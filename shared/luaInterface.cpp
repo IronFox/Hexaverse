@@ -1,6 +1,7 @@
 #include <global_root.h>
 #include "luaInterface.h"
 #include <io/byte_stream.h>
+#include <io/random_access_file.h>
 
 #include <functional>
 
@@ -654,6 +655,14 @@ namespace Lua
 	}
 
 
+	void	Reference::SetGlobal(const String&name)
+	{
+		if (IsEmpty())
+			throw Exception(CLOCATION, "Unable to set global identifier '"+name+"': Reference is empty");
+		GetProgram()->SetGlobal(name,*this);
+	}
+
+
 	namespace Detail
 	{
 
@@ -813,8 +822,8 @@ template <typename Result, typename ...T>
 
 void Lua::PushRegisteredGlobal(lua_State*state, int refID)
 {
-	if (state)
-		lua_rawgeti(state, LUA_REGISTRYINDEX, refID);
+	DBG_ASSERT_NOT_NULL__(state);
+	lua_rawgeti(state, LUA_REGISTRYINDEX, refID);
 }
 
 
@@ -916,6 +925,8 @@ namespace Lua
 					ASSERT_EQUAL__(at,-1);
 					return SerializeCurrentTable(L,stream);
 				break;
+				default:
+					throw Exception(CLOCATION, "Lua type #"+String(t)+" '"+lua_typename(L, t)+"' is not suitable for serialization");
 			}
 			return true;
 		}
@@ -968,21 +979,6 @@ namespace Lua
 		return true;
 	}
 
-	bool SerializeGlobal(lua_State*state,const String&name, IWriteStream&stream)
-	{
-		Detail::StackChecker chk(state);
-
-		int t = lua_getglobal(state,name.c_str());
-		if (lua_isnil(state,-1))
-		{
-			lua_pop(state,1);
-			return false;
-		}
-
-		bool rs = SerializeTop(state,stream);
-		lua_pop(state, 1);
-		return rs;
-	}
 
 	bool PushTable(lua_State*state, IReadStream&stream);
 
@@ -1220,13 +1216,20 @@ namespace Lua
 		lua_close(state);
 	}
 
-	/*static*/ PProgram Program::Create(const String&name/*=""*/)
+	Reference		Program::FindGlobal(const String&name)
+	{
+		Reference rs;
+		FindGlobal(name,rs);
+		return rs;
+	}
+
+
+	/*static*/ PProgram Program::Create()
 	{
 		lua_State*st = luaL_newstate();
 		if (!st)
 			return PProgram();
 		PProgram rs(new Program(st));
-		rs->name = name;
 		lua_atpanic(st, &Detail::Panic);
 
 		static const luaL_Reg loadedlibs[] = {
@@ -1258,19 +1261,17 @@ namespace Lua
 		return ref.ResetToGlobal(shared_from_this(),name);
 	}
 
-
-	void		Program::Report (int status)
+	Reference		Program::DeserializeToReference(IReadStream& data)
 	{
-		if (status != LUA_OK)
-		{
-			lastError = lua_tostring(state, -1);
-			lua_pop(state, 1);  /* remove message */
-		}
+		Reference rs;
+		DeserializeToReference(data,rs);
+		return rs;
 	}
 
 
+
 	
-	bool	CallPushedFunction(lua_State*state,int numParameters, int numResults, String&errorOut)
+	void	CallPushedFunction(lua_State*state,int numParameters, int numResults)
 	{
 		int base = lua_gettop(state) - numParameters;  /* function index */
 		lua_pushcfunction(state, Detail::AttachTraceback);  /* push message handler */
@@ -1281,60 +1282,35 @@ namespace Lua
 
 		if (status != LUA_OK)
 		{
-			errorOut = lua_tostring(state, -1);
+			String err = lua_tostring(state, -1);
 			lua_pop(state, 1);  /* remove message */
-			return false;
+			throw Exception(CLOCATION, err);
 		}
-		return true;
 	}
 
 
 	
 
 
-	bool	Program::Execute(const String&code)
+	void	Program::Execute(const String&code, const String&context/*=""*/)
 	{
 		lua_State*st = state;
 		Detail::StackChecker chk(st);
 		if (!st)
-		{
-			lastError = "Program has not been created";
-			return false;
-		}
+			throw Exception(CLOCATION,  "Program has not been created");
 
-		int rc = luaL_loadbuffer(st, code.c_str(), code.length(), name.c_str());
+		int rc = luaL_loadbuffer(st, code.c_str(), code.length(), context.c_str());
 		if (rc == LUA_OK)
+			CallPushedFunction(st,0,0);
+		else
 		{
-			return CallPushedFunction(st,0,0,lastError);
+			String err = lua_tostring(state, -1);
+			lua_pop(state, 1);  /* remove message */
+			throw Exception(CLOCATION, err);
 		}
-		Report(rc);
-		return false;
 	}
 
-	bool		Program::SerializeGlobal(const String&name,IWriteStream&stream)
-	{
-		return Lua::SerializeGlobal(state,name,stream);
-	}
 
-	bool		Program::SerializeReference(const Reference&ref,IWriteStream&stream)
-	{
-		if (ref.IsEmpty())
-			return false;
-		Detail::StackChecker chk(state);
-		PushRegisteredGlobal(state,ref.GetRefID());
-		bool rs = SerializeTop(state,stream);
-		lua_pop(state, 1);
-		return rs;
-	}
-
-	bool		Program::DeserializeToGlobal(IReadStream&stream, const String&name)
-	{
-		Detail::StackChecker chk(state);
-		if (!Lua::PushFromStream(state,stream))
-			return false;
-		lua_setglobal(state,name.c_str());
-		return true;
-	}
 
 	bool		Program::DeserializeToReference(IReadStream& data, Reference&outReference)
 	{
@@ -1349,6 +1325,49 @@ namespace Lua
 		return rs;
 	}
 
+
+
+	bool		Reference::Serialize(IWriteStream&stream)	const
+	{
+		if (IsEmpty())
+			throw Lua::Exception(CLOCATION,"Trying to serialize undefined reference");
+		lua_State*st = GetState();
+		int top = lua_gettop(st);
+		PushRegisteredGlobal(st,GetRefID());
+		bool rs;
+		try
+		{
+			rs = SerializeTop(st,stream);
+		}
+		catch (...)
+		{
+			lua_settop(st,top);
+			throw;
+		}
+		lua_pop(st, 1);
+		DBG_ASSERT_EQUAL__(top,lua_gettop(st));
+		return rs;
+	}
+
+
+	void	Program::ExecuteFile(const PathString&filename)
+	{
+		RandomAccessFile	file;
+		if (!file.Open(filename.c_str()))
+			throw Except::IO::DriveAccess::FileOpenFault(CLOCATION,"Unable to load Lua file '"+String(filename)+"'");
+		UINT len = file.GetSize();
+		TStringLength slen(len);
+		String content(slen);
+
+		file.Extract(0,content.mutablePointer(),len);
+		file.Close();
+		for (index_t i = 0; i < len; i++)
+			if (content[i] == 0)
+				throw Exception(CLOCATION,"Lua file contains zero characters: '"+String(filename)+"'");
+		Execute(content,String(filename));
+	}
+
+
 	Table Program::CreateTable()
 	{
 		Table rs;
@@ -1358,12 +1377,11 @@ namespace Lua
 	}
 
 
-	bool	Program::SetGlobal(const String&name, const Reference&ref)
+	void	Program::SetGlobal(const String&name, const Reference&ref)
 	{
 		if (!ref.Push())
-			return false;
+			return throw Lua::Exception(CLOCATION,"Can't copy reference to global '"+name+"': Reference is empty");
 		lua_setglobal(state,name.c_str());
-		return true;
 	}
 
 	Reference Program::GetGlobal(const String&name)
@@ -1501,7 +1519,7 @@ int LuaRun (int argc, const char *argv[]) {
 		bool rs;
 
 
-		rs = prog->Execute(
+		prog->Execute(
 			" function DeepPrint (e, indent)"
 			" if e == nil then"
 			"  print('nil')"
@@ -1518,13 +1536,13 @@ int LuaRun (int argc, const char *argv[]) {
 			" end"
 		);
 
-		rs = prog->Execute(
+		prog->Execute(
 			" function norm (x, y)"
 			"    local n2 = x^2 + y^2"
 			"    return math.sqrt(n2)"
 			"  end");
 
-		rs = prog->Execute(
+		prog->Execute(
 		"nested ="
 		"{"
 			"music = \"music1\","
@@ -1540,14 +1558,14 @@ int LuaRun (int argc, const char *argv[]) {
 
 
 
-		rs = prog->Execute("someVar = 3");
+		prog->Execute("someVar = 3");
 		ByteStream	testStream;
-		rs = prog->SerializeGlobal("nested",testStream);
-
+		rs = prog->GetGlobal("nested").Serialize(testStream);
+		
 		{
 			MemReadStream reader(testStream.pointer(),testStream.GetFillLevel());
 
-			rs = prog->DeserializeToGlobal(reader,"nested2");
+			prog->DeserializeToReference(reader).SetGlobal("nested2");
 		}
 
 		Lua::Function<void(Lua::Reference,String)> deepPrint(prog,"DeepPrint");
@@ -1561,18 +1579,18 @@ int LuaRun (int argc, const char *argv[]) {
 			deepPrint(ref,"");
 
 			ByteStream str2;
-			prog->SerializeReference(ref,str2);
+			ref.Serialize(str2);
 			{
 				MemReadStream reader(str2.pointer(),str2.GetFillLevel());
-				rs = prog->DeserializeToGlobal(reader,"nested3");
+				prog->DeserializeToReference(reader).SetGlobal("nested3");
 
 			}
 		}
 
 
-		rs = prog->Execute("DeepPrint(nested,\"\")");
-		rs = prog->Execute("DeepPrint(nested2,\"\")");
-		rs = prog->Execute("DeepPrint(nested3,\"\")");
+		prog->Execute("DeepPrint(nested,\"\")");
+		prog->Execute("DeepPrint(nested2,\"\")");
+		prog->Execute("DeepPrint(nested3,\"\")");
 
 
 		try
@@ -1609,9 +1627,9 @@ int LuaRun (int argc, const char *argv[]) {
 		t.AppendElement(42);
 		t.AppendElement(42.f);
 		count_t len = t.GetLength();
-		rs = prog->SetGlobal("field",t);
+		prog->SetGlobal("field",t);
 
-		rs = prog->Execute("DeepPrint(field,'')");
+		prog->Execute("DeepPrint(field,'')");
 		
 		//rs = prog->Execute("print(Interface.Test(3.5))");
 		//rs = prog->Execute("print(Interface.Test2(3,5))");

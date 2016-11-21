@@ -39,12 +39,12 @@ namespace Lua
 	The number of pushed parameters must match @a numParameters.
 	Both the function and parameters are removed from the stack as a result of execution.
 	Upon success, all requested return values are pushed to the stack
+	Throws Lua::Exception on failure. No return values are pushed in case an exception is thrown
 	@param numParameters Number of parameters pushed to the stack. Must match the actually pushed parameters
 	@param numResults Number of return values which are pushed to the stack as a result. Typically 0 (void function) or 1 (single return value)
 	@param[out] errorOut Resulting error message in case lua execution fails. Updated only if the function returns false
-	@return true on success, false otherwise. No results are pushed if the function returns false
 	*/
-	bool	CallPushedFunction(lua_State*,int numParameters, int numResults, String&errorOut);
+	void	CallPushedFunction(lua_State*,int numParameters, int numResults);
 	/**
 	Finds a global (variable, function, w/e) by name, and pushes it to a new refID.
 	@param name Name of the global to look for
@@ -64,6 +64,22 @@ namespace Lua
 	@param refID refID to erase
 	*/
 	void	EraseReference(lua_State *, int refID);
+
+	class Exception : public Except::Program::GeneralFault
+	{
+		typedef Except::Program::GeneralFault Super;
+	public:
+		/**/		Exception(){}\
+		/**/		Exception(const char*message):Super(message) {}\
+		/**/		Exception(const globalString&string):Super(string){}\
+		/**/		Exception(const TCodeLocation&loc):Super(loc){}\
+		/**/		Exception(const TCodeLocation&loc, const char*message):Super(loc,message) {}\
+		/**/		Exception(const TCodeLocation&loc, const globalString&string):Super(loc,string){}\
+		template <class C>		Exception(const IString<C>&string):Super(string){}\
+		template <class C>		Exception(const TCodeLocation&loc, const IString<C>&string):Super(loc,string){}\
+		static const Name&		StaticGetName()	{static const Name name=Name(Super::StaticGetName(),"/Lua::Exception"); return name;}
+		virtual	const char*		GetType()	const override					{return StaticGetName();}
+	};
 
 
 	namespace Detail
@@ -273,11 +289,7 @@ namespace Lua
 	*/
 	class Program : public std::enable_shared_from_this<Program>
 	{
-		String			lastError;
-		String			name;
 		lua_State		*const state;
-
-		void			Report (int);
 
 		/**/			Program(lua_State*st):state(st)	{}
 
@@ -291,7 +303,7 @@ namespace Lua
 		Creates a new instance.
 		@return new object on success. An empty results indicates a Lua error (most likely insufficient memory)
 		*/
-		static PProgram	Create(const String&name = "");
+		static PProgram	Create();
 		/**
 		Fetches the internal lua state. Never NULL
 		*/
@@ -304,43 +316,19 @@ namespace Lua
 		@return true if the specified global was found and @a outRef updated, otherwise
 		*/
 		bool			FindGlobal(const String&name, Reference&outRef);
+		Reference		FindGlobal(const String&name);
 
 		/**
-		Attempts to execute an arbitrary lua script chunk in protected mode
+		Attempts to execute an arbitrary lua script chunk in protected mode.
+		Throws Lua::Exception() in case of errors
 		@param luaCode Code to execute
-		@return true on success, false if something happend. Check GetLastError() if the method returns false
 		*/
-		bool			Execute(const String&luaCode);
-
+		void			Execute(const String&luaCode, const String&context="");
 		/**
-		Fetches a string representation of the last occurred error.
-		Updated only if Execute() returns false (left as is otherwise)
+		Attempts to exdecute a script file from disk.
+		Throws file open faults or Lua::Exception in case of errors
 		*/
-		const String&	GetLastError()	const	{return lastError;}
-
-		/**
-		Attempts to store a generic reference as a host byte stream.
-		Some data (like functions) cannot be serialized and is omitted.
-		@param ref Reference to serialize
-		@param[inout] stream Stream to put the resulting byte data to
-		@return true if the specified reference is set and the stream was large enough to hold any serializable data, false otherwise
-		*/
-		bool			SerializeReference(const Reference&ref, IWriteStream&stream);
-		/**
-		Attempst to store a global variable as a host byte stream.
-		Some data (like functions) cannot be serialized and is omitted.
-		@param name Name of the global to serialize
-		@param[inout] stream Stream to put the resulting byte data to
-		@return true if the specified name was found and the stream was large enough to hold any serializable data, false otherwise
-		*/
-		bool			SerializeGlobal(const String&name,IWriteStream&stream);
-		/**
-		Deserializes binary host data to a global variable
-		@param[inout] data Serialized host data of some lua variable (created by SerializeReference() or SerializeGlobal())
-		@param name Name of the global variable to set
-		@return true if the data could be deserialized and the global variable was updated, false otherwise
-		*/
-		bool			DeserializeToGlobal(IReadStream&data, const String&name);
+		void			ExecuteFile(const PathString&filename);
 		/**
 		Deserializes binary host data to a new lua reference
 		@param[inout] data Serialized host data of some lua variable (created by SerializeReference() or SerializeGlobal())
@@ -348,6 +336,7 @@ namespace Lua
 		@return true if the data could be deserialized and the reference was created, false otherwise
 		*/
 		bool			DeserializeToReference(IReadStream& data, Reference&outReference);
+		Reference		DeserializeToReference(IReadStream& data);
 
 		/**
 		Creates a new table and returns the reference to it. Apart from the returned reference, there is no link of the local program to the returned table
@@ -357,10 +346,11 @@ namespace Lua
 		Associates the specified name with the given reference
 		@return true if the given reference is not empty, false otherwise
 		*/
-		bool			SetGlobal(const String&name, const Reference&);
+		void			SetGlobal(const String&name, const Reference&);
 
 		/**
-		Queries a global variable
+		Queries a global variable.
+		The resulting reference may be empty if the requested global does not exist
 		*/
 		Reference		GetGlobal(const String&name);
 	};
@@ -451,6 +441,17 @@ namespace Lua
 		*/
 		bool		Push()	const {if (IsEmpty()) return false; PushRegisteredGlobal(GetState(),GetRefID()); return true;}
 
+
+		/**
+		Attempts to store the local reference as a host byte stream.
+		If the local reference is empty a Lua::Exception is thrown.
+		Some data (like functions) cannot be serialized and cause a Lua::Exception to be thrown.
+		@param[inout] stream Stream to put the resulting byte data to
+		@return true if the stream was large enough to hold any serializable data, false otherwise
+		*/
+		bool			Serialize(IWriteStream&stream)	const;
+		void			SetGlobal(const String&name);
+
 	};
 
 	/**
@@ -469,6 +470,11 @@ namespace Lua
 		virtual bool	IsTableReference() const override	{return true;}
 
 	public:
+		/**/			Table()	{}
+		/**/			Table(const Reference&ref)
+		{
+			operator=(ref);
+		}
 		/**
 		Fetches a reference for the specified field in the local table.
 		The result may be empty if the specified field was not found
@@ -541,6 +547,7 @@ namespace Lua
 		@return true if the local reference was updated
 		*/
 		bool			Reset(const Reference&ref);
+		void			operator=(const Reference&ref)	{ASSERT__(Reset(ref));}
 
 		/**
 		Inserts a new named C function into the local table.
@@ -589,6 +596,7 @@ namespace Lua
 			{
 				ResetToGlobal(prog,functionName);
 			}
+			void		operator=(const Reference&ref)	{ASSERT__(Super::Reset(ref));}
 
 			void		operator()(args_t...parameters)	const
 			{
@@ -597,9 +605,7 @@ namespace Lua
 				lua_State*state = GetProgram()->GetState();
 				Super::Push();
 				int numParameters = Detail::PushParameters(state,parameters...);
-				String error;
-				if (!CallPushedFunction(state,numParameters,0,error))
-					throw Except::Program::GeneralFault("Lua: "+error);
+				CallPushedFunction(state,numParameters,0);
 			}
 
 		};
@@ -616,6 +622,7 @@ namespace Lua
 			{
 				ResetToGlobal(prog,functionName);
 			}
+			void		operator=(const Reference&ref)	{ASSERT__(Super::Reset(ref));}
 
 			return_t	operator()(args_t...parameters)	const
 			{
@@ -624,9 +631,7 @@ namespace Lua
 				lua_State*state = GetProgram()->GetState();
 				Super::Push();
 				int numParameters = Detail::PushParameters(state,parameters...);
-				String error;
-				if (!CallPushedFunction(state,numParameters,1,error))
-					throw Except::Program::GeneralFault("Lua: "+error);
+				CallPushedFunction(state,numParameters,1);
 				return_t rs;
 				Detail::GetStacked(GetProgram(),-1,rs);
 				Detail::PopStacked(state);
