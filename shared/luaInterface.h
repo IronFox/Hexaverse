@@ -316,6 +316,7 @@ namespace Lua
 		@return true if the specified global was found and @a outRef updated, otherwise
 		*/
 		bool			FindGlobal(const String&name, Reference&outRef);
+		Reference		FindGlobal(const String&name);
 
 		/**
 		Attempts to execute an arbitrary lua script chunk in protected mode.

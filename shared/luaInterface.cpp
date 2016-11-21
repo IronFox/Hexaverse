@@ -1205,6 +1205,14 @@ namespace Lua
 		lua_close(state);
 	}
 
+	Reference		Program::FindGlobal(const String&name)
+	{
+		Reference rs;
+		FindGlobal(name,rs);
+		return rs;
+	}
+
+
 	/*static*/ PProgram Program::Create()
 	{
 		lua_State*st = luaL_newstate();
