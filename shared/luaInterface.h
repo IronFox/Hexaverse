@@ -475,6 +475,11 @@ namespace Lua
 		virtual bool	IsTableReference() const override	{return true;}
 
 	public:
+		/**/			Table()	{}
+		/**/			Table(const Reference&ref)
+		{
+			operator=(ref);
+		}
 		/**
 		Fetches a reference for the specified field in the local table.
 		The result may be empty if the specified field was not found
@@ -547,6 +552,7 @@ namespace Lua
 		@return true if the local reference was updated
 		*/
 		bool			Reset(const Reference&ref);
+		void			operator=(const Reference&ref)	{ASSERT__(Reset(ref));}
 
 		/**
 		Inserts a new named C function into the local table.
@@ -595,6 +601,7 @@ namespace Lua
 			{
 				ResetToGlobal(prog,functionName);
 			}
+			void		operator=(const Reference&ref)	{ASSERT__(Super::Reset(ref));}
 
 			void		operator()(args_t...parameters)	const
 			{
@@ -622,6 +629,7 @@ namespace Lua
 			{
 				ResetToGlobal(prog,functionName);
 			}
+			void		operator=(const Reference&ref)	{ASSERT__(Super::Reset(ref));}
 
 			return_t	operator()(args_t...parameters)	const
 			{
