@@ -735,7 +735,7 @@ namespace Lua
 			void*ptrData = lua_newuserdata(st,sizeof(WProgram)); //stack now: ... userdata(f), userdata(p)
 			new (ptrData) WProgram(prog);
 			lua_newtable(st);							//stack now: ... userdata(f), userdata(p), metatable
-			lua_pushcclosure(st,DeleteT<WProgram>,0);				//stack now: ... userdata(f), userdata(p), metatable, fdel
+			lua_pushcclosure(st,DeleteT<WProgram>,0);				//stack now: ... userdata(f), userdata(p), metatable, wdel
 
 			stackDump(st);
 
