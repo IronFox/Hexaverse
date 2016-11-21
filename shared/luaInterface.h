@@ -446,6 +446,8 @@ namespace Lua
 		@return true if the stream was large enough to hold any serializable data, false otherwise
 		*/
 		bool			Serialize(IWriteStream&stream)	const;
+		void			SetGlobal(const String&name);
+
 	};
 
 	/**

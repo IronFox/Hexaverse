@@ -654,6 +654,14 @@ namespace Lua
 	}
 
 
+	void	Reference::SetGlobal(const String&name)
+	{
+		if (IsEmpty())
+			throw Exception(CLOCATION, "Unable to set global identifier '"+name+"': Reference is empty");
+		GetProgram()->SetGlobal(name,*this);
+	}
+
+
 	namespace Detail
 	{
 
