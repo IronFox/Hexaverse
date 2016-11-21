@@ -968,21 +968,6 @@ namespace Lua
 		return true;
 	}
 
-	bool SerializeGlobal(lua_State*state,const String&name, IWriteStream&stream)
-	{
-		Detail::StackChecker chk(state);
-
-		int t = lua_getglobal(state,name.c_str());
-		if (lua_isnil(state,-1))
-		{
-			lua_pop(state,1);
-			return false;
-		}
-
-		bool rs = SerializeTop(state,stream);
-		lua_pop(state, 1);
-		return rs;
-	}
 
 	bool PushTable(lua_State*state, IReadStream&stream);
 
@@ -1311,10 +1296,6 @@ namespace Lua
 		return false;
 	}
 
-	bool		Program::SerializeGlobal(const String&name,IWriteStream&stream)
-	{
-		return Lua::SerializeGlobal(state,name,stream);
-	}
 
 	bool		Program::SerializeReference(const Reference&ref,IWriteStream&stream)
 	{
@@ -1327,14 +1308,6 @@ namespace Lua
 		return rs;
 	}
 
-	bool		Program::DeserializeToGlobal(IReadStream&stream, const String&name)
-	{
-		Detail::StackChecker chk(state);
-		if (!Lua::PushFromStream(state,stream))
-			return false;
-		lua_setglobal(state,name.c_str());
-		return true;
-	}
 
 	bool		Program::DeserializeToReference(IReadStream& data, Reference&outReference)
 	{

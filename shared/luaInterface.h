@@ -343,20 +343,7 @@ namespace Lua
 		*/
 		bool			SerializeReference(const Reference&ref, IWriteStream&stream);
 		/**
-		Attempst to store a global variable as a host byte stream.
-		Some data (like functions) cannot be serialized and is omitted.
-		@param name Name of the global to serialize
-		@param[inout] stream Stream to put the resulting byte data to
-		@return true if the specified name was found and the stream was large enough to hold any serializable data, false otherwise
 		*/
-		bool			SerializeGlobal(const String&name,IWriteStream&stream);
-		/**
-		Deserializes binary host data to a global variable
-		@param[inout] data Serialized host data of some lua variable (created by SerializeReference() or SerializeGlobal())
-		@param name Name of the global variable to set
-		@return true if the data could be deserialized and the global variable was updated, false otherwise
-		*/
-		bool			DeserializeToGlobal(IReadStream&data, const String&name);
 		/**
 		Deserializes binary host data to a new lua reference
 		@param[inout] data Serialized host data of some lua variable (created by SerializeReference() or SerializeGlobal())
