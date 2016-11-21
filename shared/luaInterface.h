@@ -65,6 +65,22 @@ namespace Lua
 	*/
 	void	EraseReference(lua_State *, int refID);
 
+	class Exception : public Except::Program::GeneralFault
+	{
+		typedef Except::Program::GeneralFault Super;
+	public:
+		/**/		Exception(){}\
+		/**/		Exception(const char*message):Super(message) {}\
+		/**/		Exception(const globalString&string):Super(string){}\
+		/**/		Exception(const TCodeLocation&loc):Super(loc){}\
+		/**/		Exception(const TCodeLocation&loc, const char*message):Super(loc,message) {}\
+		/**/		Exception(const TCodeLocation&loc, const globalString&string):Super(loc,string){}\
+		template <class C>		Exception(const IString<C>&string):Super(string){}\
+		template <class C>		Exception(const TCodeLocation&loc, const IString<C>&string):Super(loc,string){}\
+		static const Name&		StaticGetName()	{static const Name name=Name(Super::StaticGetName(),"/Lua::Exception"); return name;}
+		virtual	const char*		GetType()	const override					{return StaticGetName();}
+	};
+
 
 	namespace Detail
 	{
