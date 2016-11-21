@@ -25,7 +25,7 @@
 #include "components/networkChannels.h"
 #include "components/journalSaveGame.h"
 #include "components/reflection.h"
-#include "components/luaInterface.h"
+#include <luaInterface.h>
 #include "components/configurationMode.h"
 
 UINT32 ApplicationInterface::globalVersionOfCurrentFile = 0;	//file version being loaded right now
