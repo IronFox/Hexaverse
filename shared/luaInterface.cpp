@@ -1205,13 +1205,12 @@ namespace Lua
 		lua_close(state);
 	}
 
-	/*static*/ PProgram Program::Create(const String&name/*=""*/)
+	/*static*/ PProgram Program::Create()
 	{
 		lua_State*st = luaL_newstate();
 		if (!st)
 			return PProgram();
 		PProgram rs(new Program(st));
-		rs->name = name;
 		lua_atpanic(st, &Detail::Panic);
 
 		static const luaL_Reg loadedlibs[] = {
@@ -1250,18 +1249,10 @@ namespace Lua
 		return rs;
 	}
 
-	void		Program::Report (int status)
-	{
-		if (status != LUA_OK)
-		{
-			lastError = lua_tostring(state, -1);
-			lua_pop(state, 1);  /* remove message */
-		}
-	}
 
 
 	
-	bool	CallPushedFunction(lua_State*state,int numParameters, int numResults, String&errorOut)
+	void	CallPushedFunction(lua_State*state,int numParameters, int numResults)
 	{
 		int base = lua_gettop(state) - numParameters;  /* function index */
 		lua_pushcfunction(state, Detail::AttachTraceback);  /* push message handler */
@@ -1272,34 +1263,32 @@ namespace Lua
 
 		if (status != LUA_OK)
 		{
-			errorOut = lua_tostring(state, -1);
+			String err = lua_tostring(state, -1);
 			lua_pop(state, 1);  /* remove message */
-			return false;
+			throw Exception(CLOCATION, err);
 		}
-		return true;
 	}
 
 
 	
 
 
-	bool	Program::Execute(const String&code)
+	void	Program::Execute(const String&code, const String&context/*=""*/)
 	{
 		lua_State*st = state;
 		Detail::StackChecker chk(st);
 		if (!st)
-		{
-			lastError = "Program has not been created";
-			return false;
-		}
+			throw Exception(CLOCATION,  "Program has not been created");
 
-		int rc = luaL_loadbuffer(st, code.c_str(), code.length(), name.c_str());
+		int rc = luaL_loadbuffer(st, code.c_str(), code.length(), context.c_str());
 		if (rc == LUA_OK)
+			CallPushedFunction(st,0,0);
+		else
 		{
-			return CallPushedFunction(st,0,0,lastError);
+			String err = lua_tostring(state, -1);
+			lua_pop(state, 1);  /* remove message */
+			throw Exception(CLOCATION, err);
 		}
-		Report(rc);
-		return false;
 	}
 
 
@@ -1493,7 +1482,7 @@ int LuaRun (int argc, const char *argv[]) {
 		bool rs;
 
 
-		rs = prog->Execute(
+		prog->Execute(
 			" function DeepPrint (e, indent)"
 			" if e == nil then"
 			"  print('nil')"
@@ -1510,13 +1499,13 @@ int LuaRun (int argc, const char *argv[]) {
 			" end"
 		);
 
-		rs = prog->Execute(
+		prog->Execute(
 			" function norm (x, y)"
 			"    local n2 = x^2 + y^2"
 			"    return math.sqrt(n2)"
 			"  end");
 
-		rs = prog->Execute(
+		prog->Execute(
 		"nested ="
 		"{"
 			"music = \"music1\","
@@ -1532,14 +1521,14 @@ int LuaRun (int argc, const char *argv[]) {
 
 
 
-		rs = prog->Execute("someVar = 3");
+		prog->Execute("someVar = 3");
 		ByteStream	testStream;
-		rs = prog->SerializeGlobal("nested",testStream);
-
+		rs = prog->GetGlobal("nested").Serialize(testStream);
+		
 		{
 			MemReadStream reader(testStream.pointer(),testStream.GetFillLevel());
 
-			rs = prog->DeserializeToGlobal(reader,"nested2");
+			prog->DeserializeToReference(reader).SetGlobal("nested2");
 		}
 
 		Lua::Function<void(Lua::Reference,String)> deepPrint(prog,"DeepPrint");
@@ -1553,18 +1542,18 @@ int LuaRun (int argc, const char *argv[]) {
 			deepPrint(ref,"");
 
 			ByteStream str2;
-			prog->SerializeReference(ref,str2);
+			ref.Serialize(str2);
 			{
 				MemReadStream reader(str2.pointer(),str2.GetFillLevel());
-				rs = prog->DeserializeToGlobal(reader,"nested3");
+				prog->DeserializeToReference(reader).SetGlobal("nested3");
 
 			}
 		}
 
 
-		rs = prog->Execute("DeepPrint(nested,\"\")");
-		rs = prog->Execute("DeepPrint(nested2,\"\")");
-		rs = prog->Execute("DeepPrint(nested3,\"\")");
+		prog->Execute("DeepPrint(nested,\"\")");
+		prog->Execute("DeepPrint(nested2,\"\")");
+		prog->Execute("DeepPrint(nested3,\"\")");
 
 
 		try
@@ -1601,9 +1590,9 @@ int LuaRun (int argc, const char *argv[]) {
 		t.AppendElement(42);
 		t.AppendElement(42.f);
 		count_t len = t.GetLength();
-		rs = prog->SetGlobal("field",t);
+		prog->SetGlobal("field",t);
 
-		rs = prog->Execute("DeepPrint(field,'')");
+		prog->Execute("DeepPrint(field,'')");
 		
 		//rs = prog->Execute("print(Interface.Test(3.5))");
 		//rs = prog->Execute("print(Interface.Test2(3,5))");

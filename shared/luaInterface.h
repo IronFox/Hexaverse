@@ -39,12 +39,12 @@ namespace Lua
 	The number of pushed parameters must match @a numParameters.
 	Both the function and parameters are removed from the stack as a result of execution.
 	Upon success, all requested return values are pushed to the stack
+	Throws Lua::Exception on failure. No return values are pushed in case an exception is thrown
 	@param numParameters Number of parameters pushed to the stack. Must match the actually pushed parameters
 	@param numResults Number of return values which are pushed to the stack as a result. Typically 0 (void function) or 1 (single return value)
 	@param[out] errorOut Resulting error message in case lua execution fails. Updated only if the function returns false
-	@return true on success, false otherwise. No results are pushed if the function returns false
 	*/
-	bool	CallPushedFunction(lua_State*,int numParameters, int numResults, String&errorOut);
+	void	CallPushedFunction(lua_State*,int numParameters, int numResults);
 	/**
 	Finds a global (variable, function, w/e) by name, and pushes it to a new refID.
 	@param name Name of the global to look for
@@ -289,11 +289,7 @@ namespace Lua
 	*/
 	class Program : public std::enable_shared_from_this<Program>
 	{
-		String			lastError;
-		String			name;
 		lua_State		*const state;
-
-		void			Report (int);
 
 		/**/			Program(lua_State*st):state(st)	{}
 
@@ -307,7 +303,7 @@ namespace Lua
 		Creates a new instance.
 		@return new object on success. An empty results indicates a Lua error (most likely insufficient memory)
 		*/
-		static PProgram	Create(const String&name = "");
+		static PProgram	Create();
 		/**
 		Fetches the internal lua state. Never NULL
 		*/
@@ -322,19 +318,11 @@ namespace Lua
 		bool			FindGlobal(const String&name, Reference&outRef);
 
 		/**
-		Attempts to execute an arbitrary lua script chunk in protected mode
+		Attempts to execute an arbitrary lua script chunk in protected mode.
+		Throws Lua::Exception() in case of errors
 		@param luaCode Code to execute
-		@return true on success, false if something happend. Check GetLastError() if the method returns false
 		*/
-		bool			Execute(const String&luaCode);
-
-		/**
-		Fetches a string representation of the last occurred error.
-		Updated only if Execute() returns false (left as is otherwise)
-		*/
-		const String&	GetLastError()	const	{return lastError;}
-
-		*/
+		void			Execute(const String&luaCode, const String&context="");
 		/**
 		*/
 		/**
@@ -610,9 +598,7 @@ namespace Lua
 				lua_State*state = GetProgram()->GetState();
 				Super::Push();
 				int numParameters = Detail::PushParameters(state,parameters...);
-				String error;
-				if (!CallPushedFunction(state,numParameters,0,error))
-					throw Except::Program::GeneralFault("Lua: "+error);
+				CallPushedFunction(state,numParameters,0);
 			}
 
 		};
@@ -638,9 +624,7 @@ namespace Lua
 				lua_State*state = GetProgram()->GetState();
 				Super::Push();
 				int numParameters = Detail::PushParameters(state,parameters...);
-				String error;
-				if (!CallPushedFunction(state,numParameters,1,error))
-					throw Except::Program::GeneralFault("Lua: "+error);
+				CallPushedFunction(state,numParameters,1);
 				return_t rs;
 				Detail::GetStacked(GetProgram(),-1,rs);
 				Detail::PopStacked(state);
