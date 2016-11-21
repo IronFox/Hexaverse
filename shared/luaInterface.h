@@ -334,14 +334,7 @@ namespace Lua
 		*/
 		const String&	GetLastError()	const	{return lastError;}
 
-		/**
-		Attempts to store a generic reference as a host byte stream.
-		Some data (like functions) cannot be serialized and is omitted.
-		@param ref Reference to serialize
-		@param[inout] stream Stream to put the resulting byte data to
-		@return true if the specified reference is set and the stream was large enough to hold any serializable data, false otherwise
 		*/
-		bool			SerializeReference(const Reference&ref, IWriteStream&stream);
 		/**
 		*/
 		/**
@@ -454,6 +447,15 @@ namespace Lua
 		*/
 		bool		Push()	const {if (IsEmpty()) return false; PushRegisteredGlobal(GetState(),GetRefID()); return true;}
 
+
+		/**
+		Attempts to store the local reference as a host byte stream.
+		If the local reference is empty a Lua::Exception is thrown.
+		Some data (like functions) cannot be serialized and cause a Lua::Exception to be thrown.
+		@param[inout] stream Stream to put the resulting byte data to
+		@return true if the stream was large enough to hold any serializable data, false otherwise
+		*/
+		bool			Serialize(IWriteStream&stream)	const;
 	};
 
 	/**

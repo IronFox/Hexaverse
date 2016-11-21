@@ -1297,17 +1297,6 @@ namespace Lua
 	}
 
 
-	bool		Program::SerializeReference(const Reference&ref,IWriteStream&stream)
-	{
-		if (ref.IsEmpty())
-			return false;
-		Detail::StackChecker chk(state);
-		PushRegisteredGlobal(state,ref.GetRefID());
-		bool rs = SerializeTop(state,stream);
-		lua_pop(state, 1);
-		return rs;
-	}
-
 
 	bool		Program::DeserializeToReference(IReadStream& data, Reference&outReference)
 	{
@@ -1319,6 +1308,30 @@ namespace Lua
 		}
 		bool rs = outReference.ResetFromStack(shared_from_this(),-1);
 		lua_pop(state,1);
+		return rs;
+	}
+
+
+
+	bool		Reference::Serialize(IWriteStream&stream)	const
+	{
+		if (IsEmpty())
+			throw Lua::Exception(CLOCATION,"Trying to serialize undefined reference");
+		lua_State*st = GetState();
+		int top = lua_gettop(st);
+		PushRegisteredGlobal(st,GetRefID());
+		bool rs;
+		try
+		{
+			rs = SerializeTop(st,stream);
+		}
+		catch (...)
+		{
+			lua_settop(st,top);
+			throw;
+		}
+		lua_pop(st, 1);
+		DBG_ASSERT_EQUAL__(top,lua_gettop(st));
 		return rs;
 	}
 
