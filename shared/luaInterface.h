@@ -346,7 +346,8 @@ namespace Lua
 		void			SetGlobal(const String&name, const Reference&);
 
 		/**
-		Queries a global variable
+		Queries a global variable.
+		The resulting reference may be empty if the requested global does not exist
 		*/
 		Reference		GetGlobal(const String&name);
 	};
