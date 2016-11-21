@@ -1347,12 +1347,11 @@ namespace Lua
 	}
 
 
-	bool	Program::SetGlobal(const String&name, const Reference&ref)
+	void	Program::SetGlobal(const String&name, const Reference&ref)
 	{
 		if (!ref.Push())
-			return false;
+			return throw Lua::Exception(CLOCATION,"Can't copy reference to global '"+name+"': Reference is empty");
 		lua_setglobal(state,name.c_str());
-		return true;
 	}
 
 	Reference Program::GetGlobal(const String&name)

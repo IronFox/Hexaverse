@@ -343,7 +343,7 @@ namespace Lua
 		Associates the specified name with the given reference
 		@return true if the given reference is not empty, false otherwise
 		*/
-		bool			SetGlobal(const String&name, const Reference&);
+		void			SetGlobal(const String&name, const Reference&);
 
 		/**
 		Queries a global variable
