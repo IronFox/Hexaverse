@@ -1,6 +1,7 @@
 #include <global_root.h>
 #include "luaInterface.h"
 #include <io/byte_stream.h>
+#include <io/random_access_file.h>
 
 #include <functional>
 
@@ -1345,6 +1346,25 @@ namespace Lua
 		DBG_ASSERT_EQUAL__(top,lua_gettop(st));
 		return rs;
 	}
+
+
+	void	Program::ExecuteFile(const PathString&filename)
+	{
+		RandomAccessFile	file;
+		if (!file.Open(filename.c_str()))
+			throw Except::IO::DriveAccess::FileOpenFault(CLOCATION,"Unable to load Lua file '"+String(filename)+"'");
+		UINT len = file.GetSize();
+		TStringLength slen(len);
+		String content(slen);
+
+		file.Extract(0,content.mutablePointer(),len);
+		file.Close();
+		for (index_t i = 0; i < len; i++)
+			if (content[i] == 0)
+				throw Exception(CLOCATION,"Lua file contains zero characters: '"+String(filename)+"'");
+		Execute(content,String(filename));
+	}
+
 
 	Table Program::CreateTable()
 	{

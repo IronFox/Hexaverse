@@ -325,7 +325,10 @@ namespace Lua
 		*/
 		void			Execute(const String&luaCode, const String&context="");
 		/**
+		Attempts to exdecute a script file from disk.
+		Throws file open faults or Lua::Exception in case of errors
 		*/
+		void			ExecuteFile(const PathString&filename);
 		/**
 		Deserializes binary host data to a new lua reference
 		@param[inout] data Serialized host data of some lua variable (created by SerializeReference() or SerializeGlobal())
