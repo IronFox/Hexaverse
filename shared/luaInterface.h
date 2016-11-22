@@ -548,7 +548,7 @@ namespace Lua
 		@return true if the local reference was updated
 		*/
 		bool			Reset(const Reference&ref);
-		void			operator=(const Reference&ref)	{ASSERT__(Reset(ref));}
+		void			operator=(const Reference&ref);
 
 		/**
 		Inserts a new named C function into the local table.
@@ -579,7 +579,7 @@ namespace Lua
 
 	public:
 		bool			Reset(const Reference&ref);
-
+		void			operator=(const Reference&ref);
 	};
 
 
@@ -597,7 +597,7 @@ namespace Lua
 			{
 				ResetToGlobal(prog,functionName);
 			}
-			void		operator=(const Reference&ref)	{ASSERT__(Super::Reset(ref));}
+			void		operator=(const Reference&ref)	{Super::operator=(ref);}
 
 			void		operator()(args_t...parameters)	const
 			{
@@ -623,7 +623,7 @@ namespace Lua
 			{
 				ResetToGlobal(prog,functionName);
 			}
-			void		operator=(const Reference&ref)	{ASSERT__(Super::Reset(ref));}
+			void		operator=(const Reference&ref)	{Super::operator=(ref);}
 
 			return_t	operator()(args_t...parameters)	const
 			{

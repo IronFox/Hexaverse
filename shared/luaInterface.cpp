@@ -1214,6 +1214,26 @@ namespace Lua
 		return false;
 	}
 
+	void Table::operator=(const Reference & ref)
+	{
+		if (ref.IsEmpty() || ref.IsTable())
+		{
+			((Super&)*this) = ref;
+			return;
+		} 
+		throw Exception("Trying to assign non-table Lua variable to table reference");
+	}
+
+	void BaseFunction::operator=(const Reference & ref)
+	{
+		if (ref.IsEmpty() || ref.IsFunction())
+		{
+			((Super&)*this) = ref;
+			return;
+		} 
+		throw Exception("Trying to assign non-function Lua variable to function reference");
+	}
+
 	count_t Table::GetLength() const
 	{
 		lua_State*st = GetState();
