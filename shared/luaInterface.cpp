@@ -2,6 +2,7 @@
 #include "luaInterface.h"
 #include <io/byte_stream.h>
 #include <io/random_access_file.h>
+#include <io/file_system.h>
 
 #include <functional>
 
@@ -632,7 +633,16 @@ namespace Lua
 		if (lua_gettop(state)< abs(at) || lua_isnil(state,at))
 			return false;
 		lua_pushvalue(state,at);
-		SetReference(st,luaL_ref(state, LUA_REGISTRYINDEX));
+		int ref = luaL_ref(state, LUA_REGISTRYINDEX);
+		try
+		{
+			SetReference(st,ref);
+		}
+		catch (...)
+		{
+			luaL_unref(state,LUA_REGISTRYINDEX,ref);
+			throw;
+		}
 		return true;
 	}
 
@@ -723,6 +733,22 @@ namespace Lua
 			return lua_touserdata(st,idx);
 		}
 
+		void* PushShared(lua_State*st, size_t fsize, int(*fdel)(lua_State*))
+		{
+			void*fdata = lua_newuserdata(st,fsize);		//stack now: ... userdata(f)
+			//memcpy(data,fdata,fsize);
+
+			lua_newtable(st);							//stack now: ... userdata(f), metatable
+			lua_pushcclosure(st,fdel,0);				//stack now: ... userdata(f), metatable, fdel
+
+	//		stackDump(st);
+
+			lua_setfield(st,-2,"__gc");		//stack now: ... userdata(f), metatable
+			lua_setmetatable(st,-2);					//stack now: ... userdata(f)
+
+	
+			return fdata;
+		}
 
 		void* RegisterFunction(const PProgram & prog, size_t fsize, int(*fdel)(lua_State*) ,int(*f)(lua_State*))
 		{
@@ -734,19 +760,19 @@ namespace Lua
 			lua_newtable(st);							//stack now: ... userdata(f), metatable
 			lua_pushcclosure(st,fdel,0);				//stack now: ... userdata(f), metatable, fdel
 
-			stackDump(st);
+		//	stackDump(st);
 
 			lua_setfield(st,-2,"__gc");		//stack now: ... userdata(f), metatable
 			lua_setmetatable(st,-2);					//stack now: ... userdata(f)
 
-			stackDump(st);
+		//	stackDump(st);
 
 			void*ptrData = lua_newuserdata(st,sizeof(WProgram)); //stack now: ... userdata(f), userdata(p)
 			new (ptrData) WProgram(prog);
 			lua_newtable(st);							//stack now: ... userdata(f), userdata(p), metatable
 			lua_pushcclosure(st,DeleteT<WProgram>,0);				//stack now: ... userdata(f), userdata(p), metatable, wdel
 
-			stackDump(st);
+		//	stackDump(st);
 
 			lua_setfield(st,-2,"__gc");		//stack now: ... userdata(f), userdata(p), metatable
 			lua_setmetatable(st,-2);					//stack now: ... userdata(f), userdata(p)
@@ -756,6 +782,48 @@ namespace Lua
 //			lua_pushlightuserdata(st,pptr);
 			lua_pushcclosure(st, f, 2);  /* closure with those upvalues */
 			return fdata;
+		}
+
+		void	Raise(lua_State*st, const String&msg)
+		{
+			lua_pushstring(st,msg.c_str());
+			lua_error(st);
+		}
+
+
+		void*	RequireStackedUserData(const PProgram&prog,int addr,size_t requireByteSize, int (*gcFunction)(lua_State*), bool allowNil)
+		{
+			lua_State*st = prog->GetState();
+			int t = lua_type(st,addr);
+			if (t == LUA_TNIL && allowNil)
+				return nullptr;
+			if (t != LUA_TUSERDATA)
+			{
+				Raise(st,"Expected stacked Lua value at idx "+String(addr)+" to be of type user data, but got "+String(lua_typename(st,t)));
+				//throw Exception(CLOCATION,"Expected stacked Lua value at idx "+String(addr)+" to be of type user data, but got "+String(lua_typename(st,t)));
+			}
+			size_t len = lua_rawlen(st,addr);
+			if (len != requireByteSize)
+				Raise(st,"Expected Lua user data at idx "+String(addr)+" to be of size "+String(requireByteSize)+", but got "+String(len)+" bytes");
+			if (!lua_getmetatable(st,addr))
+				Raise(st,"Lua user data at idx "+String(addr)+" has no metatable");
+			lua_getfield(st,-1,"__gc");
+
+			if (lua_type(st,-1) == LUA_TNIL)
+			{
+				lua_pop(st,1);
+				Raise(st,"Lua user data at idx "+String(addr)+" has metatable but no gc function");
+			}
+			ASSERT__(lua_type(st,-1)==LUA_TFUNCTION);
+			lua_CFunction storedGcFunction = lua_tocfunction(st,-1);
+			if (storedGcFunction != gcFunction)
+			{
+				lua_pop(st,2);
+				Raise(st,"Lua user data at idx "+String(addr)+" has wrong gc function ("+String(storedGcFunction)+", expected "+String(gcFunction)+")");
+			}
+
+			lua_pop(st,2);
+			return lua_touserdata(st,addr);
 		}
 
 		void GetStacked(const PProgram&st, int addr, bool&rs)
@@ -1198,6 +1266,26 @@ namespace Lua
 		return false;
 	}
 
+	void Table::operator=(const Reference & ref)
+	{
+		if (ref.IsEmpty() || ref.IsTable())
+		{
+			((Super&)*this) = ref;
+			return;
+		} 
+		throw Exception("Trying to assign non-table Lua variable to table reference");
+	}
+
+	void BaseFunction::operator=(const Reference & ref)
+	{
+		if (ref.IsEmpty() || ref.IsFunction())
+		{
+			((Super&)*this) = ref;
+			return;
+		} 
+		throw Exception("Trying to assign non-function Lua variable to function reference");
+	}
+
 	count_t Table::GetLength() const
 	{
 		lua_State*st = GetState();
@@ -1364,7 +1452,8 @@ namespace Lua
 		for (index_t i = 0; i < len; i++)
 			if (content[i] == 0)
 				throw Exception(CLOCATION,"Lua file contains zero characters: '"+String(filename)+"'");
-		Execute(content,String(filename));
+		
+		Execute(content,String(FileSystem::ExtractFileNameExt(filename)));
 	}
 
 

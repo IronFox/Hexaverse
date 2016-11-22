@@ -84,6 +84,21 @@ namespace Lua
 
 	namespace Detail
 	{
+		template <typename T>
+			inline int DeleteT(lua_State*st)
+			{
+				void*d = GetUserData(st,1);
+				ASSERT_NOT_NULL__(d);
+				T*obj = (T*)d;
+				((T*)d)->~T();	//destroy
+				return 0;
+			}
+
+
+
+		void* PushShared(lua_State*state, size_t fsize, int(*fdel)(lua_State*));
+
+
 		void PushParameter(lua_State *state, long long i);
 		inline void PushParameter(lua_State *state, int i) {PushParameter(state,(long long)i);}
 		void PushParameter(lua_State *state, double i);
@@ -91,26 +106,46 @@ namespace Lua
 		void PushParameter(lua_State *state, const Reference&);
 		void PushStrParameter(lua_State *state, const String&str);
 
+
+
+
 		template <typename T>
-			inline void	PushParameterT(lua_State *state, const T&v)
+			struct ParameterT
 			{
-				PushParameter(state,v);
-				//FATAL__("Push not defined for type "+String(typeid(T).name()));
-			}
+				static void	Push(lua_State *state, const T&v)
+				{
+					PushParameter(state,v);
+				}
+			};
 		template <>
-			inline void	PushParameterT<String>(lua_State *state, const String&v)
+			struct ParameterT<String>
 			{
-				PushStrParameter(state,v);
-			}
+				static void Push(lua_State *state, const String&v)
+				{
+					PushStrParameter(state,v);
+				}
+			};
+		template <typename T>
+			struct ParameterT<std::shared_ptr<T>>
+			{
+				static void Push(lua_State*state, const std::shared_ptr<T>&p)
+				{
+					typedef std::shared_ptr<T>	ST;
+					void* dat = PushShared(state,sizeof(ST),DeleteT<ST>);
+					new (dat)ST(p);
+				}
+			};
 
 		void PopStacked(lua_State*);
 
+		void*RequireStackedUserData(const PProgram&,int addr,size_t requireByteSize, int (*gcFunction)(lua_State*), bool allowNil);
 		void GetStacked(const PProgram&, int addr, bool&rs);
 		void GetStacked(const PProgram&, int addr, String&rs);
 		void GetStacked(const PProgram&, int addr, void*&rs);
 		void GetStacked(const PProgram&, int addr, long long&rs);
 		void GetStacked(const PProgram&, int addr, double&rs);
 		void GetStacked(const PProgram&, int addr, Reference&rs);
+		
 		inline void GetStacked(const PProgram&st, int addr, float&rs)
 		{
 			double tmp;
@@ -125,20 +160,54 @@ namespace Lua
 			rs = (int)temp;
 		}
 
-		template <typename T>
-			inline  void GetStackedT(const PProgram&st, int addr, T&rs)
-			{
-				GetStacked(st,addr,rs);
-			}
-		template <typename T>
-			inline T GetStackedT(const PProgram&st, int addr)
-			{
-				T tmp;
-				GetStacked(st,addr,tmp);
-				return tmp;
-			}
 
 
+		template <typename T>
+			struct BaseStackedT
+			{
+				static void Get(const PProgram&st, int addr, T&rs)
+				{
+					GetStacked(st,addr,rs);
+				}
+				static T Get(const PProgram&st, int addr)
+				{
+					T tmp;
+					GetStacked(st,addr,tmp);
+					return tmp;
+				}
+			};
+
+		template <typename T>
+			struct BaseStackedT<std::shared_ptr<T> >
+			{
+				static void Get(const PProgram&st, int addr, std::shared_ptr<T>&rs)
+				{
+					void*data = RequireStackedUserData(st,addr,sizeof(rs), DeleteT<std::shared_ptr<T> >,true);
+					if (!data)
+					{
+						rs = std::shared_ptr<T>();
+						return;
+					}
+					rs = *(const std::shared_ptr<T>*)(data);
+				}
+				static const std::shared_ptr<T>& Get(const PProgram&st, int addr)
+				{
+					void*data = RequireStackedUserData(st,addr,sizeof(std::shared_ptr<T>), DeleteT<std::shared_ptr<T> >,true);
+					static std::shared_ptr<T> empty;
+					if (!data)
+						return empty;
+					return *(const std::shared_ptr<T>*)(data);
+				}
+
+			};
+
+		template <typename T>
+			struct Strip : public std::remove_const<typename std::remove_reference<T>::type>
+			{};
+
+		template <typename T>
+			struct StackedT : public BaseStackedT<typename Strip<T>::type>
+			{};
 
 		static inline int PushParameters(lua_State *state)
 		{
@@ -148,14 +217,14 @@ namespace Lua
 		template <typename T0>
 			static inline int PushParameters(lua_State *state, const T0&p0)
 			{
-				PushParameterT(state,p0);
+				ParameterT<T0>::Push(state,p0);
 				return 1;
 			}
 
 		template <typename T0, typename ...T>
 			static inline int PushParameters(lua_State *state, const T0&p0, const T&...p)
 			{
-				PushParameterT(state,p0);
+				ParameterT<T0>::Push(state,p0);
 				return 1 + PushParameters(state,p...);
 			}
 
@@ -168,7 +237,7 @@ namespace Lua
 			static inline void GetParameters(lua_State *state, int at, const T0&p0)
 			{
 				if (at < 0)
-					GetStacked(state,at,p0);
+					StackedT<T0>::Get(state,at,p0);
 			}
 
 		template <typename T0, typename ...T>
@@ -181,65 +250,108 @@ namespace Lua
 
 		void*	GetUserData(lua_State*,int idx);
 
-		template <typename T>
-			inline int DeleteT(lua_State*st)
-			{
-				void*d = GetUserData(st,1);
-				ASSERT_NOT_NULL__(d);
-				T*obj = (T*)d;
-				((T*)d)->~T();	//destroy
-				return 0;
-			}
 
 
 		void*	BeginFunction(lua_State *state, PProgram&outProgram);
 		void*	RegisterFunction(const PProgram & prog, size_t fsize, int(*fdel)(lua_State*) ,int(*f)(lua_State*));
 		void	MoveStackTopToGlobal(const PProgram&prog,const String&name);
 
+		void	Raise(lua_State *state,const String&error);
+		
+		
 
-		struct ParameterWalker
-		{
-			int at = 1;
-			template <typename T>
-				T	GetStacked(const Lua::PProgram&prog)
-				{
-					return GetStackedT<T>(prog,at++);
-				}
-		};
+		
+		template <std::size_t... Is>
+			struct indices {};
+
+		template <std::size_t N, std::size_t... Is>
+			struct build_indices  : build_indices<N-1, N-1, Is...> {};
+
+		template <std::size_t... Is>
+			struct build_indices<0, Is...> : indices<Is...> {};
+
+
+		template <typename T>
+			class BaseExec {};
+
+		template <typename R, typename... P>
+			class BaseExec<R(P...)>
+			{
+			public:
+				template <index_t...I>
+					static int Execute(lua_State *state, indices<I...>)
+					{
+						try
+						{
+							Lua::PProgram prog;
+							const auto&f = *(const std::function<R(P...)>*)BeginFunction(state,prog);
+							if (!prog)
+								return 0;
+							R rs = f(StackedT<typename Strip<P>::type>::Get(prog,I+1)...);
+							ParameterT<R>::Push(state,rs);
+							return 1;
+						}
+						catch (const std::exception&ex)
+						{
+							Raise(state,ex.what());
+							return 0;
+						}
+					}
+			};
+
+		template <typename ...P>
+			class BaseExec<void(P...)>
+			{
+			public:
+				template <index_t...I>
+					static int Execute(lua_State *state, indices<I...>)
+					{
+						try
+						{
+							Lua::PProgram prog;
+							const auto&f = *(const std::function<void(P...)>*)BeginFunction(state,prog);
+							if (!prog)
+								return 0;
+							ParameterWalker w;
+							f(StackedT<typename Strip<P>::type>::Get(prog,I+1)...);
+							return 0;
+						}
+						catch (const std::exception&ex)
+						{
+							Raise(state,ex.what());
+							return 0;
+						}
+
+					}
+			};
+		
 
 		template <typename T>
 			class LuaExec {};
 
 		template <typename R, typename... P>
-			class LuaExec<R(P...)>
+			class LuaExec<R(P...)> : public BaseExec<R(P...)>
 			{
+				typedef BaseExec<R(P...)>	Super;
 			public:
 				static int Execute(lua_State *state)
 				{
-					Lua::PProgram prog;
-					const auto&f = *(const std::function<R(P...)>*)BeginFunction(state,prog);
-					if (!prog)
-						return 0;
-					ParameterWalker w;
-					PushParameterT<R>(state,f(w.GetStacked<P>(prog)...));
-					return 1;
-				}
+					return Super::Execute(state,build_indices<sizeof...(P)>{});
+				}			
+			
+			
 			};
 
 		template <typename ...P>
-			class LuaExec<void(P...)>
+			class LuaExec<void(P...)> : public BaseExec<void(P...) >
 			{
+				typedef BaseExec<void(P...)>	Super;
 			public:
 				static int Execute(lua_State *state)
 				{
-					Lua::PProgram prog;
-					const auto&f = *(const std::function<void(P...)>*)BeginFunction(state,prog);
-					if (!prog)
-						return 0;
-					ParameterWalker w;
-					f(w.GetStacked<P>(prog)...);
-					return 0;
-				}
+					return Super::Execute(state,build_indices<sizeof...(P)>{});
+				}			
+						
 			};
 
 		
@@ -378,10 +490,10 @@ namespace Lua
 			this->prog = prog;
 			this->refID.reset((int*)(size_t)refID,[prog](int*ptr){Discard(prog,ptr);});
 
-			if (IsTableReference())
-				ASSERT__(IsTable());
-			if (IsFunctionReference())
-				ASSERT__(IsFunction());
+			if (IsTableReference() && !IsTable())
+				throw Exception("Trying to assigning non-table Lua reference to table reference variable");
+			if (IsFunctionReference() && !IsFunction())
+				throw Exception("Trying to assigning non-function Lua reference to function reference variable");
 		}
 	protected:
 
@@ -496,7 +608,7 @@ namespace Lua
 			{
 				if (!PushField(name))
 					return false;
-				rs = Detail::GetStackedT<T>(GetProgram(),-1);
+				rs = Detail::StackedT<T>::Get(GetProgram(),-1);
 				Pop(2);
 				return true;
 			}
@@ -510,7 +622,7 @@ namespace Lua
 			{
 				if (!PushElement(at))
 					return false;
-				rs = Detail::GetStackedT<T>(GetProgram(),-1);
+				rs = Detail::StackedT<T>::Get(GetProgram(),-1);
 				Pop(2);
 				return true;
 			}
@@ -536,7 +648,7 @@ namespace Lua
 			{
 				if (IsEmpty())
 					return false;
-				Detail::PushParameterT<T>(GetState(),value);
+				Detail::ParameterT<T>::Push(GetState(),value);
 				return AppendTopElement();
 			}
 
@@ -547,7 +659,7 @@ namespace Lua
 		@return true if the local reference was updated
 		*/
 		bool			Reset(const Reference&ref);
-		void			operator=(const Reference&ref)	{ASSERT__(Reset(ref));}
+		void			operator=(const Reference&ref);
 
 		/**
 		Inserts a new named C function into the local table.
@@ -578,7 +690,7 @@ namespace Lua
 
 	public:
 		bool			Reset(const Reference&ref);
-
+		void			operator=(const Reference&ref);
 	};
 
 
@@ -596,7 +708,7 @@ namespace Lua
 			{
 				ResetToGlobal(prog,functionName);
 			}
-			void		operator=(const Reference&ref)	{ASSERT__(Super::Reset(ref));}
+			void		operator=(const Reference&ref)	{Super::operator=(ref);}
 
 			void		operator()(args_t...parameters)	const
 			{
@@ -622,7 +734,7 @@ namespace Lua
 			{
 				ResetToGlobal(prog,functionName);
 			}
-			void		operator=(const Reference&ref)	{ASSERT__(Super::Reset(ref));}
+			void		operator=(const Reference&ref)	{Super::operator=(ref);}
 
 			return_t	operator()(args_t...parameters)	const
 			{
@@ -633,7 +745,7 @@ namespace Lua
 				int numParameters = Detail::PushParameters(state,parameters...);
 				CallPushedFunction(state,numParameters,1);
 				return_t rs;
-				Detail::GetStacked(GetProgram(),-1,rs);
+				Detail::StackedT<return_t>::Get(GetProgram(),-1,rs);
 				Detail::PopStacked(state);
 				return rs;
 			}
