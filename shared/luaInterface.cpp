@@ -733,6 +733,22 @@ namespace Lua
 			return lua_touserdata(st,idx);
 		}
 
+		void* PushShared(lua_State*st, size_t fsize, int(*fdel)(lua_State*))
+		{
+			void*fdata = lua_newuserdata(st,fsize);		//stack now: ... userdata(f)
+			//memcpy(data,fdata,fsize);
+
+			lua_newtable(st);							//stack now: ... userdata(f), metatable
+			lua_pushcclosure(st,fdel,0);				//stack now: ... userdata(f), metatable, fdel
+
+	//		stackDump(st);
+
+			lua_setfield(st,-2,"__gc");		//stack now: ... userdata(f), metatable
+			lua_setmetatable(st,-2);					//stack now: ... userdata(f)
+
+	
+			return fdata;
+		}
 
 		void* RegisterFunction(const PProgram & prog, size_t fsize, int(*fdel)(lua_State*) ,int(*f)(lua_State*))
 		{
@@ -772,6 +788,42 @@ namespace Lua
 		{
 			lua_pushstring(st,msg.c_str());
 			lua_error(st);
+		}
+
+
+		void*	RequireStackedUserData(const PProgram&prog,int addr,size_t requireByteSize, int (*gcFunction)(lua_State*), bool allowNil)
+		{
+			lua_State*st = prog->GetState();
+			int t = lua_type(st,addr);
+			if (t == LUA_TNIL && allowNil)
+				return nullptr;
+			if (t != LUA_TUSERDATA)
+			{
+				Raise(st,"Expected stacked Lua value at idx "+String(addr)+" to be of type user data, but got "+String(lua_typename(st,t)));
+				//throw Exception(CLOCATION,"Expected stacked Lua value at idx "+String(addr)+" to be of type user data, but got "+String(lua_typename(st,t)));
+			}
+			size_t len = lua_rawlen(st,addr);
+			if (len != requireByteSize)
+				Raise(st,"Expected Lua user data at idx "+String(addr)+" to be of size "+String(requireByteSize)+", but got "+String(len)+" bytes");
+			if (!lua_getmetatable(st,addr))
+				Raise(st,"Lua user data at idx "+String(addr)+" has no metatable");
+			lua_getfield(st,-1,"__gc");
+
+			if (lua_type(st,-1) == LUA_TNIL)
+			{
+				lua_pop(st,1);
+				Raise(st,"Lua user data at idx "+String(addr)+" has metatable but no gc function");
+			}
+			ASSERT__(lua_type(st,-1)==LUA_TFUNCTION);
+			lua_CFunction storedGcFunction = lua_tocfunction(st,-1);
+			if (storedGcFunction != gcFunction)
+			{
+				lua_pop(st,2);
+				Raise(st,"Lua user data at idx "+String(addr)+" has wrong gc function ("+String(storedGcFunction)+", expected "+String(gcFunction)+")");
+			}
+
+			lua_pop(st,2);
+			return lua_touserdata(st,addr);
 		}
 
 		void GetStacked(const PProgram&st, int addr, bool&rs)
