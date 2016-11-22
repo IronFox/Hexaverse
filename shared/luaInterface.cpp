@@ -744,19 +744,19 @@ namespace Lua
 			lua_newtable(st);							//stack now: ... userdata(f), metatable
 			lua_pushcclosure(st,fdel,0);				//stack now: ... userdata(f), metatable, fdel
 
-			stackDump(st);
+		//	stackDump(st);
 
 			lua_setfield(st,-2,"__gc");		//stack now: ... userdata(f), metatable
 			lua_setmetatable(st,-2);					//stack now: ... userdata(f)
 
-			stackDump(st);
+		//	stackDump(st);
 
 			void*ptrData = lua_newuserdata(st,sizeof(WProgram)); //stack now: ... userdata(f), userdata(p)
 			new (ptrData) WProgram(prog);
 			lua_newtable(st);							//stack now: ... userdata(f), userdata(p), metatable
 			lua_pushcclosure(st,DeleteT<WProgram>,0);				//stack now: ... userdata(f), userdata(p), metatable, wdel
 
-			stackDump(st);
+		//	stackDump(st);
 
 			lua_setfield(st,-2,"__gc");		//stack now: ... userdata(f), userdata(p), metatable
 			lua_setmetatable(st,-2);					//stack now: ... userdata(f), userdata(p)
