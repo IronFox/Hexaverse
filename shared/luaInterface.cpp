@@ -768,6 +768,12 @@ namespace Lua
 			return fdata;
 		}
 
+		void	Raise(lua_State*st, const String&msg)
+		{
+			lua_pushstring(st,msg.c_str());
+			lua_error(st);
+		}
+
 		void GetStacked(const PProgram&st, int addr, bool&rs)
 		{
 			rs = lua_toboolean(st->GetState(), addr)!=0;

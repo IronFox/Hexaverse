@@ -196,6 +196,7 @@ namespace Lua
 		void*	RegisterFunction(const PProgram & prog, size_t fsize, int(*fdel)(lua_State*) ,int(*f)(lua_State*));
 		void	MoveStackTopToGlobal(const PProgram&prog,const String&name);
 
+		void	Raise(lua_State *state,const String&error);
 
 		struct ParameterWalker
 		{
