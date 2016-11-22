@@ -2,6 +2,7 @@
 #include "luaInterface.h"
 #include <io/byte_stream.h>
 #include <io/random_access_file.h>
+#include <io/file_system.h>
 
 #include <functional>
 
@@ -1364,7 +1365,8 @@ namespace Lua
 		for (index_t i = 0; i < len; i++)
 			if (content[i] == 0)
 				throw Exception(CLOCATION,"Lua file contains zero characters: '"+String(filename)+"'");
-		Execute(content,String(filename));
+		
+		Execute(content,String(FileSystem::ExtractFileNameExt(filename)));
 	}
 
 
