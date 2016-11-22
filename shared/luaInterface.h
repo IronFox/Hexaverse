@@ -260,7 +260,7 @@ namespace Lua
 		
 		
 
-		
+		//index building from: http://stackoverflow.com/questions/29057781/how-to-implement-an-easy-bind-that-automagically-inserts-implied-placeholders
 		template <std::size_t... Is>
 			struct indices {};
 
