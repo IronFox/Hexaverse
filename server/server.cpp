@@ -1289,7 +1289,7 @@ int main( int argc, const char* argv[])
 	
 
 	onFatal = MyFatal;
-	return LuaRun(argc,argv);
+//	return LuaRun(argc,argv);
 
 
 	try

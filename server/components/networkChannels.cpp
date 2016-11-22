@@ -65,7 +65,7 @@ namespace Channels
 	TCP::ObjectSender<Protocol::GameProgress,Protocol::ChannelID::GameProgress>						gameProgress;
 	TCP::ObjectSender<Protocol::ChangeEntityOwner,Protocol::ChannelID::ChangeEntityOwner>			changeEntityOwner;
 	TCP::ObjectSender<Protocol::IdentifyUser, Protocol::ChannelID::IdentifyUser>					identifyUser;
-	TCP::ObjectSender<Objects::ResearchState, Protocol::ChannelID::ResearchState>					researchState;
+	//TCP::ObjectSender<Objects::ResearchState, Protocol::ChannelID::ResearchState>					researchState;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionOnline>							factionOnline;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionOffline>							factionOffline;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionRequestedNewRound>				factionRequestedNewRound;
@@ -143,7 +143,7 @@ namespace Receiver
 						Channels::factionRequestedNewRound.SendTo(peer,f->id);
 				}
 			}
-			Channels::researchState.SendTo(peer,f->researchState);
+//			Channels::researchState.SendTo(peer,f->researchState);
 		});
 
 		#ifndef NO_HIBERNATION

@@ -75,7 +75,7 @@ namespace Objects
 
 		float							VehicleBase::GetBaseMovementSpeed(const OwnerParameter&owner) const
 		{
-			return owner ? owner->researchState.GetFactorFor(*this,Attribute::MovementSpeed) * unmodulatedMovementSpeed : unmodulatedMovementSpeed;
+			return unmodulatedMovementSpeed;
 		}
 		float							VehicleBase::GetCarryingCapacity(const OwnerParameter&owner) const
 		{
@@ -84,31 +84,31 @@ namespace Objects
 		}
 		float							VehicleBase::GetBaseHealth(const OwnerParameter&owner) const
 		{
-			return owner ? owner->researchState.GetFactorFor(*this,Attribute::Health) * unmodulatedHealth : unmodulatedHealth;
+			return unmodulatedHealth;
 		}
 
 
 
 		float							Turret::GetOperationSpeed(operation_t op, const OwnerParameter&owner) const
 		{
-			return owner ? owner->researchState.GetFactorFor(*this,Attribute::ConstructionSpeed) * baseOperationSpeed[op] : baseOperationSpeed[op];
+			return baseOperationSpeed[op];
 		}
 
 		int							Turret::GetDamageLevel(const OwnerParameter&owner) const
 		{
 			if (baseDamageLevel == 0)
 				return 0;
-			return owner ? std::max(1,(int)floor(owner->researchState.GetFactorFor(*this,Attribute::DamageLevel) * baseDamageLevel) ): baseDamageLevel;
+			return baseDamageLevel;
 		}
 
 		float							Turret::GetExplosionRadius(const OwnerParameter&owner) const
 		{
-			return owner ? owner->researchState.GetFactorFor(*this,Attribute::ExplosionRadius) * baseExplosionRadius : baseExplosionRadius;
+			return  baseExplosionRadius;
 		}
 
 		int								Turret::GetAttacksPerRound(const OwnerParameter&owner) const
 		{
-			return owner ? (int)floor(owner->researchState.GetFactorFor(*this,Attribute::AttacksPerRound) * baseAttacksPerRound) : baseAttacksPerRound;
+			return  baseAttacksPerRound;
 		}		
 
 		int								Turret::GetAmmoNeedPerShot(const OwnerParameter&owner) const
@@ -125,17 +125,17 @@ namespace Objects
 		{
 			if (baseHorizontalAttackRange == 0)
 				return 0;
-			return owner ? owner->researchState.GetFactorFor(*this,Attribute::AttackRange) * (baseHorizontalAttackRange + bonus) : (baseHorizontalAttackRange + bonus);
+			return (baseHorizontalAttackRange + bonus);
 		}
 
 		float							Turret::GetScanningRange(const OwnerParameter&owner, int bonus/*=0*/) const
 		{
-			return owner ? owner->researchState.GetFactorFor(*this,Attribute::ScanningRange) * (baseScanningRange + bonus) : (baseScanningRange + bonus);
+			return (baseScanningRange + bonus);
 		}
 
 		float							Turret::GetGroundScanningRange(const OwnerParameter&owner) const
 		{
-			return owner ? owner->researchState.GetFactorFor(*this,Attribute::ScanningRange) * baseGroundScanningRange : baseGroundScanningRange;
+			return baseGroundScanningRange;
 		}
 
 
@@ -1063,10 +1063,6 @@ namespace Objects
 		
 			component.weight = 2;					//turret weight
 
-
-			ResearchState::RegisterResearch(component,Attribute::ConstructionSpeed);
-			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
-
 			component.FinishCreation();
 		}
 
@@ -1145,11 +1141,6 @@ namespace Objects
 		
 			component.weight = 5;					//turret weight
 
-			ResearchState::RegisterResearch(component,Attribute::ConstructionSpeed);
-			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
-			ResearchState::RegisterUnlockCost(component,50);
-
-
 			component.FinishCreation();
 		}
 
@@ -1206,14 +1197,6 @@ namespace Objects
 				component.baseAmmoNeedPerShot = 6;
 			#endif
 
-			ResearchState::RegisterDependency(component,armored);
-			ResearchState::RegisterUnlockCost(component,20);
-			ResearchState::RegisterResearch(component,Attribute::AttackRange);
-			ResearchState::RegisterResearch(component,Attribute::AttacksPerRound);
-			ResearchState::RegisterResearch(component,Attribute::DamageLevel);
-			ResearchState::RegisterResearch(component,Attribute::ExplosionRadius);
-			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
-
 			component.FinishCreation();
 		}
 
@@ -1267,15 +1250,6 @@ namespace Objects
 				component.baseAmmoNeedPerShot = 8;
 			#endif
 
-			ResearchState::RegisterDependency(component,armored);
-			ResearchState::RegisterDependency(component,GetPrototypeByName(component.constTowerName));
-			ResearchState::RegisterUnlockCost(component,40);
-			ResearchState::RegisterResearch(component,Attribute::AttackRange);
-			ResearchState::RegisterResearch(component,Attribute::AttacksPerRound);
-			ResearchState::RegisterResearch(component,Attribute::DamageLevel);
-			ResearchState::RegisterResearch(component,Attribute::ExplosionRadius);
-			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
-
 			component.FinishCreation();
 		}
 
@@ -1325,12 +1299,6 @@ namespace Objects
 
 			component.ignoresVehicleMotion = true;
 
-			ResearchState::RegisterResearch(component,Attribute::AttackRange);
-			ResearchState::RegisterResearch(component,Attribute::AttacksPerRound);
-			ResearchState::RegisterResearch(component,Attribute::DamageLevel);
-			ResearchState::RegisterResearch(component,Attribute::ExplosionRadius);
-			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
-
 
 			component.FinishCreation();
 		}
@@ -1379,14 +1347,6 @@ namespace Objects
 			component.requiresStationaryVehicle = true;
 			component.uplinkTraffic = 10;
 
-			ResearchState::RegisterDependency(component,armored);
-			ResearchState::RegisterDependency(component,launcher);
-			ResearchState::RegisterUnlockCost(component,50);
-			ResearchState::RegisterResearch(component,Attribute::AttackRange);
-			ResearchState::RegisterResearch(component,Attribute::AttacksPerRound);
-			ResearchState::RegisterResearch(component,Attribute::DamageLevel);
-			ResearchState::RegisterResearch(component,Attribute::ExplosionRadius);
-			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
 			#ifndef NO_MUNITION
 				if (component.baseAmmoNeedPerShot > 0)
 					ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
@@ -1653,7 +1613,6 @@ namespace Objects
 			//component.baseAmmoNeedPerShot = 2;
 
 			//component.ignoresVehicleMotion = true;
-			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
 			#ifndef NO_MUNITION
 				if (component.baseAmmoNeedPerShot > 0)
 					ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
@@ -1696,14 +1655,6 @@ namespace Objects
 			component.uplinkTraffic = 10;
 
 
-			ResearchState::RegisterUnlockCost(component,15);
-			ResearchState::RegisterResearch(component,Attribute::ConstructionSpeed);
-			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
-			#ifndef NO_MUNITION
-				if (component.baseAmmoNeedPerShot > 0)
-					ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
-			#endif
-
 			component.FinishCreation();
 		}
 
@@ -1731,13 +1682,6 @@ namespace Objects
 			component.continuousRotation = true;
 			component.continuousRotationSpeed = 2.f;
 			component.uplinkTraffic = 10;
-
-			ResearchState::RegisterUnlockCost(component,15);
-			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
-			#ifndef NO_MUNITION
-				if (component.baseAmmoNeedPerShot > 0)
-					ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
-			#endif
 
 			component.FinishCreation();
 		}
@@ -1818,10 +1762,6 @@ namespace Objects
 			component.acceleration[TerrainAdd] = 1;
 			component.acceleration[TerrainRemove] = 1;
 
-			ResearchState::RegisterResearch(component,Attribute::MovementSpeed);
-			ResearchState::RegisterResearch(component,Attribute::Health);
-
-
 			component.FinishCreation();
 
 			component.height *= vehicleScale;
@@ -1870,11 +1810,6 @@ namespace Objects
 
 			component.acceleration[TerrainAdd] = 2;
 			component.acceleration[TerrainRemove] = 2;
-			ResearchState::RegisterDependency(component,hoverbase);
-			ResearchState::RegisterUnlockCost(component,40);
-			ResearchState::RegisterResearch(component,Attribute::MovementSpeed);
-			ResearchState::RegisterResearch(component,Attribute::Health);
-
 
 			component.FinishCreation();
 
@@ -1925,11 +1860,6 @@ namespace Objects
 
 			component.acceleration[TerrainAdd] = 2;
 			component.acceleration[TerrainRemove] = 2;
-			ResearchState::RegisterDependency(component,hoverbase);
-			ResearchState::RegisterUnlockCost(component,40);
-			ResearchState::RegisterResearch(component,Attribute::MovementSpeed);
-			ResearchState::RegisterResearch(component,Attribute::Health);
-
 
 			component.FinishCreation();
 

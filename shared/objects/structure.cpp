@@ -840,10 +840,6 @@ namespace Objects
 	/*virtual override*/	void			Tower::PrototypeSetup()
 	{
 		Super::PrototypeSetup();
-		if (turret == &Component::artillery)
-		{
-			ResearchState::RegisterUnlockCost(this,15);
-		}
 		if (setup)
 			return;
 		setup = true;
@@ -1871,30 +1867,24 @@ namespace Objects
 	/*virtual override*/ String		Tower::DescribeScanningRange() const
 	{
 		return 
-				owner ?
-				owner->researchState.Describe(*turret,turret->baseScanningRange+(turret->CanAttack() ? - 2.f : 2.f),Component::Attribute::ScanningRange, ResearchState::ModulationType::DefaultFloat,std::bind(&WorldEntity::EMPModify,this,std::placeholders::_1,2))
-				:
 				String(GetScanningRange());
 	}
 
 	/*virtual override*/ int				Tower::GetMaxHealth() const
 	{
 		float base = float(Super::GetBaseMaxHealth()) * turret->healthMultiplier;
-		if (owner)
-			base *= owner->researchState.GetFactorFor(GetCTypeName(),Component::Attribute::Health);
 		return std::max(1,(int)floor(base));
 	}
 
 	/*virtual override*/ String				Tower::DescribeMaxHealth() const
 	{
-		return owner ? owner->researchState.Describe(GetCTypeName(),float(Super::GetBaseMaxHealth()) * turret->healthMultiplier,Component::Attribute::Health,ResearchSateModulation::FloorInt) : String(GetMaxHealth());
+		return String(GetMaxHealth());
 	}
 
 
 	/*virtual*/ void				Structure::PrototypeSetup()
 	{
 		Super::PrototypeSetup();
-		ResearchState::RegisterResearch(this,Component::Attribute::Health);
 	}
 
 
@@ -1942,13 +1932,7 @@ namespace Objects
 
 	/*virtual override*/ bool			Laboratory::IsBuilding(std::pair<int,int>&outProgress) const
 	{
-		if ( owner->researchState.IsUnlocked( owner->researchState.currentResearch))
-			return false;
-		UINT32 current,max;
-		owner->researchState.GetResearchOf(owner->researchState.currentResearch, current, max);
-		outProgress.first = current;
-		outProgress.second = max;
-		return true;
+		return false;
 	}
 
 
@@ -2479,7 +2463,6 @@ namespace Objects
 	/*virtual override*/ void				ReactorCore::PrototypeSetup()
 	{
 		Super::PrototypeSetup();
-		ResearchState::RegisterUnlockCost(this,30);
 	}
 
 	#ifdef HAS_WINDOW

@@ -1756,8 +1756,8 @@ namespace Journal
 	/*virtual override*/ void Round::SelectResearch::Execute(const Objects::PFaction&f) const
 	{
 		const bool attribResearch = f->researchState.IsUnlocked(target);
-		f->researchState.currentResearch = target;
-		f->researchState.currentResearchAttribute = attribute;
+		//f->researchState.currentResearch = target;
+		//f->researchState.currentResearchAttribute = attribute;
 		Network::PClient cl;
 		if (Network::playerMap.Query(f,cl))
 		{

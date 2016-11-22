@@ -70,11 +70,7 @@ namespace Objects
 
 	/*virtual override*/ String		Vehicle::DescribeScanningRange() const
 	{
-		return owner
-				?
-				owner->researchState.Describe(*turret,turret->baseScanningRange+(turret->CanAttack() ? 0 : base->rangeModifier),Component::Attribute::ScanningRange, ResearchState::ModulationType::DefaultFloat,BindEMPModifyFunction())
-				:
-				String(GetScanningRange())
+		return String(GetScanningRange())
 				;
 	}
 
@@ -85,7 +81,7 @@ namespace Objects
 
 	/*virtual override*/ String				Vehicle::DescribeMaxHealth() const
 	{
-		return owner ? owner->researchState.Describe(*base,base->unmodulatedHealth * turret->healthMultiplier,Component::Attribute::Health,ResearchSateModulation::FloorInt) : String(GetMaxHealth());
+		return String(GetMaxHealth());
 	}
 
 	
@@ -183,10 +179,7 @@ namespace Objects
 
 	/*virtual override*/String			Vehicle::DescribeMovementStepsPerRound()	const
 	{
-		return owner ?
-				owner->researchState.Describe(*base,GetTurretOverweightFactor() * base->unmodulatedMovementSpeed,Component::Attribute::MovementSpeed,ResearchSateModulation::CeilInt,BindEMPModifyFunction())
-				:
-				String(GetMovementStepsPerRound());
+		return String(GetMovementStepsPerRound());
 	}
 
 	

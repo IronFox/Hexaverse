@@ -224,8 +224,6 @@ namespace Objects
 
 		Hangar::StaticSetup();
 
-		ResearchState::RegisterUnlockCost(launcherTower.get(),40);
-
 
 
 		#ifndef NO_SATELLITES

@@ -6,6 +6,7 @@
 #include "structureCompound.h"
 #include "../stringTable.h"
 #include "../roundNumber.h"
+#include "research.h"
 
 namespace Objects
 {

@@ -78,9 +78,7 @@ namespace Objects
 
 	/*virtual override*/ String		MobileEntity::DescribeScanningRange() const
 	{
-		return owner
-			?owner->researchState.Describe(GetCTypeName(),turret->baseScanningRange,Component::Attribute::ScanningRange, ResearchState::ModulationType::DefaultFloat,std::bind(&WorldEntity::EMPModify,this,std::placeholders::_1,2))
-			:String(GetScanningRange());
+		return String(GetScanningRange());
 	}
 
 

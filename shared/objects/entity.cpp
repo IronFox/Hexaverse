@@ -273,30 +273,26 @@ namespace Objects
 
 	/*virtual*/ int				WorldEntity::GetMaxHealth() const
 	{
-		float fc = owner ? owner->researchState.GetFactorFor(GetCTypeName(),Component::Attribute::Health) : 1.f;
+		float fc = 1.f;
 		return std::max(1, (int)floor( fc * GetConstructionCost()/5) );
 	}
 
 	/*virtual*/ String				WorldEntity::DescribeMaxHealth() const
 	{
-		return owner 
-					?owner->researchState.Describe(GetCTypeName(),GetConstructionCost()/5,Component::Attribute::Health,ResearchSateModulation::FloorInt)
-					:String(GetMaxHealth());
+		return String(GetMaxHealth());
 	}
 
 
 
 	/*virtual*/ float		WorldEntity::GetMaxScanningRange() const
 	{
-		float fc = owner ? owner->researchState.GetFactorFor(GetCTypeName(),Component::Attribute::ScanningRange) : 1.f;
+		float fc = 1.f;
 		return EMPModify(2.f * fc * Grid::UnitScale, 2.f);
 	}
 
 	/*virtual*/ String		WorldEntity::DescribeScanningRange() const
 	{
-		return owner
-				?owner->researchState.Describe(GetCTypeName(),2.f,Component::Attribute::ScanningRange, ResearchState::ModulationType::DefaultFloat,std::bind(&WorldEntity::EMPModify,this,std::placeholders::_1,2))
-				:String(GetScanningRange());
+		return String(GetScanningRange());
 	}
 
 	//bool		WorldEntity::CanSee(const PWorldEntity&other) const

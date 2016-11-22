@@ -1677,7 +1677,7 @@ namespace Objects
 			id.Generate();
 		else
 			id = toID;
-		researchState.ownerID = id;
+		researchState.SignalIDChange(id);
 		if (recomputeColor)
 			IDToColor(color,id);
 	}

@@ -149,12 +149,12 @@ namespace Game
 				{
 					f->DropPerRoundData();	//make sure instantaneous destruction commands are processed with correct visibility information
 
-					if (f->researchState.changed)
-					{
-						f->researchState.changed = false;
-						Channels::researchState.SendTo(::Network::server,f->researchState,(UINT32)::Network::UserLevel::CommonFaction);
+					//if (f->researchState.changed)
+					//{
+					//	f->researchState.changed = false;
+					//	Channels::researchState.SendTo(::Network::server,f->researchState,(UINT32)::Network::UserLevel::CommonFaction);
 
-					}
+					//}
 				});
 			}
 
