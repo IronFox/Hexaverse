@@ -633,7 +633,16 @@ namespace Lua
 		if (lua_gettop(state)< abs(at) || lua_isnil(state,at))
 			return false;
 		lua_pushvalue(state,at);
-		SetReference(st,luaL_ref(state, LUA_REGISTRYINDEX));
+		int ref = luaL_ref(state, LUA_REGISTRYINDEX);
+		try
+		{
+			SetReference(st,ref);
+		}
+		catch (...)
+		{
+			luaL_unref(state,LUA_REGISTRYINDEX,ref);
+			throw;
+		}
 		return true;
 	}
 
