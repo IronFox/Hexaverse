@@ -266,33 +266,38 @@ namespace Objects
 		return min + window * Grid::powi(0.25f,(UINT)empDamageLevel);
 	}
 
-	float		WorldEntity::GetScanningRange() const
+	/*virtual*/ float		WorldEntity::GetScanningRange() const
 	{
-		return EMPModify(GetMaxScanningRange(), 2.f * Grid::UnitScale);
+		return EMPModify(table->maxScanningRange.getValue(GetResearchState()), 2.f * Grid::UnitScale);
 	}
 
-	/*virtual*/ int				WorldEntity::GetMaxHealth() const
+	/*virtual*/ int			WorldEntity::GetConstructionCost() const
 	{
-		float fc = 1.f;
-		return std::max(1, (int)floor( fc * GetConstructionCost()/5) );
+		return table->constructionCost.getValue(GetResearchState());
 	}
 
-	/*virtual*/ String				WorldEntity::DescribeMaxHealth() const
+	/*virtual*/ int			WorldEntity::GetMaxHealth() const
 	{
-		return String(GetMaxHealth());
+		return table->maxHealth.getValue(GetResearchState());
+	}
+
+	/*virtual*/ String		WorldEntity::DescribeMaxHealth() const
+	{
+		return table->maxHealth.describeValue(GetResearchState());
 	}
 
 
 
-	/*virtual*/ float		WorldEntity::GetMaxScanningRange() const
+
+	Lua::Reference WorldEntity::GetResearchState() const
 	{
-		float fc = 1.f;
-		return EMPModify(2.f * fc * Grid::UnitScale, 2.f);
+		return owner ? owner->researchState.researchState : Lua::Reference();
 	}
+
 
 	/*virtual*/ String		WorldEntity::DescribeScanningRange() const
 	{
-		return String(GetScanningRange());
+		return table->maxScanningRange.describeValue(GetResearchState());
 	}
 
 	//bool		WorldEntity::CanSee(const PWorldEntity&other) const

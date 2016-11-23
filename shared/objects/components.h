@@ -13,6 +13,7 @@
 #include "cursorMode.h"
 #include "types.h"
 #include "componentAttribute.h"
+#include "../luaInterface.h"
 
 
 namespace Objects
@@ -150,6 +151,20 @@ namespace Objects
 
 		};
 
+
+		template <typename T>
+			struct LuaAttribute : public Lua::Function<T(Lua::Reference)>
+			{
+				typedef Lua::Function<T(Lua::Reference)>	Super;
+
+				T	operator()(const OwnerParameter&owner) const
+				{
+					if (IsSet())
+						return Super::operator()(owner ? owner->researchState.researchState : Lua::Reference());
+					return (T)0;
+				}
+
+			};
 	
 
 		/**
@@ -169,15 +184,15 @@ namespace Objects
 
 			ConstName						constTowerName;
 
-			float							healthMultiplier = 1.f;
+			typedef LuaAttribute<float>		FFunc;
+			typedef LuaAttribute<int>		IFunc;
+			FFunc							healthMultiplier;
 			Resource						ammoType;
-			FixedArray<int,OperationCount>	baseOperationSpeed;
-			int								weight,					//turret weight
-											baseDamageLevel=0,
-											baseAttacksPerRound=0,
-											baseAmmoNeedPerShot=0,
-											uplinkTraffic = 5,
-											uplinkPriority = 950;	//before towers and storage structures
+			FixedArray<IFunc,OperationCount>operationSpeed;
+			IFunc							weight	/*=1*/,					//turret weight
+											damageLevel,
+											attacksPerRound,
+											ammoNeedPerShot;
 
 			#ifndef ONE_COMPOUND_PER_FACTION
 				ResourceVector				baseStorageCapacity;
@@ -190,7 +205,7 @@ namespace Objects
 											isDoomsday = false;	//server may reject their deployment
 
 			MountType						mountType = MountType::Vehicle;
-			float							baseExplosionRadius = 0.f;
+			FFunc							explosionRadius;
 			TrajectoryType					trajectoryType;
 			//int								fuelSupplyRadius = 0;	//!< Satellites only (in fact, SkyHub only): Maximum radius that friendly satellites will be supplied in
 
@@ -203,22 +218,22 @@ namespace Objects
 			//	Linear,
 			//	Missile,
 			//}								trajectory;
-			float							baseHorizontalAttackRange = 0,	//geometric firing range
-											baseScanningRange = 10,	//geometric scanning range
-											baseGroundScanningRange = -1.f,//>0 indicates that this turret can scan from orbit down to the ground (effective only if used by a satellite)
-											groundScannerPenetration = 1,	//number of blocks the ground-scanner can penetrate into solid ground (effective only if used by a satellite)
-											continuousRotationSpeed = 1;	//angles per second rotation speed, effective only, if continuousRotation is set true
+			FFunc							horizontalAttackRange,	//geometric firing range
+											scanningRange /*= 10*/,	//geometric scanning range
+											groundScanningRange /*= -1.f*/,//>0 indicates that this turret can scan from orbit down to the ground (effective only if used by a satellite)
+											groundScannerPenetration /*= 1*/;	//number of blocks the ground-scanner can penetrate into solid ground (effective only if used by a satellite)
+			float							continuousRotationSpeed = 1;	//angles per second rotation speed, effective only, if continuousRotation is set true
 
 
 
-			/**/							Turret():weight(1),
+			/**/							Turret():
 												#ifdef NO_MUNITION
 													ammoType(Resource::Minerals)
 												#else
 													ammoType(Resource::Munitions)
 												#endif
 												{
-													baseOperationSpeed.Fill(0);
+													//baseOperationSpeed.Fill(0);
 												}
 
 			static int						GetGroundHeight(const Grid::LCellIdI&location);
@@ -328,11 +343,11 @@ namespace Objects
 
 
 
-			void							BuildBlastSystem(const Grid::LCellIdI&location, TMatrix4<>&system) const;
-			void							BuildBlastSystem(const TVec3<>&location, TMatrix4<>&system) const;
+			void							BuildBlastSystem(const Grid::LCellIdI&location, float radius, TMatrix4<>&system) const;
+			void							BuildBlastSystem(const TVec3<>&location, float radius, TMatrix4<>&system) const;
 
-			bool							CanAttack() const {return baseAttacksPerRound > 0;}
-			bool							CanDo(operation_t op) const {return baseOperationSpeed[op] > 0;}
+			bool							CanAttack() const {return attacksPerRound.IsSet();}
+			bool							CanDo(operation_t op) const {return operationSpeed[op].IsSet();}
 			bool							CanRepair() const {return CanDo(Repair);}
 			bool							CanConstruct() const {return CanDo(Construct);}
 			//bool							IsStandardOffensive() const
@@ -363,11 +378,7 @@ namespace Objects
 			bool							ConsumesResources(ResourceFlagSet&res, const OwnerParameter&) const;
 			void							FinishCreation(bool scaleToVehicleSize=true)
 			{
-				float fc = (Grid::UnitScale-1.f)*0.5f + 1.f;
-				baseExplosionRadius *= fc;
-				baseScanningRange *= fc;
-				baseGroundScanningRange *= fc;
-				baseHorizontalAttackRange *= fc;
+				//float fc = (Grid::UnitScale-1.f)*0.5f + 1.f;
 				Super::FinishCreation(scaleToVehicleSize);
 			}
 

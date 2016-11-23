@@ -514,7 +514,7 @@ namespace Objects
 	#endif /*0*/
 	
 
-	Structure::Structure(const OwnerParameter&owner, const Grid::LCellIdI&at, bool buildSystem, float time) :Super(owner,at)
+	Structure::Structure(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&at, bool buildSystem, float time) :Super(owner,at), table(table)
 		#ifdef HAS_WINDOW
 			, localizableShape(nullptr)
 		#endif
@@ -1130,7 +1130,7 @@ namespace Objects
 	//}
 
 
-	Connector::Connector(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location, true, atTime)
+	Connector::Connector(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(table,owner,location, true, atTime)
 	{}
 
 
@@ -1264,7 +1264,7 @@ namespace Objects
 	}
 
 
-	VehicleStore::VehicleStore(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location, true,atTime)
+	VehicleStore::VehicleStore(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(table,owner,location, true,atTime)
 	{}
 
 
@@ -1872,7 +1872,7 @@ namespace Objects
 
 	/*virtual override*/ int				Tower::GetMaxHealth() const
 	{
-		float base = float(Super::GetBaseMaxHealth()) * turret->healthMultiplier;
+		float base = float(Super::GetMaxHealth()) * turret->healthMultiplier(owner);
 		return std::max(1,(int)floor(base));
 	}
 
@@ -2075,7 +2075,7 @@ namespace Objects
 	#endif
 
 
-	VehiclePlant::VehiclePlant(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner, location, atTime),
+	VehiclePlant::VehiclePlant(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(table,owner, location, atTime),
 		MobileEntityProducer(DefaultProductionPerRound)
 	{
 		#ifdef CLIENT

@@ -56,6 +56,7 @@ namespace Objects
 
 
 	protected:
+		BaseAttributeTable*			table;
 		typedef WorldEntity			Super;
 		/**/						Structure():Super(OwnerParameter(),Grid::LCellIdI(0, 0))
 				#ifdef HAS_WINDOW
@@ -63,7 +64,7 @@ namespace Objects
 				#endif
 				{}
 
-		/**/						Structure(const OwnerParameter&owner, const Grid::LCellIdI&at, bool buildSystem, float time);
+		/**/						Structure(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&at, bool buildSystem, float time);
 
 
 
@@ -278,6 +279,8 @@ namespace Objects
 		virtual void				OnDestroy(RemovalType, float&atTime) override;
 		virtual void				OnConstructionFinished(float&atTime) override;
 		virtual void				PrototypeSetup() override;
+		virtual BaseAttributeTable*	GetTable() const override {return table;}
+
 
 		/**
 		Retrieves the height of the local structure that it is broad in. The remainder of GetHeight() is considered narrow.
@@ -332,7 +335,7 @@ namespace Objects
 		{
 			typedef Structure Super;
 		protected:
-			/**/					OtherStructure<Derivative>(const OwnerParameter&owner, const Grid::LCellIdI&location, bool buildSystem, float atTime):Super(owner,location,buildSystem,atTime)
+			/**/					OtherStructure<Derivative>(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, bool buildSystem, float atTime):Super(table,owner,location,buildSystem,atTime)
 			{ 
 				#ifdef HAS_WINDOW
 					Super::localizableShape = &shape;
@@ -366,7 +369,7 @@ namespace Objects
 
 
 
-			virtual PWorldEntity		CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override { return PWorldEntity(new Derivative(owner, location,atTime)); }
+			virtual PWorldEntity		CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override { return PWorldEntity(new Derivative(table,owner, location,atTime)); }
 			#ifdef HAS_WINDOW
 				virtual bool			TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override {return Super::TestIntersection(geometry,b,d,distance);}
 				virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override {commands.VisitMembers(visitor,force);};
@@ -408,7 +411,7 @@ namespace Objects
 
 		friend class Super;
 		/**/						VehicleStore() {}
-		/**/						VehicleStore(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
+		/**/						VehicleStore(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
 	public:
 
 		/**
@@ -538,7 +541,7 @@ namespace Objects
 
 		friend class Super;
 		/**/						Connector() {}
-		/**/						Connector(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
+		/**/						Connector(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
 	public:
 
 
@@ -588,7 +591,8 @@ namespace Objects
 
 	protected:
 		/**/						WorkingStructure() : isEnabled(false)	{ }	//global prototype
-		/**/						WorkingStructure(const OwnerParameter&owner, const Grid::LCellIdI&location, bool buildSystem, float atTime) : Super(owner,location,buildSystem,atTime),isEnabled(false)
+		/**/						WorkingStructure(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, bool buildSystem, float atTime) 
+									: Super(table,owner,location,buildSystem,atTime),isEnabled(false)
 		{};
 
 		#ifndef CLIENT
@@ -719,7 +723,7 @@ namespace Objects
 		{
 			typedef WorkingStructure	Super;
 		protected:
-			/**/						WorkingStructureT(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
+			/**/						WorkingStructureT(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
 			/**/						WorkingStructureT()
 			{
 				#ifdef HAS_WINDOW
@@ -792,7 +796,8 @@ namespace Objects
 
 			friend class Super;
 			/**/						SkyPort():MobileEntityProducer(ConstructionSpeed) {MobileEntityProducer::SetCommandOffset(int2(3,1));}
-			/**/						SkyPort(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime):Super(owner,location,atTime), MobileEntityProducer(ConstructionSpeed){MobileEntityProducer::SetCommandOffset(int2(3,1));}
+			/**/						SkyPort(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime)
+											:Super(table,owner,location,atTime), MobileEntityProducer(ConstructionSpeed){MobileEntityProducer::SetCommandOffset(int2(3,1));}
 		public:
 			static const int			ConstructionSpeed = 5;
 			static const int			EnergyConsumption = 10;
@@ -879,7 +884,8 @@ namespace Objects
 		typedef WorkingStructureT<NexusPort>			Super;
 		typedef NexusPort		Self;
 		friend class Super;
-		/**/						Self(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location,atTime),resistence(-1)	{}
+		/**/						Self(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) 
+									: Super(table,owner,location,atTime),resistence(-1)	{}
 		/**/						Self()	{ }	//global prototype
 
 		#ifndef CLIENT
@@ -962,7 +968,8 @@ namespace Objects
 	class Generator : public WorkingStructureT<Generator>
 	{
 		friend class WorkingStructureT<Generator>;
-		/**/						Generator(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location,atTime)	{}
+		/**/						Generator(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) 
+									: Super(table,owner,location,atTime)	{}
 		/**/						Generator()	{ }	//global prototype
 	public:
 		static const int FuelCostPerRound = 10;
@@ -1008,7 +1015,8 @@ namespace Objects
 	{
 		typedef WorkingStructureT<ReactorCore>	Super;
 		friend class Super;
-		/**/						ReactorCore(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location,atTime)	{}
+		/**/						ReactorCore(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) 
+									: Super(table,owner,location,atTime)	{}
 		/**/						ReactorCore()	{ }	//global prototype
 	public:
 		static const int	UraniumCost = 5;
@@ -1045,7 +1053,7 @@ namespace Objects
 	{
 		friend class WorkingStructureT<VehiclePlant>;
 
-        /**/						VehiclePlant(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
+        /**/						VehiclePlant(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
 		/**/						VehiclePlant():  MobileEntityProducer(DefaultProductionPerRound) {}//global prototype
 	protected:
 		virtual bool				CanEnable() const override {return MobileEntityProducer::queue.IsNotEmpty();}
@@ -1155,7 +1163,7 @@ namespace Objects
 		typedef WorkingStructureT<Laboratory>	Super;
 		friend class Super;
 
-        /**/						Laboratory(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner, location, atTime)	{};
+        /**/						Laboratory(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(table,owner, location, atTime)	{};
 		/**/						Laboratory() {}//global prototype
 	protected:
 		//virtual bool				CanEnable() const override {return MobileEntityProducer::queue.IsNotEmpty();}
@@ -1212,7 +1220,7 @@ namespace Objects
 	protected:
 		typedef WorkingStructureT<Derivative>			Super;
 		friend class Super;
-		/**/						StorageStructure(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location,atTime)	{}
+		/**/						StorageStructure(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(table,owner,location,atTime)	{}
 		/**/						StorageStructure()	{ }	//global prototype
 
 	public:
@@ -1293,7 +1301,8 @@ namespace Objects
 
 
 		friend class WorkingStructureT<Mine>;
-		/**/						Mine(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location,atTime)	{maxStorage.level[Resource::Minerals] = MineralStorage; isLinkedToCore = LinkToCore(atTime);}
+		/**/						Mine(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) 
+									: Super(table,owner,location,atTime)	{maxStorage.level[Resource::Minerals] = MineralStorage; isLinkedToCore = LinkToCore(atTime);}
 		/**/						Mine()	{
 			maxStorage.level[Resource::Minerals] = MineralStorage;
 		}	//global prototype
@@ -1386,7 +1395,8 @@ namespace Objects
 
 
 		static const int LocalMunitionStorage = 4;
-		/**/						Self(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location,atTime)
+		/**/						Self(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) 
+									: Super(table,owner,location,atTime)
 		{
 			#ifndef NO_MUNITION
 				maxStorage.level[Resource::Munitions] = LocalMunitionStorage;
@@ -1455,7 +1465,8 @@ namespace Objects
 		typedef StorageStructure<FuelContainer>	Super;
 		friend class Super;
 		friend class WorkingStructureT<FuelContainer>;
-		/**/						FuelContainer(const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) : Super(owner,location,atTime)	{maxStorage.level[Resource::Fuel] = 400;}
+		/**/						FuelContainer(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
+									: Super(table,owner,location,atTime)	{maxStorage.level[Resource::Fuel] = 400;}
 		/**/						FuelContainer()	{maxStorage.level[Resource::Fuel] = 400; }	//global prototype
 	public:
 		virtual String				GetTypeName() const override { return "Fuel Container"; };
@@ -1469,7 +1480,8 @@ namespace Objects
 		typedef StorageStructure<MineralContainer>	Super;
 		friend class Super;
 		friend class WorkingStructureT<MineralContainer>;
-		/**/						MineralContainer(const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) : Super(owner,location,atTime)	{maxStorage.level[Resource::Minerals] = 400;}
+		/**/						MineralContainer(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
+									: Super(table,owner,location,atTime)	{maxStorage.level[Resource::Minerals] = 400;}
 		/**/						MineralContainer()	{maxStorage.level[Resource::Minerals] = 400; }	//global prototype
 	public:
 		virtual String				GetTypeName() const override { return "Mineral Container"; };
@@ -1483,7 +1495,8 @@ namespace Objects
 		typedef StorageStructure<UraniumStorage>	Super;
 		friend class Super;
 		friend class WorkingStructureT<UraniumStorage>;
-		/**/						UraniumStorage(const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) : Super(owner,location,atTime)	{maxStorage.level[Resource::Uranium] = 400;}
+		/**/						UraniumStorage(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
+									: Super(table,owner,location,atTime)	{maxStorage.level[Resource::Uranium] = 400;}
 		/**/						UraniumStorage()	{maxStorage.level[Resource::Uranium] = 400; }	//global prototype
 	public:
 		virtual String				GetTypeName() const override { return "Uranium Storage"; };
@@ -1499,7 +1512,8 @@ namespace Objects
 		typedef StorageStructure<Self>	Super;
 		friend class Super;
 		friend class WorkingStructureT<Self>;
-		/**/						Self(const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) : Super(owner,location,atTime)	
+		/**/						Self(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
+									: Super(table,owner,location,atTime)	
 		{
 			#ifndef NO_MUNITION
 				maxStorage.level[Resource::Munitions] = 400;
@@ -1544,7 +1558,8 @@ namespace Objects
 				Super::localizableShape = &shape;
 			#endif
 		}
-		/**/						Tower(Component::Turret*turret, const OwnerParameter&owner, const Grid::LCellIdI&location, float time) : Super(owner,location,true,time),TurretBase(turret)
+		/**/						Tower(BaseAttributeTable*table, Component::Turret*turret, const OwnerParameter&owner, const Grid::LCellIdI&location, float time) 
+									: Super(table,owner,location,true,time),TurretBase(turret)
 		{
 			#ifdef HAS_WINDOW
 				Super::localizableShape = &shape;
@@ -1670,7 +1685,7 @@ namespace Objects
 			virtual int				GetUplinkTraffic() const override {return turret->uplinkTraffic;}
 			virtual int				GetUplinkPriority() const override {return 1000;}
 		#endif
-		virtual PWorldEntity		CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override {return PWorldEntity(new Tower(turret,owner,location,atTime));};
+		virtual PWorldEntity		CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override {return PWorldEntity(new Tower(table,turret,owner,location,atTime));};
 		virtual PTurretBase			GetTurretBase(float&zOffset) override { zOffset = GetEffectiveFoundationHeight(); return To<Tower>::Cast(shared_from_this());}
 		virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = GetEffectiveFoundationHeight(); return To<const Tower>::Cast(shared_from_this());}
 
@@ -1760,7 +1775,10 @@ namespace Objects
 
 
 	template <typename Derivative>
-		/*virtual override*/ PWorldEntity			WorkingStructureT<Derivative>::CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) { return PWorldEntity(new Derivative(owner,location,atTime)); }
+		/*virtual override*/ PWorldEntity			WorkingStructureT<Derivative>::CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime)
+		{
+			return PWorldEntity(new Derivative(table,owner,location,atTime));
+		}
 
 
 
@@ -1871,7 +1889,7 @@ namespace Objects
 		}
 	
 	template <typename Derivative>
-		WorkingStructureT<Derivative>::WorkingStructureT(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location, true, atTime)
+		WorkingStructureT<Derivative>::WorkingStructureT(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(table,owner,location, true, atTime)
 		{
 			#ifdef CLIENT
 				#ifdef HAS_WINDOW

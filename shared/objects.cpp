@@ -218,9 +218,10 @@ namespace Objects
 
 		Structure::StaticSetup();
 
-		ResearchState::StaticCreate();
 
 		Component::ConfigureAll();
+
+
 
 		Hangar::StaticSetup();
 
@@ -233,6 +234,7 @@ namespace Objects
 		foreach(structurePrototypes, p)
 			(*p)->PrototypeSetup();
 
+		ResearchState::StaticCreate();	//all prototypes good. time to set the tables
 
 		#ifdef HAS_WINDOW
 			Laboratory::ConfigureResearchButtons();

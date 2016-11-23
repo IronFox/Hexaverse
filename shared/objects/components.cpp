@@ -91,64 +91,57 @@ namespace Objects
 
 		float							Turret::GetOperationSpeed(operation_t op, const OwnerParameter&owner) const
 		{
-			return baseOperationSpeed[op];
+			return operationSpeed[op](owner);
 		}
 
 		int							Turret::GetDamageLevel(const OwnerParameter&owner) const
 		{
-			if (baseDamageLevel == 0)
-				return 0;
-			return baseDamageLevel;
+			return damageLevel(owner);
 		}
 
 		float							Turret::GetExplosionRadius(const OwnerParameter&owner) const
 		{
-			return  baseExplosionRadius;
+			return  explosionRadius(owner);
 		}
 
 		int								Turret::GetAttacksPerRound(const OwnerParameter&owner) const
 		{
-			return  baseAttacksPerRound;
+			return  attacksPerRound(owner);
 		}		
 
 		int								Turret::GetAmmoNeedPerShot(const OwnerParameter&owner) const
 		{
-			return baseAmmoNeedPerShot;
-			#ifndef NO_MUNITION
-				if (baseAmmoNeedPerShot == 0)
-					return 0;
-				return owner ? (int)ceil(float(baseAmmoNeedPerShot) / owner->researchState.GetFactorFor(*this,Attribute::AmmoNeed)) : baseAmmoNeedPerShot;
-			#endif
+			return ammoNeedPerShot(owner);
 		}
 
 		float							Turret::GetHorizontalAttackRange(const OwnerParameter&owner, int bonus/*=0*/) const
 		{
-			if (baseHorizontalAttackRange == 0)
+			if (horizontalAttackRange.IsEmpty())
 				return 0;
-			return (baseHorizontalAttackRange + bonus);
+			return (horizontalAttackRange(owner) + bonus);
 		}
 
 		float							Turret::GetScanningRange(const OwnerParameter&owner, int bonus/*=0*/) const
 		{
-			return (baseScanningRange + bonus);
+			return (scanningRange(owner) + bonus);
 		}
 
 		float							Turret::GetGroundScanningRange(const OwnerParameter&owner) const
 		{
-			return baseGroundScanningRange;
+			return groundScanningRange(owner);
 		}
 
 
 
-		void		Turret::BuildBlastSystem(const TVec3<>&location, TMatrix4<>&system) const
+		void		Turret::BuildBlastSystem(const TVec3<>&location, float radius, TMatrix4<>&system) const
 		{
-			BuildSystem(location,baseExplosionRadius,baseExplosionRadius,system);
+			BuildSystem(location,radius,radius,system);
 		}
 
 
-		void		Turret::BuildBlastSystem(const Grid::LCellIdI&location, TMatrix4<>&system)	const
+		void		Turret::BuildBlastSystem(const Grid::LCellIdI&location, float radius, TMatrix4<>&system)	const
 		{
-			BuildSystem(location,baseExplosionRadius,baseExplosionRadius,system);
+			BuildSystem(location,radius,radius,system);
 		}
 
 
@@ -1052,16 +1045,16 @@ namespace Objects
 			#ifndef ONE_COMPOUND_PER_FACTION
 				component.baseStorageCapacity.level[Resource::Minerals] = 200;
 			#endif
-			component.baseOperationSpeed[Construct] = 10;
-			component.baseOperationSpeed[TerrainRemove] = 10;
-			component.baseOperationSpeed[TerrainAdd] = 10;
-			component.healthMultiplier = 1;
-			component.baseScanningRange = 4;
-			component.uplinkTraffic = 30;
-			component.uplinkPriority = 200;	//fairly early
+			//component.baseOperationSpeed[Construct] = 10;
+			//component.baseOperationSpeed[TerrainRemove] = 10;
+			//component.baseOperationSpeed[TerrainAdd] = 10;
+			//component.healthMultiplier = 1;
+			//component.baseScanningRange = 4;
+			//component.uplinkTraffic = 30;
+			//component.uplinkPriority = 200;	//fairly early
 
 		
-			component.weight = 2;					//turret weight
+			//component.weight = 2;					//turret weight
 
 			component.FinishCreation();
 		}
@@ -1128,18 +1121,18 @@ namespace Objects
 			#ifndef ONE_COMPOUND_PER_FACTION
 				component.baseStorageCapacity.level[Resource::Uranium] = VehicleJob::DoomsdaySelfDetonationCosts;
 			#endif
-			component.baseOperationSpeed[Nuclear] = 50;
-			component.healthMultiplier = 1;
-			component.baseScanningRange = 1;
-			component.uplinkTraffic = 30;
-			component.uplinkPriority = 200;	//fairly early
+			//component.baseOperationSpeed[Nuclear] = 50;
+			//component.healthMultiplier = 1;
+			//component.baseScanningRange = 1;
+			//component.uplinkTraffic = 30;
+			//component.uplinkPriority = 200;	//fairly early
 
-			component.continuousRotation = true;
-			component.continuousRotationSpeed = 0.125f;
-			component.baseExplosionRadius = 7;	//doomsday radius
-			component.baseDamageLevel = 50;		//doomsday damage
+			//component.continuousRotation = true;
+			//component.continuousRotationSpeed = 0.125f;
+			//component.baseExplosionRadius = 7;	//doomsday radius
+			//component.baseDamageLevel = 50;		//doomsday damage
 		
-			component.weight = 5;					//turret weight
+			//component.weight = 5;					//turret weight
 
 			component.FinishCreation();
 		}
@@ -1178,24 +1171,24 @@ namespace Objects
 				component.baseStorageCapacity.level[Resource::Munitions] = 24;
 			#endif
 		
-			component.weight = 3;
-			component.healthMultiplier = 1.5f;
-			component.baseHorizontalAttackRange = 7;
-			component.baseScanningRange = 4;
+			//component.weight = 3;
+			//component.healthMultiplier = 1.5f;
+			//component.baseHorizontalAttackRange = 7;
+			//component.baseScanningRange = 4;
 
-			#ifndef HYBRID_GRID
-				component.baseExplosionRadius = 3.5f;
-			#else
-				component.baseExplosionRadius = 2;
-			#endif
-			component.baseDamageLevel = 7;
-			component.baseAttacksPerRound = 1;
-			component.initiative = 80;
-			#ifdef NO_MUNITION
-				component.baseAmmoNeedPerShot = 0;
-			#else
-				component.baseAmmoNeedPerShot = 6;
-			#endif
+			//#ifndef HYBRID_GRID
+			//	component.baseExplosionRadius = 3.5f;
+			//#else
+			//	component.baseExplosionRadius = 2;
+			//#endif
+			//component.baseDamageLevel = 7;
+			//component.baseAttacksPerRound = 1;
+			//component.initiative = 80;
+			//#ifdef NO_MUNITION
+			//	component.baseAmmoNeedPerShot = 0;
+			//#else
+			//	component.baseAmmoNeedPerShot = 6;
+			//#endif
 
 			component.FinishCreation();
 		}
@@ -1230,25 +1223,25 @@ namespace Objects
 				component.baseStorageCapacity.level[Resource::Munitions] = 24;
 			#endif
 		
-			component.weight = 13;
-			component.healthMultiplier = 1.5f;
-			component.baseHorizontalAttackRange = 8;
-			component.baseScanningRange = 4;
+			//component.weight = 13;
+			//component.healthMultiplier = 1.5f;
+			//component.baseHorizontalAttackRange = 8;
+			//component.baseScanningRange = 4;
 
-			#ifndef HYBRID_GRID
-				component.baseExplosionRadius = 1.5f;
-			#else
-				component.baseExplosionRadius = 1;
-			#endif
-			component.trajectoryType = TrajectoryType::Missile;
-			component.baseDamageLevel = 10;
-			component.baseAttacksPerRound = 1;
-			component.initiative = 70;
-			#ifdef NO_MUNITION
-				component.baseAmmoNeedPerShot = 0;
-			#else
-				component.baseAmmoNeedPerShot = 8;
-			#endif
+			//#ifndef HYBRID_GRID
+			//	component.baseExplosionRadius = 1.5f;
+			//#else
+			//	component.baseExplosionRadius = 1;
+			//#endif
+			//component.trajectoryType = TrajectoryType::Missile;
+			//component.baseDamageLevel = 10;
+			//component.baseAttacksPerRound = 1;
+			//component.initiative = 70;
+			//#ifdef NO_MUNITION
+			//	component.baseAmmoNeedPerShot = 0;
+			//#else
+			//	component.baseAmmoNeedPerShot = 8;
+			//#endif
 
 			component.FinishCreation();
 		}
@@ -1283,19 +1276,19 @@ namespace Objects
 				component.baseStorageCapacity.level[Resource::Munitions] = 20;
 			#endif
 		
-			component.weight = 3;
-			component.healthMultiplier = 2;
-			component.baseHorizontalAttackRange = 5;
-			component.baseScanningRange = 5;
+			//component.weight = 3;
+			//component.healthMultiplier = 2;
+			//component.baseHorizontalAttackRange = 5;
+			//component.baseScanningRange = 5;
 
-			component.baseExplosionRadius = 1;
-			component.baseDamageLevel = 3;
-			component.baseAttacksPerRound = 2;
-			#ifdef NO_MUNITION
-				component.baseAmmoNeedPerShot = 0;
-			#else
-				component.baseAmmoNeedPerShot = 2;
-			#endif
+			//component.baseExplosionRadius = 1;
+			//component.baseDamageLevel = 3;
+			//component.baseAttacksPerRound = 2;
+			//#ifdef NO_MUNITION
+			//	component.baseAmmoNeedPerShot = 0;
+			//#else
+			//	component.baseAmmoNeedPerShot = 2;
+			//#endif
 
 			component.ignoresVehicleMotion = true;
 
@@ -1332,20 +1325,20 @@ namespace Objects
 				component.baseStorageCapacity.level[Resource::Uranium] = 150;
 			#endif
 		
-			component.weight = 5;
-			component.healthMultiplier = 1;
-			component.baseHorizontalAttackRange = 17;
-			component.baseScanningRange = 3;
+			//component.weight = 5;
+			//component.healthMultiplier = 1;
+			//component.baseHorizontalAttackRange = 17;
+			//component.baseScanningRange = 3;
 
-			component.baseExplosionRadius = 3;
-			component.baseDamageLevel = 5;
-			component.dealsEMPDamage = true;
-			component.baseAttacksPerRound = 1;
-			component.initiative = 30;
-			component.baseAmmoNeedPerShot = 50;
-			component.ammoType = Resource::Uranium;
-			component.requiresStationaryVehicle = true;
-			component.uplinkTraffic = 10;
+			//component.baseExplosionRadius = 3;
+			//component.baseDamageLevel = 5;
+			//component.dealsEMPDamage = true;
+			//component.baseAttacksPerRound = 1;
+			//component.initiative = 30;
+			//component.baseAmmoNeedPerShot = 50;
+			//component.ammoType = Resource::Uranium;
+			//component.requiresStationaryVehicle = true;
+			//component.uplinkTraffic = 10;
 
 			#ifndef NO_MUNITION
 				if (component.baseAmmoNeedPerShot > 0)
@@ -1603,9 +1596,9 @@ namespace Objects
 				component.baseStorageCapacity.level[Resource::Munitions] = 100;
 			#endif
 		
-			component.weight = 4;
-			component.healthMultiplier = 1;
-			component.baseScanningRange = 3;
+			//component.weight = 4;
+			//component.healthMultiplier = 1;
+			//component.baseScanningRange = 3;
 
 			//component.baseExplosionRadius = 1;
 			//component.baseDamageLevel = 3;
@@ -1648,11 +1641,11 @@ namespace Objects
 				component.baseStorageCapacity.level[Resource::Minerals] = 100;
 			#endif
 		
-			component.weight = 2;
-			component.healthMultiplier = 1;
-			component.baseScanningRange = 3;
-			component.baseOperationSpeed[Repair] = 10;
-			component.uplinkTraffic = 10;
+			//component.weight = 2;
+			//component.healthMultiplier = 1;
+			//component.baseScanningRange = 3;
+			//component.baseOperationSpeed[Repair] = 10;
+			//component.uplinkTraffic = 10;
 
 
 			component.FinishCreation();
@@ -1676,12 +1669,12 @@ namespace Objects
 
 			component.productionCosts = 10;
 		
-			component.weight = 2;
-			component.healthMultiplier = 1;
-			component.baseScanningRange = 12;
-			component.continuousRotation = true;
-			component.continuousRotationSpeed = 2.f;
-			component.uplinkTraffic = 10;
+			//component.weight = 2;
+			//component.healthMultiplier = 1;
+			//component.baseScanningRange = 12;
+			//component.continuousRotation = true;
+			//component.continuousRotationSpeed = 2.f;
+			//component.uplinkTraffic = 10;
 
 			component.FinishCreation();
 		}
@@ -1707,11 +1700,11 @@ namespace Objects
 			component.continuousRotation = true;
 			component.continuousRotationSpeed = -1.f;
 
-			component.weight = 1;
-			component.healthMultiplier = 1;
-			component.detectsResources = true;
-			component.baseScanningRange = 4;
-			component.uplinkPriority = 180;	//fairly early
+			//component.weight = 1;
+			//component.healthMultiplier = 1;
+			//component.detectsResources = true;
+			//component.baseScanningRange = 4;
+			//component.uplinkPriority = 180;	//fairly early
 
 			#ifndef NO_MUNITION
 				if (component.baseAmmoNeedPerShot > 0)

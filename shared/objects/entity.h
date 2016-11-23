@@ -131,6 +131,23 @@ namespace Objects
 	};
 
 
+	template <typename T>
+		struct LuaAttribute
+		{
+			Lua::Function<T(Lua::Reference)>		getValue;
+			Lua::Function<String(Lua::Reference)>	describeValue;
+		};
+
+
+	class BaseAttributeTable
+	{
+	public:
+		//all functions here take the research state of an owning faction into account
+		LuaAttribute<int>			maxHealth,
+									constructionCost;
+		LuaAttribute<float>			maxScanningRange;
+	};
+
 	
 	/**
 	World entity base class.
@@ -163,7 +180,6 @@ namespace Objects
 		#ifndef CLIENT
 
 			float					motionTime=0.f;		//!< Time (in seconds) into the motion phase to calculate event times
-
 			Random					entityRandom;
 			
 			void					ReSeedRandom();
@@ -171,6 +187,9 @@ namespace Objects
 			void					ResetMotionTime()	{motionTime = 0;}
 
 		#endif
+
+		Lua::Reference				GetResearchState() const;
+		virtual BaseAttributeTable*	GetTable() const {return nullptr;}
 
 		inline void					SyncTime(float&remoteTime, float timeOffset)
 		{
@@ -307,20 +326,8 @@ namespace Objects
 		#endif
 
 
-		/**
-		Retrieves the maximum possible health level.
-		Currently this is overridden by Vehicles and Towers
-		*/
-		virtual int					GetMaxHealth() const;
-		/**
-		Generates a printout of current max health including explicit factor due to research
-		*/
-		virtual String				DescribeMaxHealth() const;
 
-
-		virtual int					GetBaseMaxHealth() const	{return GetConstructionCost()/5;}
-
-		virtual int					GetConstructionCost() const = 0;	//!< Retrieves the minerals required to construct a new instance of this structure
+		virtual int					GetConstructionCost() const;	//!< Retrieves the minerals required to construct a new instance of this structure
 
 		/**
 		Queries the entity height in layers. Most entities have height=1
@@ -380,12 +387,13 @@ namespace Objects
 			virtual void			PrototypeLoadGeometry() {};
 		#endif
 
+		virtual int					GetMaxHealth() const;
+		virtual String				DescribeMaxHealth() const;
 		/**
 		Queries the current scanning radius of the local entity, including research and EMP effects.
 		Currently this is overridden by MobileEntity, Vehicle, and Tower
 		*/
 		virtual float				GetScanningRange() const;
-		virtual float				GetMaxScanningRange() const;
 		/**
 		Explicitly describes how the scanning range is computed (only has to explicitly name research, not EMP, but has to include EMP in the resulting numbers)
 		*/
