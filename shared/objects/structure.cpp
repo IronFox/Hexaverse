@@ -1858,11 +1858,11 @@ namespace Objects
 
 	#endif
 
-	
-	/*virtual override*/ float		Tower::GetScanningRange() const
-	{
-		return EMPModify(turret->GetScanningRange(owner,turret->CanAttack() ? - 2.f : 2.f), 2.f);
-	}
+	//
+	///*virtual override*/ float		Tower::GetScanningRange() const
+	//{
+	//	return EMPModify(turret->GetScanningRange(owner,turret->CanAttack() ? - 2.f : 2.f), 2.f);
+	//}
 
 	/*virtual override*/ String		Tower::DescribeScanningRange() const
 	{
@@ -1870,11 +1870,11 @@ namespace Objects
 				String(GetScanningRange());
 	}
 
-	/*virtual override*/ int				Tower::GetMaxHealth() const
-	{
-		float base = float(Super::GetMaxHealth()) * turret->healthMultiplier(owner);
-		return std::max(1,(int)floor(base));
-	}
+	///*virtual override*/ int				Tower::GetMaxHealth() const
+	//{
+	//	float base = float(Super::GetMaxHealth()) * turret->healthMultiplier(owner);
+	//	return std::max(1,(int)floor(base));
+	//}
 
 	/*virtual override*/ String				Tower::DescribeMaxHealth() const
 	{

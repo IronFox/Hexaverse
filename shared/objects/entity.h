@@ -134,8 +134,32 @@ namespace Objects
 	template <typename T>
 		struct LuaAttribute
 		{
-			Lua::Function<T(Lua::Reference)>		getValue;
-			Lua::Function<String(Lua::Reference)>	describeValue;
+			Lua::Function<T(Lua::Reference)>		luaGetValue;
+			Lua::Function<String(Lua::Reference)>	luaDescribeValue;
+
+
+			T			constValue;
+			bool		isConst = false;
+
+			void		SetConst(const T&value)
+			{
+				constValue = value;
+				isConst = true;
+			}
+
+			T			GetValue(const Lua::Reference&researchState)	const
+			{
+				if (isConst)
+					return constValue;
+				return luaGetValue(researchState);
+			}
+
+			String		Describe(const Lua::Reference&researchState)	const
+			{
+				if (luaDescribeValue.IsSet())
+					return luaDescribeValue(researchState);
+				return GetValue(researchState);
+			}
 		};
 
 
@@ -189,7 +213,7 @@ namespace Objects
 		#endif
 
 		Lua::Reference				GetResearchState() const;
-		virtual BaseAttributeTable*	GetTable() const {return nullptr;}
+		virtual BaseAttributeTable*	GetTable() const {FATAL__("Attempting to query attribute table on "+GetTypeName());  return nullptr;}
 
 		inline void					SyncTime(float&remoteTime, float timeOffset)
 		{

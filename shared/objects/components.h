@@ -99,10 +99,30 @@ namespace Objects
 			OperationCount
 		};
 
+
+		Lua::Reference		ResearchStateOf(const OwnerParameter&);
+
+		template <typename T>
+			struct LuaAttribute : public Lua::Function<T(Lua::Reference)>
+			{
+				typedef Lua::Function<T(Lua::Reference)>	Super;
+				T	testOverride;
+				bool	doOverride=false;
+
+				T	operator()(const OwnerParameter&owner) const
+				{
+					if (doOverride)
+						return testOverride;
+					if (IsSet())
+						return Super::operator()(ResearchStateOf(owner));
+					return (T)0;
+				}
+
+			};
 		class Base 
 		{
 		protected:
-			/**/							Base():productionCosts(1),initiative(100)	{researchSlot.Fill(InvalidIndex);}
+			/**/							Base():initiative(100)	{}
 
 			struct Detail
 			{
@@ -124,12 +144,13 @@ namespace Objects
 				Array<std::pair<Geometry,DX11::InstructionBlock32> >	parts;
 			#endif
 
-			FixedArray<index_t,Attribute::N+1>	researchSlot;
-
+			
 			String							typeName,shortName;
 			ConstName						constName;
-			int								productionCosts,
-											initiative;
+			int								initiative;
+			LuaAttribute<int>				productionCosts /*=1*/;
+											
+
 
 			void							FinishCreation(bool scaleToVehicleSize=true);
 
@@ -152,19 +173,7 @@ namespace Objects
 		};
 
 
-		template <typename T>
-			struct LuaAttribute : public Lua::Function<T(Lua::Reference)>
-			{
-				typedef Lua::Function<T(Lua::Reference)>	Super;
 
-				T	operator()(const OwnerParameter&owner) const
-				{
-					if (IsSet())
-						return Super::operator()(owner ? owner->researchState.researchState : Lua::Reference());
-					return (T)0;
-				}
-
-			};
 	
 
 		/**

@@ -129,9 +129,9 @@ namespace Objects
 			virtual void		VisitAllCommands(FCommandVisitor visitor,bool force) override {Component::Turret* turret = this->turret; Component::VehicleBase* base = this->base;  base->VisitAllCommands(visitor,force); turret->VisitAllCommands(visitor,force);};
 		#endif
 
-		int						GetPrice() const	{return GetPrice(base,turret);}
-		static int				GetPrice(Component::VehicleBase*, Component::Turret*);
-		static int				GetPrice(Component::VehicleBase&b, Component::Turret&t)	{return GetPrice(&b,&t);}
+		int						GetPrice() const	{return GetPrice(base,turret, owner);}
+		static int				GetPrice(Component::VehicleBase*, Component::Turret*, const OwnerParameter&);
+		static int				GetPrice(Component::VehicleBase&b, Component::Turret&t, const OwnerParameter&owner)	{return GetPrice(&b,&t,owner);}
 		int						GetMaxClimbingHeight() const {return base->maxClimbUp;}
 		int						GetMaxFallingHeight() const {return -base->minClimbDown;}
 

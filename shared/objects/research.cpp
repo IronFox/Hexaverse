@@ -1,5 +1,7 @@
 #include <global_root.h>
 #include "research.h"
+#include "prototypes.h"
+#include "structure.h"
 #include "../logEvent.h"
 
 namespace Objects
@@ -32,6 +34,64 @@ namespace Objects
 		return rs;
 	}
 
+
+
+	static Array<BaseAttributeTable>	structureTables;
+
+
+	template <typename T>
+		static void InitAttrib(const Lua::Table&source, const String&path, const String&name, LuaAttribute<T>&a)
+		{
+			Lua::Reference ref = source.GetField(name);
+			if (ref.IsEmpty())
+				FATAL__("research.lua does not define "+path+"."+name);
+
+			if (ref.IsTable())
+			{
+				Lua::Table t = source.GetField(name);
+			
+				a.luaGetValue = t.GetField("Get");
+				if (a.luaGetValue.IsEmpty())
+					FATAL__("research.lua does not define "+path+"."+name+".Get");
+
+				a.luaDescribeValue = t.GetField("Describe");
+			}
+			elif (ref.IsFunction())
+			{
+				a.luaGetValue = ref;
+			}
+			else
+			{
+				a.SetConst(ref.GetAs<T>());
+			}
+		}
+
+	static void InitTable(String baseName, BaseAttributeTable&t)
+	{
+		baseName.eraseCharacter(' ');
+		baseName.eraseCharacter('-');
+		
+		static Lua::Table configTable;
+		if (configTable.IsEmpty())
+		{
+			configTable = ResearchState::globalState.researchProgram->FindGlobal("StructureConfig");
+			if (configTable.IsEmpty())
+				FATAL__("research.lua does not define StructureConfig table");
+		}
+
+		Lua::Table source = configTable.GetField(baseName);
+		if (source.IsEmpty())
+			FATAL__("research.lua does not define StructureConfig."+baseName+" table");
+
+		String path =  "StructureConfig."+baseName;
+		InitAttrib(source,path,  "Cost",t.constructionCost);
+		InitAttrib(source,path,  "Health",t.maxHealth);
+		InitAttrib(source,path,  "ScanningRange",t.maxScanningRange);
+
+
+	}
+
+
 	/*static*/ void		ResearchState::StaticCreate()
 	{
 		globalState.researchProgram = Lua::Program::Create();
@@ -63,7 +123,20 @@ namespace Objects
 		{
 			FATAL__("Research Lua script does not define ResearchState.New method");
 		}
-		globalState.researchProgram.reset();
+
+		
+		structureTables.SetSize(structurePrototypes.Count());
+		for (index_t i = 0; i < structurePrototypes.Count(); i++)
+		{
+			const PStructure&s = structurePrototypes[i];
+			BaseAttributeTable&t = structureTables[i];
+			InitTable(s->GetTypeName(),t);
+			s->DefineAttributeTable(&t);
+
+		}
+
+
+		//globalState.researchProgram.reset();
 	}
 
 

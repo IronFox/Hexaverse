@@ -56,9 +56,9 @@ namespace Objects
 		}
 	#endif
 
-	/*static*/ int					Vehicle::GetPrice(Component::VehicleBase*base, Component::Turret*turret)
+	/*static*/ int					Vehicle::GetPrice(Component::VehicleBase*base, Component::Turret*turret, const OwnerParameter&owner)
 	{
-		return (turret ? turret->productionCosts : 0) + (base ? base->productionCosts : 0);
+		return (turret ? turret->productionCosts(owner) : 0) + (base ? base->productionCosts(owner) : 0);
 	}
 
 
@@ -76,7 +76,7 @@ namespace Objects
 
 	/*virtual override*/ int				Vehicle::GetMaxHealth() const
 	{
-		return std::max(1,(int)floor(base->GetBaseHealth(owner) * turret->healthMultiplier));
+		return std::max(1,(int)floor(base->GetBaseHealth(owner) * turret->healthMultiplier(owner)));
 	}
 
 	/*virtual override*/ String				Vehicle::DescribeMaxHealth() const
@@ -158,7 +158,7 @@ namespace Objects
 
 	int						Vehicle::GetTurretOverweight() const
 	{
-		return std::max(0, turret->weight - (int)floor(base->GetCarryingCapacity(owner)));
+		return std::max(0, turret->weight(owner) - (int)floor(base->GetCarryingCapacity(owner)));
 	}
 
 	float					Vehicle::GetTurretOverweightFactor() const

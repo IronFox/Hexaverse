@@ -183,8 +183,11 @@ namespace Objects
 			//if (structureTypeName.IsNotEmpty())
 			{
 				foreach(allTurretComponents, p)
-					if ((*p)->typeName == name)
+				{
+					const String&cname = (*p)->typeName;
+					if (cname == name)
 						return *p;
+				}
 			}
 			return nullptr;
 		}

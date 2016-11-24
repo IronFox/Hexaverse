@@ -466,20 +466,20 @@ namespace Game
 			+ 
 			Objects::MineralContainer::globalPrototype->GetConstructionCost()
 			+
-			Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::terraformer)
+			Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::terraformer,Objects::OwnerParameter())
 			+
-			Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::resourceScanner);
+			Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::resourceScanner,Objects::OwnerParameter());
 		}
 		else
 		{
 			factionStartMineralValue = 
-				3 * Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::terraformer)
+				3 * Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::terraformer,Objects::OwnerParameter())
 				+
-				Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::radar)
+				Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::radar,Objects::OwnerParameter())
 				+
-				Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::resourceScanner)
+				Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::resourceScanner,Objects::OwnerParameter())
 				+
-				Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::artillery);
+				Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::artillery,Objects::OwnerParameter());
 		}
 		//if (State::Config::Nexus::haveBases)
 		//{

@@ -268,22 +268,22 @@ namespace Objects
 
 	/*virtual*/ float		WorldEntity::GetScanningRange() const
 	{
-		return EMPModify(table->maxScanningRange.getValue(GetResearchState()), 2.f * Grid::UnitScale);
+		return EMPModify(GetTable()->maxScanningRange.GetValue(GetResearchState()), 2.f * Grid::UnitScale);
 	}
 
 	/*virtual*/ int			WorldEntity::GetConstructionCost() const
 	{
-		return table->constructionCost.getValue(GetResearchState());
+		return GetTable()->constructionCost.GetValue(GetResearchState());
 	}
 
 	/*virtual*/ int			WorldEntity::GetMaxHealth() const
 	{
-		return table->maxHealth.getValue(GetResearchState());
+		return GetTable()->maxHealth.GetValue(GetResearchState());
 	}
 
 	/*virtual*/ String		WorldEntity::DescribeMaxHealth() const
 	{
-		return table->maxHealth.describeValue(GetResearchState());
+		return GetTable()->maxHealth.Describe(GetResearchState());
 	}
 
 
@@ -297,7 +297,7 @@ namespace Objects
 
 	/*virtual*/ String		WorldEntity::DescribeScanningRange() const
 	{
-		return table->maxScanningRange.describeValue(GetResearchState());
+		return GetTable()->maxScanningRange.Describe(GetResearchState());
 	}
 
 	//bool		WorldEntity::CanSee(const PWorldEntity&other) const

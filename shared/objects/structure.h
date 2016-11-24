@@ -69,6 +69,7 @@ namespace Objects
 
 
 	public:
+		void						DefineAttributeTable(BaseAttributeTable*t)	{table = t;}
 
 		CONSTRUCT_ENUMERATION5(Category, Resources, Defense, Factories, Infrastructure, Miscellaneous);
 
@@ -279,7 +280,11 @@ namespace Objects
 		virtual void				OnDestroy(RemovalType, float&atTime) override;
 		virtual void				OnConstructionFinished(float&atTime) override;
 		virtual void				PrototypeSetup() override;
-		virtual BaseAttributeTable*	GetTable() const override {return table;}
+		virtual BaseAttributeTable*	GetTable() const override
+		{
+			ASSERT_NOT_NULL1__(table,GetTypeName());
+			return table;
+		}
 
 
 		/**
@@ -507,7 +512,7 @@ namespace Objects
 		virtual ConstName			GetCTypeName() const override {return ConstName::Type_VehicleStore;}
 		virtual int					GetHeight() const override {return 2;}
 		virtual void				PrototypeSetup() override;
-		virtual int					GetConstructionCost() const override {return 40;}
+		//virtual int					GetConstructionCost() const override {return 40;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 2;}
 		#endif
@@ -549,7 +554,7 @@ namespace Objects
 		virtual ConstName			GetCTypeName() const override {return ConstName::Type_Connector;}
 
 
-		virtual int					GetConstructionCost() const override {return 5;}
+		//virtual int					GetConstructionCost() const override {return 5;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 1;}
 		#endif
@@ -813,7 +818,7 @@ namespace Objects
 			//WorldEntity overrides:
 			virtual int					GetHeight() const override {return 2;}
 			virtual void				PrototypeSetup() override;
-			virtual int					GetConstructionCost() const override {return 40;}
+			//virtual int					GetConstructionCost() const override {return 40;}
 			#ifndef NO_HIBERNATION
 				virtual int				GetUplinkTraffic() const override {return 10;}
 				virtual int				GetUplinkPriority() const override {return 750;};	//not much point going far beyond generators. if they shut off, this thing shuts off, too
@@ -925,13 +930,13 @@ namespace Objects
 
 
 
-		virtual int					GetConstructionCost() const override {return 0;}
+		//virtual int					GetConstructionCost() const override {return 0;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 10;}
 			virtual int				GetUplinkPriority() const override {return 750;};	//not much point going far beyond generators. if they shut off, this thing shuts off, too
 		#endif
 
-		virtual int					GetMaxHealth() const override {return 1;}
+		//virtual int					GetMaxHealth() const override {return 1;}
 
 		virtual String				GetTypeName() const override { return "Nexus Port"; };
 		virtual ConstName			GetCTypeName() const override {return ConstName::Type_NexusPort;}
@@ -985,7 +990,7 @@ namespace Objects
 			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override {return connectedToReactor.lock() == connected ? &reactorConnector : &standardConnector;}
 		#endif
 
-		virtual int					GetConstructionCost() const override {return 40;}
+		//virtual int					GetConstructionCost() const override {return 40;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 5;}
 			virtual int				GetUplinkPriority() const override {return 750;};
@@ -1022,7 +1027,7 @@ namespace Objects
 		static const int	UraniumCost = 5;
 		static const int	EnergyOutput = 40;
 
-		virtual int					GetConstructionCost() const override {return 120;}
+		//virtual int					GetConstructionCost() const override {return 120;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 15;}
 			virtual int				GetUplinkPriority() const override {return 750;};
@@ -1115,7 +1120,7 @@ namespace Objects
 
 		//WorldEntity overrides:
 		virtual void				PrototypeSetup()	override;
-		virtual int					GetConstructionCost() const override {return 80;}
+		//virtual int					GetConstructionCost() const override {return 80;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 20;}
 		#endif
@@ -1186,7 +1191,7 @@ namespace Objects
 
 		//WorldEntity overrides:
 		virtual void				PrototypeSetup()	override;
-		virtual int					GetConstructionCost() const override {return 80;}
+		//virtual int					GetConstructionCost() const override {return 80;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 20;}
 		#endif
@@ -1283,7 +1288,7 @@ namespace Objects
 				}
 			#endif
 		#endif
-		virtual int					GetConstructionCost() const override {return 10;}
+		//virtual int					GetConstructionCost() const override {return 10;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 2;}
 			virtual int				GetUplinkPriority() const override {return 1000;};
@@ -1349,7 +1354,7 @@ namespace Objects
 										v.level[Resource::Energy] += -EnergyConsumption;
 									}
 
-		virtual int					GetConstructionCost() const override {return 40;}
+		//virtual int					GetConstructionCost() const override {return 40;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 10;}
 			virtual int				GetUplinkPriority() const override {return naturalResources.fuel*5 + naturalResources.minerals + naturalResources.uranium;};
@@ -1431,7 +1436,7 @@ namespace Objects
 		}
 		virtual Category			GetCategory() const override {return Category::Resources;}
 
-		virtual int					GetConstructionCost() const override {return 40;}
+		//virtual int					GetConstructionCost() const override {return 40;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 5;}
 			virtual int				GetUplinkPriority() const override {return 400;};
@@ -1667,9 +1672,9 @@ namespace Objects
 
 		//WorldEntity overrides:
 		virtual bool				IsTower() const override {return true;}
-		virtual float				GetScanningRange() const override;
+		//virtual float				GetScanningRange() const override;
 		virtual String				DescribeScanningRange() const override;
-		virtual int					GetMaxHealth() const override;
+		//virtual int					GetMaxHealth() const override;
 		virtual String				DescribeMaxHealth() const override;
 		virtual void				PrototypeSetup()	override;
 		#ifdef HAS_WINDOW
@@ -1680,7 +1685,7 @@ namespace Objects
 			virtual void			OnConstructionFinished(float&atTime) override;
 			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 		#endif
-		virtual int					GetConstructionCost() const override {return 40 + turret->productionCosts;}
+		//virtual int					GetConstructionCost() const override {return this->GetTable()->constructionCost.getValue(GetResearchState()) + turret->productionCosts(owner);}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return turret->uplinkTraffic;}
 			virtual int				GetUplinkPriority() const override {return 1000;}

@@ -234,11 +234,10 @@ namespace Test
 		Grid::HCellIdI impactCell;
 		auto turret = &Objects::Component::artillery;
 		int outOfScanning = 0;
-		const float originalExRadius = turret->baseExplosionRadius;
 		for (int i = 0; i < 100 || outOfScanning < 10; i++)
 		{
-			turret->baseExplosionRadius = random.getFloat(1,4);
-
+			turret->explosionRadius.testOverride = random.getFloat(1,4);
+			turret->explosionRadius.doOverride = true;
 
 			Grid::LCellIdI	generatorAt = RandomCell(random);
 			generatorAt.height = Objects::FindApplicableGround(generatorAt,true);
@@ -264,11 +263,11 @@ namespace Test
 			#endif
 			Objects::RefreshCompoundCoverage(0);
 
-			Grid::LCellIdI	vehicleAt = RandomCellAtRange(random, generatorAt, FloatRange(0.f, turret->baseHorizontalAttackRange + turret->baseExplosionRadius * 2));	//allow out-of-range
+			Grid::LCellIdI	vehicleAt = RandomCellAtRange(random, generatorAt, FloatRange(0.f, turret->horizontalAttackRange(faction0) + turret->explosionRadius(faction0) * 2));	//allow out-of-range
 			vehicleAt.height = Objects::FindApplicableGround(vehicleAt,true);
 			while (vehicleAt.height == Objects::badHeight)
 			{
-				vehicleAt = RandomCellAtRange(random, generatorAt, FloatRange(0.f, turret->baseHorizontalAttackRange + turret->baseExplosionRadius * 2));	//allow out-of-range
+				vehicleAt = RandomCellAtRange(random, generatorAt, FloatRange(0.f, turret->horizontalAttackRange(faction0) + turret->explosionRadius(faction0) * 2));	//allow out-of-range
 				vehicleAt.height = Objects::FindApplicableGround(vehicleAt,true);
 			}
 
@@ -327,7 +326,7 @@ namespace Test
 
 
 		}
-		turret->baseExplosionRadius = originalExRadius;
+		turret->explosionRadius.doOverride = false;
 		
 		Objects::FlushAllData();
 		Grid::ResetStructureCounters();
