@@ -70,6 +70,22 @@ namespace Objects
 						catbase;
 
 
+		const char*				OperationToString(operation_t op)
+		{
+			#undef ECASE
+			#define ECASE(X)	case X: return #X;
+
+			switch (op)
+			{
+				ECASE(Construct)
+				ECASE(Nuclear)
+				ECASE(Repair)
+				ECASE(TerrainAdd)
+				ECASE(TerrainRemove)
+			}
+			return "undefined";
+		}
+
 
 		Lua::Reference	ResearchStateOf(const OwnerParameter&owner)
 		{

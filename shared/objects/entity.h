@@ -7,6 +7,7 @@
 #include "turretBase.h"
 #include "types.h"
 #include "hibernating.h"
+#include "luaAttribute.h"
 
 
 #ifdef HAS_WINDOW
@@ -131,36 +132,7 @@ namespace Objects
 	};
 
 
-	template <typename T>
-		struct LuaAttribute
-		{
-			Lua::Function<T(Lua::Reference)>		luaGetValue;
-			Lua::Function<String(Lua::Reference)>	luaDescribeValue;
 
-
-			T			constValue;
-			bool		isConst = false;
-
-			void		SetConst(const T&value)
-			{
-				constValue = value;
-				isConst = true;
-			}
-
-			T			GetValue(const Lua::Reference&researchState)	const
-			{
-				if (isConst)
-					return constValue;
-				return luaGetValue(researchState);
-			}
-
-			String		Describe(const Lua::Reference&researchState)	const
-			{
-				if (luaDescribeValue.IsSet())
-					return luaDescribeValue(researchState);
-				return GetValue(researchState);
-			}
-		};
 
 
 	class BaseAttributeTable
@@ -170,6 +142,7 @@ namespace Objects
 		LuaAttribute<int>			maxHealth,
 									constructionCost;
 		LuaAttribute<float>			maxScanningRange;
+		LuaAttribute<bool>			isUnlocked;
 	};
 
 	

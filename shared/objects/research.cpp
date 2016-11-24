@@ -40,11 +40,15 @@ namespace Objects
 
 
 	template <typename T>
-		static void InitAttrib(const Lua::Table&source, const String&path, const String&name, LuaAttribute<T>&a)
+		static void InitAttrib(const Lua::Table&source, const String&path, const String&name, LuaAttribute<T>&a, bool allowEmpty = false)
 		{
 			Lua::Reference ref = source.GetField(name);
 			if (ref.IsEmpty())
-				FATAL__("research.lua does not define "+path+"."+name);
+			{
+				if (!allowEmpty)
+					FATAL__("research.lua does not define "+path+"."+name);
+				return;
+			}
 
 			if (ref.IsTable())
 			{
@@ -87,8 +91,58 @@ namespace Objects
 		InitAttrib(source,path,  "Cost",t.constructionCost);
 		InitAttrib(source,path,  "Health",t.maxHealth);
 		InitAttrib(source,path,  "ScanningRange",t.maxScanningRange);
+		InitAttrib(source,path, "IsUnlocked", t.isUnlocked);
+	}
 
 
+	static Lua::Table InitComponent(const Lua::Table&parent, String&path, Component::Base&b)
+	{
+		String baseName = b.typeName;
+		baseName.eraseCharacter(' ');
+		baseName.eraseCharacter('-');
+
+		path += '.'+baseName;
+
+		Lua::Table baseTable = parent.GetField(baseName);
+		if (baseTable.IsEmpty())
+			FATAL__("research.lua does not define "+path+" table");
+		InitAttrib(baseTable,path,"Cost",b.productionCosts);
+		return baseTable;
+	}
+
+	static void InitTurret(Component::Turret&t)
+	{
+		static Lua::Table configTable;
+		if (configTable.IsEmpty())
+		{
+			configTable = ResearchState::globalState.researchProgram->FindGlobal("TurretConfig");
+			if (configTable.IsEmpty())
+				FATAL__("research.lua does not define TurretConfig table");
+		}
+
+		String path = "TurretConfig";
+		Lua::Table myTable = InitComponent(configTable,path,t);
+
+		InitAttrib(myTable,path,"HealthMultiplier",t.healthMultiplier);
+		InitAttrib(myTable,path,"ScanningRange",t.scanningRange);
+		InitAttrib(myTable,path,"Weight",t.weight);
+
+		for (index_t i = 0; i < Component::OperationCount; i++)
+		{
+			InitAttrib(myTable,path,Component::OperationToString((Component::operation_t)i),t.operationSpeed[i],true);
+		}
+
+		InitAttrib(myTable,path,"GroundScannerPenetration",t.groundScannerPenetration,true);
+		InitAttrib(myTable,path,"GroundScanningRange",t.groundScanningRange,true);
+
+		InitAttrib(myTable,path,"AmmoConsumption",t.ammoNeedPerShot,true);
+		InitAttrib(myTable,path,"AttacksPerRound",t.attacksPerRound,true);
+		if (t.attacksPerRound.IsSet())
+		{
+			InitAttrib(myTable,path,"DamageLevel",t.damageLevel);
+			InitAttrib(myTable,path,"ExplosionRadius",t.explosionRadius);
+			InitAttrib(myTable,path,"HorizontalAttackRange",t.horizontalAttackRange);
+		}
 	}
 
 
@@ -132,7 +186,11 @@ namespace Objects
 			BaseAttributeTable&t = structureTables[i];
 			InitTable(s->GetTypeName(),t);
 			s->DefineAttributeTable(&t);
+		}
 
+		foreach (Component::allTurretComponents,turret)
+		{
+			InitTurret(**turret);
 		}
 
 

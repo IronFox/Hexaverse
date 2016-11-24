@@ -234,10 +234,10 @@ namespace Test
 		Grid::HCellIdI impactCell;
 		auto turret = &Objects::Component::artillery;
 		int outOfScanning = 0;
+		auto original = turret->explosionRadius.constOverride;
 		for (int i = 0; i < 100 || outOfScanning < 10; i++)
 		{
-			turret->explosionRadius.testOverride = random.getFloat(1,4);
-			turret->explosionRadius.doOverride = true;
+			turret->explosionRadius.SetConst(random.getFloat(1,4));
 
 			Grid::LCellIdI	generatorAt = RandomCell(random);
 			generatorAt.height = Objects::FindApplicableGround(generatorAt,true);
@@ -326,7 +326,7 @@ namespace Test
 
 
 		}
-		turret->explosionRadius.doOverride = false;
+		turret->explosionRadius.constOverride = original;
 		
 		Objects::FlushAllData();
 		Grid::ResetStructureCounters();

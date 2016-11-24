@@ -13,7 +13,7 @@
 #include "cursorMode.h"
 #include "types.h"
 #include "componentAttribute.h"
-#include "../luaInterface.h"
+#include "luaAttribute.h"
 
 
 namespace Objects
@@ -100,25 +100,24 @@ namespace Objects
 		};
 
 
+		const char*			OperationToString(operation_t);
 		Lua::Reference		ResearchStateOf(const OwnerParameter&);
 
-		template <typename T>
-			struct LuaAttribute : public Lua::Function<T(Lua::Reference)>
-			{
-				typedef Lua::Function<T(Lua::Reference)>	Super;
-				T	testOverride;
-				bool	doOverride=false;
 
-				T	operator()(const OwnerParameter&owner) const
+
+		template <typename T>
+			class LuaAttribute : public Objects::LuaAttribute<T>
+			{
+			public:
+				T						operator()(const OwnerParameter&p) const
 				{
-					if (doOverride)
-						return testOverride;
-					if (IsSet())
-						return Super::operator()(ResearchStateOf(owner));
-					return (T)0;
+					if (this->IsEmpty())
+						return (T)0;
+					return this->GetValue(ResearchStateOf(p));
 				}
 
 			};
+
 		class Base 
 		{
 		protected:
@@ -171,6 +170,7 @@ namespace Objects
 			#endif
 
 		};
+
 
 
 
