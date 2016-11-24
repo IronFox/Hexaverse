@@ -138,7 +138,7 @@ namespace Lua
 
 		void PopStacked(lua_State*);
 
-		void*RequireStackedUserData(const PProgram&,int addr,size_t requireByteSize, int (*gcFunction)(lua_State*), bool allowNil);
+		void*RequireStackedUserData(const PProgram&,int addr,size_t requireByteSize, int (*gcFunction)(lua_State*), bool allowNil, bool pCall);
 		void GetStacked(const PProgram&, int addr, bool&rs);
 		void GetStacked(const PProgram&, int addr, String&rs);
 		void GetStacked(const PProgram&, int addr, void*&rs);
@@ -162,7 +162,7 @@ namespace Lua
 
 
 
-		template <typename T>
+		template <typename T, bool PCall>
 			struct BaseStackedT
 			{
 				static void Get(const PProgram&st, int addr, T&rs)
@@ -177,12 +177,12 @@ namespace Lua
 				}
 			};
 
-		template <typename T>
-			struct BaseStackedT<std::shared_ptr<T> >
+		template <typename T, bool PCall>
+			struct BaseStackedT<std::shared_ptr<T>, PCall>
 			{
 				static void Get(const PProgram&st, int addr, std::shared_ptr<T>&rs)
 				{
-					void*data = RequireStackedUserData(st,addr,sizeof(rs), DeleteT<std::shared_ptr<T> >,true);
+					void*data = RequireStackedUserData(st,addr,sizeof(rs), DeleteT<std::shared_ptr<T> >,true,PCall);
 					if (!data)
 					{
 						rs = std::shared_ptr<T>();
@@ -192,7 +192,7 @@ namespace Lua
 				}
 				static const std::shared_ptr<T>& Get(const PProgram&st, int addr)
 				{
-					void*data = RequireStackedUserData(st,addr,sizeof(std::shared_ptr<T>), DeleteT<std::shared_ptr<T> >,true);
+					void*data = RequireStackedUserData(st,addr,sizeof(std::shared_ptr<T>), DeleteT<std::shared_ptr<T> >,true,PCall);
 					static std::shared_ptr<T> empty;
 					if (!data)
 						return empty;
@@ -205,8 +205,8 @@ namespace Lua
 			struct Strip : public std::remove_const<typename std::remove_reference<T>::type>
 			{};
 
-		template <typename T>
-			struct StackedT : public BaseStackedT<typename Strip<T>::type>
+		template <typename T, bool PCall>
+			struct StackedT : public BaseStackedT<typename Strip<T>::type,PCall>
 			{};
 
 		static inline int PushParameters(lua_State *state)
@@ -237,7 +237,7 @@ namespace Lua
 			static inline void GetParameters(lua_State *state, int at, const T0&p0)
 			{
 				if (at < 0)
-					StackedT<T0>::Get(state,at,p0);
+					StackedT<T0,true>::Get(state,at,p0);
 			}
 
 		template <typename T0, typename ...T>
@@ -287,7 +287,7 @@ namespace Lua
 							const auto&f = *(const std::function<R(P...)>*)BeginFunction(state,prog);
 							if (!prog)
 								return 0;
-							R rs = f(StackedT<typename Strip<P>::type>::Get(prog,I+1)...);
+							R rs = f(StackedT<typename Strip<P>::type,true>::Get(prog,I+1)...);
 							ParameterT<R>::Push(state,rs);
 							return 1;
 						}
@@ -313,7 +313,7 @@ namespace Lua
 							if (!prog)
 								return 0;
 							ParameterWalker w;
-							f(StackedT<typename Strip<P>::type>::Get(prog,I+1)...);
+							f(StackedT<typename Strip<P>::type,true>::Get(prog,I+1)...);
 							return 0;
 						}
 						catch (const std::exception&ex)
@@ -553,6 +553,30 @@ namespace Lua
 		*/
 		bool		Push()	const {if (IsEmpty()) return false; PushRegisteredGlobal(GetState(),GetRefID()); return true;}
 
+		/**
+		Fetches the fereenced value as a host copy.
+		The method fails if the local reference is empty.
+		If the referenced data is not of the respective primitive type the operation may return empty values
+		*/
+		template <typename T>
+			bool	Get(T&result) const
+			{
+				if (!Push())
+					return false;
+				try
+				{
+					Detail::StackedT<T,false>::Get(GetProgram(),-1,result);
+				}
+				catch (...)
+				{
+					Detail::PopStacked(GetState());
+					throw;
+				}
+				Detail::PopStacked(GetState());
+				return true;
+			}
+		template <typename T>
+			T		GetAs() const {T rs; Get(rs); return rs;}
 
 		/**
 		Attempts to store the local reference as a host byte stream.
@@ -608,7 +632,7 @@ namespace Lua
 			{
 				if (!PushField(name))
 					return false;
-				rs = Detail::StackedT<T>::Get(GetProgram(),-1);
+				rs = Detail::StackedT<T,false>::Get(GetProgram(),-1);
 				Pop(2);
 				return true;
 			}
@@ -622,7 +646,7 @@ namespace Lua
 			{
 				if (!PushElement(at))
 					return false;
-				rs = Detail::StackedT<T>::Get(GetProgram(),-1);
+				rs = Detail::StackedT<T,false>::Get(GetProgram(),-1);
 				Pop(2);
 				return true;
 			}
@@ -745,7 +769,15 @@ namespace Lua
 				int numParameters = Detail::PushParameters(state,parameters...);
 				CallPushedFunction(state,numParameters,1);
 				return_t rs;
-				Detail::StackedT<return_t>::Get(GetProgram(),-1,rs);
+				try
+				{
+					Detail::StackedT<return_t,false>::Get(GetProgram(),-1,rs);
+				}
+				catch (...)
+				{
+					Detail::PopStacked(state);
+					throw;
+				}
 				Detail::PopStacked(state);
 				return rs;
 			}

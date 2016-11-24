@@ -790,8 +790,16 @@ namespace Lua
 			lua_error(st);
 		}
 
+		void	Raise(bool pCall, lua_State*st, const String&msg)
+		{
+			if (pCall)
+				Raise(st,msg);
+			else
+				throw Lua::Exception(msg);
+		}
 
-		void*	RequireStackedUserData(const PProgram&prog,int addr,size_t requireByteSize, int (*gcFunction)(lua_State*), bool allowNil)
+
+		void*	RequireStackedUserData(const PProgram&prog,int addr,size_t requireByteSize, int (*gcFunction)(lua_State*), bool allowNil, bool pCall)
 		{
 			lua_State*st = prog->GetState();
 			int t = lua_type(st,addr);
@@ -799,27 +807,27 @@ namespace Lua
 				return nullptr;
 			if (t != LUA_TUSERDATA)
 			{
-				Raise(st,"Expected stacked Lua value at idx "+String(addr)+" to be of type user data, but got "+String(lua_typename(st,t)));
+				Raise(pCall,st,"Expected stacked Lua value at idx "+String(addr)+" to be of type user data, but got "+String(lua_typename(st,t)));
 				//throw Exception(CLOCATION,"Expected stacked Lua value at idx "+String(addr)+" to be of type user data, but got "+String(lua_typename(st,t)));
 			}
 			size_t len = lua_rawlen(st,addr);
 			if (len != requireByteSize)
-				Raise(st,"Expected Lua user data at idx "+String(addr)+" to be of size "+String(requireByteSize)+", but got "+String(len)+" bytes");
+				Raise(pCall,st,"Expected Lua user data at idx "+String(addr)+" to be of size "+String(requireByteSize)+", but got "+String(len)+" bytes");
 			if (!lua_getmetatable(st,addr))
-				Raise(st,"Lua user data at idx "+String(addr)+" has no metatable");
+				Raise(pCall,st,"Lua user data at idx "+String(addr)+" has no metatable");
 			lua_getfield(st,-1,"__gc");
 
 			if (lua_type(st,-1) == LUA_TNIL)
 			{
 				lua_pop(st,1);
-				Raise(st,"Lua user data at idx "+String(addr)+" has metatable but no gc function");
+				Raise(pCall,st,"Lua user data at idx "+String(addr)+" has metatable but no gc function");
 			}
 			ASSERT__(lua_type(st,-1)==LUA_TFUNCTION);
 			lua_CFunction storedGcFunction = lua_tocfunction(st,-1);
 			if (storedGcFunction != gcFunction)
 			{
 				lua_pop(st,2);
-				Raise(st,"Lua user data at idx "+String(addr)+" has wrong gc function ("+String(storedGcFunction)+", expected "+String(gcFunction)+")");
+				Raise(pCall,st,"Lua user data at idx "+String(addr)+" has wrong gc function ("+String(storedGcFunction)+", expected "+String(gcFunction)+")");
 			}
 
 			lua_pop(st,2);
