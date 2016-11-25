@@ -3,12 +3,14 @@ ResearchState.__index = ResearchState
 function ResearchState.New()
 	local rs = {}
 	setmetatable(rs,ResearchState)
+	rs.research = {}
 	return rs
 end
 
 function ResearchState:SelectUnlock(tech)
 	print "hello"
 end
+
 
 
 UnlockProgress = {}
@@ -45,7 +47,28 @@ function DefaultStructure(cost)
 end
 
 function Get(attribute, state)
-	if type(attribute) == 'function' then
+	if (attribute == nil) then
+		return 0
+	end
+	t = type(attribute)
+	if t == 'table' then
+		return attribute.Get(state)
+	end
+	if t == 'function' then
+		return attribute(state)
+	end
+	return attribute
+end
+
+function Describe(attribute, state)
+	if (attribute == nil) then
+		return '0'
+	end
+	t = type(attribute)
+	if t == 'table' then
+		return attribute.Describe(state)
+	end
+	if t == 'function' then
 		return attribute(state)
 	end
 	return attribute
@@ -55,7 +78,7 @@ end
 --[[ Turret configurations ]]
 TurretConfig = 
 {
-	Launcher = 
+	MissileLauncher = 
 	{
 		Cost = 40,
 		Weight = 13,
@@ -95,6 +118,17 @@ TurretConfig =
 		ScanningRange = 4,
 		IsUnlocked = true,
 	},
+	Bomb =
+	{
+		Cost = 40,
+		Weight = 5,
+		HealthMultiplier = 1,
+		ScanningRange = 1,
+		ExplosionRadius = 7,
+		DamageLevel = 50,
+		HorizontalAttackRange = 0,
+		IsUnlocked = true,
+	},
 	EMP =
 	{
 		Cost = 100,
@@ -108,7 +142,61 @@ TurretConfig =
 		AmmoConsumption = 50,
 		IsUnlocked = false,
 	},
+	Artillery =
+	{
+		Cost = 25,
+		Weight = 3,
+		HealthMultiplier = 1.5,
+		ScanningRange = 4,
+		AttacksPerRound = 1,
+		DamageLevel = 7,
+		ExplosionRadius = 3.5,
+		HorizontalAttackRange = 7,
+		IsUnlocked = false,
+	},
+	Terraformer =
+	{
+		Cost = 40,
+		Weight = 2,
+		HealthMultiplier = 1,
+		ScanningRange = 4,
+		Op_Construct = 10,
+		Op_TerrainRemove = 10,
+		Op_TerrainAdd = 10,
+		IsUnlocked = true,
+	},
+	Mechanic =
+	{
+		Cost = 30,
+		Weight = 2,
+		HealthMultiplier = 1,
+		ScanningRange = 3,
+		Op_Repair = 10,
+		IsUnlocked = true,
+	},
 }
+
+
+
+function MakeResearchable(parent, parentName, attribute)
+	original = parent[attribute]
+	--entry = ResearchEntry.New(original)
+	key = parentName..attribute
+	parent[attribute] =
+	{
+		Get = function(state)
+			if state == nil then
+				return original
+			end
+			if state.research[key] == nil then
+				state.research[key] = ResearchEntry.New(original)
+			end
+			return state.research[key]:Get()
+		end
+	}
+end
+
+MakeResearchable(TurretConfig.MissileLauncher, 'Launcher', 'IsUnlocked')
 
 
 
@@ -126,13 +214,47 @@ end
 
 
 function Tower(turret)
-	return
+	rs =
 	{
-		Cost = function(state) return 40 + Get(turret.Cost,state) end,
-		Health = function(state) return DefaultHealthAtCost(Cost.Get(state)) * Get(turret.HealthMultiplier,state) end,
-		ScanningRange = function(state) return Get(turret.ScanningRange,state) + TowerScanningModifier(turret) end,
-		IsUnlocked = function(state) return Get(turret.IsUnlocked,state) end,
+		Cost =
+		{
+			Get = 
+				function(state) 
+					return 40 + Get(turret.Cost,state)
+				end,
+			Describe = 
+				function(state) 
+					return '40+'.. Describe(turret.Cost,state)
+				end,
+		},
+		Health = 
+		{
+			Get = 
+				function(state) 
+					return DefaultHealthAtCost(rs.Cost.Get(state)) * Get(turret.HealthMultiplier,state) 
+				end,
+			Describe = 
+				function(state) 
+					return DefaultHealthAtCost(rs.Cost.Get(state))..'*'.. Describe(turret.HealthMultiplier,state) 
+				end,
+		},
+		ScanningRange =
+		{
+			Get = 
+				function(state) 
+					return Get(turret.ScanningRange,state) + TowerScanningModifier(turret)
+				end,
+			Describe = 
+				function(state) 
+					return Describe(turret.ScanningRange,state) ..'+'.. TowerScanningModifier(turret) 
+				end,
+		},
+		IsUnlocked = 
+			function(state) 
+				return Get(turret.IsUnlocked,state) 
+			end,
 	}
+	return rs
 end
 
 
@@ -151,10 +273,9 @@ StructureConfig =
 	UraniumStorage = DefaultStructure(10),
 	MunitionStorage = DefaultStructure(10),
 	NexusPort = ExplicitStructure(0,1,2,false),
-	MissileLauncherTower = Tower(TurretConfig.Launcher),
+	MissileLauncherTower = Tower(TurretConfig.MissileLauncher),
 	RadarTower = Tower(TurretConfig.Radar),
 	CannonTower = Tower(TurretConfig.Cannon),
-
 }
 
 
