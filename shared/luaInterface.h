@@ -287,9 +287,17 @@ namespace Lua
 							const auto&f = *(const std::function<R(P...)>*)BeginFunction(state,prog);
 							if (!prog)
 								return 0;
-							R rs = f(StackedT<typename Strip<P>::type,true>::Get(prog,I+1)...);
-							ParameterT<R>::Push(state,rs);
-							return 1;
+							try
+							{
+								R rs = f(StackedT<typename Strip<P>::type,true>::Get(prog,I+1)...);
+								ParameterT<R>::Push(state,rs);
+								return 1;
+							}
+							catch (const std::exception&e)
+							{
+								Raise(state,e.what());
+							}
+							return 0;
 						}
 						catch (const std::exception&ex)
 						{
@@ -313,7 +321,14 @@ namespace Lua
 							if (!prog)
 								return 0;
 							ParameterWalker w;
-							f(StackedT<typename Strip<P>::type,true>::Get(prog,I+1)...);
+							try
+							{
+								f(StackedT<typename Strip<P>::type,true>::Get(prog,I+1)...);
+							}
+							catch (const std::exception&e)
+							{
+								Raise(e.what());
+							}
 							return 0;
 						}
 						catch (const std::exception&ex)
@@ -583,9 +598,12 @@ namespace Lua
 		If the local reference is empty a Lua::Exception is thrown.
 		Some data (like functions) cannot be serialized and cause a Lua::Exception to be thrown.
 		@param[inout] stream Stream to put the resulting byte data to
+		@param ignoreNonSerializableContent Set true to allow and ignore non-serializable content. Otherwise an exception is thrown upon encountering such
 		@return true if the stream was large enough to hold any serializable data, false otherwise
 		*/
-		bool			Serialize(IWriteStream&stream)	const;
+		bool			Serialize(IWriteStream&stream, bool ignoreNonSerializableContent=false)	const;
+
+		bool			DeserializeMerge(IReadStream&stream);
 		void			SetGlobal(const String&name);
 
 	};
