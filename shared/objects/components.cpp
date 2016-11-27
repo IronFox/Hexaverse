@@ -95,16 +95,16 @@ namespace Objects
 
 		float							VehicleBase::GetBaseMovementSpeed(const OwnerParameter&owner) const
 		{
-			return unmodulatedMovementSpeed;
+			return movementSpeed.GetValue(ResearchStateOf(owner));
 		}
 		float							VehicleBase::GetCarryingCapacity(const OwnerParameter&owner) const
 		{
-			return baseCarryingCapacity;
+			return carryingCapacity.GetValue(ResearchStateOf(owner));
 			//return owner ? owner->researchState.GetFactorFor(*this,Attribute::CarryWeight) * baseCarryingCapacity : baseCarryingCapacity;
 		}
 		float							VehicleBase::GetBaseHealth(const OwnerParameter&owner) const
 		{
-			return unmodulatedHealth;
+			return health.GetValue(ResearchStateOf(owner));
 		}
 
 
@@ -134,11 +134,11 @@ namespace Objects
 			return ammoNeedPerShot(owner);
 		}
 
-		float							Turret::GetHorizontalAttackRange(const OwnerParameter&owner, int bonus/*=0*/) const
+		float							Turret::GetHorizontalAttackRange(const OwnerParameter&owner, const FFunc&bonus/*=FFunc()*/) const
 		{
 			if (horizontalAttackRange.IsEmpty())
 				return 0;
-			return (horizontalAttackRange(owner) + bonus);
+			return (horizontalAttackRange(owner) + bonus(owner));
 		}
 
 		float							Turret::GetScanningRange(const OwnerParameter&owner, int bonus/*=0*/) const
@@ -1768,9 +1768,9 @@ namespace Objects
 				component.storageMultiplier = 1;
 			#endif
 
-			component.unmodulatedMovementSpeed = 20;
-			component.baseCarryingCapacity = 1;
-			component.unmodulatedHealth = 4;
+			//component.unmodulatedMovementSpeed = 20;
+			//component.baseCarryingCapacity = 1;
+			//component.unmodulatedHealth = 4;
 
 			component.acceleration[TerrainAdd] = 1;
 			component.acceleration[TerrainRemove] = 1;
@@ -1810,11 +1810,11 @@ namespace Objects
 			#ifndef ONE_COMPOUND_PER_FACTION
 				component.storageMultiplier = 2;
 			#endif
-			component.operationSpeedMultiplier = 2;
+			//component.operationSpeedMultiplier = 2;
 
-			component.unmodulatedMovementSpeed = 15;
-			component.baseCarryingCapacity = 10;
-			component.unmodulatedHealth = 12;
+			//component.unmodulatedMovementSpeed = 15;
+			//component.baseCarryingCapacity = 10;
+			//component.unmodulatedHealth = 12;
 
 			component.hindrance.road = 1;
 			component.hindrance.air = 3;
@@ -1859,12 +1859,12 @@ namespace Objects
 			#ifndef ONE_COMPOUND_PER_FACTION
 				component.storageMultiplier = 2;
 			#endif
-			component.operationSpeedMultiplier = 2;
-			component.rangeModifier = 1;
+			//component.operationSpeedMultiplier = 2;
+			//component.rangeModifier = 1;
 
-			component.unmodulatedMovementSpeed = 8;
-			component.baseCarryingCapacity = 15;
-			component.unmodulatedHealth = 12;
+			//component.unmodulatedMovementSpeed = 8;
+			//component.baseCarryingCapacity = 15;
+			//component.unmodulatedHealth = 12;
 
 			component.hindrance.road = 10;
 			component.hindrance.air = 2;
@@ -2004,10 +2004,10 @@ namespace Objects
 				ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_DigDown, ConstName::Empty);
 			}
 
-			void			Base::DescribeType(BaseCommand::Label&label, bool compound, const OwnerParameter&)
+			void			Base::DescribeType(BaseCommand::Label&label, bool compound, const OwnerParameter&owner)
 			{
 				if (!compound)
-					label << " Cost: "+String(ResourceTag(Resource::Minerals))+String(productionCosts);
+					label << " Cost: "+String(ResourceTag(Resource::Minerals))+productionCosts.Describe(Objects::Component::ResearchStateOf(owner));
 				label.MarkBriefEnd();
 				if (!compound)
 					label << " Initiative: "+String(initiative);
@@ -2017,6 +2017,7 @@ namespace Objects
 
 			void VehicleBase::DescribeType(BaseCommand::Label&outResult, bool compound, const OwnerParameter&owner)
 			{
+				Lua::Reference researchState = ResearchStateOf(owner);
 				outResult << typeName + " (Base)";
 				Base::DescribeType(outResult,compound,owner);
 				outResult << " Can climb "+String(maxClimbUp)+" height level(s) up";
@@ -2028,35 +2029,27 @@ namespace Objects
 				#endif
 				if (!compound)
 				{
-					if (operationSpeedMultiplier != 1)
-						outResult << " Operation speed multiplied by "+String(operationSpeedMultiplier);
-					outResult<<" Base speed: "+ModulateByResearch(unmodulatedMovementSpeed,Attribute::MovementSpeed,owner,ResearchState::ModulationType::DefaultFloat);
+					float mult = operationSpeedMultiplier.GetValue(researchState);
+					if (mult != 1)
+						outResult << " Operation speed multiplied by "+operationSpeedMultiplier.Describe(researchState);
+					outResult<<" Base speed: "+ movementSpeed.Describe(researchState);
 					if (requirements == Requirement::Water)
 						outResult.lines.last()+= " (naval)";
 					else
 						if (moveOnWater)
 							outResult.lines.last()+= " (moves over water)";
-					outResult<<" Base health: "+ModulateByResearch(unmodulatedHealth,Attribute::Health,owner,ResearchState::ModulationType::FloorInt);
-					outResult<<" Turret carrying capacity: "+String(baseCarryingCapacity);
-					if (rangeModifier != 0)
-						if (rangeModifier < 0)
-							outResult<<" Turret range modifier: "+String(rangeModifier);
-						else
-							outResult<<" Turret range modifier: +"+String(rangeModifier);
+					outResult<<" Base health: "+health.Describe(researchState);
+					outResult<<" Turret carrying capacity: "+carryingCapacity.Describe(researchState);
+					float rangeMod = turretRangeModifier.GetValue(researchState);
+					if (rangeMod != 0)
+						outResult<<" Turret range modifier: "+turretRangeModifier.Describe(researchState);
 				}
 				if (ignoresVehicleAttacks)
 					outResult<<" Can move independently of attack action";
 			}
 
 
-			String Base::ModulateByResearch(float baseValue, Attribute attrib, const OwnerParameter&owner, ResearchState::ModulationType type/*=ModulationType::DefaultFloat*/)	const
-			{
-				if (owner)
-					return owner->researchState.Describe(*this, baseValue,attrib,type);
-				else
-					return String(baseValue);
-				
-			}
+
 
 			void Turret::DescribeType(BaseCommand::Label&outResult, bool compound, const String&parentType, const OwnerParameter&owner)
 			{
@@ -2079,18 +2072,20 @@ namespace Objects
 						outResult << " Deployed: "+String(cnt)+"/"+String(limit);
 				}
 
+				Lua::Reference researchState = ResearchStateOf(owner);
 
 				Base::DescribeType(outResult,compound,owner);
 				if (!compound)
 				{
-					outResult << " Weight: "+String(weight);
-					outResult << " Base scanning range: "+ModulateByResearch(baseScanningRange,Attribute::ScanningRange,owner,ResearchState::ModulationType::DefaultFloat);
-					if (healthMultiplier != 1)
-						outResult << " Health: x"+String(healthMultiplier);
-					if (RuntimeConfig::hibernationSystemEnabled)
-					{
-						outResult << " "+String(TrafficResourceTag())+String(uplinkTraffic)+", Priority: "+String(uplinkPriority);
-					}
+					outResult << " Weight: "+weight.Describe(researchState);
+					outResult << " Base scanning range: "+scanningRange.Describe(researchState);
+					float healthMult = healthMultiplier.GetValue(researchState);
+					if (healthMult != 1)
+						outResult << " Health: x"+healthMultiplier.Describe(researchState);
+					//if (RuntimeConfig::hibernationSystemEnabled)
+					//{
+					//	outResult << " "+String(TrafficResourceTag())+String(uplinkTraffic)+", Priority: "+String(uplinkPriority);
+					//}
 				}
 				if (CanAttack())
 				{
@@ -2101,22 +2096,23 @@ namespace Objects
 					elif (requiresStationaryVehicle)
 						outResult << " Vehicle must remain stationary to fire";
 					if (!compound)
-						outResult << " Base horizontal attack range: "+ModulateByResearch(baseHorizontalAttackRange,Attribute::AttackRange,owner,ResearchState::ModulationType::DefaultFloat);
+						outResult << " Base horizontal attack range: "+horizontalAttackRange.Describe(researchState);
 
-					if (baseAmmoNeedPerShot == 0)
+					int need = ammoNeedPerShot.GetValue(researchState);
+					if (need == 0)
 						outResult << "Does not require ammunition";
 					else
-						outResult << " Consumes "+String(ResourceTag(ammoType))+String(GetAmmoNeedPerShot(owner))+" per shot";
-					outResult << " Explosion radius: "+ModulateByResearch(baseExplosionRadius, Attribute::ExplosionRadius,owner,ResearchState::ModulationType::DefaultFloat);
+						outResult << " Consumes "+String(ResourceTag(ammoType))+ammoNeedPerShot.Describe(researchState)+" per shot";
+					outResult << " Explosion radius: "+explosionRadius.Describe(researchState);
 					if (dealsEMPDamage)
-						outResult << " EMP damage: "+ModulateByResearch(baseDamageLevel,Attribute::DamageLevel,owner,ResearchState::ModulationType::FloorInt);
+						outResult << " EMP damage: "+damageLevel.Describe(researchState);
 					else
-						outResult << " Damage: "+ModulateByResearch(baseDamageLevel,Attribute::DamageLevel,owner,ResearchState::ModulationType::FloorInt);
-					outResult << " "+ModulateByResearch(baseAttacksPerRound,Attribute::DamageLevel,owner,ResearchState::ModulationType::FloorInt)+" attack(s) per round";
+						outResult << " Damage: "+damageLevel.Describe(researchState);
+					outResult << " "+attacksPerRound.Describe(researchState)+" attack(s) per round";
 				}
 
 				if (CanConstruct() && !compound)
-					outResult << " Construction: Converts "+String(ResourceTag(Resource::Minerals))+ModulateByResearch(baseOperationSpeed[Construct],Attribute::ConstructionSpeed,owner,ResearchState::ModulationType::FloorInt)+" per round";
+					outResult << " Construction: Converts "+String(ResourceTag(Resource::Minerals))+operationSpeed[Construct].Describe(researchState)+" per round";
 				if ((CanDo(TerrainRemove) || CanDo(TerrainAdd)) && !compound)
 					outResult << " Terraforming: Can shape the surrounding terrain";
 				if (CanRepair())
@@ -2151,7 +2147,7 @@ namespace Objects
 						outResult.WrapAppendText("This "+lowerName+" deals EMP damage. EMP damage temporarily reduces scanning range. Does not cause any permanent damage.");
 				}
 				else
-					if (baseScanningRange > 10)
+					if (scanningRange.GetValue(researchState) > 10)
 						outResult.WrapAppendText("This "+lowerName+" type is especially suited for detecting hostile entities. Such turret types are manadatory in order to see hostile forces approaching, as well as their attacks. Offensive turrets usually lack the necessary scanning range to see where they are shooting and depend on this turret type to reside in the vicinity.");
 				//if (isDoomsday)
 				//{

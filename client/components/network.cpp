@@ -949,18 +949,18 @@ namespace Network
 			bool brk = true;
 		}
 
-		void	ResearchState(Objects::ResearchState&state)
+		void	ResearchState(Protocol::ResearchState&state)
 		{
 			Objects::PFaction f = ResolveFaction(state.ownerID);
-			f->researchState.Update( state, f);
+			f->researchState.Import(state.serializedData);
+			//Update( state, f);
 		}
 
 		void	SelectResearch(Protocol::SelectResearch&research)
 		{
 			if (Objects::Faction::mine)
 			{
-				Objects::Faction::mine->researchState.currentResearch = research.target;
-				Objects::Faction::mine->researchState.currentResearchAttribute.Load(research.attribute);
+				Objects::Faction::mine->researchState.SetActiveTopic(research);
 				//Dialog::SignalSituationChange();
 				#ifdef HAS_WINDOW
 					UI::RefreshButtonState();
@@ -1010,7 +1010,7 @@ namespace Network
 		TCP::Channel<Protocol::UnitLimits, 0, Protocol::ChannelID::UnitLimits>						unitLimits(Receiver::UnitLimits);
 		TCP::Channel<Grid::ExtendedPlanetConfig, 0, Protocol::ChannelID::PlanetConfig>				planetConfig(Receiver::PlanetConfig);
 		TCP::Channel<Protocol::OperationLacksResources, 0, Protocol::ChannelID::OperationLacksResources>			operationLacksResources(Receiver::OperationLacksResources);
-		TCP::Channel<Objects::ResearchState, 0, Protocol::ChannelID::ResearchState>					researchState(Receiver::ResearchState);
+		TCP::Channel<Protocol::ResearchState, 0, Protocol::ChannelID::ResearchState>					researchState(Receiver::ResearchState);
 		TCP::Channel<Protocol::SelectResearch, 0, Protocol::ChannelID::SelectResearch>				selectResearch(Receiver::SelectResearch);
 
 

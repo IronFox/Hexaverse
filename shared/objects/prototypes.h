@@ -43,6 +43,8 @@ namespace Objects
 		VehicleBase*	GetVehicleBaseByName(const String&name);
 		Turret*			GetTurretByName(const String&name);
 		Turret*			GetTurretByName(ConstName name);
+		Base*			GetByName(const String&name);
+		Base*			GetByName(ConstName name);
 
 		void			ConfigureAll();
 		void			DestroyAll();

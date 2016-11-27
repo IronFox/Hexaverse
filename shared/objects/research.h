@@ -12,23 +12,50 @@
 namespace Objects
 {
 
-	enum class ResearchSateModulation
+	class ResearchTopic
 	{
-		DefaultFloat,
-		InvertedFloat,
-		FloorInt,
-		CeilInt,
-		InvertedCeilInt
+	public:
+		typedef Lua::Function<void(Lua::Reference, int)>	FAdvance;
+		typedef Lua::Function<int(Lua::Reference)>	FGetProgress;
+		typedef Lua::Function<bool(Lua::Reference)> FBool;
+		typedef Lua::Function<PResearchTopic(Lua::Reference)> FResearchTopic;
+		
+
+		const String			name,iconName;
+		const WResearchTopic	parent;
+		Buffer0<PResearchTopic>	children;
+		FAdvance				advance;
+		FGetProgress			currentProgress;
+		const int				maxProgress;
+		const WResearchTopic	dependency;
+		PWorldEntity			prototypeReference;
+		index_t					serialIndex=InvalidIndex;
+		Component::Base			*componentReference=nullptr;
+
+
+		/**/					ResearchTopic(const PResearchTopic&parent, const String&name, const String&iconName, 
+												const FAdvance&adv, 
+												const FGetProgress&currentProgress, int maxProgress,
+												const PResearchTopic&dependency
+												);
+		virtual					~ResearchTopic();
+
+		bool					IsChildOf(const PResearchTopic&other) const {if (other.get() == this) return true; PResearchTopic p = parent.lock(); return p && p->IsChildOf(other);}
+		bool					IsGroup() const {return maxProgress > 0;}
+		bool					ResearchCompleted(const Lua::Reference&researchState) const
+		{
+			return currentProgress(researchState) >= maxProgress;
+		}
+		bool					CanResearch(const Lua::Reference&researchState) const
+		{
+			if (IsGroup())
+				return false;
+			if (ResearchCompleted(researchState))
+				return false;
+			PResearchTopic p = parent.lock();
+			return !p || p->ResearchCompleted(researchState);
+		}
 	};
-
-	enum class ResearchTask
-	{
-		None,
-		Unlock,
-		Improve
-	};
-
-
 
 	/**
 	@brief Research progress of a given faction
@@ -43,34 +70,22 @@ namespace Objects
 
 
 
-		class Research;
-		typedef std::shared_ptr<Research>	PResearch;
-		typedef std::weak_ptr<Research>	WResearch;
 
-
-		typedef Lua::Function<void(Lua::Reference)>	FOnActivate;	//must be activated on a valid state
-
-		class Research
-		{
-		public:
-			const String		name,iconName;
-			const WResearch		parent;
-			Buffer0<PResearch>	children;
-			FOnActivate			onActivate;
-
-
-			/**/				Research(const PResearch&parent, const String&name, const String&iconName, const FOnActivate&func);
-			virtual				~Research();
-		};
 
 
 	private:
+		int						totalContribution = 0;
+		PResearchTopic			activeResearch;
 		TUniqueID				factionID;
 		bool					factionIsNexus;
-		static PResearch		CreateResearch(const PResearch&parent, const String&name, const String&icon, const FOnActivate&func);
+		static PResearchTopic	CreateResearch(const PResearchTopic&parent, const String&name, const String&iconName, 
+												const ResearchTopic::FAdvance&adv, 
+												const ResearchTopic::FGetProgress&currentProgress, int maxProgress,
+												const PResearchTopic&dependency
+												);
 	public:
 
-
+		bool					changed = false;
 
 		static void				StaticCreate();
 		Lua::Reference			researchState;	//unknown to C++ code
@@ -79,7 +94,7 @@ namespace Objects
 
 		struct GlobalState
 		{
-			Buffer0<PResearch>	rootResearch;
+			Buffer0<PResearchTopic>	rootResearch,allTopics;
 			Lua::PProgram		researchProgram;
 			Lua::Function<Lua::Reference()>	stateConstructor;
 			Lua::Function<void(Lua::Reference)>	selectResearch;
@@ -91,14 +106,21 @@ namespace Objects
 		/**/					ResearchState(const TUniqueID&id, bool isNexus);
 		void					SignalIDChange(const TUniqueID&){}
 
-		void					Contribute()	{};
-		void					FinalizeRound(const PFaction&)	{}
+		void					Contribute()	{totalContribution++;}
+		void					FinalizeRound(const PFaction&);
 
 		bool					CheckUnlocked(const Component::Base&base, String&errorOut) const	{return true;}
 		bool					CheckUnlocked(ConstName, String&errorOut) const	{return true;}
 		bool					IsUnlocked(const Component::Base&base) const	{return true;}
 		bool					IsUnlocked(ConstName) const	{return true;}
-
+		bool					IsIdle() const {return !GetActiveTopic();}
+		PResearchTopic			GetActiveTopic() const	{return activeResearch;}
+		bool					SetActiveTopic(const PResearchTopic&active);
+		void					SetActiveTopic(index_t serialIndex)	{SetActiveTopic(GetTopic(serialIndex));}
+		void					Import(const ArrayData<BYTE>&serializedState);
+		void					Export(Array<BYTE>&outSerializedState) const;
+		static PResearchTopic	GetTopic(index_t);
+		static PResearchTopic	FindTopic(const String&name);
 	};
 
 	

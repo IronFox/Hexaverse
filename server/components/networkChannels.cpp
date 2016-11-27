@@ -65,7 +65,7 @@ namespace Channels
 	TCP::ObjectSender<Protocol::GameProgress,Protocol::ChannelID::GameProgress>						gameProgress;
 	TCP::ObjectSender<Protocol::ChangeEntityOwner,Protocol::ChannelID::ChangeEntityOwner>			changeEntityOwner;
 	TCP::ObjectSender<Protocol::IdentifyUser, Protocol::ChannelID::IdentifyUser>					identifyUser;
-	//TCP::ObjectSender<Objects::ResearchState, Protocol::ChannelID::ResearchState>					researchState;
+	TCP::ObjectSender<Protocol::ResearchState, Protocol::ChannelID::ResearchState>					researchState;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionOnline>							factionOnline;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionOffline>							factionOffline;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionRequestedNewRound>				factionRequestedNewRound;
@@ -833,7 +833,7 @@ namespace Receiver
 		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 		if (!client->faction)
 			return;
-		Journal::currentRound.Register(true,client->faction,new Journal::Round::SelectResearch(research.target,Objects::Component::Attribute::Reinterpret(research.attribute)));
+		Journal::currentRound.Register(true,client->faction,new Journal::Round::SelectResearch(Objects::ResearchState::GetTopic( research)));
 	}
 
 	void	IdentifyUser(NET(TUniqueID)&id, TCP::Peer&peer)

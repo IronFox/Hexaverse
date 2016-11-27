@@ -1848,10 +1848,7 @@ namespace Protocol
 		, Package::NetString<32>, name
 	)
 
-	NETSTRUCT2(SelectResearch
-		, NET(ConstName), target
-		, NET(BYTE), attribute
-	)
+	typedef NET(index_t)	SelectResearch;
 
 	typedef std::pair<UINT16,UINT16>	TUnitLimit;
 
@@ -1863,6 +1860,11 @@ namespace Protocol
 		, Timestamp, timestamp
 		, NET(TUniqueID), entityID
 		, NETA(BYTE), resourceIndices
+	)
+
+	NETSTRUCT2(ResearchState
+		, NET(TUniqueID), ownerID
+		, NETA(BYTE), serializedData
 	)
 
 

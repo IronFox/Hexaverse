@@ -14,6 +14,7 @@
 #include "gridAndChoices.h"
 #include "components.h"
 #include <image/converter/magic.h>
+#include "research.h"
 
 extern Engine::Display<Engine::DirectX11>	display;
 //extern Engine::VectorCamera<>				scene;
@@ -41,24 +42,117 @@ namespace Objects
 
 	}
 
-	/*virtual override*/	void	ResearchCommandGroup::Refresh(bool controlEnabled)
-	{
-		Super::Refresh(controlEnabled);
+	/**/			ResearchCommand::ResearchCommand(const PResearchTopic&topic) : Super(topic->name,topic->iconName),topic(topic)	{}
 
-		if (!(state & Flags::IsPermaActive)
-			&&
-			selectedEntity && selectedEntity->owner->researchState.GetCurrentTask() == task
-			&&
-			(!hasAttrib || selectedEntity->owner->researchState.currentResearchAttribute == attrib)
-			)
-			state |= Flags::IsFlashing | Flags::SoftFlashing;
-		else
+	///*virtual override*/ void	ResearchCommand::LoadIcon()
+	//{
+	//	if (topic->iconName.IsNotEmpty())
+	//		Super::LoadIcon(topic->iconName);
+	//}
+
+	/*virtual override*/ void	ResearchCommand::Execute()
+	{
+		Super::Execute();
+		if (selectedEntity && selectedEntity->owner && selectedEntity->owner->researchState.SetActiveTopic(topic))
 		{
-			state -= Flags::IsFlashing;
-			state -= Flags::SoftFlashing;
+			this->Refresh(true);
 		}
 	}
 
+	/*virtual override*/ void ResearchCommand::RasterizeImage()
+	{
+		PWorldEntity e = topic->prototypeReference;
+		if (e)
+			EntityCommand::UpdateTexture(*this,e,true);
+		elif (topic->componentReference)
+			if (topic->componentReference->IsVehicleBase())
+				EntityConstructionCommand::UpdateTexture(*this,(Component::VehicleBase*)topic->componentReference,nullptr);
+			elif (topic->componentReference->IsTurret())
+				EntityConstructionCommand::UpdateTexture(*this,nullptr,(Component::Turret*)topic->componentReference);
+	}
+
+	/*virtual override*/	void	ResearchCommand::Refresh(bool controlEnabled)
+	{
+		OwnerParameter owner = selectedEntity ? selectedEntity->owner : OwnerParameter();
+		if (topic->IsGroup())
+		{
+			Super::Refresh(controlEnabled);
+
+
+
+			if (!(state & Flags::IsPermaActive)
+				&&
+				owner && owner->researchState.GetActiveTopic()->IsChildOf(topic)
+				)
+				state |= Flags::IsFlashing | Flags::SoftFlashing;
+			else
+			{
+				state -= Flags::IsFlashing;
+				state -= Flags::SoftFlashing;
+			}
+		}
+		else
+		{
+			state = BaseCommand::Flags::None;
+			if (owner && owner->researchState.GetActiveTopic() == topic)
+				state |= BaseCommand::Flags::IsPermaActive;
+			Lua::Reference st = owner ? owner->researchState.researchState : Lua::Reference();
+			if (!controlEnabled || !topic->CanResearch(st))
+				return;
+			state |= BaseCommand::Flags::IsEnabled;
+		}
+	}
+
+
+	/*virtual override*/ void		ResearchCommand::CompileLabel(Label&outResult)
+	{
+		Lua::Reference state = selectedEntity ? selectedEntity->GetResearchState() : Lua::Reference();
+
+		int current = 0;
+		int max = topic->maxProgress;
+		if (state.IsSet())
+		{
+			current = topic->currentProgress(state);
+		}
+//		const ResearchState*rs = selectedEntity && selectedEntity->owner ? &selectedEntity->owner->researchState : nullptr;
+
+		//if (ref || (base && turret))
+		{
+			outResult << topic->name;
+			String dependentOn;
+			//else
+			{
+				if (current < max)
+				{
+					outResult << "Research progress "+String(current) + "/"+String(max);
+				}
+				else
+					outResult << "Research completed";
+			}
+			PResearchTopic dep = topic->dependency.lock();
+			if (dep && (state.IsEmpty() || dep->currentProgress(state)<dep->maxProgress))
+				outResult << "Requires complete research of "+dep->name;
+			outResult.MarkBriefEnd();
+			outResult << "";
+		}
+
+		PWorldEntity ref = topic->prototypeReference;
+		if (ref)
+		{
+			ref->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth);
+			return;
+		}
+
+		if (topic->componentReference)
+		{
+			if (topic->componentReference->IsVehicleBase())
+			{
+				((Component::VehicleBase*)topic->componentReference)->DescribeType(outResult,false,selectedEntity ? selectedEntity->owner : OwnerParameter());
+			}			
+			elif (topic->componentReference->IsTurret())
+				((Component::Turret*)topic->componentReference)->DescribeType(outResult,false, "Vehicle",selectedEntity ? selectedEntity->owner : OwnerParameter());
+		}
+	}
 
 
 	/*static*/ void		EntityConstructionCommand::UpdateTexture(BaseCommand&target, Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor/* = float4(0)*/)
@@ -185,7 +279,7 @@ namespace Objects
 		//PWorkingStructure ws = To<WorkingStructure>::DynamicCast(e);
 
 		PWorldEntity ref = reference.lock();
-		int rawPrice = ref ? ref->GetConstructionCost() : Vehicle::GetPrice(base,turret);
+		int rawPrice = ref ? ref->GetConstructionCost() : Vehicle::GetPrice(base,turret,OwnerParameter());
 		int price = (int)std::min(mineralsLeft, (unsigned)rawPrice);
 
 		//if (ref || (base && turret))
@@ -242,108 +336,7 @@ namespace Objects
 	}
 
 
-	/*virtual override*/ void		UnlockResearchCommand::CompileLabel(Label&outResult)
-	{
-		const MobileEntityProducer*p = selectedEntity ? selectedEntity->CastToProducer() : nullptr;
-		PWorldEntity ref = reference.lock();
-		UINT32 current,max;
-		selectedEntity->owner->researchState.GetResearchOf(target,current,max);
 
-		//if (ref || (base && turret))
-		{
-			outResult << "Unlock "+name;
-			String dependentOn;
-			//else
-			{
-				if (current < max)
-				{
-					outResult << "Research progress "+String(current) + "/"+String(max);
-				}
-				else
-					outResult << "Research completed";
-			}
-			if (!selectedEntity->owner->researchState.IsCurrentlyResearchable(target,&dependentOn) && dependentOn.IsNotEmpty())
-				outResult << "Depends on "+dependentOn;
-			outResult.MarkBriefEnd();
-			outResult << "";
-		}
-
-		if (ref)
-		{
-			ref->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth);
-			return;
-		}
-
-		if (base && turret)
-		{
-
-			PVehicle v(new Vehicle(selectedEntity->owner, selectedEntity->location, base,turret));
-			v->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth);
-		}
-		else
-		{
-			if (base)
-			{
-				//PVehicle v(new Vehicle(p->owner, p->location, base,turret));
-				base->DescribeType(outResult,false,OwnerParameter());
-			}			
-			if (turret)
-				turret->DescribeType(outResult,false, "Vehicle",selectedEntity->owner);
-
-		}
-	}
-
-	ImproveResearchCommand::ImproveResearchCommand(const String&name,ConstName target,Component::Attribute attrib):Super(name,target),attrib(attrib)	{}
-	ImproveResearchCommand::ImproveResearchCommand(ConstName target,Component::Attribute attrib):Super(target),attrib(attrib)	{}
-	ImproveResearchCommand::ImproveResearchCommand(const String&name,ConstName target, Component::Attribute attrib, Component::VehicleBase*base, Component::Turret*turret, const PWorldEntity&e,   FOnExecute f, FCheck c)
-						: Super(name,target,base,turret, e,f,c),attrib(attrib) {}
-
-
-	/*virtual override*/ void		ImproveResearchCommand::CompileLabel(Label&outResult)
-	{
-		const MobileEntityProducer*p = selectedEntity ? selectedEntity->CastToProducer() : nullptr;
-		PWorldEntity ref = reference.lock();
-		UINT32 current = selectedEntity->owner->researchState.GetResearchOf(target,attrib);
-
-		//if (ref || (base && turret))
-		{
-			outResult << "Improve "+name;
-			if (!selectedEntity->owner->researchState.IsCurrentlyResearchable(target,attrib))
-				outResult << "LOCKED" ;
-			else
-				if (current)
-				{
-					outResult << "Research level "+/*String(TimeResourceTag()) + */String(current) +" (x"+String(0.01f * round(selectedEntity->owner->researchState.GetFactorFor(target,attrib)*100.f))+")";
-				}
-
-			outResult.MarkBriefEnd();
-			outResult << "";
-		}
-
-		if (ref)
-		{
-			ref->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth);
-			return;
-		}
-
-		if (base && turret)
-		{
-
-			PVehicle v(new Vehicle(selectedEntity->owner, selectedEntity->location, base,turret));
-			v->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth);
-		}
-		else
-		{
-			if (base)
-			{
-				//PVehicle v(new Vehicle(p->owner, p->location, base,turret));
-				base->DescribeType(outResult,false,OwnerParameter());
-			}			
-			if (turret)
-				turret->DescribeType(outResult,false, "Vehicle",selectedEntity->owner);
-
-		}
-	}
 
 
 

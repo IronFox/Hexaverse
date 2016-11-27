@@ -71,14 +71,14 @@ namespace Objects
 
 
 
-	/*virtual override*/ float		MobileEntity::GetScanningRange() const
+	/*virtual override*/ float		MobileEntity::GetScanningRange()
 	{
-		return EMPModify(turret->GetScanningRange(owner), 2.f);
+		return cache.maxScanningRange.GetEMPModified(*this,turret->scanningRange);
 	}
 
 	/*virtual override*/ String		MobileEntity::DescribeScanningRange() const
 	{
-		return String(GetScanningRange());
+		return turret->scanningRange.Describe(GetResearchState());
 	}
 
 

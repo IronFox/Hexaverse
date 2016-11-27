@@ -42,7 +42,7 @@ namespace Objects
 	
 	int						Vehicle::GetOperationSpeed(Component::operation_t op)  const
 	{
-		return (int)floor(turret->GetOperationSpeed(op,owner) * base->operationSpeedMultiplier);
+		return (int)floor(turret->GetOperationSpeed(op,owner) * base->operationSpeedMultiplier(owner));
 	}
 
 
@@ -63,25 +63,30 @@ namespace Objects
 
 
 
-	/*virtual override*/ float		Vehicle::GetScanningRange() const
+	/*virtual override*/ float		Vehicle::GetScanningRange()
 	{
-		return EMPModify(turret->GetScanningRange(owner,turret->CanAttack() ? 0 : base->rangeModifier), 2.f);
+		return cache.maxScanningRange.GetEMPModified(*this,turret->scanningRange,turret->CanAttack() ? Component::FFunc() : base->turretRangeModifier);
+		//return EMPModify(turret->GetScanningRange(owner,turret->CanAttack() ? 0 : base->rangeModifier), 2.f);
 	}
 
 	/*virtual override*/ String		Vehicle::DescribeScanningRange() const
 	{
-		return String(GetScanningRange())
-				;
+		String rs = turret->scanningRange.Describe(GetResearchState());
+		if (!turret->CanAttack())
+			rs += "+"+base->turretRangeModifier.Describe(GetResearchState());
+		return rs;
 	}
 
 	/*virtual override*/ int				Vehicle::GetMaxHealth() const
 	{
-		return std::max(1,(int)floor(base->GetBaseHealth(owner) * turret->healthMultiplier(owner)));
+		return cache.maxHealth.Get(this->GetResearchState(), base->health,turret->healthMultiplier, 1);
+		//return std::max(1,(int)floor(base->GetBaseHealth(owner) * turret->healthMultiplier(owner)));
 	}
 
 	/*virtual override*/ String				Vehicle::DescribeMaxHealth() const
 	{
-		return String(GetMaxHealth());
+		Lua::Reference state = GetResearchState();
+		return base->health.Describe(state)+"*" + turret->healthMultiplier.Describe(state);
 	}
 
 	
@@ -158,7 +163,7 @@ namespace Objects
 
 	int						Vehicle::GetTurretOverweight() const
 	{
-		return std::max(0, turret->weight(owner) - (int)floor(base->GetCarryingCapacity(owner)));
+		return std::max(0, (int)floor((turret->weight(owner) - base->GetCarryingCapacity(owner))));
 	}
 
 	float					Vehicle::GetTurretOverweightFactor() const
@@ -183,9 +188,10 @@ namespace Objects
 	}
 
 	
-	/*virtual override*/ float			Vehicle::GetFlatAttackRange() const 
+	/*virtual override*/ float			Vehicle::GetFlatAttackRange() const
 	{
-		return EMPModify(turret->GetHorizontalAttackRange(owner,base->rangeModifier),1.f);
+		return cache.horizontalAttackRange.GetEMPModified(*this,turret->horizontalAttackRange,base->turretRangeModifier);
+		//EMPModify(turret->GetHorizontalAttackRange(owner,base->turretRangeModifier),1.f);
 	}
 
 
@@ -355,9 +361,10 @@ namespace Objects
 			base->DescribeType(outResult,true,owner);
 			outResult << "";
 
-			const int capacity = (int)floor(base->GetCarryingCapacity(owner));
-			if (turret->weight > capacity)
-				outResult << "Overweight: "+String(turret->weight - capacity);
+			const float capacity = floor(base->GetCarryingCapacity(owner));
+			const float weight = turret->weight(owner);
+			if (weight > capacity)
+				outResult << "Overweight: "+String(weight - capacity);
 			const int baseMovement = (int)floor(base->GetBaseMovementSpeed(owner));
 			if (baseMovement > 0)
 			{

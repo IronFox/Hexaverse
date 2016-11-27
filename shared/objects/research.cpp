@@ -12,27 +12,58 @@ namespace Objects
 	/*static*/ ResearchState::GlobalState		ResearchState::globalState;
 
 
-
-	ResearchState::Research::Research(const PResearch&parent, const String&name, const String&iconName, const FOnActivate&onActivate):
-		name(name),iconName(iconName.IsNotEmpty() ? iconName : name),parent(parent),onActivate(onActivate)
+	PResearchTopic	ResearchState::CreateResearch(const PResearchTopic&parent, const String&name, const String&iconName, 
+												const ResearchTopic::FAdvance&adv, 
+												const ResearchTopic::FGetProgress&currentProgress, int maxProgress,
+												const PResearchTopic&dependency
+											)
 	{
+		LogEvent(EventClass::Preset::important,"Lua created new research '"+name+"'");
 
+		const String&iconSource = iconName.IsEmpty() ? name : iconName;
+
+		PWorldEntity proto = GetNonVehiclePrototypeByName(iconSource);
+		Component::Base*component = proto ? nullptr : Component::GetByName(iconSource);
+		bool hasIcon = !proto && !component;
+
+
+		PResearchTopic rs(new ResearchTopic(parent, name,hasIcon ? iconSource : "",adv,currentProgress,maxProgress,dependency));
+
+		rs->serialIndex = globalState.allTopics.Count();
+		globalState.allTopics << rs;
+
+
+		if (!parent)
+			globalState.rootResearch << rs;
+		else
+		{
+			parent->children << rs;
+			if (parent->maxProgress > 0)
+			{
+				throw Lua::Exception("Trying to convert regular research '"+parent->name+"' to group when adding '"+name+"' as child. '"+parent->name+"'.maxProgress must be 0 when used as a group");
+			}
+		}
+		return rs;
 	}
 
-	ResearchState::Research::~Research()
+	ResearchTopic::ResearchTopic(const PResearchTopic&parent, const String&name, const String&iconName, 
+								const FAdvance&adv, 
+								const FGetProgress&currentProgress, int maxProgress,
+								const PResearchTopic&dependency
+								)
+								:parent(parent),name(name),iconName(iconName),
+								advance(adv),currentProgress(currentProgress),maxProgress(maxProgress),
+								dependency(dependency)
+	{}
+
+
+
+	ResearchTopic::ResearchTopic::~ResearchTopic()
 	{
 		bool brk = true;
 
 	}
 
-	ResearchState::PResearch ResearchState::CreateResearch(const PResearch & parent, const String & name, const String & icon, const FOnActivate&onActivate)
-	{
-		LogEvent(EventClass::Preset::important,"Lua created new research '"+name+"'");
-		PResearch rs(new Research(parent, name,icon,onActivate));
-		if (!parent)
-			globalState.rootResearch << rs;
-		return rs;
-	}
 
 
 
@@ -107,7 +138,28 @@ namespace Objects
 		if (baseTable.IsEmpty())
 			FATAL__("research.lua does not define "+path+" table");
 		InitAttrib(baseTable,path,"Cost",b.productionCosts);
+		InitAttrib(baseTable,path,"IsUnlocked",b.isUnlocked);
 		return baseTable;
+	}
+
+	static void InitVehicleBase(Component::VehicleBase&b)
+	{
+		static Lua::Table configTable;
+		if (configTable.IsEmpty())
+		{
+			configTable = ResearchState::globalState.researchProgram->FindGlobal("VehicleBaseConfig");
+			if (configTable.IsEmpty())
+				FATAL__("research.lua does not define VehicleBaseConfig table");
+		}
+		
+		String path = "VehicleBaseConfig";
+		Lua::Table myTable = InitComponent(configTable,path,b);
+
+		InitAttrib(myTable,path,"TurretRangeModifier",b.turretRangeModifier);
+		InitAttrib(myTable,path,"OperationSpeedMultiplier",b.operationSpeedMultiplier);
+		InitAttrib(myTable,path,"MovementSpeed",b.movementSpeed);
+		InitAttrib(myTable,path,"CarryingCapacity",b.carryingCapacity);
+		InitAttrib(myTable,path,"Health",b.health);
 	}
 
 	static void InitTurret(Component::Turret&t)
@@ -189,14 +241,13 @@ namespace Objects
 		}
 
 		foreach (Component::allTurretComponents,turret)
-		{
 			InitTurret(**turret);
-		}
+		foreach (Component::baseComponents,base)
+			InitVehicleBase(**base);
 
 
 		//globalState.researchProgram.reset();
 	}
-
 
 	ResearchState::ResearchState(const TUniqueID&id, bool isNexus)
 	{
@@ -207,9 +258,66 @@ namespace Objects
 
 	}
 
+	/*static*/ PResearchTopic	ResearchState::FindTopic(const String&name)
+	{
+		foreach (globalState.allTopics,t)
+			if ((*t)->name == name)
+				return *t;
+		return PResearchTopic();
+	}
+
+	/*static*/ PResearchTopic	ResearchState::GetTopic(index_t serialIndex)
+	{
+		return globalState.allTopics[serialIndex];
+	}
+
+	bool	ResearchState::SetActiveTopic(const PResearchTopic&active)
+	{
+		if (!active || !active->CanResearch(researchState))
+			return false;
+		activeResearch = active;
+		return true;
+	}
 
 
+	void					ResearchState::FinalizeRound(const PFaction&f)
+	{
+		if (activeResearch && totalContribution)
+		{
+			int left = activeResearch->maxProgress - activeResearch->currentProgress(researchState);
+			if (left <= 0)
+				return;
+			totalContribution = vmin(totalContribution,left);
+			activeResearch->advance(researchState,totalContribution);
+			changed = true;
+			totalContribution = 0;
+			if (totalContribution == left)
+			{
+				ASSERT_EQUAL__(activeResearch->currentProgress(researchState),activeResearch->maxProgress);
+				activeResearch.reset();
+			}
+		}
+		BaseAttributeCache::versionCounter++;
+	}
 
+	void					ResearchState::Import(const ArrayData<BYTE>&serializedState)
+	{
+		
+		ASSERT__(researchState.DeserializeMerge(ByteReadStream(serializedState)));
+
+		BaseAttributeCache::versionCounter++;
+
+	}
+	
+	
+	void					ResearchState::Export(Array<BYTE>&outSerializedState) const
+	{
+		//Buffer0<BYTE> data;
+		ByteStream stream;
+
+		ASSERT__(researchState.Serialize(stream,true));
+		stream.CopyToArray(outSerializedState);
+	}
 
 
 

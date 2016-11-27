@@ -149,6 +149,23 @@ namespace Objects
 	namespace Component
 	{
 
+		Base*			GetByName(const String&name)
+		{
+			Base* rs = GetVehicleBaseByName(name);
+			if (rs)
+				return rs;
+			return GetTurretByName(name);
+		}
+
+		Base*			GetByName(ConstName name)
+		{
+			Base* rs = GetVehicleBaseByName(name);
+			if (rs)
+				return rs;
+			return GetTurretByName(name);
+		}
+
+
 		VehicleBase*	GetVehicleBaseByName(ConstName name)
 		{
 			//Buffer0<VehicleBase*>		baseComponents;

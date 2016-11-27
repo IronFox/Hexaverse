@@ -132,7 +132,32 @@ namespace Objects
 	};
 
 
+	class BaseAttributeCache
+	{
+	public:
+		static index_t			versionCounter;
 
+	};
+
+	template <typename T>
+		class LuaAttributeCache : public BaseAttributeCache
+		{
+			typedef BaseAttributeCache	Super;
+		public:
+			index_t				versionCounter=InvalidIndex;
+			T					cached;
+			T					GetEMPModified(const WorldEntity&e,const LuaAttribute<T>&source,const LuaAttribute<T>&bonus = LuaAttribute<T>());
+			T					Get(const Lua::Reference&researchState, const LuaAttribute<T>&source, const LuaAttribute<T>&multiplier, T minimum);
+		};
+
+	class CachedAttributes
+	{
+	public:
+		LuaAttributeCache<float>	groundScanningRange,
+									maxScanningRange,
+									horizontalAttackRange;
+		LuaAttributeCache<int>		maxHealth;
+	};
 
 
 	class BaseAttributeTable
@@ -184,6 +209,8 @@ namespace Objects
 			void					ResetMotionTime()	{motionTime = 0;}
 
 		#endif
+
+		mutable CachedAttributes	cache;	//less wrong to make this mutable in const methods, than changing all const methods that don't actually change their respective object
 
 		Lua::Reference				GetResearchState() const;
 		virtual BaseAttributeTable*	GetTable() const {FATAL__("Attempting to query attribute table on "+GetTypeName());  return nullptr;}
@@ -395,6 +422,7 @@ namespace Objects
 		Explicitly describes how the scanning range is computed (only has to explicitly name research, not EMP, but has to include EMP in the resulting numbers)
 		*/
 		virtual String				DescribeScanningRange() const;
+		static float				StaticEMPModify(float raw, float min, int empDamageLevel);
 		float						EMPModify(float raw, float min) const;
 		std::function<float(float)>	BindEMPModifyFunction() const {return std::bind(&WorldEntity::EMPModify,this,std::placeholders::_1,2);}
 		
@@ -574,6 +602,37 @@ namespace Objects
 	#ifdef CLIENT
 		extern Buffer0<PWorldEntity>		waste;
 	#endif
+
+
+	template <typename T>
+		T	LuaAttributeCache<T>::GetEMPModified(const WorldEntity&e,const LuaAttribute<T>&source,const LuaAttribute<T>&bonus /*= LuaAttribute<T>()*/)
+		{
+			if (versionCounter != Super::versionCounter)
+			{
+				versionCounter = Super::versionCounter;
+				T val = source.GetValue(e.GetResearchState());
+				if (bonus.IsSet())
+					val += bonus.GetValue(e.GetResearchState());
+				cached = WorldEntity::StaticEMPModify(val,2.f * Grid::UnitScale,e.empDamageLevel);
+			}
+			return cached;
+		}
+
+	template <typename T>
+		T	LuaAttributeCache<T>::Get(const Lua::Reference&researchState, const LuaAttribute<T>&source, const LuaAttribute<T>&multiplier, T minimum)
+		{
+			if (versionCounter != Super::versionCounter)
+			{
+				versionCounter = Super::versionCounter;
+				T val = source.GetValue(researchState);
+				if (multiplier.IsSet())
+					val*=multiplier.GetValue(researchState);
+					
+				val = vmax(val, minimum);
+				cached = val;
+			}
+			return cached;
+		}
 
 
 	PWorldEntity							GetEntity(const TUniqueID&id);

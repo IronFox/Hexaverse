@@ -28,6 +28,7 @@ namespace Objects
 
 	GenericHashTable<TUniqueID,PWorldEntity,TUniqueID,Strategy::POD,Strategy::Swap>	idMap;
 
+	/*static*/ index_t			BaseAttributeCache::versionCounter = 0;
 
 
 
@@ -257,18 +258,23 @@ namespace Objects
 	}
 
 
-
-	float		WorldEntity::EMPModify(float raw, float min) const
+	/*static*/ float				WorldEntity::StaticEMPModify(float raw, float min, int empDamageLevel)
 	{
 		if (raw <= min)
 			return raw;
 		const float window = raw - min;
 		return min + window * Grid::powi(0.25f,(UINT)empDamageLevel);
 	}
+	
+
+	float		WorldEntity::EMPModify(float raw, float min) const
+	{
+		return StaticEMPModify(raw,min,empDamageLevel);
+	}
 
 	/*virtual*/ float		WorldEntity::GetScanningRange() const
 	{
-		return EMPModify(GetTable()->maxScanningRange.GetValue(GetResearchState()), 2.f * Grid::UnitScale);
+		return cache.maxScanningRange.GetEMPModified(*this,GetTable()->maxScanningRange);
 	}
 
 	/*virtual*/ int			WorldEntity::GetConstructionCost() const
@@ -278,7 +284,8 @@ namespace Objects
 
 	/*virtual*/ int			WorldEntity::GetMaxHealth() const
 	{
-		return GetTable()->maxHealth.GetValue(GetResearchState());
+		return cache.maxHealth.Get(GetResearchState(),GetTable()->maxHealth,Component::IFunc(),1);
+		//return GetTable()->maxHealth.GetValue(GetResearchState());
 	}
 
 	/*virtual*/ String		WorldEntity::DescribeMaxHealth() const

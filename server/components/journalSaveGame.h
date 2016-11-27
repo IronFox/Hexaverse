@@ -791,11 +791,10 @@ namespace Journal
 		class SelectResearch : public FactionEventT<SelectResearch>
 		{
 		public:
-			ConstName		target = ConstName::Empty;
-			Objects::Component::Attribute attribute;
-
+			Objects::PResearchTopic		topic;
+			
 			/**/			SelectResearch() {}
-			/**/			SelectResearch(ConstName target, Objects::Component::Attribute attribute) : target(target),attribute(attribute) {}
+			/**/			SelectResearch(const Objects::PResearchTopic&t) : topic(t) {}
 			virtual void	Decode(const Entry&e) override;
 			virtual void	Execute(const Objects::PFaction&) const override;
 

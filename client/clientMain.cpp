@@ -666,9 +666,9 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force);
 namespace ApplicationInterface
 {
 
-	void	SignalResearch(ConstName target, BYTE attribute)
+	void	SignalResearch(const Objects::PResearchTopic&topic)
 	{
-		Network::Channels::selectResearch.SendTo(Network::client,Protocol::SelectResearch(target,attribute));
+		Network::Channels::selectResearch.SendTo(Network::client,Protocol::SelectResearch(topic->serialIndex));
 		if (Objects::selectedEntity && Objects::selectedEntity->IsWorkingStructure() && !To<Objects::WorkingStructure>::Cast( Objects::selectedEntity)->IsEnabled())
 		{
 			Network::Channels::enableStructure.SendTo(Network::client,Protocol::EnableStructure(Objects::selectedEntity->id,true));
@@ -2894,7 +2894,7 @@ bool	IsIdle(const Objects::PStructure&s)
 	auto lab = To<Objects::Laboratory>::DynamicCast(s);
 	if (lab)
 	{
-		if ((lab->IsEnabled() || lab->CouldEnable()) && !lab->owner->researchState.IsActive())
+		if ((lab->IsEnabled() || lab->CouldEnable()) && lab->owner->researchState.IsIdle())
 			return true;
 		return !lab->IsEnabled() && lab->CouldEnable();
 	}

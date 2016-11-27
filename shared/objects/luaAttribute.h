@@ -18,6 +18,11 @@ namespace Objects
 
 			ConstOverride<T>	constOverride;
 
+			/**/		LuaAttribute()	{}
+			/**/		LuaAttribute(const T&constOverride)
+			{
+				SetConst(constOverride);
+			}
 
 			bool		IsSet() const {return constOverride.isSet || luaGetValue.IsSet();}
 			bool		IsEmpty() const {return !constOverride.isSet && luaGetValue.IsEmpty();}

@@ -870,11 +870,12 @@ namespace Objects
 
 
 	
-	/*virtual override*/ float			Tower::GetFlatAttackRange() const 
+	/*virtual override*/ float			Tower::GetFlatAttackRange() const
 	{
 		if (!turret->CanAttack())
 			return 0.f;
-		return EMPModify(turret->GetHorizontalAttackRange(owner,2.f),2.f);
+		return cache.horizontalAttackRange.GetEMPModified(*this,turret->horizontalAttackRange,Objects::LuaAttribute<float>(2.f));
+		//EMPModify(turret->GetHorizontalAttackRange(owner,2.f),2.f);
 	}
 
 
@@ -1864,11 +1865,13 @@ namespace Objects
 	//	return EMPModify(turret->GetScanningRange(owner,turret->CanAttack() ? - 2.f : 2.f), 2.f);
 	//}
 
-	/*virtual override*/ String		Tower::DescribeScanningRange() const
-	{
-		return 
-				String(GetScanningRange());
-	}
+	///*virtual override*/ String		Tower::DescribeScanningRange() const
+	//{
+	//	return GetTable()->maxScanningRange.Describe(GetResearchState());
+	//	//cache.maxScanningRange.GetEMPModified(*this,GetTable()->maxScanningRange);
+	//	//
+	//	//		String(GetScanningRange());
+	//}
 
 	///*virtual override*/ int				Tower::GetMaxHealth() const
 	//{
@@ -1876,10 +1879,10 @@ namespace Objects
 	//	return std::max(1,(int)floor(base));
 	//}
 
-	/*virtual override*/ String				Tower::DescribeMaxHealth() const
-	{
-		return String(GetMaxHealth());
-	}
+	///*virtual override*/ String				Tower::DescribeMaxHealth() const
+	//{
+	//	return String(GetMaxHealth());
+	//}
 
 
 	/*virtual*/ void				Structure::PrototypeSetup()
@@ -1890,39 +1893,6 @@ namespace Objects
 
 
 
-		//	virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;
-		//#endif
-
-
-		////WorldEntity overrides:
-		//virtual void				PrototypeSetup()	override;
-
-	#ifdef HAS_WINDOW
-		static BaseCommand::Flags GetResearchButtonCheckFlags(ConstName target, bool controlEnabled)
-		{
-			BaseCommand::Flags rs = BaseCommand::Flags::None;
-			if (selectedEntity && selectedEntity->owner->researchState.currentResearch == target && !selectedEntity->owner->researchState.IsUnlocked(target))
-				rs |= BaseCommand::Flags::IsPermaActive;
-			if (selectedEntity && selectedEntity->owner->researchState.IsUnlocked(target))
-				rs |= BaseCommand::Flags::IsInvisible;
-			if (!controlEnabled || !selectedEntity || !selectedEntity->owner->researchState.IsCurrentlyResearchable(target))
-				return rs;
-			rs |= BaseCommand::Flags::IsEnabled;
-			return rs;
-		}
-
-		static BaseCommand::Flags GetResearchButtonCheckFlags(ConstName target, Component::Attribute attrib, bool controlEnabled)
-		{
-			BaseCommand::Flags rs = BaseCommand::Flags::None;
-			if (selectedEntity && selectedEntity->owner->researchState.currentResearch == target && selectedEntity->owner->researchState.IsUnlocked(target) && selectedEntity->owner->researchState.currentResearchAttribute == attrib)
-				rs |= BaseCommand::Flags::IsPermaActive;
-			if (!controlEnabled || !selectedEntity || !selectedEntity->owner->researchState.IsCurrentlyResearchable(target,attrib))
-				return rs;
-			rs |= BaseCommand::Flags::IsEnabled;
-			return rs;
-		}
-
-	#endif
 
 	/*virtual override*/ void			Laboratory::PrototypeSetup()
 	{
@@ -1937,86 +1907,20 @@ namespace Objects
 
 
 	#ifdef HAS_WINDOW
+
+		static PResearchCommand BuildCommand(const PResearchTopic&t)
+		{
+			PResearchCommand rs(new ResearchCommand(t));
+			return rs;
+		}
+
+
 		/*static*/	void Laboratory::ConfigureResearchButtons()
 		{
-			
-			PCommandGroup unlockGroup = To<CommandGroup>::Cast( commands.Add(new ResearchCommandGroup( "Unlock", ResearchTask::Unlock)));
-			PCommandGroup improveGroup = To<CommandGroup>::Cast( commands.Add(new ResearchCommandGroup( "Improve", ResearchTask::Improve)));
-			FixedArray<PCommandGroup,Component::Attribute::N> improveSubGroups;
-			foreach (improveSubGroups,sub)
+			foreach (ResearchState::globalState.rootResearch,res)
 			{
-				Component::Attribute attrib = Component::Attribute::Reinterpret(sub - improveSubGroups.begin());
-				(*sub) = To<CommandGroup>::Cast(improveGroup->Add(new ResearchCommandGroup( attrib.ToString(), ResearchTask::Improve,  attrib)) );
+				commands.Add( BuildCommand(*res) );
 			}
-
-			foreach (ResearchState::globalState.types,t)
-			{
-				ConstName target = t->targetName;
-				if (t->researchCost > 0)
-				{
-
-
-					if (t->prototypeReference)
-						unlockGroup->Add(new UnlockResearchCommand(t->name,target,nullptr, nullptr,t->prototypeReference->shared_from_this(),[target](){ApplicationInterface::SignalResearch(target,0); },
-							[target](bool controlEnabled)->BaseCommand::Flags
-							{
-								return GetResearchButtonCheckFlags(target,controlEnabled);
-							}))->RasterizeImage();
-					elif (t->componentReference)
-					{
-						Component::Turret*turret = nullptr;
-						Component::VehicleBase*base = nullptr;
-						if (t->componentReference->IsTurret())
-							turret = (Component::Turret*)t->componentReference;
-						elif (t->componentReference->IsBase())
-							base = (Component::VehicleBase*)t->componentReference;
-						unlockGroup->Add(new UnlockResearchCommand(t->name,target,base,turret,PWorldEntity(),[target](){ApplicationInterface::SignalResearch(target,0);},
-							[target](bool controlEnabled)->BaseCommand::Flags
-							{
-								return GetResearchButtonCheckFlags(target,controlEnabled);
-							}))->RasterizeImage();
-					}
-					else
-					{
-						bool brk = true;
-					}
-				}
-
-				for (index_t i = 0; i < Component::Attribute::N; i++)
-					if (t->attributeAt[i] != InvalidIndex)
-					{
-						Component::Attribute attrib = Component::Attribute::Reinterpret(i);
-						if (t->prototypeReference)
-							improveSubGroups[i]->Add(new ImproveResearchCommand(t->name,target,attrib,nullptr,nullptr,t->prototypeReference->shared_from_this(),[target,i](){ApplicationInterface::SignalResearch(target,(BYTE)i);},
-								[target,attrib](bool controlEnabled)->BaseCommand::Flags
-								{
-									return GetResearchButtonCheckFlags(target,attrib,controlEnabled);
-								}))->RasterizeImage();
-						elif (t->componentReference)
-						{
-							Component::Turret*turret = nullptr;
-							Component::VehicleBase*base = nullptr;
-							if (t->componentReference->IsTurret())
-								turret = (Component::Turret*)t->componentReference;
-							elif (t->componentReference->IsBase())
-								base = (Component::VehicleBase*)t->componentReference;
-							improveSubGroups[i]->Add(new ImproveResearchCommand(t->name,target,attrib,base,turret,PWorldEntity(),[target,i](){ApplicationInterface::SignalResearch(target,(BYTE)i);},
-								[target,attrib](bool controlEnabled)->BaseCommand::Flags
-								{
-									return GetResearchButtonCheckFlags(target,attrib,controlEnabled);
-								}))->RasterizeImage();
-						}
-						else
-						{
-							bool brk = true;
-						}
-
-					}
-			}
-
-
-
-
 		}
 	#endif
 
@@ -2083,15 +1987,13 @@ namespace Objects
 			ASSERT__(baseComponents.IsNotEmpty())
 
 			foreach (baseComponents,c)
-				if ((!owner || !ResearchState::IsGenerallyResearchable((*c)->constName))
-					|| (owner && owner->researchState.IsUnlocked((*c)->constName)))
+				if (!owner || (*c)->isUnlocked(owner))
 				{
 					selectedBase = *c;
 					break;
 				}
 			foreach (turretComponents,c)
-				if ((!owner || !ResearchState::IsGenerallyResearchable((*c)->constName))
-					|| (owner && owner->researchState.IsUnlocked((*c)->constName)))
+				if (!owner || (*c)->isUnlocked(owner))
 				{
 					selectedTurret = *c;
 					break;
@@ -2198,7 +2100,7 @@ namespace Objects
 					task.blastVisualization.ibo = sphereIBO[0];
 					//shape.depthTest = true;
 
-					turret->BuildBlastSystem(trajectory.last().xyz * trajectory.last().w,task.blastSystem);
+					turret->BuildBlastSystem(trajectory.last().xyz * trajectory.last().w,turret->explosionRadius(owner),task.blastSystem);
 				}
 			#endif
 		}
@@ -2395,7 +2297,7 @@ namespace Objects
 						timeCostOut = 0;
 						return;
 					}
-					mineralCostOut = Vehicle::GetPrice(p->selectedBase,p->selectedTurret);
+					mineralCostOut = Vehicle::GetPrice(p->selectedBase,p->selectedTurret,p->owner);
 					timeCostOut = p->ProductionRounds(mineralCostOut,false);
 				}
 			));

@@ -378,19 +378,22 @@ namespace Objects
 	};
 
 
-	class ResearchCommandGroup : public CommandGroup
+	class ResearchCommand : public CustomIcon<CommandGroup>
 	{
-		typedef CommandGroup	Super;
+		typedef CustomIcon<CommandGroup>	Super;
 	public:
-		ResearchTask	task;
-		const bool		hasAttrib;
-		const Component::Attribute	attrib;
-		/**/			ResearchCommandGroup(const String&name, ResearchTask	task, Component::Attribute attrib) : Super(name),task(task),attrib(attrib),hasAttrib(true)	{}
-		/**/			ResearchCommandGroup(const String&name, ResearchTask	task) : Super(name),task(task),hasAttrib(false)	{}
+		PResearchTopic	topic;
+
+		/**/			ResearchCommand(const PResearchTopic&topic);
 
 		virtual	void	Refresh(bool controlEnabled) override;
-	};
+		virtual void	RasterizeImage()override;
 
+		virtual void	CompileLabel(Label&outResult) override;
+		virtual void	Execute() override;
+
+	};
+	typedef std::shared_ptr<ResearchCommand>	PResearchCommand;
 
 
 	class EntityCommand : public CallbackCommand
@@ -455,32 +458,6 @@ namespace Objects
 		void				UpdateTexture(Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor = float4(0));
 	};
 
-	class UnlockResearchCommand : public EntityConstructionCommand
-	{
-		typedef EntityConstructionCommand	Super;
-	protected:
-		/**/				UnlockResearchCommand(const String&name,ConstName target):Super(name),target(target)	{}
-	public:
-		const ConstName		target;
-		/**/				UnlockResearchCommand(ConstName target) : target(target)	{}
-		/**/				UnlockResearchCommand(const String&name,ConstName target, Component::VehicleBase*base, Component::Turret*turret, const PWorldEntity&e,   FOnExecute f, FCheck c)
-						: Super(name,base,turret, e,f,c),target(target) {}
-
-		virtual void		CompileLabel(Label&outResult) override;
-	};
-
-	class ImproveResearchCommand : public UnlockResearchCommand
-	{
-		typedef UnlockResearchCommand	Super;
-	protected:
-		/**/				ImproveResearchCommand(const String&name,ConstName target,Component::Attribute attrib);
-	public:
-		const Component::Attribute attrib;
-		/**/				ImproveResearchCommand(ConstName target,Component::Attribute attrib);
-		/**/				ImproveResearchCommand(const String&name,ConstName target, Component::Attribute attrib, Component::VehicleBase*base, Component::Turret*turret, const PWorldEntity&e,   FOnExecute f, FCheck c);
-
-		virtual void		CompileLabel(Label&outResult) override;
-	};
 
 
 

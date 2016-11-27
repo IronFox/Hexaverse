@@ -105,16 +105,21 @@ namespace Objects
 
 
 
-		template <typename T>
+		template <typename T, int EmptyDefault=0>
 			class LuaAttribute : public Objects::LuaAttribute<T>
 			{
 			public:
 				T						operator()(const OwnerParameter&p) const
 				{
 					if (this->IsEmpty())
-						return (T)0;
+						return (T)EmptyDefault;
 					return this->GetValue(ResearchStateOf(p));
 				}
+
+				//String		Describe(const OwnerParameter&p) const
+				//{
+				//	return std::move(Objects::LuaAttribute<T>::Describe(ResearchStateOf(p)));
+				//}
 
 			};
 
@@ -134,7 +139,6 @@ namespace Objects
 				static bool					MissileCanHit(float flatRange, const TrajectoryEndPoint&origin, const TrajectoryEndPoint&destination);
 			};
 
-			String							ModulateByResearch(float baseValue, Attribute attrib, const OwnerParameter&owner, ResearchSateModulation type)	const;
 
 		public:
 			#ifdef HAS_WINDOW
@@ -148,6 +152,7 @@ namespace Objects
 			ConstName						constName;
 			int								initiative;
 			LuaAttribute<int>				productionCosts /*=1*/;
+			LuaAttribute<bool,true>			isUnlocked;
 											
 
 
@@ -155,7 +160,7 @@ namespace Objects
 
 			void							GetSubSystem(index_t geometryIndex, float angle, TMatrix4<>&outSystem)	const;
 			virtual bool					IsTurret() const {return false;}
-			virtual bool					IsBase() const {return false;}
+			virtual bool					IsVehicleBase() const {return false;}
 
 			#ifdef HAS_WINDOW
 				//typedef std::function<void(EntityCommand&cmd)>	FCommandVisitor;
@@ -172,6 +177,8 @@ namespace Objects
 		};
 
 
+		typedef LuaAttribute<float>		FFunc;
+		typedef LuaAttribute<int>		IFunc;
 
 
 	
@@ -193,14 +200,12 @@ namespace Objects
 
 			ConstName						constTowerName;
 
-			typedef LuaAttribute<float>		FFunc;
-			typedef LuaAttribute<int>		IFunc;
-			FFunc							healthMultiplier;
+			IFunc							healthMultiplier;
 			Resource						ammoType;
 			FixedArray<IFunc,OperationCount>operationSpeed;
-			IFunc							weight	/*=1*/,					//turret weight
-											damageLevel,
-											attacksPerRound,
+			FFunc							weight	/*=1*/,					//turret weight
+											damageLevel;
+			IFunc							attacksPerRound,
 											ammoNeedPerShot;
 
 			#ifndef ONE_COMPOUND_PER_FACTION
@@ -264,7 +269,7 @@ namespace Objects
 			float							GetExplosionRadius(const OwnerParameter&owner) const;
 			int								GetAttacksPerRound(const OwnerParameter&owner) const;
 			int								GetAmmoNeedPerShot(const OwnerParameter&owner) const;
-			float							GetHorizontalAttackRange(const OwnerParameter&owner, int bonus=0) const;
+			float							GetHorizontalAttackRange(const OwnerParameter&owner, const FFunc&bonus=FFunc()) const;
 			float							GetScanningRange(const OwnerParameter&owner, int bonus=0) const;
 			float							GetGroundScanningRange(const OwnerParameter&owner) const;
 
@@ -408,11 +413,11 @@ namespace Objects
 				int							storageMultiplier = 1;
 			#endif
 
-			int								rangeModifier = 0,
-											operationSpeedMultiplier = 1,
-											unmodulatedMovementSpeed,		//ideal movement speed (if not encumbered)
-											baseCarryingCapacity,		//turret weight tolerance before movement speed is reduced
-											unmodulatedHealth=2;			//!< Base health level
+			FFunc							turretRangeModifier /*= 0*/,
+											operationSpeedMultiplier /*= 1*/,
+											movementSpeed,		//ideal movement speed (if not encumbered)
+											carryingCapacity;		//turret weight tolerance before movement speed is reduced
+			IFunc							health/*=2*/;			//!< Base health level
 			bool							ignoresVehicleAttacks;
 			THindranceVector				hindrance;
 
@@ -455,7 +460,7 @@ namespace Objects
 
 			bool							CanClimb(int inclination) const { if (inclination < 0) return inclination >= minClimbDown; return inclination <= maxClimbUp;}
 
-			virtual bool					IsBase() const override {return true;}
+			virtual bool					IsVehicleBase() const override {return true;}
 
 			/**
 			Global flag that states whether or not any base should be able to stand on unknown blocks.

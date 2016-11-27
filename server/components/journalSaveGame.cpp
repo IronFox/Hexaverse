@@ -1755,35 +1755,30 @@ namespace Journal
 
 	/*virtual override*/ void Round::SelectResearch::Execute(const Objects::PFaction&f) const
 	{
-		const bool attribResearch = f->researchState.IsUnlocked(target);
+		f->researchState.SetActiveTopic(topic);
 		//f->researchState.currentResearch = target;
 		//f->researchState.currentResearchAttribute = attribute;
 		Network::PClient cl;
 		if (Network::playerMap.Query(f,cl))
 		{
-			Channels::selectResearch.SendTo(cl->peer.lock(),Protocol::SelectResearch(target,(BYTE)attribute));
+			Channels::selectResearch.SendTo(cl->peer.lock(),Protocol::SelectResearch(topic->serialIndex));
 		}
-		LogEvent(EventSignificance::Uncommon, GetPeerOfFaction(f), "Faction research updated to "+Objects::ComponentOrPrototypeToString(target)+(attribResearch ? String("/")+attribute.ToString() :""));
+		LogEvent(EventSignificance::Uncommon, GetPeerOfFaction(f), "Faction research updated to "+topic->name);
 	}
 
 	/*virtual override*/ void Round::SelectResearch::Decode(const Entry&e)
 	{
 		String targetName;
 		e.stringParameters.Require(CLOCATION,"Target",targetName);
-		target = Objects::ComponentOrPrototypeToCName(targetName);
-		if (target == ConstName::Empty)
+		topic = Objects::ResearchState::FindTopic(targetName);
+		if (!topic)
 		{
 			throw Except::Program::FunctionalityNotImplemented(CLOCATION,"Unknown research target '"+targetName+"'");
 		}			
-		String attributeName;
-		e.stringParameters.Require(CLOCATION,"Attribute",attributeName);
-		if (!attribute.Decode(attributeName.c_str()))
-			throw Except::Program::FunctionalityNotImplemented(CLOCATION,"Unknown research attribute '"+attributeName+"'");
 	}
 	/*virtual override*/ void Round::SelectResearch::Compile(Entry&e)	const
 	{
-		e.stringParameters.Set("Target",Objects::ComponentOrPrototypeToString(target));
-		e.stringParameters.Set("Attribute",attribute.ToString());
+		e.stringParameters.Set("Target",topic->name);
 	}
 
 

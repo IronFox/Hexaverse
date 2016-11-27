@@ -1673,9 +1673,9 @@ namespace Objects
 		//WorldEntity overrides:
 		virtual bool				IsTower() const override {return true;}
 		//virtual float				GetScanningRange() const override;
-		virtual String				DescribeScanningRange() const override;
+		//virtual String				DescribeScanningRange() const override;
 		//virtual int					GetMaxHealth() const override;
-		virtual String				DescribeMaxHealth() const override;
+		//virtual String				DescribeMaxHealth() const override;
 		virtual void				PrototypeSetup()	override;
 		#ifdef HAS_WINDOW
 			virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
