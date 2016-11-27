@@ -966,10 +966,10 @@ namespace Lua
 		}
 
 
-		bool SerializeCurrentTable(lua_State *L, IWriteStream&stream);
+		bool SerializeCurrentTable(lua_State *L, IWriteStream&stream, bool ignoreNonSerializableContent);
 
 
-		bool	SerializePart(lua_State*L, IWriteStream&stream, int at)
+		bool	SerializePart(lua_State*L, IWriteStream&stream, int at, bool ignoreNonSerializableContent)
 		{
 			int t = lua_type(L, at);
 			if (!stream.WritePrimitive((BYTE)t))
@@ -999,15 +999,16 @@ namespace Lua
 				break;
 				case LUA_TTABLE:
 					ASSERT_EQUAL__(at,-1);
-					return SerializeCurrentTable(L,stream);
+					return SerializeCurrentTable(L,stream,ignoreNonSerializableContent);
 				break;
 				default:
-					throw Exception(CLOCATION, "Lua type #"+String(t)+" '"+lua_typename(L, t)+"' is not suitable for serialization");
+					if (!ignoreNonSerializableContent)
+						throw Exception(CLOCATION, "Lua type #"+String(t)+" '"+lua_typename(L, t)+"' is not suitable for serialization");
 			}
 			return true;
 		}
 
-		bool SerializeCurrentTable(lua_State *L, IWriteStream&stream)
+		bool SerializeCurrentTable(lua_State *L, IWriteStream&stream, bool ignoreNonSerializableContent)
 		{
 			lua_pushnil(L);
 
@@ -1025,9 +1026,9 @@ namespace Lua
 
 			while(lua_next(L, -2) != 0)
 			{
-				if (!SerializePart(L,stream,-2))	//key
+				if (!SerializePart(L,stream,-2,ignoreNonSerializableContent))	//key
 					return false;
-				if (!SerializePart(L,stream,-1))	//value
+				if (!SerializePart(L,stream,-1,ignoreNonSerializableContent))	//value
 					return false;
 				lua_pop(L, 1);
 			}
@@ -1043,11 +1044,11 @@ namespace Lua
 
 	}
 
-	bool SerializeTop(lua_State*state, IWriteStream&stream)
+	bool SerializeTop(lua_State*state, IWriteStream&stream, bool ignoreNonSerializableContent)
 	{
 		Detail::StackChecker chk(state);
 		int top = lua_gettop(state);
-		if (!Detail::SerializePart(state,stream,-1))
+		if (!Detail::SerializePart(state,stream,-1,ignoreNonSerializableContent))
 		{
 			lua_settop(state,top);
 			return false;
@@ -1423,7 +1424,7 @@ namespace Lua
 
 
 
-	bool		Reference::Serialize(IWriteStream&stream)	const
+	bool		Reference::Serialize(IWriteStream&stream, bool ignoreNonSerializableContent/*=false*/)	const
 	{
 		if (IsEmpty())
 			throw Lua::Exception(CLOCATION,"Trying to serialize undefined reference");
@@ -1433,7 +1434,7 @@ namespace Lua
 		bool rs;
 		try
 		{
-			rs = SerializeTop(st,stream);
+			rs = SerializeTop(st,stream,ignoreNonSerializableContent);
 		}
 		catch (...)
 		{
