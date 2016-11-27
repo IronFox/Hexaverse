@@ -6,4 +6,5 @@
 	</source>
 	<macro name="CLIENT"/>
 	<referenceProject name="DeltaWorks" />
+	<referenceProject name="lua" />
 </project>
