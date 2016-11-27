@@ -602,6 +602,8 @@ namespace Lua
 		@return true if the stream was large enough to hold any serializable data, false otherwise
 		*/
 		bool			Serialize(IWriteStream&stream, bool ignoreNonSerializableContent=false)	const;
+
+		bool			DeserializeMerge(IReadStream&stream);
 		void			SetGlobal(const String&name);
 
 	};

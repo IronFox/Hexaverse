@@ -1118,17 +1118,9 @@ namespace Lua
 		return true;
 	}
 
-	/**
-
-	*/
-	bool PushTable(lua_State*state, IReadStream&stream)
+	
+	bool InsertIntoPushedTable(lua_State*state, IReadStream&stream, count_t numElements)
 	{
-		count_t numElements;
-		if (!stream.ReadSize(numElements))
-			return false;
-
-		lua_createtable (state, 0, (int)numElements);
-
 		for (index_t i = 0; i < numElements; i++)
 		{
 			if (!PushFromStream(state, stream))
@@ -1147,6 +1139,30 @@ namespace Lua
 		}
 		return true;
 	}
+
+	bool PushTable(lua_State*state, IReadStream&stream)
+	{
+		count_t numElements;
+		if (!stream.ReadSize(numElements))
+			return false;
+
+		lua_createtable (state, 0, (int)numElements);
+		InsertIntoPushedTable(state,stream,numElements);
+
+		return true;
+	}
+
+
+	bool InsertIntoPushedTable(lua_State*state, IReadStream&stream)
+	{
+		count_t numElements;
+		if (!stream.ReadSize(numElements))
+			return false;
+		InsertIntoPushedTable(state,stream,numElements);
+
+		return true;
+	}
+
 
 	void	Table::Pop(int cnt)
 	{
@@ -1422,6 +1438,28 @@ namespace Lua
 		return rs;
 	}
 
+
+	bool		Reference::DeserializeMerge(IReadStream&stream)
+	{
+		if (IsEmpty())
+			throw Lua::Exception(CLOCATION,"Trying to deserialize/merge into undefined reference");
+		lua_State*st = GetState();
+		int top = lua_gettop(st);
+		PushRegisteredGlobal(st,GetRefID());
+		bool rs;
+		try
+		{
+			rs = InsertIntoPushedTable(st, stream);
+		}
+		catch (...)
+		{
+			lua_settop(st,top);
+			throw;
+		}
+		lua_pop(st, 1);
+		DBG_ASSERT_EQUAL__(top,lua_gettop(st));
+		return rs;
+	}
 
 
 	bool		Reference::Serialize(IWriteStream&stream, bool ignoreNonSerializableContent/*=false*/)	const
