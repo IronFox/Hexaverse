@@ -287,9 +287,17 @@ namespace Lua
 							const auto&f = *(const std::function<R(P...)>*)BeginFunction(state,prog);
 							if (!prog)
 								return 0;
-							R rs = f(StackedT<typename Strip<P>::type,true>::Get(prog,I+1)...);
-							ParameterT<R>::Push(state,rs);
-							return 1;
+							try
+							{
+								R rs = f(StackedT<typename Strip<P>::type,true>::Get(prog,I+1)...);
+								ParameterT<R>::Push(state,rs);
+								return 1;
+							}
+							catch (const std::exception&e)
+							{
+								Raise(state,e.what());
+							}
+							return 0;
 						}
 						catch (const std::exception&ex)
 						{
@@ -313,7 +321,14 @@ namespace Lua
 							if (!prog)
 								return 0;
 							ParameterWalker w;
-							f(StackedT<typename Strip<P>::type,true>::Get(prog,I+1)...);
+							try
+							{
+								f(StackedT<typename Strip<P>::type,true>::Get(prog,I+1)...);
+							}
+							catch (const std::exception&e)
+							{
+								Raise(e.what());
+							}
 							return 0;
 						}
 						catch (const std::exception&ex)
