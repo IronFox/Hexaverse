@@ -803,7 +803,7 @@ namespace Lua
 		{
 			lua_State*st = prog->GetState();
 			int t = lua_type(st,addr);
-			if (t == LUA_TNIL && allowNil)
+			if ((t == LUA_TNIL || t == LUA_TNONE) && allowNil)
 				return nullptr;
 			if (t != LUA_TUSERDATA)
 			{
