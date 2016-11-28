@@ -1,15 +1,42 @@
+researchables = {}
+
+
+ResearchEntry = {}
+ResearchEntry.__index = ResearchEntry
+function ResearchEntry.New(limit)
+	local rs = {}
+	setmetatable(rs,ResearchEntry)
+	rs.limit = limit
+	return rs
+end
+function ResearchEntry.NewBool(limit)
+	return ResearchEntry.New(limit)
+end
+function ResearchEntry:Instantiate()
+	local rs = ResearchEntry.New(self.limit)
+	rs.progress = 0
+	return rs
+end
+
+
 ResearchState = {}
 ResearchState.__index = ResearchState
 function ResearchState.New()
 	local rs = {}
 	setmetatable(rs,ResearchState)
 	rs.research = {}
+	for k,v in pairs(researchables) do
+		rs.research[k] = v:Instantiate()
+	end
 	return rs
 end
 
 function ResearchState:SelectUnlock(tech)
 	print "hello"
 end
+
+
+
 
 
 
@@ -177,26 +204,59 @@ TurretConfig =
 }
 
 
+VehicleBaseConfig = 
+{
+	Hoverbase = 
+	{
+		Cost = 40,
+		MovementSpeed = 20,
+		CarryingCapacity = 1,
+		Health = 4,
+		OperationSpeedMultiplier = 1,
+		TurretRangeModifier = 0,
+		IsUnlocked = true,
+	},
+	HeavyBase = 
+	{
+		Cost = 80,
+		MovementSpeed = 15,
+		CarryingCapacity = 10,
+		Health = 12,
+		OperationSpeedMultiplier = 2,
+		TurretRangeModifier = 0,
+		IsUnlocked = true,
+	},
+	CatamaranBase = 
+	{
+		Cost = 100,
+		MovementSpeed = 8,
+		CarryingCapacity = 15,
+		Health = 12,
+		OperationSpeedMultiplier = 2,
+		TurretRangeModifier = 1,
+		IsUnlocked = true,
+	},
+}
 
-function MakeResearchable(parent, parentName, attribute)
-	original = parent[attribute]
+
+
+function MakeUnlockResearchable(parent, parentName, limit)
 	--entry = ResearchEntry.New(original)
-	key = parentName..attribute
-	parent[attribute] =
+	local key = 'unlock'..parentName
+	researchables[key] = ResearchEntry.NewBool(limit)
+	
+	parent.IsUnlocked =
 	{
 		Get = function(state)
 			if state == nil then
-				return original
+				return false
 			end
-			if state.research[key] == nil then
-				state.research[key] = ResearchEntry.New(original)
-			end
-			return state.research[key]:Get()
+			return state.research[key].current >= state.research[key].completion
 		end
 	}
 end
 
-MakeResearchable(TurretConfig.MissileLauncher, 'Launcher', 'IsUnlocked')
+MakeUnlockResearchable(TurretConfig.Artillery, 'Artillery',20)
 
 
 
@@ -279,12 +339,33 @@ StructureConfig =
 }
 
 
-unlockGroup = API.CreateResearch(nil,"Unlock");
+
+--[[
+Creates a new research topic or topic group.
+Leave maxProgress at 0 to indicate that the research is a topic group
+
+@param group Topic group to insert this research into. Set nil to declare the research a root topic
+@param name String identifier of the research topic
+@param iconName Name of the component, prototype, or image to display. Leave empty to reuse the content of [name] instead
+@param advance Function/method that accepts an instance of ResearchState and an integer containing research points (>0), to be assigned to this research topic. Leave empty if this is supposed to be a topic group
+@param getProgress Function/method that accepts an instance of ResearchState and returns the current progress of this research topic. Leave empty if this is supposed to be a topic group
+@param maxProgress Maximum possible amount of research progress that can be invested into this topic. Use negative values to indicate an infinitely researchable topic. Leave at 0 if this is supposed to be a topic group
+@param dependency Research topic handle that this research depends on. Researching this topic will only be allowed once the specified dependency is completed
+@return Handle to the new topic group
+
+Handle	API.CreateResearch(Handle group, String name, String iconName, advance(ResearchState,int by), getProgress(ResearchState)->int, int maxProgress, Handle dependency)
+]]
+
+
+unlockGroup = API.CreateResearch(nil,"Unlock","Research_Unlock");
+improveGroup = API.CreateResearch(nil,"Improve","Research_Improve");
 
 artillery = UnlockProgress.New();
 
-API.CreateResearch(unlockGroup,"Artillery","Artillery",function(state) return state:SelectUnlock("Artillery") end);
-
+API.CreateResearch(unlockGroup,"Artillery",nil,
+		function(state,progress) state.research.unlockArtillery.progress = state.research.unlockArtillery.progress + progress end,
+		function(state) return state.research.unlockArtillery.progress end, researchables.unlockArtillery.limit
+		);
 
 
 

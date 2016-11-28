@@ -29,6 +29,8 @@ namespace Objects
 
 		PResearchTopic rs(new ResearchTopic(parent, name,hasIcon ? iconSource : "",adv,currentProgress,maxProgress,dependency));
 
+		rs->componentReference = component;
+		rs->prototypeReference = proto;
 		rs->serialIndex = globalState.allTopics.Count();
 		globalState.allTopics << rs;
 
@@ -38,10 +40,19 @@ namespace Objects
 		else
 		{
 			parent->children << rs;
-			if (parent->maxProgress > 0)
+			if (parent->maxProgress != 0)
 			{
 				throw Lua::Exception("Trying to convert regular research '"+parent->name+"' to group when adding '"+name+"' as child. '"+parent->name+"'.maxProgress must be 0 when used as a group");
 			}
+		}
+
+		if (dependency)
+		{
+			if (parent->currentProgress.IsEmpty())
+			{
+				throw Lua::Exception("Trying to register research dependency of '"+name+"' to unresearchable topic '"+dependency->name+"'");
+			}
+
 		}
 		return rs;
 	}
@@ -284,14 +295,18 @@ namespace Objects
 	{
 		if (activeResearch && totalContribution)
 		{
-			int left = activeResearch->maxProgress - activeResearch->currentProgress(researchState);
-			if (left <= 0)
-				return;
-			totalContribution = vmin(totalContribution,left);
+			int left;
+			if (activeResearch->maxProgress >= 0)
+			{
+				left = activeResearch->maxProgress - activeResearch->currentProgress(researchState);
+				if (left <= 0)
+					return;
+				totalContribution = vmin(totalContribution,left);
+			}
 			activeResearch->advance(researchState,totalContribution);
 			changed = true;
 			totalContribution = 0;
-			if (totalContribution == left)
+			if (activeResearch->maxProgress >= 0 && totalContribution == left)
 			{
 				ASSERT_EQUAL__(activeResearch->currentProgress(researchState),activeResearch->maxProgress);
 				activeResearch.reset();

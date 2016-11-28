@@ -152,7 +152,7 @@ namespace Objects
 		virtual int				GetMaxHealth() const override;
 		virtual String			DescribeMaxHealth() const override;
 		virtual PWorldEntity	CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override {return PWorldEntity(new Vehicle(owner,location,base,turret));};
-		virtual float			GetScanningRange() override;
+		virtual float			GetScanningRange() const override;
 		virtual String			DescribeScanningRange() const override;
 		virtual PTurretBase		GetTurretBase(float&zOffset) override { zOffset = base->height; return To<Vehicle>::Cast(shared_from_this());}
 		virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = base->height; return To<const Vehicle>::Cast(shared_from_this());}

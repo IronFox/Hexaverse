@@ -106,6 +106,12 @@ namespace Objects
 
 	/*virtual override*/ void		ResearchCommand::CompileLabel(Label&outResult)
 	{
+
+		if (topic->IsGroup())
+		{
+			outResult << topic->name;
+			return;
+		}
 		Lua::Reference state = selectedEntity ? selectedEntity->GetResearchState() : Lua::Reference();
 
 		int current = 0;

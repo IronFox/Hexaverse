@@ -40,8 +40,8 @@ namespace Objects
 												);
 		virtual					~ResearchTopic();
 
-		bool					IsChildOf(const PResearchTopic&other) const {if (other.get() == this) return true; PResearchTopic p = parent.lock(); return p && p->IsChildOf(other);}
-		bool					IsGroup() const {return maxProgress > 0;}
+		bool					IsChildOf(const PResearchTopic&other) const {if (!this) return false; if (other.get() == this) return true; PResearchTopic p = parent.lock(); return p && p->IsChildOf(other);}
+		bool					IsGroup() const {return maxProgress == 0;}
 		bool					ResearchCompleted(const Lua::Reference&researchState) const
 		{
 			return currentProgress(researchState) >= maxProgress;
@@ -52,7 +52,7 @@ namespace Objects
 				return false;
 			if (ResearchCompleted(researchState))
 				return false;
-			PResearchTopic p = parent.lock();
+			PResearchTopic p = dependency.lock();
 			return !p || p->ResearchCompleted(researchState);
 		}
 	};

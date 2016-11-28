@@ -37,6 +37,8 @@ namespace Objects
 			{
 				if (constOverride.isSet)
 					return constOverride.constValue;
+				if (luaGetValue.IsEmpty())
+					return (T)0;
 				return luaGetValue(researchState);
 			}
 

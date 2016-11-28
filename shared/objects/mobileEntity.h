@@ -532,7 +532,7 @@ namespace Objects
 		#ifndef NO_HIBERNATION
 			virtual const Hibernating*ToHibernating() const override {return this;}
 		#endif
-		virtual float			GetScanningRange();
+		virtual float			GetScanningRange() const override;
 		virtual String			DescribeScanningRange() const override;
 		#ifndef CLIENT
 			virtual void		OnDestroy(RemovalType, float&atTime) override;	

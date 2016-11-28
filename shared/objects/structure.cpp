@@ -1911,6 +1911,12 @@ namespace Objects
 		static PResearchCommand BuildCommand(const PResearchTopic&t)
 		{
 			PResearchCommand rs(new ResearchCommand(t));
+			foreach (t->children,c)
+			{
+				rs->Add(BuildCommand(*c));
+			}
+			if (t->componentReference || t->prototypeReference)
+				rs->RasterizeImage();
 			return rs;
 		}
 

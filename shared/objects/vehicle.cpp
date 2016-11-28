@@ -63,7 +63,7 @@ namespace Objects
 
 
 
-	/*virtual override*/ float		Vehicle::GetScanningRange()
+	/*virtual override*/ float		Vehicle::GetScanningRange() const
 	{
 		return cache.maxScanningRange.GetEMPModified(*this,turret->scanningRange,turret->CanAttack() ? Component::FFunc() : base->turretRangeModifier);
 		//return EMPModify(turret->GetScanningRange(owner,turret->CanAttack() ? 0 : base->rangeModifier), 2.f);
