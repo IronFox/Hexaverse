@@ -119,6 +119,7 @@ namespace Protocol
 		class NetArray : public Array<T>
 		{
 		public:
+			static const constexpr MaxElementCount = MaxSize;
 			typedef Array<T>	Super;
 			void				operator=(const Array<T>&other)
 			{
