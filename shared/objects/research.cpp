@@ -12,7 +12,12 @@ namespace Objects
 	/*static*/ ResearchState::GlobalState		ResearchState::globalState;
 
 
-	PResearchTopic	ResearchState::CreateResearch(const PResearchTopic&parent, const String&name, const String&iconName, 
+	/*static*/ void ResearchState::LogLua(const String&msg)
+	{
+		LogEvent(EventClass::Preset::important,"Lua: "+msg);
+	}
+
+	/*static*/ PResearchTopic	ResearchState::CreateResearch(const PResearchTopic&parent, const String&name, const String&iconName, 
 												const ResearchTopic::FAdvance&adv, 
 												const ResearchTopic::FGetProgress&currentProgress, int maxProgress,
 												const PResearchTopic&dependency
@@ -217,6 +222,7 @@ namespace Objects
 			Lua::Table api = globalState.researchProgram->CreateTable();
 
 			api.SetFunction("CreateResearch",CreateResearch);
+			api.SetFunction("Log",LogLua);
 
 			#ifdef LOWER_RESOLUTION_PLANET
 				api.SetField("LowerResolutionPlanet",true);

@@ -78,6 +78,7 @@ namespace Objects
 		PResearchTopic			activeResearch;
 		TUniqueID				factionID;
 		bool					factionIsNexus;
+		static void				LogLua(const String&msg);
 		static PResearchTopic	CreateResearch(const PResearchTopic&parent, const String&name, const String&iconName, 
 												const ResearchTopic::FAdvance&adv, 
 												const ResearchTopic::FGetProgress&currentProgress, int maxProgress,

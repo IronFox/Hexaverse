@@ -18,6 +18,8 @@ Handle	Game.CreateResearch(Handle group, String name, String iconName, advance(R
 					dependency is completed
 	@return Handle to the new topic group
 
+	
+void	Game.Log(msg)					Prints any message to Hexaverse log (client or server-private)
 
 bool	Game.LowerResolutionPlanet		Set to true if the planet has reduced grid resolution (1/4 of cells, each cell twice as high)
 float	Game.UnitScale					Set to a global unit scale corresponding to [Game.LowerResolutionPlanet]. This scale value is to be
@@ -296,7 +298,8 @@ function MakeUnlockResearchable(parent, parentName, limit)
 			if state == nil then
 				return false
 			end
-			return state.research[key].current >= state.research[key].completion
+			Game.Log(key)
+			return state.research[key].progress >= state.research[key].limit
 		end
 	}
 end
