@@ -320,14 +320,13 @@ namespace Lua
 							const auto&f = *(const std::function<void(P...)>*)BeginFunction(state,prog);
 							if (!prog)
 								return 0;
-							ParameterWalker w;
 							try
 							{
 								f(StackedT<typename Strip<P>::type,true>::Get(prog,I+1)...);
 							}
 							catch (const std::exception&e)
 							{
-								Raise(e.what());
+								Raise(state,e.what());
 							}
 							return 0;
 						}
