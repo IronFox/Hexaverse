@@ -147,7 +147,10 @@ namespace Objects
 			index_t				versionCounter=InvalidIndex;
 			T					cached;
 			T					GetEMPModified(const WorldEntity&e,const LuaAttribute<T>&source,const LuaAttribute<T>&bonus = LuaAttribute<T>());
-			T					Get(const Lua::Reference&researchState, const LuaAttribute<T>&source, const LuaAttribute<T>&multiplier, T minimum);
+			template <typename T2>
+				T				Get(const Lua::Reference&researchState, const LuaAttribute<T>&source, const LuaAttribute<T2>&multiplier, T minimum);
+			bool				IsCurrent() const {return versionCounter == Super::versionCounter;}
+			T					Update(T newValue) {cached = newValue; versionCounter = Super::versionCounter; return cached;}
 		};
 
 	class CachedAttributes
@@ -156,7 +159,7 @@ namespace Objects
 		LuaAttributeCache<float>	groundScanningRange,
 									maxScanningRange,
 									horizontalAttackRange;
-		LuaAttributeCache<int>		maxHealth;
+		LuaAttributeCache<int>		maxHealth,constructionCost;
 	};
 
 
@@ -619,20 +622,21 @@ namespace Objects
 		}
 
 	template <typename T>
-		T	LuaAttributeCache<T>::Get(const Lua::Reference&researchState, const LuaAttribute<T>&source, const LuaAttribute<T>&multiplier, T minimum)
-		{
-			if (versionCounter != Super::versionCounter)
+		template <typename T2>
+			T	LuaAttributeCache<T>::Get(const Lua::Reference&researchState, const LuaAttribute<T>&source, const LuaAttribute<T2>&multiplier, T minimum)
 			{
-				versionCounter = Super::versionCounter;
-				T val = source.GetValue(researchState);
-				if (multiplier.IsSet())
-					val*=multiplier.GetValue(researchState);
+				if (versionCounter != Super::versionCounter)
+				{
+					versionCounter = Super::versionCounter;
+					T val = source.GetValue(researchState);
+					if (multiplier.IsSet())
+						val*=multiplier.GetValue(researchState);
 					
-				val = vmax(val, minimum);
-				cached = val;
+					val = vmax(val, minimum);
+					cached = val;
+				}
+				return cached;
 			}
-			return cached;
-		}
 
 
 	PWorldEntity							GetEntity(const TUniqueID&id);

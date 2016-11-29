@@ -145,7 +145,7 @@ namespace Objects
 
 
 		//WorldEntity overrides:
-		virtual int				GetConstructionCost() const override {return GetPrice();}
+		virtual int				GetConstructionCost() const override {return cache.constructionCost.IsCurrent() ? cache.constructionCost.cached : cache.constructionCost.Update( GetPrice() );}
 		#ifndef NO_HIBERNATION
 			virtual int			GetUplinkTraffic() const override;
 		#endif

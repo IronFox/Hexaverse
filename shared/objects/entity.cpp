@@ -279,7 +279,7 @@ namespace Objects
 
 	/*virtual*/ int			WorldEntity::GetConstructionCost() const
 	{
-		return GetTable()->constructionCost.GetValue(GetResearchState());
+		return cache.constructionCost.Get(GetResearchState(), GetTable()->constructionCost,Component::IFunc(),1);
 	}
 
 	/*virtual*/ int			WorldEntity::GetMaxHealth() const
