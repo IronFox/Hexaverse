@@ -155,6 +155,7 @@ namespace Game
 						Protocol::ResearchState state;
 						state.ownerID = f->id;
 						f->researchState.Export(state.serializedData);
+						ASSERT_LESS__(state.serializedData.Count(),state.serializedData.MaxElementCount);
 						Channels::researchState.SendTo(::Network::server,state,(UINT32)::Network::UserLevel::CommonFaction);
 
 					}
