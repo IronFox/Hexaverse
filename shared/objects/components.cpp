@@ -1022,7 +1022,7 @@ namespace Objects
 					{
 						bool constructingMe = (activeCursorMode == CursorMode::PlaceStructureMode
 								&& activeStructureToPlace == s);
-						bool unlocked = selectedEntity && selectedEntity->owner->researchState.IsUnlocked(s->GetCTypeName());
+						bool unlocked = selectedEntity && s->GetTable()->isUnlocked.GetValue(selectedEntity->GetResearchState());
 						BaseCommand::Flags rs = controlsEnabled && 
 							(activeCursorMode == CursorMode::Idle
 							|| constructingMe

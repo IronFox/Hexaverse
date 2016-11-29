@@ -2048,12 +2048,12 @@ namespace Journal
 					LogEvent(EventClass::Preset::commandRejected,e.get(),"Cannot produce that");
 					return;
 				}
-				if (!e->owner->researchState.IsUnlocked(turret->constName))
+				if (!turret->isUnlocked.GetValue(e->GetResearchState()))
 				{
 					LogEvent(EventClass::Preset::commandRejected,e.get(), "Cannot build "+turret->typeName+" since it has not been researched yet");
 					return;
 				}
-				if (!e->owner->researchState.IsUnlocked(base->constName))
+				if (!base->isUnlocked.GetValue(e->GetResearchState()))
 				{
 					LogEvent(EventClass::Preset::commandRejected,e.get(), "Cannot build "+base->typeName+" since it has not been researched yet");
 					return;
@@ -2070,7 +2070,7 @@ namespace Journal
 					LogEvent(EventClass::Preset::commandRejected,e.get(),"Cannot produce that");
 					return;
 				}
-				if (!e->owner->researchState.IsUnlocked(proto->GetCTypeName()))
+				if (!proto->GetTable()->isUnlocked.GetValue(e->GetResearchState()))
 				{
 					LogEvent(EventClass::Preset::commandRejected,e.get(), "Cannot build "+proto->GetTypeName()+" since it has not been researched yet");
 					return;

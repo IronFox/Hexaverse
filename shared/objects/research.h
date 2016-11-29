@@ -113,8 +113,6 @@ namespace Objects
 
 		bool					CheckUnlocked(const Component::Base&base, String&errorOut) const	{return true;}
 		bool					CheckUnlocked(ConstName, String&errorOut) const	{return true;}
-		bool					IsUnlocked(const Component::Base&base) const	{return true;}
-		bool					IsUnlocked(ConstName) const	{return true;}
 		bool					IsIdle() const {return !GetActiveTopic();}
 		PResearchTopic			GetActiveTopic() const	{return activeResearch;}
 		bool					SetActiveTopic(const PResearchTopic&active);

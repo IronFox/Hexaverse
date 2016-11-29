@@ -2326,7 +2326,7 @@ namespace Objects
 					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
 					if (plant && plant->selectedBase == c)
 						rs |= BaseCommand::Flags::IsPermaActive;
-					if (!plant || !plant->owner->researchState.IsUnlocked(c->constName))
+					if (!plant || !c->isUnlocked(plant->owner))
 						rs = BaseCommand::Flags::None;
 					return rs;
 				}));
@@ -2355,7 +2355,7 @@ namespace Objects
 						elif (!plant->selectedTurret)
 							rs |= BaseCommand::Flags::IsFlashing | BaseCommand::Flags::SoftFlashing;
 					}
-					if (!plant || !plant->owner->researchState.IsUnlocked(c->constName))
+					if (!plant || !c->isUnlocked(plant->owner))
 						rs = BaseCommand::Flags::None;
 					return rs;
 				}));
