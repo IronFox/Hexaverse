@@ -217,7 +217,15 @@ namespace Objects
 			Lua::Table api = globalState.researchProgram->CreateTable();
 
 			api.SetFunction("CreateResearch",CreateResearch);
-			api.SetGlobal("API");
+
+			#ifdef LOWER_RESOLUTION_PLANET
+				api.SetField("LowerResolutionPlanet",true);
+			#else
+				api.SetField("LowerResolutionPlanet",false);
+			#endif
+			api.SetField("UnitScale",Grid::UnitScale);
+
+			api.SetGlobal("Game");
 		}
 
 
@@ -347,7 +355,7 @@ namespace Objects
 		Lua::Reference exported = globalState.exportState(researchState);
 		ASSERT__(exported.IsSet());
 		ByteStream stream;
-		ASSERT__(exported.Serialize(stream,true));
+		ASSERT__(exported.Serialize(stream));
 		stream.CopyToArray(outSerializedState);
 	}
 

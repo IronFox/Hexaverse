@@ -1,3 +1,46 @@
+--[[ API:
+
+Handle	Game.CreateResearch(Handle group, String name, String iconName, advance(ResearchState,int by), getProgress(ResearchState)->int, int maxProgress, Handle dependency)
+
+	Creates a new research topic or topic group.
+	Leave maxProgress at 0 to indicate that the research is a topic group
+
+	@param group Topic group to insert this research into. Set nil to declare the research a root topic
+	@param name String identifier of the research topic
+	@param iconName Name of the component, prototype, or image to display. Leave empty to reuse the content of [name] instead
+	@param advance Function/method that accepts an instance of ResearchState and an integer containing research points (>0), 
+					to be assigned to this research topic. Leave empty if this is supposed to be a topic group
+	@param getProgress Function/method that accepts an instance of ResearchState and returns the current progress of this research topic. 
+					Leave empty if this is supposed to be a topic group
+	@param maxProgress Maximum possible amount of research progress that can be invested into this topic. Use negative values to indicate
+					an infinitely researchable topic. Leave at 0 if this is supposed to be a topic group
+	@param dependency Research topic handle that this research depends on. Researching this topic will only be allowed once the specified
+					dependency is completed
+	@return Handle to the new topic group
+
+
+bool	Game.LowerResolutionPlanet		Set to true if the planet has reduced grid resolution (1/4 of cells, each cell twice as high)
+float	Game.UnitScale					Set to a global unit scale corresponding to [Game.LowerResolutionPlanet]. This scale value is to be
+										applied too units (hence the name). 1 if the planet is not of lowered resolution, 2 otherwise.
+
+
+Hexaverse expects the following classes and methods to be defined:
+	ResearchState - table, arbitrary content. Expected but not required to mimic a class
+	ResearchState.New() - constructs a new instance (expected to be of its own type, but not required)
+	ResearchState:Export() - expected to return the serializable content of the local research state.
+							Expected but not required to operate on instances of type ResearchState. State is passed as first function
+							parameter (e.g. [self] in a method).
+							Result must not contain non-serializable content. Serializable content includes tables, ints, floats, and strings, 
+							both as keys and values.
+	ResearchState:Import(exported) - expected to integrate a previously exported, deserialized research state. Should only accept recognized data,
+									and discard the rest. Data may come from older savegames containing outdated research formats.
+									Expected but not required to operate on instances of type ResearchState. State is passed as first function
+									parameter (e.g. [self] in a method).
+]]
+
+
+
+
 researchables = {}
 
 
@@ -342,29 +385,13 @@ StructureConfig =
 
 
 
---[[
-Creates a new research topic or topic group.
-Leave maxProgress at 0 to indicate that the research is a topic group
 
-@param group Topic group to insert this research into. Set nil to declare the research a root topic
-@param name String identifier of the research topic
-@param iconName Name of the component, prototype, or image to display. Leave empty to reuse the content of [name] instead
-@param advance Function/method that accepts an instance of ResearchState and an integer containing research points (>0), to be assigned to this research topic. Leave empty if this is supposed to be a topic group
-@param getProgress Function/method that accepts an instance of ResearchState and returns the current progress of this research topic. Leave empty if this is supposed to be a topic group
-@param maxProgress Maximum possible amount of research progress that can be invested into this topic. Use negative values to indicate an infinitely researchable topic. Leave at 0 if this is supposed to be a topic group
-@param dependency Research topic handle that this research depends on. Researching this topic will only be allowed once the specified dependency is completed
-@return Handle to the new topic group
-
-Handle	API.CreateResearch(Handle group, String name, String iconName, advance(ResearchState,int by), getProgress(ResearchState)->int, int maxProgress, Handle dependency)
-]]
-
-
-unlockGroup = API.CreateResearch(nil,"Unlock","Research_Unlock");
-improveGroup = API.CreateResearch(nil,"Improve","Research_Improve");
+unlockGroup = Game.CreateResearch(nil,"Unlock","Research_Unlock");
+improveGroup = Game.CreateResearch(nil,"Improve","Research_Improve");
 
 artillery = UnlockProgress.New();
 
-API.CreateResearch(unlockGroup,"Artillery",nil,
+Game.CreateResearch(unlockGroup,"Artillery",nil,
 		function(state,progress) state.research.unlockArtillery.progress = state.research.unlockArtillery.progress + progress end,
 		function(state) return state.research.unlockArtillery.progress end, researchables.unlockArtillery.limit
 		);
