@@ -1722,7 +1722,7 @@ namespace Objects
 
 			//component.weight = 1;
 			//component.healthMultiplier = 1;
-			//component.detectsResources = true;
+			component.detectsResources = true;
 			//component.baseScanningRange = 4;
 			//component.uplinkPriority = 180;	//fairly early
 
