@@ -241,6 +241,17 @@ namespace Objects
 			FATAL__("Research Lua script does not define ResearchState.New method");
 		}
 
+		globalState.exportState = researchTable.GetField("Export");
+		if (globalState.exportState.IsEmpty())
+		{
+			FATAL__("Research Lua script does not define ResearchState:Export method");
+		}
+		globalState.importState = researchTable.GetField("Import");
+		if (globalState.importState.IsEmpty())
+		{
+			FATAL__("Research Lua script does not define ResearchState:Import method");
+		}
+
 		
 		structureTables.SetSize(structurePrototypes.Count());
 		for (index_t i = 0; i < structurePrototypes.Count(); i++)
@@ -305,32 +316,38 @@ namespace Objects
 			}
 			activeResearch->advance(researchState,totalContribution);
 			changed = true;
-			totalContribution = 0;
 			if (activeResearch->maxProgress >= 0 && totalContribution == left)
 			{
 				ASSERT_EQUAL__(activeResearch->currentProgress(researchState),activeResearch->maxProgress);
 				activeResearch.reset();
 			}
 		}
+		totalContribution = 0;
 		BaseAttributeCache::versionCounter++;
 	}
 
 	void					ResearchState::Import(const ArrayData<BYTE>&serializedState)
 	{
-		
-		ASSERT__(researchState.DeserializeMerge(ByteReadStream(serializedState)));
-
-		BaseAttributeCache::versionCounter++;
-
+		try
+		{
+			Lua::Reference deserialized = globalState.researchProgram->DeserializeToReference(ByteReadStream(serializedState));
+			globalState.importState(researchState,deserialized);
+			BaseAttributeCache::versionCounter++;
+		}
+		catch (const std::exception&e)
+		{
+			LogEvent(EventClass::Preset::error,e.what());
+		}
 	}
 	
 	
 	void					ResearchState::Export(Array<BYTE>&outSerializedState) const
 	{
 		//Buffer0<BYTE> data;
+		Lua::Reference exported = globalState.exportState(researchState);
+		ASSERT__(exported.IsSet());
 		ByteStream stream;
-
-		ASSERT__(researchState.Serialize(stream,true));
+		ASSERT__(exported.Serialize(stream,true));
 		stream.CopyToArray(outSerializedState);
 	}
 

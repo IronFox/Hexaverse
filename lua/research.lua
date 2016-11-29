@@ -30,11 +30,13 @@ function ResearchState.New()
 	end
 	return rs
 end
-
-function ResearchState:SelectUnlock(tech)
-	print "hello"
+function ResearchState:Export()
+	return self.research
 end
 
+function ResearchState:Import(exported)
+	self.research = exported
+end
 
 
 

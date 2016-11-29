@@ -97,7 +97,8 @@ namespace Objects
 			Buffer0<PResearchTopic>	rootResearch,allTopics;
 			Lua::PProgram		researchProgram;
 			Lua::Function<Lua::Reference()>	stateConstructor;
-			Lua::Function<void(Lua::Reference)>	selectResearch;
+			Lua::Function<Lua::Reference(Lua::Reference)>	exportState;
+			Lua::Function<void(Lua::Reference,Lua::Reference)> importState;
 		};
 		static GlobalState		globalState;
 
