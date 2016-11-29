@@ -115,6 +115,7 @@ namespace Objects
 		bool					CheckUnlocked(ConstName, String&errorOut) const	{return true;}
 		bool					IsIdle() const {return !GetActiveTopic();}
 		PResearchTopic			GetActiveTopic() const	{return activeResearch;}
+		index_t					GetActiveTopicIndex() const {return activeResearch ? activeResearch->serialIndex : InvalidIndex;}
 		bool					SetActiveTopic(const PResearchTopic&active);
 		void					SetActiveTopic(index_t serialIndex)	{SetActiveTopic(GetTopic(serialIndex));}
 		void					Import(const ArrayData<BYTE>&serializedState);

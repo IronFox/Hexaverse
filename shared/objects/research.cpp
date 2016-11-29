@@ -304,7 +304,7 @@ namespace Objects
 
 	/*static*/ PResearchTopic	ResearchState::GetTopic(index_t serialIndex)
 	{
-		return globalState.allTopics[serialIndex];
+		return serialIndex < globalState.allTopics.Count() ? globalState.allTopics[serialIndex] : PResearchTopic();
 	}
 
 	bool	ResearchState::SetActiveTopic(const PResearchTopic&active)
