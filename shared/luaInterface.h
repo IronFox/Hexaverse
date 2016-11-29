@@ -674,13 +674,13 @@ namespace Lua
 		Works for primitive values as well as references
 		*/
 		template <typename T>
-			void		SetField(const String&name, const T&value)	{if (IsEmpty()) return; Detail::PushParameterT<T>(GetState(),value); SetTopField(name);}
+			void		SetField(const String&name, const T&value)	{if (IsEmpty()) return; Detail::ParameterT<T>::Push(GetState(),value); SetTopField(name);}
 		/**
 		Sets an index element in the local table.
 		Works for primitive values as well as references
 		*/
 		template <typename T>
-			void		SetElement(index_t at, const T&value) {if (IsEmpty()) return; Detail::PushParameterT<T>(GetState(),value); SetTopElement(at);}
+			void		SetElement(index_t at, const T&value) {if (IsEmpty()) return; Detail::ParameterT<T>::Push(GetState(),value); SetTopElement(at);}
 		/**
 		Attempts to append a value to the end of the local table.
 		Works only if the element GetLength()+1 is not set already
