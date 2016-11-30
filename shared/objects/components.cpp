@@ -2415,9 +2415,9 @@ namespace Objects
 						return true;
 					if (strongestStr == waterStrength)
 						return moveOnWater || ignoreWater;
-					if (strongest == Grid::Content::Clear)
-						return doFloat;
-					return false;	//lava
+					//if (strongest == Grid::Content::Clear)
+					//	return doFloat;
+					return doFloat;	//air or lava
 				}
 				case Requirement::Water:
 					if (anyUnknown && !canStandOnUnknown)
@@ -2426,9 +2426,9 @@ namespace Objects
 					//	return false;
 					//if (strongest == Grid::Content::Lava)
 					//	return false;
-					if (strongest == Grid::Content::Clear)
-						return doFloat;
-					return strongest == Grid::Content::Water;
+					//if (strongest == Grid::Content::Clear)
+					//	return doFloat;
+					return strongest == Grid::Content::Water || doFloat;
 				break;
 				//case Requirement::CentralBlock:
 				//{

@@ -205,8 +205,8 @@ namespace Objects
 					highChoices << *c;
 
 			Grid::LCellIdI c = highChoices.IsNotEmpty()
-						? highChoices[parent->entityRandom.getIndex(highChoices.Count()-1)].location
-						: movementChoices[parent->entityRandom.getIndex(movementChoices.Count()-1)].location;
+						? highChoices[parent->entityRandom.NextIndex(highChoices.Count())].location
+						: movementChoices[parent->entityRandom.NextIndex(movementChoices.Count())].location;
 
 			MobilePlacementResult rs = v->PlaceExactlyAt(c,0,0,false,false);
 			if (Failed(rs))

@@ -780,7 +780,7 @@ namespace Animation
 						v->activitySound.SetReferenceDistance(3.f,1.f);
 						v->activitySound.EnqueueWaveBuffer(constructSound);
 						static Random random;
-						v->activitySound.SetPitch(1.f + random.getFloat(-0.05f,0.05f));
+						v->activitySound.SetPitch(1.f + random.NextFloat(-0.05f,0.05f));
 						v->activitySound.SetGain(0.5f);
 					}
 					if (!v->activitySound.IsPlaying())

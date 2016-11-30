@@ -541,7 +541,7 @@ namespace Objects
 			CRC32::calcNext(&cName,sizeof(ConstName));
 			UINT32 seed = CRC32::endSequence();
 			//std::cout << "Reseeding "<<GetName()<<" to "<<seed<< std::endl;
-			entityRandom.setSeed(seed);
+			entityRandom.seed(seed);
 		}
 	#endif
 

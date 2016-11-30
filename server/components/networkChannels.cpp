@@ -238,7 +238,7 @@ namespace Receiver
 		response.startFactionTypes = _p.startFactionTypes;
 		response.factionToken = _p.factionToken;
 		response.planetConfig = Grid::currentPlanetConfig;
-		Game::Network::AssembleGameInfo(response.info);
+		Game::Network::AssembleGameInfo(response.info, peer.IsLocalhost());
 		//response.info = CompileWorldInfo();
 
 		if (!response.startFactionTypes || response.startFactionTypes == Protocol::FactionType::SpectatorFaction)

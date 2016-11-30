@@ -29,7 +29,7 @@ void ConfigurationMode::Begin()
 	originalFlags = Game::Config::factionSupportFlags;	//must copy this before actually closing the session
 	Network::CloseSession(true);						//this line wipes factionSupportFlags
 	//Game::Config::factionSupportFlags = Protocol::GameFlag::SupportSpectatorFactions;	//and this is redundant
-	planetSeed = Random().getSeed();
+	planetSeed = Random().NextSeed();
 	LogEvent(EventSignificance::Important,"Starting configuration mode");
 	Network::BuildConfiguredWorld();
 

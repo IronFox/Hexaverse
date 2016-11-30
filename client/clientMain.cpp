@@ -1928,6 +1928,18 @@ bool loop()
 			}
 	
 
+			if (ConfigurationMode::IsActive())
+			{
+				static const String line = "Interactive Configuration Mode";
+
+				textout.pushState();
+				textout.scale(2.0f,2.0f);
+				textout.locate(0.95f - textout.scaledWidth(line),0.95f);
+				textout << line;
+				textout.popState();
+			}
+
+
 			DebugCheckVector(scene.location,-1000,1000);
 		
 		
@@ -2356,147 +2368,6 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 
 
-const String&	Vocal(Random&random)
-{
-	static const String vocals[] = 
-	{
-		"a",
-		"e",
-		//"i",
-		"o",
-		"u",
-		"y",
-		"ou",
-		//"ae",
-		//"ei",
-		"ea",
-	};
-	return vocals[random.getIndex(ARRAYSIZE(vocals)-1)];
-}
-
-
-const String&	Consonant(Random&random)
-{
-	static const String consonants[] =
-	{
-		"b",
-		"c",
-		"d",
-		"g",
-		"h",
-		//"j",
-		"l",
-		"m",
-		"n",
-		"r",
-		"s",
-		"t",
-		"v",
-		"w",
-		"x",
-		"z",
-		"th",
-		"ch",
-	};
-	return consonants[random.getIndex(ARRAYSIZE(consonants)-1)];
-
-}
-
-const String&	PreConsonant(Random&random)
-{
-	static const String preOnly[] =
-	{
-		"dr",
-		"bl",
-		"fl",
-		"kr",
-		"tr",
-		"cr",
-		"f",
-		"k",
-		"p",
-		"q",
-
-	};
-
-
-	return random.getFloat() < 0.9f ? Consonant(random) : preOnly[random.getIndex(ARRAYSIZE(preOnly)-1)];
-}
-
-const String&	PostConsonant(Random&random)
-{
-	static const String postOnly[] =
-	{
-		"ng",
-		"ct",
-		"st",
-	};
-
-	return random.getFloat() < 0.95f ? Consonant(random) : postOnly[random.getIndex(ARRAYSIZE(postOnly)-1)];
-}
-
-
-String GenerateOreName(Random&random)
-{
-	static const char c0[] =
-	{
-		'b',
-		'c',
-		'd',
-		'g',
-		'h',
-		'j',
-		'k',
-		'm',
-		'n',
-		'p',
-		'q',
-		'r',
-		's',
-		't',
-		'v',
-		//'w',
-		'x',
-		'y',
-		'z',
-	};
-
-	String rs0 = String(c0[random.getIndex(ARRAYSIZE(c0)-1)]);
-	
-	char c1 = c0[random.getIndex(ARRAYSIZE(c0)-1)];
-	while (rs0.firstChar() == c1)
-		c1 = c0[random.getIndex(ARRAYSIZE(c0)-1)];
-	return rs0 + String(c1) + String(random.getIndex(99));
-
-
-
-
-
-	String rs;
-	
-	if (random.getFloat() < 0.5f)
-		rs += Vocal(random);
-	
-	rs +=  PreConsonant(random);
-
-	rs += Vocal(random);// + PostConsonant(random);
-
-	int len = 2;
-
-	//for (int i = 1; i < len; i++)
-	//{
-	//	rs +=  PreConsonant(random) + Vocal(random);
-	//};
-	rs +=  PostConsonant(random);
-
-	if (random.getFloat() < 0.8f)
-		rs += "ite";
-	else
-		rs +=  Vocal(random) + PostConsonant(random);
-
-	return rs;
-
-}
 
 void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 {

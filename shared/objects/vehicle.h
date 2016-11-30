@@ -109,7 +109,7 @@ namespace Objects
 		@param world World to check against
 		@param cell The cell the local vehicle is attempting to stand atop of. If relocation is performed the cell one higher than this will be used for the final location
 		@param ignoreWater Upon encountering pure water, the method succeeds if either the local vehicle can stand on water, or this value is set true
-		@param doFloat Allows the vehicle to stand on pure air. Useful for certain construction jobs
+		@param doFloat Allows the vehicle to stand on any substance. Useful for certain construction jobs
 		*/
 		bool					CanStandOn(const Grid::WorldData&world, const Grid::LCellIdI&cell, bool ignoreWater, bool doFloat) const {return base->CanStandOn(world,cell,ignoreWater, doFloat);}
 

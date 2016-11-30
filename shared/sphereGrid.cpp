@@ -1031,9 +1031,9 @@ namespace Grid
 
 				Random random(23984);
 				Instruction::THeightMapOrientation	orientation;
-				SetOrientation(orientation.orientation0,float3(1,0.75,0.75).Normalized0(),Engine::timing.now, float3(random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1)).Normalized0(),random.getDouble(0,100));
-				SetOrientation(orientation.orientation1,float3(0.75,1,0.75).Normalized0(),-Engine::timing.now*1.35, float3(random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1)).Normalized0(),random.getDouble(0,100));
-				SetOrientation(orientation.orientation2,float3(0.75,0.75,1).Normalized0(),Engine::timing.now/M_PI, float3(random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1)).Normalized0(),random.getDouble(0,100));
+				SetOrientation(orientation.orientation0,float3(1,0.75,0.75).Normalized0(),Engine::timing.now, float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)).Normalized0(),random.NextFloatT<double>(0,100));
+				SetOrientation(orientation.orientation1,float3(0.75,1,0.75).Normalized0(),-Engine::timing.now*1.35, float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)).Normalized0(),random.NextFloatT<double>(0,100));
+				SetOrientation(orientation.orientation2,float3(0.75,0.75,1).Normalized0(),Engine::timing.now/M_PI, float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)).Normalized0(),random.NextFloatT<double>(0,100));
 
 				Instruction::heightMapOrientation.Update(orientation);
 
@@ -1320,7 +1320,7 @@ namespace Grid
 			Instruction::heightMapOrientation.Create(Instruction::THeightMapOrientation());
 
 			{
-				SimplexNoise n(Random().get());
+				SimplexNoise n(Random().NextSeed());
 				Image sides[6];
 				//+x, -x, +y, -y, +z, -z.
 				CreateHeightMapSide(sides[0],n,float3(1,0,0),float3(0,0,-1),float3(0,1,0));
@@ -1526,7 +1526,7 @@ namespace Grid
 
 	void	ExtendedPlanetConfig::RandomizeSeeds(Random&random)
 	{
-		lastSeed = random.currentSeed();
+		lastSeed = random.GetCurrentSeed();
 		//LogEvent(EventSignificance::Uncommon,"seed randomized "+String(lastSeed));
 		extendedCore.Randomize(random);
 		mountains.Randomize(random);
@@ -3346,7 +3346,7 @@ namespace Grid
 		#ifdef GRID_INDEPENDENT_RANDOM
 			static Random random;
 			float q = 1.f - p;
-			coverage_t rs (Round(sqr(sqr(sqr(std::max(0.f,(random.getFloat()-q)/p)))) * (max-1)));
+			coverage_t rs (Round(sqr(sqr(sqr(std::max(0.f,(random.NextFloat()-q)/p)))) * (max-1)));
 			if (rs)
 				rs++;
 			return rs;
@@ -3406,7 +3406,7 @@ namespace Grid
 
 	void Resource::Fill(Random&random,float p0, coverage_t max, float avgPerCell)
 	{
-		SimplexNoise n(random.get());
+		SimplexNoise n(random.NextSeed());
 		//avgPerCell *= UnitScale;
 
 		for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
