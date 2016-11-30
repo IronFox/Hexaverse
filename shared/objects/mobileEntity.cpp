@@ -611,7 +611,7 @@ namespace Objects
 				//random first to maybe not make the same mistake twice
 				for (index_t i = 0; i < ways.numWays; i++)
 				{
-					index_t target = entityRandom.getIndex(ways.numWays-1);
+					index_t target = entityRandom.NextIndex(ways.numWays);
 					if (PlotFrontCourse(ways.way[target],true))
 					{
 						numTriedPlottingOnMoveAutoMotion ++;

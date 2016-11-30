@@ -450,9 +450,9 @@ namespace World
 					dist2 = std::min(dist2, d2);
 				}
 				if (Objects::Faction::all.IsEmpty())
-					dist2 = dist2 > 0.35f ? sqr(random.getFloat(1,2)) : 0.f;
+					dist2 = dist2 > 0.35f ? sqr(random.NextFloat(1,2)) : 0.f;
 				else
-					dist2 *= random.getFloat(0.9f,1.f / 0.9f);
+					dist2 *= random.NextFloat(0.9f,1.f / 0.9f);
 
 				biggestNDist = std::max(biggestNDist,ndist2);
 
