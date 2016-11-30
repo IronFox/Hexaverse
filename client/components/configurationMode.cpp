@@ -942,7 +942,7 @@ namespace ConfigurationMode
 	void	RandomizeSeed()
 	{
 		using namespace Detail;
-		seed = rng.getSeed();
+		seed = rng.NextSeed();
 		Update();
 	}
 
