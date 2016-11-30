@@ -2392,16 +2392,16 @@ namespace Grid
 		void	RandomizeSun(Random&random)
 		{
 			sunColor = float4(1);
-			//float4(random.getFloat(0.8,1.05f),random.getFloat(0.8,1.05f),random.getFloat(0.8,1.05f),1);
+			//float4(random.NextFloat(0.8,1.05f),random.NextFloat(0.8,1.05f),random.NextFloat(0.8,1.05f),1);
 
 			Vec::stretch(sunColor.rgb,atmosphereColor.rgb,atmosphereColor.rgb);
 			//sunColor.rgb = atmosphereColor.rgb;
 
 
 			sunPlaneNormal_Speed = float4(
-					random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1),
+					random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1),
 					0.07f
-					//random.getFloat(-0.2,0.2)
+					//random.NextFloat(-0.2,0.2)
 				);
 			Vec::normalize0(sunPlaneNormal_Speed.xyz);
 
@@ -2424,12 +2424,12 @@ namespace Grid
 			void	Randomize(Random&random)
 			{
 				for (index_t i = 0; i < ARRAYSIZE(seed); i++)
-					seed[i] = random.get();
-				depressionSeed0 = random.get();
-				depressionSeed1 = random.get();
-				depressionSeed2 = random.get();
-				depressionSeed3 = random.get();
-				productSeed = random.get();
+					seed[i] = random.NextSeed();
+				depressionSeed0 = random.NextSeed();
+				depressionSeed1 = random.NextSeed();
+				depressionSeed2 = random.NextSeed();
+				depressionSeed3 = random.NextSeed();
+				productSeed = random.NextSeed();
 			}
 		};
 

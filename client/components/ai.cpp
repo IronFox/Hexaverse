@@ -404,7 +404,7 @@ namespace AI
 				}
 			
 			currentIsOverconfident = proximityPresence > 5;
-			if (!v->turret->CanAttack() && radarProximity > 1 && random.getFloat() < 0.3f)
+			if (!v->turret->CanAttack() && radarProximity > 1 && random.NextFloat() < 0.3f)
 			{
 				ApplicationInterface::SignalRemoval(v);
 				return;
@@ -416,7 +416,7 @@ namespace AI
 		currentIsOffensiveVehicle = attacker && v->turret->ignoresVehicleMotion;
 		static Objects::ReachabilityMapper mapper(false);
 //		currentThreat = TThreatEstimation();
-		currentCanIgnoreThreat = (v->turret->CanAttack() || random.getFloat() < 0.5f) && !v->turret->dealsEMPDamage;
+		currentCanIgnoreThreat = (v->turret->CanAttack() || random.NextFloat() < 0.5f) && !v->turret->dealsEMPDamage;
 		//currentIsOverconfident = v->overconfident;
 		EstimateThreatFromAll(v->system.w.xyz,true, currentCanIgnoreThreat,currentThreat);	//determine base threat based on ghosts
 
@@ -483,12 +483,12 @@ namespace AI
 			
 				float score = (1.f + goodWeight) / (1.f+badWeight) / (1.f + float(abs(n->movementCostsFromRoot- minMotion * 3 / 2))*0.01f);
 				{
-					float extend = 1.f + sqr(sqr(sqr(random.getFloat())));
-					if (random.getIndex(1) == 0)
+					float extend = 1.f + sqr(sqr(sqr(random.NextFloat())));
+					if (random.NextBool())
 						extend = 1.f / extend;
 					score *= extend;				
 				}
-				//score *= random.getFloat(0.8f,1.25f);
+				//score *= random.NextFloat(0.8f,1.25f);
 				if (score > bestScore)
 				{
 					best = n;

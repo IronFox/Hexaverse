@@ -181,7 +181,7 @@ namespace Objects
 
 			PMobileEntity v = CompleteProduction(t);
 			//static Random random;
-			Grid::LCellIdI c = movementChoices[parent->entityRandom.getIndex(movementChoices.Count()-1)].location;
+			Grid::LCellIdI c = movementChoices[parent->entityRandom.NextIndex(movementChoices.Count())].location;
 
 			MobilePlacementResult rs = v->PlaceExactlyAt(c,0,0,false,false);
 			if (Failed(rs))

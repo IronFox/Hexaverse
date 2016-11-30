@@ -134,25 +134,25 @@ namespace Test
 		{
 			Objects::Marker m;
 			m.id.Generate();
-			m.createdInRound = random.get(0, MaxSerialSize);
-			if (random.getFloat() > 0.1f)
+			m.createdInRound = random.Next(MaxSerialSize);
+			if (random.NextFloat() > 0.1f)
 			{
-				m.location.stackID = random.get(0, Grid::LowSetup::GridType::CellCount - 1);
-				m.location.height = random.get(-Grid::CellStack::HalfRange, Grid::CellStack::HalfRange - 1);
+				m.location.stackID = random.Next(Grid::LowSetup::GridType::CellCount - 1);
+				m.location.height = random.Next(-Grid::CellStack::HalfRange, Grid::CellStack::HalfRange - 1);
 			}
-			m.type = Objects::Marker::Type::Reinterpret(random.get(0, Objects::Marker::Type::NumberOfPossibilities - 1));
+			m.type = Objects::Marker::Type::Reinterpret(random.NextIndex(Objects::Marker::Type::NumberOfPossibilities));
 			if (m.UtilizesReferenceEntity())
 			{
 				m.referenceEntity.Generate();
-				if (random.getFloat() < 0.5f)
+				if (random.NextBool())
 				{
-					m.referencedType[0] = Objects::structurePrototypes[random.getIndex(Objects::structurePrototypes.Count() - 1)]->GetCTypeName();
+					m.referencedType[0] = Objects::structurePrototypes[random.NextIndex(Objects::structurePrototypes.Count())]->GetCTypeName();
 					m.referencedType[1] = ConstName::Empty;
 				}
 				else
 				{
-					m.referencedType[0] = Objects::Component::baseComponents[random.getIndex(Objects::Component::baseComponents.Count() - 1)]->constName;
-					m.referencedType[1] = Objects::Component::allTurretComponents[random.getIndex(Objects::Component::allTurretComponents.Count() - 1)]->constName;
+					m.referencedType[0] = Objects::Component::baseComponents[random.NextIndex(Objects::Component::baseComponents.Count())]->constName;
+					m.referencedType[1] = Objects::Component::allTurretComponents[random.NextIndex(Objects::Component::allTurretComponents.Count())]->constName;
 				}
 			}
 			Protocol::VerifySerialization(m);
@@ -163,18 +163,18 @@ namespace Test
 			for (int i = 0; i < 10000; i++)
 			{
 				Protocol::LCellIdI coords;
-				coords.stackID = random.get(Grid::LowSetup::GridType::CellCount);
-				coords.height = random.get(-Grid::CellStack::HalfRange, Grid::CellStack::HalfRange);
+				coords.stackID = random.Next(Grid::LowSetup::GridType::CellCount-1);
+				coords.height = random.Next(-Grid::CellStack::HalfRange, Grid::CellStack::HalfRange);
 				Protocol::VerifySerialization(coords);
 
 
 				Protocol::PositiveResourceVector vec;
 				for (index_t i = 0; i < Protocol::PositiveResourceVector::NumEntries; i++)
 				{
-					if (random.getFloat() < 0.5f)
+					if (random.NextBool())
 						vec.level[i] = 0;
 					else
-						vec.level[i] = cubic(random.get(0, 100));
+						vec.level[i] = cubic(random.Next(100));
 				}
 
 				Protocol::VerifySerialization(vec);
@@ -237,7 +237,7 @@ namespace Test
 		auto original = turret->explosionRadius.constOverride;
 		for (int i = 0; i < 100 || outOfScanning < 10; i++)
 		{
-			turret->explosionRadius.SetConst(random.getFloat(1,4));
+			turret->explosionRadius.SetConst(random.NextFloat(1,4));
 
 			Grid::LCellIdI	generatorAt = RandomCell(random);
 			generatorAt.height = Objects::FindApplicableGround(generatorAt,true);
@@ -336,8 +336,8 @@ namespace Test
 	/*static*/ Grid::LCellIdI	AutoTargeting::RandomCell(Random&random)
 	{
 		return Grid::LCellIdI(
-			random.getType<UINT32>(0,Grid::LowSetup::GridType::CellCount-1),
-			random.get(-Grid::CellStack::HalfRange+1,Grid::CellStack::HalfRange-2)
+			random.Next(Grid::LowSetup::GridType::CellCount-1),
+			random.Next(-Grid::CellStack::HalfRange+1,Grid::CellStack::HalfRange-2)
 		);
 	}
 	/*static*/ Grid::LCellIdI	AutoTargeting::RandomCellAtRange(Random&random,const Grid::LCellIdI&center, const TFloatRange<>&range)
@@ -439,10 +439,10 @@ namespace Test
 
 	/*static*/ void VehiclePlant::EnqueueRandom(Objects::PVehiclePlant&plant, Random&random)
 	{
-		Objects::Component::VehicleBase *base = plant->baseComponents[random.getIndex(plant->baseComponents.Count() - 1)];
+		Objects::Component::VehicleBase *base = plant->baseComponents[random.NextIndex(plant->baseComponents.Count())];
 		while (base->requirements == Objects::Component::VehicleBase::Requirement::Water)
-			base = plant->baseComponents[random.getIndex(plant->baseComponents.Count() - 1)];
-		Objects::Component::Turret* turret = plant->turretComponents[random.getIndex(plant->turretComponents.Count() - 1)];
+			base = plant->baseComponents[random.NextIndex(plant->baseComponents.Count())];
+		Objects::Component::Turret* turret = plant->turretComponents[random.NextIndex(plant->turretComponents.Count())];
 		bool rs = !!plant->Enqueue(base, turret);
 		ASSERT__(rs);
 	}
@@ -529,7 +529,7 @@ namespace Test
 					Objects::GetChoices(plant, Objects::PVehicle(),Objects::CursorMode::Idle, choices, showArrow, hasArrowCellTarget, arrowFrom, arrowFromCell);
 					ASSERT__(choices.IsNotEmpty());
 					Objects::PVehicle v = plant->GetProduction();
-					Grid::LCellIdI choice = choices[random.getIndex(choices.Count() - 1)].location;
+					Grid::LCellIdI choice = choices[random.NextIndex(choices.Count())].location;
 					Objects::ProcessChoiceIntersection(plant, choice, Objects::CursorMode::Idle, Objects::PVehicle());
 					ASSERT_EQUAL__(v->health, v->GetMaxHealth());
 					ASSERT2__(v->location == choice, v->location.ToString(), choice.ToString());
