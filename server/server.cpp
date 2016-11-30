@@ -428,10 +428,10 @@ namespace ApplicationInterface
 
 		const float range = base->GetAttackRange();
 		float radius = range * 0.2f;
-		float3 mod = float3(random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1)) * radius;
+		float3 mod = float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)) * radius;
 		count_t numIt = 0;
 		while (Vec::quadraticDistance(mod + roughAttack.sourcePosition.value, traceToWorld) > sqr(range) && ++numIt < 1000)
-			mod = float3(random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1)) * radius;
+			mod = float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)) * radius;
 		ASSERT__(numIt < 1000);
 		roughAttack.sourcePosition.value += mod;
 
@@ -560,12 +560,12 @@ namespace ApplicationInterface
 
 			const float range = roughAttack.turretRange;//base->GetFlatAttackRange();
 			float radius = range * 0.2f;
-			float3 mod = float3(random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1)) * radius;
+			float3 mod = float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)) * radius;
 			count_t numIt = 0;
 			while (!attack.attackFrom->CanHit(mod + roughAttack.sourcePosition.value,roughAttack.attackAngle.value)
 					//Vec::quadraticDistance(mod + roughAttack.sourcePosition.value, traceToWorld) > sqr(range) 
 				&& ++numIt < 1000)
-				mod = float3(random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1)) * radius;
+				mod = float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)) * radius;
 			ASSERT__(numIt < 1000);
 			roughAttack.sourcePosition.value += mod;
 		}
@@ -943,7 +943,7 @@ void ProcessAICoverage()
 								Objects::PVehiclePlant vplant = To<Objects::VehiclePlant>::DynamicCast(ws);
 								if (plant && vplant && plant->queue.IsEmpty())
 								{
-									index_t choice = vplant->entityRandom.getIndex(Game::Config::Nexus::vehicleTurrets.Count() - 1);
+									index_t choice = vplant->entityRandom.NextIndex(Game::Config::Nexus::vehicleTurrets.Count());
 									//random.getIndex(State::Config::Nexus::vehicleTurrets.Count() - 1);
 									ASSERT_LESS__(choice,Game::Config::Nexus::vehicleTurrets.Count());
 									//Objects::Component::Turret* turret = State::Config::Nexus::vehicleTurrets[choice];
@@ -992,7 +992,7 @@ void ProcessAICoverage()
 
 					if (location != Grid::LCellIdI::Invalid)
 					{
-						Objects::Component::Turret* turret = Game::Config::Nexus::vehicleTurrets[random.getIndex(Game::Config::Nexus::vehicleTurrets.Count() - 1)];
+						Objects::Component::Turret* turret = Game::Config::Nexus::vehicleTurrets[random.NextIndex(Game::Config::Nexus::vehicleTurrets.Count())];
 						float t = 0;
 						Objects::PVehicle v = Objects::SpawnVehicle(Objects::Faction::nexus, location, &Objects::Component::hoverbase, turret, true, t);
 						Journal::currentRound.LogEntityCreation(v);
