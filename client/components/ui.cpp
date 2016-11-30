@@ -722,7 +722,7 @@
 				}
 				UINT32 crc = CRC32::getChecksum(e->GetTypeName().c_str());
 				Random random(crc);
-				significance *= random.getFloat(0.95f,1.07f);
+				significance *= random.NextFloat(0.95f,1.07f);
 			}
 
 
