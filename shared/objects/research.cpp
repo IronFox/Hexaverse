@@ -3,6 +3,8 @@
 #include "prototypes.h"
 #include "structure.h"
 #include "../logEvent.h"
+#include "../scriptCache.h"
+#include "faction.h"
 
 namespace Objects
 {
@@ -94,6 +96,7 @@ namespace Objects
 			{
 				if (!allowEmpty)
 					FATAL__("research.lua does not define "+path+"."+name);
+				a.Clear();
 				return;
 			}
 
@@ -216,6 +219,15 @@ namespace Objects
 
 	/*static*/ void		ResearchState::StaticCreate()
 	{
+		LoadProgram(ScriptCache::Fetch("../lua/research.lua"));
+	}
+
+	/*static*/ void		ResearchState::LoadProgram(const ScriptCache::PScript&script)
+	{
+		ASSERT__(Faction::all.IsEmpty());
+		globalState.rootResearch.Clear();
+		globalState.allTopics.Clear();
+
 		globalState.researchProgram = Lua::Program::Create();
 		ASSERT__(globalState.researchProgram);
 		{
@@ -238,7 +250,7 @@ namespace Objects
 
 		try
 		{
-			globalState.researchProgram->ExecuteFile("../lua/research.lua");
+			globalState.researchProgram->Execute(script->content);
 		}
 		catch (const std::exception&e)
 		{

@@ -117,6 +117,7 @@ namespace Game
 			info.numFactionsCreated = (UINT16)Objects::Faction::all.Count() + (Config::Nexus::enableAI ? 1 : 0);
 			info.roundNumber = RuntimeConfig::roundNumber;
 			info.worldID = World::worldID;
+			info.gameConfig.researchScript = Objects::ResearchState::GetScriptIdentifier();
 			info.gameConfig.gameGoal = (UINT32)RuntimeConfig::gameGoal;
 			info.gameConfig.gameFlags = 0;
 			info.gameConfig.worldDiscovery = (BYTE)World::Config::worldDiscovery;

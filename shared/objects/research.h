@@ -8,6 +8,7 @@
 #include "../uniqueID.h"
 #include "../stringTable.h"
 #include "../luaInterface.h"
+#include "../scriptCache.h"
 
 namespace Objects
 {
@@ -89,6 +90,12 @@ namespace Objects
 		bool					changed = false;
 
 		static void				StaticCreate();
+		static void				LoadProgram(const ScriptCache::PScript&script);
+
+
+		static const SHA256::HashContainer&	GetScriptIdentifier();
+
+
 		Lua::Reference			researchState;	//unknown to C++ code
 
 

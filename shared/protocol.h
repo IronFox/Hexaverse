@@ -1778,10 +1778,15 @@ namespace Protocol
 		};
 	};
 
-	NETSTRUCT3(GameConfig
+
+	typedef SHA256::HashContainer TScriptContentHash;
+
+
+	NETSTRUCT4(GameConfig
 		, NET(UINT32), gameFlags
 		, NET(BYTE), gameGoal
 		, NET(BYTE), worldDiscovery
+		, NET(TScriptContentHash), researchScript
 	)	
 
 	NETSTRUCT6(GameInfo
