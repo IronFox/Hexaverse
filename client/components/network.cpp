@@ -1327,7 +1327,7 @@ namespace Network
 			StringRef conv = url.subStringRef((int)portAt);
 			if (!convert(conv.pointer(),conv.length(),basePort))
 			{
-				throw Program::ParameterFault("Unable to parse port component '" + String(conv) + "' of '"+url+"'");
+				throw Except::Program::ParameterFault(CLOCATION, "Unable to parse port component '" + String(conv) + "' of '"+url+"'");
 			}
 		}
 		else

@@ -71,13 +71,13 @@ namespace Lua
 	public:
 		/**/		Exception(){}\
 		/**/		Exception(const char*message):Super(message) {}\
-		/**/		Exception(const globalString&string):Super(string){}\
+		/**/		Exception(const Except::globalString&string):Super(string){}\
 		/**/		Exception(const TCodeLocation&loc):Super(loc){}\
 		/**/		Exception(const TCodeLocation&loc, const char*message):Super(loc,message) {}\
-		/**/		Exception(const TCodeLocation&loc, const globalString&string):Super(loc,string){}\
+		/**/		Exception(const TCodeLocation&loc, const Except::globalString&string):Super(loc,string){}\
 		template <class C>		Exception(const IString<C>&string):Super(string){}\
 		template <class C>		Exception(const TCodeLocation&loc, const IString<C>&string):Super(loc,string){}\
-		static const Name&		StaticGetName()	{static const Name name=Name(Super::StaticGetName(),"/Lua::Exception"); return name;}
+		static const Except::Name&		StaticGetName()	{static const Except::Name name=Except::Name(Super::StaticGetName(),"/Lua::Exception"); return name;}
 		virtual	const char*		GetType()	const override					{return StaticGetName();}
 	};
 

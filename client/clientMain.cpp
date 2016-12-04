@@ -3085,7 +3085,7 @@ void ParseKeyValue(const String&key, const String&value)
 		elif (key == "udpListen")
 		{
 			if (!convert(value.c_str(), RuntimeConfig::udpListen))
-				throw Program::ParameterFault("Unable to parse udpListen='" + value + "' to bool");
+				throw Except::Program::ParameterFault(CLOCATION, "Unable to parse udpListen='" + value + "' to bool");
 		}
 		elif(key == "serverURL")
 		{
@@ -3093,11 +3093,11 @@ void ParseKeyValue(const String&key, const String&value)
 			LogEvent(EventClass::Preset::configuration, nullptr, "Server address set to "+RuntimeConfig::serverAddress.ToString());
 		}
 		else
-			throw Program::ParameterFault("`"+key+"` is not a recognized runtime parameter");
+			throw Except::Program::ParameterFault(CLOCATION, "`"+key+"` is not a recognized runtime parameter");
 	}
 	catch (const std::exception&e)
 	{
-		throw Program::ParameterFault("While parsing `" + key + "`='" + value + "': "+String(e.what()));
+		throw Except::Program::ParameterFault(CLOCATION, "While parsing `" + key + "`='" + value + "': "+String(e.what()));
 	}
 
 }
@@ -3122,7 +3122,7 @@ bool ConfigureClient(const wchar_t*commandLine)
 
 		if (!Tokenizer::tokenize(cmd, cfg, tokenList))
 		{
-			throw Program::ParameterFault("Configuration syntax violation: Unable to parse parameter line '"+cmd+"' (missing closing quotes perhaps?)");
+			throw Except::Program::ParameterFault(CLOCATION, "Configuration syntax violation: Unable to parse parameter line '"+cmd+"' (missing closing quotes perhaps?)");
 		}
 
 		String parameterName;
@@ -3133,7 +3133,7 @@ bool ConfigureClient(const wchar_t*commandLine)
 			if (*token == '=')
 			{
 				if (parameterName.IsEmpty())
-					throw Program::ParameterFault("Configuration syntax violation: Missing parameter name before '='");
+					throw Except::Program::ParameterFault(CLOCATION, "Configuration syntax violation: Missing parameter name before '='");
 				expectValue = true;
 				continue;
 			}
@@ -3146,18 +3146,18 @@ bool ConfigureClient(const wchar_t*commandLine)
 			else
 			{
 				if (parameterName.IsNotEmpty())
-					throw Program::ParameterFault("Configuration syntax violation: Found multiple tokens ('" + parameterName + "' and '" + *token + "') without intermediate '='");
+					throw Except::Program::ParameterFault(CLOCATION, "Configuration syntax violation: Found multiple tokens ('" + parameterName + "' and '" + *token + "') without intermediate '='");
 				parameterName = *token;
 				//expectValue = true;
 			}
 		}
 		if (expectValue)
 		{
-			throw Program::ParameterFault("Configuration syntax violation: Missing parameter value for '" + parameterName + "'");
+			throw Except::Program::ParameterFault(CLOCATION, "Configuration syntax violation: Missing parameter value for '" + parameterName + "'");
 		}
 		else
 			if (parameterName.IsNotEmpty())
-				throw Program::ParameterFault("Configuration syntax violation: Missing '=' and parameter value for '" + parameterName + "'");
+				throw Except::Program::ParameterFault(CLOCATION, "Configuration syntax violation: Missing '=' and parameter value for '" + parameterName + "'");
 	}
 	catch (const std::exception&e)
 	{
@@ -3170,7 +3170,7 @@ bool ConfigureClient(const wchar_t*commandLine)
 	}
 
 
-	onFatal = MyFatal;
+	Except::onFatal = MyFatal;
 	RuntimeConfig::ClientInit();
 
 	ASSERT__(FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("logs")));
@@ -3283,7 +3283,7 @@ namespace StartConfig
 
 int main( int argc, const char* argv[])
 {
-	onFatal = MyFatal;
+	Except::onFatal = MyFatal;
 	Vec::assertConsistency<float>();
 
 	
@@ -3597,7 +3597,7 @@ int main( int argc, const char* argv[])
 
 		return 0;
 	}
-	catch (const Exception&exception)
+	catch (const Except::Exception&exception)
 	{
 		FATAL__("Caught unhandled exception of type "+String(exception.GetType())+":\n"+exception.what());
 	}

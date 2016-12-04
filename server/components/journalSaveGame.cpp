@@ -1138,11 +1138,11 @@ namespace Journal
 		this->stackID = (UINT32)e.intParameters.Require(CLOCATION,"StackID");
 		const String&resName = e.stringParameters.Require(CLOCATION,"Resource");
 		if (!this->resource.Decode(resName.c_str()))
-			throw Program::DataConsistencyFault( CLOCATION,"Unknown resource '"+resName+"'");
+			throw Except::Program::DataConsistencyFault( CLOCATION,"Unknown resource '"+resName+"'");
 		this->newCoverage = (Grid::Resource::coverage_t)e.intParameters.Require(CLOCATION,"NewCoverage");
 		if (this->stackID >= Grid::LowSetup::GridType::CellCount)
 		{
-			throw Program::DataConsistencyFault( CLOCATION,"Stack ID out of range '"+String(stackID)+"'");
+			throw Except::Program::DataConsistencyFault( CLOCATION,"Stack ID out of range '"+String(stackID)+"'");
 		}
 	}
 
@@ -1162,7 +1162,7 @@ namespace Journal
 		this->stackID = (UINT32)e.intParameters.Require(CLOCATION,"StackID");
 		if (this->stackID >= Grid::LowSetup::GridType::CellCount)
 		{
-			throw Program::DataConsistencyFault( CLOCATION,"Stack ID out of range '"+String(stackID)+"'");
+			throw Except::Program::DataConsistencyFault( CLOCATION,"Stack ID out of range '"+String(stackID)+"'");
 		}
 	}
 
@@ -1183,7 +1183,7 @@ namespace Journal
 		{
 			LogEvent(EventClass::Preset::commandRejected,ex.GetCoreMessage());
 		}
-		catch (const Exception&ex)
+		catch (const Except::Exception&ex)
 		{
 			LogEvent(EventClass::Preset::error,ex.std::exception::what());
 		}
@@ -1205,7 +1205,7 @@ namespace Journal
 			else
 				LogEvent(EventClass::Preset::error, f->GetName()+": "+ ex.GetCoreMessage());
 		}
-		catch (const Exception&ex)
+		catch (const Except::Exception&ex)
 		{
 			LogEvent(EventClass::Preset::error,f->GetName()+": "+ ex.std::exception::what());
 		}
@@ -1223,7 +1223,7 @@ namespace Journal
 		{
 			LogEvent(EventClass::Preset::commandRejected,e.get(),ex.GetCoreMessage());
 		}
-		catch (const Exception&ex)
+		catch (const Except::Exception&ex)
 		{
 			LogEvent(EventClass::Preset::error,e.get(),ex.std::exception::what());
 		}
@@ -1348,10 +1348,10 @@ namespace Journal
 			foreach (this->entries,e)
 				ApplyToGlobalState(*e,true);
 		}
-		catch (const Exception&ex)
+		catch (const Except::Exception&ex)
 		{
 			if (ex.hasLocation)
-				fatal(ex.location,ex.what());
+				Except::fatal(ex.location,ex.what());
 			else
 				FATAL__(ex.what());
 		}
