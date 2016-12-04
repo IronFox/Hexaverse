@@ -1286,7 +1286,7 @@ int main( int argc, const char* argv[])
 {
 	
 
-	onFatal = MyFatal;
+	Except::onFatal = MyFatal;
 
 
 	try

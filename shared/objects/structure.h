@@ -9,7 +9,7 @@
 
 #endif
 
-#include <io/encryption.h>
+#include <io/cryptographic_hash.h>
 #include "../cast.h"
 #include "interface.h"
 #include "hibernating.h"

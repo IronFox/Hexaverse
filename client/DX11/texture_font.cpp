@@ -47,14 +47,14 @@ namespace Engine
 
 			const XML::Node*xfont = container.Find("font");
 			if (!xfont)
-				throw IO::DriveAccess::FileFormatFault(globalString("XML font file lacks <font> tag"));
+				throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, Except::globalString("XML font file lacks <font> tag"));
 
 			if (!get(*xfont,"scale",scale))
-				throw IO::DriveAccess::FileFormatFault(globalString("XML <font> attribute lacks 'scale' parameter"));
+				throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, Except::globalString("XML <font> attribute lacks 'scale' parameter"));
 			scale*=scale_;
 			String imagefile;
 			if (!xfont->Query("image",imagefile))
-				throw IO::DriveAccess::FileFormatFault(globalString("XML <font> attribute lacks 'image' parameter"));
+				throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, Except::globalString("XML <font> attribute lacks 'image' parameter"));
 			
 			Image image;
 			Magic::LoadFromFile(image,root + imagefile);
@@ -71,7 +71,7 @@ namespace Engine
 
 			String shaderfile;
 			if (!xfont->Query("shader",shaderfile))
-				throw IO::DriveAccess::FileFormatFault(globalString("XML <font> attribute lacks 'shader' parameter"));
+				throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, Except::globalString("XML <font> attribute lacks 'shader' parameter"));
 
 			colorBuffer.Create(float4());
 
@@ -94,7 +94,7 @@ namespace Engine
 
 
 			if (image.channels() != 4)
-				throw IO::DriveAccess::FileFormatFault("XML font file specifies unusable font image. Image must have 4 channels (RGBA) but has "+String(image.channels()));
+				throw Except::IO::DriveAccess::FileFormatFault("XML font file specifies unusable font image. Image must have 4 channels (RGBA) but has "+String(image.channels()));
 
 	
 			height = 0;
