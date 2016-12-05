@@ -1953,6 +1953,8 @@ namespace Protocol
 			FactionContinuedRound,		// s2c: TUniqueID
 			ResearchState,		// s2c : ResearchState
 			SelectResearch,		// c2s : SelectResearch -> s2c : SelectResearch
+			RequestResource,	// c2s : NET(SHA256::HashContainer) -> s2c : ResourceData
+			ResourceData,		// s2c : ResourceData
 
 			LockEMPZones,		// s2c : UINT16
 			UplinkBandwidth,	// s2c : int, can be negative to indicate it's disabled

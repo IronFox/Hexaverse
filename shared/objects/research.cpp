@@ -219,12 +219,29 @@ namespace Objects
 
 	/*static*/ void		ResearchState::StaticCreate()
 	{
-		LoadProgram(ScriptCache::Fetch("../lua/research.lua"));
+		#ifndef CLIENT
+			LoadProgram(ScriptCache::Fetch("../lua/research.lua"));
+		#endif
 	}
+
+	/*static*/ bool		ResearchState::SetScriptIdentifier(const TScriptID&id)
+	{
+		ScriptCache::PScript script = ScriptCache::Lookup(id);
+		if (script)
+		{
+			LoadProgram(script);
+			return true;
+		}
+		return false;
+
+		
+	
+	}
+
 
 	/*static*/ void		ResearchState::LoadProgram(const ScriptCache::PScript&script)
 	{
-		ASSERT__(Faction::all.IsEmpty());
+		globalState.script = script;
 		globalState.rootResearch.Clear();
 		globalState.allTopics.Clear();
 
@@ -294,6 +311,13 @@ namespace Objects
 			InitVehicleBase(**base);
 
 
+		ForeachFaction([](const PFaction&f)
+		{
+			f->researchState.researchState = globalState.stateConstructor();
+			if (f->researchState.serialData.IsNotEmpty())
+				f->researchState.Import(f->researchState.serialData);
+		});
+
 		//globalState.researchProgram.reset();
 	}
 
@@ -354,6 +378,11 @@ namespace Objects
 
 	void					ResearchState::Import(const ArrayData<BYTE>&serializedState)
 	{
+		serialData = serializedState;
+		if (!globalState.researchProgram)
+		{
+			return;
+		}
 		try
 		{
 			Lua::Reference deserialized = globalState.researchProgram->DeserializeToReference(ByteReadStream(serializedState));

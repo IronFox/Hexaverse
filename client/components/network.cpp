@@ -39,6 +39,7 @@ namespace Network
 
 	TUniqueID		myID,serverID,worldID;
 	UINT32				gameFlags = 0;
+	SHA256::HashContainer	requestedResearchScript;
 
 	CryptographicID	activeToken;
 	String			myIDString,serverIDString,worldIDString,activeTokenString;
@@ -659,6 +660,13 @@ namespace Network
 			myIDString = myID.ToString();
 
 			Network::gameFlags = cr.info.gameConfig.gameFlags;
+			if (!Objects::ResearchState::SetScriptIdentifier(cr.info.gameConfig.researchScript))
+			{
+				Network::requestedResearchScript = cr.info.gameConfig.researchScript;
+				LogEvent(EventClass::Preset::network,"Research script '"+Bin2Str::ConvertPOD(cr.info.gameConfig.researchScript.value)+"' is not locally available. Asking server...");
+				Network::Channels::requestResource.SendTo(client,cr.info.gameConfig.researchScript);
+			}
+
 			RuntimeConfig::empZones = (Network::gameFlags & Protocol::GameFlag::EMPZones) != 0;
 			RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(cr.info.gameConfig.gameGoal);
 			RuntimeConfig::phase = RuntimeConfig::Phase::Reinterpret(cr.info.activePhase);
@@ -1034,6 +1042,7 @@ namespace Network
 		TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>					changeMyName;
 		TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>					chatMessage;
 		TCP::ObjectSender<Protocol::GameConfig,Protocol::ChannelID::GameConfig>						gameConfig;
+		TCP::ObjectSender<NET(SHA256::HashContainer), Protocol::ChannelID::RequestResource>			requestResource;
 
 			//	,			//c2s: NET(bool) -> NET(bool)
 			//SetFactionId,		//s2c: NET(TUniqueID)

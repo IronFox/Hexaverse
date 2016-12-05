@@ -70,7 +70,7 @@ namespace Objects
 		typedef std::function<float(float)>	ExtraModulationFunction;
 
 
-
+		typedef const SHA256::HashContainer&	TScriptID;
 
 
 
@@ -93,15 +93,15 @@ namespace Objects
 		static void				LoadProgram(const ScriptCache::PScript&script);
 
 
-		static const SHA256::HashContainer&	GetScriptIdentifier();
 
 
 		Lua::Reference			researchState;	//unknown to C++ code
-
+		Array<BYTE>				serialData;
 
 
 		struct GlobalState
 		{
+			ScriptCache::PScript	script;
 			Buffer0<PResearchTopic>	rootResearch,allTopics;
 			Lua::PProgram		researchProgram;
 			Lua::Function<Lua::Reference()>	stateConstructor;
@@ -110,6 +110,8 @@ namespace Objects
 		};
 		static GlobalState		globalState;
 
+		static const TScriptID&	GetScriptIdentifier()	{return globalState.script->identifier;}
+		static bool				SetScriptIdentifier(const TScriptID&);
 
 
 		/**/					ResearchState(const TUniqueID&id, bool isNexus);

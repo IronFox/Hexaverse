@@ -228,6 +228,7 @@ namespace Network
 		extern TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>				changeMyName;
 		extern TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>				chatMessage;
 		extern TCP::ObjectSender<Protocol::GameConfig,Protocol::ChannelID::GameConfig>					gameConfig;
+		extern TCP::ObjectSender<NET(SHA256::HashContainer), Protocol::ChannelID::RequestResource>		requestResource;
 
 		
 	}
