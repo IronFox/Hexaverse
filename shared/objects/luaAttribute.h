@@ -32,6 +32,12 @@ namespace Objects
 				constOverride.constValue = value;
 				constOverride.isSet = true;
 			}
+			void		Clear()
+			{
+				constOverride.isSet = false;
+				luaGetValue.Clear();
+				luaDescribeValue.Clear();
+			}
 
 			T			GetValue(const Lua::Reference&researchState)	const
 			{
