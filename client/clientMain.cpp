@@ -668,11 +668,13 @@ namespace ApplicationInterface
 
 	void	SignalResearch(const Objects::PResearchTopic&topic)
 	{
-		Network::Channels::selectResearch.SendTo(Network::client,Protocol::SelectResearch(topic->serialIndex));
-		if (Objects::selectedEntity && Objects::selectedEntity->IsWorkingStructure() && !To<Objects::WorkingStructure>::Cast( Objects::selectedEntity)->IsEnabled())
-		{
-			Network::Channels::enableStructure.SendTo(Network::client,Protocol::EnableStructure(Objects::selectedEntity->id,true));
-		}
+		#ifdef HAS_WINDOW
+			Network::Channels::selectResearch.SendTo(Network::client,Protocol::SelectResearch(topic->serialIndex));
+			if (Objects::selectedEntity && Objects::selectedEntity->IsWorkingStructure() && !To<Objects::WorkingStructure>::Cast( Objects::selectedEntity)->IsEnabled())
+			{
+				Network::Channels::enableStructure.SendTo(Network::client,Protocol::EnableStructure(Objects::selectedEntity->id,true));
+			}
+		#endif
 	}
 
 
