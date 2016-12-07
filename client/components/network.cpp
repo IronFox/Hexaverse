@@ -56,7 +56,7 @@ namespace Network
 	bool			newRoundRequested = false;
 
 
-	void			ConnectTo(const ServerAddress&addr)
+	void			ConnectTo(const ServerAddress&addr, const Protocol::ServerInfo&info)
 	{
 		RuntimeConfig::phase = RuntimeConfig::Phase::Uninitialized;
 		gameHasBegun = false;
@@ -65,6 +65,15 @@ namespace Network
 		#ifdef HAS_WINDOW
 			GUI::SignalSituationChange();
 		#endif
+
+		serverID = info.hostInfo.value.hostID;
+		serverIDString = Network::serverID.ToNiceString();
+
+		worldID = info.gameInfo.worldID;
+		worldIDString = worldID.ToNiceString();
+		gameFlags = info.gameInfo.gameConfig.gameFlags;
+		RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(info.gameInfo.gameConfig.gameGoal);
+		requestedResearchScript = info.gameInfo.gameConfig.researchScript;
 	}
 
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id)
@@ -1730,11 +1739,7 @@ bool		Network::ConnectToConfiguredServerIfAvailable()
 				}
 			srv->selected = true;
 
-			Network::serverID = srv->id;
-			Network::serverIDString = Network::serverID.ToNiceString();
-			Network::worldID = srv->info.gameInfo.worldID;
-			Network::worldIDString = Network::worldID.ToNiceString();
-			Network::ConnectTo(srv->addresses[best].first);
+			Network::ConnectTo(srv->addresses[best].first,srv->info);
 
 			lastAttempt = timer.Now();
 			delayCounter = 0;
