@@ -72,7 +72,7 @@ DECLARE_DEFAULT_STRATEGY(Network::ServerAddress,Adopt);
 namespace Network
 {
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id);
-	void					ConnectTo(const ServerAddress&);
+	void					ConnectTo(const ServerAddress&, const Protocol::ServerInfo&);
 
 	void SaveWorldAccessTokens();
 
