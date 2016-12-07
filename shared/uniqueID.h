@@ -44,6 +44,12 @@ namespace Bin2Str
 			_ByteToHex(out,((const BYTE*)data)[i]);
 		return result;
 	}
+
+	template <typename T>
+		inline String ConvertPOD(const T&data, size_t maxBytes=2)
+		{
+			return Convert(&data,vmin(maxBytes,sizeof(T)));
+		}
 	inline String Convert(const Array<BYTE>&v)
 	{
 		return Convert(v.pointer(),v.size());
