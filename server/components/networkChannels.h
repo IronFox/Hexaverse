@@ -29,7 +29,8 @@ namespace Receiver
 	void	SelectResearch(Protocol::SelectResearch&, TCP::Peer&peer);
 	void	ChatMessage(Package::NetString<256>&, TCP::Peer&peer);
 	void	PlanetConfig(Grid::ExtendedPlanetConfig&, TCP::Peer&peer);
-	void		GameConfig(Protocol::GameConfig&, TCP::Peer&peer);
+	void	GameConfig(Protocol::GameConfig&, TCP::Peer&peer);
+	void	RequestResource(Protocol::ResourceID&, TCP::Peer&peer);
 
 	/**
 	Handler function to process network signals (packages without payloads)
@@ -45,7 +46,6 @@ namespace Receiver
 	*/
 	void		OnIgnorePackage(UINT32 channelId, UINT32 packageSize, TCP::Peer&peer);
 	void		OnDeserializationFailed(UINT32 channel, TCP::Peer&origin);
-
 
 
 }
@@ -90,6 +90,8 @@ namespace Channels
 	extern TCP::Channel<Package::NetString<256>, FactionLevel, Protocol::ChannelID::ChatMessage>				chatMessage;
 	extern TCP::Channel<Grid::ExtendedPlanetConfig, Configurator, Protocol::ChannelID::PlanetConfig>			planetConfig;
 	extern TCP::Channel<Protocol::GameConfig, Configurator, Protocol::ChannelID::GameConfig>					gameConfig;
+	extern TCP::Channel<Protocol::ResourceID, PreFaction, Protocol::ChannelID::RequestResource>					requestResource;
+
 
 	extern TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>				clientFactionResponse;
 	extern TCP::ObjectSender<Protocol::Marker, Protocol::ChannelID::MarkerCreationFailedLimitReached>			markerCreationFailedLimitReached;
@@ -116,6 +118,7 @@ namespace Channels
 	extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionOffline>						factionOffline;
 	extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionRequestedNewRound>				factionRequestedNewRound;
 	extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionContinuedRound>				factionContinuedRound;
+	extern TCP::ObjectSender<Protocol::ResourceData,Protocol::ChannelID::ResourceData>					resourceData;
 	
 	extern TCP::ObjectSender<NET(UINT16), Protocol::ChannelID::LockEMPZones>							lockEmpZones;
 	#ifndef NO_HIBERNATION

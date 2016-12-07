@@ -219,24 +219,20 @@ namespace Objects
 
 	/*static*/ void		ResearchState::StaticCreate()
 	{
+		structureTables.SetSize(structurePrototypes.Count());
+		for (index_t i = 0; i < structurePrototypes.Count(); i++)
+		{
+			const PStructure&s = structurePrototypes[i];
+			BaseAttributeTable&t = structureTables[i];
+			s->DefineAttributeTable(&t);
+		}
 		#ifndef CLIENT
-			LoadProgram(ScriptCache::Fetch("../lua/research.lua"));
+			LoadProgram(ScriptCache::Load("../lua/research.lua"));
 		#endif
 	}
 
-	/*static*/ bool		ResearchState::SetScriptIdentifier(const TScriptID&id)
-	{
-		ScriptCache::PScript script = ScriptCache::Lookup(id);
-		if (script)
-		{
-			LoadProgram(script);
-			return true;
-		}
-		return false;
 
-		
 	
-	}
 
 
 	/*static*/ void		ResearchState::LoadProgram(const ScriptCache::PScript&script)
@@ -296,13 +292,11 @@ namespace Objects
 		}
 
 		
-		structureTables.SetSize(structurePrototypes.Count());
 		for (index_t i = 0; i < structurePrototypes.Count(); i++)
 		{
 			const PStructure&s = structurePrototypes[i];
 			BaseAttributeTable&t = structureTables[i];
 			InitTable(s->GetTypeName(),t);
-			s->DefineAttributeTable(&t);
 		}
 
 		foreach (Component::allTurretComponents,turret)
@@ -325,8 +319,8 @@ namespace Objects
 	{
 		factionID = id;
 		factionIsNexus = isNexus;
-
-		researchState = globalState.stateConstructor();
+		if (globalState.script)
+			researchState = globalState.stateConstructor();
 
 	}
 

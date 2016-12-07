@@ -1779,14 +1779,14 @@ namespace Protocol
 	};
 
 
-	typedef SHA256::HashContainer TScriptContentHash;
+	typedef NET(SHA256::HashContainer) ResourceID;
 
 
 	NETSTRUCT4(GameConfig
 		, NET(UINT32), gameFlags
 		, NET(BYTE), gameGoal
 		, NET(BYTE), worldDiscovery
-		, NET(TScriptContentHash), researchScript
+		, ResourceID, researchScript
 	)	
 
 	NETSTRUCT6(GameInfo
@@ -1873,6 +1873,11 @@ namespace Protocol
 		, NETA(BYTE), serializedData
 	)
 
+	NETSTRUCT2(ResourceData
+		, ResourceID, id
+		, NETA(BYTE), data
+	)
+
 
 	namespace ChannelID
 	{
@@ -1953,7 +1958,7 @@ namespace Protocol
 			FactionContinuedRound,		// s2c: TUniqueID
 			ResearchState,		// s2c : ResearchState
 			SelectResearch,		// c2s : SelectResearch -> s2c : SelectResearch
-			RequestResource,	// c2s : NET(SHA256::HashContainer) -> s2c : ResourceData
+			RequestResource,	// c2s : ResourceID -> s2c : ResourceData
 			ResourceData,		// s2c : ResourceData
 
 			LockEMPZones,		// s2c : UINT16

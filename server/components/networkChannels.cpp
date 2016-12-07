@@ -44,6 +44,8 @@ namespace Channels
 	TCP::Channel<Package::NetString<256>, FactionLevel, Protocol::ChannelID::ChatMessage>					chatMessage(Receiver::ChatMessage);
 	TCP::Channel<Grid::ExtendedPlanetConfig, Configurator, Protocol::ChannelID::PlanetConfig>				planetConfig(Receiver::PlanetConfig);
 	TCP::Channel<Protocol::GameConfig, Configurator, Protocol::ChannelID::GameConfig>						gameConfig(Receiver::GameConfig);
+	TCP::Channel<Protocol::ResourceID, PreFaction, Protocol::ChannelID::RequestResource>				requestResource(Receiver::RequestResource);
+	
 
 	TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>			clientFactionResponse;
 	TCP::ObjectSender<Protocol::Marker, Protocol::ChannelID::MarkerCreationFailedLimitReached>		markerCreationFailedLimitReached;
@@ -70,6 +72,7 @@ namespace Channels
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionOffline>							factionOffline;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionRequestedNewRound>				factionRequestedNewRound;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionContinuedRound>					factionContinuedRound;
+	TCP::ObjectSender<Protocol::ResourceData,Protocol::ChannelID::ResourceData>						resourceData;
 
 	TCP::ObjectSender<NET(UINT16), Protocol::ChannelID::LockEMPZones>								lockEmpZones;
 	#ifndef NO_HIBERNATION
@@ -904,6 +907,23 @@ namespace Receiver
 		else
 			LogEvent(EventClass::Preset::commandRejected,peer,"Configuration mode is not active. User should not have this level");
 
+	}
+
+	void	RequestResource(Protocol::ResourceID&id, TCP::Peer&peer)
+	{
+		LogEvent(EventClass::Preset::uncommon,peer,"Received resource request for resource "+Bin2Str::ConvertPOD(id.value));
+
+		ScriptCache::PScript script = ScriptCache::Lookup(id);
+		if (script)
+		{
+			LogEvent(EventClass::Preset::uncommon,peer,"Resource "+Bin2Str::ConvertPOD(id.value)+" is script. Dispatching "+String(script->compressed.Count())+" bytes");
+			Protocol::ResourceData data;
+			data.data = script->compressed;	//stupid copy...
+			data.id = id;
+			Channels::resourceData.SendTo(peer,data);
+			return;
+		}
+		LogEvent(EventClass::Preset::uncommon,peer,"Resource "+Bin2Str::ConvertPOD(id.value)+" is unknown");
 	}
 
 	

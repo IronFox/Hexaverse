@@ -19,9 +19,11 @@ namespace ScriptCache
 	};
 	typedef std::shared_ptr<Script>	PScript;
 
-
-	PScript		Fetch(const PathString&);
+	/**
+	Loads the specified script file. Returns cached data if the specified file is requested multiple times
+	*/
+	PScript		Load(const PathString&);
 	PScript		Lookup(const SHA256::HashContainer&id);
-
+	PScript		DefineFromFleetingCompressedData(const SHA256::HashContainer&id,ArrayData<BYTE>&data);
 
 }

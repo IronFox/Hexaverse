@@ -165,6 +165,7 @@ namespace Network
 		void	FactionContinuedRound(NET(TUniqueID)&);
 		void	LockEmpZones(NET(UINT16)&);
 		void	PlanetConfig(Grid::ExtendedPlanetConfig&);
+		void	ResourceData(Protocol::ResourceData&);
 	}
 
 
@@ -207,6 +208,7 @@ namespace Network
 		extern TCP::Channel<Protocol::OperationLacksResources, 0, Protocol::ChannelID::OperationLacksResources>			operationLacksResources;
 		extern TCP::Channel<Protocol::ResearchState, 0, Protocol::ChannelID::ResearchState>				researchState;
 		extern TCP::Channel<Protocol::SelectResearch, 0, Protocol::ChannelID::SelectResearch>			selectResearch;
+		extern TCP::Channel<Protocol::ResourceData,0,Protocol::ChannelID::ResourceData>					resourceData;
 
 
 		extern TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;
@@ -228,7 +230,7 @@ namespace Network
 		extern TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>				changeMyName;
 		extern TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>				chatMessage;
 		extern TCP::ObjectSender<Protocol::GameConfig,Protocol::ChannelID::GameConfig>					gameConfig;
-		extern TCP::ObjectSender<NET(SHA256::HashContainer), Protocol::ChannelID::RequestResource>		requestResource;
+		extern TCP::ObjectSender<Protocol::ResourceID, Protocol::ChannelID::RequestResource>			requestResource;
 
 		
 	}

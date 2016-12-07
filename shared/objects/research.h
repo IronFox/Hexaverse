@@ -111,7 +111,6 @@ namespace Objects
 		static GlobalState		globalState;
 
 		static const TScriptID&	GetScriptIdentifier()	{return globalState.script->identifier;}
-		static bool				SetScriptIdentifier(const TScriptID&);
 
 
 		/**/					ResearchState(const TUniqueID&id, bool isNexus);

@@ -12,6 +12,7 @@
 #include "clientRuntimeConfig.h"
 #include "timelapse.h"
 #include "configurationMode.h"
+#include <scriptCache.h>
 
 
 //#define DEBUG_SERVER_LIST	//enable to generate very long artificial server list
@@ -409,6 +410,15 @@ namespace Network
 				#ifdef HAS_WINDOW
 					Dialog::CheckServersAreShown(false);
 				#endif
+
+				ScriptCache::PScript script = ScriptCache::Lookup(Network::requestedResearchScript);
+				if (script)
+					Objects::ResearchState::LoadProgram(script);
+				else
+				{
+					LogEvent(EventClass::Preset::network,"Research script '"+Bin2Str::ConvertPOD(Network::requestedResearchScript)+"' is not locally available. Asking server...");
+					Network::Channels::requestResource.SendTo(client,Network::requestedResearchScript);
+				}
 			}
 			else
 			{
@@ -669,12 +679,6 @@ namespace Network
 			myIDString = myID.ToString();
 
 			Network::gameFlags = cr.info.gameConfig.gameFlags;
-			if (!Objects::ResearchState::SetScriptIdentifier(cr.info.gameConfig.researchScript))
-			{
-				Network::requestedResearchScript = cr.info.gameConfig.researchScript;
-				LogEvent(EventClass::Preset::network,"Research script '"+Bin2Str::ConvertPOD(cr.info.gameConfig.researchScript.value)+"' is not locally available. Asking server...");
-				Network::Channels::requestResource.SendTo(client,cr.info.gameConfig.researchScript);
-			}
 
 			RuntimeConfig::empZones = (Network::gameFlags & Protocol::GameFlag::EMPZones) != 0;
 			RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(cr.info.gameConfig.gameGoal);
@@ -983,8 +987,23 @@ namespace Network
 					UI::RefreshButtonState();
 				#endif
 			}
-
 		}
+
+		void	ResourceData(Protocol::ResourceData&dat)
+		{
+			LogEvent(EventClass::Preset::uncommon,"Received resource "+Bin2Str::ConvertPOD(dat.id.value));
+			if (dat.id == requestedResearchScript)
+			{
+				LogEvent(EventClass::Preset::uncommon,"Resource "+Bin2Str::ConvertPOD(dat.id.value)+" is research script");
+				ScriptCache::PScript script = ScriptCache::DefineFromFleetingCompressedData(dat.id, dat.data);
+				if (script)
+				{
+					Objects::ResearchState::LoadProgram(script);
+				}
+			}
+			
+		}
+
 	}
 
 
@@ -1029,6 +1048,7 @@ namespace Network
 		TCP::Channel<Protocol::OperationLacksResources, 0, Protocol::ChannelID::OperationLacksResources>			operationLacksResources(Receiver::OperationLacksResources);
 		TCP::Channel<Protocol::ResearchState, 0, Protocol::ChannelID::ResearchState>					researchState(Receiver::ResearchState);
 		TCP::Channel<Protocol::SelectResearch, 0, Protocol::ChannelID::SelectResearch>				selectResearch(Receiver::SelectResearch);
+		TCP::Channel<Protocol::ResourceData,0,Protocol::ChannelID::ResourceData>					resourceData(Receiver::ResourceData);
 
 
 
@@ -1051,7 +1071,7 @@ namespace Network
 		TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>					changeMyName;
 		TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>					chatMessage;
 		TCP::ObjectSender<Protocol::GameConfig,Protocol::ChannelID::GameConfig>						gameConfig;
-		TCP::ObjectSender<NET(SHA256::HashContainer), Protocol::ChannelID::RequestResource>			requestResource;
+		TCP::ObjectSender<Protocol::ResourceID, Protocol::ChannelID::RequestResource>				requestResource;
 
 			//	,			//c2s: NET(bool) -> NET(bool)
 			//SetFactionId,		//s2c: NET(TUniqueID)
@@ -1279,6 +1299,8 @@ namespace Network
 		client.InstallChannel(Channels::unitLimits);
 		client.InstallChannel(Channels::planetConfig);
 		client.InstallChannel(Channels::operationLacksResources);
+		client.InstallChannel(Channels::resourceData);
+
 
 		client.OpenSignalChannel(Protocol::ChannelID::Pong,0);
 		client.OpenSignalChannel(Protocol::ChannelID::BeginGame,0);
