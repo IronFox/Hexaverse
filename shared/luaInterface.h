@@ -520,6 +520,12 @@ namespace Lua
 		virtual		~Reference() {};
 
 		/**
+		Clears any locally held Lua references
+		*/
+		void		Clear()	{prog.reset(); refID.reset();}
+
+
+		/**
 		Updates the local reference to the top-most entry of the current lua stack associated with the specified program.
 		The stack remains unchanged by the operation (the referenced element remains in the stack)
 		The method fails if the given program is empty, its stack does not contain the addressed element, or the addressed element is nil.
