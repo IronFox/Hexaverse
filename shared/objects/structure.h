@@ -1708,6 +1708,7 @@ namespace Objects
 		virtual bool				NextTaskIsAttack() const override {return health > 0 && attackQueue.IsNotEmpty();}
 		virtual float				GetAttackActionLeft() const override {return attackActionLeft;};
 		virtual float				GetFlatAttackRange() const override;
+		virtual String				DescribeFlatAttackRange() const override;
 		virtual bool				HasAmmoForShot() override;
 		#ifndef CLIENT
 			virtual void			Attack(float&)	override;

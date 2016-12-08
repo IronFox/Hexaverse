@@ -147,6 +147,7 @@ namespace Objects
 			index_t				versionCounter=InvalidIndex;
 			T					cached;
 			T					GetEMPModified(const WorldEntity&e,const LuaAttribute<T>&source,const LuaAttribute<T>&bonus = LuaAttribute<T>());
+			String				DescribeEMPModified(const WorldEntity&e,const LuaAttribute<T>&source,const LuaAttribute<T>&bonus = LuaAttribute<T>());
 			template <typename T2>
 				T				Get(const Lua::Reference&researchState, const LuaAttribute<T>&source, const LuaAttribute<T2>&multiplier, T minimum);
 			bool				IsCurrent() const {return versionCounter == Super::versionCounter;}
@@ -620,7 +621,11 @@ namespace Objects
 			}
 			return cached;
 		}
-
+	template <typename T>
+		String	LuaAttributeCache<T>::DescribeEMPModified(const WorldEntity&e,const LuaAttribute<T>&source,const LuaAttribute<T>&bonus /*= LuaAttribute<T>()*/)
+		{
+			return source.Describe(e.GetResearchState());	//emp later
+		}
 	template <typename T>
 		template <typename T2>
 			T	LuaAttributeCache<T>::Get(const Lua::Reference&researchState, const LuaAttribute<T>&source, const LuaAttribute<T2>&multiplier, T minimum)

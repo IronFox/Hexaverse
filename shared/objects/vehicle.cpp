@@ -187,6 +187,11 @@ namespace Objects
 		return String(GetMovementStepsPerRound());
 	}
 
+	/*virtual override*/ String			Vehicle::DescribeFlatAttackRange() const
+	{
+		return cache.horizontalAttackRange.DescribeEMPModified(*this,turret->horizontalAttackRange,base->turretRangeModifier);
+	}
+
 	
 	/*virtual override*/ float			Vehicle::GetFlatAttackRange() const
 	{

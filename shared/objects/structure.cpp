@@ -878,6 +878,13 @@ namespace Objects
 		//EMPModify(turret->GetHorizontalAttackRange(owner,2.f),2.f);
 	}
 
+	/*virtual override*/ String			Tower::DescribeFlatAttackRange() const
+	{
+		if (!turret->CanAttack())
+			return 0.f;
+		return cache.horizontalAttackRange.DescribeEMPModified(*this,turret->horizontalAttackRange,Objects::LuaAttribute<float>(2.f));
+		//EMPModify(turret->GetHorizontalAttackRange(owner,2.f),2.f);
+	}
 
 
 

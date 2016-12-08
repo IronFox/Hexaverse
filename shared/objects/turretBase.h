@@ -107,6 +107,7 @@ namespace Objects
 		int						CountPossibleAttacks() const {return GetAttacksPerRound() * GetAttackActionLeft();}
 		virtual bool			NextTaskIsAttack() const = 0;
 		virtual float			GetFlatAttackRange() const = 0;
+		virtual String			DescribeFlatAttackRange() const = 0;
 
 		/**
 		Checks if there are enough resources available for a single shot.

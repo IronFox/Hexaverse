@@ -178,6 +178,7 @@ namespace Objects
 
 		//TurretBase overrides:
 		virtual float			GetFlatAttackRange() const override;
+		virtual String			DescribeFlatAttackRange() const override;
 
 		//Hibernating overrides:
 		#ifndef NO_HIBERNATION
