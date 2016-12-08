@@ -3351,7 +3351,7 @@ int main( int argc, const char* argv[])
 			storageThread.start();
 
 			Engine::CreateDisplay(display,
-				RuntimeConfig::ConfigDir(),
+				RuntimeConfig::ConfigFile("window"),
 				RuntimeConfig::aiMode ? "AI":
 				PRODUCT_NAME
 				#ifdef _DEBUG
