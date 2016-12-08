@@ -306,7 +306,7 @@ function MakeUnlockResearchable(researchGroup, typeTable, typeName, limit)
 		end
 	}
 	
-	Game.CreateResearch(researchGroup,typeName,nil,
+	return Game.CreateResearch(researchGroup,typeName,nil,
 		function(state,progress) state.research[key].progress = state.research[key].progress + progress end,
 		function(state) return state.research[key].progress end, researchables[key].limit
 		);
@@ -314,7 +314,7 @@ function MakeUnlockResearchable(researchGroup, typeTable, typeName, limit)
 end
 
 
-function MakeImproveResearchable(researchGroup, typeTable, typeName, attributeName)
+function MakeImproveResearchable(researchGroup, researchDependency, typeTable, typeName, attributeName)
 	local key = 'improve'..typeName
 	local typeHandle = typeTable[typeName]
 	--at this point we assume that typeHandle[attributeName] is still a simple variable. we can add a check here but then ResearchEntry.NewFloat would get really messy
@@ -339,9 +339,9 @@ function MakeImproveResearchable(researchGroup, typeTable, typeName, attributeNa
 		end
 	}
 	
-	Game.CreateResearch(researchGroup,typeName,nil,
+	return Game.CreateResearch(researchGroup,typeName,nil,
 		function(state,progress) state.research[key].progress = state.research[key].progress + progress end,
-		function(state) return state.research[key].progress end, -1
+		function(state) return state.research[key].progress end, -1, researchDependency
 		);
 	
 end
@@ -435,9 +435,9 @@ attackRangeGroup = Game.CreateResearch(improveGroup,'Attack Range','Research_Att
 
 
 
-MakeUnlockResearchable(unlockGroup, TurretConfig, 'Artillery',20)
+artilleryUnlock = MakeUnlockResearchable(unlockGroup, TurretConfig, 'Artillery',20)
 MakeUnlockResearchable(unlockGroup, StructureConfig, 'ReactorCore',20)
 
-MakeImproveResearchable(attackRangeGroup, TurretConfig, 'Artillery', 'HorizontalAttackRange')
+MakeImproveResearchable(attackRangeGroup, artilleryUnlock, TurretConfig, 'Artillery', 'HorizontalAttackRange')
 
 
