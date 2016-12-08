@@ -125,11 +125,17 @@ namespace Objects
 
 		//if (ref || (base && turret))
 		{
-			outResult << topic->name;
+			PResearchTopic p = topic->parent.lock();
+			if (p)
+				outResult << p->name+":"+topic->name;
+			else
+				outResult << topic->name;
 			String dependentOn;
 			//else
 			{
-				if (current < max)
+				if (max < 0)
+					outResult << "Research progress "+String(current);
+				elif (current < max)
 				{
 					outResult << "Research progress "+String(current) + "/"+String(max);
 				}
