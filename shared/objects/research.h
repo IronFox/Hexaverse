@@ -45,8 +45,9 @@ namespace Objects
 		bool					IsGroup() const {return maxProgress == 0;}
 		bool					ResearchCompleted(const Lua::Reference&researchState) const
 		{
-			return currentProgress(researchState) >= maxProgress;
+			return maxProgress > 0 && currentProgress(researchState) >= maxProgress;
 		}
+
 		bool					CanResearch(const Lua::Reference&researchState) const
 		{
 			if (IsGroup())
@@ -121,7 +122,7 @@ namespace Objects
 
 		bool					CheckUnlocked(const Component::Base&base, String&errorOut) const	{return true;}
 		bool					CheckUnlocked(ConstName, String&errorOut) const	{return true;}
-		bool					IsIdle() const {return !GetActiveTopic();}
+		bool					IsIdle() const {PResearchTopic t = GetActiveTopic(); return !t || t->ResearchCompleted(researchState);}
 		PResearchTopic			GetActiveTopic() const	{return activeResearch;}
 		index_t					GetActiveTopicIndex() const {return activeResearch ? activeResearch->serialIndex : InvalidIndex;}
 		bool					SetActiveTopic(const PResearchTopic&active);
