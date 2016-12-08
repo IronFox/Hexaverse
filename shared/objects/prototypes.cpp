@@ -108,6 +108,14 @@ namespace Objects
 			foreach (structurePrototypes,p)
 				if ((*p)->GetTypeName() == structureTypeName)
 					return *p;
+			foreach (structurePrototypes,p)
+				if ((*p)->GetTypeName().find(' '))
+				{
+					String pn = (*p)->GetTypeName();
+					pn.eraseCharacter(' ');
+					if (pn == structureTypeName)
+						return *p;
+				}
 		}
 		return PStructure();
 	}
