@@ -1755,7 +1755,8 @@ namespace Journal
 
 	/*virtual override*/ void Round::SelectResearch::Execute(const Objects::PFaction&f) const
 	{
-		f->researchState.SetActiveTopic(topic);
+		if (!f->researchState.SetActiveTopic(topic))
+			throw RoundException(CLOCATION, "Unable to set '"+topic->name+"' as active research topic. Is this a group?");
 		//f->researchState.currentResearch = target;
 		//f->researchState.currentResearchAttribute = attribute;
 		Network::PClient cl;
