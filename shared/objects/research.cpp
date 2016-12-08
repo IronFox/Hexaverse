@@ -57,7 +57,7 @@ namespace Objects
 
 		if (dependency)
 		{
-			if (parent->currentProgress.IsEmpty())
+			if (dependency->currentProgress.IsEmpty())
 			{
 				throw Lua::Exception("Trying to register research dependency of '"+name+"' to unresearchable topic '"+dependency->name+"'");
 			}
