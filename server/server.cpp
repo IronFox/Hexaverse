@@ -1294,7 +1294,7 @@ int main( int argc, const char* argv[])
 
 		RuntimeConfig::InitConfigDir("server");
 		ASSERT__(FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("logs")));
-		Logging::Begin(RuntimeConfig::ConfigFile(PathString("logs/server_"+Logging::TimeStamp(true)+".log")));
+		Logging::Begin(RuntimeConfig::ConfigFile(PathString("logs/server "+Logging::TimeStamp(true)+".log")));
 		LogEvent(EventSignificance::Uncommon,nullptr,"Starting server v" PRODUCT_VERSION);
 
 

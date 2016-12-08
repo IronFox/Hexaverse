@@ -3154,7 +3154,7 @@ bool ConfigureClient(const wchar_t*commandLine)
 	RuntimeConfig::ClientInit();
 
 	ASSERT__(FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("logs")));
-	Logging::Begin(RuntimeConfig::ConfigFile(PathString("logs/client_"+Logging::TimeStamp(true)+".log")));
+	Logging::Begin(RuntimeConfig::ConfigFile(PathString("logs/client "+Logging::TimeStamp(true)+".log")));
 
 	//(PRODUCT_NAME".log",true,true)
 	return true;
