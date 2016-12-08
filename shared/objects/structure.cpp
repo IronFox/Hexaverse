@@ -1927,9 +1927,16 @@ namespace Objects
 			return rs;
 		}
 
+		/*static*/ count_t			Laboratory::researchCommandOffset = InvalidIndex;
+
+
 
 		/*static*/	void Laboratory::ConfigureResearchButtons()
 		{
+			if (researchCommandOffset == InvalidIndex)
+				researchCommandOffset = commands.Count();
+			else
+				commands.Truncate(researchCommandOffset);
 			foreach (ResearchState::globalState.rootResearch,res)
 			{
 				commands.Add( BuildCommand(*res) );

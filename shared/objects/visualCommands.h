@@ -300,6 +300,8 @@ namespace Objects
 		PBaseCommand	Add(const int2&coords, bool relativeCoords, BaseCommand*newCommand)	{ return Add(coords, relativeCoords, PBaseCommand(newCommand));}
 		PBaseCommand	Add(const int2&coords, bool relativeCoords, const PBaseCommand&newCommand);
 		const Member&	GetLast() const {return members.last();}
+		void			Truncate(count_t numMembers)	{members.Truncate(numMembers);}
+		count_t			Count() const {return members.Count();}
 		
 		index_t			Find(const PBaseCommand&) const;
 	};

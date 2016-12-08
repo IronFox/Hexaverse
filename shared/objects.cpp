@@ -237,7 +237,6 @@ namespace Objects
 		ResearchState::StaticCreate();	//all prototypes good. time to set the tables
 
 		#ifdef HAS_WINDOW
-			Laboratory::ConfigureResearchButtons();
 			foreach (Component::vehicleTurretComponents,tc)
 				(*tc)->VisitAllCommands([](const int2&,const PBaseCommand&cmd){cmd->RasterizeImage();},true);
 			foreach (Component::baseComponents,bc)

@@ -312,6 +312,9 @@ namespace Objects
 				f->researchState.Import(f->researchState.serialData);
 		});
 
+		#ifdef HAS_WINDOW
+			Laboratory::ConfigureResearchButtons();
+		#endif
 		//globalState.researchProgram.reset();
 	}
 

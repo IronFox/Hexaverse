@@ -1168,6 +1168,10 @@ namespace Objects
 		typedef WorkingStructureT<Laboratory>	Super;
 		friend class Super;
 
+		#ifdef HAS_WINDOW
+			static count_t			researchCommandOffset;
+		#endif
+
         /**/						Laboratory(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(table,owner, location, atTime)	{};
 		/**/						Laboratory() {}//global prototype
 	protected:
@@ -1176,9 +1180,10 @@ namespace Objects
 	public:
 		static const int			EnergyConsumption = 10;
 
-
-
 		#ifdef HAS_WINDOW
+			/**
+			Resets all commands to the currently loaded research script. Need only be called when the research script has changed
+			*/
 			static void				ConfigureResearchButtons();
 			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;
 		#endif
