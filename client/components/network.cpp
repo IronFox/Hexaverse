@@ -72,7 +72,6 @@ namespace Network
 		worldIDString = worldID.ToNiceString();
 		gameFlags = info.gameInfo.gameConfig.gameFlags;
 		RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(info.gameInfo.gameConfig.gameGoal);
-		requestedResearchScript = info.gameInfo.gameConfig.researchScript;
 	}
 
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id)
