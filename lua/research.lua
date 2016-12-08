@@ -48,17 +48,21 @@ researchables = {}
 
 ResearchEntry = {}
 ResearchEntry.__index = ResearchEntry
-function ResearchEntry.New(limit)
+function ResearchEntry.New(limit,original)
 	local rs = {}
 	setmetatable(rs,ResearchEntry)
 	rs.limit = limit
+	rs.original = original
 	return rs
 end
 function ResearchEntry.NewBool(limit)
-	return ResearchEntry.New(limit)
+	return ResearchEntry.New(limit,false)
+end
+function ResearchEntry.NewFloat(original)
+	return ResearchEntry.New(-1,original)
 end
 function ResearchEntry:Instantiate()
-	local rs = ResearchEntry.New(self.limit)
+	local rs = ResearchEntry.New(self.limit,self.original)
 	rs.progress = 0
 	return rs
 end
@@ -287,24 +291,60 @@ VehicleBaseConfig =
 
 
 
-function MakeUnlockResearchable(parent, parentName, limit)
+function MakeUnlockResearchable(researchGroup, typeTable, typeName, limit)
 	--entry = ResearchEntry.New(original)
-	local key = 'unlock'..parentName
+	local key = 'unlock'..typeName
 	researchables[key] = ResearchEntry.NewBool(limit)
-	
-	parent.IsUnlocked =
+	local typeHandle = typeTable[typeName]
+	typeHandle.IsUnlocked =
 	{
 		Get = function(state)
 			if state == nil then
 				return false
 			end
-			Game.Log(key)
 			return state.research[key].progress >= state.research[key].limit
 		end
 	}
+	
+	Game.CreateResearch(researchGroup,typeName,nil,
+		function(state,progress) state.research[key].progress = state.research[key].progress + progress end,
+		function(state) return state.research[key].progress end, researchables[key].limit
+		);
+	
 end
 
-MakeUnlockResearchable(TurretConfig.Artillery, 'Artillery',20)
+
+function MakeImproveResearchable(researchGroup, typeTable, typeName, attributeName)
+	local key = 'improve'..typeName
+	local typeHandle = typeTable[typeName]
+	--at this point we assume that typeHandle[attributeName] is still a simple variable. we can add a check here but then ResearchEntry.NewFloat would get really messy
+	local original = typeHandle[attributeName]
+	researchables[key] = ResearchEntry.NewFloat(original)
+	typeHandle[attributeName] =
+	{
+		Get = function(state)
+			if state == nil then
+				return original
+			end
+			local progress = state.research[key].progress
+			return original * (2 ^ (0.1 * progress) )
+		end,
+		
+		Describe = function(state)
+			if state == nil then
+				return original
+			end
+			local progress = state.research[key].progress
+			return original..'*'..(2 ^ (0.1 * progress) )
+		end
+	}
+	
+	Game.CreateResearch(researchGroup,typeName,nil,
+		function(state,progress) state.research[key].progress = state.research[key].progress + progress end,
+		function(state) return state.research[key].progress end, -1
+		);
+	
+end
 
 
 
@@ -391,34 +431,13 @@ StructureConfig =
 
 unlockGroup = Game.CreateResearch(nil,"Unlock","Research_Unlock");
 improveGroup = Game.CreateResearch(nil,"Improve","Research_Improve");
-
-artillery = UnlockProgress.New();
-
-Game.CreateResearch(unlockGroup,"Artillery",nil,
-		function(state,progress) state.research.unlockArtillery.progress = state.research.unlockArtillery.progress + progress end,
-		function(state) return state.research.unlockArtillery.progress end, researchables.unlockArtillery.limit
-		);
+attackRangeGroup = Game.CreateResearch(improveGroup,'Attack Range','Research_AttackRange');
 
 
 
+MakeUnlockResearchable(unlockGroup, TurretConfig, 'Artillery',20)
+MakeUnlockResearchable(unlockGroup, StructureConfig, 'ReactorCore',20)
+
+MakeImproveResearchable(attackRangeGroup, TurretConfig, 'Artillery', 'HorizontalAttackRange')
 
 
---[[
-Account = {}
-Account.__index = Account
-
-function Account.create(balance)
-   local acnt = {}             -- our new object
-   setmetatable(acnt,Account)  -- make Account handle lookup
-   acnt.balance = balance      -- initialize our object
-   return acnt
-end
-
-function Account:withdraw(amount)
-   self.balance = self.balance - amount
-end
-
--- create and use an Account
-acc = Account.create(1000)
-acc:withdraw(100)
-]]--
