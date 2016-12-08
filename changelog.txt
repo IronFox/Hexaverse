@@ -1,6 +1,7 @@
 v0.3.26
 	> Decreased sensor range in reduced world resolution state.
 	> Added an on-screen message to show when client is in interactive configuration mode.
+	> Moved player client directory to Hexaverse/client (was Hexaverse/client/player)
 	* Fixed bridge pathfinding when building directly on lava.
 
 v0.3.25 [Nov 4 2016]
