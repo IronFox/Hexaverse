@@ -16,7 +16,7 @@ namespace RuntimeConfig
 
 	void	ClientInit()
 	{
-		InitConfigDir(aiMode ? "client/ai" : "client/player");
+		InitConfigDir(aiMode ? "client/ai" : "client");
 
 
 		phase = Phase::Uninitialized;
