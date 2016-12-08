@@ -5,6 +5,8 @@
 #include "../logEvent.h"
 #include "../scriptCache.h"
 #include "faction.h"
+#include "../runtimeConfig.h"
+#include <io/file_system.h>
 
 namespace Objects
 {
@@ -227,7 +229,20 @@ namespace Objects
 			s->DefineAttributeTable(&t);
 		}
 		#ifndef CLIENT
-			LoadProgram(ScriptCache::Load("../lua/research.lua"));
+			#ifdef _DEBUG
+				PathString final = "../lua/research.lua";
+			#else
+				FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("config/lua"));
+				PathString final = RuntimeConfig::ConfigFile("config/lua/research.lua");
+				if (!FileSystem::IsFile(final))
+				{
+					if (FileSystem::CopyFile("../lua/research.lua",final,false))
+						LogEvent(EventClass::Preset::configuration,"Copied ../lua/research.lua to "+String(final));
+					else
+						FATAL__("Unable to copy ../lua/research.lua to "+String(final));
+				}
+			#endif
+			LoadProgram(ScriptCache::Load(final));
 		#endif
 	}
 
