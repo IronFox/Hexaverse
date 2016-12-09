@@ -53,7 +53,7 @@ namespace Objects
 	/*virtual override*/ void	ResearchCommand::Execute()
 	{
 		Super::Execute();
-		if (selectedEntity && selectedEntity->owner/* &&  selectedEntity->owner->researchState.SetActiveTopic(topic)*/)
+		if (selectedEntity && selectedEntity->owner &&  topic->CanResearch(selectedEntity->GetResearchState()))
 		{
 			ApplicationInterface::SignalResearch(topic);
 			this->Refresh(true);
