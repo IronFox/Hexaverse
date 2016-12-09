@@ -169,7 +169,7 @@ namespace Objects
 		index_t					GetActiveTopicIndex() const {return activeResearch ? activeResearch->serialIndex : InvalidIndex;}
 		bool					SetActiveTopic(const PResearchTopic&active);
 		void					SetActiveTopic(index_t serialIndex)	{SetActiveTopic(GetTopic(serialIndex));}
-		void					Import(const ArrayData<BYTE>&serializedState);
+		void					Import(const ArrayRef<const BYTE>&serializedState);
 		void					Export(Array<BYTE>&outSerializedState) const;
 		static PResearchTopic	GetTopic(index_t);
 		static PResearchTopic	FindTopic(const String&path);

@@ -166,6 +166,7 @@ namespace FileIO
 								factionWorldTypeChunk("WTCK"),
 								terrainExponent("TREX"),
 								researchScript("RESS"),
+								researchState("REST"),
 
 								zzzz("zzzz")	//no use, just so that every line can have a comma at the end
 								;
@@ -1336,6 +1337,10 @@ namespace FileIO
 								}
 								GetPOD(list,RID::factionAccessToken,faction->accessToken);
 
+								Riff::Chunk*researchStateChunk = list->FindFirst(RID::researchState);
+								if (researchStateChunk)
+									faction->researchState.Import(researchStateChunk->ReferenceData());
+
 								Riff::Chunk*nameChunk = list->FindFirst(RID::factionName);
 								if (nameChunk)
 								{
@@ -1617,6 +1622,15 @@ namespace FileIO
 			factionSection->AppendBlock(RID::factionName)->SetData(faction->name.c_str(),faction->name.length());
 
 			factionSection->AppendBlock(RID::factionAccessToken)->SetPODData(faction->accessToken);	//faction access token
+
+
+			if (faction->researchState.researchState.IsSet())
+			{
+				Array<BYTE> data;
+				faction->researchState.Export(data);
+				factionSection->AppendBlock(RID::researchState)->SetData(data);
+			}
+
 
 			if (faction->markers.IsNotEmpty())
 			{

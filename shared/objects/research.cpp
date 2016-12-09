@@ -428,7 +428,7 @@ namespace Objects
 		BaseAttributeCache::versionCounter++;
 	}
 
-	void					ResearchState::Import(const ArrayData<BYTE>&serializedState)
+	void					ResearchState::Import(const ArrayRef<const BYTE>&serializedState)
 	{
 		serialData = serializedState;
 		if (!globalState.researchProgram)
@@ -451,6 +451,11 @@ namespace Objects
 	void					ResearchState::Export(Array<BYTE>&outSerializedState) const
 	{
 		//Buffer0<BYTE> data;
+		if (globalState.exportState.IsEmpty() || researchState.IsEmpty())
+		{
+			outSerializedState.Clear();
+			return;
+		}
 		Lua::Reference exported = globalState.exportState(researchState);
 		ASSERT__(exported.IsSet());
 		ByteStream stream;
