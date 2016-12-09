@@ -680,6 +680,24 @@ namespace Objects
 		return InvalidIndex;
 	}
 
+
+	void	CommandGroup::SignalBaseChange(CommandContainer*newParent, const int2&newBase)
+	{
+		ASSERT_IS_NULL__(parent);
+		baseCoords = newBase;
+		baseCoords.x += baseCoords.y/2;
+		parent = newParent;
+
+		foreach (members,m)
+		{
+			if (m->second->IsGroup())
+			{
+				To<CommandGroup>::Cast(m->second)->SignalBaseChange(this,baseCoords + int2(0, m->first.y+1));
+			}
+
+		}
+	}
+
 	PBaseCommand			CommandContainer::Add(const int2&coords, bool relativeCoords, const PBaseCommand&newCommand)
 	{
 		DBG_ASSERT__(Find(newCommand) == InvalidIndex);
@@ -688,11 +706,12 @@ namespace Objects
 		m.first = relativeCoords ? coords : coords - baseCoords;
 		if (newCommand->IsGroup())
 		{
-			PCommandGroup group = To<CommandGroup>::Cast(newCommand);
-			group->baseCoords = baseCoords;
-			group->baseCoords.y += m.first.y+1;
-			group->baseCoords.x += group->baseCoords.y/2;
-			group->parent = this;
+			To<CommandGroup>::Cast(newCommand)->SignalBaseChange(this,baseCoords + int2(0, m.first.y+1));
+			//PCommandGroup group = To<CommandGroup>::Cast(newCommand);
+			//group->baseCoords = baseCoords;
+			//group->baseCoords.y += m.first.y+1;
+			//group->baseCoords.x += group->baseCoords.y/2;
+			//group->parent = this;
 		}
 		return newCommand;
 	}
@@ -705,11 +724,13 @@ namespace Objects
 		m.first = int2((int)members.Count()-1,0);
 		if (newCommand->IsGroup())
 		{
+			To<CommandGroup>::Cast(newCommand)->SignalBaseChange(this,baseCoords + int2(0, m.first.y+1));
+/*
 			PCommandGroup group = To<CommandGroup>::Cast(newCommand);
 			group->baseCoords = baseCoords;
 			group->baseCoords.y += m.first.y+1;
 			group->baseCoords.x += group->baseCoords.y/2;
-			group->parent = this;
+			group->parent = this;*/
 		}
 		return newCommand;
 	}

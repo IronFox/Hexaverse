@@ -371,12 +371,19 @@ namespace Objects
 			Collapse();
 		}
 
+		/**
+		Visually hides all child-members of any expanded children
+		*/
 		static void		CollapseAll()
 		{
 			foreach (activeGroupPath,p)
 				(*p)->Collapse();
 			activeGroupPath.Clear();
 		}
+
+
+		void			SignalBaseChange(CommandContainer*newParent, const int2&newBase);
+
 	};
 
 
