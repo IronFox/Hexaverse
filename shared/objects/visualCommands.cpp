@@ -125,11 +125,7 @@ namespace Objects
 
 		//if (ref || (base && turret))
 		{
-			PResearchTopic p = topic->parent.lock();
-			if (p)
-				outResult << p->name+":"+topic->name;
-			else
-				outResult << topic->name;
+			outResult << topic->GetFullName();
 			String dependentOn;
 			//else
 			{
@@ -144,7 +140,7 @@ namespace Objects
 			}
 			PResearchTopic dep = topic->dependency.lock();
 			if (dep && (state.IsEmpty() || dep->currentProgress(state)<dep->maxProgress))
-				outResult << "Requires complete research of "+dep->name;
+				outResult << "Requires completion of "+dep->GetFullName()+" research";
 			outResult.MarkBriefEnd();
 			outResult << "";
 		}
