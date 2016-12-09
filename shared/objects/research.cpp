@@ -45,10 +45,14 @@ namespace Objects
 
 
 		if (!parent)
-			globalState.rootResearch << rs;
+		{
+			if (!globalState.rootResearch.Insert(rs))
+				throw Lua::Exception("Research '"+name+"' is not unique in global namespace");
+		}
 		else
 		{
-			parent->children << rs;
+			if (!parent->Insert(rs))
+				throw Lua::Exception("Research '"+name+"' is not unique in '"+parent->GetFullName()+"'");
 			if (parent->maxProgress != 0)
 			{
 				throw Lua::Exception("Trying to convert regular research '"+parent->name+"' to group when adding '"+name+"' as child. '"+parent->name+"'.maxProgress must be 0 when used as a group");
@@ -71,7 +75,7 @@ namespace Objects
 								const FGetProgress&currentProgress, int maxProgress,
 								const PResearchTopic&dependency
 								)
-								:parent(parent),name(name),iconName(iconName),
+								:Super(name), parent(parent),iconName(iconName),
 								advance(adv),currentProgress(currentProgress),maxProgress(maxProgress),
 								dependency(dependency)
 	{}
@@ -341,12 +345,40 @@ namespace Objects
 			researchState = globalState.stateConstructor();
 
 	}
-
-	/*static*/ PResearchTopic	ResearchState::FindTopic(const String&name)
+	
+	bool					ResearchGroup::Insert(const PResearchTopic&t)
 	{
-		foreach (globalState.allTopics,t)
-			if ((*t)->name == name)
-				return *t;
+		if (Find(t->name))
+			return false;
+		map.Set(t->name,t);
+		children << t;
+		return true;
+	}
+
+
+	PResearchTopic			ResearchGroup::Find(const StringRef&name) const
+	{
+		//PResearchTopic t;
+		//map.Query(name,t);
+		//return t;
+		foreach (children,c)
+			if ((*c)->name == name)	//i suspect this is actually faster for slow numbers of topics per family, since it does not force a String copy
+				return *c;
+		return PResearchTopic();
+	}
+
+
+	/*static*/ PResearchTopic	ResearchState::FindTopic(const String&path)
+	{
+		Array<StringRef>	components;
+		explode('/',path,components);
+		PResearchTopic	current = globalState.rootResearch.Find(components.First());
+		for (index_t i = 1; i < components.Count(); i++)
+		{
+			if (!current)
+				return PResearchTopic();
+			current = current->Find(components[i]);
+		}
 		return PResearchTopic();
 	}
 

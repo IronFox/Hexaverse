@@ -1769,17 +1769,17 @@ namespace Journal
 
 	/*virtual override*/ void Round::SelectResearch::Decode(const Entry&e)
 	{
-		String targetName;
-		e.stringParameters.Require(CLOCATION,"Target",targetName);
-		topic = Objects::ResearchState::FindTopic(targetName);
+		String targetPath;
+		e.stringParameters.Require(CLOCATION,"Target",targetPath);
+		topic = Objects::ResearchState::FindTopic(targetPath);
 		if (!topic)
 		{
-			throw Except::Program::FunctionalityNotImplemented(CLOCATION,"Unknown research target '"+targetName+"'");
+			throw Except::Program::FunctionalityNotImplemented(CLOCATION,"Unknown research target '"+targetPath+"'");
 		}			
 	}
 	/*virtual override*/ void Round::SelectResearch::Compile(Entry&e)	const
 	{
-		e.stringParameters.Set("Target",topic->name);
+		e.stringParameters.Set("Target",topic->GetPath());
 	}
 
 

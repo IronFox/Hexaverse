@@ -3,6 +3,7 @@
 #include <functional>
 #include <interface/serializable.h>
 #include <global_string.h>
+#include <container/hashtable.h>
 
 #include "types.h"
 #include "../uniqueID.h"
@@ -13,8 +14,24 @@
 namespace Objects
 {
 
-	class ResearchTopic
+	class ResearchGroup
 	{
+	public:
+		Buffer0<PResearchTopic>	children;
+		StringTable<PResearchTopic>	map;
+
+		const String			name;
+
+		/**/					ResearchGroup(const String&name):name(name)	{}
+		bool					Insert(const PResearchTopic&t);
+		PResearchTopic			Find(const StringRef&name) const;
+		PResearchTopic			Find(const String&name) const {return Find(name.ref());}
+		void					Clear()	{children.Clear(); map.Clear();}
+	};
+
+	class ResearchTopic : public ResearchGroup
+	{
+		typedef ResearchGroup	Super;
 	public:
 		typedef Lua::Function<void(Lua::Reference, int)>	FAdvance;
 		typedef Lua::Function<int(Lua::Reference)>	FGetProgress;
@@ -22,9 +39,8 @@ namespace Objects
 		typedef Lua::Function<PResearchTopic(Lua::Reference)> FResearchTopic;
 		
 
-		const String			name,iconName;
+		const String			iconName;
 		const WResearchTopic	parent;
-		Buffer0<PResearchTopic>	children;
 		FAdvance				advance;
 		FGetProgress			currentProgress;
 		const int				maxProgress;
@@ -53,6 +69,13 @@ namespace Objects
 			PResearchTopic p = parent.lock();
 			if (p)
 				return p->name+":"+name;
+			return name;
+		}
+		String					GetPath() const
+		{
+			PResearchTopic p = parent.lock();
+			if (p)
+				return p->GetPath() + '/'+name;
 			return name;
 		}
 
@@ -116,11 +139,14 @@ namespace Objects
 		struct GlobalState
 		{
 			ScriptCache::PScript	script;
-			Buffer0<PResearchTopic>	rootResearch,allTopics;
+			Buffer0<PResearchTopic>	allTopics;
+			ResearchGroup		rootResearch;
 			Lua::PProgram		researchProgram;
 			Lua::Function<Lua::Reference()>	stateConstructor;
 			Lua::Function<Lua::Reference(Lua::Reference)>	exportState;
 			Lua::Function<void(Lua::Reference,Lua::Reference)> importState;
+
+			/**/				GlobalState():rootResearch(""){}
 		};
 		static GlobalState		globalState;
 
@@ -143,7 +169,7 @@ namespace Objects
 		void					Import(const ArrayData<BYTE>&serializedState);
 		void					Export(Array<BYTE>&outSerializedState) const;
 		static PResearchTopic	GetTopic(index_t);
-		static PResearchTopic	FindTopic(const String&name);
+		static PResearchTopic	FindTopic(const String&path);
 	};
 
 	
