@@ -165,6 +165,7 @@ namespace FileIO
 								worldID("WDID"),
 								factionWorldTypeChunk("WTCK"),
 								terrainExponent("TREX"),
+								researchScript("RESS"),
 
 								zzzz("zzzz")	//no use, just so that every line can have a comma at the end
 								;
@@ -1103,6 +1104,27 @@ namespace FileIO
 		bool nexusFound = false, worldInfoFound = false;
 
 
+
+		{
+			Riff::Chunk*chunk = file.FindFirst(RID::researchScript);
+			if (chunk)
+			{
+				SHA256::HashContainer id;
+				SHA256::Hash(chunk->pointer(),chunk->size(),id);
+				ScriptCache::PScript script = ScriptCache::Lookup(id);
+				if (!script)
+				{
+					Array<BYTE>	data;
+					chunk->Get(data);
+					script = ScriptCache::DefineFromFleetingCompressedData(id,data,false);
+				}
+				if (script)
+					Objects::ResearchState::LoadProgram(script);
+				else
+					Objects::ResearchState::LoadDefaultProgram();
+			}
+		}
+
 		GenericHashTable<TUniqueID,Objects::PFaction,TUniqueID>	factionMap;
 		for (int round = 0; round < 2; round++)
 		{
@@ -1529,6 +1551,8 @@ namespace FileIO
 			general->AppendBlock(RID::variableConfiguration,variableBuffer.pointer(),variableBuffer.GetContentSize());
 		}
 
+		if (Objects::ResearchState::globalState.script)
+			general->AppendBlock(RID::researchScript)->SetData(Objects::ResearchState::globalState.script->compressed);
 
 		//general->AppendBlock(RID::factionSupportFlags)->SetPODData(State::Config::factionSupportFlags);
 		//general->AppendBlock(RID::closedGame)->SetPODData(State::Config::closedGame);

@@ -233,6 +233,14 @@ namespace Objects
 			s->DefineAttributeTable(&t);
 		}
 		#ifndef CLIENT
+			LoadDefaultProgram();
+		#endif
+	}
+
+
+	#ifndef CLIENT
+		/*static*/ void			ResearchState::LoadDefaultProgram()
+		{
 			#ifdef _DEBUG
 				PathString final = "../lua/research.lua";
 			#else
@@ -247,15 +255,15 @@ namespace Objects
 				}
 			#endif
 			LoadProgram(ScriptCache::Load(final));
-		#endif
-	}
+		}
+	#endif
 
-
-	
 
 
 	/*static*/ void		ResearchState::LoadProgram(const ScriptCache::PScript&script)
 	{
+		if (!script || script == globalState.script)
+			return;
 		globalState.script = script;
 		globalState.rootResearch.Clear();
 		globalState.allTopics.Clear();
