@@ -1922,16 +1922,16 @@ namespace Objects
 
 	#ifdef HAS_WINDOW
 
-		static PResearchCommand BuildCommand(const PResearchTopic&t)
+		static void BuildCommand(CommandContainer&parent, const PResearchTopic&t)
 		{
 			PResearchCommand rs(new ResearchCommand(t));
+			parent.Add(rs);
 			foreach (t->children,c)
 			{
-				rs->Add(BuildCommand(*c));
+				BuildCommand(*rs,*c);
 			}
 			if (t->componentReference || t->prototypeReference)
 				rs->RasterizeImage();
-			return rs;
 		}
 
 		/*static*/ count_t			Laboratory::researchCommandOffset = InvalidIndex;
@@ -1946,7 +1946,7 @@ namespace Objects
 				commands.Truncate(researchCommandOffset);
 			foreach (ResearchState::globalState.rootResearch,res)
 			{
-				commands.Add( BuildCommand(*res) );
+				BuildCommand(commands,*res);
 			}
 		}
 	#endif
