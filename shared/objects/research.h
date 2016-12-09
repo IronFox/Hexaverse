@@ -48,6 +48,19 @@ namespace Objects
 			return maxProgress > 0 && currentProgress(researchState) >= maxProgress;
 		}
 
+		String					GetFullName() const
+		{
+			PResearchTopic p = parent.lock();
+			if (p)
+				return p->name+":"+name;
+			return name;
+		}
+
+		/**
+		Checks whether or not the local topic is researchable in its current state.
+		A topic is researchable if it's generally researchable (i.e. not a group), its dependencies are completed,
+		and it can and has not been completed.
+		*/
 		bool					CanResearch(const Lua::Reference&researchState) const
 		{
 			if (IsGroup())
