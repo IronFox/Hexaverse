@@ -6,6 +6,7 @@
 #include <third_party/bz2/bz2.h>
 #include "logEvent.h"
 #include "uniqueID.h"
+#include "runtimeConfig.h"
 
 namespace ScriptCache
 {
@@ -54,13 +55,47 @@ namespace ScriptCache
 		return s;
 	}
 
-	PScript		Lookup(const SHA256::HashContainer&id)
+
+	static PathString	GetFilePath(const SHA256::HashContainer&id)
 	{
-		PScript*rs = hashMap.QueryPointer(id);
-		return rs ? *rs : PScript();
+		return RuntimeConfig::ConfigFile(PathString("cache/"+Bin2Str::ConvertPOD(id,InvalidIndex)));
 	}
 
-	PScript		DefineFromFleetingCompressedData(const SHA256::HashContainer&id, ArrayData<BYTE>&data)
+	PScript		Lookup(const SHA256::HashContainer&id)
+	{
+		PScript rs;
+		if (hashMap.Query(id,rs))
+			return rs;
+
+
+		PathString path = GetFilePath(id);
+		if (!FileSystem::IsFile(path))
+			return rs;	//empty
+		FILE*f = FOPEN(path.c_str(),"rb");
+		if (!f)
+			return rs;
+		FileSystem::fsize_t size = FileSystem::GetFileSize(path);
+		Array<BYTE> compressed(size);
+		size_t read = fread(compressed.pointer(),1,size,f);
+		fclose(f);
+		if (read != size)
+		{
+			return rs;
+		}
+		SHA256::HashContainer check;
+		SHA256::Hash(compressed.pointer(),size,check);
+		if (check != id)
+		{
+			LogEvent(EventClass::Preset::error,"Requested script "+Bin2Str::ConvertPOD(id)+" was cached to local drive but hash code does not match. Removing file");
+			FileSystem::UnlinkFile(path);
+			return rs;
+		}
+		LogEvent(EventClass::Preset::configuration,"Requested script "+Bin2Str::ConvertPOD(id)+" was cached to local drive. Restoring");
+
+		return DefineFromFleetingCompressedData(id,compressed,false);
+	}
+
+	PScript		DefineFromFleetingCompressedData(const SHA256::HashContainer&id, ArrayData<BYTE>&data, bool createFile/*=true*/)
 	{
 		if (data.GetLength() < 4)
 		{
@@ -74,6 +109,31 @@ namespace ScriptCache
 		{
 			LogEvent(EventClass::Preset::error,"Attempting to redefine script cache entry for "+Bin2Str::ConvertPOD(id)+". Ignoring...");
 			return script;
+		}
+
+		if (createFile)
+		{
+			PathString path = GetFilePath(id);
+			FileSystem::CreateDirectory(FileSystem::ExtractFileDir(path));
+			FILE*f = FOPEN(path.c_str(),"w+b");
+			if (f)
+			{
+				size_t written = fwrite(data.pointer(),1,data.size(),f);
+				fclose(f);
+				if (written != data.size())
+				{
+					LogEvent(EventClass::Preset::error,"Warning: Unable to write entire received resource "+Bin2Str::ConvertPOD(id)+" to file: "+String(path)+". Erasing remains");
+					FileSystem::UnlinkFile(path);
+				}
+				else
+					LogEvent(EventClass::Preset::configuration,"Resource "+Bin2Str::ConvertPOD(id)+" cached to file: "+String(path));
+
+			}
+			else
+			{
+				LogEvent(EventClass::Preset::error,"Warning: Unable to write received resource "+Bin2Str::ConvertPOD(id)+" to file: "+String(path));
+			}
+
 		}
 
 		UINT32 uncompressedSize = *(const UINT32*)data.pointer();

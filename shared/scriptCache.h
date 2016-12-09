@@ -24,6 +24,6 @@ namespace ScriptCache
 	*/
 	PScript		Load(const PathString&);
 	PScript		Lookup(const SHA256::HashContainer&id);
-	PScript		DefineFromFleetingCompressedData(const SHA256::HashContainer&id,ArrayData<BYTE>&data);
+	PScript		DefineFromFleetingCompressedData(const SHA256::HashContainer&id,ArrayData<BYTE>&data, bool createFile=true);
 
 }
