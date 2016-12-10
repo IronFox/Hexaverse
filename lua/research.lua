@@ -48,21 +48,20 @@ researchables = {}
 
 ResearchEntry = {}
 ResearchEntry.__index = ResearchEntry
-function ResearchEntry.New(limit,original)
+function ResearchEntry.New(limit)
 	local rs = {}
 	setmetatable(rs,ResearchEntry)
 	rs.limit = limit
-	rs.original = original
 	return rs
 end
 function ResearchEntry.NewBool(limit)
-	return ResearchEntry.New(limit,false)
+	return ResearchEntry.New(limit)
 end
-function ResearchEntry.NewFloat(original)
-	return ResearchEntry.New(-1,original)
+function ResearchEntry.NewFloat()
+	return ResearchEntry.New(-1)
 end
 function ResearchEntry:Instantiate()
-	local rs = ResearchEntry.New(self.limit,self.original)
+	local rs = ResearchEntry.New(self.limit)
 	rs.progress = 0
 	return rs
 end
@@ -102,7 +101,14 @@ end
 
 
 --[[ Helper functions ]]
-function DefaultHealthAtCost(cost)
+
+
+function Round(value--[[float]], digits--[[optional int]])
+  local factor = 10^(digits or 0);
+  return math.floor(value * factor + 0.5) / factor;
+end
+
+function DefaultHealthAtCost(cost--[[float]]) --float
 	return cost /5
 end
 
@@ -290,8 +296,19 @@ VehicleBaseConfig =
 }
 
 
+--[[
+Declares an item as unlock-researchable.
+Manipulates the IsUnlocked attribute of the specified item.
+Automatically registers everything
 
-function MakeUnlockResearchable(researchGroup, typeTable, typeName, limit)
+@param researchGroup		Research-group handle (folder) that this new research should be filed under. May be nil, causing this to be filed as a root research topic
+@param researchDependency	Research handle (actual research) that must be completed before this research may commence. Must be a non-improve research. May be nil
+@param typeTable			Handle to the table that the specified type is a member in
+@param typeName				Name (string) of the type the attribute belongs to
+@param limit				Max research (int). Progress must reach this value for the item to become unlocked
+@return Resulting research handle, as returned from Hexaverse
+]]
+function MakeUnlockResearchable(researchGroup, researchDependency, typeTable, typeName, limit)
 	--entry = ResearchEntry.New(original)
 	local key = 'unlock'..typeName
 	researchables[key] = ResearchEntry.NewBool(limit)
@@ -308,34 +325,67 @@ function MakeUnlockResearchable(researchGroup, typeTable, typeName, limit)
 	
 	return Game.CreateResearch(researchGroup,typeName,nil,
 		function(state,progress) state.research[key].progress = state.research[key].progress + progress end,
-		function(state) return state.research[key].progress end, researchables[key].limit
+		function(state) return state.research[key].progress end, researchables[key].limit, researchDependency
 		);
 	
 end
 
 
-function MakeImproveResearchable(researchGroup, researchDependency, typeTable, typeName, attributeName)
-	local key = 'improve'..typeName
-	local typeHandle = typeTable[typeName]
+
+function GetResearchFactor(totalProgress--[[float]])  --[[float]]
+	if (totalProgress < 0) then
+		return 1 / (1 - totalProgress);
+	end
+	return (1 + totalProgress);
+end
+
+
+--[[
+Declares a currently non-researchable attribute as improvement-researchable.
+Works on all floating point attributes.
+Improvement-research goes on indefinitely.
+Automatically registers everything
+
+@param researchGroup		Research-group handle (folder) that this new research should be filed under. May be nil, causing this to be filed as a root research topic
+@param researchDependency	Research handle (actual research) that must be completed before this research may commence. Must be a non-improve research. May be nil
+@param typeTable			Handle to the table that the specified type is a member in
+@param typeName				Name (string) of the type the attribute belongs to
+@param attributeName		Name (string) of the attribute to research
+@param speed				Floating point speed modifier. The closer to zero, the slower. 
+							Positive values affect the resulting factor linearly. 
+							If 10 rounds are needed to reach 1.2 at factor 0.02, then another 10 rounds will produce 1.4.
+							Negative values affect the resulting factor inversely.
+							If 10 rounds are needed to reach 1/(1.2)=83% at factor -0.02, then another 10 rounds will produce 1/(1.4)=71%
+@return Resulting research handle, as returned from Hexaverse
+]]
+function MakeImproveResearchable(researchGroup, researchDependency, typeTable, typeName, attributeName, speed)
+	local key = 'improve'..typeName;
+	local typeHandle = typeTable[typeName];
 	--at this point we assume that typeHandle[attributeName] is still a simple variable. we can add a check here but then ResearchEntry.NewFloat would get really messy
-	local original = typeHandle[attributeName]
-	researchables[key] = ResearchEntry.NewFloat(original)
+	local original = typeHandle[attributeName];
+	researchables[key] = ResearchEntry.NewFloat();
 	typeHandle[attributeName] =
 	{
 		Get = function(state)
 			if state == nil then
-				return original
+				return original;
 			end
-			local progress = state.research[key].progress
-			return original * (2 ^ (0.1 * progress) )
+			local progress = state.research[key].progress;
+			local factor = GetResearchFactor(speed*progress);
+			local result = original * factor;
+			return result;
 		end,
 		
 		Describe = function(state)
 			if state == nil then
-				return original
+				return original;
 			end
-			local progress = state.research[key].progress
-			return original..'*'..(2 ^ (0.1 * progress) )
+			local progress = state.research[key].progress;
+			if (progress == 0) then
+				return original;
+			end
+			local factor = GetResearchFactor(speed*progress);
+			return Round(original * factor,2)..'[='.. original..'*'..Round(factor,2)..']';
 		end
 	}
 	
@@ -343,7 +393,6 @@ function MakeImproveResearchable(researchGroup, researchDependency, typeTable, t
 		function(state,progress) state.research[key].progress = state.research[key].progress + progress end,
 		function(state) return state.research[key].progress end, -1, researchDependency
 		);
-	
 end
 
 
@@ -360,8 +409,11 @@ function TowerScanningModifier(turret)
 end
  
 
-
-function Tower(turret)
+--[[
+Constructs a tower structure configuration from a given turret entry.
+Defines both Get and Describe functions
+]]
+function Tower(turret--[[Table]]) --Table
 	rs =
 	{
 		Cost =
@@ -383,7 +435,7 @@ function Tower(turret)
 				end,
 			Describe = 
 				function(state) 
-					return DefaultHealthAtCost(rs.Cost.Get(state))..'*'.. Describe(turret.HealthMultiplier,state) 
+					return Round(DefaultHealthAtCost(rs.Cost.Get(state)) * Get(turret.HealthMultiplier,state),2)..'[='.. DefaultHealthAtCost(rs.Cost.Get(state))..'*'.. Describe(turret.HealthMultiplier,state)..']';
 				end,
 		},
 		ScanningRange =
@@ -402,7 +454,7 @@ function Tower(turret)
 				return Get(turret.IsUnlocked,state) 
 			end,
 	}
-	return rs
+	return rs;
 end
 
 
@@ -431,13 +483,27 @@ StructureConfig =
 
 unlockGroup = Game.CreateResearch(nil,"Unlock","Research_Unlock");
 improveGroup = Game.CreateResearch(nil,"Improve","Research_Improve");
+
+
+
+artilleryUnlock = MakeUnlockResearchable(unlockGroup, nil, TurretConfig, 'Artillery',20);
+launcherUnlock = MakeUnlockResearchable(unlockGroup, nil, TurretConfig, 'MissileLauncher',20);
+radarUnlock = MakeUnlockResearchable(unlockGroup, nil, TurretConfig, 'Radar',20);
+heavyUnlock = MakeUnlockResearchable(unlockGroup, nil, VehicleBaseConfig, 'HeavyBase',20);
+catUnlock = MakeUnlockResearchable(unlockGroup, nil, VehicleBaseConfig, 'CatamaranBase',20);
+MakeUnlockResearchable(unlockGroup, nil, StructureConfig, 'ReactorCore',20);
+
 attackRangeGroup = Game.CreateResearch(improveGroup,'Attack Range','Research_AttackRange');
+	MakeImproveResearchable(attackRangeGroup, artilleryUnlock, TurretConfig, 'Artillery', 'HorizontalAttackRange',0.005);
+	MakeImproveResearchable(attackRangeGroup, launcherUnlock, TurretConfig, 'MissileLauncher', 'HorizontalAttackRange',0.005);
+	MakeImproveResearchable(attackRangeGroup, nil, TurretConfig, 'Cannon', 'HorizontalAttackRange',0.005);
 
+scanningRangeGroup = Game.CreateResearch(improveGroup,'Scanning Range','Research_ScanningRange');
+	MakeImproveResearchable(scanningRangeGroup, radarUnlock, TurretConfig, 'Radar', 'ScanningRange',0.005);
 
-
-artilleryUnlock = MakeUnlockResearchable(unlockGroup, TurretConfig, 'Artillery',20)
-MakeUnlockResearchable(unlockGroup, StructureConfig, 'ReactorCore',20)
-
-MakeImproveResearchable(attackRangeGroup, artilleryUnlock, TurretConfig, 'Artillery', 'HorizontalAttackRange')
+healthGroup = Game.CreateResearch(improveGroup,'Health','Research_Health');
+	MakeImproveResearchable(healthGroup, nil, VehicleBaseConfig, 'Hoverbase', 'Health',0.005);
+	MakeImproveResearchable(healthGroup, heavyUnlock, VehicleBaseConfig, 'HeavyBase', 'Health',0.005);
+	MakeImproveResearchable(healthGroup, catUnlock, VehicleBaseConfig, 'CatamaranBase', 'Health',0.005);
 
 
