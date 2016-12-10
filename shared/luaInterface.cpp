@@ -3,6 +3,7 @@
 #include <io/byte_stream.h>
 #include <io/random_access_file.h>
 #include <io/file_system.h>
+#include <math/basic.h>
 
 #include <functional>
 
@@ -851,8 +852,13 @@ namespace Lua
 
 		void GetStacked(const PProgram&st, int addr, long long&rs)
 		{
-			int dummy;
-			rs = lua_tointegerx(st->GetState(), addr,&dummy);
+			auto state = st->GetState();
+			if (lua_isinteger(state,addr))
+				rs = lua_tointeger(state, addr);
+			else
+			{
+				rs = (long long)std::round(lua_tonumber(state,addr));
+			}
 		}
 
 		void GetStacked(const PProgram&st, int addr, double&rs)
