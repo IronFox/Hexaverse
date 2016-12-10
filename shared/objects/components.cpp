@@ -2100,7 +2100,7 @@ namespace Objects
 
 					int need = ammoNeedPerShot.GetValue(researchState);
 					if (need == 0)
-						outResult << "Does not require ammunition";
+						outResult << " Does not require ammunition";
 					else
 						outResult << " Consumes "+String(ResourceTag(ammoType))+ammoNeedPerShot.Describe(researchState)+" per shot";
 					outResult << " Explosion radius: "+explosionRadius.Describe(researchState);
