@@ -196,6 +196,15 @@ namespace Objects
 				foreach(baseComponents, p)
 					if ((*p)->typeName == name)
 						return *p;
+
+				foreach (baseComponents,p)
+					if ((*p)->typeName.find(' '))
+					{
+						String pn = (*p)->typeName;
+						pn.eraseCharacter(' ');
+						if (pn == name)
+							return *p;
+					}
 			}
 			return nullptr;
 		}
@@ -213,6 +222,16 @@ namespace Objects
 					if (cname == name)
 						return *p;
 				}
+
+				foreach (allTurretComponents,p)
+					if ((*p)->typeName.find(' '))
+					{
+						String pn = (*p)->typeName;
+						pn.eraseCharacter(' ');
+						if (pn == name)
+							return *p;
+					}
+
 			}
 			return nullptr;
 		}
