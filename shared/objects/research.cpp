@@ -456,11 +456,19 @@ namespace Objects
 			outSerializedState.Clear();
 			return;
 		}
-		Lua::Reference exported = globalState.exportState(researchState);
-		ASSERT__(exported.IsSet());
-		ByteStream stream;
-		ASSERT__(exported.Serialize(stream));
-		stream.CopyToArray(outSerializedState);
+		try
+		{
+			Lua::Reference exported = globalState.exportState(researchState);
+			ASSERT__(exported.IsSet());
+			ByteStream stream;
+			ASSERT__(exported.Serialize(stream));
+			stream.CopyToArray(outSerializedState);
+		}
+		catch (const std::exception&e)
+		{
+			LogEvent(EventClass::Preset::error,e.what());
+			outSerializedState.Clear();
+		}
 	}
 
 
