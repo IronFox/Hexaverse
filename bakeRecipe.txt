@@ -26,5 +26,6 @@ client/D3DCompiler_47.dll
 server/Server*.exe
 server/config/planets/*.ini
 server/config/declaration.xml
+lua/*.lua
 
 ControlConsole/ControlConsole*.exe
