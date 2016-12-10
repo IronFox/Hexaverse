@@ -232,36 +232,38 @@ namespace Objects
 			BaseAttributeTable&t = structureTables[i];
 			s->DefineAttributeTable(&t);
 		}
-		#ifndef CLIENT
+		#ifdef _DEBUG
 			LoadDefaultProgram();
 		#endif
 	}
 
 
-	#ifndef CLIENT
-		/*static*/ void			ResearchState::LoadDefaultProgram()
-		{
-			#ifdef _DEBUG
-				PathString final = "../lua/research.lua";
-			#else
-				FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("config/lua"));
-				PathString final = RuntimeConfig::ConfigFile("config/lua/research.lua");
-				if (!FileSystem::IsFile(final))
-				{
-					if (FileSystem::CopyFile("../lua/research.lua",final,false))
-						LogEvent(EventClass::Preset::configuration,"Copied ../lua/research.lua to "+String(final));
-					else
-						FATAL__("Unable to copy ../lua/research.lua to "+String(final));
-				}
-			#endif
-			LoadProgram(ScriptCache::Load(final));
-		}
-	#endif
+	/*static*/ void			ResearchState::LoadDefaultProgram()
+	{
+		#ifdef _DEBUG
+			PathString final = "../lua/research.lua";
+		#else
+			FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("config/lua"));
+			PathString final = RuntimeConfig::ConfigFile("config/lua/research.lua");
+			if (!FileSystem::IsFile(final))
+			{
+				if (FileSystem::CopyFile("../lua/research.lua",final,false))
+					LogEvent(EventClass::Preset::configuration,"Copied ../lua/research.lua to "+String(final));
+				else
+					FATAL__("Unable to copy ../lua/research.lua to "+String(final));
+			}
+		#endif
+		LoadProgram(ScriptCache::Load(final));
+	}
 
 
 
 	/*static*/ void		ResearchState::LoadProgram(const ScriptCache::PScript&script)
 	{
+		#if defined _DEBUG && defined HAS_WINDOW
+			if (globalState.script)
+				return;		//prevent reloading
+		#endif
 		if (!script || script == globalState.script)
 			return;
 		globalState.script = script;

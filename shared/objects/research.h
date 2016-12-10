@@ -138,9 +138,7 @@ namespace Objects
 
 		static void				StaticCreate();
 		static void				LoadProgram(const ScriptCache::PScript&script);
-		#ifndef CLIENT
-			static void			LoadDefaultProgram();
-		#endif
+		static void				LoadDefaultProgram();
 
 
 
