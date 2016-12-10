@@ -86,7 +86,7 @@ namespace Objects
 	/*virtual override*/ String				Vehicle::DescribeMaxHealth() const
 	{
 		Lua::Reference state = GetResearchState();
-		return base->health.Describe(state)+"*" + turret->healthMultiplier.Describe(state);
+		return String(GetMaxHealth())+"[="+ base->health.Describe(state)+"*" + turret->healthMultiplier.Describe(state)+"]";
 	}
 
 	
