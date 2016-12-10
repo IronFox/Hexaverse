@@ -405,7 +405,9 @@ namespace Objects
 			if (b)
 			{
 				if (b->turret->CanAttack())
-					outResult << " Hrz. Attack range: "+b-> DescribeFlatAttackRange() + "+"+b->turret->explosionRadius.Describe(Component::ResearchStateOf(owner));
+				{
+					outResult << " Hrz. Attack range: "+b-> DescribeFlatAttackRange();
+				}
 				outResult << "";
 				b->turret->DescribeType(outResult,true, IF_SATELLITES( IsSatellite() ? "Satellite" : ) (IsVehicle() ? "Vehicle":"Tower"),owner);
 			}
