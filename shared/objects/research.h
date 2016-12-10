@@ -17,9 +17,13 @@ namespace Objects
 	class ResearchGroup
 	{
 	public:
-		Buffer0<PResearchTopic>	children;
-		StringTable<PResearchTopic>	map;
+		typedef Buffer0<PResearchTopic>	List;
+		typedef List::iterator			iterator;
+		typedef List::const_iterator	const_iterator;
 
+
+		List					children;
+		StringTable<PResearchTopic>	map;
 		const String			name;
 
 		/**/					ResearchGroup(const String&name):name(name)	{}
@@ -27,6 +31,12 @@ namespace Objects
 		PResearchTopic			Find(const StringRef&name) const;
 		PResearchTopic			Find(const String&name) const {return Find(name.ref());}
 		void					Clear()	{children.Clear(); map.Clear();}
+		count_t					Count() const {return children.Count();}
+
+		iterator				begin() {return children.begin();}
+		iterator				end() {return children.end();}
+		const_iterator			begin() const {return children.begin();}
+		const_iterator			end() const {return children.end();}
 	};
 
 	class ResearchTopic : public ResearchGroup
