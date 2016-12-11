@@ -22,8 +22,8 @@ namespace Objects
 	}
 
 	/*static*/ PResearchTopic	ResearchState::CreateResearch(const PResearchTopic&parent, const String&name, const String&iconName, 
-												const ResearchTopic::FAdvance&adv, 
-												const ResearchTopic::FGetProgress&currentProgress, int maxProgress,
+												const ResearchTopic::FSetProgress&setProgress, 
+												const ResearchTopic::FGetProgress&getProgress, int maxProgress,
 												const PResearchTopic&dependency
 											)
 	{
@@ -36,7 +36,7 @@ namespace Objects
 		bool hasIcon = !proto && !component;
 
 
-		PResearchTopic rs(new ResearchTopic(parent, name,hasIcon ? iconSource : "",adv,currentProgress,maxProgress,dependency));
+		PResearchTopic rs(new ResearchTopic(parent, name,hasIcon ? iconSource : "",setProgress,getProgress,maxProgress,dependency));
 
 		rs->componentReference = component;
 		rs->prototypeReference = proto;
@@ -61,7 +61,7 @@ namespace Objects
 
 		if (dependency)
 		{
-			if (dependency->currentProgress.IsEmpty())
+			if (dependency->getProgress.IsEmpty())
 			{
 				throw Lua::Exception("Trying to register research dependency of '"+name+"' to unresearchable topic '"+dependency->name+"'");
 			}
@@ -71,12 +71,12 @@ namespace Objects
 	}
 
 	ResearchTopic::ResearchTopic(const PResearchTopic&parent, const String&name, const String&iconName, 
-								const FAdvance&adv, 
-								const FGetProgress&currentProgress, int maxProgress,
+								const FSetProgress&setProgress, 
+								const FGetProgress&getProgress, int maxProgress,
 								const PResearchTopic&dependency
 								)
 								:Super(name), parent(parent),iconName(iconName),
-								advance(adv),currentProgress(currentProgress),maxProgress(maxProgress),
+								setProgress(setProgress),getProgress(getProgress),maxProgress(maxProgress),
 								dependency(dependency)
 	{}
 
@@ -411,18 +411,20 @@ namespace Objects
 		if (activeResearch && totalContribution)
 		{
 			int left;
+			int current = activeResearch->getProgress(researchState);
 			if (activeResearch->maxProgress >= 0)
 			{
-				left = activeResearch->maxProgress - activeResearch->currentProgress(researchState);
+				left = activeResearch->maxProgress - current;
 				if (left <= 0)
 					return;
 				totalContribution = vmin(totalContribution,left);
 			}
-			activeResearch->advance(researchState,totalContribution);
+			int next = current + totalContribution;
+			activeResearch->setProgress(researchState,next);
+			ASSERT_EQUAL__(next,activeResearch->getProgress(researchState));
 			changed = true;
-			if (activeResearch->maxProgress >= 0 && totalContribution == left)
+			if (activeResearch->maxProgress >= 0 && next >= activeResearch->maxProgress)
 			{
-				ASSERT_EQUAL__(activeResearch->currentProgress(researchState),activeResearch->maxProgress);
 				activeResearch.reset();
 			}
 		}

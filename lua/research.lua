@@ -324,7 +324,7 @@ function MakeUnlockResearchable(researchGroup, researchDependency, typeTable, ty
 	}
 	
 	return Game.CreateResearch(researchGroup,typeName,nil,
-		function(state,progress) state.research[key].progress = state.research[key].progress + progress end,
+		function(state,progress) state.research[key].progress = progress end,
 		function(state) return state.research[key].progress end, researchables[key].limit, researchDependency
 		);
 	
@@ -390,7 +390,7 @@ function MakeImproveResearchable(researchGroup, researchDependency, typeTable, t
 	}
 	
 	return Game.CreateResearch(researchGroup,typeName,nil,
-		function(state,progress) state.research[key].progress = state.research[key].progress + progress end,
+		function(state,progress) state.research[key].progress = progress end,
 		function(state) return state.research[key].progress end, -1, researchDependency
 		);
 end

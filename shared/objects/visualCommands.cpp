@@ -119,7 +119,7 @@ namespace Objects
 		int max = topic->maxProgress;
 		if (state.IsSet())
 		{
-			current = topic->currentProgress(state);
+			current = topic->getProgress(state);
 		}
 //		const ResearchState*rs = selectedEntity && selectedEntity->owner ? &selectedEntity->owner->researchState : nullptr;
 
@@ -139,7 +139,7 @@ namespace Objects
 					outResult << "Research completed";
 			}
 			PResearchTopic dep = topic->dependency.lock();
-			if (dep && (state.IsEmpty() || dep->currentProgress(state)<dep->maxProgress))
+			if (dep && (state.IsEmpty() || dep->getProgress(state)<dep->maxProgress))
 				outResult << "Requires completion of "+dep->GetFullName()+" research";
 			outResult.MarkBriefEnd();
 			outResult << "";

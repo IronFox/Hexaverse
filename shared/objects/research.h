@@ -43,7 +43,7 @@ namespace Objects
 	{
 		typedef ResearchGroup	Super;
 	public:
-		typedef Lua::Function<void(Lua::Reference, int)>	FAdvance;
+		typedef Lua::Function<void(Lua::Reference, int)>	FSetProgress;
 		typedef Lua::Function<int(Lua::Reference)>	FGetProgress;
 		typedef Lua::Function<bool(Lua::Reference)> FBool;
 		typedef Lua::Function<PResearchTopic(Lua::Reference)> FResearchTopic;
@@ -51,8 +51,8 @@ namespace Objects
 
 		const String			iconName;
 		const WResearchTopic	parent;
-		FAdvance				advance;
-		FGetProgress			currentProgress;
+		FSetProgress			setProgress;
+		FGetProgress			getProgress;
 		const int				maxProgress;
 		const WResearchTopic	dependency;
 		PWorldEntity			prototypeReference;
@@ -61,8 +61,8 @@ namespace Objects
 
 
 		/**/					ResearchTopic(const PResearchTopic&parent, const String&name, const String&iconName, 
-												const FAdvance&adv, 
-												const FGetProgress&currentProgress, int maxProgress,
+												const FSetProgress&setProgress, 
+												const FGetProgress&getProgress, int maxProgress,
 												const PResearchTopic&dependency
 												);
 		virtual					~ResearchTopic();
@@ -71,7 +71,7 @@ namespace Objects
 		bool					IsGroup() const {return maxProgress == 0;}
 		bool					ResearchCompleted(const Lua::Reference&researchState) const
 		{
-			return maxProgress > 0 && currentProgress(researchState) >= maxProgress;
+			return maxProgress > 0 && getProgress(researchState) >= maxProgress;
 		}
 
 		String					GetFullName() const
@@ -128,8 +128,8 @@ namespace Objects
 		bool					factionIsNexus;
 		static void				LogLua(const String&msg);
 		static PResearchTopic	CreateResearch(const PResearchTopic&parent, const String&name, const String&iconName, 
-												const ResearchTopic::FAdvance&adv, 
-												const ResearchTopic::FGetProgress&currentProgress, int maxProgress,
+												const ResearchTopic::FSetProgress&setProgress, 
+												const ResearchTopic::FGetProgress&getProgress, int maxProgress,
 												const PResearchTopic&dependency
 												);
 	public:

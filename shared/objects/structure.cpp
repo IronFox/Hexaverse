@@ -1914,7 +1914,7 @@ namespace Objects
 		auto topic = owner->researchState.GetActiveTopic();
 		if (topic->maxProgress <= 0)
 			return false;
-		outProgress.first = topic->currentProgress(owner->researchState.researchState);
+		outProgress.first = topic->getProgress(owner->researchState.researchState);
 		outProgress.second = topic->maxProgress;
 		return true;
 	}
