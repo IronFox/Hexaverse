@@ -204,7 +204,7 @@ namespace Objects
 			static PFaction				FindByID(const TUniqueID&id);
 			static PFaction				GetOrCreate(const TUniqueID&id);
 
-			/**/						Faction(const TUniqueID&id):researchState(id,false) {UpdateID(id);}
+			/**/						Faction(const TUniqueID&id):researchState(this,id,false) {UpdateID(id);}
 
 		#else
 

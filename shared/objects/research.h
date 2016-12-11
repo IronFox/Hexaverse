@@ -163,8 +163,12 @@ namespace Objects
 
 		static const TScriptID&	GetScriptIdentifier()	{return globalState.script->identifier;}
 
+		Faction*const			owner;
 
-		/**/					ResearchState(const TUniqueID&id, bool isNexus);
+
+		/**/					ResearchState(Faction*owner, const TUniqueID&id, bool isNexus);
+		/**/					ResearchState(const ResearchState&)=delete;
+		void					operator=(const ResearchState&)=delete;
 		void					SignalIDChange(const TUniqueID&){}
 
 		void					Contribute()	{totalContribution++;}

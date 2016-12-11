@@ -347,7 +347,7 @@ namespace Objects
 		//globalState.researchProgram.reset();
 	}
 
-	ResearchState::ResearchState(const TUniqueID&id, bool isNexus)
+	ResearchState::ResearchState(Faction*owner, const TUniqueID&id, bool isNexus):owner(owner)
 	{
 		factionID = id;
 		factionIsNexus = isNexus;
