@@ -382,7 +382,7 @@ namespace Objects
 			return false;
 		if (c >= '0' && c <= '9')
 			return false;
-		return true;
+		return c != '_';
 	}
 
 	void			BaseCommand::LoadIcon(const String&name)
