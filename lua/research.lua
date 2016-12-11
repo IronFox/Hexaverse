@@ -482,7 +482,8 @@ StructureConfig =
 
 
 unlockGroup = Game.CreateResearch(nil,"Unlock","Research_Unlock");
-improveGroup = Game.CreateResearch(nil,"Improve","Research_Improve");
+improveGroup = Game.CreateResearch(nil,"Improve",'Increase');
+--"Research_Improve");
 
 
 
