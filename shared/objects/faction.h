@@ -262,7 +262,7 @@ namespace Objects
 
 
 
-			/**/		Faction(const TUniqueID&id, const String&name="", bool isNexus=false):researchState(id,isNexus), name(name)
+			/**/		Faction(const TUniqueID&id, const String&name="", bool isNexus=false):researchState(this,id,isNexus), name(name)
 			{
 				nexusControl = acquiringNexusControl = 0;
 				deathInRounds = 0;
