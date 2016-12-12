@@ -1968,7 +1968,7 @@ namespace Protocol
 			ChatMessage,		// c2s: NetString<256>
 
 			PlanetConfig,		// both: Grid::ExtendedPlanetConfig
-			GameConfig,			// c2s: GameConfig
+			GameConfig,			// both: GameConfig
 			EndConfigurationMode,//c2s: <signal>
 
 			OperationLacksResources, //s2c: OperationLacksResources

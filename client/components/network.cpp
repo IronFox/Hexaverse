@@ -57,10 +57,44 @@ namespace Network
 	bool			newRoundRequested = false;
 
 
+
+	void			LoadScript(const SHA256::HashContainer&id)
+	{
+		ScriptCache::PScript script = ScriptCache::Lookup(id);
+		if (script)
+		{
+			LogEvent(EventClass::Preset::common,"Research script '"+Bin2Str::ConvertPOD(id)+"' is already locally available. activating...");
+			Objects::ResearchState::ActivateProgram(script);
+		}
+		else
+		{
+			LogEvent(EventClass::Preset::network,"Research script '"+Bin2Str::ConvertPOD(id)+"' is not locally available. Asking server...");
+			Network::Channels::requestResource.SendTo(client,id);
+		}
+
+	}
+
+
+	void			LoadGameConfig(const Protocol::GameConfig&cfg)
+	{
+		gameFlags = cfg.gameFlags;
+		RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(cfg.gameGoal);
+		requestedResearchScript = cfg.researchScript;
+
+		if (client.IsConnected())
+		{
+			LoadScript(Network::requestedResearchScript);
+		}
+	}
+
 	void			ConnectTo(const ServerAddress&addr, const Protocol::ServerInfo&info)
 	{
+		client.Disconnect();
+
 		RuntimeConfig::phase = RuntimeConfig::Phase::Uninitialized;
 		gameHasBegun = false;
+
+		LoadGameConfig(info.gameInfo.gameConfig);
 
 		client.ConnectAsync(addr.host + ":"+String(addr.basePort + PortOffset::Session));
 		#ifdef HAS_WINDOW
@@ -72,9 +106,6 @@ namespace Network
 
 		worldID = info.gameInfo.worldID;
 		worldIDString = worldID.ToNiceString();
-		gameFlags = info.gameInfo.gameConfig.gameFlags;
-		RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(info.gameInfo.gameConfig.gameGoal);
-		requestedResearchScript = info.gameInfo.gameConfig.researchScript;
 	}
 
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id)
@@ -389,6 +420,12 @@ namespace Network
 	{
 		bool			eventsLocked = true;
 
+		void	GameConfig(Protocol::GameConfig&cfg)
+		{
+			Network::LoadGameConfig(cfg);
+			LogEvent(EventClass::Preset::important,"Game config updated");
+		}
+
 
 		void	OnHelloResponse(Protocol::HelloResponse&response)
 		{
@@ -411,14 +448,7 @@ namespace Network
 					Dialog::CheckServersAreShown(false);
 				#endif
 
-				ScriptCache::PScript script = ScriptCache::Lookup(Network::requestedResearchScript);
-				if (script)
-					Objects::ResearchState::LoadProgram(script);
-				else
-				{
-					LogEvent(EventClass::Preset::network,"Research script '"+Bin2Str::ConvertPOD(Network::requestedResearchScript)+"' is not locally available. Asking server...");
-					Network::Channels::requestResource.SendTo(client,Network::requestedResearchScript);
-				}
+				LoadScript(Network::requestedResearchScript);
 			}
 			else
 			{
@@ -1049,6 +1079,7 @@ namespace Network
 		TCP::Channel<Protocol::ResearchState, 0, Protocol::ChannelID::ResearchState>					researchState(Receiver::ResearchState);
 		TCP::Channel<Protocol::SelectResearch, 0, Protocol::ChannelID::SelectResearch>				selectResearch(Receiver::SelectResearch);
 		TCP::Channel<Protocol::ResourceData,0,Protocol::ChannelID::ResourceData>					resourceData(Receiver::ResourceData);
+		TCP::Channel<Protocol::GameConfig,0,Protocol::ChannelID::GameConfig>						gameConfig(Receiver::GameConfig);
 
 
 
@@ -1070,7 +1101,6 @@ namespace Network
 		TCP::ObjectSender<Protocol::EntityStateUpdate, Protocol::ChannelID::Sleep>					sleep;
 		TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>					changeMyName;
 		TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>					chatMessage;
-		TCP::ObjectSender<Protocol::GameConfig,Protocol::ChannelID::GameConfig>						gameConfig;
 		TCP::ObjectSender<Protocol::ResourceID, Protocol::ChannelID::RequestResource>				requestResource;
 
 			//	,			//c2s: NET(bool) -> NET(bool)
@@ -1300,6 +1330,7 @@ namespace Network
 		client.InstallChannel(Channels::planetConfig);
 		client.InstallChannel(Channels::operationLacksResources);
 		client.InstallChannel(Channels::resourceData);
+		client.InstallChannel(Channels::gameConfig);
 
 
 		client.OpenSignalChannel(Protocol::ChannelID::Pong,0);
