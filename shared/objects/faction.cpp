@@ -20,9 +20,9 @@ namespace Objects
 		/*static*/ Buffer0<WFaction>	Faction::all;
 		/*static*/ PFaction				Faction::nexus;
 
-		void	Faction::RecreateNexus()
+		void	Faction::RecreateNexus(const TUniqueID&id)
 		{
-			nexus.reset(new Faction(TUniqueID::Empty(), "<Nexus>",true));
+			nexus.reset(new Faction(id, "<Nexus>",true));
 			ApplicationInterface::SignalFactionsChanged();
 		}
 
@@ -1671,13 +1671,12 @@ namespace Objects
 		rs.v[secondary] = secondaryLevel;
 	}
 
-	void		Faction::UpdateID(const TUniqueID&toID, bool recomputeColor/*=true*/)
+	void		Faction::InitID(const TUniqueID&toID, bool recomputeColor/*=true*/)
 	{
 		if (toID == TUniqueID::Empty())
 			id.Generate();
 		else
 			id = toID;
-		researchState.SignalIDChange(id);
 		if (recomputeColor)
 			IDToColor(color,id);
 	}

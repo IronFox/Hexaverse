@@ -1322,9 +1322,9 @@ namespace FileIO
 									isNexus = true;
 									ASSERT__(!nexusFound);
 									nexusFound = true;
+									Objects::Faction::RecreateNexus(factionID);
 									faction = Objects::Faction::nexus;
 									LogEvent(EventSignificance::Common,"Loading nexus faction");
-									faction->UpdateID(factionID);
 								}
 								else
 								{

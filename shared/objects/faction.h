@@ -144,6 +144,9 @@ namespace Objects
 //			void		ReplaceSensory(const Grid::SkySensorState&oldState, const Grid::SkySensorState&newState, float t, short changeBy);
 			void		CheckChanges(float t);
 		#endif
+
+		void			InitID(const TUniqueID&toID, bool recomputeColor=true);
+
 	public:
 		TUniqueID	id;
 		String		name;
@@ -188,7 +191,6 @@ namespace Objects
 		*/		
 		static void IDToColor(TVec3<>&outColor, const TUniqueID&id, int iteration=0);
 
-		void							UpdateID(const TUniqueID&toID, bool recomputeColor=true);
 
 		#ifdef ONE_COMPOUND_PER_FACTION
 			//index_t		compoundIndex = InvalidIndex;
@@ -204,7 +206,7 @@ namespace Objects
 			static PFaction				FindByID(const TUniqueID&id);
 			static PFaction				GetOrCreate(const TUniqueID&id);
 
-			/**/						Faction(const TUniqueID&id):researchState(this,id,false) {UpdateID(id);}
+			/**/						Faction(const TUniqueID&id):researchState(this,false) {InitID(id);}
 
 		#else
 
@@ -258,17 +260,17 @@ namespace Objects
 
 
 
-			static void			RecreateNexus();	//!< Creates a fresh nexus faction and assigns it to @a nexus
+			static void			RecreateNexus(const TUniqueID&id=TUniqueID::Empty());	//!< Creates a fresh nexus faction and assigns it to @a nexus
 
 
 
-			/**/		Faction(const TUniqueID&id, const String&name="", bool isNexus=false):researchState(this,id,isNexus), name(name)
+			/**/		Faction(const TUniqueID&toID, const String&name="", bool isNexus=false):researchState(this,isNexus), name(name)
 			{
 				nexusControl = acquiringNexusControl = 0;
 				deathInRounds = 0;
 
 				accessToken.Generate();
-				UpdateID(id);
+				InitID(toID);
 			}
 
 
