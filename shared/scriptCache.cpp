@@ -48,7 +48,10 @@ namespace ScriptCache
 
 		PScript other = Lookup(s->identifier);
 		if (other)
+		{
+			LogEvent(EventClass::Preset::configurationPrint,"  File mapped as '"+Bin2Str::ConvertPOD(s->identifier)+"' did not change. Returning previous instance.");
 			return other;
+		}
 
 		hashMap.Set(s->identifier,s);
 
@@ -79,6 +82,13 @@ namespace ScriptCache
 		file.Close();
 
 		s->Recompress();
+
+		PScript other = Lookup(s->identifier);
+		if (other)
+		{
+			LogEvent(EventClass::Preset::configurationPrint,"  File mapped as '"+Bin2Str::ConvertPOD(s->identifier)+"' did not change. Returning previous instance.");
+			return other;
+		}
 
 		map.Set(s->filename,std::make_pair(s,FileSystem::GetModificationTime(path)) );
 		hashMap.Set(s->identifier,s);
