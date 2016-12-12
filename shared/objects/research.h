@@ -125,6 +125,7 @@ namespace Objects
 		int						totalContribution = 0;
 		PResearchTopic			activeResearch;
 		bool					factionIsNexus;
+		String					lastTopic;
 		static void				LogLua(const String&msg);
 		static PResearchTopic	CreateResearch(const PResearchTopic&parent, const String&name, const String&iconName, 
 												const ResearchTopic::FSetProgress&setProgress, 

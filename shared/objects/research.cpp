@@ -554,7 +554,13 @@ namespace Objects
 		ForeachFaction([](const PFaction&f)
 		{
 			f->researchState.Export(f->researchState.serialData);
+			if (f->researchState.GetActiveTopic())
+				f->researchState.lastTopic = f->researchState.GetActiveTopic()->GetPath();
+			else
+				f->researchState.lastTopic.free();
 		});
+
+		
 
 		ScriptCache::PScript current = globalState.script;
 		try
@@ -663,6 +669,11 @@ namespace Objects
 			f->researchState.researchState = globalState.stateConstructor();
 			if (f->researchState.serialData.IsNotEmpty())
 				f->researchState.Import(f->researchState.serialData);
+
+			if (f->researchState.lastTopic.IsNotEmpty())
+			{
+				f->researchState.SetActiveTopic(FindTopic(f->researchState.lastTopic));
+			}
 		});
 
 		#ifdef HAS_WINDOW
