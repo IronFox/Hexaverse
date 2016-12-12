@@ -602,6 +602,7 @@ namespace Objects
 	{
 		if (!script)
 			throw Lua::Exception(CLOCATION, Except::globalString("Script is NULL"));
+		LogEvent(EventClass(EventSignificance::Common,EventFlavor::ServerPrivate),"Attempting to activate research program "+Bin2Str::ConvertPOD(script->identifier));
 		globalState.script = script;
 		globalState.rootResearch.Clear();
 		globalState.allTopics.Clear();
