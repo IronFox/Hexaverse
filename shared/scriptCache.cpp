@@ -10,7 +10,7 @@
 
 namespace ScriptCache
 {
-	GenericHashTable<PathString,PScript>	map;
+	GenericHashTable<PathString,std::pair<PScript,FileSystem::ftime_t> >	map;
 	GenericHashTable<SHA256::HashContainer,PScript,PODHash>	hashMap;
 
 
@@ -33,6 +33,7 @@ namespace ScriptCache
 
 		ASSERT_LESS__(compressed,32768);	//max transferrable byte count in current version
 		LogEvent(EventClass::Preset::configurationPrint,"  compressed to "+String(compressed)+" bytes ("+String((float)compressed/(float)len * 100.f)+"%)");
+		LogEvent(EventClass::Preset::configurationPrint,"  ID updated to "+Bin2Str::ConvertPOD(this->identifier));
 
 	}
 
@@ -59,9 +60,9 @@ namespace ScriptCache
 	{
 		FileSystem::File rs;
 		ASSERT1__(FileSystem::Folder().Find(path,rs,true),path);
-		PScript*script = map.QueryPointer(rs.GetLocation());
-		if (script)
-			return *script;
+		auto*cached = map.QueryPointer(rs.GetLocation());
+		if (cached && FileSystem::GetModificationTime(path) == cached->second)
+			return cached->first;
 
 		LogEvent(EventClass::Preset::configurationPrint,"Loading script file '"+String(path)+"'...");
 
@@ -79,7 +80,7 @@ namespace ScriptCache
 
 		s->Recompress();
 
-		map.Set(s->filename,s);
+		map.Set(s->filename,std::make_pair(s,FileSystem::GetModificationTime(path)) );
 		hashMap.Set(s->identifier,s);
 
 		return s;
