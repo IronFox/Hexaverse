@@ -167,6 +167,7 @@ namespace FileIO
 								terrainExponent("TREX"),
 								researchScript("RESS"),
 								researchState("REST"),
+								activeResearchTopic("ARET"),
 
 								zzzz("zzzz")	//no use, just so that every line can have a comma at the end
 								;
@@ -1339,7 +1340,14 @@ namespace FileIO
 
 								Riff::Chunk*researchStateChunk = list->FindFirst(RID::researchState);
 								if (researchStateChunk)
+								{
 									faction->researchState.Import(researchStateChunk->ReferenceData());
+
+
+									Riff::Chunk*activeResearchChunk = list->FindFirst(RID::activeResearchTopic);
+									if (activeResearchChunk)
+										faction->researchState.SetActiveTopic(Objects::ResearchState::FindTopic(String((const char*)activeResearchChunk->pointer(),activeResearchChunk->size())));
+								}
 
 								Riff::Chunk*nameChunk = list->FindFirst(RID::factionName);
 								if (nameChunk)
@@ -1629,6 +1637,13 @@ namespace FileIO
 				Array<BYTE> data;
 				faction->researchState.Export(data);
 				factionSection->AppendBlock(RID::researchState)->SetData(data);
+
+				auto res = faction->researchState.GetActiveTopic();
+				if (res)
+				{
+					String topic = res->GetPath();
+					factionSection->AppendBlock(RID::activeResearchTopic)->SetData(topic.c_str(),topic.length());
+				}
 			}
 
 
