@@ -508,7 +508,7 @@ namespace Objects
 		);
 
 		#ifdef _DEBUG
-			LoadProgram(globalState.fallback);	//test fallback program
+			ActivateProgram(globalState.fallback);	//test fallback program
 		#endif
 
 		//.reset(new ScriptCache::Script());
@@ -535,12 +535,12 @@ namespace Objects
 					FATAL__("Unable to copy ../lua/research.lua to "+String(final));
 			}
 		#endif
-		LoadProgram(ScriptCache::Load(final));
+		ActivateProgram(ScriptCache::Load(final));
 	}
 
 
 
-	/*static*/ void		ResearchState::LoadProgram(const ScriptCache::PScript&script)
+	/*static*/ void		ResearchState::ActivateProgram(const ScriptCache::PScript&script)
 	{
 		#if defined _DEBUG && defined HAS_WINDOW
 			if (globalState.script)

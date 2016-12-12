@@ -138,7 +138,7 @@ namespace Objects
 		bool					changed = false;
 
 		static void				StaticCreate();
-		static void				LoadProgram(const ScriptCache::PScript&script);
+		static void				ActivateProgram(const ScriptCache::PScript&script);
 		static void				LoadDefaultProgram();
 
 

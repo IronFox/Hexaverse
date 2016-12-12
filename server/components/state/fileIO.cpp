@@ -1120,7 +1120,7 @@ namespace FileIO
 					script = ScriptCache::DefineFromFleetingCompressedData(id,data,false);
 				}
 				if (script)
-					Objects::ResearchState::LoadProgram(script);
+					Objects::ResearchState::ActivateProgram(script);
 				else
 					Objects::ResearchState::LoadDefaultProgram();
 			}

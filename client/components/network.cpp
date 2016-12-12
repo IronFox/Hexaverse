@@ -998,7 +998,7 @@ namespace Network
 				ScriptCache::PScript script = ScriptCache::DefineFromFleetingCompressedData(dat.id, dat.data);
 				if (script)
 				{
-					Objects::ResearchState::LoadProgram(script);
+					Objects::ResearchState::ActivateProgram(script);
 				}
 			}
 			
