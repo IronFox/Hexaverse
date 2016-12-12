@@ -110,35 +110,40 @@ namespace Game
 		}
 
 
+		void		AssembleGameConfig(Protocol::GameConfig&gameConfig, bool allowSpectatorFactions)
+		{
+			gameConfig.researchScript = Objects::ResearchState::GetScriptIdentifier();
+			gameConfig.gameGoal = (UINT32)RuntimeConfig::gameGoal;
+			gameConfig.gameFlags = 0;
+			gameConfig.worldDiscovery = (BYTE)World::Config::worldDiscovery;
+			if (Config::closedGame)
+				gameConfig.gameFlags |= Protocol::GameFlag::ClosedGame;
+			if (RuntimeConfig::empZones)
+				gameConfig.gameFlags |= Protocol::GameFlag::EMPZones;
+			if (Config::basesRequired)
+				gameConfig.gameFlags |= Protocol::GameFlag::BasesRequired;
+			if (Config::startBases)
+				gameConfig.gameFlags |= Protocol::GameFlag::StartBases;
+			if (Config::Nexus::enableAI)
+				gameConfig.gameFlags |= Protocol::GameFlag::NexusAI;
+			if (ConfigurationMode::IsActive())
+				gameConfig.gameFlags |= Protocol::GameFlag::ConfigurationMode;
+			if (World::Config::simulateLiquids)
+				gameConfig.gameFlags |= Protocol::GameFlag::SimulateLiquids;
+
+			gameConfig.gameFlags |= Config::factionSupportFlags;
+			if (!allowSpectatorFactions)
+				gameConfig.gameFlags &= ~Protocol::GameFlag::SupportSpectatorFactions;
+		}
+
 		void	AssembleGameInfo(Protocol::GameInfo&info, bool allowSpectatorFactions)
 		{
+			AssembleGameConfig(info.gameConfig,allowSpectatorFactions);
 			info.activePhase = RuntimeConfig::phase;
 			info.numFactionsOnline = (UINT16)::Network::activePlayersAndSpectators.Count();
 			info.numFactionsCreated = (UINT16)Objects::Faction::all.Count() + (Config::Nexus::enableAI ? 1 : 0);
 			info.roundNumber = RuntimeConfig::roundNumber;
 			info.worldID = World::worldID;
-			info.gameConfig.researchScript = Objects::ResearchState::GetScriptIdentifier();
-			info.gameConfig.gameGoal = (UINT32)RuntimeConfig::gameGoal;
-			info.gameConfig.gameFlags = 0;
-			info.gameConfig.worldDiscovery = (BYTE)World::Config::worldDiscovery;
-			if (Config::closedGame)
-				info.gameConfig.gameFlags |= Protocol::GameFlag::ClosedGame;
-			if (RuntimeConfig::empZones)
-				info.gameConfig.gameFlags |= Protocol::GameFlag::EMPZones;
-			if (Config::basesRequired)
-				info.gameConfig.gameFlags |= Protocol::GameFlag::BasesRequired;
-			if (Config::startBases)
-				info.gameConfig.gameFlags |= Protocol::GameFlag::StartBases;
-			if (Config::Nexus::enableAI)
-				info.gameConfig.gameFlags |= Protocol::GameFlag::NexusAI;
-			if (ConfigurationMode::IsActive())
-				info.gameConfig.gameFlags |= Protocol::GameFlag::ConfigurationMode;
-			if (World::Config::simulateLiquids)
-				info.gameConfig.gameFlags |= Protocol::GameFlag::SimulateLiquids;
-
-			info.gameConfig.gameFlags |= Config::factionSupportFlags;
-			if (!allowSpectatorFactions)
-				info.gameConfig.gameFlags &= ~Protocol::GameFlag::SupportSpectatorFactions;
 		}
 
 
