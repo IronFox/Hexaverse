@@ -14,6 +14,47 @@ namespace ScriptCache
 	GenericHashTable<SHA256::HashContainer,PScript,PODHash>	hashMap;
 
 
+	void	Script::Recompress()
+	{
+		size_t len = content.length();
+		compressed.SetSize(4/*decompressed size*/  + len /*worst expected size=uncompressed*/ +50 /*overhead*/);
+		size_t compressed = BZ2::compress(content.c_str(),len,this->compressed.pointer()+4,len+50);
+		if (!compressed)
+		{
+			if (filename.IsNotEmpty())
+				FATAL__("Script compression of file '"+String(filename)+"' failed")
+			else
+				FATAL__("Script compression failed");
+		}
+		(*(UINT32*)this->compressed.pointer()) = (UINT32)len;
+
+		this->compressed.resizePreserveContent(compressed+4);
+		SHA256::Hash(this->compressed.pointer(),this->compressed.size(),this->identifier);
+
+		ASSERT_LESS__(compressed,32768);	//max transferrable byte count in current version
+		LogEvent(EventClass::Preset::configurationPrint,"  compressed to "+String(compressed)+" bytes ("+String((float)compressed/(float)len * 100.f)+"%)");
+
+	}
+
+	PScript		LoadContent(const String&content)
+	{
+		LogEvent(EventClass::Preset::configurationPrint,"Loading raw script ...");
+
+		PScript s(new Script());
+		s->content = content;
+
+		s->Recompress();
+
+		PScript other = Lookup(s->identifier);
+		if (other)
+			return other;
+
+		hashMap.Set(s->identifier,s);
+
+		return s;
+
+	}
+
 	PScript		Load(const PathString&path)
 	{
 		FileSystem::File rs;
@@ -36,21 +77,10 @@ namespace ScriptCache
 		file.Extract(0,s->content.mutablePointer(),len);
 		file.Close();
 
-		s->compressed.SetSize(4/*decompressed size*/  + len /*worst expected size=uncompressed*/ +50 /*overhead*/);
-		size_t compressed = BZ2::compress(s->content.c_str(),len,s->compressed.pointer()+4,len+50);
-		if (!compressed)
-			FATAL__("Script compression of file '"+String(s->filename)+"' failed");
-		(*(UINT32*)s->compressed.pointer()) = (UINT32)len;
-
-		s->compressed.resizePreserveContent(compressed+4);
-		SHA256::Hash(s->compressed.pointer(),s->compressed.size(),s->identifier);
+		s->Recompress();
 
 		map.Set(s->filename,s);
 		hashMap.Set(s->identifier,s);
-
-		ASSERT_LESS__(compressed,32768);	//max transferrable byte count in current version
-
-		LogEvent(EventClass::Preset::configurationPrint,"  compressed to "+String(compressed)+" bytes ("+String((float)compressed/(float)len * 100.f)+"%)");
 
 		return s;
 	}

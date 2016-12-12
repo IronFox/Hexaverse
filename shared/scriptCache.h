@@ -16,6 +16,9 @@ namespace ScriptCache
 		PathString				filename;
 		String					content;
 		Array<BYTE>				compressed;
+
+
+		void					Recompress();
 	};
 	typedef std::shared_ptr<Script>	PScript;
 
@@ -23,6 +26,9 @@ namespace ScriptCache
 	Loads the specified script file. Returns cached data if the specified file is requested multiple times
 	*/
 	PScript		Load(const PathString&);
+
+	PScript		LoadContent(const String&content);
+
 	PScript		Lookup(const SHA256::HashContainer&id);
 	PScript		DefineFromFleetingCompressedData(const SHA256::HashContainer&id,ArrayData<BYTE>&data, bool createFile=true);
 

@@ -232,6 +232,288 @@ namespace Objects
 			BaseAttributeTable&t = structureTables[i];
 			s->DefineAttributeTable(&t);
 		}
+
+		globalState.fallback = ScriptCache::LoadContent(
+			"ResearchState = {}\n"
+			"ResearchState.__index = ResearchState\n"
+			"function ResearchState.New()\n"
+				"local rs = {}\n"
+				"setmetatable(rs,ResearchState)\n"
+				"return rs\n"
+			"end\n"
+			"function ResearchState:Export()\n"
+				"return 0\n"
+			"end\n"
+			"function ResearchState:Import(exported)\n"
+			"end\n"
+					"\n"
+		"function DefaultHealthAtCost(cost--[[float]]) --float\n"
+		"	return cost /5\n"
+		"end\n"
+		"\n"
+		"function ExplicitStructure(cost, health, scanningRange, isUnlocked)\n"
+		"	return\n"
+		"	{\n"
+		"		Cost = cost,\n"
+		"		Health = health,\n"
+		"		ScanningRange = scanningRange,\n"
+		"		IsUnlocked = isUnlocked\n"
+		"	}\n"
+		"end\n"
+		"\n"
+		"function Structure(cost, scanningRange)\n"
+		"	return ExplicitStructure(cost, DefaultHealthAtCost(cost),scanningRange, true)\n"
+		"end\n"
+		"\n"
+		"function DefaultStructure(cost)\n"
+		"	return Structure(cost,2)\n"
+		"end\n"
+		"\n"
+		"function Get(attribute, state)\n"
+		"	if (attribute == nil) then\n"
+		"		return 0\n"
+		"	end\n"
+		"	t = type(attribute)\n"
+		"	if t == 'table' then\n"
+		"		return attribute.Get(state)\n"
+		"	end\n"
+		"	if t == 'function' then\n"
+		"		return attribute(state)\n"
+		"	end\n"
+		"	return attribute\n"
+		"end\n"
+		"\n"
+		"function Describe(attribute, state)\n"
+		"	if (attribute == nil) then\n"
+		"		return '0'\n"
+		"	end\n"
+		"	t = type(attribute)\n"
+		"	if t == 'table' then\n"
+		"		return attribute.Describe(state)\n"
+		"	end\n"
+		"	if t == 'function' then\n"
+		"		return attribute(state)\n"
+		"	end\n"
+		"	return attribute\n"
+		"end"
+			"	TurretConfig = "
+			"	{\n"
+			"	MissileLauncher = "
+			"	{\n"
+			"	Cost = 40,\n"
+			"	Weight = 13,\n"
+			"	HealthMultiplier = 1.5,\n"
+			"	ScanningRange = 4,\n"
+			"	AttacksPerRound = 1,\n"
+			"	DamageLevel = 10,\n"
+			"	ExplosionRadius = 1,\n"
+			"	HorizontalAttackRange = 8,\n"
+			"	IsUnlocked = true,\n"
+			"	},\n"
+			"	Cannon = "
+			"	{\n"
+			"	Cost = 15,\n"
+			"	Weight = 3,\n"
+			"	HealthMultiplier = 2,\n"
+			"	ScanningRange = 5,\n"
+			"	AttacksPerRound = 2,\n"
+			"	DamageLevel = 3,\n"
+			"	ExplosionRadius = 1,\n"
+			"	HorizontalAttackRange = 5,\n"
+			"	IsUnlocked = true,\n"
+			"	},\n"
+			"	Radar =\n"
+			"	{\n"
+			"	Cost = 10,\n"
+			"	Weight = 2,\n"
+			"	HealthMultiplier = 1,\n"
+			"	ScanningRange = 12,\n"
+			"	IsUnlocked = true,\n"
+			"	},\n"
+			"	Surveyor =\n"
+			"	{\n"
+			"	Cost = 10,\n"
+			"	Weight = 1,\n"
+			"	HealthMultiplier = 1,\n"
+			"	ScanningRange = 4,\n"
+			"	IsUnlocked = true,\n"
+			"	},\n"
+			"	Bomb =\n"
+			"	{\n"
+			"	Cost = 40,\n"
+			"	Weight = 5,\n"
+			"	HealthMultiplier = 1,\n"
+			"	ScanningRange = 1,\n"
+			"	ExplosionRadius = 7,\n"
+			"	DamageLevel = 50,\n"
+			"	HorizontalAttackRange = 0,\n"
+			"	IsUnlocked = true,\n"
+			"	},\n"
+			"	EMP =\n"
+			"	{\n"
+			"	Cost = 100,\n"
+			"	Weight = 5,\n"
+			"	HealthMultiplier = 1,\n"
+			"	ScanningRange = 3,\n"
+			"	AttacksPerRound = 1,\n"
+			"	DamageLevel = 5,\n"
+			"	ExplosionRadius = 3,\n"
+			"	HorizontalAttackRange = 17,\n"
+			"	AmmoConsumption = 50,\n"
+			"	IsUnlocked = false,\n"
+			"	},\n"
+			"	Artillery =\n"
+			"	{\n"
+			"	Cost = 25,\n"
+			"	Weight = 3,\n"
+			"	HealthMultiplier = 1.5,\n"
+			"	ScanningRange = 4,\n"
+			"	AttacksPerRound = 1,\n"
+			"	DamageLevel = 7,\n"
+			"	ExplosionRadius = 3.5,\n"
+			"	HorizontalAttackRange = 7,\n"
+			"	IsUnlocked = false,\n"
+			"	},\n"
+			"	Terraformer =\n"
+			"	{\n"
+			"	Cost = 40,\n"
+			"	Weight = 2,\n"
+			"	HealthMultiplier = 1,\n"
+			"	ScanningRange = 4,\n"
+			"	Op_Construct = 10,\n"
+			"	Op_TerrainRemove = 10,\n"
+			"	Op_TerrainAdd = 10,\n"
+			"	IsUnlocked = true,\n"
+			"	},\n"
+			"	Mechanic =\n"
+			"	{\n"
+			"	Cost = 30,\n"
+			"	Weight = 2,\n"
+			"	HealthMultiplier = 1,\n"
+			"	ScanningRange = 3,\n"
+			"	Op_Repair = 10,\n"
+			"	IsUnlocked = true,\n"
+			"	},\n"
+			"	}\n"
+			"	VehicleBaseConfig = "
+			"	{\n"
+			"	Hoverbase = "
+			"	{\n"
+			"	Cost = 40,\n"
+			"	MovementSpeed = 20,\n"
+			"	CarryingCapacity = 1,\n"
+			"	Health = 4,\n"
+			"	OperationSpeedMultiplier = 1,\n"
+			"	TurretRangeModifier = 0,\n"
+			"	IsUnlocked = true,\n"
+			"	},\n"
+			"	HeavyBase = "
+			"	{\n"
+			"	Cost = 80,\n"
+			"	MovementSpeed = 15,\n"
+			"	CarryingCapacity = 10,\n"
+			"	Health = 12,\n"
+			"	OperationSpeedMultiplier = 2,\n"
+			"	TurretRangeModifier = 0,\n"
+			"	IsUnlocked = true,\n"
+			"	},\n"
+			"	CatamaranBase = "
+			"	{\n"
+			"	Cost = 100,\n"
+			"	MovementSpeed = 8,\n"
+			"	CarryingCapacity = 15,\n"
+			"	Health = 12,\n"
+			"	OperationSpeedMultiplier = 2,\n"
+			"	TurretRangeModifier = 1,\n"
+			"	IsUnlocked = true,\n"
+			"	},\n"
+			"	}\n"
+
+
+			"function CanAttack(turret)\n"
+			"return Get(turret.AttacksPerRound,nil) > 0\n"
+			"end\n"
+
+			"function TowerScanningModifier(turret)\n"
+			"if CanAttack(turret) then\n"
+			"return -2.0	--penalty for attaching towers\n"
+			"end\n"
+			"return 2.0	--boost non-attacking towers\n"
+			"end\n"
+
+			"function Tower(turret--[[Table]]) --Table\n"
+			"rs =\n"
+			"{\n"
+			"Cost =\n"
+			"{\n"
+			"Get = "
+			"function(state) "
+			"return 40 + Get(turret.Cost,state)\n"
+			"end,\n"
+			"Describe = "
+			"function(state) "
+			"return '40+'.. Describe(turret.Cost,state)\n"
+			"end,\n"
+			"},\n"
+			"Health = "
+			"{\n"
+			"Get = "
+			"function(state) "
+			"return DefaultHealthAtCost(rs.Cost.Get(state)) * Get(turret.HealthMultiplier,state) "
+			"end,\n"
+			"Describe = "
+			"function(state) "
+			"return Round(DefaultHealthAtCost(rs.Cost.Get(state)) * Get(turret.HealthMultiplier,state),2)..'[='.. DefaultHealthAtCost(rs.Cost.Get(state))..'*'.. Describe(turret.HealthMultiplier,state)..']';\n"
+			"end,\n"
+			"},\n"
+			"ScanningRange =\n"
+			"{\n"
+			"Get = "
+			"function(state) "
+			"return Get(turret.ScanningRange,state) + TowerScanningModifier(turret)\n"
+			"end,\n"
+			"Describe = "
+			"function(state) "
+			"return Describe(turret.ScanningRange,state) ..'+'.. TowerScanningModifier(turret) "
+			"end,\n"
+			"},\n"
+			"IsUnlocked = "
+			"function(state) "
+			"return Get(turret.IsUnlocked,state) "
+			"end,\n"
+			"}\n"
+			"return rs;\n"
+			"end\n"
+
+
+			"StructureConfig =\n"
+			"{\n"
+			"	Mine = DefaultStructure(40),\n"
+			"	Generator = DefaultStructure(40),\n"
+			"	ReactorCore = DefaultStructure(120),\n"
+			"	VehicleStore = DefaultStructure(40),\n"
+			"	VehiclePlant = DefaultStructure(80),\n"
+			"	Laboratory = DefaultStructure(80),\n"
+			"	MunitionFactory = DefaultStructure(40),\n"
+			"	Connector = DefaultStructure(5),\n"
+			"	FuelContainer = DefaultStructure(10),\n"
+			"	MineralContainer = DefaultStructure(10),\n"
+			"	UraniumStorage = DefaultStructure(10),\n"
+			"	MunitionStorage = DefaultStructure(10),\n"
+			"	NexusPort = ExplicitStructure(0,1,2,false),\n"
+			"	MissileLauncherTower = Tower(TurretConfig.MissileLauncher),\n"
+			"	RadarTower = Tower(TurretConfig.Radar),\n"
+			"	CannonTower = Tower(TurretConfig.Cannon),\n"
+			"}\n"
+		);
+
+		#ifdef _DEBUG
+			LoadProgram(globalState.fallback);	//test fallback program
+		#endif
+
+		//.reset(new ScriptCache::Script());
+		
+
 		#ifdef _DEBUG
 			LoadDefaultProgram();
 		#endif
@@ -266,6 +548,52 @@ namespace Objects
 		#endif
 		if (!script || script == globalState.script)
 			return;
+
+		ForeachFaction([](const PFaction&f)
+		{
+			f->researchState.Export(f->researchState.serialData);
+		});
+
+		ScriptCache::PScript current = globalState.script;
+		try
+		{
+			InnerLoad(script);
+			return;
+		}
+		catch (const std::exception&e)
+		{
+			LogEvent(EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),e.what());
+		};
+
+		if (current)
+		{
+			LogEvent(EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),"Falling back to previous script");
+			RequireLoad(current);
+		}
+		else
+		{
+			LogEvent(EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),"Falling back to emergency script");
+			RequireLoad(globalState.fallback);
+		}
+	}
+
+	/*static*/ void ResearchState::RequireLoad(const ScriptCache::PScript&script)
+	{
+		try
+		{
+			InnerLoad(globalState.fallback);
+			return;
+		}
+		catch (const std::exception&e)
+		{
+			FATAL__("Fallback research script failed to load: "+String( e.what() ));
+		};
+	}
+
+	/*static*/ void	ResearchState::InnerLoad(const ScriptCache::PScript&script)
+	{
+		if (!script)
+			throw Lua::Exception(CLOCATION, Except::globalString("Script is NULL"));
 		globalState.script = script;
 		globalState.rootResearch.Clear();
 		globalState.allTopics.Clear();
@@ -290,14 +618,8 @@ namespace Objects
 
 
 
-		try
-		{
-			globalState.researchProgram->Execute(script->content);
-		}
-		catch (const std::exception&e)
-		{
-			FATAL__(e.what());
-		}
+		globalState.researchProgram->Execute(script->content);
+
 		Lua::Table researchTable = globalState.researchProgram->FindGlobal("ResearchState");
 		if (researchTable.IsEmpty())
 		{
@@ -347,9 +669,8 @@ namespace Objects
 		//globalState.researchProgram.reset();
 	}
 
-	ResearchState::ResearchState(Faction*owner, const TUniqueID&id, bool isNexus):owner(owner)
+	ResearchState::ResearchState(Faction*owner, bool isNexus):owner(owner)
 	{
-		factionID = id;
 		factionIsNexus = isNexus;
 		if (globalState.script)
 			researchState = globalState.stateConstructor();

@@ -124,7 +124,6 @@ namespace Objects
 	private:
 		int						totalContribution = 0;
 		PResearchTopic			activeResearch;
-		TUniqueID				factionID;
 		bool					factionIsNexus;
 		static void				LogLua(const String&msg);
 		static PResearchTopic	CreateResearch(const PResearchTopic&parent, const String&name, const String&iconName, 
@@ -132,6 +131,8 @@ namespace Objects
 												const ResearchTopic::FGetProgress&getProgress, int maxProgress,
 												const PResearchTopic&dependency
 												);
+		static void				InnerLoad(const ScriptCache::PScript&script);
+		static void				RequireLoad(const ScriptCache::PScript&script);
 	public:
 
 		bool					changed = false;
@@ -149,7 +150,7 @@ namespace Objects
 
 		struct GlobalState
 		{
-			ScriptCache::PScript	script;
+			ScriptCache::PScript	script,fallback;
 			Buffer0<PResearchTopic>	allTopics;
 			ResearchGroup		rootResearch;
 			Lua::PProgram		researchProgram;
@@ -166,10 +167,9 @@ namespace Objects
 		Faction*const			owner;
 
 
-		/**/					ResearchState(Faction*owner, const TUniqueID&id, bool isNexus);
+		/**/					ResearchState(Faction*owner, bool isNexus);
 		/**/					ResearchState(const ResearchState&)=delete;
 		void					operator=(const ResearchState&)=delete;
-		void					SignalIDChange(const TUniqueID&){}
 
 		void					Contribute()	{totalContribution++;}
 		void					FinalizeRound(const PFaction&);
