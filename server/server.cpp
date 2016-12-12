@@ -1374,23 +1374,7 @@ int main( int argc, const char* argv[])
 			application_shutting_down = true;
 		})->SetUniqueHelp("Shuts down the service and terminates the application");
 
-		Reflection::state.DefineCommand("/World/reloadResearchScript",(CLI::Command::function0_t)[]()
-		{
-			Objects::ResearchState::LoadDefaultProgram();
-			Protocol::GameConfig localhost,other;
-			Game::Network::AssembleGameConfig(other,false);
-			Game::Network::AssembleGameConfig(localhost,true);
 
-			Network::server.VisitAllPeers([localhost,other](const TCP::PPeer&p)
-			{
-				if (p->IsLocalhost())
-					Channels::gameConfig.SendTo(p,localhost);
-				else
-					Channels::gameConfig.SendTo(p,other);
-			});
-
-
-		})->SetUniqueHelp("Reloads research script from file source");
 
 		Reflection::state.PushFocus();
 			Reflection::state.EnterNewFolder("/IO");
@@ -1418,6 +1402,26 @@ int main( int argc, const char* argv[])
 					}
 				FileIO::Load(FileIO::GetAutoSavePath(index));
 			},CLI::FileCompletion);
+
+
+			Reflection::state.DefineCommand("reloadResearchProgram",(CLI::Command::function0_t)[]()
+			{
+				Objects::ResearchState::LoadDefaultProgram();
+				Protocol::GameConfig localhost,other;
+				Game::Network::AssembleGameConfig(other,false);
+				Game::Network::AssembleGameConfig(localhost,true);
+
+				Network::server.VisitAllPeers([localhost,other](const TCP::PPeer&p)
+				{
+					if (p->IsLocalhost())
+						Channels::gameConfig.SendTo(p,localhost);
+					else
+						Channels::gameConfig.SendTo(p,other);
+				});
+
+
+			})->SetUniqueHelp("Reloads research program from file and redeploys to clients");
+
 		Reflection::state.PopFocus();
 
 
