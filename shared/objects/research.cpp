@@ -98,11 +98,11 @@ namespace Objects
 		static void InitAttrib(const Lua::Table&source, const String&path, const String&name, LuaAttribute<T>&a, bool allowEmpty = false)
 		{
 			Lua::Reference ref = source.GetField(name);
+			a.Clear();
 			if (ref.IsEmpty())
 			{
 				if (!allowEmpty)
 					FATAL__("research.lua does not define "+path+"."+name);
-				a.Clear();
 				return;
 			}
 
