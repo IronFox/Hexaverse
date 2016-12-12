@@ -710,7 +710,7 @@ namespace Objects
 				return PResearchTopic();
 			current = current->Find(components[i]);
 		}
-		return PResearchTopic();
+		return current;
 	}
 
 	/*static*/ PResearchTopic	ResearchState::GetTopic(index_t serialIndex)
