@@ -542,10 +542,10 @@ namespace Objects
 
 	/*static*/ void		ResearchState::ActivateProgram(const ScriptCache::PScript&script)
 	{
-		#if defined _DEBUG && defined HAS_WINDOW
-			if (globalState.script)
-				return;		//prevent reloading
-		#endif
+		//#if defined _DEBUG && defined HAS_WINDOW
+		//	if (globalState.script)
+		//		return;		//prevent reloading
+		//#endif
 		if (!script || script == globalState.script)
 			return;
 		LogEvent(EventClass::Preset::common,"Activating research script "+Bin2Str::ConvertPOD(script->identifier));
