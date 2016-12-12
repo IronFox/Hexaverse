@@ -548,6 +548,8 @@ namespace Objects
 		#endif
 		if (!script || script == globalState.script)
 			return;
+		LogEvent(EventClass::Preset::common,"Activating research script "+Bin2Str::ConvertPOD(script->identifier));
+
 
 		ForeachFaction([](const PFaction&f)
 		{
