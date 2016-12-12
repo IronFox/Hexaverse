@@ -589,7 +589,7 @@ namespace Objects
 	{
 		try
 		{
-			InnerLoad(globalState.fallback);
+			InnerLoad(script);
 			return;
 		}
 		catch (const std::exception&e)
