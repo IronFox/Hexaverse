@@ -126,8 +126,9 @@ namespace Objects
 				const TVec3<>&dir = Grid::low.cells[c.stackID].centerVertex.xyz;
 				float h = Grid::ToRadiusf(float(c.height));
 				Mat::makeAxisSystem(dir*h,dir,2,sys);
-				sys.x.xyz *= 0.75f;
-				sys.y.xyz *= 0.75f;
+				sys.x.xyz *= 0.75f * Grid::UnitScale;
+				sys.y.xyz *= 0.75f * Grid::UnitScale;
+				sys.z.xyz *= Grid::UnitScale;
 				selectedVisual = sys;
 			}
 			else
@@ -180,7 +181,7 @@ namespace Objects
 
 			PMobileEntity v = CompleteProduction(t);
 			//static Random random;
-			Grid::LCellIdI c = movementChoices[parent->entityRandom.getIndex(movementChoices.Count()-1)].location;
+			Grid::LCellIdI c = movementChoices[parent->entityRandom.NextIndex(movementChoices.Count())].location;
 
 			MobilePlacementResult rs = v->PlaceExactlyAt(c,0,0,false,false);
 			if (Failed(rs))
@@ -484,6 +485,8 @@ namespace Objects
 			//PSatellite	satellite;
 			//VehicleBase* base;
 			//Turret* turret;
+			WorldEntity*parent = dynamic_cast<WorldEntity*>(this);
+
 			int price = 0;
 			String name;
 			Component::VehicleBase* base = nullptr;
@@ -496,14 +499,16 @@ namespace Objects
 				ASSERT_NOT_NULL1__(turret, (int)turretName);
 				ASSERT_NOT_NULL1__(base, (int)baseName);
 
-				price = Vehicle::GetPrice(base,turret);
+				price = Vehicle::GetPrice(base,turret,parent->owner);
 				name = Vehicle::GetTypeName(base,turret);
 			}
 			else
 			{
 				prototype = GetNonVehiclePrototypeByName(baseName);
 				ASSERT1__(prototype, (int)baseName);
-				price = prototype->GetConstructionCost();
+				prototype->owner = parent->owner;
+					price = prototype->GetConstructionCost();
+				prototype->owner.reset();
 				name = prototype->GetTypeName();
 				if (prototype->IsVehicle())
 				{
@@ -548,7 +553,7 @@ namespace Objects
 							{
 								PWorldEntity e1 = e.lock();
 								if (e1)
-									SignalConstructionAbort(e1->id,id);
+									ApplicationInterface::SignalConstructionAbort(e1->id,id);
 							}
 							,
 							[e,p,id]()->Dialog::CheckResult
@@ -566,7 +571,7 @@ namespace Objects
 
 						}
 						else
-							SignalConstructionAbort(selectedEntity->id,id);	//lossless
+							ApplicationInterface::SignalConstructionAbort(selectedEntity->id,id);	//lossless
 
 					},CommonCmd::CommonButtonCheck));
 					item.commandToTerminate.first = commandOffset + int2(index,0);

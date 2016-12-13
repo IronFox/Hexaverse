@@ -22,7 +22,7 @@ namespace Bin2Str
 		c = Template::toupper(c);
 		if (c >= 'A' && c <= 'F')
 			return (BYTE)(10 + (c - 'A'));
-		throw Program::ParameterFault("Unable to decode byte-string character '" + String(c) + "': Invalid hexadecimal character");
+		throw Except::Program::ParameterFault("Unable to decode byte-string character '" + String(c) + "': Invalid hexadecimal character");
 	}
 
 	inline void _ByteToHex(char*&out, BYTE v)
@@ -44,6 +44,12 @@ namespace Bin2Str
 			_ByteToHex(out,((const BYTE*)data)[i]);
 		return result;
 	}
+
+	template <typename T>
+		inline String ConvertPOD(const T&data, size_t maxBytes=4)
+		{
+			return Convert(&data,vmin(maxBytes,sizeof(T)));
+		}
 	inline String Convert(const Array<BYTE>&v)
 	{
 		return Convert(v.pointer(),v.size());
@@ -52,7 +58,7 @@ namespace Bin2Str
 	{
 		if (sourceLen != outDataSize * 2)
 		{
-			throw Program::ParameterFault("Unable to decode byte-string '" + String(source,sourceLen) + "': Invalid length (" + String(sourceLen) + "). Expected "+String(outDataSize*2)+" characters");
+			throw Except::Program::ParameterFault("Unable to decode byte-string '" + String(source,sourceLen) + "': Invalid length (" + String(sourceLen) + "). Expected "+String(outDataSize*2)+" characters");
 		}
 		BYTE*outBytes = (BYTE*)outData;
 		for (index_t i = 0; i < outDataSize; i++)

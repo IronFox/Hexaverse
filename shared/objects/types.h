@@ -16,6 +16,8 @@ namespace Objects
 	DECLARE_POINTER_CLASS(MobileEntityProducer)
 	DECLARE_POINTER_CLASS(SkyLinkStructure)
 
+	DECLARE_POINTER_CLASS(ResearchTopic)
+
 	DECLARE_POINTER_CLASS(BaseEntity)
 		DECLARE_POINTER_CLASS(WorldEntity)
 			DECLARE_POINTER_CLASS(Structure)
@@ -54,6 +56,7 @@ namespace Objects
 
 	typedef PFaction		OwnerParameter;
 
+	enum class ResearchSateModulation;
 
 	CONSTRUCT_ENUMERATION7(RemovalType,
 		Vanished,
@@ -68,6 +71,17 @@ namespace Objects
 	class Compound;
 	class Marker;
 	struct TrajectoryEndPoint;
+
+
+	struct ResourceWithMunition;	//enum container
+	struct ResourceWithoutMunition;	//enum container
+
+	#ifdef NO_MUNITION
+		typedef ResourceWithoutMunition	Resource;
+	#else
+		typedef ResourceWithMunition	Resource;
+	#endif
+
 
 	DECLARE_POINTER_CLASS(CommandGroup)
 

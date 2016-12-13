@@ -1,0 +1,31 @@
+changelog.txt
+client/game.ini
+client/Visual Client.exe
+client/Console Client*.exe
+client/shaders/compiled/*.*
+client/Font/font.*
+client/Font/compiled/*.*
+client/objects/*.cgs
+client/resources/*.wav
+client/resources/objectSounds/*.wav
+client/resources/objectSounds/sources.txt
+client/resources/*.png
+client/resources/nice/*.txt
+client/resources/icons/*.png
+client/resources/textures/*.png
+client/resources/tutorial/*.png
+client/resources/tutorial/*.jpg
+client/resources/tutorial/*.xml
+client/oalinst.exe
+client/dxwebsetup.exe
+client/OpenAL32.dll
+client/D3DCompiler_43.dll
+client/D3DCompiler_47.dll
+
+
+server/Server*.exe
+server/config/planets/*.ini
+server/config/declaration.xml
+lua/*.lua
+
+ControlConsole/ControlConsole*.exe

@@ -6,9 +6,9 @@
 
 namespace Logging
 {
-	void SendEntityEvent( TCP::Peer*toPeer,const EventClass&type, const Objects::WorldEntity*e, const String&msg)
+	void SendEntityEvent( TCP::Peer*toPeer,const EventClass&type, const Objects::WorldEntity*e, const Objects::OwnerParameter&owner, const String&msg)
 	{
-		if (!toPeer && !e && type.significance >= EventSignificance::Uncommon)
+		if (!toPeer && !e && !owner && type.significance >= EventSignificance::Uncommon)
 			RemoteControl::RelayEvent(msg);
 
 		if (type.flavor == EventFlavor::ServerPrivate || type.significance < EventSignificance::Uncommon)
@@ -17,9 +17,9 @@ namespace Logging
 
 		if (!Network::server.IsOnline())
 			return;
-		if (!toPeer && e)
+		if (!toPeer && (e || owner))
 		{
-			Network::PClient*cl = Network::playerMap.QueryPointer(e->owner);
+			Network::PClient*cl = e ? Network::playerMap.QueryPointer(e->owner) : Network::playerMap.QueryPointer(owner);
 			if (cl)
 				toPeer = (*cl)->peer.lock().get();
 			else
@@ -52,15 +52,15 @@ namespace Logging
 
 void LogEvent(const EventClass&t, TCP::Peer&peer, const String&msg)
 {
-	Logging::SendEntityEvent(&peer,t,nullptr,msg);
+	Logging::SendEntityEvent(&peer,t,nullptr, Objects::OwnerParameter(),msg);
 
-	Logging::WriteEvent(t,msg,&peer,nullptr);
+	Logging::WriteEvent(t,msg,&peer,nullptr,Objects::OwnerParameter());
 }
 
 void LogEvent(const EventClass&t, TCP::Peer&peer, const Objects::PWorldEntity&e, const String&msg)
 {
-	Logging::SendEntityEvent(&peer,t,e.get(),msg);
-	Logging::WriteEvent(t,msg,&peer,e.get());
+	Logging::SendEntityEvent(&peer,t,e.get(),Objects::OwnerParameter(),msg);
+	Logging::WriteEvent(t,msg,&peer,e.get(),Objects::OwnerParameter());
 }
 
 

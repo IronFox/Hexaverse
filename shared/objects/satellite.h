@@ -169,7 +169,9 @@ namespace Objects
 		SkyPort connection status.
 		The return value is expected to be independent of the state of the local instance.
 		*/
-		virtual int				GetFuelConsumptionPerRound() const {return GetConstructionCost()/4;};
+		virtual int				GetFuelConsumptionPerRound() const;
+		virtual String			DescribeFuelConsumptionPerRound() const;
+		virtual int				GetBaseFuelConsumptionPerRound() const {return GetConstructionCost()/4;}
 		/**
 		Tests whether or not the local instance currently requires fuel at all.
 		SkyHubs do not require fuel when hovering atop an enabled SkyPort, and will then return false.
@@ -191,7 +193,7 @@ namespace Objects
 		virtual bool			IsSkyHub() const {return false;}
 
 		//TurretBase overrides:
-		virtual float			GetFlatAttackRange() const override {return EMPModify(turret->horizontalAttackRange,1.f);}
+		virtual float			GetFlatAttackRange() const override;
 		#ifndef CLIENT
 			virtual bool		FillAttackQueue()override;
 		#endif
@@ -239,12 +241,17 @@ namespace Objects
 			}
 		#endif
 
+		virtual int				GetMovementStepsPerRound() const override;
+		virtual String			DescribeMovementStepsPerRound()	const override;
 		virtual bool			MotionIgnoresAttack() const override {return false;}
 		virtual float			GetPathSize() const override {return 1.f;}
 		#ifndef CLIENT
 			bool				DirectTo(mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 			MobilePlacementResult	PlaceExactlyAt(const Grid::LCellIdI&, float timeCost, float minTimeOffset, bool signalEvent=true, bool isCreated=true, bool failIsFatal=false) override;
 		#endif
+
+		//WorldEntity overrides:
+		virtual void			PrototypeSetup() override;
 	};
 
 
@@ -329,6 +336,7 @@ namespace Objects
 	template <typename Derivative>
 		/*virtual override*/	void			SatelliteTemplate<Derivative>::PrototypeSetup()
 		{
+			Super::PrototypeSetup();
 			turret = GetTurretType();
 			#ifdef HAS_WINDOW
 				commands.baseCoords = int2(4,0)+BaseCommand::coordOffset;
@@ -392,7 +400,7 @@ namespace Objects
 		void					UpdateConnections();
 
 
-
+		static bool				CanProduce(const Satellite*satPrototype);
 
 
 
@@ -430,7 +438,6 @@ namespace Objects
 
 		//MobileEntity overrides:
 		virtual Grid::LCellIdI	GetConstructionLocation(const Grid::LCellIdI&focus) const {return Grid::LCellIdI(focus.stackID,GetStructureBuildHeight(focus));}
-		virtual int				GetMovementStepsPerRound() const override {return 1;}
 
 
 		//WorldEntity overrides:
@@ -473,8 +480,6 @@ namespace Objects
 		#endif
 
 
-		//MobileEntity overrides:
-		virtual int				GetMovementStepsPerRound() const override {return 1;}
 
 
 		//BaseEntity overrides:
@@ -510,8 +515,6 @@ namespace Objects
 		/**/					Ragnarok():Super(GetTurretType())
 								{}	//global prototype
 	public:
-		//MobileEntity overrides:
-		virtual int				GetMovementStepsPerRound() const override {return 1;}
 
 		//BaseEntity overrides:
 		virtual String			GetTypeName() const override {return "Ragnarök";}
@@ -546,8 +549,6 @@ namespace Objects
 	public:
 		static const int		ProductionSpeed = 5;
 
-		//MobileEntity overrides:
-		virtual int				GetMovementStepsPerRound() const override {return 1;}
 
 		//BaseEntity overrides:
 		virtual String			GetTypeName() const override {return "Star Port";}

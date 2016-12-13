@@ -166,6 +166,9 @@ namespace FileIO
 								worldID("WDID"),
 								factionWorldTypeChunk("WTCK"),
 								terrainExponent("TREX"),
+								researchScript("RESS"),
+								researchState("REST"),
+								activeResearchTopic("ARET"),
 
 								zzzz("zzzz")	//no use, just so that every line can have a comma at the end
 								;
@@ -267,6 +270,7 @@ namespace FileIO
 
 	static void Import(Riff::Chunk*parent, Objects::WorldEntity&e, const GenericHashTable<TUniqueID,Objects::PFaction,TUniqueID>&ownerMap)
 	{
+		using namespace ApplicationInterface;
 		Riff::Chunk*source = parent->FindFirst(RID::entity);
 		ASSERT_NOT_NULL__(source);
 
@@ -866,6 +870,7 @@ namespace FileIO
 	
 	static Objects::PStructure Import(Riff::Chunk*parent, GenericHashTable<TUniqueID,Objects::PFaction,TUniqueID>&factions)
 	{
+		using namespace ApplicationInterface;
 		String typeName;
 		Import(parent,RID::structureType,typeName);
 		Grid::LCellIdI location;
@@ -1062,13 +1067,13 @@ namespace FileIO
 						failed = true;
 					}
 					else
-						if (vid > SupportedFileVersion)
+						if (vid > ApplicationInterface::SupportedFileVersion)
 						{
-							LogEvent(EventClass::Preset::error,"Unsupported version: "+String(vid)+". Versions are supported up to "+String(SupportedFileVersion));
+							LogEvent(EventClass::Preset::error,"Unsupported version: "+String(vid)+". Versions are supported up to "+String(ApplicationInterface::SupportedFileVersion));
 							failed = true;
 						}
 						else
-							globalVersionOfCurrentFile = vid;
+							ApplicationInterface::globalVersionOfCurrentFile = vid;
 				}
 
 			}
@@ -1102,6 +1107,27 @@ namespace FileIO
 		bool nexusFound = false, worldInfoFound = false;
 
 
+
+		{
+			Riff::Chunk*chunk = file.FindFirst(RID::researchScript);
+			if (chunk)
+			{
+				SHA256::HashContainer id;
+				SHA256::Hash(chunk->pointer(),chunk->size(),id);
+				ScriptCache::PScript script = ScriptCache::Lookup(id);
+				if (!script)
+				{
+					Array<BYTE>	data;
+					chunk->Get(data);
+					script = ScriptCache::DefineFromFleetingCompressedData(id,data,false);
+				}
+				if (script)
+					Objects::ResearchState::ActivateProgram(script);
+				else
+					Objects::ResearchState::LoadDefaultProgram();
+			}
+		}
+
 		GenericHashTable<TUniqueID,Objects::PFaction,TUniqueID>	factionMap;
 		for (int round = 0; round < 2; round++)
 		{
@@ -1126,7 +1152,7 @@ namespace FileIO
 								Game::Config::Nexus::enableAI = list->FindFirst(RID::nexusAI) != nullptr;
 								RuntimeConfig::empZones = false;
 
-								if (globalVersionOfCurrentFile < FileVersions::FirstVersionWithVariables)
+								if (ApplicationInterface::globalVersionOfCurrentFile < ApplicationInterface::FileVersions::FirstVersionWithVariables)
 								{
 									GetPOD(list,RID::closedGame,Game::Config::closedGame);
 									GetOptionalPOD(list,RID::nexusBases,Game::Config::Nexus::haveBases,false);
@@ -1300,9 +1326,9 @@ namespace FileIO
 									isNexus = true;
 									ASSERT__(!nexusFound);
 									nexusFound = true;
+									Objects::Faction::RecreateNexus(factionID);
 									faction = Objects::Faction::nexus;
 									LogEvent(EventSignificance::Common,"Loading nexus faction");
-									faction->UpdateID(factionID);
 								}
 								else
 								{
@@ -1315,6 +1341,17 @@ namespace FileIO
 								}
 								GetPOD(list,RID::factionAccessToken,faction->accessToken);
 
+								Riff::Chunk*researchStateChunk = list->FindFirst(RID::researchState);
+								if (researchStateChunk)
+								{
+									faction->researchState.Import(researchStateChunk->ReferenceData());
+
+
+									Riff::Chunk*activeResearchChunk = list->FindFirst(RID::activeResearchTopic);
+									if (activeResearchChunk)
+										faction->researchState.SetActiveTopic(Objects::ResearchState::FindTopic(String((const char*)activeResearchChunk->pointer(),activeResearchChunk->size())));
+								}
+
 								Riff::Chunk*nameChunk = list->FindFirst(RID::factionName);
 								if (nameChunk)
 								{
@@ -1324,7 +1361,7 @@ namespace FileIO
 								else
 									faction->name = isNexus ? "<Nexus>" : faction->id.ToString();
 							
-								if (globalVersionOfCurrentFile >= 1038)
+								if (ApplicationInterface::globalVersionOfCurrentFile >= 1038)
 								{
 									Riff::Chunk*markerChunk = list->FindFirst(RID::factionMarkers);
 									if (markerChunk)
@@ -1504,7 +1541,7 @@ namespace FileIO
 		Timer::Time t0 = timer.Now();
 
 		Riff::Container container;
-		UINT32 vid = SupportedFileVersion;
+		UINT32 vid = ApplicationInterface::SupportedFileVersion;
 		container.AppendBlock(RID::fileVersion,&vid,sizeof(vid));
 		container.AppendBlock(RID::worldContentTypeCount)->SetPODData((UINT32)Grid::Content::NumberOfPossibilities);
 		container.AppendBlock(RID::terrainExponent)->SetPODData((UINT32)Grid::HighExponent);
@@ -1531,6 +1568,8 @@ namespace FileIO
 			general->AppendBlock(RID::variableConfiguration,variableBuffer.pointer(),variableBuffer.GetContentSize());
 		}
 
+		if (Objects::ResearchState::globalState.script)
+			general->AppendBlock(RID::researchScript)->SetData(Objects::ResearchState::globalState.script->compressed);
 
 		//general->AppendBlock(RID::factionSupportFlags)->SetPODData(State::Config::factionSupportFlags);
 		//general->AppendBlock(RID::closedGame)->SetPODData(State::Config::closedGame);
@@ -1595,6 +1634,22 @@ namespace FileIO
 			factionSection->AppendBlock(RID::factionName)->SetData(faction->name.c_str(),faction->name.length());
 
 			factionSection->AppendBlock(RID::factionAccessToken)->SetPODData(faction->accessToken);	//faction access token
+
+
+			if (faction->researchState.researchState.IsSet())
+			{
+				Array<BYTE> data;
+				faction->researchState.Export(data);
+				factionSection->AppendBlock(RID::researchState)->SetData(data);
+
+				auto res = faction->researchState.GetActiveTopic();
+				if (res)
+				{
+					String topic = res->GetPath();
+					factionSection->AppendBlock(RID::activeResearchTopic)->SetData(topic.c_str(),topic.length());
+				}
+			}
+
 
 			if (faction->markers.IsNotEmpty())
 			{

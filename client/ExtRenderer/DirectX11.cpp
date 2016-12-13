@@ -5,7 +5,7 @@
 #include "DirectX11.h"
 #include <io/file_system.h>
 //#include <DxErr.h>
-#include <io/encryption.h>
+#include <io/cryptographic_hash.h>
 #include <engine/timing.h>
 #include <comdef.h>
 
@@ -3029,7 +3029,7 @@ namespace Engine
 		D3D11_TEXTURE2D_DESC desc;
 		source->GetDesc(&desc);
 		DXGI_FORMAT format = desc.Format;
-		destination.setContentType(PixelType::StrictColor);
+		destination.SetContentType(PixelType::StrictColor);
 
 		BYTE channels = 0;
 		switch (format)

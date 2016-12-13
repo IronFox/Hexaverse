@@ -200,25 +200,26 @@ namespace Objects
 
 				{
 					//float delta = std::max(fabs(angles.x - turretAngleX), fabs(angles.y - turretAngleY));
-					SignalTurretRotation(shared_from_this(),(ToWorld(trajectory[1]) - ToWorld(trajectory.First())).Normalized0(),Times::TurretRotation);
+					ApplicationInterface::SignalTurretRotation(shared_from_this(),(ToWorld(trajectory[1]) - ToWorld(trajectory.First())).Normalized0(),Times::TurretRotation);
 					motionTime += Times::TurretRotation;
 				}
 
-				TAttack at;
+				ApplicationInterface::TAttack at;
 				at.attackAngle = angle;
 				at.attackFrom = shared_from_this();
 				at.flightTime = flightTime;
 				at.isAutoAttack = target.autoTarget;
 				at.traceTo = t0;
-				SignalAttack(at);
+				ApplicationInterface::SignalAttack(at);
 
-				if (storage.level[turret->ammoType] >= turret->ammoNeedPerShot)
-					ChangeStorage(*this,attackTime, turret->ammoType,-turret->ammoNeedPerShot);
+				const int ammoNeed = turret->GetAmmoNeedPerShot(owner);
+				if (storage.level[turret->ammoType] >= ammoNeed)
+					ChangeStorage(*this,attackTime, turret->ammoType,-ammoNeed);
 				else
 				{
 					RefreshCompoundCoverageIfNeeded(motionTime);
 					ResourceVector change;
-					change.level[turret->ammoType] = -turret->ammoNeedPerShot;
+					change.level[turret->ammoType] = -ammoNeed;
 					GetCompound().ChangeStorage(change,motionTime);
 					//ASSERT__(change.IsEmpty());
 				}
@@ -226,13 +227,15 @@ namespace Objects
 
 				
 				motionTime += flightTime;
+				const int damageLevel = (int)floor(turret->GetDamageLevel(owner));
+				const float explosionRadius = turret->GetExplosionRadius(owner);
 
 				if (turret->dealsEMPDamage)
 					ExplodeEMP(at,
-								t1, t0, turret->explosionRadius, turret->damageLevel,motionTime);
+								t1, t0, explosionRadius, damageLevel,motionTime);
 				else
 					Explode(at,
-							t1, t0, turret->explosionRadius, turret->damageLevel,turret->isDoomsday, motionTime);
+							t1, t0, explosionRadius, damageLevel,turret->isDoomsday, motionTime);
 
 				RegisterChange((changeType_t)(TasksChanged),motionTime);
 				//stateChangedAt = attackTime;	//problematic
@@ -249,13 +252,13 @@ namespace Objects
 
 		/*virtual override*/ bool Tower::FillAttackQueue()
 		{
-			if (this->storage.level[turret->ammoType] < turret->ammoNeedPerShot)
+			if (!HasAmmoForShot())
 				return false;
 			//index_t freeSlots = attackQueue.Count() < t->GetAttacksPerRound() <  t->GetAttacksPerRound() - t->attackQueue.Count() : 0;
 			if ((int)attackQueue.Count() < CountPossibleAttacks())
 			{
 				Grid::LCellIdI target;
-				return GetSentryTarget(*this,this->storage.level[turret->ammoType], TrajectoryEndPoint( location,foundationHeight),*this,target) && AttackNext(target,true);
+				return GetSentryTarget(*this,this->storage.level[turret->ammoType], TrajectoryEndPoint( location,GetEffectiveFoundationHeight()),*this,target) && AttackNext(target,true);
 			}
 			else
 				return false;
@@ -263,7 +266,7 @@ namespace Objects
 		}
 
 
-	/*virtual*/ void				WorkingStructure::Tick(ResourceVector&v)
+		/*virtual*/ void				WorkingStructure::Tick(ResourceVector&v)
 		{
 			ResourceVector v1, s, m;
 			GetResourceVector(v1,s,m);
@@ -282,9 +285,9 @@ namespace Objects
 
 		
 
-		bool Tower::WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime) const
+		bool Tower::WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)
 		{
-			if (!HasAmmoForShot(entityTime) || empDamageLevel != 0 || IsHibernating())
+			if (!HasAmmoForShot() || empDamageLevel != 0 || IsHibernating())
 			{
 				//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
 				return false;
@@ -302,7 +305,7 @@ namespace Objects
 					/*&&	*/turret->CanAttack() 
 					&& motionTime <= entityTime 
 					&& CountPossibleAttacks() > 0 
-					&& ExtCanHit(owner,TrajectoryEndPoint( location,foundationHeight ), endPoint,outTarget)
+					&& ExtCanHit(owner,TrajectoryEndPoint( location,GetEffectiveFoundationHeight() ), endPoint,outTarget)
 					//&& d2 > sqr(turret->explosionRadius)
 					&& TraceTrajectory(endPoint,trajectory,iat,ic,angle)==TurretTrajectory::ReachesTarget;
 		}
@@ -511,7 +514,7 @@ namespace Objects
 	#endif /*0*/
 	
 
-	Structure::Structure(const OwnerParameter&owner, const Grid::LCellIdI&at, bool buildSystem, float time) :Super(owner,at)
+	Structure::Structure(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&at, bool buildSystem, float time) :Super(owner,at), table(table)
 		#ifdef HAS_WINDOW
 			, localizableShape(nullptr)
 		#endif
@@ -806,7 +809,7 @@ namespace Objects
 				PMine mine = ToMine(selectedEntity);
 				if (mine)
 				{
-					SignalRestoreCoreLink(mine->id);
+					ApplicationInterface::SignalRestoreCoreLink(mine->id);
 				}
 			},
 			[](bool controlEnabled)
@@ -836,14 +839,10 @@ namespace Objects
 	bool	Tower::setup = false;
 	/*virtual override*/	void			Tower::PrototypeSetup()
 	{
+		Super::PrototypeSetup();
 		if (setup)
 			return;
 		setup = true;
-		Super::PrototypeSetup();
-		//turretComponents << artillery;
-		//turretComponents << Armored::component;
-		//turretComponents << radar;
-		//turretComponents << MunitionTransporter::component;
 
 		#ifdef HAS_WINDOW
 			geometry.Clear();
@@ -867,8 +866,27 @@ namespace Objects
 		#else
 			foundationHeight = staticHeight;
 		#endif
-
 	}
+
+
+	
+	/*virtual override*/ float			Tower::GetFlatAttackRange() const
+	{
+		if (!turret->CanAttack())
+			return 0.f;
+		return cache.horizontalAttackRange.GetEMPModified(*this,turret->horizontalAttackRange,Objects::LuaAttribute<float>(2.f));
+		//EMPModify(turret->GetHorizontalAttackRange(owner,2.f),2.f);
+	}
+
+	/*virtual override*/ String			Tower::DescribeFlatAttackRange() const
+	{
+		if (!turret->CanAttack())
+			return 0.f;
+		return cache.horizontalAttackRange.DescribeEMPModified(*this,turret->horizontalAttackRange,Objects::LuaAttribute<float>(2.f));
+		//EMPModify(turret->GetHorizontalAttackRange(owner,2.f),2.f);
+	}
+
+
 
 	#ifndef CLIENT
 		/*virtual override*/ void			Tower::ProcessLeftovers(ResourceVector&v, index_t iteration, float atTime)
@@ -986,7 +1004,7 @@ namespace Objects
 				TVec3<> b,d;//,test;
 				Mat::transform(inverse,_b,b);
 				Mat::rotate(inverse,_d,d);
-				return geometry.TestIntersection(b,d,distance) | turret->TestIntersection(foundationHeight, turretAngleX,turretAngleY,b,d,distance);	//binary or - must evaluate both
+				return geometry.TestIntersection(b,d,distance) | turret->TestIntersection(GetEffectiveFoundationHeight(), turretAngleX,turretAngleY,b,d,distance);	//binary or - must evaluate both
 			}
 		#endif
 	#endif
@@ -1044,17 +1062,10 @@ namespace Objects
 
 
 
-	bool	Tower::HasAmmoForShot(float atTime) const
-	{
-		#ifndef CLIENT
-			RefreshCompoundCoverageIfNeeded(atTime);
-		#endif
-		return GetCompound().total.storage.level[turret->ammoType] >= turret->ammoNeedPerShot;
-	}
 
 	bool	Tower::HasAmmoForShot()
 	{
-		return GetCompound().total.storage.level[turret->ammoType] >= turret->ammoNeedPerShot;
+		return GetCompound().total.storage.level[turret->ammoType] >= turret->GetAmmoNeedPerShot(owner);
 		//compoundID < compounds.Count() && compounds[compoundID].total.storage.level[turret->ammoType] >= turret->ammoNeedPerShot;
 	}
 
@@ -1127,7 +1138,7 @@ namespace Objects
 	//}
 
 
-	Connector::Connector(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location, true, atTime)
+	Connector::Connector(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(table,owner,location, true, atTime)
 	{}
 
 
@@ -1261,7 +1272,7 @@ namespace Objects
 	}
 
 
-	VehicleStore::VehicleStore(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location, true,atTime)
+	VehicleStore::VehicleStore(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(table,owner,location, true,atTime)
 	{}
 
 
@@ -1855,11 +1866,106 @@ namespace Objects
 
 	#endif
 
-	#ifndef CLIENT
-		#ifndef NO_SATELLITES
-			/*virtual override*/ void			SkyPort::OnSleepChange(float&t)
+	//
+	///*virtual override*/ float		Tower::GetScanningRange() const
+	//{
+	//	return EMPModify(turret->GetScanningRange(owner,turret->CanAttack() ? - 2.f : 2.f), 2.f);
+	//}
+
+	///*virtual override*/ String		Tower::DescribeScanningRange() const
+	//{
+	//	return GetTable()->maxScanningRange.Describe(GetResearchState());
+	//	//cache.maxScanningRange.GetEMPModified(*this,GetTable()->maxScanningRange);
+	//	//
+	//	//		String(GetScanningRange());
+	//}
+
+	///*virtual override*/ int				Tower::GetMaxHealth() const
+	//{
+	//	float base = float(Super::GetMaxHealth()) * turret->healthMultiplier(owner);
+	//	return std::max(1,(int)floor(base));
+	//}
+
+	///*virtual override*/ String				Tower::DescribeMaxHealth() const
+	//{
+	//	return String(GetMaxHealth());
+	//}
+
+
+	/*virtual*/ void				Structure::PrototypeSetup()
+	{
+		Super::PrototypeSetup();
+	}
+
+
+
+
+
+	/*virtual override*/ void			Laboratory::PrototypeSetup()
+	{
+		Super::PrototypeSetup();
+
+	}
+
+	/*virtual override*/ bool			Laboratory::IsBuilding(std::pair<int,int>&outProgress) const
+	{
+		if (!owner || owner->researchState.IsIdle())
+			return false;
+		auto topic = owner->researchState.GetActiveTopic();
+		if (topic->maxProgress <= 0)
+			return false;
+		outProgress.first = topic->getProgress(owner->researchState.researchState);
+		outProgress.second = topic->maxProgress;
+		return true;
+	}
+
+
+	#ifdef HAS_WINDOW
+
+		static void BuildCommand(CommandContainer&parent, const PResearchTopic&t)
+		{
+			PResearchCommand rs(new ResearchCommand(t));
+			parent.Add(rs);
+			foreach (t->children,c)
 			{
-				Super::OnSleepChange(t);
+				BuildCommand(*rs,*c);
+			}
+			if (t->componentReference || t->prototypeReference)
+				rs->RasterizeImage();
+		}
+
+		/*static*/ count_t			Laboratory::researchCommandOffset = InvalidIndex;
+
+
+
+		/*static*/	void Laboratory::ConfigureResearchButtons()
+		{
+			if (researchCommandOffset == InvalidIndex)
+				researchCommandOffset = commands.Count();
+			else
+				commands.Truncate(researchCommandOffset);
+			foreach (ResearchState::globalState.rootResearch,res)
+			{
+				BuildCommand(commands,*res);
+			}
+		}
+	#endif
+
+
+
+	#ifndef CLIENT
+
+		/*virtual override*/ void			Laboratory::Tick(ResourceVector&vec)
+		{
+			Super::Tick(vec);
+
+			owner->researchState.Contribute();
+		}
+	
+	#ifndef NO_SATELLITES
+		/*virtual override*/ void			SkyPort::OnSleepChange(float&t)
+		{
+			Super::OnSleepChange(t);
 
 				if (IsSleeping() && IsEnabled())
 				{
@@ -1900,13 +2006,25 @@ namespace Objects
 	#endif
 
 
-	VehiclePlant::VehiclePlant(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner, location, atTime),
+	VehiclePlant::VehiclePlant(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(table,owner, location, atTime),
 		MobileEntityProducer(DefaultProductionPerRound)
 	{
 		#ifdef CLIENT
 			// make some base selected by default
 			ASSERT__(baseComponents.IsNotEmpty())
-			selectedBase = baseComponents[0];
+
+			foreach (baseComponents,c)
+				if (!owner || (*c)->isUnlocked(owner))
+				{
+					selectedBase = *c;
+					break;
+				}
+			foreach (turretComponents,c)
+				if (!owner || (*c)->isUnlocked(owner))
+				{
+					selectedTurret = *c;
+					break;
+				}
 		#endif
 	}
 
@@ -2009,7 +2127,7 @@ namespace Objects
 					task.blastVisualization.ibo = sphereIBO[0];
 					//shape.depthTest = true;
 
-					turret->BuildBlastSystem(trajectory.last().xyz * trajectory.last().w,task.blastSystem);
+					turret->BuildBlastSystem(trajectory.last().xyz * trajectory.last().w,turret->explosionRadius(owner),task.blastSystem);
 				}
 			#endif
 		}
@@ -2059,7 +2177,7 @@ namespace Objects
 				GetProductionChoices(this,selectedBase,choices);
 				static bool ignoreWarnings = false;
 				if (choices.IsNotEmpty() || ignoreWarnings)
-					SignalConstructionBegin(id, selectedBase->constName, selectedTurret->constName);
+					ApplicationInterface::SignalConstructionBegin(id, selectedBase->constName, selectedTurret->constName);
 				else
 				{
 
@@ -2074,7 +2192,7 @@ namespace Objects
 						Dialog::Confirm("Cannot find valid spawning locations around '"+GetNiceName()+"' for '"+Vehicle::GetTypeName(selectedBase,selectedTurret)+"'. "+waterNotice+"Are you sure you wish to start this production?",
 								[baseName,turretName,myID]()
 								{
-									SignalConstructionBegin(myID, baseName, turretName);
+									ApplicationInterface::SignalConstructionBegin(myID, baseName, turretName);
 									//ignoreWarnings = true;
 								}
 								,
@@ -2089,7 +2207,7 @@ namespace Objects
 								}
 							);
 					#else
-						SignalConstructionBegin(id, selectedBase->constName, selectedTurret->constName);
+						ApplicationInterface::SignalConstructionBegin(id, selectedBase->constName, selectedTurret->constName);
 					#endif
 				}
 			}
@@ -2140,10 +2258,10 @@ namespace Objects
 							{
 								if (!s2->IsEnabled() && !s2->CanEnable())
 								{
-									SignalUserMessage(s2->GetNiceName()+" is switched off because its queue is empty. It will attempt to automatically enable once you enqueue at least one production job using the 'Construct Selected' button. You must first select both a foundation and a turret, however.");
+									ApplicationInterface::SignalUserMessage(s2->GetNiceName()+" is switched off because its queue is empty. It will attempt to automatically enable once you enqueue at least one production job using the 'Construct Selected' button. You must first select both a foundation and a turret, however.");
 									return;
 								}
-								SignalEnableStructure(*s2, !s2->IsEnabled());
+								ApplicationInterface::SignalEnableStructure(*s2, !s2->IsEnabled());
 							}
 						}
 						,[](bool controlEnabled)
@@ -2172,11 +2290,11 @@ namespace Objects
 						else
 						{
 							if (plant->selectedBase)
-								SignalUserMessage(plant->GetNiceName()+" needs to know what turret you want to use in order to enqueue a new production job. Please select one in the top row.");
+								ApplicationInterface::SignalUserMessage(plant->GetNiceName()+" needs to know what turret you want to use in order to enqueue a new production job. Please select one in the top row.");
 							elif (plant->selectedTurret)
-								SignalUserMessage(plant->GetNiceName()+" needs to know what foundation you want to use in order to enqueue a new production job. Please select one in the bottom row.");
+								ApplicationInterface::SignalUserMessage(plant->GetNiceName()+" needs to know what foundation you want to use in order to enqueue a new production job. Please select one in the bottom row.");
 							else
-								SignalUserMessage(plant->GetNiceName()+" needs to know what turret and foundation you want to use in order to enqueue a new production job. Please select one in each top and bottom rows.");
+								ApplicationInterface::SignalUserMessage(plant->GetNiceName()+" needs to know what turret and foundation you want to use in order to enqueue a new production job. Please select one in each top and bottom rows.");
 						}
 					}
 				},
@@ -2206,7 +2324,7 @@ namespace Objects
 						timeCostOut = 0;
 						return;
 					}
-					mineralCostOut = Vehicle::GetPrice(p->selectedBase,p->selectedTurret);
+					mineralCostOut = Vehicle::GetPrice(p->selectedBase,p->selectedTurret,p->owner);
 					timeCostOut = p->ProductionRounds(mineralCostOut,false);
 				}
 			));
@@ -2229,6 +2347,8 @@ namespace Objects
 					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
 					if (plant && plant->selectedBase == c)
 						rs |= BaseCommand::Flags::IsPermaActive;
+					if (!plant || !c->isUnlocked(plant->owner))
+						rs = BaseCommand::Flags::None;
 					return rs;
 				}));
 				commands.GetLast().second->RasterizeImage();
@@ -2256,6 +2376,8 @@ namespace Objects
 						elif (!plant->selectedTurret)
 							rs |= BaseCommand::Flags::IsFlashing | BaseCommand::Flags::SoftFlashing;
 					}
+					if (!plant || !c->isUnlocked(plant->owner))
+						rs = BaseCommand::Flags::None;
 					return rs;
 				}));
 				commands.GetLast().second->RasterizeImage();
@@ -2266,6 +2388,12 @@ namespace Objects
 		//commands << Command("Queue:",[](const PWorldEntity&){},AlwaysFalse<PWorldEntity const&>,AlwaysFalse<PWorldEntity const&>);
 
 	}
+
+	/*virtual override*/ void				ReactorCore::PrototypeSetup()
+	{
+		Super::PrototypeSetup();
+	}
+
 	#ifdef HAS_WINDOW
 		/*virtual override*/ void				VehiclePlant::VisitAllCommands(FCommandVisitor visitor, bool force)
 		{
@@ -2311,6 +2439,7 @@ namespace Objects
 		/*virtual override*/ void				SkyPort::PrototypeSetup()
 		{
 			Super::PrototypeSetup();
+			ResearchState::RegisterUnlockCost(this,20);
 
 			#ifdef HAS_WINDOW
 	
@@ -2418,7 +2547,7 @@ namespace Objects
 					DBG_ASSERT__(owner->acquiringNexusControl >= 0);
 					owner->nexusControl ++;
 					LogEvent( EventClass( EventSignificance::Important,EventFlavor::Gain ),this,"Control Acquired");
-					SignalNexusControlChange(owner);
+					ApplicationInterface::SignalNexusControlChange(owner);
 				}
 			}
 
@@ -2457,7 +2586,7 @@ namespace Objects
 					}
 					resistence = ResistenceRounds;
 					RegisterChange(NexusControlChanged,0);
-					SignalNexusControlChange(owner);
+					ApplicationInterface::SignalNexusControlChange(owner);
 				}
 			}
 		}
@@ -2558,7 +2687,7 @@ namespace Objects
 
 		RefreshCompoundStates(atTime);
 		#ifdef HAS_WINDOW
-			OnSelectionChange(true);
+			ApplicationInterface::OnSelectionChange(true);
 		#endif
 	}
 
@@ -2566,6 +2695,19 @@ namespace Objects
 
 	#ifdef HAS_WINDOW
 	
+		/*virtual override*/ void			Laboratory::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
+		{
+			Super::DescribeType(label,  descFlags);
+			label.MarkBriefEnd();
+			label.WrapAppendText("Laboratories research new components and buildings, or improve their attributes."
+			" Each enabled laboratory contributes 1 research point per round to the currently selected faction research goal."
+			" Research aimed at unlocking new components requires a number of research points to be accumulated."
+			" Research aimed at improvement will continuously improve the selected property, but become increasingly less efficient the further research has progressed."
+			" As a result, research facilities are a continuous construction effort and you will most likely never have enough."
+			);
+		}
+
+
 
 		/*virtual override*/ void			NexusPort::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
 		{
@@ -2684,8 +2826,7 @@ namespace Objects
 			return true;
 
 		const Compound&n = GetCompound();
-		String dummy;
-		return n.CanEnable(this,dummy,ignoreCanEnable);
+		return n.CanEnable(this,nullptr,nullptr,ignoreCanEnable);
 	}
 
 
@@ -2723,9 +2864,15 @@ namespace Objects
 				{
 					Compound&network = GetCompound();
 					String outWhy;
-					if (!network.CanEnable(this,outWhy))
+					Array<Resource> missingResources;
+					if (!network.CanEnable(this,&outWhy,&missingResources))
 					{
 						LogEvent(EventClass::Preset::operationAborted,this,"Cannot enable: Insufficient resource supply in compound ("+outWhy+")");
+						if (missingResources.IsNotEmpty())
+						{
+							atTime += timeEpsilon;
+							ApplicationInterface::SignalOperationLacksResources(*this,missingResources,atTime);
+						}
 						return false;
 					}
 				}

@@ -40,9 +40,12 @@ namespace Channels
 	TCP::Channel<Protocol::TouchedMarker, FactionLevel, Protocol::ChannelID::TouchMarker>					touchMarker(Receiver::TouchMarker);
 	TCP::Channel<Protocol::ClientName,FactionLevel,Protocol::ChannelID::ChangeMyName>						changeMyName(Receiver::ChangeMyName);
 	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::IdentifyUser>							identifyUserRecv(Receiver::IdentifyUser);
+	TCP::Channel<Protocol::SelectResearch, FactionLevel, Protocol::ChannelID::SelectResearch>				selectResearch(Receiver::SelectResearch);
 	TCP::Channel<Package::NetString<256>, FactionLevel, Protocol::ChannelID::ChatMessage>					chatMessage(Receiver::ChatMessage);
 	TCP::Channel<Grid::ExtendedPlanetConfig, Configurator, Protocol::ChannelID::PlanetConfig>				planetConfig(Receiver::PlanetConfig);
 	TCP::Channel<Protocol::GameConfig, Configurator, Protocol::ChannelID::GameConfig>						gameConfig(Receiver::GameConfig);
+	TCP::Channel<Protocol::ResourceID, PreFaction, Protocol::ChannelID::RequestResource>				requestResource(Receiver::RequestResource);
+	
 
 	TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>			clientFactionResponse;
 	TCP::ObjectSender<Protocol::Marker, Protocol::ChannelID::MarkerCreationFailedLimitReached>		markerCreationFailedLimitReached;
@@ -64,10 +67,12 @@ namespace Channels
 	TCP::ObjectSender<Protocol::GameProgress,Protocol::ChannelID::GameProgress>						gameProgress;
 	TCP::ObjectSender<Protocol::ChangeEntityOwner,Protocol::ChannelID::ChangeEntityOwner>			changeEntityOwner;
 	TCP::ObjectSender<Protocol::IdentifyUser, Protocol::ChannelID::IdentifyUser>					identifyUser;
+	TCP::ObjectSender<Protocol::ResearchState, Protocol::ChannelID::ResearchState>					researchState;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionOnline>							factionOnline;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionOffline>							factionOffline;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionRequestedNewRound>				factionRequestedNewRound;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionContinuedRound>					factionContinuedRound;
+	TCP::ObjectSender<Protocol::ResourceData,Protocol::ChannelID::ResourceData>						resourceData;
 
 	TCP::ObjectSender<NET(UINT16), Protocol::ChannelID::LockEMPZones>								lockEmpZones;
 	#ifndef NO_HIBERNATION
@@ -75,6 +80,7 @@ namespace Channels
 	#endif
 
 	TCP::ObjectSender<Protocol::UnitLimits,Protocol::ChannelID::UnitLimits>							unitLimits;
+	TCP::ObjectSender<Protocol::OperationLacksResources,Protocol::ChannelID::OperationLacksResources>	operationLacksResources;
 
 //	Channel<class Object, unsigned MinUserLevel, UINT32 ChannelID>
 
@@ -140,6 +146,7 @@ namespace Receiver
 						Channels::factionRequestedNewRound.SendTo(peer,f->id);
 				}
 			}
+//			Channels::researchState.SendTo(peer,f->researchState);
 		});
 
 		#ifndef NO_HIBERNATION
@@ -237,7 +244,7 @@ namespace Receiver
 		response.startFactionTypes = _p.startFactionTypes;
 		response.factionToken = _p.factionToken;
 		response.planetConfig = Grid::currentPlanetConfig;
-		Game::Network::AssembleGameInfo(response.info);
+		Game::Network::AssembleGameInfo(response.info, peer.IsLocalhost());
 		//response.info = CompileWorldInfo();
 
 		if (!response.startFactionTypes || response.startFactionTypes == Protocol::FactionType::SpectatorFaction)
@@ -455,7 +462,7 @@ namespace Receiver
 			client->faction.reset(new Objects::Faction(TUniqueID::Empty()));
 			faction = client->faction;
 			Objects::Faction::all << client->faction;
-			SignalFactionsChanged();
+			ApplicationInterface::SignalFactionsChanged();
 			client->faction->name = client->name;
 
 
@@ -506,6 +513,15 @@ namespace Receiver
 
 		}
 
+		Objects::ForeachFaction([&peer](const Objects::PFaction&f)
+		{
+			Protocol::ResearchState state;
+			state.ownerID = f->id;
+			f->researchState.Export(state.serializedData);
+			ASSERT_LESS__(state.serializedData.Count(),state.serializedData.MaxElementCount);
+			Channels::researchState.SendTo(peer,state);
+		});
+		Channels::selectResearch.SendTo(peer,Protocol::SelectResearch(client->faction->researchState.GetActiveTopicIndex()));
 
 		#ifndef CHEAT_SHOW_ALL_RESOURCES
 		if (!newFaction)
@@ -822,6 +838,15 @@ namespace Receiver
 
 	}
 
+	void	SelectResearch(Protocol::SelectResearch&research, TCP::Peer&peer)
+	{
+		if (!peer.attachment)
+			return;
+		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
+		if (!client->faction)
+			return;
+		Journal::currentRound.Register(true,client->faction,new Journal::Round::SelectResearch(Objects::ResearchState::GetTopic( research)));
+	}
 
 	void	IdentifyUser(NET(TUniqueID)&id, TCP::Peer&peer)
 	{
@@ -882,6 +907,23 @@ namespace Receiver
 		else
 			LogEvent(EventClass::Preset::commandRejected,peer,"Configuration mode is not active. User should not have this level");
 
+	}
+
+	void	RequestResource(Protocol::ResourceID&id, TCP::Peer&peer)
+	{
+		LogEvent(EventClass::Preset::uncommon,peer,"Received resource request for resource "+Bin2Str::ConvertPOD(id.value));
+
+		ScriptCache::PScript script = ScriptCache::Lookup(id);
+		if (script)
+		{
+			LogEvent(EventClass::Preset::uncommon,peer,"Resource "+Bin2Str::ConvertPOD(id.value)+" is script. Dispatching "+String(script->compressed.Count())+" bytes");
+			Protocol::ResourceData data;
+			data.data = script->compressed;	//stupid copy...
+			data.id = id;
+			Channels::resourceData.SendTo(peer,data);
+			return;
+		}
+		LogEvent(EventClass::Preset::uncommon,peer,"Resource "+Bin2Str::ConvertPOD(id.value)+" is unknown");
 	}
 
 	

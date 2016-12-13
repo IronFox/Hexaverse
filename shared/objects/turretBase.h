@@ -101,12 +101,13 @@ namespace Objects
 
 		virtual float			GetAttackActionLeft() const=0;
 
-		int						GetAttacksPerRound() const	{return turret->attacksPerRound;}
-		int						GetDamagePotentialPerRound() const {return GetAttacksPerRound() * turret->damageLevel;}
+		int						GetAttacksPerRound() const	{return turret->GetAttacksPerRound(GetOwner());}
+		int						GetDamagePotentialPerRound() const {OwnerParameter owner = GetOwner(); return turret->GetAttacksPerRound(owner) * turret->GetDamageLevel(owner);}
 		float					GetAttackInitiative()const	{return turret->initiative * GetAttackActionLeft();}
 		int						CountPossibleAttacks() const {return GetAttacksPerRound() * GetAttackActionLeft();}
 		virtual bool			NextTaskIsAttack() const = 0;
 		virtual float			GetFlatAttackRange() const = 0;
+		virtual String			DescribeFlatAttackRange() const = 0;
 
 		/**
 		Checks if there are enough resources available for a single shot.
@@ -114,6 +115,7 @@ namespace Objects
 		Must not persistently alter the local entity, however.
 		*/
 		virtual bool			HasAmmoForShot() = 0;
+		virtual OwnerParameter	GetOwner() const = 0;
 		
 		/**
 		Determines whether or not the local turret base can hit a given location.
@@ -132,7 +134,6 @@ namespace Objects
 		#ifndef CLIENT
 			virtual void		Attack(float&currentTime) = 0;
 			virtual bool		FillAttackQueue() = 0;
-
 		#endif
 	};
 

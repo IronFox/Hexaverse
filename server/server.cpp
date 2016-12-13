@@ -25,9 +25,10 @@
 #include "components/networkChannels.h"
 #include "components/journalSaveGame.h"
 #include "components/reflection.h"
+#include <luaInterface.h>
 #include "components/configurationMode.h"
 
-UINT32 globalVersionOfCurrentFile = 0;	//file version being loaded right now
+UINT32 ApplicationInterface::globalVersionOfCurrentFile = 0;	//file version being loaded right now
 
 
 
@@ -39,527 +40,551 @@ Random		random;
 #endif
 
 
-void	SignalChainReactionExplosion(const Grid::LCellIdI&center, float radius, int damageLevel, float atTime)
+namespace ApplicationInterface
 {
-	Game::evolver->HandleChainReactionExplosion(Evolver::TExplosion( center, radius, damageLevel, atTime ));
-}
 
-
-void	SignalNewMobileEntity(const Objects::PMobileEntity&_v, bool restoredFromStorage, float atTime)
-{
-	const Objects::MobileEntity&v = *_v;
-
-
-
-	Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),atTime);
-	//if (client)
+	void	SignalOperationLacksResources(const Objects::WorldEntity&e, const ArrayRef<Objects::Resource>&resources, float atTime)
 	{
-		if (!restoredFromStorage)
-		{
-			Protocol::NewMobileEntity	w;
-			Game::Network::Describe(w,v,true,timestamp,0xFFFFFFFF);
-			Network::SendToOwner(Channels::newMobileEntity,v,w);
-//			Channels::newMobileEntity.SendTo((client)->peer.lock(),w);
-		}
-		else
-		{
-			Protocol::MobileState state;
-			Game::Network::Describe(state,(const Objects::MobileEntity&)v,true,timestamp,0xFFFFFFFF);
-			Network::SendToOwner(Channels::setMobileState,v,state);
-			//Channels::setMobileState.SendTo(client->peer.lock(),state);
-		}
-	}
-
-	if (_v->IsVehicle() && To<Objects::Vehicle>::Cast(_v)->turret->detectsResources)
-	{
-		Game::Network::UpdateResourceCoverage(_v->owner, _v->location,_v->GetScanningRange(),timestamp);
-	}
-
-	if (Game::Config::basesRequired && v.GetOperationSpeed(Objects::Component::Construct) && !v.owner->hasTerraformer)
-	{
-		LogEvent(EventSignificance::Debug,_v.get(),"Recognized as terraformer. Reevaluating survivial conditions");
-		v.owner->hasTerraformer = true;
-		String whyNot;
-		bool canLive = v.owner->CanLive(whyNot);
-		
-		if (canLive)	//conditions changed
-		{
-			if (v.owner->deathInRounds > 0)
-			{
-				v.owner->deathInRounds = 0;
-				Network::PClient client;
-				if (Network::playerMap.query(v.owner,client))
-					client->SendProgressUpdate(false,whyNot);
-			}
-		}
-		else
-			LogEvent(EventSignificance::Debug,_v.get(),"Nope: "+whyNot);
-	}
-}
-
-void	SignalNewStructure(const Objects::PStructure&s, float atTime)
-{
-	const Objects::Structure&v = *s;
-
-	//State::PClient*cl = State::playerMap.QueryPointer(v.owner);
-	//if (!cl)
-	//	return;
-
-	LogEvent(EventSignificance::Common,s.get(),"Signalling new structure to owner at t="+String(atTime));
-	Protocol::StructureConstruction	w;
-	Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),atTime);
-	Game::Network::Describe(w,*s,true,timestamp);
-	Network::SendToOwner(Channels::createStructure,v,w);
-
-
-	//State::Describe(w2.Ref(),s,true,&parent);
-	//w.Seal();
-	//w2.Seal();
-
-	//Channels::createStructure.SendTo((*cl)->peer.lock(),w);
-
-	//SendToOwner(Channels::createStructure,v,w);
-
-	//foreach (State::clients,cl)
-	//{
-	//	TCP::PPeer peer = (*cl)->peer.lock();
-	//	if (peer && Receiver::CanSee(*cl,s))
-	//		Channels::createStructure.SendTo(peer,Receiver::HasAccess(*cl,s) ? w2 : w);
-	//}
-}
-
-
-void	SignalOwnershipChange(const Objects::PWorldEntity&e,const Objects::OwnerParameter&target, float t)
-{
-	for (const auto&p : Network::activePlayersAndSpectators)
-	{
-		if (p->CanSee(e,t) || p->faction == target)
-		{
-			TCP::PPeer peer = p->peer.lock();
-			DBG_ASSERT1__(peer,p->ToString());
-			if (peer)
-			{
-				LogEvent(EventSignificance::Common,*peer,e,"Reported seeing ownership change (-> '"+target->GetName()+"')");
-				Channels::changeEntityOwner.SendTo(peer,Protocol::ChangeEntityOwner(e->id,target->id));
-			}
-		}
-	}
-}
-
-
-void	SignalAppearanceToHostileFaction(const Objects::OwnerParameter&target, const Objects::PWorldEntity&e, float atTime)
-{
-	if (!e)
-	{
-		LogEvent(EventClass::Preset::error,nullptr, "Trying to show null");
-		return;
-	}
-	Network::PClient client;
-	if (!Network::playerMap.query(target,client))
-		return;
-	//if (!client->ShowNew(e))
-		//return;	//already knows this
-	Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),atTime);
-
-	if (e->IsMobile())
-	{
-		Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(e);
-	//	TCP::Serial<Protocol::VehicleConstruction>	w;
-		TCP::Serial<Protocol::NewMobileEntity>	w;
-		Game::Network::Describe(w.Ref(),*v,false,timestamp,0xFFFFFFFF);
-		w.Seal();
-		Channels::newMobileEntity.SendTo(client->peer.lock(),w);
-	}
-	else
-	{
-		Objects::PStructure s = To<Objects::Structure>::DynamicCast(e);
-		ASSERT1__(s,e->GetName());
-		TCP::Serial<Protocol::StructureConstruction>	w;
-		Game::Network::Describe(w.Ref(),*s,false,timestamp);
-		w.Seal();
-		Channels::createStructure.SendTo(client->peer.lock(),w);
-	}
-	LogEvent(EventSignificance::Common,*client->peer.lock(),e,"Signalling appearance "+(timestamp.rightNow ? "(now)" : " at time="+String(atTime)));
-	
-}
-
-
-/*
-Note: anyone that can see this entity must be told it is being removed. There will be no other notifications
-*/
-void	SignalRemoval(const Objects::PWorldEntity&e, Objects::RemovalType t, float atTime)
-{
-	if (!e)
-	{
-		LogEvent(EventClass::Preset::error,nullptr, "Trying to remove null");
-		return;
-	}
-	Protocol::DestroyEntity self,others;
-	self.id = e->id;
-	self.type = t;
-	self.timestamp.atTime = atTime;
-	self.timestamp.rightNow = RuntimeConfig::IsInAnyCommandPhase();
-	others = self;
-	bool sendToSelf = true;
-	switch (t)
-	{
-		case Objects::RemovalType::DestroyedInStorage:
-			others.type = Objects::RemovalType::Vanished;
-		break;
-		case Objects::RemovalType::EnteredStorage:
-			sendToSelf = false;
-			//bleed into:
-		case Objects::RemovalType::BeingReplaced:
-		case Objects::RemovalType::Vanished:
-		case Objects::RemovalType::ChangingOwnership:
-			others.type = Objects::RemovalType::Vanished;
-		break;
-		case Objects::RemovalType::ControlledExplosion:
-		case Objects::RemovalType::UncontrolledExplosion:
-			others.type = Objects::RemovalType::UncontrolledExplosion;
-		break;
-		default:
-			FATAL__("Unrecognized removal type "+String(t.ToString()));
-	}
-
-	foreach (Network::activePlayersAndSpectators,cl)
-	{
-		TCP::PPeer peer = (*cl)->peer.lock();
-		if (peer && Network::CanSee(*cl,e,atTime))
-		{
-			bool access = Network::CanSeeAsOwner(*cl,e);
-			if (
-				(access && !sendToSelf)
-				)
-			{
-				LogEvent(EventSignificance::Debug,(*cl)->ToString()+" reported NOT seeing removal of "+e->GetName()+" (t="+String(t.ToString())+", access="+String(access)+", sendToSelf="+String(sendToSelf)+") at time "+String(atTime) );
-				continue;
-			}
-			const Protocol::DestroyEntity&send = access ? self : others;
-			LogEvent(EventSignificance::Common,(*cl)->ToString()+" reported seeing removal of "+e->GetName()+" at time "+String(atTime) );
-
-
-			//(*cl)->Hide(e);
-			Channels::destroyEntity.SendTo(peer,send);
-		}
-		else
-			LogEvent(EventSignificance::Debug,(*cl)->ToString()+" reported NOT seeing removal of "+e->GetName()+" (t="+String(t.ToString())+", access="+String(access)+", sendToSelf="+String(sendToSelf)+") at time "+String(atTime) +" - hasPeer="+String((bool)peer));
-	}
-
-	
-}
-
-void	SignalDisappearanceToHostileFaction(const Objects::OwnerParameter&target, const Objects::PWorldEntity&e, float atTime)
-{
-	if (!e)
-	{
-		LogEvent(EventClass::Preset::error,nullptr, "Trying to hide null");
-		return;
-	}
-	Network::PClient client;
-	if (!Network::playerMap.query(target,client))
-		return;
-	Protocol::DestroyEntity de;
-	de.id = e->id;
-	de.type = Objects::RemovalType::Vanished;
-	de.timestamp.atTime = atTime;
-	de.timestamp.rightNow = RuntimeConfig::IsInAnyCommandPhase();
-
-	//LogEvent(EventSignificance::Common,*client->peer.lock(),e,"Signalling disappearance");
-	LogEvent(EventSignificance::Common,*client->peer.lock(),e,"Signalling disappearance "+(de.timestamp.rightNow ? "(now)" : " at time="+String(atTime)));
-
-	Channels::destroyEntity.SendTo(client->peer.lock(),de);
-}
-
-
-
-
-void	SignalMotion(const Objects::PMobileEntity&v, const Grid::LCellIdI&from,const Grid::LCellIdI&to, float t0, float timeNeeded)
-{
-	if (!v)
-	{
-		LogEvent(EventClass::Preset::commandRejected,nullptr, "Trying to move null");
-		return;
-	}
-	Protocol::MobileEntityMotion motion;
-	motion.id = v->id;
-	motion.fromLocation = from;
-	motion.toLocation = to;
-	motion.timeNeeded = timeNeeded;
-	motion.timestamp.rightNow = false;
-	motion.timestamp.atTime = t0;
-
-	if (v->IsVehicle() && To<Objects::Vehicle>::Cast(v)->turret->detectsResources)
-	{
-		Game::Network::UpdateResourceCoverage(v->owner,v->location,v->GetScanningRange(),motion.timestamp);
-	}
-
-
-	foreach (Network::activePlayersAndSpectators,cl)
-	{
-		TCP::PPeer peer = (*cl)->peer.lock();
-		if (peer && Network::CanSee(*cl,v,t0))
-		{
-			LogEvent(EventSignificance::Common,(*cl)->ToString()+" reported seeing motion of "+v->GetName()+" at time "+String(t0)+"+"+String(timeNeeded) );
-
-			Channels::mobileEntityMotion.SendTo(peer,motion);
-		}
-	}
-}
-
-void	SignalTurretRotation(const Objects::PWorldEntity&e, const TVec3<>&toWorld, float rotationTime)
-{
-	if (!e)
-	{
-		LogEvent(EventClass::Preset::commandRejected,nullptr, "Trying to let null attack");
-		return;
-	}
-	Protocol::EntityTurretRotation rot;
-	rot.id = e->id;
-	rot.toWorld = toWorld;
-	rot.rotationTime = rotationTime;
-	rot.timestamp.rightNow = false;
-	rot.timestamp.atTime = e->motionTime;
-
-	foreach (Network::activePlayersAndSpectators,cl)
-	{
-		TCP::PPeer peer = (*cl)->peer.lock();
-		if (peer && Network::CanSee(*cl,e,rotationTime))
-			Channels::entityTurretRotation.SendTo(peer,rot);
-	}
-}
-
-
-
-void	SignalNexusControlChange(const Objects::PFaction&f)
-{
-	if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
-		return;
-	if (RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::ConquerNexus)
-	{
-		if (f->nexusControl >= Game::Config::GetTargetNexusCount())
-		{
-			Game::Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
-			Game::winner = f;
-
-			foreach (Network::activePlayersAndSpectators,p)
-			{
-				(*p)->SendProgressUpdate(true,"<null>");
-			}
-		}
-		else
-		{
-			Network::PClient client;
-			if (Network::playerMap.Query(f,client))
-			{
-				String why;
-				if (Game::Config::basesRequired && f->deathInRounds > 0)
-					f->CanLive(why);
-				client->SendProgressUpdate(false,why);
-			}
+		Network::PClient*cl = Network::playerMap.QueryPointer(e.owner);
+		if (!cl && Network::spectators.IsEmpty())
 			return;
-		}
+
+		Protocol::OperationLacksResources outRes;
+		outRes.resourceIndices.SetSize(resources.Count());
+		for (index_t i = 0; i < resources.Count(); i++)
+			outRes.resourceIndices[i] = (BYTE)resources[i];
+		outRes.timestamp.atTime = atTime;
+		outRes.timestamp.rightNow = RuntimeConfig::IsInAnyCommandPhase();
+		outRes.entityID = e.id;
+
+		Channels::operationLacksResources.SendTo((*cl)->peer.lock(),outRes);
+		foreach (Network::spectators,s)
+			Channels::operationLacksResources.SendTo((*s)->peer.lock(),outRes);
 	}
-}
 
 
-/*
-	if (!e)
+	void	SignalChainReactionExplosion(const Grid::LCellIdI&center, float radius, int damageLevel, float atTime)
 	{
-		LogEvent(EventClass::Preset::commandRejected,nullptr, "NULL attempting attack");
-		return;
+		Game::evolver->HandleChainReactionExplosion(Evolver::TExplosion( center, radius, damageLevel, atTime ));
 	}
-	LogEvent(EventSignificance::Common,e.get(),"Attacking "+traceTo.ToString()+" in "+String(flightTime)+" seconds");
-	Protocol::EntityAttack roughAttack,preciseAttack;
-	float zOffset;
-	Objects::PTurretBase base = e->GetTurretBase(zOffset);
-	ASSERT__(base);
-	preciseAttack.turretType = base->turret->constName;
-	preciseAttack.traceTo = traceTo;
 
-	preciseAttack.timestamp.rightNow = false;
-	const float3 traceToWorld = Grid::ToWorld(traceTo);
 
-	preciseAttack.sourcePosition = e->system.w.xyz + e->system.z.xyz * zOffset;
-	//attack.timestamp.atTime = v->timeAt;
-	
+	void	SignalNewMobileEntity(const Objects::PMobileEntity&_v, bool restoredFromStorage, float atTime)
 	{
-		Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(e);
-		if (v)
-			preciseAttack.timestamp.atTime = v->timeAt;
-		else
+		const Objects::MobileEntity&v = *_v;
+
+
+
+		Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),atTime);
+		//if (client)
 		{
-			Objects::PTower t = To<Objects::Tower>::DynamicCast(e);
-			if (t)
-				preciseAttack.timestamp.atTime = t->timeAt;
+			if (!restoredFromStorage)
+			{
+				Protocol::NewMobileEntity	w;
+				Game::Network::Describe(w,v,true,timestamp,0xFFFFFFFF);
+				Network::SendToOwner(Channels::newMobileEntity,v,w);
+	//			Channels::newMobileEntity.SendTo((client)->peer.lock(),w);
+			}
 			else
 			{
-				LogEvent(EventClass::Preset::commandRejected,e.get(), "Incompatible entity attempting attack");
-				return;	
+				Protocol::MobileState state;
+				Game::Network::Describe(state,(const Objects::MobileEntity&)v,true,timestamp,0xFFFFFFFF);
+				Network::SendToOwner(Channels::setMobileState,v,state);
+				//Channels::setMobileState.SendTo(client->peer.lock(),state);
+			}
+		}
+
+		if (_v->IsVehicle() && To<Objects::Vehicle>::Cast(_v)->turret->detectsResources)
+		{
+			Game::Network::UpdateResourceCoverage(_v->owner, _v->location,_v->GetScanningRange(),timestamp);
+		}
+
+		if (Game::Config::basesRequired && v.GetOperationSpeed(Objects::Component::Construct) && !v.owner->hasTerraformer)
+		{
+			LogEvent(EventSignificance::Debug,_v.get(),"Recognized as terraformer. Reevaluating survivial conditions");
+			v.owner->hasTerraformer = true;
+			String whyNot;
+			bool canLive = v.owner->CanLive(whyNot);
+		
+			if (canLive)	//conditions changed
+			{
+				if (v.owner->deathInRounds > 0)
+				{
+					v.owner->deathInRounds = 0;
+					Network::PClient client;
+					if (Network::playerMap.query(v.owner,client))
+						client->SendProgressUpdate(false,whyNot);
+				}
+			}
+			else
+				LogEvent(EventSignificance::Debug,_v.get(),"Nope: "+whyNot);
+		}
+	}
+
+	void	SignalNewStructure(const Objects::PStructure&s, float atTime)
+	{
+		const Objects::Structure&v = *s;
+
+		//State::PClient*cl = State::playerMap.QueryPointer(v.owner);
+		//if (!cl)
+		//	return;
+
+		LogEvent(EventSignificance::Common,s.get(),"Signalling new structure to owner at t="+String(atTime));
+		Protocol::StructureConstruction	w;
+		Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),atTime);
+		Game::Network::Describe(w,*s,true,timestamp);
+		Network::SendToOwner(Channels::createStructure,v,w);
+
+
+		//State::Describe(w2.Ref(),s,true,&parent);
+		//w.Seal();
+		//w2.Seal();
+
+		//Channels::createStructure.SendTo((*cl)->peer.lock(),w);
+
+		//SendToOwner(Channels::createStructure,v,w);
+
+		//foreach (State::clients,cl)
+		//{
+		//	TCP::PPeer peer = (*cl)->peer.lock();
+		//	if (peer && Receiver::CanSee(*cl,s))
+		//		Channels::createStructure.SendTo(peer,Receiver::HasAccess(*cl,s) ? w2 : w);
+		//}
+	}
+
+
+	void	SignalOwnershipChange(const Objects::PWorldEntity&e,const Objects::OwnerParameter&target, float t)
+	{
+		for (const auto&p : Network::activePlayersAndSpectators)
+		{
+			if (p->CanSee(e,t) || p->faction == target)
+			{
+				TCP::PPeer peer = p->peer.lock();
+				DBG_ASSERT1__(peer,p->ToString());
+				if (peer)
+				{
+					LogEvent(EventSignificance::Common,*peer,e,"Reported seeing ownership change (-> '"+target->GetName()+"')");
+					Channels::changeEntityOwner.SendTo(peer,Protocol::ChangeEntityOwner(e->id,target->id));
+				}
 			}
 		}
 	}
 
-	preciseAttack.flightTime = flightTime;
-	roughAttack = preciseAttack;
 
-	const float range = base->GetAttackRange();
-	float radius = range * 0.2f;
-	float3 mod = float3(random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1)) * radius;
-	count_t numIt = 0;
-	while (Vec::quadraticDistance(mod + roughAttack.sourcePosition.value, traceToWorld) > sqr(range) && ++numIt < 1000)
-		mod = float3(random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1)) * radius;
-	ASSERT__(numIt < 1000);
-	roughAttack.sourcePosition.value += mod;
-
-	for (auto cl : State::clients)
+	void	SignalAppearanceToHostileFaction(const Objects::OwnerParameter&target, const Objects::PWorldEntity&e, float atTime)
 	{
-		TCP::PPeer peer = (cl)->peer.lock();
-		if (!peer)
-			continue;
-		if (Receiver::CanSee(cl,e,preciseAttack.timestamp.atTime))
-			Channels::entityAttack.SendTo(peer,preciseAttack);
-		else
-			if (cl->faction
-	}
-	*/
-
-
-void	SignalAttack(const TAttack&attack)
-{
-	if (!attack.attackFrom)
-	{
-		LogEvent(EventClass::Preset::commandRejected,nullptr, "NULL attempting attack");
-		return;
-	}
-	LogEvent(EventSignificance::Common,attack.attackFrom.get(),"Attacking "+attack.traceTo.ToString()+" in "+String(attack.flightTime)+" seconds");
-	Protocol::PreciseAttackTrajectory preciseAttack;
-	preciseAttack.attacker = attack.attackFrom->id;
-	preciseAttack.traceTo = attack.traceTo;
-	preciseAttack.isAutoAttack = attack.isAutoAttack;
-	preciseAttack.attackAngle = attack.attackAngle;
-	preciseAttack.timestamp.rightNow = false;
-	preciseAttack.timestamp.atTime = attack.attackFrom->motionTime;
-	
-	LogEvent(EventSignificance::Debug,attack.attackFrom.get(),"Commencing attack at t="+String(preciseAttack.timestamp.atTime));
-
-
-	preciseAttack.flightTime = attack.flightTime;
-
-	for (auto cl : Network::activePlayersAndSpectators)
-	{
-		TCP::PPeer peer = (cl)->peer.lock();
-		if (!peer)
-			continue;
-		if (Network::CanSee(cl,attack.attackFrom,preciseAttack.timestamp.atTime))
-			Channels::preciseAttackTrajectory.SendTo(peer,preciseAttack);
-	}
-}
-
-
-void	SignalExplosion(const TAttack&attack, const TVec3<>&center,float explosionRadius,bool isEMP, bool isDoomsday, float atTime)
-{
-	Protocol::Explosion explosion;
-	explosion.center = center;
-	explosion.radius = explosionRadius;
-	explosion.isEMP = isEMP;
-	explosion.timestamp.atTime = atTime;
-	explosion.timestamp.rightNow = false;
-
-	//static GenericHashSet<Objects::OwnerParameter,Objects::OwnerHash>	map;
-	static Buffer0<Objects::OwnerParameter>	canSee;
-	static Buffer0<Network::PClient>	clientsCanSee;
-
-	bool allSee = isDoomsday && RuntimeConfig::doomsdayWeapons == RuntimeConfig::DoomsdayWeapons::Expose;
-
-	canSee.Clear();
-	if (allSee)
-	{
-		//just set all. I'm lazy, and these are rare
-		foreach (Objects::Faction::all, f)
-			canSee.Append(f->lock());
-		canSee.Append(Objects::Faction::nexus);
-	}
-	else
-	{
-		static Grid::HighSetup::TVolumeDescriptor volume;
-		Sphere<> explosionSphere(center,explosionRadius);
-		Grid::high.GenerateVolume(explosionSphere,volume);
-
-		Objects::ForeachFaction([explosionSphere](const Objects::PFaction&f)
+		if (!e)
 		{
-			if (f->GridCanSee(volume) || f->CountOffGridCoverage(explosionSphere))
-			{
-				canSee.Append(f);
-			};
-		});
-	}
-
-	clientsCanSee.Clear();
-
-	for (const Objects::OwnerParameter&p : canSee)
-	{
+			LogEvent(EventClass::Preset::error,nullptr, "Trying to show null");
+			return;
+		}
 		Network::PClient client;
-		if (Network::playerMap.Query(p,client))
-			clientsCanSee << client;
-	}
-	clientsCanSee.Append(Network::spectators);
+		if (!Network::playerMap.query(target,client))
+			return;
+		//if (!client->ShowNew(e))
+			//return;	//already knows this
+		Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),atTime);
 
-	if (clientsCanSee.IsEmpty())
-		return;
+		if (e->IsMobile())
+		{
+			Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(e);
+		//	TCP::Serial<Protocol::VehicleConstruction>	w;
+			TCP::Serial<Protocol::NewMobileEntity>	w;
+			Game::Network::Describe(w.Ref(),*v,false,timestamp,0xFFFFFFFF);
+			w.Seal();
+			Channels::newMobileEntity.SendTo(client->peer.lock(),w);
+		}
+		else
+		{
+			Objects::PStructure s = To<Objects::Structure>::DynamicCast(e);
+			ASSERT1__(s,e->GetName());
+			TCP::Serial<Protocol::StructureConstruction>	w;
+			Game::Network::Describe(w.Ref(),*s,false,timestamp);
+			w.Seal();
+			Channels::createStructure.SendTo(client->peer.lock(),w);
+		}
+		LogEvent(EventSignificance::Common,*client->peer.lock(),e,"Signalling appearance "+(timestamp.rightNow ? "(now)" : " at time="+String(atTime)));
+	
+	}
+
+
+	/*
+	Note: anyone that can see this entity must be told it is being removed. There will be no other notifications
+	*/
+	void	SignalRemoval(const Objects::PWorldEntity&e, Objects::RemovalType t, float atTime)
+	{
+		if (!e)
+		{
+			LogEvent(EventClass::Preset::error,nullptr, "Trying to remove null");
+			return;
+		}
+		Protocol::DestroyEntity self,others;
+		self.id = e->id;
+		self.type = t;
+		self.timestamp.atTime = atTime;
+		self.timestamp.rightNow = RuntimeConfig::IsInAnyCommandPhase();
+		others = self;
+		bool sendToSelf = true;
+		switch (t)
+		{
+			case Objects::RemovalType::DestroyedInStorage:
+				others.type = Objects::RemovalType::Vanished;
+			break;
+			case Objects::RemovalType::EnteredStorage:
+				sendToSelf = false;
+				//bleed into:
+			case Objects::RemovalType::BeingReplaced:
+			case Objects::RemovalType::Vanished:
+			case Objects::RemovalType::ChangingOwnership:
+				others.type = Objects::RemovalType::Vanished;
+			break;
+			case Objects::RemovalType::ControlledExplosion:
+			case Objects::RemovalType::UncontrolledExplosion:
+				others.type = Objects::RemovalType::UncontrolledExplosion;
+			break;
+			default:
+				FATAL__("Unrecognized removal type "+String(t.ToString()));
+		}
+
+		foreach (Network::activePlayersAndSpectators,cl)
+		{
+			TCP::PPeer peer = (*cl)->peer.lock();
+			if (peer && Network::CanSee(*cl,e,atTime))
+			{
+				bool access = Network::CanSeeAsOwner(*cl,e);
+				if (
+					(access && !sendToSelf)
+					)
+				{
+					LogEvent(EventSignificance::Debug,(*cl)->ToString()+" reported NOT seeing removal of "+e->GetName()+" (t="+String(t.ToString())+", access="+String(access)+", sendToSelf="+String(sendToSelf)+") at time "+String(atTime) );
+					continue;
+				}
+				const Protocol::DestroyEntity&send = access ? self : others;
+				LogEvent(EventSignificance::Common,(*cl)->ToString()+" reported seeing removal of "+e->GetName()+" at time "+String(atTime) );
+
+
+				//(*cl)->Hide(e);
+				Channels::destroyEntity.SendTo(peer,send);
+			}
+			else
+				LogEvent(EventSignificance::Debug,(*cl)->ToString()+" reported NOT seeing removal of "+e->GetName()+" (t="+String(t.ToString())+", access="+String(access)+", sendToSelf="+String(sendToSelf)+") at time "+String(atTime) +" - hasPeer="+String((bool)peer));
+		}
+
+	
+	}
+
+	void	SignalDisappearanceToHostileFaction(const Objects::OwnerParameter&target, const Objects::PWorldEntity&e, float atTime)
+	{
+		if (!e)
+		{
+			LogEvent(EventClass::Preset::error,nullptr, "Trying to hide null");
+			return;
+		}
+		Network::PClient client;
+		if (!Network::playerMap.query(target,client))
+			return;
+		Protocol::DestroyEntity de;
+		de.id = e->id;
+		de.type = Objects::RemovalType::Vanished;
+		de.timestamp.atTime = atTime;
+		de.timestamp.rightNow = RuntimeConfig::IsInAnyCommandPhase();
+
+		//LogEvent(EventSignificance::Common,*client->peer.lock(),e,"Signalling disappearance");
+		LogEvent(EventSignificance::Common,*client->peer.lock(),e,"Signalling disappearance "+(de.timestamp.rightNow ? "(now)" : " at time="+String(atTime)));
+
+		Channels::destroyEntity.SendTo(client->peer.lock(),de);
+	}
+
+
+
+
+	void	SignalMotion(const Objects::PMobileEntity&v, const Grid::LCellIdI&from,const Grid::LCellIdI&to, float t0, float timeNeeded)
+	{
+		if (!v)
+		{
+			LogEvent(EventClass::Preset::commandRejected,nullptr, "Trying to move null");
+			return;
+		}
+		Protocol::MobileEntityMotion motion;
+		motion.id = v->id;
+		motion.fromLocation = from;
+		motion.toLocation = to;
+		motion.timeNeeded = timeNeeded;
+		motion.timestamp.rightNow = false;
+		motion.timestamp.atTime = t0;
+
+		if (v->IsVehicle() && To<Objects::Vehicle>::Cast(v)->turret->detectsResources)
+		{
+			Game::Network::UpdateResourceCoverage(v->owner,v->location,v->GetScanningRange(),motion.timestamp);
+		}
+
+
+		foreach (Network::activePlayersAndSpectators,cl)
+		{
+			TCP::PPeer peer = (*cl)->peer.lock();
+			if (peer && Network::CanSee(*cl,v,t0))
+			{
+				LogEvent(EventSignificance::Common,(*cl)->ToString()+" reported seeing motion of "+v->GetName()+" at time "+String(t0)+"+"+String(timeNeeded) );
+
+				Channels::mobileEntityMotion.SendTo(peer,motion);
+			}
+		}
+	}
+
+	void	SignalTurretRotation(const Objects::PWorldEntity&e, const TVec3<>&toWorld, float rotationTime)
+	{
+		if (!e)
+		{
+			LogEvent(EventClass::Preset::commandRejected,nullptr, "Trying to let null attack");
+			return;
+		}
+		Protocol::EntityTurretRotation rot;
+		rot.id = e->id;
+		rot.toWorld = toWorld;
+		rot.rotationTime = rotationTime;
+		rot.timestamp.rightNow = false;
+		rot.timestamp.atTime = e->motionTime;
+
+		foreach (Network::activePlayersAndSpectators,cl)
+		{
+			TCP::PPeer peer = (*cl)->peer.lock();
+			if (peer && Network::CanSee(*cl,e,rotationTime))
+				Channels::entityTurretRotation.SendTo(peer,rot);
+		}
+	}
+
+
+
+	void	SignalNexusControlChange(const Objects::PFaction&f)
+	{
+		if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
+			return;
+		if (RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::ConquerNexus)
+		{
+			if (f->nexusControl >= Game::Config::GetTargetNexusCount())
+			{
+				Game::Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
+				Game::winner = f;
+
+				foreach (Network::activePlayersAndSpectators,p)
+				{
+					(*p)->SendProgressUpdate(true,"<null>");
+				}
+			}
+			else
+			{
+				Network::PClient client;
+				if (Network::playerMap.Query(f,client))
+				{
+					String why;
+					if (Game::Config::basesRequired && f->deathInRounds > 0)
+						f->CanLive(why);
+					client->SendProgressUpdate(false,why);
+				}
+				return;
+			}
+		}
+	}
+
+
+	/*
+		if (!e)
+		{
+			LogEvent(EventClass::Preset::commandRejected,nullptr, "NULL attempting attack");
+			return;
+		}
+		LogEvent(EventSignificance::Common,e.get(),"Attacking "+traceTo.ToString()+" in "+String(flightTime)+" seconds");
+		Protocol::EntityAttack roughAttack,preciseAttack;
+		float zOffset;
+		Objects::PTurretBase base = e->GetTurretBase(zOffset);
+		ASSERT__(base);
+		preciseAttack.turretType = base->turret->constName;
+		preciseAttack.traceTo = traceTo;
+
+		preciseAttack.timestamp.rightNow = false;
+		const float3 traceToWorld = Grid::ToWorld(traceTo);
+
+		preciseAttack.sourcePosition = e->system.w.xyz + e->system.z.xyz * zOffset;
+		//attack.timestamp.atTime = v->timeAt;
+	
+		{
+			Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(e);
+			if (v)
+				preciseAttack.timestamp.atTime = v->timeAt;
+			else
+			{
+				Objects::PTower t = To<Objects::Tower>::DynamicCast(e);
+				if (t)
+					preciseAttack.timestamp.atTime = t->timeAt;
+				else
+				{
+					LogEvent(EventClass::Preset::commandRejected,e.get(), "Incompatible entity attempting attack");
+					return;	
+				}
+			}
+		}
+
+		preciseAttack.flightTime = flightTime;
+		roughAttack = preciseAttack;
+
+		const float range = base->GetAttackRange();
+		float radius = range * 0.2f;
+		float3 mod = float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)) * radius;
+		count_t numIt = 0;
+		while (Vec::quadraticDistance(mod + roughAttack.sourcePosition.value, traceToWorld) > sqr(range) && ++numIt < 1000)
+			mod = float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)) * radius;
+		ASSERT__(numIt < 1000);
+		roughAttack.sourcePosition.value += mod;
+
+		for (auto cl : State::clients)
+		{
+			TCP::PPeer peer = (cl)->peer.lock();
+			if (!peer)
+				continue;
+			if (Receiver::CanSee(cl,e,preciseAttack.timestamp.atTime))
+				Channels::entityAttack.SendTo(peer,preciseAttack);
+			else
+				if (cl->faction
+		}
+		*/
+
+
+	void	SignalAttack(const TAttack&attack)
+	{
+		if (!attack.attackFrom)
+		{
+			LogEvent(EventClass::Preset::commandRejected,nullptr, "NULL attempting attack");
+			return;
+		}
+		LogEvent(EventSignificance::Common,attack.attackFrom.get(),"Attacking "+attack.traceTo.ToString()+" in "+String(attack.flightTime)+" seconds");
+		Protocol::PreciseAttackTrajectory preciseAttack;
+		preciseAttack.attacker = attack.attackFrom->id;
+		preciseAttack.traceTo = attack.traceTo;
+		preciseAttack.isAutoAttack = attack.isAutoAttack;
+		preciseAttack.attackAngle = attack.attackAngle;
+		preciseAttack.timestamp.rightNow = false;
+		preciseAttack.timestamp.atTime = attack.attackFrom->motionTime;
+	
+		LogEvent(EventSignificance::Debug,attack.attackFrom.get(),"Commencing attack at t="+String(preciseAttack.timestamp.atTime));
+
+
+		preciseAttack.flightTime = attack.flightTime;
+
+		for (auto cl : Network::activePlayersAndSpectators)
+		{
+			TCP::PPeer peer = (cl)->peer.lock();
+			if (!peer)
+				continue;
+			if (Network::CanSee(cl,attack.attackFrom,preciseAttack.timestamp.atTime))
+				Channels::preciseAttackTrajectory.SendTo(peer,preciseAttack);
+		}
+	}
+
+
+	void	SignalExplosion(const TAttack&attack, const TVec3<>&center,float explosionRadius,bool isEMP, bool isDoomsday, float atTime)
+	{
+		Protocol::Explosion explosion;
+		explosion.center = center;
+		explosion.radius = explosionRadius;
+		explosion.isEMP = isEMP;
+		explosion.timestamp.atTime = atTime;
+		explosion.timestamp.rightNow = false;
+
+		//static GenericHashSet<Objects::OwnerParameter,Objects::OwnerHash>	map;
+		static Buffer0<Objects::OwnerParameter>	canSee;
+		static Buffer0<Network::PClient>	clientsCanSee;
+
+		bool allSee = isDoomsday && RuntimeConfig::doomsdayWeapons == RuntimeConfig::DoomsdayWeapons::Expose;
+
+		canSee.Clear();
+		if (allSee)
+		{
+			//just set all. I'm lazy, and these are rare
+			foreach (Objects::Faction::all, f)
+				canSee.Append(f->lock());
+			canSee.Append(Objects::Faction::nexus);
+		}
+		else
+		{
+			static Grid::HighSetup::TVolumeDescriptor volume;
+			Sphere<> explosionSphere(center,explosionRadius);
+			Grid::high.GenerateVolume(explosionSphere,volume);
+
+			Objects::ForeachFaction([explosionSphere](const Objects::PFaction&f)
+			{
+				if (f->GridCanSee(volume) || f->CountOffGridCoverage(explosionSphere))
+				{
+					canSee.Append(f);
+				};
+			});
+		}
+
+		clientsCanSee.Clear();
+
+		for (const Objects::OwnerParameter&p : canSee)
+		{
+			Network::PClient client;
+			if (Network::playerMap.Query(p,client))
+				clientsCanSee << client;
+		}
+		clientsCanSee.Append(Network::spectators);
+
+		if (clientsCanSee.IsEmpty())
+			return;
 	
 
 
-	Protocol::VagueAttackTrajectory	roughAttack;
-	bool hasTrajectory = false;
-	if (attack.attackFrom)
-	{
-		hasTrajectory = true;
-		LogEvent(EventSignificance::Common,attack.attackFrom.get(),"Tracing rough trajectory to "+Vec::toString(center)+" in "+String(attack.flightTime)+" seconds");
-		float zOffset;
-		Objects::PTurretBase base = attack.attackFrom->GetTurretBase(zOffset);
-		ASSERT__(base);
-		roughAttack.turretType = base->turret->constName;
-		roughAttack.traceTo = attack.traceTo;
+		Protocol::VagueAttackTrajectory	roughAttack;
+		bool hasTrajectory = false;
+		if (attack.attackFrom)
+		{
+			hasTrajectory = true;
+			LogEvent(EventSignificance::Common,attack.attackFrom.get(),"Tracing rough trajectory to "+Vec::toString(center)+" in "+String(attack.flightTime)+" seconds");
+			float zOffset;
+			Objects::PTurretBase base = attack.attackFrom->GetTurretBase(zOffset);
+			ASSERT__(base);
+			roughAttack.turretType = base->turret->constName;
+			roughAttack.traceTo = attack.traceTo;
 
-		roughAttack.timestamp.rightNow = false;
-		roughAttack.timestamp.atTime = atTime - attack.flightTime;
-		roughAttack.flightTime = attack.flightTime;
-		roughAttack.attackAngle = attack.attackAngle;
-		roughAttack.turretRange = base->GetFlatAttackRange();
+			roughAttack.timestamp.rightNow = false;
+			roughAttack.timestamp.atTime = atTime - attack.flightTime;
+			roughAttack.flightTime = attack.flightTime;
+			roughAttack.attackAngle = attack.attackAngle;
+			roughAttack.turretRange = base->GetFlatAttackRange();
+			roughAttack.explosionRadius = base->turret->GetExplosionRadius(attack.attackFrom->owner);
 
-		const TVec3<>& traceToWorld = attack.traceTo;
+			const TVec3<>& traceToWorld = attack.traceTo;
 
-		roughAttack.sourcePosition = attack.attackFrom->GetWorldPosition() + Grid::low.cells[attack.attackFrom->location.stackID].centerVertex.xyz * zOffset;
-		//attack.timestamp.atTime = v->timeAt;
+			roughAttack.sourcePosition = attack.attackFrom->GetWorldPosition() + Grid::low.cells[attack.attackFrom->location.stackID].centerVertex.xyz * zOffset;
+			//attack.timestamp.atTime = v->timeAt;
 		
 
 
-		const float range = roughAttack.turretRange;//base->GetFlatAttackRange();
-		float radius = range * 0.2f;
-		float3 mod = float3(random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1)) * radius;
-		count_t numIt = 0;
-		while (!attack.attackFrom->CanHit(mod + roughAttack.sourcePosition.value,roughAttack.attackAngle.value)
-				//Vec::quadraticDistance(mod + roughAttack.sourcePosition.value, traceToWorld) > sqr(range) 
-			&& ++numIt < 1000)
-			mod = float3(random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1)) * radius;
-		ASSERT__(numIt < 1000);
-		roughAttack.sourcePosition.value += mod;
-	}
+			const float range = roughAttack.turretRange;//base->GetFlatAttackRange();
+			float radius = range * 0.2f;
+			float3 mod = float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)) * radius;
+			count_t numIt = 0;
+			while (!attack.attackFrom->CanHit(mod + roughAttack.sourcePosition.value,roughAttack.attackAngle.value)
+					//Vec::quadraticDistance(mod + roughAttack.sourcePosition.value, traceToWorld) > sqr(range) 
+				&& ++numIt < 1000)
+				mod = float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)) * radius;
+			ASSERT__(numIt < 1000);
+			roughAttack.sourcePosition.value += mod;
+		}
 
-	for (const Network::PClient&client : clientsCanSee)
-	{
-		TCP::PPeer peer = client->peer.lock();
-		if (peer)
+		for (const Network::PClient&client : clientsCanSee)
 		{
-			if (!client->CanSee(attack.attackFrom,roughAttack.timestamp.atTime) && hasTrajectory)
-				Channels::vagueAttackTrajectory.SendTo(peer,roughAttack);
-			Channels::explosion.SendTo(peer,explosion);
+			TCP::PPeer peer = client->peer.lock();
+			if (peer)
+			{
+				if (!client->CanSee(attack.attackFrom,roughAttack.timestamp.atTime) && hasTrajectory)
+					Channels::vagueAttackTrajectory.SendTo(peer,roughAttack);
+				Channels::explosion.SendTo(peer,explosion);
+			}
 		}
 	}
+
 }
-
-
 
 
 
@@ -588,15 +613,24 @@ namespace InformationProvider
 
 		void	ThreadMain() override
 		{
-			Protocol::ServerInfo info;
-			info.hostInfo = UDPBroadCast::packet;
+			Protocol::ServerInfo infoGlobal,infoLocal;
+			infoGlobal.hostInfo = UDPBroadCast::packet;
+			infoLocal.hostInfo = UDPBroadCast::packet;
 
 			while (!application_shutting_down && !doEnd)
 			{
 				Sleep(1000);
-				Game::Network::AssembleGameInfo(info.gameInfo);
+				Game::Network::AssembleGameInfo(infoGlobal.gameInfo,false);
+				Game::Network::AssembleGameInfo(infoLocal.gameInfo,true);
 
-				infoSender.SendTo(server,info);
+				server.VisitAllPeers([infoGlobal,infoLocal](const TCP::PPeer&p)
+				{
+					if (p->IsLocalhost())
+						infoSender.SendTo(p,infoLocal);
+					else
+						infoSender.SendTo(p,infoGlobal);
+				});
+				//infoSender.SendTo(server,info);
 			}
 			server.EndService();
 		}
@@ -649,7 +683,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 	file.Log(message+"\n",true);
 	file.Close();
 
-	Logging::WriteEvent(EventClass::Preset::fatal,message,nullptr,nullptr);
+	Logging::WriteEvent(EventClass::Preset::fatal,message,nullptr,nullptr, Objects::OwnerParameter());
 
 	application_shutting_down = true;	//prevent certain operations in Close()
 	DisplayMessage(PRODUCT_NAME" Server Error",message,false);
@@ -911,7 +945,7 @@ void ProcessAICoverage()
 								Objects::PVehiclePlant vplant = To<Objects::VehiclePlant>::DynamicCast(ws);
 								if (plant && vplant && plant->queue.IsEmpty())
 								{
-									index_t choice = vplant->entityRandom.getIndex(Game::Config::Nexus::vehicleTurrets.Count() - 1);
+									index_t choice = vplant->entityRandom.NextIndex(Game::Config::Nexus::vehicleTurrets.Count());
 									//random.getIndex(State::Config::Nexus::vehicleTurrets.Count() - 1);
 									ASSERT_LESS__(choice,Game::Config::Nexus::vehicleTurrets.Count());
 									//Objects::Component::Turret* turret = State::Config::Nexus::vehicleTurrets[choice];
@@ -960,7 +994,7 @@ void ProcessAICoverage()
 
 					if (location != Grid::LCellIdI::Invalid)
 					{
-						Objects::Component::Turret* turret = Game::Config::Nexus::vehicleTurrets[random.getIndex(Game::Config::Nexus::vehicleTurrets.Count() - 1)];
+						Objects::Component::Turret* turret = Game::Config::Nexus::vehicleTurrets[random.NextIndex(Game::Config::Nexus::vehicleTurrets.Count())];
 						float t = 0;
 						Objects::PVehicle v = Objects::SpawnVehicle(Objects::Faction::nexus, location, &Objects::Component::hoverbase, turret, true, t);
 						Journal::currentRound.LogEntityCreation(v);
@@ -1000,7 +1034,7 @@ void TerminateNow(bool isMain)
 		}
 
 
-		Logging::WriteEvent(EventSignificance::Uncommon,"Closing down",nullptr,nullptr);
+		Logging::WriteEvent(EventSignificance::Uncommon,"Closing down",nullptr,nullptr,Objects::OwnerParameter());
 		Network::server.Shutdown();
 
 		if (Game::Config::Nexus::enableAI)
@@ -1015,7 +1049,7 @@ void TerminateNow(bool isMain)
 		RemoteControl::Destroy();
 
 
-		Logging::WriteEvent(EventSignificance::Uncommon,"Terminating process",nullptr,nullptr);
+		Logging::WriteEvent(EventSignificance::Uncommon,"Terminating process",nullptr,nullptr,Objects::OwnerParameter());
 		Logging::End();
 
 	mutex.release();
@@ -1044,7 +1078,7 @@ BOOL WINAPI MyHandlerRoutine(_In_  DWORD dwCtrlType)
 
 void LogConfig(const String&msg)
 {
-	Logging::WriteEvent(EventClass::Preset::configurationPrint,msg,nullptr,nullptr);
+	Logging::WriteEvent(EventClass::Preset::configurationPrint,msg,nullptr,nullptr,Objects::OwnerParameter());
 }
 
 
@@ -1254,7 +1288,8 @@ int main( int argc, const char* argv[])
 {
 	
 
-	onFatal = MyFatal;
+	Except::onFatal = MyFatal;
+//	return LuaRun(argc,argv);
 
 
 	try
@@ -1262,7 +1297,7 @@ int main( int argc, const char* argv[])
 
 		RuntimeConfig::InitConfigDir("server");
 		ASSERT__(FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("logs")));
-		Logging::Begin(RuntimeConfig::ConfigFile(PathString("logs/server_"+Logging::TimeStamp(true)+".log")));
+		Logging::Begin(RuntimeConfig::ConfigFile(PathString("logs/server "+Logging::TimeStamp(true)+".log")));
 		LogEvent(EventSignificance::Uncommon,nullptr,"Starting server v" PRODUCT_VERSION);
 
 
@@ -1339,6 +1374,8 @@ int main( int argc, const char* argv[])
 			application_shutting_down = true;
 		})->SetUniqueHelp("Shuts down the service and terminates the application");
 
+
+
 		Reflection::state.PushFocus();
 			Reflection::state.EnterNewFolder("/IO");
 			Reflection::state.DefineCommand("autoSaveNow",FileIO::AutoSave,CLI::NoCompletion);
@@ -1365,6 +1402,26 @@ int main( int argc, const char* argv[])
 					}
 				FileIO::Load(FileIO::GetAutoSavePath(index));
 			},CLI::FileCompletion);
+
+
+			Reflection::state.DefineCommand("reloadResearchProgram",(CLI::Command::function0_t)[]()
+			{
+				Objects::ResearchState::LoadDefaultProgram();
+				Protocol::GameConfig localhost,other;
+				Game::Network::AssembleGameConfig(other,false);
+				Game::Network::AssembleGameConfig(localhost,true);
+
+				Network::server.VisitAllPeers([localhost,other](const TCP::PPeer&p)
+				{
+					if (p->IsLocalhost())
+						Channels::gameConfig.SendTo(p,localhost);
+					else
+						Channels::gameConfig.SendTo(p,other);
+				});
+
+
+			})->SetUniqueHelp("Reloads research program from file and redeploys to clients");
+
 		Reflection::state.PopFocus();
 
 
@@ -1451,7 +1508,7 @@ int main( int argc, const char* argv[])
 
 
 
-		//Reflection::CreatePrototypeDeclaration();
+
 		if (!ParameterConfig::customWorldID)
 		{
 			World::BuildConfiguredWorld(random);
@@ -1513,7 +1570,7 @@ int main( int argc, const char* argv[])
 
 		if (false)
 		{
-			Logging::WriteEvent(EventSignificance::Uncommon,"Testing server.",nullptr,nullptr);
+			Logging::WriteEvent(EventSignificance::Uncommon,"Testing server.",nullptr,nullptr,Objects::OwnerParameter());
 
 			FileIO::Save(PathString("test0."+FileIO::savFileExtension));
 			FileIO::Load(PathString("test0."+FileIO::savFileExtension));
@@ -1536,14 +1593,14 @@ int main( int argc, const char* argv[])
 				FileIO::Load(filename);
 			}
 			else
-				Logging::WriteEvent(EventClass::Preset::fileError,"Specified file ("+String(filename)+") does not exist. Skipping loading operation.",nullptr,nullptr);
+				Logging::WriteEvent(EventClass::Preset::fileError,"Specified file ("+String(filename)+") does not exist. Skipping loading operation.",nullptr,nullptr,Objects::OwnerParameter());
 		}
 
 		//Journal::globalWriter.InitNew(RuntimeConfig::ConfigFile("saves/log"));
 		//Journal::globalWriter.ContinueExisting(RuntimeConfig::ConfigFile("saves/log"));
 
-		Logging::WriteEvent(EventSignificance::Uncommon, "Preparation of world '"+World::worldID.ToNiceString()+"'/" + World::worldID.ToString() + " completed.", nullptr, nullptr);
-		Logging::WriteEvent(EventSignificance::Important,"Server "+Network::serverID.ToString()+"/"+UDPBroadCast::packet.version+" is online.",nullptr,nullptr);
+		Logging::WriteEvent(EventSignificance::Uncommon, "Preparation of world '"+World::worldID.ToNiceString()+"'/" + World::worldID.ToString() + " completed.", nullptr, nullptr,Objects::OwnerParameter());
+		Logging::WriteEvent(EventSignificance::Important,"Server "+Network::serverID.ToString()+"/"+UDPBroadCast::packet.version+" is online.",nullptr,nullptr,Objects::OwnerParameter());
 		FileIO::RefreshWindowTitle();
 
 	

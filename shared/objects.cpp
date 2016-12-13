@@ -156,6 +156,7 @@ namespace Objects
 		structurePrototypes << ReactorCore::globalPrototype;
 		structurePrototypes << MunitionFactory::globalPrototype;
 		structurePrototypes << VehiclePlant::globalPrototype;
+		structurePrototypes << Laboratory::globalPrototype;
 		structurePrototypes << Connector::globalPrototype;
 		structurePrototypes << FuelContainer::globalPrototype;
 		structurePrototypes << MineralContainer::globalPrototype;
@@ -175,6 +176,7 @@ namespace Objects
 
 
 		Tower::globalPrototypes.Append().reset(new Tower(&Component::launcher));
+		PStructure launcherTower = Tower::globalPrototypes.last();
 		//Tower::globalPrototypes.Append().reset(new Tower(artillery));
 		Tower::globalPrototypes.Append().reset(new Tower(&Component::radar));
 		Tower::globalPrototypes.Append().reset(new Tower(&Component::armored));
@@ -216,9 +218,14 @@ namespace Objects
 
 		Structure::StaticSetup();
 
+
 		Component::ConfigureAll();
 
+
+
 		Hangar::StaticSetup();
+
+
 
 		#ifndef NO_SATELLITES
 			foreach(satellitePrototypes, p)
@@ -227,7 +234,7 @@ namespace Objects
 		foreach(structurePrototypes, p)
 			(*p)->PrototypeSetup();
 
-		
+		ResearchState::StaticCreate();	//all prototypes good. time to set the tables
 
 		#ifdef HAS_WINDOW
 			foreach (Component::vehicleTurretComponents,tc)
@@ -236,20 +243,33 @@ namespace Objects
 				(*bc)->VisitAllCommands([](const int2&,const PBaseCommand&cmd){cmd->RasterizeImage();},true);
 
 			globalCommands.baseCoords = BaseCommand::coordOffset;
-			globalCommands.Add(int2(-1, 0),false,new GlobalCommand("End Round", [](){if (HasSignalledRoundEnd()) SignalUndoRoundEnd(); else SignalRoundEnd();}, 
+			globalCommands.Add(int2(-1, 0),false,new GlobalCommand("End Round",
+			[]()
+			{
+				if (ApplicationInterface::HasSignalledRoundEnd())
+					ApplicationInterface::SignalUndoRoundEnd();
+				else
+					ApplicationInterface::SignalRoundEnd();
+			}, 
 			[](bool controlEnabled)->BaseCommand::Flags
 			{
 				BaseCommand::Flags rs = BaseCommand::Flags::None;
-				if (CanChangeRoundState())
+				if (ApplicationInterface::CanChangeRoundState())
 					rs |= BaseCommand::Flags::IsEnabled;
-				if (HasSignalledRoundEnd())
+				if (ApplicationInterface::HasSignalledRoundEnd())
 					rs |= BaseCommand::Flags::IsPermaActive;
 				else
-					if (ShouldSignalRoundEnd())
+					if (ApplicationInterface::ShouldSignalRoundEnd())
 						rs |= BaseCommand::Flags::IsFlashing;
 				return rs;
 			}));
-			globalCommands.Add(int2(0, 0),false,new GlobalCommand("Auto End Round", [](){if (!RuntimeConfig::autoNewRound && ShouldSignalRoundEnd()) SignalRoundEnd(); RuntimeConfig::autoNewRound = !RuntimeConfig::autoNewRound;}, 
+			globalCommands.Add(int2(0, 0),false,new GlobalCommand("Auto End Round",
+			[]()
+			{
+				if (!RuntimeConfig::autoNewRound && ApplicationInterface::ShouldSignalRoundEnd())
+					ApplicationInterface::SignalRoundEnd();
+				RuntimeConfig::autoNewRound = !RuntimeConfig::autoNewRound;
+			},
 			[](bool controlEnabled)->BaseCommand::Flags
 			{
 				BaseCommand::Flags rs = BaseCommand::Flags::None;
