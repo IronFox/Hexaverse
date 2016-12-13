@@ -18,7 +18,7 @@ namespace ScriptCache
 		Array<BYTE>				compressed;
 
 
-		void					Recompress();
+		bool					Recompress();
 	};
 	typedef std::shared_ptr<Script>	PScript;
 
