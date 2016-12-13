@@ -5,6 +5,7 @@ v0.3.26
 	> Added an on-screen message to show when client is in interactive configuration mode.
 	> Moved player client directory to Hexaverse/client (was Hexaverse/client/player).
 	> Renovated logfile keeping. No more than the most recent 10 logs are preserved.
+	> Resource distribution is less clustered now.
 	* Fixed bridge pathfinding when building directly on lava.
 	* Fixed specatator mode sometimes not being available when connecting from localhost.
 
