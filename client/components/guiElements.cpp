@@ -656,7 +656,7 @@ namespace GUI
 		foreach (components,c)
 			rs |= (*c)->UpdateHeight();
 
-		if (autoHeight && components.IsNotEmpty())
+		if (autoHeight)
 		{
 			float lowest = std::numeric_limits<float>::max();
 			foreach (components,c)
@@ -684,6 +684,8 @@ namespace GUI
 					break;
 				}
 			}
+			if (components.IsEmpty())
+				lowest = rect.y.max;
 			float newY = lowest;// - autoHeightSpacing;
 			float currentHeight = rect.y.max - newY;
 			bool newVScroll = currentHeight > maxHeight;
