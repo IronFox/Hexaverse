@@ -1,4 +1,6 @@
 v0.3.26
+	+ Added Lua support to Hexaverse.
+	+ Introduced laboratory structure and Lua research programs.
 	> Decreased sensor range in reduced world resolution state.
 	> Added an on-screen message to show when client is in interactive configuration mode.
 	> Moved player client directory to Hexaverse/client (was Hexaverse/client/player).
