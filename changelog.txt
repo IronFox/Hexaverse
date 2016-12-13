@@ -6,6 +6,7 @@ v0.3.26
 	> Moved player client directory to Hexaverse/client (was Hexaverse/client/player).
 	> Renovated logfile keeping. No more than the most recent 10 logs are preserved.
 	* Fixed bridge pathfinding when building directly on lava.
+	* Fixed specatator mode sometimes not being available when connecting from localhost.
 
 v0.3.25 [Nov 4 2016]
 	> Decreased world resultion in an attempt to accelerate the game.
