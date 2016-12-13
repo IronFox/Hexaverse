@@ -71,6 +71,17 @@ namespace Objects
 
 
 
+	/*virtual override*/ float		MobileEntity::GetScanningRange() const
+	{
+		return cache.maxScanningRange.GetEMPModified(*this,turret->scanningRange);
+	}
+
+	/*virtual override*/ String		MobileEntity::DescribeScanningRange() const
+	{
+		return turret->scanningRange.Describe(GetResearchState());
+	}
+
+
 	void MobileEntity::UpdateSystem()
 	{
 		ASSERT_LESS__(location.stackID, Grid::LowSetup::GridType::CellCount);
@@ -131,7 +142,7 @@ namespace Objects
 		{
 			if (t == RemovalType::UncontrolledExplosion && RuntimeConfig::bombsExplodeWhenDestroyed && turret == &Component::bomb)
 			{
-				SignalChainReactionExplosion(location, Component::Bomb::GetRadius(false),Component::Bomb::GetDamageLevel(false),atTime);
+				ApplicationInterface::SignalChainReactionExplosion(location, Component::Bomb::GetRadius(false,owner),Component::Bomb::GetDamageLevel(false,owner),atTime);
 			}
 
 		}
@@ -275,7 +286,7 @@ namespace Objects
 									case MobilePlacementResult::PlacementFailedTemporarilyObstructed:
 									{
 										isObstructed = true;
-										LogEvent( this->isAutomated ? EventClass::Preset::common :  EventClass::Preset::operationAborted,this,"Unable to complete movement.");
+										LogEvent( this->isAutomated ? EventClass::Preset::common :  EventClass::Preset::operationAborted,this,"Temporary obstruction detected: Unable to complete movement.");
 										if (health <= 0)
 										{
 											LogEvent(EventSignificance::Common,this,"Is dead.");
@@ -499,7 +510,7 @@ namespace Objects
 
 				if (timeCost > 0)
 				{
-					SignalMotion(To<Vehicle>::Cast(shared_from_this()),oldLocation,location,oldTime,timeCost);
+					ApplicationInterface::SignalMotion(To<Vehicle>::Cast(shared_from_this()),oldLocation,location,oldTime,timeCost);
 				}
 				else
 				{
@@ -611,7 +622,7 @@ namespace Objects
 				//random first to maybe not make the same mistake twice
 				for (index_t i = 0; i < ways.numWays; i++)
 				{
-					index_t target = entityRandom.getIndex(ways.numWays-1);
+					index_t target = entityRandom.NextIndex(ways.numWays);
 					if (PlotFrontCourse(ways.way[target],true))
 					{
 						numTriedPlottingOnMoveAutoMotion ++;
@@ -1136,7 +1147,7 @@ namespace Objects
 					{
 						//float delta = std::max(fabs(angles.x - turretAngleX), fabs(angles.y - turretAngleY));
 						float rotTime = Times::TurretRotation/**delta*/;
-						SignalTurretRotation(To<Vehicle>::Cast(shared_from_this()),(ToWorld(trajectory[1]) - ToWorld(trajectory.First())).Normalized0(),rotTime);
+						ApplicationInterface::SignalTurretRotation(To<Vehicle>::Cast(shared_from_this()),(ToWorld(trajectory[1]) - ToWorld(trajectory.First())).Normalized0(),rotTime);
 						motionTime += rotTime;
 
 					//	TVec3<> t0;
@@ -1151,24 +1162,25 @@ namespace Objects
 				else
 					flightTime =  timeEpsilon;// Times::Attack * 10;;
 
-				TAttack at;
+				ApplicationInterface::TAttack at;
 				at.attackFrom = To<MobileEntity>::Cast(shared_from_this());
 				at.attackAngle = angle;
 				at.flightTime = flightTime;
 				at.isAutoAttack = false;
 				at.traceTo = t0;
 
-				SignalAttack(at);
-				ChangeStorage(*this,motionTime,turret->ammoType,-turret->ammoNeedPerShot);
+				ApplicationInterface::SignalAttack(at);
+				ChangeStorage(*this,motionTime,turret->ammoType,-turret->GetAmmoNeedPerShot(owner));
 				
 				motionTime += flightTime;
 
+				const int damageLevel = (int)floor(turret->GetDamageLevel(owner));
 				if (turret->dealsEMPDamage)
 					ExplodeEMP(at,
-								t1, t0, turret->explosionRadius, turret->damageLevel,motionTime);
+								t1, t0, turret->GetExplosionRadius(owner), damageLevel,motionTime);
 				else
 					Explode(at,
-							t1, t0, turret->explosionRadius, turret->damageLevel,turret->isDoomsday, motionTime);
+							t1, t0, turret->GetExplosionRadius(owner), damageLevel,turret->isDoomsday, motionTime);
 			}
 
 			if (task.foci.IsEmpty())
@@ -1582,7 +1594,7 @@ namespace Objects
 	#ifdef HAS_WINDOW
 
 
-	void					MobileEntity::Task::SetLocalizableShape(ConstName shape, const Grid::LCellIdI&location)
+	void					MobileEntity::Task::SetLocalizableShape(ConstName shape, const Grid::LCellIdI&location, const OwnerParameter&owner)
 	{
 		if (shape == ConstName::DetonationSize_Regular)
 		{
@@ -1593,7 +1605,7 @@ namespace Objects
 			shape.instruction.ibo = sphereIBO[0];
 			shape.depthTest = true;
 
-			float r = Component::Bomb::GetRadius(false);
+			float r = Component::Bomb::GetRadius(false,owner);
 			BuildSystem(Grid::ToWorld(location),r, r,shape.system);
 			return;
 		}
@@ -1607,7 +1619,7 @@ namespace Objects
 			shape.instruction.ibo = sphereIBO[0];
 			shape.depthTest = true;
 
-			float r = Component::Bomb::GetRadius(true);
+			float r = Component::Bomb::GetRadius(true,owner);
 			BuildSystem(Grid::ToWorld(location),r, r,shape.system);
 			return;
 		}
@@ -1780,14 +1792,15 @@ namespace Objects
 
 	/*virtual override*/bool				MobileEntity::HasAmmoForShot() 
 	{
-		if (!turret->ammoNeedPerShot)
+		int ammoNeed = turret->GetAmmoNeedPerShot(owner);
+		if (!ammoNeed)
 			return true;
 
 		#ifdef ONE_COMPOUND_PER_FACTION
 			const Compound&compound = owner->compound;
-			return compound.total.storage.level[turret->ammoType] >= turret->ammoNeedPerShot;
+			return compound.total.storage.level[turret->ammoType] >= ammoNeed;
 		#else
-			return currentStorage.level[turret->ammoType] >= turret->ammoNeedPerShot;
+			return currentStorage.level[turret->ammoType] >= ammoNeed;
 		#endif
 	}
 

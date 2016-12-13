@@ -8,7 +8,6 @@
 	#include "visualCommands.h"
 	//#include "gridAndChoices.h"
 	#include "satellite.h"
-	#include "faction.h"
 	#include "rendering.h"
 #endif
 #ifndef CLIENT
@@ -17,6 +16,7 @@
 #endif
 #include "vehicle.h"
 #include "structure.h"
+#include "faction.h"
 
 
 namespace Objects
@@ -28,6 +28,7 @@ namespace Objects
 
 	GenericHashTable<TUniqueID,PWorldEntity,TUniqueID,Strategy::POD,Strategy::Swap>	idMap;
 
+	/*static*/ index_t			BaseAttributeCache::versionCounter = 0;
 
 
 
@@ -257,20 +258,54 @@ namespace Objects
 	}
 
 
-
-	float		WorldEntity::EMPModify(float raw, float min) const
+	/*static*/ float				WorldEntity::StaticEMPModify(float raw, float min, int empDamageLevel)
 	{
 		if (raw <= min)
 			return raw;
 		const float window = raw - min;
 		return min + window * Grid::powi(0.25f,(UINT)empDamageLevel);
 	}
+	
 
-	float		WorldEntity::GetScanningRange() const
+	float		WorldEntity::EMPModify(float raw, float min) const
 	{
-		return EMPModify(GetMaxScanningRange(), 2.f);
+		return StaticEMPModify(raw,min,empDamageLevel);
 	}
 
+	/*virtual*/ float		WorldEntity::GetScanningRange() const
+	{
+		return cache.maxScanningRange.GetEMPModified(*this,GetTable()->maxScanningRange);
+	}
+
+	/*virtual*/ int			WorldEntity::GetConstructionCost() const
+	{
+		return cache.constructionCost.Get(GetResearchState(), GetTable()->constructionCost,Component::IFunc(),1);
+	}
+
+	/*virtual*/ int			WorldEntity::GetMaxHealth() const
+	{
+		return cache.maxHealth.Get(GetResearchState(),GetTable()->maxHealth,Component::IFunc(),1);
+		//return GetTable()->maxHealth.GetValue(GetResearchState());
+	}
+
+	/*virtual*/ String		WorldEntity::DescribeMaxHealth() const
+	{
+		return GetTable()->maxHealth.Describe(GetResearchState());
+	}
+
+
+
+
+	Lua::Reference WorldEntity::GetResearchState() const
+	{
+		return owner ? owner->researchState.researchState : Lua::Reference();
+	}
+
+
+	/*virtual*/ String		WorldEntity::DescribeScanningRange() const
+	{
+		return GetTable()->maxScanningRange.Describe(GetResearchState());
+	}
 
 	//bool		WorldEntity::CanSee(const PWorldEntity&other) const
 	//{
@@ -343,9 +378,9 @@ namespace Objects
 				if (descFlags & DescIncludeMaxHealth)
 				{
 					if ((descFlags & DescIncludeCurrentHealth))
-						outResult << " Health: " +String(this->health)+"/"+String( this->GetMaxHealth() );
+						outResult << " Health: " +String(this->health)+"/"+this->DescribeMaxHealth();
 					else
-						outResult << " Health: " +String( this->GetMaxHealth() );
+						outResult << " Health: " + this->DescribeMaxHealth();
 				}
 				else
 					if ((descFlags & DescIncludeCurrentHealth))
@@ -357,8 +392,7 @@ namespace Objects
 			{
 				AppendDeploymentCount(outResult,owner);
 			}
-
-			outResult << " Scanning range: "+String(GetMaxScanningRange());
+			outResult << " Scanning range: "+DescribeScanningRange();
 			#ifndef NO_HIBERNATION
 					outResult << " "+String(TrafficResourceTag()) +String(GetUplinkTraffic());
 
@@ -371,7 +405,9 @@ namespace Objects
 			if (b)
 			{
 				if (b->turret->CanAttack())
-					outResult << " Hrz. Attack range: "+String(b->GetFlatAttackRange()) + "+"+String(b->turret->explosionRadius);
+				{
+					outResult << " Hrz. Attack range: "+b-> DescribeFlatAttackRange();
+				}
 				outResult << "";
 				b->turret->DescribeType(outResult,true, IF_SATELLITES( IsSatellite() ? "Satellite" : ) (IsVehicle() ? "Vehicle":"Tower"),owner);
 			}
@@ -518,7 +554,7 @@ namespace Objects
 			CRC32::calcNext(&cName,sizeof(ConstName));
 			UINT32 seed = CRC32::endSequence();
 			//std::cout << "Reseeding "<<GetName()<<" to "<<seed<< std::endl;
-			entityRandom.setSeed(seed);
+			entityRandom.seed(seed);
 		}
 	#endif
 

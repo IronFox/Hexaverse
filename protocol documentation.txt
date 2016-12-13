@@ -1,0 +1,44 @@
+unless disabled manually, server broadcasts existence info on port Base+2
+unless listening is disabled manually, client will listen for these broadcasts
+
+client: 
+	on udp package -> ServerDiscovery::RegisterNewHost() (network.cpp)
+	if known ignore
+	otherwise create new HostContactAttempt and start client-thread for each server candidate
+	
+	Thread installs channels for server information (Protocol::ServerInfo on channel Protocol::InfoChannel::ServerInfo),
+	and pings (Protocol::Ping on channel Protocol::InfoChannel::Ping).
+	Thread then continuously attempts connections and (while connected) sends pings on channel Protocol::InfoChannel::Ping (1),
+	which will trigger server responses on the same channel.
+	A connected TCP client object will periodically receive server info updates on channel Protocol::InfoChannel::ServerInfo.
+	These asynchronously trigger ServerDiscovery::OnServerInfo(), which updates HostContactAttempt::lastInfo
+	
+
+	
+	loop() (clientMain.cpp):
+		-> Network::Update() periodically checks Network::attempts (all HostContactAttempt objects).
+		If any entries are found that are worth displaying, and presently not displayed (checked via host-id),
+		they are added to Network::servers.
+		
+		-> (periodically) UpdateServerChoice() (guiHostList.cpp)
+		Each entry in Network::servers is given a panel, that the user can click on.
+		Upon clicked the panel will attempt to lookup the server info of its entry in Network::servers, and call Network::ConnectTo()
+		Network::ConnectTo() (network.cpp) will memorize server information in Network::* namespace, and asynchronously attempt connection
+		
+	Connection established:
+		client sends Protocol::Hello on Protocol::ChannelID::Hello (network.cpp)
+		
+	Client receives Protocol::HelloResponse on Protocol::ChannelID::Hello via Network::Receiver::OnHelloResponse() (network.cpp)
+		if in configuration mode, client will attempt faction login, otherwise gui is updated, presenting a faction choice dialog
+	
+	Either GUI event or automated login will call Network::AttemptFactionLogin() (network.cpp) to attempt faction login
+		This can only happen on an active connection. If a faction is currently logged in, it is logged out by the server
+		Sends Protocol::ClientFactionRequest on channel Protocol::ChannelID::ClientFaction to the server
+	
+	Client receives Protocol::ClientFactionResponse on channel Protocol::ChannelID::ClientFaction via Network::Receiver::ClientFactionResponse() (network.cpp)
+		
+
+
+
+
+

@@ -292,8 +292,8 @@ namespace Grid
 		static DX11::Shader				gridShader,transparentGridShader;// , blockShader;
 	#endif
 
-	HighSetup		high;
-	Setup<5>			low;
+	HighSetup			high;
+	LowSetup			low;
 
 	WorldData			actualWorld;
 	#ifndef CLIENT
@@ -467,12 +467,12 @@ namespace Grid
 	{
 		//float topHeight = heights.y;
 		//based on this, h could go up to 40, though chances for that are excessively rare
-		int up0 = (int)Round(heights.y * config.mountains.heightScale / RawLayerHeight);
+		int up0 = (int)Round(heights.y * config.mountains.heightScale / RawLayerHeight / UnitScale);
 		if (abs(up0) <= config.mountains.dampening)
 			up0 = 0;
 		else
 			up0 -= config.mountains.dampening * sign(up0);
-		int up1 = (int)Round(heights.x * config.extendedCore.heightScale / RawLayerHeight);
+		int up1 = (int)Round(heights.x * config.extendedCore.heightScale / RawLayerHeight / UnitScale);
 		if (abs(up1) <= config.extendedCore.dampening)
 			up1 = 0;
 		else
@@ -1030,9 +1030,9 @@ namespace Grid
 
 				Random random(23984);
 				Instruction::THeightMapOrientation	orientation;
-				SetOrientation(orientation.orientation0,float3(1,0.75,0.75).Normalized0(),Engine::timing.now, float3(random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1)).Normalized0(),random.getDouble(0,100));
-				SetOrientation(orientation.orientation1,float3(0.75,1,0.75).Normalized0(),-Engine::timing.now*1.35, float3(random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1)).Normalized0(),random.getDouble(0,100));
-				SetOrientation(orientation.orientation2,float3(0.75,0.75,1).Normalized0(),Engine::timing.now/M_PI, float3(random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1)).Normalized0(),random.getDouble(0,100));
+				SetOrientation(orientation.orientation0,float3(1,0.75,0.75).Normalized0(),Engine::timing.now, float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)).Normalized0(),random.NextFloatT<double>(0,100));
+				SetOrientation(orientation.orientation1,float3(0.75,1,0.75).Normalized0(),-Engine::timing.now*1.35, float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)).Normalized0(),random.NextFloatT<double>(0,100));
+				SetOrientation(orientation.orientation2,float3(0.75,0.75,1).Normalized0(),Engine::timing.now/M_PI, float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)).Normalized0(),random.NextFloatT<double>(0,100));
 
 				Instruction::heightMapOrientation.Update(orientation);
 
@@ -1275,6 +1275,10 @@ namespace Grid
 	{
 		return (float)n.Get(p.x,p.y,p.z);
 	}
+	float GetContinuous(const SimplexNoise&n, const TVec3<>&p)
+	{
+		return (float)n.GetContinuous(p.x,p.y,p.z);
+	}
 
 	static BYTE GetHeightMapHeight(const SimplexNoise&n, TVec3<>&p)
 	{
@@ -1315,7 +1319,7 @@ namespace Grid
 			Instruction::heightMapOrientation.Create(Instruction::THeightMapOrientation());
 
 			{
-				SimplexNoise n(Random().getType<int64_t>());
+				SimplexNoise n(Random().NextSeed());
 				Image sides[6];
 				//+x, -x, +y, -y, +z, -z.
 				CreateHeightMapSide(sides[0],n,float3(1,0,0),float3(0,0,-1),float3(0,1,0));
@@ -1521,7 +1525,7 @@ namespace Grid
 
 	void	ExtendedPlanetConfig::RandomizeSeeds(Random&random)
 	{
-		lastSeed = random.currentSeed();
+		lastSeed = random.GetCurrentSeed();
 		//LogEvent(EventSignificance::Uncommon,"seed randomized "+String(lastSeed));
 		extendedCore.Randomize(random);
 		mountains.Randomize(random);
@@ -3341,7 +3345,7 @@ namespace Grid
 		#ifdef GRID_INDEPENDENT_RANDOM
 			static Random random;
 			float q = 1.f - p;
-			coverage_t rs (Round(sqr(sqr(sqr(std::max(0.f,(random.getFloat()-q)/p)))) * (max-1)));
+			coverage_t rs (Round(sqr(sqr(sqr(std::max(0.f,(random.NextFloat()-q)/p)))) * (max-1)));
 			if (rs)
 				rs++;
 			return rs;
@@ -3351,7 +3355,7 @@ namespace Grid
 			static const int reduce = 5;
 
 			//float t0 = fabs(noise.Get(direction + seed,8.f));	//wide areas
-			float t1 = (Get(n,direction *M_PIF*2.5f));	//small areas
+			float t1 = (Get(n,direction *M_PIF/2.5f));	//small areas
 
 			int rs = std::min(1.f,scale * t1) * (reduce + max);
 			rs -= reduce;
@@ -3401,7 +3405,8 @@ namespace Grid
 
 	void Resource::Fill(Random&random,float p0, coverage_t max, float avgPerCell)
 	{
-		SimplexNoise n(random.getType<int64_t>());
+		SimplexNoise n(random.NextSeed());
+		//avgPerCell *= UnitScale;
 
 		for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
 		{

@@ -3,6 +3,7 @@
 
 #include <general/enumeration.h>
 #include <global_string.h>
+#include "objects/types.h"
 
 
 
@@ -104,6 +105,7 @@ namespace Logging
 }
 
 void		LogEvent(const EventClass&evClass, const Objects::WorldEntity*, const String&);
+void		LogEvent(const EventClass&evClass, const Objects::OwnerParameter&, const String&);
 
 inline void LogEvent(const EventClass&evClass, const String&msg)
 {

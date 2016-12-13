@@ -10,9 +10,11 @@
 #endif
 #include "configurationMode.h"
 
-void			SignalMarkerDeletion(TUniqueID markerID);
-void			OnPlayerControlBegin();
-
+namespace LocalApplicationInterface
+{
+	void			SignalMarkerDeletion(TUniqueID markerID);
+	void			OnPlayerControlBegin();
+}
 
 namespace Animation
 {
@@ -144,7 +146,7 @@ namespace Animation
 				}
 			}
 		}
-		SignalDropAllTasks(v);
+		ApplicationInterface::SignalDropAllTasks(v);
 		v->myTasks.Clear();	//will happen anyways
 
 		int referenceSpeed = v->GetMovementStepsPerRound()-1;
@@ -515,7 +517,7 @@ namespace Animation
 						}
 					#endif
 
-					t1.SetLocalizableShape(sourceTask.visualizationName,loc);
+					t1.SetLocalizableShape(sourceTask.visualizationName,loc,e.owner);
 				}
 			#endif
 		}
@@ -746,7 +748,7 @@ namespace Animation
 		#ifdef HAS_WINDOW
 			if (v == Objects::selectedEntity)
 			{
-				OnSelectionChange(true);
+				ApplicationInterface::OnSelectionChange(true);
 				Objects::UpdateChoices(Network::ControlEnabled());
 			}
 		#endif
@@ -778,7 +780,7 @@ namespace Animation
 						v->activitySound.SetReferenceDistance(3.f,1.f);
 						v->activitySound.EnqueueWaveBuffer(constructSound);
 						static Random random;
-						v->activitySound.SetPitch(1.f + random.getFloat(-0.05f,0.05f));
+						v->activitySound.SetPitch(1.f + random.NextFloat(-0.05f,0.05f));
 						v->activitySound.SetGain(0.5f);
 					}
 					if (!v->activitySound.IsPlaying())
@@ -916,7 +918,7 @@ namespace Animation
 		}
 
 		#ifdef HAS_WINDOW
-			OnSelectionChange(true);	//could be affecting selected network
+			ApplicationInterface::OnSelectionChange(true);	//could be affecting selected network
 			if (s == Objects::selectedEntity)
 			{
 				Objects::UpdateChoices(Network::ControlEnabled());
@@ -1037,6 +1039,7 @@ namespace Animation
 		attackAngle = a.attackAngle,
 		attackerPosition = a.sourcePosition;
 		explosionCenter = a.traceTo;
+		explosionRadius = a.explosionRadius;
 		isAutoTarget = false;
 
 		time.Set(a.timestamp.atTime,a.timestamp.atTime+a.flightTime);
@@ -1259,6 +1262,7 @@ namespace Animation
 					attackerTurret = base->turret;
 					ASSERT_NOT_NULL1__(attackerTurret,attacker->GetName());
 					attackRange = base->GetFlatAttackRange();
+					explosionRadius = base->turret->GetExplosionRadius(attacker->owner);
 					attackerPosition = attacker->GetWorldPosition();
 					attackerPosition += Grid::low.cells[attacker->location.stackID].cornerCenter * zOffset;
 					#ifdef HAS_WINDOW
@@ -1277,7 +1281,7 @@ namespace Animation
 						attackerTurret->trajectoryType, attackRange,attackAngle, attackerPosition,explosionCenter,
 						activeTrajectory);
 
-					explosionRadius = attackerTurret->explosionRadius;
+					//explosionRadius = attackerTurret->GetExplosionRadius;
 					projectileAt = 0.f;
 					projectileActive = true;
 
@@ -1385,7 +1389,7 @@ namespace Animation
 					if (Vec::quadraticDistance(Grid::ToWorld(m.location),explosionCenter) < sqr(explosionRadius))
 					{
 						LogEvent(EventSignificance::Common,nullptr,m.GetName()+ " considered near occuring explosion. Dropping marker");
-						SignalMarkerDeletion(m.id);
+						LocalApplicationInterface::SignalMarkerDeletion(m.id);
 						i--;
 					}
 				}
@@ -1402,7 +1406,7 @@ namespace Animation
 					if (Vec::quadraticDistance(Grid::ToWorld(m.location),explosionCenter) < sqr(explosionRadius))
 					{
 						LogEvent(EventSignificance::Common,nullptr,m.GetName()+ " considered near occuring explosion. Dropping marker");
-						SignalMarkerDeletion(m.id);
+						LocalApplicationInterface::SignalMarkerDeletion(m.id);
 						i--;
 					}
 				}
@@ -1827,7 +1831,7 @@ namespace Animation
 				{
 					LogEvent(EventSignificance::Debug,"Animation done. OnPlayerControlBegin");
 
-					OnPlayerControlBegin();
+					LocalApplicationInterface::OnPlayerControlBegin();
 				}
 			}
 

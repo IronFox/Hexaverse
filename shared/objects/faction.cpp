@@ -10,6 +10,7 @@
 #include "vehicle.h"
 #include "../sphereGridHelper.h"
 #include "../runtimeConfig.h"
+#include "prototypes.h"
 
 namespace Objects
 {
@@ -19,10 +20,10 @@ namespace Objects
 		/*static*/ Buffer0<WFaction>	Faction::all;
 		/*static*/ PFaction				Faction::nexus;
 
-		void	Faction::RecreateNexus()
+		void	Faction::RecreateNexus(const TUniqueID&id)
 		{
-			nexus.reset(new Faction(TUniqueID::Empty(), "<Nexus>"));
-			SignalFactionsChanged();
+			nexus.reset(new Faction(id, "<Nexus>",true));
+			ApplicationInterface::SignalFactionsChanged();
 		}
 
 		int		GetStorage(const MobileEntity&v, Resource res)
@@ -455,7 +456,7 @@ namespace Objects
 				ASSERT1__(gainedVisualAt.SetNew(e,t),e->id.ToString());
 
 				if (cascade)
-					SignalAppearanceToHostileFaction(shared_from_this(),e,t);
+					ApplicationInterface::SignalAppearanceToHostileFaction(shared_from_this(),e,t);
 
 				e->SyncTime(t,timeEpsilon);
 
@@ -506,7 +507,7 @@ namespace Objects
 				ASSERT1__(lostVisualAt.SetNew(e,t-timeEpsilon),e->id.ToString());
 				seeing.Unset(e);
 				if (signalConnectedClient)
-					SignalDisappearanceToHostileFaction(shared_from_this(),e,t);
+					ApplicationInterface::SignalDisappearanceToHostileFaction(shared_from_this(),e,t);
 
 				e->SyncTime(t,timeEpsilon);
 			}
@@ -826,12 +827,20 @@ namespace Objects
 				return true;
 			if (e->IsMobile())
 			{
-				ConstName type = To<MobileEntity>::Cast(e)->turret->constName;
-				return CheckLimit(CountMobileType(type), RuntimeConfig::UnitLimits::Get(type), errorOut);
+				if (e->IsVehicle())
+				{
+					const Component::VehicleBase*base = To<Vehicle>::Cast(e)->base;
+
+					if (!researchState.CheckUnlocked(*base,errorOut))
+						return false;
+				}
+				const Component::Turret*turret = To<MobileEntity>::Cast(e)->turret;
+				ConstName type = turret->constName;
+				return researchState.CheckUnlocked(*turret,errorOut) && CheckLimit(CountMobileType(type), RuntimeConfig::UnitLimits::Get(type), errorOut);
 			}
 			ConstName type = e->GetCTypeName();
 			if (e->IsStructure())
-				return CheckLimit(CountStructureType(type), RuntimeConfig::UnitLimits::Get(type), errorOut);
+				return researchState.CheckUnlocked(type,errorOut) && CheckLimit(CountStructureType(type), RuntimeConfig::UnitLimits::Get(type), errorOut);
 			FATAL__("Unknown type: "+e->GetName());
 			return false;
 		}
@@ -1431,7 +1440,7 @@ namespace Objects
 				if (!inStream.ReadPrimitive(this->referenceEntity))
 					return false;
 
-				if (globalVersionOfCurrentFile >= FileVersions::MarkersHaveOwner)
+				if (ApplicationInterface::globalVersionOfCurrentFile >= ApplicationInterface::FileVersions::MarkersHaveOwner)
 				{
 					if (!inStream.ReadPrimitive(this->referenceEntityOwner))
 						return false;
@@ -1575,7 +1584,7 @@ namespace Objects
 						break;
 					}
 				LogEvent(EventClass::Preset::factionDeath, "Faction terminated: " + f->GetLogName());
-				SignalFactionsChanged();
+				ApplicationInterface::SignalFactionsChanged();
 			}
 			else
 				LogEvent(EventClass::Preset::remoteControlError, "Destructible entities destroyed, but cannot terminate nexus faction itself");
@@ -1662,7 +1671,7 @@ namespace Objects
 		rs.v[secondary] = secondaryLevel;
 	}
 
-	void		Faction::UpdateID(const TUniqueID&toID, bool recomputeColor/*=true*/)
+	void		Faction::InitID(const TUniqueID&toID, bool recomputeColor/*=true*/)
 	{
 		if (toID == TUniqueID::Empty())
 			id.Generate();

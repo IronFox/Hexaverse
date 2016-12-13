@@ -5,14 +5,22 @@
 #include "cursorMode.h"
 
 
+#ifdef HAS_WINDOW
+	#include <engine/display.h>
+	#include "../../client/ExtRenderer/DirectX11.h"
+	extern Engine::Display<Engine::DirectX11>	display;
+
+#endif
+
+/**
+Functions that send events to the non-shared components of the application.
+The client application must implement these somewhere
+*/
+namespace ApplicationInterface
+{
+
 #ifdef CLIENT
 	
-	#ifdef HAS_WINDOW
-		#include <engine/display.h>
-		#include "../../client/ExtRenderer/DirectX11.h"
-		extern Engine::Display<Engine::DirectX11>	display;
-
-	#endif
 	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick);
 	void	SignalChoiceIntersection(const Objects::PWorldEntity&e,const Grid::LCellIdI&c, Objects::CursorMode mode, const Objects::PMobileEntity&deployingWhat);
 	void	SignalRoundEnd();
@@ -33,6 +41,7 @@
 	void	SignalSleep(const Objects::PWorldEntity&v, bool doSleep);
 	void	SignalEnableStructure(Objects::Structure&s, bool enabled);
 	void	SignalTargetLessAttack(const Objects::PWorldEntity&e);
+	void	SignalResearch(const Objects::PResearchTopic&topic);
 
 	#ifdef HAS_WINDOW
 		void	OnSelectionChange(bool stateChangeOnly);
@@ -85,6 +94,7 @@
 	void	SignalOwnershipChange(const Objects::PWorldEntity&e,const Objects::OwnerParameter&target, float t);
 	void	SignalNexusControlChange(const Objects::PFaction&f);
 	void	SignalChainReactionExplosion(const Grid::LCellIdI&center, float radius, int damageLevel, float atTime);
+	void	SignalOperationLacksResources(const Objects::WorldEntity&, const ArrayRef<Objects::Resource>&resources, float atTime);
 	/**
 	Signals that a new faction has been created or an existing one has been removed.
 	Also replacement as happens when the nexus faction is recreated.
@@ -92,6 +102,6 @@
 	void	SignalFactionsChanged();
 
 #endif
-
+}
 
 #endif

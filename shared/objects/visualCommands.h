@@ -11,6 +11,8 @@
 #include "types.h"
 #include "resource.h"
 #include "../cast.h"
+#include "componentAttribute.h"
+#include "../stringTable.h"
 
 namespace Objects
 {
@@ -38,7 +40,8 @@ namespace Objects
 			IsEnabled=0x1,
 			IsPermaActive=0x2,
 			IsFlashing=0x4,
-			SoftFlashing=0x8
+			SoftFlashing=0x8,
+			IsInvisible=0x10
 		};
 
 
@@ -297,6 +300,8 @@ namespace Objects
 		PBaseCommand	Add(const int2&coords, bool relativeCoords, BaseCommand*newCommand)	{ return Add(coords, relativeCoords, PBaseCommand(newCommand));}
 		PBaseCommand	Add(const int2&coords, bool relativeCoords, const PBaseCommand&newCommand);
 		const Member&	GetLast() const {return members.last();}
+		void			Truncate(count_t numMembers)	{members.Truncate(numMembers);}
+		count_t			Count() const {return members.Count();}
 		
 		index_t			Find(const PBaseCommand&) const;
 	};
@@ -366,17 +371,38 @@ namespace Objects
 			Collapse();
 		}
 
+		/**
+		Visually hides all child-members of any expanded children
+		*/
 		static void		CollapseAll()
 		{
 			foreach (activeGroupPath,p)
 				(*p)->Collapse();
 			activeGroupPath.Clear();
 		}
+
+
+		void			SignalBaseChange(CommandContainer*newParent, const int2&newBase);
+
 	};
 
-	
 
+	class ResearchCommand : public CustomIcon<CommandGroup>
+	{
+		typedef CustomIcon<CommandGroup>	Super;
+	public:
+		PResearchTopic	topic;
 
+		/**/			ResearchCommand(const PResearchTopic&topic);
+
+		virtual	void	Refresh(bool controlEnabled) override;
+		virtual void	RasterizeImage()override;
+
+		virtual void	CompileLabel(Label&outResult) override;
+		virtual void	Execute() override;
+
+	};
+	typedef std::shared_ptr<ResearchCommand>	PResearchCommand;
 
 
 	class EntityCommand : public CallbackCommand
@@ -440,6 +466,7 @@ namespace Objects
 		static void			UpdateTexture(BaseCommand&target, Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor = float4(0));
 		void				UpdateTexture(Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor = float4(0));
 	};
+
 
 
 

@@ -35,7 +35,7 @@ namespace Evolver
 			Objects::WMobileEntity	ref;
 			float			initiativeFactor;
 
-			/**/		TActionReference(const Objects::PMobileEntity&e):ref(e)	{initiativeFactor = e->entityRandom.getFloat(0.95f,1.f); /*std::cout << e->GetName()<<": "<< initiativeFactor << std::endl;*/}
+			/**/		TActionReference(const Objects::PMobileEntity&e):ref(e)	{initiativeFactor = e->entityRandom.NextFloat(0.95f,1.f); /*std::cout << e->GetName()<<": "<< initiativeFactor << std::endl;*/}
 
 			bool		IsAlive() const {return ref.lock() && ref.lock()->health >= 0;}
 
@@ -50,7 +50,7 @@ namespace Evolver
 			Objects::WWorldEntity			eref;
 			float			initiativeFactor;
 
-			/**/		TAttackReference(const Objects::PWorldEntity&we):eref(we)	{initiativeFactor = we->entityRandom.getFloat(0.95f,1.f);/*std::cout << we->GetName()<<": "<< initiativeFactor << std::endl;*/}
+			/**/		TAttackReference(const Objects::PWorldEntity&we):eref(we)	{initiativeFactor = we->entityRandom.NextFloat(0.95f,1.f);/*std::cout << we->GetName()<<": "<< initiativeFactor << std::endl;*/}
 
 			bool		IsAlive() const {Objects::PWorldEntity e = eref.lock(); return e && e->health >= 0;}
 
@@ -213,6 +213,10 @@ namespace Evolver
 				c.TickBegin();
 				c.RefreshState(0);
 			});
+			Objects::ForeachFaction([](const Objects::PFaction&f)
+			{
+				f->researchState.FinalizeRound(f);
+			});
 
 
 			Objects::ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
@@ -271,7 +275,7 @@ namespace Evolver
 					{
 						if (t->attackQueue.IsEmpty() && !t->FillAttackQueue())
 							continue;
-						if (!t->HasAmmoForShot(0))
+						if (!t->HasAmmoForShot())
 						{
 							LogEvent(EventClass::Preset::commandRejected,t.get(),"Insufficient ammunition. Attacks cancelled");
 							t->attackQueue.Clear();
@@ -371,7 +375,7 @@ namespace Evolver
 		{
 			static TExplosion exp;
 			while (pendingExplosions >> exp)
-				Objects::Explode(TAttack(),Grid::ToHigh(exp.center),Grid::ToWorld(exp.center),exp.radius,exp.damageLevel,false,exp.atTime);
+				Objects::Explode(ApplicationInterface::TAttack(),Grid::ToHigh(exp.center),Grid::ToWorld(exp.center),exp.radius,exp.damageLevel,false,exp.atTime);
 
 			switch (RuntimeConfig::phase)
 			{

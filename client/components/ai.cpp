@@ -1,14 +1,15 @@
 #include <global_root.h>
 #include "ai.h"
+#include <objects/interface.h>
 
-void	SignalDropAllTasks(const Objects::PWorldEntity&v);
-bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick, Objects::Vehicle::mode_t mode);
-void	SignalRemoval(const Objects::PWorldEntity&entity);
-void	SignalMarkerCreation(Protocol::Marker&marker);
-void	SignalMarkerDeletion(TUniqueID markerID);
-void	SignalMarkerTouch(Objects::Marker&marker);
+namespace LocalApplicationInterface
+{
+	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick, Objects::Vehicle::mode_t mode);
+	void	SignalMarkerCreation(Protocol::Marker&marker);
+	void	SignalMarkerDeletion(TUniqueID markerID);
+	void	SignalMarkerTouch(Objects::Marker&marker);
+}
 
-void	SignalRoundEnd();
 
 namespace AI
 {
@@ -25,7 +26,7 @@ namespace AI
 		
 		if (base && base->turret->CanAttack())
 		{
-			rs /= (1.f + float(base->turret->damageLevel * base->GetAttacksPerRound() * base->GetFlatAttackRange()) * 0.1f);
+			rs /= (1.f + float(base->turret->GetDamageLevel(base->GetOwner()) * base->GetAttacksPerRound() * base->GetFlatAttackRange()) * 0.1f);
 		}
 		return rs * 3.f;
 	}
@@ -89,10 +90,10 @@ namespace AI
 
 		//if (b->CanHit(e.owner,e.location,))
 		if (e.CanHit(reference))
-		//if (distance < sqr(b->GetAttackRange() + b->turret->explosionRadius - 1))
+		//if (distance < sqr(b->GetAttackRange() + b->turret->GetExplosionRadius(e.owner) - 1))
 		{
 			Objects::PTurretBase b = e.GetTurretBase();
-			current.damageThreat += b->turret->damageLevel * b->GetAttacksPerRound();
+			current.damageThreat += b->turret->GetDamageLevel(e.owner) * b->GetAttacksPerRound();
 		}
 	}
 
@@ -154,7 +155,7 @@ namespace AI
 		static Buffer0<Grid::LCellIdI> path;
 		path.Clear();
 		AssemblePath(mapper, current,path);
-		DirectTo(v,path.ToRef(),true,false,Objects::CursorMode::Idle);
+		LocalApplicationInterface::DirectTo(v,path.ToRef(),true,false,Objects::CursorMode::Idle);
 	}
 
 
@@ -172,14 +173,14 @@ namespace AI
 	};
 
 
-	static float ProcessAttackPriority(Objects::WorldEntity&e,const TVec3<>&explosionCenter,float explosionRadius)
+	static float ProcessAttackPriority(Objects::WorldEntity&e,const TVec3<>&explosionCenter,float maxExplosionRadius)
 	{
-		if (e.isOwnedByMe || Vec::quadraticDistance(explosionCenter,e.system.w.xyz) > sqr(explosionRadius))
+		if (e.isOwnedByMe || Vec::quadraticDistance(explosionCenter,e.system.w.xyz) > sqr(maxExplosionRadius))
 			return 0.f;
 		Objects::PTurretBase b = e.GetTurretBase();
-		float rs = e.GetMaxScanningRange();
+		float rs = e.GetScanningRange();
 		if (b)
-			rs = std::max(rs, b->GetFlatAttackRange() + b->turret->explosionRadius);
+			rs = std::max(rs, b->GetFlatAttackRange() + b->turret->GetExplosionRadius(e.owner));
 		int health = e.health >0 ? e.health : e.GetMaxHealth();
 		return rs / health;
 	}
@@ -193,7 +194,7 @@ namespace AI
 		Grid::LCellIdI target;
 		if (source.ExtCanHit(source.owner, Objects::TrajectoryEndPoint( source.location,source.base->height),Objects::TrajectoryEndPoint( candidate.location,0 ),target))
 		{
-
+			const float explosionRadius = source.turret->GetExplosionRadius(source.owner);
 
 			TVec3<> detonationAt;
 			Objects::TurretTrajectory rs = source.TraceTrajectory(Objects::TrajectoryEndPoint( target),detonationAt);
@@ -207,9 +208,9 @@ namespace AI
 			if (rs != Objects::TurretTrajectory::ReachesTarget)
 			{
 				float distanceToTarget = Vec::distance(detonationAt,candidate.system.w.xyz);
-				if (distanceToTarget > source.turret->explosionRadius)
+				if (distanceToTarget > explosionRadius)
 				{
-					LogEvent(EventSignificance::Debug,&source,"Cannot trace good trajectory to destination. Final distance is "+String(distanceToTarget)+"/"+String(source.turret->explosionRadius));
+					LogEvent(EventSignificance::Debug,&source,"Cannot trace good trajectory to destination. Final distance is "+String(distanceToTarget)+"/"+String(explosionRadius));
 					return;
 				}
 			}
@@ -217,22 +218,22 @@ namespace AI
 			//Objects::Turret::MaxRangeToVelocity(source.GetFlatAttackRange()),
 				//									Grid::actualWorld, source.location,target,detonationAt);
 			//if (rs == Objects::TurretTrajectory::ReachesTarget
-			// || (rs == Objects::TurretTrajectory::MidFlightImpact && source.turret->explosionRadius > 1 && !source.turret->dealsEMPDamage))
+			// || (rs == Objects::TurretTrajectory::MidFlightImpact && source.turret->GetExplosionRadius(e.owner) > 1 && !source.turret->dealsEMPDamage))
 			{
 				LogEvent(EventSignificance::Debug,&source,"Trajectory checks out");
-				count_t needAttacks = ceil(float(std::max(1,candidate.health)) / source.turret->damageLevel);
+				count_t needAttacks = ceil(float(std::max(1,candidate.health)) / source.turret->GetDamageLevel(source.owner));
 				if (rs != Objects::TurretTrajectory::ReachesTarget)
 					needAttacks ++;
 				//if (rs == Objects::Turret::ReachesTarget)
 				float priority = 0.f;
 				foreach (Objects::vehicles,_v)
-					priority += ProcessAttackPriority(**_v,detonationAt,source.turret->explosionRadius);
+					priority += ProcessAttackPriority(**_v,detonationAt,explosionRadius);
 				foreach (Objects::structures,_v)
-					priority += ProcessAttackPriority(**_v,detonationAt,source.turret->explosionRadius);
+					priority += ProcessAttackPriority(**_v,detonationAt,explosionRadius);
 				foreach (Objects::Marker::structureGhosts,_v)
-					priority += ProcessAttackPriority(**_v,detonationAt,source.turret->explosionRadius);
+					priority += ProcessAttackPriority(**_v,detonationAt,explosionRadius);
 				foreach (Objects::Marker::mobileGhosts,_v)
-					priority += ProcessAttackPriority(**_v,detonationAt,source.turret->explosionRadius);
+					priority += ProcessAttackPriority(**_v,detonationAt,explosionRadius);
 				LogEvent(EventSignificance::Debug,&source,"Base Priority considered "+String(priority));
 				for (index_t i = 0; i < needAttacks; i++)
 				{
@@ -263,7 +264,7 @@ namespace AI
 		Objects::ReachabilityMapper::MapNode*best = nullptr;
 		float bestScore = 0.f;
 		bool attacker = t->CanAttack();
-//		const float myRange = t->maxRange + t->explosionRadius - 1;
+//		const float myRange = t->maxRange + t->GetExplosionRadius(e.owner) - 1;
 
 
 
@@ -271,14 +272,14 @@ namespace AI
 			if (attacker && !v->HasAmmoForShot())
 			{
 				LogEvent(EventSignificance::Debug,v.get(),"AI: Out of ammo: destroying vehicle");
-				SignalRemoval(v);
+				ApplicationInterface::SignalRemoval(v);
 				return;
 			}
 		#endif
 		//if (v->tasks.IsNotEmpty())
 		{
 			//LogEvent(EventSignificance::Debug,v.get(),"AI: dropping tasks");
-			SignalDropAllTasks(v);
+			ApplicationInterface::SignalDropAllTasks(v);
 		}
 
 
@@ -291,7 +292,7 @@ namespace AI
 				float distance = Vec::quadraticDistance(Grid::ToWorld(_m->location),v->system.w.xyz);
 				if (distance < 25.f)
 				{
-					SignalMarkerTouch(*_m);
+					LocalApplicationInterface::SignalMarkerTouch(*_m);
 					haveMarker = true;
 //					break;
 				}
@@ -316,7 +317,7 @@ namespace AI
 			tempMarkers << v->system.w.xyz;
 			static_assert(Objects::Marker::Type::Visited == 2, "Please update marker logic");
 			marker.data.Set2();
-			SignalMarkerCreation(marker);
+			LocalApplicationInterface::SignalMarkerCreation(marker);
 		}
 
 
@@ -325,6 +326,7 @@ namespace AI
 			String id = v->id.ToString();
 			static Buffer0<TAttackTarget>	attackTarget;
 			attackTarget.Clear();
+			const float explosionRadius = v->turret->GetExplosionRadius(v->owner);
 
 			foreach (Objects::vehicles,_v)
 			{
@@ -349,7 +351,7 @@ namespace AI
 					if ((*_v)->isOwnedByMe)
 					{
 						float distance = Vec::quadraticDistance((*_v)->system.w.xyz,ref);
-						if ( distance < sqr(v->turret->explosionRadius))
+						if ( distance < sqr(explosionRadius))
 						{
 							conflict = true;
 							break;
@@ -361,7 +363,7 @@ namespace AI
 					if ((*_v)->isOwnedByMe)
 					{
 						float distance = Vec::quadraticDistance((*_v)->system.w.xyz,ref);
-						if ( distance < sqr(v->turret->explosionRadius))
+						if ( distance < sqr(explosionRadius))
 						{
 							conflict = true;
 							break;
@@ -375,14 +377,14 @@ namespace AI
 				}
 			}
 			std::sort(attackTarget.begin(),attackTarget.end());
-			attackTarget.Truncate(v->turret->attacksPerRound);
+			attackTarget.Truncate(v->turret->GetAttacksPerRound(v->owner));
 			static Array<Grid::LCellIdI>	targets;
 			targets.SetSize(attackTarget.Count());
 			foreach (attackTarget,t)
 			{
 				targets[t-attackTarget.pointer()] = t->target;
 			}
-			DirectTo(v,targets,false,true, Objects::CursorMode::AttackMode);
+			LocalApplicationInterface::DirectTo(v,targets,false,true, Objects::CursorMode::AttackMode);
 
 			if (attackTarget.IsNotEmpty() && !v->base->ignoresVehicleAttacks)
 				return;
@@ -402,9 +404,9 @@ namespace AI
 				}
 			
 			currentIsOverconfident = proximityPresence > 5;
-			if (!v->turret->CanAttack() && radarProximity > 1 && random.getFloat() < 0.3f)
+			if (!v->turret->CanAttack() && radarProximity > 1 && random.NextFloat() < 0.3f)
 			{
-				SignalRemoval(v);
+				ApplicationInterface::SignalRemoval(v);
 				return;
 			}
 		}
@@ -414,7 +416,7 @@ namespace AI
 		currentIsOffensiveVehicle = attacker && v->turret->ignoresVehicleMotion;
 		static Objects::ReachabilityMapper mapper(false);
 //		currentThreat = TThreatEstimation();
-		currentCanIgnoreThreat = (v->turret->CanAttack() || random.getFloat() < 0.5f) && !v->turret->dealsEMPDamage;
+		currentCanIgnoreThreat = (v->turret->CanAttack() || random.NextFloat() < 0.5f) && !v->turret->dealsEMPDamage;
 		//currentIsOverconfident = v->overconfident;
 		EstimateThreatFromAll(v->system.w.xyz,true, currentCanIgnoreThreat,currentThreat);	//determine base threat based on ghosts
 
@@ -449,7 +451,7 @@ namespace AI
 					float distance = Vec::quadraticDistance(e->system.w.xyz,reference);
 					float fc = EstimateInterest(e->GetTurretBase(),e->location.height,
 								e->GetConstructionCost(),distance);
-					if (distance < Objects::Component::artillery.explosionRadius)
+					if (distance < Objects::Component::artillery.GetExplosionRadius(e->owner))
 						badWeight += 20 / (1.f + distance);
 					else
 						goodWeight += fc / (1.f + distance);
@@ -481,12 +483,12 @@ namespace AI
 			
 				float score = (1.f + goodWeight) / (1.f+badWeight) / (1.f + float(abs(n->movementCostsFromRoot- minMotion * 3 / 2))*0.01f);
 				{
-					float extend = 1.f + sqr(sqr(sqr(random.getFloat())));
-					if (random.getIndex(1) == 0)
+					float extend = 1.f + sqr(sqr(sqr(random.NextFloat())));
+					if (random.NextBool())
 						extend = 1.f / extend;
 					score *= extend;				
 				}
-				//score *= random.getFloat(0.8f,1.25f);
+				//score *= random.NextFloat(0.8f,1.25f);
 				if (score > bestScore)
 				{
 					best = n;
@@ -564,7 +566,7 @@ namespace AI
 					if (m.age >= 10 && m.visualization && m.visualization->IsMobile())	//after 10 rounds, assume vehicle has moved
 					{
 						LogEvent(EventSignificance::Debug,nullptr,"AI: Deleting marker "+m.GetName()+" since hostile vehicle markers are considered outdated after 10 rounds (age="+String(m.age)+")");
-						SignalMarkerDeletion(m.id);
+						LocalApplicationInterface::SignalMarkerDeletion(m.id);
 						i--;
 					}
 				break;
@@ -575,7 +577,7 @@ namespace AI
 					if (estimation.damageThreat > 0)	//knowing cause, dropping ghost
 					{
 						LogEvent(EventSignificance::Debug,nullptr,"AI: Deleting marker "+m.GetName()+" because cause of destruction is considered known");
-						SignalMarkerDeletion(m.id);
+						LocalApplicationInterface::SignalMarkerDeletion(m.id);
 						i--;
 					}
 				}
@@ -630,14 +632,14 @@ namespace AI
 				{
 					LogEvent(EventSignificance::Debug,nullptr,"AI: Deleting marker "+m.GetName()+". Reached end-of-life after 100 rounds");
 
-					SignalMarkerDeletion(m.id);
+					LocalApplicationInterface::SignalMarkerDeletion(m.id);
 					i--;
 				}
 			}
 
 			ASSERT__(done);
 			LogEvent(EventSignificance::Debug,nullptr,"AI: all done. requesting new round");
-			SignalRoundEnd();
+			ApplicationInterface::SignalRoundEnd();
 			
 		}
 

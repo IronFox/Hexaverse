@@ -4,7 +4,7 @@
 #include "sphereGrid.h"
 
 #ifdef _DEBUG
-	#include <io/encryption.h>
+	#include <io/cryptographic_hash.h>
 
 #endif
 

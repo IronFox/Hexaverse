@@ -166,14 +166,8 @@ void	SaveHosts()
 				}
 				info->selected = true;
 
-				Network::serverID = info->id;
-				Network::serverIDString = Network::serverID.ToNiceString();
-				Network::worldID = info->info.gameInfo.worldID;
-				Network::worldIDString = Network::worldID.ToNiceString();
-				Network::gameFlags = info->info.gameInfo.gameConfig.gameFlags;
-				RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(info->info.gameInfo.gameConfig.gameGoal);
 
-				Network::ConnectTo(info->addresses[best].first);
+				Network::ConnectTo(info->addresses[best].first,info->info);
 			});
 
 		}
@@ -497,8 +491,10 @@ void	SaveHosts()
 
 		Dialog::serverChoice->FullAutoLayout();
 		if (isActive)
+		{
 			Dialog::serverChoice->SetActive(isActive);
-
+			GUI::OverrideSignalMouseMotion();
+		}
 		
 		Dialog::CheckServersAreShown(!Network::client.IsConnected());
 	}

@@ -1,4 +1,14 @@
-﻿server list must be scrollable
+﻿resources 2.0:
+	+ Mines have diminishing yield (not to zero, but low)
+	+ New resource types from trees (natural compounds), and dendrites (vulcanic compounds)
+	+ Mix compounds and fuel/minerals to generate superior fuel and alloys for improved units?
+	
+smaller planets on average. three flexible sizes (current is probably largest)? 
+
+alloy? resource type that is required for some constructions, and requires a special factory to make
+
+
+
 
 client-side started local server should survive client closure?
 
@@ -11,7 +21,6 @@ compare with pre-80d6657fcd00f7d41fdc54c4cdef47b3d073ff48: 3972d667c90b1ef1ded85
 having small compound spheres within larger ones become visible if the camera is inside these spheres
 shift+click should work on terraforming operations, too
 
-alloy? resource type that is required for some constructions, and requires a special factory to make
 
 
 
@@ -21,6 +30,15 @@ research concept:
 			some arranged in a tree, others available right away
 			
 		improved unlocked turret/base/building (very expensive, end game, all in percentage, exponentially increasing costs)
+		
+			anyValue(B,L,D,C) = max(1, B * ln(max(1, e+(R-D)*C)))
+				where
+					B = base value (e.g. radar range 11)
+					R = research level (>=0, 0 = not researched). each enabled laboratory generates one research point per round
+					D = planetary difficulty value (>=0, 0 = none)
+					C = scaling constant. Maybe 0.01 - 0.1
+	
+		
 			* scanning range
 			* attacks per round (towers/offensive vehicles)
 			* attack range (towers/offensive vehicles)
@@ -160,6 +178,7 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+server list must be scrollable
 visual server configurator 
 ragnarök attack beam visualization	//satellites are deprecated
 spy-satellite	//satellites are deprecated
