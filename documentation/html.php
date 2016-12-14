@@ -1,4 +1,5 @@
 <?php
+date_default_timezone_set('Europe/Berlin');
 require_once('visual/site.php');
 require_once('renderer/WikiRenderer.lib.php');
 require_once(WIKIRENDERER_PATH . 'rules/dokuwiki_to_xhtml.php');
