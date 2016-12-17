@@ -291,14 +291,14 @@ class dkxhtml_list extends WikiRendererBloc {
     public $type='list';
     protected $_stack=array();
     protected $_firstTagLen;
-    protected $regexp="/^(\s{2,})([\*\-])(.*)/";
+    protected $regexp="/^([\*]+|[\#]+)(.*)/";
     protected $_firstItem = true;
-
+	
     public function open(){
-        $this->_stack[] = array(strlen($this->_detectMatch[1]) ,  $this->_detectMatch[2]);
+        $this->_stack[] = array(strlen($this->_detectMatch[1]) ,  $this->_detectMatch[1][0]);
         $this->_firstTagLen = strlen($this->_detectMatch[1]);
         $this->_firstItem = true;
-        if($this->_detectMatch[2] == '-')
+        if($this->_detectMatch[1][0] == '#')
             return "<ol>\n";
         else
             return "<ul>\n";
@@ -310,7 +310,7 @@ class dkxhtml_list extends WikiRendererBloc {
         for($i=count($this->_stack)-1; $i >=0; $i--){
             if($this->_stack[$i][0] < $this->_firstTagLen) break;
 
-            $str.=($this->_stack[$i][1]== '-'?"</li></ol>\n":"</li></ul>\n");
+            $str.=($this->_stack[$i][1]== '#'?"</li></ol>\n":"</li></ul>\n");
             array_pop($this->_stack);
         }
         return $str;
@@ -323,8 +323,8 @@ class dkxhtml_list extends WikiRendererBloc {
         $str='';
 
         if( $d < 0 ){ // un niveau de plus
-            $this->_stack[] = array($newLen ,  $this->_detectMatch[2]);
-            $str=($this->_detectMatch[2] == '-'?"<ol><li>":"<ul><li>");
+            $this->_stack[] = array($newLen ,  $this->_detectMatch[1][0]);
+            $str=($this->_detectMatch[1][0] == '#'?"<ol><li>":"<ul><li>");
 
         } else {
             if( $d > 0 ){ // on remonte d'un ou plusieurs cran dans la hierarchie...
@@ -332,16 +332,16 @@ class dkxhtml_list extends WikiRendererBloc {
                     if($this->_stack[$i][0] <= $newLen){
                         break;
                     } else {
-                        $str.=($this->_stack[$i][1]== '-'?"</li></ol>\n":"</li></ul>\n");
+                        $str.=($this->_stack[$i][1]== '#'?"</li></ol>\n":"</li></ul>\n");
                     }
                     array_pop($this->_stack);
                 }
                 if(count($this->_stack) == 0) {
                     $this->_firstTagLen = $newLen;
                     $this->_firstItem = true;
-                    $t = array($newLen,   $this->_detectMatch[2]);
+                    $t = array($newLen,   $this->_detectMatch[1][0]);
                     $this->_stack[] = $t;
-                    if($t[1] == '-')
+                    if($t[1] == '#')
                         $str .= "<ol>\n";
                     else
                         $str .= "<ul>\n";
@@ -351,16 +351,16 @@ class dkxhtml_list extends WikiRendererBloc {
 
             }
 
-            if($t[1] != $this->_detectMatch[2]) {
+            if($t[1] != $this->_detectMatch[1][0]) {
                 if(!$this->_firstItem)
                     $str .='</li>';
 
-                if($t[1] == '-')
+                if($t[1] == '#')
                     $str .= "<ol>\n<li>";
                 else
                     $str .= "<ul>\n<li>";
                 array_pop($this->_stack);
-                $this->_stack[] = array($newLen ,  $this->_detectMatch[2]);
+                $this->_stack[] = array($newLen ,  $this->_detectMatch[1][0]);
             } else {
                 if($this->_firstItem)
                     $str.="<li>";
@@ -370,7 +370,7 @@ class dkxhtml_list extends WikiRendererBloc {
 
         }
         $this->_firstItem = false;
-        return $str.$this->_renderInlineTag(trim($this->_detectMatch[3]));
+        return $str.$this->_renderInlineTag(trim($this->_detectMatch[2]));
 
     }
 }
