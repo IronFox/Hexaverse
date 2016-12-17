@@ -39,6 +39,9 @@
             this.panel3 = new System.Windows.Forms.Panel();
             this.documentTree = new System.Windows.Forms.TreeView();
             this.documentContextMenu = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.newDocumentToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.newFolderToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.toolStripMenuItem1 = new System.Windows.Forms.ToolStripSeparator();
             this.deleteToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.updater = new System.Windows.Forms.Timer(this.components);
             this.topContentPanel = new System.Windows.Forms.Panel();
@@ -46,8 +49,6 @@
             this.logBox = new System.Windows.Forms.TextBox();
             this.editorPanel = new System.Windows.Forms.Panel();
             this.logSplitter = new System.Windows.Forms.Splitter();
-            this.newFolderToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.toolStripMenuItem1 = new System.Windows.Forms.ToolStripSeparator();
             this.panel1.SuspendLayout();
             this.panel2.SuspendLayout();
             this.panel3.SuspendLayout();
@@ -135,7 +136,6 @@
             // 
             // documentTree
             // 
-            this.documentTree.ContextMenuStrip = this.documentContextMenu;
             this.documentTree.Dock = System.Windows.Forms.DockStyle.Fill;
             this.documentTree.HideSelection = false;
             this.documentTree.Location = new System.Drawing.Point(0, 0);
@@ -148,16 +148,37 @@
             // documentContextMenu
             // 
             this.documentContextMenu.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.newDocumentToolStripMenuItem,
             this.newFolderToolStripMenuItem,
             this.toolStripMenuItem1,
             this.deleteToolStripMenuItem});
             this.documentContextMenu.Name = "documentContextMenu";
-            this.documentContextMenu.Size = new System.Drawing.Size(135, 54);
+            this.documentContextMenu.Size = new System.Drawing.Size(158, 76);
+            this.documentContextMenu.Opening += new System.ComponentModel.CancelEventHandler(this.documentContextMenu_Opening);
+            // 
+            // newDocumentToolStripMenuItem
+            // 
+            this.newDocumentToolStripMenuItem.Name = "newDocumentToolStripMenuItem";
+            this.newDocumentToolStripMenuItem.Size = new System.Drawing.Size(157, 22);
+            this.newDocumentToolStripMenuItem.Text = "New Document";
+            this.newDocumentToolStripMenuItem.Click += new System.EventHandler(this.newDocumentToolStripMenuItem_Click);
+            // 
+            // newFolderToolStripMenuItem
+            // 
+            this.newFolderToolStripMenuItem.Name = "newFolderToolStripMenuItem";
+            this.newFolderToolStripMenuItem.Size = new System.Drawing.Size(157, 22);
+            this.newFolderToolStripMenuItem.Text = "New Folder";
+            this.newFolderToolStripMenuItem.Click += new System.EventHandler(this.newFolderToolStripMenuItem_Click);
+            // 
+            // toolStripMenuItem1
+            // 
+            this.toolStripMenuItem1.Name = "toolStripMenuItem1";
+            this.toolStripMenuItem1.Size = new System.Drawing.Size(154, 6);
             // 
             // deleteToolStripMenuItem
             // 
             this.deleteToolStripMenuItem.Name = "deleteToolStripMenuItem";
-            this.deleteToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.deleteToolStripMenuItem.Size = new System.Drawing.Size(157, 22);
             this.deleteToolStripMenuItem.Text = "Delete";
             this.deleteToolStripMenuItem.Click += new System.EventHandler(this.deleteToolStripMenuItem_Click);
             // 
@@ -218,18 +239,6 @@
             this.logSplitter.TabIndex = 0;
             this.logSplitter.TabStop = false;
             // 
-            // newFolderToolStripMenuItem
-            // 
-            this.newFolderToolStripMenuItem.Name = "newFolderToolStripMenuItem";
-            this.newFolderToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
-            this.newFolderToolStripMenuItem.Text = "New Folder";
-            this.newFolderToolStripMenuItem.Click += new System.EventHandler(this.newFolderToolStripMenuItem_Click);
-            // 
-            // toolStripMenuItem1
-            // 
-            this.toolStripMenuItem1.Name = "toolStripMenuItem1";
-            this.toolStripMenuItem1.Size = new System.Drawing.Size(131, 6);
-            // 
             // MainWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -276,6 +285,7 @@
         private System.Windows.Forms.ToolStripMenuItem newFolderToolStripMenuItem;
         internal System.Windows.Forms.TreeView documentTree;
         private System.Windows.Forms.ToolStripSeparator toolStripMenuItem1;
+        private System.Windows.Forms.ToolStripMenuItem newDocumentToolStripMenuItem;
     }
 }
 

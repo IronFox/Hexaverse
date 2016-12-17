@@ -1,4 +1,4 @@
-== Welcome to the documentation of Hexaverse ==
+===== Welcome to the documentation of Hexaverse =====
 
 {{img:game.png}}
 

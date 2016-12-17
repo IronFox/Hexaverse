@@ -76,6 +76,8 @@ namespace DocumentationEditor
             }
         }
 
+        public string ParentNiceName { get { return Parent != null ? Parent.NiceName : "/"; } }
+
         internal void SignalChange()
         {
             System.Threading.Interlocked.Increment(ref version);

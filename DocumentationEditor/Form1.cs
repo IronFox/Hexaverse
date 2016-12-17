@@ -362,7 +362,7 @@ namespace DocumentationEditor
 		}
 
 
-        Dictionary<string, Document> documentList = new Dictionary<string, Document>();
+        //Dictionary<string, Document> documentList = new Dictionary<string, Document>();
 
 
         public FolderInfo RegisterSubdirectory(FolderInfo parent, Directory child)
@@ -389,18 +389,19 @@ namespace DocumentationEditor
         public Document RegisterFile(Directory root, FolderInfo folder, File f)
         {
             Document tag = new Document(root, folder, f);
-            documentList.Add(tag.DocumentID.ToLower(), tag);
+            //documentList.Add(tag.DocumentID.ToLower(), tag);
             return tag;
         }
 
         Thread updateThread;
 
-        public FolderInfo DocumentRoot { get { return new FolderInfo (new Directory("../documentation/documentation"), documentTree.Nodes); } }
+        public FolderInfo DocumentRoot { get; private set; }
 
         private void MainWindow_Load(object sender, EventArgs e)
         {
             CoInternetSetFeatureEnabled(FEATURE_DISABLE_NAVIGATION_SOUNDS, SET_FEATURE_ON_PROCESS, true);
 
+            DocumentRoot = new FolderInfo(new Directory("../documentation/documentation"), documentTree.Nodes);
             FolderInfo root = DocumentRoot;
             try
             {
@@ -414,10 +415,7 @@ namespace DocumentationEditor
             updateThread.Start();
         }
 
-        private void documentTree_MouseUp(object sender, MouseEventArgs e)
-        {
 
-        }
 
         
         private Document lastTag=null;
@@ -548,12 +546,15 @@ namespace DocumentationEditor
                 return;
             }
             string site = e.Url.AbsoluteUri.Substring(at + needle.Length);
-            Document entry;
-            if (documentList.TryGetValue(site.ToLower(), out entry))
-            {
-                documentTree.SelectedNode = entry.Node;
-                return;
-            }
+            site = site.Replace("%20", " ");
+            //while ((at = site.IndexOf("  ")) != -1)
+            //    site = site.Remove(at, 1);
+            //Document entry;
+            //if (documentList.TryGetValue(site.ToLower(), out entry))
+            //{
+            //    documentTree.SelectedNode = entry.Node;
+            //    return;
+            //}
 
             try
             {
@@ -561,15 +562,24 @@ namespace DocumentationEditor
                 string[] segments = site.Split('/');
                 for (int i = 0; i < segments.Length - 1; i++)
                 {
+                    FolderInfo sub = folder.FindFolder(segments[i]);
+                    if (sub != null)
+                    {
+                        folder = sub;
+                        continue;
+                    }
                     Directory.VerifyIsValidName(segments[i]);
                     Directory dir = folder.Directory.CreateSubdirectory(segments[i]);
                     folder = RegisterSubdirectory(folder, dir);
                 }
                 string docName = segments[segments.Length - 1];
-                File.VerifyIsValidName(docName);
-                File f = new File(Path.Combine(folder.Directory.FullName, docName+".txt"));
-
-                var d= RegisterFile(DocumentRoot.Directory, folder, f);
+                Document d = folder.FindDocument(docName);
+                if (d == null)
+                {
+                    File.VerifyIsValidName(docName);
+                    File f = new File(Path.Combine(folder.Directory.FullName, docName + ".txt"));
+                    d = RegisterFile(DocumentRoot.Directory, folder, f);
+                }
                 documentTree.SelectedNode = d.Node;
             }
             catch (Exception ex)
@@ -615,7 +625,6 @@ namespace DocumentationEditor
                     if (doc != null)
                     {
                         SelectDocument(null);
-                        documentList.Remove(doc.DocumentID.ToLower());
                         doc.Remove();
                         Log(doc.DocumentID + " removed");
                     }
@@ -649,6 +658,78 @@ namespace DocumentationEditor
         private void MainWindow_FormClosed(object sender, FormClosedEventArgs e)
         {
             Environment.Exit(0);
+        }
+
+        private void newDocumentToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            TreeNode n = documentTree.SelectedNode;
+            if (n == null)
+                return;
+            Document doc = n.Tag as Document;
+            FolderInfo dir = n.Tag as FolderInfo;
+            if (doc != null)
+                dir = doc.Parent;
+            Debug.Assert(dir != null);
+
+            new CreateEntryForm().Show(this, dir, true);
+
+        }
+
+        private void documentContextMenu_Opening(object sender, CancelEventArgs e)
+        {
+            TreeNode n = documentTree.SelectedNode;
+            if (n == null)
+            {
+                newDocumentToolStripMenuItem.Enabled = false;
+                newFolderToolStripMenuItem.Enabled = false;
+                deleteToolStripMenuItem.Enabled = false;
+                newDocumentToolStripMenuItem.Text = "Create document...";
+                newFolderToolStripMenuItem.Text = "Create folder...";
+                deleteToolStripMenuItem.Text = "Delete";
+                return;
+            }
+            if (n.Tag is Document)
+            {
+                newDocumentToolStripMenuItem.Enabled = true;
+                newDocumentToolStripMenuItem.Text = "Create document in '" + ((Document)n.Tag).ParentNiceName + "'...";
+                newFolderToolStripMenuItem.Enabled = true;
+                newFolderToolStripMenuItem.Text = "Create folder in '" + ((Document)n.Tag).ParentNiceName + "'...";
+                deleteToolStripMenuItem.Enabled = true;
+                deleteToolStripMenuItem.Text = "Delete '"+ ((Document)n.Tag).DocumentID+"'";
+            }
+            else if (n.Tag is FolderInfo)
+            {
+                newDocumentToolStripMenuItem.Enabled = true;
+                newDocumentToolStripMenuItem.Text = "Create document in '" + ((FolderInfo)n.Tag).NiceName + "'...";
+                newFolderToolStripMenuItem.Enabled = true;
+                newFolderToolStripMenuItem.Text = "Create folder in '" + ((FolderInfo)n.Tag).NiceName + "'...";
+                deleteToolStripMenuItem.Enabled = true;
+                deleteToolStripMenuItem.Text = "Delete '" + ((FolderInfo)n.Tag).NiceName + "'";
+            }
+            else
+            {
+                newDocumentToolStripMenuItem.Enabled = false;
+                newFolderToolStripMenuItem.Enabled = false;
+                deleteToolStripMenuItem.Enabled = false;
+                newDocumentToolStripMenuItem.Text = "Create document...";
+                newFolderToolStripMenuItem.Text = "Create folder...";
+                deleteToolStripMenuItem.Text = "Delete";
+                Log("Clicked on unexpected tree node '" + n.Text + "'");
+            }
+        }
+
+        private void documentTree_MouseUp(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Right)
+            {
+                // Select the clicked node
+                documentTree.SelectedNode = documentTree.GetNodeAt(e.X, e.Y);
+
+                if (documentTree.SelectedNode != null)
+                {
+                    documentContextMenu.Show(documentTree, e.Location);
+                }
+            }
         }
     }
 

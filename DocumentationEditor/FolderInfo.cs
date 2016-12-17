@@ -38,13 +38,7 @@ namespace DocumentationEditor
             NiceName = parent.NiceName + dirName;
         }
 
-        internal Document FindDocument(string text)
-        {
-            foreach (var doc in Documents)
-                if (doc.Name == text)
-                    return doc;
-            return null;
-        }
+
 
         public override string ToString()
         {
@@ -76,9 +70,18 @@ namespace DocumentationEditor
         {
             if (!text.EndsWith("/"))
                 text += '/';
+            text = text.ToLower();
             foreach (var folder in Folders)
-                if (folder.Node.Text == text)
+                if (folder.Node.Text.ToLower() == text)
                     return folder;
+            return null;
+        }
+        internal Document FindDocument(string text)
+        {
+            text = text.ToLower();
+            foreach (var doc in Documents)
+                if (doc.Name.ToLower() == text)
+                    return doc;
             return null;
         }
 

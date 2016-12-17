@@ -126,10 +126,6 @@ namespace DocumentationEditor
             CheckInput();
         }
 
-        private void resultInput_KeyUp(object sender, KeyEventArgs e)
-        {
-            if (e.KeyCode == Keys.Enter || e.KeyCode == Keys.Return)
-                createButton_Click(sender,null);
-        }
+
     }
 }

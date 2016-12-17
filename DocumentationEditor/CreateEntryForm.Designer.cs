@@ -53,7 +53,6 @@
             this.resultInput.Size = new System.Drawing.Size(260, 20);
             this.resultInput.TabIndex = 1;
             this.resultInput.TextChanged += new System.EventHandler(this.resultInput_TextChanged);
-            this.resultInput.KeyUp += new System.Windows.Forms.KeyEventHandler(this.resultInput_KeyUp);
             // 
             // resultReport
             // 
@@ -88,8 +87,10 @@
             // 
             // CreateEntryForm
             // 
+            this.AcceptButton = this.createButton;
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.CancelButton = this.abortButton;
             this.ClientSize = new System.Drawing.Size(284, 96);
             this.Controls.Add(this.abortButton);
             this.Controls.Add(this.createButton);
