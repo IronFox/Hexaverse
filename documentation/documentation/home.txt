@@ -3,6 +3,6 @@
 {{img:game.png}}
 
 Please see [[start|getting started]] if you are new to Hexaverse.
-[[Units/All]] lists all available units in the game.
+[[Units]] lists all available units in the game.
 
 Working?

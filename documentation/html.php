@@ -1,5 +1,4 @@
 <?php
-date_default_timezone_set('Europe/Berlin');
 require_once('visual/site.php');
 require_once('renderer/WikiRenderer.lib.php');
 require_once(WIKIRENDERER_PATH . 'rules/dokuwiki_to_xhtml.php');
@@ -38,6 +37,7 @@ $ctr=new WikiRenderer(new MyConfig());
 function Convert($strPage)
 {
 	global $ctr;
+	$strPage = str_replace(array('/','\'','.'),'',$strPage);
 	$text = implode('',file("./documentation/$strPage.txt"));
 	$text = $ctr->render($text);
 	
@@ -52,6 +52,6 @@ function Convert($strPage)
 	$rs[] = $text;
 	return $rs;
 }
-
-
-Site(Convert('home'),"Documentation");
+//print_r($_GET);
+//echo $_GET['page'];
+Site(Convert($_GET['page']),"Documentation");
