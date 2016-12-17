@@ -28,7 +28,7 @@ class MyConfig extends dokuwiki_to_xhtml
 		$url = $rs[0];
 		if ($appendix = GetTagValue($url,'img'))
 			return array("./images/$appendix", $rs[1]);
-		return array("./html.php?page=$url", $rs[1]);
+		return array("./html.php?page=".strtolower($url), $rs[1]);
 	}
 };
 
