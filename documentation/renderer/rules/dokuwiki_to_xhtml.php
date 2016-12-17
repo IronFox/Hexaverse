@@ -407,7 +407,7 @@ class dkxhtml_title extends WikiRendererBloc {
         }
 
         $conf->sectionLevel[] = $level;
-        $h = 6 - $level + $conf->startHeaderNumber;
+        $h = $level + $conf->startHeaderNumber;
         if($h > 5) $h = 5;
         elseif($h < 1) $h = 1;
         return $output.'<div><h'.$h.'>'.$this->_renderInlineTag(trim($this->_detectMatch[2])).'</h'.$h.'>';
