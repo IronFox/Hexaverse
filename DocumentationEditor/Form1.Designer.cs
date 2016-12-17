@@ -47,6 +47,7 @@
             this.editorPanel = new System.Windows.Forms.Panel();
             this.logSplitter = new System.Windows.Forms.Splitter();
             this.newFolderToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.toolStripMenuItem1 = new System.Windows.Forms.ToolStripSeparator();
             this.panel1.SuspendLayout();
             this.panel2.SuspendLayout();
             this.panel3.SuspendLayout();
@@ -147,10 +148,11 @@
             // documentContextMenu
             // 
             this.documentContextMenu.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.deleteToolStripMenuItem,
-            this.newFolderToolStripMenuItem});
+            this.newFolderToolStripMenuItem,
+            this.toolStripMenuItem1,
+            this.deleteToolStripMenuItem});
             this.documentContextMenu.Name = "documentContextMenu";
-            this.documentContextMenu.Size = new System.Drawing.Size(153, 70);
+            this.documentContextMenu.Size = new System.Drawing.Size(135, 54);
             // 
             // deleteToolStripMenuItem
             // 
@@ -223,6 +225,11 @@
             this.newFolderToolStripMenuItem.Text = "New Folder";
             this.newFolderToolStripMenuItem.Click += new System.EventHandler(this.newFolderToolStripMenuItem_Click);
             // 
+            // toolStripMenuItem1
+            // 
+            this.toolStripMenuItem1.Name = "toolStripMenuItem1";
+            this.toolStripMenuItem1.Size = new System.Drawing.Size(131, 6);
+            // 
             // MainWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -233,6 +240,7 @@
             this.Controls.Add(this.editorPanel);
             this.Name = "MainWindow";
             this.Text = "Documentation Editor";
+            this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.MainWindow_FormClosed);
             this.Load += new System.EventHandler(this.MainWindow_Load);
             this.panel1.ResumeLayout(false);
             this.panel1.PerformLayout();
@@ -256,7 +264,6 @@
         private System.Windows.Forms.Splitter splitter2;
         private System.Windows.Forms.Panel panel2;
         private System.Windows.Forms.Panel panel3;
-        private System.Windows.Forms.TreeView documentTree;
         private System.Windows.Forms.Label documentName;
         private System.Windows.Forms.Timer updater;
         private System.Windows.Forms.Panel topContentPanel;
@@ -267,6 +274,8 @@
         private System.Windows.Forms.ContextMenuStrip documentContextMenu;
         private System.Windows.Forms.ToolStripMenuItem deleteToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem newFolderToolStripMenuItem;
+        internal System.Windows.Forms.TreeView documentTree;
+        private System.Windows.Forms.ToolStripSeparator toolStripMenuItem1;
     }
 }
 

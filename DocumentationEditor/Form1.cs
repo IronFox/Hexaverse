@@ -84,7 +84,7 @@ namespace DocumentationEditor
                 return fullPath != null ? new System.IO.FileInfo(fullPath).DirectoryName : "";
             }
         }
-        static string[] reserved = { "CON", "PRN", "AUX", "NUL", "AUX.txt" };
+        static string[] reserved = { "CON", "PRN", "AUX", "NUL", "AUX.txt", ".", ".." };
 
         public static void VerifyIsValidName(string name)
         {
@@ -92,21 +92,21 @@ namespace DocumentationEditor
             for (int i = 1; i <= 9; i++)
             {
                 if (name == "COM" + i)
-                    throw new Exception("Filename '"+name+"' is a reserved system name");
+                    throw new Exception("'"+name+"' is a reserved system name");
                 if (name == "LPT" + i)
-                    throw new Exception("Filename '" + name + "' is a reserved system name");
+                    throw new Exception("'" + name + "' is a reserved system name");
             }
             foreach (string str in reserved)
                 if (str == name)
-                    throw new Exception("Filename '" + name + "' is a reserved system name");
+                    throw new Exception("'" + name + "' is a reserved system name");
 
             if (name.IndexOfAny(Path.GetInvalidFileNameChars()) != -1)
-                throw new Exception("Filename '" + name + "' contains invalid characters");
+                throw new Exception("'" + name + "' contains invalid characters");
 
             if (name.Length < 2)
-                throw new Exception("Filename '" + name + "' is shorter than 2 characters");
+                throw new Exception("'" + name + "' is shorter than 2 characters");
             if (name.Length > 64)
-                throw new Exception("Filename '" + name + "' is longer than 64 characters");
+                throw new Exception("'" + name + "' is longer than 64 characters");
         }
 
         public static File operator +(File a, string ext)
@@ -276,12 +276,7 @@ namespace DocumentationEditor
         }
         public static void VerifyIsValidName(string name)
         {
-             if (name.IndexOfAny(Path.GetInvalidPathChars()) != -1)
-                throw new Exception("Directory name '" + name + "' contains invalid characters");
-            if (name.Length < 2)
-                throw new Exception("Directory name '" + name + "' is shorter than 2 characters");
-            if (name.Length > 64)
-                throw new Exception("Directory name '" + name + "' is longer than 64 characters");
+            File.VerifyIsValidName(name);
         }
         public File[] Files
         {
@@ -391,7 +386,7 @@ namespace DocumentationEditor
             }
         }
 
-        private Document RegisterFile(Directory root, FolderInfo folder, File f)
+        public Document RegisterFile(Directory root, FolderInfo folder, File f)
         {
             Document tag = new Document(root, folder, f);
             documentList.Add(tag.DocumentID.ToLower(), tag);
@@ -524,7 +519,7 @@ namespace DocumentationEditor
 
         public delegate void LogEntry(string line);
 
-        private void Log(string msg)
+        internal void Log(string msg)
         {
             if (logBox.InvokeRequired)
             {
@@ -534,7 +529,7 @@ namespace DocumentationEditor
 
             logBox.AppendText("\r\n" + msg);
         }
-        private void Log(Exception ex)
+        internal void Log(Exception ex)
         {
             Log("Exception caught: " + ex);
         }
@@ -639,7 +634,21 @@ namespace DocumentationEditor
 
         private void newFolderToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            TreeNode n = documentTree.SelectedNode;
+            if (n == null)
+                return;
+            Document doc = n.Tag as Document;
+            FolderInfo dir = n.Tag as FolderInfo;
+            if (doc != null)
+                dir = doc.Parent;
+            Debug.Assert(dir != null);
 
+            new CreateEntryForm().Show(this, dir, false);
+        }
+
+        private void MainWindow_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            Environment.Exit(0);
         }
     }
 

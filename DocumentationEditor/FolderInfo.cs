@@ -15,6 +15,8 @@ namespace DocumentationEditor
         public List<Document> Documents = new List<Document>();
         public readonly string NiceName;
 
+        public bool Removed { get; private set; }
+
         public FolderInfo(Directory dir, TreeNodeCollection scope)
         {
             Directory = dir;
@@ -34,6 +36,14 @@ namespace DocumentationEditor
             Node.Expand();
             parent.Folders.Add(this);
             NiceName = parent.NiceName + dirName;
+        }
+
+        internal Document FindDocument(string text)
+        {
+            foreach (var doc in Documents)
+                if (doc.Name == text)
+                    return doc;
+            return null;
         }
 
         public override string ToString()
@@ -59,6 +69,17 @@ namespace DocumentationEditor
                 Directory.Remove();
             if (Parent != null)
                 Parent.Folders.Remove(this);
+            Removed = true;
+        }
+
+        internal FolderInfo FindFolder(string text)
+        {
+            if (!text.EndsWith("/"))
+                text += '/';
+            foreach (var folder in Folders)
+                if (folder.Node.Text == text)
+                    return folder;
+            return null;
         }
 
         internal static string GetNameOf(Directory child)
