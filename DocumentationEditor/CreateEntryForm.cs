@@ -39,7 +39,7 @@ namespace DocumentationEditor
 
         private string GetText()
         {
-            return resultInput.Text.Trim();
+            return resultInput.Text.Trim().ToLower();
         }
 
         private void CheckInput()

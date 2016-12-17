@@ -547,6 +547,7 @@ namespace DocumentationEditor
             }
             string site = e.Url.AbsoluteUri.Substring(at + needle.Length);
             site = site.Replace("%20", " ");
+            site = site.ToLower();
             //while ((at = site.IndexOf("  ")) != -1)
             //    site = site.Remove(at, 1);
             //Document entry;
