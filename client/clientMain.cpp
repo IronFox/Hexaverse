@@ -851,6 +851,27 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 
 
 #ifdef HAS_WINDOW
+
+	bool IsValidFileChar(char c)
+	{
+		if (Template::isalnum(c))
+			return true;
+		switch (c)
+		{
+		case ' ':
+		case '-':
+			return true;
+		}
+		return false;
+	}
+
+	PathString MakeValidFilename(String base)
+	{
+		base.eraseCharacters(IsValidFileChar,false);
+		return PathString(base);
+	}
+
+
 	bool saveScreenshot = false;
 	bool saveTransparentScreenshot = false;
 
@@ -3094,6 +3115,10 @@ void ParseKeyValue(const String&key, const String&value)
 			RuntimeConfig::serverAddress = Network::ServerAddress(value);
 			LogEvent(EventClass::Preset::configuration, nullptr, "Server address set to "+RuntimeConfig::serverAddress.ToString());
 		}
+		elif(key == "generateDocumentationHere")
+		{
+			FileSystem::Folder().FindFolder(PathString(value),RuntimeConfig::documentationTargetFolder);
+		}
 		else
 			throw Except::Program::ParameterFault(CLOCATION, "`"+key+"` is not a recognized runtime parameter");
 	}
@@ -3555,8 +3580,32 @@ int main( int argc, const char* argv[])
 			}
 
 
-			display.assign(loop);
-			display.execute();
+			if (RuntimeConfig::documentationTargetFolder.DoesExist())
+			{
+				LogEvent(EventSignificance::Uncommon, "Documenting objects to "+String(RuntimeConfig::documentationTargetFolder.GetLocation())+ "...");
+				//Objects::GeometryImage::resultResolution = 512;
+				Objects::EntityCommand container;
+				Image image;
+				FileSystem::Folder folder(RuntimeConfig::documentationTargetFolder);
+				foreach (Objects::structurePrototypes,s)
+				{
+					LogEvent(EventSignificance::Uncommon, "Capturing "+(*s)->GetTypeName());
+					Objects::EntityCommand::UpdateTexture(container,*s,true);
+					container.texture.DownloadImage(image);
+					
+					image.ScaleHalf();
+					PathString outName = MakeValidFilename( (*s)->GetTypeName() )+".png";
+
+					png.SaveToFile(image, folder.FindFile(outName,false)->GetLocation().c_str());
+				}
+
+
+			}
+			//else
+			{
+				display.assign(loop);
+				display.execute();
+			}
 		#else
 			while (!application_shutting_down && loop())
 			{};

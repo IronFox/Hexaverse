@@ -2256,15 +2256,16 @@ namespace Objects
 	namespace GeometryImage
 	{
 		DX11::FBO	fbo;
-
+		UINT		resultResolution(128);
 		Engine::AngularCamera<>	camera;
 
 		void		BeginRendering(const float4&tone, float distanceFactor/*=1.f*/)
 		{
+			const Resolution res(resultResolution,resultResolution);
 			Renderer::RefreshFactionColors(false);
-			if (fbo.IsEmpty())
+			if (fbo.IsEmpty() || fbo.GetResolution() != res)
 			{
-				fbo.Create(Resolution(128,128),DXGI_FORMAT_R8G8B8A8_UNORM,true,DX11::FBO::PrepareMips);
+				fbo.Create(res,DXGI_FORMAT_R8G8B8A8_UNORM,true,DX11::FBO::PrepareMips);
 
 				camera.retraction = float3(0,0,-6 * distanceFactor);
 				camera.angle.x = 45.f;

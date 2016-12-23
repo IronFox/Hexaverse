@@ -65,6 +65,8 @@ namespace Objects
 	
 	namespace GeometryImage
 	{
+		extern UINT		resultResolution;	//!< Defaults to 128 (=128*128)
+
 		void			BeginRendering(const float4&tone, float cameraDistanceFactor = 1.f);
 		DX11::Texture	EndRendering();
 	}
