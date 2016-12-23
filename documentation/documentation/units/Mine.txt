@@ -1,0 +1,8 @@
+=Mine=
+{{img:units/Mine.png}}
+* Health: 8
+* Price:  40
+* Scanning range: 2
+*Consumes: 10
+Storage structures accumulate excess production of the respective resources until they are full. Disabling a storage structure will change its priority such, that excess resources are stored here only if all other storage capacities are exhausted. Likewise, resource demand will remove resources from disabled storage structures first, such that they tend towards empty. Storage structures do not require  to operate.
+Enabled mines extract any natural resources available in the planet-core beneath their location. They are essential in supplying other structures in the network. Mines should be build only on known occurrences of natural resources. They cannot be constructed atop each other, since they require a working link to the core in order to operate. Mines, like many structures, require  from generators to operate.

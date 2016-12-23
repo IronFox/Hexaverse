@@ -1,0 +1,12 @@
+=Cannon Tower=
+{{img:units/Cannon Tower.png}}
+* Health: 22 [=11.0*2]
+* Price:  55
+* Scanning range: 3 [=5-2]
+* Hrz. Attack range: 5
+*Cannon (Tower-Turret)
+* Does not require ammunition
+* Explosion radius: 1
+* Damage: 3
+* 2 attack(s) per round
+This tower-turret type can attack objects in range.

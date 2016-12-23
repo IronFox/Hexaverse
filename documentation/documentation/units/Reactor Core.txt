@@ -1,0 +1,8 @@
+=Reactor Core=
+{{img:units/Reactor Core.png}}
+* Health: 24
+* Price:  120
+* Scanning range: 2
+*Consumes: 5
+*Produces: 40
+Amplifies the energy output of connected generators. Only one reactor core can be connected to any one generator, but multiple generators may be connected to the same reactor core. Must be placed on the same height level as the generator(s) to connect to.
