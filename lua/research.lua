@@ -104,8 +104,13 @@ end
 
 
 function Round(value--[[float]], digits--[[optional int]])
-  local factor = 10^(digits or 0);
-  return math.floor(value * factor + 0.5) / factor;
+	local factor = 10^(digits or 0);
+	local result = math.floor(value * factor + 0.5) / factor;
+	local floored = math.floor(value);
+	if (floored==value) then
+		return floored;
+	end
+	return value;
 end
 
 function DefaultHealthAtCost(cost--[[float]]) --float
@@ -385,7 +390,7 @@ function MakeImproveResearchable(researchGroup, researchDependency, typeTable, t
 				return original;
 			end
 			local factor = GetResearchFactor(speed*progress);
-			return Round(original * factor,2)..'[='.. original..'*'..Round(factor,2)..']';
+			return Round(original * factor,2)..' [='.. original..'*'..Round(factor,2)..']';
 		end
 	}
 	
@@ -435,7 +440,7 @@ function Tower(turret--[[Table]]) --Table
 				end,
 			Describe = 
 				function(state) 
-					return Round(DefaultHealthAtCost(rs.Cost.Get(state)) * Get(turret.HealthMultiplier,state),2)..'[='.. DefaultHealthAtCost(rs.Cost.Get(state))..'*'.. Describe(turret.HealthMultiplier,state)..']';
+					return Round(DefaultHealthAtCost(rs.Cost.Get(state)) * Get(turret.HealthMultiplier,state),2)..' [='.. DefaultHealthAtCost(rs.Cost.Get(state))..'*'.. Describe(turret.HealthMultiplier,state)..']';
 				end,
 		},
 		ScanningRange =
@@ -446,7 +451,15 @@ function Tower(turret--[[Table]]) --Table
 				end,
 			Describe = 
 				function(state) 
-					return Describe(turret.ScanningRange,state) ..'+'.. TowerScanningModifier(turret) 
+					local modifier =  TowerScanningModifier(turret);
+					local base = Describe(turret.ScanningRange,state);
+					if (modifier == 0) then
+						return base;
+					end
+					if (modifier > 0) then
+						return Round(Get(turret.ScanningRange,state)+modifier,2)..' [='..  base ..'+'..Round(modifier,2)..']';
+					end
+					return Round(Get(turret.ScanningRange,state)+modifier,2)..' [='..  base ..'-'..Round(-modifier,2)..']';
 				end,
 		},
 		IsUnlocked = 
