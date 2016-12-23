@@ -192,7 +192,7 @@ namespace ScriptCache
 			return PScript();
 		}
 
-		LogEvent(EventClass::Preset::uncommon,"Defining new script cache entry for "+Bin2Str::ConvertPOD(id)+" using script of "+String(rsSize)+" bytes");
+		LogEvent(EventClass::Preset::uncommon,"Defining new cache entry for script "+Bin2Str::ConvertPOD(id)+" ("+String(rsSize)+" uncompressed bytes)");
 		script.reset(new Script());
 		hashMap.Set(id,script);
 		script->compressed.adoptData(data);

@@ -87,24 +87,24 @@ namespace Network
 		}
 	}
 
-	void			ConnectTo(const ServerAddress&addr, const Protocol::ServerInfo&info)
+	void			ConnectTo(const Host&host)
 	{
 		client.Disconnect();
 
 		RuntimeConfig::phase = RuntimeConfig::Phase::Uninitialized;
 		gameHasBegun = false;
 
-		LoadGameConfig(info.gameInfo.gameConfig);
+		LoadGameConfig(host.serverInfo.gameInfo.gameConfig);
 
-		client.ConnectAsync(addr.host + ":"+String(addr.basePort + PortOffset::Session));
+		client.ConnectAsync(host.address.host + ":"+String(host.address.basePort + PortOffset::Session));
 		#ifdef HAS_WINDOW
 			GUI::SignalSituationChange();
 		#endif
 
-		serverID = info.hostInfo.value.hostID;
+		serverID = host.serverInfo.hostInfo.value.hostID;
 		serverIDString = Network::serverID.ToNiceString();
 
-		worldID = info.gameInfo.worldID;
+		worldID = host.serverInfo.gameInfo.worldID;
 		worldIDString = worldID.ToNiceString();
 	}
 
@@ -1534,18 +1534,30 @@ namespace Network
 						if (!serverMap.query(a.lastInfo.hostInfo.value.hostID,at))
 						{
 							at = servers.Count();
-							servers.Append().info = a.lastInfo;
+							servers.Append();
 							servers.last().haveToken = 	a.protocolIncompatible ? false : accessMap.IsSet(a.lastInfo.gameInfo.worldID);
 							servers.last().protocolIncompatible = a.protocolIncompatible;
-							servers.last().id = a.protocolIncompatible ? TUniqueID::Empty() : servers.last().info.hostInfo.value.hostID;
+							servers.last().id = a.protocolIncompatible ? TUniqueID::Empty() : a.lastInfo.hostInfo.value.hostID;
 							servers.last().rightVersion = a.rightVersion && !a.protocolIncompatible;
 							//if (!a.protocolIncompatible)
 							serverMap.Set(servers.last().id,at);
 						
 						}
-
 						ServerInfo&info = servers[at];
-						info.addresses.Append(std::make_pair(a.address,a.lastPing));
+
+						if (info.addresses.IsNotEmpty())
+						{
+							if (info.addresses.Last().serverInfo.gameInfo.worldID.value != a.lastInfo.gameInfo.worldID)
+							{
+								LogEvent(EventClass::Preset::error,"Received mismatching world IDs from host "+info.id.ToNiceString()+". Ignoring address "+a.address.ToString());
+								continue;
+							}
+						}
+
+						Host&host = info.addresses.Append();
+						host.address = a.address;
+						host.serverInfo = a.lastInfo;
+						host.ping = a.lastPing;
 					}
 				}
 			#endif
@@ -1783,16 +1795,16 @@ bool		Network::ConnectToConfiguredServerIfAvailable()
 		if (srv->rightVersion && srv->HasAddress(RuntimeConfig::serverAddress))
 		{
 			index_t best = 0;
-			float bestPing = srv->addresses.First().second;
+			float bestPing = srv->addresses.First().ping;
 			for (index_t i = 1; i < srv->addresses.Count(); i++)
-				if (srv->addresses[i].second < bestPing)
+				if (srv->addresses[i].ping < bestPing)
 				{
-					bestPing = srv->addresses[i].second;
+					bestPing = srv->addresses[i].ping;
 					best = i;
 				}
 			srv->selected = true;
 
-			Network::ConnectTo(srv->addresses[best].first,srv->info);
+			Network::ConnectTo(srv->addresses[best]);
 
 			lastAttempt = timer.Now();
 			delayCounter = 0;
