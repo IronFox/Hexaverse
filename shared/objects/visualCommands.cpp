@@ -107,6 +107,7 @@ namespace Objects
 
 	/*virtual override*/ void		ResearchCommand::CompileLabel(Label&outResult)
 	{
+		outResult.BeginBrief();
 
 		if (topic->IsGroup())
 		{
@@ -260,6 +261,7 @@ namespace Objects
 
 	/*virtual override*/ void		BaseCommand::CompileLabel(Label&outResult)
 	{
+		outResult.BeginBrief();
 		int resourceCost, timeCost;
 		Resource resourceType;
 		GetCosts(resourceCost,resourceType,timeCost);
@@ -278,12 +280,13 @@ namespace Objects
 		else
 			outResult<<" ";
 		//outResult << "Rounds: "+String(timeCost);
-		outResult.lines.last() += TimeResourceTag() + String(timeCost);
+		outResult.GetLastLine() += TimeResourceTag() + String(timeCost);
 	}
 
 
 	/*virtual override*/ void		EntityConstructionCommand::CompileLabel(Label&outResult)
 	{
+		outResult.BeginBrief();
 		const MobileEntityProducer*p = selectedEntity ? selectedEntity->CastToProducer() : nullptr;
 		//PWorkingStructure ws = To<WorkingStructure>::DynamicCast(e);
 
@@ -307,12 +310,12 @@ namespace Objects
 			outResult << name;
 			outResult << String(ResourceTag(Resource::Minerals))+ " "+String(price);
 			if (price != rawPrice)
-				outResult.lines.last() += "/"+String(rawPrice);
+				outResult.GetLastLine() += "/"+String(rawPrice);
 			if (rounds)
 			{
-				outResult.lines.last() += "  "+String(TimeResourceTag()) + String(rounds);
+				outResult.GetLastLine() += "  "+String(TimeResourceTag()) + String(rounds);
 				if (rounds != rawRounds)
-					outResult.lines.last() += "/"+String(rawRounds);
+					outResult.GetLastLine() += "/"+String(rawRounds);
 			}
 
 			outResult.MarkBriefEnd();
@@ -355,6 +358,7 @@ namespace Objects
 
 	/*virtual override*/ void		DeployMobileCommand::CompileLabel(Label&outResult)
 	{
+		outResult.BeginBrief();
 		PHangar h = To<Hangar>::DynamicCast(selectedEntity);
 		ASSERT__(h);
 		PMobileEntity vehicle = ToMobileEntity( this->reference.lock() );

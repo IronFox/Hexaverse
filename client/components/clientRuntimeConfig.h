@@ -19,7 +19,7 @@ namespace RuntimeConfig
 	extern bool udpListen;
 
 	extern Network::ServerAddress	serverAddress;
-	extern FileSystem::File			documentationTargetFolder;
+	extern FileSystem::File			documentationTargetFolder,imageTargetFolder;
 
 	void					ClientInit();
 

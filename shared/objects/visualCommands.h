@@ -93,43 +93,66 @@ namespace Objects
 		class Label
 		{
 		public:
-			Buffer0<String>		lines;
-			count_t				briefEndAt = InvalidIndex;
-
+			Buffer0<std::pair<String, bool> >		rawLines,wrappedLines;
+			bool				isBrief=true;
 
 			void				Clear()
 			{
-				briefEndAt = InvalidIndex;
-				lines.Clear();
+				rawLines.Clear();
+			}
+
+			void				BeginBrief()
+			{
+				isBrief = true;
 			}
 
 			void				MarkBriefEnd()
 			{
-				briefEndAt = std::min( lines.Count(), briefEndAt);	//don't extend once set
+				isBrief = false;
 			}
-			/**
-			Wraps text as necessary
-			*/
-			void				WrapAppendText(const String&multiLineText)
+
+			String&				GetLastLine()
 			{
-				if (multiLineText.length() <= 60)
-				{
-					lines << multiLineText;
-					return;
-				}
-				Array<String>	split;
-				wrap(multiLineText,60,split);
-				lines.Append(split);
+				return rawLines.Last().first;
 			}
 
 			Label&				operator<<(const String&line)
 			{
-				WrapAppendText(line);
+				rawLines << std::make_pair(line,isBrief);
+				//WrapAppendText(line);
 				//lines << line;
 				return *this;
 			}
 
+			count_t				CountWrappedBriefLines() const
+			{
+				count_t rs = 0;
+				foreach (wrappedLines,l)
+					if (l->second)
+						rs++;
+				return rs;
+			}
 
+			void				ReWrap()
+			{
+				wrappedLines.Clear();
+				foreach (rawLines,l)
+				{
+					if (l->first.length() <= 60)
+					{
+						wrappedLines << *l;
+						continue;
+					}
+					Array<String>	split;
+					wrap(l->first,60,split);
+					foreach (split,s)
+					{
+						wrappedLines.Append().first.adoptData(*s);
+						wrappedLines.Last().second = l->second;
+					}
+				}
+
+			}
 
 
 		};
@@ -200,7 +223,7 @@ namespace Objects
 		public:
 			BaseCommand::Label		customLabel;
 
-			/**/		CustomLabel(const String&name):Super(name) {customLabel << name; customLabel.MarkBriefEnd();}
+			/**/		CustomLabel(const String&name):Super(name) {customLabel.BeginBrief(); customLabel << name; customLabel.MarkBriefEnd();}
 			/**/		CustomLabel() {}
 			virtual void	CompileLabel(BaseCommand::Label&outResult) override
 			{

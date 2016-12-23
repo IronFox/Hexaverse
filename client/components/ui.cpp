@@ -539,6 +539,7 @@
 
 			/*virtual override*/ void				AnimationEventFocusCommand::CompileLabel(Label&outResult)
 			{
+				outResult.BeginBrief();
 				Objects::PWorldEntity e = GetTarget();
 				String hostile = isFriendly? "" : "hostile ";
 				String t = " at t="+String(atTime)+" sec";
@@ -725,6 +726,7 @@
 
 			/*virtual override*/ void	EntityFocusCommand::CompileLabel(Label&outResult)
 			{
+				outResult.BeginBrief();
 				outResult << name;
 				Objects::PWorldEntity target = this->reference.lock();
 				if (!target)
@@ -799,6 +801,7 @@
 			/*virtual override*/ void	GroupFocusCommand::CompileLabel(Label&outResult)
 			{
 				//group->InitSelection();
+				outResult.BeginBrief();
 
 				Objects::PWorldEntity proto = group->GetPrototype();
 				Objects::PWorldEntity instance = group->entries.First().lock();
@@ -1240,7 +1243,8 @@
 					hoveringText.Clear();
 					if (hoveringOver)
 						hoveringOver->command->CompileLabel(hoveringText);
-					hoveringText.briefEndAt = std::min(hoveringText.briefEndAt,hoveringText.lines.Count());
+					hoveringText.MarkBriefEnd();
+					hoveringText.ReWrap();
 					hoveringWidth = 0;
 					hoveringBrief = true;
 				}
@@ -1265,15 +1269,16 @@
 					{
 						if (hoveringBrief)
 						{
-							for (index_t i = 0; i < hoveringText.briefEndAt; i++)
-								hoveringWidth = std::max(hoveringWidth, textout.getScaledWidth(hoveringText.lines[i]));
+							foreach (hoveringText.wrappedLines,t)
+								if (t->second)
+									hoveringWidth = std::max(hoveringWidth, textout.getScaledWidth(t->first));
 						}
 						else
-							foreach (hoveringText.lines,t)
-								hoveringWidth = std::max(hoveringWidth, textout.getScaledWidth(*t));
+							foreach (hoveringText.wrappedLines,t)
+								hoveringWidth = std::max(hoveringWidth, textout.getScaledWidth(t->first));
 					}
 				
-					count_t lineCount = hoveringBrief ? hoveringText.briefEndAt : hoveringText.lines.Count();
+					count_t lineCount = hoveringBrief ? hoveringText.CountWrappedBriefLines() : hoveringText.wrappedLines.Count();
 					float h = textout.getScaledHeight()*(lineCount-1);
 					Rect<> r;
 
@@ -1316,8 +1321,9 @@
 					SurfaceRenderer::Flush();
 
 					textout.color(1,1,1);
-					for (index_t i = 0; i < lineCount; i++)
-						textout << hoveringText.lines[i] << nl;
+					foreach (hoveringText.wrappedLines,l)
+						if (!hoveringBrief || l->second)
+							textout << l->first << nl;
 					textout.popState();
 				}
 

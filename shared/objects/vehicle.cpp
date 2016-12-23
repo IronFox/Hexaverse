@@ -361,10 +361,12 @@ namespace Objects
 
 		void Vehicle::DescribeType(BaseCommand::Label&outResult, UINT32 descFlags)
 		{
+			outResult.BeginBrief();
 			Super::DescribeType(outResult,descFlags);
 			outResult << "";
 			base->DescribeType(outResult,true,owner);
 			outResult << "";
+			outResult.BeginBrief();
 
 			const float capacity = floor(base->GetCarryingCapacity(owner));
 			const float weight = turret->weight(owner);
@@ -383,10 +385,10 @@ namespace Objects
 
 
 			if (base->requirements == Component::VehicleBase::Requirement::Water)
-				outResult.lines.last()+= " (naval)";
+				outResult.GetLastLine()+= " (naval)";
 			else
 				if (base->moveOnWater)
-					outResult.lines.last() += " (moves over water)";
+					outResult.GetLastLine() += " (moves over water)";
 
 			int opSpeed = std::max(GetOperationSpeed(Component::Construct),GetOperationSpeed(Component::TerrainAdd));
 			if (opSpeed)

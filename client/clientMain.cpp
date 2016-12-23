@@ -3115,9 +3115,17 @@ void ParseKeyValue(const String&key, const String&value)
 			RuntimeConfig::serverAddress = Network::ServerAddress(value);
 			LogEvent(EventClass::Preset::configuration, nullptr, "Server address set to "+RuntimeConfig::serverAddress.ToString());
 		}
+		elif(key == "generateImagesHere")
+		{
+			FileSystem::Folder().FindFolder(PathString(value),RuntimeConfig::imageTargetFolder,false);
+			if (!RuntimeConfig::imageTargetFolder.DoesExist())
+				FileSystem::CreateDirectory(RuntimeConfig::imageTargetFolder);
+		}
 		elif(key == "generateDocumentationHere")
 		{
-			FileSystem::Folder().FindFolder(PathString(value),RuntimeConfig::documentationTargetFolder);
+			FileSystem::Folder().FindFolder(PathString(value),RuntimeConfig::documentationTargetFolder,false);
+			if (!RuntimeConfig::documentationTargetFolder.DoesExist())
+				FileSystem::CreateDirectory(RuntimeConfig::documentationTargetFolder);
 		}
 		else
 			throw Except::Program::ParameterFault(CLOCATION, "`"+key+"` is not a recognized runtime parameter");
@@ -3580,28 +3588,67 @@ int main( int argc, const char* argv[])
 			}
 
 
-			if (RuntimeConfig::documentationTargetFolder.DoesExist())
+			if (RuntimeConfig::documentationTargetFolder.DoesExist() || RuntimeConfig::imageTargetFolder.DoesExist())
 			{
-				LogEvent(EventSignificance::Uncommon, "Documenting objects to "+String(RuntimeConfig::documentationTargetFolder.GetLocation())+ "...");
-				//Objects::GeometryImage::resultResolution = 512;
-				Objects::EntityCommand container;
-				Image image;
-				FileSystem::Folder folder(RuntimeConfig::documentationTargetFolder);
-				foreach (Objects::structurePrototypes,s)
+				if (RuntimeConfig::imageTargetFolder.DoesExist())
 				{
-					LogEvent(EventSignificance::Uncommon, "Capturing "+(*s)->GetTypeName());
-					Objects::EntityCommand::UpdateTexture(container,*s,true);
-					container.texture.DownloadImage(image);
+					LogEvent(EventSignificance::Uncommon, "Documenting objects to "+String(RuntimeConfig::documentationTargetFolder.GetLocation())+ "...");
+					Objects::GeometryImage::resultResolution = 512;
+					Objects::EntityCommand container;
+					Image image;
+					FileSystem::Folder folder(RuntimeConfig::imageTargetFolder);
+					foreach (Objects::structurePrototypes,s)
+					{
+						LogEvent(EventSignificance::Uncommon, "Capturing "+(*s)->GetTypeName());
+						Objects::EntityCommand::UpdateTexture(container,*s,true);
+						display.Copy(container.texture.GetHandle2D(),image);
 					
-					image.ScaleHalf();
-					PathString outName = MakeValidFilename( (*s)->GetTypeName() )+".png";
+						image.ScaleHalf();
+						image.TruncateToOpaque();
+						PathString outName = MakeValidFilename( (*s)->GetTypeName() )+".png";
 
-					png.SaveToFile(image, folder.FindFile(outName,false)->GetLocation().c_str());
+						png.SaveToFile(image, folder.FindFile(outName,false)->GetLocation().c_str());
+					}
+				}
+				if (RuntimeConfig::documentationTargetFolder.DoesExist())
+				{
+					FileSystem::Folder folder(RuntimeConfig::documentationTargetFolder);
+
+					foreach (Objects::structurePrototypes,s)
+					{
+						LogEvent(EventSignificance::Uncommon, "Documenting "+(*s)->GetTypeName());
+						PathString name = MakeValidFilename( (*s)->GetTypeName() );
+						PathString outName = name+".txt";
+						StringFile file;
+						file.Create(folder.FindFile(outName,false)->GetLocation());
+
+						file << "="<<(*s)->GetTypeName()<<"="<<nl;
+						file << "{{img:units/"<< String(name) <<".png}}"<<nl;
+						Objects::BaseCommand::Label label;
+						(*s)->DescribeType(label,0xFFFFFFFF & ~Objects::WorldEntity::DescIncludeName & ~Objects::WorldEntity::DescIncludeCurrentHealth);
+
+						foreach(label.rawLines, line)
+						{
+							if (line->first.length() == 0)
+								continue;
+							if (line->second)
+								file << "*";
+							foreach(line->first, c)
+							{
+								if (Objects::IsTag(*c))
+									continue;
+								file << *c;
+							}
+							file << nl;
+						}
+
+
+					}
+
 				}
 
-
 			}
-			//else
+			else
 			{
 				display.assign(loop);
 				display.execute();

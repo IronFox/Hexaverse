@@ -2697,82 +2697,87 @@ namespace Objects
 	
 		/*virtual override*/ void			Laboratory::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
 		{
+			label.BeginBrief();
 			Super::DescribeType(label,  descFlags);
 			label.MarkBriefEnd();
-			label.WrapAppendText("Laboratories research new components and buildings, or improve their attributes."
+			label << "Laboratories research new components and buildings, or improve their attributes."
 			" Each enabled laboratory contributes 1 research point per round to the currently selected faction research goal."
 			" Research aimed at unlocking new components requires a number of research points to be accumulated."
 			" Research aimed at improvement will continuously improve the selected property, but become increasingly less efficient the further research has progressed."
 			" As a result, research facilities are a continuous construction effort and you will most likely never have enough."
-			);
+			;
 		}
 
 
 
 		/*virtual override*/ void			NexusPort::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
 		{
+			label.BeginBrief();
 			Super::DescribeType(label,  descFlags);
 			label.MarkBriefEnd();
-			label.WrapAppendText("Nexus Ports are indestructible structures of unknown origin."
+			label << "Nexus Ports are indestructible structures of unknown origin."
 			" Depending on game-settings, non-player Nexus Ports serve as spawning-beakons for Nexus units."
 			" Nexus Ports will shift ownership to the respective owner of the first connected player building."
 			" They must be enabled for a number of rounds in order to count towards winning the game."
 			" Disabling a Nexus Port will make it stop counting as such."
 			" A Nexus Port that loses all connections to other player-owned structures will shift back to"
 			" the Nexus faction."
-			);
-			
-		
+			;
 		}
 
 
 		/*virtual override*/ void			Mine::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
 		{
+			label.BeginBrief();
 			Super::DescribeType(label,  descFlags);
 			label.MarkBriefEnd();
-			label.WrapAppendText("Enabled mines extract any natural resources available in the planet-core beneath their location. They are essential in supplying other structures in the network."
+			label << "Enabled mines extract any natural resources available in the planet-core beneath their location. They are essential in supplying other structures in the network."
 			" Mines should be build only on known occurrences of natural resources."
 			" They cannot be constructed atop each other, since they require a working link to the core in order to operate."
 			//" Mines constructed on a height level of -8 or lower are twice as effective."
 			" Mines, like many structures, require "+String(ResourceTag(Resource::Energy))+" from generators to operate."
-			);
+			;
 		}
 
 
 
 		/*virtual override*/ void			Generator::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
 		{
+			label.BeginBrief();
 			Super::DescribeType(label,  descFlags);
 			label.MarkBriefEnd();
-			label.WrapAppendText("Enabled generators provide energy for the local compound."
+			label << "Enabled generators provide energy for the local compound."
 			" Since many structures consume "+String(ResourceTag(Resource::Energy))+" when enabled, generators are a crucial component of any active base."
 			" Combine with reactor cores for increased output."
-			);
+			;
 		}
 
 		/*virtual override*/ void			ReactorCore::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
 		{
+			label.BeginBrief();
 			Super::DescribeType(label,  descFlags);
 			label.MarkBriefEnd();
-			label.WrapAppendText("Amplifies the energy output of connected generators. Only one reactor core can be connected to any one generator,"
+			label  << "Amplifies the energy output of connected generators. Only one reactor core can be connected to any one generator,"
 			" but multiple generators may be connected to the same reactor core."
 			" Must be placed on the same height level as the generator(s) to connect to."
-			);
+			;
 		}
 		/*virtual override*/ void			VehiclePlant::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
 		{
+			label.BeginBrief();
 			Super::DescribeType(label,  descFlags);
 			label.MarkBriefEnd();
-			label.WrapAppendText("Enabled vehicle plants produce vehicles of arbitrary configuration at the expense of "
+			label << "Enabled vehicle plants produce vehicles of arbitrary configuration at the expense of "
 			+String(ResourceTag(Resource::Minerals))+", "+String(ResourceTag(Resource::Energy))+", and "+String(TimeResourceTag())+"."
 			" A vehicle plant that does not have access to the necessary resources switches off immediately."
 			" Vehicle plants should be build such, that the intended vehicle output can stand in the immediate surroundings of the structure."
-			);
+			;
 		}
 
 
 		/*virtual override*/ void			WorkingStructure::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
 		{
+			label.BeginBrief();
 			Super::DescribeType(label,  descFlags);
 
 			ResourceVector balance,discard,maxStorage;
@@ -2787,7 +2792,7 @@ namespace Objects
 					for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
 						if (balance.level[i] < 0)
 						{
-							label << " "+String(ResourceTag(i))+String(-balance.level[i]);
+							label.GetLastLine() += " "+String(ResourceTag(i))+String(-balance.level[i]);
 						}
 				}
 				if (balance.SumPositive())
@@ -2796,7 +2801,7 @@ namespace Objects
 					for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
 						if (balance.level[i] > 0)
 						{
-							label << " "+String(ResourceTag(i))+String(balance.level[i]);
+							label.GetLastLine() += " "+String(ResourceTag(i))+String(balance.level[i]);
 						}
 				}
 			}
@@ -2806,7 +2811,7 @@ namespace Objects
 				for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
 					if (maxStorage.level[i] > 0)
 					{
-						label << " "+String(ResourceTag(i))+String(maxStorage.level[i]);
+						label.GetLastLine() += " "+String(ResourceTag(i))+String(maxStorage.level[i]);
 					}
 			}
 		

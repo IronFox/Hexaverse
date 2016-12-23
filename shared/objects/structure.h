@@ -520,11 +520,12 @@ namespace Objects
 			virtual void			PrototypeLoadGeometry() override;
 			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override
 			{
+				label.BeginBrief();
 				Super::DescribeType(label,descFlags);
 				label << " Max Vehicles per Store: "+String(MaxVehiclesPerStore);
 				label.MarkBriefEnd();
-				label.WrapAppendText("Vehicle stores can be used to store vehicles which will then enter hibernation until deployed. This structure shares storage with nearby structures of the same type."
-									" A vehicle store can deploy any vehicle found within the vehicle store compound.");			
+				label << "Vehicle stores can be used to store vehicles which will then enter hibernation until deployed. This structure shares storage with nearby structures of the same type."
+									" A vehicle store can deploy any vehicle found within the vehicle store compound.";
 			}
 			virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
 		#endif
@@ -562,10 +563,11 @@ namespace Objects
 		#ifdef HAS_WINDOW
 			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override
 			{
+				label.BeginBrief();
 				Super::DescribeType(label,descFlags);
 				label.MarkBriefEnd();
-				label.WrapAppendText("Connectors establish links between structures that are too distant from one another to otherwise connect. Connected structures form compounds and share their input/output."
-				);			
+				label << "Connectors establish links between structures that are too distant from one another to otherwise connect. Connected structures form compounds and share their input/output."
+				;
 			}
 		#endif
 
@@ -838,11 +840,12 @@ namespace Objects
 				virtual float			GetSoundLevel() const {return IsEnabled() ? GetActivityLevel() : 0.f;}
 				virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override
 				{
+					label.BeginBrief();
 					Super::DescribeType(label,descFlags);
 					//label << " Max Vehicles per Store: "+String(MaxVehiclesPerStore);
 					label.MarkBriefEnd();
-					label.WrapAppendText("Sky ports provide a foundation for each one sky hub. Periodically, "+String(ResourceTag(Resource::Fuel))+"fuel is transferred up, to supply the hub and its satellites."
-										" Failure to supply the required "+String(ResourceTag(Resource::Fuel))+" will result in satellite losses. An unobstructed path into orbit is required to maintain the connection");
+					label << "Sky ports provide a foundation for each one sky hub. Periodically, "+String(ResourceTag(Resource::Fuel))+"fuel is transferred up, to supply the hub and its satellites."
+										" Failure to supply the required "+String(ResourceTag(Resource::Fuel))+" will result in satellite losses. An unobstructed path into orbit is required to maintain the connection";
 				}
 				virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
 				virtual void			OnSelect()	override;
@@ -1283,13 +1286,14 @@ namespace Objects
 			#ifdef HAS_WINDOW
 				virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override
 				{
+					label.BeginBrief();
 					Super::DescribeType(label,descFlags);
 					label.MarkBriefEnd();
-					label.WrapAppendText("Storage structures accumulate excess production of the respective resources until they are full."
-					" Disabling a storage structure will change its priority such, that excess resources are stored here only, if all other storage capacities are exhausted."
+					label << "Storage structures accumulate excess production of the respective resources until they are full."
+					" Disabling a storage structure will change its priority such, that excess resources are stored here only if all other storage capacities are exhausted."
 					" Likewise, resource demand will remove resources from disabled storage structures first, such that they tend towards empty."
-					" Storage structures do not need "+String(ResourceTag(Resource::Energy))+" to store resources."
-					);			
+					" Storage structures do not require "+String(ResourceTag(Resource::Energy))+" to operate."
+					;			
 				}
 			#endif
 		#endif
@@ -1455,14 +1459,15 @@ namespace Objects
 		#ifdef HAS_WINDOW
 			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override
 			{
+				label.BeginBrief();
 				Super::DescribeType(label,descFlags);
 				label.MarkBriefEnd();
 				#ifdef NO_MUNITION
-					label.WrapAppendText("Enabled munition factories continuiously produce munition to supply connected offensive turrets. This is a deprecated building type."
+					label << "Enabled munition factories continuiously produce munition to supply connected offensive turrets. This is a deprecated building type."
 				#else
-					label.WrapAppendText("Enabled munition factories continuiously produce "+String(ResourceTag(Resource::Munitions))+" to supply connected offensive turrets."
+					label << "Enabled munition factories continuiously produce "+String(ResourceTag(Resource::Munitions))+" to supply connected offensive turrets."
 				#endif
-				);			
+				;
 			}
 		#endif
 	};

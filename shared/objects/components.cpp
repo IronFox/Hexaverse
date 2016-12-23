@@ -2017,9 +2017,11 @@ namespace Objects
 
 			void VehicleBase::DescribeType(BaseCommand::Label&outResult, bool compound, const OwnerParameter&owner)
 			{
+				outResult.BeginBrief();
 				Lua::Reference researchState = ResearchStateOf(owner);
 				outResult << typeName + " (Base)";
 				Base::DescribeType(outResult,compound,owner);
+				outResult.BeginBrief();
 				outResult << " Can climb "+String(maxClimbUp)+" height level(s) up";
 			
 				outResult << " Can safely fall down "+String(-minClimbDown)+" height level(s)";
@@ -2034,10 +2036,10 @@ namespace Objects
 						outResult << " Operation speed multiplied by "+operationSpeedMultiplier.Describe(researchState);
 					outResult<<" Base speed: "+ movementSpeed.Describe(researchState);
 					if (requirements == Requirement::Water)
-						outResult.lines.last()+= " (naval)";
+						outResult.GetLastLine()+= " (naval)";
 					else
 						if (moveOnWater)
-							outResult.lines.last()+= " (moves over water)";
+							outResult.GetLastLine() += " (moves over water)";
 					outResult<<" Base health: "+health.Describe(researchState);
 					outResult<<" Turret carrying capacity: "+carryingCapacity.Describe(researchState);
 					float rangeMod = turretRangeModifier.GetValue(researchState);
@@ -2053,6 +2055,7 @@ namespace Objects
 
 			void Turret::DescribeType(BaseCommand::Label&outResult, bool compound, const String&parentType, const OwnerParameter&owner)
 			{
+				outResult.BeginBrief();
 				const String upperName = parentType.IsNotEmpty() ? parentType+"-Turret" : "Turret";
 				const String nameAppend = isDoomsday ? ", DOOMSDAY" : "";
 				const String lowerName = upperName.copyToLowerCase();
@@ -2075,6 +2078,7 @@ namespace Objects
 				Lua::Reference researchState = ResearchStateOf(owner);
 
 				Base::DescribeType(outResult,compound,owner);
+				outResult.BeginBrief();
 				if (!compound)
 				{
 					outResult << " Weight: "+weight.Describe(researchState);
@@ -2091,10 +2095,13 @@ namespace Objects
 				{
 					if (!compound)
 						outResult << " Offensive "+lowerName;
-					if (ignoresVehicleMotion)
-						outResult << " Can attack independently of movement action";
-					elif (requiresStationaryVehicle)
-						outResult << " Vehicle must remain stationary to fire";
+					if (parentType != "Tower")
+					{
+						if (ignoresVehicleMotion)
+							outResult << " Can attack independently of movement action";
+						elif (requiresStationaryVehicle)
+							outResult << " Vehicle must remain stationary to fire";
+					}
 					if (!compound)
 						outResult << " Base horizontal attack range: "+horizontalAttackRange.Describe(researchState);
 
@@ -2135,20 +2142,20 @@ namespace Objects
 				outResult.MarkBriefEnd();
 				outResult << "";
 				if (CanConstruct())
-					outResult.WrapAppendText("This "+lowerName+" type can build structures in valid locations. It requires "+String(ResourceTag(Resource::Minerals))+" to initiate construction.");
+					outResult << ("This "+lowerName+" type can build structures in valid locations. It requires "+String(ResourceTag(Resource::Minerals))+" to initiate construction.");
 				if (CanRepair())
-					outResult.WrapAppendText("This "+lowerName+" type can repair other structures and vehicles. It requires "+String(ResourceTag(Resource::Minerals))+" to initiate repair.");
+					outResult << ("This "+lowerName+" type can repair other structures and vehicles. It requires "+String(ResourceTag(Resource::Minerals))+" to initiate repair.");
 				if (detectsResources)
-					outResult.WrapAppendText("This "+lowerName+" type detects all naturally occuring resources within its scanning range. It can be automated.");
+					outResult << ("This "+lowerName+" type detects all naturally occuring resources within its scanning range. It can be automated.");
 				if (CanAttack())
 				{
-					outResult.WrapAppendText("This "+lowerName+" type can attack objects in range.");
+					outResult << ("This "+lowerName+" type can attack objects in range.");
 					if (dealsEMPDamage)
-						outResult.WrapAppendText("This "+lowerName+" deals EMP damage. EMP damage temporarily reduces scanning range. Does not cause any permanent damage.");
+						outResult << ("This "+lowerName+" deals EMP damage. EMP damage temporarily reduces scanning range. Does not cause any permanent damage.");
 				}
 				else
 					if (scanningRange.GetValue(researchState) > 10)
-						outResult.WrapAppendText("This "+lowerName+" type is especially suited for detecting hostile entities. Such turret types are manadatory in order to see hostile forces approaching, as well as their attacks. Offensive turrets usually lack the necessary scanning range to see where they are shooting and depend on this turret type to reside in the vicinity.");
+						outResult << ("This "+lowerName+" type is especially suited for detecting hostile entities. Such turret types are manadatory in order to see hostile forces approaching, as well as their attacks. Offensive turrets usually lack the necessary scanning range to see where they are shooting and depend on this turret type to reside in the vicinity.");
 				//if (isDoomsday)
 				//{
 				//	outResult.WrapAppendText("This "+lowerName+" type is classified as Doomsday weaponry. Careful with this one.");
