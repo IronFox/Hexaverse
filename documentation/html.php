@@ -15,8 +15,26 @@ function GetTagValue($strHaystack, $tag)
 	return substr($strHaystack,strlen($tag)+1);
 }
 
+
+class HR extends WikiRendererBloc {
+    public $type='hr';
+    protected $regexp="/^----$/";
+    protected $_closeNow=true;
+
+    public function getRenderedLine(){
+        return '<hr />';
+    }
+}
+
 class MyConfig extends dokuwiki_to_xhtml
 {
+	public function MyConfig()
+	{
+		$this->bloctags[] = 'HR';
+	}
+	
+	
+	
 	/**
 	* in some wiki system, some links are specials. You should override this method
 	* to transform this specific links to real URL
@@ -38,11 +56,9 @@ function Convert($strPage)
 {
 	global $ctr;
 	$strPage = str_replace(array('/','\'','.'),'',$strPage);
-	$text = implode('',file("./documentation/$strPage.txt"));
+	$text = file_get_contents("./documentation/$strPage.prefix").file_get_contents("./documentation/$strPage.txt");
 	$text = $ctr->render($text);
-	
 	$rs = array();
-	
 	if($ctr->errors)
 	{
 		//echo '<p style="color:red;">Errors in line(s):';
