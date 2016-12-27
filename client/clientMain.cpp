@@ -898,15 +898,24 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 		}
 	}
 
-	void WriteDocumentation(const FileSystem::Folder&outFolder, const String&typeName, const Objects::BaseCommand::Label&label)
+	void WriteDocumentation(const FileSystem::Folder&rootFolder, const FileSystem::Folder&outFolder, StringFile&listFile, const String&typeName, const Objects::BaseCommand::Label&label, const String&pretext = "")
 	{
 		LogEvent(EventSignificance::Uncommon, "Documenting "+typeName);
+
 		PathString name = MakeValidFilename( typeName );
 		PathString outName = (name+".prefix").convertToLowerCase();
 		StringFile file;
-		file.Create(outFolder.FindFile(outName,false)->GetLocation());
+		if (!outFolder.IsValidLocation())
+			FileSystem::CreateDirectory(outFolder.GetLocation());
+
+		String relative = String(FileSystem::GetRelativePath(rootFolder.GetLocation(),outFolder.GetLocation()));
+		relative.replace('\\','/');
+		PathString outPath = outFolder.FindFile(outName,false)->GetLocation();
+		listFile << "* [[units/"<<relative<<'/'<<typeName<<'|'<<typeName <<"]]"<< nl;
+		file.Create(outPath);
 
 		file << "="<<typeName<<"="<<nl;
+		file << pretext;
 		file << "{{img:units/"<< String(name) <<".png}}"<<nl;
 		WriteLabel(file,label);
 	}
@@ -3678,27 +3687,45 @@ int main( int argc, const char* argv[])
 				}
 				if (RuntimeConfig::documentationTargetFolder.DoesExist())
 				{
-					FileSystem::Folder folder(RuntimeConfig::documentationTargetFolder);
+					FileSystem::Folder rootFolder(RuntimeConfig::documentationTargetFolder);
+					FileSystem::Folder structureFolder(rootFolder.FindFolder("structures",false));
+					FileSystem::Folder turretFolder(rootFolder.FindFolder("turrets",false));
+					FileSystem::Folder vbaseFolder(rootFolder.FindFolder("vbases",false));
 
+					StringFile unitList;
+					unitList.Create(rootFolder.FindFile("list.prefix",false)->GetLocation());
+
+					unitList << "=Unit Types and Components="<<nl;
+
+					unitList << "==Structures=="<<nl;
 					foreach (Objects::structurePrototypes,s)
 					{
 						Objects::BaseCommand::Label label;
 						(*s)->DescribeType(label,0xFFFFFFFF & ~Objects::WorldEntity::DescIncludeName & ~Objects::WorldEntity::DescIncludeCurrentHealth);
-						WriteDocumentation(folder,(*s)->GetTypeName(), label);
+						String pretext;
+						auto tb = (*s)->GetTurretBase();
+						if (tb)
+						{
+							label.rawLines.Insert(0).first = "Based on [[units/turrets/"+String(MakeValidFilename(tb->turret->typeName))+"|"+tb->turret->typeName+"]] turret";
+							label.rawLines.First().second = true;
+						}
+						WriteDocumentation(rootFolder, structureFolder,unitList, (*s)->GetTypeName(), label,pretext);
 					}
 
+					unitList << "==Turrets=="<<nl;
 					foreach (Objects::Component::allTurretComponents,c)
 					{
 						Objects::BaseCommand::Label label;
 						(*c)->DescribeType(label,false,false,"Vehicle",Objects::OwnerParameter());
-						WriteDocumentation(folder,(*c)->typeName, label);
+						WriteDocumentation(rootFolder, turretFolder,unitList, (*c)->typeName, label);
 					}
 
+					unitList << "==Vehicle Bases=="<<nl;
 					foreach (Objects::Component::baseComponents,c)
 					{
 						Objects::BaseCommand::Label label;
 						(*c)->DescribeType(label,false,false,Objects::OwnerParameter());
-						WriteDocumentation(folder,(*c)->typeName, label);
+						WriteDocumentation(rootFolder, vbaseFolder,unitList, (*c)->typeName, label);
 					}
 				}
 
