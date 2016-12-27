@@ -445,7 +445,7 @@ function Tower(turret--[[Table]]) --Table
 					if (multiplier == 1) then
 						return Round(health);
 					end
-					return Round(health * Get(turret.HealthMultiplier,state),2)..' [='.. Round(health)..'*'.. multiplier..']';
+					return Round(health * Get(turret.HealthMultiplier,state),2)..' [='.. Round(health)..'*'.. multiplier..' (turret health multiplier)]';
 				end,
 		},
 		ScanningRange =
