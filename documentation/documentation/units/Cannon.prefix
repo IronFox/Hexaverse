@@ -1,0 +1,15 @@
+=Cannon=
+{{img:units/Cannon.png}}
+* Cost: 15
+* Initiative: 100
+* Weight: 3
+* Base scanning range: 5
+* Health: x2
+* Offensive vehicle-turret
+* Can attack independently of movement action
+* Base horizontal attack range: 5
+* Does not require ammunition
+* Explosion radius: 1
+* Damage: 3
+* 2 attack(s) per round
+This vehicle-turret type can attack objects in range.

@@ -1,0 +1,14 @@
+=EMP=
+{{img:units/EMP.png}}
+* Cost: 100
+* Initiative: 30
+* Weight: 5
+* Base scanning range: 3
+* Offensive vehicle-turret
+* Base horizontal attack range: 17
+* Consumes 50 per shot
+* Explosion radius: 3
+* EMP damage: 5
+* 1 attack(s) per round
+This vehicle-turret type can attack objects in range.
+This vehicle-turret deals EMP damage. EMP damage temporarily reduces scanning range. Does not cause any permanent damage.

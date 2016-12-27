@@ -1,0 +1,9 @@
+=Hoverbase=
+{{img:units/Hoverbase.png}}
+* Cost: 40
+* Initiative: 100
+* Can climb 1 height level up
+* Can safely fall down 5 height levels
+* Base speed: 20 (moves over water)
+* Base health: 4
+* Turret carrying capacity: 1

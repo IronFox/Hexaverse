@@ -1,7 +1,6 @@
 =Radar Tower=
 {{img:units/Radar Tower.png}}
-* Health: 11 [=11.0*1]
+* Health: 11
 * Price:  50
-* Scanning range: 14 [=12+2]
-*Radar (Tower-Turret)
+* Scanning range: 14 [=12+2 (tower modifier)]
 This tower-turret type is especially suited for detecting hostile entities. Such turret types are manadatory in order to see hostile forces approaching, as well as their attacks. Offensive turrets usually lack the necessary scanning range to see where they are shooting and depend on this turret type to reside in the vicinity.

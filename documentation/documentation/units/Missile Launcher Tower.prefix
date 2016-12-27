@@ -1,10 +1,9 @@
 =Missile Launcher Tower=
 {{img:units/Missile Launcher Tower.png}}
-* Health: 16.5 [=11.0*1.5]
+* Health: 16.5 [=11*1.5]
 * Price:  80
-* Scanning range: 2 [=4-2]
+* Scanning range: 2 [=4-2 (tower modifier)]
 * Hrz. Attack range: 8
-*Missile Launcher (Tower-Turret)
 * Does not require ammunition
 * Explosion radius: 1
 * Damage: 10

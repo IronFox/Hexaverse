@@ -1,0 +1,8 @@
+=Mechanic=
+{{img:units/Mechanic.png}}
+* Cost: 30
+* Initiative: 100
+* Weight: 2
+* Base scanning range: 3
+* Can repair other vehicles/structures
+This vehicle-turret type can repair other structures and vehicles. It requires  to initiate repair.

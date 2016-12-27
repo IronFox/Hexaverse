@@ -1,0 +1,10 @@
+=Heavy Base=
+{{img:units/Heavy Base.png}}
+* Cost: 80
+* Initiative: 100
+* Can climb 1 height level up
+* Can safely fall down 2 height levels
+* Operation speed multiplied by 2
+* Base speed: 15
+* Base health: 12
+* Turret carrying capacity: 10
