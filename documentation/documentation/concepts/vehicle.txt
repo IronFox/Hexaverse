@@ -1,8 +1,8 @@
 = Vehicle =
 
-Vehicles are ground-based mobile units. They require at least a ledge to stand on, and cannot stand on lava alone.
+Vehicles are ground-based mobile units built by [[units/structures/vehicle plant]]s. They require at least a ledge to stand on, and cannot stand on lava alone.
 All regular vehicles are composed of a vehicle base and turret.
-Depending on the combination different capacities and restrictions apply.
+Depending on the combination, different capacities and restrictions apply.
 
 == Ships ==
 Vehicles built on a [[units/vbases/catamaran base]] are much faster on, but also restricted to water surfaces. They are usually a good choice on planets with extensive water surfaces, but rarely anywhere else.

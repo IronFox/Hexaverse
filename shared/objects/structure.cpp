@@ -2783,7 +2783,7 @@ namespace Objects
 			label << "Enabled vehicle plants produce vehicles of arbitrary configuration at the expense of "
 			+String(ResourceTag(Resource::Minerals))+", "+String(ResourceTag(Resource::Energy))+", and "+String(TimeResourceTag())+"."
 			" A vehicle plant that does not have access to the necessary resources switches off immediately."
-			" Vehicle plants should be build such, that the intended vehicle output can stand in the immediate surroundings of the structure."
+			" Vehicle plants should be placed so that any produced vehicles can stand in the immediate surroundings of the structure."
 			;
 		}
 

@@ -4,4 +4,4 @@
 * Price: {{img:Minerals.png}} 80
 * [[concepts/sensory|Scanning range]]: 2
 *Consumes: {{img:Minerals.png}}10 {{img:Energy.png}}10
-Enabled vehicle plants produce vehicles of arbitrary configuration at the expense of {{img:Minerals.png}}, {{img:Energy.png}}, and {{img:time.png}}. A vehicle plant that does not have access to the necessary resources switches off immediately. Vehicle plants should be build such, that the intended vehicle output can stand in the immediate surroundings of the structure.
+Enabled vehicle plants produce vehicles of arbitrary configuration at the expense of {{img:Minerals.png}}, {{img:Energy.png}}, and {{img:time.png}}. A vehicle plant that does not have access to the necessary resources switches off immediately. Vehicle plants should be placed so that any produced vehicles can stand in the immediate surroundings of the structure.
