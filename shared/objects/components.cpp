@@ -1253,7 +1253,7 @@ namespace Objects
 			//#else
 			//	component.baseExplosionRadius = 1;
 			//#endif
-			//component.trajectoryType = TrajectoryType::Missile;
+			component.trajectoryType = TrajectoryType::Missile;
 			//component.baseDamageLevel = 10;
 			//component.baseAttacksPerRound = 1;
 			component.initiative = 70;
@@ -1356,7 +1356,7 @@ namespace Objects
 			//component.baseAttacksPerRound = 1;
 			component.initiative = 30;
 			//component.baseAmmoNeedPerShot = 50;
-			//component.ammoType = Resource::Uranium;
+			component.ammoType = Resource::Uranium;
 			//component.requiresStationaryVehicle = true;
 			//component.uplinkTraffic = 10;
 
