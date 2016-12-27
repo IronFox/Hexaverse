@@ -1,9 +1,0 @@
-=Terraformer=
-{{img:units/Terraformer.png}}
-* Cost: 40
-* Initiative: 100
-* Weight: 2
-* Base scanning range: 4
-* Construction: Converts 10 per round
-* Terraforming: Can shape the surrounding terrain
-This vehicle-turret type can build structures in valid locations. It requires  to initiate construction.

@@ -1,7 +1,7 @@
 =Catamaran Base=
 {{img:units/Catamaran Base.png}}
-* Cost: 100
-* Initiative: 100
+* Cost: {{img:Minerals.png}}100
+* [[concepts/initiative|Initiative]]: 100
 * Can climb 1 height level up
 * Can safely fall down 2 height levels
 * Operation speed multiplied by 2

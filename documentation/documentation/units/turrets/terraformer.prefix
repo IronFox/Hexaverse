@@ -1,0 +1,9 @@
+=Terraformer=
+{{img:units/Terraformer.png}}
+* Cost: {{img:Minerals.png}}40
+* [[concepts/initiative|Initiative]]: 100
+* [[concepts/weight|Weight]]: 2
+* Base scanning range: 4
+* Construction: Converts {{img:Minerals.png}}10 per round
+* Terraforming: Can shape the surrounding terrain
+This vehicle-turret type can build structures in valid locations. It requires {{img:Minerals.png}} to initiate construction.

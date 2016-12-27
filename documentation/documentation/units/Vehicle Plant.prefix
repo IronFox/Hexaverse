@@ -1,7 +1,0 @@
-=Vehicle Plant=
-{{img:units/Vehicle Plant.png}}
-* Health: 16
-* Price:  80
-* Scanning range: 2
-*Consumes: 10 10
-Enabled vehicle plants produce vehicles of arbitrary configuration at the expense of , , and . A vehicle plant that does not have access to the necessary resources switches off immediately. Vehicle plants should be build such, that the intended vehicle output can stand in the immediate surroundings of the structure.

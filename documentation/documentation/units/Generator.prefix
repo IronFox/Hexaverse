@@ -1,8 +1,0 @@
-=Generator=
-{{img:units/Generator.png}}
-* Health: 8
-* Price:  40
-* Scanning range: 2
-*Consumes: 10
-*Produces: 20
-Enabled generators provide energy for the local compound. Since many structures consume  when enabled, generators are a crucial component of any active base. Combine with reactor cores for increased output.

@@ -893,7 +893,7 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 	{
 		LogEvent(EventSignificance::Uncommon, "Documenting "+typeName);
 		PathString name = MakeValidFilename( typeName );
-		PathString outName = name+".prefix";
+		PathString outName = (name+".prefix").convertToLowerCase();
 		StringFile file;
 		file.Create(outFolder.FindFile(outName,false)->GetLocation());
 

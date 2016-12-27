@@ -1,7 +1,7 @@
 =Radar=
 {{img:units/Radar.png}}
-* Cost: 10
-* Initiative: 100
-* Weight: 2
+* Cost: {{img:Minerals.png}}10
+* [[concepts/initiative|Initiative]]: 100
+* [[concepts/weight|Weight]]: 2
 * Base scanning range: 12
 This vehicle-turret type is especially suited for detecting hostile entities. Such turret types are manadatory in order to see hostile forces approaching, as well as their attacks. Offensive turrets usually lack the necessary scanning range to see where they are shooting and depend on this turret type to reside in the vicinity.
