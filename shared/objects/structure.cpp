@@ -1006,6 +1006,19 @@ namespace Objects
 				Mat::rotate(inverse,_d,d);
 				return geometry.TestIntersection(b,d,distance) | turret->TestIntersection(GetEffectiveFoundationHeight(), turretAngleX,turretAngleY,b,d,distance);	//binary or - must evaluate both
 			}
+			/*virtual override*/ void			Tower::DescribeType(BaseCommand::Label&label, UINT32 descFlags) 
+			{
+				label.BeginBrief();
+				Super::DescribeType(label,descFlags);
+				label.MarkBriefEnd();
+				if (turret->CanAttack())
+					label << "The unit automatically attacks hostile units in range (possibly extended by its impact explosion radius)."
+							" Towers are the only units that can intercept hostile units during their movement phase."
+							" A hostile mobile unit that enters their attack range is immediately attacked as long as sufficient attack action is left."
+							" This tower will never automatically fire at locations that endanger friendly units."
+							;
+			}
+
 		#endif
 	#endif
 

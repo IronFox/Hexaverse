@@ -1690,6 +1690,8 @@ namespace Objects
 		#ifdef HAS_WINDOW
 			virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
 			virtual bool			TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override;
+			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags);
+
 		#endif
 		#ifndef CLIENT
 			virtual void			OnConstructionFinished(float&atTime) override;

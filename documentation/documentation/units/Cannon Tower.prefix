@@ -1,6 +1,6 @@
 =Cannon Tower=
 {{img:units/Cannon Tower.png}}
-* Health: 22 [=11*2]
+* Health: 22 [=11*2 (turret health multiplier)]
 * Price:  55
 * Scanning range: 3 [=5-2 (tower modifier)]
 * Hrz. Attack range: 5
@@ -9,3 +9,4 @@
 * Damage: 3
 * 2 attack(s) per round
 This tower-turret type can attack objects in range.
+The unit automatically attacks hostile units in range (possibly extended by its impact explosion radius). Towers are the only units that can intercept hostile units during their movement phase. A hostile mobile unit that enters their attack range is immediately attacked as long as sufficient attack action is left. This tower will never automatically fire at locations that endanger friendly units.
