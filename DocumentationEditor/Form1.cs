@@ -124,6 +124,17 @@ namespace DocumentationEditor
                 return fi.Name.Substring(0, fi.Name.IndexOf(fi.Extension));
             }
         }
+
+        public string Extension
+        {
+            get
+            {
+                if (fullPath == null)
+                    return null;
+                return new System.IO.FileInfo(fullPath).Extension;
+            }
+        }
+
         public override int GetHashCode()
         {
             return fullPath != null ? fullPath.GetHashCode() : 0;
@@ -155,6 +166,16 @@ namespace DocumentationEditor
                 System.IO.File.WriteAllText(fullPath, value);
             }
         }
+
+		public DateTime LastWrite
+		{
+			get
+			{
+				if (!Exists)
+					return new DateTime(1, 1, 1);
+				return new System.IO.FileInfo(fullPath).LastWriteTimeUtc;
+			}
+		}
 
         public void Remove()
         {
@@ -377,6 +398,11 @@ namespace DocumentationEditor
             {
                 RegisterFile(root.Directory,dir, f);
             }
+            files = dir.Directory.GetFiles("*.prefix");
+            foreach (File f in files)
+            {
+                RegisterFile(root.Directory, dir, f);
+            }
 
             Directory[] subs = dir.Directory.Directories;
             foreach (Directory d in subs)
@@ -388,9 +414,12 @@ namespace DocumentationEditor
 
         public Document RegisterFile(Directory root, FolderInfo folder, File f)
         {
-            Document tag = new Document(root, folder, f);
+            Document rs = folder.FindDocument(Document.GetNameOf(f));
+            if (rs != null)
+                return rs;
+            rs = new Document(root, folder, f);
             //documentList.Add(tag.DocumentID.ToLower(), tag);
-            return tag;
+            return rs;
         }
 
         Thread updateThread;
@@ -418,30 +447,30 @@ namespace DocumentationEditor
 
 
         
-        private Document lastTag=null;
+        private Document currentDocument=null;
         bool lockOnChange = false;
 
-        private void SelectDocument(Document tag)
+        private void SelectDocument(Document newDocument, bool force=false)
         {
-            if (tag == lastTag)
+            if (newDocument == currentDocument && !force)
                 return;
-            if (lastTag != null)
+            if (currentDocument != null && newDocument != currentDocument)
             {
-                lastTag.Update(textEditor.Text);
+                currentDocument.Update(textEditor.Text);
             }
-            documentName.Text = tag != null ? tag.DocumentID : "";
+            documentName.Text = newDocument != null ? newDocument.DocumentID : "";
             lockOnChange = true;
-            textEditor.Text = tag != null ? tag.Text : "";
+            textEditor.Text = newDocument != null ? newDocument.Text : "";
             lockOnChange = false;
-            lastTag = tag;
+            currentDocument = newDocument;
         }
 
         private void textEditor_TextChanged(object sender, EventArgs e)
         {
             if (lockOnChange)
                 return;
-            if (lastTag != null)
-                lastTag.Update(textEditor.Text);
+            if (currentDocument != null)
+                currentDocument.Update(textEditor.Text);
         }
 
         public delegate void DRefresh(File path);
@@ -468,7 +497,7 @@ namespace DocumentationEditor
             for (;;)
             {
                 Thread.Sleep(1000);
-                Document tag = lastTag;
+                Document tag = currentDocument;
                 if (tag == null || (!tag.Write() && myLastTag == tag))
                     continue;
                 myLastTag = tag;
@@ -509,9 +538,13 @@ namespace DocumentationEditor
         }
 
 
-        private void updater_Tick(object sender, EventArgs e)
-        {
-            
+		private void updater_Tick(object sender, EventArgs e)
+		{
+			if (currentDocument != null && !currentDocument.CheckContent())
+			{
+				Log("File content changed and reloaded: "+currentDocument.Name);
+				SelectDocument(currentDocument, true);
+			}
         }
 
 

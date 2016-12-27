@@ -1,37 +1,65 @@
-﻿using System.IO;
+﻿using System;
+using System.Diagnostics;
+using System.IO;
 using System.Windows.Forms;
 
 namespace DocumentationEditor
 {
     public class Document
     {
-        private File f;
-        private string content = null;
+        private File file;
+        private string content = "";
         private bool changed = false;
         public readonly TreeNode Node;
         private int version = 0;
         public readonly string DocumentID;
         public readonly FolderInfo Parent;
+		private DateTime contentStamp = new DateTime(1,1,1);
+
+        public static string GetNameOf(File f)
+        {
+            return f.CoreName;
+        }
 
         public Document(Directory root, FolderInfo folder, File f)
         {
-            Node = folder.Scope.Add(f.CoreName);
+            Node = folder.Scope.Add(GetNameOf(f));
             Node.Tag = this;
+			if (f.Extension == ".txt")
+				file = f;
+			else
+			{
+				file = new File(Path.Combine(f.DirectoryName, f.CoreName + ".txt"));
+				Debug.Assert(!file.Exists);
+			}
 
-            this.f = f;
             DocumentID = Path.Combine(f.DirectoryName, f.CoreName).Substring(root.FullName.Length + 1);
             Parent = folder;
             Parent.Documents.Add(this);
         }
 
-        public string Text
+		/// <summary>
+		/// Checks whether or not the actual file data has changed due to timestamp mismatch
+		/// </summary>
+		/// <returns>true if the filestamp is as expected, false if the local content has been updated from file</returns>
+		public bool CheckContent()
+		{
+			if (file.LastWrite != contentStamp)
+			{
+				contentStamp = file.LastWrite;
+				content = file.Text;
+				changed = false;
+				return false;
+			}
+			return true;
+		}
+
+		public string Text
         {
             get
             {
-                if (content != null)
-                    return content;
-                content = f.Text;
-                return content;
+				CheckContent();
+				return content;
             }
         }
         public bool Write()
@@ -40,8 +68,11 @@ namespace DocumentationEditor
             {
                 if (!changed)
                     return false;
-                //   Debug.Assert(content.Length != 0);
-                f.Text = content;
+				//   Debug.Assert(content.Length != 0);
+				if (contentStamp != file.LastWrite)
+					return false;
+                file.Text = content;
+				contentStamp = file.LastWrite;
                 changed = false;
                 //  node.Text = node.Text.Substring(1);
                 return true;
@@ -92,9 +123,9 @@ namespace DocumentationEditor
         {
             Parent.Documents.Remove(this);
             Node.Remove();
-            f.Remove();
+            file.Remove();
             changed = false;
-            f = new File();
+            file = new File();
         }
     };
 
