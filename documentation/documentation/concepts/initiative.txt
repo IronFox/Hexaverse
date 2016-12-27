@@ -1,4 +1,4 @@
 = Unit Initiative =
 
-During the [[concepts/phases|motion and attack]] phases, the order of unit [[concepts/commands|command]] execution is based on initiative. Higher initiative means higher priority. Units that can execute multiple instructions per round (e.g. a turret that can attack multiple times), will see their initiative drop during each execution.
-Units of identical initiative will be prioritized in random order.
+During the [[concepts/phases|motion and attack]] phases, the order of unit [[concepts/commands|command]] execution is based on initiative. Higher initiative means higher priority. Units that can execute multiple instructions per round (e.g. a turret that can attack multiple times), see their initiative drop during each execution.
+Units of identical initiative are prioritized in random order.

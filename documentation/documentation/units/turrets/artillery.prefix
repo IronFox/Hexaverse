@@ -3,12 +3,12 @@
 * Cost: {{img:Minerals.png}}25
 * [[concepts/initiative|Initiative]]: 80
 * [[concepts/weight|Weight]]: 3
-* Base scanning range: 4
+* [[concepts/sensory|Base scanning range]]: 4
 * Health: x2
-* Offensive vehicle-turret
+* Offensive turret
 * [[concepts/attack range|Base horizontal attack range]]: 7 (Artillery)
 * Does not require ammunition
 * Explosion radius: 3.5
 * Damage: 7
 * 1 attack per round
-This vehicle-turret type can attack objects in range.
+This turret type can attack objects in range.

@@ -2,7 +2,7 @@
 {{img:units/Reactor Core.png}}
 * Health: 24
 * Price: {{img:Minerals.png}} 120
-* Scanning range: 2
+* [[concepts/sensory|Scanning range]]: 2
 *Consumes: {{img:Uranium.png}}5
 *Produces: {{img:Energy.png}}40
 Amplifies the energy output of connected generators. Only one reactor core can be connected to any one generator, but multiple generators may be connected to the same reactor core. Must be placed on the same height level as the generator(s) to connect to.

@@ -2,7 +2,7 @@
 {{img:units/Generator.png}}
 * Health: 8
 * Price: {{img:Minerals.png}} 40
-* Scanning range: 2
+* [[concepts/sensory|Scanning range]]: 2
 *Consumes: {{img:Fuel.png}}10
 *Produces: {{img:Energy.png}}20
 Enabled generators provide energy for the local compound. Since many structures consume {{img:Energy.png}} when enabled, generators are a crucial component of any active base. Combine with reactor cores for increased output.

@@ -3,7 +3,7 @@
 *Based on [[units/turrets/Missile Launcher|Missile Launcher]] turret
 * Health: 16.5 [=11*1.5 (turret health multiplier)]
 * Price: {{img:Minerals.png}} 80
-* Scanning range: 2 [=4-2 (tower modifier)]
+* [[concepts/sensory|Scanning range]]: 2 [=4-2 (tower modifier)]
 * [[concepts/attack range|Hrz. Attack range]]: 8 (Missile)
 * Does not require ammunition
 * Explosion radius: 1

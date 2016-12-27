@@ -2,7 +2,7 @@
 {{img:units/Nexus Port.png}}
 * Indestructible
 * Price: {{img:Minerals.png}} 1
-* Scanning range: 2
+* [[concepts/sensory|Scanning range]]: 2
 *Consumes: {{img:Energy.png}}10
 *Produces: {{img:Fuel.png}}55 {{img:Minerals.png}}50 {{img:Uranium.png}}10
 Nexus Ports are indestructible structures of unknown origin. Depending on game-settings, non-player Nexus Ports serve as spawning-beakons for Nexus units. Nexus Ports will shift ownership to the respective owner of the first connected player building. They must be enabled for a number of rounds in order to count towards winning the game. Disabling a Nexus Port will make it stop counting as such. A Nexus Port that loses all connections to other player-owned structures will shift back to the Nexus faction.

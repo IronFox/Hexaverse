@@ -3,6 +3,6 @@
 * Cost: {{img:Minerals.png}}10
 * [[concepts/initiative|Initiative]]: 100
 * [[concepts/weight|Weight]]: 1
-* Base scanning range: 4
+* [[concepts/sensory|Base scanning range]]: 4
 * Detects natural resources
-This vehicle-turret type detects all naturally occuring resources within its scanning range. It can be automated.
+This turret type detects all naturally occuring resources within its scanning range. It can be automated.

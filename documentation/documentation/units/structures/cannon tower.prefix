@@ -3,7 +3,7 @@
 *Based on [[units/turrets/Cannon|Cannon]] turret
 * Health: 22 [=11*2 (turret health multiplier)]
 * Price: {{img:Minerals.png}} 55
-* Scanning range: 3 [=5-2 (tower modifier)]
+* [[concepts/sensory|Scanning range]]: 3 [=5-2 (tower modifier)]
 * [[concepts/attack range|Hrz. Attack range]]: 5 (Artillery)
 * Does not require ammunition
 * Explosion radius: 1

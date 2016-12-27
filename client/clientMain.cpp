@@ -884,7 +884,8 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 			linkedLine.replace("Base horizontal attack range","[[concepts/attack range|Base horizontal attack range]]");
 			linkedLine.replace("Initiative","[[concepts/initiative|Initiative]]");
 			linkedLine.replace("Weight","[[concepts/weight|Weight]]");
-			
+			linkedLine.replace("Base scanning range","[[concepts/sensory|Base scanning range]]");
+			linkedLine.replace("Scanning range","[[concepts/sensory|Scanning range]]");
 			foreach(linkedLine, c)
 			{
 				if (Objects::IsTag(*c))
@@ -918,6 +919,19 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 		file << pretext;
 		file << "{{img:units/"<< String(name) <<".png}}"<<nl;
 		WriteLabel(file,label);
+	}
+
+	void	FinishRendering(const FileSystem::Folder&folder, const DX11::Texture&texture, const String&typeName)
+	{
+		static Image image;
+		display.Copy(texture.GetHandle2D(),image);
+					
+		image.ScaleHalf();
+		image.ScaleHalf();
+		image.TruncateToOpaque();
+		PathString outName = MakeValidFilename(typeName)+".png";
+
+		png.SaveToFile(image, folder.FindFile(outName,false)->GetLocation().c_str());
 	}
 
 
@@ -3642,7 +3656,7 @@ int main( int argc, const char* argv[])
 				if (RuntimeConfig::imageTargetFolder.DoesExist())
 				{
 					LogEvent(EventSignificance::Uncommon, "Documenting objects to "+String(RuntimeConfig::documentationTargetFolder.GetLocation())+ "...");
-					Objects::GeometryImage::resultResolution = 512;
+					Objects::GeometryImage::resultResolution = 1024;
 					Objects::EntityCommand container;
 					Image image;
 					FileSystem::Folder folder(RuntimeConfig::imageTargetFolder);
@@ -3650,39 +3664,21 @@ int main( int argc, const char* argv[])
 					{
 						LogEvent(EventSignificance::Uncommon, "Capturing "+(*s)->GetTypeName());
 						Objects::EntityCommand::UpdateTexture(container,*s,true);
-						display.Copy(container.texture.GetHandle2D(),image);
-					
-						image.ScaleHalf();
-						image.TruncateToOpaque();
-						PathString outName = MakeValidFilename( (*s)->GetTypeName() )+".png";
-
-						png.SaveToFile(image, folder.FindFile(outName,false)->GetLocation().c_str());
+						FinishRendering(folder, container.texture, (*s)->GetTypeName());
 					}
 
 					foreach (Objects::Component::allTurretComponents,c)
 					{
 						LogEvent(EventSignificance::Uncommon, "Capturing "+(*c)->typeName);
 						Objects::EntityConstructionCommand::UpdateTexture(container,nullptr,*c);
-						display.Copy(container.texture.GetHandle2D(),image);
-					
-						image.ScaleHalf();
-						image.TruncateToOpaque();
-						PathString outName = MakeValidFilename( (*c)->typeName )+".png";
-
-						png.SaveToFile(image, folder.FindFile(outName,false)->GetLocation().c_str());
+						FinishRendering(folder, container.texture, (*c)->typeName);
 					}
 
 					foreach (Objects::Component::baseComponents,c)
 					{
 						LogEvent(EventSignificance::Uncommon, "Capturing "+(*c)->typeName);
 						Objects::EntityConstructionCommand::UpdateTexture(container,*c,nullptr);
-						display.Copy(container.texture.GetHandle2D(),image);
-					
-						image.ScaleHalf();
-						image.TruncateToOpaque();
-						PathString outName = MakeValidFilename( (*c)->typeName )+".png";
-
-						png.SaveToFile(image, folder.FindFile(outName,false)->GetLocation().c_str());
+						FinishRendering(folder, container.texture, (*c)->typeName);
 					}
 				}
 				if (RuntimeConfig::documentationTargetFolder.DoesExist())
@@ -3716,7 +3712,7 @@ int main( int argc, const char* argv[])
 					foreach (Objects::Component::allTurretComponents,c)
 					{
 						Objects::BaseCommand::Label label;
-						(*c)->DescribeType(label,false,false,"Vehicle",Objects::OwnerParameter());
+						(*c)->DescribeType(label,false,false,"",Objects::OwnerParameter());
 						WriteDocumentation(rootFolder, turretFolder,unitList, (*c)->typeName, label);
 					}
 
