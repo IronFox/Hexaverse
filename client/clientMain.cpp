@@ -871,6 +871,37 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 		return PathString(base);
 	}
 
+	void WriteLabel(StringFile&file, const Objects::BaseCommand::Label&label)
+	{
+		foreach(label.rawLines, line)
+		{
+			if (line->first.length() == 0)
+				continue;
+			if (line->second)
+				file << "*";
+			foreach(line->first, c)
+			{
+				if (Objects::IsTag(*c))
+					continue;
+				file << *c;
+			}
+			file << nl;
+		}
+	}
+
+	void WriteDocumentation(const FileSystem::Folder&outFolder, const String&typeName, const Objects::BaseCommand::Label&label)
+	{
+		LogEvent(EventSignificance::Uncommon, "Documenting "+typeName);
+		PathString name = MakeValidFilename( typeName );
+		PathString outName = name+".prefix";
+		StringFile file;
+		file.Create(outFolder.FindFile(outName,false)->GetLocation());
+
+		file << "="<<typeName<<"="<<nl;
+		file << "{{img:units/"<< String(name) <<".png}}"<<nl;
+		WriteLabel(file,label);
+	}
+
 
 	bool saveScreenshot = false;
 	bool saveTransparentScreenshot = false;
@@ -3609,6 +3640,32 @@ int main( int argc, const char* argv[])
 
 						png.SaveToFile(image, folder.FindFile(outName,false)->GetLocation().c_str());
 					}
+
+					foreach (Objects::Component::allTurretComponents,c)
+					{
+						LogEvent(EventSignificance::Uncommon, "Capturing "+(*c)->typeName);
+						Objects::EntityConstructionCommand::UpdateTexture(container,nullptr,*c);
+						display.Copy(container.texture.GetHandle2D(),image);
+					
+						image.ScaleHalf();
+						image.TruncateToOpaque();
+						PathString outName = MakeValidFilename( (*c)->typeName )+".png";
+
+						png.SaveToFile(image, folder.FindFile(outName,false)->GetLocation().c_str());
+					}
+
+					foreach (Objects::Component::baseComponents,c)
+					{
+						LogEvent(EventSignificance::Uncommon, "Capturing "+(*c)->typeName);
+						Objects::EntityConstructionCommand::UpdateTexture(container,*c,nullptr);
+						display.Copy(container.texture.GetHandle2D(),image);
+					
+						image.ScaleHalf();
+						image.TruncateToOpaque();
+						PathString outName = MakeValidFilename( (*c)->typeName )+".png";
+
+						png.SaveToFile(image, folder.FindFile(outName,false)->GetLocation().c_str());
+					}
 				}
 				if (RuntimeConfig::documentationTargetFolder.DoesExist())
 				{
@@ -3616,35 +3673,24 @@ int main( int argc, const char* argv[])
 
 					foreach (Objects::structurePrototypes,s)
 					{
-						LogEvent(EventSignificance::Uncommon, "Documenting "+(*s)->GetTypeName());
-						PathString name = MakeValidFilename( (*s)->GetTypeName() );
-						PathString outName = name+".txt";
-						StringFile file;
-						file.Create(folder.FindFile(outName,false)->GetLocation());
-
-						file << "="<<(*s)->GetTypeName()<<"="<<nl;
-						file << "{{img:units/"<< String(name) <<".png}}"<<nl;
 						Objects::BaseCommand::Label label;
 						(*s)->DescribeType(label,0xFFFFFFFF & ~Objects::WorldEntity::DescIncludeName & ~Objects::WorldEntity::DescIncludeCurrentHealth);
-
-						foreach(label.rawLines, line)
-						{
-							if (line->first.length() == 0)
-								continue;
-							if (line->second)
-								file << "*";
-							foreach(line->first, c)
-							{
-								if (Objects::IsTag(*c))
-									continue;
-								file << *c;
-							}
-							file << nl;
-						}
-
-
+						WriteDocumentation(folder,(*s)->GetTypeName(), label);
 					}
 
+					foreach (Objects::Component::allTurretComponents,c)
+					{
+						Objects::BaseCommand::Label label;
+						(*c)->DescribeType(label,false,false,"Vehicle",Objects::OwnerParameter());
+						WriteDocumentation(folder,(*c)->typeName, label);
+					}
+
+					foreach (Objects::Component::baseComponents,c)
+					{
+						Objects::BaseCommand::Label label;
+						(*c)->DescribeType(label,false,false,Objects::OwnerParameter());
+						WriteDocumentation(folder,(*c)->typeName, label);
+					}
 				}
 
 			}
