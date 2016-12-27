@@ -34,6 +34,7 @@ namespace DocumentationEditor
 			}
 
             DocumentID = Path.Combine(f.DirectoryName, f.CoreName).Substring(root.FullName.Length + 1);
+			DocumentID = DocumentID.Replace('\\', '/');
             Parent = folder;
             Parent.Documents.Add(this);
         }

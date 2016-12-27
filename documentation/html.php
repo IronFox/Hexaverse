@@ -55,7 +55,7 @@ $ctr=new WikiRenderer(new MyConfig());
 function Convert($strPage)
 {
 	global $ctr;
-	$strPage = str_replace(array('/','\'','.'),'',$strPage);
+	$strPage = str_replace(array('.'),'',$strPage);
 	$text = file_get_contents("./documentation/$strPage.prefix").file_get_contents("./documentation/$strPage.txt");
 	$text = $ctr->render($text);
 	$rs = array();
