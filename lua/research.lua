@@ -440,7 +440,12 @@ function Tower(turret--[[Table]]) --Table
 				end,
 			Describe = 
 				function(state) 
-					return Round(DefaultHealthAtCost(rs.Cost.Get(state)) * Get(turret.HealthMultiplier,state),2)..' [='.. DefaultHealthAtCost(rs.Cost.Get(state))..'*'.. Describe(turret.HealthMultiplier,state)..']';
+					local multiplier = Describe(turret.HealthMultiplier,state);
+					local health = DefaultHealthAtCost(rs.Cost.Get(state));
+					if (multiplier == 1) then
+						return Round(health);
+					end
+					return Round(health * Get(turret.HealthMultiplier,state),2)..' [='.. Round(health)..'*'.. multiplier..']';
 				end,
 		},
 		ScanningRange =
@@ -457,9 +462,9 @@ function Tower(turret--[[Table]]) --Table
 						return base;
 					end
 					if (modifier > 0) then
-						return Round(Get(turret.ScanningRange,state)+modifier,2)..' [='..  base ..'+'..Round(modifier,2)..']';
+						return Round(Get(turret.ScanningRange,state)+modifier,2)..' [='..  base ..'+'..Round(modifier,2)..' (tower modifier)]';
 					end
-					return Round(Get(turret.ScanningRange,state)+modifier,2)..' [='..  base ..'-'..Round(-modifier,2)..']';
+					return Round(Get(turret.ScanningRange,state)+modifier,2)..' [='..  base ..'-'..Round(-modifier,2)..' (tower modifier)]';
 				end,
 		},
 		IsUnlocked = 
