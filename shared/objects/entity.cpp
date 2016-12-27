@@ -406,7 +406,7 @@ namespace Objects
 			{
 				if (b->turret->CanAttack())
 				{
-					outResult << " Hrz. Attack range: "+b-> DescribeFlatAttackRange();
+					outResult << " Hrz. Attack range: "+b-> DescribeFlatAttackRange()+" ("+b->turret->trajectoryType.ToString()+")";
 				}
 				outResult << "";
 				b->turret->DescribeType(outResult,true,  false,  IF_SATELLITES( IsSatellite() ? "Satellite" : ) (IsVehicle() ? "Vehicle":"Tower"),owner);

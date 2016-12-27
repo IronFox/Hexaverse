@@ -2110,7 +2110,7 @@ namespace Objects
 							outResult << " Vehicle must remain stationary to fire";
 					}
 					if (!compound)
-						outResult << " Base horizontal attack range: "+horizontalAttackRange.Describe(researchState);
+						outResult << " Base horizontal attack range: "+horizontalAttackRange.Describe(researchState)+" ("+trajectoryType.ToString()+")";
 
 					int need = ammoNeedPerShot.GetValue(researchState);
 					if (need == 0)
@@ -2122,7 +2122,8 @@ namespace Objects
 						outResult << " EMP damage: "+damageLevel.Describe(researchState);
 					else
 						outResult << " Damage: "+damageLevel.Describe(researchState);
-					outResult << " "+attacksPerRound.Describe(researchState)+" attack(s) per round";
+					int count = attacksPerRound.GetValue(researchState);
+					outResult << " "+attacksPerRound.Describe(researchState)+" attack"+(count == 1 ? "" : "s")+" per round";
 				}
 
 				if (CanConstruct() && !compound)
