@@ -1,0 +1,13 @@
+= Vehicle =
+
+Vehicles are ground-based mobile units. They require at least a ledge to stand on, and cannot stand on lava alone.
+All regular vehicles are composed of a vehicle base and turret.
+Depending on the combination different capacities and restrictions apply.
+
+== Ships ==
+Vehicles built on a [[units/vbases/catamaran base]] are much faster on, but also restricted to water surfaces. They are usually a good choice on planets with extensive water surfaces, but rarely anywhere else.
+Naval [[units/turrets/terraformer]]s can dig canals through non-water terrain, but can never leave the water surface.
+
+==Heavy Vehicles==
+If a [[units/vbases/heavy base]] is used, then the vehicle cannot savely stand on water alone, and has reduced falling tolerance. However, similar to catcases it does come along with increased capacities on solid terrain. Heavy vehicles benefit from flat non-liquid terrain.
+Similarly to naval vehicles, [[units/turrets/terraformer]]s can make any terrain suitable for heavy vehicles.
