@@ -879,7 +879,13 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 				continue;
 			if (line->second)
 				file << "*";
-			foreach(line->first, c)
+			String linkedLine = line->first;
+			linkedLine.replace("Hrz. Attack range","[[concepts/attack range|Hrz. Attack range]]");
+			linkedLine.replace("Base horizontal attack range","[[concepts/attack range|Base horizontal attack range]]");
+			linkedLine.replace("Initiative","[[concepts/initiative|Initiative]]");
+			linkedLine.replace("Weight","[[concepts/weight|Weight]]");
+			
+			foreach(linkedLine, c)
 			{
 				if (Objects::IsTag(*c))
 				{
