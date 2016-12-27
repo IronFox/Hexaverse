@@ -45,14 +45,13 @@ namespace DocumentationEditor
 		/// <returns>true if the filestamp is as expected, false if the local content has been updated from file</returns>
 		public bool CheckContent()
 		{
-			if (file.LastWrite != contentStamp)
-			{
-				contentStamp = file.LastWrite;
-				content = file.Text;
-				changed = false;
-				return false;
-			}
-			return true;
+			var delta = contentStamp - file.LastWrite;
+			if (Math.Abs(delta.TotalSeconds) < 1)
+				return true;
+			contentStamp = file.LastWrite;
+			content = file.Text;
+			changed = false;
+			return false;
 		}
 
 		public string Text

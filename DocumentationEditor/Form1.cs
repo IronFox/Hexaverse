@@ -540,10 +540,17 @@ namespace DocumentationEditor
 
 		private void updater_Tick(object sender, EventArgs e)
 		{
-			if (currentDocument != null && !currentDocument.CheckContent())
+			try
 			{
-				Log("File content changed and reloaded: "+currentDocument.Name);
-				SelectDocument(currentDocument, true);
+				if (currentDocument != null && !currentDocument.CheckContent())
+				{
+					Log("File content changed and reloaded: " + currentDocument.Name);
+					SelectDocument(currentDocument, true);
+				}
+			}
+			catch (Exception ex)
+			{
+				Log(ex);
 			}
         }
 
