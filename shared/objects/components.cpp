@@ -2007,24 +2007,25 @@ namespace Objects
 			void			Base::DescribeType(BaseCommand::Label&label, bool compound, const OwnerParameter&owner)
 			{
 				if (!compound)
+				{
 					label << " Cost: "+String(ResourceTag(Resource::Minerals))+productionCosts.Describe(Objects::Component::ResearchStateOf(owner));
-				label.MarkBriefEnd();
-				if (!compound)
 					label << " Initiative: "+String(initiative);
+				}
 			}
 
 
 
-			void VehicleBase::DescribeType(BaseCommand::Label&outResult, bool compound, const OwnerParameter&owner)
+			void VehicleBase::DescribeType(BaseCommand::Label&outResult, bool compound, bool includeName, const OwnerParameter&owner)
 			{
 				outResult.BeginBrief();
 				Lua::Reference researchState = ResearchStateOf(owner);
-				outResult << typeName + " (Base)";
+				if (includeName)
+					outResult << typeName + " (Base)";
 				Base::DescribeType(outResult,compound,owner);
 				outResult.BeginBrief();
-				outResult << " Can climb "+String(maxClimbUp)+" height level(s) up";
+				outResult << " Can climb "+String(maxClimbUp)+" height level"+(maxClimbUp==1?"":"s")+" up";
 			
-				outResult << " Can safely fall down "+String(-minClimbDown)+" height level(s)";
+				outResult << " Can safely fall down "+String(-minClimbDown)+" height level"+(minClimbDown==-1?"":"s");
 				#ifndef ONE_COMPOUND_PER_FACTION
 					if (storageMultiplier != 1)
 						outResult << " Storage capacity multiplied by "+String(storageMultiplier);
@@ -2053,13 +2054,19 @@ namespace Objects
 
 
 
-			void Turret::DescribeType(BaseCommand::Label&outResult, bool compound, const String&parentType, const OwnerParameter&owner)
+			void Turret::DescribeType(BaseCommand::Label&outResult, bool compound, bool includeName, const String&parentType, const OwnerParameter&owner)
 			{
 				outResult.BeginBrief();
 				const String upperName = parentType.IsNotEmpty() ? parentType+"-Turret" : "Turret";
-				const String nameAppend = isDoomsday ? ", DOOMSDAY" : "";
 				const String lowerName = upperName.copyToLowerCase();
-				outResult << typeName+" ("+upperName+nameAppend+")";
+				if (includeName)
+				{
+					const String nameAppend = isDoomsday ? ", DOOMSDAY" : "";
+					outResult << typeName+" ("+upperName+nameAppend+")";
+				}
+				else
+					if (isDoomsday)
+						outResult << "DOOMSDAY";
 
 				if (!compound && RuntimeConfig::UnitLimits::AnySet())
 				{

@@ -409,7 +409,7 @@ namespace Objects
 					outResult << " Hrz. Attack range: "+b-> DescribeFlatAttackRange();
 				}
 				outResult << "";
-				b->turret->DescribeType(outResult,true, IF_SATELLITES( IsSatellite() ? "Satellite" : ) (IsVehicle() ? "Vehicle":"Tower"),owner);
+				b->turret->DescribeType(outResult,true,  false,  IF_SATELLITES( IsSatellite() ? "Satellite" : ) (IsVehicle() ? "Vehicle":"Tower"),owner);
 			}
 		}
 	#endif

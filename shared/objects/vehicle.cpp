@@ -86,6 +86,9 @@ namespace Objects
 	/*virtual override*/ String				Vehicle::DescribeMaxHealth() const
 	{
 		Lua::Reference state = GetResearchState();
+		String multiplier = turret->healthMultiplier.Describe(state);
+		if (multiplier == "1" || multiplier == "1.0")
+			return base->health.Describe(state);
 		return String(GetMaxHealth())+"[="+ base->health.Describe(state)+"*" + turret->healthMultiplier.Describe(state)+"]";
 	}
 
@@ -364,7 +367,7 @@ namespace Objects
 			outResult.BeginBrief();
 			Super::DescribeType(outResult,descFlags);
 			outResult << "";
-			base->DescribeType(outResult,true,owner);
+			base->DescribeType(outResult,true,true,owner);
 			outResult << "";
 			outResult.BeginBrief();
 

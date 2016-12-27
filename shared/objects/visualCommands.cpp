@@ -157,13 +157,18 @@ namespace Objects
 		{
 			if (topic->componentReference->IsVehicleBase())
 			{
-				((Component::VehicleBase*)topic->componentReference)->DescribeType(outResult,false,selectedEntity ? selectedEntity->owner : OwnerParameter());
+				((Component::VehicleBase*)topic->componentReference)->DescribeType(outResult,false,true,selectedEntity ? selectedEntity->owner : OwnerParameter());
 			}			
 			elif (topic->componentReference->IsTurret())
-				((Component::Turret*)topic->componentReference)->DescribeType(outResult,false, "Vehicle",selectedEntity ? selectedEntity->owner : OwnerParameter());
+				((Component::Turret*)topic->componentReference)->DescribeType(outResult,false, true,"Vehicle",selectedEntity ? selectedEntity->owner : OwnerParameter());
 		}
 	}
 
+
+	static void SetPrototypeKeyColor()
+	{
+		keyColor.Update(float4(0.5,0.5,1,1));
+	}
 
 	/*static*/ void		EntityConstructionCommand::UpdateTexture(BaseCommand&target, Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor/* = float4(0)*/)
 	{
@@ -176,6 +181,9 @@ namespace Objects
 		}
 
 		GeometryImage::BeginRendering(backgroundColor,distanceFactor);
+
+		if (!base || !turret)
+			SetPrototypeKeyColor();
 
 		TMatrix4<> sys = Matrix<>::eye4;
 		sys.x.x = sys.y.y = sys.z.z = 2.5f;
@@ -195,7 +203,7 @@ namespace Objects
 	{
 		if (isPrototype)
 		{
-			keyColor.Update(float4(0.5,0.5,1,1));
+			SetPrototypeKeyColor();
 			return;
 		}
 		if (v->health <= 0)
@@ -339,10 +347,10 @@ namespace Objects
 			if (base)
 			{
 				//PVehicle v(new Vehicle(p->owner, p->location, base,turret));
-				base->DescribeType(outResult,false,OwnerParameter());
+				base->DescribeType(outResult,false,true,OwnerParameter());
 			}			
 			if (turret)
-				turret->DescribeType(outResult,false, "Vehicle",selectedEntity->owner);
+				turret->DescribeType(outResult,false, true,"Vehicle",selectedEntity->owner);
 
 		}
 	}

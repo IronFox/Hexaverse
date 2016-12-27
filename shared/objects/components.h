@@ -383,7 +383,7 @@ namespace Objects
 					SmokeTrail
 				};
 				static float				CompileTrajectory(const Buffer0<TVec4<> >&v, geometryType_t type, Geometry&outGeo, float widthScale=1.f);
-				void						DescribeType(BaseCommand::Label&label, bool compound, const String&parentType, const OwnerParameter&owner);
+				void						DescribeType(BaseCommand::Label&label, bool compound, bool includeName, const String&parentType, const OwnerParameter&owner);
 			#endif
 
 			/**
@@ -472,7 +472,7 @@ namespace Objects
 			bool							CanStandOn(const Grid::WorldData&world, const Grid::LCellIdI&, bool ignoreWater, bool doFloat);
 
 			#ifdef HAS_WINDOW
-				void						DescribeType(BaseCommand::Label&label, bool compound, const OwnerParameter&);
+				void						DescribeType(BaseCommand::Label&label, bool compound, bool includeName, const OwnerParameter&);
 			#endif
 
 	
