@@ -1,0 +1,7 @@
+=Compound=
+
+Neighboring structures form compounds.
+Within a compound, working structures auto-balance resource output and demand. Non-working structures may function as relays between distant structures.
+Select any structure of a compound to see its resource balance in the bottom left screen corner.
+
+In the local game variance all structures of one [[concepts/faction]] form one implicit compound, regardless of distance.

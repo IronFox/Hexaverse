@@ -1,0 +1,11 @@
+=Scanning Range=
+{{img:Radar.png?300 }}
+All units provide a scanning range that reveals terrain and hostile units. The respective range is shown as a yellow sphere around the selected unit.
+
+Terrain and units outside the current scanning range of any friendly unit are at best preserved as memories, but not updated.
+The older the memory, the less likely it is still current.
+[[concepts/ghost|Ghosts]] of hostile units to which sensor contact has been lost are removed after 10 [[concepts/round|rounds]].
+
+{{ img:areas.png?300}}
+The terrain is shown in three shades (also depending on [[config/server|server configuration]]): Unvisited (1), visited (3), and currently observed (2). It is benefitial to observe as much of the terrain as possible.
+

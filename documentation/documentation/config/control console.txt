@@ -1,0 +1,20 @@
+= Server Control Console =
+
+Hexaverse comes with a localhost-only control console of running server instances.
+It is provided in the ''ControlConsole\'' subdirectory of the install directory.
+The program will automatically connect with any local server running on the default server port. If no server is running, or the connection is lost, the client will continuously probe //localhost// for a connection.
+It is not possible to connect to a remote server, as the server rejects all non-//localhost// connections.
+
+==Syntax==
+The program loosely follows a unix-like syntax, with commands and variables arranged in virtual directories by the server. Use the ''help'' command to get started.
+
+Some hints:
+* ''ls'' lists the contents of the local virtual server directory
+* ''cd [X]'' changes to the relative path ''[X]''. Use ''cd ..'' to move the respective virtual parent directory. Paths starting with a / indicate absolute paths.
+* ''exit'' closes the console
+* ''help [X]'' prints any available help text about ''[X]'' (variable or command)
+* ''[X]=[Y]'' defines or updates a variable ''[X]'' to a new value ''[Y]''. Not all variables can be updated. Others may execute complex code upon change
+
+Simply enter a command to execute it. 'Executing' a variable prints its current value.
+
+The console allows partial auto-completion. Use tab on an incomplete input to display and/or automatically chose a complete command/path/variable.

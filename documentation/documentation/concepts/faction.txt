@@ -1,0 +1,4 @@
+= Faction = 
+Each connected player client allows control of one faction. All units and their sensory are shared among each other and the player client.
+Structures of the same faction implicitly connect to share resources.
+Auto-firing towers will use sensory of any other unit of the same faction to extend their own vision.

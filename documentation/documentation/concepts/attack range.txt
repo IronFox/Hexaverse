@@ -1,4 +1,7 @@
 =Horizontal Attack Range=
+
+{{ img:attack.jpg?400|Artillery attack range}}
+
 Units with offensive capabilities can attack locations or units within attack range.
 Hexaverse distinguishes between missile and artillery trajectories.
 

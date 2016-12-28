@@ -1,0 +1,13 @@
+= Terrain =
+
+Hexaverse is played on (or something beneath) the surface of planets.
+
+
+== Terrain Clipping ==
+
+{{ img:ClipTerrain.png}}
+Terrain clipping allows to view caves beneath the ground. It visually removes terrain within a certain radius around the current focus point, and down to the current clipping height.
+It can be configured via the respective ''view'' buttons, but may also be toggled using the ''control key''.
+Page Up/Down can be used to quickly alter the clipping height.
+
+Liquids (water/lava) are shown in their respective colors but all other types are shown as solid black to contrast this viewing mode against regular non-clipped terrain.
