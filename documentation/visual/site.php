@@ -7,10 +7,10 @@ function PutLink($name, $url)
 	global $globalCurrent;
 	if ($globalCurrent == $name)
 	{
-		echo "<li class=\"menu_current\"><div class=\"menu_link\">$name</div></li>";
+		echo "<div class=\"menu_current\"><div class=\"menu_link\">$name</div></div>";
 		return;
 	}
-	echo "<li class=\"menu\"><a href=\"$url\" class=\"menu_link\"><div class=\"menu_link\">$name</div></a></li>";
+	echo "<div class=\"menu_entry\"><a href=\"$url\" class=\"menu_link\"><div class=\"menu_link\">$name</div></a></div>";
 }
 
 function Site($arElements, $title)
@@ -23,7 +23,7 @@ function Site($arElements, $title)
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Hexaverse - <?php echo $title; ?></title>
-	<link rel="stylesheet" href="<?php echo $siteRoot;?>/visual/style.css" />
+	<link rel="stylesheet" href="./visual/style.css" />
 	<link rel="shortcut icon" href="<?php echo $siteRoot;?>/visual/visual.ico" />
   </head>
   <body>
@@ -32,19 +32,19 @@ function Site($arElements, $title)
 		
 		<div class="body">
 			<div class="menu">
-			<ul class="menu">
 				<?php
 					PutLink("Home","/");
 					PutLink("News","/pages/news.php");
+					PutLink("Documentation","/html.php");
 					//PutLink("Forum","");
 					//PutLink("Gallery","");
 					//PutLink("&larr; Wiki","/gameWiki/");
-					PutLink("&larr; Forum","/gameForum/");
-					PutLink("&larr; Steam Greenlight","https://steamcommunity.com/sharedfiles/filedetails/?id=625864433");
+					PutLink("&uarr; Forum","/gameForum/");
+					PutLink("&uarr; Steam Greenlight","https://steamcommunity.com/sharedfiles/filedetails/?id=625864433");
 					PutLink("Downloads",$siteRoot."/pages/download/");
 					PutLink("Impressum",$siteRoot."/pages/impressum.php");
 				?>
-			</ul>
+				<div class='terminator' ></div>
 			</div>
 			<div class="messages">
 <?php
@@ -52,12 +52,14 @@ function Site($arElements, $title)
 	{
 		echo '<div class="message">';
 			echo $el;
+			echo '<div style="clear: both;"></div>';
 		echo '</div>';
 	}
 ?>
 			
 			</div>
 		</div>
+		<div class='terminator' ></div>
 		<div class="footer">
 			<div class="footer_inner">Copyright &copy; Stefan Elsen 2016</div>
 		</div>
