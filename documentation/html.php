@@ -59,10 +59,13 @@ $ctr=new WikiRenderer(new MyConfig());
 function Convert($strPage)
 {
 	global $ctr;
+	if (!$strPage)
+		$strPage = "home";
 	$strPage = str_replace(array('.'),'',$strPage);
 	$text = file_get_contents("./documentation/$strPage.prefix").file_get_contents("./documentation/$strPage.txt");
 	$text = $ctr->render($text);
 	$rs = array();
+	$rs[] = "<a href='html.php?page=home'>Documentation Home</a>";
 	if($ctr->errors)
 	{
 		//echo '<p style="color:red;">Errors in line(s):';
