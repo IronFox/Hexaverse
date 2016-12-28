@@ -257,19 +257,20 @@ class dkxhtml_image extends WikiTagXhtml {
                 $align='left';
             }
             if($m[3]) {
-                $width=$height=$m[4];
+                $width=$m[4];
                 if($m[5])
                    $height=$m[6];
             }
             $href= $m[2];
         }
         list($href, $label) = $this->config->processLink($href, $this->name);
-        $tag = '<img src="'.$href.'"';
+        $tag = '<img class="documentation" src="'.$href.'"';
         if($width != '')
             $tag.=' width="'.$width.'"';
         if($height != '')
             $tag.=' height="'.$height.'"';
         if($align != '')
+            //$tag.=' style="float:'.$align.'"';
             $tag.=' align="'.$align.'"';
 
         if($title != '') 
