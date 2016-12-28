@@ -3178,11 +3178,11 @@ void ParseKeyValue(const String&key, const String&value)
 			RuntimeConfig::serverAddress = Network::ServerAddress(value);
 			LogEvent(EventClass::Preset::configuration, nullptr, "Server address set to "+RuntimeConfig::serverAddress.ToString());
 		}
-		elif(key == "generateImagesHere")
+		elif(key == "documentHere")
 		{
-			FileSystem::Folder().FindFolder(PathString(value),RuntimeConfig::imageTargetFolder,false);
-			if (!RuntimeConfig::imageTargetFolder.DoesExist())
-				FileSystem::CreateDirectory(RuntimeConfig::imageTargetFolder);
+			FileSystem::Folder().FindFolder(PathString(value),RuntimeConfig::documentationRootFolder,false);
+			if (!RuntimeConfig::documentationRootFolder.DoesExist())
+				FileSystem::CreateDirectory(RuntimeConfig::documentationRootFolder);
 		}
 		elif(key == "generateDocumentationHere")
 		{
@@ -3651,77 +3651,83 @@ int main( int argc, const char* argv[])
 			}
 
 
-			if (RuntimeConfig::documentationTargetFolder.DoesExist() || RuntimeConfig::imageTargetFolder.DoesExist())
+			if (RuntimeConfig::documentationRootFolder.DoesExist())
 			{
-				if (RuntimeConfig::imageTargetFolder.DoesExist())
 				{
-					LogEvent(EventSignificance::Uncommon, "Documenting objects to "+String(RuntimeConfig::documentationTargetFolder.GetLocation())+ "...");
-					Objects::GeometryImage::resultResolution = 1024;
-					Objects::EntityCommand container;
-					Image image;
-					FileSystem::Folder folder(RuntimeConfig::imageTargetFolder);
-					foreach (Objects::structurePrototypes,s)
+					FileSystem::Folder imageTarget = FileSystem::Folder(RuntimeConfig::documentationRootFolder).FindFolder("images",false);
+					if (imageTarget.IsValidLocation())
 					{
-						LogEvent(EventSignificance::Uncommon, "Capturing "+(*s)->GetTypeName());
-						Objects::EntityCommand::UpdateTexture(container,*s,true);
-						FinishRendering(folder, container.texture, (*s)->GetTypeName());
-					}
+						LogEvent(EventSignificance::Uncommon, "Rendering type images to "+String(imageTarget.GetLocation())+ "...");
+						Objects::GeometryImage::resultResolution = 1024;
+						Objects::EntityCommand container;
+						Image image;
+						FileSystem::Folder folder(imageTarget);
+						foreach (Objects::structurePrototypes,s)
+						{
+							LogEvent(EventSignificance::Uncommon, "Capturing "+(*s)->GetTypeName());
+							Objects::EntityCommand::UpdateTexture(container,*s,true);
+							FinishRendering(folder, container.texture, (*s)->GetTypeName());
+						}
 
-					foreach (Objects::Component::allTurretComponents,c)
-					{
-						LogEvent(EventSignificance::Uncommon, "Capturing "+(*c)->typeName);
-						Objects::EntityConstructionCommand::UpdateTexture(container,nullptr,*c);
-						FinishRendering(folder, container.texture, (*c)->typeName);
-					}
+						foreach (Objects::Component::allTurretComponents,c)
+						{
+							LogEvent(EventSignificance::Uncommon, "Capturing "+(*c)->typeName);
+							Objects::EntityConstructionCommand::UpdateTexture(container,nullptr,*c);
+							FinishRendering(folder, container.texture, (*c)->typeName);
+						}
 
-					foreach (Objects::Component::baseComponents,c)
-					{
-						LogEvent(EventSignificance::Uncommon, "Capturing "+(*c)->typeName);
-						Objects::EntityConstructionCommand::UpdateTexture(container,*c,nullptr);
-						FinishRendering(folder, container.texture, (*c)->typeName);
+						foreach (Objects::Component::baseComponents,c)
+						{
+							LogEvent(EventSignificance::Uncommon, "Capturing "+(*c)->typeName);
+							Objects::EntityConstructionCommand::UpdateTexture(container,*c,nullptr);
+							FinishRendering(folder, container.texture, (*c)->typeName);
+						}
 					}
 				}
-				if (RuntimeConfig::documentationTargetFolder.DoesExist())
 				{
-					FileSystem::Folder rootFolder(RuntimeConfig::documentationTargetFolder);
-					FileSystem::Folder structureFolder(rootFolder.FindFolder("structures",false));
-					FileSystem::Folder turretFolder(rootFolder.FindFolder("turrets",false));
-					FileSystem::Folder vbaseFolder(rootFolder.FindFolder("vbases",false));
-
-					StringFile unitList;
-					unitList.Create(rootFolder.FindFile("list.prefix",false)->GetLocation());
-
-					unitList << "=Unit Types and Components="<<nl;
-
-					unitList << "==Structures=="<<nl;
-					foreach (Objects::structurePrototypes,s)
+					FileSystem::Folder documentationTarget = FileSystem::Folder(RuntimeConfig::documentationRootFolder).FindFolder("documentation",false);
+					if (documentationTarget.IsValidLocation())
 					{
-						Objects::BaseCommand::Label label;
-						(*s)->DescribeType(label,0xFFFFFFFF & ~Objects::WorldEntity::DescIncludeName & ~Objects::WorldEntity::DescIncludeCurrentHealth);
-						String pretext;
-						auto tb = (*s)->GetTurretBase();
-						if (tb)
+						FileSystem::Folder rootFolder(documentationTarget);
+						FileSystem::Folder structureFolder(rootFolder.FindFolder("structures",false));
+						FileSystem::Folder turretFolder(rootFolder.FindFolder("turrets",false));
+						FileSystem::Folder vbaseFolder(rootFolder.FindFolder("vbases",false));
+
+						StringFile unitList;
+						unitList.Create(rootFolder.FindFile("list.prefix",false)->GetLocation());
+
+						unitList << "=Unit Types and Components="<<nl;
+
+						unitList << "==Structures=="<<nl;
+						foreach (Objects::structurePrototypes,s)
 						{
-							label.rawLines.Insert(0).first = "Based on [[units/turrets/"+String(MakeValidFilename(tb->turret->typeName))+"|"+tb->turret->typeName+"]] turret";
-							label.rawLines.First().second = true;
+							Objects::BaseCommand::Label label;
+							(*s)->DescribeType(label,0xFFFFFFFF & ~Objects::WorldEntity::DescIncludeName & ~Objects::WorldEntity::DescIncludeCurrentHealth);
+							String pretext;
+							auto tb = (*s)->GetTurretBase();
+							if (tb)
+							{
+								label.rawLines.Insert(0).first = "Based on [[units/turrets/"+String(MakeValidFilename(tb->turret->typeName))+"|"+tb->turret->typeName+"]] turret";
+								label.rawLines.First().second = true;
+							}
+							WriteDocumentation(rootFolder, structureFolder,unitList, (*s)->GetTypeName(), label,pretext);
 						}
-						WriteDocumentation(rootFolder, structureFolder,unitList, (*s)->GetTypeName(), label,pretext);
-					}
 
-					unitList << "==Turrets=="<<nl;
-					foreach (Objects::Component::allTurretComponents,c)
-					{
-						Objects::BaseCommand::Label label;
-						(*c)->DescribeType(label,false,false,"",Objects::OwnerParameter());
-						WriteDocumentation(rootFolder, turretFolder,unitList, (*c)->typeName, label);
-					}
+						unitList << "==Turrets=="<<nl;
+						foreach (Objects::Component::allTurretComponents,c)
+						{
+							Objects::BaseCommand::Label label;
+							(*c)->DescribeType(label,false,false,"",Objects::OwnerParameter());
+							WriteDocumentation(rootFolder, turretFolder,unitList, (*c)->typeName, label);
+						}
 
-					unitList << "==Vehicle Bases=="<<nl;
-					foreach (Objects::Component::baseComponents,c)
-					{
-						Objects::BaseCommand::Label label;
-						(*c)->DescribeType(label,false,false,Objects::OwnerParameter());
-						WriteDocumentation(rootFolder, vbaseFolder,unitList, (*c)->typeName, label);
+						unitList << "==Vehicle Bases=="<<nl;
+						foreach (Objects::Component::baseComponents,c)
+						{
+							Objects::BaseCommand::Label label;
+							(*c)->DescribeType(label,false,false,Objects::OwnerParameter());
+							WriteDocumentation(rootFolder, vbaseFolder,unitList, (*c)->typeName, label);
+						}
 					}
 				}
 

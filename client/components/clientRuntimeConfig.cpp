@@ -11,7 +11,7 @@ namespace RuntimeConfig
 	bool udpListen = true;
 
 	Network::ServerAddress	serverAddress;
-	FileSystem::File		documentationTargetFolder,imageTargetFolder;
+	FileSystem::File		documentationRootFolder;
 
 
 
