@@ -3,6 +3,11 @@
 
 ==Camera Control==
 
+* The **ASDW** keys can be used to rotate the camera around the currently focused point.
+* The **Mouse Wheel**, or alternatively the **Up and Down Arrow Keys** zoom the camera in and out.
+* Press and hold the **Right or Middle Mouse Buttons** to pan the camera around the planet.
+
+
 ==Unit Control==
 Units are selected by clicking on them. Clicking anywhere else will deselect any selected unit.
 With a unit selected, the **right mouse button** may be used to direct it. When clicking on empty terrain, a selected mobile unit will attempt to reach that destination during its next motion phase.
@@ -17,8 +22,8 @@ Right clicking anywhere with a [[units/structures/vehicle plant]] selected moves
 ==GUI Buttons==
 
 Hexaverse is mostly controlled via its hexagonal button configuration.
+Some buttons may be disabled (semi-transparent), or perma-active (blue).
 There are four button areas, with different functionality.
-
 
 ===Main Commands===
 {{ img:globalCommands.png}}

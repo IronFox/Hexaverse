@@ -1,6 +1,6 @@
 =Scanning Range=
 {{img:Radar.png?300 }}
-All units provide a scanning range that reveals terrain and hostile units. The respective range is shown as a yellow sphere around the selected unit.
+All units provide a scanning range that reveals terrain and hostile units. The respective range is shown as a yellow shape around the selected unit.
 
 Terrain and units outside the current scanning range of any friendly unit are at best preserved as memories, but not updated.
 The older the memory, the less likely it is still current.

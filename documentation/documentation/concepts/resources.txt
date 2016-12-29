@@ -1,2 +1,22 @@
 =Resources=
 Resources in Hexaverse are infinite, but must be retrieved from the local planet using [[units/structures/mine|mines]] or produced by other structures, such as [[units/structures/generator|generators]].
+
+==Natural Resources==
+{{ resources.png|Natural resources shown atop a desert planet}}
+Natural resources are retrieved by [[units/structures/mine|mines]] from the planet core. Mines will retrieve whichever natural resource is located beneath them, provided a link to the core can be maintained.
+
+When visualized on the terrain (see [[controls]] for details), they are shown as colored bars atop the terrain:
+* **Green**: %Fuel% Fuel
+* **Gray**: %Minerals% Minerals
+* **Yellow**: %Uranium% Uranium
+The higher the bar, the greater the yield per turn.
+Multiple natural resources may be found on the same cell, causing their bars to stack.
+
+
+Natural resource coverage is initially unknown, and uncoverded automatically within the [[concepts/scanning range]] of vehicles featuring a [[units/turrets/surveyor]] turret.
+
+==Other Resources==
+Currently only %Energy% Energy is produced artificially by [[units/structures/generator|generators]] and [[units/structures/reactor core|reactor cores]], by converting %Fuel% Fuel or %Uranium% Uranium.
+Many structures require a continuous supply of %Energy% Energy to operate.
+
+%Time% Time is also frequently shown as an icon, indicating the number of [[concepts/round|rounds]] necessary to complete an operation.
