@@ -19,4 +19,4 @@ Natural resource coverage is initially unknown, and uncoverded automatically wit
 Currently only %Energy% Energy is produced artificially by [[units/structures/generator|generators]] and [[units/structures/reactor core|reactor cores]], by converting %Fuel% Fuel or %Uranium% Uranium.
 Many structures require a continuous supply of %Energy% Energy to operate.
 
-%Time% Time is also frequently shown as an icon, indicating the number of [[concepts/round|rounds]] necessary to complete an operation.
+%Time% Time is also frequently shown as a resource icon, indicating the number of [[concepts/round|rounds]] necessary to complete an operation.
