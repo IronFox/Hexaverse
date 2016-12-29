@@ -874,7 +874,7 @@ namespace Objects
 	{
 		if (!turret->CanAttack())
 			return 0.f;
-		return cache.horizontalAttackRange.GetEMPModified(*this,turret->horizontalAttackRange,Objects::LuaAttribute<float>(2.f));
+		return cache.horizontalAttackRange.GetEMPModified(*this,turret->horizontalAttackRange,Objects::LuaAttribute<float>(2.f),true);
 		//EMPModify(turret->GetHorizontalAttackRange(owner,2.f),2.f);
 	}
 
@@ -2140,7 +2140,7 @@ namespace Objects
 					task.blastVisualization.ibo = sphereIBO[0];
 					//shape.depthTest = true;
 
-					turret->BuildBlastSystem(trajectory.last().xyz * trajectory.last().w,turret->explosionRadius(owner),task.blastSystem);
+					turret->BuildBlastSystem(trajectory.last().xyz * trajectory.last().w,turret->GetExplosionRadius(owner),task.blastSystem);
 				}
 			#endif
 		}

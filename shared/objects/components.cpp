@@ -121,7 +121,7 @@ namespace Objects
 
 		float							Turret::GetExplosionRadius(const OwnerParameter&owner) const
 		{
-			return  explosionRadius(owner);
+			return  explosionRadius(owner)*Grid::UnitScale;
 		}
 
 		int								Turret::GetAttacksPerRound(const OwnerParameter&owner) const
@@ -138,7 +138,7 @@ namespace Objects
 		{
 			if (horizontalAttackRange.IsEmpty())
 				return 0;
-			return (horizontalAttackRange(owner) + bonus(owner));
+			return (horizontalAttackRange(owner) + bonus(owner))*Grid::UnitScale;
 		}
 
 		float							Turret::GetScanningRange(const OwnerParameter&owner, int bonus/*=0*/) const
@@ -148,7 +148,7 @@ namespace Objects
 
 		float							Turret::GetGroundScanningRange(const OwnerParameter&owner) const
 		{
-			return groundScanningRange(owner);
+			return groundScanningRange(owner)*Grid::UnitScale;
 		}
 
 
@@ -1084,13 +1084,13 @@ namespace Objects
 		float		Bomb::GetRadius(bool doomsday, const OwnerParameter& owner)
 		{
 			//return doomsday ? 7*Grid::UnitScale : artillery.explosionRadius*2;
-			return doomsday ? bomb.GetExplosionRadius(owner) : artillery.GetExplosionRadius(owner)*2;
+			return bomb.GetExplosionRadius(owner) * (doomsday ? 2 : 1);
 		}
 
 		int			Bomb::GetDamageLevel(bool doomsday, const OwnerParameter& owner)
 		{
 			//return doomsday ? 50 : artillery.damageLevel*2;
-			return doomsday ? bomb.GetDamageLevel(owner)  : artillery.GetDamageLevel(owner)*2;
+			return bomb.GetDamageLevel(owner) * (doomsday ? 5 : 1);
 		}
 
 	
@@ -2119,13 +2119,24 @@ namespace Objects
 						outResult <<"Does not require ammunition";
 					else
 						outResult <<"Consumes "+String(ResourceTag(ammoType))+ammoNeedPerShot.Describe(researchState)+" per shot";
+					int count = attacksPerRound.GetValue(researchState);
+					outResult <<""+attacksPerRound.Describe(researchState)+" attack"+(count == 1 ? "" : "s")+" per round";
+				}
+				if (explosionRadius.IsSet())
+				{
 					outResult <<"Explosion radius: "+explosionRadius.Describe(researchState);
+					if (this == &bomb)
+						outResult.GetLastLine() +=" ("+String(ResourceTag(Resource::Uranium))+": *2)";
+						//bomb.GetExplosionRadius(owner) : artillery.GetExplosionRadius(owner)*2;
+				}
+				if (damageLevel.IsSet())
+				{
 					if (dealsEMPDamage)
 						outResult <<"EMP damage: "+damageLevel.Describe(researchState);
 					else
 						outResult <<"Damage: "+damageLevel.Describe(researchState);
-					int count = attacksPerRound.GetValue(researchState);
-					outResult <<""+attacksPerRound.Describe(researchState)+" attack"+(count == 1 ? "" : "s")+" per round";
+					if (this == &bomb)
+						outResult.GetLastLine() +=" ("+String(ResourceTag(Resource::Uranium))+": *5)";
 				}
 
 				if (CanConstruct() && !compound)
@@ -2167,7 +2178,8 @@ namespace Objects
 						outResult << ("This "+lowerName+" type is especially suited for detecting hostile entities. Such turret types are manadatory in order to see hostile forces approaching, as well as their attacks. Offensive turrets usually lack the necessary scanning range to see where they are shooting and depend on this turret type to reside in the vicinity.");
 
 				if (this == &bomb)
-					outResult << "This "+lowerName+" type can self-detonate in a large explosion. The vehicle is lost in the process. The explosion can be caused explicitly or by sufficient external damage. Bombs are very powerful and can trigger the explosion of neighboring bombs. An optional "+String(ResourceTag(Resource::Uranium))+"-driven DOOMSDAY explosion provides an extended explosion radius but will notify hostile factions of the explosion.";
+					outResult << "This "+lowerName+" type can self-detonate in a large explosion. The vehicle is lost in the process. The explosion can be caused explicitly or by sufficient external damage."
+					"Bombs are very powerful and can trigger the explosion of neighboring bombs. An optional "+String(ResourceTag(Resource::Uranium))+"-driven DOOMSDAY explosion provides an extended explosion radius but will notify hostile factions of the explosion.";
 				//if (isDoomsday)
 				//{
 				//	outResult.WrapAppendText("This "+lowerName+" type is classified as Doomsday weaponry. Careful with this one.");

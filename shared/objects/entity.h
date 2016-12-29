@@ -146,7 +146,7 @@ namespace Objects
 		public:
 			index_t				versionCounter=InvalidIndex;
 			T					cached;
-			T					GetEMPModified(const WorldEntity&e,const LuaAttribute<T>&source,const LuaAttribute<T>&bonus = LuaAttribute<T>());
+			T					GetEMPModified(const WorldEntity&e,const LuaAttribute<T>&source,const LuaAttribute<T>&bonus = LuaAttribute<T>(), bool applyUnitScale=false);
 			String				DescribeEMPModified(const WorldEntity&e,const LuaAttribute<T>&source,const LuaAttribute<T>&bonus = LuaAttribute<T>());
 			template <typename T2>
 				T				Get(const Lua::Reference&researchState, const LuaAttribute<T>&source, const LuaAttribute<T2>&multiplier, T minimum);
@@ -614,7 +614,7 @@ namespace Objects
 
 
 	template <typename T>
-		T	LuaAttributeCache<T>::GetEMPModified(const WorldEntity&e,const LuaAttribute<T>&source,const LuaAttribute<T>&bonus /*= LuaAttribute<T>()*/)
+		T	LuaAttributeCache<T>::GetEMPModified(const WorldEntity&e,const LuaAttribute<T>&source,const LuaAttribute<T>&bonus /*= LuaAttribute<T>()*/, bool applyUnitScale/*=false*/)
 		{
 			if (versionCounter != Super::versionCounter)
 			{
@@ -623,6 +623,8 @@ namespace Objects
 				if (bonus.IsSet())
 					val += bonus.GetValue(e.GetResearchState());
 				cached = WorldEntity::StaticEMPModify(val,2.f * Grid::UnitScale,e.empDamageLevel);
+				if (applyUnitScale)
+					cached *= Grid::UnitScale;
 			}
 			return cached;
 		}
@@ -630,9 +632,13 @@ namespace Objects
 		String	LuaAttributeCache<T>::DescribeEMPModified(const WorldEntity&e,const LuaAttribute<T>&source,const LuaAttribute<T>&bonus /*= LuaAttribute<T>()*/)
 		{
 			if (bonus.IsSet())
-				return String(GetEMPModified(e,source,bonus))+" [="+source.Describe(e.GetResearchState()) + "+"+bonus.Describe(e.GetResearchState())+" (bonus)]";
-			else
-				return source.Describe(e.GetResearchState());
+			{
+				String bonusStr = bonus.Describe(e.GetResearchState());
+				if (bonusStr != "0")
+					return String(GetEMPModified(e,source,bonus))+" [="+source.Describe(e.GetResearchState()) + "+"+bonusStr+" (bonus)]";
+			}
+			
+			return source.Describe(e.GetResearchState());
 		}
 	template <typename T>
 		template <typename T2>

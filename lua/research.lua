@@ -196,7 +196,7 @@ TurretConfig =
 		Cost = 10,
 		Weight = 2,
 		HealthMultiplier = 1,
-		ScanningRange = 12,
+		ScanningRange = 7,
 		IsUnlocked = true,
 	},
 	Surveyor =
@@ -209,12 +209,13 @@ TurretConfig =
 	},
 	Bomb =
 	{
+		Op_Nuclear = 50,
 		Cost = 40,
 		Weight = 5,
 		HealthMultiplier = 1,
 		ScanningRange = 1,
-		ExplosionRadius = 7,
-		DamageLevel = 50,
+		ExplosionRadius = 4,
+		DamageLevel = 10,
 		HorizontalAttackRange = 0,
 		IsUnlocked = true,
 	},
@@ -239,7 +240,7 @@ TurretConfig =
 		ScanningRange = 4,
 		AttacksPerRound = 1,
 		DamageLevel = 7,
-		ExplosionRadius = 3.5,
+		ExplosionRadius = 2,
 		HorizontalAttackRange = 7,
 		IsUnlocked = false,
 	},

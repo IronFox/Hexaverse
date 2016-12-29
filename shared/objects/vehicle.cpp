@@ -65,7 +65,7 @@ namespace Objects
 
 	/*virtual override*/ float		Vehicle::GetScanningRange() const
 	{
-		return cache.maxScanningRange.GetEMPModified(*this,turret->scanningRange,turret->CanAttack() ? Component::FFunc() : base->turretRangeModifier);
+		return cache.maxScanningRange.GetEMPModified(*this,turret->scanningRange,turret->CanAttack() ? Component::FFunc() : base->turretRangeModifier,true);
 		//return EMPModify(turret->GetScanningRange(owner,turret->CanAttack() ? 0 : base->rangeModifier), 2.f);
 	}
 
@@ -198,7 +198,7 @@ namespace Objects
 	
 	/*virtual override*/ float			Vehicle::GetFlatAttackRange() const
 	{
-		return cache.horizontalAttackRange.GetEMPModified(*this,turret->horizontalAttackRange,base->turretRangeModifier);
+		return cache.horizontalAttackRange.GetEMPModified(*this,turret->horizontalAttackRange,base->turretRangeModifier,true);
 		//EMPModify(turret->GetHorizontalAttackRange(owner,base->turretRangeModifier),1.f);
 	}
 
