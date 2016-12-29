@@ -1243,7 +1243,6 @@
 					hoveringText.Clear();
 					if (hoveringOver)
 						hoveringOver->command->CompileLabel(hoveringText);
-					hoveringText.MarkBriefEnd();
 					hoveringText.ReWrap();
 					hoveringWidth = 0;
 					hoveringBrief = true;

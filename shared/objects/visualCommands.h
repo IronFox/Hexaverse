@@ -230,7 +230,7 @@ namespace Objects
 		public:
 			BaseCommand::Label		customLabel;
 
-			/**/		CustomLabel(const String&name):Super(name) {customLabel.BeginBrief(); customLabel << name; customLabel.MarkBriefEnd();}
+			/**/		CustomLabel(const String&name):Super(name) {customLabel.BeginBrief(); customLabel << name; }
 			/**/		CustomLabel() {}
 			virtual void	CompileLabel(BaseCommand::Label&outResult) override
 			{
