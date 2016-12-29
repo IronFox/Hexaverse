@@ -63,6 +63,8 @@ function Convert($strPage)
 		$strPage = "home";
 	$strPage = str_replace(array('.'),'',$strPage);
 	$text = file_get_contents("./documentation/$strPage.prefix").file_get_contents("./documentation/$strPage.txt");
+	$text = preg_replace('/{{(\s?)([^:]+)}}/','{{\1img:\2}}',$text);
+
 	$text = $ctr->render($text);
 	$rs = array();
 	$rs[] = "<a href='html.php?page=home'>Documentation Home</a>";
