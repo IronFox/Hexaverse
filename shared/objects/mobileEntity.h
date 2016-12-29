@@ -528,6 +528,9 @@ namespace Objects
 
 		//WorldEntity overrides:
 		//virtual bool			IsActive() const override {return !IsHibernating() && Super::IsActive();}
+		#ifndef CLIENT
+			virtual void		ClearSafeTasks() override;
+		#endif
 		virtual bool			IsMobile() const override {return true;}
 		#ifndef NO_HIBERNATION
 			virtual const Hibernating*ToHibernating() const override {return this;}

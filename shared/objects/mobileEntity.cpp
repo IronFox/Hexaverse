@@ -1101,6 +1101,24 @@ namespace Objects
 		}
 
 
+		/*virtual override*/ void			MobileEntity::ClearSafeTasks()
+		{
+			if (constructionRoundCounter > 0 
+				&& myTasks.IsNotEmpty() 
+				&& myTasks.Peek().IsJob() 
+				&& myTasks.Peek().job->resourceCostLeft > 0)
+			{
+				if (myTasks.Count() == 1)
+					return;//avoid signalling change
+				while (myTasks.Count() > 1)
+					myTasks.EraseBack();
+			}
+			else
+				myTasks.Clear();
+			RegisterChange(TasksChanged,motionTime);
+		}
+
+
 		/*virtual override*/ void				MobileEntity::Attack(float&attackTime)
 		{
 			//ASSERT1__(NextTaskIsAttack(),this->id.ToString());

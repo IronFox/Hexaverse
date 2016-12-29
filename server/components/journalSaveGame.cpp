@@ -715,7 +715,6 @@ namespace Journal
 
 	/*virtual override*/ void	Round::DirectToCommand::Compile(Entry&e) const
 	{
-		
 		foreach (targets,t)
 			e.locationParameters.Set("Waypoint",*t);
 		if (mode != Objects::CursorMode::Idle)
@@ -724,9 +723,15 @@ namespace Journal
 			e.intParameters.Set("LeftClick",leftClick);
 		if (detailed)
 			e.intParameters.Set("DetailedPath",detailed);
+		if (clearSafeTasks)
+			e.intParameters.Set("ClearSafeTasks",clearSafeTasks);
 	}
 	/*virtual override*/ void	Round::DirectToCommand::Execute(const Objects::PWorldEntity&e) const
 	{
+		if (clearSafeTasks)
+		{
+			e->ClearSafeTasks();
+		}
 		if (!e->DirectTo(mode,targets,detailed,leftClick))
 		{
 			#ifdef _DEBUG
@@ -759,6 +764,10 @@ namespace Journal
 			detailed = md != 0;
 		else
 			detailed = false;
+		if (e.intParameters.TryGet("ClearSafeTasks",md))
+			clearSafeTasks = md != 0;
+		else
+			clearSafeTasks = false;
 	}
 
 
@@ -1951,13 +1960,14 @@ namespace Journal
 		}
 	}
 
-	void	Round::RegisterDirectEntityTo(bool apply, const Objects::PWorldEntity&e, Objects::CursorMode mode, const ArrayRef<Grid::LCellIdI>&target, bool detailed, bool mouseLeftClick)
+	void	Round::RegisterDirectEntityTo(bool apply, const Objects::PWorldEntity&e, Objects::CursorMode mode, const ArrayRef<Grid::LCellIdI>&target, bool detailed, bool mouseLeftClick, bool clearSafeTasks)
 	{
 		EntityStrand&strand = factionStrands.Set(e->owner->id).entityStrands.Set(e->id);
 		std::shared_ptr<DirectToCommand> cmd(new DirectToCommand());
 		cmd->leftClick = mouseLeftClick;
 		cmd->mode = mode;
 		cmd->detailed = detailed;
+		cmd->clearSafeTasks = clearSafeTasks;
 		cmd->targets = target;
 		if (!apply || cmd->TryExecute(e))
 			strand.Append(cmd);

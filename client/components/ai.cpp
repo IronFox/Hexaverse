@@ -4,7 +4,8 @@
 
 namespace LocalApplicationInterface
 {
-	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick, Objects::Vehicle::mode_t mode);
+	UINT8	AssembleMotionFlags(bool detailedPath, bool leftClick, bool clearSafeTasks);
+	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, UINT8 flags, Objects::Vehicle::mode_t mode);
 	void	SignalMarkerCreation(Protocol::Marker&marker);
 	void	SignalMarkerDeletion(TUniqueID markerID);
 	void	SignalMarkerTouch(Objects::Marker&marker);
@@ -155,7 +156,7 @@ namespace AI
 		static Buffer0<Grid::LCellIdI> path;
 		path.Clear();
 		AssemblePath(mapper, current,path);
-		LocalApplicationInterface::DirectTo(v,path.ToRef(),true,false,Objects::CursorMode::Idle);
+		LocalApplicationInterface::DirectTo(v,path.ToRef(),LocalApplicationInterface::AssembleMotionFlags(true,false,false),Objects::CursorMode::Idle);
 	}
 
 
@@ -384,7 +385,7 @@ namespace AI
 			{
 				targets[t-attackTarget.pointer()] = t->target;
 			}
-			LocalApplicationInterface::DirectTo(v,targets,false,true, Objects::CursorMode::AttackMode);
+			LocalApplicationInterface::DirectTo(v,targets,LocalApplicationInterface::AssembleMotionFlags( false,true, false),Objects::CursorMode::AttackMode);
 
 			if (attackTarget.IsNotEmpty() && !v->base->ignoresVehicleAttacks)
 				return;

@@ -1459,6 +1459,7 @@ namespace Receiver
 			}
 		const bool leftClick = (cmd.directFlags & Protocol::DirectFlags::LeftClick) != 0;
 		const bool detailed = (cmd.directFlags & Protocol::DirectFlags::Detailed) != 0;
+		const bool clearSafeTasks = (cmd.directFlags & Protocol::DirectFlags::ClearSafeTasks) != 0;
 		//if (!e->DirectTo((Objects::Vehicle::mode_t)cmd.mode.value,cmd.path,detailed,leftClick))
 		//{
 		//	LogEvent(EventClass::Preset::commandRejected,peer,e,"Unable to comply");
@@ -1469,7 +1470,7 @@ namespace Receiver
 		//	LogEvent(EventSignificance::Common,peer,e,"(Directed entity in mode "+String(cmd.mode.value)+" via click "+String(leftClick)+" to "+buffer.ToString()+" (detailed="+String(detailed)+"))");
 		//	return;
 		//}
-		Journal::currentRound.RegisterDirectEntityTo(true,e,(Objects::Vehicle::mode_t)cmd.mode.value,cmd.path,detailed,leftClick);
+		Journal::currentRound.RegisterDirectEntityTo(true,e,(Objects::Vehicle::mode_t)cmd.mode.value,cmd.path,detailed,leftClick,clearSafeTasks);
 	}
 
 	#if 0

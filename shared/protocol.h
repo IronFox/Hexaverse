@@ -1684,7 +1684,8 @@ namespace Protocol
 		enum flag_t
 		{
 			LeftClick = 0x1,
-			Detailed = 0x2
+			Detailed = 0x2,
+			ClearSafeTasks = 0x4
 		};
 
 	}

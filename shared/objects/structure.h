@@ -1681,6 +1681,9 @@ namespace Objects
 		virtual ConstName			GetCTypeName() const override {return turret->constTowerName;}
 
 		//WorldEntity overrides:
+		#ifndef CLIENT
+			virtual void			ClearSafeTasks() override	{this->ClearTasks();};
+		#endif
 		virtual bool				IsTower() const override {return true;}
 		//virtual float				GetScanningRange() const override;
 		//virtual String				DescribeScanningRange() const override;
