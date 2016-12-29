@@ -1,0 +1,55 @@
+=Controls=
+
+
+==Camera Control==
+
+==Unit Control==
+Units are selected by clicking on them. Clicking anywhere else will deselect any selected unit.
+With a unit selected, the **right mouse button** may be used to direct it. When clicking on empty terrain, a selected mobile unit will attempt to reach that destination during its next motion phase.
+If the clicked destination is instead occupied by a hostile unit, and the selected unit can attack, it will instead queue an attack command.
+Right-clicking with the **shift-key** pressed queues the command after any other commands it may have.
+Otherwise the command queue is cleared first.
+
+Right clicking anywhere with a [[units/structures/vehicle plant]] selected moves or unsets its gathering point.
+
+
+
+==GUI Buttons==
+
+Hexaverse is mostly controlled via its hexagonal button configuration.
+There are four button areas, with different functionality.
+
+
+===Main Commands===
+{{ img:globalCommands.png}}
+The bottom left row of commands shows unit-independent commands.
+Left to right, the commands are:
+* **End Round** (shortcut: return): Requests the current round to end. You should press this button when you are done issuing commands to your units. Press the button again to undo the request (works only if at least one connected player has no yet requested a new round).
+* **Auto End Round**: Toggles automatic round ending if the game detects that all units already have commands. Effective only if this state was detected at the beginning of the round, and when activated manually.
+* **View**: Group of commands that affect the visual game representation.
+** **ClipTerrain** (shortcut: ctrl): Toggles visual terrain clipping (see [[terrain]] for details).{{ img:ClipTerrain.png?300|Clipped Terrain}}
+** **Clip-View Down** (shortcut: page down): Increases clipping depth.
+** **Clip-View Up** (shortcut: page up): Decreases clipping depth.
+** **Hide Objects**: Hides/shows all units on screen. Shadows are still rendered.
+** **Show Resources**: Toggles display of [[concepts/resources]] on screen.
+** **Show Ranges**: Displays all friendly unit ranges.
+** **Show Hostile Ranges**: Displays all hostile unit ranges.
+
+
+===General Commands===
+{{img:generalCommands.png |General Unit Commands}}
+Commands that are always applicable, or applicable to most units are located in the bottom right of the screen.
+
+Left to right, the commands are:
+* **Undo** (shortcut: backspace): Drops the last task of the selected unit. Only applicable to active units.
+* **Abort**: Drops all tasks of the selected unit.
+* **Sleep**: Toggles sleep-state of the selected unit. Sleeping units are omitted in the Idle Queue.
+* **Self Destruct**: Destroys the selected unit.
+* **Messages**: Displays any waiting tutorial messages.
+
+
+===Specific Unit Commands===
+{{img:terraformerCommands.png |Terraformer commands}}
+
+Different visual command trees are available depending on the type and state of the selected unit. Rest the mouse cursor atop any command to view its hint-overlay.
+

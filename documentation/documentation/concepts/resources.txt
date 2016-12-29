@@ -1,0 +1,2 @@
+=Resources=
+Resources in Hexaverse are infinite, but must be retrieved from the local planet using [[units/structures/mine|mines]] or produced by other structures, such as [[units/structures/generator|generators]].
