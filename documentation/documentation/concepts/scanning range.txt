@@ -7,5 +7,11 @@ The older the memory, the less likely it is still current.
 [[concepts/ghost|Ghosts]] of hostile units to which sensor contact has been lost are removed after 10 [[concepts/round|rounds]].
 
 {{ img:areas.png?300}}
-The terrain is shown in three shades (also depending on [[config/server|server configuration]]): Unvisited (1), visited (3), and currently observed (2). It is benefitial to observe as much of the terrain as possible.
+The terrain is shown in three shades: 
+
+# Unvisited (this may look very similar to 3., depending on [[config/server|server configuration]]))
+# Currently observed
+# Visited but currently not observed.
+
+Obviously, it is benefitial to observe as much of the terrain as possible, but it may be of higher priority to first get an idea of enemy locations.
 

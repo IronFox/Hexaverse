@@ -1,5 +1,8 @@
 =Controls=
 
+==Global Hot Keys==
+* **Escape** opens the menu, or aborts any currently visible dialog.
+* **F3** creates a screenshot in ''[[config/game folder]]\client\screenshots\''. **Shift+F3** causes the capture to retain its background transparency.
 
 ==Camera Control==
 
@@ -57,4 +60,5 @@ Left to right, the commands are:
 {{img:terraformerCommands.png |Terraformer commands}}
 
 Different visual command trees are available depending on the type and state of the selected unit. Rest the mouse cursor atop any command to view its hint-overlay.
+
 
