@@ -2,7 +2,7 @@
 =Terraformer=
 *  Cost: %Minerals%40
 *  [[concepts/initiative|Initiative]]: 100
-*  [[concepts/weight|Weight]]: 2
+*  [[concepts/vehicle|Weight]]: 2
 *  [[concepts/sensory|Base [[concepts/scanning range]]]]: 4
 *  Construction: Converts %Minerals%10 per round
 *  Terraforming: Can shape the surrounding terrain

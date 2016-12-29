@@ -2,6 +2,6 @@
 =Radar=
 *  Cost: %Minerals%10
 *  [[concepts/initiative|Initiative]]: 100
-*  [[concepts/weight|Weight]]: 2
-*  [[concepts/sensory|Base [[concepts/scanning range]]]]: 12
+*  [[concepts/vehicle|Weight]]: 2
+*  [[concepts/sensory|Base [[concepts/scanning range]]]]: 7
 This turret type is especially suited for detecting hostile entities. Such turret types are manadatory in order to see hostile forces approaching, as well as their attacks. Offensive turrets usually lack the necessary [[concepts/scanning range]] to see where they are shooting and depend on this turret type to reside in the vicinity.

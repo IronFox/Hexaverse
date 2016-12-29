@@ -5,7 +5,7 @@
 *  Can climb 1 height level up
 *  Can safely fall down 2 height levels
 *  Operation speed multiplied by 2
-*  [[concepts/weight|Carrying capacity]]: 15
+*  [[concepts/vehicle|Carrying capacity]]: 15
 *  Base speed: 8 (naval)
 *  Base health: 12
 *  Turret carrying capacity: 15
