@@ -3184,12 +3184,6 @@ void ParseKeyValue(const String&key, const String&value)
 			if (!RuntimeConfig::documentationRootFolder.DoesExist())
 				FileSystem::CreateDirectory(RuntimeConfig::documentationRootFolder);
 		}
-		elif(key == "generateDocumentationHere")
-		{
-			FileSystem::Folder().FindFolder(PathString(value),RuntimeConfig::documentationTargetFolder,false);
-			if (!RuntimeConfig::documentationTargetFolder.DoesExist())
-				FileSystem::CreateDirectory(RuntimeConfig::documentationTargetFolder);
-		}
 		else
 			throw Except::Program::ParameterFault(CLOCATION, "`"+key+"` is not a recognized runtime parameter");
 	}
