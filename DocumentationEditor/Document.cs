@@ -15,6 +15,7 @@ namespace DocumentationEditor
         public readonly string DocumentID;
         public readonly FolderInfo Parent;
 		private DateTime contentStamp = new DateTime(1,1,1);
+		private bool havePreciseStamp = false;
 
         public static string GetNameOf(File f)
         {
@@ -46,9 +47,10 @@ namespace DocumentationEditor
 		public bool CheckContent()
 		{
 			var delta = contentStamp - file.LastWrite;
-			if (Math.Abs(delta.TotalSeconds) < 1)
+			if (Math.Abs(delta.TotalSeconds) < 5)
 				return true;
 			contentStamp = file.LastWrite;
+			havePreciseStamp = true;
 			content = file.Text;
 			changed = false;
 			return false;
@@ -69,11 +71,13 @@ namespace DocumentationEditor
                 if (!changed)
                     return false;
 				//   Debug.Assert(content.Length != 0);
-				if (contentStamp != file.LastWrite)
+				if (contentStamp != file.LastWrite && havePreciseStamp)
 					return false;
                 file.Text = content;
-				contentStamp = file.LastWrite;
-                changed = false;
+//				contentStamp = file.LastWrite;
+				contentStamp = DateTime.UtcNow;
+				havePreciseStamp = false;
+				changed = false;
                 //  node.Text = node.Text.Substring(1);
                 return true;
             }
