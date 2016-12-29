@@ -1,0 +1,7 @@
+= Weight =
+
+Turrets come with an inherent weight, which must be carried by the respective vehicle base.
+Overweight is the result of turret weight exceeding the carrying capacity of the used base.
+
+For each additional point of overweight, the vehicle will lose 25% of its remaining movement speed, though it will never fall below one step per [[concepts/round]].
+Heavy turrets, such as a [[units/turrets/bomb]] or [[units/turrets/missile launcher]], are thus better suited atop a [[units/vbases/heavy base|heavy]] or [[units/vbases/catamaran base]].
