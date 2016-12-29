@@ -189,6 +189,11 @@ a:hover {
 	text-shadow: 1px 1px 3px black;
 }
 
+a.image:hover {
+    color: white;
+	background-color: transparent;
+}
+
 div.body {
 	width:100%;
 	height: 100%; 

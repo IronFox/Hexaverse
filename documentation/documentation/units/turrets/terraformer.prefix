@@ -1,9 +1,9 @@
 =Terraformer=
 {{img:units/Terraformer.png}}
-* Cost: {{img:Minerals.png}}40
+* Cost: %Minerals%40
 * [[concepts/initiative|Initiative]]: 100
 * [[concepts/weight|Weight]]: 2
 * [[concepts/sensory|Base scanning range]]: 4
-* Construction: Converts {{img:Minerals.png}}10 per round
+* Construction: Converts %Minerals%10 per round
 * Terraforming: Can shape the surrounding terrain
-This turret type can build structures in valid locations. It requires {{img:Minerals.png}} to initiate construction.
+This turret type can build structures in valid locations. It requires %Minerals% to initiate construction.

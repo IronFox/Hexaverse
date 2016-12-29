@@ -1,6 +1,6 @@
 =Surveyor=
 {{img:units/Surveyor.png}}
-* Cost: {{img:Minerals.png}}10
+* Cost: %Minerals%10
 * [[concepts/initiative|Initiative]]: 100
 * [[concepts/weight|Weight]]: 1
 * [[concepts/sensory|Base scanning range]]: 4

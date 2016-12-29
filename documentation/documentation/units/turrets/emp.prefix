@@ -1,12 +1,12 @@
 =EMP=
 {{img:units/EMP.png}}
-* Cost: {{img:Minerals.png}}100
+* Cost: %Minerals%100
 * [[concepts/initiative|Initiative]]: 30
 * [[concepts/weight|Weight]]: 5
 * [[concepts/sensory|Base scanning range]]: 3
 * Offensive turret
 * [[concepts/attack range|Base horizontal attack range]]: 17 (Artillery)
-* Consumes {{img:Uranium.png}}50 per shot
+* Consumes %Uranium%50 per shot
 * Explosion radius: 3
 * EMP damage: 5
 * 1 attack per round

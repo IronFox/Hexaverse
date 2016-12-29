@@ -72,6 +72,7 @@ function Convert($strPage)
 		foreach ($ctr->errors as $line => $l)
 			$rs[] = "$line: $l";
 	}
+	$text = preg_replace('/%([a-zA-Z]+)%/','<a class="image" href="html.php?page=concepts/resources"><img src=\'images/\1.png\' title=\'\1\' alt=\'\1\' /></a>',$text);
 	$rs[] = $text;
 	return $rs;
 }

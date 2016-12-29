@@ -902,7 +902,7 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 			{
 				if (Objects::IsTag(*c))
 				{
-					file << "{{img:"<<Objects::GetTagName(*c)<<".png}}";
+					file << "%"<<Objects::GetTagName(*c)<<"%";
 					continue;
 				}
 				file << *c;

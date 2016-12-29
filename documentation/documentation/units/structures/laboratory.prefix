@@ -1,7 +1,7 @@
 =Laboratory=
 {{img:units/Laboratory.png}}
-* Health: 16
-* Price: {{img:Minerals.png}} 80
-* [[concepts/sensory|Scanning range]]: 2
-*Consumes: {{img:Energy.png}}10
+*  Health: 16
+*  Price: %Minerals% 80
+*  [[concepts/sensory|Scanning range]]: 2
+*  Consumes: %Energy%10
 Laboratories research new components and buildings, or improve their attributes. Each enabled laboratory contributes 1 research point per round to the currently selected faction research goal. Research aimed at unlocking new components requires a number of research points to be accumulated. Research aimed at improvement will continuously improve the selected property, but become increasingly less efficient the further research has progressed. As a result, research facilities are a continuous construction effort and you will most likely never have enough.

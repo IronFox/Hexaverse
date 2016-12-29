@@ -1,6 +1,6 @@
 =Connector=
 {{img:units/Connector.png}}
-* Health: 1
-* Price: {{img:Minerals.png}} 5
-* [[concepts/sensory|Scanning range]]: 2
+*  Health: 1
+*  Price: %Minerals% 5
+*  [[concepts/sensory|Scanning range]]: 2
 Connectors establish links between structures that are too distant from one another to otherwise connect. Connected structures form compounds and share their input/output.

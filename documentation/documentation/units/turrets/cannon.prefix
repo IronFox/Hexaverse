@@ -1,6 +1,6 @@
 =Cannon=
 {{img:units/Cannon.png}}
-* Cost: {{img:Minerals.png}}15
+* Cost: %Minerals%15
 * [[concepts/initiative|Initiative]]: 100
 * [[concepts/weight|Weight]]: 3
 * [[concepts/sensory|Base scanning range]]: 5

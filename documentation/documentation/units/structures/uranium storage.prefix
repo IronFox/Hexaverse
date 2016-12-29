@@ -1,7 +1,7 @@
 =Uranium Storage=
 {{img:units/Uranium Storage.png}}
-* Health: 2
-* Price: {{img:Minerals.png}} 10
-* [[concepts/sensory|Scanning range]]: 2
-*Storage capacity: {{img:Uranium.png}}400
-Storage structures accumulate excess production of the respective resources until they are full. Disabling a storage structure will change its priority such, that excess resources are stored here only if all other storage capacities are exhausted. Likewise, resource demand will remove resources from disabled storage structures first, such that they tend towards empty. Storage structures do not require {{img:Energy.png}} to operate.
+*  Health: 2
+*  Price: %Minerals% 10
+*  [[concepts/sensory|Scanning range]]: 2
+*  Storage capacity: %Uranium%400
+Storage structures accumulate excess production of the respective resources until they are full. Disabling a storage structure will change its priority such, that excess resources are stored here only if all other storage capacities are exhausted. Likewise, resource demand will remove resources from disabled storage structures first, such that they tend towards empty. Storage structures do not require %Energy% to operate.

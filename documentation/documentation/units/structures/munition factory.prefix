@@ -1,8 +1,8 @@
 =Munition Factory=
 {{img:units/Munition Factory.png}}
-* Health: 8
-* Price: {{img:Minerals.png}} 40
-* [[concepts/sensory|Scanning range]]: 2
-*Consumes: {{img:Minerals.png}}10 {{img:Energy.png}}10
-Storage structures accumulate excess production of the respective resources until they are full. Disabling a storage structure will change its priority such, that excess resources are stored here only if all other storage capacities are exhausted. Likewise, resource demand will remove resources from disabled storage structures first, such that they tend towards empty. Storage structures do not require {{img:Energy.png}} to operate.
+*  Health: 8
+*  Price: %Minerals% 40
+*  [[concepts/sensory|Scanning range]]: 2
+*  Consumes: %Minerals%10 %Energy%10
+Storage structures accumulate excess production of the respective resources until they are full. Disabling a storage structure will change its priority such, that excess resources are stored here only if all other storage capacities are exhausted. Likewise, resource demand will remove resources from disabled storage structures first, such that they tend towards empty. Storage structures do not require %Energy% to operate.
 Enabled munition factories continuiously produce munition to supply connected offensive turrets. This is a deprecated building type.

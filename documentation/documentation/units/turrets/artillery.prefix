@@ -1,6 +1,6 @@
 =Artillery=
 {{img:units/Artillery.png}}
-* Cost: {{img:Minerals.png}}25
+* Cost: %Minerals%25
 * [[concepts/initiative|Initiative]]: 80
 * [[concepts/weight|Weight]]: 3
 * [[concepts/sensory|Base scanning range]]: 4

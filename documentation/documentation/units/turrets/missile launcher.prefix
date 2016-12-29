@@ -1,6 +1,6 @@
 =Missile Launcher=
 {{img:units/Missile Launcher.png}}
-* Cost: {{img:Minerals.png}}40
+* Cost: %Minerals%40
 * [[concepts/initiative|Initiative]]: 70
 * [[concepts/weight|Weight]]: 13
 * [[concepts/sensory|Base scanning range]]: 4
