@@ -1,0 +1,9 @@
+=Action Pool=
+During the attack and motion [[concepts/round|phases]], units execute tasks in order of their [[concepts/initiative]].
+Offensive units have each one attack action value, while mobile units have a movement action value.
+Both are set to 100% at the beginning of the respective phase.
+With each executed operation the value is reduced. If an operation would reduce it to below 0, then that operation is delayed by one round.
+
+All unit types have the same action capacity, but some are faster at certain operations than others.
+An [[units/turrets/artillery]], for instance, will exhaust all its attack action with a single shot, while a [[units/turrets/cannon]] will only consume half of it.
+Likewise, a [[units/turrets/terraformer]] mounted on a [[units/vbase/heavy base]] has increased terraforming speed compared to one based on a [[units/vbase/hoverbase]], which allows it to perform more operations per round.

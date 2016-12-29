@@ -11,7 +11,7 @@ The terrain is shown in three shades:
 
 # Unvisited (this may look very similar to 3., depending on [[config/server|server configuration]]))
 # Currently observed
-# Visited but currently not observed.
+# Observed at some point but not anymore.
 
 Obviously, it is benefitial to observe as much of the terrain as possible, but it may be of higher priority to first get an idea of enemy locations.
 

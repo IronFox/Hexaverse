@@ -3,7 +3,7 @@
 *  Cost: %Minerals%15
 *  [[concepts/initiative|Initiative]]: 100
 *  [[concepts/vehicle|Weight]]: 3
-*  [[concepts/sensory|Base [[concepts/scanning range]]]]: 5
+*  Base [[concepts/scanning range]]: 5
 *  Health: x2
 *  Offensive turret
 *  Can attack independently of movement action

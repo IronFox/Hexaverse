@@ -3,7 +3,7 @@
 *  Cost: %Minerals%40
 *  [[concepts/initiative|Initiative]]: 70
 *  [[concepts/vehicle|Weight]]: 13
-*  [[concepts/sensory|Base [[concepts/scanning range]]]]: 4
+*  Base [[concepts/scanning range]]: 4
 *  Health: x2
 *  Offensive turret
 *  [[concepts/attack range|Base horizontal attack range]]: 8 (Missile)

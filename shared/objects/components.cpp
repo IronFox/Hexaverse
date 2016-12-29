@@ -2171,7 +2171,7 @@ namespace Objects
 				{
 					outResult << ("This "+lowerName+" type can attack objects in range.");
 					if (dealsEMPDamage)
-						outResult << ("This "+lowerName+" deals EMP damage. EMP damage temporarily reduces scanning range. Does not cause any permanent damage.");
+						outResult << ("This "+lowerName+" deals EMP damage. EMP damage temporarily reduces attack and scanning range, movement speed, and disallows construction operations. Does not cause any permanent damage.");
 				}
 				else
 					if (scanningRange.GetValue(researchState) >= 7)

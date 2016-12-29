@@ -3,7 +3,7 @@
 *  Cost: %Minerals%40
 *  [[concepts/initiative|Initiative]]: 100
 *  [[concepts/vehicle|Weight]]: 2
-*  [[concepts/sensory|Base [[concepts/scanning range]]]]: 4
+*  Base [[concepts/scanning range]]: 4
 *  Construction: Converts %Minerals%10 per round
 *  Terraforming: Can shape the surrounding terrain
 This turret type can build structures in valid locations. It requires %Minerals% to initiate construction.

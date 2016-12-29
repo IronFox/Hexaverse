@@ -3,11 +3,11 @@
 *Based on [[units/turrets/Cannon|Cannon]] turret
 *  Health: 22 [=11*2 (turret health multiplier)]
 *  Price: %Minerals% 55
-*  [[concepts/sensory|Scanning range]]: 3 [=5-2 (tower modifier)]
+*  [[concepts/scanning range|Scanning range]]: 3 [=5-2 (tower modifier)]
 *  [[concepts/attack range|Hrz. Attack range]]: 7 [=5+2 (bonus)] (Artillery)
 *  Does not require ammunition
 *  2 attacks per round
 *  Explosion radius: 1
 *  Damage: 3
 This tower-turret type can attack objects in range.
-The unit automatically attacks hostile units in range (possibly extended by its impact explosion radius). Towers are the only units that can intercept hostile units during their movement [[concepts/round]]. A hostile mobile unit that enters their attack range is immediately attacked as long as sufficient attack action is left. This tower will never automatically fire at locations that endanger friendly units.
+The unit automatically attacks hostile units in range (possibly extended by its impact explosion radius). Towers are the only units that can intercept hostile units during their movement [[concepts/phase]]. A hostile mobile unit that enters their attack range is immediately attacked as long as sufficient [[concepts/action pool|attack action]] is left. This tower will never automatically fire at locations that endanger friendly units.
