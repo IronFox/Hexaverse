@@ -629,7 +629,10 @@ namespace Objects
 	template <typename T>
 		String	LuaAttributeCache<T>::DescribeEMPModified(const WorldEntity&e,const LuaAttribute<T>&source,const LuaAttribute<T>&bonus /*= LuaAttribute<T>()*/)
 		{
-			return source.Describe(e.GetResearchState());	//emp later
+			if (bonus.IsSet())
+				return String(GetEMPModified(e,source,bonus))+" [="+source.Describe(e.GetResearchState()) + "+"+bonus.Describe(e.GetResearchState())+" (bonus)]";
+			else
+				return source.Describe(e.GetResearchState());
 		}
 	template <typename T>
 		template <typename T2>

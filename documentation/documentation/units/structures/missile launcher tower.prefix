@@ -4,7 +4,7 @@
 *  Health: 16.5 [=11*1.5 (turret health multiplier)]
 *  Price: %Minerals% 80
 *  [[concepts/sensory|Scanning range]]: 2 [=4-2 (tower modifier)]
-*  [[concepts/attack range|Hrz. Attack range]]: 8 (Missile)
+*  [[concepts/attack range|Hrz. Attack range]]: 10 [=8+2 (bonus)] (Missile)
 * Does not require ammunition
 * Explosion radius: 1
 * Damage: 10
