@@ -216,10 +216,10 @@ namespace Objects
 		InitAttrib(myTable,path,"AttacksPerRound",t.attacksPerRound,true);
 		if (t.attacksPerRound.IsSet())
 		{
-			InitAttrib(myTable,path,"DamageLevel",t.damageLevel);
-			InitAttrib(myTable,path,"ExplosionRadius",t.explosionRadius);
 			InitAttrib(myTable,path,"HorizontalAttackRange",t.horizontalAttackRange);
 		}
+		InitAttrib(myTable,path,"ExplosionRadius",t.explosionRadius,true);	//can be independent
+		InitAttrib(myTable,path,"DamageLevel",t.damageLevel,true);
 	}
 
 
