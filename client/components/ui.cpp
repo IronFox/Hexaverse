@@ -1947,7 +1947,7 @@
 				Vec::normalize(wz);
 				cachedLines << " w1: "+Vec::toString(wz);
 			#else
-				GUI << " Height: "<<e.location.height<<nl;
+				cachedLines << " Height: "+String(e.location.height);
 			#endif
 
 			cachedLines << " Owner: "+e.owner->GetName()+(e.isOwnedByMe ? " (me)":"");
