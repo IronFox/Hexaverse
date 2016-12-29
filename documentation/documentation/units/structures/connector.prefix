@@ -1,5 +1,5 @@
+{{ img:units/Connector.png|Connector}}
 =Connector=
-{{img:units/Connector.png}}
 *  Health: 1
 *  Price: %Minerals% 5
 *  [[concepts/sensory|Scanning range]]: 2

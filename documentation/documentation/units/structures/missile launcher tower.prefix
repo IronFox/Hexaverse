@@ -1,5 +1,5 @@
+{{ img:units/Missile Launcher Tower.png|Missile Launcher Tower}}
 =Missile Launcher Tower=
-{{img:units/Missile Launcher Tower.png}}
 *Based on [[units/turrets/Missile Launcher|Missile Launcher]] turret
 *  Health: 16.5 [=11*1.5 (turret health multiplier)]
 *  Price: %Minerals% 80

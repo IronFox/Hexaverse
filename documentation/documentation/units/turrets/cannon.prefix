@@ -1,5 +1,5 @@
+{{ img:units/Cannon.png|Cannon}}
 =Cannon=
-{{img:units/Cannon.png}}
 * Cost: %Minerals%15
 * [[concepts/initiative|Initiative]]: 100
 * [[concepts/weight|Weight]]: 3

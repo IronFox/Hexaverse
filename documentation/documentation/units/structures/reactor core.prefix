@@ -1,5 +1,5 @@
+{{ img:units/Reactor Core.png|Reactor Core}}
 =Reactor Core=
-{{img:units/Reactor Core.png}}
 *  Health: 24
 *  Price: %Minerals% 120
 *  [[concepts/sensory|Scanning range]]: 2

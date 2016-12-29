@@ -1,5 +1,5 @@
+{{ img:units/Uranium Storage.png|Uranium Storage}}
 =Uranium Storage=
-{{img:units/Uranium Storage.png}}
 *  Health: 2
 *  Price: %Minerals% 10
 *  [[concepts/sensory|Scanning range]]: 2

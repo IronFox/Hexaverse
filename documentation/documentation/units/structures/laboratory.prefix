@@ -1,5 +1,5 @@
+{{ img:units/Laboratory.png|Laboratory}}
 =Laboratory=
-{{img:units/Laboratory.png}}
 *  Health: 16
 *  Price: %Minerals% 80
 *  [[concepts/sensory|Scanning range]]: 2

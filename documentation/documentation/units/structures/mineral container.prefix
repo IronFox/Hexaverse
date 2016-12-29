@@ -1,5 +1,5 @@
+{{ img:units/Mineral Container.png|Mineral Container}}
 =Mineral Container=
-{{img:units/Mineral Container.png}}
 *  Health: 2
 *  Price: %Minerals% 10
 *  [[concepts/sensory|Scanning range]]: 2

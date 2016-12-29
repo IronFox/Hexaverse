@@ -1,5 +1,5 @@
+{{ img:units/Generator.png|Generator}}
 =Generator=
-{{img:units/Generator.png}}
 *  Health: 8
 *  Price: %Minerals% 40
 *  [[concepts/sensory|Scanning range]]: 2

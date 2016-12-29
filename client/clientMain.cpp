@@ -927,9 +927,9 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 		listFile << "* [[units/"<<relative<<'/'<<typeName<<'|'<<typeName <<"]]"<< nl;
 		file.Create(outPath);
 
+		file << "{{ img:units/"<< String(name) <<".png|"<<typeName<<"}}"<<nl;
 		file << "="<<typeName<<"="<<nl;
 		file << pretext;
-		file << "{{img:units/"<< String(name) <<".png}}"<<nl;
 		WriteLabel(file,label);
 	}
 

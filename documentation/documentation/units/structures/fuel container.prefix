@@ -1,5 +1,5 @@
+{{ img:units/Fuel Container.png|Fuel Container}}
 =Fuel Container=
-{{img:units/Fuel Container.png}}
 *  Health: 2
 *  Price: %Minerals% 10
 *  [[concepts/sensory|Scanning range]]: 2

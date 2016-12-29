@@ -1,5 +1,5 @@
+{{ img:units/Bomb.png|Bomb}}
 =Bomb=
-{{img:units/Bomb.png}}
 * Cost: %Minerals%40
 * [[concepts/initiative|Initiative]]: 100
 * [[concepts/weight|Weight]]: 5

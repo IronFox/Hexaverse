@@ -1,5 +1,5 @@
+{{ img:units/EMP.png|EMP}}
 =EMP=
-{{img:units/EMP.png}}
 * Cost: %Minerals%100
 * [[concepts/initiative|Initiative]]: 30
 * [[concepts/weight|Weight]]: 5

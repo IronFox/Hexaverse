@@ -1,5 +1,5 @@
+{{ img:units/Radar.png|Radar}}
 =Radar=
-{{img:units/Radar.png}}
 * Cost: %Minerals%10
 * [[concepts/initiative|Initiative]]: 100
 * [[concepts/weight|Weight]]: 2

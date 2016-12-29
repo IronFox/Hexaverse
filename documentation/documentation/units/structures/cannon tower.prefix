@@ -1,5 +1,5 @@
+{{ img:units/Cannon Tower.png|Cannon Tower}}
 =Cannon Tower=
-{{img:units/Cannon Tower.png}}
 *Based on [[units/turrets/Cannon|Cannon]] turret
 *  Health: 22 [=11*2 (turret health multiplier)]
 *  Price: %Minerals% 55

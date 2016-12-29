@@ -1,5 +1,5 @@
+{{ img:units/Artillery.png|Artillery}}
 =Artillery=
-{{img:units/Artillery.png}}
 * Cost: %Minerals%25
 * [[concepts/initiative|Initiative]]: 80
 * [[concepts/weight|Weight]]: 3
