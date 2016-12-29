@@ -6,7 +6,7 @@ Depending on the combination, different capacities and restrictions apply.
 
 == Weight ==
 
-Turrets come with an inherent weight, which must be carried by the respective vehicle base.
+Turrets come with an inherent weight which must be carried by the respective vehicle base.
 Overweight is the result of turret weight exceeding the carrying capacity of the used base.
 
 For each additional point of overweight, the vehicle will lose 25% of its remaining movement speed, though it will never fall below one step per [[concepts/round]].
@@ -18,5 +18,5 @@ Vehicles built on a [[units/vbases/catamaran base]] are much faster on, but also
 Naval [[units/turrets/terraformer]]s can dig canals through non-water terrain, but can never leave the water surface.
 
 ==Heavy Vehicles==
-If a [[units/vbases/heavy base]] is used, then the vehicle cannot savely stand on water alone, and has reduced falling tolerance. However, similar to catcases it does come along with increased capacities on solid terrain. Heavy vehicles benefit from flat non-liquid terrain.
+If a [[units/vbases/heavy base]] is used, then the vehicle cannot savely stand on water alone, and has reduced falling tolerance. However, similar to catamaran bases, it has increased capacities on solid terrain. Heavy vehicles benefit from flat non-liquid terrain.
 Similarly to naval vehicles, [[units/turrets/terraformer]]s can make any terrain suitable for heavy vehicles.
