@@ -248,7 +248,7 @@ class dkxhtml_image extends WikiTagXhtml {
         $height='';
 
         $m= array('','','','','','','','');
-        if (preg_match("/^(\s*)(.*[^\s\?]+)(\?(\d+)(x(\d+))?)?(\s*)$/", $href, $m)) {
+        if (preg_match("/^(\s*)([^\?]*[^\s\?]+)(\?(\d+)(x(\d+))?)?(\s*)$/", $href, $m)) {
             if($m[1] != '' && $m[7] != ''){
                 $align='center';
             } elseif($m[1] != ''){
