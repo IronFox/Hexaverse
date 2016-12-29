@@ -132,6 +132,9 @@ ul.menu
 	margin: 0px;
 }
 
+ol {overflow:hidden;} 
+ul {overflow:hidden;} 
+
 hr {
 	border-width: 1px;
 	border-color: rgba(255,255,255,0.25);
