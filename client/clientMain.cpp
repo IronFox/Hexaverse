@@ -895,8 +895,8 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 			linkedLine.replace("Hrz. Attack range","[[concepts/attack range|Hrz. Attack range]]");
 			linkedLine.replace("Base horizontal attack range","[[concepts/attack range|Base horizontal attack range]]");
 			linkedLine.replace("Initiative","[[concepts/initiative|Initiative]]");
-			linkedLine.replace("Weight","[[concepts/weight|Weight]]");
-			linkedLine.replace("Carrying capacity","[[concepts/weight|Carrying capacity]]");
+			linkedLine.replace("Weight","[[concepts/vehicle|Weight]]");
+			linkedLine.replace("Carrying capacity","[[concepts/vehicle|Carrying capacity]]");
 			linkedLine.replace("Base scanning range","[[concepts/sensory|Base scanning range]]");
 			linkedLine.replace("Scanning range","[[concepts/sensory|Scanning range]]");
 			linkedLine.replace("compound","[[concepts/compound]]");
