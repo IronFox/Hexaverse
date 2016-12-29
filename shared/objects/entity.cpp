@@ -364,7 +364,11 @@ namespace Objects
 		void WorldEntity::AppendDeploymentCount(BaseCommand::Label&outResult, const OwnerParameter&overrideOwner)	const
 		{
 			if (RuntimeConfig::UnitLimits::AnySet())
-				outResult << CompileDeploymentCount(overrideOwner);
+			{
+				String deployment = CompileDeploymentCount(overrideOwner);
+				if (deployment.IsNotEmpty())
+					outResult << deployment;
+			}
 		}
 
 		void WorldEntity::DescribeType(BaseCommand::Label&outResult, UINT32 descFlags)
@@ -372,27 +376,27 @@ namespace Objects
 			if (descFlags & DescIncludeName)
 				outResult << GetTypeName();
 			if (IsIndestructible())
-				outResult << " Indestructible";
+				outResult << "Indestructible";
 			else
 			{
 				if (descFlags & DescIncludeMaxHealth)
 				{
 					if ((descFlags & DescIncludeCurrentHealth))
-						outResult << " Health: " +String(this->health)+"/"+this->DescribeMaxHealth();
+						outResult << "Health: " +String(this->health)+"/"+this->DescribeMaxHealth();
 					else
-						outResult << " Health: " + this->DescribeMaxHealth();
+						outResult << "Health: " + this->DescribeMaxHealth();
 				}
 				else
 					if ((descFlags & DescIncludeCurrentHealth))
-						outResult << " Health: " +String(this->health);
+						outResult << "Health: " +String(this->health);
 			}
 			if (descFlags & DescIncludePrice)
-				outResult << " Price: "+String(ResourceTag(Resource::Minerals)) + String(" ") + String(this->GetConstructionCost());
+				outResult << "Price: "+String(ResourceTag(Resource::Minerals)) + String(" ") + String(this->GetConstructionCost());
 			if ((descFlags & DescIncludeUnitCount))
 			{
 				AppendDeploymentCount(outResult,owner);
 			}
-			outResult << " Scanning range: "+DescribeScanningRange();
+			outResult << "Scanning range: "+DescribeScanningRange();
 			#ifndef NO_HIBERNATION
 					outResult << " "+String(TrafficResourceTag()) +String(GetUplinkTraffic());
 
@@ -406,9 +410,8 @@ namespace Objects
 			{
 				if (b->turret->CanAttack())
 				{
-					outResult << " Hrz. Attack range: "+b-> DescribeFlatAttackRange()+" ("+b->turret->trajectoryType.ToString()+")";
+					outResult << "Hrz. Attack range: "+b-> DescribeFlatAttackRange()+" ("+b->turret->trajectoryType.ToString()+")";
 				}
-				outResult << "";
 				b->turret->DescribeType(outResult,true,  false,  IF_SATELLITES( IsSatellite() ? "Satellite" : ) (IsVehicle() ? "Vehicle":"Tower"),owner);
 			}
 		}

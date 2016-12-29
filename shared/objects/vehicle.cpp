@@ -366,9 +366,7 @@ namespace Objects
 		{
 			outResult.BeginBrief();
 			Super::DescribeType(outResult,descFlags);
-			outResult << "";
 			base->DescribeType(outResult,true,true,owner);
-			outResult << "";
 			outResult.BeginBrief();
 
 			const float capacity = floor(base->GetCarryingCapacity(owner));

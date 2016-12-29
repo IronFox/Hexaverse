@@ -143,7 +143,6 @@ namespace Objects
 			if (dep && (state.IsEmpty() || dep->getProgress(state)<dep->maxProgress))
 				outResult << "Requires completion of "+dep->GetFullName()+" research";
 			outResult.MarkBriefEnd();
-			outResult << "";
 		}
 
 		PWorldEntity ref = topic->prototypeReference;
@@ -325,9 +324,6 @@ namespace Objects
 				if (rounds != rawRounds)
 					outResult.GetLastLine() += "/"+String(rawRounds);
 			}
-
-			outResult.MarkBriefEnd();
-			outResult << "";
 		}
 
 		if (ref)
@@ -373,8 +369,6 @@ namespace Objects
 		if (vehicle)
 		{
 			outResult << "Deploy mobile unit: "+name;
-			outResult.MarkBriefEnd();
-			outResult << "";
 
 			vehicle->DescribeType(outResult,Objects::WorldEntity::DescIncludeCurrentHealth | Objects::WorldEntity::DescIncludeMaxHealth | WorldEntity::DescIncludeUnitCount);
 		}

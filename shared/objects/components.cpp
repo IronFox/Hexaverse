@@ -2148,7 +2148,6 @@ namespace Objects
 					}
 				#endif
 				outResult.MarkBriefEnd();
-				outResult << "";
 				if (CanConstruct())
 					outResult << ("This "+lowerName+" type can build structures in valid locations. It requires "+String(ResourceTag(Resource::Minerals))+" to initiate construction.");
 				if (CanRepair())

@@ -103,11 +103,15 @@ namespace Objects
 
 			void				BeginBrief()
 			{
+				if (rawLines.IsNotEmpty() && rawLines.Last().first.trim().IsNotEmpty() && !rawLines.Last().second)
+					rawLines << std::make_pair("",false);
 				isBrief = true;
 			}
 
 			void				MarkBriefEnd()
 			{
+				if (rawLines.IsNotEmpty() && rawLines.Last().first.trim().IsNotEmpty() && rawLines.Last().second)
+					rawLines << std::make_pair("",false);
 				isBrief = false;
 			}
 
@@ -118,7 +122,10 @@ namespace Objects
 
 			Label&				operator<<(const String&line)
 			{
-				rawLines << std::make_pair(line,isBrief);
+				if (isBrief && (line.IsEmpty() || line.firstChar() != ' '))
+					rawLines << std::make_pair("  "+line,isBrief);
+				else
+					rawLines << std::make_pair(line,isBrief);
 				//WrapAppendText(line);
 				//lines << line;
 				return *this;
