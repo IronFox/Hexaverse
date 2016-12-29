@@ -1,8 +1,8 @@
 {{ img:units/Surveyor.png|Surveyor}}
 =Surveyor=
-* Cost: %Minerals%10
-* [[concepts/initiative|Initiative]]: 100
-* [[concepts/weight|Weight]]: 1
-* [[concepts/sensory|Base scanning range]]: 4
-* Detects natural resources
-This turret type detects all naturally occuring resources within its scanning range. It can be automated.
+*  Cost: %Minerals%10
+*  [[concepts/initiative|Initiative]]: 100
+*  [[concepts/weight|Weight]]: 1
+*  [[concepts/sensory|Base [[concepts/scanning range]]]]: 4
+*  Detects natural resources
+This turret type detects all naturally occuring resources within its [[concepts/scanning range]]. It can be automated.

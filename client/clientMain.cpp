@@ -883,7 +883,7 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 		return PathString(base);
 	}
 
-	void WriteLabel(StringFile&file, const Objects::BaseCommand::Label&label)
+	void WriteLabel(StringFile&file, const Objects::BaseCommand::Label&label, const String&myTypeName)
 	{
 		foreach(label.rawLines, line)
 		{
@@ -896,8 +896,26 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 			linkedLine.replace("Base horizontal attack range","[[concepts/attack range|Base horizontal attack range]]");
 			linkedLine.replace("Initiative","[[concepts/initiative|Initiative]]");
 			linkedLine.replace("Weight","[[concepts/weight|Weight]]");
+			linkedLine.replace("Carrying capacity","[[concepts/weight|Carrying capacity]]");
 			linkedLine.replace("Base scanning range","[[concepts/sensory|Base scanning range]]");
 			linkedLine.replace("Scanning range","[[concepts/sensory|Scanning range]]");
+			linkedLine.replace("compound","[[concepts/compound]]");
+			linkedLine.replace("phase","[[concepts/round]]");
+			linkedLine.replace("scanning range","[[concepts/scanning range]]");
+
+			
+			
+			foreach (Objects::structurePrototypes,s)
+			{
+				String name = (*s)->GetTypeName().copyToLowerCase();
+				if (name.equalsIgnoreCase(myTypeName))
+					continue;
+
+				linkedLine.replace(name,"[[units/structures/"+name+"]]");
+			}
+
+
+
 			foreach(linkedLine, c)
 			{
 				if (Objects::IsTag(*c))
@@ -930,7 +948,7 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 		file << "{{ img:units/"<< String(name) <<".png|"<<typeName<<"}}"<<nl;
 		file << "="<<typeName<<"="<<nl;
 		file << pretext;
-		WriteLabel(file,label);
+		WriteLabel(file,label,typeName);
 	}
 
 	void	FinishRendering(const FileSystem::Folder&folder, const DX11::Texture&texture, const String&typeName)

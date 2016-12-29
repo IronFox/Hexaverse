@@ -3,4 +3,4 @@
 *  Health: 1
 *  Price: %Minerals% 5
 *  [[concepts/sensory|Scanning range]]: 2
-Connectors establish links between structures that are too distant from one another to otherwise connect. Connected structures form compounds and share their input/output.
+Connectors establish links between structures that are too distant from one another to otherwise connect. Connected structures form [[concepts/compound]]s and share their input/output.

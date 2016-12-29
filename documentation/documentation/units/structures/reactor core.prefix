@@ -5,4 +5,4 @@
 *  [[concepts/sensory|Scanning range]]: 2
 *  Consumes: %Uranium%5
 *  Produces: %Energy%40
-Amplifies the energy output of connected generators. Only one reactor core can be connected to any one generator, but multiple generators may be connected to the same reactor core. Must be placed on the same height level as the generator(s) to connect to.
+Amplifies the energy output of connected [[units/structures/generator]]s. Only one reactor core can be connected to any one [[units/structures/generator]], but multiple [[units/structures/generator]]s may be connected to the same reactor core. Must be placed on the same height level as the [[units/structures/generator]](s) to connect to.

@@ -1,11 +1,12 @@
 {{ img:units/Catamaran Base.png|Catamaran Base}}
 =Catamaran Base=
-* Cost: %Minerals%100
-* [[concepts/initiative|Initiative]]: 100
-* Can climb 1 height level up
-* Can safely fall down 2 height levels
-* Operation speed multiplied by 2
-* Base speed: 8 (naval)
-* Base health: 12
-* Turret carrying capacity: 15
-* Turret range modifier: 1
+*  Cost: %Minerals%100
+*  [[concepts/initiative|Initiative]]: 100
+*  Can climb 1 height level up
+*  Can safely fall down 2 height levels
+*  Operation speed multiplied by 2
+*  [[concepts/weight|Carrying capacity]]: 15
+*  Base speed: 8 (naval)
+*  Base health: 12
+*  Turret carrying capacity: 15
+*  Turret range modifier: 1

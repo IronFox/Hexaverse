@@ -4,4 +4,4 @@
 *  Price: %Minerals% 40
 *  [[concepts/sensory|Scanning range]]: 2
 * Max Vehicles per Store: 4
-Vehicle stores can be used to store vehicles which will then enter hibernation until deployed. This structure shares storage with nearby structures of the same type. A vehicle store can deploy any vehicle found within the vehicle store compound.
+Vehicle stores can be used to store vehicles which will then enter hibernation until deployed. This structure shares storage with nearby structures of the same type. A vehicle store can deploy any vehicle found within the vehicle store [[concepts/compound]].
