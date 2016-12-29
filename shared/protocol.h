@@ -1855,7 +1855,7 @@ namespace Protocol
 		, Package::NetString<32>, name
 	)
 
-	typedef NET(index_t)	SelectResearch;
+	typedef NET(UINT32)	SelectResearch;	//can't use index_t
 
 	typedef std::pair<UINT16,UINT16>	TUnitLimit;
 
