@@ -2008,8 +2008,8 @@ namespace Objects
 			{
 				if (!compound)
 				{
-					label << " Cost: "+String(ResourceTag(Resource::Minerals))+productionCosts.Describe(Objects::Component::ResearchStateOf(owner));
-					label << " Initiative: "+String(initiative);
+					label <<"Cost: "+String(ResourceTag(Resource::Minerals))+productionCosts.Describe(Objects::Component::ResearchStateOf(owner));
+					label <<"Initiative: "+String(initiative);
 				}
 			}
 
@@ -2023,32 +2023,34 @@ namespace Objects
 					outResult << typeName + " (Base)";
 				Base::DescribeType(outResult,compound,owner);
 				outResult.BeginBrief();
-				outResult << " Can climb "+String(maxClimbUp)+" height level"+(maxClimbUp==1?"":"s")+" up";
+				outResult << "Can climb "+String(maxClimbUp)+" height level"+(maxClimbUp==1?"":"s")+" up";
 			
-				outResult << " Can safely fall down "+String(-minClimbDown)+" height level"+(minClimbDown==-1?"":"s");
+				outResult << "Can safely fall down "+String(-minClimbDown)+" height level"+(minClimbDown==-1?"":"s");
 				#ifndef ONE_COMPOUND_PER_FACTION
 					if (storageMultiplier != 1)
-						outResult << " Storage capacity multiplied by "+String(storageMultiplier);
+						outResult <<"Storage capacity multiplied by "+String(storageMultiplier);
 				#endif
 				if (!compound)
 				{
 					float mult = operationSpeedMultiplier.GetValue(researchState);
 					if (mult != 1)
-						outResult << " Operation speed multiplied by "+operationSpeedMultiplier.Describe(researchState);
-					outResult<<" Base speed: "+ movementSpeed.Describe(researchState);
+						outResult << "Operation speed multiplied by "+operationSpeedMultiplier.Describe(researchState);
+
+					outResult <<"Carrying capacity: "+carryingCapacity.Describe(researchState);
+					outResult<<"Base speed: "+ movementSpeed.Describe(researchState);
 					if (requirements == Requirement::Water)
 						outResult.GetLastLine()+= " (naval)";
 					else
 						if (moveOnWater)
 							outResult.GetLastLine() += " (moves over water)";
-					outResult<<" Base health: "+health.Describe(researchState);
-					outResult<<" Turret carrying capacity: "+carryingCapacity.Describe(researchState);
+					outResult<<"Base health: "+health.Describe(researchState);
+					outResult<<"Turret carrying capacity: "+carryingCapacity.Describe(researchState);
 					float rangeMod = turretRangeModifier.GetValue(researchState);
 					if (rangeMod != 0)
-						outResult<<" Turret range modifier: "+turretRangeModifier.Describe(researchState);
+						outResult<<"Turret range modifier: "+turretRangeModifier.Describe(researchState);
 				}
 				if (ignoresVehicleAttacks)
-					outResult<<" Can move independently of attack action";
+					outResult<<"Can move independently of attack action";
 			}
 
 
@@ -2079,7 +2081,7 @@ namespace Objects
 						;
 					limit = RuntimeConfig::UnitLimits::Get(constName);
 					if (limit != 0xFFFF)
-						outResult << " Deployed: "+String(cnt)+"/"+String(limit);
+						outResult <<"Deployed: "+String(cnt)+"/"+String(limit);
 				}
 
 				Lua::Reference researchState = ResearchStateOf(owner);
@@ -2088,61 +2090,61 @@ namespace Objects
 				outResult.BeginBrief();
 				if (!compound)
 				{
-					outResult << " Weight: "+weight.Describe(researchState);
-					outResult << " Base scanning range: "+scanningRange.Describe(researchState);
+					outResult <<"Weight: "+weight.Describe(researchState);
+					outResult <<"Base scanning range: "+scanningRange.Describe(researchState);
 					float healthMult = healthMultiplier.GetValue(researchState);
 					if (healthMult != 1)
-						outResult << " Health: x"+healthMultiplier.Describe(researchState);
+						outResult <<"Health: x"+healthMultiplier.Describe(researchState);
 					//if (RuntimeConfig::hibernationSystemEnabled)
 					//{
-					//	outResult << " "+String(TrafficResourceTag())+String(uplinkTraffic)+", Priority: "+String(uplinkPriority);
+					//	outResult <<""+String(TrafficResourceTag())+String(uplinkTraffic)+", Priority: "+String(uplinkPriority);
 					//}
 				}
 				if (CanAttack())
 				{
 					if (!compound)
-						outResult << " Offensive "+lowerName;
+						outResult <<"Offensive "+lowerName;
 					if (parentType != "Tower")
 					{
 						if (ignoresVehicleMotion)
-							outResult << " Can attack independently of movement action";
+							outResult <<"Can attack independently of movement action";
 						elif (requiresStationaryVehicle)
-							outResult << " Vehicle must remain stationary to fire";
+							outResult <<"Vehicle must remain stationary to fire";
 					}
 					if (!compound)
-						outResult << " Base horizontal attack range: "+horizontalAttackRange.Describe(researchState)+" ("+trajectoryType.ToString()+")";
+						outResult <<"Base horizontal attack range: "+horizontalAttackRange.Describe(researchState)+" ("+trajectoryType.ToString()+")";
 
 					int need = ammoNeedPerShot.GetValue(researchState);
 					if (need == 0)
-						outResult << " Does not require ammunition";
+						outResult <<"Does not require ammunition";
 					else
-						outResult << " Consumes "+String(ResourceTag(ammoType))+ammoNeedPerShot.Describe(researchState)+" per shot";
-					outResult << " Explosion radius: "+explosionRadius.Describe(researchState);
+						outResult <<"Consumes "+String(ResourceTag(ammoType))+ammoNeedPerShot.Describe(researchState)+" per shot";
+					outResult <<"Explosion radius: "+explosionRadius.Describe(researchState);
 					if (dealsEMPDamage)
-						outResult << " EMP damage: "+damageLevel.Describe(researchState);
+						outResult <<"EMP damage: "+damageLevel.Describe(researchState);
 					else
-						outResult << " Damage: "+damageLevel.Describe(researchState);
+						outResult <<"Damage: "+damageLevel.Describe(researchState);
 					int count = attacksPerRound.GetValue(researchState);
-					outResult << " "+attacksPerRound.Describe(researchState)+" attack"+(count == 1 ? "" : "s")+" per round";
+					outResult <<""+attacksPerRound.Describe(researchState)+" attack"+(count == 1 ? "" : "s")+" per round";
 				}
 
 				if (CanConstruct() && !compound)
-					outResult << " Construction: Converts "+String(ResourceTag(Resource::Minerals))+operationSpeed[Construct].Describe(researchState)+" per round";
+					outResult <<"Construction: Converts "+String(ResourceTag(Resource::Minerals))+operationSpeed[Construct].Describe(researchState)+" per round";
 				if ((CanDo(TerrainRemove) || CanDo(TerrainAdd)) && !compound)
-					outResult << " Terraforming: Can shape the surrounding terrain";
+					outResult <<"Terraforming: Can shape the surrounding terrain";
 				if (CanRepair())
-					outResult <<" Can repair other vehicles/structures";
+					outResult <<"Can repair other vehicles/structures";
 				if (detectsResources)
-					outResult <<  " Detects natural resources";
+					outResult <<"Detects natural resources";
 				#ifndef ONE_COMPOUND_PER_FACTION
 					if (!compound && baseStorageCapacity.IsNotEmpty())
 					{
-						outResult << " Base storage capacity:";
+						outResult <<"Base storage capacity:";
 						for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
 						{
 							if (baseStorageCapacity.level[i])
 							{
-								outResult << "  "+String(ResourceTag(i))+String(baseStorageCapacity.level[i]);
+								outResult <<" "+String(ResourceTag(i))+String(baseStorageCapacity.level[i]);
 							}
 						}
 					}
@@ -2163,6 +2165,9 @@ namespace Objects
 				else
 					if (scanningRange.GetValue(researchState) > 10)
 						outResult << ("This "+lowerName+" type is especially suited for detecting hostile entities. Such turret types are manadatory in order to see hostile forces approaching, as well as their attacks. Offensive turrets usually lack the necessary scanning range to see where they are shooting and depend on this turret type to reside in the vicinity.");
+
+				if (this == &bomb)
+					outResult << "This "+lowerName+" type can self-detonate in a large explosion. The vehicle is lost in the process. The explosion can be caused explicitly or by sufficient external damage. Bombs are very powerful and can trigger the explosion of neighboring bombs. An optional "+String(ResourceTag(Resource::Uranium))+"-driven DOOMSDAY explosion provides an extended explosion radius but will notify hostile factions of the explosion.";
 				//if (isDoomsday)
 				//{
 				//	outResult.WrapAppendText("This "+lowerName+" type is classified as Doomsday weaponry. Careful with this one.");

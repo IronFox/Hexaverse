@@ -1286,14 +1286,16 @@ namespace Objects
 			#ifdef HAS_WINDOW
 				virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override
 				{
-					label.BeginBrief();
 					Super::DescribeType(label,descFlags);
-					label.MarkBriefEnd();
-					label << "Storage structures accumulate excess production of the respective resources until they are full."
-					" Disabling a storage structure will change its priority such, that excess resources are stored here only if all other storage capacities are exhausted."
-					" Likewise, resource demand will remove resources from disabled storage structures first, such that they tend towards empty."
-					" Storage structures do not require "+String(ResourceTag(Resource::Energy))+" to operate."
-					;			
+					if (maxStorage.IsNotEmpty())
+					{
+						label.MarkBriefEnd();
+						label << "Storage structures accumulate excess production of the respective resources from the local compound until they are full."
+						" Disabling a storage structure will change its priority such, that excess resources are stored here only if all other storage capacities are exhausted."
+						" Likewise, resource demand will remove resources from disabled storage structures first, such that they tend towards empty."
+						" Storage structures do not require "+String(ResourceTag(Resource::Energy))+" to operate."
+						;
+					}
 				}
 			#endif
 		#endif
