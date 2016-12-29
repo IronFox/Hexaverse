@@ -517,6 +517,10 @@ namespace Objects
 			else
 			{
 				activeCursorMode = mode;
+
+				if (!Engine::input.pressed[Key::Shift])
+					ApplicationInterface::SignalDropAllTasks(selectedEntity);
+
 			}
 		}
 		else
