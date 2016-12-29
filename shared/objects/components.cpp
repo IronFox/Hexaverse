@@ -2174,7 +2174,7 @@ namespace Objects
 						outResult << ("This "+lowerName+" deals EMP damage. EMP damage temporarily reduces scanning range. Does not cause any permanent damage.");
 				}
 				else
-					if (scanningRange.GetValue(researchState) > 10)
+					if (scanningRange.GetValue(researchState) >= 7)
 						outResult << ("This "+lowerName+" type is especially suited for detecting hostile entities. Such turret types are manadatory in order to see hostile forces approaching, as well as their attacks. Offensive turrets usually lack the necessary scanning range to see where they are shooting and depend on this turret type to reside in the vicinity.");
 
 				if (this == &bomb)
