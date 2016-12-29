@@ -514,7 +514,7 @@ namespace Objects
 		//.reset(new ScriptCache::Script());
 		
 
-		#ifdef _DEBUG
+		#if defined _DEBUG || !defined CLIENT
 			LoadDefaultProgram();
 		#endif
 	}
