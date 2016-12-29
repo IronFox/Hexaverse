@@ -3698,7 +3698,7 @@ int main( int argc, const char* argv[])
 					FileSystem::Folder documentationTarget = FileSystem::Folder(RuntimeConfig::documentationRootFolder).FindFolder("documentation",false);
 					if (documentationTarget.IsValidLocation())
 					{
-						FileSystem::Folder rootFolder(documentationTarget);
+						FileSystem::Folder rootFolder(documentationTarget.FindFolder("units",false));
 						FileSystem::Folder structureFolder(rootFolder.FindFolder("structures",false));
 						FileSystem::Folder turretFolder(rootFolder.FindFolder("turrets",false));
 						FileSystem::Folder vbaseFolder(rootFolder.FindFolder("vbases",false));
