@@ -3664,7 +3664,7 @@ int main( int argc, const char* argv[])
 			if (RuntimeConfig::documentationRootFolder.DoesExist())
 			{
 				{
-					FileSystem::Folder imageTarget = FileSystem::Folder(RuntimeConfig::documentationRootFolder).FindFolder("images",false);
+					FileSystem::Folder imageTarget = FileSystem::Folder(RuntimeConfig::documentationRootFolder).FindFolder("images/units",false);
 					if (imageTarget.IsValidLocation())
 					{
 						LogEvent(EventSignificance::Uncommon, "Rendering type images to "+String(imageTarget.GetLocation())+ "...");
