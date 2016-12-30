@@ -1935,7 +1935,7 @@ namespace Objects
 
 	/*virtual override*/ bool			Laboratory::IsBuilding(std::pair<int,int>&outProgress) const
 	{
-		if (!owner || owner->researchState.IsIdle())
+		if (!IsEnabled() || !owner || owner->researchState.IsIdle())
 			return false;
 		auto topic = owner->researchState.GetActiveTopic();
 		if (topic->maxProgress <= 0)
