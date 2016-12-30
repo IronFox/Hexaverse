@@ -1088,8 +1088,7 @@ namespace Network
 		TCP::ObjectSender<Protocol::Hello,Protocol::ChannelID::Hello>								hello;
 		TCP::ObjectSender<Protocol::EntityDirectCommand, Protocol::ChannelID::EntityDirectCommand>	entityDirectCommand;
 		TCP::ObjectSender<Protocol::ChoiceIntersection, Protocol::ChannelID::ChoiceIntersection>	choiceIntersection;
-		TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::DropLastTask>						dropLastTask;
-		TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::DropAllTasks>						dropAllTasks;
+		TCP::ObjectSender<Protocol::DropTasks, Protocol::ChannelID::DropTasks>						dropTasks;
 		TCP::ObjectSender<Protocol::StandardJob, Protocol::ChannelID::SignalNewJob>					signalNewJob;
 		TCP::ObjectSender<Protocol::TerrainMod, Protocol::ChannelID::SignalTerrainMod>				signalTerrainMod;
 		TCP::ObjectSender<Protocol::ConstructionAbort, Protocol::ChannelID::ConstructionAbort>		constructionAbort;

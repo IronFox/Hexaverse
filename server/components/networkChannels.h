@@ -9,8 +9,7 @@ namespace Receiver
 	void	Hello(Protocol::Hello&state, TCP::Peer&peer);
 	void	EntityDirectCommand(Protocol::EntityDirectCommand&cmd, TCP::Peer&peer);
 	void	ChoiceIntersection(Protocol::ChoiceIntersection&ch, TCP::Peer&peer);
-	void	DropLastTask(NET(TUniqueID)&uuid, TCP::Peer&peer);
-	void	DropAllTasks(NET(TUniqueID)&uuid, TCP::Peer&peer);
+	void	DropTasks(Protocol::DropTasks&uuid, TCP::Peer&peer);
 	void	SignalNewJob(Protocol::StandardJob&job, TCP::Peer&peer);
 	void	SignalTerrainMod(Protocol::TerrainMod&mod, TCP::Peer&peer);
 	void	ConstructionAbort(Protocol::ConstructionAbort&ca, TCP::Peer&peer);
@@ -68,8 +67,7 @@ namespace Channels
 	extern TCP::Channel<Protocol::Hello, 0,Protocol::ChannelID::Hello>											hello;
 	extern TCP::Channel<Protocol::EntityDirectCommand, FactionLevel, Protocol::ChannelID::EntityDirectCommand>	entityDirectCommand;
 	extern TCP::Channel<Protocol::ChoiceIntersection, FactionLevel, Protocol::ChannelID::ChoiceIntersection>	choiceIntersection;
-	extern TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::DropLastTask>						dropLastTask;
-	extern TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::DropAllTasks>						dropAllTasks;
+	extern TCP::Channel<Protocol::DropTasks, FactionLevel, Protocol::ChannelID::DropTasks>						dropTasks;
 	extern TCP::Channel<Protocol::StandardJob, FactionLevel, Protocol::ChannelID::SignalNewJob>					signalNewJob;
 	extern TCP::Channel<Protocol::TerrainMod, FactionLevel, Protocol::ChannelID::SignalTerrainMod>				signalTerrainMod;
 	extern TCP::Channel<Protocol::ConstructionAbort, FactionLevel, Protocol::ChannelID::ConstructionAbort>		constructionAbort;

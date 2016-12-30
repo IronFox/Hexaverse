@@ -136,6 +136,14 @@ namespace Objects
 	}
 
 
+	bool MobileEntity::HasUnsafeTask() const
+	{
+		return constructionRoundCounter > 0 
+				&& myTasks.IsNotEmpty() 
+				&& myTasks.Peek().IsJob() 
+				&& myTasks.Peek().job->resourceCostLeft > 0;
+	}
+
 	#ifndef CLIENT
 
 		/*virtual override*/ void		MobileEntity::OnDestroy(RemovalType t, float&atTime)
@@ -1103,10 +1111,7 @@ namespace Objects
 
 		/*virtual override*/ void			MobileEntity::ClearSafeTasks()
 		{
-			if (constructionRoundCounter > 0 
-				&& myTasks.IsNotEmpty() 
-				&& myTasks.Peek().IsJob() 
-				&& myTasks.Peek().job->resourceCostLeft > 0)
+			if (HasUnsafeTask())
 			{
 				if (myTasks.Count() == 1)
 					return;//avoid signalling change

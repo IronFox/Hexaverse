@@ -22,8 +22,8 @@ namespace Channels
 	TCP::Channel<Protocol::Hello, 0,Protocol::ChannelID::Hello>												hello(Receiver::Hello);
 	TCP::Channel<Protocol::EntityDirectCommand, FactionLevel, Protocol::ChannelID::EntityDirectCommand>		entityDirectCommand(Receiver::EntityDirectCommand);
 	TCP::Channel<Protocol::ChoiceIntersection, FactionLevel, Protocol::ChannelID::ChoiceIntersection>		choiceIntersection(Receiver::ChoiceIntersection);
-	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::DropLastTask>							dropLastTask(Receiver::DropLastTask);
-	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::DropAllTasks>							dropAllTasks(Receiver::DropAllTasks);
+	TCP::Channel<Protocol::DropTasks, FactionLevel, Protocol::ChannelID::DropTasks>							dropTasks(Receiver::DropTasks);
+
 	TCP::Channel<Protocol::StandardJob, FactionLevel, Protocol::ChannelID::SignalNewJob>					signalNewJob(Receiver::SignalNewJob);
 	TCP::Channel<Protocol::TerrainMod, FactionLevel, Protocol::ChannelID::SignalTerrainMod>					signalTerrainMod(Receiver::SignalTerrainMod);
 	TCP::Channel<Protocol::ConstructionAbort, FactionLevel, Protocol::ChannelID::ConstructionAbort>			constructionAbort(Receiver::ConstructionAbort);
@@ -1357,13 +1357,23 @@ namespace Receiver
 		LogEvent(EventSignificance::Common,peer,e,"End: Processed choice intersection in mode "+String(ch.mode)+" at cell "+ch.target.ToString());
 	}
 
-	void	DropLastTask(NET(TUniqueID)&uuid, TCP::Peer&peer)
+	
+	void	DropTasks(Protocol::DropTasks&drop, TCP::Peer&peer)
 	{
-		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Drop last task of entity "+uuid.value.ToString());
+		Protocol::DropMode mode;
+		
+		if (!mode.Load(drop.dropMode.value))
+		{
+			LogEvent(EventClass::Preset::unexpectedBehavior,peer,"Invalid drop mode #"+String(drop.dropMode.value));
+			return;
+		}
+		
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Drop tasks ("+String(mode.ToString())+") of entity "+drop.targetID.value.ToString());
 
-		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(uuid,peer);
+		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(drop.targetID,peer);
 		if (!e)
 			return;
+
 
 
 		Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(e);
@@ -1372,6 +1382,11 @@ namespace Receiver
 			if (v->myTasks.IsEmpty())
 			{
 				LogEvent(EventSignificance::Common,peer,e,"Nothing to undo");
+				return;
+			}
+			if (v->HasUnsafeTask() && v->myTasks.Count() == 1 && mode == Protocol::DropMode::AllSafeTasks)
+			{
+				LogEvent(EventSignificance::Common,peer,e,"Nothing to safely undo");
 				return;
 			}
 		}
@@ -1392,48 +1407,9 @@ namespace Receiver
 				return;
 			}
 		}
-		Journal::currentRound.RegisterDropLastEntityCommand(true,e);
-
-		
+		Journal::currentRound.RegisterDropEntityCommands(true,e, mode);
 	}
 
-	void	DropAllTasks(NET(TUniqueID)&uuid, TCP::Peer&peer)
-	{
-		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Drop all tasks of entity "+uuid.value.ToString());
-
-		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(uuid,peer);
-		if (!e)
-			return;
-
-		Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(e);
-		if (v)
-		{
-			if (v->myTasks.IsEmpty())
-			{
-				LogEvent(EventSignificance::Common,peer,e,"No tasks to clear");
-				return;
-			}
-		}
-		else
-		{
-			Objects::PTower t = To<Objects::Tower>::DynamicCast(e);
-			if (t)
-			{
-				if (t->attackQueue.IsEmpty())
-				{
-					LogEvent(EventSignificance::Common,peer,e,"No tasks to clear");
-					return;
-				}
-			}
-			else
-			{
-				LogEvent(EventClass::Preset::commandRejected,peer,e,"Tried to drop commands of incompatible entity");
-				return;
-			}
-		}
-		Journal::currentRound.RegisterClearEntityCommands(true,e);
-
-	}
 
 
 	/**

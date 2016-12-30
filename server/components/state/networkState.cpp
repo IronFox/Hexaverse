@@ -146,8 +146,7 @@ namespace Network
 		server.InstallChannel(Channels::hello);
 		server.InstallChannel(Channels::entityDirectCommand);
 		server.InstallChannel(Channels::choiceIntersection);
-		server.InstallChannel(Channels::dropLastTask);
-		server.InstallChannel(Channels::dropAllTasks);
+		server.InstallChannel(Channels::dropTasks);
 		server.InstallChannel(Channels::signalNewJob);
 		server.InstallChannel(Channels::signalTerrainMod);
 		server.InstallChannel(Channels::constructionAbort);

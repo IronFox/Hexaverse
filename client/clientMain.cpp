@@ -799,7 +799,7 @@ namespace ApplicationInterface
 					TUniqueID id = e->id;
 					Dialog::Confirm("Are you sure you wish to clear all tasks? The resources invested in the leading production job will be lost.",[id]()
 					{
-						Network::Channels::dropAllTasks.SendTo(Network::client,id);
+						Network::Channels::dropTasks.SendTo(Network::client, Protocol::DropTasks( id, Protocol::DropMode::AllTasks));
 					},
 					[id]()->Dialog::CheckResult
 					{
@@ -818,7 +818,12 @@ namespace ApplicationInterface
 		
 			}
 		#endif
-		Network::Channels::dropAllTasks.SendTo(Network::client,e->id);
+		Network::Channels::dropTasks.SendTo(Network::client, Protocol::DropTasks( e->id, Protocol::DropMode::AllTasks));
+	}
+
+	void	SignalDropSafeTasks(const Objects::PWorldEntity&e)
+	{
+		Network::Channels::dropTasks.SendTo(Network::client, Protocol::DropTasks( e->id, Protocol::DropMode::AllSafeTasks));
 	}
 
 
@@ -2524,16 +2529,16 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 			//SignalDropLastTask(v);
 			//v->DropLastTask();
 			bool isJob = m->myTasks.GetNewest().IsJob();
-			Network::Channels::dropLastTask.SendTo(Network::client, m->id);
+			Network::Channels::dropTasks.SendTo(Network::client, Protocol::DropTasks( m->id, Protocol::DropMode::LastTask));
 			if (isJob && m->myTasks.Count() > 1 
 				&& m->myTasks[m->myTasks.Count() - 2].type == Objects::MobileEntity::Task::MoveTo)
 			{
-				Network::Channels::dropLastTask.SendTo(Network::client, e->id);
+				Network::Channels::dropTasks.SendTo(Network::client, Protocol::DropTasks( e->id, Protocol::DropMode::LastTask));
 			}
 		}
 	}
 	else
-		Network::Channels::dropLastTask.SendTo(Network::client, e->id);
+		Network::Channels::dropTasks.SendTo(Network::client, Protocol::DropTasks( e->id, Protocol::DropMode::LastTask));
 }
 
 

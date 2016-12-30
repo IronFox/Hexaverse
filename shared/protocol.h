@@ -1879,6 +1879,14 @@ namespace Protocol
 		, NETA(BYTE), data
 	)
 
+	CONSTRUCT_ENUMERATION3(DropMode, LastTask, AllTasks,AllSafeTasks);
+
+	NETSTRUCT2(DropTasks
+		, NET(TUniqueID), targetID
+		, NET(BYTE), dropMode
+	)
+
+
 
 	namespace ChannelID
 	{
@@ -1930,8 +1938,7 @@ namespace Protocol
 
 			EntityDirectCommand,//c2s: EntityDirectCommand
 
-			DropLastTask,		//c2s: TUniqueID
-			DropAllTasks,		//c2s: TUniqueID
+			DropTasks,			//c2s: DropTasks
 
 			SignalNewJob,		//c2s: StandardJob
 			SignalTerrainMod,	//c2s: TerrainMod
