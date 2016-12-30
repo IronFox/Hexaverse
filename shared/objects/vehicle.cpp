@@ -73,7 +73,11 @@ namespace Objects
 	{
 		String rs = turret->scanningRange.Describe(GetResearchState());
 		if (!turret->CanAttack())
-			rs += "+"+base->turretRangeModifier.Describe(GetResearchState());
+		{
+			String mod = base->turretRangeModifier.Describe(GetResearchState());
+			if (mod != '0')
+				rs += "+"+mod;
+		}
 		return rs;
 	}
 
