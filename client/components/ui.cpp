@@ -2416,7 +2416,7 @@
 						cachedLines << " Storage:";
 						for (index_t i = 0; i < delta.NumEntries; i++)
 							if (storageMax.level[i] > 0)
-								cachedLines << "  "+String((char)(tagOffset+i))+" "+String(storage.level[i])+"/"+storageMax.level[i];
+								cachedLines << "  "+String((char)(tagOffset+i))+" "+String(storage.level[i])+"/"+String(storageMax.level[i]);
 					}
 				}
 	
