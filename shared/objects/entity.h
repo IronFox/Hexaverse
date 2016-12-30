@@ -462,6 +462,9 @@ namespace Objects
 		virtual bool				IsWorkingStructure() const {return false;}
 		virtual bool				IsMobile() const {return false;}
 		virtual bool				IsTower() const {return false;}
+
+		virtual bool				IsUnlockedAtState(const Lua::Reference&researchState) const	{return GetTable()->isUnlocked.GetValue(researchState);}
+		bool						IsUnlocked() const {return IsUnlockedAtState(GetResearchState());}
 		virtual bool				IsVehicle() const {return false;}
 		#ifndef NO_SATELLITES
 			virtual bool			IsSatellite() const {return false;}

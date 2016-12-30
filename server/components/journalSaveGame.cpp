@@ -2095,7 +2095,7 @@ namespace Journal
 					LogEvent(EventClass::Preset::commandRejected,e.get(),"Cannot produce that");
 					return;
 				}
-				if (!proto->IsUnlockedFor(e->GetResearchState()))
+				if (!proto->IsUnlockedAtState(e->GetResearchState()))
 				{
 					LogEvent(EventClass::Preset::commandRejected,e.get(), "Cannot build "+proto->GetTypeName()+" since it has not been researched yet");
 					return;
