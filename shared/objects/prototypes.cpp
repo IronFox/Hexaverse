@@ -89,7 +89,17 @@ namespace Objects
 				foreach (prototypes,p)
 					if ((*p)->GetTypeName() == name)
 						return *p;
+
+				foreach (prototypes,p)
+					if ((*p)->GetTypeName().find(' '))
+					{
+						String pn = (*p)->GetTypeName();
+						pn.eraseCharacter(' ');
+						if (pn == name)
+							return *p;
+					}
 			}
+
 			return PPlane();
 		}	
 	}
