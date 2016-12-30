@@ -163,9 +163,11 @@ namespace Network
 		server.InstallChannel(Channels::touchMarker);
 		server.InstallChannel(Channels::changeMyName);
 		server.InstallChannel(Channels::identifyUserRecv);
+		server.InstallChannel(Channels::selectResearch);
 		server.InstallChannel(Channels::chatMessage);
 		server.InstallChannel(Channels::planetConfig);
 		server.InstallChannel(Channels::gameConfig);
+		server.InstallChannel(Channels::requestResource);
 
 		server.OpenSignalChannel(Protocol::ChannelID::RequestRoundEnd,(UINT32)UserLevel::CommonFaction);
 		server.OpenSignalChannel(Protocol::ChannelID::RequestContinueRound,(UINT32)UserLevel::CommonFaction);
@@ -352,7 +354,7 @@ namespace Network
 	void InvalidOperation(TCP::Peer&peer)
 	{
 		PClient client = To<Client>::Cast(peer.attachment);
-		Logging::WriteEvent(EventClass::Preset::unexpectedBehavior, "Invalid operation performed",&peer,nullptr);
+		Logging::WriteEvent(EventClass::Preset::unexpectedBehavior, "Invalid operation performed",&peer,nullptr,client && client->faction ? client->faction : Objects::OwnerParameter());
 		if (client)
 		{
 			//clients.FindAndErase(client);

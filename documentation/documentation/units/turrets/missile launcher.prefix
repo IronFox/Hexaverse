@@ -1,0 +1,14 @@
+{{ img:units/Missile Launcher.png|Missile Launcher}}
+=Missile Launcher=
+*  Cost: %Minerals%40
+*  [[concepts/initiative|Initiative]]: 70
+*  [[concepts/vehicle|Weight]]: 13
+*  Base [[concepts/scanning range]]: 4
+*  Health: x2
+*  Offensive turret
+*  [[concepts/attack range|Base horizontal attack range]]: 8 (Missile)
+*  Does not require ammunition
+*  1 attack per round
+*  Explosion radius: 1
+*  Damage: 10
+This turret type can attack objects in range.

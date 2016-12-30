@@ -1,0 +1,12 @@
+{{ img:units/Cargo Plane.png|Cargo Plane}}
+=Cargo Plane=
+*  Health: 15
+*  Price: %Minerals% 40
+*  [[concepts/scanning range|Scanning range]]: 5+0
+*  Plane (Base)
+*  Can climb 1 height level up
+*  Can safely fall down 1 height level
+*  Overweight: 12
+*  Stationary on ground (supported by water)
+*  Speed: 8 (aerial)
+Sub orbital planes move above the regular terrain. They can scan the surface, and are invisible to ordinary radar.

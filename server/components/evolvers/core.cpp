@@ -214,6 +214,10 @@ namespace Evolver
 				c.TickBegin();
 				c.RefreshState(0);
 			});
+			Objects::ForeachFaction([](const Objects::PFaction&f)
+			{
+				f->researchState.FinalizeRound(f);
+			});
 
 
 			Objects::ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
@@ -272,7 +276,7 @@ namespace Evolver
 					{
 						if (t->attackQueue.IsEmpty() && !t->FillAttackQueue())
 							continue;
-						if (!t->HasAmmoForShot(0))
+						if (!t->HasAmmoForShot())
 						{
 							LogEvent(EventClass::Preset::commandRejected,t.get(),"Insufficient ammunition. Attacks cancelled");
 							t->attackQueue.Clear();

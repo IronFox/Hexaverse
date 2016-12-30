@@ -234,11 +234,10 @@ namespace Test
 		Grid::HCellIdI impactCell;
 		auto turret = &Objects::Component::artillery;
 		int outOfScanning = 0;
-		const float originalExRadius = turret->explosionRadius;
+		auto original = turret->explosionRadius.constOverride;
 		for (int i = 0; i < 100 || outOfScanning < 10; i++)
 		{
-			turret->explosionRadius = random.NextFloat(1,4);
-
+			turret->explosionRadius.SetConst(random.NextFloat(1,4));
 
 			Grid::LCellIdI	generatorAt = RandomCell(random);
 			generatorAt.height = Objects::FindApplicableGround(generatorAt,true);
@@ -264,11 +263,11 @@ namespace Test
 			#endif
 			Objects::RefreshCompoundCoverage(0);
 
-			Grid::LCellIdI	vehicleAt = RandomCellAtRange(random, generatorAt, FloatRange(0.f, turret->horizontalAttackRange + turret->explosionRadius * 2));	//allow out-of-range
+			Grid::LCellIdI	vehicleAt = RandomCellAtRange(random, generatorAt, FloatRange(0.f, turret->GetHorizontalAttackRange(faction0) + turret->GetExplosionRadius(faction0) * 2));	//allow out-of-range
 			vehicleAt.height = Objects::FindApplicableGround(vehicleAt,true);
 			while (vehicleAt.height == Objects::badHeight)
 			{
-				vehicleAt = RandomCellAtRange(random, generatorAt, FloatRange(0.f, turret->horizontalAttackRange + turret->explosionRadius * 2));	//allow out-of-range
+				vehicleAt = RandomCellAtRange(random, generatorAt, FloatRange(0.f, turret->GetHorizontalAttackRange(faction0) + turret->GetExplosionRadius(faction0) * 2));	//allow out-of-range
 				vehicleAt.height = Objects::FindApplicableGround(vehicleAt,true);
 			}
 
@@ -295,17 +294,17 @@ namespace Test
 						if (tr = v->TraceTrajectory(Objects::TrajectoryEndPoint( target.target ),trajectory,impactAt,impactCell,angle))
 						{
 							ASSERT__(tr == Objects::TurretTrajectory::ReachesTarget);
-							if (Grid::GetGeometricDistance(vehicleAt,generatorAt) > turret->scanningRange)
+							if (Grid::GetGeometricDistance(vehicleAt,generatorAt) > v->GetScanningRange())
 								outOfScanning++;
 
 							float distance = Vec::distance(impactAt,Grid::ToWorld(v->location));
-							if (distance <= v->turret->explosionRadius)
+							if (distance <= v->GetAttackExplosionRadius())
 							{
 								//baaaaad
-								bool chk = Objects::TurretBase::CheckArea(faction1, target.target, turret->explosionRadius);
+								bool chk = Objects::TurretBase::CheckArea(faction1, target.target, turret->GetExplosionRadius(faction1));
 								ASSERT__(!chk);
 							}
-							ASSERT_GREATER__(distance,v->turret->explosionRadius);
+							ASSERT_GREATER__(distance,v->turret->GetExplosionRadius(v->owner));
 						}
 					}
 				}
@@ -327,7 +326,7 @@ namespace Test
 
 
 		}
-		turret->explosionRadius = originalExRadius;
+		turret->explosionRadius.constOverride = original;
 		
 		Objects::FlushAllData();
 		Grid::ResetStructureCounters();

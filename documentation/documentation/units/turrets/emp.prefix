@@ -1,0 +1,14 @@
+{{ img:units/EMP.png|EMP}}
+=EMP=
+*  Cost: %Minerals%100
+*  [[concepts/initiative|Initiative]]: 30
+*  [[concepts/vehicle|Weight]]: 5
+*  Base [[concepts/scanning range]]: 3
+*  Offensive turret
+*  [[concepts/attack range|Base horizontal attack range]]: 17 (Artillery)
+*  Consumes %Uranium%50 per shot
+*  1 attack per round
+*  Explosion radius: 3
+*  EMP damage: 5
+This turret type can attack objects in range.
+This turret deals EMP damage. EMP damage temporarily reduces attack and [[concepts/scanning range]], movement speed, and disallows construction operations. Does not cause any permanent damage.

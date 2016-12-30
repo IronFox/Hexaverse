@@ -1,0 +1,2 @@
+----
+Vehicles require each one turret and one base. See [[concepts/vehicle|vehicles]] for details.

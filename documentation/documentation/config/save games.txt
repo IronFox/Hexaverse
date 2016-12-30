@@ -1,0 +1,18 @@
+= Save Games =
+
+Save games are stored as binary ''.hsf'' (non-standard format) files, and managed exclusively by the server.
+The files contain all data necessary to restore a previous game, from terrain state, to factions, keys, units, and memories.
+
+==Creation==
+Unless [[config/server|configured]] differently, automatic saves are created every 10 rounds, or when all players have disconnected.
+Up to 10 automatic savegames are preserved in ''[[config/game folder]]\server\saves\auto\snapshot[index].hsf'', where ''snapshot0.hsf'' is always the newest savegame.
+
+Additionally, autosaves may be created manually using the [[config/control console]] command ''/IO/autoSaveNow''.
+Likewise the command ''/IO/saveTo [X]'' can be used to create a new save file [X] anywhere.
+
+==Loading==
+Save games may be loaded via the ''-l [X]'' server command line parameter, where ''[X]'' is a full path to a save file.
+A more convenient solution is to do so via the [[config/control console]] command ''/IO/loadFrom [X]''.
+If the filename is located in the auto-save folder, using the described naming convention, then it may also be loaded using ''/IO/loadAutoSave [index]''.
+
+Loading save games while a game session is currently active flushes the current game state and forcefully disconnects all clients.

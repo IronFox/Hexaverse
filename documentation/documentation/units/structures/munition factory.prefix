@@ -1,0 +1,7 @@
+{{ img:units/Munition Factory.png|Munition Factory}}
+=Munition Factory=
+*  Health: 8
+*  Price: %Minerals% 40
+*  [[concepts/scanning range|Scanning range]]: 2
+*  Consumes: %Minerals%10 %Energy%10
+Enabled munition factories continuiously produce munition to supply connected offensive turrets. This is a deprecated building type.

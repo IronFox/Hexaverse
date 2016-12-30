@@ -19,10 +19,57 @@ namespace Objects
 									allTurretComponents;
 	}
 
+
+	ConstName		ComponentOrPrototypeToCName(const String&name)
+	{
+		PWorldEntity e;
+		
+		#ifndef NO_SATELLITES
+			e = GetSatellitePrototypeByName(name);
+			if (e)
+				return e->GetCTypeName();
+		#endif
+		e = GetPrototypeByName(name);
+		if (e)
+			return e->GetCTypeName();
+		Component::Base*b = Component::GetTurretByName(name);
+		if (b)
+			return b->constName;
+		b = Component::GetVehicleBaseByName(name);
+		if (b)
+			return b->constName;
+		return ConstName::Empty;
+	}
+
+
+	String			ComponentOrPrototypeToString(ConstName name)
+	{
+		if (name == ConstName::Empty)
+			return "";
+		PWorldEntity e;
+ 		#ifndef NO_SATELLITES
+			e = GetSatellitePrototypeByName(name);
+			if (e)
+				return e->GetTypeName();
+		#endif
+		e = SubOrbital::GetPrototypeByName(name);
+		if (e)
+			return e->GetTypeName();
+		e = GetPrototypeByName(name);
+		if (e)
+			return e->GetTypeName();
+		Component::Base*b = Component::GetTurretByName(name);
+		if (b)
+			return b->typeName;
+		b = Component::GetVehicleBaseByName(name);
+		if (b)
+			return b->typeName;
+		return "";
+	}
+
 	namespace SubOrbital
 	{
 		Buffer0<PPlane>			prototypes;
-
 
 		PPlane		GetPrototypeByName(ConstName name)
 		{
@@ -92,6 +139,14 @@ namespace Objects
 			foreach (structurePrototypes,p)
 				if ((*p)->GetTypeName() == structureTypeName)
 					return *p;
+			foreach (structurePrototypes,p)
+				if ((*p)->GetTypeName().find(' '))
+				{
+					String pn = (*p)->GetTypeName();
+					pn.eraseCharacter(' ');
+					if (pn == structureTypeName)
+						return *p;
+				}
 		}
 		return PStructure();
 	}
@@ -139,6 +194,23 @@ namespace Objects
 	namespace Component
 	{
 
+		Base*			GetByName(const String&name)
+		{
+			Base* rs = GetVehicleBaseByName(name);
+			if (rs)
+				return rs;
+			return GetTurretByName(name);
+		}
+
+		Base*			GetByName(ConstName name)
+		{
+			Base* rs = GetVehicleBaseByName(name);
+			if (rs)
+				return rs;
+			return GetTurretByName(name);
+		}
+
+
 		VehicleBase*	GetVehicleBaseByName(ConstName name)
 		{
 			//Buffer0<VehicleBase*>		baseComponents;
@@ -161,6 +233,15 @@ namespace Objects
 				foreach(baseComponents, p)
 					if ((*p)->typeName == name)
 						return *p;
+
+				foreach (baseComponents,p)
+					if ((*p)->typeName.find(' '))
+					{
+						String pn = (*p)->typeName;
+						pn.eraseCharacter(' ');
+						if (pn == name)
+							return *p;
+					}
 			}
 			return nullptr;
 		}
@@ -173,8 +254,21 @@ namespace Objects
 			//if (structureTypeName.IsNotEmpty())
 			{
 				foreach(allTurretComponents, p)
-					if ((*p)->typeName == name)
+				{
+					const String&cname = (*p)->typeName;
+					if (cname == name)
 						return *p;
+				}
+
+				foreach (allTurretComponents,p)
+					if ((*p)->typeName.find(' '))
+					{
+						String pn = (*p)->typeName;
+						pn.eraseCharacter(' ');
+						if (pn == name)
+							return *p;
+					}
+
 			}
 			return nullptr;
 		}
@@ -195,6 +289,31 @@ namespace Objects
 
 		void ConfigureAll()
 		{
+			/*order change: by moving registration of applicable turret and base components before Configure() calls,
+			research registration can check whether a congigured component should be able to register research at all
+			*/
+			allTurretComponents << &radar 
+								#ifndef NO_SATELLITES
+									<< &skyHubTurret << &protonCannon << &ragnarok << &starPort
+								#endif
+								<< &armored << &artillery << &launcher << &emp
+                                << &SubOrbital::raptor << &SubOrbital::cargoPlane << &SubOrbital::sensorDrone
+								<< &bomb
+								<< &terraformer << &resourceScanner
+								#ifndef ONE_COMPOUND_PER_FACTION
+									<< &munitionTransporter
+								#endif
+								<< &mechanic;
+								;
+			for (auto t: allTurretComponents)
+				if (t->mountType == Component::Turret::MountType::Vehicle)
+					vehicleTurretComponents << t;
+			baseComponents << &hoverbase << &heavybase << &catbase;
+
+
+
+
+
 			Artillery::Configure(artillery);
 			Launcher::Configure(launcher);
 			EMP::Configure(emp);
@@ -224,23 +343,6 @@ namespace Objects
 			SubOrbital::SensorDrone::Configure(SubOrbital::sensorDrone);
 
 
-			allTurretComponents << &radar 
-								#ifndef NO_SATELLITES
-									<< &skyHubTurret << &protonCannon << &ragnarok << &starPort
-								#endif
-								<< &armored << &artillery << &launcher << &emp
-								<< &SubOrbital::raptor << &SubOrbital::cargoPlane << &SubOrbital::sensorDrone
-								<< &bomb
-								<< &terraformer << &resourceScanner
-								#ifndef ONE_COMPOUND_PER_FACTION
-									<< &munitionTransporter
-								#endif
-								<< &mechanic;
-								;
-			for (auto t: allTurretComponents)
-				if (t->mountType == Component::Turret::MountType::Vehicle)
-					vehicleTurretComponents << t;
-			baseComponents << &hoverbase << &heavybase << &catbase;
 		}
 
 		void DestroyAll()

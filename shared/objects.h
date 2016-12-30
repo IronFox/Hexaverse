@@ -3,7 +3,7 @@
 
 #include <container/buffer.h>
 #include <geometry/cgs.h>
-#include <io/encryption.h>
+#include <io/cryptographic_hash.h>
 #include "sphereGrid.h"
 #include <image/converter/magic.h>
 

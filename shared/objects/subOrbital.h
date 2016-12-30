@@ -73,16 +73,19 @@ namespace Objects
 				virtual bool		ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget,Grid::LCellIdI&actual) const {return false;}
 				virtual bool		ProcessRound(float&atTime);
 			#endif
-			virtual int				GetMaxAirSpeed() const = 0;
+			int						GetMaxAirSpeed() const {return 100.f / turret->weight.GetValue(GetResearchState());};
 
 			//TurretBase overrides:
-			virtual float			GetFlatAttackRange() const override {return EMPModify(turret->horizontalAttackRange,1.f);}
+			virtual float			GetFlatAttackRange() const override;
+			virtual String			DescribeFlatAttackRange() const override;
 			#ifndef CLIENT
 				virtual bool		FillAttackQueue()override;
 			#endif
 
 			//WorldEntity overrides:
-			virtual int				GetConstructionCost() const override {return turret->productionCosts;}
+			virtual int				GetMaxHealth() const override {return turret->healthMultiplier.GetValue(GetResearchState());}
+			virtual String			DescribeMaxHealth() const override {return turret->healthMultiplier.Describe(GetResearchState());}
+			virtual int				GetConstructionCost() const override {return turret->productionCosts.GetValue(GetResearchState());}
 			virtual bool			IsGroundBoundVehicle() const {return location.height <= Grid::CellStack::TopHeight;}	//landed
 			virtual bool			IsPureVehicle() const override {return false;}
 			virtual bool			IsPlane() const override {return true;}
@@ -251,9 +254,6 @@ namespace Objects
 			#endif
 
 
-			//Plane overrides:
-			virtual int				GetMaxAirSpeed() const override {return 10;}
-
 			//BaseEntity overrides:
 			virtual String			GetTypeName() const override {return "Raptor";}
 			virtual ConstName		GetCTypeName() const override {return ConstName::Type_Raptor;}
@@ -263,8 +263,6 @@ namespace Objects
 									GetTurretType() const override	{return &Component::SubOrbital::raptor;}
 
 			//WorldEntity overrides:
-			virtual int				GetMaxHealth() const {return 5;}
-
 			#ifndef NO_HIBERNATION
 				virtual int			GetUplinkTraffic() const override {return 4;}
 			#endif
@@ -288,9 +286,6 @@ namespace Objects
 		public:
 			static const count_t	MaxStorage = 4;
 
-			//Plane overrides:
-			virtual int				GetMaxAirSpeed() const override {return 8;}
-
 			//BaseEntity overrides:
 			virtual String			GetTypeName() const override {return "Cargo Plane";}
 			virtual ConstName		GetCTypeName() const override {return ConstName::Type_CargoPlane;}
@@ -301,7 +296,6 @@ namespace Objects
 
 			//WorldEntity overrides:
 			virtual bool			IsHangar() const {return true;}
-			virtual int				GetMaxHealth() const {return 15;}
 			virtual PHangar			CastToDestinationForType(const MobileEntity&e) override;
 			virtual void			OnDestroy(RemovalType, float&) override;
 			#ifdef HAS_WINDOW
@@ -341,8 +335,6 @@ namespace Objects
 									{}	//global prototype
 		public:
 
-			//Plane overrides:
-			virtual int				GetMaxAirSpeed() const override {return 9;}
 
 
 			//BaseEntity overrides:
@@ -354,7 +346,6 @@ namespace Objects
 									GetTurretType() const override	{return &Component::SubOrbital::sensorDrone;}
 
 			//WorldEntity overrides:
-			virtual int				GetMaxHealth() const {return 4;}
 			#ifndef NO_HIBERNATION
 				virtual int			GetUplinkTraffic() const override {return 4;}
 			#endif

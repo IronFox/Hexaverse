@@ -1,0 +1,19 @@
+{{ img:units/Raptor.png|Raptor}}
+=Raptor=
+*  Health: 5
+*  Price: %Minerals% 80
+*  [[concepts/scanning range|Scanning range]]: 7
+*  [[concepts/attack range|Hrz. Attack range]]: 7 (Missile)
+*  Can attack independently of movement action
+*  Does not require ammunition
+*  2 attacks per round
+*  Explosion radius: 1
+*  Damage: 5
+This plane-turret type can attack objects in range.
+*  Plane (Base)
+*  Can climb 1 height level up
+*  Can safely fall down 1 height level
+*  Overweight: 10
+*  Stationary on ground (supported by water)
+*  Speed: 10 (aerial)
+Sub orbital planes move above the regular terrain. They can scan the surface, and are invisible to ordinary radar.

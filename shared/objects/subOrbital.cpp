@@ -24,15 +24,16 @@ namespace Objects
 
 		/*virtual override*/ void		Plane::RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
 		{
-			Super::RegisterSensory(loc,atTime,checkChangesNow && turret->groundScanningRange <= 0, newContacts);
+			float range = turret->groundScanningRange.GetValue(GetResearchState());
+			Super::RegisterSensory(loc,atTime,checkChangesNow && range <= 0, newContacts);
 			#ifdef CLIENT
 				if (isOwnedByMe)
 					Grid::visibleSubOrbitGrid.ChangeSensory(loc,GetScanningRange(),+1);
 			#endif
-			if (turret->groundScanningRange > 0.f)
+			if (range > 0.f)
 			{
-				float range = EMPModify(turret->groundScanningRange,2);
-				Grid::actualWorld.MapSensorState(loc.stackID,range,loc.height,turret->groundScannerPenetration,skySensorState);
+				range = EMPModify(range,2);
+				Grid::actualWorld.MapSensorState(loc.stackID,range,loc.height,turret->groundScannerPenetration.GetValue(GetResearchState()),skySensorState);
 				Grid::actualWorld.UpdateSensorState(skySensorState);
 				#ifdef CLIENT
 					if (isOwnedByMe)
@@ -48,12 +49,13 @@ namespace Objects
 
 		/*virtual override*/ void		Plane::UnregisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/)
 		{
-			Super::UnregisterSensory(loc,atTime,checkChangesNow && turret->groundScanningRange <= 0);
+			float range = turret->groundScanningRange.GetValue(GetResearchState());
+			Super::UnregisterSensory(loc,atTime,checkChangesNow && range <= 0);
 			#ifdef CLIENT
 				if (isOwnedByMe)
 					Grid::visibleSubOrbitGrid.ChangeSensory(loc,GetScanningRange(),-1);
 			#endif
-			if (turret->groundScanningRange > 0.f)
+			if (range > 0.f)
 			{
 				#ifdef CLIENT
 					if (isOwnedByMe)
@@ -76,7 +78,6 @@ namespace Objects
 			/*virtual override*/ void Plane::DescribeType(BaseCommand::Label&outResult, UINT32 descFlags)
 			{
 				Super::DescribeType(outResult,descFlags);
-				outResult << "";
 				String speed = "Speed: "+String(this->GetMovementStepsPerRound()) + " (aerial)";
 
 				outResult << speed;
@@ -175,7 +176,10 @@ namespace Objects
 		#ifndef CLIENT
 			bool					Plane::RefreshGroundSensor(float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts/* = nullptr*/)
 			{
-				if (turret->groundScanningRange > 0.f)
+				if (turret->groundScanningRange.IsEmpty())
+					return false;
+				float range = turret->groundScanningRange.GetValue(GetResearchState());
+				if (range > 0.f)
 				{
 					Grid::SkySensorState state = skySensorState;
 					if (Grid::actualWorld.UpdateSensorState(skySensorState))
@@ -199,18 +203,23 @@ namespace Objects
 					return;
 				Super::RegisterSensory(location,motionTime,false,newContacts);
 				Super::UnregisterSensory(oldLocation,motionTime,false);
-				if (turret->groundScanningRange > 0)
-				{
-					Grid::SkySensorState state = skySensorState;
-					LogEvent(EventSignificance::Common,this,"Processing ground-sensor motion");
-					float range = EMPModify(turret->groundScanningRange,2);
-					Grid::actualWorld.MapSensorState(location.stackID,range,location.height,turret->groundScannerPenetration,skySensorState);
-					Grid::actualWorld.UpdateSensorState(skySensorState);
 
-					owner->RegisterSensorCreation(skySensorState,atTime,false, newContacts);
-					atTime += timeEpsilon;
-					owner->RegisterSensorRemoval(state,atTime,checkChangesNow);
-					atTime += timeEpsilon;
+				if (turret->groundScanningRange.IsSet())
+				{
+					float range = turret->groundScanningRange.GetValue(GetResearchState());
+					if (range > 0)
+					{
+						Grid::SkySensorState state = skySensorState;
+						LogEvent(EventSignificance::Common,this,"Processing ground-sensor motion");
+						range = EMPModify(range,2);
+						Grid::actualWorld.MapSensorState(location.stackID,range,location.height,turret->groundScannerPenetration.GetValue(GetResearchState()),skySensorState);
+						Grid::actualWorld.UpdateSensorState(skySensorState);
+
+						owner->RegisterSensorCreation(skySensorState,atTime,false, newContacts);
+						atTime += timeEpsilon;
+						owner->RegisterSensorRemoval(state,atTime,checkChangesNow);
+						atTime += timeEpsilon;
+					}
 				}
 			}
 
@@ -403,6 +412,18 @@ namespace Objects
 		{
 			Super::OnDestroy(type,t);
 			Hangar::OnDestroy(t);
+		}
+
+		/*virtual override*/ String	Plane::DescribeFlatAttackRange() const
+		{
+			return cache.horizontalAttackRange.DescribeEMPModified(*this,turret->horizontalAttackRange,LuaAttribute<float>());
+		}
+
+	
+		/*virtual override*/ float	Plane::GetFlatAttackRange() const
+		{
+			return cache.horizontalAttackRange.GetEMPModified(*this,turret->horizontalAttackRange,LuaAttribute<float>(),true);
+			//EMPModify(turret->GetHorizontalAttackRange(owner,base->turretRangeModifier),1.f);
 		}
 
 

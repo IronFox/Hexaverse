@@ -11,12 +11,12 @@ namespace Logging
 	/**
 	Writes an event to the console and/or log file
 	*/
-	void	WriteEvent(const EventClass&type, const String&message, TCP::Peer*peer, const Objects::WorldEntity*e);
+	void	WriteEvent(const EventClass&type, const String&message, TCP::Peer*peer, const Objects::WorldEntity*e, const Objects::OwnerParameter&owner);
 
 	/**
 	Sends an event to a peer
 	*/
-	void	SendEntityEvent(TCP::Peer*toPeer,const EventClass&type, const Objects::WorldEntity*e, const String&msg);
+	void	SendEntityEvent( TCP::Peer*toPeer,const EventClass&type, const Objects::WorldEntity*e, const Objects::OwnerParameter&owner, const String&msg);
 }
 
 void		LogEvent(const EventClass&t, TCP::Peer&p, const String&msg);

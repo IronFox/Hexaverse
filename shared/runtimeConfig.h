@@ -52,8 +52,8 @@ namespace RuntimeConfig
 	void		InitConfigDir(const String&subDir);
 	PathString	ConfigDir();
 
-	inline bool IsInAnyCommandPhase()	{return phase == Phase::CommandPhase;}
-
+	inline bool	IsACommandPhase(Phase p)	{return p == Phase::CommandPhase;}
+	inline bool IsInAnyCommandPhase()	{return IsACommandPhase(phase);}
 
 }
 

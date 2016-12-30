@@ -16,6 +16,8 @@ namespace Objects
 	DECLARE_POINTER_CLASS(MobileEntityProducer)
 	DECLARE_POINTER_CLASS(SkyLinkStructure)
 
+	DECLARE_POINTER_CLASS(ResearchTopic)
+
 	DECLARE_POINTER_CLASS(BaseEntity)
 		DECLARE_POINTER_CLASS(WorldEntity)
 			DECLARE_POINTER_CLASS(Structure)
@@ -60,6 +62,7 @@ namespace Objects
 
 	typedef PFaction		OwnerParameter;
 
+	enum class ResearchSateModulation;
 
 	CONSTRUCT_ENUMERATION7(RemovalType,
 		Vanished,

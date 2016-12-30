@@ -676,7 +676,7 @@ namespace Journal
 		class DirectToCommand : public EntityEvent
 		{
 		public:
-			bool			leftClick, detailed;
+			bool			leftClick, detailed, clearSafeTasks;
 			Objects::CursorMode mode;
 			Array<Grid::LCellIdI>	targets;
 			
@@ -786,7 +786,20 @@ namespace Journal
 
 		protected:
 			virtual void	Compile(Entry&)	const override;
+		};
 
+		class SelectResearch : public FactionEventT<SelectResearch>
+		{
+		public:
+			Objects::PResearchTopic		topic;
+			
+			/**/			SelectResearch() {}
+			/**/			SelectResearch(const Objects::PResearchTopic&t) : topic(t) {}
+			virtual void	Decode(const Entry&e) override;
+			virtual void	Execute(const Objects::PFaction&) const override;
+
+		protected:
+			virtual void	Compile(Entry&)	const override;
 		};
 		
 
@@ -898,7 +911,7 @@ namespace Journal
 		void	LogFactionCreation(const Objects::PFaction&f, Round::CreateFaction::FactionType type);
 		void	RegisterClearEntityCommands(bool execute, const Objects::PWorldEntity&);
 		void	RegisterDropLastEntityCommand(bool execute, const Objects::PWorldEntity&);
-		void	RegisterDirectEntityTo(bool execute, const Objects::PWorldEntity&, Objects::CursorMode mode, const ArrayRef<Grid::LCellIdI>&target, bool detailed, bool mouseLeftClick);
+		void	RegisterDirectEntityTo(bool execute, const Objects::PWorldEntity&, Objects::CursorMode mode, const ArrayRef<Grid::LCellIdI>&target, bool detailed, bool mouseLeftClick, bool clearSafeTasks);
 		void	RegisterChoiceIntersection(bool execute, const Objects::PWorldEntity&,const Grid::LCellIdI&target, Objects::CursorMode mode, const Objects::PWorldEntity&deployingWhat);
 		void	LogJobCommandStart(const Objects::PWorldEntity&, const Objects::VehicleJob::BaseJob&, const Grid::LCellIdI&focus);
 		void	LogFactionOffline(const Objects::PFaction&);

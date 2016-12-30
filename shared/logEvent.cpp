@@ -11,6 +11,7 @@
 
 #include "runtimeConfig.h"
 #include "./objects/faction.h"
+#include <io/file_system.h>
 
 #ifndef CLIENT
 	#include "../server/components/state.h"
@@ -53,7 +54,7 @@ namespace Logging
 		time_t tt = time(NULL);
 		const tm*t = localtime(&tt);
 		char output[256];
-		size_t len = strftime(output,sizeof(output),filename ? "%Y %B %d %H%M%S" : "%Y %B %d. %H:%M:%S",t);
+		size_t len = strftime(output,sizeof(output),filename ? "%Y %m %d %H%M%S" : "%Y %m %d. %H:%M:%S",t);
 		return String(output,len);
 	}
 
@@ -115,6 +116,27 @@ namespace Logging
 
 	void	Begin(const PathString&path)
 	{
+		FileSystem::Folder folder(FileSystem::ExtractFileDir(path));
+		folder.Rewind();
+		FileSystem::File file;
+		PathString ext = FileSystem::ExtractFileExt(path);
+		typedef std::pair<FileSystem::ftime_t,PathString>  Entry;
+		Buffer0<Entry>	entries;
+		while (folder.NextFile(ext,file))
+		{
+			entries << std::make_pair(file.GetModificationTime(), file.GetLocation());
+		}
+		if (entries.Count() > 10)
+		{
+			ByComparator::QuickSort(entries,[](const Entry&a, const Entry&b){return a.first < b.first ? -1 : (a.first == b.first ? 0 : 1);});
+			for (index_t i = 0; i+10 <= entries.Count(); i++)
+			{
+				FileSystem::UnlinkFile(entries[i].second);
+			}
+		}
+
+
+
 		if (!outFile.Open(path))
 		{
 			LogEvent(EventClass::Preset::error , getLastError());
@@ -162,7 +184,7 @@ namespace Logging
 
 
 
-	void WriteEvent( const EventClass&evClass, const String&message, TCP::Peer*peer, const Objects::WorldEntity*e)
+	void WriteEvent( const EventClass&evClass, const String&message, TCP::Peer*peer, const Objects::WorldEntity*e, const Objects::OwnerParameter&owner)
 	{
 		bool printToConsole = evClass.significance >= EventSignificance::Uncommon;
 		//type != EventSignificance::Debug
@@ -225,7 +247,10 @@ namespace Logging
 		}
 		else
 			if (!inTestMode)
-				logFile << tab << tab<<tab<<tab;
+				if (owner)
+					logFile << tab << tab<<tab<<owner->GetLogName() <<tab;
+				else
+					logFile << tab << tab<<tab<<tab;
 
 		if (message.contains('\n') || message.contains('\r'))
 		{
@@ -262,11 +287,18 @@ namespace Logging
 void LogEvent( const EventClass&type, const Objects::WorldEntity*e, const String&msg)
 {
 	#ifndef CLIENT
-		Logging::SendEntityEvent(nullptr,type,e,msg);
+		Logging::SendEntityEvent(nullptr,type,e,Objects::OwnerParameter(),msg);
 	#endif
-	Logging::WriteEvent(type,msg,nullptr,e);
+	Logging::WriteEvent(type,msg,nullptr,e,Objects::OwnerParameter());
 }
 
+void		LogEvent(const EventClass&type, const Objects::OwnerParameter&owner, const String&msg)
+{
+	#ifndef CLIENT
+		Logging::SendEntityEvent(nullptr,type,nullptr,owner,msg);
+	#endif
+	Logging::WriteEvent(type,msg,nullptr,nullptr,owner);
+}
 
 
 

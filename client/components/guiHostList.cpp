@@ -113,11 +113,29 @@ void	SaveHosts()
 
 	}
 
-	static float PingOf(const std::pair<Network::ServerAddress,float>&p)
+	static float PingOf(const Network::Host&p)
 	{
-		if (p.first.host == "localhost")
+		if (p.address.host == "localhost")
 			return -1;
-		return p.second;
+		return p.ping;
+	}
+
+	static const Network::Host&	GetTargetHost(const Network::ServerInfo&info)
+	{
+		float ping = std::numeric_limits<float>::max();
+		const Network::Host* best = nullptr;
+
+		foreach (info.addresses,addr)
+		{
+			float p = PingOf(*addr);
+			if (p < ping)
+			{
+				ping = p;
+				best = addr;
+			}
+		}
+		ASSERT_NOT_NULL__(best);
+		return *best;
 	}
 
 	GUI::PButtonPanel ConstructPanel(Network::ServerInfo&info)
@@ -166,14 +184,8 @@ void	SaveHosts()
 				}
 				info->selected = true;
 
-				Network::serverID = info->id;
-				Network::serverIDString = Network::serverID.ToNiceString();
-				Network::worldID = info->info.gameInfo.worldID;
-				Network::worldIDString = Network::worldID.ToNiceString();
-				Network::gameFlags = info->info.gameInfo.gameConfig.gameFlags;
-				RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(info->info.gameInfo.gameConfig.gameGoal);
 
-				Network::ConnectTo(info->addresses[best].first);
+				Network::ConnectTo(info->addresses[best]);
 			});
 
 		}
@@ -181,13 +193,14 @@ void	SaveHosts()
 
 		PButtonPanel p = info.buttonPanel;
 
+		const Network::Host&host = GetTargetHost(info);
 		if (!info.headLine)
 		{
 			String text;
 			float4 color(1,1,1,1);
 			if (info.rightVersion)
 			{
-				text = " "+info.info.hostInfo.value.hostID.ToNiceString()+" / "+info.info.gameInfo.worldID.value.ToNiceString();
+				text = " "+info.id.ToNiceString()+" / "+host.serverInfo.gameInfo.worldID.value.ToNiceString();
 				if (info.haveToken)
 					text += " (continue)";
 			}
@@ -200,7 +213,7 @@ void	SaveHosts()
 				}
 				else
 				{
-					text = " "+info.info.hostInfo.value.hostID.ToNiceString()+" / "+info.info.gameInfo.worldID.value.ToNiceString();
+					text = " "+info.id.ToNiceString()+" / "+host.serverInfo.gameInfo.worldID.value.ToNiceString();
 					text += "\n (Version Mismatch)";
 				}
 			}
@@ -215,9 +228,9 @@ void	SaveHosts()
 
 		bool incompatible = !info.rightVersion || info.protocolIncompatible;
 		{
-			AddTab(p,String(info.info.gameInfo.numFactionsOnline) + "/" + String(info.info.gameInfo.numFactionsCreated),incompatible,0.01f,GUI::TAnchor::RelativeToScreen);
-			AddTab(p,info.info.gameInfo.roundNumber.value.ToString(),incompatible,0.01f,GUI::TAnchor::RelativeToScreen);
-			PLabel l = AddTab(p,CompileRules(info.info),incompatible,0.01f,GUI::TAnchor::RelativeToScreen);
+			AddTab(p,String(host.serverInfo.gameInfo.numFactionsOnline) + "/" + String(host.serverInfo.gameInfo.numFactionsCreated),incompatible,0.01f,GUI::TAnchor::RelativeToScreen);
+			AddTab(p,host.serverInfo.gameInfo.roundNumber.value.ToString(),incompatible,0.01f,GUI::TAnchor::RelativeToScreen);
+			PLabel l = AddTab(p,CompileRules(host.serverInfo),incompatible,0.01f,GUI::TAnchor::RelativeToScreen);
 			l->zoom *= 0.9f;
 
 		}
@@ -228,7 +241,7 @@ void	SaveHosts()
 		bool first = true;
 		foreach (info.addresses,addr)
 		{
-			PLabel label = MakeTabLabel(addr->first.ToString()+ " (ping "+String((int)ceil(addr->second*1000))+')',0.7f);
+			PLabel label = MakeTabLabel(addr->address.ToString()+ " (ping "+String((int)ceil(addr->ping*1000))+')',0.7f);
 			if (info.rightVersion && !info.protocolIncompatible)
 				label->SetColor(float4(1,1,1,0.7f));
 			else
@@ -248,7 +261,7 @@ void	SaveHosts()
 
 		if (!info.rightVersion && !info.protocolIncompatible)
 		{
-			PLabel label = MakeTabLabel("Server identifies as '"+String(info.info.hostInfo.value.version)+'\'',0.7f);
+			PLabel label = MakeTabLabel("Server identifies as '"+String(host.serverInfo.hostInfo.value.version)+'\'',0.7f);
 			label->SetColor(incompatibleColor);
 			label->anchorConfig.Top().SetLastOf(p,0.005f,GUI::TAnchor::RelativeToScreen);
 			p->AddComponent( label );

@@ -1,0 +1,7 @@
+{{ img:units/Plane Factory.png|Plane Factory}}
+=Plane Factory=
+*  Health: 40
+*  Price: %Minerals% 200
+*  [[concepts/scanning range|Scanning range]]: 2
+*  Consumes: %Fuel%20 %Minerals%20 %Energy%20
+Plane factories produce planes

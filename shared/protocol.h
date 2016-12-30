@@ -1587,13 +1587,14 @@ namespace Protocol
 		, NET(float), timeNeeded
 	)
 
-	NETSTRUCT7(VagueAttackTrajectory
+	NETSTRUCT8(VagueAttackTrajectory
 		, Timestamp, timestamp
 		, NET(float), flightTime
 		, NET(TVec3<>), sourcePosition
 		, NET(ConstName), turretType
 		, NET(float), turretRange
 		, NET(float), attackAngle
+		, NET(float), explosionRadius
 		, NET(TVec3<>), traceTo
 	)
 
@@ -1683,7 +1684,8 @@ namespace Protocol
 		enum flag_t
 		{
 			LeftClick = 0x1,
-			Detailed = 0x2
+			Detailed = 0x2,
+			ClearSafeTasks = 0x4
 		};
 
 	}
@@ -1777,10 +1779,15 @@ namespace Protocol
 		};
 	};
 
-	NETSTRUCT3(GameConfig
+
+	typedef NET(SHA256::HashContainer) ResourceID;
+
+
+	NETSTRUCT4(GameConfig
 		, NET(UINT32), gameFlags
 		, NET(BYTE), gameGoal
 		, NET(BYTE), worldDiscovery
+		, ResourceID, researchScript
 	)	
 
 	NETSTRUCT6(GameInfo
@@ -1848,6 +1855,8 @@ namespace Protocol
 		, Package::NetString<32>, name
 	)
 
+	typedef NET(UINT32)	SelectResearch;	//can't use index_t
+
 	typedef std::pair<UINT16,UINT16>	TUnitLimit;
 
 	typedef NETA(TUnitLimit)	UnitLimits;
@@ -1858,6 +1867,16 @@ namespace Protocol
 		, Timestamp, timestamp
 		, NET(TUniqueID), entityID
 		, NETA(BYTE), resourceIndices
+	)
+
+	NETSTRUCT2(ResearchState
+		, NET(TUniqueID), ownerID
+		, NETA(BYTE), serializedData
+	)
+
+	NETSTRUCT2(ResourceData
+		, ResourceID, id
+		, NETA(BYTE), data
 	)
 
 
@@ -1938,6 +1957,10 @@ namespace Protocol
 			FactionOffline,		// s2c: TUniqueID
 			FactionRequestedNewRound,	// s2c: TUniqueID
 			FactionContinuedRound,		// s2c: TUniqueID
+			ResearchState,		// s2c : ResearchState
+			SelectResearch,		// c2s : SelectResearch -> s2c : SelectResearch
+			RequestResource,	// c2s : ResourceID -> s2c : ResourceData
+			ResourceData,		// s2c : ResourceData
 
 			LockEMPZones,		// s2c : UINT16
 			UplinkBandwidth,	// s2c : int, can be negative to indicate it's disabled
@@ -1946,7 +1969,7 @@ namespace Protocol
 			ChatMessage,		// c2s: NetString<256>
 
 			PlanetConfig,		// both: Grid::ExtendedPlanetConfig
-			GameConfig,			// c2s: GameConfig
+			GameConfig,			// both: GameConfig
 			EndConfigurationMode,//c2s: <signal>
 
 			OperationLacksResources, //s2c: OperationLacksResources

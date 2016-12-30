@@ -158,6 +158,7 @@ namespace Objects
 		structurePrototypes << ReactorCore::globalPrototype;
 		structurePrototypes << MunitionFactory::globalPrototype;
 		structurePrototypes << VehiclePlant::globalPrototype;
+		structurePrototypes << Laboratory::globalPrototype;
 		structurePrototypes << Connector::globalPrototype;
 		structurePrototypes << FuelContainer::globalPrototype;
 		structurePrototypes << MineralContainer::globalPrototype;
@@ -181,6 +182,7 @@ namespace Objects
 		SubOrbital::prototypes << SubOrbital::SensorDrone::globalPrototype;
 
 		Tower::globalPrototypes.Append().reset(new Tower(&Component::launcher));
+		PStructure launcherTower = Tower::globalPrototypes.last();
 		//Tower::globalPrototypes.Append().reset(new Tower(artillery));
 		Tower::globalPrototypes.Append().reset(new Tower(&Component::radar));
 		Tower::globalPrototypes.Append().reset(new Tower(&Component::armored));
@@ -224,9 +226,14 @@ namespace Objects
 
 		Structure::StaticSetup();
 
+
 		Component::ConfigureAll();
 
+
+
 		Hangar::StaticSetup();
+
+
 
 		#ifndef NO_SATELLITES
 			foreach(satellitePrototypes, p)
@@ -237,7 +244,7 @@ namespace Objects
 		foreach(SubOrbital::prototypes, p)
 			(*p)->PrototypeSetup();
 
-		
+		ResearchState::StaticCreate();	//all prototypes good. time to set the tables
 
 		#ifdef HAS_WINDOW
 			foreach (Component::vehicleTurretComponents,tc)

@@ -1,0 +1,7 @@
+{{ img:units/Radar Tower.png|Radar Tower}}
+=Radar Tower=
+*Based on [[units/turrets/Radar|Radar]] turret
+*  Health: 11
+*  Price: %Minerals% 50
+*  [[concepts/scanning range|Scanning range]]: 9 [=7+2 (tower modifier)]
+This tower-turret type is especially suited for detecting hostile entities. Such turret types are manadatory in order to see hostile forces approaching, as well as their attacks. Offensive turrets usually lack the necessary [[concepts/scanning range]] to see where they are shooting and depend on this turret type to reside in the vicinity.
