@@ -96,9 +96,10 @@ namespace Objects
 
 
 				outResult.MarkBriefEnd();
-				outResult<<"";
-				outResult<< "Sub orbital planes move above the regular terrain. They can scan the surface, and are invisible to ordinary radar."
-					;
+				outResult<< "Sub orbital planes move above the regular terrain. They can scan the surface, and are invisible to ordinary radar.";
+
+				if (IsHangar())
+					outResult<< "This plane can quickly transport other mobile entities to remote locations. Land atop mobile units, or have them move on the same location as the plane to load.";
 			}
 		
 

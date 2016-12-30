@@ -10,10 +10,7 @@
 *  Explosion radius: 1
 *  Damage: 5
 This plane-turret type can attack objects in range.
-*  Plane (Base)
-*  Can climb 1 height level up
 *  Can safely fall down 1 height level
-*  Overweight: 10
 *  Stationary on ground (supported by water)
 *  Speed: 10 (aerial)
 Sub orbital planes move above the regular terrain. They can scan the surface, and are invisible to ordinary radar.

@@ -1754,10 +1754,11 @@ namespace Objects
 						component.ambientSound = OpenAL::Load("resources/objectSounds/plane.wav");
 					#endif
 					//MakeBox(component.parts.first().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.35f));
-					component.typeName = "Plane";
+					//component.typeName = "Plane";
 					component.shortName = "Airborne";
 					component.constName = ConstName::VehicleBase_Plane;
 
+					component.carryingCapacity.SetConst(100);
 					component.requirements = VehicleBase::Requirement::AnyBlock;
 					component.moveOnWater = true;
 					component.minClimbDown = -1;	//-int(Grid::CellStack::Range);
