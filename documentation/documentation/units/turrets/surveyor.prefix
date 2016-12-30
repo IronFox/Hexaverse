@@ -4,5 +4,5 @@
 *  [[concepts/initiative|Initiative]]: 100
 *  [[concepts/vehicle|Weight]]: 1
 *  Base [[concepts/scanning range]]: 4
-*  Detects natural resources
-This turret type detects all naturally occuring resources within its [[concepts/scanning range]]. It can be automated.
+*  Detects natural [[concepts/resources]]
+This turret type detects all naturally occuring [[concepts/resources]] within its [[concepts/scanning range]]. It can be automated.

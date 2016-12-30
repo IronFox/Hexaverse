@@ -15,12 +15,20 @@
 Units are selected by clicking on them. Clicking anywhere else will deselect any selected unit.
 With a unit selected, the **right mouse button** may be used to direct it. When clicking on empty terrain, a selected mobile unit will attempt to reach that destination during its next motion phase.
 If the clicked destination is instead occupied by a hostile unit, and the selected unit can attack, it will instead queue an attack command.
-Right-clicking with the **shift-key** pressed queues the command after any other commands it may have.
+Right-clicking with the **shift-key** held down queues the command after any other commands it may have.
 Otherwise the command queue is cleared first.
 
 Right clicking anywhere with a [[units/structures/vehicle plant]] selected moves or unsets its gathering point.
 
+===The Idle Queue===
+Players are encouraged to check for idle units by pressing the **space key** at the beginning of each [[concepts/round]].
+Different requirements apply for a unit to be considered //idle//:
+* A mobile unit has run out of tasks and is awake.
+* A factory has run out of production tasks, is awake, and can be [[concepts/compound|enabled]].
+* A mine is currently disabled, is awake, and can be [[concepts/compound|enabled]].
+* An offensive mobile unit has no tasks and detected hostile units within attack range (this point ignores a potential sleep-state).
 
+With the exception of the last point, units can be put to sleep to avoid them appearing in the idle queue. If no unit is left in it, the //end round// button will flash.
 
 ==GUI Buttons==
 
@@ -62,3 +70,4 @@ Left to right, the commands are:
 Different visual command trees are available depending on the type and state of the selected unit. Rest the mouse cursor atop any command to view its hint-overlay.
 
 
+===Contact List===

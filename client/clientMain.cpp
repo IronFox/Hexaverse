@@ -903,6 +903,7 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 			linkedLine.replace("compound","[[concepts/compound]]");
 			linkedLine.replace("phase","[[concepts/phase]]");
 			linkedLine.replace("attack action","[[concepts/action pool|attack action]]");
+			linkedLine.replace("resources","[[concepts/resources]]");
 			
 
 			

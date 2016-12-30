@@ -23,3 +23,6 @@ To restore a predefined planet to its default configuration simply delete the fi
 [[units/structures/laboratory|Laboratory]] research is controlled by a Lua script located in ''[[config/game folder]]\server\config\lua\research.lua''.
 The script is loaded once during server startup, but can be updated during runtime via the [[config/control console]] command ''/IO/reloadResearchProgram''.
 Clients will receive a copy of this script during first connection (or as a result to explicit reloading).
+
+The script defines which research is possible, and how this affects unit availability and attributes.
+It also allows the basic **modification of all unit attributes.**
