@@ -1037,8 +1037,13 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 									//	Vec::mult(intermediate,255.f,Vec::ref3(pixel));
 	
 									//#else
-										float scale = 1.f / (float(pixel[3])/255.f);
-										Vec::mult(Vec::ref3(pixel),scale);
+										pixel[3] = Vec::max(Vec::ref4(pixel));
+										float scale = 255.f / float(pixel[3]);
+										TVec3<> temp;
+										Vec::mult(Vec::ref3(pixel),scale,temp);
+										//float max = Vec::max(temp);
+										Vec::clamp(temp,0,255);
+										Vec::copy(temp,Vec::ref3(pixel));
 			//						#endif
 								}
 							}

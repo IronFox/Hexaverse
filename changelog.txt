@@ -9,6 +9,7 @@ v0.3.26
 	> Right-click navigation now clears any tasks that are safe to remove unless the shift key is pressed
 	* Fixed bridge pathfinding when building directly on lava.
 	* Fixed specatator mode sometimes not being available when connecting from localhost.
+	* Fixed colors in transparent screenshot mode.
 
 v0.3.25 [Nov 4 2016]
 	> Decreased world resultion in an attempt to accelerate the game.
