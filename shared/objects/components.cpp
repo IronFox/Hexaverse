@@ -2188,11 +2188,12 @@ namespace Objects
 			{
 				outResult.BeginBrief();
 				Lua::Reference researchState = ResearchStateOf(owner);
-				if (includeName)
+				if (includeName && typeName.IsNotEmpty())
 					outResult << typeName + " (Base)";
 				Base::DescribeType(outResult,compound,owner);
 				outResult.BeginBrief();
-				outResult << "Can climb "+String(maxClimbUp)+" height level"+(maxClimbUp==1?"":"s")+" up";
+				if (movementSpeed.GetValue(researchState) > 0)
+					outResult << "Can climb "+String(maxClimbUp)+" height level"+(maxClimbUp==1?"":"s")+" up";
 			
 				outResult << "Can safely fall down "+String(-minClimbDown)+" height level"+(minClimbDown==-1?"":"s");
 				#ifndef ONE_COMPOUND_PER_FACTION
