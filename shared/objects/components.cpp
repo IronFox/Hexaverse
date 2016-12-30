@@ -1901,30 +1901,33 @@ namespace Objects
 					return;
 				if (activeCursorMode != CursorMode::PlaceStructureMode)
 				{
-					bool directPlace = !Engine::input.pressed[Key::Ctrl] && vehicle->myTasks.IsNotEmpty() && vehicle->myTasks.GetNewest().type == MobileEntity::Task::MoveTo;
-					if (directPlace)
-					{
-						const Grid::LCellIdI last = vehicle->GetLastPointOfOrigin();
-						const Grid::LCellIdI prev = vehicle->GetPrevPointOfOrigin();
-						const auto&n = Grid::low.grid.GetCell(last.stackID).neighborhood;
-						
-						for (int k = 0; k < n.numNeighbors; k++)
-							if (n.neighborID[k] == prev.stackID)
-							{
-								directPlace = false;
-								break;
-							}
-					}
+					//bool directPlace = !Engine::input.pressed[Key::Ctrl] && vehicle->myTasks.IsNotEmpty() && vehicle->myTasks.GetNewest().type == MobileEntity::Task::MoveTo;
+					//if (directPlace)
+					//{
+					//	const Grid::LCellIdI last = vehicle->GetLastPointOfOrigin();
+					//	const Grid::LCellIdI prev = vehicle->GetPrevPointOfOrigin();
+					//	const auto&n = Grid::low.grid.GetCell(last.stackID).neighborhood;
+					//	
+					//	for (int k = 0; k < n.numNeighbors; k++)
+					//		if (n.neighborID[k] == prev.stackID)
+					//		{
+					//			directPlace = false;
+					//			break;
+					//		}
+					//}
 
-					if (!directPlace)
+					//if (!directPlace)
 					{
 						activeCursorMode = CursorMode::PlaceStructureMode;
 						showArrow = true;
 						arrowFromCell = vehicle->GetLastPointOfOrigin();
 						arrowFrom = Grid::low.cells[arrowFromCell.stackID].centerVertex.xyz * ( Grid::ToRadius(arrowFromCell.height));
+
+						if (!Engine::input.pressed[Key::Shift])
+							ApplicationInterface::SignalDropSafeTasks(vehicle);
 					}
-					else
-						ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_Construct, p->GetCTypeName());	
+					//else
+						//ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_Construct, p->GetCTypeName());	
 							//this still works, but seemed unintuitive rather quickly
 					activeStructureToPlace = p;
 				}
