@@ -531,6 +531,12 @@ namespace Objects
 		#ifndef CLIENT
 			virtual void		ClearSafeTasks() override;
 		#endif
+
+		/**
+		Checks whether there is a task out front that has consumed resources and can not be removed without irreversible losses
+		*/
+		bool					HasUnsafeTask() const;
+
 		virtual bool			IsMobile() const override {return true;}
 		#ifndef NO_HIBERNATION
 			virtual const Hibernating*ToHibernating() const override {return this;}
