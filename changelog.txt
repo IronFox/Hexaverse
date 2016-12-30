@@ -7,6 +7,7 @@ v0.3.26
 	> Renovated logfile keeping. No more than the most recent 10 logs are preserved.
 	> Resource distribution is less clustered now.
 	> Right-click navigation now clears any tasks that are safe to remove unless the shift key is pressed
+	> Moved structure batch building to Alt key.
 	* Fixed bridge pathfinding when building directly on lava.
 	* Fixed specatator mode sometimes not being available when connecting from localhost.
 	* Fixed colors in transparent screenshot mode.

@@ -3593,7 +3593,7 @@ int main( int argc, const char* argv[])
 			Engine::input.Bind(Key::PageDown, ViewDown);
 			Engine::input.Bind(Key::PageUp, ViewUp);
 
-			Engine::input.Bind(Key::Shift, ResumeBatchConstruction, AbortBatchConstruction);
+			Engine::input.Bind(Key::Alt, ResumeBatchConstruction, AbortBatchConstruction);
 			
 
 		//	Engine::input.Bind(Key::PageDown, DeclineCamera);
