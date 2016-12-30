@@ -2308,7 +2308,20 @@ namespace Objects
 						return;
 					ApplicationInterface::SignalConstructionBegin(factory->id, p->GetCTypeName(), ConstName::Empty);
 				}
-				,CommonCmd::CommonButtonCheck));
+				,
+				[p](bool controlEnabled)
+				{
+					if (!controlEnabled)
+						return BaseCommand::Flags::None;
+					PlaneFactory*plant = dynamic_cast<PlaneFactory*>(selectedEntity.get());
+					if (plant)
+					{
+						BaseCommand::Flags rs = p->turret->isUnlocked.GetValue(selectedEntity->GetResearchState()) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+						return rs;
+					}
+					return BaseCommand::Flags::None;
+				}					
+				));
 				commands.GetLast().second->RasterizeImage();
 
 			#endif
