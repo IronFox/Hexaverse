@@ -127,7 +127,7 @@ namespace Objects
 
 		float							Turret::GetExplosionRadius(const OwnerParameter&owner) const
 		{
-			return  explosionRadius(owner)*Grid::UnitScale;
+			return  explosionRadius(owner);
 		}
 
 		int								Turret::GetAttacksPerRound(const OwnerParameter&owner) const
@@ -144,7 +144,7 @@ namespace Objects
 		{
 			if (horizontalAttackRange.IsEmpty())
 				return 0;
-			return (horizontalAttackRange(owner) + bonus(owner))*Grid::UnitScale;
+			return (horizontalAttackRange(owner) + bonus(owner));
 		}
 
 		float							Turret::GetScanningRange(const OwnerParameter&owner, int bonus/*=0*/) const
@@ -154,7 +154,7 @@ namespace Objects
 
 		float							Turret::GetGroundScanningRange(const OwnerParameter&owner) const
 		{
-			return groundScanningRange(owner)*Grid::UnitScale;
+			return groundScanningRange(owner);
 		}
 
 

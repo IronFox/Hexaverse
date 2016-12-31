@@ -146,10 +146,16 @@ namespace Objects
 		public:
 			index_t				versionCounter=InvalidIndex;
 			T					cached;
-			T					GetEMPModified(const WorldEntity&e,const LuaAttribute<T>&source,const LuaAttribute<T>&bonus = LuaAttribute<T>(), bool applyUnitScale=false);
-			String				DescribeEMPModified(const WorldEntity&e,const LuaAttribute<T>&source,const LuaAttribute<T>&bonus = LuaAttribute<T>());
-			template <typename T2>
-				T				Get(const Lua::Reference&researchState, const LuaAttribute<T>&source, const LuaAttribute<T2>&multiplier, T minimum);
+			template <typename F1, typename F2>
+				T				GetEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source,const LuaAttribute<T,F2>&bonus);
+			template <typename F1>
+				T				GetEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source)	{return GetEMPModified(e,source,LuaAttribute<T,NoFilter>());}
+			template <typename F1, typename F2>
+				String			DescribeEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source,const LuaAttribute<T,F2>&bonus);
+			template <typename F1>
+				String			DescribeEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source)	{return DescribeEMPModified(e,source,LuaAttribute<T,NoFilter>()); }
+			template <typename T2, typename F1, typename F2>
+				T				Get(const Lua::Reference&researchState, const LuaAttribute<T,F1>&source, const LuaAttribute<T2,F2>&multiplier, T minimum);
 			bool				IsCurrent() const {return versionCounter == Super::versionCounter;}
 			T					Update(T newValue) {cached = newValue; versionCounter = Super::versionCounter; return cached;}
 		};
@@ -168,10 +174,10 @@ namespace Objects
 	{
 	public:
 		//all functions here take the research state of an owning faction into account
-		LuaAttribute<int>			maxHealth,
-									constructionCost;
-		LuaAttribute<float>			maxScanningRange;
-		LuaAttribute<bool>			isUnlocked;
+		LuaAttribute<int,NoFilter>			maxHealth,
+											constructionCost;
+		LuaAttribute<float,UnitScaleFilter>	maxScanningRange;
+		LuaAttribute<bool,NoFilter>			isUnlocked;
 	};
 
 	
@@ -631,35 +637,35 @@ namespace Objects
 
 
 	template <typename T>
-		T	LuaAttributeCache<T>::GetEMPModified(const WorldEntity&e,const LuaAttribute<T>&source,const LuaAttribute<T>&bonus /*= LuaAttribute<T>()*/, bool applyUnitScale/*=false*/)
-		{
-			if (versionCounter != Super::versionCounter)
+		template <typename F1, typename F2>
+			T	LuaAttributeCache<T>::GetEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source,const LuaAttribute<T,F2>&bonus)
 			{
-				versionCounter = Super::versionCounter;
-				T val = source.GetValue(e.GetResearchState());
+				if (versionCounter != Super::versionCounter)
+				{
+					versionCounter = Super::versionCounter;
+					T val = source.GetValue(e.GetResearchState());
+					if (bonus.IsSet())
+						val += bonus.GetValue(e.GetResearchState());
+					cached = WorldEntity::StaticEMPModify(val,2.f * Grid::UnitScale,e.empDamageLevel);
+				}
+				return cached;
+			}
+	template <typename T>
+		template <typename F1, typename F2>
+			String	LuaAttributeCache<T>::DescribeEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source,const LuaAttribute<T,F2>&bonus)
+			{
 				if (bonus.IsSet())
-					val += bonus.GetValue(e.GetResearchState());
-				cached = WorldEntity::StaticEMPModify(val,2.f * Grid::UnitScale,e.empDamageLevel);
-				if (applyUnitScale)
-					cached *= Grid::UnitScale;
-			}
-			return cached;
-		}
-	template <typename T>
-		String	LuaAttributeCache<T>::DescribeEMPModified(const WorldEntity&e,const LuaAttribute<T>&source,const LuaAttribute<T>&bonus /*= LuaAttribute<T>()*/)
-		{
-			if (bonus.IsSet())
-			{
-				String bonusStr = bonus.Describe(e.GetResearchState());
-				if (bonusStr != "0")
-					return String(GetEMPModified(e,source,bonus))+" [="+source.Describe(e.GetResearchState()) + "+"+bonusStr+" (bonus)]";
-			}
+				{
+					String bonusStr = bonus.Describe(e.GetResearchState());
+					if (bonusStr != "0")
+						return String(GetEMPModified(e,source,bonus))+" [="+source.Describe(e.GetResearchState()) + "+"+bonusStr+" (bonus)]";
+				}
 			
-			return source.Describe(e.GetResearchState());
-		}
+				return source.Describe(e.GetResearchState());
+			}
 	template <typename T>
-		template <typename T2>
-			T	LuaAttributeCache<T>::Get(const Lua::Reference&researchState, const LuaAttribute<T>&source, const LuaAttribute<T2>&multiplier, T minimum)
+		template <typename T2,typename F1, typename F2>
+			T	LuaAttributeCache<T>::Get(const Lua::Reference&researchState, const LuaAttribute<T,F1>&source, const LuaAttribute<T2,F2>&multiplier, T minimum)
 			{
 				if (versionCounter != Super::versionCounter)
 				{

@@ -276,7 +276,7 @@ namespace Objects
 
 	/*virtual*/ float		WorldEntity::GetScanningRange() const
 	{
-		return cache.maxScanningRange.GetEMPModified(*this,GetTable()->maxScanningRange)*Grid::UnitScale;
+		return cache.maxScanningRange.GetEMPModified(*this,GetTable()->maxScanningRange);
 	}
 
 	/*virtual*/ int			WorldEntity::GetConstructionCost() const
