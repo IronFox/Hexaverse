@@ -26,10 +26,6 @@ namespace Objects
 	public:
 		static const UINT32 InvalidNetwork = 0xFFFFFFFF;
 
-		#if defined WIRELESS_VEHICLES && defined CLIENT
-			float4					color;
-		#endif
-
 		Buffer0<WWorkingStructure>	workingStructures;
 		Buffer0<WStructure>			allStructures;
 		FullResourceVector			total;

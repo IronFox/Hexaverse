@@ -1994,6 +1994,7 @@ namespace Objects
 			index_t				compoundIndex;
 			float4				color;
 			Buffer0<Math::Sphere<> >spheres;
+			Buffer0<Objects::PPylon>	pylons;
 
 
 			void				swap(CompoundDesc&other)
@@ -2001,11 +2002,13 @@ namespace Objects
 				swp(compoundIndex,other.compoundIndex);
 				swp(color,other.color);
 				spheres.swap(other.spheres);
+				pylons.swap(other.pylons);
 			}
 
 			void				UpdateSpheres()
 			{
 				spheres.Clear();
+				pylons.Clear();
 				const Compound&source = compounds[compoundIndex];
 				foreach (source.allStructures, _s)
 				{
@@ -2013,6 +2016,8 @@ namespace Objects
 					if (!s)
 						continue;
 					spheres << Sphere<>(s->GetWorldPosition(),s->GetWirelessTransferRange());
+					if (s->IsPylon())
+						pylons << To<Objects::Pylon>::Cast(s);
 				}
 				std::sort(spheres.begin(),spheres.end(),[](const Sphere<>&a, const Sphere<>&b)->bool {return a.radius > b.radius;});
 
@@ -2084,24 +2089,22 @@ namespace Objects
 			//for (UINT32 i = 0; i < compounds.Count(); i++)
 			//	compounds[i].color = ColorCompoundInRange(i);
 
-
-			for (const auto&p:pylons)
+			for (const auto&desc : compoundScope)
 			{
-				const TVec3<> color = (anyCompoundsColored && p->compoundID < compounds.Count() && !Vec::zero(compounds[p->compoundID].color)
-										?
-										compounds[p->compoundID].color.rgb
-										:
-										p->owner->activeEntityColor) * 1.5f;
-				foreach (p->connectedTo,c)
+				const TVec3<>&color = desc.color.rgb;
+
+				for (const auto&p:desc.pylons)
 				{
-					if (!c->wireless)
-						continue;
-					PStructure s = c->structure.lock();
-					if (s < p)
-						continue;
+					foreach (p->connectedTo,c)
+					{
+						if (!c->wireless)
+							continue;
+						PStructure s = c->structure.lock();
+						if (s < p)
+							continue;
 
-
-					MakeResourceArrow(interPylonArrows.Append(),p->location+p->GetHeight(),s->location+p->GetHeight(),color);
+						MakeResourceArrow(interPylonArrows.Append(),p->location+p->GetHeight(),s->location+p->GetHeight(),color);
+					}
 				}
 			}
 		}
@@ -2199,10 +2202,12 @@ namespace Objects
 
 			foreach (env.sourceCompounds,c)
 			{
-				if (!compounds[c->first].total.balance.AnyIsSet(producersOf))
+				const auto&compound = compounds[c->first];
+				if (!compound.total.balance.AnyIsSet(producersOf))
 					continue;
+
 				auto&item = resourceArrowSystems.Append();
-				MakeResourceArrow(item,c->second->location+c->second->GetHeight(),arrowTo,compounds[c->first].color.rgb*1.5f);
+				MakeResourceArrow(item,c->second->location+c->second->GetHeight(),arrowTo,ColorCompoundInRange(compound).rgb);
 			}
 			anyCompoundsColored = true;
 			UpdateInterPylonArrows();
@@ -2276,7 +2281,7 @@ namespace Objects
 					for (const auto&ci : compoundScope)
 					{
 						const auto*c = compounds + ci.compoundIndex;
-						const float4&color = c->color;
+						const float4&color = ci.color;
 						if (color.a == 0.f)
 							continue;
 						overallTint.Update(color);
@@ -2292,7 +2297,7 @@ namespace Objects
 					for (const auto&ci : compoundScope)
 					{
 						const auto*c = compounds + ci.compoundIndex;
-						const float4&color = c->color;
+						const float4&color = ci.color;
 						if (color.a == 0.f)
 							continue;
 						overallTint.Update(color);
