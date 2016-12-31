@@ -1,9 +1,23 @@
 =Action Pool=
 During the attack and motion [[concepts/round|phases]], units execute tasks in order of their [[concepts/initiative]].
-Offensive units have each one attack action value, while mobile units have a movement action value.
-Both are set to 100% at the beginning of the respective phase.
+Offensive units each have an attack action pool, while mobile units feature a movement action pool.
+Offensive mobile units feature both.
 With each executed operation the value is reduced. If an operation would reduce it to below 0, then that operation is delayed by one round.
 
-All unit types have the same action capacity, but some are faster at certain operations than others.
+All unit types have the same action capacity of 100%, but some are faster at certain operations than others.
 An [[units/turrets/artillery]], for instance, will exhaust all its attack action with a single shot, while a [[units/turrets/cannon]] will only consume half of it.
-Likewise, a [[units/turrets/terraformer]] mounted on a [[units/vbase/heavy base]] has increased terraforming speed compared to one based on a [[units/vbase/hoverbase]], which allows it to perform more operations per round.
+Likewise, a [[units/turrets/terraformer]] mounted on a [[units/vbase/heavy base]] has increased operation speed compared to one based on a [[units/vbase/hoverbase]].
+This may allow the unit to execute more operations during the same round.
+
+==Attack Action==
+
+{{ attack action.jpg?300|Heavy tanks with their attack operations visualized as rings.}}
+
+The remaining attack action defines how many attack operations a unit can execute during the next attack phase.
+This value is reset to 100% at the beginning of each motion phase (which is //**after**// the attack phase).
+Vehicle turret types exhibit different sensibility to vehicle motion, which is declared in turret help text:
+* //Can attack independently of movement action//: The vehicle's attack action is not affected by motion. The vehicle may move as fast as it can, and still attack with full capacity during the next attack phase. 
+* //Vehicle must remain stationary to fire//: This turret type reacts very sensible to motion. Even the slightest motion will disallow any attack during the next attack phase.
+* //default//: The vehicle will lose attack action depending on how much it moved during the previous motion phase. Moving half of the movement range will cause the subsequent attack action to drop by 50%. A turret that can usually attack twice may be able to attack once under these circumstances.
+
+The number of attacks left at its current attack action level is visualized as rings around each unit. The more rings are solid, the more attacks the unit has left during the next attack phase.
