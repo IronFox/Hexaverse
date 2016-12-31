@@ -1908,6 +1908,7 @@
 			cachedNumber = RuntimeConfig::roundNumber;
 			cachedEntity = &e;
 			cachedLines.Clear();
+			Lua::Reference researchState = e.GetResearchState();
 
 			currentColor = float4(1);
 			#ifndef NO_HIBERNATION
@@ -2054,8 +2055,8 @@
 					//cachedLines << " Range: "<<v->GetAttackRange() << nl;
 					//cachedLines << " Damage: "<<v->turret->damageLevel << nl;
 					//cachedLines << " Ammo-Usage: "<<v->turret->ammoNeedPerShot<<nl;
-					cachedLines << " Hrz. Range: "+String(0.1f * round(10.f * v->GetFlatAttackRange()))
-									+'+'+String(0.1f * round(10.f * v->turret->GetExplosionRadius(e.owner)));
+					cachedLines << " Hrz. Range: "+v->turret->horizontalAttackRange.Describe(researchState)
+									+'+'+v->turret->explosionRadius.Describe(researchState);
 					cachedLines << " Damage: "+String(v->turret->GetDamageLevel(e.owner));
 					int ammoNeed = v->turret->GetAmmoNeedPerShot(e.owner);
 					if (ammoNeed > 0)
