@@ -644,7 +644,12 @@ namespace Objects
 				{
 					String bonusStr = bonus.Describe(e.GetResearchState());
 					if (bonusStr != "0")
-						return String(GetEMPModified(e,source,bonus))+" [="+source.Describe(e.GetResearchState()) + "+"+bonusStr+" (bonus)]";
+					{
+						T val = source.GetUnfilteredValue(e.GetResearchState())
+							+ bonus.GetUnfilteredValue(e.GetResearchState());
+
+						return String(val)+" [="+source.Describe(e.GetResearchState()) + "+"+bonusStr+" (bonus)]";
+					}
 				}
 			
 				return source.Describe(e.GetResearchState());
