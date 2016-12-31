@@ -240,8 +240,8 @@ TurretConfig =
 		ScanningRange = 4,
 		AttacksPerRound = 1,
 		DamageLevel = 7,
-		ExplosionRadius = 2,
-		HorizontalAttackRange = 7,
+		ExplosionRadius = 3,
+		HorizontalAttackRange = 12,
 		IsUnlocked = false,
 	},
 	Terraformer =
