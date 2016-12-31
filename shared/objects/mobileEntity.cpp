@@ -69,7 +69,7 @@ namespace Objects
 
 	/*virtual override*/ float		MobileEntity::GetScanningRange() const
 	{
-		return cache.maxScanningRange.GetEMPModified(*this,turret->scanningRange)*Grid::UnitScale;
+		return cache.maxScanningRange.GetEMPModified(*this,turret->scanningRange);
 	}
 
 	/*virtual override*/ String		MobileEntity::DescribeScanningRange() const

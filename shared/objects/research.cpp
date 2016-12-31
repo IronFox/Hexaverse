@@ -94,8 +94,8 @@ namespace Objects
 	static Array<BaseAttributeTable>	structureTables;
 
 
-	template <typename T>
-		static void InitAttrib(const Lua::Table&source, const String&path, const String&name, LuaAttribute<T>&a, bool allowEmpty = false)
+	template <typename T, typename F>
+		static void InitAttrib(const Lua::Table&source, const String&path, const String&name, LuaAttribute<T,F>&a, bool allowEmpty = false)
 		{
 			Lua::Reference ref = source.GetField(name);
 			a.Clear();
