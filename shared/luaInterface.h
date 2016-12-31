@@ -567,6 +567,8 @@ namespace Lua
 		PProgram	GetProgram() const {return prog.lock();}
 		lua_State*	GetState() const {PProgram prog = this->prog.lock(); return prog ? prog->GetState() : nullptr;}
 
+		bool		operator==(const Reference&other) const {return refID == other.refID;}
+		bool		operator!=(const Reference&other) const {return refID != other.refID;}
 
 		/**
 		Pushes the local reference to the top of the stack
