@@ -310,7 +310,7 @@ namespace Objects
                                 << &SubOrbital::raptor << &SubOrbital::cargoPlane << &SubOrbital::sensorDrone
 								<< &bomb
 								<< &terraformer << &resourceScanner
-								#ifndef ONE_COMPOUND_PER_FACTION
+								#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 									<< &munitionTransporter
 								#endif
 								<< &mechanic;
