@@ -1,0 +1,28 @@
+= Server Configuration =
+
+
+
+
+The server can be configured in three ways.
+
+#Edit ''[[config/game folder]]\server\config\server.ini''. This file must be configured before starting the local server. Once started, the file's contents have no impact on any running server instance.
+#Use the provided [[config/control console]] to manipulate a running server.
+#Start a server in [[config/interactive configuration mode]]. Any server started directly from the client GUI will be started that way. Alternatively you may provide the -c parameter to the server executable at startup.
+
+== Planet Types ==
+
+The server configuration loads planets as predefined templates. While their actual layout is mostly defined by fractal noise, the underlying rules are defined in separate configuration files located in ''[[config/game folder]]\server\config\planets\[planet name].ini''. 
+
+These configuration files may be edited or created anew. Check out ''Template.ini'' for a documented example of a new planet.
+Once defined use the server.ini configuration file or [[config/control console]] to load it by name.
+To restore a predefined planet to its default configuration simply delete the file and let the server restore it during its next start.
+
+
+== Research Script ==
+
+[[units/structures/laboratory|Laboratory]] research is controlled by a Lua script located in ''[[config/game folder]]\server\config\lua\research.lua''.
+The script is loaded once during server startup, but can be updated during runtime via the [[config/control console]] command ''/IO/reloadResearchProgram''.
+Clients will receive a copy of this script during first connection (or as a result to explicit reloading).
+
+The script defines which research is possible, and how this affects unit availability and attributes.
+It also allows the basic **modification of all unit attributes.**

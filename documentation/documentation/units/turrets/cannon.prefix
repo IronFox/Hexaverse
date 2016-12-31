@@ -1,0 +1,15 @@
+{{ img:units/Cannon.png|Cannon}}
+=Cannon=
+*  Cost: %Minerals%15
+*  [[concepts/initiative|Initiative]]: 100
+*  [[concepts/vehicle|Weight]]: 3
+*  Base [[concepts/scanning range]]: 5
+*  Health: x2
+*  Offensive turret
+*  Can attack independently of movement action
+*  [[concepts/attack range|Base horizontal attack range]]: 5 (Artillery)
+*  Does not require ammunition
+*  2 attacks per round
+*  Explosion radius: 1
+*  Damage: 3
+This turret type can attack objects in range.

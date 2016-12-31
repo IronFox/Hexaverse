@@ -132,6 +132,7 @@ namespace Game
 											| Objects::WorldEntity::HibernationChanged;
 
 
+		void		AssembleGameConfig(Protocol::GameConfig&info, bool allowSpectatorFactions);
 		void		AssembleGameInfo(Protocol::GameInfo&info, bool allowSpectatorFactions);
 		/**
 		Updates the local phase and notifies all connected clients

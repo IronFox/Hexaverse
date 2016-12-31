@@ -10,6 +10,7 @@
 #include "vehicle.h"
 #include "../sphereGridHelper.h"
 #include "../runtimeConfig.h"
+#include "prototypes.h"
 
 namespace Objects
 {
@@ -22,9 +23,9 @@ namespace Objects
 		/*static*/ Buffer0<WFaction>	Faction::all;
 		/*static*/ PFaction				Faction::nexus;
 
-		void	Faction::RecreateNexus()
+		void	Faction::RecreateNexus(const TUniqueID&id)
 		{
-			nexus.reset(new Faction(TUniqueID::Empty(), "<Nexus>"));
+			nexus.reset(new Faction(id, "<Nexus>",true));
 			ApplicationInterface::SignalFactionsChanged();
 		}
 
@@ -813,12 +814,20 @@ namespace Objects
 				return true;
 			if (e->IsMobile())
 			{
-				ConstName type = To<MobileEntity>::Cast(e)->turret->constName;
-				return CheckLimit(CountMobileType(type), RuntimeConfig::UnitLimits::Get(type), errorOut);
+				if (e->IsVehicle())
+				{
+					const Component::VehicleBase*base = To<Vehicle>::Cast(e)->base;
+
+					if (!researchState.CheckUnlocked(*base,errorOut))
+						return false;
+				}
+				const Component::Turret*turret = To<MobileEntity>::Cast(e)->turret;
+				ConstName type = turret->constName;
+				return researchState.CheckUnlocked(*turret,errorOut) && CheckLimit(CountMobileType(type), RuntimeConfig::UnitLimits::Get(type), errorOut);
 			}
 			ConstName type = e->GetCTypeName();
 			if (e->IsStructure())
-				return CheckLimit(CountStructureType(type), RuntimeConfig::UnitLimits::Get(type), errorOut);
+				return researchState.CheckUnlocked(type,errorOut) && CheckLimit(CountStructureType(type), RuntimeConfig::UnitLimits::Get(type), errorOut);
 			FATAL__("Unknown type: "+e->GetName());
 			return false;
 		}
@@ -1649,7 +1658,7 @@ namespace Objects
 		rs.v[secondary] = secondaryLevel;
 	}
 
-	void		Faction::UpdateID(const TUniqueID&toID, bool recomputeColor/*=true*/)
+	void		Faction::InitID(const TUniqueID&toID, bool recomputeColor/*=true*/)
 	{
 		if (toID == TUniqueID::Empty())
 			id.Generate();

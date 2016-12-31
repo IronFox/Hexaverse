@@ -26,6 +26,44 @@ namespace Objects
 	}
 
 
+	/*virtual override*/ int				Satellite::GetFuelConsumptionPerRound() const
+	{
+		return owner ? 
+				(int)ceil(float(GetBaseFuelConsumptionPerRound()) / owner->researchState.GetFactorFor(GetCTypeName(),Component::Attribute::FuelDemand))
+				: GetBaseFuelConsumptionPerRound();
+	};
+
+	/*virtual override*/ String				Satellite::DescribeFuelConsumptionPerRound() const
+	{
+		if (!RequiresFuel())
+			return "0";
+		return owner ? 
+				owner->researchState.Describe(GetCTypeName(),GetBaseFuelConsumptionPerRound(), Component::Attribute::FuelDemand,ResearchSateModulation::InvertedCeilInt)
+				: String(GetBaseFuelConsumptionPerRound());
+	};
+
+	/*virtual override*/ float			Satellite::GetFlatAttackRange() const 
+	{
+		if (!turret->CanAttack())
+			return 0.f;
+		return EMPModify(turret->GetHorizontalAttackRange(owner,2.f),2.f);
+	}
+
+	/*virtual override*/ int			Satellite::GetMovementStepsPerRound() const 
+	{
+		return (int)floor(owner->researchState.GetFactorFor(GetCTypeName(),Component::Attribute::MovementSpeed));
+	}
+
+	/*virtual override*/String			Satellite::DescribeMovementStepsPerRound()	const
+	{
+		return owner ?
+				owner->researchState.Describe(GetCTypeName(),1.f,Component::Attribute::MovementSpeed,ResearchSateModulation::CeilInt,BindEMPModifyFunction())
+				:
+				String(GetMovementStepsPerRound());
+	}
+
+
+
 
 	///*virtual override*/ bool				Satellite::CanSee(const PWorldEntity&other)	const
 	//{
@@ -70,14 +108,14 @@ namespace Objects
 
 	/*virtual override*/ void		Satellite::RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
 	{
-		Super::RegisterSensory(loc,atTime,checkChangesNow && turret->groundScanningRange <= 0, newContacts);
+		Super::RegisterSensory(loc,atTime,checkChangesNow && turret->baseGroundScanningRange <= 0, newContacts);
 		#ifdef CLIENT
 			if (isOwnedByMe)
 				Grid::visibleOrbitGrid.ChangeSensory(loc,GetScanningRange(),+1);
 		#endif
-		if (turret->groundScanningRange > 0.f)
+		if (turret->baseGroundScanningRange > 0.f)
 		{
-			float range = EMPModify(turret->groundScanningRange,2);
+			float range = EMPModify(turret->GetGroundScanningRange(owner),2);
 			Grid::actualWorld.MapSensorState(loc.stackID,range,loc.height,turret->groundScannerPenetration,skySensorState);
 			Grid::actualWorld.UpdateSensorState(skySensorState);
 			#ifdef CLIENT
@@ -93,12 +131,12 @@ namespace Objects
 
 	/*virtual override*/ void		Satellite::UnregisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/)
 	{
-		Super::UnregisterSensory(loc,atTime,checkChangesNow && turret->groundScanningRange <= 0);
+		Super::UnregisterSensory(loc,atTime,checkChangesNow && turret->baseGroundScanningRange <= 0);
 		#ifdef CLIENT
 			if (isOwnedByMe)
 				Grid::visibleOrbitGrid.ChangeSensory(loc,GetScanningRange(),-1);
 		#endif
-		if (turret->groundScanningRange > 0.f)
+		if (turret->baseGroundScanningRange > 0.f)
 		{
 			#ifdef CLIENT
 				if (isOwnedByMe)
@@ -116,7 +154,7 @@ namespace Objects
 
 		bool					Satellite::RefreshGroundSensor(float&atTime)
 		{
-			if (turret->groundScanningRange > 0.f)
+			if (turret->baseGroundScanningRange > 0.f)
 			{
 				Grid::SkySensorState state = skySensorState;
 				if (Grid::actualWorld.UpdateSensorState(skySensorState))
@@ -228,7 +266,7 @@ namespace Objects
 		/*virtual override*/ void Satellite::DescribeType(BaseCommand::Label&outResult, UINT32 descFlags)
 		{
 			Super::DescribeType(outResult,descFlags);
-			outResult << "";
+			outResult.BeginBrief();
 			String speed = "Speed: "+String(this->GetMovementStepsPerRound()) + " (orbital)";
 
 			outResult << speed;
@@ -238,16 +276,16 @@ namespace Objects
 
 			const String fuel (ResourceTag(Resource::Fuel));
 
-			int demand = this->GetFuelConsumptionPerRound();
-			if ((descFlags & DescIncludeFuelDemandModifier) && !this->RequiresFuel())
-				demand = 0;
-			if ((descFlags & DescIncludeFuelDemandModifier) && demand)
+			String demand = this->DescribeFuelConsumptionPerRound();
+			//if ((descFlags & DescIncludeFuelDemandModifier) && !this->RequiresFuel())
+			//	demand = 0;
+			if ((descFlags & DescIncludeFuelDemandModifier) && demand != "0")
 			{
-				outResult << "Consumes"+fuel+String(demand)+'+'+String(GetExtraFuelDemand())+" per round";
+				outResult << "Consumes"+fuel+demand+'+'+String(GetExtraFuelDemand())+" per round";
 			}
 			else
 			{
-				outResult << "Consumes"+fuel+String(demand)+" per round";
+				outResult << "Consumes"+fuel+demand+" per round";
 			}
 
 
@@ -400,6 +438,19 @@ namespace Objects
 		#endif
 	}
 
+	/*virtual override*/ void			Satellite::PrototypeSetup()
+	{
+		Super::PrototypeSetup();
+		ResearchState::RegisterResearch(this,Component::Attribute::FuelDemand);
+	}
+
+
+	/*static*/ bool						SkyHub::CanProduce(const Satellite*satPrototype)
+	{
+		return satPrototype == SkyGuardian::globalPrototype.get()
+			|| satPrototype == SkyHub::globalPrototype.get()
+			|| satPrototype == Ragnarok::globalPrototype.get();
+	}
 
 
 	/*virtual override*/ void			SkyHub::PrototypeSetup()

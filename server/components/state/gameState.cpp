@@ -110,45 +110,70 @@ namespace Game
 		}
 
 
+		void		AssembleGameConfig(Protocol::GameConfig&gameConfig, bool allowSpectatorFactions)
+		{
+			gameConfig.researchScript = Objects::ResearchState::GetScriptIdentifier();
+			gameConfig.gameGoal = (UINT32)RuntimeConfig::gameGoal;
+			gameConfig.gameFlags = 0;
+			gameConfig.worldDiscovery = (BYTE)World::Config::worldDiscovery;
+			if (Config::closedGame)
+				gameConfig.gameFlags |= Protocol::GameFlag::ClosedGame;
+			if (RuntimeConfig::empZones)
+				gameConfig.gameFlags |= Protocol::GameFlag::EMPZones;
+			if (Config::basesRequired)
+				gameConfig.gameFlags |= Protocol::GameFlag::BasesRequired;
+			if (Config::startBases)
+				gameConfig.gameFlags |= Protocol::GameFlag::StartBases;
+			if (Config::Nexus::enableAI)
+				gameConfig.gameFlags |= Protocol::GameFlag::NexusAI;
+			if (ConfigurationMode::IsActive())
+				gameConfig.gameFlags |= Protocol::GameFlag::ConfigurationMode;
+			if (World::Config::simulateLiquids)
+				gameConfig.gameFlags |= Protocol::GameFlag::SimulateLiquids;
+
+			gameConfig.gameFlags |= Config::factionSupportFlags;
+			if (!allowSpectatorFactions)
+				gameConfig.gameFlags &= ~Protocol::GameFlag::SupportSpectatorFactions;
+		}
+
 		void	AssembleGameInfo(Protocol::GameInfo&info, bool allowSpectatorFactions)
 		{
+			AssembleGameConfig(info.gameConfig,allowSpectatorFactions);
 			info.activePhase = RuntimeConfig::phase;
 			info.numFactionsOnline = (UINT16)::Network::activePlayersAndSpectators.Count();
 			info.numFactionsCreated = (UINT16)Objects::Faction::all.Count() + (Config::Nexus::enableAI ? 1 : 0);
 			info.roundNumber = RuntimeConfig::roundNumber;
 			info.worldID = World::worldID;
-			info.gameConfig.gameGoal = (UINT32)RuntimeConfig::gameGoal;
-			info.gameConfig.gameFlags = 0;
-			info.gameConfig.worldDiscovery = (BYTE)World::Config::worldDiscovery;
-			if (Config::closedGame)
-				info.gameConfig.gameFlags |= Protocol::GameFlag::ClosedGame;
-			if (RuntimeConfig::empZones)
-				info.gameConfig.gameFlags |= Protocol::GameFlag::EMPZones;
-			if (Config::basesRequired)
-				info.gameConfig.gameFlags |= Protocol::GameFlag::BasesRequired;
-			if (Config::startBases)
-				info.gameConfig.gameFlags |= Protocol::GameFlag::StartBases;
-			if (Config::Nexus::enableAI)
-				info.gameConfig.gameFlags |= Protocol::GameFlag::NexusAI;
-			if (ConfigurationMode::IsActive())
-				info.gameConfig.gameFlags |= Protocol::GameFlag::ConfigurationMode;
-			if (World::Config::simulateLiquids)
-				info.gameConfig.gameFlags |= Protocol::GameFlag::SimulateLiquids;
-
-			info.gameConfig.gameFlags |= Config::factionSupportFlags;
-			if (!allowSpectatorFactions)
-				info.gameConfig.gameFlags &= ~Protocol::GameFlag::SupportSpectatorFactions;
 		}
 
 
 		void	ChangePhase(RuntimeConfig::Phase to, float timeWindow/* = -1*/)
 		{
+			if (RuntimeConfig::IsACommandPhase(to))
+			{
+				Objects::ForeachFaction([](const Objects::PFaction&f)
+				{
+					f->DropPerRoundData();	//make sure instantaneous destruction commands are processed with correct visibility information
+
+					if (f->researchState.changed)
+					{
+						f->researchState.changed = false;
+						Protocol::ResearchState state;
+						state.ownerID = f->id;
+						f->researchState.Export(state.serializedData);
+						ASSERT_LESS__(state.serializedData.Count(),state.serializedData.MaxElementCount);
+						Channels::researchState.SendTo(::Network::server,state,(UINT32)::Network::UserLevel::CommonFaction);
+
+					}
+				});
+			}
+
 			LogEvent(EventSignificance::Debug,"Changing RuntimeConfig::phase to "+String(to.ToString())+" with time window "+String(timeWindow));
 			Protocol::PhaseChange	ph;
 			ph.newPhase = to;
 			ph.roundNumber = RuntimeConfig::roundNumber;
 			ph.timeFactor = timeWindow;
-			Channels::phaseChange.SendTo(::Network::server,ph,1);
+			Channels::phaseChange.SendTo(::Network::server,ph,(UINT32)::Network::UserLevel::PreFaction);
 			RuntimeConfig::phase = to;
 			lastPhaseChange = timer.Now();
 
@@ -167,13 +192,7 @@ namespace Game
 			{
 				FileIO::CheckAutoSave(true);	//round number is formally incremented at the beginning of the command phase, but animation phase produces a delay anyways, so better save here
 			}
-			else if (RuntimeConfig::IsInAnyCommandPhase())
-			{
-				Objects::ForeachFaction([](const Objects::PFaction&f)
-				{
-					f->DropPerRoundData();	//make sure instantaneous destruction commands are processed with correct visibility information
-				});
-			}
+
 
 
 
@@ -457,20 +476,20 @@ namespace Game
 			+ 
 			Objects::MineralContainer::globalPrototype->GetConstructionCost()
 			+
-			Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::terraformer)
+			Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::terraformer,Objects::OwnerParameter())
 			+
-			Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::resourceScanner);
+			Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::resourceScanner,Objects::OwnerParameter());
 		}
 		else
 		{
 			factionStartMineralValue = 
-				3 * Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::terraformer)
+				3 * Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::terraformer,Objects::OwnerParameter())
 				+
-				Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::radar)
+				Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::radar,Objects::OwnerParameter())
 				+
-				Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::resourceScanner)
+				Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::resourceScanner,Objects::OwnerParameter())
 				+
-				Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::artillery);
+				Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::artillery,Objects::OwnerParameter());
 		}
 		//if (State::Config::Nexus::haveBases)
 		//{

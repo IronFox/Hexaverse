@@ -1,0 +1,7 @@
+{{ img:units/Mine.png|Mine}}
+=Mine=
+*  Health: 8
+*  Price: %Minerals% 40
+*  [[concepts/scanning range|Scanning range]]: 2
+*  Consumes: %Energy%10
+Enabled mines extract any natural [[concepts/resources]] available in the planet-core beneath their location. They are essential in supplying other structures of the local [[concepts/compound]]. Mines should be build only on known occurrences of natural [[concepts/resources]]. They cannot be constructed atop each other, since they require a working link to the planet core in order to operate. Mines, like many structures, require %Energy% from [[units/structures/generator]]s to operate.

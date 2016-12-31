@@ -547,6 +547,7 @@
 
 			/*virtual override*/ void				AnimationEventFocusCommand::CompileLabel(Label&outResult)
 			{
+				outResult.BeginBrief();
 				Objects::PWorldEntity e = GetTarget();
 				String hostile = isFriendly? "" : "hostile ";
 				String t = " at t="+String(atTime)+" sec";
@@ -733,6 +734,7 @@
 
 			/*virtual override*/ void	EntityFocusCommand::CompileLabel(Label&outResult)
 			{
+				outResult.BeginBrief();
 				outResult << name;
 				Objects::PWorldEntity target = this->reference.lock();
 				if (!target)
@@ -749,7 +751,7 @@
 					if (target->IsIndestructible())
 						outResult << " Indestructible";
 					else
-						outResult << String(" Health: " +String( target->health) + "/" + String(target->GetMaxHealth()));
+						outResult << String(" Health: " +String( target->health) + "/" + target->DescribeMaxHealth());
 					if (target->IsHibernating())
 						outResult << " Hibernating";
 				}
@@ -761,7 +763,7 @@
 				//outResult << "Health: "+String(target->health)+"/"+String(target->GetMaxHealth());
 				Objects::PTurretBase base = target->GetTurretBase();
 				if (base && base->turret->CanAttack())
-					outResult << "Offensive ("+String(base->GetAttacksPerRound())+"x"+String(base->turret->damageLevel)+")";
+					outResult << "Offensive ("+String(base->GetAttacksPerRound())+"x"+String(base->turret->GetDamageLevel(target->owner))+")";
 				if (target->empDamageLevel)
 					outResult << "EMP-Damage detected ("+String(target->empDamageLevel)+")";
 
@@ -807,6 +809,7 @@
 			/*virtual override*/ void	GroupFocusCommand::CompileLabel(Label&outResult)
 			{
 				//group->InitSelection();
+				outResult.BeginBrief();
 
 				Objects::PWorldEntity proto = group->GetPrototype();
 				Objects::PWorldEntity instance = group->entries.First().lock();
@@ -846,7 +849,7 @@
 				//outResult << "Health: "+String(target->health)+"/"+String(target->GetMaxHealth());
 				Objects::PTurretBase b = proto->GetTurretBase();
 				if (b && b->turret->CanAttack())
-					outResult << "Offensive ("+String(b->GetAttacksPerRound())+"x"+String(b->turret->damageLevel)+")";
+					outResult << "Offensive ("+String(b->GetAttacksPerRound())+"x"+String(b->turret->GetDamageLevel(instance->owner))+")";
 //					if (target->empDamageLevel)
 //					outResult << "EMP-Damage detected ("+String(target->empDamageLevel)+")";
 
@@ -1133,6 +1136,9 @@
 					{
 						if (c->Contains(Engine::mouse.location.windowRelative))
 						{
+							if (c->command->state & Objects::BaseCommand::Flags::IsInvisible)
+								continue;
+
 							if (c->command->state & Objects::BaseCommand::Flags::IsEnabled)
 							{
 								String name = c->command->name;
@@ -1200,7 +1206,8 @@
 						auto&cmd = *c->command;
 
 						float4 code;
-					
+						if (cmd.state & Objects::BaseCommand::Flags::IsInvisible)
+							continue;
 						{
 							if (!GUI::IsModal() && c->Contains(Engine::mouse.location.windowRelative))
 							{
@@ -1244,7 +1251,7 @@
 					hoveringText.Clear();
 					if (hoveringOver)
 						hoveringOver->command->CompileLabel(hoveringText);
-					hoveringText.briefEndAt = std::min(hoveringText.briefEndAt,hoveringText.lines.Count());
+					hoveringText.ReWrap();
 					hoveringWidth = 0;
 					hoveringBrief = true;
 				}
@@ -1269,15 +1276,16 @@
 					{
 						if (hoveringBrief)
 						{
-							for (index_t i = 0; i < hoveringText.briefEndAt; i++)
-								hoveringWidth = std::max(hoveringWidth, textout.getScaledWidth(hoveringText.lines[i]));
+							foreach (hoveringText.wrappedLines,t)
+								if (t->second)
+									hoveringWidth = std::max(hoveringWidth, textout.getScaledWidth(t->first));
 						}
 						else
-							foreach (hoveringText.lines,t)
-								hoveringWidth = std::max(hoveringWidth, textout.getScaledWidth(*t));
+							foreach (hoveringText.wrappedLines,t)
+								hoveringWidth = std::max(hoveringWidth, textout.getScaledWidth(t->first));
 					}
 				
-					count_t lineCount = hoveringBrief ? hoveringText.briefEndAt : hoveringText.lines.Count();
+					count_t lineCount = hoveringBrief ? hoveringText.CountWrappedBriefLines() : hoveringText.wrappedLines.Count();
 					float h = textout.getScaledHeight()*(lineCount-1);
 					Rect<> r;
 
@@ -1320,8 +1328,9 @@
 					SurfaceRenderer::Flush();
 
 					textout.color(1,1,1);
-					for (index_t i = 0; i < lineCount; i++)
-						textout << hoveringText.lines[i] << nl;
+					foreach (hoveringText.wrappedLines,l)
+						if (!hoveringBrief || l->second)
+							textout << l->first << nl;
 					textout.popState();
 				}
 
@@ -1878,58 +1887,95 @@
 		}
 
 
-		void		Render(const Objects::WorldEntity&e)
+		static RoundNumber cachedNumber = RoundNumber(-1);
+		static const Objects::WorldEntity *cachedEntity = nullptr;
+
+		static float4	currentColor;
+
+		static Buffer0<float4>	pushedColors;
+		static void PushCurrentColor()
 		{
-			textout.pushState();
-			float3 color (1);
+			pushedColors << currentColor;
+			ASSERT_LESS__(pushedColors.Count(),3);
+		}
+		static void PopCurrentColor()
+		{
+			ASSERT__(pushedColors.Count() != 0);
+			currentColor = pushedColors.Pop();
+		}
+
+
+
+		struct TCachedLine
+		{
+			float4		color;
+			String		text;
+
+			/**/		TCachedLine()	{}
+			/**/		TCachedLine(const String&str):text(str),color(currentColor){}
+			/**/		TCachedLine(const StringRef&str):text(str),color(currentColor){}
+			/**/		TCachedLine(String&&str):text(std::move(str)),color(currentColor){}
+			/**/		TCachedLine(const char*str):text(str),color(currentColor){}
+
+			void		swap(TCachedLine&other)
+			{
+				swp(color,other.color);
+				text.swap(other.text);
+			}
+		};
+		static Buffer0<TCachedLine,Swap>	cachedLines;
+
+		void		UpdateCacheIfNeeded(const Objects::WorldEntity&e)
+		{
+			if (cachedNumber == RuntimeConfig::roundNumber && cachedEntity == &e)
+				return;
+			cachedNumber = RuntimeConfig::roundNumber;
+			cachedEntity = &e;
+			cachedLines.Clear();
+
+			currentColor = float4(1);
 			#ifndef NO_HIBERNATION
 				const Objects::Hibernating*h = e.ToHibernating();
 			#endif
-			textout.color(color);
 			
 
 
-			float len = 300.f / display.clientWidth();
-			//if (len == 0)
-				//len = textout.scaledWidth("012345678901234567890123456789012345");
-			textout.locate(1.f - len,0.95f);
 			const String&name= e.GetNiceName();
 			if (name.length() < 20)
-				textout << name <<nl;
+				cachedLines << name;
 			else
 			{
 				index_t split = name.GetIndexOf('\'');
 				if (split == 0)
 					split = name.GetIndexOf(' ');
-				textout << name.subStringRef(0,split-1) << nl;
-				textout << ' '<<name.subStringRef((int)split-1) << nl;
+				cachedLines << name.subStringRef(0,split-1);
+				cachedLines << String(' ')+name.subStringRef((int)split-1);
 				
 				#ifdef _DEBUG
-					textout << ' '<<e.GetName()<<nl;
+					cachedLines << ' '+e.GetName();
 
 				#endif
 
 			}
 
 			#ifdef _DEBUG
-				textout << " Location: "<<e.location.ToString()<<nl;
+				cachedLines << " Location: "+e.location.ToString();
 				if (e.IsMobile())
-					textout << " Last point of origin: "<<((const Objects::MobileEntity&)e).GetLastPointOfOrigin().ToString()<<nl;
-				textout << " x: "<<e.system.x.xyz<<nl;
-				textout << " y: "<<e.system.y.xyz<<nl;
-				textout << " z: "<<e.system.z.xyz<<nl;
-				textout << " w: "<<e.system.w.xyz<<nl;
+					cachedLines << " Last point of origin: "+((const Objects::MobileEntity&)e).GetLastPointOfOrigin().ToString();
+				cachedLines << " x: "+Vec::toString(e.system.x.xyz);
+				cachedLines << " y: "+Vec::toString(e.system.y.xyz);
+				cachedLines << " z: "+Vec::toString(e.system.z.xyz);
+				cachedLines << " w: "+Vec::toString(e.system.w.xyz);
 				TVec3<> wz = e.system.w.xyz;
 				Vec::normalize(wz);
-				textout << " w1: "<<wz<<nl;
+				cachedLines << " w1: "+Vec::toString(wz);
 			#else
-				textout << " Height: "<<e.location.height<<nl;
+				cachedLines << " Height: "+String(e.location.height);
 			#endif
 
-			textout << " Owner: "<<e.owner->GetName();
+			cachedLines << " Owner: "+e.owner->GetName()+(e.isOwnedByMe ? " (me)":"");
 			if (e.isOwnedByMe)
 			{
-				textout<<" (me)";
 				if (e.health > 0)
 				{
 					static const Objects::WorldEntity *last=nullptr;
@@ -1941,75 +1987,75 @@
 					}
 					if (lastDeployed.IsNotEmpty())
 					{
-						textout.PushColorState();
-						textout.color(0.6,0.7,1.f);
-						textout << nl << lastDeployed;
+						PushCurrentColor();
+						currentColor.rgb = float3(0.6,0.7,1.f);
+						cachedLines << lastDeployed;
 
-						textout.PopColorState();
+						PopCurrentColor();
 					}
 				}
 
 			}
-			textout << nl;
-			textout << " Scanning-Range: "<<e.GetScanningRange() << nl;
+			cachedLines << "";
+			cachedLines << " Scanning-Range: "+e.DescribeScanningRange();
 			#ifndef NO_HIBERNATION
-				textout << " "<<Objects::TrafficResourceTag()  <<e.GetUplinkTraffic() << nl;
+				cachedLines << " "<<Objects::TrafficResourceTag()  <<e.GetUplinkTraffic() << nl;
 				if (h)
-					textout << " "<<Objects::TrafficResourceTag()  << "Priority: "<<h->GetUplinkPriority()<<nl;
+					cachedLines << " "<<Objects::TrafficResourceTag()  << "Priority: "<<h->GetUplinkPriority()<<nl;
 			#endif
-			textout.PushColorState();
+			PushCurrentColor();
 			if (e.health > 0)
 			{
 				if (e.IsIndestructible())
-					textout << " Indestructible" << nl;
+					cachedLines << " Indestructible";
 				else
 				{
 					int maxHealth = e.GetMaxHealth();
 					if (e.health < maxHealth/4)
-						textout.Tint(1,0.2,0.2);
+						currentColor.rgb &= float3(1,0.2,0.2);
 					elif (e.health < maxHealth/2)
-						textout.Tint(1,1,0.2);
+						currentColor.rgb &= float3(1,1,0.2);
 					elif (e.health < maxHealth)
-						textout.Tint(0.2,1,0.2);
-
-					textout << " Health: " << e.health << "/" << e.GetMaxHealth() << nl;
+						currentColor.rgb &= float3(0.2,1,0.2);
+	
+					cachedLines << " Health: " + String(e.health) + "/" + e.DescribeMaxHealth();
 				}
 			}
 			else
 			{
-				textout.Tint(1, 0.8, 0.75);
-				textout << " Ghost created " << -e.health << " round(s) ago" << nl;
-				textout.color(color);
+				currentColor.rgb &= float3(1, 0.8, 0.75);
+				cachedLines << " Ghost created " + String( -e.health )+ " round(s) ago";
 			}
-			textout.PopColorState();
+			PopCurrentColor();
 			#ifndef NO_HIBERNATION
 				if (h->IsHibernating())
 				{
 					color = float3(0.5f);
-					textout.color(0.6,1,1);
-					textout << " Hibernating" << nl;
-					textout.color(color);
+					cachedLines.color(0.6,1,1);
+					cachedLines << " Hibernating" << nl;
+					cachedLines.color(color);
 				}
 			#endif
 			if (e.empDamageLevel)
 			{
-				textout.Tint(1,0.8,0.75);
-				textout << " EMP-Damage detected: "<< e.empDamageLevel<<nl;
-				textout.color(color);
+				PushCurrentColor();
+				currentColor.rgb &= float3(1,0.8,0.75);
+				cachedLines << " EMP-Damage detected: "+String(e.empDamageLevel);
+				PopCurrentColor();
 			}
-
-
+	
+	
 			if (e.IsMobile())
 			{
 				const Objects::MobileEntity*v = (const Objects::MobileEntity*)(&e);
-
+	
 				//if (!v->storedIn.expired())
-					//textout << " Stored in: "<<v->storedIn.lock()->GetName()<<nl;	//probably never happens
+					//cachedLines << " Stored in: "<<v->storedIn.lock()->GetName()<<nl;	//probably never happens
 				if (e.IsVehicle())
 				{
 					const Objects::Vehicle*veh = (const Objects::Vehicle*)(&e);
-					textout << " Turret-Overweight: "<<std::max(0,veh->turret->weight - veh->base->carryingCapacity) << nl;
-					textout << " Movement Initiative: "<<(int)v->GetMovementInitiative()<<"/"<<(int)veh->base->initiative<<nl;
+					cachedLines << " Turret-Overweight: "+String((int)vmax(0,veh->turret->weight(e.owner) - floor(veh->base->GetCarryingCapacity(e.owner))));
+					cachedLines << " Movement Initiative: "+String((int)v->GetMovementInitiative())+"/"+String((int)veh->base->initiative);
 				}
 				#ifndef NO_SATELLITES
 					elif (e.IsSatellite())
@@ -2018,65 +2064,68 @@
 						int demand = sat->GetFuelConsumptionPerRound();
 						if (!sat->RequiresFuel())
 							demand = 0;
-						textout << " Fuel-Consumption: "<<(char)(tagOffset+Objects::Resource::Fuel)<<demand;
+						cachedLines << " Fuel-Consumption: "<<(char)(tagOffset+Objects::Resource::Fuel)<<demand;
 						if (demand > 0)
-							textout <<'+'<<sat->GetExtraFuelDemand();
-						
-						textout<<nl;
+							cachedLines <<'+'<<sat->GetExtraFuelDemand();
+							
+						cachedLines<<nl;
 					}
 				#endif
-				textout << " Attack Initiative: "<<(int)v->GetAttackInitiative()<<"/"<<(int)v->turret->initiative<<nl;
-				textout << " Speed: "<<v->GetMovementStepsPerRound() << nl;
+				cachedLines << " Attack Initiative: "+String((int)v->GetAttackInitiative())+"/"+String((int)v->turret->initiative);
+				cachedLines << " Speed: " + v->DescribeMovementStepsPerRound();
 				if (v->turret->CanAttack())
 				{
-					//textout << " Range: "<<v->GetAttackRange() << nl;
-					//textout << " Damage: "<<v->turret->damageLevel << nl;
-					//textout << " Ammo-Usage: "<<v->turret->ammoNeedPerShot<<nl;
-					textout << " Hrz. Range: "<<v->GetFlatAttackRange();
-					textout << '+'<<v->turret->explosionRadius<< nl;
-					textout << " Damage: "<<v->turret->damageLevel << nl;
-					if (v->turret->ammoNeedPerShot > 0)
-						textout << " "<<(char)(tagOffset+v->turret->ammoType)<<"Ammo-Usage: "<<v->turret->ammoNeedPerShot<<nl;
-
+					//cachedLines << " Range: "<<v->GetAttackRange() << nl;
+					//cachedLines << " Damage: "<<v->turret->damageLevel << nl;
+					//cachedLines << " Ammo-Usage: "<<v->turret->ammoNeedPerShot<<nl;
+					cachedLines << " Hrz. Range: "+String(0.1f * round(10.f * v->GetFlatAttackRange()))
+									+'+'+String(0.1f * round(10.f * v->turret->GetExplosionRadius(e.owner)));
+					cachedLines << " Damage: "+String(v->turret->GetDamageLevel(e.owner));
+					int ammoNeed = v->turret->GetAmmoNeedPerShot(e.owner);
+					if (ammoNeed > 0)
+						cachedLines << " "+String((char)(tagOffset+v->turret->ammoType))+"Ammo-Usage: "+String(ammoNeed);
+	
 				}
 				if (v->turret->CanAttack())
 				{
-					textout << " Attacks left: "<<int(v->CountPossibleAttacks())<<"/"<<v->GetAttacksPerRound();
-					textout << nl;
+					cachedLines << " Attacks left: "+String(int(v->CountPossibleAttacks()))+"/"+String(v->GetAttacksPerRound());
 					if (v->turret->ignoresVehicleMotion)
-						textout << "  (ignores movement)"<<nl;
+						cachedLines << "  (ignores movement)";
 				}
-				int opSpeed = v->GetOperationSpeed(Objects::Component::Construct);
-				if (opSpeed)
-					textout << " Converts "<<Objects::ResourceTag(Objects::Resource::Minerals)<<opSpeed<<" per round"<<nl;
-				opSpeed = v->GetOperationSpeed(Objects::Component::Repair);
-				if (opSpeed)
-					textout << " Repairs "<<Objects::ResourceTag(Objects::Resource::Minerals)<<opSpeed<<" per round"<<nl;
-
-				textout << " Tasks:" << nl;
+				if (v->turret->CanDo(Objects::Component::Construct))
+				{
+					String opSpeed = v->turret->operationSpeed[Objects::Component::Construct].Describe(v->GetResearchState());
+					cachedLines << " Converts "+String(Objects::ResourceTag(Objects::Resource::Minerals))+opSpeed+" per round";
+				}
+				if (v->turret->CanDo(Objects::Component::Repair))
+				{
+					String opSpeed = v->turret->operationSpeed[Objects::Component::Repair].Describe(v->GetResearchState());
+					cachedLines << " Repairs "+String(Objects::ResourceTag(Objects::Resource::Minerals))+opSpeed+" per round";
+				}
+	
+				cachedLines << " Tasks:";
 				if (v->myTasks.IsEmpty())
 				{
 					if (v->unstable)
-						textout << "  Operation done. Relocate to complete" << nl;
+						cachedLines << "  Operation done. Relocate to complete";
 					else
-						textout << "  idle"<<nl;
+						cachedLines << "  idle";
 				}
 				else
 				{
-					textout.Tint(0.75,0.8,1);
+					PushCurrentColor();
+					currentColor.rgb &= float3(0.75,0.8,1);
 					foreach (v->myTasks,t)
 					{
-						textout << "  * "<<t->name;
+						cachedLines << "  * "+t->name;
 						if (t->IsMode(Objects::CursorMode::AttackMode) && t->foci.Count() > 1)
-							textout << " (x"<<t->foci.Count()<<')';
+							cachedLines.Last().text+= " (x"+String(t->foci.Count())+')';
 						if (t->job && t->job->roundsToJobCompletion)
 						{
-							textout << " ("<<t->job->roundsToJobCompletion<<" round"<<(t->job->roundsToJobCompletion != 1 ? "s)" : ")") << nl;
+							cachedLines.Last().text+= " ("+String(t->job->roundsToJobCompletion)+" round"+(t->job->roundsToJobCompletion != 1 ? "s)" : ")");
 						}
-						else
-							textout << nl;
 					}
-					textout.color(color);
+					PopCurrentColor();
 				}
 				#ifndef ONE_COMPOUND_PER_FACTION
 					const Objects::ResourceVector max = v->GetMaxStorageCapacity();
@@ -2086,79 +2135,75 @@
 							any = true;
 					if (any)
 					{
-
-						textout << "Resources in storage:" << nl;
+	
+						cachedLines << "Resources in storage:";
 						for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
 							if (max.level[i] > 0)
 							{
-
-		//						textout << "  "<<Objects::Resource::Reinterpret(i).ToString()<<": "<<v->currentStorage.level[i]<<"/"<<max.level[i]<<nl;
-								textout << "  "<<(char)(tagOffset+i)<<" "<<v->currentStorage.level[i]<<"/"<<max.level[i]<<nl;
-								//textout << "        : "<<v->currentStorage.level[i]<<"/"<<max.level[i]<<nl;
+	
+		//						cachedLines << "  "<<Objects::Resource::Reinterpret(i).ToString()<<": "<<v->currentStorage.level[i]<<"/"<<max.level[i]<<nl;
+								cachedLines << "  "+String((char)(tagOffset+i))+" "+String(v->currentStorage.level[i])+"/"+String(max.level[i]);
+								//cachedLines << "        : "<<v->currentStorage.level[i]<<"/"<<max.level[i]<<nl;
 							}
 					}
 				#endif
 			}
-
+	
 			bool storeListed = false;
-
+	
 			if (e.IsStructure())
 			{
 				#ifdef _DEBUG
 				{
-					textout << " Connected to: "<<nl;
+					cachedLines << " Connected to: ";
 					const Objects::Structure&s = (const Objects::Structure&)e;
 					foreach (s.connectedTo,c)
 					{
 						Objects::PStructure s = c->structure.lock();
 						if (!s)
 							continue;
-						textout << "  "<<s->GetName()<<", wireless="<<c->wireless <<nl;
+						cachedLines << "  "+s->GetName()+", wireless="+String(c->wireless);
 					}
 				}
 				#endif
 				const Objects::Tower*t = dynamic_cast<const Objects::Tower*>(&e);
 				if (t)
 				{
-					textout << " Attack Initiative: "<<(int)t->turret->initiative<<nl;
+					cachedLines << " Attack Initiative: "+String((int)t->turret->initiative);
 					if (t->turret->CanAttack())
 					{
 						const Objects::Tower*v = t;	//rename
-						textout << " Hrz. Range: "<<v->GetFlatAttackRange();
-						textout << '+'<<v->turret->explosionRadius<< nl;
-						textout << " Damage: "<<v->turret->damageLevel << nl;
-						textout << " "<<(char)(tagOffset+v->turret->ammoType)<<"Ammo-Usage: "<<v->turret->ammoNeedPerShot<<nl;
+						cachedLines << " Hrz. Range: "+t->DescribeFlatAttackRange();
+						cachedLines << " Damage: "+t->turret->damageLevel.Describe(e.GetResearchState());
+						cachedLines << " "+String((char)(tagOffset+v->turret->ammoType))+"Ammo-Usage: "+String(v->turret->ammoNeedPerShot.Describe(e.GetResearchState()));
 					}
-					if (t->GetAttacksPerRound() > 0)
-						textout << " Attacks left: "<<int(t->CountPossibleAttacks())<<"/"<<t->GetAttacksPerRound() << nl;
-					//textout << " Tasks:" << nl;
-
-					//textout << "Resources in storage:" << nl;
+					if (t->turret->CanAttack())
+						cachedLines << " Attacks left: "+String(int(t->CountPossibleAttacks()))+"/"+String(t->turret->attacksPerRound.Describe(e.GetResearchState()));
+					//cachedLines << " Tasks:" << nl;
+	
+					//cachedLines << "Resources in storage:" << nl;
 					//const Objects::ResourceVector max = t->GetMaxStorageCapacity();
 					//for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
 					//	if (max.level[i] > 0)
-					//		textout << "  "<<Objects::Resource::Reinterpret(i).ToString()<<": "<<t->storage.level[i]<<"/"<<max.level[i]<<nl;
-		
+					//		cachedLines << "  "<<Objects::Resource::Reinterpret(i).ToString()<<": "<<t->storage.level[i]<<"/"<<max.level[i]<<nl;
+			
 				}
-
-
+	
+	
 				const Objects::VehicleStore*st = dynamic_cast<const Objects::VehicleStore*>(&e);
 				if (st)
 				{
 					storeListed = true;
-					textout << " Max Vehicles per Store: "<<Objects::VehicleStore::MaxVehiclesPerStore<<nl;
-
-
+					cachedLines << " Max Vehicles per Store: "+String(Objects::VehicleStore::MaxVehiclesPerStore);
+	
+	
 					if (st->park)
 					{
-						textout << " Vehicles stored in park ("<<st->park->vehiclesStored<<"/"<<st->GetParkVehicleCapacity()<<"):"<<nl;
-
-
-						textout.PushColorState();
-
-						textout.Tint(0.8f,0.9f,1.1f);
+						cachedLines << " Vehicles stored in park ("+String(st->park->vehiclesStored)+"/"+String(st->GetParkVehicleCapacity())+"):";
+						PushCurrentColor();
+						currentColor.rgb &= float3(0.8f,0.9f,1.1f);
 						count_t cnt = 0;
-
+	
 						{
 							const Objects::VehicleStore *other = st;
 							for (const auto&v : other->stored)
@@ -2167,15 +2212,15 @@
 								ASSERT1__(v1,st->ToEntity().id.ToString());
 								if (++cnt > 10)
 								{
-									textout << "..."<<nl;
+									cachedLines << "...";
 									break;
 								}
-								textout << "  "<<v1->GetNiceName() <<" (local)"<< nl;
+								cachedLines << "  "+v1->GetNiceName() +" (local)";
 							}
 						}
-
-						textout.Tint(0.9f,0.9f,0.9f);
-
+	
+						currentColor.rgb &= float3(0.9f,0.9f,0.9f);
+	
 						for (const auto&_s : st->park->members)
 						{
 							Objects::PVehicleStore other = _s.lock();
@@ -2187,76 +2232,73 @@
 								ASSERT1__(v1,st->ToEntity().id.ToString());
 								if (++cnt > 10)
 								{
-									textout << "..."<<nl;
+									cachedLines << "...";
 									break;
 								}
-								textout << "  "<<v1->GetNiceName() << nl;
+								cachedLines << "  "+v1->GetNiceName();
 							}
 							if (cnt > 10)
 								break;
 						}
-						textout.PopColorState();
+						PopCurrentColor();
 					}
 					else
 					{
-						textout << " Vehicles stored ("<<st->stored.Count()<<"/"<<Objects::VehicleStore::MaxVehiclesPerStore<<"):"<<nl;
+						cachedLines << " Vehicles stored ("+String(st->stored.Count())+"/"+String(Objects::VehicleStore::MaxVehiclesPerStore)+"):";
 						for (const auto&v : st->stored)
 						{
 							Objects::PMobileEntity v1 = v.entity.lock();
 							ASSERT1__(v1,st->ToEntity().id.ToString());
-							textout << "  "<<v1->GetNiceName() << nl;
+							cachedLines << "  "+v1->GetNiceName();
 						}
 					}
 				}
-
-
+	
+	
 				const Objects::Structure*s = (const Objects::Structure*)(&e);
-				
-				textout.color(1,1,1);
-
+	
 				#if defined _DEBUG && !defined ONE_COMPOUND_PER_FACTION
-					textout << " Compound ID: "<<s->compoundID << nl;
+					cachedLines << " Compound ID: "+String(s->compoundID);
 				#endif
 				const Objects::Compound*net = nullptr;
 				if (s->health > 0)
 				{
 					const Objects::Compound&network = s->GetCompound();
 					net = &network;
-					textout << " Compound status:" << nl;
+					cachedLines << " Compound status:";
 					if (!network.stable)
 					{
-						textout.PushColorState();
+						PushCurrentColor();
 						if (e.isOwnedByMe)
-							textout.Tint(1, 0.2, 0.2);
-
-						textout << "  UNSTABLE";
+							currentColor.rgb &= float3(1, 0.2, 0.2);
+	
+						cachedLines << "  UNSTABLE";
 						if (!e.isOwnedByMe)
-							textout << " (?)";
-						textout << nl;
-						textout.PopColorState();
+							cachedLines.Last().text += " (?)";
+						PopCurrentColor();
 					}
-					textout << "  Resource consumption:" << nl;
-					textout << "    (demand/supply)" << nl;
+					cachedLines << "  Resource consumption:";
+					cachedLines << "    (demand/supply)";
 					for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
 					{
-						textout.PushColorState();
+						PushCurrentColor();
 						if (e.isOwnedByMe && network.total.demand.level[i] > network.total.supply.level[i])
-							textout.Tint(1, 0.2, 0.2);
-						textout << "   " << (char)(tagOffset+i) << " " << network.total.demand.level[i] << "/" << network.total.supply.level[i] << nl;
-						textout.PopColorState();
+							currentColor.rgb &= float3(1, 0.2, 0.2);
+						cachedLines << "   " + String((char)(tagOffset+i))+ " " +String(network.total.demand.level[i])+  "/" +String( network.total.supply.level[i] );
+						PopCurrentColor();
 					}
-					textout << "  Resource storage:" << nl;
+					cachedLines << "  Resource storage:";
 					for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
 					{
 						if (network.total.storageMax.level[i] > 0)
-							textout << "   " << (char)(tagOffset+i) << " " << network.total.storage.level[i] << "/" << network.total.storageMax.level[i] << nl;
+							cachedLines << "   " +String( (char)(tagOffset+i) ) + " " + String(network.total.storage.level[i]) + "/" + String( network.total.storageMax.level[i]);
 					}
 				}
 				else
 				{
-					//textout << " Ghost created in round "<<
+					//cachedLines << " Ghost created in round "<<
 				}
-
+	
 				{
 					const Objects::MobileEntityProducer*ps = e.CastToProducer();
 					if (ps)
@@ -2267,57 +2309,56 @@
 						{
 							active = ((const Objects::WorkingStructure*)(&e))->IsEnabled();
 						}
-						
+							
 						if (ps->queue.IsNotEmpty())
 						{
-							textout << "  producing "<<ps->queue.First().name<<nl;
+							cachedLines << "  producing "+ps->queue.First().name;
 							if (!active)
-								textout << "   completion (when enabled) in "<<Objects::TimeResourceTag() <<ps->productionRoundsLeft<<nl;
+								cachedLines << "   completion (when enabled) in "+String(Objects::TimeResourceTag())+String(ps->productionRoundsLeft);
 							else
-								textout << "   completion in "<<Objects::TimeResourceTag() <<ps->productionRoundsLeft<<nl;
+								cachedLines << "   completion in "+String(Objects::TimeResourceTag())+String(ps->productionRoundsLeft);
 						}
-
+	
 					}
 					else
 					{
-
-
+	
+	
 					}
 				}
-
+	
 				if (e.IsWorkingStructure())
 				{
 					const Objects::WorkingStructure*ws = (const Objects::WorkingStructure*)(&e);
-					textout << nl << " Structure status:"<<nl;
+					cachedLines << "";
+					cachedLines << " Structure status:";
 					if (ws->IsHibernating())
-						textout << "  Hibernating" << nl;
-					textout.color(color);
-
+						cachedLines << "  Hibernating";
+	
 					if (ws->AwaitsUserInteraction())
-						textout << "  Awaiting user input" << nl;
+						cachedLines << "  Awaiting user input";
 					else
-						textout << (ws->IsEnabled() ? "  Enabled" : "  Disabled") << nl;
-				
-
-
+						cachedLines << (ws->IsEnabled() ? "  Enabled" : "  Disabled");
+					
+	
+	
 					{
-						
+							
 						if (ws->IsMine())
 						{
 							const Objects::Mine*ms = (const Objects::Mine*)(ws);
-							textout << "  Efficiency: "<<  int(ms->GetEfficiency()*100) << "%"  << nl;
+							cachedLines << "  Efficiency: "+String(  int(ms->GetEfficiency()*100) )+ "%";
 							if (ms->IsLinkedToCore())
-								textout << "  Linked to Core" << nl;
+								cachedLines << "  Linked to Core" ;
 							else
 							{
+								PushCurrentColor();
 								if (e.isOwnedByMe)
-									textout.Tint(1,0.5,0.4);
-								textout << "  Disconnected from Core";
+									currentColor.rgb &= float3(1,0.5,0.4);
+								cachedLines << "  Disconnected from Core";
 								if (!e.isOwnedByMe)
-									textout << " (?)";
-								textout << nl;
-
-								textout.color(color);
+									cachedLines.Last().text += " (?)";
+								PopCurrentColor();
 							}
 						}
 						else
@@ -2328,16 +2369,16 @@
 								if (np->isOwnedByMe)
 								{
 									if (np->resistence)
-										textout << "  Remaining resistence: "<<np->resistence << nl;
+										cachedLines << "  Remaining resistence: "+String(np->resistence);
 									else
-										textout << "  Captured"<< nl;
+										cachedLines << "  Captured";
 								}
 							}
 						}
 					}
 					Objects::ResourceVector	delta,storage,storageMax;
 					ws->GetResourceVector(delta,storage,storageMax);
-
+	
 					bool any = false;
 					for (index_t i = 0; i < delta.NumEntries; i++)
 						if (delta.level[i] < 0)
@@ -2345,37 +2386,37 @@
 					const bool isEnabled = ws->IsEnabled();
 					if (any)
 					{
-						textout << " Consumes";
+						cachedLines << " Consumes";
 						if (!isEnabled)
-							textout << " (if enabled)";
-						textout <<':'<<nl;
+							cachedLines.Last().text += " (if enabled)";
+						cachedLines.Last().text +=':';
 						if (!isEnabled)
-							textout << "    (demand/compound supply)" << nl;
-					
-
+							cachedLines << "    (demand/compound supply)";
+						
+	
 						for (index_t i = 0; i < delta.NumEntries; i++)
 							if (delta.level[i] < 0)
 							{
-								//textout << "  "<<Objects::Resource::Reinterpret(i).ToString()<<": "<<-delta.level[i];
+								//cachedLines << "  "<<Objects::Resource::Reinterpret(i).ToString()<<": "<<-delta.level[i];
 								if (isEnabled)
-									textout << "  "<<(char)(tagOffset+i)<<" "<<-delta.level[i];
+									cachedLines << "  "+String((char)(tagOffset+i))+" "+String(-delta.level[i]);
 								else
 								{
+									PushCurrentColor();
 									if (net && delta.level[i] + net->total.balance.level[i] < 0)
-										textout.Tint(1,0.6,0.5);
-									textout << "  "<<(char)(tagOffset+i)<<" "<<-delta.level[i];
-								
+										currentColor.rgb &= float3(1,0.6,0.5);
+									cachedLines << "  "+String((char)(tagOffset+i))+" "+String(-delta.level[i]);
+									
 									if (net)
 									{
-										textout << " / " << net->total.balance.level[i];
+										cachedLines.Last().text += " / " + String( net->total.balance.level[i] );
 										if (net->total.storage.level[i])
-											textout << " (" << net->total.storage.level[i] << " stored)";
+											cachedLines.Last().text += " (" + String(net->total.storage.level[i])+ " stored)";
 									}
-									//textout << nl;
-									textout.color(color);
-
+									//cachedLines << nl;
+									PopCurrentColor();
+	
 								}
-								textout << nl;
 							}
 					}
 					any = false;
@@ -2384,16 +2425,16 @@
 							any = true;
 					if (any)
 					{
-						//textout << " Produces:"<<nl;
-						textout << " Produces";
+						//cachedLines << " Produces:"<<nl;
+						cachedLines << " Produces";
 						bool isEnabled = ws->IsEnabled();
 						if (!isEnabled)
-							textout << " (if enabled)";
-						textout <<':'<<nl;
-
+							cachedLines.Last().text += " (if enabled)";
+						cachedLines.Last().text +=':';
+	
 						for (index_t i = 0; i < delta.NumEntries; i++)
 							if (delta.level[i] > 0)
-								textout << "  "<<(char)(tagOffset+i)<<" "<<delta.level[i]<<nl;
+								cachedLines << "  "+String((char)(tagOffset+i))+" "+String(delta.level[i]);
 					}
 					any = false;
 					for (index_t i = 0; i < delta.NumEntries; i++)
@@ -2401,36 +2442,56 @@
 							any = true;
 					if (any)
 					{
-						textout << " Storage:"<<nl;
+						cachedLines << " Storage:";
 						for (index_t i = 0; i < delta.NumEntries; i++)
 							if (storageMax.level[i] > 0)
-								textout << "  "<<(char)(tagOffset+i)<<" "<<storage.level[i]<<"/"<<storageMax.level[i]<<nl;
+								cachedLines << "  "+String((char)(tagOffset+i))+" "+String(storage.level[i])+"/"+String(storageMax.level[i]);
 					}
 				}
-
-
 	
+	
+		
 			}
-
-
+	
+	
 			if (!storeListed && e.IsHangar())
 			{
 				const Objects::Hangar&h = *dynamic_cast<const Objects::Hangar*>(&e);
-				textout.PushColorState();
-				textout.Tint(0.75,0.8,1);
-				textout << " Units in storage ("<<h.stored.Count()<<"/"<<h.GetMaxStorage()<<"):"<<nl;
-				textout.PopColorState();
+				PushCurrentColor();
+				currentColor.rgb &= float3(0.75,0.8,1);
+				cachedLines << " Units in storage ("+String(h.stored.Count())+"/"+String(h.GetMaxStorage())+"):";
 				for (const auto&v : h.stored)
 				{
 					Objects::PMobileEntity v1 = v.entity.lock();
 					ASSERT1__(v1,h.ToEntity().id.ToString());
-					textout << "  "<<v1->GetNiceName() << nl;
+					cachedLines << "  "+v1->GetNiceName();
 				}
-
+				PopCurrentColor();
+	
 			}
+
+		
+
+		}
+
+		void		Render(const Objects::WorldEntity&e)
+		{
+
+			UpdateCacheIfNeeded(e);
+			
 			//textout.getActiveFont()->EndTagMode();
+			textout.pushState();
 
+			float len = 300.f / display.clientWidth();
+			//if (len == 0)
+				//len = textout.scaledWidth("012345678901234567890123456789012345");
+			textout.locate(1.f - len,0.95f);
 
+			foreach (cachedLines,l)
+			{
+				textout.color(l->color);
+				textout << l->text << nl;
+			}
 
 			textout.popState();
 	

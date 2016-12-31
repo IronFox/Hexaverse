@@ -3355,7 +3355,7 @@ namespace Grid
 			static const int reduce = 5;
 
 			//float t0 = fabs(noise.Get(direction + seed,8.f));	//wide areas
-			float t1 = (Get(n,direction *M_PIF/2.5f));	//small areas
+			float t1 = (Get(n,direction *M_PIF/2.5f * 8));	//small areas
 
 			int rs = std::min(1.f,scale * t1) * (reduce + max);
 			rs -= reduce;

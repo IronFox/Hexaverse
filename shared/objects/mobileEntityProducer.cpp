@@ -485,6 +485,8 @@ namespace Objects
 			//PSatellite	satellite;
 			//VehicleBase* base;
 			//Turret* turret;
+			WorldEntity*parent = dynamic_cast<WorldEntity*>(this);
+
 			int price = 0;
 			String name;
 			Component::VehicleBase* base = nullptr;
@@ -497,14 +499,16 @@ namespace Objects
 				ASSERT_NOT_NULL1__(turret, (int)turretName);
 				ASSERT_NOT_NULL1__(base, (int)baseName);
 
-				price = Vehicle::GetPrice(base,turret);
+				price = Vehicle::GetPrice(base,turret,parent->owner);
 				name = Vehicle::GetTypeName(base,turret);
 			}
 			else
 			{
 				prototype = GetNonVehiclePrototypeByName(baseName);
 				ASSERT1__(prototype, (int)baseName);
-				price = prototype->GetConstructionCost();
+				prototype->owner = parent->owner;
+					price = prototype->GetConstructionCost();
+				prototype->owner.reset();
 				name = prototype->GetTypeName();
 				if (prototype->IsVehicle())
 				{

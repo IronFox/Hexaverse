@@ -771,8 +771,8 @@ namespace Objects
 
 		/*virtual override*/ BaseJob::continue_t	SelfDetonate::Finish(MobileEntity&v, const Grid::LCellIdI&focus)
 		{
-			float radius = Component::Bomb::GetRadius(doomsday);
-			int damageLevel = Component::Bomb::GetDamageLevel(doomsday);
+			float radius = Component::Bomb::GetRadius(doomsday,v.owner);
+			int damageLevel = Component::Bomb::GetDamageLevel(doomsday,v.owner);
 
 			Remove(v.shared_from_this(),Objects::RemovalType::ControlledExplosion,v.motionTime,true);
 			v.motionTime += timeEpsilon;

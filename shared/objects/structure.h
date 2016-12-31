@@ -10,7 +10,7 @@
 
 #endif
 
-#include <io/encryption.h>
+#include <io/cryptographic_hash.h>
 #include "../cast.h"
 #include "interface.h"
 #include "hibernating.h"
@@ -59,6 +59,7 @@ namespace Objects
 
 
 	protected:
+		BaseAttributeTable*			table;
 		typedef WorldEntity			Super;
 		/**/						Structure():Super(OwnerParameter(),Grid::LCellIdI(0, 0))
 				#ifdef HAS_WINDOW
@@ -66,11 +67,12 @@ namespace Objects
 				#endif
 				{}
 
-		/**/						Structure(const OwnerParameter&owner, const Grid::LCellIdI&at, bool buildSystem, float time);
+		/**/						Structure(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&at, bool buildSystem, float time);
 
 
 
 	public:
+		void						DefineAttributeTable(BaseAttributeTable*t)	{table = t;}
 
 		CONSTRUCT_ENUMERATION5(Category, Resources, Defense, Factories, Infrastructure, Miscellaneous);
 
@@ -313,6 +315,13 @@ namespace Objects
 		*/
 		virtual void				OnDestroy(RemovalType, float&atTime) override;
 		virtual void				OnConstructionFinished(float&atTime) override;
+		virtual void				PrototypeSetup() override;
+		virtual BaseAttributeTable*	GetTable() const override
+		{
+			ASSERT_NOT_NULL1__(table,GetTypeName());
+			return table;
+		}
+
 
 		/**
 		Retrieves the height of the local structure that it is broad in. The remainder of GetHeight() is considered narrow.
@@ -367,7 +376,7 @@ namespace Objects
 		{
 			typedef Structure Super;
 		protected:
-			/**/					OtherStructure<Derivative>(const OwnerParameter&owner, const Grid::LCellIdI&location, bool buildSystem, float atTime):Super(owner,location,buildSystem,atTime)
+			/**/					OtherStructure<Derivative>(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, bool buildSystem, float atTime):Super(table,owner,location,buildSystem,atTime)
 			{ 
 				#ifdef HAS_WINDOW
 					Super::localizableShape = &shape;
@@ -401,7 +410,7 @@ namespace Objects
 
 
 
-			virtual PWorldEntity		CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override { return PWorldEntity(new Derivative(owner, location,atTime)); }
+			virtual PWorldEntity		CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override { return PWorldEntity(new Derivative(table,owner, location,atTime)); }
 			#ifdef HAS_WINDOW
 				virtual bool			TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override {return Super::TestIntersection(geometry,b,d,distance);}
 				virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override {commands.VisitMembers(visitor,force);};
@@ -443,7 +452,7 @@ namespace Objects
 
 		friend class Super;
 		/**/						VehicleStore() {}
-		/**/						VehicleStore(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
+		/**/						VehicleStore(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
 	public:
 
 		/**
@@ -539,7 +548,7 @@ namespace Objects
 		virtual ConstName			GetCTypeName() const override {return ConstName::Type_VehicleStore;}
 		virtual int					GetHeight() const override {return 2;}
 		virtual void				PrototypeSetup() override;
-		virtual int					GetConstructionCost() const override {return 40;}
+		//virtual int					GetConstructionCost() const override {return 40;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 2;}
 		#endif
@@ -547,11 +556,12 @@ namespace Objects
 			virtual void			PrototypeLoadGeometry() override;
 			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override
 			{
+				label.BeginBrief();
 				Super::DescribeType(label,descFlags);
 				label << " Max Vehicles per Store: "+String(MaxVehiclesPerStore);
 				label.MarkBriefEnd();
-				label.WrapAppendText("Vehicle stores can be used to store vehicles which will then enter hibernation until deployed. This structure shares storage with nearby structures of the same type."
-									" A vehicle store can deploy any vehicle found within the vehicle store compound.");			
+				label << "Vehicle stores can be used to store vehicles which will then enter hibernation until deployed. This structure shares storage with nearby structures of the same type."
+									" A vehicle store can deploy any vehicle found within the vehicle store compound.";
 			}
 			virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
 		#endif
@@ -573,7 +583,7 @@ namespace Objects
 
 		friend class Super;
 		/**/						Connector() {}
-		/**/						Connector(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
+		/**/						Connector(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
 	public:
 
 
@@ -581,7 +591,7 @@ namespace Objects
 		virtual ConstName			GetCTypeName() const override {return ConstName::Type_Connector;}
 
 
-		virtual int					GetConstructionCost() const override {return 5;}
+		//virtual int					GetConstructionCost() const override {return 5;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 1;}
 		#endif
@@ -589,10 +599,11 @@ namespace Objects
 		#ifdef HAS_WINDOW
 			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override
 			{
+				label.BeginBrief();
 				Super::DescribeType(label,descFlags);
 				label.MarkBriefEnd();
-				label.WrapAppendText("Connectors establish links between structures that are too distant from one another to otherwise connect. Connected structures form compounds and share their input/output."
-				);			
+				label << "Connectors establish links between structures that are too distant from one another to otherwise connect. Connected structures form compounds and share their input/output."
+				;
 			}
 		#endif
 
@@ -615,14 +626,14 @@ namespace Objects
 
 		friend class Super;
 		/**/						Pylon() {}
-		/**/						Pylon(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
+		/**/						Pylon(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
 	public:
 
 		virtual String				GetTypeName() const override { return "Pylon"; };
 		virtual ConstName			GetCTypeName() const override {return ConstName::Type_Pylon;}
 
 
-		virtual int					GetConstructionCost() const override {return 20;}
+		//virtual int					GetConstructionCost() const override {return 20;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return maxConnectionRadius;}
 		#endif
@@ -643,8 +654,7 @@ namespace Objects
 			{
 				Super::DescribeType(label,descFlags);
 				label.MarkBriefEnd();
-				label.WrapAppendText("Pylons establish wireless links between structures that are too distant from one another to otherwise connect. Connected structures form compounds and share their input/output."
-				);			
+				label << "Pylons establish wireless links between structures that are too distant from one another to otherwise connect. Connected structures form compounds and share their input/output.";
 			}
 		#endif
 
@@ -671,7 +681,8 @@ namespace Objects
 
 	protected:
 		/**/						WorkingStructure() : isEnabled(false)	{ }	//global prototype
-		/**/						WorkingStructure(const OwnerParameter&owner, const Grid::LCellIdI&location, bool buildSystem, float atTime) : Super(owner,location,buildSystem,atTime),isEnabled(false)
+		/**/						WorkingStructure(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, bool buildSystem, float atTime) 
+									: Super(table,owner,location,buildSystem,atTime),isEnabled(false)
 		{};
 
 		#ifndef CLIENT
@@ -802,7 +813,7 @@ namespace Objects
 		{
 			typedef WorkingStructure	Super;
 		protected:
-			/**/						WorkingStructureT(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
+			/**/						WorkingStructureT(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
 			/**/						WorkingStructureT()
 			{
 				#ifdef HAS_WINDOW
@@ -875,7 +886,8 @@ namespace Objects
 
 			friend class Super;
 			/**/						SkyPort():MobileEntityProducer(ConstructionSpeed) {MobileEntityProducer::SetCommandOffset(int2(3,1));}
-			/**/						SkyPort(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime):Super(owner,location,atTime), MobileEntityProducer(ConstructionSpeed){MobileEntityProducer::SetCommandOffset(int2(3,1));}
+			/**/						SkyPort(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime)
+											:Super(table,owner,location,atTime), MobileEntityProducer(ConstructionSpeed){MobileEntityProducer::SetCommandOffset(int2(3,1));}
 		public:
 			static const int			ConstructionSpeed = 5;
 			static const int			EnergyConsumption = 10;
@@ -891,7 +903,7 @@ namespace Objects
 			//WorldEntity overrides:
 			virtual int					GetHeight() const override {return 2;}
 			virtual void				PrototypeSetup() override;
-			virtual int					GetConstructionCost() const override {return 40;}
+			//virtual int					GetConstructionCost() const override {return 40;}
 			#ifndef NO_HIBERNATION
 				virtual int				GetUplinkTraffic() const override {return 10;}
 				virtual int				GetUplinkPriority() const override {return 750;};	//not much point going far beyond generators. if they shut off, this thing shuts off, too
@@ -911,11 +923,12 @@ namespace Objects
 				virtual float			GetSoundLevel() const {return IsEnabled() ? GetActivityLevel() : 0.f;}
 				virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override
 				{
+					label.BeginBrief();
 					Super::DescribeType(label,descFlags);
 					//label << " Max Vehicles per Store: "+String(MaxVehiclesPerStore);
 					label.MarkBriefEnd();
-					label.WrapAppendText("Sky ports provide a foundation for each one sky hub. Periodically, "+String(ResourceTag(Resource::Fuel))+"fuel is transferred up, to supply the hub and its satellites."
-										" Failure to supply the required "+String(ResourceTag(Resource::Fuel))+" will result in satellite losses. An unobstructed path into orbit is required to maintain the connection");
+					label << "Sky ports provide a foundation for each one sky hub. Periodically, "+String(ResourceTag(Resource::Fuel))+"fuel is transferred up, to supply the hub and its satellites."
+										" Failure to supply the required "+String(ResourceTag(Resource::Fuel))+" will result in satellite losses. An unobstructed path into orbit is required to maintain the connection";
 				}
 				virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
 				virtual void			OnSelect()	override;
@@ -962,7 +975,8 @@ namespace Objects
 		typedef WorkingStructureT<NexusPort>			Super;
 		typedef NexusPort		Self;
 		friend class Super;
-		/**/						Self(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location,atTime),resistence(-1)	{}
+		/**/						Self(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) 
+									: Super(table,owner,location,atTime),resistence(-1)	{}
 		/**/						Self()	{ }	//global prototype
 
 		#ifndef CLIENT
@@ -1002,13 +1016,13 @@ namespace Objects
 
 
 
-		virtual int					GetConstructionCost() const override {return 0;}
+		//virtual int					GetConstructionCost() const override {return 0;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 10;}
 			virtual int				GetUplinkPriority() const override {return 750;};	//not much point going far beyond generators. if they shut off, this thing shuts off, too
 		#endif
 
-		virtual int					GetMaxHealth() const override {return 1;}
+		//virtual int					GetMaxHealth() const override {return 1;}
 
 		virtual String				GetTypeName() const override { return "Nexus Port"; };
 		virtual ConstName			GetCTypeName() const override {return ConstName::Type_NexusPort;}
@@ -1045,7 +1059,8 @@ namespace Objects
 	class Generator : public WorkingStructureT<Generator>
 	{
 		friend class WorkingStructureT<Generator>;
-		/**/						Generator(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location,atTime)	{}
+		/**/						Generator(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) 
+									: Super(table,owner,location,atTime)	{}
 		/**/						Generator()	{ }	//global prototype
 	public:
 		static const int FuelCostPerRound = 10;
@@ -1061,7 +1076,7 @@ namespace Objects
 			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override {return connectedToReactor.lock() == connected ? &reactorConnector : &standardConnector;}
 		#endif
 
-		virtual int					GetConstructionCost() const override {return 40;}
+		//virtual int					GetConstructionCost() const override {return 40;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 5;}
 			virtual int				GetUplinkPriority() const override {return 750;};
@@ -1091,13 +1106,14 @@ namespace Objects
 	{
 		typedef WorkingStructureT<ReactorCore>	Super;
 		friend class Super;
-		/**/						ReactorCore(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location,atTime)	{}
+		/**/						ReactorCore(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) 
+									: Super(table,owner,location,atTime)	{}
 		/**/						ReactorCore()	{ }	//global prototype
 	public:
 		static const int	UraniumCost = 5;
 		static const int	EnergyOutput = 40;
 
-		virtual int					GetConstructionCost() const override {return 120;}
+		//virtual int					GetConstructionCost() const override {return 120;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 15;}
 			virtual int				GetUplinkPriority() const override {return 750;};
@@ -1117,6 +1133,8 @@ namespace Objects
 			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;
 		#endif
 
+		//WorldEntity overrides:
+		virtual void				PrototypeSetup()	override;
 	};
 
 
@@ -1126,7 +1144,7 @@ namespace Objects
 	{
 		friend class WorkingStructureT<VehiclePlant>;
 
-        /**/						VehiclePlant(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
+        /**/						VehiclePlant(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
 		/**/						VehiclePlant():  MobileEntityProducer(DefaultProductionPerRound) {}//global prototype
 	protected:
 		virtual bool				CanEnable() const override {return MobileEntityProducer::queue.IsNotEmpty();}
@@ -1188,7 +1206,7 @@ namespace Objects
 
 		//WorldEntity overrides:
 		virtual void				PrototypeSetup()	override;
-		virtual int					GetConstructionCost() const override {return 80;}
+		//virtual int					GetConstructionCost() const override {return 80;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 20;}
 		#endif
@@ -1231,7 +1249,62 @@ namespace Objects
 	};
 
 
+	class Laboratory : public WorkingStructureT<Laboratory>
+	{
+		typedef WorkingStructureT<Laboratory>	Super;
+		friend class Super;
 
+		#ifdef HAS_WINDOW
+			static count_t			researchCommandOffset;
+		#endif
+
+        /**/						Laboratory(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(table,owner, location, atTime)	{};
+		/**/						Laboratory() {}//global prototype
+	protected:
+		//virtual bool				CanEnable() const override {return MobileEntityProducer::queue.IsNotEmpty();}
+
+	public:
+		static const int			EnergyConsumption = 10;
+
+		#ifdef HAS_WINDOW
+			/**
+			Resets all commands to the currently loaded research script. Need only be called when the research script has changed
+			*/
+			static void				ConfigureResearchButtons();
+			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;
+		#endif
+
+
+		//Structure overrides:
+		virtual bool				IsBuilding(std::pair<int,int>&outProgress) const override;
+		virtual Category			GetCategory() const override {return Category::Miscellaneous;}
+
+
+		//WorldEntity overrides:
+		virtual void				PrototypeSetup()	override;
+		//virtual int					GetConstructionCost() const override {return 80;}
+		#ifndef NO_HIBERNATION
+			virtual int				GetUplinkTraffic() const override {return 20;}
+		#endif
+		virtual bool				AwaitsUserInteraction() const override {return false;} //place holder for later
+
+		#ifndef NO_HIBERNATION
+			//Hibernating overrides:
+			virtual int				GetUplinkPriority() const override {return 800;};
+		#endif
+
+		//BaseEntity overrides:
+		virtual String				GetTypeName() const override { return "Laboratory"; };
+		virtual ConstName			GetCTypeName() const override {return ConstName::Type_Laboratory;}
+
+
+		//WorkingStructure overrides:
+		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override	{v.level[Resource::Energy] = -EnergyConsumption;}
+		virtual bool				WouldLikeToEnable() const {return true;}
+		#ifndef CLIENT
+			virtual void			Tick(ResourceVector&) override;
+		#endif
+	};
 	
 
 	void	ChangeStorage(WorkingStructure&ws, float atTime, Resource res, int change);	//defined in faction.h/.cpp
@@ -1243,7 +1316,7 @@ namespace Objects
 	protected:
 		typedef WorkingStructureT<Derivative>			Super;
 		friend class Super;
-		/**/						StorageStructure(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location,atTime)	{}
+		/**/						StorageStructure(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(table,owner,location,atTime)	{}
 		/**/						StorageStructure()	{ }	//global prototype
 
 	public:
@@ -1297,16 +1370,19 @@ namespace Objects
 				virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override
 				{
 					Super::DescribeType(label,descFlags);
-					label.MarkBriefEnd();
-					label.WrapAppendText("Storage structures accumulate excess production of the respective resources until they are full."
-					" Disabling a storage structure will change its priority such, that excess resources are stored here only, if all other storage capacities are exhausted."
-					" Likewise, resource demand will remove resources from disabled storage structures first, such that they tend towards empty."
-					" Storage structures do not need "+String(ResourceTag(Resource::Energy))+" to store resources."
-					);			
+					if (maxStorage.IsNotEmpty())
+					{
+						label.MarkBriefEnd();
+						label << "Storage structures accumulate excess production of the respective resources from the local compound until they are full."
+						" Disabling a storage structure will change its priority such, that excess resources are stored here only if all other storage capacities are exhausted."
+						" Likewise, resource demand will remove resources from disabled storage structures first, such that they tend towards empty."
+						" Storage structures do not require "+String(ResourceTag(Resource::Energy))+" to operate."
+						;
+					}
 				}
 			#endif
 		#endif
-		virtual int					GetConstructionCost() const override {return 10;}
+		//virtual int					GetConstructionCost() const override {return 10;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 2;}
 			virtual int				GetUplinkPriority() const override {return 1000;};
@@ -1324,7 +1400,8 @@ namespace Objects
 
 
 		friend class WorkingStructureT<Mine>;
-		/**/						Mine(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location,atTime)	{maxStorage.level[Resource::Minerals] = MineralStorage; isLinkedToCore = LinkToCore(atTime);}
+		/**/						Mine(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) 
+									: Super(table,owner,location,atTime)	{maxStorage.level[Resource::Minerals] = MineralStorage; isLinkedToCore = LinkToCore(atTime);}
 		/**/						Mine()	{
 			maxStorage.level[Resource::Minerals] = MineralStorage;
 		}	//global prototype
@@ -1371,7 +1448,7 @@ namespace Objects
 										v.level[Resource::Energy] += -EnergyConsumption;
 									}
 
-		virtual int					GetConstructionCost() const override {return 40;}
+		//virtual int					GetConstructionCost() const override {return 40;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 10;}
 			virtual int				GetUplinkPriority() const override {return naturalResources.fuel*5 + naturalResources.minerals + naturalResources.uranium;};
@@ -1417,7 +1494,8 @@ namespace Objects
 
 
 		static const int LocalMunitionStorage = 4;
-		/**/						Self(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location,atTime)
+		/**/						Self(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) 
+									: Super(table,owner,location,atTime)
 		{
 			#ifndef NO_MUNITION
 				maxStorage.level[Resource::Munitions] = LocalMunitionStorage;
@@ -1452,7 +1530,7 @@ namespace Objects
 		}
 		virtual Category			GetCategory() const override {return Category::Resources;}
 
-		virtual int					GetConstructionCost() const override {return 40;}
+		//virtual int					GetConstructionCost() const override {return 40;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 5;}
 			virtual int				GetUplinkPriority() const override {return 400;};
@@ -1466,14 +1544,15 @@ namespace Objects
 		#ifdef HAS_WINDOW
 			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override
 			{
+				label.BeginBrief();
 				Super::DescribeType(label,descFlags);
 				label.MarkBriefEnd();
 				#ifdef NO_MUNITION
-					label.WrapAppendText("Enabled munition factories continuiously produce munition to supply connected offensive turrets. This is a deprecated building type."
+					label << "Enabled munition factories continuiously produce munition to supply connected offensive turrets. This is a deprecated building type."
 				#else
-					label.WrapAppendText("Enabled munition factories continuiously produce "+String(ResourceTag(Resource::Munitions))+" to supply connected offensive turrets."
+					label << "Enabled munition factories continuiously produce "+String(ResourceTag(Resource::Munitions))+" to supply connected offensive turrets."
 				#endif
-				);			
+				;
 			}
 		#endif
 	};
@@ -1486,7 +1565,8 @@ namespace Objects
 		typedef StorageStructure<FuelContainer>	Super;
 		friend class Super;
 		friend class WorkingStructureT<FuelContainer>;
-		/**/						FuelContainer(const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) : Super(owner,location,atTime)	{maxStorage.level[Resource::Fuel] = 400;}
+		/**/						FuelContainer(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
+									: Super(table,owner,location,atTime)	{maxStorage.level[Resource::Fuel] = 400;}
 		/**/						FuelContainer()	{maxStorage.level[Resource::Fuel] = 400; }	//global prototype
 	public:
 		virtual String				GetTypeName() const override { return "Fuel Container"; };
@@ -1500,7 +1580,8 @@ namespace Objects
 		typedef StorageStructure<MineralContainer>	Super;
 		friend class Super;
 		friend class WorkingStructureT<MineralContainer>;
-		/**/						MineralContainer(const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) : Super(owner,location,atTime)	{maxStorage.level[Resource::Minerals] = 400;}
+		/**/						MineralContainer(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
+									: Super(table,owner,location,atTime)	{maxStorage.level[Resource::Minerals] = 400;}
 		/**/						MineralContainer()	{maxStorage.level[Resource::Minerals] = 400; }	//global prototype
 	public:
 		virtual String				GetTypeName() const override { return "Mineral Container"; };
@@ -1514,7 +1595,8 @@ namespace Objects
 		typedef StorageStructure<UraniumStorage>	Super;
 		friend class Super;
 		friend class WorkingStructureT<UraniumStorage>;
-		/**/						UraniumStorage(const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) : Super(owner,location,atTime)	{maxStorage.level[Resource::Uranium] = 400;}
+		/**/						UraniumStorage(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
+									: Super(table,owner,location,atTime)	{maxStorage.level[Resource::Uranium] = 400;}
 		/**/						UraniumStorage()	{maxStorage.level[Resource::Uranium] = 400; }	//global prototype
 	public:
 		virtual String				GetTypeName() const override { return "Uranium Storage"; };
@@ -1530,7 +1612,8 @@ namespace Objects
 		typedef StorageStructure<Self>	Super;
 		friend class Super;
 		friend class WorkingStructureT<Self>;
-		/**/						Self(const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) : Super(owner,location,atTime)	
+		/**/						Self(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
+									: Super(table,owner,location,atTime)	
 		{
 			#ifndef NO_MUNITION
 				maxStorage.level[Resource::Munitions] = 400;
@@ -1575,14 +1658,16 @@ namespace Objects
 				Super::localizableShape = &shape;
 			#endif
 		}
-		/**/						Tower(Component::Turret*turret, const OwnerParameter&owner, const Grid::LCellIdI&location, float time) : Super(owner,location,true,time),TurretBase(turret)
+		/**/						Tower(BaseAttributeTable*table, Component::Turret*turret, const OwnerParameter&owner, const Grid::LCellIdI&location, float time) 
+									: Super(table,owner,location,true,time),TurretBase(turret)
 		{
 			#ifdef HAS_WINDOW
 				Super::localizableShape = &shape;
 			#endif
 		}
 
-		bool						WouldLikeToEnable() const override {return true;}
+		//WorkingEntity overrides (private):
+		virtual bool				WouldLikeToEnable() const override {return true;}
 
 
 	public:
@@ -1609,18 +1694,10 @@ namespace Objects
 
 		};
 
-		virtual void				SetResourceStorage(const ResourceVector&storage)override
-		{
-			this->storage = storage;
-			this->storage.Cap(this->GetMaxStorageCapacity());
-		};
 
 		static float				foundationHeight;	//unscaled height of the base geometry, and vertical offset to position turret
 		static float				GetEffectiveFoundationHeight() {return foundationHeight * Grid::UnitScale;}
-		virtual PTurretBase			GetTurretBase(float&zOffset) override { zOffset = GetEffectiveFoundationHeight(); return To<Tower>::Cast(shared_from_this());}
-		virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = GetEffectiveFoundationHeight(); return To<const Tower>::Cast(shared_from_this());}
 
-		virtual int					GetHeight() const override {return 2;}
 
 
 		float						attackActionLeft=1.f;
@@ -1651,17 +1728,11 @@ namespace Objects
 			bool					ClearTasks();
 			bool					DropLastTask();
 
-			virtual void			Attack(float&)	override;
-			virtual bool			FillAttackQueue() override;
-			bool					WouldAttack(const PWorldEntity&e, Grid::LCellIdI&outTarget, float entityTime)	const;
-			bool					IsIdleButCouldAttack(float atTime) const {return attackQueue.IsEmpty() && HasAmmoForShot(atTime);}
-
-
-			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
+			bool					WouldAttack(const PWorldEntity&e, Grid::LCellIdI&outTarget, float entityTime);
+			bool					IsIdleButCouldAttack(float atTime) {return attackQueue.IsEmpty() && HasAmmoForShot();}
 
 		#endif
-		bool						HasAmmoForShot(float atTime) const;
-		bool						HasAmmoForShot() override;
+
 
 
 
@@ -1673,57 +1744,72 @@ namespace Objects
 
 
 
+
+		//WorkingStructure overrides:
 		virtual void				GetResourceVector(ResourceVector&, ResourceVector&storage, ResourceVector&max) const override	{storage = this->storage; max = GetMaxStorageCapacity();}
-
-
-
-		virtual placement_t			CheckPlacement(const Grid::LCellIdI&location) override
+		#ifndef CLIENT
+			virtual void			ProcessLeftovers(ResourceVector&v, index_t iteration, float atTime) override;
+		#endif
+		virtual void				SetResourceStorage(const ResourceVector&storage)override
 		{
-			return CommonCheckStructurePlacement(location,2,true);
-		}
+			this->storage = storage;
+			this->storage.Cap(this->GetMaxStorageCapacity());
+		};
 
-		virtual PWorldEntity				CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override {return PWorldEntity(new Tower(turret,owner,location,atTime));};
+		//Structure overrides:
+		virtual bool				ConnectionPossible(const StrongConnection&other, UINT32 acrossHighCell)	override	{return true;}
+		virtual placement_t			CheckPlacement(const Grid::LCellIdI&location) override { return CommonCheckStructurePlacement(location,2,true); }
+		virtual int					GetHeight() const override {return 2;}
 
-
-		virtual float				GetMaxScanningRange() const override	{return turret->CanAttack() ? turret->scanningRange - 2.f : turret->scanningRange + 2.f;};	//returns the effective scanning range of the local entity
-		virtual int					GetMaxHealth() const override {return int(ceil(float(Super::GetMaxHealth()) * turret->healthMultiplier));}
-		virtual void				PrototypeSetup()	override;
+		//BaseEntity overrides:
 		virtual String				GetTypeName() const override { return turret->typeName+" Tower"; };
 		virtual ConstName			GetCTypeName() const override {return turret->constTowerName;}
 
-		virtual int					GetConstructionCost() const override {return 40 + turret->productionCosts;}
+		//WorldEntity overrides:
+		#ifndef CLIENT
+			virtual void			ClearSafeTasks() override	{this->ClearTasks();};
+		#endif
+		virtual bool				IsTower() const override {return true;}
+		//virtual float				GetScanningRange() const override;
+		//virtual String				DescribeScanningRange() const override;
+		//virtual int					GetMaxHealth() const override;
+		//virtual String				DescribeMaxHealth() const override;
+		virtual void				PrototypeSetup()	override;
+		#ifdef HAS_WINDOW
+			virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
+			virtual bool			TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override;
+			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags);
+
+		#endif
+
+		#ifndef CLIENT
+			virtual void			OnConstructionFinished(float&atTime) override;
+			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
+		#endif
+		//virtual int					GetConstructionCost() const override {return this->GetTable()->constructionCost.getValue(GetResearchState()) + turret->productionCosts(owner);}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return turret->uplinkTraffic;}
 			virtual int				GetUplinkPriority() const override {return 1000;}
 		#endif
+		virtual PWorldEntity		CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override {return PWorldEntity(new Tower(table,turret,owner,location,atTime));};
+		virtual PTurretBase			GetTurretBase(float&zOffset) override { zOffset = GetEffectiveFoundationHeight(); return To<Tower>::Cast(shared_from_this());}
+		virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = GetEffectiveFoundationHeight(); return To<const Tower>::Cast(shared_from_this());}
 
-		virtual bool				ConnectionPossible(const StrongConnection&, UINT32 acrossHighCell)	override	{return true;}
-
-		#ifndef CLIENT
-
-			virtual void			OnConstructionFinished(float&atTime) override;
-			virtual void			ProcessLeftovers(ResourceVector&v, index_t iteration, float atTime) override;
-		#else
-			#ifdef HAS_WINDOW
-				virtual void		VisitAllCommands(FCommandVisitor visitor, bool force) override;
-
-				virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override;
-			#endif
-		#endif
-
-		//WorldEntity overrides:
-		virtual bool				IsTower() const override {return true;}
-
-		//structure overrides:
+		//Structure overrides:
 		virtual int					GetBroadHeight() const override {return std::max(1,GetHeight()-1);}
 		virtual Category			GetCategory() const override {return Category::Defense;}
 
-
-		//turret base overrides:
+		//TurretBase overrides:
+		virtual OwnerParameter		GetOwner() const override {return owner;};
 		virtual bool				NextTaskIsAttack() const override {return health > 0 && attackQueue.IsNotEmpty();}
 		virtual float				GetAttackActionLeft() const override {return attackActionLeft;};
-		virtual float				GetFlatAttackRange() const override {return turret->horizontalAttackRange > 0 ? EMPModify(float(turret->horizontalAttackRange) + 2.f,2.f) : 0.f;}
-
+		virtual float				GetFlatAttackRange() const override;
+		virtual String				DescribeFlatAttackRange() const override;
+		virtual bool				HasAmmoForShot() override;
+		#ifndef CLIENT
+			virtual void			Attack(float&)	override;
+			virtual bool			FillAttackQueue() override;
+		#endif
 	};
 
 
@@ -1795,7 +1881,10 @@ namespace Objects
 
 
 	template <typename Derivative>
-		/*virtual override*/ PWorldEntity			WorkingStructureT<Derivative>::CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) { return PWorldEntity(new Derivative(owner,location,atTime)); }
+		/*virtual override*/ PWorldEntity			WorkingStructureT<Derivative>::CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime)
+		{
+			return PWorldEntity(new Derivative(table,owner,location,atTime));
+		}
 
 
 
@@ -1906,7 +1995,7 @@ namespace Objects
 		}
 	
 	template <typename Derivative>
-		WorkingStructureT<Derivative>::WorkingStructureT(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location, true, atTime)
+		WorkingStructureT<Derivative>::WorkingStructureT(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(table,owner,location, true, atTime)
 		{
 			#ifdef CLIENT
 				#ifdef HAS_WINDOW

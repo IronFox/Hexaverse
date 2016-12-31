@@ -11,7 +11,6 @@
 
 extern Engine::Display<Engine::DirectX11>	display;
 
-void LogEvent(EventClass type,  const Objects::WorldEntity*e, const String&_event);
 
 namespace Explosions
 {

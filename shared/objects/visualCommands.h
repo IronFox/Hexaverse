@@ -11,6 +11,8 @@
 #include "types.h"
 #include "resource.h"
 #include "../cast.h"
+#include "componentAttribute.h"
+#include "../stringTable.h"
 
 namespace Objects
 {
@@ -38,7 +40,8 @@ namespace Objects
 			IsEnabled=0x1,
 			IsPermaActive=0x2,
 			IsFlashing=0x4,
-			SoftFlashing=0x8
+			SoftFlashing=0x8,
+			IsInvisible=0x10
 		};
 
 
@@ -90,43 +93,73 @@ namespace Objects
 		class Label
 		{
 		public:
-			Buffer0<String>		lines;
-			count_t				briefEndAt = InvalidIndex;
-
+			Buffer0<std::pair<String, bool> >		rawLines,wrappedLines;
+			bool				isBrief=true;
 
 			void				Clear()
 			{
-				briefEndAt = InvalidIndex;
-				lines.Clear();
+				rawLines.Clear();
+			}
+
+			void				BeginBrief()
+			{
+				if (rawLines.IsNotEmpty() && rawLines.Last().first.trim().IsNotEmpty() && !rawLines.Last().second)
+					rawLines << std::make_pair("",false);
+				isBrief = true;
 			}
 
 			void				MarkBriefEnd()
 			{
-				briefEndAt = std::min( lines.Count(), briefEndAt);	//don't extend once set
+				if (rawLines.IsNotEmpty() && rawLines.Last().first.trim().IsNotEmpty() && rawLines.Last().second)
+					rawLines << std::make_pair("",false);
+				isBrief = false;
 			}
-			/**
-			Wraps text as necessary
-			*/
-			void				WrapAppendText(const String&multiLineText)
+
+			String&				GetLastLine()
 			{
-				if (multiLineText.length() <= 60)
-				{
-					lines << multiLineText;
-					return;
-				}
-				Array<String>	split;
-				wrap(multiLineText,60,split);
-				lines.Append(split);
+				return rawLines.Last().first;
 			}
 
 			Label&				operator<<(const String&line)
 			{
-				WrapAppendText(line);
+				if (isBrief && (line.IsEmpty() || line.firstChar() != ' '))
+					rawLines << std::make_pair("  "+line,isBrief);
+				else
+					rawLines << std::make_pair(line,isBrief);
+				//WrapAppendText(line);
 				//lines << line;
 				return *this;
 			}
 
+			count_t				CountWrappedBriefLines() const
+			{
+				count_t rs = 0;
+				foreach (wrappedLines,l)
+					if (l->second)
+						rs++;
+				return rs;
+			}
 
+			void				ReWrap()
+			{
+				wrappedLines.Clear();
+				foreach (rawLines,l)
+				{
+					if (l->first.length() <= 60)
+					{
+						wrappedLines << *l;
+						continue;
+					}
+					Array<String>	split;
+					wrap(l->first,60,split);
+					foreach (split,s)
+					{
+						wrappedLines.Append().first.adoptData(*s);
+						wrappedLines.Last().second = l->second;
+					}
+				}
+
+			}
 
 
 		};
@@ -197,7 +230,7 @@ namespace Objects
 		public:
 			BaseCommand::Label		customLabel;
 
-			/**/		CustomLabel(const String&name):Super(name) {customLabel << name; customLabel.MarkBriefEnd();}
+			/**/		CustomLabel(const String&name):Super(name) {customLabel.BeginBrief(); customLabel << name; }
 			/**/		CustomLabel() {}
 			virtual void	CompileLabel(BaseCommand::Label&outResult) override
 			{
@@ -297,6 +330,8 @@ namespace Objects
 		PBaseCommand	Add(const int2&coords, bool relativeCoords, BaseCommand*newCommand)	{ return Add(coords, relativeCoords, PBaseCommand(newCommand));}
 		PBaseCommand	Add(const int2&coords, bool relativeCoords, const PBaseCommand&newCommand);
 		const Member&	GetLast() const {return members.last();}
+		void			Truncate(count_t numMembers)	{members.Truncate(numMembers);}
+		count_t			Count() const {return members.Count();}
 		
 		index_t			Find(const PBaseCommand&) const;
 	};
@@ -366,17 +401,38 @@ namespace Objects
 			Collapse();
 		}
 
+		/**
+		Visually hides all child-members of any expanded children
+		*/
 		static void		CollapseAll()
 		{
 			foreach (activeGroupPath,p)
 				(*p)->Collapse();
 			activeGroupPath.Clear();
 		}
+
+
+		void			SignalBaseChange(CommandContainer*newParent, const int2&newBase);
+
 	};
 
-	
 
+	class ResearchCommand : public CustomIcon<CommandGroup>
+	{
+		typedef CustomIcon<CommandGroup>	Super;
+	public:
+		PResearchTopic	topic;
 
+		/**/			ResearchCommand(const PResearchTopic&topic);
+
+		virtual	void	Refresh(bool controlEnabled) override;
+		virtual void	RasterizeImage()override;
+
+		virtual void	CompileLabel(Label&outResult) override;
+		virtual void	Execute() override;
+
+	};
+	typedef std::shared_ptr<ResearchCommand>	PResearchCommand;
 
 
 	class EntityCommand : public CallbackCommand
@@ -440,6 +496,7 @@ namespace Objects
 		static void			UpdateTexture(BaseCommand&target, Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor = float4(0));
 		void				UpdateTexture(Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor = float4(0));
 	};
+
 
 
 

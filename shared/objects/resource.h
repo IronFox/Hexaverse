@@ -278,7 +278,8 @@ namespace Objects
 	static inline char ResourceTag(index_t index) {return (char)(TextoutResourceTagOffset + (char)index);}
 	static inline char TimeResourceTag() {return ResourceTag(Resource::NumberOfPossibilities);}
 	static inline char TrafficResourceTag() {return ResourceTag(Resource::NumberOfPossibilities+1);}
-
+	static inline bool IsTag(char c) {return c >= TextoutResourceTagOffset && (index_t)(c-TextoutResourceTagOffset) < Resource::NumberOfPossibilities+2;}
+	String GetTagName(char c);
 }
 
 

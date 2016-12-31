@@ -248,22 +248,18 @@ bool CanEnableAtAll()
 
 }
 
-static void SendDirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick, Objects::Vehicle::mode_t mode)
+static void SendDirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, UINT8 flags, Objects::Vehicle::mode_t mode)
 {
 	Protocol::EntityDirectCommand	cmd;
 	cmd.id = v->id;
 	cmd.mode = (UINT16)mode;
 	cmd.path = targets;
-	cmd.directFlags = 0;
-	if (detailedPath)
-		cmd.directFlags |= Protocol::DirectFlags::Detailed;
-	if (leftClick)
-		cmd.directFlags |= Protocol::DirectFlags::LeftClick;
+	cmd.directFlags = flags;
 	Network::Channels::entityDirectCommand.SendTo(Network::client,cmd);
 }
 
 
-bool	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Grid::LCellIdI target)
+bool	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Grid::LCellIdI target, UINT8 flags)
 {
 	if (prev == target)
 		return true;
@@ -290,14 +286,14 @@ bool	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Gr
 			if (!Grid::actualWorld.LowCellIsClearIgnoreStructure(target) && target.height+1 <= Grid::CellStack::TopHeight)
 			{
 				target++;
-				return MoveVehicleTo(v,prev,target);
+				return MoveVehicleTo(v,prev,target,flags);
 			}
 			LogEvent(EventClass::Preset::commandRejected,v.get(),"Unable to find route to designated destination");
 			//SendDirectTo(v,target,false,false,Objects::CursorMode::Idle);	//maybe some error in the client
 			return false;
 		}
 		if (!tooLong)
-			SendDirectTo(v,target,false,false,Objects::CursorMode::Idle);	//all good
+			SendDirectTo(v,target,flags,Objects::CursorMode::Idle);	//all good
 		else
 		{
 			LogEvent(EventSignificance::Common,v.get(),"Splitting long path into parts");
@@ -319,7 +315,7 @@ bool	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Gr
 			if (open)
 				waypoints << path.last().cell;
 				//SendDirectTo(v,path.last().cell,false,Objects::CursorMode::Idle);
-			SendDirectTo(v,waypoints.ToRef(),false,false,Objects::CursorMode::Idle);
+			SendDirectTo(v,waypoints.ToRef(),flags,Objects::CursorMode::Idle);
 		}
 	}
 	return true;
@@ -328,12 +324,12 @@ bool	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Gr
 
 namespace LocalApplicationInterface
 {
-	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick, Objects::Vehicle::mode_t mode, bool interactive)
+	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, UINT8 flags, Objects::Vehicle::mode_t mode, bool interactive)
 	{
 		if (!v)
 			return false;
 		DBG_ASSERT__(!RuntimeConfig::aiMode || !Network::newRoundRequested);
-		const bool moveTo = mode == Objects::CursorMode::Idle && !leftClick;
+		const bool moveTo = mode == Objects::CursorMode::Idle && !(flags & Protocol::DirectFlags::LeftClick);
 
 		if (v->IsMobile() && moveTo)
 		{
@@ -376,22 +372,22 @@ namespace LocalApplicationInterface
 			#endif
 			#endif
 
-			if (!detailedPath)
+			if (!(flags & Protocol::DirectFlags::Detailed))
 			{
 				Grid::LCellIdI start = me->GetLastPointOfOrigin();
 				foreach (targets,t)
 				{
-					if (!MoveVehicleTo(me,start,*t))
+					if (!MoveVehicleTo(me,start,*t,flags))
 						return false;
 					start = *t;
 				}
 			}
 			else
-				SendDirectTo(v,targets,detailedPath,false,Objects::CursorMode::Idle);
+				SendDirectTo(v,targets,flags,Objects::CursorMode::Idle);
 		}
 		else
 		{
-			SendDirectTo(v,targets,detailedPath,leftClick,mode);
+			SendDirectTo(v,targets,flags,mode);
 		}
 
 		#ifdef HAS_WINDOW
@@ -402,9 +398,22 @@ namespace LocalApplicationInterface
 		return true;
 	}
 
-	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick, Objects::Vehicle::mode_t mode)
+
+	UINT8	AssembleMotionFlags(bool detailedPath, bool leftClick, bool clearSafeTasks)
 	{
-		return DirectTo(v, targets, detailedPath, leftClick, mode, true);
+		UINT8 flags = 0;
+		if (detailedPath)
+			flags |= Protocol::DirectFlags::Detailed;
+		if (leftClick)
+			flags |= Protocol::DirectFlags::LeftClick;
+		if (clearSafeTasks)
+			flags |= Protocol::DirectFlags::ClearSafeTasks;
+		return flags;
+	}
+
+	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, UINT8 flags, Objects::Vehicle::mode_t mode)
+	{
+		return DirectTo(v, targets, flags, mode, true);
 	}
 }
 
@@ -414,9 +423,9 @@ namespace ApplicationInterface
 	{
 		return
 		#ifdef HAS_WINDOW
-			LocalApplicationInterface::DirectTo(v,targets, detailedPath,leftClick,Objects::activeCursorMode);
+			LocalApplicationInterface::DirectTo(v,targets, LocalApplicationInterface::AssembleMotionFlags(detailedPath,leftClick,false),Objects::activeCursorMode);
 		#else
-			LocalApplicationInterface::DirectTo(v,targets, detailedPath,leftClick,Objects::CursorMode::Idle);
+			LocalApplicationInterface::DirectTo(v,targets, LocalApplicationInterface::AssembleMotionFlags(detailedPath,leftClick,false),Objects::CursorMode::Idle);
 		#endif
 	}
 
@@ -442,7 +451,7 @@ namespace ApplicationInterface
 	void	SignalTargetLessAttack(const Objects::PWorldEntity&e)
 	{
 	//	Grid::LCellIdI loc = e->location;
-		LocalApplicationInterface::DirectTo(e,Grid::LCellIdI(e->location),false,true,Objects::CursorMode::AttackMode);
+		LocalApplicationInterface::DirectTo(e,Grid::LCellIdI(e->location),  LocalApplicationInterface::AssembleMotionFlags(false,true,false),Objects::CursorMode::AttackMode);
 	}
 
 
@@ -666,6 +675,19 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force);
 
 namespace ApplicationInterface
 {
+
+	void	SignalResearch(const Objects::PResearchTopic&topic)
+	{
+		#ifdef HAS_WINDOW
+			Network::Channels::selectResearch.SendTo(Network::client,Protocol::SelectResearch((UINT32)topic->serialIndex));
+			if (Objects::selectedEntity && Objects::selectedEntity->IsWorkingStructure() && !To<Objects::WorkingStructure>::Cast( Objects::selectedEntity)->IsEnabled())
+			{
+				Network::Channels::enableStructure.SendTo(Network::client,Protocol::EnableStructure(Objects::selectedEntity->id,true));
+			}
+		#endif
+	}
+
+
 	void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, ConstName parameterName, const Grid::LCellIdI&overrideLocation)
 	{
 		const Grid::LCellIdI targetLocation = overrideLocation != Grid::LCellIdI::Invalid ? overrideLocation : v->GetLastPointOfOrigin();
@@ -767,38 +789,46 @@ namespace ApplicationInterface
 	void	SignalDropAllTasks(const Objects::PWorldEntity&e)
 	{
 		#ifdef HAS_WINDOW
-		if (e->IsMobile())
-		{
-			Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(e);
-			if (v->constructionRoundCounter > 0 
-			&& v->myTasks.IsNotEmpty() 
-			&& v->myTasks.Peek().IsJob() 
-			&& v->myTasks.Peek().job->resourceCostLeft > 0)
+			if (e->IsMobile())
 			{
-				TUniqueID id = e->id;
-				Dialog::Confirm("Are you sure you wish to clear all tasks? The resources invested in the leading production job will be lost.",[id]()
+				Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(e);
+				if (v->constructionRoundCounter > 0 
+				&& v->myTasks.IsNotEmpty() 
+				&& v->myTasks.Peek().IsJob() 
+				&& v->myTasks.Peek().job->resourceCostLeft > 0)
 				{
-					Network::Channels::dropAllTasks.SendTo(Network::client,id);
-				},
-				[id]()->Dialog::CheckResult
+					TUniqueID id = e->id;
+					Dialog::Confirm("Are you sure you wish to clear all tasks? The resources invested in the leading production job will be lost.",[id]()
+					{
+						Network::Channels::dropTasks.SendTo(Network::client, Protocol::DropTasks( id, Protocol::DropMode::AllTasks));
+					},
+					[id]()->Dialog::CheckResult
+					{
+						if (!Network::client.IsConnected() || !Objects::GetEntity(id))
+							return Dialog::CheckResult::Abort;
+						if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase || Network::newRoundRequested)
+							return Dialog::CheckResult::OkayNotRightNow;
+						return Dialog::CheckResult::OkayContinue;
+					});
+					return;
+				}
+				else
 				{
-					if (!Network::client.IsConnected() || !Objects::GetEntity(id))
-						return Dialog::CheckResult::Abort;
-					if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase || Network::newRoundRequested)
-						return Dialog::CheckResult::OkayNotRightNow;
-					return Dialog::CheckResult::OkayContinue;
-				});
-				return;
-			}
-			else
-			{
 			
-			}
+				}
 		
-		}
+			}
 		#endif
-		Network::Channels::dropAllTasks.SendTo(Network::client,e->id);
+		Network::Channels::dropTasks.SendTo(Network::client, Protocol::DropTasks( e->id, Protocol::DropMode::AllTasks));
 	}
+
+	void	SignalDropSafeTasks(const Objects::PWorldEntity&e)
+	{
+		Network::Channels::dropTasks.SendTo(Network::client, Protocol::DropTasks( e->id, Protocol::DropMode::AllSafeTasks));
+	}
+
+
+
 	void SignalEnableStructure(Objects::Structure&s, bool enabled)
 	{
 		Protocol::EnableStructure es;
@@ -839,6 +869,111 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 
 
 #ifdef HAS_WINDOW
+
+	bool IsValidFileChar(char c)
+	{
+		if (Template::isalnum(c))
+			return true;
+		switch (c)
+		{
+		case ' ':
+		case '-':
+			return true;
+		}
+		return false;
+	}
+
+	PathString MakeValidFilename(String base)
+	{
+		base.eraseCharacters(IsValidFileChar,false);
+		return PathString(base);
+	}
+
+	void WriteLabel(StringFile&file, const Objects::BaseCommand::Label&label, const String&myTypeName)
+	{
+		foreach(label.rawLines, line)
+		{
+			if (line->first.length() == 0)
+				continue;
+			if (line->second)
+				file << "*";
+			String linkedLine = line->first;
+			linkedLine.replace("Hrz. Attack range","[[concepts/attack range|Hrz. Attack range]]");
+			linkedLine.replace("Base horizontal attack range","[[concepts/attack range|Base horizontal attack range]]");
+			linkedLine.replace("Initiative","[[concepts/initiative|Initiative]]");
+			linkedLine.replace("Weight","[[concepts/vehicle|Weight]]");
+			linkedLine.replace("Carrying capacity","[[concepts/vehicle|Carrying capacity]]");
+//			linkedLine.replace("Base scanning range","[[concepts/sensory|Base scanning range]]");
+			linkedLine.replace("scanning range","[[concepts/scanning range]]");
+			linkedLine.replace("Scanning range","[[concepts/scanning range|Scanning range]]");
+			linkedLine.replace("compound","[[concepts/compound]]");
+			linkedLine.replace("phase","[[concepts/phase]]");
+			linkedLine.replace("attack action","[[concepts/action pool|attack action]]");
+			linkedLine.replace("resources","[[concepts/resources]]");
+			
+
+			
+			
+			foreach (Objects::structurePrototypes,s)
+			{
+				String name = (*s)->GetTypeName().copyToLowerCase();
+				if (name.equalsIgnoreCase(myTypeName))
+					continue;
+
+				linkedLine.replace(name,"[[units/structures/"+name+"]]");
+			}
+
+
+
+			foreach(linkedLine, c)
+			{
+				if (Objects::IsTag(*c))
+				{
+					file << "%"<<Objects::GetTagName(*c)<<"%";
+					continue;
+				}
+				file << *c;
+			}
+			file << nl;
+		}
+	}
+
+	void WriteDocumentation(const FileSystem::Folder&rootFolder, const FileSystem::Folder&outFolder, StringFile&listFile, const String&typeName, const Objects::BaseCommand::Label&label, const String&pretext = "")
+	{
+		LogEvent(EventSignificance::Uncommon, "Documenting "+typeName);
+
+		PathString name = MakeValidFilename( typeName );
+		PathString outName = (name+".prefix").convertToLowerCase();
+		StringFile file;
+		if (!outFolder.IsValidLocation())
+			FileSystem::CreateDirectory(outFolder.GetLocation());
+
+		String relative = String(FileSystem::GetRelativePath(rootFolder.GetLocation(),outFolder.GetLocation()));
+		relative.replace('\\','/');
+		PathString outPath = outFolder.FindFile(outName,false)->GetLocation();
+		listFile << "* [[units/"<<relative<<'/'<<typeName<<'|'<<typeName <<"]]"<< nl;
+		file.Create(outPath);
+
+		file << "{{ img:units/"<< String(name) <<".png|"<<typeName<<"}}"<<nl;
+		file << "="<<typeName<<"="<<nl;
+		file << pretext;
+		WriteLabel(file,label,typeName);
+	}
+
+	void	FinishRendering(const FileSystem::Folder&folder, const DX11::Texture&texture, const String&typeName)
+	{
+		static Image image;
+		display.Copy(texture.GetHandle2D(),image);
+					
+		image.ScaleHalf();
+		image.ScaleHalf();
+		image.TruncateToOpaque();
+		PathString outName = MakeValidFilename(typeName)+".png";
+
+		png.SaveToFile(image, folder.FindFile(outName,false)->GetLocation().c_str());
+	}
+
+
 	bool saveScreenshot = false;
 	bool saveTransparentScreenshot = false;
 
@@ -909,8 +1044,13 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 									//	Vec::mult(intermediate,255.f,Vec::ref3(pixel));
 	
 									//#else
-										float scale = 1.f / (float(pixel[3])/255.f);
-										Vec::mult(Vec::ref3(pixel),scale);
+										pixel[3] = Vec::max(Vec::ref4(pixel));
+										float scale = 255.f / float(pixel[3]);
+										TVec3<> temp;
+										Vec::mult(Vec::ref3(pixel),scale,temp);
+										//float max = Vec::max(temp);
+										Vec::clamp(temp,0,255);
+										Vec::copy(temp,Vec::ref3(pixel));
 			//						#endif
 								}
 							}
@@ -1174,7 +1314,7 @@ namespace ApplicationInterface
 				Objects::ResourceVector change;
 				Objects::ResourceVector current = Objects::selectedMobileEntity->currentStorage,current2,max2;
 				Objects::ResourceVector max = Objects::selectedMobileEntity->GetMaxStorageCapacity();
-				if (base && base->turret->ConsumesResources(res))
+				if (base && base->turret->ConsumesResources(res,Objects::selectedMobileEntity->owner))
 				{
 					//if (!stateChangeOnly)
 					//	Objects::anyCompoundsColored = true;
@@ -2176,7 +2316,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 									{
 										lastWarning = Objects::selectedMobileEntity.get();
 										Grid::LCellIdI t = target;
-										if (LocalApplicationInterface::DirectTo(m,t,false,false,Objects::CursorMode::Idle,false))
+										if (LocalApplicationInterface::DirectTo(m,t,0,Objects::CursorMode::Idle,false))
 										{
 											ApplicationInterface::SignalNewJob(m,ConstName::Job_Construct,s->GetCTypeName(),target);
 											Objects::arrowFromCell = target;
@@ -2194,7 +2334,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 							//	Objects::showArrow = false;
 							}
 						}
-						if (!dont && LocalApplicationInterface::DirectTo(Objects::selectedMobileEntity,target,false,false,Objects::CursorMode::Idle,false))
+						if (!dont && LocalApplicationInterface::DirectTo(Objects::selectedMobileEntity,target,0,Objects::CursorMode::Idle,false))
 						{
 							ApplicationInterface::SignalNewJob(Objects::selectedMobileEntity,ConstName::Job_Construct,Objects::activeStructureToPlace->GetCTypeName(),target);
 							Objects::arrowFromCell = target;
@@ -2506,16 +2646,16 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 			//SignalDropLastTask(v);
 			//v->DropLastTask();
 			bool isJob = m->myTasks.GetNewest().IsJob();
-			Network::Channels::dropLastTask.SendTo(Network::client, m->id);
+			Network::Channels::dropTasks.SendTo(Network::client, Protocol::DropTasks( m->id, Protocol::DropMode::LastTask));
 			if (isJob && m->myTasks.Count() > 1 
 				&& m->myTasks[m->myTasks.Count() - 2].type == Objects::MobileEntity::Task::MoveTo)
 			{
-				Network::Channels::dropLastTask.SendTo(Network::client, e->id);
+				Network::Channels::dropTasks.SendTo(Network::client, Protocol::DropTasks( e->id, Protocol::DropMode::LastTask));
 			}
 		}
 	}
 	else
-		Network::Channels::dropLastTask.SendTo(Network::client, e->id);
+		Network::Channels::dropTasks.SendTo(Network::client, Protocol::DropTasks( e->id, Protocol::DropMode::LastTask));
 }
 
 
@@ -2587,7 +2727,9 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 						Objects::PWorldEntity possibleTarget = Objects::GetRayIntersection(b,d,distance);
 						if (possibleTarget && !possibleTarget->isOwnedByMe && Objects::selectedEntity->CanHit( Objects::TrajectoryEndPoint( possibleTarget->location )))
 						{
-							LocalApplicationInterface::DirectTo(Objects::selectedEntity,possibleTarget->location,false,true, Objects::CursorMode::AttackMode);
+							LocalApplicationInterface::DirectTo(Objects::selectedEntity,possibleTarget->location,
+								LocalApplicationInterface::AssembleMotionFlags(false,true,!Engine::input.pressed[Key::Shift]),
+								Objects::CursorMode::AttackMode);
 							return;
 						}
 					}
@@ -2595,7 +2737,9 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 					{
 						if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,true))
 						{
-							LocalApplicationInterface::DirectTo(Objects::selectedEntity,target,false,true,Objects::CursorMode::AttackMode);
+							LocalApplicationInterface::DirectTo(Objects::selectedEntity,target,
+								LocalApplicationInterface::AssembleMotionFlags(false,true,!Engine::input.pressed[Key::Shift]),
+								Objects::CursorMode::AttackMode);
 							return;
 						}
 					}
@@ -2626,7 +2770,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 					int h;
 					if (!Objects::selectedMobileEntity->CanSpawnInGrid() && Objects::selectedMobileEntity->CanSpawnAboveGrid(h))
 						target.height = h;
-					ApplicationInterface::DirectTo(Objects::selectedMobileEntity,target,false,false);
+					LocalApplicationInterface::DirectTo(Objects::selectedMobileEntity,target, LocalApplicationInterface::AssembleMotionFlags(false,false,!Engine::input.pressed[Key::Shift]),Objects::activeCursorMode);
 				}
 			}
 		}
@@ -2855,6 +2999,15 @@ bool	IsIdle(const Objects::PStructure&s)
 	Objects::PMine mine = To<Objects::Mine>::DynamicCast(s);
 	if (mine)
 		return !mine->IsEnabled() && mine->CouldEnable();
+
+	auto lab = To<Objects::Laboratory>::DynamicCast(s);
+	if (lab)
+	{
+		if ((lab->IsEnabled() || lab->CouldEnable()) && lab->owner->researchState.IsIdle())
+			return true;
+		return !lab->IsEnabled() && lab->CouldEnable();
+	}
+
 	#ifndef NO_SATELLITES
 		if (s->IsSkyLinkStructure())
 		{
@@ -3182,19 +3335,25 @@ void ParseKeyValue(const String&key, const String&value)
 		elif (key == "udpListen")
 		{
 			if (!convert(value.c_str(), RuntimeConfig::udpListen))
-				throw Program::ParameterFault("Unable to parse udpListen='" + value + "' to bool");
+				throw Except::Program::ParameterFault(CLOCATION, "Unable to parse udpListen='" + value + "' to bool");
 		}
 		elif(key == "serverURL")
 		{
 			RuntimeConfig::serverAddress = Network::ServerAddress(value);
 			LogEvent(EventClass::Preset::configuration, nullptr, "Server address set to "+RuntimeConfig::serverAddress.ToString());
 		}
+		elif(key == "documentHere")
+		{
+			FileSystem::Folder().FindFolder(PathString(value),RuntimeConfig::documentationRootFolder,false);
+			if (!RuntimeConfig::documentationRootFolder.DoesExist())
+				FileSystem::CreateDirectory(RuntimeConfig::documentationRootFolder);
+		}
 		else
-			throw Program::ParameterFault("`"+key+"` is not a recognized runtime parameter");
+			throw Except::Program::ParameterFault(CLOCATION, "`"+key+"` is not a recognized runtime parameter");
 	}
 	catch (const std::exception&e)
 	{
-		throw Program::ParameterFault("While parsing `" + key + "`='" + value + "': "+String(e.what()));
+		throw Except::Program::ParameterFault(CLOCATION, "While parsing `" + key + "`='" + value + "': "+String(e.what()));
 	}
 
 }
@@ -3219,7 +3378,7 @@ bool ConfigureClient(const wchar_t*commandLine)
 
 		if (!Tokenizer::tokenize(cmd, cfg, tokenList))
 		{
-			throw Program::ParameterFault("Configuration syntax violation: Unable to parse parameter line '"+cmd+"' (missing closing quotes perhaps?)");
+			throw Except::Program::ParameterFault(CLOCATION, "Configuration syntax violation: Unable to parse parameter line '"+cmd+"' (missing closing quotes perhaps?)");
 		}
 
 		String parameterName;
@@ -3230,7 +3389,7 @@ bool ConfigureClient(const wchar_t*commandLine)
 			if (*token == '=')
 			{
 				if (parameterName.IsEmpty())
-					throw Program::ParameterFault("Configuration syntax violation: Missing parameter name before '='");
+					throw Except::Program::ParameterFault(CLOCATION, "Configuration syntax violation: Missing parameter name before '='");
 				expectValue = true;
 				continue;
 			}
@@ -3243,18 +3402,18 @@ bool ConfigureClient(const wchar_t*commandLine)
 			else
 			{
 				if (parameterName.IsNotEmpty())
-					throw Program::ParameterFault("Configuration syntax violation: Found multiple tokens ('" + parameterName + "' and '" + *token + "') without intermediate '='");
+					throw Except::Program::ParameterFault(CLOCATION, "Configuration syntax violation: Found multiple tokens ('" + parameterName + "' and '" + *token + "') without intermediate '='");
 				parameterName = *token;
 				//expectValue = true;
 			}
 		}
 		if (expectValue)
 		{
-			throw Program::ParameterFault("Configuration syntax violation: Missing parameter value for '" + parameterName + "'");
+			throw Except::Program::ParameterFault(CLOCATION, "Configuration syntax violation: Missing parameter value for '" + parameterName + "'");
 		}
 		else
 			if (parameterName.IsNotEmpty())
-				throw Program::ParameterFault("Configuration syntax violation: Missing '=' and parameter value for '" + parameterName + "'");
+				throw Except::Program::ParameterFault(CLOCATION, "Configuration syntax violation: Missing '=' and parameter value for '" + parameterName + "'");
 	}
 	catch (const std::exception&e)
 	{
@@ -3267,11 +3426,11 @@ bool ConfigureClient(const wchar_t*commandLine)
 	}
 
 
-	onFatal = MyFatal;
+	Except::onFatal = MyFatal;
 	RuntimeConfig::ClientInit();
 
 	ASSERT__(FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("logs")));
-	Logging::Begin(RuntimeConfig::ConfigFile(PathString("logs/client_"+Logging::TimeStamp(true)+".log")));
+	Logging::Begin(RuntimeConfig::ConfigFile(PathString("logs/client "+Logging::TimeStamp(true)+".log")));
 
 	//(PRODUCT_NAME".log",true,true)
 	return true;
@@ -3380,7 +3539,7 @@ namespace StartConfig
 
 int main( int argc, const char* argv[])
 {
-	onFatal = MyFatal;
+	Except::onFatal = MyFatal;
 	Vec::assertConsistency<float>();
 
 	
@@ -3468,7 +3627,7 @@ int main( int argc, const char* argv[])
 			storageThread.start();
 
 			Engine::CreateDisplay(display,
-				RuntimeConfig::ConfigDir(),
+				RuntimeConfig::ConfigFile("window"),
 				RuntimeConfig::aiMode ? "AI":
 				PRODUCT_NAME
 				#ifdef _DEBUG
@@ -3499,7 +3658,7 @@ int main( int argc, const char* argv[])
 			Engine::input.Bind(Key::PageDown, ViewDown);
 			Engine::input.Bind(Key::PageUp, ViewUp);
 
-			Engine::input.Bind(Key::Shift, ResumeBatchConstruction, AbortBatchConstruction);
+			Engine::input.Bind(Key::Alt, ResumeBatchConstruction, AbortBatchConstruction);
 			
 
 		//	Engine::input.Bind(Key::PageDown, DeclineCamera);
@@ -3650,8 +3809,92 @@ int main( int argc, const char* argv[])
 			}
 
 
-			display.assign(loop);
-			display.execute();
+			if (RuntimeConfig::documentationRootFolder.DoesExist())
+			{
+				{
+					FileSystem::Folder imageTarget = FileSystem::Folder(RuntimeConfig::documentationRootFolder).FindFolder("images/units",false);
+					if (imageTarget.IsValidLocation())
+					{
+						LogEvent(EventSignificance::Uncommon, "Rendering type images to "+String(imageTarget.GetLocation())+ "...");
+						Objects::GeometryImage::resultResolution = 1024;
+						Objects::EntityCommand container;
+						Image image;
+						FileSystem::Folder folder(imageTarget);
+						foreach (Objects::structurePrototypes,s)
+						{
+							LogEvent(EventSignificance::Uncommon, "Capturing "+(*s)->GetTypeName());
+							Objects::EntityCommand::UpdateTexture(container,*s,true);
+							FinishRendering(folder, container.texture, (*s)->GetTypeName());
+						}
+
+						foreach (Objects::Component::allTurretComponents,c)
+						{
+							LogEvent(EventSignificance::Uncommon, "Capturing "+(*c)->typeName);
+							Objects::EntityConstructionCommand::UpdateTexture(container,nullptr,*c);
+							FinishRendering(folder, container.texture, (*c)->typeName);
+						}
+
+						foreach (Objects::Component::baseComponents,c)
+						{
+							LogEvent(EventSignificance::Uncommon, "Capturing "+(*c)->typeName);
+							Objects::EntityConstructionCommand::UpdateTexture(container,*c,nullptr);
+							FinishRendering(folder, container.texture, (*c)->typeName);
+						}
+					}
+				}
+				{
+					FileSystem::Folder documentationTarget = FileSystem::Folder(RuntimeConfig::documentationRootFolder).FindFolder("documentation",false);
+					if (documentationTarget.IsValidLocation())
+					{
+						FileSystem::Folder rootFolder(documentationTarget.FindFolder("units",false));
+						FileSystem::Folder structureFolder(rootFolder.FindFolder("structures",false));
+						FileSystem::Folder turretFolder(rootFolder.FindFolder("turrets",false));
+						FileSystem::Folder vbaseFolder(rootFolder.FindFolder("vbases",false));
+
+						StringFile unitList;
+						unitList.Create(rootFolder.FindFile("list.prefix",false)->GetLocation());
+
+						unitList << "=Unit Types and Components="<<nl;
+
+						unitList << "==Structures=="<<nl;
+						foreach (Objects::structurePrototypes,s)
+						{
+							Objects::BaseCommand::Label label;
+							(*s)->DescribeType(label,0xFFFFFFFF & ~Objects::WorldEntity::DescIncludeName & ~Objects::WorldEntity::DescIncludeCurrentHealth);
+							String pretext;
+							auto tb = (*s)->GetTurretBase();
+							if (tb)
+							{
+								label.rawLines.Insert(0).first = "Based on [[units/turrets/"+String(MakeValidFilename(tb->turret->typeName))+"|"+tb->turret->typeName+"]] turret";
+								label.rawLines.First().second = true;
+							}
+							WriteDocumentation(rootFolder, structureFolder,unitList, (*s)->GetTypeName(), label,pretext);
+						}
+
+						unitList << "==Turrets=="<<nl;
+						foreach (Objects::Component::allTurretComponents,c)
+						{
+							Objects::BaseCommand::Label label;
+							(*c)->DescribeType(label,false,false,"",Objects::OwnerParameter());
+							WriteDocumentation(rootFolder, turretFolder,unitList, (*c)->typeName, label);
+						}
+
+						unitList << "==Vehicle Bases=="<<nl;
+						foreach (Objects::Component::baseComponents,c)
+						{
+							Objects::BaseCommand::Label label;
+							(*c)->DescribeType(label,false,false,Objects::OwnerParameter());
+							WriteDocumentation(rootFolder, vbaseFolder,unitList, (*c)->typeName, label);
+						}
+					}
+				}
+
+			}
+			else
+			{
+				display.assign(loop);
+				display.execute();
+			}
 		#else
 			while (!application_shutting_down && loop())
 			{};
@@ -3694,7 +3937,7 @@ int main( int argc, const char* argv[])
 
 		return 0;
 	}
-	catch (const Exception&exception)
+	catch (const Except::Exception&exception)
 	{
 		FATAL__("Caught unhandled exception of type "+String(exception.GetType())+":\n"+exception.what());
 	}

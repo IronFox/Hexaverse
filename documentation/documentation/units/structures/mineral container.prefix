@@ -1,0 +1,7 @@
+{{ img:units/Mineral Container.png|Mineral Container}}
+=Mineral Container=
+*  Health: 2
+*  Price: %Minerals% 10
+*  [[concepts/scanning range|Scanning range]]: 2
+*  Storage capacity: %Minerals%400
+Storage structures accumulate excess production of the respective [[concepts/resources]] from the local [[concepts/compound]] until they are full. Disabling a storage structure will change its priority such, that excess [[concepts/resources]] are stored here only if all other storage capacities are exhausted. Likewise, resource demand will remove [[concepts/resources]] from disabled storage structures first, such that they tend towards empty. Storage structures do not require %Energy% to operate.

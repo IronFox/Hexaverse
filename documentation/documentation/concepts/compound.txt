@@ -1,0 +1,21 @@
+=Compound=
+
+Neighboring structures of at most one height layer of difference form compounds.
+Within a compound, working structures auto-balance [[concepts/resources|resource]] output and demand. Passive structures may function as relays between distant structures.
+Select any structure of a compound to see its resource balance in the bottom left screen corner.
+
+In some game variances all structures of one [[concepts/faction]] form an implicit compound, regardless of distance.
+In others, [[units/structures/connector|connectors]] are required to connect distant structures.
+
+
+==Structure Enabled State==
+
+Many structure types can be enabled or disabled.
+Depending on the state of their compound, it may not be possible to enable a particular structure at a time without first disabling some other structure.
+In particular, if a structure consumes limited resources, it may disallow other structures in the same compound to be enabled.
+
+The game tries to balance supply and demand automatically.
+If, for instance, insufficient energy is available to explicitly enable a certain structure, but [[units/structures/generator|generators]] could be enabled, then it will do so automatically.
+This, in turn, might enable fuel [[units/structures/mine|mines]] that have not been running at this point.
+
+Rapid change (such as [[units/structures/connector|connectors]] being destroyed) will see the minimal number of structures disabled to balance out [[concepts/resources|resource]] supply and demand.

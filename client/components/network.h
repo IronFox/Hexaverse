@@ -65,14 +65,33 @@ namespace Network
 
 		String				ToString() const {return basePort != DEFAULT_SERVER_BASE_PORT ? host + ':' + String(basePort) : host;}
 	};
+
+	class Host
+	{
+	public:
+		ServerAddress		address;
+		Protocol::ServerInfo	serverInfo;
+		float				ping;
+
+		void				adoptData(Host&other)
+		{
+			address.adoptData(other.address);
+			serverInfo = other.serverInfo;
+			ping = other.ping;
+		}
+	};
+
 }
 
 DECLARE_DEFAULT_STRATEGY(Network::ServerAddress,Adopt);
+DECLARE_DEFAULT_STRATEGY(Network::Host,Adopt);
 
 namespace Network
 {
+
+
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id);
-	void					ConnectTo(const ServerAddress&);
+	void					ConnectTo(const Host&);
 
 	void SaveWorldAccessTokens();
 
@@ -165,6 +184,8 @@ namespace Network
 		void	FactionContinuedRound(NET(TUniqueID)&);
 		void	LockEmpZones(NET(UINT16)&);
 		void	PlanetConfig(Grid::ExtendedPlanetConfig&);
+		void	ResourceData(Protocol::ResourceData&);
+		void	GameConfig(Protocol::GameConfig&);
 	}
 
 
@@ -205,6 +226,10 @@ namespace Network
 		extern TCP::Channel<NET(int32_t), 0, Protocol::ChannelID::UplinkBandwidth>						uplinkBandwidth;
 		extern TCP::Channel<Grid::ExtendedPlanetConfig, 0, Protocol::ChannelID::PlanetConfig>			planetConfig;
 		extern TCP::Channel<Protocol::OperationLacksResources, 0, Protocol::ChannelID::OperationLacksResources>			operationLacksResources;
+		extern TCP::Channel<Protocol::ResearchState, 0, Protocol::ChannelID::ResearchState>				researchState;
+		extern TCP::Channel<Protocol::SelectResearch, 0, Protocol::ChannelID::SelectResearch>			selectResearch;
+		extern TCP::Channel<Protocol::ResourceData,0,Protocol::ChannelID::ResourceData>					resourceData;
+		extern TCP::Channel<Protocol::GameConfig,0,Protocol::ChannelID::GameConfig>						gameConfig;
 
 
 		extern TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;
@@ -212,8 +237,7 @@ namespace Network
 		extern TCP::ObjectSender<Protocol::Hello,Protocol::ChannelID::Hello>								hello;
 		extern TCP::ObjectSender<Protocol::EntityDirectCommand, Protocol::ChannelID::EntityDirectCommand>	entityDirectCommand;
 		extern TCP::ObjectSender<Protocol::ChoiceIntersection, Protocol::ChannelID::ChoiceIntersection>		choiceIntersection;
-		extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::DropLastTask>							dropLastTask;
-		extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::DropAllTasks>						dropAllTasks;
+		extern TCP::ObjectSender<Protocol::DropTasks, Protocol::ChannelID::DropTasks>					dropTasks;
 		extern TCP::ObjectSender<Protocol::StandardJob, Protocol::ChannelID::SignalNewJob>				signalNewJob;
 		extern TCP::ObjectSender<Protocol::TerrainMod, Protocol::ChannelID::SignalTerrainMod>			signalTerrainMod;
 		extern TCP::ObjectSender<Protocol::ConstructionAbort, Protocol::ChannelID::ConstructionAbort>	constructionAbort;
@@ -225,7 +249,7 @@ namespace Network
 		extern TCP::ObjectSender<Protocol::EntityStateUpdate, Protocol::ChannelID::Sleep>				sleep;
 		extern TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>				changeMyName;
 		extern TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>				chatMessage;
-		extern TCP::ObjectSender<Protocol::GameConfig,Protocol::ChannelID::GameConfig>					gameConfig;
+		extern TCP::ObjectSender<Protocol::ResourceID, Protocol::ChannelID::RequestResource>			requestResource;
 
 		
 	}
@@ -272,15 +296,18 @@ namespace Network
 		TUniqueID				id;
 		bool					rightVersion = false,
 								protocolIncompatible = false;
-		Protocol::ServerInfo	info;
+//		Protocol::ServerInfo	info;
 		
-		Buffer0<std::pair<ServerAddress, float> >			addresses;
+
+
+
+		Buffer0<Host>			addresses;
 		
 		//float					top, bottom;
 		bool					selected, haveToken;
 
 		#ifdef HAS_WINDOW
-			GUI::PLabel		headLine;	//game/server ids, optionally (continue)
+			GUI::PLabel			headLine;	//game/server ids, optionally (continue)
 			GUI::PButtonPanel	buttonPanel;
 		#endif
 
@@ -298,7 +325,7 @@ namespace Network
 		bool					HasAddress(const ServerAddress&addr) const
 		{
 			foreach(addresses, u)
-				if (u->first == addr)
+				if (u->address == addr)
 					return true;
 			return false;
 		}
@@ -306,7 +333,6 @@ namespace Network
 		void					swap(ServerInfo&other)
 		{
 			swp(id,other.id);
-			swp(info,other.info);
 			//swp(top,other.top);
 			//swp(bottom,other.bottom);
 			swp(selected,other.selected);

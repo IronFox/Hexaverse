@@ -25,6 +25,7 @@
 #include "components/networkChannels.h"
 #include "components/journalSaveGame.h"
 #include "components/reflection.h"
+#include <luaInterface.h>
 #include "components/configurationMode.h"
 
 UINT32 ApplicationInterface::globalVersionOfCurrentFile = 0;	//file version being loaded right now
@@ -550,6 +551,7 @@ namespace ApplicationInterface
 			roughAttack.flightTime = attack.flightTime;
 			roughAttack.attackAngle = attack.attackAngle;
 			roughAttack.turretRange = base->GetFlatAttackRange();
+			roughAttack.explosionRadius = base->turret->GetExplosionRadius(attack.attackFrom->owner);
 
 			const TVec3<>& traceToWorld = attack.traceTo;
 
@@ -681,7 +683,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 	file.Log(message+"\n",true);
 	file.Close();
 
-	Logging::WriteEvent(EventClass::Preset::fatal,message,nullptr,nullptr);
+	Logging::WriteEvent(EventClass::Preset::fatal,message,nullptr,nullptr, Objects::OwnerParameter());
 
 	application_shutting_down = true;	//prevent certain operations in Close()
 	DisplayMessage(PRODUCT_NAME" Server Error",message,false);
@@ -1032,7 +1034,7 @@ void TerminateNow(bool isMain)
 		}
 
 
-		Logging::WriteEvent(EventSignificance::Uncommon,"Closing down",nullptr,nullptr);
+		Logging::WriteEvent(EventSignificance::Uncommon,"Closing down",nullptr,nullptr,Objects::OwnerParameter());
 		Network::server.Shutdown();
 
 		if (Game::Config::Nexus::enableAI)
@@ -1047,7 +1049,7 @@ void TerminateNow(bool isMain)
 		RemoteControl::Destroy();
 
 
-		Logging::WriteEvent(EventSignificance::Uncommon,"Terminating process",nullptr,nullptr);
+		Logging::WriteEvent(EventSignificance::Uncommon,"Terminating process",nullptr,nullptr,Objects::OwnerParameter());
 		Logging::End();
 
 	mutex.release();
@@ -1076,7 +1078,7 @@ BOOL WINAPI MyHandlerRoutine(_In_  DWORD dwCtrlType)
 
 void LogConfig(const String&msg)
 {
-	Logging::WriteEvent(EventClass::Preset::configurationPrint,msg,nullptr,nullptr);
+	Logging::WriteEvent(EventClass::Preset::configurationPrint,msg,nullptr,nullptr,Objects::OwnerParameter());
 }
 
 
@@ -1286,7 +1288,8 @@ int main( int argc, const char* argv[])
 {
 	
 
-	onFatal = MyFatal;
+	Except::onFatal = MyFatal;
+//	return LuaRun(argc,argv);
 
 
 	try
@@ -1294,7 +1297,7 @@ int main( int argc, const char* argv[])
 
 		RuntimeConfig::InitConfigDir("server");
 		ASSERT__(FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("logs")));
-		Logging::Begin(RuntimeConfig::ConfigFile(PathString("logs/server_"+Logging::TimeStamp(true)+".log")));
+		Logging::Begin(RuntimeConfig::ConfigFile(PathString("logs/server "+Logging::TimeStamp(true)+".log")));
 		LogEvent(EventSignificance::Uncommon,nullptr,"Starting server v" PRODUCT_VERSION);
 
 
@@ -1371,6 +1374,8 @@ int main( int argc, const char* argv[])
 			application_shutting_down = true;
 		})->SetUniqueHelp("Shuts down the service and terminates the application");
 
+
+
 		Reflection::state.PushFocus();
 			Reflection::state.EnterNewFolder("/IO");
 			Reflection::state.DefineCommand("autoSaveNow",FileIO::AutoSave,CLI::NoCompletion);
@@ -1397,6 +1402,26 @@ int main( int argc, const char* argv[])
 					}
 				FileIO::Load(FileIO::GetAutoSavePath(index));
 			},CLI::FileCompletion);
+
+
+			Reflection::state.DefineCommand("reloadResearchProgram",(CLI::Command::function0_t)[]()
+			{
+				Objects::ResearchState::LoadDefaultProgram();
+				Protocol::GameConfig localhost,other;
+				Game::Network::AssembleGameConfig(other,false);
+				Game::Network::AssembleGameConfig(localhost,true);
+
+				Network::server.VisitAllPeers([localhost,other](const TCP::PPeer&p)
+				{
+					if (p->IsLocalhost())
+						Channels::gameConfig.SendTo(p,localhost);
+					else
+						Channels::gameConfig.SendTo(p,other);
+				});
+
+
+			})->SetUniqueHelp("Reloads research program from file and redeploys to clients");
+
 		Reflection::state.PopFocus();
 
 
@@ -1483,7 +1508,7 @@ int main( int argc, const char* argv[])
 
 
 
-		//Reflection::CreatePrototypeDeclaration();
+
 		if (!ParameterConfig::customWorldID)
 		{
 			World::BuildConfiguredWorld(random);
@@ -1545,7 +1570,7 @@ int main( int argc, const char* argv[])
 
 		if (false)
 		{
-			Logging::WriteEvent(EventSignificance::Uncommon,"Testing server.",nullptr,nullptr);
+			Logging::WriteEvent(EventSignificance::Uncommon,"Testing server.",nullptr,nullptr,Objects::OwnerParameter());
 
 			FileIO::Save(PathString("test0."+FileIO::savFileExtension));
 			FileIO::Load(PathString("test0."+FileIO::savFileExtension));
@@ -1568,14 +1593,14 @@ int main( int argc, const char* argv[])
 				FileIO::Load(filename);
 			}
 			else
-				Logging::WriteEvent(EventClass::Preset::fileError,"Specified file ("+String(filename)+") does not exist. Skipping loading operation.",nullptr,nullptr);
+				Logging::WriteEvent(EventClass::Preset::fileError,"Specified file ("+String(filename)+") does not exist. Skipping loading operation.",nullptr,nullptr,Objects::OwnerParameter());
 		}
 
 		//Journal::globalWriter.InitNew(RuntimeConfig::ConfigFile("saves/log"));
 		//Journal::globalWriter.ContinueExisting(RuntimeConfig::ConfigFile("saves/log"));
 
-		Logging::WriteEvent(EventSignificance::Uncommon, "Preparation of world '"+World::worldID.ToNiceString()+"'/" + World::worldID.ToString() + " completed.", nullptr, nullptr);
-		Logging::WriteEvent(EventSignificance::Important,"Server "+Network::serverID.ToString()+"/"+UDPBroadCast::packet.version+" is online.",nullptr,nullptr);
+		Logging::WriteEvent(EventSignificance::Uncommon, "Preparation of world '"+World::worldID.ToNiceString()+"'/" + World::worldID.ToString() + " completed.", nullptr, nullptr,Objects::OwnerParameter());
+		Logging::WriteEvent(EventSignificance::Important,"Server "+Network::serverID.ToString()+"/"+UDPBroadCast::packet.version+" is online.",nullptr,nullptr,Objects::OwnerParameter());
 		FileIO::RefreshWindowTitle();
 
 	

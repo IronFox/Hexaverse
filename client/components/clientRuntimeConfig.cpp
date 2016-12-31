@@ -11,12 +11,13 @@ namespace RuntimeConfig
 	bool udpListen = true;
 
 	Network::ServerAddress	serverAddress;
+	FileSystem::File		documentationRootFolder;
 
 
 
 	void	ClientInit()
 	{
-		InitConfigDir(aiMode ? "client/ai" : "client/player");
+		InitConfigDir(aiMode ? "client/ai" : "client");
 
 
 		phase = Phase::Uninitialized;
