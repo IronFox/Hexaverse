@@ -513,6 +513,7 @@ radarUnlock = MakeUnlockResearchable(unlockGroup, nil, TurretConfig, 'Radar',20)
 heavyUnlock = MakeUnlockResearchable(unlockGroup, nil, VehicleBaseConfig, 'HeavyBase',20);
 catUnlock = MakeUnlockResearchable(unlockGroup, nil, VehicleBaseConfig, 'CatamaranBase',20);
 MakeUnlockResearchable(unlockGroup, nil, StructureConfig, 'ReactorCore',20);
+MakeUnlockResearchable(unlockGroup, nil, StructureConfig, 'Pylon', 10);
 
 attackRangeGroup = Game.CreateResearch(improveGroup,'Attack Range','Research_AttackRange');
 	MakeImproveResearchable(attackRangeGroup, artilleryUnlock, TurretConfig, 'Artillery', 'HorizontalAttackRange',0.005);
