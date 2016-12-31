@@ -57,7 +57,7 @@ float4 psMain(V2P input) : SV_TARGET
 	rs.a = (0.75 + 0.25 * outerGridOpacity);
 	//rs.a *= sqr(max(0.0,input.emp_fresnel.y));
 	//smoothstep(0.4,0.6,input.emp_fresnel.y);
-	rs.a *= 0.5 * sqr(input.emp_fresnel.y) + 0.5 * input.normal3_opacity.w;
+	rs.a *= 0.125 * sqr(input.emp_fresnel.y) + 0.875 * input.normal3_opacity.w;
 	rs.a *= 1.0 - input.emp_fresnel.x;	//emp lets grid break off entirely
 	//
 	return rs;
