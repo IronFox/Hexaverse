@@ -1466,7 +1466,17 @@ namespace Objects
 					);
 				if (base && base->turret->groundScanningRange.IsSet())
 				{
-					scanningRange = base->GetFlatAttackRange();
+
+					static Lua::Reference lastResearchState;
+					static Objects::Component::Turret*lastTurret = nullptr;
+					static float scanningRange = -1.f;
+					Lua::Reference newResearchState = selectedEntity->GetResearchState();
+					if (newResearchState != lastResearchState || base->turret != lastTurret)
+					{
+						lastResearchState = newResearchState;
+						lastTurret = base->turret;
+						scanningRange = lastTurret->groundScanningRange.GetValue(lastResearchState);
+					}
 						//cache.groundScanningRange.GetEMPModified(*selectedEntity,base->turret->groundScanningRange)*Grid::UnitScale;
 					//selectedEntity->EMPModify(base->turret->GetGroundScanningRange(selectedEntity->owner),2);
 					float refHeight = Grid::ToRadius(selectedEntity->location.height);
