@@ -32,6 +32,7 @@ namespace ApplicationInterface
 	void	SignalTerrainModification(const Objects::PVehicle&v,Objects::CursorMode activeCursorMode,const Array<Grid::HCellIdI>&selection);
 	void	SignalDropLastTask(const Objects::PWorldEntity&v);
 	void	SignalDropAllTasks(const Objects::PWorldEntity&v);
+	void	SignalDropSafeTasks(const Objects::PWorldEntity&v);
 	void	SignalRestoreCoreLink(const TUniqueID&mineId);
 	void	SignalConstructionAbort(const TUniqueID&plantId,const TUniqueID&taskId);
 	void	SignalConstructionBegin(const TUniqueID&plantId,ConstName baseName, ConstName turretName);
@@ -41,6 +42,7 @@ namespace ApplicationInterface
 	void	SignalSleep(const Objects::PWorldEntity&v, bool doSleep);
 	void	SignalEnableStructure(Objects::Structure&s, bool enabled);
 	void	SignalTargetLessAttack(const Objects::PWorldEntity&e);
+	void	SignalResearch(const Objects::PResearchTopic&topic);
 
 	#ifdef HAS_WINDOW
 		void	OnSelectionChange(bool stateChangeOnly);

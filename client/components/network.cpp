@@ -12,6 +12,7 @@
 #include "clientRuntimeConfig.h"
 #include "timelapse.h"
 #include "configurationMode.h"
+#include <scriptCache.h>
 
 
 //#define DEBUG_SERVER_LIST	//enable to generate very long artificial server list
@@ -39,6 +40,7 @@ namespace Network
 
 	TUniqueID		myID,serverID,worldID;
 	UINT32				gameFlags = 0;
+	SHA256::HashContainer	requestedResearchScript;
 
 	CryptographicID	activeToken;
 	String			myIDString,serverIDString,worldIDString,activeTokenString;
@@ -55,15 +57,55 @@ namespace Network
 	bool			newRoundRequested = false;
 
 
-	void			ConnectTo(const ServerAddress&addr)
+
+	void			LoadScript(const SHA256::HashContainer&id)
 	{
+		ScriptCache::PScript script = ScriptCache::Lookup(id);
+		if (script)
+		{
+			LogEvent(EventClass::Preset::common,"Research script '"+Bin2Str::ConvertPOD(id)+"' is already locally available. activating...");
+			Objects::ResearchState::ActivateProgram(script);
+		}
+		else
+		{
+			LogEvent(EventClass::Preset::network,"Research script '"+Bin2Str::ConvertPOD(id)+"' is not locally available. Asking server...");
+			Network::Channels::requestResource.SendTo(client,id);
+		}
+
+	}
+
+
+	void			LoadGameConfig(const Protocol::GameConfig&cfg)
+	{
+		gameFlags = cfg.gameFlags;
+		RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(cfg.gameGoal);
+		requestedResearchScript = cfg.researchScript;
+
+		if (client.IsConnected())
+		{
+			LoadScript(Network::requestedResearchScript);
+		}
+	}
+
+	void			ConnectTo(const Host&host)
+	{
+		client.Disconnect();
+
 		RuntimeConfig::phase = RuntimeConfig::Phase::Uninitialized;
 		gameHasBegun = false;
 
-		client.ConnectAsync(addr.host + ":"+String(addr.basePort + PortOffset::Session));
+		LoadGameConfig(host.serverInfo.gameInfo.gameConfig);
+
+		client.ConnectAsync(host.address.host + ":"+String(host.address.basePort + PortOffset::Session));
 		#ifdef HAS_WINDOW
 			GUI::SignalSituationChange();
 		#endif
+
+		serverID = host.serverInfo.hostInfo.value.hostID;
+		serverIDString = Network::serverID.ToNiceString();
+
+		worldID = host.serverInfo.gameInfo.worldID;
+		worldIDString = worldID.ToNiceString();
 	}
 
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id)
@@ -378,6 +420,12 @@ namespace Network
 	{
 		bool			eventsLocked = true;
 
+		void	GameConfig(Protocol::GameConfig&cfg)
+		{
+			Network::LoadGameConfig(cfg);
+			LogEvent(EventClass::Preset::important,"Game config updated");
+		}
+
 
 		void	OnHelloResponse(Protocol::HelloResponse&response)
 		{
@@ -399,6 +447,8 @@ namespace Network
 				#ifdef HAS_WINDOW
 					Dialog::CheckServersAreShown(false);
 				#endif
+
+				LoadScript(Network::requestedResearchScript);
 			}
 			else
 			{
@@ -659,6 +709,7 @@ namespace Network
 			myIDString = myID.ToString();
 
 			Network::gameFlags = cr.info.gameConfig.gameFlags;
+
 			RuntimeConfig::empZones = (Network::gameFlags & Protocol::GameFlag::EMPZones) != 0;
 			RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(cr.info.gameConfig.gameGoal);
 			RuntimeConfig::phase = RuntimeConfig::Phase::Reinterpret(cr.info.activePhase);
@@ -948,6 +999,41 @@ namespace Network
 		{
 			bool brk = true;
 		}
+
+		void	ResearchState(Protocol::ResearchState&state)
+		{
+			Objects::PFaction f = ResolveFaction(state.ownerID);
+			f->researchState.Import(state.serializedData);
+			//Update( state, f);
+		}
+
+		void	SelectResearch(Protocol::SelectResearch&research)
+		{
+			if (Objects::Faction::mine)
+			{
+				Objects::Faction::mine->researchState.SetActiveTopic(research);
+				//Dialog::SignalSituationChange();
+				#ifdef HAS_WINDOW
+					UI::RefreshButtonState();
+				#endif
+			}
+		}
+
+		void	ResourceData(Protocol::ResourceData&dat)
+		{
+			LogEvent(EventClass::Preset::uncommon,"Received resource "+Bin2Str::ConvertPOD(dat.id.value));
+			if (dat.id == requestedResearchScript)
+			{
+				LogEvent(EventClass::Preset::uncommon,"Resource "+Bin2Str::ConvertPOD(dat.id.value)+" is research script");
+				ScriptCache::PScript script = ScriptCache::DefineFromFleetingCompressedData(dat.id, dat.data);
+				if (script)
+				{
+					Objects::ResearchState::ActivateProgram(script);
+				}
+			}
+			
+		}
+
 	}
 
 
@@ -990,6 +1076,10 @@ namespace Network
 		TCP::Channel<Protocol::UnitLimits, 0, Protocol::ChannelID::UnitLimits>						unitLimits(Receiver::UnitLimits);
 		TCP::Channel<Grid::ExtendedPlanetConfig, 0, Protocol::ChannelID::PlanetConfig>				planetConfig(Receiver::PlanetConfig);
 		TCP::Channel<Protocol::OperationLacksResources, 0, Protocol::ChannelID::OperationLacksResources>			operationLacksResources(Receiver::OperationLacksResources);
+		TCP::Channel<Protocol::ResearchState, 0, Protocol::ChannelID::ResearchState>					researchState(Receiver::ResearchState);
+		TCP::Channel<Protocol::SelectResearch, 0, Protocol::ChannelID::SelectResearch>				selectResearch(Receiver::SelectResearch);
+		TCP::Channel<Protocol::ResourceData,0,Protocol::ChannelID::ResourceData>					resourceData(Receiver::ResourceData);
+		TCP::Channel<Protocol::GameConfig,0,Protocol::ChannelID::GameConfig>						gameConfig(Receiver::GameConfig);
 
 
 
@@ -998,8 +1088,7 @@ namespace Network
 		TCP::ObjectSender<Protocol::Hello,Protocol::ChannelID::Hello>								hello;
 		TCP::ObjectSender<Protocol::EntityDirectCommand, Protocol::ChannelID::EntityDirectCommand>	entityDirectCommand;
 		TCP::ObjectSender<Protocol::ChoiceIntersection, Protocol::ChannelID::ChoiceIntersection>	choiceIntersection;
-		TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::DropLastTask>						dropLastTask;
-		TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::DropAllTasks>						dropAllTasks;
+		TCP::ObjectSender<Protocol::DropTasks, Protocol::ChannelID::DropTasks>						dropTasks;
 		TCP::ObjectSender<Protocol::StandardJob, Protocol::ChannelID::SignalNewJob>					signalNewJob;
 		TCP::ObjectSender<Protocol::TerrainMod, Protocol::ChannelID::SignalTerrainMod>				signalTerrainMod;
 		TCP::ObjectSender<Protocol::ConstructionAbort, Protocol::ChannelID::ConstructionAbort>		constructionAbort;
@@ -1011,7 +1100,7 @@ namespace Network
 		TCP::ObjectSender<Protocol::EntityStateUpdate, Protocol::ChannelID::Sleep>					sleep;
 		TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>					changeMyName;
 		TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>					chatMessage;
-		TCP::ObjectSender<Protocol::GameConfig,Protocol::ChannelID::GameConfig>						gameConfig;
+		TCP::ObjectSender<Protocol::ResourceID, Protocol::ChannelID::RequestResource>				requestResource;
 
 			//	,			//c2s: NET(bool) -> NET(bool)
 			//SetFactionId,		//s2c: NET(TUniqueID)
@@ -1227,6 +1316,8 @@ namespace Network
 		client.InstallChannel(Channels::markerCreationFailedLimitReached);
 		client.InstallChannel(Channels::destroyMarker);
 		client.InstallChannel(Channels::identifyUser);
+		client.InstallChannel(Channels::researchState);
+		client.InstallChannel(Channels::selectResearch);
 		client.InstallChannel(Channels::factionOnline);
 		client.InstallChannel(Channels::factionOffline);
 		client.InstallChannel(Channels::factionRequestedNewRound);
@@ -1237,6 +1328,9 @@ namespace Network
 		client.InstallChannel(Channels::unitLimits);
 		client.InstallChannel(Channels::planetConfig);
 		client.InstallChannel(Channels::operationLacksResources);
+		client.InstallChannel(Channels::resourceData);
+		client.InstallChannel(Channels::gameConfig);
+
 
 		client.OpenSignalChannel(Protocol::ChannelID::Pong,0);
 		client.OpenSignalChannel(Protocol::ChannelID::BeginGame,0);
@@ -1303,7 +1397,7 @@ namespace Network
 			StringRef conv = url.subStringRef((int)portAt);
 			if (!convert(conv.pointer(),conv.length(),basePort))
 			{
-				throw Program::ParameterFault("Unable to parse port component '" + String(conv) + "' of '"+url+"'");
+				throw Except::Program::ParameterFault(CLOCATION, "Unable to parse port component '" + String(conv) + "' of '"+url+"'");
 			}
 		}
 		else
@@ -1439,18 +1533,30 @@ namespace Network
 						if (!serverMap.query(a.lastInfo.hostInfo.value.hostID,at))
 						{
 							at = servers.Count();
-							servers.Append().info = a.lastInfo;
+							servers.Append();
 							servers.last().haveToken = 	a.protocolIncompatible ? false : accessMap.IsSet(a.lastInfo.gameInfo.worldID);
 							servers.last().protocolIncompatible = a.protocolIncompatible;
-							servers.last().id = a.protocolIncompatible ? TUniqueID::Empty() : servers.last().info.hostInfo.value.hostID;
+							servers.last().id = a.protocolIncompatible ? TUniqueID::Empty() : a.lastInfo.hostInfo.value.hostID;
 							servers.last().rightVersion = a.rightVersion && !a.protocolIncompatible;
 							//if (!a.protocolIncompatible)
 							serverMap.Set(servers.last().id,at);
 						
 						}
-
 						ServerInfo&info = servers[at];
-						info.addresses.Append(std::make_pair(a.address,a.lastPing));
+
+						if (info.addresses.IsNotEmpty())
+						{
+							if (info.addresses.Last().serverInfo.gameInfo.worldID.value != a.lastInfo.gameInfo.worldID)
+							{
+								LogEvent(EventClass::Preset::error,"Received mismatching world IDs from host "+info.id.ToNiceString()+". Ignoring address "+a.address.ToString());
+								continue;
+							}
+						}
+
+						Host&host = info.addresses.Append();
+						host.address = a.address;
+						host.serverInfo = a.lastInfo;
+						host.ping = a.lastPing;
 					}
 				}
 			#endif
@@ -1688,20 +1794,16 @@ bool		Network::ConnectToConfiguredServerIfAvailable()
 		if (srv->rightVersion && srv->HasAddress(RuntimeConfig::serverAddress))
 		{
 			index_t best = 0;
-			float bestPing = srv->addresses.First().second;
+			float bestPing = srv->addresses.First().ping;
 			for (index_t i = 1; i < srv->addresses.Count(); i++)
-				if (srv->addresses[i].second < bestPing)
+				if (srv->addresses[i].ping < bestPing)
 				{
-					bestPing = srv->addresses[i].second;
+					bestPing = srv->addresses[i].ping;
 					best = i;
 				}
 			srv->selected = true;
 
-			Network::serverID = srv->id;
-			Network::serverIDString = Network::serverID.ToNiceString();
-			Network::worldID = srv->info.gameInfo.worldID;
-			Network::worldIDString = Network::worldID.ToNiceString();
-			Network::ConnectTo(srv->addresses[best].first);
+			Network::ConnectTo(srv->addresses[best]);
 
 			lastAttempt = timer.Now();
 			delayCounter = 0;

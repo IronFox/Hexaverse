@@ -1,0 +1,6 @@
+=Ghost=
+{{ img:hostileGhost.png?200|Ghost of a hostile unit out of scanning range}}
+{{ img:friendlyGhost.png?200|Ghost of a lost unit}}
+A ghost is a preserved memory of a unit that is currently not in sensor range.
+Ghosts are created of lost friendly units (black), and hostile units to which contact has been lost (red).
+They are preserved for up to 10 [[concepts/round|rounds]].

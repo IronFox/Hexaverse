@@ -71,6 +71,17 @@ namespace Objects
 
 
 
+	/*virtual override*/ float		MobileEntity::GetScanningRange() const
+	{
+		return cache.maxScanningRange.GetEMPModified(*this,turret->scanningRange);
+	}
+
+	/*virtual override*/ String		MobileEntity::DescribeScanningRange() const
+	{
+		return turret->scanningRange.Describe(GetResearchState());
+	}
+
+
 	void MobileEntity::UpdateSystem()
 	{
 		ASSERT_LESS__(location.stackID, Grid::LowSetup::GridType::CellCount);
@@ -125,13 +136,21 @@ namespace Objects
 	}
 
 
+	bool MobileEntity::HasUnsafeTask() const
+	{
+		return constructionRoundCounter > 0 
+				&& myTasks.IsNotEmpty() 
+				&& myTasks.Peek().IsJob() 
+				&& myTasks.Peek().job->resourceCostLeft > 0;
+	}
+
 	#ifndef CLIENT
 
 		/*virtual override*/ void		MobileEntity::OnDestroy(RemovalType t, float&atTime)
 		{
 			if (t == RemovalType::UncontrolledExplosion && RuntimeConfig::bombsExplodeWhenDestroyed && turret == &Component::bomb)
 			{
-				ApplicationInterface::SignalChainReactionExplosion(location, Component::Bomb::GetRadius(false),Component::Bomb::GetDamageLevel(false),atTime);
+				ApplicationInterface::SignalChainReactionExplosion(location, Component::Bomb::GetRadius(false,owner),Component::Bomb::GetDamageLevel(false,owner),atTime);
 			}
 
 		}
@@ -1090,6 +1109,21 @@ namespace Objects
 		}
 
 
+		/*virtual override*/ void			MobileEntity::ClearSafeTasks()
+		{
+			if (HasUnsafeTask())
+			{
+				if (myTasks.Count() == 1)
+					return;//avoid signalling change
+				while (myTasks.Count() > 1)
+					myTasks.EraseBack();
+			}
+			else
+				myTasks.Clear();
+			RegisterChange(TasksChanged,motionTime);
+		}
+
+
 		/*virtual override*/ void				MobileEntity::Attack(float&attackTime)
 		{
 			//ASSERT1__(NextTaskIsAttack(),this->id.ToString());
@@ -1159,16 +1193,17 @@ namespace Objects
 				at.traceTo = t0;
 
 				ApplicationInterface::SignalAttack(at);
-				ChangeStorage(*this,motionTime,turret->ammoType,-turret->ammoNeedPerShot);
+				ChangeStorage(*this,motionTime,turret->ammoType,-turret->GetAmmoNeedPerShot(owner));
 				
 				motionTime += flightTime;
 
+				const int damageLevel = (int)floor(turret->GetDamageLevel(owner));
 				if (turret->dealsEMPDamage)
 					ExplodeEMP(at,
-								t1, t0, turret->explosionRadius, turret->damageLevel,motionTime);
+								t1, t0, turret->GetExplosionRadius(owner), damageLevel,motionTime);
 				else
 					Explode(at,
-							t1, t0, turret->explosionRadius, turret->damageLevel,turret->isDoomsday, motionTime);
+							t1, t0, turret->GetExplosionRadius(owner), damageLevel,turret->isDoomsday, motionTime);
 			}
 
 			if (task.foci.IsEmpty())
@@ -1582,7 +1617,7 @@ namespace Objects
 	#ifdef HAS_WINDOW
 
 
-	void					MobileEntity::Task::SetLocalizableShape(ConstName shape, const Grid::LCellIdI&location)
+	void					MobileEntity::Task::SetLocalizableShape(ConstName shape, const Grid::LCellIdI&location, const OwnerParameter&owner)
 	{
 		if (shape == ConstName::DetonationSize_Regular)
 		{
@@ -1593,7 +1628,7 @@ namespace Objects
 			shape.instruction.ibo = sphereIBO[0];
 			shape.depthTest = true;
 
-			float r = Component::Bomb::GetRadius(false);
+			float r = Component::Bomb::GetRadius(false,owner);
 			BuildSystem(Grid::ToWorld(location),r, r,shape.system);
 			return;
 		}
@@ -1607,7 +1642,7 @@ namespace Objects
 			shape.instruction.ibo = sphereIBO[0];
 			shape.depthTest = true;
 
-			float r = Component::Bomb::GetRadius(true);
+			float r = Component::Bomb::GetRadius(true,owner);
 			BuildSystem(Grid::ToWorld(location),r, r,shape.system);
 			return;
 		}
@@ -1780,14 +1815,15 @@ namespace Objects
 
 	/*virtual override*/bool				MobileEntity::HasAmmoForShot() 
 	{
-		if (!turret->ammoNeedPerShot)
+		int ammoNeed = turret->GetAmmoNeedPerShot(owner);
+		if (!ammoNeed)
 			return true;
 
 		#ifdef ONE_COMPOUND_PER_FACTION
 			const Compound&compound = owner->compound;
-			return compound.total.storage.level[turret->ammoType] >= turret->ammoNeedPerShot;
+			return compound.total.storage.level[turret->ammoType] >= ammoNeed;
 		#else
-			return currentStorage.level[turret->ammoType] >= turret->ammoNeedPerShot;
+			return currentStorage.level[turret->ammoType] >= ammoNeed;
 		#endif
 	}
 

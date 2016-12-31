@@ -1,0 +1,7 @@
+{{ img:units/Vehicle Plant.png|Vehicle Plant}}
+=Vehicle Plant=
+*  Health: 16
+*  Price: %Minerals% 80
+*  [[concepts/scanning range|Scanning range]]: 2
+*  Consumes: %Minerals%10 %Energy%10
+Enabled vehicle plants produce vehicles of arbitrary configuration at the expense of %Minerals%, %Energy%, and %time%. A vehicle plant that does not have access to the necessary [[concepts/resources]] switches off immediately. Vehicle plants should be placed so that any produced vehicles can stand in the immediate surroundings of the structure.

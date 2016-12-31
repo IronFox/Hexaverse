@@ -42,7 +42,7 @@ namespace Objects
 	
 	int						Vehicle::GetOperationSpeed(Component::operation_t op)  const
 	{
-		return base->operationSpeedMultiplier *  turret->operationSpeed[op];
+		return (int)floor(turret->GetOperationSpeed(op,owner) * base->operationSpeedMultiplier(owner));
 	}
 
 
@@ -56,13 +56,45 @@ namespace Objects
 		}
 	#endif
 
-	/*static*/ int					Vehicle::GetPrice(Component::VehicleBase*base, Component::Turret*turret)
+	/*static*/ int					Vehicle::GetPrice(Component::VehicleBase*base, Component::Turret*turret, const OwnerParameter&owner)
 	{
-		return (turret ? turret->productionCosts : 0) + (base ? base->productionCosts : 0);
+		return (turret ? turret->productionCosts(owner) : 0) + (base ? base->productionCosts(owner) : 0);
 	}
 
 
 
+	/*virtual override*/ float		Vehicle::GetScanningRange() const
+	{
+		return cache.maxScanningRange.GetEMPModified(*this,turret->scanningRange,turret->CanAttack() ? Component::FScaledFunc() : base->turretRangeModifier);
+		//return EMPModify(turret->GetScanningRange(owner,turret->CanAttack() ? 0 : base->rangeModifier), 2.f);
+	}
+
+	/*virtual override*/ String		Vehicle::DescribeScanningRange() const
+	{
+		String rs = turret->scanningRange.Describe(GetResearchState());
+		if (!turret->CanAttack())
+		{
+			String mod = base->turretRangeModifier.Describe(GetResearchState());
+			if (mod != '0')
+				rs += "+"+mod;
+		}
+		return rs;
+	}
+
+	/*virtual override*/ int				Vehicle::GetMaxHealth() const
+	{
+		return cache.maxHealth.Get(this->GetResearchState(), base->health,turret->healthMultiplier, 1);
+		//return std::max(1,(int)floor(base->GetBaseHealth(owner) * turret->healthMultiplier(owner)));
+	}
+
+	/*virtual override*/ String				Vehicle::DescribeMaxHealth() const
+	{
+		Lua::Reference state = GetResearchState();
+		String multiplier = turret->healthMultiplier.Describe(state);
+		if (multiplier == "1" || multiplier == "1.0")
+			return base->health.Describe(state);
+		return String(GetMaxHealth())+"[="+ base->health.Describe(state)+"*" + turret->healthMultiplier.Describe(state)+"]";
+	}
 
 	
 	#ifndef CLIENT
@@ -136,16 +168,44 @@ namespace Objects
 
 	#endif
 
+	int						Vehicle::GetTurretOverweight() const
+	{
+		return std::max(0, (int)floor((turret->weight(owner) - base->GetCarryingCapacity(owner))));
+	}
+
+	float					Vehicle::GetTurretOverweightFactor() const
+	{
+		return Grid::powi(0.75f,GetTurretOverweight());
+	}
+
+
+
 
 	/*virtual override*/int			Vehicle::GetMovementStepsPerRound()	const
 	{
 		return (int)ceil(EMPModify(
-				float(base->baseMovementSpeed) 
-				* Grid::powi(0.75f,std::max(0, turret->weight - base->carryingCapacity)),
+				base->GetBaseMovementSpeed(owner) 
+				* GetTurretOverweightFactor(),
 				1.f));
 	}
 
+	/*virtual override*/String			Vehicle::DescribeMovementStepsPerRound()	const
+	{
+		return String(GetMovementStepsPerRound());
+	}
+
+	/*virtual override*/ String			Vehicle::DescribeFlatAttackRange() const
+	{
+		return cache.horizontalAttackRange.DescribeEMPModified(*this,turret->horizontalAttackRange,base->turretRangeModifier);
+	}
+
 	
+	/*virtual override*/ float			Vehicle::GetFlatAttackRange() const
+	{
+		return cache.horizontalAttackRange.GetEMPModified(*this,turret->horizontalAttackRange,base->turretRangeModifier);
+		//EMPModify(turret->GetHorizontalAttackRange(owner,base->turretRangeModifier),1.f);
+	}
+
 
 	#ifdef CLIENT
 	#else
@@ -158,187 +218,6 @@ namespace Objects
 			ClearAllTasks(true,CLOCATION);
 		}
 
-
-
-		///*virtual override*/ MobilePlacementResult	Satellite::PlaceExactlyAt(const Grid::LCellIdI&_cell, float timeCost, float minTimeOffset, bool signalEvent/*=true*/, bool isCreated/*=true*/, bool failIsFatal/*=false*/)
-		//{
-		//	UINT32 cell = _cell.stackID;
-		//	if (health <= 0)
-		//	{
-		//		if (failIsFatal)
-		//		{
-		//			LogEvent(EventClass::Preset::fatal,this,"Dead");
-		//			FATAL__("Critical abort");
-		//		}
-		//		return MobilePlacementResult::PlacementFailedHarmfulOrBlocked;
-		//	}
-		//	
-		//	//VerifyVisibilityNetwork();
-		//	timeAt = std::max(minTimeOffset,timeAt);
-		//	if ((location.stackID != cell && !NoSatelliteHere(cell)))
-		//	{
-		//		if (failIsFatal)
-		//		{
-		//			LogEvent(EventClass::Preset::fatal,this,"Target cell ("+String(cell)+") is obstructed by satellite");
-		//			FATAL__("Critical abort");
-		//		}
-		//		return MobilePlacementResult::PlacementFailedObstructed;
-		//	}
-		//	const Grid::LCellIdI old = location;
-
-		//	#ifdef _DEBUG
-		//		bool hadTasks = HasTasks();
-		//	#endif
-		//	
-		//	location = _cell;
-	
-		//	MobilePlacementResult result = MobilePlacementResult::PlacementOkay;
-		//	if (old != location)
-		//	{
-		//		if (isCreated)
-		//		{
-		//			if (constructionRoundCounter)
-		//			{
-		//				constructionRoundCounter = 0;
-		//				RegisterChange(WorldEntity::TasksChanged,timeAt);
-		//			}
-		//		}
-		//		this->UpdateSystem();
-		//		if (signalEvent)
-		//		{
-		//			static GenericHashSet<OwnerParameter,OwnerHash>	checkStillBeeingSeenBy;
-		//			static Buffer0<PWorldEntity> checkCanStillSee;
-		//			checkCanStillSee.Clear();
-		//			checkStillBeeingSeenBy.Clear();
-
-		//			float oldTime = timeAt;
-		//			timeAt += timeCost;
-
-		//			this->UnregisterSensory(old,timeAt);
-		//			this->RegisterSensory(location,timeAt);
-		//			owner->seeing.VisitAllKeys([this,&result](const PWorldEntity&e)
-		//			{
-		//				if (!e->IsMobile())
-		//					return;
-		//				PMobileEntity&m = To<MobileEntity>::Cast(e);
-		//				if (m->CanAttack())
-		//				{
-		//					for (WMobileEntity w : owner->satellites)
-		//					{
-		//						PMobileEntity v2 = w.lock();
-		//						if (!v2->IsSatellite())
-		//							continue;
-
-		//						for (index_t i = 0; i < v2->myTasks.Count(); i++)
-		//						{
-		//							const Task&task = v2->myTasks[i];
-		//							bool badTask = false;
-		//							if (task.type == Task::MoveTo)
-		//							{
-		//								for (const auto&node : task.path)
-		//								{
-		//									//TVec3<> world = Grid::ToWorld(node.cell);
-		//									float zOffset;
-		//									const auto&base = m->GetTurretBase(zOffset);
-		//									Grid::LCellIdI actual;
-		//									if (m->ExtCanHit(m->owner,m->location,zOffset,node.cell, actual))
-		//									{
-		//										badTask = true;
-		//										break;
-		//									}
-
-		//								}
-		//							}
-		//							if (badTask)
-		//							{
-		//								LogEvent(EventSignificance::Common,v2.get(),"Dangerous movement into range of "+m->GetNiceName()+" detected. Dropping task(s).");
-		//								if (v2.get() == this)
-		//								{
-		//									ClearAllTasks(true,CLOCATION);
-		//									result = MobilePlacementResult::PlacementFailedHarmfulOrBlocked;
-		//								}
-		//								else
-		//								{
-		//									while (v2->myTasks.Count() > i)
-		//										v2->myTasks.EraseBack();
-		//								}
-		//								break;
-		//							}
-
-		//						}
-		//					}
-		//				}
-		//			});
-
-		//			//if (result == MobilePlacementResult::PlacementFailedHarmfulOrBlocked)
-		//			//{
-		//			//	this->UnregisterSensory(location,timeAt);
-		//			//	this->RegisterSensory(old,timeAt);
-		//			//	location = old;
-		//			//	return result;
-		//			//}
-		//
-
-
-		//			if (timeCost > 0)
-		//			{
-		//				SignalMotion(To<Satellite>::Cast(shared_from_this()),old,location,oldTime,timeCost);
-		//			}
-		//			else
-		//			{
-		//				#ifndef CLIENT
-		//					LogEvent(EventSignificance::Common,this,"Time cost is "+String(timeCost)+". Warping satellite at time "+String(oldTime));
-		//				#endif
-		//				RegisterChange(PositionChanged,oldTime);
-		//			}
-		//			//timeAt += timeCost;
-
-		//			bool doBreak = false;
-		//			ForeachFaction([this,&doBreak](const PFaction&f)
-		//			{
-		//				if (doBreak)
-		//					return;
-		//				if (!f->ExtCanSee(shared_from_this(),timeAt))
-		//					return;
-		//				Grid::LCellIdI loc;
-		//				for (const auto& _s:f->satellites)
-		//				{
-		//					PSatellite s = _s.lock();
-		//					if (s->WouldAttack(shared_from_this(),loc,timeAt))
-		//					{
-		//						if (s->AttackNext(loc,true))
-		//						{
-		//							LogEvent(EventSignificance::Common,s.get(),"Auto-targeting moving "+GetNiceName()+ " at location "+loc.ToString());
-		//							s->Attack(timeAt);
-		//							if (health <= 0)
-		//							{
-		//								doBreak = true;
-		//							}
-		//						}
-		//					}
-		//				}
-		//			});
-		//			if (doBreak)
-		//				return MobilePlacementResult::PlacementFailedMobileDestroyed;
-
-		//			#ifndef CLIENT
-		//				LogEvent(EventSignificance::Common,this,"Motion completed");
-		//			#endif
-		//		}
-		//		else
-		//		{
-		//			timeAt += timeCost;
-		//			#ifndef CLIENT
-		//				LogEvent(EventSignificance::Common,this,"Silent motion completed");
-		//			#endif
-		//		}
-		//	}
-		//	#ifdef _DEBUG
-		//		ASSERT__(Failed(result) || hadTasks == HasTasks());
-		//	#endif
-		//	return result;
-
-		//}
 
 
 		/*virtual override*/ MobilePlacementResult Vehicle::PlaceExactlyAt(const Grid::LCellIdI&cell, float timeCost, float minTimeOffset, bool signalEvent/*=true*/, bool isCreated/*=true*/, bool failIsFatal/*=false*/)
@@ -489,18 +368,21 @@ namespace Objects
 
 		void Vehicle::DescribeType(BaseCommand::Label&outResult, UINT32 descFlags)
 		{
+			outResult.BeginBrief();
 			Super::DescribeType(outResult,descFlags);
-			outResult << "";
-			base->DescribeType(outResult,true);
-			outResult << "";
+			base->DescribeType(outResult,true,true,owner);
+			outResult.BeginBrief();
 
-			if (turret->weight > base->carryingCapacity)
-				outResult << "Overweight: "+String(turret->weight - base->carryingCapacity);
-			if (base->baseMovementSpeed > 0)
+			const float capacity = floor(base->GetCarryingCapacity(owner));
+			const float weight = turret->weight(owner);
+			if (weight > capacity)
+				outResult << "Overweight: "+String(weight - capacity);
+			const int baseMovement = (int)floor(base->GetBaseMovementSpeed(owner));
+			if (baseMovement > 0)
 			{
 				String speed = "Effective speed: "+String(this->GetMovementStepsPerRound());
-				if (GetMovementStepsPerRound() != base->baseMovementSpeed)
-					speed += " /"+String(this->base->baseMovementSpeed);
+				if (GetMovementStepsPerRound() != baseMovement)
+					speed += " /"+String(baseMovement);
 				outResult << speed;
 			}
 			else
@@ -508,10 +390,10 @@ namespace Objects
 
 
 			if (base->requirements == Component::VehicleBase::Requirement::Water)
-				outResult.lines.last()+= " (naval)";
+				outResult.GetLastLine()+= " (naval)";
 			else
 				if (base->moveOnWater)
-					outResult.lines.last() += " (moves over water)";
+					outResult.GetLastLine() += " (moves over water)";
 
 			int opSpeed = std::max(GetOperationSpeed(Component::Construct),GetOperationSpeed(Component::TerrainAdd));
 			if (opSpeed)

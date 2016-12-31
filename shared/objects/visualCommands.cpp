@@ -12,7 +12,9 @@
 #include "satellite.h"
 #include "faction.h"
 #include "gridAndChoices.h"
+#include "components.h"
 #include <image/converter/magic.h>
+#include "research.h"
 
 extern Engine::Display<Engine::DirectX11>	display;
 //extern Engine::VectorCamera<>				scene;
@@ -40,6 +42,132 @@ namespace Objects
 
 	}
 
+	/**/			ResearchCommand::ResearchCommand(const PResearchTopic&topic) : Super(topic->name,topic->iconName),topic(topic)	{}
+
+	///*virtual override*/ void	ResearchCommand::LoadIcon()
+	//{
+	//	if (topic->iconName.IsNotEmpty())
+	//		Super::LoadIcon(topic->iconName);
+	//}
+
+	/*virtual override*/ void	ResearchCommand::Execute()
+	{
+		Super::Execute();
+		if (selectedEntity && selectedEntity->owner &&  topic->CanResearch(selectedEntity->GetResearchState()))
+		{
+			ApplicationInterface::SignalResearch(topic);
+			this->Refresh(true);
+		}
+	}
+
+	/*virtual override*/ void ResearchCommand::RasterizeImage()
+	{
+		PWorldEntity e = topic->prototypeReference;
+		if (e)
+			EntityCommand::UpdateTexture(*this,e,true);
+		elif (topic->componentReference)
+			if (topic->componentReference->IsVehicleBase())
+				EntityConstructionCommand::UpdateTexture(*this,(Component::VehicleBase*)topic->componentReference,nullptr);
+			elif (topic->componentReference->IsTurret())
+				EntityConstructionCommand::UpdateTexture(*this,nullptr,(Component::Turret*)topic->componentReference);
+	}
+
+	/*virtual override*/	void	ResearchCommand::Refresh(bool controlEnabled)
+	{
+		OwnerParameter owner = selectedEntity ? selectedEntity->owner : OwnerParameter();
+		if (topic->IsGroup())
+		{
+			Super::Refresh(controlEnabled);
+
+
+
+			if (!(state & Flags::IsPermaActive)
+				&&
+				owner && owner->researchState.GetActiveTopic()->IsChildOf(topic)
+				)
+				state |= Flags::IsFlashing | Flags::SoftFlashing;
+			else
+			{
+				state -= Flags::IsFlashing;
+				state -= Flags::SoftFlashing;
+			}
+		}
+		else
+		{
+			state = BaseCommand::Flags::None;
+			if (owner && owner->researchState.GetActiveTopic() == topic)
+				state |= BaseCommand::Flags::IsPermaActive;
+			Lua::Reference st = owner ? owner->researchState.researchState : Lua::Reference();
+			if (!controlEnabled || !topic->CanResearch(st))
+				return;
+			state |= BaseCommand::Flags::IsEnabled;
+		}
+	}
+
+
+	/*virtual override*/ void		ResearchCommand::CompileLabel(Label&outResult)
+	{
+		outResult.BeginBrief();
+
+		if (topic->IsGroup())
+		{
+			outResult << topic->name;
+			return;
+		}
+		Lua::Reference state = selectedEntity ? selectedEntity->GetResearchState() : Lua::Reference();
+
+		int current = 0;
+		int max = topic->maxProgress;
+		if (state.IsSet())
+		{
+			current = topic->getProgress(state);
+		}
+//		const ResearchState*rs = selectedEntity && selectedEntity->owner ? &selectedEntity->owner->researchState : nullptr;
+
+		//if (ref || (base && turret))
+		{
+			outResult << topic->GetFullName();
+			String dependentOn;
+			//else
+			{
+				if (max < 0)
+					outResult << "Research progress "+String(current);
+				elif (current < max)
+				{
+					outResult << "Research progress "+String(current) + "/"+String(max);
+				}
+				else
+					outResult << "Research completed";
+			}
+			PResearchTopic dep = topic->dependency.lock();
+			if (dep && (state.IsEmpty() || dep->getProgress(state)<dep->maxProgress))
+				outResult << "Requires completion of "+dep->GetFullName()+" research";
+			outResult.MarkBriefEnd();
+		}
+
+		PWorldEntity ref = topic->prototypeReference;
+		if (ref)
+		{
+			ref->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth);
+			return;
+		}
+
+		if (topic->componentReference)
+		{
+			if (topic->componentReference->IsVehicleBase())
+			{
+				((Component::VehicleBase*)topic->componentReference)->DescribeType(outResult,false,true,selectedEntity ? selectedEntity->owner : OwnerParameter());
+			}			
+			elif (topic->componentReference->IsTurret())
+				((Component::Turret*)topic->componentReference)->DescribeType(outResult,false, true,"Vehicle",selectedEntity ? selectedEntity->owner : OwnerParameter());
+		}
+	}
+
+
+	static void SetPrototypeKeyColor()
+	{
+		keyColor.Update(float4(0.5,0.5,1,1));
+	}
 
 	/*static*/ void		EntityConstructionCommand::UpdateTexture(BaseCommand&target, Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor/* = float4(0)*/)
 	{
@@ -52,6 +180,9 @@ namespace Objects
 		}
 
 		GeometryImage::BeginRendering(backgroundColor,distanceFactor);
+
+		if (!base || !turret)
+			SetPrototypeKeyColor();
 
 		TMatrix4<> sys = Matrix<>::eye4;
 		sys.x.x = sys.y.y = sys.z.z = 2.5f;
@@ -71,7 +202,7 @@ namespace Objects
 	{
 		if (isPrototype)
 		{
-			keyColor.Update(float4(0.5,0.5,1,1));
+			SetPrototypeKeyColor();
 			return;
 		}
 		if (v->health <= 0)
@@ -137,6 +268,7 @@ namespace Objects
 
 	/*virtual override*/ void		BaseCommand::CompileLabel(Label&outResult)
 	{
+		outResult.BeginBrief();
 		int resourceCost, timeCost;
 		Resource resourceType;
 		GetCosts(resourceCost,resourceType,timeCost);
@@ -155,20 +287,21 @@ namespace Objects
 		else
 			outResult<<" ";
 		//outResult << "Rounds: "+String(timeCost);
-		outResult.lines.last() += TimeResourceTag() + String(timeCost);
+		outResult.GetLastLine() += TimeResourceTag() + String(timeCost);
 	}
 
 
 	/*virtual override*/ void		EntityConstructionCommand::CompileLabel(Label&outResult)
 	{
+		outResult.BeginBrief();
 		const MobileEntityProducer*p = selectedEntity ? selectedEntity->CastToProducer() : nullptr;
 		//PWorkingStructure ws = To<WorkingStructure>::DynamicCast(e);
 
 		PWorldEntity ref = reference.lock();
-		int rawPrice = ref ? ref->GetConstructionCost() : Vehicle::GetPrice(base,turret);
+		int rawPrice = ref ? ref->GetConstructionCost() : Vehicle::GetPrice(base,turret,OwnerParameter());
 		int price = (int)std::min(mineralsLeft, (unsigned)rawPrice);
 
-		if (ref || (base && turret))
+		//if (ref || (base && turret))
 		{
 			UINT32 rounds = 0,rawRounds = 0;
 
@@ -184,16 +317,13 @@ namespace Objects
 			outResult << name;
 			outResult << String(ResourceTag(Resource::Minerals))+ " "+String(price);
 			if (price != rawPrice)
-				outResult.lines.last() += "/"+String(rawPrice);
+				outResult.GetLastLine() += "/"+String(rawPrice);
 			if (rounds)
 			{
-				outResult.lines.last() += "  "+String(TimeResourceTag()) + String(rounds);
+				outResult.GetLastLine() += "  "+String(TimeResourceTag()) + String(rounds);
 				if (rounds != rawRounds)
-					outResult.lines.last() += "/"+String(rawRounds);
+					outResult.GetLastLine() += "/"+String(rawRounds);
 			}
-
-			outResult.MarkBriefEnd();
-			outResult << "";
 		}
 
 		if (ref)
@@ -213,13 +343,17 @@ namespace Objects
 			if (base)
 			{
 				//PVehicle v(new Vehicle(p->owner, p->location, base,turret));
-				base->DescribeType(outResult,false);
+				base->DescribeType(outResult,false,true,OwnerParameter());
 			}			
 			if (turret)
-				turret->DescribeType(outResult,false, "Vehicle",selectedEntity->owner);
+				turret->DescribeType(outResult,false, true,"Vehicle",selectedEntity->owner);
 
 		}
 	}
+
+
+
+
 
 
 	/**/				DeployMobileCommand::DeployMobileCommand(const PMobileEntity&v,   FOnExecute f, FCheck c) : Super(v->GetNiceName(),v,f,c)	{}
@@ -228,14 +362,13 @@ namespace Objects
 
 	/*virtual override*/ void		DeployMobileCommand::CompileLabel(Label&outResult)
 	{
+		outResult.BeginBrief();
 		PHangar h = To<Hangar>::DynamicCast(selectedEntity);
 		ASSERT__(h);
 		PMobileEntity vehicle = ToMobileEntity( this->reference.lock() );
 		if (vehicle)
 		{
 			outResult << "Deploy mobile unit: "+name;
-			outResult.MarkBriefEnd();
-			outResult << "";
 
 			vehicle->DescribeType(outResult,Objects::WorldEntity::DescIncludeCurrentHealth | Objects::WorldEntity::DescIncludeMaxHealth | WorldEntity::DescIncludeUnitCount);
 		}
@@ -255,7 +388,7 @@ namespace Objects
 			return false;
 		if (c >= '0' && c <= '9')
 			return false;
-		return true;
+		return c != '_';
 	}
 
 	void			BaseCommand::LoadIcon(const String&name)
@@ -384,6 +517,10 @@ namespace Objects
 			else
 			{
 				activeCursorMode = mode;
+
+				if (!Engine::input.pressed[Key::Shift])
+					ApplicationInterface::SignalDropAllTasks(selectedEntity);
+
 			}
 		}
 		else
@@ -553,6 +690,24 @@ namespace Objects
 		return InvalidIndex;
 	}
 
+
+	void	CommandGroup::SignalBaseChange(CommandContainer*newParent, const int2&newBase)
+	{
+		ASSERT_IS_NULL__(parent);
+		baseCoords = newBase;
+		baseCoords.x += baseCoords.y/2;
+		parent = newParent;
+
+		foreach (members,m)
+		{
+			if (m->second->IsGroup())
+			{
+				To<CommandGroup>::Cast(m->second)->SignalBaseChange(this,baseCoords + int2(0, m->first.y+1));
+			}
+
+		}
+	}
+
 	PBaseCommand			CommandContainer::Add(const int2&coords, bool relativeCoords, const PBaseCommand&newCommand)
 	{
 		DBG_ASSERT__(Find(newCommand) == InvalidIndex);
@@ -561,11 +716,12 @@ namespace Objects
 		m.first = relativeCoords ? coords : coords - baseCoords;
 		if (newCommand->IsGroup())
 		{
-			PCommandGroup group = To<CommandGroup>::Cast(newCommand);
-			group->baseCoords = baseCoords;
-			group->baseCoords.y += m.first.y+1;
-			group->baseCoords.x += group->baseCoords.y/2;
-			group->parent = this;
+			To<CommandGroup>::Cast(newCommand)->SignalBaseChange(this,baseCoords + int2(0, m.first.y+1));
+			//PCommandGroup group = To<CommandGroup>::Cast(newCommand);
+			//group->baseCoords = baseCoords;
+			//group->baseCoords.y += m.first.y+1;
+			//group->baseCoords.x += group->baseCoords.y/2;
+			//group->parent = this;
 		}
 		return newCommand;
 	}
@@ -578,11 +734,13 @@ namespace Objects
 		m.first = int2((int)members.Count()-1,0);
 		if (newCommand->IsGroup())
 		{
+			To<CommandGroup>::Cast(newCommand)->SignalBaseChange(this,baseCoords + int2(0, m.first.y+1));
+/*
 			PCommandGroup group = To<CommandGroup>::Cast(newCommand);
 			group->baseCoords = baseCoords;
 			group->baseCoords.y += m.first.y+1;
 			group->baseCoords.x += group->baseCoords.y/2;
-			group->parent = this;
+			group->parent = this;*/
 		}
 		return newCommand;
 	}

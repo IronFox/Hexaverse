@@ -1,0 +1,4 @@
+<project type="StaticLibrary">
+	<source path="src" include="true">
+	</source>
+</project>

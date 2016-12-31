@@ -515,7 +515,7 @@ namespace Engine
 									sliceSize;
 			DXGI_FORMAT				format;
 		public:
-			void				CreateOrResize(const Resolution3D&resolution, DXGI_FORMAT format);
+			void				CreateOrResize(const Resolution3D&resolution, DXGI_FORMAT format, UINT mipmapLayers);
 			void				Clear()
 			{
 				handle.Clear();
@@ -701,23 +701,28 @@ namespace Engine
 			size_t					byteSize;
 			Resolution3D			resolution;
 			DXGI_FORMAT				format;
+			UINT					mipLevels=1;
 
 			friend struct Shader::Binding;
 			friend class DirectX11;
 			friend class FBO;
 
 
-			void					Clear(){byteSize = 0; resolution = Resolution3D(); format = DXGI_FORMAT_UNKNOWN;}
+			void					Clear(){byteSize = 0; mipLevels = 1; resolution = Resolution3D(); format = DXGI_FORMAT_UNKNOWN;}
 		public:
 			/**/					BaseTexture():byteSize(0),format(DXGI_FORMAT_UNKNOWN)	{};
 			const Resolution3D&		GetResolution() const {return resolution;}
 			size_t					GetByteSize()	const	{return byteSize;}
+			DXGI_FORMAT				GetFormat() const {return format;}
+			UINT					GetMipLevels() const {return mipLevels;}
+			void					_SetMipLevels(UINT mipLevels) {this->mipLevels = mipLevels;}
 
 			void					swap(BaseTexture&other)
 			{
 				std::swap(byteSize,other.byteSize);
 				std::swap(resolution,other.resolution);
 				std::swap(format,other.format);
+				std::swap(mipLevels,other.mipLevels);
 			}
 		};
 
@@ -731,7 +736,6 @@ namespace Engine
 			Handle<ID3D11Texture2D>	handle2D;
 			Handle<ID3D11DepthStencilView>	dsView;
 			Handle<ID3D11ShaderResourceView>	view;
-
 		public:
 			void					Create(const Resolution&);
 			void					Clear()

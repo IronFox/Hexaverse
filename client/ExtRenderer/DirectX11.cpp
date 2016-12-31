@@ -5,7 +5,7 @@
 #include "DirectX11.h"
 #include <io/file_system.h>
 //#include <DxErr.h>
-#include <io/encryption.h>
+#include <io/cryptographic_hash.h>
 #include <engine/timing.h>
 #include <comdef.h>
 
@@ -263,7 +263,7 @@ namespace Engine
 
 		UINT flags = 0;
 		#ifdef _DEBUG
-			//flags |= /*D3D11_CREATE_DEVICE_DEBUGGABLE;*/ D3D11_CREATE_DEVICE_DEBUG;
+			flags |= /*D3D11_CREATE_DEVICE_DEBUGGABLE |*/ D3D11_CREATE_DEVICE_DEBUG;
 		#endif
 		// create a device, device context and swap chain using the information in the scd struct
 		
@@ -1227,7 +1227,7 @@ namespace Engine
 	}
 
 
-	void				DX11::StageTexture::CreateOrResize(const Resolution3D&resolution, DXGI_FORMAT format)
+	void				DX11::StageTexture::CreateOrResize(const Resolution3D&resolution, DXGI_FORMAT format, UINT mipmapLayers)
 	{
 		if (handle.IsSet() && format == this->format && this->resolution == resolution)
 			return;
@@ -1244,7 +1244,7 @@ namespace Engine
 			texDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
 			texDesc.Format = format;
 			texDesc.Width = resolution.width;
-			texDesc.MipLevels = 1;
+			texDesc.MipLevels = mipmapLayers;
 			texDesc.MiscFlags = 0;
 			texDesc.Usage = D3D11_USAGE_STAGING;
 
@@ -1261,7 +1261,7 @@ namespace Engine
 			texDesc.Format = format;
 			texDesc.Width = resolution.width;
 			texDesc.Height = resolution.height;
-			texDesc.MipLevels = 1;
+			texDesc.MipLevels = mipmapLayers;
 			texDesc.MiscFlags = 0;
 			texDesc.SampleDesc.Count = 1;
 			texDesc.SampleDesc.Quality = 0;
@@ -1281,7 +1281,7 @@ namespace Engine
 			texDesc.Width = resolution.width;
 			texDesc.Height = resolution.height;
 			texDesc.Depth = resolution.depth;
-			texDesc.MipLevels = 1;
+			texDesc.MipLevels = mipmapLayers;
 			texDesc.MiscFlags = 0;
 			texDesc.Usage = D3D11_USAGE_STAGING;
 
@@ -1790,8 +1790,12 @@ namespace Engine
 		desc.Height = res.height;
 		desc.MipLevels = 1;
 		if (supportsMips)
+		{
 			desc.MipLevels = _CountMipLevels(res);
-
+			colorTarget[targetIndex]._SetMipLevels(desc.MipLevels);
+		}
+		else
+			colorTarget[targetIndex]._SetMipLevels(1);
 		desc.ArraySize = 1;
 		desc.Usage = D3D11_USAGE_DEFAULT;
 		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
@@ -1877,6 +1881,7 @@ namespace Engine
 			}
 			colorTarget[i].resolution = Resolution3D(res,1);
 			colorTarget[i]._CreateView(desc);
+			colorTarget[i]._SetMipLevels(desc.MipLevels);
 		}
 
 		if (depthStencil)
@@ -1955,6 +1960,7 @@ namespace Engine
 			}
 			colorTarget[i].resolution = res;
 			colorTarget[i]._CreateView(desc);
+			colorTarget[i]._SetMipLevels(desc.MipLevels);
 		}
 	}
 
@@ -1962,7 +1968,7 @@ namespace Engine
 	{
 		if (resolution.CountPixels() == 0)
 			return;
-		stageTexture.CreateOrResize(resolution,format);
+		stageTexture.CreateOrResize(resolution,format,mipLevels);
 		if (handle1D)
 			DirectX11::globalInstance->GetDeviceContext()->CopyResource(stageTexture.GetHandle(),handle1D);
 		elif (handle2D)
@@ -2401,6 +2407,7 @@ namespace Engine
 			return;
 		}
 		_CreateView(desc);
+		mipLevels = layers;
 	}
 	void					DX11::Texture::Load(const Resolution&res, DXGI_FORMAT fmt, const void*data, bool generateMipMaps/*=false*/)
 	{
@@ -2467,6 +2474,7 @@ namespace Engine
 			return;
 		}
 		_CreateView(desc);
+		mipLevels = layers;
 	}
 
 	void					DX11::Texture::LoadCube(const Resolution&res, DXGI_FORMAT fmt, const void*data[6], bool generateMipMaps/*=false*/)
@@ -2540,6 +2548,7 @@ namespace Engine
 			return;
 		}
 		_CreateCubeView(desc);
+		mipLevels = layers;
 	}
 
 	void					DX11::Texture::Load(UINT width, DXGI_FORMAT fmt, const void*data, bool generateMipMaps/*=false*/)
@@ -2602,6 +2611,7 @@ namespace Engine
 			return;
 		}
 		_CreateView(desc);
+		mipLevels = layers;
 	}
 
 	void					DX11::Texture::LoadInts(UINT width, UINT height, BYTE channels, const BYTE*data)
@@ -2806,7 +2816,7 @@ namespace Engine
 		desc.CPUAccessFlags = 0;
 		desc.SampleDesc.Count = 1;
 
-		UINT layers = _CountMipLevels(res);
+		//UINT layers = _CountMipLevels(res);
 
 		HRESULT hr;
 		{
@@ -2860,6 +2870,7 @@ namespace Engine
 				return;
 			}
 		}
+		mipLevels = 1;
 	}
 
 	bool	DirectX11::_CreateDepthStencilTarget(const Resolution&res)
@@ -3028,7 +3039,7 @@ namespace Engine
 		D3D11_TEXTURE2D_DESC desc;
 		source->GetDesc(&desc);
 		DXGI_FORMAT format = desc.Format;
-		destination.setContentType(PixelType::StrictColor);
+		destination.SetContentType(PixelType::StrictColor);
 
 		BYTE channels = 0;
 		switch (format)
@@ -3051,7 +3062,7 @@ namespace Engine
 		
 		Resolution3D res(desc.Width,desc.Height,1);
 		
-		stageTexture.CreateOrResize(res,format);
+		stageTexture.CreateOrResize(res,format,desc.MipLevels);
 
 		if (desc.SampleDesc.Count > 1)	
 		{

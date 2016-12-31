@@ -7,6 +7,7 @@
 #include "turretBase.h"
 #include "types.h"
 #include "hibernating.h"
+#include "luaAttribute.h"
 
 
 #ifdef HAS_WINDOW
@@ -131,6 +132,54 @@ namespace Objects
 	};
 
 
+	class BaseAttributeCache
+	{
+	public:
+		static index_t			versionCounter;
+
+	};
+
+	template <typename T>
+		class LuaAttributeCache : public BaseAttributeCache
+		{
+			typedef BaseAttributeCache	Super;
+		public:
+			index_t				versionCounter=InvalidIndex;
+			T					cached;
+			template <typename F1, typename F2>
+				T				GetEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source,const LuaAttribute<T,F2>&bonus);
+			template <typename F1>
+				T				GetEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source)	{return GetEMPModified(e,source,LuaAttribute<T,NoFilter>());}
+			template <typename F1, typename F2>
+				String			DescribeEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source,const LuaAttribute<T,F2>&bonus);
+			template <typename F1>
+				String			DescribeEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source)	{return DescribeEMPModified(e,source,LuaAttribute<T,NoFilter>()); }
+			template <typename T2, typename F1, typename F2>
+				T				Get(const Lua::Reference&researchState, const LuaAttribute<T,F1>&source, const LuaAttribute<T2,F2>&multiplier, T minimum);
+			bool				IsCurrent() const {return versionCounter == Super::versionCounter;}
+			T					Update(T newValue) {cached = newValue; versionCounter = Super::versionCounter; return cached;}
+		};
+
+	class CachedAttributes
+	{
+	public:
+		LuaAttributeCache<float>	groundScanningRange,
+									maxScanningRange,
+									horizontalAttackRange;
+		LuaAttributeCache<int>		maxHealth,constructionCost;
+	};
+
+
+	class BaseAttributeTable
+	{
+	public:
+		//all functions here take the research state of an owning faction into account
+		LuaAttribute<int,NoFilter>			maxHealth,
+											constructionCost;
+		LuaAttribute<float,UnitScaleFilter>	maxScanningRange;
+		LuaAttribute<bool,NoFilter>			isUnlocked;
+	};
+
 	
 	/**
 	World entity base class.
@@ -163,7 +212,6 @@ namespace Objects
 		#ifndef CLIENT
 
 			float					motionTime=0.f;		//!< Time (in seconds) into the motion phase to calculate event times
-
 			Random					entityRandom;
 			
 			void					ReSeedRandom();
@@ -171,6 +219,11 @@ namespace Objects
 			void					ResetMotionTime()	{motionTime = 0;}
 
 		#endif
+
+		mutable CachedAttributes	cache;	//less wrong to make this mutable in const methods, than changing all const methods that don't actually change their respective object
+
+		Lua::Reference				GetResearchState() const;
+		virtual BaseAttributeTable*	GetTable() const {FATAL__("Attempting to query attribute table on "+GetTypeName());  return nullptr;}
 
 		inline void					SyncTime(float&remoteTime, float timeOffset)
 		{
@@ -306,12 +359,9 @@ namespace Objects
 			virtual OpenAL::Wave	GetAmbientSound() const;
 		#endif
 
-		/**
-		Retrieves the maximum possible health level
-		*/
-		virtual int					GetMaxHealth() const {return std::max(1,GetConstructionCost()/5);}
 
-		virtual int					GetConstructionCost() const = 0;	//!< Retrieves the minerals required to construct a new instance of this structure
+
+		virtual int					GetConstructionCost() const;	//!< Retrieves the minerals required to construct a new instance of this structure
 
 		/**
 		Queries the entity height in layers. Most entities have height=1
@@ -371,9 +421,20 @@ namespace Objects
 			virtual void			PrototypeLoadGeometry() {};
 		#endif
 
-		virtual float				GetMaxScanningRange() const	{return 2.f * Grid::UnitScale;};	//returns the effective scanning range of the local entity
-		float						GetScanningRange() const;
+		virtual int					GetMaxHealth() const;
+		virtual String				DescribeMaxHealth() const;
+		/**
+		Queries the current scanning radius of the local entity, including research and EMP effects.
+		Currently this is overridden by MobileEntity, Vehicle, and Tower
+		*/
+		virtual float				GetScanningRange() const;
+		/**
+		Explicitly describes how the scanning range is computed (only has to explicitly name research, not EMP, but has to include EMP in the resulting numbers)
+		*/
+		virtual String				DescribeScanningRange() const;
+		static float				StaticEMPModify(float raw, float min, int empDamageLevel);
 		float						EMPModify(float raw, float min) const;
+		std::function<float(float)>	BindEMPModifyFunction() const {return std::bind(&WorldEntity::EMPModify,this,std::placeholders::_1,2);}
 		
 		virtual PTurretBase			GetTurretBase(float &zOffset) { return PTurretBase();}
 		inline PTurretBase			GetTurretBase() { float dummy; return GetTurretBase(dummy);}
@@ -395,6 +456,11 @@ namespace Objects
 
 		#ifndef CLIENT
 			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) = 0;
+
+			/**
+			Forces all tasks to be dropped that do not result in resource loss. Other tasks must remain
+			*/
+			virtual void			ClearSafeTasks()	{};
 		#endif
 
 
@@ -402,6 +468,9 @@ namespace Objects
 		virtual bool				IsWorkingStructure() const {return false;}
 		virtual bool				IsMobile() const {return false;}
 		virtual bool				IsTower() const {return false;}
+
+		virtual bool				IsUnlockedAtState(const Lua::Reference&researchState) const	{return GetTable()->isUnlocked.GetValue(researchState);}
+		bool						IsUnlocked() const {return IsUnlockedAtState(GetResearchState());}
 		virtual bool				IsVehicle() const {return false;}
 		#ifndef NO_SATELLITES
 			virtual bool			IsSatellite() const {return false;}
@@ -551,6 +620,51 @@ namespace Objects
 	#ifdef CLIENT
 		extern Buffer0<PWorldEntity>		waste;
 	#endif
+
+
+	template <typename T>
+		template <typename F1, typename F2>
+			T	LuaAttributeCache<T>::GetEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source,const LuaAttribute<T,F2>&bonus)
+			{
+				if (versionCounter != Super::versionCounter)
+				{
+					versionCounter = Super::versionCounter;
+					T val = source.GetValue(e.GetResearchState());
+					if (bonus.IsSet())
+						val += bonus.GetValue(e.GetResearchState());
+					cached = WorldEntity::StaticEMPModify(val,2.f * Grid::UnitScale,e.empDamageLevel);
+				}
+				return cached;
+			}
+	template <typename T>
+		template <typename F1, typename F2>
+			String	LuaAttributeCache<T>::DescribeEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source,const LuaAttribute<T,F2>&bonus)
+			{
+				if (bonus.IsSet())
+				{
+					String bonusStr = bonus.Describe(e.GetResearchState());
+					if (bonusStr != "0")
+						return String(GetEMPModified(e,source,bonus))+" [="+source.Describe(e.GetResearchState()) + "+"+bonusStr+" (bonus)]";
+				}
+			
+				return source.Describe(e.GetResearchState());
+			}
+	template <typename T>
+		template <typename T2,typename F1, typename F2>
+			T	LuaAttributeCache<T>::Get(const Lua::Reference&researchState, const LuaAttribute<T,F1>&source, const LuaAttribute<T2,F2>&multiplier, T minimum)
+			{
+				if (versionCounter != Super::versionCounter)
+				{
+					versionCounter = Super::versionCounter;
+					T val = source.GetValue(researchState);
+					if (multiplier.IsSet())
+						val*=multiplier.GetValue(researchState);
+					
+					val = vmax(val, minimum);
+					cached = val;
+				}
+				return cached;
+			}
 
 
 	PWorldEntity							GetEntity(const TUniqueID&id);
