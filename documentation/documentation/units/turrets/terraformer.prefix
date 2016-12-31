@@ -6,4 +6,7 @@
 *  Base [[concepts/scanning range]]: 4
 *  Construction: Converts %Minerals%10 per round
 *  Terraforming: Can shape the surrounding terrain
+*  Base storage capacity:
+* %Minerals%200
 This turret type can build structures in valid locations. It requires %Minerals% to initiate construction.
+This turret type is especially suited for detecting hostile entities. Such turret types are manadatory in order to see hostile forces approaching, as well as their attacks. Offensive turrets usually lack the necessary [[concepts/scanning range]] to see where they are shooting and depend on this turret type to reside in the vicinity.

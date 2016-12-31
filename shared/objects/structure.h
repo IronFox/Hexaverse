@@ -654,7 +654,7 @@ namespace Objects
 			{
 				Super::DescribeType(label,descFlags);
 				label.MarkBriefEnd();
-				label << "Pylons establish wireless links between structures that are too distant from one another to otherwise connect. Connected structures form compounds and share their input/output.";
+				label << "Pylons can establish wireless links between compounds that are too distant from one another to otherwise connect. Wirelessly connected pylons form compounds and share their input/output. They also provide an extended drawing range for terraformers to draw from.";
 			}
 		#endif
 

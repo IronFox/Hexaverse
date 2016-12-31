@@ -10,5 +10,7 @@
 *  1 attack per round
 *  Explosion radius: 3
 *  EMP damage: 5
+*  Base storage capacity:
+* %Uranium%150
 This turret type can attack objects in range.
 This turret deals EMP damage. EMP damage temporarily reduces attack and [[concepts/scanning range]], movement speed, and disallows construction operations. Does not cause any permanent damage.

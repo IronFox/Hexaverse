@@ -6,4 +6,6 @@
 *  Base [[concepts/scanning range]]: 1
 *  Explosion radius: 4 (%Uranium%: *2)
 *  Damage: 10 (%Uranium%: *5)
+*  Base storage capacity:
+* %Uranium%200
 This turret type can self-detonate in a large explosion. The vehicle is lost in the process. The explosion can be caused explicitly or by sufficient external damage.Bombs are very powerful and can trigger the explosion of neighboring bombs. An optional %Uranium%-driven DOOMSDAY explosion provides an extended explosion radius but will notify hostile factions of the explosion.

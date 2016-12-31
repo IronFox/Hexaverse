@@ -1,9 +1,10 @@
 {{ img:units/Catamaran Base.png|Catamaran Base}}
 =Catamaran Base=
-*  Cost: %Minerals%100
+*  Cost: %Minerals%60
 *  [[concepts/initiative|Initiative]]: 100
 *  Can climb 1 height level up
 *  Can safely fall down 2 height levels
+*  Storage capacity multiplied by 2
 *  Operation speed multiplied by 2
 *  [[concepts/vehicle|Carrying capacity]]: 15
 *  Base speed: 8 (naval)

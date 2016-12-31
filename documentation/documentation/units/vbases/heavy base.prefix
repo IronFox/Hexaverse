@@ -1,9 +1,10 @@
 {{ img:units/Heavy Base.png|Heavy Base}}
 =Heavy Base=
-*  Cost: %Minerals%80
+*  Cost: %Minerals%45
 *  [[concepts/initiative|Initiative]]: 100
 *  Can climb 1 height level up
 *  Can safely fall down 2 height levels
+*  Storage capacity multiplied by 2
 *  Operation speed multiplied by 2
 *  [[concepts/vehicle|Carrying capacity]]: 10
 *  Base speed: 15

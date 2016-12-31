@@ -1,0 +1,6 @@
+{{ img:units/Pylon.png|Pylon}}
+=Pylon=
+*  Health: 4
+*  Price: %Minerals% 20
+*  [[concepts/scanning range|Scanning range]]: 2
+Pylons can establish wireless links between [[concepts/compound]]s that are too distant from one another to otherwise connect. Wirelessly connected pylons form [[concepts/compound]]s and share their input/output. They also provide an extended drawing range for terraformers to draw from.

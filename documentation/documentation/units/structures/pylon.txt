@@ -1,0 +1,6 @@
+
+{{pylons.png |Pylon chain}}
+The left image shows a sequence of pylons connecting to one another.
+The selected [[units/turrets/terraformer]] can [[concepts/compound|draw]] from the distant compound as long as it remains within the visible range.
+
+Likewise, other pylons will connect to it if constructed within this range.

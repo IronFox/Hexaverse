@@ -1,4 +1,4 @@
-=Compound=
+l =Compound=
 
 Neighboring structures of at most one height layer of difference form compounds.
 Within a compound, working structures auto-balance [[concepts/resources|resource]] output and demand. Passive structures may function as relays between distant structures.
@@ -19,3 +19,10 @@ If, for instance, insufficient energy is available to explicitly enable a certai
 This, in turn, might enable fuel [[units/structures/mine|mines]] that have not been running at this point.
 
 Rapid change (such as [[units/structures/connector|connectors]] being destroyed) will see the minimal number of structures disabled to balance out [[concepts/resources|resource]] supply and demand.
+
+==Resource Drawing==
+{{ compounds.jpg?300|Two disconnected compounds and their drawing ranges}}
+[[units/turrets/terraformer|Terraformers]] will draw necessary construction resources from nearby compounds while within their wireless transfer range.
+As long as they remain there, construction operations favor resource drawing over depleting any locally stored resources. Only if all compounds are out of range or no resources can be drawn from any, the former will use its own storage.
+
+[[units/structures/pylon|Pylons]] may be used to greatly enhance this range.
