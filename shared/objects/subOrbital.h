@@ -73,7 +73,7 @@ namespace Objects
 				virtual bool		ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget,Grid::LCellIdI&actual) const {return false;}
 				virtual bool		ProcessRound(float&atTime);
 			#endif
-			int						GetMaxAirSpeed() const {return 100.f / turret->weight.GetValue(GetResearchState());};
+			float					GetMaxAirSpeed() const {return 100.f / turret->weight.GetValue(GetResearchState());};
 
 			//TurretBase overrides:
 			virtual float			GetFlatAttackRange() const override;
