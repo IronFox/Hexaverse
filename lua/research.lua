@@ -186,7 +186,7 @@ TurretConfig =
 		HealthMultiplier = 2,
 		ScanningRange = 5,
 		AttacksPerRound = 2,
-		DamageLevel = 3,
+		DamageLevel = 7,
 		ExplosionRadius = 1,
 		HorizontalAttackRange = 5,
 		IsUnlocked = true,
@@ -307,7 +307,7 @@ VehicleBaseConfig =
 {
 	Hoverbase = 
 	{
-		Cost = 40,
+		Cost = 30,
 		MovementSpeed = 20,
 		CarryingCapacity = 1,
 		Health = 4,
@@ -317,7 +317,7 @@ VehicleBaseConfig =
 	},
 	HeavyBase = 
 	{
-		Cost = 80,
+		Cost = 45,
 		MovementSpeed = 15,
 		CarryingCapacity = 10,
 		Health = 12,
@@ -327,7 +327,7 @@ VehicleBaseConfig =
 	},
 	CatamaranBase = 
 	{
-		Cost = 100,
+		Cost = 60,
 		MovementSpeed = 8,
 		CarryingCapacity = 15,
 		Health = 12,

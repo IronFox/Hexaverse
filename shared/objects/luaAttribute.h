@@ -55,9 +55,18 @@ namespace Objects
 				luaDescribeValue.Clear();
 			}
 
+			T			GetUnfilteredValue(const Lua::Reference&researchState)	const
+			{
+				if (constOverride.isSet)
+					return constOverride.constValue;
+				if (luaGetValue.IsEmpty())
+					return (T)0;
+				return luaGetValue(researchState);
+			}
+
 			T			GetValue(const Lua::Reference&researchState)	const
 			{
-				T rs = _GetValue(researchState);
+				T rs = GetUnfilteredValue(researchState);
 				Filter::Filter(rs);
 				return rs;
 			}
@@ -66,18 +75,11 @@ namespace Objects
 			{
 				if (luaDescribeValue.IsSet())
 					return luaDescribeValue(researchState);
-				return _GetValue(researchState);
+				return GetUnfilteredValue(researchState);
 			}
 
 		private:
-			T			_GetValue(const Lua::Reference&researchState)	const
-			{
-				if (constOverride.isSet)
-					return constOverride.constValue;
-				if (luaGetValue.IsEmpty())
-					return (T)0;
-				return luaGetValue(researchState);
-			}
+
 		};	
 	
 }
