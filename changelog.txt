@@ -9,6 +9,7 @@ v0.3.26
 	> Right-click navigation now clears any tasks that are safe to remove unless the shift key is pressed.
 	> Moved structure batch building to Alt key.
 	> When building anything using the terraformer it will now clear all safe tasks unless shift is pressed.
+	> Improved performance of wireless compound transfer range rendering.
 	* Fixed bridge pathfinding when building directly on lava.
 	* Fixed specatator mode sometimes not being available when connecting from localhost.
 	* Fixed colors in transparent screenshot mode.

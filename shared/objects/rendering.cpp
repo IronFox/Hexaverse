@@ -4,6 +4,7 @@
 #include <engine/aspect.h>
 #include "../../client/ExtRenderer/DirectX11.h"
 #include <math/vector.h>
+#include <geometry/bvh.h>
 #include <image/converter/magic.h>
 #include "structure.h"
 #include "vehicle.h"
@@ -150,6 +151,14 @@ namespace Objects
 	{
 		smokeTrails[0].Clear();
 		smokeTrails[1].Clear();
+	}
+
+
+	
+
+	void Renderer::RenderRangeSphere(const Math::Sphere<>&sphere, const float4&color)
+	{
+		RenderRangeSphere(sphere.center,sphere.radius,color);
 	}
 
 
@@ -1051,8 +1060,20 @@ namespace Objects
 
 
 
-	float4	ColorCompoundInRange(UINT32 cID)
+	static float4	ColorCompoundInRange(const Objects::Compound&compound)
 	{
+		TUniqueID highest = TUniqueID::Empty();
+
+		for (const auto&s : compound.allStructures)
+		{
+			PStructure w = s.lock();
+			if (w && w->id > highest)
+				highest = w->id;
+		}
+
+
+		UINT64 cID = *(const UINT64*)highest.bytes;
+
 		int primaryColor = 2 - (cID%3);
 		int secondaryColor = (cID/3)%3;
 		int secondaryIntensity = (cID/9)%2;
@@ -1967,7 +1988,71 @@ namespace Objects
 
 
 	#ifndef ONE_COMPOUND_PER_FACTION
-		static Buffer0<UINT32>	compoundScope;
+
+		struct CompoundDesc
+		{
+			index_t				compoundIndex;
+			float4				color;
+			Buffer0<Math::Sphere<> >spheres;
+
+
+			void				swap(CompoundDesc&other)
+			{
+				swp(compoundIndex,other.compoundIndex);
+				swp(color,other.color);
+				spheres.swap(other.spheres);
+			}
+
+			void				UpdateSpheres()
+			{
+				spheres.Clear();
+				const Compound&source = compounds[compoundIndex];
+				foreach (source.allStructures, _s)
+				{
+					PStructure s= _s->lock();
+					if (!s)
+						continue;
+					spheres << Sphere<>(s->GetWorldPosition(),s->GetWirelessTransferRange());
+				}
+				std::sort(spheres.begin(),spheres.end(),[](const Sphere<>&a, const Sphere<>&b)->bool {return a.radius > b.radius;});
+
+				static BVH<Sphere<>, 2,float,NoBVHAttachment,SphereBVHNature<Sphere<>,float,NoBVHAttachment> >	bvh;
+
+				static Buffer0<Sphere<> >	final;
+				static Buffer0<Sphere<>*>	existing;
+				final.Clear();
+				bvh.Clear();
+				bvh.DisallowAutomaticReconstruction();
+				float lastRadius = -1;
+				foreach (spheres,s)
+				{
+					existing.Clear();
+
+					if (lastRadius != -1 && lastRadius != s->radius)
+						bvh.ForceReconstruction();
+					lastRadius = s->radius;
+					bvh.Lookup(*s,existing);
+
+					bool found = false;
+					foreach (existing, s2)
+						if ((*s2)->Contains(*s))
+						{
+							found = true;
+							break;
+						}
+					if (found)
+						continue;
+
+
+					bvh.Insert(s,*s);
+					final << *s;
+				}
+				spheres.swap(final);
+			}
+		};
+
+
+		static Buffer0<CompoundDesc,Swap>	compoundScope;
 		typedef std::pair<TMatrix4<>, float3>	Arrow;
 		static Buffer0<Arrow>	resourceArrowSystems,interPylonArrows;
 
@@ -2040,13 +2125,14 @@ namespace Objects
 					continue;
 				if (c->total.balance.IsNotEmpty())
 				{
-					compoundScope << (UINT32)(c - compounds.pointer());
+					compoundScope.Append().compoundIndex = (c - compounds.pointer());
 				}
 			}
 
-			for (auto c : compoundScope)
+			for (auto&c : compoundScope)
 			{
-				compounds[c].color = ColorCompoundInRange(c);
+				c.color = ColorCompoundInRange(compounds[c.compoundIndex]);
+				c.UpdateSpheres();
 			}
 			anyCompoundsColored = true;
 			UpdateInterPylonArrows();
@@ -2100,13 +2186,14 @@ namespace Objects
 					continue;
 				if (c->total.balance.AnyIsSet(producersOf))
 				{
-					compoundScope << c - compounds.pointer();
+					compoundScope.Append().compoundIndex = (c - compounds.pointer());
 				}
 			}
 
-			for (auto c : compoundScope)
+			for (auto&c : compoundScope)
 			{
-				compounds[c].color = ColorCompoundInRange((UINT32)(c));
+				c.color = ColorCompoundInRange(compounds[c.compoundIndex]);
+				c.UpdateSpheres();
 			}
 
 
@@ -2186,9 +2273,9 @@ namespace Objects
 				display.LinkShader(compoundShader,true,true);
 
 					display.SetObjectMatrix(Matrix<>::eye4);
-					for (auto ci : compoundScope)
+					for (const auto&ci : compoundScope)
 					{
-						const auto*c = compounds + ci;
+						const auto*c = compounds + ci.compoundIndex;
 						const float4&color = c->color;
 						if (color.a == 0.f)
 							continue;
@@ -2202,9 +2289,9 @@ namespace Objects
 							}
 						}
 					}
-					for (auto ci : compoundScope)
+					for (const auto&ci : compoundScope)
 					{
-						const auto*c = compounds + ci;
+						const auto*c = compounds + ci.compoundIndex;
 						const float4&color = c->color;
 						if (color.a == 0.f)
 							continue;
@@ -2263,30 +2350,25 @@ namespace Objects
 
 				float dr = extendedShadow ? RangeShadowExtension : 0.f;
 
-				for (auto ci : compoundScope)
+				for (const auto&ci : compoundScope)
 				{
-					const auto*c = compounds + ci;
+					//const auto*c = compounds + ci;
 
-					foreach(c->allStructures, _s)
+					foreach(ci.spheres, _s)
 					{
-						Structure&s = *_s->lock();
-						RenderRangeSphere(s.GetWorldPosition(),s.GetWirelessTransferRange()+dr,float4());
+						RenderRangeSphere(_s->center,_s->radius+dr,float4());
 					}
 
 				}
-				for (auto ci : compoundScope)
+				for (const auto&ci : compoundScope)
 				{
-					const auto*c = compounds + ci;
-					float4 color = extendedShadow ? float4(0,0,0,RangeShadowOpacity) : float4(c->color.rgb*1.5f,1.0f);
-					foreach(c->allStructures, _s)
+					//const auto*c = compounds + ci;
+					float4 color = extendedShadow ? float4(0,0,0,RangeShadowOpacity) : float4(ci.color.rgb*1.5f,1.0f);
+					foreach(ci.spheres, _s)
 					{
-						Structure&s = *_s->lock();
-						RenderRangeSphere(s.GetWorldPosition(),s.GetWirelessTransferRange()+dr,color);
+						RenderRangeSphere(_s->center,_s->radius+dr,color);
 					}
-
 				}
-
-
 			}
 
 			display.RestoreRendererState();
