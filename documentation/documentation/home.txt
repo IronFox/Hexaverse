@@ -1,8 +1,8 @@
-= Welcome to the Documentation of Hexaverse =
+= Documentation =
 
-{{img:game.png?400 }}
+{{ img:game.png?400}}
 
-Hexaverse is a round based X4 strategy game. Thrive and expand around the globe.
+Hexaverse is a round based X4 strategy game. Thrive and expand around the globe, or get whooped by someone that is better at it than you.
 
 If you are new, check out [[controls]], an explanation of the [[terrain]] or all [[units/list|supported unit types]].
 You may also be interested in game concepts such as [[concepts/round|round processing]], [[concepts/faction|factions]] or [[concepts/scanning range|sensory]].
@@ -10,6 +10,27 @@ You may also be interested in game concepts such as [[concepts/round|round proce
 Hexaverse is a networked game.
 It comes in two parts:
 a **visual client** and a [[server start|dedicated server]].
-Upon start the visual client automatically locates any server running on the local area network.
+When starting the visual client, it automatically locates any server running on the local area network and displays it in its server list.
+If there are none, you may have to [[server start|start your own server]].
 
 To manage game savestates check out the [[config/save games]] documentation.
+
+== Requirements ==
+Hexaverse is networked but may run isolated on the local system.
+Typically you need some network connection to play against others.
+
+Hexaverse currently only runs on windows.
+The server can be started on Linux using Wine, but nobody has had any luck with the client so far.
+
+You will need a video card capable of rendering Direct3D 10 content.
+If it is capable of doing that, then Hexaverse should run with an acceptable framerate.
+This requirement also means you need some screen. You should definitely have a screen.
+
+Audio is optional.
+If you want audio output, then you need an OpenAL-compatible sound card or onboard device.
+I have not heard of any devices that are not compatible with OpenAL, so if you are listening to music from your PC right now, then you're good.
+
+Keyboard and Mouse, I guess.
+The game makes use of left, middle (optional), and right clicks, as well as the mouse wheel (also optional).
+The right click is particularly important.
+A keyboard (at least an emulated one) is necessary to enter your name, possibly a server address, and insults for your opponents when they raid your base.

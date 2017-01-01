@@ -3,7 +3,7 @@
 ==Global Hot Keys==
 * **Escape** opens the menu, or aborts any currently visible dialog.
 * **F3** creates a screenshot in ''[[config/game folder]]\client\screenshots\''. **Shift+F3** causes the capture to retain its background transparency.
-
+* **Alt+Enter** toggles (fake) fullscreen mode.
 ==Camera Control==
 
 * The **ASDW** keys can be used to rotate the camera around the currently focused point.
