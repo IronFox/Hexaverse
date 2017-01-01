@@ -694,6 +694,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 		std::cin.getline(confirm,sizeof(confirm));
 	#endif
 
+	TerminateNow(true);
 
 	//NetworkConnection::Close();
 
