@@ -20,15 +20,9 @@ Otherwise the command queue is cleared first.
 
 Right clicking anywhere with a [[units/structures/vehicle plant]] selected moves or unsets its gathering point.
 
-===The Idle Queue===
+===Idle Units===
 Players are encouraged to check for idle units by pressing the **space key** at the beginning of each [[concepts/round]].
-Different requirements apply for a unit to be considered //idle//:
-* A mobile unit has run out of tasks and is awake.
-* A factory has run out of production tasks, is awake, and can be [[concepts/compound|enabled]].
-* A mine is currently disabled, is awake, and can be [[concepts/compound|enabled]].
-* An offensive mobile unit has no tasks and detected hostile units within attack range (this point ignores a potential sleep-state).
-
-With the exception of the last point, units can be put to sleep to avoid them appearing in the idle queue. If no unit is left in it, the //end round// button will flash.
+The queue will iterate through all units currently considered [[concepts/idle]].
 
 ==GUI Buttons==
 
@@ -43,7 +37,7 @@ Left to right, the commands are:
 * **End Round** (shortcut: return): Requests the current round to end. You should press this button when you are done issuing commands to your units. Press the button again to undo the request (works only if at least one connected player has no yet requested a new round).
 * **Auto End Round**: Toggles automatic round ending if the game detects that all units already have commands. Effective only if this state was detected at the beginning of the round, and when activated manually.
 * **View**: Group of commands that affect the visual game representation.
-** **ClipTerrain** (shortcut: ctrl): Toggles visual terrain clipping (see [[terrain]] for details).{{ img:ClipTerrain.png?300|Clipped Terrain}}
+** **ClipTerrain** (shortcut: ctrl): Toggles visual terrain clipping (see [[terrain]] for details).
 ** **Clip-View Down** (shortcut: page down): Increases clipping depth.
 ** **Clip-View Up** (shortcut: page up): Decreases clipping depth.
 ** **Hide Objects**: Hides/shows all units on screen. Shadows are still rendered.
@@ -51,10 +45,14 @@ Left to right, the commands are:
 ** **Show Ranges**: Displays all friendly unit ranges.
 ** **Show Hostile Ranges**: Displays all hostile unit ranges.
 
+===Contact and Event Lists===
+Friendly and hostile contacts are grouped by type and displayed at the top edge of the screen.
+Continuously clicking on the same group will go through all members of that group.
+Beneath it, important events are listed, such as unit losses and attacks that occurred during the last round.
 
 ===General Commands===
 {{img:generalCommands.png |General Unit Commands}}
-Commands that are always applicable, or applicable to most units are located in the bottom right of the screen.
+[[concepts/commands|Commands]] that are always applicable, or applicable to most units are located in the bottom right of the screen.
 
 Left to right, the commands are:
 * **Undo** (shortcut: backspace): Drops the last task of the selected unit. Only applicable to active units.
@@ -67,7 +65,5 @@ Left to right, the commands are:
 ===Specific Unit Commands===
 {{img:terraformerCommands.png |Terraformer commands}}
 
-Different visual command trees are available depending on the type and state of the selected unit. Rest the mouse cursor atop any command to view its hint-overlay.
-
-
-===Contact List===
+Different visual [[concepts/commands|command]] trees are available depending on the type and state of the selected unit. Rest the mouse cursor atop any command to view its hint-overlay.
+The currently expanded tree element is shown in blue outline.
