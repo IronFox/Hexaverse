@@ -1439,7 +1439,7 @@ namespace ApplicationInterface
 
 
 		UI::HexGrid::Configure(Objects::selectedEntity);
-
+		StatePanel::SignalChange();
 	}
 	#endif
 }
