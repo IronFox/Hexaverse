@@ -2092,6 +2092,8 @@ void MyFatal(const FatalDescriptor&descriptor)
 	ErrMessage(message);
 	//NetworkConnection::Close();
 
+	TerminateProcess(GetCurrentProcess(),0);	//self-terminate
+
 }
 
 
