@@ -1177,7 +1177,7 @@ namespace ParameterConfig
 					startInConfig = true;
 				elif (!strcmp(arg,"--loadAuto") || !strcmp(arg,"-a"))
 					mode = ExpectAutoSaveNumber;
-				elif (!strcmp(arg,"--help"))
+				elif (!strcmp(arg,"--help") || !strcmp(arg,"-h"))
 				{
 					PrintHelp();
 					exit(0);
