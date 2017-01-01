@@ -1124,15 +1124,15 @@ namespace ParameterConfig
 	void	PrintHelp()
 	{
 		std::cout << std::endl << "usage: "<<programName<<" ..."<<std::endl;
-		std::cout << "  --load/-l [filename]\tload savegame"<<std::endl;
-		std::cout << "  --loadAuto/-a [number]\tload auto-savegame. number=0 => most recent"<<std::endl;
-		std::cout << "  --offline/-o \tstart offline"<<std::endl;
-		std::cout << "  --config/-c \tstart in configuration mode"<<std::endl;
-		std::cout << "  --port/-p [basePort]\tuse a non-default base port ("<<DEFAULT_SERVER_BASE_PORT<<" is default)"<<std::endl;
-		std::cout << "  --noRemote/-r \tdisable remote control service"<<std::endl;
+		std::cout << "  --load/-l [filename]\tLoad savegame"<<std::endl;
+		std::cout << "  --loadAuto/-a [number]\tLoad auto-savegame. number=0 => most recent"<<std::endl;
+		std::cout << "  --offline/-o \tStart offline"<<std::endl;
+		std::cout << "  --config/-c \tStart in configuration mode"<<std::endl;
+		std::cout << "  --port/-p [basePort]\tUse a non-default base port ("<<DEFAULT_SERVER_BASE_PORT<<" is default)"<<std::endl;
+		std::cout << "  --noRemote/-r \tDisable remote control service"<<std::endl;
 		std::cout << "  --rv4\tStart remote control service using IPv4"<<std::endl;
-		std::cout << "  --test/-t \trun self-tests, then quit"<<std::endl;
-		std::cout << "  --world/-w [worldID] \tuse custom world ID, and start empty"<<std::endl;
+		std::cout << "  --test/-t \tRun self-tests, then quit"<<std::endl;
+		//std::cout << "  --world/-w [worldID] \tuse custom world ID, and start empty"<<std::endl;
 	}
 
 
@@ -1277,7 +1277,7 @@ bool	IsTargetWorkingDirectory(const PathString&dir)
 {
 	PathString test = dir + "/config/declaration.xml";
 	bool rs = FileSystem::IsFile(test);
-	LogEvent(EventSignificance::Debug,"Checking server target directory candidate '"+String(dir)+"'=>'"+String(test)+"'. Result="+String(rs));
+	LogEvent(EventSignificance::Debug,"Checking server target directory candidate '"+String(dir)+"' => IsFile('"+String(test)+"'). Result="+String(rs));
 
 
 	return rs;
