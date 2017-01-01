@@ -1,3 +1,5 @@
+v0.4.0
+
 v0.3.26	[Jan 1 2017]
 	+ Added Lua script support.
 	+ Introduced laboratory structure and Lua research programs.
