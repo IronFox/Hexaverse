@@ -1,4 +1,4 @@
-﻿IMPORTANT: errors in research lua script (in user directory) causes fatal. should make backup and replace with original
+﻿IMPORTANT: errors in research lua script (in user directory) causes fatal (if required things are missing). should make backup and replace with original
 
 Wider emp field areas in low-resolution terrain mode.
 
