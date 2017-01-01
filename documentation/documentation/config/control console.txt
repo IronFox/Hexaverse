@@ -5,11 +5,14 @@ It is provided in the ''ControlConsole\'' subdirectory of the install directory.
 The program will automatically connect with any local server running on the default server port. If no server is running, or the connection is lost, the client will continuously probe //localhost// for a connection.
 It is not possible to connect to a remote server, as the server rejects all non-//localhost// connections.
 
+
+
+
 ==Syntax==
 The program loosely follows a unix-like syntax, with commands and variables arranged in virtual directories by the server. Use the ''help'' command to get started.
 
 Some hints:
-* ''ls'' lists the contents of the local virtual server directory
+* ''ls'' lists the contents of the current virtual working directory
 * ''cd [X]'' changes to the relative path ''[X]''. Use ''cd ..'' to move the respective virtual parent directory. Paths starting with a / indicate absolute paths.
 * ''exit'' closes the console
 * ''help [X]'' prints any available help text about ''[X]'' (variable or command)
@@ -18,3 +21,16 @@ Some hints:
 Simply enter a command to execute it. 'Executing' a variable prints its current value.
 
 The console allows partial auto-completion. Use tab on an incomplete input to display and/or automatically chose a complete command/path/variable.
+
+==Virtual Working Directory==
+The server maintains one single working directory across all connected control consoles.
+To assure non-global commands are always executed correctly in a scripted environment use absolute paths (with a leading /).
+
+
+==Runtime Parameters==
+By default the server connects to the default port using interactive mode.
+The following runtime parameters may be used to alter this behavior:
+
+* ''-p/--port [port]'': Use non-default [[server start|base port]].
+* ''-c/--command [cmd]'': Explicitly connect, execute remote command(s), and terminate. Virtual directory updates are printed with a leading =, Regular results with a +, errors with a -. Multiple commands can be chained using ; as separator.
+* Anything else: Interpreted as a command, and executed as if ''-c'' was declared.

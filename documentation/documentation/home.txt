@@ -7,4 +7,9 @@ Hexaverse is a round based X4 strategy game. Thrive and expand around the globe.
 If you are new, check out [[controls]], an explanation of the [[terrain]] or all [[units/list|supported unit types]].
 You may also be interested in game concepts such as [[concepts/round|round processing]], [[concepts/faction|factions]] or [[concepts/scanning range|sensory]].
 
+Hexaverse is a networked game.
+It comes in two parts:
+a **visual client** and a [[server start|dedicated server]].
+Upon start the visual client automatically locates any server running on the local area network.
+
 To manage game savestates check out the [[config/save games]] documentation.
