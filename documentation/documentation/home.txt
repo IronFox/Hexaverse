@@ -1,4 +1,4 @@
-= Documentation =
+= An Introduction =
 
 {{ img:game.png?400}}
 

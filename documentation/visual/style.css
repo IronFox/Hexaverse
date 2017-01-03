@@ -47,6 +47,18 @@ span.file_desc {
 }
 
 
+a.documentation_link {
+	margin: 1px;
+	padding-left: 3px;
+	padding-right: 3px;
+	text-decoration: none;
+	background-color: rgba(255,255,255,0.3);
+	border-width: 1px;
+	border-color: rgba(255,255,255,0.2);
+	border-style: solid;
+	font-size: 110%;
+}
+
 a.download_file {
 	width: 100%;
 	display: block;
