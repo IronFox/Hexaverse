@@ -1,4 +1,5 @@
-v0.4.0
+v0.6.0
+	* Set new version number to be higher than any deprecated feature branch, to avoid confusions.
 
 v0.3.26	[Jan 1 2017]
 	+ Added Lua script support.
