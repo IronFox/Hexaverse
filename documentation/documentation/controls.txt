@@ -20,6 +20,10 @@ Otherwise the command queue is cleared first.
 
 Right clicking anywhere with a [[units/structures/vehicle plant]] selected moves or unsets its gathering point.
 
+Once any construction commands have been issued,
+[[units/turrets/terraformer|Terraformer]] construction commands can be batched quickly by **alt+clicking** at any desired construction location.
+This combination will re-enqueue the last construction command issued to any terraformer.
+
 ===Idle Units===
 Players are encouraged to check for idle units by pressing the **space key** at the beginning of each [[concepts/round]].
 The queue will iterate through all units currently considered [[concepts/idle]].
