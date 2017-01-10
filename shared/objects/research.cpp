@@ -27,7 +27,7 @@ namespace Objects
 												const PResearchTopic&dependency
 											)
 	{
-		LogEvent(EventClass::Preset::important,"Lua created new research '"+name+"'");
+		LogEvent(EventClass::Preset::debug,"Lua created new research '"+name+"'");
 
 		const String&iconSource = iconName.IsEmpty() ? name : iconName;
 

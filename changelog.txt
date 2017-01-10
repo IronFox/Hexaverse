@@ -2,8 +2,12 @@ v0.6.0	[Jan 10 2017]
 	+ Added option to configure the number of factions per unlocked EMP zone.
 	> Lua research script now first falls back to factory default (the research script in the install directory) before loading emergency program.
 	> Enabling or disabling EMP zones now takes immediate effect and is rejected if not possible.
+	> Removed less important lua reporting messages.
 	* Set new version number to be higher than any deprecated feature branch, to avoid confusions.
 	* Missing entries in research scripts no longer cause the program to terminate. Instead, it reports the error and attempts fallback.
+	* Fixed chat message size in visual log.
+	* Fixed visual log positioning.
+	* Configuration-related messages are no longer streamed to clients.
 
 v0.3.26	[Jan 1 2017]
 	+ Added Lua script support.
