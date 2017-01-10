@@ -36,7 +36,7 @@ namespace ScriptCache
 		this->compressed.resizePreserveContent(compressed+4);
 		SHA256::Hash(this->compressed.pointer(),this->compressed.size(),this->identifier);
 
-		LogEvent(EventClass::Preset::configurationPrint,"  "+String(len)+" bytes compressed to "+String(compressed)+" bytes (down to "+String(Round((float)compressed/(float)len * 100.f,1))+"%)");
+		LogEvent(EventClass::Preset::configurationPrint,"  BZ2: "+String(len)+" bytes compressed to "+String(compressed)+" bytes (down to "+String(Round((float)compressed/(float)len * 100.f,1))+"%)");
 		LogEvent(EventClass::Preset::configurationPrint,"  ID updated to "+Bin2Str::ConvertPOD(this->identifier));
 		return true;
 	}
