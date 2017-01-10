@@ -13,7 +13,6 @@ client/.projector/
 server/.projector/
 server/saves/
 game.7z
-client/TechniteLogic/*.config
 client/TechniteLogic/*.manifest
 *.coverage
 *.odt#
@@ -41,7 +40,6 @@ repackAndUpload.bat
 *.exe
 baked/
 *.pdb
-*.config
 Bake/Bake.vshost.exe.manifest
 ThirdParty/lua/.projector/
 documentation/last.html

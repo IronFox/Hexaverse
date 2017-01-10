@@ -118,9 +118,14 @@
 	<context name="Rules">Game rule settings
 		<variable name="gameGoal" default="ConquerNexus">
 			None: No AI bases, no winning rules other than killing everyone else.
-			ConquerNexus: Three AI bases are spawned around the globe. Their center NexusPorts must be conquered by building anything next to it. All three NexusPorts must be conquered to win.
+			ConquerNexus: Three AI bases are spawned around the globe. Their center Nexus Ports must be conquered by building anything next to it. Additional Nexus Ports are spawned if EMP zones are active. Two/three (depending on number of unlocked zones) Nexus Ports must be conquered to win.
 		</variable>
 		<variable name="supportedFactions" default="Spectator, Regular">Comma-separated list of supported faction types.</variable>
+		<variable name="factionsPerEMPZone">
+			The maximum number of allowed factions per unlocked zone. If more factions are created, more zones will be unlocked. The resulting number of unlocked zones is rounded up.
+			Example: factionsPerEMPZone set to 3 causes the first three factions to share the same zone. The fourth faction will permanently unlock a new zone.
+			This value cannot be increased if any factions (besides the Nexus faction) exist.
+		</variable>
 		<variable name="closedGame" default="false">Indicates that new factions can be created only during round 0.</variable>
 		<variable name="roundTimer" default="60">
 			Time in seconds that players can remain in command phase. once the deadline is reached, rounds will be progressed.
@@ -134,6 +139,8 @@
 			Establishes auto-retracting EMP zones that constraint player expansion depending on faction-count.
 			Initially the EMP zones will cover most of the planet. As faction count increases, EMP zones will slowly retract to expose more terrain to expand into.
 			If enabled and gameGoal is set to ConquerNexus, then secondary Nexus Ports will be spawned on poles that are not covered by Nexus stations.
+			Enabling this value on a live session (via the control console) will fail if any factions exist (the Nexus faction does not count).
+			Otherwise EMP zones may be enabled or disabled as desired, but the presence of Nexus Ports remains unaffected prior to constructing a new world.
 		</variable>
 		<variable name="newVehiclesHaveFullAmmo" default="true">
 			New offensive vehicles using normal ammunition start with full ammo.

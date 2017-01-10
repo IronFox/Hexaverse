@@ -1164,7 +1164,7 @@ namespace GUI
 	}
 
 
-	bool			TextField::UpdateIdealWidth()
+	/*virtual*/ float			TextField::GetIdealWidth() const
 	{
 		textout.pushState();
 		textout.scale(textZoom*zoom,textZoom*zoom);
@@ -1177,10 +1177,16 @@ namespace GUI
 				w1 += CharWidth(*c);
 			w = std::max(w,w1);
 		}
-
-		bool changed = Set(rect.x.max, rect.x.min + w / 0.85f);
-
 		textout.popState();
+		return w/ 0.85f;
+	}
+
+	bool			TextField::UpdateIdealWidth()
+	{
+		float w = GetIdealWidth();
+
+		bool changed = Set(rect.x.max, rect.x.min + w);
+
 		return changed;
 	}
 
@@ -1196,6 +1202,11 @@ namespace GUI
 
 	bool		TextField::UpdateHeight()
 	{
+		return UpdateHeight(rect.x);
+	}
+
+	/*virtual override*/ bool		TextField::UpdateHeight(const TFloatRange<>&hRange)
+	{
 		bool changed = false;
 		if (widthLockedToIdeal)
 			changed = UpdateIdealWidth();
@@ -1207,7 +1218,7 @@ namespace GUI
 		Array<String>	wrapped;
 		for (const String&raw : rawText)
 		{
-			wrapf(raw,rect.GetWidth()*0.9f,CharWidth,wrapped);
+			wrapf(raw,hRange.GetExtent()*0.9f,CharWidth,wrapped);
 			wrappedText.MoveAppend(wrapped);
 		}
 		lineAt.SetSize(wrappedText.Count());
@@ -1218,9 +1229,9 @@ namespace GUI
 			lineAt[i] =
 				float2(
 					alignCenter ? 
-						rect.x.center() - textout.getScaledWidth(wrappedText[i])*0.5f
+						hRange.center() - textout.getScaledWidth(wrappedText[i])*0.5f
 						:
-						rect.x.min,
+						hRange.min,
 				y - lineHeight * (i));
 		}
 		textHeight = textout.getScaledHeight() * (float(wrappedText.Count()) + extraSpacing*2.f);
@@ -1573,6 +1584,45 @@ namespace GUI
 			SurfaceRenderer::Flush();
 	
 	}
+
+	/*virtual override*/ float	Checkbox::GetIdealWidth() const
+	{
+		float checkBoxWidth = textZoom*zoom * textout.getScaledHeight() / display.pixelAspect() * 1.5f;
+		return Super::GetIdealWidth() + checkBoxWidth;
+	}
+
+
+	/*virtual override*/ bool	Checkbox::UpdateHeight()
+	{
+		float checkBoxWidth = textZoom*zoom * textout.getScaledHeight() / display.pixelAspect() * 1.5f;
+		return Super::UpdateHeight(FloatRange(rect.x.min + checkBoxWidth,rect.x.max ));
+	}
+
+	/*virtual override*/ void Checkbox::Render()
+	{
+		bool lit = IsLit();
+		//Super::BaseRender(lit,false);
+		Super::RenderText(lit);
+		SurfaceRenderer::SetColor(lit ? float4(0.7f):float4(0.5f));
+		float checkBoxHeight = textZoom*zoom * textout.getScaledHeight();
+		float checkBoxWidth = checkBoxHeight / display.pixelAspect();
+		float top = rect.y.center() + checkBoxHeight*0.7f;// Super::extraSpacing * checkBoxHeight;
+		TFloatRect box = TFloatRect(rect.x.min,top - checkBoxHeight,rect.x.min+checkBoxWidth,top);
+		SurfaceRenderer::Rasterize(box);
+		if (isChecked)
+		{
+			//SurfaceRenderer::SetColor(lit ? float4(0.7f):float4(0.4f));
+			TFloatRect inner = box;
+			inner.Scale(0.8f);
+			SurfaceRenderer::SetColor(lit ? float4(1.f):float4(0.7f));
+			SurfaceRenderer::Rasterize(inner);
+		}
+		SurfaceRenderer::Flush();
+		LineRenderer::SetColor(lit ? float4(1) : float4(0.7f));
+		LineRenderer::Rasterize(box);
+		LineRenderer::Flush();
+	}
+
 }
 
 #endif

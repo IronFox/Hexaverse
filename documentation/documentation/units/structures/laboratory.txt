@@ -1,0 +1,3 @@
+
+Actual research possibilities and benefits depend on the contents of ''research.lua'', which is provided as part of the active [[config/server|server configuration]].
+As a server host, you may adjust the file to your needs.

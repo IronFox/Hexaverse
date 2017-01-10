@@ -1,24 +1,25 @@
 l =Compound=
+{{ isolated compounds.jpg?400|Disconnected Compounds}}
 
 Neighboring structures of at most one height layer of difference form compounds.
-Within a compound, working structures auto-balance [[concepts/resources|resource]] output and demand. Passive structures may function as relays between distant structures.
+Within a compound, working structures auto-balance [[concepts/resources|resource]] supply and demand. Passive structures may function as relays between distant structures.
 Select any structure of a compound to see its resource balance in the bottom left screen corner.
+Its detailed resource supply and demand is listed on the unit panel in the right screen section.
 
-In some game variances all structures of one [[concepts/faction]] form an implicit compound, regardless of distance.
-In others, [[units/structures/connector|connectors]] are required to connect distant structures.
+In most game variances, all structures of one [[concepts/faction]] form an implicit compound, regardless of physical connection.
+In some, however, [[units/structures/connector|connectors]] are required to connect distant structures.
 
-
-==Structure Enabled State==
+==Enabling Structures==
 
 Many structure types can be enabled or disabled.
-Depending on the state of their compound, it may not be possible to enable a particular structure at a time without first disabling some other structure.
-In particular, if a structure consumes limited resources, it may disallow other structures in the same compound to be enabled.
+Depending on the state of their compound, it may be impossible to enable a structure without first disabling some other structure.
+In particular, if a structure consumes limited resources, it may block other structures in the same compound from being enabled.
 
 The game tries to balance supply and demand automatically.
-If, for instance, insufficient energy is available to explicitly enable a certain structure, but [[units/structures/generator|generators]] could be enabled, then it will do so automatically.
-This, in turn, might enable fuel [[units/structures/mine|mines]] that have not been running at this point.
+If, for instance, insufficient %energy% energy is available to explicitly enable a certain structure, but [[units/structures/generator|generators]] could be enabled, then it will do so automatically.
+This, in turn, might enable %fuel% fuel [[units/structures/mine|mines]] that have not been running at this point.
 
-Rapid change (such as [[units/structures/connector|connectors]] being destroyed) will see the minimal number of structures disabled to balance out [[concepts/resources|resource]] supply and demand.
+Rapid change (such as [[units/structures/connector|connectors]] being destroyed) will cause the minimal number of structures being disabled to balance out [[concepts/resources|resource]] supply and demand.
 
 ==Resource Drawing==
 {{ compounds.jpg?300|Two disconnected compounds and their drawing ranges}}

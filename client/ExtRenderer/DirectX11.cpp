@@ -291,7 +291,38 @@ namespace Engine
 			return false;
 		}
 
-
+		{
+			ID3D11Debug *d3dDebug = nullptr;
+			if( SUCCEEDED( dev->QueryInterface( __uuidof(ID3D11Debug), (void**)&d3dDebug ) ) )
+			{
+				ID3D11InfoQueue *d3dInfoQueue = nullptr;
+				if( SUCCEEDED( dev->QueryInterface( __uuidof(ID3D11InfoQueue), (void**)&d3dInfoQueue ) ) )
+				{
+					#ifdef _DEBUG
+						d3dInfoQueue->SetBreakOnSeverity( D3D11_MESSAGE_SEVERITY_CORRUPTION, true );
+						d3dInfoQueue->SetBreakOnSeverity( D3D11_MESSAGE_SEVERITY_ERROR, true );
+					#endif
+ 
+					D3D11_MESSAGE_ID hide [] =
+					{
+						D3D11_MESSAGE_ID_SETPRIVATEDATA_CHANGINGPARAMS,
+						//D3D11_MESSAGE_ID_DEVICE_UNORDEREDACCESSVIEW_NOT_SET,
+						//(D3D11_MESSAGE_ID)3146081,
+						//D3D11_MESSAGE_ID_DEVICE_PSSETSHADERRESOURCES_HAZARD,	//the engine doesn't unset these because this would require additional complexities
+						//D3D11_MESSAGE_ID_DEVICE_OMSETRENDERTARGETS_HAZARD,
+						// Add more message IDs here as needed
+					};
+ 
+					D3D11_INFO_QUEUE_FILTER filter;
+					memset( &filter, 0, sizeof(filter) );
+					filter.DenyList.NumIDs = _countof(hide);
+					filter.DenyList.pIDList = hide;
+					d3dInfoQueue->AddStorageFilterEntries( &filter );
+					d3dInfoQueue->Release();
+				}
+				d3dDebug->Release();
+			}
+		}
 		{
 			IDXGIDevice * pDXGIDevice;
 			rs =  dev->QueryInterface(__uuidof(IDXGIDevice), (void **)&pDXGIDevice);
@@ -520,6 +551,7 @@ namespace Engine
 
 	void	DirectX11::TargetBackbuffer()
 	{
+		UnbindShaderResources();
 		devcon->OMSetRenderTargets(1, backbufferView.Reference(),backbufferDepthView);
 	//	devcon->OMSetRenderTargets(1, backbufferView.Reference(),NULL);
 	}
@@ -532,6 +564,7 @@ namespace Engine
 		for (index_t i = 0; i < fbo.numTargets; i++)
 			views[i] = fbo.colorTarget[i].rtView;
 
+		UnbindShaderResources();
 		devcon->OMSetRenderTargets((UINT)fbo.numTargets, views, fbo.depthStencilTarget.dsView);
 		return true;
 	}
@@ -569,6 +602,27 @@ namespace Engine
 	{}
 
 
+	void		DirectX11::UnbindShaderResources()
+	{
+		if (!devcon)
+			return;
+
+		static ID3D11Buffer* nullBuffer[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT]={nullptr};
+		devcon->VSSetConstantBuffers(0,D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT,nullBuffer);
+		devcon->PSSetConstantBuffers(0,D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT,nullBuffer);
+		devcon->GSSetConstantBuffers(0,D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT,nullBuffer);
+
+		static ID3D11ShaderResourceView* nullView[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]={nullptr};
+		devcon->VSSetShaderResources(0,D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT,nullView);
+		devcon->PSSetShaderResources(0,D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT,nullView);
+		devcon->GSSetShaderResources(0,D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT,nullView);
+
+		static ID3D11SamplerState* nullState[D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT]={nullptr};
+		devcon->VSSetSamplers(0,D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT,nullState);
+		devcon->PSSetSamplers(0,D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT,nullState);
+		devcon->GSSetSamplers(0,D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT,nullState);
+	}
+
 	void		DirectX11::SignalWindowResize(const Resolution&res)
 	{
 		if (!swapchain)
@@ -576,7 +630,11 @@ namespace Engine
 		if (_currentResolution == res)
 			return;
 		_currentResolution = res;
+
+
+		UnbindShaderResources();
 		devcon->OMSetRenderTargets(0, NULL, NULL);
+
 		backbufferView.Clear();
 		backbufferDepthView.Clear();
 		backbufferTexture.Clear();
