@@ -67,7 +67,10 @@ function Convert($strPage)
 
 	$text = $ctr->render($text);
 	$rs = array();
-	$rs[] = "<a href='html.php?page=home'>Documentation Home</a>";
+	$rs[] = "Main pages: <a class='documentation_link' href='html.php?page=home'>Welcome</a>"
+			."<a class='documentation_link' href='html.php?page=controls'>Controls</a>"
+			."<a class='documentation_link' href='html.php?page=units/list'>Units</a>"
+			;
 	if($ctr->errors)
 	{
 		//echo '<p style="color:red;">Errors in line(s):';

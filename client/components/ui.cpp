@@ -1901,6 +1901,12 @@
 		};
 		static Buffer0<TCachedLine,Swap>	cachedLines;
 
+		void		SignalChange()
+		{
+			cachedEntity = nullptr;
+		}
+
+
 		void		UpdateCacheIfNeeded(const Objects::WorldEntity&e)
 		{
 			if (cachedNumber == RuntimeConfig::roundNumber && cachedEntity == &e)

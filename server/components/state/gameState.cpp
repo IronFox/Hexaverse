@@ -36,6 +36,14 @@ namespace Game
 					startBases = false,
 					basesRequired = false,
 					exposeActionLeftToHostileFactions = true;
+		UINT32		factionsPerZone = 
+					#ifdef LOWER_RESOLUTION_PLANET
+						1
+					#else
+						3
+					#endif
+					;
+
 		UINT32		factionSupportFlags = Protocol::GameFlag::AllFactionSupport;
 
 		namespace Nexus

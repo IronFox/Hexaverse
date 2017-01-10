@@ -33,16 +33,17 @@ namespace Game
 						startBases /*= false*/,
 						basesRequired/* = false*/,
 						exposeActionLeftToHostileFactions/* = true*/;
+		extern UINT32	factionsPerZone/* = 3/1*/;
 
 		extern UINT32	factionSupportFlags;
 		
 		typedef RuntimeConfig::GameGoal	Goal;
 
 
-		inline count_t	CountAccessibleZones()
+		inline count_t	CountAccessibleZones(count_t temporaryFactionCountBonus=0)
 		{
-			count_t numZones = mostFactionsAlive;	//not counting nexus faction
-			numZones = (numZones/3) + !!(numZones % 3);
+			count_t numZones = mostFactionsAlive+temporaryFactionCountBonus;	//not counting nexus faction
+			numZones = (numZones/factionsPerZone) + !!(numZones % factionsPerZone);
 			return numZones;
 		}
 

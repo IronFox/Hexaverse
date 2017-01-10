@@ -1442,7 +1442,7 @@ namespace ApplicationInterface
 
 
 		UI::HexGrid::Configure(Objects::selectedEntity);
-
+		StatePanel::SignalChange();
 	}
 	#endif
 }
@@ -2037,6 +2037,7 @@ bool loop()
 				#ifdef _DEBUG
 					if (Network::haveID)
 						textout << "My ID: "<<Network::myIDString<<nl;
+					textout << "Active Research Script: "<< Bin2Str::ConvertPOD( Objects::ResearchState::GetScriptIdentifier() )<<nl;
 					textout << -Camera::scene.retraction.z/WorldScale << nl;
 				#endif
 				if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Network::roundTimer > 0)
@@ -2110,6 +2111,8 @@ void MyFatal(const FatalDescriptor&descriptor)
 	LogEvent(EventClass( EventSignificance::SystemFatal, EventFlavor::SystemError ), nullptr, message);
 	ErrMessage(message);
 	//NetworkConnection::Close();
+
+	TerminateProcess(GetCurrentProcess(),0);	//self-terminate
 
 }
 

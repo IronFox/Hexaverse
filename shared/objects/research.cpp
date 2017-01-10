@@ -102,7 +102,7 @@ namespace Objects
 			if (ref.IsEmpty())
 			{
 				if (!allowEmpty)
-					FATAL__("research.lua does not define "+path+"."+name);
+					throw Lua::Exception("Field '"+path+"."+name+"' is not defined");
 				return;
 			}
 
@@ -112,7 +112,7 @@ namespace Objects
 			
 				a.luaGetValue = t.GetField("Get");
 				if (a.luaGetValue.IsEmpty())
-					FATAL__("research.lua does not define "+path+"."+name+".Get");
+					throw Lua::Exception("Function '"+path+"."+name+".Get' is not defined");
 
 				a.luaDescribeValue = t.GetField("Describe");
 			}
@@ -136,12 +136,12 @@ namespace Objects
 		{
 			configTable = ResearchState::globalState.researchProgram->FindGlobal("StructureConfig");
 			if (configTable.IsEmpty())
-				FATAL__("research.lua does not define StructureConfig table");
+				throw Lua::Exception("Table 'StructureConfig' is not defined");
 		}
 
 		Lua::Table source = configTable.GetField(baseName);
 		if (source.IsEmpty())
-			FATAL__("research.lua does not define StructureConfig."+baseName+" table");
+			throw Lua::Exception("Table 'StructureConfig."+baseName+"' is not defined");
 
 		String path =  "StructureConfig."+baseName;
 		InitAttrib(source,path,  "Cost",t.constructionCost);
@@ -161,7 +161,7 @@ namespace Objects
 
 		Lua::Table baseTable = parent.GetField(baseName);
 		if (baseTable.IsEmpty())
-			FATAL__("research.lua does not define "+path+" table");
+			throw Lua::Exception("Table '"+path+"' is not defined");
 		InitAttrib(baseTable,path,"Cost",b.productionCosts);
 		InitAttrib(baseTable,path,"IsUnlocked",b.isUnlocked);
 		return baseTable;
@@ -174,7 +174,7 @@ namespace Objects
 		{
 			configTable = ResearchState::globalState.researchProgram->FindGlobal("VehicleBaseConfig");
 			if (configTable.IsEmpty())
-				FATAL__("research.lua does not define VehicleBaseConfig table");
+				throw Lua::Exception("Table 'VehicleBaseConfig' is not defined");
 		}
 		
 		String path = "VehicleBaseConfig";
@@ -194,7 +194,7 @@ namespace Objects
 		{
 			configTable = ResearchState::globalState.researchProgram->FindGlobal("TurretConfig");
 			if (configTable.IsEmpty())
-				FATAL__("research.lua does not define TurretConfig table");
+				throw Lua::Exception("Table 'TurretConfig' is not defined");
 		}
 
 		String path = "TurretConfig";
@@ -233,7 +233,7 @@ namespace Objects
 			s->DefineAttributeTable(&t);
 		}
 
-		globalState.fallback = ScriptCache::LoadContent(
+		globalState.program0 = ScriptCache::LoadContent(
 			"ResearchState = {}\n"
 			"ResearchState.__index = ResearchState\n"
 			"function ResearchState.New()\n"
@@ -543,7 +543,7 @@ namespace Objects
 		);
 
 		#ifdef _DEBUG
-			ActivateProgram(globalState.fallback);	//test fallback program
+			ActivateProgram(globalState.program0);	//test fallback program
 		#endif
 
 		//.reset(new ScriptCache::Script());
@@ -557,8 +557,9 @@ namespace Objects
 
 	/*static*/ void			ResearchState::LoadDefaultProgram()
 	{
-		#ifdef _DEBUG
-			PathString final = "../lua/research.lua";
+		PathString factoryDefault = "../lua/research.lua";
+		#if 0 && defined _DEBUG
+			PathString final = factoryDefault;
 		#else
 			FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("config/lua"));
 			PathString final = RuntimeConfig::ConfigFile("config/lua/research.lua");
@@ -570,6 +571,10 @@ namespace Objects
 					FATAL__("Unable to copy ../lua/research.lua to "+String(final));
 			}
 		#endif
+		globalState.factoryDefault = ScriptCache::Load(factoryDefault); 
+		//#ifdef _DEBUG
+		//	ActivateProgram(globalState.factoryDefault);
+		//#endif
 		ActivateProgram(ScriptCache::Load(final));
 	}
 
@@ -605,18 +610,30 @@ namespace Objects
 		}
 		catch (const std::exception&e)
 		{
-			LogEvent(EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),e.what());
+			if (script->filename.IsNotEmpty())
+				LogEvent(EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),String(script->filename)+": "+e.what());
+			else
+				LogEvent(EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),e.what());
 		};
 
-		if (current)
+		if (current && current != globalState.program0)
 		{
 			LogEvent(EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),"Falling back to previous script");
 			RequireLoad(current);
 		}
 		else
 		{
-			LogEvent(EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),"Falling back to emergency script");
-			RequireLoad(globalState.fallback);
+			if (script == globalState.factoryDefault)
+			{
+				LogEvent(EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),"Unable to load factory default. Falling back to emergency script");
+				RequireLoad(globalState.program0);
+			}
+			else
+			{
+				ASSERT__(globalState.factoryDefault);
+				LogEvent(EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),"Falling back to factory default script");
+				ActivateProgram(globalState.factoryDefault);
+			}
 		}
 	}
 
@@ -638,7 +655,6 @@ namespace Objects
 		if (!script)
 			throw Lua::Exception(CLOCATION, Except::globalString("Script is NULL"));
 		LogEvent(EventClass(EventSignificance::Common,EventFlavor::ServerPrivate),"Attempting to activate research program "+Bin2Str::ConvertPOD(script->identifier));
-		globalState.script = script;
 		globalState.rootResearch.Clear();
 		globalState.allTopics.Clear();
 
@@ -662,28 +678,28 @@ namespace Objects
 
 
 
-		globalState.researchProgram->Execute(script->content);
+		globalState.researchProgram->Execute(script->content,String(script->filename));
 
 		Lua::Table researchTable = globalState.researchProgram->FindGlobal("ResearchState");
 		if (researchTable.IsEmpty())
 		{
-			FATAL__("Research Lua script does not define ResearchState class");
+			throw Lua::Exception("Table 'ResearchState' is not defined");
 		}
 		globalState.stateConstructor = researchTable.GetField("New");
 		if (globalState.stateConstructor.IsEmpty())
 		{
-			FATAL__("Research Lua script does not define ResearchState.New method");
+			throw Lua::Exception("Function 'ResearchState.New' is not defined");
 		}
 
 		globalState.exportState = researchTable.GetField("Export");
 		if (globalState.exportState.IsEmpty())
 		{
-			FATAL__("Research Lua script does not define ResearchState:Export method");
+			throw Lua::Exception("Method 'ResearchState:Export' is not defined");
 		}
 		globalState.importState = researchTable.GetField("Import");
 		if (globalState.importState.IsEmpty())
 		{
-			FATAL__("Research Lua script does not define ResearchState:Import method");
+			throw Lua::Exception("Method 'ResearchState:Import' is not defined");
 		}
 
 		
@@ -711,6 +727,7 @@ namespace Objects
 				f->researchState.SetActiveTopic(FindTopic(f->researchState.lastTopic));
 			}
 		});
+		globalState.script = script;
 
 		#ifdef HAS_WINDOW
 			Laboratory::ConfigureResearchButtons();

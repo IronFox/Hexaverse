@@ -761,6 +761,11 @@ namespace UI
 
 		void		Render( const Objects::WorldEntity&e);
 
+		/**
+		Signifies that the state of the selected unit has changed and the panel should be recompiled
+		*/
+		void		SignalChange();
+
 	}
 #endif
 
