@@ -481,7 +481,7 @@ namespace World
 	{
 		if (RuntimeConfig::empZones)
 		{
-			count_t numZones = Game::mostFactionsAlive+temporaryFactionCountBonus;	//not counting nexus faction, but counting new faction(s)
+			count_t numZones = Game::Config::CountAccessibleZones(temporaryFactionCountBonus);
 			numZones = (numZones/3) + !!(numZones % 3);
 
 			int unlocked = 0;
@@ -497,6 +497,14 @@ namespace World
 			SetUnlockedEMPZones(unlocked);
 
 			Channels::lockEmpZones.SendTo(::Network::server,empZonesLocked,2);
+		}
+		else
+		{
+			if (empZonesLocked != 0)
+			{
+				empZonesLocked = 0;
+				Channels::lockEmpZones.SendTo(::Network::server,empZonesLocked,2);
+			}
 		}
 
 	}
