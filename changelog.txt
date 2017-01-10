@@ -1,5 +1,7 @@
 v0.6.0
+	> Lua research script now first falls back to factory default (the research script in the install directory) before loading emergency program.
 	* Set new version number to be higher than any deprecated feature branch, to avoid confusions.
+	* Missing entries in research scripts no longer cause the program to terminate. Instead, it reports the error and attempts fallback.
 
 v0.3.26	[Jan 1 2017]
 	+ Added Lua script support.

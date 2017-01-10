@@ -675,6 +675,9 @@ namespace InformationProvider
 
 }
 
+void TerminateNow(bool isMain);
+
+
 void MyFatal(const FatalDescriptor&descriptor)
 {
 	String message = descriptor.ToString();
@@ -1102,7 +1105,8 @@ namespace ParameterConfig
 		ExpectFilename,
 		ExpectAutoSaveNumber,
 
-	}		mode = Idle;
+	};
+	mode_t mode = Idle;
 
 	PathString	loadFile;
 	bool	startOffline = false,
