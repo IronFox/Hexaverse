@@ -50,6 +50,19 @@ namespace LineRenderer
 	{
 		Rasterize(p0, _color, p1, _color);
 	}
+
+	void	Rasterize(const TFloatRect&r)
+	{
+		float3	p0 = float3(r.x.min, r.y.min, 0 ),
+				p1 = float3(r.x.max, r.y.min, 0 ),
+				p2 = float3(r.x.max, r.y.max, 0 ),
+				p3 = float3(r.x.min, r.y.max, 0 );
+		Rasterize(p0,p1);
+		Rasterize(p1,p2);
+		Rasterize(p2,p3);
+		Rasterize(p3,p0);
+	}
+
 	void	Rasterize(const float3&p0, const float4&c0, const float3&p1, const float4&c1)
 	{
 		Vec::ref3(_at) = p0;	_at += 3;
