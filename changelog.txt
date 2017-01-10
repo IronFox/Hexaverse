@@ -8,6 +8,7 @@ v0.6.0	[Jan 10 2017]
 	* Fixed chat message size in visual log.
 	* Fixed visual log positioning.
 	* Configuration-related messages are no longer streamed to clients.
+	* Fixed random empty images in contact list.
 
 v0.3.26	[Jan 1 2017]
 	+ Added Lua script support.

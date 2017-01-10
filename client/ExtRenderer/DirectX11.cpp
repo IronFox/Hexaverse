@@ -621,6 +621,7 @@ namespace Engine
 		devcon->VSSetSamplers(0,D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT,nullState);
 		devcon->PSSetSamplers(0,D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT,nullState);
 		devcon->GSSetSamplers(0,D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT,nullState);
+		lazyPixelShaderHandle = nullptr;
 	}
 
 	void		DirectX11::SignalWindowResize(const Resolution&res)
