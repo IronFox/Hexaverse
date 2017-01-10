@@ -1,4 +1,4 @@
-v0.6.0
+v0.6.0	[Jan 10 2017]
 	+ Added option to configure the number of factions per unlocked EMP zone.
 	> Lua research script now first falls back to factory default (the research script in the install directory) before loading emergency program.
 	> Enabling or disabling EMP zones now takes immediate effect and is rejected if not possible.
