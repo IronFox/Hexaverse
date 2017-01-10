@@ -25,9 +25,9 @@ void vsMain(A2V input, out V2P output)
 
 
 
-float4 psMain() : SV_TARGET
+void psMain()
 {
-	return (float4)1.0;
+	
 }
 
 

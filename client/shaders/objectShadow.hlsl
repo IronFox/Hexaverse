@@ -22,9 +22,9 @@ void vsMain(A2V input, out V2P output)
 	//output.position.z = output.position.w * 0.5;	//middle of defined space, defo less than 1.0. should be visible
 }
 
-float4 psMain() : SV_TARGET
+void psMain()
 {
-	return (float4)1;
+	
 }
 
 

@@ -1,4 +1,11 @@
-v0.3.26
+v0.6.0
+	+ Added option to configure the number of factions per unlocked EMP zone.
+	> Lua research script now first falls back to factory default (the research script in the install directory) before loading emergency program.
+	> Enabling or disabling EMP zones now takes immediate effect and is rejected if not possible.
+	* Set new version number to be higher than any deprecated feature branch, to avoid confusions.
+	* Missing entries in research scripts no longer cause the program to terminate. Instead, it reports the error and attempts fallback.
+
+v0.3.26	[Jan 1 2017]
 	+ Added Lua script support.
 	+ Introduced laboratory structure and Lua research programs.
 	> Decreased sensor range in reduced world resolution state.

@@ -973,7 +973,7 @@ namespace Engine
 		void				SetDepthTest0(bool depthTest, bool depthWrite);
 		void				SetRasterizer0(bool fill, bool cull);
 		void				SetBlendMode0(BlendMode);
-
+		void				UnbindShaderResources();
 
 	protected:
 		//static			bool				bindFrameBufferObject(const GL::FBO&);

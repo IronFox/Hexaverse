@@ -18,6 +18,7 @@ namespace GUI
 
 	DECLARE_POINTER_CLASS(Component);
 		DECLARE_POINTER_CLASS(TextField);
+			DECLARE_POINTER_CLASS(Checkbox);
 			DECLARE_POINTER_CLASS(Label);
 			DECLARE_POINTER_CLASS(Button);
 				DECLARE_POINTER_CLASS(ScrollButton);
@@ -286,10 +287,14 @@ namespace GUI
 		float4			color = float4(1,1,1,1);
 		float			textHeight = 1.f;
 		bool			widthLockedToIdeal=false;
-
 		bool			UpdateIdealWidth();
+
 	protected:
 		void			RenderText(bool lit);
+		bool			UpdateHeight(const TFloatRange<>&hRange);
+
+		virtual float	GetIdealWidth() const;
+
 	public:
 		typedef Area	Super;
 
@@ -435,6 +440,112 @@ namespace GUI
 			}
 		}
 	};
+
+	class Checkbox : public TextField
+	{
+		typedef TextField	Super;
+
+		std::function<void(bool)>	onChanged;
+		std::function<bool()>		check;
+		bool						isChecked = false;
+
+		//String					baseLabel;
+//		TextField::SetText;
+
+	protected:
+		virtual bool	ClientIsLit() const override {return IsActive() && IsEnabled() && ContainsMouse();}
+		virtual float	GetIdealWidth() const override;
+	public:
+		/**/			Checkbox()
+		{
+			Super::alignCenter = false;
+			Super::extraSpacing /= 2;
+			Super::fillBackground = false;
+			SetText("");
+		}
+
+		/**/			Checkbox(const String&text, bool checked, std::function<void(bool)> onChanged = std::function<void(bool)>(), std::function<bool()> check = std::function<bool()>() )
+		{
+			Super::alignCenter = false;
+			Super::fillBackground = false;
+			Super::extraSpacing /= 2;
+			this->onChanged = onChanged;
+			this->check = check;
+			isChecked = checked;
+			SetText(text);
+			SetIdealWidth();
+		}
+
+		void			SetChecked(bool checked, bool doSignal = true)
+		{
+			if (checked == isChecked)
+				return;
+			isChecked = checked;
+			if (doSignal)
+				onChanged(isChecked);
+		}
+
+		bool			IsChecked() const {return isChecked;}
+
+		void			SetOnChange(const std::function<void(bool)>&onChanged)
+		{
+			this->onChanged = onChanged;
+		}
+
+		void			SetCheck(const std::function<bool()>&check)
+		{
+			this->check = check;
+			DetectEnabledState();
+		}
+
+		virtual bool	DetectEnabledState() override
+		{
+			//String set = baseLabel;
+			bool changed =false;
+			if (check)
+			{
+				if (!check())
+				{
+				
+					//set += " (not right now)";
+					changed = SetEnabled(false);
+				}
+				else
+					changed = SetEnabled(true);
+			}
+
+			//Super::SetText(set);
+			return changed;
+		}
+
+		virtual void Render() override;
+
+		virtual PComponent	HandleMouseDown() override
+		{
+			DetectEnabledState();
+			if (IsEnabled() && ContainsMouse())
+			{
+				return shared_from_this();
+			}
+			return PComponent();
+		}
+
+		virtual	void			SignalMouseUp() override
+		{
+			if (ContainsMouse())
+			{
+				DetectEnabledState();
+				if (IsEnabled())
+				{
+					isChecked = !isChecked;
+					onChanged(isChecked);
+				}
+			}
+		}
+
+		virtual bool	UpdateHeight() override;
+	};
+
 
 	class ScrollButton : public Button
 	{
