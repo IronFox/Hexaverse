@@ -370,7 +370,7 @@ namespace Reflection
 			}
 			virtual void		SetCurrentToDefault() override
 			{
-				defaultValue = Game::Config::factionsPerZone;
+				defaultValue = RuntimeConfig::empZones;
 			}
 		};
 
