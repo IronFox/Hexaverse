@@ -1,5 +1,4 @@
-﻿* Disable towers in emp field
-* TEST AI
+﻿* TEST AI
 * Hide/disable Poll messages 'Found X lobrry matche(es)' when session is in progress
 * EMP zones are not expanding as desired
 * VEHICLE PLANT can build plane turrets
@@ -162,6 +161,7 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+* Disable towers in emp field
 IMPORTANT: errors in research lua script (in user directory) causes fatal (if required things are missing). should make backup and replace with original
 Wider emp field areas in low-resolution terrain mode.
 research concept
