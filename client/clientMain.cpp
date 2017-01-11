@@ -232,7 +232,7 @@ namespace LocalApplicationInterface
 
 	bool			SeeingHostileActivity()
 	{
-		return UI::EventLog::HasHostileRegisteredActivity();
+		return UI::EventLog::HasRegisteredHostileActivity();
 	}
 																				
 	/**

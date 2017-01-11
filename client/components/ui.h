@@ -671,7 +671,7 @@ namespace UI
 			/**
 			Checks if any events have been registered in the log that signals hostile activity (attacks, units dying etc)
 			*/
-			bool			HasHostileRegisteredActivity();
+			bool			HasRegisteredHostileActivity();
 
 		}
 

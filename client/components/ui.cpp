@@ -497,7 +497,7 @@
 				HexGrid::animationTimeLine.Refresh();
 			}
 
-			bool			HasHostileRegisteredActivity()
+			bool			HasRegisteredHostileActivity()
 			{
 				foreach (HexGrid::animationTimeLine.commands,cmd)
 				{
