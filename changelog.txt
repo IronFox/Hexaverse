@@ -1,5 +1,6 @@
 v0.6.1
 	> Nexus units are now affected by residual EMP fields to prevent them from firing out of EMP zones.
+	* Fixed 'factionsPerEMPZone' implementation.
 
 v0.6.0	[Jan 10 2017]
 	+ Added option to configure the number of factions per unlocked EMP zone.
