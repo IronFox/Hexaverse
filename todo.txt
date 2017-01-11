@@ -3,11 +3,11 @@
 * Hide/disable Poll messages 'Found X lobrry matche(es)' when session is in progress
 * EMP zones are not expanding as desired
 * VEHICLE PLANT can build plane turrets
-* Unable to determine feasible angles... (broadcasted to all)
-* halt auto-new round when any attacks were recorded
-* repair height difference 0?
+* "Unable to determine feasible angles..." (message is broadcasted to ALL)
+* halt auto-new round when any attacks, hostile contacts or damages were recorded
+* Max repair height difference 0? Should be one
 * clipped water doesn't correctly render to the ground
-* move buttons bottom right
+* move buttons bottom right somewhere else
 
 
 
