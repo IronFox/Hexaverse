@@ -215,6 +215,26 @@ namespace LocalApplicationInterface
 	#endif
 
 	void							SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird shit
+	
+																				
+	bool						SeeingHostileUnits()
+	{
+		bool any = false;
+		Objects::ForeachWorldEntity([&any](const Objects::PWorldEntity&other)
+		{
+			if (any)
+				return;
+			if (!other->isOwnedByMe)
+				any = true;
+		});
+		return any;
+	}
+
+	bool			SeeingHostileActivity()
+	{
+		return UI::EventLog::HasHostileRegisteredActivity();
+	}
+																				
 	/**
 	Triggered when entering command mode and animations have finished (whichever of those events happens later)
 	*/
@@ -232,7 +252,7 @@ namespace LocalApplicationInterface
 		#endif
 		Animation::UpdateAutomation(CLOCATION);
 		Objects::CheckMobileEntitySanity();
-		if (RuntimeConfig::autoNewRound && ApplicationInterface::ShouldSignalRoundEnd())
+		if (RuntimeConfig::autoNewRound && ApplicationInterface::ShouldSignalRoundEnd() && !SeeingHostileUnits() && !SeeingHostileActivity())
 			ApplicationInterface::SignalRoundEnd();
 	}
 }

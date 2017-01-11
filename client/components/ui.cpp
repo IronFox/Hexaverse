@@ -479,7 +479,7 @@
 
 			void			RegisterAttack(float time, bool isFriendly,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const Objects::Renderer::SmokeTrailIndex&smokeTrailIndex)
 			{
-				HexGrid::AnimationEventFocusCommand*cmd = new HexGrid::AnimationEventFocusCommand("Attack","Attack",focusLocation,focusEntityID,time,isFriendly);
+				HexGrid::AnimationEventFocusCommand*cmd = new HexGrid::AnimationEventFocusCommand("Attack","Attack",focusLocation,focusEntityID,time,isFriendly,!isFriendly);
 				cmd->smokeTrailIndex = smokeTrailIndex;
 				if (!isFriendly)
 					cmd->state |= Objects::BaseCommand::Flags::IsFlashing;
@@ -489,12 +489,23 @@
 
 			void			RegisterEntityDestruction(float time, bool isOwnedByMe,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const String&entityName)
 			{
-				HexGrid::AnimationEventFocusCommand*cmd = new HexGrid::AnimationEventFocusCommand("Entity Death","Entity Death",focusLocation,focusEntityID,time,isOwnedByMe);
+				HexGrid::AnimationEventFocusCommand*cmd = new HexGrid::AnimationEventFocusCommand("Entity Death","Entity Death",focusLocation,focusEntityID,time,isOwnedByMe,isOwnedByMe);
 				if (isOwnedByMe)	//flipped logic
 					cmd->state |= Objects::BaseCommand::Flags::IsFlashing;
 				cmd->fallbackTargetName = entityName;
 				HexGrid::animationTimeLine.commands << Objects::PBaseCommand(cmd);
 				HexGrid::animationTimeLine.Refresh();
+			}
+
+			bool			HasHostileRegisteredActivity()
+			{
+				foreach (HexGrid::animationTimeLine.commands,cmd)
+				{
+					std::shared_ptr<HexGrid::AnimationEventFocusCommand> aec = To<HexGrid::AnimationEventFocusCommand>::Cast(*cmd);
+					if (aec->isHostileActivity)
+						return true;
+				}
+				return false;
 			}
 
 

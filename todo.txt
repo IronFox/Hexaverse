@@ -1,7 +1,6 @@
 ﻿* TEST AI
 * Hide/disable Poll messages 'Found X lobrry matche(es)' when session is in progress
 * VEHICLE PLANT can build plane turrets
-* halt auto-new round when any attacks, hostile contacts or damages were recorded
 * Max repair height difference 0? Should be one
 * clipped water doesn't correctly render to the ground
 * move buttons bottom right somewhere else
@@ -159,6 +158,7 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+* halt auto-new round when any attacks, hostile contacts or damages were recorded
 * Fixed: "Unable to determine feasible angles..." (message is broadcasted to ALL)
 * Fixed: EMP zones are not expanding as desired
 * Disable towers in emp field
