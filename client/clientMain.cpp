@@ -232,7 +232,11 @@ namespace LocalApplicationInterface
 
 	bool			SeeingHostileActivity()
 	{
-		return UI::EventLog::HasRegisteredHostileActivity();
+		#ifdef HAS_WINDOW
+			return UI::EventLog::HasRegisteredHostileActivity();
+		#else
+			return false;
+		#endif
 	}
 																				
 	/**
