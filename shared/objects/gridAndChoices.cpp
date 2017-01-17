@@ -933,14 +933,23 @@ namespace Objects
 				case CursorMode::RepairMode:
 				//case CursorMode::TransferMode:
 				{
-					//const auto&c = Grid::low.grid.GetCell(location.stackID);
-					for (int j = 0; j < n.numNeighbors; j++)
+					for (int h = location.height -1; h <= location.height+1; h++)
 					{
-						const Grid::LCellIdI candidate(n.neighborID[j],location.height);
-						PWorldEntity other = GetEntity(candidate);
-						if (!other || other.get() == v || other->health == other->GetMaxHealth())	//no owner-check (for now)
-							continue;
-						movementChoices << Choice(candidate,1);
+						if (h >= -Grid::CellStack::HalfRange && h < Grid::CellStack::HalfRange-1)
+						{
+							for (int j = 0; j < n.numNeighbors; j++)
+							{
+								const Grid::LCellIdI candidate(n.neighborID[j],h);
+								PWorldEntity other = GetEntity(candidate);
+								if (!other || other.get() == v 
+									#ifndef _DEBUG
+									|| other->health == other->GetMaxHealth()
+									#endif
+									)	//no owner-check (for now)
+									continue;
+								movementChoices << Choice(candidate,1);
+							}
+						}
 					}
 				}
 				break;

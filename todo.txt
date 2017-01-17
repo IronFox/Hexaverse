@@ -1,6 +1,5 @@
 ﻿* TEST AI
 * Hide/disable Poll messages 'Found X lobrry matche(es)' when session is in progress
-* Max repair height difference 0? Should be one
 * move buttons bottom right somewhere else
 
 
@@ -156,6 +155,7 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+* Max repair height difference 0? Should be one
 * Fixed: liquids didn't expand downwards
 * Fixed: VEHICLE PLANT can build plane turrets
 * halt auto-new round when any attacks, hostile contacts or damages were recorded
