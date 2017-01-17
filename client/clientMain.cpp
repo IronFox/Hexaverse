@@ -209,7 +209,7 @@ namespace LocalApplicationInterface
 
 	#ifdef HAS_WINDOW
 		void						QueryNickname();
-		void						QueryNicknameIfEmpty();
+		bool						QueryNicknameIfEmpty();
 		void						RefreshSessionView();
 		//void						OnSelectionChange(bool stateChangeOnly);
 	#else
@@ -2707,6 +2707,12 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 
 	namespace LocalApplicationInterface
 	{
+		bool	IsValidNickname(const String&candidate)
+		{
+			return Package::NetString<32>::IsValid(candidate) 
+				&& candidate.length() > 3 && candidate.length() <= 16;
+		}
+
 
 		void	QueryNickname()
 		{
@@ -2716,12 +2722,11 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 			{
 				static const String allowed = "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_-";
 
-				Dialog::Query("Please enter a valid nickname to continue (length 4-16)",Network::chosenNickname,
+				Dialog::Query("Please enter a nickname to continue (length 4-16)",Network::chosenNickname,
 				allowed,
-				[](const String&candidate)->bool
+					[](const String&candidate)->bool
 					{
-						return Package::NetString<32>::IsValid(candidate) 
-							&& candidate.length() > 3 && candidate.length() <= 16;
+						return IsValidNickname(candidate);
 					},
 					[](const String&name)
 					{
@@ -2741,10 +2746,14 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 			}
 		}
 
-		void	QueryNicknameIfEmpty()
+		bool	QueryNicknameIfEmpty()
 		{
-			if (Network::chosenNickname.IsEmpty())
+			if (!IsValidNickname(Network::chosenNickname))
+			{
 				QueryNickname();
+				return true;
+			}
+			return false;
 		}
 	}
 
@@ -3699,8 +3708,8 @@ int main( int argc, const char* argv[])
 				}
 				else
 				{
-					LocalApplicationInterface::QueryNickname();
 				}
+				LocalApplicationInterface::QueryNicknameIfEmpty();
 			}
 
 

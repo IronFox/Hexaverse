@@ -22,7 +22,7 @@ namespace LocalApplicationInterface
 	void			OnPlayerControlBegin();
 
 	#ifdef HAS_WINDOW
-		void		QueryNicknameIfEmpty();
+		bool		QueryNicknameIfEmpty();
 	#endif
 }
 
@@ -90,6 +90,9 @@ namespace Network
 	void			ConnectTo(const Host&host)
 	{
 		client.Disconnect();
+
+		if (LocalApplicationInterface::QueryNicknameIfEmpty())
+			return;
 
 		RuntimeConfig::phase = RuntimeConfig::Phase::Uninitialized;
 		gameHasBegun = false;
