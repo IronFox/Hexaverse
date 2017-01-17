@@ -205,6 +205,8 @@ int2 rightMouseDragFrom;
 
 namespace LocalApplicationInterface
 {
+	bool pauseAutomaticRoundProgression=false;
+
 	#ifdef HAS_WINDOW
 		void						QueryNickname();
 		void						QueryNicknameIfEmpty();
@@ -215,20 +217,7 @@ namespace LocalApplicationInterface
 	#endif
 
 	void							SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird shit
-	
-																				
-	bool						SeeingHostileUnits()
-	{
-		bool any = false;
-		Objects::ForeachWorldEntity([&any](const Objects::PWorldEntity&other)
-		{
-			if (any)
-				return;
-			if (!other->isOwnedByMe)
-				any = true;
-		});
-		return any;
-	}
+
 
 	bool			SeeingHostileActivity()
 	{
@@ -256,8 +245,10 @@ namespace LocalApplicationInterface
 		#endif
 		Animation::UpdateAutomation(CLOCATION);
 		Objects::CheckMobileEntitySanity();
-		if (RuntimeConfig::autoNewRound && ApplicationInterface::ShouldSignalRoundEnd() && !SeeingHostileUnits() && !SeeingHostileActivity())
+		if (RuntimeConfig::autoNewRound && ApplicationInterface::ShouldSignalRoundEnd() && !pauseAutomaticRoundProgression && !SeeingHostileActivity())
 			ApplicationInterface::SignalRoundEnd();
+
+		pauseAutomaticRoundProgression = false;
 	}
 }
 
@@ -1273,6 +1264,8 @@ namespace ApplicationInterface
 				}
 			}
 		}
+		else
+			LocalApplicationInterface::pauseAutomaticRoundProgression = true;
 	}
 
 
