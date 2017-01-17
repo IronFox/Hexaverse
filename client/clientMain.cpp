@@ -128,6 +128,9 @@ SpinLock	eventLock;
 					if (type.significance == EventSignificance::Important)
 						color = float3(0.5,0.5,1);
 				break;
+				case EventFlavor::ChatMessage:
+					scale = 2.f;
+				break;
 			}
 
 
@@ -168,6 +171,15 @@ SpinLock	eventLock;
 
 
 	Buffer<VisualEvent,0,Adopt>	events;
+	float		historyHeight=1;
+	static const float eventFontScale = 0.9f;
+	void		UpdateHistoryHeight()
+	{
+		float h0 = textout.getScaledHeight() * eventFontScale;
+		historyHeight = 0;
+		foreach (events,ev)
+			historyHeight += h0 * ev->scale;
+	}
 #endif
 
 //LogFile	eventLog;
@@ -203,6 +215,30 @@ namespace LocalApplicationInterface
 	#endif
 
 	void							SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird shit
+	
+																				
+	bool						SeeingHostileUnits()
+	{
+		bool any = false;
+		Objects::ForeachWorldEntity([&any](const Objects::PWorldEntity&other)
+		{
+			if (any)
+				return;
+			if (!other->isOwnedByMe)
+				any = true;
+		});
+		return any;
+	}
+
+	bool			SeeingHostileActivity()
+	{
+		#ifdef HAS_WINDOW
+			return UI::EventLog::HasRegisteredHostileActivity();
+		#else
+			return false;
+		#endif
+	}
+																				
 	/**
 	Triggered when entering command mode and animations have finished (whichever of those events happens later)
 	*/
@@ -220,7 +256,7 @@ namespace LocalApplicationInterface
 		#endif
 		Animation::UpdateAutomation(CLOCATION);
 		Objects::CheckMobileEntitySanity();
-		if (RuntimeConfig::autoNewRound && ApplicationInterface::ShouldSignalRoundEnd())
+		if (RuntimeConfig::autoNewRound && ApplicationInterface::ShouldSignalRoundEnd() && !SeeingHostileUnits() && !SeeingHostileActivity())
 			ApplicationInterface::SignalRoundEnd();
 	}
 }
@@ -574,9 +610,8 @@ namespace ApplicationInterface
 		if (type.significance > EventSignificance::Common)
 		{
 			#ifdef HAS_WINDOW
-				if (type.flavor == EventFlavor::ChatMessage)
-					events << VisualEvent("",EventSignificance::Debug);
 				events << VisualEvent(event,type);
+				UpdateHistoryHeight();
 			#else
 				std::cout << event << std::endl;
 			#endif
@@ -1960,10 +1995,8 @@ bool loop()
 
 			if (UI::showControlsAndContacts)
 			{
-				textout.pushState();
-				textout.scale(0.9f, 0.9f);
 				eventLock.lock();
-
+				bool anyChanged = false;
 				for (index_t i = 0; i < events.Count(); i++)
 				{
 					events[i].age += Engine::timing.delta;
@@ -1971,12 +2004,18 @@ bool loop()
 					{
 						events.Erase(i);
 						i--;
+						anyChanged = true;
 					}
 				}
-				count_t rows = std::min(events.Count(), (count_t)floor(0.7f / textout.getScaledHeight()));
+				if (anyChanged)
+					UpdateHistoryHeight();
+				count_t rows = events.Count();
+					//std::min(events.Count(), (count_t)floor(0.7f / textout.getScaledHeight()));
 
 
-				textout.locate(0.0f, 0.3f + float(rows) * textout.getScaledHeight());
+				textout.pushState();
+				textout.scale(eventFontScale,eventFontScale);
+				textout.locate(0.0f, 280.f/display.clientHeight() + historyHeight);
 				for (index_t i = events.Count() - rows; i < events.Count(); i++)
 					//if (events[i].stackID < 10)
 					{
@@ -1986,8 +2025,8 @@ bool loop()
 							textout.scale(ev.scale,ev.scale);
 							textout.color(ev.color, (VisualEvent::MaxAge - ev.age)/VisualEvent::MaxAge);
 							textout << ev.message;
-							textout.scale(1.f/ev.scale,1.f/ev.scale);
 							textout <<  nl;
+							textout.scale(1.f/ev.scale,1.f/ev.scale);
 						}
 					}
 				textout.popState();
@@ -2129,6 +2168,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 		UI::OnWindowResize();
 		GUI::OnWindowResize();
+		UpdateHistoryHeight();
 	}
 
 
@@ -2574,30 +2614,6 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 	else
 		Network::Channels::dropTasks.SendTo(Network::client, Protocol::DropTasks( e->id, Protocol::DropMode::LastTask));
 }
-
-
-//void LogEvent( EventType type,  const Objects::WorldEntity*e, const String&_event)
-//{
-//	String event = _event, outEvent = _event;
-//	if (e)
-//	{
-//		event = e->owner->GetName()+","+ e->GetNiceName()+": "+event;
-//		outEvent = e->owner->GetLogName()+","+ e->GetName()+": "+event;
-//	}
-//	eventLock.lock();
-//	if (type != EventSignificance::Debug && type != EventSignificance::PerformanceMeasurement && type != EventSignificance::Common)
-//	{
-//		#ifdef HAS_WINDOW
-//			if (type == EventType::ChatMessage)
-//				events << VisualEvent("",EventSignificance::Debug);
-//			events << VisualEvent(event,type);
-//		#else
-//			std::cout << event << std::endl;
-//		#endif
-//	}
-//	eventLog.Log(String(RuntimeConfig::roundNumber)+tab+ RuntimeConfig::phase.ToString()   + tab + outEvent,true);
-//	eventLock.unlock();
-//}
 
 
 #ifdef HAS_WINDOW

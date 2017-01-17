@@ -482,7 +482,6 @@ namespace World
 		if (RuntimeConfig::empZones)
 		{
 			count_t numZones = Game::Config::CountAccessibleZones(temporaryFactionCountBonus);
-			numZones = (numZones/3) + !!(numZones % 3);
 
 			int unlocked = 0;
 			for (index_t i = 0; i < numZones; i++)

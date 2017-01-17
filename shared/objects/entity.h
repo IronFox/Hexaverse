@@ -611,6 +611,19 @@ namespace Objects
 				RegisterChange(EMPDamageChanged,atTime);
 				RegisterSensory(atTime);
 			}
+			/**
+			Removes all present emp damage. Should generally only be done for nexus entities
+			*/
+			void					HealAllEMPDamage(float&atTime)
+			{
+				if (empDamageLevel > 0)
+				{
+					UnregisterSensory(atTime);
+					empDamageLevel = 0;
+					RegisterChange(EMPDamageChanged,atTime);
+					RegisterSensory(atTime);
+				}
+			}
 			void					HealEMPDamage(float&atTime)
 			{
 				if (empDamageLevel > 0)

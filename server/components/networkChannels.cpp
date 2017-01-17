@@ -834,7 +834,7 @@ namespace Receiver
 		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 		if (!client->faction)
 			return;
-		LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::ChatMessage ),client->faction->GetName()+": "+message);
+		LogEvent(EventClass( EventSignificance::Important, EventFlavor::ChatMessage ),client->faction->GetName()+": "+message);
 
 	}
 

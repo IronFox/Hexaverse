@@ -911,7 +911,7 @@ namespace Game
 
 		Objects::ForeachWorldEntity([&atTime](const Objects::PWorldEntity&e)
 		{
-			if (e->owner == Objects::Faction::nexus)
+			if (e->owner == Objects::Faction::nexus && e->IsAboveGrid())
 				return;	//i know this is a hack, but i gotta do something to prevent nexus satellites from crashing.
 			if (Grid::AffectedByEMP(e->location))
 			{
@@ -919,7 +919,8 @@ namespace Game
 					LogEvent(EventSignificance::Common,e.get(),"Entering EMP-Zone");
 				e->HandleEMPDamage(10,atTime);
 			}
-					
+			elif (e->owner == Objects::Faction::nexus)
+				e->HealAllEMPDamage(atTime);	//immediately heal when a new area gets unlocked
 		});
 
 	
