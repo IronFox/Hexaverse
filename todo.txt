@@ -1,5 +1,4 @@
 ﻿* TEST AI
-* Hide/disable Poll messages 'Found X lobby matche(es)' when session is in progress
 * move buttons bottom right somewhere else
 
 
@@ -155,6 +154,7 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+* Fixed: Hide/disable Poll messages 'Found X lobby match(es)' when session is in progress
 * Max repair height difference 0? Should be one
 * Fixed: liquids didn't expand downwards
 * Fixed: VEHICLE PLANT can build plane turrets
