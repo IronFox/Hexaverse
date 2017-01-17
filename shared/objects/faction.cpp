@@ -940,6 +940,7 @@ namespace Objects
 
 		void	ChangeOwnership( const PWorldEntity&e,const OwnerParameter&newOwner, bool isNowMine)
 		{
+			LogEvent(EventSignificance::Debug, e.get(),"Changing ownership to "+newOwner->GetName());
 			PStructure s = To<Structure>::DynamicCast(e);
 			#ifdef CLIENT
 				if (e->isOwnedByMe)
