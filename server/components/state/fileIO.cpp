@@ -261,7 +261,7 @@ namespace FileIO
 			flags |= EntityFlag::IsSleeping;
 		stream.Append(flags);
 		
-		parent->AppendBlock(RID::entity,stream.pointer(),stream.GetFillLevel());
+		parent->AppendBlock(RID::entity,stream.pointer(),stream.GetCount());
 		parent->AppendBlock(RID::location)->SetPODData(e.location);
 		if (e.empDamageLevel)
 			parent->AppendBlock(RID::empDamageLevel)->SetPODData(e.empDamageLevel);
@@ -522,7 +522,7 @@ namespace FileIO
 		static ByteStream stream;
 		stream.Clear();
 		stream << (UINT16)t.mode << (UINT16)t.type;
-		taskChunk->AppendBlock(RID::taskData,stream.pointer(),stream.GetFillLevel());
+		taskChunk->AppendBlock(RID::taskData,stream.pointer(),stream.GetCount());
 		Export(taskChunk,t.job);
 	}
 
@@ -711,7 +711,7 @@ namespace FileIO
 		//stream.Append(v.hasConstructedThisRound);
 		//stream.Append(v.hasMoved);
 		
-		parent->AppendBlock(RID::vehicle,stream.pointer(),stream.GetFillLevel());
+		parent->AppendBlock(RID::vehicle,stream.pointer(),stream.GetCount());
 		if (v.IsVehicle())
 		{
 			Objects::Vehicle&veh = (Objects::Vehicle&)v;
