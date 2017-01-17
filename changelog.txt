@@ -3,6 +3,7 @@ v0.6.1
 	> Automatic round progression now halts if hostile units are visible, or visible hostile activity has occurred during the previous round.
 	* Fixed 'factionsPerEMPZone' implementation.
 	* "Unable to determine feasible angles for artillery trajectory" messages are no longer sent to clients.
+	* Removed non-vehicle turrets from vehicle plant choices.
 
 v0.6.0	[Jan 10 2017]
 	+ Added option to configure the number of factions per unlocked EMP zone.
