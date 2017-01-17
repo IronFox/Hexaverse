@@ -1,5 +1,5 @@
 ﻿* TEST AI
-* Hide/disable Poll messages 'Found X lobrry matche(es)' when session is in progress
+* Hide/disable Poll messages 'Found X lobby matche(es)' when session is in progress
 * move buttons bottom right somewhere else
 
 
