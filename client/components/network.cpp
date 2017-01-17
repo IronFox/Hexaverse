@@ -91,8 +91,10 @@ namespace Network
 	{
 		client.Disconnect();
 
-		if (LocalApplicationInterface::QueryNicknameIfEmpty())
-			return;
+		#ifdef HAS_WINDOW
+			if (LocalApplicationInterface::QueryNicknameIfEmpty())
+				return;
+		#endif
 
 		RuntimeConfig::phase = RuntimeConfig::Phase::Uninitialized;
 		gameHasBegun = false;
@@ -1615,12 +1617,12 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 
 			Objects::ForeachMobileWorldEntity([](const Objects::PWorldEntity&e)
 			{
-				if (e->health <= 0 || !e->isOwnedByMe)
+				if (!e->isOwnedByMe)
 					return;
 				Objects::Marker *m = Objects::Marker::Find(e->location);
 				if (m)
 					LocalApplicationInterface::SignalMarkerDeletion(m->id);
-			});
+			},false);
 
 			#ifdef HAS_WINDOW
 				for (const auto&s : Objects::structures)

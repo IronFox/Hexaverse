@@ -311,7 +311,7 @@ namespace Objects
 						affectedStructures << To<Structure>::Cast(e);
 					}
 				}
-			});
+			},false);
 			atTime += timeEpsilon;
 			foreach (toDestroy,d)
 			{
@@ -393,7 +393,7 @@ namespace Objects
 					atTime = std::max(atTime,e->motionTime);
 					toDisable << e;
 				}
-			});
+			},false);
 			atTime += timeEpsilon;
 			foreach (toDisable,_d)
 			{

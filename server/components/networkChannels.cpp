@@ -189,7 +189,7 @@ namespace Receiver
 			Protocol::NewMobileEntity st;
 			Game::Network::Describe(st,*v,true,timestamp,0xFFFFFFFF);
 			Channels::newMobileEntity.SendTo(peer,st);
-		});
+		},false);
 
 
 		{

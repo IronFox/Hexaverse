@@ -802,7 +802,7 @@ namespace Objects
 							float t = 0;
 							e->UnregisterSensory(t,false);
 						}
-					});
+					},false);
 			#endif
 
 			Lua::Reference deserialized = globalState.researchProgram->DeserializeToReference(ByteReadStream(serializedState));
@@ -823,7 +823,7 @@ namespace Objects
 						float t = 0;
 						e->RegisterSensory(t,false);
 					}
-				});
+				},false);
 		#endif
 
 	}

@@ -308,7 +308,7 @@ namespace World
 						}
 					}
 				}
-			});
+			},false);
 			float t = timer.GetSecondsSince(t0);
 			LogEvent(EventSignificance::PerformanceMeasurement,"Time needed to process water: "+String(t));
 

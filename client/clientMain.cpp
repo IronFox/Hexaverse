@@ -1426,7 +1426,7 @@ namespace ApplicationInterface
 						return;
 					change.level[Objects::Resource::Minerals] -= std::min(opSpeed, v->myTasks.Peek().job->resourceCostLeft);
 
-				});
+				},false);
 
 				#ifndef NO_SATELLITES
 				for (const auto&sat : Objects::satellites)
@@ -2167,7 +2167,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 						result = v->location;
 						rs = true;
 					}
-				});
+				},true);
 			}
 
 			#ifndef NO_SATELLITES
@@ -2967,7 +2967,7 @@ namespace ApplicationInterface
 		Objects::PWorldEntity any;
 		Objects::ForeachWorldEntity([&any](const Objects::PWorldEntity&e)
 		{
-			if (any || !e->isOwnedByMe || e->health <= 0)
+			if (any || !e->isOwnedByMe)
 				return;
 			if (e->IsMobile())
 			{
@@ -2979,7 +2979,7 @@ namespace ApplicationInterface
 				if (IsIdle(To<Objects::Structure>::Cast(e)))
 					any = e;
 			}
-		});
+		},false);
 		//#ifdef _DEBUG
 		//if (any)
 		//	LogEvent(EventSignificance::Uncommon,any.get(),"not idle");
