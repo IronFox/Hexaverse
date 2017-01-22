@@ -103,7 +103,7 @@ namespace Animation
 				if (d < 2.f)
 					canDo = false;
 			}
-		});
+		},true);
 		return canDo;
 	}
 
@@ -1803,7 +1803,7 @@ namespace Animation
 						e->MoveSensory(e->preAnimationLocation,e->location,t);
 //							Grid::actualWorld.MoveSensor((*v)->preAnimationLocation,(*v)->location,(*v)->GetScanningRange());
 					}
-				});
+				},false);
 
 
 				Animation::insertIntoGridLater.VisitAllKeys([](const TUniqueID&key)
@@ -1825,7 +1825,7 @@ namespace Animation
 				Objects::ForeachMobileWorldEntity([](const Objects::PMobileEntity&e)
 				{
 					e->preAnimationLocation = e->location;
-				});
+				},false);
 
 				if (RuntimeConfig::IsInAnyCommandPhase() && Network::gameHasBegun)
 				{

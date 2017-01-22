@@ -205,9 +205,11 @@ int2 rightMouseDragFrom;
 
 namespace LocalApplicationInterface
 {
+	bool pauseAutomaticRoundProgression=false;
+
 	#ifdef HAS_WINDOW
 		void						QueryNickname();
-		void						QueryNicknameIfEmpty();
+		bool						QueryNicknameIfEmpty();
 		void						RefreshSessionView();
 		//void						OnSelectionChange(bool stateChangeOnly);
 	#else
@@ -215,20 +217,7 @@ namespace LocalApplicationInterface
 	#endif
 
 	void							SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird shit
-	
-																				
-	bool						SeeingHostileUnits()
-	{
-		bool any = false;
-		Objects::ForeachWorldEntity([&any](const Objects::PWorldEntity&other)
-		{
-			if (any)
-				return;
-			if (!other->isOwnedByMe)
-				any = true;
-		});
-		return any;
-	}
+
 
 	bool			SeeingHostileActivity()
 	{
@@ -256,8 +245,10 @@ namespace LocalApplicationInterface
 		#endif
 		Animation::UpdateAutomation(CLOCATION);
 		Objects::CheckMobileEntitySanity();
-		if (RuntimeConfig::autoNewRound && ApplicationInterface::ShouldSignalRoundEnd() && !SeeingHostileUnits() && !SeeingHostileActivity())
+		if (RuntimeConfig::autoNewRound && ApplicationInterface::ShouldSignalRoundEnd() && !pauseAutomaticRoundProgression && !SeeingHostileActivity())
 			ApplicationInterface::SignalRoundEnd();
+
+		pauseAutomaticRoundProgression = false;
 	}
 }
 
@@ -1273,6 +1264,8 @@ namespace ApplicationInterface
 				}
 			}
 		}
+		else
+			LocalApplicationInterface::pauseAutomaticRoundProgression = true;
 	}
 
 
@@ -1433,7 +1426,7 @@ namespace ApplicationInterface
 						return;
 					change.level[Objects::Resource::Minerals] -= std::min(opSpeed, v->myTasks.Peek().job->resourceCostLeft);
 
-				});
+				},false);
 
 				#ifndef NO_SATELLITES
 				for (const auto&sat : Objects::satellites)
@@ -2174,7 +2167,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 						result = v->location;
 						rs = true;
 					}
-				});
+				},true);
 			}
 
 			#ifndef NO_SATELLITES
@@ -2714,6 +2707,12 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 
 	namespace LocalApplicationInterface
 	{
+		bool	IsValidNickname(const String&candidate)
+		{
+			return Package::NetString<32>::IsValid(candidate) 
+				&& candidate.length() > 3 && candidate.length() <= 16;
+		}
+
 
 		void	QueryNickname()
 		{
@@ -2723,12 +2722,11 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 			{
 				static const String allowed = "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_-";
 
-				Dialog::Query("Please enter a valid nickname to continue (length 4-16)",Network::chosenNickname,
+				Dialog::Query("Please enter a nickname to continue (length 4-16)",Network::chosenNickname,
 				allowed,
-				[](const String&candidate)->bool
+					[](const String&candidate)->bool
 					{
-						return Package::NetString<32>::IsValid(candidate) 
-							&& candidate.length() > 3 && candidate.length() <= 16;
+						return IsValidNickname(candidate);
 					},
 					[](const String&name)
 					{
@@ -2748,10 +2746,14 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 			}
 		}
 
-		void	QueryNicknameIfEmpty()
+		bool	QueryNicknameIfEmpty()
 		{
-			if (Network::chosenNickname.IsEmpty())
+			if (!IsValidNickname(Network::chosenNickname))
+			{
 				QueryNickname();
+				return true;
+			}
+			return false;
 		}
 	}
 
@@ -2965,7 +2967,7 @@ namespace ApplicationInterface
 		Objects::PWorldEntity any;
 		Objects::ForeachWorldEntity([&any](const Objects::PWorldEntity&e)
 		{
-			if (any || !e->isOwnedByMe || e->health <= 0)
+			if (any || !e->isOwnedByMe)
 				return;
 			if (e->IsMobile())
 			{
@@ -2977,7 +2979,7 @@ namespace ApplicationInterface
 				if (IsIdle(To<Objects::Structure>::Cast(e)))
 					any = e;
 			}
-		});
+		},false);
 		//#ifdef _DEBUG
 		//if (any)
 		//	LogEvent(EventSignificance::Uncommon,any.get(),"not idle");
@@ -3706,8 +3708,8 @@ int main( int argc, const char* argv[])
 				}
 				else
 				{
-					LocalApplicationInterface::QueryNickname();
 				}
+				LocalApplicationInterface::QueryNicknameIfEmpty();
 			}
 
 

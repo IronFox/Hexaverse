@@ -555,7 +555,7 @@ namespace Game
 					}			
 				v.ResetAllChange();
 			}
-		});
+		},false);
 
 		foreach (Objects::structures, _s)
 		{
@@ -799,7 +799,7 @@ namespace Game
 				{
 					v->owner->hasTerraformer = true;
 				}
-			});
+			},false);
 
 			for (index_t i = 0; i < Objects::Faction::all.Count(); i++)
 			{
@@ -921,7 +921,7 @@ namespace Game
 			}
 			elif (e->owner == Objects::Faction::nexus)
 				e->HealAllEMPDamage(atTime);	//immediately heal when a new area gets unlocked
-		});
+		},false);
 
 	
 	}

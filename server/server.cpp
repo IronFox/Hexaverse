@@ -1686,7 +1686,7 @@ int main( int argc, const char* argv[])
 		else
 			LogConfig(" -Private Vehicle Action: Vehicle movement is not exposed to hostile factions.");
 		if (RuntimeConfig::empZones)
-			LogConfig(" -EMP Zones: Vehicles enterting residual EMP fields will suffer extensive EMP damage.");
+			LogConfig(" -EMP Zones: Vehicles entering residual EMP fields will suffer extensive EMP damage.");
 		else
 			LogConfig(" -No EMP Zones: The entire planet is freely accessible.");
 
@@ -1769,7 +1769,7 @@ int main( int argc, const char* argv[])
 					Objects::ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
 					{
 						e->ReSeedRandom();
-					});
+					},false);
 
 					ProcessAICoverage();
 

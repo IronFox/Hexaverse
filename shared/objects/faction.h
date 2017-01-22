@@ -390,30 +390,30 @@ namespace Objects
 	void			ForeachFaction(const std::function<void(const PFaction&)>&func);
 
 	/**
-	Iterates through all entities that are located in the world, including markers (markers on client only)
+	Iterates through all entities that are located in the world, potentially including ghosts (ghosts on client only)
 	Stored mobiles are not iterated
 	*/
-	void			ForeachWorldEntity(const std::function<void(const PWorldEntity&)>&func);
+	void			ForeachWorldEntity(const std::function<void(const PWorldEntity&)>&func, bool includeGhosts);
 	/**
-	Iterates through all entities that are located in the world, including markers (markers on client only)
+	Iterates through all entities that are located in the world, potentially including ghosts (ghosts on client only)
 	Stored mobiles are also iterated
 	*/
-	void			ForeachWorldEntityIncludingStored(const std::function<void(const PWorldEntity&)>&func);
+	void			ForeachWorldEntityIncludingStored(const std::function<void(const PWorldEntity&)>&func, bool includeGhosts);
 
 	/**
-	Iterates through all mobile entities that are located in the world.
+	Iterates through all mobile entities that are located in the world, potentially including ghosts (ghosts on client only).
 	Stored mobiles are not iterated
 	Note that this function is usually overkill since most loops can easily know whether they target ground
 	units or orbital units
 	*/
-	void			ForeachMobileWorldEntity(const std::function<void(const PMobileEntity&)>&func);
+	void			ForeachMobileWorldEntity(const std::function<void(const PMobileEntity&)>&func, bool includeGhosts);
 
 	/**
-	Iterates through all mobile entities that are located in the world or in storage, including markers (markers on client only).
+	Iterates through all mobile entities that are located in the world or in storage, potentially including ghosts (ghosts on client only).
 	Note that this function is usually overkill since most loops can easily know whether they target ground
 	units or orbital units
 	*/
-	void			ForeachMobileEntityIncludingStored(const std::function<void(const PMobileEntity&)>&func);
+	void			ForeachMobileEntityIncludingStored(const std::function<void(const PMobileEntity&)>&func, bool includeGhosts);
 }
 
 

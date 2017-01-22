@@ -1,8 +1,11 @@
 v0.6.1
 	> Nexus units are now affected by residual EMP fields to prevent them from firing out of EMP zones.
-	> Automatic round progression now halts if hostile units are visible, or visible hostile activity has occurred during the previous round.
+	> Automatic round progression now halts if hostile units appeared, or visible hostile activity has occurred during the previous round.
+	> Mechanic can now repair across one level of height difference.
 	* Fixed 'factionsPerEMPZone' implementation.
 	* "Unable to determine feasible angles for artillery trajectory" messages are no longer sent to clients.
+	* Removed non-vehicle turrets from vehicle plant choices.
+	* Fixed liquids not expanding downwards.
 
 v0.6.0	[Jan 10 2017]
 	+ Added option to configure the number of factions per unlocked EMP zone.

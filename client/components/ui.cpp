@@ -1457,7 +1457,7 @@
 						}
 						else
 							hostileGroups.collection.Set(key).Append(e);
-					});
+					},true);
 					CollectionToCommands(friendlyGroups);
 					CollectionToCommands(hostileGroups);
 				}
