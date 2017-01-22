@@ -893,7 +893,7 @@
 											{
 												LoadIcon();
 												indexCounter++;
-												gridCoords = int2(1,2+indexCounter);
+												gridCoords = int2(1+indexCounter,1);
 											}
 
 
