@@ -1705,7 +1705,7 @@ int LuaRun (int argc, const char *argv[]) {
 		rs = prog->GetGlobal("nested").Serialize(testStream);
 		
 		{
-			MemReadStream reader(testStream.pointer(),(serial_size_t)testStream.GetCount());
+			MemReadStream reader(testStream.pointer(),(serial_size_t)testStream.GetFillLevel());
 
 			prog->DeserializeToReference(reader).SetGlobal("nested2");
 		}
@@ -1715,7 +1715,7 @@ int LuaRun (int argc, const char *argv[]) {
 		{
 			Lua::Reference ref;
 			{
-				MemReadStream reader(testStream.pointer(),(serial_size_t)testStream.GetCount());
+				MemReadStream reader(testStream.pointer(),(serial_size_t)testStream.GetFillLevel());
 				rs = prog->DeserializeToReference(reader,ref);
 			}
 			deepPrint(ref,"");
@@ -1723,7 +1723,7 @@ int LuaRun (int argc, const char *argv[]) {
 			ByteStream str2;
 			ref.Serialize(str2);
 			{
-				MemReadStream reader(str2.pointer(),(serial_size_t)str2.GetCount());
+				MemReadStream reader(str2.pointer(),(serial_size_t)str2.GetFillLevel());
 				prog->DeserializeToReference(reader).SetGlobal("nested3");
 
 			}
