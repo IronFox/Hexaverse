@@ -756,55 +756,113 @@ EnumerationType	GetType(Config::Context*context, const String&path)
 //}
 
 
-void EstimatePresence(Objects::WorldEntity&e, const Grid::LCellIdI&location, float*hostileNearNexus, float*constructorNearNexus, float*friendlyNearNexus)
+void EstimatePresence(Objects::WorldEntity&e, const Grid::LCellIdI&location, const ArrayRef<index_t>&cornerField, float*hostileNearNexus, float*constructorNearNexus, float*friendlyNearNexus)
 {
 	const TVec3 < >&loc = Grid::low.cells[location.stackID].centerVertex.xyz;
 	float impact = e.GetConstructionCost();
 	if (impact > 0)
-		for (index_t i = 0; i < 12; i++)
-			if (BaseGrid::IsIsolatedCorner(i))
+		foreach (cornerField, at)
+		{
+			float opacity = Vec::dot(Grid::low.cells[*at].centerVertex.xyz, loc);
+			#ifdef LOWER_RESOLUTION_PLANET
+				opacity = opacity * 0.5f + 0.5f;
+			#else
+				opacity = std::max(0.f,opacity);
+			#endif
+			//opacity = Grid::powi(opacity,2);
+			if (opacity > 0)
 			{
-				float opacity = std::max(0.f,Vec::dot(Grid::low.cells[i].centerVertex.xyz, loc));
-				//opacity = Grid::powi(opacity,2);
-				if (opacity > 0)
+				if (e.owner != Objects::Faction::nexus)
 				{
-					if (e.owner != Objects::Faction::nexus)
-					{
-						hostileNearNexus[i] += opacity * impact;
+					hostileNearNexus[*at] += opacity * impact;
 
-						Objects::PTurretBase b = e.GetTurretBase();
-						if (b && b->turret->CanDo(Objects::Component::Construct))
-						{
-							constructorNearNexus[i] += Grid::powi(opacity,64);
-						}
-					}
-					else
+					Objects::PTurretBase b = e.GetTurretBase();
+					if (b && b->turret->CanDo(Objects::Component::Construct))
 					{
-						if (e.IsMobile())
-							friendlyNearNexus[i] += opacity * impact;
+						constructorNearNexus[*at] += Grid::powi(opacity,64);
 					}
 				}
+				else
+				{
+					if (e.IsMobile())
+						friendlyNearNexus[*at] += opacity * impact;
+				}
 			}
+		}
 }
 
 
 
-static Objects::PNexusPort ClosestPort(const Objects::PWorldEntity&e, const Objects::PNexusPort cornerPorts[12])
+static Objects::PNexusPort ClosestPort(const Objects::PWorldEntity&e, const ArrayRef<Objects::PNexusPort>&cornerPorts)
 {
 	float d2 = std::numeric_limits<float>::max();
 	Objects::PNexusPort rs;
-	for (int i = 0; i < 12; i++)
+	foreach (cornerPorts,p)
 	{
-		if (!cornerPorts[i])
-			continue;
-		float nd2 = Vec::quadraticDistance(e->GetWorldPosition(),cornerPorts[i]->GetWorldPosition());
+		float nd2 = Vec::quadraticDistance(e->GetWorldPosition(),(*p)->GetWorldPosition());
 		if (nd2 < d2)
 		{
 			d2 = nd2;
-			rs = cornerPorts[i];
+			rs = *p;
 		}
 	}
 	return rs;
+}
+
+namespace NexusStructures
+{
+	#ifdef ONE_COMPOUND_PER_FACTION
+		Buffer0<Objects::WWorkingStructure>	portList[12];
+	#endif
+
+
+
+	void Reset(const ArrayRef<Objects::PNexusPort>&ports)
+	{
+		#ifdef ONE_COMPOUND_PER_FACTION
+			for (int i = 0; i < 12; i++)
+				portList[i].Clear();
+
+			if (!Objects::Faction::nexus || ports.IsEmpty())
+				return;
+
+			TVec3<> centers[12];
+			DBG_ASSERT_LESS_OR_EQUAL__(ports.Count(),12);
+			for (index_t i = 0; i < ports.Count(); i++)
+				centers[i] = Grid::low.cells[ports[i]->location.stackID].centerVertex.xyz;
+			foreach (Objects::Faction::nexus->structures,s0)
+			{
+				Objects::PStructure s = s0->lock();
+				if (!s || !s->IsWorkingStructure())
+					continue;
+				float closestAt = std::numeric_limits<float>::lowest();
+				index_t closest = InvalidIndex;
+				for (index_t i = 0; i < ports.Count(); i++)
+				{
+					float d = Vec::dot(Grid::low.cells[s->location.stackID].centerVertex.xyz,centers[i]);
+					if (d > closestAt)
+					{
+						closestAt = d;
+						closest = i;
+					}
+				}
+				portList[closest].Append(To<Objects::WorkingStructure>::Cast(s));
+			}
+		#endif
+	}
+
+
+	const BasicBuffer<Objects::WWorkingStructure>&
+		OfPort(const Objects::PNexusPort&p, int portIndex)
+	{
+		#ifdef ONE_COMPOUND_PER_FACTION
+			return portList[portIndex];
+		#else
+			return p->GetCompound().workingStructures;
+		#endif
+	}
+
+
 }
 
 
@@ -852,170 +910,190 @@ void ProcessAICoverage()
 		}
 
 
-		for (int i = 0; i < 12; i++)
-			if (BaseGrid::IsIsolatedCorner(i))
-				friendlyNearNexus[i] = Game::factionStartMineralValue /*- State::Config::nexusStartMineralValue*/;
-		Objects::PNexusPort ports[12];
+		Objects::PNexusPort compactPortList[12];
 		index_t portAt = 0;
 		foreach(Objects::structures, s)
 		{
 			//bool nexus = (*s)->owner == Objects::Faction::nexus;
 			Objects::PNexusPort p = To<Objects::NexusPort>::DynamicCast(*s);
-			if (p && BaseGrid::IsIsolatedCorner((*s)->location.stackID))
+			if (p && BaseGrid::IsIsolatedCorner(p->location.stackID) && p->owner == Objects::Faction::nexus)
 			{
 				ASSERT_LESS__(portAt, BaseGrid::IsolatedCornerCount);
+				compactPortList[portAt] = p;
 				portAt++;
-				index_t portIn = (*s)->location.stackID;
-				ASSERT_LESS__(portIn, 12);
-				ASSERT__(!ports[portIn]);
-				ports[portIn] = p;
+				//index_t portIn = (*s)->location.stackID;
+				//ASSERT_LESS__(portIn, 12);
+				//ASSERT__(!ports[portIn]);
+				//ports[portIn] = p;
 			}
 		}
-		ASSERT_EQUAL__(portAt, BaseGrid::IsolatedCornerCount);
+		ASSERT_LESS_OR_EQUAL__(portAt, BaseGrid::IsolatedCornerCount);	//some might have changed ownership
+		LogEvent(EventSignificance::Debug,"Identified "+String(portAt)+" Nexus Ports under Nexus faction control");
+
+		const ArrayRef<Objects::PNexusPort>	ports (compactPortList,portAt);
+		Array<index_t> portLocations(portAt);
+		for (index_t i = 0; i < ports.Count(); i++)
+		{
+			portLocations[i] = ports[i]->location.stackID;
+			friendlyNearNexus[i] = Game::factionStartMineralValue /*- State::Config::nexusStartMineralValue*/;
+		}
 
 		foreach(Objects::vehicles, v)
 		{
-			EstimatePresence(**v,(*v)->location,hostileNearNexus,constructorNearNexus,friendlyNearNexus);
+			EstimatePresence(**v,(*v)->location,portLocations, hostileNearNexus,constructorNearNexus,friendlyNearNexus);
 		}
 
 		foreach(Objects::structures, s)
 		{
-			EstimatePresence(**s,(*s)->location,hostileNearNexus,constructorNearNexus,friendlyNearNexus);
+			EstimatePresence(**s,(*s)->location,portLocations, hostileNearNexus,constructorNearNexus,friendlyNearNexus);
 		}
 		static Buffer0<UINT32> neighborField;
-		for (int i = 0; i < 12; i++)
-			if (BaseGrid::IsIsolatedCorner(i) && (Grid::empZonesUnlocked & (1<<i)))
+		NexusStructures::Reset(ports);
+		for (index_t j = 0; j < portAt; j++)
+		{
+			Objects::PNexusPort p = compactPortList[j];
+			if (p->empDamageLevel > 0)
+				continue;
+			if (RuntimeConfig::roundNumber - p->lastSpawnRound < 5 || p->owner != Objects::Faction::nexus)
+				continue;	//not allowed to spawn anything for the moment
+
+			float threatLevel = sqr(hostileNearNexus[j] )*Game::Config::Nexus::threatEstimationFactor
+					*1e-3f;
+			LogEvent(EventSignificance::Debug, "Threat level for " + ports[j]->GetName() + " considered " + String(threatLevel));
+			if (Game::Config::Nexus::haveBases)
 			{
-				Objects::PNexusPort p = ports[i];
-				if (RuntimeConfig::roundNumber - p->lastSpawnRound < 5 || p->owner != Objects::Faction::nexus)
-					continue;	//not allowed to spawn anything for the moment
+				Objects::RefreshCompoundCoverageIfNeeded(0);
 
-				float threatLevel = sqr(hostileNearNexus[i] )*Game::Config::Nexus::threatEstimationFactor
-						*1e-3f;
-				LogEvent(EventSignificance::Debug, "Threat level for " + ports[i]->GetName() + " considered " + String(threatLevel));
-				if (Game::Config::Nexus::haveBases)
+				Objects::Compound&n = p->GetCompound();
+				count_t producing = 0,
+						existing = 0;
+				for (Objects::WWorkingStructure _ws : NexusStructures::OfPort(p,j))
 				{
-					Objects::RefreshCompoundCoverageIfNeeded(0);
-
-					Objects::Compound&n = p->GetCompound();
-					count_t producing = 0,
-							existing = 0;
-					for (Objects::WWorkingStructure _ws : n.workingStructures)
-					{
-						Objects::PWorkingStructure	ws = _ws.lock();
-						if (!ws)
+					Objects::PWorkingStructure	ws = _ws.lock();
+					if (!ws)
+						continue;
+					#ifndef NO_HIBERNATION
+						if (ws->ToHibernating()->IsHibernating())
 							continue;
-						#ifndef NO_HIBERNATION
-							if (ws->ToHibernating()->IsHibernating())
+					#endif
+					if (Grid::AffectedByEMP(ws->location) || ClosestPort(ws,ports) != p)
+						continue;
+					if (ws->health < ws->GetMaxHealth())
+						friendlyNearNexus[j] -= ws->GetConstructionCost();
+					Objects::PMobileEntityProducer plant = To<Objects::MobileEntityProducer>::DynamicCast(ws);
+					if (plant)
+					{
+						existing++;
+						if (plant->AwaitsUserInteraction())
+						{
+							float t = 0;
+							Objects::PMobileEntity v = plant->SpawnFinishedProductionAnywhere(t);
+							if (!v)
+							{
+								producing++;	//dont count
 								continue;
-						#endif
-						if (Grid::AffectedByEMP(ws->location) || ClosestPort(ws,ports) != p)
-							continue;
-						if (ws->health < ws->GetMaxHealth())
-							friendlyNearNexus[i] -= ws->GetConstructionCost();
-						Objects::PMobileEntityProducer plant = To<Objects::MobileEntityProducer>::DynamicCast(ws);
-						if (plant)
+							}
+							Journal::currentRound.RegisterChoiceIntersection(false,ws,v->location,Objects::CursorMode::Idle,v);
+							EstimatePresence(*v,v->location,portLocations, hostileNearNexus,constructorNearNexus,friendlyNearNexus);
+						}
+						if (plant->queue.IsNotEmpty())
 						{
-							existing++;
-							if (plant->AwaitsUserInteraction())
-							{
-								float t = 0;
-								Objects::PMobileEntity v = plant->SpawnFinishedProductionAnywhere(t);
-								if (!v)
-								{
-									producing++;	//dont count
-									continue;
-								}
-								Journal::currentRound.RegisterChoiceIntersection(false,ws,v->location,Objects::CursorMode::Idle,v);
-								EstimatePresence(*v,v->location,hostileNearNexus,constructorNearNexus,friendlyNearNexus);
-							}
-							if (plant->queue.IsNotEmpty())
-							{
-								producing++;
-								ASSERT__(plant->queue.first().producing->owner == Objects::Faction::nexus);
-								EstimatePresence(*plant->queue.first().producing,ws->location,hostileNearNexus,constructorNearNexus,friendlyNearNexus);
-							}
+							producing++;
+							ASSERT__(plant->queue.first().producing->owner == Objects::Faction::nexus);
+							EstimatePresence(*plant->queue.first().producing,ws->location,portLocations, hostileNearNexus,constructorNearNexus,friendlyNearNexus);
 						}
 					}
+				}
 
-	//				if (producing < existing)
+//				if (producing < existing)
+				{
+					while (producing < existing && (friendlyNearNexus[j] < threatLevel || (constructorNearNexus[j] > 0.2f && friendlyNearNexus[j] < Game::factionStartMineralValue + 20.f)))
 					{
-						while (producing < existing && (friendlyNearNexus[i] < threatLevel || (constructorNearNexus[i] > 0.2f && friendlyNearNexus[i] < Game::factionStartMineralValue + 20.f)))
+						LogEvent(EventSignificance::Debug, "Increasing production for " + p->GetName()+" (friendlies here: "+String(friendlyNearNexus[j])+", constructor at: "+String(constructorNearNexus[j])+")");
+						bool anyFound = false;
+
+						for (Objects::WWorkingStructure _ws : NexusStructures::OfPort(p,j))
+						//for (Objects::WWorkingStructure _ws : n.workingStructures)
 						{
-							for (Objects::WWorkingStructure _ws : n.workingStructures)
+							Objects::PWorkingStructure ws = _ws.lock();
+							if (!ws)
+								continue;
+							Objects::PMobileEntityProducer plant = To<Objects::MobileEntityProducer>::DynamicCast(ws);
+	//						Objects::MobileEntityProducer*plant = ws->ToProducer();
+							Objects::PVehiclePlant vplant = To<Objects::VehiclePlant>::DynamicCast(ws);
+							if (plant && vplant && plant->queue.IsEmpty())
 							{
-								Objects::PWorkingStructure ws = _ws.lock();
-								if (!ws)
-									continue;
-								Objects::PMobileEntityProducer plant = To<Objects::MobileEntityProducer>::DynamicCast(ws);
-		//						Objects::MobileEntityProducer*plant = ws->ToProducer();
-								Objects::PVehiclePlant vplant = To<Objects::VehiclePlant>::DynamicCast(ws);
-								if (plant && vplant && plant->queue.IsEmpty())
-								{
-									index_t choice = vplant->entityRandom.NextIndex(Game::Config::Nexus::vehicleTurrets.Count());
-									//random.getIndex(State::Config::Nexus::vehicleTurrets.Count() - 1);
-									ASSERT_LESS__(choice,Game::Config::Nexus::vehicleTurrets.Count());
-									//Objects::Component::Turret* turret = State::Config::Nexus::vehicleTurrets[choice];
-									//Objects::MobileEntityProducer::WorkItem item = vplant->EnqueueProductionOfVehicle(&Objects::Component::hoverbase,turret);
-									//Objects::PVehicle v = To<Objects::Vehicle>::Cast(item.producing);
-									ConstName	parameters[2] = {ConstName::VehicleBase_HoverBase, Game::Config::Nexus::vehicleTurrets[choice]->constName};
-									LogEvent(EventSignificance::Common,vplant.get(),"Enqueueing vehicle production job due to high threat level");
-									Journal::currentRound.RegisterProductionJobStart(true,vplant,plant,parameters,2);
+								anyFound = true;
+								index_t choice = vplant->entityRandom.NextIndex(Game::Config::Nexus::vehicleTurrets.Count());
+								//random.getIndex(State::Config::Nexus::vehicleTurrets.Count() - 1);
+								ASSERT_LESS__(choice,Game::Config::Nexus::vehicleTurrets.Count());
+								//Objects::Component::Turret* turret = State::Config::Nexus::vehicleTurrets[choice];
+								//Objects::MobileEntityProducer::WorkItem item = vplant->EnqueueProductionOfVehicle(&Objects::Component::hoverbase,turret);
+								//Objects::PVehicle v = To<Objects::Vehicle>::Cast(item.producing);
+								ConstName	parameters[2] = {ConstName::VehicleBase_HoverBase, Game::Config::Nexus::vehicleTurrets[choice]->constName};
+								LogEvent(EventSignificance::Common,vplant.get(),"Enqueueing vehicle production job due to high threat level");
+								Journal::currentRound.RegisterProductionJobStart(true,vplant,plant,parameters,2);
 									
-									EstimatePresence(*vplant->queue.last().producing,vplant->location,hostileNearNexus,constructorNearNexus,friendlyNearNexus);
-									producing++;
-									break;
-								}
+								EstimatePresence(*vplant->queue.last().producing,vplant->location,portLocations, hostileNearNexus,constructorNearNexus,friendlyNearNexus);
+								producing++;
+								break;
 							}
 						}
+						if (!anyFound)
+						{
+							LogEvent(EventSignificance::Debug,  p->GetName()+" no longer has idle plants. Aborting");
+							break;
+
+						}
 					}
+				}
 
 			
-					#ifdef ONE_COMPOUND_PER_FACTION
-						break;	//only one compound for nexus faction. all done
-					#endif
-
-				}
-				else
-				while (friendlyNearNexus[i] < threatLevel || (constructorNearNexus[i] > 0.2f && friendlyNearNexus[i] < Game::factionStartMineralValue + 20.f))
-				{
-					LogEvent(EventSignificance::Debug, "Spawning nexus unit near " + p->GetName());
-					p->lastSpawnRound = RuntimeConfig::roundNumber;
-
-
-					Grid::LCellIdI location = Grid::LCellIdI::Invalid;
-					Grid::low.GetExtendedNeighborhood(i, 3, neighborField);
-					foreach(neighborField, n)
-					{
-						Grid::LCellIdI candidate(*n, ports[i]->location.height);
-						Grid::AssertIsValid(candidate);
-						candidate.height = Objects::FindApplicableGround(candidate, true);
-
-						if (candidate.height != Objects::badHeight && !Objects::GetVehicle(candidate))
-						{
-							location = candidate;
-							break;
-						}
-
-					}
-
-					if (location != Grid::LCellIdI::Invalid)
-					{
-						Objects::Component::Turret* turret = Game::Config::Nexus::vehicleTurrets[random.NextIndex(Game::Config::Nexus::vehicleTurrets.Count())];
-						float t = 0;
-						Objects::PVehicle v = Objects::SpawnVehicle(Objects::Faction::nexus, location, &Objects::Component::hoverbase, turret, true, t);
-						Journal::currentRound.LogEntityCreation(v);
-						EstimatePresence(*v,v->location, hostileNearNexus,constructorNearNexus, friendlyNearNexus);
-					//	Objects::VerifyVisibilityNetwork();
-					}
-					else
-					{
-						LogEvent(EventSignificance::Debug, "Unable to spawn nexus vehicle. Not enough space near " + ports[i]->GetName());
-						break;
-					}
-				}
+				//#ifdef ONE_COMPOUND_PER_FACTION
+				//	break;	//only one compound for nexus faction. all done
+				//#endif
 
 			}
+			else
+			while (friendlyNearNexus[j] < threatLevel || (constructorNearNexus[j] > 0.2f && friendlyNearNexus[j] < Game::factionStartMineralValue + 20.f))
+			{
+				LogEvent(EventSignificance::Debug, "Spawning nexus unit near " + p->GetName());
+				p->lastSpawnRound = RuntimeConfig::roundNumber;
+
+
+				Grid::LCellIdI location = Grid::LCellIdI::Invalid;
+				Grid::low.GetExtendedNeighborhood(p->location.stackID, 3, neighborField);
+				foreach(neighborField, n)
+				{
+					Grid::LCellIdI candidate(*n, p->location.height);
+					Grid::AssertIsValid(candidate);
+					candidate.height = Objects::FindApplicableGround(candidate, true);
+
+					if (candidate.height != Objects::badHeight && !Objects::GetVehicle(candidate))
+					{
+						location = candidate;
+						break;
+					}
+
+				}
+
+				if (location != Grid::LCellIdI::Invalid)
+				{
+					Objects::Component::Turret* turret = Game::Config::Nexus::vehicleTurrets[random.NextIndex(Game::Config::Nexus::vehicleTurrets.Count())];
+					float t = 0;
+					Objects::PVehicle v = Objects::SpawnVehicle(Objects::Faction::nexus, location, &Objects::Component::hoverbase, turret, true, t);
+					Journal::currentRound.LogEntityCreation(v);
+					EstimatePresence(*v,v->location,  portLocations,hostileNearNexus,constructorNearNexus, friendlyNearNexus);
+				//	Objects::VerifyVisibilityNetwork();
+				}
+				else
+				{
+					LogEvent(EventSignificance::Debug, "Unable to spawn nexus vehicle. Not enough space near " + p->GetName());
+					break;
+				}
+			}
+
+		}
 	}
 }
 
@@ -1060,7 +1138,6 @@ void TerminateNow(bool isMain)
 		Logging::End();
 
 	mutex.release();
-
 	TerminateProcess(GetCurrentProcess(),0);
 
 	
