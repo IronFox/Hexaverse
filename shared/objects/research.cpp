@@ -27,7 +27,7 @@ namespace Objects
 												const PResearchTopic&dependency
 											)
 	{
-		LogEvent(EventClass::Preset::important,"Lua created new research '"+name+"'");
+		LogEvent(EventClass::Preset::debug,"Lua created new research '"+name+"'");
 
 		const String&iconSource = iconName.IsEmpty() ? name : iconName;
 
@@ -837,7 +837,7 @@ namespace Objects
 							float t = 0;
 							e->UnregisterSensory(t,false);
 						}
-					});
+					},false);
 			#endif
 
 			Lua::Reference deserialized = globalState.researchProgram->DeserializeToReference(ByteReadStream(serializedState));
@@ -858,7 +858,7 @@ namespace Objects
 						float t = 0;
 						e->RegisterSensory(t,false);
 					}
-				});
+				},false);
 		#endif
 
 	}

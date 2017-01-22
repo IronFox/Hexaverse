@@ -221,19 +221,19 @@ namespace World
 				{
 					if (stack.volumeCell[layer].content == Grid::Content::Clear)
 					{
-						BYTE Fill = 
-							layer+1 < Grid::CellStack::Range && Grid::CellStack::Cell::IsLiquid(stack.volumeCell[layer].content) ? stack.volumeCell[layer].content : 0;
-						if (!Fill)
+						BYTE fill = 
+							layer+1 < Grid::CellStack::Range && Grid::CellStack::Cell::IsLiquid(stack.volumeCell[layer+1].content) ? stack.volumeCell[layer+1].content : 0;
+						if (!fill)
 							for (int i = 0; i < neighborhood.numNeighbors; i++)
 								if (Grid::CellStack::Cell::IsLiquid(nStacks[i]->volumeCell[layer].content))
 								{
-									Fill = nStacks[i]->volumeCell[layer].content;
+									fill = nStacks[i]->volumeCell[layer].content;
 									break;
 								}
 
-						if (Fill)
+						if (fill)
 						{
-							target.volumeCell[layer] = Fill;
+							target.volumeCell[layer] = fill;
 							thisChanged = true;
 						}
 					}
@@ -308,7 +308,7 @@ namespace World
 						}
 					}
 				}
-			});
+			},false);
 			float t = timer.GetSecondsSince(t0);
 			LogEvent(EventSignificance::PerformanceMeasurement,"Time needed to process water: "+String(t));
 
@@ -482,7 +482,6 @@ namespace World
 		if (RuntimeConfig::empZones)
 		{
 			count_t numZones = Game::Config::CountAccessibleZones(temporaryFactionCountBonus);
-			numZones = (numZones/3) + !!(numZones % 3);
 
 			int unlocked = 0;
 			for (index_t i = 0; i < numZones; i++)

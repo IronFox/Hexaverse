@@ -456,7 +456,7 @@ namespace AI
 						badWeight += 20 / (1.f + distance);
 					else
 						goodWeight += fc / (1.f + distance);
-				});
+				},true);
 				//if (badWeight < 0.1f && goodWeight < 0.05f)
 				{
 					foreach (Objects::Marker::all,_m)

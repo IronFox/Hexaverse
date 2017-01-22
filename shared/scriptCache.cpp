@@ -28,7 +28,7 @@ namespace ScriptCache
 		}
 		if (compressed > 32768)	//max transferrable byte count in current protocol version. Might happen
 		{
-			LogEvent(EventClass::Preset::configurationError,"  compressed size ("+String(compressed)+" bytes) exceeds maximum transferable size (32768 bytes)");
+			LogEvent(EventClass::Preset::common,"  compressed size ("+String(compressed)+" bytes) exceeds maximum transferable size (32768 bytes)");
 			return false;
 		}
 		(*(UINT32*)this->compressed.pointer()) = (UINT32)len;
@@ -36,14 +36,14 @@ namespace ScriptCache
 		this->compressed.resizePreserveContent(compressed+4);
 		SHA256::Hash(this->compressed.pointer(),this->compressed.size(),this->identifier);
 
-		LogEvent(EventClass::Preset::configurationPrint,"  BZ2: "+String(len)+" bytes compressed to "+String(compressed)+" bytes (down to "+String(Round((float)compressed/(float)len * 100.f,1))+"%)");
-		LogEvent(EventClass::Preset::configurationPrint,"  ID updated to "+Bin2Str::ConvertPOD(this->identifier));
+		LogEvent(EventClass::Preset::common,"  BZ2: "+String(len)+" bytes compressed to "+String(compressed)+" bytes (down to "+String(Round((float)compressed/(float)len * 100.f,1))+"%)");
+		LogEvent(EventClass::Preset::common,"  ID updated to "+Bin2Str::ConvertPOD(this->identifier));
 		return true;
 	}
 
 	PScript		LoadContent(const String&content)
 	{
-		LogEvent(EventClass::Preset::configurationPrint,"Loading raw script ...");
+		LogEvent(EventClass::Preset::common,"Loading raw script ...");
 
 		PScript s(new Script());
 		s->content = content;
@@ -54,7 +54,7 @@ namespace ScriptCache
 		PScript other = Lookup(s->identifier);
 		if (other)
 		{
-			LogEvent(EventClass::Preset::configurationPrint,"  File mapped as '"+Bin2Str::ConvertPOD(s->identifier)+"' did not change. Returning previous instance.");
+			LogEvent(EventClass::Preset::common,"  File mapped as '"+Bin2Str::ConvertPOD(s->identifier)+"' did not change. Returning previous instance.");
 			return other;
 		}
 
@@ -72,7 +72,7 @@ namespace ScriptCache
 		if (cached && FileSystem::GetModificationTime(path) == cached->second)
 			return cached->first;
 
-		LogEvent(EventClass::Preset::configurationPrint,"Loading script file '"+String(path)+"'...");
+		LogEvent(EventClass::Preset::common,"Loading script file '"+String(path)+"'...");
 
 		PScript s(new Script());
 		s->filename = rs.GetLocation();
@@ -92,7 +92,7 @@ namespace ScriptCache
 		PScript other = Lookup(s->identifier);
 		if (other)
 		{
-			LogEvent(EventClass::Preset::configurationPrint,"  File mapped as '"+Bin2Str::ConvertPOD(s->identifier)+"' did not change. Returning previous instance.");
+			LogEvent(EventClass::Preset::common,"  File mapped as '"+Bin2Str::ConvertPOD(s->identifier)+"' did not change. Returning previous instance.");
 			return other;
 		}
 
@@ -192,7 +192,7 @@ namespace ScriptCache
 			return PScript();
 		}
 
-		LogEvent(EventClass::Preset::uncommon,"Defining new cache entry for script "+Bin2Str::ConvertPOD(id)+" ("+String(rsSize)+" uncompressed bytes)");
+		LogEvent(EventClass::Preset::common,"Defining new cache entry for script "+Bin2Str::ConvertPOD(id)+" ("+String(rsSize)+" uncompressed bytes)");
 		script.reset(new Script());
 		hashMap.Set(id,script);
 		script->compressed.adoptData(data);

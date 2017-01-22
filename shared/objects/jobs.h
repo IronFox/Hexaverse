@@ -138,8 +138,8 @@ namespace Objects
 				}
 				else
 					fixedSize /= sizeof(Grid::LCellIdI);
-				path.SetSize(fixedSize,true);
-				return inStream.ReadPrimitives(path.pointer(),path.Count());
+				path.Clear();
+				return inStream.ReadPrimitives(path.AppendRow(fixedSize),fixedSize);
 			}
 		};
 

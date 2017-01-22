@@ -159,7 +159,7 @@ namespace Journal
 		Objects::ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
 		{
 			e->ReSeedRandom();
-		});
+		},false);
 
 		Game::ProcessChanges(true);
 
@@ -2210,7 +2210,7 @@ namespace Journal
 		{
 			PEntityEvent ev(new Round::EntityStateCheck(e));
 			factionStrands.Set(e->owner->id).entityStrands.Set(e->id).Append(ev);
-		});
+		},false);
 	}
 
 	/*static*/ StringRef	Round::OperationNameOf(const std::type_info&info)

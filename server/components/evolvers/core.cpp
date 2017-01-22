@@ -104,7 +104,7 @@ namespace Evolver
 				v->BeginMotionPhase(attackTime);
 				if (v->IsBuilding() || v->NextTaskIsMotion())
 					movingVehicles.Append(TMovementReference(v));
-			});
+			},false);
 		}
 
 		bool		ProcessNextVehicleAttack()
@@ -191,7 +191,7 @@ namespace Evolver
 			{
 				if (doHeal(e))
 					e->HealEMPDamage(atTime);
-			});
+			},false);
 		}
 
 
@@ -223,7 +223,7 @@ namespace Evolver
 			Objects::ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
 			{
 				e->ResetMotionTime();
-			});
+			},false);
 
 			Objects::ForeachMobileWorldEntity([](const Objects::PMobileEntity&v)
 			{
@@ -260,7 +260,7 @@ namespace Evolver
 					//ref.attacksLeft = v->CountPossibleAttacks();
 				}
 
-			}
+			},false
 			);
 			Objects::ForeachFaction([](const Objects::PFaction&f)
 			{
@@ -401,7 +401,7 @@ namespace Evolver
 						Objects::ForeachWorldEntityIncludingStored([&animationLength](const Objects::PWorldEntity&m)
 						{
 							animationLength = std::max(m->motionTime,animationLength);
-						});
+						},false);
 						Game::PerformNewRoundLogic(animationLength);
 						ResetTowerAttackAction(animationLength);
 						CheckOrbitalSupplyAndSensory(animationLength,World::terrainChanged);

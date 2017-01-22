@@ -755,7 +755,7 @@ namespace Objects
 					if (newContacts)
 						newContacts->Append(other);
 				}
-			});
+			},false);
 		}
 		void		Faction::RegisterSensorRemoval(const Grid::SkySensorState&state, float&t, bool checkChangesNow)
 		{
@@ -971,6 +971,7 @@ namespace Objects
 
 		void	ChangeOwnership( const PWorldEntity&e,const OwnerParameter&newOwner, bool isNowMine)
 		{
+			LogEvent(EventSignificance::Debug, e.get(),"Changing ownership to "+newOwner->GetName());
 			PStructure s = To<Structure>::DynamicCast(e);
 			#ifdef CLIENT
 				if (e->isOwnedByMe)
@@ -1044,7 +1045,7 @@ namespace Objects
 
 
 
-	void			ForeachMobileWorldEntity(const std::function<void(const PMobileEntity&)>&func)
+	void			ForeachMobileWorldEntity(const std::function<void(const PMobileEntity&)>&func, bool includeGhosts)
 	{
 		for (const PMobileEntity&e : vehicles)
 			func(e);
@@ -1054,9 +1055,14 @@ namespace Objects
 		#endif
 		for (const PMobileEntity&e : SubOrbital::planes)
 			func(e);
+		#ifdef CLIENT
+			if (includeGhosts)
+				for (const PMobileEntity&e : Marker::mobileGhosts)
+					func(e);
+		#endif
 	}
 
-	void			ForeachMobileEntityIncludingStored(const std::function<void(const PMobileEntity&)>&func)
+	void			ForeachMobileEntityIncludingStored(const std::function<void(const PMobileEntity&)>&func, bool includeGhosts)
 	{
 		for (const PMobileEntity&e : vehicles)
 			func(e);
@@ -1069,13 +1075,14 @@ namespace Objects
 		for (const PMobileEntity&e : storedMobileEntities)
 			func(e);
 		#ifdef CLIENT
-			for (const PMobileEntity&e : Marker::mobileGhosts)
-				func(e);
+			if (includeGhosts)
+				for (const PMobileEntity&e : Marker::mobileGhosts)
+					func(e);
 		#endif
 	}
 
 
-	void			ForeachWorldEntityIncludingStored(const std::function<void(const PWorldEntity&)>&func)
+	void			ForeachWorldEntityIncludingStored(const std::function<void(const PWorldEntity&)>&func, bool includeGhosts)
 	{
 		for (const PWorldEntity&e : vehicles)
 			func(e);
@@ -1090,16 +1097,19 @@ namespace Objects
 		for (const PWorldEntity&e : structures)
 			func(e);
 		#ifdef CLIENT
-			for (const PWorldEntity&e : Marker::structureGhosts)
-				func(e);
-			for (const PWorldEntity&e : Marker::mobileGhosts)
-				func(e);
+			if (includeGhosts)
+			{
+				for (const PWorldEntity&e : Marker::structureGhosts)
+					func(e);
+				for (const PWorldEntity&e : Marker::mobileGhosts)
+					func(e);
+			}
 		#endif
 
 
 	}
 
-	void ForeachWorldEntity(const std::function<void(const PWorldEntity&)>&func)
+	void ForeachWorldEntity(const std::function<void(const PWorldEntity&)>&func, bool includeGhosts)
 	{
 		for (const PWorldEntity&e : vehicles)
 			func(e);
@@ -1112,10 +1122,13 @@ namespace Objects
 		for (const PWorldEntity&e : structures)
 			func(e);
 		#ifdef CLIENT
-			for (const PWorldEntity&e : Marker::structureGhosts)
-				func(e);
-			for (const PWorldEntity&e : Marker::mobileGhosts)
-				func(e);
+			if (includeGhosts)
+			{
+				for (const PWorldEntity&e : Marker::structureGhosts)
+					func(e);
+				for (const PWorldEntity&e : Marker::mobileGhosts)
+					func(e);
+			}
 		#endif
 	}
 
