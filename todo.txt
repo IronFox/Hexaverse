@@ -1,5 +1,4 @@
 ﻿* TEST AI
-* move buttons bottom right somewhere else
 
 
 
@@ -154,6 +153,7 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+* Moved buttons bottom right to a vertical setup
 * Fixed: Hide/disable Poll messages 'Found X lobby match(es)' when session is in progress
 * Max repair height difference 0? Should be one
 * Fixed: liquids didn't expand downwards
