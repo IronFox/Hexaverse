@@ -693,8 +693,11 @@ void MyFatal(const FatalDescriptor&descriptor)
 	//ErrMessage("Hexaverse Server: "+message);
 	std::cerr << message << std::endl;
 	#ifdef _DEBUG
+		std::abort();
+
 		char confirm[0x100];
 		std::cin.getline(confirm,sizeof(confirm));
+
 	#endif
 
 	TerminateNow(true);
