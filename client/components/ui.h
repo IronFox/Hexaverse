@@ -146,19 +146,23 @@ namespace UI
 					typedef Objects::BaseCommand	Super;
 				public:
 					int2					gridCoords;
+					static index_t			indexCounter;
 
-					/**/					Icon(const int2&coords, const String&name) : Super(name)
+					/**/					Icon(const String&name) : Super(name)
 											{
 												LoadIcon();
-												gridCoords = coords;
+												indexCounter++;
+												gridCoords = int2(1,4+indexCounter);
 											}
 				};
+
+
 
 				class TutorialCommand : public Icon
 				{
 					typedef Icon			Super;
 				public:
-					/**/					TutorialCommand() : Super(int2(1,1),"Tutorial") {}
+					/**/					TutorialCommand() : Super("Tutorial") {}
 
 					virtual void			Refresh(bool)
 					{
@@ -180,8 +184,8 @@ namespace UI
 				{
 					typedef Icon			Super;
 				public:
-					/**/					UndoCommand() : Super(int2(5,1),"Undo") {}
-					/**/					UndoCommand(const int2&coords, const String&name) : Super(coords,name) {}
+					/**/					UndoCommand() : Super("Undo") {}
+					/**/					UndoCommand(const String&name) : Super(name) {}
 
 					virtual void			Refresh(bool controlsEnabled) override
 					{
@@ -221,7 +225,7 @@ namespace UI
 				{
 					typedef UndoCommand		Super;
 				public:
-					/**/					AbortCommand() : Super(int2(4,1),"Abort") {}
+					/**/					AbortCommand() : Super("Abort") {}
 
 					virtual void			Execute() override
 					{
@@ -239,8 +243,8 @@ namespace UI
 				{
 					typedef Icon			Super;
 				public:
-					/**/					DemolishCommand() : Super(int2(2,1),"Demolish") {}
-					/**/					DemolishCommand(const int2&coords, const String&name) : Super(coords,name) {}
+					/**/					DemolishCommand() : Super("Demolish") {}
+					/**/					DemolishCommand(const String&name) : Super(name) {}
 
 					virtual void			Refresh(bool controlsEnabled) override
 					{
@@ -267,8 +271,8 @@ namespace UI
 				{
 					typedef Icon			Super;
 				public:
-					/**/					SleepCommand() : Super(int2(3,1),"Sleep") {}
-					/**/					SleepCommand(const int2&coords, const String&name) : Super(coords,name) {}
+					/**/					SleepCommand() : Super("Sleep") {}
+					/**/					SleepCommand(const String&name) : Super(name) {}
 
 					virtual void			Refresh(bool controlsEnabled) override
 					{

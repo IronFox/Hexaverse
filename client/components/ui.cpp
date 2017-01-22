@@ -888,6 +888,9 @@
 				typedef std::shared_ptr<Icon>	PIcon;
 				Buffer0<PIcon >				commands;
 
+				/*static*/ index_t			Icon::indexCounter = 0;
+
+
 				void Create()
 				{
 					commands << PIcon( new TutorialCommand() );
