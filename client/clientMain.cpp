@@ -2123,9 +2123,6 @@ void MyFatal(const FatalDescriptor&descriptor)
 	LogEvent(EventClass( EventSignificance::SystemFatal, EventFlavor::SystemError ), nullptr, message);
 	ErrMessage(message);
 	//NetworkConnection::Close();
-
-	TerminateProcess(GetCurrentProcess(),0);	//self-terminate
-
 }
 
 
@@ -3445,7 +3442,6 @@ int main( int argc, const char* argv[])
 {
 	Except::onFatal = MyFatal;
 	Vec::assertConsistency<float>();
-
 	
 	#ifndef HAS_WINDOW
 		String cfg;
