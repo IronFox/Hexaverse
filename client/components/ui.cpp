@@ -889,6 +889,12 @@
 				Buffer0<PIcon >				commands;
 
 				/*static*/ index_t			Icon::indexCounter = 0;
+					/**/					Icon::Icon(const String&name) : Super(name)
+											{
+												LoadIcon();
+												indexCounter++;
+												gridCoords = int2(1,2+indexCounter);
+											}
 
 
 				void Create()

@@ -148,12 +148,7 @@ namespace UI
 					int2					gridCoords;
 					static index_t			indexCounter;
 
-					/**/					Icon(const String&name) : Super(name)
-											{
-												LoadIcon();
-												indexCounter++;
-												gridCoords = int2(1,4+indexCounter);
-											}
+					/**/					Icon(const String&name);
 				};
 
 
