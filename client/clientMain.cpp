@@ -2743,8 +2743,16 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 			}
 		}
 
+		/**
+		Checks loaded nickname and queries a new one if none or an invalid is currently set.
+		No check is performed if the client is configured to run in AI mode.
+		@return true if a new name was queried, false otherwise. False indicates the currently set name is good, or AI mode is enabled
+		*/
 		bool	QueryNicknameIfEmpty()
 		{
+			if (RuntimeConfig::aiMode)
+				return false;
+
 			if (!IsValidNickname(Network::chosenNickname))
 			{
 				QueryNickname();
@@ -3232,6 +3240,7 @@ void ParseKeyValue(const String&key, const String&value)
 		{
 			RuntimeConfig::aiMode = true;
 			RuntimeConfig::aiAccessToken.Decode(value);
+			LogEvent(EventClass::Preset::configuration,nullptr,"Assuming AI-client role");
 		}
 		elif (key == "udpListen")
 		{
@@ -3276,6 +3285,8 @@ bool ConfigureClient(const wchar_t*commandLine)
 		cfg.quotations = "\"'";
 		cfg.quotation_escape_character = '\\';
 		cfg.trim_characters = " \t";
+
+		LogEvent(EventClass::Preset::configuration,"Configuring client using command line '"+cmd+"'");
 
 		if (!Tokenizer::tokenize(cmd, cfg, tokenList))
 		{
