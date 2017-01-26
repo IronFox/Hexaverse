@@ -102,7 +102,7 @@ namespace Objects
 		virtual float			GetAttackActionLeft() const=0;
 
 		int						GetAttacksPerRound() const	{return turret->GetAttacksPerRound(GetOwner());}
-		int						GetDamagePotentialPerRound() const {OwnerParameter owner = GetOwner(); return turret->GetAttacksPerRound(owner) * turret->GetDamageLevel(owner);}
+		int						GetDamagePotentialPerRound() const {OwnerParameter owner = GetOwner(); return std::max(1,turret->GetAttacksPerRound(owner)) * turret->GetDamageLevel(owner);}
 		float					GetAttackInitiative()const	{return turret->initiative * GetAttackActionLeft();}
 		int						CountPossibleAttacks() const {return GetAttacksPerRound() * GetAttackActionLeft();}
 		virtual bool			NextTaskIsAttack() const = 0;
