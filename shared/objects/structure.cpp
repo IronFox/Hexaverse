@@ -2382,7 +2382,9 @@ namespace Objects
 	{
 		Super::PrototypeSetup();
 		baseComponents = Objects::Component::baseComponents;
-		turretComponents = Objects::Component::vehicleTurretComponents;
+		for (const auto& turret:Objects::Component::vehicleTurretComponents)
+			if (turret->mountType == Component::Turret::MountType::Vehicle)
+				turretComponents << turret;
 
 		#ifdef HAS_WINDOW
 			commands.VisitMembers([](const int2&coords,const PBaseCommand&cmd)

@@ -147,19 +147,18 @@ namespace UI
 					typedef Objects::BaseCommand	Super;
 				public:
 					int2					gridCoords;
+					static index_t			indexCounter;
 
-					/**/					Icon(const int2&coords, const String&name) : Super(name)
-											{
-												LoadIcon();
-												gridCoords = coords;
-											}
+					/**/					Icon(const String&name);
 				};
+
+
 
 				class TutorialCommand : public Icon
 				{
 					typedef Icon			Super;
 				public:
-					/**/					TutorialCommand() : Super(int2(1,1),"Tutorial") {}
+					/**/					TutorialCommand() : Super("Tutorial") {}
 
 					virtual void			Refresh(bool)
 					{
@@ -181,8 +180,8 @@ namespace UI
 				{
 					typedef Icon			Super;
 				public:
-					/**/					UndoCommand() : Super(int2(5,1),"Undo") {}
-					/**/					UndoCommand(const int2&coords, const String&name) : Super(coords,name) {}
+					/**/					UndoCommand() : Super("Undo") {}
+					/**/					UndoCommand(const String&name) : Super(name) {}
 
 					virtual void			Refresh(bool controlsEnabled) override
 					{
@@ -222,7 +221,7 @@ namespace UI
 				{
 					typedef UndoCommand		Super;
 				public:
-					/**/					AbortCommand() : Super(int2(4,1),"Abort") {}
+					/**/					AbortCommand() : Super("Abort") {}
 
 					virtual void			Execute() override
 					{
@@ -240,8 +239,8 @@ namespace UI
 				{
 					typedef Icon			Super;
 				public:
-					/**/					DemolishCommand() : Super(int2(2,1),"Demolish") {}
-					/**/					DemolishCommand(const int2&coords, const String&name) : Super(coords,name) {}
+					/**/					DemolishCommand() : Super("Demolish") {}
+					/**/					DemolishCommand(const String&name) : Super(name) {}
 
 					virtual void			Refresh(bool controlsEnabled) override
 					{
@@ -268,8 +267,8 @@ namespace UI
 				{
 					typedef Icon			Super;
 				public:
-					/**/					SleepCommand() : Super(int2(3,1),"Sleep") {}
-					/**/					SleepCommand(const int2&coords, const String&name) : Super(coords,name) {}
+					/**/					SleepCommand() : Super("Sleep") {}
+					/**/					SleepCommand(const String&name) : Super(name) {}
 
 					virtual void			Refresh(bool controlsEnabled) override
 					{
@@ -376,13 +375,14 @@ namespace UI
 				typedef	Objects::BaseCommand	Super;
 				TVec3<>				focusLocation;
 				float				atTime;
-				bool				isFriendly;
+				bool				isFriendly,	//!< Signals that the origin of the event is friendly. Note that a lost owned unit will count as friendly as the origin is the entity itself (and hence friendly)
+									isHostileActivity;	//!< Declares that the activity originates in a hostile unit. The destruction of any owned entity counts as much as hostile, as an attack done by any non-owned entities
 				TUniqueID			focusTarget;
 				Objects::Renderer::SmokeTrailIndex	smokeTrailIndex;
 				String				fallbackTargetName;
 			
-				/**/				AnimationEventFocusCommand(const String&name, const String&iconName, const TVec3<>&focusLocation, const TUniqueID&focusID, float atTime, bool isFriendly)
-									: Super(name),focusLocation(focusLocation),atTime(atTime),isFriendly(isFriendly),focusTarget(focusID)
+				/**/				AnimationEventFocusCommand(const String&name, const String&iconName, const TVec3<>&focusLocation, const TUniqueID&focusID, float atTime, bool isFriendly, bool isHostileActivity)
+									: Super(name),focusLocation(focusLocation),atTime(atTime),isFriendly(isFriendly),isHostileActivity(isHostileActivity),focusTarget(focusID)
 				{
 					LoadIcon(iconName);
 				}
@@ -668,7 +668,10 @@ namespace UI
 			void			Clear();
 			void			RegisterAttack(float time, bool isFriendly,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const Objects::Renderer::SmokeTrailIndex&smokeTrailIndex);
 			void			RegisterEntityDestruction(float time, bool isOwnedByMe,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const String&entityName);
-
+			/**
+			Checks if any events have been registered in the log that signals hostile activity (attacks, units dying etc)
+			*/
+			bool			HasRegisteredHostileActivity();
 
 		}
 

@@ -1333,7 +1333,7 @@ namespace Objects
 					}
 				}
 			}
-		});
+		},false);
 
 
 		for (const auto&s : structures)
@@ -1512,6 +1512,7 @@ namespace Objects
 						}
 					}
 				}
+				,true
 			);
 		}
 
@@ -1641,7 +1642,7 @@ namespace Objects
 
 				}
 			}
-		});
+		},false);
 
 
 		display.SetObjectMatrix(Matrix<>::eye4);
@@ -1687,7 +1688,7 @@ namespace Objects
 			}
 			if (v == selectedEntity)
 				overallTint.Update(float4(0,0,0,1));	//make sure localizable shapes appear - but in black
-		});
+		},false);
 
 
 		foreach(structures, _s)
@@ -1806,7 +1807,7 @@ namespace Objects
 				}
 
 			}
-		});
+		},false);
 		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 		overallTint.Update(noTint);
 		

@@ -128,6 +128,9 @@ SpinLock	eventLock;
 					if (type.significance == EventSignificance::Important)
 						color = float3(0.5,0.5,1);
 				break;
+				case EventFlavor::ChatMessage:
+					scale = 2.f;
+				break;
 			}
 
 
@@ -168,6 +171,15 @@ SpinLock	eventLock;
 
 
 	Buffer<VisualEvent,0,Adopt>	events;
+	float		historyHeight=1;
+	static const float eventFontScale = 0.9f;
+	void		UpdateHistoryHeight()
+	{
+		float h0 = textout.getScaledHeight() * eventFontScale;
+		historyHeight = 0;
+		foreach (events,ev)
+			historyHeight += h0 * ev->scale;
+	}
 #endif
 
 //LogFile	eventLog;
@@ -193,9 +205,11 @@ int2 rightMouseDragFrom;
 
 namespace LocalApplicationInterface
 {
+	bool pauseAutomaticRoundProgression=false;
+
 	#ifdef HAS_WINDOW
 		void						QueryNickname();
-		void						QueryNicknameIfEmpty();
+		bool						QueryNicknameIfEmpty();
 		void						RefreshSessionView();
 		//void						OnSelectionChange(bool stateChangeOnly);
 	#else
@@ -203,6 +217,17 @@ namespace LocalApplicationInterface
 	#endif
 
 	void							SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird shit
+
+
+	bool			SeeingHostileActivity()
+	{
+		#ifdef HAS_WINDOW
+			return UI::EventLog::HasRegisteredHostileActivity();
+		#else
+			return false;
+		#endif
+	}
+																				
 	/**
 	Triggered when entering command mode and animations have finished (whichever of those events happens later)
 	*/
@@ -221,8 +246,10 @@ namespace LocalApplicationInterface
 		#endif
 		Animation::UpdateAutomation(CLOCATION);
 		Objects::CheckMobileEntitySanity();
-		if (RuntimeConfig::autoNewRound && ApplicationInterface::ShouldSignalRoundEnd())
+		if (RuntimeConfig::autoNewRound && ApplicationInterface::ShouldSignalRoundEnd() && !pauseAutomaticRoundProgression && !SeeingHostileActivity())
 			ApplicationInterface::SignalRoundEnd();
+
+		pauseAutomaticRoundProgression = false;
 	}
 }
 
@@ -577,9 +604,8 @@ namespace ApplicationInterface
 		if (type.significance > EventSignificance::Common)
 		{
 			#ifdef HAS_WINDOW
-				if (type.flavor == EventFlavor::ChatMessage)
-					events << VisualEvent("",EventSignificance::Debug);
 				events << VisualEvent(event,type);
+				UpdateHistoryHeight();
 			#else
 				std::cout << event << std::endl;
 			#endif
@@ -1239,6 +1265,11 @@ namespace ApplicationInterface
 				}
 			}
 		}
+		else
+		{
+			LogEvent(EventSignificance::Important,"Hostile contact: "+e->GetNiceName()+ (RuntimeConfig::autoNewRound ? ". Pausing automatic round progression.":"."));
+			LocalApplicationInterface::pauseAutomaticRoundProgression = true;
+		}
 	}
 
 
@@ -1478,7 +1509,7 @@ namespace ApplicationInterface
 						return;
 					change.level[Objects::Resource::Minerals] -= std::min(opSpeed, v->myTasks.Peek().job->resourceCostLeft);
 
-				});
+				},false);
 
 				#ifndef NO_SATELLITES
 				for (const auto&sat : Objects::satellites)
@@ -2022,10 +2053,8 @@ bool loop()
 
 			if (UI::showControlsAndContacts)
 			{
-				textout.pushState();
-				textout.scale(0.9f, 0.9f);
 				eventLock.lock();
-
+				bool anyChanged = false;
 				for (index_t i = 0; i < events.Count(); i++)
 				{
 					events[i].age += Engine::timing.delta;
@@ -2033,12 +2062,18 @@ bool loop()
 					{
 						events.Erase(i);
 						i--;
+						anyChanged = true;
 					}
 				}
-				count_t rows = std::min(events.Count(), (count_t)floor(0.7f / textout.getScaledHeight()));
+				if (anyChanged)
+					UpdateHistoryHeight();
+				count_t rows = events.Count();
+					//std::min(events.Count(), (count_t)floor(0.7f / textout.getScaledHeight()));
 
 
-				textout.locate(0.0f, 0.3f + float(rows) * textout.getScaledHeight());
+				textout.pushState();
+				textout.scale(eventFontScale,eventFontScale);
+				textout.locate(0.0f, 280.f/display.clientHeight() + historyHeight);
 				for (index_t i = events.Count() - rows; i < events.Count(); i++)
 					//if (events[i].stackID < 10)
 					{
@@ -2048,8 +2083,8 @@ bool loop()
 							textout.scale(ev.scale,ev.scale);
 							textout.color(ev.color, (VisualEvent::MaxAge - ev.age)/VisualEvent::MaxAge);
 							textout << ev.message;
-							textout.scale(1.f/ev.scale,1.f/ev.scale);
 							textout <<  nl;
+							textout.scale(1.f/ev.scale,1.f/ev.scale);
 						}
 					}
 				textout.popState();
@@ -2173,9 +2208,6 @@ void MyFatal(const FatalDescriptor&descriptor)
 	LogEvent(EventClass( EventSignificance::SystemFatal, EventFlavor::SystemError ), nullptr, message);
 	ErrMessage(message);
 	//NetworkConnection::Close();
-
-	TerminateProcess(GetCurrentProcess(),0);	//self-terminate
-
 }
 
 
@@ -2191,6 +2223,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 		UI::OnWindowResize();
 		GUI::OnWindowResize();
+		UpdateHistoryHeight();
 	}
 
 
@@ -2216,7 +2249,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 						result = v->location;
 						rs = true;
 					}
-				});
+				},true);
 			}
 
 			#ifndef NO_SATELLITES
@@ -2662,30 +2695,6 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 }
 
 
-//void LogEvent( EventType type,  const Objects::WorldEntity*e, const String&_event)
-//{
-//	String event = _event, outEvent = _event;
-//	if (e)
-//	{
-//		event = e->owner->GetName()+","+ e->GetNiceName()+": "+event;
-//		outEvent = e->owner->GetLogName()+","+ e->GetName()+": "+event;
-//	}
-//	eventLock.lock();
-//	if (type != EventSignificance::Debug && type != EventSignificance::PerformanceMeasurement && type != EventSignificance::Common)
-//	{
-//		#ifdef HAS_WINDOW
-//			if (type == EventType::ChatMessage)
-//				events << VisualEvent("",EventSignificance::Debug);
-//			events << VisualEvent(event,type);
-//		#else
-//			std::cout << event << std::endl;
-//		#endif
-//	}
-//	eventLog.Log(String(RuntimeConfig::roundNumber)+tab+ RuntimeConfig::phase.ToString()   + tab + outEvent,true);
-//	eventLock.unlock();
-//}
-
-
 #ifdef HAS_WINDOW
 
 	void ToggleControlGUI()
@@ -2815,6 +2824,12 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 
 	namespace LocalApplicationInterface
 	{
+		bool	IsValidNickname(const String&candidate)
+		{
+			return Package::NetString<32>::IsValid(candidate) 
+				&& candidate.length() > 3 && candidate.length() <= 16;
+		}
+
 
 		void	QueryNickname()
 		{
@@ -2824,12 +2839,11 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 			{
 				static const String allowed = "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_-";
 
-				Dialog::Query("Please enter a valid nickname to continue (length 4-16)",Network::chosenNickname,
+				Dialog::Query("Please enter a nickname to continue (length 4-16)",Network::chosenNickname,
 				allowed,
-				[](const String&candidate)->bool
+					[](const String&candidate)->bool
 					{
-						return Package::NetString<32>::IsValid(candidate) 
-							&& candidate.length() > 3 && candidate.length() <= 16;
+						return IsValidNickname(candidate);
 					},
 					[](const String&name)
 					{
@@ -2849,10 +2863,22 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 			}
 		}
 
-		void	QueryNicknameIfEmpty()
+		/**
+		Checks loaded nickname and queries a new one if none or an invalid is currently set.
+		No check is performed if the client is configured to run in AI mode.
+		@return true if a new name was queried, false otherwise. False indicates the currently set name is good, or AI mode is enabled
+		*/
+		bool	QueryNicknameIfEmpty()
 		{
-			if (Network::chosenNickname.IsEmpty())
+			if (RuntimeConfig::aiMode)
+				return false;
+
+			if (!IsValidNickname(Network::chosenNickname))
+			{
 				QueryNickname();
+				return true;
+			}
+			return false;
 		}
 	}
 
@@ -3066,7 +3092,7 @@ namespace ApplicationInterface
 		Objects::PWorldEntity any;
 		Objects::ForeachWorldEntity([&any](const Objects::PWorldEntity&e)
 		{
-			if (any || !e->isOwnedByMe || e->health <= 0)
+			if (any || !e->isOwnedByMe)
 				return;
 			if (e->IsMobile())
 			{
@@ -3078,7 +3104,7 @@ namespace ApplicationInterface
 				if (IsIdle(To<Objects::Structure>::Cast(e)))
 					any = e;
 			}
-		});
+		},false);
 		//#ifdef _DEBUG
 		//if (any)
 		//	LogEvent(EventSignificance::Uncommon,any.get(),"not idle");
@@ -3334,6 +3360,7 @@ void ParseKeyValue(const String&key, const String&value)
 		{
 			RuntimeConfig::aiMode = true;
 			RuntimeConfig::aiAccessToken.Decode(value);
+			LogEvent(EventClass::Preset::configuration,nullptr,"Assuming AI-client role");
 		}
 		elif (key == "udpListen")
 		{
@@ -3378,6 +3405,8 @@ bool ConfigureClient(const wchar_t*commandLine)
 		cfg.quotations = "\"'";
 		cfg.quotation_escape_character = '\\';
 		cfg.trim_characters = " \t";
+
+		LogEvent(EventClass::Preset::configuration,"Configuring client using command line '"+cmd+"'");
 
 		if (!Tokenizer::tokenize(cmd, cfg, tokenList))
 		{
@@ -3544,7 +3573,6 @@ int main( int argc, const char* argv[])
 {
 	Except::onFatal = MyFatal;
 	Vec::assertConsistency<float>();
-
 	
 	#ifndef HAS_WINDOW
 		String cfg;
@@ -3807,8 +3835,8 @@ int main( int argc, const char* argv[])
 				}
 				else
 				{
-					LocalApplicationInterface::QueryNickname();
 				}
+				LocalApplicationInterface::QueryNicknameIfEmpty();
 			}
 
 
