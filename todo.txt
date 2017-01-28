@@ -3,6 +3,8 @@
 
 
 Optionally broadcast research state to all clients
+Select planet type by name from interactive configurator
+
 
 
 resources 2.0:
