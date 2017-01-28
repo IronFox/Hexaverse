@@ -1,7 +1,7 @@
 ﻿* TEST AI
 * AI unit spawning causes server crash, but threat estimation in low-res mode is horrificly slow. Must adjust
 
-
+Loading screen
 Optionally broadcast research state to all clients
 Select planet type by name from interactive configurator
 
