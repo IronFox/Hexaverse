@@ -134,6 +134,7 @@ namespace Objects
 												);
 		static void				InnerLoad(const ScriptCache::PScript&script);
 		static void				RequireLoad(const ScriptCache::PScript&script);
+		void					LoadNexusResearchState();
 	public:
 
 		bool					changed = false;

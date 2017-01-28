@@ -1,6 +1,8 @@
-﻿IMPORTANT: errors in research lua script (in user directory) causes fatal (if required things are missing). should make backup and replace with original
+﻿* TEST AI
+* AI unit spawning causes server crash, but threat estimation in low-res mode is horrificly slow. Must adjust
 
-Wider emp field areas in low-resolution terrain mode.
+
+Optionally broadcast research state to all clients
 
 
 resources 2.0:
@@ -153,6 +155,17 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+* Moved buttons bottom right to a vertical setup
+* Fixed: Hide/disable Poll messages 'Found X lobby match(es)' when session is in progress
+* Max repair height difference 0? Should be one
+* Fixed: liquids didn't expand downwards
+* Fixed: VEHICLE PLANT can build plane turrets
+* halt auto-new round when any attacks, hostile contacts or damages were recorded
+* Fixed: "Unable to determine feasible angles..." (message is broadcasted to ALL)
+* Fixed: EMP zones are not expanding as desired
+* Disable towers in emp field
+IMPORTANT: errors in research lua script (in user directory) causes fatal (if required things are missing). should make backup and replace with original
+Wider emp field areas in low-resolution terrain mode.
 research concept
 fixed: having small compound spheres within larger ones become visible if the camera is inside these spheres
 server list must be scrollable

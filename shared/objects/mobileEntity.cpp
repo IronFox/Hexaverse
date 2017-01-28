@@ -1619,10 +1619,10 @@ namespace Objects
 
 	void					MobileEntity::Task::SetLocalizableShape(ConstName shape, const Grid::LCellIdI&location, const OwnerParameter&owner)
 	{
+		localizableShapes.Clear();
 		if (shape == ConstName::DetonationSize_Regular)
 		{
-			localizableShapes.SetSize(1,true);
-			Shape&shape = localizableShapes.First();
+			Shape&shape = localizableShapes.Append();
 			((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
 			shape.instruction.vbo = sphereVBO[0];
 			shape.instruction.ibo = sphereIBO[0];
@@ -1635,8 +1635,7 @@ namespace Objects
 
 		if (shape == ConstName::DetonationSize_Doomsday)
 		{
-			localizableShapes.SetSize(1,true);
-			Shape&shape = localizableShapes.First();
+			Shape&shape = localizableShapes.Append();
 			((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
 			shape.instruction.vbo = sphereVBO[0];
 			shape.instruction.ibo = sphereIBO[0];
@@ -1651,8 +1650,7 @@ namespace Objects
 
 		if (p)
 		{
-			localizableShapes.SetSize(1,true);
-			Shape&shape = localizableShapes.First();
+			Shape&shape = localizableShapes.Append();
 			((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
 
 			shape.instruction.vbo = p->localizableShape->vbo;
@@ -1662,7 +1660,6 @@ namespace Objects
 			BuildStructureSystem(location,shape.system);
 			return;
 		}
-		localizableShapes.Clear();
 	}
 
 	void					MobileEntity::Task::RecompilePath(int stepsPerRound, float structureSize/*=vehicleScale*/)
