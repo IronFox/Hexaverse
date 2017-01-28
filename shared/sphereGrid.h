@@ -1053,6 +1053,24 @@ namespace Grid
 
 	class Resource;
 
+	struct TDistanceRange : public TFloatRange<>
+	{
+		typedef TFloatRange<>	Super;
+
+		float	sum=0;
+		count_t	numSamples=0;
+
+		void	Include(float distance)
+		{
+			Super::Include(distance);
+			sum += distance;
+			numSamples ++;
+		}
+		float	GetAverage() const
+		{
+			return numSamples ? sum / numSamples : 1;
+		}
+	};
 
 	template <unsigned Exponent>
 	class Setup
@@ -1063,7 +1081,7 @@ namespace Grid
 		GridType					grid;
 		static Array<BaseGrid::TNetCell>	cells;
 		Array<BaseGrid::TCellVertex>	cellVertices;
-
+		TDistanceRange				neighborCellDistances;
 
 		#ifdef HAS_WINDOW
 			DX11::InstructionBlock32	gridInstruction,
@@ -1230,6 +1248,8 @@ namespace Grid
 			grid.Create();
 			grid.Construct(cellVertices, cells);
 
+			neighborCellDistances = TDistanceRange();
+
 			for (index_t i = 0; i < ARRAYSIZE(unitSphereFamilyBoundingBox); i++)
 				unitSphereFamilyBoundingBox[i] = planetFamilyBoundingBox[i] =  Box<>::Invalid();
 
@@ -1248,6 +1268,8 @@ namespace Grid
 			}
 			foreach (cells,c)
 			{
+				neighborCellDistances.Include(c->minCornerDistance * 2.f);	//not the most precise, but should be somewhat acceptable on average
+
 				Box<>&box = unitSphereFamilyBoundingBox[grid.GetCell(c - cells.pointer()).family];
 				box.Include(c->centerVertex.xyz);
 				for (int i = 0; i < c->numCorners; i++)

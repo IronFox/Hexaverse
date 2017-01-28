@@ -357,6 +357,7 @@ namespace Objects
 			void							BuildBlastSystem(const TVec3<>&location, float radius, TMatrix4<>&system) const;
 
 			bool							CanAttack() const {return attacksPerRound.IsSet();}
+			bool							CanDealDamage() const {return damageLevel.IsSet();}
 			bool							CanDo(operation_t op) const {return operationSpeed[op].IsSet();}
 			bool							CanRepair() const {return CanDo(Repair);}
 			bool							CanConstruct() const {return CanDo(Construct);}

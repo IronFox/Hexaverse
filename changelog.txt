@@ -1,12 +1,14 @@
-v0.6.1
+v0.6.1	[Jan 28 2017]
 	> Nexus units are now affected by residual EMP fields to prevent them from firing out of EMP zones.
 	> Automatic round progression now halts if hostile units appeared, or visible hostile activity has occurred during the previous round.
 	> Mechanic can now repair across one level of height difference.
-	> Relocated bottom right buttons to a vertical position to not be blocked by steam messages.
+	> OpenAL sound output will now mute if the game window loses focus.
+	> New hostile contacts are now logged in the console.
 	* Fixed 'factionsPerEMPZone' implementation.
 	* "Unable to determine feasible angles for artillery trajectory" messages are no longer sent to clients.
 	* Removed non-vehicle turrets from vehicle plant choices.
 	* Fixed liquids not expanding downwards.
+	* Fixed AI threat computation, and unit production. The Nexus faction now has slightly elevated starting research states.
 
 v0.6.0	[Jan 10 2017]
 	+ Added option to configure the number of factions per unlocked EMP zone.
