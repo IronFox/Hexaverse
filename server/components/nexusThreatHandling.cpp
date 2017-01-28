@@ -94,7 +94,7 @@ namespace Nexus
 				bool isYellow = stepDistance < 6;
 				bool isNoticed = stepDistance < 9;
 
-				float opacity = (float(isRed?3:0) + float(isYellow ? 2 : 0) + float(isNoticed))/6.f;
+				float opacity = (float(isRed?3:0) + float(isYellow ? 2 : 0) + float(isNoticed))/3.f;	//0->1/3->1->2
 				//opacity = Grid::powi(opacity,2);
 				index_t index = at-cornerField.begin();
 				if (opacity > 0)
