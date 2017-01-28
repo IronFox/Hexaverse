@@ -1265,7 +1265,10 @@ namespace ApplicationInterface
 			}
 		}
 		else
+		{
+			LogEvent(EventSignificance::Important,"Hostile contact: "+e->GetNiceName()+ (RuntimeConfig::autoNewRound ? ". Pausing automatic round progression.":"."));
 			LocalApplicationInterface::pauseAutomaticRoundProgression = true;
+		}
 	}
 
 

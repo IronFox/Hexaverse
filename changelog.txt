@@ -4,6 +4,7 @@ v0.6.1
 	> Mechanic can now repair across one level of height difference.
 	> Relocated bottom right buttons to a vertical position to not be blocked by steam messages.
 	> OpenAL sound output will now mute if the game window loses focus.
+	> New hostile contacts are now logged in the console.
 	* Fixed 'factionsPerEMPZone' implementation.
 	* "Unable to determine feasible angles for artillery trajectory" messages are no longer sent to clients.
 	* Removed non-vehicle turrets from vehicle plant choices.
