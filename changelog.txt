@@ -9,6 +9,7 @@ v0.6.1
 	* "Unable to determine feasible angles for artillery trajectory" messages are no longer sent to clients.
 	* Removed non-vehicle turrets from vehicle plant choices.
 	* Fixed liquids not expanding downwards.
+	* Fixed AI threat computation, and unit production. The Nexus faction now has slightly elevated starting research states.
 
 v0.6.0	[Jan 10 2017]
 	+ Added option to configure the number of factions per unlocked EMP zone.

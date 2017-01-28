@@ -694,17 +694,42 @@ namespace Objects
 		});
 		globalState.script = script;
 
+		#ifndef CLIENT
+			if (Faction::nexus)
+				Faction::nexus->researchState.LoadNexusResearchState();
+		#endif
+
 		#ifdef HAS_WINDOW
 			Laboratory::ConfigureResearchButtons();
 		#endif
 		//globalState.researchProgram.reset();
 	}
 
+	void ResearchState::LoadNexusResearchState()
+	{
+		foreach (globalState.allTopics,_t)
+		{
+			auto&t = **_t;
+			if (t.setProgress.IsSet())
+			{
+				if (t.maxProgress > 0)
+					t.setProgress(researchState,t.maxProgress);
+				elif (t.maxProgress < 0)
+					t.setProgress(researchState,10);
+			}
+		}
+		changed = true;
+	}
+
 	ResearchState::ResearchState(Faction*owner, bool isNexus):owner(owner)
 	{
 		factionIsNexus = isNexus;
 		if (globalState.script)
+		{
 			researchState = globalState.stateConstructor();
+			if (isNexus)
+				LoadNexusResearchState();
+		}
 
 	}
 	
