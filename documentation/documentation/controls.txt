@@ -5,6 +5,7 @@
 * **F3** creates a screenshot in ''[[config/game folder]]\client\screenshots\''. **Shift+F3** causes the capture to retain its background transparency.
 * **Alt+Enter** toggles (fake) fullscreen mode.
 * **Tab** shows all participating players, including whether they requested a [[concepts/round|new round]].
+* The **T** key opens an input dialog to send a message to all other players. Only connected players will receive this message.
 ==Camera Control==
 
 * The **ASDW** keys can be used to rotate the camera around the currently focused point.
