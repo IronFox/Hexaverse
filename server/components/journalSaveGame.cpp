@@ -1785,7 +1785,7 @@ namespace Journal
 		Network::PClient cl;
 		if (Network::playerMap.Query(f,cl))
 		{
-			Channels::selectResearch.SendTo(cl->peer.lock(),Protocol::SelectResearch(topic->serialIndex));
+			Channels::selectResearch.SendTo(cl->peer.lock(),Protocol::SelectResearch((UINT32)topic->serialIndex));
 		}
 		LogEvent(EventSignificance::Uncommon, GetPeerOfFaction(f), "Faction research updated to "+topic->GetFullName());
 	}

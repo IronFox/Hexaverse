@@ -521,7 +521,7 @@ namespace Receiver
 			ASSERT_LESS__(state.serializedData.Count(),state.serializedData.MaxElementCount);
 			Channels::researchState.SendTo(peer,state);
 		});
-		Channels::selectResearch.SendTo(peer,Protocol::SelectResearch(client->faction->researchState.GetActiveTopicIndex()));
+		Channels::selectResearch.SendTo(peer,Protocol::SelectResearch((UINT32)client->faction->researchState.GetActiveTopicIndex()));
 
 		#ifndef CHEAT_SHOW_ALL_RESOURCES
 		if (!newFaction)
