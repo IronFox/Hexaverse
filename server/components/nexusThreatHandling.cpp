@@ -70,38 +70,49 @@ namespace Nexus
 	void EstimatePresence(Objects::WorldEntity&e, const Grid::LCellIdI&location, const ArrayRef<index_t>&cornerField, float*hostileNearNexus, float*constructorNearNexus, float*friendlyNearNexus)
 	{
 		const TVec3 < >&loc = Grid::low.cells[location.stackID].centerVertex.xyz;
+		float entityRange = e.GetScanningRange();
 		float impact = e.GetConstructionCost();
 		Objects::PTurretBase b = e.GetTurretBase();
 		if (b && b->turret->CanDealDamage())
+		{
 			impact += b->GetDamagePotentialPerRound();
+			entityRange = vmax(entityRange,b->GetFlatAttackRange());
+		}
+		impact += entityRange;
+		const TVec3<> worldLoc = Grid::ToWorld(location);
 		const float avg = Grid::low.neighborCellDistances.GetAverage();
 		if (impact > 0)
 			foreach (cornerField, at)
 			{
-				float angularDistance = Vec::angle(Grid::low.cells[*at].centerVertex.xyz,loc) * M_PIF/180.f;
-				float stepDistance = angularDistance / avg;
+				float worldDistance = Vec::distance(Grid::low.cells[*at].centerVertex.xyz * Grid::VerticalBase,worldLoc);
+				if (e.owner != Objects::Faction::nexus)
+					worldDistance = vmax(0,worldDistance-entityRange);
+				//float angularDistance = Vec::angle(Grid::low.cells[*at].centerVertex.xyz,loc) * M_PIF/180.f;
+				float stepDistance = worldDistance / Grid::VerticalBase / avg * 0.75f;
 
-				bool isRed = stepDistance < 6;
-				bool isYellow = stepDistance < 9;
-				bool isNoticed = stepDistance < 15;
+				bool isRed = stepDistance < 4;
+				bool isYellow = stepDistance < 6;
+				bool isNoticed = stepDistance < 9;
 
-				float opacity = (float(isRed) + float(isYellow) + float(isNoticed))/3.f;
+				float opacity = (float(isRed?3:0) + float(isYellow ? 2 : 0) + float(isNoticed))/6.f;
 				//opacity = Grid::powi(opacity,2);
+				index_t index = at-cornerField.begin();
 				if (opacity > 0)
 				{
 					if (e.owner != Objects::Faction::nexus)
 					{
-						hostileNearNexus[*at] += opacity * impact;
+						hostileNearNexus[index] += opacity * impact;
 
 						if (b && b->turret->CanDo(Objects::Component::Construct))
 						{
-							constructorNearNexus[*at] += float(isYellow);
+							if (isYellow)
+								constructorNearNexus[index] += opacity;
 						}
 					}
 					else
 					{
 						if (e.IsMobile())
-							friendlyNearNexus[*at] += opacity * impact;
+							friendlyNearNexus[index] += opacity * impact;
 					}
 				}
 			}
@@ -221,9 +232,8 @@ namespace Nexus
 				if (RuntimeConfig::roundNumber - p->lastSpawnRound < 5 || p->owner != Objects::Faction::nexus)
 					continue;	//not allowed to spawn anything for the moment
 
-				float threatLevel = sqr(hostileNearNexus[j] )*Game::Config::Nexus::threatEstimationFactor
-						*1e-3f;
-				LogEvent(EventSignificance::Debug, "Threat level for " + ports[j]->GetName() + " considered " + String(threatLevel));
+				float threatLevel = hostileNearNexus[j]*Game::Config::Nexus::threatEstimationFactor;
+				LogEvent(EventSignificance::Debug, "Threat level for " + ports[j]->GetName() + " considered " + String(threatLevel)+" (friendlies here: "+String(friendlyNearNexus[j])+", hostile constructor(s) at: "+String(constructorNearNexus[j])+")");
 				if (Game::Config::Nexus::haveBases)
 				{
 					Objects::RefreshCompoundCoverageIfNeeded(0);
@@ -271,9 +281,9 @@ namespace Nexus
 
 	//				if (producing < existing)
 					{
-						while (producing < existing && (friendlyNearNexus[j] < threatLevel || (constructorNearNexus[j] > 0.2f && friendlyNearNexus[j] < Game::factionStartMineralValue + 20.f)))
+						while (producing < existing && (friendlyNearNexus[j] < threatLevel || (constructorNearNexus[j] > 0.5f && friendlyNearNexus[j] < Game::factionStartMineralValue + 20.f)))
 						{
-							LogEvent(EventSignificance::Debug, "Increasing production for " + p->GetName()+" (friendlies here: "+String(friendlyNearNexus[j])+", constructor at: "+String(constructorNearNexus[j])+")");
+							LogEvent(EventSignificance::Debug, "Increasing production for " + p->GetName());
 							bool anyFound = false;
 
 							for (Objects::WWorkingStructure _ws : NexusStructures::OfPort(p,j))
@@ -287,7 +297,6 @@ namespace Nexus
 								Objects::PVehiclePlant vplant = To<Objects::VehiclePlant>::DynamicCast(ws);
 								if (plant && vplant && plant->queue.IsEmpty())
 								{
-									anyFound = true;
 									index_t choice = vplant->entityRandom.NextIndex(Game::Config::Nexus::vehicleTurrets.Count());
 									//random.getIndex(State::Config::Nexus::vehicleTurrets.Count() - 1);
 									ASSERT_LESS__(choice,Game::Config::Nexus::vehicleTurrets.Count());
@@ -298,14 +307,18 @@ namespace Nexus
 									LogEvent(EventSignificance::Common,vplant.get(),"Enqueueing vehicle production job due to high threat level");
 									Journal::currentRound.RegisterProductionJobStart(true,vplant,plant,parameters,2);
 									
-									EstimatePresence(*vplant->queue.last().producing,vplant->location,portLocations, hostileNearNexus,constructorNearNexus,friendlyNearNexus);
-									producing++;
-									break;
+									if (vplant->queue.IsNotEmpty())	//shit happens
+									{
+										EstimatePresence(*vplant->queue.last().producing,vplant->location,portLocations, hostileNearNexus,constructorNearNexus,friendlyNearNexus);
+										anyFound = true;
+										producing++;
+										break;
+									}
 								}
 							}
 							if (!anyFound)
 							{
-								LogEvent(EventSignificance::Debug,  p->GetName()+" no longer has idle plants. Aborting");
+								LogEvent(EventSignificance::Debug,  p->GetName()+" no longer has idle plants capable of queueing jobs. Aborting");
 								break;
 
 							}
