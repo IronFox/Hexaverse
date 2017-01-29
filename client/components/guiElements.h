@@ -672,6 +672,13 @@ namespace GUI
 			components << c;
 			return true;
 		}
+		virtual PComponent	AddNewComponent(Component*c)
+		{
+			PComponent comp(c);
+			ASSERT__(AddComponent(comp));
+			return comp;
+		}
+
 		virtual bool		RemoveComponent(const PComponent&c)
 		{
 			return components.FindAndErase(c);
