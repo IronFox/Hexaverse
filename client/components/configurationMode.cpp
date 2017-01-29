@@ -21,6 +21,9 @@ namespace ConfigurationMode
 		Protocol::GameConfig	gameConfig;
 		Random rng;
 		StringTable<String>		declarations;
+		Array<String>			planetList;
+
+		GUI::PWindow			planetListWindow;
 
 		const String& FindDeclaration(const String& path)
 		{
@@ -51,6 +54,27 @@ namespace ConfigurationMode
 					declarations.Set(path+'/'+str,implode('\n',lines));
 				}
 			}
+		}
+
+		void		RebuildPlanetList()
+		{
+			planetListWindow->ClearComponents();
+			planetListWindow->SetCenteredWidth(0.7f,GUI::TAnchor::RelativeToScreen);
+			planetListWindow->autoHeight = true;
+			planetListWindow->maxHeight = 0.7f;
+			planetListWindow->fillBackground = false;
+			GUI::PComponent label = planetListWindow->AddNewComponent(new GUI::Label("Planets",1.2f));
+			label->anchorConfig.Top().Set(0);
+			label->anchorConfig.Left().Set(0);
+			foreach (planetList,p)
+			{
+				GUI::PButton button(new GUI::Button(*p));
+				button->anchorConfig.Top().SetLastOf(planetListWindow,0.02f);
+				button->anchorConfig.axis[0].min.Set(0);
+				button->anchorConfig.axis[0].max.Set(0);
+				planetListWindow->AddComponent(button);
+			}
+			planetListWindow->FullAutoLayout();
 		}
 
 
@@ -752,6 +776,10 @@ namespace ConfigurationMode
 				return;
 			created = true;
 
+
+			planetListWindow.reset(new GUI::Window());
+			RebuildPlanetList();
+
 			XML::Container declarations;
 			declarations.LoadFromFile("../server/config/declaration.xml");
 			ParseDeclarations(declarations.root_node,"");
@@ -767,6 +795,8 @@ namespace ConfigurationMode
 			ruleGroup.reset(new Objects::CommandGroup("Rules"));
 			ruleGroup->baseCoords = int2(1);
 			ruleGroup->customLabel << "All common game rules";
+
+
 			copyPasteGroup.reset(new Objects::CommandGroup("Copy/Paste"));
 			copyPasteGroup->baseCoords = int2(1);
 			copyPasteGroup->customLabel << "Copy/paste current configuration to/from clipboard";
@@ -924,6 +954,25 @@ namespace ConfigurationMode
 						[](bool){return Objects::BaseCommand::Flags::IsEnabled;}
 						))
 					);
+			buttons	<< std::make_pair(int2(at++,0),
+						Objects::PBaseCommand(new Objects::CustomIconCommand("Display all predefined server planet types","Planet Presets",[]()
+						{
+							if (!GUI::IsVisible(planetListWindow))
+								GUI::Show(planetListWindow);
+							else
+								GUI::Hide(planetListWindow);
+						},
+						[](bool)
+						{
+							Objects::BaseCommand::Flags rs = Objects::BaseCommand::Flags::IsEnabled;
+							//if (GUI::IsVisible(planetListWindow))
+							//	rs |= Objects::BaseCommand::Flags::IsPermaActive;
+							return rs;
+						}
+						))
+					);
+
+
 			buttons	<< std::make_pair(int2(at++,0),mountainGroup);
 			buttons	<< std::make_pair(int2(at++,0),extendedCoreGroup);
 			buttons	<< std::make_pair(int2(at++,0),coreGroup);
@@ -1027,6 +1076,14 @@ namespace ConfigurationMode
 		if (Detail::isActive)
 			Detail::Clipboard::ImportPlanet();
 	}
+
+
+	void	UpdatePlanetList(Array<String>&fleetingData)
+	{
+		Detail::planetList.adoptData(fleetingData);
+		Detail::RebuildPlanetList();
+	}
+
 }
 
 #endif

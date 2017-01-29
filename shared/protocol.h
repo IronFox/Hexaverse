@@ -1977,6 +1977,8 @@ namespace Protocol
 
 			PlanetConfig,		// both: Grid::ExtendedPlanetConfig
 			GameConfig,			// both: GameConfig
+			PlanetNames,		// s2c: NetString<256>[]
+			LoadPlanetByName,	// c2s: NetString<256>
 			EndConfigurationMode,//c2s: <signal>
 
 			OperationLacksResources, //s2c: OperationLacksResources

@@ -1089,19 +1089,11 @@ int main( int argc, const char* argv[])
 
 		Reflection::state.DefineCommand("/World/showPlanetTypes",(CLI::Command::function0_t)[]()
 		{
-			FileSystem::Folder folder = RuntimeConfig::ConfigFile("config/planets");
-			if (!folder.IsValidLocation())
-			{
-				LogEvent(EventClass::Preset::remoteControlError,"Internal error: Unable to locate planets-directory");
-				return;
-			}
-			FileSystem::File file;
-			folder.Rewind();
-			CLI::println("-");
-			while (folder.NextFile("ini",file))
-			{
-				CLI::println(String(file.GetInnerName()));
-			}
+			Array<FileSystem::File>	planetIniFiles;
+			World::GetAvailablePlanetIniFiles(planetIniFiles);
+
+			foreach (planetIniFiles,f)
+				CLI::println(String(f->GetInnerName()));
 			CLI::println("-");
 		},CLI::NoCompletion);
 

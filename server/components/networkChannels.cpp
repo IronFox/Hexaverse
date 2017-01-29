@@ -73,6 +73,7 @@ namespace Channels
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionRequestedNewRound>				factionRequestedNewRound;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionContinuedRound>					factionContinuedRound;
 	TCP::ObjectSender<Protocol::ResourceData,Protocol::ChannelID::ResourceData>						resourceData;
+	TCP::ObjectSender<NETA(Package::NetString<256>),Protocol::ChannelID::PlanetNames>				planetNames;
 
 	TCP::ObjectSender<NET(UINT16), Protocol::ChannelID::LockEMPZones>								lockEmpZones;
 	#ifndef NO_HIBERNATION
@@ -344,6 +345,18 @@ namespace Receiver
 			SendAllToSpectator(peer, firstSpectator);
 
 			Channels::planetConfig.SendTo(peer,Grid::currentPlanetConfig);
+
+			{
+				
+				Array<FileSystem::File>	iniFiles;
+				World::GetAvailablePlanetIniFiles(iniFiles);
+				NETA(Package::NetString<256>) names;
+				names.SetSize(iniFiles.Count());
+				for (index_t i = 0; i < iniFiles.Count(); i++)
+					names[i] = String(iniFiles[i].GetInnerName());
+				Channels::planetNames.SendTo(peer,names);
+			}
+
 
 			peer.SendSignal(Protocol::ChannelID::BeginGame);
 			return;
@@ -1536,15 +1549,7 @@ namespace Receiver
 			peer.SendObject(Protocol::ChannelID::Hello,response);
 			return;
 		}
-		//foreach (State::clients,c)
-		//{
-		//	if ((*c)->state.playerName == state.playerName)
-		//	{
-		//		peer.SendObject(Protocol::ChannelID::SetClientState,Protocol::Result(false,"Name already in use"));
-		//		return;
-		//	}
-		//
-		//}
+
 
 		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 		if (!client)
@@ -1577,30 +1582,6 @@ namespace Receiver
 			Channels::phaseChange.SendTo(peer,ph);
 
 
-
-			/*
-			foreach (Objects::vehicles,_v)
-			{
-				const Objects::Vehicle&v = **_v;
-				//if (CanSee(client,v))	//doesnt have vehicles, always false, hence no vehicles at all
-				{
-					Protocol::VehicleConstruction	w;
-					State::Describe(w,v,false, Protocol::Timestamp(true,0),0xFFFFFFFF);
-					Channels::createVehicle.SendTo(peer,w);
-				}
-			}
-
-			foreach (Objects::structures,_s)
-			{
-				const Objects::Structure&v = **_s;
-				//if (CanSee(client,v))
-				{
-					Protocol::StructureConstruction	w;
-					State::Describe(w,*_s,false, nullptr);
-					Channels::createStructure.SendTo(peer,w);
-				}
-			}
-			*/
 			Protocol::HelloResponse response;
 			response.success = true;
 			response.configurationMode = ConfigurationMode::IsActive() && peer.IsLocalhost();
@@ -1608,8 +1589,6 @@ namespace Receiver
 			peer.SendObject(Protocol::ChannelID::Hello,response);
 			return;
 		}
-		//else
-			//LogEvent(EventType::SessionRelated,client->state.playerName+" -> "+ state.playerName);
 
 
 		ChangeMyName(hello,peer);

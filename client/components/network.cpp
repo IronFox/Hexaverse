@@ -432,6 +432,14 @@ namespace Network
 		}
 
 
+		void	PlanetNames(NETA(Package::NetString<256>)&list)
+		{
+			Array<String> copy(list.length());
+			for (index_t i = 0; i < list.length(); i++)
+				copy[i].adoptData(list[i]);
+			ConfigurationMode::UpdatePlanetList(copy);
+		}
+
 		void	OnHelloResponse(Protocol::HelloResponse&response)
 		{
 			ASSERT__(response.success);
@@ -1085,6 +1093,7 @@ namespace Network
 		TCP::Channel<Protocol::SelectResearch, 0, Protocol::ChannelID::SelectResearch>				selectResearch(Receiver::SelectResearch);
 		TCP::Channel<Protocol::ResourceData,0,Protocol::ChannelID::ResourceData>					resourceData(Receiver::ResourceData);
 		TCP::Channel<Protocol::GameConfig,0,Protocol::ChannelID::GameConfig>						gameConfig(Receiver::GameConfig);
+		TCP::Channel<NETA(Package::NetString<256>),0,Protocol::ChannelID::PlanetNames>				planetNames(Receiver::PlanetNames);
 
 
 
@@ -1335,6 +1344,7 @@ namespace Network
 		client.InstallChannel(Channels::operationLacksResources);
 		client.InstallChannel(Channels::resourceData);
 		client.InstallChannel(Channels::gameConfig);
+		client.InstallChannel(Channels::planetNames);
 
 
 		client.OpenSignalChannel(Protocol::ChannelID::Pong,0);

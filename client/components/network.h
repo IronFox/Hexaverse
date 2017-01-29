@@ -230,6 +230,7 @@ namespace Network
 		extern TCP::Channel<Protocol::SelectResearch, 0, Protocol::ChannelID::SelectResearch>			selectResearch;
 		extern TCP::Channel<Protocol::ResourceData,0,Protocol::ChannelID::ResourceData>					resourceData;
 		extern TCP::Channel<Protocol::GameConfig,0,Protocol::ChannelID::GameConfig>						gameConfig;
+		extern TCP::Channel<NETA(Package::NetString<256>),0,Protocol::ChannelID::PlanetNames>			planetNames;
 
 
 		extern TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;
