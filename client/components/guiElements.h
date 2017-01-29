@@ -630,6 +630,22 @@ namespace GUI
 		}
 
 		Buffer0<PComponent>	components;
+
+		/**
+		Queries whether or not the vertical scrollbar is currently visible.
+		*/
+		bool			ScrollbarIsVisible() const
+		{
+			return vscroll.visible;
+		}
+
+		/**
+		Queries the width+horizontal offset of any currently visible scrollbar, 0 if invisible.
+		*/
+		float			GetVisibleScrollbarContentExpansion() const
+		{
+			return vscroll.visible ? TScrollbar::Width+TScrollbar::ContentSpacing : 0;
+		}
 	public:
 		bool			autoHeight = false;
 		float			autoHeightSpacing = 0.f;//0.015f;
@@ -825,6 +841,7 @@ namespace GUI
 		void				UpdateOuterRect()
 		{
 			outerRect= rect;
+			outerRect.x.max += GetVisibleScrollbarContentExpansion();
 			outerRect.Expand(0.015f);
 		}
 		Rect<>				outerRect = Rect<>(0,0,1,1);
