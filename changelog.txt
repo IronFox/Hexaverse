@@ -1,3 +1,6 @@
+v0.6.2
+	
+
 v0.6.1	[Jan 28 2017]
 	> Nexus units are now affected by residual EMP fields to prevent them from firing out of EMP zones.
 	> Automatic round progression now halts if hostile units appeared, or visible hostile activity has occurred during the previous round.
