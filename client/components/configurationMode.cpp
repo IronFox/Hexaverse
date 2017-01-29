@@ -161,7 +161,10 @@ namespace ConfigurationMode
 			{
 				//Grid::actualWorld.FlushAllData();
 				if (serverObjects.IsEmpty())
+				{
 					serverObjects.Import(true);
+					UI::HexGrid::RefreshContacts();
+				}
 				forceRebuild |= !clientWorldBuilt;
 				clientWorldBuilt = true;
 				if (GridState::current)
@@ -1075,6 +1078,7 @@ namespace ConfigurationMode
 			serverObjects.Export();
 			Grid::actualWorld.OverrideVisibility(1);
 		}
+		UI::HexGrid::RefreshContacts();
 	}
 
 
