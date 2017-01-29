@@ -895,6 +895,12 @@ namespace Receiver
 		if (ConfigurationMode::IsActive())
 		{
 			LogEvent(EventClass::Preset::configurationPrint,peer,"Received request for planet preset '"+planet+"'...");
+			if (planet.contains('/') || planet.contains('\\'))
+			{
+				LogEvent(EventClass::Preset::commandRejected,peer,"Planet name contained path separators. Rejecting request.");
+				return;
+			}
+
 			if (planet.IsNotEmpty())
 			{
 				if (!FileSystem::IsFile(RuntimeConfig::ConfigFile(PathString("config/planets/"+planet+".ini"))))

@@ -1,4 +1,5 @@
 v0.6.2
+	+ Added new dialog to remotely load server-known plant presets.
 	> Replaced 'rules' icon with cogwheel.
 	> Added additional screen text in interactive configuration mode showing which version is currently visible.
 	* Fixed planet atmosphere color not properly updating while in interactive configuration mode.

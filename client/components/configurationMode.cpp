@@ -975,7 +975,7 @@ namespace ConfigurationMode
 						))
 					);
 			buttons	<< std::make_pair(int2(at++,0),
-						Objects::PBaseCommand(new Objects::CustomIconCommand("Display all predefined server planet types","Planet Presets",[]()
+						Objects::PBaseCommand(new Objects::CustomIconCommand("Load Planet Preset","Planet Presets",[]()
 						{
 							if (!GUI::IsVisible(planetListWindow))
 								GUI::Show(planetListWindow);
