@@ -16,7 +16,7 @@ namespace ConfigurationMode
 	{
 		Objects::Storage serverObjects;
 		bool isActive = false;
-		Grid::ExtendedPlanetConfig	config, refConfig;
+		Grid::ExtendedPlanetConfig	config, serverConfig;
 		UINT32 seed = 0;
 		Protocol::GameConfig	gameConfig;
 		Random rng;
@@ -252,7 +252,7 @@ namespace ConfigurationMode
 
 		void UploadToServer()
 		{
-			refConfig = config;
+			serverConfig = config;
 			RefreshButtonStates();
 			Network::Channels::planetConfig.SendTo(Network::client,config);
 		}
@@ -871,22 +871,22 @@ namespace ConfigurationMode
 				RefreshDiscovery();
 			};
 
-			MakeMaterialChoice(coreGroup,config.innerCoreType,refConfig.innerCoreType,noUnknown);
-			mountainGroup = MakeLayer("Mountains",config.mountains,refConfig.mountains);
+			MakeMaterialChoice(coreGroup,config.innerCoreType,serverConfig.innerCoreType,noUnknown);
+			mountainGroup = MakeLayer("Mountains",config.mountains,serverConfig.mountains);
 			mountainGroup->customLabel << "Defines the extend and content of the mountain layer. The mountain layer stretches from the bottom up, where not overwritten by the extended planet core.";
-			extendedCoreGroup = MakeLayer("Extended Core",config.extendedCore,refConfig.extendedCore);
+			extendedCoreGroup = MakeLayer("Extended Core",config.extendedCore,serverConfig.extendedCore);
 			extendedCoreGroup->customLabel << "Defines the extend and content of the extended core layer. The extended core stretches from the bottom up, potentially overwriting content defined by the mountain layer.";
-			MakeMaterialChoice(extendedCoreGroup->AddChild("Type","Terrain Content"),config.extendedCoreType,refConfig.extendedCoreType, noUnknown);
-			MakeMaterialChoice(mountainGroup->AddChild("Type","Terrain Content"),config.type,refConfig.type, fullScope);
+			MakeMaterialChoice(extendedCoreGroup->AddChild("Type","Terrain Content"),config.extendedCoreType,serverConfig.extendedCoreType, noUnknown);
+			MakeMaterialChoice(mountainGroup->AddChild("Type","Terrain Content"),config.type,serverConfig.type, fullScope);
 //			MakeMaterialChoice(mountainGroup->AddChild("Top Type", "Terrain Top" ),config.topType,refConfig.topType, fullScope);
-			MakeIntButtons(mountainGroup->AddChild("Snow Height"),config.snowHeight,refConfig.snowHeight,Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight-1);
+			MakeIntButtons(mountainGroup->AddChild("Snow Height"),config.snowHeight,serverConfig.snowHeight,Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight-1);
 
 			{
 				liquidGroup.reset(new Objects::CommandGroup("Oceans"));
 				liquidGroup->baseCoords = int2(1);
-				MakeMaterialChoice(liquidGroup->AddChild("Ocean Content","Ocean Type"),config.liquidCoverage,refConfig.liquidCoverage,noUnknown);
-				MakeIntButtons(liquidGroup->AddChild("Level","Base Height"),config.liquidHeight,refConfig.liquidHeight,Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight-1);
-				MakeMaterialChoice(liquidGroup->AddChild("Ocean Outline"),config.liquidOutline,refConfig.liquidOutline,noLiquids);
+				MakeMaterialChoice(liquidGroup->AddChild("Ocean Content","Ocean Type"),config.liquidCoverage,serverConfig.liquidCoverage,noUnknown);
+				MakeIntButtons(liquidGroup->AddChild("Level","Base Height"),config.liquidHeight,serverConfig.liquidHeight,Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight-1);
+				MakeMaterialChoice(liquidGroup->AddChild("Ocean Outline"),config.liquidOutline,serverConfig.liquidOutline,noLiquids);
 			}
 
 
@@ -929,7 +929,7 @@ namespace ConfigurationMode
 			buttons	<< std::make_pair(int2(at++,0),
 						Objects::PBaseCommand(new Objects::CustomIconCommand("Reset to server config and rebuild local planet","Download from Server",[]()
 						{
-							config = refConfig;
+							config = serverConfig;
 							Update();
 						},
 						[](bool){return Objects::BaseCommand::Flags::IsEnabled;}
@@ -1008,7 +1008,7 @@ namespace ConfigurationMode
 		using namespace Detail;
 		seed = cfg.lastSeed;
 		config = cfg;
-		refConfig = cfg;
+		serverConfig = cfg;
 		if (clientWorldLoaded)
 			Update();
 	}
