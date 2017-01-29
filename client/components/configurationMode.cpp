@@ -150,6 +150,15 @@ namespace ConfigurationMode
 			}
 			Grid::SetAllFamiliesOutdated();	//force rebuild
 			World::allowRecompilation = true;
+
+			if (clientWorldLoaded)
+			{
+				config.GenerateAtmosphereColor();
+				config.Apply();
+			}
+			else
+				serverConfig.Apply();
+
 			RefreshButtonStates();
 		}
 
@@ -1010,10 +1019,13 @@ namespace ConfigurationMode
 	{
 		using namespace Detail;
 		seed = cfg.lastSeed;
-		config = cfg;
+		if (!clientWorldBuilt)
+			config = cfg;
 		serverConfig = cfg;
 		if (clientWorldLoaded)
 			Update();
+		else
+			cfg.Apply();
 	}
 
 	void	SetGameConfig(UINT32 gameFlags, RuntimeConfig::GameGoal goal, Grid::WorldDiscovery disc)

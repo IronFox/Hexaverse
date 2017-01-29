@@ -82,7 +82,12 @@ namespace Network
 		if (started)
 			Network::RestartSession();
 		else
+		{
 			World::Network::SendChangedFamilies();
+
+
+			Channels::planetConfig.SendTo(server,Grid::currentPlanetConfig,(UINT)UserLevel::PlanetConfigurator);
+		}
 	}
 
 
