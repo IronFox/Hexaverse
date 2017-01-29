@@ -4649,6 +4649,16 @@ namespace Grid
 
 	#endif
 
+	void TSharedPlanetConfig::Apply() const
+	{
+		Grid::Content coreContent = Grid::Content::Reinterpret(innerCoreType);
+		Grid::CellStack::bottom.content = coreContent;
+		#ifdef HAS_WINDOW
+			Grid::UpdateAtmosphere(atmosphereColor);
+			Grid::UpdateSun(sunPlaneNormal_Speed,sunColor);
+		#endif
+	}
+
 	/**/					WorldData::WorldData():cellStack(HighSetup::GridType::CellCount)
 	{}
 

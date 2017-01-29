@@ -365,12 +365,7 @@ namespace Network
 
 	static void ApplyPlanetConfig(const Grid::TSharedPlanetConfig&config)
 	{
-		Grid::Content coreContent = Grid::Content::Reinterpret(config.innerCoreType);
-		Grid::CellStack::bottom.content = coreContent;
-		#ifdef HAS_WINDOW
-			Grid::UpdateAtmosphere(config.atmosphereColor);
-			Grid::UpdateSun(config.sunPlaneNormal_Speed,config.sunColor);
-		#endif
+		config.Apply();
 	}
 
 
