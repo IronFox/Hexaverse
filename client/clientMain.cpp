@@ -2084,6 +2084,15 @@ bool loop()
 			}
 	
 
+
+			DebugCheckVector(scene.location,-1000,1000);
+		
+		
+			UI::Render();
+			display.pick(Camera::hud);
+			GUI::Render();
+
+
 			if (ConfigurationMode::IsActive())
 			{
 				static const String line = "Interactive Configuration Mode";
@@ -2099,14 +2108,6 @@ bool loop()
 					textout << "Seeing Local Version";
 				textout.popState();
 			}
-
-
-			DebugCheckVector(scene.location,-1000,1000);
-		
-		
-			UI::Render();
-			display.pick(Camera::hud);
-			GUI::Render();
 
 	#endif
 		//textout << "direction: "<<scene.GetViewingDirection()<< nl;
