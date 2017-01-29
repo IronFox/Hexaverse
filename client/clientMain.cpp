@@ -2091,7 +2091,12 @@ bool loop()
 				textout.pushState();
 				textout.scale(2.0f,2.0f);
 				textout.locate(0.95f - textout.scaledWidth(line),0.95f);
-				textout << line;
+				textout << line<<nl;
+				textout.scale(0.75f,0.75f);
+				if (ConfigurationMode::ViewingServerVersion())
+					textout << "Seeing Server Version";
+				else
+					textout << "Seeing Local Version";
 				textout.popState();
 			}
 
