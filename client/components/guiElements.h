@@ -341,6 +341,13 @@ namespace GUI
 		{
 			Super::fillBackground = false;
 		}
+		/**/			Label(const String&text, float scale=1.f)
+		{
+			Super::fillBackground = false;
+			Super::zoom = scale;
+			SetText(text);
+			SetIdealWidth();
+		}
 	};
 
 	class Button : public TextField
