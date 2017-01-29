@@ -11,6 +11,7 @@ namespace ConfigurationMode
 	void	SetActive(bool);
 	void	SetGameConfig(UINT32, RuntimeConfig::GameGoal, Grid::WorldDiscovery);
 	bool	IsActive();
+	bool	ViewingServerVersion();
 	void	RandomizeSeed();
 
 	/**

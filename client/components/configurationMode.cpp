@@ -56,26 +56,6 @@ namespace ConfigurationMode
 			}
 		}
 
-		void		RebuildPlanetList()
-		{
-			planetListWindow->ClearComponents();
-			planetListWindow->SetCenteredWidth(0.7f,GUI::TAnchor::RelativeToScreen);
-			planetListWindow->autoHeight = true;
-			planetListWindow->maxHeight = 0.7f;
-			planetListWindow->fillBackground = false;
-			GUI::PComponent label = planetListWindow->AddNewComponent(new GUI::Label("Planets",1.2f));
-			label->anchorConfig.Top().Set(0);
-			label->anchorConfig.Left().Set(0);
-			foreach (planetList,p)
-			{
-				GUI::PButton button(new GUI::Button(*p));
-				button->anchorConfig.Top().SetLastOf(planetListWindow,0.02f);
-				button->anchorConfig.axis[0].min.Set(0);
-				button->anchorConfig.axis[0].max.Set(0);
-				planetListWindow->AddComponent(button);
-			}
-			planetListWindow->FullAutoLayout();
-		}
 
 
 		class GridState
@@ -325,6 +305,34 @@ namespace ConfigurationMode
 			else
 				ActivateDiscovery(false,serverWorld);
 		}
+
+		void		RebuildPlanetList()
+		{
+			planetListWindow->ClearComponents();
+			planetListWindow->SetCenteredWidth(0.7f,GUI::TAnchor::RelativeToScreen);
+			planetListWindow->autoHeight = true;
+			planetListWindow->maxHeight = 0.7f;
+			planetListWindow->fillBackground = false;
+			GUI::PComponent label = planetListWindow->AddNewComponent(new GUI::Label("Planets",1.2f));
+			label->anchorConfig.Top().Set(0);
+			label->anchorConfig.Left().Set(0);
+			foreach (planetList,p)
+			{
+				index_t myIndex = p - planetList.pointer();
+				GUI::PButton button(new GUI::Button(*p,[myIndex]()
+				{
+					Network::Channels::loadPlanetByName.SendTo(Network::client, planetList[myIndex]);
+					GUI::Hide(planetListWindow);
+					LoadServerWorld(false);
+				}));
+				button->anchorConfig.Top().SetLastOf(planetListWindow,0.02f);
+				button->anchorConfig.axis[0].min.Set(0);
+				button->anchorConfig.axis[0].max.Set(0);
+				planetListWindow->AddComponent(button);
+			}
+			planetListWindow->FullAutoLayout();
+		}
+
 
 		void AppendRuleButton(const Objects::PCommandGroup&grp,const String&niceName, const String&iconName,const String&configName, UINT32 flag, const std::function<void(bool)>&onChange)
 		{
@@ -1028,6 +1036,12 @@ namespace ConfigurationMode
 		Create();
 		UI::HexGrid::Configure(Objects::selectedEntity);
 
+	}
+
+	bool	ViewingServerVersion()
+	{
+		using namespace Detail;
+		return !clientWorldLoaded;
 	}
 
 	bool	IsActive()

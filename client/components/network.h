@@ -251,6 +251,7 @@ namespace Network
 		extern TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>				changeMyName;
 		extern TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>				chatMessage;
 		extern TCP::ObjectSender<Protocol::ResourceID, Protocol::ChannelID::RequestResource>			requestResource;
+		extern TCP::ObjectSender<Package::NetString<256>, Protocol::ChannelID::LoadPlanetByName>		loadPlanetByName;
 
 		
 	}

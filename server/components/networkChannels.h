@@ -30,6 +30,7 @@ namespace Receiver
 	void	PlanetConfig(Grid::ExtendedPlanetConfig&, TCP::Peer&peer);
 	void	GameConfig(Protocol::GameConfig&, TCP::Peer&peer);
 	void	RequestResource(Protocol::ResourceID&, TCP::Peer&peer);
+	void	LoadPlanetByName(Package::NetString<256>&, TCP::Peer&peer);
 
 	/**
 	Handler function to process network signals (packages without payloads)
@@ -89,6 +90,7 @@ namespace Channels
 	extern TCP::Channel<Grid::ExtendedPlanetConfig, Configurator, Protocol::ChannelID::PlanetConfig>			planetConfig;
 	extern TCP::Channel<Protocol::GameConfig, Configurator, Protocol::ChannelID::GameConfig>					gameConfig;
 	extern TCP::Channel<Protocol::ResourceID, PreFaction, Protocol::ChannelID::RequestResource>					requestResource;
+	extern TCP::Channel<Package::NetString<256>, Configurator, Protocol::ChannelID::LoadPlanetByName>			loadPlanetByName;
 
 
 	extern TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>				clientFactionResponse;

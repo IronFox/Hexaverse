@@ -45,6 +45,7 @@ namespace Channels
 	TCP::Channel<Grid::ExtendedPlanetConfig, Configurator, Protocol::ChannelID::PlanetConfig>				planetConfig(Receiver::PlanetConfig);
 	TCP::Channel<Protocol::GameConfig, Configurator, Protocol::ChannelID::GameConfig>						gameConfig(Receiver::GameConfig);
 	TCP::Channel<Protocol::ResourceID, PreFaction, Protocol::ChannelID::RequestResource>				requestResource(Receiver::RequestResource);
+	TCP::Channel<Package::NetString<256>, Configurator, Protocol::ChannelID::LoadPlanetByName>		loadPlanetByName(Receiver::LoadPlanetByName);
 	
 
 	TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>			clientFactionResponse;
@@ -888,6 +889,32 @@ namespace Receiver
 			LogEvent(EventClass::Preset::commandRejected,peer,"Configuration mode is not active. User should not have this level");
 
 	}
+
+	void	LoadPlanetByName(Package::NetString<256>&planet, TCP::Peer&peer)
+	{
+		if (ConfigurationMode::IsActive())
+		{
+			LogEvent(EventClass::Preset::configurationPrint,peer,"Received request for planet preset '"+planet+"'...");
+			if (planet.IsNotEmpty())
+			{
+				if (!FileSystem::IsFile(RuntimeConfig::ConfigFile(PathString("config/planets/"+planet+".ini"))))
+				{
+					LogEvent(EventClass::Preset::remoteControlError,"'"+planet+"' is not a valid planet type");
+					return;
+				}
+			}
+
+			if (planet.IsNotEmpty())
+			{
+				Reflection::Variable::planetType->Set(planet.trim());
+				Reflection::ReloadPlanet();
+			}
+			Network::BuildConfiguredWorld();
+		}
+		else
+			LogEvent(EventClass::Preset::commandRejected,peer,"Configuration mode is not active. User should not have this level");
+	}
+
 
 	void	GameConfig(Protocol::GameConfig&cfg, TCP::Peer&peer)
 	{

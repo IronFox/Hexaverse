@@ -1115,6 +1115,7 @@ namespace Network
 		TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>					changeMyName;
 		TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>					chatMessage;
 		TCP::ObjectSender<Protocol::ResourceID, Protocol::ChannelID::RequestResource>				requestResource;
+		TCP::ObjectSender<Package::NetString<256>, Protocol::ChannelID::LoadPlanetByName>			loadPlanetByName;
 
 			//	,			//c2s: NET(bool) -> NET(bool)
 			//SetFactionId,		//s2c: NET(TUniqueID)
