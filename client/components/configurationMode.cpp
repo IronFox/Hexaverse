@@ -1110,8 +1110,11 @@ namespace ConfigurationMode
 
 	void	UpdatePlanetList(Array<String>&fleetingData)
 	{
-		Detail::planetList.adoptData(fleetingData);
-		Detail::RebuildPlanetList();
+		if (Detail::isActive)
+		{
+			Detail::planetList.adoptData(fleetingData);
+			Detail::RebuildPlanetList();
+		}
 	}
 
 }
