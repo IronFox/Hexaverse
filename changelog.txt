@@ -1,7 +1,7 @@
 v0.6.2
-	+ Added new dialog to remotely load server-known plant presets.
+	+ Added new dialog to remotely load server-known planet presets.
 	> Replaced 'rules' icon with cogwheel.
-	> Added additional screen text in interactive configuration mode showing which version is currently visible.
+	> Added additional screen text in interactive configuration mode showing which version (server/client) is currently visible.
 	> Improved/smoothed rendering of certain vehicle tasks.
 	> Disabled server panel if server is in interactive configuration mode, and localhost address is yet unknown.
 	* Fixed planet atmosphere color not properly updating while in interactive configuration mode.
