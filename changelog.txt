@@ -6,6 +6,7 @@ v0.6.2
 	> Disabled server panel if server is in interactive configuration mode, and localhost address is yet unknown.
 	* Fixed planet atmosphere color not properly updating while in interactive configuration mode.
 	* Fixed contact list still popping up when controls and contact list are hidden.
+	* Fixed HollowCore planet type.
 
 v0.6.1	[Jan 28 2017]
 	> Nexus units are now affected by residual EMP fields to prevent them from firing out of EMP zones.
