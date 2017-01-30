@@ -559,6 +559,10 @@ namespace Objects
 						PMobileEntity vehicle = selectedMobileEntity;
 						if (!vehicle)
 							return;
+						#ifdef HAS_WINDOW
+							if (!Engine::input.pressed[Key::Shift])
+								ApplicationInterface::SignalDropSafeTasks(vehicle);
+						#endif
 						ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_SelfDetonate,DetonationSize);					
 					}
 
