@@ -1519,9 +1519,10 @@ namespace Objects
 
 										Shape&shape = localizableShapes.Append();
 										((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
-										shape.instruction.vbo = sphereVBO[0];
-										shape.instruction.ibo = sphereIBO[0];
+										shape.instruction.vbo = sphereVBO[2];
+										shape.instruction.ibo = sphereIBO[2];
 										shape.depthTest = true;
+										shape.flareDisplay = true;
 
 										BuildSystem(trajectory.last().xyz * trajectory.last().w,parent->GetAttackExplosionRadius(),  parent->GetAttackExplosionRadius(),shape.system);
 									}
@@ -1624,9 +1625,12 @@ namespace Objects
 		{
 			Shape&shape = localizableShapes.Append();
 			((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
-			shape.instruction.vbo = sphereVBO[0];
-			shape.instruction.ibo = sphereIBO[0];
+			shape.instruction.vbo = sphereVBO[1];
+			shape.instruction.ibo = sphereIBO[1];
 			shape.depthTest = true;
+			shape.flareDisplay = false;
+			shape.preRenderDepth = false;
+			shape.selectedOnly = true;
 
 			float r = Component::Bomb::GetRadius(false,owner);
 			BuildSystem(Grid::ToWorld(location),r, r,shape.system);
@@ -1637,9 +1641,12 @@ namespace Objects
 		{
 			Shape&shape = localizableShapes.Append();
 			((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
-			shape.instruction.vbo = sphereVBO[0];
-			shape.instruction.ibo = sphereIBO[0];
+			shape.instruction.vbo = sphereVBO[2];
+			shape.instruction.ibo = sphereIBO[2];
 			shape.depthTest = true;
+			shape.flareDisplay = false;
+			shape.preRenderDepth = false;
+			shape.selectedOnly = true;
 
 			float r = Component::Bomb::GetRadius(true,owner);
 			BuildSystem(Grid::ToWorld(location),r, r,shape.system);
@@ -1656,6 +1663,7 @@ namespace Objects
 			shape.instruction.vbo = p->localizableShape->vbo;
 			shape.instruction.ibo = p->localizableShape->ibo;
 			shape.depthTest = true;
+			shape.flareDisplay = type != Job;
 
 			BuildStructureSystem(location,shape.system);
 			return;
