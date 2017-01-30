@@ -347,8 +347,8 @@ namespace Receiver
 
 			Channels::planetConfig.SendTo(peer,Grid::currentPlanetConfig);
 
+			if (ConfigurationMode::IsActive())
 			{
-				
 				Array<FileSystem::File>	iniFiles;
 				World::GetAvailablePlanetIniFiles(iniFiles);
 				NETA(Package::NetString<256>) names;
