@@ -141,6 +141,10 @@ void	SaveHosts()
 	GUI::PButtonPanel ConstructPanel(Network::ServerInfo&info)
 	{
 		using namespace GUI;
+
+		const Network::Host&host = GetTargetHost(info);
+
+
 		if (info.buttonPanel)
 		{
 			info.buttonPanel->ClearComponents();
@@ -152,12 +156,30 @@ void	SaveHosts()
 			info.buttonPanel->anchorConfig.Right().Set(0.f);
 			info.buttonPanel->autoHeight = true;
 			bool versionMatch = info.rightVersion;
-			info.buttonPanel->SetCheck([versionMatch]()
+
+			TUniqueID id = info.id;
+			const bool isConfigurationMode = (host.serverInfo.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::ConfigurationMode) != 0;
+
+			info.buttonPanel->SetCheck([versionMatch,id,isConfigurationMode]()
 			{
+				if (isConfigurationMode)
+				{
+					Network::ServerInfo*info = nullptr;
+					foreach (Network::servers,srv)
+					{
+						if (srv->id == id)
+						{
+							info = srv;
+							break;
+						}
+					}
+					if (!info || !info->HasLocalhost())
+						return false;
+				}
+
 				return versionMatch && !Network::client.IsAttemptingToConnect() && !Network::client.IsConnected();
 			});
 
-			TUniqueID id = info.id;
 			info.buttonPanel->SetOnPress([id]()
 			{
 				Network::ServerInfo*info = nullptr;
@@ -193,7 +215,6 @@ void	SaveHosts()
 
 		PButtonPanel p = info.buttonPanel;
 
-		const Network::Host&host = GetTargetHost(info);
 		if (!info.headLine)
 		{
 			String text;
@@ -277,7 +298,6 @@ void	SaveHosts()
 			p->backgroundTone = incompatibleColor.rgb * 0.75f;
 		else
 			p->backgroundTone = float3(1);
-		
 		return p;
 	}
 

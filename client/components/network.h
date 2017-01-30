@@ -63,6 +63,8 @@ namespace Network
 			basePort = other.basePort;
 		}
 
+		bool				IsLocalhost() const {return host == "localhost" || host == "127.0.0.1" || host == "::1";}
+
 		String				ToString() const {return basePort != DEFAULT_SERVER_BASE_PORT ? host + ':' + String(basePort) : host;}
 	};
 
@@ -323,6 +325,14 @@ namespace Network
 		//			return true;
 		//	return false;
 		//}
+
+		bool					HasLocalhost() const
+		{
+			foreach (addresses,u)
+				if (u->address.IsLocalhost())
+					return true;
+			return false;
+		}
 
 		bool					HasAddress(const ServerAddress&addr) const
 		{
