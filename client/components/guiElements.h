@@ -313,6 +313,7 @@ namespace GUI
 			rawText.SetSize(1);
 			rawText.First() = string;
 			Super::InvalidateSize();
+			UpdateHeight();
 		}
 		void			SetText(const Array<String>&string)
 		{
@@ -320,6 +321,7 @@ namespace GUI
 				return;
 			rawText = string;
 			Super::InvalidateSize();
+			UpdateHeight();
 		}
 
 		void			SetIdealWidth();
