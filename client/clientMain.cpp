@@ -1266,7 +1266,13 @@ namespace ApplicationInterface
 		}
 		else
 		{
-			LogEvent(ConfigurationMode::IsActive() ? EventSignificance::Debug : EventSignificance::Important,"Hostile contact: "+e->GetNiceName()+ (RuntimeConfig::autoNewRound ? ". Pausing automatic round progression.":"."));
+			bool isCommon = 
+				#ifdef HAS_WINDOW
+					ConfigurationMode::IsActive();
+				#else
+					true;
+				#endif
+			LogEvent(EventClass(isCommon ? EventSignificance::Common : EventSignificance::Important,EventFlavor::Loss),"Hostile contact: "+e->GetNiceName()+ (RuntimeConfig::autoNewRound ? ". Pausing automatic round progression.":"."));
 			LocalApplicationInterface::pauseAutomaticRoundProgression = true;
 		}
 	}
