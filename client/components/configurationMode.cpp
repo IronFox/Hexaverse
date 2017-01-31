@@ -575,7 +575,7 @@ namespace ConfigurationMode
 			->customLabel << "Scales extremes. The heigher this value the further the resulting heightmap will reach up and down"
 			;
 			MakeFloatButtons(group->AddChild("Frequency"),layer.frequency, refLayer.frequency)
-			->customLabel << "Scales the frequency of peaks. The heigher this value the higher the number of mountains at reduced horizontal extend each."
+			->customLabel << "Scales the frequency of peaks. The heigher this value the higher the number of mountains at reduced horizontal extent each."
 			;
 			return group;
 		}
@@ -885,9 +885,9 @@ namespace ConfigurationMode
 
 			MakeMaterialChoice(coreGroup,config.innerCoreType,serverConfig.innerCoreType,noUnknown);
 			mountainGroup = MakeLayer("Mountains",config.mountains,serverConfig.mountains);
-			mountainGroup->customLabel << "Defines the extend and content of the mountain layer. The mountain layer stretches from the bottom up, where not overwritten by the extended planet core.";
+			mountainGroup->customLabel << "Defines the extent and content of the mountain layer. The mountain layer stretches from the bottom up, where not overwritten by the extended planet core.";
 			extendedCoreGroup = MakeLayer("Extended Core",config.extendedCore,serverConfig.extendedCore);
-			extendedCoreGroup->customLabel << "Defines the extend and content of the extended core layer. The extended core stretches from the bottom up, potentially overwriting content defined by the mountain layer.";
+			extendedCoreGroup->customLabel << "Defines the extent and content of the extended core layer. The extended core stretches from the bottom up, potentially overwriting content defined by the mountain layer.";
 			MakeMaterialChoice(extendedCoreGroup->AddChild("Type","Terrain Content"),config.extendedCoreType,serverConfig.extendedCoreType, noUnknown);
 			MakeMaterialChoice(mountainGroup->AddChild("Type","Terrain Content"),config.type,serverConfig.type, fullScope);
 //			MakeMaterialChoice(mountainGroup->AddChild("Top Type", "Terrain Top" ),config.topType,refConfig.topType, fullScope);

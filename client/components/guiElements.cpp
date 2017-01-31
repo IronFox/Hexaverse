@@ -1480,7 +1480,7 @@ namespace GUI
 		}
 
 
-		float extend = a.GetExtent();
+		float extent = a.GetExtent();
 
 		if (anchor.min.IsFixed())
 		{
@@ -1524,10 +1524,10 @@ namespace GUI
 				rs |= Set(a.max, context.axis[axis].max - dist);
 		}
 		else
-			rs |= Set(a.max,a.min + extend);
+			rs |= Set(a.max,a.min + extent);
 
 		if (!anchor.min.IsFixed())
-			rs |= Set(a.min,a.max - extend);
+			rs |= Set(a.min,a.max - extent);
 
 
 		return rs;

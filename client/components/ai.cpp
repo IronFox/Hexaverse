@@ -484,10 +484,10 @@ namespace AI
 			
 				float score = (1.f + goodWeight) / (1.f+badWeight) / (1.f + float(abs(n->movementCostsFromRoot- minMotion * 3 / 2))*0.01f);
 				{
-					float extend = 1.f + sqr(sqr(sqr(random.NextFloat())));
+					float extent = 1.f + sqr(sqr(sqr(random.NextFloat())));
 					if (random.NextBool())
-						extend = 1.f / extend;
-					score *= extend;				
+						extent = 1.f / extent;
+					score *= extent;				
 				}
 				//score *= random.NextFloat(0.8f,1.25f);
 				if (score > bestScore)

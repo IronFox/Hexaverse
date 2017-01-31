@@ -276,7 +276,7 @@ namespace Objects
 		#endif
 
 		int							health;
-		int							empDamageLevel = 0;	//!< Number of rounds that scanners are disabled due to emp-damage. Also affects extend of damage
+		int							empDamageLevel = 0;	//!< Number of rounds that scanners are disabled due to emp-damage. Also affects extent of damage
 
 		bool						unstable;	//!< Indicates that something is wrong with the consumption vector of the local network. Or the vehicle state is unstable. Again, DO NOT CHANGE.
 
