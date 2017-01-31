@@ -645,9 +645,9 @@ namespace Objects
 					T val = source.GetValue(e.GetResearchState());
 					if (bonus.IsSet())
 						val += bonus.GetValue(e.GetResearchState());
-					cached = WorldEntity::StaticEMPModify(val,2.f * Grid::UnitScale,e.empDamageLevel);
+					cached = val;
 				}
-				return cached;
+				return WorldEntity::StaticEMPModify(cached,2.f * Grid::UnitScale,e.empDamageLevel);;
 			}
 	template <typename T>
 		template <typename F1, typename F2>
