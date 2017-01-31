@@ -4,6 +4,7 @@ v0.6.2
 	> Added additional screen text in interactive configuration mode showing which version (server/client) is currently visible.
 	> Improved/smoothed rendering of certain vehicle tasks.
 	> Disabled server panel if server is in interactive configuration mode, and localhost address is yet unknown.
+	> The currently active terrain material type is now displayed in brackets when presenting a material choice dialog in interactive configuration mode.
 	* Fixed planet atmosphere color not properly updating while in interactive configuration mode.
 	* Fixed contact list still popping up when controls and contact list are hidden.
 	* Fixed HollowCore planet type.

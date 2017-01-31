@@ -110,6 +110,7 @@ namespace ConfigurationMode
 		public:
 			GUI::PWindow	window;
 			std::function<void(BYTE)>	onSelect;
+			Buffer0<std::pair<index_t, GUI::PButton> >	materialButtons;
 			
 			void				Create(bool allowUnknown, bool allowLiquids);
 			void				SetCurrent(BYTE type);
@@ -195,6 +196,7 @@ namespace ConfigurationMode
 
 		void				MaterialDialog::Create(bool allowUnknown, bool allowLiquids)
 		{
+			materialButtons.Clear();
 			window.reset(new GUI::Window());
 			//window->autoHeight = false;
 			for (index_t i  = 0; i < Grid::Content::NumberOfPossibilities; i++)
@@ -237,6 +239,7 @@ namespace ConfigurationMode
 					this->onSelect((BYTE)i);
 				});
 				window->AddComponent(button);
+				materialButtons << std::make_pair(i,button);
 			}
 
 			{
@@ -259,7 +262,16 @@ namespace ConfigurationMode
 
 		void				MaterialDialog::SetCurrent(BYTE type)
 		{
-
+			foreach (materialButtons,b)
+			{
+				String name = Grid::Content::Reinterpret(b->first).ToString();
+				if (b->first == Grid::Content::Unknown)
+					name = "Natural";
+				if (b->first == type)
+					b->second->SetText("["+name+"]");
+				else
+					b->second->SetText(name);
+			}
 		}
 
 		void UploadToServer()
