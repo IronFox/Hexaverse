@@ -429,10 +429,12 @@ namespace Network
 
 		void	PlanetNames(NETA(Package::NetString<256>)&list)
 		{
-			Array<String> copy(list.length());
-			for (index_t i = 0; i < list.length(); i++)
-				copy[i].adoptData(list[i]);
-			ConfigurationMode::UpdatePlanetList(copy);
+			#ifdef HAS_WINDOW
+				Array<String> copy(list.length());
+				for (index_t i = 0; i < list.length(); i++)
+					copy[i].adoptData(list[i]);
+				ConfigurationMode::UpdatePlanetList(copy);
+			#endif
 		}
 
 		void	OnHelloResponse(Protocol::HelloResponse&response)
