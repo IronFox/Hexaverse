@@ -1,9 +1,4 @@
-﻿* TEST AI
-* AI unit spawning causes server crash, but threat estimation in low-res mode is horrificly slow. Must adjust
-
-Loading screen
-Optionally broadcast research state to all clients
-Select planet type by name from interactive configurator
+﻿Loading screen
 
 
 
@@ -157,6 +152,9 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+Select planet type by name from interactive configurator
+* TEST AI
+* AI unit spawning causes server crash, but threat estimation in low-res mode is horrificly slow. Must adjust
 * Moved buttons bottom right to a vertical setup
 * Fixed: Hide/disable Poll messages 'Found X lobby match(es)' when session is in progress
 * Max repair height difference 0? Should be one
