@@ -1,3 +1,5 @@
+v0.6.3
+
 v0.6.2	[Jan 31 2017]
 	+ Added new dialog to remotely load server-known planet presets.
 	> Replaced 'rules' icon with cogwheel.
