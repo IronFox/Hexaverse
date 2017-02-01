@@ -1915,7 +1915,8 @@ bool loop()
 			{
 				static Timer::Time	lastCheck = timer.Now();
 				if (!Dialog::serverChoice || timer.CheckIfOutdatedAndUpdate(lastCheck,1.f))
-					UpdateServerChoice();
+					if (!display.IsMinimized())
+						UpdateServerChoice();
 			}
 
 
