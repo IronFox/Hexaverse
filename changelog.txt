@@ -1,4 +1,5 @@
 v0.6.3
+	> When target mode is active with any unit selected, pressing the right mouse button will abort the mode.
 	> Vehicle plants no longer require energy to operate.
 	* Fixed rare fatal client exception when failing to layout menu components.
 
