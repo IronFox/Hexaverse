@@ -1684,7 +1684,8 @@ namespace Protocol
 		enum flag_t
 		{
 			LeftClick = 0x1,
-			Detailed = 0x2
+			Detailed = 0x2,
+			ClearSafeTasks = 0x4
 		};
 
 	}
@@ -1854,7 +1855,7 @@ namespace Protocol
 		, Package::NetString<32>, name
 	)
 
-	typedef NET(index_t)	SelectResearch;
+	typedef NET(UINT32)	SelectResearch;	//can't use index_t
 
 	typedef std::pair<UINT16,UINT16>	TUnitLimit;
 
@@ -1877,6 +1878,14 @@ namespace Protocol
 		, ResourceID, id
 		, NETA(BYTE), data
 	)
+
+	CONSTRUCT_ENUMERATION3(DropMode, LastTask, AllTasks,AllSafeTasks);
+
+	NETSTRUCT2(DropTasks
+		, NET(TUniqueID), targetID
+		, NET(BYTE), dropMode
+	)
+
 
 
 	namespace ChannelID
@@ -1929,8 +1938,7 @@ namespace Protocol
 
 			EntityDirectCommand,//c2s: EntityDirectCommand
 
-			DropLastTask,		//c2s: TUniqueID
-			DropAllTasks,		//c2s: TUniqueID
+			DropTasks,			//c2s: DropTasks
 
 			SignalNewJob,		//c2s: StandardJob
 			SignalTerrainMod,	//c2s: TerrainMod
@@ -1969,6 +1977,8 @@ namespace Protocol
 
 			PlanetConfig,		// both: Grid::ExtendedPlanetConfig
 			GameConfig,			// both: GameConfig
+			PlanetNames,		// s2c: NetString<256>[]
+			LoadPlanetByName,	// c2s: NetString<256>
 			EndConfigurationMode,//c2s: <signal>
 
 			OperationLacksResources, //s2c: OperationLacksResources

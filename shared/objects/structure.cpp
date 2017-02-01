@@ -874,7 +874,7 @@ namespace Objects
 	{
 		if (!turret->CanAttack())
 			return 0.f;
-		return cache.horizontalAttackRange.GetEMPModified(*this,turret->horizontalAttackRange,Objects::LuaAttribute<float>(2.f));
+		return cache.horizontalAttackRange.GetEMPModified(*this,turret->horizontalAttackRange,Objects::LuaAttribute<float,UnitScaleFilter>(2.f));
 		//EMPModify(turret->GetHorizontalAttackRange(owner,2.f),2.f);
 	}
 
@@ -882,7 +882,7 @@ namespace Objects
 	{
 		if (!turret->CanAttack())
 			return 0.f;
-		return cache.horizontalAttackRange.DescribeEMPModified(*this,turret->horizontalAttackRange,Objects::LuaAttribute<float>(2.f));
+		return cache.horizontalAttackRange.DescribeEMPModified(*this,turret->horizontalAttackRange,Objects::LuaAttribute<float,UnitScaleFilter>(2.f));
 		//EMPModify(turret->GetHorizontalAttackRange(owner,2.f),2.f);
 	}
 
@@ -1006,6 +1006,19 @@ namespace Objects
 				Mat::rotate(inverse,_d,d);
 				return geometry.TestIntersection(b,d,distance) | turret->TestIntersection(GetEffectiveFoundationHeight(), turretAngleX,turretAngleY,b,d,distance);	//binary or - must evaluate both
 			}
+			/*virtual override*/ void			Tower::DescribeType(BaseCommand::Label&label, UINT32 descFlags) 
+			{
+				label.BeginBrief();
+				Super::DescribeType(label,descFlags);
+				label.MarkBriefEnd();
+				if (turret->CanAttack())
+					label << "The unit automatically attacks hostile units in range (possibly extended by its impact explosion radius)."
+							" Towers are the only units that can intercept hostile units during their movement phase."
+							" A hostile mobile unit that enters their attack range is immediately attacked as long as sufficient attack action is left."
+							" This tower will never automatically fire at locations that endanger friendly units."
+							;
+			}
+
 		#endif
 	#endif
 
@@ -1909,7 +1922,7 @@ namespace Objects
 
 	/*virtual override*/ bool			Laboratory::IsBuilding(std::pair<int,int>&outProgress) const
 	{
-		if (!owner || owner->researchState.IsIdle())
+		if (!IsEnabled() || !owner || owner->researchState.IsIdle())
 			return false;
 		auto topic = owner->researchState.GetActiveTopic();
 		if (topic->maxProgress <= 0)
@@ -2127,7 +2140,7 @@ namespace Objects
 					task.blastVisualization.ibo = sphereIBO[0];
 					//shape.depthTest = true;
 
-					turret->BuildBlastSystem(trajectory.last().xyz * trajectory.last().w,turret->explosionRadius(owner),task.blastSystem);
+					turret->BuildBlastSystem(trajectory.last().xyz * trajectory.last().w,turret->GetExplosionRadius(owner),task.blastSystem);
 				}
 			#endif
 		}
@@ -2242,7 +2255,9 @@ namespace Objects
 	{
 		Super::PrototypeSetup();
 		baseComponents = Objects::Component::baseComponents;
-		turretComponents = Objects::Component::vehicleTurretComponents;
+		for (const auto& turret:Objects::Component::vehicleTurretComponents)
+			if (turret->mountType == Component::Turret::MountType::Vehicle)
+				turretComponents << turret;
 
 		#ifdef HAS_WINDOW
 			commands.VisitMembers([](const int2&coords,const PBaseCommand&cmd)
@@ -2697,82 +2712,87 @@ namespace Objects
 	
 		/*virtual override*/ void			Laboratory::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
 		{
+			label.BeginBrief();
 			Super::DescribeType(label,  descFlags);
 			label.MarkBriefEnd();
-			label.WrapAppendText("Laboratories research new components and buildings, or improve their attributes."
+			label << "Laboratories research new components and buildings, or improve their attributes."
 			" Each enabled laboratory contributes 1 research point per round to the currently selected faction research goal."
 			" Research aimed at unlocking new components requires a number of research points to be accumulated."
 			" Research aimed at improvement will continuously improve the selected property, but become increasingly less efficient the further research has progressed."
 			" As a result, research facilities are a continuous construction effort and you will most likely never have enough."
-			);
+			;
 		}
 
 
 
 		/*virtual override*/ void			NexusPort::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
 		{
+			label.BeginBrief();
 			Super::DescribeType(label,  descFlags);
 			label.MarkBriefEnd();
-			label.WrapAppendText("Nexus Ports are indestructible structures of unknown origin."
+			label << "Nexus Ports are indestructible structures of unknown origin."
 			" Depending on game-settings, non-player Nexus Ports serve as spawning-beakons for Nexus units."
 			" Nexus Ports will shift ownership to the respective owner of the first connected player building."
 			" They must be enabled for a number of rounds in order to count towards winning the game."
 			" Disabling a Nexus Port will make it stop counting as such."
 			" A Nexus Port that loses all connections to other player-owned structures will shift back to"
 			" the Nexus faction."
-			);
-			
-		
+			;
 		}
 
 
 		/*virtual override*/ void			Mine::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
 		{
+			label.BeginBrief();
 			Super::DescribeType(label,  descFlags);
 			label.MarkBriefEnd();
-			label.WrapAppendText("Enabled mines extract any natural resources available in the planet-core beneath their location. They are essential in supplying other structures in the network."
+			label << "Enabled mines extract any natural resources available in the planet-core beneath their location. They are essential in supplying other structures of the local compound."
 			" Mines should be build only on known occurrences of natural resources."
-			" They cannot be constructed atop each other, since they require a working link to the core in order to operate."
+			" They cannot be constructed atop each other, since they require a working link to the planet core in order to operate."
 			//" Mines constructed on a height level of -8 or lower are twice as effective."
 			" Mines, like many structures, require "+String(ResourceTag(Resource::Energy))+" from generators to operate."
-			);
+			;
 		}
 
 
 
 		/*virtual override*/ void			Generator::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
 		{
+			label.BeginBrief();
 			Super::DescribeType(label,  descFlags);
 			label.MarkBriefEnd();
-			label.WrapAppendText("Enabled generators provide energy for the local compound."
+			label << "Enabled generators provide energy for the local compound."
 			" Since many structures consume "+String(ResourceTag(Resource::Energy))+" when enabled, generators are a crucial component of any active base."
 			" Combine with reactor cores for increased output."
-			);
+			;
 		}
 
 		/*virtual override*/ void			ReactorCore::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
 		{
+			label.BeginBrief();
 			Super::DescribeType(label,  descFlags);
 			label.MarkBriefEnd();
-			label.WrapAppendText("Amplifies the energy output of connected generators. Only one reactor core can be connected to any one generator,"
+			label  << "Amplifies the energy output of connected generators. Only one reactor core can be connected to any one generator,"
 			" but multiple generators may be connected to the same reactor core."
 			" Must be placed on the same height level as the generator(s) to connect to."
-			);
+			;
 		}
 		/*virtual override*/ void			VehiclePlant::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
 		{
+			label.BeginBrief();
 			Super::DescribeType(label,  descFlags);
 			label.MarkBriefEnd();
-			label.WrapAppendText("Enabled vehicle plants produce vehicles of arbitrary configuration at the expense of "
-			+String(ResourceTag(Resource::Minerals))+", "+String(ResourceTag(Resource::Energy))+", and "+String(TimeResourceTag())+"."
+			label << "Enabled vehicle plants produce vehicles of arbitrary configuration at the expense of "
+			+String(ResourceTag(Resource::Minerals))+", and "+String(TimeResourceTag())+"."
 			" A vehicle plant that does not have access to the necessary resources switches off immediately."
-			" Vehicle plants should be build such, that the intended vehicle output can stand in the immediate surroundings of the structure."
-			);
+			" Vehicle plants should be placed so that any produced vehicles can stand in the immediate surroundings of the structure."
+			;
 		}
 
 
 		/*virtual override*/ void			WorkingStructure::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
 		{
+			label.BeginBrief();
 			Super::DescribeType(label,  descFlags);
 
 			ResourceVector balance,discard,maxStorage;
@@ -2787,7 +2807,7 @@ namespace Objects
 					for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
 						if (balance.level[i] < 0)
 						{
-							label << " "+String(ResourceTag(i))+String(-balance.level[i]);
+							label.GetLastLine() += " "+String(ResourceTag(i))+String(-balance.level[i]);
 						}
 				}
 				if (balance.SumPositive())
@@ -2796,7 +2816,7 @@ namespace Objects
 					for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
 						if (balance.level[i] > 0)
 						{
-							label << " "+String(ResourceTag(i))+String(balance.level[i]);
+							label.GetLastLine() += " "+String(ResourceTag(i))+String(balance.level[i]);
 						}
 				}
 			}
@@ -2806,7 +2826,7 @@ namespace Objects
 				for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
 					if (maxStorage.level[i] > 0)
 					{
-						label << " "+String(ResourceTag(i))+String(maxStorage.level[i]);
+						label.GetLastLine() += " "+String(ResourceTag(i))+String(maxStorage.level[i]);
 					}
 			}
 		

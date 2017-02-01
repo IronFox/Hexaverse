@@ -159,7 +159,7 @@ namespace Journal
 		Objects::ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
 		{
 			e->ReSeedRandom();
-		});
+		},false);
 
 		Game::ProcessChanges(true);
 
@@ -715,7 +715,6 @@ namespace Journal
 
 	/*virtual override*/ void	Round::DirectToCommand::Compile(Entry&e) const
 	{
-		
 		foreach (targets,t)
 			e.locationParameters.Set("Waypoint",*t);
 		if (mode != Objects::CursorMode::Idle)
@@ -724,9 +723,15 @@ namespace Journal
 			e.intParameters.Set("LeftClick",leftClick);
 		if (detailed)
 			e.intParameters.Set("DetailedPath",detailed);
+		if (clearSafeTasks)
+			e.intParameters.Set("ClearSafeTasks",clearSafeTasks);
 	}
 	/*virtual override*/ void	Round::DirectToCommand::Execute(const Objects::PWorldEntity&e) const
 	{
+		if (clearSafeTasks)
+		{
+			e->ClearSafeTasks();
+		}
 		if (!e->DirectTo(mode,targets,detailed,leftClick))
 		{
 			#ifdef _DEBUG
@@ -759,6 +764,10 @@ namespace Journal
 			detailed = md != 0;
 		else
 			detailed = false;
+		if (e.intParameters.TryGet("ClearSafeTasks",md))
+			clearSafeTasks = md != 0;
+		else
+			clearSafeTasks = false;
 	}
 
 
@@ -1506,9 +1515,23 @@ namespace Journal
 		if (e->IsMobile())
 		{
 			Objects::PMobileEntity&me = To<Objects::MobileEntity>::Cast(e);
-			me->ClearAllTasks(false,CLOCATION);
-			LogEvent(EventSignificance::Common,e.get(),"Cleared all tasks");
-
+			switch (dropMode)
+			{
+				case Protocol::DropMode::AllTasks:
+					me->ClearAllTasks(false,CLOCATION);
+					LogEvent(EventSignificance::Common,e.get(),"Cleared all tasks");
+				break;
+				case Protocol::DropMode::AllSafeTasks:
+					me->ClearSafeTasks();
+					LogEvent(EventSignificance::Common,e.get(),"Cleared all safe tasks");
+				break;
+				case Protocol::DropMode::LastTask:
+					if (!me->DropLastTask())
+						throw RoundException(CLOCATION,e->GetName()+": Failed to drop last command. Queue is empty");
+					else
+						LogEvent(EventSignificance::Common,e.get(),"Cleared last entity task");
+				break;
+			}
 			return;
 		}
 		if (e->IsStructure())
@@ -1516,8 +1539,18 @@ namespace Journal
 			Objects::PTower&te = To<Objects::Tower>::DynamicCast(e);
 			if (te)
 			{
-				te->ClearTasks();
-				LogEvent(EventSignificance::Common,e.get(),"Cleared all tasks");
+				if (dropMode == Protocol::DropMode::LastTask)
+				{
+					if (!te->DropLastTask())
+						throw RoundException(CLOCATION,e->GetName()+": Failed to drop last command. Queue is empty");
+					else
+						LogEvent(EventSignificance::Common,e.get(),"Cleared last entity task");
+				}
+				else
+				{
+					te->ClearTasks();	//all tasks are safe
+					LogEvent(EventSignificance::Common,e.get(),"Cleared all tasks");
+				}
 
 				return;
 			}
@@ -1525,30 +1558,20 @@ namespace Journal
 		throw RoundException(CLOCATION,e->GetName()+": Unable to clear commands. Incompatible entity");
 	}
 
-	/*virtual override*/ void	Round::ClearLastEntityCommand::Execute(const Objects::PWorldEntity&e) const
+
+
+	/*virtual override*/ void	Round::ClearEntityCommands::Compile(Entry&e)	const
 	{
-		if (e->IsMobile())
+		e.stringParameters.Set("type",this->dropMode.ToString());
+	}
+
+	/*virtual override*/ void	Round::ClearEntityCommands::Decode(const Entry&e)
+	{
+		const String&t = e.stringParameters.Require(CLOCATION,"type");
+		if (!dropMode.Decode(t.c_str()))
 		{
-			Objects::PMobileEntity&me = To<Objects::MobileEntity>::Cast(e);
-			if (!me->DropLastTask())
-				throw RoundException(CLOCATION,e->GetName()+": Failed to drop last command. Queue is empty");
-			else
-				LogEvent(EventSignificance::Common,e.get(),"Cleared last entity task");
-			return;
+			throw Except::Program::FunctionalityNotImplemented(CLOCATION,"Unknown task drop type '"+t+"'");
 		}
-		if (e->IsStructure())
-		{
-			Objects::PTower&te = To<Objects::Tower>::DynamicCast(e);
-			if (te)
-			{
-				if (!te->DropLastTask())
-					throw RoundException(CLOCATION,e->GetName()+": Failed to drop last command. Queue is empty");
-				else
-					LogEvent(EventSignificance::Common,e.get(),"Cleared last entity task");
-				return;
-			}
-		}
-		throw RoundException(CLOCATION,e->GetName()+": Unable to clear last command. Incompatible entity");
 	}
 
 
@@ -1762,7 +1785,7 @@ namespace Journal
 		Network::PClient cl;
 		if (Network::playerMap.Query(f,cl))
 		{
-			Channels::selectResearch.SendTo(cl->peer.lock(),Protocol::SelectResearch(topic->serialIndex));
+			Channels::selectResearch.SendTo(cl->peer.lock(),Protocol::SelectResearch((UINT32)topic->serialIndex));
 		}
 		LogEvent(EventSignificance::Uncommon, GetPeerOfFaction(f), "Faction research updated to "+topic->GetFullName());
 	}
@@ -1905,59 +1928,61 @@ namespace Journal
 		globalEvents.Append(ev);
 	}
 
-
-	void	Round::RegisterClearEntityCommands(bool apply, const Objects::PWorldEntity&e)
+	void	Round::RegisterDropEntityCommands(bool execute, const Objects::PWorldEntity&e, Protocol::DropMode mode)
 	{
 		EntityStrand&strand = factionStrands.Set(e->owner->id).entityStrands.Set(e->id);
-		strand.ClearAll(typeid(Round::ClearEntityCommands));
-		strand.ClearAll(typeid(Round::ClearLastEntityCommand));
-		strand.ClearAll(typeid(Round::DirectToCommand));
-		strand.ClearAll(typeid(Round::JobCommand));
-		strand.Append().reset(new ClearEntityCommands());
-		if (apply)
+		if (mode == Protocol::DropMode::AllTasks)
+		{
+			strand.ClearAll(typeid(Round::ClearEntityCommands));
+			strand.ClearAll(typeid(Round::DirectToCommand));
+			strand.ClearAll(typeid(Round::JobCommand));
+		}
+		elif(mode == Protocol::DropMode::LastTask)
+		{
+			index_t lastDropCommand = strand.FindLast(typeid(Round::ClearEntityCommands));
+			index_t lastCommand = strand.FindLastOf<Round::DirectToCommand,Round::JobCommand>();
+			PEntityEvent clear(new ClearEntityCommands(mode));
+			if (execute && !clear->TryExecute(e))
+				return;
+			if (lastDropCommand == InvalidIndex)
+			{
+				if (lastCommand != InvalidIndex)
+				{
+					strand.Erase(lastCommand);
+				}
+				else
+				{
+					strand.Append(clear);
+				}
+			}
+			else
+			{
+				if (lastCommand == InvalidIndex)
+				{
+					strand.Append(clear);
+				}
+				else
+				{
+					ASSERT_GREATER__(lastCommand,lastDropCommand);
+					strand.Erase(lastCommand);
+				}
+			}
+			return;
+		}
+		strand.Append().reset(new ClearEntityCommands(mode));
+		if (execute)
 			strand.last()->Execute(e);
 	}
 
-	void	Round::RegisterDropLastEntityCommand(bool apply, const Objects::PWorldEntity&e)
-	{
-		EntityStrand&strand = factionStrands.Set(e->owner->id).entityStrands.Set(e->id);
-		index_t lastDropCommand = strand.FindLast(typeid(Round::ClearLastEntityCommand));
-		index_t lastCommand = strand.FindLastOf<Round::DirectToCommand,Round::JobCommand>();
-		PEntityEvent clear(new ClearLastEntityCommand());
-		if (apply && !clear->TryExecute(e))
-			return;
-		if (lastDropCommand == InvalidIndex)
-		{
-			if (lastCommand != InvalidIndex)
-			{
-				strand.Erase(lastCommand);
-			}
-			else
-			{
-				strand.Append(clear);
-			}
-		}
-		else
-		{
-			if (lastCommand == InvalidIndex)
-			{
-				strand.Append(clear);
-			}
-			else
-			{
-				ASSERT_GREATER__(lastCommand,lastDropCommand);
-				strand.Erase(lastCommand);
-			}
-		}
-	}
 
-	void	Round::RegisterDirectEntityTo(bool apply, const Objects::PWorldEntity&e, Objects::CursorMode mode, const ArrayRef<Grid::LCellIdI>&target, bool detailed, bool mouseLeftClick)
+	void	Round::RegisterDirectEntityTo(bool apply, const Objects::PWorldEntity&e, Objects::CursorMode mode, const ArrayRef<Grid::LCellIdI>&target, bool detailed, bool mouseLeftClick, bool clearSafeTasks)
 	{
 		EntityStrand&strand = factionStrands.Set(e->owner->id).entityStrands.Set(e->id);
 		std::shared_ptr<DirectToCommand> cmd(new DirectToCommand());
 		cmd->leftClick = mouseLeftClick;
 		cmd->mode = mode;
 		cmd->detailed = detailed;
+		cmd->clearSafeTasks = clearSafeTasks;
 		cmd->targets = target;
 		if (!apply || cmd->TryExecute(e))
 			strand.Append(cmd);
@@ -1990,7 +2015,6 @@ namespace Journal
 		if (!apply || cmd->TryExecute(e))
 		{
 			strand.ClearAll<Round::ClearEntityCommands>();
-			strand.ClearAll<Round::ClearLastEntityCommand>();
 			strand.ClearAll<Round::DirectToCommand>();
 			strand.ClearAll<Round::JobCommand>();
 			strand.ClearAll<Round::NewEntityProduction>();
@@ -2071,7 +2095,7 @@ namespace Journal
 					LogEvent(EventClass::Preset::commandRejected,e.get(),"Cannot produce that");
 					return;
 				}
-				if (!proto->GetTable()->isUnlocked.GetValue(e->GetResearchState()))
+				if (!proto->IsUnlockedAtState(e->GetResearchState()))
 				{
 					LogEvent(EventClass::Preset::commandRejected,e.get(), "Cannot build "+proto->GetTypeName()+" since it has not been researched yet");
 					return;
@@ -2186,7 +2210,7 @@ namespace Journal
 		{
 			PEntityEvent ev(new Round::EntityStateCheck(e));
 			factionStrands.Set(e->owner->id).entityStrands.Set(e->id).Append(ev);
-		});
+		},false);
 	}
 
 	/*static*/ StringRef	Round::OperationNameOf(const std::type_info&info)
@@ -2271,7 +2295,6 @@ namespace Journal
 		#undef MAP_ADD
 		#define MAP_ADD(X)	eventMap.Set(String(OperationNameOf(typeid(X))),PEvent(new X()));
 		MAP_ADD(ClearEntityCommands);
-		MAP_ADD(ClearLastEntityCommand);
 		MAP_ADD(DirectToCommand);
 		MAP_ADD(ChoiceIntersection);
 		MAP_ADD(DropEntityProduction);

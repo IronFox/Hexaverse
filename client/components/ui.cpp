@@ -479,7 +479,7 @@
 
 			void			RegisterAttack(float time, bool isFriendly,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const Objects::Renderer::SmokeTrailIndex&smokeTrailIndex)
 			{
-				HexGrid::AnimationEventFocusCommand*cmd = new HexGrid::AnimationEventFocusCommand("Attack","Attack",focusLocation,focusEntityID,time,isFriendly);
+				HexGrid::AnimationEventFocusCommand*cmd = new HexGrid::AnimationEventFocusCommand("Attack","Attack",focusLocation,focusEntityID,time,isFriendly,!isFriendly);
 				cmd->smokeTrailIndex = smokeTrailIndex;
 				if (!isFriendly)
 					cmd->state |= Objects::BaseCommand::Flags::IsFlashing;
@@ -489,12 +489,23 @@
 
 			void			RegisterEntityDestruction(float time, bool isOwnedByMe,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const String&entityName)
 			{
-				HexGrid::AnimationEventFocusCommand*cmd = new HexGrid::AnimationEventFocusCommand("Entity Death","Entity Death",focusLocation,focusEntityID,time,isOwnedByMe);
+				HexGrid::AnimationEventFocusCommand*cmd = new HexGrid::AnimationEventFocusCommand("Entity Death","Entity Death",focusLocation,focusEntityID,time,isOwnedByMe,isOwnedByMe);
 				if (isOwnedByMe)	//flipped logic
 					cmd->state |= Objects::BaseCommand::Flags::IsFlashing;
 				cmd->fallbackTargetName = entityName;
 				HexGrid::animationTimeLine.commands << Objects::PBaseCommand(cmd);
 				HexGrid::animationTimeLine.Refresh();
+			}
+
+			bool			HasRegisteredHostileActivity()
+			{
+				foreach (HexGrid::animationTimeLine.commands,cmd)
+				{
+					std::shared_ptr<HexGrid::AnimationEventFocusCommand> aec = To<HexGrid::AnimationEventFocusCommand>::Cast(*cmd);
+					if (aec->isHostileActivity)
+						return true;
+				}
+				return false;
 			}
 
 
@@ -539,6 +550,7 @@
 
 			/*virtual override*/ void				AnimationEventFocusCommand::CompileLabel(Label&outResult)
 			{
+				outResult.BeginBrief();
 				Objects::PWorldEntity e = GetTarget();
 				String hostile = isFriendly? "" : "hostile ";
 				String t = " at t="+String(atTime)+" sec";
@@ -725,6 +737,7 @@
 
 			/*virtual override*/ void	EntityFocusCommand::CompileLabel(Label&outResult)
 			{
+				outResult.BeginBrief();
 				outResult << name;
 				Objects::PWorldEntity target = this->reference.lock();
 				if (!target)
@@ -799,6 +812,7 @@
 			/*virtual override*/ void	GroupFocusCommand::CompileLabel(Label&outResult)
 			{
 				//group->InitSelection();
+				outResult.BeginBrief();
 
 				Objects::PWorldEntity proto = group->GetPrototype();
 				Objects::PWorldEntity instance = group->entries.First().lock();
@@ -873,6 +887,15 @@
 			{
 				typedef std::shared_ptr<Icon>	PIcon;
 				Buffer0<PIcon >				commands;
+
+				/*static*/ index_t			Icon::indexCounter = 0;
+					/**/					Icon::Icon(const String&name) : Super(name)
+											{
+												LoadIcon();
+												indexCounter++;
+												gridCoords = int2(1+indexCounter,1);
+											}
+
 
 				void Create()
 				{
@@ -1240,7 +1263,7 @@
 					hoveringText.Clear();
 					if (hoveringOver)
 						hoveringOver->command->CompileLabel(hoveringText);
-					hoveringText.briefEndAt = std::min(hoveringText.briefEndAt,hoveringText.lines.Count());
+					hoveringText.ReWrap();
 					hoveringWidth = 0;
 					hoveringBrief = true;
 				}
@@ -1265,15 +1288,16 @@
 					{
 						if (hoveringBrief)
 						{
-							for (index_t i = 0; i < hoveringText.briefEndAt; i++)
-								hoveringWidth = std::max(hoveringWidth, textout.getScaledWidth(hoveringText.lines[i]));
+							foreach (hoveringText.wrappedLines,t)
+								if (t->second)
+									hoveringWidth = std::max(hoveringWidth, textout.getScaledWidth(t->first));
 						}
 						else
-							foreach (hoveringText.lines,t)
-								hoveringWidth = std::max(hoveringWidth, textout.getScaledWidth(*t));
+							foreach (hoveringText.wrappedLines,t)
+								hoveringWidth = std::max(hoveringWidth, textout.getScaledWidth(t->first));
 					}
 				
-					count_t lineCount = hoveringBrief ? hoveringText.briefEndAt : hoveringText.lines.Count();
+					count_t lineCount = hoveringBrief ? hoveringText.CountWrappedBriefLines() : hoveringText.wrappedLines.Count();
 					float h = textout.getScaledHeight()*(lineCount-1);
 					Rect<> r;
 
@@ -1316,8 +1340,9 @@
 					SurfaceRenderer::Flush();
 
 					textout.color(1,1,1);
-					for (index_t i = 0; i < lineCount; i++)
-						textout << hoveringText.lines[i] << nl;
+					foreach (hoveringText.wrappedLines,l)
+						if (!hoveringBrief || l->second)
+							textout << l->first << nl;
 					textout.popState();
 				}
 
@@ -1394,9 +1419,10 @@
 
 			void					RefreshContacts()
 			{
+				if (!showControlsAndContacts)
+					return;
 				//this is off:
 				//currentContactListWidth = std::max(1, int((display.pixelAspect()-0.67f)*15));
-
 				const float viewPortRange = 2.f * display.pixelAspect();
 				const float screenRelativeRightPanel = 300.f / display.clientWidth();
 				const float inViewPortRange = screenRelativeRightPanel * viewPortRange;
@@ -1438,7 +1464,7 @@
 						}
 						else
 							hostileGroups.collection.Set(key).Append(e);
-					});
+					},true);
 					CollectionToCommands(friendlyGroups);
 					CollectionToCommands(hostileGroups);
 				}
@@ -1896,6 +1922,12 @@
 		};
 		static Buffer0<TCachedLine,Swap>	cachedLines;
 
+		void		SignalChange()
+		{
+			cachedEntity = nullptr;
+		}
+
+
 		void		UpdateCacheIfNeeded(const Objects::WorldEntity&e)
 		{
 			if (cachedNumber == RuntimeConfig::roundNumber && cachedEntity == &e)
@@ -1903,6 +1935,7 @@
 			cachedNumber = RuntimeConfig::roundNumber;
 			cachedEntity = &e;
 			cachedLines.Clear();
+			Lua::Reference researchState = e.GetResearchState();
 
 			currentColor = float4(1);
 			#ifndef NO_HIBERNATION
@@ -1941,7 +1974,7 @@
 				Vec::normalize(wz);
 				cachedLines << " w1: "+Vec::toString(wz);
 			#else
-				GUI << " Height: "<<e.location.height<<nl;
+				cachedLines << " Height: "+String(e.location.height);
 			#endif
 
 			cachedLines << " Owner: "+e.owner->GetName()+(e.isOwnedByMe ? " (me)":"");
@@ -2049,8 +2082,8 @@
 					//cachedLines << " Range: "<<v->GetAttackRange() << nl;
 					//cachedLines << " Damage: "<<v->turret->damageLevel << nl;
 					//cachedLines << " Ammo-Usage: "<<v->turret->ammoNeedPerShot<<nl;
-					cachedLines << " Hrz. Range: "+String(0.1f * round(10.f * v->GetFlatAttackRange()))
-									+'+'+String(0.1f * round(10.f * v->turret->GetExplosionRadius(e.owner)));
+					cachedLines << " Hrz. Range: "+v->turret->horizontalAttackRange.Describe(researchState)
+									+'+'+v->turret->explosionRadius.Describe(researchState);
 					cachedLines << " Damage: "+String(v->turret->GetDamageLevel(e.owner));
 					int ammoNeed = v->turret->GetAmmoNeedPerShot(e.owner);
 					if (ammoNeed > 0)
@@ -2411,7 +2444,7 @@
 						cachedLines << " Storage:";
 						for (index_t i = 0; i < delta.NumEntries; i++)
 							if (storageMax.level[i] > 0)
-								cachedLines << "  "+String((char)(tagOffset+i))+" "+String(storage.level[i])+"/"+storageMax.level[i];
+								cachedLines << "  "+String((char)(tagOffset+i))+" "+String(storage.level[i])+"/"+String(storageMax.level[i]);
 					}
 				}
 	

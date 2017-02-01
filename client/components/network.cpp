@@ -22,7 +22,7 @@ namespace LocalApplicationInterface
 	void			OnPlayerControlBegin();
 
 	#ifdef HAS_WINDOW
-		void		QueryNicknameIfEmpty();
+		bool		QueryNicknameIfEmpty();
 	#endif
 }
 
@@ -87,24 +87,29 @@ namespace Network
 		}
 	}
 
-	void			ConnectTo(const ServerAddress&addr, const Protocol::ServerInfo&info)
+	void			ConnectTo(const Host&host)
 	{
 		client.Disconnect();
+
+		#ifdef HAS_WINDOW
+			if (LocalApplicationInterface::QueryNicknameIfEmpty())
+				return;
+		#endif
 
 		RuntimeConfig::phase = RuntimeConfig::Phase::Uninitialized;
 		gameHasBegun = false;
 
-		LoadGameConfig(info.gameInfo.gameConfig);
+		LoadGameConfig(host.serverInfo.gameInfo.gameConfig);
 
-		client.ConnectAsync(addr.host + ":"+String(addr.basePort + PortOffset::Session));
+		client.ConnectAsync(host.address.host + ":"+String(host.address.basePort + PortOffset::Session));
 		#ifdef HAS_WINDOW
 			GUI::SignalSituationChange();
 		#endif
 
-		serverID = info.hostInfo.value.hostID;
+		serverID = host.serverInfo.hostInfo.value.hostID;
 		serverIDString = Network::serverID.ToNiceString();
 
-		worldID = info.gameInfo.worldID;
+		worldID = host.serverInfo.gameInfo.worldID;
 		worldIDString = worldID.ToNiceString();
 	}
 
@@ -360,12 +365,7 @@ namespace Network
 
 	static void ApplyPlanetConfig(const Grid::TSharedPlanetConfig&config)
 	{
-		Grid::Content coreContent = Grid::Content::Reinterpret(config.innerCoreType);
-		Grid::CellStack::bottom.content = coreContent;
-		#ifdef HAS_WINDOW
-			Grid::UpdateAtmosphere(config.atmosphereColor);
-			Grid::UpdateSun(config.sunPlaneNormal_Speed,config.sunColor);
-		#endif
+		config.Apply();
 	}
 
 
@@ -426,6 +426,16 @@ namespace Network
 			LogEvent(EventClass::Preset::important,"Game config updated");
 		}
 
+
+		void	PlanetNames(NETA(Package::NetString<256>)&list)
+		{
+			#ifdef HAS_WINDOW
+				Array<String> copy(list.length());
+				for (index_t i = 0; i < list.length(); i++)
+					copy[i].adoptData(list[i]);
+				ConfigurationMode::UpdatePlanetList(copy);
+			#endif
+		}
 
 		void	OnHelloResponse(Protocol::HelloResponse&response)
 		{
@@ -1080,6 +1090,7 @@ namespace Network
 		TCP::Channel<Protocol::SelectResearch, 0, Protocol::ChannelID::SelectResearch>				selectResearch(Receiver::SelectResearch);
 		TCP::Channel<Protocol::ResourceData,0,Protocol::ChannelID::ResourceData>					resourceData(Receiver::ResourceData);
 		TCP::Channel<Protocol::GameConfig,0,Protocol::ChannelID::GameConfig>						gameConfig(Receiver::GameConfig);
+		TCP::Channel<NETA(Package::NetString<256>),0,Protocol::ChannelID::PlanetNames>				planetNames(Receiver::PlanetNames);
 
 
 
@@ -1088,8 +1099,7 @@ namespace Network
 		TCP::ObjectSender<Protocol::Hello,Protocol::ChannelID::Hello>								hello;
 		TCP::ObjectSender<Protocol::EntityDirectCommand, Protocol::ChannelID::EntityDirectCommand>	entityDirectCommand;
 		TCP::ObjectSender<Protocol::ChoiceIntersection, Protocol::ChannelID::ChoiceIntersection>	choiceIntersection;
-		TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::DropLastTask>						dropLastTask;
-		TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::DropAllTasks>						dropAllTasks;
+		TCP::ObjectSender<Protocol::DropTasks, Protocol::ChannelID::DropTasks>						dropTasks;
 		TCP::ObjectSender<Protocol::StandardJob, Protocol::ChannelID::SignalNewJob>					signalNewJob;
 		TCP::ObjectSender<Protocol::TerrainMod, Protocol::ChannelID::SignalTerrainMod>				signalTerrainMod;
 		TCP::ObjectSender<Protocol::ConstructionAbort, Protocol::ChannelID::ConstructionAbort>		constructionAbort;
@@ -1102,6 +1112,7 @@ namespace Network
 		TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>					changeMyName;
 		TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>					chatMessage;
 		TCP::ObjectSender<Protocol::ResourceID, Protocol::ChannelID::RequestResource>				requestResource;
+		TCP::ObjectSender<Package::NetString<256>, Protocol::ChannelID::LoadPlanetByName>			loadPlanetByName;
 
 			//	,			//c2s: NET(bool) -> NET(bool)
 			//SetFactionId,		//s2c: NET(TUniqueID)
@@ -1331,6 +1342,7 @@ namespace Network
 		client.InstallChannel(Channels::operationLacksResources);
 		client.InstallChannel(Channels::resourceData);
 		client.InstallChannel(Channels::gameConfig);
+		client.InstallChannel(Channels::planetNames);
 
 
 		client.OpenSignalChannel(Protocol::ChannelID::Pong,0);
@@ -1534,18 +1546,30 @@ namespace Network
 						if (!serverMap.query(a.lastInfo.hostInfo.value.hostID,at))
 						{
 							at = servers.Count();
-							servers.Append().info = a.lastInfo;
+							servers.Append();
 							servers.last().haveToken = 	a.protocolIncompatible ? false : accessMap.IsSet(a.lastInfo.gameInfo.worldID);
 							servers.last().protocolIncompatible = a.protocolIncompatible;
-							servers.last().id = a.protocolIncompatible ? TUniqueID::Empty() : servers.last().info.hostInfo.value.hostID;
+							servers.last().id = a.protocolIncompatible ? TUniqueID::Empty() : a.lastInfo.hostInfo.value.hostID;
 							servers.last().rightVersion = a.rightVersion && !a.protocolIncompatible;
 							//if (!a.protocolIncompatible)
 							serverMap.Set(servers.last().id,at);
 						
 						}
-
 						ServerInfo&info = servers[at];
-						info.addresses.Append(std::make_pair(a.address,a.lastPing));
+
+						if (info.addresses.IsNotEmpty())
+						{
+							if (info.addresses.Last().serverInfo.gameInfo.worldID.value != a.lastInfo.gameInfo.worldID)
+							{
+								LogEvent(EventClass::Preset::error,"Received mismatching world IDs from host "+info.id.ToNiceString()+". Ignoring address "+a.address.ToString());
+								continue;
+							}
+						}
+
+						Host&host = info.addresses.Append();
+						host.address = a.address;
+						host.serverInfo = a.lastInfo;
+						host.ping = a.lastPing;
 					}
 				}
 			#endif
@@ -1601,12 +1625,12 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 
 			Objects::ForeachMobileWorldEntity([](const Objects::PWorldEntity&e)
 			{
-				if (e->health <= 0 || !e->isOwnedByMe)
+				if (!e->isOwnedByMe)
 					return;
 				Objects::Marker *m = Objects::Marker::Find(e->location);
 				if (m)
 					LocalApplicationInterface::SignalMarkerDeletion(m->id);
-			});
+			},false);
 
 			#ifdef HAS_WINDOW
 				for (const auto&s : Objects::structures)
@@ -1783,16 +1807,16 @@ bool		Network::ConnectToConfiguredServerIfAvailable()
 		if (srv->rightVersion && srv->HasAddress(RuntimeConfig::serverAddress))
 		{
 			index_t best = 0;
-			float bestPing = srv->addresses.First().second;
+			float bestPing = srv->addresses.First().ping;
 			for (index_t i = 1; i < srv->addresses.Count(); i++)
-				if (srv->addresses[i].second < bestPing)
+				if (srv->addresses[i].ping < bestPing)
 				{
-					bestPing = srv->addresses[i].second;
+					bestPing = srv->addresses[i].ping;
 					best = i;
 				}
 			srv->selected = true;
 
-			Network::ConnectTo(srv->addresses[best].first,srv->info);
+			Network::ConnectTo(srv->addresses[best]);
 
 			lastAttempt = timer.Now();
 			delayCounter = 0;

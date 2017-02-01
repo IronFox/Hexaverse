@@ -104,8 +104,13 @@ end
 
 
 function Round(value--[[float]], digits--[[optional int]])
-  local factor = 10^(digits or 0);
-  return math.floor(value * factor + 0.5) / factor;
+	local factor = 10^(digits or 0);
+	local result = math.floor(value * factor + 0.5) / factor;
+	local floored = math.floor(value);
+	if (floored==value) then
+		return floored;
+	end
+	return value;
 end
 
 function DefaultHealthAtCost(cost--[[float]]) --float
@@ -181,7 +186,7 @@ TurretConfig =
 		HealthMultiplier = 2,
 		ScanningRange = 5,
 		AttacksPerRound = 2,
-		DamageLevel = 3,
+		DamageLevel = 7,
 		ExplosionRadius = 1,
 		HorizontalAttackRange = 5,
 		IsUnlocked = true,
@@ -191,7 +196,7 @@ TurretConfig =
 		Cost = 10,
 		Weight = 2,
 		HealthMultiplier = 1,
-		ScanningRange = 12,
+		ScanningRange = 7,
 		IsUnlocked = true,
 	},
 	Surveyor =
@@ -204,12 +209,13 @@ TurretConfig =
 	},
 	Bomb =
 	{
+		Op_Nuclear = 50,
 		Cost = 40,
 		Weight = 5,
 		HealthMultiplier = 1,
 		ScanningRange = 1,
-		ExplosionRadius = 7,
-		DamageLevel = 50,
+		ExplosionRadius = 4,
+		DamageLevel = 10,
 		HorizontalAttackRange = 0,
 		IsUnlocked = true,
 	},
@@ -234,7 +240,7 @@ TurretConfig =
 		ScanningRange = 4,
 		AttacksPerRound = 1,
 		DamageLevel = 7,
-		ExplosionRadius = 3.5,
+		ExplosionRadius = 2,
 		HorizontalAttackRange = 7,
 		IsUnlocked = false,
 	},
@@ -265,7 +271,7 @@ VehicleBaseConfig =
 {
 	Hoverbase = 
 	{
-		Cost = 40,
+		Cost = 30,
 		MovementSpeed = 20,
 		CarryingCapacity = 1,
 		Health = 4,
@@ -275,7 +281,7 @@ VehicleBaseConfig =
 	},
 	HeavyBase = 
 	{
-		Cost = 80,
+		Cost = 45,
 		MovementSpeed = 15,
 		CarryingCapacity = 10,
 		Health = 12,
@@ -285,7 +291,7 @@ VehicleBaseConfig =
 	},
 	CatamaranBase = 
 	{
-		Cost = 100,
+		Cost = 60,
 		MovementSpeed = 8,
 		CarryingCapacity = 15,
 		Health = 12,
@@ -385,7 +391,7 @@ function MakeImproveResearchable(researchGroup, researchDependency, typeTable, t
 				return original;
 			end
 			local factor = GetResearchFactor(speed*progress);
-			return Round(original * factor,2)..'[='.. original..'*'..Round(factor,2)..']';
+			return Round(original * factor,2)..' [='.. original..'*'..Round(factor,2)..']';
 		end
 	}
 	
@@ -435,7 +441,12 @@ function Tower(turret--[[Table]]) --Table
 				end,
 			Describe = 
 				function(state) 
-					return Round(DefaultHealthAtCost(rs.Cost.Get(state)) * Get(turret.HealthMultiplier,state),2)..'[='.. DefaultHealthAtCost(rs.Cost.Get(state))..'*'.. Describe(turret.HealthMultiplier,state)..']';
+					local multiplier = Describe(turret.HealthMultiplier,state);
+					local health = DefaultHealthAtCost(rs.Cost.Get(state));
+					if (multiplier == 1) then
+						return Round(health);
+					end
+					return Round(health * Get(turret.HealthMultiplier,state),2)..' [='.. Round(health)..'*'.. multiplier..' (turret health multiplier)]';
 				end,
 		},
 		ScanningRange =
@@ -446,7 +457,15 @@ function Tower(turret--[[Table]]) --Table
 				end,
 			Describe = 
 				function(state) 
-					return Describe(turret.ScanningRange,state) ..'+'.. TowerScanningModifier(turret) 
+					local modifier =  TowerScanningModifier(turret);
+					local base = Describe(turret.ScanningRange,state);
+					if (modifier == 0) then
+						return base;
+					end
+					if (modifier > 0) then
+						return Round(Get(turret.ScanningRange,state)+modifier,2)..' [='..  base ..'+'..Round(modifier,2)..' (tower modifier)]';
+					end
+					return Round(Get(turret.ScanningRange,state)+modifier,2)..' [='..  base ..'-'..Round(-modifier,2)..' (tower modifier)]';
 				end,
 		},
 		IsUnlocked = 

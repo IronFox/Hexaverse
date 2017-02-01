@@ -23,8 +23,9 @@ namespace Bake
 
 				string[] recipe = System.IO.File.ReadAllLines(@"bakeRecipe.txt");
 
-				Console.WriteLine("Processing recipe...");
+				Console.WriteLine("Creating temporary 'baked' directory...");
 				DirectoryInfo globalDest = Directory.CreateDirectory("baked");
+				Console.WriteLine("Processing recipe...");
 				foreach (string element in recipe)
 				{
 					if (element.Trim().Length == 0)

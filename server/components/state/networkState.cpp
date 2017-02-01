@@ -82,7 +82,12 @@ namespace Network
 		if (started)
 			Network::RestartSession();
 		else
+		{
 			World::Network::SendChangedFamilies();
+
+
+			Channels::planetConfig.SendTo(server,Grid::currentPlanetConfig,(UINT)UserLevel::PlanetConfigurator);
+		}
 	}
 
 
@@ -146,8 +151,7 @@ namespace Network
 		server.InstallChannel(Channels::hello);
 		server.InstallChannel(Channels::entityDirectCommand);
 		server.InstallChannel(Channels::choiceIntersection);
-		server.InstallChannel(Channels::dropLastTask);
-		server.InstallChannel(Channels::dropAllTasks);
+		server.InstallChannel(Channels::dropTasks);
 		server.InstallChannel(Channels::signalNewJob);
 		server.InstallChannel(Channels::signalTerrainMod);
 		server.InstallChannel(Channels::constructionAbort);
@@ -168,6 +172,7 @@ namespace Network
 		server.InstallChannel(Channels::planetConfig);
 		server.InstallChannel(Channels::gameConfig);
 		server.InstallChannel(Channels::requestResource);
+		server.InstallChannel(Channels::loadPlanetByName);
 
 		server.OpenSignalChannel(Protocol::ChannelID::RequestRoundEnd,(UINT32)UserLevel::CommonFaction);
 		server.OpenSignalChannel(Protocol::ChannelID::RequestContinueRound,(UINT32)UserLevel::CommonFaction);
@@ -334,7 +339,7 @@ namespace Network
 				d.type = e->isInsertedIntoGrid ? Objects::RemovalType::Vanished : Objects::RemovalType::DestroyedInStorage;
 				d.timestamp.rightNow = true;
 				Channels::destroyEntity.SendTo(server,d);
-			});
+			},false);
 
 		}
 

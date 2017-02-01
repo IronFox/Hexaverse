@@ -1217,7 +1217,7 @@ namespace Objects
 					}
 				}
 			}
-		});
+		},false);
 
 
 		for (const auto&s : structures)
@@ -1348,7 +1348,8 @@ namespace Objects
 				PTurretBase base = selectedEntity->GetTurretBase(zOffset);		
 				if (base && base->turret->groundScanningRange.IsSet())
 				{
-					scanningRange = selectedEntity->cache.groundScanningRange.GetEMPModified(*selectedEntity,base->turret->groundScanningRange);
+					scanningRange = base->GetFlatAttackRange();
+						//cache.groundScanningRange.GetEMPModified(*selectedEntity,base->turret->groundScanningRange)*Grid::UnitScale;
 					//selectedEntity->EMPModify(base->turret->GetGroundScanningRange(selectedEntity->owner),2);
 					float refHeight = Grid::ToRadius(selectedEntity->location.height);
 					float top = Grid::ToRadius(/*selectedEntity->location.height*/Grid::CellStack::HalfRange);
@@ -1395,6 +1396,7 @@ namespace Objects
 						}
 					}
 				}
+				,true
 			);
 		}
 
@@ -1512,7 +1514,7 @@ namespace Objects
 					if (t->type == Vehicle::Task::Job)
 						foreach (t->localizableShapes,shape)
 						{
-							if (shape->depthTest)
+							if (shape->depthTest && shape->preRenderDepth)
 							{
 //									display.SetDepthTest(shape->depthTest,false);
 
@@ -1524,7 +1526,7 @@ namespace Objects
 
 				}
 			}
-		});
+		},false);
 
 
 		display.SetObjectMatrix(Matrix<>::eye4);
@@ -1545,32 +1547,37 @@ namespace Objects
 		{
 			if (v->IsAboveGrid() != orbital)
 				return;
-
-			if (v == selectedEntity)
+			const bool selected = v == selectedEntity;
+			if (selected)
 				overallTint.Update(float4(red2,1));
 			
 			{
 				foreach (v->myTasks,t)
 				{
-					if (t->type == Vehicle::Task::Job)
-						display.SetBlendMode(Engine::BlendMode::AlphaBlend);
-					else
-						display.SetBlendMode(Engine::BlendMode::FlareBlend);
-
 					foreach (t->localizableShapes,shape)
 					{
+						if (shape->selectedOnly && !selected)
+							continue;
+
+						if (shape->flareDisplay)
+						{
+							if (!selected)
+								continue;	//invisible anyway
+							display.SetBlendMode(Engine::BlendMode::FlareBlend);
+						}
+						else
+							display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+
 						display.SetDepthTest(shape->depthTest,false);
 
 						display.SetObjectMatrix(shape->system);
 						display.Render(shape->instruction);
-
 					}
-
 				}
 			}
-			if (v == selectedEntity)
+			if (selected)
 				overallTint.Update(float4(0,0,0,1));	//make sure localizable shapes appear - but in black
-		});
+		},false);
 
 
 		foreach(structures, _s)
@@ -1689,7 +1696,7 @@ namespace Objects
 				}
 
 			}
-		});
+		},false);
 		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 		overallTint.Update(noTint);
 		
@@ -2256,15 +2263,16 @@ namespace Objects
 	namespace GeometryImage
 	{
 		DX11::FBO	fbo;
-
+		UINT		resultResolution(128);
 		Engine::AngularCamera<>	camera;
 
 		void		BeginRendering(const float4&tone, float distanceFactor/*=1.f*/)
 		{
+			const Resolution res(resultResolution,resultResolution);
 			Renderer::RefreshFactionColors(false);
-			if (fbo.IsEmpty())
+			if (fbo.IsEmpty() || fbo.GetResolution() != res)
 			{
-				fbo.Create(Resolution(128,128),DXGI_FORMAT_R8G8B8A8_UNORM,true,DX11::FBO::PrepareMips);
+				fbo.Create(res,DXGI_FORMAT_R8G8B8A8_UNORM,true,DX11::FBO::PrepareMips);
 
 				camera.retraction = float3(0,0,-6 * distanceFactor);
 				camera.angle.x = 45.f;

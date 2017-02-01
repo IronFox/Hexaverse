@@ -65,7 +65,7 @@ namespace Objects
 
 	/*virtual override*/ float		Vehicle::GetScanningRange() const
 	{
-		return cache.maxScanningRange.GetEMPModified(*this,turret->scanningRange,turret->CanAttack() ? Component::FFunc() : base->turretRangeModifier);
+		return cache.maxScanningRange.GetEMPModified(*this,turret->scanningRange,turret->CanAttack() ? Component::FScaledFunc() : base->turretRangeModifier);
 		//return EMPModify(turret->GetScanningRange(owner,turret->CanAttack() ? 0 : base->rangeModifier), 2.f);
 	}
 
@@ -73,7 +73,11 @@ namespace Objects
 	{
 		String rs = turret->scanningRange.Describe(GetResearchState());
 		if (!turret->CanAttack())
-			rs += "+"+base->turretRangeModifier.Describe(GetResearchState());
+		{
+			String mod = base->turretRangeModifier.Describe(GetResearchState());
+			if (mod != '0')
+				rs += "+"+mod;
+		}
 		return rs;
 	}
 
@@ -86,6 +90,9 @@ namespace Objects
 	/*virtual override*/ String				Vehicle::DescribeMaxHealth() const
 	{
 		Lua::Reference state = GetResearchState();
+		String multiplier = turret->healthMultiplier.Describe(state);
+		if (multiplier == "1" || multiplier == "1.0")
+			return base->health.Describe(state);
 		return String(GetMaxHealth())+"[="+ base->health.Describe(state)+"*" + turret->healthMultiplier.Describe(state)+"]";
 	}
 
@@ -361,10 +368,10 @@ namespace Objects
 
 		void Vehicle::DescribeType(BaseCommand::Label&outResult, UINT32 descFlags)
 		{
+			outResult.BeginBrief();
 			Super::DescribeType(outResult,descFlags);
-			outResult << "";
-			base->DescribeType(outResult,true,owner);
-			outResult << "";
+			base->DescribeType(outResult,true,true,owner);
+			outResult.BeginBrief();
 
 			const float capacity = floor(base->GetCarryingCapacity(owner));
 			const float weight = turret->weight(owner);
@@ -383,10 +390,10 @@ namespace Objects
 
 
 			if (base->requirements == Component::VehicleBase::Requirement::Water)
-				outResult.lines.last()+= " (naval)";
+				outResult.GetLastLine()+= " (naval)";
 			else
 				if (base->moveOnWater)
-					outResult.lines.last() += " (moves over water)";
+					outResult.GetLastLine() += " (moves over water)";
 
 			int opSpeed = std::max(GetOperationSpeed(Component::Construct),GetOperationSpeed(Component::TerrainAdd));
 			if (opSpeed)

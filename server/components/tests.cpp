@@ -263,11 +263,11 @@ namespace Test
 			#endif
 			Objects::RefreshCompoundCoverage(0);
 
-			Grid::LCellIdI	vehicleAt = RandomCellAtRange(random, generatorAt, FloatRange(0.f, turret->horizontalAttackRange(faction0) + turret->explosionRadius(faction0) * 2));	//allow out-of-range
+			Grid::LCellIdI	vehicleAt = RandomCellAtRange(random, generatorAt, FloatRange(0.f, turret->GetHorizontalAttackRange(faction0) + turret->GetExplosionRadius(faction0) * 2));	//allow out-of-range
 			vehicleAt.height = Objects::FindApplicableGround(vehicleAt,true);
 			while (vehicleAt.height == Objects::badHeight)
 			{
-				vehicleAt = RandomCellAtRange(random, generatorAt, FloatRange(0.f, turret->horizontalAttackRange(faction0) + turret->explosionRadius(faction0) * 2));	//allow out-of-range
+				vehicleAt = RandomCellAtRange(random, generatorAt, FloatRange(0.f, turret->GetHorizontalAttackRange(faction0) + turret->GetExplosionRadius(faction0) * 2));	//allow out-of-range
 				vehicleAt.height = Objects::FindApplicableGround(vehicleAt,true);
 			}
 

@@ -1455,7 +1455,7 @@ namespace FileIO
 		Objects::ForeachWorldEntity([](const Objects::PWorldEntity&w)
 		{
 			w->ResetAllChange();
-		});
+		},false);
 
 		lastSaveRound = RuntimeConfig::roundNumber;
 		ASSERT__(worldInfoFound);
@@ -1593,7 +1593,7 @@ namespace FileIO
 		{
 			Objects::MobileEntity&v = *_v;
 			Export(objects->AppendBlock(RIFF_LIST),v,allFactions);
-		});
+		},false);
 
 
 

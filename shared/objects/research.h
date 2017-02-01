@@ -134,6 +134,7 @@ namespace Objects
 												);
 		static void				InnerLoad(const ScriptCache::PScript&script);
 		static void				RequireLoad(const ScriptCache::PScript&script);
+		void					LoadNexusResearchState();
 	public:
 
 		bool					changed = false;
@@ -151,7 +152,9 @@ namespace Objects
 
 		struct GlobalState
 		{
-			ScriptCache::PScript	script,fallback;
+			ScriptCache::PScript	script,	//currently loaded program
+									program0,	//absolute fallback program to be used if all fails
+									factoryDefault;	//program defined in install directory
 			Buffer0<PResearchTopic>	allTopics;
 			ResearchGroup		rootResearch;
 			Lua::PProgram		researchProgram;

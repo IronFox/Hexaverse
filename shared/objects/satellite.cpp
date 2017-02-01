@@ -266,7 +266,7 @@ namespace Objects
 		/*virtual override*/ void Satellite::DescribeType(BaseCommand::Label&outResult, UINT32 descFlags)
 		{
 			Super::DescribeType(outResult,descFlags);
-			outResult << "";
+			outResult.BeginBrief();
 			String speed = "Speed: "+String(this->GetMovementStepsPerRound()) + " (orbital)";
 
 			outResult << speed;

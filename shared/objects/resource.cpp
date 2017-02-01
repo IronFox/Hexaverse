@@ -26,4 +26,19 @@ namespace Objects
 	}
 
 
+
+	String GetTagName(char c)
+	{
+		if (!IsTag(c))
+			return c;
+		index_t idx = c - TextoutResourceTagOffset;
+		if (idx < Resource::N)
+			return Resource::Reinterpret(idx).ToString();
+		if (c == TimeResourceTag())
+			return "time";
+		if (c == TrafficResourceTag())
+			return "traffic";
+		return "";
+	}
+
 }

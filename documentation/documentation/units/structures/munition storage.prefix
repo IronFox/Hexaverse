@@ -1,0 +1,5 @@
+{{ img:units/Munition Storage.png|Munition Storage}}
+=Munition Storage=
+*  Health: 2
+*  Price: %Minerals% 10
+*  [[concepts/scanning range|Scanning range]]: 2

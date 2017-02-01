@@ -63,16 +63,37 @@ namespace Network
 			basePort = other.basePort;
 		}
 
+		bool				IsLocalhost() const {return host == "localhost" || host == "127.0.0.1" || host == "::1";}
+
 		String				ToString() const {return basePort != DEFAULT_SERVER_BASE_PORT ? host + ':' + String(basePort) : host;}
 	};
+
+	class Host
+	{
+	public:
+		ServerAddress		address;
+		Protocol::ServerInfo	serverInfo;
+		float				ping;
+
+		void				adoptData(Host&other)
+		{
+			address.adoptData(other.address);
+			serverInfo = other.serverInfo;
+			ping = other.ping;
+		}
+	};
+
 }
 
 DECLARE_DEFAULT_STRATEGY(Network::ServerAddress,Adopt);
+DECLARE_DEFAULT_STRATEGY(Network::Host,Adopt);
 
 namespace Network
 {
+
+
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id);
-	void					ConnectTo(const ServerAddress&, const Protocol::ServerInfo&);
+	void					ConnectTo(const Host&);
 
 	void SaveWorldAccessTokens();
 
@@ -211,6 +232,7 @@ namespace Network
 		extern TCP::Channel<Protocol::SelectResearch, 0, Protocol::ChannelID::SelectResearch>			selectResearch;
 		extern TCP::Channel<Protocol::ResourceData,0,Protocol::ChannelID::ResourceData>					resourceData;
 		extern TCP::Channel<Protocol::GameConfig,0,Protocol::ChannelID::GameConfig>						gameConfig;
+		extern TCP::Channel<NETA(Package::NetString<256>),0,Protocol::ChannelID::PlanetNames>			planetNames;
 
 
 		extern TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;
@@ -218,8 +240,7 @@ namespace Network
 		extern TCP::ObjectSender<Protocol::Hello,Protocol::ChannelID::Hello>								hello;
 		extern TCP::ObjectSender<Protocol::EntityDirectCommand, Protocol::ChannelID::EntityDirectCommand>	entityDirectCommand;
 		extern TCP::ObjectSender<Protocol::ChoiceIntersection, Protocol::ChannelID::ChoiceIntersection>		choiceIntersection;
-		extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::DropLastTask>							dropLastTask;
-		extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::DropAllTasks>						dropAllTasks;
+		extern TCP::ObjectSender<Protocol::DropTasks, Protocol::ChannelID::DropTasks>					dropTasks;
 		extern TCP::ObjectSender<Protocol::StandardJob, Protocol::ChannelID::SignalNewJob>				signalNewJob;
 		extern TCP::ObjectSender<Protocol::TerrainMod, Protocol::ChannelID::SignalTerrainMod>			signalTerrainMod;
 		extern TCP::ObjectSender<Protocol::ConstructionAbort, Protocol::ChannelID::ConstructionAbort>	constructionAbort;
@@ -232,6 +253,7 @@ namespace Network
 		extern TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>				changeMyName;
 		extern TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>				chatMessage;
 		extern TCP::ObjectSender<Protocol::ResourceID, Protocol::ChannelID::RequestResource>			requestResource;
+		extern TCP::ObjectSender<Package::NetString<256>, Protocol::ChannelID::LoadPlanetByName>		loadPlanetByName;
 
 		
 	}
@@ -278,15 +300,18 @@ namespace Network
 		TUniqueID				id;
 		bool					rightVersion = false,
 								protocolIncompatible = false;
-		Protocol::ServerInfo	info;
+//		Protocol::ServerInfo	info;
 		
-		Buffer0<std::pair<ServerAddress, float> >			addresses;
+
+
+
+		Buffer0<Host>			addresses;
 		
 		//float					top, bottom;
 		bool					selected, haveToken;
 
 		#ifdef HAS_WINDOW
-			GUI::PLabel		headLine;	//game/server ids, optionally (continue)
+			GUI::PLabel			headLine;	//game/server ids, optionally (continue)
 			GUI::PButtonPanel	buttonPanel;
 		#endif
 
@@ -301,10 +326,18 @@ namespace Network
 		//	return false;
 		//}
 
+		bool					HasLocalhost() const
+		{
+			foreach (addresses,u)
+				if (u->address.IsLocalhost())
+					return true;
+			return false;
+		}
+
 		bool					HasAddress(const ServerAddress&addr) const
 		{
 			foreach(addresses, u)
-				if (u->first == addr)
+				if (u->address == addr)
 					return true;
 			return false;
 		}
@@ -312,7 +345,6 @@ namespace Network
 		void					swap(ServerInfo&other)
 		{
 			swp(id,other.id);
-			swp(info,other.info);
 			//swp(top,other.top);
 			//swp(bottom,other.bottom);
 			swp(selected,other.selected);

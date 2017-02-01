@@ -136,6 +136,14 @@ namespace Objects
 	}
 
 
+	bool MobileEntity::HasUnsafeTask() const
+	{
+		return constructionRoundCounter > 0 
+				&& myTasks.IsNotEmpty() 
+				&& myTasks.Peek().IsJob() 
+				&& myTasks.Peek().job->resourceCostLeft > 0;
+	}
+
 	#ifndef CLIENT
 
 		/*virtual override*/ void		MobileEntity::OnDestroy(RemovalType t, float&atTime)
@@ -1101,6 +1109,21 @@ namespace Objects
 		}
 
 
+		/*virtual override*/ void			MobileEntity::ClearSafeTasks()
+		{
+			if (HasUnsafeTask())
+			{
+				if (myTasks.Count() == 1)
+					return;//avoid signalling change
+				while (myTasks.Count() > 1)
+					myTasks.EraseBack();
+			}
+			else
+				myTasks.Clear();
+			RegisterChange(TasksChanged,motionTime);
+		}
+
+
 		/*virtual override*/ void				MobileEntity::Attack(float&attackTime)
 		{
 			//ASSERT1__(NextTaskIsAttack(),this->id.ToString());
@@ -1496,9 +1519,10 @@ namespace Objects
 
 										Shape&shape = localizableShapes.Append();
 										((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
-										shape.instruction.vbo = sphereVBO[0];
-										shape.instruction.ibo = sphereIBO[0];
+										shape.instruction.vbo = sphereVBO[2];
+										shape.instruction.ibo = sphereIBO[2];
 										shape.depthTest = true;
+										shape.flareDisplay = true;
 
 										BuildSystem(trajectory.last().xyz * trajectory.last().w,parent->GetAttackExplosionRadius(),  parent->GetAttackExplosionRadius(),shape.system);
 									}
@@ -1596,14 +1620,17 @@ namespace Objects
 
 	void					MobileEntity::Task::SetLocalizableShape(ConstName shape, const Grid::LCellIdI&location, const OwnerParameter&owner)
 	{
+		localizableShapes.Clear();
 		if (shape == ConstName::DetonationSize_Regular)
 		{
-			localizableShapes.SetSize(1,true);
-			Shape&shape = localizableShapes.First();
+			Shape&shape = localizableShapes.Append();
 			((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
-			shape.instruction.vbo = sphereVBO[0];
-			shape.instruction.ibo = sphereIBO[0];
+			shape.instruction.vbo = sphereVBO[1];
+			shape.instruction.ibo = sphereIBO[1];
 			shape.depthTest = true;
+			shape.flareDisplay = false;
+			shape.preRenderDepth = false;
+			shape.selectedOnly = true;
 
 			float r = Component::Bomb::GetRadius(false,owner);
 			BuildSystem(Grid::ToWorld(location),r, r,shape.system);
@@ -1612,12 +1639,14 @@ namespace Objects
 
 		if (shape == ConstName::DetonationSize_Doomsday)
 		{
-			localizableShapes.SetSize(1,true);
-			Shape&shape = localizableShapes.First();
+			Shape&shape = localizableShapes.Append();
 			((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
-			shape.instruction.vbo = sphereVBO[0];
-			shape.instruction.ibo = sphereIBO[0];
+			shape.instruction.vbo = sphereVBO[2];
+			shape.instruction.ibo = sphereIBO[2];
 			shape.depthTest = true;
+			shape.flareDisplay = false;
+			shape.preRenderDepth = false;
+			shape.selectedOnly = true;
 
 			float r = Component::Bomb::GetRadius(true,owner);
 			BuildSystem(Grid::ToWorld(location),r, r,shape.system);
@@ -1628,18 +1657,17 @@ namespace Objects
 
 		if (p)
 		{
-			localizableShapes.SetSize(1,true);
-			Shape&shape = localizableShapes.First();
+			Shape&shape = localizableShapes.Append();
 			((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
 
 			shape.instruction.vbo = p->localizableShape->vbo;
 			shape.instruction.ibo = p->localizableShape->ibo;
 			shape.depthTest = true;
+			shape.flareDisplay = type != Job;
 
 			BuildStructureSystem(location,shape.system);
 			return;
 		}
-		localizableShapes.Clear();
 	}
 
 	void					MobileEntity::Task::RecompilePath(int stepsPerRound, float structureSize/*=vehicleScale*/)

@@ -107,6 +107,7 @@ namespace Objects
 
 	/*virtual override*/ void		ResearchCommand::CompileLabel(Label&outResult)
 	{
+		outResult.BeginBrief();
 
 		if (topic->IsGroup())
 		{
@@ -142,7 +143,6 @@ namespace Objects
 			if (dep && (state.IsEmpty() || dep->getProgress(state)<dep->maxProgress))
 				outResult << "Requires completion of "+dep->GetFullName()+" research";
 			outResult.MarkBriefEnd();
-			outResult << "";
 		}
 
 		PWorldEntity ref = topic->prototypeReference;
@@ -156,13 +156,18 @@ namespace Objects
 		{
 			if (topic->componentReference->IsVehicleBase())
 			{
-				((Component::VehicleBase*)topic->componentReference)->DescribeType(outResult,false,selectedEntity ? selectedEntity->owner : OwnerParameter());
+				((Component::VehicleBase*)topic->componentReference)->DescribeType(outResult,false,true,selectedEntity ? selectedEntity->owner : OwnerParameter());
 			}			
 			elif (topic->componentReference->IsTurret())
-				((Component::Turret*)topic->componentReference)->DescribeType(outResult,false, "Vehicle",selectedEntity ? selectedEntity->owner : OwnerParameter());
+				((Component::Turret*)topic->componentReference)->DescribeType(outResult,false, true,"Vehicle",selectedEntity ? selectedEntity->owner : OwnerParameter());
 		}
 	}
 
+
+	static void SetPrototypeKeyColor()
+	{
+		keyColor.Update(float4(0.5,0.5,1,1));
+	}
 
 	/*static*/ void		EntityConstructionCommand::UpdateTexture(BaseCommand&target, Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor/* = float4(0)*/)
 	{
@@ -175,6 +180,9 @@ namespace Objects
 		}
 
 		GeometryImage::BeginRendering(backgroundColor,distanceFactor);
+
+		if (!base || !turret)
+			SetPrototypeKeyColor();
 
 		TMatrix4<> sys = Matrix<>::eye4;
 		sys.x.x = sys.y.y = sys.z.z = 2.5f;
@@ -194,7 +202,7 @@ namespace Objects
 	{
 		if (isPrototype)
 		{
-			keyColor.Update(float4(0.5,0.5,1,1));
+			SetPrototypeKeyColor();
 			return;
 		}
 		if (v->health <= 0)
@@ -260,6 +268,7 @@ namespace Objects
 
 	/*virtual override*/ void		BaseCommand::CompileLabel(Label&outResult)
 	{
+		outResult.BeginBrief();
 		int resourceCost, timeCost;
 		Resource resourceType;
 		GetCosts(resourceCost,resourceType,timeCost);
@@ -278,12 +287,13 @@ namespace Objects
 		else
 			outResult<<" ";
 		//outResult << "Rounds: "+String(timeCost);
-		outResult.lines.last() += TimeResourceTag() + String(timeCost);
+		outResult.GetLastLine() += TimeResourceTag() + String(timeCost);
 	}
 
 
 	/*virtual override*/ void		EntityConstructionCommand::CompileLabel(Label&outResult)
 	{
+		outResult.BeginBrief();
 		const MobileEntityProducer*p = selectedEntity ? selectedEntity->CastToProducer() : nullptr;
 		//PWorkingStructure ws = To<WorkingStructure>::DynamicCast(e);
 
@@ -307,16 +317,13 @@ namespace Objects
 			outResult << name;
 			outResult << String(ResourceTag(Resource::Minerals))+ " "+String(price);
 			if (price != rawPrice)
-				outResult.lines.last() += "/"+String(rawPrice);
+				outResult.GetLastLine() += "/"+String(rawPrice);
 			if (rounds)
 			{
-				outResult.lines.last() += "  "+String(TimeResourceTag()) + String(rounds);
+				outResult.GetLastLine() += "  "+String(TimeResourceTag()) + String(rounds);
 				if (rounds != rawRounds)
-					outResult.lines.last() += "/"+String(rawRounds);
+					outResult.GetLastLine() += "/"+String(rawRounds);
 			}
-
-			outResult.MarkBriefEnd();
-			outResult << "";
 		}
 
 		if (ref)
@@ -336,10 +343,10 @@ namespace Objects
 			if (base)
 			{
 				//PVehicle v(new Vehicle(p->owner, p->location, base,turret));
-				base->DescribeType(outResult,false,OwnerParameter());
+				base->DescribeType(outResult,false,true,OwnerParameter());
 			}			
 			if (turret)
-				turret->DescribeType(outResult,false, "Vehicle",selectedEntity->owner);
+				turret->DescribeType(outResult,false, true,"Vehicle",selectedEntity->owner);
 
 		}
 	}
@@ -355,14 +362,13 @@ namespace Objects
 
 	/*virtual override*/ void		DeployMobileCommand::CompileLabel(Label&outResult)
 	{
+		outResult.BeginBrief();
 		PHangar h = To<Hangar>::DynamicCast(selectedEntity);
 		ASSERT__(h);
 		PMobileEntity vehicle = ToMobileEntity( this->reference.lock() );
 		if (vehicle)
 		{
 			outResult << "Deploy mobile unit: "+name;
-			outResult.MarkBriefEnd();
-			outResult << "";
 
 			vehicle->DescribeType(outResult,Objects::WorldEntity::DescIncludeCurrentHealth | Objects::WorldEntity::DescIncludeMaxHealth | WorldEntity::DescIncludeUnitCount);
 		}
@@ -511,6 +517,10 @@ namespace Objects
 			else
 			{
 				activeCursorMode = mode;
+
+				if (!Engine::input.pressed[Key::Shift])
+					ApplicationInterface::SignalDropAllTasks(selectedEntity);
+
 			}
 		}
 		else

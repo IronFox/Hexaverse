@@ -36,7 +36,7 @@ namespace Objects
 				else
 					objects << e; 
 			}
-		});
+		},true);
 		markers.swap(Marker::all);
 		RuntimeConfig::UnitLimits::Export(unitLimits);
 		Objects::FlushAllData(true);

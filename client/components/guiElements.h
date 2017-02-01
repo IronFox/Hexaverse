@@ -18,6 +18,7 @@ namespace GUI
 
 	DECLARE_POINTER_CLASS(Component);
 		DECLARE_POINTER_CLASS(TextField);
+			DECLARE_POINTER_CLASS(Checkbox);
 			DECLARE_POINTER_CLASS(Label);
 			DECLARE_POINTER_CLASS(Button);
 				DECLARE_POINTER_CLASS(ScrollButton);
@@ -286,10 +287,14 @@ namespace GUI
 		float4			color = float4(1,1,1,1);
 		float			textHeight = 1.f;
 		bool			widthLockedToIdeal=false;
-
 		bool			UpdateIdealWidth();
+
 	protected:
 		void			RenderText(bool lit);
+		bool			UpdateHeight(const TFloatRange<>&hRange);
+
+		virtual float	GetIdealWidth() const;
+
 	public:
 		typedef Area	Super;
 
@@ -308,6 +313,7 @@ namespace GUI
 			rawText.SetSize(1);
 			rawText.First() = string;
 			Super::InvalidateSize();
+			UpdateHeight();
 		}
 		void			SetText(const Array<String>&string)
 		{
@@ -315,6 +321,7 @@ namespace GUI
 				return;
 			rawText = string;
 			Super::InvalidateSize();
+			UpdateHeight();
 		}
 
 		void			SetIdealWidth();
@@ -335,6 +342,13 @@ namespace GUI
 		/**/			Label()
 		{
 			Super::fillBackground = false;
+		}
+		/**/			Label(const String&text, float scale=1.f)
+		{
+			Super::fillBackground = false;
+			Super::zoom = scale;
+			SetText(text);
+			SetIdealWidth();
 		}
 	};
 
@@ -436,6 +450,112 @@ namespace GUI
 		}
 	};
 
+	class Checkbox : public TextField
+	{
+		typedef TextField	Super;
+
+		std::function<void(bool)>	onChanged;
+		std::function<bool()>		check;
+		bool						isChecked = false;
+
+		//String					baseLabel;
+//		TextField::SetText;
+
+	protected:
+		virtual bool	ClientIsLit() const override {return IsActive() && IsEnabled() && ContainsMouse();}
+		virtual float	GetIdealWidth() const override;
+	public:
+		/**/			Checkbox()
+		{
+			Super::alignCenter = false;
+			Super::extraSpacing /= 2;
+			Super::fillBackground = false;
+			SetText("");
+		}
+
+		/**/			Checkbox(const String&text, bool checked, std::function<void(bool)> onChanged = std::function<void(bool)>(), std::function<bool()> check = std::function<bool()>() )
+		{
+			Super::alignCenter = false;
+			Super::fillBackground = false;
+			Super::extraSpacing /= 2;
+			this->onChanged = onChanged;
+			this->check = check;
+			isChecked = checked;
+			SetText(text);
+			SetIdealWidth();
+		}
+
+		void			SetChecked(bool checked, bool doSignal = true)
+		{
+			if (checked == isChecked)
+				return;
+			isChecked = checked;
+			if (doSignal)
+				onChanged(isChecked);
+		}
+
+		bool			IsChecked() const {return isChecked;}
+
+		void			SetOnChange(const std::function<void(bool)>&onChanged)
+		{
+			this->onChanged = onChanged;
+		}
+
+		void			SetCheck(const std::function<bool()>&check)
+		{
+			this->check = check;
+			DetectEnabledState();
+		}
+
+		virtual bool	DetectEnabledState() override
+		{
+			//String set = baseLabel;
+			bool changed =false;
+			if (check)
+			{
+				if (!check())
+				{
+				
+					//set += " (not right now)";
+					changed = SetEnabled(false);
+				}
+				else
+					changed = SetEnabled(true);
+			}
+
+			//Super::SetText(set);
+			return changed;
+		}
+
+		virtual void Render() override;
+
+		virtual PComponent	HandleMouseDown() override
+		{
+			DetectEnabledState();
+			if (IsEnabled() && ContainsMouse())
+			{
+				return shared_from_this();
+			}
+			return PComponent();
+		}
+
+		virtual	void			SignalMouseUp() override
+		{
+			if (ContainsMouse())
+			{
+				DetectEnabledState();
+				if (IsEnabled())
+				{
+					isChecked = !isChecked;
+					onChanged(isChecked);
+				}
+			}
+		}
+
+		virtual bool	UpdateHeight() override;
+	};
+
+
 	class ScrollButton : public Button
 	{
 		typedef Button	Super;
@@ -512,6 +632,22 @@ namespace GUI
 		}
 
 		Buffer0<PComponent>	components;
+
+		/**
+		Queries whether or not the vertical scrollbar is currently visible.
+		*/
+		bool			ScrollbarIsVisible() const
+		{
+			return vscroll.visible;
+		}
+
+		/**
+		Queries the width+horizontal offset of any currently visible scrollbar, 0 if invisible.
+		*/
+		float			GetVisibleScrollbarContentExpansion() const
+		{
+			return vscroll.visible ? TScrollbar::Width+TScrollbar::ContentSpacing : 0;
+		}
 	public:
 		bool			autoHeight = false;
 		float			autoHeightSpacing = 0.f;//0.015f;
@@ -561,6 +697,13 @@ namespace GUI
 			components << c;
 			return true;
 		}
+		virtual PComponent	AddNewComponent(Component*c)
+		{
+			PComponent comp(c);
+			ASSERT__(AddComponent(comp));
+			return comp;
+		}
+
 		virtual bool		RemoveComponent(const PComponent&c)
 		{
 			return components.FindAndErase(c);
@@ -700,6 +843,7 @@ namespace GUI
 		void				UpdateOuterRect()
 		{
 			outerRect= rect;
+			outerRect.x.max += GetVisibleScrollbarContentExpansion();
 			outerRect.Expand(0.015f);
 		}
 		Rect<>				outerRect = Rect<>(0,0,1,1);

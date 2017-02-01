@@ -36,6 +36,14 @@ namespace Game
 					startBases = false,
 					basesRequired = false,
 					exposeActionLeftToHostileFactions = true;
+		UINT32		factionsPerZone = 
+					#ifdef LOWER_RESOLUTION_PLANET
+						1
+					#else
+						3
+					#endif
+					;
+
 		UINT32		factionSupportFlags = Protocol::GameFlag::AllFactionSupport;
 
 		namespace Nexus
@@ -547,7 +555,7 @@ namespace Game
 					}			
 				v.ResetAllChange();
 			}
-		});
+		},false);
 
 		foreach (Objects::structures, _s)
 		{
@@ -791,7 +799,7 @@ namespace Game
 				{
 					v->owner->hasTerraformer = true;
 				}
-			});
+			},false);
 
 			for (index_t i = 0; i < Objects::Faction::all.Count(); i++)
 			{
@@ -903,7 +911,7 @@ namespace Game
 
 		Objects::ForeachWorldEntity([&atTime](const Objects::PWorldEntity&e)
 		{
-			if (e->owner == Objects::Faction::nexus)
+			if (e->owner == Objects::Faction::nexus && e->IsAboveGrid())
 				return;	//i know this is a hack, but i gotta do something to prevent nexus satellites from crashing.
 			if (Grid::AffectedByEMP(e->location))
 			{
@@ -911,8 +919,9 @@ namespace Game
 					LogEvent(EventSignificance::Common,e.get(),"Entering EMP-Zone");
 				e->HandleEMPDamage(10,atTime);
 			}
-					
-		});
+			elif (e->owner == Objects::Faction::nexus)
+				e->HealAllEMPDamage(atTime);	//immediately heal when a new area gets unlocked
+		},false);
 
 	
 	}

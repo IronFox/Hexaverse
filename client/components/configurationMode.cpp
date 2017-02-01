@@ -16,11 +16,14 @@ namespace ConfigurationMode
 	{
 		Objects::Storage serverObjects;
 		bool isActive = false;
-		Grid::ExtendedPlanetConfig	config, refConfig;
+		Grid::ExtendedPlanetConfig	config, serverConfig;
 		UINT32 seed = 0;
 		Protocol::GameConfig	gameConfig;
 		Random rng;
 		StringTable<String>		declarations;
+		Array<String>			planetList;
+
+		GUI::PWindow			planetListWindow;
 
 		const String& FindDeclaration(const String& path)
 		{
@@ -52,6 +55,7 @@ namespace ConfigurationMode
 				}
 			}
 		}
+
 
 
 		class GridState
@@ -106,6 +110,7 @@ namespace ConfigurationMode
 		public:
 			GUI::PWindow	window;
 			std::function<void(BYTE)>	onSelect;
+			Buffer0<std::pair<index_t, GUI::PButton> >	materialButtons;
 			
 			void				Create(bool allowUnknown, bool allowLiquids);
 			void				SetCurrent(BYTE type);
@@ -146,6 +151,15 @@ namespace ConfigurationMode
 			}
 			Grid::SetAllFamiliesOutdated();	//force rebuild
 			World::allowRecompilation = true;
+
+			if (clientWorldLoaded)
+			{
+				config.GenerateAtmosphereColor();
+				config.Apply();
+			}
+			else
+				serverConfig.Apply();
+
 			RefreshButtonStates();
 		}
 
@@ -157,7 +171,10 @@ namespace ConfigurationMode
 			{
 				//Grid::actualWorld.FlushAllData();
 				if (serverObjects.IsEmpty())
+				{
 					serverObjects.Import(true);
+					UI::HexGrid::RefreshContacts();
+				}
 				forceRebuild |= !clientWorldBuilt;
 				clientWorldBuilt = true;
 				if (GridState::current)
@@ -179,6 +196,7 @@ namespace ConfigurationMode
 
 		void				MaterialDialog::Create(bool allowUnknown, bool allowLiquids)
 		{
+			materialButtons.Clear();
 			window.reset(new GUI::Window());
 			//window->autoHeight = false;
 			for (index_t i  = 0; i < Grid::Content::NumberOfPossibilities; i++)
@@ -221,6 +239,7 @@ namespace ConfigurationMode
 					this->onSelect((BYTE)i);
 				});
 				window->AddComponent(button);
+				materialButtons << std::make_pair(i,button);
 			}
 
 			{
@@ -243,12 +262,21 @@ namespace ConfigurationMode
 
 		void				MaterialDialog::SetCurrent(BYTE type)
 		{
-
+			foreach (materialButtons,b)
+			{
+				String name = Grid::Content::Reinterpret(b->first).ToString();
+				if (b->first == Grid::Content::Unknown)
+					name = "Natural";
+				if (b->first == type)
+					b->second->SetText("["+name+"]");
+				else
+					b->second->SetText(name);
+			}
 		}
 
 		void UploadToServer()
 		{
-			refConfig = config;
+			serverConfig = config;
 			RefreshButtonStates();
 			Network::Channels::planetConfig.SendTo(Network::client,config);
 		}
@@ -301,6 +329,34 @@ namespace ConfigurationMode
 			else
 				ActivateDiscovery(false,serverWorld);
 		}
+
+		void		RebuildPlanetList()
+		{
+			planetListWindow->ClearComponents();
+			planetListWindow->SetCenteredWidth(0.7f,GUI::TAnchor::RelativeToScreen);
+			planetListWindow->autoHeight = true;
+			planetListWindow->maxHeight = 0.7f;
+			planetListWindow->fillBackground = false;
+			GUI::PComponent label = planetListWindow->AddNewComponent(new GUI::Label("Planets",1.2f));
+			label->anchorConfig.Top().Set(0);
+			label->anchorConfig.Left().Set(0);
+			foreach (planetList,p)
+			{
+				index_t myIndex = p - planetList.pointer();
+				GUI::PButton button(new GUI::Button(*p,[myIndex]()
+				{
+					Network::Channels::loadPlanetByName.SendTo(Network::client, planetList[myIndex]);
+					GUI::Hide(planetListWindow);
+					LoadServerWorld(false);
+				}));
+				button->anchorConfig.Top().SetLastOf(planetListWindow,0.02f);
+				button->anchorConfig.axis[0].min.Set(0);
+				button->anchorConfig.axis[0].max.Set(0);
+				planetListWindow->AddComponent(button);
+			}
+			planetListWindow->FullAutoLayout();
+		}
+
 
 		void AppendRuleButton(const Objects::PCommandGroup&grp,const String&niceName, const String&iconName,const String&configName, UINT32 flag, const std::function<void(bool)>&onChange)
 		{
@@ -531,7 +587,7 @@ namespace ConfigurationMode
 			->customLabel << "Scales extremes. The heigher this value the further the resulting heightmap will reach up and down"
 			;
 			MakeFloatButtons(group->AddChild("Frequency"),layer.frequency, refLayer.frequency)
-			->customLabel << "Scales the frequency of peaks. The heigher this value the higher the number of mountains at reduced horizontal extend each."
+			->customLabel << "Scales the frequency of peaks. The heigher this value the higher the number of mountains at reduced horizontal extent each."
 			;
 			return group;
 		}
@@ -752,6 +808,10 @@ namespace ConfigurationMode
 				return;
 			created = true;
 
+
+			planetListWindow.reset(new GUI::Window());
+			RebuildPlanetList();
+
 			XML::Container declarations;
 			declarations.LoadFromFile("../server/config/declaration.xml");
 			ParseDeclarations(declarations.root_node,"");
@@ -767,6 +827,8 @@ namespace ConfigurationMode
 			ruleGroup.reset(new Objects::CommandGroup("Rules"));
 			ruleGroup->baseCoords = int2(1);
 			ruleGroup->customLabel << "All common game rules";
+
+
 			copyPasteGroup.reset(new Objects::CommandGroup("Copy/Paste"));
 			copyPasteGroup->baseCoords = int2(1);
 			copyPasteGroup->customLabel << "Copy/paste current configuration to/from clipboard";
@@ -833,22 +895,22 @@ namespace ConfigurationMode
 				RefreshDiscovery();
 			};
 
-			MakeMaterialChoice(coreGroup,config.innerCoreType,refConfig.innerCoreType,noUnknown);
-			mountainGroup = MakeLayer("Mountains",config.mountains,refConfig.mountains);
-			mountainGroup->customLabel << "Defines the extend and content of the mountain layer. The mountain layer stretches from the bottom up, where not overwritten by the extended planet core.";
-			extendedCoreGroup = MakeLayer("Extended Core",config.extendedCore,refConfig.extendedCore);
-			extendedCoreGroup->customLabel << "Defines the extend and content of the extended core layer. The extended core stretches from the bottom up, potentially overwriting content defined by the mountain layer.";
-			MakeMaterialChoice(extendedCoreGroup->AddChild("Type","Terrain Content"),config.extendedCoreType,refConfig.extendedCoreType, noUnknown);
-			MakeMaterialChoice(mountainGroup->AddChild("Type","Terrain Content"),config.type,refConfig.type, fullScope);
+			MakeMaterialChoice(coreGroup,config.innerCoreType,serverConfig.innerCoreType,noUnknown);
+			mountainGroup = MakeLayer("Mountains",config.mountains,serverConfig.mountains);
+			mountainGroup->customLabel << "Defines the extent and content of the mountain layer. The mountain layer stretches from the bottom up, where not overwritten by the extended planet core.";
+			extendedCoreGroup = MakeLayer("Extended Core",config.extendedCore,serverConfig.extendedCore);
+			extendedCoreGroup->customLabel << "Defines the extent and content of the extended core layer. The extended core stretches from the bottom up, potentially overwriting content defined by the mountain layer.";
+			MakeMaterialChoice(extendedCoreGroup->AddChild("Type","Terrain Content"),config.extendedCoreType,serverConfig.extendedCoreType, noUnknown);
+			MakeMaterialChoice(mountainGroup->AddChild("Type","Terrain Content"),config.type,serverConfig.type, fullScope);
 //			MakeMaterialChoice(mountainGroup->AddChild("Top Type", "Terrain Top" ),config.topType,refConfig.topType, fullScope);
-			MakeIntButtons(mountainGroup->AddChild("Snow Height"),config.snowHeight,refConfig.snowHeight,Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight-1);
+			MakeIntButtons(mountainGroup->AddChild("Snow Height"),config.snowHeight,serverConfig.snowHeight,Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight-1);
 
 			{
 				liquidGroup.reset(new Objects::CommandGroup("Oceans"));
 				liquidGroup->baseCoords = int2(1);
-				MakeMaterialChoice(liquidGroup->AddChild("Ocean Content","Ocean Type"),config.liquidCoverage,refConfig.liquidCoverage,noUnknown);
-				MakeIntButtons(liquidGroup->AddChild("Level","Base Height"),config.liquidHeight,refConfig.liquidHeight,Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight-1);
-				MakeMaterialChoice(liquidGroup->AddChild("Ocean Outline"),config.liquidOutline,refConfig.liquidOutline,noLiquids);
+				MakeMaterialChoice(liquidGroup->AddChild("Ocean Content","Ocean Type"),config.liquidCoverage,serverConfig.liquidCoverage,noUnknown);
+				MakeIntButtons(liquidGroup->AddChild("Level","Base Height"),config.liquidHeight,serverConfig.liquidHeight,Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight-1);
+				MakeMaterialChoice(liquidGroup->AddChild("Ocean Outline"),config.liquidOutline,serverConfig.liquidOutline,noLiquids);
 			}
 
 
@@ -891,7 +953,7 @@ namespace ConfigurationMode
 			buttons	<< std::make_pair(int2(at++,0),
 						Objects::PBaseCommand(new Objects::CustomIconCommand("Reset to server config and rebuild local planet","Download from Server",[]()
 						{
-							config = refConfig;
+							config = serverConfig;
 							Update();
 						},
 						[](bool){return Objects::BaseCommand::Flags::IsEnabled;}
@@ -924,6 +986,25 @@ namespace ConfigurationMode
 						[](bool){return Objects::BaseCommand::Flags::IsEnabled;}
 						))
 					);
+			buttons	<< std::make_pair(int2(at++,0),
+						Objects::PBaseCommand(new Objects::CustomIconCommand("Load Planet Preset","Planet Presets",[]()
+						{
+							if (!GUI::IsVisible(planetListWindow))
+								GUI::Show(planetListWindow);
+							else
+								GUI::Hide(planetListWindow);
+						},
+						[](bool)
+						{
+							Objects::BaseCommand::Flags rs = Objects::BaseCommand::Flags::IsEnabled;
+							//if (GUI::IsVisible(planetListWindow))
+							//	rs |= Objects::BaseCommand::Flags::IsPermaActive;
+							return rs;
+						}
+						))
+					);
+
+
 			buttons	<< std::make_pair(int2(at++,0),mountainGroup);
 			buttons	<< std::make_pair(int2(at++,0),extendedCoreGroup);
 			buttons	<< std::make_pair(int2(at++,0),coreGroup);
@@ -950,10 +1031,13 @@ namespace ConfigurationMode
 	{
 		using namespace Detail;
 		seed = cfg.lastSeed;
-		config = cfg;
-		refConfig = cfg;
+		if (!clientWorldBuilt)
+			config = cfg;
+		serverConfig = cfg;
 		if (clientWorldLoaded)
 			Update();
+		else
+			cfg.Apply();
 	}
 
 	void	SetGameConfig(UINT32 gameFlags, RuntimeConfig::GameGoal goal, Grid::WorldDiscovery disc)
@@ -979,6 +1063,12 @@ namespace ConfigurationMode
 		Create();
 		UI::HexGrid::Configure(Objects::selectedEntity);
 
+	}
+
+	bool	ViewingServerVersion()
+	{
+		using namespace Detail;
+		return !clientWorldLoaded;
 	}
 
 	bool	IsActive()
@@ -1012,6 +1102,7 @@ namespace ConfigurationMode
 			serverObjects.Export();
 			Grid::actualWorld.OverrideVisibility(1);
 		}
+		UI::HexGrid::RefreshContacts();
 	}
 
 
@@ -1027,6 +1118,17 @@ namespace ConfigurationMode
 		if (Detail::isActive)
 			Detail::Clipboard::ImportPlanet();
 	}
+
+
+	void	UpdatePlanetList(Array<String>&fleetingData)
+	{
+		if (Detail::isActive)
+		{
+			Detail::planetList.adoptData(fleetingData);
+			Detail::RebuildPlanetList();
+		}
+	}
+
 }
 
 #endif

@@ -129,7 +129,10 @@ namespace Objects
 				{
 					DX11::InstructionBlock32	instruction;
 					TMatrix4<>		system;
-					bool			depthTest;
+					bool			depthTest,		//Indicates that the shape should depth-test against the terrain and other complex shapes
+									preRenderDepth = true,	//Effective only if @a depthTest is true. Indicates that this is a complex shape and should be depth-only pre-rendered
+									flareDisplay = false,	//Indicates that the shape is rendered using an add-blend function, and using a white color when not selected. Otherwise black is used, using regular alpha blending
+									selectedOnly = false;	//This shape should only be rendered for selected units
 				};
 
 				Buffer0<Shape>		localizableShapes;
@@ -528,6 +531,15 @@ namespace Objects
 
 		//WorldEntity overrides:
 		//virtual bool			IsActive() const override {return !IsHibernating() && Super::IsActive();}
+		#ifndef CLIENT
+			virtual void		ClearSafeTasks() override;
+		#endif
+
+		/**
+		Checks whether there is a task out front that has consumed resources and can not be removed without irreversible losses
+		*/
+		bool					HasUnsafeTask() const;
+
 		virtual bool			IsMobile() const override {return true;}
 		#ifndef NO_HIBERNATION
 			virtual const Hibernating*ToHibernating() const override {return this;}

@@ -221,19 +221,19 @@ namespace World
 				{
 					if (stack.volumeCell[layer].content == Grid::Content::Clear)
 					{
-						BYTE Fill = 
-							layer+1 < Grid::CellStack::Range && Grid::CellStack::Cell::IsLiquid(stack.volumeCell[layer].content) ? stack.volumeCell[layer].content : 0;
-						if (!Fill)
+						BYTE fill = 
+							layer+1 < Grid::CellStack::Range && Grid::CellStack::Cell::IsLiquid(stack.volumeCell[layer+1].content) ? stack.volumeCell[layer+1].content : 0;
+						if (!fill)
 							for (int i = 0; i < neighborhood.numNeighbors; i++)
 								if (Grid::CellStack::Cell::IsLiquid(nStacks[i]->volumeCell[layer].content))
 								{
-									Fill = nStacks[i]->volumeCell[layer].content;
+									fill = nStacks[i]->volumeCell[layer].content;
 									break;
 								}
 
-						if (Fill)
+						if (fill)
 						{
-							target.volumeCell[layer] = Fill;
+							target.volumeCell[layer] = fill;
 							thisChanged = true;
 						}
 					}
@@ -308,7 +308,7 @@ namespace World
 						}
 					}
 				}
-			});
+			},false);
 			float t = timer.GetSecondsSince(t0);
 			LogEvent(EventSignificance::PerformanceMeasurement,"Time needed to process water: "+String(t));
 
@@ -481,8 +481,7 @@ namespace World
 	{
 		if (RuntimeConfig::empZones)
 		{
-			count_t numZones = Game::mostFactionsAlive+temporaryFactionCountBonus;	//not counting nexus faction, but counting new faction(s)
-			numZones = (numZones/3) + !!(numZones % 3);
+			count_t numZones = Game::Config::CountAccessibleZones(temporaryFactionCountBonus);
 
 			int unlocked = 0;
 			for (index_t i = 0; i < numZones; i++)
@@ -498,6 +497,14 @@ namespace World
 
 			Channels::lockEmpZones.SendTo(::Network::server,empZonesLocked,2);
 		}
+		else
+		{
+			if (empZonesLocked != 0)
+			{
+				empZonesLocked = 0;
+				Channels::lockEmpZones.SendTo(::Network::server,empZonesLocked,2);
+			}
+		}
 
 	}
 
@@ -508,4 +515,23 @@ namespace World
 		Grid::empZonesLocked = empZonesLocked = ((1 << 12)-1)  & ~unlockedEMPZones;
 	}
 
+
+	void		GetAvailablePlanetIniFiles(Array<FileSystem::File>&rsOut)
+	{
+		FileSystem::Folder folder = RuntimeConfig::ConfigFile("config/planets");
+		if (!folder.IsValidLocation())
+		{
+			LogEvent(EventClass::Preset::remoteControlError,"Internal error: Unable to locate planets-directory");
+			rsOut.Clear();
+			return;
+		}
+		FileSystem::File file;
+		Buffer0<FileSystem::File,Swap> files;
+		folder.Rewind();
+		while (folder.NextFile("ini",file))
+		{
+			files.Append().swap(file);
+		}
+		files.MoveToArray(rsOut,true);
+	}
 }

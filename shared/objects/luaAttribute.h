@@ -10,7 +10,23 @@ namespace Objects
 			T			constValue;
 			bool		isSet = false;
 		};
-	template <typename T>
+
+	struct NoFilter
+	{
+		template <typename T>
+			static void	Filter(T&){}
+	};
+
+	struct UnitScaleFilter
+	{
+		template <typename T>
+			static void	Filter(T&v)
+			{
+				v *= Grid::UnitScale;
+			}
+	};
+
+	template <typename T, typename Filter>
 		struct LuaAttribute
 		{
 			Lua::Function<T(Lua::Reference)>		luaGetValue;
@@ -39,7 +55,7 @@ namespace Objects
 				luaDescribeValue.Clear();
 			}
 
-			T			GetValue(const Lua::Reference&researchState)	const
+			T			GetUnfilteredValue(const Lua::Reference&researchState)	const
 			{
 				if (constOverride.isSet)
 					return constOverride.constValue;
@@ -48,12 +64,22 @@ namespace Objects
 				return luaGetValue(researchState);
 			}
 
+			T			GetValue(const Lua::Reference&researchState)	const
+			{
+				T rs = GetUnfilteredValue(researchState);
+				Filter::Filter(rs);
+				return rs;
+			}
+
 			String		Describe(const Lua::Reference&researchState)	const
 			{
 				if (luaDescribeValue.IsSet())
 					return luaDescribeValue(researchState);
-				return GetValue(researchState);
+				return GetUnfilteredValue(researchState);
 			}
+
+		private:
+
 		};	
 	
 }

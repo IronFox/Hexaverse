@@ -1,0 +1,14 @@
+{{ img:units/Artillery.png|Artillery}}
+=Artillery=
+*  Cost: %Minerals%25
+*  [[concepts/initiative|Initiative]]: 80
+*  [[concepts/vehicle|Weight]]: 3
+*  Base [[concepts/scanning range]]: 4
+*  Health: x2
+*  Offensive turret
+*  [[concepts/attack range|Base horizontal attack range]]: 7 (Artillery)
+*  Does not require ammunition
+*  1 attack per round
+*  Explosion radius: 2
+*  Damage: 7
+This turret type can attack objects in range.

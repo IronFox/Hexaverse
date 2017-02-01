@@ -22,8 +22,8 @@ namespace Channels
 	TCP::Channel<Protocol::Hello, 0,Protocol::ChannelID::Hello>												hello(Receiver::Hello);
 	TCP::Channel<Protocol::EntityDirectCommand, FactionLevel, Protocol::ChannelID::EntityDirectCommand>		entityDirectCommand(Receiver::EntityDirectCommand);
 	TCP::Channel<Protocol::ChoiceIntersection, FactionLevel, Protocol::ChannelID::ChoiceIntersection>		choiceIntersection(Receiver::ChoiceIntersection);
-	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::DropLastTask>							dropLastTask(Receiver::DropLastTask);
-	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::DropAllTasks>							dropAllTasks(Receiver::DropAllTasks);
+	TCP::Channel<Protocol::DropTasks, FactionLevel, Protocol::ChannelID::DropTasks>							dropTasks(Receiver::DropTasks);
+
 	TCP::Channel<Protocol::StandardJob, FactionLevel, Protocol::ChannelID::SignalNewJob>					signalNewJob(Receiver::SignalNewJob);
 	TCP::Channel<Protocol::TerrainMod, FactionLevel, Protocol::ChannelID::SignalTerrainMod>					signalTerrainMod(Receiver::SignalTerrainMod);
 	TCP::Channel<Protocol::ConstructionAbort, FactionLevel, Protocol::ChannelID::ConstructionAbort>			constructionAbort(Receiver::ConstructionAbort);
@@ -45,6 +45,7 @@ namespace Channels
 	TCP::Channel<Grid::ExtendedPlanetConfig, Configurator, Protocol::ChannelID::PlanetConfig>				planetConfig(Receiver::PlanetConfig);
 	TCP::Channel<Protocol::GameConfig, Configurator, Protocol::ChannelID::GameConfig>						gameConfig(Receiver::GameConfig);
 	TCP::Channel<Protocol::ResourceID, PreFaction, Protocol::ChannelID::RequestResource>				requestResource(Receiver::RequestResource);
+	TCP::Channel<Package::NetString<256>, Configurator, Protocol::ChannelID::LoadPlanetByName>		loadPlanetByName(Receiver::LoadPlanetByName);
 	
 
 	TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>			clientFactionResponse;
@@ -73,6 +74,7 @@ namespace Channels
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionRequestedNewRound>				factionRequestedNewRound;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionContinuedRound>					factionContinuedRound;
 	TCP::ObjectSender<Protocol::ResourceData,Protocol::ChannelID::ResourceData>						resourceData;
+	TCP::ObjectSender<NETA(Package::NetString<256>),Protocol::ChannelID::PlanetNames>				planetNames;
 
 	TCP::ObjectSender<NET(UINT16), Protocol::ChannelID::LockEMPZones>								lockEmpZones;
 	#ifndef NO_HIBERNATION
@@ -189,7 +191,7 @@ namespace Receiver
 			Protocol::NewMobileEntity st;
 			Game::Network::Describe(st,*v,true,timestamp,0xFFFFFFFF);
 			Channels::newMobileEntity.SendTo(peer,st);
-		});
+		},false);
 
 
 		{
@@ -344,6 +346,18 @@ namespace Receiver
 			SendAllToSpectator(peer, firstSpectator);
 
 			Channels::planetConfig.SendTo(peer,Grid::currentPlanetConfig);
+
+			if (ConfigurationMode::IsActive())
+			{
+				Array<FileSystem::File>	iniFiles;
+				World::GetAvailablePlanetIniFiles(iniFiles);
+				NETA(Package::NetString<256>) names;
+				names.SetSize(iniFiles.Count());
+				for (index_t i = 0; i < iniFiles.Count(); i++)
+					names[i] = String(iniFiles[i].GetInnerName());
+				Channels::planetNames.SendTo(peer,names);
+			}
+
 
 			peer.SendSignal(Protocol::ChannelID::BeginGame);
 			return;
@@ -521,7 +535,7 @@ namespace Receiver
 			ASSERT_LESS__(state.serializedData.Count(),state.serializedData.MaxElementCount);
 			Channels::researchState.SendTo(peer,state);
 		});
-		Channels::selectResearch.SendTo(peer,Protocol::SelectResearch(client->faction->researchState.GetActiveTopicIndex()));
+		Channels::selectResearch.SendTo(peer,Protocol::SelectResearch((UINT32)client->faction->researchState.GetActiveTopicIndex()));
 
 		#ifndef CHEAT_SHOW_ALL_RESOURCES
 		if (!newFaction)
@@ -834,7 +848,7 @@ namespace Receiver
 		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 		if (!client->faction)
 			return;
-		LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::ChatMessage ),client->faction->GetName()+": "+message);
+		LogEvent(EventClass( EventSignificance::Important, EventFlavor::ChatMessage ),client->faction->GetName()+": "+message);
 
 	}
 
@@ -875,6 +889,38 @@ namespace Receiver
 			LogEvent(EventClass::Preset::commandRejected,peer,"Configuration mode is not active. User should not have this level");
 
 	}
+
+	void	LoadPlanetByName(Package::NetString<256>&planet, TCP::Peer&peer)
+	{
+		if (ConfigurationMode::IsActive())
+		{
+			LogEvent(EventClass::Preset::configurationPrint,peer,"Received request for planet preset '"+planet+"'...");
+			if (planet.contains('/') || planet.contains('\\'))
+			{
+				LogEvent(EventClass::Preset::commandRejected,peer,"Planet name contained path separators. Rejecting request.");
+				return;
+			}
+
+			if (planet.IsNotEmpty())
+			{
+				if (!FileSystem::IsFile(RuntimeConfig::ConfigFile(PathString("config/planets/"+planet+".ini"))))
+				{
+					LogEvent(EventClass::Preset::remoteControlError,"'"+planet+"' is not a valid planet type");
+					return;
+				}
+			}
+
+			if (planet.IsNotEmpty())
+			{
+				Reflection::Variable::planetType->Set(planet.trim());
+				Reflection::ReloadPlanet();
+			}
+			Network::BuildConfiguredWorld();
+		}
+		else
+			LogEvent(EventClass::Preset::commandRejected,peer,"Configuration mode is not active. User should not have this level");
+	}
+
 
 	void	GameConfig(Protocol::GameConfig&cfg, TCP::Peer&peer)
 	{
@@ -1357,13 +1403,23 @@ namespace Receiver
 		LogEvent(EventSignificance::Common,peer,e,"End: Processed choice intersection in mode "+String(ch.mode)+" at cell "+ch.target.ToString());
 	}
 
-	void	DropLastTask(NET(TUniqueID)&uuid, TCP::Peer&peer)
+	
+	void	DropTasks(Protocol::DropTasks&drop, TCP::Peer&peer)
 	{
-		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Drop last task of entity "+uuid.value.ToString());
+		Protocol::DropMode mode;
+		
+		if (!mode.Load(drop.dropMode.value))
+		{
+			LogEvent(EventClass::Preset::unexpectedBehavior,peer,"Invalid drop mode #"+String(drop.dropMode.value));
+			return;
+		}
+		
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Drop tasks ("+String(mode.ToString())+") of entity "+drop.targetID.value.ToString());
 
-		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(uuid,peer);
+		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(drop.targetID,peer);
 		if (!e)
 			return;
+
 
 
 		Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(e);
@@ -1372,6 +1428,11 @@ namespace Receiver
 			if (v->myTasks.IsEmpty())
 			{
 				LogEvent(EventSignificance::Common,peer,e,"Nothing to undo");
+				return;
+			}
+			if (v->HasUnsafeTask() && v->myTasks.Count() == 1 && mode == Protocol::DropMode::AllSafeTasks)
+			{
+				LogEvent(EventSignificance::Common,peer,e,"Nothing to safely undo");
 				return;
 			}
 		}
@@ -1392,48 +1453,9 @@ namespace Receiver
 				return;
 			}
 		}
-		Journal::currentRound.RegisterDropLastEntityCommand(true,e);
-
-		
+		Journal::currentRound.RegisterDropEntityCommands(true,e, mode);
 	}
 
-	void	DropAllTasks(NET(TUniqueID)&uuid, TCP::Peer&peer)
-	{
-		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Drop all tasks of entity "+uuid.value.ToString());
-
-		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(uuid,peer);
-		if (!e)
-			return;
-
-		Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(e);
-		if (v)
-		{
-			if (v->myTasks.IsEmpty())
-			{
-				LogEvent(EventSignificance::Common,peer,e,"No tasks to clear");
-				return;
-			}
-		}
-		else
-		{
-			Objects::PTower t = To<Objects::Tower>::DynamicCast(e);
-			if (t)
-			{
-				if (t->attackQueue.IsEmpty())
-				{
-					LogEvent(EventSignificance::Common,peer,e,"No tasks to clear");
-					return;
-				}
-			}
-			else
-			{
-				LogEvent(EventClass::Preset::commandRejected,peer,e,"Tried to drop commands of incompatible entity");
-				return;
-			}
-		}
-		Journal::currentRound.RegisterClearEntityCommands(true,e);
-
-	}
 
 
 	/**
@@ -1459,6 +1481,7 @@ namespace Receiver
 			}
 		const bool leftClick = (cmd.directFlags & Protocol::DirectFlags::LeftClick) != 0;
 		const bool detailed = (cmd.directFlags & Protocol::DirectFlags::Detailed) != 0;
+		const bool clearSafeTasks = (cmd.directFlags & Protocol::DirectFlags::ClearSafeTasks) != 0;
 		//if (!e->DirectTo((Objects::Vehicle::mode_t)cmd.mode.value,cmd.path,detailed,leftClick))
 		//{
 		//	LogEvent(EventClass::Preset::commandRejected,peer,e,"Unable to comply");
@@ -1469,7 +1492,7 @@ namespace Receiver
 		//	LogEvent(EventSignificance::Common,peer,e,"(Directed entity in mode "+String(cmd.mode.value)+" via click "+String(leftClick)+" to "+buffer.ToString()+" (detailed="+String(detailed)+"))");
 		//	return;
 		//}
-		Journal::currentRound.RegisterDirectEntityTo(true,e,(Objects::Vehicle::mode_t)cmd.mode.value,cmd.path,detailed,leftClick);
+		Journal::currentRound.RegisterDirectEntityTo(true,e,(Objects::Vehicle::mode_t)cmd.mode.value,cmd.path,detailed,leftClick,clearSafeTasks);
 	}
 
 	#if 0
@@ -1559,15 +1582,7 @@ namespace Receiver
 			peer.SendObject(Protocol::ChannelID::Hello,response);
 			return;
 		}
-		//foreach (State::clients,c)
-		//{
-		//	if ((*c)->state.playerName == state.playerName)
-		//	{
-		//		peer.SendObject(Protocol::ChannelID::SetClientState,Protocol::Result(false,"Name already in use"));
-		//		return;
-		//	}
-		//
-		//}
+
 
 		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 		if (!client)
@@ -1600,30 +1615,6 @@ namespace Receiver
 			Channels::phaseChange.SendTo(peer,ph);
 
 
-
-			/*
-			foreach (Objects::vehicles,_v)
-			{
-				const Objects::Vehicle&v = **_v;
-				//if (CanSee(client,v))	//doesnt have vehicles, always false, hence no vehicles at all
-				{
-					Protocol::VehicleConstruction	w;
-					State::Describe(w,v,false, Protocol::Timestamp(true,0),0xFFFFFFFF);
-					Channels::createVehicle.SendTo(peer,w);
-				}
-			}
-
-			foreach (Objects::structures,_s)
-			{
-				const Objects::Structure&v = **_s;
-				//if (CanSee(client,v))
-				{
-					Protocol::StructureConstruction	w;
-					State::Describe(w,*_s,false, nullptr);
-					Channels::createStructure.SendTo(peer,w);
-				}
-			}
-			*/
 			Protocol::HelloResponse response;
 			response.success = true;
 			response.configurationMode = ConfigurationMode::IsActive() && peer.IsLocalhost();
@@ -1631,8 +1622,6 @@ namespace Receiver
 			peer.SendObject(Protocol::ChannelID::Hello,response);
 			return;
 		}
-		//else
-			//LogEvent(EventType::SessionRelated,client->state.playerName+" -> "+ state.playerName);
 
 
 		ChangeMyName(hello,peer);
@@ -1683,6 +1672,7 @@ namespace Receiver
 	void OnDeserializationFailed(UINT32 channel, TCP::Peer&origin)
 	{
 		LogEvent(EventClass::Preset::networkError,nullptr,"Network error: "+origin.ToString()+": Deserialization failed on channel "+String(channel));
+		DBG_FATAL__("Network error: "+origin.ToString()+": Deserialization failed on channel "+String(channel));
 	}
 
 

@@ -105,8 +105,8 @@ namespace Objects
 
 
 
-		template <typename T, int EmptyDefault=0>
-			class LuaAttribute : public Objects::LuaAttribute<T>
+		template <typename T, typename Filter, int EmptyDefault=0>
+			class LuaAttribute : public Objects::LuaAttribute<T,Filter>
 			{
 			public:
 				T						operator()(const OwnerParameter&p) const
@@ -115,12 +115,6 @@ namespace Objects
 						return (T)EmptyDefault;
 					return this->GetValue(ResearchStateOf(p));
 				}
-
-				//String		Describe(const OwnerParameter&p) const
-				//{
-				//	return std::move(Objects::LuaAttribute<T>::Describe(ResearchStateOf(p)));
-				//}
-
 			};
 
 		class Base 
@@ -151,8 +145,8 @@ namespace Objects
 			String							typeName,shortName;
 			ConstName						constName;
 			int								initiative;
-			LuaAttribute<int>				productionCosts /*=1*/;
-			LuaAttribute<bool,true>			isUnlocked;
+			LuaAttribute<int,NoFilter>			productionCosts /*=1*/;
+			LuaAttribute<bool,NoFilter,true>	isUnlocked;
 											
 
 
@@ -177,8 +171,9 @@ namespace Objects
 		};
 
 
-		typedef LuaAttribute<float>		FFunc;
-		typedef LuaAttribute<int>		IFunc;
+		typedef LuaAttribute<float,NoFilter>		FFunc;
+		typedef LuaAttribute<int,NoFilter>			IFunc;
+		typedef LuaAttribute<float,UnitScaleFilter>	FScaledFunc;
 
 
 	
@@ -219,7 +214,7 @@ namespace Objects
 											isDoomsday = false;	//server may reject their deployment
 
 			MountType						mountType = MountType::Vehicle;
-			FFunc							explosionRadius;
+			FScaledFunc						explosionRadius;
 			TrajectoryType					trajectoryType;
 			//int								fuelSupplyRadius = 0;	//!< Satellites only (in fact, SkyHub only): Maximum radius that friendly satellites will be supplied in
 
@@ -232,10 +227,10 @@ namespace Objects
 			//	Linear,
 			//	Missile,
 			//}								trajectory;
-			FFunc							horizontalAttackRange,	//geometric firing range
+			FScaledFunc						horizontalAttackRange,	//geometric firing range
 											scanningRange /*= 10*/,	//geometric scanning range
-											groundScanningRange /*= -1.f*/,//>0 indicates that this turret can scan from orbit down to the ground (effective only if used by a satellite)
-											groundScannerPenetration /*= 1*/;	//number of blocks the ground-scanner can penetrate into solid ground (effective only if used by a satellite)
+											groundScanningRange /*= -1.f*/;//>0 indicates that this turret can scan from orbit down to the ground (effective only if used by a satellite)
+			FFunc							groundScannerPenetration /*= 1*/;	//number of blocks the ground-scanner can penetrate into solid ground (effective only if used by a satellite)
 			float							continuousRotationSpeed = 1;	//angles per second rotation speed, effective only, if continuousRotation is set true
 
 
@@ -361,6 +356,7 @@ namespace Objects
 			void							BuildBlastSystem(const TVec3<>&location, float radius, TMatrix4<>&system) const;
 
 			bool							CanAttack() const {return attacksPerRound.IsSet();}
+			bool							CanDealDamage() const {return damageLevel.IsSet();}
 			bool							CanDo(operation_t op) const {return operationSpeed[op].IsSet();}
 			bool							CanRepair() const {return CanDo(Repair);}
 			bool							CanConstruct() const {return CanDo(Construct);}
@@ -383,7 +379,7 @@ namespace Objects
 					SmokeTrail
 				};
 				static float				CompileTrajectory(const Buffer0<TVec4<> >&v, geometryType_t type, Geometry&outGeo, float widthScale=1.f);
-				void						DescribeType(BaseCommand::Label&label, bool compound, const String&parentType, const OwnerParameter&owner);
+				void						DescribeType(BaseCommand::Label&label, bool compound, bool includeName, const String&parentType, const OwnerParameter&owner);
 			#endif
 
 			/**
@@ -413,8 +409,8 @@ namespace Objects
 				int							storageMultiplier = 1;
 			#endif
 
-			FFunc							turretRangeModifier /*= 0*/,
-											operationSpeedMultiplier /*= 1*/,
+			FScaledFunc						turretRangeModifier /*= 0*/;
+			FFunc							operationSpeedMultiplier /*= 1*/,
 											movementSpeed,		//ideal movement speed (if not encumbered)
 											carryingCapacity;		//turret weight tolerance before movement speed is reduced
 			IFunc							health/*=2*/;			//!< Base health level
@@ -472,7 +468,7 @@ namespace Objects
 			bool							CanStandOn(const Grid::WorldData&world, const Grid::LCellIdI&, bool ignoreWater, bool doFloat);
 
 			#ifdef HAS_WINDOW
-				void						DescribeType(BaseCommand::Label&label, bool compound, const OwnerParameter&);
+				void						DescribeType(BaseCommand::Label&label, bool compound, bool includeName, const OwnerParameter&);
 			#endif
 
 	
@@ -563,6 +559,10 @@ namespace Objects
 						PMobileEntity vehicle = selectedMobileEntity;
 						if (!vehicle)
 							return;
+						#ifdef HAS_WINDOW
+							if (!Engine::input.pressed[Key::Shift])
+								ApplicationInterface::SignalDropSafeTasks(vehicle);
+						#endif
 						ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_SelfDetonate,DetonationSize);					
 					}
 

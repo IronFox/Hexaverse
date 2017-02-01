@@ -1,0 +1,8 @@
+{{ img:units/Generator.png|Generator}}
+=Generator=
+*  Health: 8
+*  Price: %Minerals% 40
+*  [[concepts/scanning range|Scanning range]]: 2
+*  Consumes: %Fuel%10
+*  Produces: %Energy%20
+Enabled generators provide energy for the local [[concepts/compound]]. Since many structures consume %Energy% when enabled, generators are a crucial component of any active base. Combine with [[units/structures/reactor core]]s for increased output.

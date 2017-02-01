@@ -1,4 +1,13 @@
-﻿resources 2.0:
+﻿* TEST AI
+* AI unit spawning causes server crash, but threat estimation in low-res mode is horrificly slow. Must adjust
+
+Loading screen
+Optionally broadcast research state to all clients
+Select planet type by name from interactive configurator
+
+
+
+resources 2.0:
 	+ Mines have diminishing yield (not to zero, but low)
 	+ New resource types from trees (natural compounds), and dendrites (vulcanic compounds)
 	+ Mix compounds and fuel/minerals to generate superior fuel and alloys for improved units?
@@ -18,39 +27,11 @@ compare with pre-80d6657fcd00f7d41fdc54c4cdef47b3d073ff48: 3972d667c90b1ef1ded85
 
 
 
-having small compound spheres within larger ones become visible if the camera is inside these spheres
-shift+click should work on terraforming operations, too
+alt+click should work on terraforming operations, too
 
 
 
 
-research concept:
-	two types of research:
-		acquire locked turret/base/building
-			some arranged in a tree, others available right away
-			
-		improved unlocked turret/base/building (very expensive, end game, all in percentage, exponentially increasing costs)
-		
-			anyValue(B,L,D,C) = max(1, B * ln(max(1, e+(R-D)*C)))
-				where
-					B = base value (e.g. radar range 11)
-					R = research level (>=0, 0 = not researched). each enabled laboratory generates one research point per round
-					D = planetary difficulty value (>=0, 0 = none)
-					C = scaling constant. Maybe 0.01 - 0.1
-	
-		
-			* scanning range
-			* attacks per round (towers/offensive vehicles)
-			* attack range (towers/offensive vehicles)
-			* explosion radius (towers/offensive vehicles)
-			* damage level (towers/offensive vehicles)
-			* movement speed (vehicles)
-			* construction speed (vehicles/factories) - for vehicles mostly only makes sense with multi job execution per round
-			* health
-			* health factor (vehicle turrets)
-			* emp resistance?
-			* fuel demand (satellites, generators)
-			* yield efficiency (mines/generators produce more)
 			
 		
 
@@ -97,8 +78,6 @@ send entity id with server messages so user can click on the message to focus on
 	trajectories
 	explosion markers
 	damage markers
-	auto-pause animation during events (might be too tricky)
-increase resource stack minimum
 better mine output (refinery)
 research
 	research concept, stations, states. AI? viruses?
@@ -116,7 +95,7 @@ transfer build-state of terraformer to hostile factions
 
 
 
-Better handling of crashes in release (should not cause windows popup).
+Better handling of crashes in release (should not cause windows popup). Should probably self-terminate as a result.
 
 
 Satellite beam animation seed.
@@ -178,6 +157,19 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+* Moved buttons bottom right to a vertical setup
+* Fixed: Hide/disable Poll messages 'Found X lobby match(es)' when session is in progress
+* Max repair height difference 0? Should be one
+* Fixed: liquids didn't expand downwards
+* Fixed: VEHICLE PLANT can build plane turrets
+* halt auto-new round when any attacks, hostile contacts or damages were recorded
+* Fixed: "Unable to determine feasible angles..." (message is broadcasted to ALL)
+* Fixed: EMP zones are not expanding as desired
+* Disable towers in emp field
+IMPORTANT: errors in research lua script (in user directory) causes fatal (if required things are missing). should make backup and replace with original
+Wider emp field areas in low-resolution terrain mode.
+research concept
+fixed: having small compound spheres within larger ones become visible if the camera is inside these spheres
 server list must be scrollable
 visual server configurator 
 ragnarök attack beam visualization	//satellites are deprecated

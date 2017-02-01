@@ -263,7 +263,7 @@ namespace Engine
 
 		UINT flags = 0;
 		#ifdef _DEBUG
-			//flags |= /*D3D11_CREATE_DEVICE_DEBUGGABLE;*/ D3D11_CREATE_DEVICE_DEBUG;
+			flags |= /*D3D11_CREATE_DEVICE_DEBUGGABLE |*/ D3D11_CREATE_DEVICE_DEBUG;
 		#endif
 		// create a device, device context and swap chain using the information in the scd struct
 		
@@ -291,7 +291,38 @@ namespace Engine
 			return false;
 		}
 
-
+		{
+			ID3D11Debug *d3dDebug = nullptr;
+			if( SUCCEEDED( dev->QueryInterface( __uuidof(ID3D11Debug), (void**)&d3dDebug ) ) )
+			{
+				ID3D11InfoQueue *d3dInfoQueue = nullptr;
+				if( SUCCEEDED( dev->QueryInterface( __uuidof(ID3D11InfoQueue), (void**)&d3dInfoQueue ) ) )
+				{
+					#ifdef _DEBUG
+						d3dInfoQueue->SetBreakOnSeverity( D3D11_MESSAGE_SEVERITY_CORRUPTION, true );
+						d3dInfoQueue->SetBreakOnSeverity( D3D11_MESSAGE_SEVERITY_ERROR, true );
+					#endif
+ 
+					D3D11_MESSAGE_ID hide [] =
+					{
+						D3D11_MESSAGE_ID_SETPRIVATEDATA_CHANGINGPARAMS,
+						//D3D11_MESSAGE_ID_DEVICE_UNORDEREDACCESSVIEW_NOT_SET,
+						//(D3D11_MESSAGE_ID)3146081,
+						//D3D11_MESSAGE_ID_DEVICE_PSSETSHADERRESOURCES_HAZARD,	//the engine doesn't unset these because this would require additional complexities
+						//D3D11_MESSAGE_ID_DEVICE_OMSETRENDERTARGETS_HAZARD,
+						// Add more message IDs here as needed
+					};
+ 
+					D3D11_INFO_QUEUE_FILTER filter;
+					memset( &filter, 0, sizeof(filter) );
+					filter.DenyList.NumIDs = _countof(hide);
+					filter.DenyList.pIDList = hide;
+					d3dInfoQueue->AddStorageFilterEntries( &filter );
+					d3dInfoQueue->Release();
+				}
+				d3dDebug->Release();
+			}
+		}
 		{
 			IDXGIDevice * pDXGIDevice;
 			rs =  dev->QueryInterface(__uuidof(IDXGIDevice), (void **)&pDXGIDevice);
@@ -520,6 +551,7 @@ namespace Engine
 
 	void	DirectX11::TargetBackbuffer()
 	{
+		UnbindShaderResources();
 		devcon->OMSetRenderTargets(1, backbufferView.Reference(),backbufferDepthView);
 	//	devcon->OMSetRenderTargets(1, backbufferView.Reference(),NULL);
 	}
@@ -532,6 +564,7 @@ namespace Engine
 		for (index_t i = 0; i < fbo.numTargets; i++)
 			views[i] = fbo.colorTarget[i].rtView;
 
+		UnbindShaderResources();
 		devcon->OMSetRenderTargets((UINT)fbo.numTargets, views, fbo.depthStencilTarget.dsView);
 		return true;
 	}
@@ -569,6 +602,29 @@ namespace Engine
 	{}
 
 
+	void		DirectX11::UnbindShaderResources()
+	{
+		if (!devcon)
+			return;
+
+		static ID3D11Buffer* nullBuffer[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT]={nullptr};
+		devcon->VSSetConstantBuffers(0,D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT,nullBuffer);
+		devcon->PSSetConstantBuffers(0,D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT,nullBuffer);
+		devcon->GSSetConstantBuffers(0,D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT,nullBuffer);
+
+		static ID3D11ShaderResourceView* nullView[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]={nullptr};
+		devcon->VSSetShaderResources(0,D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT,nullView);
+		devcon->PSSetShaderResources(0,D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT,nullView);
+		devcon->GSSetShaderResources(0,D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT,nullView);
+
+		static ID3D11SamplerState* nullState[D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT]={nullptr};
+		devcon->VSSetSamplers(0,D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT,nullState);
+		devcon->PSSetSamplers(0,D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT,nullState);
+		devcon->GSSetSamplers(0,D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT,nullState);
+
+		lazyPixelShaderHandle = nullptr;
+	}
+
 	void		DirectX11::SignalWindowResize(const Resolution&res)
 	{
 		if (!swapchain)
@@ -576,7 +632,11 @@ namespace Engine
 		if (_currentResolution == res)
 			return;
 		_currentResolution = res;
+
+
+		UnbindShaderResources();
 		devcon->OMSetRenderTargets(0, NULL, NULL);
+
 		backbufferView.Clear();
 		backbufferDepthView.Clear();
 		backbufferTexture.Clear();
@@ -1227,7 +1287,7 @@ namespace Engine
 	}
 
 
-	void				DX11::StageTexture::CreateOrResize(const Resolution3D&resolution, DXGI_FORMAT format)
+	void				DX11::StageTexture::CreateOrResize(const Resolution3D&resolution, DXGI_FORMAT format, UINT mipmapLayers)
 	{
 		if (handle.IsSet() && format == this->format && this->resolution == resolution)
 			return;
@@ -1244,7 +1304,7 @@ namespace Engine
 			texDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
 			texDesc.Format = format;
 			texDesc.Width = resolution.width;
-			texDesc.MipLevels = 1;
+			texDesc.MipLevels = mipmapLayers;
 			texDesc.MiscFlags = 0;
 			texDesc.Usage = D3D11_USAGE_STAGING;
 
@@ -1261,7 +1321,7 @@ namespace Engine
 			texDesc.Format = format;
 			texDesc.Width = resolution.width;
 			texDesc.Height = resolution.height;
-			texDesc.MipLevels = 1;
+			texDesc.MipLevels = mipmapLayers;
 			texDesc.MiscFlags = 0;
 			texDesc.SampleDesc.Count = 1;
 			texDesc.SampleDesc.Quality = 0;
@@ -1281,7 +1341,7 @@ namespace Engine
 			texDesc.Width = resolution.width;
 			texDesc.Height = resolution.height;
 			texDesc.Depth = resolution.depth;
-			texDesc.MipLevels = 1;
+			texDesc.MipLevels = mipmapLayers;
 			texDesc.MiscFlags = 0;
 			texDesc.Usage = D3D11_USAGE_STAGING;
 
@@ -1791,8 +1851,12 @@ namespace Engine
 		desc.Height = res.height;
 		desc.MipLevels = 1;
 		if (supportsMips)
+		{
 			desc.MipLevels = _CountMipLevels(res);
-
+			colorTarget[targetIndex]._SetMipLevels(desc.MipLevels);
+		}
+		else
+			colorTarget[targetIndex]._SetMipLevels(1);
 		desc.ArraySize = 1;
 		desc.Usage = D3D11_USAGE_DEFAULT;
 		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
@@ -1878,6 +1942,7 @@ namespace Engine
 			}
 			colorTarget[i].resolution = Resolution3D(res,1);
 			colorTarget[i]._CreateView(desc);
+			colorTarget[i]._SetMipLevels(desc.MipLevels);
 		}
 
 		if (depthStencil)
@@ -1956,6 +2021,7 @@ namespace Engine
 			}
 			colorTarget[i].resolution = res;
 			colorTarget[i]._CreateView(desc);
+			colorTarget[i]._SetMipLevels(desc.MipLevels);
 		}
 	}
 
@@ -1963,7 +2029,7 @@ namespace Engine
 	{
 		if (resolution.CountPixels() == 0)
 			return;
-		stageTexture.CreateOrResize(resolution,format);
+		stageTexture.CreateOrResize(resolution,format,mipLevels);
 		if (handle1D)
 			DirectX11::globalInstance->GetDeviceContext()->CopyResource(stageTexture.GetHandle(),handle1D);
 		elif (handle2D)
@@ -2402,6 +2468,7 @@ namespace Engine
 			return;
 		}
 		_CreateView(desc);
+		mipLevels = layers;
 	}
 	void					DX11::Texture::Load(const Resolution&res, DXGI_FORMAT fmt, const void*data, bool generateMipMaps/*=false*/)
 	{
@@ -2468,6 +2535,7 @@ namespace Engine
 			return;
 		}
 		_CreateView(desc);
+		mipLevels = layers;
 	}
 
 	void					DX11::Texture::LoadCube(const Resolution&res, DXGI_FORMAT fmt, const void*data[6], bool generateMipMaps/*=false*/)
@@ -2541,6 +2609,7 @@ namespace Engine
 			return;
 		}
 		_CreateCubeView(desc);
+		mipLevels = layers;
 	}
 
 	void					DX11::Texture::Load(UINT width, DXGI_FORMAT fmt, const void*data, bool generateMipMaps/*=false*/)
@@ -2603,6 +2672,7 @@ namespace Engine
 			return;
 		}
 		_CreateView(desc);
+		mipLevels = layers;
 	}
 
 	void					DX11::Texture::LoadInts(UINT width, UINT height, BYTE channels, const BYTE*data)
@@ -2807,7 +2877,7 @@ namespace Engine
 		desc.CPUAccessFlags = 0;
 		desc.SampleDesc.Count = 1;
 
-		UINT layers = _CountMipLevels(res);
+		//UINT layers = _CountMipLevels(res);
 
 		HRESULT hr;
 		{
@@ -2861,6 +2931,7 @@ namespace Engine
 				return;
 			}
 		}
+		mipLevels = 1;
 	}
 
 	bool	DirectX11::_CreateDepthStencilTarget(const Resolution&res)
@@ -3052,7 +3123,7 @@ namespace Engine
 		
 		Resolution3D res(desc.Width,desc.Height,1);
 		
-		stageTexture.CreateOrResize(res,format);
+		stageTexture.CreateOrResize(res,format,desc.MipLevels);
 
 		if (desc.SampleDesc.Count > 1)	
 		{

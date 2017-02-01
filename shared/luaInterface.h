@@ -563,7 +563,7 @@ namespace Lua
 			prog.swap(other.prog);
 		}
 
-		int			GetRefID() const {return reinterpret_cast<int>( refID.get() );}
+		int			GetRefID() const {return (int)(UINT32)(index_t)( refID.get() );}	//cast to something integer like of pointer-size -> cast to unsigned 32bit number -> cast to signed int32 (is what we store in there)
 		PProgram	GetProgram() const {return prog.lock();}
 		lua_State*	GetState() const {PProgram prog = this->prog.lock(); return prog ? prog->GetState() : nullptr;}
 

@@ -4,7 +4,8 @@
 
 namespace LocalApplicationInterface
 {
-	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick, Objects::Vehicle::mode_t mode);
+	UINT8	AssembleMotionFlags(bool detailedPath, bool leftClick, bool clearSafeTasks);
+	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, UINT8 flags, Objects::Vehicle::mode_t mode);
 	void	SignalMarkerCreation(Protocol::Marker&marker);
 	void	SignalMarkerDeletion(TUniqueID markerID);
 	void	SignalMarkerTouch(Objects::Marker&marker);
@@ -24,9 +25,9 @@ namespace AI
 	{
 		float rs = constructionCost;
 		
-		if (base && base->turret->CanAttack())
+		if (base && base->turret->CanDealDamage())
 		{
-			rs /= (1.f + float(base->turret->GetDamageLevel(base->GetOwner()) * base->GetAttacksPerRound() * base->GetFlatAttackRange()) * 0.1f);
+			rs /= (1.f + float(base->GetDamagePotentialPerRound()) * base->GetFlatAttackRange() * 0.1f);
 		}
 		return rs * 3.f;
 	}
@@ -155,7 +156,7 @@ namespace AI
 		static Buffer0<Grid::LCellIdI> path;
 		path.Clear();
 		AssemblePath(mapper, current,path);
-		LocalApplicationInterface::DirectTo(v,path.ToRef(),true,false,Objects::CursorMode::Idle);
+		LocalApplicationInterface::DirectTo(v,path.ToRef(),LocalApplicationInterface::AssembleMotionFlags(true,false,false),Objects::CursorMode::Idle);
 	}
 
 
@@ -263,7 +264,7 @@ namespace AI
 		//attacker logic
 		Objects::ReachabilityMapper::MapNode*best = nullptr;
 		float bestScore = 0.f;
-		bool attacker = t->CanAttack();
+		const bool attacker = t->CanAttack();
 //		const float myRange = t->maxRange + t->GetExplosionRadius(e.owner) - 1;
 
 
@@ -384,7 +385,7 @@ namespace AI
 			{
 				targets[t-attackTarget.pointer()] = t->target;
 			}
-			LocalApplicationInterface::DirectTo(v,targets,false,true, Objects::CursorMode::AttackMode);
+			LocalApplicationInterface::DirectTo(v,targets,LocalApplicationInterface::AssembleMotionFlags( false,true, false),Objects::CursorMode::AttackMode);
 
 			if (attackTarget.IsNotEmpty() && !v->base->ignoresVehicleAttacks)
 				return;
@@ -397,14 +398,14 @@ namespace AI
 			foreach (Objects::vehicles,_v2)
 				if ((*_v2)->isOwnedByMe && Vec::quadraticDistance(v->system.w.xyz,(*_v2)->system.w.xyz) < 25.f)
 				{
-					if ((*_v2)->turret->CanAttack())
+					if ((*_v2)->turret->CanDealDamage())
 						proximityPresence++;
 					else
 						radarProximity++;
 				}
 			
 			currentIsOverconfident = proximityPresence > 5;
-			if (!v->turret->CanAttack() && radarProximity > 1 && random.NextFloat() < 0.3f)
+			if (!attacker && radarProximity > 1 && random.NextFloat() < 0.3f)
 			{
 				ApplicationInterface::SignalRemoval(v);
 				return;
@@ -416,7 +417,7 @@ namespace AI
 		currentIsOffensiveVehicle = attacker && v->turret->ignoresVehicleMotion;
 		static Objects::ReachabilityMapper mapper(false);
 //		currentThreat = TThreatEstimation();
-		currentCanIgnoreThreat = (v->turret->CanAttack() || random.NextFloat() < 0.5f) && !v->turret->dealsEMPDamage;
+		currentCanIgnoreThreat = (attacker || random.NextFloat() < 0.5f) && !t->dealsEMPDamage;
 		//currentIsOverconfident = v->overconfident;
 		EstimateThreatFromAll(v->system.w.xyz,true, currentCanIgnoreThreat,currentThreat);	//determine base threat based on ghosts
 
@@ -455,7 +456,7 @@ namespace AI
 						badWeight += 20 / (1.f + distance);
 					else
 						goodWeight += fc / (1.f + distance);
-				});
+				},true);
 				//if (badWeight < 0.1f && goodWeight < 0.05f)
 				{
 					foreach (Objects::Marker::all,_m)
@@ -483,10 +484,10 @@ namespace AI
 			
 				float score = (1.f + goodWeight) / (1.f+badWeight) / (1.f + float(abs(n->movementCostsFromRoot- minMotion * 3 / 2))*0.01f);
 				{
-					float extend = 1.f + sqr(sqr(sqr(random.NextFloat())));
+					float extent = 1.f + sqr(sqr(sqr(random.NextFloat())));
 					if (random.NextBool())
-						extend = 1.f / extend;
-					score *= extend;				
+						extent = 1.f / extent;
+					score *= extent;				
 				}
 				//score *= random.NextFloat(0.8f,1.25f);
 				if (score > bestScore)
@@ -514,9 +515,9 @@ namespace AI
 			e.ignoreThreatRounds = 0;
 		Objects::PTurretBase b = e.GetTurretBase();
 		const TVec3<>&ref = e.system.w.xyz;
-		if (b && b->turret->CanAttack())
+		if (b && b->turret->CanDealDamage())
 		{
-			float r = b->GetFlatAttackRange();
+			float r = b->GetFlatAttackRange() + b->turret->explosionRadius.GetValue(e.GetResearchState());
 			float damagePotentialPerRound = 0.f;
 			count_t participants = 0;
 			foreach (Objects::vehicles,_v)
