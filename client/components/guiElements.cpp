@@ -1385,12 +1385,12 @@ namespace GUI
 
 			#ifdef _DEBUG
 				if (numRounds > 900)
-					ShowMessage("Debug: GUI will crash shortly. Attach now and debug.");
+					ShowMessage(__func__ ": Debug: GUI will abort auto-layout shortly. Attach now and debug.");
 
 			#endif
 
 			if (numRounds > 1000)	//might be linear to the number of contained components, depending on order
-				FATAL__("Layout infinite loop detected");
+				return false;
 		}
 
 	}
@@ -1480,7 +1480,7 @@ namespace GUI
 		}
 
 
-		float extend = a.GetExtent();
+		float extent = a.GetExtent();
 
 		if (anchor.min.IsFixed())
 		{
@@ -1524,10 +1524,10 @@ namespace GUI
 				rs |= Set(a.max, context.axis[axis].max - dist);
 		}
 		else
-			rs |= Set(a.max,a.min + extend);
+			rs |= Set(a.max,a.min + extent);
 
 		if (!anchor.min.IsFixed())
-			rs |= Set(a.min,a.max - extend);
+			rs |= Set(a.min,a.max - extent);
 
 
 		return rs;

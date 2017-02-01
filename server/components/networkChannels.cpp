@@ -45,6 +45,7 @@ namespace Channels
 	TCP::Channel<Grid::ExtendedPlanetConfig, Configurator, Protocol::ChannelID::PlanetConfig>				planetConfig(Receiver::PlanetConfig);
 	TCP::Channel<Protocol::GameConfig, Configurator, Protocol::ChannelID::GameConfig>						gameConfig(Receiver::GameConfig);
 	TCP::Channel<Protocol::ResourceID, PreFaction, Protocol::ChannelID::RequestResource>				requestResource(Receiver::RequestResource);
+	TCP::Channel<Package::NetString<256>, Configurator, Protocol::ChannelID::LoadPlanetByName>		loadPlanetByName(Receiver::LoadPlanetByName);
 	
 
 	TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>			clientFactionResponse;
@@ -73,6 +74,7 @@ namespace Channels
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionRequestedNewRound>				factionRequestedNewRound;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionContinuedRound>					factionContinuedRound;
 	TCP::ObjectSender<Protocol::ResourceData,Protocol::ChannelID::ResourceData>						resourceData;
+	TCP::ObjectSender<NETA(Package::NetString<256>),Protocol::ChannelID::PlanetNames>				planetNames;
 
 	TCP::ObjectSender<NET(UINT16), Protocol::ChannelID::LockEMPZones>								lockEmpZones;
 	#ifndef NO_HIBERNATION
@@ -345,6 +347,18 @@ namespace Receiver
 
 			Channels::planetConfig.SendTo(peer,Grid::currentPlanetConfig);
 
+			if (ConfigurationMode::IsActive())
+			{
+				Array<FileSystem::File>	iniFiles;
+				World::GetAvailablePlanetIniFiles(iniFiles);
+				NETA(Package::NetString<256>) names;
+				names.SetSize(iniFiles.Count());
+				for (index_t i = 0; i < iniFiles.Count(); i++)
+					names[i] = String(iniFiles[i].GetInnerName());
+				Channels::planetNames.SendTo(peer,names);
+			}
+
+
 			peer.SendSignal(Protocol::ChannelID::BeginGame);
 			return;
 		}
@@ -521,7 +535,7 @@ namespace Receiver
 			ASSERT_LESS__(state.serializedData.Count(),state.serializedData.MaxElementCount);
 			Channels::researchState.SendTo(peer,state);
 		});
-		Channels::selectResearch.SendTo(peer,Protocol::SelectResearch(client->faction->researchState.GetActiveTopicIndex()));
+		Channels::selectResearch.SendTo(peer,Protocol::SelectResearch((UINT32)client->faction->researchState.GetActiveTopicIndex()));
 
 		#ifndef CHEAT_SHOW_ALL_RESOURCES
 		if (!newFaction)
@@ -875,6 +889,38 @@ namespace Receiver
 			LogEvent(EventClass::Preset::commandRejected,peer,"Configuration mode is not active. User should not have this level");
 
 	}
+
+	void	LoadPlanetByName(Package::NetString<256>&planet, TCP::Peer&peer)
+	{
+		if (ConfigurationMode::IsActive())
+		{
+			LogEvent(EventClass::Preset::configurationPrint,peer,"Received request for planet preset '"+planet+"'...");
+			if (planet.contains('/') || planet.contains('\\'))
+			{
+				LogEvent(EventClass::Preset::commandRejected,peer,"Planet name contained path separators. Rejecting request.");
+				return;
+			}
+
+			if (planet.IsNotEmpty())
+			{
+				if (!FileSystem::IsFile(RuntimeConfig::ConfigFile(PathString("config/planets/"+planet+".ini"))))
+				{
+					LogEvent(EventClass::Preset::remoteControlError,"'"+planet+"' is not a valid planet type");
+					return;
+				}
+			}
+
+			if (planet.IsNotEmpty())
+			{
+				Reflection::Variable::planetType->Set(planet.trim());
+				Reflection::ReloadPlanet();
+			}
+			Network::BuildConfiguredWorld();
+		}
+		else
+			LogEvent(EventClass::Preset::commandRejected,peer,"Configuration mode is not active. User should not have this level");
+	}
+
 
 	void	GameConfig(Protocol::GameConfig&cfg, TCP::Peer&peer)
 	{
@@ -1538,15 +1584,7 @@ namespace Receiver
 			peer.SendObject(Protocol::ChannelID::Hello,response);
 			return;
 		}
-		//foreach (State::clients,c)
-		//{
-		//	if ((*c)->state.playerName == state.playerName)
-		//	{
-		//		peer.SendObject(Protocol::ChannelID::SetClientState,Protocol::Result(false,"Name already in use"));
-		//		return;
-		//	}
-		//
-		//}
+
 
 		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 		if (!client)
@@ -1579,30 +1617,6 @@ namespace Receiver
 			Channels::phaseChange.SendTo(peer,ph);
 
 
-
-			/*
-			foreach (Objects::vehicles,_v)
-			{
-				const Objects::Vehicle&v = **_v;
-				//if (CanSee(client,v))	//doesnt have vehicles, always false, hence no vehicles at all
-				{
-					Protocol::VehicleConstruction	w;
-					State::Describe(w,v,false, Protocol::Timestamp(true,0),0xFFFFFFFF);
-					Channels::createVehicle.SendTo(peer,w);
-				}
-			}
-
-			foreach (Objects::structures,_s)
-			{
-				const Objects::Structure&v = **_s;
-				//if (CanSee(client,v))
-				{
-					Protocol::StructureConstruction	w;
-					State::Describe(w,*_s,false, nullptr);
-					Channels::createStructure.SendTo(peer,w);
-				}
-			}
-			*/
 			Protocol::HelloResponse response;
 			response.success = true;
 			response.configurationMode = ConfigurationMode::IsActive() && peer.IsLocalhost();
@@ -1610,8 +1624,6 @@ namespace Receiver
 			peer.SendObject(Protocol::ChannelID::Hello,response);
 			return;
 		}
-		//else
-			//LogEvent(EventType::SessionRelated,client->state.playerName+" -> "+ state.playerName);
 
 
 		ChangeMyName(hello,peer);

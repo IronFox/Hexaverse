@@ -3,7 +3,7 @@
 
 #include <objects.h>
 #include <net/tcp.h>
-
+#include <io/file_system.h>
 
 namespace World
 {
@@ -27,6 +27,13 @@ namespace World
 
 
 	void			SimulateLiquidsIfEnabled();
+
+	/**
+	Fetches the paths to all available planet ini files.
+	Queries the file system to determine current state (all returned files existed at the moment of fetching).
+	Any occurring error is logged, and an empty array is returned in this case.
+	*/
+	void			GetAvailablePlanetIniFiles(Array<FileSystem::File>&rsOut);
 
 
 

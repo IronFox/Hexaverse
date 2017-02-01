@@ -515,4 +515,23 @@ namespace World
 		Grid::empZonesLocked = empZonesLocked = ((1 << 12)-1)  & ~unlockedEMPZones;
 	}
 
+
+	void		GetAvailablePlanetIniFiles(Array<FileSystem::File>&rsOut)
+	{
+		FileSystem::Folder folder = RuntimeConfig::ConfigFile("config/planets");
+		if (!folder.IsValidLocation())
+		{
+			LogEvent(EventClass::Preset::remoteControlError,"Internal error: Unable to locate planets-directory");
+			rsOut.Clear();
+			return;
+		}
+		FileSystem::File file;
+		Buffer0<FileSystem::File,Swap> files;
+		folder.Rewind();
+		while (folder.NextFile("ini",file))
+		{
+			files.Append().swap(file);
+		}
+		files.MoveToArray(rsOut,true);
+	}
 }

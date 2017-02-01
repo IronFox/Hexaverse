@@ -365,12 +365,7 @@ namespace Network
 
 	static void ApplyPlanetConfig(const Grid::TSharedPlanetConfig&config)
 	{
-		Grid::Content coreContent = Grid::Content::Reinterpret(config.innerCoreType);
-		Grid::CellStack::bottom.content = coreContent;
-		#ifdef HAS_WINDOW
-			Grid::UpdateAtmosphere(config.atmosphereColor);
-			Grid::UpdateSun(config.sunPlaneNormal_Speed,config.sunColor);
-		#endif
+		config.Apply();
 	}
 
 
@@ -431,6 +426,16 @@ namespace Network
 			LogEvent(EventClass::Preset::important,"Game config updated");
 		}
 
+
+		void	PlanetNames(NETA(Package::NetString<256>)&list)
+		{
+			#ifdef HAS_WINDOW
+				Array<String> copy(list.length());
+				for (index_t i = 0; i < list.length(); i++)
+					copy[i].adoptData(list[i]);
+				ConfigurationMode::UpdatePlanetList(copy);
+			#endif
+		}
 
 		void	OnHelloResponse(Protocol::HelloResponse&response)
 		{
@@ -1085,6 +1090,7 @@ namespace Network
 		TCP::Channel<Protocol::SelectResearch, 0, Protocol::ChannelID::SelectResearch>				selectResearch(Receiver::SelectResearch);
 		TCP::Channel<Protocol::ResourceData,0,Protocol::ChannelID::ResourceData>					resourceData(Receiver::ResourceData);
 		TCP::Channel<Protocol::GameConfig,0,Protocol::ChannelID::GameConfig>						gameConfig(Receiver::GameConfig);
+		TCP::Channel<NETA(Package::NetString<256>),0,Protocol::ChannelID::PlanetNames>				planetNames(Receiver::PlanetNames);
 
 
 
@@ -1106,6 +1112,7 @@ namespace Network
 		TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>					changeMyName;
 		TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>					chatMessage;
 		TCP::ObjectSender<Protocol::ResourceID, Protocol::ChannelID::RequestResource>				requestResource;
+		TCP::ObjectSender<Package::NetString<256>, Protocol::ChannelID::LoadPlanetByName>			loadPlanetByName;
 
 			//	,			//c2s: NET(bool) -> NET(bool)
 			//SetFactionId,		//s2c: NET(TUniqueID)
@@ -1335,6 +1342,7 @@ namespace Network
 		client.InstallChannel(Channels::operationLacksResources);
 		client.InstallChannel(Channels::resourceData);
 		client.InstallChannel(Channels::gameConfig);
+		client.InstallChannel(Channels::planetNames);
 
 
 		client.OpenSignalChannel(Protocol::ChannelID::Pong,0);

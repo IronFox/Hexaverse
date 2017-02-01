@@ -1658,7 +1658,7 @@ namespace Objects
 					if (t->type == Vehicle::Task::Job)
 						foreach (t->localizableShapes,shape)
 						{
-							if (shape->depthTest)
+							if (shape->depthTest && shape->preRenderDepth)
 							{
 //									display.SetDepthTest(shape->depthTest,false);
 
@@ -1691,30 +1691,35 @@ namespace Objects
 		{
 			if (v->IsAboveGrid() != orbital)
 				return;
-
-			if (v == selectedEntity)
+			const bool selected = v == selectedEntity;
+			if (selected)
 				overallTint.Update(float4(red2,1));
 			
 			{
 				foreach (v->myTasks,t)
 				{
-					if (t->type == Vehicle::Task::Job)
-						display.SetBlendMode(Engine::BlendMode::AlphaBlend);
-					else
-						display.SetBlendMode(Engine::BlendMode::FlareBlend);
-
 					foreach (t->localizableShapes,shape)
 					{
+						if (shape->selectedOnly && !selected)
+							continue;
+
+						if (shape->flareDisplay)
+						{
+							if (!selected)
+								continue;	//invisible anyway
+							display.SetBlendMode(Engine::BlendMode::FlareBlend);
+						}
+						else
+							display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+
 						display.SetDepthTest(shape->depthTest,false);
 
 						display.SetObjectMatrix(shape->system);
 						display.Render(shape->instruction);
-
 					}
-
 				}
 			}
-			if (v == selectedEntity)
+			if (selected)
 				overallTint.Update(float4(0,0,0,1));	//make sure localizable shapes appear - but in black
 		},false);
 

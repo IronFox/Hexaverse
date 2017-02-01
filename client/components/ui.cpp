@@ -1419,9 +1419,10 @@
 
 			void					RefreshContacts()
 			{
+				if (!showControlsAndContacts)
+					return;
 				//this is off:
 				//currentContactListWidth = std::max(1, int((display.pixelAspect()-0.67f)*15));
-
 				const float viewPortRange = 2.f * display.pixelAspect();
 				const float screenRelativeRightPanel = 300.f / display.clientWidth();
 				const float inViewPortRange = screenRelativeRightPanel * viewPortRange;

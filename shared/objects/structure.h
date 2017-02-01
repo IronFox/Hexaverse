@@ -1145,7 +1145,7 @@ namespace Objects
 
 
 
-		static const int			EnergyConsumption = 10;
+		static const int			EnergyConsumption = 0;
 		static const int			DefaultProductionPerRound = 10;
 
 

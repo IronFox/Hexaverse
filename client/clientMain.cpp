@@ -1264,7 +1264,13 @@ namespace ApplicationInterface
 		}
 		else
 		{
-			LogEvent(EventSignificance::Important,"Hostile contact: "+e->GetNiceName()+ (RuntimeConfig::autoNewRound ? ". Pausing automatic round progression.":"."));
+			bool isCommon = 
+				#ifdef HAS_WINDOW
+					ConfigurationMode::IsActive();
+				#else
+					true;
+				#endif
+			LogEvent(EventClass(isCommon ? EventSignificance::Common : EventSignificance::Important,EventFlavor::Loss),"Hostile contact: "+e->GetNiceName()+ (RuntimeConfig::autoNewRound ? ". Pausing automatic round progression.":"."));
 			LocalApplicationInterface::pauseAutomaticRoundProgression = true;
 		}
 	}
@@ -2104,17 +2110,6 @@ bool loop()
 			}
 	
 
-			if (ConfigurationMode::IsActive())
-			{
-				static const String line = "Interactive Configuration Mode";
-
-				textout.pushState();
-				textout.scale(2.0f,2.0f);
-				textout.locate(0.95f - textout.scaledWidth(line),0.95f);
-				textout << line;
-				textout.popState();
-			}
-
 
 			DebugCheckVector(scene.location,-1000,1000);
 		
@@ -2122,6 +2117,23 @@ bool loop()
 			UI::Render();
 			display.pick(Camera::hud);
 			GUI::Render();
+
+
+			if (ConfigurationMode::IsActive())
+			{
+				static const String line = "Interactive Configuration Mode";
+
+				textout.pushState();
+				textout.scale(2.0f,2.0f);
+				textout.locate(0.95f - textout.scaledWidth(line),0.95f);
+				textout << line<<nl;
+				textout.scale(0.75f,0.75f);
+				if (ConfigurationMode::ViewingServerVersion())
+					textout << "Seeing Server Version";
+				else
+					textout << "Seeing Local Version";
+				textout.popState();
+			}
 
 	#endif
 		//textout << "direction: "<<scene.GetViewingDirection()<< nl;

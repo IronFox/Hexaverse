@@ -1,3 +1,19 @@
+v0.6.3
+	> Vehicle plants no longer require energy to operate.
+	* Fixed rare fatal client exception when failing to layout menu components.
+
+v0.6.2	[Jan 31 2017]
+	+ Added new dialog to remotely load server-known planet presets.
+	> Replaced 'rules' icon with cogwheel.
+	> Added additional screen text in interactive configuration mode showing which version (server/client) is currently visible.
+	> Improved/smoothed rendering of certain vehicle tasks.
+	> Disabled server panel if server is in interactive configuration mode, and localhost address is yet unknown.
+	> The currently active terrain material type is now displayed in brackets when presenting a material choice dialog in interactive configuration mode.
+	* Fixed planet atmosphere color not properly updating while in interactive configuration mode.
+	* Fixed contact list still popping up when controls and contact list are hidden.
+	* Fixed HollowCore planet type.
+	* Fixed EMP damage not being properly applied in certain situations.
+
 v0.6.1	[Jan 28 2017]
 	> Nexus units are now affected by residual EMP fields to prevent them from firing out of EMP zones.
 	> Automatic round progression now halts if hostile units appeared, or visible hostile activity has occurred during the previous round.

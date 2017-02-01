@@ -53,7 +53,7 @@ namespace Nexus
 
 
 		const BasicBuffer<Objects::WWorkingStructure>&
-			OfPort(const Objects::PNexusPort&p, int portIndex)
+			OfPort(const Objects::PNexusPort&p, index_t portIndex)
 		{
 			#ifdef ONE_COMPOUND_PER_FACTION
 				return portList[portIndex];

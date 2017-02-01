@@ -129,7 +129,10 @@ namespace Objects
 				{
 					DX11::InstructionBlock32	instruction;
 					TMatrix4<>		system;
-					bool			depthTest;
+					bool			depthTest,		//Indicates that the shape should depth-test against the terrain and other complex shapes
+									preRenderDepth = true,	//Effective only if @a depthTest is true. Indicates that this is a complex shape and should be depth-only pre-rendered
+									flareDisplay = false,	//Indicates that the shape is rendered using an add-blend function, and using a white color when not selected. Otherwise black is used, using regular alpha blending
+									selectedOnly = false;	//This shape should only be rendered for selected units
 				};
 
 				Buffer0<Shape>		localizableShapes;

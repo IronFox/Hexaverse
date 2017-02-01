@@ -11,6 +11,7 @@ namespace ConfigurationMode
 	void	SetActive(bool);
 	void	SetGameConfig(UINT32, RuntimeConfig::GameGoal, Grid::WorldDiscovery);
 	bool	IsActive();
+	bool	ViewingServerVersion();
 	void	RandomizeSeed();
 
 	/**
@@ -33,10 +34,17 @@ namespace ConfigurationMode
 	Executed if the user enters the Ctrl+C key combination
 	*/
 	void	OnCopy();
+	
 	/**
 	Executed if the user enters the Ctrl+V key combination
 	*/
 	void	OnPaste();
+
+	/**
+	Notifies the configuration mode of a new list of available planet presets
+	The specified list @a fleetingData will be adopted and left empty
+	*/
+	void	UpdatePlanetList(Array<String>&fleetingData);
 }
 
 #endif
