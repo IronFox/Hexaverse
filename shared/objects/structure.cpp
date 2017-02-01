@@ -2783,7 +2783,7 @@ namespace Objects
 			Super::DescribeType(label,  descFlags);
 			label.MarkBriefEnd();
 			label << "Enabled vehicle plants produce vehicles of arbitrary configuration at the expense of "
-			+String(ResourceTag(Resource::Minerals))+", "+String(ResourceTag(Resource::Energy))+", and "+String(TimeResourceTag())+"."
+			+String(ResourceTag(Resource::Minerals))+", and "+String(TimeResourceTag())+"."
 			" A vehicle plant that does not have access to the necessary resources switches off immediately."
 			" Vehicle plants should be placed so that any produced vehicles can stand in the immediate surroundings of the structure."
 			;

@@ -1,4 +1,5 @@
 v0.6.3
+	> Vehicle plants no longer require energy to operate.
 
 v0.6.2	[Jan 31 2017]
 	+ Added new dialog to remotely load server-known planet presets.
