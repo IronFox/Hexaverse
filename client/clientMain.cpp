@@ -2026,8 +2026,8 @@ bool loop()
 					textout << "Game Goal: "<<RuntimeConfig::gameGoal.ToString() << nl;
 					#ifdef _DEBUG
 						textout << "Access ID: " << Network::activeTokenString<<nl;
+						textout << "Phase: "<<RuntimeConfig::phase.ToString()<<nl;
 					#endif
-					textout << "Phase: "<<RuntimeConfig::phase.ToString()<<nl;
 					textout << "Round Number: "<<RuntimeConfig::roundNumber.main<<nl;
 					if (!Network::gameProgress.gameOver)
 					{
