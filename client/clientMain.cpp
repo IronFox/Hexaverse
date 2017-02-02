@@ -60,6 +60,7 @@
 #include "components/serverProcess.h"
 #include "components/audioInterface.h"
 #include "components/configurationMode.h"
+#include "components/objectAnimationRenderer.h"
 
 #include "rc/Resource.h"
 
@@ -3280,6 +3281,12 @@ void ParseKeyValue(const String&key, const String&value)
 			if (!RuntimeConfig::documentationRootFolder.DoesExist())
 				FileSystem::CreateDirectory(RuntimeConfig::documentationRootFolder);
 		}
+		elif(key == "animateObjectsHere")
+		{
+			FileSystem::Folder().FindFolder(PathString(value),RuntimeConfig::objectAnimationRootFolder,false);
+			if (!RuntimeConfig::objectAnimationRootFolder.DoesExist())
+				FileSystem::CreateDirectory(RuntimeConfig::objectAnimationRootFolder);
+		}
 		else
 			throw Except::Program::ParameterFault(CLOCATION, "`"+key+"` is not a recognized runtime parameter");
 	}
@@ -3741,7 +3748,9 @@ int main( int argc, const char* argv[])
 				LocalApplicationInterface::QueryNicknameIfEmpty();
 			}
 
-
+			if (RuntimeConfig::objectAnimationRootFolder.DoesExist())
+				ObjectAnimationRenderer::RenderTo(RuntimeConfig::objectAnimationRootFolder);
+			else
 			if (RuntimeConfig::documentationRootFolder.DoesExist())
 			{
 				{

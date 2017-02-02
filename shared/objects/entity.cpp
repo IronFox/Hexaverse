@@ -391,7 +391,7 @@ namespace Objects
 						outResult << "Health: " +String(this->health);
 			}
 			if (descFlags & DescIncludePrice)
-				outResult << "Price: "+String(ResourceTag(Resource::Minerals)) + String(" ") + String(this->GetConstructionCost());
+				outResult << "Price: "+String(ResourceTag(Resource::Minerals)) + String(this->GetConstructionCost());
 			if ((descFlags & DescIncludeUnitCount))
 			{
 				AppendDeploymentCount(outResult,owner);
