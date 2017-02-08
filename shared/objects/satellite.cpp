@@ -928,7 +928,7 @@ namespace Objects
 
 	
 	#ifndef CLIENT
-		/*virtual override*/ bool					Satellite::FillAttackQueue()
+		/*virtual override*/ bool					Satellite::FrontQueuePossibleAttacks()
 		{
 			if (!turret->CanAttack() || !HasAmmoForShot())
 			{

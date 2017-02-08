@@ -250,18 +250,20 @@ namespace Objects
 
 		}
 
-		/*virtual override*/ bool Tower::FillAttackQueue()
+		/*virtual override*/ bool Tower::FrontQueuePossibleAttacks()
 		{
 			if (!HasAmmoForShot())
 				return false;
 			//index_t freeSlots = attackQueue.Count() < t->GetAttacksPerRound() <  t->GetAttacksPerRound() - t->attackQueue.Count() : 0;
-			if ((int)attackQueue.Count() < CountPossibleAttacks())
+			bool rs = false;
+			while ((int)attackQueue.Count() < CountPossibleAttacks())
 			{
 				Grid::LCellIdI target;
-				return GetSentryTarget(*this,this->storage.level[turret->ammoType], TrajectoryEndPoint( location,GetEffectiveFoundationHeight()),*this,target) && AttackNext(target,true);
+				if (!GetSentryTarget(*this,this->storage.level[turret->ammoType], TrajectoryEndPoint( location,GetEffectiveFoundationHeight()),*this,target) || !AttackNext(target,true))
+					return rs;
+				rs = true;
 			}
-			else
-				return false;
+			return rs;
 
 		}
 

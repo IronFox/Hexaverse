@@ -118,7 +118,7 @@ namespace Objects
 			}
 		}
 
-		/*virtual override*/ bool Vehicle::FillAttackQueue()
+		/*virtual override*/ bool Vehicle::FrontQueuePossibleAttacks()
 		{
 			if (!turret->CanAttack() || !HasAmmoForShot())
 			{
@@ -138,11 +138,14 @@ namespace Objects
 					#endif
 				;
 
-				if (GetSentryTarget(*this, storage.level[turret->ammoType], TrajectoryEndPoint( location,base->height ),*this, target))
+				bool result = false;
+				while (		(!NextTaskIsAttack() || myTasks.GetOldest().foci.Count() < CountPossibleAttacks())   
+					&& GetSentryTarget(*this, storage.level[turret->ammoType], TrajectoryEndPoint( location,base->height ),*this, target))
 				{
-					EnqueueAttack(target);
-					return true;
+					FrontEnqueueAttack(target);
+					result = true;
 				}
+				return result;
 			}
 			//else
 				//return false;
@@ -447,6 +450,26 @@ namespace Objects
 			}
 		}
 
+		void	Vehicle::FrontEnqueueAttack(Grid::LCellIdI destination)
+		{
+			Grid::LCellIdI pointOfOrigin = location;
+			ASSERT__(!TasksAreLocked());
+			if (!HasTasks() || !myTasks.GetOldest().IsMode(CursorMode::AttackMode))
+			{
+				myTasks.PushFront(Task("Attack Position",destination,true,Task::Mode,CursorMode::AttackMode));
+				myTasks.GetOldest().Replot(pointOfOrigin,this,FocusChangeType::FullChange,true);
+				RegisterChange(TasksChanged,-1);
+			}
+			else
+			{
+				//if (!tasks.GetNewest().foci.Contains(destination))	//irrelevant. attack same location as often as you want
+				{
+					myTasks.GetOldest().foci.PushFront().target = destination;
+					myTasks.GetOldest().Replot(pointOfOrigin,this,FocusChangeType::FocusAppended,true);
+					RegisterChange(TasksChanged,-1);
+				}
+			}
+		}
 
 		bool	Vehicle::DirectTo(mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
 		{
