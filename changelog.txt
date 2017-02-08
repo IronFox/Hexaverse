@@ -1,5 +1,7 @@
-v0.6.3
+v0.6.3	[Feb 8 2017]
+	> When target mode is active with any unit selected, pressing the right mouse button will abort the mode.
 	> Vehicle plants no longer require energy to operate.
+	> Reduced size of Nexus bases.
 	* Fixed rare fatal client exception when failing to layout menu components.
 
 v0.6.2	[Jan 31 2017]

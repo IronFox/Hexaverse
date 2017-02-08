@@ -1935,7 +1935,8 @@ bool loop()
 			{
 				static Timer::Time	lastCheck = timer.Now();
 				if (!Dialog::serverChoice || timer.CheckIfOutdatedAndUpdate(lastCheck,1.f))
-					UpdateServerChoice();
+					if (!display.IsMinimized())
+						UpdateServerChoice();
 			}
 
 
@@ -2045,8 +2046,8 @@ bool loop()
 					textout << "Game Goal: "<<RuntimeConfig::gameGoal.ToString() << nl;
 					#ifdef _DEBUG
 						textout << "Access ID: " << Network::activeTokenString<<nl;
+						textout << "Phase: "<<RuntimeConfig::phase.ToString()<<nl;
 					#endif
-					textout << "Phase: "<<RuntimeConfig::phase.ToString()<<nl;
 					textout << "Round Number: "<<RuntimeConfig::roundNumber.main<<nl;
 					if (!Network::gameProgress.gameOver)
 					{
@@ -2645,6 +2646,12 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 
 		if (!AlsoControlsUnits)
 			return;
+
+		if (Objects::DisableModes(Network::ControlEnabled()))
+		{
+			OnTutorialsChanged();
+			return;
+		}
 
 		if (timer.GetSecondsSince(rightMouseDragBegun) < 0.2f && !rightMouseDragged)
 		{

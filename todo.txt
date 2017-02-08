@@ -1,10 +1,6 @@
-﻿* TEST AI
-* AI unit spawning causes server crash, but threat estimation in low-res mode is horrificly slow. Must adjust
+﻿Loading screen
 
-Loading screen
-Optionally broadcast research state to all clients
-Select planet type by name from interactive configurator
-
+Show base height in configuration mode
 
 
 resources 2.0:
@@ -12,7 +8,7 @@ resources 2.0:
 	+ New resource types from trees (natural compounds), and dendrites (vulcanic compounds)
 	+ Mix compounds and fuel/minerals to generate superior fuel and alloys for improved units?
 	
-smaller planets on average. three flexible sizes (current is probably largest)? 
+three flexible planet sizes (current is probably middle)? 
 
 alloy? resource type that is required for some constructions, and requires a special factory to make
 
@@ -74,17 +70,9 @@ split terraformers and constructors
 lava ship
 
 send entity id with server messages so user can click on the message to focus on them
-	/visual event log extracted from animation:
-	trajectories
-	explosion markers
-	damage markers
 better mine output (refinery)
-research
-	research concept, stations, states. AI? viruses?
-	virus infection and propagation (possibly from nexus ports - possibly same effect as emp)
-recycling
 
-
+laboratories have better yield if grouped but pose risk of virus changing lab group ownership to nexus
 
 
 
@@ -157,6 +145,9 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+Select planet type by name from interactive configurator
+* TEST AI
+* AI unit spawning causes server crash, but threat estimation in low-res mode is horrificly slow. Must adjust
 * Moved buttons bottom right to a vertical setup
 * Fixed: Hide/disable Poll messages 'Found X lobby match(es)' when session is in progress
 * Max repair height difference 0? Should be one

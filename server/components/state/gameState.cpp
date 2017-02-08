@@ -998,7 +998,19 @@ namespace Game
 			//	bool rebuild[BaseGrid::NumFamilies] = { false };
 
 				Grid::LowSetup::TDistanceField field;
-				static const int R = 5;
+				#ifdef LOWER_RESOLUTION_PLANET
+					static const int R = 4;
+					static const int MissileDistance = 4;
+					static const int RadarDistance = 3;
+					static const int OuterFactoryDistance = 2;
+					static const int MaxFactories = 3;
+				#else
+					static const int R = 5;
+					static const int MissileDistance = 5;
+					static const int RadarDistance = 4;
+					static const int OuterFactoryDistance = 3;
+					static const int MaxFactories = 4;
+				#endif
 
 				Grid::low.UpdatePlanarDistanceField(pole,R+1,field);
 
@@ -1088,7 +1100,7 @@ namespace Game
 					#if 1
 					if (Grid::low.grid.GetCell(i).family == 0)	//align of family members implies family zero members are along edges between nexus poles
 					{
-						if (field.distance[i] == 5)
+						if (field.distance[i] == MissileDistance)
 						{
 							#ifndef _DEBUG
 								std::shared_ptr<Objects::Tower> tower = To<Objects::Tower>::Cast(
@@ -1099,7 +1111,7 @@ namespace Game
 								Objects::InsertConstructed(tower,t);
 							#endif
 						}
-						if (field.distance[i] == 4)
+						if (field.distance[i] == RadarDistance)
 						{
 							std::shared_ptr<Objects::Tower> tower = To<Objects::Tower>::Cast(
 								Objects::GetPrototypeByName(ConstName::Type_RadarTower)->CreateNewInstance(Objects::Faction::nexus,
@@ -1109,32 +1121,69 @@ namespace Game
 							Objects::InsertConstructed(tower,t);
 						}
 
-						if (field.distance[i] == (2))
+						if (field.distance[i] == OuterFactoryDistance)
 						{
-							if (generatorCount == 4)
+							if (factoryCount == MaxFactories)
 							{
-								Objects::PMunitionStorage storage = To<Objects::MunitionStorage>::Cast(
-									Objects::MunitionStorage::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
-									Grid::LCellIdI(i,h),
-									0));
-								storage->CorrectTerrain(false,0);
-								storage->storage = storage->maxStorage;
-								Objects::InsertConstructed(storage,t);
-								alwaysOn << storage;
+								#ifdef LOWER_RESOLUTION_PLANET
+									Objects::PGenerator generator = To<Objects::Generator>::Cast(
+										Objects::Generator::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
+										Grid::LCellIdI(i,h),
+										0));
+									generator->CorrectTerrain(false,0);
+									Objects::InsertConstructed(generator,t);
+									generatorCount++;
+									alwaysOn << generator;	//only need three generators switched on
+								#else
+									Objects::PMunitionFactory factory = To<Objects::MunitionFactory>::Cast(
+										Objects::MunitionFactory::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
+										Grid::LCellIdI(i,h),
+										0));
+									factory->CorrectTerrain(false,0);
+									Objects::InsertConstructed(factory,t);
+									alwaysOn << factory;
+								#endif
 							}
 							else
 							{
-								Objects::PGenerator generator = To<Objects::Generator>::Cast(
-									Objects::Generator::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
+								Objects::PVehiclePlant plant = To<Objects::VehiclePlant>::Cast(
+									Objects::VehiclePlant::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
 									Grid::LCellIdI(i,h),
 									0));
-								generator->CorrectTerrain(false,0);
-								Objects::InsertConstructed(generator,t);
-								generatorCount++;
-								if (generatorCount < 4)
-									alwaysOn << generator;	//only need three generators switched on
+								plant->CorrectTerrain(false,0);
+								Objects::InsertConstructed(plant,t);
+								factoryCount++;
 							}
 						}
+
+						#ifndef LOWER_RESOLUTION_PLANET
+							if (field.distance[i] == (2))
+							{
+								if (generatorCount == 4)
+								{
+									Objects::PMunitionStorage storage = To<Objects::MunitionStorage>::Cast(
+										Objects::MunitionStorage::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
+										Grid::LCellIdI(i,h),
+										0));
+									storage->CorrectTerrain(false,0);
+									storage->storage = storage->maxStorage;
+									Objects::InsertConstructed(storage,t);
+									alwaysOn << storage;
+								}
+								else
+								{
+									Objects::PGenerator generator = To<Objects::Generator>::Cast(
+										Objects::Generator::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
+										Grid::LCellIdI(i,h),
+										0));
+									generator->CorrectTerrain(false,0);
+									Objects::InsertConstructed(generator,t);
+									generatorCount++;
+									if (generatorCount < 4)
+										alwaysOn << generator;	//only need three generators switched on
+								}
+							}
+						#endif
 
 						if (field.distance[i] == 1 /*|| field.distance[i] == 4*/)
 						{
@@ -1146,29 +1195,6 @@ namespace Game
 								connector->CorrectTerrain(false,0);
 								Objects::InsertConstructed(connector,t);
 								connectorCount++;
-							}
-						}
-						if (field.distance[i] == (3))
-						{
-							if (factoryCount == 4)
-							{
-								Objects::PMunitionFactory factory = To<Objects::MunitionFactory>::Cast(
-									Objects::MunitionFactory::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
-									Grid::LCellIdI(i,h),
-									0));
-								factory->CorrectTerrain(false,0);
-								Objects::InsertConstructed(factory,t);
-								alwaysOn << factory;
-							}
-							else
-							{
-								Objects::PVehiclePlant plant = To<Objects::VehiclePlant>::Cast(
-									Objects::VehiclePlant::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
-									Grid::LCellIdI(i,h),
-									0));
-								plant->CorrectTerrain(false,0);
-								Objects::InsertConstructed(plant,t);
-								factoryCount++;
 							}
 						}
 					}
