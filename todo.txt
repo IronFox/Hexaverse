@@ -1,6 +1,15 @@
 ﻿Loading screen
 
 Show base height in configuration mode
+reduce water transparency
+instant emp damage on nexus units in emp fields
+reduce nexus missile range
+faction spawning too close to hostile factions
+hoverformer sometimes tries building roads through buildings
+towers don't shoot twice automatically
+obliterate/self detonate has no visible price
+dedicated server should not start in interactive mode. Log whether in interactive mode/public/private
+fix invite (IsInLobby() is false in client)
 
 
 resources 2.0:

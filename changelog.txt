@@ -4,6 +4,7 @@ v0.6.3	[Feb 8 2017]
 	> Plane factories no longer require energy to operate.
 	> Reduced size of Nexus bases.
 	* Fixed rare fatal client exception when failing to layout menu components.
+	* Fixed rare fatal server exception when Nexus Port changes ownership.
 
 v0.6.2	[Jan 31 2017]
 	+ Added new dialog to remotely load server-known planet presets.
