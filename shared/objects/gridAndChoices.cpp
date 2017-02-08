@@ -1263,7 +1263,10 @@ namespace Objects
 				if (ws->IsEnabled())
 				{
 					if (refreshNetworkNow)
-						FATAL__("this should not happen anymore")
+					{
+						LogEvent(EventClass::Preset::debug,s.get(),"InsertConstructed(): refreshNetworkNow is true (this is unexpected)");	//i suspect ownership change of some enabled nexus port might cause this
+						//DBG_FATAL__("this should not happen anymore")
+					}
 					else
 						ws->SetEnabled(true,atTime,false,WorkingStructure::ForceEnable);
 					//if (!RefreshCompoundCoverageIfNeeded(atTime))
