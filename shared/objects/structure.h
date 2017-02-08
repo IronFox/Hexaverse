@@ -989,7 +989,7 @@ namespace Objects
 	public:
 		static const int			ConstructionSpeed = 20;
 		static const int			FuelDemand = 20;
-		static const int			EnergyConsumption = 20;
+		static const int			EnergyConsumption = 0;
 
 		static Buffer0<ConstName>	prototypes;
 
