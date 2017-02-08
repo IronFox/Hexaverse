@@ -195,7 +195,7 @@ namespace Objects
 		//TurretBase overrides:
 		virtual float			GetFlatAttackRange() const override;
 		#ifndef CLIENT
-			virtual bool		FillAttackQueue()override;
+			virtual bool		FrontQueuePossibleAttacks()override;
 		#endif
 
 		//WorldEntity overrides:

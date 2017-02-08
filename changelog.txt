@@ -6,6 +6,7 @@ v0.6.3	[Feb 8 2017]
 	* Fixed rare fatal client exception when failing to layout menu components.
 	* Fixed rare fatal server exception when Nexus Port changes ownership.
 	* Fixed Raptor not being able to fire at locations straight down.
+	* Fixed towers auto-firing only once per round even if they could fire multiple times.
 
 v0.6.2	[Jan 31 2017]
 	+ Added new dialog to remotely load server-known planet presets.

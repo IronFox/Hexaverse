@@ -464,7 +464,7 @@ namespace Objects
 
 		#ifndef CLIENT
 
-			/*virtual override*/ bool					Plane::FillAttackQueue()
+			/*virtual override*/ bool					Plane::FrontQueuePossibleAttacks()
 			{
 				if (!turret->CanAttack() || !HasAmmoForShot())
 				{
@@ -483,11 +483,21 @@ namespace Objects
 						#endif
 					;
 
-					if (GetSentryTarget(*this, storage.level[turret->ammoType], TrajectoryEndPoint( location ),*this, target))
+					bool result = false;
+					while (		(!NextTaskIsAttack() || (int)myTasks.GetOldest().foci.Count() < CountPossibleAttacks())   
+						&& GetSentryTarget(*this, storage.level[turret->ammoType], TrajectoryEndPoint( location),*this, target))
 					{
-						AttackNext(target,true);
-						return true;
+						AttackFirst(target,true);
+						result = true;
 					}
+					return result;
+
+
+					//if (GetSentryTarget(*this, storage.level[turret->ammoType], TrajectoryEndPoint( location ),*this, target))
+					//{
+					//	AttackNext(target,true);
+					//	return true;
+					//}
 				}
 				//else
 					//return false;
@@ -515,7 +525,7 @@ namespace Objects
 					return false;
 				}
 				Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
-				if (target.stackID == pointOfOrigin.stackID && turret->trajectoryType != TrajectoryType::VerticalBeam)
+				if (target == pointOfOrigin && turret->trajectoryType != TrajectoryType::VerticalBeam)
 				{
 					LogEvent(EventClass::Preset::commandRejected,this,"Destination too close");
 					return false;
@@ -552,6 +562,56 @@ namespace Objects
 				return true;
 
 			}
+
+			/*virtual override*/ bool	Plane::AttackFirst(Grid::LCellIdI target, bool autoTarget)
+			{
+				ASSERT__(!TasksAreLocked());
+				if (!CanAttack())
+					return false;
+				if (myTasks.Count() >= MaxStructureTasks)
+				{
+					LogEvent(EventClass::Preset::commandRejected,this,"Max queue length ("+String(MaxStructureTasks)+") reached");
+					return false;
+				}
+				Grid::LCellIdI pointOfOrigin = location;
+				if (target == pointOfOrigin && turret->trajectoryType != TrajectoryType::VerticalBeam)
+				{
+					LogEvent(EventClass::Preset::commandRejected,this,"Destination too close");
+					return false;
+				}
+				if (turret->trajectoryType != TrajectoryType::VerticalBeam)
+				{
+					//Grid::LCellIdI pointOfOrigin = location+1;
+
+
+					//float targetDistance = Grid::GetGeometricDistance(pointOfOrigin,target);
+
+					if (!CanHitFrom(pointOfOrigin,TrajectoryEndPoint( target )))
+					{
+						LogEvent(EventClass::Preset::commandRejected,this,"Destination out of range");
+						return false;
+					}
+				}
+
+				if (!HasTasks() || !myTasks.GetOldest().IsMode(CursorMode::AttackMode))
+				{
+					myTasks.PushFront(Task("Attack Position",target,false,Task::Mode,CursorMode::AttackMode));
+					myTasks.GetOldest().Replot(pointOfOrigin,this,FocusChangeType::FullChange,true);
+					RegisterChange(TasksChanged,-1);
+				}
+				else
+				{
+					//if (!tasks.GetNewest().foci.Contains(destination))	//irrelevant. attack same location as often as you want
+					{
+						myTasks.GetOldest().foci.PushFront().target = target;
+						myTasks.GetOldest().Replot(pointOfOrigin,this,FocusChangeType::FocusAppended,true);
+						RegisterChange(TasksChanged,-1);
+					}
+				}
+				return true;
+
+			}
+
 		#endif
 
 	}

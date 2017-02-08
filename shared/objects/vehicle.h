@@ -57,8 +57,9 @@ namespace Objects
 		#ifndef CLIENT
 			virtual bool		DirectTo(mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 
-			virtual bool		FillAttackQueue()override;
+			virtual bool		FrontQueuePossibleAttacks()override;
 			void				EnqueueAttack(Grid::LCellIdI destination);
+			void				FrontEnqueueAttack(Grid::LCellIdI destination);
 
 
 

@@ -133,7 +133,7 @@ namespace Objects
 
 		#ifndef CLIENT
 			virtual void		Attack(float&currentTime) = 0;
-			virtual bool		FillAttackQueue() = 0;
+			virtual bool		FrontQueuePossibleAttacks() = 0;
 		#endif
 	};
 

@@ -1798,7 +1798,7 @@ namespace Objects
 		virtual bool				HasAmmoForShot() override;
 		#ifndef CLIENT
 			virtual void			Attack(float&)	override;
-			virtual bool			FillAttackQueue() override;
+			virtual bool			FrontQueuePossibleAttacks() override;
 		#endif
 	};
 

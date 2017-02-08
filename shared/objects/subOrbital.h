@@ -65,6 +65,7 @@ namespace Objects
 				@return true, if changes were detected and applied, false otherwise
 				*/
 				bool				AttackNext(Grid::LCellIdI target, bool autoTarget);
+				bool				AttackFirst(Grid::LCellIdI target, bool autoTarget);
 				bool				RefreshGroundSensor(float&atTime, bool checkChangesNow=true, Buffer0<PWorldEntity>*newContacts = nullptr);
 			#endif
 
@@ -79,7 +80,7 @@ namespace Objects
 			virtual float			GetFlatAttackRange() const override;
 			virtual String			DescribeFlatAttackRange() const override;
 			#ifndef CLIENT
-				virtual bool		FillAttackQueue()override;
+				virtual bool		FrontQueuePossibleAttacks()override;
 			#endif
 
 			//WorldEntity overrides:

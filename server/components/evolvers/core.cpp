@@ -236,10 +236,10 @@ namespace Evolver
 				if (!b || !b->turret->CanAttack() || !b->CountPossibleAttacks())
 					return;
 
-				if (v->IsSentry())
+				//if (v->IsSentry())
 				{
-					if (v->myTasks.IsEmpty())
-						v->FillAttackQueue();
+					if (v->myTasks.IsEmpty() || (b->turret->ignoresVehicleMotion && !v->NextTaskIsAttack()))
+						v->FrontQueuePossibleAttacks();
 				}
 
 				if (v->NextTaskIsAttack())
@@ -274,7 +274,7 @@ namespace Evolver
 
 					if (t->turret->CanAttack())
 					{
-						if (t->attackQueue.IsEmpty() && !t->FillAttackQueue())
+						if (t->attackQueue.IsEmpty() && !t->FrontQueuePossibleAttacks())
 							continue;
 						if (!t->HasAmmoForShot())
 						{
