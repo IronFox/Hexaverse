@@ -363,7 +363,7 @@ namespace Objects
 						{
 							for (const auto&destination : waypoints)
 							{
-								if (destination.stackID != location.stackID || turret->trajectoryType == TrajectoryType::VerticalBeam)
+								if (destination != location || turret->trajectoryType == TrajectoryType::VerticalBeam)
 								{
 									if (turret->trajectoryType != TrajectoryType::VerticalBeam)
 									{
@@ -380,7 +380,7 @@ namespace Objects
 										return false;
 								}
 								else
-									LogEvent(EventClass::Preset::commandRejected,this,"Attempting to attack current location");
+									LogEvent(EventClass::Preset::commandRejected,this,"Attempting to attack own location");
 							}
 						}
 						else
