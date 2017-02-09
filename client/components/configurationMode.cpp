@@ -17,7 +17,7 @@ namespace ConfigurationMode
 		Objects::Storage serverObjects;
 		bool isActive = false;
 		Grid::ExtendedPlanetConfig	config, serverConfig;
-		UINT32 seed = 0;
+		UINT32 seed = 0,serverSeed=0;
 		Protocol::GameConfig	gameConfig;
 		Random rng;
 		StringTable<String>		declarations;
@@ -277,6 +277,7 @@ namespace ConfigurationMode
 		void UploadToServer()
 		{
 			serverConfig = config;
+			serverSeed = seed;
 			RefreshButtonStates();
 			Network::Channels::planetConfig.SendTo(Network::client,config);
 		}
@@ -954,6 +955,7 @@ namespace ConfigurationMode
 						Objects::PBaseCommand(new Objects::CustomIconCommand("Reset to server config and rebuild local planet","Download from Server",[]()
 						{
 							config = serverConfig;
+							seed = serverSeed;
 							Update();
 						},
 						[](bool){return Objects::BaseCommand::Flags::IsEnabled;}
