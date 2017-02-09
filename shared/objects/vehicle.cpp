@@ -139,7 +139,7 @@ namespace Objects
 				;
 
 				bool result = false;
-				while (		(!NextTaskIsAttack() || myTasks.GetOldest().foci.Count() < CountPossibleAttacks())   
+				while (		(!NextTaskIsAttack() || (int)myTasks.GetOldest().foci.Count() < CountPossibleAttacks())   
 					&& GetSentryTarget(*this, storage.level[turret->ammoType], TrajectoryEndPoint( location,base->height ),*this, target))
 				{
 					FrontEnqueueAttack(target);
