@@ -1187,7 +1187,7 @@ int main( int argc, const char* argv[])
 		Logging::WriteEvent(EventSignificance::Important,"Server "+Network::serverID.ToString()+"/"+UDPBroadCast::packet.version+" is online.",nullptr,nullptr,Objects::OwnerParameter());
 		FileIO::RefreshWindowTitle();
 
-	
+
 		LogConfig("AI is configured as follows:");
 		if (Game::Config::Nexus::enableAI)
 		{
@@ -1273,6 +1273,15 @@ int main( int argc, const char* argv[])
 			LogConfig(" -Auto-saves will be created every "+String(FileIO::Config::saveEveryNRounds)+" round(s).");
 		if (FileIO::Config::saveWhenAllQuit)
 			LogConfig(" -Auto-saves will be created when all quit.");
+
+
+		if (ConfigurationMode::IsActive())
+		{
+			LogConfig("");
+			LogConfig("Server is running in interactive configuration mode.");
+			LogConfig("Log in from localhost to configure and activate.");
+		}
+
 
 
 		//FATAL__("test");
