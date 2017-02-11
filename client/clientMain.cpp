@@ -1603,6 +1603,8 @@ bool loop()
 
 
 	#ifdef HAS_WINDOW
+		ConfigurationMode::Tick();
+
 		bool alwaysDay = RuntimeConfig::FromFile::alwaysDay && !Camera::autoRotation;
 
 		if (!alwaysDay)

@@ -83,10 +83,10 @@ namespace Network
 			Network::RestartSession();
 		else
 		{
+			Channels::planetConfig.SendTo(server,Grid::currentPlanetConfig,(UINT)UserLevel::PlanetConfigurator);
 			World::Network::SendChangedFamilies();
 
 
-			Channels::planetConfig.SendTo(server,Grid::currentPlanetConfig,(UINT)UserLevel::PlanetConfigurator);
 		}
 	}
 

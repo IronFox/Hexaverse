@@ -22,6 +22,11 @@ namespace ConfigurationMode
 		Random rng;
 		StringTable<String>		declarations;
 		Array<String>			planetList;
+		Timer::Time				lastLocalChange=timer.Now();
+
+		index_t					sentVersion = 0,
+								receivedVersion = 0,
+								localVersion = 0;
 
 		GUI::PWindow			planetListWindow;
 
@@ -165,6 +170,9 @@ namespace ConfigurationMode
 
 		void Update(bool forceRebuild = true)
 		{
+			lastLocalChange = timer.Now();
+			if (localVersion == sentVersion)
+				localVersion++;
 			config.SetSeed(seed);
 
 			if (isActive)
@@ -459,12 +467,12 @@ namespace ConfigurationMode
 
 		Objects::PCommandGroup MakeIntButtons(const Objects::PCommandGroup&group, int&value, const int&defValue, int min, int max)
 		{
-			Objects::PIconCommand reset(new Objects::CustomIconCommand("Reset","Undo",[&value,&defValue]()
-			{
-				value = defValue;
-				Update();
-			},[](bool){return Objects::BaseCommand::Flags::IsEnabled;}));
-			reset->customLabel << "Resets this setting to the current server value";
+			//Objects::PIconCommand reset(new Objects::CustomIconCommand("Reset","Undo",[&value,&defValue]()
+			//{
+			//	value = defValue;
+			//	Update();
+			//},[](bool){return Objects::BaseCommand::Flags::IsEnabled;}));
+			//reset->customLabel << "Resets this setting to the current server value";
 			Objects::PIconCommand decrease(new Objects::IconCommand("Decrease",[&value,min]()
 			{
 				if (value > min)
@@ -527,7 +535,7 @@ namespace ConfigurationMode
 			setMax->customLabel << "Sets this setting to the maximum possible value ("+String(max)+")";
 
 
-			group->Add(reset);
+//			group->Add(reset);
 			group->Add(decrease);
 			group->Add(increase);
 			group->Add(decreaseFast);
@@ -541,12 +549,12 @@ namespace ConfigurationMode
 		{
 			float min = value / 10.f;
 			float max = value * 10.f;
-			Objects::PIconCommand reset(new Objects::CustomIconCommand("Reset","Undo",[&value,&defValue]()
-			{
-				value = defValue;
-				Update();
-			},[](bool){return Objects::BaseCommand::Flags::IsEnabled;}));
-			reset->customLabel << "Resets this setting to the current server value";
+			//Objects::PIconCommand reset(new Objects::CustomIconCommand("Reset","Undo",[&value,&defValue]()
+			//{
+			//	value = defValue;
+			//	Update();
+			//},[](bool){return Objects::BaseCommand::Flags::IsEnabled;}));
+			//reset->customLabel << "Resets this setting to the current server value";
 			Objects::PIconCommand decrease(new Objects::IconCommand("Decrease",[&value,min]()
 			{
 				if (value > min)
@@ -568,7 +576,7 @@ namespace ConfigurationMode
 			},[&value,max](bool){return value < max ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
 			increase->customLabel << "Increases this setting by 20%";
 
-			group->Add(reset);
+//			group->Add(reset);
 			group->Add(decrease);
 			group->Add(increase);
 			return group;
@@ -597,12 +605,13 @@ namespace ConfigurationMode
 		template <typename T=BYTE>
 		void MakeMaterialChoice(const Objects::PCommandGroup&group, T&value, const T&defValue, MaterialDialog&dialog)
 		{
-			Objects::PIconCommand reset(new Objects::CustomIconCommand("Reset","Undo",[&value,defValue]()
+/*			Objects::PIconCommand reset(new Objects::CustomIconCommand("Reset","Undo",[&value,defValue]()
 			{
 				value = defValue;
 				Update();
 			},[](bool){return Objects::BaseCommand::Flags::IsEnabled;}));
 			reset->customLabel << "Resets this material to the current server value";
+			*/
 			Objects::PBaseCommand choose(new Objects::IconCommand("Choose Material",[&value,&dialog]()
 			{
 				dialog.SetCurrent(value);
@@ -616,7 +625,7 @@ namespace ConfigurationMode
 			[](bool){return Objects::BaseCommand::Flags::IsEnabled;}
 			));
 
-			group->Add(reset);
+//			group->Add(reset);
 			group->Add(choose);
 		}
 
@@ -940,46 +949,46 @@ namespace ConfigurationMode
 						[](bool){return Objects::BaseCommand::Flags::IsEnabled;}
 						))
 					);
-			buttons << std::make_pair(int2(at++,0),
-						Objects::PBaseCommand(new Objects::CustomIconCommand("Commit changes and rebuild server planet","Upload to Server",[]()
-						{
-							UploadToServer();
-							//Update();
-						},
-						[](bool){
-						return (flashUploadButton ? Objects::BaseCommand::Flags::SoftFlashing : Objects::BaseCommand::Flags::None) |  Objects::BaseCommand::Flags::IsEnabled;
-						}
-						))
-					);
-			buttons	<< std::make_pair(int2(at++,0),
-						Objects::PBaseCommand(new Objects::CustomIconCommand("Reset to server config and rebuild local planet","Download from Server",[]()
-						{
-							config = serverConfig;
-							seed = serverSeed;
-							Update();
-						},
-						[](bool){return Objects::BaseCommand::Flags::IsEnabled;}
-						))
-					);
-			buttons << std::make_pair(int2(at++,0),
-						Objects::PBaseCommand(new Objects::CustomIconCommand("View server version","View Server Version",[]()
-						{
-							if (clientWorldLoaded)
-							{
-								LoadServerWorld(false);
-								RestoreServerObjects();
-							}
-							else
-							{
-								LoadClientWorld();
-							}
-							//Update();
-						},
-						[](bool){
-						return (!clientWorldLoaded ? Objects::BaseCommand::Flags::IsPermaActive : Objects::BaseCommand::Flags::None) | Objects::BaseCommand::Flags::IsEnabled;
-						}
-						))
-					);
+			//buttons << std::make_pair(int2(at++,0),
+			//			Objects::PBaseCommand(new Objects::CustomIconCommand("Commit changes and rebuild server planet","Upload to Server",[]()
+			//			{
+			//				UploadToServer();
+			//				//Update();
+			//			},
+			//			[](bool){
+			//			return (flashUploadButton ? Objects::BaseCommand::Flags::SoftFlashing : Objects::BaseCommand::Flags::None) |  Objects::BaseCommand::Flags::IsEnabled;
+			//			}
+			//			))
+			//		);
+			//buttons	<< std::make_pair(int2(at++,0),
+			//			Objects::PBaseCommand(new Objects::CustomIconCommand("Reset to server config and rebuild local planet","Download from Server",[]()
+			//			{
+			//				config = serverConfig;
+			//				seed = serverSeed;
+			//				Update();
+			//			},
+			//			[](bool){return Objects::BaseCommand::Flags::IsEnabled;}
+			//			))
+			//		);
+			//buttons << std::make_pair(int2(at++,0),
+			//			Objects::PBaseCommand(new Objects::CustomIconCommand("View server version","View Server Version",[]()
+			//			{
+			//				if (clientWorldLoaded)
+			//				{
+			//					LoadServerWorld(false);
+			//					RestoreServerObjects();
+			//				}
+			//				else
+			//				{
+			//					LoadClientWorld();
+			//				}
+			//				//Update();
+			//			},
+			//			[](bool){
+			//			return (!clientWorldLoaded ? Objects::BaseCommand::Flags::IsPermaActive : Objects::BaseCommand::Flags::None) | Objects::BaseCommand::Flags::IsEnabled;
+			//			}
+			//			))
+			//		);
 			buttons	<< std::make_pair(int2(at++,0),
 						Objects::PBaseCommand(new Objects::CustomIconCommand("Randomize seeds and rebuild using current config","Randomize",[]()
 						{
@@ -1032,14 +1041,25 @@ namespace ConfigurationMode
 	void	Update(const Grid::ExtendedPlanetConfig&cfg)
 	{
 		using namespace Detail;
-		seed = cfg.lastSeed;
-		if (!clientWorldBuilt)
-			config = cfg;
-		serverConfig = cfg;
-		if (clientWorldLoaded)
-			Update();
-		else
-			cfg.Apply();
+
+		receivedVersion++;
+		if (receivedVersion >= sentVersion)
+		{
+			receivedVersion = sentVersion;
+
+			if (RestoreServerWorld())
+			{
+				seed = cfg.lastSeed;
+				if (!clientWorldBuilt)
+					config = cfg;
+				serverConfig = cfg;
+				//if (clientWorldLoaded)
+				//	Update();
+				//else
+					cfg.Apply();
+				World::allowRecompilation = false;
+			}
+		}
 	}
 
 	void	SetGameConfig(UINT32 gameFlags, RuntimeConfig::GameGoal goal, Grid::WorldDiscovery disc)
@@ -1062,6 +1082,7 @@ namespace ConfigurationMode
 			showDiscovery = false;
 			serverObjects.Clear();
 		}
+		localVersion = sentVersion = receivedVersion = 0;
 		Create();
 		UI::HexGrid::Configure(Objects::selectedEntity);
 
@@ -1090,10 +1111,31 @@ namespace ConfigurationMode
 		return true;
 	}
 
-
-	void	RestoreServerWorld()
+	void	SignalServerWorldUpdateCompleted()
 	{
+		using namespace Detail;
+		if (!isActive)
+			return;
+
+		ASSERT__(!clientWorldLoaded);
+
 		Detail::LoadServerWorld(true);
+		for (index_t i = 0; i< Grid::WorldDiscovery::N; i++)
+		{
+			clientWorld[i] = serverWorld[i];
+			clientWorld[i].isLoaded = false;
+		}
+	}
+
+	bool	RestoreServerWorld()
+	{
+		if (!Detail::isActive)
+			return true;
+		if (Detail::receivedVersion != Detail::localVersion)
+			return false;
+		Detail::LoadServerWorld(true);
+		//World::allowRecompilation = false;
+		return true;
 	}
 	void	RestoreServerObjects()
 	{
@@ -1120,6 +1162,16 @@ namespace ConfigurationMode
 		if (Detail::isActive)
 			Detail::Clipboard::ImportPlanet();
 	}
+
+	void	Tick()
+	{
+		if (Detail::isActive && Detail::localVersion > Detail::sentVersion && timer.GetSecondsSince(Detail::lastLocalChange) > 1)
+		{
+			Detail::sentVersion = Detail::localVersion;
+			Detail::UploadToServer();
+		}
+	}
+
 
 
 	void	UpdatePlanetList(Array<String>&fleetingData)
