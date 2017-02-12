@@ -707,7 +707,7 @@ namespace Dialog
 
 	size_t	CharLength(char c)
 	{
-		return (size_t)textout.getFont().GetWidth(c);
+		return (size_t)textout.GetFont().GetWidth(c);
 	}
 
 

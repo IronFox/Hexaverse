@@ -197,13 +197,13 @@
 			//display.SetObjectMatrix()
 			//if (!target)
 			//{
-			//	textout.pushState();
-			//	textout.setScale(0.2,0.2);
+			//	textout.PushState();
+			//	textout.SetScale(0.2,0.2);
 			//	display.SetRasterizer(true,false);
 			//	textout.locate(0,0,1);
-			//	textout.color(1,1,1);
+			//	textout.SetColor(1,1,1);
 			//	textout << "test";
-			//	textout.popState();
+			//	textout.PopState();
 
 			//}
 
@@ -236,15 +236,15 @@
 
 		void	Gauge::RenderListText(int y)
 		{
-			textout.pushState();
+			textout.PushState();
 			//textout.locate(projectedTop);
-			textout.locate(-1.f + 0.01f,-1.f + textout.getScaledHeight()*1.2f*(y+5));
+			textout.MoveTo(-1.f + 0.01f,-1.f + textout.GetScaledHeight()*1.2f*(y+5));
 
 			//textout.SetLine(-1);
 			textout << myTag;
 			
 			
-			textout.color(color * 0.5f + float3(0.5f));
+			textout.SetColor(color * 0.5f + float3(0.5f));
 			if (changePerRound > 0)
 			{
 				textout << "+";
@@ -253,76 +253,76 @@
 			else
 				if (changePerRound < 0)
 				{
-					textout.color(1,0.6,0.5);
+					textout.SetColor(1,0.6,0.5);
 					Write(changePerRound);
-					textout.color(color * 0.5f + float3(0.5f));
+					textout.SetColor(color * 0.5f + float3(0.5f));
 				}
 			if (max > 0)
-				textout.scale(1.2f,1.2f);
+				textout.Scale(1.2f,1.2f);
 			if (max > 0)
 			{
 				textout << ' ';
 				Write(current);
-				textout.scale(0.6f,0.6f);
+				textout.Scale(0.6f,0.6f);
 				textout <<'/';
 				Write(max);
-				textout.scale(1.f/0.6f,1.f/0.6f);
+				textout.Scale(1.f/0.6f,1.f/0.6f);
 			}
 			//textout << max;
-			textout.popState();
+			textout.PopState();
 
 
 		}
 
 		void	Gauge::RenderText()
 		{
-			//textout.setScale(0.2,0.2);	//leave it
+			//textout.SetScale(0.2,0.2);	//leave it
 			//display.SetRasterizer(true,false);
 			{
-				textout.pushState();
-				textout.color(color * 0.5f + float3(0.5f));
-				textout.locate(projectedBottom);
+				textout.PushState();
+				textout.SetColor(color * 0.5f + float3(0.5f));
+				textout.MoveTo(projectedBottom);
 				textout.SetLine(-1);
 				textout << current << nl;
-				textout.popState();
+				textout.PopState();
 			}
 			if (max)
 			{
-				textout.pushState();
-				textout.locate(projectedMax);
-				textout.scale(0.6f,0.6f);
+				textout.PushState();
+				textout.MoveTo(projectedMax);
+				textout.Scale(0.6f,0.6f);
 				textout.SetLine(-1);
 				textout << max;
-				textout.popState();
+				textout.PopState();
 			}
 
 			if (changePerRound != 0)
 			{
-				textout.pushState();
-				textout.locate(projectedDelta.xy);
-				textout.scale(0.8f,0.8f);
+				textout.PushState();
+				textout.MoveTo(projectedDelta.xy);
+				textout.Scale(0.8f,0.8f);
 				textout.SetLine(-1);
 				if (changePerRound > 0)
 				{
-					textout.color(color);
+					textout.SetColor(color);
 					textout << '+';
 				}
 				else
-					textout.color(1,0.6,0.5);
+					textout.SetColor(1,0.6,0.5);
 				textout << changePerRound;
-				textout.popState();
+				textout.PopState();
 			}
 			
 			{
-				textout.pushState();
+				textout.PushState();
 				//textout.locate(projectedTop);
-				textout.scale(0.6f,0.6f);
-				textout.locate(projectedTop.x,projectedTop.y + textout.getScaledHeight()*2.5f);
+				textout.Scale(0.6f,0.6f);
+				textout.MoveTo(projectedTop.x,projectedTop.y + textout.GetScaledHeight()*2.5f);
 
 				//textout.SetLine(-1);
 				textout << myTag;
 				//textout << max;
-				textout.popState();
+				textout.PopState();
 			}
 			
 			//RenderIcon(projectedTop);
@@ -1279,9 +1279,9 @@
 					//tooltips
 					display.pick(UI::textoutCamera);
 
-					textout.pushState();
+					textout.PushState();
 					float2 base = Engine::mouse.location.windowRelative * 2.f - 1.f;
-					textout.scale(2.5f,2.5f);
+					textout.Scale(2.5f,2.5f);
 
 					SurfaceRenderer::SetColor(float4(0,0,0,0.9f));
 					if (hoveringWidth == 0)
@@ -1290,28 +1290,28 @@
 						{
 							foreach (hoveringText.wrappedLines,t)
 								if (t->second)
-									hoveringWidth = std::max(hoveringWidth, textout.getScaledWidth(t->first));
+									hoveringWidth = std::max(hoveringWidth, textout.QueryScaledWidth(t->first));
 						}
 						else
 							foreach (hoveringText.wrappedLines,t)
-								hoveringWidth = std::max(hoveringWidth, textout.getScaledWidth(t->first));
+								hoveringWidth = std::max(hoveringWidth, textout.QueryScaledWidth(t->first));
 					}
 				
 					count_t lineCount = hoveringBrief ? hoveringText.CountWrappedBriefLines() : hoveringText.wrappedLines.Count();
-					float h = textout.getScaledHeight()*(lineCount-1);
+					float h = textout.GetScaledHeight()*(lineCount-1);
 					Rect<> r;
 
 					if (hoveringOver->flipX)
 					{
 						if (hoveringOver->flipY)
 						{
-							textout.locate(base - float2(hoveringWidth,textout.getScaledHeight()));
-							r = Rect<>(base -float2(hoveringWidth,textout.getScaledHeight() + h+textout.getScaledHeight()),base + float2(0,-textout.getScaledHeight()*0.8f));
+							textout.MoveTo(base - float2(hoveringWidth,textout.GetScaledHeight()));
+							r = Rect<>(base -float2(hoveringWidth,textout.GetScaledHeight() + h+textout.GetScaledHeight()),base + float2(0,-textout.GetScaledHeight()*0.8f));
 						}
 						else
 						{
-							textout.locate(base + float2(-hoveringWidth,h + textout.getScaledHeight()));
-							r = Rect<>(base-float2(hoveringWidth,0) ,base + float2(0,h + textout.getScaledHeight()*1.2f));
+							textout.MoveTo(base + float2(-hoveringWidth,h + textout.GetScaledHeight()));
+							r = Rect<>(base-float2(hoveringWidth,0) ,base + float2(0,h + textout.GetScaledHeight()*1.2f));
 						}
 					}
 					else
@@ -1320,13 +1320,13 @@
 
 						if (hoveringOver->flipY)
 						{
-							textout.locate(base - float2(0,textout.getScaledHeight()));
-							r = Rect<>(base -float2(0,textout.getScaledHeight() + h+textout.getScaledHeight()),base + float2(hoveringWidth,-textout.getScaledHeight()*0.8f));
+							textout.MoveTo(base - float2(0,textout.GetScaledHeight()));
+							r = Rect<>(base -float2(0,textout.GetScaledHeight() + h+textout.GetScaledHeight()),base + float2(hoveringWidth,-textout.GetScaledHeight()*0.8f));
 						}
 						else
 						{
-							textout.locate(base + float2(0,h + textout.getScaledHeight()));
-							r = Rect<>(base ,base + float2(hoveringWidth,h + textout.getScaledHeight()*1.2f));
+							textout.MoveTo(base + float2(0,h + textout.GetScaledHeight()));
+							r = Rect<>(base ,base + float2(hoveringWidth,h + textout.GetScaledHeight()*1.2f));
 						}
 					}
 
@@ -1339,11 +1339,11 @@
 					SurfaceRenderer::Rasterize(r);
 					SurfaceRenderer::Flush();
 
-					textout.color(1,1,1);
+					textout.SetColor(1,1,1);
 					foreach (hoveringText.wrappedLines,l)
 						if (!hoveringBrief || l->second)
 							textout << l->first << nl;
-					textout.popState();
+					textout.PopState();
 				}
 
 
@@ -1435,7 +1435,7 @@
 
 				//camera.UpdateProjection2(-1,-1,-1+2.f * display.pixelAspect(),1,-1,1);
 				float len = 300.f / display.clientWidth();
-				textout.locate(1.f - len,0.95f);
+				textout.MoveTo(1.f - len,0.95f);
 
 
 
@@ -1723,12 +1723,12 @@
 			if (resourcesAsList)
 			{
 				display.pick(textoutCamera);
-					textout.pushState();
-					textout.scale(2.5f,2.5f);
-					float lineHeight = textout.getScaledHeight()*1.2f;
+					textout.PushState();
+					textout.Scale(2.5f,2.5f);
+					float lineHeight = textout.GetScaledHeight()*1.2f;
 					SurfaceRenderer::SetColor(float4(0,0,0,0.6f));
 					float w = 0.2f / display.pixelAspect();
-					//textout.locate(-1.f + 0.01f,-1.f + textout.getScaledHeight()*1.2f*(y+6));
+					//textout.locate(-1.f + 0.01f,-1.f + textout.GetScaledHeight()*1.2f*(y+6));
 					Rect<> t(-1,lineHeight*4.f-1.f,w*2.f - 1.f,lineHeight*11.5f - 1.f);
 					SurfaceRenderer::Rasterize(
 						float2(t.x.min,t.y.min),float4(0,0,0,0.8f),
@@ -1737,8 +1737,8 @@
 						float2(t.x.min,t.y.max),float4(0,0,0,0.8f)
 					);
 					SurfaceRenderer::Flush();
-					//textout.scale(4.f,4.f);
-					//textout.color(1,1,1);
+					//textout.Scale(4.f,4.f);
+					//textout.SetColor(1,1,1);
 
 					#ifndef NO_HIBERNATION
 						trafficGauge.RenderListText(0);	//bottom
@@ -1752,7 +1752,7 @@
 						}
 					}
 
-					textout.popState();
+					textout.PopState();
 			}
 			else
 			{
@@ -1803,9 +1803,9 @@
 					}
 
 				display.pick(textoutCamera);
-					textout.pushState();
-					textout.scale(4.f,4.f);
-					textout.color(1,1,1);
+					textout.PushState();
+					textout.Scale(4.f,4.f);
+					textout.SetColor(1,1,1);
 
 					#ifndef NO_HIBERNATION
 						trafficGauge.RenderText();
@@ -1816,7 +1816,7 @@
 							res->RenderText();
 						}
 
-					textout.popState();
+					textout.PopState();
 			
 
 
@@ -1862,7 +1862,7 @@
 
 		float		OnTag(const float3&at, char tagChar, float scaleX, float scaleY)
 		{
-	//		float2 at = float2(textout.state.left+0.015,textout.state.top - textout.getScaledHeight() * (float(textout.state.line)-0.5f));
+	//		float2 at = float2(textout.state.left+0.015,textout.state.top - textout.GetScaledHeight() * (float(textout.state.line)-0.5f));
 
 			index_t i = tagChar - tagOffset;
 	//		float2 p = at.xy;
@@ -2035,9 +2035,9 @@
 				if (h->IsHibernating())
 				{
 					color = float3(0.5f);
-					cachedLines.color(0.6,1,1);
+					cachedLines.SetColor(0.6,1,1);
 					cachedLines << " Hibernating" << nl;
-					cachedLines.color(color);
+					cachedLines.SetColor(color);
 				}
 			#endif
 			if (e.empDamageLevel)
@@ -2478,21 +2478,21 @@
 
 			UpdateCacheIfNeeded(e);
 			
-			//textout.getActiveFont()->EndTagMode();
-			textout.pushState();
+			//textout.GetActiveFont()->EndTagMode();
+			textout.PushState();
 
 			float len = 300.f / display.clientWidth();
 			//if (len == 0)
-				//len = textout.scaledWidth("012345678901234567890123456789012345");
-			textout.locate(1.f - len,0.95f);
+				//len = textout.GetScaledWidth("012345678901234567890123456789012345");
+			textout.MoveTo(1.f - len,0.95f);
 
 			foreach (cachedLines,l)
 			{
-				textout.color(l->color);
+				textout.SetColor(l->color);
 				textout << l->text << nl;
 			}
 
-			textout.popState();
+			textout.PopState();
 	
 		}
 
