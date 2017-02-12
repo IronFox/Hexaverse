@@ -9,7 +9,7 @@ namespace World
 
 	Grid::WorldData	spectatorWorldState;
 	bool			terrainChanged=false;
-	UINT32			empZonesLocked = 0, unlockedEMPZones = 0xFFFF;
+	UINT16			empZonesLocked = 0, unlockedEMPZones = 0xFFFF;
 	TUniqueID		worldID;
 
 
@@ -494,25 +494,26 @@ namespace World
 			}
 				
 			SetUnlockedEMPZones(unlocked);
-
-			Channels::lockEmpZones.SendTo(::Network::server,empZonesLocked,2);
 		}
 		else
 		{
-			if (empZonesLocked != 0)
-			{
-				empZonesLocked = 0;
-				Channels::lockEmpZones.SendTo(::Network::server,empZonesLocked,2);
-			}
+			SetUnlockedEMPZones(NumZones);
 		}
-
 	}
 
 
 	void		SetUnlockedEMPZones(int unlocked)
 	{
-		Grid::empZonesUnlocked = unlockedEMPZones = ((1<<unlocked) - 1);
-		Grid::empZonesLocked = empZonesLocked = ((1 << 12)-1)  & ~unlockedEMPZones;
+		const UINT16 newUnlocked = ((1<<unlocked) - 1);
+		if (unlockedEMPZones == newUnlocked)
+			return;
+		Grid::empZonesUnlocked = unlockedEMPZones = newUnlocked;
+		Grid::empZonesLocked = empZonesLocked = AllZones  & ~unlockedEMPZones;
+		Channels::lockEmpZones.SendTo(::Network::server,empZonesLocked,Channels::FactionLevel);
+
+		float t = 0;
+		Game::UpdateResidualEMPDamage(t);
+
 	}
 
 

@@ -908,7 +908,12 @@ namespace Game
 
 		}
 
+		UpdateResidualEMPDamage(atTime);
+	}
 
+
+	void			UpdateResidualEMPDamage(float&atTime)
+	{
 		Objects::ForeachWorldEntity([&atTime](const Objects::PWorldEntity&e)
 		{
 			if (e->owner == Objects::Faction::nexus && e->IsAboveGrid())
@@ -922,10 +927,7 @@ namespace Game
 			elif (e->owner == Objects::Faction::nexus)
 				e->HealAllEMPDamage(atTime);	//immediately heal when a new area gets unlocked
 		},false);
-
-	
 	}
-
 
 
 	

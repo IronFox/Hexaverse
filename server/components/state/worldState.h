@@ -45,6 +45,12 @@ namespace World
 	extern TUniqueID	worldID;
 
 
+	static const constexpr int NumZones = 12;
+
+	/**
+	Bitset that contains all bits of all zones
+	*/
+	static const constexpr UINT16 AllZones = (UINT16)((1 << NumZones)-1);
 
 
 	namespace Config
