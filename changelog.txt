@@ -8,7 +8,8 @@ v0.6.3
 	* Fixed rare fatal client exception when failing to layout menu components.
 	* Fixed rare fatal server exception when Nexus Port changes ownership.
 	* Fixed towers auto-firing only once per round even if they could fire multiple times.
-
+	* Fixed some hex-commands not showing their price (e.g. 'Obliterate').
+	
 v0.6.2	[Jan 31 2017]
 	+ Added new dialog to remotely load server-known planet presets.
 	> Replaced 'rules' icon with cogwheel.

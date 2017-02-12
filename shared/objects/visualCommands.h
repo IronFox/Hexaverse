@@ -104,6 +104,9 @@ namespace Objects
 				rawLines.Clear();
 			}
 
+			bool				IsEmpty() const {return rawLines.IsEmpty();}
+			bool				IsNotEmpty() const {return rawLines.IsNotEmpty();}
+
 			void				BeginBrief()
 			{
 				if (rawLines.IsNotEmpty() && rawLines.Last().first.trim().IsNotEmpty() && !rawLines.Last().second)
@@ -233,10 +236,15 @@ namespace Objects
 		public:
 			BaseCommand::Label		customLabel;
 
-			/**/		CustomLabel(const String&name):Super(name) {customLabel.BeginBrief(); customLabel << name; }
+			/**/		CustomLabel(const String&name):Super(name) {/*customLabel.BeginBrief(); customLabel << name;*/ }
 			/**/		CustomLabel() {}
 			virtual void	CompileLabel(BaseCommand::Label&outResult) override
 			{
+				if (customLabel.IsEmpty())
+				{
+					Super::CompileLabel(outResult);
+					return;
+				}
 				outResult = customLabel;
 			}
 		};

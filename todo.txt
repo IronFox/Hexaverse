@@ -5,7 +5,6 @@ instant emp damage on nexus units in emp fields
 reduce nexus missile range
 faction spawning too close to hostile factions
 hoverformer sometimes tries building roads through buildings
-obliterate/self detonate has no visible price
 dedicated server should not start in interactive mode. Log whether in interactive mode/public/private
 fix invite (IsInLobby() is false in client)
 
@@ -152,6 +151,7 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+Fixed: obliterate/self detonate has no visible price
 Show base height in configuration mode
 Fixed: towers don't shoot twice automatically
 Select planet type by name from interactive configurator
