@@ -27,6 +27,7 @@ namespace ConfigurationMode
 		index_t					sentVersion = 0,
 								receivedVersion = 0,
 								localVersion = 0;
+		Buffer0<Objects::PBaseCommand>	numberCommands;	//!< All commands rendering numbers
 
 		GUI::PWindow			planetListWindow;
 
@@ -467,75 +468,76 @@ namespace ConfigurationMode
 
 		Objects::PCommandGroup MakeIntButtons(const Objects::PCommandGroup&group, int&value, const int&defValue, int min, int max)
 		{
-			//Objects::PIconCommand reset(new Objects::CustomIconCommand("Reset","Undo",[&value,&defValue]()
-			//{
-			//	value = defValue;
-			//	Update();
-			//},[](bool){return Objects::BaseCommand::Flags::IsEnabled;}));
-			//reset->customLabel << "Resets this setting to the current server value";
-			Objects::PIconCommand decrease(new Objects::IconCommand("Decrease",[&value,min]()
+			Objects::PBaseCommand number(new UI::HexGrid::Custom::ValueReferenceCommand<int>(group->name,value));
+			numberCommands << number;
+			Objects::PIconCommand decrease(new Objects::IconCommand("Decrease",[&value,min,number]()
 			{
 				if (value > min)
 				{
 					value--;
+					number->RasterizeImage();
 					Update();
 				}
 			},[&value,min](bool){return value > min ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
 			decrease->customLabel << "Decreases this setting by 1";
-			Objects::PIconCommand increase(new Objects::IconCommand("Increase",[&value,max]()
+			Objects::PIconCommand increase(new Objects::IconCommand("Increase",[&value,max,number]()
 			{
 				if (value < max)
 				{
 					value++;
+					number->RasterizeImage();
 					Update();
 				}
 			},[&value,max](bool){return value < max ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
 			increase->customLabel << "Increases this setting by 1";
 
-			Objects::PIconCommand decreaseFast(new Objects::IconCommand("Decrease Fast",[&value,min,max]()
+			Objects::PIconCommand decreaseFast(new Objects::IconCommand("Decrease Fast",[&value,min,max,number]()
 			{
 				if (value > min)
 				{
 					value-=(max - min)/4;
 					value = std::max(min,value);
+					number->RasterizeImage();
 					Update();
 				}
 			},[&value,min](bool){return value > min ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
 			decreaseFast->customLabel << "Decreases this setting by "+String((max - min)/4);
-			Objects::PIconCommand increaseFast(new Objects::IconCommand("Increase Fast",[&value,min,max]()
+			Objects::PIconCommand increaseFast(new Objects::IconCommand("Increase Fast",[&value,min,max,number]()
 			{
 				if (value < max)
 				{
 					value+=(max - min)/4;
 					value = std::min(max,value);
+					number->RasterizeImage();
 					Update();
 				}
 			},[&value,max](bool){return value < max ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
 			increaseFast->customLabel << "Decreases this setting by "+String((max - min)/4);
 
-			Objects::PIconCommand setMin(new Objects::IconCommand("Set Min",[&value,min]()
+			Objects::PIconCommand setMin(new Objects::IconCommand("Set Min",[&value,min,number]()
 			{
 				if (value > min)
 				{
 					value = min;
+					number->RasterizeImage();
 					Update();
 				}
 			},[&value,min](bool){return value > min ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
 			setMin->customLabel << "Sets this setting to the minimum possible value ("+String(min)+")";
 
 
-			Objects::PIconCommand setMax(new Objects::IconCommand("Set Max",[&value,max]()
+			Objects::PIconCommand setMax(new Objects::IconCommand("Set Max",[&value,max,number]()
 			{
 				if (value < max)
 				{
 					value = max;
+					number->RasterizeImage();
 					Update();
 				}
 			},[&value,max](bool){return value < max ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
 			setMax->customLabel << "Sets this setting to the maximum possible value ("+String(max)+")";
 
-
-//			group->Add(reset);
+			group->Add(number);
 			group->Add(decrease);
 			group->Add(increase);
 			group->Add(decreaseFast);
@@ -547,6 +549,8 @@ namespace ConfigurationMode
 
 		Objects::PCommandGroup MakeFloatButtons(const Objects::PCommandGroup&group, float&value, const float&defValue)
 		{
+			Objects::PBaseCommand number(new UI::HexGrid::Custom::ValueReferenceCommand<float>(group->name,value));
+			numberCommands << number;
 			float min = value / 10.f;
 			float max = value * 10.f;
 			//Objects::PIconCommand reset(new Objects::CustomIconCommand("Reset","Undo",[&value,&defValue]()
@@ -555,28 +559,30 @@ namespace ConfigurationMode
 			//	Update();
 			//},[](bool){return Objects::BaseCommand::Flags::IsEnabled;}));
 			//reset->customLabel << "Resets this setting to the current server value";
-			Objects::PIconCommand decrease(new Objects::IconCommand("Decrease",[&value,min]()
+			Objects::PIconCommand decrease(new Objects::IconCommand("Decrease",[&value,min,number]()
 			{
 				if (value > min)
 				{
 					value /= 1.2f;
 					value = std::max(value,min);
+					number->RasterizeImage();
 					Update();
 				}
 			},[&value,min](bool){return value > min ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
 			decrease->customLabel << "Decreases this setting by 20%";
-			Objects::PIconCommand increase(new Objects::IconCommand("Increase",[&value,max]()
+			Objects::PIconCommand increase(new Objects::IconCommand("Increase",[&value,max,number]()
 			{
 				if (value < max)
 				{
 					value *= 1.2f;
 					value = std::min(value,max);
+					number->RasterizeImage();
 					Update();
 				}
 			},[&value,max](bool){return value < max ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
 			increase->customLabel << "Increases this setting by 20%";
 
-//			group->Add(reset);
+			group->Add(number);
 			group->Add(decrease);
 			group->Add(increase);
 			return group;
@@ -1051,7 +1057,11 @@ namespace ConfigurationMode
 			{
 				seed = cfg.lastSeed;
 				if (!clientWorldBuilt)
+				{
 					config = cfg;
+					foreach (numberCommands,n)
+						(*n)->RasterizeImage();
+				}
 				serverConfig = cfg;
 				//if (clientWorldLoaded)
 				//	Update();

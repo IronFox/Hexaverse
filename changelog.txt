@@ -4,6 +4,7 @@ v0.6.3
 	> Vehicle plants no longer require energy to operate.
 	> Reduced size of Nexus bases.
 	> Configuration mode now automatically uploads local configuration to server. Removed explicit up and download commands.
+	> Added number icons next to changeable values in interactive configuration mode.
 	* Fixed rare fatal client exception when failing to layout menu components.
 	* Fixed rare fatal server exception when Nexus Port changes ownership.
 	* Fixed towers auto-firing only once per round even if they could fire multiple times.

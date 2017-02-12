@@ -604,6 +604,25 @@
 			namespace Custom
 			{
 
+				/*virtual override*/ void		TextDisplayCommand::RasterizeImage()
+				{
+					Objects::GeometryImage::BeginRendering(backgroundColor,1.f);
+
+					display.Pick(Engine::OrthographicAspect<>());	//all identity, -1 to +1
+					textout.PushState();
+
+
+					textout.SetScale(2. * textHeight / textout.GetUnscaledHeight());
+
+					String text = this->GetText();
+					textout.MoveTo(-textout.GetScaledWidth(text)*0.5f,textHeight*0.7f);
+					textout.SetColor(textColor);
+					textout << text;
+					textout.PopState();
+
+					Super::texture = Objects::GeometryImage::EndRendering();
+				}
+
 
 				ArrowCommand::ArrowCommand(bool left, DynamicRow*row) : Super(left ? "Left":"Right"), left(left),row(row)
 				{

@@ -385,7 +385,40 @@ namespace UI
 				};
 
 
+				/**
+				Dummy-command that merely rasterized and renders a specific value at its location
+				*/
+				class TextDisplayCommand : public Objects::BaseCommand
+				{
+					typedef Objects::BaseCommand	Super;
+				protected:
+					virtual String		GetText() const=0;
+				public:
+					float4				backgroundColor;	//defaults to transparent black
+					float4				textColor = float4(1);
+					float				textHeight = 0.4f;	//Relative text height. 1 fills the entire available height. Text width is scaled proportionally
 
+					/**/				TextDisplayCommand(const String&name):Super(name)	{Super::state = Flags::IsEnabled;}
+					virtual void		RasterizeImage() override;
+					virtual	void		Refresh(bool) override	{Super::state = Flags::IsEnabled;}
+					virtual void		Execute() override {};
+				};
+
+				/**
+				Type-variable specialization of TextDisplayCommand.
+				Assumes that T can be converted to String by any of its constructors.
+				A reference to the provided address is maintained so that re-rastering will use the current value.
+				*/
+				template <typename T>
+					class ValueReferenceCommand : public TextDisplayCommand
+					{
+						typedef TextDisplayCommand		Super;
+					public:
+						T&				value;
+
+						/**/			ValueReferenceCommand(const String&name, T&value):Super(name),value(value)	{ RasterizeImage();}
+						virtual String	GetText() const	{return String((float)value,2);}
+					};
 
 
 				class GroupFocusCommand : public Objects::BaseCommand
