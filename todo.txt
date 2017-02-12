@@ -1,6 +1,5 @@
 ﻿Loading screen
 
-Show base height in configuration mode
 reduce water transparency
 instant emp damage on nexus units in emp fields
 reduce nexus missile range
@@ -153,6 +152,7 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+Show base height in configuration mode
 Fixed: towers don't shoot twice automatically
 Select planet type by name from interactive configurator
 * TEST AI
