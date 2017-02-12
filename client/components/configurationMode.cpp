@@ -468,7 +468,7 @@ namespace ConfigurationMode
 
 		Objects::PCommandGroup MakeIntButtons(const Objects::PCommandGroup&group, int&value, const int&defValue, int min, int max)
 		{
-			Objects::PBaseCommand number(new UI::HexGrid::Custom::ValueReferenceCommand<int>(group->name,value));
+			Objects::PBaseCommand number(new UI::HexGrid::Custom::ValueReferenceCommand<int>(group->name+" ["+String(min)+".."+String(max)+"]",value));
 			numberCommands << number;
 			Objects::PIconCommand decrease(new Objects::IconCommand("Decrease",[&value,min,number]()
 			{
@@ -549,10 +549,10 @@ namespace ConfigurationMode
 
 		Objects::PCommandGroup MakeFloatButtons(const Objects::PCommandGroup&group, float&value, const float&defValue)
 		{
-			Objects::PBaseCommand number(new UI::HexGrid::Custom::ValueReferenceCommand<float>(group->name,value));
-			numberCommands << number;
 			float min = value / 10.f;
 			float max = value * 10.f;
+			Objects::PBaseCommand number(new UI::HexGrid::Custom::ValueReferenceCommand<float>(group->name+" ["+String(min)+" - "+String(max)+"]",value));
+			numberCommands << number;
 			//Objects::PIconCommand reset(new Objects::CustomIconCommand("Reset","Undo",[&value,&defValue]()
 			//{
 			//	value = defValue;
