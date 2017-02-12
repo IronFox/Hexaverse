@@ -1268,7 +1268,7 @@ namespace ApplicationInterface
 		{
 			bool isCommon = 
 				#ifdef HAS_WINDOW
-					ConfigurationMode::IsActive();
+					Network::amSpectator;
 				#else
 					true;
 				#endif
