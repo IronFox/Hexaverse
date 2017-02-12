@@ -126,7 +126,7 @@ namespace Engine
 					lowest = bottom;
 				if (chars[id].height > height)
 					height = chars[id].height;
-				chars[id].texcoords.Set(left,bottom,right,top);
+				chars[id].texcoords.Set(left,bottom,right+1,top+1);
 				chars[id].texcoords.x /= (float)(image.GetWidth()-1);
 				chars[id].texcoords.y /= (float)(image.GetHeight()-1);
 			}
