@@ -30,7 +30,10 @@ namespace Objects
 
 
 
-
+	/**
+	Base class for all visual commands.
+	Visual commands are currently rendered as hexagonal icons arranged in the four corners of the screen.
+	*/
 	class BaseCommand : public std::enable_shared_from_this<BaseCommand>
 	{
 	public:

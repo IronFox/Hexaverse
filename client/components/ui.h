@@ -126,7 +126,9 @@ namespace UI
 
 		extern bool			resourcesAsList;
 
-
+		/**
+		Hexagonal layouter and renderer for visual commands (see shared/objects/visualCommands.h)
+		*/
 		namespace HexGrid
 		{
 			static const float CellSize = 0.075f;
@@ -138,6 +140,9 @@ namespace UI
 			static const int2 DynamicRowOffset(5,1);
 
 
+			/**
+			Everything related to the universal buttons located in the bottom right panel
+			*/
 			namespace BottomRightPanel
 			{
 
@@ -151,7 +156,7 @@ namespace UI
 					/**/					Icon(const String&name);
 				};
 
-
+				#pragma region PanelButtonImplementations
 
 				class TutorialCommand : public Icon
 				{
@@ -296,7 +301,7 @@ namespace UI
 					}
 				};
 
-
+				#pragma endregion PanelButtonImplementations
 
 				/**
 				Updates state and presence of all buttons of this panel
@@ -313,25 +318,6 @@ namespace UI
 				float		significance = 0;
 				
 
-				bool		operator<(const Group&other) const
-				{
-					return significance > other.significance;
-				}
-
-				Objects::PWorldEntity	GetPrototype() const
-				{
-					Objects::PWorldEntity e = entries.First().lock();
-					ASSERT__(e);
-					if (e->IsStructure())
-						return Objects::GetPrototypeByName(e->GetCTypeName());
-					return e;	//good enough
-
-				}
-
-				bool		InitSelection();
-
-				void		UpdateSignificance();
-
 				void		swap(Group&other)
 				{
 					name.swap(other.name);
@@ -339,87 +325,89 @@ namespace UI
 					std::swap(currentSelection,other.currentSelection);
 					std::swap(significance,other.significance);
 				}
+				void		UpdateSignificance();
+				bool		InitSelection();
+				bool		operator<(const Group&other) const;
+				Objects::PWorldEntity	GetPrototype() const;
 			};
 
 			typedef std::shared_ptr<Group>				PGroup;
 
-
-			class EntityFocusCommand : public Objects::EntityCommand
+			/**
+			Local custom visual commands
+			*/
+			namespace Custom
 			{
-			public:
-				typedef	Objects::EntityCommand	Super;
-
-				//int2 coords, const String&name, const VehicleBase*&base, const Turret*&turret,   OnExecute f, CheckEnabled a, IsPermaActive p
-				/**/				EntityFocusCommand()	{}
-				/**/				EntityFocusCommand(const Objects::PWorldEntity&target) 
-									: Super(target->GetNiceName(),target,[](){FATAL__("WTF");},
-										[](bool) {return Objects::BaseCommand::Flags::IsEnabled;})
-				{}
-
-				void				Execute()	override
+				/**
+				Command representing the currently selected entity.
+				Clicking on the button selects the unit and moves the camera to the unit
+				*/
+				class EntityFocusCommand : public Objects::EntityCommand
 				{
-					Objects::PWorldEntity target = reference.lock();
-					if (target)
-						Camera::TranslateTo(target->system.w.xyz);
-				}
+				public:
+					typedef	Objects::EntityCommand	Super;
 
-
-				virtual void	CompileLabel(Label&outResult) override;
-			};
+					/**/				EntityFocusCommand()	{}
+					/**/				EntityFocusCommand(const Objects::PWorldEntity&target);
+					virtual void		Execute()	override;
+					virtual void		CompileLabel(Label&outResult) override;
+				};
 
 		
-			class AnimationEventFocusCommand : public Objects::BaseCommand
-			{
-			public:
-				typedef	Objects::BaseCommand	Super;
-				TVec3<>				focusLocation;
-				float				atTime;
-				bool				isFriendly,	//!< Signals that the origin of the event is friendly. Note that a lost owned unit will count as friendly as the origin is the entity itself (and hence friendly)
-									isHostileActivity;	//!< Declares that the activity originates in a hostile unit. The destruction of any owned entity counts as much as hostile, as an attack done by any non-owned entities
-				TUniqueID			focusTarget;
-				Objects::Renderer::SmokeTrailIndex	smokeTrailIndex;
-				String				fallbackTargetName;
-			
-				/**/				AnimationEventFocusCommand(const String&name, const String&iconName, const TVec3<>&focusLocation, const TUniqueID&focusID, float atTime, bool isFriendly, bool isHostileActivity)
-									: Super(name),focusLocation(focusLocation),atTime(atTime),isFriendly(isFriendly),isHostileActivity(isHostileActivity),focusTarget(focusID)
+				class AnimationEventFocusCommand : public Objects::BaseCommand
 				{
-					LoadIcon(iconName);
-				}
+				public:
+					typedef	Objects::BaseCommand	Super;
+					TVec3<>				focusLocation;
+					float				atTime;
 
-				Objects::PWorldEntity	GetTarget()	const;
+					/**
+					Signals that the origin of the event is friendly. Note that a lost owned unit will count as friendly as the origin is the entity itself (and hence friendly)
+					*/
+					bool				isFriendly;
 
-				virtual void	Execute()	override;
-				virtual void	Refresh(bool controlEnabled) override {}
-				virtual void	CompileLabel(Label&outResult) override;
-			};
+					/**
+					Declares that the activity originates in a hostile unit. The destruction of any owned entity counts as much as hostile, as an attack done by any non-owned entities
+					*/
+					bool				isHostileActivity;
+					TUniqueID			focusTarget;
+					Objects::Renderer::SmokeTrailIndex	smokeTrailIndex;
+					String				fallbackTargetName;
+			
+					/**/				AnimationEventFocusCommand(const String&name, const String&iconName, const TVec3<>&focusLocation, const TUniqueID&focusID, 
+																	float atTime, bool isFriendly, bool isHostileActivity);
+
+					Objects::PWorldEntity	GetTarget()	const;
+
+					virtual void		Execute()	override;
+					virtual void		Refresh(bool controlEnabled) override {}
+					virtual void		CompileLabel(Label&outResult) override;
+				};
 
 
-			static const float4 friendlyBackgroundColor(0,0,1,0);
-			static const float4 hostileBackgroundColor(1,0,0,0);
 
 
-			class GroupFocusCommand : public Objects::BaseCommand
-			{
-			public:
-				typedef Objects::BaseCommand	Super;
-				
-				PGroup				group;
 
-				/**/				GroupFocusCommand() {}
-				/**/				GroupFocusCommand(PGroup&group);
+				class GroupFocusCommand : public Objects::BaseCommand
+				{
+					typedef Objects::BaseCommand	Super;
+				public:
+					PGroup				group;
 
-				virtual void		RasterizeImage() override;
+					/**/				GroupFocusCommand() {}
+					/**/				GroupFocusCommand(PGroup&group);
+					virtual void		RasterizeImage() override;
+					virtual void		Refresh(bool)	override {};
+					virtual void		Execute()	override;
+					virtual void		CompileLabel(Label&outResult) override;
+					bool				operator<(const GroupFocusCommand&other) const {return group->operator<(*other.group);}
+				};
 
-				virtual void		Refresh(bool)	override {};
+				class ArrowCommand;
+			}
+			static const float4		friendlyBackgroundColor(0,0,1,0);
+			static const float4		hostileBackgroundColor(1,0,0,0);
 
-				virtual void		Execute()	override;
-
-				virtual void		CompileLabel(Label&outResult) override;
-
-				bool				operator<(const GroupFocusCommand&other) const {return group->operator<(*other.group);}
-			};
-
-			class ArrowCommand;
 
 			/**
 			Horizontal row of some commands. Its width is continuously adjusted via HexGrid::currentContactListWidth.
@@ -430,12 +418,12 @@ namespace UI
 			{
 			private:
 				Buffer0<Objects::PBaseCommand>			lastVisible;
-				std::shared_ptr<ArrowCommand>			leftCommand,rightCommand;
+				std::shared_ptr<Custom::ArrowCommand>	leftCommand,rightCommand;
 				index_t									offset=0;
 				TIntRange<index_t>						visibleRange;
 
-				void									RebuildCommands();
-				void									RemoveCommandIcons();
+				void					RebuildCommands();
+				void					RemoveCommandIcons();
 			public:
 
 				/**
@@ -448,63 +436,32 @@ namespace UI
 				/**
 				Vertical position of this row with 0 being the top-most, and positive values iterating downwards
 				*/
-				const int								rowIndex;
+				const int				rowIndex;
 
-				/**/									DynamicRow(int rowIndex) : rowIndex(rowIndex)	{}
+				/**/					DynamicRow(int rowIndex) : rowIndex(rowIndex)	{}
 				/**
 				Flushes and reallocates gui cells as necessary. Redetects horizontal scrolling constraints and shows arrow buttons as necessary
 				*/
-				void									Refresh();
+				void					Refresh();
 				/**
 				Allocates arrow commands. Must be called once at program start or row creation.
 				*/
-				void									Create();
+				void					Create();
 				/**
 				Object destruction command. Should be called once when the program terminates.
 				*/
-				void									Destroy() {leftCommand.reset(); rightCommand.reset();}
+				void					Destroy() {leftCommand.reset(); rightCommand.reset();}
 				/**
 				Attempts to execute a scrolling operation by at most one element. Scrolling may fail.
 				Automatically refreshs the local icon composition.
 				@param left Set true to scroll left, false to scroll right. Only scrolls by one element
 				*/
-				void									Scroll(bool left);
+				void					Scroll(bool left);
 				/**
 				Removes all visible icons of this row from the GUI, including left and right arrow icons.
 				Call Refresh() to show them again.
 				*/
-				void									RemoveIcons();
-			};
-
-
-			/**
-			Horizontal arrow command pointing left or right.
-			Used by DynamicRow
-			*/
-			class ArrowCommand : public Objects::BaseCommand
-			{
-			public:
-				typedef Objects::BaseCommand	Super;
-				const bool						left;
-				DynamicRow *const				row;
-				int2							gridCoords;
-
-				//int2 coords, const String&name, OnExecute f, CheckEnabled a, IsPermaActive p, GetCosts c
-				/**/				ArrowCommand(bool left, DynamicRow*row) : Super(left ? "Left":"Right"), left(left),row(row)
-									{
-										LoadIcon();
-									}
-				virtual void Execute() override
-				{
-					row->Scroll(left);
-				}
-
-				virtual void Refresh(bool controlEnabled) override {}
-
-				virtual void			CompileLabel(Label&outResult) override
-				{
-					outResult << "Scroll "+name;
-				}
+				void					RemoveIcons();
 			};
 
 
@@ -515,16 +472,39 @@ namespace UI
 			public:
 				StringTable<Buffer0<T>,Swap>			collection;
 
-				/**/									CollectionTemplateRow(int rowIndex) : Super(rowIndex)	{}
-				void									Clear()	{commands.Clear(); collection.Clear();}
-				void									Destroy() {Clear(); Super::Destroy();}
+				/**/					CollectionTemplateRow(int rowIndex) : Super(rowIndex)	{}
+				void					Clear()	{commands.Clear(); collection.Clear();}
+				void					Destroy() {Clear(); Super::Destroy();}
 			};
 			extern CollectionTemplateRow<Objects::WWorldEntity>	friendlyGroups,hostileGroups;
 			extern DynamicRow							animationTimeLine;
 
-			extern std::shared_ptr<EntityFocusCommand>	selectedFocus;
+			extern std::shared_ptr<Custom::EntityFocusCommand>	selectedFocus;
 
 
+			namespace Custom
+			{
+				/**
+				Horizontal arrow command pointing left or right.
+				Used by DynamicRow
+				*/
+				class ArrowCommand : public Objects::BaseCommand
+				{
+					typedef Objects::BaseCommand	Super;
+				public:
+					const bool			left;
+					DynamicRow *const	row;
+					int2				gridCoords;
+
+					/**/				ArrowCommand(bool left, DynamicRow*row);
+					virtual void		Execute() override {row->Scroll(left);}
+					virtual void		Refresh(bool controlEnabled) override {}
+					virtual void		CompileLabel(Label&outResult) override
+					{
+						outResult << "Scroll "+name;
+					}
+				};
+			}
 
 		}
 	}
@@ -533,9 +513,6 @@ namespace UI
 
 	namespace UI
 	{
-		/**
-		All methods and classes associated with the HUD hexagonal button grid
-		*/
 		namespace HexGrid
 		{
 			/**

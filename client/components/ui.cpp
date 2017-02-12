@@ -479,7 +479,7 @@
 
 			void			RegisterAttack(float time, bool isFriendly,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const Objects::Renderer::SmokeTrailIndex&smokeTrailIndex)
 			{
-				HexGrid::AnimationEventFocusCommand*cmd = new HexGrid::AnimationEventFocusCommand("Attack","Attack",focusLocation,focusEntityID,time,isFriendly,!isFriendly);
+				HexGrid::Custom::AnimationEventFocusCommand*cmd = new HexGrid::Custom::AnimationEventFocusCommand("Attack","Attack",focusLocation,focusEntityID,time,isFriendly,!isFriendly);
 				cmd->smokeTrailIndex = smokeTrailIndex;
 				if (!isFriendly)
 					cmd->state |= Objects::BaseCommand::Flags::IsFlashing;
@@ -489,7 +489,7 @@
 
 			void			RegisterEntityDestruction(float time, bool isOwnedByMe,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const String&entityName)
 			{
-				HexGrid::AnimationEventFocusCommand*cmd = new HexGrid::AnimationEventFocusCommand("Entity Death","Entity Death",focusLocation,focusEntityID,time,isOwnedByMe,isOwnedByMe);
+				HexGrid::Custom::AnimationEventFocusCommand*cmd = new HexGrid::Custom::AnimationEventFocusCommand("Entity Death","Entity Death",focusLocation,focusEntityID,time,isOwnedByMe,isOwnedByMe);
 				if (isOwnedByMe)	//flipped logic
 					cmd->state |= Objects::BaseCommand::Flags::IsFlashing;
 				cmd->fallbackTargetName = entityName;
@@ -501,7 +501,7 @@
 			{
 				foreach (HexGrid::animationTimeLine.commands,cmd)
 				{
-					std::shared_ptr<HexGrid::AnimationEventFocusCommand> aec = To<HexGrid::AnimationEventFocusCommand>::Cast(*cmd);
+					std::shared_ptr<HexGrid::Custom::AnimationEventFocusCommand> aec = To<HexGrid::Custom::AnimationEventFocusCommand>::Cast(*cmd);
 					if (aec->isHostileActivity)
 						return true;
 				}
@@ -523,53 +523,318 @@
 			count_t					currentContactListWidth = 10;
 
 
-
-			Objects::PWorldEntity	AnimationEventFocusCommand::GetTarget()	const
+			bool		Group::operator<(const Group&other) const
 			{
-				if (focusTarget != TUniqueID::Empty())
+				return significance > other.significance;
+			}
+
+			Objects::PWorldEntity	Group::GetPrototype() const
+			{
+				Objects::PWorldEntity e = entries.First().lock();
+				ASSERT__(e);
+				if (e->IsStructure())
+					return Objects::GetPrototypeByName(e->GetCTypeName());
+				return e;	//good enough
+			}
+
+			bool		Group::InitSelection()
+			{
+				if (currentSelection == InvalidIndex)
 				{
-					Objects::PWorldEntity e = Objects::GetEntity(focusTarget);
-					if (e)
-						return e;
-					auto marker = Objects::Marker::FindByReference(focusTarget);
-					if (marker)
-						return marker->visualization;
+					currentSelection = InvalidIndex;
+					foreach (entries,e)
+						if (e->lock() == Objects::selectedEntity)
+						{
+							currentSelection = e - entries.pointer();
+							break;
+						}
+					if (currentSelection == InvalidIndex)
+					{
+						float distance = std::numeric_limits<float>::max();
+						
+						index_t at = 0;
+						for (const auto&entry : entries)
+						{
+							Objects::PWorldEntity e = entry.lock();
+							DBG_ASSERT__(e);
+							float d = Vec::quadraticDistance(e->system.w.xyz,Camera::scene.location);
+							if (d < distance)
+							{
+								distance = d;
+								currentSelection = at;
+							}
+							at++;
+						}
+					}
+					return true;
 				}
-				return Objects::PWorldEntity();
+				return false;
+
 			}
 
-			/*virtual override*/ void				AnimationEventFocusCommand::Execute()
+			void		Group::UpdateSignificance()
 			{
-				Camera::TranslateTo(focusLocation);
-				Objects::PWorldEntity e = GetTarget();
-				if (e)
-					Objects::Select(e,Network::ControlEnabled());
-				Objects::Renderer::HighlightSmokeTrail(smokeTrailIndex);
-				state = Objects::BaseCommand::Flags::IsEnabled;
-			}
+				Objects::PWorldEntity e = entries.First().lock();
+				DBG_ASSERT__(e);
+				significance = e->GetConstructionCost();
 
-			/*virtual override*/ void				AnimationEventFocusCommand::CompileLabel(Label&outResult)
-			{
-				outResult.BeginBrief();
-				Objects::PWorldEntity e = GetTarget();
-				String hostile = isFriendly? "" : "hostile ";
-				String t = " at t="+String(atTime)+" sec";
-				if (e)
-					outResult << "Focus on "+hostile + name+" of "+e->GetNiceName()+t;
-				else
-					if (fallbackTargetName.IsNotEmpty())
-						outResult << "Focus on "+hostile + name+" of "+fallbackTargetName+t;
+
+
+				Objects::PTurretBase b = e->GetTurretBase();
+				if (b && b->turret->CanAttack())
+				{
+					significance *= 3.f;
+				}
+				if (e->IsVehicle())
+					significance *= 10.f;
+				if (e->health <= 0)
+				{
+					if (e->isOwnedByMe)
+						significance *= 15.f / (1.f + sqr(e->health));
 					else
-						outResult << "Focus on "+hostile + name+t;
+						significance *= 0.8f;
+				}
+				UINT32 crc = CRC32::getChecksum(e->GetTypeName().c_str());
+				Random random(crc);
+				significance *= random.NextFloat(0.95f,1.07f);
 			}
 
 
+
+			namespace Custom
+			{
+
+
+				ArrowCommand::ArrowCommand(bool left, DynamicRow*row) : Super(left ? "Left":"Right"), left(left),row(row)
+				{
+					LoadIcon();
+				}
+
+
+				EntityFocusCommand::EntityFocusCommand(const Objects::PWorldEntity&target) 
+									: Super(target->GetNiceName(),target,[](){FATAL__("WTF");},
+										[](bool) {return Objects::BaseCommand::Flags::IsEnabled;})
+				{}
+
+				/*virtual override*/ void	EntityFocusCommand::Execute()
+				{
+					Objects::PWorldEntity target = reference.lock();
+					if (target)
+						Camera::TranslateTo(target->system.w.xyz);
+				}
+
+
+				AnimationEventFocusCommand::AnimationEventFocusCommand(const String&name, const String&iconName, const TVec3<>&focusLocation, const TUniqueID&focusID, float atTime, bool isFriendly, bool isHostileActivity)
+									: Super(name),focusLocation(focusLocation),atTime(atTime),isFriendly(isFriendly),isHostileActivity(isHostileActivity),focusTarget(focusID)
+				{
+					LoadIcon(iconName);
+				}
+
+
+
+				Objects::PWorldEntity	AnimationEventFocusCommand::GetTarget()	const
+				{
+					if (focusTarget != TUniqueID::Empty())
+					{
+						Objects::PWorldEntity e = Objects::GetEntity(focusTarget);
+						if (e)
+							return e;
+						auto marker = Objects::Marker::FindByReference(focusTarget);
+						if (marker)
+							return marker->visualization;
+					}
+					return Objects::PWorldEntity();
+				}
+
+				/*virtual override*/ void				AnimationEventFocusCommand::Execute()
+				{
+					Camera::TranslateTo(focusLocation);
+					Objects::PWorldEntity e = GetTarget();
+					if (e)
+						Objects::Select(e,Network::ControlEnabled());
+					Objects::Renderer::HighlightSmokeTrail(smokeTrailIndex);
+					state = Objects::BaseCommand::Flags::IsEnabled;
+				}
+
+				/*virtual override*/ void				AnimationEventFocusCommand::CompileLabel(Label&outResult)
+				{
+					outResult.BeginBrief();
+					Objects::PWorldEntity e = GetTarget();
+					String hostile = isFriendly? "" : "hostile ";
+					String t = " at t="+String(atTime)+" sec";
+					if (e)
+						outResult << "Focus on "+hostile + name+" of "+e->GetNiceName()+t;
+					else
+						if (fallbackTargetName.IsNotEmpty())
+							outResult << "Focus on "+hostile + name+" of "+fallbackTargetName+t;
+						else
+							outResult << "Focus on "+hostile + name+t;
+				}
+
+
+				
+
+				/*virtual override*/ void	EntityFocusCommand::CompileLabel(Label&outResult)
+				{
+					outResult.BeginBrief();
+					outResult << name;
+					Objects::PWorldEntity target = this->reference.lock();
+					if (!target)
+						return;
+					if (target->isOwnedByMe)
+					{
+						outResult << "Owner: me";
+						target->AppendDeploymentCount(outResult, target->owner);
+					}
+					else
+						outResult << "Owner: "+target->owner->GetName();
+					if (target->health > 0)
+					{
+						if (target->IsIndestructible())
+							outResult << " Indestructible";
+						else
+							outResult << String(" Health: " +String( target->health) + "/" + target->DescribeMaxHealth());
+						if (target->IsHibernating())
+							outResult << " Hibernating";
+					}
+					else
+					{
+						outResult << " Ghost created " + String(-target->health) + " round(s) ago";
+					}
+
+					//outResult << "Health: "+String(target->health)+"/"+String(target->GetMaxHealth());
+					Objects::PTurretBase base = target->GetTurretBase();
+					if (base && base->turret->CanAttack())
+						outResult << "Offensive ("+String(base->GetAttacksPerRound())+"x"+String(base->turret->GetDamageLevel(target->owner))+")";
+					if (target->empDamageLevel)
+						outResult << "EMP-Damage detected ("+String(target->empDamageLevel)+")";
+
+					outResult.MarkBriefEnd();
+					target->DescribeType(outResult,Objects::WorldEntity::DescIncludePrice/* | Objects::WorldEntity::DescIncludeUnitCount*/);
+
+				}
+
+
+
+				/**/	GroupFocusCommand::GroupFocusCommand(PGroup&group):
+										Super(group->name+" ("+String(group->entries.Count())+")"),
+										group(group)
+				{
+					RasterizeImage();
+				
+				}
+
+				/*virtual override*/ void	GroupFocusCommand::RasterizeImage()
+				{
+					Objects::PWorldEntity e = group->entries.First().lock();
+					if (!e)
+						return;
+
+					const float4&background = e->isOwnedByMe ? friendlyBackgroundColor : hostileBackgroundColor;
+					Objects::EntityCommand::UpdateTexture(*this,e,false,background);
+				}
+
+
+				/*virtual override*/ void				GroupFocusCommand::Execute()
+				{
+					if (!group->InitSelection() || group->entries[group->currentSelection].lock() == Objects::selectedEntity)
+						group->currentSelection = (group->currentSelection+1) % group->entries.Count();
+					Objects::PWorldEntity e = group->entries[group->currentSelection].lock();
+					if (e)
+					{
+						Camera::TranslateTo(e->system.w.xyz);
+						Objects::Select(e,Network::ControlEnabled());
+					}
+				}
+
+
+				/*virtual override*/ void	GroupFocusCommand::CompileLabel(Label&outResult)
+				{
+					//group->InitSelection();
+					outResult.BeginBrief();
+
+					Objects::PWorldEntity proto = group->GetPrototype();
+					Objects::PWorldEntity instance = group->entries.First().lock();
+
+					if (!instance)
+						return;
+					
+					outResult << name;
+					if (instance->isOwnedByMe)
+					{
+	//					outResult << "Owner: me";
+						if (instance->health > 0)
+						{
+							proto->AppendDeploymentCount(outResult, instance->owner);
+						}
+					}
+					else
+						outResult << "Owner: "+instance->owner->GetName();
+					if (instance->health > 0)
+					{
+						//if (e->IsIndestructible())
+						//	outResult << " Indestructible";
+						//else
+						//	outResult << String(" Health: " +String( e->health) + "/" + String(e->GetMaxHealth()));
+					}
+					else
+					{
+						outResult << " Ghost";
+					}
+
+					#ifndef NO_HIBERNATION
+						if (instance->ToHibernating()->IsHibernating())
+							outResult << " Hibernating";
+					#endif
+
+
+					//outResult << "Health: "+String(target->health)+"/"+String(target->GetMaxHealth());
+					Objects::PTurretBase b = proto->GetTurretBase();
+					if (b && b->turret->CanAttack())
+						outResult << "Offensive ("+String(b->GetAttacksPerRound())+"x"+String(b->turret->GetDamageLevel(instance->owner))+")";
+	//					if (target->empDamageLevel)
+	//					outResult << "EMP-Damage detected ("+String(target->empDamageLevel)+")";
+
+					outResult.MarkBriefEnd();
+					Objects::OwnerParameter old = proto->owner;
+					proto->owner = instance->owner;	//crude, but either it's set already, or this is a global prototype in which case ownership don't matter
+					proto->DescribeType(outResult,Objects::WorldEntity::DescIncludePrice /*| Objects::WorldEntity::DescIncludeUnitCount*/);
+					proto->owner = old;
+
+					//if (e->IsVehicle())
+					//{
+					//	VehicleFocusCommand vcommand(gridCoords,To<Objects::Vehicle>::Cast(e));
+					//	vcommand.CompileLabel(outResult);
+					//	return;
+					//}
+					//if (e->IsStructure())
+					//{
+					//	StructureFocusCommand scommand(gridCoords,To<Objects::Structure>::Cast(e));
+					//	scommand.CompileLabel(outResult);
+					//	return;
+					//}
+					//outResult << "Unsupported entity: "+e->GetName();
+				}
+
+
+				static int CollectionCommandCompare(const Objects::PBaseCommand&a,const Objects::PBaseCommand&b)
+				{
+					const GroupFocusCommand&g0 = *(GroupFocusCommand*)a.get();
+					const GroupFocusCommand&g1 = *(GroupFocusCommand*)b.get();
+					if (g0 < g1)
+						return -1;
+					return 1;
+				}
+
+
+
+			}
 
 			void	DynamicRow::Create()
 			{
-				leftCommand.reset(new ArrowCommand(true,this));
+				leftCommand.reset(new Custom::ArrowCommand(true,this));
 				leftCommand->gridCoords = DynamicRowOffset + int2(0,rowIndex);
-				rightCommand.reset(new ArrowCommand(false,this));
+				rightCommand.reset(new Custom::ArrowCommand(false,this));
 				rightCommand->gridCoords = DynamicRowOffset + int2(currentContactListWidth+1,rowIndex);
 			}
 
@@ -667,221 +932,13 @@
 			}
 
 
-			bool		Group::InitSelection()
-			{
-				if (currentSelection == InvalidIndex)
-				{
-					currentSelection = InvalidIndex;
-					foreach (entries,e)
-						if (e->lock() == Objects::selectedEntity)
-						{
-							currentSelection = e - entries.pointer();
-							break;
-						}
-					if (currentSelection == InvalidIndex)
-					{
-						float distance = std::numeric_limits<float>::max();
-						
-						index_t at = 0;
-						for (const auto&entry : entries)
-						{
-							Objects::PWorldEntity e = entry.lock();
-							DBG_ASSERT__(e);
-							float d = Vec::quadraticDistance(e->system.w.xyz,Camera::scene.location);
-							if (d < distance)
-							{
-								distance = d;
-								currentSelection = at;
-							}
-							at++;
-						}
-					}
-					return true;
-				}
-				return false;
-
-			}
-
-			void		Group::UpdateSignificance()
-			{
-				Objects::PWorldEntity e = entries.First().lock();
-				DBG_ASSERT__(e);
-				significance = e->GetConstructionCost();
-
-
-
-				Objects::PTurretBase b = e->GetTurretBase();
-				if (b && b->turret->CanAttack())
-				{
-					significance *= 3.f;
-				}
-				if (e->IsVehicle())
-					significance *= 10.f;
-				if (e->health <= 0)
-				{
-					if (e->isOwnedByMe)
-						significance *= 15.f / (1.f + sqr(e->health));
-					else
-						significance *= 0.8f;
-				}
-				UINT32 crc = CRC32::getChecksum(e->GetTypeName().c_str());
-				Random random(crc);
-				significance *= random.NextFloat(0.95f,1.07f);
-			}
 
 
 
 
 
 
-
-			/*virtual override*/ void	EntityFocusCommand::CompileLabel(Label&outResult)
-			{
-				outResult.BeginBrief();
-				outResult << name;
-				Objects::PWorldEntity target = this->reference.lock();
-				if (!target)
-					return;
-				if (target->isOwnedByMe)
-				{
-					outResult << "Owner: me";
-					target->AppendDeploymentCount(outResult, target->owner);
-				}
-				else
-					outResult << "Owner: "+target->owner->GetName();
-				if (target->health > 0)
-				{
-					if (target->IsIndestructible())
-						outResult << " Indestructible";
-					else
-						outResult << String(" Health: " +String( target->health) + "/" + target->DescribeMaxHealth());
-					if (target->IsHibernating())
-						outResult << " Hibernating";
-				}
-				else
-				{
-					outResult << " Ghost created " + String(-target->health) + " round(s) ago";
-				}
-
-				//outResult << "Health: "+String(target->health)+"/"+String(target->GetMaxHealth());
-				Objects::PTurretBase base = target->GetTurretBase();
-				if (base && base->turret->CanAttack())
-					outResult << "Offensive ("+String(base->GetAttacksPerRound())+"x"+String(base->turret->GetDamageLevel(target->owner))+")";
-				if (target->empDamageLevel)
-					outResult << "EMP-Damage detected ("+String(target->empDamageLevel)+")";
-
-				outResult.MarkBriefEnd();
-				target->DescribeType(outResult,Objects::WorldEntity::DescIncludePrice/* | Objects::WorldEntity::DescIncludeUnitCount*/);
-
-			}
-
-
-
-			/**/	GroupFocusCommand::GroupFocusCommand(PGroup&group):
-									Super(group->name+" ("+String(group->entries.Count())+")"),
-									group(group)
-			{
-				RasterizeImage();
-				
-			}
-
-			/*virtual override*/ void	GroupFocusCommand::RasterizeImage()
-			{
-				Objects::PWorldEntity e = group->entries.First().lock();
-				if (!e)
-					return;
-
-				const float4&background = e->isOwnedByMe ? friendlyBackgroundColor : hostileBackgroundColor;
-				Objects::EntityCommand::UpdateTexture(*this,e,false,background);
-			}
-
-
-			/*virtual override*/ void				GroupFocusCommand::Execute()
-			{
-				if (!group->InitSelection() || group->entries[group->currentSelection].lock() == Objects::selectedEntity)
-					group->currentSelection = (group->currentSelection+1) % group->entries.Count();
-				Objects::PWorldEntity e = group->entries[group->currentSelection].lock();
-				if (e)
-				{
-					Camera::TranslateTo(e->system.w.xyz);
-					Objects::Select(e,Network::ControlEnabled());
-				}
-			}
-
-
-			/*virtual override*/ void	GroupFocusCommand::CompileLabel(Label&outResult)
-			{
-				//group->InitSelection();
-				outResult.BeginBrief();
-
-				Objects::PWorldEntity proto = group->GetPrototype();
-				Objects::PWorldEntity instance = group->entries.First().lock();
-
-				if (!instance)
-					return;
-					
-				outResult << name;
-				if (instance->isOwnedByMe)
-				{
-//					outResult << "Owner: me";
-					if (instance->health > 0)
-					{
-						proto->AppendDeploymentCount(outResult, instance->owner);
-					}
-				}
-				else
-					outResult << "Owner: "+instance->owner->GetName();
-				if (instance->health > 0)
-				{
-					//if (e->IsIndestructible())
-					//	outResult << " Indestructible";
-					//else
-					//	outResult << String(" Health: " +String( e->health) + "/" + String(e->GetMaxHealth()));
-				}
-				else
-				{
-					outResult << " Ghost";
-				}
-
-				#ifndef NO_HIBERNATION
-					if (instance->ToHibernating()->IsHibernating())
-						outResult << " Hibernating";
-				#endif
-
-
-				//outResult << "Health: "+String(target->health)+"/"+String(target->GetMaxHealth());
-				Objects::PTurretBase b = proto->GetTurretBase();
-				if (b && b->turret->CanAttack())
-					outResult << "Offensive ("+String(b->GetAttacksPerRound())+"x"+String(b->turret->GetDamageLevel(instance->owner))+")";
-//					if (target->empDamageLevel)
-//					outResult << "EMP-Damage detected ("+String(target->empDamageLevel)+")";
-
-				outResult.MarkBriefEnd();
-				Objects::OwnerParameter old = proto->owner;
-				proto->owner = instance->owner;	//crude, but either it's set already, or this is a global prototype in which case ownership don't matter
-				proto->DescribeType(outResult,Objects::WorldEntity::DescIncludePrice /*| Objects::WorldEntity::DescIncludeUnitCount*/);
-				proto->owner = old;
-
-				//if (e->IsVehicle())
-				//{
-				//	VehicleFocusCommand vcommand(gridCoords,To<Objects::Vehicle>::Cast(e));
-				//	vcommand.CompileLabel(outResult);
-				//	return;
-				//}
-				//if (e->IsStructure())
-				//{
-				//	StructureFocusCommand scommand(gridCoords,To<Objects::Structure>::Cast(e));
-				//	scommand.CompileLabel(outResult);
-				//	return;
-				//}
-				//outResult << "Unsupported entity: "+e->GetName();
-			}
-
-
-			//Buffer0<VehicleFocusCommand>		vehicleCommands;
-			//Buffer0<StructureFocusCommand>		structureCommands;
-			//Buffer0<GroupFocusCommand>			groupFocusCommands;
-			std::shared_ptr<EntityFocusCommand>					selectedFocus;
+			std::shared_ptr<Custom::EntityFocusCommand>			selectedFocus;
 
 			namespace BottomRightPanel
 			{
@@ -1387,15 +1444,6 @@
 
 			}
 
-			static int CollectionCommandCompare(const Objects::PBaseCommand&a,const Objects::PBaseCommand&b)
-			{
-				const GroupFocusCommand&g0 = *(GroupFocusCommand*)a.get();
-				const GroupFocusCommand&g1 = *(GroupFocusCommand*)b.get();
-				if (g0 < g1)
-					return -1;
-				return 1;
-			}
-
 			static void CollectionToCommands(CollectionTemplateRow<Objects::WWorldEntity>&context)
 			{
 				context.commands.Clear();
@@ -1409,11 +1457,11 @@
 						group->entries.adoptData(entries);
 						group->UpdateSignificance();
 
-						context.commands << Objects::PBaseCommand(new GroupFocusCommand(group));
+						context.commands << Objects::PBaseCommand(new Custom::GroupFocusCommand(group));
 					}
 				});
 				context.collection.Clear();
-				ByComparator::QuickSort(context.commands,CollectionCommandCompare);
+				ByComparator::QuickSort(context.commands,Custom::CollectionCommandCompare);
 				context.Refresh();
 			}
 
@@ -1512,7 +1560,7 @@
 						e->VisitAllCommands(VisitAddCommand,false);
 
 					FindAndDeleteCell(selectedFocus);
-					selectedFocus.reset(new EntityFocusCommand(e) );
+					selectedFocus.reset(new Custom::EntityFocusCommand(e) );
 					selectedFocus->Refresh(true);//Network::ControlEnabled());
 					selectedFocus->UpdateTexture(e,false,e->isOwnedByMe ? friendlyBackgroundColor : hostileBackgroundColor);
 
