@@ -1,6 +1,5 @@
 ﻿Loading screen
 
-reduce water transparency
 reduce nexus missile range
 faction spawning too close to hostile factions
 hoverformer sometimes tries building roads through buildings
@@ -152,6 +151,7 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+reduced water transparency
 instant emp damage on nexus units in emp fields
 Fixed: obliterate/self detonate has no visible price
 Show base height in configuration mode
