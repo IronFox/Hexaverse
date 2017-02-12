@@ -145,7 +145,7 @@ namespace Objects
 			void		CheckChanges(float t);
 		#endif
 
-		void			InitID(const TUniqueID&toID, bool recomputeColor=true);
+		void			InitID(const TUniqueID&toID);
 
 	public:
 		TUniqueID	id;
@@ -181,6 +181,7 @@ namespace Objects
 		}
 
 
+#if 0
 		/**
 		Computes a suitable color from a given faction ID.
 		The process is guaranteed to return a well saturated, lit color, but may be too slow to use on a per-frame basis.
@@ -190,6 +191,7 @@ namespace Objects
 		@param iteration Passing a different iteration alters the resulting color in a random way
 		*/		
 		static void IDToColor(TVec3<>&outColor, const TUniqueID&id, int iteration=0);
+#endif /*0*/
 
 
 		#ifdef ONE_COMPOUND_PER_FACTION
@@ -352,6 +354,7 @@ namespace Objects
 				*/
 				void	UpdateCompoundCoverage();
 			#endif
+			static void FindFreeColor(float3&outColor);
 
 			static void	Kill(const PFaction&);
 		#endif

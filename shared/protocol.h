@@ -366,6 +366,8 @@ namespace Protocol
 			T0		NAME0;\
 			T1		NAME1;\
 			T2		NAME2;\
+			NAME()	{}\
+			NAME(const T0&a, const T1&b, const T2&c):NAME0(a),NAME1(b),NAME2(c){}\
 			virtual	serial_size_t				GetSerialSize(bool exportSize) const	override\
 			{\
 				if (NAME1.HasFixedSize() && NAME2.HasFixedSize())\
@@ -1850,9 +1852,10 @@ namespace Protocol
 		, NET(RuntimeConfig::RoundNumber), newRoundNumber
 	)
 
-	NETSTRUCT2(IdentifyUser
+	NETSTRUCT3(IdentifyFaction
 		, NET(TUniqueID), id
 		, Package::NetString<32>, name
+		, NET(TVec3<>), color
 	)
 
 	typedef NET(UINT32)	SelectResearch;	//can't use index_t
@@ -1958,7 +1961,7 @@ namespace Protocol
 			DestroyMarker,		//c2s/s2c: TUniqueID
 			TouchMarker,		//c2s: TouchedMarker
 
-			IdentifyUser,		// [c2s: TUniqueID -> ] s2c: IdentifyUser
+			IdentifyFaction,	// [c2s: TUniqueID -> ] s2c: IdentifyFaction
 			ChangeMyName,		// c2s: ClientName
 			FactionOnline,		// s2c: TUniqueID
 			FactionOffline,		// s2c: TUniqueID

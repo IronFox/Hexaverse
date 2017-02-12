@@ -755,8 +755,8 @@ namespace Objects
 		{
 			float pulse = doPulse ? GetActiveColor(now) : 1.f;
 
-			float3 mine = float3 (0.5f, 0.5f, 1.f) * pulse;
-			float3 theirs = float3 (1.f, 0.5f, 0.5f) * pulse;
+			//float3 mine = float3 (0.5f, 0.5f, 1.f) * pulse;
+			//float3 theirs = float3 (1.f, 0.5f, 0.5f) * pulse;
 			static const float3 inactiveColorMine/*=0*/,
 								inactiveColorTheirs(0.5f,0.25f,0.25f);
 
@@ -765,13 +765,16 @@ namespace Objects
 				Faction&f = **_f;
 				if (f.isOwnedByMe)
 				{
-					f.activeEntityColor = mine;
+					f.activeEntityColor = f.color * pulse;
+						//mine;
 					f.inactiveEntityColor = inactiveColorMine;
 				}
 				else
 				{
-					f.activeEntityColor = theirs;
-					f.inactiveEntityColor = inactiveColorTheirs;
+					f.activeEntityColor = f.color * pulse;
+						//theirs;
+					f.inactiveEntityColor = f.color * 0.5f;
+						//inactiveColorTheirs;
 				}
 
 			}

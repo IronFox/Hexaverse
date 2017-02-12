@@ -978,7 +978,7 @@ namespace Network
 			#endif
 		}
 
-		void	IdentifyUser(Protocol::IdentifyUser&id);
+		void	IdentifyFaction(Protocol::IdentifyFaction&id);
 		void	FactionOnline(NET(TUniqueID)&);
 		void	FactionOffline(NET(TUniqueID)&);
 		void	FactionRequestedNewRound(NET(TUniqueID)&);
@@ -1080,7 +1080,7 @@ namespace Network
 		TCP::Channel<Protocol::Marker, 0, Protocol::ChannelID::MarkerCreationFailedLimitReached>	markerCreationFailedLimitReached(Receiver::MarkerCreationFailedLimitReached);
 		TCP::Channel<NET(TUniqueID), 0, Protocol::ChannelID::DestroyMarker>							destroyMarker(Receiver::DestroyMarker);
 
-		TCP::Channel<Protocol::IdentifyUser, 0, Protocol::ChannelID::IdentifyUser>					identifyUser(Receiver::IdentifyUser);
+		TCP::Channel<Protocol::IdentifyFaction, 0, Protocol::ChannelID::IdentifyFaction>			identifyFaction(Receiver::IdentifyFaction);
 		TCP::Channel<NET(TUniqueID), 0, Protocol::ChannelID::FactionOnline>							factionOnline(Receiver::FactionOnline);
 		TCP::Channel<NET(TUniqueID), 0, Protocol::ChannelID::FactionOffline>						factionOffline(Receiver::FactionOffline);
 		TCP::Channel<NET(TUniqueID), 0, Protocol::ChannelID::FactionRequestedNewRound>				factionRequestedNewRound(Receiver::FactionRequestedNewRound);
@@ -1331,7 +1331,7 @@ namespace Network
 		client.InstallChannel(Channels::createMarker);
 		client.InstallChannel(Channels::markerCreationFailedLimitReached);
 		client.InstallChannel(Channels::destroyMarker);
-		client.InstallChannel(Channels::identifyUser);
+		client.InstallChannel(Channels::identifyFaction);
 		client.InstallChannel(Channels::researchState);
 		client.InstallChannel(Channels::selectResearch);
 		client.InstallChannel(Channels::factionOnline);
@@ -1772,10 +1772,11 @@ void	Network::Receiver::FactionContinuedRound(NET(TUniqueID)&id)
 
 
 
-void	Network::Receiver::IdentifyUser(Protocol::IdentifyUser&id)
+void	Network::Receiver::IdentifyFaction(Protocol::IdentifyFaction&id)
 {
 	Objects::OwnerParameter faction = Network::ResolveFaction(id.id);
 	faction->name = id.name;
+	faction->color = id.color.value;
 	#ifdef HAS_WINDOW
 		UI::RefreshSessionView();
 	#endif

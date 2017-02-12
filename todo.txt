@@ -6,7 +6,6 @@ hoverformer sometimes tries building roads through buildings
 dedicated server should not start in interactive mode. Log whether in interactive mode/public/private
 fix invite (IsInLobby() is false in client)
 server should be public by default
-better faction colors (also show them in regular game)
 
 
 resources 2.0:
@@ -151,6 +150,7 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+better faction colors (also show them in regular game)
 reduced water transparency
 instant emp damage on nexus units in emp fields
 Fixed: obliterate/self detonate has no visible price

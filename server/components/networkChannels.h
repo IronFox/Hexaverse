@@ -24,7 +24,7 @@ namespace Receiver
 	void	DestroyMarker(NET(TUniqueID)&, TCP::Peer&peer);
 	void	TouchMarker(Protocol::TouchedMarker&, TCP::Peer&peer);
 	void	ChangeMyName(Protocol::ClientName&, TCP::Peer&peer);
-	void	IdentifyUser(NET(TUniqueID)&, TCP::Peer&peer);
+	void	IdentifyFaction(NET(TUniqueID)&, TCP::Peer&peer);
 	void	SelectResearch(Protocol::SelectResearch&, TCP::Peer&peer);
 	void	ChatMessage(Package::NetString<256>&, TCP::Peer&peer);
 	void	PlanetConfig(Grid::ExtendedPlanetConfig&, TCP::Peer&peer);
@@ -84,7 +84,7 @@ namespace Channels
 	extern TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::DestroyMarker>						destroyMarker;
 	extern TCP::Channel<Protocol::TouchedMarker, FactionLevel, Protocol::ChannelID::TouchMarker>				touchMarker;
 	extern TCP::Channel<Protocol::ClientName,FactionLevel,Protocol::ChannelID::ChangeMyName>					changeMyName;
-	extern TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::IdentifyUser>						identifyUserRecv;
+	extern TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::IdentifyFaction>						identifyFactionRecv;
 	extern TCP::Channel<Protocol::SelectResearch, FactionLevel, Protocol::ChannelID::SelectResearch>			selectResearch;
 	extern TCP::Channel<Package::NetString<256>, FactionLevel, Protocol::ChannelID::ChatMessage>				chatMessage;
 	extern TCP::Channel<Grid::ExtendedPlanetConfig, Configurator, Protocol::ChannelID::PlanetConfig>			planetConfig;
@@ -112,7 +112,7 @@ namespace Channels
 	extern TCP::ObjectSender<Protocol::ResourceUpdate,Protocol::ChannelID::ResourceUpdate>				resourceUpdate;
 	extern TCP::ObjectSender<Protocol::GameProgress,Protocol::ChannelID::GameProgress>					gameProgress;
 	extern TCP::ObjectSender<Protocol::ChangeEntityOwner,Protocol::ChannelID::ChangeEntityOwner>		changeEntityOwner;
-	extern TCP::ObjectSender<Protocol::IdentifyUser, Protocol::ChannelID::IdentifyUser>					identifyUser;
+	extern TCP::ObjectSender<Protocol::IdentifyFaction, Protocol::ChannelID::IdentifyFaction>			identifyFaction;
 	extern TCP::ObjectSender<Protocol::ResearchState, Protocol::ChannelID::ResearchState>				researchState;
 	extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionOnline>						factionOnline;
 	extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionOffline>						factionOffline;

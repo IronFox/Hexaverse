@@ -166,7 +166,7 @@ namespace Network
 		server.InstallChannel(Channels::destroyMarker);
 		server.InstallChannel(Channels::touchMarker);
 		server.InstallChannel(Channels::changeMyName);
-		server.InstallChannel(Channels::identifyUserRecv);
+		server.InstallChannel(Channels::identifyFactionRecv);
 		server.InstallChannel(Channels::selectResearch);
 		server.InstallChannel(Channels::chatMessage);
 		server.InstallChannel(Channels::planetConfig);
