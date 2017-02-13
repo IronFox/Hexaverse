@@ -28,6 +28,13 @@ namespace UDPBroadCast
 	Checks if UDP broadcasting is enabled
 	*/
 	bool		IsStarted();
+
+	/**
+	Checks whether or not the local packet variable is completed and can be used.
+	Network::InformationProvider::Updater thread queries this every half second until true is returned
+	@return true if @a packet is complete. Always true on master branch
+	*/
+	bool		PacketIsDone();
 }
 
 

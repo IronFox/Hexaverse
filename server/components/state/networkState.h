@@ -122,9 +122,14 @@ namespace Network
 	bool		AnyHumanPlayersActive();
 
 	/**
-	Configures the local server and starts it
+	Configures the local server and starts it. Also starts information provider on the given base port
 	*/
-	void		Start();
+	void		Start(UINT16 basePort);
+
+	/**
+	Stops the local server and information provider
+	*/
+	void		Stop();
 
 	/**
 	Updates and logs the new user level (if it changed)
@@ -180,6 +185,14 @@ namespace Network
 		}
 
 	
+
+	namespace InformationProvider
+	{
+		bool	IsOnline();
+		void	Start(UINT16 basePort);
+		void	Stop();
+	}
+
 
 }
 

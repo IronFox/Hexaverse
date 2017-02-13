@@ -9,7 +9,9 @@
 #include "../aiProcess.h"
 #include "../serverLogEvent.h"
 #include "../configurationMode.h"
+#include "../udpBroadcast.h"
 #include "worldState.h"
+
 
 
 #undef StartService
@@ -22,6 +24,100 @@ namespace Network
 	Buffer<PClient>	activePlayersAndSpectators,spectators;
 	GenericHashTable<Objects::OwnerParameter,PClient,Objects::OwnerHash>	playerMap;
 	GenericHashTable<CryptographicID,Objects::PFaction,CryptographicID>		tokenMap;
+
+
+	
+
+	namespace InformationProvider
+	{
+		TCP::Server		server;
+		bool			created = false;
+
+		void	OnPing(Protocol::Ping&ping, TCP::Peer&peer);
+
+		TCP::ObjectSender<Protocol::ServerInfo,Protocol::InfoChannel::ServerInfo>	infoSender;
+		TCP::Channel<Protocol::Ping,0,Protocol::InfoChannel::Ping>	pingChannel(OnPing);
+
+		void	OnPing(Protocol::Ping&ping, TCP::Peer&peer)
+		{
+			pingChannel.SendTo(peer,ping);
+		}
+
+
+
+		class Updater : public ThreadObject
+		{
+		public:
+			volatile bool	doEnd = false;
+
+			void	ThreadMain() override
+			{
+				Protocol::ServerInfo infoGlobal,infoLocal;
+
+				while (!UDPBroadCast::PacketIsDone())
+				{
+					Sleep(500);
+				}
+
+				while (!application_shutting_down && !doEnd)
+				{
+					Sleep(1000);
+					infoGlobal.hostInfo = UDPBroadCast::packet;
+					infoLocal.hostInfo = UDPBroadCast::packet;
+
+					Game::Network::AssembleGameInfo(infoGlobal.gameInfo,false);
+					Game::Network::AssembleGameInfo(infoLocal.gameInfo,true);
+
+					server.VisitAllPeers([infoGlobal,infoLocal](const TCP::PPeer&p)
+					{
+						if (p->IsLocalhost())
+							infoSender.SendTo(p,infoLocal);
+						else
+							infoSender.SendTo(p,infoGlobal);
+					});
+					//infoSender.SendTo(server,info);
+				}
+				server.EndService();
+			}
+		}		updater;
+
+
+		void		Start(UINT16 basePort)
+		{
+			if (!created)
+			{
+				created = true;
+				server.InstallChannel(pingChannel);
+			}
+
+			UINT16 port = basePort + PortOffset::Info;
+
+			if (!server.StartService(port))
+				FATAL__("Unable to register information server. Chances are, a server is already running on port "+String(port)+".")
+			else
+			{
+				LogEvent(EventSignificance::Uncommon,"Info server started on port "+String(port));
+				updater.doEnd = false;
+				updater.start();
+			}
+
+
+
+		}
+
+		void		Stop()
+		{
+			updater.doEnd = true;
+			updater.awaitCompletion();
+		}
+
+		bool	IsOnline()
+		{
+			return server.IsOnline();
+		}
+
+
+	}
 
 
 	namespace Config
@@ -133,11 +229,19 @@ namespace Network
 
 
 
-	void		Start()
+	void		Start(UINT16 basePort)
 	{
 		SetupServer();
 		StartServer();
 		Session::isStarted = true;
+
+		InformationProvider::Start(basePort);
+	}
+
+	void		Stop()
+	{
+		Network::server.StopService();
+		InformationProvider::Stop();
 	}
 
 

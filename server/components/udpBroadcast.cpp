@@ -201,6 +201,12 @@ namespace UDPBroadCast
 			lastBroadcast = timer.Now();
 		}
 	}
+
+	bool		PacketIsDone()
+	{
+		return true;
+	}
+
 }
 
 

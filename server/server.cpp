@@ -510,93 +510,6 @@ namespace ApplicationInterface
 
 
 
-
-namespace InformationProvider
-{
-	TCP::Server		server;
-	bool			created = false;
-
-	void	OnPing(Protocol::Ping&ping, TCP::Peer&peer);
-
-	TCP::ObjectSender<Protocol::ServerInfo,Protocol::InfoChannel::ServerInfo>	infoSender;
-	TCP::Channel<Protocol::Ping,0,Protocol::InfoChannel::Ping>	pingChannel(OnPing);
-
-	void	OnPing(Protocol::Ping&ping, TCP::Peer&peer)
-	{
-		pingChannel.SendTo(peer,ping);
-	}
-
-
-
-	class Updater : public ThreadObject
-	{
-	public:
-		volatile bool	doEnd = false;
-
-		void	ThreadMain() override
-		{
-			Protocol::ServerInfo infoGlobal,infoLocal;
-			infoGlobal.hostInfo = UDPBroadCast::packet;
-			infoLocal.hostInfo = UDPBroadCast::packet;
-
-			while (!application_shutting_down && !doEnd)
-			{
-				Sleep(1000);
-				Game::Network::AssembleGameInfo(infoGlobal.gameInfo,false);
-				Game::Network::AssembleGameInfo(infoLocal.gameInfo,true);
-
-				server.VisitAllPeers([infoGlobal,infoLocal](const TCP::PPeer&p)
-				{
-					if (p->IsLocalhost())
-						infoSender.SendTo(p,infoLocal);
-					else
-						infoSender.SendTo(p,infoGlobal);
-				});
-				//infoSender.SendTo(server,info);
-			}
-			server.EndService();
-		}
-	}		updater;
-
-
-	void		Start(UINT16 basePort)
-	{
-		if (!created)
-		{
-			created = true;
-			server.InstallChannel(pingChannel);
-		}
-
-		UINT16 port = basePort + PortOffset::Info;
-
-		if (!server.StartService(port))
-			FATAL__("Unable to register information server. Chances are, a server is already running on port "+String(port)+".")
-		else
-		{
-			LogEvent(EventSignificance::Uncommon,"Info server started on port "+String(port));
-			updater.doEnd = false;
-			updater.start();
-		}
-
-
-
-	}
-
-	void		Stop()
-	{
-		updater.doEnd = true;
-		updater.awaitCompletion();
-	}
-
-	void		Destroy()
-	{
-		//should end on its own
-	
-	}
-
-
-}
-
 void TerminateNow(bool isMain);
 
 
@@ -676,7 +589,6 @@ void TerminateNow(bool isMain)
 			AIProcess::End();
 
 
-		InformationProvider::Destroy();
 		Objects::Destroy();
 		Grid::Destroy();
 		UDPBroadCast::Terminate();
@@ -858,15 +770,13 @@ namespace ParameterConfig
 void	StartUp()
 {
 	UDPBroadCast::Start();
-	Network::Start();
-	InformationProvider::Start(ParameterConfig::basePort);
+	Network::Start(ParameterConfig::basePort);
 }
 
 void	ShutDown()
 {
 	UDPBroadCast::Terminate();
-	Network::server.StopService();
-	InformationProvider::Stop();
+	Network::Stop();
 }
 
 class ServiceVar : public Reflection::Variable::Base
@@ -998,7 +908,7 @@ int main( int argc, const char* argv[])
 		Reflection::state.PushFocus();
 		Reflection::state.EnterNewFolder("/Online");
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("udpBroadcast",UDPBroadCast::IsStarted,UDPBroadCast::Terminate,[](){UDPBroadCast::Start();})));
-		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("info",[]()->bool{return InformationProvider::server.IsOnline();},InformationProvider::Stop,[](){InformationProvider::Start(ParameterConfig::basePort);})));
+		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("info",[]()->bool{return Network::InformationProvider::IsOnline();},Network::InformationProvider::Stop,[](){Network::InformationProvider::Start(ParameterConfig::basePort);})));
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("session",[]()->bool{return Network::server.IsOnline();},[](){Network::SuspendSession();},Network::RestartSession)));
 		Reflection::state.DefineCommand("closeSession",(CLI::Command::function0_t)[](){Network::CloseSession();},CLI::NoCompletion);	//why...?
 
