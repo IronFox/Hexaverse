@@ -4,8 +4,6 @@ reduce nexus missile range
 faction spawning too close to hostile factions
 hoverformer sometimes tries building roads through buildings
 dedicated server should not start in interactive mode. Log whether in interactive mode/public/private
-fix invite (IsInLobby() is false in client)
-server should be public by default
 
 
 resources 2.0:
@@ -150,6 +148,8 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+Steam: fixed invite (IsInLobby() wis false in client)
+Steam: server should be public by default
 better faction colors (also show them in regular game)
 reduced water transparency
 instant emp damage on nexus units in emp fields
