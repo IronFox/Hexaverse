@@ -1,6 +1,5 @@
 ﻿Loading screen
 
-reduce nexus missile range
 faction spawning too close to hostile factions
 hoverformer sometimes tries building roads through buildings
 dedicated server should not start in interactive mode. Log whether in interactive mode/public/private
@@ -148,6 +147,7 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+reduce nexus missile range
 Steam: fixed invite (IsInLobby() wis false in client)
 Steam: server should be public by default
 better faction colors (also show them in regular game)
