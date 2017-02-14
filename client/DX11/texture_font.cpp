@@ -185,7 +185,7 @@ namespace Engine
 
 		float TextureFont::GetWidth(char c)
 		{
-			return chars[(BYTE)c].isset?scale*chars[(BYTE)c].width:0;
+			return CharWidth(c)*scale;
 		}
 
 		void TextureFont::Begin(const TFontState&state)
