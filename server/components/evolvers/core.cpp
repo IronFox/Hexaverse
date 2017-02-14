@@ -218,6 +218,15 @@ namespace Evolver
 				f->researchState.FinalizeRound(f);
 			});
 
+			if (Objects::Faction::nexus && Game::Config::Nexus::roundsPerResearchPoint)
+			{
+				if (((RuntimeConfig::roundNumber.main+1)%Game::Config::Nexus::roundsPerResearchPoint)==0)
+				{
+					LogEvent(EventSignificance::Common,Objects::Faction::nexus,"Advancing Nexus research state");
+					Objects::Faction::nexus->researchState.AdvanceNexusResearch();
+				}
+			}
+
 
 			Objects::ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
 			{

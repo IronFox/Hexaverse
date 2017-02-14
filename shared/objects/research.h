@@ -175,6 +175,10 @@ namespace Objects
 		/**/					ResearchState(const ResearchState&)=delete;
 		void					operator=(const ResearchState&)=delete;
 
+		/**
+		Handles changes necessary to advance all endless research topics by one. Should only be used on Nexus faction
+		*/
+		void					AdvanceNexusResearch();
 		void					Contribute()	{totalContribution++;}
 		void					FinalizeRound(const PFaction&);
 

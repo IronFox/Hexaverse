@@ -714,8 +714,6 @@ namespace Objects
 			{
 				if (t.maxProgress > 0)
 					t.setProgress(researchState,t.maxProgress);
-				elif (t.maxProgress < 0)
-					t.setProgress(researchState,10);
 			}
 		}
 		changed = true;
@@ -782,6 +780,23 @@ namespace Objects
 		return true;
 	}
 
+
+	void					ResearchState::AdvanceNexusResearch()
+	{
+		DBG_ASSERT__(factionIsNexus);
+
+		foreach (globalState.allTopics,_t)
+		{
+			auto&t = **_t;
+			if (t.setProgress.IsSet())
+			{
+				if (t.maxProgress < 0)
+					t.setProgress(researchState,t.getProgress(researchState)+1);
+			}
+		}
+		changed = true;
+		BaseAttributeCache::versionCounter++;
+	}
 
 	void					ResearchState::FinalizeRound(const PFaction&f)
 	{
