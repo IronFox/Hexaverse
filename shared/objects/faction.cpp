@@ -1697,35 +1697,41 @@ namespace Objects
 			Vec::HSL2RGB(float3(random.NextFloat(),0.5f + random.NextFloat(0.5f),0.5f),candidate);
 			count_t competition = 0;
 			float closest = std::numeric_limits<float>::max();
-			foreach (all,_f)
+			ForeachFaction([&](const PFaction&f)
 			{
-				PFaction f  = _f->lock();
-				if (f && (&f->color != &outColor))
+				if (&f->color != &outColor)
 				{
 					competition++;
 					float dist = Vec::quadraticDistance(candidate,f->color);
 					closest = vmin(dist,closest);
 				}
-			}
+			});
 			if (closest > bestDist)
 			{
 				bestDist = closest;
 				outColor = candidate;
 			}
 			if (!competition)
-				return;	//no point randomizing more often
+			{
+			//	LogEvent(EventClass::Preset::configurationPrint,"No other faction. Using color as is");
+				break;	//no point randomizing more often
+			}
 		}
+		//LogEvent(EventClass::Preset::configurationPrint,"Final color is "+outColor.ToString());
 	}
 #endif
 
-	void		Faction::InitID(const TUniqueID&toID)
+	void		Faction::InitID(const TUniqueID&toID,bool nexusFaction)
 	{
 		if (toID == TUniqueID::Empty())
 			id.Generate();
 		else
 			id = toID;
 		#ifndef CLIENT
-			FindFreeColor(color);
+			if (nexusFaction)
+				color = float3 (1.f, 0.25f, 0.25f);
+			else
+				FindFreeColor(color);
 		#else
 			color = float3();
 		#endif

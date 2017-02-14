@@ -145,7 +145,7 @@ namespace Objects
 			void		CheckChanges(float t);
 		#endif
 
-		void			InitID(const TUniqueID&toID);
+		void			InitID(const TUniqueID&toID, bool nexusFaction);
 
 	public:
 		TUniqueID	id;
@@ -208,7 +208,7 @@ namespace Objects
 			static PFaction				FindByID(const TUniqueID&id);
 			static PFaction				GetOrCreate(const TUniqueID&id);
 
-			/**/						Faction(const TUniqueID&id):researchState(this,false) {InitID(id);}
+			/**/						Faction(const TUniqueID&id):researchState(this,false) {InitID(id,false);}
 
 		#else
 
@@ -272,7 +272,7 @@ namespace Objects
 				deathInRounds = 0;
 
 				accessToken.Generate();
-				InitID(toID);
+				InitID(toID,isNexus);
 			}
 
 
