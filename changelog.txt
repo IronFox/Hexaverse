@@ -12,6 +12,7 @@ v0.6.3
 	* Fixed towers auto-firing only once per round even if they could fire multiple times.
 	* Fixed some hex-commands not showing their price (e.g. 'Obliterate').
 	* Nexus bases located in residual EMP fields now instantaneously suffer EMP damage.
+	* Added missing research state updates to spectators.
 	
 v0.6.2	[Jan 31 2017]
 	+ Added new dialog to remotely load server-known planet presets.
