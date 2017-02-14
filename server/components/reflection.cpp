@@ -1,4 +1,5 @@
 #include <global_root.h>
+#include <global_string.h>
 #include <math/basic.h>
 #include "reflection.h"
 #include "state.h"
@@ -57,10 +58,13 @@ namespace Reflection
 		}
 
 
+		/**
+		Container for regular string variables.
 
+		*/
 		class StringVar : public Base
 		{
-				typedef Base	Super;
+			typedef Base	Super;
 		public:
 			String	value,
 					defaultValue;
@@ -985,14 +989,14 @@ namespace Reflection
 			state.SetVariable(CLI::PVariable(new Variable::SupportedFactions("supportedFactions")));
 
 			VAR(closedGame,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame);
-			VAR(roundTimer,Game::Config,-1,INT_MAX,Variable::Persistence::ConfigOverridesSavegame);
-			VAR(bombsExplodeWhenDestroyed,RuntimeConfig,false,true,Variable::Persistence::ConfigOverridesSavegame);
+			VAR(roundTimer,Game::Config,-1,INT_MAX,Variable::Persistence::RestoreFromSavegame);
+			VAR(bombsExplodeWhenDestroyed,RuntimeConfig,false,true,Variable::Persistence::RestoreFromSavegame);
 			VAR(startBases,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame);
 			VAR(basesRequired,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame);
-			VAR(exposeActionLeftToHostileFactions,Game::Config,false,true,Variable::Persistence::ConfigOverridesSavegame);
+			VAR(exposeActionLeftToHostileFactions,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame);
 			VAR(newVehiclesHaveFullAmmo,Objects,false,true,Variable::Persistence::RestoreFromSavegame);
 			VAR(uplinkBandwidth,Game::Config,1U,1000000U,Variable::Persistence::RestoreFromSavegame);
-			ENUMVAR(doomsdayWeapons,RuntimeConfig,Variable::Persistence::ConfigOverridesSavegame);
+			ENUMVAR(doomsdayWeapons,RuntimeConfig,Variable::Persistence::RestoreFromSavegame);
 			
 			state.SetVariable(CLI::PVariable(new Variable::FactionsPerEMPZone("factionsPerEMPZone")));
 			state.SetVariable(CLI::PVariable(new Variable::EMPZones("empZones")));
@@ -1028,7 +1032,7 @@ namespace Reflection
 				#endif
 				state.SetVariable(CLI::PVariable(new Variable::NexusAIEnabled("enableAI")));
 				//VAR(enableAI,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
-				VAR(threatEstimationFactor,Game::Config::Nexus,0.001f,100.f,Variable::Persistence::ConfigOverridesSavegame);
+				VAR(threatEstimationFactor,Game::Config::Nexus,0.001f,100.f,Variable::Persistence::RestoreFromSavegame);
 				state.SetVariable(CLI::PVariable(new Variable::NexusVehicleTurrets("vehicleTurrets")));
 			state.ExitFolder();
 		state.ExitFolder();
@@ -1163,9 +1167,9 @@ namespace Reflection
 				case Variable::Persistence::ConfigOnly:
 					outBuffer << "Loaded from configuration each time the server is restarted. Not written to savegames."<<nl;
 				break;
-				case Variable::Persistence::ConfigOverridesSavegame:
-					outBuffer << "Written to savegames and applied during loading, but overridden by settings found in configuration files afterwards."<<nl;
-				break;
+				//case Variable::Persistence::ConfigOverridesSavegame:
+				//	outBuffer << "Written to savegames and applied during loading, but overridden by settings found in configuration files afterwards."<<nl;
+				//break;
 				case Variable::Persistence::GameInvariant:
 				case Variable::Persistence::PlanetConfig :	//for now, write the same thing into the config
 					outBuffer << "Written to savegames and restored from there, but cannot be altered once a game has started."<<nl;
@@ -1311,7 +1315,7 @@ namespace Reflection
 
 		Feed(state.GetRoot(),localServerINI, false, [](const Variable::PBase&base)->bool
 		{
-			return base->persistence == Variable::Persistence::ConfigOverridesSavegame;
+			return false;//base->persistence == Variable::Persistence::ConfigOverridesSavegame;
 		});
 
 		Grid::currentPlanetConfig.GenerateAtmosphereColor();
