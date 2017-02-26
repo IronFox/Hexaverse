@@ -39,7 +39,7 @@ namespace Channels
 	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::DestroyMarker>							destroyMarker(Receiver::DestroyMarker);
 	TCP::Channel<Protocol::TouchedMarker, FactionLevel, Protocol::ChannelID::TouchMarker>					touchMarker(Receiver::TouchMarker);
 	TCP::Channel<Protocol::ClientName,FactionLevel,Protocol::ChannelID::ChangeMyName>						changeMyName(Receiver::ChangeMyName);
-	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::IdentifyUser>							identifyUserRecv(Receiver::IdentifyUser);
+	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::IdentifyFaction>						identifyFactionRecv(Receiver::IdentifyFaction);
 	TCP::Channel<Protocol::SelectResearch, FactionLevel, Protocol::ChannelID::SelectResearch>				selectResearch(Receiver::SelectResearch);
 	TCP::Channel<Package::NetString<256>, FactionLevel, Protocol::ChannelID::ChatMessage>					chatMessage(Receiver::ChatMessage);
 	TCP::Channel<Grid::ExtendedPlanetConfig, Configurator, Protocol::ChannelID::PlanetConfig>				planetConfig(Receiver::PlanetConfig);
@@ -67,7 +67,7 @@ namespace Channels
 	TCP::ObjectSender<Protocol::ResourceUpdate,Protocol::ChannelID::ResourceUpdate>					resourceUpdate;
 	TCP::ObjectSender<Protocol::GameProgress,Protocol::ChannelID::GameProgress>						gameProgress;
 	TCP::ObjectSender<Protocol::ChangeEntityOwner,Protocol::ChannelID::ChangeEntityOwner>			changeEntityOwner;
-	TCP::ObjectSender<Protocol::IdentifyUser, Protocol::ChannelID::IdentifyUser>					identifyUser;
+	TCP::ObjectSender<Protocol::IdentifyFaction, Protocol::ChannelID::IdentifyFaction>				identifyFaction;
 	TCP::ObjectSender<Protocol::ResearchState, Protocol::ChannelID::ResearchState>					researchState;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionOnline>							factionOnline;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionOffline>							factionOffline;
@@ -140,7 +140,7 @@ namespace Receiver
 		{
 			if (f != exclude)
 			{
-				Channels::identifyUser.SendTo(peer,Protocol::IdentifyUser(f->id,f->name));
+				Channels::identifyFaction.SendTo(peer,Protocol::IdentifyFaction(f->id,f->name,f->color));
 				if (f->online)
 				{
 					Channels::factionOnline.SendTo(peer,f->id);
@@ -231,6 +231,15 @@ namespace Receiver
 		}
 
 		SendSessionConfigTo(peer, Objects::PFaction());
+
+		Objects::ForeachFaction([&peer](const Objects::PFaction&f)
+		{
+			Protocol::ResearchState state;
+			state.ownerID = f->id;
+			f->researchState.Export(state.serializedData);
+			ASSERT_LESS__(state.serializedData.Count(),state.serializedData.MaxElementCount);
+			Channels::researchState.SendTo(peer,state);
+		});
 
 		peer.SendSignal(Protocol::ChannelID::EndEverything);
 
@@ -674,7 +683,7 @@ namespace Receiver
 		//probably optional later on
 		{
 			//broadcast name and state
-			Channels::identifyUser.SendTo(Network::server,Protocol::IdentifyUser(client->faction->id,client->name),2);
+			Channels::identifyFaction.SendTo(Network::server,Protocol::IdentifyFaction(client->faction->id,client->name,client->faction->color),2);
 			Channels::factionOnline.SendTo(Network::server,client->faction->id,2);
 
 		}
@@ -862,18 +871,9 @@ namespace Receiver
 		Journal::currentRound.Register(true,client->faction,new Journal::Round::SelectResearch(Objects::ResearchState::GetTopic( research)));
 	}
 
-	void	IdentifyUser(NET(TUniqueID)&id, TCP::Peer&peer)
+	void	IdentifyFaction(NET(TUniqueID)&id, TCP::Peer&peer)
 	{
 		//LATER
-	/*	for (const auto&weak : Objects::Faction::all)
-		{
-			Objects::PFaction fac = weak.lock();
-			if (fac && fac->
-
-		}
-		State::playerMap.QueryPointer(id);
-*/
-
 	}
 
 	void	PlanetConfig(Grid::ExtendedPlanetConfig&cfg, TCP::Peer&peer)
@@ -985,11 +985,12 @@ namespace Receiver
 		cl->name = name;
 		if (cl->faction)
 		{
-			Protocol::IdentifyUser userID;
-			userID.id = cl->faction->id;
-			userID.name = name;
+			Protocol::IdentifyFaction factionID;
+			factionID.id = cl->faction->id;
+			factionID.name = name;
+			factionID.color = cl->faction->color;
 			cl->faction->name = name;
-			Channels::identifyUser.SendTo(Network::server,userID,2);
+			Channels::identifyFaction.SendTo(Network::server,factionID,2);
 			LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ), peer, "User renamed to '"+name+"'");
 		}
 	}

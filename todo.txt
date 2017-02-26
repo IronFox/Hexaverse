@@ -1,15 +1,7 @@
 ﻿Loading screen
 
-Show base height in configuration mode
-reduce water transparency
-instant emp damage on nexus units in emp fields
-reduce nexus missile range
-faction spawning too close to hostile factions
 hoverformer sometimes tries building roads through buildings
-towers don't shoot twice automatically
-obliterate/self detonate has no visible price
-dedicated server should not start in interactive mode. Log whether in interactive mode/public/private
-fix invite (IsInLobby() is false in client)
+dedicated server should not start in interactive mode.
 
 
 resources 2.0:
@@ -154,6 +146,17 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+Log whether in interactive mode/public/private
+fixed: faction spawning too close to hostile factions
+reduce nexus missile range
+Steam: fixed invite (IsInLobby() wis false in client)
+Steam: server should be public by default
+better faction colors (also show them in regular game)
+reduced water transparency
+instant emp damage on nexus units in emp fields
+Fixed: obliterate/self detonate has no visible price
+Show base height in configuration mode
+Fixed: towers don't shoot twice automatically
 Select planet type by name from interactive configurator
 * TEST AI
 * AI unit spawning causes server crash, but threat estimation in low-res mode is horrificly slow. Must adjust

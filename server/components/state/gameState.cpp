@@ -53,6 +53,7 @@ namespace Game
 						;
 
 			bool		enableAI = false;
+			count_t		roundsPerResearchPoint=10;
 			float		threatEstimationFactor = 1.f;
 			Array<Objects::Component::Turret*>	vehicleTurrets;
 		}
@@ -908,7 +909,12 @@ namespace Game
 
 		}
 
+		UpdateResidualEMPDamage(atTime);
+	}
 
+
+	void			UpdateResidualEMPDamage(float&atTime)
+	{
 		Objects::ForeachWorldEntity([&atTime](const Objects::PWorldEntity&e)
 		{
 			if (e->owner == Objects::Faction::nexus && e->IsAboveGrid())
@@ -922,10 +928,7 @@ namespace Game
 			elif (e->owner == Objects::Faction::nexus)
 				e->HealAllEMPDamage(atTime);	//immediately heal when a new area gets unlocked
 		},false);
-
-	
 	}
-
 
 
 	

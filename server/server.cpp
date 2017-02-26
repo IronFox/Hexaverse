@@ -514,93 +514,6 @@ namespace ApplicationInterface
 
 
 
-
-namespace InformationProvider
-{
-	TCP::Server		server;
-	bool			created = false;
-
-	void	OnPing(Protocol::Ping&ping, TCP::Peer&peer);
-
-	TCP::ObjectSender<Protocol::ServerInfo,Protocol::InfoChannel::ServerInfo>	infoSender;
-	TCP::Channel<Protocol::Ping,0,Protocol::InfoChannel::Ping>	pingChannel(OnPing);
-
-	void	OnPing(Protocol::Ping&ping, TCP::Peer&peer)
-	{
-		pingChannel.SendTo(peer,ping);
-	}
-
-
-
-	class Updater : public ThreadObject
-	{
-	public:
-		volatile bool	doEnd = false;
-
-		void	ThreadMain() override
-		{
-			Protocol::ServerInfo infoGlobal,infoLocal;
-			infoGlobal.hostInfo = UDPBroadCast::packet;
-			infoLocal.hostInfo = UDPBroadCast::packet;
-
-			while (!application_shutting_down && !doEnd)
-			{
-				Sleep(1000);
-				Game::Network::AssembleGameInfo(infoGlobal.gameInfo,false);
-				Game::Network::AssembleGameInfo(infoLocal.gameInfo,true);
-
-				server.VisitAllPeers([infoGlobal,infoLocal](const TCP::PPeer&p)
-				{
-					if (p->IsLocalhost())
-						infoSender.SendTo(p,infoLocal);
-					else
-						infoSender.SendTo(p,infoGlobal);
-				});
-				//infoSender.SendTo(server,info);
-			}
-			server.EndService();
-		}
-	}		updater;
-
-
-	void		Start(UINT16 basePort)
-	{
-		if (!created)
-		{
-			created = true;
-			server.InstallChannel(pingChannel);
-		}
-
-		UINT16 port = basePort + PortOffset::Info;
-
-		if (!server.StartService(port))
-			FATAL__("Unable to register information server. Chances are, a server is already running on port "+String(port)+".")
-		else
-		{
-			LogEvent(EventSignificance::Uncommon,"Info server started on port "+String(port));
-			updater.doEnd = false;
-			updater.start();
-		}
-
-
-
-	}
-
-	void		Stop()
-	{
-		updater.doEnd = true;
-		updater.awaitCompletion();
-	}
-
-	void		Destroy()
-	{
-		//should end on its own
-	
-	}
-
-
-}
-
 void TerminateNow(bool isMain);
 
 
@@ -680,7 +593,6 @@ void TerminateNow(bool isMain)
 			AIProcess::End();
 
 
-		InformationProvider::Destroy();
 		Objects::Destroy();
 		Grid::Destroy();
 		UDPBroadCast::Terminate();
@@ -712,11 +624,6 @@ BOOL WINAPI MyHandlerRoutine(_In_  DWORD dwCtrlType)
 	
 	}
 	return FALSE;
-}
-
-void LogConfig(const String&msg)
-{
-	Logging::WriteEvent(EventClass::Preset::configurationPrint,msg,nullptr,nullptr,Objects::OwnerParameter());
 }
 
 
@@ -862,15 +769,13 @@ namespace ParameterConfig
 void	StartUp()
 {
 	UDPBroadCast::Start();
-	Network::Start();
-	InformationProvider::Start(ParameterConfig::basePort);
+	Network::Start(ParameterConfig::basePort);
 }
 
 void	ShutDown()
 {
 	UDPBroadCast::Terminate();
-	Network::server.StopService();
-	InformationProvider::Stop();
+	Network::Stop();
 }
 
 class ServiceVar : public Reflection::Variable::Base
@@ -1002,8 +907,8 @@ int main( int argc, const char* argv[])
 		Reflection::state.PushFocus();
 		Reflection::state.EnterNewFolder("/Online");
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("udpBroadcast",UDPBroadCast::IsStarted,UDPBroadCast::Terminate,[](){UDPBroadCast::Start();})));
-		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("info",[]()->bool{return InformationProvider::server.IsOnline();},InformationProvider::Stop,[](){InformationProvider::Start(ParameterConfig::basePort);})));
-		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("session",[]()->bool{return Network::server.IsOnline();},[](){Network::SuspendSession();},Network::RestartSession)));
+		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("info",[]()->bool{return Network::InformationProvider::IsOnline();},Network::InformationProvider::Stop,[](){Network::InformationProvider::Start(ParameterConfig::basePort);})));
+		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("session",[]()->bool{return Network::server.IsOnline();},[](){Network::SuspendSession();},[](){Network::RestartSession(false);})));
 		Reflection::state.DefineCommand("closeSession",(CLI::Command::function0_t)[](){Network::CloseSession();},CLI::NoCompletion);	//why...?
 
 		Reflection::state.PopFocus();
@@ -1188,95 +1093,9 @@ int main( int argc, const char* argv[])
 		//Journal::globalWriter.ContinueExisting(RuntimeConfig::ConfigFile("saves/log"));
 
 		Logging::WriteEvent(EventSignificance::Uncommon, "Preparation of world '"+World::worldID.ToNiceString()+"'/" + World::worldID.ToString() + " completed.", nullptr, nullptr,Objects::OwnerParameter());
-		Logging::WriteEvent(EventSignificance::Important,"Server "+Network::serverID.ToString()+"/"+UDPBroadCast::packet.version+" is online.",nullptr,nullptr,Objects::OwnerParameter());
-		FileIO::RefreshWindowTitle();
+		
+		Network::LogServerState();
 
-	
-		LogConfig("AI is configured as follows:");
-		if (Game::Config::Nexus::enableAI)
-		{
-			LogConfig(" -Nexus-AI enabled");
-			LogConfig(" -ThreatEstimationFactor=" + String(Game::Config::Nexus::threatEstimationFactor));
-			//LogConfig(" -NexusTurrets=" + implode(',', State::Config::Nexus::vehicleTurretNames));
-		}
-		else
-			LogConfig(" -Disabled");
-
-		LogConfig("This game is configured as follows:");
-		#ifndef NO_HIBERNATION
-			LogConfig(" -Uplink traffic per faction is limited to "+String(State::Config::uplinkBandwidth));
-		#endif
-
-		LogConfig(" -Factions: "+Game::Config::FactionSupportFlagString());
-
-		if (World::Config::simulateLiquids)
-			LogConfig(" -Liquids: Expanding.");
-		else
-			LogConfig(" -Liquids: Static.");
-		switch (RuntimeConfig::gameGoal)
-		{
-			case RuntimeConfig::GameGoal::None:
-				LogConfig(" -Goal: None.");
-			break;
-			case RuntimeConfig::GameGoal::ConquerNexus:
-				static_assert(BaseGrid::IsolatedCornerCount==3,"Unexpected count");
-				LogConfig(" -Goal: Connect and enable 2+ Nexus Ports.");
-			break;
-		}
-		if (Game::Config::closedGame)
-			LogConfig(" -Closed: Joining will be restricted to first round and access tokens. Game can be won.");
-		else
-			LogConfig(" -Open: Players can join any time. Game is endless.");
-		if (Game::Config::Nexus::haveBases)
-			LogConfig(" -Nexus-Bases: Nexus bases will be randomly created during world creation");
-		else
-			LogConfig(" -No Nexus-Bases: Nexus bases will not be created");
-
-		switch (RuntimeConfig::doomsdayWeapons)
-		{
-			case RuntimeConfig::DoomsdayWeapons::Conceal:
-				LogConfig(" -Doomsday weapons: Treated like normal weapons (must be in sensor range to see)");
-			break;
-			case RuntimeConfig::DoomsdayWeapons::Disallow:
-				LogConfig(" -Doomsday weapons: Forbidden to fire (can still be built, however)");
-			break;
-			case RuntimeConfig::DoomsdayWeapons::Expose:
-				LogConfig(" -Doomsday weapons: Doomsday explosions are made visible to all factions");
-			break;
-			default:
-				LogConfig(" -Doomsday weapons: "+String(RuntimeConfig::doomsdayWeapons.ToString()));
-			break;
-		}
-
-		if (Game::Config::roundTimer > 0)
-			LogConfig(" -Round Timer: Rounds beyond the first may last at most "+String(Game::Config::roundTimer)+" seconds.");
-		else
-			LogConfig(" -No Round Timer: Rounds end when all players requested so.");
-		if (Game::Config::basesRequired)
-			LogConfig(" -Bases Required: Factions that do not meet the station requirements die after five rounds.");
-		else
-			LogConfig(" -No Survival Conditions: Factions live forever (although their vehicles/structures might not).");
-		if (Game::Config::startBases)
-			LogConfig(" -Bases: New factions are given minimal bases.");
-		else
-			LogConfig(" -Flexibility: New factions are given vehicles, but no structures.");
-		if (Objects::newVehiclesHaveFullAmmo)
-			LogConfig(" -Ammo: New vehicles using standard ammo are given full ammo.");
-		else
-			LogConfig(" -No Ammo: New vehicles have zero ammo.");
-		if (Game::Config::exposeActionLeftToHostileFactions)
-			LogConfig(" -Expose Vehicle Initiative: Vehicle initiative is exposed to hostile factions.");
-		else
-			LogConfig(" -Private Vehicle Action: Vehicle movement is not exposed to hostile factions.");
-		if (RuntimeConfig::empZones)
-			LogConfig(" -EMP Zones: Vehicles entering residual EMP fields will suffer extensive EMP damage.");
-		else
-			LogConfig(" -No EMP Zones: The entire planet is freely accessible.");
-
-		if (FileIO::Config::saveEveryNRounds > 0)
-			LogConfig(" -Auto-saves will be created every "+String(FileIO::Config::saveEveryNRounds)+" round(s).");
-		if (FileIO::Config::saveWhenAllQuit)
-			LogConfig(" -Auto-saves will be created when all quit.");
 
 
 		//FATAL__("test");

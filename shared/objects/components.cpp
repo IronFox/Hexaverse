@@ -2610,7 +2610,7 @@ namespace Objects
 
 		void							Base::GetSubSystem(index_t geometryIndex, float angle, TMatrix4<>&outSystem)	const
 		{
-			Mat::eye(outSystem);
+			Mat::Eye(outSystem);
 			if (angle == 0)
 				return;
 			const float cs = cos(angle);

@@ -197,13 +197,13 @@
 			//display.SetObjectMatrix()
 			//if (!target)
 			//{
-			//	textout.pushState();
-			//	textout.setScale(0.2,0.2);
+			//	textout.PushState();
+			//	textout.SetScale(0.2,0.2);
 			//	display.SetRasterizer(true,false);
 			//	textout.locate(0,0,1);
-			//	textout.color(1,1,1);
+			//	textout.SetColor(1,1,1);
 			//	textout << "test";
-			//	textout.popState();
+			//	textout.PopState();
 
 			//}
 
@@ -236,15 +236,15 @@
 
 		void	Gauge::RenderListText(int y)
 		{
-			textout.pushState();
+			textout.PushState();
 			//textout.locate(projectedTop);
-			textout.locate(-1.f + 0.01f,-1.f + textout.getScaledHeight()*1.2f*(y+5));
+			textout.MoveTo(-1.f + 0.01f,-1.f + textout.GetScaledHeight()*1.2f*(y+5));
 
 			//textout.SetLine(-1);
 			textout << myTag;
 			
 			
-			textout.color(color * 0.5f + float3(0.5f));
+			textout.SetColor(color * 0.5f + float3(0.5f));
 			if (changePerRound > 0)
 			{
 				textout << "+";
@@ -253,76 +253,76 @@
 			else
 				if (changePerRound < 0)
 				{
-					textout.color(1,0.6,0.5);
+					textout.SetColor(1,0.6,0.5);
 					Write(changePerRound);
-					textout.color(color * 0.5f + float3(0.5f));
+					textout.SetColor(color * 0.5f + float3(0.5f));
 				}
 			if (max > 0)
-				textout.scale(1.2f,1.2f);
+				textout.Scale(1.2f,1.2f);
 			if (max > 0)
 			{
 				textout << ' ';
 				Write(current);
-				textout.scale(0.6f,0.6f);
+				textout.Scale(0.6f,0.6f);
 				textout <<'/';
 				Write(max);
-				textout.scale(1.f/0.6f,1.f/0.6f);
+				textout.Scale(1.f/0.6f,1.f/0.6f);
 			}
 			//textout << max;
-			textout.popState();
+			textout.PopState();
 
 
 		}
 
 		void	Gauge::RenderText()
 		{
-			//textout.setScale(0.2,0.2);	//leave it
+			//textout.SetScale(0.2,0.2);	//leave it
 			//display.SetRasterizer(true,false);
 			{
-				textout.pushState();
-				textout.color(color * 0.5f + float3(0.5f));
-				textout.locate(projectedBottom);
+				textout.PushState();
+				textout.SetColor(color * 0.5f + float3(0.5f));
+				textout.MoveTo(projectedBottom);
 				textout.SetLine(-1);
 				textout << current << nl;
-				textout.popState();
+				textout.PopState();
 			}
 			if (max)
 			{
-				textout.pushState();
-				textout.locate(projectedMax);
-				textout.scale(0.6f,0.6f);
+				textout.PushState();
+				textout.MoveTo(projectedMax);
+				textout.Scale(0.6f,0.6f);
 				textout.SetLine(-1);
 				textout << max;
-				textout.popState();
+				textout.PopState();
 			}
 
 			if (changePerRound != 0)
 			{
-				textout.pushState();
-				textout.locate(projectedDelta.xy);
-				textout.scale(0.8f,0.8f);
+				textout.PushState();
+				textout.MoveTo(projectedDelta.xy);
+				textout.Scale(0.8f,0.8f);
 				textout.SetLine(-1);
 				if (changePerRound > 0)
 				{
-					textout.color(color);
+					textout.SetColor(color);
 					textout << '+';
 				}
 				else
-					textout.color(1,0.6,0.5);
+					textout.SetColor(1,0.6,0.5);
 				textout << changePerRound;
-				textout.popState();
+				textout.PopState();
 			}
 			
 			{
-				textout.pushState();
+				textout.PushState();
 				//textout.locate(projectedTop);
-				textout.scale(0.6f,0.6f);
-				textout.locate(projectedTop.x,projectedTop.y + textout.getScaledHeight()*2.5f);
+				textout.Scale(0.6f,0.6f);
+				textout.MoveTo(projectedTop.x,projectedTop.y + textout.GetScaledHeight()*2.5f);
 
 				//textout.SetLine(-1);
 				textout << myTag;
 				//textout << max;
-				textout.popState();
+				textout.PopState();
 			}
 			
 			//RenderIcon(projectedTop);
@@ -479,7 +479,7 @@
 
 			void			RegisterAttack(float time, bool isFriendly,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const Objects::Renderer::SmokeTrailIndex&smokeTrailIndex)
 			{
-				HexGrid::AnimationEventFocusCommand*cmd = new HexGrid::AnimationEventFocusCommand("Attack","Attack",focusLocation,focusEntityID,time,isFriendly,!isFriendly);
+				HexGrid::Custom::AnimationEventFocusCommand*cmd = new HexGrid::Custom::AnimationEventFocusCommand("Attack","Attack",focusLocation,focusEntityID,time,isFriendly,!isFriendly);
 				cmd->smokeTrailIndex = smokeTrailIndex;
 				if (!isFriendly)
 					cmd->state |= Objects::BaseCommand::Flags::IsFlashing;
@@ -489,7 +489,7 @@
 
 			void			RegisterEntityDestruction(float time, bool isOwnedByMe,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const String&entityName)
 			{
-				HexGrid::AnimationEventFocusCommand*cmd = new HexGrid::AnimationEventFocusCommand("Entity Death","Entity Death",focusLocation,focusEntityID,time,isOwnedByMe,isOwnedByMe);
+				HexGrid::Custom::AnimationEventFocusCommand*cmd = new HexGrid::Custom::AnimationEventFocusCommand("Entity Death","Entity Death",focusLocation,focusEntityID,time,isOwnedByMe,isOwnedByMe);
 				if (isOwnedByMe)	//flipped logic
 					cmd->state |= Objects::BaseCommand::Flags::IsFlashing;
 				cmd->fallbackTargetName = entityName;
@@ -501,7 +501,7 @@
 			{
 				foreach (HexGrid::animationTimeLine.commands,cmd)
 				{
-					std::shared_ptr<HexGrid::AnimationEventFocusCommand> aec = To<HexGrid::AnimationEventFocusCommand>::Cast(*cmd);
+					std::shared_ptr<HexGrid::Custom::AnimationEventFocusCommand> aec = To<HexGrid::Custom::AnimationEventFocusCommand>::Cast(*cmd);
 					if (aec->isHostileActivity)
 						return true;
 				}
@@ -523,53 +523,337 @@
 			count_t					currentContactListWidth = 10;
 
 
-
-			Objects::PWorldEntity	AnimationEventFocusCommand::GetTarget()	const
+			bool		Group::operator<(const Group&other) const
 			{
-				if (focusTarget != TUniqueID::Empty())
+				return significance > other.significance;
+			}
+
+			Objects::PWorldEntity	Group::GetPrototype() const
+			{
+				Objects::PWorldEntity e = entries.First().lock();
+				ASSERT__(e);
+				if (e->IsStructure())
+					return Objects::GetPrototypeByName(e->GetCTypeName());
+				return e;	//good enough
+			}
+
+			bool		Group::InitSelection()
+			{
+				if (currentSelection == InvalidIndex)
 				{
-					Objects::PWorldEntity e = Objects::GetEntity(focusTarget);
-					if (e)
-						return e;
-					auto marker = Objects::Marker::FindByReference(focusTarget);
-					if (marker)
-						return marker->visualization;
+					currentSelection = InvalidIndex;
+					foreach (entries,e)
+						if (e->lock() == Objects::selectedEntity)
+						{
+							currentSelection = e - entries.pointer();
+							break;
+						}
+					if (currentSelection == InvalidIndex)
+					{
+						float distance = std::numeric_limits<float>::max();
+						
+						index_t at = 0;
+						for (const auto&entry : entries)
+						{
+							Objects::PWorldEntity e = entry.lock();
+							DBG_ASSERT__(e);
+							float d = Vec::quadraticDistance(e->system.w.xyz,Camera::scene.location);
+							if (d < distance)
+							{
+								distance = d;
+								currentSelection = at;
+							}
+							at++;
+						}
+					}
+					return true;
 				}
-				return Objects::PWorldEntity();
+				return false;
+
 			}
 
-			/*virtual override*/ void				AnimationEventFocusCommand::Execute()
+			void		Group::UpdateSignificance()
 			{
-				Camera::TranslateTo(focusLocation);
-				Objects::PWorldEntity e = GetTarget();
-				if (e)
-					Objects::Select(e,Network::ControlEnabled());
-				Objects::Renderer::HighlightSmokeTrail(smokeTrailIndex);
-				state = Objects::BaseCommand::Flags::IsEnabled;
-			}
+				Objects::PWorldEntity e = entries.First().lock();
+				DBG_ASSERT__(e);
+				significance = e->GetConstructionCost();
 
-			/*virtual override*/ void				AnimationEventFocusCommand::CompileLabel(Label&outResult)
-			{
-				outResult.BeginBrief();
-				Objects::PWorldEntity e = GetTarget();
-				String hostile = isFriendly? "" : "hostile ";
-				String t = " at t="+String(atTime)+" sec";
-				if (e)
-					outResult << "Focus on "+hostile + name+" of "+e->GetNiceName()+t;
-				else
-					if (fallbackTargetName.IsNotEmpty())
-						outResult << "Focus on "+hostile + name+" of "+fallbackTargetName+t;
+
+
+				Objects::PTurretBase b = e->GetTurretBase();
+				if (b && b->turret->CanAttack())
+				{
+					significance *= 3.f;
+				}
+				if (e->IsVehicle())
+					significance *= 10.f;
+				if (e->health <= 0)
+				{
+					if (e->isOwnedByMe)
+						significance *= 15.f / (1.f + sqr(e->health));
 					else
-						outResult << "Focus on "+hostile + name+t;
+						significance *= 0.8f;
+				}
+				UINT32 crc = CRC32::getChecksum(e->GetTypeName().c_str());
+				Random random(crc);
+				significance *= random.NextFloat(0.95f,1.07f);
 			}
 
 
+
+			namespace Custom
+			{
+
+				/*virtual override*/ void		TextDisplayCommand::RasterizeImage()
+				{
+					Objects::GeometryImage::BeginRendering(backgroundColor,1.f);
+
+					display.Pick(Engine::OrthographicAspect<>());	//all identity, -1 to +1
+					textout.PushState();
+
+
+					textout.SetScale(2. * textHeight / textout.GetUnscaledHeight());
+
+					String text = this->GetText();
+					textout.MoveTo(-textout.GetScaledWidth(text)*0.5f,textHeight*0.7f);
+					textout.SetColor(textColor);
+					textout << text;
+					textout.PopState();
+
+					Super::texture = Objects::GeometryImage::EndRendering();
+				}
+
+
+				ArrowCommand::ArrowCommand(bool left, DynamicRow*row) : Super(left ? "Left":"Right"), left(left),row(row)
+				{
+					LoadIcon();
+				}
+
+
+				EntityFocusCommand::EntityFocusCommand(const Objects::PWorldEntity&target) 
+									: Super(target->GetNiceName(),target,[](){FATAL__("WTF");},
+										[](bool) {return Objects::BaseCommand::Flags::IsEnabled;})
+				{}
+
+				/*virtual override*/ void	EntityFocusCommand::Execute()
+				{
+					Objects::PWorldEntity target = reference.lock();
+					if (target)
+						Camera::TranslateTo(target->system.w.xyz);
+				}
+
+
+				AnimationEventFocusCommand::AnimationEventFocusCommand(const String&name, const String&iconName, const TVec3<>&focusLocation, const TUniqueID&focusID, float atTime, bool isFriendly, bool isHostileActivity)
+									: Super(name),focusLocation(focusLocation),atTime(atTime),isFriendly(isFriendly),isHostileActivity(isHostileActivity),focusTarget(focusID)
+				{
+					LoadIcon(iconName);
+				}
+
+
+
+				Objects::PWorldEntity	AnimationEventFocusCommand::GetTarget()	const
+				{
+					if (focusTarget != TUniqueID::Empty())
+					{
+						Objects::PWorldEntity e = Objects::GetEntity(focusTarget);
+						if (e)
+							return e;
+						auto marker = Objects::Marker::FindByReference(focusTarget);
+						if (marker)
+							return marker->visualization;
+					}
+					return Objects::PWorldEntity();
+				}
+
+				/*virtual override*/ void				AnimationEventFocusCommand::Execute()
+				{
+					Camera::TranslateTo(focusLocation);
+					Objects::PWorldEntity e = GetTarget();
+					if (e)
+						Objects::Select(e,Network::ControlEnabled());
+					Objects::Renderer::HighlightSmokeTrail(smokeTrailIndex);
+					state = Objects::BaseCommand::Flags::IsEnabled;
+				}
+
+				/*virtual override*/ void				AnimationEventFocusCommand::CompileLabel(Label&outResult)
+				{
+					outResult.BeginBrief();
+					Objects::PWorldEntity e = GetTarget();
+					String hostile = isFriendly? "" : "hostile ";
+					String t = " at t="+String(atTime)+" sec";
+					if (e)
+						outResult << "Focus on "+hostile + name+" of "+e->GetNiceName()+t;
+					else
+						if (fallbackTargetName.IsNotEmpty())
+							outResult << "Focus on "+hostile + name+" of "+fallbackTargetName+t;
+						else
+							outResult << "Focus on "+hostile + name+t;
+				}
+
+
+				
+
+				/*virtual override*/ void	EntityFocusCommand::CompileLabel(Label&outResult)
+				{
+					outResult.BeginBrief();
+					outResult << name;
+					Objects::PWorldEntity target = this->reference.lock();
+					if (!target)
+						return;
+					if (target->isOwnedByMe)
+					{
+						outResult << "Owner: me";
+						target->AppendDeploymentCount(outResult, target->owner);
+					}
+					else
+						outResult << "Owner: "+target->owner->GetName();
+					if (target->health > 0)
+					{
+						if (target->IsIndestructible())
+							outResult << " Indestructible";
+						else
+							outResult << String(" Health: " +String( target->health) + "/" + target->DescribeMaxHealth());
+						if (target->IsHibernating())
+							outResult << " Hibernating";
+					}
+					else
+					{
+						outResult << " Ghost created " + String(-target->health) + " round(s) ago";
+					}
+
+					//outResult << "Health: "+String(target->health)+"/"+String(target->GetMaxHealth());
+					Objects::PTurretBase base = target->GetTurretBase();
+					if (base && base->turret->CanAttack())
+						outResult << "Offensive ("+String(base->GetAttacksPerRound())+"x"+String(base->turret->GetDamageLevel(target->owner))+")";
+					if (target->empDamageLevel)
+						outResult << "EMP-Damage detected ("+String(target->empDamageLevel)+")";
+
+					outResult.MarkBriefEnd();
+					target->DescribeType(outResult,Objects::WorldEntity::DescIncludePrice/* | Objects::WorldEntity::DescIncludeUnitCount*/);
+
+				}
+
+
+
+				/**/	GroupFocusCommand::GroupFocusCommand(PGroup&group):
+										Super(group->name+" ("+String(group->entries.Count())+")"),
+										group(group)
+				{
+					RasterizeImage();
+				
+				}
+
+				/*virtual override*/ void	GroupFocusCommand::RasterizeImage()
+				{
+					Objects::PWorldEntity e = group->entries.First().lock();
+					if (!e)
+						return;
+
+					const float4&background = e->isOwnedByMe ? friendlyBackgroundColor : hostileBackgroundColor;
+					Objects::EntityCommand::UpdateTexture(*this,e,false,background);
+				}
+
+
+				/*virtual override*/ void				GroupFocusCommand::Execute()
+				{
+					if (!group->InitSelection() || group->entries[group->currentSelection].lock() == Objects::selectedEntity)
+						group->currentSelection = (group->currentSelection+1) % group->entries.Count();
+					Objects::PWorldEntity e = group->entries[group->currentSelection].lock();
+					if (e)
+					{
+						Camera::TranslateTo(e->system.w.xyz);
+						Objects::Select(e,Network::ControlEnabled());
+					}
+				}
+
+
+				/*virtual override*/ void	GroupFocusCommand::CompileLabel(Label&outResult)
+				{
+					//group->InitSelection();
+					outResult.BeginBrief();
+
+					Objects::PWorldEntity proto = group->GetPrototype();
+					Objects::PWorldEntity instance = group->entries.First().lock();
+
+					if (!instance)
+						return;
+					
+					outResult << name;
+					if (instance->isOwnedByMe)
+					{
+	//					outResult << "Owner: me";
+						if (instance->health > 0)
+						{
+							proto->AppendDeploymentCount(outResult, instance->owner);
+						}
+					}
+					else
+						outResult << "Owner: "+instance->owner->GetName();
+					if (instance->health > 0)
+					{
+						//if (e->IsIndestructible())
+						//	outResult << " Indestructible";
+						//else
+						//	outResult << String(" Health: " +String( e->health) + "/" + String(e->GetMaxHealth()));
+					}
+					else
+					{
+						outResult << " Ghost";
+					}
+
+					#ifndef NO_HIBERNATION
+						if (instance->ToHibernating()->IsHibernating())
+							outResult << " Hibernating";
+					#endif
+
+
+					//outResult << "Health: "+String(target->health)+"/"+String(target->GetMaxHealth());
+					Objects::PTurretBase b = proto->GetTurretBase();
+					if (b && b->turret->CanAttack())
+						outResult << "Offensive ("+String(b->GetAttacksPerRound())+"x"+String(b->turret->GetDamageLevel(instance->owner))+")";
+	//					if (target->empDamageLevel)
+	//					outResult << "EMP-Damage detected ("+String(target->empDamageLevel)+")";
+
+					outResult.MarkBriefEnd();
+					Objects::OwnerParameter old = proto->owner;
+					proto->owner = instance->owner;	//crude, but either it's set already, or this is a global prototype in which case ownership don't matter
+					proto->DescribeType(outResult,Objects::WorldEntity::DescIncludePrice /*| Objects::WorldEntity::DescIncludeUnitCount*/);
+					proto->owner = old;
+
+					//if (e->IsVehicle())
+					//{
+					//	VehicleFocusCommand vcommand(gridCoords,To<Objects::Vehicle>::Cast(e));
+					//	vcommand.CompileLabel(outResult);
+					//	return;
+					//}
+					//if (e->IsStructure())
+					//{
+					//	StructureFocusCommand scommand(gridCoords,To<Objects::Structure>::Cast(e));
+					//	scommand.CompileLabel(outResult);
+					//	return;
+					//}
+					//outResult << "Unsupported entity: "+e->GetName();
+				}
+
+
+				static int CollectionCommandCompare(const Objects::PBaseCommand&a,const Objects::PBaseCommand&b)
+				{
+					const GroupFocusCommand&g0 = *(GroupFocusCommand*)a.get();
+					const GroupFocusCommand&g1 = *(GroupFocusCommand*)b.get();
+					if (g0 < g1)
+						return -1;
+					return 1;
+				}
+
+
+
+			}
 
 			void	DynamicRow::Create()
 			{
-				leftCommand.reset(new ArrowCommand(true,this));
+				leftCommand.reset(new Custom::ArrowCommand(true,this));
 				leftCommand->gridCoords = DynamicRowOffset + int2(0,rowIndex);
-				rightCommand.reset(new ArrowCommand(false,this));
+				rightCommand.reset(new Custom::ArrowCommand(false,this));
 				rightCommand->gridCoords = DynamicRowOffset + int2(currentContactListWidth+1,rowIndex);
 			}
 
@@ -667,221 +951,13 @@
 			}
 
 
-			bool		Group::InitSelection()
-			{
-				if (currentSelection == InvalidIndex)
-				{
-					currentSelection = InvalidIndex;
-					foreach (entries,e)
-						if (e->lock() == Objects::selectedEntity)
-						{
-							currentSelection = e - entries.pointer();
-							break;
-						}
-					if (currentSelection == InvalidIndex)
-					{
-						float distance = std::numeric_limits<float>::max();
-						
-						index_t at = 0;
-						for (const auto&entry : entries)
-						{
-							Objects::PWorldEntity e = entry.lock();
-							DBG_ASSERT__(e);
-							float d = Vec::quadraticDistance(e->system.w.xyz,Camera::scene.location);
-							if (d < distance)
-							{
-								distance = d;
-								currentSelection = at;
-							}
-							at++;
-						}
-					}
-					return true;
-				}
-				return false;
-
-			}
-
-			void		Group::UpdateSignificance()
-			{
-				Objects::PWorldEntity e = entries.First().lock();
-				DBG_ASSERT__(e);
-				significance = e->GetConstructionCost();
-
-
-
-				Objects::PTurretBase b = e->GetTurretBase();
-				if (b && b->turret->CanAttack())
-				{
-					significance *= 3.f;
-				}
-				if (e->IsGroundBoundVehicle())
-					significance *= 10.f;
-				if (e->health <= 0)
-				{
-					if (e->isOwnedByMe)
-						significance *= 15.f / (1.f + sqr(e->health));
-					else
-						significance *= 0.8f;
-				}
-				UINT32 crc = CRC32::getChecksum(e->GetTypeName().c_str());
-				Random random(crc);
-				significance *= random.NextFloat(0.95f,1.07f);
-			}
 
 
 
 
 
 
-
-			/*virtual override*/ void	EntityFocusCommand::CompileLabel(Label&outResult)
-			{
-				outResult.BeginBrief();
-				outResult << name;
-				Objects::PWorldEntity target = this->reference.lock();
-				if (!target)
-					return;
-				if (target->isOwnedByMe)
-				{
-					outResult << "Owner: me";
-					target->AppendDeploymentCount(outResult, target->owner);
-				}
-				else
-					outResult << "Owner: "+target->owner->GetName();
-				if (target->health > 0)
-				{
-					if (target->IsIndestructible())
-						outResult << " Indestructible";
-					else
-						outResult << String(" Health: " +String( target->health) + "/" + target->DescribeMaxHealth());
-					if (target->IsHibernating())
-						outResult << " Hibernating";
-				}
-				else
-				{
-					outResult << " Ghost created " + String(-target->health) + " round(s) ago";
-				}
-
-				//outResult << "Health: "+String(target->health)+"/"+String(target->GetMaxHealth());
-				Objects::PTurretBase base = target->GetTurretBase();
-				if (base && base->turret->CanAttack())
-					outResult << "Offensive ("+String(base->GetAttacksPerRound())+"x"+String(base->turret->GetDamageLevel(target->owner))+")";
-				if (target->empDamageLevel)
-					outResult << "EMP-Damage detected ("+String(target->empDamageLevel)+")";
-
-				outResult.MarkBriefEnd();
-				target->DescribeType(outResult,Objects::WorldEntity::DescIncludePrice/* | Objects::WorldEntity::DescIncludeUnitCount*/);
-
-			}
-
-
-
-			/**/	GroupFocusCommand::GroupFocusCommand(PGroup&group):
-									Super(group->name+" ("+String(group->entries.Count())+")"),
-									group(group)
-			{
-				RasterizeImage();
-				
-			}
-
-			/*virtual override*/ void	GroupFocusCommand::RasterizeImage()
-			{
-				Objects::PWorldEntity e = group->entries.First().lock();
-				if (!e)
-					return;
-
-				const float4&background = e->isOwnedByMe ? friendlyBackgroundColor : hostileBackgroundColor;
-				Objects::EntityCommand::UpdateTexture(*this,e,false,background);
-			}
-
-
-			/*virtual override*/ void				GroupFocusCommand::Execute()
-			{
-				if (!group->InitSelection() || group->entries[group->currentSelection].lock() == Objects::selectedEntity)
-					group->currentSelection = (group->currentSelection+1) % group->entries.Count();
-				Objects::PWorldEntity e = group->entries[group->currentSelection].lock();
-				if (e)
-				{
-					Camera::TranslateTo(e->system.w.xyz);
-					Objects::Select(e,Network::ControlEnabled());
-				}
-			}
-
-
-			/*virtual override*/ void	GroupFocusCommand::CompileLabel(Label&outResult)
-			{
-				//group->InitSelection();
-				outResult.BeginBrief();
-
-				Objects::PWorldEntity proto = group->GetPrototype();
-				Objects::PWorldEntity instance = group->entries.First().lock();
-
-				if (!instance)
-					return;
-					
-				outResult << name;
-				if (instance->isOwnedByMe)
-				{
-//					outResult << "Owner: me";
-					if (instance->health > 0)
-					{
-						proto->AppendDeploymentCount(outResult, instance->owner);
-					}
-				}
-				else
-					outResult << "Owner: "+instance->owner->GetName();
-				if (instance->health > 0)
-				{
-					//if (e->IsIndestructible())
-					//	outResult << " Indestructible";
-					//else
-					//	outResult << String(" Health: " +String( e->health) + "/" + String(e->GetMaxHealth()));
-				}
-				else
-				{
-					outResult << " Ghost";
-				}
-
-				#ifndef NO_HIBERNATION
-					if (instance->ToHibernating()->IsHibernating())
-						outResult << " Hibernating";
-				#endif
-
-
-				//outResult << "Health: "+String(target->health)+"/"+String(target->GetMaxHealth());
-				Objects::PTurretBase b = proto->GetTurretBase();
-				if (b && b->turret->CanAttack())
-					outResult << "Offensive ("+String(b->GetAttacksPerRound())+"x"+String(b->turret->GetDamageLevel(instance->owner))+")";
-//					if (target->empDamageLevel)
-//					outResult << "EMP-Damage detected ("+String(target->empDamageLevel)+")";
-
-				outResult.MarkBriefEnd();
-				Objects::OwnerParameter old = proto->owner;
-				proto->owner = instance->owner;	//crude, but either it's set already, or this is a global prototype in which case ownership don't matter
-				proto->DescribeType(outResult,Objects::WorldEntity::DescIncludePrice /*| Objects::WorldEntity::DescIncludeUnitCount*/);
-				proto->owner = old;
-
-				//if (e->IsGroundBoundVehicle())
-				//{
-				//	VehicleFocusCommand vcommand(gridCoords,To<Objects::Vehicle>::Cast(e));
-				//	vcommand.CompileLabel(outResult);
-				//	return;
-				//}
-				//if (e->IsStructure())
-				//{
-				//	StructureFocusCommand scommand(gridCoords,To<Objects::Structure>::Cast(e));
-				//	scommand.CompileLabel(outResult);
-				//	return;
-				//}
-				//outResult << "Unsupported entity: "+e->GetName();
-			}
-
-
-			//Buffer0<VehicleFocusCommand>		vehicleCommands;
-			//Buffer0<StructureFocusCommand>		structureCommands;
-			//Buffer0<GroupFocusCommand>			groupFocusCommands;
-			std::shared_ptr<EntityFocusCommand>					selectedFocus;
+			std::shared_ptr<Custom::EntityFocusCommand>			selectedFocus;
 
 			namespace BottomRightPanel
 			{
@@ -1279,9 +1355,9 @@
 					//tooltips
 					display.pick(UI::textoutCamera);
 
-					textout.pushState();
+					textout.PushState();
 					float2 base = Engine::mouse.location.windowRelative * 2.f - 1.f;
-					textout.scale(2.5f,2.5f);
+					textout.Scale(2.5f,2.5f);
 
 					SurfaceRenderer::SetColor(float4(0,0,0,0.9f));
 					if (hoveringWidth == 0)
@@ -1290,28 +1366,28 @@
 						{
 							foreach (hoveringText.wrappedLines,t)
 								if (t->second)
-									hoveringWidth = std::max(hoveringWidth, textout.getScaledWidth(t->first));
+									hoveringWidth = std::max(hoveringWidth, textout.QueryScaledWidth(t->first));
 						}
 						else
 							foreach (hoveringText.wrappedLines,t)
-								hoveringWidth = std::max(hoveringWidth, textout.getScaledWidth(t->first));
+								hoveringWidth = std::max(hoveringWidth, textout.QueryScaledWidth(t->first));
 					}
 				
 					count_t lineCount = hoveringBrief ? hoveringText.CountWrappedBriefLines() : hoveringText.wrappedLines.Count();
-					float h = textout.getScaledHeight()*(lineCount-1);
+					float h = textout.GetScaledHeight()*(lineCount-1);
 					Rect<> r;
 
 					if (hoveringOver->flipX)
 					{
 						if (hoveringOver->flipY)
 						{
-							textout.locate(base - float2(hoveringWidth,textout.getScaledHeight()));
-							r = Rect<>(base -float2(hoveringWidth,textout.getScaledHeight() + h+textout.getScaledHeight()),base + float2(0,-textout.getScaledHeight()*0.8f));
+							textout.MoveTo(base - float2(hoveringWidth,textout.GetScaledHeight()));
+							r = Rect<>(base -float2(hoveringWidth,textout.GetScaledHeight() + h+textout.GetScaledHeight()),base + float2(0,-textout.GetScaledHeight()*0.8f));
 						}
 						else
 						{
-							textout.locate(base + float2(-hoveringWidth,h + textout.getScaledHeight()));
-							r = Rect<>(base-float2(hoveringWidth,0) ,base + float2(0,h + textout.getScaledHeight()*1.2f));
+							textout.MoveTo(base + float2(-hoveringWidth,h + textout.GetScaledHeight()));
+							r = Rect<>(base-float2(hoveringWidth,0) ,base + float2(0,h + textout.GetScaledHeight()*1.2f));
 						}
 					}
 					else
@@ -1320,13 +1396,13 @@
 
 						if (hoveringOver->flipY)
 						{
-							textout.locate(base - float2(0,textout.getScaledHeight()));
-							r = Rect<>(base -float2(0,textout.getScaledHeight() + h+textout.getScaledHeight()),base + float2(hoveringWidth,-textout.getScaledHeight()*0.8f));
+							textout.MoveTo(base - float2(0,textout.GetScaledHeight()));
+							r = Rect<>(base -float2(0,textout.GetScaledHeight() + h+textout.GetScaledHeight()),base + float2(hoveringWidth,-textout.GetScaledHeight()*0.8f));
 						}
 						else
 						{
-							textout.locate(base + float2(0,h + textout.getScaledHeight()));
-							r = Rect<>(base ,base + float2(hoveringWidth,h + textout.getScaledHeight()*1.2f));
+							textout.MoveTo(base + float2(0,h + textout.GetScaledHeight()));
+							r = Rect<>(base ,base + float2(hoveringWidth,h + textout.GetScaledHeight()*1.2f));
 						}
 					}
 
@@ -1339,11 +1415,11 @@
 					SurfaceRenderer::Rasterize(r);
 					SurfaceRenderer::Flush();
 
-					textout.color(1,1,1);
+					textout.SetColor(1,1,1);
 					foreach (hoveringText.wrappedLines,l)
 						if (!hoveringBrief || l->second)
 							textout << l->first << nl;
-					textout.popState();
+					textout.PopState();
 				}
 
 
@@ -1387,15 +1463,6 @@
 
 			}
 
-			static int CollectionCommandCompare(const Objects::PBaseCommand&a,const Objects::PBaseCommand&b)
-			{
-				const GroupFocusCommand&g0 = *(GroupFocusCommand*)a.get();
-				const GroupFocusCommand&g1 = *(GroupFocusCommand*)b.get();
-				if (g0 < g1)
-					return -1;
-				return 1;
-			}
-
 			static void CollectionToCommands(CollectionTemplateRow<Objects::WWorldEntity>&context)
 			{
 				context.commands.Clear();
@@ -1409,11 +1476,11 @@
 						group->entries.adoptData(entries);
 						group->UpdateSignificance();
 
-						context.commands << Objects::PBaseCommand(new GroupFocusCommand(group));
+						context.commands << Objects::PBaseCommand(new Custom::GroupFocusCommand(group));
 					}
 				});
 				context.collection.Clear();
-				ByComparator::QuickSort(context.commands,CollectionCommandCompare);
+				ByComparator::QuickSort(context.commands,Custom::CollectionCommandCompare);
 				context.Refresh();
 			}
 
@@ -1435,7 +1502,7 @@
 
 				//camera.UpdateProjection2(-1,-1,-1+2.f * display.pixelAspect(),1,-1,1);
 				float len = 300.f / display.clientWidth();
-				textout.locate(1.f - len,0.95f);
+				textout.MoveTo(1.f - len,0.95f);
 
 
 
@@ -1512,7 +1579,7 @@
 						e->VisitAllCommands(VisitAddCommand,false);
 
 					FindAndDeleteCell(selectedFocus);
-					selectedFocus.reset(new EntityFocusCommand(e) );
+					selectedFocus.reset(new Custom::EntityFocusCommand(e) );
 					selectedFocus->Refresh(true);//Network::ControlEnabled());
 					selectedFocus->UpdateTexture(e,false,e->isOwnedByMe ? friendlyBackgroundColor : hostileBackgroundColor);
 
@@ -1723,12 +1790,12 @@
 			if (resourcesAsList)
 			{
 				display.pick(textoutCamera);
-					textout.pushState();
-					textout.scale(2.5f,2.5f);
-					float lineHeight = textout.getScaledHeight()*1.2f;
+					textout.PushState();
+					textout.Scale(2.5f,2.5f);
+					float lineHeight = textout.GetScaledHeight()*1.2f;
 					SurfaceRenderer::SetColor(float4(0,0,0,0.6f));
 					float w = 0.2f / display.pixelAspect();
-					//textout.locate(-1.f + 0.01f,-1.f + textout.getScaledHeight()*1.2f*(y+6));
+					//textout.locate(-1.f + 0.01f,-1.f + textout.GetScaledHeight()*1.2f*(y+6));
 					Rect<> t(-1,lineHeight*4.f-1.f,w*2.f - 1.f,lineHeight*11.5f - 1.f);
 					SurfaceRenderer::Rasterize(
 						float2(t.x.min,t.y.min),float4(0,0,0,0.8f),
@@ -1737,8 +1804,8 @@
 						float2(t.x.min,t.y.max),float4(0,0,0,0.8f)
 					);
 					SurfaceRenderer::Flush();
-					//textout.scale(4.f,4.f);
-					//textout.color(1,1,1);
+					//textout.Scale(4.f,4.f);
+					//textout.SetColor(1,1,1);
 
 					#ifndef NO_HIBERNATION
 						trafficGauge.RenderListText(0);	//bottom
@@ -1752,7 +1819,7 @@
 						}
 					}
 
-					textout.popState();
+					textout.PopState();
 			}
 			else
 			{
@@ -1803,9 +1870,9 @@
 					}
 
 				display.pick(textoutCamera);
-					textout.pushState();
-					textout.scale(4.f,4.f);
-					textout.color(1,1,1);
+					textout.PushState();
+					textout.Scale(4.f,4.f);
+					textout.SetColor(1,1,1);
 
 					#ifndef NO_HIBERNATION
 						trafficGauge.RenderText();
@@ -1816,7 +1883,7 @@
 							res->RenderText();
 						}
 
-					textout.popState();
+					textout.PopState();
 			
 
 
@@ -1862,7 +1929,7 @@
 
 		float		OnTag(const float3&at, char tagChar, float scaleX, float scaleY)
 		{
-	//		float2 at = float2(textout.state.left+0.015,textout.state.top - textout.getScaledHeight() * (float(textout.state.line)-0.5f));
+	//		float2 at = float2(textout.state.left+0.015,textout.state.top - textout.GetScaledHeight() * (float(textout.state.line)-0.5f));
 
 			index_t i = tagChar - tagOffset;
 	//		float2 p = at.xy;
@@ -2035,9 +2102,9 @@
 				if (h->IsHibernating())
 				{
 					color = float3(0.5f);
-					cachedLines.color(0.6,1,1);
+					cachedLines.SetColor(0.6,1,1);
 					cachedLines << " Hibernating" << nl;
-					cachedLines.color(color);
+					cachedLines.SetColor(color);
 				}
 			#endif
 			if (e.empDamageLevel)
@@ -2478,21 +2545,21 @@
 
 			UpdateCacheIfNeeded(e);
 			
-			//textout.getActiveFont()->EndTagMode();
-			textout.pushState();
+			//textout.GetActiveFont()->EndTagMode();
+			textout.PushState();
 
 			float len = 300.f / display.clientWidth();
 			//if (len == 0)
-				//len = textout.scaledWidth("012345678901234567890123456789012345");
-			textout.locate(1.f - len,0.95f);
+				//len = textout.GetScaledWidth("012345678901234567890123456789012345");
+			textout.MoveTo(1.f - len,0.95f);
 
 			foreach (cachedLines,l)
 			{
-				textout.color(l->color);
+				textout.SetColor(l->color);
 				textout << l->text << nl;
 			}
 
-			textout.popState();
+			textout.PopState();
 	
 		}
 

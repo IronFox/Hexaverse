@@ -1710,6 +1710,7 @@ namespace Objects
 		return float(random()) / float(random.max());
 	}
 
+#if 0
 	/*static*/ void Faction::IDToColor(TVec3<>&rs, const TUniqueID&id, int iteration/*=0*/)
 	{
 		USHORT	v0 = *(const USHORT*)id.bytes,
@@ -1722,15 +1723,57 @@ namespace Objects
 		rs.v[primary] = sqrt(1.f - sqr(secondaryLevel));
 		rs.v[secondary] = secondaryLevel;
 	}
+#endif /*0*/
 
-	void		Faction::InitID(const TUniqueID&toID, bool recomputeColor/*=true*/)
+#ifndef CLIENT
+	/*static*/ void Faction::FindFreeColor(float3&outColor)
+	{
+		static Random random;
+		float bestDist = -1;
+		for (index_t i = 0; i < 20; i++)
+		{
+			TVec3<> candidate;
+			Vec::HSL2RGB(float3(random.NextFloat(),0.5f + random.NextFloat(0.5f),0.5f),candidate);
+			count_t competition = 0;
+			float closest = std::numeric_limits<float>::max();
+			ForeachFaction([&](const PFaction&f)
+			{
+				if (&f->color != &outColor)
+				{
+					competition++;
+					float dist = Vec::quadraticDistance(candidate,f->color);
+					closest = vmin(dist,closest);
+				}
+			});
+			if (closest > bestDist)
+			{
+				bestDist = closest;
+				outColor = candidate;
+			}
+			if (!competition)
+			{
+			//	LogEvent(EventClass::Preset::configurationPrint,"No other faction. Using color as is");
+				break;	//no point randomizing more often
+			}
+		}
+		//LogEvent(EventClass::Preset::configurationPrint,"Final color is "+outColor.ToString());
+	}
+#endif
+
+	void		Faction::InitID(const TUniqueID&toID,bool nexusFaction)
 	{
 		if (toID == TUniqueID::Empty())
 			id.Generate();
 		else
 			id = toID;
-		if (recomputeColor)
-			IDToColor(color,id);
+		#ifndef CLIENT
+			if (nexusFaction)
+				color = float3 (1.f, 0.25f, 0.25f);
+			else
+				FindFreeColor(color);
+		#else
+			color = float3();
+		#endif
 	}
 
 }

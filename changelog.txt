@@ -1,13 +1,23 @@
-v0.6.3	[Feb 8 2017]
+v0.6.3	[Feb 26 2017]
+	> All vehicles now fire automatically if they are idle or move independently of attacks.
 	> When target mode is active with any unit selected, pressing the right mouse button will abort the mode.
 	> Vehicle plants no longer require energy to operate.
 	> Plane factories no longer require energy to operate.
 	> Reduced size of Nexus bases.
+	> Configuration mode now automatically uploads local configuration to server. Removed explicit up and download commands.
+	> Added number icons next to changeable values in interactive configuration mode.
+	> Decreased water transparency. Improved contrast to oceanic fog-of-war.
+	> Faction colors are now generated and distributed by the server. Clients render them even in non-spectator mode.
+	> Nexus faction research can now be configured to progress over time. Removed the initial research bonus of that faction.
+	> Improved initial faction placement.
 	* Fixed rare fatal client exception when failing to layout menu components.
 	* Fixed rare fatal server exception when Nexus Port changes ownership.
 	* Fixed Raptor not being able to fire at locations straight down.
 	* Fixed towers auto-firing only once per round even if they could fire multiple times.
-
+	* Fixed some hex-commands not showing their price (e.g. 'Obliterate').
+	* Nexus bases located in residual EMP fields now instantaneously suffer EMP damage.
+	* Added missing research state updates to spectators.
+	
 v0.6.2	[Jan 31 2017]
 	+ Added new dialog to remotely load server-known planet presets.
 	> Replaced 'rules' icon with cogwheel.

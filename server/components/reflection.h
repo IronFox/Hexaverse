@@ -1,10 +1,14 @@
 #ifndef componentReflectionH
 #define componentReflectionH
 
+#include <global_string.h>
 #include <string/cli.h>
 #include <string/cli_defaults.h>
 
-
+/**
+The reflection module handles all configurable variables, including loadable planets.
+All variables are mapped to CLI (Command Line Interpretor) entries, that may execute arbitrary code on change.
+*/
 namespace Reflection
 {
 
@@ -12,16 +16,18 @@ namespace Reflection
 
 	namespace Variable
 	{
-		CONSTRUCT_ENUMERATION6(Persistence,
+		CONSTRUCT_ENUMERATION5(Persistence,
 			Temporary,
-			ConfigOnly,
-			ConfigOverridesSavegame,
-			RestoreFromSavegame,
+			ConfigOnly,			//only read from configuration. not written to or extracted from savegames
+		//	ConfigOverridesSavegame,	//written to savegames but overridden by configuration after load (useful for debugging or statistical purposes, mostly)
+			RestoreFromSavegame,		//written to and restored from savegames. Configuration does not override these values, but they may be changed via the console
 			GameInvariant,		//written to savegames, but unchangeable until a new game is created. Common type: planet type
 			PlanetConfig		//written to savegames, but changeable via console in order to reconfigure a new planet
 		)
 
-
+		/**
+		Basic variable abstruction, providing callbacks for change detection
+		*/
 		class Base : public CLI::Variable
 		{
 			typedef CLI::Variable	Super;

@@ -175,7 +175,7 @@ SpinLock	eventLock;
 	static const float eventFontScale = 0.9f;
 	void		UpdateHistoryHeight()
 	{
-		float h0 = textout.getScaledHeight() * eventFontScale;
+		float h0 = textout.GetScaledHeight() * eventFontScale;
 		historyHeight = 0;
 		foreach (events,ev)
 			historyHeight += h0 * ev->scale;
@@ -1266,7 +1266,7 @@ namespace ApplicationInterface
 		{
 			bool isCommon = 
 				#ifdef HAS_WINDOW
-					ConfigurationMode::IsActive();
+					Network::amSpectator;
 				#else
 					true;
 				#endif
@@ -1509,7 +1509,7 @@ namespace ApplicationInterface
 		//float3 t;
 		//float4 c;
 		//shadowCamera.Project(center,t);
-		//Mat::mult(Objects::shadowCamera.projection,float4(t,1),c);
+		//Mat::Mult(Objects::shadowCamera.projection,float4(t,1),c);
 
 		//display.SetDepthTest(false,false);	//disables depth output
 		Objects::Renderer::RenderShadows(
@@ -1619,6 +1619,8 @@ bool loop()
 
 
 	#ifdef HAS_WINDOW
+		ConfigurationMode::Tick();
+
 		bool alwaysDay = RuntimeConfig::FromFile::alwaysDay && !Camera::autoRotation;
 
 		if (!alwaysDay)
@@ -1928,7 +1930,7 @@ bool loop()
 			display.SetDepthTest(false,false);
 			display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 
-			textout.color(1,1,1);
+			textout.SetColor(1,1,1);
 
 
 			if (!Network::client.IsConnected() /*&& false*/)
@@ -1943,12 +1945,12 @@ bool loop()
 			if (UI::showControlsAndContacts && !saveScreenshot)
 			{
 				static const String line = "(C) Stefan Elsen; v" PRODUCT_VERSION "; Compiled "+String(__TIMESTAMP__);
-				//textout.locate(0.f,1.f - textout.getScaledHeight());
-				textout.pushState();
-				textout.scale(0.8f,0.8f);
-				textout.locate(1.f - textout.scaledWidth(line),textout.getScaledHeight());
+				//textout.locate(0.f,1.f - textout.GetScaledHeight());
+				textout.PushState();
+				textout.Scale(0.8f,0.8f);
+				textout.MoveTo(1.f - textout.GetScaledWidth(line),textout.GetScaledHeight());
 				textout << line;
-				textout.popState();
+				textout.PopState();
 
 			}
 
@@ -2013,30 +2015,30 @@ bool loop()
 				if (anyChanged)
 					UpdateHistoryHeight();
 				count_t rows = events.Count();
-					//std::min(events.Count(), (count_t)floor(0.7f / textout.getScaledHeight()));
+					//std::min(events.Count(), (count_t)floor(0.7f / textout.GetScaledHeight()));
 
 
-				textout.pushState();
-				textout.scale(eventFontScale,eventFontScale);
-				textout.locate(0.0f, 280.f/display.clientHeight() + historyHeight);
+				textout.PushState();
+				textout.Scale(eventFontScale,eventFontScale);
+				textout.MoveTo(0.0f, 280.f/display.clientHeight() + historyHeight);
 				for (index_t i = events.Count() - rows; i < events.Count(); i++)
 					//if (events[i].stackID < 10)
 					{
 						const auto&ev = events[i];
 						//if (ev.age < 30.f)
 						{
-							textout.scale(ev.scale,ev.scale);
-							textout.color(ev.color, (VisualEvent::MaxAge - ev.age)/VisualEvent::MaxAge);
+							textout.Scale(ev.scale,ev.scale);
+							textout.SetColor(ev.color, (VisualEvent::MaxAge - ev.age)/VisualEvent::MaxAge);
 							textout << ev.message;
 							textout <<  nl;
-							textout.scale(1.f/ev.scale,1.f/ev.scale);
+							textout.Scale(1.f/ev.scale,1.f/ev.scale);
 						}
 					}
-				textout.popState();
+				textout.PopState();
 				eventLock.unlock();
 
-				textout.color(1,1,1);
-				textout.locate(0,1);
+				textout.SetColor(1,1,1);
+				textout.MoveTo(0,1);
 				textout << (Network::amOnline? "online" : "offline")<<", "<< (Network::haveFaction ? "logged in" : "not logged in")<< nl;
 				textout << "Hello "<<Network::chosenNickname<<nl;
 				if (Network::amOnline)
@@ -2055,9 +2057,9 @@ bool loop()
 							textout << "Progress: "<<Network::gameProgress.status<<nl;
 						if (Network::gameProgress.warning.IsNotEmpty())
 						{
-							textout.color(1,0,0);
+							textout.SetColor(1,0,0);
 							textout << "Warning: "<<Network::gameProgress.warning<<nl;
-							textout.color(1,1,1);
+							textout.SetColor(1,1,1);
 						}
 					}
 					else
@@ -2065,15 +2067,15 @@ bool loop()
 						{
 							if (Network::gameProgress.gameWon)
 							{
-								textout.color(0.4,0.5,1);
+								textout.SetColor(0.4,0.5,1);
 								textout << "YOU WIN"<<nl;
 							}
 							else
 							{
-								textout.color(1,0.5,0.4);
+								textout.SetColor(1,0.5,0.4);
 								textout << "GAME OVER"<<nl;
 							}
-							textout.color(1,1,1);
+							textout.SetColor(1,1,1);
 						}
 				}
 				#ifdef _DEBUG
@@ -2084,23 +2086,23 @@ bool loop()
 				#endif
 				if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Network::roundTimer > 0)
 				{
-					textout.pushState();
+					textout.PushState();
 					float remaining = std::max(Network::roundTimer - timer.GetSecondsSince(Network::phaseStarted),0.f);
 					textout << "Remaining seconds: "<<nl;
-					textout.scale(2.f,2.f);
+					textout.Scale(2.f,2.f);
 					if (remaining <= 10.f && !Network::newRoundRequested)
 					{
-						textout.scale(1.2f,1.2f);
+						textout.Scale(1.2f,1.2f);
 						bool blinkOn = ((timer.Now()/(timer.GetTicksPerSecond()/5))%2) != 0;
-						textout.color(1,0.2,0.2,blinkOn ? 0.5f : 1.f);
+						textout.SetColor(1,0.2,0.2,blinkOn ? 0.5f : 1.f);
 					}
 					textout<<Round(remaining)<<nl;
-					textout.popState();
+					textout.PopState();
 				}
 
 
-				textout.locate(0.0f,0.05f);
-				textout.color(1,1,1);
+				textout.MoveTo(0.0f,0.05f);
+				textout.SetColor(1,1,1);
 				textout << "FPS: "<<1.f / Engine::timing.delta << nl;
 				if (Camera::locked && !TimeLapse::enabled)
 					textout << "Camera locked. Press F4 to unlock" << nl;
@@ -2124,16 +2126,16 @@ bool loop()
 			{
 				static const String line = "Interactive Configuration Mode";
 
-				textout.pushState();
-				textout.scale(2.0f,2.0f);
-				textout.locate(0.95f - textout.scaledWidth(line),0.95f);
+				textout.PushState();
+				textout.Scale(2.0f,2.0f);
+				textout.MoveTo(0.95f - textout.GetScaledWidth(line),0.95f);
 				textout << line<<nl;
-				textout.scale(0.75f,0.75f);
+				textout.Scale(0.75f,0.75f);
 				if (ConfigurationMode::ViewingServerVersion())
 					textout << "Seeing Server Version";
 				else
 					textout << "Seeing Local Version";
-				textout.popState();
+				textout.PopState();
 			}
 
 	#endif
@@ -2168,9 +2170,9 @@ void MyFatal(const FatalDescriptor&descriptor)
 	void	onWindowResize(const Resolution&, UINT32)
 	{
 		Camera::scene.UpdateProjection2(display.pixelAspect(),0.1f,1000.f);
-	//	textout.setScale(1.f/display.clientWidth(),1.f/display.clientHeight());
+	//	textout.SetScale(1.f/display.clientWidth(),1.f/display.clientHeight());
 
-		textout.setScale(1.f / display.clientWidth(), 1.f / display.clientHeight());
+		textout.SetScale(1.f / display.clientWidth(), 1.f / display.clientHeight());
 
 		UI::OnWindowResize();
 		GUI::OnWindowResize();
@@ -3625,7 +3627,7 @@ int main( int argc, const char* argv[])
 			display.ScanShaderHeader("shaders");
 
 
-			textout.getActiveFont()->LoadFromFile("Font/font.xml");
+			textout.GetActiveFont()->LoadFromFile("Font/font.xml");
 
 
 			LineRenderer::Create();
@@ -3683,7 +3685,7 @@ int main( int argc, const char* argv[])
 
 			Engine::mouse.BindWheel(OnWheel);
 
-			textout.setScale(1.f/display.clientWidth(),1.f/display.clientHeight());
+			textout.SetScale(1.f/display.clientWidth(),1.f/display.clientHeight());
 
 
 			display.SetBackbufferClearColor(0,0,0,0);
@@ -3755,8 +3757,8 @@ int main( int argc, const char* argv[])
 			{
 				TMatrix3<> mat,rot;
 				Mat::makeAxisSystem(float3::reinterpret(Camera::scene.location).Normalized(),2,mat);
-				Mat::rotationMatrix(SunOffAngle, mat.x,rot);
-				Mat::mult(rot,mat.z,sunDirection);
+				Mat::BuildRotationMatrix(SunOffAngle, mat.x,rot);
+				Mat::Mult(rot,mat.z,sunDirection);
 			}
 
 
@@ -3765,7 +3767,7 @@ int main( int argc, const char* argv[])
 				if (RuntimeConfig::aiMode)
 					ShowWindow(Engine::context.getWindow(),SW_MINIMIZE);
 			#endif
-			textout.getActiveFont()->BeginTagMode(StatePanel::OnTag,StatePanel::TagWidth,
+			textout.GetActiveFont()->BeginTagMode(StatePanel::OnTag,StatePanel::TagWidth,
 					Objects::TextoutResourceTagOffset,(char)(Objects::TextoutResourceTagOffset+(char)Objects::Resource::NumberOfPossibilities + 2));
 			Tutorial::Create();
 

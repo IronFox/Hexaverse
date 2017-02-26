@@ -3,6 +3,7 @@
 #include "state/networkState.h"
 #include "state/gameState.h"
 #include "state/worldState.h"
+#include "state/fileIO.h"
 
 extern Random random;
 
@@ -32,6 +33,7 @@ void ConfigurationMode::Begin()
 	planetSeed = Random().NextSeed();
 	LogEvent(EventSignificance::Important,"Starting configuration mode");
 	Network::BuildConfiguredWorld();
+	FileIO::RefreshWindowTitle();
 
 	//Network::RestartSession();
 }
@@ -53,7 +55,8 @@ void ConfigurationMode::End()
 	World::BuildConfiguredWorld(random);
 
 
-	Network::RestartSession();
+	Network::RestartSession(true);
+	FileIO::RefreshWindowTitle();
 
 }
 
