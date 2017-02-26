@@ -1,7 +1,7 @@
 ﻿Loading screen
 
 hoverformer sometimes tries building roads through buildings
-dedicated server should not start in interactive mode. Log whether in interactive mode/public/private
+dedicated server should not start in interactive mode.
 
 
 resources 2.0:
@@ -146,6 +146,7 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+Log whether in interactive mode/public/private
 fixed: faction spawning too close to hostile factions
 reduce nexus missile range
 Steam: fixed invite (IsInLobby() wis false in client)
