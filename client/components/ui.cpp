@@ -585,7 +585,7 @@
 				{
 					significance *= 3.f;
 				}
-				if (e->IsVehicle())
+				if (e->IsGroundBoundVehicle())
 					significance *= 10.f;
 				if (e->health <= 0)
 				{
@@ -820,7 +820,7 @@
 					proto->DescribeType(outResult,Objects::WorldEntity::DescIncludePrice /*| Objects::WorldEntity::DescIncludeUnitCount*/);
 					proto->owner = old;
 
-					//if (e->IsVehicle())
+					//if (e->IsGroundBoundVehicle())
 					//{
 					//	VehicleFocusCommand vcommand(gridCoords,To<Objects::Vehicle>::Cast(e));
 					//	vcommand.CompileLabel(outResult);
