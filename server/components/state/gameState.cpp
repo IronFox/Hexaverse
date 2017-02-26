@@ -53,7 +53,7 @@ namespace Game
 						;
 
 			bool		enableAI = false;
-			count_t		roundsPerResearchPoint=10;
+			UINT32		roundsPerResearchPoint=10;
 			float		threatEstimationFactor = 1.f;
 			Array<Objects::Component::Turret*>	vehicleTurrets;
 		}
