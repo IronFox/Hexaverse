@@ -15,10 +15,22 @@ namespace Reflection
 
 	static CLI::PFolder factionFolder;
 
+
+	static const constexpr UINT32 DefaultFactionsPerEMPZone = 
+			#ifdef LOWER_RESOLUTION_PLANET
+					1
+			#else
+					3
+			#endif
+			;
+
+
+
 	namespace Variable
 	{
 		PBase	planetType;	
-	
+		typedef ::String	String;
+
 		void	Walk(const CLI::PFolder&f, const Variable::FCallback&callback)
 		{
 			for (const auto&var : f->variables)
@@ -286,56 +298,7 @@ namespace Reflection
 				defaultValue = ToString();
 			}
 		};
-		
-		class FactionsPerEMPZone : public Base
-		{
-			typedef Base	Super;
-		public:
-			#ifdef LOWER_RESOLUTION_PLANET
-				UINT32		defaultValue = 1;
-			#else
-				UINT32		defaultValue = 3;
-			#endif
 
-			/**/			FactionsPerEMPZone(const String&name, unsigned protection=CLI::EraseProtection):Super(name, "UInt32",Persistence::RestoreFromSavegame,1,protection)	{}
-			virtual String	ToString()		const	override	{return String(Game::Config::factionsPerZone);}
-			virtual	bool	Set(const String&value)	override
-			{
-				UINT32 old = Game::Config::factionsPerZone;
-				if (!convert(value.c_str(),value.length(),Game::Config::factionsPerZone))
-					return false;
-				if (Game::Config::factionsPerZone < 1 || Game::Config::factionsPerZone > 5)
-				{
-					Game::Config::factionsPerZone = old;
-					return false;
-				}
-				if (old < Game::Config::factionsPerZone && Objects::Faction::all.Count() > 0)
-				{
-					LogEvent(EventClass::Preset::commandRejected,"Unable to increase factionsPerEMPZone while factions exist.");
-					Game::Config::factionsPerZone = old;
-					return false;
-				}
-				if (old != Game::Config::factionsPerZone)
-				{
-					OnChanged();
-					World::UpdateEMPZones(0);
-				}
-				return true;
-			}
-			virtual String		GetSupportedValues() const override 
-			{
-				return "[1,5]"
-						;
-			}
-			virtual String	GetDefault() const override
-			{
-				return defaultValue;
-			}
-			virtual void		SetCurrentToDefault() override
-			{
-				defaultValue = Game::Config::factionsPerZone;
-			}
-		};
 
 		class EMPZones : public Base
 		{
@@ -562,6 +525,57 @@ namespace Reflection
 				defaultValue = RuntimeConfig::UnitLimits::IsEnabled();
 			}
 
+		};
+
+		
+		
+
+
+
+		class FactionsPerEMPZone : public Base
+		{
+			typedef Base	Super;
+		public:
+			UINT32		defaultValue = DefaultFactionsPerEMPZone;
+
+			/**/			FactionsPerEMPZone(const String&name, unsigned protection=CLI::EraseProtection):Super(name, "UInt32",Persistence::RestoreFromSavegame,1,protection)	{}
+			virtual String	ToString()		const	override	{return String(Game::Config::factionsPerZone);}
+			virtual	bool	Set(const String&value)	override
+			{
+				UINT32 old = Game::Config::factionsPerZone;
+				if (!convert(value.c_str(),value.length(),Game::Config::factionsPerZone))
+					return false;
+				if (Game::Config::factionsPerZone < 1 || Game::Config::factionsPerZone > 5)
+				{
+					Game::Config::factionsPerZone = old;
+					return false;
+				}
+				if (old < Game::Config::factionsPerZone && Objects::Faction::all.Count() > 0)
+				{
+					LogEvent(EventClass::Preset::commandRejected,"Unable to increase factionsPerEMPZone while factions exist.");
+					Game::Config::factionsPerZone = old;
+					return false;
+				}
+				if (old != Game::Config::factionsPerZone)
+				{
+					OnChanged();
+					World::UpdateEMPZones(0);
+				}
+				return true;
+			}
+			virtual String		GetSupportedValues() const override 
+			{
+				return "[1,5]"
+						;
+			}
+			virtual String	GetDefault() const override
+			{
+				return defaultValue;
+			}
+			virtual void		SetCurrentToDefault() override
+			{
+				defaultValue = Game::Config::factionsPerZone;
+			}
 		};
 
 
