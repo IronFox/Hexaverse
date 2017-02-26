@@ -2798,8 +2798,12 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 		if (Objects::DisableModes(Network::ControlEnabled()))
 			return;
 
+
+
 		if (!GUI::IsVisible(mainMenu))
 		{
+			if (!UI::showControlsAndContacts)
+				ToggleControlGUI();	
 			GUI::Show(mainMenu);
 		}
 		else
