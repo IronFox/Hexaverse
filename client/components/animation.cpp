@@ -246,9 +246,8 @@ namespace Animation
 			//LogEvent(EventSignificance::Debug,nullptr,"Automation issued by "+String(loc.ToString()));
 			AI::vehicles.Clear();
 		}
-		foreach(Objects::vehicles, _v)
+		Objects::vehicles.Foreach([](const Objects::PVehicle&v)
 		{
-			Objects::PVehicle v = *_v;
 			if (v->isOwnedByMe)
 			{
 				if (v->isAutomated && v->turret->detectsResources)
@@ -259,7 +258,7 @@ namespace Animation
 						AI::vehicles << v;
 					}
 			}
-		}
+		});
 		if (RuntimeConfig::aiMode)
 		{
 			DBG_ASSERT__(!Network::newRoundRequested);

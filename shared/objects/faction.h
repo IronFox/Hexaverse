@@ -6,6 +6,7 @@
 #include "structureCompound.h"
 #include "../stringTable.h"
 #include "../roundNumber.h"
+#include "../sharedContainer.h"
 #include "research.h"
 
 namespace Objects
@@ -121,8 +122,8 @@ namespace Objects
 			static void				GetOutdated(BasicBuffer<Marker>&outOudated, const RoundNumber&currentRoundNumber, UINT32 deathOutdatedAfterRounds=3);
 
 			static Buffer0<Marker, Strategy::Adopt>	all;
-			static Buffer0<PStructure>	structureGhosts;
-			static Buffer0<PMobileEntity>	mobileGhosts;
+			static SharedContainer<Structure>		structureGhosts;
+			static SharedContainer<MobileEntity>	mobileGhosts;
 			static Buffer0<TVisited>	visitedSystems;
 			static GenericHashTable<TUniqueID, index_t, TUniqueID>	idMap, referenceIDMap,visitedSystemIDMap;
 		#endif

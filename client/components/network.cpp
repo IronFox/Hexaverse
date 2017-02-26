@@ -1617,8 +1617,10 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			if (RuntimeConfig::aiMode)
 				AI::vehicles.Clear();	//whichever is left, cannot be computed
 			Animation::atTime = 0.f;
-			foreach (Objects::vehicles, v)
-				(*v)->preAnimationLocation = (*v)->location;
+			Objects::ForeachMobileWorldEntity([](const Objects::PMobileEntity&m)
+			{
+				m->preAnimationLocation = m->location;
+			},false);
 			if (c.timeFactor > 0)
 				animationTimeFactor = c.timeFactor;
 		break;
@@ -1637,7 +1639,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			},false);
 
 			#ifdef HAS_WINDOW
-				for (const auto&s : Objects::structures)
+				Objects::structures.Foreach([](const Objects::PStructure&s)
 				{
 					if (s->isOwnedByMe && s->IsWorkingStructure() )
 					{
@@ -1645,7 +1647,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 						if (ws->AwaitsUserInteraction())
 							Tutorial::ShowMessage("Interaction");
 					}
-				}
+				});
 
 				if (TimeLapse::enabled)
 					saveScreenshot = true;

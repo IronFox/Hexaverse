@@ -114,7 +114,7 @@ namespace Game
 			extern bool		startBases/* = false*/,
 							enableAI/* = false*/;
 			extern float	threatEstimationFactor/* = 1.f*/;
-			extern count_t	roundsPerResearchPoint;
+			extern UINT32	roundsPerResearchPoint;
 			extern Array<Objects::Component::Turret*>	vehicleTurrets;
 		}
 	}

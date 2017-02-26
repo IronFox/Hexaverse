@@ -9,7 +9,7 @@
 
 namespace Objects
 {
-	Buffer0<PVehicle>				vehicles;
+	SharedContainer<Vehicle>		vehicles;
 
 	#ifndef CLIENT
 		bool						newVehiclesHaveFullAmmo = true;
@@ -31,9 +31,11 @@ namespace Objects
 	/*static*/ count_t			Vehicle::CountTurretOccurrences(const OwnerParameter&o,Component::Turret*t)
 	{
 		count_t rs = 0;
-		for (const auto&m : vehicles)
-			if (m->owner == o && m->turret == t)
+		vehicles.Foreach([&rs,o,t](const PVehicle&v)
+		{
+			if (v->owner == o && v->turret == t)
 				rs++;
+		});
 		return rs;
 	}
 

@@ -1595,12 +1595,11 @@ namespace FileIO
 		},false);
 
 
-
-		foreach (Objects::structures,_s)
+		Objects::structures.Foreach([&objects,&allFactions](const Objects::PStructure&_s)
 		{
-			Objects::Structure&s = **_s;
+			Objects::Structure&s = *_s;
 			Export(objects->AppendBlock(RIFF_LIST),s,allFactions);
-		}
+		});
 
 
 		foreach (Grid::Resource::all,res)

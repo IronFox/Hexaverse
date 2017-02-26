@@ -3,11 +3,12 @@
 
 #include "mobileEntity.h"
 #include "turretBase.h"
+#include "../sharedContainer.h"
 
 namespace Objects
 {
 
-	extern Buffer0<PVehicle>			vehicles;
+	extern SharedContainer<Vehicle>		vehicles;
 
 	extern Grid::THighDistanceField		vehicleDistanceField;
 

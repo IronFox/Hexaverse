@@ -1,3 +1,8 @@
+v0.6.4
+	> The escape key now also unhides HUD elements (text etc.).
+	* Target mode is no longer canceled when dragging the camera.
+	* Fixed unit destruction when falling farther than safely possible.
+
 v0.6.3	[Feb 26 2017]
 	> All vehicles now fire automatically if they are idle or move independently of attacks.
 	> When target mode is active with any unit selected, pressing the right mouse button will abort the mode.

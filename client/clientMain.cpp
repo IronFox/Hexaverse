@@ -1414,9 +1414,11 @@ namespace ApplicationInterface
 				if (f->compound.allStructures.IsEmpty())
 				{
 					bool any = false;
-					for (const auto& s : Objects::structures)
+					Objects::structures.Foreach([&any,f](const Objects::PStructure&s)
+					{
 						if (s->owner == f)
 							any = true;
+					});
 					if (any)	//prevent stack overflow
 						Objects::RefreshCompoundCoverage(0);
 				}
@@ -1554,11 +1556,11 @@ bool loop()
 		DebugCheckCamera();
 		Explosions::Update(Engine::timing.delta);
 
-		for (const auto&plane : Objects::SubOrbital::planes)
+		Objects::SubOrbital::planes.Foreach([](const Objects::SubOrbital::PPlane&plane)
 		{
 			auto&s = *plane;
 			if (s.IsGroundBoundVehicle())
-				continue;
+				return;
 
 			TVec3<> at = Grid::ToWorld(s.location);
 			double offset = (((UINT32)s.id.bytes[1]<<16) | ((UINT32)s.id.bytes[2]<<8) | ((UINT32)s.id.bytes[3]));
@@ -1566,7 +1568,7 @@ bool loop()
 			at.y += (sin(offset + Engine::timing.now*1.2784))*0.025f;
 			at.z += (sin(offset + Engine::timing.now*1.43485))*0.025f;
 			s.system.w.xyz = at;
-		}
+		});
 
 		if (!Engine::mouse.buttons.pressed)		
 		{
@@ -2649,14 +2651,16 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 		if (!AlsoControlsUnits)
 			return;
 
-		if (Objects::DisableModes(Network::ControlEnabled()))
-		{
-			OnTutorialsChanged();
-			return;
-		}
+
 
 		if (timer.GetSecondsSince(rightMouseDragBegun) < 0.2f && !rightMouseDragged)
 		{
+			if (Objects::DisableModes(Network::ControlEnabled()))
+			{
+				OnTutorialsChanged();
+				return;
+			}
+
 			Grid::LCellIdI	target;
 			if (Objects::selectedEntity)
 			{
@@ -2830,8 +2834,12 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 		if (Objects::DisableModes(Network::ControlEnabled()))
 			return;
 
+
+
 		if (!GUI::IsVisible(mainMenu))
 		{
+			if (!UI::showControlsAndContacts)
+				ToggleControlGUI();	
 			GUI::Show(mainMenu);
 		}
 		else
@@ -2906,16 +2914,17 @@ bool	IsIdle(const Objects::PMobileEntity&v)
 		if (v->CanAttack() && v->HasAmmoForShot() && v->CountPossibleAttacks())	//check that its turret can attack, there's ammo for the shot, and it has any shots left this round
 		{
 			bool emp = v->turret->dealsEMPDamage;
-			if (v->IsGroundBoundVehicle())
+			if (v->IsVehicle())
 			{
-				for (auto other : Objects::vehicles)
-					if (!emp || !other->empDamageLevel)
+				bool canAttackAny = false;
+				Objects::ForeachWorldEntity([emp,&canAttackAny,v](const Objects::PWorldEntity&other)
+				{
+					if (!canAttackAny && (!emp || !other->empDamageLevel))
 						if (!other->isOwnedByMe && CanHit(v,other->location))
-							return true;
-				for (auto other : Objects::structures)
-					if (!emp || !other->empDamageLevel)
-						if (!other->isOwnedByMe && CanHit(v,other->location))
-							return true;
+							canAttackAny = true;
+				},false);
+				if (canAttackAny)
+					return true;
 			}
 			else
 				#ifndef NO_SATELLITES
@@ -2928,25 +2937,9 @@ bool	IsIdle(const Objects::PMobileEntity&v)
 				}
 				else
 				#endif
-					if (v->IsPlane())
-					{
-						for (auto other : Objects::SubOrbital::planes)
-							if (!other->isOwnedByMe && CanHit(v, other->location))
-								if (!emp || !other->empDamageLevel)
-									return true;
-						for (auto other : Objects::vehicles)
-							if (!emp || !other->empDamageLevel)
-								if (!other->isOwnedByMe && CanHit(v, other->location))
-									return true;
-						for (auto other : Objects::structures)
-							if (!emp || !other->empDamageLevel)
-								if (!other->isOwnedByMe && CanHit(v, other->location))
-									return true;
-					}
-					else
-					{
-						FATAL__("Unknown mobile entity type "+v->GetTypeName());
-					}
+				{
+					FATAL__("Unknown mobile entity type "+v->GetTypeName());
+				}
 		}
 		return false;	//cannot attack or has nothing to attack: NOT IDLE since it is SLEEPING
 	}
@@ -3068,7 +3061,7 @@ namespace ApplicationInterface
 
 #ifdef HAS_WINDOW
 	template <typename T>
-	void GetIterateableEntity(Objects::PWorldEntity&rs, index_t&i, const BasicBuffer<T>&list)
+	void GetIterateableEntity(Objects::PWorldEntity&rs, index_t&i, const SharedContainer<T>&list)
 	{
 		if (rs)
 			return;
@@ -3083,7 +3076,7 @@ namespace ApplicationInterface
 	
 
 	template <typename T>
-	void FindIterateableEntity(index_t&offset,index_t&rs, const Objects::PWorldEntity&e, const BasicBuffer<T>&list)
+	void FindIterateableEntity(index_t&offset,index_t&rs, const Objects::PWorldEntity&e, const SharedContainer<T>&list)
 	{
 		if (rs != InvalidIndex)
 			return;

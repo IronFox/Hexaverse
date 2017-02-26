@@ -179,12 +179,12 @@ namespace Receiver
 
 		peer.SendSignal(Protocol::ChannelID::BeginEverything);
 
-		for (const auto&s : Objects::structures)
+		Objects::structures.Foreach([timestamp,&peer](const Objects::PStructure&s)
 		{
 			Protocol::StructureConstruction st;
 			Game::Network::Describe(st,*s,true,timestamp);
 			Channels::createStructure.SendTo(peer,st);
-		}
+		});
 
 		Objects::ForeachMobileWorldEntity([&peer, timestamp](const Objects::PMobileEntity&v)
 		{

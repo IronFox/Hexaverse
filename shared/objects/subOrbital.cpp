@@ -8,14 +8,16 @@ namespace Objects
 
 	namespace SubOrbital
 	{
-		Buffer0<PPlane>	planes;
+		SharedContainer<Plane>	planes;
 
 		/*static*/ count_t			Plane::CountTurretOccurrences(const OwnerParameter&o,Component::Turret*t)
 		{
 			count_t rs = 0;
-			for (const auto&m : planes)
+			planes.Foreach([&rs,o,t](const PPlane&m)
+			{
 				if (m->owner == o && m->turret == t)
 					rs++;
+			});
 			return rs;
 		}
 

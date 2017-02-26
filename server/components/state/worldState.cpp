@@ -422,34 +422,26 @@ namespace World
 				}
 
 
-				float3 ref = Grid::low.cells[i].centerVertex.xyz;// * r;
+				const float3 ref = Grid::low.cells[i].centerVertex.xyz;// * r;
 				float dist2 = std::numeric_limits<float>::max();
 				float minNexusHubDist2 = std::numeric_limits<float>::max();
-				foreach (Objects::structures, s)
+				Objects::ForeachWorldEntity([ref,&dist2,&minNexusHubDist2](const Objects::PWorldEntity&e)
 				{
-					float d2 = Vec::quadraticDistance(Grid::low.cells[(*s)->location.stackID].centerVertex.xyz,ref);
-					if (!To<Objects::NexusPort>::DynamicCast(*s))
+					float d2 = Vec::quadraticDistance(Grid::low.cells[e->location.stackID].centerVertex.xyz,ref);
+					
+					if (!e->IsStructure() || !To<Objects::NexusPort>::DynamicCast(e))
 					{
-						Objects::PTurretBase base = (*s)->GetTurretBase();
+						Objects::PTurretBase base = e->GetTurretBase();
 						if (base)
-							//d2 = sqr(sqrt(d2) - base->GetFlatAttackRange());	//fair enough here
-							d2 = sqr(sqrt(d2) - base->turret->horizontalAttackRange((*s)->owner));
-						//if (Grid::AffectedByEMP((*s)->location))
-							//d2 *= 4.f;
-						//if ((*s)->owner != Objects::Faction::nexus)
-						//	d2 *= 0.25f;
+							d2 = sqr(sqrt(d2) - base->turret->horizontalAttackRange(e->owner));
+
 						dist2 = std::min(dist2, d2);
 					}
 					else
 					{
 						minNexusHubDist2 = std::min(minNexusHubDist2, d2);
 					}
-				}
-				foreach (Objects::vehicles, v)
-				{
-					float d2 = Vec::quadraticDistance(Grid::low.cells[(*v)->location.stackID].centerVertex.xyz,ref);
-					dist2 = std::min(dist2, d2);
-				}
+				},false);
 
 				#ifdef LOWER_RESOLUTION_PLANET
 					static const float MinimumNexusBaseDistance = 0.4f;	//minimum distance from any nexus building (nexus hub explicitly excluded)

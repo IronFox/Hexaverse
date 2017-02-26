@@ -187,10 +187,10 @@ namespace Nexus
 
 			Objects::PNexusPort compactPortList[12];
 			index_t portAt = 0;
-			foreach(Objects::structures, s)
+			Objects::structures.Foreach([&portAt,&compactPortList](const Objects::PStructure&s)
 			{
 				//bool nexus = (*s)->owner == Objects::Faction::nexus;
-				Objects::PNexusPort p = To<Objects::NexusPort>::DynamicCast(*s);
+				Objects::PNexusPort p = To<Objects::NexusPort>::DynamicCast(s);
 				if (p && BaseGrid::IsIsolatedCorner(p->location.stackID) && p->owner == Objects::Faction::nexus)
 				{
 					ASSERT_LESS__(portAt, BaseGrid::IsolatedCornerCount);
@@ -201,7 +201,7 @@ namespace Nexus
 					//ASSERT__(!ports[portIn]);
 					//ports[portIn] = p;
 				}
-			}
+			});
 			ASSERT_LESS_OR_EQUAL__(portAt, BaseGrid::IsolatedCornerCount);	//some might have changed ownership
 			LogEvent(EventSignificance::Debug,"Identified "+String(portAt)+" Nexus Ports under Nexus faction control");
 
@@ -213,15 +213,11 @@ namespace Nexus
 				friendlyNearNexus[i] = Game::factionStartMineralValue /*- State::Config::nexusStartMineralValue*/;
 			}
 
-			foreach(Objects::vehicles, v)
+			Objects::ForeachWorldEntity([&](const Objects::PWorldEntity&e)
 			{
-				EstimatePresence(**v,(*v)->location,portLocations, hostileNearNexus,constructorNearNexus,friendlyNearNexus);
-			}
+				EstimatePresence(*e,e->location,portLocations, hostileNearNexus,constructorNearNexus,friendlyNearNexus);
+			},false);
 
-			foreach(Objects::structures, s)
-			{
-				EstimatePresence(**s,(*s)->location,portLocations, hostileNearNexus,constructorNearNexus,friendlyNearNexus);
-			}
 			static Buffer0<UINT32> neighborField;
 			NexusStructures::Reset(ports);
 			for (index_t j = 0; j < portAt; j++)

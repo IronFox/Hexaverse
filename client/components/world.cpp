@@ -199,14 +199,14 @@ namespace World
 			if (Grid::actualWorld.structureChanged)
 			{
 				Grid::actualWorld.structureChanged = false;
-				for (const auto&s : Objects::structures)
+				Objects::structures.Foreach([](const Objects::PStructure&s)
 				{
 					if (Grid::high.family[Grid::low.grid.GetCell(s->location.stackID).family].normal.outdated)
 					{
 						s->changed = true;
 						Objects::Structure::anyChanged = true;
 					}
-				}
+				});
 			}
 
 			BYTE familiesRebuilt = 0;

@@ -359,7 +359,7 @@ namespace Objects
 		};
 
 
-		extern Buffer0<PPlane>		planes;
+		extern SharedContainer<Plane>		planes;
 	}
 }
 

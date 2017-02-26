@@ -35,7 +35,7 @@ namespace Objects
 	To the server these are all the buildings that exist, to the client these are all
 	it currently knows about.
 	*/
-	Buffer0<PStructure>			structures;
+	SharedContainer<Structure>	structures;
 	#ifdef CLIENT
 		/**
 		Filter list containing only SkyPorts. Used to faster render certain effects.
@@ -98,14 +98,16 @@ namespace Objects
 	/*static*/ count_t			Structure::CountOccurrences(const OwnerParameter&o,ConstName type)
 	{
 		count_t rs = 0;
-		for (const auto&m : structures)
-			if (m->owner == o && m->GetCTypeName() == type)
+		structures.Foreach([&rs,o,type](const Objects::PStructure&s)
+		{
+			if (s->owner == o && s->GetCTypeName() == type)
 				rs++;
 			else
 			{
 //				if (m->GetCTypeName() == type)
 	//				ShowMessage(m->owner->GetName() + "!="+o->GetName());
 			}
+		});
 		return rs;
 	}
 
@@ -2772,10 +2774,10 @@ namespace Objects
 					faction->compound.workingStructures.Clear();
 				}
 
-				for (const auto&s:structures)
+				structures.Foreach([](const Objects::PStructure&s)
 				{
 					s->owner->compound.AppendStructure(s.get());
-				}
+				});
 			#else
 //				compounds.SetSize(Faction::all...)
 				for (const auto&f0 : Faction::all)

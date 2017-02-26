@@ -5,6 +5,7 @@
 #include "../cast.h"
 #include "jobs.h"
 #include "hibernating.h"
+#include "../sharedContainer.h"
 
 
 namespace Objects
@@ -39,7 +40,7 @@ namespace Objects
 	Hangar entities may/should reference them however.
 	A link to a hangar structure (storedIn) must be set and not expired.
 	*/
-	extern Buffer0<PMobileEntity>			storedMobileEntities;
+	extern SharedContainer<MobileEntity>			storedMobileEntities;
 
 	/**
 	Checks all mobile entities, both in storage and not, for various consistency aspects.
@@ -436,6 +437,13 @@ namespace Objects
 			Attempts to position the vehicle exactly in the specified cell. The vehicle may fall as a result if the area beneath is free
 			*/
 			virtual MobilePlacementResult	PlaceExactlyAt(const Grid::LCellIdI&, float timeCost, float minTimeOffset, bool signalEvent=true, bool isCreated=true, bool failIsFatal=false) = 0;
+		
+
+			/**
+			Handles destructive results of PlaceExactlyAt(), since PlaceExactlyAt() is not allowed to immediately destroy the local entity
+			*/
+			void				HandleNow(MobilePlacementResult);
+
 
 			bool				CompleteOnMove(const Grid::LCellIdI&referenceLocation);
 
