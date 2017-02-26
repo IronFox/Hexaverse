@@ -1313,7 +1313,7 @@ namespace Journal
 		World::UpdateEMPZones();
 
 		if (closed)
-			Network::RestartSession();
+			Network::RestartSession(true);
 
 
 
@@ -1406,7 +1406,7 @@ namespace Journal
 		journal.ApplyToGlobalState();
 
 		if (closed)
-			Network::RestartSession();
+			Network::RestartSession(true);
 
 		logStream.open(writeTo.c_str(),std::ios::binary | std::ios::out | std::ios::trunc);
 		ASSERT__(logStream.is_open());
