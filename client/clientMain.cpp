@@ -1506,7 +1506,7 @@ namespace ApplicationInterface
 		//float3 t;
 		//float4 c;
 		//shadowCamera.Project(center,t);
-		//Mat::mult(Objects::shadowCamera.projection,float4(t,1),c);
+		//Mat::Mult(Objects::shadowCamera.projection,float4(t,1),c);
 
 		//display.SetDepthTest(false,false);	//disables depth output
 		Objects::Renderer::RenderShadows(
@@ -3705,8 +3705,8 @@ int main( int argc, const char* argv[])
 			{
 				TMatrix3<> mat,rot;
 				Mat::makeAxisSystem(float3::reinterpret(Camera::scene.location).Normalized(),2,mat);
-				Mat::rotationMatrix(SunOffAngle, mat.x,rot);
-				Mat::mult(rot,mat.z,sunDirection);
+				Mat::BuildRotationMatrix(SunOffAngle, mat.x,rot);
+				Mat::Mult(rot,mat.z,sunDirection);
 			}
 
 

@@ -2147,7 +2147,7 @@ namespace Objects
 		
 		{
 			TMatrix4<>	m;
-			Mat::mult(shadowCamera.projection,shadowCamera.view,m);
+			Mat::Mult(shadowCamera.projection,shadowCamera.view,m);
 			shadowMatrix.Update(m);
 		}
 

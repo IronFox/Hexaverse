@@ -369,7 +369,7 @@ template <unsigned Exponent>
 			for (int j = 0; j < 5; j++)
 			{
 				float3 at = _LocateCell(cornerToFirstEdgeCell[i][j], false);
-				Mat::mult(transpose, at);
+				Mat::Mult(transpose, at);
 				field[j].element = cornerToFirstEdgeCell[i][j];
 				field[j].angle = -atan2(at.y, at.x);
 			}

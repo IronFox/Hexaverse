@@ -32,7 +32,7 @@ namespace Atmosphere
 	//	float3 center = normal * distanceFromCenter;
 
 		TMatrix4<> m;
-		Mat::mult(mainCamera.viewInvert,mainCamera.projectionInvert,m);
+		Mat::Mult(mainCamera.viewInvert,mainCamera.projectionInvert,m);
 	//	Mat::transpose(m);	//might not be necessary
 
 		display.SetObjectMatrix(m);

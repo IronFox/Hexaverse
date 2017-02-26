@@ -190,7 +190,7 @@ namespace Engine
 
 		void TextureFont::Begin(const TFontState&state)
 		{
-			Mat::eye(m);
+			Mat::Eye(m);
 			m.w.xyz = float3(state.left+state.indent,
 			state.top 
 			- 
