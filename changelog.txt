@@ -8,6 +8,7 @@ v0.6.3
 	> Decreased water transparency. Improved contrast to oceanic fog-of-war.
 	> Faction colors are now generated and distributed by the server. Clients render them even in non-spectator mode.
 	> Nexus faction research can now be configured to progress over time. Removed the initial research bonus of that faction.
+	> Improved initial faction placement.
 	* Fixed rare fatal client exception when failing to layout menu components.
 	* Fixed rare fatal server exception when Nexus Port changes ownership.
 	* Fixed towers auto-firing only once per round even if they could fire multiple times.

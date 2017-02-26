@@ -424,7 +424,7 @@ namespace World
 
 				float3 ref = Grid::low.cells[i].centerVertex.xyz;// * r;
 				float dist2 = std::numeric_limits<float>::max();
-				float ndist2 = std::numeric_limits<float>::max();
+				float minNexusHubDist2 = std::numeric_limits<float>::max();
 				foreach (Objects::structures, s)
 				{
 					float d2 = Vec::quadraticDistance(Grid::low.cells[(*s)->location.stackID].centerVertex.xyz,ref);
@@ -432,16 +432,17 @@ namespace World
 					{
 						Objects::PTurretBase base = (*s)->GetTurretBase();
 						if (base)
-							d2 = sqr(sqrt(d2) - base->GetFlatAttackRange());	//fair enough here
-						if (Grid::AffectedByEMP((*s)->location))
-							d2 *= 4.f;
-						if ((*s)->owner != Objects::Faction::nexus)
-							d2 *= 0.25f;
+							//d2 = sqr(sqrt(d2) - base->GetFlatAttackRange());	//fair enough here
+							d2 = sqr(sqrt(d2) - base->turret->horizontalAttackRange((*s)->owner));
+						//if (Grid::AffectedByEMP((*s)->location))
+							//d2 *= 4.f;
+						//if ((*s)->owner != Objects::Faction::nexus)
+						//	d2 *= 0.25f;
 						dist2 = std::min(dist2, d2);
 					}
 					else
 					{
-						ndist2 = std::min(ndist2, d2);
+						minNexusHubDist2 = std::min(minNexusHubDist2, d2);
 					}
 				}
 				foreach (Objects::vehicles, v)
@@ -449,14 +450,23 @@ namespace World
 					float d2 = Vec::quadraticDistance(Grid::low.cells[(*v)->location.stackID].centerVertex.xyz,ref);
 					dist2 = std::min(dist2, d2);
 				}
+
+				#ifdef LOWER_RESOLUTION_PLANET
+					static const float MinimumNexusBaseDistance = 0.4f;	//minimum distance from any nexus building (nexus hub explicitly excluded)
+				#else
+					static const float MinimumNexusBaseDistance = 0.35f;
+				#endif
+
+				static const float PlacementVariance = 0.1f;	//should not exceed 0.1f
+
 				if (Objects::Faction::all.IsEmpty())
-					dist2 = dist2 > 0.35f ? sqr(random.NextFloat(1,2)) : 0.f;
+					dist2 = dist2 > MinimumNexusBaseDistance ? sqr(random.NextFloat(1,2)) : 0.f;	//0 should imply to not take this location
 				else
-					dist2 *= random.NextFloat(0.9f,1.f / 0.9f);
+					dist2 *= pow(1.f - PlacementVariance,random.NextFloat(-1,1));	//vary randomly
 
-				biggestNDist = std::max(biggestNDist,ndist2);
+				biggestNDist = std::max(biggestNDist,minNexusHubDist2);
 
-				if (dist2 > bestDist && ndist2 > 0.25f)	//actual
+				if (dist2 > bestDist && minNexusHubDist2 > 0.125f)
 				{
 					bestDist = dist2;
 					//nbestDist = ndist2;
