@@ -356,7 +356,7 @@ namespace Evolver
 							Grid::LCellIdI newLocation = sat->location;
 							newLocation.height = Objects::Satellite::DeclinedResidenceHeight;
 							//t+= 0.025f;
-							sat->PlaceExactlyAt(newLocation, 0.1f, 0.f);
+							sat->HandleNow(sat->PlaceExactlyAt(newLocation, 0.1f, 0.f));
 						}
 					}
 					else
@@ -365,7 +365,7 @@ namespace Evolver
 							LogEvent( EventClass(EventSignificance::Uncommon, EventFlavor::Gain),sat.get(),"Satellite height restored");
 							Grid::LCellIdI newLocation = sat->location;
 							newLocation.height = Objects::Satellite::BaseResidenceHeight;
-							sat->PlaceExactlyAt(newLocation, 0.1f, 0.f);
+							sat->HandleNow(sat->PlaceExactlyAt(newLocation, 0.1f, 0.f));
 						}
 				}
 				//satellitesAreLocked = false;

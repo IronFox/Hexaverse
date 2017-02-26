@@ -396,6 +396,19 @@ namespace Objects
 		}
 
 
+		void			MobileEntity::HandleNow(MobilePlacementResult rs)
+		{
+			if (rs == MobilePlacementResult::PlacementFailedMobileDestroyed)
+			{
+				LogEvent(EventSignificance::Common,this,"Handling mobile entity destruction.");
+				jobStarted = false;
+				ClearAllTasks(true, CLOCATION);
+				unstable = false;
+				if (isInserted)	//otherwise already killed by Finish() operation
+					Remove(shared_from_this(),RemovalType::UncontrolledExplosion,motionTime,false,false);
+			}
+		}
+
 
 		bool			MobileEntity::CompleteOnMove(const Grid::LCellIdI&referenceLocation)
 		{
@@ -405,7 +418,7 @@ namespace Objects
 			unstable = false;
 			if (rs == VehicleJob::BaseJob::TerminalFailureVehicleDestroyed)
 			{
-				LogEvent(EventSignificance::Common,this,"Terminal failure. Remaining tasks dropped. Vehicle destroyed.");
+				LogEvent(EventSignificance::Common,this,"Terminal failure. Remaining tasks dropped. Mobile entity destroyed.");
 				jobStarted = false;
 				ClearAllTasks(true, CLOCATION);
 				unstable = false;

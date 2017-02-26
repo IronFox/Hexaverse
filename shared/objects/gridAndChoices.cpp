@@ -129,7 +129,7 @@ namespace Objects
 							}
 						}
 
-						v->PlaceExactlyAt(v->location,0,atTime);	//should do the trick
+						v->HandleNow(v->PlaceExactlyAt(v->location,0,atTime));	//should do the trick
 					}
 				}
 			}
@@ -349,7 +349,7 @@ namespace Objects
 				//copy = vehicles;	//in case they get whooped by falling
 				for (const auto&v : affectedVehicles)
 				{
-					v->PlaceExactlyAt(v->location,0, atTime);	//in case they fall due to explosions
+					v->HandleNow(v->PlaceExactlyAt(v->location,0, atTime));	//in case they fall due to explosions
 					if (v->health <= 0)
 					{
 						DBG_ASSERT__(!vehicles.Contains(v));

@@ -436,6 +436,13 @@ namespace Objects
 			Attempts to position the vehicle exactly in the specified cell. The vehicle may fall as a result if the area beneath is free
 			*/
 			virtual MobilePlacementResult	PlaceExactlyAt(const Grid::LCellIdI&, float timeCost, float minTimeOffset, bool signalEvent=true, bool isCreated=true, bool failIsFatal=false) = 0;
+		
+
+			/**
+			Handles destructive results of PlaceExactlyAt(), since PlaceExactlyAt() is not allowed to immediately destroy the local entity
+			*/
+			void				HandleNow(MobilePlacementResult);
+
 
 			bool				CompleteOnMove(const Grid::LCellIdI&referenceLocation);
 
