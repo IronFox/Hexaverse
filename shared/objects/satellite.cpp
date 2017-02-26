@@ -9,7 +9,7 @@ namespace Objects
 {
 
 	/*static*/ Buffer0<ConstName>	SkyHub::supportsProduction;
-	Buffer0<PSatellite>	satellites;
+	SharedContainer<Satellite>	satellites;
 	//bool					satellitesAreLocked = false;
 
 	#ifndef ONE_COMPOUND_PER_FACTION

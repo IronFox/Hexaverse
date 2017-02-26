@@ -102,24 +102,10 @@ namespace AI
 	static void EstimateThreatFromAll(const TVec3<>&reference, bool ignoreHostiles, bool canIgnoreThreat, TThreatEstimation&threat)
 	{
 		threat = TThreatEstimation();
-		foreach (Objects::vehicles,_v)
+		Objects::ForeachWorldEntity([reference,ignoreHostiles,canIgnoreThreat,&threat](const Objects::PWorldEntity&e)
 		{
-			EstimateThreatLevelFrom(**_v,reference,ignoreHostiles,canIgnoreThreat,threat);
-		}
-		foreach (Objects::structures,_v)
-		{
-			EstimateThreatLevelFrom(**_v,reference,ignoreHostiles,canIgnoreThreat,threat);
-		}
-
-		foreach (Objects::Marker::mobileGhosts,_v)
-		{
-			EstimateThreatLevelFrom(**_v,reference,ignoreHostiles,canIgnoreThreat,threat);
-		}
-		foreach (Objects::Marker::structureGhosts,_v)
-		{
-			EstimateThreatLevelFrom(**_v,reference,ignoreHostiles,canIgnoreThreat,threat);
-		}
-
+			EstimateThreatLevelFrom(*e,reference,ignoreHostiles,canIgnoreThreat,threat);
+		},true);
 	}
 
 
@@ -227,14 +213,10 @@ namespace AI
 					needAttacks ++;
 				//if (rs == Objects::Turret::ReachesTarget)
 				float priority = 0.f;
-				foreach (Objects::vehicles,_v)
-					priority += ProcessAttackPriority(**_v,detonationAt,explosionRadius);
-				foreach (Objects::structures,_v)
-					priority += ProcessAttackPriority(**_v,detonationAt,explosionRadius);
-				foreach (Objects::Marker::structureGhosts,_v)
-					priority += ProcessAttackPriority(**_v,detonationAt,explosionRadius);
-				foreach (Objects::Marker::mobileGhosts,_v)
-					priority += ProcessAttackPriority(**_v,detonationAt,explosionRadius);
+				Objects::ForeachWorldEntity([&priority,detonationAt,explosionRadius](const Objects::PWorldEntity&e)
+				{
+					priority += ProcessAttackPriority(*e,detonationAt,explosionRadius);
+				},true);
 				LogEvent(EventSignificance::Debug,&source,"Base Priority considered "+String(priority));
 				for (index_t i = 0; i < needAttacks; i++)
 				{
@@ -329,48 +311,29 @@ namespace AI
 			attackTarget.Clear();
 			const float explosionRadius = v->turret->GetExplosionRadius(v->owner);
 
-			foreach (Objects::vehicles,_v)
+			Objects::ForeachWorldEntity([v](const Objects::PWorldEntity&e)
 			{
-				ProcessAttackTarget(*v,**_v,attackTarget);
-			}
-			foreach (Objects::structures,_v)
-			{
-				ProcessAttackTarget(*v,**_v,attackTarget);
-			}
-			foreach (Objects::Marker::structureGhosts,_v)
-			{
-				ProcessAttackTarget(*v,**_v,attackTarget);
-			}
+				ProcessAttackTarget(*v,*e,attackTarget);
+			},true);
+
 			for(index_t at = 0; at < attackTarget.Count(); at++)
 			{
 				if (!attackTarget[at].midflightExplosion)
 					continue;
 				const TVec3<>&ref = attackTarget[at].explosionAt;
 				bool conflict = false;
-				foreach (Objects::vehicles,_v)
+				Objects::ForeachWorldEntity([ref,explosionRadius,&conflict](const Objects::PWorldEntity&e)
 				{
-					if ((*_v)->isOwnedByMe)
+					if (!conflict && e->isOwnedByMe)
 					{
-						float distance = Vec::quadraticDistance((*_v)->system.w.xyz,ref);
+						float distance = Vec::quadraticDistance(e->GetWorldPosition(),ref);
 						if ( distance < sqr(explosionRadius))
 						{
 							conflict = true;
-							break;
 						}
 					}
-				}
-				foreach (Objects::structures,_v)
-				{
-					if ((*_v)->isOwnedByMe)
-					{
-						float distance = Vec::quadraticDistance((*_v)->system.w.xyz,ref);
-						if ( distance < sqr(explosionRadius))
-						{
-							conflict = true;
-							break;
-						}
-					}
-				}
+				},false);
+
 				if (conflict)
 				{
 					attackTarget.Erase(at);
@@ -395,14 +358,17 @@ namespace AI
 		{
 			count_t proximityPresence = 0,
 					radarProximity = 0;
-			foreach (Objects::vehicles,_v2)
-				if ((*_v2)->isOwnedByMe && Vec::quadraticDistance(v->system.w.xyz,(*_v2)->system.w.xyz) < 25.f)
+			Objects::ForeachMobileWorldEntity([v,&proximityPresence,&radarProximity](const Objects::PMobileEntity&e)
+			{
+				if (e->isOwnedByMe && Vec::quadraticDistance(v->GetWorldPosition(),e->GetWorldPosition()) < 25.f)
 				{
-					if ((*_v2)->turret->CanDealDamage())
+					if (e->turret->CanDealDamage())
 						proximityPresence++;
 					else
 						radarProximity++;
 				}
+			}
+			,false);
 			
 			currentIsOverconfident = proximityPresence > 5;
 			if (!attacker && radarProximity > 1 && random.NextFloat() < 0.3f)
@@ -514,28 +480,27 @@ namespace AI
 		if (e.ignoreThreatRounds < 0)
 			e.ignoreThreatRounds = 0;
 		Objects::PTurretBase b = e.GetTurretBase();
-		const TVec3<>&ref = e.system.w.xyz;
+		const TVec3<>&ref = e.GetWorldPosition();
 		if (b && b->turret->CanDealDamage())
 		{
 			float r = b->GetFlatAttackRange() + b->turret->explosionRadius.GetValue(e.GetResearchState());
 			float damagePotentialPerRound = 0.f;
 			count_t participants = 0;
-			foreach (Objects::vehicles,_v)
+			Objects::ForeachMobileWorldEntity([ref,r,&damagePotentialPerRound,&participants](const Objects::PMobileEntity&e)
 			{
-				Objects::PVehicle v = *_v;
-				if (v->isOwnedByMe && v->turret->CanAttack() && !v->turret->dealsEMPDamage)
+				if (e->isOwnedByMe && e->turret->CanAttack() && !e->turret->dealsEMPDamage)
 				{
-					float d2 = Vec::quadraticDistance(v->system.w.xyz,ref);
+					float d2 = Vec::quadraticDistance(e->GetWorldPosition(),ref);
 					if (d2 < sqr(r*1.2f))	//might be okay anyway
 					{
-						float p = v->GetDamagePotentialPerRound();
-						if (!v->turret->ignoresVehicleMotion)
+						float p = e->GetDamagePotentialPerRound();
+						if (!e->turret->ignoresVehicleMotion)
 							p *= 0.5f;
 						damagePotentialPerRound += p;
 						participants++;
 					}
 				}
-			}
+			},false);
 
 			if (participants > 1)
 			{
@@ -587,23 +552,10 @@ namespace AI
 		}
 
 
-		foreach (Objects::structures,_s)
+		Objects::ForeachWorldEntity([](const Objects::PWorldEntity&e)
 		{
-			ProcessIgnorance(**_s);
-		}
-		foreach (Objects::vehicles,_v)
-		{
-			ProcessIgnorance(**_v);
-
-		}
-		foreach (Objects::Marker::structureGhosts,_s)
-		{
-			ProcessIgnorance(**_s);
-		}
-		foreach (Objects::Marker::mobileGhosts,_v)
-		{
-			ProcessIgnorance(**_v);
-		}
+			ProcessIgnorance(*e);
+		},true);
 
 
 	}

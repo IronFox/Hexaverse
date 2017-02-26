@@ -5,6 +5,7 @@
 #include "../cast.h"
 #include "jobs.h"
 #include "hibernating.h"
+#include "../sharedContainer.h"
 
 
 namespace Objects
@@ -39,7 +40,7 @@ namespace Objects
 	Hangar entities may/should reference them however.
 	A link to a hangar structure (storedIn) must be set and not expired.
 	*/
-	extern Buffer0<PMobileEntity>			storedMobileEntities;
+	extern SharedContainer<MobileEntity>			storedMobileEntities;
 
 	/**
 	Checks all mobile entities, both in storage and not, for various consistency aspects.

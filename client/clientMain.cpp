@@ -1411,9 +1411,11 @@ namespace ApplicationInterface
 				if (f->compound.allStructures.IsEmpty())
 				{
 					bool any = false;
-					for (const auto& s : Objects::structures)
+					Objects::structures.Foreach([&any,f](const Objects::PStructure&s)
+					{
 						if (s->owner == f)
 							any = true;
+					});
 					if (any)	//prevent stack overflow
 						Objects::RefreshCompoundCoverage(0);
 				}
@@ -2881,14 +2883,15 @@ bool	IsIdle(const Objects::PMobileEntity&v)
 			bool emp = v->turret->dealsEMPDamage;
 			if (v->IsVehicle())
 			{
-				for (auto other : Objects::vehicles)
-					if (!emp || !other->empDamageLevel)
+				bool canAttackAny = false;
+				Objects::ForeachWorldEntity([emp,&canAttackAny,v](const Objects::PWorldEntity&other)
+				{
+					if (!canAttackAny && (!emp || !other->empDamageLevel))
 						if (!other->isOwnedByMe && CanHit(v,other->location))
-							return true;
-				for (auto other : Objects::structures)
-					if (!emp || !other->empDamageLevel)
-						if (!other->isOwnedByMe && CanHit(v,other->location))
-							return true;
+							canAttackAny = true;
+				},false);
+				if (canAttackAny)
+					return true;
 			}
 			else
 				#ifndef NO_SATELLITES
@@ -3025,7 +3028,7 @@ namespace ApplicationInterface
 
 #ifdef HAS_WINDOW
 	template <typename T>
-	void GetIterateableEntity(Objects::PWorldEntity&rs, index_t&i, const BasicBuffer<T>&list)
+	void GetIterateableEntity(Objects::PWorldEntity&rs, index_t&i, const SharedContainer<T>&list)
 	{
 		if (rs)
 			return;
@@ -3040,7 +3043,7 @@ namespace ApplicationInterface
 	
 
 	template <typename T>
-	void FindIterateableEntity(index_t&offset,index_t&rs, const Objects::PWorldEntity&e, const BasicBuffer<T>&list)
+	void FindIterateableEntity(index_t&offset,index_t&rs, const Objects::PWorldEntity&e, const SharedContainer<T>&list)
 	{
 		if (rs != InvalidIndex)
 			return;

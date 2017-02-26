@@ -558,9 +558,9 @@ namespace Game
 			}
 		},false);
 
-		foreach (Objects::structures, _s)
+		Objects::structures.Foreach([](const Objects::PStructure&_s)
 		{
-			Objects::Structure&s = **_s;
+			Objects::Structure&s = *_s;
 			if (s.changeFlags)
 			{
 				//anythingChanged = true;
@@ -571,8 +571,8 @@ namespace Game
 				Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),s.changeTimer);
 
 				TCP::Serial<Protocol::StructureState>	w0,w1;
-				Network::Describe(w0.Ref(),**_s,false,timestamp,s.changeFlags);
-				Network::Describe(w1.Ref(),**_s,true,timestamp,s.changeFlags);
+				Network::Describe(w0.Ref(),s,false,timestamp,s.changeFlags);
+				Network::Describe(w1.Ref(),s,true,timestamp,s.changeFlags);
 				w0.Seal();
 				w1.Seal();
 				if (!othersNeedToKnow)
@@ -585,13 +585,13 @@ namespace Game
 						if (::Network::CanSeeAsOwner(*cl,s))
 							Channels::setStructureState.SendTo((*cl)->peer.lock(),w1);
 						else
-							if (::Network::CanSee(*cl,*_s,0))
+							if (::Network::CanSee(*cl,_s,0))
 								Channels::setStructureState.SendTo((*cl)->peer.lock(),w0);
 						//Channels::setStructureState.SendTo((*cl)->peer.lock(),Receiver::HasAccess(*cl,s) ? w1 : w0);
 					}
 				s.ResetAllChange();
 			}
-		}
+		});
 
 		if (thoroughly)
 		{
