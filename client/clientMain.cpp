@@ -3555,6 +3555,7 @@ int main( int argc, const char* argv[])
 
 
 		NiceName::Load();
+		ScriptCache::Create();
 
 		Network::LoadWorldAccessTokens();
 
@@ -3920,6 +3921,7 @@ int main( int argc, const char* argv[])
 		Grid::Destroy();
 		Objects::Destroy();
 		Animation::Destroy();
+		ScriptCache::Destroy();
 
 		application_shutting_down = true;
 

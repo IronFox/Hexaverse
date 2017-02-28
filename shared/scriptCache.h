@@ -32,4 +32,16 @@ namespace ScriptCache
 	PScript		Lookup(const SHA256::HashContainer&id);
 	PScript		DefineFromFleetingCompressedData(const SHA256::HashContainer&id,ArrayData<BYTE>&data, bool createFile=true);
 
+	/**
+	Cleans up outdated cache files on client.
+	Does currently nothing on server, but should be called for future expansions
+	*/
+	void		Create();
+
+	/**
+	Releases all cashed objects in main memory.
+	Written files are preserved
+	*/
+	void		Destroy();
+
 }

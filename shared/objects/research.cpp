@@ -557,24 +557,24 @@ namespace Objects
 
 	/*static*/ void			ResearchState::LoadDefaultProgram()
 	{
-		PathString factoryDefault = "../lua/research.lua";
+		PathString factoryDefault = "../lua/research.v2.lua";
 		#if 0 && defined _DEBUG
 			PathString final = factoryDefault;
 		#else
 			FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("config/lua"));
-			PathString final = RuntimeConfig::ConfigFile("config/lua/research.lua");
+			PathString final = RuntimeConfig::ConfigFile("config/lua/research.v2.lua");
 			if (!FileSystem::IsFile(final))
 			{
-				if (FileSystem::CopyFile("../lua/research.lua",final,false))
-					LogEvent(EventClass::Preset::configuration,"Copied ../lua/research.lua to "+String(final));
-				else
-					FATAL__("Unable to copy ../lua/research.lua to "+String(final));
+				final = factoryDefault;
+				#if 0	//leave this disabled. do not copy automatically
+					if (FileSystem::CopyFile("../lua/research.lua",final,false))
+						LogEvent(EventClass::Preset::configuration,"Copied ../lua/research.lua to "+String(final));
+					else
+						FATAL__("Unable to copy ../lua/research.lua to "+String(final));
+				#endif /*0*/
 			}
 		#endif
 		globalState.factoryDefault = ScriptCache::Load(factoryDefault); 
-		//#ifdef _DEBUG
-		//	ActivateProgram(globalState.factoryDefault);
-		//#endif
 		ActivateProgram(ScriptCache::Load(final));
 	}
 

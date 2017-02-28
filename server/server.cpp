@@ -598,6 +598,7 @@ void TerminateNow(bool isMain)
 		UDPBroadCast::Terminate();
 
 		RemoteControl::Destroy();
+		ScriptCache::Destroy();
 
 
 		Logging::WriteEvent(EventSignificance::Uncommon,"Terminating process",nullptr,nullptr,Objects::OwnerParameter());
@@ -874,6 +875,7 @@ int main( int argc, const char* argv[])
 
 		NiceName::Load();
 
+		ScriptCache::Create();
 		Evolver::Create();
 		Game::evolver = Evolver::GetDefault();
 

@@ -1,7 +1,10 @@
 ﻿Loading screen
 
 hoverformer sometimes tries building roads through buildings
-dedicated server should not start in interactive mode.
+
+
+parallel attacks
+adjust research script and renovate overriding
 
 
 resources 2.0:
@@ -62,7 +65,6 @@ compound inefficieny
 wireless power? ... dedicated compounds?
 		
 
-decrease max transparency of water (make it configurable?)
 
 make generators switch off if not needed
 
@@ -106,7 +108,6 @@ let foundation blocks (and granite) explode into stone first // maybe later
 
 hover beam	//elevator
 
-loading screen	//doesn't seem necessary just yet
 
 granite-digging turret
 
@@ -146,6 +147,7 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+dedicated server should not start in interactive mode.
 Log whether in interactive mode/public/private
 fixed: faction spawning too close to hostile factions
 reduce nexus missile range
