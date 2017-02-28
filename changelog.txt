@@ -1,5 +1,6 @@
 v0.6.4
 	> The escape key now also unhides HUD elements (text etc.).
+	> Improved research script. Renamed it to research.v2.lua. Script is no longer copied automatically to user directory.
 	* Target mode is no longer canceled when dragging the camera.
 	* Fixed unit destruction when falling farther than safely possible.
 

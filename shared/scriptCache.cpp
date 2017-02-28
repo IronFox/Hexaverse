@@ -4,14 +4,19 @@
 #include <io/file_system.h>
 #include <io/random_access_file.h>
 #include <third_party/bz2/bz2.h>
+#include <container/sorter.h>
+#include <container/buffer.h>
 #include "logEvent.h"
 #include "uniqueID.h"
 #include "runtimeConfig.h"
+#include <time.h>
 
 namespace ScriptCache
 {
 	GenericHashTable<PathString,std::pair<PScript,FileSystem::ftime_t> >	map;
 	GenericHashTable<SHA256::HashContainer,PScript,PODHash>	hashMap;
+
+	static const PathString cacheFileExtension = ".script";
 
 
 	bool	Script::Recompress()
@@ -103,9 +108,17 @@ namespace ScriptCache
 	}
 
 
-	static PathString	GetFilePath(const SHA256::HashContainer&id)
+	static FileSystem::Folder	GetCacheDirectory()
 	{
-		return RuntimeConfig::ConfigFile(PathString("cache/"+Bin2Str::ConvertPOD(id,InvalidIndex)));
+		return FileSystem::Folder( RuntimeConfig::ConfigFile("cache/") );
+	}
+
+	static PathString	GetFileCachePath(const SHA256::HashContainer&id)
+	{
+		FileSystem::File f;
+		if (!GetCacheDirectory().Find(PathString(Bin2Str::ConvertPOD(id,InvalidIndex))+cacheFileExtension,f,false))
+			return "";
+		return f.GetLocation();
 	}
 
 	PScript		Lookup(const SHA256::HashContainer&id)
@@ -115,7 +128,7 @@ namespace ScriptCache
 			return rs;
 
 
-		PathString path = GetFilePath(id);
+		PathString path = GetFileCachePath(id);
 		if (!FileSystem::IsFile(path))
 			return rs;	//empty
 		FILE*f = FOPEN(path.c_str(),"rb");
@@ -160,7 +173,7 @@ namespace ScriptCache
 
 		if (createFile)
 		{
-			PathString path = GetFilePath(id);
+			PathString path = GetFileCachePath(id);
 			FileSystem::CreateDirectory(FileSystem::ExtractFileDir(path));
 			FILE*f = FOPEN(path.c_str(),"w+b");
 			if (f)
@@ -201,6 +214,97 @@ namespace ScriptCache
 		return script;
 	}
 
+	struct TCacheSortEntry
+	{
+		FileSystem::ftime_t	stamp;
+		FileSystem::File	file;
 
 
+		bool				operator>(const TCacheSortEntry&other) const
+		{
+			return stamp > other.stamp;
+		}
+		bool				operator<(const TCacheSortEntry&other) const
+		{
+			return stamp < other.stamp;
+		}
+
+		void				swap(TCacheSortEntry&other)
+		{
+			file.swap(other.file);
+			swp(stamp,other.stamp);
+		}
+
+		friend void			swap(TCacheSortEntry&a, TCacheSortEntry&b)
+		{
+			a.swap(b);
+		}
+	};
+
+
+
+	void		Create()
+	{
+		LogEvent(EventClass::Preset::common,"Creating script cache");
+
+		#ifdef CLIENT
+			FileSystem::Folder f = GetCacheDirectory();
+			FileSystem::File file;
+			if (f.IsValidLocation())
+			{
+				const FileSystem::ftime_t baseTime = (FileSystem::ftime_t)time(NULL);
+
+				Buffer0<TCacheSortEntry,Swap> entries;
+				Buffer0<FileSystem::File,Swap> toDelete;
+				f.Rewind();
+				while (f.NextFile(cacheFileExtension, file))
+				{
+					FileSystem::ftime_t t = file.GetModificationTime();
+					if (t > baseTime)
+					{
+						LogEvent(EventClass::Preset::common,"ScriptCache: "+String(file.GetName())+" has bad timestamp. Forcing deletion");
+						toDelete << file;
+					}
+					else
+					{
+						entries.Append().stamp = t;
+						entries.Last().file.swap(file);
+					}
+				}
+				if (entries.Count() > 20)
+				{
+					count_t erase = entries.Count()-20;
+					LogEvent(EventClass::Preset::common,"ScriptCache: Found "+String(entries.Count())+" cache entries, exceeding max cache size by "+String(erase));
+					ByOperator::QuickSort(entries);
+					for (index_t i = 0; i < erase; i++)
+					{
+						toDelete.Append().swap( entries[i].file );
+					}
+				}
+				if (toDelete.IsNotEmpty())
+				{
+					LogEvent(EventClass::Preset::common,"ScriptCache: Deleting "+String(toDelete.Count())+" file(s)");
+					foreach (toDelete,f)
+					{
+						LogEvent(EventClass::Preset::common,"ScriptCache: Deleting "+String(f->GetLocation())+"...");
+						if (!f->Unlink())
+						{
+							LogEvent(EventClass::Preset::error,"ScriptCache: Warning: Unable to delete "+String(f->GetLocation())+"...");
+						}
+					}
+				}
+
+			}
+
+			LogEvent(EventClass::Preset::common,"ScriptCache: All done");
+		#endif
+	}
+
+
+	void		Destroy()
+	{
+		LogEvent(EventClass::Preset::common,"Destroying script cache");
+		map.Clear();
+		hashMap.Clear();
+	}
 }
