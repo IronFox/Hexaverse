@@ -389,10 +389,10 @@ namespace Engine
 
 		{	//create camera buffer
 			CameraData data;
-			Mat::eye(data.projectionMatrix);
-			Mat::eye(data.viewMatrix);
-			Mat::eye(data.viewProjectionMatrix);
-			Mat::eye(data.worldCamera);
+			Mat::Eye(data.projectionMatrix);
+			Mat::Eye(data.viewMatrix);
+			Mat::Eye(data.viewProjectionMatrix);
+			Mat::Eye(data.worldCamera);
 			cameraBuffer.Create(data,DX11::BufferAccess::Dynamic,D3D11_BIND_CONSTANT_BUFFER);
 		}
 		{	//create object buffer
@@ -2981,7 +2981,7 @@ namespace Engine
 		data.projectionMatrix = projection;
 		data.viewMatrix = view;
 		Mat::transpose(viewInvert,data.worldCamera); //dx orientation change
-		Mat::mult(data.projectionMatrix,data.viewMatrix,data.viewProjectionMatrix);
+		Mat::Mult(data.projectionMatrix,data.viewMatrix,data.viewProjectionMatrix);
 		//data.worldCamera = viewInvert;
 		cameraBuffer.Update(data);
 	}

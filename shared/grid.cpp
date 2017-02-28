@@ -41,8 +41,8 @@
 	//float angle = a0 * M_PIF/180.f;
 	Vec::normalize(axis);
 	TMatrix3<> rot;
-	Mat::rotationMatrix(-a0*at, axis, rot);
-	Mat::mult(rot, v0, out);
+	Mat::BuildRotationMatrix(-a0*at, axis, rot);
+	Mat::Mult(rot, v0, out);
 }
 
 
@@ -64,8 +64,8 @@
 	//float3 v1 = axis1 * angle1 * yat;
 	//float3 v = v0 + v1;
 	//TMatrix3<> rot;
-	//Mat::rotationMatrix(v.length(),v.Normalized0(),rot);
-	//Mat::mult(rot,base,out);
+	//Mat::BuildRotationMatrix(v.length(),v.Normalized0(),rot);
+	//Mat::Mult(rot,base,out);
 
 	//ComplexMath::_q2Quaternion(angle0,axis0,q0);
 	//ComplexMath::_q2Quaternion(angle1,axis1,q1);

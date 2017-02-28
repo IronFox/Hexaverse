@@ -365,12 +365,7 @@ namespace Network
 
 	static void ApplyPlanetConfig(const Grid::TSharedPlanetConfig&config)
 	{
-		Grid::Content coreContent = Grid::Content::Reinterpret(config.innerCoreType);
-		Grid::CellStack::bottom.content = coreContent;
-		#ifdef HAS_WINDOW
-			Grid::UpdateAtmosphere(config.atmosphereColor);
-			Grid::UpdateSun(config.sunPlaneNormal_Speed,config.sunColor);
-		#endif
+		config.Apply();
 	}
 
 
@@ -432,6 +427,16 @@ namespace Network
 		}
 
 
+		void	PlanetNames(NETA(Package::NetString<256>)&list)
+		{
+			#ifdef HAS_WINDOW
+				Array<String> copy(list.length());
+				for (index_t i = 0; i < list.length(); i++)
+					copy[i].adoptData(list[i]);
+				ConfigurationMode::UpdatePlanetList(copy);
+			#endif
+		}
+
 		void	OnHelloResponse(Protocol::HelloResponse&response)
 		{
 			ASSERT__(response.success);
@@ -484,14 +489,18 @@ namespace Network
 			else
 			{
 				#ifdef HAS_WINDOW
-					ConfigurationMode::RestoreServerWorld();
+					if (ConfigurationMode::RestoreServerWorld())
+					{
 				#endif
 				BYTE family = delta.familyAndLastFlag & 0x7F;
 				bool last = (delta.familyAndLastFlag & 0x80) != 0;
 				Grid::actualWorld.ApplyFamilyDelta(family,delta.data0,false,true);
 
 				#ifdef HAS_WINDOW
-					World::allowRecompilation = last && gameHasBegun;
+						World::allowRecompilation = last && gameHasBegun;
+						if (last)
+							ConfigurationMode::SignalServerWorldUpdateCompleted();
+					}
 				#endif
 			}
 
@@ -969,7 +978,7 @@ namespace Network
 			#endif
 		}
 
-		void	IdentifyUser(Protocol::IdentifyUser&id);
+		void	IdentifyFaction(Protocol::IdentifyFaction&id);
 		void	FactionOnline(NET(TUniqueID)&);
 		void	FactionOffline(NET(TUniqueID)&);
 		void	FactionRequestedNewRound(NET(TUniqueID)&);
@@ -1071,7 +1080,7 @@ namespace Network
 		TCP::Channel<Protocol::Marker, 0, Protocol::ChannelID::MarkerCreationFailedLimitReached>	markerCreationFailedLimitReached(Receiver::MarkerCreationFailedLimitReached);
 		TCP::Channel<NET(TUniqueID), 0, Protocol::ChannelID::DestroyMarker>							destroyMarker(Receiver::DestroyMarker);
 
-		TCP::Channel<Protocol::IdentifyUser, 0, Protocol::ChannelID::IdentifyUser>					identifyUser(Receiver::IdentifyUser);
+		TCP::Channel<Protocol::IdentifyFaction, 0, Protocol::ChannelID::IdentifyFaction>			identifyFaction(Receiver::IdentifyFaction);
 		TCP::Channel<NET(TUniqueID), 0, Protocol::ChannelID::FactionOnline>							factionOnline(Receiver::FactionOnline);
 		TCP::Channel<NET(TUniqueID), 0, Protocol::ChannelID::FactionOffline>						factionOffline(Receiver::FactionOffline);
 		TCP::Channel<NET(TUniqueID), 0, Protocol::ChannelID::FactionRequestedNewRound>				factionRequestedNewRound(Receiver::FactionRequestedNewRound);
@@ -1085,6 +1094,7 @@ namespace Network
 		TCP::Channel<Protocol::SelectResearch, 0, Protocol::ChannelID::SelectResearch>				selectResearch(Receiver::SelectResearch);
 		TCP::Channel<Protocol::ResourceData,0,Protocol::ChannelID::ResourceData>					resourceData(Receiver::ResourceData);
 		TCP::Channel<Protocol::GameConfig,0,Protocol::ChannelID::GameConfig>						gameConfig(Receiver::GameConfig);
+		TCP::Channel<NETA(Package::NetString<256>),0,Protocol::ChannelID::PlanetNames>				planetNames(Receiver::PlanetNames);
 
 
 
@@ -1106,6 +1116,7 @@ namespace Network
 		TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>					changeMyName;
 		TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>					chatMessage;
 		TCP::ObjectSender<Protocol::ResourceID, Protocol::ChannelID::RequestResource>				requestResource;
+		TCP::ObjectSender<Package::NetString<256>, Protocol::ChannelID::LoadPlanetByName>			loadPlanetByName;
 
 			//	,			//c2s: NET(bool) -> NET(bool)
 			//SetFactionId,		//s2c: NET(TUniqueID)
@@ -1320,7 +1331,7 @@ namespace Network
 		client.InstallChannel(Channels::createMarker);
 		client.InstallChannel(Channels::markerCreationFailedLimitReached);
 		client.InstallChannel(Channels::destroyMarker);
-		client.InstallChannel(Channels::identifyUser);
+		client.InstallChannel(Channels::identifyFaction);
 		client.InstallChannel(Channels::researchState);
 		client.InstallChannel(Channels::selectResearch);
 		client.InstallChannel(Channels::factionOnline);
@@ -1335,6 +1346,7 @@ namespace Network
 		client.InstallChannel(Channels::operationLacksResources);
 		client.InstallChannel(Channels::resourceData);
 		client.InstallChannel(Channels::gameConfig);
+		client.InstallChannel(Channels::planetNames);
 
 
 		client.OpenSignalChannel(Protocol::ChannelID::Pong,0);
@@ -1605,8 +1617,10 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			if (RuntimeConfig::aiMode)
 				AI::vehicles.Clear();	//whichever is left, cannot be computed
 			Animation::atTime = 0.f;
-			foreach (Objects::vehicles, v)
-				(*v)->preAnimationLocation = (*v)->location;
+			Objects::ForeachMobileWorldEntity([](const Objects::PMobileEntity&m)
+			{
+				m->preAnimationLocation = m->location;
+			},false);
 			if (c.timeFactor > 0)
 				animationTimeFactor = c.timeFactor;
 		break;
@@ -1625,7 +1639,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			},false);
 
 			#ifdef HAS_WINDOW
-				for (const auto&s : Objects::structures)
+				Objects::structures.Foreach([](const Objects::PStructure&s)
 				{
 					if (s->isOwnedByMe && s->IsWorkingStructure() )
 					{
@@ -1633,7 +1647,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 						if (ws->AwaitsUserInteraction())
 							Tutorial::ShowMessage("Interaction");
 					}
-				}
+				});
 
 				if (TimeLapse::enabled)
 					saveScreenshot = true;
@@ -1760,10 +1774,11 @@ void	Network::Receiver::FactionContinuedRound(NET(TUniqueID)&id)
 
 
 
-void	Network::Receiver::IdentifyUser(Protocol::IdentifyUser&id)
+void	Network::Receiver::IdentifyFaction(Protocol::IdentifyFaction&id)
 {
 	Objects::OwnerParameter faction = Network::ResolveFaction(id.id);
 	faction->name = id.name;
+	faction->color = id.color.value;
 	#ifdef HAS_WINDOW
 		UI::RefreshSessionView();
 	#endif

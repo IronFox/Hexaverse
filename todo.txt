@@ -1,8 +1,10 @@
-﻿* TEST AI
-* AI unit spawning causes server crash, but threat estimation in low-res mode is horrificly slow. Must adjust
+﻿Loading screen
+
+hoverformer sometimes tries building roads through buildings
 
 
-Optionally broadcast research state to all clients
+parallel attacks
+adjust research script and renovate overriding
 
 
 resources 2.0:
@@ -10,7 +12,7 @@ resources 2.0:
 	+ New resource types from trees (natural compounds), and dendrites (vulcanic compounds)
 	+ Mix compounds and fuel/minerals to generate superior fuel and alloys for improved units?
 	
-smaller planets on average. three flexible sizes (current is probably largest)? 
+three flexible planet sizes (current is probably middle)? 
 
 alloy? resource type that is required for some constructions, and requires a special factory to make
 
@@ -63,7 +65,6 @@ compound inefficieny
 wireless power? ... dedicated compounds?
 		
 
-decrease max transparency of water (make it configurable?)
 
 make generators switch off if not needed
 
@@ -72,17 +73,9 @@ split terraformers and constructors
 lava ship
 
 send entity id with server messages so user can click on the message to focus on them
-	/visual event log extracted from animation:
-	trajectories
-	explosion markers
-	damage markers
 better mine output (refinery)
-research
-	research concept, stations, states. AI? viruses?
-	virus infection and propagation (possibly from nexus ports - possibly same effect as emp)
-recycling
 
-
+laboratories have better yield if grouped but pose risk of virus changing lab group ownership to nexus
 
 
 
@@ -115,7 +108,6 @@ let foundation blocks (and granite) explode into stone first // maybe later
 
 hover beam	//elevator
 
-loading screen	//doesn't seem necessary just yet
 
 granite-digging turret
 
@@ -155,6 +147,21 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+dedicated server should not start in interactive mode.
+Log whether in interactive mode/public/private
+fixed: faction spawning too close to hostile factions
+reduce nexus missile range
+Steam: fixed invite (IsInLobby() wis false in client)
+Steam: server should be public by default
+better faction colors (also show them in regular game)
+reduced water transparency
+instant emp damage on nexus units in emp fields
+Fixed: obliterate/self detonate has no visible price
+Show base height in configuration mode
+Fixed: towers don't shoot twice automatically
+Select planet type by name from interactive configurator
+* TEST AI
+* AI unit spawning causes server crash, but threat estimation in low-res mode is horrificly slow. Must adjust
 * Moved buttons bottom right to a vertical setup
 * Fixed: Hide/disable Poll messages 'Found X lobby match(es)' when session is in progress
 * Max repair height difference 0? Should be one

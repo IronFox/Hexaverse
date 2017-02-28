@@ -41,8 +41,8 @@ namespace Camera
 	{
 		float3 axis = (sunDirection | scene.location).Normalized();
 		TMatrix3<> mat;
-		Mat::rotationMatrix(SunOffAngle,axis,mat);
-		Mat::mult(mat,scene.location,sunDirection);
+		Mat::BuildRotationMatrix(SunOffAngle,axis,mat);
+		Mat::Mult(mat,scene.location,sunDirection);
 		sunDirection.Normalize0();
 	}
 
@@ -81,8 +81,8 @@ namespace Camera
 					Rotate(float2());
 
 					TMatrix3<> rot;
-					Mat::rotationMatrix(angle,axis.Normalized(),rot);
-					Mat::mult(rot, sunDirection);
+					Mat::BuildRotationMatrix(angle,axis.Normalized(),rot);
+					Mat::Mult(rot, sunDirection);
 					RealignSunDirection();
 
 				}
@@ -226,13 +226,13 @@ namespace Camera
 	void							Rotate(const float2&angleDelta)
 	{
 		TMatrix3<> rot;
-		Mat::rotationMatrix(angleDelta.x, scene.upAxis, rot);
-		Mat::mult(rot, scene.direction);
+		Mat::BuildRotationMatrix(angleDelta.x, scene.upAxis, rot);
+		Mat::Mult(rot, scene.direction);
 		TVec3<> x;
 		Vec::cross(scene.upAxis, scene.direction, x);
 		Vec::normalize0(x);
-		Mat::rotationMatrix(angleDelta.y, x, rot);
-		Mat::mult(rot, scene.direction);
+		Mat::BuildRotationMatrix(angleDelta.y, x, rot);
+		Mat::Mult(rot, scene.direction);
 
 		float angle = Vec::angle(scene.direction, scene.upAxis);
 		if (angle > 90.f)
@@ -243,8 +243,8 @@ namespace Camera
 
 		if (angle < 20.f)
 		{
-			Mat::rotationMatrix(-(20.f - angle), x, rot);
-			Mat::mult(rot, scene.direction);
+			Mat::BuildRotationMatrix(-(20.f - angle), x, rot);
+			Mat::Mult(rot, scene.direction);
 		}
 
 
@@ -347,15 +347,15 @@ namespace Camera
 		Vec::normalize0(axis);
 		DebugCheckVector(axis,-2,2);
 		TMatrix3<> rot;
-		Mat::rotationMatrix(-angle,axis,rot);
+		Mat::BuildRotationMatrix(-angle,axis,rot);
 		ASSERT_IS_CONSTRAINED__(angle,-1000,1000);
 		DebugCheckVector(rot.x,-2,2);
 
-		Mat::mult(rot, scene.location);
-		Mat::mult(rot, scene.direction);
+		Mat::Mult(rot, scene.location);
+		Mat::Mult(rot, scene.direction);
 		if (RuntimeConfig::FromFile::alwaysDay)
 		{
-			Mat::mult(rot, sunDirection);
+			Mat::Mult(rot, sunDirection);
 			RealignSunDirection();
 		}
 		DebugCheckVector(scene.location,-10000,10000);
@@ -401,15 +401,15 @@ namespace Camera
 
 
 		TMatrix3<> rot;
-		Mat::rotationMatrix(angleDelta.y, x, rot);
-		Mat::mult(rot, scene.location);
-		Mat::mult(rot, scene.direction);
-		Mat::rotationMatrix(angleDelta.x, y, rot);
-		Mat::mult(rot, scene.location);
-		Mat::mult(rot, scene.direction);
+		Mat::BuildRotationMatrix(angleDelta.y, x, rot);
+		Mat::Mult(rot, scene.location);
+		Mat::Mult(rot, scene.direction);
+		Mat::BuildRotationMatrix(angleDelta.x, y, rot);
+		Mat::Mult(rot, scene.location);
+		Mat::Mult(rot, scene.direction);
 		if (RuntimeConfig::FromFile::alwaysDay)
 		{
-			Mat::mult(rot, sunDirection);
+			Mat::Mult(rot, sunDirection);
 			RealignSunDirection();
 		}
 

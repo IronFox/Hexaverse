@@ -94,11 +94,10 @@ namespace Objects
 
 		void		VerifyGrid()
 		{
-			foreach (vehicles,v)
-				ASSERT1__(GetVehicle((*v)->location) == *v, (*v)->location.ToString());
-			foreach (structures,s)
-				ASSERT1__(GetStructure((*s)->location) == *s, (*s)->location.ToString());
-
+			ForeachWorldEntity([](const Objects::PWorldEntity&e)
+			{
+				ASSERT1__(GetEntity(e->location) == e, e->location.ToString());
+			},false);
 		}
 
 
@@ -129,7 +128,7 @@ namespace Objects
 							}
 						}
 
-						v->PlaceExactlyAt(v->location,0,atTime);	//should do the trick
+						v->HandleNow(v->PlaceExactlyAt(v->location,0,atTime));	//should do the trick
 					}
 				}
 			}
@@ -241,7 +240,7 @@ namespace Objects
 			float terrainExplosionRadius = float(explosionRadius)-0.5f;
 			//float coreRadius = core*core;
 			float outerRadius = explosionRadius*explosionRadius;
-			static Buffer0<PWorldEntity>	toDestroy,allLivingAffected;
+			static Buffer0<PWorldEntity>	allLivingAffected;
 			static Buffer0<PStructure>		affectedStructures;
 			static Buffer0<PVehicle>		affectedVehicles;
 			ForeachWorldEntity([center,outerRadius,damageLevel,&atTime](const PWorldEntity e)
@@ -271,7 +270,8 @@ namespace Objects
 						e->TakeDamage(damageLevel);
 						if (e->health <= 0)
 						{
-							toDestroy << e;
+							e->SyncTime(atTime);
+							Remove(e,Objects::RemovalType::UncontrolledExplosion,atTime,false);
 						}
 						else
 						{
@@ -313,12 +313,7 @@ namespace Objects
 				}
 			},false);
 			atTime += timeEpsilon;
-			foreach (toDestroy,d)
-			{
-				(*d)->SyncTime(atTime);
-				Remove(*d,Objects::RemovalType::UncontrolledExplosion,atTime,false);
-			}
-			toDestroy.Clear();
+
 
 
 
@@ -349,7 +344,7 @@ namespace Objects
 				//copy = vehicles;	//in case they get whooped by falling
 				for (const auto&v : affectedVehicles)
 				{
-					v->PlaceExactlyAt(v->location,0, atTime);	//in case they fall due to explosions
+					v->HandleNow(v->PlaceExactlyAt(v->location,0, atTime));	//in case they fall due to explosions
 					if (v->health <= 0)
 					{
 						DBG_ASSERT__(!vehicles.Contains(v));
@@ -461,7 +456,7 @@ namespace Objects
 				}
 			}
 		#else
-			foreach(structures, s)
+			structures.Foreach([referenceOwner,cellID,n,&outNeighborhood](const PStructure&s)
 			{
 				//LogEvent(EventSignificance::Debug,s->get(),"Testing as neighbor of cell "+cellID.ToString()+" local position is "+(*s)->location.ToString());
 				if (
@@ -469,18 +464,18 @@ namespace Objects
 							!ignoreOwnership && 
 							!(*s)->ConnectsToDifferentOwnership() &&
 						#endif
-						(*s)->owner != referenceOwner 
+						s->owner != referenceOwner 
 					)
 				{
 					//LogEvent(EventSignificance::Debug,s->get(),"Rejected due to ownership: "+referenceOwner.ToString()+" != "+(*s)->owner.ToString());
-					continue;
+					return;
 				}
 
-				if (_IsNeighbor(cellID, n, (*s)->location))
-					outNeighborhood.Append(*s);
+				if (_IsNeighbor(cellID, n, s->location))
+					outNeighborhood.Append(s);
 				//else
 					//LogEvent(EventSignificance::Debug,s->get(),"Rejected due to location");
-			}
+			});
 		#endif
 	}
 
@@ -1263,7 +1258,10 @@ namespace Objects
 				if (ws->IsEnabled())
 				{
 					if (refreshNetworkNow)
-						FATAL__("this should not happen anymore")
+					{
+						LogEvent(EventClass::Preset::debug,s.get(),"InsertConstructed(): refreshNetworkNow is true (this is unexpected)");	//i suspect ownership change of some enabled nexus port might cause this
+						//DBG_FATAL__("this should not happen anymore")
+					}
 					else
 						ws->SetEnabled(true,atTime,false,WorkingStructure::ForceEnable);
 					//if (!RefreshCompoundCoverageIfNeeded(atTime))

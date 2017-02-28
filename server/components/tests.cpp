@@ -280,7 +280,7 @@ namespace Test
 			#endif
 			faction1->SignalAppearance(generator,t);	//make sure tower can see generator
 			//faction1->currentState = Grid::actualWorld;
-			bool wouldFire = v->FillAttackQueue();
+			bool wouldFire = v->FrontQueuePossibleAttacks();
 			if (wouldFire)
 			{
 				//check target

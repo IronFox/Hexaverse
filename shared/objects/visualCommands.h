@@ -30,7 +30,10 @@ namespace Objects
 
 
 
-
+	/**
+	Base class for all visual commands.
+	Visual commands are currently rendered as hexagonal icons arranged in the four corners of the screen.
+	*/
 	class BaseCommand : public std::enable_shared_from_this<BaseCommand>
 	{
 	public:
@@ -100,6 +103,9 @@ namespace Objects
 			{
 				rawLines.Clear();
 			}
+
+			bool				IsEmpty() const {return rawLines.IsEmpty();}
+			bool				IsNotEmpty() const {return rawLines.IsNotEmpty();}
 
 			void				BeginBrief()
 			{
@@ -230,10 +236,15 @@ namespace Objects
 		public:
 			BaseCommand::Label		customLabel;
 
-			/**/		CustomLabel(const String&name):Super(name) {customLabel.BeginBrief(); customLabel << name; }
+			/**/		CustomLabel(const String&name):Super(name) {/*customLabel.BeginBrief(); customLabel << name;*/ }
 			/**/		CustomLabel() {}
 			virtual void	CompileLabel(BaseCommand::Label&outResult) override
 			{
+				if (customLabel.IsEmpty())
+				{
+					Super::CompileLabel(outResult);
+					return;
+				}
 				outResult = customLabel;
 			}
 		};

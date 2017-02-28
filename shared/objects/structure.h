@@ -16,6 +16,7 @@
 #include "hangar.h"
 #include "mobileEntityProducer.h"
 #include "../roundNumber.h"
+#include "../sharedContainer.h"
 
 /*
 In the context of this game, a structure defines a building, as opposed to a vehicle or meta entity
@@ -1071,7 +1072,7 @@ namespace Objects
 
 
 
-		static const int			EnergyConsumption = 10;
+		static const int			EnergyConsumption = 0;
 		static const int			DefaultProductionPerRound = 10;
 
 
@@ -1724,7 +1725,7 @@ namespace Objects
 		virtual bool				HasAmmoForShot() override;
 		#ifndef CLIENT
 			virtual void			Attack(float&)	override;
-			virtual bool			FillAttackQueue() override;
+			virtual bool			FrontQueuePossibleAttacks() override;
 		#endif
 	};
 
@@ -1746,7 +1747,7 @@ namespace Objects
 
 
 
-	extern Buffer0<PStructure>			structures;
+	extern SharedContainer<Structure>		structures;
 	#ifdef CLIENT
 		typedef std::pair<WSkyLinkStructure,WWorkingStructure>	TLinkReference;
 		extern Buffer0<TLinkReference>		skyLinks;	//also included in structures, but filtered for quicker access

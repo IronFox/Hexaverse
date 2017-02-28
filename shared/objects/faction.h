@@ -6,6 +6,7 @@
 #include "structureCompound.h"
 #include "../stringTable.h"
 #include "../roundNumber.h"
+#include "../sharedContainer.h"
 #include "research.h"
 
 namespace Objects
@@ -121,8 +122,8 @@ namespace Objects
 			static void				GetOutdated(BasicBuffer<Marker>&outOudated, const RoundNumber&currentRoundNumber, UINT32 deathOutdatedAfterRounds=3);
 
 			static Buffer0<Marker, Strategy::Adopt>	all;
-			static Buffer0<PStructure>	structureGhosts;
-			static Buffer0<PMobileEntity>	mobileGhosts;
+			static SharedContainer<Structure>		structureGhosts;
+			static SharedContainer<MobileEntity>	mobileGhosts;
 			static Buffer0<TVisited>	visitedSystems;
 			static GenericHashTable<TUniqueID, index_t, TUniqueID>	idMap, referenceIDMap,visitedSystemIDMap;
 		#endif
@@ -145,7 +146,7 @@ namespace Objects
 			void		CheckChanges(float t);
 		#endif
 
-		void			InitID(const TUniqueID&toID, bool recomputeColor=true);
+		void			InitID(const TUniqueID&toID, bool nexusFaction);
 
 	public:
 		TUniqueID	id;
@@ -181,6 +182,7 @@ namespace Objects
 		}
 
 
+#if 0
 		/**
 		Computes a suitable color from a given faction ID.
 		The process is guaranteed to return a well saturated, lit color, but may be too slow to use on a per-frame basis.
@@ -190,6 +192,7 @@ namespace Objects
 		@param iteration Passing a different iteration alters the resulting color in a random way
 		*/		
 		static void IDToColor(TVec3<>&outColor, const TUniqueID&id, int iteration=0);
+#endif /*0*/
 
 
 		#ifdef ONE_COMPOUND_PER_FACTION
@@ -206,7 +209,7 @@ namespace Objects
 			static PFaction				FindByID(const TUniqueID&id);
 			static PFaction				GetOrCreate(const TUniqueID&id);
 
-			/**/						Faction(const TUniqueID&id):researchState(this,false) {InitID(id);}
+			/**/						Faction(const TUniqueID&id):researchState(this,false) {InitID(id,false);}
 
 		#else
 
@@ -270,7 +273,7 @@ namespace Objects
 				deathInRounds = 0;
 
 				accessToken.Generate();
-				InitID(toID);
+				InitID(toID,isNexus);
 			}
 
 
@@ -352,6 +355,7 @@ namespace Objects
 				*/
 				void	UpdateCompoundCoverage();
 			#endif
+			static void FindFreeColor(float3&outColor);
 
 			static void	Kill(const PFaction&);
 		#endif

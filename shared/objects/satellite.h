@@ -30,6 +30,7 @@
 #include "mobileEntity.h"
 #include "interface.h"
 #include "mobileEntityProducer.h"
+#include "../sharedContainer.h"
 
 namespace Objects
 {
@@ -195,7 +196,7 @@ namespace Objects
 		//TurretBase overrides:
 		virtual float			GetFlatAttackRange() const override;
 		#ifndef CLIENT
-			virtual bool		FillAttackQueue()override;
+			virtual bool		FrontQueuePossibleAttacks()override;
 		#endif
 
 		//WorldEntity overrides:
@@ -573,7 +574,7 @@ namespace Objects
 
 
 
-	extern Buffer0<PSatellite>	satellites;
+	extern SharedContainer<Satellite>	satellites;
 	//extern bool					satellitesAreLocked;
 
 }

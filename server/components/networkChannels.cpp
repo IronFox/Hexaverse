@@ -39,12 +39,13 @@ namespace Channels
 	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::DestroyMarker>							destroyMarker(Receiver::DestroyMarker);
 	TCP::Channel<Protocol::TouchedMarker, FactionLevel, Protocol::ChannelID::TouchMarker>					touchMarker(Receiver::TouchMarker);
 	TCP::Channel<Protocol::ClientName,FactionLevel,Protocol::ChannelID::ChangeMyName>						changeMyName(Receiver::ChangeMyName);
-	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::IdentifyUser>							identifyUserRecv(Receiver::IdentifyUser);
+	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::IdentifyFaction>						identifyFactionRecv(Receiver::IdentifyFaction);
 	TCP::Channel<Protocol::SelectResearch, FactionLevel, Protocol::ChannelID::SelectResearch>				selectResearch(Receiver::SelectResearch);
 	TCP::Channel<Package::NetString<256>, FactionLevel, Protocol::ChannelID::ChatMessage>					chatMessage(Receiver::ChatMessage);
 	TCP::Channel<Grid::ExtendedPlanetConfig, Configurator, Protocol::ChannelID::PlanetConfig>				planetConfig(Receiver::PlanetConfig);
 	TCP::Channel<Protocol::GameConfig, Configurator, Protocol::ChannelID::GameConfig>						gameConfig(Receiver::GameConfig);
 	TCP::Channel<Protocol::ResourceID, PreFaction, Protocol::ChannelID::RequestResource>				requestResource(Receiver::RequestResource);
+	TCP::Channel<Package::NetString<256>, Configurator, Protocol::ChannelID::LoadPlanetByName>		loadPlanetByName(Receiver::LoadPlanetByName);
 	
 
 	TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>			clientFactionResponse;
@@ -66,13 +67,14 @@ namespace Channels
 	TCP::ObjectSender<Protocol::ResourceUpdate,Protocol::ChannelID::ResourceUpdate>					resourceUpdate;
 	TCP::ObjectSender<Protocol::GameProgress,Protocol::ChannelID::GameProgress>						gameProgress;
 	TCP::ObjectSender<Protocol::ChangeEntityOwner,Protocol::ChannelID::ChangeEntityOwner>			changeEntityOwner;
-	TCP::ObjectSender<Protocol::IdentifyUser, Protocol::ChannelID::IdentifyUser>					identifyUser;
+	TCP::ObjectSender<Protocol::IdentifyFaction, Protocol::ChannelID::IdentifyFaction>				identifyFaction;
 	TCP::ObjectSender<Protocol::ResearchState, Protocol::ChannelID::ResearchState>					researchState;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionOnline>							factionOnline;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionOffline>							factionOffline;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionRequestedNewRound>				factionRequestedNewRound;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionContinuedRound>					factionContinuedRound;
 	TCP::ObjectSender<Protocol::ResourceData,Protocol::ChannelID::ResourceData>						resourceData;
+	TCP::ObjectSender<NETA(Package::NetString<256>),Protocol::ChannelID::PlanetNames>				planetNames;
 
 	TCP::ObjectSender<NET(UINT16), Protocol::ChannelID::LockEMPZones>								lockEmpZones;
 	#ifndef NO_HIBERNATION
@@ -138,7 +140,7 @@ namespace Receiver
 		{
 			if (f != exclude)
 			{
-				Channels::identifyUser.SendTo(peer,Protocol::IdentifyUser(f->id,f->name));
+				Channels::identifyFaction.SendTo(peer,Protocol::IdentifyFaction(f->id,f->name,f->color));
 				if (f->online)
 				{
 					Channels::factionOnline.SendTo(peer,f->id);
@@ -177,12 +179,12 @@ namespace Receiver
 
 		peer.SendSignal(Protocol::ChannelID::BeginEverything);
 
-		for (const auto&s : Objects::structures)
+		Objects::structures.Foreach([timestamp,&peer](const Objects::PStructure&s)
 		{
 			Protocol::StructureConstruction st;
 			Game::Network::Describe(st,*s,true,timestamp);
 			Channels::createStructure.SendTo(peer,st);
-		}
+		});
 
 		Objects::ForeachMobileWorldEntity([&peer, timestamp](const Objects::PMobileEntity&v)
 		{
@@ -229,6 +231,15 @@ namespace Receiver
 		}
 
 		SendSessionConfigTo(peer, Objects::PFaction());
+
+		Objects::ForeachFaction([&peer](const Objects::PFaction&f)
+		{
+			Protocol::ResearchState state;
+			state.ownerID = f->id;
+			f->researchState.Export(state.serializedData);
+			ASSERT_LESS__(state.serializedData.Count(),state.serializedData.MaxElementCount);
+			Channels::researchState.SendTo(peer,state);
+		});
 
 		peer.SendSignal(Protocol::ChannelID::EndEverything);
 
@@ -344,6 +355,18 @@ namespace Receiver
 			SendAllToSpectator(peer, firstSpectator);
 
 			Channels::planetConfig.SendTo(peer,Grid::currentPlanetConfig);
+
+			if (ConfigurationMode::IsActive())
+			{
+				Array<FileSystem::File>	iniFiles;
+				World::GetAvailablePlanetIniFiles(iniFiles);
+				NETA(Package::NetString<256>) names;
+				names.SetSize(iniFiles.Count());
+				for (index_t i = 0; i < iniFiles.Count(); i++)
+					names[i] = String(iniFiles[i].GetInnerName());
+				Channels::planetNames.SendTo(peer,names);
+			}
+
 
 			peer.SendSignal(Protocol::ChannelID::BeginGame);
 			return;
@@ -521,7 +544,7 @@ namespace Receiver
 			ASSERT_LESS__(state.serializedData.Count(),state.serializedData.MaxElementCount);
 			Channels::researchState.SendTo(peer,state);
 		});
-		Channels::selectResearch.SendTo(peer,Protocol::SelectResearch(client->faction->researchState.GetActiveTopicIndex()));
+		Channels::selectResearch.SendTo(peer,Protocol::SelectResearch((UINT32)client->faction->researchState.GetActiveTopicIndex()));
 
 		#ifndef CHEAT_SHOW_ALL_RESOURCES
 		if (!newFaction)
@@ -660,7 +683,7 @@ namespace Receiver
 		//probably optional later on
 		{
 			//broadcast name and state
-			Channels::identifyUser.SendTo(Network::server,Protocol::IdentifyUser(client->faction->id,client->name),2);
+			Channels::identifyFaction.SendTo(Network::server,Protocol::IdentifyFaction(client->faction->id,client->name,client->faction->color),2);
 			Channels::factionOnline.SendTo(Network::server,client->faction->id,2);
 
 		}
@@ -848,18 +871,9 @@ namespace Receiver
 		Journal::currentRound.Register(true,client->faction,new Journal::Round::SelectResearch(Objects::ResearchState::GetTopic( research)));
 	}
 
-	void	IdentifyUser(NET(TUniqueID)&id, TCP::Peer&peer)
+	void	IdentifyFaction(NET(TUniqueID)&id, TCP::Peer&peer)
 	{
 		//LATER
-	/*	for (const auto&weak : Objects::Faction::all)
-		{
-			Objects::PFaction fac = weak.lock();
-			if (fac && fac->
-
-		}
-		State::playerMap.QueryPointer(id);
-*/
-
 	}
 
 	void	PlanetConfig(Grid::ExtendedPlanetConfig&cfg, TCP::Peer&peer)
@@ -875,6 +889,38 @@ namespace Receiver
 			LogEvent(EventClass::Preset::commandRejected,peer,"Configuration mode is not active. User should not have this level");
 
 	}
+
+	void	LoadPlanetByName(Package::NetString<256>&planet, TCP::Peer&peer)
+	{
+		if (ConfigurationMode::IsActive())
+		{
+			LogEvent(EventClass::Preset::configurationPrint,peer,"Received request for planet preset '"+planet+"'...");
+			if (planet.contains('/') || planet.contains('\\'))
+			{
+				LogEvent(EventClass::Preset::commandRejected,peer,"Planet name contained path separators. Rejecting request.");
+				return;
+			}
+
+			if (planet.IsNotEmpty())
+			{
+				if (!FileSystem::IsFile(RuntimeConfig::ConfigFile(PathString("config/planets/"+planet+".ini"))))
+				{
+					LogEvent(EventClass::Preset::remoteControlError,"'"+planet+"' is not a valid planet type");
+					return;
+				}
+			}
+
+			if (planet.IsNotEmpty())
+			{
+				Reflection::Variable::planetType->Set(planet.trim());
+				Reflection::ReloadPlanet();
+			}
+			Network::BuildConfiguredWorld();
+		}
+		else
+			LogEvent(EventClass::Preset::commandRejected,peer,"Configuration mode is not active. User should not have this level");
+	}
+
 
 	void	GameConfig(Protocol::GameConfig&cfg, TCP::Peer&peer)
 	{
@@ -939,11 +985,12 @@ namespace Receiver
 		cl->name = name;
 		if (cl->faction)
 		{
-			Protocol::IdentifyUser userID;
-			userID.id = cl->faction->id;
-			userID.name = name;
+			Protocol::IdentifyFaction factionID;
+			factionID.id = cl->faction->id;
+			factionID.name = name;
+			factionID.color = cl->faction->color;
 			cl->faction->name = name;
-			Channels::identifyUser.SendTo(Network::server,userID,2);
+			Channels::identifyFaction.SendTo(Network::server,factionID,2);
 			LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ), peer, "User renamed to '"+name+"'");
 		}
 	}
@@ -1536,15 +1583,7 @@ namespace Receiver
 			peer.SendObject(Protocol::ChannelID::Hello,response);
 			return;
 		}
-		//foreach (State::clients,c)
-		//{
-		//	if ((*c)->state.playerName == state.playerName)
-		//	{
-		//		peer.SendObject(Protocol::ChannelID::SetClientState,Protocol::Result(false,"Name already in use"));
-		//		return;
-		//	}
-		//
-		//}
+
 
 		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 		if (!client)
@@ -1577,30 +1616,6 @@ namespace Receiver
 			Channels::phaseChange.SendTo(peer,ph);
 
 
-
-			/*
-			foreach (Objects::vehicles,_v)
-			{
-				const Objects::Vehicle&v = **_v;
-				//if (CanSee(client,v))	//doesnt have vehicles, always false, hence no vehicles at all
-				{
-					Protocol::VehicleConstruction	w;
-					State::Describe(w,v,false, Protocol::Timestamp(true,0),0xFFFFFFFF);
-					Channels::createVehicle.SendTo(peer,w);
-				}
-			}
-
-			foreach (Objects::structures,_s)
-			{
-				const Objects::Structure&v = **_s;
-				//if (CanSee(client,v))
-				{
-					Protocol::StructureConstruction	w;
-					State::Describe(w,*_s,false, nullptr);
-					Channels::createStructure.SendTo(peer,w);
-				}
-			}
-			*/
 			Protocol::HelloResponse response;
 			response.success = true;
 			response.configurationMode = ConfigurationMode::IsActive() && peer.IsLocalhost();
@@ -1608,8 +1623,6 @@ namespace Receiver
 			peer.SendObject(Protocol::ChannelID::Hello,response);
 			return;
 		}
-		//else
-			//LogEvent(EventType::SessionRelated,client->state.playerName+" -> "+ state.playerName);
 
 
 		ChangeMyName(hello,peer);

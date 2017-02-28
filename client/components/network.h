@@ -63,6 +63,8 @@ namespace Network
 			basePort = other.basePort;
 		}
 
+		bool				IsLocalhost() const {return host == "localhost" || host == "127.0.0.1" || host == "::1";}
+
 		String				ToString() const {return basePort != DEFAULT_SERVER_BASE_PORT ? host + ':' + String(basePort) : host;}
 	};
 
@@ -177,7 +179,7 @@ namespace Network
 
 		void	DestroyMarker(NET(TUniqueID)&mid);
 
-		void	IdentifyUser(Protocol::IdentifyUser&id);
+		void	IdentifyFaction(Protocol::IdentifyFaction&id);
 		void	FactionOnline(NET(TUniqueID)&);
 		void	FactionOffline(NET(TUniqueID)&);
 		void	FactionRequestedNewRound(NET(TUniqueID)&);
@@ -217,7 +219,7 @@ namespace Network
 		extern TCP::Channel<Protocol::Marker, 0, Protocol::ChannelID::MarkerCreationFailedLimitReached>	markerCreationFailedLimitReached;
 		extern TCP::Channel<NET(TUniqueID), 0, Protocol::ChannelID::DestroyMarker>						destroyMarker;
 
-		extern TCP::Channel<Protocol::IdentifyUser, 0, Protocol::ChannelID::IdentifyUser>				identifyUser;
+		extern TCP::Channel<Protocol::IdentifyFaction, 0, Protocol::ChannelID::IdentifyFaction>			identifyFaction;
 		extern TCP::Channel<NET(TUniqueID), 0, Protocol::ChannelID::FactionOnline>						factionOnline;
 		extern TCP::Channel<NET(TUniqueID), 0, Protocol::ChannelID::FactionOffline>						factionOffline;
 		extern TCP::Channel<NET(TUniqueID), 0, Protocol::ChannelID::FactionRequestedNewRound>			factionRequestedNewRound;
@@ -230,6 +232,7 @@ namespace Network
 		extern TCP::Channel<Protocol::SelectResearch, 0, Protocol::ChannelID::SelectResearch>			selectResearch;
 		extern TCP::Channel<Protocol::ResourceData,0,Protocol::ChannelID::ResourceData>					resourceData;
 		extern TCP::Channel<Protocol::GameConfig,0,Protocol::ChannelID::GameConfig>						gameConfig;
+		extern TCP::Channel<NETA(Package::NetString<256>),0,Protocol::ChannelID::PlanetNames>			planetNames;
 
 
 		extern TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;
@@ -250,6 +253,7 @@ namespace Network
 		extern TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>				changeMyName;
 		extern TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>				chatMessage;
 		extern TCP::ObjectSender<Protocol::ResourceID, Protocol::ChannelID::RequestResource>			requestResource;
+		extern TCP::ObjectSender<Package::NetString<256>, Protocol::ChannelID::LoadPlanetByName>		loadPlanetByName;
 
 		
 	}
@@ -321,6 +325,14 @@ namespace Network
 		//			return true;
 		//	return false;
 		//}
+
+		bool					HasLocalhost() const
+		{
+			foreach (addresses,u)
+				if (u->address.IsLocalhost())
+					return true;
+			return false;
+		}
 
 		bool					HasAddress(const ServerAddress&addr) const
 		{

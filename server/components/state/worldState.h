@@ -3,7 +3,7 @@
 
 #include <objects.h>
 #include <net/tcp.h>
-
+#include <io/file_system.h>
 
 namespace World
 {
@@ -28,6 +28,13 @@ namespace World
 
 	void			SimulateLiquidsIfEnabled();
 
+	/**
+	Fetches the paths to all available planet ini files.
+	Queries the file system to determine current state (all returned files existed at the moment of fetching).
+	Any occurring error is logged, and an empty array is returned in this case.
+	*/
+	void			GetAvailablePlanetIniFiles(Array<FileSystem::File>&rsOut);
+
 
 
 	void			UpdateEMPZones(count_t temporaryFactionCountBonus=0);
@@ -38,6 +45,12 @@ namespace World
 	extern TUniqueID	worldID;
 
 
+	static const constexpr int NumZones = 12;
+
+	/**
+	Bitset that contains all bits of all zones
+	*/
+	static const constexpr UINT16 AllZones = (UINT16)((1 << NumZones)-1);
 
 
 	namespace Config

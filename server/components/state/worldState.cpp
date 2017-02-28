@@ -9,7 +9,7 @@ namespace World
 
 	Grid::WorldData	spectatorWorldState;
 	bool			terrainChanged=false;
-	UINT32			empZonesLocked = 0, unlockedEMPZones = 0xFFFF;
+	UINT16			empZonesLocked = 0, unlockedEMPZones = 0xFFFF;
 	TUniqueID		worldID;
 
 
@@ -422,41 +422,43 @@ namespace World
 				}
 
 
-				float3 ref = Grid::low.cells[i].centerVertex.xyz;// * r;
+				const float3 ref = Grid::low.cells[i].centerVertex.xyz;// * r;
 				float dist2 = std::numeric_limits<float>::max();
-				float ndist2 = std::numeric_limits<float>::max();
-				foreach (Objects::structures, s)
+				float minNexusHubDist2 = std::numeric_limits<float>::max();
+				Objects::ForeachWorldEntity([ref,&dist2,&minNexusHubDist2](const Objects::PWorldEntity&e)
 				{
-					float d2 = Vec::quadraticDistance(Grid::low.cells[(*s)->location.stackID].centerVertex.xyz,ref);
-					if (!To<Objects::NexusPort>::DynamicCast(*s))
+					float d2 = Vec::quadraticDistance(Grid::low.cells[e->location.stackID].centerVertex.xyz,ref);
+					
+					if (!e->IsStructure() || !To<Objects::NexusPort>::DynamicCast(e))
 					{
-						Objects::PTurretBase base = (*s)->GetTurretBase();
+						Objects::PTurretBase base = e->GetTurretBase();
 						if (base)
-							d2 = sqr(sqrt(d2) - base->GetFlatAttackRange());	//fair enough here
-						if (Grid::AffectedByEMP((*s)->location))
-							d2 *= 4.f;
-						if ((*s)->owner != Objects::Faction::nexus)
-							d2 *= 0.25f;
+							d2 = sqr(sqrt(d2) - base->turret->horizontalAttackRange(e->owner));
+
 						dist2 = std::min(dist2, d2);
 					}
 					else
 					{
-						ndist2 = std::min(ndist2, d2);
+						minNexusHubDist2 = std::min(minNexusHubDist2, d2);
 					}
-				}
-				foreach (Objects::vehicles, v)
-				{
-					float d2 = Vec::quadraticDistance(Grid::low.cells[(*v)->location.stackID].centerVertex.xyz,ref);
-					dist2 = std::min(dist2, d2);
-				}
+				},false);
+
+				#ifdef LOWER_RESOLUTION_PLANET
+					static const float MinimumNexusBaseDistance = 0.4f;	//minimum distance from any nexus building (nexus hub explicitly excluded)
+				#else
+					static const float MinimumNexusBaseDistance = 0.35f;
+				#endif
+
+				static const float PlacementVariance = 0.1f;	//should not exceed 0.1f
+
 				if (Objects::Faction::all.IsEmpty())
-					dist2 = dist2 > 0.35f ? sqr(random.NextFloat(1,2)) : 0.f;
+					dist2 = dist2 > MinimumNexusBaseDistance ? sqr(random.NextFloat(1,2)) : 0.f;	//0 should imply to not take this location
 				else
-					dist2 *= random.NextFloat(0.9f,1.f / 0.9f);
+					dist2 *= pow(1.f - PlacementVariance,random.NextFloat(-1,1));	//vary randomly
 
-				biggestNDist = std::max(biggestNDist,ndist2);
+				biggestNDist = std::max(biggestNDist,minNexusHubDist2);
 
-				if (dist2 > bestDist && ndist2 > 0.25f)	//actual
+				if (dist2 > bestDist && minNexusHubDist2 > 0.125f)
 				{
 					bestDist = dist2;
 					//nbestDist = ndist2;
@@ -494,25 +496,45 @@ namespace World
 			}
 				
 			SetUnlockedEMPZones(unlocked);
-
-			Channels::lockEmpZones.SendTo(::Network::server,empZonesLocked,2);
 		}
 		else
 		{
-			if (empZonesLocked != 0)
-			{
-				empZonesLocked = 0;
-				Channels::lockEmpZones.SendTo(::Network::server,empZonesLocked,2);
-			}
+			SetUnlockedEMPZones(NumZones);
 		}
-
 	}
 
 
 	void		SetUnlockedEMPZones(int unlocked)
 	{
-		Grid::empZonesUnlocked = unlockedEMPZones = ((1<<unlocked) - 1);
-		Grid::empZonesLocked = empZonesLocked = ((1 << 12)-1)  & ~unlockedEMPZones;
+		const UINT16 newUnlocked = ((1<<unlocked) - 1);
+		if (unlockedEMPZones == newUnlocked)
+			return;
+		Grid::empZonesUnlocked = unlockedEMPZones = newUnlocked;
+		Grid::empZonesLocked = empZonesLocked = AllZones  & ~unlockedEMPZones;
+		Channels::lockEmpZones.SendTo(::Network::server,empZonesLocked,Channels::FactionLevel);
+
+		float t = 0;
+		Game::UpdateResidualEMPDamage(t);
+
 	}
 
+
+	void		GetAvailablePlanetIniFiles(Array<FileSystem::File>&rsOut)
+	{
+		FileSystem::Folder folder = RuntimeConfig::ConfigFile("config/planets");
+		if (!folder.IsValidLocation())
+		{
+			LogEvent(EventClass::Preset::remoteControlError,"Internal error: Unable to locate planets-directory");
+			rsOut.Clear();
+			return;
+		}
+		FileSystem::File file;
+		Buffer0<FileSystem::File,Swap> files;
+		folder.Rewind();
+		while (folder.NextFile("ini",file))
+		{
+			files.Append().swap(file);
+		}
+		files.MoveToArray(rsOut,true);
+	}
 }

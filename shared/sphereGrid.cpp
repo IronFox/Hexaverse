@@ -982,7 +982,7 @@ namespace Grid
 
 
 				float3 p = float3(cos(SunDetails::progression),sin(SunDetails::progression),0);
-				Mat::mult(SunDetails::sunSystem,p,SunDetails::sunDirection);
+				Mat::Mult(SunDetails::sunSystem,p,SunDetails::sunDirection);
 				UpdateSunDirection(SunDetails::sunDirection,true);
 			}
 
@@ -990,7 +990,7 @@ namespace Grid
 			{
 				double angle = SunDetails::progression*speedFactor;
 				Vec::def(outDir,cos(angle),sin(angle),0);
-				Mat::mult(SunDetails::sunSystem,outDir);
+				Mat::Mult(SunDetails::sunSystem,outDir);
 				return angle;
 			}
 
@@ -1011,9 +1011,9 @@ namespace Grid
 			void	SetOrientation(TMatrix4<>&m, const float3&axis, double t, const float3&seedAxis, double seedRot)
 			{
 				TMatrix3<> sys1,sys2,sys;
-				Mat::rotationMatrix(t*1.5,axis,sys1);
-				Mat::rotationMatrix(seedRot,seedAxis,sys2);
-				Mat::mult(sys1,sys2,sys);
+				Mat::BuildRotationMatrix(t*1.5,axis,sys1);
+				Mat::BuildRotationMatrix(seedRot,seedAxis,sys2);
+				Mat::Mult(sys1,sys2,sys);
 				Mat::copyOrientation(sys,m);
 				m.w.xyz = Vector<>::zero;
 				Mat::resetBottomRow(m);
@@ -4703,6 +4703,16 @@ namespace Grid
 	//}
 
 	#endif
+
+	void TSharedPlanetConfig::Apply() const
+	{
+		Grid::Content coreContent = Grid::Content::Reinterpret(innerCoreType);
+		Grid::CellStack::bottom.content = coreContent;
+		#ifdef HAS_WINDOW
+			Grid::UpdateAtmosphere(atmosphereColor);
+			Grid::UpdateSun(sunPlaneNormal_Speed,sunColor);
+		#endif
+	}
 
 	/**/					WorldData::WorldData():cellStack(HighSetup::GridType::CellCount)
 	{}

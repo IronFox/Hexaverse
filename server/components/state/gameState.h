@@ -114,6 +114,7 @@ namespace Game
 			extern bool		startBases/* = false*/,
 							enableAI/* = false*/;
 			extern float	threatEstimationFactor/* = 1.f*/;
+			extern UINT32	roundsPerResearchPoint;
 			extern Array<Objects::Component::Turret*>	vehicleTurrets;
 		}
 	}
@@ -201,6 +202,11 @@ namespace Game
 	@param thoroughly If set, also checks faction terrain changes that currently offline
 	*/
 	void			ProcessChanges(bool thoroughly);
+
+	/**
+	Updates EMP damage caused by residual EMP fields. This is called automatically at the end of round processing
+	*/
+	void			UpdateResidualEMPDamage(float&atTime);
 
 
 	void			SpawnNexusBaseAtPoleWithPort(int pole);

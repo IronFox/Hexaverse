@@ -8,6 +8,7 @@
 #include "../reflection.h"
 #include "gameState.h"
 #include "worldState.h"
+#include "../configurationMode.h"
 #include "../../../client/version.h"
 
 namespace FileIO
@@ -45,6 +46,8 @@ namespace FileIO
 	void RefreshWindowTitle()
 	{
 		String title = String(PRODUCT_NAME)+" server "+ ::Network::serverID.ToNiceString()+" (world "+ World::worldID.ToNiceString()+")";
+		if (ConfigurationMode::IsActive())
+			title += " INTERACTIVE CONFIGURATION MODE";
 		SetConsoleTitleA(title.c_str());
 	}
 
@@ -1487,7 +1490,7 @@ namespace FileIO
 
 
 		if (wasOpen)
-			::Network::RestartSession();
+			::Network::RestartSession(true);
 
 	}
 
@@ -1592,12 +1595,11 @@ namespace FileIO
 		},false);
 
 
-
-		foreach (Objects::structures,_s)
+		Objects::structures.Foreach([&objects,&allFactions](const Objects::PStructure&_s)
 		{
-			Objects::Structure&s = **_s;
+			Objects::Structure&s = *_s;
 			Export(objects->AppendBlock(RIFF_LIST),s,allFactions);
-		}
+		});
 
 
 		foreach (Grid::Resource::all,res)

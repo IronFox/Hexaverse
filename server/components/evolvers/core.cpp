@@ -218,6 +218,15 @@ namespace Evolver
 				f->researchState.FinalizeRound(f);
 			});
 
+			if (Objects::Faction::nexus && Game::Config::Nexus::roundsPerResearchPoint)
+			{
+				if (((RuntimeConfig::roundNumber.main+1)%Game::Config::Nexus::roundsPerResearchPoint)==0)
+				{
+					LogEvent(EventSignificance::Common,Objects::Faction::nexus,"Advancing Nexus research state");
+					Objects::Faction::nexus->researchState.AdvanceNexusResearch();
+				}
+			}
+
 
 			Objects::ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
 			{
@@ -235,10 +244,10 @@ namespace Evolver
 				if (!b || !b->turret->CanAttack() || !b->CountPossibleAttacks())
 					return;
 
-				if (v->IsSentry())
+				//if (v->IsSentry())
 				{
-					if (v->myTasks.IsEmpty())
-						v->FillAttackQueue();
+					if (v->myTasks.IsEmpty() || (b->turret->ignoresVehicleMotion && !v->NextTaskIsAttack()))
+						v->FrontQueuePossibleAttacks();
 				}
 
 				if (v->NextTaskIsAttack())
@@ -273,7 +282,7 @@ namespace Evolver
 
 					if (t->turret->CanAttack())
 					{
-						if (t->attackQueue.IsEmpty() && !t->FillAttackQueue())
+						if (t->attackQueue.IsEmpty() && !t->FrontQueuePossibleAttacks())
 							continue;
 						if (!t->HasAmmoForShot())
 						{
@@ -347,7 +356,7 @@ namespace Evolver
 							Grid::LCellIdI newLocation = sat->location;
 							newLocation.height = Objects::Satellite::DeclinedResidenceHeight;
 							//t+= 0.025f;
-							sat->PlaceExactlyAt(newLocation, 0.1f, 0.f);
+							sat->HandleNow(sat->PlaceExactlyAt(newLocation, 0.1f, 0.f));
 						}
 					}
 					else
@@ -356,7 +365,7 @@ namespace Evolver
 							LogEvent( EventClass(EventSignificance::Uncommon, EventFlavor::Gain),sat.get(),"Satellite height restored");
 							Grid::LCellIdI newLocation = sat->location;
 							newLocation.height = Objects::Satellite::BaseResidenceHeight;
-							sat->PlaceExactlyAt(newLocation, 0.1f, 0.f);
+							sat->HandleNow(sat->PlaceExactlyAt(newLocation, 0.1f, 0.f));
 						}
 				}
 				//satellitesAreLocked = false;

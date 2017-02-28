@@ -34,7 +34,7 @@ namespace Objects
 	To the server these are all the buildings that exist, to the client these are all
 	it currently knows about.
 	*/
-	Buffer0<PStructure>			structures;
+	SharedContainer<Structure>	structures;
 	#ifdef CLIENT
 		/**
 		Filter list containing only SkyPorts. Used to faster render certain effects.
@@ -95,14 +95,16 @@ namespace Objects
 	/*static*/ count_t			Structure::CountOccurrences(const OwnerParameter&o,ConstName type)
 	{
 		count_t rs = 0;
-		for (const auto&m : structures)
-			if (m->owner == o && m->GetCTypeName() == type)
+		structures.Foreach([&rs,o,type](const Objects::PStructure&s)
+		{
+			if (s->owner == o && s->GetCTypeName() == type)
 				rs++;
 			else
 			{
 //				if (m->GetCTypeName() == type)
 	//				ShowMessage(m->owner->GetName() + "!="+o->GetName());
 			}
+		});
 		return rs;
 	}
 
@@ -250,18 +252,20 @@ namespace Objects
 
 		}
 
-		/*virtual override*/ bool Tower::FillAttackQueue()
+		/*virtual override*/ bool Tower::FrontQueuePossibleAttacks()
 		{
 			if (!HasAmmoForShot())
 				return false;
 			//index_t freeSlots = attackQueue.Count() < t->GetAttacksPerRound() <  t->GetAttacksPerRound() - t->attackQueue.Count() : 0;
-			if ((int)attackQueue.Count() < CountPossibleAttacks())
+			bool rs = false;
+			while ((int)attackQueue.Count() < CountPossibleAttacks())
 			{
 				Grid::LCellIdI target;
-				return GetSentryTarget(*this,this->storage.level[turret->ammoType], TrajectoryEndPoint( location,GetEffectiveFoundationHeight()),*this,target) && AttackNext(target,true);
+				if (!GetSentryTarget(*this,this->storage.level[turret->ammoType], TrajectoryEndPoint( location,GetEffectiveFoundationHeight()),*this,target) || !AttackNext(target,true))
+					return rs;
+				rs = true;
 			}
-			else
-				return false;
+			return rs;
 
 		}
 
@@ -2677,10 +2681,10 @@ namespace Objects
 					faction->compound.workingStructures.Clear();
 				}
 
-				for (const auto&s:structures)
+				structures.Foreach([](const Objects::PStructure&s)
 				{
 					s->owner->compound.AppendStructure(s.get());
-				}
+				});
 			#else
 //				compounds.SetSize(Faction::all...)
 				for (const auto&f0 : Faction::all)
@@ -2783,7 +2787,7 @@ namespace Objects
 			Super::DescribeType(label,  descFlags);
 			label.MarkBriefEnd();
 			label << "Enabled vehicle plants produce vehicles of arbitrary configuration at the expense of "
-			+String(ResourceTag(Resource::Minerals))+", "+String(ResourceTag(Resource::Energy))+", and "+String(TimeResourceTag())+"."
+			+String(ResourceTag(Resource::Minerals))+", and "+String(TimeResourceTag())+"."
 			" A vehicle plant that does not have access to the necessary resources switches off immediately."
 			" Vehicle plants should be placed so that any produced vehicles can stand in the immediate surroundings of the structure."
 			;

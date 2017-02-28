@@ -2373,6 +2373,8 @@ namespace Grid
 		float4			atmosphereColor = float4(0.7,0.8,1.0,0.5);	//alpha=1.0 is really dense
 		float4			sunPlaneNormal_Speed = float4(0,0,1,0.5f);	//fourth parameter is rotation speed in radians per second
 		float4			sunColor = float4(1,1,1,1);	//fourth parameter is ignored
+
+		void			Apply() const;
 	};
 
 	inline void	AssertIsValid(const Grid::LCellIdI&location)

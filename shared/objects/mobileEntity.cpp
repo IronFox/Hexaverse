@@ -11,7 +11,7 @@
 
 namespace Objects
 {
-	Buffer0<PMobileEntity>			storedMobileEntities;
+	SharedContainer<MobileEntity>			storedMobileEntities;
 
 
 
@@ -20,50 +20,37 @@ namespace Objects
 
 	void						CheckMobileEntitySanity()
 	{
-		for (const auto&v : vehicles)
+		ForeachMobileWorldEntity([](const Objects::PMobileEntity&m)
 		{
-			ASSERT1__(v->isInserted,v->GetName());
-			ASSERT1__(v->health > 0,v->GetName());
-			ASSERT1__(GetEntity(v->id) == v, v->GetName());
-			ASSERT1__(!storedMobileEntities.Contains(v), v->GetName());
-			ASSERT1__(v->storedIn.expired(), v->GetName());
+			ASSERT1__(m->isInserted,m->GetName());
+			ASSERT1__(m->health > 0,m->GetName());
+			ASSERT1__(GetEntity(m->id) == m, m->GetName());
+			ASSERT1__(!storedMobileEntities.Contains(m), m->GetName());
+			ASSERT1__(m->storedIn.expired(), m->GetName());
 			#ifndef CLIENT
-				ASSERT2__(!v->owner->HasMobileInStorage(v),v->GetName(),v->owner->GetName());
-				ASSERT2__(v->owner->HasActiveMobile(v),v->GetName(),v->owner->GetName());
+				ASSERT2__(!m->owner->HasMobileInStorage(m),m->GetName(),m->owner->GetName());
+				ASSERT2__(m->owner->HasActiveMobile(m),m->GetName(),m->owner->GetName());
 			#endif
-		}
-		#ifndef NO_SATELLITES
-			for (const auto&v : satellites)
-			{
-				ASSERT1__(v->isInserted,v->GetName());
-				ASSERT1__(!v->isInsertedIntoGrid,v->GetName());	//satellites are never inserted into grid
-				ASSERT1__(v->health > 0,v->GetName());
-				ASSERT1__(GetEntity(v->id) == v, v->GetName());
-				ASSERT1__(!storedMobileEntities.Contains(v), v->GetName());
-				ASSERT1__(v->storedIn.expired(), v->GetName());
-				#ifndef CLIENT
-					ASSERT2__(!v->owner->HasMobileInStorage(v),v->GetName(),v->owner->GetName());
-					ASSERT2__(v->owner->HasActiveMobile(v),v->GetName(),v->owner->GetName());
-				#endif
-			}
-		#endif
-		for (const auto&v : storedMobileEntities)
+		},false);
+		
+		storedMobileEntities.Foreach([](const Objects::PMobileEntity&m)
 		{
-			ASSERT1__(!v->isInserted,v->GetName());
-			ASSERT1__(!v->isInsertedIntoGrid,v->GetName());
-			ASSERT1__(v->health > 0,v->GetName());
-			ASSERT1__(GetEntity(v->id) == v, v->GetName());
-			ASSERT1__(!vehicles.Contains(v),v->GetName());
-			PHangar hangar = v->storedIn.lock();
+			ASSERT1__(!m->isInserted,m->GetName());
+			ASSERT1__(!m->isInsertedIntoGrid,m->GetName());
+			ASSERT1__(m->health > 0,m->GetName());
+			ASSERT1__(GetEntity(m->id) == m, m->GetName());
+			if (m->IsVehicle())
+				ASSERT1__(!vehicles.Contains(To<Vehicle>::Cast(m)),m->GetName());
+			PHangar hangar = m->storedIn.lock();
 			//PVehicleStore storedIn = To<VehicleStore>::DynamicCast( v->storedIn.lock());
-			ASSERT1__(hangar,v->GetName());
-			ASSERT2__(hangar->HasStoredLocally(v),v->GetName(),hangar->ToEntity().GetName());
+			ASSERT1__(hangar,m->GetName());
+			ASSERT2__(hangar->HasStoredLocally(m),m->GetName(),hangar->ToEntity().GetName());
 
 			#ifndef CLIENT
-				ASSERT2__(v->owner->HasMobileInStorage(v),v->GetName(),v->owner->GetName());
-				ASSERT2__(!v->owner->HasActiveMobile(v),v->GetName(),v->owner->GetName());
+				ASSERT2__(m->owner->HasMobileInStorage(m),m->GetName(),m->owner->GetName());
+				ASSERT2__(!m->owner->HasActiveMobile(m),m->GetName(),m->owner->GetName());
 			#endif
-		}
+		});
 
 	}
 
@@ -396,6 +383,19 @@ namespace Objects
 		}
 
 
+		void			MobileEntity::HandleNow(MobilePlacementResult rs)
+		{
+			if (rs == MobilePlacementResult::PlacementFailedMobileDestroyed)
+			{
+				LogEvent(EventSignificance::Common,this,"Handling mobile entity destruction.");
+				jobStarted = false;
+				ClearAllTasks(true, CLOCATION);
+				unstable = false;
+				if (isInserted)	//otherwise already killed by Finish() operation
+					Remove(shared_from_this(),RemovalType::UncontrolledExplosion,motionTime,false,false);
+			}
+		}
+
 
 		bool			MobileEntity::CompleteOnMove(const Grid::LCellIdI&referenceLocation)
 		{
@@ -405,7 +405,7 @@ namespace Objects
 			unstable = false;
 			if (rs == VehicleJob::BaseJob::TerminalFailureVehicleDestroyed)
 			{
-				LogEvent(EventSignificance::Common,this,"Terminal failure. Remaining tasks dropped. Vehicle destroyed.");
+				LogEvent(EventSignificance::Common,this,"Terminal failure. Remaining tasks dropped. Mobile entity destroyed.");
 				jobStarted = false;
 				ClearAllTasks(true, CLOCATION);
 				unstable = false;
@@ -1519,9 +1519,10 @@ namespace Objects
 
 										Shape&shape = localizableShapes.Append();
 										((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
-										shape.instruction.vbo = sphereVBO[0];
-										shape.instruction.ibo = sphereIBO[0];
+										shape.instruction.vbo = sphereVBO[2];
+										shape.instruction.ibo = sphereIBO[2];
 										shape.depthTest = true;
+										shape.flareDisplay = true;
 
 										BuildSystem(trajectory.last().xyz * trajectory.last().w,parent->GetAttackExplosionRadius(),  parent->GetAttackExplosionRadius(),shape.system);
 									}
@@ -1624,9 +1625,12 @@ namespace Objects
 		{
 			Shape&shape = localizableShapes.Append();
 			((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
-			shape.instruction.vbo = sphereVBO[0];
-			shape.instruction.ibo = sphereIBO[0];
+			shape.instruction.vbo = sphereVBO[1];
+			shape.instruction.ibo = sphereIBO[1];
 			shape.depthTest = true;
+			shape.flareDisplay = false;
+			shape.preRenderDepth = false;
+			shape.selectedOnly = true;
 
 			float r = Component::Bomb::GetRadius(false,owner);
 			BuildSystem(Grid::ToWorld(location),r, r,shape.system);
@@ -1637,9 +1641,12 @@ namespace Objects
 		{
 			Shape&shape = localizableShapes.Append();
 			((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
-			shape.instruction.vbo = sphereVBO[0];
-			shape.instruction.ibo = sphereIBO[0];
+			shape.instruction.vbo = sphereVBO[2];
+			shape.instruction.ibo = sphereIBO[2];
 			shape.depthTest = true;
+			shape.flareDisplay = false;
+			shape.preRenderDepth = false;
+			shape.selectedOnly = true;
 
 			float r = Component::Bomb::GetRadius(true,owner);
 			BuildSystem(Grid::ToWorld(location),r, r,shape.system);
@@ -1656,6 +1663,7 @@ namespace Objects
 			shape.instruction.vbo = p->localizableShape->vbo;
 			shape.instruction.ibo = p->localizableShape->ibo;
 			shape.depthTest = true;
+			shape.flareDisplay = type != Job;
 
 			BuildStructureSystem(location,shape.system);
 			return;

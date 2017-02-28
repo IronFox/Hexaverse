@@ -39,7 +39,7 @@ namespace NiceName
 		ASSERT1__(file.Open(PRE_PATH L"resources/nice/nouns.txt"), FileSystem::GetWorkingDirectory());
 
 		while (file >> line)
-			nouns << MakeNice(line);
+			nouns << line;
 
 		ASSERT__(file.Open(PRE_PATH L"resources/nice/adjectives.txt"));
 

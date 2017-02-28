@@ -313,6 +313,7 @@ namespace GUI
 			rawText.SetSize(1);
 			rawText.First() = string;
 			Super::InvalidateSize();
+			UpdateHeight();
 		}
 		void			SetText(const Array<String>&string)
 		{
@@ -320,6 +321,7 @@ namespace GUI
 				return;
 			rawText = string;
 			Super::InvalidateSize();
+			UpdateHeight();
 		}
 
 		void			SetIdealWidth();
@@ -340,6 +342,13 @@ namespace GUI
 		/**/			Label()
 		{
 			Super::fillBackground = false;
+		}
+		/**/			Label(const String&text, float scale=1.f)
+		{
+			Super::fillBackground = false;
+			Super::zoom = scale;
+			SetText(text);
+			SetIdealWidth();
 		}
 	};
 
@@ -623,6 +632,22 @@ namespace GUI
 		}
 
 		Buffer0<PComponent>	components;
+
+		/**
+		Queries whether or not the vertical scrollbar is currently visible.
+		*/
+		bool			ScrollbarIsVisible() const
+		{
+			return vscroll.visible;
+		}
+
+		/**
+		Queries the width+horizontal offset of any currently visible scrollbar, 0 if invisible.
+		*/
+		float			GetVisibleScrollbarContentExpansion() const
+		{
+			return vscroll.visible ? TScrollbar::Width+TScrollbar::ContentSpacing : 0;
+		}
 	public:
 		bool			autoHeight = false;
 		float			autoHeightSpacing = 0.f;//0.015f;
@@ -672,6 +697,13 @@ namespace GUI
 			components << c;
 			return true;
 		}
+		virtual PComponent	AddNewComponent(Component*c)
+		{
+			PComponent comp(c);
+			ASSERT__(AddComponent(comp));
+			return comp;
+		}
+
 		virtual bool		RemoveComponent(const PComponent&c)
 		{
 			return components.FindAndErase(c);
@@ -811,6 +843,7 @@ namespace GUI
 		void				UpdateOuterRect()
 		{
 			outerRect= rect;
+			outerRect.x.max += GetVisibleScrollbarContentExpansion();
 			outerRect.Expand(0.015f);
 		}
 		Rect<>				outerRect = Rect<>(0,0,1,1);

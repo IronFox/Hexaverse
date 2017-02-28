@@ -749,9 +749,9 @@ namespace GUI
 	{
 		if ((index_t)c >= Objects::TextoutResourceTagOffset && (index_t)c <= (index_t)Objects::TextoutResourceTagOffset + Objects::Resource::NumberOfPossibilities)
 		{
-			return textout.getFont().GetHeight() * textout.state.scale_x;
+			return textout.GetFont().GetHeight() * textout.state.scale_x;
 		}
-		return textout.getFont().GetWidth(c) * textout.state.scale_x;
+		return textout.GetFont().GetWidth(c) * textout.state.scale_x;
 	}
 
 	void OnWindowResize()
@@ -895,14 +895,14 @@ namespace GUI
 
 	bool			BaseInput::UpdateHeight()
 	{
-		textout.pushState();
-			textout.scale(textZoom,textZoom);
+		textout.PushState();
+			textout.Scale(textZoom,textZoom);
 
-			float newMin = this->rect.y.max - textout.getScaledHeight() * 2.5f;
+			float newMin = this->rect.y.max - textout.GetScaledHeight() * 2.5f;
 			bool same = Math::similar(newMin,this->rect.y.min);
 			this->rect.y.min = newMin;
 
-		textout.popState();
+		textout.PopState();
 		return Super::UpdateHeight() || !same;
 	}
 
@@ -1036,9 +1036,9 @@ namespace GUI
 	/*virtual override*/ void			BaseInput::Render()
 	{
 		core = rect;
-		textout.pushState();
-		textout.scale(textZoom,textZoom);
-		core.Expand(-textout.getScaledHeight()*0.4f);
+		textout.PushState();
+		textout.Scale(textZoom,textZoom);
+		core.Expand(-textout.GetScaledHeight()*0.4f);
 		//core.Scale(0.97f);
 
 		if (fillBackground)
@@ -1048,14 +1048,14 @@ namespace GUI
 
 
 		static const char cursorChar = '<';
-		float cursorLen = textout.getScaledWidth(&cursorChar,1);
-		float visualLen = textout.getScaledWidth(text) + cursorLen;
+		float cursorLen = textout.GetScaledWidth(StringRef(&cursorChar,1));
+		float visualLen = textout.GetScaledWidth(text) + cursorLen;
 
 
 		SurfaceRenderer::Flush();
 
 
-		textout.locate(core.x.min,core.y.max - textout.getScaledHeight() * 0.4f);
+		textout.MoveTo(core.x.min,core.y.max - textout.GetScaledHeight() * 0.4f);
 
 
 		if (visualLen < core.x.GetExtent())
@@ -1067,7 +1067,7 @@ namespace GUI
 		{
 			while (text.DropFirstChar())
 			{
-				visualLen = textout.getScaledWidth(text) + cursorLen;
+				visualLen = textout.QueryScaledWidth(text) + cursorLen;
 				if (visualLen < core.x.GetExtent())
 				{
 					textout << text;
@@ -1080,7 +1080,7 @@ namespace GUI
 			textout << cursorChar;
 
 
-		textout.popState();
+		textout.PopState();
 
 
 	}
@@ -1166,8 +1166,8 @@ namespace GUI
 
 	/*virtual*/ float			TextField::GetIdealWidth() const
 	{
-		textout.pushState();
-		textout.scale(textZoom*zoom,textZoom*zoom);
+		textout.PushState();
+		textout.Scale(textZoom*zoom,textZoom*zoom);
 		float w = 0.f;
 
 		foreach (rawText,t)
@@ -1177,7 +1177,7 @@ namespace GUI
 				w1 += CharWidth(*c);
 			w = std::max(w,w1);
 		}
-		textout.popState();
+		textout.PopState();
 		return w/ 0.85f;
 	}
 
@@ -1211,8 +1211,8 @@ namespace GUI
 		if (widthLockedToIdeal)
 			changed = UpdateIdealWidth();
 
-		textout.pushState();
-		textout.scale(textZoom*zoom,textZoom*zoom);
+		textout.PushState();
+		textout.Scale(textZoom*zoom,textZoom*zoom);
 
 		wrappedText.Clear();
 		Array<String>	wrapped;
@@ -1222,23 +1222,23 @@ namespace GUI
 			wrappedText.MoveAppend(wrapped);
 		}
 		lineAt.SetSize(wrappedText.Count());
-		float lineHeight = textout.getScaledHeight();
+		float lineHeight = textout.GetScaledHeight();
 		float y = -lineHeight*(extraSpacing);
 		for (index_t i = 0; i < lineAt.Count(); i++)
 		{
 			lineAt[i] =
 				float2(
 					alignCenter ? 
-						hRange.center() - textout.getScaledWidth(wrappedText[i])*0.5f
+						hRange.center() - textout.QueryScaledWidth(wrappedText[i])*0.5f
 						:
 						hRange.min,
 				y - lineHeight * (i));
 		}
-		textHeight = textout.getScaledHeight() * (float(wrappedText.Count()) + extraSpacing*2.f);
+		textHeight = textout.GetScaledHeight() * (float(wrappedText.Count()) + extraSpacing*2.f);
 
 		changed |= Set(this->rect.y.min,rect.y.max - textHeight);
 
-		textout.popState();
+		textout.PopState();
 		return Super::UpdateHeight() || changed;
 	}
 
@@ -1261,15 +1261,15 @@ namespace GUI
 
 	void TextField::RenderText(bool lit)
 	{
-		textout.pushState();
-		textout.scale(textZoom*zoom,textZoom*zoom);
+		textout.PushState();
+		textout.Scale(textZoom*zoom,textZoom*zoom);
 
 		//bool hovering = !Super::sensitiveToMouse || (enabled && ContainsMouse());
 
 		SurfaceRenderer::Flush();
 
-		//textout.locate(rect.x.min + rect.x.GetExtent()*0.05f,rect.y.max - textout.getScaledHeight()*1.5f);
-		//float lineHeight = textout.getScaledHeight();
+		//textout.locate(rect.x.min + rect.x.GetExtent()*0.05f,rect.y.max - textout.GetScaledHeight()*1.5f);
+		//float lineHeight = textout.GetScaledHeight();
 		float top = rect.y.max;
 
 
@@ -1279,13 +1279,13 @@ namespace GUI
 		else
 			baseColor = float4(0.5,0.5,0.5,1);
 
-		textout.color(baseColor & this->color);
+		textout.SetColor(baseColor & this->color);
 		for (index_t i = 0; i < wrappedText.Count(); i++)
 		{
-			textout.locate(lineAt[i].x,lineAt[i].y+top);
+			textout.MoveTo(lineAt[i].x,lineAt[i].y+top);
 			textout << wrappedText[i];
 		}
-		textout.popState();
+		textout.PopState();
 	}
 
 	/*virtual override*/ bool	Image::UpdateHeight()
@@ -1385,12 +1385,12 @@ namespace GUI
 
 			#ifdef _DEBUG
 				if (numRounds > 900)
-					ShowMessage("Debug: GUI will crash shortly. Attach now and debug.");
+					ShowMessage(__func__ ": Debug: GUI will abort auto-layout shortly. Attach now and debug.");
 
 			#endif
 
 			if (numRounds > 1000)	//might be linear to the number of contained components, depending on order
-				FATAL__("Layout infinite loop detected");
+				return false;
 		}
 
 	}
@@ -1480,7 +1480,7 @@ namespace GUI
 		}
 
 
-		float extend = a.GetExtent();
+		float extent = a.GetExtent();
 
 		if (anchor.min.IsFixed())
 		{
@@ -1524,10 +1524,10 @@ namespace GUI
 				rs |= Set(a.max, context.axis[axis].max - dist);
 		}
 		else
-			rs |= Set(a.max,a.min + extend);
+			rs |= Set(a.max,a.min + extent);
 
 		if (!anchor.min.IsFixed())
-			rs |= Set(a.min,a.max - extend);
+			rs |= Set(a.min,a.max - extent);
 
 
 		return rs;
@@ -1587,14 +1587,14 @@ namespace GUI
 
 	/*virtual override*/ float	Checkbox::GetIdealWidth() const
 	{
-		float checkBoxWidth = textZoom*zoom * textout.getScaledHeight() / display.pixelAspect() * 1.5f;
+		float checkBoxWidth = textZoom*zoom * textout.GetScaledHeight() / display.pixelAspect() * 1.5f;
 		return Super::GetIdealWidth() + checkBoxWidth;
 	}
 
 
 	/*virtual override*/ bool	Checkbox::UpdateHeight()
 	{
-		float checkBoxWidth = textZoom*zoom * textout.getScaledHeight() / display.pixelAspect() * 1.5f;
+		float checkBoxWidth = textZoom*zoom * textout.GetScaledHeight() / display.pixelAspect() * 1.5f;
 		return Super::UpdateHeight(FloatRange(rect.x.min + checkBoxWidth,rect.x.max ));
 	}
 
@@ -1604,7 +1604,7 @@ namespace GUI
 		//Super::BaseRender(lit,false);
 		Super::RenderText(lit);
 		SurfaceRenderer::SetColor(lit ? float4(0.7f):float4(0.5f));
-		float checkBoxHeight = textZoom*zoom * textout.getScaledHeight();
+		float checkBoxHeight = textZoom*zoom * textout.GetScaledHeight();
 		float checkBoxWidth = checkBoxHeight / display.pixelAspect();
 		float top = rect.y.center() + checkBoxHeight*0.7f;// Super::extraSpacing * checkBoxHeight;
 		TFloatRect box = TFloatRect(rect.x.min,top - checkBoxHeight,rect.x.min+checkBoxWidth,top);

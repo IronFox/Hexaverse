@@ -755,8 +755,8 @@ namespace Objects
 		{
 			float pulse = doPulse ? GetActiveColor(now) : 1.f;
 
-			float3 mine = float3 (0.5f, 0.5f, 1.f) * pulse;
-			float3 theirs = float3 (1.f, 0.5f, 0.5f) * pulse;
+			//float3 mine = float3 (0.5f, 0.5f, 1.f) * pulse;
+			//float3 theirs = float3 (1.f, 0.5f, 0.5f) * pulse;
 			static const float3 inactiveColorMine/*=0*/,
 								inactiveColorTheirs(0.5f,0.25f,0.25f);
 
@@ -765,13 +765,16 @@ namespace Objects
 				Faction&f = **_f;
 				if (f.isOwnedByMe)
 				{
-					f.activeEntityColor = mine;
+					f.activeEntityColor = f.color * pulse;
+						//mine;
 					f.inactiveEntityColor = inactiveColorMine;
 				}
 				else
 				{
-					f.activeEntityColor = theirs;
-					f.inactiveEntityColor = inactiveColorTheirs;
+					f.activeEntityColor = f.color * pulse;
+						//theirs;
+					f.inactiveEntityColor = f.color * 0.5f;
+						//inactiveColorTheirs;
 				}
 
 			}
@@ -1006,13 +1009,13 @@ namespace Objects
 			display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 
 			overallTint.Update(noTint);
-			foreach(vehicles, _v)
+
+			vehicles.Foreach([](const Objects::PVehicle&v)
 			{
-				PVehicle&v = *_v;
 				UpdateSeeThroughColor(v->isOwnedByMe, v==selectedEntity);
 				//overallTint.Update(v->isOwnedByMe ? mySeeThroughColor : hostileSeeThroughColor);
 				Renderer::RenderSimple(*v);
-			}
+			});
 
 			//foreach(structures, _s)
 			//{
@@ -1042,9 +1045,8 @@ namespace Objects
 
 
 		overallTint.Update(baseTint);
-		foreach(vehicles, _v)
+		vehicles.Foreach([](const Objects::PVehicle&v)
 		{
-			const PVehicle&v = *_v;
 			const float light = GetLowLighting(v->location);
 
 			bool isBuilding = v->IsBuilding();
@@ -1060,11 +1062,10 @@ namespace Objects
 				Renderer::Render(*v,light);
 				ApplyBaseTint(*v,baseTint);
 			}
-		}
+		});
 		#ifndef NO_SATELLITES
-			foreach(satellites, _v)
+			satellites.Foreach([](const Objects::PVehicle&v)
 			{
-				const PSatellite&v = *_v;
 				const float light = GetLowLighting(v->location);
 
 				bool isBuilding = v->IsBuilding();
@@ -1099,9 +1100,9 @@ namespace Objects
 
 		overallTint.Update(noTint);
 
-		foreach(structures, _s)
+		structures.Foreach([](const Objects::PStructure&_s)
 		{
-			Structure&s = **_s;
+			Structure&s = *_s;
 			//if (&s == selectedEntity.get())	//Renderer compiled shape only here
 				//continue;
 			if (s.changed)
@@ -1117,22 +1118,22 @@ namespace Objects
 				display.Render(s.compiledShape,true);
 				//ApplyBaseTint(s,baseTint);
 			}
-		}
+		});
 
 		flip = fmod(Engine::timing.now ,1.0) > 0.5;
-		foreach(structures, _s)
+		structures.Foreach([](const Objects::PStructure&_s)
 		{
-			Structure&s = **_s;
+			Structure&s = *_s;
 			if (s.localizableShape)
 			{
 				if (&s == selectedEntity.get())
-					continue;
+					return;
 				ApplyStateTint(s,baseTint,false);
 				Renderer::Render(s);
 				//ApplyBaseTint(s,baseTint);	//why?
 
 			}
-		}
+		});
 
 		if (selectedEntity && selectedEntity->health > 0)
 		{
@@ -1220,7 +1221,7 @@ namespace Objects
 		},false);
 
 
-		for (const auto&s : structures)
+		structures.Foreach([](const Objects::PStructure&s)
 		{
 			int maxHealth = s->GetMaxHealth();
 			//float progress;
@@ -1244,7 +1245,7 @@ namespace Objects
 					}
 				}
 			}
-		}
+		});
 		ProgressBar::End();
 	}
 
@@ -1432,11 +1433,11 @@ namespace Objects
 		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 
 		display.LinkShader(jobShader, false, true);
-		foreach(Marker::mobileGhosts, _v)
+
+		Marker::mobileGhosts.Foreach([orbital](const Objects::PMobileEntity&m)
 		{
-			const PMobileEntity&m = *_v;
 			if (m->IsAboveGrid() != orbital)
-				continue;
+				return;
 			if (m->IsVehicle())
 			{
 				PVehicle v = To<Vehicle>::Cast(m);
@@ -1452,21 +1453,18 @@ namespace Objects
 					else
 				#endif
 					FATAL__("Unsupported ghost type "+m->GetTypeName());
-		}
-		foreach(Marker::structureGhosts, _s)
+		});
+		Marker::structureGhosts.Foreach([orbital](const Objects::PStructure&s)
 		{
-			const PStructure&s = *_s;
 			if (s->IsAboveGrid() != orbital)
-				continue;
+				return;
 			Renderer::RenderSimple(*s,s->HasFoundation());
+		});
 
-		}
-
-		foreach(Marker::mobileGhosts, _v)
+		Marker::mobileGhosts.Foreach([orbital](const Objects::PMobileEntity&m)
 		{
-			const PMobileEntity&m = *_v;
 			if (m->IsAboveGrid() != orbital)
-				continue;
+				return;
 			if (m->isOwnedByMe)
 				overallTint.Update(float4(0.2, 0.2, 0.2, 1));
 			else
@@ -1486,18 +1484,17 @@ namespace Objects
 					else
 				#endif
 					FATAL__("Unsupported ghost type "+m->GetTypeName());
-		}
-		foreach(Marker::structureGhosts, _s)
+		});
+		Marker::structureGhosts.Foreach([orbital](const Objects::PStructure&s)
 		{
-			const PStructure&s = *_s;
 			if (s->IsAboveGrid() != orbital)
-				continue;
+				return;
 			if (s->isOwnedByMe)
 				overallTint.Update(float4(0.2, 0.2, 0.2, 1));
 			else
 				overallTint.Update(float4(1, 0, 0, 1));
 			Renderer::RenderSimple(*s,s->HasFoundation());
-		}
+		});
 		display.UnlockShader();
 
 
@@ -1514,7 +1511,7 @@ namespace Objects
 					if (t->type == Vehicle::Task::Job)
 						foreach (t->localizableShapes,shape)
 						{
-							if (shape->depthTest)
+							if (shape->depthTest && shape->preRenderDepth)
 							{
 //									display.SetDepthTest(shape->depthTest,false);
 
@@ -1547,39 +1544,42 @@ namespace Objects
 		{
 			if (v->IsAboveGrid() != orbital)
 				return;
-
-			if (v == selectedEntity)
+			const bool selected = v == selectedEntity;
+			if (selected)
 				overallTint.Update(float4(red2,1));
 			
 			{
 				foreach (v->myTasks,t)
 				{
-					if (t->type == Vehicle::Task::Job)
-						display.SetBlendMode(Engine::BlendMode::AlphaBlend);
-					else
-						display.SetBlendMode(Engine::BlendMode::FlareBlend);
-
 					foreach (t->localizableShapes,shape)
 					{
+						if (shape->selectedOnly && !selected)
+							continue;
+
+						if (shape->flareDisplay)
+						{
+							if (!selected)
+								continue;	//invisible anyway
+							display.SetBlendMode(Engine::BlendMode::FlareBlend);
+						}
+						else
+							display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+
 						display.SetDepthTest(shape->depthTest,false);
 
 						display.SetObjectMatrix(shape->system);
 						display.Render(shape->instruction);
-
 					}
-
 				}
 			}
-			if (v == selectedEntity)
+			if (selected)
 				overallTint.Update(float4(0,0,0,1));	//make sure localizable shapes appear - but in black
 		},false);
 
-
-		foreach(structures, _s)
+		structures.Foreach([orbital](const Objects::PStructure&s)
 		{
-			const PStructure&s = *_s;
 			if (s->IsAboveGrid() != orbital)
-				continue;
+				return;
 
 			float dummy;
 			if (s->GetTurretBase(dummy))
@@ -1608,7 +1608,7 @@ namespace Objects
 
 			}
 		
-		}
+		});
 		display.SetObjectMatrix(Matrix<>::eye4);
 
 
@@ -1695,11 +1695,10 @@ namespace Objects
 		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 		overallTint.Update(noTint);
 		
-		foreach(structures, _s)
+		structures.Foreach([orbital](const Objects::PStructure&s)
 		{
-			const PStructure&s = *_s;
 			if (s->IsAboveGrid() != orbital)
-				continue;
+				return;
 
 			float zOffset;
 			if (s != selectedEntity)
@@ -1718,7 +1717,7 @@ namespace Objects
 					}
 				}
 			}
-		}
+		});
 
 		display.SetDepthTest(false,false);
 		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
@@ -2139,7 +2138,7 @@ namespace Objects
 		
 		{
 			TMatrix4<>	m;
-			Mat::mult(shadowCamera.projection,shadowCamera.view,m);
+			Mat::Mult(shadowCamera.projection,shadowCamera.view,m);
 			shadowMatrix.Update(m);
 		}
 
@@ -2176,19 +2175,21 @@ namespace Objects
 			#else
 				display.LinkShader(shadowInstruction,false,true);
 
-				foreach(vehicles, v)
+				vehicles.Foreach([](const Objects::PVehicle&v)
 				{
-					_RenderShadow(**v);
-				}
+					_RenderShadow(*v);
+				});
 				#ifndef NO_SATELLITES
-					foreach (satellites, s)
-						_RenderShadow(**s);
+					satellites.Foreach([](const Objects::PSatellite&s)
+					{
+						_RenderShadow(*s);
+					});
 				#endif
 				display.SetObjectMatrix(Matrix<>::eye4);
 
-				foreach(structures, _s)
+				structures.Foreach([](const Objects::PStructure&_s)
 				{
-					Structure&s = **_s;
+					Structure&s = *_s;
 					if (s.changed)
 					{
 						s.Recompile();
@@ -2205,18 +2206,18 @@ namespace Objects
 						display.SetObjectMatrix(Matrix<>::eye4);
 					}
 
-				}
+				});
 				//display.SetObjectMatrix(Matrix<>::eye4);
 				//return;
 
-				foreach(structures, _s)
+				structures.Foreach([](const Objects::PStructure&_s)
 				{
-					const Structure&s = **_s;
+					const Structure&s = *_s;
 					if (s.localizableShape)
 					{
 						_RenderShadow(s);
 					}
-				}
+				});
 				display.SetObjectMatrix(Matrix<>::eye4);
 				display.UnlockShader();
 			#endif /*0*/

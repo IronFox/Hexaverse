@@ -126,7 +126,7 @@ namespace Engine
 					lowest = bottom;
 				if (chars[id].height > height)
 					height = chars[id].height;
-				chars[id].texcoords.Set(left,bottom,right,top);
+				chars[id].texcoords.Set(left,bottom,right+1,top+1);
 				chars[id].texcoords.x /= (float)(image.GetWidth()-1);
 				chars[id].texcoords.y /= (float)(image.GetHeight()-1);
 			}
@@ -170,35 +170,27 @@ namespace Engine
 			return 0.f;
 		}
 
-		float TextureFont::GetWidth(const char*str)
-		{
-			float rs = 0;
-			while (*str)
-			{
-				rs += CharWidth(*str);
-				str++;
-			}
-			return rs*scale;
-		}
 
-		float TextureFont::GetWidth(const char*str, size_t len)
+		float TextureFont::GetWidth(const StringRef&str)
 		{
 			float rs = 0;
-			for (index_t i = 0; i < len; i++)
+			const char*c = str.pointer(),
+					*const end = c + str.GetLength();
+			for (;c != end; ++c)
 			{
-				rs += CharWidth(str[i]);
+				rs += CharWidth(*c);
 			}
 			return rs*scale;
 		}
 
 		float TextureFont::GetWidth(char c)
 		{
-			return chars[(BYTE)c].isset?scale*chars[(BYTE)c].width:0;
+			return CharWidth(c)*scale;
 		}
 
-		void TextureFont::begin(const TFontState&state)
+		void TextureFont::Begin(const TFontState&state)
 		{
-			Mat::eye(m);
+			Mat::Eye(m);
 			m.w.xyz = float3(state.left+state.indent,
 			state.top 
 			- 
@@ -217,15 +209,10 @@ namespace Engine
 			//stateCopy = state;
 		}
 
-		void TextureFont::alterColor(const TFontColor&color)
+		void TextureFont::AlterColor(const TFontColor&color)
 		{
 			//glColor4fv(color.v);
 			colorBuffer.Update(color);
-		}
-
-		void TextureFont::write(const char*str)
-		{
-			write(str,strlen(str));
 		}
 
 		void TextureFont::Render(count_t numVertices)
@@ -237,10 +224,12 @@ namespace Engine
 			DirectX11::globalInstance->RenderVertices(instruction);
 		}
 
-		void TextureFont::write(const char*str, size_t len)
+		void TextureFont::Write(const StringRef&str)
 		{
 			index_t written = 0;
-			for (index_t i = 0; i < len; i++)
+			const char*c = str.pointer(),
+					*const end = c + str.GetLength();
+			for (;c != end; ++c)
 			{
 				if (written == MaxStream)
 				{
@@ -248,7 +237,7 @@ namespace Engine
 					written = 0;
 				}
 
-				if (tagMode && tagRange.Contains(str[i]))
+				if (tagMode && tagRange.Contains(*c))
 				{
 					if (written)
 					{
@@ -259,7 +248,7 @@ namespace Engine
 					m.w.x += m.x.x  * at;
 					DirectX11::globalInstance->SetObjectMatrix(m);
 
-					m.w.x += onTag(m.w.xyz,str[i],m.x.x,m.y.y);
+					m.w.x += onTag(m.w.xyz,*c,m.x.x,m.y.y);
 
 					at = 0;
 
@@ -269,23 +258,23 @@ namespace Engine
 				}
 
 				TVertex&vtx = vertices[written++];
-				const TCharacter&c = chars[(BYTE)str[i]];
-				vtx.x = c.texcoords.x.min - pixelOffset.x;
-				vtx.y = c.texcoords.y.min - pixelOffset.y;
-				vtx.z = c.texcoords.x.max - pixelOffset.x;
-				vtx.w = c.texcoords.y.max - pixelOffset.y;
-				vtx.v[4] = c.width;
-				vtx.v[5] = c.height;
+				const TCharacter&ch = chars[(BYTE)*c];
+				vtx.x = ch.texcoords.x.min - pixelOffset.x;
+				vtx.y = ch.texcoords.y.min - pixelOffset.y;
+				vtx.z = ch.texcoords.x.max - pixelOffset.x;
+				vtx.w = ch.texcoords.y.max - pixelOffset.y;
+				vtx.v[4] = ch.width;
+				vtx.v[5] = ch.height;
 				vtx.v[6] = at;
-				vtx.v[7] = c.yoffset;
-				at += c.width;// + 2;
+				vtx.v[7] = ch.yoffset;
+				at += ch.width;// + 2;
 			}
 			if (written)
 				Render(written);
 				//glCallLists(GLuint(len),GL_UNSIGNED_BYTE,str);
 		}
 
-		void TextureFont::end()
+		void TextureFont::End()
 		{
 		}
 	}

@@ -1,4 +1,5 @@
 #include <global_root.h>
+#include <global_string.h>
 #include <math/basic.h>
 #include "reflection.h"
 #include "state.h"
@@ -14,10 +15,22 @@ namespace Reflection
 
 	static CLI::PFolder factionFolder;
 
+
+	static const constexpr UINT32 DefaultFactionsPerEMPZone = 
+			#ifdef LOWER_RESOLUTION_PLANET
+					1
+			#else
+					3
+			#endif
+			;
+
+
+
 	namespace Variable
 	{
 		PBase	planetType;	
-	
+		typedef ::String	String;
+
 		void	Walk(const CLI::PFolder&f, const Variable::FCallback&callback)
 		{
 			for (const auto&var : f->variables)
@@ -57,10 +70,13 @@ namespace Reflection
 		}
 
 
+		/**
+		Container for regular string variables.
 
+		*/
 		class StringVar : public Base
 		{
-				typedef Base	Super;
+			typedef Base	Super;
 		public:
 			String	value,
 					defaultValue;
@@ -282,56 +298,7 @@ namespace Reflection
 				defaultValue = ToString();
 			}
 		};
-		
-		class FactionsPerEMPZone : public Base
-		{
-			typedef Base	Super;
-		public:
-			#ifdef LOWER_RESOLUTION_PLANET
-				UINT32		defaultValue = 1;
-			#else
-				UINT32		defaultValue = 3;
-			#endif
 
-			/**/			FactionsPerEMPZone(const String&name, unsigned protection=CLI::EraseProtection):Super(name, "UInt32",Persistence::RestoreFromSavegame,1,protection)	{}
-			virtual String	ToString()		const	override	{return String(Game::Config::factionsPerZone);}
-			virtual	bool	Set(const String&value)	override
-			{
-				UINT32 old = Game::Config::factionsPerZone;
-				if (!convert(value.c_str(),value.length(),Game::Config::factionsPerZone))
-					return false;
-				if (Game::Config::factionsPerZone < 1 || Game::Config::factionsPerZone > 5)
-				{
-					Game::Config::factionsPerZone = old;
-					return false;
-				}
-				if (old < Game::Config::factionsPerZone && Objects::Faction::all.Count() > 0)
-				{
-					LogEvent(EventClass::Preset::commandRejected,"Unable to increase factionsPerEMPZone while factions exist.");
-					Game::Config::factionsPerZone = old;
-					return false;
-				}
-				if (old != Game::Config::factionsPerZone)
-				{
-					OnChanged();
-					World::UpdateEMPZones(0);
-				}
-				return true;
-			}
-			virtual String		GetSupportedValues() const override 
-			{
-				return "[1,5]"
-						;
-			}
-			virtual String	GetDefault() const override
-			{
-				return defaultValue;
-			}
-			virtual void		SetCurrentToDefault() override
-			{
-				defaultValue = Game::Config::factionsPerZone;
-			}
-		};
 
 		class EMPZones : public Base
 		{
@@ -558,6 +525,57 @@ namespace Reflection
 				defaultValue = RuntimeConfig::UnitLimits::IsEnabled();
 			}
 
+		};
+
+		
+		
+
+
+
+		class FactionsPerEMPZone : public Base
+		{
+			typedef Base	Super;
+		public:
+			UINT32		defaultValue = DefaultFactionsPerEMPZone;
+
+			/**/			FactionsPerEMPZone(const String&name, unsigned protection=CLI::EraseProtection):Super(name, "UInt32",Persistence::RestoreFromSavegame,1,protection)	{}
+			virtual String	ToString()		const	override	{return String(Game::Config::factionsPerZone);}
+			virtual	bool	Set(const String&value)	override
+			{
+				UINT32 old = Game::Config::factionsPerZone;
+				if (!convert(value.c_str(),value.length(),Game::Config::factionsPerZone))
+					return false;
+				if (Game::Config::factionsPerZone < 1 || Game::Config::factionsPerZone > 5)
+				{
+					Game::Config::factionsPerZone = old;
+					return false;
+				}
+				if (old < Game::Config::factionsPerZone && Objects::Faction::all.Count() > 0)
+				{
+					LogEvent(EventClass::Preset::commandRejected,"Unable to increase factionsPerEMPZone while factions exist.");
+					Game::Config::factionsPerZone = old;
+					return false;
+				}
+				if (old != Game::Config::factionsPerZone)
+				{
+					OnChanged();
+					World::UpdateEMPZones(0);
+				}
+				return true;
+			}
+			virtual String		GetSupportedValues() const override 
+			{
+				return "[1,5]"
+						;
+			}
+			virtual String	GetDefault() const override
+			{
+				return defaultValue;
+			}
+			virtual void		SetCurrentToDefault() override
+			{
+				defaultValue = Game::Config::factionsPerZone;
+			}
 		};
 
 
@@ -985,14 +1003,14 @@ namespace Reflection
 			state.SetVariable(CLI::PVariable(new Variable::SupportedFactions("supportedFactions")));
 
 			VAR(closedGame,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame);
-			VAR(roundTimer,Game::Config,-1,INT_MAX,Variable::Persistence::ConfigOverridesSavegame);
-			VAR(bombsExplodeWhenDestroyed,RuntimeConfig,false,true,Variable::Persistence::ConfigOverridesSavegame);
+			VAR(roundTimer,Game::Config,-1,INT_MAX,Variable::Persistence::RestoreFromSavegame);
+			VAR(bombsExplodeWhenDestroyed,RuntimeConfig,false,true,Variable::Persistence::RestoreFromSavegame);
 			VAR(startBases,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame);
 			VAR(basesRequired,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame);
-			VAR(exposeActionLeftToHostileFactions,Game::Config,false,true,Variable::Persistence::ConfigOverridesSavegame);
+			VAR(exposeActionLeftToHostileFactions,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame);
 			VAR(newVehiclesHaveFullAmmo,Objects,false,true,Variable::Persistence::RestoreFromSavegame);
 			VAR(uplinkBandwidth,Game::Config,1U,1000000U,Variable::Persistence::RestoreFromSavegame);
-			ENUMVAR(doomsdayWeapons,RuntimeConfig,Variable::Persistence::ConfigOverridesSavegame);
+			ENUMVAR(doomsdayWeapons,RuntimeConfig,Variable::Persistence::RestoreFromSavegame);
 			
 			state.SetVariable(CLI::PVariable(new Variable::FactionsPerEMPZone("factionsPerEMPZone")));
 			state.SetVariable(CLI::PVariable(new Variable::EMPZones("empZones")));
@@ -1028,7 +1046,8 @@ namespace Reflection
 				#endif
 				state.SetVariable(CLI::PVariable(new Variable::NexusAIEnabled("enableAI")));
 				//VAR(enableAI,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
-				VAR(threatEstimationFactor,Game::Config::Nexus,0.001f,100.f,Variable::Persistence::ConfigOverridesSavegame);
+				VAR(threatEstimationFactor,Game::Config::Nexus,0.001f,100.f,Variable::Persistence::RestoreFromSavegame);
+				VAR(roundsPerResearchPoint,Game::Config::Nexus,0U,10000U,Variable::Persistence::RestoreFromSavegame);
 				state.SetVariable(CLI::PVariable(new Variable::NexusVehicleTurrets("vehicleTurrets")));
 			state.ExitFolder();
 		state.ExitFolder();
@@ -1163,9 +1182,9 @@ namespace Reflection
 				case Variable::Persistence::ConfigOnly:
 					outBuffer << "Loaded from configuration each time the server is restarted. Not written to savegames."<<nl;
 				break;
-				case Variable::Persistence::ConfigOverridesSavegame:
-					outBuffer << "Written to savegames and applied during loading, but overridden by settings found in configuration files afterwards."<<nl;
-				break;
+				//case Variable::Persistence::ConfigOverridesSavegame:
+				//	outBuffer << "Written to savegames and applied during loading, but overridden by settings found in configuration files afterwards."<<nl;
+				//break;
 				case Variable::Persistence::GameInvariant:
 				case Variable::Persistence::PlanetConfig :	//for now, write the same thing into the config
 					outBuffer << "Written to savegames and restored from there, but cannot be altered once a game has started."<<nl;
@@ -1311,7 +1330,7 @@ namespace Reflection
 
 		Feed(state.GetRoot(),localServerINI, false, [](const Variable::PBase&base)->bool
 		{
-			return base->persistence == Variable::Persistence::ConfigOverridesSavegame;
+			return false;//base->persistence == Variable::Persistence::ConfigOverridesSavegame;
 		});
 
 		Grid::currentPlanetConfig.GenerateAtmosphereColor();

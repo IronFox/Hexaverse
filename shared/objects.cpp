@@ -462,43 +462,14 @@ namespace Objects
 			PWorldEntity					GetRayIntersection(const TVec3<>&b, const TVec3<>&d, float&distance)
 			{
 				PWorldEntity newSel;
-				foreach(vehicles, v)
+				ForeachWorldEntity([b,d,&distance,&newSel](const Objects::PWorldEntity&e)
 				{
-					if ((*v)->TestIntersection(b, d, distance))
+					if (e->TestIntersection(b, d, distance))
 					{
-						newSel = *v;
+						newSel = e;
 					}
-				}
-				#ifndef NO_SATELLITES
-					foreach(satellites, v)
-					{
-						if ((*v)->TestIntersection(b, d, distance))
-						{
-							newSel = *v;
-						}
-					}
-				#endif
-				foreach(structures, s)
-				{
-					if ((*s)->TestIntersection(b, d, distance))
-					{
-						newSel = *s;
-					}
-				}
-				foreach(Marker::mobileGhosts, v)
-				{
-					if ((*v)->TestIntersection(b, d, distance))
-					{
-						newSel = *v;
-					}
-				}
-				foreach(Marker::structureGhosts, s)
-				{
-					if ((*s)->TestIntersection(b, d, distance))
-					{
-						newSel = *s;
-					}
-				}
+				},true);
+
 				return newSel;
 			}
 

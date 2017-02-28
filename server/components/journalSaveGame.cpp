@@ -1310,27 +1310,10 @@ namespace Journal
 		bool ai = Game::Config::Nexus::enableAI;
 		Game::Config::Nexus::enableAI = false;
 
-		if (RuntimeConfig::empZones)
-		{
-			count_t numZones = Game::Config::CountAccessibleZones();
-
-			int unlocked = 0;
-			for (index_t i = 0; i < numZones; i++)
-			{
-				if (Game::Config::Nexus::haveBases && BaseGrid::IsIsolatedCorner(unlocked))
-				{
-					unlocked++;
-				}
-				unlocked++;
-			}
-				
-
-			World::SetUnlockedEMPZones(unlocked);
-
-		}
+		World::UpdateEMPZones();
 
 		if (closed)
-			Network::RestartSession();
+			Network::RestartSession(true);
 
 
 
@@ -1423,7 +1406,7 @@ namespace Journal
 		journal.ApplyToGlobalState();
 
 		if (closed)
-			Network::RestartSession();
+			Network::RestartSession(true);
 
 		logStream.open(writeTo.c_str(),std::ios::binary | std::ios::out | std::ios::trunc);
 		ASSERT__(logStream.is_open());
@@ -1785,7 +1768,7 @@ namespace Journal
 		Network::PClient cl;
 		if (Network::playerMap.Query(f,cl))
 		{
-			Channels::selectResearch.SendTo(cl->peer.lock(),Protocol::SelectResearch(topic->serialIndex));
+			Channels::selectResearch.SendTo(cl->peer.lock(),Protocol::SelectResearch((UINT32)topic->serialIndex));
 		}
 		LogEvent(EventSignificance::Uncommon, GetPeerOfFaction(f), "Faction research updated to "+topic->GetFullName());
 	}
