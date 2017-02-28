@@ -2,6 +2,7 @@
 
 hoverformer sometimes tries building roads through buildings
 
+aerial radar and turret
 
 
 
