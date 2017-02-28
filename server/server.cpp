@@ -326,7 +326,7 @@ namespace ApplicationInterface
 		rot.toWorld = toWorld;
 		rot.rotationTime = rotationTime;
 		rot.timestamp.rightNow = false;
-		rot.timestamp.atTime = e->motionTime;
+		rot.timestamp.atTime = e->entityTime;
 
 		foreach (Network::activePlayersAndSpectators,cl)
 		{
@@ -385,7 +385,7 @@ namespace ApplicationInterface
 		preciseAttack.isAutoAttack = attack.isAutoAttack;
 		preciseAttack.attackAngle = attack.attackAngle;
 		preciseAttack.timestamp.rightNow = false;
-		preciseAttack.timestamp.atTime = attack.attackFrom->motionTime;
+		preciseAttack.timestamp.atTime = attack.attackFrom->entityTime;
 	
 		LogEvent(EventSignificance::Debug,attack.attackFrom.get(),"Commencing attack at t="+String(preciseAttack.timestamp.atTime));
 

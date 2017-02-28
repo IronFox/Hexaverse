@@ -211,12 +211,12 @@ namespace Objects
 	public:
 		#ifndef CLIENT
 
-			float					motionTime=0.f;		//!< Time (in seconds) into the motion phase to calculate event times
+			float					entityTime=0.f;		//!< Time (in seconds) into the animation phase to calculate event times
 			Random					entityRandom;
 			
 			void					ReSeedRandom();
 
-			void					ResetMotionTime()	{motionTime = 0;}
+			void					ResetEntityTime()	{entityTime = 0;}
 
 		#endif
 
@@ -228,26 +228,26 @@ namespace Objects
 		inline void					SyncTime(float&remoteTime, float timeOffset)
 		{
 			#ifndef CLIENT
-				remoteTime = motionTime = std::max(motionTime,remoteTime) + timeOffset;
+				remoteTime = entityTime = std::max(entityTime,remoteTime) + timeOffset;
 			#endif
 		}
 		inline void					SyncTime(float&remoteTime)
 		{
 			#ifndef CLIENT
-				remoteTime = motionTime = std::max(motionTime,remoteTime);
+				remoteTime = entityTime = std::max(entityTime,remoteTime);
 			#endif
 		}
 
 		inline void					SyncTime(WorldEntity&other, float&remoteTime, float timeOffset)
 		{
 			#ifndef CLIENT
-				other.motionTime = remoteTime = motionTime = std::max(motionTime,std::max(remoteTime,other.motionTime)) + timeOffset;
+				other.entityTime = remoteTime = entityTime = std::max(entityTime,std::max(remoteTime,other.entityTime)) + timeOffset;
 			#endif
 		}
 		inline void					SyncTime(WorldEntity&other, float&remoteTime)
 		{
 			#ifndef CLIENT
-				other.motionTime = remoteTime = motionTime = std::max(motionTime,std::max(remoteTime,other.motionTime));
+				other.entityTime = remoteTime = entityTime = std::max(entityTime,std::max(remoteTime,other.entityTime));
 			#endif
 		}
 

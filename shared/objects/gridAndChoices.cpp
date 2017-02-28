@@ -247,55 +247,23 @@ namespace Objects
 			{
 				if (e->IsIndestructible())
 					return;
-				float d2 = std::numeric_limits<float>::max();
+				float dist2 = std::numeric_limits<float>::max(),
+						dist2IncludingBase = dist2;
 				const int h = e->GetHeight();
 				const TVec3<>&c = Grid::low.cells[e->location.stackID].cornerCenter;
 				TVec3<> p;
 				for (int k = 0; k <= h; k++)
 				{
 					Vec::mult(c,Grid::ToRadius(e->location.height + k),p);
-					float d3 = Vec::quadraticDistance(p,center);
-					d2 = std::min(d2,d3);
+					const float d2 = Vec::quadraticDistance(p,center);
+					dist2 = std::min(dist2,d2);
 				}
-				//LogEvent(EventSignificance::Debug,e->get(),Vec::toString((*e)->system.w.xyz)+" <> "+Vec::toString(center)+ " = "+ String(sqrt(d2)));
-				//if (d2 < coreRadius)
-				//{
-				//	toDestroy << *e;
-				//}
-				//else
+				dist2IncludingBase = dist2;
 				{
-					if (d2 <= outerRadius)
-					{
-						atTime = std::max(atTime,e->motionTime);
-						e->TakeDamage(damageLevel);
-						if (e->health <= 0)
-						{
-							e->SyncTime(atTime);
-							Remove(e,Objects::RemovalType::UncontrolledExplosion,atTime,false);
-						}
-						else
-						{
-							e->RegisterChange(WorldEntity::HealthChanged,atTime);
-						}
-					}
+					Vec::mult(c,Grid::ToRadius(e->location.height - 1),p);
+					const float d2 = Vec::quadraticDistance(p,center);
+					dist2IncludingBase = std::min(dist2IncludingBase,d2);
 				}
-				if (e->health <= 0)
-					return;	//prevent being added to affect*
-				allLivingAffected << e;
-				{
-					Vec::mult(c,Grid::ToRadius(e->location.height -1),p);	//include own lower level
-					float d3 = Vec::quadraticDistance(p,center);
-					d2 = std::min(d2,d3);
-				}
-
-				if (e->IsVehicle())
-				{
-					if (d2 <= outerRadius)
-					{
-						affectedVehicles << To<Vehicle>::Cast(e);
-					}
-				}
-				else
 				if (e->IsStructure())
 				{
 					const auto&n = Grid::low.grid.GetCell(e->location.stackID).neighborhood;
@@ -303,13 +271,46 @@ namespace Objects
 					{
 						p = Grid::ToWorld(Grid::LCellIdI(n.neighborID[k],e->location.height-1));	//include lower level of neighbors
 						float d3 = Vec::quadraticDistance(p,center);
-						d2 = std::min(d2,d3);
+						dist2IncludingBase = std::min(dist2IncludingBase,d3);
 					}
+				}
 
-					if (d2 <= outerRadius)
+
+				if (dist2IncludingBase > outerRadius)
+					return;
+				//LogEvent(EventSignificance::Debug,e->get(),Vec::toString((*e)->system.w.xyz)+" <> "+Vec::toString(center)+ " = "+ String(sqrt(d2)));
+				//if (d2 < coreRadius)
+				//{
+				//	toDestroy << *e;
+				//}
+				//else
+				if (dist2 <= outerRadius)
+				{
+					atTime = std::max(atTime,e->entityTime);
+					e->TakeDamage(damageLevel);
+					if (e->health <= 0)
 					{
-						affectedStructures << To<Structure>::Cast(e);
+						e->SyncTime(atTime);
+						Remove(e,Objects::RemovalType::UncontrolledExplosion,atTime,false);
 					}
+					else
+					{
+						e->RegisterChange(WorldEntity::HealthChanged,atTime);
+					}
+					if (e->health <= 0)
+						return;	//prevent being added to affect*
+				}
+				allLivingAffected << e;
+
+
+				if (e->IsVehicle())
+				{
+					affectedVehicles << To<Vehicle>::Cast(e);
+				}
+				else
+				if (e->IsStructure())
+				{
+					affectedStructures << To<Structure>::Cast(e);
 				}
 			},false);
 			atTime += timeEpsilon;
@@ -385,7 +386,7 @@ namespace Objects
 				}
 				if (d2 <= outerRadius)
 				{
-					atTime = std::max(atTime,e->motionTime);
+					atTime = std::max(atTime,e->entityTime);
 					toDisable << e;
 				}
 			},false);
@@ -511,7 +512,7 @@ namespace Objects
 		PVehicle vh = GetVehicle(cellID);
 		return !vh || vh.get() == v 
 			#ifndef CLIENT
-				|| !v->owner->CanSee(vh,v->motionTime)
+				|| !v->owner->CanSee(vh,v->entityTime)
 			#endif
 		;
 	}
@@ -1577,7 +1578,7 @@ namespace Objects
 							if (!NoHostileVehicleHere(cell,v->owner))
 								continue;
 						#else
-							if (!NoHostileVehicleHere(cell,v->owner,v->motionTime))
+							if (!NoHostileVehicleHere(cell,v->owner,v->entityTime))
 								continue;
 						#endif
 				}
