@@ -264,7 +264,42 @@ TurretConfig =
 		Op_Repair = 10,
 		IsUnlocked = true,
 	},
-}
+	
+	--Planes:
+	Raptor =
+	{
+		Cost = 80,
+		Weight = 10,	--defines movement speed: 100/Weight
+		HealthMultiplier = 5,	--directly equals health
+		ScanningRange = 7,
+		HorizontalAttackRange = 7,
+		GroundScanningRange = 7,
+		GroundScannerPenetration = 0,
+		ExplosionRadius = 1,
+		DamageLevel = 5,
+		AttacksPerRound = 2,
+		IsUnlocked = true,
+	},
+	CargoPlane = 
+	{
+		Cost = 40,
+		Weight = 12,	--defines movement speed: 100/Weight
+		HealthMultiplier = 15,	--directly equals health
+		ScanningRange = 5,
+		GroundScanningRange = 2,
+		GroundScannerPenetration = 0,
+		IsUnlocked = true,
+	},
+	SensorDrone = 
+	{
+		Cost = 10,
+		Weight = 11,	--defines movement speed: 100/Weight
+		HealthMultiplier = 4,	--directly equals health
+		ScanningRange = 10,
+		GroundScanningRange = 10,
+		GroundScannerPenetration = 2,
+		IsUnlocked = true,
+	},}
 
 
 VehicleBaseConfig = 
@@ -494,6 +529,7 @@ StructureConfig =
 	ReactorCore = DefaultStructure(120),
 	VehicleStore = DefaultStructure(40),
 	VehiclePlant = DefaultStructure(80),
+	PlaneFactory = DefaultStructure(200),
 	Laboratory = DefaultStructure(80),
 	MunitionFactory = DefaultStructure(40),
 	Connector = DefaultStructure(5),
@@ -522,6 +558,9 @@ radarUnlock = MakeUnlockResearchable(unlockGroup, nil, TurretConfig, 'Radar',20)
 heavyUnlock = MakeUnlockResearchable(unlockGroup, nil, VehicleBaseConfig, 'HeavyBase',20);
 catUnlock = MakeUnlockResearchable(unlockGroup, nil, VehicleBaseConfig, 'CatamaranBase',20);
 MakeUnlockResearchable(unlockGroup, nil, StructureConfig, 'ReactorCore',20);
+planeFactoryUnlock = MakeUnlockResearchable(unlockGroup, nil, StructureConfig, 'PlaneFactory',20);
+MakeUnlockResearchable(unlockGroup, planeFactoryUnlock, TurretConfig, 'CargoPlane',20);
+MakeUnlockResearchable(unlockGroup, planeFactoryUnlock, TurretConfig, 'Raptor',20);
 
 attackRangeGroup = Game.CreateResearch(improveGroup,'Attack Range','Research_AttackRange');
 	MakeImproveResearchable(attackRangeGroup, artilleryUnlock, TurretConfig, 'Artillery', 'HorizontalAttackRange',0.005);
