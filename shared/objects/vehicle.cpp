@@ -105,7 +105,7 @@ namespace Objects
 		/*virtual override*/ void		Vehicle::OnConstructionFinished(float&atTime)
 		{
 			Super::OnConstructionFinished(atTime);
-			motionTime = atTime;
+			entityTime = atTime;
 			if (turret->CanAttack())
 			{
 				//leave munitions here. it seems fair that a new tank starts with full ammo, but an emp-tank should not start with full uranium...
@@ -243,7 +243,7 @@ namespace Objects
 			if (!Grid::actualWorld.LowCellIsClear(cell))
 			{
 				PHangar s = MobileDestinationStructureHere(cell,*this);
-				if (s && s->Store(To<Vehicle>::Cast(shared_from_this()),motionTime))
+				if (s && s->Store(To<Vehicle>::Cast(shared_from_this()),entityTime))
 					return MobilePlacementResult::EnteredStructure;
 
 				if (failIsFatal)
@@ -263,7 +263,7 @@ namespace Objects
 					if (v->owner == owner)
 					{
 						PHangar s = v->CastToDestinationForType(*this);
-						if (s && s->Store(To<Vehicle>::Cast(shared_from_this()),motionTime))
+						if (s && s->Store(To<Vehicle>::Cast(shared_from_this()),entityTime))
 							return MobilePlacementResult::EnteredStructure;
 					}
 
@@ -318,9 +318,9 @@ namespace Objects
 						//InsertIntoGrid(vehicleGrid,location,To<Vehicle>::Cast(shared_from_this()));
 
 						if (timeCost > 0)
-							ApplicationInterface::SignalMotion(To<Vehicle>::Cast(shared_from_this()),old,location,motionTime,timeCost);
+							ApplicationInterface::SignalMotion(To<Vehicle>::Cast(shared_from_this()),old,location,entityTime,timeCost);
 
-						motionTime += timeCost;
+						entityTime += timeCost;
 						InsertVehicleIntoGrid(To<Vehicle>::Cast(shared_from_this()),location);
 						//RemoveFromGrid(vehicleGrid,location,To<Vehicle>::Cast(shared_from_this()));
 					}
@@ -352,7 +352,7 @@ namespace Objects
 					if (constructionRoundCounter)
 					{
 						constructionRoundCounter = 0;
-						RegisterChange(WorldEntity::TasksChanged,motionTime);
+						RegisterChange(WorldEntity::TasksChanged,entityTime);
 					}
 				}
 

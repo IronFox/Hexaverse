@@ -204,8 +204,8 @@ namespace Objects
 			{
 				if (oldLocation == location)
 					return;
-				Super::RegisterSensory(location,motionTime,false,newContacts);
-				Super::UnregisterSensory(oldLocation,motionTime,false);
+				Super::RegisterSensory(location,entityTime,false,newContacts);
+				Super::UnregisterSensory(oldLocation,entityTime,false);
 
 				if (turret->groundScanningRange.IsSet())
 				{
@@ -251,7 +251,7 @@ namespace Objects
 				if (cell.height <= Grid::CellStack::TopHeight && !Grid::actualWorld.LowCellIsClear(cell))
 				{
 					PHangar s = MobileDestinationStructureHere(cell,*this);
-					if (s && s->Store(To<Vehicle>::Cast(shared_from_this()),motionTime))
+					if (s && s->Store(To<Vehicle>::Cast(shared_from_this()),entityTime))
 						return MobilePlacementResult::EnteredStructure;
 
 					if (failIsFatal)
@@ -276,9 +276,9 @@ namespace Objects
 							PHangar t = CastToDestinationForType(*v);
 							if (!s != !t)
 							{
-								if (s && s->Store(To<Vehicle>::Cast(shared_from_this()),motionTime))
+								if (s && s->Store(To<Vehicle>::Cast(shared_from_this()),entityTime))
 									return MobilePlacementResult::EnteredStructure;
-								else if (t && t->Store(v,motionTime))
+								else if (t && t->Store(v,entityTime))
 									isGood = true;
 							}
 						}
@@ -317,7 +317,7 @@ namespace Objects
 						if (constructionRoundCounter)
 						{
 							constructionRoundCounter = 0;
-							RegisterChange(WorldEntity::TasksChanged,motionTime);
+							RegisterChange(WorldEntity::TasksChanged,entityTime);
 						}
 					}
 					Super::HandleMotion(result,signalEvent,old,timeCost);

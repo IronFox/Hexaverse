@@ -62,7 +62,7 @@ namespace Evolver
 		};
 
 		Buffer<TAttackReference>	attackingEntities;
-		float						attackTime = 0.f;
+		//float						attackTime = 0.f;
 
 
 
@@ -99,7 +99,14 @@ namespace Evolver
 
 		void		SignalMotionPhase()
 		{
-			Objects::ForeachMobileWorldEntity([](const Objects::PMobileEntity&v)
+			float attackTime = 0;
+			Objects::ForeachWorldEntity([&attackTime](const Objects::PWorldEntity&e)
+			{
+				attackTime = std::max(attackTime,e->entityTime);
+
+			},false);
+
+			Objects::ForeachMobileWorldEntity([attackTime](const Objects::PMobileEntity&v)
 			{
 				v->BeginMotionPhase(attackTime);
 				if (v->IsBuilding() || v->NextTaskIsMotion())
@@ -123,14 +130,14 @@ namespace Evolver
 				SignalMotionPhase();
 				return false;
 			}
+			Objects::PWorldEntity e = attackingEntities.last().eref.lock();
 			Objects::PTurretBase b = attackingEntities.last().tref.lock();
-			b->Attack(attackTime);
+			b->Attack(e->entityTime);
 			//PWorldEntity e = attackingEntities.last().eref.lock();
 
 			while (attackingEntities.IsNotEmpty())
 			{
 				b = attackingEntities.last().tref.lock();
-				Objects::PWorldEntity e = attackingEntities.last().eref.lock();
 				if (!b || !b->NextTaskIsAttack() || b->CountPossibleAttacks() <= 0 || !b->HasAmmoForShot() || !e || e->empDamageLevel)
 					attackingEntities.EraseLast();	//happened
 				else
@@ -231,14 +238,13 @@ namespace Evolver
 
 			Objects::ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
 			{
-				e->ResetMotionTime();
+				e->ResetEntityTime();
 			},false);
 
 			Objects::ForeachMobileWorldEntity([](const Objects::PMobileEntity&v)
 			{
 				if (v->IsHibernating())
 					return;
-				attackTime = 0;
 				v->BeginAttackPhase();
 
 				Objects::PTurretBase b = v->GetTurretBase();
@@ -263,7 +269,7 @@ namespace Evolver
 					{
 						LogEvent(EventClass::Preset::commandRejected,v.get(),"Insufficient ammunition. Attacks cancelled");
 						v->EraseFirstTask();
-						v->RegisterChange(Objects::WorldEntity::TasksChanged,v->motionTime);
+						v->RegisterChange(Objects::WorldEntity::TasksChanged,v->entityTime);
 					}
 					//ref.initiative = v->GetAttackInitiative();
 					//ref.attacksLeft = v->CountPossibleAttacks();
@@ -278,7 +284,6 @@ namespace Evolver
 					Objects::PTower t = _t->lock();
 					if (!t || t->IsHibernating())
 						continue;
-					attackTime = 0;
 					t->BeginAttackPhase();
 
 					if (t->turret->CanAttack())
@@ -289,7 +294,7 @@ namespace Evolver
 						{
 							LogEvent(EventClass::Preset::commandRejected,t.get(),"Insufficient ammunition. Attacks cancelled");
 							t->attackQueue.Clear();
-							t->RegisterChange(Objects::WorldEntity::TasksChanged,t->motionTime);
+							t->RegisterChange(Objects::WorldEntity::TasksChanged,t->entityTime);
 							continue;
 						}
 
@@ -411,7 +416,7 @@ namespace Evolver
 						animationLength = 0.f;
 						Objects::ForeachWorldEntityIncludingStored([&animationLength](const Objects::PWorldEntity&m)
 						{
-							animationLength = std::max(m->motionTime,animationLength);
+							animationLength = std::max(m->entityTime,animationLength);
 						},false);
 						Game::PerformNewRoundLogic(animationLength);
 						ResetTowerAttackAction(animationLength);

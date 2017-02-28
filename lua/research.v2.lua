@@ -110,7 +110,7 @@ function Round(value--[[float]], digits--[[optional int]])
 	if (floored==value) then
 		return floored;
 	end
-	return value;
+	return result;
 end
 
 function DefaultHealthAtCost(cost--[[float]]) --float

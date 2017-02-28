@@ -501,8 +501,8 @@ namespace Objects
 	#else
 		/*virtual*/ void		WorldEntity::MoveSensoryToCurrentLocation(const Grid::LCellIdI&oldLocation, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts/* = nullptr*/)
 		{
-			this->RegisterSensory(location,motionTime,false,newContacts);
-			this->UnregisterSensory(oldLocation,motionTime,checkChangesNow);
+			this->RegisterSensory(location,entityTime,false,newContacts);
+			this->UnregisterSensory(oldLocation,entityTime,checkChangesNow);
 		}
 
 	#endif
