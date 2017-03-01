@@ -1021,9 +1021,10 @@ int main( int argc, const char* argv[])
 
 
 			{
+				Test::Run(Test::AutoTargeting());
+				Test::Run(Test::SharedContainer());
 				Test::Run(Test::ServerClient());
 				Test::Run(Test::HighGridFamilies());
-				Test::Run(Test::AutoTargeting());
 				Test::Run(Test::Bin2Str());
 				Test::Run(Test::Serialization());
 				Test::Run(Test::VehiclePlant());

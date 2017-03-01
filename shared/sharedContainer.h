@@ -3,6 +3,7 @@
 #include <container/buffer.h>
 #include <functional>
 #include <memory>
+#include <limits>
 
 /**
 Container for shared objects (effectively stores std::shared_ptr<T>).
@@ -15,25 +16,26 @@ template <typename T>
 		typedef Buffer0<std::shared_ptr<T> >	Super;
 		typedef std::shared_ptr<T>				PT;
 
-		bool		iterating = false;
-		index_t		current;
+		static const constexpr index_t Max = std::numeric_limits<index_t>::max();
+		index_t		currentIterationAt = Max;
 
 	public:
 		Super::IsEmpty;
 		Super::IsNotEmpty;
 		Super::Count;
+		Super::First;
+		Super::Last;
 		Super::operator[];
 		Super::GetIndexOf;
 
 		void		Foreach(const std::function<void(const PT&)>&f)
 		{
-			iterating = true;
-			for (current = 0; current < Super::Count(); current++)
+			for (currentIterationAt = 0; currentIterationAt < Super::Count(); currentIterationAt++)
 			{
-				PT copy = Super::at(current);	//make sure we can manipulate the base as we see fit
+				PT copy = Super::at(currentIterationAt);	//make sure we can manipulate the base as we see fit
 				f(copy);
 			}
-			iterating = false;
+			currentIterationAt = Max;
 		}
 
 		SharedContainer<T>&	operator<<(const PT&element)
@@ -44,7 +46,14 @@ template <typename T>
 
 		void		Clear()
 		{
-			Super::Clear();	//if iterating, successive iteration check (current < Super::Count()) will fail
+			Super::Clear();	//if iterating, successive iteration check (currentIterationAt < Super::Count()) will fail
+		}
+
+		void		Erase(index_t at)
+		{
+			Super::Erase(at);
+			if (currentIterationAt != Max && at <= currentIterationAt)
+				currentIterationAt--;	//this may underflow to Max, which prevents further underflowing, and will be corrected during the end of the for loop
 		}
 
 		template <typename T2>	//allow base types here
@@ -53,9 +62,7 @@ template <typename T>
 			index_t at = Super::GetIndexOf(e);
 			if (at == InvalidIndex)
 				return false;
-			Super::Erase(at);
-			if (iterating && at <= current)
-				current--;
+			Erase(at);
 			return true;
 		}
 
