@@ -4,6 +4,11 @@ hoverformer sometimes tries building roads through buildings
 
 aerial radar and turret
 
+save/restore faction colors
+
+save planet configuration upon commit in interactive configuration mode. present list of last saves to recover from
+
+make shift-key functionality optional
 
 
 resources 2.0:
