@@ -17,7 +17,10 @@ template <typename T>
 		typedef std::shared_ptr<T>				PT;
 
 		static const constexpr index_t Max = std::numeric_limits<index_t>::max();
-		index_t		currentIterationAt = Max;
+//		index_t		currentIterationAt = Max;
+
+		count_t		recursionDepth=0;
+		SSIZE_T		currentIterationAt[10]={0};
 
 	public:
 		Super::IsEmpty;
@@ -30,12 +33,16 @@ template <typename T>
 
 		void		Foreach(const std::function<void(const PT&)>&f)
 		{
-			for (currentIterationAt = 0; currentIterationAt < Super::Count(); currentIterationAt++)
+			DBG_ASSERT_LESS__(recursionDepth,ARRAYSIZE(currentIterationAt));
+			SSIZE_T&c = currentIterationAt[recursionDepth];
+			recursionDepth++;
+			
+			for (c = 0; c < (SSIZE_T)Super::Count(); c++)
 			{
-				PT copy = Super::at(currentIterationAt);	//make sure we can manipulate the base as we see fit
+				PT copy = Super::at(c);	//make sure we can manipulate the base as we see fit
 				f(copy);
 			}
-			currentIterationAt = Max;
+			recursionDepth--;
 		}
 
 		SharedContainer<T>&	operator<<(const PT&element)
@@ -52,8 +59,9 @@ template <typename T>
 		void		Erase(index_t at)
 		{
 			Super::Erase(at);
-			if (currentIterationAt != Max && at <= currentIterationAt)
-				currentIterationAt--;	//this may underflow to Max, which prevents further underflowing, and will be corrected during the end of the for loop
+			for (index_t d = 0; d < recursionDepth; d++)
+				if ((SSIZE_T)at <= currentIterationAt[d])
+					currentIterationAt[d]--;
 		}
 
 		template <typename T2>	//allow base types here
