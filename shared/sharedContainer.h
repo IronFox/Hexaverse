@@ -15,12 +15,12 @@ template <typename T>
 	{
 		typedef Buffer0<std::shared_ptr<T> >	Super;
 		typedef std::shared_ptr<T>				PT;
+		typedef SSIZE_T							sindex_t;
 
-		static const constexpr index_t Max = std::numeric_limits<index_t>::max();
-//		index_t		currentIterationAt = Max;
+		static_assert(sizeof(sindex_t) == sizeof(index_t),"Type size error");
 
 		count_t		recursionDepth=0;
-		SSIZE_T		currentIterationAt[10]={0};
+		sindex_t	currentIterationAt[10]={0};
 
 	public:
 		Super::IsEmpty;
@@ -34,10 +34,9 @@ template <typename T>
 		void		Foreach(const std::function<void(const PT&)>&f)
 		{
 			DBG_ASSERT_LESS__(recursionDepth,ARRAYSIZE(currentIterationAt));
-			SSIZE_T&c = currentIterationAt[recursionDepth];
+			sindex_t&c = currentIterationAt[recursionDepth];
 			recursionDepth++;
-			
-			for (c = 0; c < (SSIZE_T)Super::Count(); c++)
+			for (c = 0; c < (sindex_t)Super::Count(); c++)
 			{
 				PT copy = Super::at(c);	//make sure we can manipulate the base as we see fit
 				f(copy);
@@ -60,7 +59,7 @@ template <typename T>
 		{
 			Super::Erase(at);
 			for (index_t d = 0; d < recursionDepth; d++)
-				if ((SSIZE_T)at <= currentIterationAt[d])
+				if ((sindex_t)at <= currentIterationAt[d])
 					currentIterationAt[d]--;
 		}
 
