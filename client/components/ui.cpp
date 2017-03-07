@@ -939,6 +939,8 @@
 			void							DynamicRow::RebuildCommands()
 			{
 				RemoveCommandIcons();
+				if (!showControlsAndContacts)
+					return;
 				for (index_t i = 0; i < visibleRange.GetExtent(); i++)
 				{
 					const Objects::PBaseCommand cmd = commands[i+visibleRange.start];
@@ -1094,6 +1096,8 @@
 
 			GridCell&		AllocateCell(const Objects::PBaseCommand&cmd, bool&isNew)
 			{
+				DBG_ASSERT__(showControlsAndContacts);
+
 				foreach (allGuiCells,c)
 					if (c->command == cmd)
 					{

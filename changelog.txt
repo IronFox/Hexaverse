@@ -5,6 +5,7 @@ v0.6.4
 	* Target mode is no longer canceled when dragging the camera.
 	* Fixed unit destruction when falling farther than safely possible.
 	* Fixed rounding error in research script.
+	* Fixed certain events still being shown when controls are supposed to be hidden.
 
 v0.6.3	[Feb 26 2017]
 	> All vehicles now fire automatically if they are idle or move independently of attacks.
