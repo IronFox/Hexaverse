@@ -303,6 +303,17 @@ namespace ConfigurationMode
 
 		*/
 
+		template <typename T>
+		void SetHint(Objects::CustomLabel<T>&grp, const String&hint)
+		{
+			if (hint.IsEmpty())
+				return;
+			grp.customLabel << grp.name;
+			grp.customLabel.MarkBriefEnd();
+			grp.customLabel << hint.trimRef();
+		}
+
+
 		/**
 		Activates client world view
 		*/
@@ -398,8 +409,7 @@ namespace ConfigurationMode
 			grp->Add(cmd);
 			onChange(!!(gameConfig.gameFlags&flag));
 			String help = FindDeclaration(configName);
-			if (help.IsNotEmpty())
-				cmd->customLabel << help;
+			SetHint(*cmd, help);
 		}
 
 		void AppendRuleButton(const Objects::PCommandGroup&grp,const String&niceName, const String&configName, UINT32 flag)
@@ -479,7 +489,7 @@ namespace ConfigurationMode
 					Update();
 				}
 			},[&value,min](bool){return value > min ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
-			decrease->customLabel << "Decreases this setting by 1";
+			SetHint(*decrease, "Decreases this setting by 1");
 			Objects::PIconCommand increase(new Objects::IconCommand("Increase",[&value,max,number]()
 			{
 				if (value < max)
@@ -489,7 +499,7 @@ namespace ConfigurationMode
 					Update();
 				}
 			},[&value,max](bool){return value < max ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
-			increase->customLabel << "Increases this setting by 1";
+			SetHint(*increase,"Increases this setting by 1");
 
 			Objects::PIconCommand decreaseFast(new Objects::IconCommand("Decrease Fast",[&value,min,max,number]()
 			{
@@ -501,7 +511,7 @@ namespace ConfigurationMode
 					Update();
 				}
 			},[&value,min](bool){return value > min ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
-			decreaseFast->customLabel << "Decreases this setting by "+String((max - min)/4);
+			SetHint(*decreaseFast, "Decreases this setting by "+String((max - min)/4));
 			Objects::PIconCommand increaseFast(new Objects::IconCommand("Increase Fast",[&value,min,max,number]()
 			{
 				if (value < max)
@@ -512,7 +522,7 @@ namespace ConfigurationMode
 					Update();
 				}
 			},[&value,max](bool){return value < max ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
-			increaseFast->customLabel << "Decreases this setting by "+String((max - min)/4);
+			SetHint(*increaseFast, "Decreases this setting by "+String((max - min)/4));
 
 			Objects::PIconCommand setMin(new Objects::IconCommand("Set Min",[&value,min,number]()
 			{
@@ -523,7 +533,7 @@ namespace ConfigurationMode
 					Update();
 				}
 			},[&value,min](bool){return value > min ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
-			setMin->customLabel << "Sets this setting to the minimum possible value ("+String(min)+")";
+			SetHint(*setMin, "Sets this setting to the minimum possible value ("+String(min)+")");
 
 
 			Objects::PIconCommand setMax(new Objects::IconCommand("Set Max",[&value,max,number]()
@@ -535,7 +545,7 @@ namespace ConfigurationMode
 					Update();
 				}
 			},[&value,max](bool){return value < max ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
-			setMax->customLabel << "Sets this setting to the maximum possible value ("+String(max)+")";
+			SetHint(*setMax, "Sets this setting to the maximum possible value ("+String(max)+")");
 
 			group->Add(number);
 			group->Add(decrease);
@@ -569,7 +579,7 @@ namespace ConfigurationMode
 					Update();
 				}
 			},[&value,min](bool){return value > min ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
-			decrease->customLabel << "Decreases this setting by 20%";
+			SetHint(*decrease, "Decreases this setting by 20%");
 			Objects::PIconCommand increase(new Objects::IconCommand("Increase",[&value,max,number]()
 			{
 				if (value < max)
@@ -580,7 +590,7 @@ namespace ConfigurationMode
 					Update();
 				}
 			},[&value,max](bool){return value < max ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
-			increase->customLabel << "Increases this setting by 20%";
+			SetHint(*increase, "Increases this setting by 20%");
 
 			group->Add(number);
 			group->Add(decrease);
@@ -592,17 +602,17 @@ namespace ConfigurationMode
 		{
 			Objects::PCommandGroup group(new Objects::CommandGroup(name));
 			group->baseCoords = int2(1);
-			MakeIntButtons(group->AddChild("Base Height"),layer.baseHeight,refLayer.baseHeight, Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight-1)
-			->customLabel << "Defines the central height of this attribute. The effective altitude stretches symmetrically up and down from this value."
+			SetHint(*MakeIntButtons(group->AddChild("Base Height"),layer.baseHeight,refLayer.baseHeight, Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight-1),
+			"Defines the central height of this attribute. The effective altitude stretches symmetrically up and down from this value.")
 			;
-			MakeIntButtons(group->AddChild("Dampening"),layer.dampening,refLayer.dampening, 0,Grid::CellStack::HalfRange)
-			->customLabel << "Draws height values closer to the base height. Creates plateaus at central height level"
+			SetHint(*MakeIntButtons(group->AddChild("Dampening"),layer.dampening,refLayer.dampening, 0,Grid::CellStack::HalfRange),
+			"Draws height values closer to the base height. Creates plateaus at central height level")
 			;
-			MakeFloatButtons(group->AddChild("Height Scale"),layer.heightScale, refLayer.heightScale)
-			->customLabel << "Scales extremes. The heigher this value the further the resulting heightmap will reach up and down"
+			SetHint(*MakeFloatButtons(group->AddChild("Height Scale"),layer.heightScale, refLayer.heightScale),
+			"Scales extremes. The heigher this value the further the resulting heightmap will reach up and down")
 			;
-			MakeFloatButtons(group->AddChild("Frequency"),layer.frequency, refLayer.frequency)
-			->customLabel << "Scales the frequency of peaks. The heigher this value the higher the number of mountains at reduced horizontal extent each."
+			SetHint(*MakeFloatButtons(group->AddChild("Frequency"),layer.frequency, refLayer.frequency),
+			"Scales the frequency of peaks. The heigher this value the higher the number of mountains at reduced horizontal extent each.")
 			;
 			return group;
 		}
@@ -839,15 +849,15 @@ namespace ConfigurationMode
 
 			coreGroup.reset(new Objects::CommandGroup("Core"));
 			coreGroup->baseCoords = int2(1);
-			coreGroup->customLabel << "The inner planetary core represents the center-most sphere content";
+			SetHint(*coreGroup,"The inner planetary core represents the center-most sphere content");
 			ruleGroup.reset(new Objects::CommandGroup("Rules"));
 			ruleGroup->baseCoords = int2(1);
-			ruleGroup->customLabel << "All common game rules";
+			SetHint(*ruleGroup,"All common game rules");
 
 
 			copyPasteGroup.reset(new Objects::CommandGroup("Copy/Paste"));
 			copyPasteGroup->baseCoords = int2(1);
-			copyPasteGroup->customLabel << "Copy/paste current configuration to/from clipboard";
+			SetHint(*copyPasteGroup,"Copy/paste current configuration to/from clipboard");
 
 			{
 				Objects::PIconCommand cmd;
@@ -893,11 +903,11 @@ namespace ConfigurationMode
 				Grid::SetAllFamiliesOutdated(0);
 			});
 			Objects::PCommandGroup goals = ruleGroup->AddChild("Game Goal");
-			goals->customLabel << FindDeclaration("/Rules/gameGoal");
+			SetHint(*goals,FindDeclaration("/Rules/gameGoal"));
 			for (index_t i = 0; i < RuntimeConfig::GameGoal::N; i++)
 				AppendGoalButton(goals,RuntimeConfig::GameGoal::Reinterpret(i));
 			Objects::PCommandGroup disc = ruleGroup->AddChild("Initial Discovery","View");
-			disc->customLabel << FindDeclaration("/World/worldDiscovery");
+			SetHint(*disc,FindDeclaration("/World/worldDiscovery"));
 			for (index_t i = 0; i < Grid::WorldDiscovery::N; i++)
 				AppendDiscoveryButton(disc,Grid::WorldDiscovery::Reinterpret(i));
 			disc->onExpand = []()
@@ -913,9 +923,9 @@ namespace ConfigurationMode
 
 			MakeMaterialChoice(coreGroup,config.innerCoreType,serverConfig.innerCoreType,noUnknown);
 			mountainGroup = MakeLayer("Mountains",config.mountains,serverConfig.mountains);
-			mountainGroup->customLabel << "Defines the extent and content of the mountain layer. The mountain layer stretches from the bottom up, where not overwritten by the extended planet core.";
+			SetHint(*mountainGroup,"Defines the extent and content of the mountain layer. The mountain layer stretches from the bottom up, where not overwritten by the extended planet core.");
 			extendedCoreGroup = MakeLayer("Extended Core",config.extendedCore,serverConfig.extendedCore);
-			extendedCoreGroup->customLabel << "Defines the extent and content of the extended core layer. The extended core stretches from the bottom up, potentially overwriting content defined by the mountain layer.";
+			SetHint(*extendedCoreGroup, "Defines the extent and content of the extended core layer. The extended core stretches from the bottom up, potentially overwriting content defined by the mountain layer.");
 			MakeMaterialChoice(extendedCoreGroup->AddChild("Type","Terrain Content"),config.extendedCoreType,serverConfig.extendedCoreType, noUnknown);
 			MakeMaterialChoice(mountainGroup->AddChild("Type","Terrain Content"),config.type,serverConfig.type, fullScope);
 //			MakeMaterialChoice(mountainGroup->AddChild("Top Type", "Terrain Top" ),config.topType,refConfig.topType, fullScope);
