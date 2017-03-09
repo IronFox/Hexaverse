@@ -1,0 +1,14 @@
+= Research =
+
+Research allows unlocking or improving units/unit-components over time.
+The exact effect of research depends on the used [[config/server|research script]].
+
+Each enabled [[units/structures/laboratory]] contributes one research point per [[concepts/round]].
+Unlock and improvement research will accelerate accordingly if multiple laboratories are enabled.
+Research progress is **not** lost if the laboratory is destroyed.
+
+The default research script locks all advanced units ([[units/vbases/heavy base|heavy]]/[[units/vbases/catamaran base|catamaran]] bases, [[units/turrets/missile launcher]], [[units/structures/reactor core]], etc.) until they are sufficiently researched.
+Additionally, it allows improving firing ranges of offensive turrets, and scanning range of radar turrets.
+Improvements are currently scaled using a standard square root, thus generating diminishing return.
+
+If hosting [[server start|your own server]], you may [[config/server|override/reconfigure the research script]] as you see fit.
