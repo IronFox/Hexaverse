@@ -28,13 +28,54 @@ namespace World
 
 	void			SimulateLiquidsIfEnabled();
 
+
+	struct TPlanetIniFile
+	{
+		String				name;
+		FileSystem::File	factoryDefault,userDefined;
+
+		void				swap(TPlanetIniFile&other)
+		{
+			name.swap(other.name);
+			factoryDefault.swap(other.factoryDefault);
+			userDefined.swap(other.userDefined);
+		}
+
+		bool				operator<(const TPlanetIniFile&other) const
+		{
+			return name < other.name;
+		}
+
+		bool				operator>(const TPlanetIniFile&other) const
+		{
+			return name > other.name;
+		}
+	};
+
+}
+
+DECLARE_DEFAULT_STRATEGY(World::TPlanetIniFile,Swap);
+
+namespace World
+{
 	/**
 	Fetches the paths to all available planet ini files.
 	Queries the file system to determine current state (all returned files existed at the moment of fetching).
 	Any occurring error is logged, and an empty array is returned in this case.
 	*/
-	void			GetAvailablePlanetIniFiles(Array<FileSystem::File>&rsOut);
-
+	void			GetAvailablePlanetIniFiles(Array<TPlanetIniFile>&rsOut);
+	/**
+	Fetches the unique names of all available planet types.
+	Duplicates are filtered out. No distinction is made between user-defined and factory default types of identical name.
+	Extensions are omitted.
+	*/
+	void			GetAvailablePlanetNames(Array<String>&rsOut);
+	/**
+	Checks if the specified ini-filename is one of the available planet ini files
+	@param filename Name of the file (name[.ini]), without folders
+	@return true if it exists, false otherwise
+	*/
+	bool			IsPlanetIniFile(const String&filename);
 
 
 	void			UpdateEMPZones(count_t temporaryFactionCountBonus=0);
@@ -116,7 +157,6 @@ namespace World
 	}
 
 }
-
 
 
 #endif

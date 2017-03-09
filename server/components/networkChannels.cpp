@@ -358,12 +358,12 @@ namespace Receiver
 
 			if (ConfigurationMode::IsActive())
 			{
-				Array<FileSystem::File>	iniFiles;
-				World::GetAvailablePlanetIniFiles(iniFiles);
+				Array<String>	planetNames;
+				World::GetAvailablePlanetNames(planetNames);
 				NETA(Package::NetString<256>) names;
-				names.SetSize(iniFiles.Count());
-				for (index_t i = 0; i < iniFiles.Count(); i++)
-					names[i] = String(iniFiles[i].GetInnerName());
+				names.SetSize(planetNames.Count());
+				for (index_t i = 0; i < planetNames.Count(); i++)
+					names[i] = planetNames[i];
 				Channels::planetNames.SendTo(peer,names);
 			}
 
@@ -903,7 +903,7 @@ namespace Receiver
 
 			if (planet.IsNotEmpty())
 			{
-				if (!FileSystem::IsFile(RuntimeConfig::ConfigFile(PathString("config/planets/"+planet+".ini"))))
+				if (!World::IsPlanetIniFile(planet+".ini"))
 				{
 					LogEvent(EventClass::Preset::remoteControlError,"'"+planet+"' is not a valid planet type");
 					return;

@@ -24,6 +24,12 @@ namespace Reflection
 			#endif
 			;
 
+	enum class FeedMode
+	{
+		Original,
+		ConstructIfMissing,
+		IgnoreIfMissing
+	};
 
 
 	namespace Variable
@@ -599,8 +605,9 @@ namespace Reflection
 		public:
 			const CLI::PVariable	sourceVariable;
 			const String	base;
+			const FeedMode	mode;
 
-			/**/			FileReferenceAttachment(const String&base, const CLI::PVariable&source):sourceVariable(source),base(base)	{}
+			/**/			FileReferenceAttachment(const String&base, const CLI::PVariable&source, FeedMode mode):sourceVariable(source),base(base),mode(mode)	{}
 		};
 
 
@@ -952,7 +959,7 @@ namespace Reflection
 
 			state.EnterNewFolder("Planet")->attachment = persistenceAttachment;
 				Variable::planetType = Variable::SetString("Type","LushGreen",Variable::Persistence::PlanetConfig);
-				state.EnterNewFolder("Config")->attachment.reset(new Variable::FileReferenceAttachment("config/planets",Variable::planetType));
+				state.EnterNewFolder("Config")->attachment.reset(new Variable::FileReferenceAttachment("config/myPlanets",Variable::planetType,FeedMode::IgnoreIfMissing));
 				{
 					/*
 					Important:
@@ -1072,10 +1079,11 @@ namespace Reflection
 
 	}
 
-	static void Feed(const CLI::PFolder&folder, const PathString&subConfigName, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, bool readOriginal=false);
-	static bool InnerFeed(const CLI::PFolder&folder,const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction);
 
-	static bool FeedSubDirectory(const CLI::PFolder&dir, const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction)
+	static bool Feed(const CLI::PFolder&folder, const PathString&subConfigName, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode mode);
+	static bool InnerFeed(const CLI::PFolder&folder,const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode);
+
+	static bool FeedSubDirectory(const CLI::PFolder&dir, const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction,FeedMode mode)
 	{
 		bool allGood = true;
 		std::shared_ptr<Variable::PersistenceAttachment> a = To<Variable::PersistenceAttachment>::DynamicCast(dir->attachment);
@@ -1092,7 +1100,11 @@ namespace Reflection
 				Variable::planetType->Set("LushGreen");
 
 			//PathString str = RuntimeConfig::ConfigFile( PathString(ref->base + FOLDER_SLASH + ref->sourceVariable->ToString() + ".ini"));
-			Feed(dir,PathString(ref->base + FOLDER_SLASH + ref->sourceVariable->ToString() + ".ini"),testMode,filterFunction);
+			if (!Feed(dir,PathString(ref->base + FOLDER_SLASH + ref->sourceVariable->ToString() + ".ini"),testMode,filterFunction,ref->mode))
+			{
+				LogEvent(EventSignificance::NonFatalError,"Warning: Failed to load referenced input configuration '"+ref->sourceVariable->ToString()+".ini'");
+				return false;
+			}
 		}
 		else
 		{
@@ -1101,7 +1113,7 @@ namespace Reflection
 			{
 				allGood = false;
 			}
-			bool innerGood = InnerFeed(dir,sub,testMode,filterFunction);
+			bool innerGood = InnerFeed(dir,sub,testMode,filterFunction,mode);
 			if (!innerGood)
 				allGood = false;
 
@@ -1109,7 +1121,7 @@ namespace Reflection
 		return allGood;
 	}
 
-	static bool InnerFeed(const CLI::PFolder&folder,const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction)
+	static bool InnerFeed(const CLI::PFolder&folder,const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction,FeedMode mode)
 	{
 		bool allGood = true;
 		for (const auto&var : folder->variables)
@@ -1149,7 +1161,7 @@ namespace Reflection
 		}
 		for (const auto&dir : folder->folders)
 		{
-			if (!FeedSubDirectory(dir,ctx,testMode,filterFunction))
+			if (!FeedSubDirectory(dir,ctx,testMode,filterFunction,mode))
 				allGood = false;
 		}
 		return allGood;
@@ -1251,30 +1263,36 @@ namespace Reflection
 		}
 	}
 
-	static void Feed(const CLI::PFolder&folder, const PathString&subConfigName, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, bool readOriginal/*=false*/)
+
+	static bool Feed(const CLI::PFolder&folder, const PathString&subConfigName, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode mode)
 	{
-		if (!readOriginal)
-			Feed(folder,subConfigName,testMode,filterFunction,true);	//read original first
+		bool needThis = true;
+		if (mode != FeedMode::Original)
+			needThis = !Feed(folder,subConfigName,testMode,filterFunction,FeedMode::Original);	//read original first
 		Configuration	config;
 		Config::Context*	ctx = nullptr;
 		
-		const PathString configName = readOriginal ? "./"+subConfigName :  RuntimeConfig::ConfigFile(PathString(subConfigName));
+		const PathString configName = mode == FeedMode::Original ? "./"+subConfigName :  RuntimeConfig::ConfigFile(PathString(subConfigName));
 
-		bool rewrite = true;
+		bool rewrite = false;
 		if (FileSystem::IsFile(configName))
 		{
 			if (!config.LoadFromFile(configName))
 			{
+				rewrite = true;
 				LogEvent(EventClass::Preset::configurationError,"Unable to parse "+String(configName)+":\n"+config.Report());
 			}
 			else
 			{
 				ctx = &config;
-				rewrite = false;
 			}
 		}
 		else
 		{
+			if (mode == FeedMode::ConstructIfMissing)
+				rewrite = true;
+			//already read original at this point. so either the original is good, and the override is not, or both are bad
+#if 0
 			if (FileSystem::IsFile(subConfigName))
 			{
 				LogEvent(EventClass::Preset::configurationPrint,"Restoring missing configuration file '"+String(subConfigName)+"' from base data");
@@ -1282,40 +1300,40 @@ namespace Reflection
 				{
 					if (!config.LoadFromFile(configName))
 					{
+						rewrite = true;
 						LogEvent(EventClass::Preset::configurationError,"Unable to parse "+String(configName)+":\n"+config.Report());
 					}
 					else
 					{
 						ctx = &config;
-						rewrite = false;
 					}
 				}
 			}	
+#endif /*0*/
 		}
 
 		if (!ctx)
 			LogEvent(EventClass::Preset::configuration,"Default configuration loaded");
-		bool allGood = InnerFeed(folder,ctx,testMode,filterFunction);
-		if (!readOriginal && (!allGood || rewrite))
+		bool allGood = InnerFeed(folder,ctx,testMode,filterFunction,mode);
+		if (mode != FeedMode::Original && ((ctx && !allGood) || rewrite))
 		{
 			//Feed(folder,subConfigName,testMode,filterFunction,true);
 			StringFile outFile;
 			if (!outFile.Create(configName))
 			{
 				LogEvent(EventClass::Preset::configurationError,"Unable to overwrite '"+String(configName)+"'");
+				allGood = false;
 			}
 			else
 			{
 				LogEvent(EventClass::Preset::configurationPrint,"Writing '"+String(configName)+"'...");
 				DefineConfig(outFile,folder, 0);
 				outFile.Close();
+				allGood = true;
 			}
 		}
-		else
-			if (readOriginal && !allGood && !rewrite)
-			{
-				FATAL__("There were errors while trying to parse original configuration file "+String(configName)+". Fix the errors and restart the application.\nCheck your server logs (My Documents/My Games/Hexaverse/server/logs) for details. Redownloading the application should also fix the issue.")
-			}
+
+		return (ctx && allGood) || !needThis;
 	}
 
 
@@ -1331,7 +1349,7 @@ namespace Reflection
 		Feed(state.GetRoot(),localServerINI, false, [](const Variable::PBase&base)->bool
 		{
 			return false;//base->persistence == Variable::Persistence::ConfigOverridesSavegame;
-		});
+		},FeedMode::ConstructIfMissing);
 
 		Grid::currentPlanetConfig.GenerateAtmosphereColor();
 
@@ -1369,7 +1387,8 @@ namespace Reflection
 		ASSERT__(f);
 		if (f)
 		{
-			FeedSubDirectory(f, nullptr, false, std::function<bool(const Variable::PBase&)>());
+			if (!FeedSubDirectory(f, nullptr, false, std::function<bool(const Variable::PBase&)>(),FeedMode::IgnoreIfMissing))
+				LogEvent(EventSignificance::NonFatalError,"Warning: Failed to reload planet. Current configuration remains in effect");
 		}
 	}
 
@@ -1378,18 +1397,18 @@ namespace Reflection
 	{
 		FileSystem::Folder	root;
 		ASSERT__(root.IsValidLocation());
-		FileSystem::Folder planetPrototypes = root.FindFolder("config/planets");
+		FileSystem::Folder planetPrototypes = root.FindFolder("config/myPlanets");
 		
 
 		if (planetPrototypes.IsValidLocation())
 		{
-			FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("config/planets"));
+			FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("config/myPlanets"));
 			planetPrototypes.Rewind();
 			FileSystem::File file;
 			while (planetPrototypes.NextFile(".ini",file))
 			{
-				PathString dest = RuntimeConfig::ConfigFile("config/planets/"+file.GetName());
-				if (!FileSystem::IsFile(dest))
+				PathString dest = RuntimeConfig::ConfigFile("config/myPlanets/"+file.GetName());
+				if (file.GetName() == "Template.ini" && !FileSystem::IsFile(dest))
 				{
 					if (!FileSystem::Copy(file.GetLocation(),dest,true))
 					{
@@ -1411,7 +1430,7 @@ namespace Reflection
 			const char*localServerINI = "config/server.ini";
 		#endif
 
-		Feed(state.GetRoot(),localServerINI, testMode,std::function<bool(const Variable::PBase&)>());
+		Feed(state.GetRoot(),localServerINI, testMode,std::function<bool(const Variable::PBase&)>(),FeedMode::ConstructIfMissing);
 
 		Grid::currentPlanetConfig.GenerateAtmosphereColor();
 	}

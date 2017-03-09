@@ -1,4 +1,5 @@
 v0.6.4
+	+ Base planet types are no longer copied to the configuration directory (except Template.ini), but may be overridden manually.
 	> The escape key now also unhides HUD elements (text etc.).
 	> Improved research script. Renamed it to research.v2.lua. Script is no longer copied automatically to user directory.
 	> Unrelated attacks are now visually executed in parallel.

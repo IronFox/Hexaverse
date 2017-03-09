@@ -971,7 +971,7 @@ int main( int argc, const char* argv[])
 		{
 			if (planet.IsNotEmpty())
 			{
-				if (!FileSystem::IsFile(RuntimeConfig::ConfigFile(PathString("config/planets/"+planet+".ini"))))
+				if (!World::IsPlanetIniFile(planet+".ini"))
 				{
 					LogEvent(EventClass::Preset::remoteControlError,"'"+planet+"' is not a valid planet type");
 					return;
@@ -996,11 +996,12 @@ int main( int argc, const char* argv[])
 
 		Reflection::state.DefineCommand("/World/showPlanetTypes",(CLI::Command::function0_t)[]()
 		{
-			Array<FileSystem::File>	planetIniFiles;
+			Array<World::TPlanetIniFile>	planetIniFiles;
 			World::GetAvailablePlanetIniFiles(planetIniFiles);
 
+			CLI::println("-");
 			foreach (planetIniFiles,f)
-				CLI::println(String(f->GetInnerName()));
+				CLI::println(f->name+(f->userDefined.GetLocation().IsNotEmpty()? ( f->factoryDefault.GetLocation().IsNotEmpty() ? " (user override)" :" (user)"): ""));
 			CLI::println("-");
 		},CLI::NoCompletion);
 
