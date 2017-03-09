@@ -2792,6 +2792,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 
 	void	AbortMode()
 	{
+		Camera::StopAutoRotation();
 		if (GUI::CloseAllModal())
 		{
 			LocalApplicationInterface::QueryNicknameIfEmpty();
