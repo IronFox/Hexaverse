@@ -545,7 +545,7 @@ namespace World
 			return IsPlanetIniFile(filename+".ini");
 		return FileSystem::Folder(RuntimeConfig::ConfigFile("config/myPlanets")).FindFile(PathString(filename)) != nullptr
 				||
-			FileSystem::Folder().FindFolder("config/myPlanets/"+PathString(filename)) != nullptr;
+			FileSystem::Folder().FindFile("config/myPlanets/"+PathString(filename)) != nullptr;
 	}
 
 

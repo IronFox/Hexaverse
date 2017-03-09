@@ -1314,7 +1314,7 @@ namespace Reflection
 
 		if (!ctx)
 			LogEvent(EventClass::Preset::configuration,"Default configuration loaded");
-		bool allGood = InnerFeed(folder,ctx,testMode,filterFunction,mode);
+		bool allGood = (ctx || needThis) && InnerFeed(folder,ctx,testMode,filterFunction,mode);	//will load defaults if executed with ctx=nullptr
 		if (mode != FeedMode::Original && ((ctx && !allGood) || rewrite))
 		{
 			//Feed(folder,subConfigName,testMode,filterFunction,true);
