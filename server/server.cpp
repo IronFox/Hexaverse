@@ -674,7 +674,7 @@ namespace ParameterConfig
 		std::cout << "  --port/-p [basePort]\tUse a non-default base port ("<<DEFAULT_SERVER_BASE_PORT<<" is default)"<<std::endl;
 		std::cout << "  --noRemote/-r \tDisable remote control service"<<std::endl;
 		std::cout << "  --rv4\tStart remote control service using IPv4"<<std::endl;
-		std::cout << "  --test/-t \tRun self-tests, then quit"<<std::endl;
+		std::cout << "  --test \tRun self-tests, then quit"<<std::endl;
 		//std::cout << "  --world/-w [worldID] \tuse custom world ID, and start empty"<<std::endl;
 	}
 
@@ -708,7 +708,7 @@ namespace ParameterConfig
 			}
 			break;
 			case Idle:
-				if (!strcmp(arg,"--test") || !strcmp(arg,"-t"))
+				if (!strcmp(arg,"--test"))
 					inTestMode = true;
 				elif (!strcmp(arg,"--rv4"))
 					controlProtocol = TCP::Server::Protocol::IPv4;
