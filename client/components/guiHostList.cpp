@@ -159,10 +159,12 @@ void	SaveHosts()
 
 			TUniqueID id = info.id;
 			const bool isConfigurationMode = (host.serverInfo.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::ConfigurationMode) != 0;
+			const bool isTutorialMode = (host.serverInfo.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::TutorialMode) != 0;
+			const bool requireLocalhost = isConfigurationMode || isTutorialMode;
 
-			info.buttonPanel->SetCheck([versionMatch,id,isConfigurationMode]()
+			info.buttonPanel->SetCheck([versionMatch,id,requireLocalhost]()
 			{
-				if (isConfigurationMode)
+				if (requireLocalhost)
 				{
 					Network::ServerInfo*info = nullptr;
 					foreach (Network::servers,srv)
