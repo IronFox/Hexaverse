@@ -3252,14 +3252,28 @@ namespace ApplicationInterface
 			Objects::showArrow = false;
 			UI::RefreshButtonState();
 		}
-
 	}
 
 	void	OnWheel(short delta)
 	{
 		if (GUI::HandleMouseWheel(delta) == GUI::WheelRs::NotContained)
 			Camera::Event::WheelAction(delta);
+	}
 
+
+	void	StartTutorial()
+	{
+		RuntimeConfig::serverAddress = Network::ServerAddress("localhost");
+		Dialog::PermanentMessage("Hold on. Getting tutorial server ready.",[]()->Dialog::CheckResult
+		{
+			if (Network::haveFaction)
+			{
+				Dialog::ShowMessage("Welcome to the Hexaverse Tutorial");
+				return Dialog::CheckResult::Abort;
+			}
+			return Dialog::CheckResult::OkayContinue;
+		});
+		ServerProcess::Begin(true,false,true);
 	}
 
 #endif
@@ -3693,6 +3707,29 @@ int main( int argc, const char* argv[])
 					Network::client.Disconnect();
 				},
 				[](){return Network::client.IsConnected();});
+			mainMenu->AddCommand("Start Tutorial",
+				[]()
+				{
+					if (ServerProcess::IsRunning())
+					{
+						Dialog::Confirm("In order to start a tutorial server, the local server must be shut down. Continue?",
+						[]()
+						{
+							ServerProcess::End();
+							StartTutorial();
+						},
+						[]()->Dialog::CheckResult
+						{
+							if (!ServerProcess::IsRunning())
+								return Dialog::CheckResult::Confirm;
+							return Dialog::CheckResult::OkayContinue;
+						});
+					}
+					else
+						StartTutorial();
+				},
+				[](){return !Network::client.IsConnected() && !Network::client.IsAttemptingToConnect();});
+
 			mainMenu->AddCommand("Quit to Desktop",[](){Dialog::Confirm("Really quit? Any active faction will be preserved server-sided for you to continue later on.",[](){application_shutting_down = true;},[](){return Dialog::CheckResult::OkayContinue;});});
 			mainMenu->FullAutoLayout();
 
