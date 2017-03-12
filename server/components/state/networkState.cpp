@@ -435,6 +435,7 @@ namespace Network
 		FileIO::Network::HandleSessionClosure();
 		RuntimeConfig::roundNumber = 0;
 		RuntimeConfig::phase = RuntimeConfig::Phase::CommandPhase;
+		RuntimeConfig::tutorialMode = false;
 
 		if (spectators.IsNotEmpty())
 		{

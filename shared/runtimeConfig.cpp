@@ -23,6 +23,7 @@ namespace RuntimeConfig
 
 	bool hibernationSystemEnabled = false;
 	bool bombsExplodeWhenDestroyed = true;
+	bool tutorialMode = false;
 	RoundNumber roundNumber;
 	Phase	phase;
 
