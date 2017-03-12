@@ -137,6 +137,8 @@ namespace Game
 				gameConfig.gameFlags |= Protocol::GameFlag::NexusAI;
 			if (ConfigurationMode::IsActive())
 				gameConfig.gameFlags |= Protocol::GameFlag::ConfigurationMode;
+			if (RuntimeConfig::tutorialMode)
+				gameConfig.gameFlags |= Protocol::GameFlag::TutorialMode;
 			if (World::Config::simulateLiquids)
 				gameConfig.gameFlags |= Protocol::GameFlag::SimulateLiquids;
 

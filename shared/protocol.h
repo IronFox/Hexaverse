@@ -2015,6 +2015,7 @@ namespace Protocol
 			EMPZones = 0x10,
 			SimulateLiquids = 0x20,
 			ConfigurationMode = 0x40,
+			TutorialMode = 0x80,
 
 			SupportSpectatorFactions = 0x100,
 			SupportRegularFactions = 0x200,
