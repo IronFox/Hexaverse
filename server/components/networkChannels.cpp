@@ -1103,7 +1103,11 @@ namespace Receiver
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(uuid,peer);
 		if (!e)
 			return;
-
+		if (e->IsIndestructible())
+		{
+			LogEvent(EventClass::Preset::commandRejected,peer,e,"Unable to issue self destruction. Entity is indestructible");
+			return;
+		}
 		Journal::currentRound.RegisterEntityDestruction(true,e,e->isInserted ? Objects::RemovalType::ControlledExplosion : Objects::RemovalType::DestroyedInStorage);
 	}
 
