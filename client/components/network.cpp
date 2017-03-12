@@ -1818,17 +1818,19 @@ bool		Network::ConnectToConfiguredServerIfAvailable()
 	{
 		if (srv->rightVersion && srv->HasAddress(RuntimeConfig::serverAddress))
 		{
-			index_t best = 0;
-			float bestPing = srv->addresses.First().ping;
-			for (index_t i = 1; i < srv->addresses.Count(); i++)
-				if (srv->addresses[i].ping < bestPing)
+			//index_t best = 0;
+			//float bestPing = srv->addresses.First().ping;
+			index_t found = InvalidIndex;
+			for (index_t i = 0; i < srv->addresses.Count(); i++)
+				if (srv->addresses[i].address == RuntimeConfig::serverAddress)
 				{
-					bestPing = srv->addresses[i].ping;
-					best = i;
+					found = i;
+					break;
 				}
+			ASSERT__(found != InvalidIndex);
 			srv->selected = true;
 
-			Network::ConnectTo(srv->addresses[best]);
+			Network::ConnectTo(srv->addresses[found]);
 
 			lastAttempt = timer.Now();
 			delayCounter = 0;
