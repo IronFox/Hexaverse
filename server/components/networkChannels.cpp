@@ -1108,6 +1108,11 @@ namespace Receiver
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(uuid,peer);
 		if (!e)
 			return;
+		if (RuntimeConfig::tutorialMode)
+		{
+			LogEvent(EventClass::Preset::commandRejected,peer,e,"Unable to issue self destruction. Tutorial mode is active");
+			return;
+		}
 		if (e->IsIndestructible())
 		{
 			LogEvent(EventClass::Preset::commandRejected,peer,e,"Unable to issue self destruction. Entity is indestructible");

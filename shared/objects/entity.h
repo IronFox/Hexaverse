@@ -492,7 +492,7 @@ namespace Objects
 		virtual PHangar				CastToDestinationForType(const MobileEntity&e) {return PHangar();}
 		virtual bool				IsHangar() const {return false;}
 
-		virtual bool				IsIndestructible() const	{return false;};
+		virtual bool				IsIndestructible() const;
 
 		/**
 		Checks if the local entity is currently above the regular grid (e.g. a satellite)
