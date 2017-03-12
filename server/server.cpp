@@ -676,6 +676,7 @@ namespace ParameterConfig
 		std::cout << "  --noRemote/-r \tDisable remote control service"<<std::endl;
 		std::cout << "  --rv4\tStart remote control service using IPv4"<<std::endl;
 		std::cout << "  --test \tRun self-tests, then quit"<<std::endl;
+		std::cout << "  --version/-v \tShow version, then quit"<<std::endl;
 		//std::cout << "  --world/-w [worldID] \tuse custom world ID, and start empty"<<std::endl;
 	}
 
@@ -713,6 +714,11 @@ namespace ParameterConfig
 					inTestMode = true;
 				elif (!strcmp(arg,"--rv4"))
 					controlProtocol = TCP::Server::Protocol::IPv4;
+				elif (!strcmp(arg,"--version") || !strcmp(arg,"-v"))
+				{
+					std::cout << SERVER_NAME<<std::endl;
+					exit(0);
+				}
 				elif (!strcmp(arg,"--port") || !strcmp(arg,"-p"))
 					mode = ExpectPort;
 				elif (!strcmp(arg,"--offline") || !strcmp(arg,"-o"))
