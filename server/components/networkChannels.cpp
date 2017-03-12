@@ -383,7 +383,7 @@ namespace Receiver
 
 		bool newFaction = false;
 
-		if (Game::Config::Nexus::enableAI && Objects::Faction::nexus->accessToken == response.factionToken && (peer.ToString(false) == "localhost"))
+		if (Game::Config::Nexus::enableAI && Objects::Faction::nexus->accessToken == response.factionToken && peer.IsLocalhost())
 		{
 			LogEvent(EventClass( EventSignificance::Important, EventFlavor::Gain ), peer, "Access to nexus faction permitted.");
 			faction = Objects::Faction::nexus;
