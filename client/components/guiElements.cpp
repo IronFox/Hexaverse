@@ -348,7 +348,7 @@ namespace GUI
 		VerifyIntegrity(CLOCATION);
 		for (index_t i = 0; i < Detail::visibleWindows.Count(); i++)
 		{
-			const PWindow&d = Detail::visibleWindows[i];
+			PWindow d = Detail::visibleWindows[i];	//make copy to allow SignalChange() to create new windows
 			if (!d->SignalChange())
 			{
 				d->OnHide();
