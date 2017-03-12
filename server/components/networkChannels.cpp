@@ -250,6 +250,13 @@ namespace Receiver
 	{
 		if (!peer.attachment)
 			return;
+
+		if (RuntimeConfig::tutorialMode && !peer.IsLocalhost())
+		{
+			LogEvent(EventClass( EventSignificance::ClientFatal, EventFlavor::Loss ), peer,"Server is in tutorial mode. Rejecting connection from non-localhost.");
+			peer.DisconnectPeer();
+		}
+
 		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 		Protocol::ClientFactionResponse response;
 		response.startFactionTypes = _p.startFactionTypes;
@@ -1640,7 +1647,11 @@ namespace Receiver
 		{
 			case TCP::Event::ConnectionEstablished:
 				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ), peer,"Client connected");
-
+				if (RuntimeConfig::tutorialMode && !peer.IsLocalhost())
+				{
+					LogEvent(EventClass( EventSignificance::ClientFatal, EventFlavor::Loss ), peer,"Server is in tutorial mode. Rejecting connection from non-localhost.");
+					peer.DisconnectPeer();
+				}
 			break;
 			case TCP::Event::ConnectionClosed:
 			case TCP::Event::ConnectionLost:
