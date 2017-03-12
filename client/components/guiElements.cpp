@@ -345,6 +345,10 @@ namespace GUI
 
 	void	SignalSituationChange()
 	{
+		static bool checking = false;
+		if (checking)
+			return;
+		checking = true;
 		VerifyIntegrity(CLOCATION);
 		for (index_t i = 0; i < Detail::visibleWindows.Count(); i++)
 		{
@@ -365,6 +369,7 @@ namespace GUI
 				d->DetectEnabledState();
 		}
 		VerifyIntegrity(CLOCATION);
+		checking = false;
 	}
 
 
