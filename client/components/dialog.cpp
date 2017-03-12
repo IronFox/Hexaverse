@@ -717,6 +717,11 @@ namespace Dialog
 		CheckResult ck = check();
 		if (ck == CheckResult::Abort)
 			return PDialog();
+		if (ck == CheckResult::Confirm)
+		{
+			onAnswer(true);
+			return PDialog();
+		}
 
 		PDialog d = Detail::NewModalDialog(Detail::ComponentFlags::ConfirmButton| Detail::ComponentFlags::NoButton|Detail::ComponentFlags::HelpButton, "Yes", false);
 
@@ -739,6 +744,11 @@ namespace Dialog
 		CheckResult ck = check();
 		if (ck == CheckResult::Abort)
 			return PDialog();
+		if (ck == CheckResult::Confirm)
+		{
+			onConfirm();
+			return PDialog();
+		}
 		if (RuntimeConfig::aiMode)
 		{
 			if (ck == CheckResult::OkayContinue)
