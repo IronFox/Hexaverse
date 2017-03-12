@@ -96,6 +96,8 @@ namespace Network
 				return;
 		#endif
 
+		RuntimeConfig::tutorialMode = (host.serverInfo.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::TutorialMode) != 0;
+
 		RuntimeConfig::phase = RuntimeConfig::Phase::Uninitialized;
 		gameHasBegun = false;
 
@@ -448,6 +450,8 @@ namespace Network
 				#endif
 				if (response.configurationMode)
 					AttemptFactionLogin(false,Protocol::FactionType::SpectatorFaction);
+				elif (RuntimeConfig::tutorialMode)
+					AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly);
 				else
 				{
 					#ifdef HAS_WINDOW
