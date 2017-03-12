@@ -388,18 +388,16 @@ namespace Receiver
 			LogEvent(EventClass( EventSignificance::Important, EventFlavor::Gain ), peer, "Access to nexus faction permitted.");
 			faction = Objects::Faction::nexus;
 		}
-		#ifdef _DEBUG
-			if (faction
-				|| Network::tokenMap.Query(response.factionToken,faction)
-				|| (
-						response.startFactionTypes == Protocol::FactionType::ContinueOnly 
-						&& Objects::Faction::all.IsNotEmpty()
-						&& (faction = Objects::Faction::all.first().lock())
-					)
+		if (faction
+			|| Network::tokenMap.Query(response.factionToken,faction)
+			|| (	response.startFactionTypes == Protocol::FactionType::ContinueOnly 
+					#ifndef _DEBUG
+						&& RuntimeConfig::tutorialMode
+					#endif
+					&& Objects::Faction::all.IsNotEmpty()
+					&& (faction = Objects::Faction::all.first().lock())	//in tutorial mode (or debug mode) take first known faction
 				)
-		#else
-			if (faction || Network::tokenMap.Query(response.factionToken,faction))
-		#endif
+			)
 		{
 			#ifdef _DEBUG
 				response.factionToken = faction->accessToken;
