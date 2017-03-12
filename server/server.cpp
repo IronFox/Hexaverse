@@ -648,7 +648,8 @@ namespace ParameterConfig
 
 	PathString	loadFile;
 	bool	startOffline = false,
-			startInConfig = false;
+			startInConfig = false,
+			startInTutorial = false;
 	bool	customWorldID = false;
 	bool	enableRemoteControl = true;
 	const char*	programName="";
@@ -728,7 +729,7 @@ namespace ParameterConfig
 				elif (!strcmp(arg,"--tutorial") || !strcmp(arg,"-t"))
 				{
 					loadFile = "config/tutorial.hsf";
-					RuntimeConfig::tutorialMode = true;
+					startInTutorial = true;
 				}
 				elif (!strcmp(arg,"--loadAuto") || !strcmp(arg,"-a"))
 					mode = ExpectAutoSaveNumber;
@@ -1100,6 +1101,7 @@ int main( int argc, const char* argv[])
 			else
 				Logging::WriteEvent(EventClass::Preset::fileError,"Specified file ("+String(filename)+") does not exist. Skipping loading operation.",nullptr,nullptr,Objects::OwnerParameter());
 		}
+		RuntimeConfig::tutorialMode = ParameterConfig::startInTutorial;
 
 		//Journal::globalWriter.InitNew(RuntimeConfig::ConfigFile("saves/log"));
 		//Journal::globalWriter.ContinueExisting(RuntimeConfig::ConfigFile("saves/log"));
