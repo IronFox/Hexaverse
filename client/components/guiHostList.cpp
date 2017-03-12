@@ -81,6 +81,8 @@ void	SaveHosts()
 		String result;
 		if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::ConfigurationMode)
 			result += "Interactive Configuration Mode";
+		else if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::TutorialMode)
+			result += "Tutorial Mode";
 		else
 		{
 			switch (info.gameInfo.gameConfig.gameGoal)
