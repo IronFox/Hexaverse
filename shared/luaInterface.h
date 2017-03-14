@@ -640,7 +640,7 @@ namespace Lua
 		virtual void	SignalChange(const String&) override;
 	public:
 		/**/			Table()	{}
-		/**/			Table(const Reference&ref);
+		/**/			Table(const Reference&ref):Super(ref){};
 		/**
 		Fetches a reference for the specified field in the local table.
 		The result may be empty if the specified field was not found
