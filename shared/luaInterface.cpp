@@ -1268,9 +1268,9 @@ namespace Lua
 		return rs;
 	}
 
-	Reference Table::GetField(const String & name) const
+	NamedReference Table::GetField(const String & name) const
 	{
-		Reference	rs;
+		NamedReference	rs(name);
 		lua_State*st = GetState();
 		if (!st)
 			return rs;
