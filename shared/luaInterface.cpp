@@ -1329,7 +1329,7 @@ namespace Lua
 	{
 		lua_State*st = luaL_newstate();
 		if (!st)
-			return PProgram();
+			throw Exception("Unable to create new Lua program");
 		PProgram rs(new Program(st));
 		lua_atpanic(st, &Detail::Panic);
 
