@@ -869,16 +869,6 @@ namespace Lua
 	}
 
 
-	bool BaseFunction::Reset(const Reference & ref)
-	{
-		if (ref.IsFunction())
-		{
-			((Super&)*this) = ref;
-			return true;
-		} 
-		DBG_FATAL__("Given reference is empty or no function");
-		return false;
-	}
 
 }
 
@@ -1286,16 +1276,6 @@ namespace Lua
 		return rs;
 	}
 
-	bool Table::Reset(const Reference & ref)
-	{
-		if (ref.IsTable())
-		{
-			((Super&)*this) = ref;
-			return true;
-		} 
-		DBG_FATAL__("Given reference is empty or no table");
-		return false;
-	}
 
 	void Table::operator=(const Reference & ref)
 	{
