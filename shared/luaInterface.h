@@ -699,13 +699,6 @@ namespace Lua
 				return AppendTopElement();
 			}
 
-		/**
-		Updates the local reference.
-		The specified reference must be a table (and not empty).
-		In debug mode this method will raise a fatal exception otherwise
-		@return true if the local reference was updated
-		*/
-		bool			Reset(const Reference&ref);
 		void			operator=(const Reference&ref);
 
 		/**
@@ -736,7 +729,6 @@ namespace Lua
 		virtual bool	IsFunctionReference() const override	{return true;}
 
 	public:
-		bool			Reset(const Reference&ref);
 		void			operator=(const Reference&ref);
 	};
 
