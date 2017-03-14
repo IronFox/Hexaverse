@@ -731,7 +731,7 @@ namespace Network
 			RuntimeConfig::empZones = (Network::gameFlags & Protocol::GameFlag::EMPZones) != 0;
 			RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(cr.info.gameConfig.gameGoal);
 			RuntimeConfig::phase = RuntimeConfig::Phase::Reinterpret(cr.info.activePhase);
-
+			RuntimeConfig::tutorialMode = (Network::gameFlags & Protocol::GameFlag::TutorialMode) != 0;
 			#ifdef HAS_WINDOW
 				ConfigurationMode::SetGameConfig(Network::gameFlags, RuntimeConfig::gameGoal, Grid::WorldDiscovery::Reinterpret( cr.info.gameConfig.worldDiscovery ));
 				World::allowRecompilation = false;
@@ -1290,6 +1290,8 @@ namespace Network
 					}
 					else
 						LogEvent(EventSignificance::Debug,"Begin Game. Animation NOT done");
+				if (RuntimeConfig::tutorialMode)
+					Tutorial::SignalStart();
 			break;
 			case Protocol::ChannelID::Pong:
 				//lastPong = timer.Now();

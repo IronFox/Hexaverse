@@ -1479,6 +1479,9 @@ namespace ApplicationInterface
 
 		UI::HexGrid::Configure(Objects::selectedEntity);
 		StatePanel::SignalChange();
+
+		if (RuntimeConfig::tutorialMode)
+			Tutorial::SignalEntitySelectionChange(stateChangeOnly);
 	}
 	#endif
 }
@@ -3268,7 +3271,7 @@ namespace ApplicationInterface
 		{
 			if (Network::haveFaction)
 			{
-				Dialog::ShowMessage("Welcome to the Hexaverse Tutorial");
+				//Dialog::ShowMessage("Welcome to the Hexaverse Tutorial");
 				return Dialog::CheckResult::Abort;
 			}
 			return Dialog::CheckResult::OkayContinue;

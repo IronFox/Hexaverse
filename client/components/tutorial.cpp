@@ -6,8 +6,10 @@
 #include <io/xml.h>
 #include <container/hashtable.h>
 #include "../version.h"
-#include "../../shared/objects.h"
+#include <objects.h>
+#include <luaGameAPI.h>
 #include "clientRuntimeConfig.h"
+#include <lua.hpp>
 
 namespace Tutorial
 {
@@ -32,6 +34,12 @@ namespace Tutorial
 				std::swap(shown,other.shown);
 			}
 		};
+
+		Lua::PProgram		tutorialProgram;
+		namespace Trigger
+		{
+			Lua::Function<void()>	begin,selectionChanged;
+		}
 
 		StringFile			memory;
 
@@ -112,8 +120,36 @@ namespace Tutorial
 	//	#endif
 			Detail::memory.Create(RuntimeConfig::ConfigFile("tutorialMemory.txt"));
 	
+		using namespace Detail;
+
+		try
+		{
+			tutorialProgram = Lua::Program::Create();
+			Lua::Table api = Lua::CreateGeneralAPI(tutorialProgram);
+
+			tutorialProgram->ExecuteFile("../lua/tutorial.lua");
+
+			Trigger::begin = tutorialProgram->RequireGlobal("OnBegin");
+			Trigger::selectionChanged = tutorialProgram->RequireGlobal("OnSelectionChanged");
+		}
+		catch (const std::exception&ex)
+		{
+			LogEvent(EventClass::Preset::configurationError,ex.what());
+		}
 	}
 
+	void	SignalStart()
+	{
+		Detail::Trigger::begin();
+	}
+
+	void	SignalEntitySelectionChange(bool stateChangeOnly)
+	{
+		if (!stateChangeOnly)
+			Detail::Trigger::selectionChanged();
+	}
+
+	
 
 
 }

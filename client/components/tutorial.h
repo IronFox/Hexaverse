@@ -18,6 +18,12 @@ namespace Tutorial
 						endRoundTutorialIssued;
 
 
+	/**
+	Signals that the tutorial should (re)start.
+	Call this when all player units have been loaded (e.g. the game has begun on a tutorial session)
+	*/
+	void	SignalStart();
+	void	SignalEntitySelectionChange(bool stateChangeOnly);
 
 }
 
