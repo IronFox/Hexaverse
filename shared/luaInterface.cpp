@@ -637,7 +637,7 @@ namespace Lua
 		int ref = luaL_ref(state, LUA_REGISTRYINDEX);
 		try
 		{
-			SetReference(st,ref);
+			SetReference(st,ref,"");
 		}
 		catch (...)
 		{
@@ -1160,6 +1160,12 @@ namespace Lua
 	}
 
 
+	/*virtual override*/ void Table::SignalChange(const String&)
+	{
+		if (!IsTable())
+			throw Exception("Trying to assigning non-table Lua reference to table reference variable");
+	}
+
 	void	Table::Pop(int cnt)
 	{
 		lua_State*st = GetState();
@@ -1277,25 +1283,13 @@ namespace Lua
 	}
 
 
-	void Table::operator=(const Reference & ref)
+	/*virtual override*/ void BaseFunction::SignalChange(const String&name)
 	{
-		if (ref.IsEmpty() || ref.IsTable())
-		{
-			((Super&)*this) = ref;
-			return;
-		} 
-		throw Exception("Trying to assign non-table Lua variable to table reference");
+		if (!IsFunction())
+			throw Exception("Trying to assigning non-function Lua reference '"+name+"' to function reference variable");
 	}
 
-	void BaseFunction::operator=(const Reference & ref)
-	{
-		if (ref.IsEmpty() || ref.IsFunction())
-		{
-			((Super&)*this) = ref;
-			return;
-		} 
-		throw Exception("Trying to assign non-function Lua variable to function reference");
-	}
+
 
 	count_t Table::GetLength() const
 	{
@@ -1315,10 +1309,18 @@ namespace Lua
 		lua_close(state);
 	}
 
-	Reference		Program::FindGlobal(const String&name)
+	NamedReference		Program::FindGlobal(const String&name)
 	{
-		Reference rs;
+		NamedReference rs;
 		FindGlobal(name,rs);
+		return rs;
+	}
+
+	NamedReference		Program::RequireGlobal(const String&name)
+	{
+		NamedReference rs;
+		if (!FindGlobal(name,rs))
+			throw Exception("Unable to find required global identifier '"+name+"'");
 		return rs;
 	}
 
@@ -1422,6 +1424,19 @@ namespace Lua
 		bool rs = outReference.ResetFromStack(shared_from_this(),-1);
 		lua_pop(state,1);
 		return rs;
+	}
+
+
+	void	Reference::operator=(const Reference&other)
+	{
+		if (&other == this)
+			return;
+		prog = other.prog;
+		refID = other.refID;
+		if (other.IsNamedReference())
+			SignalChange(((const NamedReference&)other).GetName());
+		else
+			SignalChange("");
 	}
 
 
