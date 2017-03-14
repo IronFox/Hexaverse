@@ -616,9 +616,14 @@ namespace Lua
 	class NamedReference : public Reference
 	{
 		String			name;
+
+		friend class Table;
+
+		/**/			NamedReference(const String&name):name(name)	{}
 	protected:
 		virtual void	SignalChange(const String&name)	{this->name = name;}
 	public:
+		/**/			NamedReference()	{}
 		virtual bool	IsNamedReference() const override {return true;}
 
 		const String&	GetName() const {return name;}
@@ -645,7 +650,7 @@ namespace Lua
 		Fetches a reference for the specified field in the local table.
 		The result may be empty if the specified field was not found
 		*/
-		Reference		GetField(const String&name)	const;
+		NamedReference	GetField(const String&name)	const;
 		/**
 		Fetches a reference for the specified index (usually in the range [1,GetLength()]).
 		The result may be empty if the specified index was not found
