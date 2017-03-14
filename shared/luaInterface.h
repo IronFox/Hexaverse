@@ -760,7 +760,8 @@ namespace Lua
 			void		operator()(args_t...parameters)	const
 			{
 				if (IsEmpty())
-					throw Except::Program::GeneralFault("Lua: Trying to call empty function");
+					return;	//allow return-less functions to just fail silently
+					//throw Except::Program::GeneralFault("Lua: Trying to call empty function");
 				lua_State*state = GetProgram()->GetState();
 				Super::Push();
 				int numParameters = Detail::PushParameters(state,parameters...);
