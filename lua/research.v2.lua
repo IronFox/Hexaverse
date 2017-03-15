@@ -327,12 +327,6 @@ function MakeUnlockResearchable(researchGroup, researchDependency, typeTable, ty
 				return false
 			end
 			return state.research[key].progress >= state.research[key].limit
-		end,
-		Describe = function(state)
-			if state == nil then
-				return false
-			end
-			return state.research[key].progress >= state.research[key].limit
 		end
 	}
 	
