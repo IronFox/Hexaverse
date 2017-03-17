@@ -57,8 +57,8 @@ namespace GUI
 			if (viewportStack.Count() > 1)
 			{
 				viewportStack.last().view.Translate(-totalOffset);
-				viewportStack.last().view.ConstrainBy(viewportStack.fromEnd(1).view);
-				//viewportStack.last().second += viewportStack.fromEnd(1).second;
+				viewportStack.last().view.ConstrainBy(viewportStack.GetFromEnd(1).view);
+				//viewportStack.last().second += viewportStack.GetFromEnd(1).second;
 			}
 			totalOffset += offset;
 			LoadView(viewportStack.last().view,viewportStack.last().offset);
@@ -144,7 +144,7 @@ namespace GUI
 		{
 			window->SetActive(false);
 			if (Detail::visibleWindows.Count() > 1)
-				Detail::visibleWindows.fromEnd(1)->SetActive(true);
+				Detail::visibleWindows.GetFromEnd(1)->SetActive(true);
 		}
 		Detail::visibleWindows.Erase(index);	//should be last. window is not guaranteed to be valid past this point
 
@@ -207,7 +207,7 @@ namespace GUI
 			if (at+1 == Detail::visibleWindows.Count())	//ist last
 			{
 				window->SetActive(false);
-				Detail::visibleWindows.fromEnd(1)->SetActive(true);
+				Detail::visibleWindows.GetFromEnd(1)->SetActive(true);
 			}
 			Detail::visibleWindows.Erase(at);
 		} 
@@ -360,7 +360,7 @@ namespace GUI
 				{
 					d->SetActive(false);
 					if (Detail::visibleWindows.Count() > 1)
-						Detail::visibleWindows.fromEnd(1)->SetActive(true);
+						Detail::visibleWindows.GetFromEnd(1)->SetActive(true);
 				}
 				Detail::visibleWindows.Erase(i);
 				i--;
