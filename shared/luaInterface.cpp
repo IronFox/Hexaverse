@@ -1160,10 +1160,10 @@ namespace Lua
 	}
 
 
-	/*virtual override*/ void Table::SignalChange(const String&)
+	/*virtual override*/ void Table::SignalChange(const String&name)
 	{
-		if (!IsTable())
-			throw Exception("Trying to assigning non-table Lua reference to table reference variable");
+		if (!IsEmpty() && !IsTable())
+			throw Exception("Trying to assigning non-table Lua reference '"+name+"' to table reference variable");
 	}
 
 	void	Table::Pop(int cnt)
@@ -1285,7 +1285,7 @@ namespace Lua
 
 	/*virtual override*/ void BaseFunction::SignalChange(const String&name)
 	{
-		if (!IsFunction())
+		if (!IsEmpty() && !IsFunction())
 			throw Exception("Trying to assigning non-function Lua reference '"+name+"' to function reference variable");
 	}
 
