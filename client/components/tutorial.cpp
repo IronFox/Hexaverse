@@ -9,6 +9,7 @@
 #include <objects.h>
 #include <luaGameAPI.h>
 #include "clientRuntimeConfig.h"
+#include "network.h"
 #include <lua.hpp>
 
 namespace Tutorial
@@ -35,15 +36,55 @@ namespace Tutorial
 			}
 		};
 
-		Lua::PProgram		tutorialProgram;
-		namespace Trigger
-		{
-			Lua::Function<void()>	begin,selectionChanged;
-		}
 
 		StringFile			memory;
 
 		StringTable<Message,Strategy::Swap>	messages;
+	}
+
+	namespace Interactive
+	{
+		Lua::PProgram		tutorialProgram;
+
+		namespace Trigger
+		{
+			Lua::Function<void()>	begin,selectionChanged,onMessageConfirm;
+		}
+
+		namespace API
+		{
+			void	DisplayMessage(const String&msg)
+			{
+				auto w = Dialog::ShowMessage(msg,[]()->Dialog::CheckResult{ return Network::client.IsConnected() ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort; }).lock();
+				w->onConfirm = 
+				[]()
+				{
+					Trigger::onMessageConfirm();
+				};
+				w->canBeImplicitlyClosed = false;
+			}
+
+		}
+
+		void Create()
+		{
+			try
+			{
+				tutorialProgram = Lua::Program::Create();
+				Lua::Table api = Lua::CreateGeneralAPI(tutorialProgram);
+				api.SetFunction("DisplayMessage",API::DisplayMessage);
+
+				tutorialProgram->ExecuteFile("../lua/tutorial.lua");
+
+				Trigger::begin = tutorialProgram->RequireGlobal("OnBegin");
+				Trigger::selectionChanged = tutorialProgram->RequireGlobal("OnSelectionChanged");
+				Trigger::onMessageConfirm = tutorialProgram->RequireGlobal("OnMessageConfirm");
+			}
+			catch (const std::exception&ex)
+			{
+				LogEvent(EventClass::Preset::configurationError,ex.what());
+			}
+		}
 	}
 
 	void	ShowMessage(const String&name, bool forceOpenNow/*=false*/)
@@ -120,33 +161,20 @@ namespace Tutorial
 	//	#endif
 			Detail::memory.Create(RuntimeConfig::ConfigFile("tutorialMemory.txt"));
 	
-		using namespace Detail;
 
-		try
-		{
-			tutorialProgram = Lua::Program::Create();
-			Lua::Table api = Lua::CreateGeneralAPI(tutorialProgram);
 
-			tutorialProgram->ExecuteFile("../lua/tutorial.lua");
-
-			Trigger::begin = tutorialProgram->RequireGlobal("OnBegin");
-			Trigger::selectionChanged = tutorialProgram->RequireGlobal("OnSelectionChanged");
-		}
-		catch (const std::exception&ex)
-		{
-			LogEvent(EventClass::Preset::configurationError,ex.what());
-		}
+		Interactive::Create();
 	}
 
 	void	SignalStart()
 	{
-		Detail::Trigger::begin();
+		Interactive::Trigger::begin();
 	}
 
 	void	SignalEntitySelectionChange(bool stateChangeOnly)
 	{
 		if (!stateChangeOnly)
-			Detail::Trigger::selectionChanged();
+			Interactive::Trigger::selectionChanged();
 	}
 
 	
