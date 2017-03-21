@@ -51,8 +51,8 @@ namespace Objects
 			void		Clear()
 			{
 				constOverride.isSet = false;
-				luaGetValue.Clear();
-				luaDescribeValue.Clear();
+				luaGetValue.ClearReference();
+				luaDescribeValue.ClearReference();
 			}
 
 			T			GetUnfilteredValue(const Lua::Reference&researchState)	const
