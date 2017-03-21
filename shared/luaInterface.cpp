@@ -1254,6 +1254,51 @@ namespace Lua
 		return true;
 	}
 
+	void		Table::ClearElements()
+	{
+		lua_State*st = GetState();
+		if (!st)
+			return;
+		Detail::StackChecker chk(st);
+		Super::Push();
+
+		lua_pushnil(st);
+
+		while(lua_next(st, -2) != 0)
+		{
+			lua_pop(st, 1);	//pop value, key still on stack
+			lua_pushnil(st);	//now table, key, nil
+			lua_settable(st,-3);	//pops key, nil
+			lua_pushnil(st);	//push nil key
+		}
+		lua_pop(st,1);
+	}
+
+	void		Table::UnsetField(const String&name)
+	{
+		lua_State*st = GetState();
+		if (!st)
+			return;
+		Detail::StackChecker chk(st);
+		Super::Push();
+		lua_pushnil(st);
+		lua_setfield(st,-2,name.c_str());
+		lua_pop(st,1);
+	}
+
+	void		Table::UnsetElement(index_t at)
+	{
+		lua_State*st = GetState();
+		if (!st)
+			return;
+		Detail::StackChecker chk(st);
+		Super::Push();
+		lua_pushnil(st);
+		lua_seti(st,-2,(lua_Integer)at);
+		lua_pop(st,1);
+	}
+
+
 	Reference Table::GetElement(index_t at) const
 	{
 		Reference	rs;

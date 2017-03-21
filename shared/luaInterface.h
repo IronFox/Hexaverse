@@ -657,6 +657,9 @@ namespace Lua
 		*/
 		Reference		GetElement(index_t at) const;
 
+		void			ClearElements();
+		void			UnsetField(const String&name);
+		void			UnsetElement(index_t at);
 		/**
 		Fetches the value of the specified field in the local table.
 		Intended to be used for primitive values like ints or strings, but may be used for Reference objects, too
