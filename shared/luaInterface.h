@@ -521,7 +521,7 @@ namespace Lua
 		/**
 		Clears any locally held Lua references
 		*/
-		void		Clear()	{prog.reset(); refID.reset();}
+		void		ClearReference()	{prog.reset(); refID.reset();}
 
 
 		/**
