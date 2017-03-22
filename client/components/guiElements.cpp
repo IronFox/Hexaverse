@@ -1538,13 +1538,28 @@ namespace GUI
 		return rs;
 	}
 
-	void			Component::SetCenteredWidth(float w, TAnchor::distanceType_t type)
+	Component&			Component::FillHorizontally(float spacing, TAnchor::distanceType_t type /*= TAnchor::RelativeToParentComponent*/)
+	{
+		anchorConfig.Left().Set(spacing,type);
+		anchorConfig.Right().Set(spacing,type);
+		return *this;
+	}
+	
+	Component&			Component::AnchorTop(float spacing, TAnchor::distanceType_t type/* = TAnchor::RelativeToParentComponent*/)
+	{
+		anchorConfig.Top().Set(spacing,type);
+		return *this;
+	}
+
+
+	Component&			Component::SetCenteredWidth(float w, TAnchor::distanceType_t type)
 	{
 		float extra = 1.f - w;
 		if (type == TAnchor::AbsolutePixels)
 			extra = float(ViewPortWidth()) - w;
 		anchorConfig.Left().Set(extra*0.5f,type);
 		anchorConfig.Right().Set(extra*0.5f,type);
+		return *this;
 	}
 
 
