@@ -712,11 +712,36 @@ namespace ApplicationInterface
 		#endif
 	}
 
+	static bool IsTerraformingOperation(ConstName jobName)
+	{
+		switch (jobName)
+		{
+			case ConstName::Job_AlterTerrain:
+			case ConstName::Job_BuildHorizontalWall:
+			case ConstName::Job_BuildRoad:
+			case ConstName::Job_BuildWallUp:
+			case ConstName::Job_ClearAbove:
+			case ConstName::Job_DigDown:
+			case ConstName::Job_DigHorizontal:
+			case ConstName::Job_Sequence:
+				return true;
+
+		}
+		return false;
+	}
+
 
 	void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, ConstName parameterName, const Grid::LCellIdI&overrideLocation)
 	{
 		const Grid::LCellIdI targetLocation = overrideLocation != Grid::LCellIdI::Invalid ? overrideLocation : v->GetLastPointOfOrigin();
 		#ifdef HAS_WINDOW
+			if (RuntimeConfig::tutorialMode && IsTerraformingOperation(jobName))
+			{
+				Dialog::ShowMessage("Terraforming is not permitted in this tutorial. You may do so freely on a regular server.");
+				return;
+			}
+
+
 			if (jobName == ConstName::Job_Construct && parameterName != ConstName::Type_Connector)
 			{
 				Objects::NaturalResourceVector	res;
