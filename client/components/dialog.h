@@ -170,6 +170,8 @@ namespace Dialog
 	Queues a tutorial message. Allows hiding all following tutorials
 	*/
 	WDialog	EnqueueTutorial(const String&key, const Array<String>&text, const String&imageName = "", const Rect<>&screenReference = Rect<>::Invalid);
+	PDialog	CreateTutorialMessage(const String&key, const ArrayRef<const String>&text, const String&imageName = "", const Rect<>&screenReference = Rect<>::Invalid);
+
 	bool	RemoveTutorial(const String&key);
 	bool	RemoveTutorial(const PDialog&dialog);
 

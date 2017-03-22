@@ -634,17 +634,14 @@ namespace Dialog
 		return GUI::Hide(dialog);
 	}
 
-	WDialog	EnqueueTutorial(const String&key, const Array<String>&text, const String&imageName /*= ""*/, const Rect<>&screenReference /*= Rect<>::Invalid*/)
+	PDialog	CreateTutorialMessage(const String&key, const ArrayRef<const String>&text, const String&imageName /*= ""*/, const Rect<>&screenReference /*= Rect<>::Invalid*/)
 	{
-		GUI::VerifyIntegrity(CLOCATION);
-		if (!Detail::showTutorials)
-			return PDialog();
+
+		
 		static StringTable<DX11::Texture,Strategy::Swap>	textureMap;
 
 
-
-		PDialog&d = /*Detail::visibleWindows.IsEmpty() ? Detail::visibleWindows.Append() : */Detail::pendingTutorials.Push();
-		d.reset(new Dialog());
+		PDialog d(new Dialog());
 
 
 		DX11::Texture setTexture;
@@ -682,6 +679,19 @@ namespace Dialog
 
 		d->ReLayout();
 		GUI::VerifyIntegrity(CLOCATION);
+
+		return d;
+	}
+
+
+	WDialog	EnqueueTutorial(const String&key, const Array<String>&text, const String&imageName /*= ""*/, const Rect<>&screenReference /*= Rect<>::Invalid*/)
+	{
+		GUI::VerifyIntegrity(CLOCATION);
+		if (!Detail::showTutorials)
+			return PDialog();
+
+		PDialog d = CreateTutorialMessage(key, text, imageName, screenReference);
+		Detail::pendingTutorials.Push(d);
 
 		OnTutorialsChanged();
 
