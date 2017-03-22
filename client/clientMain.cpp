@@ -249,6 +249,9 @@ namespace LocalApplicationInterface
 			ApplicationInterface::SignalRoundEnd();
 
 		pauseAutomaticRoundProgression = false;
+
+		if (RuntimeConfig::tutorialMode)
+			Tutorial::SignalRoundStart();
 	}
 }
 
@@ -1580,7 +1583,8 @@ bool loop()
 	#else
 		DebugCheckCamera();
 		Explosions::Update(Engine::timing.delta);
-
+		if (RuntimeConfig::tutorialMode)
+			Tutorial::ProcessTriggers(Engine::timing.delta);
 
 		if (!Engine::mouse.buttons.pressed)		
 		{

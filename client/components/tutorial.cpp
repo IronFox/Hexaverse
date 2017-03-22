@@ -10,6 +10,7 @@
 #include <luaGameAPI.h>
 #include "clientRuntimeConfig.h"
 #include "network.h"
+#include "ui.h"
 #include <lua.hpp>
 
 namespace Tutorial
@@ -45,6 +46,8 @@ namespace Tutorial
 	namespace Interactive
 	{
 		Lua::PProgram		tutorialProgram;
+		Lua::Table			api,myUnits;
+		bool				started = false;
 
 		namespace Trigger
 		{
@@ -53,16 +56,114 @@ namespace Tutorial
 
 		namespace API
 		{
-			void	DisplayMessage(const String&msg)
+
+			GUI::PWindow	taskWindow;
+
+			struct TTrigger
 			{
-				auto w = Dialog::ShowMessage(msg,[]()->Dialog::CheckResult{ return Network::client.IsConnected() ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort; }).lock();
+				float		remainingSeconds;
+				Lua::Function<void()>	trigger;
+			};
+
+			Buffer0<TTrigger>	activeTriggers;
+
+
+			//void	NextTask()
+			//{
+			//	if (taskWindow)
+			//		To<GUI::Label>::Cast(taskWindow->GetComponents().First())->SetText("Well done!");
+			//}
+
+			void	DisplayMessage(const String&msg, const String&img)
+			{
+				if (taskWindow)
+					GUI::Hide(taskWindow);
+
+				auto w = Dialog::CreateTutorialMessage("", msg,img);
+				w->check = []()->Dialog::CheckResult{ return Network::client.IsConnected() ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort; };
 				w->onConfirm = 
-				[]()
+				[w]()
 				{
 					Trigger::onMessageConfirm();
+					GUI::Hide(w);
 				};
 				w->canBeImplicitlyClosed = false;
+				GUI::Show(w);
 			}
+
+			void	DescribeTask(const String&msg)
+			{
+				if (taskWindow)
+				{
+					To<GUI::Label>::Cast(taskWindow->GetComponents().First())->SetText(msg);
+					taskWindow->InvalidateSize();
+				}
+				else
+				{
+					taskWindow.reset(new GUI::Window());
+					taskWindow->canBeImplicitlyClosed = false;
+
+					taskWindow->AddNewComponent(new GUI::Label(msg))->AnchorTop(0).FillHorizontally(0);
+					taskWindow->autoHeight = true;
+					taskWindow->autoCenter = false;
+					taskWindow->anchorConfig.Left().Unset();
+					taskWindow->anchorConfig.Right().Set(0.1f);
+					taskWindow->anchorConfig.Bottom().Set(0.1f);
+					taskWindow->SetSize(float2(0.25));
+					taskWindow->isModal = false;
+				}
+				GUI::Show(taskWindow);
+			}
+
+			void	CallDelayed(float delay, Lua::Function<void()> f)
+			{
+				activeTriggers.Append().remainingSeconds = delay;
+				activeTriggers.Last().trigger = f;
+			}
+
+		}
+
+
+		PointerTable<Lua::Reference,Swap>	objectTables;
+
+
+		Lua::Table RebuildEntity(const Objects::PWorldEntity&e)
+		{
+			ASSERT__(e);
+			Lua::Table t;
+			if (!objectTables.Query(e.get(),t))
+			{
+				t = tutorialProgram->CreateTable();
+				objectTables.Set(e.get(),t);
+			}
+
+			t.ClearTable();
+			Lua::EntityToTable(e,t);
+			return t;
+		}
+
+		void RebuildSelected()
+		{
+			const auto&e = Objects::selectedEntity;
+			if (!e)
+			{
+				api.SetField("selectedUnit",Lua::Reference());
+				return;
+			}
+			
+			api.SetField("selectedUnit",RebuildEntity(e));
+		}
+
+		void RebuildFactionUnits()
+		{
+			myUnits.ClearTable();
+			Objects::ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
+			{
+				if (e->isOwnedByMe)
+				{
+					myUnits.AppendElement(RebuildEntity(e));
+				}
+			},false);
 
 		}
 
@@ -70,9 +171,15 @@ namespace Tutorial
 		{
 			try
 			{
+				objectTables.Clear();
 				tutorialProgram = Lua::Program::Create();
-				Lua::Table api = Lua::CreateGeneralAPI(tutorialProgram);
+				api = Lua::CreateGeneralAPI(tutorialProgram);
+				myUnits = tutorialProgram->CreateTable();
+				api.SetField("myUnits",myUnits);
+
 				api.SetFunction("DisplayMessage",API::DisplayMessage);
+				api.SetFunction("DescribeTask",API::DescribeTask);
+				api.SetFunction("CallDelayed",API::CallDelayed);
 
 				tutorialProgram->ExecuteFile("../lua/tutorial.lua");
 
@@ -168,18 +275,50 @@ namespace Tutorial
 
 	void	SignalStart()
 	{
+		Interactive::started = true;
+		Interactive::RebuildFactionUnits();
+		Interactive::RebuildSelected();
 		Interactive::Trigger::begin();
 	}
 
+	void	SignalRoundStart()
+	{
+		if (!Interactive::started)
+			return;
+		Interactive::RebuildFactionUnits();
+	}
+
+
 	void	SignalEntitySelectionChange(bool stateChangeOnly)
 	{
-		if (!stateChangeOnly)
-			Interactive::Trigger::selectionChanged();
+		if (!Interactive::started)
+			return;
+		Interactive::RebuildSelected();
+
+		Interactive::Trigger::selectionChanged();
 	}
 
 	
+	void	SignalEnd()
+	{
+		Interactive::started = false;
+		Interactive::objectTables.Clear();
+	}
 
-
+	void	ProcessTriggers(float timeDelta)
+	{
+		for (index_t i = 0; i < Interactive::API::activeTriggers.Count(); i++)
+		{
+			auto&t = Interactive::API::activeTriggers[i];
+			t.remainingSeconds -= timeDelta;
+			if (t.remainingSeconds < 0)
+			{
+				t.trigger();
+				Interactive::API::activeTriggers.Erase(i);
+				i--;
+			}
+		}
+	}
 }
 
 

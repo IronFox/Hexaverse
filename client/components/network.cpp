@@ -1265,6 +1265,7 @@ namespace Network
 					GUI::Hide(Dialog::loginMenu);
 					Dialog::CheckServersAreShown(true);
 					GUI::SignalSituationChange();
+					Tutorial::SignalEnd();
 				#endif
 
 			}

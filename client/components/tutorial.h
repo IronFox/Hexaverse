@@ -23,8 +23,10 @@ namespace Tutorial
 	Call this when all player units have been loaded (e.g. the game has begun on a tutorial session)
 	*/
 	void	SignalStart();
+	void	SignalRoundStart();
 	void	SignalEntitySelectionChange(bool stateChangeOnly);
-
+	void	SignalEnd();
+	void	ProcessTriggers(float timeDelta);
 }
 
 #endif
