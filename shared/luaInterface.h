@@ -102,6 +102,7 @@ namespace Lua
 
 		void PushParameter(lua_State *state, long long i);
 		inline void PushParameter(lua_State *state, int i) {PushParameter(state,(long long)i);}
+		inline void PushParameter(lua_State *state, unsigned i) {PushParameter(state,(long long)i);}
 		void PushParameter(lua_State *state, double i);
 		void PushParameter(lua_State *state, void*p);
 		void PushParameter(lua_State *state, const Reference&);
@@ -657,7 +658,10 @@ namespace Lua
 		*/
 		Reference		GetElement(index_t at) const;
 
-		void			ClearElements();
+		/**
+		Clears out all elements of the local table
+		*/
+		void			ClearTable();
 		void			UnsetField(const String&name);
 		void			UnsetElement(index_t at);
 		/**
