@@ -1292,8 +1292,10 @@ namespace Objects
 	void					Remove( const PWorldEntity&e, RemovalType t, float&timestamp, bool controlEnabled, bool isRemovedFromGrid/*=false*/, bool ignoreIndestructible/*=false*/)
 	{
 		ASSERT__(e);
-		if (e->IsIndestructible())
-			return;
+		#ifndef CLIENT
+			if (e->IsIndestructible() && !ignoreIndestructible)
+				return;
+		#endif
 		e->SyncTime(timestamp,timeEpsilon);
 		ASSERT1__(e->isInserted != ( t == RemovalType::DestroyedInStorage ),e->GetName());
 		#ifdef CLIENT
