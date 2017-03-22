@@ -83,6 +83,11 @@ namespace GUI
 		distanceType_t		distanceType = RelativeToParentComponent;	
 		Buffer0<WComponent>	references;			//!< Zero or more reference components. If none are set, the respective context extreme is used. If more than one are set, the closest is used
 
+
+		void			Unset()
+		{
+			type = Disabled;
+		}
 		void			Set(const PComponent&c, float distance, distanceType_t dtype=RelativeToParentComponent)
 		{
 			if (!c)
@@ -172,7 +177,15 @@ namespace GUI
 
 		bool			FullAutoLayout(const Rect<>&context);
 
-		void			SetCenteredWidth(float w, TAnchor::distanceType_t type);
+
+		Component&		SetSize(const TVec2<>&size)	{auto loc = GetLocation(); loc.x.max = loc.x.min + size.x ; loc.y.max = loc.y.min + size.y; SetLocation(loc);return *this;}
+		/**
+		Updates the left and right anchors such that the local component maintains the given width
+		@param w Target component width. If @a type is AbsolutePixels, then w must be specified in pixels, otherwise any value in [0,1]
+		*/
+		Component&		SetCenteredWidth(float w, TAnchor::distanceType_t type);
+		Component&		FillHorizontally(float spacing, TAnchor::distanceType_t type = TAnchor::RelativeToParentComponent);
+		Component&		AnchorTop(float spacing, TAnchor::distanceType_t type = TAnchor::RelativeToParentComponent);
 
 		const Rect<>&	GetLocation() const {return rect;}
 	};
