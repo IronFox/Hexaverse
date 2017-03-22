@@ -1254,7 +1254,7 @@ namespace Lua
 		return true;
 	}
 
-	void		Table::ClearElements()
+	void		Table::ClearTable()
 	{
 		lua_State*st = GetState();
 		if (!st)
