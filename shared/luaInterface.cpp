@@ -1261,17 +1261,21 @@ namespace Lua
 			return;
 		Detail::StackChecker chk(st);
 		Super::Push();
+		//..., table
 
 		lua_pushnil(st);
-
+		//..., table, nil
 		while(lua_next(st, -2) != 0)
 		{
-			lua_pop(st, 1);	//pop value, key still on stack
-			lua_pushnil(st);	//now table, key, nil
-			lua_settable(st,-3);	//pops key, nil
-			lua_pushnil(st);	//push nil key
+			lua_pop(st, 1);	//pop value -> ..., table, key
+			lua_pushnil(st);	//..., table, key, nil
+			lua_settable(st,-3);	//pops key, nil -> ..., table
+			lua_pushnil(st);	//push nil key -> ..., table, nil
 		}
+		//..., table
 		lua_pop(st,1);
+		//...
+		ASSERT_EQUAL__(this->GetLength(),0);
 	}
 
 	void		Table::UnsetField(const String&name)
