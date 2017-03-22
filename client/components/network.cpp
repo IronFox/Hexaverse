@@ -1022,6 +1022,10 @@ namespace Network
 		{
 			Objects::PFaction f = ResolveFaction(state.ownerID);
 			f->researchState.Import(state.serializedData);
+			#ifdef HAS_WINDOW
+				if (RuntimeConfig::tutorialMode && f == Objects::Faction::mine)
+					Tutorial::SignalResearchChange();
+			#endif
 			//Update( state, f);
 		}
 
@@ -1033,6 +1037,8 @@ namespace Network
 				//Dialog::SignalSituationChange();
 				#ifdef HAS_WINDOW
 					UI::RefreshButtonState();
+					if (RuntimeConfig::tutorialMode)
+						Tutorial::SignalResearchChange();
 				#endif
 			}
 		}

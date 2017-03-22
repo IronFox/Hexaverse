@@ -46,12 +46,12 @@ namespace Tutorial
 	namespace Interactive
 	{
 		Lua::PProgram		tutorialProgram;
-		Lua::Table			api,myUnits;
+		Lua::Table			api,myUnits, myResearch;
 		bool				started = false;
 
 		namespace Trigger
 		{
-			Lua::Function<void()>	begin,selectionChanged,onMessageConfirm;
+			Lua::Function<void()>	begin,selectionChanged,onMessageConfirm,roundStart,onResearchChange;
 		}
 
 		namespace API
@@ -167,6 +167,51 @@ namespace Tutorial
 
 		}
 
+
+		void RebuildResearchState()
+		{
+			if (myResearch.IsEmpty())
+			{
+				myResearch = tutorialProgram->CreateTable();
+				api.SetField("myResearch",myResearch);
+			}
+			else
+				myResearch.ClearTable();
+
+			Lua::Reference current;
+			const auto&st = Objects::Faction::mine->researchState.researchState;
+			const index_t at = Objects::Faction::mine->researchState.GetActiveTopicIndex();
+			for (index_t i = 0; i < Objects::ResearchState::globalState.allTopics.Count(); i++)
+			{
+				auto t = Objects::ResearchState::GetTopic(i);
+				if (t->IsGroup())
+					continue;
+				String key = t->GetFullName();
+
+				Lua::Table outT = tutorialProgram->CreateTable();
+				myResearch.SetField(key,outT);
+
+				outT.SetField("fullName",key);
+				outT.SetField("name",t->name);
+				outT.SetField("max",t->maxProgress);
+				outT.SetField("isEndless",t->maxProgress <= 0);
+				
+				const int prog = t->getProgress(st);
+				outT.SetField("progress",prog);
+				outT.SetField("completed",t->ResearchCompleted(st));
+
+				bool isActive = at==i && (t->maxProgress <= 0 || prog < t->maxProgress);
+				outT.SetField("isActive",isActive);
+
+				if (isActive)
+					current = outT;
+			}
+
+
+			api.SetField("myCurrentResearch",current);
+		}
+
+
 		void Create()
 		{
 			try
@@ -186,6 +231,8 @@ namespace Tutorial
 				Trigger::begin = tutorialProgram->RequireGlobal("OnBegin");
 				Trigger::selectionChanged = tutorialProgram->RequireGlobal("OnSelectionChanged");
 				Trigger::onMessageConfirm = tutorialProgram->RequireGlobal("OnMessageConfirm");
+				Trigger::roundStart = tutorialProgram->RequireGlobal("OnRoundStart");
+				Trigger::onResearchChange = tutorialProgram->RequireGlobal("OnResearchChange");
 			}
 			catch (const std::exception&ex)
 			{
@@ -286,6 +333,7 @@ namespace Tutorial
 		if (!Interactive::started)
 			return;
 		Interactive::RebuildFactionUnits();
+		Interactive::Trigger::roundStart();
 	}
 
 
@@ -296,6 +344,15 @@ namespace Tutorial
 		Interactive::RebuildSelected();
 
 		Interactive::Trigger::selectionChanged();
+	}
+
+
+	void	SignalResearchChange()
+	{
+		if (!Interactive::started || !Objects::Faction::mine)
+			return;
+		Interactive::RebuildResearchState();
+		Interactive::Trigger::onResearchChange();
 	}
 
 	

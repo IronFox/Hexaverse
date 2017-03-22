@@ -26,6 +26,7 @@ namespace Tutorial
 	void	SignalRoundStart();
 	void	SignalEntitySelectionChange(bool stateChangeOnly);
 	void	SignalEnd();
+	void	SignalResearchChange();
 	void	ProcessTriggers(float timeDelta);
 }
 
