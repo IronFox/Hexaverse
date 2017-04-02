@@ -1278,7 +1278,7 @@ namespace Grid
 	}
 	float GetContinuous(const SimplexNoise&n, const TVec3<>&p)
 	{
-		return (float)n.GetContinuous(p.x,p.y,p.z);
+		return (float)n.GetUniform(p.x,p.y,p.z);
 	}
 
 	static BYTE GetHeightMapHeight(const SimplexNoise&n, TVec3<>&p)
@@ -1288,7 +1288,7 @@ namespace Grid
 		float v = 0.5f * (Get(n,p) + Get(n,p*2.f));	//pseudo normal distributed -1..+1
 
 		float x = //fabs(perlin);
-				fabs(SimplexNoise::ToContinuousDistribution(v));
+				SimplexNoise::ToUniformDistribution(v);
 		//float x = p.z * 0.5f + 0.5f;
 		//;
 		return (BYTE)(std::min(x ,1.f)* 255.f);

@@ -358,12 +358,12 @@ namespace Receiver
 
 			if (ConfigurationMode::IsActive())
 			{
-				Array<FileSystem::File>	iniFiles;
-				World::GetAvailablePlanetIniFiles(iniFiles);
+				Array<String>	planetNames;
+				World::GetAvailablePlanetNames(planetNames);
 				NETA(Package::NetString<256>) names;
-				names.SetSize(iniFiles.Count());
-				for (index_t i = 0; i < iniFiles.Count(); i++)
-					names[i] = String(iniFiles[i].GetInnerName());
+				names.SetSize(planetNames.Count());
+				for (index_t i = 0; i < planetNames.Count(); i++)
+					names[i] = planetNames[i];
 				Channels::planetNames.SendTo(peer,names);
 			}
 
@@ -376,7 +376,7 @@ namespace Receiver
 
 		bool newFaction = false;
 
-		if (Game::Config::Nexus::enableAI && Objects::Faction::nexus->accessToken == response.factionToken && (peer.ToString(false) == "localhost"))
+		if (Game::Config::Nexus::enableAI && Objects::Faction::nexus->accessToken == response.factionToken && peer.IsLocalhost())
 		{
 			LogEvent(EventClass( EventSignificance::Important, EventFlavor::Gain ), peer, "Access to nexus faction permitted.");
 			faction = Objects::Faction::nexus;
@@ -903,7 +903,7 @@ namespace Receiver
 
 			if (planet.IsNotEmpty())
 			{
-				if (!FileSystem::IsFile(RuntimeConfig::ConfigFile(PathString("config/planets/"+planet+".ini"))))
+				if (!World::IsPlanetIniFile(planet+".ini"))
 				{
 					LogEvent(EventClass::Preset::remoteControlError,"'"+planet+"' is not a valid planet type");
 					return;
@@ -1103,7 +1103,11 @@ namespace Receiver
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(uuid,peer);
 		if (!e)
 			return;
-
+		if (e->IsIndestructible())
+		{
+			LogEvent(EventClass::Preset::commandRejected,peer,e,"Unable to issue self destruction. Entity is indestructible");
+			return;
+		}
 		Journal::currentRound.RegisterEntityDestruction(true,e,e->isInserted ? Objects::RemovalType::ControlledExplosion : Objects::RemovalType::DestroyedInStorage);
 	}
 

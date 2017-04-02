@@ -6,6 +6,7 @@
 #include "../scriptCache.h"
 #include "faction.h"
 #include "../runtimeConfig.h"
+#include "../luaGameAPI.h"
 #include <io/file_system.h>
 
 namespace Objects
@@ -16,10 +17,6 @@ namespace Objects
 	/*static*/ ResearchState::GlobalState		ResearchState::globalState;
 
 
-	/*static*/ void ResearchState::LogLua(const String&msg)
-	{
-		LogEvent(EventClass::Preset::important,"Lua: "+msg);
-	}
 
 	/*static*/ PResearchTopic	ResearchState::CreateResearch(const PResearchTopic&parent, const String&name, const String&iconName, 
 												const ResearchTopic::FSetProgress&setProgress, 
@@ -108,7 +105,7 @@ namespace Objects
 
 			if (ref.IsTable())
 			{
-				Lua::Table t = source.GetField(name);
+				Lua::Table t = ref;
 			
 				a.luaGetValue = t.GetField("Get");
 				if (a.luaGetValue.IsEmpty())
@@ -661,19 +658,8 @@ namespace Objects
 		globalState.researchProgram = Lua::Program::Create();
 		ASSERT__(globalState.researchProgram);
 		{
-			Lua::Table api = globalState.researchProgram->CreateTable();
-
+			Lua::Table api = Lua::CreateGeneralAPI(globalState.researchProgram);
 			api.SetFunction("CreateResearch",CreateResearch);
-			api.SetFunction("Log",LogLua);
-
-			#ifdef LOWER_RESOLUTION_PLANET
-				api.SetField("LowerResolutionPlanet",true);
-			#else
-				api.SetField("LowerResolutionPlanet",false);
-			#endif
-			api.SetField("UnitScale",Grid::UnitScale);
-
-			api.SetGlobal("Game");
 		}
 
 

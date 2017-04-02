@@ -1,5 +1,6 @@
 #include <global_root.h>
 #include "tests.h"
+#include <sharedContainer.h>
 
 
 
@@ -767,6 +768,44 @@ namespace Test
 		{
 			FATAL__(e.what());
 		}
+	}
+
+
+	struct TTestElement
+	{
+		count_t touched = 0;
+	};
+
+	typedef std::shared_ptr<TTestElement>	PTestElement;
+
+
+	/*virtual override*/ void	SharedContainer::Run(Random&random)
+	{
+		::SharedContainer<TTestElement>	container;
+
+		for (index_t run = 0; run < 1000; run++)
+		{
+			for (index_t i = 0; i < 100; i++)
+				container << PTestElement(new TTestElement());
+
+		
+			container.Foreach([&container,&random](const PTestElement&e)
+			{
+				e->touched++;
+
+				while (random.NextFloat()>0.2f)
+				{
+					container.Erase(random.NextIndex(container.Count()));
+				}
+			});
+			container.Foreach([run](const PTestElement&e)
+			{
+				ASSERT_EQUAL1__(e->touched,1,run);
+			});
+
+			container.Clear();
+		}
+
 	}
 
 }

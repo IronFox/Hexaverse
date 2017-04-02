@@ -132,6 +132,14 @@ namespace Test
 		virtual void	Run(Random&random) override;
 
 	};
+
+	class SharedContainer : public Test
+	{
+	public:
+		/**/		SharedContainer() : Test("SharedContainer")
+		{}
+		virtual void	Run(Random&random) override;
+	};
 	
 }
 

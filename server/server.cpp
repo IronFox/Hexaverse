@@ -678,7 +678,8 @@ namespace ParameterConfig
 		std::cout << "  --port/-p [basePort]\tUse a non-default base port ("<<DEFAULT_SERVER_BASE_PORT<<" is default)"<<std::endl;
 		std::cout << "  --noRemote/-r \tDisable remote control service"<<std::endl;
 		std::cout << "  --rv4\tStart remote control service using IPv4"<<std::endl;
-		std::cout << "  --test/-t \tRun self-tests, then quit"<<std::endl;
+		std::cout << "  --test \tRun self-tests, then quit"<<std::endl;
+		std::cout << "  --version/-v \tShow version, then quit"<<std::endl;
 		//std::cout << "  --world/-w [worldID] \tuse custom world ID, and start empty"<<std::endl;
 	}
 
@@ -712,10 +713,15 @@ namespace ParameterConfig
 			}
 			break;
 			case Idle:
-				if (!strcmp(arg,"--test") || !strcmp(arg,"-t"))
+				if (!strcmp(arg,"--test"))
 					inTestMode = true;
 				elif (!strcmp(arg,"--rv4"))
 					controlProtocol = TCP::Server::Protocol::IPv4;
+				elif (!strcmp(arg,"--version") || !strcmp(arg,"-v"))
+				{
+					std::cout << SERVER_NAME<<std::endl;
+					exit(0);
+				}
 				elif (!strcmp(arg,"--port") || !strcmp(arg,"-p"))
 					mode = ExpectPort;
 				elif (!strcmp(arg,"--offline") || !strcmp(arg,"-o"))
@@ -975,7 +981,7 @@ int main( int argc, const char* argv[])
 		{
 			if (planet.IsNotEmpty())
 			{
-				if (!FileSystem::IsFile(RuntimeConfig::ConfigFile(PathString("config/planets/"+planet+".ini"))))
+				if (!World::IsPlanetIniFile(planet+".ini"))
 				{
 					LogEvent(EventClass::Preset::remoteControlError,"'"+planet+"' is not a valid planet type");
 					return;
@@ -1000,11 +1006,12 @@ int main( int argc, const char* argv[])
 
 		Reflection::state.DefineCommand("/World/showPlanetTypes",(CLI::Command::function0_t)[]()
 		{
-			Array<FileSystem::File>	planetIniFiles;
+			Array<World::TPlanetIniFile>	planetIniFiles;
 			World::GetAvailablePlanetIniFiles(planetIniFiles);
 
+			CLI::println("-");
 			foreach (planetIniFiles,f)
-				CLI::println(String(f->GetInnerName()));
+				CLI::println(f->name+(f->userDefined.GetLocation().IsNotEmpty()? ( f->factoryDefault.GetLocation().IsNotEmpty() ? " (user override)" :" (user)"): ""));
 			CLI::println("-");
 		},CLI::NoCompletion);
 
@@ -1025,9 +1032,10 @@ int main( int argc, const char* argv[])
 
 
 			{
+				Test::Run(Test::AutoTargeting());
+				Test::Run(Test::SharedContainer());
 				Test::Run(Test::ServerClient());
 				Test::Run(Test::HighGridFamilies());
-				Test::Run(Test::AutoTargeting());
 				Test::Run(Test::Bin2Str());
 				Test::Run(Test::Serialization());
 				Test::Run(Test::VehiclePlant());

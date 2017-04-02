@@ -11,10 +11,11 @@
 
 namespace Dialog
 {
-	CONSTRUCT_ENUMERATION3(CheckResult,
+	CONSTRUCT_ENUMERATION4(CheckResult,
 		OkayContinue,		//operation applicable. User can continue any time they wish to
 		OkayNotRightNow,	//often returned when the server is in some non-command mode
-		Abort				//sitatuation changed. Operation no longer applicable
+		Abort,				//situation changed. Operation no longer applicable
+		Confirm				//situation changed. Operation has completed otherwise and the dialog should be confirmed
 	);
 
 	typedef std::function<void()>	FOnConfirm;
@@ -83,6 +84,11 @@ namespace Dialog
 				CheckResult rs = check();
 				if (rs == CheckResult::Abort)
 					return false;
+				if (rs == CheckResult::Confirm && confirmButton)
+				{
+					onConfirm();
+					return false;
+				}
 			}
 			Super::DetectEnabledState();
 			return true;
@@ -164,6 +170,8 @@ namespace Dialog
 	Queues a tutorial message. Allows hiding all following tutorials
 	*/
 	WDialog	EnqueueTutorial(const String&key, const Array<String>&text, const String&imageName = "", const Rect<>&screenReference = Rect<>::Invalid);
+	PDialog	CreateTutorialMessage(const String&key, const ArrayRef<const String>&text, const String&imageName = "", const Rect<>&screenReference = Rect<>::Invalid);
+
 	bool	RemoveTutorial(const String&key);
 	bool	RemoveTutorial(const PDialog&dialog);
 

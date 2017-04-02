@@ -17,6 +17,7 @@ Lua-related definitions and helpers
 namespace Lua
 {
 	class Reference;
+	class NamedReference;
 	class Program;
 	class Table;
 	typedef std::shared_ptr<Program> PProgram;
@@ -101,6 +102,7 @@ namespace Lua
 
 		void PushParameter(lua_State *state, long long i);
 		inline void PushParameter(lua_State *state, int i) {PushParameter(state,(long long)i);}
+		inline void PushParameter(lua_State *state, unsigned i) {PushParameter(state,(long long)i);}
 		void PushParameter(lua_State *state, double i);
 		void PushParameter(lua_State *state, void*p);
 		void PushParameter(lua_State *state, const Reference&);
@@ -442,7 +444,11 @@ namespace Lua
 		@return true if the specified global was found and @a outRef updated, otherwise
 		*/
 		bool			FindGlobal(const String&name, Reference&outRef);
-		Reference		FindGlobal(const String&name);
+		NamedReference	FindGlobal(const String&name);
+		/**
+		Like FindGlobal(const String&), but throws a Lua exception, if the global is not found
+		*/
+		NamedReference	RequireGlobal(const String&name);
 
 		/**
 		Attempts to execute an arbitrary lua script chunk in protected mode.
@@ -499,30 +505,24 @@ namespace Lua
 			if (prog)
 				EraseReference(prog->GetState(),(int)(size_t)raw);
 		}
-		void	SetReference(WProgram prog, int refID)
+		void	SetReference(WProgram prog, int refID, const String&name)
 		{
 			this->prog = prog;
 			this->refID.reset((int*)(size_t)refID,[prog](int*ptr){Discard(prog,ptr);});
-
-			if (IsTableReference() && !IsTable())
-				throw Exception("Trying to assigning non-table Lua reference to table reference variable");
-			if (IsFunctionReference() && !IsFunction())
-				throw Exception("Trying to assigning non-function Lua reference to function reference variable");
+			SignalChange(name);
 		}
 	protected:
-
-		virtual bool	IsTableReference() const	{return false;}
-		virtual bool	IsFunctionReference() const	{return false;}
-		
+		virtual void	SignalChange(const String&name) {};
 	public:
 
 		/**/		Reference(){}
 		virtual		~Reference() {};
+		void		operator=(const Reference&other);
 
 		/**
 		Clears any locally held Lua references
 		*/
-		void		Clear()	{prog.reset(); refID.reset();}
+		void		ClearReference()	{prog.reset(); refID.reset();}
 
 
 		/**
@@ -548,7 +548,7 @@ namespace Lua
 			{
 				return false;
 			}
-			SetReference(prog, global);
+			SetReference(prog, global,name);
 			return true;
 		}
 
@@ -556,6 +556,7 @@ namespace Lua
 		bool		IsEmpty() const {return !IsSet();}
 		bool		IsTable() const;
 		bool		IsFunction() const;
+		virtual bool	IsNamedReference() const {return false;}
 
 		void		swap(Reference&other)
 		{
@@ -615,6 +616,22 @@ namespace Lua
 
 	};
 
+	class NamedReference : public Reference
+	{
+		String			name;
+
+		friend class Table;
+
+		/**/			NamedReference(const String&name):name(name)	{}
+	protected:
+		virtual void	SignalChange(const String&name)	{this->name = name;}
+	public:
+		/**/			NamedReference()	{}
+		virtual bool	IsNamedReference() const override {return true;}
+
+		const String&	GetName() const {return name;}
+	};
+
 	/**
 	Handler structure for tables
 	*/
@@ -628,25 +645,27 @@ namespace Lua
 		bool			PushElement(index_t) const;
 		void			Pop(int cnt);
 	protected:
-		virtual bool	IsTableReference() const override	{return true;}
-
+		virtual void	SignalChange(const String&) override;
 	public:
 		/**/			Table()	{}
-		/**/			Table(const Reference&ref)
-		{
-			operator=(ref);
-		}
+		/**/			Table(const Reference&ref):Super(ref){};
 		/**
 		Fetches a reference for the specified field in the local table.
 		The result may be empty if the specified field was not found
 		*/
-		Reference		GetField(const String&name)	const;
+		NamedReference	GetField(const String&name)	const;
 		/**
 		Fetches a reference for the specified index (usually in the range [1,GetLength()]).
 		The result may be empty if the specified index was not found
 		*/
 		Reference		GetElement(index_t at) const;
 
+		/**
+		Clears out all elements of the local table
+		*/
+		void			ClearTable();
+		void			UnsetField(const String&name);
+		void			UnsetElement(index_t at);
 		/**
 		Fetches the value of the specified field in the local table.
 		Intended to be used for primitive values like ints or strings, but may be used for Reference objects, too
@@ -701,14 +720,8 @@ namespace Lua
 				return AppendTopElement();
 			}
 
-		/**
-		Updates the local reference.
-		The specified reference must be a table (and not empty).
-		In debug mode this method will raise a fatal exception otherwise
-		@return true if the local reference was updated
-		*/
-		bool			Reset(const Reference&ref);
-		void			operator=(const Reference&ref);
+
+		void			operator=(const Reference&other)	{Super::operator=(other);}
 
 		/**
 		Inserts a new named C function into the local table.
@@ -735,11 +748,9 @@ namespace Lua
 		typedef Reference	Super;
 	protected:
 		/**/			BaseFunction()	{};
-		virtual bool	IsFunctionReference() const override	{return true;}
-
+		virtual void	SignalChange(const String&) override;
 	public:
-		bool			Reset(const Reference&ref);
-		void			operator=(const Reference&ref);
+		void			operator=(const Reference&other)	{Super::operator=(other);}
 	};
 
 
@@ -762,7 +773,8 @@ namespace Lua
 			void		operator()(args_t...parameters)	const
 			{
 				if (IsEmpty())
-					throw Except::Program::GeneralFault("Lua: Trying to call empty function");
+					return;	//allow return-less functions to just fail silently
+					//throw Except::Program::GeneralFault("Lua: Trying to call empty function");
 				lua_State*state = GetProgram()->GetState();
 				Super::Push();
 				int numParameters = Detail::PushParameters(state,parameters...);

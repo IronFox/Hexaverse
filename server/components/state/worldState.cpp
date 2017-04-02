@@ -519,22 +519,72 @@ namespace World
 	}
 
 
-	void		GetAvailablePlanetIniFiles(Array<FileSystem::File>&rsOut)
+	void		AppendAvailablePlanetInitFilesFrom(bool isFactoryDefault, FileSystem::Folder  folder, Buffer0<TPlanetIniFile,Swap>&outList)
 	{
-		FileSystem::Folder folder = RuntimeConfig::ConfigFile("config/planets");
 		if (!folder.IsValidLocation())
 		{
-			LogEvent(EventClass::Preset::remoteControlError,"Internal error: Unable to locate planets-directory");
-			rsOut.Clear();
+			LogEvent(EventClass::Preset::remoteControlError,"Internal error: Unable to locate planets-directory '"+String(folder.GetLocation())+"'");
 			return;
 		}
 		FileSystem::File file;
-		Buffer0<FileSystem::File,Swap> files;
 		folder.Rewind();
 		while (folder.NextFile("ini",file))
 		{
-			files.Append().swap(file);
+			outList.Append().name = String(file.GetInnerName());
+			if (isFactoryDefault)
+				outList.Last().factoryDefault.swap(file);
+			else
+				outList.Last().userDefined.swap(file);
 		}
-		files.MoveToArray(rsOut,true);
+
 	}
+
+	bool			IsPlanetIniFile(const String&filename)
+	{
+		if (!filename.endsWith(".ini"))
+			return IsPlanetIniFile(filename+".ini");
+		return FileSystem::Folder(RuntimeConfig::ConfigFile("config/myPlanets")).FindFile(PathString(filename)) != nullptr
+				||
+			FileSystem::Folder().FindFile("config/myPlanets/"+PathString(filename)) != nullptr;
+	}
+
+
+	void		GetAvailablePlanetIniFiles(Array<TPlanetIniFile>&rsOut)
+	{
+		Buffer0<TPlanetIniFile,Swap> files;
+		
+		AppendAvailablePlanetInitFilesFrom(false, RuntimeConfig::ConfigFile("config/myPlanets"),files);
+		AppendAvailablePlanetInitFilesFrom(true,FileSystem::Folder().FindFolder("config/myPlanets"),files);
+
+		GenericHashTable<String,TPlanetIniFile,StdHash,Swap,Swap>	merged;
+		foreach (files,f)
+		{
+			
+			auto*ptr = merged.QueryPointer(f->name);
+			if (ptr)
+			{
+				if (f->factoryDefault.GetLocation().IsNotEmpty())
+					ptr->factoryDefault.swap(f->factoryDefault);
+				else
+					ptr->userDefined.swap(f->userDefined);
+			}
+			else
+				merged.Set(f->name).swap(*f);
+		}
+
+		merged.exportTo(rsOut);
+
+		ByOperator::QuickSort(rsOut);
+	}
+
+
+	void			GetAvailablePlanetNames(Array<String>&rsOut)
+	{
+		Array<TPlanetIniFile>	files;
+		GetAvailablePlanetIniFiles(files);
+		rsOut.SetSize(files.Count());
+		for (index_t i = 0; i < files.Count(); i++)
+			rsOut[i].swap(files[i].name);
+	}
+
 }

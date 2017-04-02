@@ -1,10 +1,13 @@
 v0.6.4
+	+ Base planet types are no longer copied to the configuration directory (except Template.ini), but may be overridden manually.
 	> The escape key now also unhides HUD elements (text etc.).
 	> Improved research script. Renamed it to research.v2.lua. Script is no longer copied automatically to user directory.
 	> Unrelated attacks are now visually executed in parallel.
 	* Target mode is no longer canceled when dragging the camera.
 	* Fixed unit destruction when falling farther than safely possible.
 	* Fixed rounding error in research script.
+	* Fixed certain events still being shown when controls are supposed to be hidden.
+	* Fixed destruction events on indestructible units.
 
 v0.6.3	[Feb 26 2017]
 	> All vehicles now fire automatically if they are idle or move independently of attacks.

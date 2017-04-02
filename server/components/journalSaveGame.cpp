@@ -1578,6 +1578,10 @@ namespace Journal
 		{
 			throw RoundException(CLOCATION,e->GetName()+": Unable to destroy entity. Entity already dead");
 		}
+		if (e->IsIndestructible())
+		{
+			throw RoundException(CLOCATION,e->GetName()+": Unable to destroy entity. Entity is indestructible");
+		}
 		float t = 0;
 		Objects::Remove(e,type,t,false);
 		if (To<Objects::Structure>::DynamicCast(e))

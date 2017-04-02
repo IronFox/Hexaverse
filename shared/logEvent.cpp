@@ -59,7 +59,7 @@ namespace Logging
 	}
 
 
-	SharedLogFile outFile;
+	SharedLogFile outFile;	//max 10MB
 
 
 	#ifndef HAS_WINDOW
@@ -137,7 +137,7 @@ namespace Logging
 
 
 
-		if (!outFile.Open(path))
+		if (!outFile.Open(path,10*1024*1024))
 		{
 			LogEvent(EventClass::Preset::error , getLastError());
 		}

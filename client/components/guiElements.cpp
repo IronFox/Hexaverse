@@ -57,8 +57,8 @@ namespace GUI
 			if (viewportStack.Count() > 1)
 			{
 				viewportStack.last().view.Translate(-totalOffset);
-				viewportStack.last().view.ConstrainBy(viewportStack.fromEnd(1).view);
-				//viewportStack.last().second += viewportStack.fromEnd(1).second;
+				viewportStack.last().view.ConstrainBy(viewportStack.GetFromEnd(1).view);
+				//viewportStack.last().second += viewportStack.GetFromEnd(1).second;
 			}
 			totalOffset += offset;
 			LoadView(viewportStack.last().view,viewportStack.last().offset);
@@ -144,7 +144,7 @@ namespace GUI
 		{
 			window->SetActive(false);
 			if (Detail::visibleWindows.Count() > 1)
-				Detail::visibleWindows.fromEnd(1)->SetActive(true);
+				Detail::visibleWindows.GetFromEnd(1)->SetActive(true);
 		}
 		Detail::visibleWindows.Erase(index);	//should be last. window is not guaranteed to be valid past this point
 
@@ -207,7 +207,7 @@ namespace GUI
 			if (at+1 == Detail::visibleWindows.Count())	//ist last
 			{
 				window->SetActive(false);
-				Detail::visibleWindows.fromEnd(1)->SetActive(true);
+				Detail::visibleWindows.GetFromEnd(1)->SetActive(true);
 			}
 			Detail::visibleWindows.Erase(at);
 		} 
@@ -345,10 +345,14 @@ namespace GUI
 
 	void	SignalSituationChange()
 	{
+		static bool checking = false;
+		if (checking)
+			return;
+		checking = true;
 		VerifyIntegrity(CLOCATION);
 		for (index_t i = 0; i < Detail::visibleWindows.Count(); i++)
 		{
-			const PWindow&d = Detail::visibleWindows[i];
+			PWindow d = Detail::visibleWindows[i];	//make copy to allow SignalChange() to create new windows
 			if (!d->SignalChange())
 			{
 				d->OnHide();
@@ -356,7 +360,7 @@ namespace GUI
 				{
 					d->SetActive(false);
 					if (Detail::visibleWindows.Count() > 1)
-						Detail::visibleWindows.fromEnd(1)->SetActive(true);
+						Detail::visibleWindows.GetFromEnd(1)->SetActive(true);
 				}
 				Detail::visibleWindows.Erase(i);
 				i--;
@@ -365,6 +369,7 @@ namespace GUI
 				d->DetectEnabledState();
 		}
 		VerifyIntegrity(CLOCATION);
+		checking = false;
 	}
 
 
@@ -1533,13 +1538,28 @@ namespace GUI
 		return rs;
 	}
 
-	void			Component::SetCenteredWidth(float w, TAnchor::distanceType_t type)
+	Component&			Component::FillHorizontally(float spacing, TAnchor::distanceType_t type /*= TAnchor::RelativeToParentComponent*/)
+	{
+		anchorConfig.Left().Set(spacing,type);
+		anchorConfig.Right().Set(spacing,type);
+		return *this;
+	}
+	
+	Component&			Component::AnchorTop(float spacing, TAnchor::distanceType_t type/* = TAnchor::RelativeToParentComponent*/)
+	{
+		anchorConfig.Top().Set(spacing,type);
+		return *this;
+	}
+
+
+	Component&			Component::SetCenteredWidth(float w, TAnchor::distanceType_t type)
 	{
 		float extra = 1.f - w;
 		if (type == TAnchor::AbsolutePixels)
 			extra = float(ViewPortWidth()) - w;
 		anchorConfig.Left().Set(extra*0.5f,type);
 		anchorConfig.Right().Set(extra*0.5f,type);
+		return *this;
 	}
 
 

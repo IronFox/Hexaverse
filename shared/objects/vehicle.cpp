@@ -324,7 +324,10 @@ namespace Objects
 						InsertVehicleIntoGrid(To<Vehicle>::Cast(shared_from_this()),location);
 						//RemoveFromGrid(vehicleGrid,location,To<Vehicle>::Cast(shared_from_this()));
 					}
-					LogEvent(EventClass::Preset::commandRejected,this, "Unable to relocate here. Vehicle destroyed.");
+					if (!IsIndestructible())
+						LogEvent(EventClass::Preset::commandRejected,this, "Unable to relocate here. Vehicle destroyed.");
+					else
+						LogEvent(EventClass::Preset::debug,this, "Extended fall. Entity is indestructible.");
 //					Remove(shared_from_this(),RemovalType::UncontrolledExplosion,timeAt,false,true);
 
 					if (failIsFatal)
