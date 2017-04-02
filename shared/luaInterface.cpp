@@ -682,6 +682,11 @@ namespace Lua
 			lua_pushinteger(state, i);
 		}
 
+		void PushParameter(lua_State *state, bool b)
+		{
+			lua_pushboolean(state,b);
+		}
+
 		void PushParameter(lua_State *state, double i)
 		{
 			lua_pushnumber(state, i);
