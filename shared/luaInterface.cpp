@@ -701,6 +701,11 @@ namespace Lua
 			lua_pushstring(state,str.c_str());
 		}
 
+		void PushStrParameter(lua_State *state, const char*str)
+		{
+			lua_pushstring(state,str);
+		}
+
 		void PushParameter(lua_State *state, const Reference&ref)
 		{
 			if (ref.IsEmpty())

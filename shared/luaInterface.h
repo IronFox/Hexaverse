@@ -108,6 +108,7 @@ namespace Lua
 		void PushParameter(lua_State *state, void*p);
 		void PushParameter(lua_State *state, const Reference&);
 		void PushStrParameter(lua_State *state, const String&str);
+		void PushStrParameter(lua_State *state, const char*str);
 
 
 
@@ -124,6 +125,14 @@ namespace Lua
 			struct ParameterT<String>
 			{
 				static void Push(lua_State *state, const String&v)
+				{
+					PushStrParameter(state,v);
+				}
+			};
+		template <>
+			struct ParameterT<const char*>
+			{
+				static void Push(lua_State *state, const char*v)
 				{
 					PushStrParameter(state,v);
 				}

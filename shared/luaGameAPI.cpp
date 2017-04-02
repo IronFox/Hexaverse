@@ -101,6 +101,37 @@ namespace Lua
 
 			return taskOut;
 		}
+
+		Lua::Table ToTable(Lua::PProgram&p, const Objects::TurretBase&b, const Lua::Reference&researchState)
+		{
+
+			Lua::Table t = p->CreateTable();
+			//b.
+			t.SetField("typeName",b.turret->typeName);
+			t.SetField("weight",b.turret->weight.GetValue(researchState));
+
+			t.SetField("canAttack",b.turret->CanAttack());
+			if (b.turret->CanAttack())
+			{
+				t.SetField("trajectoryType",b.turret->trajectoryType.ToString());
+				t.SetField("ammoType",b.turret->ammoType.ToString());
+				t.SetField("possibleAttacks",b.CountPossibleAttacks());
+				t.SetField("attackActionLeft",b.GetAttackActionLeft());
+				t.SetField("attackInitiative",b.GetAttackInitiative());
+				t.SetField("attacksPerRound",b.GetAttacksPerRound());
+				t.SetField("flatAttackRange",b.GetFlatAttackRange());
+			}
+
+			for (index_t op = 0; op < Objects::Component::OperationCount; op++)
+			{
+				const auto o = (Objects::Component::operation_t)op;
+				const String os = String(Objects::Component::OperationToString(o));
+				t.SetField("can"+os,b.turret->CanDo(o));
+				t.SetField("speedOf"+os,b.turret->operationSpeed[o].GetValue(researchState));
+			}
+
+			return t;
+		}
 	}
 
 
@@ -153,6 +184,7 @@ namespace Lua
 		t.SetField("health",e->health);
 		t.SetField("maxHealth",e->GetMaxHealth());
 		t.SetField("empDamageLevel",e->empDamageLevel);
+		t.SetField("scanningRange",e->GetScanningRange());
 		if (e->IsWorkingStructure())
 		{
 			t.SetField("isWorkingStructure",true);
@@ -160,6 +192,17 @@ namespace Lua
 		}
 		else
 			t.SetField("isWorkingStructure",false);
+
+		float zOffset;
+		const auto base = e->GetTurretBase(zOffset);
+		if (base)
+		{
+			Lua::Table sub = Detail::ToTable(p, *base, e->GetResearchState());
+			sub.SetField("zOffset",zOffset);
+			t.SetField("turretBase",sub);
+		}
+
+
 
 		if (e->IsMobile())
 		{
