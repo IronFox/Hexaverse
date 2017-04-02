@@ -3,6 +3,14 @@
 void	Game.Log(msg)					Prints any message to Hexaverse log (client or server-private)
 void	Game.DisplayMessage(string msg[,string imageName])		Prints a persistent message on screen. Once the user has pressed 'Got it' this stage will automatically advance to the next task
 
+void	Game.CallDelayed(float seconds, function func)					Waits the specified number of seconds, then calls the given function without parameters
+int		Game.FindHighestAvailableResourceLocation(string resourceName)	Searches among all known resource spots for the highest value where a mine could be constructed. Returns -1 if none are found
+int		Game.GetResourceCoverage(string resourceName, int stackID)		Fetches the resource level at the specified location. Returns -1 if the specified location has not been surveyed yet
+void	Game.FocusCameraAt(int stackID)									Smoothly focuses the camera on the specified stack index
+int		Game.GetCompoundResourceChange(string resourceName)				Fetches the current balance of the specified resource type in the active player's compound. May be negative
+int		Game.GetCompoundResourceStorage(string resourceName)			Fetches the current storage level of the specified resource type in the active player's compound. May be 0 but not negative
+
+
 bool	Game.LowerResolutionPlanet		Set to true if the planet has reduced grid resolution (1/4 of cells, each cell twice as high)
 float	Game.UnitScale					Set to a global unit scale corresponding to [Game.LowerResolutionPlanet]. This scale value is to be
 										applied too units (hence the name). 1 if the planet is not of lowered resolution, 2 otherwise.
@@ -22,11 +30,11 @@ currentTask = 0;	--none
 tasks = {};
 
 
-function CreateTask(begin, eventName, eventFunc)
+function CreateTask(begin, checkFunc)
 	local t = {};
 	t.begin = begin;
-	if eventName ~= nil then
-		t[eventName] = eventFunc;
+	if checkFunc ~= nil then
+		t.check = checkFunc;
 	end;
 	table.insert(tasks, t);
 end
@@ -39,33 +47,43 @@ end
 CreateTask(function() Game.DisplayMessage("Welcome to the Hexaverse tutorial.\nThe following tasks will introduce you to the general game mechanics.") end);
 
 --buildings:
-CreateTask(function() Game.DescribeTask("Please find and select your Generator.") end, 'onSelectionChanged', function() if Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Generator' then TaskDone() end; end);
+CreateTask(function() Game.DescribeTask("Please find and select your Generator.") end, function() if Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Generator' then TaskDone() end; end);
 CreateTask(function() Game.DisplayMessage("Enabled generators supply active buildings with energy. This one will suffice for your Mine and one more consumer. After that you will need more.") end);
 
-CreateTask(function() Game.DescribeTask("Please find and select your Mine.") end, 'onSelectionChanged', function() if Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Mine' then TaskDone() end; end);
+CreateTask(function() Game.DescribeTask("Please find and select your Mine.") end, function() if Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Mine' then TaskDone() end; end);
 CreateTask(function() Game.DisplayMessage("Enabled mines collect natural resources from the ground underneath. The colorful stack atop indicates how much they mine per round. This one collects minerals and fuel. The resources never run out but they are also never enough.") end);
 
 --build lab:
-CreateTask(function() Game.DescribeTask("Please find and select your Terraformer.") end, 'onSelectionChanged', function() if Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Hoverformer' then TaskDone() end; end);
+CreateTask(function() Game.DescribeTask("Please find and select your Terraformer.") end, function() if Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Hoverformer' then TaskDone() end; end);
 CreateTask(function() Game.DisplayMessage("Terraformers are your primary worker force. While not all terraformers are equally manuverable and resilient, they can all shape the terrain and build new structures. Let's build something!","terraformer.png") end);
 CreateTask(function() Game.DescribeTask("Please instruct your Terraformer to build a laboratory. Using the unit commands in the bottom screen section, select Build->Miscellaneous->Laboratory, and click anywhere on the terrain.") end, 
-	'onSelectionChanged', 
 	function() 
+		local done = false;
 		if Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Hoverformer' then 
 			for i = 1, #Game.selectedUnit.tasks do
 				local t = Game.selectedUnit.tasks[i];
 				if t.name == 'construct Laboratory' then
 					TaskDone();
+					done = true;
 					break;
 				end;
 			end;
-		end; 
+		end;
+		--also done when it already exists
+		if not done then
+			for i = 1, #Game.myUnits do
+				local u = Game.myUnits[i];
+				if u.typeName == 'Laboratory' then
+					TaskDone();
+					break;
+				end;
+			end;
+		end;
 	end);
 
-CreateTask(function() Game.DisplayMessage("The Terraformer will keep constructing the building each round until done, as long as enough resources are available. The bottom left resource table tells us that we have 12 Minerals more than we currently need. So let's press on.") end);
+CreateTask(function() Game.DisplayMessage("The Terraformer will keep constructing the building each round until done, as long as enough resources are available. The bottom left resource table tells us that we have sufficient minerals (gray) available: "..Game.GetCompoundResourceChange('Minerals') .." per round, "..Game.GetCompoundResourceStorage('Minerals').." in storage. So let's press on.") end);
 
 CreateTask(function() Game.DescribeTask("Please request new rounds, using the command in the bottom left section of the screen or by pressing the Return key, until the Laboratory is done."); end,
-	'onRoundStart',
 	function()
 		for i = 1, #Game.myUnits do
 			local u = Game.myUnits[i];
@@ -78,31 +96,102 @@ CreateTask(function() Game.DescribeTask("Please request new rounds, using the co
 );
 
 CreateTask(function() Game.DisplayMessage("Laboratories allow two types of research: Unlocking and Improving. The more Laboratories you have enabled, the faster the research will progress."); end);
-CreateTask(function() Game.DescribeTask("Task your laboratory to unlock the ReactorCore building type, by using the commands in the bottom section of the screen."); end,
-	'onResearchChange',
+CreateTask(function() Game.DescribeTask("Task your laboratory to unlock the ReactorCore building type, by selected it and using the commands in the bottom section of the screen."); end,
 	function()
-		if Game.myCurrentResearch ~= nil and Game.myCurrentResearch.fullName == 'Unlock:ReactorCore' then
+		local res = Game.myResearch['Unlock:ReactorCore'];
+		--FindResearch('Unlock:ReactorCore');
+		if res ~= nil and (res.isActive or res.isCompleted) then
+			TaskDone();
+		else
+			
+		end;
+	end
+);
+
+CreateTask(function() Game.DescribeTask("While we wait for the laboratory to finish, please find and select your Surveyor.") end, function() if Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Hoversurveyor' then TaskDone() end; end);
+
+CreateTask(function() Game.DisplayMessage("Surveyors automatically identify new natural resources in their yellow scanning sphere. The dark discs near your starting location indicate that there isn't anything there (except beneath your starting mine). Instruct your surveyor to move by right-clicking anywhere without discs.","surveyor.png") end);
+CreateTask(function() Game.DescribeTask("Please move your surveyor until it found some fuel (a green bar atop the terrain). Request new rounds to execute movement operations") end, 
+		function() 
+			local at = Game.FindHighestAvailableResourceLocation('Fuel');
+			if (at ~= -1) then
+				--Game.FocusCameraAt(at);
+				TaskDone() 
+			end;
+		end
+		);
+
+CreateTask(function() Game.DisplayMessage("In some situations it may be smarter to survey the terrain manually, but for now let's instruct the unit to do so automatically.") end);
+CreateTask(function() Game.DescribeTask("Please automate your Surveyor by selecting it and clicking on the Automate button at the bottom screen section.") end, 
+		function() 
+			if Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Hoversurveyor' and Game.selectedUnit.isAutomated then 
+				TaskDone() 
+			end; 
+		end
+		);
+
+CreateTask(function() Game.DescribeTask("Please construct a mine atop the newly found fuel resource using your terraformer. In the bottom screen section, select Build->Resources->Mine, and click on the terrain cell with the green bar.") end,
+	function()
+		local count = 0;
+		for i = 1, #Game.myUnits do
+			local u = Game.myUnits[i];
+			if u.typeName == 'Mine' and Game.GetResourceCoverage('Fuel', u.location.stackID) > 0 then
+				count = count + 1;
+			end;
+		end;
+		if (count >= 2) then
+			TaskDone();
+		end;
+	end
+);
+
+CreateTask(function() Game.DisplayMessage("The list in the bottom left section of the screen shows your current resource output. With two mines and one laboratory we now require more energy than a single generator can supply.") end);
+
+CreateTask(function() Game.DescribeTask("Please construct a second generator using your terraformer. In the bottom screen section, select Build->Resources->Generator, and click anywhere on the terrain.") end,
+	function()
+		local count = 0;
+		for i = 1, #Game.myUnits do
+			local u = Game.myUnits[i];
+			if u.typeName == 'Generator' then
+				count = count + 1;
+			end;
+		end;
+		if (count >= 2) then
+			TaskDone();
+		end;
+	end
+);
+
+CreateTask(function() Game.DisplayMessage("Both the new generator and mine are currently switched off, since they are not needed. Typically when requiring more energy, available generators will be switched on automatically, which, in turn, may enable mines.") end);
+
+CreateTask(function() Game.DescribeTask("Please enable either your new mine or your new generator.") end,
+	function()
+		local enabled = 0;
+		for i = 1, #Game.myUnits do
+			local u = Game.myUnits[i];
+			if (u.typeName == 'Generator' or u.typeName == 'Mine') and u.isEnabled then
+				enabled = enabled + 1;
+			end;
+		end;
+		if (enabled >= 4) then
 			TaskDone();
 		end;
 	end
 );
 
 
+CreateTask(function() Game.DisplayMessage("Notice how enabling either the generator or mine also enabled the other. The two buildings supply each other running. If either is destroyed, the other may be forced to switch off.") end);
 
 
 
-CreateTask(function() Game.DescribeTask("Please find and select your Surveyor.") end, 'onSelectionChanged', function() if Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Hoversurveyor' then TaskDone() end; end);
-
-CreateTask(function() Game.DisplayMessage("Surveyors automatically identify new natural resources in their yellow scanning sphere. The dark discs on the ground indicate that it has so far found none beyond your starting resources. While Surveyors may be moved manually, it may be less time-consuming to automate them. Let's do that.","surveyor.png") end);
-CreateTask(function() Game.DescribeTask("Please automate your Surveyor by selecting it and clicking on the Automate button at the bottom screen section.") end, 'onSelectionChanged', 
-		function() 
-			if Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Hoversurveyor' and Game.selectedUnit.isAutomated then TaskDone() 
-		end; 
-	end);
-
-CreateTask(function() Game.DisplayMessage("Notice how the surveyor has already chosen a route. This planned motion will be executed once the next round is processed.") end);
 
 
+
+
+
+
+
+--helper functions and triggers:
 
 
 function Current()	--table
@@ -112,10 +201,16 @@ function Current()	--table
 	return {};
 end
 
-function CallEvent(task--[[string]])
+taskDone = false;
+
+
+function CheckTaskConditions()
+	if (taskDone) then
+		return;
+	end;
 	local t = Current();
-	if t ~= nil and type(t[task]) == 'function' then
-		t[task]();
+	if t ~= nil and type(t.check) == 'function' then
+		t.check();
 	end
 end
 
@@ -125,10 +220,12 @@ function NextTask()
 	if t ~= nil and type(t.begin)=='function' then
 		t.begin();
 	end
+	taskDone = false;
 end
 
 
 function TaskDone()
+	taskDone = true;
 	Game.DescribeTask("Well done!");
 	Game.CallDelayed(2,NextTask);
 end
@@ -139,17 +236,6 @@ function OnBegin()
 	NextTask();
 end
 
-function OnSelectionChanged()
-	CallEvent('onSelectionChanged');
-end
-
-function OnRoundStart()
-	CallEvent('onRoundStart');
-end
-
-function OnResearchChange()
-	CallEvent('onResearchChange');
-end
 
 function OnMessageConfirm()
 	NextTask();

@@ -51,7 +51,7 @@ namespace Tutorial
 
 		namespace Trigger
 		{
-			Lua::Function<void()>	begin,selectionChanged,onMessageConfirm,roundStart,onResearchChange;
+			Lua::Function<void()>	begin,checkTaskConditions,onMessageConfirm;
 		}
 
 		namespace API
@@ -113,12 +113,20 @@ namespace Tutorial
 					taskWindow->isModal = false;
 				}
 				GUI::Show(taskWindow);
+				Trigger::checkTaskConditions();
 			}
 
 			void	CallDelayed(float delay, Lua::Function<void()> f)
 			{
 				activeTriggers.Append().remainingSeconds = delay;
 				activeTriggers.Last().trigger = f;
+			}
+
+			void	FocusCameraAt(int stackID)
+			{
+				if (stackID < 0 || stackID >= Grid::LowSetup::GridType::CellCount)
+					return;
+				Camera::TranslateTo(Grid::low.cells[stackID].centerVertex.xyz);
 			}
 
 		}
@@ -198,7 +206,7 @@ namespace Tutorial
 				
 				const int prog = t->getProgress(st);
 				outT.SetField("progress",prog);
-				outT.SetField("completed",t->ResearchCompleted(st));
+				outT.SetField("isCompleted",t->ResearchCompleted(st));
 
 				bool isActive = at==i && (t->maxProgress <= 0 || prog < t->maxProgress);
 				outT.SetField("isActive",isActive);
@@ -225,14 +233,13 @@ namespace Tutorial
 				api.SetFunction("DisplayMessage",API::DisplayMessage);
 				api.SetFunction("DescribeTask",API::DescribeTask);
 				api.SetFunction("CallDelayed",API::CallDelayed);
+				api.SetFunction("FocusCameraAt",API::FocusCameraAt);
 
 				tutorialProgram->ExecuteFile("../lua/tutorial.lua");
 
 				Trigger::begin = tutorialProgram->RequireGlobal("OnBegin");
-				Trigger::selectionChanged = tutorialProgram->RequireGlobal("OnSelectionChanged");
+				Trigger::checkTaskConditions = tutorialProgram->RequireGlobal("CheckTaskConditions");
 				Trigger::onMessageConfirm = tutorialProgram->RequireGlobal("OnMessageConfirm");
-				Trigger::roundStart = tutorialProgram->RequireGlobal("OnRoundStart");
-				Trigger::onResearchChange = tutorialProgram->RequireGlobal("OnResearchChange");
 			}
 			catch (const std::exception&ex)
 			{
@@ -325,6 +332,7 @@ namespace Tutorial
 		Interactive::started = true;
 		Interactive::RebuildFactionUnits();
 		Interactive::RebuildSelected();
+		Interactive::RebuildResearchState();
 		Interactive::Trigger::begin();
 	}
 
@@ -333,7 +341,7 @@ namespace Tutorial
 		if (!Interactive::started)
 			return;
 		Interactive::RebuildFactionUnits();
-		Interactive::Trigger::roundStart();
+		Interactive::Trigger::checkTaskConditions();
 	}
 
 
@@ -341,9 +349,10 @@ namespace Tutorial
 	{
 		if (!Interactive::started)
 			return;
+		Interactive::RebuildFactionUnits();
 		Interactive::RebuildSelected();
 
-		Interactive::Trigger::selectionChanged();
+		Interactive::Trigger::checkTaskConditions();
 	}
 
 
@@ -352,7 +361,7 @@ namespace Tutorial
 		if (!Interactive::started || !Objects::Faction::mine)
 			return;
 		Interactive::RebuildResearchState();
-		Interactive::Trigger::onResearchChange();
+		Interactive::Trigger::checkTaskConditions();
 	}
 
 	
