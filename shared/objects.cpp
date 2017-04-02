@@ -88,17 +88,20 @@ namespace Objects
 		*/
 		class GlobalPermaSwitch
 		{
-			std::function<bool()>	getState;
+			std::function<bool()>	getState,enabled;
 		public:
-			/**/	GlobalPermaSwitch(const std::function<bool()>&f):getState(f)
+			/**/	GlobalPermaSwitch(const std::function<bool()>&f,const std::function<bool()>&enabled=std::function<bool()>()):getState(f),enabled(enabled)
 			{}
-			/**/	GlobalPermaSwitch(bool&b):getState([&b](){return b;})
+			/**/	GlobalPermaSwitch(bool&b,const std::function<bool()>&enabled=std::function<bool()>()):getState([&b](){return b;}),enabled(enabled)
 			{}
 
 
 			BaseCommand::Flags	operator()(bool)
 			{
-				return getState() ? BaseCommand::Flags::IsEnabled | BaseCommand::Flags::IsPermaActive : BaseCommand::Flags::IsEnabled;
+				BaseCommand::Flags rs= getState() ? BaseCommand::Flags::IsPermaActive : BaseCommand::Flags::None;
+				if (!enabled || enabled())
+					rs |= BaseCommand::Flags::IsEnabled;
+				return rs;
 			}
 
 
