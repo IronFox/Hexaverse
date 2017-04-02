@@ -305,9 +305,8 @@ namespace Objects
 						resourceView = !resourceView;
 						for (int j = 0; j < BaseGrid::NumFamilies; j++)
 							Grid::low.family[j].normal.resourceOutdated = true;
-			
 					}
-					,GlobalPermaSwitch(resourceView)
+					,GlobalPermaSwitch(resourceView,[](){return !RuntimeConfig::tutorialMode;})
 				));
 
 			viewCommands->Add( new GlobalCommand("Show Ranges", []()
