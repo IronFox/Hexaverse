@@ -99,14 +99,19 @@ namespace Tutorial
 			//		To<GUI::Label>::Cast(taskWindow->GetComponents().First())->SetText("Well done!");
 			//}
 
+			void ReplaceTags(String&msg)
+			{
+				for (index_t i = 0; i < Objects::Resource::N; i++)
+					msg.replace('%'+String(Objects::Resource::Reinterpret(i).ToString())+'%',Objects::ResourceTag(i));
+				msg.replace("%Time%",Objects::TimeResourceTag());
+			}
+
 			void	DisplayMessage(String msg, const String&img)
 			{
 				if (taskWindow)
 					GUI::Hide(taskWindow);
-
-				for (index_t i = 0; i < Objects::Resource::N; i++)
-					msg.replace('%'+String(Objects::Resource::Reinterpret(i).ToString())+'%',Objects::ResourceTag(i));
-				msg.replace("%Time%",Objects::TimeResourceTag());
+				
+				ReplaceTags(msg);
 
 				auto w = Dialog::CreateTutorialMessage("", msg,img);
 				w->check = []()->Dialog::CheckResult{ return Network::client.IsConnected() ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort; };
@@ -120,8 +125,9 @@ namespace Tutorial
 				GUI::Show(w);
 			}
 
-			void	DescribeTask(const String&msg)
+			void	DescribeTask(String msg)
 			{
+				ReplaceTags(msg);
 				if (taskWindow)
 				{
 					To<GUI::Label>::Cast(taskWindow->GetComponents().First())->SetText(msg);
