@@ -189,6 +189,15 @@ namespace Lua
 		{
 			t.SetField("isWorkingStructure",true);
 			t.SetField("isEnabled",To<Objects::WorkingStructure>::Cast(e)->IsEnabled());
+			t.SetFunction("Enable", (std::function<void(bool)>) [e](bool doEnable)
+			{
+				#ifdef CLIENT
+					ApplicationInterface::SignalEnableStructure(*To<Objects::WorkingStructure>::Cast(e),doEnable);
+				#else
+					float t= 0;
+					e->SetEnabled(doEnable, t);
+				#endif
+			});
 		}
 		else
 			t.SetField("isWorkingStructure",false);
