@@ -217,7 +217,7 @@ CreateTask(function() Game.DescribeTask("Please construct a Vehicle Plant using 
 
 CreateTask(function() Game.DisplayMessage("Vehicle Plants can construct all sorts of vehicles. Let's start with another terraformer.") end);
 
-CreateTask(function() Game.DescribeTask("Please task your Vehicle Plant to construct another hoverformer by selecting it, chosing the Terraformer turret in the top row of its unit commands, and finally pressing the Construct Selected button.") end,
+CreateTask(function() Game.DescribeTask("Please task your Vehicle Plant to construct another hoverformer by selecting the plant, chosing the Terraformer turret in the top row of its unit commands, and finally pressing the Construct Selected button.") end,
 	function()
 		for i = 1, #Game.myUnits do
 			local u = Game.myUnits[i];
