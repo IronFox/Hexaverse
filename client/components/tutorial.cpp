@@ -45,9 +45,34 @@ namespace Tutorial
 
 	namespace Interactive
 	{
+		class CameraEvent
+		{
+		public:
+			Timer::Time		lastEvent;
+			bool			happend=false;
+			Lua::Function<void()>	trigger;
+
+			void			Process()
+			{
+				if (happend && timer.GetSecondsSince(lastEvent) > 0.5f)
+				{
+					happend = false;
+					trigger();
+				}
+			}
+			void			Signal()
+			{
+				lastEvent = timer.Now();
+				happend = true;
+			}
+		};
+
 		Lua::PProgram		tutorialProgram;
 		Lua::Table			api,myUnits, myResearch;
 		bool				started = false;
+
+		CameraEvent			drag,rotate,zoom;
+
 
 		namespace Trigger
 		{
@@ -244,6 +269,9 @@ namespace Tutorial
 				Trigger::begin = tutorialProgram->RequireGlobal("OnBegin");
 				Trigger::checkTaskConditions = tutorialProgram->RequireGlobal("CheckTaskConditions");
 				Trigger::onMessageConfirm = tutorialProgram->RequireGlobal("OnMessageConfirm");
+				drag.trigger = tutorialProgram->RequireGlobal("OnCameraDrag");
+				rotate.trigger = tutorialProgram->RequireGlobal("OnCameraRotate");
+				zoom.trigger = tutorialProgram->RequireGlobal("OnCameraZoom");
 			}
 			catch (const std::exception&ex)
 			{
@@ -388,7 +416,29 @@ namespace Tutorial
 				i--;
 			}
 		}
+
+		Interactive::rotate.Process();
+		Interactive::drag.Process();
+		Interactive::zoom.Process();
+
 	}
+
+	void	SignalCameraDrag()
+	{
+		Interactive::drag.Signal();
+	}
+
+	void	SignalCameraRotation()
+	{
+		Interactive::rotate.Signal();
+	}
+
+	void	SignalZoom()
+	{
+		Interactive::zoom.Signal();
+	}
+
+
 }
 
 

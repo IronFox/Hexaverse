@@ -28,6 +28,9 @@ namespace Tutorial
 	void	SignalEnd();
 	void	SignalResearchChange();
 	void	ProcessTriggers(float timeDelta);
+	void	SignalCameraDrag();
+	void	SignalCameraRotation();
+	void	SignalZoom();
 }
 
 #endif
