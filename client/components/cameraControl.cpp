@@ -1,6 +1,7 @@
 #ifdef HAS_WINDOW
 #include <global_root.h>
 #include "cameraControl.h"
+#include "tutorial.h"
 
 
 #include <math/matrix.h>
@@ -142,6 +143,8 @@ namespace Camera
 			scene.retraction.z /= pow(1.1f,param);
 			scene.retraction.z = Math::clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
 			scene.UpdateView();
+			if (RuntimeConfig::tutorialMode)
+				Tutorial::SignalZoom();
 		}
 	}
 
@@ -153,6 +156,8 @@ namespace Camera
 			scene.retraction.z *= 0.95f;
 			scene.retraction.z = Math::clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
 			scene.UpdateView();
+			if (RuntimeConfig::tutorialMode)
+				Tutorial::SignalZoom();
 		}
 	}
 
@@ -163,6 +168,8 @@ namespace Camera
 			scene.retraction.z /= 0.95f;
 			scene.retraction.z = Math::clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
 			scene.UpdateView();
+			if (RuntimeConfig::tutorialMode)
+				Tutorial::SignalZoom();
 		}
 	}
 
@@ -171,6 +178,8 @@ namespace Camera
 		scene.retraction.z *= pow(3.f,-outSpeed);
 		scene.retraction.z = Math::clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
 		scene.UpdateView();
+		if (RuntimeConfig::tutorialMode)
+			Tutorial::SignalZoom();
 
 	}
 
@@ -249,6 +258,8 @@ namespace Camera
 
 
 		scene.UpdateView();
+		if (RuntimeConfig::tutorialMode)
+			Tutorial::SignalCameraRotation();
 		//moveToTarget = false;	//leave on if on
 	}
 
@@ -434,6 +445,9 @@ namespace Camera
 
 
 		scene.UpdateView();
+		if (RuntimeConfig::tutorialMode)
+			Tutorial::SignalCameraDrag();
+
 	}
 
 }
