@@ -43,20 +43,24 @@ end
 
 
 
+
+
+
+
 --tasks:
 CreateTask(function() Game.DisplayMessage("Welcome to the Hexaverse tutorial.\nThe following tasks will introduce you to the general game mechanics.") end);
 
 CreateTask(function() Game.DisplayMessage("Let's get you acquainted with the camera controls.") end);
 
+CreateTask(function() Game.DescribeTask("Zoom the camera by using the mouse-wheel or the up/down arrow-keys."); end, function() if cameraZoomed then TaskDone() end; end);
 CreateTask(function() Game.DescribeTask("Drag the camera by holding the right mouse button and moving the mouse."); end, function() if cameraDragged then TaskDone() end; end);
 CreateTask(function() Game.DescribeTask("Rotate the camera around your current focus by pressing the ASDW keys."); end, function() if cameraRotated then TaskDone() end; end);
-CreateTask(function() Game.DescribeTask("Zoom the camera by using the mouse-wheel or the up/down arrow-keys."); end, function() if cameraZoomed then TaskDone() end; end);
 
 CreateTask(function() Game.DisplayMessage("Now that you have some understanding camera control, let's explore your units.") end);
 
 --buildings:
 CreateTask(function() Game.DescribeTask("Please find and select your Generator by left-clicking on it. The name of the building you currently selected is shown in the top-right section of the screen.") end, function() if Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Generator' then TaskDone() end; end);
-CreateTask(function() Game.DisplayMessage("Enabled generators supply active buildings with %Energy%energy by consuming %Fuel%fuel. This one will suffice for your Mine and one more consumer. After that you will need more.","generator.jpg") end);
+CreateTask(function() Game.DisplayMessage("Enabled generators supply active buildings with %Energy%energy while consuming %Fuel%fuel. This one will suffice for your Mine and one more consumer. After that you will need more.","generator.jpg") end);
 
 CreateTask(function() Game.DescribeTask("Please find and select your Mine.") end, function() if Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Mine' then TaskDone() end; end);
 CreateTask(function() Game.DisplayMessage("Enabled mines collect natural resources from the ground underneath. The colorful stack atop indicates how much they mine per round. This one collects %Minerals%minerals and %Fuel%fuel. The resources never run out but they are also never enough.","mine.png") end);
@@ -89,7 +93,7 @@ CreateTask(function() Game.DescribeTask("Please instruct your Terraformer to bui
 		end;
 	end);
 
-CreateTask(function() Game.DisplayMessage("The Terraformer will keep constructing the building each %Time%round until done, as long as enough resources are available. The bottom left resource table tells us that we have sufficient %Minerals%minerals available: "..Game.GetCompoundResourceChange('Minerals') .." per round, "..Game.GetCompoundResourceStorage('Minerals').." in storage. So let's press on.") end);
+CreateTask(function() Game.DisplayMessage("The Terraformer will keep constructing the building each %Time%round until done, as long as enough %Minerals%resources are available. The bottom left resource table tells us that we have sufficient %Minerals%minerals available: "..Game.GetCompoundResourceChange('Minerals') .." per round, "..Game.GetCompoundResourceStorage('Minerals').." in storage. So let's press on.") end);
 
 CreateTask(function() Game.DescribeTask("Please request new %Time%rounds, using the respective command in the bottom left section of the screen or by pressing the Return key, until the Laboratory is done."); end,
 	function()
@@ -153,7 +157,7 @@ CreateTask(function() Game.DescribeTask("Please construct a mine atop the newly 
 	end
 );
 
-CreateTask(function() Game.DisplayMessage("The list in the bottom left section of the screen shows your current resource output. With two mines and one laboratory we now require more energy than a single generator can supply.") end);
+CreateTask(function() Game.DisplayMessage("The list in the bottom left section of the screen shows your current resource output. With two mines and one laboratory we now require more %Energy%energy than a single generator can supply.") end);
 
 CreateTask(function() Game.DescribeTask("Please construct a second generator using your terraformer. In the bottom screen section, select Build->Resources->Generator, and click anywhere on the terrain.") end,
 	function()
@@ -170,9 +174,18 @@ CreateTask(function() Game.DescribeTask("Please construct a second generator usi
 	end
 );
 
-CreateTask(function() Game.DisplayMessage("Both the new generator and mine are currently switched off, since they are not needed. Typically when requiring more energy, available generators will be switched on automatically, which, in turn, may enable mines.") end);
+CreateTask(function() Game.DisplayMessage("Both the new generator and mine are currently switched off, since they are not needed. Typically when requiring more %Energy%energy, available generators will be switched on automatically, which, in turn, may enable mines.") end);
 
-CreateTask(function() Game.DescribeTask("Please enable either your new mine or your new generator.") end,
+CreateTask(
+	function() 
+		for i = 1, #Game.myUnits do
+			local u = Game.myUnits[i];
+			if (u.typeName == 'Laboratory') and not u.isEnabled then
+				u.Enable(true);
+			end;
+		end;
+		Game.DescribeTask("Please enable either your new mine or your new generator by selecting either, and pressing the Enable button in the bottom screen section.") 
+	end,
 	function()
 		local enabled = 0;
 		for i = 1, #Game.myUnits do
@@ -188,14 +201,46 @@ CreateTask(function() Game.DescribeTask("Please enable either your new mine or y
 );
 
 
-CreateTask(function() Game.DisplayMessage("Notice how enabling either the generator or mine also enabled the other. The two buildings supply each other running. If either is destroyed, the other may be forced to switch off.") end);
+CreateTask(function() Game.DisplayMessage("Notice how enabling either the generator or mine also enabled the other. The two buildings supply each other. If either is destroyed, the other may be forced to switch off.") end);
 
+CreateTask(function() Game.DescribeTask("Please construct a Vehicle Plant using your terraformer. In the bottom screen section, select Build->Factories->Vehicle Plant, and click anywhere on the terrain.") end,
+	function()
+		for i = 1, #Game.myUnits do
+			local u = Game.myUnits[i];
+			if u.typeName == 'Vehicle Plant' then
+				TaskDone();
+				break;
+			end;
+		end;
+	end
+);
 
+CreateTask(function() Game.DisplayMessage("Vehicle Plants can construct all sorts of vehicles. Let's start with another terraformer.") end);
 
+CreateTask(function() Game.DescribeTask("Please task your Vehicle Plant to construct another hoverformer by selecting it, chosing the Terraformer turret in the top row of its unit commands, and finally pressing the Construct Selected button.") end,
+	function()
+		for i = 1, #Game.myUnits do
+			local u = Game.myUnits[i];
+			if u.typeName == 'Vehicle Plant' then
+				local found = false;
+				
+				for j = 1, #u.productionQueue do
+					if u.productionQueue[j] == "Hoverformer" then
+						found = true;
+						break;
+					end;
+				end;
+				
+				if (found) then
+					TaskDone();
+					break;
+				end;
+			end;
+		end;
+	end
+);
 
-
-
-
+CreateTask(function() Game.DisplayMessage("As long as its enabled and has access to the required %Minerals%minerals, the vehicle plant will continue producing the items in its queue, left to right. You can abort any job by clicking on it in the list. To automate deployment you may also place a gathering point by selecting the vehicle plant in question and right-clicking at the desired destination.") end);
 
 
 
@@ -227,6 +272,9 @@ end
 
 
 function TaskDone()
+	if taskDone then
+		return;
+	end;
 	taskDone = true;
 	Game.DescribeTask("Well done!");
 	Game.CallDelayed(2,NextTask);
