@@ -2131,9 +2131,13 @@ bool loop()
 			DebugCheckVector(scene.location,-1000,1000);
 		
 		
-			UI::Render();
+			UI::RenderCommands();
 			display.pick(Camera::hud);
-			GUI::Render();
+			GUI::RenderNonModal();
+
+			UI::RenderHint();
+			display.pick(Camera::hud);
+			GUI::RenderModal();
 
 
 			if (ConfigurationMode::IsActive())

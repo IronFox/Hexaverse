@@ -1152,7 +1152,7 @@ namespace GUI
 
 
 
-	void	Render()
+	void	RenderNonModal()
 	{
 		if (Detail::visibleWindows.IsNotEmpty())
 		{
@@ -1164,10 +1164,31 @@ namespace GUI
 		
 		foreach (Detail::visibleWindows,d)
 		{
+			if ((*d)->isModal)
+				break;
 			(*d)->Render();
 		}
 	}
 
+	void	RenderModal()
+	{
+		if (Detail::visibleWindows.IsNotEmpty())
+		{
+			CheckMouseMotion();
+		}
+
+
+		Detail::LoadView(Rect<>(0,0,1,1),float2());
+		
+		bool nonModal = true;
+		foreach (Detail::visibleWindows,d)
+		{
+			if ((*d)->isModal)
+				nonModal = false;
+			if (!nonModal)
+				(*d)->Render();
+		}
+	}
 
 	/*virtual*/ float			TextField::GetIdealWidth() const
 	{

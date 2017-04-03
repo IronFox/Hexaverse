@@ -1014,9 +1014,13 @@ namespace GUI
 	*/
 	bool				CloseAllModal();
 	/**
-	Renders all visible windows/dialogs
+	Renders visible non-modal windows/dialogs up to the first modal window
 	*/
-	void				Render();
+	void				RenderNonModal();
+	/**
+	Renders visible modal windows/dialogs following the first encountered modal window/dialog, bottom up
+	*/
+	void				RenderModal();
 
 }
 
