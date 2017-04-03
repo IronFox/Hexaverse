@@ -74,10 +74,14 @@ namespace Tutorial
 			//		To<GUI::Label>::Cast(taskWindow->GetComponents().First())->SetText("Well done!");
 			//}
 
-			void	DisplayMessage(const String&msg, const String&img)
+			void	DisplayMessage(String msg, const String&img)
 			{
 				if (taskWindow)
 					GUI::Hide(taskWindow);
+
+				for (index_t i = 0; i < Objects::Resource::N; i++)
+					msg.replace('%'+String(Objects::Resource::Reinterpret(i).ToString())+'%',Objects::ResourceTag(i));
+				msg.replace("%Time%",Objects::TimeResourceTag());
 
 				auto w = Dialog::CreateTutorialMessage("", msg,img);
 				w->check = []()->Dialog::CheckResult{ return Network::client.IsConnected() ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort; };
