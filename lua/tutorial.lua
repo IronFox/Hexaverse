@@ -1,7 +1,7 @@
 --[[ API:
 
 void	Game.Log(msg)					Prints any message to Hexaverse log (client or server-private)
-void	Game.DisplayMessage(string msg[,string imageName])		Prints a persistent message on screen. Once the user has pressed 'Got it' this stage will automatically advance to the next task
+void	Game.DisplayMessage(string msg[,string imageName])		Prints a persistent message on screen. Once the user has pressed 'Got it', OnMessageConfirm() is invoked
 
 void	Game.CallDelayed(float seconds, function func)					Waits the specified number of seconds, then calls the given function without parameters
 int		Game.FindHighestAvailableResourceLocation(string resourceName)	Searches among all known resource spots for the highest value where a mine could be constructed. Returns -1 if none are found
@@ -12,8 +12,8 @@ int		Game.GetCompoundResourceStorage(string resourceName)			Fetches the current 
 
 
 bool	Game.LowerResolutionPlanet		Set to true if the planet has reduced grid resolution (1/4 of cells, each cell twice as high)
-float	Game.UnitScale					Set to a global unit scale corresponding to [Game.LowerResolutionPlanet]. This scale value is to be
-										applied too units (hence the name). 1 if the planet is not of lowered resolution, 2 otherwise.
+float	Game.UnitScale					Set to a global unit scale depending on [Game.LowerResolutionPlanet]. This scale value is to be
+										applied to units (hence the name). 1 if the planet is not of lowered resolution, 2 otherwise.
 
 
 Table	Game.myUnits					Table of all player-owned units currently known to the client
