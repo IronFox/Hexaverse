@@ -202,6 +202,19 @@ namespace Lua
 		else
 			t.SetField("isWorkingStructure",false);
 
+		auto prod = e->CastToProducer();
+		t.SetField("isMobileEntityProducer",prod != nullptr);
+		if (prod)
+		{
+			Lua::Table queue = p->CreateTable();
+			foreach (prod->queue,w)
+			{
+				queue.AppendElement(w->GetName());
+			}
+			t.SetField("productionQueue",queue);
+		}
+
+
 		float zOffset;
 		const auto base = e->GetTurretBase(zOffset);
 		if (base)
