@@ -46,16 +46,24 @@ end
 --tasks:
 CreateTask(function() Game.DisplayMessage("Welcome to the Hexaverse tutorial.\nThe following tasks will introduce you to the general game mechanics.") end);
 
+CreateTask(function() Game.DisplayMessage("Let's get you acquainted with the camera controls.") end);
+
+CreateTask(function() Game.DescribeTask("Drag the camera by holding the right mouse button and moving the mouse."); end, function() if cameraDragged then TaskDone() end; end);
+CreateTask(function() Game.DescribeTask("Rotate the camera around your current focus by pressing the ASDW keys."); end, function() if cameraRotated then TaskDone() end; end);
+CreateTask(function() Game.DescribeTask("Zoom the camera by using the mouse-wheel or the up/down arrow-keys."); end, function() if cameraZoomed then TaskDone() end; end);
+
+CreateTask(function() Game.DisplayMessage("Now that you have some understanding camera control, let's explore your units.") end);
+
 --buildings:
-CreateTask(function() Game.DescribeTask("Please find and select your Generator.") end, function() if Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Generator' then TaskDone() end; end);
-CreateTask(function() Game.DisplayMessage("Enabled generators supply active buildings with energy. This one will suffice for your Mine and one more consumer. After that you will need more.") end);
+CreateTask(function() Game.DescribeTask("Please find and select your Generator by left-clicking on it. The name of the building you currently selected is shown in the top-right section of the screen.") end, function() if Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Generator' then TaskDone() end; end);
+CreateTask(function() Game.DisplayMessage("Enabled generators supply active buildings with %Energy%energy by consuming %Fuel%fuel. This one will suffice for your Mine and one more consumer. After that you will need more.","generator.jpg") end);
 
 CreateTask(function() Game.DescribeTask("Please find and select your Mine.") end, function() if Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Mine' then TaskDone() end; end);
-CreateTask(function() Game.DisplayMessage("Enabled mines collect natural resources from the ground underneath. The colorful stack atop indicates how much they mine per round. This one collects minerals and fuel. The resources never run out but they are also never enough.") end);
+CreateTask(function() Game.DisplayMessage("Enabled mines collect natural resources from the ground underneath. The colorful stack atop indicates how much they mine per round. This one collects %Minerals%minerals and %Fuel%fuel. The resources never run out but they are also never enough.","mine.png") end);
 
 --build lab:
 CreateTask(function() Game.DescribeTask("Please find and select your Terraformer.") end, function() if Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Hoverformer' then TaskDone() end; end);
-CreateTask(function() Game.DisplayMessage("Terraformers are your primary worker force. While not all terraformers are equally manuverable and resilient, they can all shape the terrain and build new structures. Let's build something!","terraformer.png") end);
+CreateTask(function() Game.DisplayMessage("Terraformers are your primary worker force. While not all terraformers are equally manuverable, resilient, or productive, they can all shape the terrain and build new structures. Let's build something!","terraformer.png") end);
 CreateTask(function() Game.DescribeTask("Please instruct your Terraformer to build a laboratory. Using the unit commands in the bottom screen section, select Build->Miscellaneous->Laboratory, and click anywhere on the terrain.") end, 
 	function() 
 		local done = false;
@@ -81,9 +89,9 @@ CreateTask(function() Game.DescribeTask("Please instruct your Terraformer to bui
 		end;
 	end);
 
-CreateTask(function() Game.DisplayMessage("The Terraformer will keep constructing the building each round until done, as long as enough resources are available. The bottom left resource table tells us that we have sufficient minerals (gray) available: "..Game.GetCompoundResourceChange('Minerals') .." per round, "..Game.GetCompoundResourceStorage('Minerals').." in storage. So let's press on.") end);
+CreateTask(function() Game.DisplayMessage("The Terraformer will keep constructing the building each %Time%round until done, as long as enough resources are available. The bottom left resource table tells us that we have sufficient %Minerals%minerals available: "..Game.GetCompoundResourceChange('Minerals') .." per round, "..Game.GetCompoundResourceStorage('Minerals').." in storage. So let's press on.") end);
 
-CreateTask(function() Game.DescribeTask("Please request new rounds, using the command in the bottom left section of the screen or by pressing the Return key, until the Laboratory is done."); end,
+CreateTask(function() Game.DescribeTask("Please request new %Time%rounds, using the respective command in the bottom left section of the screen or by pressing the Return key, until the Laboratory is done."); end,
 	function()
 		for i = 1, #Game.myUnits do
 			local u = Game.myUnits[i];
@@ -201,7 +209,9 @@ function Current()	--table
 end
 
 taskDone = false;
-
+cameraDragged = false;
+cameraRotated = false;
+cameraZoomed = false;
 
 function NextTask()
 	currentTask = currentTask+1;
@@ -210,6 +220,9 @@ function NextTask()
 		t.begin();
 	end
 	taskDone = false;
+	cameraRotated = false;
+	cameraDragged = false;
+	cameraZoomed = false;
 end
 
 
@@ -244,4 +257,19 @@ end
 
 function OnMessageConfirm()
 	NextTask();
+end
+
+function OnCameraDrag()
+	cameraDragged = true;
+	CheckTaskConditions();
+end
+
+function OnCameraRotate()
+	cameraRotated = true;
+	CheckTaskConditions();
+end
+
+function OnCameraZoom()
+	cameraZoomed = true;
+	CheckTaskConditions();
 end
