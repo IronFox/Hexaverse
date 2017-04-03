@@ -195,7 +195,7 @@ namespace Lua
 					ApplicationInterface::SignalEnableStructure(*To<Objects::WorkingStructure>::Cast(e),doEnable);
 				#else
 					float t= 0;
-					e->SetEnabled(doEnable, t);
+					To<Objects::WorkingStructure>::Cast(e)->SetEnabled(doEnable, t);
 				#endif
 			});
 		}
