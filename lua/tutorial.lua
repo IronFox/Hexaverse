@@ -191,8 +191,7 @@ CreateTask(function() Game.DisplayMessage("Notice how enabling either the genera
 
 
 
---helper functions and triggers:
-
+--helper functions
 
 function Current()	--table
 	if type(tasks[currentTask]) ~= nil then
@@ -203,16 +202,6 @@ end
 
 taskDone = false;
 
-
-function CheckTaskConditions()
-	if (taskDone) then
-		return;
-	end;
-	local t = Current();
-	if t ~= nil and type(t.check) == 'function' then
-		t.check();
-	end
-end
 
 function NextTask()
 	currentTask = currentTask+1;
@@ -228,6 +217,22 @@ function TaskDone()
 	taskDone = true;
 	Game.DescribeTask("Well done!");
 	Game.CallDelayed(2,NextTask);
+end
+
+
+
+
+
+--triggers called by game
+
+function CheckTaskConditions()
+	if (taskDone) then
+		return;
+	end;
+	local t = Current();
+	if t ~= nil and type(t.check) == 'function' then
+		t.check();
+	end
 end
 
 function OnBegin()
