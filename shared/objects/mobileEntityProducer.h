@@ -79,6 +79,7 @@ namespace Objects
 			Component::VehicleBase*	GetVehicleBase() const;
 			bool					CanSpawnInGrid() const;
 			bool					CanSpawnAboveGrid(int&) const;
+			const String&			GetName() const;
 		};
 		//typedef std::pair<PVehicle,Command>		WorkItem;
 		Buffer0<WorkItem>			queue;	//must use buffer here, because elements can be erased and changes are rare
