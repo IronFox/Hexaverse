@@ -1246,6 +1246,8 @@ namespace Objects
 		typedef WorkingStructureT<Laboratory>	Super;
 		friend class Super;
 
+		Buffer0<WLaboratory>		labNeighbors;
+
 		#ifdef HAS_WINDOW
 			static count_t			researchCommandOffset;
 		#endif
@@ -1266,11 +1268,14 @@ namespace Objects
 			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;
 		#endif
 
+		count_t						GetTotalResearchOutput() const;
+
 
 		//Structure overrides:
 		virtual bool				IsBuilding(std::pair<int,int>&outProgress) const override;
 		virtual Category			GetCategory() const override {return Category::Miscellaneous;}
-
+		virtual void				OnNewConnection(const PStructure&, UINT32 acrossHighCell, float atTime) override;
+		virtual void				OnConnectionLost(const PStructure&, UINT32 acrossHighCell, float atTime) override;
 
 		//WorldEntity overrides:
 		virtual void				PrototypeSetup()	override;

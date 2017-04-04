@@ -31,6 +31,7 @@ namespace Objects
 					DECLARE_POINTER_CLASS(Mine)
 					DECLARE_POINTER_CLASS(NexusPort)
 					DECLARE_POINTER_CLASS(Generator)
+					DECLARE_POINTER_CLASS(Laboratory)
 					DECLARE_POINTER_CLASS(ReactorCore)
 					DECLARE_POINTER_CLASS(MunitionFactory)
 					DECLARE_POINTER_CLASS(MunitionStorage)

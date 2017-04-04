@@ -179,7 +179,7 @@ namespace Objects
 		Handles changes necessary to advance all endless research topics by one. Should only be used on Nexus faction
 		*/
 		void					AdvanceNexusResearch();
-		void					Contribute()	{totalContribution++;}
+		void					Contribute(int c)	{totalContribution+=c;}
 		void					FinalizeRound(const PFaction&);
 
 		bool					CheckUnlocked(const Component::Base&base, String&errorOut) const	{return true;}

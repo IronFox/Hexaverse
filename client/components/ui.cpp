@@ -2501,15 +2501,21 @@
 					for (index_t i = 0; i < delta.NumEntries; i++)
 						if (delta.level[i] > 0)
 							any = true;
-					if (any)
+					const Objects::Laboratory*lab = dynamic_cast<const Objects::Laboratory*>(ws);
+
+					if (any || lab)
 					{
-						//cachedLines << " Produces:"<<nl;
 						cachedLines << " Produces";
 						bool isEnabled = ws->IsEnabled();
 						if (!isEnabled)
 							cachedLines.Last().text += " (if enabled)";
 						cachedLines.Last().text +=':';
-	
+						if (lab)
+							cachedLines << "  Research: "+String(lab->GetTotalResearchOutput());
+					}
+					if (any)
+					{
+						//cachedLines << " Produces:"<<nl;
 						for (index_t i = 0; i < delta.NumEntries; i++)
 							if (delta.level[i] > 0)
 								cachedLines << "  "+String((char)(tagOffset+i))+" "+String(delta.level[i]);
