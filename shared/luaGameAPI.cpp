@@ -12,6 +12,71 @@ namespace Lua
 		{
 			LogEvent(EventClass::Preset::important,"Lua: "+msg);
 		}
+
+		#ifdef CLIENT
+
+			int	GetCompoundResourceChange(const String&resourceName)
+			{
+				Objects::Resource resource;
+				if (!resource.Decode(resourceName.c_str()))
+					throw Lua::Exception("Resource '"+resourceName+"' does not exist.");
+				#ifndef ONE_COMPOUND_PER_FACTION
+					return 0;
+				#else
+					return Objects::Faction::mine->compound.total.supply.level[resource] - Objects::Faction::mine->compound.total.demand.level[resource];
+				#endif
+			}
+
+			int GetCompoundResourceStorage(const String&resourceName)
+			{
+				Objects::Resource resource;
+				if (!resource.Decode(resourceName.c_str()))
+					throw Lua::Exception("Resource '"+resourceName+"' does not exist.");
+				#ifndef ONE_COMPOUND_PER_FACTION
+					return 0;
+				#else
+					return Objects::Faction::mine->compound.total.storage.level[resource];
+				#endif
+			}
+
+			int FindHighestAvailableResourceLocation(const String&resourceName)
+			{
+				foreach (Grid::Resource::all,r)
+					if (r->GetName() == resourceName)
+					{
+						int highestAt = -1;
+						Grid::Resource::coverage_t highest = 0;
+						for (index_t i = 0; i < Grid::Resource::NumEntries; i++)
+							if (r->known[i])
+							{
+								if (r->coverage[i] > highest)
+								{
+									if (Objects::FindApplicableGround(Grid::LCellIdI(i,0),true) != Objects::badHeight)
+									{
+										highest = r->coverage[i];
+										highestAt = (int)i;
+									}
+								}
+							}
+						return highestAt;
+					}
+				throw Lua::Exception("Resource '"+resourceName+"' does not exist.");
+			}
+
+			int GetResourceCoverage(const String&resourceName, int stackID)
+			{
+				if (stackID < 0 || stackID >= Grid::LowSetup::GridType::CellCount)
+					throw Lua::Exception("GetResourceCoverage(): Invalid location ("+String(stackID)+").");
+				foreach (Grid::Resource::all,r)
+					if (r->GetName() == resourceName)
+					{
+						if (!r->known[stackID])
+							return -1;
+						return r->coverage[stackID];
+					}
+				throw Lua::Exception("GetResourceCoverage(): Resource '"+resourceName+"' does not exist.");
+			}
+		#endif
 		
 		Lua::Reference ToTable(Lua::PProgram&p, const Grid::LCellIdI&cell)
 		{
@@ -73,6 +138,12 @@ namespace Lua
 	void DefineGeneralAPI(Lua::Table&api)
 	{
 		api.SetFunction("Log",Detail::LogLua);
+		#ifdef CLIENT
+			api.SetFunction("FindHighestAvailableResourceLocation",Detail::FindHighestAvailableResourceLocation);
+			api.SetFunction("GetResourceCoverage",Detail::GetResourceCoverage);
+			api.SetFunction("GetCompoundResourceChange",Detail::GetCompoundResourceChange);
+			api.SetFunction("GetCompoundResourceStorage",Detail::GetCompoundResourceStorage);
+		#endif
 
 		#ifdef LOWER_RESOLUTION_PLANET
 			api.SetField("LowerResolutionPlanet",true);
@@ -114,6 +185,35 @@ namespace Lua
 		t.SetField("maxHealth",e->GetMaxHealth());
 		t.SetField("empDamageLevel",e->empDamageLevel);
 		t.SetField("scanningRange",e->GetScanningRange());
+		if (e->IsWorkingStructure())
+		{
+			t.SetField("isWorkingStructure",true);
+			t.SetField("isEnabled",To<Objects::WorkingStructure>::Cast(e)->IsEnabled());
+			t.SetFunction("Enable", (std::function<void(bool)>) [e](bool doEnable)
+			{
+				#ifdef CLIENT
+					ApplicationInterface::SignalEnableStructure(*To<Objects::WorkingStructure>::Cast(e),doEnable);
+				#else
+					float t= 0;
+					To<Objects::WorkingStructure>::Cast(e)->SetEnabled(doEnable, t);
+				#endif
+			});
+		}
+		else
+			t.SetField("isWorkingStructure",false);
+
+		auto prod = e->CastToProducer();
+		t.SetField("isMobileEntityProducer",prod != nullptr);
+		if (prod)
+		{
+			Lua::Table queue = p->CreateTable();
+			foreach (prod->queue,w)
+			{
+				queue.AppendElement(w->GetName());
+			}
+			t.SetField("productionQueue",queue);
+		}
+
 
 		float zOffset;
 		const auto base = e->GetTurretBase(zOffset);

@@ -1255,7 +1255,7 @@
 			/*
 				Renders in viewport -1 to +1
 			*/
-			void						Render()
+			void						RenderCommands()
 			{
 				//static int2 lastMouse;
 				float flashOpacity = 	((UINT64)floor(Engine::timing.now*2.0))%2;
@@ -1353,7 +1353,10 @@
 					if (wasBefore != hoveringBrief)
 						hoveringWidth = 0;
 				}
+			}
 
+			void	RenderHint()
+			{
 				if (hoveringOver)
 				{
 					//tooltips
@@ -1776,9 +1779,14 @@
 				gauges[i].Set(current.level[i],max.level[i],change.level[i],localCurrent.level[i],0,true);
 		}
 
-		void	Render()
+		void	RenderHint()
 		{
-			HexGrid::Render();
+			HexGrid::RenderHint();
+		}
+
+		void	RenderCommands()
+		{
+			HexGrid::RenderCommands();
 			//if (!Objects::selectedEntity)
 			//{
 			//	return;

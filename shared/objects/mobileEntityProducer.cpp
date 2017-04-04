@@ -84,6 +84,16 @@ namespace Objects
 		#endif
 	}
 
+	const String&			MobileEntityProducer::WorkItem::GetName() const
+	{
+		#ifdef CLIENT
+			return name;
+		#else
+			return producing->GetTypeName();
+		#endif
+	}
+
+
 	bool					MobileEntityProducer::WorkItem::IsPureVehicle() const
 	{
 		#ifdef CLIENT

@@ -650,7 +650,8 @@ namespace UI
 			/*
 				Renders in viewport -1 to +1
 			*/
-			void						Render();
+			void						RenderCommands();
+			void						RenderHint();
 
 			/**
 			Command visitor function that adds a given command to the grid.
@@ -745,7 +746,8 @@ namespace UI
 		void	Update(TRAFFIC const Objects::ResourceVector&current, const Objects::ResourceVector&max);
 		void	Update(TRAFFIC const Objects::ResourceVector&current, const Objects::ResourceVector&max, const Objects::ResourceVector&change,
 						const Objects::ResourceVector&localCurrent/*, const Objects::ResourceVector&localChange, bool isEnabled*/);
-		void	Render();
+		void	RenderCommands();
+		void	RenderHint();
 		void	Destroy();
 
 
