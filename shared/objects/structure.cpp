@@ -1968,6 +1968,48 @@ namespace Objects
 		}
 	#endif
 
+	/*virtual override*/ void				Laboratory::OnNewConnection(const PStructure&s, UINT32 acrossHighCell, float atTime)
+	{
+		Super::OnNewConnection(s,acrossHighCell,atTime);
+		PLaboratory lab = To<Laboratory>::DynamicCast(s);
+		if (lab)
+			labNeighbors << lab;
+		for (index_t i = 0; i < labNeighbors.Count(); i++)
+			if (labNeighbors[i].expired())
+			{
+				labNeighbors.Erase(i--);
+				LogEvent(EventClass::Preset::internalError,"Removing expired neighbor laboratory");
+			}
+	}
+
+	/*virtual override*/ void				Laboratory::OnConnectionLost(const PStructure&s, UINT32 acrossHighCell, float atTime)
+	{
+		Super::OnConnectionLost(s,acrossHighCell,atTime);
+		PLaboratory lab = To<Laboratory>::DynamicCast(s);
+		for (index_t i = 0; i < labNeighbors.Count(); i++)
+		{
+			if (labNeighbors[i].lock() == lab)
+				labNeighbors.Erase(i--);
+			else
+			if (labNeighbors[i].expired())
+			{
+				labNeighbors.Erase(i--);
+				LogEvent(EventClass::Preset::internalError,"Removing expired neighbor laboratory");
+			}
+		}
+	}
+
+	count_t						Laboratory::GetTotalResearchOutput() const
+	{
+		count_t rs = 0;
+		foreach (labNeighbors, n)
+		{
+			PLaboratory lab = n->lock();
+			if (lab && lab->IsEnabled())
+				rs++;
+		}
+		return 1 + rs/2;
+	}
 
 
 	#ifndef CLIENT
@@ -1976,10 +2018,10 @@ namespace Objects
 		{
 			Super::Tick(vec);
 
-			owner->researchState.Contribute();
+			owner->researchState.Contribute((int)GetTotalResearchOutput());
 		}
 	
-	#ifndef NO_SATELLITES
+		#ifndef NO_SATELLITES
 		/*virtual override*/ void			SkyPort::OnSleepChange(float&t)
 		{
 			Super::OnSleepChange(t);
@@ -2721,6 +2763,7 @@ namespace Objects
 			label.MarkBriefEnd();
 			label << "Laboratories research new components and buildings, or improve their attributes."
 			" Each enabled laboratory contributes 1 research point per round to the currently selected faction research goal."
+			" For each two enabled neighbor laboratories this output is further increased by one."
 			" Research aimed at unlocking new components requires a number of research points to be accumulated."
 			" Research aimed at improvement will continuously improve the selected property, but become increasingly less efficient the further research has progressed."
 			" As a result, research facilities are a continuous construction effort and you will most likely never have enough."
