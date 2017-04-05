@@ -739,6 +739,8 @@ namespace Lua
 		template <typename F>
 			void		SetFunction(const String&name, const F&function)
 			{
+				if (IsEmpty())
+					return;
 				Detail::LibFunction<F>::Push(GetProgram(),function);
 				SetTopField(name);
 			}
