@@ -684,6 +684,7 @@ namespace Lua
 	{
 		typedef Reference	Super;
 		void			SetTopField(const String&name);
+		void			SetTopField(const char*name);
 		void			SetTopElement(index_t at);
 		bool			AppendTopElement();
 		bool			PushField(const String&name) const;
@@ -746,6 +747,8 @@ namespace Lua
 		*/
 		template <typename T>
 			void		SetField(const String&name, const T&value)	{if (IsEmpty()) return; Detail::ParameterT<T>::Push(GetState(),value); SetTopField(name);}
+		template <typename T>
+			void		SetField(const char*name, const T&value)	{if (IsEmpty()) return; Detail::ParameterT<T>::Push(GetState(),value); SetTopField(name);}
 		/**
 		Sets an index element in the local table.
 		Works for primitive values as well as references
@@ -774,6 +777,19 @@ namespace Lua
 		*/
 		template <typename F>
 			void		SetFunction(const String&name, const F&function)
+			{
+				if (IsEmpty())
+					return;
+				Detail::LibFunction<F>::Push(GetProgram(),function);
+				SetTopField(name);
+			}
+
+		/**
+		Inserts a new named C function into the local table.
+		Works for native function pointers, and any version of std::function, but not raw functors (including lambda expressions) atm
+		*/
+		template <typename F>
+			void		SetFunction(const char*name, const F&function)
 			{
 				if (IsEmpty())
 					return;

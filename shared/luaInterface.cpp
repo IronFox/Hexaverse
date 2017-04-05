@@ -1182,8 +1182,7 @@ namespace Lua
 		lua_pop(st,cnt);
 	}
 
-
-	void Table::SetTopField(const String & name)
+	void Table::SetTopField(const char*name)
 	{
 		lua_State*st = GetState();
 		if (!st)
@@ -1192,10 +1191,16 @@ namespace Lua
 		int top = lua_gettop(st);
 		Super::Push();	
 		lua_insert(st,-2);
-		lua_setfield(st,-2,name.c_str());
+		lua_setfield(st,-2,name);
 		lua_pop(st,1);
 
 		ASSERT_EQUAL__(top-1,lua_gettop(st));
+	}
+
+
+	void Table::SetTopField(const String & name)
+	{
+		SetTopField(name.c_str());
 	}
 	
 
