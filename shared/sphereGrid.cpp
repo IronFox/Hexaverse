@@ -1067,6 +1067,11 @@ namespace Grid
 					return n.Get(x,y,z);
 				});
 
+				api.SetFunction("RandomInt",[&random](int min, int max)->int
+				{
+					return random.Next(min,max);
+				});
+
 
 
 				prog->ExecuteFile(PathString("../lua/distributions/"+distribution+".lua"));
