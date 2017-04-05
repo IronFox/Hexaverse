@@ -165,13 +165,14 @@ namespace Lua
 			rs = (float)tmp;
 		}
 
-		inline void GetStacked(const PProgram&st, int addr, int&rs)
-		{
-			long long temp;
-			GetStacked(st,addr,temp);
-			rs = (int)temp;
-		}
 
+		inline void GetStacked(const PProgram&st, int addr, UINT8&rs) {long long temp; GetStacked(st,addr,temp); rs = (UINT8)temp; }
+		inline void GetStacked(const PProgram&st, int addr, UINT16&rs) {long long temp; GetStacked(st,addr,temp); rs = (UINT16)temp; }
+		inline void GetStacked(const PProgram&st, int addr, UINT32&rs) {long long temp; GetStacked(st,addr,temp); rs = (UINT32)temp; }
+		inline void GetStacked(const PProgram&st, int addr, UINT64&rs) {long long temp; GetStacked(st,addr,temp); rs = (UINT64)temp; }
+		inline void GetStacked(const PProgram&st, int addr, INT8&rs) {long long temp; GetStacked(st,addr,temp); rs = (INT8)temp; }
+		inline void GetStacked(const PProgram&st, int addr, INT16&rs) {long long temp; GetStacked(st,addr,temp); rs = (INT16)temp; }
+		inline void GetStacked(const PProgram&st, int addr, INT32&rs) {long long temp; GetStacked(st,addr,temp); rs = (INT32)temp; }
 
 
 		template <typename T, bool PCall>
@@ -776,6 +777,7 @@ namespace Lua
 			{
 				ResetToGlobal(prog,functionName);
 			}
+			/**/		Function(const Reference&ref)	{Super::operator=(ref);}
 			void		operator=(const Reference&ref)	{Super::operator=(ref);}
 
 			void		operator()(args_t...parameters)	const
@@ -803,6 +805,7 @@ namespace Lua
 			{
 				ResetToGlobal(prog,functionName);
 			}
+			/**/		Function(const Reference&ref)	{Super::operator=(ref);}
 			void		operator=(const Reference&ref)	{Super::operator=(ref);}
 
 			return_t	operator()(args_t...parameters)	const
