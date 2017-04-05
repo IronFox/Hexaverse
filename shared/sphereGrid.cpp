@@ -1053,6 +1053,7 @@ namespace Grid
 
 	/*static*/ void Resource::FillAll(Random&random, const String&distribution)
 	{
+		#ifndef CLIENT
 		if (distribution.IsNotEmpty())
 		{
 			try
@@ -1093,9 +1094,12 @@ namespace Grid
 			catch (const Lua::Exception&ex)
 			{
 				LogEvent(EventClass::Preset::configurationError,ex.what());
+				foreach (Resource::all,res)
+					res->FillInternal(random);
 			}
 		}
 		else
+		#endif
 		{
 			foreach (Resource::all,res)
 				res->FillInternal(random);
