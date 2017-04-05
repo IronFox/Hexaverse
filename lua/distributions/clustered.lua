@@ -4,6 +4,8 @@ If chosen, it manages the levels of all resources across the globe.
 
 API:
 void	Game.Log(msg)					Prints any message to Hexaverse log (client or server-private)
+int		Game.RandomInt(int min, int max)		Generates a pseudo random value in the range [min,max]
+float	Game.Simplex(float x, float y, float z)	Samples a raw OpenSimplex noise value for the specified coordinates. The result is in the range [-1,+1], smooth, and semi-normaly distributed
 
 bool	Game.LowerResolutionPlanet		Set to true if the planet has reduced grid resolution (1/4 of cells, each cell twice as high)
 float	Game.UnitScale					Set to a global unit scale corresponding to [Game.LowerResolutionPlanet]. This scale value is to be
@@ -47,8 +49,18 @@ Reference numbers are:
 12 should be the absolute maximum. For Uranium the maximum should be no more than 6
 ]]
 function Compute()
+	local rs = {};
+	rs.Minerals = {};
+	rs.Fuel = {};
+	rs.Uranium = {};
 	
+	for i=1,#Game.lowCells do
+		rs.Minerals[i] = Game.RandomInt(3,12);
+		rs.Fuel[i] = Game.RandomInt(3,12);
+		rs.Uranium[i] = Game.RandomInt(3,12);
+	end;
 
+	return rs;
 end;
 
 
