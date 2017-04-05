@@ -1026,6 +1026,7 @@ namespace Reflection
 					MapConfig(Grid::currentPlanetConfig.mountains,mountains);
 
 					state.EnterNewFolder("Resources")->attachment = persistenceAttachment;
+						Variable::SetStringReference("distribution",Grid::currentCustomResourceDistribution,Variable::Persistence::PlanetConfig);
 						for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
 						{
 							Objects::Resource res = Objects::Resource::Reinterpret(i);

@@ -95,6 +95,12 @@
 					<variable name="outline" default="Unknown" />
 				</context>
 				<context name="Resources">
+					<variable name="distribution" default="">
+						Sets a custom Lua resource destribution script.
+						Set to '' to use the internal distribution script.
+						Any non-empty string X implies that [installDir]\lua\distributions\X.lua exists and is a valid Lua script.
+						If the required script does not exist or cannot be executed, then the internal program is used instead, which uses the specified density and max values.
+					</variable>
 					<context name="Fuel">
 						<variable name="density" default="0.04" />
 						<variable name="max" default="12" />
