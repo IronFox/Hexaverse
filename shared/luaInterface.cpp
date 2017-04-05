@@ -1569,6 +1569,7 @@ namespace Lua
 		Table rs;
 		lua_createtable(state,0,0);
 		ASSERT__(rs.ResetFromStack(shared_from_this(),-1));
+		lua_pop(state,1);
 		return rs;
 	}
 
