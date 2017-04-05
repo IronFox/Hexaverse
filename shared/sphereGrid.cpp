@@ -57,6 +57,8 @@ namespace Grid
 
 	#endif
 		TPlanetConfig	currentPlanetConfig;
+		String			currentCustomResourceDistribution="clustered";
+
 
 	#ifdef HAS_WINDOW
 		/*static*/ const float4 WaterCompiler::waterColor = float4(0.5f, 0.6f, 1.f,0.6f);
@@ -1048,10 +1050,39 @@ namespace Grid
 	//}
 
 
-	/*static*/ void Resource::FillAll(Random&random)
+	/*static*/ void Resource::FillAll(Random&random, const String&distribution)
 	{
-		foreach (Resource::all,res)
-			res->Fill(random);
+		if (distribution.IsNotEmpty())
+		{
+			try
+			{
+				Lua::PProgram prog = Lua::Program::Create();
+				prog->ExecuteFile(PathString("../lua/distributions/"+distribution+".lua"));
+
+				Lua::Function<Lua::Table()> compute = prog->RequireGlobal("Compute");
+				Lua::Table result = compute();
+
+				foreach (Resource::all,res)
+				{
+					Lua::Table sub = result.GetField(res->name);
+					if (sub.IsEmpty())
+						throw Lua::Exception("Unable to fetch table for resource '"+res->name+"' in response from "+distribution+".lua : Compute()");
+					if (sub.GetLength() != LowSetup::GridType::CellCount)
+						throw Lua::Exception("Response size of "+distribution+".lua : Compute() for resource '"+res->name+"' ("+String(sub.GetLength())+") does not match expected size "+String(LowSetup::GridType::CellCount));
+					for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
+						res->coverage[i] = sub.GetElement(i+1).GetAs<coverage_t>();
+				}
+			}
+			catch (const Lua::Exception&ex)
+			{
+				LogEvent(EventClass::Preset::configurationError,ex.what());
+			}
+		}
+		else
+		{
+			foreach (Resource::all,res)
+				res->FillInternal(random);
+		}
 	}
 
 	void WorldData::BuildWorld(const ExtendedPlanetConfig&config)
@@ -3398,12 +3429,12 @@ namespace Grid
 	//	rc.Name(name,cname,color);
 	//}
 
-	void Resource::Fill(Random&random)
+	void Resource::FillInternal(Random&random)
 	{
-		Fill(random,probability[resourceIndex],maximum[resourceIndex], density[resourceIndex]);
+		FillInternal(random,probability[resourceIndex],maximum[resourceIndex], density[resourceIndex]);
 	}
 
-	void Resource::Fill(Random&random,float p0, coverage_t max, float avgPerCell)
+	void Resource::FillInternal(Random&random,float p0, coverage_t max, float avgPerCell)
 	{
 		SimplexNoise n(random.NextSeed());
 		//avgPerCell *= UnitScale;

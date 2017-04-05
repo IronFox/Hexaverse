@@ -327,7 +327,7 @@ namespace World
 		Grid::currentPlanetConfig.RandomizeSeeds(random);
 		Grid::actualWorld.BuildWorld(Grid::currentPlanetConfig);
 		Grid::actualWorld.ExportDiscovered(Grid::initialWorld, Config::worldDiscovery);
-		Grid::Resource::FillAll(random);
+		Grid::Resource::FillAll(random,Grid::currentCustomResourceDistribution);
 		if (Objects::Faction::nexus)
 			Objects::Faction::nexus->currentState = Grid::initialWorld;
 

@@ -112,6 +112,7 @@ namespace Grid
 	#endif
 
 	extern TPlanetConfig	currentPlanetConfig;
+	extern String			currentCustomResourceDistribution;
 	
 
 
@@ -1809,10 +1810,10 @@ namespace Grid
 		}
 		void					Name(const String&name, ConstName cname, const float3&color)	{this->name = name; this->cname = cname; this->color = color;}
 		
-		void					Fill(Random&random, float p, coverage_t, float density);
-		void					Fill(Random&random);
+		void					FillInternal(Random&random, float p, coverage_t, float density);
+		void					FillInternal(Random&random);
 
-		static void				FillAll(Random&random);
+		static void				FillAll(Random&random, const String&distribution);
 
 		const String&			GetName() const {return name;}
 		ConstName				GetCName() const {return cname;}

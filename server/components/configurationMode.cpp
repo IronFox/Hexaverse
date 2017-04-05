@@ -52,7 +52,7 @@ void ConfigurationMode::End()
 	ASSERT__(!Network::server.IsOnline());
 	Network::activePlayersAndSpectators.Clear();
 	Network::spectators.Clear();
-	World::BuildConfiguredWorld(random);
+	World::BuildConfiguredWorld(random, customResourceDistribution);
 
 
 	Network::RestartSession(true);
