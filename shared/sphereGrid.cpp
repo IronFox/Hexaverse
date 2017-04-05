@@ -7,6 +7,7 @@
 #include "objects.h"
 #include "logEvent.h"
 #include "sphereGridHelper.h"
+#include "luaGameAPI.h"
 
 
 #ifdef HAS_WINDOW
@@ -1057,6 +1058,17 @@ namespace Grid
 			try
 			{
 				Lua::PProgram prog = Lua::Program::Create();
+				Lua::Table api = Lua::CreateGeneralAPI(prog);
+				Lua::DefineLowGridCells(api);
+				
+				SimplexNoise n(random.NextSeed());
+				api.SetFunction("Simplex",[&n](double x, double y, double z)->double
+				{
+					return n.Get(x,y,z);
+				});
+
+
+
 				prog->ExecuteFile(PathString("../lua/distributions/"+distribution+".lua"));
 
 				Lua::Function<Lua::Table()> compute = prog->RequireGlobal("Compute");
