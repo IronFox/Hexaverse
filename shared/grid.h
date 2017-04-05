@@ -54,7 +54,7 @@ public:
 					cornerVertexId[6];	//valid through numCorners-1
 		BYTE		numCorners;	//0 for invalid cells, 5 for corner cells, 6 for all other cells
 		UINT32		voffset;	//custom usage, not filled by grid base implementation
-		float3		cornerCenter;		//arithmetic average of all corner vertex locations
+		float3		cornerCenter;		//normalized arithmetic average of all corner vertex locations
 		float		minCornerDistance;	//minimum distance between centerVertex and cornerVertex
 		USHORT		cornerFlags;	//one bit set for each original corner affecting the local cell
 	};
