@@ -27,9 +27,13 @@ Vector
 
 
 
+function Simplex(v--[[vector]],factor)
+	return Game.Simplex(v.x*factor,v.y*factor,v.z*factor);
+end;
 
-
-
+function CellSimplex(cell--[[Cell]],factor)
+	return Simplex(cell.center,factor);
+end;
 
 --[[
 Compute(): Expected to compute the distribution, and return a table of the following composition:
@@ -55,9 +59,13 @@ function Compute()
 	rs.Uranium = {};
 	
 	for i=1,#Game.lowCells do
-		rs.Minerals[i] = Game.RandomInt(3,12);
-		rs.Fuel[i] = Game.RandomInt(3,12);
-		rs.Uranium[i] = Game.RandomInt(3,12);
+		local opacity = CellSimplex(Game.lowCells[i],10)*1.2 - 0.2;
+		if (opacity < 0.25) then
+			opacity = 0;
+		end;
+		rs.Minerals[i] = 12*opacity;
+		rs.Fuel[i] = 0;--Game.RandomInt(3,12)*opacity;
+		rs.Uranium[i] = 0;--Game.RandomInt(3,6)*opacity;
 	end;
 
 	return rs;
