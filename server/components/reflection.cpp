@@ -992,10 +992,12 @@ namespace Reflection
 		state.EnterNewFolder("World")->attachment = persistenceAttachment;
 			VAR(simulateLiquids,World::Config,false,true,Variable::Persistence::RestoreFromSavegame);
 			ENUMVAR(worldDiscovery,World::Config,Variable::Persistence::PlanetConfig);
+			Variable::SetStringReference("resourceDistribution",Grid::currentCustomResourceDistribution,Variable::Persistence::PlanetConfig);
 
 
 			state.EnterNewFolder("Planet")->attachment = persistenceAttachment;
 				Variable::planetType = Variable::SetString("Type","LushGreen",Variable::Persistence::PlanetConfig);
+
 				state.EnterNewFolder("Config")->attachment.reset(new Variable::FileReferenceAttachment("config/myPlanets",Variable::planetType,FeedMode::IgnoreIfMissing));
 				{
 					/*
@@ -1026,7 +1028,6 @@ namespace Reflection
 					MapConfig(Grid::currentPlanetConfig.mountains,mountains);
 
 					state.EnterNewFolder("Resources")->attachment = persistenceAttachment;
-						Variable::SetStringReference("distribution",Grid::currentCustomResourceDistribution,Variable::Persistence::PlanetConfig);
 						for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
 						{
 							Objects::Resource res = Objects::Resource::Reinterpret(i);

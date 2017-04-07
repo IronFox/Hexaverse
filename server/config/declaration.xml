@@ -17,6 +17,12 @@
 			&apos;Liquids&apos; will expose all liquids in general (currently water and lava).
 			&apos;FullTerrain&apos; exposes all initial terrain information to all clients (excluding terrain modifications caused by subsequent changes, e.g. nexus base construction).
 		</variable>
+		<variable name="resourceDistribution" default="">
+			Sets a custom Lua resource destribution script.
+			Set to '' to use the internal distribution script.
+			Any non-empty string X implies that [installDir]\lua\distributions\X.lua exists and is a valid Lua script.
+			If the required script does not exist or cannot be executed, then the internal program is used instead, which uses the planet-specific density and max values.
+		</variable>
 		<context name="Planet">
 			<variable name="Type" default="LushGreen">
 				The following defines which planet type to use.
@@ -95,12 +101,6 @@
 					<variable name="outline" default="Unknown" />
 				</context>
 				<context name="Resources">
-					<variable name="distribution" default="">
-						Sets a custom Lua resource destribution script.
-						Set to '' to use the internal distribution script.
-						Any non-empty string X implies that [installDir]\lua\distributions\X.lua exists and is a valid Lua script.
-						If the required script does not exist or cannot be executed, then the internal program is used instead, which uses the specified density and max values.
-					</variable>
 					<context name="Fuel">
 						<variable name="density" default="0.04" />
 						<variable name="max" default="12" />
