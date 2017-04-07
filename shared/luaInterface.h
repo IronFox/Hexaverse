@@ -166,10 +166,10 @@ namespace Lua
 		}
 
 
-		inline void GetStacked(const PProgram&st, int addr, UINT8&rs) {long long temp; GetStacked(st,addr,temp); rs = (UINT8)temp; }
-		inline void GetStacked(const PProgram&st, int addr, UINT16&rs) {long long temp; GetStacked(st,addr,temp); rs = (UINT16)temp; }
-		inline void GetStacked(const PProgram&st, int addr, UINT32&rs) {long long temp; GetStacked(st,addr,temp); rs = (UINT32)temp; }
-		inline void GetStacked(const PProgram&st, int addr, UINT64&rs) {long long temp; GetStacked(st,addr,temp); rs = (UINT64)temp; }
+		inline void GetStacked(const PProgram&st, int addr, UINT8&rs) {long long temp; GetStacked(st,addr,temp); rs = (UINT8)std::max(temp,0LL); }
+		inline void GetStacked(const PProgram&st, int addr, UINT16&rs) {long long temp; GetStacked(st,addr,temp); rs = (UINT16)std::max(temp,0LL); }
+		inline void GetStacked(const PProgram&st, int addr, UINT32&rs) {long long temp; GetStacked(st,addr,temp); rs = (UINT32)std::max(temp,0LL); }
+		inline void GetStacked(const PProgram&st, int addr, UINT64&rs) {long long temp; GetStacked(st,addr,temp); rs = (UINT64)std::max(temp,0LL); }
 		inline void GetStacked(const PProgram&st, int addr, INT8&rs) {long long temp; GetStacked(st,addr,temp); rs = (INT8)temp; }
 		inline void GetStacked(const PProgram&st, int addr, INT16&rs) {long long temp; GetStacked(st,addr,temp); rs = (INT16)temp; }
 		inline void GetStacked(const PProgram&st, int addr, INT32&rs) {long long temp; GetStacked(st,addr,temp); rs = (INT32)temp; }
