@@ -620,7 +620,7 @@ namespace Objects
 		globalState.rootResearch.Clear();
 		globalState.allTopics.Clear();
 
-		globalState.researchProgram = Lua::Program::Create();
+		globalState.researchProgram = Lua::Program::Create("Research");
 		ASSERT__(globalState.researchProgram);
 		{
 			Lua::Table api = Lua::CreateGeneralAPI(globalState.researchProgram);

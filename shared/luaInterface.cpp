@@ -1389,12 +1389,12 @@ namespace Lua
 	}
 
 
-	/*static*/ PProgram Program::Create()
+	/*static*/ PProgram Program::Create(const String&name)
 	{
 		lua_State*st = luaL_newstate();
 		if (!st)
-			throw Exception("Unable to create new Lua program");
-		PProgram rs(new Program(st));
+			throw Exception("Unable to create new Lua program '"+name+"'. Unknown reason. Out of memory?");
+		PProgram rs(new Program(st,name));
 		lua_atpanic(st, &Detail::Panic);
 
 		static const luaL_Reg loadedlibs[] = {
@@ -1712,7 +1712,7 @@ void Lua::Detail::PopStacked(lua_State*st)
 int LuaRun (int argc, const char *argv[]) {
 
 
-	Lua::PProgram prog = Lua::Program::Create();
+	Lua::PProgram prog = Lua::Program::Create("Test");
 	ASSERT__(prog);
 
 	{

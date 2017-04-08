@@ -465,20 +465,22 @@ namespace Lua
 	class Program : public std::enable_shared_from_this<Program>
 	{
 		lua_State		*const state;
+		const String	name;
 
-		/**/			Program(lua_State*st):state(st)	{}
+		/**/			Program(lua_State*st, const String&name):state(st),name(name)	{}
 
 	public:
 		/**/			Program() = delete;
 		/**/			Program(const Program&) = delete;
 		/**/			~Program();
 		void			operator=(const Program&) = delete;
+		const String&	GetName() const {return name;}
 
 		/**
 		Creates a new instance.
 		@return new object on success. An empty results indicates a Lua error (most likely insufficient memory)
 		*/
-		static PProgram	Create();
+		static PProgram	Create(const String&name);
 		/**
 		Fetches the internal lua state. Never NULL
 		*/
