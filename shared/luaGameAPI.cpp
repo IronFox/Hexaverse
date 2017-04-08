@@ -8,9 +8,9 @@ namespace Lua
 {
 	namespace Detail
 	{
-		void LogLua(const String&msg)
+		void LogLua(const String&msg, const String&programName)
 		{
-			LogEvent(EventClass::Preset::important,"Lua: "+msg);
+			LogEvent(EventClass::Preset::important,programName+"(Lua): "+msg);
 		}
 
 		#ifdef CLIENT
@@ -148,7 +148,8 @@ namespace Lua
 
 	void DefineGeneralAPI(Lua::Table&api)
 	{
-		api.SetFunction("Log",Detail::LogLua);
+		String name = api.GetProgram()->GetName();
+		api.SetFunction("Log", [name](const String&msg){Detail::LogLua(msg,name);});
 		#ifdef CLIENT
 			api.SetFunction("FindHighestAvailableResourceLocation",Detail::FindHighestAvailableResourceLocation);
 			api.SetFunction("GetResourceCoverage",Detail::GetResourceCoverage);
@@ -166,6 +167,8 @@ namespace Lua
 
 	Lua::Table CreateGeneralAPI(const Lua::PProgram&p)
 	{
+		if (!p)
+			return Lua::Table();
 		Lua::Table api = p->CreateTable();
 		DefineGeneralAPI(api);
 		api.SetGlobal("Game");
