@@ -67,7 +67,7 @@ namespace Grid
 		//ASSERT__(layer < 1000.f);
 		return height * SingleLayerHeight + VerticalBase;
 	}
-	inline float FromRadiusf(float radius)
+	inline float HeightFromRadiusf(float radius)
 	{
 		return (radius - VerticalBase) / SingleLayerHeight;
 
@@ -78,15 +78,15 @@ namespace Grid
 		return ToRadiusf(height);
 	}
 
-	inline int FromRadius(float radius)
+	inline int HeightFromRadius(float radius)
 	{
-		return (int)M::Round(FromRadiusf(radius));
+		return (int)M::Round(HeightFromRadiusf(radius));
 	}
 
 
-	inline int FloorFromRadius(float radius)
+	inline int HeightFloorFromRadius(float radius)
 	{
-		return (int)floor(FromRadiusf(radius));
+		return (int)floor(HeightFromRadiusf(radius));
 	}
 
 

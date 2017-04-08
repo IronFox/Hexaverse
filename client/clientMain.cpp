@@ -2218,7 +2218,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 					index_t stackID = Grid::low.TestGridIntersection(b, d, height, distance);
 					if (stackID != InvalidIndex)
 					{
-						result = Grid::LCellIdI((UINT32)stackID,Grid::FromRadius(height));
+						result = Grid::LCellIdI((UINT32)stackID,Grid::HeightFromRadius(height));
 
 						#ifdef _DEBUG
 							Debug::lastClickCell = result;
@@ -2334,24 +2334,24 @@ void MyFatal(const FatalDescriptor&descriptor)
 									if (Vec::dot(d, normal) > 0.5f)	//flat selection
 									{
 										stackID = Grid::high.Locate(d);
-										h = Grid::FromRadius(r);
+										h = Grid::HeightFromRadius(r);
 									}
 									else
 									{
 										stackID = Grid::high.Locate(d + normal*0.001f);
-										h = Grid::FloorFromRadius(r);
+										h = Grid::HeightFloorFromRadius(r);
 									}
 								}
 								else
 									if (Vec::dot(d, normal) > 0.5f)	//flat selection
 									{
 										stackID = Grid::high.Locate(d);
-										h = int(floor(Grid::FromRadiusf(r)-0.5f));
+										h = int(floor(Grid::HeightFromRadiusf(r)-0.5f));
 									}
 									else
 									{
 										stackID = Grid::high.Locate(d - normal*0.01f);
-										h = Grid::FloorFromRadius(r);
+										h = Grid::HeightFloorFromRadius(r);
 									}
 								String activity = "build";
 								if (Objects::CommonCmd::IsModeActive(Objects::CursorMode::RemoveBlockMode))
@@ -2403,7 +2403,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 								index_t stackID = Grid::low.TestGridIntersection(b, d, height, distance);
 								if (stackID != InvalidIndex)
 								{
-									Grid::LCellIdI	target((UINT32)stackID,Grid::FromRadius(height));
+									Grid::LCellIdI	target((UINT32)stackID,Grid::HeightFromRadius(height));
 									if (target.height < Grid::CellStack::HalfRange && target.height >= -Grid::CellStack::HalfRange)
 									{
 										Objects::PWorldEntity e = Objects::GetEntity(target);

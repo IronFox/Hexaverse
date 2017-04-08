@@ -22,7 +22,7 @@ namespace Objects
 	{
 		radius = Vec::length(worldLocation);
 		cellLocation.stackID = Grid::low.Locate(worldLocation,0);
-		cellLocation.height = (Grid::FloorFromRadius(radius));
+		cellLocation.height = (Grid::HeightFloorFromRadius(radius));
 		this->worldLocation = worldLocation;
 
 	//	LogEvent(EventSignificance::Uncommon,"from world: "+ToString());
@@ -581,7 +581,7 @@ namespace Objects
 //				outSteps << float4(b,fy);
 
 				cellAt = Grid::high.Locate(b,cellAt);
-				int h = (Grid::FloorFromRadius(fy));
+				int h = (Grid::HeightFloorFromRadius(fy));
 				if (world.cellStack[cellAt].GetCellI(h).IsOccupied())
 				{
 					float3 impactAt = b * (fy);
@@ -676,7 +676,7 @@ namespace Objects
 					outSteps << float4(b,fy);
 
 					cellAt = Grid::high.Locate(b,cellAt);
-					int h = (Grid::FloorFromRadius(fy));
+					int h = (Grid::HeightFloorFromRadius(fy));
 					if (actualWorld.cellStack[cellAt].GetCellI(h).IsOccupied())
 					{
 						impactAt = b * (fy);
@@ -735,7 +735,7 @@ namespace Objects
 				outSteps << float4(b,fy);
 
 				cellAt = Grid::high.Locate(b,cellAt);
-				int h = (Grid::FloorFromRadius(fy));
+				int h = (Grid::HeightFloorFromRadius(fy));
 				if (world.cellStack[cellAt].GetCellI(h).IsOccupied())
 				{
 					impactAt = b * (fy);
