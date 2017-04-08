@@ -1058,7 +1058,7 @@ namespace Grid
 		{
 			try
 			{
-				Lua::PProgram prog = Lua::Program::Create();
+				Lua::PProgram prog = Lua::Program::Create("Resources");
 				Lua::Table api = Lua::CreateGeneralAPI(prog);
 				Lua::DefineLowGridCells(api);
 				
@@ -1074,11 +1074,13 @@ namespace Grid
 				});
 
 
-
+				LogEvent(EventClass::Preset::configurationPrint,"Executing resource distribution program '"+distribution+"'");
+				Timer::Time t0 = timer.Now();
 				prog->ExecuteFile(PathString("../lua/distributions/"+distribution+".lua"));
 
 				Lua::Function<Lua::Table()> compute = prog->RequireGlobal("Compute");
 				Lua::Table result = compute();
+				LogEvent(EventClass::Preset::configurationPrint,"'"+distribution+"' took "+timer.GetSecondsSince(t0)+" seconds");
 
 				foreach (Resource::all,res)
 				{
@@ -1094,6 +1096,7 @@ namespace Grid
 			catch (const Lua::Exception&ex)
 			{
 				LogEvent(EventClass::Preset::configurationError,ex.what());
+				LogEvent(EventClass::Preset::configurationPrint,"Falling back to internal distribution");
 				foreach (Resource::all,res)
 					res->FillInternal(random);
 			}
