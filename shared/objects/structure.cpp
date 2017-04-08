@@ -840,6 +840,13 @@ namespace Objects
 
 	#endif
 
+
+	/*virtual override*/ float3				Tower::GetScanningCenter(const Grid::LCellIdI&loc) const
+	{
+		return Grid::low.cells[loc.stackID].centerVertex.xyz * Grid::ToRadiusf(1.5f + loc.height);
+	}
+
+
 	bool	Tower::setup = false;
 	/*virtual override*/	void			Tower::PrototypeSetup()
 	{

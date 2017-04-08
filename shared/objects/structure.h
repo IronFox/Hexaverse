@@ -1693,6 +1693,8 @@ namespace Objects
 			virtual void			ClearSafeTasks() override	{this->ClearTasks();};
 		#endif
 		virtual bool				IsTower() const override {return true;}
+		virtual float3				GetScanningCenter(const Grid::LCellIdI&loc) const override;
+
 		//virtual float				GetScanningRange() const override;
 		//virtual String				DescribeScanningRange() const override;
 		//virtual int					GetMaxHealth() const override;

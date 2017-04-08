@@ -277,6 +277,11 @@ namespace Objects
 		return cache.maxScanningRange.GetEMPModified(*this,GetTable()->maxScanningRange);
 	}
 
+	/*virtual*/ float3		WorldEntity::GetScanningCenter(const Grid::LCellIdI&loc) const
+	{
+		return Grid::low.cells[loc.stackID].centerVertex.xyz * Grid::ToRadiusf(0.5f + loc.height);
+	}
+
 	/*virtual*/ int			WorldEntity::GetConstructionCost() const
 	{
 		return cache.constructionCost.Get(GetResearchState(), GetTable()->constructionCost,Component::IFunc(),1);
@@ -476,17 +481,6 @@ namespace Objects
 	
 
 	#ifdef CLIENT
-		/*virtual*/ void WorldEntity::RegisterWorldSensory(const Grid::HighSetup::TVolumeDescriptor&desc)
-		{
-			Grid::actualWorld.InsertSensor(desc);
-
-		}
-
-		/*virtual*/ void WorldEntity::UnregisterWorldSensory(const Grid::HighSetup::TVolumeDescriptor&desc)
-		{
-			Grid::actualWorld.RemoveSensor(desc);
-		}
-
 		void					WorldEntity::MoveSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to, float&atTime, bool checkChangesNow/*=true*/)
 		{
 			if (from == to)
@@ -511,9 +505,10 @@ namespace Objects
 		#ifdef CLIENT
 			if (isOwnedByMe)
 			{
-				Grid::HighSetup::TVolumeDescriptor desc;
-				Grid::high.GenerateVolume(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),desc);
-				RegisterWorldSensory(desc);
+				//Grid::HighSetup::TVolumeDescriptor desc;
+				//Grid::high.GenerateVolume(,desc);
+				Grid::actualWorld.InsertSensor(Sphere<>(GetScanningCenter(loc),GetScanningRange()));
+				//RegisterWorldSensory(desc);
 				#ifdef THOROUGLY_DEBUG_SENSORY
 					VerifySensory();
 				#endif
@@ -535,9 +530,10 @@ namespace Objects
 		#ifdef CLIENT
 			if (isOwnedByMe)
 			{
-				Grid::HighSetup::TVolumeDescriptor desc;
-				Grid::high.GenerateVolume(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),desc);
-				UnregisterWorldSensory(desc);
+				//Grid::HighSetup::TVolumeDescriptor desc;
+				//Grid::high.GenerateVolume(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),desc);
+				//UnregisterWorldSensory(desc);
+				Grid::actualWorld.RemoveSensor(Sphere<>(GetScanningCenter(loc),GetScanningRange()));
 				#ifdef THOROUGLY_DEBUG_SENSORY
 					VerifySensory();
 				#endif

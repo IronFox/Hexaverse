@@ -428,6 +428,7 @@ namespace Objects
 		Currently this is overridden by MobileEntity, Vehicle, and Tower
 		*/
 		virtual float				GetScanningRange() const;
+		virtual float3				GetScanningCenter(const Grid::LCellIdI&loc) const;
 		/**
 		Explicitly describes how the scanning range is computed (only has to explicitly name research, not EMP, but has to include EMP in the resulting numbers)
 		*/
@@ -535,9 +536,6 @@ namespace Objects
 		virtual void			UnregisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true);
 		#ifdef CLIENT
 			void				MoveSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to, float&atTime, bool checkChangesNow=true);
-			virtual void		RegisterWorldSensory(const Grid::HighSetup::TVolumeDescriptor&);
-			virtual void		UnregisterWorldSensory(const Grid::HighSetup::TVolumeDescriptor&);
-			//virtual void		MoveWorldSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to);
 		#else
 			virtual void		MoveSensoryToCurrentLocation(const Grid::LCellIdI&oldLocation, float&atTime, bool checkChangesNow=true, Buffer0<PWorldEntity>*newContacts = nullptr);
 

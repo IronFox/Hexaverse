@@ -4574,7 +4574,16 @@ namespace Grid
 				return true;
 		return false;
 	}
+	
 
+	void		WorldData::ChangeSensorCoverage(const Sphere<>&state, signed char change)
+	{
+		bool familyChanged[BaseGrid::NumFamilies] = {false};
+		TemplateHelper::ChangeSensory(state.center,state.radius,change,cellStack.pointer(),familyChanged);
+		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
+			if (familyChanged[i])
+				Grid::high.family[i].SetOutdated(0);
+	}
 
 	void		WorldData::ChangeSensorCoverage(const HighSetup::TVolumeDescriptor&state, signed char change)
 	{
@@ -4668,6 +4677,16 @@ namespace Grid
 		#else
 			return true;
 		#endif
+	}
+
+	void				WorldData::InsertSensor(const Sphere<>&desc)
+	{
+		ChangeSensorCoverage(desc,1);
+	}
+
+	void				WorldData::RemoveSensor(const Sphere<>&desc)
+	{
+		ChangeSensorCoverage(desc,-1);
 	}
 
 	void				WorldData::InsertSensor(const HighSetup::TVolumeDescriptor&desc)

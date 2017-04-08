@@ -355,7 +355,7 @@ namespace Grid
 					BYTE	dbgVisibility;	//used to check visibility visualization is correct
 				#endif
 			#endif
-
+			BYTE	user=0;
 
 			static const count_t TypeCount = 13;
 
@@ -1204,6 +1204,20 @@ namespace Grid
 			}
 		}
 
+		void			VisitNeighborsOf(const typename GridType::CellIdU&center, const std::function<void(const typename GridType::CellIdU&)>&visitor) const
+		{
+			const auto&n = grid.GetCell(center.stackID).neighborhood;
+			if (center.layer > 0)
+				for (BYTE k = 0; k < n.numNeighbors; k++)
+					visitor(typename GridType::CellIdU(n.neighborID[k],center.layer-1));
+
+			if (center.layer+1 < CellStack::Range)
+				for (BYTE k = 0; k < n.numNeighbors; k++)
+					visitor(typename GridType::CellIdU(n.neighborID[k],center.layer+1));
+			for (BYTE k = 0; k < n.numNeighbors; k++)
+				visitor(typename GridType::CellIdU(n.neighborID[k],center.layer));
+		}
+
 
 		UINT32			Locate(const TVec3<>&v, UINT32 startID = 0)	const
 		{
@@ -1344,42 +1358,42 @@ namespace Grid
 	
 
 
-		void	GenerateVolume(const Sphere<>&sphere,TVolumeDescriptor&volume) const
-		{
-			static TVolumeDescriptor::Operator op;
-			volume.Clear();
-			UINT32 centerStack = Locate(sphere.center);
-			op.stacksLeft << centerStack;
+		//void	GenerateVolume(const Sphere<>&sphere,TVolumeDescriptor&volume) const
+		//{
+		//	static TVolumeDescriptor::Operator op;
+		//	volume.Clear();
+		//	UINT32 centerStack = Locate(sphere.center);
+		//	op.stacksLeft << centerStack;
 
-			const float br = ToRadius(CellStack::BottomHeight);
-			const float tr = ToRadius(CellStack::TopHeight);
-			UINT32 next;
-			while (op.stacksLeft >> next)
-			{
-				if (op.stackVisited[next])
-					continue;
-				op.stackVisited[next] = true;
-				const TVec3<>&dir = cells[next].cornerCenter;
-				TVec2<> distances;
-				TVec3<> bottom,top;
-				Vec::mult(dir,br,bottom);
-				Vec::mult(dir,tr,top);
-				TVolumeDescriptor::TStack&st = volume.coverage.Append();
-				st.stackID = next;
-				if (!Obj::DetectSphereEdgeIntersection(sphere.center,sphere.radius,bottom,top,distances))
-				{
-					st.range.SetEmpty(0);
-					continue;
-				}
-			
-				st.range.start = (UINT32)floor(std::max(distances.x,0.f) * (CellStack::Range-1));
-				st.range.end = 1 + (UINT32)ceil(std::min(distances.y,1.f) * (CellStack::Range-1));
-				const auto&n = grid.GetCell(next).neighborhood;
-				for (int i = 0; i < n.numNeighbors; i++)
-					op.stacksLeft << n.neighborID[i];
-			}
-			op.ResetVisited(volume);
-		}
+		//	const float br = ToRadius(CellStack::BottomHeight);
+		//	const float tr = ToRadius(CellStack::TopHeight);
+		//	UINT32 next;
+		//	while (op.stacksLeft >> next)
+		//	{
+		//		if (op.stackVisited[next])
+		//			continue;
+		//		op.stackVisited[next] = true;
+		//		const TVec3<>&dir = cells[next].cornerCenter;
+		//		TVec2<> distances;
+		//		TVec3<> bottom,top;
+		//		Vec::mult(dir,br,bottom);
+		//		Vec::mult(dir,tr,top);
+		//		TVolumeDescriptor::TStack&st = volume.coverage.Append();
+		//		st.stackID = next;
+		//		if (!Obj::DetectSphereEdgeIntersection(sphere.center,sphere.radius,bottom,top,distances))
+		//		{
+		//			st.range.SetEmpty(0);
+		//			continue;
+		//		}
+		//	
+		//		st.range.start = (UINT32)floor(std::max(distances.x,0.f) * (CellStack::Range-1));
+		//		st.range.end = 1 + (UINT32)ceil(std::min(distances.y,1.f) * (CellStack::Range-1));
+		//		const auto&n = grid.GetCell(next).neighborhood;
+		//		for (int i = 0; i < n.numNeighbors; i++)
+		//			op.stacksLeft << n.neighborID[i];
+		//	}
+		//	op.ResetVisited(volume);
+		//}
 
 		#ifdef HAS_WINDOW
 			void		Compile(const Array<CellStack>&stacks, THull<TerrainVertex>&solid, THull<OverlayVertex>&cover, index_t offset, count_t count, FClipHeight clipHeight)
@@ -2067,6 +2081,7 @@ namespace Grid
 			{
 				short	visibility;
 				bool	oldVisible, temporarilyVisible;
+				BYTE	user=0;
 
 				#ifdef HAS_WINDOW
 					TVisibility	GetVisibility() const {return TVisibility(visibility>0);}
@@ -2342,7 +2357,9 @@ namespace Grid
 			void				SignalLightingChange(const LCellIdI&cellID);
 		#endif
 		void					InsertSensor(const HighSetup::TVolumeDescriptor&desc);
+		void					InsertSensor(const Sphere<>&);
 		void					RemoveSensor(const HighSetup::TVolumeDescriptor&desc);
+		void					RemoveSensor(const Sphere<>&);
 
 		void					InsertSensorCoverage(const SkySensorState&);
 		void					RemoveSensorCoverage(const SkySensorState&);
@@ -2354,6 +2371,7 @@ namespace Grid
 
 		private:
 			void				ChangeSensory(const LCellIdI&center, float radius, signed char change);
+			void				ChangeSensorCoverage(const Sphere<>&,signed char change);
 			void				ChangeSensorCoverage(const SkySensorState&,signed char change);
 			void				ChangeSensorCoverage(const HighSetup::TVolumeDescriptor&state, signed char change);
 	};
