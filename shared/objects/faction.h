@@ -232,7 +232,7 @@ namespace Objects
 
 
 			Grid::WorldData			currentState;
-			Grid::VisibilityState	visibility;
+			Grid::SensorCoverage	visibility;
 
 			count_t				nexusControl,
 								acquiringNexusControl;

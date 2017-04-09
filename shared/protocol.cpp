@@ -46,7 +46,7 @@ namespace Protocol
 		}
 
 
-	void			GenerateWorldDelta(Grid::VisibilityState*vs, Grid::WorldData*ws, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, WorldDeltaType::delta_type_t deltaType)
+	void			GenerateWorldDelta(Grid::SensorCoverage*vs, Grid::WorldData*ws, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, WorldDeltaType::delta_type_t deltaType)
 	{
 		const index_t offset = Grid::high.grid.GetFamilyOffset(familyID);
 		const count_t length = Grid::high.grid.CountFamilyMembers(familyID);

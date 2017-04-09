@@ -1,5 +1,5 @@
 #include <global_root.h>
-#include "grid.h"
+#include "base.h"
 #include <math/complex.h>
 
 /*static*/ UINT32			BaseGrid::IsolatedCornerIndex[IsolatedCornerCount];

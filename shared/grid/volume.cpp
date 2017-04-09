@@ -1,13 +1,13 @@
 #include <global_root.h>
-#include "sphereGrid.h"
+#include "volume.h"
 #ifdef HAS_WINDOW
 	#include <engine/display.h>
 #endif
 
-#include "objects.h"
-#include "logEvent.h"
-#include "sphereGridHelper.h"
-#include "luaGameAPI.h"
+#include "../objects.h"
+#include "../logEvent.h"
+//#include "../sphereGridHelper.h"
+#include "../luaGameAPI.h"
 
 
 #ifdef HAS_WINDOW
@@ -61,10 +61,6 @@ namespace Grid
 		String			currentCustomResourceDistribution="clustered";
 
 
-	#ifdef HAS_WINDOW
-		/*static*/ const float4 WaterCompiler::waterColor = float4(0.5f, 0.6f, 1.f,0.6f);
-	#endif
-	
 	static_assert(CellStack::Cell::TypeCount == Content::NumberOfPossibilities, "Adjust type count");
 
 	/*static*/ float3	CellStack::Cell::typeColor[TypeCount] =
@@ -170,7 +166,7 @@ namespace Grid
 		return ToHeight(h);
 	}
 
-	#ifdef HAS_WINDOW
+	#ifdef 0
 
 
 		TLitColor			CellStack::GetColorU(unsigned layer, Cell::Content oppositeContent, bool&mixes, Cell::Content&outType) const
@@ -291,49 +287,18 @@ namespace Grid
 
 
 	
-		static DX11::Texture			lineTex;
-		static DX11::Shader				gridShader,transparentGridShader;// , blockShader;
 	#endif
 
 	HighSetup			high;
 	LowSetup			low;
-
-	WorldData			actualWorld;
-	#ifndef CLIENT
-		WorldData		initialWorld;
-	#endif
 	
 	#ifdef VOXEL_SCANNER
 		Array<LowCellStack>	lowCellStack;
 	#endif
 
 
-	#ifdef HAS_WINDOW
-		namespace Instruction
-		{	
-			float4	lastColor;
-			displayMode_t				displayMode = NormalRendering;
-			DX11::BaseInstructionBlock	terrainBase, terrainSphereBase, terrainParaboloidBase,
-										orbitGridBase,
-										terrainShadowBase, 
-										waterBase, waterSphereBase, waterParaboloidBase,
-										overlayBase, 
-										overlayShadowBase, resourceBase;// , terrainEdgeBase;
 
-			DX11::ObjectBuffer<float4>	ParaboloidDirection_Height,SphereDef,SphereColor;
-			DX11::ObjectBuffer<float4>	ParaboloidColor_FlatRadius;
-
-			DX11::ObjectBuffer<VecN<float,8> > atmosphereConfig;
-			DX11::ObjectBuffer<float4> sunDirection,sunColor;
-
-			DX11::ObjectBuffer<THeightMapOrientation>	heightMapOrientation;	//used for lava
-			DX11::Texture								cubeHeightMap;	//used for lava
-
-
-		}
-	#endif
-
-	/*static*/ CellStack::Cell	CellStack::bottom(CellStack::Cell::Content::Granite, 0,1), CellStack::top(CellStack::Cell::Content::Clear, 255,1);	//extremes below the bottom most, and above the top most
+	/*static*/ CellStack::Cell	CellStack::bottom(CellStack::Cell::Content::Granite, 0), CellStack::top(CellStack::Cell::Content::Clear, 255);	//extremes below the bottom most, and above the top most
 
 
 	const CellStack::Cell&		CellStack::GetCellU(unsigned layer)	const
@@ -407,14 +372,14 @@ namespace Grid
 			return rs;
 		}
 
-		float	CellStack::Cell::GetWaterLightLevel() const
-		{
-			#ifdef DEBUG_HIDE_SENSORY
-				return 1.f;
-			#else
-				return float(visible > 0);
-			#endif
-		}
+		//float	CellStack::Cell::GetWaterLightLevel() const
+		//{
+		//	#ifdef DEBUG_HIDE_SENSORY
+		//		return 1.f;
+		//	#else
+		//		return float(visible > 0);
+		//	#endif
+		//}
 
 		void	CellStack::Cell::SetLightLevel(float v)
 		{
@@ -599,9 +564,6 @@ namespace Grid
 				volumeCell[i].submergence = 0;
 			#endif
 
-			#ifdef CLIENT
-				volumeCell[i].visible = 0;
-			#endif
 		}
 		#ifdef HAS_WINDOW
 			lightingChangedTo = Range;
@@ -1690,13 +1652,12 @@ namespace Grid
 		}
 	}
 
-	int						WorldData::TraceSkySensor(UINT32 highCellCenter, int penetration) const
+	UINT32						WorldData::TraceSkySensorLayer(UINT32 highCellCenter, UINT32 startingLayer, int penetration) const
 	{
 		int penetrationLeft = penetration << 1;	//account for water effect
-		//int h = CellStack::HalfRange-1;
 
 		const CellStack&stack = cellStack[highCellCenter];
-		UINT32 limit = CellStack::Range-1;
+		UINT32 limit = vmin( startingLayer, CellStack::Range-1);
 
 		#ifdef HAS_WINDOW
 			if (stack.waterRange.IsNotEmpty())
@@ -1732,9 +1693,12 @@ namespace Grid
 		}
 		if (layer > CellStack::Range)
 			layer = 0;
-		//if (layer > 0)
-		//	layer--;
-		return CellStack::ToHeight(layer);
+		return layer;
+	}
+
+	int						WorldData::TraceSkySensorHeight(UINT32 highCellCenter, int penetration) const
+	{
+		return CellStack::ToHeight(TraceSkySensorLayer(highCellCenter,0xFFFFFFFF,penetration) );
 	}
 
 
@@ -2332,19 +2296,7 @@ namespace Grid
 
 
 
-		TBaseColor	CellStack::Cell::GetBaseColor() const
-		{
-			TBaseColor rs = typeColor[content]; 
-			//if (submergence > 0)
-				//color = float3(0.1f);
-			//Vec::abs(color);color *= 0.5f;
 
-			rs.color.r *= powi(0.8f, submergence); 
-			rs.color.g *= powi(0.85f, submergence);
-			rs.color.b *= powi(0.95f, submergence); 
-			//rs.visibility = visible > 0 ? 1.f : 0.f;
-			return rs; 
-		}
 
 
 
@@ -3554,245 +3506,6 @@ namespace Grid
 
 
 
-	#ifdef HAS_WINDOW
-	void	WorldData::UpdateLighting()
-	{
-		lightingOutdated = false;
-		Timer::Time t0 = timer.Now();
-
-		UINT32 top = 0,bottom = CellStack::Range;
-		count_t cnt = 0;
-		foreach (cellStack,stack)
-		{
-			if (stack->lightingChangedTo > stack->lowestOpenCell)
-			{
-				cnt ++;
-				top = std::max<UINT32>(top,stack->lightingChangedTo);
-				bottom = std::min<UINT32>(bottom,stack->lowestOpenCell > 0 ? stack->lowestOpenCell-1 : 0);
-			}
-		}
-		if (cnt < 512)
-		{
-			static Buffer<UINT32>	ids;
-			ids.Clear();
-
-			foreach (cellStack,stack)
-			{
-				if (stack->lightingChangedTo > stack->lowestOpenCell)
-				{
-					ids << stack - cellStack.pointer();
-				}
-			}
-
-
-			UINT32 tp = std::min(top,CellStack::Range-1);
-			for (UINT32 h = tp; /*h > 0 && */h >= bottom && h <= tp; h--)
-			{
-				Concurrency::parallel_for(index_t(0), ids.Count(),[this,h](index_t _i)
-				{
-					const UINT32 i = ids[_i];
-					CellStack&thisStack = cellStack[i];
-					if (h > thisStack.lightingChangedTo)
-						return;
-					int l = 0xFF;
-				
-					if (h < CellStack::Range-1)
-					{
-						l = thisStack.volumeCell[h+1].intLightLevel;
-						const auto&n = high.grid.GetCell(i).neighborhood;
-						for (int j = 0; j < n.numNeighbors; j++)
-							l += cellStack[n.neighborID[j]].volumeCell[h+1].intLightLevel;
-						l /= 1 + n.numNeighbors;
-					}
-					thisStack.volumeCell[h].SetIntLightLevel(l);
-					BYTE next = h < CellStack::Range-1 ? thisStack.volumeCell[h+1].GetIncreasedSubmergence() : 0;
-					thisStack.volumeCell[h].SetSubmergence(next);
-				});
-			}
-			foreach (cellStack,stack)
-				stack->lightingChangedTo = 0;
-
-		}
-		else
-		{
-			UINT32 tp = std::min(top,CellStack::Range-1);
-			for (UINT32 h = tp; /*h > 0 && */h >= bottom && h <= tp; h--)
-			{
-				Concurrency::parallel_for(index_t(0), HighSetup::GridType::CellCount,[this,h](index_t i)
-				{
-					CellStack&thisStack = cellStack[i];
-					if (h > thisStack.lightingChangedTo)
-						return;
-					int l = 0xFF;
-				
-					if (h < CellStack::Range-1)
-					{
-						l = thisStack.volumeCell[h+1].intLightLevel;
-						const auto&n = high.grid.GetCell(i).neighborhood;
-						for (int j = 0; j < n.numNeighbors; j++)
-							l += cellStack[n.neighborID[j]].volumeCell[h+1].intLightLevel;
-						l /= 1 + n.numNeighbors;
-					}
-					thisStack.volumeCell[h].SetIntLightLevel(l);
-					thisStack.volumeCell[h].SetSubmergence(h < CellStack::Range-1 ? thisStack.volumeCell[h+1].GetIncreasedSubmergence() : 0);
-				});
-			}
-			foreach (cellStack,stack)
-				stack->lightingChangedTo = 0;
-		}
-
-		LogEvent(EventSignificance::PerformanceMeasurement,  "Updated lighting in "+String(timer.GetSecondsSince(t0))+" seconds");
-	
-	
-	}
-
-	HighSetup::TDistanceField	field;
-	void	WorldData::SignalLightingChange(const HCellIdI&stackID)
-	{
-		lightingOutdated = true;
-		structureChanged = true;
-		const UINT r = CellStack::ToLayer(stackID.height)+1;
-		high.UpdatePlanarDistanceField(stackID.stackID,r,field);
-		for (index_t i = 0; i < HighSetup::TDistanceField::NumEntries; i++)
-			if (field.distance[i] != 0xFFFFFFFF)
-			{
-				cellStack[i].lightingChangedTo = r-field.distance[i];
-				high.family[high.grid.GetCell(i).family].SetOutdated(0);
-			}
-	}
-
-		#ifdef HYBRID_GRID
-			void	WorldData::SignalLightingChange(const LCellIdI&stackID)
-			{
-				lightingOutdated = true;
-				structureChanged = true;
-				const UINT r = CellStack::ToLayer(stackID.height) + 2;
-				UINT32 higher = low.grid.GetCell(stackID.stackID).higherEquivalent;
-				high.UpdatePlanarDistanceField(higher,CellStack::ToLayer(stackID.height),field);
-				for (index_t i = 0; i < HighSetup::TDistanceField::NumEntries; i++)
-					if (field.distance[i] != 0xFFFFFFFF)
-					{
-						cellStack[i].lightingChangedTo = std::max<BYTE>( cellStack[i].lightingChangedTo, r-field.distance[i]);
-						high.family[high.grid.GetCell(i).family].SetOutdated(0);
-					}
-			}
-		#endif
-
-	#endif
-
-
-	void	WorldData::Explode(const HCellIdI&id,float radius, bool*familyChanged)
-	{
-		const float3 center = high.cells[id.stackID].centerVertex.xyz * ToRadiusf(0.5f + id.height);
-		const float r2 = sqr(radius);
-		Queue<UINT32> queue;
-		
-		#ifdef HAS_WINDOW
-			Queue<UINT32> changed;
-		#endif
-		queue << id.stackID;
-
-		Box<> b;
-		b.SetCenter(center,radius);
-
-		bool processed[HighSetup::GridType::CellCount] = {false};
-
-
-		UINT32 current;
-		while (queue >> current)
-		{
-			if (processed[current])
-				continue;
-			processed[current] = true;
-			const TVec3<>&dir = high.cells[current].centerVertex.xyz;
-			TVec3<> lower = dir * ToRadius(-CellStack::HalfRange);
-			TVec3<> upper = dir * ToRadius(CellStack::HalfRange);
-			float dummy = Vec::distance(upper,lower);
-			if (b.Contains(lower) || b.Contains(upper) || _oDetectOpticalBoxIntersection(b,lower,(upper-lower)/dummy,dummy))
-			{
-				bool anyChanged = false;
-				for (int h = -CellStack::HalfRange; h < CellStack::HalfRange; h++)
-				{
-					TVec3<> at = dir * ToRadius(h);
-					if (Vec::quadraticDistance(center,at) < r2)
-					{
-						if (cellStack[current].MakeLocalHole(h))
-						{
-							UINT layer = CellStack::ToLayer(h);
-							#ifdef HAS_WINDOW
-								cellStack[current].lightingChangedTo = std::max<BYTE>(cellStack[current].lightingChangedTo, layer);
-							#endif
-							//ASSERT_LESS__(layer,CellStack::Range);
-
-							//SignalLightingChange(HCellIdI(current,h+1));
-							anyChanged = true;
-						}
-					}
-				}
-				if (anyChanged)
-				{
-					#ifdef HAS_WINDOW
-						changed << current;
-					#endif
-					familyChanged[high.grid.GetCell(current).family] = true;
-				}
-
-				const auto&n = high.grid.GetCell(current).neighborhood;
-				for (BYTE k = 0; k < n.numNeighbors; k++)
-				{
-					queue << n.neighborID[k];
-				}
-			}
-		}
-		//count_t counter = 0;
-		//BYTE smallest = 0xff;
-		#ifdef HAS_WINDOW
-			while (changed >> current)
-			{
-				BYTE h = cellStack[current].lightingChangedTo;
-				//ASSERT_LESS__(h,CellStack::Range);
-				//if (h+1 >= cellStack[current].lowestOpenCell)
-				if (!h)
-					continue;
-				h--;
-				//smallest = std::min(smallest,h);
-				//counter++;
-
-		
-				const auto&n = high.grid.GetCell(current).neighborhood;
-				for (BYTE k = 0; k < n.numNeighbors; k++)
-				{
-					UINT32 nid = n.neighborID[k];
-					if (cellStack[nid].lightingChangedTo < h)
-					{
-						cellStack[nid].lightingChangedTo = h;
-						changed << nid;
-					}
-				}
-			}
-		#endif
-		//ShowMessage(counter);
-		//ShowMessage(smallest);
-
-	
-	}
-
-	void	WorldData::Explode(const HCellIdI&id,float radius, float atTime)
-	{
-		bool familyChanged[BaseGrid::NumFamilies] = {false};
-		Explode(id,radius,familyChanged);
-		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
-			if (familyChanged[i])
-			{
-				high.family[i].SetOutdated(atTime);
-				low.family[i].SetOutdated(atTime);
-				#ifdef HAS_WINDOW
-					lightingOutdated = true;
-					structureChanged = true;
-				#endif
-			}
-
-	}
 
 	bool	IsHighPartOfLow(UINT32 highCell, UINT32 lowCell)
 	{
@@ -4155,25 +3868,12 @@ namespace Grid
 
 	#endif
 
-	void	FlushStackFamily(Array<CellStack>&cellStack,  BYTE family)
-	{
-		const index_t offset = high.grid.GetFamilyOffset(family);
-		const count_t range = high.grid.CountFamilyMembers(family);
-		for (index_t i = offset; i < offset+range; i++)
-			cellStack[i].ZeroInit();		
-	
-	}
 
 
 
-	void	ResetStructureCounters(bool resetVisibility)
-	{
-		actualWorld.ResetStructureCounters(resetVisibility);
 
 
-	}
-
-	void	FlushAllData()
+	void	FlushAllVolumeData()
 	{
 		empZonesLocked = 0;
 		empZonesUnlocked = 0xFFFF;
@@ -4263,6 +3963,14 @@ namespace Grid
 		{
 			return high.cells[id.stackID].centerVertex.xyz * Grid::ToRadius(id.height);
 		}
+		TVec3<> ToWorld(const HCellIdU&id, float fLayerOffset)
+		{
+			return high.cells[id.stackID].centerVertex.xyz * Grid::ToRadiusf(fLayerOffset + CellStack::ToHeight(id.layer));
+		}
+		TVec3<> ToWorld(const HCellIdI&id, float fLayerOffset)
+		{
+			return high.cells[id.stackID].centerVertex.xyz * Grid::ToRadiusf(fLayerOffset + id.height);
+		}
 	#endif
 	TVec3<> ToWorld(const LCellIdU&id)
 	{
@@ -4272,6 +3980,16 @@ namespace Grid
 	{
 		return low.cells[id.stackID].centerVertex.xyz * Grid::ToRadius(id.height);
 	}
+	TVec3<> ToWorld(const LCellIdU&id, float fLayerOffset)
+	{
+		return low.cells[id.stackID].centerVertex.xyz * Grid::ToRadiusf(fLayerOffset + CellStack::ToHeight(id.layer));
+	}
+	TVec3<> ToWorld(const LCellIdI&id, float fLayerOffset)
+	{
+		return low.cells[id.stackID].centerVertex.xyz * Grid::ToRadiusf(fLayerOffset + id.height);
+	}
+
+
 
 	bool	AffectedByEMP(const HCellIdI&id)
 	{
@@ -4283,145 +4001,6 @@ namespace Grid
 	}
 
 
-
-
-	void				VisibilityState::ChangeSensory(const Grid::HCellIdU&center, float t, short changeBy)
-	{
-		bool familyChanged[BaseGrid::NumFamilies] = { false };
-
-		Grid::TemplateHelper::ChangeSensory(center, changeBy, cellStack.pointer(), familyChanged);
-
-		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
-			if (familyChanged[i])
-				families[i].changed = true;
-	}
-
-	void				VisibilityState::ChangeSensory(const Grid::HighSetup::TVolumeDescriptor&desc, float t, short changeBy)
-	{
-		bool familyChanged[BaseGrid::NumFamilies] = { false };
-		Grid::TemplateHelper::ChangeSensory(desc, changeBy, cellStack.pointer(), familyChanged);
-		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
-			if (familyChanged[i])
-			{
-				families[i].changed = true;
-				//families[i].lastChange
-			}
-
-	}
-
-	//void				VisibilityState::ChangeSensory(const LCellIdI&center, float radius, float t, short changeBy)
-	//{
-	//	bool familyChanged[BaseGrid::NumFamilies] = { false };
-	//	Grid::TemplateHelper::ChangeSensory(Grid::ToWorld(center), radius, changeBy, cellStack.pointer(), familyChanged);
-	//	for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
-	//		if (familyChanged[i])
-	//			families[i].changed = true;
-	//}
-	void				VisibilityState::ChangeSensory(const SkySensorState&state, float t, short changeBy)
-	{
-		bool familyChanged[BaseGrid::NumFamilies] = { false };
-		Grid::TemplateHelper::ChangeSensorCoverage(state, changeBy, cellStack.pointer(), familyChanged);
-		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
-			if (familyChanged[i])
-				families[i].changed = true;
-	}
-
-	void				VisibilityState::RegisterExplosionCrater(const Grid::HCellIdI&center, float radius, float t)
-	{
-		bool familyChanged[BaseGrid::NumFamilies] = { false };
-		const float3 c3 = Grid::high.cells[center.stackID].centerVertex.xyz * Grid::ToRadiusf(0.5f + center.height);
-
-		Grid::TemplateHelper::ChangeSensory(c3, radius, 0, cellStack.pointer(), familyChanged);
-		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
-			if (familyChanged[i])
-				families[i].changed = true;
-	}
-
-
-
-	void VisibilityState::FlushAllData(bool includeResources/*=true*/)
-	{
-		if (includeResources)
-			resourcesDiscovered.Fill(false);
-		for (index_t i = 0; i < ARRAYSIZE(families); i++)
-			families[i].Reset();
-		foreach (cellStack,stack)
-			stack->Reset();
-
-	}
-
-
-	void		VisibilityState::UpdateResourceCoverage(const Grid::LCellIdI&center,float range, BasicBuffer<UINT32>&outNewDiscoveries)
-	{
-		static IndexSet covered;
-		static Buffer0<UINT32>	coverage;
-		static Queue<UINT32>	stacks;
-		covered.Clear();
-		coverage.Clear();
-		stacks.Clear();
-		outNewDiscoveries.Clear();
-
-		stacks << center.stackID;
-
-		const TVec3<> worldCenter = Grid::ToWorld(center);
-
-		UINT32 stackID;
-		while (stacks >> stackID)
-		{
-			const TVec3<> world = Grid::ToWorld(Grid::LCellIdI(stackID,center.height));
-			if (Vec::quadraticDistance(world,worldCenter) > sqr(range))
-				continue;
-			if (!covered.IsSet(stackID))
-			{
-				covered.Set(stackID);
-				coverage << stackID;
-			}
-			else
-				continue;
-
-			const auto&n = Grid::low.grid.GetCell(stackID).neighborhood;
-			for (BYTE k = 0; k < n.numNeighbors; k++)
-				stacks << n.neighborID[k];
-		}
-			
-		foreach (coverage,cov)
-		{
-			if (resourcesDiscovered[*cov])
-				continue;
-			resourcesDiscovered[*cov] = true;
-			outNewDiscoveries << *cov;
-		}
-	}
-
-
-	void		VisibilityState::CheckChanges(float t)
-	{
-		for (BYTE f = 0; f < BaseGrid::NumFamilies; f++)
-		{
-			if (families[f].changed)
-			{
-				families[f].changed = false;
-				const index_t offset = Grid::high.grid.GetFamilyOffset(f);
-				const count_t range = Grid::high.grid.CountFamilyMembers(f);
-				bool anyChanged = false;
-				Concurrency::parallel_for(offset, offset + range, [this, &anyChanged](index_t i)
-				{
-					for (unsigned j = 0; j < Grid::CellStack::Range; j++)
-					{
-						CellStack::Cell&cell1 = cellStack[i].volumeCell[j];
-						if (cell1.Changed(true))
-							anyChanged = true;
-					}
-				});
-				if (anyChanged)
-				{
-					families[f].coverageChanged = true;
-					families[f].lastChange = t;
-				}
-			}
-		}
-
-	}
 
 
 

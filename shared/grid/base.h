@@ -1,5 +1,4 @@
-#ifndef game0GridH
-#define game0GridH
+#pragma once
 
 #include <math/vclasses.h>
 #include <fractal/segment_map.h>
@@ -914,4 +913,3 @@ template <unsigned Exponent>
 
 
 
-#endif
