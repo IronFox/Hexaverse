@@ -1181,7 +1181,7 @@ namespace Animation
 					ASSERT2__(v->preAnimationLocation == v->location ,v->preAnimationLocation.ToString(),v->location.ToString());
 					//#ifdef HAS_WINDOW
 					//	if (v->isOwnedByMe && v->IsVehicle())
-					//		ASSERT1__(Grid::actualWorld.HasSensor(v->location,v->GetScanningRange()),v->id.ToString());
+					//		ASSERT1__(World::actual.HasSensor(v->location,v->GetScanningRange()),v->id.ToString());
 					//#endif
 					v->preAnimationLocation = v->location;
 					if (v->IsVehicle() && !v->IsAboveGrid())
@@ -1360,7 +1360,7 @@ namespace Animation
 					v->MoveSensory(v->preAnimationLocation,v->location,t);
 
 					//v->MoveWorldSensory(v->preAnimationLocation,v->location);
-					//Grid::actualWorld.MoveSensor(v->preAnimationLocation,v->location,v->GetScanningRange());
+					//World::actual.MoveSensor(v->preAnimationLocation,v->location,v->GetScanningRange());
 				}
 				v->preAnimationLocation = v->location;
 				allocatedTarget.reset();	//for debugging purposes
@@ -1475,7 +1475,7 @@ namespace Animation
 				{
 					BYTE family = block->familyAndLastFlag & 0x7F;
 					//bool last = (block->family & 0x80) != 0;
-					Grid::actualWorld.ApplyFamilyDelta(family,block->data0,false,true);
+					World::actual.ApplyFamilyDelta(family,block->data0,false,true);
 				}
 				#ifdef HAS_WINDOW
 					World::allowRecompilation = true;
@@ -1800,7 +1800,7 @@ namespace Animation
 					{
 						float t = 0.f;
 						e->MoveSensory(e->preAnimationLocation,e->location,t);
-//							Grid::actualWorld.MoveSensor((*v)->preAnimationLocation,(*v)->location,(*v)->GetScanningRange());
+//							World::actual.MoveSensor((*v)->preAnimationLocation,(*v)->location,(*v)->GetScanningRange());
 					}
 				},false);
 

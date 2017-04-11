@@ -8,7 +8,7 @@
 //	#include "entity.h"
 #endif
 
-#include "../sphereGrid.h"
+#include "../grid/worldData.h"
 #include "resource.h"
 #include "cursorMode.h"
 #include "types.h"
@@ -126,8 +126,8 @@ namespace Objects
 			{
 				static void					TraceAnimationArtilleryTrajectory(float velocity,  float attackAngle, const TrajectoryEndPoint&attackerPosition, const TrajectoryEndPoint&explosionCenter,Buffer0<TVec4<> >&outSteps);
 				static void					TraceAnimationMissileTrajectory(float range, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps);
-				static TurretTrajectory		TraceArtilleryTrajectory(float velocity, const Grid::WorldData&decisionWorld, const Grid::WorldData&actualWorld, const TrajectoryEndPoint&source,  const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle);
-				static TurretTrajectory		TraceMissileTrajectory(float range, const Grid::WorldData&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell);
+				static TurretTrajectory		TraceArtilleryTrajectory(float velocity, const World::Data&decisionWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source,  const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle);
+				static TurretTrajectory		TraceMissileTrajectory(float range, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell);
 				static bool					ArtilleryCanHit(float flatRange, float horizontalDistance, float verticalDistance, float&outAngle);
 				static bool					ArtilleryCanHit(float flatRange, float horizontalDistance, float verticalDistance);
 				static bool					MissileCanHit(float flatRange, const TrajectoryEndPoint&origin, const TrajectoryEndPoint&destination);
@@ -247,8 +247,8 @@ namespace Objects
 
 			static int						GetGroundHeight(const Grid::LCellIdI&location);
 			//static void						TraceTrajectory(TrajectoryType, float flatRange, const TVec3<>&source, const TVec3<>&dest, Buffer0<TVec4<> >&outSteps);
-			static TurretTrajectory			TraceTrajectory(TrajectoryType, float flatRange, const Grid::WorldData&visibleWorld, const Grid::WorldData&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle);
-			static TurretTrajectory			TraceTrajectory(TrajectoryType type, float flatRange, const Grid::WorldData&visibleWorld, const Grid::WorldData&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, TVec3<>&impactAt)
+			static TurretTrajectory			TraceTrajectory(TrajectoryType, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle);
+			static TurretTrajectory			TraceTrajectory(TrajectoryType type, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, TVec3<>&impactAt)
 			{
 				Buffer0<TVec4<> > outSteps;
 				Grid::HCellIdI impactCell;
@@ -465,7 +465,7 @@ namespace Objects
 			*/
 			static bool						canStandOnUnknown	/*=true*/;
 
-			bool							CanStandOn(const Grid::WorldData&world, const Grid::LCellIdI&, bool ignoreWater, bool doFloat);
+			bool							CanStandOn(const World::Data&world, const Grid::LCellIdI&, bool ignoreWater, bool doFloat);
 
 			#ifdef HAS_WINDOW
 				void						DescribeType(BaseCommand::Label&label, bool compound, bool includeName, const OwnerParameter&);

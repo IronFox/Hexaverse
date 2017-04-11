@@ -57,7 +57,7 @@ namespace Grid
 	static const constexpr float VerticalBase = WorldScale;
 
 #ifdef GAME_BLOB_SYSTEM
-	Buffer<WorldData::Blob>	blobs;
+	Buffer<Volume::Blob>	blobs;
 #endif
 
 	static const float SingleLayerHeight = RawLayerHeight * VerticalScale;
@@ -387,7 +387,7 @@ namespace Grid
 		void			FillTypes(const ExtendedPlanetConfig&);
 
 		void			ZeroInit();
-		void			ResetStructureCounters(bool resetVisibility);
+		void			ResetStructureCounters();
 		#ifdef HAS_WINDOW
 
 			#ifdef THOROUGLY_DEBUG_SENSORY

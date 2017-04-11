@@ -24,7 +24,7 @@ namespace SensorCoverage
 				BYTE	user=0;
 
 				#ifdef HAS_WINDOW
-					TVisibility	GetVisibility() const {return TVisibility(visibility>0);}
+					Grid::TVisibility	GetVisibility() const {return Grid::TVisibility(visibility>0);}
 				#endif
 
 				bool	Changed(bool reset)
@@ -148,11 +148,10 @@ namespace SensorCoverage
 	{
 	public:
 
-		Array<bool >		resourcesDiscovered;//discovers all resources (for now)
+		FixedArray<bool,Grid::LowSetup::GridType::CellCount>			resourcesDiscovered;//discovers all resources (for now)
 
 		/**/				Resources()
 		{
-			resourcesDiscovered.SetSize(Grid::Resource::NumEntries);
 			resourcesDiscovered.Fill(false);
 		}
 

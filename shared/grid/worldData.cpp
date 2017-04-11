@@ -2,12 +2,14 @@
 #include "worldData.h"
 
 
+
+
 namespace World
 {
 
-	WorldData			actualWorld;
+	Data			actual;
 	#ifndef CLIENT
-		WorldData		initialWorld;
+		Volume		initial;
 	#endif
 	
 	void	FlushStackFamily(Array<CellStack>&cellStack,  BYTE family)
@@ -19,16 +21,20 @@ namespace World
 	
 	}
 		
-	void	ResetStructureCounters(bool resetVisibility)
+	void	ResetStructureCounters()
 	{
-		actualWorld.ResetStructureCounters(resetVisibility);
-
-
+		actual.ResetStructureCounters();
 	}
 
 
+
+	Data::Data()
+	{
+		familyOutdatedSince.Fill(MaxOutdated);
+	}
+
 	#ifdef HAS_WINDOW
-	void	WorldData::UpdateLighting()
+	void	Data::UpdateLighting()
 	{
 		lightingOutdated = false;
 		Timer::Time t0 = timer.Now();
@@ -120,7 +126,7 @@ namespace World
 	}
 
 	HighSetup::TDistanceField	field;
-	void	WorldData::SignalLightingChange(const HCellIdI&stackID)
+	void	Data::SignalLightingChange(const HCellIdI&stackID)
 	{
 		lightingOutdated = true;
 		structureChanged = true;
@@ -130,12 +136,12 @@ namespace World
 			if (field.distance[i] != 0xFFFFFFFF)
 			{
 				cellStack[i].lightingChangedTo = r-field.distance[i];
-				high.family[high.grid.GetCell(i).family].SetOutdated(0);
+				SetFamilyOutdated(high.grid.GetCell(i).family);
 			}
 	}
 
 		#ifdef HYBRID_GRID
-			void	WorldData::SignalLightingChange(const LCellIdI&stackID)
+			void	Data::SignalLightingChange(const LCellIdI&stackID)
 			{
 				lightingOutdated = true;
 				structureChanged = true;
@@ -146,7 +152,7 @@ namespace World
 					if (field.distance[i] != 0xFFFFFFFF)
 					{
 						cellStack[i].lightingChangedTo = std::max<BYTE>( cellStack[i].lightingChangedTo, r-field.distance[i]);
-						high.family[high.grid.GetCell(i).family].SetOutdated(0);
+						SetFamilyOutdated(high.grid.GetCell(i).family);
 					}
 			}
 		#endif
@@ -154,7 +160,7 @@ namespace World
 	#endif
 
 
-	void	WorldData::Explode(const HCellIdI&id,float radius, bool*familyChanged)
+	void	Data::Explode(const HCellIdI&id,float radius, bool*familyChanged)
 	{
 		const float3 center = high.cells[id.stackID].centerVertex.xyz * ToRadiusf(0.5f + id.height);
 		const float r2 = sqr(radius);
@@ -250,15 +256,14 @@ namespace World
 	
 	}
 
-	void	WorldData::Explode(const HCellIdI&id,float radius, float atTime)
+	void	Data::Explode(const HCellIdI&id,float radius, float atTime)
 	{
 		bool familyChanged[BaseGrid::NumFamilies] = {false};
 		Explode(id,radius,familyChanged);
 		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
 			if (familyChanged[i])
 			{
-				high.family[i].SetOutdated(atTime);
-				low.family[i].SetOutdated(atTime);
+				SetFamilyOutdated(i,atTime);
 				#ifdef HAS_WINDOW
 					lightingOutdated = true;
 					structureChanged = true;
@@ -267,6 +272,63 @@ namespace World
 
 	}
 
+
+	void					Data::ExportDiscovered(Data&target, WorldDiscovery discoveryLevel) const
+	{
+		for (index_t i = 0; i < HighSetup::GridType::CellCount; i++)
+		{
+			auto&stack = target.cellStack[i];
+			stack = cellStack[i];	//raw copy
+			switch (discoveryLevel)
+			{
+				case WorldDiscovery::None:
+					for (unsigned j = 0; j < CellStack::Range; j++)
+					{
+						CellStack::Cell&c = stack.volumeCell[j];
+						if (c.content != Content::Clear)
+						{
+					
+							c.content = Content::Unknown;
+							#ifndef CLIENT
+							DBG_ASSERT__(c.structureCounter == 0);
+							#endif
+						}
+					}
+				break;
+				case WorldDiscovery::Water:
+					for (unsigned j = 0; j < CellStack::Range; j++)
+					{
+						CellStack::Cell&c = stack.volumeCell[j];
+						if (c.content != Content::Clear && c.content != Content::Water)
+						{
+							c.content = Content::Unknown;
+							#ifndef CLIENT
+							DBG_ASSERT__(c.structureCounter == 0);
+							#endif
+						}
+					}
+				break;
+				case WorldDiscovery::Liquids:
+					for (unsigned j = 0; j < CellStack::Range; j++)
+					{
+						CellStack::Cell&c = stack.volumeCell[j];
+						if (c.content != Content::Clear && !c.IsLiquid())
+						{
+							c.content = Content::Unknown;
+							#ifndef CLIENT
+							DBG_ASSERT__(c.structureCounter == 0);
+							#endif
+						}
+					}
+				break;
+			}
+			#ifdef HAS_WINDOW
+				if (discoveryLevel != WorldDiscovery::FullTerrain)
+					stack.UpdateRange();
+			#endif
+		}
+	}
+
 	
-	
+
 }

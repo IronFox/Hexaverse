@@ -1,6 +1,7 @@
 #include <global_root.h>
 #include "entity.h"
 #include "turretBase.h"
+#include "../grid/worldData.h"
 
 #include "../runtimeConfig.h"
 
@@ -39,7 +40,7 @@ namespace Objects
 		{
 			return std::min(1.f, 
 					2.f * 
-					float(Grid::actualWorld.cellStack[
+					float(World::actual.cellStack[
 						#ifdef HYBRID_GRID
 							Grid::low.grid.GetCell(location.stackID).higherEquivalent
 						#else
@@ -155,15 +156,15 @@ namespace Objects
 			return TurretTrajectory::InvalidTrajectory;
 		}
 
-		const Grid::WorldData&visibleWorld =
+		const Grid::Data&visibleWorld =
 		#ifndef CLIENT
 			owner->currentState
 		#else
-			Grid::actualWorld
+			World::actual
 		#endif
 		;
 
-		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, Grid::actualWorld,TrajectoryEndPoint( location,zOffset ),dest,outSteps,impactAt,impactCell,outAngle);
+		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, World::actual,TrajectoryEndPoint( location,zOffset ),dest,outSteps,impactAt,impactCell,outAngle);
 	}
 
 	TurretTrajectory		WorldEntity::TraceTrajectory(const TrajectoryEndPoint&dest, TVec3<>&impactAt) const
@@ -174,15 +175,15 @@ namespace Objects
 		{
 			return TurretTrajectory::InvalidTrajectory;
 		}
-		const Grid::WorldData&visibleWorld =
+		const Grid::Data&visibleWorld =
 		#ifndef CLIENT
 			owner->currentState
 		#else
-			Grid::actualWorld
+			World::actual
 		#endif
 		;
 
-		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, Grid::actualWorld,TrajectoryEndPoint(location,zOffset),dest,impactAt);
+		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, World::actual,TrajectoryEndPoint(location,zOffset),dest,impactAt);
 	}
 
 
@@ -197,14 +198,14 @@ namespace Objects
 			outSteps.Clear();
 			return TurretTrajectory::InvalidTrajectory;
 		}
-		const Grid::WorldData&visibleWorld =
+		const Grid::Data&visibleWorld =
 		#ifndef CLIENT
 			owner->currentState
 		#else
-			Grid::actualWorld
+			World::actual
 		#endif
 		;
-		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, Grid::actualWorld,TrajectoryEndPoint(source,zOffset),dest,outSteps,impactAt,impactCell,outAngle);
+		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, World::actual,TrajectoryEndPoint(source,zOffset),dest,outSteps,impactAt,impactCell,outAngle);
 	}
 
 	TurretTrajectory		WorldEntity::TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, TVec3<>&impactAt) const
@@ -215,14 +216,14 @@ namespace Objects
 		{
 			return TurretTrajectory::InvalidTrajectory;
 		}
-		const Grid::WorldData&visibleWorld =
+		const Grid::Data&visibleWorld =
 		#ifndef CLIENT
 			owner->currentState
 		#else
-			Grid::actualWorld
+			World::actual
 		#endif
 		;
-		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, Grid::actualWorld,TrajectoryEndPoint(source,zOffset),dest,impactAt);
+		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, World::actual,TrajectoryEndPoint(source,zOffset),dest,impactAt);
 	}
 
 	bool						WorldEntity::CanHitFrom(const Grid::LCellIdI&origin, const TrajectoryEndPoint&dest, float&outAngle) const
@@ -507,7 +508,7 @@ namespace Objects
 			{
 				//Grid::HighSetup::TVolumeDescriptor desc;
 				//Grid::high.GenerateVolume(,desc);
-				Grid::actualWorld.InsertSensor(Sphere<>(GetScanningCenter(loc),GetScanningRange()));
+				World::actual.InsertSensor(Sphere<>(GetScanningCenter(loc),GetScanningRange()));
 				//RegisterWorldSensory(desc);
 				#ifdef THOROUGLY_DEBUG_SENSORY
 					VerifySensory();
@@ -533,7 +534,7 @@ namespace Objects
 				//Grid::HighSetup::TVolumeDescriptor desc;
 				//Grid::high.GenerateVolume(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),desc);
 				//UnregisterWorldSensory(desc);
-				Grid::actualWorld.RemoveSensor(Sphere<>(GetScanningCenter(loc),GetScanningRange()));
+				World::actual.RemoveSensor(Sphere<>(GetScanningCenter(loc),GetScanningRange()));
 				#ifdef THOROUGLY_DEBUG_SENSORY
 					VerifySensory();
 				#endif

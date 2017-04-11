@@ -114,7 +114,7 @@ namespace Objects
 		@param ignoreWater Upon encountering pure water, the method succeeds if either the local vehicle can stand on water, or this value is set true
 		@param doFloat Allows the vehicle to stand on any substance. Useful for certain construction jobs
 		*/
-		bool					CanStandOn(const Grid::WorldData&world, const Grid::LCellIdI&cell, bool ignoreWater, bool doFloat) const {return base->CanStandOn(world,cell,ignoreWater, doFloat);}
+		bool					CanStandOn(const World::Data&world, const Grid::LCellIdI&cell, bool ignoreWater, bool doFloat) const {return base->CanStandOn(world,cell,ignoreWater, doFloat);}
 
 		bool					IsAutomatedResourceDetector() const {return turret->detectsResources && isAutomated;}
 		bool					IsNonAutomatedResourceDetector() const {return turret->detectsResources && !isAutomated;}

@@ -6,25 +6,39 @@ namespace World
 {
 	using namespace Grid;
 
-	class WorldData
+	class Data
 	{
 	public:
 		Array<CellStack>		cellStack;
 		#ifdef HAS_WINDOW
 			bool				lightingOutdated = true;
 			bool				structureChanged = true;
+
+
 		#endif
 
-		/**/					WorldData();
+		static const constexpr float MaxOutdated = std::numeric_limits<float>::max();
 
-		void					swap(WorldData&other)
+		FixedArray<float,BaseGrid::NumFamilies>	
+								familyOutdatedSince;
+
+		/**/					Data();
+
+		void					swap(Data&other)
 		{
 			cellStack.swap(other.cellStack);
+			familyOutdatedSince.swap(other.familyOutdatedSince);
 			#ifdef HAS_WINDOW
 				swp(lightingOutdated,other.lightingOutdated);
 				swp(structureChanged,other.structureChanged);
 			#endif
 		}
+
+		bool					FamilyIsOutdated(index_t i) const {return familyOutdatedSince[i] != MaxOutdated;}
+		void					UnsetFamilyOutdated(index_t i) {familyOutdatedSince[i] = MaxOutdated;}
+		void					SetFamilyOutdated(index_t i, float t) {familyOutdatedSince[i] = std::min(familyOutdatedSince[i],t);}
+		void					SetFamilyOutdated(index_t i) {familyOutdatedSince[i] = 0;}
+
 		/**
 		Checks if the specified low-resolution cell is not at all covered (not even partially)
 		*/
@@ -49,11 +63,11 @@ namespace World
 				cellStack[i].ZeroInit();
 			}
 		}
-		void					ResetStructureCounters(bool resetVisibility)
+		void					ResetStructureCounters()
 		{
 			for (index_t i = 0; i < cellStack.Count(); i++)
 			{
-				cellStack[i].ResetStructureCounters(resetVisibility);
+				cellStack[i].ResetStructureCounters();
 			}
 		}
 		void					ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDelta>&data0, bool initialization);
@@ -77,7 +91,7 @@ namespace World
 				//SignalChange(LCellIdI(c.cellID,h));
 		}
 
-		//these manipulations should only be called on Grid::actualWorld, since they alter the outdated state of global families
+		//these manipulations should only be called on World::actual, since they alter the outdated state of global families
 		/**
 		@brief Clears all high resolution cells intersecting the specified low resolution cell
 		@return true, if any matter was removed, false otherwise
@@ -103,7 +117,7 @@ namespace World
 		@param[out] target Target container to hold the filtered world data
 		@param discoveryLevel Level of terrain obfuscation to apply to the copy. If set to FullTerrain, then @a target will contain an exact copy of the local world data.
 		*/
-		void					ExportDiscovered(WorldData&target, WorldDiscovery discoveryLevel) const;
+		void					ExportDiscovered(Data&target, WorldDiscovery discoveryLevel) const;
 
 		UINT32					TraceSkySensorLayer(UINT32 highCellCenter, UINT32 startingLayer, int penetration) const;
 		int						TraceSkySensorHeight(UINT32 highCellCenter,  int penetration) const;
@@ -141,9 +155,9 @@ namespace World
 
 	};
 
-	extern WorldData			actualWorld;
+	extern Data			actual;
 	#ifndef CLIENT
-		extern WorldData		initialWorld;
+		extern Volume		initial;
 	#endif
 	
 	

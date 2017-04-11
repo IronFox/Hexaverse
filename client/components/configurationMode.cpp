@@ -67,7 +67,7 @@ namespace ConfigurationMode
 		class GridState
 		{
 		public:
-			Grid::WorldData	copy;
+			World::Data	copy;
 			static GridState	*current;
 			bool			isLoaded = false;
 
@@ -85,7 +85,7 @@ namespace ConfigurationMode
 				ASSERT__(!isLoaded);
 				ASSERT__(!current || current == this);
 				isLoaded = true;
-				copy.swap(Grid::actualWorld);
+				copy.swap(World::actual);
 				current = nullptr;
 				Grid::SetAllFamiliesOutdated();	//force rebuild
 			};
@@ -96,7 +96,7 @@ namespace ConfigurationMode
 				ASSERT_IS_NULL__(current);
 				//ASSERT__(copy.cellStack.First().volumeCell[0].content != Grid::Content::Clear);
 				isLoaded = false;
-				copy.swap(Grid::actualWorld);
+				copy.swap(World::actual);
 				current = this;
 				Grid::SetAllFamiliesOutdated();	//force rebuild
 			}
@@ -178,7 +178,7 @@ namespace ConfigurationMode
 
 			if (isActive)
 			{
-				//Grid::actualWorld.FlushAllData();
+				//World::actual.FlushAllData();
 				if (serverObjects.IsEmpty())
 				{
 					serverObjects.Import(true);
@@ -1164,7 +1164,7 @@ namespace ConfigurationMode
 		if (serverObjects.IsNotEmpty())
 		{
 			serverObjects.Export();
-			Grid::actualWorld.OverrideVisibility(1);
+			World::actual.OverrideVisibility(1);
 		}
 		UI::HexGrid::RefreshContacts();
 	}

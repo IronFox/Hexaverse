@@ -494,7 +494,7 @@ namespace Network
 				#endif
 				BYTE family = delta.familyAndLastFlag & 0x7F;
 				bool last = (delta.familyAndLastFlag & 0x80) != 0;
-				Grid::actualWorld.ApplyFamilyDelta(family,delta.data0,false,true);
+				World::actual.ApplyFamilyDelta(family,delta.data0,false,true);
 
 				#ifdef HAS_WINDOW
 						World::allowRecompilation = last && gameHasBegun;
@@ -599,8 +599,8 @@ namespace Network
 			#endif
 
 			//#ifdef HAS_WINDOW
-			//	if (Grid::actualWorld.lightingOutdated && World::allowRecompilation)
-			//		Grid::actualWorld.UpdateLighting();
+			//	if (World::actual.lightingOutdated && World::allowRecompilation)
+			//		World::actual.UpdateLighting();
 			//#endif
 
 			Objects::PStructure s = Objects::SpawnStructure(Network::ResolveFaction(sc.owner),  sc.state.entityState.id,sc.state.entityState.location,sc.typeName, sc.state.entityState.timestamp.rightNow, Network::haveID && Network::myID == sc.owner);
@@ -774,7 +774,7 @@ namespace Network
 			#ifdef HAS_WINDOW
 				if (amSpectator)
 				{
-					Grid::actualWorld.OverrideVisibility(1);
+					World::actual.OverrideVisibility(1);
 
 				}
 			#endif

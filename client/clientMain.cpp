@@ -309,7 +309,7 @@ bool	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Gr
 		}
 		if (!foundPath)
 		{
-			if (!Grid::actualWorld.LowCellIsClearIgnoreStructure(target) && target.height+1 <= Grid::CellStack::TopHeight)
+			if (!World::actual.LowCellIsClearIgnoreStructure(target) && target.height+1 <= Grid::CellStack::TopHeight)
 			{
 				target++;
 				return MoveVehicleTo(v,prev,target,flags);

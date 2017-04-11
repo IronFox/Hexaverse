@@ -165,11 +165,11 @@ namespace Objects
 
 		/*virtual override*/ BaseJob::continue_t	DigHorizontal::Finish(MobileEntity&v, const Grid::LCellIdI&focus)
 		{			
-			Grid::actualWorld.Clear(focus,v.entityTime);
+			World::actual.Clear(focus,v.entityTime);
 			if (v.IsVehicle() && ((Vehicle&)v).base->requirements == Component::VehicleBase::Requirement::Water)
-					Grid::actualWorld.Overwrite(focus-1,Grid::Content::Water,v.entityTime);
+					World::actual.Overwrite(focus-1,Grid::Content::Water,v.entityTime);
 			SignalClusterAndNeighborsChange(focus,v.entityTime);
-			if (Grid::actualWorld.LowCellIsClear(focus))
+			if (World::actual.LowCellIsClear(focus))
 			{
 				if (v.PlaceExactlyAt(focus,Times::Dig,v.entityTime) == MobilePlacementResult::PlacementFailedMobileDestroyed)
 					return BaseJob::TerminalFailureVehicleDestroyed;
@@ -197,7 +197,7 @@ namespace Objects
 
 			count_t blobCnt = 0;
 			{
-				auto&fine = Grid::actualWorld.cellStack[finer];
+				auto&fine = World::actual.cellStack[finer];
 				if (fine.LocalOverwrite(target.height - 1, Grid::CellStack::Cell::Content::Road))
 				{
 					Grid::TagCluster(rebuild, finer);
@@ -223,7 +223,7 @@ namespace Objects
 			for (int j = 0; j < c.neighborhood.numNeighbors; j++)
 			{
 				UINT32 n = c.neighborhood.neighborID[j];
-				auto&fine = Grid::actualWorld.cellStack[n];
+				auto&fine = World::actual.cellStack[n];
 				if (prevCell != target.stackID &&
 				//!Grid::cellStack[n].GetCellI(target.height-2).IsSolid() ||
 						((Grid::IsHighPartOfLow(n, prevCell) || Grid::IsHighPartOfLow(n, nextCell)) && fine.GetCellI(target.height-1).content == Grid::Content::Clear))
@@ -251,7 +251,7 @@ namespace Objects
 
 
 			}
-			Grid::actualWorld.SignalChangeUpTo(target-1);
+			World::actual.SignalChangeUpTo(target-1);
 
 
 			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
@@ -284,7 +284,7 @@ namespace Objects
 				return CannotStartAbort;
 			}
 
-			const auto&stack = Grid::actualWorld.cellStack[Grid::low.grid.GetCell(focus.stackID).higherEquivalent];
+			const auto&stack = World::actual.cellStack[Grid::low.grid.GetCell(focus.stackID).higherEquivalent];
 			if (stack.GetCellI(v.location.height-1).IsClearOrWater() && focus == v.location+1)
 			{
 				//focus --;
@@ -294,9 +294,9 @@ namespace Objects
 				return Delayed;
 			}
 
-			if (movesToFocusWhenDone && !Grid::actualWorld.LowCellIsClear(focus))
+			if (movesToFocusWhenDone && !World::actual.LowCellIsClear(focus))
 			{
-				if (!Grid::actualWorld.LowCellHasStructure(focus))
+				if (!World::actual.LowCellHasStructure(focus))
 				{
 					LogEvent(EventSignificance::Common,&v,GetName()+": Obstruction detected. Resolution: clearing upper terrain.");
 					PVehicleJob job;
@@ -333,7 +333,7 @@ namespace Objects
 		
 		/*virtual override*/ bool			BuildWallUp::CanContinue(MobileEntity&v, const Grid::LCellIdI&focus, String&outError)
 		{
-			if (this->movesToFocusWhenDone && !Grid::actualWorld.LowCellIsClear(focus))
+			if (this->movesToFocusWhenDone && !World::actual.LowCellIsClear(focus))
 			{
 				outError = "Cannot build wall here: "+(focus).ToString()+" is not empty";
 				return false;
@@ -360,11 +360,11 @@ namespace Objects
 
 
 			const UINT32 higher = Grid::low.grid.GetCell(target.stackID).higherEquivalent;
-			auto&stack = Grid::actualWorld.cellStack[higher];
+			auto&stack = World::actual.cellStack[higher];
 			if (stack.LocalOverwrite(target.height,Grid::Content::Foundation))
 			{
 				Grid::TagCluster(rebuild, higher);
-				Grid::actualWorld.SignalChange(Grid::HCellIdI(higher,target.height));
+				World::actual.SignalChange(Grid::HCellIdI(higher,target.height));
 			}
 
 
@@ -372,14 +372,14 @@ namespace Objects
 			for (int j = 0; j < n.numNeighbors; j++)
 			{
 				const UINT32 higher2 = Grid::low.grid.GetCell(n.neighborID[j]).higherEquivalent;
-				const auto&stack2 = Grid::actualWorld.cellStack[higher2];
+				const auto&stack2 = World::actual.cellStack[higher2];
 				if (ConnectTo(stack2.GetCellI(target.height).content))
 				{
 					UINT32 n = BaseGrid::RequireIntersection(Grid::high.grid.GetCell(higher).neighborhood, Grid::high.grid.GetCell(higher2).neighborhood);
-					if (Grid::actualWorld.cellStack[n].LocalOverwrite(target.height,Grid::Content::Foundation))
+					if (World::actual.cellStack[n].LocalOverwrite(target.height,Grid::Content::Foundation))
 					{
 						Grid::TagCluster(rebuild, n);
-						Grid::actualWorld.SignalChange(Grid::HCellIdI(n,target.height));
+						World::actual.SignalChange(Grid::HCellIdI(n,target.height));
 					}
 				}
 			}
@@ -430,10 +430,10 @@ namespace Objects
 					if (cell->height < -Grid::CellStack::HalfRange || cell->height >= Grid::CellStack::HalfRange)
 						continue;
 
-					if (Grid::actualWorld.cellStack[cell->stackID].LocalOverwrite(cell->height,Grid::Content::Foundation))
+					if (World::actual.cellStack[cell->stackID].LocalOverwrite(cell->height,Grid::Content::Foundation))
 					{
 						Grid::TagCluster(rebuild, cell->stackID);
-						Grid::actualWorld.SignalChange(*cell);
+						World::actual.SignalChange(*cell);
 					}
 				}
 			}
@@ -463,10 +463,10 @@ namespace Objects
 					if (cell->height < -Grid::CellStack::HalfRange || cell->height >= Grid::CellStack::HalfRange)
 						continue;
 
-					if (Grid::actualWorld.cellStack[cell->stackID].MakeLocalHole(cell->height))
+					if (World::actual.cellStack[cell->stackID].MakeLocalHole(cell->height))
 					{
 						Grid::TagCluster(rebuild, cell->stackID);
-						Grid::actualWorld.SignalChange(*cell);
+						World::actual.SignalChange(*cell);
 					}
 				}
 				//To<MobileEntity>::DynamicCast(v)->PlaceExactlyAt(v->location);
@@ -503,7 +503,7 @@ namespace Objects
 
 		/*virtual override*/ BaseJob::continue_t	ClearAbove::Finish(MobileEntity&v, const Grid::LCellIdI&focus)
 		{
-			Grid::actualWorld.Clear(focus,v.entityTime);
+			World::actual.Clear(focus,v.entityTime);
 			SignalClusterAndNeighborsChange(focus,v.entityTime);
 			return JobDone;
 		}
@@ -537,7 +537,7 @@ namespace Objects
 		//	//bool rebuild[BaseGrid::NumFamilies] = { false };
 
 		//	//count_t blobCnt = 0;
-		//	//Grid::CellStack&fine =Grid::actualWorld.cellStack[finer];
+		//	//Grid::CellStack&fine =World::actual.cellStack[finer];
 		//	//int lowest = target.height-1;
 		//	//if (fine.LocalOverwrite(target.height - 1, Grid::CellStack::Cell::Content::Foundation))
 		//	//{
@@ -562,7 +562,7 @@ namespace Objects
 		//	//for (int j = 0; j < c.neighborhood.numNeighbors; j++)
 		//	//{
 		//	//	UINT32 n = c.neighborhood.neighborID[j];
-		//	//	Grid::CellStack&stack = Grid::actualWorld.cellStack[n];
+		//	//	Grid::CellStack&stack = World::actual.cellStack[n];
 		//	//	if (stack.LocalOverwrite(target.height - 1, Grid::CellStack::Cell::Content::Foundation))
 		//	//	{
 		//	//		Grid::TagCluster(rebuild, n);
@@ -583,7 +583,7 @@ namespace Objects
 		//	//	lowest = std::min(lowest,h+1);
 
 		//	//}
-		//	//Grid::actualWorld.SignalChangeUpTo(target-1);
+		//	//World::actual.SignalChangeUpTo(target-1);
 		//	//for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 		//	//	if (rebuild[k])
 		//	//	{
@@ -928,7 +928,7 @@ namespace Objects
 
 
 			count_t blobCnt = 0;
-			if (Grid::actualWorld.cellStack[finer].MakeLocalHole(target.height))
+			if (World::actual.cellStack[finer].MakeLocalHole(target.height))
 			{
 				Grid::TagCluster(rebuild, finer);
 				blobCnt++;
@@ -938,7 +938,7 @@ namespace Objects
 				for (int j = 0; j < c.neighborhood.numNeighbors; j++)
 				{
 					UINT32 n = c.neighborhood.neighborID[j];
-					if (Grid::actualWorld.cellStack[n].MakeLocalHole(target.height))
+					if (World::actual.cellStack[n].MakeLocalHole(target.height))
 					{
 						Grid::TagCluster(rebuild, n);
 						blobCnt++;
@@ -946,7 +946,7 @@ namespace Objects
 
 				}
 			#endif
-			Grid::actualWorld.SignalChange(target);
+			World::actual.SignalChange(target);
 
 
 			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
@@ -1085,7 +1085,7 @@ namespace Objects
 				//		const UINT32 finer = v.location.stackID;
 				//	#endif
 
-				//	const auto&stack = Grid::actualWorld.cellStack[finer];
+				//	const auto&stack = World::actual.cellStack[finer];
 				//	Grid::HCellIdI ground(finer,v.location.height-1);
 
 				//	int h = v.location.height - 2;
@@ -1267,7 +1267,7 @@ namespace Objects
 					&& Super::Deserialize(inStream,EmbeddedSize);
 				
 		}
-		bool					Sequence::DoneHere(const Grid::WorldData&world,const Grid::LCellIdI&cell, const Grid::LCellIdI&nextCell)	const
+		bool					Sequence::DoneHere(const World::Data&world,const Grid::LCellIdI&cell, const Grid::LCellIdI&nextCell)	const
 		{
 			switch (mode)
 			{
@@ -1305,7 +1305,7 @@ namespace Objects
 			roundsToJobCompletion = 0;
 			resourceCostLeft = 0;
 
-			const Grid::WorldData&world = v.owner->currentState;
+			const World::Data&world = v.owner->currentState;
 			int speed = v.GetOperationSpeed(GetOperationAffinity());
 			//if (destination != v.location)
 			{
@@ -1439,7 +1439,7 @@ namespace Objects
 
 		/*virtual override*/ bool				Sequence::UpdatePath(const MobileEntity&v, const Grid::LCellIdI&_origin, Grid::LCellIdI&destination)
 		{
-			const Grid::WorldData&world = v.owner->currentState;
+			const World::Data&world = v.owner->currentState;
 //			Grid::LCellIdI destination = _destination;
 			if (v.IsVehicle())
 			{
@@ -1492,7 +1492,7 @@ namespace Objects
 
 		/*virtual override*/ bool		Sequence::IsImplicitlyDone(MobileEntity&v, const Grid::LCellIdI&_destination) const
 		{
-			const Grid::WorldData&world = v.owner->currentState;
+			const World::Data&world = v.owner->currentState;
 			Grid::LCellIdI destination = _destination;
 			if (v.IsVehicle())
 			{
@@ -1503,7 +1503,7 @@ namespace Objects
 			}
 
 			auto next = path.IsNotEmpty() ? *path.begin() : v.location;
-			if (destination == v.location && DoneHere(Grid::actualWorld,v.location,next))
+			if (destination == v.location && DoneHere(World::actual,v.location,next))
 			{
 				return true;
 			}
@@ -1514,7 +1514,7 @@ namespace Objects
 
 		/*virtual override*/ Sequence::begin_t	Sequence::BeginHere(MobileEntity&v, const Grid::LCellIdI&_destination,bool hasToMoveFirst)
 		{
-			const Grid::WorldData&world = v.owner->currentState;
+			const World::Data&world = v.owner->currentState;
 			Grid::LCellIdI destination = _destination;
 			if (mode != CursorMode::BuildBridgeMode)
 				while (!world.LowCellIsClearIgnoreStructure(destination))
@@ -1526,7 +1526,7 @@ namespace Objects
 				destination--;
 
 			auto next = path.IsNotEmpty() ? *path.begin() : v.location;
-			if (destination == v.location && DoneHere(Grid::actualWorld,v.location,next))
+			if (destination == v.location && DoneHere(World::actual,v.location,next))
 			{
 				roundsToJobCompletion = 0;
 				return Started;
@@ -1545,7 +1545,7 @@ namespace Objects
 				bool nextIsLast = path.Count() <= 1;
 				bool hasNext = path.Count() > 0;
 
-				if (!DoneHere(Grid::actualWorld,v.location,next) && !hasToMoveFirst)
+				if (!DoneHere(World::actual,v.location,next) && !hasToMoveFirst)
 				{
 					switch (mode)
 					{
@@ -1645,7 +1645,7 @@ namespace Objects
 					{
 						c = *node;
 						auto next = node+1;
-						if (c != v.location && !DoneHere(Grid::actualWorld,c, next == path.end() ? c : *next))
+						if (c != v.location && !DoneHere(World::actual,c, next == path.end() ? c : *next))
 							break;
 					}
 					if (c == v.location)

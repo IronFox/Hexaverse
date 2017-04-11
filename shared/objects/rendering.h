@@ -3,7 +3,7 @@
 #define objectRenderingH
 
 #include "../../client/ExtRenderer/DirectX11.h"
-#include "../sphereGrid.h"
+#include "../grid/volume.h"
 #include "turretBase.h"
 #include <engine/display.h>
 #include <al/openal.h>

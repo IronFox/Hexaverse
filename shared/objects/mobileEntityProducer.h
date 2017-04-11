@@ -1,7 +1,7 @@
 #ifndef objectMobileEntityProducerH
 #define objectMobileEntityProducerH
 
-#include "../sphereGrid.h"
+#include "../grid/volume.h"
 #include "types.h"
 #include "../uniqueID.h"
 #ifdef HAS_WINDOW

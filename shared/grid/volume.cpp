@@ -10,18 +10,6 @@
 #include "../luaGameAPI.h"
 
 
-#ifdef HAS_WINDOW
-	extern Engine::Display<Engine::DirectX11>	display;
-	namespace Camera
-	{
-		extern Engine::VectorCamera<>	scene;
-		void  ChangeGroundRadius(float);
-	}
-
-#endif
-
-
-
 
 namespace Grid
 {
@@ -30,23 +18,11 @@ namespace Grid
 						empZonesUnlocked = 0xFFFF;
 
 	//static Resource::coverage_t	GetResourceCoverage(const TVec3<>&seed, const TVec3<>&center0,float rarity,Resource::coverage_t maxYield, float probabilityModifier);
-	#ifndef NO_MUNITION
-		/*static*/ float			Resource::probability[Objects::Resource::NumberOfPossibilities] = {0.08f,0.08f,0,0,0.008f } ;
-		/*static*/ float			Resource::density[Objects::Resource::NumberOfPossibilities] = {0.04f,0.06f,0,0,0.02f } ;
-		/*static*/ Resource::coverage_t		Resource::maximum[Objects::Resource::NumberOfPossibilities] = {12,12,0,0,6};
-	#else
-		/*static*/ float			Resource::probability[Objects::Resource::NumberOfPossibilities] = {0.08f,0.08f,0,0.008f } ;
-		/*static*/ float			Resource::density[Objects::Resource::NumberOfPossibilities] = {0.04f,0.06f,0,0.02f } ;
-		/*static*/ Resource::coverage_t		Resource::maximum[Objects::Resource::NumberOfPossibilities] = {12,12,0,6};
-	#endif
-
-
-	/*static*/ Buffer0<Resource>	Resource::all;
 
 
 
 
-	float2	RandomHeight(const TVec3<>&center0, const ExtendedPlanetConfig&config);
+
 
 
 
@@ -57,8 +33,6 @@ namespace Grid
 	#else
 
 	#endif
-		TPlanetConfig	currentPlanetConfig;
-		String			currentCustomResourceDistribution="clustered";
 
 
 	static_assert(CellStack::Cell::TypeCount == Content::NumberOfPossibilities, "Adjust type count");
@@ -372,14 +346,6 @@ namespace Grid
 			return rs;
 		}
 
-		//float	CellStack::Cell::GetWaterLightLevel() const
-		//{
-		//	#ifdef DEBUG_HIDE_SENSORY
-		//		return 1.f;
-		//	#else
-		//		return float(visible > 0);
-		//	#endif
-		//}
 
 		void	CellStack::Cell::SetLightLevel(float v)
 		{
@@ -429,125 +395,6 @@ namespace Grid
 
 
 
-
-
-	void			CellStack::InitUnknown(float2 heights, const ExtendedPlanetConfig&config)
-	{
-		//float topHeight = heights.y;
-		//based on this, h could go up to 40, though chances for that are excessively rare
-		int up0 = (int)Round(heights.y * config.mountains.heightScale / RawLayerHeight / UnitScale);
-		if (abs(up0) <= config.mountains.dampening)
-			up0 = 0;
-		else
-			up0 -= config.mountains.dampening * sign(up0);
-		int up1 = (int)Round(heights.x * config.extendedCore.heightScale / RawLayerHeight / UnitScale);
-		if (abs(up1) <= config.extendedCore.dampening)
-			up1 = 0;
-		else
-			up1 -= config.extendedCore.dampening * sign(up1);
-		const int h = clamp(config.mountains.baseHeight + up0, -HalfRange, HalfRange - 2);
-		const int coreH = clamp(config.extendedCore.baseHeight + up1, -HalfRange, HalfRange - 2);
-		
-//			int coreH = clamp(Round(fabs(heights.x) * config.coreScale / RawLayerHeight)-HalfRange, -HalfRange, HalfRange - 1);
-
-		UINT uh = unsigned(h + HalfRange);
-		UINT coreLayer = ToLayer(coreH);
-
-		#ifdef HAS_WINDOW
-			lowestOpenCell = (BYTE)uh + 1;
-			highestOpaqueCell = (BYTE)uh;
-		#endif
-		if (config.type != Content::Clear)
-			for (UINT i = 0; i <= uh; i++)
-				volumeCell[i].content = Cell::IsLiquid(config.type) ? Cell::Content::Water : Cell::Content::Unknown;
-		else
-			for (UINT i = 0; i <= uh; i++)
-				volumeCell[i].content = Cell::Content::Clear;
-
-
-		for (UINT l = uh+1; l < Range; l++)
-			volumeCell[l].content = Content::Clear;
-
-		//if (Cell::IsLiquid(config.extendedCoreType ) || config.extendedCoreType == Content::Clear)
-		//	for (UINT i = 0; i < coreLayer; i++)
-		//		volumeCell[i].content = Content::Clear;
-		//else
-		if (config.extendedCoreType != Content::Clear)
-			for (UINT i = 0; i < coreLayer; i++)
-				volumeCell[i].content = Cell::IsLiquid(config.type) ? Cell::Content::Lava : Cell::Content::Granite;
-		else
-			for (UINT i = 0; i < coreLayer; i++)
-				volumeCell[i].content = Content::Clear;
-	}
-
-	void			CellStack::FillTypes(const ExtendedPlanetConfig&config)
-	{
-		UINT top = 0;
-		int h = BottomHeight;
-		for (UINT layer = Range-1; layer < Range; layer--)
-		{
-			BYTE&content = volumeCell[layer].content;
-			if (content == Content::Clear)
-			{
-				continue;
-			}
-			if (!top)
-			{
-				bool isSolid = true;
-				//isSolid = Cell::IsSolid(content);
-
-				if (content == Content::Unknown)
-				{
-					top = layer;
-					h = ToHeight(top);
-
-					if (h > config.snowHeight)
-						content = Content::Snow;
-					else
-						if (h < config.liquidHeight && CellStack::Cell::IsLiquid(config.liquidCoverage) && CellStack::Cell::IsSolid(config.liquidOutline))
-							content = config.liquidOutline;
-						else  
-							if (config.type == Content::Unknown)
-								content = h < 3 ? Content::Grass : Content::Rock;
-							else
-								content = config.type;
-					continue;
-				}
-			}
-			if (content == Content::Unknown || content == Content::Water)	//mountain layer
-			{
-				if (config.type == Content::Unknown)
-				{
-					//bool hasEarth = Cell::typeStrength[config.topType] <= Cell::typeStrength[Content::Earth];
-					UINT rockHeight = h > 3 ? top : top - (3 - h);
-					//if (!hasEarth)
-					//	rockHeight = Range;
-					
-					content = layer <= rockHeight ? Cell::Content::Rock : Cell::Content::Earth;
-				}
-				else
-					content = config.type;
-			}
-			else if (content == Content::Granite || content == Content::Lava)
-				content = config.extendedCoreType;
-				
-					
-
-		}
-
-
-		if (config.liquidCoverage != Content::Clear)
-		{
-			UINT top = std::min(ToLayer(config.liquidHeight),Range-1);
-			for (UINT i = 0; i <= top; i++)
-				if (volumeCell[i].content == Content::Clear)
-				{
-					volumeCell[i].content = config.liquidCoverage;
-				}
-		}
-	}
-	
-
 	void			CellStack::ZeroInit()
 	{
 		#ifdef HAS_WINDOW
@@ -570,15 +417,11 @@ namespace Grid
 		#endif
 	}
 
-	void			CellStack::ResetStructureCounters(bool resetVisibility)
+	void			CellStack::ResetStructureCounters()
 	{
 		for (UINT i = 0; i < Range; i++)
 		{
 			volumeCell[i].structureCounter = 0;
-			#ifdef CLIENT
-				if (resetVisibility)
-					volumeCell[i].visible = 0;
-			#endif
 		}
 	}
 
@@ -704,192 +547,6 @@ namespace Grid
 
 
 
-	void				Create1()
-	{
-		#ifdef HAS_WINDOW
-			Buffer0<DX11::Shader::Binding> bindings;
-
-
-			foreach (Resource::all,res)
-				memset(res->known,false,sizeof(res->known));
-
-			//bindings;
-		
-			bindings.Append(DX11::Shader::Binding(Instruction::sunDirection,"Sun"));
-			bindings.Append(DX11::Shader::Binding(Instruction::sunColor,"SunColor"));
-			#ifdef CASCADING_SHADOW
-				for (index_t i = 0; i < Objects::NumCascades; i++)
-				{
-					bindings.Append(DX11::Shader::Binding(Objects::shadowMatrix[i],"ShadowMatrix"+String(i)));
-					bindings.Append(DX11::Shader::Binding(Objects::shadowMap[i].GetDepthStencilTarget(), "ShadowMap"+String(i)));
-				}
-			#else
-				bindings.Append(DX11::Shader::Binding(Objects::shadowMatrix,"ShadowMatrix"));
-				bindings.Append(DX11::Shader::Binding(Objects::shadowMap.GetDepthStencilTarget(), "ShadowMap"));
-			#endif
-			bindings.Append(DX11::Shader::Binding(Instruction::atmosphereConfig, "AtmosphereConfig"));
-			bindings.Append(DX11::Shader::SamplerBinding(true, Engine::TextureFilter::None, 1, "ShadowSampler"));
-
-			bindings.Append(DX11::Shader::SamplerBinding(true,Engine::TextureFilter::Trilinear,1,"HeightMapSampler"));
-			bindings.Append(DX11::Shader::Binding(Instruction::cubeHeightMap,"HeightMap"));
-			bindings.Append(DX11::Shader::Binding(Instruction::heightMapOrientation,"HeightMapOrientation"));
-		
-			Instruction::terrainBase.shader.LoadFromFile("shaders/gridTerrain.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
-
-		
-
-			{
-				//Engine::VertexBinding binding;
-				//binding.vertex.set(0, 4);
-				//binding.normal.set(4, 4);
-				//binding.color.set(8, 4);
-				//binding.floats_per_vertex = 12;
-				Instruction::terrainBase.binding.Append("POSITION",0,DXGI_FORMAT_R32G32B32A32_FLOAT);
-				Instruction::terrainBase.binding.Append("NORMAL",0,DXGI_FORMAT_R8G8B8A8_SNORM);
-				Instruction::terrainBase.binding.Append("COLOR",0,DXGI_FORMAT_R32G32B32A32_FLOAT);
-				Instruction::terrainBase.SetTriangles();
-
-				Instruction::terrainSphereBase.binding = Instruction::terrainBase.binding;
-				Instruction::terrainSphereBase.SetTriangles();
-
-				Instruction::terrainParaboloidBase.binding = Instruction::terrainBase.binding;
-				Instruction::terrainParaboloidBase.SetTriangles();
-
-				Instruction::terrainBase.UpdateLayout();
-			}
-			Instruction::terrainShadowBase.shader.LoadFromFile("shaders/gridTerrainShadow.hlsl", "vsMain", "psMain");
-			Instruction::terrainShadowBase.binding = Instruction::terrainBase.binding;
-			Instruction::terrainShadowBase.UpdateLayout();
-			Instruction::terrainShadowBase.SetTriangles();
-
-
-			{
-				Engine::VertexBinding binding;
-				binding.vertex.set(0, 4);
-				binding.normal.set(4, 4);
-				binding.color.set(8,1);
-				binding.floats_per_vertex = 9;
-
-				Instruction::orbitGridBase.binding = binding;
-				Instruction::orbitGridBase.SetTriangles();
-				Instruction::orbitGridBase.shader.LoadFromFile("shaders/orbitalGrid.hlsl", "vsMain", "psMain");
-				Instruction::orbitGridBase.UpdateLayout();
-			}
-	
-			{
-				DX11::BaseInstructionBlock&base = Instruction::waterBase;
-				base.shader.LoadFromFile("shaders/gridTerrainWater.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
-
-				{
-					/*
-				float4		vertex;
-				float3		normal;
-				float		light;	//water derives color from shader variable
-					*/
-					Engine::VertexBinding binding;
-					binding.vertex.set(0, 4);
-					binding.normal.set(4, 3);
-					binding.color.set(7, 1);
-					binding.floats_per_vertex = 8;
-					base.binding = binding;
-					base.UpdateLayout();
-					base.SetTriangles();
-				}
-
-
-				Instruction::waterSphereBase.binding = Instruction::waterBase.binding;
-				Instruction::waterSphereBase.SetTriangles();
-
-				Instruction::waterParaboloidBase.binding = Instruction::waterBase.binding;
-				Instruction::waterParaboloidBase.SetTriangles();
-
-			}
-			{
-				Engine::VertexBinding binding;
-				binding.vertex.set(0, 3);
-				binding.normal.unset();
-				binding.color.set(3, 1);
-				binding.floats_per_vertex = 4;
-				{
-					DX11::BaseInstructionBlock&base = Instruction::overlayBase;
-					base.shader.LoadFromFile("shaders/gridTerrainOverlay.hlsl", "vsMain", "psMain"/*, bindings, ARRAYSIZE(bindings)*/);
-					base.binding = binding;
-					base.UpdateLayout();
-					base.SetTriangles();
-				}
-				{
-					DX11::BaseInstructionBlock&base = Instruction::overlayShadowBase;
-					base.shader.LoadFromFile("shaders/gridTerrainOverlayShadow.hlsl", "vsMain", "psMain"/*, bindings, ARRAYSIZE(bindings)*/);
-					base.binding = binding;
-					base.UpdateLayout();
-					base.SetTriangles();
-				}
-			}
-
-			{
-				DX11::BaseInstructionBlock&base = Instruction::resourceBase;
-				base.shader.LoadFromFile("shaders/gridResourceVisualization.hlsl", "vsMain", "psMain"/*, bindings, ARRAYSIZE(bindings)*/);
-				{
-					Engine::VertexBinding binding;
-					binding.vertex.set(0, 4);
-					binding.normal.set(4, 4);
-					binding.color.set(8, 4);
-					binding.floats_per_vertex = 12;
-					base.binding = binding;
-					base.UpdateLayout();
-					base.SetTriangles();
-				}
-			}
-
-
-			Instruction::ParaboloidDirection_Height.Create(float4());
-			Instruction::ParaboloidColor_FlatRadius.Create(float4());
-			Instruction::SphereDef.Create(float4());
-			Instruction::SphereColor.Create(float4());
-
-			DX11::Shader::RedefineMacro(DX11::Shader::Macro("SPHERE_DISPLAY","1"));
-			bindings.Append(DX11::Shader::Binding(Instruction::SphereDef,"SphereDef"));
-			bindings.Append(DX11::Shader::Binding(Instruction::SphereColor,"SphereColor"));
-			Instruction::terrainSphereBase.shader.LoadFromFile("shaders/gridTerrain.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
-			DX11::Shader::macroDefinitions.Clear();
-			Instruction::terrainSphereBase.UpdateLayout();
-			bindings.EraseLast();
-			bindings.EraseLast();
-
-
-			DX11::Shader::RedefineMacro(DX11::Shader::Macro("PARABOLOID_DISPLAY","1"));
-			bindings.Append(DX11::Shader::Binding(Instruction::ParaboloidDirection_Height,"ParaboloidDirection_Height"));
-			bindings.Append(DX11::Shader::Binding(Instruction::ParaboloidColor_FlatRadius,"ParaboloidColor_FlatRadius"));
-			Instruction::terrainParaboloidBase.shader.LoadFromFile("shaders/gridTerrain.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
-			DX11::Shader::macroDefinitions.Clear();
-			Instruction::terrainParaboloidBase.UpdateLayout();
-			bindings.EraseLast();
-			bindings.EraseLast();
-
-
-
-			DX11::Shader::RedefineMacro(DX11::Shader::Macro("SPHERE_DISPLAY","1"));
-			bindings.Append(DX11::Shader::Binding(Instruction::SphereDef,"SphereDef"));
-			bindings.Append(DX11::Shader::Binding(Instruction::SphereColor,"SphereColor"));
-			Instruction::waterSphereBase.shader.LoadFromFile("shaders/gridTerrainWater.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
-			DX11::Shader::macroDefinitions.Clear();
-			Instruction::waterSphereBase.UpdateLayout();
-			bindings.EraseLast();
-			bindings.EraseLast();
-
-
-			DX11::Shader::RedefineMacro(DX11::Shader::Macro("PARABOLOID_DISPLAY","1"));
-			bindings.Append(DX11::Shader::Binding(Instruction::ParaboloidDirection_Height,"ParaboloidDirection_Height"));
-			bindings.Append(DX11::Shader::Binding(Instruction::ParaboloidColor_FlatRadius,"ParaboloidColor_FlatRadius"));
-			Instruction::waterParaboloidBase.shader.LoadFromFile("shaders/gridTerrainWater.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
-			DX11::Shader::macroDefinitions.Clear();
-			Instruction::waterParaboloidBase.UpdateLayout();
-			bindings.EraseLast();
-			bindings.EraseLast();
-
-
-		#endif
-	}
 	
 	#ifdef CLIENT
 		#ifdef HAS_WINDOW
@@ -1013,265 +670,6 @@ namespace Grid
 	//}
 
 
-	/*static*/ void Resource::FillAll(Random&random, const String&distribution)
-	{
-		#ifndef CLIENT
-		if (distribution.IsNotEmpty())
-		{
-			try
-			{
-				Lua::PProgram prog = Lua::Program::Create("Resources");
-				Lua::Table api = Lua::CreateGeneralAPI(prog);
-				Lua::DefineLowGridCells(api);
-				
-				SimplexNoise n(random.NextSeed());
-				api.SetFunction("Simplex",[&n](double x, double y, double z)->double
-				{
-					return n.Get(x,y,z);
-				});
-
-				api.SetFunction("RandomInt",[&random](int min, int max)->int
-				{
-					return random.Next(min,max);
-				});
-
-
-				LogEvent(EventClass::Preset::configurationPrint,"Executing resource distribution program '"+distribution+"'");
-				Timer::Time t0 = timer.Now();
-				prog->ExecuteFile(PathString("../lua/distributions/"+distribution+".lua"));
-
-				Lua::Function<Lua::Table()> compute = prog->RequireGlobal("Compute");
-				Lua::Table result = compute();
-				LogEvent(EventClass::Preset::configurationPrint,"'"+distribution+"' took "+timer.GetSecondsSince(t0)+" seconds");
-
-				foreach (Resource::all,res)
-				{
-					Lua::Table sub = result.GetField(res->name);
-					if (sub.IsEmpty())
-						throw Lua::Exception("Unable to fetch table for resource '"+res->name+"' in response from "+distribution+".lua : Compute()");
-					if (sub.GetLength() != LowSetup::GridType::CellCount)
-						throw Lua::Exception("Response size of "+distribution+".lua : Compute() for resource '"+res->name+"' ("+String(sub.GetLength())+") does not match expected size "+String(LowSetup::GridType::CellCount));
-					for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
-						res->coverage[i] = sub.GetElement(i+1).GetAs<coverage_t>();
-				}
-			}
-			catch (const Lua::Exception&ex)
-			{
-				LogEvent(EventClass::Preset::configurationError,ex.what());
-				LogEvent(EventClass::Preset::configurationPrint,"Falling back to internal distribution");
-				foreach (Resource::all,res)
-					res->FillInternal(random);
-			}
-		}
-		else
-		#endif
-		{
-			foreach (Resource::all,res)
-				res->FillInternal(random);
-		}
-	}
-
-	void WorldData::BuildWorld(const ExtendedPlanetConfig&config)
-	{
-		#ifdef HAS_WINDOW
-			lightingOutdated = true;
-			structureChanged = true;
-		#endif
-		ResetStructureCounters(false);
-		CellStack::bottom.content = (BYTE)config.innerCoreType;
-
-		Concurrency::parallel_for(index_t(0),HighSetup::GridType::CellCount,[config,this](index_t i)
-		{
-			cellStack[i].InitUnknown(RandomHeight(high.cells[i].centerVertex.xyz,config),config);
-		});
-
-		for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
-		{
-			index_t fine = Grid::low.grid.GetCell(i).higherEquivalent;
-			auto&stack = cellStack[fine];
-			const auto&n = Grid::high.grid.GetCell(fine).neighborhood;
-			for (UINT l = 0; l < CellStack::Range; l++)
-			{
-				if (stack.volumeCell[l].IsClearOrLiquidIgnoreStructure())
-				{
-					int cnt = 0;
-					BYTE cont;
-					for (int ni = 0; ni < n.numNeighbors; ni++)
-					{
-						auto&other = cellStack[n.neighborID[ni]].volumeCell[l];
-						if (!other.IsClearOrLiquidIgnoreStructure())
-						{
-							cnt ++;
-							cont = other.content;
-						}
-					}
-					if (cnt > 1)
-					{
-						stack.volumeCell[l].content = cont;
-	
-					}
-					else if (cnt > 0)
-					{
-						for (int ni = 0; ni < n.numNeighbors; ni++)
-						{
-							auto&otherStack = cellStack[n.neighborID[ni]];
-							auto&other = otherStack.volumeCell[l];
-							if (!other.IsClearOrLiquidIgnoreStructure())
-							{
-								cont = stack.volumeCell[l].content;
-
-								cnt ++;
-								other.content = stack.volumeCell[l].content;
-							}
-						}
-					}
-				}
-			}
-		}
-
-		Concurrency::parallel_for(index_t(0),LowSetup::GridType::CellCount,[this](index_t i)
-		{
-			index_t fine = Grid::low.grid.GetCell(i).higherEquivalent;
-			auto&centerStack = cellStack[fine];
-			const auto&n = Grid::high.grid.GetCell(fine).neighborhood;
-			const auto&n0 = Grid::low.grid.GetCell(i).neighborhood;
-			for (int ni = 0; ni < n.numNeighbors; ni++)
-			{
-				if ((index_t)n0.neighborID[ni] < i)
-					continue;
-
-				const auto&n2 = Grid::high.grid.GetCell(n.neighborID[ni]).neighborhood;
-
-				auto&nStack = cellStack[n.neighborID[ni]];
-				for (UINT l = 0; l < CellStack::Range; l++)
-				{
-					if (!nStack.volumeCell[l].IsClearOrLiquidIgnoreStructure())
-						continue;
-					count_t cnt = 0;
-					BYTE cont = 0;
-					for (int nj = 0; nj < n2.numNeighbors; nj++)
-					{
-						if (!cellStack[n2.neighborID[nj]].volumeCell[l].IsClearOrLiquidIgnoreStructure())
-						{
-							cnt ++;
-							cont = cellStack[n2.neighborID[nj]].volumeCell[l].content;
-						}
-					}
-					if (cnt > 3)
-					{
-						nStack.volumeCell[l].content = cont;
-					}
-				}
-
-			}
-		});
-
-
-		Concurrency::parallel_for(index_t(0),HighSetup::GridType::CellCount,[config,this](index_t i)
-		{
-			cellStack[i].FillTypes(config);
-		});
-
-		//Concurrency::parallel_for (index_t(0), HighSetup::GridType::CellCount, [this](index_t i)
-		//{
-		//	auto&stack = cellStack[i];
-		//	UINT32 stackTop = 0;
-		//	for (UINT l = 0; l+1 < CellStack::Range; l++)
-		//	{
-		//		if (stack.volumeCell[l].content == Content::Grass && !stack.volumeCell[l+1].IsClearOrLiquidIgnoreStructure())
-		//		{
-		//			stack.volumeCell[l].content = Content::Earth;
-		//		}
-		//	}
-		//});
-
-
-		const bool solidProx = CellStack::Cell::IsSolid(config.liquidOutline) && CellStack::Cell::IsLiquid(config.liquidCoverage);
-		if (solidProx)
-			for (index_t i = 0; i < HighSetup::GridType::CellCount; i++)
-			{
-				auto&stack = cellStack[i];
-				for (UINT l = 0; l < CellStack::Range; l++)
-				{
-					const BYTE cont = stack.volumeCell[l].content;
-					if (solidProx && cont == config.liquidCoverage)
-					{
-						const auto&n = high.grid.GetCell(i).neighborhood;
-						for (BYTE k = 0; k < n.numNeighbors; k++)
-							cellStack[n.neighborID[k]].volumeCell[l].SetToIfSolid(config.liquidOutline);
-					}
-
-				}
-			}
-
-		#ifdef HAS_WINDOW
-			Concurrency::parallel_for (index_t(0), HighSetup::GridType::CellCount, [this](index_t i)
-			{
-				auto&stack = cellStack[i];
-				stack.UpdateRange();
-				stack.lightingChangedTo = (BYTE)CellStack::Range;
-			});
-			lightingOutdated = true;
-			structureChanged = true;
-		#endif
-	}
-	void					WorldData::ExportDiscovered(WorldData&target, WorldDiscovery discoveryLevel) const
-	{
-		for (index_t i = 0; i < HighSetup::GridType::CellCount; i++)
-		{
-			auto&stack = target.cellStack[i];
-			stack = cellStack[i];	//raw copy
-			switch (discoveryLevel)
-			{
-				case WorldDiscovery::None:
-					for (unsigned j = 0; j < CellStack::Range; j++)
-					{
-						CellStack::Cell&c = stack.volumeCell[j];
-						if (c.content != Content::Clear)
-						{
-					
-							c.content = Content::Unknown;
-							#ifndef CLIENT
-							DBG_ASSERT__(c.structureCounter == 0);
-							#endif
-						}
-					}
-				break;
-				case WorldDiscovery::Water:
-					for (unsigned j = 0; j < CellStack::Range; j++)
-					{
-						CellStack::Cell&c = stack.volumeCell[j];
-						if (c.content != Content::Clear && c.content != Content::Water)
-						{
-							c.content = Content::Unknown;
-							#ifndef CLIENT
-							DBG_ASSERT__(c.structureCounter == 0);
-							#endif
-						}
-					}
-				break;
-				case WorldDiscovery::Liquids:
-					for (unsigned j = 0; j < CellStack::Range; j++)
-					{
-						CellStack::Cell&c = stack.volumeCell[j];
-						if (c.content != Content::Clear && !c.IsLiquid())
-						{
-							c.content = Content::Unknown;
-							#ifndef CLIENT
-							DBG_ASSERT__(c.structureCounter == 0);
-							#endif
-						}
-					}
-				break;
-			}
-			#ifdef HAS_WINDOW
-				if (discoveryLevel != WorldDiscovery::FullTerrain)
-					stack.UpdateRange();
-			#endif
-		}
-	}
-
-
 
 	//static float CDF(float x)
 	//{
@@ -1288,14 +686,6 @@ namespace Grid
 	//}
 
 
-	float Get(const SimplexNoise&n, const TVec3<>&p)
-	{
-		return (float)n.Get(p.x,p.y,p.z);
-	}
-	float GetContinuous(const SimplexNoise&n, const TVec3<>&p)
-	{
-		return (float)n.GetUniform(p.x,p.y,p.z);
-	}
 
 	static BYTE GetHeightMapHeight(const SimplexNoise&n, TVec3<>&p)
 	{
@@ -1523,73 +913,6 @@ namespace Grid
 		//terrainColor.Clear();
 	}
 
-	bool	ExtendedPlanetConfig::ApplySeed()
-	{
-		//LogEvent(EventSignificance::Uncommon,"seed: "+String(lastSeed));
-		Random random(lastSeed);
-		extendedCore.Randomize(random);
-		mountains.Randomize(random);
-		RandomizeSun(random);
-		return true;
-	}
-
-	void	ExtendedPlanetConfig::SetSeed(UINT32 seed)
-	{
-		lastSeed = seed;
-		//LogEvent(EventSignificance::Uncommon,"seed set "+String(lastSeed));
-		ApplySeed();
-	}
-
-	void	ExtendedPlanetConfig::RandomizeSeeds(Random&random)
-	{
-		lastSeed = random.GetCurrentSeed();
-		//LogEvent(EventSignificance::Uncommon,"seed randomized "+String(lastSeed));
-		extendedCore.Randomize(random);
-		mountains.Randomize(random);
-		RandomizeSun(random);
-	}
-
-	float	RandomHeight(const TVec3<>&center0, const ExtendedPlanetConfig::NoiseSet&config)
-	{
-		//center *= 3.f;
-		TVec3<> center = center0;
-		float rs = 0;
-
-		float strength = 1.f;
-		//noiseLevels = std::min(noiseLevels,5);
-		for (int i = 0; i < 5; i++)
-		{
-			center *= 2.f;
-			strength /= 2.f;
-			//const float3&seed = config.seed[i];
-			rs += Get(config.fractal[i],center)*strength;
-		}
-		rs *= Get(config.product,center0*2.f)*0.5f + 0.5f;
-		//noise.Get(center0.x*2.f + config.productSeed.x, center0.y*2.f + config.productSeed.y, center0.z*2.f + config.productSeed.z) * 0.5 + 0.5f;
-
-		float rf = 1.5f;
-		float depress = smoothstep(0.1f, 0.2f, 
-						0.5f * Get(config.depression0, center0*6.f*rf)
-							+ Get(config.depression1, center0*3.f*rf));
-		float fc = 0.25f * Get(config.depression2, center0*4.f*rf) 
-				+ 0.75f * Get(config.depression3, -center0*2.f*rf);
-		//noise.Get(center0.x*2.f + 10.f, center0.y*2.f, center0.z*2.f);
-		depress *= fc;// *fabs(fc);
-
-		rs -= depress*0.3f;
-
-		return rs;
-		//return (float)sign(rs)*pow(fabs(rs),1.3f) ;
-	}
-
-	float2	RandomHeight(const TVec3<>&center0, const ExtendedPlanetConfig&config)
-	{
-		return float2(
-			RandomHeight(center0*config.extendedCore.frequency,config.extendedCore),
-			RandomHeight(center0*config.mountains.frequency,config.mountains)
-			);
-
-	}
 	#ifdef CLIENT
 		#ifdef HAS_WINDOW
 			void	UpdatePlanetRenderingParameters(float radius)	//more to come
@@ -1619,7 +942,7 @@ namespace Grid
 
 
 
-	void					WorldData::MapSensorState(UINT32 lowCellCenter, float radius, int refHeight, int groundPenetration, SkySensorState&outState) const
+	void					Volume::MapSensorState(UINT32 lowCellCenter, float radius, int refHeight, int groundPenetration, SkySensorState&outState) const
 	{
 		outState.Clear();
 		outState.groundPenetration = groundPenetration;
@@ -1652,7 +975,7 @@ namespace Grid
 		}
 	}
 
-	UINT32						WorldData::TraceSkySensorLayer(UINT32 highCellCenter, UINT32 startingLayer, int penetration) const
+	UINT32						Volume::TraceSkySensorLayer(UINT32 highCellCenter, UINT32 startingLayer, int penetration) const
 	{
 		int penetrationLeft = penetration << 1;	//account for water effect
 
@@ -1696,13 +1019,13 @@ namespace Grid
 		return layer;
 	}
 
-	int						WorldData::TraceSkySensorHeight(UINT32 highCellCenter, int penetration) const
+	int						Volume::TraceSkySensorHeight(UINT32 highCellCenter, int penetration) const
 	{
 		return CellStack::ToHeight(TraceSkySensorLayer(highCellCenter,0xFFFFFFFF,penetration) );
 	}
 
 
-	bool					WorldData::UpdateSensorState(SkySensorState&state) const
+	bool					Volume::UpdateSensorState(SkySensorState&state) const
 	{
 		bool anyChanged = false;
 		for (auto&c : state.coverage)
@@ -1720,11 +1043,11 @@ namespace Grid
 
 	#ifdef CLIENT
 	
-		void				WorldData::InsertSensorCoverage(const SkySensorState&state)
+		void				Volume::InsertSensorCoverage(const SkySensorState&state)
 		{
 			ChangeSensorCoverage(state,1);
 		}
-		void				WorldData::RemoveSensorCoverage(const SkySensorState&state)
+		void				Volume::RemoveSensorCoverage(const SkySensorState&state)
 		{
 			ChangeSensorCoverage(state,-1);
 		}
@@ -1734,7 +1057,7 @@ namespace Grid
 
 
 
-	bool					WorldData::LowCellHasStructure(const LCellIdI&cell)const
+	bool					Volume::LowCellHasStructure(const LCellIdI&cell)const
 	{
 		if (cell.height >= CellStack::HalfRange || cell.height < -CellStack::HalfRange)
 			return false;
@@ -1748,7 +1071,7 @@ namespace Grid
 		#endif
 	}
 
-	bool					WorldData::LowCellIsClear(const LCellIdI&cell)	const
+	bool					Volume::LowCellIsClear(const LCellIdI&cell)	const
 	{
 		if (cell.height > CellStack::TopHeight)
 			return true;
@@ -1769,7 +1092,7 @@ namespace Grid
 		#endif
 	}
 
-	String					WorldData::LowCellReport(const LCellIdI&cell)	const
+	String					Volume::LowCellReport(const LCellIdI&cell)	const
 	{
 		if (cell.height > CellStack::TopHeight)
 			return "Clear: Over max height";
@@ -1802,7 +1125,7 @@ namespace Grid
 		return "Clear";
 	}
 
-	bool					WorldData::LowCellIsClearOrWater(const LCellIdI&cell)	const
+	bool					Volume::LowCellIsClearOrWater(const LCellIdI&cell)	const
 	{
 		if (cell.height >= CellStack::HalfRange)
 			return true;
@@ -1824,7 +1147,7 @@ namespace Grid
 	}
 
 
-	bool					WorldData::LowCellIsClearIgnoreStructure(const LCellIdI&cell)	const
+	bool					Volume::LowCellIsClearIgnoreStructure(const LCellIdI&cell)	const
 	{
 		if (cell.height >= CellStack::HalfRange)
 			return true;
@@ -1846,7 +1169,7 @@ namespace Grid
 
 
 
-	bool	WorldData::GetStrengthRange(const LCellIdI&cell, Content&outWeakest, Content&outStrongest, bool includeUnknown) const
+	bool	Volume::GetStrengthRange(const LCellIdI&cell, Content&outWeakest, Content&outStrongest, bool includeUnknown) const
 	{
 		#ifdef HYBRID_GRID
 			index_t finer = Grid::low.grid.GetCell(cell.stackID).higherEquivalent;
@@ -1993,7 +1316,7 @@ namespace Grid
 		}
 	#endif
 
-	bool	WorldData::Clear(const LCellIdI&ch, float atTime)
+	bool	Volume::Clear(const LCellIdI&ch, float atTime)
 	{
 		#ifdef HYBRID_GRID
 			index_t finer = Grid::low.grid.GetCell(ch.stackID).higherEquivalent;
@@ -2035,7 +1358,7 @@ namespace Grid
 		return blobCnt > 0;
 	}
 
-	bool	WorldData::ClearNonLava(const LCellIdI&ch, float atTime)
+	bool	Volume::ClearNonLava(const LCellIdI&ch, float atTime)
 	{
 		#ifdef HYBRID_GRID
 			index_t finer = Grid::low.grid.GetCell(ch.stackID).higherEquivalent;
@@ -2082,7 +1405,7 @@ namespace Grid
 	}
 
 
-	bool	WorldData::Overwrite(const LCellIdI&ch, Content with,  float atTime)
+	bool	Volume::Overwrite(const LCellIdI&ch, Content with,  float atTime)
 	{
 		#ifdef HYBRID_GRID
 			index_t finer = Grid::low.grid.GetCell(ch.stackID).higherEquivalent;
@@ -2126,14 +1449,14 @@ namespace Grid
 
 	#ifdef HAS_WINDOW
 
-		void	WorldData::OverrideVisibility(short v)
+		void	Volume::OverrideVisibility(short v)
 		{
 			foreach (cellStack,stack)
 			for (UINT32 l = 0; l < Grid::CellStack::Range; l++)
 				stack->volumeCell[l].visible = v;
 		}
 
-		float	WorldData::GetAverageLightLevel(const LCellIdI&id) const
+		float	Volume::GetAverageLightLevel(const LCellIdI&id) const
 		{
 			#ifdef HYBRID_GRID
 				const UINT32 high = Grid::low.grid.GetCell(id.stackID).higherEquivalent;
@@ -2147,7 +1470,7 @@ namespace Grid
 			#endif
 		}
 
-		float	WorldData::GetHighestLightLevel(const LCellIdI&id) const
+		float	Volume::GetHighestLightLevel(const LCellIdI&id) const
 		{
 			#ifdef HYBRID_GRID
 				const UINT32 high = Grid::low.grid.GetCell(id.stackID).higherEquivalent;
@@ -2163,7 +1486,7 @@ namespace Grid
 
 
 
-		void WorldData::CompileResources(THull<ResourceVertex>&cover, index_t offset, count_t count, FClipHeight clipHeight, const Resource*resources, count_t numResources) const
+		void Volume::CompileResources(THull<ResourceVertex>&cover, index_t offset, count_t count, FClipHeight clipHeight, const Resource*resources, count_t numResources) const
 		{
 			const index_t end = offset + count;
 			SpinLock lock;
@@ -3545,7 +2868,7 @@ namespace Grid
 		return (clearIsRoad && t == Content::Clear) || t == Content::Road || t == Content::Foundation;
 	}
 
-	bool	WorldData::IsRoad(const LCellIdI&cell, bool ignoreClearCellsOnEdge) const
+	bool	Volume::IsRoad(const LCellIdI&cell, bool ignoreClearCellsOnEdge) const
 	{
 		#ifdef HYBRID_GRID
 			const UINT32 lowEq = low.grid.GetCell(cell.stackID).higherEquivalent;
@@ -3564,7 +2887,7 @@ namespace Grid
 
 
 
-	void	WorldData::ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDeltaBlock>&data0, bool initialization, bool actualWorld)
+	void	Volume::ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDeltaBlock>&data0, bool initialization, bool actualWorld)
 	{
 		ASSERT_LESS__(family, BaseGrid::NumFamilies);
 		const index_t offset = high.grid.GetFamilyOffset(family);
@@ -3714,7 +3037,7 @@ namespace Grid
 	}
 */
 
-	void	WorldData::ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDelta>&data0, bool initialization)
+	void	Volume::ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDelta>&data0, bool initialization)
 	{
 		const index_t offset = high.grid.GetFamilyOffset(family);
 		const count_t range = high.grid.CountFamilyMembers(family);
@@ -4129,7 +3452,7 @@ namespace Grid
 		//ShowMessage(timer.GetSecondsSince(t0));
 	}
 
-	bool		WorldData::GridCanSeeAny(const HCellIdU&base, UINT height) const
+	bool		Volume::GridCanSeeAny(const HCellIdU&base, UINT height) const
 	{
 		const auto&stack = cellStack[base.stackID];
 		UINT end = std::min(base.layer + height,CellStack::Range);
@@ -4139,7 +3462,7 @@ namespace Grid
 		return false;
 	}
 
-	bool		WorldData::GridCanSee(const LCellIdI&center, int height, bool broad) const
+	bool		Volume::GridCanSee(const LCellIdI&center, int height, bool broad) const
 	{
 		UINT32 fine = low.grid.GetCell(center.stackID).higherEquivalent;
 		UINT32 layer0 = CellStack::ToLayer(center.height);
@@ -4155,7 +3478,7 @@ namespace Grid
 	}
 	
 
-	void		WorldData::ChangeSensorCoverage(const Sphere<>&state, signed char change)
+	void		Volume::ChangeSensorCoverage(const Sphere<>&state, signed char change)
 	{
 		bool familyChanged[BaseGrid::NumFamilies] = {false};
 		TemplateHelper::ChangeSensory(state.center,state.radius,change,cellStack.pointer(),familyChanged);
@@ -4164,7 +3487,7 @@ namespace Grid
 				Grid::high.family[i].SetOutdated(0);
 	}
 
-	void		WorldData::ChangeSensorCoverage(const HighSetup::TVolumeDescriptor&state, signed char change)
+	void		Volume::ChangeSensorCoverage(const HighSetup::TVolumeDescriptor&state, signed char change)
 	{
 		bool familyChanged[BaseGrid::NumFamilies] = {false};
 		TemplateHelper::ChangeSensory(state,change,cellStack.pointer(),familyChanged);
@@ -4173,7 +3496,7 @@ namespace Grid
 				Grid::high.family[i].SetOutdated(0);
 	}
 
-	void		WorldData::ChangeSensorCoverage(const SkySensorState&state, signed char change)
+	void		Volume::ChangeSensorCoverage(const SkySensorState&state, signed char change)
 	{
 		bool familyChanged[BaseGrid::NumFamilies] = {false};
 		TemplateHelper::ChangeSensorCoverage(state,change,cellStack.pointer(),familyChanged);
@@ -4182,7 +3505,7 @@ namespace Grid
 				Grid::high.family[i].SetOutdated(0);
 	}
 
-	void		WorldData::ChangeSensory(const LCellIdI&center, float radius, signed char change)
+	void		Volume::ChangeSensory(const LCellIdI&center, float radius, signed char change)
 	{
 		bool familyChanged[BaseGrid::NumFamilies] = {false};
 		TemplateHelper::ChangeSensory(Grid::ToWorld(center),radius,change,cellStack.pointer(),familyChanged);
@@ -4246,7 +3569,7 @@ namespace Grid
 
 
 
-	bool		WorldData::HasSensor(const LCellIdI&cell, float radius) const
+	bool		Volume::HasSensor(const LCellIdI&cell, float radius) const
 	{
 		#ifdef DEBUG_SENSORY
 			TSensor s;
@@ -4258,27 +3581,27 @@ namespace Grid
 		#endif
 	}
 
-	void				WorldData::InsertSensor(const Sphere<>&desc)
+	void				Volume::InsertSensor(const Sphere<>&desc)
 	{
 		ChangeSensorCoverage(desc,1);
 	}
 
-	void				WorldData::RemoveSensor(const Sphere<>&desc)
+	void				Volume::RemoveSensor(const Sphere<>&desc)
 	{
 		ChangeSensorCoverage(desc,-1);
 	}
 
-	void				WorldData::InsertSensor(const HighSetup::TVolumeDescriptor&desc)
+	void				Volume::InsertSensor(const HighSetup::TVolumeDescriptor&desc)
 	{
 		ChangeSensorCoverage(desc,1);
 	}
 
-	void				WorldData::RemoveSensor(const HighSetup::TVolumeDescriptor&desc)
+	void				Volume::RemoveSensor(const HighSetup::TVolumeDescriptor&desc)
 	{
 		ChangeSensorCoverage(desc,-1);
 	}
 
-	//void		WorldData::InsertSensor(const LCellIdI&cell, float radius)
+	//void		Volume::InsertSensor(const LCellIdI&cell, float radius)
 	//{
 	//	ChangeSensory(cell,radius,1);
 	//	#ifdef DEBUG_SENSORY
@@ -4289,7 +3612,7 @@ namespace Grid
 	//		sensors.Append(s);
 	//	#endif
 	//}
-	//void		WorldData::RemoveSensor(const LCellIdI&cell, float radius)
+	//void		Volume::RemoveSensor(const LCellIdI&cell, float radius)
 	//{
 	//	#ifdef DEBUG_SENSORY
 	//		TSensor s;
@@ -4312,7 +3635,7 @@ namespace Grid
 		#endif
 	}
 
-	/**/					WorldData::WorldData():cellStack(HighSetup::GridType::CellCount)
+	/**/					Volume::Volume():cellStack(HighSetup::GridType::CellCount)
 	{}
 
 }

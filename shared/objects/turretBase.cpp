@@ -231,7 +231,7 @@ namespace Objects
 			float fromDest2 = Vec::quadraticDistance(destIn.worldLocation,world);
 			if (fromDest2 > explosionRadius2)
 				continue;
-			if (!Grid::actualWorld.LowCellIsClear(current) || 
+			if (!World::actual.LowCellIsClear(current) || 
 				!Component::Turret::CanHit(turret->trajectoryType, range,source,TrajectoryEndPoint( current,0)))
 				continue;
 			//float fromSource2 = Vec::quadraticDistance(source3,world);

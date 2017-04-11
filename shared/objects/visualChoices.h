@@ -3,7 +3,7 @@
 #ifndef visualChoicesH
 #define visualChoicesH
 
-#include "../sphereGrid.h"
+#include "../grid/volume.h"
 #include "types.h"
 
 namespace Objects

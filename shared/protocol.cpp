@@ -46,7 +46,7 @@ namespace Protocol
 		}
 
 
-	void			GenerateWorldDelta(Grid::SensorCoverage*vs, Grid::WorldData*ws, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, WorldDeltaType::delta_type_t deltaType)
+	void			GenerateWorldDelta(Grid::SensorCoverage*vs, World::Data*ws, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, WorldDeltaType::delta_type_t deltaType)
 	{
 		const index_t offset = Grid::high.grid.GetFamilyOffset(familyID);
 		const count_t length = Grid::high.grid.CountFamilyMembers(familyID);
@@ -92,7 +92,7 @@ namespace Protocol
 						}
 						if (canSee)
 						{
-							Grid::actualWorld.cellStack[stackID].volumeCell[layer].
+							World::actual.cellStack[stackID].volumeCell[layer].
 							GetDeltaFromAndUpdate(ws->cellStack[stackID].volumeCell[layer],tdts[i]/*,fdts[i],fdtsValid[i]*/);
 						}
 						else
@@ -107,7 +107,7 @@ namespace Protocol
 						bool canSee = cell.visibility > 0 || cell.temporarilyVisible;
 						if (canSee)
 						{
-							ws->cellStack[stackID].volumeCell[layer].content = Grid::actualWorld.cellStack[stackID].volumeCell[layer].content;
+							ws->cellStack[stackID].volumeCell[layer].content = World::actual.cellStack[stackID].volumeCell[layer].content;
 							cell.temporarilyVisible = false;
 						}
 					}
@@ -121,7 +121,7 @@ namespace Protocol
 							canSee = cell.visibility > 0 || cell.temporarilyVisible;
 							cell.temporarilyVisible = false;
 						}
-						const Grid::CellStack::Cell& source = canSee ? Grid::actualWorld.cellStack[stackID].volumeCell[layer] : Grid::initialWorld.cellStack[stackID].volumeCell[layer];
+						const Grid::CellStack::Cell& source = canSee ? World::actual.cellStack[stackID].volumeCell[layer] : Grid::initialWorld.cellStack[stackID].volumeCell[layer];
 						source.GetDeltaFrom(empty,tdts[i]/*,fdts[i],fdtsValid[i]*/);
 						ws->cellStack[stackID].volumeCell[layer] = source;
 					}
@@ -141,7 +141,7 @@ namespace Protocol
 				break;
 				case WorldDeltaType::GlobalCopy:
 				{
-					const Grid::CellStack::Cell& source = Grid::actualWorld.cellStack[stackID].volumeCell[layer];
+					const Grid::CellStack::Cell& source = World::actual.cellStack[stackID].volumeCell[layer];
 					source.GetDeltaFrom(empty,tdts[i]/*,fdts[i],fdtsValid[i]*/);
 				}
 				break;

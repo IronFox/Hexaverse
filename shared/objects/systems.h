@@ -3,7 +3,7 @@
 
 #include <math/vector.h>
 #include <math/matrix.h>
-#include "../sphereGrid.h"
+#include "../grid/volume.h"
 
 namespace Objects
 {

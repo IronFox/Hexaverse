@@ -3,7 +3,7 @@
 
 #include <container/queue.h>
 #include <container/hashtable.h>
-#include "../sphereGrid.h"
+#include "../grid/volume.h"
 #include "components.h"
 
 #ifdef HAS_WINDOW

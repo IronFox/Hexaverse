@@ -14,6 +14,7 @@
 #include "gridAndChoices.h"
 #include "../runtimeConfig.h"
 #include "faction.h"
+#include "../grid/worldData.h"
 
 namespace Objects
 {
@@ -337,7 +338,7 @@ namespace Objects
 		/*static*/ int				Turret::GetGroundHeight(const Grid::LCellIdI&location)
 		{
 			UINT32 fine = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
-			return Grid::actualWorld.cellStack[fine].FindTopClearOverNonClear(false);
+			return World::actual.cellStack[fine].FindTopClearOverNonClear(false);
 		}
 
 
@@ -513,7 +514,7 @@ namespace Objects
 		}
 
 
-		/*static*/ TurretTrajectory			Turret::TraceTrajectory(TrajectoryType t, float flatRange, const Grid::WorldData&visibleWorld, const Grid::WorldData&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle)
+		/*static*/ TurretTrajectory			Turret::TraceTrajectory(TrajectoryType t, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle)
 		{
 			outSteps.Clear();
 			outAngle = 0;
@@ -545,7 +546,7 @@ namespace Objects
 
 		}
 
-		static float	PreTraceArtillery(float velocity, float angle, const TrajectoryEndPoint&here, const TrajectoryEndPoint&there, float distance, const Grid::WorldData&world)
+		static float	PreTraceArtillery(float velocity, float angle, const TrajectoryEndPoint&here, const TrajectoryEndPoint&there, float distance, const World::Data&world)
 		{
 			float sn = sin(angle),
 					cs = cos(angle);
@@ -591,7 +592,7 @@ namespace Objects
 			return 0;
 		}
 
-		/*static*/ TurretTrajectory			Turret::Detail::TraceArtilleryTrajectory(float velocity, const Grid::WorldData&decisionWorld, const Grid::WorldData&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle)
+		/*static*/ TurretTrajectory			Turret::Detail::TraceArtilleryTrajectory(float velocity, const World::Data&decisionWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle)
 		{
 			Turret::TAngles angles = Turret::GetAngleForDistance(velocity,source,dest);
 			if (angles.numAngles == 0)
@@ -700,7 +701,7 @@ namespace Objects
 			}
 		}
 
-		/*static*/ TurretTrajectory			Turret::Detail::TraceMissileTrajectory(float range, const Grid::WorldData&world, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell)
+		/*static*/ TurretTrajectory			Turret::Detail::TraceMissileTrajectory(float range, const World::Data&world, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell)
 		{
 		/*
 
@@ -2248,7 +2249,7 @@ namespace Objects
 							UINT32 min = std::max(at,2U)-1;
 							for (UINT32 j = min; j <= at + 1; j++)
 							{
-								if (Grid::actualWorld.cellStack[i].volumeCell[j].IsSolid())
+								if (World::actual.cellStack[i].volumeCell[j].IsSolid())
 								{
 									//if (j != at || Grid::vehicleDistanceField.distance[i] > 1)
 									{
@@ -2302,7 +2303,7 @@ namespace Objects
 							UINT32 at = height + Grid::CellStack::HalfRange;
 							for (UINT32 j = at - 1; j <= at + 1; j++)
 							{
-								if (!Grid::actualWorld.cellStack[i].volumeCell[j].IsOccupied())
+								if (!World::actual.cellStack[i].volumeCell[j].IsOccupied())
 								{
 									if (j != at || Objects::vehicleDistanceField.distance[i] > 1)
 									{
@@ -2347,7 +2348,7 @@ namespace Objects
 
 		/*static*/ bool					VehicleBase::canStandOnUnknown=true;
 
-		bool							VehicleBase::CanStandOn(const Grid::WorldData&world, const Grid::LCellIdI&cell, bool ignoreWater, bool doFloat)
+		bool							VehicleBase::CanStandOn(const World::Data&world, const Grid::LCellIdI&cell, bool ignoreWater, bool doFloat)
 		{
 			if (requirements == Requirement::None)
 				return true;

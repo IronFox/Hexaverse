@@ -115,14 +115,14 @@ namespace Objects
 					if (v && v.get() != except)
 					{
 					
-						if (Grid::actualWorld.Clear(v->location,atTime))
+						if (World::actual.Clear(v->location,atTime))
 						{
 							LogEvent(EventSignificance::Common,v.get(),"Cleared terrain to make space for vehicle");
 						}
 
 						if (v->base->requirements == Component::VehicleBase::Requirement::Water)
 						{
-							if (Grid::actualWorld.Overwrite(v->location-1,Grid::Content::Water, atTime))
+							if (World::actual.Overwrite(v->location-1,Grid::Content::Water, atTime))
 							{
 								LogEvent(EventSignificance::Common,v.get(),"Cleared terrain to make water for naval vehicle");
 							}
@@ -167,7 +167,7 @@ namespace Objects
 			PWorldEntity closestEntity;
 			if (base.turret->GetAmmoNeedPerShot(source.owner) > munitionStorage)
 				return false;
-			const Grid::WorldData&world = source.owner->currentState;
+			const World::Data&world = source.owner->currentState;
 			source.owner->seeing.VisitAllKeys([&world, &source,sourceLocation,&base,&c2,&closest,&closestEntity](const PWorldEntity&e)
 			{
 //					&& turret->TraceTrajectory(location+1,target.location,trajectory,iat,ic)==Turret::ReachesTarget;		
@@ -186,7 +186,7 @@ namespace Objects
 				TVec3<> iat;
 				float angle;
 				if (Component::Turret::TraceTrajectory(base.turret->trajectoryType,base.GetFlatAttackRange(),   
-							world, Grid::actualWorld,sourceLocation,TrajectoryEndPoint( loc ),trajectory,
+							world, World::actual,sourceLocation,TrajectoryEndPoint( loc ),trajectory,
 							iat,ic,angle) != TurretTrajectory::ReachesTarget)
 					return;
 				float d2 = Grid::GetQuadraticGeometricDistance(sourceLocation.cellLocation,loc);
@@ -320,7 +320,7 @@ namespace Objects
 
 			if (terrainExplosionRadius > 0)
 			{
-				Grid::actualWorld.Explode(targetCell,terrainExplosionRadius, atTime);
+				World::actual.Explode(targetCell,terrainExplosionRadius, atTime);
 				if (doomsday && RuntimeConfig::doomsdayWeapons == RuntimeConfig::DoomsdayWeapons::Expose)
 					foreach (Faction::all,f)
 					{
@@ -721,7 +721,7 @@ namespace Objects
 					if (j < 0)
 					{
 						for (int j = cell.height + 1; j <= producer->location.height; j++)
-							if (!Grid::actualWorld.LowCellIsClear(Grid::LCellIdI(n.neighborID[i], j)))
+							if (!World::actual.LowCellIsClear(Grid::LCellIdI(n.neighborID[i], j)))
 							{
 								okay = false;
 								break;
@@ -729,7 +729,7 @@ namespace Objects
 					}
 					else
 						for (int j = cell.height; j > producer->location.height; j--)
-							if (j >= producer->location.height + producer->GetHeight() &&  !Grid::actualWorld.LowCellIsClear(Grid::LCellIdI(producer->location.stackID, j)))
+							if (j >= producer->location.height + producer->GetHeight() &&  !World::actual.LowCellIsClear(Grid::LCellIdI(producer->location.stackID, j)))
 							{
 								okay = false;
 								break;
@@ -738,8 +738,8 @@ namespace Objects
 				if (!okay)
 					continue;
 
-				if (Grid::actualWorld.LowCellIsClear(cell) && NothingBlockingHere(cell,true)
-						&& production->CanStandOn(Grid::actualWorld,cell-1,false,false)
+				if (World::actual.LowCellIsClear(cell) && NothingBlockingHere(cell,true)
+						&& production->CanStandOn(World::actual,cell-1,false,false)
 						&& !Grid::AffectedByEMP(cell)
 				)
 				{
@@ -754,9 +754,9 @@ namespace Objects
 	
 	void		GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Choice>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell)
 	{
-		const Grid::WorldData&world = 
+		const World::Data&world = 
 		#ifdef CLIENT
-			Grid::actualWorld;
+			World::actual;
 		#else
 			entity.owner->currentState;
 		#endif
@@ -821,9 +821,9 @@ namespace Objects
 							for (int j = 0; j < n.numNeighbors; j++)
 							{
 								const Grid::LCellIdI candidate(n.neighborID[j],h);
-								if (Grid::actualWorld.LowCellIsClear(candidate) && NothingBlockingHere(candidate,true) && !Grid::AffectedByEMP(candidate))
+								if (World::actual.LowCellIsClear(candidate) && NothingBlockingHere(candidate,true) && !Grid::AffectedByEMP(candidate))
 								{
-									if (!deploying->IsVehicle() || To<Vehicle>::Cast(deploying)->CanStandOn(Grid::actualWorld,candidate-1,false,false))
+									if (!deploying->IsVehicle() || To<Vehicle>::Cast(deploying)->CanStandOn(World::actual,candidate-1,false,false))
 										movementChoices << Choice(candidate,0);
 								}
 							}
@@ -1002,25 +1002,25 @@ namespace Objects
 			int _h = h;
 			//incremented = false;
 			if (set)
-				_h = std::max(_h, Grid::actualWorld.cellStack[finer].FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater));
+				_h = std::max(_h, World::actual.cellStack[finer].FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater));
 			else
 			{
-				_h = Grid::actualWorld.cellStack[finer].FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater);
+				_h = World::actual.cellStack[finer].FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater);
 				set = true;
 			}
 			#ifdef HYBRID_GRID
 				for (int j = 0; j < c.neighborhood.numNeighbors; j++)
-					_h = std::max(_h, Grid::actualWorld.cellStack[c.neighborhood.neighborID[j]].FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater));
+					_h = std::max(_h, World::actual.cellStack[c.neighborhood.neighborID[j]].FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater));
 			#endif
 			incremented = _h != h;
 			h = _h;
 		}
 
-		if (Grid::actualWorld.cellStack[finer].GetCellI(h).IsOccupied())
+		if (World::actual.cellStack[finer].GetCellI(h).IsOccupied())
 			return badHeight;
 		#ifdef HYBRID_GRID
 			for (int j = 0; j < c.neighborhood.numNeighbors; j++)
-				if (Grid::actualWorld.cellStack[c.neighborhood.neighborID[j]].GetCellI(h).IsOccupied())
+				if (World::actual.cellStack[c.neighborhood.neighborID[j]].GetCellI(h).IsOccupied())
 					return badHeight;
 		#endif
 		return h;
@@ -1509,7 +1509,7 @@ namespace Objects
 	}
 
 	template <bool IgnoreStructuresAtDestination>
-	bool ValidDestinationOf(const Grid::WorldData&world,const Vehicle&v, const Grid::LCellIdI&location, bool isDestination, bool ignoreWater, bool doFloat)
+	bool ValidDestinationOf(const World::Data&world,const Vehicle&v, const Grid::LCellIdI&location, bool isDestination, bool ignoreWater, bool doFloat)
 	{
 		return 
 			(world.LowCellIsClear(location) || (isDestination && (IgnoreStructuresAtDestination || MobileDestinationStructureHere(location,v))))
@@ -1522,7 +1522,7 @@ namespace Objects
 
 
 
-	void GetWays(	const Grid::WorldData&world,
+	void GetWays(	const World::Data&world,
 							const Vehicle*v,  const Grid::LCellIdI&location, 
 							TWays&outWays, const Grid::LCellIdI&destination, 
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute, bool forceRevertible)
@@ -1642,7 +1642,7 @@ namespace Objects
 	#endif
 
 	
-	void			GetMobileWays(	const Grid::WorldData&world,
+	void			GetMobileWays(	const World::Data&world,
 							const MobileEntity*v,  const Grid::LCellIdI&location, 
 							TWays&outWays, const Grid::LCellIdI&destination, 
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute)
@@ -1671,7 +1671,7 @@ namespace Objects
 
 
 
-	static count_t GetConstructionWays(const Grid::WorldData&world, bool ignoreWater, bool flat, bool canGoDownVertically,
+	static count_t GetConstructionWays(const World::Data&world, bool ignoreWater, bool flat, bool canGoDownVertically,
 										const Vehicle*v,  const Grid::LCellIdI&location, 
 										Grid::LCellIdI*outChoices, const Grid::LCellIdI&destination)
 	{
@@ -1789,7 +1789,7 @@ namespace Objects
 
 	
 
-	void AccumulateCellMovementCosts(const Grid::WorldData&world, count_t&airCount,count_t&waterCount,count_t&roadCount,const Grid::HCellIdI&cell,count_t multiplier=1)
+	void AccumulateCellMovementCosts(const World::Data&world, count_t&airCount,count_t&waterCount,count_t&roadCount,const Grid::HCellIdI&cell,count_t multiplier=1)
 	{
 		const Grid::CellStack::Cell&c = world.cellStack[cell.stackID].GetCellI(cell.height);
 		switch (c.content)
@@ -1808,7 +1808,7 @@ namespace Objects
 	}
 
 
-	int GetCellMovementCosts(const Grid::WorldData&world, const Grid::LCellIdI&cell, const THindranceVector&hindrance, int vehicleSpeed)
+	int GetCellMovementCosts(const World::Data&world, const Grid::LCellIdI&cell, const THindranceVector&hindrance, int vehicleSpeed)
 	{
 		#ifdef HYBRID_GRID
 			const UINT32 high = Grid::low.grid.GetCell(cell.stackID).higherEquivalent;
@@ -1946,9 +1946,9 @@ namespace Objects
 		if (outWouldFailDueToLimitReached)
 			(*outWouldFailDueToLimitReached) = false;
 
-		const Grid::WorldData&world = 
+		const World::Data&world = 
 		#ifdef CLIENT
-			Grid::actualWorld;
+			World::actual;
 		#else
 			vehicle->owner->currentState;
 		#endif
@@ -2156,9 +2156,9 @@ namespace Objects
 
 	void ReachabilityMapper::Map(const Vehicle*vehicle, const Grid::LCellIdI&from, FBlockTest isBlocked, UINT32 maxRange/*=0xFFFFFFFF*/, bool forceRevertible/*=false*/)
 	{
-		const Grid::WorldData&world = 
+		const World::Data&world = 
 		#ifdef CLIENT
-			Grid::actualWorld;
+			World::actual;
 		#else
 			vehicle->owner->currentState;
 		#endif
@@ -2321,9 +2321,9 @@ namespace Objects
 			to.height = from.height;
 		if (from == to)
 			return true;
-		const Grid::WorldData&world = 
+		const World::Data&world = 
 		#ifdef CLIENT
-			Grid::actualWorld;
+			World::actual;
 		#else
 			vehicle->owner->currentState;
 		#endif

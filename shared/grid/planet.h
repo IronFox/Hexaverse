@@ -1,6 +1,7 @@
 #pragma once
 
 #include "volume.h"
+#include "worldData.h"
 
 namespace Grid
 {
@@ -249,6 +250,11 @@ namespace Grid
 			else
 				GenerateAtmosphereColorForType(type);
 		}
+
+		void	InitUnknown(CellStack&stack, float2 heights) const;
+		void	FillTypes(CellStack&stack) const;
+
+		void	BuildWorld(World::Data&world) const;
 
 	};
 	

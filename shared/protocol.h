@@ -7,7 +7,8 @@
 #include <iphlpapi.h>
 #include <net/tcp.h>
 #include <net/containers.h>
-#include "grid.h"
+#include "grid/volume.h"
+#include "grid/planet.h"
 #include "objects.h"
 #include "stringTable.h"
 #include "runtimeConfig.h"
@@ -2077,7 +2078,7 @@ namespace Protocol
 	@param last Indicates that the result should include the 'last'-flag, which means no deltas will follow this one for the current sequence
 	@param deltaType Type of delta to compute (see delta_type_t for details)
 	*/
-	void			GenerateWorldDelta(Grid::SensorCoverage*vs, Grid::WorldData*ws, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, WorldDeltaType::delta_type_t deltaType);
+	void			GenerateWorldDelta(Grid::SensorCoverage*vs, World::Data*ws, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, WorldDeltaType::delta_type_t deltaType);
 }
 
 

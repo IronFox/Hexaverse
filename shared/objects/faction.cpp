@@ -1089,7 +1089,7 @@ namespace Objects
 						//TVec3<> center = Grid::ToWorld(m->location);
 						//if ()
 						bool seen = m->age > 1 &&	//don't delete hostile markers in round <2. grid might be outdated
-									 m->visualization && Grid::actualWorld.GridCanSee(m->location,m->visualization->GetHeight(),m->visualization->IsBroad());
+									 m->visualization && World::actual.GridCanSee(m->location,m->visualization->GetHeight(),m->visualization->IsBroad());
 						/*foreach(structures, s)
 							if ((*s)->isOwnedByMe && (*s)->CanSee(center, 0))
 							{

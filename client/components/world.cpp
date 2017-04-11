@@ -70,7 +70,7 @@ namespace World
 				const auto&c = Grid::high.cells[candidate->stackID];
 				float	r0 = Grid::ToRadius(int(candidate->layer) - Grid::CellStack::HalfRange),
 						r1 = Grid::ToRadius(int(candidate->layer) - Grid::CellStack::HalfRange + 1);
-				if (candidate->layer > 0 && Grid::actualWorld.cellStack[candidate->stackID].volumeCell[candidate->layer - 1].IsSolid())
+				if (candidate->layer > 0 && World::actual.cellStack[candidate->stackID].volumeCell[candidate->layer - 1].IsSolid())
 				{
 					for (int j = 0; j < n.numNeighbors; j++)
 					{
@@ -81,7 +81,7 @@ namespace World
 				for (int j = 0; j < n.numNeighbors; j++)
 				{
 					UINT32 j1 = (j + 1) % n.numNeighbors;
-					if (Grid::actualWorld.cellStack[n.neighborID[j1]].volumeCell[candidate->layer].IsSolid())
+					if (World::actual.cellStack[n.neighborID[j1]].volumeCell[candidate->layer].IsSolid())
 					{
 						//
 						LineRenderer::Rasterize(c.cornerVertex[j].xyz * r0,
@@ -130,7 +130,7 @@ namespace World
 				const auto&c = Grid::high.cells[candidate->stackID];
 				const float	r0 = Grid::ToRadius(int(candidate->layer) - Grid::CellStack::HalfRange),
 							r1 = Grid::ToRadius(int(candidate->layer) - Grid::CellStack::HalfRange + 1);
-				if (candidate->layer + 1 < Grid::CellStack::Range && !Grid::actualWorld.cellStack[candidate->stackID].volumeCell[candidate->layer + 1].IsSolid())
+				if (candidate->layer + 1 < Grid::CellStack::Range && !World::actual.cellStack[candidate->stackID].volumeCell[candidate->layer + 1].IsSolid())
 				{
 					for (int j = 0; j < n.numNeighbors; j++)
 					{
@@ -141,7 +141,7 @@ namespace World
 				for (int j = 0; j < n.numNeighbors; j++)
 				{
 					UINT32 j1 = (j + 1) % n.numNeighbors;
-					if (!Grid::actualWorld.cellStack[n.neighborID[j1]].volumeCell[candidate->layer].IsSolid())
+					if (!World::actual.cellStack[n.neighborID[j1]].volumeCell[candidate->layer].IsSolid())
 					{
 						//
 						LineRenderer::Rasterize(c.cornerVertex[j].xyz * r0,
@@ -190,15 +190,15 @@ namespace World
 
 		if (allowRecompilation)
 		{
-			if (Grid::actualWorld.lightingOutdated)
+			if (World::actual.lightingOutdated)
 			{
-				Grid::actualWorld.UpdateLighting();
-				if (!Grid::actualWorld.lightingOutdated)
+				World::actual.UpdateLighting();
+				if (!World::actual.lightingOutdated)
 					Grid::SetAllFamiliesOutdated();
 			}
-			if (Grid::actualWorld.structureChanged)
+			if (World::actual.structureChanged)
 			{
-				Grid::actualWorld.structureChanged = false;
+				World::actual.structureChanged = false;
 				Objects::structures.Foreach([](const Objects::PStructure&s)
 				{
 					if (Grid::high.family[Grid::low.grid.GetCell(s->location.stackID).family].normal.outdated)
@@ -233,11 +233,11 @@ namespace World
 						familiesRebuilt++;
 						if (Grid::SeeThrough::IsEnabled())
 						{
-							Grid::high.BakeBlockInstruction(Grid::actualWorld.cellStack, k, Grid::SeeThrough::ClipHeight);
+							Grid::high.BakeBlockInstruction(World::actual.cellStack, k, Grid::SeeThrough::ClipHeight);
 						}
 						else
 						{
-							Grid::high.BakeBlockInstruction(Grid::actualWorld.cellStack, k, Grid::Clip::NoClip);
+							Grid::high.BakeBlockInstruction(World::actual.cellStack, k, Grid::Clip::NoClip);
 						}
 					}
 				}

@@ -365,7 +365,7 @@ namespace Camera
 		index_t stackID = Grid::high.Locate(scene.location);
 		{
 			int top;
-			if (Grid::actualWorld.cellStack[stackID].FindTopOccupied(top))
+			if (World::actual.cellStack[stackID].FindTopOccupied(top))
 				ChangeGroundRadius(Grid::ToRadius(top+2));
 		}
 		if (Grid::SeeThrough::IsEnabled())
@@ -418,11 +418,11 @@ namespace Camera
 		index_t stackID = Grid::high.Locate(scene.location);
 		{
 			int top;
-			if (Grid::actualWorld.cellStack[stackID].FindTopOccupied(top))
+			if (World::actual.cellStack[stackID].FindTopOccupied(top))
 				ChangeGroundRadius(Grid::ToRadius(top+2));
 		}
 
-		//targetOrbit = Grid::ToRadius(Grid::actualWorld.cellStack[stackID].FindTopOccupied());
+		//targetOrbit = Grid::ToRadius(World::actual.cellStack[stackID].FindTopOccupied());
 		if (Grid::SeeThrough::IsEnabled())
 			ChangeGroundRadius(std::min(Grid::ToRadius(Grid::SeeThrough::GetFocusPoint().height+2), targetOrbit));
 

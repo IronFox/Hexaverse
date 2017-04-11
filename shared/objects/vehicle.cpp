@@ -240,7 +240,7 @@ namespace Objects
 			//VerifyVisibilityNetwork();
 			SyncTime(minTimeOffset);
 
-			if (!Grid::actualWorld.LowCellIsClear(cell))
+			if (!World::actual.LowCellIsClear(cell))
 			{
 				PHangar s = MobileDestinationStructureHere(cell,*this);
 				if (s && s->Store(To<Vehicle>::Cast(shared_from_this()),entityTime))
@@ -249,7 +249,7 @@ namespace Objects
 				if (failIsFatal)
 				{
 					PStructure st = GetStructure(cell);
-					LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is obstructed by structure "+(st ? st->GetName(): "<>")+": "+Grid::actualWorld.LowCellReport(cell));
+					LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is obstructed by structure "+(st ? st->GetName(): "<>")+": "+World::actual.LowCellReport(cell));
 					FATAL__("Critical abort");
 				}
 
@@ -290,14 +290,14 @@ namespace Objects
 			location = cell;
 			int fallingHeight = 0;
 			while (location.height-fallingHeight > -Grid::CellStack::HalfRange 
-					&& Grid::actualWorld.LowCellIsClear(Grid::LCellIdI(location.stackID, location.height - fallingHeight - 1))
+					&& World::actual.LowCellIsClear(Grid::LCellIdI(location.stackID, location.height - fallingHeight - 1))
 					&& NoVehicleHereExcept(Grid::LCellIdI(location.stackID, location.height - fallingHeight - 1),this))
 				fallingHeight ++;
 			//if (fallingHeight > 0)
 			{
 				timeCost += Times::Fall * fallingHeight;
 				location = location - fallingHeight;
-				if (!CanClimb(-fallingHeight) || !CanStandOn(Grid::actualWorld,location-1,false,false))
+				if (!CanClimb(-fallingHeight) || !CanStandOn(World::actual,location-1,false,false))
 				{
 					if (cell.stackID != old.stackID)	//at least some horizontal motion
 					{

@@ -165,7 +165,7 @@ namespace Objects
 			Task&task = LockedPeekTask();
 			jobStarted = false;
 
-			const Grid::WorldData&world = owner->currentState;
+			const World::Data&world = owner->currentState;
 			bool isObstructed = false;
 			//if ( focus != location)
 			{
@@ -937,7 +937,7 @@ namespace Objects
 
 		bool			MobileEntity::PlotCourse(ArrayRef<Grid::LCellIdI> destination, bool detailedPath, bool virtualPlatformMode/*=false*/)
 		{
-			const Grid::WorldData&world = owner->currentState;
+			const World::Data&world = owner->currentState;
 			if (IsVehicle())
 			{
 				for (index_t i = 0; i < destination.length(); i++)
@@ -1039,7 +1039,7 @@ namespace Objects
 
 		bool	MobileEntity::PlotFrontCourse(ArrayRef<Grid::LCellIdI> destination, bool detailedPath)
 		{
-			const Grid::WorldData&world = owner->currentState;
+			const World::Data&world = owner->currentState;
 
 			if (IsVehicle())
 			{

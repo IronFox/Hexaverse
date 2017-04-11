@@ -231,7 +231,7 @@ namespace Objects
 
 
 
-			Grid::WorldData			currentState;
+			World::Data			currentState;
 			Grid::SensorCoverage	visibility;
 
 			count_t				nexusControl,

@@ -181,7 +181,7 @@ namespace Grid
 				c.user = Visited;
 				marked << current;
 
-				bool translucent = Grid::actualWorld.cellStack[current.stackID].volumeCell[current.layer].IsClearOrWaterIgnoreStructure();
+				bool translucent = World::actual.cellStack[current.stackID].volumeCell[current.layer].IsClearOrWaterIgnoreStructure();
 
 				float visibleWeight=0, totalWeight=0;
 				Grid::high.VisitNeighborsOf(current,[cellStack,&visibleWeight,&totalWeight, &work,current,worldCenter,d03,c3,translucent](const Grid::HCellIdU&next)

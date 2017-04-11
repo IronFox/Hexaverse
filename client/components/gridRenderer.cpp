@@ -1,13 +1,68 @@
 #ifdef HAS_WINDOW
 #include <global_root.h>
 #include "gridRenderer.h"
+#include <objects/rendering.h>
 
 #include "../ExtRenderer/DirectX11.h"
+#include <engine/display.h>
+#include <math/vclasses.h>
+	
+extern Engine::Display<Engine::DirectX11>	display;
+namespace Camera
+{
+	extern Engine::VectorCamera<>	scene;
+	void  ChangeGroundRadius(float);
+}
+
+
+
+
+
 
 namespace Grid
 {
 	using namespace Engine;
 	
+
+	Box<>		unitSphereFamilyBoundingBox[BaseGrid::NumFamilies];
+	Box<>		planetFamilyBoundingBox[BaseGrid::NumFamilies];
+
+
+	
+	namespace Instruction
+	{	
+		enum displayMode_t
+		{
+			NormalRendering,
+			ParaboloidColored,
+			SphereColored
+		};
+
+		extern displayMode_t				displayMode;
+		extern DX11::ObjectBuffer<float4>	ParaboloidDirection_Height,SphereDef,SphereColor;
+		extern DX11::ObjectBuffer<float4>	ParaboloidColor_FlatRadius;
+		extern DX11::ObjectBuffer<VecN<float,8> > atmosphereConfig;
+		extern DX11::ObjectBuffer<float4> sunDirection,sunColor;
+
+
+		struct THeightMapOrientation
+		{
+			TMatrix4<>	orientation0,
+						orientation1,
+						orientation2;
+		};
+
+		static const size_t sTHeightMapOrientation = sizeof(THeightMapOrientation);
+		static_assert(sTHeightMapOrientation==sizeof(float)*16*3,"Sruct alignment out of wack");
+		extern DX11::ObjectBuffer<THeightMapOrientation>	heightMapOrientation;	//used for lava
+		extern DX11::Texture								cubeHeightMap;	//used for lava
+
+			
+		extern DX11::BaseInstructionBlock	terrainBase, terrainSphereBase, terrainParaboloidBase, 
+											terrainShadowBase, 
+											waterBase, waterSphereBase, waterParaboloidBase,
+											overlayBase, overlayShadowBase, resourceBase;// , terrainEdgeBase;
+	}
 
 	namespace Instruction
 	{	
@@ -33,10 +88,287 @@ namespace Grid
 	}
 
 
-	#ifdef HAS_WINDOW
-		/*static*/ const float4 WaterCompiler::waterColor = float4(0.5f, 0.6f, 1.f,0.6f);
-	#endif
+
 	
+	static BYTE GetHeightMapHeight(const SimplexNoise&n, TVec3<>&p)
+	{
+		Vec::normalize(p);
+		Vec::mult(p,2.f);
+		float v = 0.5f * (Get(n,p) + Get(n,p*2.f));	//pseudo normal distributed -1..+1
+
+		float x = //fabs(perlin);
+				SimplexNoise::ToUniformDistribution(v);
+		//float x = p.z * 0.5f + 0.5f;
+		//;
+		return (BYTE)(std::min(x ,1.f)* 255.f);
+	}
+
+	static void CreateHeightMapSide(Image&result, const SimplexNoise&n, const float3&origin, const float3&dx, const float3&dy)
+	{
+		result.SetSize(128,128,1);
+		Concurrency::parallel_for(index_t(0),count_t(result.GetWidth()*result.GetHeight()),[&result,&n,origin,dx,dy](index_t i)
+		{
+			TVec3<> p;
+			index_t x = i/result.GetHeight();
+			index_t y = i%result.GetHeight();
+			{
+				float fx = float(x)/float(result.GetWidth()-1) * 2.f - 1.f;
+				float fy = float(y)/float(result.GetHeight()-1) * 2.f - 1.f;
+				
+				Vec::mad(origin,dx,fx,p);
+				Vec::mad(p,dy,fy);
+				result.SetChannel((UINT32)x,(UINT32)y,0,GetHeightMapHeight(n,p));
+			}
+		});
+	}
+
+
+
+	void CreateRenderer()
+	{
+		Buffer0<DX11::Shader::Binding> bindings;
+
+
+		//bindings;
+		
+		bindings.Append(DX11::Shader::Binding(Instruction::sunDirection,"Sun"));
+		bindings.Append(DX11::Shader::Binding(Instruction::sunColor,"SunColor"));
+		#ifdef CASCADING_SHADOW
+			for (index_t i = 0; i < Objects::NumCascades; i++)
+			{
+				bindings.Append(DX11::Shader::Binding(Objects::shadowMatrix[i],"ShadowMatrix"+String(i)));
+				bindings.Append(DX11::Shader::Binding(Objects::shadowMap[i].GetDepthStencilTarget(), "ShadowMap"+String(i)));
+			}
+		#else
+			bindings.Append(DX11::Shader::Binding(Objects::shadowMatrix,"ShadowMatrix"));
+			bindings.Append(DX11::Shader::Binding(Objects::shadowMap.GetDepthStencilTarget(), "ShadowMap"));
+		#endif
+		bindings.Append(DX11::Shader::Binding(Instruction::atmosphereConfig, "AtmosphereConfig"));
+		bindings.Append(DX11::Shader::SamplerBinding(true, Engine::TextureFilter::None, 1, "ShadowSampler"));
+
+		bindings.Append(DX11::Shader::SamplerBinding(true,Engine::TextureFilter::Trilinear,1,"HeightMapSampler"));
+		bindings.Append(DX11::Shader::Binding(Instruction::cubeHeightMap,"HeightMap"));
+		bindings.Append(DX11::Shader::Binding(Instruction::heightMapOrientation,"HeightMapOrientation"));
+		
+		Instruction::terrainBase.shader.LoadFromFile("shaders/gridTerrain.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
+
+		
+
+		{
+			//Engine::VertexBinding binding;
+			//binding.vertex.set(0, 4);
+			//binding.normal.set(4, 4);
+			//binding.color.set(8, 4);
+			//binding.floats_per_vertex = 12;
+			Instruction::terrainBase.binding.Append("POSITION",0,DXGI_FORMAT_R32G32B32A32_FLOAT);
+			Instruction::terrainBase.binding.Append("NORMAL",0,DXGI_FORMAT_R8G8B8A8_SNORM);
+			Instruction::terrainBase.binding.Append("COLOR",0,DXGI_FORMAT_R32G32B32A32_FLOAT);
+			Instruction::terrainBase.SetTriangles();
+
+			Instruction::terrainSphereBase.binding = Instruction::terrainBase.binding;
+			Instruction::terrainSphereBase.SetTriangles();
+
+			Instruction::terrainParaboloidBase.binding = Instruction::terrainBase.binding;
+			Instruction::terrainParaboloidBase.SetTriangles();
+
+			Instruction::terrainBase.UpdateLayout();
+		}
+		Instruction::terrainShadowBase.shader.LoadFromFile("shaders/gridTerrainShadow.hlsl", "vsMain", "psMain");
+		Instruction::terrainShadowBase.binding = Instruction::terrainBase.binding;
+		Instruction::terrainShadowBase.UpdateLayout();
+		Instruction::terrainShadowBase.SetTriangles();
+
+
+		{
+			Engine::VertexBinding binding;
+			binding.vertex.set(0, 4);
+			binding.normal.set(4, 4);
+			binding.color.set(8,1);
+			binding.floats_per_vertex = 9;
+
+			Instruction::orbitGridBase.binding = binding;
+			Instruction::orbitGridBase.SetTriangles();
+			Instruction::orbitGridBase.shader.LoadFromFile("shaders/orbitalGrid.hlsl", "vsMain", "psMain");
+			Instruction::orbitGridBase.UpdateLayout();
+		}
+	
+		{
+			DX11::BaseInstructionBlock&base = Instruction::waterBase;
+			base.shader.LoadFromFile("shaders/gridTerrainWater.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
+
+			{
+				/*
+			float4		vertex;
+			float3		normal;
+			float		light;	//water derives color from shader variable
+				*/
+				Engine::VertexBinding binding;
+				binding.vertex.set(0, 4);
+				binding.normal.set(4, 3);
+				binding.color.set(7, 1);
+				binding.floats_per_vertex = 8;
+				base.binding = binding;
+				base.UpdateLayout();
+				base.SetTriangles();
+			}
+
+
+			Instruction::waterSphereBase.binding = Instruction::waterBase.binding;
+			Instruction::waterSphereBase.SetTriangles();
+
+			Instruction::waterParaboloidBase.binding = Instruction::waterBase.binding;
+			Instruction::waterParaboloidBase.SetTriangles();
+
+		}
+		{
+			Engine::VertexBinding binding;
+			binding.vertex.set(0, 3);
+			binding.normal.unset();
+			binding.color.set(3, 1);
+			binding.floats_per_vertex = 4;
+			{
+				DX11::BaseInstructionBlock&base = Instruction::overlayBase;
+				base.shader.LoadFromFile("shaders/gridTerrainOverlay.hlsl", "vsMain", "psMain"/*, bindings, ARRAYSIZE(bindings)*/);
+				base.binding = binding;
+				base.UpdateLayout();
+				base.SetTriangles();
+			}
+			{
+				DX11::BaseInstructionBlock&base = Instruction::overlayShadowBase;
+				base.shader.LoadFromFile("shaders/gridTerrainOverlayShadow.hlsl", "vsMain", "psMain"/*, bindings, ARRAYSIZE(bindings)*/);
+				base.binding = binding;
+				base.UpdateLayout();
+				base.SetTriangles();
+			}
+		}
+
+		{
+			DX11::BaseInstructionBlock&base = Instruction::resourceBase;
+			base.shader.LoadFromFile("shaders/gridResourceVisualization.hlsl", "vsMain", "psMain"/*, bindings, ARRAYSIZE(bindings)*/);
+			{
+				Engine::VertexBinding binding;
+				binding.vertex.set(0, 4);
+				binding.normal.set(4, 4);
+				binding.color.set(8, 4);
+				binding.floats_per_vertex = 12;
+				base.binding = binding;
+				base.UpdateLayout();
+				base.SetTriangles();
+			}
+		}
+
+
+		Instruction::ParaboloidDirection_Height.Create(float4());
+		Instruction::ParaboloidColor_FlatRadius.Create(float4());
+		Instruction::SphereDef.Create(float4());
+		Instruction::SphereColor.Create(float4());
+
+		DX11::Shader::RedefineMacro(DX11::Shader::Macro("SPHERE_DISPLAY","1"));
+		bindings.Append(DX11::Shader::Binding(Instruction::SphereDef,"SphereDef"));
+		bindings.Append(DX11::Shader::Binding(Instruction::SphereColor,"SphereColor"));
+		Instruction::terrainSphereBase.shader.LoadFromFile("shaders/gridTerrain.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
+		DX11::Shader::macroDefinitions.Clear();
+		Instruction::terrainSphereBase.UpdateLayout();
+		bindings.EraseLast();
+		bindings.EraseLast();
+
+
+		DX11::Shader::RedefineMacro(DX11::Shader::Macro("PARABOLOID_DISPLAY","1"));
+		bindings.Append(DX11::Shader::Binding(Instruction::ParaboloidDirection_Height,"ParaboloidDirection_Height"));
+		bindings.Append(DX11::Shader::Binding(Instruction::ParaboloidColor_FlatRadius,"ParaboloidColor_FlatRadius"));
+		Instruction::terrainParaboloidBase.shader.LoadFromFile("shaders/gridTerrain.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
+		DX11::Shader::macroDefinitions.Clear();
+		Instruction::terrainParaboloidBase.UpdateLayout();
+		bindings.EraseLast();
+		bindings.EraseLast();
+
+
+
+		DX11::Shader::RedefineMacro(DX11::Shader::Macro("SPHERE_DISPLAY","1"));
+		bindings.Append(DX11::Shader::Binding(Instruction::SphereDef,"SphereDef"));
+		bindings.Append(DX11::Shader::Binding(Instruction::SphereColor,"SphereColor"));
+		Instruction::waterSphereBase.shader.LoadFromFile("shaders/gridTerrainWater.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
+		DX11::Shader::macroDefinitions.Clear();
+		Instruction::waterSphereBase.UpdateLayout();
+		bindings.EraseLast();
+		bindings.EraseLast();
+
+
+		DX11::Shader::RedefineMacro(DX11::Shader::Macro("PARABOLOID_DISPLAY","1"));
+		bindings.Append(DX11::Shader::Binding(Instruction::ParaboloidDirection_Height,"ParaboloidDirection_Height"));
+		bindings.Append(DX11::Shader::Binding(Instruction::ParaboloidColor_FlatRadius,"ParaboloidColor_FlatRadius"));
+		Instruction::waterParaboloidBase.shader.LoadFromFile("shaders/gridTerrainWater.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
+		DX11::Shader::macroDefinitions.Clear();
+		Instruction::waterParaboloidBase.UpdateLayout();
+		bindings.EraseLast();
+		bindings.EraseLast();
+
+
+
+
+
+
+
+
+
+
+		//----------------------
+
+
+			Instruction::heightMapOrientation.Create(Instruction::THeightMapOrientation());
+
+			{
+				SimplexNoise n(Random().NextSeed());
+				Image sides[6];
+				//+x, -x, +y, -y, +z, -z.
+				CreateHeightMapSide(sides[0],n,float3(1,0,0),float3(0,0,-1),float3(0,1,0));
+				CreateHeightMapSide(sides[1],n,float3(-1,0,0),float3(0,0,1),float3(0,1,0));
+				CreateHeightMapSide(sides[2],n,float3(0,1,0),float3(1,0,0),float3(0,0,-1));
+				CreateHeightMapSide(sides[3],n,float3(0,-1,0),float3(1,0,0),float3(0,0,1));
+				CreateHeightMapSide(sides[4],n,float3(0,0,1),float3(1,0,0),float3(0,1,0));
+				CreateHeightMapSide(sides[5],n,float3(0,0,-1),float3(-1,0,0),float3(0,1,0));
+
+
+				Instruction::cubeHeightMap.LoadCube(sides,false);
+			}
+
+			Instruction::atmosphereConfig.Create(VecN<float,8>());
+			UpdateAtmosphere(currentPlanetConfig.atmosphereColor);
+
+			Instruction::sunDirection.Create(float4());
+			Instruction::sunColor.Create(float4());
+			UpdateSun(currentPlanetConfig.sunPlaneNormal_Speed,currentPlanetConfig.sunColor);
+
+
+
+			Image img(64, 1, 4);
+			for (UINT32 x = 0; x < img.GetWidth(); x++)
+			{
+				float a = smoothstep(0.9, 0.95, float(x) / float(img.GetWidth() - 1));
+				float b = smoothstep(0.925, 0.95, float(x) / float(img.GetWidth() - 1));
+				BYTE*pixel = img.get(x, 0);
+				pixel[0] = (BYTE)(180 * b);
+				pixel[1] = (BYTE)(200 * b);
+				pixel[2] = (BYTE)(255 * b);
+				pixel[3] = (BYTE)(a * 255.f);
+			}
+
+
+			lineTex.Load(img, true);
+			//blockConfig.Create(TMatrix4<>());
+
+			DX11::Shader::Binding bindings[] =
+			{
+				DX11::Shader::Binding(lineTex, "LineTex"),
+				DX11::Shader::SamplerBinding(true, Engine::TextureFilter::Trilinear, 1, "LineSampler")
+
+			};
+			gridShader.LoadFromFile("shaders/sphereGrid.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
+			transparentGridShader.LoadFromFile("shaders/transparentSphereGrid.hlsl", "vsMain", "psMain");
+
+
+	}
+
 
 	typedef SensorCoverage::Volume::CellStack	SensorStack;
 
@@ -108,6 +440,299 @@ namespace Grid
 	};
 
 
+		struct TerrainVertex
+	{
+		float4		vertex;
+		sbyte4		normal_structure;
+		float4		color;
+
+		/**/		TerrainVertex()	{};
+		/**/		TerrainVertex(const float4&vtx, float h, const float3&n, const TLitColor&color, float structure) : vertex(vtx.xyz*h, vtx.w), normal_structure(n*127.f,structure*127.f) {color.CompileFinalColor(this->color);}
+		/**/		TerrainVertex(const float4&vtx, float h, const float3&n, const float3&color, float structure) : vertex(vtx.xyz*h, vtx.w), normal_structure(n*127.f, structure*127.f), color(color,1.f){}
+	};
+	
+	struct ResourceVertex //! Temporarily the same layout as TerrainVertex
+	{
+		float4		vertex;
+		float4		normal;
+		float4		color;
+
+		/**/		ResourceVertex()	{};
+		/**/		ResourceVertex(const float4&vtx, float h, const float3&n, const float4&color, float structure) : vertex(vtx.xyz*h, vtx.w), normal(n,structure), color(color){}
+		/**/		ResourceVertex(const float4&vtx, float h, const float3&n, const float3&color, float structure) : vertex(vtx.xyz*h, vtx.w), normal(n, structure), color(color,1.f){}
+		/**/		ResourceVertex(const float3&vtx, float h, const float3&n, const float4&color, float structure) : vertex(vtx*h, 1.f), normal(n,structure), color(color){}
+		/**/		ResourceVertex(const float3&vtx, float h, const float3&n, const float3&color, float structure) : vertex(vtx*h, 1.f), normal(n, structure), color(color,1.f){}
+	};
+
+	struct OverlayVertex
+	{
+		float3		vertex;
+		float		opacity;	//overlay is always black
+
+		/**/		OverlayVertex()	{};
+		/**/		OverlayVertex(const float4&vtx, float h, float opacity) : vertex(vtx.xyz*h), opacity(opacity){}
+	};
+
+	struct WaterVertex
+	{
+		float4		vertex;
+		float3		normal;
+		float		light;	//water derives color from shader variable
+
+		/**/		WaterVertex()	{};
+		/**/		WaterVertex(const float4&vtx, float h, const float3&n,float light, int emp) : vertex(vtx.xyz*h, vtx.w), normal(n),light((float(emp) + 0.05f + light*0.9f) * 0.25f ){}
+	};
+	
+
+	template <typename Vtx>
+		struct THull
+		{
+			Buffer<Vtx, 0>	vertices;
+			Buffer<UINT32, 0>	indices;
+
+
+			void			Clear()
+			{
+				vertices.Clear();
+				indices.Clear();
+			}
+
+			void		AppendTo(THull<Vtx>&hull) const
+			{
+				UINT32 offset = (UINT32)hull.vertices.Count();
+				hull.vertices.Append(vertices);
+				const UINT32*iFrom = indices.pointer();
+				UINT32*iTo = hull.indices.AppendRow(this->indices.Count());
+				while (iFrom != this->indices.end())
+				{
+					(*iTo) = (*iFrom) + offset;
+					iFrom++;
+					iTo++;
+				}
+				DBG_ASSERT__(iTo == hull.indices.end());
+			}
+		};
+
+	struct TTerrainHull : public THull<TerrainVertex>
+	{
+		DX11::InstructionBlock32	instruction[3],shadowInstruction;
+
+		void						Destroy()
+		{
+			THull<TerrainVertex>::Clear();
+			instruction[0] = instruction[1] = instruction[2]
+				= shadowInstruction = DX11::InstructionBlock32();
+		}
+	};
+	struct TResourceHull : public THull<ResourceVertex>
+	{
+		DX11::InstructionBlock32	instruction,shadowInstruction;	// might cast shadow some day
+
+		void						Destroy()
+		{
+			THull<ResourceVertex>::Clear();
+			shadowInstruction = instruction = DX11::InstructionBlock32();
+		}
+	};
+	struct TWaterHull : public THull<WaterVertex>
+	{
+		DX11::InstructionBlock32	instruction[3];
+
+		void						Destroy()
+		{
+			THull<WaterVertex>::Clear();
+			instruction[0] = instruction[1] = instruction[2]
+				= DX11::InstructionBlock32();
+		}
+	};
+
+	struct TOverlayHull : public THull<OverlayVertex>
+	{
+		DX11::InstructionBlock32	instruction,shadowInstruction;
+
+		void						Destroy()
+		{
+			THull<OverlayVertex>::Clear();
+			shadowInstruction = instruction = DX11::InstructionBlock32();
+		}
+	};
+	/**
+	Stack-stored mesh container with constant capacity
+	*/
+	template <typename Vtx, count_t maxVertices, count_t maxIndices>
+		class StaticMesh
+		{
+		public:
+			static const count_t MaxVertices = maxVertices;
+			static const count_t MaxIndices = maxIndices;
+
+			BYTE		vertexData[maxVertices * sizeof(Vtx)];	//prevent constructor execution
+			Vtx			*vertexRange,
+						*vat;
+			UINT16		indexRange[maxIndices],
+						*iat,
+						offset;
+
+			/**/		StaticMesh() :vertexRange((Vtx*)vertexData),vat((Vtx*)vertexData), iat(indexRange), offset(0)	{}
+			/**/		StaticMesh(const StaticMesh<Vtx,maxVertices,maxIndices>&other)	{Reset();}	//nothing for now
+
+			void		operator=(const StaticMesh<Vtx,maxVertices,maxIndices>&other)	{Reset();}	//nothing for now
+
+
+			void		Reset()
+			{
+				vertexRange = ((Vtx*)vertexData);
+				vat = ((Vtx*)vertexData);
+				iat = (indexRange);
+				offset = (0);
+			}
+
+			bool		IsEmpty() const {return indexRange == iat;}
+			bool		IsNotEmpty() const {return indexRange != iat;}
+
+
+
+			void		SetOffset()
+						{
+							offset = (UINT16)(vat - vertexRange);
+						}
+
+			StaticMesh&	Quad(int i0, int i1, int i2, int i3)
+						{
+							DBG_ASSERT__(iat - indexRange+6 <= maxIndices);
+							(*iat) = UINT16(i0) + offset;iat++;
+							(*iat) = UINT16(i1) + offset;iat++;
+							(*iat) = UINT16(i2) + offset;iat++;
+							(*iat) = UINT16(i0) + offset;iat++;
+							(*iat) = UINT16(i2) + offset;iat++;
+							(*iat) = UINT16(i3) + offset;iat++;
+							return *this;
+						}
+
+			StaticMesh&	InvQuad(int i0, int i1, int i2, int i3)
+						{
+							DBG_ASSERT__(iat - indexRange+6 <= maxIndices);
+							(*iat) = UINT16(i0) + offset;iat++;
+							(*iat) = UINT16(i2) + offset;iat++;
+							(*iat) = UINT16(i1) + offset;iat++;
+							(*iat) = UINT16(i0) + offset;iat++;
+							(*iat) = UINT16(i3) + offset;iat++;
+							(*iat) = UINT16(i2) + offset;iat++;
+							return *this;
+						}
+			StaticMesh&	operator<<(UINT16 index)
+						{
+							DBG_ASSERT__(iat - indexRange < maxIndices);
+							(*iat) = index + offset;
+							iat++;
+							return *this;
+						}
+			StaticMesh&	operator<<(const Vtx&vtx)
+						{
+							DBG_ASSERT_EQUAL__((void*)vertexRange ,(void*)vertexData);
+							DBG_ASSERT__(vat - vertexRange < maxVertices);
+							(*vat) = vtx;
+							vat++;
+							return *this;
+						}
+
+			void		AppendTo(THull<Vtx>&hull) const
+						{
+							UINT32 offset = (UINT32)hull.vertices.Count();
+							hull.vertices.Append(vertexRange, vat - vertexRange);
+							const UINT16*iFrom = indexRange;
+							UINT32*iTo = hull.indices.AppendRow(iat - indexRange);
+							while (iFrom != iat)
+							{
+								(*iTo) = UINT32(*iFrom) + offset;
+								//DBG_ASSERT__(*iTo < _vertices.Count());
+								iFrom++;
+								iTo++;
+							}
+							DBG_ASSERT__(iTo == hull.indices.end());
+						}
+		};
+
+
+	template <typename Vtx>
+		class DynamicMesh
+		{
+		public:
+			Buffer<Vtx>	vertices;
+			Buffer<UINT32>	indices;
+			//std::vector<Vtx>	vertices;
+			//std::vector<UINT32>	indices;
+			UINT32		offset;
+
+			/**/		DynamicMesh() :offset(0)	{}
+
+			void		Clear()
+			{
+				vertices.clear();
+				indices.clear();
+				offset = 0;
+			}
+
+			bool		IsEmpty() const {return indices.IsEmpty();}
+			bool		IsNotEmpty() const {return indices.IsNotEmpty();}
+
+
+
+			void		SetOffset()
+						{
+							offset = (UINT32)vertices.size();
+						}
+
+			DynamicMesh&	Quad(int i0, int i1, int i2, int i3)
+						{
+							//indices.push_back(i0);
+							//indices.push_back(i1);
+							//indices.push_back(i2);
+							//indices.push_back(i0);
+							//indices.push_back(i2);
+							//indices.push_back(i3);
+							UINT32*iat = indices.AppendRow(6);
+							(*iat) = UINT32(i0) + offset;iat++;
+							(*iat) = UINT32(i1) + offset;iat++;
+							(*iat) = UINT32(i2) + offset;iat++;
+							(*iat) = UINT32(i0) + offset;iat++;
+							(*iat) = UINT32(i2) + offset;iat++;
+							(*iat) = UINT32(i3) + offset;iat++;
+							return *this;
+						}
+
+			DynamicMesh&	operator<<(UINT32 index)
+						{
+							//indices << index;
+							indices.push_back(offset + index);
+							return *this;
+						}
+			DynamicMesh&	operator<<(const Vtx&vtx)
+						{
+							//vertices << vtx;
+							vertices.push_back(vtx);
+							return *this;
+						}
+
+			void		AppendTo(THull<Vtx>&hull) const
+						{
+							UINT32 offset = (UINT32)hull.vertices.Count();
+							//foreach (vertices,v)
+								//hull.vertices.push_back(*v);
+							hull.vertices.Append(vertices);
+							//const UINT32*iFrom = indices.pointer();
+							auto iFrom = indices.begin();
+							UINT32*iTo = hull.indices.AppendRow(indices.size());
+							while (iFrom != indices.end())
+							{
+								(*iTo) = UINT32(*iFrom) + offset;
+								//DBG_ASSERT__(*iTo < _vertices.Count());
+								iFrom++;
+								iTo++;
+							}
+							DBG_ASSERT__(iTo == hull.indices.end());
+						}
+		};
 
 
 	/**
@@ -164,11 +789,11 @@ namespace Grid
 
 	};
 
-	TFamily					family[BaseGrid::NumFamilies];
+	TFamily						family[BaseGrid::NumFamilies];
 	DX11::InstructionBlock32	gridInstruction,
 								transparentGridInstruction;
-	static DX11::Texture			lineTex;
-	static DX11::Shader				gridShader,transparentGridShader;// , blockShader;
+	static DX11::Texture		lineTex;
+	static DX11::Shader			gridShader,transparentGridShader;// , blockShader;
 
 
 	void		Destroy()
@@ -246,8 +871,60 @@ namespace Grid
 	}
 
 
-	Box<>		unitSphereFamilyBoundingBox[BaseGrid::NumFamilies];
-	Box<>		planetFamilyBoundingBox[BaseGrid::NumFamilies];
+
+
+	class TerrainCompiler
+	{
+	public:
+		static const count_t BatchSize = 16;	//the bigger, the less paralism, but the less the overhead during locking (since more work per locking)
+
+		StaticMesh<TerrainVertex,BatchSize * CellStack::Range * (7 + 7 + 4 * 6),BatchSize * CellStack::Range * 3 * (7 * 2 + 2 * 7)>	solidMesh;
+		StaticMesh<OverlayVertex,BatchSize * 7,BatchSize * 3*7>	coverMesh;
+		
+
+		const CellStack * stacks;
+		const SensorStack*sensorStacks;
+		const BaseGrid::TCell*  gridCells;
+		const BaseGrid::TNetCell*  netCells;
+		FClipHeight	clipHeight;
+		bool	wasEmpty;
+		TLitColor	cornerColor[6];
+
+
+		void	Setup(const CellStack *stacks, const SensorStack*sensorStacks, const BaseGrid::TCell*cells, const BaseGrid::TNetCell*netCells,FClipHeight clipHeight)
+		{
+			solidMesh.Reset();
+			coverMesh.Reset();
+			this->stacks = stacks;
+			this->sensorStacks = sensorStacks;
+			this->netCells = netCells;
+			this->gridCells = cells;
+			this->clipHeight = clipHeight;
+			wasEmpty = true;
+		}
+
+
+		TWeightedColor	GetMixColorU(index_t stackIndex,  UINT ih, Content oppositeContent, float&brightness, int&sumVisibilityTo, Content&outContent) const;
+		TWeightedColor	GetDownMixColorU(index_t stackIndex,  UINT ih, Content oppositeContent, float&brightness, int&sumVisibilityTo, Content&outContent) const;
+//			static void ApplyEMP(UINT16 cornerFlags,TVec4<>&rs);
+		static bool FlagsAffectedByEMP(UINT16 cornerFlags) {return !(cornerFlags & empZonesUnlocked);}
+		static bool AffectedByEMP(index_t stackIndex);
+
+
+		void	Compile(const index_t offset, const index_t end);
+		void	CompileLayer(	const UINT ih, const CellStack&, const SensorStack&, const int clipH,
+								const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighborhood);
+		void	CompileBottomLayer(	const CellStack&stack, const SensorStack&sensorStack, const int clipH,
+									const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighborhood);
+		void	CompileAboveTerrainOutline(const UINT ih, const int ir,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors);
+		void	CompileCap(	const UINT ih,const BaseGrid::TNetCell&cell, const bool capped, const CellStack::Cell&thisCell, 
+							const TFloatRange<>&,const BaseGrid::TCellNeighborhood&, const CellStack&, const SensorStack&);
+		void	CompileDownCap(	const UINT ih,const BaseGrid::TNetCell&cell, const CellStack::Cell&thisCell, 
+								const int ir,const BaseGrid::TCellNeighborhood&, const CellStack&, const SensorStack&);
+		void	CompileFaceToNeighbor(const int j, const UINT ih, const int ir,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors,TLitColor newCornerColor[6], 
+										const CellStack::Cell&thisCell, const CellStack::Cell&lastCell, const TFloatRange<>&range);
+		void	DeliverResults(THull<TerrainVertex>&solidHull, THull<OverlayVertex>&coverHull);
+	};
 
 
 	class ResourceCompiler
@@ -291,54 +968,6 @@ namespace Grid
 		void	Compile(const index_t offset, const index_t end, THull<ResourceVertex>&, SpinLock&lock);
 	};
 
-	class TerrainCompiler
-	{
-	public:
-		static const count_t BatchSize = 16;	//the bigger, the less paralism, but the less the overhead during locking (since more work per locking)
-
-		StaticMesh<TerrainVertex,BatchSize * CellStack::Range * (7 + 7 + 4 * 6),BatchSize * CellStack::Range * 3 * (7 * 2 + 2 * 7)>	solidMesh;
-		StaticMesh<OverlayVertex,BatchSize * 7,BatchSize * 3*7>	coverMesh;
-		
-
-		const CellStack * stacks;
-		const SensorStack*sensorStacks;
-		const BaseGrid::TCell*  gridCells;
-		const BaseGrid::TNetCell*  netCells;
-		FClipHeight	clipHeight;
-		bool	wasEmpty;
-		TLitColor	cornerColor[6];
-
-
-		void	Setup(const CellStack *stacks, const SensorStack*sensorStacks, const BaseGrid::TCell*cells, const BaseGrid::TNetCell*netCells,FClipHeight clipHeight)
-		{
-			solidMesh.Reset();
-			coverMesh.Reset();
-			this->stacks = stacks;
-			this->sensorStacks = sensorStacks;
-			this->netCells = netCells;
-			this->gridCells = cells;
-			this->clipHeight = clipHeight;
-			wasEmpty = true;
-		}
-
-
-		TWeightedColor	GetMixColorU(index_t stackIndex,  UINT ih, Content oppositeContent, float&brightness, int&sumVisibilityTo, Content&outContent) const;
-		TWeightedColor	GetDownMixColorU(index_t stackIndex,  UINT ih, Content oppositeContent, float&brightness, int&sumVisibilityTo, Content&outContent) const;
-//			static void ApplyEMP(UINT16 cornerFlags,TVec4<>&rs);
-		static bool FlagsAffectedByEMP(UINT16 cornerFlags) {return !(cornerFlags & empZonesUnlocked);}
-		static bool AffectedByEMP(index_t stackIndex);
-
-
-		void	Compile(const index_t offset, const index_t end);
-		void	CompileLayer(const UINT ih, const CellStack&stack, const int clipH,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighborhood);
-		void	CompileBottomLayer(const CellStack&stack, const int clipH,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighborhood);
-		void	CompileAboveTerrainOutline(const UINT ih, const int ir,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors);
-		void	CompileCap(const UINT ih,const BaseGrid::TNetCell&cell, const bool capped, const CellStack::Cell&thisCell, const TFloatRange<>&range,const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack);
-		void	CompileDownCap(const UINT ih,const BaseGrid::TNetCell&cell, const CellStack::Cell&thisCell, const int ir,const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack);
-		void	CompileFaceToNeighbor(const int j, const UINT ih, const int ir,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors,TLitColor newCornerColor[6], 
-										const CellStack::Cell&thisCell, const CellStack::Cell&lastCell, const TFloatRange<>&range);
-		void	DeliverResults(THull<TerrainVertex>&solidHull, THull<OverlayVertex>&coverHull);
-	};
 
 
 	
@@ -372,15 +1001,21 @@ namespace Grid
 
 
 		void	Compile(const index_t offset, const index_t end, THull<WaterVertex>&, SpinLock&lock);
-		void	CompileLayer(const index_t i, const UINT ih, const CellStack&stack, const int clipH,const BaseGrid::TNetCell&cell,
-							const BaseGrid::TCellNeighborhood&neighborhood, bool localEMP);
+		void	CompileLayer(	const index_t i, const UINT ih, const CellStack&stack, const SensorStack&sensorStack,
+								const int clipH,const BaseGrid::TNetCell&cell,
+								const BaseGrid::TCellNeighborhood&neighborhood, bool localEMP);
 		void	CompileFaceToNeighbor(const int j, const UINT ih, const int ir,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors,float newCornerColor[6], 
 									const CellStack::Cell&thisCell, const TFloatRange<>&range, bool localEMP);
-		void	CompileBottomLayer(const CellStack&stack, const int clipH,const BaseGrid::TNetCell&cell,
+		void	CompileBottomLayer(const CellStack&stack, const SensorStack&sensorStack, const int clipH,const BaseGrid::TNetCell&cell,
 									const BaseGrid::TCellNeighborhood&neighbors, bool empThis);
-		void	CompileCap(const UINT ih,const BaseGrid::TNetCell&cell, const bool capped, const CellStack::Cell&thisCell, const TFloatRange<>&range,
-									const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack, bool empThis);
+		void	CompileCap(	const UINT ih,const BaseGrid::TNetCell&cell, const bool capped, const CellStack::Cell&thisCell, 
+							const TFloatRange<>&range, const BaseGrid::TCellNeighborhood&neighbors, 
+							const CellStack&stack, const SensorStack&sensorStack, bool empThis);
+
+		static float	GetWaterLightLevel(const SensorCoverage::Volume::CellStack::Cell&cell);
+		float			GetWaterLightLevel(UINT32 stackID, UINT32 layer)	const;
 	};
+	/*static*/ const float4 WaterCompiler::waterColor = float4(0.5f, 0.6f, 1.f,0.6f);
 
 	
 	
@@ -652,7 +1287,7 @@ namespace Grid
 		{
 			BYTE data[sizeof(ResourceCompiler)];	//prevent implicit memset in release mode. i'm serious. visual studio has some funny ideas there...
 			ResourceCompiler&compiler = *(ResourceCompiler*)data;
-			compiler.Setup(World::actualWorld.cellStack.pointer(),low.grid.GetCells(),high.grid.GetCells(), low.cells.pointer(),clipHeight,resources, numResources);
+			compiler.Setup(World::actual.cellStack.pointer(),low.grid.GetCells(),high.grid.GetCells(), low.cells.pointer(),clipHeight,resources, numResources);
 			compiler.Compile(i,end,cover,lock);
 		});
 	}
@@ -779,12 +1414,12 @@ namespace Grid
 
 
 
-	void	TerrainCompiler::CompileCap(const UINT ih,const BaseGrid::TNetCell&cell, const bool capped, const CellStack::Cell&thisCell, const TFloatRange<>&range,const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack)
+	void	TerrainCompiler::CompileCap(const UINT ih,const BaseGrid::TNetCell&cell, const bool capped, const CellStack::Cell&thisCell, const TFloatRange<>&range,const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack, const SensorStack&sensorStack)
 	{
 
 		bool mixes0;
 		Content centerType;
-		TLitColor color0 = GetColorU(stack,ih, Content::Clear, mixes0,centerType);
+		TLitColor color0 = GetColorU(stack,sensorStack,ih, Content::Clear, mixes0,centerType);
 		color0.capped = capped;
 		color0.emp = FlagsAffectedByEMP(cell.cornerFlags);
 			
@@ -840,13 +1475,13 @@ namespace Grid
 	}
 
 	
-	void	TerrainCompiler::CompileDownCap(const UINT ih,const BaseGrid::TNetCell&cell, const CellStack::Cell&thisCell, const int ir,const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack)
+	void	TerrainCompiler::CompileDownCap(const UINT ih,const BaseGrid::TNetCell&cell, const CellStack::Cell&thisCell, const int ir,const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack, const SensorStack&sensorStack)
 	{
 		float h = ToRadius(ir + 1);
 		bool mixes0;
 		solidMesh.SetOffset();
 		Content centerType;
-		TLitColor color0 = stack.GetDownColorU(ih, Content::Clear, mixes0,centerType);
+		TLitColor color0 = GetDownColorU(stack,sensorStack, ih, Content::Clear, mixes0,centerType);
 		color0.emp = FlagsAffectedByEMP(cell.cornerFlags) ? 1.f : 0.f;
 
 		solidMesh << TerrainVertex(cell.centerVertex, h, -cell.centerVertex.xyz, color0, thisCell.GetStructureFactor());
@@ -946,7 +1581,7 @@ namespace Grid
 	}
 
 
-	void	TerrainCompiler::CompileLayer(const UINT ih, const CellStack&stack, const int clipH,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors)
+	void	TerrainCompiler::CompileLayer(const UINT ih, const CellStack&stack, const SensorStack&sensorStack, const int clipH,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors)
 	{
 		const int ir = CellStack::ToHeight(ih);
 
@@ -956,7 +1591,7 @@ namespace Grid
 		const CellStack::Cell&lastCell = stack.GetCellI(ir - 1);
 		const CellStack::Cell&thisCell = stack.volumeCell[ih];
 		const CellStack::Cell&nextCell = stack.GetCellU(ih + 1);
-
+		const auto&thisSCell = sensorStack.volumeCell[ih];
 			
 
 		if (!thisCell.IsOpaque())
@@ -973,7 +1608,7 @@ namespace Grid
 					CompileAboveTerrainOutline(ih,ir,cell,neighbors);
 				else
 				{
-					CompileDownCap(ih,cell,thisCell,ir,neighbors,stack);
+					CompileDownCap(ih,cell,thisCell,ir,neighbors,stack,sensorStack);
 				}
 			}
 			return;
@@ -988,15 +1623,15 @@ namespace Grid
 
 			solidMesh.SetOffset();
 
-			TLitColor baseColor = TLitColor(thisCell.GetBaseColor(),0.f,FlagsAffectedByEMP( cell.cornerFlags),thisCell.GetVisibility());
-			TLitColor nextColor = TLitColor(nextCell.IsOpaque() && nextCell.Mixes() ? TLitColor(nextCell.GetBaseColor(),0.f, baseColor.emp,thisCell.GetVisibility()) : baseColor);
+			TLitColor baseColor = TLitColor(GetBaseColor(thisCell),0.f,FlagsAffectedByEMP( cell.cornerFlags),thisSCell.GetVisibility());
+			TLitColor nextColor = TLitColor(nextCell.IsOpaque() && nextCell.Mixes() ? TLitColor(GetBaseColor(nextCell),0.f, baseColor.emp,thisSCell.GetVisibility()) : baseColor);
 
 			const bool capped = nextCell.IsOpaque();
 			if (!capped
 				|| ir+1 >= clipH
 				)
 			{
-				CompileCap(ih+1,cell,capped,thisCell,range,neighbors,stack);
+				CompileCap(ih+1,cell,capped,thisCell,range,neighbors,stack,sensorStack);
 			}
 
 			TLitColor newCornerColor[6];
@@ -1033,7 +1668,7 @@ namespace Grid
 	}
 	
 
-	void	TerrainCompiler::CompileBottomLayer(const CellStack&stack, const int clipH,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors)
+	void	TerrainCompiler::CompileBottomLayer(const CellStack&stack, const SensorStack&sensorStack, const int clipH,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors)
 	{
 		//static const int ir = -CellStack::HalfRange;
 		//static const UINT ih = 0;
@@ -1053,7 +1688,7 @@ namespace Grid
 				bool mixes0;
 				solidMesh.SetOffset();
 				Content centerContent;
-				TLitColor color0 = stack.GetDownColorU(0, Content::Clear,mixes0,centerContent);
+				TLitColor color0 = GetDownColorU(stack,sensorStack, 0, Content::Clear,mixes0,centerContent);
 				solidMesh << TerrainVertex(cell.centerVertex, h, -cell.centerVertex.xyz, color0, thisCell.GetStructureFactor());
 				for (int j = 0; j < cell.numCorners; j++)
 				{
@@ -1066,8 +1701,10 @@ namespace Grid
 
 							if (!mixes0)
 								color *= 4.f; //mild bleeding
-							color += stacks[neighbors.neighborID[(j + 1) % cell.numCorners]].GetDownMixColorU(0, centerContent,brightness,visibility,c0);
-							color += stacks[neighbors.neighborID[j]].GetDownMixColorU(0, centerContent,brightness,visibility,c1);
+							const UINT32 n0 = neighbors.neighborID[(j + 1) % cell.numCorners];
+							const UINT32 n1 = neighbors.neighborID[j];
+							color += GetDownMixColorU(n0,0, centerContent,brightness,visibility,c0);
+							color += GetDownMixColorU(n1,0, centerContent,brightness,visibility,c1);
 
 							brightness /= 3;
 							//color.rgb *= brightness / color.a;
@@ -1100,7 +1737,7 @@ namespace Grid
 			if (!capped
 				)
 			{
-				CompileCap(0,cell,capped,thisCell,range,neighbors,stack);
+				CompileCap(0,cell,capped,thisCell,range,neighbors,stack,sensorStack);
 			}
 
 
@@ -1114,6 +1751,7 @@ namespace Grid
 		for (index_t i = offset; i < offset+BatchSize && i < end; i++ )
 		{
 			const ::Grid::CellStack&stack = stacks[i];
+			const auto&sensorStack = sensorStacks[i];
 			const auto&neighbors = gridCells[i].neighborhood;
 			const auto&cell = netCells[i];
 
@@ -1145,12 +1783,12 @@ namespace Grid
 			const int clipH = clipHeight(i);
 			end = std::min(end, CellStack::ToLayer(clipH));
 			if (begin == 0 || CellStack::bottom.content == Content::Clear)
-				CompileBottomLayer(stack,clipH,cell,neighbors);
+				CompileBottomLayer(stack, sensorStack,clipH,cell,neighbors);
 			if (end >= CellStack::Range)
 				begin = std::min(begin,end - 1);
 			for (UINT ih = begin; ih < end; ih++)
 			{
-				CompileLayer(ih,stack,clipH,cell,neighbors);
+				CompileLayer(ih,stack,sensorStack,clipH,cell,neighbors);
 			}
 		}
 	}
@@ -1177,7 +1815,7 @@ namespace Grid
 	}
 
 
-	void	WaterCompiler::CompileBottomLayer(const CellStack&stack, const int clipH,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors, bool empThis)
+	void	WaterCompiler::CompileBottomLayer(const CellStack&stack, const SensorStack&sensorStack, const int clipH,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors, bool empThis)
 	{
 		//static const int ir = -CellStack::HalfRange;
 		//static const UINT ih = 0;
@@ -1211,7 +1849,7 @@ namespace Grid
 				//)
 			{
 				//CompileCap(ih+1,cell,capped,thisCell,range,neighbors,stack);
-				CompileCap(0,cell,false,thisCell,range,neighbors,stack,empThis);
+				CompileCap(0,cell,false,thisCell,range,neighbors,stack,sensorStack,empThis);
 			}
 
 
@@ -1335,10 +1973,26 @@ namespace Grid
 	
 	}
 
-	void	WaterCompiler::CompileCap(const UINT ih,const BaseGrid::TNetCell&cell, const bool capped, const CellStack::Cell&thisCell, const TFloatRange<>&range,const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack, bool empThis)
+	/*static*/ float	WaterCompiler::GetWaterLightLevel(const SensorCoverage::Volume::CellStack::Cell&cell)
 	{
+		#ifdef DEBUG_HIDE_SENSORY
+			return 1.f;
+		#else
+			return float(cell.IsCurrentlyVisible());
+		#endif
+	}
 
-		float light0 = stack.GetCellU(ih).GetWaterLightLevel();
+	float	WaterCompiler::GetWaterLightLevel(UINT32 stackID, UINT32 layer) const
+	{
+		return GetWaterLightLevel(sensorStacks[stackID].volumeCell[vmin(layer,CellStack::Range-1)]);
+	}
+
+
+
+	void	WaterCompiler::CompileCap(const UINT ih,const BaseGrid::TNetCell&cell, const bool capped, const CellStack::Cell&thisCell, const TFloatRange<>&range,const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack, const SensorStack&sensorStack , bool empThis)
+	{
+		const UINT layer = vmin(ih, CellStack::Range-1);
+		float light0 = GetWaterLightLevel(sensorStack.volumeCell[layer]);
 		
 		mesh.SetOffset();
 		mesh <<  WaterVertex(cell.centerVertex, range.max, cell.centerVertex.xyz, light0,empThis?3:0);
@@ -1349,10 +2003,10 @@ namespace Grid
 				UINT32 n1 = neighbors.neighborID[(j + 1) % cell.numCorners];
 				UINT32 n0 = neighbors.neighborID[j];
 				{
-					const auto& sn1 = stacks[n1];
-					const auto&	sn2 = stacks[n0];
-					brightness += sn1.GetCellU(ih).GetWaterLightLevel();
-					brightness += sn2.GetCellU(ih).GetWaterLightLevel();
+					const auto& sn1 = sensorStacks[n1];
+					const auto&	sn2 = sensorStacks[n0];
+					brightness += GetWaterLightLevel(sn1.volumeCell[layer]);
+					brightness += GetWaterLightLevel(sn2.volumeCell[layer]);
 
 					brightness /= 3;
 				}
@@ -1369,7 +2023,7 @@ namespace Grid
 	}
 
 
-	void	WaterCompiler::CompileLayer(const index_t i, const UINT ih, const CellStack&stack, const int clipH, const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors, bool empThis)
+	void	WaterCompiler::CompileLayer(const index_t i, const UINT ih, const CellStack&stack, const SensorStack&sensorStack,const int clipH, const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors, bool empThis)
 	{
 		const int ir = int(ih) - CellStack::HalfRange;
 		//if (clipped(i, ir))
@@ -1399,7 +2053,7 @@ namespace Grid
 							
 				//color0.rgb = waterColor;
 				//CompileCap(const UINT ih,const BaseGrid::TNetCell&cell, const bool capped, const CellStack::Cell&thisCell, const TFloatRange<>&range,const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack)
-				CompileCap(ih+1,cell,capped,thisCell,range,neighbors,stack, empThis);
+				CompileCap(ih+1,cell,capped,thisCell,range,neighbors,stack, sensorStack, empThis);
 			
 			}
 
@@ -1411,10 +2065,10 @@ namespace Grid
 				const UINT32 n1 = neighbors.neighborID[(j + 1) % cell.numCorners];
 				const CellStack&sn = stacks[n1];
 				{
-					float c1 = (stacks[n1].GetCellU(ih).GetWaterLightLevel() + stacks[n1].GetCellU(ih+1).GetWaterLightLevel())/2.f;
+					float c1 = (GetWaterLightLevel(n1,ih) + GetWaterLightLevel(n1,ih+1))/2.f;
 					float color1 = (c1 * 2.f
 						+
-						(Brighten(stacks[n0].GetCellU(ih).GetWaterLightLevel()) + Brighten(stacks[n0].GetCellU(ih+1).GetWaterLightLevel())) / 2.f);	//originally 'mild' levels
+						(Brighten(GetWaterLightLevel(n0,ih)) + Brighten(GetWaterLightLevel(n0,ih+1))) / 2.f);	//originally 'mild' levels
 
 					color1 /= 3.f;
 					newCornerLight[j] = color1;
@@ -1479,12 +2133,13 @@ namespace Grid
 		for (index_t i = offset; i < offset+BatchSize && i < end; i++ )
 		{
 			const ::Grid::CellStack&stack = stacks[i];
+			const auto&sensorStack = sensorStacks[i];
 			const auto&cell = netCells[i];
 			const bool empThis = !(cell.cornerFlags & empZonesUnlocked);
 			if (!stack.HasWater())
 			{
 				if (CellStack::bottom.IsWater())
-					CompileBottomLayer(stack,100,netCells[i],gridCells[i].neighborhood,empThis);
+					CompileBottomLayer(stack,sensorStack, 100,netCells[i],gridCells[i].neighborhood,empThis);
 
 				continue;
 			}
@@ -1514,10 +2169,10 @@ namespace Grid
 			const int clipH = clipHeight(i);
 			waterRange.end = (BYTE)std::min<UINT>(waterRange.end, CellStack::ToLayer(clipH));
 			if (CellStack::bottom.IsWater())
-				CompileBottomLayer(stack,clipH,cell,neighbors,empThis);
+				CompileBottomLayer(stack,sensorStack, clipH,cell,neighbors,empThis);
 			for (UINT ih = waterRange.start; ih < waterRange.end; ih++)
 			{
-				CompileLayer(i,ih,stack,clipH,cell,neighbors,empThis);
+				CompileLayer(i,ih,stack,sensorStack, clipH,cell,neighbors,empThis);
 			}
 		}
 
@@ -1545,11 +2200,13 @@ namespace Grid
 	void		BakeResourceInstruction(BYTE family, FClipHeight clipHeight,const Resource*resources, count_t numResources)
 	{
 	//	return;
-		TFamily &fam = this->family[family];
+		TFamily &fam = Grid::family[family];
 		TFamily::TData&dat = fam.normal;
 
+		const auto&grid = Grid::low.grid;
+
 		dat.resources.Clear();
-		actualWorld.CompileResources(dat.resources, grid.GetFamilyOffset(family), grid.CountFamilyMembers(family), clipHeight, resources, numResources);
+		CompileResources(dat.resources,  grid.GetFamilyOffset(family), grid.CountFamilyMembers(family), clipHeight, resources, numResources);
 
 		Box<> box = Box<>::Invalid();
 
@@ -1572,32 +2229,32 @@ namespace Grid
 		dat.resources.instruction.ibo.Create(dat.resources.indices);
 	}
 
-	void		BakeLineInstruction(const Array<CellStack>&stacks, BYTE family, int minHeight)
-	{
-		if (!section)
-			minHeight = -CellStack::HalfRange;
-		TFamily &fam = this->family[family];
-		TFamily::TData&dat = fam.GetData(section);
+	//void		BakeLineInstruction(const Array<CellStack>&stacks, BYTE family, int minHeight)
+	//{
+	//	if (!section)
+	//		minHeight = -CellStack::HalfRange;
+	//	TFamily &fam = Grid::family[family];
+	//	TFamily::TData&dat = fam.GetData(section);
 
-		dat.edgeVertices.Clear();
-		dat.edgeIndices.Clear();
-		CompileEdges(stacks, dat.edgeVertices, dat.edgeIndices, grid.GetFamilyOffset(family), grid.CountFamilyMembers(family), minHeight);
+	//	dat.edgeVertices.Clear();
+	//	dat.edgeIndices.Clear();
+	//	CompileEdges(stacks, dat.edgeVertices, dat.edgeIndices, grid.GetFamilyOffset(family), grid.CountFamilyMembers(family), minHeight);
 
-		if (dat.edgeInstruction.shader.IsEmpty())
-		{
-			(DX11::BaseInstructionBlock&)dat.edgeInstruction = terrainEdgeBase;
-			dat.edgeInstruction.SetLines();
-		}
+	//	if (dat.edgeInstruction.shader.IsEmpty())
+	//	{
+	//		(DX11::BaseInstructionBlock&)dat.edgeInstruction = terrainEdgeBase;
+	//		dat.edgeInstruction.SetLines();
+	//	}
 
 
-		dat.edgeInstruction.vbo.CreateFromStructs(dat.edgeVertices);
-		dat.edgeInstruction.ibo.Create(dat.edgeIndices);
-	}
+	//	dat.edgeInstruction.vbo.CreateFromStructs(dat.edgeVertices);
+	//	dat.edgeInstruction.ibo.Create(dat.edgeIndices);
+	//}
 
 
 	void		RenderCell(index_t stackID)
 	{
-		display.Render(gridInstruction, cells[stackID].voffset, cells[stackID].numCorners * 3);
+		display.Render(gridInstruction, low.cells[stackID].voffset, low.cells[stackID].numCorners * 3);
 	}
 	/**
 	Second-style version of RenderCell().
@@ -1606,23 +2263,23 @@ namespace Grid
 	*/
 	void		RenderTransparentCell(index_t stackID)
 	{
-		display.Render(transparentGridInstruction, cells[stackID].voffset, cells[stackID].numCorners * 3);
+		display.Render(transparentGridInstruction, low.cells[stackID].voffset, low.cells[stackID].numCorners * 3);
 	}
 
-	void RenderBlock(index_t cellID, float h0, float h1, const float4&color)
-	{
-		TMatrix4<> config;
-		memset(&config, 0, sizeof(config));
-		config.x.x = h0;
-		config.x.y = h1;
-		config.z = color;
-		Mat::transpose(config);
-		blockConfig.Update(config);
-		display.Render(blockInstruction, cells[stackID].voffset, cells[stackID].numCorners * 3);
-	}
+	//void RenderBlock(index_t cellID, float h0, float h1, const float4&color)
+	//{
+	//	TMatrix4<> config;
+	//	memset(&config, 0, sizeof(config));
+	//	config.x.x = h0;
+	//	config.x.y = h1;
+	//	config.z = color;
+	//	Mat::transpose(config);
+	//	blockConfig.Update(config);
+	//	display.Render(blockInstruction, cells[stackID].voffset, cells[stackID].numCorners * 3);
+	//}
 
 	static const count_t HullTestBatch = 16;
-	bool	TestHullIntersection(const TVec3<>&b, const TVec3<>&d, float&distance, TVec3<>&outNormal, bool includeWater) const
+	bool	TestHullIntersection(const TVec3<>&b, const TVec3<>&d, float&distance, TVec3<>&outNormal, bool includeWater)
 	{
 		bool rs = false;
 		SpinLock lock;
@@ -1637,7 +2294,7 @@ namespace Grid
 				{
 					const auto*indices = dat.water.indices.pointer();
 
-					Concurrency::parallel_for(index_t(0), dat.water.indices.Count(), index_t(3) * HullTestBatch, [this, &lock, &distance, b, d, &rs, &dat, indices, &outNormal](index_t _i)
+					Concurrency::parallel_for(index_t(0), dat.water.indices.Count(), index_t(3) * HullTestBatch, [&lock, &distance, b, d, &rs, &dat, indices, &outNormal](index_t _i)
 						//for (index_t i = 0; i < hullIndices.Count(); i += 3)
 					{
 						float dist = distance;
@@ -1675,7 +2332,7 @@ namespace Grid
 				{
 					const auto*indices = dat.terrain.indices.pointer();
 
-					Concurrency::parallel_for(index_t(0), dat.terrain.indices.Count(), index_t(3) * HullTestBatch, [this, &lock, &distance, b, d, &rs, &dat, indices, &outNormal](index_t _i)
+					Concurrency::parallel_for(index_t(0), dat.terrain.indices.Count(), index_t(3) * HullTestBatch, [&lock, &distance, b, d, &rs, &dat, indices, &outNormal](index_t _i)
 						//for (index_t i = 0; i < hullIndices.Count(); i += 3)
 					{
 						float dist = distance;
@@ -1715,10 +2372,12 @@ namespace Grid
 		return rs;
 	}
 
-	index_t	TestGridIntersection(TVec3<> b, TVec3<> d, float radius, float&distance) const
+	index_t	TestLowGridIntersection(TVec3<> b, TVec3<> d, float radius, float&distance)
 	{
 		Vec::div(b,radius);
 		Vec::div(d,radius);
+
+		const auto&grid = low.grid;
 
 		index_t rs = InvalidIndex;
 
@@ -1733,7 +2392,7 @@ namespace Grid
 								end = begin+cnt;
 				for (index_t i = begin; i < end; i++)
 				{
-					const auto&c = cells[i];
+					const auto&c = low.cells[i];
 					for (int j = 0; j < c.numCorners; j++)
 					{
 						if (Obj::detectOpticalIntersection(c.centerVertex.xyz, c.cornerVertex[j].xyz,

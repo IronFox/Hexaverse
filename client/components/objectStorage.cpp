@@ -40,7 +40,7 @@ namespace Objects
 		markers.swap(Marker::all);
 		RuntimeConfig::UnitLimits::Export(unitLimits);
 		Objects::FlushAllData(true);
-		Grid::actualWorld.ResetStructureCounters(!preserveGridVisibility);
+		World::actual.ResetStructureCounters(!preserveGridVisibility);
 		Grid::SetAllFamiliesOutdated(0);
 		loaded = true;
 	}
@@ -48,7 +48,7 @@ namespace Objects
 	void	Storage::Export()
 	{
 		Objects::FlushAllData(true);
-		Grid::actualWorld.ResetStructureCounters(true);
+		World::actual.ResetStructureCounters(true);
 		markers.swap(Marker::all);
 		RuntimeConfig::UnitLimits::Import(unitLimits);
 		for (const PWorldEntity&e : objects)

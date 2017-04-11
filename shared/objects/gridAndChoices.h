@@ -157,7 +157,7 @@ namespace Objects
 	typedef TWaysTemplate<UINT32,1>			TOrbitalWays;	//TOrbitalWays MaxLevels must always be == 1
 
 
-	void			GetWays(const Grid::WorldData&world,
+	void			GetWays(const World::Data&world,
 							const Vehicle*v,  const Grid::LCellIdI&location, 
 							TWays&outWays, const Grid::LCellIdI&destination, 
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute, bool forceRevertible);
@@ -166,7 +166,7 @@ namespace Objects
 							TOrbitalWays&outWays, UINT32 destination, 
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute);
 	#endif
-	void			GetMobileWays(	const Grid::WorldData&world,
+	void			GetMobileWays(	const World::Data&world,
 							const MobileEntity*v,  const Grid::LCellIdI&location, 
 							TWays&outWays, const Grid::LCellIdI&destination, 
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute);

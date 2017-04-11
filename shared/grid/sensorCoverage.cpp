@@ -295,7 +295,7 @@ namespace SensorCoverage
 			c.user = Visited;
 			marked << current;
 
-			bool translucent = Grid::actualWorld.cellStack[current.stackID].volumeCell[current.layer].IsClearOrWaterIgnoreStructure();
+			bool translucent = World::actual.cellStack[current.stackID].volumeCell[current.layer].IsClearOrWaterIgnoreStructure();
 
 			float visibleWeight=0, totalWeight=0;
 			Grid::high.VisitNeighborsOf(current,[&v,&visibleWeight,&totalWeight, &work,current,d03,c3,translucent](const Grid::HCellIdU&next)
@@ -380,7 +380,7 @@ namespace SensorCoverage
 				ApplyShaftTo(v,change,familyChanged,
 					[this](UINT32 stackID)
 					{
-						return Grid::actualWorld.TraceSkySensorLayer(stackID,gridCenter.layer,this->terrainPenetration);
+						return World::actual.TraceSkySensorLayer(stackID,gridCenter.layer,this->terrainPenetration);
 					}
 				);
 			break;

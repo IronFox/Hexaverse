@@ -3,7 +3,7 @@
 
 
 #include "types.h"
-#include "../sphereGrid.h"
+#include "../grid/volume.h"
 
 #ifdef HAS_WINDOW
 	#include "visualCommands.h"
