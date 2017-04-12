@@ -13,6 +13,11 @@ namespace World
 	#endif
 
 
+	bool IsRoad(BYTE /*CellStack::Cell::Content::type_t*/ t, bool clearIsRoad)
+	{
+		return (clearIsRoad && t == Content::Clear) || t == Content::Road || t == Content::Foundation;
+	}
+
 	void	Create()
 	{
 		#ifndef CLIENT
@@ -777,11 +782,11 @@ namespace World
 		#ifdef HYBRID_GRID
 			const UINT32 lowEq = low.grid.GetCell(cell.stackID).higherEquivalent;
 
-			if (!Grid::IsRoad(cellStack[lowEq].GetCellI(cell.height).content,false))
+			if (!World::IsRoad(cellStack[lowEq].GetCellI(cell.height).content,false))
 				return false;
 			const auto&n = high.grid.GetCell(lowEq).neighborhood;
 			for (int i = 0; i < n.numNeighbors; i++)
-				if (!Grid::IsRoad(cellStack[n.neighborID[i]].GetCellI(cell.height).content,ignoreClearCellsOnEdge))
+				if (!World::IsRoad(cellStack[n.neighborID[i]].GetCellI(cell.height).content,ignoreClearCellsOnEdge))
 					return false;
 			return true;
 		#else

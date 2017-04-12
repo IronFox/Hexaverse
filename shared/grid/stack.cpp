@@ -735,10 +735,6 @@ namespace Grid
 		return Vec::quadraticDistance(wa,wb);
 	}
 
-	bool IsRoad(BYTE /*CellStack::Cell::Content::type_t*/ t, bool clearIsRoad)
-	{
-		return (clearIsRoad && t == Content::Clear) || t == Content::Road || t == Content::Foundation;
-	}
 
 
 /*

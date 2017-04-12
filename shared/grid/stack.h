@@ -725,7 +725,6 @@ namespace Grid
 		return (float)n.GetUniform(p.x,p.y,p.z);
 	}
 
-	bool IsRoad(BYTE /*CellStack::Cell::Content::type_t*/ t, bool clearIsRoad);
 
 
 
