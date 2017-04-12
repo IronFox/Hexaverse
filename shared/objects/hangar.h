@@ -3,7 +3,7 @@
 
 
 #include "types.h"
-#include "../grid/volume.h"
+#include "../grid/stack.h"
 
 #ifdef HAS_WINDOW
 	#include "visualCommands.h"

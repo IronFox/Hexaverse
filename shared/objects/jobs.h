@@ -2,7 +2,7 @@
 #define objectJobsH
 
 #include <io/riff_handler.h>
-#include "../grid/volume.h"
+#include "../grid/stack.h"
 #include "cursorMode.h"
 #include "types.h"
 #include "../uniqueID.h"

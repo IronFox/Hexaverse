@@ -1,6 +1,6 @@
 #pragma once
 
-#include "volume.h"
+#include "stack.h"
 
 namespace World
 {
@@ -124,11 +124,6 @@ namespace World
 
 
 		#ifdef HAS_WINDOW
-			/**
-			Updates the visibility of all cells to the specified value.
-			The previous value is discarded.
-			*/
-			void				OverrideVisibility(short v);
 			/**
 			Retrieves the average light-level of all high-resolution cells touched by the specified low-resolution cell
 			*/

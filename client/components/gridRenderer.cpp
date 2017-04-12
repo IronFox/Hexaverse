@@ -2,6 +2,7 @@
 #include <global_root.h>
 #include "gridRenderer.h"
 #include <objects/rendering.h>
+#include <grid/planet.h> 
 
 #include "../ExtRenderer/DirectX11.h"
 #include <engine/display.h>
@@ -87,6 +88,124 @@ namespace Grid
 
 	}
 
+	void	UpdateAtmosphere(const float4&fogColor)
+	{
+		UpdateAtmosphere(VerticalBase * 1.5f, fogColor);
+
+	}
+
+	void	UpdateAtmosphere(float radius, const float4&fogColor)
+	{
+		VecN<float,8>	atmosphereCfg;
+		atmosphereCfg[0] = sqr(radius);
+		atmosphereCfg[1] = radius;
+		atmosphereCfg[2] = 0;
+		atmosphereCfg[3] = 0;
+		atmosphereCfg[4] = fogColor.r;
+		atmosphereCfg[5] = fogColor.g;
+		atmosphereCfg[6] = fogColor.b;
+		atmosphereCfg[7] = fogColor.a;
+
+		Instruction::atmosphereConfig.Update(atmosphereCfg);
+	}
+
+	void	UpdatePlanetRenderingParameters(float radius)	//more to come
+	{
+		TMatrix4<> matrix = Matrix<>::eye4;
+		matrix.x.xyz *= radius;
+		matrix.y.xyz *= radius;
+		matrix.z.xyz *= radius;
+
+		display.SetObjectMatrix(matrix);
+	}
+
+	namespace SunDetails
+	{
+		float4	plane_Speed = float4(0,0,1,0.5f);
+		float4	color = float4(1);
+		TMatrix3<>	sunSystem = Matrix<>::eye3;
+		float3	sunDirection(1,0,0);
+		double progression = 0.0;
+	}
+
+	const float3&	GetSunDirection()
+	{
+		return SunDetails::sunDirection;
+	}
+
+	void	UpdateSun(const float4&sunPlane_Speed,const float4&sunColor)
+	{
+		SunDetails::plane_Speed = sunPlane_Speed;
+		SunDetails::color = sunColor;
+		SunDetails::progression = 0.f;
+		Mat::makeAxisSystem(sunPlane_Speed.xyz,2,SunDetails::sunSystem);
+
+		Instruction::sunColor.Update(sunColor);
+		UpdateSunDirection(SunDetails::sunSystem.x,true);
+	}
+
+
+	void	PerFrameUpdateSunDirection()
+	{
+		SunDetails::progression += SunDetails::plane_Speed.w * Engine::timing.delta;
+
+
+		float3 p = float3(cos(SunDetails::progression),sin(SunDetails::progression),0);
+		Mat::Mult(SunDetails::sunSystem,p,SunDetails::sunDirection);
+		UpdateSunDirection(SunDetails::sunDirection,true);
+	}
+
+	double	GetAcceleratedSunDirection(TVec3<>&outDir, float speedFactor/*=1.f*/)
+	{
+		double angle = SunDetails::progression*speedFactor;
+		Vec::def(outDir,cos(angle),sin(angle),0);
+		Mat::Mult(SunDetails::sunSystem,outDir);
+		return angle;
+	}
+
+
+	const TMatrix3<>& GetSunSystem()
+	{
+		return SunDetails::sunSystem;
+	}
+
+
+	void	ResetSunRotation()
+	{
+		SunDetails::progression = 0;
+	}
+
+
+
+	void	SetOrientation(TMatrix4<>&m, const float3&axis, double t, const float3&seedAxis, double seedRot)
+	{
+		TMatrix3<> sys1,sys2,sys;
+		Mat::BuildRotationMatrix(t*1.5,axis,sys1);
+		Mat::BuildRotationMatrix(seedRot,seedAxis,sys2);
+		Mat::Mult(sys1,sys2,sys);
+		Mat::copyOrientation(sys,m);
+		m.w.xyz = Vector<>::zero;
+		Mat::resetBottomRow(m);
+
+	}
+
+	void	UpdateSunDirection(const float3&p, bool shadows /*= true*/)
+	{
+		SunDetails::sunDirection = p;
+		//#ifdef _DEBUG
+		//	SunDetails::sunDirection = -p;
+		//#endif
+		Instruction::sunDirection.Update(float4(SunDetails::sunDirection,shadows));
+
+		Random random(23984);
+		Instruction::THeightMapOrientation	orientation;
+		SetOrientation(orientation.orientation0,float3(1,0.75,0.75).Normalized0(),Engine::timing.now, float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)).Normalized0(),random.NextFloatT<double>(0,100));
+		SetOrientation(orientation.orientation1,float3(0.75,1,0.75).Normalized0(),-Engine::timing.now*1.35, float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)).Normalized0(),random.NextFloatT<double>(0,100));
+		SetOrientation(orientation.orientation2,float3(0.75,0.75,1).Normalized0(),Engine::timing.now/M_PI, float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)).Normalized0(),random.NextFloatT<double>(0,100));
+
+		Instruction::heightMapOrientation.Update(orientation);
+
+	}
 
 
 	
@@ -122,7 +241,28 @@ namespace Grid
 		});
 	}
 
+	void	DestroyRenderer()
+	{
+		Instruction::sunDirection.Clear();
+		Instruction::sunColor.Clear();
 
+		lineTex.Clear();
+		gridShader.Clear();
+		transparentGridShader.Clear();
+		Instruction::overlayBase = Instruction::overlayShadowBase 
+			= Instruction::resourceBase = Instruction::terrainBase 
+			= Instruction::terrainSphereBase = Instruction::terrainParaboloidBase 
+			= Instruction::orbitGridBase
+			= Instruction::terrainShadowBase
+			= Instruction::waterBase = Instruction::waterSphereBase = Instruction::waterParaboloidBase
+			= DX11::BaseInstructionBlock();
+		Instruction::atmosphereConfig .Clear();
+		Instruction::ParaboloidDirection_Height.Clear();
+		Instruction::ParaboloidColor_FlatRadius.Clear();
+		Instruction::SphereDef.Clear();
+		Instruction::heightMapOrientation.Clear();
+		Instruction::cubeHeightMap.Clear();
+	}
 
 	void CreateRenderer()
 	{
@@ -366,6 +506,10 @@ namespace Grid
 			gridShader.LoadFromFile("shaders/sphereGrid.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
 			transparentGridShader.LoadFromFile("shaders/transparentSphereGrid.hlsl", "vsMain", "psMain");
 
+
+
+		for (BYTE i = 0; i < BaseGrid::NumFamilies; i++)
+			BakeBlockInstruction(World::actual.cellStack, SensorCoverage::Volume::client.cellStack, i, Clip::NoClip);
 
 	}
 
@@ -1291,6 +1435,7 @@ namespace Grid
 			compiler.Compile(i,end,cover,lock);
 		});
 	}
+
 
 	void	TerrainCompiler::CompileAboveTerrainOutline(const UINT ih, const int ir,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors)
 	{
@@ -2429,6 +2574,301 @@ namespace Grid
 		display.Render(gridInstruction);
 	}
 
+
+
+
+	namespace SeeThrough
+	{
+		static HighSetup::TDistanceField	currentCutoffDomain;
+		//static int						currentLowerCutoff = 0;
+		static Grid::LCellIdI			currentFocus(0xFFFFFFFF,0);
+		//static UINT32					currentLowerCutoffCenter = 0xFFFFFFFF;
+		static bool						cutoffMode = false;
+
+
+		const Grid::LCellIdI&	GetFocusPoint()
+		{
+			return currentFocus;
+		}
+
+		int ClipHeight(index_t stackID)
+		{
+			//int d = (int)std::min(SeeThrough::currentCutoffDomain.distance[stackID], 0x1FFFFFFFU);
+			//return  d < int(CutoffRadius) && /*std::max(d-4,0) +*/ SeeThrough::currentFocus.height < intRadius;
+			return  //currentFocus.height < intRadius &&
+				currentCutoffDomain.distance[stackID] < CutoffRadius ? currentFocus.height + 1 : NoClipHeight;
+		}
+
+		Grid::LCellIdI		LocateCamera()
+		{
+			UINT32 cell = low.Locate(Camera::scene.location);
+			#ifdef HYBRID_GRID
+				UINT32 finer = low.grid.GetCell(cell).higherEquivalent;
+			#else
+				UINT32 finer = cell;
+			#endif
+			if (currentCutoffDomain.distance[finer] < CutoffRadius * 3 / 4)
+				return currentFocus;
+			return Grid::LCellIdI(cell,currentFocus.height);
+		}
+
+		bool	IsEnabled()
+		{
+			return cutoffMode;
+		}
+
+		void	Update(bool enable, const Grid::LCellIdI&targetFocus)
+		{
+			if (targetFocus.stackID >= LowSetup::GridType::CellCount)
+				return;	// uninitialized focus
+			//ASSERT_LESS__(targetFocus.stackID, LowSetup::GridType::CellCount);
+			bool newHeight = currentFocus.height != targetFocus.height;
+			if (!newHeight && currentFocus.stackID == targetFocus.stackID && enable == cutoffMode)
+				return;
+			#ifdef HYBRID_GRID
+				UINT32 finer = low.grid.GetCell(targetFocus.stackID).higherEquivalent;
+			#else
+				UINT32 finer = targetFocus.stackID;
+			#endif
+
+			if (enable)
+			{
+				Camera::ChangeGroundRadius(ToRadius(targetFocus.height));
+			}
+
+			HighSetup::TDistanceField	newDomain;
+			if (enable)
+				high.UpdatePlanarDistanceField(finer, CutoffRadius, newDomain);
+
+			for (index_t i = 0; i < HighSetup::GridType::CellCount; i++)
+			{
+				if ((newDomain.distance[i] != 0xFFFFFFFF && newHeight) || (newDomain.distance[i] == 0xFFFFFFFF) != (currentCutoffDomain.distance[i] == 0xFFFFFFFF))
+				{
+					BYTE fam = high.grid.GetCell(i).family;
+					World::actual.SetFamilyOutdated(fam);
+				}
+			}
+
+			currentCutoffDomain = newDomain;
+			cutoffMode = enable;
+			currentFocus = targetFocus;
+		}
+
+	
+	}
+
+
+	void	ResourceCompiler::Compile(const index_t offset, const index_t end, THull<ResourceVertex>&coverHull, SpinLock&lock)
+	{
+		for (index_t i = offset; i < offset+BatchSize && i < end; i++ )
+		{
+			//const ::Grid::CellStack&stack = stacks[i];
+			if (!this->resources[0].known[i])	//
+				continue;	//nothing known
+
+			#ifndef _DEBUG
+				if (!(lowGridCells[i].cornerFlags & empZonesUnlocked))
+					continue;
+			#endif
+
+			#ifdef HYBRID_GRID
+				const UINT32 fine = lowGridCells[i].higherEquivalent;
+			#else
+				const UINT32 fine = (UINT32)i;
+			#endif
+			//const auto&n = highGridCells[fine].neighborhood;
+			UINT layer = actualWorld.cellStack[fine].highestOpaqueCell;
+			const auto&fineStack = actualWorld.cellStack[fine];
+			if (fineStack.waterRange.IsNotEmpty())
+				layer = std::max<UINT>(fineStack.waterRange.end-1, layer);
+			const int clipH = clipHeight(fine);
+			const UINT clipL = CellStack::ToLayer(clipH);
+			layer = std::min(layer, clipL-1);
+			while (layer > 0 && fineStack.volumeCell[layer].content == Content::Clear)
+				layer--;
+			bool structureCenter = false;
+			while (layer+1 < CellStack::Range && (fineStack.volumeCell[layer+1].structureCounter > 0 /*|| fineStack.volumeCell[layer].structureCounter > 0*/))
+			{
+				layer++;
+				structureCenter = true;
+			}
+
+			if (layer != 0)
+				layer++;
+			else
+				if (CellStack::bottom.content == Content::Clear || CellStack::bottom.content == Content::Lava)
+					continue;
+		/*	else
+				if (CellStack::bottom.content == Content::Clear)
+					continue;*/
+
+			float add = 0.1f;
+			//if (fineStack.volumeCell[layer].structureCounter > 0)
+				//add += 0.5f;
+
+			float h;
+			const auto&cell = lowNetCells[i];
+			TMatrix4<>	system;
+
+
+			h =  ToRadiusf( float(CellStack::ToHeight(layer))+add);
+			const TVec3<>&center = structureCenter? cell.cornerCenter : cell.centerVertex.xyz;
+			Mat::makeAxisSystem(center * h,center,2,system);
+			float r = cell.minCornerDistance * h / 4.f * 1.5f;	//dark coat
+
+			int total = 0;
+			for (index_t ri = 0; ri < this->numResources; ri++)
+				total += this->resources[ri].coverage[i];
+			if (total)
+			{
+				{
+					float level = float(total);
+
+					float3 color (-0.1f);
+
+					float h2 = h + SingleLayerHeight * (level*0.25f + 0.05f);
+
+					mesh.SetOffset();
+					mesh << ResourceVertex(center,h,center,float4(color,level+0.8f),1.f);
+					for (int j = 0; j < Resolution; j ++)
+					{
+						float a = float(j) / float(Resolution) * 2.f * M_PIF;
+				
+						TVec3<> p;
+						Mat::transform(system,float3(cos(a)*r,sin(a)*r,0.f),p);
+						//Vec::center(cell.cornerVertex[j].xyz,cell.centerVertex.xyz,p);
+						Vec::normalize(p);
+						mesh << ResourceVertex(float4(p,1.f),h,p,float4(color,level),1.f);
+						mesh << 0 << 1 + j << 1 + (j+1)%Resolution;
+					}
+
+					if (h2 > h)
+					{
+						mesh.SetOffset();
+						for (int j = 0; j < Resolution; j ++)
+						{
+							float a = float(j) / float(Resolution) * 2.f * M_PIF;
+							TVec3<> p;
+							Mat::transform(system,float3(cos(a)*r,sin(a)*r,0.f),p);
+							//Vec::center(cell.cornerVertex[j].xyz,cell.centerVertex.xyz,p);
+							Vec::normalize(p);
+							float3 n = (p - cell.centerVertex.xyz).Normalized();
+							mesh << ResourceVertex(float4(p,1.f),h,n,float4(color,0.f),1.f);
+							mesh << ResourceVertex(float4(p,1.f),h2,n,float4(color,level),1.f);
+
+
+							mesh.InvQuad(j * 2 + 1, j * 2, ((j+1)%Resolution)*2, ((j+1)%Resolution)*2+1);
+						}
+					}
+				}
+
+				r = cell.minCornerDistance * h / 4.f; 
+				h =  ToRadiusf( float(CellStack::ToHeight(layer))+add);
+				for (index_t ri = 0; ri < this->numResources; ri++)
+				{
+					const Resource&res = this->resources[ri];
+					if (!res.coverage[i])
+						continue;
+					float level = float(res.coverage[i]);
+
+					float3 color = GetColor(level/20.f,res.GetColor());
+
+					float h2 = h + SingleLayerHeight * (level*0.25f);
+
+					mesh.SetOffset();
+					mesh << ResourceVertex(center,h2,center,float4(color,level+0.8f),1.f);
+					for (int j = 0; j < Resolution; j ++)
+					{
+						float a = float(j) / float(Resolution) * 2.f * M_PIF;
+				
+						TVec3<> p;
+						Mat::transform(system,float3(cos(a)*r,sin(a)*r,0.f),p);
+						//Vec::center(cell.cornerVertex[j].xyz,cell.centerVertex.xyz,p);
+						Vec::normalize(p);
+						mesh << ResourceVertex(float4(p,1.f),h2,p,float4(color,level),1.f);
+						mesh << 0 << 1 + j << 1 + (j+1)%Resolution;
+					}
+
+					if (h2 > h)
+					{
+						mesh.SetOffset();
+						for (int j = 0; j < Resolution; j ++)
+						{
+							float a = float(j) / float(Resolution) * 2.f * M_PIF;
+							TVec3<> p;
+							Mat::transform(system,float3(cos(a)*r,sin(a)*r,0.f),p);
+							//Vec::center(cell.cornerVertex[j].xyz,cell.centerVertex.xyz,p);
+							Vec::normalize(p);
+							float3 n = (p - cell.centerVertex.xyz).Normalized();
+							mesh << ResourceVertex(float4(p,1.f),h,n,float4(color,0.f),1.f);
+							mesh << ResourceVertex(float4(p,1.f),h2,n,float4(color,level),1.f);
+
+
+							mesh.Quad(j * 2 + 1, j * 2, ((j+1)%Resolution)*2, ((j+1)%Resolution)*2+1);
+						}
+					}
+
+					h = h2;
+				}
+			}
+			else
+			//if (!anyThere)
+			{
+				r = cell.minCornerDistance * h / 4.f;
+				float level = 0.1f;
+
+				float3 color (0.2f);
+
+				float h2 = h + SingleLayerHeight * (level*0.25f);
+
+				mesh.SetOffset();
+				mesh << ResourceVertex(center,h2,center,float4(color,level+0.8f),1.f);
+				for (int j = 0; j < Resolution; j ++)
+				{
+					float a = float(j) / float(Resolution) * 2.f * M_PIF;
+				
+					TVec3<> p;
+					Mat::transform(system,float3(cos(a)*r,sin(a)*r,0.f),p);
+					//Vec::center(cell.cornerVertex[j].xyz,cell.centerVertex.xyz,p);
+					Vec::normalize(p);
+					mesh << ResourceVertex(float4(p,1.f),h2,p,float4(color,level),1.f);
+					mesh << 0 << 1 + j << 1 + (j+1)%Resolution;
+				}
+
+				//if (h2 > h)
+				{
+					mesh.SetOffset();
+					for (int j = 0; j < Resolution; j ++)
+					{
+						float a = float(j) / float(Resolution) * 2.f * M_PIF;
+						TVec3<> p;
+						Mat::transform(system,float3(cos(a)*r,sin(a)*r,0.f),p);
+						//Vec::center(cell.cornerVertex[j].xyz,cell.centerVertex.xyz,p);
+						Vec::normalize(p);
+						float3 n = (p - cell.centerVertex.xyz).Normalized();
+						mesh << ResourceVertex(float4(p,1.f),h,n,float4(color,0.f),1.f);
+						mesh << ResourceVertex(float4(p,1.f),h2,n,float4(color,level),1.f);
+
+
+						mesh.Quad(j * 2 + 1, j * 2, ((j+1)%Resolution)*2, ((j+1)%Resolution)*2+1);
+					}
+				}
+
+			}
+
+		}
+
+		if (mesh.IsNotEmpty())
+		{
+			lock.lock();
+
+			mesh.AppendTo(coverHull);
+
+			lock.unlock();
+		}
+
+	}
+	
 
 }
 

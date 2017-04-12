@@ -3,7 +3,7 @@
 #include <global_string.h>
 #include <math/vclasses.h>
 #include "../stringTable.h"
-#include "volume.h"
+#include "stack.h"
 
 namespace Grid
 {
@@ -55,4 +55,7 @@ namespace Grid
 
 	extern String			currentCustomResourceDistribution;
 
+	void					CreateResources();
 }
+
+

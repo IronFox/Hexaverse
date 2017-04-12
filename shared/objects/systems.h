@@ -3,7 +3,7 @@
 
 #include <math/vector.h>
 #include <math/matrix.h>
-#include "../grid/volume.h"
+#include "../grid/stack.h"
 
 namespace Objects
 {

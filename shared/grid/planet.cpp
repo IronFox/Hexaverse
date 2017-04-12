@@ -150,15 +150,7 @@ namespace Grid
 		RandomizeSun(random);
 	}
 
-	float Get(const SimplexNoise&n, const TVec3<>&p)
-	{
-		return (float)n.Get(p.x,p.y,p.z);
-	}
-	float GetContinuous(const SimplexNoise&n, const TVec3<>&p)
-	{
-		return (float)n.GetUniform(p.x,p.y,p.z);
-	}
-
+	
 
 	float	RandomHeight(const TVec3<>&center0, const ExtendedPlanetConfig::NoiseSet&config)
 	{

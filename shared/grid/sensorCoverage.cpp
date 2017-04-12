@@ -1,8 +1,11 @@
 #include <global_root.h>
 #include "sensorCoverage.h"
+#include "worldData.h"
 
 namespace SensorCoverage
 {
+
+	/*static*/ Volume	Volume::client;
 
 	void				Volume::ChangeSensory(const Grid::HCellIdU&center, float t, short changeBy)
 	{
@@ -255,7 +258,7 @@ namespace SensorCoverage
 	}
 
 
-	void		Sensor::ApplyShadedSphereTo(Volume&v, short change, bool*familyChanged)	const
+	void		Sensor::ApplyShadedSphereTo(Volume&v,const World::Data&w, short change, bool*familyChanged)	const
 	{
 		enum
 		{
@@ -295,7 +298,7 @@ namespace SensorCoverage
 			c.user = Visited;
 			marked << current;
 
-			bool translucent = World::actual.cellStack[current.stackID].volumeCell[current.layer].IsClearOrWaterIgnoreStructure();
+			bool translucent = w.cellStack[current.stackID].volumeCell[current.layer].IsClearOrWaterIgnoreStructure();
 
 			float visibleWeight=0, totalWeight=0;
 			Grid::high.VisitNeighborsOf(current,[&v,&visibleWeight,&totalWeight, &work,current,d03,c3,translucent](const Grid::HCellIdU&next)
@@ -360,7 +363,7 @@ namespace SensorCoverage
 
 
 
-	void		Sensor::ApplyTo(Volume&v, short change)	const
+	void		Sensor::ApplyTo(Volume&v,const World::Data&w, short change)	const
 	{
 		bool familyChanged[BaseGrid::NumFamilies] = { false };
 
@@ -371,16 +374,16 @@ namespace SensorCoverage
 				ApplySolidSphereTo(v,change,familyChanged);
 			break;
 			case ShadedSphere:
-				ApplyShadedSphereTo(v,change,familyChanged);
+				ApplyShadedSphereTo(v,w,change,familyChanged);
 			break;
 			case SolidCylinder:
 				ApplyShaftTo(v,change,familyChanged,[](UINT32){return 0;});
 			break;
 			case ShadedCylinder:
 				ApplyShaftTo(v,change,familyChanged,
-					[this](UINT32 stackID)
+					[this,&w](UINT32 stackID)
 					{
-						return World::actual.TraceSkySensorLayer(stackID,gridCenter.layer,this->terrainPenetration);
+						return w.TraceSkySensorLayer(stackID,gridCenter.layer,this->terrainPenetration);
 					}
 				);
 			break;
@@ -393,4 +396,25 @@ namespace SensorCoverage
 				v.families[i].changed = true;
 	}
 
+
+
+
+
+
+
+
+
+	#ifdef CLIENT
+	
+		void				Volume::InsertSensorCoverage(const SkySensorState&state)
+		{
+			ChangeSensorCoverage(state,1);
+		}
+		void				Volume::RemoveSensorCoverage(const SkySensorState&state)
+		{
+			ChangeSensorCoverage(state,-1);
+		}
+
+
+	#endif
 }

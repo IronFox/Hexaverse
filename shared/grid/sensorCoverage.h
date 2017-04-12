@@ -1,6 +1,6 @@
 #pragma once
 
-#include "volume.h"
+#include "stack.h"
 
 
 namespace SensorCoverage
@@ -141,6 +141,8 @@ namespace SensorCoverage
 		*/
 		void				Invalidate();
 		void				SetValid();
+
+		static Volume		client;
 	};
 
 
@@ -170,6 +172,8 @@ namespace SensorCoverage
 		Completely resets the internal state
 		*/
 		void				FlushAllData();
+
+
 	};
 
 
@@ -185,7 +189,7 @@ namespace SensorCoverage
 		static void		ApplyVolume(Volume&v, short changeBy, bool*familyChanged);
 
 		void			ApplySolidSphereTo(Volume&v, short change, bool*familyChanged)	const;
-		void			ApplyShadedSphereTo(Volume&v, short change, bool*familyChanged)	const;
+		void			ApplyShadedSphereTo(Volume&v, const World::Data&,short change, bool*familyChanged)	const;
 		void			ApplyShaftTo(Volume&v, short change, bool*familyChanged, const std::function<UINT32(UINT32 stackID)>&traceFunction)	const;
 	public:
 		/**
@@ -232,9 +236,9 @@ namespace SensorCoverage
 							gridCenter(Grid::ToLayered(center)),
 							radius(radius),type(t)	{}
 
-		void			ApplyTo(Volume&, short change)	const;
-		void			InsertInto(Volume&s) const {ApplyTo(s,+1);}
-		void			RemoveFrom(Volume&s) const {ApplyTo(s,-1);}
+		void			ApplyTo(Volume&, const World::Data&, short change)	const;
+		void			InsertInto(Volume&s,const World::Data&w) const {ApplyTo(s,w,+1);}
+		void			RemoveFrom(Volume&s,const World::Data&w) const {ApplyTo(s,w,-1);}
 	};
 
 

@@ -2,7 +2,7 @@
 #define objectEntityH
 
 #include "../uniqueID.h"
-#include <grid/volume.h>
+#include <grid/stack.h>
 
 #include "turretBase.h"
 #include "types.h"

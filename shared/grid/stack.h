@@ -8,7 +8,7 @@
 #include "../logEvent.h"
 #include <general/random.h>
 #include <math/SimplexNoise.h>
-
+#include "types.h"
 
 
 static const constexpr float WorldScale = 40.f;
@@ -383,9 +383,6 @@ namespace Grid
 		bool			FindTopOccupied(int&outHeight) const;
 
 
-		void			InitUnknown(float2 heights, const ExtendedPlanetConfig&);
-		void			FillTypes(const ExtendedPlanetConfig&);
-
 		void			ZeroInit();
 		void			ResetStructureCounters();
 		#ifdef HAS_WINDOW
@@ -396,9 +393,9 @@ namespace Grid
 			#endif
 		#endif
 
-		bool			MakeLocalHole(int h);
+		bool			MakeLocalHole(int h, World::Data&owner);
 
-		bool			LocalOverwrite(int h, Cell::Content type);
+		bool			LocalOverwrite(int h, Cell::Content type, World::Data&owner);
 
 		/**
 		Attempts to find the most applicable ground relative to the given location.
@@ -719,50 +716,18 @@ namespace Grid
 
 	
 	
-
-
-	#ifdef HAS_WINDOW
-	namespace SeeThrough
+	inline float Get(const SimplexNoise&n, const TVec3<>&p)
 	{
-
-		/**
-		Updates see-through to the specified settings. Do not alter related values manually
-		@param enable Enable see-through. Set false to disable see-through
-		*/
-		void	Update(bool enable, const Grid::LCellIdI&focusPoint);
-
-		/**
-		Queries whether see-through is currently enabled
-		*/
-		bool	IsEnabled();
-
-		/**
-		Queries the current focus point of the see-through clipping
-		*/
-		const Grid::LCellIdI&	GetFocusPoint();
-
-		/**
-		Retrieves the low-resolution cell id closest to the current camera focus point for use to update see-through.
-		If the current camera location is within proximity of the current cut-off focus cell, then the focus cell is returned instead.
-		The returned height is set to the current focus height and may be ignored if not needed.
-		*/
-		Grid::LCellIdI		LocateCamera();
-
-
-
-		/**
-		Clipping function for see-through. Returns the int height (not unsigned layer) at which (and above) clipping occurs
-		*/
-		int		ClipHeight(index_t cellID);
-
-
+		return (float)n.Get(p.x,p.y,p.z);
+	}
+	inline float GetContinuous(const SimplexNoise&n, const TVec3<>&p)
+	{
+		return (float)n.GetUniform(p.x,p.y,p.z);
 	}
 
-	/**
-	Updates plantary parameters to be used prior to rendering flat grid components (RenderNeighborhood(), low/high.RenderCell()). Does not affect other rendering operations
-	*/
-	void	UpdatePlanetRenderingParameters(float radius);
-	#endif
+	bool IsRoad(BYTE /*CellStack::Cell::Content::type_t*/ t, bool clearIsRoad);
+
+
 
 	///**
 	//Visualizes the outlines of the spcified low-resolution stackID and all high-resolution cells that intersect it.
@@ -948,6 +913,9 @@ namespace Grid
 		//void	StripColor();
 
 	};
+
+
+	void		CreateHighAndLow();
 
 	#ifdef CLIENT
 		#ifndef NO_SATELLITES
