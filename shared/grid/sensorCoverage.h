@@ -152,6 +152,8 @@ namespace SensorCoverage
 
 		FixedArray<bool,Grid::LowSetup::GridType::CellCount>			resourcesDiscovered;//discovers all resources (for now)
 
+		bool				familyChanged[BaseGrid::NumFamilies] = {false};
+
 		/**/				Resources()
 		{
 			resourcesDiscovered.Fill(false);
@@ -173,6 +175,7 @@ namespace SensorCoverage
 		*/
 		void				FlushAllData();
 
+		static Resources	client;
 
 	};
 

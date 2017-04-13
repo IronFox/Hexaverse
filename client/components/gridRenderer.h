@@ -38,9 +38,11 @@ namespace Grid
 
 
 	/**
-	Updates plantary parameters to be used prior to rendering flat grid components (RenderNeighborhood(), low/high.RenderCell()). Does not affect other rendering operations
+	Updates plantary parameters to be used prior to rendering flat grid components (RenderNeighborhood(), RenderLowCell()). Does not affect other rendering operations
 	*/
 	void	UpdatePlanetRenderingParameters(float radius);
+	void	RenderLowCell(index_t stackID);
+	void	RenderLowGrid();
 
 	namespace SeeThrough
 	{
@@ -79,6 +81,9 @@ namespace Grid
 	}
 
 	
+	void		SetParaboloidDisplay(const TVec3<>&direction, float height, float flatRadius, const float4&color);
+	void		SetSphereDisplay(const TVec3<>&center, float radius, const float4&color);
+	void		UnsetParaboloidAndSphereDisplay();
 
 }
 

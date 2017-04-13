@@ -2,6 +2,8 @@
 #include "resources.h"
 
 #include "../objects/resource.h"
+//#include "worldData.h"
+#include "sensorCoverage.h"
 
 namespace Grid
 {
@@ -305,6 +307,27 @@ namespace Grid
 		rc.Name(name,cname,color);
 		rc.resourceIndex = resIndex;
 	}
+
+
+	#ifdef CLIENT
+		void		UpdateResourceMap(ConstName resourceName,const ArrayData<TCellResourceCoverage>&data, SensorCoverage::Resources&setSensor)
+		{
+			foreach (Resource::all, res)
+				if (res->GetCName() == resourceName)
+				{
+					foreach (data,el)
+					{
+						ASSERT_LESS__(el->cellIndex,ARRAYSIZE(res->coverage));
+						res->coverage[el->cellIndex] = el->coverage;
+						setSensor.resourcesDiscovered[el->cellIndex] = true;
+						setSensor.familyChanged[low.grid.GetCell(el->cellIndex).family] = true;
+					}
+					return;
+				}
+			FATAL__("Unable to locate resource type #"+String((int)resourceName));
+		}
+	#endif
+
 
 }
 

@@ -56,6 +56,9 @@ namespace Grid
 	extern String			currentCustomResourceDistribution;
 
 	void					CreateResources();
+	#ifdef CLIENT
+		void				UpdateResourceMap(ConstName resourceName,const ArrayData<TCellResourceCoverage>&, SensorCoverage::Resources&setKnown);
+	#endif
 }
 
 

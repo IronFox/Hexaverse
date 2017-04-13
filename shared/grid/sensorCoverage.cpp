@@ -5,7 +5,8 @@
 namespace SensorCoverage
 {
 
-	/*static*/ Volume	Volume::client;
+	/*static*/ Volume		Volume::client;
+	/*static*/ Resources	Resources::client;
 
 	void				Volume::ChangeSensory(const Grid::HCellIdU&center, float t, short changeBy)
 	{

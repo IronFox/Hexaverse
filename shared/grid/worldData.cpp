@@ -896,7 +896,89 @@ namespace World
 			#endif
 		}
 		//ASSERT_CONCLUSION(data,delta);
-		
 	}
+
+	
+
+	void	Data::ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDelta>&data0, bool initialization)
+	{
+		const index_t offset = high.grid.GetFamilyOffset(family);
+		const count_t range = high.grid.CountFamilyMembers(family);
+		ASSERT_EQUAL__(data0.Count(), range * CellStack::Range);
+		//ASSERT_EQUAL__(data1.Count(), range * CellStack::Range);
+
+		#ifdef HAS_WINDOW
+			Queue<index_t>	changed;
+		#endif
+		{
+			const CellStack::TTypeDelta*delta = data0.pointer();
+			for (index_t i = 0; i < range; i++)
+			{
+				CellStack&stack = cellStack[i+offset];
+				bool anyChanged = false;
+				for (index_t j = 0; j < CellStack::Range; j++)
+				{
+					if (stack.volumeCell[j].ApplyDelta(*delta))
+					{
+						anyChanged = true;
+						#ifdef HAS_WINDOW
+							stack.lightingChangedTo = std::max<BYTE>(stack.lightingChangedTo,(BYTE)j+1);
+						#endif
+					}
+					#ifdef _DEBUG
+					else
+						if (initialization)
+							FATAL__("Failed to initialize");
+					#endif
+					delta ++;
+				}
+				if (anyChanged)
+				{
+					#ifdef HAS_WINDOW
+						stack.UpdateRange();
+						changed << i + offset;
+					#endif
+				}
+			}
+			ASSERT_CONCLUSION(data0,delta);
+		}
+		SetFamilyOutdated(family);
+
+
+
+		#ifdef HAS_WINDOW
+			index_t current;
+			while (changed >> current)
+			{
+				BYTE h = cellStack[current].lightingChangedTo;
+				//ASSERT_LESS__(h,CellStack::Range);
+				//if (h+1 >= cellStack[current].lowestOpenCell)
+				{
+					SetFamilyOutdated(high.grid.GetCell(current).family);
+					lightingOutdated = true;
+					structureChanged = true;
+				}
+				if (!h)
+					continue;
+				h--;
+				//smallest = std::min(smallest,h);
+				//counter++;
+
+		
+				const auto&n = high.grid.GetCell(current).neighborhood;
+				for (BYTE k = 0; k < n.numNeighbors; k++)
+				{
+					UINT32 nid = n.neighborID[k];
+					if (cellStack[nid].lightingChangedTo < h)
+					{
+						cellStack[nid].lightingChangedTo = h;
+						changed << nid;
+					}
+				}
+			}
+
+		#endif
+	}
+
 
 }

@@ -832,19 +832,6 @@ namespace Grid
 	void			FlushStackFamily(Array<CellStack>&cellStack,  BYTE family);
 	void			FlushAllVolumeData();
 
-	void			UpdateResourceMap(ConstName resourceName,const ArrayData<TCellResourceCoverage>&);
-	#ifdef HAS_WINDOW
-		void		SetParaboloidDisplay(const TVec3<>&direction, float height, float flatRadius, const float4&color);
-		void		SetSphereDisplay(const TVec3<>&center, float radius, const float4&color);
-		void		UnsetParaboloidAndSphereDisplay();
-
-
-
-		#ifdef THOROUGLY_DEBUG_SENSORY
-			void	InsertDbgSensor(const LCellIdI&, float radius);
-		#endif
-
-	#endif
 	#ifdef VOXEL_SCANNER
 		void		RemapToLowStacks(BYTE family);
 	#endif

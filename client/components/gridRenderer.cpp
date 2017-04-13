@@ -3,6 +3,8 @@
 #include "gridRenderer.h"
 #include <objects/rendering.h>
 #include <grid/planet.h> 
+#include <grid/resources.h>
+#include <grid/sensorCoverage.h>
 
 #include "../ExtRenderer/DirectX11.h"
 #include <engine/display.h>
@@ -934,7 +936,7 @@ namespace Grid
 	};
 
 	TFamily						family[BaseGrid::NumFamilies];
-	DX11::InstructionBlock32	gridInstruction,
+	DX11::InstructionBlock32	lowGridInstruction,
 								transparentGridInstruction;
 	static DX11::Texture		lineTex;
 	static DX11::Shader			gridShader,transparentGridShader;// , blockShader;
@@ -944,10 +946,8 @@ namespace Grid
 	{
 		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 			family[k].Destroy();
-		#ifdef HAS_WINDOW
-			gridInstruction.Clear();
-			transparentGridInstruction.Clear();
-		#endif
+		lowGridInstruction.Clear();
+		transparentGridInstruction.Clear();
 	}
 
 	void		Create()
@@ -981,34 +981,34 @@ namespace Grid
 
 
 
-		Array<float4> verticesToLoad(Grid::high.cellVertices.Count());
-		for (index_t i = 0; i < Grid::high.cellVertices.Count(); i++)
-			verticesToLoad[i] = float4(Grid::high.cellVertices[i].centerDirection,float(Grid::high.cellVertices[i].ownerCount > 1));
-		gridInstruction.vbo.CreateFromStructs(verticesToLoad);
+		Array<float4> verticesToLoad(Grid::low.cellVertices.Count());
+		for (index_t i = 0; i < Grid::low.cellVertices.Count(); i++)
+			verticesToLoad[i] = float4(Grid::low.cellVertices[i].centerDirection,float(Grid::low.cellVertices[i].ownerCount > 1));
+		lowGridInstruction.vbo.CreateFromStructs(verticesToLoad);
 		{
 			Buffer<UINT32>	ibo;
-			foreach(Grid::high.cells, cell)
+			foreach(Grid::low.cells, cell)
 			{
 				cell->voffset = (UINT32)ibo.Count();
 				for (int j = 0; j < cell->numCorners; j++)
 					ibo << cell->centerVertexId << cell->cornerVertexId[j] << cell->cornerVertexId[(j + 1) % cell->numCorners];
 			}
-			gridInstruction.ibo.Create(ibo);
+			lowGridInstruction.ibo.Create(ibo);
 		}
 
-		gridInstruction.shader = gridShader;
+		lowGridInstruction.shader = gridShader;
 		{
 			Engine::VertexBinding	binding;
 			binding.vertex.set(0, 4);
 			binding.normal.unset();
 			binding.floats_per_vertex = 4;
-			gridInstruction.binding = binding;
+			lowGridInstruction.binding = binding;
 		}
-		gridInstruction.UpdateLayout();
-		gridInstruction.SetTriangles();
+		lowGridInstruction.UpdateLayout();
+		lowGridInstruction.SetTriangles();
 
 
-		transparentGridInstruction = gridInstruction;
+		transparentGridInstruction = lowGridInstruction;
 		transparentGridInstruction.shader = transparentGridShader;
 		transparentGridInstruction.UpdateLayout();
 		
@@ -1082,6 +1082,7 @@ namespace Grid
 		const BaseGrid::TCell*  lowGridCells, *highGridCells;
 		const BaseGrid::TNetCell*  lowNetCells;
 		const Resource*resources;
+		const SensorCoverage::Resources*visibility;
 		count_t			numResources;
 		FClipHeight	clipHeight;
 
@@ -1097,7 +1098,7 @@ namespace Grid
 		}
 		static float GetExtend(float level) {return level/3.f;}
 	
-		void	Setup(const CellStack *stacks,const BaseGrid::TCell*lowGridCells, const BaseGrid::TCell*highGridCells,  const BaseGrid::TNetCell*lowNetCells,FClipHeight clipHeight,const Resource*resources, count_t numResources)
+		void	Setup(const CellStack *stacks,const SensorCoverage::Resources*visibility,const BaseGrid::TCell*lowGridCells, const BaseGrid::TCell*highGridCells,  const BaseGrid::TNetCell*lowNetCells,FClipHeight clipHeight,const Resource*resources, count_t numResources)
 		{
 			mesh.Reset();
 			this->stacks = stacks;
@@ -1107,6 +1108,7 @@ namespace Grid
 			this->clipHeight = clipHeight;
 			this->resources = resources;
 			this->numResources = numResources;
+			this->visibility = visibility;
 		}
 
 		void	Compile(const index_t offset, const index_t end, THull<ResourceVertex>&, SpinLock&lock);
@@ -1423,15 +1425,15 @@ namespace Grid
 
 
 
-	void CompileResources(THull<ResourceVertex>&cover, index_t offset, count_t count, FClipHeight clipHeight, const Resource*resources, count_t numResources)
+	void CompileResources(THull<ResourceVertex>&cover, SensorCoverage::Resources&visibility, index_t offset, count_t count, FClipHeight clipHeight, const Resource*resources, count_t numResources)
 	{
 		const index_t end = offset + count;
 		SpinLock lock;
-		Concurrency::parallel_for(offset, end, ResourceCompiler::BatchSize,[end,&lock, &cover, clipHeight,resources, numResources](index_t i)	//looks good - at least in release
+		Concurrency::parallel_for(offset, end, ResourceCompiler::BatchSize,[end,&lock,&visibility, &cover, clipHeight,resources, numResources](index_t i)	//looks good - at least in release
 		{
 			BYTE data[sizeof(ResourceCompiler)];	//prevent implicit memset in release mode. i'm serious. visual studio has some funny ideas there...
 			ResourceCompiler&compiler = *(ResourceCompiler*)data;
-			compiler.Setup(World::actual.cellStack.pointer(),low.grid.GetCells(),high.grid.GetCells(), low.cells.pointer(),clipHeight,resources, numResources);
+			compiler.Setup(World::actual.cellStack.pointer(),&visibility,low.grid.GetCells(),high.grid.GetCells(), low.cells.pointer(),clipHeight,resources, numResources);
 			compiler.Compile(i,end,cover,lock);
 		});
 	}
@@ -2342,7 +2344,7 @@ namespace Grid
 
 
 
-	void		BakeResourceInstruction(BYTE family, FClipHeight clipHeight,const Resource*resources, count_t numResources)
+	void		BakeResourceInstruction(BYTE family, SensorCoverage::Resources&vis, FClipHeight clipHeight,const Resource*resources, count_t numResources)
 	{
 	//	return;
 		TFamily &fam = Grid::family[family];
@@ -2351,7 +2353,7 @@ namespace Grid
 		const auto&grid = Grid::low.grid;
 
 		dat.resources.Clear();
-		CompileResources(dat.resources,  grid.GetFamilyOffset(family), grid.CountFamilyMembers(family), clipHeight, resources, numResources);
+		CompileResources(dat.resources,  vis,grid.GetFamilyOffset(family), grid.CountFamilyMembers(family), clipHeight, resources, numResources);
 
 		Box<> box = Box<>::Invalid();
 
@@ -2372,6 +2374,8 @@ namespace Grid
 
 		dat.resources.instruction.vbo.CreateFromStructs(dat.resources.vertices);
 		dat.resources.instruction.ibo.Create(dat.resources.indices);
+
+		vis.familyChanged[family] = false;
 	}
 
 	//void		BakeLineInstruction(const Array<CellStack>&stacks, BYTE family, int minHeight)
@@ -2397,9 +2401,9 @@ namespace Grid
 	//}
 
 
-	void		RenderCell(index_t stackID)
+	void		RenderLowCell(index_t stackID)
 	{
-		display.Render(gridInstruction, low.cells[stackID].voffset, low.cells[stackID].numCorners * 3);
+		display.Render(lowGridInstruction, low.cells[stackID].voffset, low.cells[stackID].numCorners * 3);
 	}
 	/**
 	Second-style version of RenderCell().
@@ -2563,7 +2567,7 @@ namespace Grid
 		return rs;
 	}
 
-	void RenderGrid(float radius)
+	void RenderLowGrid(float radius)
 	{
 		TMatrix4<> matrix = Matrix<>::eye4;
 		matrix.x.xyz *= radius;
@@ -2571,7 +2575,7 @@ namespace Grid
 		matrix.z.xyz *= radius;
 
 		display.SetObjectMatrix(matrix);
-		display.Render(gridInstruction);
+		display.Render(lowGridInstruction);
 	}
 
 
@@ -2663,7 +2667,7 @@ namespace Grid
 		for (index_t i = offset; i < offset+BatchSize && i < end; i++ )
 		{
 			//const ::Grid::CellStack&stack = stacks[i];
-			if (!this->resources[0].known[i])	//
+			if (!this->visibility->resourcesDiscovered[i])	//
 				continue;	//nothing known
 
 			#ifndef _DEBUG
@@ -2677,8 +2681,8 @@ namespace Grid
 				const UINT32 fine = (UINT32)i;
 			#endif
 			//const auto&n = highGridCells[fine].neighborhood;
-			UINT layer = actualWorld.cellStack[fine].highestOpaqueCell;
-			const auto&fineStack = actualWorld.cellStack[fine];
+			const auto&fineStack = stacks[fine];
+			UINT layer = fineStack.highestOpaqueCell;
 			if (fineStack.waterRange.IsNotEmpty())
 				layer = std::max<UINT>(fineStack.waterRange.end-1, layer);
 			const int clipH = clipHeight(fine);
@@ -2869,6 +2873,117 @@ namespace Grid
 
 	}
 	
+	
+
+	void		SetSphereDisplay(const TVec3<>&center, float radius, const float4&color)
+	{
+		Instruction::displayMode = Instruction::SphereColored;
+		Instruction::SphereDef.Update(float4(center,radius));
+		Instruction::SphereColor.Update(color);
+	}
+
+	void		SetParaboloidDisplay(const TVec3<>&direction, float height, float flatRadius, const float4&_color)
+	{
+		Instruction::displayMode = Instruction::ParaboloidColored;
+		Instruction::ParaboloidDirection_Height.Update(float4(direction,height));
+		float4 color_r = float4(_color.rgb, flatRadius);
+
+		if (Instruction::lastColor != color_r)
+		{
+			//LogEvent(EventSignificance::Debug,nullptr,"change2 detected");
+			Instruction::lastColor = color_r;
+			Instruction::ParaboloidColor_FlatRadius.Update(color_r);
+		}
+	}
+
+	void		UnsetParaboloidAndSphereDisplay()
+	{
+		Instruction::displayMode = Instruction::NormalRendering;
+	}
+
+
+
+
+
+
+
+	void	OrbitGrid::Render(const Engine::Frustum<>&frustum)
+	{
+		if (!valid)
+			ForceRecompileNow();
+		display.StoreRendererState();
+			display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+			display.SetDepthTest(true,false);
+			display.SetRasterizer(true,true);
+			display.Render(instruction,true);
+		display.RestoreRendererState();
+	}
+
+
+	void	OrbitGrid::ForceRecompileNow()
+	{
+		valid = true;
+
+		const count_t numVertices = low.cellVertices.Count();
+		vertices.SetSize(numVertices);
+		Concurrency::parallel_for(index_t(0),numVertices,[this](index_t i)
+		{
+			Vertex&out = vertices[i];
+			const BaseGrid::TCellVertex&in = low.cellVertices[i];
+			
+			float opacity = cells[in.owner[0]].visible ? 1.f : 0.f;
+			float emp = !(low.grid.GetCell(in.owner[0]).cornerFlags & empZonesUnlocked) ? 1.f : 0.f;
+			for (BYTE k = 1; k < in.ownerCount; k++)
+			{
+				opacity += cells[in.owner[k]].visible ? 1.f : 0.f;
+				emp += !(low.grid.GetCell(in.owner[k]).cornerFlags & empZonesUnlocked) ? 1.f : 0.f;
+			}
+
+			opacity /= in.ownerCount;
+			emp /= in.ownerCount;
+			
+			out.Set(in.centerDirection,in.ownerCount>1 ? 1.f : 0.f,orbit,opacity,emp);
+		});
+
+		((Engine::DX11::BaseInstructionBlock&)instruction) = Instruction::orbitGridBase;
+		instruction.ibo = low.gridInstruction.ibo;
+		instruction.vbo.CreateFromStructs(vertices);
+	}
+
+
+
+	
+	void		OrbitGrid::ChangeSensory(const LCellIdI&center, float radius, signed char change)
+	{
+		Timer::Time t0 = timer.Now();
+		LogEvent(EventSignificance::Debug,nullptr,"Processing orbital sensor change around center "+center.ToString()+", radius="+String(radius)+", change="+String(change));
+
+		Math::Box<> test;
+		const TVec3<> worldCenter = ToWorld(center);
+		test.SetCenter(worldCenter,radius);
+		float r2 = radius*radius;
+		Concurrency::parallel_for(index_t(0),LowSetup::GridType::CellCount,[this,worldCenter,r2,change](index_t i)
+		{
+			//bool anyChanged = false;
+			bool anyVisible = false;
+			UINT32 cell((UINT32)i);
+
+			bool wasIn = false;
+			TVec3<> localCenter = low.cells[i].centerVertex.xyz * orbit;
+			float dist2 = Vec::quadraticDistance(localCenter,worldCenter);
+			if (dist2 <= r2)
+			{
+				cells[i].visible += change;
+				DBG_ASSERT_GREATER_OR_EQUAL__(cells[i].visible,0);
+
+				//DBG_ASSERT_LESS_OR_EQUAL__(cells[i].visible,1);	//enable to debug in scenarios where sensors do not overlap
+				valid = false;
+			}
+		});
+
+		LogEvent(EventSignificance::PerformanceMeasurement,nullptr,"Orbital sensory change processed in "+String(timer.GetSecondsSince(t0))+". Used orbit was "+String(orbit));
+		//ShowMessage(timer.GetSecondsSince(t0));
+	}
 
 }
 
