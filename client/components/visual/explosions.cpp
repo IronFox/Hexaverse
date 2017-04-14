@@ -3,10 +3,10 @@
 #include <global_root.h>
 #include <engine/display.h>
 #include "explosions.h"
-#include "../../shared/objects.h"
-#include "../version.h"
-#include "clientRuntimeConfig.h"
-#include "audioInterface.h"
+#include <objects.h>
+#include "../../version.h"
+#include "../clientRuntimeConfig.h"
+#include "../audioInterface.h"
 //#include <Nx/physics.h>
 
 extern Engine::Display<Engine::DirectX11>	display;

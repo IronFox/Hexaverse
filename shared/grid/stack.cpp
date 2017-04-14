@@ -141,128 +141,6 @@ namespace Grid
 		return ToHeight(h);
 	}
 
-	#ifdef 0
-
-
-		TLitColor			CellStack::GetColorU(unsigned layer, Cell::Content oppositeContent, bool&mixes, Cell::Content&outType) const
-		{
-			if (layer >= Range)
-			{
-				mixes = false;
-				outType = Cell::Content::Clear;
-				return TLitColor(TVisibility(1.f));
-			}
-			const Cell&cell = layer > 0 ? this->volumeCell[layer - 1] : bottom;
-			const TVisibility&vis = layer > 0 ? this->volumeCell[layer - 1].GetVisibility() : this->volumeCell[0].GetVisibility();
-			mixes = cell.content == oppositeContent || Cell::typeColorMixes[cell.content];
-			outType = Cell::Content::Reinterpret(cell.content);
-			return TLitColor(cell.GetBaseColor(), this->volumeCell[layer].GetLightLevel(),0.f,vis);
-		}
-	
-		TLitColor			CellStack::GetDownColorU(unsigned layer, Cell::Content oppositeContent, bool&mixes, Cell::Content&outType) const
-		{
-			if (layer+1 >= Range)
-			{
-				mixes = false;
-				outType = Cell::Content::Clear;
-				return TLitColor();
-			}
-			const Cell&cell = this->volumeCell[layer + 1];
-			mixes = oppositeContent==cell.content || Cell::typeColorMixes[cell.content];
-			outType = Cell::Content::Reinterpret(cell.content);
-			return TLitColor(cell.GetBaseColor(), this->volumeCell[layer].GetLightLevel(),0.f,cell.GetVisibility());
-		}
-
-
-		TWeightedColor			CellStack::GetMixColorU(unsigned layer, Cell::Content oppositeContent, float&sumBrightnessTo, int&sumVisibilityTo, Content&outContent) const
-		{
-			if (layer >= Range)
-			{
-				//sumBrightnessTo += 1.f;
-				outContent = Content::Clear;
-				sumVisibilityTo ++;
-				return TWeightedColor();
-			}
-			const Cell&upper = this->volumeCell[layer];
-
-			if (!layer)
-			{
-				sumBrightnessTo += upper.GetLightLevel();
-				sumVisibilityTo += upper.visible > 0;
-				outContent = Content::Clear;
-				return TWeightedColor();
-			}
-			const Cell&cell = this->volumeCell[layer - 1];
-			float light = upper.GetLightLevel();
-			sumVisibilityTo += (cell.visible > 0);
-			if (!cell.IsOpaque() || upper.IsOpaque())
-			{
-				sumBrightnessTo += light * 1.3f;
-				outContent = Content::Clear;
-				return TWeightedColor();
-					//float4(0, 0, 0, -0.1f);
-					//float4(0.2f) * light;	//slight light increase
-			}
-			else
-			{
-				sumBrightnessTo += light;
-				if (oppositeContent == cell.content || Cell::typeColorMixes[cell.content])
-				{
-					outContent = Content::Reinterpret( cell.content );
-					return TWeightedColor(cell.GetBaseColor(), 1.f);
-				}
-				outContent = Content::Clear;
-				return TWeightedColor();
-			}
-
-		}
-
-
-	
-		TWeightedColor			CellStack::GetDownMixColorU(unsigned layer, Cell::Content oppositeContent, float&sumBrightnessTo, int&sumVisibilityTo, Content&outContent) const
-		{
-			if (layer >= Range)
-			{
-				sumBrightnessTo += 1.f;
-				outContent = Content::Clear;
-				return TWeightedColor();
-			}
-			if (!layer)
-			{
-				sumBrightnessTo += this->volumeCell[layer].GetLightLevel();
-				outContent = Content::Clear;
-				return TWeightedColor();
-			}
-			const Cell&cell = this->volumeCell[layer - 1],
-				&upper = this->volumeCell[layer];
-			float light = cell.GetLightLevel();
-			sumVisibilityTo += cell.visible > 0;
-			if (cell.IsOpaque() || !upper.IsOpaque())
-			{
-				sumBrightnessTo += light * 1.3f;
-				outContent = Content::Clear;
-				return TWeightedColor();
-					//float4(0, 0, 0, -0.1f);
-					//float4(0.2f) * light;	//slight light increase
-			}
-			else
-			{
-				sumBrightnessTo += light;
-				if (oppositeContent == upper.content || Cell::typeColorMixes[upper.content])
-				{
-					outContent = Content::Reinterpret( upper.content );
-					return TWeightedColor(upper.GetBaseColor(), 1.f);
-				}
-				outContent = Content::Clear;
-
-				return TWeightedColor();
-			}
-
-		}
-
-
-	
-	#endif
 
 	HighSetup			high;
 	LowSetup			low;
@@ -396,7 +274,7 @@ namespace Grid
 
 
 
-	void			CellStack::ZeroInit()
+	void			CellStack::ZeroInit(bool resetVisibility)
 	{
 		#ifdef HAS_WINDOW
 			lowestOpenCell = (BYTE)Range;
@@ -411,11 +289,19 @@ namespace Grid
 				volumeCell[i].intLightLevel = 0xFF;
 				volumeCell[i].submergence = 0;
 			#endif
+			if (resetVisibility)
+			{
+				volumeCell[i].visibility = 0;
+				volumeCell[i].temporarilyVisible = false;
+				volumeCell[i].oldVisible = false;
+			}
 
 		}
 		#ifdef HAS_WINDOW
 			lightingChangedTo = Range;
 		#endif
+
+			
 	}
 
 	void			CellStack::ResetStructureCounters()
@@ -788,45 +674,10 @@ namespace Grid
 
 
 
-	void	FlushAllVolumeData()
+	void	FlushAllStackData()
 	{
 		empZonesLocked = 0;
 		empZonesUnlocked = 0xFFFF;
-
-		actualWorld.FlushAllData();
-		#ifndef CLIENT
-			initialWorld.FlushAllData();
-			for (int i = 0; i < BaseGrid::NumFamilies; i++)
-			{
-				high.family[i].SetOutdated(0);
-				low.family[i].SetOutdated(0);
-			}
-		#endif
-
-		#ifdef HAS_WINDOW
-			ResetSunRotation();
-		#endif
-			
-		#ifdef CLIENT
-			#ifndef NO_SATELLITES
-				visibleOrbitGrid.Clear();
-			#endif
-			#ifdef HAS_WINDOW
-				for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-				{
-					high.family[k].SetOutdated(0);
-					low.family[k].SetOutdated(0);
-				}
-
-				UnsetParaboloidAndSphereDisplay();
-			#endif
-			foreach (Resource::all,res)
-				memset(res->known,false,sizeof(res->known));
-		#endif
-
-		#ifdef DEBUG_SENSORY
-			sensors.Clear();
-		#endif
 	}
 
 
@@ -859,14 +710,6 @@ namespace Grid
 		}
 	#endif
 
-	void	SetAllFamiliesOutdated(float t)
-	{
-		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-		{
-			high.family[k].SetOutdated(t);
-			low.family[k].SetOutdated(t);
-		}
-	}
 
 
 	#ifdef HYBRID_GRID
@@ -919,69 +762,6 @@ namespace Grid
 
 
 
-
-	bool		Volume::GridCanSeeAny(const HCellIdU&base, UINT height) const
-	{
-		const auto&stack = cellStack[base.stackID];
-		UINT end = std::min(base.layer + height,CellStack::Range);
-		for (UINT layer = base.layer; layer < end; layer++)
-			if (stack.volumeCell[layer].visible > 0)
-				return true;
-		return false;
-	}
-
-	bool		Volume::GridCanSee(const LCellIdI&center, int height, bool broad) const
-	{
-		UINT32 fine = low.grid.GetCell(center.stackID).higherEquivalent;
-		UINT32 layer0 = CellStack::ToLayer(center.height);
-		if (GridCanSeeAny(HCellIdU(fine,layer0),(UINT)height))
-			return true;
-		if (!broad)
-			return false;
-		const auto&n = high.grid.GetCell(fine).neighborhood;
-		for (int i = 0; i < n.numNeighbors; i++)
-			if (GridCanSeeAny(HCellIdU(n.neighborID[i],layer0),(UINT)height))
-				return true;
-		return false;
-	}
-	
-
-	void		Volume::ChangeSensorCoverage(const Sphere<>&state, signed char change)
-	{
-		bool familyChanged[BaseGrid::NumFamilies] = {false};
-		TemplateHelper::ChangeSensory(state.center,state.radius,change,cellStack.pointer(),familyChanged);
-		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
-			if (familyChanged[i])
-				Grid::high.family[i].SetOutdated(0);
-	}
-
-	void		Volume::ChangeSensorCoverage(const HighSetup::TVolumeDescriptor&state, signed char change)
-	{
-		bool familyChanged[BaseGrid::NumFamilies] = {false};
-		TemplateHelper::ChangeSensory(state,change,cellStack.pointer(),familyChanged);
-		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
-			if (familyChanged[i])
-				Grid::high.family[i].SetOutdated(0);
-	}
-
-	void		Volume::ChangeSensorCoverage(const SkySensorState&state, signed char change)
-	{
-		bool familyChanged[BaseGrid::NumFamilies] = {false};
-		TemplateHelper::ChangeSensorCoverage(state,change,cellStack.pointer(),familyChanged);
-		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
-			if (familyChanged[i])
-				Grid::high.family[i].SetOutdated(0);
-	}
-
-	void		Volume::ChangeSensory(const LCellIdI&center, float radius, signed char change)
-	{
-		bool familyChanged[BaseGrid::NumFamilies] = {false};
-		TemplateHelper::ChangeSensory(Grid::ToWorld(center),radius,change,cellStack.pointer(),familyChanged);
-		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
-			if (familyChanged[i])
-				Grid::high.family[i].SetOutdated(0);
-		
-	}
 
 	#ifdef THOROUGLY_DEBUG_SENSORY
 		void	InsertDbgSensor(const LCellIdI&center, float radius)
@@ -1037,38 +817,6 @@ namespace Grid
 
 
 
-	bool		Volume::HasSensor(const LCellIdI&cell, float radius) const
-	{
-		#ifdef DEBUG_SENSORY
-			TSensor s;
-			s.center = cell;
-			s.radius = radius;
-			return sensors.Contains(s);	
-		#else
-			return true;
-		#endif
-	}
-
-	void				Volume::InsertSensor(const Sphere<>&desc)
-	{
-		ChangeSensorCoverage(desc,1);
-	}
-
-	void				Volume::RemoveSensor(const Sphere<>&desc)
-	{
-		ChangeSensorCoverage(desc,-1);
-	}
-
-	void				Volume::InsertSensor(const HighSetup::TVolumeDescriptor&desc)
-	{
-		ChangeSensorCoverage(desc,1);
-	}
-
-	void				Volume::RemoveSensor(const HighSetup::TVolumeDescriptor&desc)
-	{
-		ChangeSensorCoverage(desc,-1);
-	}
-
 	//void		Volume::InsertSensor(const LCellIdI&cell, float radius)
 	//{
 	//	ChangeSensory(cell,radius,1);
@@ -1093,17 +841,5 @@ namespace Grid
 
 
 
-	void TSharedPlanetConfig::Apply() const
-	{
-		Grid::Content coreContent = Grid::Content::Reinterpret(innerCoreType);
-		Grid::CellStack::bottom.content = coreContent;
-		#ifdef HAS_WINDOW
-			Grid::UpdateAtmosphere(atmosphereColor);
-			Grid::UpdateSun(sunPlaneNormal_Speed,sunColor);
-		#endif
-	}
-
-	/**/					Volume::Volume():cellStack(HighSetup::GridType::CellCount)
-	{}
 
 }

@@ -5,9 +5,6 @@
 #include "types.h"
 #include "../grid/stack.h"
 
-#ifdef HAS_WINDOW
-	#include "visualCommands.h"
-#endif
 
 namespace Objects
 {
@@ -22,7 +19,7 @@ namespace Objects
 
 			static int2				cmdLeftCoords,
 									cmdRightCoords;
-			static IconCommand		cmdLeft,		//!< Arrow button to scroll left
+			static PBaseCommand		cmdLeft,		//!< Arrow button to scroll left
 									cmdRight;		//!< Arrow button to scroll right
 		#endif
 

@@ -2,14 +2,16 @@
 #ifdef HAS_WINDOW
 
 #include <grid/worldData.h>
-#include <grid/sensorCoverage.h>
 #include <math/matrix.h>
 #include <math/vclasses.h>
+#include "../../ExtRenderer/DirectX11.h"
 
-namespace Grid
+namespace VisualTerrain
 {
 
 	index_t	TestLowGridIntersection(TVec3<> b, TVec3<> d, float radius, float&distance);
+	bool	TestHullIntersection(const TVec3<>&b, const TVec3<>&d, float&distance, TVec3<>&outNormal, bool includeWater);
+
 
 	void	UpdateAtmosphere(const float4&fogColor);
 	void	UpdateAtmosphere(float radius, const float4&fogColor);
@@ -42,7 +44,39 @@ namespace Grid
 	*/
 	void	UpdatePlanetRenderingParameters(float radius);
 	void	RenderLowCell(index_t stackID);
+	void	RenderTransparentLowCell(index_t stackID);
 	void	RenderLowGrid();
+	void	FlushAllRendererData();
+
+
+	//global construction functions
+
+	/**
+	Loads all GPU resources associated with rendering terrain.
+	Must be called after Objects::Create(), since it uses the same shadow map
+	*/
+	void	Create();
+
+	/**
+	Frees allocated GPU resources.
+	Subsequent rendering instructions will fail (horribly)
+	*/
+	void	Destroy();
+
+
+	//scene rendering functions:
+	void	RenderOpaqueTerrain(const Engine::Frustum<>&frustum);
+	void	RenderShadows();
+	void	RenderWater(const Engine::Frustum<>&frustum);
+	void	RenderOverlay(const Engine::Frustum<>&frustum);
+	void	RenderResources(const Engine::Frustum<>&frustum);
+
+	/**
+	Checks whether or not the specified family is outdated.
+	This function does not check for index validity!
+	*/
+	bool	FamilyIsOutdated(index_t);
+	void	RebuildOutdatedFamilies();
 
 	namespace SeeThrough
 	{
@@ -84,6 +118,71 @@ namespace Grid
 	void		SetParaboloidDisplay(const TVec3<>&direction, float height, float flatRadius, const float4&color);
 	void		SetSphereDisplay(const TVec3<>&center, float radius, const float4&color);
 	void		UnsetParaboloidAndSphereDisplay();
+
+
+
+
+
+
+	class OrbitGrid
+	{
+	public:
+		struct TCell
+		{
+			short visible = 0;
+
+
+		};
+
+
+		TCell	cells[Grid::LowSetup::GridType::CellCount];
+		float	orbit = 1.f;
+
+		#ifdef HAS_WINDOW
+			struct Vertex
+			{
+				float4		vertex3_edge;
+				float4		normal3_opacity;
+				float		emp;
+
+				/**/		Vertex()	{};
+				/**/		Vertex(const float3&n,float edge, float orbit, float opacity, float emp) : vertex3_edge(n*orbit,edge), normal3_opacity(n,opacity),emp(emp){}
+				void		Set(const float3&n,float edge, float orbit, float opacity, float emp) {vertex3_edge = float4(n*orbit,edge); normal3_opacity = float4(n,opacity); this->emp = emp;}
+			};
+	
+			Array<Vertex>	vertices;
+			Engine::DX11::InstructionBlock32	instruction;
+			void		ForceRecompileNow();
+			void		Render(const Engine::Frustum<>&);
+		#endif
+
+		bool			valid = false;
+		void			Invalidate() {valid = false;}
+
+			
+		/**/			OrbitGrid()
+		{
+			Clear();
+		}
+
+		void			ChangeSensory(const Grid::LCellIdI&center, float radius, signed char change);
+
+		void			Clear()
+		{
+			TCell clear;
+			for (index_t i = 0; i < Grid::LowSetup::GridType::CellCount; i++)
+				cells[i] = clear;
+			Invalidate();
+			//colorArea.active = false;
+		}
+
+
+		//void	Color(const LCellIdI&center, int fuelRadius);
+		//void	StripColor();
+
+	};
+
+
 
 }
 

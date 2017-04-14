@@ -1,20 +1,22 @@
 #ifdef HAS_WINDOW
 
 #include <global_root.h>
-#include "visualCommands.h"
-#include "rendering.h"
-#include "../../client/ExtRenderer/DirectX11.h"
+#include "visualObjectCommands.h"
+#include "objectRendering.h"
+#include "../../ExtRenderer/DirectX11.h"
 #include <engine/display.h>
-#include "vehicle.h"
-#include "structure.h"
-#include "visualSelection.h"
-#include "visualChoices.h"
-#include "satellite.h"
-#include "faction.h"
-#include "gridAndChoices.h"
-#include "components.h"
+#include <objects/vehicle.h>
+#include <objects/structure.h>
+#include "visualObjectSelection.h"
+#include "visualObjectChoices.h"
+#include <objects/satellite.h>
+#include <objects/faction.h>
+#include <objects/gridAndChoices.h>
+#include <objects/components.h>
 #include <image/converter/magic.h>
-#include "research.h"
+#include <objects/research.h>
+#include "visualTerrain.h"
+
 
 extern Engine::Display<Engine::DirectX11>	display;
 //extern Engine::VectorCamera<>				scene;
@@ -29,10 +31,9 @@ namespace Objects
 	/*static*/ Buffer0<CommandGroup*>		CommandGroup::activeGroupPath;
 
 
-	/*static*/ GenericHashTable<PathString, DX11::Texture>	BaseCommand::textureMap;
+	/*static*/ GenericHashTable<PathString, DX11::Texture>	VisualCommand::textureMap;
 
 
-	/*static*/ const int2 BaseCommand::coordOffset(1,0);
 
 	
 
@@ -169,7 +170,7 @@ namespace Objects
 		keyColor.Update(float4(0.5,0.5,1,1));
 	}
 
-	/*static*/ void		EntityConstructionCommand::UpdateTexture(BaseCommand&target, Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor/* = float4(0)*/)
+	/*static*/ void		EntityConstructionCommand::UpdateTexture(VisualCommand&target, Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor/* = float4(0)*/)
 	{
 		float distanceFactor = 1.f;
 		//if (base)
@@ -234,7 +235,7 @@ namespace Objects
 
 
 
-	/*static*/ void		EntityCommand::UpdateTexture(BaseCommand&target, const PWorldEntity&e, bool isPrototype, const float4&tone/* = float4(0)*/)
+	/*static*/ void		EntityCommand::UpdateTexture(VisualCommand&target, const PWorldEntity&e, bool isPrototype, const float4&tone/* = float4(0)*/)
 	{
 		float distanceFactor = 1.f;
 		if (e->IsMobile())
@@ -266,29 +267,6 @@ namespace Objects
 
 
 
-	/*virtual override*/ void		BaseCommand::CompileLabel(Label&outResult)
-	{
-		outResult.BeginBrief();
-		int resourceCost, timeCost;
-		Resource resourceType;
-		GetCosts(resourceCost,resourceType,timeCost);
-
-		if (timeCost == 0)
-		{
-			outResult << name;
-			return;
-		}
-
-		outResult << name;
-		if (resourceCost > 0)
-		{
-			outResult << " "+String(ResourceTag(resourceType))+ " "+String(resourceCost) + "  ";
-		}
-		else
-			outResult<<" ";
-		//outResult << "Rounds: "+String(timeCost);
-		outResult.GetLastLine() += TimeResourceTag() + String(timeCost);
-	}
 
 
 	/*virtual override*/ void		EntityConstructionCommand::CompileLabel(Label&outResult)
@@ -375,9 +353,34 @@ namespace Objects
 	}
 
 
-	void			BaseCommand::LoadIcon()
+
+	/*virtual*/ void		VisualCommand::CompileLabel(Label&outResult)
 	{
-		LoadIcon(name);
+		outResult.BeginBrief();
+		int resourceCost, timeCost;
+		Resource resourceType;
+		GetCosts(resourceCost,resourceType,timeCost);
+
+		if (timeCost == 0)
+		{
+			outResult << name;
+			return;
+		}
+
+		outResult << name;
+		if (resourceCost > 0)
+		{
+			outResult << " "+String(ResourceTag(resourceType))+ " "+String(resourceCost) + "  ";
+		}
+		else
+			outResult<<" ";
+		//outResult << "Rounds: "+String(timeCost);
+		outResult.GetLastLine() += TimeResourceTag() + String(timeCost);
+	}
+
+	void			VisualCommand::LoadIcon()
+	{
+		LoadIconByName(name);
 	}
 
 	static bool NotValidFSChar(char c)
@@ -391,7 +394,7 @@ namespace Objects
 		return c != '_';
 	}
 
-	void			BaseCommand::LoadIcon(const String&name)
+	void			VisualCommand::LoadIconByName(const String&name)
 	{
 		String name2 = name;
 		name2.replaceCharacters(NotValidFSChar,'-');
@@ -439,13 +442,13 @@ namespace Objects
 	
 	void	GlobalCmd::SeeThroughUp()
 	{
-		if (Grid::SeeThrough::GetFocusPoint().height < Grid::CellStack::HalfRange)
-			Grid::SeeThrough::Update(true, Grid::SeeThrough::LocateCamera() + 1);
+		if (VisualTerrain::SeeThrough::GetFocusPoint().height < Grid::CellStack::HalfRange)
+			VisualTerrain::SeeThrough::Update(true, VisualTerrain::SeeThrough::LocateCamera() + 1);
 	}
 	void	GlobalCmd::SeeThroughDown()
 	{
-		if (Grid::SeeThrough::GetFocusPoint().height > -Grid::CellStack::HalfRange)
-			Grid::SeeThrough::Update(true, Grid::SeeThrough::LocateCamera()-1);
+		if (VisualTerrain::SeeThrough::GetFocusPoint().height > -Grid::CellStack::HalfRange)
+			VisualTerrain::SeeThrough::Update(true, VisualTerrain::SeeThrough::LocateCamera()-1);
 	}
 
 
@@ -453,25 +456,25 @@ namespace Objects
 	{
 		if (selectedEntity)
 		{
-			Grid::LCellIdI target = Grid::SeeThrough::LocateCamera();
+			Grid::LCellIdI target = VisualTerrain::SeeThrough::LocateCamera();
 			if (selectedEntity->location.height <= Grid::CellStack::BottomHeight)
 				target.height = selectedEntity->location.height;
-			Grid::SeeThrough::Update(!Grid::SeeThrough::IsEnabled(), target);
+			VisualTerrain::SeeThrough::Update(!VisualTerrain::SeeThrough::IsEnabled(), target);
 //					Grid::SeeThrough::Update(!Grid::SeeThrough::IsEnabled(), selectedEntity->location);
 		}
 		else
 		{
-			Grid::SeeThrough::Update(!Grid::SeeThrough::IsEnabled(), Grid::SeeThrough::LocateCamera());
+			VisualTerrain::SeeThrough::Update(!VisualTerrain::SeeThrough::IsEnabled(), VisualTerrain::SeeThrough::LocateCamera());
 		}
 	}
 
 	bool	GlobalCmd::SeeThroughIsActive()
 	{
-		return Grid::SeeThrough::IsEnabled();
+		return VisualTerrain::SeeThrough::IsEnabled();
 	}
 	bool	GlobalCmd::SeeThroughIsActive2(bool)
 	{
-		return Grid::SeeThrough::IsEnabled();
+		return VisualTerrain::SeeThrough::IsEnabled();
 	}
 
 
@@ -657,39 +660,6 @@ namespace Objects
 		//SignalButtonTreeChange();
 	}
 
-	PCommandGroup	CommandContainer::AddChild(const String&name)
-	{
-		PCommandGroup rs (new CommandGroup(name));
-		Add(rs );
-		return rs;
-	}
-	PCommandGroup	CommandContainer::AddChild(const int2&coords, bool relativeCoords, const String&name)
-	{
-		PCommandGroup rs (new CommandGroup(name));
-		Add(coords, relativeCoords, rs );
-		return rs;
-	}
-	PCommandGroup	CommandContainer::AddChild(const String&name, const String&iconName)
-	{
-		PCommandGroup rs (new CustomIcon<CommandGroup>(name,iconName));
-		Add(rs );
-		return rs;
-	}
-	PCommandGroup	CommandContainer::AddChild(const int2&coords, bool relativeCoords, const String&name, const String&iconName)
-	{
-		PCommandGroup rs (new CustomIcon<CommandGroup>(name,iconName));
-		Add(coords, relativeCoords, rs );
-		return rs;
-	}
-
-	index_t					CommandContainer::Find(const PBaseCommand&cmd) const
-	{
-		foreach (members,m)
-			if (m->second == cmd)
-				return m - members.pointer();
-		return InvalidIndex;
-	}
-
 
 	void	CommandGroup::SignalBaseChange(CommandContainer*newParent, const int2&newBase)
 	{
@@ -708,43 +678,30 @@ namespace Objects
 		}
 	}
 
-	PBaseCommand			CommandContainer::Add(const int2&coords, bool relativeCoords, const PBaseCommand&newCommand)
+	PCommandGroup	AddChild(CommandContainer&container, const String&name)
 	{
-		DBG_ASSERT__(Find(newCommand) == InvalidIndex);
-		Member&m = members.Append();
-		m.second = newCommand;
-		m.first = relativeCoords ? coords : coords - baseCoords;
-		if (newCommand->IsGroup())
-		{
-			To<CommandGroup>::Cast(newCommand)->SignalBaseChange(this,baseCoords + int2(0, m.first.y+1));
-			//PCommandGroup group = To<CommandGroup>::Cast(newCommand);
-			//group->baseCoords = baseCoords;
-			//group->baseCoords.y += m.first.y+1;
-			//group->baseCoords.x += group->baseCoords.y/2;
-			//group->parent = this;
-		}
-		return newCommand;
+		PCommandGroup rs (new CommandGroup(name));
+		container.Add(rs );
+		return rs;
 	}
-
-	PBaseCommand			CommandContainer::Add(const PBaseCommand&newCommand)
+	PCommandGroup	AddChild(CommandContainer&container, const int2&coords, bool relativeCoords, const String&name)
 	{
-		DBG_ASSERT__(Find(newCommand) == InvalidIndex);
-		Member&m = members.Append();
-		m.second = newCommand;
-		m.first = int2((int)members.Count()-1,0);
-		if (newCommand->IsGroup())
-		{
-			To<CommandGroup>::Cast(newCommand)->SignalBaseChange(this,baseCoords + int2(0, m.first.y+1));
-/*
-			PCommandGroup group = To<CommandGroup>::Cast(newCommand);
-			group->baseCoords = baseCoords;
-			group->baseCoords.y += m.first.y+1;
-			group->baseCoords.x += group->baseCoords.y/2;
-			group->parent = this;*/
-		}
-		return newCommand;
+		PCommandGroup rs (new CommandGroup(name));
+		container.Add(coords, relativeCoords, rs );
+		return rs;
 	}
-
+	PCommandGroup	AddChild(CommandContainer&container, const String&name, const String&iconName)
+	{
+		PCommandGroup rs (new CustomIcon<CommandGroup>(name,iconName));
+		container.Add(rs );
+		return rs;
+	}
+	PCommandGroup	AddChild(CommandContainer&container, const int2&coords, bool relativeCoords, const String&name, const String&iconName)
+	{
+		PCommandGroup rs (new CustomIcon<CommandGroup>(name,iconName));
+		container.Add(coords, relativeCoords, rs );
+		return rs;
+	}
 
 
 }

@@ -2070,7 +2070,6 @@ namespace Protocol
 	/**
 	Generates a world delta for storage/client notification
 	//@param faction Reference to the respective client faction (must be set if deltaType is ProgressiveInit, ProgressiveUpdate, or FactionCopy)
-	@param vs Faction visibility state. Used for ProgressiveInit and ProgressiveUpdate only
 	@param ws Faction/local world state. Required not-null for ProgressiveUpdate and LocalCopy, ignored otherwise. Updated during ProgressiveUpdate
 	@param[out] delta Resulting delta
 	@param familyID Index of the grid family that the delta should be computed of
@@ -2078,7 +2077,7 @@ namespace Protocol
 	@param last Indicates that the result should include the 'last'-flag, which means no deltas will follow this one for the current sequence
 	@param deltaType Type of delta to compute (see delta_type_t for details)
 	*/
-	void			GenerateWorldDelta(Grid::SensorCoverage*vs, World::Data*ws, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, WorldDeltaType::delta_type_t deltaType);
+	void			GenerateWorldDelta(World::Data*ws, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, WorldDeltaType::delta_type_t deltaType);
 }
 
 

@@ -13,6 +13,7 @@
 #include "timelapse.h"
 #include "configurationMode.h"
 #include <scriptCache.h>
+#include "gridControl.h"
 
 
 //#define DEBUG_SERVER_LIST	//enable to generate very long artificial server list
@@ -362,10 +363,9 @@ namespace Network
 	}
 
 
-
 	static void ApplyPlanetConfig(const Grid::TSharedPlanetConfig&config)
 	{
-		config.Apply();
+		GridControl::Apply(config);
 	}
 
 

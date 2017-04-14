@@ -1,20 +1,20 @@
 #ifdef HAS_WINDOW
 #include <global_root.h>
-#include "rendering.h"
+#include "objectRendering.h"
 #include <engine/aspect.h>
-#include "../../client/ExtRenderer/DirectX11.h"
+#include "../../ExtRenderer/DirectX11.h"
 #include <math/vector.h>
 #include <image/converter/magic.h>
-#include "structure.h"
-#include "vehicle.h"
-#include "satellite.h"
-#include "faction.h"
-#include "../../client/components/progressBar.h"
-#include "visualChoices.h"
-#include "visualSelection.h"
-#include "gridAndChoices.h"
-#include "../runtimeConfig.h"
-#include "systems.h"
+#include <objects/structure.h>
+#include <objects/vehicle.h>
+#include <objects/satellite.h>
+#include <objects/faction.h>
+#include "../progressBar.h"
+#include "objectChoices.h"
+#include "objectSelection.h"
+#include <objects/gridAndChoices.h>
+#include <runtimeConfig.h>
+#include <objects/systems.h>
 
 namespace Camera
 {
@@ -83,6 +83,8 @@ namespace Objects
 
 	namespace Renderer
 	{
+
+
 		class SmokeTrailCollection
 		{
 		public:
@@ -112,6 +114,12 @@ namespace Objects
 		}			smokeTrails[2];
 
 	}
+
+	OpenAL::Wave	Renderer::GetAmbientSound(const WorldEntity&e)
+	{
+		return GetAmbientSoundOf(e.GetTypeName(),e.GetCTypeName());
+	}
+
 
 	OpenAL::WaveBuffer	Renderer::GetAmbientSoundOf(const String&entityTypeName, ConstName _entityType)
 	{

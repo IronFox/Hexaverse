@@ -6,10 +6,8 @@
 #include "../runtimeConfig.h"
 
 #ifdef HAS_WINDOW
-	#include "visualCommands.h"
 	//#include "gridAndChoices.h"
 	#include "satellite.h"
-	#include "rendering.h"
 #endif
 #ifndef CLIENT
 	#include "faction.h"
@@ -52,10 +50,7 @@ namespace Objects
 		}
 
 
-		/*virtual*/ OpenAL::Wave	WorldEntity::GetAmbientSound() const
-		{
-			return Objects::Renderer::GetAmbientSoundOf(GetTypeName(),GetCTypeName());
-		}
+
 
 
 
@@ -156,7 +151,7 @@ namespace Objects
 			return TurretTrajectory::InvalidTrajectory;
 		}
 
-		const Grid::Data&visibleWorld =
+		const World::Data&visibleWorld =
 		#ifndef CLIENT
 			owner->currentState
 		#else
@@ -175,7 +170,7 @@ namespace Objects
 		{
 			return TurretTrajectory::InvalidTrajectory;
 		}
-		const Grid::Data&visibleWorld =
+		const World::Data&visibleWorld =
 		#ifndef CLIENT
 			owner->currentState
 		#else
@@ -198,7 +193,7 @@ namespace Objects
 			outSteps.Clear();
 			return TurretTrajectory::InvalidTrajectory;
 		}
-		const Grid::Data&visibleWorld =
+		const World::Data&visibleWorld =
 		#ifndef CLIENT
 			owner->currentState
 		#else
@@ -216,7 +211,7 @@ namespace Objects
 		{
 			return TurretTrajectory::InvalidTrajectory;
 		}
-		const Grid::Data&visibleWorld =
+		const World::Data&visibleWorld =
 		#ifndef CLIENT
 			owner->currentState
 		#else
@@ -367,7 +362,7 @@ namespace Objects
 			return "";
 		}
 
-		void WorldEntity::AppendDeploymentCount(BaseCommand::Label&outResult, const OwnerParameter&overrideOwner)	const
+		void WorldEntity::AppendDeploymentCount(Description&outResult, const OwnerParameter&overrideOwner)	const
 		{
 			if (RuntimeConfig::UnitLimits::AnySet())
 			{
@@ -377,7 +372,7 @@ namespace Objects
 			}
 		}
 
-		void WorldEntity::DescribeType(BaseCommand::Label&outResult, UINT32 descFlags)
+		void WorldEntity::DescribeType(Description&outResult, UINT32 descFlags)
 		{
 			if (descFlags & DescIncludeName)
 				outResult << GetTypeName();
@@ -506,13 +501,7 @@ namespace Objects
 		#ifdef CLIENT
 			if (isOwnedByMe)
 			{
-				//Grid::HighSetup::TVolumeDescriptor desc;
-				//Grid::high.GenerateVolume(,desc);
-				World::actual.InsertSensor(Sphere<>(GetScanningCenter(loc),GetScanningRange()));
-				//RegisterWorldSensory(desc);
-				#ifdef THOROUGLY_DEBUG_SENSORY
-					VerifySensory();
-				#endif
+				World::Sensor(GetScanningCenter(loc),GetScanningRange(),GetScannerType()).InsertInto(World::actual);
 			}
 
 		#else
@@ -531,13 +520,7 @@ namespace Objects
 		#ifdef CLIENT
 			if (isOwnedByMe)
 			{
-				//Grid::HighSetup::TVolumeDescriptor desc;
-				//Grid::high.GenerateVolume(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),desc);
-				//UnregisterWorldSensory(desc);
-				World::actual.RemoveSensor(Sphere<>(GetScanningCenter(loc),GetScanningRange()));
-				#ifdef THOROUGLY_DEBUG_SENSORY
-					VerifySensory();
-				#endif
+				World::Sensor(GetScanningCenter(loc),GetScanningRange(),GetScannerType()).RemoveFrom(World::actual);
 			}
 		#endif
 

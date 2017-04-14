@@ -2,11 +2,15 @@
 #include "animation.h"
 #include "network.h"
 #include "ui.h"
-#include "world.h"
+#include "visual/world.h"
 #include "clientRuntimeConfig.h"
 #include "ai.h"
+#include <grid/resources.h>
 #ifdef HAS_WINDOW
-	#include "explosions.h"
+	#include "visual/explosions.h"
+	#include "visual/objectSelection.h"
+	#include "visual/objectComponent.h"
+	#include "visual/objectChoices.h"
 #endif
 #include "configurationMode.h"
 
@@ -124,7 +128,7 @@ namespace Animation
 			if (v->myTasks.Peek().type == Objects::Vehicle::Task::MoveTo && v->myTasks.Count() == 1)
 			{
 				Grid::LCellIdI last = v->GetLastPointOfOrigin();
-				if (!Grid::Resource::all.First().known[last.stackID])
+				if (!Grid::ResourceDiscovery::client.resourcesDiscovered[last.stackID])
 				{
 					float competition = 100.f;
 					float ally = 100.f;
@@ -163,7 +167,7 @@ namespace Animation
 		//Grid::LCellIdI closest = Grid::LCellIdI::Invalid;
 		//float closestCompetingDistance = 0;
 
-		const bool*known = Grid::Resource::all.First().known;
+		const auto&known = Grid::ResourceDiscovery::client.resourcesDiscovered;
 
 	
 		for (int retries = 0; retries < 2; retries++)
@@ -386,7 +390,7 @@ namespace Animation
 		outMerged.mode = localVersion.mode;
 		outMerged.job = localVersion.job;
 		#ifdef HAS_WINDOW
-			outMerged.localizableShapes.adoptData(localVersion.localizableShapes);
+			outMerged.visualization.swap(localVersion.visualization);
 		#endif
 		outMerged.name.adoptData(localVersion.name);
 		outMerged.type = localVersion.type;
@@ -515,8 +519,8 @@ namespace Animation
 								loc.height = h;
 						}
 					#endif
-
-					t1.SetLocalizableShape(sourceTask.visualizationName,loc,e.owner);
+					
+					Objects::TaskAttachment::Of(t1)->SetLocalizableShape(sourceTask.visualizationName,loc,e.owner);
 				}
 			#endif
 		}
@@ -875,6 +879,8 @@ namespace Animation
 						{
 							m->SetLinkedToCore(state->linkedToCore,Network::ControlEnabled());
 							m->naturalResources = state->naturalResources;
+							if (Objects::selectedEntity == s)
+								Objects::UpdateChoices(Network::ControlEnabled());
 						}
 					}
 				}

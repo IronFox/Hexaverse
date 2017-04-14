@@ -2,8 +2,6 @@
 #include "resources.h"
 
 #include "../objects/resource.h"
-//#include "worldData.h"
-#include "sensorCoverage.h"
 
 namespace Grid
 {
@@ -310,7 +308,7 @@ namespace Grid
 
 
 	#ifdef CLIENT
-		void		UpdateResourceMap(ConstName resourceName,const ArrayData<TCellResourceCoverage>&data, SensorCoverage::Resources&setSensor)
+		void		UpdateResourceMap(ConstName resourceName,const ArrayData<TCellResourceCoverage>&data, ResourceDiscovery&setSensor)
 		{
 			foreach (Resource::all, res)
 				if (res->GetCName() == resourceName)
@@ -328,6 +326,67 @@ namespace Grid
 		}
 	#endif
 
+
+	#ifdef CLIENT
+		/*static*/ ResourceDiscovery	ResourceDiscovery::client;
+	#endif
+
+
+	void ResourceDiscovery::FlushAllData()
+	{
+		resourcesDiscovered.Fill(false);
+	}
+
+
+	void FlushAllResourceData()
+	{
+		#ifdef CLIENT
+			ResourceDiscovery::client.FlushAllData();
+		#endif
+	}
+
+
+	void		ResourceDiscovery::Update(const Grid::LCellIdI&center,float range, BasicBuffer<UINT32>&outNewDiscoveries)
+	{
+		static IndexSet covered;
+		static Buffer0<UINT32>	coverage;
+		static Queue<UINT32>	stacks;
+		covered.Clear();
+		coverage.Clear();
+		stacks.Clear();
+		outNewDiscoveries.Clear();
+
+		stacks << center.stackID;
+
+		const TVec3<> worldCenter = Grid::ToWorld(center);
+
+		UINT32 stackID;
+		while (stacks >> stackID)
+		{
+			const TVec3<> world = Grid::ToWorld(Grid::LCellIdI(stackID,center.height));
+			if (Vec::quadraticDistance(world,worldCenter) > sqr(range))
+				continue;
+			if (!covered.IsSet(stackID))
+			{
+				covered.Set(stackID);
+				coverage << stackID;
+			}
+			else
+				continue;
+
+			const auto&n = Grid::low.grid.GetCell(stackID).neighborhood;
+			for (BYTE k = 0; k < n.numNeighbors; k++)
+				stacks << n.neighborID[k];
+		}
+			
+		foreach (coverage,cov)
+		{
+			if (resourcesDiscovered[*cov])
+				continue;
+			resourcesDiscovered[*cov] = true;
+			outNewDiscoveries << *cov;
+		}
+	}
 
 }
 

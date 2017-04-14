@@ -4,9 +4,6 @@
 #include "../grid/stack.h"
 #include "types.h"
 #include "../uniqueID.h"
-#ifdef HAS_WINDOW
-	#include "visualCommands.h"
-#endif
 #ifndef CLIENT
 	#include "resource.h"
 #endif

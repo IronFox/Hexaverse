@@ -3,6 +3,7 @@
 
 #include "types.h"
 #include "cursorMode.h"
+#include "../grid/stack.h"
 
 
 #ifdef HAS_WINDOW

@@ -3,16 +3,16 @@
 #include <global_root.h>
 #include "dialog.h"
 #include <engine/display.h>
-#include "../ExtRenderer/DirectX11.h"
-#include "../DX11/texture_font.h"
+#include "../../ExtRenderer/DirectX11.h"
+#include "../../DX11/texture_font.h"
 #include <container/buffer.h>
 #include "surfaceRenderer.h"
 #include <engine/aspect.h>
 #include <image/converter/magic.h>
 #include <general/random.h>
-#include "../../shared/cast.h"
-#include "../../shared/logEvent.h"
-#include "clientRuntimeConfig.h"
+#include <cast.h>
+#include <logEvent.h>
+#include "../clientRuntimeConfig.h"
 
 namespace DX11 = Engine::DX11; 
 

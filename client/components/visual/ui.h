@@ -25,10 +25,10 @@ namespace UI
 
 
 #ifdef HAS_WINDOW
-	#include "../ExtRenderer/DirectX11.h"
-	#include "../../shared/objects.h"
+	#include "../../ExtRenderer/DirectX11.h"
+	#include <objects.h>
 	#include "dialog.h"
-	#include "cameraControl.h"
+	#include "../cameraControl.h"
 
 	namespace UI 
 	{
@@ -146,9 +146,9 @@ namespace UI
 			namespace BottomRightPanel
 			{
 
-				class Icon : public Objects::BaseCommand
+				class Icon : public Objects::VisualCommand
 				{
-					typedef Objects::BaseCommand	Super;
+					typedef Objects::VisualCommand	Super;
 				public:
 					int2					gridCoords;
 					static index_t			indexCounter;
@@ -354,10 +354,10 @@ namespace UI
 				};
 
 		
-				class AnimationEventFocusCommand : public Objects::BaseCommand
+				class AnimationEventFocusCommand : public Objects::VisualCommand
 				{
 				public:
-					typedef	Objects::BaseCommand	Super;
+					typedef	Objects::VisualCommand	Super;
 					TVec3<>				focusLocation;
 					float				atTime;
 
@@ -388,9 +388,9 @@ namespace UI
 				/**
 				Dummy-command that merely rasterized and renders a specific value at its location
 				*/
-				class TextDisplayCommand : public Objects::BaseCommand
+				class TextDisplayCommand : public Objects::VisualCommand
 				{
-					typedef Objects::BaseCommand	Super;
+					typedef Objects::VisualCommand	Super;
 				protected:
 					virtual String		GetText() const=0;
 				public:
@@ -421,9 +421,9 @@ namespace UI
 					};
 
 
-				class GroupFocusCommand : public Objects::BaseCommand
+				class GroupFocusCommand : public Objects::VisualCommand
 				{
-					typedef Objects::BaseCommand	Super;
+					typedef Objects::VisualCommand	Super;
 				public:
 					PGroup				group;
 
@@ -450,7 +450,7 @@ namespace UI
 			class DynamicRow
 			{
 			private:
-				Buffer0<Objects::PBaseCommand>			lastVisible;
+				Buffer0<Objects::PVisualCommand>		lastVisible;
 				std::shared_ptr<Custom::ArrowCommand>	leftCommand,rightCommand;
 				index_t									offset=0;
 				TIntRange<index_t>						visibleRange;
@@ -464,7 +464,7 @@ namespace UI
 				Call Refresh() when done to make changes visible.
 				Only elements addressed by @a visibleRange will be shown on screen.
 				*/
-				Buffer0<Objects::PBaseCommand>			commands;
+				Buffer0<Objects::PVisualCommand>		commands;
 
 				/**
 				Vertical position of this row with 0 being the top-most, and positive values iterating downwards
@@ -521,9 +521,9 @@ namespace UI
 				Horizontal arrow command pointing left or right.
 				Used by DynamicRow
 				*/
-				class ArrowCommand : public Objects::BaseCommand
+				class ArrowCommand : public Objects::VisualCommand
 				{
-					typedef Objects::BaseCommand	Super;
+					typedef Objects::VisualCommand	Super;
 				public:
 					const bool			left;
 					DynamicRow *const	row;
@@ -561,7 +561,7 @@ namespace UI
 				Used as a unique identifier for this cell.
 				Only at most one cell can exist per command (address)
 				*/
-				Objects::PBaseCommand	command;
+				Objects::PVisualCommand	command;
 				/**
 				Location of this button on the current viewport (for faster click lookup).
 				Updated by Update()
@@ -601,17 +601,17 @@ namespace UI
 			Only one cell may be allocated per command. A second call with the same parameter yields the cell returned by the first call.
 			@return Reference to the newly allocated or existing cell. Valid only until the next call to AllocateCell() or FindAndDeleteCell(). Do not persistently store pointers or references to the returned cell
 			*/
-			GridCell&		AllocateCell(const Objects::PBaseCommand&cmd);
+			GridCell&		AllocateCell(const Objects::PVisualCommand&cmd);
 			/**
 			@copydoc AllocateCell()
 			@param[out] isNew Set to true if the specified command was not previously allocated
 			*/
-			GridCell&		AllocateCell(const Objects::PBaseCommand&, bool&isNew);
+			GridCell&		AllocateCell(const Objects::PVisualCommand&, bool&isNew);
 			/**
 			Attempts to locate and delete the first cell using the specified command.
 			Fails silently if no such cell exists.
 			*/
-			void			FindAndDeleteCell(const Objects::PBaseCommand&);
+			void			FindAndDeleteCell(const Objects::PVisualCommand&);
 
 
 
@@ -643,7 +643,7 @@ namespace UI
 			bool	HandleClick();
 
 			extern GridCell*		hoveringOver;
-			extern Objects::BaseCommand::Label	hoveringText;
+			extern Objects::WrappedDescription	hoveringText;
 			extern float			hoveringWidth;
 			extern bool			hoveringBrief;
 
@@ -660,7 +660,7 @@ namespace UI
 			@param location Grid location to place the button at. The coordinates are relative to the bottom left grid edge, and progress to the right/up
 			@param cmd Command to place/memorize. Must not be empty/null
 			*/
-			void		VisitAddCommand(const int2&location,const Objects::PBaseCommand&cmd);
+			void		VisitAddCommand(const int2&location,const Objects::PVisualCommand&cmd);
 
 			/**
 			Removes all visual command buttons, and clears out all local command references

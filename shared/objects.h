@@ -4,7 +4,7 @@
 #include <container/buffer.h>
 #include <geometry/cgs.h>
 #include <io/cryptographic_hash.h>
-#include "sphereGrid.h"
+#include "grid/stack.h"
 #include <image/converter/magic.h>
 
 #include "uniqueID.h"
@@ -14,15 +14,12 @@
 
 //parts:
 #include "objects/interface.h"
-#include "objects/rendering.h"
 #include "objects/structure.h"
 #include "objects/vehicle.h"
 #include "objects/satellite.h"
 #include "objects/faction.h"
 #include "objects/prototypes.h"
 #include "objects/gridAndChoices.h"
-#include "objects/visualSelection.h"
-#include "objects/visualChoices.h"
 //#include "objects/interface.h"
 
 

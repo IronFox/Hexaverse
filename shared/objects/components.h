@@ -1,12 +1,4 @@
-#ifndef objectVehicleComponentsH
-#define objectVehicleComponentsH
-
-#ifdef HAS_WINDOW
-	#include "visualCommands.h"
-	#include "geometry.h"
-	#include <al/openal.h>
-//	#include "entity.h"
-#endif
+#pragma once
 
 #include "../grid/worldData.h"
 #include "resource.h"
@@ -14,7 +6,13 @@
 #include "types.h"
 #include "componentAttribute.h"
 #include "luaAttribute.h"
-
+#include "description.h"
+#include "entityCommand.h"
+#include "clientAttachment.h"
+#ifdef HAS_WINDOW
+	#include <al/openal.h>
+	#include "geometry.h"
+#endif
 
 namespace Objects
 {
@@ -135,11 +133,17 @@ namespace Objects
 
 
 		public:
-			#ifdef HAS_WINDOW
-				CommandContainer			commands;
 
-				Array<std::pair<Geometry,DX11::InstructionBlock32> >	parts;
+			/**
+			Custom attachment to the local component. Not used by server.
+			*/
+			PClientAttachment				attachment;
+			CommandContainer				commands;
+			#ifdef HAS_WINDOW
+				Array<Geometry>				parts;
+				OpenAL::Wave				ambientSound;	//sound used for ambience (25% volume, normal pitch), or motion (100% volume, increased pitch)
 			#endif
+
 
 			
 			String							typeName,shortName;
@@ -156,18 +160,12 @@ namespace Objects
 			virtual bool					IsTurret() const {return false;}
 			virtual bool					IsVehicleBase() const {return false;}
 
-			#ifdef HAS_WINDOW
-				//typedef std::function<void(EntityCommand&cmd)>	FCommandVisitor;
-
-				void						VisitAllCommands(FCommandVisitor visitor, bool force);
-			#endif
+			
 
 			bool							TestIntersection(float zOffset, float x, float y, const TVec3<>&b, const TVec3<>&d, float & distance);
 
-			#ifdef HAS_WINDOW
-				void						DescribeType(BaseCommand::Label&label,bool compound, const OwnerParameter&);
-			#endif
-
+			void							DescribeType(Description&,bool compound, const OwnerParameter&);
+			void							VisitAllCommands(FCommandVisitor visitor, bool force);
 		};
 
 
@@ -372,15 +370,18 @@ namespace Objects
 			//}
 
 			#ifdef HAS_WINDOW
-				enum geometryType_t
-				{
-					Schematic,
-					Animation,
-					SmokeTrail
-				};
-				static float				CompileTrajectory(const Buffer0<TVec4<> >&v, geometryType_t type, Geometry&outGeo, float widthScale=1.f);
-				void						DescribeType(BaseCommand::Label&label, bool compound, bool includeName, const String&parentType, const OwnerParameter&owner);
 			#endif
+			void							DescribeType(Description&, bool compound, bool includeName, const String&parentType, const OwnerParameter&owner);
+
+
+			enum geometryType_t
+			{
+				Schematic,
+				Animation,
+				SmokeTrail
+			};
+
+			float							CompileTrajectory(const Buffer0<TVec4<> >&v, geometryType_t type, Geometry&outGeo, float widthScale=1.f);
 
 			/**
 			Checks whether or not the local turret could ever possibly consume resources
@@ -428,9 +429,6 @@ namespace Objects
 			*/
 			FixedArray<BYTE,OperationCount>	acceleration;
 
-			#ifdef HAS_WINDOW
-				OpenAL::Wave				ambientSound;	//sound used for ambience (25% volume, normal pitch), or motion (100% volume, increased pitch)
-			#endif
 
 			//warning: none is broken in pathfinding
 			CONSTRUCT_ENUMERATION3(Requirement, None, AnyBlock ,Water);
@@ -467,9 +465,7 @@ namespace Objects
 
 			bool							CanStandOn(const World::Data&world, const Grid::LCellIdI&, bool ignoreWater, bool doFloat);
 
-			#ifdef HAS_WINDOW
-				void						DescribeType(BaseCommand::Label&label, bool compound, bool includeName, const OwnerParameter&);
-			#endif
+			void							DescribeType(Description&, bool compound, bool includeName, const OwnerParameter&);
 
 	
 		};
@@ -683,5 +679,3 @@ namespace Objects
 }
 
 
-
-#endif

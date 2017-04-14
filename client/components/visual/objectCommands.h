@@ -6,13 +6,15 @@
 
 #include <global_string.h>
 #include <math/vclasses.h>
-#include "../../client/ExtRenderer/DirectX11.h"
-#include "cursorMode.h"
-#include "types.h"
-#include "resource.h"
-#include "../cast.h"
-#include "componentAttribute.h"
-#include "../stringTable.h"
+#include "../../ExtRenderer/DirectX11.h"
+#include <objects/cursorMode.h>
+#include <objects/types.h>
+#include <objects/resource.h>
+#include <cast.h>
+#include <objects/componentAttribute.h>
+#include <objects/description.h>
+#include <stringTable.h>
+#include <objects/entityCommand.h>
 
 namespace Objects
 {
@@ -23,190 +25,57 @@ namespace Objects
 
 	void				RefreshCommands(bool controlEnabled);
 
-	class BaseCommand;
-
-	typedef std::function<void(const int2&,const PBaseCommand&cmd)>	FCommandVisitor;
 
 
-
-
-	/**
-	Base class for all visual commands.
-	Visual commands are currently rendered as hexagonal icons arranged in the four corners of the screen.
-	*/
-	class BaseCommand : public std::enable_shared_from_this<BaseCommand>
+	class VisualCommand : public BaseCommand
 	{
+		typedef	BaseCommand	Super;
 	public:
-		enum class Flags
-		{
-			None = 0,
-			IsEnabled=0x1,
-			IsPermaActive=0x2,
-			IsFlashing=0x4,
-			SoftFlashing=0x8,
-			IsInvisible=0x10
-		};
+		#undef LoadIcon
+		static GenericHashTable<PathString, DX11::Texture>	textureMap;
 
-
-		String			name;
-		Flags			state = Flags::IsEnabled;
+		/**/			VisualCommand(const String&name):Super(name) {}
+		/**/			VisualCommand() {}
+		virtual void	RasterizeImage()	{}
+		virtual void	LoadIcon();
 		DX11::Texture	texture;
 		TFloatRect		screenRect;
-
-
-		static const int2 coordOffset;
-
-
-		/**/			BaseCommand(const String&name):name(name) {}
-		///**/			BaseCommand(const int2&coords, const String&name):name(name) {SetCoords(coords);}
-		/**/			BaseCommand()	{}
-
-		/**
-		Triggered when the local command is executed
-		*/
-		virtual void	Execute() = 0;
-		/**
-		Triggered when @a state is supposed to be updated
-		@param controlEnabled Indicates that the current phase and client state allows execution of server-commands. Commands that do not involve server-interaction may ignore this parameter
-		*/
-		virtual	void	Refresh(bool controlEnabled) = 0;
+		void			LoadIconByName(const String&name);
 		/**
 		Queries any subsequent costs of an execution of the local command
 		*/
 		virtual void	GetCosts(int&costOut, Resource&costTypeOut, int&timeCostOut)	{costOut = 0; costTypeOut = Resource::Minerals; timeCostOut = 0;}
+		virtual void	CompileLabel(Label&outResult);
+	};
 
-		#undef LoadIcon
-		static GenericHashTable<PathString, DX11::Texture>	textureMap;
-
-		virtual void	RasterizeImage()	{}
-		virtual bool	IsGroup() const {return false;}
-		virtual void	VisitMembers(const FCommandVisitor&visitor, bool force, const int2&parentGridCoords) {visitor(parentGridCoords,shared_from_this());}
-		void			VisitMembers(const FCommandVisitor&visitor, bool force) {VisitMembers(visitor,force,coordOffset);}
-
-		virtual void	LoadIcon();
-		void			LoadIcon(const String&name);
+	typedef std::shared_ptr<VisualCommand> PVisualCommand;
 
 
-		//void			SetCoords(const int2&rawCoords)
-		//{
-		//	gridCoords = rawCoords+coordOffset;
-		//}
-
-
-		class Label
+	template <typename Base>
+		class CustomLabel : public Base
 		{
+			typedef	Base	Super;
 		public:
-			Buffer0<std::pair<String, bool> >		rawLines,wrappedLines;
-			bool				isBrief=true;
+			BaseCommand::Label		customLabel;
 
-			void				Clear()
+			/**/			CustomLabel(const String&name):Super(name) {}
+			/**/			CustomLabel() {}
+			virtual void	CompileLabel(BaseCommand::Label&outResult) override
 			{
-				rawLines.Clear();
-			}
-
-			bool				IsEmpty() const {return rawLines.IsEmpty();}
-			bool				IsNotEmpty() const {return rawLines.IsNotEmpty();}
-
-			void				BeginBrief()
-			{
-				if (rawLines.IsNotEmpty() && rawLines.Last().first.trim().IsNotEmpty() && !rawLines.Last().second)
-					rawLines << std::make_pair("",false);
-				isBrief = true;
-			}
-
-			void				MarkBriefEnd()
-			{
-				if (rawLines.IsNotEmpty() && rawLines.Last().first.trim().IsNotEmpty() && rawLines.Last().second)
-					rawLines << std::make_pair("",false);
-				isBrief = false;
-			}
-
-			String&				GetLastLine()
-			{
-				return rawLines.Last().first;
-			}
-
-			Label&				operator<<(const String&line)
-			{
-				if (isBrief && (line.IsEmpty() || line.firstChar() != ' '))
-					rawLines << std::make_pair("  "+line,isBrief);
-				else
-					rawLines << std::make_pair(line,isBrief);
-				//WrapAppendText(line);
-				//lines << line;
-				return *this;
-			}
-
-			count_t				CountWrappedBriefLines() const
-			{
-				count_t rs = 0;
-				foreach (wrappedLines,l)
-					if (l->second)
-						rs++;
-				return rs;
-			}
-
-			void				ReWrap()
-			{
-				wrappedLines.Clear();
-				foreach (rawLines,l)
+				if (customLabel.IsEmpty())
 				{
-					if (l->first.length() <= 60)
-					{
-						wrappedLines << *l;
-						continue;
-					}
-					Array<String>	split;
-					wrap(l->first,60,split);
-					foreach (split,s)
-					{
-						wrappedLines.Append().first.adoptData(*s);
-						wrappedLines.Last().second = l->second;
-					}
+					Super::CompileLabel(outResult);
+					return;
 				}
-
+				outResult = customLabel;
 			}
-
-
 		};
 
 
 
-		virtual void	CompileLabel(Label&outResult);
-
-	};
-
-	inline BaseCommand::Flags operator|(BaseCommand::Flags a, BaseCommand::Flags b)
+	class CallbackCommand : public VisualCommand
 	{
-		using T = std::underlying_type_t <BaseCommand::Flags>;
-		return (BaseCommand::Flags)(((T)a)|((T)b));
-	}
-	
-	inline void operator|=(BaseCommand::Flags&a, BaseCommand::Flags b)
-	{
-		using T = std::underlying_type_t <BaseCommand::Flags>;
-		a = (BaseCommand::Flags)(((T)a)|((T)b));
-	}
-
-	inline bool operator&(BaseCommand::Flags a, BaseCommand::Flags b)
-	{
-		using T = std::underlying_type_t <BaseCommand::Flags>;
-		return (((T)a)&((T)b)) != 0;
-	}
-
-	inline void operator-=(BaseCommand::Flags&a, BaseCommand::Flags b)
-	{
-		using T = std::underlying_type_t <BaseCommand::Flags>;
-		a = (BaseCommand::Flags)(((T)a)&(~((T)b)));
-	}
-
-
-	typedef std::shared_ptr<BaseCommand>	PBaseCommand;
-
-
-	class CallbackCommand : public BaseCommand
-	{
-		typedef	BaseCommand	Super;
+		typedef	VisualCommand	Super;
 	protected:
 		/**/			CallbackCommand(const String&name):Super(name)	{}
 	public:
@@ -226,28 +95,6 @@ namespace Objects
 		virtual	void	Refresh(bool controlEnabled) override							{state = check(controlEnabled);}
 		virtual void	GetCosts(int&costOut, Resource&costTypeOut, int&timeCostOut) override	{if (getCosts) getCosts(costOut,costTypeOut,timeCostOut); else Super::GetCosts(costOut,costTypeOut,timeCostOut);}
 	};
-
-
-
-	template <typename Base>
-		class CustomLabel : public Base
-		{
-			typedef	Base	Super;
-		public:
-			BaseCommand::Label		customLabel;
-
-			/**/		CustomLabel(const String&name):Super(name) {/*customLabel.BeginBrief(); customLabel << name;*/ }
-			/**/		CustomLabel() {}
-			virtual void	CompileLabel(BaseCommand::Label&outResult) override
-			{
-				if (customLabel.IsEmpty())
-				{
-					Super::CompileLabel(outResult);
-					return;
-				}
-				outResult = customLabel;
-			}
-		};
 
 
 	class IconCommand : public CustomLabel<CallbackCommand>
@@ -283,7 +130,7 @@ namespace Objects
 		public:
 			/**/		CustomIcon(const String&name, const String&imageName):Super(name),imageName(imageName)	{LoadIcon();}
 			/**/		CustomIcon() {}
-			virtual void	LoadIcon()	override {Super::LoadIcon(imageName);}
+			virtual void	LoadIcon()	override {Super::LoadIconByName(imageName);}
 		};
 
 
@@ -308,44 +155,6 @@ namespace Objects
 						}
 	};
 
-	class CommandContainer
-	{
-	public:
-		typedef std::pair<int2,PBaseCommand>	Member;
-	protected:
-		Buffer0<Member>				members;
-		const CommandContainer		*parent = nullptr;	//!< Must not access members
-
-	public:
-		int2						baseCoords;
-
-		PCommandGroup	AddChild(const String&name);
-		PCommandGroup	AddChild(const int2&coords, bool relativeCoords, const String&name);
-		PCommandGroup	AddChild(const String&name, const String&iconName);
-		PCommandGroup	AddChild(const int2&coords, bool relativeCoords, const String&name, const String&iconName);
-
-		void			VisitMembers(const FCommandVisitor&visitor, bool force)	const
-		{
-			foreach (members,m)
-				m->second->VisitMembers(visitor,force,BaseCommand::coordOffset + baseCoords + m->first);
-		}
-
-		void			Refresh(bool controlEnabled)
-		{
-			foreach (members,m)
-				m->second->Refresh(controlEnabled);
-		}
-
-		PBaseCommand	Add(BaseCommand*newCommand)	{ return Add(PBaseCommand(newCommand));}
-		PBaseCommand	Add(const PBaseCommand&newCommand);
-		PBaseCommand	Add(const int2&coords, bool relativeCoords, BaseCommand*newCommand)	{ return Add(coords, relativeCoords, PBaseCommand(newCommand));}
-		PBaseCommand	Add(const int2&coords, bool relativeCoords, const PBaseCommand&newCommand);
-		const Member&	GetLast() const {return members.last();}
-		void			Truncate(count_t numMembers)	{members.Truncate(numMembers);}
-		count_t			Count() const {return members.Count();}
-		
-		index_t			Find(const PBaseCommand&) const;
-	};
 
 
 	/**
@@ -353,9 +162,9 @@ namespace Objects
 	Only one branch of groups can be visible at any time.
 	This version of Group must hold copies of one type of command. It cannot be used to store shared_ptr of commands!
 	*/
-	class CommandGroup : public CustomLabel<BaseCommand>, public CommandContainer	//for size/compatibility reasons
+	class CommandGroup : public CustomLabel<VisualCommand>, public CommandContainer	//for size/compatibility reasons
 	{
-		typedef CustomLabel<BaseCommand> Super;
+		typedef CustomLabel<VisualCommand> Super;
 
 		static Buffer0<CommandGroup*>		activeGroupPath;
 
@@ -423,7 +232,7 @@ namespace Objects
 		}
 
 
-		void			SignalBaseChange(CommandContainer*newParent, const int2&newBase);
+		virtual void	SignalBaseChange(CommandContainer*newParent, const int2&newBase) override;
 
 	};
 
@@ -468,7 +277,7 @@ namespace Objects
 				UpdateTexture(e,false);
 		}
 		void				UpdateTexture(const PWorldEntity&v, bool isPrototype, const float4&backgroundColor = float4(0));
-		static void			UpdateTexture(BaseCommand&target, const PWorldEntity&v, bool isPrototype, const float4&backgroundColor = float4(0));
+		static void			UpdateTexture(VisualCommand&target, const PWorldEntity&v, bool isPrototype, const float4&backgroundColor = float4(0));
 
 	};
 
@@ -504,7 +313,7 @@ namespace Objects
 				UpdateTexture(base,turret);
 		}
 
-		static void			UpdateTexture(BaseCommand&target, Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor = float4(0));
+		static void			UpdateTexture(VisualCommand&target, Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor = float4(0));
 		void				UpdateTexture(Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor = float4(0));
 	};
 
@@ -536,7 +345,7 @@ namespace Objects
 
 	//	virtual void		RasterizeImage() override	{PStructure s = GetReference(); if (s) UpdateTexture(s,true);}
 	//	void				UpdateTexture(const PStructure&structure, bool isPrototype, const float4&backgroundColor = float4(0));
-	//	static void			UpdateTexture(BaseCommand&target, const PStructure&structure, bool isPrototype, const float4&backgroundColor = float4(0));
+	//	static void			UpdateTexture(VisualCommand&target, const PStructure&structure, bool isPrototype, const float4&backgroundColor = float4(0));
 
 	//	PStructure			GetReference() const;
 	//};
@@ -634,6 +443,11 @@ namespace Objects
 
 
 	}
+
+	PCommandGroup	AddChild(CommandContainer&container, const String&name);
+	PCommandGroup	AddChild(CommandContainer&container, const int2&coords, bool relativeCoords, const String&name);
+	PCommandGroup	AddChild(CommandContainer&container, const String&name, const String&iconName);
+	PCommandGroup	AddChild(CommandContainer&container, const int2&coords, bool relativeCoords, const String&name, const String&iconName);
 
 
 	namespace GlobalCmd

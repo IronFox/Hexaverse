@@ -2,7 +2,7 @@
 #define networkComponentH
 
 #include "../../shared/protocol.h"
-#include "guiElements.h"
+#include "visual/guiElements.h"
 
 /**
 All network-related aspects. Multiple additions to this namespace exist.
@@ -373,7 +373,6 @@ namespace Network
 
 
 	bool		ConnectToConfiguredServerIfAvailable();
-
 
 }
 

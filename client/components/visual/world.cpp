@@ -1,11 +1,12 @@
 #ifdef HAS_WINDOW
 #include <global_root.h>
 #include "world.h"
-#include "../../shared/sphereGrid.h"
-#include "network.h"
-#include "tutorial.h"
+#include <grid/worldData.h>
+#include "../network.h"
+#include "../tutorial.h"
 #include "lineRenderer.h"
 #include <objects/structure.h>
+#include "gridRenderer.h"
 
 
 namespace World
@@ -15,45 +16,22 @@ namespace World
 
 	void		Render(const Engine::Frustum<>&frustum)
 	{
-		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-		{
-			Grid::TFamily::TData&dat = Grid::high.family[k].normal;
-			if (frustum.IsVisible(dat.boundingSphere))
-				display.Render(dat.terrain.instruction[Grid::Instruction::displayMode],true);
-		}
+		VisualTerrain::RenderOpaqueTerrain(frustum);
 	}
 
 	void		RenderWater(const Engine::Frustum<>&frustum)
 	{
-		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-		{
-			Grid::TFamily::TData&dat = Grid::high.family[k].normal;
-			if (frustum.IsVisible(dat.boundingSphere))
-				display.Render(dat.water.instruction[Grid::Instruction::displayMode],true);
-		}
+		VisualTerrain::RenderWater(frustum);
 	}
 
 	void		RenderOverlay(const Engine::Frustum<>&frustum)
 	{
-		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-		{
-			Grid::TFamily::TData&dat = Grid::high.family[k].normal;
-			if (frustum.IsVisible(dat.boundingSphere))
-				display.Render(dat.overlay.instruction);
-		}
+		VisualTerrain::RenderOverlay(frustum);
 	}
 
 	void		RenderResources(const Engine::Frustum<>&frustum)
 	{
-		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
-	//	display.SetBlendMode(Engine::BlendMode::FlareBlend);
-		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-		{
-			Grid::TFamily::TData&dat = Grid::low.family[k].normal;
-			if (frustum.IsVisible(dat.boundingSphere))
-				display.Render(dat.resources.instruction);
-		}
-
+		VisualTerrain::RenderResources(frustum);
 	}
 
 
@@ -196,72 +174,28 @@ namespace World
 				if (!World::actual.lightingOutdated)
 					Grid::SetAllFamiliesOutdated();
 			}
+			bool anyOutdated = false;
 			if (World::actual.structureChanged)
 			{
 				World::actual.structureChanged = false;
-				Objects::structures.Foreach([](const Objects::PStructure&s)
+				Objects::structures.Foreach([&anyOutdated](const Objects::PStructure&s)
 				{
-					if (Grid::high.family[Grid::low.grid.GetCell(s->location.stackID).family].normal.outdated)
+					if (VisualTerrain::FamilyIsOutdated(Grid::low.grid.GetCell(s->location.stackID).family))
 					{
+						anyOutdated = true;
 						s->changed = true;
 						Objects::Structure::anyChanged = true;
 					}
 				});
 			}
 
-			BYTE familiesRebuilt = 0;
-			Timer::Time t0 = timer.Now();
-
-			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
+			if (anyOutdated && Network::client.IsConnected())
 			{
-				{
-					Grid::TFamily::TData&dat = Grid::high.family[k].normal;
-					if (dat.outdated)
-					{
-						if (Network::client.IsConnected())
-						{
-							Tutorial::ShowMessage("Areas");
-							Tutorial::ShowMessage("Controls");
-						}
-
-						dat.outdated = false;
-
-						#ifdef VOXEL_SCANNER
-							Grid::RemapToLowStacks(k);
-						#endif
-
-						familiesRebuilt++;
-						if (Grid::SeeThrough::IsEnabled())
-						{
-							Grid::high.BakeBlockInstruction(World::actual.cellStack, k, Grid::SeeThrough::ClipHeight);
-						}
-						else
-						{
-							Grid::high.BakeBlockInstruction(World::actual.cellStack, k, Grid::Clip::NoClip);
-						}
-					}
-				}
-				{
-					Grid::TFamily::TData&dat = Grid::low.family[k].normal;
-					if (dat.resourceOutdated)
-					{
-						dat.resourceOutdated = false;
-						if (Grid::SeeThrough::IsEnabled())
-						{
-							Grid::low.BakeResourceInstruction(k, Grid::SeeThrough::ClipHeight,Grid::Resource::all.pointer(),Grid::Resource::all.Count());
-						}
-						else
-						{
-							Grid::low.BakeResourceInstruction(k, Grid::Clip::NoClip,Grid::Resource::all.pointer(),Grid::Resource::all.Count());
-						}
-					}
-				}
+				Tutorial::ShowMessage("Areas");
+				Tutorial::ShowMessage("Controls");
 			}
-			if (familiesRebuilt > 0)
-			{
-				float seconds = timer.GetSecondsSince(t0);
-				LogEvent(EventSignificance::PerformanceMeasurement, nullptr, "Rebuilt "+String(familiesRebuilt)+" families in "+String(seconds));
-			}
+
+			VisualTerrain::RebuildOutdatedFamilies();
 		}
 	}
 

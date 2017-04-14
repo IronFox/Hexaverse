@@ -1,8 +1,7 @@
+#pragma once
 #ifdef HAS_WINDOW
-#ifndef objectSelectionH
-#define objectSelectionH
 
-#include "vehicle.h"
+#include <objects/types.h>
 
 namespace Objects
 {
@@ -19,5 +18,4 @@ namespace Objects
 
 
 
-#endif
 #endif

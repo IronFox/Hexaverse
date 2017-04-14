@@ -7,8 +7,8 @@
 #include <engine/interface/keyboard.h>
 
 #include <memory>
-#include "../ExtRenderer/DirectX11.h"
-#include "../../shared/typeDecl.h"
+#include "../../ExtRenderer/DirectX11.h"
+#include <typeDecl.h>
 
 namespace GUI
 {

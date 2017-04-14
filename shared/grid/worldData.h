@@ -8,6 +8,8 @@ namespace World
 
 	class Data
 	{
+		int						lockLevel=0;
+		bool					sensoryValid=true;
 	public:
 		Array<CellStack>		cellStack;
 		#ifdef HAS_WINDOW
@@ -19,25 +21,68 @@ namespace World
 
 		static const constexpr float MaxOutdated = std::numeric_limits<float>::max();
 
-		FixedArray<float,BaseGrid::NumFamilies>	
-								familyOutdatedSince;
+		struct FamilyState
+		{
+			float			lastChange;
+			bool			coverageChanged, changed;
+
+			/**/			FamilyState() :lastChange(0), coverageChanged(false), changed(false)
+			{}
+			void			Reset()
+			{
+				lastChange = 0;
+				coverageChanged = false;
+				changed = false;
+			}
+
+			void			SignalStructureChange(float t)
+			{
+				lastChange = vmax(lastChange,t);
+				changed = true;
+			}
+			void			SignalStructureChange()
+			{
+				changed = true;
+			}
+
+			void			SignalCoverageChange(float t)
+			{
+				lastChange = vmax(lastChange,t);
+				coverageChanged = true;
+			}
+			void			SignalCoverageChange()
+			{
+				lastChange = 0;
+				coverageChanged = true;
+			}
+		};
+		FixedArray<FamilyState,BaseGrid::NumFamilies>		families;
 
 		/**/					Data();
 
 		void					swap(Data&other)
 		{
 			cellStack.swap(other.cellStack);
-			familyOutdatedSince.swap(other.familyOutdatedSince);
+			families.swap(other.families);
 			#ifdef HAS_WINDOW
 				swp(lightingOutdated,other.lightingOutdated);
 				swp(structureChanged,other.structureChanged);
 			#endif
 		}
 
-		bool					FamilyIsOutdated(index_t i) const {return familyOutdatedSince[i] != MaxOutdated;}
-		void					UnsetFamilyOutdated(index_t i) {familyOutdatedSince[i] = MaxOutdated;}
-		void					SetFamilyOutdated(index_t i, float t) {familyOutdatedSince[i] = std::min(familyOutdatedSince[i],t);}
-		void					SetFamilyOutdated(index_t i) {familyOutdatedSince[i] = 0;}
+		bool					FamilyIsOutdated(index_t i) const {return families[i].changed;}
+		void					UnsetFamilyOutdated(index_t i) {families[i].Reset();}
+		void					SignalFamilyStructureChange(index_t i, float t) {families[i].SignalStructureChange(t);}
+		void					SignalFamilyStructureChange(index_t i) {families[i].SignalStructureChange();}
+		void					SignalFamilyCoverageChange(index_t i, float t) {families[i].SignalCoverageChange(t);}
+		void					SignalFamilyCoverageChange(index_t i) {families[i].SignalCoverageChange();}
+		void					SetAllFamiliesOutdated(float t)
+		{
+			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
+			{
+				SignalFamilyStructureChange(k,t);
+			}
+		}
 
 		/**
 		Checks if the specified low-resolution cell is not at all covered (not even partially)
@@ -56,13 +101,7 @@ namespace World
 
 		bool					IsRoad(const LCellIdI&, bool ignoreClearCellsOnEdge) const;
 
-		void					FlushAllData()
-		{
-			for (index_t i = 0; i < cellStack.Count(); i++)
-			{
-				cellStack[i].ZeroInit();
-			}
-		}
+		void					FlushAllData(bool resetVisibility);
 		void					ResetStructureCounters()
 		{
 			for (index_t i = 0; i < cellStack.Count(); i++)
@@ -148,6 +187,34 @@ namespace World
 		bool					GridCanSee(const LCellIdI&, int height, bool broad) const;
 		bool					GridCanSeeAny(const HCellIdU&, UINT height) const;
 
+		/**
+		Prevents all calls to CheckChanges() until UnlockChangeChecking() is called.
+		Supports nested calls up to depth 16
+		*/
+		void					LockChangeChecking()	{ASSERT_LESS__(lockLevel,16);lockLevel++; }
+		/**
+		Unlocks calls to CheckChanges(). Calls CheckChanges() automatically, if the lock level falls back to zero
+		*/
+		void					UnlockChangeChecking(float t)	{ASSERT_GREATER__(lockLevel,0); if (--lockLevel == 0) CheckChanges(t);}
+
+		/**
+		Processes all families for which FamilyState::changed is true, and detects if the visible terrain
+		coverage actually changed. If so, the respective value FamilyState::coverageChange is set true,
+		and FamilyState::lastChange is set to the specified parameter t.
+		Finally, FamilyState::changed is set false for all families.
+		*/
+		void					CheckChanges(float t);
+
+		/**
+		Affects the cell and its immediate neighbors only
+		*/
+		void					ChangeSensory(const Grid::HCellIdU&center, float t, short changeBy);
+		void					RegisterExplosionCrater(const Grid::HCellIdI&center, float radius, float t);
+
+
+		void					InvalidateSensory() {sensoryValid = false;}
+		void					ValidateSensory() {sensoryValid = true;}
+		bool					SensoryIsInvalid()const	{return !sensoryValid;}
 	};
 
 	extern Data			actual;
@@ -156,6 +223,73 @@ namespace World
 	#endif
 	
 	
-	void						ResetStructureCounters(bool resetVisibility=true);
+	void				ResetStructureCounters(bool resetVisibility=true);
+	void				FlushAllWorldData();
+
+
+	/**
+	Sensor shape descriptor
+	*/
+	class Sensor
+	{
+	private:
+		static Grid::HighSetup::TVolumeDescriptor::Operator op;
+		static Grid::HighSetup::TVolumeDescriptor	volume;
+
+		static void		ApplyVolume(World::Data&v, short changeBy, bool*familyChanged);
+
+		void			ApplySolidSphereTo(World::Data&v, short change, bool*familyChanged)	const;
+		void			ApplyShadedSphereTo(World::Data&v, short change, bool*familyChanged)	const;
+		void			ApplyShaftTo(World::Data&v, short change, bool*familyChanged, const std::function<UINT32(UINT32 stackID)>&traceFunction)	const;
+	public:
+		/**
+		3d location of the local sensor
+		*/
+		float3			worldCenter;
+		/**
+
+		*/
+		Grid::HCellIdU	gridCenter;
+		/**
+
+		*/
+		float			radius=1;
+
+		/**
+		Steps the sensor can walk through terrain matter.
+		Only effective if type is ShadedCylinder
+		*/
+		int				terrainPenetration=0;
+
+		enum type_t
+		{
+			SolidSphere,	//!< Sphere that covers the entire area. Unaffected by terrain
+			ShadedSphere,	//!< Sphere that covers the area where non-occluded by terrain
+			SolidCylinder,	//!< Cylinder stretching down from the specified world center to the bottom of the grid. Unaffected by terrain
+			ShadedCylinder,	//!< Cylinder stretching down from the specified world center to the bottom of the grid. Halted by terrain
+		};
+		type_t			type=SolidSphere;
+
+		/**/			Sensor()	{}
+		/**/			Sensor(const float3&center, float radius, type_t t, int terrainPenetration=0)
+							:worldCenter(center),
+							gridCenter(Grid::high.Locate(center),Grid::CellStack::ToLayer(Grid::HeightFloorFromRadius(center.length()))),
+							radius(radius),type(t)	{}
+
+		/**/			Sensor(const Grid::LCellIdI&center, float fLayerOffset, float radius, type_t t)
+							:worldCenter(Grid::ToWorld(center,fLayerOffset)),
+							gridCenter(Grid::ToLayered(  Grid::ToHigh(center) )),
+							radius(radius),type(t)	{}
+
+		/**/			Sensor(const Grid::HCellIdI&center, float fLayerOffset, float radius, type_t t)
+							:worldCenter(Grid::ToWorld(center,fLayerOffset)),
+							gridCenter(Grid::ToLayered(center)),
+							radius(radius),type(t)	{}
+
+		void			ApplyTo(World::Data&, short change)	const;
+		void			InsertInto(World::Data&w) const {ApplyTo(w,+1);}
+		void			RemoveFrom(World::Data&w) const {ApplyTo(w,-1);}
+	};
+
 	
 }

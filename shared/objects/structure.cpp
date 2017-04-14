@@ -5,16 +5,12 @@
 #include "interface.h"
 
 #ifdef HAS_WINDOW
-	#include "visualChoices.h"
-	#include "rendering.h"
-	#include "visualCommands.h"
-	#include "../../client/components/dialog.h"
+	#include "entityCommand.h"
 	#include "interface.h"
 #endif
 
 #include "gridAndChoices.h"
 #include "prototypes.h"
-#include "visualSelection.h"
 #include "faction.h"
 #include "satellite.h"
 #include "vehicle.h"
@@ -76,7 +72,7 @@ namespace Objects
 
 
 		
-		static IconCommand			cmdLeft,cmdRight;
+		//static IconCommand			cmdLeft,cmdRight;
 
 		/*static*/ Geometry			VehicleStore::interConnector,
 									Generator::reactorConnector;
@@ -807,25 +803,6 @@ namespace Objects
 	/*virtual override*/	void			Mine::PrototypeSetup()
 	{
 		Super::PrototypeSetup();
-		#ifdef HAS_WINDOW
-			commands.Add( new IconCommand("Restore Core Link",[]()
-			{
-				PMine mine = ToMine(selectedEntity);
-				if (mine)
-				{
-					ApplicationInterface::SignalRestoreCoreLink(mine->id);
-				}
-			},
-			[](bool controlEnabled)
-			{
-				if (!controlEnabled)
-					return BaseCommand::Flags::None;
-				PMine mine = ToMine(selectedEntity);
-				return mine && !mine->IsLinkedToCore() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
-			},
-			NoCosts
-			));
-		#endif
 	}
 
 	#ifdef HAS_WINDOW
@@ -1133,10 +1110,6 @@ namespace Objects
 			if (isLinkedToCore == b)
 				return;
 			isLinkedToCore = b;
-			#ifdef HAS_WINDOW
-				if (selectedEntity.get() == this)
-					UpdateChoices(controlEnabled);
-			#endif
 		}
 	#endif
 

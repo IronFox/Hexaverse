@@ -1,9 +1,10 @@
 #ifdef HAS_WINDOW
 #include <global_root.h>
-#include "visualSelection.h"
-#include "visualChoices.h"
-#include "interface.h"
-#include "gridAndChoices.h"
+#include "visualObjectSelection.h"
+#include "visualObjectChoices.h"
+#include <objects/interface.h>
+#include <objects/gridAndChoices.h>
+#include <objects/vehicle.h>
 
 namespace Objects
 {

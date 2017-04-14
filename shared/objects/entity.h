@@ -8,11 +8,12 @@
 #include "types.h"
 #include "hibernating.h"
 #include "luaAttribute.h"
-
+#include "description.h"
+#include "entityCommand.h"
+#include "geometry.h"
 
 #ifdef HAS_WINDOW
 	#include <al/openal.h>
-	#include "visualCommands.h"
 #endif
 
 struct SharedPtrHash
@@ -256,7 +257,7 @@ namespace Objects
 		virtual						~WorldEntity();
 
 		#ifdef HAS_WINDOW
-			typedef Objects::CallbackCommand	Command;
+			typedef Objects::BaseCommand		Command;
 			typedef Objects::FCommandVisitor	FCommandVisitor;
 
 			OpenAL::Source			ambientSound;
@@ -429,6 +430,7 @@ namespace Objects
 		*/
 		virtual float				GetScanningRange() const;
 		virtual float3				GetScanningCenter(const Grid::LCellIdI&loc) const;
+		virtual World::Sensor::type_t	GetScannerType() const {return World::Sensor::SolidSphere;}
 		/**
 		Explicitly describes how the scanning range is computed (only has to explicitly name research, not EMP, but has to include EMP in the resulting numbers)
 		*/
@@ -542,6 +544,13 @@ namespace Objects
 		#endif
 
 
+		/**
+		Stores a description of the local type in the specified label
+		@param[out] label Label to store the description in
+		@param deskFlags Combination of descFlag_t to fine-tune the generation process
+		*/
+		virtual void		DescribeType(Description&label, UINT32 descFlags);
+		void				AppendDeploymentCount(Description&outResult, const OwnerParameter&overrideOwner)	const;
 
 
 		#ifdef CLIENT
@@ -556,18 +565,11 @@ namespace Objects
 					DescIncludeUnitCount = 0x20,
 				};
 				//old: includeName, includePrice
-				/**
-				Stores a description of the local type in the specified label
-				@param[out] label Label to store the description in
-				@param deskFlags Combination of descFlag_t to fine-tune the generation process
-				*/
-				virtual void		DescribeType(BaseCommand::Label&label, UINT32 descFlags);
 
 				/**
 				Appends deployment count in the form " Deployed: cnt/max", if any limit is set.
 				Otherwise nothing will be appended.
 				*/
-				void				AppendDeploymentCount(BaseCommand::Label&outResult, const OwnerParameter&overrideOwner)	const;
 				String				CompileDeploymentCount(const OwnerParameter&overrideOwner)	const;
 
 				/**

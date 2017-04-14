@@ -8,6 +8,43 @@
 namespace Grid
 {
 
+	
+	class ResourceDiscovery
+	{
+	public:
+		FixedArray<bool,Grid::LowSetup::GridType::CellCount>			resourcesDiscovered;//discovers all resources (for now)
+
+		bool				familyChanged[BaseGrid::NumFamilies] = {false};
+
+		/**/				ResourceDiscovery()
+		{
+			resourcesDiscovered.Fill(false);
+		}
+
+
+		/**
+		Detects resource coverage changes within the specified sphere, and updates @a resourcesDiscovered where necessary.
+		Uses some static fields. Do not call in parallel.
+		@param center Terrain center to detect resources from
+		@param range Sphere radius to detect resources within
+		@param[inout] outNewDiscoveries Buffer to add newly discovered cell stacks to. Cleared automatically
+		*/
+		void				Update(const Grid::LCellIdI&center,float range, BasicBuffer<UINT32>&outNewDiscoveries);
+
+		
+		/**
+		Completely resets the internal state
+		*/
+		void				FlushAllData();
+
+		#ifdef CLIENT
+			static ResourceDiscovery	client;
+		#endif
+	};
+
+
+
+
 	class Resource
 	{
 		String					name;
@@ -56,8 +93,9 @@ namespace Grid
 	extern String			currentCustomResourceDistribution;
 
 	void					CreateResources();
+	void					FlushAllResourceData();
 	#ifdef CLIENT
-		void				UpdateResourceMap(ConstName resourceName,const ArrayData<TCellResourceCoverage>&, SensorCoverage::Resources&setKnown);
+		void				UpdateResourceMap(ConstName resourceName,const ArrayData<TCellResourceCoverage>&, ResourceDiscovery&setKnown);
 	#endif
 }
 

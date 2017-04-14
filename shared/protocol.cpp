@@ -46,7 +46,7 @@ namespace Protocol
 		}
 
 
-	void			GenerateWorldDelta(Grid::SensorCoverage*vs, World::Data*ws, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, WorldDeltaType::delta_type_t deltaType)
+	void			GenerateWorldDelta(World::Data*ws, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, WorldDeltaType::delta_type_t deltaType)
 	{
 		const index_t offset = Grid::high.grid.GetFamilyOffset(familyID);
 		const count_t length = Grid::high.grid.CountFamilyMembers(familyID);
@@ -55,24 +55,23 @@ namespace Protocol
 
 		if (writeOutput)
 		{
-			delta.timestamp.atTime = std::max(Grid::high.family[familyID].outdatedAt,vs?vs->families[familyID].lastChange : 0.f);
+			delta.timestamp.atTime = ws->families[familyID].lastChange;
 			delta.timestamp.rightNow = rightNow;
 			delta.familyAndLastFlag = familyID;
 			if (last)
 				delta.familyAndLastFlag.value |= 0x80;
 		}
 
-		const Grid::CellStack::Cell empty(Grid::Content::Reinterpret(0),0,0);
+		const Grid::CellStack::Cell empty(Grid::Content::Reinterpret(0),0);
 		Array<Grid::CellStack::TTypeDelta> tdts(writeOutput ? length * Grid::CellStack::Range : 0);
 		//Array<Grid::CellStack::TTechniteFactionDelta> fdts(length * Grid::CellStack::Range);
 		//Array<bool> fdtsValid(length * Grid::CellStack::Range);
 
-		if (vs)
-			vs->families[familyID].Reset();
+		ws->families[familyID].Reset();
 			
 		Concurrency::parallel_for(index_t(0),length*Grid::CellStack::Range,
 		[&tdts,/*&fdts,&fdtsValid,*/length,
-			offset,empty,deltaType,vs,ws](index_t i)
+			offset,empty,deltaType,ws](index_t i)
 		{
 			//index_t stackId = offset + (i / Grid::CellStack::Range);
 			//index_t layer = i % Grid::CellStack::Range;

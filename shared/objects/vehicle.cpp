@@ -1,7 +1,6 @@
 #include <global_root.h>
 #include "vehicle.h"
 #include "satellite.h"
-#include "rendering.h"
 #include "prototypes.h"
 #include "systems.h"
 #include "gridAndChoices.h"

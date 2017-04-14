@@ -2,7 +2,7 @@
 
 #ifdef HAS_WINDOW
 
-#include <sphereGrid.h>
+#include <grid/planet.h>
 #include <runtimeConfig.h>
 
 namespace ConfigurationMode

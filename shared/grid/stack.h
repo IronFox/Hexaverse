@@ -231,6 +231,54 @@ namespace Grid
 			static int		typeStrength[TypeCount];
 
 
+			short	visibility=0;
+			bool	oldVisible=false, temporarilyVisible=false;
+			BYTE	user=0;
+
+			#ifdef HAS_WINDOW
+				Grid::TVisibility	GetVisibility() const {return Grid::TVisibility(visibility>0);}
+			#endif
+
+			bool	Changed(bool reset)
+			{
+				bool visible = temporarilyVisible || visibility > 0;
+				bool before = oldVisible;
+				if (reset)
+					oldVisible = visibility > 0;	//dont include temp here
+				return visible != before;
+			}
+
+			void	AlterVisibility(short change)
+			{
+				visibility += change;
+				if (change >= 0)
+				{
+					temporarilyVisible = true;
+				}
+			}
+
+			/**
+			Checks whether or not the terrain contents of the local cell are currently visible,
+			either because it is currently in range, or has been in range at any given time during
+			the last processing round.
+			Use this method for terrain contents only. Not to be used for entity visibility.
+			Use IsCurrentlyVisible() instead!
+			*/
+			bool	TerrainIsVisible() const
+			{
+				return visibility > 0 || temporarilyVisible;
+			}
+
+			/**
+			Checks whether or not this cell is currently visible.
+			Should be used for entity visibility.
+			*/
+			bool	IsCurrentlyVisible() const
+			{
+				return visibility > 0;
+			}
+
+
 			#ifdef HAS_WINDOW
 			/**/	Cell() :CompactCell(Content::Clear), intLightLevel(255), submergence(0) {}
 			/**/	Cell(Content t, BYTE lightLevel) :CompactCell(t), intLightLevel(lightLevel), submergence(0)	{}
@@ -383,7 +431,7 @@ namespace Grid
 		bool			FindTopOccupied(int&outHeight) const;
 
 
-		void			ZeroInit();
+		void			ZeroInit(bool resetVisibility);
 		void			ResetStructureCounters();
 		#ifdef HAS_WINDOW
 
@@ -740,14 +788,6 @@ namespace Grid
 
 
 	/**
-	Initializes the grid and all static gpu resources. Call ONCE before creating objects (and their shadows)
-	*/
-	void				Create0();
-	/**
-	Concludes grid initialization. Call ONCE after Create0(), and creating objects (and their shadows)
-	*/
-	void				Create1();
-	/**
 	Destroys all gpu-resouces allocated by local structures. Call ONCE when shutting down
 	*/
 	void				Destroy();
@@ -830,7 +870,7 @@ namespace Grid
 	#pragma pack(pop)
 
 	void			FlushStackFamily(Array<CellStack>&cellStack,  BYTE family);
-	void			FlushAllVolumeData();
+	void			FlushAllStackData();
 
 	#ifdef VOXEL_SCANNER
 		void		RemapToLowStacks(BYTE family);
@@ -838,67 +878,6 @@ namespace Grid
 
 
 
-
-
-	class OrbitGrid
-	{
-	public:
-		struct TCell
-		{
-			short visible = 0;
-
-
-		};
-
-
-		TCell	cells[LowSetup::GridType::CellCount];
-		float	orbit = 1.f;
-
-		#if 0
-		#ifdef HAS_WINDOW
-			struct Vertex
-			{
-				float4		vertex3_edge;
-				float4		normal3_opacity;
-				float		emp;
-
-				/**/		Vertex()	{};
-				/**/		Vertex(const float3&n,float edge, float orbit, float opacity, float emp) : vertex3_edge(n*orbit,edge), normal3_opacity(n,opacity),emp(emp){}
-				void		Set(const float3&n,float edge, float orbit, float opacity, float emp) {vertex3_edge = float4(n*orbit,edge); normal3_opacity = float4(n,opacity); this->emp = emp;}
-			};
-	
-			Array<Vertex>	vertices;
-			DX11::InstructionBlock32	instruction;
-			void		ForceRecompileNow();
-			void		Render(const Engine::Frustum<>&);
-		#endif
-		#endif /*0*/
-
-		bool			valid = false;
-		void			Invalidate() {valid = false;}
-
-			
-		/**/			OrbitGrid()
-		{
-			Clear();
-		}
-
-		void			ChangeSensory(const LCellIdI&center, float radius, signed char change);
-
-		void			Clear()
-		{
-			TCell clear;
-			for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
-				cells[i] = clear;
-			Invalidate();
-			//colorArea.active = false;
-		}
-
-
-		//void	Color(const LCellIdI&center, int fuelRadius);
-		//void	StripColor();
-
-	};
 
 
 	void		CreateHighAndLow();

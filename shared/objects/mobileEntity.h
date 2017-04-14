@@ -73,11 +73,8 @@ namespace Objects
 				Mode,
 				Job,
 			}						type;
-			CursorMode		mode;
+			CursorMode				mode;
 		
-			#ifdef HAS_WINDOW
-				DX11::InstructionBlock32			visualization;
-			#endif
 
 
 
@@ -118,28 +115,14 @@ namespace Objects
 			};
 
 
-			Queue<Focus>	foci;	//function depends on current mode. movement destination(s) if idle, firing target(s) if in attack mode
+			Queue<Focus>			foci;	//function depends on current mode. movement destination(s) if idle, firing target(s) if in attack mode
 			
 			Buffer0<PathNode>		path;
+			PClientAttachment		visualization;
 
 			String					name;
 
 			PVehicleJob				job;
-			#ifdef HAS_WINDOW
-				struct Shape
-				{
-					DX11::InstructionBlock32	instruction;
-					TMatrix4<>		system;
-					bool			depthTest,		//Indicates that the shape should depth-test against the terrain and other complex shapes
-									preRenderDepth = true,	//Effective only if @a depthTest is true. Indicates that this is a complex shape and should be depth-only pre-rendered
-									flareDisplay = false,	//Indicates that the shape is rendered using an add-blend function, and using a white color when not selected. Otherwise black is used, using regular alpha blending
-									selectedOnly = false;	//This shape should only be rendered for selected units
-				};
-
-				Buffer0<Shape>		localizableShapes;
-
-				void				SetLocalizableShape(ConstName structureIdentifier, const Grid::LCellIdI&location, const OwnerParameter&);
-			#endif
 
 
 			/**/					Task()	{}
@@ -173,10 +156,8 @@ namespace Objects
 				foci.swap(other.foci);
 				path.swap(other.path);
 				name.swap(other.name);
+				visualization.swap(other.visualization);
 				job.swap(other.job);
-				#ifdef HAS_WINDOW
-					localizableShapes.swap(other.localizableShapes);
-				#endif
 			}
 
 			Grid::LCellIdI			GetFocus(const Grid::LCellIdI&fallback)	const

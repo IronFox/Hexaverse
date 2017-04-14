@@ -1,12 +1,13 @@
-#ifndef explosionsH
-#define explosionsH
+#pragma once
+
+#ifdef HAS_WINDOW
 
 #include <math/vclasses.h>
 #include <image/img_generators.h>
 #include <al/openal.h>
 #include <container/buffer.h>
 
-#include "../ExtRenderer/DirectX11.h"
+#include "../../ExtRenderer/DirectX11.h"
 
 namespace Explosions
 {

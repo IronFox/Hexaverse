@@ -7,7 +7,7 @@
 #include <functional>
 #include <global_string.h>
 #include "guiElements.h"
-#include "../../shared/cast.h"
+#include <cast.h>
 
 namespace Dialog
 {

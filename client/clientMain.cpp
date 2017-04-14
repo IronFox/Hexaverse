@@ -24,42 +24,42 @@
 #include <container/string_list.h>
 #include <io/file_system.h>
 
-#include "../shared/sphereGrid.h"
-#include "../shared/objects.h"
+#include <objects.h>
 
-#ifdef HAS_WINDOW
-	#include "components/explosions.h"
-#endif
 
 #include <geometry/bvh.h>
 
 #include "version.h"
-#include "../shared/protocol.h"
-#include "../shared/objects/faction.h"
-#include "../shared/objects/structure.h"
-#include "../shared/objects/gridAndChoices.h"
-#include "../shared/objects/visualSelection.h"
-#include "../shared/objects/visualChoices.h"
-#include "../shared/objects/prototypes.h"
-#include "../shared/objects/rendering.h"
+#include <protocol.h>
+#include <objects/faction.h>
+#include <objects/structure.h>
+#include <objects/gridAndChoices.h>
+#include <objects/prototypes.h>
 
+#include "components/visual/explosions.h"
+#include "components/visual/objectRendering.h"
+#include "components/visual/objectSelection.h"
+#include "components/visual/objectChoices.h"
+#include "components/visual/terrain.h"
+#include "components/visual/objectCommands.h"
+#include "components/visual/ui.h"
 #include "components/network.h"
-#include "components/ui.h"
 #include "components/animation.h"
 #include "components/cameraControl.h"
 #include "components/progressBar.h"
-#include "components/dialog.h"
+#include "components/visual/dialog.h"
 #include "components/tutorial.h"
-#include "components/lineRenderer.h"
-#include "components/surfaceRenderer.h"
+#include "components/visual/lineRenderer.h"
+#include "components/visual/surfaceRenderer.h"
 #include "components/ai.h"
 #include "components/clientRuntimeConfig.h"
-#include "components/world.h"
+#include "components/visual/world.h"
 #include "components/atmosphere.h"
-#include "components/guiHostList.h"
+#include "components/visual/guiHostList.h"
 #include "components/serverProcess.h"
 #include "components/audioInterface.h"
 #include "components/configurationMode.h"
+#include "components/gridControl.h"
 
 #include "rc/Resource.h"
 
@@ -914,9 +914,11 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 		return PathString(base);
 	}
 
-	void WriteLabel(StringFile&file, const Objects::BaseCommand::Label&label, const String&myTypeName)
+	void WriteLabel(StringFile&file, const Objects::Description&label, const String&myTypeName)
 	{
-		foreach(label.rawLines, line)
+
+
+		foreach(label, line)
 		{
 			if (line->first.length() == 0)
 				continue;
@@ -1495,7 +1497,7 @@ namespace ApplicationInterface
 		float3 center = Camera::scene.GetAbsoluteLocation() - Camera::scene.GetViewingDirection() * shadowRadius;
 		Vec::setLen(center,Grid::ToRadius(0));
 
-		const float3&up = Grid::GetSunDirection();
+		const float3&up = VisualTerrain::GetSunDirection();
 		Mat::makeAxisSystem(center,-up,2,shadowCamera.viewInvert);
 		Mat::invertSystem(shadowCamera.viewInvert,shadowCamera.view);
 		shadowCamera.UpdateProjection2(-shadowRadius,-shadowRadius,shadowRadius,shadowRadius,100.f,-100.f);
@@ -1516,14 +1518,7 @@ namespace ApplicationInterface
 				cascade
 			#endif
 		);
-		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-		{
-			Grid::TFamily::TData&dat = Grid::high.family[k].normal;
-			if (dat.terrain.shadowInstruction.shader.IsSet())
-				display.Render(dat.terrain.shadowInstruction);
-			if (dat.overlay.shadowInstruction.shader.IsSet())
-				display.Render(dat.overlay.shadowInstruction);
-		}
+		VisualTerrain::RenderShadows();
 	}
 
 	#ifdef CASCADING_SHADOW
@@ -1610,7 +1605,7 @@ bool loop()
 		bool alwaysDay = RuntimeConfig::FromFile::alwaysDay && !Camera::autoRotation;
 
 		if (!alwaysDay)
-			Grid::PerFrameUpdateSunDirection();
+			VisualTerrain::PerFrameUpdateSunDirection();
 
 
 		Camera::ProgressRotation();
@@ -1682,7 +1677,7 @@ bool loop()
 
 
 		if (alwaysDay)
-			Grid::UpdateSunDirection(sunDirection);
+			VisualTerrain::UpdateSunDirection(sunDirection);
 
 
 		Objects::Renderer::AdvanceTurretAnimations();
@@ -1720,8 +1715,8 @@ bool loop()
 		{
 			//Atmosphere::Render(Grid::ToRadius(-Grid::CellStack::HalfRange),Grid::ToRadius(Grid::CellStack::HalfRange-1), Camera::scene.GetAbsoluteLocation());
 			Atmosphere::Render(Camera::scene);
-			if (Grid::SeeThrough::IsEnabled() /*&& !Objects::selectedEntity*/)
-				Grid::SeeThrough::Update(Grid::SeeThrough::IsEnabled(), Grid::SeeThrough::LocateCamera());
+			if (VisualTerrain::SeeThrough::IsEnabled() /*&& !Objects::selectedEntity*/)
+				VisualTerrain::SeeThrough::Update(VisualTerrain::SeeThrough::IsEnabled(), VisualTerrain::SeeThrough::LocateCamera());
 
 	//		const Grid::Resource&resource = Grid::Resource::all[Objects::activeResource];
 
@@ -1756,8 +1751,8 @@ bool loop()
 			{
 				display.SetDepthTest(true,true);
 				display.SetBlendMode(Engine::BlendMode::None);
-				Grid::UpdatePlanetRenderingParameters(Grid::ToRadiusf(float(Objects::selectedEntity->location.height)+0.1f));
-				Grid::low.RenderCell(Objects::selectedEntity->location.stackID);
+				VisualTerrain::UpdatePlanetRenderingParameters(Grid::ToRadiusf(float(Objects::selectedEntity->location.height)+0.1f));
+				VisualTerrain::RenderLowCell(Objects::selectedEntity->location.stackID);
 
 				//Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(Objects::selectedEntity);
 				if (Objects::selectedMobileEntity)
@@ -1766,8 +1761,8 @@ bool loop()
 					{
 						foreach (Objects::selectedMobileEntity->myTasks.Peek().foci,f)
 						{
-							Grid::UpdatePlanetRenderingParameters(Grid::ToRadiusf(float(f->target.height)+0.1f));
-							Grid::low.RenderCell(f->target.stackID);
+							VisualTerrain::UpdatePlanetRenderingParameters(Grid::ToRadiusf(float(f->target.height)+0.1f));
+							VisualTerrain::RenderLowCell(f->target.stackID);
 						}
 					}
 				}
@@ -1880,14 +1875,14 @@ bool loop()
 
 			foreach(Objects::movementChoices, choice)
 			{
-				Grid::UpdatePlanetRenderingParameters(Grid::ToRadius(choice->location.height + choice->visualVerticalOffset));
-				Grid::low.RenderTransparentCell(choice->location.stackID);
+				VisualTerrain::UpdatePlanetRenderingParameters(Grid::ToRadius(choice->location.height + choice->visualVerticalOffset));
+				VisualTerrain::RenderTransparentLowCell(choice->location.stackID);
 			}
 			if (choice != InvalidIndex)
 			{
 				const Objects::Choice&ch = Objects::movementChoices[choice];
-				Grid::UpdatePlanetRenderingParameters(Grid::ToRadiusf(float(ch.location.height + ch.visualVerticalOffset) + 0.2f));
-				Grid::low.RenderCell(ch.location.stackID);
+				VisualTerrain::UpdatePlanetRenderingParameters(Grid::ToRadiusf(float(ch.location.height + ch.visualVerticalOffset) + 0.2f));
+				VisualTerrain::RenderLowCell(ch.location.stackID);
 			}
 		}
 
@@ -2205,7 +2200,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 			{
 				TVec3<> normal;
-				if (Grid::high.TestHullIntersection(b, d, distance, normal, includeWater))
+				if (VisualTerrain::TestHullIntersection(b, d, distance, normal, includeWater))
 				{
 					#ifdef _DEBUG
 						Debug::lastClickPoint = b + d * distance;
@@ -2215,7 +2210,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 					float3 p = b + d * distance;
 					float height = p.Length();
 					distance = std::numeric_limits<float>::max();
-					index_t stackID = Grid::low.TestGridIntersection(b, d, height, distance);
+					index_t stackID = VisualTerrain::TestLowGridIntersection(b, d, height, distance);
 					if (stackID != InvalidIndex)
 					{
 						result = Grid::LCellIdI((UINT32)stackID,Grid::HeightFromRadius(height));
@@ -2320,7 +2315,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 					bool selectionDone = false;
 					if (Objects::CommonCmd::IsModeActive(Objects::CursorMode::BuildBlockMode) || Objects::CommonCmd::IsModeActive(Objects::CursorMode::RemoveBlockMode))
 					{
-						if (Grid::high.TestHullIntersection(b, d, distance, normal,false))
+						if (VisualTerrain::TestHullIntersection(b, d, distance, normal,false))
 						{
 							if (Objects::selectedVehicle)
 							{
@@ -2393,14 +2388,14 @@ void MyFatal(const FatalDescriptor&descriptor)
 						{
 							distance = std::numeric_limits<float>::max();
 
-							if (Grid::high.TestHullIntersection(b, d, distance, normal,false))
+							if (VisualTerrain::TestHullIntersection(b, d, distance, normal,false))
 							{
 								float3 p = b + d * distance;
 								float height = p.Length();
 
 								distance = std::numeric_limits<float>::max();
 
-								index_t stackID = Grid::low.TestGridIntersection(b, d, height, distance);
+								index_t stackID = VisualTerrain::TestLowGridIntersection(b, d, height, distance);
 								if (stackID != InvalidIndex)
 								{
 									Grid::LCellIdI	target((UINT32)stackID,Grid::HeightFromRadius(height));
@@ -2503,17 +2498,17 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 	void ToggleSeeThrough()
 	{
-		bool enable = !Grid::SeeThrough::IsEnabled();
-		Grid::SeeThrough::Update(enable, Grid::SeeThrough::LocateCamera());
+		bool enable = !VisualTerrain::SeeThrough::IsEnabled();
+		VisualTerrain::SeeThrough::Update(enable, VisualTerrain::SeeThrough::LocateCamera());
 		if (enable)
 			Tutorial::ShowMessage("Clip Terrain");
 	}
 
 	void ViewDown()
 	{
-		if (Grid::SeeThrough::GetFocusPoint().height > -Grid::CellStack::HalfRange)
+		if (VisualTerrain::SeeThrough::GetFocusPoint().height > -Grid::CellStack::HalfRange)
 		{
-			Grid::SeeThrough::Update(true, Grid::SeeThrough::LocateCamera()-1);
+			VisualTerrain::SeeThrough::Update(true, VisualTerrain::SeeThrough::LocateCamera()-1);
 			Objects::UpdateChoices(Network::ControlEnabled());
 			Tutorial::ShowMessage("Clip Terrain");
 		}
@@ -2521,9 +2516,9 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 	void ViewUp()
 	{
-		if (Grid::SeeThrough::GetFocusPoint().height < Grid::CellStack::HalfRange)
+		if (VisualTerrain::SeeThrough::GetFocusPoint().height < Grid::CellStack::HalfRange)
 		{
-			Grid::SeeThrough::Update(true, Grid::SeeThrough::LocateCamera() + 1);
+			VisualTerrain::SeeThrough::Update(true, VisualTerrain::SeeThrough::LocateCamera() + 1);
 			Objects::UpdateChoices(Network::ControlEnabled());
 			Tutorial::ShowMessage("Clip Terrain");
 		}
@@ -3659,10 +3654,10 @@ int main( int argc, const char* argv[])
 		#endif
 
 
-		
-		Grid::Create0();
+		ClientGrid::Create();
+		Objects::Renderer::Create();
 		Objects::Create();
-		Grid::Create1();
+		VisualTerrain::Create();
 
 
 		#ifdef HAS_WINDOW
@@ -3815,8 +3810,8 @@ int main( int argc, const char* argv[])
 							auto tb = (*s)->GetTurretBase();
 							if (tb)
 							{
-								label.rawLines.Insert(0).first = "Based on [[units/turrets/"+String(MakeValidFilename(tb->turret->typeName))+"|"+tb->turret->typeName+"]] turret";
-								label.rawLines.First().second = true;
+								label.Insert(0).first = "Based on [[units/turrets/"+String(MakeValidFilename(tb->turret->typeName))+"|"+tb->turret->typeName+"]] turret";
+								label.SetBrief(0);
 							}
 							WriteDocumentation(rootFolder, structureFolder,unitList, (*s)->GetTypeName(), label,pretext);
 						}
@@ -3867,7 +3862,8 @@ int main( int argc, const char* argv[])
 			SurfaceRenderer::Destroy();
 			AudioInterface::Destroy();
 		#endif
-		Grid::Destroy();
+		ClientGrid::Destroy();
+		VisualTerrain::Destroy();
 		Objects::Destroy();
 		Animation::Destroy();
 		ScriptCache::Destroy();

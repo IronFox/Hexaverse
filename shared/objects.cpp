@@ -3,9 +3,6 @@
 
 #ifdef HAS_WINDOW
 	#include <engine/display.h>
-	#include "../client/components/progressBar.h"
-	#include "../client/components/dialog.h"
-	#include "../client/components/tutorial.h"
 #endif
 
 //#include <geometry/graph_mesh.h>
@@ -118,9 +115,6 @@ namespace Objects
 			#ifndef NO_SATELLITES
 				Grid::visibleOrbitGrid.orbit = Grid::ToRadius(Satellite::BaseResidenceHeight);
 				Grid::visibleOrbitGrid.Clear();
-			#endif
-			#ifdef HAS_WINDOW
-				Renderer::Create();
 			#endif
 		#else
 

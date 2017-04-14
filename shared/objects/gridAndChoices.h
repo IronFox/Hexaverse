@@ -263,7 +263,8 @@ namespace Objects
 	void			Remove( const PWorldEntity&, RemovalType t, float&atTime, bool controlEnabled, bool isRemovedFromGrid=false, bool ignoreIndestructible=false);
 
 	/**
-	Must be called once during start up, after the base grids have been created
+	Must be called once during start up, after the base grids have been created.
+	Updates maxAngleBetweenNeighboringCells, which is required by AppendShortestConstructionPath()
 	*/
 	void			InitGrid();
 

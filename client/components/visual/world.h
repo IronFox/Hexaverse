@@ -1,9 +1,7 @@
+#pragma once
 #ifdef HAS_WINDOW
-#ifndef worldComponentH
-#define worldComponentH
 
-#include "../../shared/sphereGrid.h"
-
+#include <engine/aspect.h>
 
 namespace World
 {
@@ -21,5 +19,4 @@ namespace World
 
 
 
-#endif
 #endif

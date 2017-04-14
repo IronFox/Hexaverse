@@ -5,8 +5,6 @@
 #ifdef HAS_WINDOW
 	#include "geometry.h"
 	#include "../../client/ExtRenderer/DirectX11.h"
-	#include "visualSelection.h"
-
 #endif
 
 #include <io/cryptographic_hash.h>
@@ -17,6 +15,7 @@
 #include "mobileEntityProducer.h"
 #include "../roundNumber.h"
 #include "../sharedContainer.h"
+#include "description.h"
 
 /*
 In the context of this game, a structure defines a building, as opposed to a vehicle or meta entity
@@ -519,17 +518,17 @@ namespace Objects
 		#endif
 		#ifdef HAS_WINDOW
 			virtual void			PrototypeLoadGeometry() override;
-			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override
-			{
-				label.BeginBrief();
-				Super::DescribeType(label,descFlags);
-				label << " Max Vehicles per Store: "+String(MaxVehiclesPerStore);
-				label.MarkBriefEnd();
-				label << "Vehicle stores can be used to store vehicles which will then enter hibernation until deployed. This structure shares storage with nearby structures of the same type."
-									" A vehicle store can deploy any vehicle found within the vehicle store compound.";
-			}
 			virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
 		#endif
+		virtual void				DescribeType(Description&label, UINT32 descFlags) override
+		{
+			label.BeginBrief();
+			Super::DescribeType(label,descFlags);
+			label << " Max Vehicles per Store: "+String(MaxVehiclesPerStore);
+			label.MarkBriefEnd();
+			label << "Vehicle stores can be used to store vehicles which will then enter hibernation until deployed. This structure shares storage with nearby structures of the same type."
+								" A vehicle store can deploy any vehicle found within the vehicle store compound.";
+		}
 
 
 	};
@@ -562,7 +561,7 @@ namespace Objects
 		#endif
 
 		#ifdef HAS_WINDOW
-			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override
+			virtual void			DescribeType(Description&label, UINT32 descFlags) override
 			{
 				label.BeginBrief();
 				Super::DescribeType(label,descFlags);
@@ -687,7 +686,7 @@ namespace Objects
 			virtual void			OnSleepChange(float&t) override;
 		#else
 			#ifdef HAS_WINDOW
-				virtual void		DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;
+				virtual void		DescribeType(Description&label, UINT32 descFlags) override;
 			#endif
 
 		#endif
@@ -740,15 +739,6 @@ namespace Objects
 			}	//global prototype
 
 
-		protected:
-
-			#ifdef HAS_WINDOW
-				struct Cmd
-				{
-					static void				Enable();
-					static bool				IsEnabled();
-				};
-			#endif
 		public:
 			static const std::shared_ptr<WorkingStructureT<Derivative> >		globalPrototype;
 			#ifdef HAS_WINDOW
@@ -839,7 +829,7 @@ namespace Objects
 			#endif
 			#ifdef HAS_WINDOW
 				virtual float			GetSoundLevel() const {return IsEnabled() ? GetActivityLevel() : 0.f;}
-				virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override
+				virtual void			DescribeType(Description&label, UINT32 descFlags) override
 				{
 					label.BeginBrief();
 					Super::DescribeType(label,descFlags);
@@ -925,7 +915,7 @@ namespace Objects
 			virtual void			OnConstructionFinished(float&atTime)	{Super::OnConstructionFinished(atTime); SetEnabled(false,atTime,false);}
 		#else
 			#ifdef HAS_WINDOW
-				virtual void		DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;
+				virtual void		DescribeType(Description&label, UINT32 descFlags) override;
 			#endif
 		#endif
 
@@ -1014,7 +1004,7 @@ namespace Objects
 
 
 		#ifdef HAS_WINDOW
-			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;
+			virtual void			DescribeType(Description&label, UINT32 descFlags) override;
 			virtual void			PrototypeLoadGeometry() override;
 		#endif
 
@@ -1048,7 +1038,7 @@ namespace Objects
 		#ifdef HAS_WINDOW
 			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override {PGenerator gen = To<Generator>::DynamicCast(connected); return gen && gen->connectedToReactor.lock().get() == this ? &Generator::reactorConnector : &standardConnector;}
 
-			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;
+			virtual void			DescribeType(Description&label, UINT32 descFlags) override;
 		#endif
 
 		//WorldEntity overrides:
@@ -1101,7 +1091,7 @@ namespace Objects
 			Component::VehicleBase*	GetProductionBase() const;
 
 			#ifdef HAS_WINDOW
-				virtual void		DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;
+				virtual void		DescribeType(Description&label, UINT32 descFlags) override;
 			#endif
 
 		#else
@@ -1191,7 +1181,7 @@ namespace Objects
 			Resets all commands to the currently loaded research script. Need only be called when the research script has changed
 			*/
 			static void				ConfigureResearchButtons();
-			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;
+			virtual void			DescribeType(Description&label, UINT32 descFlags) override;
 		#endif
 
 		count_t						GetTotalResearchOutput() const;
@@ -1290,7 +1280,7 @@ namespace Objects
 			}
 		#else
 			#ifdef HAS_WINDOW
-				virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override
+				virtual void			DescribeType(Description&label, UINT32 descFlags) override
 				{
 					Super::DescribeType(label,descFlags);
 					if (maxStorage.IsNotEmpty())
@@ -1347,7 +1337,7 @@ namespace Objects
 		#ifdef CLIENT
 			void					SetLinkedToCore(bool, bool controlEnabled);
 			#ifdef HAS_WINDOW
-				virtual void		DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;
+				virtual void		DescribeType(Description&label, UINT32 descFlags) override;
 			#endif
 
 		#endif
@@ -1465,7 +1455,7 @@ namespace Objects
 
 
 		#ifdef HAS_WINDOW
-			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override
+			virtual void			DescribeType(Description&label, UINT32 descFlags) override
 			{
 				label.BeginBrief();
 				Super::DescribeType(label,descFlags);
@@ -1703,9 +1693,9 @@ namespace Objects
 		#ifdef HAS_WINDOW
 			virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
 			virtual bool			TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override;
-			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags);
 
 		#endif
+		virtual void				DescribeType(Description&, UINT32 descFlags);
 		#ifndef CLIENT
 			virtual void			OnConstructionFinished(float&atTime) override;
 			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
@@ -1861,29 +1851,6 @@ namespace Objects
 		{
 			Super::PrototypeSetup();
 
-			#ifdef HAS_WINDOW
-				commands.baseCoords = int2(3,0);
-
-				commands.Add(new IconCommand("Enable",&Cmd::Enable,
-				[](bool controlEnabled)->BaseCommand::Flags
-				{
-					BaseCommand::Flags rs = BaseCommand::Flags::None;
-					WorkingStructureT<Derivative>*div = dynamic_cast<WorkingStructureT<Derivative>*>(selectedEntity.get());
-					if (controlEnabled)
-					{
-						if (div && div->CanEnable())
-						{
-							rs |= BaseCommand::Flags::IsEnabled;
-						}
-					}
-					if (div && div->IsEnabled())
-						rs |= BaseCommand::Flags::IsPermaActive;
-					return rs;
-				}
-				,NoCosts
-				));
-			#endif
-
 			String name = GetTypeName();
 			name.set(0, Template::tolower(name.firstChar()));
 			name.replace(' ',"");
@@ -1944,29 +1911,6 @@ namespace Objects
 			return CommonCheckStructurePlacement(location,GetBroadHeight(), GetHeight());
 		}
 
-	#ifdef HAS_WINDOW
-
-		template <typename Derivative>
-			/*static*/ void				WorkingStructureT<Derivative>::Cmd::Enable()
-			{
-				WorkingStructureT<Derivative>*s2 = dynamic_cast<WorkingStructureT<Derivative>*>(selectedEntity.get());
-				if (s2)
-				{
-					ApplicationInterface::SignalEnableStructure(*s2, !s2->IsEnabled());
-					//s2->SetEnabled(!s2->IsEnabled());
-				}
-			}
-		template <typename Derivative>
-			/*static*/ bool				WorkingStructureT<Derivative>::Cmd::IsEnabled()
-			{
-				WorkingStructureT<Derivative>*s2 = dynamic_cast<WorkingStructureT<Derivative>*>(selectedEntity.get());
-				return s2 && s2->IsEnabled();
-			};
-
-
-
-
-	#endif
 
 
 	inline PStructure		ToStructure(const PWorldEntity&e)

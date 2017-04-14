@@ -1,7 +1,8 @@
 #include <global_root.h>
 #include "luaGameAPI.h"
 #include "logEvent.h"
-#include "sphereGrid.h"
+#include "grid/stack.h"
+#include "grid/resources.h"
 #include "objects.h"
 
 namespace Lua
@@ -47,7 +48,7 @@ namespace Lua
 						int highestAt = -1;
 						Grid::Resource::coverage_t highest = 0;
 						for (index_t i = 0; i < Grid::Resource::NumEntries; i++)
-							if (r->known[i])
+							if (Grid::ResourceDiscovery::client.resourcesDiscovered[i])
 							{
 								if (r->coverage[i] > highest)
 								{
@@ -70,7 +71,7 @@ namespace Lua
 				foreach (Grid::Resource::all,r)
 					if (r->GetName() == resourceName)
 					{
-						if (!r->known[stackID])
+						if (!Grid::ResourceDiscovery::client.resourcesDiscovered[stackID])
 							return -1;
 						return r->coverage[stackID];
 					}

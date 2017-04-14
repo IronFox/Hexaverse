@@ -773,12 +773,7 @@ namespace Objects
 			#endif
 		}
 
-		#ifdef HAS_WINDOW		
-			void							Base::VisitAllCommands(FCommandVisitor visitor, bool force)
-			{	
-				commands.VisitMembers(visitor,force);
-			}
-		#endif
+
 
 
 
@@ -2462,6 +2457,12 @@ namespace Objects
 					outSystem.z.z = cs;
 				break;		
 			}
+		}
+
+
+		void							Base::VisitAllCommands(FCommandVisitor visitor, bool force)
+		{	
+			commands.VisitMembers(visitor,force);
 		}
 
 

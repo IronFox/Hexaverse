@@ -2,11 +2,13 @@
 #ifndef objectRenderingH
 #define objectRenderingH
 
-#include "../../client/ExtRenderer/DirectX11.h"
-#include "../grid/stack.h"
-#include "turretBase.h"
+#include "../../ExtRenderer/DirectX11.h"
+#include <grid/stack.h>
+#include <objects/turretBase.h>
 #include <engine/display.h>
 #include <al/openal.h>
+#include <objects/components.h>
+#include <objects/geometry.h>
 
 
 
@@ -234,7 +236,9 @@ namespace Objects
 
 
 
-		OpenAL::WaveBuffer	GetAmbientSoundOf(const String&entityTypeName, ConstName entityType);
+		OpenAL::Wave	GetAmbientSound(const WorldEntity&e);
+		OpenAL::Wave	GetAmbientSoundOf(const String&entityTypeName, ConstName entityType);
+
 	}
 
 }

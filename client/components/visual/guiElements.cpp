@@ -3,13 +3,13 @@
 #include <global_root.h>
 #include "guiElements.h"
 #include <engine/display.h>
-#include "../ExtRenderer/DirectX11.h"
-#include "../DX11/texture_font.h"
+#include "../../ExtRenderer/DirectX11.h"
+#include "../../DX11/texture_font.h"
 #include <container/buffer.h>
 #include "surfaceRenderer.h"
 #include "lineRenderer.h"
 #include <engine/aspect.h>
-#include "../../shared/objects.h"
+#include <objects.h>
 
 namespace DX11 = Engine::DX11; 
 

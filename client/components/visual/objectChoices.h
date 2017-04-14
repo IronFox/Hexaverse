@@ -1,10 +1,9 @@
+#pragma once
 #ifdef HAS_WINDOW
 
-#ifndef visualChoicesH
-#define visualChoicesH
 
-#include "../grid/stack.h"
-#include "types.h"
+#include <grid/stack.h>
+#include <objects/types.h>
 
 namespace Objects
 {
@@ -38,5 +37,4 @@ namespace Objects
 
 
 
-#endif
 #endif
