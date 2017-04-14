@@ -750,7 +750,7 @@ namespace Objects
 
 
 	
-	void		GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Choice>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell)
+	void		GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis)
 	{
 		const World::Data&world = 
 		#ifdef CLIENT
@@ -859,36 +859,36 @@ namespace Objects
 		float h;
 		if (PTurretBase b = entity.GetTurretBase(h))
 		{
-			showArrow = CursorModeExpectsLeftClick(activeCursorMode);
-			if (showArrow)
+			vis.showArrow = CursorModeExpectsLeftClick(activeCursorMode);
+			if (vis.showArrow)
 			{
-				arrowFromCell = v ? v->GetLastPointOfOrigin() : entity.location;
-				arrowFrom = Grid::low.cells[arrowFromCell.stackID].centerVertex.xyz * ( h + Grid::ToRadius(arrowFromCell.height));
-			}
-
-			#ifdef HAS_WINDOW
-				if (showArrow && activeCursorMode == CursorMode::AttackMode)
+				vis.arrowFromCell = v ? v->GetLastPointOfOrigin() : entity.location;
+				vis.arrowFrom = Grid::ToWorldR(vis.arrowFromCell,h);
+				if (activeCursorMode == CursorMode::AttackMode)
 				{
-					switch (b->turret->trajectoryType)
-					{
-						case TrajectoryType::Artillery:
-							Grid::SetParaboloidDisplay(
-								Grid::low.cells[arrowFromCell.stackID].centerVertex.xyz, 
-								h + Grid::ToRadius(arrowFromCell.height),
-								b->GetFlatAttackRange(),
-								float4(1,0,0,0.5f));
-						break;
-						case TrajectoryType::Missile:
-							Grid::SetSphereDisplay(
-								entity.GetWorldPosition(),
-								b->GetFlatAttackRange(),
-								float4(1,0,0,0.5f));
-						break;
-					}
+					vis.showTrajectory = true;
+					vis.paraboloidTrajectory = b->turret->trajectoryType == TrajectoryType::Artillery;
+					vis.flatTrajectoryRange = b->GetFlatAttackRange();
+					//switch (b->turret->trajectoryType)
+					//{
+					//	case TrajectoryType::Artillery:
+					//		Grid::SetParaboloidDisplay(
+					//			Grid::low.cells[arrowFromCell.stackID].centerVertex.xyz, 
+					//			h + Grid::ToRadius(arrowFromCell.height),
+					//			b->GetFlatAttackRange(),
+					//			float4(1,0,0,0.5f));
+					//	break;
+					//	case TrajectoryType::Missile:
+					//		Grid::SetSphereDisplay(
+					//			entity.GetWorldPosition(),
+					//			b->GetFlatAttackRange(),
+					//			float4(1,0,0,0.5f));
+					//	break;
+					//}
 				}
-				else
-					Grid::UnsetParaboloidAndSphereDisplay();
-			#endif
+				/*else
+					Grid::UnsetParaboloidAndSphereDisplay();*/
+			}	
 		}
 		if (v)
 		{
@@ -1026,7 +1026,7 @@ namespace Objects
 
 
 
-	void					GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Choice>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell)
+	void					GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis)
 	{
 		//showArrow = false;		//why were these here...?
 		//hasArrowCellTarget = false;
@@ -1034,7 +1034,7 @@ namespace Objects
 		movementChoices.Clear();
 		if (entity)
 		{
-			GetChoices(*entity,deploying,activeCursorMode, movementChoices, showArrow, hasArrowCellTarget, arrowFrom, arrowFromCell);
+			GetChoices(*entity,deploying,activeCursorMode, movementChoices, vis);
 
 		}
 	
@@ -1106,17 +1106,6 @@ namespace Objects
 		e->RegisterSensory(atTime);
 
 		#ifdef CLIENT
-			#ifdef HAS_WINDOW
-				PTurretBase b = e->GetTurretBase();
-				if (b && b->turret->continuousRotation 
-					#ifndef NO_HIBERNATION
-						&& !e->ToHibernating()->IsHibernating()
-					#endif
-				)
-					Renderer::animatedTurrets << b;
-				if (b && b->turret->CanAttack())
-					Renderer::attackers << e;
-			#endif
 			ApplicationInterface::OnAppear(e);
 		#else
 			ForeachFaction([e,&atTime](const PFaction&f)
@@ -1324,16 +1313,6 @@ namespace Objects
 				e->health = -1;
 			//e->OnDestroy(timestamp);	//moved destroy further down to prevent some cascading edge cases, which loop back into the destroyed entity
 		}
-		#ifdef HAS_WINDOW
-			PTurretBase b = e->GetTurretBase();
-			if (b)
-			{
-				if (b->turret->continuousRotation)
-					Renderer::animatedTurrets.FindAndErase(b);
-				if (b->turret->CanAttack())
-					Renderer::attackers.FindAndErase(e);
-			}
-		#endif
 
 
 		bool isStructure = e->IsStructure();
@@ -1416,12 +1395,7 @@ namespace Objects
 				FATAL__("Trying to remove unsupported entity "+e->GetName());
 			}
 
-		#ifdef HAS_WINDOW
-			if (selectedEntity == e)
-			{
-				Deselect(controlEnabled);
-			}
-		#endif
+
 
 		if (!move)
 		{
@@ -1433,7 +1407,7 @@ namespace Objects
 				RefreshCompoundCoverage(timestamp);
 			if (!move)
 				waste << e;
-			ApplicationInterface::OnVanish(e,t);
+			ApplicationInterface::OnVanish(e,t,false);
 		#else
 			ApplicationInterface::SignalRemoval(e,t,timestamp);	//must be sent before clearing seeing-list below (UnregisterSensory) or nobody will be told except owner
 

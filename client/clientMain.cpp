@@ -1206,8 +1206,29 @@ namespace LocalApplicationInterface
 
 namespace ApplicationInterface
 {
-	void	OnVanish(const Objects::PWorldEntity&e, Objects::RemovalType t)
+	void	OnVanish(const Objects::PWorldEntity&e, Objects::RemovalType t, bool wasGhost)
 	{
+		#ifdef HAS_WINDOW
+			if (Objects::selectedEntity == e)
+			{
+				Objects::Deselect(Network::ControlEnabled());
+			}
+		#endif
+		if (wasGhost)
+			return;
+
+		#ifdef HAS_WINDOW
+
+			Objects::PTurretBase b = e->GetTurretBase();
+			if (b)
+			{
+				if (b->turret->continuousRotation)
+					Objects::Renderer::animatedTurrets.FindAndErase(b);
+				if (b->turret->CanAttack())
+					Objects::Renderer::attackers.FindAndErase(e);
+			}
+		#endif
+
 		if (Network::amSpectator)
 			return;
 		if (t == Objects::RemovalType::UncontrolledExplosion && e->isOwnedByMe)
@@ -1242,6 +1263,17 @@ namespace ApplicationInterface
 
 	void	OnAppear(const Objects::PWorldEntity&e)
 	{
+		#ifdef HAS_WINDOW
+			Objects::PTurretBase b = e->GetTurretBase();
+			if (b && b->turret->continuousRotation 
+				#ifndef NO_HIBERNATION
+					&& !e->ToHibernating()->IsHibernating()
+				#endif
+			)
+				Objects::Renderer::animatedTurrets << b;
+			if (b && b->turret->CanAttack())
+				Objects::Renderer::attackers << e;
+		#endif
 		//fix: doesn't matter if e->isOwnedByMe is true or not. Must ALWAYS remove existing markers if we see the original again.
 		//reason for this problem: entity ownership change causes vanishing, and thus ghost creation, which was not removed here, because e was suddenly mine.
 		Objects::Marker*m = Objects::Marker::FindByReference(e->id);

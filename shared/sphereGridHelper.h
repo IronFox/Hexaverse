@@ -1,3 +1,5 @@
+#if 0
+
 #ifndef sphereGridHelperH
 #define sphereGridHelperH
 
@@ -252,3 +254,5 @@ namespace Grid
 
 
 #endif
+
+#endif /*0*/

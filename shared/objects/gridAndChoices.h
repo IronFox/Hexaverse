@@ -103,8 +103,19 @@ namespace Objects
 		bool		operator==(const Grid::LCellIdI&other) const {return location == other;}
 	};
 
-	void			GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Choice>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
-	void			GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Choice>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
+	struct TChoiceVisualization
+	{
+		bool			showArrow=false, 
+						hasArrowCellTarget=false,
+						showTrajectory=false;
+		TVec3<>			arrowFrom;
+		Grid::LCellIdI	arrowFromCell;
+		bool			paraboloidTrajectory = false;
+		float			flatTrajectoryRange=1;
+	};
+
+	void			GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis);
+	void			GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis);
 
 	bool			NothingBlockingHere(const Grid::LCellIdI&cellID, bool checkVehiclesOnClient);
 

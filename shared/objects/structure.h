@@ -139,9 +139,15 @@ namespace Objects
 			bool						changed;
 
 			/**
-			Client-attachable shape
+			Type-shared appearance
 			*/
-			PClientAttachment			shape;
+			PClientAttachment		shape;
+			/**
+			Compiled shape of all connectors.
+			Only some connections to neighbors are compiled into the local shape.
+			Others are compiled by the remote end.
+			*/
+			PClientAttachment		connectorShape;
 		#endif
 
 

@@ -854,6 +854,10 @@ namespace Grid
 	TVec3<> ToWorld(const HCellIdI&, float fLayerOffset);
 	TVec3<> ToWorld(const LCellIdU&, float fLayerOffset);
 	TVec3<> ToWorld(const LCellIdI&, float fLayerOffset);
+	TVec3<> ToWorldR(const HCellIdU&, float radiusOffset);
+	TVec3<> ToWorldR(const HCellIdI&, float radiusOffset);
+	TVec3<> ToWorldR(const LCellIdU&, float radiusOffset);
+	TVec3<> ToWorldR(const LCellIdI&, float radiusOffset);
 
 	inline HCellIdI	ToHigh(const LCellIdI&cellID)	{return HCellIdI(low.grid.GetCell(cellID.stackID).higherEquivalent,cellID.height); }
 	inline HCellIdU	ToHigh(const LCellIdU&cellID)	{return HCellIdU(low.grid.GetCell(cellID.stackID).higherEquivalent,cellID.layer); }
@@ -877,6 +881,12 @@ namespace Grid
 	#endif
 
 
+	inline void	AssertIsValid(const Grid::LCellIdI&location)
+	{
+		ASSERT_LESS__(location.stackID,LowSetup::GridType::CellCount);
+		ASSERT_LESS__(location.height,CellStack::HalfRange);
+		ASSERT_GREATER_OR_EQUAL__(location.height,-CellStack::HalfRange);
+	}
 
 
 

@@ -11,6 +11,12 @@
 #include "stringTable.h"
 #include "logEvent.h"
 #include "runtimeConfig.h"
+#include "objects/structure/mine.h"
+#include "objects/structure/laboratory.h"
+#include "objects/structure/storageStructures.h"
+#include "objects/structure/tower.h"
+#include "objects/structure/vehiclePlant.h"
+#include "objects/structure/vehicleStore.h"
 
 
 
@@ -183,31 +189,6 @@ namespace Objects
 
 		#ifdef HAS_WINDOW
 		{
-			LogEvent(EventSignificance::Debug, nullptr, "Loading common geometry");
-
-			{
-				Geometry geo;
-				geo.LoadFromObj("objects/cordon.obj");
-
-				geo.Scale(vehicleScale);
-				(DX11::BaseInstructionBlock&)cordon = stdVehicleShader;
-				cordon.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
-				cordon.ibo.Create(geo.GetLOD(0).indices);
-
-				geo.Clear();
-				geo.LoadFromObj("objects/foundation.obj");
-				//geo.Scale(vehicleScale);
-				(DX11::BaseInstructionBlock&)foundation = stdVehicleShader;
-				foundation.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
-				foundation.ibo.Create(geo.GetLOD(0).indices);
-			}
-			LogEvent(EventSignificance::Debug,nullptr,"Loading prototype geometry");
-			#ifndef NO_SATELLITES
-				foreach(satellitePrototypes, p)
-					(*p)->PrototypeLoadGeometry();
-			#endif
-			foreach(structurePrototypes, p)
-				(*p)->PrototypeLoadGeometry();
 		}
 		#endif
 

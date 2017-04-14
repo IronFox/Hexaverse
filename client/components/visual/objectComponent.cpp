@@ -184,7 +184,7 @@ namespace Objects
 	}
 
 
-	/*static*/ void				StructureShape::LoadAll()
+	/*static*/ void				StructureHull::LoadAll()
 	{
 		LoadFor<Objects::Mine>();
 		LoadFor<Objects::MineralContainer>();
@@ -209,14 +209,14 @@ namespace Objects
 	}
 
 
-	/*static*/ void				StructureShape::LoadFor(const Objects::Structure&prototype, Objects::Geometry&staticGeometry, PClientAttachment&staticShape)
+	/*static*/ void				StructureHull::LoadFor(const Objects::Structure&prototype, Objects::Geometry&staticGeometry, PClientAttachment&staticShape)
 	{
 		LoadFor(prototype.GetName(),staticGeometry,staticShape);
 	}
 
-	/*static*/ void				StructureShape::LoadFor(const String&geometryName, Objects::Geometry&staticGeometry, PClientAttachment&staticShape)
+	/*static*/ void				StructureHull::LoadFor(const String&geometryName, Objects::Geometry&staticGeometry, PClientAttachment&staticShape)
 	{
-		std::shared_ptr<StructureShape> shape(new StructureShape());
+		std::shared_ptr<StructureHull> shape(new StructureHull());
 		staticShape = shape;
 		String name = geometryName;
 		name.set(0, Template::tolower(name.firstChar()));
@@ -224,13 +224,13 @@ namespace Objects
 		staticGeometry.Clear();
 		staticGeometry.LoadFromObj(PathString("objects/"+name+".obj"));
 
-		if (shape->compiledShape.shader.IsEmpty())
-			(DX11::BaseInstructionBlock&)shape->compiledShape = standardLocalizableShader;
-		shape->compiledShape.vbo.CreateFromStructs(staticGeometry.GetLOD(0).vertices);
-		shape->compiledShape.ibo.Create(staticGeometry.GetLOD(0).indices);
+		if (shape->constShape.shader.IsEmpty())
+			(DX11::BaseInstructionBlock&)shape->constShape = standardLocalizableShader;
+		shape->constShape.vbo.CreateFromStructs(staticGeometry.GetLOD(0).vertices);
+		shape->constShape.ibo.Create(staticGeometry.GetLOD(0).indices);
 	}
 
-	void				StructureShape::RecompileConnectors(Objects::Structure&structure)
+	void				ConnectorHull::RecompileConnectors(Objects::Structure&structure)
 	{
 		structure.changed = false;
 

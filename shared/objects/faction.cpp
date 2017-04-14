@@ -5,7 +5,6 @@
 #include "mobileEntity.h"
 #include "gridAndChoices.h"
 #include "prototypes.h"
-#include "visualSelection.h"
 #include "satellite.h"
 #include "vehicle.h"
 #include "../sphereGridHelper.h"
@@ -1222,10 +1221,7 @@ namespace Objects
 						structureGhosts.FindAndErase(m.visualization);
 					}
 					#ifdef HAS_WINDOW
-						if (selectedEntity == m.visualization)
-						{
-							Deselect(controlEnabled);
-						}
+						ApplicationInterface::OnVanish(m.visualization,RemovalType::Vanished,true);
 					#endif
 					m.visualization.reset();
 				}

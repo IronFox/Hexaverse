@@ -55,21 +55,16 @@ namespace Objects
 	};
 
 
-	class StructureShape : public ClientAttachment
+	class StructureHull : public ClientAttachment
 	{
 	public:
 		/**
 		Temporary structure-specific rendering instruction. Updated by Recompile(). Can be used to render the local structure.
 		*/
-		DX11::InstructionBlock32	compiledShape;
-		/**
-		Container of the geometry of the local structure. Updated by RecompileConnectors()
-		*/
-		Geometry					localMesh;
+		DX11::InstructionBlock32	constShape;
 
-		void						RecompileConnectors(Objects::Structure&structure);
 
-		static const std::shared_ptr<StructureShape>&	Of(const Objects::Structure&);
+		static const std::shared_ptr<StructureHull>&	Of(const Objects::Structure&);
 
 		static void					LoadFor(const String&geometryName, Objects::Geometry&staticGeometry, PClientAttachment&staticShape);
 		static void					LoadFor(const Objects::Structure&prototype, Objects::Geometry&staticGeometry, PClientAttachment&staticShape);
@@ -85,6 +80,25 @@ namespace Objects
 		*/
 		static void					LoadAll();
 	};
+
+	class ConnectorHull : public ClientAttachment
+	{
+	public:
+		/**
+		Temporary structure-specific rendering instruction. Updated by Recompile(). Can be used to render the local structure.
+		*/
+		DX11::InstructionBlock32	compiledShape;
+		/**
+		Container of the geometry of the local structure. Updated by RecompileConnectors()
+		*/
+		Geometry					localMesh;
+
+		void						RecompileConnectors(Objects::Structure&structure);
+
+		static const std::shared_ptr<ConnectorHull>&	Of(const Objects::Structure&);
+		static const std::shared_ptr<ConnectorHull>&	Allocate(Objects::Structure&);	//must be permissive allocation. Return previously allocated if existing
+	};
+
 
 	class TowerAttackVisualization : public ClientAttachment
 	{

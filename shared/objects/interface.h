@@ -50,7 +50,7 @@ namespace ApplicationInterface
 		void	OnSelectionChange(bool stateChangeOnly);
 		void	SignalUserMessage(const String&message);
 	#endif
-	void	OnVanish(const Objects::PWorldEntity&e, Objects::RemovalType t);
+	void	OnVanish(const Objects::PWorldEntity&e, Objects::RemovalType t, bool wasGhost);
 	void	OnAppear(const Objects::PWorldEntity&e);
 #else
 

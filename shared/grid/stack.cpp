@@ -731,6 +731,14 @@ namespace Grid
 		{
 			return high.cells[id.stackID].centerVertex.xyz * Grid::ToRadiusf(fLayerOffset + id.height);
 		}
+		TVec3<> ToWorldR(const HCellIdU&id, float offset)
+		{
+			return high.cells[id.stackID].centerVertex.xyz * (offset + Grid::ToRadius(CellStack::ToHeight(id.layer)));
+		}
+		TVec3<> ToWorldR(const HCellIdI&id, float offset)
+		{
+			return high.cells[id.stackID].centerVertex.xyz * (offset + Grid::ToRadius(id.height));
+		}
 	#endif
 	TVec3<> ToWorld(const LCellIdU&id)
 	{
@@ -748,7 +756,14 @@ namespace Grid
 	{
 		return low.cells[id.stackID].centerVertex.xyz * Grid::ToRadiusf(fLayerOffset + id.height);
 	}
-
+	TVec3<> ToWorldR(const LCellIdU&id, float offset)
+	{
+		return low.cells[id.stackID].centerVertex.xyz * (offset + Grid::ToRadius(CellStack::ToHeight(id.layer)));
+	}
+	TVec3<> ToWorldR(const LCellIdI&id, float offset)
+	{
+		return low.cells[id.stackID].centerVertex.xyz * (offset + Grid::ToRadius(id.height));
+	}
 
 
 	bool	AffectedByEMP(const HCellIdI&id)

@@ -23,12 +23,6 @@ namespace Grid
 		float4			sunColor = float4(1,1,1,1);	//fourth parameter is ignored
 	};
 
-	inline void	AssertIsValid(const Grid::LCellIdI&location)
-	{
-		ASSERT_LESS__(location.stackID,LowSetup::GridType::CellCount);
-		ASSERT_LESS__(location.height,CellStack::HalfRange);
-		ASSERT_GREATER_OR_EQUAL__(location.height,-CellStack::HalfRange);
-	}
 
 
 

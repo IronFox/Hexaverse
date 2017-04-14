@@ -8,7 +8,7 @@
 #include <objects/vehicle.h>
 #include <objects/satellite.h>
 #include <objects/faction.h>
-#include "../progressBar.h"
+#include "progressBar.h"
 #include "objectChoices.h"
 #include "objectSelection.h"
 #include <objects/gridAndChoices.h>
@@ -448,12 +448,12 @@ namespace Objects
 		seeThroughShader.UpdateLayout();
 		seeThroughShader.SetTriangles();
 
-		Structure::standardCompiledShader = stdVehicleShader;	//same for now
+		standardCompiledShader = stdVehicleShader;	//same for now
 
-		Structure::standardLocalizableShader.binding = stdVehicleShader.binding;
-		Structure::standardLocalizableShader.shader.LoadFromFile("shaders/structureShape.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
-		Structure::standardLocalizableShader.UpdateLayout();
-		Structure::standardLocalizableShader.SetTriangles();
+		standardLocalizableShader.binding = stdVehicleShader.binding;
+		standardLocalizableShader.shader.LoadFromFile("shaders/structureShape.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
+		standardLocalizableShader.UpdateLayout();
+		standardLocalizableShader.SetTriangles();
 
 		{
 			Image smoke;
@@ -566,6 +566,27 @@ namespace Objects
 			gatheringPoint.ibo.Create(geo.GetLOD(0).indices);
 
 		}
+
+
+		LogEvent(EventSignificance::Debug, nullptr, "Loading common geometry");
+
+		{
+			Geometry geo;
+			geo.LoadFromObj("objects/cordon.obj");
+
+			geo.Scale(vehicleScale);
+			(DX11::BaseInstructionBlock&)cordon = stdVehicleShader;
+			cordon.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
+			cordon.ibo.Create(geo.GetLOD(0).indices);
+
+			geo.Clear();
+			geo.LoadFromObj("objects/foundation.obj");
+			//geo.Scale(vehicleScale);
+			(DX11::BaseInstructionBlock&)foundation = stdVehicleShader;
+			foundation.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
+			foundation.ibo.Create(geo.GetLOD(0).indices);
+		}
+
 		
 	}
 
@@ -605,8 +626,9 @@ namespace Objects
 
 	static void _RenderSimpleLocated(Structure&s, const TMatrix4<>&system)
 	{
-		display.Render(*s.localizableShape, true);
-		DBG_ASSERT__(s.localizableShape->ibo.IsSet());
+		const auto&shape = StructureHull::Of(s)->constShape;
+		display.Render(shape, true);
+		DBG_ASSERT__(shape.ibo.IsSet());
 
 		float zOffset;
 		PTurretBase b = s.GetTurretBase(zOffset);
@@ -1105,17 +1127,18 @@ namespace Objects
 			Structure&s = *_s;
 			//if (&s == selectedEntity.get())	//Renderer compiled shape only here
 				//continue;
+			const auto&shape = ConnectorHull::Allocate(s);
 			if (s.changed)
 			{
-				s.Recompile();
+				shape->RecompileConnectors(s);
 				s.changed = false;
 			}
-			if (s.compiledShape.vbo.IsSet())
+			if (shape->compiledShape.vbo.IsSet())
 			{
 				keyColor.Update(float4(s.owner->activeEntityColor,1.f));
 
 				//ApplyStateTint(s,baseTint,false);
-				display.Render(s.compiledShape,true);
+				display.Render(shape->compiledShape,true);
 				//ApplyBaseTint(s,baseTint);
 			}
 		});
@@ -1124,7 +1147,8 @@ namespace Objects
 		structures.Foreach([](const Objects::PStructure&_s)
 		{
 			Structure&s = *_s;
-			if (s.localizableShape)
+			const auto&shape = StructureHull::Of(s);
+			//if (shape->constShape)
 			{
 				if (&s == selectedEntity.get())
 					return;
@@ -1596,8 +1620,9 @@ namespace Objects
 				{
 					foreach (t->attackQueue,at)
 					{
-						display.SetObjectMatrix(at->blastSystem);
-						display.Render(at->blastVisualization);
+						const auto&vis = TowerAttackVisualization::Of(*at);
+						display.SetObjectMatrix(vis->blastSystem);
+						display.Render(vis->blastVisualization);
 					}
 				}
 				if (s == selectedEntity)
@@ -1717,7 +1742,8 @@ namespace Objects
 					{
 						foreach (t->attackQueue,at)
 						{
-							display.Render(at->trajectoryVisualization);
+							const auto&vis = TowerAttackVisualization::Of(*at);
+							display.Render(vis->trajectoryVisualization);
 						}
 					}
 				}
@@ -1768,7 +1794,8 @@ namespace Objects
 				{
 					foreach (t->attackQueue,at)
 					{
-						display.Render(at->trajectoryVisualization);
+						const auto&vis = TowerAttackVisualization::Of(*at);
+						display.Render(vis->trajectoryVisualization);
 					}
 				}
 			}
@@ -2045,7 +2072,8 @@ namespace Objects
 	static void _RenderShadow(const Structure&s)
 	{
 		display.SetObjectMatrix(s.system);
-		_RenderShadow(*s.localizableShape);	
+		const auto&vis = Objects::StructureHull::Of(s);
+		_RenderShadow(vis->constShape);	
 		if (s.HasFoundation())
 			_RenderShadow(foundation);
 	}
@@ -2198,13 +2226,14 @@ namespace Objects
 				structures.Foreach([](const Objects::PStructure&_s)
 				{
 					Structure&s = *_s;
+					const auto&vis = Objects::ConnectorHull::Allocate(s);
 					if (s.changed)
 					{
-						s.Recompile();
+						vis->RecompileConnectors(s);
 						s.changed = false;
 					}
-					if (s.compiledShape.ibo.IsSet())
-						_RenderShadow(s.compiledShape);
+					if (vis->compiledShape.ibo.IsSet())
+						_RenderShadow(vis->compiledShape);
 
 					float zOffset;
 					PTurretBase b = s.GetTurretBase(zOffset);
@@ -2221,10 +2250,8 @@ namespace Objects
 				structures.Foreach([](const Objects::PStructure&_s)
 				{
 					const Structure&s = *_s;
-					if (s.localizableShape)
-					{
-						_RenderShadow(s);
-					}
+					const auto&vis = Objects::StructureHull::Of(s);
+					_RenderShadow(vis->constShape);
 				});
 				display.SetObjectMatrix(Matrix<>::eye4);
 				display.UnlockShader();
