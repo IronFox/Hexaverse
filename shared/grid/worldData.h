@@ -102,11 +102,11 @@ namespace World
 		bool					IsRoad(const LCellIdI&, bool ignoreClearCellsOnEdge) const;
 
 		void					FlushAllData(bool resetVisibility);
-		void					ResetStructureCounters()
+		void					ResetStructureCounters(bool resetVisibility)
 		{
 			for (index_t i = 0; i < cellStack.Count(); i++)
 			{
-				cellStack[i].ResetStructureCounters();
+				cellStack[i].ResetStructureCounters(resetVisibility);
 			}
 		}
 		void					ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDelta>&data0, bool initialization);
@@ -180,6 +180,7 @@ namespace World
 				void			SignalLightingChange(const HCellIdI&cellID);
 			#endif
 			void				SignalLightingChange(const LCellIdI&cellID);
+			void				OverrideVisibility(short v);
 		#endif
 
 		bool					HasSensor(const LCellIdI&, float radius) const;
@@ -223,7 +224,6 @@ namespace World
 	#endif
 	
 	
-	void				ResetStructureCounters(bool resetVisibility=true);
 	void				FlushAllWorldData();
 
 

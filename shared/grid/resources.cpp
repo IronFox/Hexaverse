@@ -338,11 +338,11 @@ namespace Grid
 	}
 
 
-	void FlushAllResourceData()
+	/*static*/ void		Resource::FlushAll()
 	{
-		#ifdef CLIENT
-			ResourceDiscovery::client.FlushAllData();
-		#endif
+		foreach (all,r)
+			for (index_t i = 0; i < NumEntries; i++)
+				r->coverage[i] = 0;
 	}
 
 

@@ -3,17 +3,21 @@
 #include "../version.h"
 #include "animation.h"
 #include "clientRuntimeConfig.h"
-#include "world.h"
+#include "visual/world.h"
 #include "cameraControl.h"
-#include "ui.h"
+#include "visual/ui.h"
 #include "tutorial.h"
-#include "dialog.h"
+#include "visual/dialog.h"
 #include "ai.h"
 #include "clientRuntimeConfig.h"
 #include "timelapse.h"
 #include "configurationMode.h"
 #include <scriptCache.h>
 #include "gridControl.h"
+#include "visual/objectChoices.h"
+#include "visual/terrain.h"
+#include <grid/resources.h>
+
 
 
 //#define DEBUG_SERVER_LIST	//enable to generate very long artificial server list
@@ -58,6 +62,31 @@ namespace Network
 	bool			newRoundRequested = false;
 
 
+
+	
+	void LoadHosts()
+	{
+		StringFile hosts;
+		if (hosts.Open(RuntimeConfig::ConfigFile("hosts.txt")))
+		{
+			String host;
+			while (hosts >> host)
+				ServerDiscovery::RegisterNewHost(Network::ServerAddress(host),false, false);
+		}
+	}
+
+	void	SaveHosts()
+	{
+		StringFile hosts;
+		if (hosts.Create(RuntimeConfig::ConfigFile("hosts.txt")))
+		{
+			static Buffer0<Network::ServerAddress>	 urls;
+			ServerDiscovery::ListNonAutoAttempts(urls);
+			foreach (urls,url)
+				hosts << url->host << ':' << url->basePort << nl;
+			hosts.Close();
+		}
+	}
 
 	void			LoadScript(const SHA256::HashContainer&id)
 	{
@@ -365,7 +394,7 @@ namespace Network
 
 	static void ApplyPlanetConfig(const Grid::TSharedPlanetConfig&config)
 	{
-		GridControl::Apply(config);
+		ClientGrid::Apply(config);
 	}
 
 
@@ -398,7 +427,7 @@ namespace Network
 
 		if (alsoFlushWorld)
 		{
-			Grid::FlushAllData();
+			ClientGrid::FlushAllData();
 			Grid::empZonesLocked = 0;
 			Grid::empZonesUnlocked = ~Grid::empZonesLocked;
 			RuntimeConfig::gameGoal = RuntimeConfig::GameGoal();
@@ -906,7 +935,7 @@ namespace Network
 			if (u.timestamp.rightNow)
 			{
 				#ifdef HAS_WINDOW
-					Grid::UpdateResourceMap(u.resourceName,u.cells);
+					Grid::UpdateResourceMap(u.resourceName,u.cells,Grid::ResourceDiscovery::client);
 				#endif
 			}
 			else
@@ -1720,11 +1749,7 @@ void	Network::Receiver::LockEmpZones(NET(UINT16)&zones)
 	Grid::empZonesUnlocked = ~zones;
 
 	#ifdef HAS_WINDOW
-		for (int i = 0; i < BaseGrid::NumFamilies; i++)
-		{
-			Grid::high.family[i].SetOutdated(0);
-			Grid::low.family[i].SetOutdated(0);
-		}
+		VisualTerrain::Invalidate();
 	#endif
 	#ifndef NO_SATELLITES
 		Grid::visibleOrbitGrid.Invalidate();

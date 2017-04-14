@@ -1,15 +1,16 @@
 #ifdef HAS_WINDOW
 #include <global_root.h>
-#include "gridRenderer.h"
-#include <objects/rendering.h>
+#include "terrain.h"
+#include "objectRendering.h"
 #include <grid/planet.h> 
 #include <grid/worldData.h> 
 #include <grid/resources.h>
-#include "cameraControl.h"
+#include "../cameraControl.h"
 
-#include "../ExtRenderer/DirectX11.h"
+#include "../../ExtRenderer/DirectX11.h"
 #include <engine/display.h>
 #include <math/vclasses.h>
+#include "terrainInstructions.h"
 	
 extern Engine::Display<Engine::DirectX11>	display;
 //namespace Camera
@@ -25,7 +26,7 @@ extern Engine::Display<Engine::DirectX11>	display;
 
 namespace VisualTerrain
 {
-	using namespace Engine;
+	namespace DX11 = Engine::DX11;
 	using namespace Grid;
 
 	Box<>		unitSphereFamilyBoundingBox[BaseGrid::NumFamilies];
@@ -35,42 +36,6 @@ namespace VisualTerrain
 
 	void		BakeBlockInstruction(const Array<CellStack>&stacks, BYTE family, FClipHeight clipHeight);
 
-
-	
-	namespace Instruction
-	{	
-		enum displayMode_t
-		{
-			NormalRendering,
-			ParaboloidColored,
-			SphereColored
-		};
-
-		extern displayMode_t				displayMode;
-		extern DX11::ObjectBuffer<float4>	ParaboloidDirection_Height,SphereDef,SphereColor;
-		extern DX11::ObjectBuffer<float4>	ParaboloidColor_FlatRadius;
-		extern DX11::ObjectBuffer<VecN<float,8> > atmosphereConfig;
-		extern DX11::ObjectBuffer<float4> sunDirection,sunColor;
-
-
-		struct THeightMapOrientation
-		{
-			TMatrix4<>	orientation0,
-						orientation1,
-						orientation2;
-		};
-
-		static const size_t sTHeightMapOrientation = sizeof(THeightMapOrientation);
-		static_assert(sTHeightMapOrientation==sizeof(float)*16*3,"Sruct alignment out of wack");
-		extern DX11::ObjectBuffer<THeightMapOrientation>	heightMapOrientation;	//used for lava
-		extern DX11::Texture								cubeHeightMap;	//used for lava
-
-			
-		extern DX11::BaseInstructionBlock	terrainBase, terrainSphereBase, terrainParaboloidBase, 
-											terrainShadowBase, 
-											waterBase, waterSphereBase, waterParaboloidBase,
-											overlayBase, overlayShadowBase, resourceBase;// , terrainEdgeBase;
-	}
 
 
 
@@ -3050,6 +3015,14 @@ namespace VisualTerrain
 			LogEvent(EventSignificance::PerformanceMeasurement, nullptr, "Rebuilt "+String(familiesRebuilt)+" families in "+String(seconds));
 		}
 
+	}
+
+	void	Invalidate()
+	{
+		for (int i = 0; i < BaseGrid::NumFamilies; i++)
+		{
+			family[i].SetOutdated(0);
+		}
 	}
 
 	bool FamilyIsOutdated(index_t f)

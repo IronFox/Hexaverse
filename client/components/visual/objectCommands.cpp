@@ -1,21 +1,21 @@
 #ifdef HAS_WINDOW
 
 #include <global_root.h>
-#include "visualObjectCommands.h"
+#include "objectCommands.h"
 #include "objectRendering.h"
 #include "../../ExtRenderer/DirectX11.h"
 #include <engine/display.h>
 #include <objects/vehicle.h>
 #include <objects/structure.h>
-#include "visualObjectSelection.h"
-#include "visualObjectChoices.h"
+#include "objectSelection.h"
+#include "objectChoices.h"
 #include <objects/satellite.h>
 #include <objects/faction.h>
 #include <objects/gridAndChoices.h>
 #include <objects/components.h>
 #include <image/converter/magic.h>
 #include <objects/research.h>
-#include "visualTerrain.h"
+#include "terrain.h"
 
 
 extern Engine::Display<Engine::DirectX11>	display;

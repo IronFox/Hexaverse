@@ -1,6 +1,4 @@
-#ifndef progressBarH
-#define progressBarH
-
+#pragma once
 
 
 #ifdef HAS_WINDOW
@@ -31,7 +29,5 @@ namespace ProgressBar
 	void	Destroy();
 }
 
-
-#endif
 
 #endif

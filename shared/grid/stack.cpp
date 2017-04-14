@@ -304,11 +304,13 @@ namespace Grid
 			
 	}
 
-	void			CellStack::ResetStructureCounters()
+	void			CellStack::ResetStructureCounters(bool resetVisibility)
 	{
 		for (UINT i = 0; i < Range; i++)
 		{
 			volumeCell[i].structureCounter = 0;
+			if (resetVisibility)
+				volumeCell[i].visibility = 0;
 		}
 	}
 

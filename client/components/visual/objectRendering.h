@@ -29,12 +29,11 @@ namespace Objects
 										seeThroughShader,
 										pathShader,
 										jobShader,
-										paraboloidShader,
 										skyPortBeam,
 										arrowInstruction;
 	extern DX11::StreamVBO				arrowBuffer;
 	extern DX11::VBO					sphereVBO[4];
-	extern DX11::IBO32					sphereIBO[4], attackIBO;
+	extern DX11::IBO32					sphereIBO[4];
 	//extern DX11::InstructionBlock32		rangeInstruction[4];
 
 	extern DX11::InstructionBlock32		cordon,
@@ -54,8 +53,7 @@ namespace Objects
 		extern Engine::OrthographicAspect<>		shadowCamera;
 		extern DX11::ObjectBuffer<TMatrix4<> >	shadowMatrix;
 	#endif
-	extern DX11::BaseInstructionBlock		shadowInstruction;
-
+	extern DX11::BaseInstructionBlock		shadowInstruction,standardCompiledShader, standardLocalizableShader;
 
 	inline	int DetermineLODInstruction(float distance, float radius)
 	{
@@ -162,6 +160,8 @@ namespace Objects
 		*/
 		void	RenderScene();
 
+
+		void	Recompile(Objects::Structure&structure);
 
 		/**
 		Renders any progress bars atop objects.

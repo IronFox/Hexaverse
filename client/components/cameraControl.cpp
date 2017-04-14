@@ -6,10 +6,12 @@
 #include <math/matrix.h>
 #include <engine/timing.h>
 
-#include "../../shared/sphereGrid.h"
+#include <grid/stack.h>
 #include "clientRuntimeConfig.h"
+#include <objects/satellite.h>
+#include "visual/objectCommands.h"
+#include "visual/terrain.h"
 
-#include "../../shared/objects.h"
 #include "timelapse.h"
 
 
@@ -274,7 +276,7 @@ namespace Camera
 			if (!locked)
 			{
 				autoRotation = true;
-				Grid::ResetSunRotation();
+				VisualTerrain::ResetSunRotation();
 			}
 		}
 		else
@@ -294,7 +296,7 @@ namespace Camera
 			static const count_t CameraRotations = 2;
 			static const count_t SunRotations = 5;
 			TVec3<> dir;
-			double at = Grid::GetAcceleratedSunDirection(dir,-float(CameraRotations) / SunRotations);
+			double at = VisualTerrain::GetAcceleratedSunDirection(dir,-float(CameraRotations) / SunRotations);
 			if (fabs(at) >= M_PI*2.0 * CameraRotations)
 			{
 				StopAutoRotation();
@@ -304,7 +306,7 @@ namespace Camera
 			scene.location = float3();
 			scene.retraction.z = -WorldScale * 3.75f;
 			scene.direction = -dir;
-			scene.upAxis = Grid::GetSunSystem().z;
+			scene.upAxis = VisualTerrain::GetSunSystem().z;
 			scene.UpdateView();
 
 			return;
@@ -368,8 +370,8 @@ namespace Camera
 			if (World::actual.cellStack[stackID].FindTopOccupied(top))
 				ChangeGroundRadius(Grid::ToRadius(top+2));
 		}
-		if (Grid::SeeThrough::IsEnabled())
-			ChangeGroundRadius(std::min(Grid::ToRadius(Grid::SeeThrough::GetFocusPoint().height+2), targetOrbit));
+		if (VisualTerrain::SeeThrough::IsEnabled())
+			ChangeGroundRadius(std::min(Grid::ToRadius(VisualTerrain::SeeThrough::GetFocusPoint().height+2), targetOrbit));
 		ASSERT__(orbit > 0);
 		DebugCheckVector(scene.location,-10000,10000);
 		Vec::setLen0(scene.location, orbit);
@@ -423,8 +425,8 @@ namespace Camera
 		}
 
 		//targetOrbit = Grid::ToRadius(World::actual.cellStack[stackID].FindTopOccupied());
-		if (Grid::SeeThrough::IsEnabled())
-			ChangeGroundRadius(std::min(Grid::ToRadius(Grid::SeeThrough::GetFocusPoint().height+2), targetOrbit));
+		if (VisualTerrain::SeeThrough::IsEnabled())
+			ChangeGroundRadius(std::min(Grid::ToRadius(VisualTerrain::SeeThrough::GetFocusPoint().height+2), targetOrbit));
 
 
 		Vec::setLen0(scene.location, orbit);

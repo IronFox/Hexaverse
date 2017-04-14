@@ -1,5 +1,4 @@
-#ifndef tutorialH
-#define tutorialH
+#pragma once
 
 #ifdef HAS_WINDOW
 
@@ -23,4 +22,3 @@ namespace Tutorial
 
 #endif
 
-#endif

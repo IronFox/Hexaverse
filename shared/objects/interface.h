@@ -4,6 +4,7 @@
 #include "types.h"
 #include "cursorMode.h"
 #include "../grid/stack.h"
+#include "../uniqueID.h"
 
 
 #ifdef HAS_WINDOW

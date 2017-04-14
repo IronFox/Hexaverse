@@ -1,14 +1,11 @@
+#ifdef HAS_WINDOW
 #include <global_root.h>
 #include "atmosphere.h"
-#include "../../shared/objects.h"
+#include <math/vclasses.h>
 
-#ifdef HAS_WINDOW
-
-#include <engine/display.h>
-#include "../ExtRenderer\DirectX11.h"
-
-extern Engine::Display<Engine::DirectX11>	display;
-
+#include "display.h"
+#include "terrainInstructions.h"
+#include "objectRendering.h"
 
 
 namespace Atmosphere
@@ -95,8 +92,8 @@ namespace Atmosphere
 
 		//bindings;
 		
-		bindings <<	DX11::Shader::Binding(Grid::Instruction::sunDirection,"Sun");
-		bindings << DX11::Shader::Binding(Grid::Instruction::sunColor,"SunColor");
+		bindings <<	DX11::Shader::Binding(VisualTerrain::Instruction::sunDirection,"Sun");
+		bindings << DX11::Shader::Binding(VisualTerrain::Instruction::sunColor,"SunColor");
 
 		#ifdef CASCADING_SHADOW
 			for (index_t i = 0; i < Objects::NumCascades; i++)
@@ -109,7 +106,7 @@ namespace Atmosphere
 			bindings.Append(DX11::Shader::Binding(Objects::shadowMap.GetDepthStencilTarget(), "ShadowMap"));
 		#endif
 		bindings.Append(DX11::Shader::SamplerBinding(true, Engine::TextureFilter::None, 1, "ShadowSampler"));
-		bindings.Append(DX11::Shader::Binding(Grid::Instruction::atmosphereConfig, "AtmosphereConfig"));
+		bindings.Append(DX11::Shader::Binding(VisualTerrain::Instruction::atmosphereConfig, "AtmosphereConfig"));
 
 		instruction.shader.LoadFromFile("shaders/atmosphere.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
 		instruction.SetTriangles();

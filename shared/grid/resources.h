@@ -72,6 +72,7 @@ namespace Grid
 		static Resource&		Require(ConstName name);
 		static coverage_t		Sample(const String&resourceName, index_t cellID);
 		static coverage_t		Sample(ConstName resourceName, index_t cellID);
+		static void				FlushAll();
 
 		index_t					resourceIndex;
 
@@ -93,7 +94,6 @@ namespace Grid
 	extern String			currentCustomResourceDistribution;
 
 	void					CreateResources();
-	void					FlushAllResourceData();
 	#ifdef CLIENT
 		void				UpdateResourceMap(ConstName resourceName,const ArrayData<TCellResourceCoverage>&, ResourceDiscovery&setKnown);
 	#endif

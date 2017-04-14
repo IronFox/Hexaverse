@@ -7,14 +7,12 @@
 #include "jobs.h"
 #include "prototypes.h"
 #include "interface.h"
-#include "visualSelection.h"
-#include "visualChoices.h"
-#include "rendering.h"
 #include "satellite.h"
 #include "gridAndChoices.h"
 #include "../runtimeConfig.h"
 #include "faction.h"
 #include "../grid/worldData.h"
+#include "structure/storageStructures.h"
 
 namespace Objects
 {
@@ -759,22 +757,6 @@ namespace Objects
 
 
 
-		void	Base::FinishCreation(bool scaleToVehicleSize/*=true*/)
-		{
-			#ifdef HAS_WINDOW		
-				foreach (parts,p)
-				{
-					if (scaleToVehicleSize)
-						p->first.Scale(vehicleScale);
-					(DX11::BaseInstructionBlock&)p->second = stdVehicleShader;
-					p->second.vbo.CreateFromStructs(p->first.GetLOD(0).vertices);
-					p->second.ibo.Create(p->first.GetLOD(0).indices);
-				}
-			#endif
-		}
-
-
-
 
 
 
@@ -794,54 +776,11 @@ namespace Objects
 
 
 
-		#ifdef HAS_WINDOW
-
-			struct CellCoords : public int2
-			{
-
-				/**/		CellCoords(int x, int y):int2(x,y)
-				{}
-
-
-				CellCoords	operator++(int)
-				{
-					CellCoords rs = *this;
-					if (y == 0)
-						y = 1;
-					else
-					{
-						x++;
-						y = 0;
-					}
-					return rs;
-				}
-				CellCoords&	operator++()
-				{
-					if (y == 0)
-						y = 1;
-					else
-					{
-						x++;
-						y = 0;
-					}
-					return *this;
-				}
-
-			};
-
-
-			CellCoords ConfigureStandardCommands(Turret&component)
-			{
-				component.commands.baseCoords = int2(3,0);
-				return CellCoords(3,0);
-			}
-		#endif
 
 		Buffer<PStructure> Terraformer::canBuild;
 
 		void			Terraformer::Configure(Turret&component)
 		{
-
 			foreach (structurePrototypes,p)
 				if (!(*p)->IsIndestructible())
 					#ifdef ONE_COMPOUND_PER_FACTION
@@ -852,207 +791,12 @@ namespace Objects
 					#endif
 					canBuild << *p;
 
-			#ifdef HAS_WINDOW
-				CellCoords offset = ConfigureStandardCommands(component);
-
-
-				PCommandGroup	buildGroup = component.commands.AddChild("Build"),
-								terraformGroup = component.commands.AddChild("Terraform"),
-								terraformRemoveGround = terraformGroup->AddChild("Remove Ground"),
-								terraformAddGround = terraformGroup->AddChild("Add Ground"),
-								structureGroup[Structure::Category::N];
-
-				#ifndef ONE_COMPOUND_PER_FACTION
-					PCommandGroup	transferGroup = component.commands.AddChild("Transfer");
-				#endif
-
-				for (index_t i = 0; i < Structure::Category::N; i++)
-				{
-					#ifdef ONE_COMPOUND_PER_FACTION
-						if (i == Structure::Category::Infrastructure)
-							continue;
-					#endif
-					structureGroup[i] =	buildGroup->AddChild(Structure::Category::Reinterpret(i).ToString());
-				}
-
-			
-
-
-				terraformRemoveGround->Add( new IconCommand("Dig Horizontally", &CommonCmd::ToggleMode<CursorMode::DigMode>
-					, &CommonCmd::ModeCheck<CursorMode::DigMode>
-					,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
-					{
-						costTypeOut = Resource::Minerals;
-						mineralCostOut = 0;
-						ASSERT__(selectedMobileEntity);
-						//PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = selectedMobileEntity->GetOperationRounds(VehicleJob::DigHorizontalMineralCosts,TerrainRemove);
-					}
-					));
-				terraformRemoveGround->Add( new IconCommand("Dig Down", &Cmd::DigDown, 
-					&CommonCmd::IdleCheck
-					,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
-					{
-						costTypeOut = Resource::Minerals;
-						mineralCostOut = 0;
-						ASSERT__(selectedMobileEntity);
-//						PVehicle v = To<Vehicle>::Cast(selectedMobileEntity);
-						timeCostOut = selectedMobileEntity->GetOperationRounds(VehicleJob::DigDownMineralCosts,TerrainRemove);
-					}
-				));
-				terraformRemoveGround->Add( new IconCommand("Clear Above", &CommonCmd::ToggleMode<CursorMode::ClearAboveMode>
-					, &CommonCmd::ModeCheck<CursorMode::ClearAboveMode>
-					,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
-					{
-						costTypeOut = Resource::Minerals;
-						mineralCostOut = 0;
-						ASSERT__(selectedMobileEntity);
-//						PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = selectedMobileEntity->GetOperationRounds(VehicleJob::ClearAboveMineralCosts,TerrainRemove);
-					}
-				));
-
-				terraformAddGround->Add( new IconCommand("Build Wall Up", &Cmd::IssueCommand<ConstName::Job_BuildWallUp>
-					,&CommonCmd::IdleCheck
-					,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
-					{
-						costTypeOut = Resource::Minerals;
-						mineralCostOut = VehicleJob::BuildWallMineralCosts;
-						ASSERT__(selectedMobileEntity);
-						//PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = selectedMobileEntity->GetOperationRounds(mineralCostOut,TerrainAdd);
-					}
-				));
-				terraformAddGround->Add( new IconCommand("Build Horizontal Wall", &Cmd::IssueCommand<ConstName::Job_BuildHorizontalWall>
-					,&CommonCmd::IdleCheck
-					,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
-					{
-						costTypeOut = Resource::Minerals;
-						mineralCostOut = VehicleJob::BuildWallMineralCosts;
-						ASSERT__(selectedMobileEntity);
-						//PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = selectedMobileEntity->GetOperationRounds(mineralCostOut,TerrainAdd);
-					}
-				));
-
-				PBaseCommand buildRoad(new IconCommand("Build Road", &Cmd::BuildRoad
-					,&CommonCmd::IdleCheck
-					,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
-					{
-						costTypeOut = Resource::Minerals;
-						mineralCostOut = VehicleJob::BuildRoadMineralCosts;
-						ASSERT__(selectedMobileEntity);
-						//PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = selectedMobileEntity->GetOperationRounds(mineralCostOut,TerrainAdd);
-					}
-				));
-
-				terraformAddGround->Add( buildRoad );
-				if (structureGroup[Structure::Category::Infrastructure])
-					structureGroup[Structure::Category::Infrastructure]->Add(buildRoad);
-
-				#ifndef ONE_COMPOUND_PER_FACTION
-					transferGroup->Add(new IconCommand("Withdraw Resources",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
-					transferGroup->Add(new IconCommand("Deposit Resources",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
-
-					structureGroup[Structure::Category::Infrastructure]->Add(new IconCommand("Build Connectors to", &CommonCmd::ToggleMode<CursorMode::BuildConnectorChainMode>, &CommonCmd::ModeCheck<CursorMode::BuildConnectorChainMode>,NoCosts));
-				#else
-
-				#endif
-
-				PBaseCommand buildRoadTo(new IconCommand("Build Road to", &CommonCmd::ToggleMode<CursorMode::BuildRoadChainMode>, &CommonCmd::ModeCheck<CursorMode::BuildRoadChainMode>, NoCosts));
-				PBaseCommand buildBridgeTo( new IconCommand("Build Bridge to", &CommonCmd::ToggleMode<CursorMode::BuildBridgeMode>, &CommonCmd::ModeCheck<CursorMode::BuildBridgeMode>,NoCosts) );
-
-				terraformAddGround->Add( buildRoadTo);
-				terraformAddGround->Add( buildBridgeTo);
-				if (structureGroup[Structure::Category::Infrastructure])
-				{
-					structureGroup[Structure::Category::Infrastructure]->Add(buildRoadTo);
-					structureGroup[Structure::Category::Infrastructure]->Add(buildBridgeTo);
-				}
-
-				terraformRemoveGround->Add( new IconCommand("Dig Tunnel to", &CommonCmd::ToggleMode<CursorMode::DigTunnelMode>, &CommonCmd::ModeCheck<CursorMode::DigTunnelMode>,NoCosts));
-				terraformAddGround->Add( new IconCommand("Build Wall to", &CommonCmd::ToggleMode<CursorMode::BuildWallChainMode>, &CommonCmd::ModeCheck<CursorMode::BuildWallChainMode>,NoCosts));
-
-
-				terraformAddGround->Add( new IconCommand("Build Blocks", &Cmd::BuildBlock, &CommonCmd::ModeCheck<CursorMode::BuildBlockMode>,NoCosts));
-				terraformAddGround->Add( new IconCommand("Commit", &Cmd::CommitOperation, &Cmd::CommitCheck
-					,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
-					{
-						costTypeOut = Resource::Minerals;
-						mineralCostOut = (int)cellSelection.Count();
-						ASSERT__(selectedMobileEntity);
-						//PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = selectedMobileEntity->GetOperationRounds(mineralCostOut,activeCursorMode != CursorMode::BuildBlockMode ? TerrainRemove : TerrainAdd);
-						if (activeCursorMode != CursorMode::BuildBlockMode)
-							mineralCostOut = 0;
-					}
-				));
-				terraformRemoveGround->Add( new IconCommand("Remove Blocks", &Cmd::RemoveBlock, &CommonCmd::ModeCheck<CursorMode::RemoveBlockMode>,NoCosts));
-				terraformRemoveGround->Add( new IconCommand("Commit", &Cmd::CommitOperation, &Cmd::CommitCheck
-					,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
-					{
-						costTypeOut = Resource::Minerals;
-						mineralCostOut = (int)cellSelection.Count();
-						ASSERT__(selectedMobileEntity);
-						//PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = selectedMobileEntity->GetOperationRounds(mineralCostOut,activeCursorMode != CursorMode::BuildBlockMode ? TerrainRemove : TerrainAdd);
-						if (activeCursorMode != CursorMode::BuildBlockMode)
-							mineralCostOut = 0;
-					}
-				));
-
-				
-
-
-		
-
-
-				int at = 0;
-
-				foreach(canBuild, b)
-				{
-					PStructure s = *b;
-					structureGroup[s->GetCategory()]->Add(new EntityConstructionCommand(/*"Build " + */(*b)->GetTypeName(), nullptr,nullptr,*b,std::bind(&Cmd::Construct, *b),
-					[s](bool controlsEnabled)
-					{
-						bool constructingMe = (activeCursorMode == CursorMode::PlaceStructureMode
-								&& activeStructureToPlace == s);
-						bool unlocked = selectedEntity && s->GetTable()->isUnlocked.GetValue(selectedEntity->GetResearchState());
-						BaseCommand::Flags rs = controlsEnabled && 
-							(activeCursorMode == CursorMode::Idle
-							|| constructingMe
-							) && unlocked
-							? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
-						if (constructingMe)
-							rs |= BaseCommand::Flags::IsPermaActive;
-						return rs;
-					}
-					));
-				}
-			#endif
-
-			//component.parts.SetSize(1);
-
-			//component.parts.First().first.LoadFromObj("objects/constructor.obj");
-	/*
-			MakeBox(component.parts.First().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.15f));
-			component.parts.First().first.UpdateBoundingBox();*/
-			//component.typeName = "Constructor";
-			//component.shortName = "structor";
-			//component.productionCosts = 20;
-			//component.baseStorageCapacity.level[Resource::Minerals] = 200;
-			//component.constructionSpeed = 5;
-		
-
 			#ifdef HAS_WINDOW		
 				component.parts.SetSize(1);
 
-				component.parts.First().first.LoadFromObj("objects/terraformer.obj");
+				component.parts.First().LoadFromObj("objects/terraformer.obj");
 			#endif
-	/*
-			MakeBox(component.parts.First().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.15f));
-			component.parts.First().first.UpdateBoundingBox();*/
+
 			component.typeName = "Terraformer";
 			component.shortName = "former";
 			component.constName = ConstName::Turret_Terraformer;
@@ -1061,18 +805,6 @@ namespace Objects
 			#ifndef ONE_COMPOUND_PER_FACTION
 				component.baseStorageCapacity.level[Resource::Minerals] = 200;
 			#endif
-			//component.baseOperationSpeed[Construct] = 10;
-			//component.baseOperationSpeed[TerrainRemove] = 10;
-			//component.baseOperationSpeed[TerrainAdd] = 10;
-			//component.healthMultiplier = 1;
-			//component.baseScanningRange = 4;
-			//component.uplinkTraffic = 30;
-			//component.uplinkPriority = 200;	//fairly early
-
-		
-			//component.weight = 2;					//turret weight
-
-			component.FinishCreation();
 		}
 
 
@@ -1094,39 +826,11 @@ namespace Objects
 		{
 
 			#ifdef HAS_WINDOW
-				CellCoords offset = ConfigureStandardCommands(component);
-
-				component.commands.Add( new IconCommand("Self Detonate", &Cmd::IssueCommand<ConstName::DetonationSize_Regular>
-					, &CommonCmd::IdleCheck
-					,[](int&resourceCostOut, Resource&costTypeOut, int&timeCostOut)
-					{
-						resourceCostOut = 0;
-						ASSERT__(selectedMobileEntity);
-						//PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = selectedMobileEntity->GetOperationRounds(VehicleJob::RegularSelfDetonationCosts,Nuclear);
-					}
-					));
-
-				component.commands.Add( new IconCommand("Obliterate", &Cmd::IssueCommand<ConstName::DetonationSize_Doomsday>
-					, &CommonCmd::IdleCheck
-					,[](int&resourceCostOut, Resource&costTypeOut, int&timeCostOut)
-					{
-						resourceCostOut = VehicleJob::DoomsdaySelfDetonationCosts;
-						costTypeOut = Resource::Uranium;
-						ASSERT__(selectedMobileEntity);
-						//PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = selectedMobileEntity->GetOperationRounds(VehicleJob::DoomsdaySelfDetonationCosts,Nuclear);
-					}
-					));
-
-				#ifndef ONE_COMPOUND_PER_FACTION
-					component.commands.Add( new IconCommand("Withdraw Uranium",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
-					component.commands.Add( new IconCommand("Deposit Uranium",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
-				#endif
+				
 
 				component.parts.SetSize(1);
 
-				component.parts.First().first.LoadFromObj("objects/bomb.obj");
+				component.parts.First().LoadFromObj("objects/bomb.obj");
 			#endif
 
 			component.typeName = "Bomb";
@@ -1137,20 +841,8 @@ namespace Objects
 			#ifndef ONE_COMPOUND_PER_FACTION
 				component.baseStorageCapacity.level[Resource::Uranium] = VehicleJob::DoomsdaySelfDetonationCosts;
 			#endif
-			//component.baseOperationSpeed[Nuclear] = 50;
-			//component.healthMultiplier = 1;
-			//component.baseScanningRange = 1;
-			//component.uplinkTraffic = 30;
-			//component.uplinkPriority = 200;	//fairly early
-
 			component.continuousRotation = true;
 			component.continuousRotationSpeed = 0.125f;
-			//component.baseExplosionRadius = 7;	//doomsday radius
-			//component.baseDamageLevel = 50;		//doomsday damage
-		
-			//component.weight = 5;					//turret weight
-
-			component.FinishCreation();
 		}
 
 
@@ -1161,19 +853,8 @@ namespace Objects
 		void			Artillery::Configure(Turret&component)
 		{
 			#ifdef HAS_WINDOW		
-				CellCoords offset = ConfigureStandardCommands(component);
-
-				#ifndef NO_MUNITION
-				#ifndef ONE_COMPOUND_PER_FACTION
-					component.commands.Add( new IconCommand("Withdraw Munitions",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
-					component.commands.Add( new IconCommand("Deposit Munitions",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
-				#endif
-				#endif
-	
-				component.commands.Add( new IconCommand("Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
-
 				component.parts.SetSize(1);
-				component.parts.First().first.LoadFromObj("objects/tank.obj");
+				component.parts.First().LoadFromObj("objects/tank.obj");
 			#endif
 
 
@@ -1182,50 +863,19 @@ namespace Objects
 			component.constName = ConstName::Turret_Artillery;
 			component.constTowerName = ConstName::Type_ArtilleryTower;
 
-			//component.productionCosts = 25;
 			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 24;
 			#endif
-		
-			//component.weight = 3;
-			//component.healthMultiplier = 1.5f;
-			//component.baseHorizontalAttackRange = 7;
-			//component.baseScanningRange = 4;
 
-			//#ifndef HYBRID_GRID
-			//	component.baseExplosionRadius = 3.5f;
-			//#else
-			//	component.baseExplosionRadius = 2;
-			//#endif
-			//component.baseDamageLevel = 7;
-			//component.baseAttacksPerRound = 1;
 			component.initiative = 80;
-			//#ifdef NO_MUNITION
-			//	component.baseAmmoNeedPerShot = 0;
-			//#else
-			//	component.baseAmmoNeedPerShot = 6;
-			//#endif
-
-			component.FinishCreation();
 		}
 
 
 		void			Launcher::Configure(Turret&component)
 		{
 			#ifdef HAS_WINDOW		
-				CellCoords offset = ConfigureStandardCommands(component);
-
-				#ifndef NO_MUNITION
-				#ifndef ONE_COMPOUND_PER_FACTION
-					component.commands.Add( new IconCommand( "Withdraw Munitions",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
-					component.commands.Add( new IconCommand( "Deposit Munitions",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
-				#endif
-				#endif
-	
-				component.commands.Add( new IconCommand("Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
-
 				component.parts.SetSize(1);
-				component.parts.First().first.LoadFromObj("objects/launcher.obj");
+				component.parts.First().LoadFromObj("objects/launcher.obj");
 			#endif
 
 			component.mountType = Turret::MountType::TowerOnly;
@@ -1234,51 +884,21 @@ namespace Objects
 			component.constName = ConstName::Turret_Launcher;
 			component.constTowerName = ConstName::Type_LauncherTower;
 
-			//component.productionCosts = 40;
 			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 24;
 			#endif
-		
-			//component.weight = 13;
-			//component.healthMultiplier = 1.5f;
-			//component.baseHorizontalAttackRange = 8;
-			//component.baseScanningRange = 4;
 
-			//#ifndef HYBRID_GRID
-			//	component.baseExplosionRadius = 1.5f;
-			//#else
-			//	component.baseExplosionRadius = 1;
-			//#endif
 			component.trajectoryType = TrajectoryType::Missile;
-			//component.baseDamageLevel = 10;
-			//component.baseAttacksPerRound = 1;
-			component.initiative = 70;
-			//#ifdef NO_MUNITION
-			//	component.baseAmmoNeedPerShot = 0;
-			//#else
-			//	component.baseAmmoNeedPerShot = 8;
-			//#endif
 
-			component.FinishCreation();
+			component.initiative = 70;
 		}
 
 
 		void			Armored::Configure(Turret&component)
 		{
 			#ifdef HAS_WINDOW		
-				CellCoords offset = ConfigureStandardCommands(component);
-
-				#ifndef NO_MUNITION
-				#ifndef ONE_COMPOUND_PER_FACTION
-					component.commands.Add( new IconCommand("Withdraw Munitions",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
-					component.commands.Add( new IconCommand("Deposit Munitions",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
-				#endif
-				#endif
-	
-				component.commands.Add( new IconCommand("Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
-
 				component.parts.SetSize(1);
-				component.parts.First().first.LoadFromObj("objects/armored.obj");
+				component.parts.First().LoadFromObj("objects/armored.obj");
 			#endif
 
 
@@ -1287,29 +907,11 @@ namespace Objects
 			component.constName = ConstName::Turret_Cannon;
 			component.constTowerName = ConstName::Type_CannonTower;
 
-			//component.productionCosts = 15;
 			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 20;
 			#endif
-		
-			//component.weight = 3;
-			//component.healthMultiplier = 2;
-			//component.baseHorizontalAttackRange = 5;
-			//component.baseScanningRange = 5;
-
-			//component.baseExplosionRadius = 1;
-			//component.baseDamageLevel = 3;
-			//component.baseAttacksPerRound = 2;
-			//#ifdef NO_MUNITION
-			//	component.baseAmmoNeedPerShot = 0;
-			//#else
-			//	component.baseAmmoNeedPerShot = 2;
-			//#endif
 
 			component.ignoresVehicleMotion = true;
-
-
-			component.FinishCreation();
 		}
 
 
@@ -1317,17 +919,8 @@ namespace Objects
 		void			EMP::Configure(Turret&component)
 		{
 			#ifdef HAS_WINDOW		
-				CellCoords offset = ConfigureStandardCommands(component);
-
-				#ifndef ONE_COMPOUND_PER_FACTION
-					component.commands.Add( new IconCommand("Withdraw Uranium",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
-					component.commands.Add( new IconCommand("Deposit Uranium",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
-				#endif
-
-				component.commands.Add( new IconCommand("Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
-
 				component.parts.SetSize(1);
-				component.parts.First().first.LoadFromObj("objects/emp.obj");
+				component.parts.First().LoadFromObj("objects/emp.obj");
 			#endif
 
 
@@ -1336,49 +929,30 @@ namespace Objects
 			component.constName = ConstName::Turret_EMP;
 			component.constTowerName = ConstName::Type_EMPTower;
 
-			//component.productionCosts = 100;
 			#ifndef ONE_COMPOUND_PER_FACTION
 				component.baseStorageCapacity.level[Resource::Uranium] = 150;
 			#endif
 		
-			//component.weight = 5;
-			//component.healthMultiplier = 1;
-			//component.baseHorizontalAttackRange = 17;
-			//component.baseScanningRange = 3;
-
-			//component.baseExplosionRadius = 3;
-			//component.baseDamageLevel = 5;
 			component.dealsEMPDamage = true;
-			//component.baseAttacksPerRound = 1;
 			component.initiative = 30;
-			//component.baseAmmoNeedPerShot = 50;
 			component.ammoType = Resource::Uranium;
-			//component.requiresStationaryVehicle = true;
-			//component.uplinkTraffic = 10;
-
-			#ifndef NO_MUNITION
-				if (component.baseAmmoNeedPerShot > 0)
-					ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
-			#endif
-
-			component.FinishCreation();
 		}
 
 
-		#ifdef HAS_WINDOW		
-			namespace Ragnarok
-			{
-				namespace MyCmd
+		#ifndef NO_SATELLITES
+			#ifdef HAS_WINDOW		
+				namespace Ragnarok
 				{
-					void		Obliterate()
+					namespace MyCmd
 					{
-						ApplicationInterface::SignalTargetLessAttack(selectedEntity);
+						void		Obliterate()
+						{
+							ApplicationInterface::SignalTargetLessAttack(selectedEntity);
+						}
 					}
 				}
-			}
-		#endif
+			#endif
 
-		#ifndef NO_SATELLITES
 			void			Ragnarok::Configure(Turret&component)
 			{
 				#ifdef HAS_WINDOW		
@@ -1593,13 +1167,9 @@ namespace Objects
 		void			MunitionTransporter::Configure(Turret&component)
 		{
 			#ifdef HAS_WINDOW		
-				CellCoords offset = ConfigureStandardCommands(component);
-
-				component.commands.Add( new IconCommand("Withdraw Munitions",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
-				component.commands.Add( new IconCommand("Deposit Munitions",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
 
 				component.parts.SetSize(1);
-				component.parts.First().first.LoadFromObj("objects/munitionTransporter.obj");
+				component.parts.First().LoadFromObj("objects/munitionTransporter.obj");
 			#endif
 
 
@@ -1607,43 +1177,16 @@ namespace Objects
 			component.shortName = " Ammo Truck";
 			component.constName = ConstName::Turret_MunitionTransporter;
 
-			//component.productionCosts = 5;
 			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 100;
 			#endif
-		
-			//component.weight = 4;
-			//component.healthMultiplier = 1;
-			//component.baseScanningRange = 3;
-
-			//component.baseExplosionRadius = 1;
-			//component.baseDamageLevel = 3;
-			//component.baseAttacksPerRound = 2;
-			//component.baseAmmoNeedPerShot = 2;
-
-			//component.ignoresVehicleMotion = true;
-			#ifndef NO_MUNITION
-				if (component.baseAmmoNeedPerShot > 0)
-					ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
-			#endif
-
-			component.FinishCreation();
 		}
 
 		void			Mechanic::Configure(Turret&component)
 		{
 			#ifdef HAS_WINDOW		
-				CellCoords offset = ConfigureStandardCommands(component);
-
-				#ifndef ONE_COMPOUND_PER_FACTION
-					component.commands.Add( new IconCommand("Withdraw Resources",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
-					component.commands.Add( new IconCommand("Deposit Resources",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
-				#endif
-
-				component.commands.Add( new IconCommand("Repair",&CommonCmd::ToggleMode<CursorMode::RepairMode>, &CommonCmd::ModeCheck<CursorMode::RepairMode>,NoCosts));
-
 				component.parts.SetSize(1);
-				component.parts.First().first.LoadFromObj("objects/constructor.obj");
+				component.parts.First().LoadFromObj("objects/constructor.obj");
 			#endif
 
 
@@ -1652,29 +1195,17 @@ namespace Objects
 			component.constName = ConstName::Turret_Mechanic;
 			component.constTowerName = ConstName::Type_MechanicTower;
 
-			//component.productionCosts = 30;
 			#ifndef ONE_COMPOUND_PER_FACTION
 				component.baseStorageCapacity.level[Resource::Minerals] = 100;
 			#endif
-		
-			//component.weight = 2;
-			//component.healthMultiplier = 1;
-			//component.baseScanningRange = 3;
-			//component.baseOperationSpeed[Repair] = 10;
-			//component.uplinkTraffic = 10;
-
-
-			component.FinishCreation();
 		}
 
 
 		void			Radar::Configure(Turret&component)
 		{
 			#ifdef HAS_WINDOW		
-				CellCoords offset = ConfigureStandardCommands(component);
-
 				component.parts.SetSize(1);
-				component.parts.First().first.LoadFromObj("objects/radar.obj");
+				component.parts.First().LoadFromObj("objects/radar.obj");
 			#endif
 
 
@@ -1683,16 +1214,8 @@ namespace Objects
 			component.constName = ConstName::Turret_Radar;
 			component.constTowerName = ConstName::Type_RadarTower;
 
-			//component.productionCosts = 10;
-		
-			//component.weight = 2;
-			//component.healthMultiplier = 1;
-			//component.baseScanningRange = 12;
 			component.continuousRotation = true;
 			component.continuousRotationSpeed = 2.f;
-			//component.uplinkTraffic = 10;
-
-			component.FinishCreation();
 		}
 
 	
@@ -1700,11 +1223,8 @@ namespace Objects
 		void			ResourceScanner::Configure(Turret&component)
 		{
 			#ifdef HAS_WINDOW		
-				CellCoords offset = ConfigureStandardCommands(component);
-				component.commands.Add( new IconCommand("Automate", &VehicleCmd::Automate, &VehicleCmd::AutomatedCheck,NoCosts));
-
 				component.parts.SetSize(1);
-				component.parts.First().first.LoadFromObj("objects/resourceScanner.obj");
+				component.parts.First().LoadFromObj("objects/resourceScanner.obj");
 			#endif
 
 
@@ -1712,22 +1232,10 @@ namespace Objects
 			component.shortName = "surveyor";
 			component.constName = ConstName::Turret_Surveyor;
 
-			//component.productionCosts = 10;
 			component.continuousRotation = true;
 			component.continuousRotationSpeed = -1.f;
 
-			//component.weight = 1;
-			//component.healthMultiplier = 1;
 			component.detectsResources = true;
-			//component.baseScanningRange = 4;
-			//component.uplinkPriority = 180;	//fairly early
-
-			#ifndef NO_MUNITION
-				if (component.baseAmmoNeedPerShot > 0)
-					ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
-			#endif
-
-			component.FinishCreation();
 		}
 
 
@@ -1741,8 +1249,8 @@ namespace Objects
 			#ifdef HAS_WINDOW		
 				component.parts.SetSize(1);
 
-				component.parts.First().first.LoadFromObj("objects/hoverbase.obj");
-				component.height = component.parts.First().first.GetBoundingBox().z.max;
+				component.parts.First().LoadFromObj("objects/hoverbase.obj");
+				component.height = component.parts.First().GetBoundingBox().z.max;
 				ASSERT2__(similar(staticHeight,component.height),staticHeight,component.height);
 
 				component.ambientSound = OpenAL::Load("resources/objectSounds/hoverbase.wav");
@@ -1771,8 +1279,6 @@ namespace Objects
 			component.acceleration[TerrainAdd] = 1;
 			component.acceleration[TerrainRemove] = 1;
 
-			component.FinishCreation();
-
 			component.height *= vehicleScale;
 		}
 
@@ -1784,8 +1290,8 @@ namespace Objects
 			#ifdef HAS_WINDOW		
 				component.parts.SetSize(1);
 
-				component.parts.First().first.LoadFromObj("objects/heavyBase.obj");
-				component.height = component.parts.First().first.GetBoundingBox().z.max;
+				component.parts.First().LoadFromObj("objects/heavyBase.obj");
+				component.height = component.parts.First().GetBoundingBox().z.max;
 				ASSERT2__(similar(staticHeight,component.height),staticHeight,component.height);
 
 				component.ambientSound = OpenAL::Load("resources/objectSounds/heavybase.wav");
@@ -1806,12 +1312,6 @@ namespace Objects
 			#ifndef ONE_COMPOUND_PER_FACTION
 				component.storageMultiplier = 2;
 			#endif
-			//component.operationSpeedMultiplier = 2;
-
-			//component.unmodulatedMovementSpeed = 15;
-			//component.baseCarryingCapacity = 10;
-			//component.unmodulatedHealth = 12;
-
 			component.hindrance.road = 1;
 			component.hindrance.air = 3;
 			component.hindrance.water = 4;
@@ -1819,8 +1319,6 @@ namespace Objects
 
 			component.acceleration[TerrainAdd] = 2;
 			component.acceleration[TerrainRemove] = 2;
-
-			component.FinishCreation();
 
 			component.height *= vehicleScale;
 		}
@@ -1833,8 +1331,8 @@ namespace Objects
 			#ifdef HAS_WINDOW		
 				component.parts.SetSize(1);
 
-				component.parts.First().first.LoadFromObj("objects/catBase.obj");
-				component.height = component.parts.First().first.GetBoundingBox().z.max;
+				component.parts.First().LoadFromObj("objects/catBase.obj");
+				component.height = component.parts.First().GetBoundingBox().z.max;
 				ASSERT2__(similar(staticHeight,component.height),staticHeight,component.height);
 
 				component.ambientSound = OpenAL::Load("resources/objectSounds/catbase.wav");
@@ -1870,8 +1368,6 @@ namespace Objects
 			component.acceleration[TerrainAdd] = 2;
 			component.acceleration[TerrainRemove] = 2;
 
-			component.FinishCreation();
-
 			component.height *= vehicleScale;
 		}
 
@@ -1879,130 +1375,7 @@ namespace Objects
 
 
 		#ifdef HAS_WINDOW
-			bool	NotModifyBlockMode(const Vehicle&v)
-			{
-				return activeCursorMode != CursorMode::BuildBlockMode && activeCursorMode != CursorMode::RemoveBlockMode;
-			}
-
-			/*static*/ bool Terraformer::Cmd::NotBuilding()
-			{
-				PMobileEntity v = selectedMobileEntity;
-				return v && (!v->HasTasks() || !v->myTasks.Peek().IsJob());
-			}
-
-			/*static*/ void Terraformer::Cmd::Construct(const PStructure&p)
-			{
-				PMobileEntity vehicle = selectedMobileEntity;
-				if (!vehicle)
-					return;
-				if (activeCursorMode != CursorMode::PlaceStructureMode)
-				{
-					//bool directPlace = !Engine::input.pressed[Key::Ctrl] && vehicle->myTasks.IsNotEmpty() && vehicle->myTasks.GetNewest().type == MobileEntity::Task::MoveTo;
-					//if (directPlace)
-					//{
-					//	const Grid::LCellIdI last = vehicle->GetLastPointOfOrigin();
-					//	const Grid::LCellIdI prev = vehicle->GetPrevPointOfOrigin();
-					//	const auto&n = Grid::low.grid.GetCell(last.stackID).neighborhood;
-					//	
-					//	for (int k = 0; k < n.numNeighbors; k++)
-					//		if (n.neighborID[k] == prev.stackID)
-					//		{
-					//			directPlace = false;
-					//			break;
-					//		}
-					//}
-
-					//if (!directPlace)
-					{
-						activeCursorMode = CursorMode::PlaceStructureMode;
-						showArrow = true;
-						arrowFromCell = vehicle->GetLastPointOfOrigin();
-						arrowFrom = Grid::low.cells[arrowFromCell.stackID].centerVertex.xyz * ( Grid::ToRadius(arrowFromCell.height));
-
-						if (!Engine::input.pressed[Key::Shift])
-							ApplicationInterface::SignalDropSafeTasks(vehicle);
-					}
-					//else
-						//ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_Construct, p->GetCTypeName());	
-							//this still works, but seemed unintuitive rather quickly
-					activeStructureToPlace = p;
-				}
-				else
-				{
-					activeCursorMode = CursorMode::Idle;
-					showArrow = false;
-				}
-
-
-				//SignalNewJob(vehicle, ConstName::Job_Construct, p->GetCTypeName());
-			}
-
-/*
-
-			void Terraformer::Cmd::ToggleDigMode()
-			{
-				CommonCmd::ToggleMode(CursorMode::DigMode);
-			}
-*/
-
-			//void Terraformer::Cmd::ClearAbove()
-			//{
-			//	CommonCmd::ToggleMode(CursorMode::ClearAboveMode);
-			//}
-
-			//bool Terraformer::Cmd::ClearAboveIsActive(const PWorldEntity&e)
-			//{
-			//	return CommonCmd::IsModeActive(e,CursorMode::ClearAboveMode);
-			//}
-	
-			//bool Terraformer::Cmd::BuildBlockIsActive(const PWorldEntity&e)
-			//{
-			//	return CommonCmd::IsModeActive(e,CursorMode::BuildBlockMode);
-			//}
-
-
-
-			//bool Terraformer::Cmd::RemoveBlockIsActive(const PWorldEntity&e)	
-			//{
-			//	return CommonCmd::IsModeActive(e,CursorMode::RemoveBlockMode);
-			//}
-	 
-
-
-			bool Terraformer::Cmd::CommitIsPossibleC(bool controlEnabled)
-			{
-				return controlEnabled && 
-					(CommonCmd::IsModeActive(CursorMode::BuildBlockMode) || CommonCmd::IsModeActive(CursorMode::RemoveBlockMode));
-			}
-
-			BaseCommand::Flags Terraformer::Cmd::CommitCheck(bool controlEnabled)
-			{
-				return CommitIsPossibleC(controlEnabled) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
-			}
-
-	
-		/*	bool VehicleCmd::AbortIsPossible(const PWorldEntity&e)
-			{
-				PVehicle v = To<Vehicle>::DynamicCast(e);
-				return (activeCursorMode != CursorMode::Idle || (v && v->tasks.IsNotEmpty()));
-			}*/
-
-			bool Terraformer::Cmd::ConstructionIsPossible()
-			{
-				return CommonCmd::IsModeActive(CursorMode::Idle) && NotBuilding(); 
-			}
 		
-	
-			/*static*/ void					Terraformer::Cmd::DigDown()
-			{
-				PVehicle vehicle = To<Vehicle>::DynamicCast(selectedMobileEntity);
-				if (!vehicle)
-					return;
-				if (vehicle->location.height < Grid::CellStack::BottomHeight+1)
-					return;
-				ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_DigDown, ConstName::Empty);
-			}
-
 			void			Base::DescribeType(BaseCommand::Label&label, bool compound, const OwnerParameter&owner)
 			{
 				if (!compound)
@@ -2200,141 +1573,6 @@ namespace Objects
 			//}
 
 
-			void					Terraformer::Cmd::BuildRoad()
-			{
-				PVehicle vehicle = To<Vehicle>::DynamicCast(selectedMobileEntity);
-				if (!vehicle)
-					return;
-				if (vehicle->location.height <= Grid::CellStack::BottomHeight)
-					return;
-				ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_BuildRoad,ConstName::Empty);
-			}
-
-
-
-
-
-			void	Terraformer::Cmd::RemoveBlock()
-			{
-				PVehicle v = To<Vehicle>::DynamicCast(selectedMobileEntity);
-				if (!v)
-					return;
-				CommonCmd::ToggleMode(CursorMode::RemoveBlockMode);
-
-				cellSelection.Clear();
-				removeCandidates.Clear();
-
-				if (activeCursorMode == CursorMode::RemoveBlockMode)
-				{
-					ASSERT__(v);
-					Grid::high.UpdatePlanarDistanceField(
-						#ifdef HYBRID_GRID
-							Grid::low.grid.GetCell(v->GetLastPointOfOrigin().stackID).higherEquivalent
-							, 8, Objects::vehicleDistanceField);
-						#else
-							v->GetLastPointOfOrigin().stackID
-
-							, 4, Objects::vehicleDistanceField);
-						#endif
-					for (UINT32 i = 0; i < (UINT32)Grid::high.grid.CellCount; i++)
-					{
-						if (Objects::vehicleDistanceField.distance[i] <= 3)
-						{
-							UINT32 at = v->location.height + Grid::CellStack::HalfRange;
-							UINT32 min = std::max(at,2U)-1;
-							for (UINT32 j = min; j <= at + 1; j++)
-							{
-								if (World::actual.cellStack[i].volumeCell[j].IsSolid())
-								{
-									//if (j != at || Grid::vehicleDistanceField.distance[i] > 1)
-									{
-										removeCandidates << Grid::HCellIdU(i, j);
-									}
-
-								}
-
-							}
-
-						}
-
-					}
-
-
-				}
-
-				if (v == selectedEntity)
-					UpdateChoices(true);
-			}
-
-
-			void	Terraformer::Cmd::BuildBlock()
-			{
-				PVehicle v = To<Vehicle>::DynamicCast(selectedMobileEntity);
-				if (!v)
-					return;
-				CommonCmd::ToggleMode(CursorMode::BuildBlockMode);
-				cellSelection.Clear();
-				buildCandidates.Clear();
-				const int height = v->GetLastPointOfOrigin().height;
-
-				if (activeCursorMode == CursorMode::BuildBlockMode)
-				{
-					ASSERT__(v);
-					Grid::high.UpdatePlanarDistanceField(
-						#ifdef HYBRID_GRID
-							Grid::low.grid.GetCell(
-								v->GetLastPointOfOrigin().stackID).higherEquivalent
-							, 8,
-						#else
-							v->GetLastPointOfOrigin().stackID
-
-							, 4,
-						#endif
-						 Objects::vehicleDistanceField);
-					for (UINT32 i = 0; i < (UINT32)Grid::high.grid.CellCount; i++)
-					{
-						if (Objects::vehicleDistanceField.distance[i] <= 3)
-						{
-							UINT32 at = height + Grid::CellStack::HalfRange;
-							for (UINT32 j = at - 1; j <= at + 1; j++)
-							{
-								if (!World::actual.cellStack[i].volumeCell[j].IsOccupied())
-								{
-									if (j != at || Objects::vehicleDistanceField.distance[i] > 1)
-									{
-										buildCandidates << Grid::HCellIdU(i, j);
-									}
-
-								}
-
-							}
-
-						}
-
-					}
-
-
-				}
-
-				if (v == selectedEntity)
-					UpdateChoices(true);
-			}
-
-			void					Terraformer::Cmd::CommitOperation()
-			{
-				PVehicle v = To<Vehicle>::DynamicCast(selectedMobileEntity);
-				if (!v)
-					return;
-				Array<Grid::HCellIdI>	selection;
-				Objects::cellSelection.MoveToArray(selection,true);
-				removeCandidates.Clear();
-				buildCandidates.Clear();
-
-				ApplicationInterface::SignalTerrainModification(v,activeCursorMode,selection );
-
-				activeCursorMode = CursorMode::Idle;
-			}
-
 
 
 
@@ -2416,7 +1654,7 @@ namespace Objects
 					Mat::invertSystem(system1,inverse);
 					Mat::transform(inverse,_b,b);
 					Mat::rotate(inverse,_d,d);
-					rs |= parts.First().first.TestIntersection(b,d,distance);
+					rs |= parts.First().TestIntersection(b,d,distance);
 				}
 				if (parts.Count() > 1)
 				{
@@ -2425,7 +1663,7 @@ namespace Objects
 					Mat::invertSystem(system2,inverse);
 					Mat::transform(inverse,_b,b);
 					Mat::rotate(inverse,_d,d);
-					rs |= parts[1].first.TestIntersection(b,d,distance);
+					rs |= parts[1].TestIntersection(b,d,distance);
 				}
 				return rs;
 			#else

@@ -1,13 +1,8 @@
-#ifdef HAS_WINDOW
-
 #include <global_root.h>
 #include "progressBar.h"
-#include <engine/display.h>
-#include "../ExtRenderer\DirectX11.h"
-#include "../../shared/sphereGrid.h"
+#include <grid/stack.h>
+#include "display.h"
 
-
-extern Engine::Display<Engine::DirectX11>	display;
 
 namespace ProgressBar
 {
@@ -108,6 +103,3 @@ namespace ProgressBar
 }
 
 
-
-
-#endif

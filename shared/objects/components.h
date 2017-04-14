@@ -154,7 +154,6 @@ namespace Objects
 											
 
 
-			void							FinishCreation(bool scaleToVehicleSize=true);
 
 			void							GetSubSystem(index_t geometryIndex, float angle, TMatrix4<>&outSystem)	const;
 			virtual bool					IsTurret() const {return false;}
@@ -381,17 +380,12 @@ namespace Objects
 				SmokeTrail
 			};
 
-			float							CompileTrajectory(const Buffer0<TVec4<> >&v, geometryType_t type, Geometry&outGeo, float widthScale=1.f);
+			static float					CompileTrajectory(const Buffer0<TVec4<> >&v, geometryType_t type, Geometry&outGeo, float widthScale=1.f);
 
 			/**
 			Checks whether or not the local turret could ever possibly consume resources
 			*/
 			bool							ConsumesResources(ResourceFlagSet&res, const OwnerParameter&) const;
-			void							FinishCreation(bool scaleToVehicleSize=true)
-			{
-				//float fc = (Grid::UnitScale-1.f)*0.5f + 1.f;
-				Super::FinishCreation(scaleToVehicleSize);
-			}
 
 		};
 
@@ -495,49 +489,6 @@ namespace Objects
 		namespace Terraformer
 		{
 			extern Buffer<PStructure> canBuild;
-
-			#ifdef HAS_WINDOW
-			namespace Cmd
-			{
-
-		
-				bool	BuildFoundationJob(const Vehicle&v);
-
-
-				//void	ToggleDigMode();
-
-				void	DigDown();
-				//bool	CanDigDown();
-
-
-				template <ConstName Command>
-					void	IssueCommand()
-					{
-						if (!selectedMobileEntity)
-							return;
-						ApplicationInterface::SignalNewJob(selectedMobileEntity, Command,ConstName::Empty);					
-					}
-
-				void	BuildRoad();
-				bool	NotBuilding();
-
-				//void	ClearAbove();
-				//bool	ClearAboveIsActive();
-
-				void	BuildBlock();
-				//bool	BuildBlockIsActive();
-
-				void	RemoveBlock();
-				//bool	RemoveBlockIsActive();
-
-				void	CommitOperation();
-				bool	CommitIsPossibleC(bool);
-				BaseCommand::Flags CommitCheck(bool);
-		
-				bool	ConstructionIsPossible();
-				void	Construct(const PStructure&p);
-			};
-			#endif
 
 
 

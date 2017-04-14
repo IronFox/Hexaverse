@@ -274,6 +274,9 @@ namespace Network
 
 	void		Setup();
 
+	void		LoadHosts();
+	void		SaveHosts();
+
 
 	class Label
 	{

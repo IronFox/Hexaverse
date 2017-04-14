@@ -52,10 +52,7 @@ namespace World
 	//
 	//}
 		
-	void	ResetStructureCounters()
-	{
-		actual.ResetStructureCounters();
-	}
+
 
 
 
@@ -742,12 +739,12 @@ namespace World
 
 	#ifdef HAS_WINDOW
 
-		//void	Data::OverrideVisibility(short v)
-		//{
-		//	foreach (cellStack,stack)
-		//	for (UINT32 l = 0; l < Grid::CellStack::Range; l++)
-		//		stack->volumeCell[l].visible = v;
-		//}
+		void	Data::OverrideVisibility(short v)
+		{
+			foreach (cellStack,stack)
+				for (UINT32 l = 0; l < Grid::CellStack::Range; l++)
+					stack->volumeCell[l].visibility = v;
+		}
 
 		float	Data::GetAverageLightLevel(const LCellIdI&id) const
 		{
@@ -1076,6 +1073,7 @@ namespace World
 
 		for (index_t i = 0; i < ARRAYSIZE(families); i++)
 			families[i].Reset();
+		InvalidateSensory();
 	}
 
 

@@ -1,10 +1,7 @@
-#ifndef atmosphereH
-#define atmosphereH
-
+#pragma once
 
 #ifdef HAS_WINDOW
 
-#include <math/vclasses.h>
 #include <engine/aspect.h>
 
 
@@ -19,6 +16,4 @@ namespace Atmosphere
 }
 #endif
 
-
-#endif
 

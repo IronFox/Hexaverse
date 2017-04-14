@@ -432,7 +432,7 @@ namespace Grid
 
 
 		void			ZeroInit(bool resetVisibility);
-		void			ResetStructureCounters();
+		void			ResetStructureCounters(bool resetVisibility);
 		#ifdef HAS_WINDOW
 
 			#ifdef THOROUGLY_DEBUG_SENSORY

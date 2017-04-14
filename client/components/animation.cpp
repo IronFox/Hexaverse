@@ -1,18 +1,17 @@
 #include <global_root.h>
 #include "animation.h"
 #include "network.h"
-#include "ui.h"
 #include "visual/world.h"
 #include "clientRuntimeConfig.h"
 #include "ai.h"
 #include <grid/resources.h>
-#ifdef HAS_WINDOW
-	#include "visual/explosions.h"
-	#include "visual/objectSelection.h"
-	#include "visual/objectComponent.h"
-	#include "visual/objectChoices.h"
-#endif
+#include "visual/ui.h"
+#include "visual/explosions.h"
+#include "visual/objectSelection.h"
+#include "visual/objectComponent.h"
+#include "visual/objectChoices.h"
 #include "configurationMode.h"
+#include <objects/structure/mine.h>
 
 namespace LocalApplicationInterface
 {
@@ -666,7 +665,7 @@ namespace Animation
 				{
 					p->queue.Clear();
 					p->productionDone = state->productionDone;
-					p->gatheringPoint.Set(state->gatheringPoint,v);
+					p->gatheringPoint.Set(state->gatheringPoint,Objects::selectedEntity == v);
 					
 					foreach (state->productionTasks,t)
 					{
@@ -822,7 +821,7 @@ namespace Animation
 				{
 					p->queue.Clear();
 					p->productionDone = state->productionDone;
-					p->gatheringPoint.Set(state->gatheringPoint,s);
+					p->gatheringPoint.Set(state->gatheringPoint,s==Objects::selectedEntity);
 					
 					foreach (state->productionTasks,t)
 					{
@@ -856,7 +855,10 @@ namespace Animation
 					foreach (state->attackTasks,at)
 					{
 						//ASSERT_EQUAL__(t->parameters.Count(),2);
-						t->AppendTask(*at);
+						auto&task = t->AppendTask(*at);
+						#ifdef HAS_WINDOW
+							Objects::TowerAttackVisualization::Of(task)->Recompile(*t,*at);
+						#endif
 					}
 				}
 			}
@@ -1469,7 +1471,7 @@ namespace Animation
 			case DestroyEntity:
 			return Done;
 			case ResourceUpdate:
-				Grid::UpdateResourceMap(resourceUpdate->resourceName,resourceUpdate->cells);
+				Grid::UpdateResourceMap(resourceUpdate->resourceName,resourceUpdate->cells,Grid::ResourceDiscovery::client);
 			return Done;
 			case TerrainChange:
 			{

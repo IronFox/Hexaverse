@@ -2,7 +2,6 @@
 #include <global_root.h>
 #include "objectRendering.h"
 #include <engine/aspect.h>
-#include "../../ExtRenderer/DirectX11.h"
 #include <math/vector.h>
 #include <image/converter/magic.h>
 #include <objects/structure.h>
@@ -15,12 +14,15 @@
 #include <objects/gridAndChoices.h>
 #include <runtimeConfig.h>
 #include <objects/systems.h>
+#include "objectComponent.h"
+#include "terrainInstructions.h"
+#include "terrain.h"
+#include "display.h"
 
 namespace Camera
 {
 	extern Engine::VectorCamera<>	scene;
 }
-extern Engine::Display<Engine::DirectX11>	display;
 
 
 
@@ -44,14 +46,15 @@ namespace Objects
 								jobShader,
 								attackRingShader,
 								cylinderShader,
-								paraboloidShader,
 								arrowInstruction,
 								smokeTrailShader,
 								skyPortBeam;
 	DX11::StreamVBO				arrowBuffer;
 	DX11::VBO					sphereVBO[4],cylinderVBO[4];
-	DX11::IBO32					sphereIBO[4],cylinderIBO[4], attackIBO;
+	DX11::IBO32					sphereIBO[4],cylinderIBO[4];
 	DX11::InstructionBlock32	sphereInstruction[4],cylinderInstruction[4];
+
+	DX11::BaseInstructionBlock	standardCompiledShader, standardLocalizableShader;
 
 	DX11::InstructionBlock32	cordon,
 								foundation,
@@ -210,7 +213,7 @@ namespace Objects
 		{
 			case TrajectoryType::Artillery:
 			{
-				base->paraboloidBuffer.Render(location, 
+				Objects::ParaboloidBuffer::Of(*base)->Render(location, 
 					zOffset,base->GetFlatAttackRange(),
 					explosionRadius,color,
 					extended
@@ -250,7 +253,6 @@ namespace Objects
 
 	void Renderer::Destroy()
 	{
-		BaseCommand::textureMap.Clear();
 		keyColor.Clear();
 		cylinderConfig.Clear();
 		overallTint.Clear();
@@ -260,8 +262,8 @@ namespace Objects
 		smokeTexture.Clear();
 
 		seeThroughShader = stdVehicleShader = DX11::BaseInstructionBlock();
-		Structure::standardCompiledShader = Structure::standardLocalizableShader =
-			pathShader = jobShader = cylinderShader = paraboloidShader = 
+		standardCompiledShader = standardLocalizableShader =
+			pathShader = jobShader = cylinderShader = 
 			attackRingShader = 
 			smokeTrailShader =
 			arrowInstruction = 
@@ -271,7 +273,7 @@ namespace Objects
 		attackRing.Clear();
 		gatheringPoint.Clear();
 		arrowBuffer.Clear();
-		attackIBO.Clear();
+		Objects::ParaboloidBuffer::StaticDestroy();
 
 		for (index_t i = 0; i < ARRAYSIZE(sphereVBO); i++)
 		{
@@ -374,9 +376,9 @@ namespace Objects
 		{
 			DX11::Shader::Binding(keyColor, "KeyColor"),
 			DX11::Shader::Binding(overallTint, "Tint"),
-			DX11::Shader::Binding(Grid::Instruction::atmosphereConfig, "AtmosphereConfig"),
-			DX11::Shader::Binding(Grid::Instruction::sunDirection,"Sun"),
-			DX11::Shader::Binding(Grid::Instruction::sunColor,"SunColor"),
+			DX11::Shader::Binding(VisualTerrain::Instruction::atmosphereConfig, "AtmosphereConfig"),
+			DX11::Shader::Binding(VisualTerrain::Instruction::sunDirection,"Sun"),
+			DX11::Shader::Binding(VisualTerrain::Instruction::sunColor,"SunColor"),
 			#ifdef CASCADING_SHADOW
 				DX11::Shader::Binding(Objects::shadowMatrix[0],"ShadowMatrix0"),
 				DX11::Shader::Binding(Objects::shadowMap[0].GetDepthStencilTarget(), "ShadowMap0"),
@@ -408,9 +410,9 @@ namespace Objects
 			{
 				DX11::Shader::Binding(beamBottomColor, "BeamBottomColor"),
 				DX11::Shader::Binding(beamTopColor, "BeamTopColor"),
-				DX11::Shader::Binding(Grid::Instruction::atmosphereConfig, "AtmosphereConfig"),
-				DX11::Shader::Binding(Grid::Instruction::sunDirection,"Sun"),
-				DX11::Shader::Binding(Grid::Instruction::sunColor,"SunColor"),
+				DX11::Shader::Binding(VisualTerrain::Instruction::atmosphereConfig, "AtmosphereConfig"),
+				DX11::Shader::Binding(VisualTerrain::Instruction::sunDirection,"Sun"),
+				DX11::Shader::Binding(VisualTerrain::Instruction::sunColor,"SunColor"),
 				#ifdef CASCADING_SHADOW
 					DX11::Shader::Binding(Objects::shadowMatrix[0],"ShadowMatrix0"),
 					DX11::Shader::Binding(Objects::shadowMap[0].GetDepthStencilTarget(), "ShadowMap0"),
@@ -462,8 +464,8 @@ namespace Objects
 			DX11::Shader::Binding bindings[] =
 			{
 				DX11::Shader::Binding(overallTint, "Tint"),
-				DX11::Shader::Binding(Grid::Instruction::sunDirection,"Sun"),
-				DX11::Shader::Binding(Grid::Instruction::sunColor,"SunColor"),
+				DX11::Shader::Binding(VisualTerrain::Instruction::sunDirection,"Sun"),
+				DX11::Shader::Binding(VisualTerrain::Instruction::sunColor,"SunColor"),
 				DX11::Shader::Binding(smokeTexture,"SmokeTexture"),
 				DX11::Shader::SamplerBinding(false,Engine::TextureFilter::Trilinear,1,"SmokeSampler")
 			};
@@ -477,8 +479,8 @@ namespace Objects
 			DX11::Shader::Binding bindings[] =
 			{
 				DX11::Shader::Binding(overallTint, "Tint"),
-				DX11::Shader::Binding(Grid::Instruction::sunDirection,"Sun"),
-				DX11::Shader::Binding(Grid::Instruction::sunColor,"SunColor"),
+				DX11::Shader::Binding(VisualTerrain::Instruction::sunDirection,"Sun"),
+				DX11::Shader::Binding(VisualTerrain::Instruction::sunColor,"SunColor"),
 			};
 			pathShader.binding = stdVehicleShader.binding;
 			pathShader.shader.LoadFromFile("shaders/vehiclePath.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
@@ -496,27 +498,14 @@ namespace Objects
 			attackRingShader.SetTriangles();
 
 
-
-	
-			DX11::Shader::Binding bindings2[] =
-			{
-				DX11::Shader::Binding(overallTint, "Tint"),
-				//DX11::Shader::Binding(hexGrid, "Texture"),
-				//DX11::Shader::SamplerBinding(false,Engine::VisualEnum::TextureFilter::Trilinear,4,"Sampler"),
-			};
-
-			paraboloidShader.binding = stdVehicleShader.binding;
-			paraboloidShader.shader.LoadFromFile("shaders/attackParaboloid.hlsl", "vsMain", "psMain", bindings2, ARRAYSIZE(bindings2));
-			paraboloidShader.UpdateLayout();
-			paraboloidShader.SetTriangles();
 		}
 
 		{
 			DX11::Shader::Binding bindings[] =
 			{
 				DX11::Shader::Binding(overallTint, "Tint"),
-				DX11::Shader::Binding(Grid::Instruction::sunDirection,"Sun"),
-				DX11::Shader::Binding(Grid::Instruction::sunColor,"SunColor"),
+				DX11::Shader::Binding(VisualTerrain::Instruction::sunDirection,"Sun"),
+				DX11::Shader::Binding(VisualTerrain::Instruction::sunColor,"SunColor"),
 				DX11::Shader::Binding(cylinderConfig,"CylinderConfig"),
 			};
 
@@ -589,13 +578,14 @@ namespace Objects
 		system.y.xyz *= scale;
 		system.z.xyz *= scale;
 		TMatrix4<> sub;
+		const auto&attachment = Objects::VisualComponent::Of(comp);
 		if (comp.parts.Count() > 0)
 		{
 			comp.GetSubSystem(0,x,sub);
 			Mat::transformSystem(system,sub);
 			system = sub;
 			display.SetObjectMatrix(system);
-			display.Render(comp.parts[0].second,true);
+			display.Render(attachment->partInstruction[0],true);
 		}
 		if (comp.parts.Count() > 1)
 		{
@@ -603,7 +593,7 @@ namespace Objects
 			Mat::transformSystem(system,sub);
 			system = sub;
 			display.SetObjectMatrix(system);
-			display.Render(comp.parts[1].second,true);
+			display.Render(attachment->partInstruction[1],true);
 		}
 
 	}
@@ -868,6 +858,8 @@ namespace Objects
 	void	Renderer::RenderComponent(TMatrix4<> system, float h, const Component::Base&comp, float x, float y)
 	{
 		TMatrix4<> sub;
+		const auto&attachment = Objects::VisualComponent::Of(comp);
+
 		if (comp.parts.Count() > 0)
 		{
 			system.w.xyz += system.z.xyz * h;
@@ -876,7 +868,7 @@ namespace Objects
 			Mat::transformSystem(system,sub);
 			system = sub;
 			display.SetObjectMatrix(system);
-			display.Render(comp.parts[0].second,true);
+			display.Render(attachment->partInstruction[0],true);
 		}
 		if (comp.parts.Count() > 1)
 		{
@@ -884,7 +876,7 @@ namespace Objects
 			Mat::transformSystem(system,sub);
 			system = sub;
 			display.SetObjectMatrix(system);
-			display.Render(comp.parts[1].second,true);
+			display.Render(attachment->partInstruction[1],true);
 		}
 
 	}
@@ -1517,7 +1509,9 @@ namespace Objects
 				foreach (v->myTasks,t)
 				{
 					if (t->type == Vehicle::Task::Job)
-						foreach (t->localizableShapes,shape)
+					{
+						const auto&visual = Objects::TaskAttachment::Of(*t);
+						foreach (visual->localizableShapes,shape)
 						{
 							if (shape->depthTest && shape->preRenderDepth)
 							{
@@ -1528,7 +1522,7 @@ namespace Objects
 							}
 
 						}
-
+					}
 				}
 			}
 		},false);
@@ -1559,7 +1553,8 @@ namespace Objects
 			{
 				foreach (v->myTasks,t)
 				{
-					foreach (t->localizableShapes,shape)
+					const auto&visual = Objects::TaskAttachment::Of(*t);
+					foreach (visual->localizableShapes,shape)
 					{
 						if (shape->selectedOnly && !selected)
 							continue;
@@ -1695,7 +1690,9 @@ namespace Objects
 			{
 				foreach (v->myTasks,t)
 				{
-					display.Render(t->visualization);
+					const auto&visual = Objects::TaskAttachment::Of(*t);
+
+					display.Render(visual->instruction);
 				}
 
 			}
@@ -1757,7 +1754,8 @@ namespace Objects
 			{
 				foreach (v->myTasks,t)
 				{
-					display.Render(t->visualization);
+					const auto&visual = Objects::TaskAttachment::Of(*t);
+					display.Render(visual->instruction);
 				}
 			}
 
@@ -2057,13 +2055,14 @@ namespace Objects
 	{
 		system.w.xyz += system.z.xyz * h;
 		TMatrix4<> sub;
+		const auto&visual = Objects::VisualComponent::Of(comp);
 		if (comp.parts.Count() > 0)
 		{
 			comp.GetSubSystem(0,x,sub);
 			Mat::transformSystem(system,sub);
 			system = sub;
 			display.SetObjectMatrix(system);
-			_RenderShadow(comp.parts[0].second);
+			_RenderShadow(visual->partInstruction[0]);
 		}
 		if (comp.parts.Count() > 1)
 		{
@@ -2071,7 +2070,7 @@ namespace Objects
 			Mat::transformSystem(system,sub);
 			system = sub;
 			display.SetObjectMatrix(system);
-			_RenderShadow(comp.parts[1].second);
+			_RenderShadow(visual->partInstruction[1]);
 		}
 
 	}
@@ -2079,6 +2078,7 @@ namespace Objects
 	static void _RenderShadowS(TMatrix4<> system, float h, float scale, const Component::Base&comp, float x, float y)
 	{
 		TMatrix4<> sub;
+		const auto&visual = Objects::VisualComponent::Of(comp);
 
 		if (comp.parts.Count() > 0)
 		{
@@ -2091,7 +2091,7 @@ namespace Objects
 			Mat::transformSystem(system,sub);
 			system = sub;
 			display.SetObjectMatrix(system);
-			_RenderShadow(comp.parts[0].second);
+			_RenderShadow(visual->partInstruction[0]);
 		}
 		if (comp.parts.Count() > 1)
 		{
@@ -2099,7 +2099,7 @@ namespace Objects
 			Mat::transformSystem(system,sub);
 			system = sub;
 			display.SetObjectMatrix(system);
-			_RenderShadow(comp.parts[1].second);
+			_RenderShadow(visual->partInstruction[1]);
 		}
 
 	}
@@ -2303,7 +2303,7 @@ namespace Objects
 			display.SetBlendMode(Engine::BlendMode::None);
 			display.SetDepthTest(true,true);
 			
-			Grid::UpdateSunDirection(float3(1,0,1),false);
+			VisualTerrain::UpdateSunDirection(float3(1,0,1),false);
 
 
 			{
@@ -2329,6 +2329,8 @@ namespace Objects
 
 
 	}
+
+
 }
 
 #endif

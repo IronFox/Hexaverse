@@ -3,9 +3,7 @@
 #include <global_root.h>
 #include "lineRenderer.h"
 
-#include <engine/display.h>
-
-extern Engine::Display<Engine::DirectX11>	display;
+#include "display.h"
 
 namespace LineRenderer
 {

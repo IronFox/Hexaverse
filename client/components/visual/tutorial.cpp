@@ -1,13 +1,12 @@
-#ifdef HAS_WINDOW
 
 #include <global_root.h>
 #include "tutorial.h"
 #include "dialog.h"
 #include <io/xml.h>
 #include <container/hashtable.h>
-#include "../version.h"
-#include "../../shared/objects.h"
-#include "clientRuntimeConfig.h"
+#include "../../version.h"
+#include "../clientRuntimeConfig.h"
+#include <objects/resource.h>
 
 namespace Tutorial
 {
@@ -119,5 +118,3 @@ namespace Tutorial
 }
 
 
-
-#endif

@@ -43,23 +43,25 @@
 #include "components/visual/terrain.h"
 #include "components/visual/objectCommands.h"
 #include "components/visual/ui.h"
-#include "components/network.h"
-#include "components/animation.h"
-#include "components/cameraControl.h"
-#include "components/progressBar.h"
+#include "components/visual/objectComponent.h"
+#include "components/visual/progressBar.h"
 #include "components/visual/dialog.h"
-#include "components/tutorial.h"
+#include "components/visual/tutorial.h"
 #include "components/visual/lineRenderer.h"
 #include "components/visual/surfaceRenderer.h"
 #include "components/ai.h"
 #include "components/clientRuntimeConfig.h"
 #include "components/visual/world.h"
-#include "components/atmosphere.h"
+#include "components/visual/atmosphere.h"
 #include "components/visual/guiHostList.h"
+#include "components/visual/commandDefinitions.h"
 #include "components/serverProcess.h"
 #include "components/audioInterface.h"
 #include "components/configurationMode.h"
 #include "components/gridControl.h"
+#include "components/network.h"
+#include "components/animation.h"
+#include "components/cameraControl.h"
 
 #include "rc/Resource.h"
 
@@ -3555,7 +3557,7 @@ int main( int argc, const char* argv[])
 
 			StartConfig::Finish();
 		}
-		LoadHosts();
+		Network::LoadHosts();
 
 
 		applicationStart = timer.Now();
@@ -3661,11 +3663,15 @@ int main( int argc, const char* argv[])
 
 
 		#ifdef HAS_WINDOW
+			Objects::StructureShape::LoadAll();
+			Objects::VisualComponent::FinalizeAll();
+
 			Camera::Setup(display.pixelAspect());	//creates a menu item, for which Objects::Create() must have been called
 
 
 			Explosions::Create();
 		#endif
+		Objects::Commands::DefineAll();
 		Animation::Create();
 
 
@@ -3861,9 +3867,10 @@ int main( int argc, const char* argv[])
 			LineRenderer::Destroy();
 			SurfaceRenderer::Destroy();
 			AudioInterface::Destroy();
+			Objects::Renderer::Destroy();
+			Objects::VisualCommand::textureMap.Clear();
 		#endif
 		ClientGrid::Destroy();
-		VisualTerrain::Destroy();
 		Objects::Destroy();
 		Animation::Destroy();
 		ScriptCache::Destroy();

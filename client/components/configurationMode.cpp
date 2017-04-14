@@ -2,12 +2,14 @@
 
 #include <global_root.h>
 #include <string/cli.h>
+#include <grid/resources.h>
 #include "configurationMode.h"
-#include "world.h"
-#include "ui.h"
-#include <objects/visualCommands.h>
+#include "visual/world.h"
+#include "visual/ui.h"
+#include "visual/objectCommands.h"
 #include "network.h"
 #include "objectStorage.h"
+#include "gridControl.h"
 #include "../version.h"
 
 namespace ConfigurationMode
@@ -27,7 +29,7 @@ namespace ConfigurationMode
 		index_t					sentVersion = 0,
 								receivedVersion = 0,
 								localVersion = 0;
-		Buffer0<Objects::PBaseCommand>	numberCommands;	//!< All commands rendering numbers
+		Buffer0<Objects::PVisualCommand>	numberCommands;	//!< All commands rendering numbers
 
 		GUI::PWindow			planetListWindow;
 
@@ -161,10 +163,10 @@ namespace ConfigurationMode
 			if (clientWorldLoaded)
 			{
 				config.GenerateAtmosphereColor();
-				config.Apply();
+				ClientGrid::Apply(config);
 			}
 			else
-				serverConfig.Apply();
+				ClientGrid::Apply(serverConfig);
 
 			RefreshButtonStates();
 		}
@@ -478,7 +480,7 @@ namespace ConfigurationMode
 
 		Objects::PCommandGroup MakeIntButtons(const Objects::PCommandGroup&group, int&value, const int&defValue, int min, int max)
 		{
-			Objects::PBaseCommand number(new UI::HexGrid::Custom::ValueReferenceCommand<int>(group->name+" ["+String(min)+".."+String(max)+"]",value));
+			Objects::PVisualCommand number(new UI::HexGrid::Custom::ValueReferenceCommand<int>(group->name+" ["+String(min)+".."+String(max)+"]",value));
 			numberCommands << number;
 			Objects::PIconCommand decrease(new Objects::IconCommand("Decrease",[&value,min,number]()
 			{
@@ -561,7 +563,7 @@ namespace ConfigurationMode
 		{
 			float min = value / 10.f;
 			float max = value * 10.f;
-			Objects::PBaseCommand number(new UI::HexGrid::Custom::ValueReferenceCommand<float>(group->name+" ["+String(min)+" - "+String(max)+"]",value));
+			Objects::PVisualCommand number(new UI::HexGrid::Custom::ValueReferenceCommand<float>(group->name+" ["+String(min)+" - "+String(max)+"]",value));
 			numberCommands << number;
 			//Objects::PIconCommand reset(new Objects::CustomIconCommand("Reset","Undo",[&value,&defValue]()
 			//{
@@ -1076,7 +1078,7 @@ namespace ConfigurationMode
 				//if (clientWorldLoaded)
 				//	Update();
 				//else
-					cfg.Apply();
+				ClientGrid::Apply(cfg);
 				World::allowRecompilation = false;
 			}
 		}

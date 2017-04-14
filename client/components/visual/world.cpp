@@ -6,8 +6,9 @@
 #include "../tutorial.h"
 #include "lineRenderer.h"
 #include <objects/structure.h>
-#include "gridRenderer.h"
-
+#include "terrain.h"
+#include "objectCommands.h"
+#include "objectChoices.h"
 
 namespace World
 {
@@ -184,7 +185,6 @@ namespace World
 					{
 						anyOutdated = true;
 						s->changed = true;
-						Objects::Structure::anyChanged = true;
 					}
 				});
 			}

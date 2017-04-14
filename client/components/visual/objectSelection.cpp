@@ -1,7 +1,8 @@
 #ifdef HAS_WINDOW
 #include <global_root.h>
-#include "visualObjectSelection.h"
-#include "visualObjectChoices.h"
+#include "objectSelection.h"
+#include "objectChoices.h"
+#include "objectCommands.h"
 #include <objects/interface.h>
 #include <objects/gridAndChoices.h>
 #include <objects/vehicle.h>

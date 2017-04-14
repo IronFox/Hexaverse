@@ -77,6 +77,11 @@ namespace VisualTerrain
 	*/
 	bool	FamilyIsOutdated(index_t);
 	void	RebuildOutdatedFamilies();
+	/**
+	Sets all families outdated, requesting a full rebuild when next needed
+	*/
+	void	Invalidate();
+	
 
 	namespace SeeThrough
 	{

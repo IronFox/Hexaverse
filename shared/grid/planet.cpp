@@ -202,7 +202,7 @@ namespace Grid
 			world.lightingOutdated = true;
 			world.structureChanged = true;
 		#endif
-		world.ResetStructureCounters();
+		world.ResetStructureCounters(true);
 		CellStack::bottom.content = (BYTE)innerCoreType;
 
 		Concurrency::parallel_for(index_t(0),HighSetup::GridType::CellCount,[&world,this](index_t i)

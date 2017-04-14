@@ -1,13 +1,13 @@
 #ifdef HAS_WINDOW
 
 #include <global_root.h>
-#include "visualObjectChoices.h"
+#include "objectChoices.h"
 #include <objects/entity.h>
 #include <objects/gridAndChoices.h>
 #include <math/object.h>
-#include "visualObjectSelection.h"
+#include "objectSelection.h"
 #include <objects/interface.h>
-#include "visualObjectCommands.h"
+#include "objectCommands.h"
 
 namespace Objects
 {

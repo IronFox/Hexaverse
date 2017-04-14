@@ -1,37 +1,15 @@
 #include <global_root.h>
 #include "guiHostList.h"
 #include "guiElements.h"
-#include "network.h"
+#include "../network.h"
 #include "dialog.h"
-#include "../version.h"
+#include "../../version.h"
 #include <io/string_file.h>
-#include "../../shared/runtimeConfig.h"
-#include "clientRuntimeConfig.h"
-#include "serverProcess.h"
+#include <runtimeConfig.h>
+#include "../clientRuntimeConfig.h"
+#include "../serverProcess.h"
 
-void LoadHosts()
-{
-	StringFile hosts;
-	if (hosts.Open(RuntimeConfig::ConfigFile("hosts.txt")))
-	{
-		String host;
-		while (hosts >> host)
-			Network::ServerDiscovery::RegisterNewHost(Network::ServerAddress(host),false, false);
-	}
-}
 
-void	SaveHosts()
-{
-	StringFile hosts;
-	if (hosts.Create(RuntimeConfig::ConfigFile("hosts.txt")))
-	{
-		static Buffer0<Network::ServerAddress>	 urls;
-		Network::ServerDiscovery::ListNonAutoAttempts(urls);
-		foreach (urls,url)
-			hosts << url->host << ':' << url->basePort << nl;
-		hosts.Close();
-	}
-}
 
 
 #ifdef HAS_WINDOW
@@ -396,7 +374,7 @@ void	SaveHosts()
 					if (Network::ServerDiscovery::TryRemoveHost(url))
 					{
 						UpdateServerChoice();
-						SaveHosts();
+						Network::SaveHosts();
 					}
 				},
 				[url]()
@@ -463,7 +441,7 @@ void	SaveHosts()
 					try
 					{
 						if (Network::ServerDiscovery::RegisterNewHost(Network::ServerAddress(url),false,false))
-							SaveHosts();
+							Network::SaveHosts();
 					}
 					catch (const std::exception&ex)
 					{

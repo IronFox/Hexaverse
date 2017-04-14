@@ -8,14 +8,6 @@
 #include "faction.h"
 
 
-#ifdef HAS_WINDOW
-	#include "visualChoices.h"
-	#include "rendering.h"
-	#include "visualCommands.h"
-	#include "visualSelection.h"
-	#include "../../client/components/dialog.h"
-#endif
-
 
 namespace Objects
 {
@@ -107,13 +99,13 @@ namespace Objects
 
 
 
-	bool						GatheringPoint::Set(const Grid::LCellIdI&point, const PWorldEntity&parent)
+	bool						GatheringPoint::Set(const Grid::LCellIdI&point, bool isSelected)
 	{
 		if (current == point)
 			return false;
 		current = point;
 		#ifdef HAS_WINDOW
-			if (selectedEntity == parent)
+			if (isSelected)
 			{
 				UpdateVisuals();
 			}

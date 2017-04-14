@@ -25,7 +25,7 @@ namespace Objects
 
 		Grid::LCellIdI				current = Grid::LCellIdI::Invalid;
 
-		bool						Set(const Grid::LCellIdI&point, const PWorldEntity&parent);
+		bool						Set(const Grid::LCellIdI&point, bool isSelected);
 
 	};
 

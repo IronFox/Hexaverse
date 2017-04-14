@@ -414,13 +414,6 @@ namespace Objects
 		*/
 		virtual void				PrototypeSetup()	{};
 
-		#ifdef HAS_WINDOW
-			/**
-			Called once on the prototype instance only, prior to PrototypeSetup().
-			Static geometry should be loaded here so that it is available for commands linked during PrototypeSetup()
-			*/
-			virtual void			PrototypeLoadGeometry() {};
-		#endif
 
 		virtual int					GetMaxHealth() const;
 		virtual String				DescribeMaxHealth() const;
