@@ -5,6 +5,7 @@
 #include <grid/resources.h>
 #include "configurationMode.h"
 #include "visual/world.h"
+#include "visual/terrain.h"
 #include "visual/ui.h"
 #include "visual/objectCommands.h"
 #include "network.h"
@@ -89,7 +90,7 @@ namespace ConfigurationMode
 				isLoaded = true;
 				copy.swap(World::actual);
 				current = nullptr;
-				Grid::SetAllFamiliesOutdated();	//force rebuild
+				VisualTerrain::Invalidate(); //force rebuild
 			};
 
 			void			Export()
@@ -100,7 +101,7 @@ namespace ConfigurationMode
 				isLoaded = false;
 				copy.swap(World::actual);
 				current = this;
-				Grid::SetAllFamiliesOutdated();	//force rebuild
+				VisualTerrain::Invalidate(); //force rebuild
 			}
 
 		};
@@ -157,7 +158,7 @@ namespace ConfigurationMode
 				}
 				st2.Export();
 			}
-			Grid::SetAllFamiliesOutdated();	//force rebuild
+			VisualTerrain::Invalidate(); //force rebuild
 			World::allowRecompilation = true;
 
 			if (clientWorldLoaded)
@@ -902,7 +903,7 @@ namespace ConfigurationMode
 					Grid::empZonesLocked = 0x0;
 				}
 				RuntimeConfig::empZones = set;
-				Grid::SetAllFamiliesOutdated(0);
+				VisualTerrain::Invalidate(); //force rebuild
 			});
 			Objects::PCommandGroup goals = ruleGroup->AddChild("Game Goal");
 			SetHint(*goals,FindDeclaration("/Rules/gameGoal"));

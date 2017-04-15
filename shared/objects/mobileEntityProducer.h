@@ -7,7 +7,8 @@
 #ifndef CLIENT
 	#include "resource.h"
 #endif
-
+#include "entityCommand.h"
+#include "../observer.h"
 
 namespace Objects
 {
@@ -54,11 +55,12 @@ namespace Objects
 			TUniqueID				id;
 			#ifdef CLIENT
 				#ifdef HAS_WINDOW
-					std::pair<int2,PEntityConstructionCommand>	commandToTerminate;
+					std::pair<int2,PBaseCommand>	commandToTerminate;
 				#endif
-				String				name;
+				String				name, queueName;
 				int					cost, roundsToCompletion;
 				Component::VehicleBase*		base=nullptr;	//set for vehicles only
+				Component::Turret*		turret=nullptr;	//set for vehicles only
 				PMobileEntity		prototype;	//set for non-vehicles only
 			#else
 				PMobileEntity		producing;
@@ -86,6 +88,8 @@ namespace Objects
 									productionRoundsLeft=0;
 
 
+		static Observer<MobileEntityProducer&,WorkItem&>	onAppendTask;
+
 		/**/						MobileEntityProducer(UINT32 productionPerRound):productionPerRound(productionPerRound)
 									{}
 
@@ -101,9 +105,10 @@ namespace Objects
 		}
 
 
-		void						AppendTask(const TUniqueID&id, ConstName baseName, ConstName turretName);
+		void					AppendTask(const TUniqueID&id, ConstName baseName, ConstName turretName);
 
 		#ifdef HAS_WINDOW
+			const int2&				GetCommandOffset() const {return commandOffset;}
 			void					VisitAllCommands(FCommandVisitor visitor,bool force);
 			void					SetCommandOffset(const int2&);
 		#else

@@ -35,6 +35,8 @@
 #include <objects/structure.h>
 #include <objects/gridAndChoices.h>
 #include <objects/prototypes.h>
+#include <objects/structure/mine.h>
+#include <objects/structure/laboratory.h>
 
 #include "components/visual/explosions.h"
 #include "components/visual/objectRendering.h"
@@ -457,6 +459,20 @@ namespace ApplicationInterface
 		#endif
 	}
 
+	void	SignalSceneFlush(bool preserveGameState)
+	{
+		#ifdef HAS_WINDOW
+			Objects::Renderer::Flush();
+			Objects::Deselect(false);
+			if (!preserveGameState)
+			{
+				Objects::resourceView = true;
+				Objects::objectView = true;
+			}
+			//activeResource = 0;
+			Objects::UpdateChoices(false);
+		#endif
+	}
 
 	void	SignalChoiceIntersection(const Objects::PWorldEntity&e,const Grid::LCellIdI&c, Objects::Vehicle::mode_t mode, const Objects::PMobileEntity&deployingWhat)
 	{
@@ -1572,7 +1588,8 @@ static Timer::Time	capTime = timer.Now();
 
 bool loop()
 {
-
+	try
+	{
 
 
 	#ifndef HAS_WINDOW
@@ -1855,7 +1872,7 @@ bool loop()
 
 			Objects::Renderer::RenderProgressBars();
 
-			if (Objects::showArrow && !GUI::IsModal())
+			if (Objects::choiceVis.showArrow && !GUI::IsModal())
 			{
 	//			display.SetDepthTest(false, false);
 				bool includeWater = false;
@@ -1865,22 +1882,22 @@ bool loop()
 					if (Objects::selectedVehicle /*&& Objects::selectedVehicle->base->moveOnWater*/)
 						includeWater = true;
 				Grid::LCellIdI loc;
-				Objects::hasArrowCellTarget = GetLowCellUnderCursor(loc,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode);
-				if (Objects::hasArrowCellTarget && loc != Objects::arrowCellTarget.cellLocation)
-					Objects::arrowCellTarget = Objects::TrajectoryEndPoint(loc);
-				if (Objects::hasArrowCellTarget)
+				Objects::choiceVis.hasArrowCellTarget = GetLowCellUnderCursor(loc,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode);
+				if (Objects::choiceVis.hasArrowCellTarget && loc != Objects::choiceVis.arrowCellTarget.cellLocation)
+					Objects::choiceVis.arrowCellTarget = Objects::TrajectoryEndPoint(loc);
+				if (Objects::choiceVis.hasArrowCellTarget)
 				{
 				
 					if (Objects::activeCursorMode == Objects::CursorMode::AttackMode
 					 && 
 						(
-							(Objects::selectedMobileEntity && !Objects::selectedMobileEntity->CanHitFrom(Objects::selectedMobileEntity->GetLastPointOfOrigin(),Objects::arrowCellTarget))
+							(Objects::selectedMobileEntity && !Objects::selectedMobileEntity->CanHitFrom(Objects::selectedMobileEntity->GetLastPointOfOrigin(),Objects::choiceVis.arrowCellTarget))
 							||
-							(Objects::selectedEntity && !Objects::selectedEntity->CanHit(Objects::arrowCellTarget))
+							(Objects::selectedEntity && !Objects::selectedEntity->CanHit(Objects::choiceVis.arrowCellTarget))
 						)
 					 //!Objects::Turret::CanHit(Objects::selectedVehicle->GetFlatAttackRange(),Objects::selectedVehicle->GetLastPointOfOrigin(),Objects::arrowCellTarget)
 					 )
-						Objects::hasArrowCellTarget = false;
+						Objects::choiceVis.hasArrowCellTarget = false;
 				}
 
 			}
@@ -2156,7 +2173,11 @@ bool loop()
 	#endif
 		//textout << "direction: "<<scene.GetViewingDirection()<< nl;
 		//textout << "position: " << scene.location << nl;
-	
+	}
+	catch (const Except::Program::DataConsistencyFault&fault)
+	{
+		Network::SignalProtocolDisruption(fault.what());
+	}
 
 	return !application_shutting_down;// && !Engine::input.pressed[Key::Escape];
 }
@@ -2307,7 +2328,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 						if (LocalApplicationInterface::DirectTo(Objects::selectedMobileEntity,target,0,Objects::CursorMode::Idle,false))
 						{
 							ApplicationInterface::SignalNewJob(Objects::selectedMobileEntity,ConstName::Job_Construct,Objects::activeStructureToPlace->GetCTypeName(),target);
-							Objects::arrowFromCell = target;
+							Objects::choiceVis.arrowFromCell = target;
 						}
 				}
 				else
@@ -3267,9 +3288,9 @@ namespace ApplicationInterface
 		)
 		{
 			bool newly = Objects::activeCursorMode == Objects::CursorMode::Idle;
-			Objects::arrowFromCell = Objects::selectedMobileEntity->GetLastPointOfOrigin();
-			Objects::arrowFrom = Grid::low.cells[Objects::arrowFromCell.stackID].centerVertex.xyz * ( Grid::ToRadius(Objects::arrowFromCell.height));
-			Objects::showArrow = true;
+			Objects::choiceVis.arrowFromCell = Objects::selectedMobileEntity->GetLastPointOfOrigin();
+			Objects::choiceVis.arrowFrom = Grid::low.cells[Objects::choiceVis.arrowFromCell.stackID].centerVertex.xyz * ( Grid::ToRadius(Objects::choiceVis.arrowFromCell.height));
+			Objects::choiceVis.showArrow = true;
 			Objects::activeCursorMode = Objects::CursorMode::PlaceStructureMode;
 			if (newly)
 				UI::RefreshButtonState();
@@ -3282,7 +3303,7 @@ namespace ApplicationInterface
 		if (Objects::activeCursorMode == Objects::CursorMode::PlaceStructureMode)
 		{
 			Objects::activeCursorMode = Objects::CursorMode::Idle;
-			Objects::showArrow = false;
+			Objects::choiceVis.showArrow = false;
 			UI::RefreshButtonState();
 		}
 
@@ -3530,6 +3551,36 @@ int main( int argc, const char* argv[])
 	#endif
 
 
+
+	//tests
+	{
+		Random random;
+		for (int i = 0; i < 1000; i++)
+		{
+			BaseGrid::FamiliesChanged ch;
+			ASSERT__(ch.begin() == ch.end());
+			count_t cnt = 0;
+			for (int j = 0; j < 10; j++)
+			{
+				index_t at = random.NextIndex(BaseGrid::NumFamilies);
+				if (!ch.changed[at])
+					cnt++;
+				ch.changed[at] = true;
+			}
+			count_t newCnt = 0;
+			for (auto it = ch.begin(); it != ch.end(); ++it)
+			{
+				ASSERT__(ch.changed[*it]);
+				newCnt++;
+			}
+			ASSERT_EQUAL__(cnt,newCnt);
+		}
+		FATAL__("Test passed. Remove test");
+	}
+
+
+
+
 	try
 	{
 		LogEvent(EventClass::Preset::uncommon,nullptr,"Starting client v" PRODUCT_VERSION);
@@ -3691,12 +3742,15 @@ int main( int argc, const char* argv[])
 		ClientGrid::Create();
 		Objects::Renderer::Create();
 		Objects::Create();
+		#ifdef HAS_WINDOW
+			Objects::RefreshCommands(false);
+		#endif
+
 		VisualTerrain::Create();
 
 
 		#ifdef HAS_WINDOW
-			Objects::StructureShape::LoadAll();
-			Objects::VisualComponent::FinalizeAll();
+			Objects::CreateComponents();
 
 			Camera::Setup(display.pixelAspect());	//creates a menu item, for which Objects::Create() must have been called
 
@@ -3901,6 +3955,7 @@ int main( int argc, const char* argv[])
 			AudioInterface::Destroy();
 			Objects::Renderer::Destroy();
 			Objects::VisualCommand::textureMap.Clear();
+			Objects::DestroyComponents();
 		#endif
 		ClientGrid::Destroy();
 		Objects::Destroy();

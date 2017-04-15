@@ -82,33 +82,6 @@ namespace Objects
 
 	#ifdef HAS_WINDOW
 
-		/**
-		Relay-functor to convert a single boolean function or variable to BaseCommand::Flags.
-		Depending on the returned boolean value, flag compositions will either be 
-		BaseCommand::Flags::IsEnabled | BaseCommand::Flags::IsPermaActive 
-		or
-		BaseCommand::Flags::IsEnabled
-		*/
-		class GlobalPermaSwitch
-		{
-			std::function<bool()>	getState,enabled;
-		public:
-			/**/	GlobalPermaSwitch(const std::function<bool()>&f,const std::function<bool()>&enabled=std::function<bool()>()):getState(f),enabled(enabled)
-			{}
-			/**/	GlobalPermaSwitch(bool&b,const std::function<bool()>&enabled=std::function<bool()>()):getState([&b](){return b;}),enabled(enabled)
-			{}
-
-
-			BaseCommand::Flags	operator()(bool)
-			{
-				BaseCommand::Flags rs= getState() ? BaseCommand::Flags::IsPermaActive : BaseCommand::Flags::None;
-				if (!enabled || enabled())
-					rs |= BaseCommand::Flags::IsEnabled;
-				return rs;
-			}
-
-
-		};
 
 
 
@@ -187,11 +160,6 @@ namespace Objects
 
 
 
-		#ifdef HAS_WINDOW
-		{
-		}
-		#endif
-
 		LogEvent(EventSignificance::Debug, nullptr, "Structure static setup");
 
 		Structure::StaticSetup();
@@ -214,115 +182,7 @@ namespace Objects
 
 		ResearchState::StaticCreate();	//all prototypes good. time to set the tables
 
-		#ifdef HAS_WINDOW
-			foreach (Component::vehicleTurretComponents,tc)
-				(*tc)->VisitAllCommands([](const int2&,const PBaseCommand&cmd){cmd->RasterizeImage();},true);
-			foreach (Component::baseComponents,bc)
-				(*bc)->VisitAllCommands([](const int2&,const PBaseCommand&cmd){cmd->RasterizeImage();},true);
 
-			globalCommands.baseCoords = BaseCommand::coordOffset;
-			globalCommands.Add(int2(-1, 0),false,new GlobalCommand("End Round",
-			[]()
-			{
-				if (ApplicationInterface::HasSignalledRoundEnd())
-					ApplicationInterface::SignalUndoRoundEnd();
-				else
-					ApplicationInterface::SignalRoundEnd();
-			}, 
-			[](bool controlEnabled)->BaseCommand::Flags
-			{
-				BaseCommand::Flags rs = BaseCommand::Flags::None;
-				if (ApplicationInterface::CanChangeRoundState())
-					rs |= BaseCommand::Flags::IsEnabled;
-				if (ApplicationInterface::HasSignalledRoundEnd())
-					rs |= BaseCommand::Flags::IsPermaActive;
-				else
-					if (ApplicationInterface::ShouldSignalRoundEnd())
-						rs |= BaseCommand::Flags::IsFlashing;
-				return rs;
-			}));
-			globalCommands.Add(int2(0, 0),false,new GlobalCommand("Auto End Round",
-			[]()
-			{
-				if (!RuntimeConfig::autoNewRound && ApplicationInterface::ShouldSignalRoundEnd())
-					ApplicationInterface::SignalRoundEnd();
-				RuntimeConfig::autoNewRound = !RuntimeConfig::autoNewRound;
-			},
-			[](bool controlEnabled)->BaseCommand::Flags
-			{
-				BaseCommand::Flags rs = BaseCommand::Flags::None;
-				rs |= BaseCommand::Flags::IsEnabled;
-				if (RuntimeConfig::autoNewRound)
-					rs |= BaseCommand::Flags::IsPermaActive;
-				return rs;
-			}));
-
-			viewCommands = globalCommands.AddChild(int2(1,0),false,"View");
-
-
-			viewCommands->Add( new GlobalCommand("Clip Terrain", &GlobalCmd::ToggleSeeThrough
-					,GlobalPermaSwitch(Grid::SeeThrough::IsEnabled)
-				));
-			viewCommands->Add( new GlobalCommand("Clip-View Down", &GlobalCmd::SeeThroughDown
-					,[](bool)->BaseCommand::Flags{return GlobalCmd::SeeThroughIsActive() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;}
-				));
-			viewCommands->Add( new GlobalCommand("Clip-View Up", &GlobalCmd::SeeThroughUp
-					,[](bool)->BaseCommand::Flags{return GlobalCmd::SeeThroughIsActive() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;}
-				));
-
-			viewCommands->Add( new GlobalCommand("Hide Objects", &GlobalCmd::ToggleObjectView
-					,GlobalPermaSwitch([](){return !objectView;})
-				));
-
-
-			viewCommands->Add( new GlobalCommand("Show Resources", []()
-					{
-						resourceView = !resourceView;
-						for (int j = 0; j < BaseGrid::NumFamilies; j++)
-							Grid::low.family[j].normal.resourceOutdated = true;
-			
-					}
-					,GlobalPermaSwitch(resourceView)
-				));
-
-			viewCommands->Add( new GlobalCommand("Show Ranges", []()
-					{
-						showFriendlyRanges = !showFriendlyRanges;
-					}
-					, GlobalPermaSwitch(showFriendlyRanges)
-				));
-			viewCommands->Add( new GlobalCommand("Show Hostile Ranges", []()
-					{
-						showHostileRanges = !showHostileRanges;
-					}
-					,GlobalPermaSwitch(showHostileRanges)
-				));
-
-			//ASSERT__(Grid::Resource::all.IsNotEmpty());	//wrong order if this fires
-			//for (index_t i = 0; i < Grid::Resource::all.Count(); i++)
-			//{
-			//	const Grid::Resource&res = Grid::Resource::all[i];
-			//	globalCommands.Append(GlobalCommand(int2(i,1),"Show "+res.GetName(), [i]()
-			//	{
-			//		if (i == activeResource)
-			//		{
-			//			resourceView = !resourceView;
-			//			return;
-			//		}
-			//		for (int j = 0; j < BaseGrid::NumFamilies; j++)
-			//			Grid::low.family[j].normal.resourceOutdated = true;
-			//		resourceView = true;
-			//		activeResource = i;
-
-			//	}, &AlwaysTrueV, [i]()
-			//	{
-			//		return resourceView && activeResource == i;
-			//	}));
-			//}
-		#endif
-		#ifdef HAS_WINDOW
-			RefreshCommands(false);
-		#endif
 
 
 		InitGrid();
@@ -336,18 +196,13 @@ namespace Objects
 
 	void					Destroy()
 	{
-		#ifdef HAS_WINDOW
-			Renderer::Destroy();
-		//	hexGrid.Clear();
-		#endif
 		#ifdef CLIENT
 			skyLinks.Clear();
 		#endif
+		vehicles.Clear();
 		structures.Clear();
 		structurePrototypes.Clear();
 		Component::DestroyAll();
-
-
 	}
 	
 	#ifdef VOXEL_SCANNER
@@ -437,39 +292,7 @@ namespace Objects
 	
 
 		#ifdef HAS_WINDOW
-			PWorldEntity					GetRayIntersection(const TVec3<>&b, const TVec3<>&d, float&distance)
-			{
-				PWorldEntity newSel;
-				ForeachWorldEntity([b,d,&distance,&newSel](const Objects::PWorldEntity&e)
-				{
-					if (e->TestIntersection(b, d, distance))
-					{
-						newSel = e;
-					}
-				},true);
 
-				return newSel;
-			}
-
-			bool					Select(const TVec3<>&b, const TVec3<>&d, float&distance,bool controlEnabled)
-			{
-				//if (Compound::Transfer::isActive)
-					//return false;
-
-				//selectedEntity.reset();
-				PWorldEntity newSel = GetRayIntersection(b,d,distance);
-
-				//bool success = !!selectedEntity;
-				if (newSel)
-				{
-					Select(newSel,controlEnabled);
-				}
-				#ifdef HAS_WINDOW
-					else
-						RefreshCommands(controlEnabled);	//in UpdateChoices() otherwise
-				#endif
-				return !!newSel;
-			}
 
 		#endif
 	
@@ -721,25 +544,6 @@ namespace Objects
 
 
 
-
-
-	#ifdef HAS_WINDOW
-
-		bool			DisableModes(bool controlEnabled)
-		{
-			if (activeCursorMode == CursorMode::Idle)
-				return false;
-			buildCandidates.Clear();
-			removeCandidates.Clear();
-			activeCursorMode = CursorMode::Idle;
-			UpdateChoices(controlEnabled);
-			return true;
-		}
-
-
-
-	#endif
-
 	void			FlushAllData(bool preserveGameState)
 	{
 		LogEvent(EventClass::Preset::uncommon,"Flushing scene data");
@@ -770,26 +574,7 @@ namespace Objects
 				uplinkTraffic = 0;
 				onlineUplinkTraffic = 0;
 			#endif
-			#ifdef HAS_WINDOW
-				Renderer::Flush();
-				Deselect(false);
-				if (!preserveGameState)
-				{
-					resourceView = true;
-					objectView = true;
-				}
-				hasArrowCellTarget = false;
-				showArrow = false;
-				arrowFrom = float3();
-				arrowFromCell = Grid::LCellIdI(0,0);
-				arrowCellTarget = TrajectoryEndPoint();
-				//activeResource = 0;
 
-				cellSelection.Clear();
-				buildCandidates.Clear();
-				removeCandidates.Clear();
-				UpdateChoices(false);
-			#endif
 
 			waste.Clear();
 
@@ -797,6 +582,8 @@ namespace Objects
 			Faction::all.Clear();
 			Faction::RecreateNexus();
 		#endif
+
+		ApplicationInterface::SignalSceneFlush(preserveGameState);
 	}
 
 

@@ -102,13 +102,13 @@ namespace World
 		bool					IsRoad(const LCellIdI&, bool ignoreClearCellsOnEdge) const;
 
 		void					FlushAllData(bool resetVisibility);
-		void					ResetStructureCounters(bool resetVisibility)
-		{
-			for (index_t i = 0; i < cellStack.Count(); i++)
-			{
-				cellStack[i].ResetStructureCounters(resetVisibility);
-			}
-		}
+		/**
+		Resets the structure counters of all cells
+		@param resetVisibility Also clear out any visibility of any cell
+		@param changedFamilies Entries are set to true where stacks were changed. May be null
+		@return true if anything changed
+		*/
+		bool					ResetStructureCounters(bool resetVisibility, BaseGrid::FamiliesChanged*changedFamilies=nullptr);
 		void					ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDelta>&data0, bool initialization);
 		void					ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDeltaBlock>&data0, bool initialization, bool actualWorld);
 		//void					ApplyFamilyDelta(Array<CellStack>&stacks, BYTE family, const Array<CellStack::TTypeDeltaBlock>&data0, const Array<CellStack::TStructCountDeltaBlock>&data1, bool initialization);

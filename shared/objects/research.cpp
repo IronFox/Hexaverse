@@ -8,6 +8,7 @@
 #include "../runtimeConfig.h"
 #include "../luaGameAPI.h"
 #include <io/file_system.h>
+#include "structure/laboratory.h"
 
 namespace Objects
 {
@@ -685,9 +686,7 @@ namespace Objects
 				Faction::nexus->researchState.LoadNexusResearchState();
 		#endif
 
-		#ifdef HAS_WINDOW
-			Laboratory::ConfigureResearchButtons();
-		#endif
+		globalState.onScriptChange();
 		//globalState.researchProgram.reset();
 	}
 

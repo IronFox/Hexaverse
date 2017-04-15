@@ -11,11 +11,7 @@ namespace Objects
 
 	extern bool		controlIsEnabled /*= false*/;
 	extern Buffer0<Choice>			movementChoices;
-	extern bool						hasArrowCellTarget,
-									showArrow;
-	extern float3					arrowFrom;	//arrow visualization point of origin. Might be the location of a vehicle, or any of the locations in its task queue. Only relevant if showArrow is true
-	extern Grid::LCellIdI			arrowFromCell;
-	extern TrajectoryEndPoint		arrowCellTarget;
+	extern TChoiceVisualization		choiceVis;
 	extern Buffer0<Grid::HCellIdI>	cellSelection;	//actually selected cells in either build or remove block mode
 	extern Buffer0<Grid::HCellIdU>	buildCandidates, removeCandidates;	//possible cells to build or remove - used for visualization purposes only
 
@@ -32,7 +28,13 @@ namespace Objects
 	@return true, if a choices intersection was determined (and handled), false otherwise
 	*/
 	bool				HandleChoiceIntersection(const TVec3<>&b, const TVec3<>&d, float distance);
-
+	/**
+	Resets the cursor mode to idle.
+	Updates choices and commands if necessary.
+	@param controlEnabled Pass true if player controls are currently enabled (not disabled due to wrong phase, or open modal dialogs)
+	@return true, if any modes were disabled
+	*/
+	bool			DisableModes(bool controlEnabled);
 }
 
 

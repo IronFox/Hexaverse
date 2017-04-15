@@ -1,5 +1,6 @@
 #include <global_root.h>
 #include "vehicleStore.h"
+#include "../mobileEntity.h"
 
 namespace Objects
 {

@@ -12,6 +12,7 @@
 #include "visual/objectChoices.h"
 #include "configurationMode.h"
 #include <objects/structure/mine.h>
+#include "visual/commandDefinitions.h"
 
 namespace LocalApplicationInterface
 {
@@ -529,6 +530,19 @@ namespace Animation
 
 	static GenericHashSet<TUniqueID,TUniqueID> insertIntoGridLater;
 
+
+	static void AppendTask(const Objects::PMobileEntityProducer&p,const TUniqueID&id, ConstName baseName, ConstName turretName)
+	{
+		p->AppendTask(id,baseName,turretName);
+	}
+
+	static void StoreLocally(const Objects::PHangar&h,const Objects::PVehicle&v,float&t,bool setHealthToFull)
+	{
+		if (!h->StoreLocally(v,t,setHealthToFull,h))
+			throw Except::Program::DataConsistencyFault(CLOCATION,"Failed to store "+v->GetName()+" in hangar "+h->ToEntity().GetName()+" at "+h->ToEntity().location.ToString());
+	}
+
+
 	void ApplyState(const Objects::PMobileEntity&v, Protocol::MobileState&vs, bool isNew, bool isNewForEMP)
 	{
 		ASSERT__(v);
@@ -672,10 +686,10 @@ namespace Animation
 						switch (t->parameters.Count())
 						{
 							case 1:
-								p->AppendTask(t->id,t->parameters.First(),ConstName::Empty);
+								AppendTask(p,t->id,t->parameters.First(),ConstName::Empty);
 							break;
 							case 2:
-								p->AppendTask(t->id,t->parameters.First(),t->parameters.last());
+								AppendTask(p,t->id,t->parameters.First(),t->parameters.last());
 							break;
 							default:
 								FATAL__("Unexpected parameter count: "+String(t->parameters.Count())
@@ -714,8 +728,8 @@ namespace Animation
 					currentlyStoredIn->Lose(veh);
 				else
 					insertIntoGridLater.Unset(v->id);
-				storeInHangar->StoreLocally(veh,f,false,storeInHangar);
-				ASSERT1__(!v->isInsertedIntoGrid,v->GetName());
+				StoreLocally(storeInHangar,veh,f,false);
+				ASSERT1__(!v->isInsertedIntoGrid,v->GetName());	//should never happen. If failed, StoreLocally would have thrown an exception
 
 				#ifdef HAS_WINDOW
 					if (!currentlyStoredIn)
@@ -828,10 +842,10 @@ namespace Animation
 						switch (t->parameters.Count())
 						{
 							case 1:
-								p->AppendTask(t->id,t->parameters.First(),ConstName::Empty);
+								AppendTask(p,t->id,t->parameters.First(),ConstName::Empty);
 							break;
 							case 2:
-								p->AppendTask(t->id,t->parameters.First(),t->parameters.last());
+								AppendTask(p,t->id,t->parameters.First(),t->parameters.last());
 							break;
 							default:
 								FATAL__("Unexpected parameter count: "+String(t->parameters.Count())

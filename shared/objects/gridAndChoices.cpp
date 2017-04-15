@@ -863,31 +863,14 @@ namespace Objects
 			if (vis.showArrow)
 			{
 				vis.arrowFromCell = v ? v->GetLastPointOfOrigin() : entity.location;
-				vis.arrowFrom = Grid::ToWorldR(vis.arrowFromCell,h);
+				vis.arrowFrom = TrajectoryEndPoint(vis.arrowFromCell,h);
 				if (activeCursorMode == CursorMode::AttackMode)
 				{
 					vis.showTrajectory = true;
 					vis.paraboloidTrajectory = b->turret->trajectoryType == TrajectoryType::Artillery;
 					vis.flatTrajectoryRange = b->GetFlatAttackRange();
-					//switch (b->turret->trajectoryType)
-					//{
-					//	case TrajectoryType::Artillery:
-					//		Grid::SetParaboloidDisplay(
-					//			Grid::low.cells[arrowFromCell.stackID].centerVertex.xyz, 
-					//			h + Grid::ToRadius(arrowFromCell.height),
-					//			b->GetFlatAttackRange(),
-					//			float4(1,0,0,0.5f));
-					//	break;
-					//	case TrajectoryType::Missile:
-					//		Grid::SetSphereDisplay(
-					//			entity.GetWorldPosition(),
-					//			b->GetFlatAttackRange(),
-					//			float4(1,0,0,0.5f));
-					//	break;
-					//}
 				}
-				/*else
-					Grid::UnsetParaboloidAndSphereDisplay();*/
+
 			}	
 		}
 		if (v)

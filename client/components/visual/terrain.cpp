@@ -940,7 +940,6 @@ namespace VisualTerrain
 		};
 
 		TData							normal;// , lower;
-		float							outdatedAt;
 
 		void							Destroy()
 		{
@@ -949,10 +948,12 @@ namespace VisualTerrain
 		}
 
 
-		void							SetOutdated(float atTime)
+		void							SetOutdated(bool geometry, bool resources)
 		{
-			normal.outdated = normal.resourceOutdated = true;
-			outdatedAt = atTime;
+			if (geometry)
+				normal.outdated = true;
+			if (resources)
+				normal.resourceOutdated = true;
 		}
 
 
@@ -3017,12 +3018,15 @@ namespace VisualTerrain
 
 	}
 
-	void	Invalidate()
+	void	InvalidateFamily(BaseGrid::family_t f,bool geometry/*=true*/, bool resources/*=true*/)
 	{
-		for (int i = 0; i < BaseGrid::NumFamilies; i++)
-		{
-			family[i].SetOutdated(0);
-		}
+		family[f].SetOutdated(geometry,resources);
+	}
+
+	void	Invalidate(bool geometry/*=true*/, bool resources/*=true*/)
+	{
+		for (BaseGrid::family_t i = 0; i < BaseGrid::NumFamilies; i++)
+			InvalidateFamily(i,geometry,resources);
 	}
 
 	bool FamilyIsOutdated(index_t f)

@@ -2,7 +2,6 @@
 #include "mobileEntity.h"
 #include "faction.h"
 #include "gridAndChoices.h"
-#include "rendering.h"
 #include "vehicle.h"
 #include "satellite.h"
 #include "systems.h"
@@ -1470,10 +1469,6 @@ namespace Objects
 						{
 							path << PathNode(*n,1);
 						}
-						#ifdef HAS_WINDOW
-							if (recompileVisualization)
-								RecompilePath(1);
-						#endif
 						pjob->pathChanged = false;
 					}
 					#ifndef CLIENT
@@ -1489,57 +1484,19 @@ namespace Objects
 				{
 					if (!UpdatePath(parent,pointOfOrigin,t))
 						return false;
-					#ifdef HAS_WINDOW
-						if (recompileVisualization)
-							RecompilePath(parent->GetMovementStepsPerRound(),parent->GetPathSize());
-					#endif
 				}
-				
 			break;
 			case Mode:
-				switch (mode)
-				{
-					case CursorMode::AttackMode:
-					{
-						#ifdef HAS_WINDOW		
-							if (recompileVisualization)
-							{
-								static Buffer0<TVec4<> > trajectory;
-								Geometry geo;
-									localizableShapes.Clear();
-								foreach (foci,f)
-								{
-									trajectory.Clear();
-									TVec3<> dummy0;
-									Grid::HCellIdI dummy1;
-									float angle;
-									if (parent->TraceTrajectoryFrom(pointOfOrigin,TrajectoryEndPoint( f->target,0), trajectory,dummy0,dummy1,angle) != TurretTrajectory::InvalidTrajectory)
-									{
-										Component::Turret::CompileTrajectory(trajectory,Component::Turret::Schematic,geo,0.25f);
 
-										Shape&shape = localizableShapes.Append();
-										((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
-										shape.instruction.vbo = sphereVBO[2];
-										shape.instruction.ibo = sphereIBO[2];
-										shape.depthTest = true;
-										shape.flareDisplay = true;
-
-										BuildSystem(trajectory.last().xyz * trajectory.last().w,parent->GetAttackExplosionRadius(),  parent->GetAttackExplosionRadius(),shape.system);
-									}
-								}
-								if (visualization.shader.IsEmpty())
-									(DX11::BaseInstructionBlock&)visualization = pathShader;
-								visualization.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
-								visualization.ibo.Create(geo.GetLOD(0).indices);
-							}
-						#endif
-					}
-					break;
-				}
 			break;
 		}
+		if (recompileVisualization)
+			onVisualizationOutdated(*parent,*this,pointOfOrigin);
 		return true;
 	}
+
+	Observer<const MobileEntity&, MobileEntity::Task&,const Grid::LCellIdI&>	MobileEntity::Task::onVisualizationOutdated;
+
 
 
 	bool					MobileEntity::HasMotionTasks() const
@@ -1615,198 +1572,6 @@ namespace Objects
 
 
 
-	#ifdef HAS_WINDOW
-
-
-	void					MobileEntity::Task::SetLocalizableShape(ConstName shape, const Grid::LCellIdI&location, const OwnerParameter&owner)
-	{
-		localizableShapes.Clear();
-		if (shape == ConstName::DetonationSize_Regular)
-		{
-			Shape&shape = localizableShapes.Append();
-			((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
-			shape.instruction.vbo = sphereVBO[1];
-			shape.instruction.ibo = sphereIBO[1];
-			shape.depthTest = true;
-			shape.flareDisplay = false;
-			shape.preRenderDepth = false;
-			shape.selectedOnly = true;
-
-			float r = Component::Bomb::GetRadius(false,owner);
-			BuildSystem(Grid::ToWorld(location),r, r,shape.system);
-			return;
-		}
-
-		if (shape == ConstName::DetonationSize_Doomsday)
-		{
-			Shape&shape = localizableShapes.Append();
-			((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
-			shape.instruction.vbo = sphereVBO[2];
-			shape.instruction.ibo = sphereIBO[2];
-			shape.depthTest = true;
-			shape.flareDisplay = false;
-			shape.preRenderDepth = false;
-			shape.selectedOnly = true;
-
-			float r = Component::Bomb::GetRadius(true,owner);
-			BuildSystem(Grid::ToWorld(location),r, r,shape.system);
-			return;
-		}
-
-		PStructure p = 	GetPrototypeByName(shape);
-
-		if (p)
-		{
-			Shape&shape = localizableShapes.Append();
-			((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
-
-			shape.instruction.vbo = p->localizableShape->vbo;
-			shape.instruction.ibo = p->localizableShape->ibo;
-			shape.depthTest = true;
-			shape.flareDisplay = type != Job;
-
-			BuildStructureSystem(location,shape.system);
-			return;
-		}
-	}
-
-	void					MobileEntity::Task::RecompilePath(int stepsPerRound, float structureSize/*=vehicleScale*/)
-	{
-		Geometry geo;
-
-		struct TNode
-		{
-			float3	dir,
-					normal;
-			bool	stopHere;
-		};
-
-		Array<TNode>		nodes(path.length());
-		
-		int remaining = stepsPerRound;
-
-		for (index_t i = 0; i+1 < path.Count(); i++)
-		{
-			TNode	&na = nodes[i],
-					&nb = nodes[i+1];
-
-			const Grid::LCellIdI&a = path[i].cell,
-								&b = path[i+1].cell;
-			if (remaining >= path[i+1].movementCostsFromPrevNode)
-			{
-				remaining -= path[i+1].movementCostsFromPrevNode;
-				na.stopHere = false;
-			}
-			else
-			{
-				remaining = stepsPerRound;
-				remaining -= path[i+1].movementCostsFromPrevNode;
-				na.stopHere = true;
-			}
-			float3 p0 = Grid::low.cells[a.stackID].centerVertex.xyz * Grid::ToRadius(a.height);
-			float3 p1 = Grid::low.cells[b.stackID].centerVertex.xyz * Grid::ToRadius(b.height);
-			TVec3<> n,d = p1 - p0;
-			Vec::cross(p0,d,n);
-			na.normal += n;
-			nb.normal += n*0.9f;
-			na.dir += d;
-			nb.dir += d*0.9f;
-		}
-		foreach (nodes, n)
-		{
-			Vec::setLen0(n->dir,structureSize);
-			Vec::setLen0(n->normal,structureSize);
-		}
-
-
-
-		for (index_t i = 0; i+1 < path.Count(); i++)
-		{
-			TNode	&na = nodes[i],
-					&nb = nodes[i+1];
-
-			const Grid::LCellIdI&a = path[i].cell,
-								&b = path[i+1].cell;
-			float3 d0 = Grid::low.cells[a.stackID].centerVertex.xyz;
-			float3 p0 = d0  * Grid::ToRadiusf(float(a.height)+0.5f);
-			float3 d1 = Grid::low.cells[b.stackID].centerVertex.xyz;
-			float3 p1 = d1 * Grid::ToRadiusf(float(b.height)+0.5f);
-
-			float3 c0 = p0 + na.dir;
-			float3 c1 = p1 - nb.dir;
-
-
-			bool edge = i+2 < nodes.Count() && nodes[i+1].stopHere ;
-
-			//!((i+1)% stepsPerRound);
-
-			//TVec3<> d = p1 - p0;
-			//if (a.height == b.height)
-
-			static const int Res = 8;
-			for (int j = (i!=0); j <= Res; j++)
-			{
-				float fj = float(j) / float(Res);
-				TVec3<> p,n,d;
-
-				float op = i > 0 ? 1.f : fj;
-				
-				Vec::resolveBezierCurvePoint(p0,c0,c1,p1,fj,p);
-				//Vec::resolveBezierCurveAxis(p0,c0,c1,p1,fj,d);
-				//Vec::cross(p,d,n);
-				Vec::interpolate(na.normal,nb.normal,fj,n);
-				Vec::setLen(n,structureSize);
-				if (j > 0)
-				{
-					geo.MakeQuad(0,1,4,3);
-					geo.MakeQuad(1,2,5,4);
-
-				}
-				//if (!i)
-				//{
-				//	geo.MakeVertex(p0 + direction[i],d0,float3(0));
-				//	geo.MakeVertex(p0 - direction[i],d0,float3(1));
-				//}
-
-				geo.SetVertexOffsetToCurrent();
-
-				{
-					geo.MakeVertex(p + n,d1,float3(op,1,1));
-					if (j < Res || !edge)
-						geo.MakeVertex(p,d1,float3(0));
-					else
-						geo.MakeVertex(p,d1,float3(op,1,1)*0.7f);
-					geo.MakeVertex(p - n,d1,float3(op,1,1));
-				}
-				if (i+2 == path.Count() && fj > 0.5f)
-				{
-					//geo.SetVertexOffsetToCurrent();
-					//geo.MakeVertex(p + n*2.f,d1,float3(0));
-					//geo.MakeVertex(p - n*2.f,d1,float3(1));
-					break;
-				}
-			}
-		}
-		if (path.Count() > 1)
-		{
-			const Grid::LCellIdI&b = path.last().cell;
-
-			float3 d1 = Grid::low.cells[b.stackID].centerVertex.xyz;
-			float3 p1 = d1 * Grid::ToRadiusf(float(b.height)+0.5f);
-
-			//float s = std::max(0.f,2.f - (fj-0.5f)*4.f);
-			geo.MakeVertex(p1,d1,float3(1));
-			geo.MakeTriangle(0,1,3);
-			geo.MakeTriangle(1,2,3);
-		}
-
-		//geo.Scale(vehicleScale);
-		if (visualization.shader.IsEmpty())
-			(DX11::BaseInstructionBlock&)visualization = pathShader;
-		visualization.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
-		visualization.ibo.Create(geo.GetLOD(0).indices);
-	}
-	#endif
 
 	
 

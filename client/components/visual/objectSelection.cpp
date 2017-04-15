@@ -6,6 +6,7 @@
 #include <objects/interface.h>
 #include <objects/gridAndChoices.h>
 #include <objects/vehicle.h>
+#include <objects/faction.h>
 
 namespace Objects
 {
@@ -55,6 +56,41 @@ namespace Objects
 			e->OnDeselect();
 		RefreshCommands(controlEnabled);
 		ApplicationInterface::OnSelectionChange(!e);
+	}
+
+
+	PWorldEntity					GetRayIntersection(const TVec3<>&b, const TVec3<>&d, float&distance)
+	{
+		PWorldEntity newSel;
+		ForeachWorldEntity([b,d,&distance,&newSel](const Objects::PWorldEntity&e)
+		{
+			if (e->TestIntersection(b, d, distance))
+			{
+				newSel = e;
+			}
+		},true);
+
+		return newSel;
+	}
+
+	bool					Select(const TVec3<>&b, const TVec3<>&d, float&distance,bool controlEnabled)
+	{
+		//if (Compound::Transfer::isActive)
+			//return false;
+
+		//selectedEntity.reset();
+		PWorldEntity newSel = GetRayIntersection(b,d,distance);
+
+		//bool success = !!selectedEntity;
+		if (newSel)
+		{
+			Select(newSel,controlEnabled);
+		}
+		#ifdef HAS_WINDOW
+			else
+				RefreshCommands(controlEnabled);	//in UpdateChoices() otherwise
+		#endif
+		return !!newSel;
 	}
 }
 

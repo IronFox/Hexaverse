@@ -80,7 +80,8 @@ namespace VisualTerrain
 	/**
 	Sets all families outdated, requesting a full rebuild when next needed
 	*/
-	void	Invalidate();
+	void	Invalidate(bool geometry=true, bool resources=true);
+	void	InvalidateFamily(BaseGrid::family_t,bool geometry=true, bool resources=true);
 	
 
 	namespace SeeThrough

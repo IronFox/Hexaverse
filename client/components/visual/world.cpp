@@ -3,7 +3,7 @@
 #include "world.h"
 #include <grid/worldData.h>
 #include "../network.h"
-#include "../tutorial.h"
+#include "tutorial.h"
 #include "lineRenderer.h"
 #include <objects/structure.h>
 #include "terrain.h"
@@ -173,12 +173,18 @@ namespace World
 			{
 				World::actual.UpdateLighting();
 				if (!World::actual.lightingOutdated)
-					Grid::SetAllFamiliesOutdated();
+					VisualTerrain::Invalidate();
 			}
+
 			bool anyOutdated = false;
 			if (World::actual.structureChanged)
 			{
 				World::actual.structureChanged = false;
+
+				for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
+					if (World::actual.families[k].changed)
+						VisualTerrain::InvalidateFamily(k);
+
 				Objects::structures.Foreach([&anyOutdated](const Objects::PStructure&s)
 				{
 					if (VisualTerrain::FamilyIsOutdated(Grid::low.grid.GetCell(s->location.stackID).family))

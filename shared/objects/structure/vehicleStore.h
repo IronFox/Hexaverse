@@ -80,7 +80,7 @@ namespace Objects
 
 
 
-		count_t						CountVehiclesInPark() const {return park? park->vehiclesStored : stored.Count();}
+		virtual count_t				GetLoad() const override {return park? park->vehiclesStored : stored.Count();}
 		count_t						GetParkVehicleCapacity() const {return park ? park->members.Count() * MaxVehiclesPerStore : MaxVehiclesPerStore;}
 
 

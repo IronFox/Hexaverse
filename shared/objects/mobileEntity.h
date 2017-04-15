@@ -6,7 +6,7 @@
 #include "jobs.h"
 #include "hibernating.h"
 #include "../sharedContainer.h"
-
+#include "../observer.h"
 
 namespace Objects
 {
@@ -123,6 +123,8 @@ namespace Objects
 			String					name;
 
 			PVehicleJob				job;
+
+			static Observer<const MobileEntity&, Task&,const Grid::LCellIdI&>	onVisualizationOutdated;
 
 
 			/**/					Task()	{}

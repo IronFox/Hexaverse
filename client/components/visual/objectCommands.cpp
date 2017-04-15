@@ -9,6 +9,7 @@
 #include <objects/structure.h>
 #include "objectSelection.h"
 #include "objectChoices.h"
+#include <objects/structure/tower.h>
 #include <objects/satellite.h>
 #include <objects/faction.h>
 #include <objects/gridAndChoices.h>

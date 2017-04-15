@@ -258,7 +258,7 @@ namespace Objects
 
 		#ifdef HAS_WINDOW
 			typedef Objects::BaseCommand		Command;
-			typedef Objects::FCommandVisitor	FCommandVisitor;
+//			typedef Objects::FCommandVisitor	FCommandVisitor;
 
 			OpenAL::Source			ambientSound;
 		#endif

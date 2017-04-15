@@ -6,7 +6,7 @@
 #include "visual/world.h"
 #include "cameraControl.h"
 #include "visual/ui.h"
-#include "tutorial.h"
+#include "visual/tutorial.h"
 #include "visual/dialog.h"
 #include "ai.h"
 #include "clientRuntimeConfig.h"
@@ -1859,6 +1859,17 @@ bool		Network::ConnectToConfiguredServerIfAvailable()
 
 	}
 	return false;
+}
+
+
+void	Network::SignalProtocolDisruption(const String&message)
+{
+	LogEvent(EventClass::Preset::error,message);
+	if (client.IsConnected())
+	{
+		Dialog::ShowMessage("Protocol disruption detected. Disconnecting from server.");
+		client.Disconnect();
+	}
 }
 
 

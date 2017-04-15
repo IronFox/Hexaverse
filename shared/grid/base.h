@@ -20,6 +20,7 @@ protected:
 		return row*(row + 1) / 2 + col;
 	}
 public:
+	typedef BYTE	family_t;
 
 	enum cell_type_t
 	{
@@ -72,6 +73,41 @@ public:
 	static UINT32			IsolatedCornerIndex[IsolatedCornerCount];
 	static bool				CornerIsIsolated[12];
 
+	struct FamiliesChanged
+	{
+		bool		changed[NumFamilies] = {false};
+
+
+		struct		const_iterator
+		{
+			constexpr		const_iterator()	{}
+			bool			operator==(const const_iterator&other) const {return current == other.current;}
+			bool			operator!=(const const_iterator&other) const {return current != other.current;}
+			const_iterator	operator++(int) {auto rs = *this; current = FindNext(current+1); return rs;}
+			const_iterator&	operator++() {current = FindNext(current+1); return *this;};
+			family_t		operator*() const {return current;}
+		private:
+			friend struct FamiliesChanged;
+			const FamiliesChanged*parent=nullptr;
+			BYTE			current=NumFamilies;
+
+			/**/			const_iterator(const FamiliesChanged*parent):parent(parent)	{current=FindNext(0);}
+			constexpr		const_iterator(const FamiliesChanged*parent, BYTE current):parent(parent),current(current)	{}
+
+			BYTE			FindNext(BYTE fromInclusive) const
+			{
+				if (parent)
+					for (;fromInclusive < NumFamilies; fromInclusive++)
+						if (parent->changed[fromInclusive])
+							return fromInclusive;
+				return NumFamilies;
+			}
+		};
+
+		const_iterator		begin() const {return const_iterator(this);}
+		constexpr const_iterator	end() const {return const_iterator(nullptr,NumFamilies);}
+	};
+
 	struct TCell
 	{
 		#ifdef HYBRID_GRID
@@ -80,7 +116,7 @@ public:
 		float3							center;	//normalized
 		TCellNeighborhood				neighborhood;
 		//cell_type_t						type;
-		BYTE							family;	//[0, NumFamilies)
+		family_t						family;	//[0, NumFamilies)
 		USHORT							cornerFlags;	//one bit set for each original corner affecting the local cell
 	};
 
@@ -265,9 +301,9 @@ public:
 
 	const TCell*GetCells() const {return cellField;}
 	const TCell&GetCell(index_t)const;
-	const TCell&GetCell(BYTE family, index_t memberIndex)const;
-	count_t		CountFamilyMembers(BYTE family) const;
-	index_t		GetFamilyOffset(BYTE family) const;
+	const TCell&GetCell(family_t family, index_t memberIndex)const;
+	count_t		CountFamilyMembers(family_t family) const;
+	index_t		GetFamilyOffset(family_t family) const;
 
 	void		Construct(Array<TCellVertex>&vertices, Array<TNetCell>&cells);	//fourth component contains 0 for center vertices and 1 for outline vertices
 
@@ -767,25 +803,25 @@ template <unsigned Exponent>
 	}
 
 template <unsigned Exponent>
-	const BaseGrid::TCell&	GridSetup<Exponent>::GetCell(BYTE family, index_t memberIndex) const
+	const BaseGrid::TCell&	GridSetup<Exponent>::GetCell(family_t family, index_t memberIndex) const
 	{
 		return GetCell(GetFamilyOffset(family) + memberIndex);
 	}
 
 template <unsigned Exponent>
-	index_t		GridSetup<Exponent>::GetFamilyOffset(BYTE family) const
+	index_t		GridSetup<Exponent>::GetFamilyOffset(family_t family) const
 	{
 		if (family == 0)
 		{
 			return 0;
 		}
-		BYTE at = family - 1;
+		family_t at = family - 1;
 		return BaseMap::vertices * (at / 2) + (BaseMap::vertices >> 1) * (at % 2) + 12 + 30 * CellsPerEdge;
 	}
 
 
 template <unsigned Exponent>
-	count_t		GridSetup<Exponent>::CountFamilyMembers(BYTE family) const
+	count_t		GridSetup<Exponent>::CountFamilyMembers(family_t family) const
 	{
 		if (family == 0)
 			return 12 + 30 * CellsPerEdge;

@@ -8,17 +8,14 @@
 #include "objectSelection.h"
 #include <objects/interface.h>
 #include "objectCommands.h"
+#include "terrain.h"
 
 namespace Objects
 {
 
 	bool						controlIsEnabled = false;
 	Buffer0<Choice>				movementChoices;
-	bool						hasArrowCellTarget=false,
-								showArrow = false;
-	float3						arrowFrom;	//arrow visualization point of origin. Might be the location of a vehicle, or any of the locations in its task queue. Only relevant if showArrow is true
-	Grid::LCellIdI				arrowFromCell;
-	TrajectoryEndPoint			arrowCellTarget;
+	TChoiceVisualization		choiceVis;
 	Buffer0<Grid::HCellIdU>		buildCandidates, 
 								removeCandidates;
 	Buffer0<Grid::HCellIdI>		cellSelection;
@@ -43,6 +40,32 @@ namespace Objects
 	}
 
 
+	void	ReapplyTrajectoryType()
+	{
+		if (choiceVis.showTrajectory)
+		{
+			if (choiceVis.paraboloidTrajectory)
+			{
+				VisualTerrain::SetParaboloidDisplay(
+					Grid::low.cells[choiceVis.arrowFrom.cellLocation.stackID].cornerCenter,
+					choiceVis.arrowFrom.radius,
+					choiceVis.flatTrajectoryRange,
+					float4(1,0,0,0.5f));
+			}
+			else
+			{
+				VisualTerrain::SetSphereDisplay(
+					choiceVis.arrowFrom.worldLocation,
+					choiceVis.flatTrajectoryRange,
+					float4(1,0,0,0.5f));
+			}
+		}
+		else
+			VisualTerrain::UnsetParaboloidAndSphereDisplay();
+	}
+
+
+
 
 	void					UpdateChoices(bool controlEnabled) 
 	{
@@ -53,13 +76,13 @@ namespace Objects
 		if (controlEnabled)
 			GetChoices(selectedEntity,
 				deployingMobileEntity, 
-				activeCursorMode,movementChoices,showArrow,hasArrowCellTarget,arrowFrom,arrowFromCell);
+				activeCursorMode,movementChoices,choiceVis);
 		else
 		{
 			movementChoices.Clear();
-			showArrow = false;
-			hasArrowCellTarget = false;
+			choiceVis = TChoiceVisualization();
 		}
+		ReapplyTrajectoryType();
 	}
 
 
@@ -119,6 +142,17 @@ namespace Objects
 	}
 
 
+
+	bool			DisableModes(bool controlEnabled)
+	{
+		if (activeCursorMode == CursorMode::Idle)
+			return false;
+		buildCandidates.Clear();
+		removeCandidates.Clear();
+		activeCursorMode = CursorMode::Idle;
+		UpdateChoices(controlEnabled);
+		return true;
+	}
 
 }
 

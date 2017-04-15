@@ -6,11 +6,16 @@
 #include <objects/research.h>
 #include <objects/gridAndChoices.h>
 #include <objects/vehicle.h>
+#include <objects/prototypes.h>
 #include <objects/structure/laboratory.h>
 #include <objects/structure/mine.h>
 #include <objects/structure/vehiclePlant.h>
+#include "../clientRuntimeConfig.h"
 #include "dialog.h"
 #include "objectChoices.h"
+#include "terrain.h"
+#include "objectRendering.h"
+
 
 
 namespace Objects
@@ -19,6 +24,34 @@ namespace Objects
 	{
 		namespace Detail
 		{
+			/**
+			Relay-functor to convert a single boolean function or variable to BaseCommand::Flags.
+			Depending on the returned boolean value, flag compositions will either be 
+			BaseCommand::Flags::IsEnabled | BaseCommand::Flags::IsPermaActive 
+			or
+			BaseCommand::Flags::IsEnabled
+			*/
+			class GlobalPermaSwitch
+			{
+				std::function<bool()>	getState,enabled;
+			public:
+				/**/	GlobalPermaSwitch(const std::function<bool()>&f,const std::function<bool()>&enabled=std::function<bool()>()):getState(f),enabled(enabled)
+				{}
+				/**/	GlobalPermaSwitch(bool&b,const std::function<bool()>&enabled=std::function<bool()>()):getState([&b](){return b;}),enabled(enabled)
+				{}
+
+
+				BaseCommand::Flags	operator()(bool)
+				{
+					BaseCommand::Flags rs= getState() ? BaseCommand::Flags::IsPermaActive : BaseCommand::Flags::None;
+					if (!enabled || enabled())
+						rs |= BaseCommand::Flags::IsEnabled;
+					return rs;
+				}
+
+
+			};
+
 			static void				EnableWorkingStructure()
 			{
 				Objects::WorkingStructure*s2 = dynamic_cast<Objects::WorkingStructure*>(selectedEntity.get());
@@ -390,9 +423,9 @@ namespace Objects
 					//if (!directPlace)
 					{
 						activeCursorMode = CursorMode::PlaceStructureMode;
-						showArrow = true;
-						arrowFromCell = vehicle->GetLastPointOfOrigin();
-						arrowFrom = Grid::low.cells[arrowFromCell.stackID].centerVertex.xyz * ( Grid::ToRadius(arrowFromCell.height));
+						choiceVis.showArrow = true;
+						choiceVis.arrowFromCell = vehicle->GetLastPointOfOrigin();
+						choiceVis.arrowFrom = Grid::low.cells[choiceVis.arrowFromCell.stackID].centerVertex.xyz * ( Grid::ToRadius(choiceVis.arrowFromCell.height));
 
 						if (!Engine::input.pressed[Key::Shift])
 							ApplicationInterface::SignalDropSafeTasks(vehicle);
@@ -405,7 +438,7 @@ namespace Objects
 				else
 				{
 					activeCursorMode = CursorMode::Idle;
-					showArrow = false;
+					choiceVis.showArrow = false;
 				}
 
 
@@ -874,14 +907,259 @@ namespace Objects
 			component.commands.Add( new IconCommand("Automate", &VehicleCmd::Automate, &VehicleCmd::AutomatedCheck,NoCosts));
 		}
 
+		void DefineHangar()
+		{
+	
+			Hangar::cmdLeftCoords = int2(4,1) + BaseCommand::coordOffset;
+			Hangar::cmdRightCoords = Hangar::cmdLeftCoords + int2(Hangar::MaxVisibleStoreItems+1,0);
+
+			Hangar::cmdLeft.reset(new IconCommand("Left",
+				[]()
+				{
+					if (selectedEntity && selectedEntity->IsHangar())
+					{
+						PHangar h = To<Hangar>::DynamicCast(selectedEntity);
+						if (h && Hangar::storeOffset > 0)
+						{
+							if (Hangar::storeOffset > Hangar::MaxVisibleStoreItems)
+								Hangar::storeOffset -= Hangar::MaxVisibleStoreItems;
+							else
+								Hangar::storeOffset = 0;
+							RefreshCommands(true);
+						}
+					}
+				},
+				[](bool controlEnabled)
+				{
+					return Hangar::storeOffset > 0 && controlEnabled
+						 ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+				},
+				NoCosts));
+
+			Hangar::cmdRight.reset( new IconCommand("Right",
+				[]()
+				{
+					if (selectedEntity && selectedEntity->IsHangar())
+					{
+						PHangar h = To<Hangar>::DynamicCast(selectedEntity);
+						if (!h)
+							return;
+						if (h->GetLoad() <= Hangar::storeOffset)
+							Hangar::storeOffset = 0;
+						else
+						{
+							count_t remaining = h->GetLoad() - (Hangar::storeOffset);
+							if (remaining > Hangar::MaxVisibleStoreItems)
+								Hangar::storeOffset += Hangar::MaxVisibleStoreItems;
+							//else
+								//storeOffset = s->CountVehiclesInPark() - MaxVehiclesPerStore;
+						}
+						RefreshCommands(true);
+					}
+				},
+				[](bool controlEnabled)
+				{
+					if (selectedEntity && selectedEntity->IsHangar())
+					{
+						PHangar h = To<Hangar>::DynamicCast(selectedEntity);
+						return h && h->GetLoad() > Hangar::storeOffset + Hangar::MaxVisibleStoreItems
+						  && controlEnabled
+						   ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+					}
+					return BaseCommand::Flags::None;
+				},
+				NoCosts));
+		}
+
+					
+		
+		void DefineItemHandlers()
+		{
+			Hangar::onStored << [](Hangar&h,Hangar::TStored&item)
+			{
+				WMobileEntity w = item.entity;
+				PVisualCommand cmd(new DeployMobileCommand(w.lock(),
+					[w]()
+					{
+						//focus = To<VehicleStore>::DynamicCast(storeEntity).get();
+						if (deployingMobileEntity)
+							deployingMobileEntity.reset();
+						else
+							deployingMobileEntity = w.lock();
+					},
+					[w](bool controlEnabled)
+					{
+						BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(controlEnabled);
+						if (selectedEntity->IsHangar())
+						{
+							if (deployingMobileEntity && deployingMobileEntity == w.lock() && deployingMobileEntity->health > 0)
+								rs |= BaseCommand::Flags::IsPermaActive;
+						}
+						return rs;
+					}
+					));
+				cmd->RasterizeImage();
+
+				item.deployCommand = cmd;
+			};
+			MobileEntityProducer::onAppendTask << [](MobileEntityProducer&p, MobileEntityProducer::WorkItem&item)
+			{
+				index_t index = p.queue.Count()-1;
+				auto id = item.id;
+
+				std::shared_ptr<Objects::EntityConstructionCommand> cmd(
+					new Objects::EntityConstructionCommand(
+						item.queueName,item.base,item.turret,item.prototype,[id,index]()
+				{
+					Objects::PMobileEntityProducer p = To<Objects::MobileEntityProducer>::DynamicCast(Objects::selectedEntity);
+					ASSERT__(p);
+					if (!index && p->productionDone)
+					{
+						WWorldEntity e = selectedEntity;
+						Dialog::Confirm("Confirm cancellation of production job "+p->queue.First().name+". Material has been invested into this production, which will be lost.",
+						[e,id]()
+						{
+							PWorldEntity e1 = e.lock();
+							if (e1)
+								ApplicationInterface::SignalConstructionAbort(e1->id,id);
+						}
+						,
+						[e,p,id]()->Dialog::CheckResult
+						{
+							PWorldEntity e1 = e.lock();
+							if (!e1 || e1->health <= 0)
+								return Dialog::CheckResult::Abort;
+							if (p->queue.IsEmpty() || p->queue.First().id != id)
+								return Dialog::CheckResult::Abort;
+							if (!controlIsEnabled)
+								return Dialog::CheckResult::OkayNotRightNow;
+							return Dialog::CheckResult::OkayContinue;
+						}
+						);
+
+					}
+					else
+						ApplicationInterface::SignalConstructionAbort(selectedEntity->id,id);	//lossless
+
+				},CommonCmd::CommonButtonCheck));
+
+				item.commandToTerminate.second = cmd;
+
+				item.commandToTerminate.first = p.GetCommandOffset() + int2(index,0);
+				if (!index)
+				{
+					cmd->roundsLeft = item.roundsToCompletion;
+					cmd->mineralsLeft = item.cost;
+					if (index == 0)
+						cmd->mineralsLeft -= p.productionDone;
+				}
+				else
+				{
+					cmd->roundsLeft = 0xFFFFFFFF;
+					cmd->mineralsLeft = 0xFFFFFFFF;
+				}
+
+				cmd->RasterizeImage();
+
+			};
+
+		}
+
+
+		void DefineGlobalCommands()
+		{
+
+			globalCommands.baseCoords = BaseCommand::coordOffset;
+			globalCommands.Add(int2(-1, 0),false,new GlobalCommand("End Round",
+			[]()
+			{
+				if (ApplicationInterface::HasSignalledRoundEnd())
+					ApplicationInterface::SignalUndoRoundEnd();
+				else
+					ApplicationInterface::SignalRoundEnd();
+			}, 
+			[](bool controlEnabled)->BaseCommand::Flags
+			{
+				BaseCommand::Flags rs = BaseCommand::Flags::None;
+				if (ApplicationInterface::CanChangeRoundState())
+					rs |= BaseCommand::Flags::IsEnabled;
+				if (ApplicationInterface::HasSignalledRoundEnd())
+					rs |= BaseCommand::Flags::IsPermaActive;
+				else
+					if (ApplicationInterface::ShouldSignalRoundEnd())
+						rs |= BaseCommand::Flags::IsFlashing;
+				return rs;
+			}));
+			globalCommands.Add(int2(0, 0),false,new GlobalCommand("Auto End Round",
+			[]()
+			{
+				if (!RuntimeConfig::autoNewRound && ApplicationInterface::ShouldSignalRoundEnd())
+					ApplicationInterface::SignalRoundEnd();
+				RuntimeConfig::autoNewRound = !RuntimeConfig::autoNewRound;
+			},
+			[](bool controlEnabled)->BaseCommand::Flags
+			{
+				BaseCommand::Flags rs = BaseCommand::Flags::None;
+				rs |= BaseCommand::Flags::IsEnabled;
+				if (RuntimeConfig::autoNewRound)
+					rs |= BaseCommand::Flags::IsPermaActive;
+				return rs;
+			}));
+
+			viewCommands = globalCommands.AddChild(int2(1,0),false,"View");
+
+
+			viewCommands->Add( new GlobalCommand("Clip Terrain", &GlobalCmd::ToggleSeeThrough
+					,Detail::GlobalPermaSwitch(VisualTerrain::SeeThrough::IsEnabled)
+				));
+			viewCommands->Add( new GlobalCommand("Clip-View Down", &GlobalCmd::SeeThroughDown
+					,[](bool)->BaseCommand::Flags{return GlobalCmd::SeeThroughIsActive() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;}
+				));
+			viewCommands->Add( new GlobalCommand("Clip-View Up", &GlobalCmd::SeeThroughUp
+					,[](bool)->BaseCommand::Flags{return GlobalCmd::SeeThroughIsActive() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;}
+				));
+
+			viewCommands->Add( new GlobalCommand("Hide Objects", &GlobalCmd::ToggleObjectView
+					,Detail::GlobalPermaSwitch([](){return !Objects::objectView;})
+				));
+
+
+			viewCommands->Add( new GlobalCommand("Show Resources", []()
+					{
+						resourceView = !resourceView;
+						VisualTerrain::Invalidate(false);
+					}
+					,Detail::GlobalPermaSwitch(resourceView)
+				));
+
+			viewCommands->Add( new GlobalCommand("Show Ranges", []()
+					{
+						showFriendlyRanges = !showFriendlyRanges;
+					}
+					, Detail::GlobalPermaSwitch(showFriendlyRanges)
+				));
+			viewCommands->Add( new GlobalCommand("Show Hostile Ranges", []()
+					{
+						showHostileRanges = !showHostileRanges;
+					}
+					,Detail::GlobalPermaSwitch(showHostileRanges)
+				));
+
+		}
+				
+
 		void	DefineAll()
 		{
+			DefineItemHandlers();
+			ResearchState::globalState.onScriptChange << ReconfigureResearchButtons;
+
 			DefineMine(Objects::Mine::commands);
 			DefineVehiclePlant(Objects::VehiclePlant::commands);
 			DefineWorkingStructure(Objects::MineralContainer::commands);
 			DefineWorkingStructure(Objects::FuelContainer::commands);
 			DefineWorkingStructure(Objects::UraniumStorage::commands);
 			DefineLaboratory(Objects::Laboratory::commands);
+			DefineHangar();
 
 			DefineTerraformer(Component::terraformer);
 			DefineBomb(Component::bomb);
@@ -897,7 +1175,19 @@ namespace Objects
 			DefineAutomatable(Component::resourceScanner);
 
 
+			foreach (Objects::Component::vehicleTurretComponents,tc)
+				(*tc)->VisitAllCommands([](const int2&,const PBaseCommand&cmd){ To<VisualCommand>::Cast(cmd)->RasterizeImage();},true);
+			foreach (Objects::Component::baseComponents,bc)
+				(*bc)->VisitAllCommands([](const int2&,const PBaseCommand&cmd){To<VisualCommand>::Cast(cmd)->RasterizeImage();},true);
+
+			DefineGlobalCommands();
+
 		}
 
 	}
+
+
+
+
+
 }

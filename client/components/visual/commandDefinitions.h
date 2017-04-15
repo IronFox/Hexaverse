@@ -1,6 +1,7 @@
 #pragma once
 #ifdef HAS_WINDOW
 #include <objects/entityCommand.h>
+#include <objects/mobileEntityProducer.h>
 
 namespace Objects
 {
@@ -10,6 +11,10 @@ namespace Objects
 		void	DefineMine(CommandContainer&commands);
 		
 		
+		/**
+		Creates and defines all commands for all entity types, as well as all global commands.
+		Also rasterizes component images
+		*/
 		void	DefineAll();
 
 
@@ -19,6 +24,7 @@ namespace Objects
 		void	ReconfigureResearchButtons();
 
 
+		
 	}
 }
 

@@ -345,6 +345,7 @@ namespace Objects
 
 	}
 
+
 	void Renderer::Create()
 	{
 		DXGI_FORMAT dbgFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -588,6 +589,10 @@ namespace Objects
 		}
 
 		
+
+
+
+
 	}
 
 
@@ -1391,7 +1396,7 @@ namespace Objects
 
 			}
 
-			if (showArrow && hasArrowCellTarget && activeCursorMode == CursorMode::PlaceStructureMode && activeStructureToPlace)
+			if (choiceVis.showArrow && choiceVis.hasArrowCellTarget && activeCursorMode == CursorMode::PlaceStructureMode && activeStructureToPlace)
 			{
 				float scanningRange = activeStructureToPlace->GetScanningRange();
 				if (extendedShadow)
@@ -1404,8 +1409,8 @@ namespace Objects
 		float4 color = extendedShadow ? float4(0,0,0,RangeShadowOpacity) : float4(1,0,0,0.8f);
 		if (selectedEntity)
 			RenderAttackRangeOf(selectedEntity,color,extendedShadow,true);
-		if (showArrow && hasArrowCellTarget && activeCursorMode == CursorMode::PlaceStructureMode && activeStructureToPlace)
-			RenderAttackRangeOf(activeStructureToPlace,arrowCellTarget.cellLocation,color,extendedShadow,true);
+		if (choiceVis.showArrow && choiceVis.hasArrowCellTarget && activeCursorMode == CursorMode::PlaceStructureMode && activeStructureToPlace)
+			RenderAttackRangeOf(activeStructureToPlace,choiceVis.arrowCellTarget.cellLocation,color,extendedShadow,true);
 		
 
 		if (showHostileRanges || showFriendlyRanges)
@@ -1806,15 +1811,15 @@ namespace Objects
 
 		display.SetRasterizer(true,true);
 
-		if (showArrow && hasArrowCellTarget && WorldEntity::IsAboveGrid(arrowFromCell) == orbital)
+		if (choiceVis.showArrow && choiceVis.hasArrowCellTarget && WorldEntity::IsAboveGrid(choiceVis.arrowFromCell) == orbital)
 		{
-			if (arrowCellTarget.cellLocation != arrowFromCell)
+			if (choiceVis.arrowCellTarget.cellLocation != choiceVis.arrowFromCell)
 			{
 				display.SetDepthTest(false,false);
 
-				const float r =Grid::ToRadius(arrowCellTarget.radius);
-				const float3&arrowTo = arrowCellTarget.worldLocation;
-				float d2 = Vec::quadraticDistance(arrowTo,Objects::arrowFrom);
+				const float r =Grid::ToRadius(choiceVis.arrowCellTarget.radius);
+				const float3&arrowTo = choiceVis.arrowCellTarget.worldLocation;
+				float d2 = Vec::quadraticDistance(arrowTo,choiceVis.arrowFrom.worldLocation);
 
 				static Buffer0<Vertex>	vertices;
 				vertices.Clear();
@@ -1824,10 +1829,10 @@ namespace Objects
 				{
 					static const float3 color(1,0.5,0.5);
 					float d = sqrt(d2);
-					float3 dir = (arrowTo - Objects::arrowFrom).Normalize();
+					const auto&arrowFrom = choiceVis.arrowFrom.worldLocation;
+					float3 dir = (arrowTo - arrowFrom).Normalize();
 					float3 n = (dir | arrowTo).Normalize0() * 0.25f * Grid::UnitScale;
 					float3 arrowBase = arrowTo - dir * 1.f;
-
 
 					//arrowBuffer
 					vertices	<< Vertex(arrowFrom-n,float3(),float4(0.25f,1,0,1))
@@ -1880,7 +1885,7 @@ namespace Objects
 				bool includeFoundation = false;//activeStructureToPlace->HasFoundation();	<- is correct but job visualization doesn't use foundations
 				display.LinkShader(jobShader,false,true);
 					//TMatrix4<> sys;
-					BuildStructureSystem(arrowCellTarget.cellLocation,structureToPlaceSystem);
+					BuildStructureSystem(choiceVis.arrowCellTarget.cellLocation,structureToPlaceSystem);
 					display.SetObjectMatrix(structureToPlaceSystem);
 					overallTint.Update(noTint);	//all zero tint makes shapes invisible
 					if (includeFoundation)
@@ -2352,6 +2357,9 @@ namespace Objects
 			//fbo.Clear();
 			return fbo.GetColorTarget();
 		}
+
+
+
 
 
 

@@ -15,6 +15,7 @@
 #include <objects/structure/storageStructures.h>
 #include <objects/structure/vehicleStore.h>
 #include <objects/structure/laboratory.h>
+#include <objects/structure/mine.h>
 
 
 

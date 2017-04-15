@@ -432,7 +432,12 @@ namespace Grid
 
 
 		void			ZeroInit(bool resetVisibility);
-		void			ResetStructureCounters(bool resetVisibility);
+		/**
+		Resets structure counters (and potentially visibility) to 0
+		@param resetVisibility Set true to also reset visibility
+		@return true if anything changed, false otherwise
+		*/
+		bool			ResetStructureCounters(bool resetVisibility);
 		#ifdef HAS_WINDOW
 
 			#ifdef THOROUGLY_DEBUG_SENSORY
@@ -841,10 +846,6 @@ namespace Grid
 	bool	AffectedByEMP(const HCellIdI&);
 	bool	AffectedByEMP(const LCellIdI&);
 
-	/**
-	Sets both high resolution and low resolution families outdated, and to the specified time
-	*/
-	void	SetAllFamiliesOutdated(float t=0);
 
 	TVec3<> ToWorld(const HCellIdU&);
 	TVec3<> ToWorld(const HCellIdI&);

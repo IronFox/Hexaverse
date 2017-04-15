@@ -54,7 +54,21 @@ namespace World
 		
 
 
-
+	bool	Data::ResetStructureCounters(bool resetVisibility, BaseGrid::FamiliesChanged*changedFamilies/*=nullptr*/)
+	{
+		bool rs= false;
+		for (index_t i = 0; i < cellStack.Count(); i++)
+		{
+			bool changed = cellStack[i].ResetStructureCounters(resetVisibility);
+			if (changed)
+			{
+				rs = true;
+				if (changedFamilies != nullptr)
+					changedFamilies->changed[Grid::high.grid.GetCell(i).family] = true;
+			}
+		}
+		return rs;
+	}
 
 
 	#ifdef HAS_WINDOW

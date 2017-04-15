@@ -3,15 +3,14 @@
 #include "mobileEntity.h"
 #include "gridAndChoices.h"
 #include "faction.h"
-#ifdef HAS_WINDOW
-	#include "visualChoices.h"
-#endif
 
 namespace Objects
 {
+	/*static*/ Observer<Hangar&,Hangar::TStored&>	Hangar::onStored;
+
 	#ifdef HAS_WINDOW
 		/*static*/ index_t			Hangar::storeOffset;
-		/*static*/ IconCommand		Hangar::cmdLeft,
+		/*static*/ PBaseCommand		Hangar::cmdLeft,
 									Hangar::cmdRight;
 		/*static*/ int2				Hangar::cmdLeftCoords,
 									Hangar::cmdRightCoords;
@@ -20,58 +19,7 @@ namespace Objects
 
 	/*static*/ void		Hangar::StaticSetup()
 	{
-		#ifdef HAS_WINDOW
-			cmdLeftCoords = int2(4,1) + BaseCommand::coordOffset;
-			cmdRightCoords = cmdLeftCoords + int2(MaxVisibleStoreItems+1,0);
-
-			cmdLeft = IconCommand("Left",
-				[]()
-				{
-					PVehicleStore s = To<VehicleStore>::DynamicCast(selectedEntity);
-					if (storeOffset > 0)
-					{
-						if (storeOffset > MaxVisibleStoreItems)
-							storeOffset -= MaxVisibleStoreItems;
-						else
-							storeOffset = 0;
-						RefreshCommands(true);
-					}
-				},
-				[](bool controlEnabled)
-				{
-					return storeOffset > 0 && controlEnabled
-						 ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
-				},
-				NoCosts);
-
-			cmdRight = IconCommand("Right",
-				[]()
-				{
-					PVehicleStore s = To<VehicleStore>::DynamicCast(selectedEntity);
-					if (!s)
-						return;
-					if (s->CountVehiclesInPark() <= storeOffset)
-						storeOffset = 0;
-					else
-					{
-						count_t remaining = s->CountVehiclesInPark() - (storeOffset);
-						if (remaining > MaxVisibleStoreItems)
-							storeOffset += MaxVisibleStoreItems;
-						//else
-							//storeOffset = s->CountVehiclesInPark() - MaxVehiclesPerStore;
-					}
-					RefreshCommands(true);
-				},
-				[](bool controlEnabled)
-				{
-					PVehicleStore s = To<VehicleStore>::DynamicCast(selectedEntity);
-					return s && s->CountVehiclesInPark() > storeOffset + MaxVisibleStoreItems
-					  && controlEnabled
-					   ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
-				},
-				NoCosts);
-
-		#endif
+	
 
 
 	}
@@ -212,30 +160,6 @@ namespace Objects
 
 		stored.Append().entity = e;
 
-		#ifdef HAS_WINDOW
-			WMobileEntity w = e;
-			stored.last().deployCommand.reset(new DeployMobileCommand(e,
-				[w]()
-				{
-					//focus = To<VehicleStore>::DynamicCast(storeEntity).get();
-					if (deployingMobileEntity)
-						deployingMobileEntity.reset();
-					else
-						deployingMobileEntity = w.lock();
-				},
-				[w](bool controlEnabled)
-				{
-					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(controlEnabled);
-					if (selectedEntity->IsHangar())
-					{
-						if (deployingMobileEntity && deployingMobileEntity == w.lock() && deployingMobileEntity->health > 0)
-							rs |= BaseCommand::Flags::IsPermaActive;
-					}
-					return rs;
-				}
-				));
-			stored.last().deployCommand->RasterizeImage();
-		#endif
 
 		#ifndef CLIENT
 			//RegisterChange(StorageChanged,atTime);	might be irrelevant. let's see
@@ -248,6 +172,7 @@ namespace Objects
 			CheckMobileEntitySanity();	//this could fail (under rare circumstances) when mobile entities are currently not inserted into grid during animation
 		#endif
 
+		onStored(*this,stored.Last());
 
 		return true;
 	}

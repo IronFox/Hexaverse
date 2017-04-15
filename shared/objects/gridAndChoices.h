@@ -108,10 +108,11 @@ namespace Objects
 		bool			showArrow=false, 
 						hasArrowCellTarget=false,
 						showTrajectory=false;
-		TVec3<>			arrowFrom;
+		TrajectoryEndPoint	arrowFrom;
 		Grid::LCellIdI	arrowFromCell;
 		bool			paraboloidTrajectory = false;
 		float			flatTrajectoryRange=1;
+		TrajectoryEndPoint	arrowCellTarget;
 	};
 
 	void			GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis);

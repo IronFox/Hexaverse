@@ -4,6 +4,7 @@
 #include <objects/vehicle.h>
 #include <objects.h>
 #include <runtimeConfig.h>
+#include "visual/terrain.h"
 
 namespace Objects
 {
@@ -40,8 +41,14 @@ namespace Objects
 		markers.swap(Marker::all);
 		RuntimeConfig::UnitLimits::Export(unitLimits);
 		Objects::FlushAllData(true);
-		World::actual.ResetStructureCounters(!preserveGridVisibility);
-		Grid::SetAllFamiliesOutdated(0);
+		BaseGrid::FamiliesChanged	fam;
+		if (World::actual.ResetStructureCounters(!preserveGridVisibility,&fam))
+		{
+			#ifdef HAS_WINDOW
+				foreach (fam,f)
+					VisualTerrain::InvalidateFamily(*f);	//recompile as a result to structure counts (they darken the terrain) reset
+			#endif
+		}
 		loaded = true;
 	}
 

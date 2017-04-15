@@ -2,6 +2,7 @@
 #ifdef HAS_WINDOW
 
 #include <objects/types.h>
+#include <math/vector.h>
 
 namespace Objects
 {
@@ -12,7 +13,9 @@ namespace Objects
 
 
 	void					Select(const PWorldEntity&entity, bool controlEnabled);
+	bool					Select(const TVec3<>&b, const TVec3<>&d, float&distance,bool controlEnabled);
 	void					Deselect(bool controlEnabled);
+	PWorldEntity			GetRayIntersection(const TVec3<>&b, const TVec3<>&d, float&distance);
 
 }
 
