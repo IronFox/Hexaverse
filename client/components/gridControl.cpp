@@ -5,6 +5,9 @@
 #include <grid/resources.h>
 #include <grid/worldData.h>
 #include "visual/terrain.h"
+#include "visual/world.h"
+#include "visual/lighting.h"
+#include "clientEvents.h"
 
 namespace ClientGrid
 {
@@ -12,6 +15,10 @@ namespace ClientGrid
 	{
 		Grid::CreateHighAndLow();
 		Grid::CreateResources();
+
+		#ifdef HAS_WINDOW
+			GlobalEvents::frameAfterCamera << World::RecompileIfNecessary;
+		#endif
 	}
 
 	void	Destroy()
@@ -21,20 +28,14 @@ namespace ClientGrid
 		#endif
 	}
 
-	void	FlushAllData()
-	{
-		World::actual.FlushAllData(true);
-		Grid::Resource::FlushAll();
-		Grid::ResourceDiscovery::client.FlushAllData();
-	}
 
 	void	Apply(const Grid::TSharedPlanetConfig&cfg)
 	{
 		Grid::Content coreContent = Grid::Content::Reinterpret(cfg.innerCoreType);
 		Grid::CellStack::bottom.content = coreContent;
 		#ifdef HAS_WINDOW
-			VisualTerrain::UpdateAtmosphere(cfg.atmosphereColor);
-			VisualTerrain::UpdateSun(cfg.sunPlaneNormal_Speed,cfg.sunColor);
+			Lighting::UpdateAtmosphere(cfg.atmosphereColor);
+			Lighting::UpdateSun(cfg.sunPlaneNormal_Speed,cfg.sunColor);
 		#endif
 	}
 }

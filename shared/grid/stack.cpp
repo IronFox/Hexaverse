@@ -9,7 +9,7 @@
 #include "../logEvent.h"
 //#include "../sphereGridHelper.h"
 #include "../luaGameAPI.h"
-
+#include "../globalEvents.h"
 
 
 namespace Grid
@@ -537,7 +537,11 @@ namespace Grid
 
 
 
-	
+		GlobalEvents::terrainFlush << []()
+		{
+			empZonesLocked = 0;
+			empZonesUnlocked = ~empZonesLocked;
+		};
 
 	}
 

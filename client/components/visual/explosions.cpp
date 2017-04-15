@@ -7,6 +7,7 @@
 #include "../../version.h"
 #include "../clientRuntimeConfig.h"
 #include "../audioInterface.h"
+#include "../clientEvents.h"
 //#include <Nx/physics.h>
 
 extern Engine::Display<Engine::DirectX11>	display;
@@ -203,7 +204,7 @@ namespace Explosions
 	static const count_t	MaxParticlesPerRow = 512;
 
 
-
+	void	Update();
 
 	void Create()
 	{
@@ -270,6 +271,10 @@ namespace Explosions
 			if (empExplosionSound.IsEmpty())
 				ErrMessage("Warning: Failed to load required wave file.");
 		}
+
+
+		GlobalEvents::frameBegin << Update;
+
 	}
 
 	void				FlushData()
@@ -299,8 +304,9 @@ namespace Explosions
 		
 	}
 
-	void		Update(float delta)
+	void		Update()
 	{
+		float delta = Engine::timing.delta;
 		glowParticles.Update(delta,&dustParticles);
 		dustParticles.Update(delta,nullptr);
 		empParticles.Update(delta,nullptr);

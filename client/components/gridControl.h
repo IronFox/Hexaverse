@@ -6,7 +6,6 @@ namespace ClientGrid
 {
 	void	Create();
 	void	Destroy();
-	void	FlushAllData();
 	void	Apply(const Grid::TSharedPlanetConfig&cfg);
 }
 

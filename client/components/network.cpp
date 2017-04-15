@@ -17,7 +17,7 @@
 #include "visual/objectChoices.h"
 #include "visual/terrain.h"
 #include <grid/resources.h>
-
+#include "clientEvents.h"
 
 
 //#define DEBUG_SERVER_LIST	//enable to generate very long artificial server list
@@ -410,7 +410,7 @@ namespace Network
 
 		roundTimer = -1;
 
-		Objects::FlushAllData();
+		GlobalEvents::FlushObjects();
 		Network::gameProgress.gameOver = false;
 		Network::gameProgress.gameWon = false;
 		Network::gameProgress.status = "";
@@ -427,15 +427,12 @@ namespace Network
 
 		if (alsoFlushWorld)
 		{
-			ClientGrid::FlushAllData();
-			Grid::empZonesLocked = 0;
-			Grid::empZonesUnlocked = ~Grid::empZonesLocked;
+			GlobalEvents::terrainFlush();
 			RuntimeConfig::gameGoal = RuntimeConfig::GameGoal();
 			ApplyPlanetConfig(Grid::TSharedPlanetConfig());
 		}
 
 		#ifdef HAS_WINDOW
-			Objects::Renderer::ClearSmokeTrails();
 			UI::EventLog::Clear();
 
 			amLocated = false;
@@ -1333,9 +1330,13 @@ namespace Network
 		DBG_FATAL__("Ignored Package");
 
 	}
+	void		Update();
 
 	void		Setup()
 	{
+		LoadHosts();
+		LoadWorldAccessTokens();
+
 		client.InstallChannel(Channels::helloResponse);
 		client.InstallChannel(Channels::worldData);
 		client.InstallChannel(Channels::newMobileEntity);
@@ -1417,6 +1418,7 @@ namespace Network
 		}
 
 
+		GlobalEvents::frameBegin << Update;
 	}
 
 

@@ -13,6 +13,8 @@
 #include "visual/terrain.h"
 
 #include "timelapse.h"
+#include "clientEvents.h"
+#include "visual/lighting.h"
 
 
 float3							sunDirection;
@@ -276,7 +278,7 @@ namespace Camera
 			if (!locked)
 			{
 				autoRotation = true;
-				VisualTerrain::ResetSunRotation();
+				Lighting::ResetSunRotation();
 			}
 		}
 		else
@@ -296,7 +298,7 @@ namespace Camera
 			static const count_t CameraRotations = 2;
 			static const count_t SunRotations = 5;
 			TVec3<> dir;
-			double at = VisualTerrain::GetAcceleratedSunDirection(dir,-float(CameraRotations) / SunRotations);
+			double at = Lighting::GetAcceleratedSunDirection(dir,-float(CameraRotations) / SunRotations);
 			if (fabs(at) >= M_PI*2.0 * CameraRotations)
 			{
 				StopAutoRotation();
@@ -306,7 +308,7 @@ namespace Camera
 			scene.location = float3();
 			scene.retraction.z = -WorldScale * 3.75f;
 			scene.direction = -dir;
-			scene.upAxis = VisualTerrain::GetSunSystem().z;
+			scene.upAxis = Lighting::GetSunSystem().z;
 			scene.UpdateView();
 
 			return;
@@ -388,6 +390,17 @@ namespace Camera
 
 	}
 
+	void						ChangeGroundRadiusToFocusedTerrain()
+	{
+		index_t stackID = Grid::high.Locate(scene.location);
+		{
+			int top;
+			if (World::actual.cellStack[stackID].FindTopOccupied(top))
+				ChangeGroundRadius(Grid::ToRadius(top+2));
+		}
+	}
+
+
 	void							Translate(const float2&angleDelta)
 	{
 		//moveToTarget;
@@ -417,12 +430,7 @@ namespace Camera
 
 
 
-		index_t stackID = Grid::high.Locate(scene.location);
-		{
-			int top;
-			if (World::actual.cellStack[stackID].FindTopOccupied(top))
-				ChangeGroundRadius(Grid::ToRadius(top+2));
-		}
+		ChangeGroundRadiusToFocusedTerrain();
 
 		//targetOrbit = Grid::ToRadius(World::actual.cellStack[stackID].FindTopOccupied());
 		if (VisualTerrain::SeeThrough::IsEnabled())
@@ -436,6 +444,11 @@ namespace Camera
 
 
 		scene.UpdateView();
+	}
+
+	void						Create()
+	{
+		GlobalEvents::frameBegin << ProgressRotation;
 	}
 
 }

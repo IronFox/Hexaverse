@@ -13,6 +13,7 @@
 #include "configurationMode.h"
 #include <objects/structure/mine.h>
 #include "visual/commandDefinitions.h"
+#include "clientEvents.h"
 
 namespace LocalApplicationInterface
 {
@@ -275,6 +276,7 @@ namespace Animation
 
 	bool						LocateProjectile(float3&outPosition, float3&out);
 
+	void Update();
 
 	void						Create()
 	{
@@ -310,6 +312,8 @@ namespace Animation
 			missileHissSource.SetLooping(true);
 
 		#endif
+
+		GlobalEvents::frameBegin << Update;
 	}
 
 	void						Destroy()

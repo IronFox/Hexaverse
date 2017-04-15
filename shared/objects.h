@@ -104,13 +104,6 @@ namespace Objects
 
 
 
-
-	/**
-	Erases all objects and references to objects. Prototypes are preserved.
-	Should be called whenever the scene is reset to prevent any lingering artifacts from the previous session.
-	*/
-	void				FlushAllData(bool preserveGameState=false);
-
 	#ifndef NO_SATELLITES
 		/**
 		Updates SkyHub connections to SkyPorts,	as well as dependent satellites.

@@ -217,7 +217,12 @@ namespace Objects
 		LoadFor<Objects::VehicleStore>();
 		LoadFor<Objects::Laboratory>();
 		LoadFor<Objects::Connector>();
+		LoadFor<Objects::Generator>();
+		LoadFor<Objects::ReactorCore>();
+		LoadFor<Objects::NexusPort>();
 		LoadFor("tower",Objects::Tower::geometry,Objects::Tower::staticShape);	//special case, since there is one variant per applicable turret, but all have the same base
+		foreach (Objects::Tower::globalPrototypes,p)
+			(*p)->shape = Objects::Tower::staticShape;
 
 		float h = Objects::Tower::geometry.GetBoundingBox().z.max;
 		ASSERT2__(similar(h,Objects::Tower::foundationHeight),h,Objects::Tower::foundationHeight);
@@ -230,9 +235,10 @@ namespace Objects
 	}
 
 
-	/*static*/ void				StructureHull::LoadFor(const Objects::Structure&prototype, Objects::Geometry&staticGeometry, PClientAttachment&staticShape)
+	/*static*/ void				StructureHull::LoadFor(Objects::Structure&prototype, Objects::Geometry&staticGeometry, PClientAttachment&staticShape)
 	{
-		LoadFor(prototype.GetName(),staticGeometry,staticShape);
+		LoadFor(prototype.GetTypeName(),staticGeometry,staticShape);
+		prototype.shape = staticShape;
 	}
 
 	/*static*/ void				StructureHull::LoadFor(const String&geometryName, Objects::Geometry&staticGeometry, PClientAttachment&staticShape)

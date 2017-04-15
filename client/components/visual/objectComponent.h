@@ -67,7 +67,7 @@ namespace Objects
 
 
 		static void					LoadFor(const String&geometryName, Objects::Geometry&staticGeometry, PClientAttachment&staticShape);
-		static void					LoadFor(const Objects::Structure&prototype, Objects::Geometry&staticGeometry, PClientAttachment&staticShape);
+		static void					LoadFor(Objects::Structure&prototype, Objects::Geometry&staticGeometry, PClientAttachment&staticShape);
 
 		template <typename T>
 			static void				LoadFor()

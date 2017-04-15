@@ -192,7 +192,7 @@ namespace Explosions
 	void				Create();
 	void				Destroy();
 	void				FlushData();
-	void				Update(float delta);
+	
 
 	void				Render(const Engine::Aspect<>&);
 

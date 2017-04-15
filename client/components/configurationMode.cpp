@@ -13,6 +13,7 @@
 #include "objectStorage.h"
 #include "gridControl.h"
 #include "../version.h"
+#include "clientEvents.h"
 
 namespace ConfigurationMode
 {
@@ -1109,7 +1110,7 @@ namespace ConfigurationMode
 			serverObjects.Clear();
 		}
 		localVersion = sentVersion = receivedVersion = 0;
-		Create();
+		Detail::Create();
 		UI::HexGrid::Configure(Objects::selectedEntity);
 
 	}
@@ -1207,6 +1208,12 @@ namespace ConfigurationMode
 			Detail::planetList.adoptData(fleetingData);
 			Detail::RebuildPlanetList();
 		}
+	}
+
+
+	void	Create()
+	{
+		GlobalEvents::frameBegin << Tick;
 	}
 
 }

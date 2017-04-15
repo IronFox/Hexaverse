@@ -23,8 +23,6 @@ namespace VisualTerrain
 		extern displayMode_t				displayMode;
 		extern DX11::ObjectBuffer<float4>	ParaboloidDirection_Height,SphereDef,SphereColor;
 		extern DX11::ObjectBuffer<float4>	ParaboloidColor_FlatRadius;
-		extern DX11::ObjectBuffer<VecN<float,8> > atmosphereConfig;
-		extern DX11::ObjectBuffer<float4> sunDirection,sunColor;
 
 
 		struct THeightMapOrientation

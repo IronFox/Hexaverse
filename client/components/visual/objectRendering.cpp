@@ -18,6 +18,8 @@
 #include "terrainInstructions.h"
 #include "terrain.h"
 #include "display.h"
+#include "../clientEvents.h"
+#include "lighting.h"
 
 namespace Camera
 {
@@ -61,6 +63,7 @@ namespace Objects
 								userInteractionNotifier,
 								attackRing,
 								gatheringPoint;
+	DX11::BaseInstructionBlock	shadowInstruction;
 
 	DX11::Texture				smokeTexture;
 
@@ -68,17 +71,7 @@ namespace Objects
 
 	//DX11::Texture				hexGrid;
 
-	#ifdef CASCADING_SHADOW
 
-		DX11::FBO						shadowMap[NumCascades];
-		Engine::OrthographicAspect<>	shadowCamera[NumCascades];
-		DX11::ObjectBuffer<TMatrix4<> >	shadowMatrix[NumCascades];
-	#else
-		DX11::FBO						shadowMap;
-		Engine::OrthographicAspect<>	shadowCamera;
-		DX11::ObjectBuffer<TMatrix4<> >	shadowMatrix;
-	#endif
-	DX11::BaseInstructionBlock			shadowInstruction;
 
 
 	TMatrix4<>							structureToPlaceSystem;
@@ -87,6 +80,7 @@ namespace Objects
 	namespace Renderer
 	{
 
+		void	AdvanceTurretAnimations();
 
 		class SmokeTrailCollection
 		{
@@ -352,17 +346,6 @@ namespace Objects
 	{
 		DXGI_FORMAT dbgFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 
-		#ifdef CASCADING_SHADOW
-			for (index_t i = 0; i < NumCascades; i++)
-			{
-				shadowMap[i].Create(Resolution(1024,1024),nullptr,0,true);
-				shadowMatrix[i].Create(Matrix<>::eye4);
-			}
-		#else
-	//		shadowMap.Create(Resolution(4096,4096),&dbgFormat,1,true);
-			shadowMap.Create(Resolution(4096,4096),nullptr,0,true);
-			shadowMatrix.Create(Matrix<>::eye4);
-		#endif
 
 
 		keyColor.Create(float4(0));
@@ -379,17 +362,17 @@ namespace Objects
 		{
 			DX11::Shader::Binding(keyColor, "KeyColor"),
 			DX11::Shader::Binding(overallTint, "Tint"),
-			DX11::Shader::Binding(VisualTerrain::Instruction::atmosphereConfig, "AtmosphereConfig"),
-			DX11::Shader::Binding(VisualTerrain::Instruction::sunDirection,"Sun"),
-			DX11::Shader::Binding(VisualTerrain::Instruction::sunColor,"SunColor"),
+			DX11::Shader::Binding(Lighting::GPUResources::atmosphereConfig, "AtmosphereConfig"),
+			DX11::Shader::Binding(Lighting::GPUResources::sunDirection,"Sun"),
+			DX11::Shader::Binding(Lighting::GPUResources::sunColor,"SunColor"),
 			#ifdef CASCADING_SHADOW
-				DX11::Shader::Binding(Objects::shadowMatrix[0],"ShadowMatrix0"),
-				DX11::Shader::Binding(Objects::shadowMap[0].GetDepthStencilTarget(), "ShadowMap0"),
-				DX11::Shader::Binding(Objects::shadowMatrix[1],"ShadowMatrix1"),
-				DX11::Shader::Binding(Objects::shadowMap[1].GetDepthStencilTarget(), "ShadowMap1"),
+				DX11::Shader::Binding(Lighting::GPUResources::shadowMatrix[0],"ShadowMatrix0"),
+				DX11::Shader::Binding(Lighting::GPUResources::shadowMap[0].GetDepthStencilTarget(), "ShadowMap0"),
+				DX11::Shader::Binding(Lighting::GPUResources::shadowMatrix[1],"ShadowMatrix1"),
+				DX11::Shader::Binding(Lighting::GPUResources::shadowMap[1].GetDepthStencilTarget(), "ShadowMap1"),
 			#else
-				DX11::Shader::Binding(Objects::shadowMatrix,"ShadowMatrix"),
-				DX11::Shader::Binding(Objects::shadowMap.GetDepthStencilTarget(), "ShadowMap"),
+				DX11::Shader::Binding(Lighting::GPUResources::shadowMatrix,"ShadowMatrix"),
+				DX11::Shader::Binding(Lighting::GPUResources::shadowMap.GetDepthStencilTarget(), "ShadowMap"),
 			#endif
 			DX11::Shader::SamplerBinding(true, Engine::TextureFilter::Linear, 1, "ShadowSampler")
 		};
@@ -413,17 +396,17 @@ namespace Objects
 			{
 				DX11::Shader::Binding(beamBottomColor, "BeamBottomColor"),
 				DX11::Shader::Binding(beamTopColor, "BeamTopColor"),
-				DX11::Shader::Binding(VisualTerrain::Instruction::atmosphereConfig, "AtmosphereConfig"),
-				DX11::Shader::Binding(VisualTerrain::Instruction::sunDirection,"Sun"),
-				DX11::Shader::Binding(VisualTerrain::Instruction::sunColor,"SunColor"),
+				DX11::Shader::Binding(Lighting::GPUResources::atmosphereConfig, "AtmosphereConfig"),
+				DX11::Shader::Binding(Lighting::GPUResources::sunDirection,"Sun"),
+				DX11::Shader::Binding(Lighting::GPUResources::sunColor,"SunColor"),
 				#ifdef CASCADING_SHADOW
-					DX11::Shader::Binding(Objects::shadowMatrix[0],"ShadowMatrix0"),
-					DX11::Shader::Binding(Objects::shadowMap[0].GetDepthStencilTarget(), "ShadowMap0"),
-					DX11::Shader::Binding(Objects::shadowMatrix[1],"ShadowMatrix1"),
-					DX11::Shader::Binding(Objects::shadowMap[1].GetDepthStencilTarget(), "ShadowMap1"),
+					DX11::Shader::Binding(Lighting::GPUResources::shadowMatrix[0],"ShadowMatrix0"),
+					DX11::Shader::Binding(Lighting::GPUResources::shadowMap[0].GetDepthStencilTarget(), "ShadowMap0"),
+					DX11::Shader::Binding(Lighting::GPUResources::shadowMatrix[1],"ShadowMatrix1"),
+					DX11::Shader::Binding(Lighting::GPUResources::shadowMap[1].GetDepthStencilTarget(), "ShadowMap1"),
 				#else
-					DX11::Shader::Binding(Objects::shadowMatrix,"ShadowMatrix"),
-					DX11::Shader::Binding(Objects::shadowMap.GetDepthStencilTarget(), "ShadowMap"),
+					DX11::Shader::Binding(Lighting::GPUResources::shadowMatrix,"ShadowMatrix"),
+					DX11::Shader::Binding(Lighting::GPUResources::shadowMap.GetDepthStencilTarget(), "ShadowMap"),
 				#endif
 				DX11::Shader::SamplerBinding(true, Engine::TextureFilter::Linear, 1, "ShadowSampler")
 			};
@@ -467,8 +450,8 @@ namespace Objects
 			DX11::Shader::Binding bindings[] =
 			{
 				DX11::Shader::Binding(overallTint, "Tint"),
-				DX11::Shader::Binding(VisualTerrain::Instruction::sunDirection,"Sun"),
-				DX11::Shader::Binding(VisualTerrain::Instruction::sunColor,"SunColor"),
+				DX11::Shader::Binding(Lighting::GPUResources::sunDirection,"Sun"),
+				DX11::Shader::Binding(Lighting::GPUResources::sunColor,"SunColor"),
 				DX11::Shader::Binding(smokeTexture,"SmokeTexture"),
 				DX11::Shader::SamplerBinding(false,Engine::TextureFilter::Trilinear,1,"SmokeSampler")
 			};
@@ -482,8 +465,8 @@ namespace Objects
 			DX11::Shader::Binding bindings[] =
 			{
 				DX11::Shader::Binding(overallTint, "Tint"),
-				DX11::Shader::Binding(VisualTerrain::Instruction::sunDirection,"Sun"),
-				DX11::Shader::Binding(VisualTerrain::Instruction::sunColor,"SunColor"),
+				DX11::Shader::Binding(Lighting::GPUResources::sunDirection,"Sun"),
+				DX11::Shader::Binding(Lighting::GPUResources::sunColor,"SunColor"),
 			};
 			pathShader.binding = stdVehicleShader.binding;
 			pathShader.shader.LoadFromFile("shaders/vehiclePath.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
@@ -507,8 +490,8 @@ namespace Objects
 			DX11::Shader::Binding bindings[] =
 			{
 				DX11::Shader::Binding(overallTint, "Tint"),
-				DX11::Shader::Binding(VisualTerrain::Instruction::sunDirection,"Sun"),
-				DX11::Shader::Binding(VisualTerrain::Instruction::sunColor,"SunColor"),
+				DX11::Shader::Binding(Lighting::GPUResources::sunDirection,"Sun"),
+				DX11::Shader::Binding(Lighting::GPUResources::sunColor,"SunColor"),
 				DX11::Shader::Binding(cylinderConfig,"CylinderConfig"),
 			};
 
@@ -591,10 +574,15 @@ namespace Objects
 		}
 
 		
+		GlobalEvents::frameBegin << Renderer::AdvanceTurretAnimations;
 
-
-
-
+		GlobalEvents::objectFlush << Renderer::Flush << ClearSmokeTrails;
+		GlobalEvents::objectFlush << [](){Objects::Deselect(false);Objects::UpdateChoices(false);};
+		GlobalEvents::terrainFlush << []()
+		{
+			Objects::resourceView = true;
+			Objects::objectView = true;
+		};
 	}
 
 
@@ -2271,7 +2259,7 @@ namespace Objects
 	void					Renderer::RenderShadows(index_t cascade)
 	{
 		//for (index_t i = 0; i < NumCascades; i++)
-		RenderShadows(shadowMap[cascade],shadowCamera[cascade],shadowMatrix[cascade]);
+		RenderShadows(Lighting::GPUResources::shadowMap[cascade],Lighting::GPUResources::shadowCamera[cascade],Lighting::GPUResources::shadowMatrix[cascade]);
 	}
 	#endif
 
@@ -2337,7 +2325,7 @@ namespace Objects
 			display.SetBlendMode(Engine::BlendMode::None);
 			display.SetDepthTest(true,true);
 			
-			VisualTerrain::UpdateSunDirection(float3(1,0,1),false);
+			Lighting::UpdateSunDirection(float3(1,0,1),false);
 
 
 			{

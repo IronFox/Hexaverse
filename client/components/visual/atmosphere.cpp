@@ -6,6 +6,7 @@
 #include "display.h"
 #include "terrainInstructions.h"
 #include "objectRendering.h"
+#include "lighting.h"
 
 
 namespace Atmosphere
@@ -92,21 +93,21 @@ namespace Atmosphere
 
 		//bindings;
 		
-		bindings <<	DX11::Shader::Binding(VisualTerrain::Instruction::sunDirection,"Sun");
-		bindings << DX11::Shader::Binding(VisualTerrain::Instruction::sunColor,"SunColor");
+		bindings <<	DX11::Shader::Binding(Lighting::GPUResources::sunDirection,"Sun");
+		bindings << DX11::Shader::Binding(Lighting::GPUResources::sunColor,"SunColor");
 
 		#ifdef CASCADING_SHADOW
-			for (index_t i = 0; i < Objects::NumCascades; i++)
+			for (index_t i = 0; i < Lighting::NumCascades; i++)
 			{
-				bindings.Append(DX11::Shader::Binding(Objects::shadowMatrix[i],"ShadowMatrix"+String(i)));
-				bindings.Append(DX11::Shader::Binding(Objects::shadowMap[i].GetDepthStencilTarget(), "ShadowMap"+String(i)));
+				bindings.Append(DX11::Shader::Binding(Lighting::GPUResources::shadowMatrix[i],"ShadowMatrix"+String(i)));
+				bindings.Append(DX11::Shader::Binding(Lighting::GPUResources::shadowMap[i].GetDepthStencilTarget(), "ShadowMap"+String(i)));
 			}
 		#else
-			bindings.Append(DX11::Shader::Binding(Objects::shadowMatrix,"ShadowMatrix"));
-			bindings.Append(DX11::Shader::Binding(Objects::shadowMap.GetDepthStencilTarget(), "ShadowMap"));
+			bindings.Append(DX11::Shader::Binding(Lighting::GPUResources::shadowMatrix,"ShadowMatrix"));
+			bindings.Append(DX11::Shader::Binding(Lighting::GPUResources::shadowMap.GetDepthStencilTarget(), "ShadowMap"));
 		#endif
 		bindings.Append(DX11::Shader::SamplerBinding(true, Engine::TextureFilter::None, 1, "ShadowSampler"));
-		bindings.Append(DX11::Shader::Binding(VisualTerrain::Instruction::atmosphereConfig, "AtmosphereConfig"));
+		bindings.Append(DX11::Shader::Binding(Lighting::GPUResources::atmosphereConfig, "AtmosphereConfig"));
 
 		instruction.shader.LoadFromFile("shaders/atmosphere.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
 		instruction.SetTriangles();

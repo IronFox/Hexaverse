@@ -11,6 +11,8 @@
 #include <engine/display.h>
 #include <math/vclasses.h>
 #include "terrainInstructions.h"
+#include "lighting.h"
+#include "../clientEvents.h"
 	
 extern Engine::Display<Engine::DirectX11>	display;
 //namespace Camera
@@ -53,8 +55,6 @@ namespace VisualTerrain
 		DX11::ObjectBuffer<float4>	ParaboloidDirection_Height,SphereDef,SphereColor;
 		DX11::ObjectBuffer<float4>	ParaboloidColor_FlatRadius;
 
-		DX11::ObjectBuffer<VecN<float,8> > atmosphereConfig;
-		DX11::ObjectBuffer<float4> sunDirection,sunColor;
 
 		DX11::ObjectBuffer<THeightMapOrientation>	heightMapOrientation;	//used for lava
 		DX11::Texture								cubeHeightMap;	//used for lava
@@ -66,27 +66,7 @@ namespace VisualTerrain
 
 	}
 
-	void	UpdateAtmosphere(const float4&fogColor)
-	{
-		UpdateAtmosphere(VerticalBase * 1.5f, fogColor);
-
-	}
-
-	void	UpdateAtmosphere(float radius, const float4&fogColor)
-	{
-		VecN<float,8>	atmosphereCfg;
-		atmosphereCfg[0] = sqr(radius);
-		atmosphereCfg[1] = radius;
-		atmosphereCfg[2] = 0;
-		atmosphereCfg[3] = 0;
-		atmosphereCfg[4] = fogColor.r;
-		atmosphereCfg[5] = fogColor.g;
-		atmosphereCfg[6] = fogColor.b;
-		atmosphereCfg[7] = fogColor.a;
-
-		Instruction::atmosphereConfig.Update(atmosphereCfg);
-	}
-
+	
 	void	UpdatePlanetRenderingParameters(float radius)	//more to come
 	{
 		TMatrix4<> matrix = Matrix<>::eye4;
@@ -97,65 +77,7 @@ namespace VisualTerrain
 		display.SetObjectMatrix(matrix);
 	}
 
-	namespace SunDetails
-	{
-		float4	plane_Speed = float4(0,0,1,0.5f);
-		float4	color = float4(1);
-		TMatrix3<>	sunSystem = Matrix<>::eye3;
-		float3	sunDirection(1,0,0);
-		double progression = 0.0;
-	}
-
-	const float3&	GetSunDirection()
-	{
-		return SunDetails::sunDirection;
-	}
-
-	void	UpdateSun(const float4&sunPlane_Speed,const float4&sunColor)
-	{
-		SunDetails::plane_Speed = sunPlane_Speed;
-		SunDetails::color = sunColor;
-		SunDetails::progression = 0.f;
-		Mat::makeAxisSystem(sunPlane_Speed.xyz,2,SunDetails::sunSystem);
-
-		Instruction::sunColor.Update(sunColor);
-		UpdateSunDirection(SunDetails::sunSystem.x,true);
-	}
-
-
-	void	PerFrameUpdateSunDirection()
-	{
-		SunDetails::progression += SunDetails::plane_Speed.w * Engine::timing.delta;
-
-
-		float3 p = float3(cos(SunDetails::progression),sin(SunDetails::progression),0);
-		Mat::Mult(SunDetails::sunSystem,p,SunDetails::sunDirection);
-		UpdateSunDirection(SunDetails::sunDirection,true);
-	}
-
-	double	GetAcceleratedSunDirection(TVec3<>&outDir, float speedFactor/*=1.f*/)
-	{
-		double angle = SunDetails::progression*speedFactor;
-		Vec::def(outDir,cos(angle),sin(angle),0);
-		Mat::Mult(SunDetails::sunSystem,outDir);
-		return angle;
-	}
-
-
-	const TMatrix3<>& GetSunSystem()
-	{
-		return SunDetails::sunSystem;
-	}
-
-
-	void	ResetSunRotation()
-	{
-		SunDetails::progression = 0;
-	}
-
-
-
-	void	SetOrientation(TMatrix4<>&m, const float3&axis, double t, const float3&seedAxis, double seedRot)
+	static void	SetOrientation(TMatrix4<>&m, const float3&axis, double t, const float3&seedAxis, double seedRot)
 	{
 		TMatrix3<> sys1,sys2,sys;
 		Mat::BuildRotationMatrix(t*1.5,axis,sys1);
@@ -167,14 +89,10 @@ namespace VisualTerrain
 
 	}
 
-	void	UpdateSunDirection(const float3&p, bool shadows /*= true*/)
-	{
-		SunDetails::sunDirection = p;
-		//#ifdef _DEBUG
-		//	SunDetails::sunDirection = -p;
-		//#endif
-		Instruction::sunDirection.Update(float4(SunDetails::sunDirection,shadows));
 
+
+	void	UpdateLavaOrientation()
+	{
 		Random random(23984);
 		Instruction::THeightMapOrientation	orientation;
 		SetOrientation(orientation.orientation0,float3(1,0.75,0.75).Normalized0(),Engine::timing.now, float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)).Normalized0(),random.NextFloatT<double>(0,100));
@@ -182,9 +100,7 @@ namespace VisualTerrain
 		SetOrientation(orientation.orientation2,float3(0.75,0.75,1).Normalized0(),Engine::timing.now/M_PI, float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)).Normalized0(),random.NextFloatT<double>(0,100));
 
 		Instruction::heightMapOrientation.Update(orientation);
-
 	}
-
 
 	
 	static BYTE GetHeightMapHeight(const SimplexNoise&n, TVec3<>&p)
@@ -222,25 +138,183 @@ namespace VisualTerrain
 
 	void Create()
 	{
+		GlobalEvents::frameBegin << VisualTerrain::UpdateLavaOrientation;
+		GlobalEvents::frameAfterCamera << []()
+		{
+			//if (SeeThrough::IsEnabled())
+			SeeThrough::Update(SeeThrough::IsEnabled(), SeeThrough::LocateCamera());
+		};
+
+
+		GlobalEvents::terrainFlush << UnsetParaboloidAndSphereDisplay;
+		GlobalEvents::objectFlush << UnsetParaboloidAndSphereDisplay;
+		#ifndef NO_SATELLITES
+			GlobalEvents::objectFlush << [](){visibileOrbitGrid.Clear();}
+		#endif
+
+
 		Buffer0<DX11::Shader::Binding> bindings;
+
+
+
+
+
+
+
+
+
+
+		
+
+		//----------------------
+
+
+		Instruction::heightMapOrientation.Create(Instruction::THeightMapOrientation());
+
+		{
+			SimplexNoise n(Random().NextSeed());
+			Image sides[6];
+			//+x, -x, +y, -y, +z, -z.
+			CreateHeightMapSide(sides[0],n,float3(1,0,0),float3(0,0,-1),float3(0,1,0));
+			CreateHeightMapSide(sides[1],n,float3(-1,0,0),float3(0,0,1),float3(0,1,0));
+			CreateHeightMapSide(sides[2],n,float3(0,1,0),float3(1,0,0),float3(0,0,-1));
+			CreateHeightMapSide(sides[3],n,float3(0,-1,0),float3(1,0,0),float3(0,0,1));
+			CreateHeightMapSide(sides[4],n,float3(0,0,1),float3(1,0,0),float3(0,1,0));
+			CreateHeightMapSide(sides[5],n,float3(0,0,-1),float3(-1,0,0),float3(0,1,0));
+
+
+			Instruction::cubeHeightMap.LoadCube(sides,false);
+		}
+
+
+
+		Image img(64, 1, 4);
+		for (UINT32 x = 0; x < img.GetWidth(); x++)
+		{
+			float a = smoothstep(0.9, 0.95, float(x) / float(img.GetWidth() - 1));
+			float b = smoothstep(0.925, 0.95, float(x) / float(img.GetWidth() - 1));
+			BYTE*pixel = img.get(x, 0);
+			pixel[0] = (BYTE)(180 * b);
+			pixel[1] = (BYTE)(200 * b);
+			pixel[2] = (BYTE)(255 * b);
+			pixel[3] = (BYTE)(a * 255.f);
+		}
+
+
+		Instruction::lineTex.Load(img, true);
+		//blockConfig.Create(TMatrix4<>());
+
+		{
+			DX11::Shader::Binding bindings[] =
+			{
+				DX11::Shader::Binding(Instruction::lineTex, "LineTex"),
+				DX11::Shader::SamplerBinding(true, Engine::TextureFilter::Trilinear, 1, "LineSampler")
+
+			};
+			Instruction::gridShader.LoadFromFile("shaders/sphereGrid.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
+			Instruction::transparentGridShader.LoadFromFile("shaders/transparentSphereGrid.hlsl", "vsMain", "psMain");
+		}
+
+
+		for (BYTE i = 0; i < BaseGrid::NumFamilies; i++)
+			BakeBlockInstruction(World::actual.cellStack, i, Clip::NoClip);
+
+
+
+
+
+		//------
+
+
+
+
+
+		for (index_t i = 0; i < ARRAYSIZE(unitSphereFamilyBoundingBox); i++)
+			unitSphereFamilyBoundingBox[i] = planetFamilyBoundingBox[i] =  Box<>::Invalid();
+
+		float r0 = ToRadius(-CellStack::HalfRange);
+		float r1 = ToRadius(CellStack::HalfRange);
+		foreach (Grid::high.cells,c)
+		{
+			Box<>&box = planetFamilyBoundingBox[Grid::high.grid.GetCell(c - Grid::high.cells.pointer()).family];
+			box.Include(c->centerVertex.xyz * r0);
+			box.Include(c->centerVertex.xyz * r1);
+			for (int i = 0; i < c->numCorners; i++)
+			{
+				box.Include(c->cornerVertex[i].xyz*r0);
+				box.Include(c->cornerVertex[i].xyz*r1);
+			}
+		}
+		foreach (Grid::high.cells,c)
+		{
+			Box<>&box = unitSphereFamilyBoundingBox[Grid::high.grid.GetCell(c - Grid::high.cells.pointer()).family];
+			box.Include(c->centerVertex.xyz);
+			for (int i = 0; i < c->numCorners; i++)
+			{
+				box.Include(c->cornerVertex[i].xyz);
+			}
+		}
+
+
+
+		Array<float4> verticesToLoad(Grid::low.cellVertices.Count());
+		for (index_t i = 0; i < Grid::low.cellVertices.Count(); i++)
+			verticesToLoad[i] = float4(Grid::low.cellVertices[i].centerDirection,float(Grid::low.cellVertices[i].ownerCount > 1));
+		Instruction::lowGridInstruction.vbo.CreateFromStructs(verticesToLoad);
+		{
+			Buffer<UINT32>	ibo;
+			foreach(Grid::low.cells, cell)
+			{
+				cell->voffset = (UINT32)ibo.Count();
+				for (int j = 0; j < cell->numCorners; j++)
+					ibo << cell->centerVertexId << cell->cornerVertexId[j] << cell->cornerVertexId[(j + 1) % cell->numCorners];
+			}
+			Instruction::lowGridInstruction.ibo.Create(ibo);
+		}
+
+		Instruction::lowGridInstruction.shader = Instruction::gridShader;
+		{
+			Engine::VertexBinding	binding;
+			binding.vertex.set(0, 4);
+			binding.normal.unset();
+			binding.floats_per_vertex = 4;
+			Instruction::lowGridInstruction.binding = binding;
+		}
+		Instruction::lowGridInstruction.UpdateLayout();
+		Instruction::lowGridInstruction.SetTriangles();
+
+
+		Instruction::transparentGridInstruction = Instruction::lowGridInstruction;
+		Instruction::transparentGridInstruction.shader = Instruction::transparentGridShader;
+		Instruction::transparentGridInstruction.UpdateLayout();
+
+
+
+
+
+
+
+
+
+
 
 
 		//bindings;
 		
-		bindings.Append(DX11::Shader::Binding(Instruction::sunDirection,"Sun"));
-		bindings.Append(DX11::Shader::Binding(Instruction::sunColor,"SunColor"));
+		bindings.Append(DX11::Shader::Binding(Lighting::GPUResources::sunDirection,"Sun"));
+		bindings.Append(DX11::Shader::Binding(Lighting::GPUResources::sunColor,"SunColor"));
 		#ifdef CASCADING_SHADOW
-			for (index_t i = 0; i < Objects::NumCascades; i++)
+			for (index_t i = 0; i < Lighting::NumCascades; i++)
 			{
-				ASSERT__(Objects::shadowMatrix[i].IsSet());
-				bindings.Append(DX11::Shader::Binding(Objects::shadowMatrix[i],"ShadowMatrix"+String(i)));
-				bindings.Append(DX11::Shader::Binding(Objects::shadowMap[i].GetDepthStencilTarget(), "ShadowMap"+String(i)));
+				ASSERT__(Lighting::GPUResources::shadowMatrix[i].IsSet());
+				bindings.Append(DX11::Shader::Binding(Lighting::GPUResources::shadowMatrix[i],"ShadowMatrix"+String(i)));
+				bindings.Append(DX11::Shader::Binding(Lighting::GPUResources::shadowMap[i].GetDepthStencilTarget(), "ShadowMap"+String(i)));
 			}
 		#else
 			bindings.Append(DX11::Shader::Binding(Objects::shadowMatrix,"ShadowMatrix"));
 			bindings.Append(DX11::Shader::Binding(Objects::shadowMap.GetDepthStencilTarget(), "ShadowMap"));
 		#endif
-		bindings.Append(DX11::Shader::Binding(Instruction::atmosphereConfig, "AtmosphereConfig"));
+		bindings.Append(DX11::Shader::Binding(Lighting::GPUResources::atmosphereConfig, "AtmosphereConfig"));
 		bindings.Append(DX11::Shader::SamplerBinding(true, Engine::TextureFilter::None, 1, "ShadowSampler"));
 
 		bindings.Append(DX11::Shader::SamplerBinding(true,Engine::TextureFilter::Trilinear,1,"HeightMapSampler"));
@@ -408,135 +482,6 @@ namespace VisualTerrain
 
 
 
-
-		//----------------------
-
-
-		Instruction::heightMapOrientation.Create(Instruction::THeightMapOrientation());
-
-		{
-			SimplexNoise n(Random().NextSeed());
-			Image sides[6];
-			//+x, -x, +y, -y, +z, -z.
-			CreateHeightMapSide(sides[0],n,float3(1,0,0),float3(0,0,-1),float3(0,1,0));
-			CreateHeightMapSide(sides[1],n,float3(-1,0,0),float3(0,0,1),float3(0,1,0));
-			CreateHeightMapSide(sides[2],n,float3(0,1,0),float3(1,0,0),float3(0,0,-1));
-			CreateHeightMapSide(sides[3],n,float3(0,-1,0),float3(1,0,0),float3(0,0,1));
-			CreateHeightMapSide(sides[4],n,float3(0,0,1),float3(1,0,0),float3(0,1,0));
-			CreateHeightMapSide(sides[5],n,float3(0,0,-1),float3(-1,0,0),float3(0,1,0));
-
-
-			Instruction::cubeHeightMap.LoadCube(sides,false);
-		}
-
-		Instruction::atmosphereConfig.Create(VecN<float,8>());
-		UpdateAtmosphere(currentPlanetConfig.atmosphereColor);
-
-		Instruction::sunDirection.Create(float4());
-		Instruction::sunColor.Create(float4());
-		UpdateSun(currentPlanetConfig.sunPlaneNormal_Speed,currentPlanetConfig.sunColor);
-
-
-
-		Image img(64, 1, 4);
-		for (UINT32 x = 0; x < img.GetWidth(); x++)
-		{
-			float a = smoothstep(0.9, 0.95, float(x) / float(img.GetWidth() - 1));
-			float b = smoothstep(0.925, 0.95, float(x) / float(img.GetWidth() - 1));
-			BYTE*pixel = img.get(x, 0);
-			pixel[0] = (BYTE)(180 * b);
-			pixel[1] = (BYTE)(200 * b);
-			pixel[2] = (BYTE)(255 * b);
-			pixel[3] = (BYTE)(a * 255.f);
-		}
-
-
-		Instruction::lineTex.Load(img, true);
-		//blockConfig.Create(TMatrix4<>());
-
-		{
-			DX11::Shader::Binding bindings[] =
-			{
-				DX11::Shader::Binding(Instruction::lineTex, "LineTex"),
-				DX11::Shader::SamplerBinding(true, Engine::TextureFilter::Trilinear, 1, "LineSampler")
-
-			};
-			Instruction::gridShader.LoadFromFile("shaders/sphereGrid.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
-			Instruction::transparentGridShader.LoadFromFile("shaders/transparentSphereGrid.hlsl", "vsMain", "psMain");
-		}
-
-
-		for (BYTE i = 0; i < BaseGrid::NumFamilies; i++)
-			BakeBlockInstruction(World::actual.cellStack, i, Clip::NoClip);
-
-
-
-
-
-		//------
-
-
-
-
-
-		for (index_t i = 0; i < ARRAYSIZE(unitSphereFamilyBoundingBox); i++)
-			unitSphereFamilyBoundingBox[i] = planetFamilyBoundingBox[i] =  Box<>::Invalid();
-
-		float r0 = ToRadius(-CellStack::HalfRange);
-		float r1 = ToRadius(CellStack::HalfRange);
-		foreach (Grid::high.cells,c)
-		{
-			Box<>&box = planetFamilyBoundingBox[Grid::high.grid.GetCell(c - Grid::high.cells.pointer()).family];
-			box.Include(c->centerVertex.xyz * r0);
-			box.Include(c->centerVertex.xyz * r1);
-			for (int i = 0; i < c->numCorners; i++)
-			{
-				box.Include(c->cornerVertex[i].xyz*r0);
-				box.Include(c->cornerVertex[i].xyz*r1);
-			}
-		}
-		foreach (Grid::high.cells,c)
-		{
-			Box<>&box = unitSphereFamilyBoundingBox[Grid::high.grid.GetCell(c - Grid::high.cells.pointer()).family];
-			box.Include(c->centerVertex.xyz);
-			for (int i = 0; i < c->numCorners; i++)
-			{
-				box.Include(c->cornerVertex[i].xyz);
-			}
-		}
-
-
-
-		Array<float4> verticesToLoad(Grid::low.cellVertices.Count());
-		for (index_t i = 0; i < Grid::low.cellVertices.Count(); i++)
-			verticesToLoad[i] = float4(Grid::low.cellVertices[i].centerDirection,float(Grid::low.cellVertices[i].ownerCount > 1));
-		Instruction::lowGridInstruction.vbo.CreateFromStructs(verticesToLoad);
-		{
-			Buffer<UINT32>	ibo;
-			foreach(Grid::low.cells, cell)
-			{
-				cell->voffset = (UINT32)ibo.Count();
-				for (int j = 0; j < cell->numCorners; j++)
-					ibo << cell->centerVertexId << cell->cornerVertexId[j] << cell->cornerVertexId[(j + 1) % cell->numCorners];
-			}
-			Instruction::lowGridInstruction.ibo.Create(ibo);
-		}
-
-		Instruction::lowGridInstruction.shader = Instruction::gridShader;
-		{
-			Engine::VertexBinding	binding;
-			binding.vertex.set(0, 4);
-			binding.normal.unset();
-			binding.floats_per_vertex = 4;
-			Instruction::lowGridInstruction.binding = binding;
-		}
-		Instruction::lowGridInstruction.UpdateLayout();
-		Instruction::lowGridInstruction.SetTriangles();
-
-
-		Instruction::transparentGridInstruction = Instruction::lowGridInstruction;
-		Instruction::transparentGridInstruction.shader = Instruction::transparentGridShader;
-		Instruction::transparentGridInstruction.UpdateLayout();
 	}
 
 
@@ -909,6 +854,13 @@ namespace VisualTerrain
 	*/
 	struct TFamily
 	{
+		struct TBounds
+		{
+			Box<>						boundingBox;
+			Sphere<>					boundingSphere;
+
+		};
+
 		struct TData
 		{
 			#ifdef HAS_WINDOW
@@ -921,9 +873,9 @@ namespace VisualTerrain
 				TWaterHull				water;		//!< high-resolution overhanging terrain water, transparent, shaded
 				TResourceHull			resources;	//!< low-resolution resource visualization. Similar to @a overlay, but uses different shader
 			#endif 
-			Box<>						boundingBox;
-			Sphere<>					boundingSphere;
 			bool						outdated,resourceOutdated;
+
+			TBounds						terrainBounds,resourceBounds;
 
 			/**/						TData() :outdated(true),resourceOutdated(true)
 			{}
@@ -965,7 +917,6 @@ namespace VisualTerrain
 	{
 		using namespace Instruction;
 		sunDirection.Clear();
-		sunColor.Clear();
 
 		lineTex.Clear();
 		gridShader.Clear();
@@ -977,7 +928,6 @@ namespace VisualTerrain
 			= terrainShadowBase
 			= waterBase = waterSphereBase = waterParaboloidBase
 			= DX11::BaseInstructionBlock();
-		atmosphereConfig .Clear();
 		ParaboloidDirection_Height.Clear();
 		ParaboloidColor_FlatRadius.Clear();
 		SphereDef.Clear();
@@ -1350,12 +1300,12 @@ namespace VisualTerrain
 			box.Include(vtx->vertex.xyz);
 		foreach(dat.water.vertices, vtx)
 			box.Include(vtx->vertex.xyz);
-		dat.boundingBox = box;
-		dat.boundingSphere.center = box.GetCenter();
-		dat.boundingSphere.radius = 0.f;
+		dat.terrainBounds.boundingBox = box;
+		dat.terrainBounds.boundingSphere.center = box.GetCenter();
+		dat.terrainBounds.boundingSphere.radius = 0.f;
 		foreach(dat.terrain.vertices, vtx)
-			dat.boundingSphere.IncludeSquare(vtx->vertex.xyz);
-		dat.boundingSphere.radius = sqrt(dat.boundingSphere.radius);
+			dat.terrainBounds.boundingSphere.IncludeSquare(vtx->vertex.xyz);
+		dat.terrainBounds.boundingSphere.radius = sqrt(dat.terrainBounds.boundingSphere.radius);
 
 
 		if (dat.terrain.instruction[0].shader.IsEmpty())
@@ -2326,12 +2276,12 @@ namespace VisualTerrain
 
 		foreach(dat.resources.vertices, vtx)
 			box.Include(vtx->vertex.xyz);
-		dat.boundingBox = box;
-		dat.boundingSphere.center = box.GetCenter();
-		dat.boundingSphere.radius = 0.f;
+		dat.resourceBounds.boundingBox = box;
+		dat.resourceBounds.boundingSphere.center = box.GetCenter();
+		dat.resourceBounds.boundingSphere.radius = 0.f;
 		foreach(dat.resources.vertices, vtx)
-			dat.boundingSphere.IncludeSquare(vtx->vertex.xyz);
-		dat.boundingSphere.radius = sqrt(dat.boundingSphere.radius);
+			dat.resourceBounds.boundingSphere.IncludeSquare(vtx->vertex.xyz);
+		dat.resourceBounds.boundingSphere.radius = sqrt(dat.resourceBounds.boundingSphere.radius);
 
 
 		if (dat.resources.instruction.shader.IsEmpty())
@@ -2404,7 +2354,7 @@ namespace VisualTerrain
 			const TFamily&fam = family[k];
 			float dst = distance;
 			const TFamily::TData&dat = fam.normal;
-			if (_oDetectOpticalBoxIntersection(dat.boundingBox, b, d, dst))
+			if (_oDetectOpticalBoxIntersection(dat.terrainBounds.boundingBox, b, d, dst))
 			{
 				if (includeWater)
 				{
@@ -2606,6 +2556,8 @@ namespace VisualTerrain
 			{
 				::Camera::ChangeGroundRadius(ToRadius(targetFocus.height));
 			}
+			else
+				::Camera::ChangeGroundRadiusToFocusedTerrain();
 
 			HighSetup::TDistanceField	newDomain;
 			if (enable)
@@ -2870,19 +2822,6 @@ namespace VisualTerrain
 
 
 
-	void	FlushAllRendererData()
-	{
-		ResetSunRotation();
-			
-		#ifndef NO_SATELLITES
-			visibleOrbitGrid.Clear();
-		#endif
-		UnsetParaboloidAndSphereDisplay();
-
-		#ifdef DEBUG_SENSORY
-			sensors.Clear();
-		#endif
-	}
 
 
 
@@ -3041,7 +2980,7 @@ namespace VisualTerrain
 		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 		{
 			TFamily::TData&dat = family[k].normal;
-			if (frustum.IsVisible(dat.boundingSphere))
+			if (frustum.IsVisible(dat.resourceBounds.boundingSphere))
 				display.Render(dat.resources.instruction);
 		}
 	}
@@ -3051,7 +2990,7 @@ namespace VisualTerrain
 		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 		{
 			TFamily::TData&dat = family[k].normal;
-			if (frustum.IsVisible(dat.boundingSphere))
+			if (frustum.IsVisible(dat.terrainBounds.boundingSphere))
 				display.Render(dat.overlay.instruction);
 		}
 	}
@@ -3061,7 +3000,7 @@ namespace VisualTerrain
 		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 		{
 			TFamily::TData&dat = family[k].normal;
-			if (frustum.IsVisible(dat.boundingSphere))
+			if (frustum.IsVisible(dat.terrainBounds.boundingSphere))
 				display.Render(dat.water.instruction[Instruction::displayMode],true);
 		}
 	}
@@ -3071,7 +3010,7 @@ namespace VisualTerrain
 		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 		{
 			TFamily::TData&dat = family[k].normal;
-			if (frustum.IsVisible(dat.boundingSphere))
+			if (frustum.IsVisible(dat.terrainBounds.boundingSphere))
 				display.Render(dat.terrain.instruction[Instruction::displayMode],true);
 		}
 	}

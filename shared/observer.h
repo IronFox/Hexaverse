@@ -19,9 +19,10 @@ template <typename...T>
 		{
 			functions << f;
 		}
-		void	operator<<(const F&f)
+		Observer&	operator<<(const F&f)
 		{
 			functions << f;
+			return *this;
 		}
 	private:
 		Buffer0<F,Swap>	functions;

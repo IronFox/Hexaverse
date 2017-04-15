@@ -373,7 +373,7 @@ namespace Network
 
 	extern Timer::Time		lastPing,lastServerTableUpdate;
 
-	void		Update();
+	
 
 	void		Shutdown();
 

@@ -77,10 +77,7 @@ namespace Camera
 	void						ToggleAutoRotation();
 
 
-	/**
-	Smoothly updates ongoing camera animations. Must be called once per frame
-	*/
-	void						ProgressRotation();
+
 
 	void						StopAutoRotation();
 	/**
@@ -93,7 +90,7 @@ namespace Camera
 	*/
 	void						ChangeGroundRadius(float targetOrbit);
 
-
+	void						ChangeGroundRadiusToFocusedTerrain();
 	
 	/**
 	Switches to sky orbit
@@ -111,7 +108,7 @@ namespace Camera
 
 	bool						SkyGridIsVisible();
 
-
+	void						Create();
 
 	/**
 	Input event handlers

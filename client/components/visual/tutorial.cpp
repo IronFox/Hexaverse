@@ -7,6 +7,10 @@
 #include "../../version.h"
 #include "../clientRuntimeConfig.h"
 #include <objects/resource.h>
+#include "../clientEvents.h"
+#include <engine/interface/mouse.h>
+#include "../network.h"
+#include "objectSelection.h"
 
 namespace Tutorial
 {
@@ -111,6 +115,26 @@ namespace Tutorial
 	//	#endif
 			Detail::memory.Create(RuntimeConfig::ConfigFile("tutorialMemory.txt"));
 	
+
+		GlobalEvents::frameBegin << []()
+		{
+			if (!Engine::mouse.buttons.pressed)		
+			{
+				if (!Tutorial::movementTutorialIssued && Objects::selectedEntity && Objects::selectedEntity->isOwnedByMe && Objects::selectedEntity->IsMobile() && timer.GetSecondsSince(Tutorial::lastDelayingEvent) > 3.f)
+				{
+					Tutorial::movementTutorialIssued = true;
+					Tutorial::ShowMessage("Move To");
+					Tutorial::lastDelayingEvent = timer.Now();
+				}
+				if (!Tutorial::endRoundTutorialIssued && Network::client.IsConnected() && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && timer.GetSecondsSince(Tutorial::lastDelayingEvent) > 10.f)
+				{
+					Tutorial::endRoundTutorialIssued = true;
+					Tutorial::ShowMessage("End Round");
+					Tutorial::lastDelayingEvent = timer.Now();
+				}
+			}
+		};
+
 	}
 
 

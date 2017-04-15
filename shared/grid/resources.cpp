@@ -2,6 +2,7 @@
 #include "resources.h"
 
 #include "../objects/resource.h"
+#include "../globalEvents.h"
 
 namespace Grid
 {
@@ -86,6 +87,12 @@ namespace Grid
 		Resource::Create("Fuel", ConstName::Resource_Fuel, float3(0.1,1,0.1), Objects::Resource::Fuel);
 		Resource::Create("Minerals", ConstName::Resource_Minerals, float3(0.9,0.9,0.9), Objects::Resource::Minerals);
 		Resource::Create("Uranium", ConstName::Resource_Uranium, float3(1,1,0.1), Objects::Resource::Uranium);
+
+
+		GlobalEvents::terrainFlush << Resource::FlushAll;
+		#ifdef CLIENT
+			GlobalEvents::terrainFlush << [](){Grid::ResourceDiscovery::client.FlushAllData();};
+		#endif
 	}
 
 

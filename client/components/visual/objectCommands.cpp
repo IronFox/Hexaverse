@@ -19,6 +19,7 @@
 #include "terrain.h"
 
 
+
 extern Engine::Display<Engine::DirectX11>	display;
 //extern Engine::VectorCamera<>				scene;
 
@@ -569,7 +570,7 @@ namespace Objects
 		if (selectedEntity)
 		{
 			Grid::LCellIdI target = VisualTerrain::SeeThrough::LocateCamera();
-			if (selectedEntity->location.height <= Grid::CellStack::BottomHeight)
+			if (selectedEntity->location.height <= Grid::CellStack::TopHeight)
 				target.height = selectedEntity->location.height;
 			VisualTerrain::SeeThrough::Update(!VisualTerrain::SeeThrough::IsEnabled(), target);
 //					Grid::SeeThrough::Update(!Grid::SeeThrough::IsEnabled(), selectedEntity->location);

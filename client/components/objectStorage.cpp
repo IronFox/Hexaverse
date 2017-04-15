@@ -5,6 +5,7 @@
 #include <objects.h>
 #include <runtimeConfig.h>
 #include "visual/terrain.h"
+#include "clientEvents.h"
 
 namespace Objects
 {
@@ -40,7 +41,7 @@ namespace Objects
 		},true);
 		markers.swap(Marker::all);
 		RuntimeConfig::UnitLimits::Export(unitLimits);
-		Objects::FlushAllData(true);
+		GlobalEvents::FlushObjects();
 		BaseGrid::FamiliesChanged	fam;
 		if (World::actual.ResetStructureCounters(!preserveGridVisibility,&fam))
 		{
@@ -54,7 +55,7 @@ namespace Objects
 
 	void	Storage::Export()
 	{
-		Objects::FlushAllData(true);
+		GlobalEvents::FlushObjects();
 		World::actual.ResetStructureCounters(true);
 		markers.swap(Marker::all);
 		RuntimeConfig::UnitLimits::Import(unitLimits);

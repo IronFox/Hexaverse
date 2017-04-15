@@ -72,8 +72,8 @@ namespace World
 
 		bool					FamilyIsOutdated(index_t i) const {return families[i].changed;}
 		void					UnsetFamilyOutdated(index_t i) {families[i].Reset();}
-		void					SignalFamilyStructureChange(index_t i, float t) {families[i].SignalStructureChange(t);}
-		void					SignalFamilyStructureChange(index_t i) {families[i].SignalStructureChange();}
+		void					SignalFamilyStructureChange(index_t i, float t) {families[i].SignalStructureChange(t);structureChanged=true;}
+		void					SignalFamilyStructureChange(index_t i) {families[i].SignalStructureChange();structureChanged=true;}
 		void					SignalFamilyCoverageChange(index_t i, float t) {families[i].SignalCoverageChange(t);}
 		void					SignalFamilyCoverageChange(index_t i) {families[i].SignalCoverageChange();}
 		void					SetAllFamiliesOutdated(float t)
@@ -219,7 +219,6 @@ namespace World
 	#endif
 	
 	
-	void				FlushAllWorldData();
 
 
 	/**

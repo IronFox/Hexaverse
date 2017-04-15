@@ -54,6 +54,7 @@
 #include "components/ai.h"
 #include "components/clientRuntimeConfig.h"
 #include "components/visual/world.h"
+#include "components/visual/lighting.h"
 #include "components/visual/atmosphere.h"
 #include "components/visual/guiHostList.h"
 #include "components/visual/commandDefinitions.h"
@@ -64,6 +65,7 @@
 #include "components/network.h"
 #include "components/animation.h"
 #include "components/cameraControl.h"
+#include "components/clientEvents.h"
 
 #include "rc/Resource.h"
 
@@ -456,21 +458,6 @@ namespace ApplicationInterface
 			LocalApplicationInterface::DirectTo(v,targets, LocalApplicationInterface::AssembleMotionFlags(detailedPath,leftClick,false),Objects::activeCursorMode);
 		#else
 			LocalApplicationInterface::DirectTo(v,targets, LocalApplicationInterface::AssembleMotionFlags(detailedPath,leftClick,false),Objects::CursorMode::Idle);
-		#endif
-	}
-
-	void	SignalSceneFlush(bool preserveGameState)
-	{
-		#ifdef HAS_WINDOW
-			Objects::Renderer::Flush();
-			Objects::Deselect(false);
-			if (!preserveGameState)
-			{
-				Objects::resourceView = true;
-				Objects::objectView = true;
-			}
-			//activeResource = 0;
-			Objects::UpdateChoices(false);
 		#endif
 	}
 
@@ -1575,7 +1562,7 @@ namespace ApplicationInterface
 		float3 center = Camera::scene.GetAbsoluteLocation() - Camera::scene.GetViewingDirection() * shadowRadius;
 		Vec::setLen(center,Grid::ToRadius(0));
 
-		const float3&up = VisualTerrain::GetSunDirection();
+		const float3&up = Lighting::GetSunDirection();
 		Mat::makeAxisSystem(center,-up,2,shadowCamera.viewInvert);
 		Mat::invertSystem(shadowCamera.viewInvert,shadowCamera.view);
 		shadowCamera.UpdateProjection2(-shadowRadius,-shadowRadius,shadowRadius,shadowRadius,100.f,-100.f);
@@ -1602,7 +1589,7 @@ namespace ApplicationInterface
 	#ifdef CASCADING_SHADOW
 	void RenderShadows(float shadowRadius, index_t cascade)
 	{
-		RenderShadows(shadowRadius,Objects::shadowMap[cascade],Objects::shadowCamera[cascade],Objects::shadowMatrix[cascade],cascade);
+		RenderShadows(shadowRadius,Lighting::GPUResources::shadowMap[cascade],Lighting::GPUResources::shadowCamera[cascade],Lighting::GPUResources::shadowMatrix[cascade],cascade);
 
 	}
 	#endif
@@ -1618,31 +1605,15 @@ bool loop()
 {
 	try
 	{
-
+		GlobalEvents::frameBegin();
 
 	#ifndef HAS_WINDOW
 		Sleep(50);
 		AI::Process(0.5f);
 	#else
 		DebugCheckCamera();
-		Explosions::Update(Engine::timing.delta);
 
 
-		if (!Engine::mouse.buttons.pressed)		
-		{
-			if (!Tutorial::movementTutorialIssued && Objects::selectedEntity && Objects::selectedEntity->isOwnedByMe && Objects::selectedEntity->IsMobile() && timer.GetSecondsSince(Tutorial::lastDelayingEvent) > 3.f)
-			{
-				Tutorial::movementTutorialIssued = true;
-				Tutorial::ShowMessage("Move To");
-				Tutorial::lastDelayingEvent = timer.Now();
-			}
-			if (!Tutorial::endRoundTutorialIssued && Network::client.IsConnected() && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && timer.GetSecondsSince(Tutorial::lastDelayingEvent) > 10.f)
-			{
-				Tutorial::endRoundTutorialIssued = true;
-				Tutorial::ShowMessage("End Round");
-				Tutorial::lastDelayingEvent = timer.Now();
-			}
-		}
 
 		#if 1
 		{
@@ -1670,30 +1641,12 @@ bool loop()
 	#endif
 
 
-	Network::Update();
 
-
-	Animation::Update();
 
 
 
 
 	#ifdef HAS_WINDOW
-		ConfigurationMode::Tick();
-
-		bool alwaysDay = RuntimeConfig::FromFile::alwaysDay && !Camera::autoRotation;
-
-		if (!alwaysDay)
-			VisualTerrain::PerFrameUpdateSunDirection();
-
-
-		Camera::ProgressRotation();
-
-
-
-		//Resolution windowSize = display.clientSize();
-	
-		//bool rebuildCamera = false;
 
 		if (!GUI::IsModal() && !Camera::locked)
 		{
@@ -1754,22 +1707,15 @@ bool loop()
 			}
 		}
 
-
-		if (alwaysDay)
-			VisualTerrain::UpdateSunDirection(sunDirection);
+		GlobalEvents::frameAfterCamera();	//camera is in frameBegin()
 
 
-		Objects::Renderer::AdvanceTurretAnimations();
-
-		World::RecompileIfNecessary();
-		{
-
-	//		static const float shadowRadius = 30.f;
 		
-			//center = float3();
-			//center.Normalized0();
+
+		
+		{
 			#ifdef CASCADING_SHADOW
-				for (index_t i = 0; i < Objects::NumCascades; i++)
+				for (index_t i = 0; i < Lighting::NumCascades; i++)
 				{
 					RenderShadows(-20.f + 30.f * (1 << i) ,i);
 				}
@@ -1780,7 +1726,6 @@ bool loop()
 			Objects::Renderer::EndShadowRendering();
 		}
 
-		AudioInterface::UpdateListener(Camera::scene);
 		display.pick(Camera::scene);
 		static Engine::Frustum<> frustum;
 		Camera::scene.GetFrustum(frustum);
@@ -1794,8 +1739,6 @@ bool loop()
 		{
 			//Atmosphere::Render(Grid::ToRadius(-Grid::CellStack::HalfRange),Grid::ToRadius(Grid::CellStack::HalfRange-1), Camera::scene.GetAbsoluteLocation());
 			Atmosphere::Render(Camera::scene);
-			if (VisualTerrain::SeeThrough::IsEnabled() /*&& !Objects::selectedEntity*/)
-				VisualTerrain::SeeThrough::Update(VisualTerrain::SeeThrough::IsEnabled(), VisualTerrain::SeeThrough::LocateCamera());
 
 	//		const Grid::Resource&resource = Grid::Resource::all[Objects::activeResource];
 
@@ -3634,8 +3577,6 @@ int main( int argc, const char* argv[])
 		NiceName::Load();
 		ScriptCache::Create();
 
-		Network::LoadWorldAccessTokens();
-
 		{
 
 			PathString userConfigPath = RuntimeConfig::ConfigFile("game.ini");
@@ -3668,8 +3609,6 @@ int main( int argc, const char* argv[])
 
 			StartConfig::Finish();
 		}
-		Network::LoadHosts();
-
 
 		applicationStart = timer.Now();
 
@@ -3768,10 +3707,13 @@ int main( int argc, const char* argv[])
 
 
 		ClientGrid::Create();
+
+		Lighting::Create();
 		VisualTerrain::Create();		//egg-chicken
 		Objects::Renderer::Create();	//chicken-egg
 		Objects::Create();
 		#ifdef HAS_WINDOW
+			ConfigurationMode::Create();
 			Objects::Command::RefreshCommands(false);
 		#endif
 
@@ -3788,10 +3730,10 @@ int main( int argc, const char* argv[])
 		Objects::Commands::DefineAll();
 		Animation::Create();
 
-
 		Network::Setup();
 
 		#ifdef HAS_WINDOW
+			Camera::Create();
 			UI::Create();
 		#endif
 
@@ -3799,6 +3741,7 @@ int main( int argc, const char* argv[])
 		//#ifdef WHITE_STYLE
 		//	display.SetBackbufferClearColor(1,1,1,0);
 		//#endif
+		Network::Setup();
 
 
 		#ifdef HAS_WINDOW

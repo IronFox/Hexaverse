@@ -362,9 +362,9 @@ namespace Grid
 		Cell			volumeCell[Range];		//All contained cells
 		static Cell		bottom, top;	//extremes below the bottom most, and above the top most
 		#ifdef HAS_WINDOW
-			BYTE			lowestOpenCell,
-							highestOpaqueCell,
-							lightingChangedTo;
+			BYTE			lowestOpenCell=0,
+							highestOpaqueCell=0,
+							lightingChangedTo=0;
 			TIntRange<BYTE>	waterRange;
 		#endif
 

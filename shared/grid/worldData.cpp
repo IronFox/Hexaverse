@@ -1,7 +1,7 @@
 #include <global_root.h>
 #include "worldData.h"
 
-
+#include "../globalEvents.h"
 
 namespace World
 {
@@ -41,6 +41,8 @@ namespace World
 		#ifdef HAS_WINDOW
 			actual.UpdateLighting();
 		#endif
+
+		GlobalEvents::terrainFlush << FlushAllWorldData;
 	}
 	
 	//void	FlushStackFamily(Array<CellStack>&cellStack,  BYTE family)
@@ -1139,7 +1141,9 @@ namespace World
 
 	
 	/**/					Data::Data():cellStack(HighSetup::GridType::CellCount)
-	{}
+	{
+		FlushAllData(true);
+	}
 
 	void			Sensor::ApplyShaftTo(World::Data&v, short change, bool*familyChanged, const std::function<UINT32(UINT32 stackID)>&traceFunction)	const
 	{

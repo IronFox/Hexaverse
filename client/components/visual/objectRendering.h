@@ -9,10 +9,9 @@
 #include <al/openal.h>
 #include <objects/components.h>
 #include <objects/geometry.h>
+#include "lighting.h"
 
 
-
-#define CASCADING_SHADOW
 
 namespace Objects
 {
@@ -42,18 +41,8 @@ namespace Objects
 										gatheringPoint;
 	//extern DX11::Texture				hexGrid;
 
-	static const count_t NumCascades = 2;
 
-	#ifdef CASCADING_SHADOW
-		extern DX11::FBO						shadowMap[NumCascades];
-		extern Engine::OrthographicAspect<>		shadowCamera[NumCascades];
-		extern DX11::ObjectBuffer<TMatrix4<> >	shadowMatrix[NumCascades];
-	#else
-		extern DX11::FBO						shadowMap;
-		extern Engine::OrthographicAspect<>		shadowCamera;
-		extern DX11::ObjectBuffer<TMatrix4<> >	shadowMatrix;
-	#endif
-	extern DX11::BaseInstructionBlock		shadowInstruction,standardCompiledShader, standardLocalizableShader;
+	extern DX11::BaseInstructionBlock		standardCompiledShader, standardLocalizableShader;
 
 	inline	int DetermineLODInstruction(float distance, float radius)
 	{
@@ -104,7 +93,6 @@ namespace Objects
 		void	CompileFlatDisc(Geometry&geo, int resolution, float r0, float r1, const float4&color0,const float4&color1);
 
 
-		void	AdvanceTurretAnimations();
 
 
 

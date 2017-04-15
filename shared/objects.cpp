@@ -17,7 +17,7 @@
 #include "objects/structure/tower.h"
 #include "objects/structure/vehiclePlant.h"
 #include "objects/structure/vehicleStore.h"
-
+#include "globalEvents.h"
 
 
 namespace Objects
@@ -186,6 +186,52 @@ namespace Objects
 
 
 		InitGrid();
+
+
+
+		GlobalEvents::objectFlush << []()
+		{
+			LogEvent(EventClass::Preset::uncommon,"Flushing scene data");
+
+
+			storedMobileEntities.Clear();
+			#ifndef NO_SATELLITES
+				satellites.Clear();
+			#endif
+			vehicles.Clear();
+			structures.Clear();
+			idMap.Clear();
+			#ifndef ONE_COMPOUND_PER_FACTION
+				compounds.Clear();
+			#endif
+			vehicleGrid.Fill(PVehicle());
+			structureGrid.Fill(PStructure());
+			#ifdef CLIENT
+				skyLinks.Clear();
+				Marker::FlushAll();
+				#ifndef NO_HIBERNATION
+					uplinkTraffic = 0;
+					onlineUplinkTraffic = 0;
+				#endif
+
+
+				waste.Clear();
+
+			#else
+				Faction::all.Clear();
+				Faction::RecreateNexus();
+			#endif
+		};
+
+		GlobalEvents::terrainFlush << []()
+		{
+			#ifdef CLIENT	//temporary. once i figured out good values the limit will be restored from file and clearing is valid for server too
+				RuntimeConfig::UnitLimits::Reset();
+			#endif
+			RuntimeConfig::hibernationSystemEnabled = false;
+		};
+
+
 		//globalCommands.Append(Command("Clip Terrain", &Cmd::ToggleSeeThrough, &AlwaysTrue, &Cmd::SeeThroughIsActive));
 	}
 
@@ -541,50 +587,6 @@ namespace Objects
 
 
 	#endif /*0*/
-
-
-
-	void			FlushAllData(bool preserveGameState)
-	{
-		LogEvent(EventClass::Preset::uncommon,"Flushing scene data");
-
-		#ifdef CLIENT	//temporary. once i figured out good values the limit will be restored from file and clearing is valid for server too
-			if (!preserveGameState)
-				RuntimeConfig::UnitLimits::Reset();
-		#endif
-		if (!preserveGameState)
-			RuntimeConfig::hibernationSystemEnabled = false;
-
-		storedMobileEntities.Clear();
-		#ifndef NO_SATELLITES
-			satellites.Clear();
-		#endif
-		vehicles.Clear();
-		structures.Clear();
-		idMap.Clear();
-		#ifndef ONE_COMPOUND_PER_FACTION
-			compounds.Clear();
-		#endif
-		vehicleGrid.Fill(PVehicle());
-		structureGrid.Fill(PStructure());
-		#ifdef CLIENT
-			skyLinks.Clear();
-			Marker::FlushAll();
-			#ifndef NO_HIBERNATION
-				uplinkTraffic = 0;
-				onlineUplinkTraffic = 0;
-			#endif
-
-
-			waste.Clear();
-
-		#else
-			Faction::all.Clear();
-			Faction::RecreateNexus();
-		#endif
-
-		ApplicationInterface::SignalSceneFlush(preserveGameState);
-	}
 
 
 

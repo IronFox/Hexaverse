@@ -20,10 +20,6 @@ The client application must implement these somewhere
 */
 namespace ApplicationInterface
 {
-	/**
-	Indicates that all objects have been flushed from the scene
-	*/
-	void	SignalSceneFlush(bool preserveGameState);
 #ifdef CLIENT
 	
 	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick);
