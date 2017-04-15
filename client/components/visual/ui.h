@@ -145,9 +145,9 @@ namespace UI
 		namespace BottomRightPanel
 		{
 
-			class Icon : public Objects::VisualCommand
+			class Icon : public Objects::Command::VisualCommand
 			{
-				typedef Objects::VisualCommand	Super;
+				typedef Objects::Command::VisualCommand	Super;
 			public:
 				int2					gridCoords;
 				static index_t			indexCounter;
@@ -165,7 +165,7 @@ namespace UI
 
 				virtual void			Refresh(bool)
 				{
-					state = Dialog::HasMoreTutorials() && !GUI::IsModal() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+					state = Dialog::HasMoreTutorials() && !GUI::IsModal() ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
 				}
 
 				virtual void			Execute() override
@@ -188,7 +188,7 @@ namespace UI
 
 				virtual void			Refresh(bool controlsEnabled) override
 				{
-					state = BaseCommand::Flags::None;
+					state = Objects::CommandFlags::None;
 					if (GUI::IsModal() || !controlsEnabled || !Objects::selectedEntity)
 						return;
 					if (Objects::selectedMobileEntity)
@@ -205,7 +205,7 @@ namespace UI
 						else
 							return;
 
-					state |= BaseCommand::Flags::IsEnabled;
+					state |= Objects::CommandFlags::IsEnabled;
 				}
 
 				virtual void			Execute() override
@@ -247,11 +247,11 @@ namespace UI
 
 				virtual void			Refresh(bool controlsEnabled) override
 				{
-					state = BaseCommand::Flags::None;
+					state = Objects::CommandFlags::None;
 					if (GUI::IsModal() || !controlsEnabled || !Objects::selectedEntity || Objects::selectedEntity->IsIndestructible())
 						return;
 
-					state |= BaseCommand::Flags::IsEnabled;
+					state |= Objects::CommandFlags::IsEnabled;
 				}
 
 				virtual void			Execute() override
@@ -275,14 +275,14 @@ namespace UI
 
 				virtual void			Refresh(bool controlsEnabled) override
 				{
-					state = BaseCommand::Flags::None;
+					state = Objects::CommandFlags::None;
 					if (GUI::IsModal() || !controlsEnabled || !Objects::selectedEntity)
 						return;
 
-					state |= BaseCommand::Flags::IsEnabled;
+					state |= Objects::CommandFlags::IsEnabled;
 
 					if (Objects::selectedEntity->IsSleeping())
-						state |= BaseCommand::Flags::IsPermaActive;
+						state |= Objects::CommandFlags::IsPermaActive;
 				}
 
 				virtual void			Execute() override
@@ -341,10 +341,10 @@ namespace UI
 			Command representing the currently selected entity.
 			Clicking on the button selects the unit and moves the camera to the unit
 			*/
-			class EntityFocusCommand : public Objects::EntityCommand
+			class EntityFocusCommand : public Objects::Command::EntityCommand
 			{
 			public:
-				typedef	Objects::EntityCommand	Super;
+				typedef	Objects::Command::EntityCommand	Super;
 
 				/**/				EntityFocusCommand()	{}
 				/**/				EntityFocusCommand(const Objects::PWorldEntity&target);
@@ -353,10 +353,10 @@ namespace UI
 			};
 
 		
-			class AnimationEventFocusCommand : public Objects::VisualCommand
+			class AnimationEventFocusCommand : public Objects::Command::VisualCommand
 			{
 			public:
-				typedef	Objects::VisualCommand	Super;
+				typedef	Objects::Command::VisualCommand	Super;
 				TVec3<>				focusLocation;
 				float				atTime;
 
@@ -387,9 +387,9 @@ namespace UI
 			/**
 			Dummy-command that merely rasterized and renders a specific value at its location
 			*/
-			class TextDisplayCommand : public Objects::VisualCommand
+			class TextDisplayCommand : public Objects::Command::VisualCommand
 			{
-				typedef Objects::VisualCommand	Super;
+				typedef Objects::Command::VisualCommand	Super;
 			protected:
 				virtual String		GetText() const=0;
 			public:
@@ -420,9 +420,9 @@ namespace UI
 				};
 
 
-			class GroupFocusCommand : public Objects::VisualCommand
+			class GroupFocusCommand : public Objects::Command::VisualCommand
 			{
-				typedef Objects::VisualCommand	Super;
+				typedef Objects::Command::VisualCommand	Super;
 			public:
 				PGroup				group;
 
@@ -449,7 +449,7 @@ namespace UI
 		class DynamicRow
 		{
 		private:
-			Buffer0<Objects::PVisualCommand>		lastVisible;
+			Buffer0<Objects::Command::PVisualCommand>		lastVisible;
 			std::shared_ptr<Custom::ArrowCommand>	leftCommand,rightCommand;
 			index_t									offset=0;
 			TIntRange<index_t>						visibleRange;
@@ -463,7 +463,7 @@ namespace UI
 			Call Refresh() when done to make changes visible.
 			Only elements addressed by @a visibleRange will be shown on screen.
 			*/
-			Buffer0<Objects::PVisualCommand>		commands;
+			Buffer0<Objects::Command::PVisualCommand>		commands;
 
 			/**
 			Vertical position of this row with 0 being the top-most, and positive values iterating downwards
@@ -520,9 +520,9 @@ namespace UI
 			Horizontal arrow command pointing left or right.
 			Used by DynamicRow
 			*/
-			class ArrowCommand : public Objects::VisualCommand
+			class ArrowCommand : public Objects::Command::VisualCommand
 			{
-				typedef Objects::VisualCommand	Super;
+				typedef Objects::Command::VisualCommand	Super;
 			public:
 				const bool			left;
 				DynamicRow *const	row;
@@ -560,7 +560,7 @@ namespace UI
 			Used as a unique identifier for this cell.
 			Only at most one cell can exist per command (address)
 			*/
-			Objects::PVisualCommand	command;
+			Objects::Command::PVisualCommand	command;
 			/**
 			Location of this button on the current viewport (for faster click lookup).
 			Updated by Update()
@@ -600,17 +600,17 @@ namespace UI
 		Only one cell may be allocated per command. A second call with the same parameter yields the cell returned by the first call.
 		@return Reference to the newly allocated or existing cell. Valid only until the next call to AllocateCell() or FindAndDeleteCell(). Do not persistently store pointers or references to the returned cell
 		*/
-		GridCell&		AllocateCell(const Objects::PVisualCommand&cmd);
+		GridCell&		AllocateCell(const Objects::Command::PVisualCommand&cmd);
 		/**
 		@copydoc AllocateCell()
 		@param[out] isNew Set to true if the specified command was not previously allocated
 		*/
-		GridCell&		AllocateCell(const Objects::PVisualCommand&, bool&isNew);
+		GridCell&		AllocateCell(const Objects::Command::PVisualCommand&, bool&isNew);
 		/**
 		Attempts to locate and delete the first cell using the specified command.
 		Fails silently if no such cell exists.
 		*/
-		void			FindAndDeleteCell(const Objects::PVisualCommand&);
+		void			FindAndDeleteCell(const Objects::Command::PVisualCommand&);
 
 
 
@@ -659,7 +659,7 @@ namespace UI
 		@param location Grid location to place the button at. The coordinates are relative to the bottom left grid edge, and progress to the right/up
 		@param cmd Command to place/memorize. Must not be empty/null
 		*/
-		void		VisitAddCommand(const int2&location,const Objects::PBaseCommand&cmd);
+		void		VisitAddCommand(const int2&location,const Objects::Command::PBase&cmd);
 
 		/**
 		Removes all visual command buttons, and clears out all local command references

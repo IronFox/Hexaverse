@@ -55,7 +55,7 @@ namespace Objects
 			TUniqueID				id;
 			#ifdef CLIENT
 				#ifdef HAS_WINDOW
-					std::pair<int2,PBaseCommand>	commandToTerminate;
+					std::pair<int2,Command::PBase>	commandToTerminate;
 				#endif
 				String				name, queueName;
 				int					cost, roundsToCompletion;

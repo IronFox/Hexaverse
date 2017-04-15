@@ -373,7 +373,7 @@ namespace Objects
 	
 	#ifdef HAS_WINDOW
 
-		void Vehicle::DescribeType(BaseCommand::Label&outResult, UINT32 descFlags)
+		void Vehicle::DescribeType(Command::Base::Label&outResult, UINT32 descFlags)
 		{
 			outResult.BeginBrief();
 			Super::DescribeType(outResult,descFlags);

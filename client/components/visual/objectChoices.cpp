@@ -22,22 +22,7 @@ namespace Objects
 
 
 
-	template <bool ControlEnabled>
-		void RefreshCommand(const int2&, const PBaseCommand&cmd)
-		{
-			cmd->Refresh(ControlEnabled);
-		}
 
-	void		RefreshCommands(bool controlEnabled)
-	{
-		controlIsEnabled = controlEnabled;
-		globalCommands.Refresh(controlEnabled);
-	
-		if (selectedEntity)
-		{
-			selectedEntity->VisitAllCommands(controlEnabled ? RefreshCommand<true> : RefreshCommand<false>,false);
-		}
-	}
 
 
 	void	ReapplyTrajectoryType()
@@ -71,7 +56,7 @@ namespace Objects
 	{
 		//activeCursorMode = 
 
-		RefreshCommands(controlEnabled);
+		Command::RefreshCommands(controlEnabled);
 
 		if (controlEnabled)
 			GetChoices(selectedEntity,

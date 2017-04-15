@@ -432,25 +432,16 @@ namespace Objects
 
 	protected:
 		/**/						WorkingStructure() : isEnabled(false)
-		{
-			#ifdef HAS_WINDOW
-				Super::shape = staticShape;
-			#endif		
-		}	//global prototype
+		{}	//global prototype
 		/**/						WorkingStructure(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, bool buildSystem, float atTime) 
 									: Super(table,owner,location,buildSystem,atTime),isEnabled(false)
-		{
-			#ifdef HAS_WINDOW
-				Super::shape = staticShape;
-			#endif
-		};
+		{};
 
 		#ifndef CLIENT
 			virtual void			OnEnabledChange() {}
 		#endif
 
 	public:
-		static PClientAttachment	staticShape;
 		/**
 		Checks whether or not the conditions are given to enable the local structure
 		*/
@@ -977,10 +968,8 @@ namespace Objects
 	template <typename Derivative>
 		WorkingStructureT<Derivative>::WorkingStructureT(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(table,owner,location, true, atTime)
 		{
-			#ifdef CLIENT
-				#ifdef HAS_WINDOW
-					Super::shape = staticShape;
-				#endif
+			#ifdef HAS_WINDOW
+				Super::shape = staticShape;
 			#endif
 		}
 

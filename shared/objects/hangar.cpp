@@ -10,7 +10,7 @@ namespace Objects
 
 	#ifdef HAS_WINDOW
 		/*static*/ index_t			Hangar::storeOffset;
-		/*static*/ PBaseCommand		Hangar::cmdLeft,
+		/*static*/ Command::PBase		Hangar::cmdLeft,
 									Hangar::cmdRight;
 		/*static*/ int2				Hangar::cmdLeftCoords,
 									Hangar::cmdRightCoords;

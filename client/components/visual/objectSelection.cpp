@@ -54,7 +54,7 @@ namespace Objects
 
 		if (e)
 			e->OnDeselect();
-		RefreshCommands(controlEnabled);
+		Command::RefreshCommands(controlEnabled);
 		ApplicationInterface::OnSelectionChange(!e);
 	}
 
@@ -88,7 +88,7 @@ namespace Objects
 		}
 		#ifdef HAS_WINDOW
 			else
-				RefreshCommands(controlEnabled);	//in UpdateChoices() otherwise
+				Command::RefreshCommands(controlEnabled);	//in UpdateChoices() otherwise
 		#endif
 		return !!newSel;
 	}

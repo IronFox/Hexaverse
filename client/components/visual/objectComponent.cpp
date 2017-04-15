@@ -15,6 +15,26 @@ namespace Objects
 	DX11::IBO32					ParaboloidBuffer::attackIBO;
 	DX11::BaseInstructionBlock	ParaboloidBuffer::paraboloidShader;
 
+
+
+	template <typename T>
+		static T&StandardOf(const PClientAttachment&attach)
+		{
+			DBG_ASSERT__(To<T>::DynamicCast( attach ));	//have to remove this later on
+			return *(T*)attach.get();
+		}
+	template <typename T>
+		static T&StandardAllocate(PClientAttachment&attach)
+		{
+			if (!attach)
+				attach.reset(new T());
+			else
+			{
+				DBG_ASSERT__(To<T>::DynamicCast( attach ));	//have to remove this later on
+			}
+			return *(T*)attach.get();
+		}
+
 	/*static*/ void		ParaboloidBuffer::StaticDestroy()
 	{
 		attackIBO.Clear();
@@ -347,9 +367,9 @@ namespace Objects
 	/*static*/ void		VisualComponent::FinalizeAll()
 	{
 		foreach (Objects::Component::allTurretComponents,t)
-			Allocate(**t)->FinishCreation(**t,true);
+			Allocate(**t).FinishCreation(**t,true);
 		foreach (Objects::Component::baseComponents,b)
-			Allocate(**b)->FinishCreation(**b,true);
+			Allocate(**b).FinishCreation(**b,true);
 	}
 	
 
@@ -534,7 +554,7 @@ namespace Objects
 			Shape&shape = localizableShapes.Append();
 			((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
 
-			const auto&strucShape = StructureHull::Of(*p)->constShape;
+			const auto&strucShape = StructureHull::Of(*p).constShape;
 			shape.instruction.vbo = strucShape.vbo;
 			shape.instruction.ibo = strucShape.ibo;
 			shape.depthTest = true;
@@ -548,13 +568,13 @@ namespace Objects
 	
 	void TaskAttachment::Recompile(const MobileEntity&e, MobileEntity::Task&t,const Grid::LCellIdI&pointOfOrigin)
 	{
-		auto attach = Allocate(t);
-		attach->wasJob = false;
+		auto&attach = Allocate(t);
+		attach.wasJob = false;
 		switch (t.type)
 		{
 			case MobileEntity::Task::Job:
 			{
-				attach->wasJob = true;
+				attach.wasJob = true;
 				if (!t.job || !t.job->movesToFocusWhenDone || t.foci.IsEmpty())
 					break;
 				std::shared_ptr<VehicleJob::PathJob> pjob = To<VehicleJob::PathJob>::DynamicCast(t.job);
@@ -564,13 +584,13 @@ namespace Objects
 				{
 					if (t.foci.IsNotEmpty() && pjob->UpdatePath(e, pointOfOrigin, t.foci.Peek().target))
 					{
-						attach->RecompilePath(t,1);
+						attach.RecompilePath(t,1);
 					}
 					break;
 				}
 			}
 			case MobileEntity::Task::MoveTo:
-				attach->RecompilePath(t, e.GetMovementStepsPerRound(),e.GetPathSize());
+				attach.RecompilePath(t, e.GetMovementStepsPerRound(),e.GetPathSize());
 			break;
 			case MobileEntity::Task::Mode:
 				switch (t.mode)
@@ -579,7 +599,7 @@ namespace Objects
 					{
 						static Buffer0<TVec4<> > trajectory;
 						Geometry geo;
-						attach->localizableShapes.Clear();
+						attach.localizableShapes.Clear();
 						foreach (t.foci,f)
 						{
 							trajectory.Clear();
@@ -590,7 +610,7 @@ namespace Objects
 							{
 								Component::Turret::CompileTrajectory(trajectory,Component::Turret::Schematic,geo,0.25f);
 
-								Shape&shape = attach->localizableShapes.Append();
+								Shape&shape = attach.localizableShapes.Append();
 								((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
 								shape.instruction.vbo = sphereVBO[2];
 								shape.instruction.ibo = sphereIBO[2];
@@ -600,16 +620,72 @@ namespace Objects
 								BuildSystem(trajectory.last().xyz * trajectory.last().w,e.GetAttackExplosionRadius(),  e.GetAttackExplosionRadius(),shape.system);
 							}
 						}
-						if (attach->instruction.shader.IsEmpty())
-							(DX11::BaseInstructionBlock&)attach->instruction = pathShader;
-						attach->instruction.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
-						attach->instruction.ibo.Create(geo.GetLOD(0).indices);
+						if (attach.instruction.shader.IsEmpty())
+							(DX11::BaseInstructionBlock&)attach.instruction = pathShader;
+						attach.instruction.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
+						attach.instruction.ibo.Create(geo.GetLOD(0).indices);
 					}
 					break;
 				}
 			break;
 		}
 	}
+
+	/*static*/ TaskAttachment&	TaskAttachment::Of(const Objects::MobileEntity::Task&t)
+	{
+		return StandardOf<TaskAttachment>(t.visualization);
+	}
+
+	/*static*/ TaskAttachment&	TaskAttachment::Allocate(Objects::MobileEntity::Task&t)
+	{
+		return StandardAllocate<TaskAttachment>(t.visualization);
+	}
+
+	/*static*/ ConnectorHull&		ConnectorHull::Of(const Objects::Structure&s)
+	{
+		return StandardOf<ConnectorHull>(s.connectorShape);
+	}
+
+	/*static*/ ConnectorHull&		ConnectorHull::Allocate(Objects::Structure&s)
+	{
+		return StandardAllocate<ConnectorHull>(s.connectorShape);
+	}
+
+	/*static*/ VisualComponent&		VisualComponent::Of(const Objects::Component::Base&b)
+	{
+		return StandardOf<VisualComponent>(b.attachment);
+	}
+	/*static*/ VisualComponent&		VisualComponent::Allocate(Objects::Component::Base&b)
+	{
+		return StandardAllocate<VisualComponent>(b.attachment);
+	}
+
+	/*static*/ ParaboloidBuffer&	ParaboloidBuffer::Of(const Objects::TurretBase&b)
+	{
+		return StandardOf<ParaboloidBuffer>(b.paraboloidBuffer);
+	}
+	/*static*/ ParaboloidBuffer&	ParaboloidBuffer::Allocate(Objects::TurretBase&b)
+	{
+		return StandardAllocate<ParaboloidBuffer>(b.paraboloidBuffer);
+	}
+	/*static*/ TowerAttackVisualization&	TowerAttackVisualization::Of(const Tower::AttackTask&t)
+	{
+		return StandardOf<TowerAttackVisualization>(t.visualization);
+	}
+	/*static*/ TowerAttackVisualization&	TowerAttackVisualization::Allocate(Tower::AttackTask&t)
+	{
+		return StandardAllocate<TowerAttackVisualization>(t.visualization);
+	}
+	/*static*/ StructureHull&	StructureHull::Of(const Objects::Structure&s)
+	{
+		return StandardOf<StructureHull>(s.shape);
+	}
+
+	/*static*/ StructureHull&	StructureHull::Allocate(Objects::Structure&s)
+	{
+		return StandardAllocate<StructureHull>(s.shape);
+	}
+
 
 	void	CreateComponents()
 	{

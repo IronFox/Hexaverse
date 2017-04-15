@@ -263,7 +263,7 @@ namespace Objects
 
 
 
-		/*virtual override*/ void Satellite::DescribeType(BaseCommand::Label&outResult, UINT32 descFlags)
+		/*virtual override*/ void Satellite::DescribeType(Command::Base::Label&outResult, UINT32 descFlags)
 		{
 			Super::DescribeType(outResult,descFlags);
 			outResult.BeginBrief();
@@ -428,11 +428,11 @@ namespace Objects
 			commands.Add(new
 				EntityConstructionCommand(s->GetTypeName(), nullptr,nullptr, s,
 				exec,
-				[isStructure](bool controlEnabled)->BaseCommand::Flags
+				[isStructure](bool controlEnabled)->Objects::CommandFlags
 				{
 					if (!isStructure)
 						return CommonCmd::IdleCheck(controlEnabled);
-					return MyCmd::CanBuildStructure() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+					return MyCmd::CanBuildStructure() ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
 				}
 				))->RasterizeImage();
 		#endif

@@ -257,7 +257,7 @@ namespace Objects
 		virtual						~WorldEntity();
 
 		#ifdef HAS_WINDOW
-			typedef Objects::BaseCommand		Command;
+			//typedef Objects::Command::Base		Command;
 //			typedef Objects::FCommandVisitor	FCommandVisitor;
 
 			OpenAL::Source			ambientSound;
@@ -357,7 +357,6 @@ namespace Objects
 		virtual float				GetActivityLevel() const {return IsHibernating() ? 0.f : (sleeping ? 0.5f : 1.f);}
 		#ifdef HAS_WINDOW
 			virtual float			GetSoundLevel() const {return GetActivityLevel()*0.35f;}
-			virtual OpenAL::Wave	GetAmbientSound() const;
 		#endif
 
 

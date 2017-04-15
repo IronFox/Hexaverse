@@ -8,6 +8,7 @@
 #include "visual/terrain.h"
 #include "visual/ui.h"
 #include "visual/objectCommands.h"
+
 #include "network.h"
 #include "objectStorage.h"
 #include "gridControl.h"
@@ -30,7 +31,7 @@ namespace ConfigurationMode
 		index_t					sentVersion = 0,
 								receivedVersion = 0,
 								localVersion = 0;
-		Buffer0<Objects::PVisualCommand>	numberCommands;	//!< All commands rendering numbers
+		Buffer0<Objects::Command::PVisualCommand>	numberCommands;	//!< All commands rendering numbers
 
 		GUI::PWindow			planetListWindow;
 
@@ -111,8 +112,8 @@ namespace ConfigurationMode
 		bool created = false,
 				flashUploadButton = false;
 		bool clientWorldLoaded = false, clientWorldBuilt = false, anyWorldLoaded = false;
-		Objects::PCommandGroup mountainGroup,extendedCoreGroup,liquidGroup,coreGroup,ruleGroup,copyPasteGroup;
-		Buffer0<std::pair<int2,Objects::PBaseCommand> > buttons; 
+		Objects::Command::PCommandGroup mountainGroup,extendedCoreGroup,liquidGroup,coreGroup,ruleGroup,copyPasteGroup;
+		Buffer0<std::pair<int2,Objects::Command::PBase> > buttons; 
 
 		class MaterialDialog
 		{
@@ -197,7 +198,7 @@ namespace ConfigurationMode
 				if (forceRebuild)
 				{
 					st.isLoaded = true;
-					st.copy.BuildWorld(config);
+					config.BuildWorld(st.copy);
 					st.copy.OverrideVisibility(1);
 //					ASSERT__(st.copy.cellStack.First().volumeCell[0].content != Grid::Content::Clear);
 				}
@@ -307,7 +308,7 @@ namespace ConfigurationMode
 		*/
 
 		template <typename T>
-		void SetHint(Objects::CustomLabel<T>&grp, const String&hint)
+		void SetHint(Objects::Command::CustomLabel<T>&grp, const String&hint)
 		{
 			if (hint.IsEmpty())
 				return;
@@ -382,9 +383,9 @@ namespace ConfigurationMode
 		}
 
 
-		void AppendRuleButton(const Objects::PCommandGroup&grp,const String&niceName, const String&iconName,const String&configName, UINT32 flag, const std::function<void(bool)>&onChange)
+		void AppendRuleButton(const Objects::Command::PCommandGroup&grp,const String&niceName, const String&iconName,const String&configName, UINT32 flag, const std::function<void(bool)>&onChange)
 		{
-			Objects::PIconCommand cmd(new Objects::CustomIconCommand(niceName,iconName,[flag,onChange]()
+			Objects::Command::PIconCommand cmd(new Objects::Command::CustomIconCommand(niceName,iconName,[flag,onChange]()
 			{
 				if (gameConfig.gameFlags & flag)
 				{
@@ -399,9 +400,9 @@ namespace ConfigurationMode
 				Network::Channels::gameConfig.SendTo(Network::client,gameConfig);
 				//LoadClientWorld();
 			},
-			[flag](bool)->Objects::BaseCommand::Flags
+			[flag](bool)->Objects::CommandFlags
 			{
-				typedef Objects::BaseCommand::Flags F;
+				typedef Objects::CommandFlags F;
 
 				F result = F::IsEnabled;
 				
@@ -415,7 +416,7 @@ namespace ConfigurationMode
 			SetHint(*cmd, help);
 		}
 
-		void AppendRuleButton(const Objects::PCommandGroup&grp,const String&niceName, const String&configName, UINT32 flag)
+		void AppendRuleButton(const Objects::Command::PCommandGroup&grp,const String&niceName, const String&configName, UINT32 flag)
 		{
 			AppendRuleButton(grp,niceName,niceName,configName,flag,[](bool){});
 		}
@@ -428,9 +429,9 @@ namespace ConfigurationMode
 				ActivateDiscovery(false,serverWorld);
 		}
 
-		void AppendDiscoveryButton(const Objects::PCommandGroup&grp,Grid::WorldDiscovery disc)
+		void AppendDiscoveryButton(const Objects::Command::PCommandGroup&grp,Grid::WorldDiscovery disc)
 		{
-			Objects::PBaseCommand cmd(new Objects::CustomIconCommand(disc.ToString(),String("Discovery ")+disc.ToString(),[disc]()
+			Objects::Command::PBase cmd(new Objects::Command::CustomIconCommand(disc.ToString(),String("Discovery ")+disc.ToString(),[disc]()
 			{
 				if (gameConfig.worldDiscovery == (BYTE)disc && showDiscovery)
 					return;
@@ -439,9 +440,9 @@ namespace ConfigurationMode
 				Network::Channels::gameConfig.SendTo(Network::client,gameConfig);
 				RefreshDiscovery();
 			},
-			[disc](bool)->Objects::BaseCommand::Flags
+			[disc](bool)->Objects::CommandFlags
 			{
-				typedef Objects::BaseCommand::Flags F;
+				typedef Objects::CommandFlags F;
 
 				F result = F::IsEnabled;
 				
@@ -454,9 +455,9 @@ namespace ConfigurationMode
 		}
 
 
-		void AppendGoalButton(const Objects::PCommandGroup&grp,RuntimeConfig::GameGoal goal)
+		void AppendGoalButton(const Objects::Command::PCommandGroup&grp,RuntimeConfig::GameGoal goal)
 		{
-			Objects::PBaseCommand cmd(new Objects::CustomIconCommand(goal.ToString(),String("Goal ")+goal.ToString(),[goal]()
+			Objects::Command::PBase cmd(new Objects::Command::CustomIconCommand(goal.ToString(),String("Goal ")+goal.ToString(),[goal]()
 			{
 				if (gameConfig.gameGoal == (BYTE)goal)
 					return;
@@ -465,9 +466,9 @@ namespace ConfigurationMode
 				UploadToServer();	//make sure server planet is up-to-date
 				Network::Channels::gameConfig.SendTo(Network::client,gameConfig);
 			},
-			[goal](bool)->Objects::BaseCommand::Flags
+			[goal](bool)->Objects::CommandFlags
 			{
-				typedef Objects::BaseCommand::Flags F;
+				typedef Objects::CommandFlags F;
 
 				F result = F::IsEnabled;
 				
@@ -479,11 +480,11 @@ namespace ConfigurationMode
 		}
 			
 
-		Objects::PCommandGroup MakeIntButtons(const Objects::PCommandGroup&group, int&value, const int&defValue, int min, int max)
+		Objects::Command::PCommandGroup MakeIntButtons(const Objects::Command::PCommandGroup&group, int&value, const int&defValue, int min, int max)
 		{
-			Objects::PVisualCommand number(new UI::HexGrid::Custom::ValueReferenceCommand<int>(group->name+" ["+String(min)+".."+String(max)+"]",value));
+			Objects::Command::PVisualCommand number(new UI::HexGrid::Custom::ValueReferenceCommand<int>(group->name+" ["+String(min)+".."+String(max)+"]",value));
 			numberCommands << number;
-			Objects::PIconCommand decrease(new Objects::IconCommand("Decrease",[&value,min,number]()
+			Objects::Command::PIconCommand decrease(new Objects::Command::IconCommand("Decrease",[&value,min,number]()
 			{
 				if (value > min)
 				{
@@ -491,9 +492,9 @@ namespace ConfigurationMode
 					number->RasterizeImage();
 					Update();
 				}
-			},[&value,min](bool){return value > min ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
+			},[&value,min](bool){return value > min ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;}));
 			SetHint(*decrease, "Decreases this setting by 1");
-			Objects::PIconCommand increase(new Objects::IconCommand("Increase",[&value,max,number]()
+			Objects::Command::PIconCommand increase(new Objects::Command::IconCommand("Increase",[&value,max,number]()
 			{
 				if (value < max)
 				{
@@ -501,10 +502,10 @@ namespace ConfigurationMode
 					number->RasterizeImage();
 					Update();
 				}
-			},[&value,max](bool){return value < max ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
+			},[&value,max](bool){return value < max ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;}));
 			SetHint(*increase,"Increases this setting by 1");
 
-			Objects::PIconCommand decreaseFast(new Objects::IconCommand("Decrease Fast",[&value,min,max,number]()
+			Objects::Command::PIconCommand decreaseFast(new Objects::Command::IconCommand("Decrease Fast",[&value,min,max,number]()
 			{
 				if (value > min)
 				{
@@ -513,9 +514,9 @@ namespace ConfigurationMode
 					number->RasterizeImage();
 					Update();
 				}
-			},[&value,min](bool){return value > min ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
+			},[&value,min](bool){return value > min ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;}));
 			SetHint(*decreaseFast, "Decreases this setting by "+String((max - min)/4));
-			Objects::PIconCommand increaseFast(new Objects::IconCommand("Increase Fast",[&value,min,max,number]()
+			Objects::Command::PIconCommand increaseFast(new Objects::Command::IconCommand("Increase Fast",[&value,min,max,number]()
 			{
 				if (value < max)
 				{
@@ -524,10 +525,10 @@ namespace ConfigurationMode
 					number->RasterizeImage();
 					Update();
 				}
-			},[&value,max](bool){return value < max ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
+			},[&value,max](bool){return value < max ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;}));
 			SetHint(*increaseFast, "Decreases this setting by "+String((max - min)/4));
 
-			Objects::PIconCommand setMin(new Objects::IconCommand("Set Min",[&value,min,number]()
+			Objects::Command::PIconCommand setMin(new Objects::Command::IconCommand("Set Min",[&value,min,number]()
 			{
 				if (value > min)
 				{
@@ -535,11 +536,11 @@ namespace ConfigurationMode
 					number->RasterizeImage();
 					Update();
 				}
-			},[&value,min](bool){return value > min ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
+			},[&value,min](bool){return value > min ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;}));
 			SetHint(*setMin, "Sets this setting to the minimum possible value ("+String(min)+")");
 
 
-			Objects::PIconCommand setMax(new Objects::IconCommand("Set Max",[&value,max,number]()
+			Objects::Command::PIconCommand setMax(new Objects::Command::IconCommand("Set Max",[&value,max,number]()
 			{
 				if (value < max)
 				{
@@ -547,7 +548,7 @@ namespace ConfigurationMode
 					number->RasterizeImage();
 					Update();
 				}
-			},[&value,max](bool){return value < max ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
+			},[&value,max](bool){return value < max ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;}));
 			SetHint(*setMax, "Sets this setting to the maximum possible value ("+String(max)+")");
 
 			group->Add(number);
@@ -560,19 +561,19 @@ namespace ConfigurationMode
 			return group;
 		}
 
-		Objects::PCommandGroup MakeFloatButtons(const Objects::PCommandGroup&group, float&value, const float&defValue)
+		Objects::Command::PCommandGroup MakeFloatButtons(const Objects::Command::PCommandGroup&group, float&value, const float&defValue)
 		{
 			float min = value / 10.f;
 			float max = value * 10.f;
-			Objects::PVisualCommand number(new UI::HexGrid::Custom::ValueReferenceCommand<float>(group->name+" ["+String(min)+" - "+String(max)+"]",value));
+			Objects::Command::PVisualCommand number(new UI::HexGrid::Custom::ValueReferenceCommand<float>(group->name+" ["+String(min)+" - "+String(max)+"]",value));
 			numberCommands << number;
-			//Objects::PIconCommand reset(new Objects::CustomIconCommand("Reset","Undo",[&value,&defValue]()
+			//Objects::Command::PIconCommand reset(new Objects::Command::CustomIconCommand("Reset","Undo",[&value,&defValue]()
 			//{
 			//	value = defValue;
 			//	Update();
-			//},[](bool){return Objects::BaseCommand::Flags::IsEnabled;}));
+			//},[](bool){return Objects::CommandFlags::IsEnabled;}));
 			//reset->customLabel << "Resets this setting to the current server value";
-			Objects::PIconCommand decrease(new Objects::IconCommand("Decrease",[&value,min,number]()
+			Objects::Command::PIconCommand decrease(new Objects::Command::IconCommand("Decrease",[&value,min,number]()
 			{
 				if (value > min)
 				{
@@ -581,9 +582,9 @@ namespace ConfigurationMode
 					number->RasterizeImage();
 					Update();
 				}
-			},[&value,min](bool){return value > min ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
+			},[&value,min](bool){return value > min ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;}));
 			SetHint(*decrease, "Decreases this setting by 20%");
-			Objects::PIconCommand increase(new Objects::IconCommand("Increase",[&value,max,number]()
+			Objects::Command::PIconCommand increase(new Objects::Command::IconCommand("Increase",[&value,max,number]()
 			{
 				if (value < max)
 				{
@@ -592,7 +593,7 @@ namespace ConfigurationMode
 					number->RasterizeImage();
 					Update();
 				}
-			},[&value,max](bool){return value < max ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
+			},[&value,max](bool){return value < max ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;}));
 			SetHint(*increase, "Increases this setting by 20%");
 
 			group->Add(number);
@@ -601,20 +602,21 @@ namespace ConfigurationMode
 			return group;
 		}
 
-		Objects::PCommandGroup MakeLayer(const String&name, Grid::ExtendedPlanetConfig::TLayerConfig&layer,const Grid::ExtendedPlanetConfig::TLayerConfig&refLayer)
+		Objects::Command::PCommandGroup MakeLayer(const String&name, Grid::ExtendedPlanetConfig::TLayerConfig&layer,const Grid::ExtendedPlanetConfig::TLayerConfig&refLayer)
 		{
-			Objects::PCommandGroup group(new Objects::CommandGroup(name));
+			namespace Command = Objects::Command;
+			Objects::Command::PCommandGroup group(new Command::CommandGroup(name));
 			group->baseCoords = int2(1);
-			SetHint(*MakeIntButtons(group->AddChild("Base Height"),layer.baseHeight,refLayer.baseHeight, Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight-1),
+			SetHint(*MakeIntButtons(Command::AddChild(*group,"Base Height"),layer.baseHeight,refLayer.baseHeight, Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight-1),
 			"Defines the central height of this attribute. The effective altitude stretches symmetrically up and down from this value.")
 			;
-			SetHint(*MakeIntButtons(group->AddChild("Dampening"),layer.dampening,refLayer.dampening, 0,Grid::CellStack::HalfRange),
+			SetHint(*MakeIntButtons(Command::AddChild(*group,"Dampening"),layer.dampening,refLayer.dampening, 0,Grid::CellStack::HalfRange),
 			"Draws height values closer to the base height. Creates plateaus at central height level")
 			;
-			SetHint(*MakeFloatButtons(group->AddChild("Height Scale"),layer.heightScale, refLayer.heightScale),
+			SetHint(*MakeFloatButtons(Command::AddChild(*group,"Height Scale"),layer.heightScale, refLayer.heightScale),
 			"Scales extremes. The heigher this value the further the resulting heightmap will reach up and down")
 			;
-			SetHint(*MakeFloatButtons(group->AddChild("Frequency"),layer.frequency, refLayer.frequency),
+			SetHint(*MakeFloatButtons(Command::AddChild(*group,"Frequency"),layer.frequency, refLayer.frequency),
 			"Scales the frequency of peaks. The heigher this value the higher the number of mountains at reduced horizontal extent each.")
 			;
 			return group;
@@ -622,16 +624,16 @@ namespace ConfigurationMode
 
 
 		template <typename T=BYTE>
-		void MakeMaterialChoice(const Objects::PCommandGroup&group, T&value, const T&defValue, MaterialDialog&dialog)
+		void MakeMaterialChoice(const Objects::Command::PCommandGroup&group, T&value, const T&defValue, MaterialDialog&dialog)
 		{
-/*			Objects::PIconCommand reset(new Objects::CustomIconCommand("Reset","Undo",[&value,defValue]()
+/*			Objects::Command::PIconCommand reset(new Objects::Command::CustomIconCommand("Reset","Undo",[&value,defValue]()
 			{
 				value = defValue;
 				Update();
-			},[](bool){return Objects::BaseCommand::Flags::IsEnabled;}));
+			},[](bool){return Objects::CommandFlags::IsEnabled;}));
 			reset->customLabel << "Resets this material to the current server value";
 			*/
-			Objects::PBaseCommand choose(new Objects::IconCommand("Choose Material",[&value,&dialog]()
+			Objects::Command::PBase choose(new Objects::Command::IconCommand("Choose Material",[&value,&dialog]()
 			{
 				dialog.SetCurrent(value);
 				dialog.onSelect = [&value](BYTE v)
@@ -641,7 +643,7 @@ namespace ConfigurationMode
 				};
 				GUI::Show(dialog.window); 
 			},
-			[](bool){return Objects::BaseCommand::Flags::IsEnabled;}
+			[](bool){return Objects::CommandFlags::IsEnabled;}
 			));
 
 //			group->Add(reset);
@@ -850,27 +852,28 @@ namespace ConfigurationMode
 			noLiquids.Create(false,false);
 			noUnknown.Create(false,true);
 
-			coreGroup.reset(new Objects::CommandGroup("Core"));
+			namespace Command = Objects::Command;
+			coreGroup.reset(new Objects::Command::CommandGroup("Core"));
 			coreGroup->baseCoords = int2(1);
 			SetHint(*coreGroup,"The inner planetary core represents the center-most sphere content");
-			ruleGroup.reset(new Objects::CommandGroup("Rules"));
+			ruleGroup.reset(new Objects::Command::CommandGroup("Rules"));
 			ruleGroup->baseCoords = int2(1);
 			SetHint(*ruleGroup,"All common game rules");
 
 
-			copyPasteGroup.reset(new Objects::CommandGroup("Copy/Paste"));
+			copyPasteGroup.reset(new Objects::Command::CommandGroup("Copy/Paste"));
 			copyPasteGroup->baseCoords = int2(1);
 			SetHint(*copyPasteGroup,"Copy/paste current configuration to/from clipboard");
 
 			{
-				Objects::PIconCommand cmd;
+				Objects::Command::PIconCommand cmd;
 
-				cmd.reset(new Objects::CustomIconCommand("Copy planet to clipboard (CTRL+C)","Copy/Paste",Clipboard::ExportPlanet,
-				[](bool)->Objects::BaseCommand::Flags { return Objects::BaseCommand::Flags::IsEnabled;}));
+				cmd.reset(new Objects::Command::CustomIconCommand("Copy planet to clipboard (CTRL+C)","Copy/Paste",Clipboard::ExportPlanet,
+				[](bool)->Objects::CommandFlags { return Objects::CommandFlags::IsEnabled;}));
 				copyPasteGroup->Add(cmd);
 
-				cmd.reset(new Objects::CustomIconCommand("Paste planet from clipboard (CTRL+V)","Paste",Clipboard::ImportPlanet,
-				[](bool)->Objects::BaseCommand::Flags { return Objects::BaseCommand::Flags::IsEnabled;}));
+				cmd.reset(new Objects::Command::CustomIconCommand("Paste planet from clipboard (CTRL+V)","Paste",Clipboard::ImportPlanet,
+				[](bool)->Objects::CommandFlags { return Objects::CommandFlags::IsEnabled;}));
 				copyPasteGroup->Add(cmd);
 			}
 
@@ -905,11 +908,11 @@ namespace ConfigurationMode
 				RuntimeConfig::empZones = set;
 				VisualTerrain::Invalidate(); //force rebuild
 			});
-			Objects::PCommandGroup goals = ruleGroup->AddChild("Game Goal");
+			Objects::Command::PCommandGroup goals = AddChild(*ruleGroup,"Game Goal");
 			SetHint(*goals,FindDeclaration("/Rules/gameGoal"));
 			for (index_t i = 0; i < RuntimeConfig::GameGoal::N; i++)
 				AppendGoalButton(goals,RuntimeConfig::GameGoal::Reinterpret(i));
-			Objects::PCommandGroup disc = ruleGroup->AddChild("Initial Discovery","View");
+			Objects::Command::PCommandGroup disc = AddChild(*ruleGroup,"Initial Discovery","View");
 			SetHint(*disc,FindDeclaration("/World/worldDiscovery"));
 			for (index_t i = 0; i < Grid::WorldDiscovery::N; i++)
 				AppendDiscoveryButton(disc,Grid::WorldDiscovery::Reinterpret(i));
@@ -929,23 +932,23 @@ namespace ConfigurationMode
 			SetHint(*mountainGroup,"Defines the extent and content of the mountain layer. The mountain layer stretches from the bottom up, where not overwritten by the extended planet core.");
 			extendedCoreGroup = MakeLayer("Extended Core",config.extendedCore,serverConfig.extendedCore);
 			SetHint(*extendedCoreGroup, "Defines the extent and content of the extended core layer. The extended core stretches from the bottom up, potentially overwriting content defined by the mountain layer.");
-			MakeMaterialChoice(extendedCoreGroup->AddChild("Type","Terrain Content"),config.extendedCoreType,serverConfig.extendedCoreType, noUnknown);
-			MakeMaterialChoice(mountainGroup->AddChild("Type","Terrain Content"),config.type,serverConfig.type, fullScope);
+			MakeMaterialChoice(AddChild(*extendedCoreGroup,"Type","Terrain Content"),config.extendedCoreType,serverConfig.extendedCoreType, noUnknown);
+			MakeMaterialChoice(AddChild(*mountainGroup,"Type","Terrain Content"),config.type,serverConfig.type, fullScope);
 //			MakeMaterialChoice(mountainGroup->AddChild("Top Type", "Terrain Top" ),config.topType,refConfig.topType, fullScope);
-			MakeIntButtons(mountainGroup->AddChild("Snow Height"),config.snowHeight,serverConfig.snowHeight,Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight-1);
+			MakeIntButtons(AddChild(*mountainGroup,"Snow Height"),config.snowHeight,serverConfig.snowHeight,Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight-1);
 
 			{
-				liquidGroup.reset(new Objects::CommandGroup("Oceans"));
+				liquidGroup.reset(new Objects::Command::CommandGroup("Oceans"));
 				liquidGroup->baseCoords = int2(1);
-				MakeMaterialChoice(liquidGroup->AddChild("Ocean Content","Ocean Type"),config.liquidCoverage,serverConfig.liquidCoverage,noUnknown);
-				MakeIntButtons(liquidGroup->AddChild("Level","Base Height"),config.liquidHeight,serverConfig.liquidHeight,Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight-1);
-				MakeMaterialChoice(liquidGroup->AddChild("Ocean Outline"),config.liquidOutline,serverConfig.liquidOutline,noLiquids);
+				MakeMaterialChoice(AddChild(*liquidGroup,"Ocean Content","Ocean Type"),config.liquidCoverage,serverConfig.liquidCoverage,noUnknown);
+				MakeIntButtons(AddChild(*liquidGroup,"Level","Base Height"),config.liquidHeight,serverConfig.liquidHeight,Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight-1);
+				MakeMaterialChoice(AddChild(*liquidGroup,"Ocean Outline"),config.liquidOutline,serverConfig.liquidOutline,noLiquids);
 			}
 
 
 			int at = 0;
 			buttons << std::make_pair(int2(at++,0),
-						Objects::PBaseCommand(new Objects::CustomIconCommand("Accept current server planet and config, and finish","Commit",[]()
+						Objects::Command::PBase(new Objects::Command::CustomIconCommand("Accept current server planet and config, and finish","Commit",[]()
 						{
 							
 							if (clientWorldLoaded)
@@ -965,32 +968,32 @@ namespace ConfigurationMode
 								[](){return Detail::isActive ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;});
 							//Update();
 						},
-						[](bool){return Objects::BaseCommand::Flags::IsEnabled;}
+						[](bool){return Objects::CommandFlags::IsEnabled;}
 						))
 					);
 			//buttons << std::make_pair(int2(at++,0),
-			//			Objects::PBaseCommand(new Objects::CustomIconCommand("Commit changes and rebuild server planet","Upload to Server",[]()
+			//			Objects::Command::PBase(new Objects::Command::CustomIconCommand("Commit changes and rebuild server planet","Upload to Server",[]()
 			//			{
 			//				UploadToServer();
 			//				//Update();
 			//			},
 			//			[](bool){
-			//			return (flashUploadButton ? Objects::BaseCommand::Flags::SoftFlashing : Objects::BaseCommand::Flags::None) |  Objects::BaseCommand::Flags::IsEnabled;
+			//			return (flashUploadButton ? Objects::CommandFlags::SoftFlashing : Objects::CommandFlags::None) |  Objects::CommandFlags::IsEnabled;
 			//			}
 			//			))
 			//		);
 			//buttons	<< std::make_pair(int2(at++,0),
-			//			Objects::PBaseCommand(new Objects::CustomIconCommand("Reset to server config and rebuild local planet","Download from Server",[]()
+			//			Objects::Command::PBase(new Objects::Command::CustomIconCommand("Reset to server config and rebuild local planet","Download from Server",[]()
 			//			{
 			//				config = serverConfig;
 			//				seed = serverSeed;
 			//				Update();
 			//			},
-			//			[](bool){return Objects::BaseCommand::Flags::IsEnabled;}
+			//			[](bool){return Objects::CommandFlags::IsEnabled;}
 			//			))
 			//		);
 			//buttons << std::make_pair(int2(at++,0),
-			//			Objects::PBaseCommand(new Objects::CustomIconCommand("View server version","View Server Version",[]()
+			//			Objects::Command::PBase(new Objects::Command::CustomIconCommand("View server version","View Server Version",[]()
 			//			{
 			//				if (clientWorldLoaded)
 			//				{
@@ -1004,20 +1007,20 @@ namespace ConfigurationMode
 			//				//Update();
 			//			},
 			//			[](bool){
-			//			return (!clientWorldLoaded ? Objects::BaseCommand::Flags::IsPermaActive : Objects::BaseCommand::Flags::None) | Objects::BaseCommand::Flags::IsEnabled;
+			//			return (!clientWorldLoaded ? Objects::CommandFlags::IsPermaActive : Objects::CommandFlags::None) | Objects::CommandFlags::IsEnabled;
 			//			}
 			//			))
 			//		);
 			buttons	<< std::make_pair(int2(at++,0),
-						Objects::PBaseCommand(new Objects::CustomIconCommand("Randomize seeds and rebuild using current config","Randomize",[]()
+						Objects::Command::PBase(new Objects::Command::CustomIconCommand("Randomize seeds and rebuild using current config","Randomize",[]()
 						{
 							RandomizeSeed();
 						},
-						[](bool){return Objects::BaseCommand::Flags::IsEnabled;}
+						[](bool){return Objects::CommandFlags::IsEnabled;}
 						))
 					);
 			buttons	<< std::make_pair(int2(at++,0),
-						Objects::PBaseCommand(new Objects::CustomIconCommand("Load Planet Preset","Planet Presets",[]()
+						Objects::Command::PBase(new Objects::Command::CustomIconCommand("Load Planet Preset","Planet Presets",[]()
 						{
 							if (!GUI::IsVisible(planetListWindow))
 								GUI::Show(planetListWindow);
@@ -1026,9 +1029,9 @@ namespace ConfigurationMode
 						},
 						[](bool)
 						{
-							Objects::BaseCommand::Flags rs = Objects::BaseCommand::Flags::IsEnabled;
+							Objects::CommandFlags rs = Objects::CommandFlags::IsEnabled;
 							//if (GUI::IsVisible(planetListWindow))
-							//	rs |= Objects::BaseCommand::Flags::IsPermaActive;
+							//	rs |= Objects::CommandFlags::IsPermaActive;
 							return rs;
 						}
 						))

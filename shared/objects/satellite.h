@@ -207,7 +207,7 @@ namespace Objects
 		virtual bool			CanSpawnAboveGrid(int&outHeight) const {outHeight = BaseResidenceHeight; return true;}
 
 		#ifdef HAS_WINDOW
-			virtual void		DescribeType(BaseCommand::Label&outResult, UINT32 descFlags) override;
+			virtual void		DescribeType(Command::Base::Label&outResult, UINT32 descFlags) override;
 			//virtual void		RegisterWorldSensory() override;
 			//virtual void		UnregisterWorldSensory() override;
 //			virtual void		MoveWorldSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to) override;
@@ -340,7 +340,7 @@ namespace Objects
 			Super::PrototypeSetup();
 			turret = GetTurretType();
 			#ifdef HAS_WINDOW
-				commands.baseCoords = int2(4,0)+BaseCommand::coordOffset;
+				commands.baseCoords = int2(4,0)+Command::Base::coordOffset;
 			#endif
 		}
 

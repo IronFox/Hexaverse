@@ -161,10 +161,8 @@ namespace Objects
 		virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = base->height; return To<const Vehicle>::Cast(shared_from_this());}
 		virtual bool			IsVehicle() const override {return true;}
 		#ifdef HAS_WINDOW
-			virtual void		DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;
+			virtual void		DescribeType(Command::Base::Label&label, UINT32 descFlags) override;
 			virtual float		GetSoundLevel() const {return GetActivityLevel()*0.25f;}	//save 75% for motion
-			virtual OpenAL::Wave	GetAmbientSound() const {return base->ambientSound;}
-
 		#endif
 
 		//MobileEntity overrides:

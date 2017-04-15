@@ -11,7 +11,7 @@
 
 namespace Objects
 {
-
+	namespace DX11 = Engine::DX11;
 	/**
 	Used to cache and render the paraboloid above a turret base
 	*/
@@ -28,8 +28,9 @@ namespace Objects
 		static void			MakeHull(DX11::InstructionBlock32&target, const TMatrix4<>&matrix, float flatRange, float explosionRadius, const TVec3<>&center);
 
 	public:
-		void			Render(const Grid::LCellIdI&cell, float zOffset, float flatRange, float explosionRadius, const float4&color, bool extended);
-		static const std::shared_ptr<ParaboloidBuffer>&	Of(Objects::TurretBase&);
+		void						Render(const Grid::LCellIdI&cell, float zOffset, float flatRange, float explosionRadius, const float4&color, bool extended);
+		static ParaboloidBuffer&	Of(const Objects::TurretBase&);
+		static ParaboloidBuffer&	Allocate(Objects::TurretBase&);
 
 
 		/**
@@ -47,8 +48,8 @@ namespace Objects
 	public:
 
 		Array<DX11::InstructionBlock32>				partInstruction;
-		static const std::shared_ptr<VisualComponent>&	Allocate(Objects::Component::Base&);
-		static const std::shared_ptr<VisualComponent>&	Of(const Objects::Component::Base&);
+		static VisualComponent&		Allocate(Objects::Component::Base&);
+		static VisualComponent&		Of(const Objects::Component::Base&);
 
 
 		static void					FinalizeAll();
@@ -64,7 +65,6 @@ namespace Objects
 		DX11::InstructionBlock32	constShape;
 
 
-		static const std::shared_ptr<StructureHull>&	Of(const Objects::Structure&);
 
 		static void					LoadFor(const String&geometryName, Objects::Geometry&staticGeometry, PClientAttachment&staticShape);
 		static void					LoadFor(const Objects::Structure&prototype, Objects::Geometry&staticGeometry, PClientAttachment&staticShape);
@@ -79,6 +79,8 @@ namespace Objects
 		Loads all static structure geometry and uploads them to the GPU
 		*/
 		static void					LoadAll();
+		static StructureHull&		Of(const Objects::Structure&);
+		static StructureHull&		Allocate(Objects::Structure&);
 	};
 
 	class ConnectorHull : public ClientAttachment
@@ -95,8 +97,8 @@ namespace Objects
 
 		void						RecompileConnectors(Objects::Structure&structure);
 
-		static const std::shared_ptr<ConnectorHull>&	Of(const Objects::Structure&);
-		static const std::shared_ptr<ConnectorHull>&	Allocate(Objects::Structure&);	//must be permissive allocation. Return previously allocated if existing
+		static ConnectorHull&		Of(const Objects::Structure&);
+		static ConnectorHull&		Allocate(Objects::Structure&);	//must be permissive allocation. Return previously allocated if existing
 	};
 
 
@@ -109,7 +111,8 @@ namespace Objects
 
 		void						Recompile(const Tower&t, const Grid::LCellIdI&target);
 
-		static const std::shared_ptr<TowerAttackVisualization>&	Of(Objects::Tower::AttackTask&);
+		static TowerAttackVisualization&	Of(const Objects::Tower::AttackTask&);
+		static TowerAttackVisualization&	Allocate(Objects::Tower::AttackTask&);
 	};
 
 	class TaskAttachment : public ClientAttachment
@@ -134,8 +137,8 @@ namespace Objects
 		static void						Recompile(const MobileEntity&e, MobileEntity::Task&t,const Grid::LCellIdI&pointOfOrigin);
 		void							RecompilePath(const MobileEntity::Task&t, int stepsPerRound, float structureSize=vehicleScale);
 
-		static const std::shared_ptr<TaskAttachment>&	Of(const Objects::MobileEntity::Task&);
-		static const std::shared_ptr<TaskAttachment>&	Allocate(Objects::MobileEntity::Task&);
+		static TaskAttachment&			Of(const Objects::MobileEntity::Task&);
+		static TaskAttachment&			Allocate(Objects::MobileEntity::Task&);
 	};
 
 

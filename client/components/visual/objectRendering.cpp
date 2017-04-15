@@ -120,6 +120,8 @@ namespace Objects
 
 	OpenAL::Wave	Renderer::GetAmbientSound(const WorldEntity&e)
 	{
+		if (e.IsVehicle())
+			return ((const Vehicle&)e).base->ambientSound;
 		return GetAmbientSoundOf(e.GetTypeName(),e.GetCTypeName());
 	}
 
@@ -213,7 +215,7 @@ namespace Objects
 		{
 			case TrajectoryType::Artillery:
 			{
-				Objects::ParaboloidBuffer::Of(*base)->Render(location, 
+				Objects::ParaboloidBuffer::Of(*base).Render(location, 
 					zOffset,base->GetFlatAttackRange(),
 					explosionRadius,color,
 					extended
@@ -611,7 +613,7 @@ namespace Objects
 			Mat::transformSystem(system,sub);
 			system = sub;
 			display.SetObjectMatrix(system);
-			display.Render(attachment->partInstruction[0],true);
+			display.Render(attachment.partInstruction[0],true);
 		}
 		if (comp.parts.Count() > 1)
 		{
@@ -619,7 +621,7 @@ namespace Objects
 			Mat::transformSystem(system,sub);
 			system = sub;
 			display.SetObjectMatrix(system);
-			display.Render(attachment->partInstruction[1],true);
+			display.Render(attachment.partInstruction[1],true);
 		}
 
 	}
@@ -631,7 +633,7 @@ namespace Objects
 
 	static void _RenderSimpleLocated(Structure&s, const TMatrix4<>&system)
 	{
-		const auto&shape = StructureHull::Of(s)->constShape;
+		const auto&shape = StructureHull::Of(s).constShape;
 		display.Render(shape, true);
 		DBG_ASSERT__(shape.ibo.IsSet());
 
@@ -895,7 +897,7 @@ namespace Objects
 			Mat::transformSystem(system,sub);
 			system = sub;
 			display.SetObjectMatrix(system);
-			display.Render(attachment->partInstruction[0],true);
+			display.Render(attachment.partInstruction[0],true);
 		}
 		if (comp.parts.Count() > 1)
 		{
@@ -903,7 +905,7 @@ namespace Objects
 			Mat::transformSystem(system,sub);
 			system = sub;
 			display.SetObjectMatrix(system);
-			display.Render(attachment->partInstruction[1],true);
+			display.Render(attachment.partInstruction[1],true);
 		}
 
 	}
@@ -1132,18 +1134,18 @@ namespace Objects
 			Structure&s = *_s;
 			//if (&s == selectedEntity.get())	//Renderer compiled shape only here
 				//continue;
-			const auto&shape = ConnectorHull::Allocate(s);
+			auto&shape = ConnectorHull::Allocate(s);
 			if (s.changed)
 			{
-				shape->RecompileConnectors(s);
+				shape.RecompileConnectors(s);
 				s.changed = false;
 			}
-			if (shape->compiledShape.vbo.IsSet())
+			if (shape.compiledShape.vbo.IsSet())
 			{
 				keyColor.Update(float4(s.owner->activeEntityColor,1.f));
 
 				//ApplyStateTint(s,baseTint,false);
-				display.Render(shape->compiledShape,true);
+				display.Render(shape.compiledShape,true);
 				//ApplyBaseTint(s,baseTint);
 			}
 		});
@@ -1540,7 +1542,7 @@ namespace Objects
 					if (t->type == Vehicle::Task::Job)
 					{
 						const auto&visual = Objects::TaskAttachment::Of(*t);
-						foreach (visual->localizableShapes,shape)
+						foreach (visual.localizableShapes,shape)
 						{
 							if (shape->depthTest && shape->preRenderDepth)
 							{
@@ -1583,7 +1585,7 @@ namespace Objects
 				foreach (v->myTasks,t)
 				{
 					const auto&visual = Objects::TaskAttachment::Of(*t);
-					foreach (visual->localizableShapes,shape)
+					foreach (visual.localizableShapes,shape)
 					{
 						if (shape->selectedOnly && !selected)
 							continue;
@@ -1626,8 +1628,8 @@ namespace Objects
 					foreach (t->attackQueue,at)
 					{
 						const auto&vis = TowerAttackVisualization::Of(*at);
-						display.SetObjectMatrix(vis->blastSystem);
-						display.Render(vis->blastVisualization);
+						display.SetObjectMatrix(vis.blastSystem);
+						display.Render(vis.blastVisualization);
 					}
 				}
 				if (s == selectedEntity)
@@ -1722,7 +1724,7 @@ namespace Objects
 				{
 					const auto&visual = Objects::TaskAttachment::Of(*t);
 
-					display.Render(visual->instruction);
+					display.Render(visual.instruction);
 				}
 
 			}
@@ -1748,7 +1750,7 @@ namespace Objects
 						foreach (t->attackQueue,at)
 						{
 							const auto&vis = TowerAttackVisualization::Of(*at);
-							display.Render(vis->trajectoryVisualization);
+							display.Render(vis.trajectoryVisualization);
 						}
 					}
 				}
@@ -1786,7 +1788,7 @@ namespace Objects
 				foreach (v->myTasks,t)
 				{
 					const auto&visual = Objects::TaskAttachment::Of(*t);
-					display.Render(visual->instruction);
+					display.Render(visual.instruction);
 				}
 			}
 
@@ -1800,7 +1802,7 @@ namespace Objects
 					foreach (t->attackQueue,at)
 					{
 						const auto&vis = TowerAttackVisualization::Of(*at);
-						display.Render(vis->trajectoryVisualization);
+						display.Render(vis.trajectoryVisualization);
 					}
 				}
 			}
@@ -2078,7 +2080,7 @@ namespace Objects
 	{
 		display.SetObjectMatrix(s.system);
 		const auto&vis = Objects::StructureHull::Of(s);
-		_RenderShadow(vis->constShape);	
+		_RenderShadow(vis.constShape);	
 		if (s.HasFoundation())
 			_RenderShadow(foundation);
 	}
@@ -2095,7 +2097,7 @@ namespace Objects
 			Mat::transformSystem(system,sub);
 			system = sub;
 			display.SetObjectMatrix(system);
-			_RenderShadow(visual->partInstruction[0]);
+			_RenderShadow(visual.partInstruction[0]);
 		}
 		if (comp.parts.Count() > 1)
 		{
@@ -2103,7 +2105,7 @@ namespace Objects
 			Mat::transformSystem(system,sub);
 			system = sub;
 			display.SetObjectMatrix(system);
-			_RenderShadow(visual->partInstruction[1]);
+			_RenderShadow(visual.partInstruction[1]);
 		}
 
 	}
@@ -2124,7 +2126,7 @@ namespace Objects
 			Mat::transformSystem(system,sub);
 			system = sub;
 			display.SetObjectMatrix(system);
-			_RenderShadow(visual->partInstruction[0]);
+			_RenderShadow(visual.partInstruction[0]);
 		}
 		if (comp.parts.Count() > 1)
 		{
@@ -2132,7 +2134,7 @@ namespace Objects
 			Mat::transformSystem(system,sub);
 			system = sub;
 			display.SetObjectMatrix(system);
-			_RenderShadow(visual->partInstruction[1]);
+			_RenderShadow(visual.partInstruction[1]);
 		}
 
 	}
@@ -2231,14 +2233,14 @@ namespace Objects
 				structures.Foreach([](const Objects::PStructure&_s)
 				{
 					Structure&s = *_s;
-					const auto&vis = Objects::ConnectorHull::Allocate(s);
+					auto&vis = Objects::ConnectorHull::Allocate(s);
 					if (s.changed)
 					{
-						vis->RecompileConnectors(s);
+						vis.RecompileConnectors(s);
 						s.changed = false;
 					}
-					if (vis->compiledShape.ibo.IsSet())
-						_RenderShadow(vis->compiledShape);
+					if (vis.compiledShape.ibo.IsSet())
+						_RenderShadow(vis.compiledShape);
 
 					float zOffset;
 					PTurretBase b = s.GetTurretBase(zOffset);
@@ -2256,7 +2258,7 @@ namespace Objects
 				{
 					const Structure&s = *_s;
 					const auto&vis = Objects::StructureHull::Of(s);
-					_RenderShadow(vis->constShape);
+					_RenderShadow(vis.constShape);
 				});
 				display.SetObjectMatrix(Matrix<>::eye4);
 				display.UnlockShader();

@@ -19,7 +19,7 @@ namespace Objects
 
 			static int2				cmdLeftCoords,
 									cmdRightCoords;
-			static PBaseCommand		cmdLeft,		//!< Arrow button to scroll left
+			static Command::PBase	cmdLeft,		//!< Arrow button to scroll left
 									cmdRight;		//!< Arrow button to scroll right
 		#endif
 
@@ -27,7 +27,7 @@ namespace Objects
 		{
 			WMobileEntity	entity;
 			#ifdef HAS_WINDOW
-				PBaseCommand	deployCommand;
+				Command::PBase	deployCommand;
 			#endif
 
 			/**/			TStored()	{}

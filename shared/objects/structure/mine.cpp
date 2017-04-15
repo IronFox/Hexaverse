@@ -107,7 +107,7 @@ namespace Objects
 
 
 
-	/*virtual override*/ void			Mine::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
+	/*virtual override*/ void			Mine::DescribeType(Command::Base::Label&label, UINT32 descFlags)
 	{
 		label.BeginBrief();
 		Super::DescribeType(label,  descFlags);

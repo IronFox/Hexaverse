@@ -520,7 +520,7 @@ namespace Animation
 						}
 					#endif
 					
-					Objects::TaskAttachment::Of(t1)->SetLocalizableShape(sourceTask.visualizationName,loc,e.owner);
+					Objects::TaskAttachment::Allocate(t1).SetLocalizableShape(sourceTask.visualizationName,loc,e.owner);
 				}
 			#endif
 		}
@@ -871,7 +871,7 @@ namespace Animation
 						//ASSERT_EQUAL__(t->parameters.Count(),2);
 						auto&task = t->AppendTask(*at);
 						#ifdef HAS_WINDOW
-							Objects::TowerAttackVisualization::Of(task)->Recompile(*t,*at);
+							Objects::TowerAttackVisualization::Allocate(task).Recompile(*t,*at);
 						#endif
 					}
 				}

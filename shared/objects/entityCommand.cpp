@@ -3,46 +3,49 @@
 
 namespace Objects
 {
-	/*static*/ const int2 BaseCommand::coordOffset(1,0);
-
-
-
-
-
-	index_t					CommandContainer::Find(const PBaseCommand&cmd) const
+	namespace Command
 	{
-		foreach (members,m)
-			if (m->second == cmd)
-				return m - members.pointer();
-		return InvalidIndex;
-	}
+		/*static*/ const int2 Base::coordOffset(1,0);
 
 
-	PBaseCommand			CommandContainer::Add(const int2&coords, bool relativeCoords, const PBaseCommand&newCommand)
-	{
-		DBG_ASSERT__(Find(newCommand) == InvalidIndex);
-		Member&m = members.Append();
-		m.second = newCommand;
-		m.first = relativeCoords ? coords : coords - baseCoords;
-		if (newCommand->IsGroup())
+
+
+
+		index_t					Container::Find(const PBase&cmd) const
 		{
-			newCommand->SignalBaseChange(this,baseCoords + int2(0, m.first.y+1));
+			foreach (members,m)
+				if (m->second == cmd)
+					return m - members.pointer();
+			return InvalidIndex;
 		}
-		return newCommand;
-	}
 
-	PBaseCommand			CommandContainer::Add(const PBaseCommand&newCommand)
-	{
-		DBG_ASSERT__(Find(newCommand) == InvalidIndex);
-		Member&m = members.Append();
-		m.second = newCommand;
-		m.first = int2((int)members.Count()-1,0);
-		if (newCommand->IsGroup())
+
+		PBase			Container::Add(const int2&coords, bool relativeCoords, const PBase&newCommand)
 		{
-			newCommand->SignalBaseChange(this,baseCoords + int2(0, m.first.y+1));
+			DBG_ASSERT__(Find(newCommand) == InvalidIndex);
+			Member&m = members.Append();
+			m.second = newCommand;
+			m.first = relativeCoords ? coords : coords - baseCoords;
+			if (newCommand->IsGroup())
+			{
+				newCommand->SignalBaseChange(this,baseCoords + int2(0, m.first.y+1));
+			}
+			return newCommand;
 		}
-		return newCommand;
+
+		PBase			Container::Add(const PBase&newCommand)
+		{
+			DBG_ASSERT__(Find(newCommand) == InvalidIndex);
+			Member&m = members.Append();
+			m.second = newCommand;
+			m.first = int2((int)members.Count()-1,0);
+			if (newCommand->IsGroup())
+			{
+				newCommand->SignalBaseChange(this,baseCoords + int2(0, m.first.y+1));
+			}
+			return newCommand;
+		}
+
+
 	}
-
-
 }

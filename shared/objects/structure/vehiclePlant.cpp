@@ -89,7 +89,7 @@ namespace Objects
 				Super::VisitAllCommands(visitor,force);
 			}
 
-			/*virtual override*/ void			VehiclePlant::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
+			/*virtual override*/ void			VehiclePlant::DescribeType(Command::Base::Label&label, UINT32 descFlags)
 			{
 				label.BeginBrief();
 				Super::DescribeType(label,  descFlags);

@@ -25,11 +25,11 @@ namespace Objects
 		namespace Detail
 		{
 			/**
-			Relay-functor to convert a single boolean function or variable to BaseCommand::Flags.
+			Relay-functor to convert a single boolean function or variable to Objects::CommandFlags.
 			Depending on the returned boolean value, flag compositions will either be 
-			BaseCommand::Flags::IsEnabled | BaseCommand::Flags::IsPermaActive 
+			Objects::CommandFlags::IsEnabled | Objects::CommandFlags::IsPermaActive 
 			or
-			BaseCommand::Flags::IsEnabled
+			Objects::CommandFlags::IsEnabled
 			*/
 			class GlobalPermaSwitch
 			{
@@ -41,11 +41,11 @@ namespace Objects
 				{}
 
 
-				BaseCommand::Flags	operator()(bool)
+				Objects::CommandFlags	operator()(bool)
 				{
-					BaseCommand::Flags rs= getState() ? BaseCommand::Flags::IsPermaActive : BaseCommand::Flags::None;
+					Objects::CommandFlags rs= getState() ? Objects::CommandFlags::IsPermaActive : Objects::CommandFlags::None;
 					if (!enabled || enabled())
-						rs |= BaseCommand::Flags::IsEnabled;
+						rs |= Objects::CommandFlags::IsEnabled;
 					return rs;
 				}
 
@@ -121,11 +121,11 @@ namespace Objects
 		void DefineVehiclePlant(CommandContainer&commands)
 		{
 			DefineWorkingStructure(commands);
-			commands.VisitMembers([](const int2&coords,const PBaseCommand&cmd)
+			commands.VisitMembers([](const int2&coords,const Command::PBase&cmd)
 			{
 				if (cmd->name == "Enable")
 				{
-					(*cmd) = IconCommand("Enable",
+					(*cmd) = Command::IconCommand("Enable",
 						[]()
 						{
 
@@ -142,12 +142,12 @@ namespace Objects
 						}
 						,[](bool controlEnabled)
 						{
-							BaseCommand::Flags rs = BaseCommand::Flags::None;
+							Objects::CommandFlags rs = Objects::CommandFlags::None;
 							VehiclePlant*div = dynamic_cast<VehiclePlant*>(selectedEntity.get());
 							if (controlEnabled && div != nullptr)
-								rs |= BaseCommand::Flags::IsEnabled;
+								rs |= Objects::CommandFlags::IsEnabled;
 							if (Detail::WorkingStructureIsEnabled())
-								rs |= BaseCommand::Flags::IsPermaActive;
+								rs |= Objects::CommandFlags::IsPermaActive;
 							return rs;
 						}
 						,NoCosts
@@ -156,13 +156,13 @@ namespace Objects
 			},true);
 
 
-			commands.Add(int2(4,0),false, new IconCommand("Construct Selected",[]()
+			commands.Add(int2(4,0),false, new Command::IconCommand("Construct Selected",[]()
 				{
 					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
 					if (plant)
 					{
 						if (plant->selectedBase && plant->selectedTurret)
-							plant->EnqueueSelectedConstruction();
+							Detail::EnqueueSelectedConstruction(*plant);
 						else
 						{
 							if (plant->selectedBase)
@@ -177,17 +177,17 @@ namespace Objects
 				[](bool controlEnabled)
 				{
 					if (!controlEnabled)
-						return BaseCommand::Flags::None;
+						return Objects::CommandFlags::None;
 					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
 					if (plant)
 					{
-						BaseCommand::Flags rs = BaseCommand::Flags::IsEnabled;
+						Objects::CommandFlags rs = Objects::CommandFlags::IsEnabled;
 						if (plant->selectedBase && plant->selectedTurret && plant->queue.IsEmpty() /*&& !plant->IsSleeping()*/)
-							rs |= BaseCommand::Flags::IsFlashing | BaseCommand::Flags::SoftFlashing;
+							rs |= Objects::CommandFlags::IsFlashing | Objects::CommandFlags::SoftFlashing;
 
 						return rs;
 					}
-					else return BaseCommand::Flags::None;
+					else return Objects::CommandFlags::None;
 				},
 				[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 				{
@@ -211,7 +211,7 @@ namespace Objects
 			foreach (VehiclePlant::baseComponents,comp)
 			{
 				Component::VehicleBase* c = *comp;
-				commands.Add(int2(5+at,0),false,new EntityConstructionCommand(c->typeName,c,nullptr,PWorldEntity(),[c]()
+				commands.Add(int2(5+at,0),false,new Command::EntityConstructionCommand(c->typeName,c,nullptr,PWorldEntity(),[c]()
 				{
 					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
 					if (plant)
@@ -219,15 +219,15 @@ namespace Objects
 				}
 				,[c](bool controlEnabled)
 				{
-					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(controlEnabled);
+					Objects::CommandFlags rs = CommonCmd::CommonButtonCheck(controlEnabled);
 					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
 					if (plant && plant->selectedBase == c)
-						rs |= BaseCommand::Flags::IsPermaActive;
+						rs |= Objects::CommandFlags::IsPermaActive;
 					if (!plant || !c->isUnlocked(plant->owner))
-						rs = BaseCommand::Flags::None;
+						rs = Objects::CommandFlags::None;
 					return rs;
 				}));
-				To<Objects::VisualCommand>::Cast(commands.GetLast().second)->RasterizeImage();
+				To<Objects::Command::VisualCommand>::Cast(commands.GetLast().second)->RasterizeImage();
 				at++;
 			}
 			at = 0;
@@ -235,7 +235,7 @@ namespace Objects
 			foreach (VehiclePlant::turretComponents,comp)
 			{
 				Component::Turret* c = *comp;
-				commands.Add(int2(3+at,1),false,new EntityConstructionCommand(c->typeName,nullptr,c,PWorldEntity(),[c]()
+				commands.Add(int2(3+at,1),false,new Command::EntityConstructionCommand(c->typeName,nullptr,c,PWorldEntity(),[c]()
 				{
 					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
 					if (plant)
@@ -243,20 +243,20 @@ namespace Objects
 				}
 				,[c](bool controlEnabled)
 				{
-					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(controlEnabled);
+					Objects::CommandFlags rs = CommonCmd::CommonButtonCheck(controlEnabled);
 					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
 					if (plant)
 					{
 						if (plant->selectedTurret == c)
-							rs |= BaseCommand::Flags::IsPermaActive;
+							rs |= Objects::CommandFlags::IsPermaActive;
 						elif (!plant->selectedTurret)
-							rs |= BaseCommand::Flags::IsFlashing | BaseCommand::Flags::SoftFlashing;
+							rs |= Objects::CommandFlags::IsFlashing | Objects::CommandFlags::SoftFlashing;
 					}
 					if (!plant || !c->isUnlocked(plant->owner))
-						rs = BaseCommand::Flags::None;
+						rs = Objects::CommandFlags::None;
 					return rs;
 				}));
-				To<Objects::VisualCommand>::Cast(commands.GetLast().second)->RasterizeImage();
+				To<Objects::Command::VisualCommand>::Cast(commands.GetLast().second)->RasterizeImage();
 				at++;
 			}
 		
@@ -265,7 +265,7 @@ namespace Objects
 		void DefineMine(CommandContainer&commands)
 		{
 			DefineWorkingStructure(commands);
-			commands.Add( new IconCommand("Restore Core Link",[]()
+			commands.Add( new Command::IconCommand("Restore Core Link",[]()
 			{
 				PMine mine = ToMine(selectedEntity);
 				if (mine)
@@ -276,9 +276,9 @@ namespace Objects
 			[](bool controlEnabled)
 			{
 				if (!controlEnabled)
-					return BaseCommand::Flags::None;
+					return Objects::CommandFlags::None;
 				PMine mine = ToMine(selectedEntity);
-				return mine && !mine->IsLinkedToCore() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+				return mine && !mine->IsLinkedToCore() ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
 			},
 			NoCosts
 			));
@@ -288,20 +288,20 @@ namespace Objects
 		{
 			commands.baseCoords = int2(3,0);
 
-			commands.Add(new IconCommand("Enable",&Detail::EnableWorkingStructure,
-			[](bool controlEnabled)->BaseCommand::Flags
+			commands.Add(new Command::IconCommand("Enable",&Detail::EnableWorkingStructure,
+			[](bool controlEnabled)->Objects::CommandFlags
 			{
-				BaseCommand::Flags rs = BaseCommand::Flags::None;
+				Objects::CommandFlags rs = Objects::CommandFlags::None;
 				Objects::WorkingStructure*div = dynamic_cast<Objects::WorkingStructure*>(selectedEntity.get());
 				if (controlEnabled)
 				{
 					if (div && div->CanEnable())
 					{
-						rs |= BaseCommand::Flags::IsEnabled;
+						rs |= Objects::CommandFlags::IsEnabled;
 					}
 				}
 				if (div && div->IsEnabled())
-					rs |= BaseCommand::Flags::IsPermaActive;
+					rs |= Objects::CommandFlags::IsPermaActive;
 				return rs;
 			}
 			,NoCosts
@@ -310,7 +310,7 @@ namespace Objects
 
 		static void BuildCommand(CommandContainer&parent, const PResearchTopic&t)
 		{
-			PResearchCommand rs(new ResearchCommand(t));
+			Command::PResearchCommand rs(new Command::ResearchCommand(t));
 			parent.Add(rs);
 			foreach (t->children,c)
 			{
@@ -483,9 +483,9 @@ namespace Objects
 					(CommonCmd::IsModeActive(CursorMode::BuildBlockMode) || CommonCmd::IsModeActive(CursorMode::RemoveBlockMode));
 			}
 
-			BaseCommand::Flags TerraformerCommitCheck(bool controlEnabled)
+			Objects::CommandFlags TerraformerCommitCheck(bool controlEnabled)
 			{
-				return TerraformerCommitIsPossibleC(controlEnabled) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+				return TerraformerCommitIsPossibleC(controlEnabled) ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
 			}
 
 	
@@ -663,10 +663,10 @@ namespace Objects
 			Detail::ConfigureStandardOffset(component);
 
 
-			PCommandGroup	buildGroup = component.commands.AddChild("Build"),
-							terraformGroup = component.commands.AddChild("Terraform"),
-							terraformRemoveGround = terraformGroup->AddChild("Remove Ground"),
-							terraformAddGround = terraformGroup->AddChild("Add Ground"),
+			Command::PCommandGroup	buildGroup = Command::AddChild(component.commands,"Build"),
+							terraformGroup = Command::AddChild(component.commands,"Terraform"),
+							terraformRemoveGround = Command::AddChild(*terraformGroup,"Remove Ground"),
+							terraformAddGround = Command::AddChild(*terraformGroup,"Add Ground"),
 							structureGroup[Structure::Category::N];
 
 			#ifndef ONE_COMPOUND_PER_FACTION
@@ -679,13 +679,13 @@ namespace Objects
 					if (i == Structure::Category::Infrastructure)
 						continue;
 				#endif
-				structureGroup[i] =	buildGroup->AddChild(Structure::Category::Reinterpret(i).ToString());
+				structureGroup[i] =	Command::AddChild(*buildGroup,Structure::Category::Reinterpret(i).ToString());
 			}
 
 			
 
 
-			terraformRemoveGround->Add( new IconCommand("Dig Horizontally", &CommonCmd::ToggleMode<CursorMode::DigMode>
+			terraformRemoveGround->Add( new Command::IconCommand("Dig Horizontally", &CommonCmd::ToggleMode<CursorMode::DigMode>
 				, &CommonCmd::ModeCheck<CursorMode::DigMode>
 				,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 				{
@@ -696,7 +696,7 @@ namespace Objects
 					timeCostOut = selectedMobileEntity->GetOperationRounds(VehicleJob::DigHorizontalMineralCosts,Component::TerrainRemove);
 				}
 				));
-			terraformRemoveGround->Add( new IconCommand("Dig Down", &Detail::TerraformerDigDown, 
+			terraformRemoveGround->Add( new Command::IconCommand("Dig Down", &Detail::TerraformerDigDown, 
 				&CommonCmd::IdleCheck
 				,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 				{
@@ -707,7 +707,7 @@ namespace Objects
 					timeCostOut = selectedMobileEntity->GetOperationRounds(VehicleJob::DigDownMineralCosts,Component::TerrainRemove);
 				}
 			));
-			terraformRemoveGround->Add( new IconCommand("Clear Above", &CommonCmd::ToggleMode<CursorMode::ClearAboveMode>
+			terraformRemoveGround->Add( new Command::IconCommand("Clear Above", &CommonCmd::ToggleMode<CursorMode::ClearAboveMode>
 				, &CommonCmd::ModeCheck<CursorMode::ClearAboveMode>
 				,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 				{
@@ -719,7 +719,7 @@ namespace Objects
 				}
 			));
 
-			terraformAddGround->Add( new IconCommand("Build Wall Up", &Detail::IssueCommand<ConstName::Job_BuildWallUp>
+			terraformAddGround->Add( new Command::IconCommand("Build Wall Up", &Detail::IssueCommand<ConstName::Job_BuildWallUp>
 				,&CommonCmd::IdleCheck
 				,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 				{
@@ -730,7 +730,7 @@ namespace Objects
 					timeCostOut = selectedMobileEntity->GetOperationRounds(mineralCostOut,Component::TerrainAdd);
 				}
 			));
-			terraformAddGround->Add( new IconCommand("Build Horizontal Wall", &Detail::IssueCommand<ConstName::Job_BuildHorizontalWall>
+			terraformAddGround->Add( new Command::IconCommand("Build Horizontal Wall", &Detail::IssueCommand<ConstName::Job_BuildHorizontalWall>
 				,&CommonCmd::IdleCheck
 				,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 				{
@@ -742,7 +742,7 @@ namespace Objects
 				}
 			));
 
-			PBaseCommand buildRoad(new IconCommand("Build Road", &Detail::TerraformerBuildRoad
+			Command::PBase buildRoad(new Command::IconCommand("Build Road", &Detail::TerraformerBuildRoad
 				,&CommonCmd::IdleCheck
 				,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 				{
@@ -767,8 +767,8 @@ namespace Objects
 
 			#endif
 
-			PBaseCommand buildRoadTo(new IconCommand("Build Road to", &CommonCmd::ToggleMode<CursorMode::BuildRoadChainMode>, &CommonCmd::ModeCheck<CursorMode::BuildRoadChainMode>, NoCosts));
-			PBaseCommand buildBridgeTo( new IconCommand("Build Bridge to", &CommonCmd::ToggleMode<CursorMode::BuildBridgeMode>, &CommonCmd::ModeCheck<CursorMode::BuildBridgeMode>,NoCosts) );
+			Command::PBase buildRoadTo(new Command::IconCommand("Build Road to", &CommonCmd::ToggleMode<CursorMode::BuildRoadChainMode>, &CommonCmd::ModeCheck<CursorMode::BuildRoadChainMode>, NoCosts));
+			Command::PBase buildBridgeTo( new Command::IconCommand("Build Bridge to", &CommonCmd::ToggleMode<CursorMode::BuildBridgeMode>, &CommonCmd::ModeCheck<CursorMode::BuildBridgeMode>,NoCosts) );
 
 			terraformAddGround->Add( buildRoadTo);
 			terraformAddGround->Add( buildBridgeTo);
@@ -778,12 +778,12 @@ namespace Objects
 				structureGroup[Structure::Category::Infrastructure]->Add(buildBridgeTo);
 			}
 
-			terraformRemoveGround->Add( new IconCommand("Dig Tunnel to", &CommonCmd::ToggleMode<CursorMode::DigTunnelMode>, &CommonCmd::ModeCheck<CursorMode::DigTunnelMode>,NoCosts));
-			terraformAddGround->Add( new IconCommand("Build Wall to", &CommonCmd::ToggleMode<CursorMode::BuildWallChainMode>, &CommonCmd::ModeCheck<CursorMode::BuildWallChainMode>,NoCosts));
+			terraformRemoveGround->Add( new Command::IconCommand("Dig Tunnel to", &CommonCmd::ToggleMode<CursorMode::DigTunnelMode>, &CommonCmd::ModeCheck<CursorMode::DigTunnelMode>,NoCosts));
+			terraformAddGround->Add( new Command::IconCommand("Build Wall to", &CommonCmd::ToggleMode<CursorMode::BuildWallChainMode>, &CommonCmd::ModeCheck<CursorMode::BuildWallChainMode>,NoCosts));
 
 
-			terraformAddGround->Add( new IconCommand("Build Blocks", &Detail::TerraformerBuildBlock, &CommonCmd::ModeCheck<CursorMode::BuildBlockMode>,NoCosts));
-			terraformAddGround->Add( new IconCommand("Commit", &Detail::TerraformerCommitOperation, &Detail::TerraformerCommitCheck
+			terraformAddGround->Add( new Command::IconCommand("Build Blocks", &Detail::TerraformerBuildBlock, &CommonCmd::ModeCheck<CursorMode::BuildBlockMode>,NoCosts));
+			terraformAddGround->Add( new Command::IconCommand("Commit", &Detail::TerraformerCommitOperation, &Detail::TerraformerCommitCheck
 				,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 				{
 					costTypeOut = Resource::Minerals;
@@ -795,8 +795,8 @@ namespace Objects
 						mineralCostOut = 0;
 				}
 			));
-			terraformRemoveGround->Add( new IconCommand("Remove Blocks", &Detail::TerraformerRemoveBlock, &CommonCmd::ModeCheck<CursorMode::RemoveBlockMode>,NoCosts));
-			terraformRemoveGround->Add( new IconCommand("Commit", &Detail::TerraformerCommitOperation, &Detail::TerraformerCommitCheck
+			terraformRemoveGround->Add( new Command::IconCommand("Remove Blocks", &Detail::TerraformerRemoveBlock, &CommonCmd::ModeCheck<CursorMode::RemoveBlockMode>,NoCosts));
+			terraformRemoveGround->Add( new Command::IconCommand("Commit", &Detail::TerraformerCommitOperation, &Detail::TerraformerCommitCheck
 				,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 				{
 					costTypeOut = Resource::Minerals;
@@ -820,19 +820,19 @@ namespace Objects
 			foreach(Component::Terraformer::canBuild, b)
 			{
 				PStructure s = *b;
-				structureGroup[s->GetCategory()]->Add(new EntityConstructionCommand(/*"Build " + */(*b)->GetTypeName(), nullptr,nullptr,*b,std::bind(&Detail::TerraformerConstruct, *b),
+				structureGroup[s->GetCategory()]->Add(new Command::EntityConstructionCommand(/*"Build " + */(*b)->GetTypeName(), nullptr,nullptr,*b,std::bind(&Detail::TerraformerConstruct, *b),
 				[s](bool controlsEnabled)
 				{
 					bool constructingMe = (activeCursorMode == CursorMode::PlaceStructureMode
 							&& activeStructureToPlace == s);
 					bool unlocked = selectedEntity && s->GetTable()->isUnlocked.GetValue(selectedEntity->GetResearchState());
-					BaseCommand::Flags rs = controlsEnabled && 
+					Objects::CommandFlags rs = controlsEnabled && 
 						(activeCursorMode == CursorMode::Idle
 						|| constructingMe
 						) && unlocked
-						? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+						? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
 					if (constructingMe)
-						rs |= BaseCommand::Flags::IsPermaActive;
+						rs |= Objects::CommandFlags::IsPermaActive;
 					return rs;
 				}
 				));
@@ -844,7 +844,7 @@ namespace Objects
 		{
 			Detail::ConfigureStandardOffset(component);
 
-			component.commands.Add( new IconCommand("Self Detonate", &Detail::IssueCommand<ConstName::DetonationSize_Regular>
+			component.commands.Add( new Command::IconCommand("Self Detonate", &Detail::IssueCommand<ConstName::DetonationSize_Regular>
 				, &CommonCmd::IdleCheck
 				,[](int&resourceCostOut, Resource&costTypeOut, int&timeCostOut)
 				{
@@ -855,7 +855,7 @@ namespace Objects
 				}
 				));
 
-			component.commands.Add( new IconCommand("Obliterate", &Detail::IssueCommand<ConstName::DetonationSize_Doomsday>
+			component.commands.Add( new Command::IconCommand("Obliterate", &Detail::IssueCommand<ConstName::DetonationSize_Doomsday>
 				, &CommonCmd::IdleCheck
 				,[](int&resourceCostOut, Resource&costTypeOut, int&timeCostOut)
 				{
@@ -891,29 +891,29 @@ namespace Objects
 				DefineResourceTransfer(component,component.ammoType);
 			#endif
 	
-			component.commands.Add( new IconCommand("Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
+			component.commands.Add( new Command::IconCommand("Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
 		}
 
 		void DefineMechanic(Component::Turret&component)
 		{
 			DefineResourceTransfer(component,Resource::Minerals);
-			component.commands.Add( new IconCommand("Repair",&CommonCmd::ToggleMode<CursorMode::RepairMode>, &CommonCmd::ModeCheck<CursorMode::RepairMode>,NoCosts));
+			component.commands.Add( new Command::IconCommand("Repair",&CommonCmd::ToggleMode<CursorMode::RepairMode>, &CommonCmd::ModeCheck<CursorMode::RepairMode>,NoCosts));
 		}
 
 		void DefineAutomatable(Component::Turret&component)
 		{
 			Detail::ConfigureStandardOffset(component);
 
-			component.commands.Add( new IconCommand("Automate", &VehicleCmd::Automate, &VehicleCmd::AutomatedCheck,NoCosts));
+			component.commands.Add( new Command::IconCommand("Automate", &VehicleCmd::Automate, &VehicleCmd::AutomatedCheck,NoCosts));
 		}
 
 		void DefineHangar()
 		{
 	
-			Hangar::cmdLeftCoords = int2(4,1) + BaseCommand::coordOffset;
+			Hangar::cmdLeftCoords = int2(4,1) + Command::Base::coordOffset;
 			Hangar::cmdRightCoords = Hangar::cmdLeftCoords + int2(Hangar::MaxVisibleStoreItems+1,0);
 
-			Hangar::cmdLeft.reset(new IconCommand("Left",
+			Hangar::cmdLeft.reset(new Command::IconCommand("Left",
 				[]()
 				{
 					if (selectedEntity && selectedEntity->IsHangar())
@@ -925,18 +925,18 @@ namespace Objects
 								Hangar::storeOffset -= Hangar::MaxVisibleStoreItems;
 							else
 								Hangar::storeOffset = 0;
-							RefreshCommands(true);
+							Command::RefreshCommands(true);
 						}
 					}
 				},
 				[](bool controlEnabled)
 				{
 					return Hangar::storeOffset > 0 && controlEnabled
-						 ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+						 ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
 				},
 				NoCosts));
 
-			Hangar::cmdRight.reset( new IconCommand("Right",
+			Hangar::cmdRight.reset( new Command::IconCommand("Right",
 				[]()
 				{
 					if (selectedEntity && selectedEntity->IsHangar())
@@ -954,7 +954,7 @@ namespace Objects
 							//else
 								//storeOffset = s->CountVehiclesInPark() - MaxVehiclesPerStore;
 						}
-						RefreshCommands(true);
+						Command::RefreshCommands(true);
 					}
 				},
 				[](bool controlEnabled)
@@ -964,9 +964,9 @@ namespace Objects
 						PHangar h = To<Hangar>::DynamicCast(selectedEntity);
 						return h && h->GetLoad() > Hangar::storeOffset + Hangar::MaxVisibleStoreItems
 						  && controlEnabled
-						   ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+						   ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
 					}
-					return BaseCommand::Flags::None;
+					return Objects::CommandFlags::None;
 				},
 				NoCosts));
 		}
@@ -978,7 +978,7 @@ namespace Objects
 			Hangar::onStored << [](Hangar&h,Hangar::TStored&item)
 			{
 				WMobileEntity w = item.entity;
-				PVisualCommand cmd(new DeployMobileCommand(w.lock(),
+				Command::PVisualCommand cmd(new Command::DeployMobileCommand(w.lock(),
 					[w]()
 					{
 						//focus = To<VehicleStore>::DynamicCast(storeEntity).get();
@@ -989,11 +989,11 @@ namespace Objects
 					},
 					[w](bool controlEnabled)
 					{
-						BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(controlEnabled);
+						Objects::CommandFlags rs = CommonCmd::CommonButtonCheck(controlEnabled);
 						if (selectedEntity->IsHangar())
 						{
 							if (deployingMobileEntity && deployingMobileEntity == w.lock() && deployingMobileEntity->health > 0)
-								rs |= BaseCommand::Flags::IsPermaActive;
+								rs |= Objects::CommandFlags::IsPermaActive;
 						}
 						return rs;
 					}
@@ -1007,8 +1007,8 @@ namespace Objects
 				index_t index = p.queue.Count()-1;
 				auto id = item.id;
 
-				std::shared_ptr<Objects::EntityConstructionCommand> cmd(
-					new Objects::EntityConstructionCommand(
+				std::shared_ptr<Command::EntityConstructionCommand> cmd(
+					new Command::EntityConstructionCommand(
 						item.queueName,item.base,item.turret,item.prototype,[id,index]()
 				{
 					Objects::PMobileEntityProducer p = To<Objects::MobileEntityProducer>::DynamicCast(Objects::selectedEntity);
@@ -1068,8 +1068,9 @@ namespace Objects
 
 		void DefineGlobalCommands()
 		{
+			using namespace Command;
 
-			globalCommands.baseCoords = BaseCommand::coordOffset;
+			globalCommands.baseCoords = Command::Base::coordOffset;
 			globalCommands.Add(int2(-1, 0),false,new GlobalCommand("End Round",
 			[]()
 			{
@@ -1078,16 +1079,16 @@ namespace Objects
 				else
 					ApplicationInterface::SignalRoundEnd();
 			}, 
-			[](bool controlEnabled)->BaseCommand::Flags
+			[](bool controlEnabled)->Objects::CommandFlags
 			{
-				BaseCommand::Flags rs = BaseCommand::Flags::None;
+				Objects::CommandFlags rs = Objects::CommandFlags::None;
 				if (ApplicationInterface::CanChangeRoundState())
-					rs |= BaseCommand::Flags::IsEnabled;
+					rs |= Objects::CommandFlags::IsEnabled;
 				if (ApplicationInterface::HasSignalledRoundEnd())
-					rs |= BaseCommand::Flags::IsPermaActive;
+					rs |= Objects::CommandFlags::IsPermaActive;
 				else
 					if (ApplicationInterface::ShouldSignalRoundEnd())
-						rs |= BaseCommand::Flags::IsFlashing;
+						rs |= Objects::CommandFlags::IsFlashing;
 				return rs;
 			}));
 			globalCommands.Add(int2(0, 0),false,new GlobalCommand("Auto End Round",
@@ -1097,26 +1098,26 @@ namespace Objects
 					ApplicationInterface::SignalRoundEnd();
 				RuntimeConfig::autoNewRound = !RuntimeConfig::autoNewRound;
 			},
-			[](bool controlEnabled)->BaseCommand::Flags
+			[](bool controlEnabled)->Objects::CommandFlags
 			{
-				BaseCommand::Flags rs = BaseCommand::Flags::None;
-				rs |= BaseCommand::Flags::IsEnabled;
+				Objects::CommandFlags rs = Objects::CommandFlags::None;
+				rs |= Objects::CommandFlags::IsEnabled;
 				if (RuntimeConfig::autoNewRound)
-					rs |= BaseCommand::Flags::IsPermaActive;
+					rs |= Objects::CommandFlags::IsPermaActive;
 				return rs;
 			}));
 
-			viewCommands = globalCommands.AddChild(int2(1,0),false,"View");
+			viewCommands = AddChild(globalCommands,int2(1,0),false,"View");
 
 
 			viewCommands->Add( new GlobalCommand("Clip Terrain", &GlobalCmd::ToggleSeeThrough
 					,Detail::GlobalPermaSwitch(VisualTerrain::SeeThrough::IsEnabled)
 				));
 			viewCommands->Add( new GlobalCommand("Clip-View Down", &GlobalCmd::SeeThroughDown
-					,[](bool)->BaseCommand::Flags{return GlobalCmd::SeeThroughIsActive() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;}
+					,[](bool)->Objects::CommandFlags{return GlobalCmd::SeeThroughIsActive() ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;}
 				));
 			viewCommands->Add( new GlobalCommand("Clip-View Up", &GlobalCmd::SeeThroughUp
-					,[](bool)->BaseCommand::Flags{return GlobalCmd::SeeThroughIsActive() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;}
+					,[](bool)->Objects::CommandFlags{return GlobalCmd::SeeThroughIsActive() ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;}
 				));
 
 			viewCommands->Add( new GlobalCommand("Hide Objects", &GlobalCmd::ToggleObjectView
@@ -1176,9 +1177,9 @@ namespace Objects
 
 
 			foreach (Objects::Component::vehicleTurretComponents,tc)
-				(*tc)->VisitAllCommands([](const int2&,const PBaseCommand&cmd){ To<VisualCommand>::Cast(cmd)->RasterizeImage();},true);
+				(*tc)->VisitAllCommands([](const int2&,const Command::PBase&cmd){ To<Command::VisualCommand>::Cast(cmd)->RasterizeImage();},true);
 			foreach (Objects::Component::baseComponents,bc)
-				(*bc)->VisitAllCommands([](const int2&,const PBaseCommand&cmd){To<VisualCommand>::Cast(cmd)->RasterizeImage();},true);
+				(*bc)->VisitAllCommands([](const int2&,const Command::PBase&cmd){To<Command::VisualCommand>::Cast(cmd)->RasterizeImage();},true);
 
 			DefineGlobalCommands();
 

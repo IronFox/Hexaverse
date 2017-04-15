@@ -983,7 +983,7 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 		}
 	}
 
-	void WriteDocumentation(const FileSystem::Folder&rootFolder, const FileSystem::Folder&outFolder, StringFile&listFile, const String&typeName, const Objects::BaseCommand::Label&label, const String&pretext = "")
+	void WriteDocumentation(const FileSystem::Folder&rootFolder, const FileSystem::Folder&outFolder, StringFile&listFile, const String&typeName, const Objects::Command::Base::Label&label, const String&pretext = "")
 	{
 		LogEvent(EventSignificance::Uncommon, "Documenting "+typeName);
 
@@ -1280,6 +1280,34 @@ namespace ApplicationInterface
 	void	OnAppear(const Objects::PWorldEntity&e)
 	{
 		#ifdef HAS_WINDOW
+			if (!e->ambientSound.IsCreated())
+			{
+				OpenAL::WaveBuffer wbo = Objects::Renderer::GetAmbientSound(*e);
+				//Renderer::GetAmbientSoundOf(e->GetTypeName(),e->GetCTypeName());
+				if (wbo.IsNotEmpty())
+				{
+					e->ambientSound.Create();
+					e->ambientSound.EnqueueWaveBuffer(wbo);
+					e->ambientSound.SetReferenceDistance(3.f,1.5f - (e->IsMobile()? 0.5f : 0.f));
+					static Random random;
+					e->ambientSound.SetPitch(1.f + random.NextFloat(-0.02f,0.02f));
+					#ifdef _DEBUG
+						e->ambientSound.name = e->GetName()+".ambient";
+						e->ambientSound.reference = e.get();
+					#endif
+				}
+			}
+
+			if (e->ambientSound.IsCreated())
+			{
+				e->ambientSound.SetPosition(e->GetWorldPosition());
+				e->ambientSound.SetVelocity(float3());
+				e->ambientSound.SetGain(e->GetSoundLevel());
+				e->ambientSound.SetLooping(true);
+				e->ambientSound.Play();
+			}
+
+
 			Objects::PTurretBase b = e->GetTurretBase();
 			if (b && b->turret->continuousRotation 
 				#ifndef NO_HIBERNATION
@@ -1351,7 +1379,7 @@ namespace ApplicationInterface
 				return;
 		}
 		else
-			Objects::CommandGroup::CollapseAll();
+			Objects::Command::CommandGroup::CollapseAll();
 		Objects::Renderer::ClearSmokeTrailHighlighting();
 
 		Tutorial::lastDelayingEvent = timer.Now();
@@ -3743,7 +3771,7 @@ int main( int argc, const char* argv[])
 		Objects::Renderer::Create();
 		Objects::Create();
 		#ifdef HAS_WINDOW
-			Objects::RefreshCommands(false);
+			Objects::Command::RefreshCommands(false);
 		#endif
 
 		VisualTerrain::Create();
@@ -3854,27 +3882,27 @@ int main( int argc, const char* argv[])
 					{
 						LogEvent(EventSignificance::Uncommon, "Rendering type images to "+String(imageTarget.GetLocation())+ "...");
 						Objects::GeometryImage::resultResolution = 1024;
-						Objects::EntityCommand container;
+						Objects::Command::EntityCommand container;
 						Image image;
 						FileSystem::Folder folder(imageTarget);
 						foreach (Objects::structurePrototypes,s)
 						{
 							LogEvent(EventSignificance::Uncommon, "Capturing "+(*s)->GetTypeName());
-							Objects::EntityCommand::UpdateTexture(container,*s,true);
+							Objects::Command::EntityCommand::UpdateTexture(container,*s,true);
 							FinishRendering(folder, container.texture, (*s)->GetTypeName());
 						}
 
 						foreach (Objects::Component::allTurretComponents,c)
 						{
 							LogEvent(EventSignificance::Uncommon, "Capturing "+(*c)->typeName);
-							Objects::EntityConstructionCommand::UpdateTexture(container,nullptr,*c);
+							Objects::Command::EntityConstructionCommand::UpdateTexture(container,nullptr,*c);
 							FinishRendering(folder, container.texture, (*c)->typeName);
 						}
 
 						foreach (Objects::Component::baseComponents,c)
 						{
 							LogEvent(EventSignificance::Uncommon, "Capturing "+(*c)->typeName);
-							Objects::EntityConstructionCommand::UpdateTexture(container,*c,nullptr);
+							Objects::Command::EntityConstructionCommand::UpdateTexture(container,*c,nullptr);
 							FinishRendering(folder, container.texture, (*c)->typeName);
 						}
 					}
@@ -3896,7 +3924,7 @@ int main( int argc, const char* argv[])
 						unitList << "==Structures=="<<nl;
 						foreach (Objects::structurePrototypes,s)
 						{
-							Objects::BaseCommand::Label label;
+							Objects::Command::Base::Label label;
 							(*s)->DescribeType(label,0xFFFFFFFF & ~Objects::WorldEntity::DescIncludeName & ~Objects::WorldEntity::DescIncludeCurrentHealth);
 							String pretext;
 							auto tb = (*s)->GetTurretBase();
@@ -3911,7 +3939,7 @@ int main( int argc, const char* argv[])
 						unitList << "==Turrets=="<<nl;
 						foreach (Objects::Component::allTurretComponents,c)
 						{
-							Objects::BaseCommand::Label label;
+							Objects::Command::Base::Label label;
 							(*c)->DescribeType(label,false,false,"",Objects::OwnerParameter());
 							WriteDocumentation(rootFolder, turretFolder,unitList, (*c)->typeName, label);
 						}
@@ -3919,7 +3947,7 @@ int main( int argc, const char* argv[])
 						unitList << "==Vehicle Bases=="<<nl;
 						foreach (Objects::Component::baseComponents,c)
 						{
-							Objects::BaseCommand::Label label;
+							Objects::Command::Base::Label label;
 							(*c)->DescribeType(label,false,false,Objects::OwnerParameter());
 							WriteDocumentation(rootFolder, vbaseFolder,unitList, (*c)->typeName, label);
 						}
@@ -3954,7 +3982,7 @@ int main( int argc, const char* argv[])
 			SurfaceRenderer::Destroy();
 			AudioInterface::Destroy();
 			Objects::Renderer::Destroy();
-			Objects::VisualCommand::textureMap.Clear();
+			Objects::Command::VisualCommand::textureMap.Clear();
 			Objects::DestroyComponents();
 		#endif
 		ClientGrid::Destroy();

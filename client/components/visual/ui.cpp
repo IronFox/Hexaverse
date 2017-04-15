@@ -488,8 +488,8 @@ namespace UI
 			HexGrid::Custom::AnimationEventFocusCommand*cmd = new HexGrid::Custom::AnimationEventFocusCommand("Attack","Attack",focusLocation,focusEntityID,time,isFriendly,!isFriendly);
 			cmd->smokeTrailIndex = smokeTrailIndex;
 			if (!isFriendly)
-				cmd->state |= Objects::BaseCommand::Flags::IsFlashing;
-			HexGrid::animationTimeLine.commands << Objects::PVisualCommand(cmd);
+				cmd->state |= Objects::CommandFlags::IsFlashing;
+			HexGrid::animationTimeLine.commands << Objects::Command::PVisualCommand(cmd);
 			HexGrid::animationTimeLine.Refresh();
 		}
 
@@ -497,9 +497,9 @@ namespace UI
 		{
 			HexGrid::Custom::AnimationEventFocusCommand*cmd = new HexGrid::Custom::AnimationEventFocusCommand("Entity Death","Entity Death",focusLocation,focusEntityID,time,isOwnedByMe,isOwnedByMe);
 			if (isOwnedByMe)	//flipped logic
-				cmd->state |= Objects::BaseCommand::Flags::IsFlashing;
+				cmd->state |= Objects::CommandFlags::IsFlashing;
 			cmd->fallbackTargetName = entityName;
-			HexGrid::animationTimeLine.commands << Objects::PVisualCommand(cmd);
+			HexGrid::animationTimeLine.commands << Objects::Command::PVisualCommand(cmd);
 			HexGrid::animationTimeLine.Refresh();
 		}
 
@@ -638,7 +638,7 @@ namespace UI
 
 			EntityFocusCommand::EntityFocusCommand(const Objects::PWorldEntity&target) 
 								: Super(target->GetNiceName(),target,[](){FATAL__("WTF");},
-									[](bool) {return Objects::BaseCommand::Flags::IsEnabled;})
+									[](bool) {return Objects::CommandFlags::IsEnabled;})
 			{}
 
 			/*virtual override*/ void	EntityFocusCommand::Execute()
@@ -678,7 +678,7 @@ namespace UI
 				if (e)
 					Objects::Select(e,Network::ControlEnabled());
 				Objects::Renderer::HighlightSmokeTrail(smokeTrailIndex);
-				state = Objects::BaseCommand::Flags::IsEnabled;
+				state = Objects::CommandFlags::IsEnabled;
 			}
 
 			/*virtual override*/ void				AnimationEventFocusCommand::CompileLabel(Label&outResult)
@@ -756,7 +756,7 @@ namespace UI
 					return;
 
 				const float4&background = e->isOwnedByMe ? friendlyBackgroundColor : hostileBackgroundColor;
-				Objects::EntityCommand::UpdateTexture(*this,e,false,background);
+				Objects::Command::EntityCommand::UpdateTexture(*this,e,false,background);
 			}
 
 
@@ -842,7 +842,7 @@ namespace UI
 			}
 
 
-			static int CollectionCommandCompare(const Objects::PVisualCommand&a,const Objects::PVisualCommand&b)
+			static int CollectionCommandCompare(const Objects::Command::PVisualCommand&a,const Objects::Command::PVisualCommand&b)
 			{
 				const GroupFocusCommand&g0 = *(GroupFocusCommand*)a.get();
 				const GroupFocusCommand&g1 = *(GroupFocusCommand*)b.get();
@@ -949,7 +949,7 @@ namespace UI
 				return;
 			for (index_t i = 0; i < visibleRange.GetExtent(); i++)
 			{
-				const Objects::PVisualCommand cmd = commands[i+visibleRange.start];
+				const Objects::Command::PVisualCommand cmd = commands[i+visibleRange.start];
 				GridCell&cell = AllocateCell(cmd);
 				cell.gridCoords = DynamicRowOffset + int2(i+1,rowIndex);
 				cell.flipY = true;
@@ -997,7 +997,7 @@ namespace UI
 				commands.Clear();
 			}
 
-			static void Add(const int2&coords, const Objects::PVisualCommand&cmd)
+			static void Add(const int2&coords, const Objects::Command::PVisualCommand&cmd)
 			{
 				GridCell&cell = AllocateCell(cmd);
 				cell.gridCoords = coords;
@@ -1094,13 +1094,13 @@ namespace UI
 
 		Buffer<GridCell>			allGuiCells;
 
-		GridCell&		AllocateCell(const Objects::PVisualCommand&cmd)
+		GridCell&		AllocateCell(const Objects::Command::PVisualCommand&cmd)
 		{
 			bool isNew;
 			return AllocateCell(cmd,isNew);
 		}
 
-		GridCell&		AllocateCell(const Objects::PVisualCommand&cmd, bool&isNew)
+		GridCell&		AllocateCell(const Objects::Command::PVisualCommand&cmd, bool&isNew)
 		{
 			DBG_ASSERT__(showControlsAndContacts);
 
@@ -1116,7 +1116,7 @@ namespace UI
 			return c;
 		}
 
-		void			FindAndDeleteCell(const Objects::PVisualCommand&cmd)
+		void			FindAndDeleteCell(const Objects::Command::PVisualCommand&cmd)
 		{
 			if (!cmd)
 				return;
@@ -1234,10 +1234,10 @@ namespace UI
 				{
 					if (c->Contains(Engine::mouse.location.windowRelative))
 					{
-						if (c->command->state & Objects::BaseCommand::Flags::IsInvisible)
+						if (c->command->state & Objects::CommandFlags::IsInvisible)
 							continue;
 
-						if (c->command->state & Objects::BaseCommand::Flags::IsEnabled)
+						if (c->command->state & Objects::CommandFlags::IsEnabled)
 						{
 							String name = c->command->name;
 							c->command->Execute();
@@ -1304,7 +1304,7 @@ namespace UI
 					auto&cmd = *c->command;
 
 					float4 code;
-					if (cmd.state & Objects::BaseCommand::Flags::IsInvisible)
+					if (cmd.state & Objects::CommandFlags::IsInvisible)
 						continue;
 					{
 						if (!GUI::IsModal() && c->Contains(Engine::mouse.location.windowRelative))
@@ -1317,16 +1317,16 @@ namespace UI
 							}
 						}
 						else
-							if (cmd.state & (Objects::BaseCommand::Flags::IsFlashing | Objects::BaseCommand::Flags::SoftFlashing))
+							if (cmd.state & (Objects::CommandFlags::IsFlashing | Objects::CommandFlags::SoftFlashing))
 							{
-								code.r = (cmd.state & Objects::BaseCommand::Flags::SoftFlashing) ? softFlashOpacity : flashOpacity;
+								code.r = (cmd.state & Objects::CommandFlags::SoftFlashing) ? softFlashOpacity : flashOpacity;
 							}
 							
-						if (cmd.state & Objects::BaseCommand::Flags::IsPermaActive)
+						if (cmd.state & Objects::CommandFlags::IsPermaActive)
 							code.y = 1.f;
 					}
 
-					if (!(cmd.state & Objects::BaseCommand::Flags::IsEnabled))
+					if (!(cmd.state & Objects::CommandFlags::IsEnabled))
 					{
 					//	code.xy = float2(0);
 						code.z = 0.5f;
@@ -1454,11 +1454,11 @@ namespace UI
 
 		}
 
-		Buffer0<Objects::PVisualCommand>	allocatedEntityCommands;
+		Buffer0<Objects::Command::PVisualCommand>	allocatedEntityCommands;
 			
-		void	VisitAddCommand(const int2&coords,const Objects::PBaseCommand&cmd)
+		void	VisitAddCommand(const int2&coords,const Objects::Command::PBase&cmd)
 		{
-			auto vcmd = To<Objects::VisualCommand>::DynamicCast( cmd);
+			auto vcmd = To<Objects::Command::VisualCommand>::DynamicCast( cmd);
 			if (!vcmd)
 				return;
 			bool isNew;
@@ -1492,7 +1492,7 @@ namespace UI
 					group->entries.adoptData(entries);
 					group->UpdateSignificance();
 
-					context.commands << Objects::PVisualCommand(new Custom::GroupFocusCommand(group));
+					context.commands << Objects::Command::PVisualCommand(new Custom::GroupFocusCommand(group));
 				}
 			});
 			context.collection.Clear();

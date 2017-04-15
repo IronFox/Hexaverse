@@ -199,10 +199,10 @@ namespace Camera
 	namespace Cmd
 	{
 
-		Objects::BaseCommand::Flags Check(bool)
+		Objects::CommandFlags Check(bool)
 		{
-			return Objects::BaseCommand::Flags::IsEnabled | 
-					(Camera::SkyGridIsVisible() ? Objects::BaseCommand::Flags::IsPermaActive : Objects::BaseCommand::Flags::None);
+			return Objects::CommandFlags::IsEnabled | 
+					(Camera::SkyGridIsVisible() ? Objects::CommandFlags::IsPermaActive : Objects::CommandFlags::None);
 		}
 	}
 

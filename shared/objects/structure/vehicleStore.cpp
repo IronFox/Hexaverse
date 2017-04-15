@@ -176,10 +176,10 @@ namespace Objects
 				},
 				[w](bool controlEnabled)
 				{
-					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(controlEnabled);
+					Objects::CommandFlags rs = CommonCmd::CommonButtonCheck(controlEnabled);
 					PVehicleStore s = To<VehicleStore>::DynamicCast(selectedEntity);
 					if (deployingMobileEntity && s == selectedEntity && deployingMobileEntity == w.lock() && deployingMobileEntity->health > 0)
-						rs |= BaseCommand::Flags::IsPermaActive;
+						rs |= Objects::CommandFlags::IsPermaActive;
 					return rs;
 				}
 				));

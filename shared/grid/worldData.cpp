@@ -404,49 +404,49 @@ namespace World
 	//	}
 	//}
 
-	//UINT32						Volume::TraceSkySensorLayer(UINT32 highCellCenter, UINT32 startingLayer, int penetration) const
-	//{
-	//	int penetrationLeft = penetration << 1;	//account for water effect
+	UINT32						Data::TraceSkySensorLayer(UINT32 highCellCenter, UINT32 startingLayer, int penetration) const
+	{
+		int penetrationLeft = penetration << 1;	//account for water effect
 
-	//	const CellStack&stack = cellStack[highCellCenter];
-	//	UINT32 limit = vmin( startingLayer, CellStack::Range-1);
+		const CellStack&stack = cellStack[highCellCenter];
+		UINT32 limit = vmin( startingLayer, CellStack::Range-1);
 
-	//	#ifdef HAS_WINDOW
-	//		if (stack.waterRange.IsNotEmpty())
-	//		{
-	//			limit = (UINT32)(stack.waterRange.end-1);
-	//			if (stack.highestOpaqueCell >= stack.lowestOpenCell)
-	//				limit = std::max(limit,(UINT32)stack.highestOpaqueCell);
-	//		}
-	//		else
-	//			if (stack.highestOpaqueCell >= stack.lowestOpenCell)
-	//				limit = stack.highestOpaqueCell;
-	//	#endif
-	//	ASSERT_LESS__(limit,CellStack::Range);
+		#ifdef HAS_WINDOW
+			if (stack.waterRange.IsNotEmpty())
+			{
+				limit = (UINT32)(stack.waterRange.end-1);
+				if (stack.highestOpaqueCell >= stack.lowestOpenCell)
+					limit = std::max(limit,(UINT32)stack.highestOpaqueCell);
+			}
+			else
+				if (stack.highestOpaqueCell >= stack.lowestOpenCell)
+					limit = stack.highestOpaqueCell;
+		#endif
+		ASSERT_LESS__(limit,CellStack::Range);
 
-	//	UINT32 layer = limit;
-	//	//stack.highestOpaqueCell
-
-
+		UINT32 layer = limit;
+		//stack.highestOpaqueCell
 
 
-	//	for (; layer < CellStack::Range; layer--)
-	//	{
-	//		const CellStack::Cell&cell = stack.volumeCell[layer];
 
-	//		if (cell.content == Content::Clear)
-	//			continue;
-	//		if (cell.content == Content::Water)
-	//			penetrationLeft--;
-	//		else
-	//			penetrationLeft-=2;
-	//		if (penetrationLeft < 0)
-	//			break;
-	//	}
-	//	if (layer > CellStack::Range)
-	//		layer = 0;
-	//	return layer;
-	//}
+
+		for (; layer < CellStack::Range; layer--)
+		{
+			const CellStack::Cell&cell = stack.volumeCell[layer];
+
+			if (cell.content == Content::Clear)
+				continue;
+			if (cell.content == Content::Water)
+				penetrationLeft--;
+			else
+				penetrationLeft-=2;
+			if (penetrationLeft < 0)
+				break;
+		}
+		if (layer > CellStack::Range)
+			layer = 0;
+		return layer;
+	}
 
 	//int						Volume::TraceSkySensorHeight(UINT32 highCellCenter, int penetration) const
 	//{

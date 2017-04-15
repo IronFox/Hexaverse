@@ -41,7 +41,6 @@ class VehiclePlant : public WorkingStructureT<VehiclePlant>, public MobileEntity
 		#endif
 
 		#ifdef CLIENT
-			bool					EnqueueSelectedConstruction();
 			Component::VehicleBase*	GetProductionBase() const;
 
 			#ifdef HAS_WINDOW

@@ -1376,7 +1376,7 @@ namespace Objects
 
 		#ifdef HAS_WINDOW
 		
-			void			Base::DescribeType(BaseCommand::Label&label, bool compound, const OwnerParameter&owner)
+			void			Base::DescribeType(Command::Base::Label&label, bool compound, const OwnerParameter&owner)
 			{
 				if (!compound)
 				{
@@ -1387,7 +1387,7 @@ namespace Objects
 
 
 
-			void VehicleBase::DescribeType(BaseCommand::Label&outResult, bool compound, bool includeName, const OwnerParameter&owner)
+			void VehicleBase::DescribeType(Command::Base::Label&outResult, bool compound, bool includeName, const OwnerParameter&owner)
 			{
 				outResult.BeginBrief();
 				Lua::Reference researchState = ResearchStateOf(owner);
@@ -1429,7 +1429,7 @@ namespace Objects
 
 
 
-			void Turret::DescribeType(BaseCommand::Label&outResult, bool compound, bool includeName, const String&parentType, const OwnerParameter&owner)
+			void Turret::DescribeType(Command::Base::Label&outResult, bool compound, bool includeName, const String&parentType, const OwnerParameter&owner)
 			{
 				outResult.BeginBrief();
 				const String upperName = parentType.IsNotEmpty() ? parentType+"-Turret" : "Turret";

@@ -877,8 +877,8 @@ namespace Objects
 					[](bool controlsEnabled)
 					{
 						if (!controlsEnabled)
-							return BaseCommand::Flags::None;
-						return selectedEntity && !GetSatellite(selectedEntity->location.stackID) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+							return Objects::CommandFlags::None;
+						return selectedEntity && !GetSatellite(selectedEntity->location.stackID) ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
 					}));
 					commands.GetLast().second->RasterizeImage();
 				}
@@ -1106,7 +1106,7 @@ namespace Objects
 
 
 
-		/*virtual override*/ void			NexusPort::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
+		/*virtual override*/ void			NexusPort::DescribeType(Command::Base::Label&label, UINT32 descFlags)
 		{
 			label.BeginBrief();
 			Super::DescribeType(label,  descFlags);
@@ -1123,7 +1123,7 @@ namespace Objects
 
 
 
-		/*virtual override*/ void			Generator::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
+		/*virtual override*/ void			Generator::DescribeType(Command::Base::Label&label, UINT32 descFlags)
 		{
 			label.BeginBrief();
 			Super::DescribeType(label,  descFlags);
@@ -1134,7 +1134,7 @@ namespace Objects
 			;
 		}
 
-		/*virtual override*/ void			ReactorCore::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
+		/*virtual override*/ void			ReactorCore::DescribeType(Command::Base::Label&label, UINT32 descFlags)
 		{
 			label.BeginBrief();
 			Super::DescribeType(label,  descFlags);
@@ -1146,7 +1146,7 @@ namespace Objects
 		}
 
 
-		/*virtual override*/ void			WorkingStructure::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
+		/*virtual override*/ void			WorkingStructure::DescribeType(Command::Base::Label&label, UINT32 descFlags)
 		{
 			label.BeginBrief();
 			Super::DescribeType(label,  descFlags);

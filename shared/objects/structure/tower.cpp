@@ -284,7 +284,7 @@ namespace Objects
 	#else
 		/*virtual override*/ void				Tower::VisitAllCommands(FCommandVisitor visitor, bool force)
 		{
-			commands.VisitMembers([visitor,this](const int2&coords, const PBaseCommand&cmd)
+			commands.VisitMembers([visitor,this](const int2&coords, const Command::PBase&cmd)
 			{
 				if (turret->CanAttack() || cmd->name!="Attack")
 					visitor(coords,cmd);
@@ -307,7 +307,7 @@ namespace Objects
 				Mat::rotate(inverse,_d,d);
 				return geometry.TestIntersection(b,d,distance) | turret->TestIntersection(GetEffectiveFoundationHeight(), turretAngleX,turretAngleY,b,d,distance);	//binary or - must evaluate both
 			}
-			/*virtual override*/ void			Tower::DescribeType(BaseCommand::Label&label, UINT32 descFlags) 
+			/*virtual override*/ void			Tower::DescribeType(Command::Base::Label&label, UINT32 descFlags) 
 			{
 				label.BeginBrief();
 				Super::DescribeType(label,descFlags);

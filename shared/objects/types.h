@@ -8,9 +8,13 @@
 
 namespace Objects
 {
-	DECLARE_POINTER_CLASS(BaseCommand)
-		//DECLARE_POINTER_CLASS(DeployMobileCommand)
-		//DECLARE_POINTER_CLASS(EntityConstructionCommand)
+	namespace Command
+	{
+		DECLARE_POINTER_CLASS(Base)
+			//DECLARE_POINTER_CLASS(DeployMobileCommand)
+			//DECLARE_POINTER_CLASS(EntityConstructionCommand)
+
+	}
 
 	DECLARE_POINTER_CLASS(Hangar)
 	DECLARE_POINTER_CLASS(MobileEntityProducer)
@@ -86,7 +90,7 @@ namespace Objects
 	#endif
 
 
-	DECLARE_POINTER_CLASS(CommandGroup)
+	
 
 
 	CONSTRUCT_ENUMERATION7(MobilePlacementResult,

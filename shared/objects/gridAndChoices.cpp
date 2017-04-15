@@ -1044,34 +1044,7 @@ namespace Objects
 				}
 			#endif
 		#endif
-		#ifdef HAS_WINDOW
-			if (!e->ambientSound.IsCreated())
-			{
-				OpenAL::WaveBuffer wbo = e->GetAmbientSound();
-				//Renderer::GetAmbientSoundOf(e->GetTypeName(),e->GetCTypeName());
-				if (wbo.IsNotEmpty())
-				{
-					e->ambientSound.Create();
-					e->ambientSound.EnqueueWaveBuffer(wbo);
-					e->ambientSound.SetReferenceDistance(3.f,1.5f - (e->IsMobile()? 0.5f : 0.f));
-					static Random random;
-					e->ambientSound.SetPitch(1.f + random.NextFloat(-0.02f,0.02f));
-					#ifdef _DEBUG
-						e->ambientSound.name = e->GetName()+".ambient";
-						e->ambientSound.reference = e.get();
-					#endif
-				}
-			}
-
-			if (e->ambientSound.IsCreated())
-			{
-				e->ambientSound.SetPosition(e->GetWorldPosition());
-				e->ambientSound.SetVelocity(float3());
-				e->ambientSound.SetGain(e->GetSoundLevel());
-				e->ambientSound.SetLooping(true);
-				e->ambientSound.Play();
-			}
-		#endif
+		
 
 		bool restored = idMap.IsSet(e->id);
 		if (restored)

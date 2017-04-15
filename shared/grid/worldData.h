@@ -146,11 +146,6 @@ namespace World
 		void					Explode(const HCellIdI&id,float radius, bool*familyChanged);
 
 		/**
-		Redefines the world volume, based on the specified world configuration and discovery setting
-		MUST NOT be used on the actual world while a session with active factions/players
-		*/
-		void					BuildWorld(const ExtendedPlanetConfig&config);
-		/**
 		Copies the volumetric composition of the local world data to the specified target according to the specified
 		world discovery value.
 		@param[out] target Target container to hold the filtered world data
