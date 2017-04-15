@@ -1,7 +1,7 @@
 #pragma once
-#ifdef HAS_WINDOW
-
 #include <objects/types.h>
+
+#ifdef HAS_WINDOW
 #include <math/vector.h>
 
 namespace Objects
@@ -16,9 +16,13 @@ namespace Objects
 	bool					Select(const TVec3<>&b, const TVec3<>&d, float&distance,bool controlEnabled);
 	void					Deselect(bool controlEnabled);
 	PWorldEntity			GetRayIntersection(const TVec3<>&b, const TVec3<>&d, float&distance);
-
+	inline bool				IsSelected(const PWorldEntity&e) {return selectedEntity == e;}
 }
 
 
-
+#else
+namespace Objects
+{
+	inline constexpr bool	IsSelected(const PWorldEntity&) {return false;}
+}
 #endif

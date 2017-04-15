@@ -133,16 +133,16 @@ namespace Objects
 		#endif
 		#ifdef HAS_WINDOW
 			virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
+			virtual void			DescribeType(Description&label, UINT32 descFlags) override
+			{
+				label.BeginBrief();
+				Super::DescribeType(label,descFlags);
+				label << " Max Vehicles per Store: "+String(MaxVehiclesPerStore);
+				label.MarkBriefEnd();
+				label << "Vehicle stores can be used to store vehicles which will then enter hibernation until deployed. This structure shares storage with nearby structures of the same type."
+									" A vehicle store can deploy any vehicle found within the vehicle store compound.";
+			}
 		#endif
-		virtual void				DescribeType(Description&label, UINT32 descFlags) override
-		{
-			label.BeginBrief();
-			Super::DescribeType(label,descFlags);
-			label << " Max Vehicles per Store: "+String(MaxVehiclesPerStore);
-			label.MarkBriefEnd();
-			label << "Vehicle stores can be used to store vehicles which will then enter hibernation until deployed. This structure shares storage with nearby structures of the same type."
-								" A vehicle store can deploy any vehicle found within the vehicle store compound.";
-		}
 
 
 	};

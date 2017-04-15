@@ -13,6 +13,7 @@
 #include "terrainInstructions.h"
 #include "lighting.h"
 #include "../clientEvents.h"
+#include "../gridControl.h"
 	
 extern Engine::Display<Engine::DirectX11>	display;
 //namespace Camera
@@ -2910,6 +2911,8 @@ namespace VisualTerrain
 
 		BYTE familiesRebuilt = 0;
 		Timer::Time t0 = timer.Now();
+
+		ClientGrid::CheckSensory();
 
 
 		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)

@@ -18,6 +18,7 @@
 #include "visual/terrain.h"
 #include <grid/resources.h>
 #include "clientEvents.h"
+#include <io/string_file.h>
 
 
 //#define DEBUG_SERVER_LIST	//enable to generate very long artificial server list
@@ -604,8 +605,10 @@ namespace Network
 			#endif
 			if (vc.state.entityState.timestamp.rightNow)
 			{
-				if (!isOwnedByMe)
-					UI::HexGrid::RefreshContacts();
+				#ifdef HAS_WINDOW
+					if (!isOwnedByMe)
+						UI::HexGrid::RefreshContacts();
+				#endif
 			}
 			else
 			{
@@ -642,8 +645,10 @@ namespace Network
 			}
 			else
 			{
-				if (!s->isOwnedByMe)
-					UI::HexGrid::RefreshContacts();
+				#ifdef HAS_WINDOW
+					if (!s->isOwnedByMe)
+						UI::HexGrid::RefreshContacts();
+				#endif
 			}
 		}
 
@@ -714,8 +719,10 @@ namespace Network
 					#endif
 				}
 
-				if (!e->isOwnedByMe)
-					UI::HexGrid::RefreshContacts();
+				#ifdef HAS_WINDOW
+					if (!e->isOwnedByMe)
+						UI::HexGrid::RefreshContacts();
+				#endif
 			}
 			else
 			{
@@ -1695,9 +1702,9 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 	phaseStarted = timer.Now();
 	#ifdef HAS_WINDOW
 		Objects::UpdateChoices(ControlEnabled());
+		UI::HexGrid::RefreshContacts();
 	#endif
 
-	UI::HexGrid::RefreshContacts();
 	//while (Objects::Network::records.IsNotEmpty() && timer.GetSecondsSince(Objects::Network::records.Peek().recorded) > 10)
 	//	Objects::Network::records.EraseFront();
 	LogEvent(EventSignificance::Common,nullptr,"Server phase changed to "+String(RuntimeConfig::phase.ToString())+" ("+String(c.timeFactor.value)+") @"+String(Animation::atTime));
@@ -1869,7 +1876,9 @@ void	Network::SignalProtocolDisruption(const String&message)
 	LogEvent(EventClass::Preset::error,message);
 	if (client.IsConnected())
 	{
-		Dialog::ShowMessage("Protocol disruption detected. Disconnecting from server.");
+		#ifdef HAS_WINDOW
+			Dialog::ShowMessage("Protocol disruption detected. Disconnecting from server.");
+		#endif
 		client.Disconnect();
 	}
 }

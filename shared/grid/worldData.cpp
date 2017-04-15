@@ -931,6 +931,7 @@ namespace World
 		#ifdef HAS_WINDOW
 			Queue<index_t>	changed;
 		#endif
+		bool globalChanged = false;
 		{
 			const CellStack::TTypeDelta*delta = data0.pointer();
 			for (index_t i = 0; i < range; i++)
@@ -955,6 +956,7 @@ namespace World
 				}
 				if (anyChanged)
 				{
+					globalChanged = true;
 					#ifdef HAS_WINDOW
 						stack.UpdateRange();
 						changed << i + offset;
@@ -965,7 +967,7 @@ namespace World
 		}
 		SignalFamilyStructureChange(family);
 
-		if (changed.IsNotEmpty())
+		if (globalChanged)
 			InvalidateSensory();
 
 
@@ -1004,6 +1006,23 @@ namespace World
 	}
 
 
+
+	void				Data::FlushAndValidateSensory()
+	{
+		bool rs= false;
+		for (index_t i = 0; i < cellStack.Count(); i++)
+		{
+			auto&stack = cellStack[i];
+			for (UINT32 k = 0;  k < Grid::CellStack::Range; k++)
+			{
+				auto&cell = stack.volumeCell[k];
+				cell.oldVisible = false;
+				cell.visibility = 0;
+				cell.temporarilyVisible = false;
+			}
+		}
+		this->sensoryValid = true;
+	}
 
 	void				Data::ChangeSensory(const Grid::HCellIdU&center, float t, short changeBy)
 	{

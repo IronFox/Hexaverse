@@ -3708,9 +3708,11 @@ int main( int argc, const char* argv[])
 
 		ClientGrid::Create();
 
-		Lighting::Create();
-		VisualTerrain::Create();		//egg-chicken
-		Objects::Renderer::Create();	//chicken-egg
+		#ifdef HAS_WINDOW
+			Lighting::Create();
+			VisualTerrain::Create();		//egg-chicken
+			Objects::Renderer::Create();	//chicken-egg
+		#endif
 		Objects::Create();
 		#ifdef HAS_WINDOW
 			ConfigurationMode::Create();
@@ -3726,8 +3728,8 @@ int main( int argc, const char* argv[])
 
 
 			Explosions::Create();
+			Objects::Commands::DefineAll();
 		#endif
-		Objects::Commands::DefineAll();
 		Animation::Create();
 
 		Network::Setup();

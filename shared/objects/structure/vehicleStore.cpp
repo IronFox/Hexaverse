@@ -4,7 +4,9 @@
 
 namespace Objects
 {
-	/*static*/ Geometry			VehicleStore::interConnector;
+	#ifdef HAS_WINDOW
+		/*static*/ Geometry			VehicleStore::interConnector;
+	#endif
 
 
 

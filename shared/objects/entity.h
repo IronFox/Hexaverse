@@ -535,13 +535,14 @@ namespace Objects
 
 		#endif
 
-
-		/**
-		Stores a description of the local type in the specified label
-		@param[out] label Label to store the description in
-		@param deskFlags Combination of descFlag_t to fine-tune the generation process
-		*/
-		virtual void		DescribeType(Description&label, UINT32 descFlags);
+		#ifdef HAS_WINDOW
+			/**
+			Stores a description of the local type in the specified label
+			@param[out] label Label to store the description in
+			@param deskFlags Combination of descFlag_t to fine-tune the generation process
+			*/
+			virtual void	DescribeType(Description&label, UINT32 descFlags);
+		#endif
 		void				AppendDeploymentCount(Description&outResult, const OwnerParameter&overrideOwner)	const;
 
 

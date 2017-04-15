@@ -1,4 +1,5 @@
 #pragma once
+#ifdef HAS_WINDOW
 
 #include "display.h"
 
@@ -60,3 +61,5 @@ namespace Lighting
 	void	Destroy();
 
 }
+
+#endif

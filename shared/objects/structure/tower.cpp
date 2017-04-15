@@ -4,9 +4,11 @@
 
 namespace Objects
 {
-	/*static*/ CommandContainer			Tower::commands;
-	/*static*/ PClientAttachment		Tower::staticShape;
-	/*static*/ Geometry					Tower::geometry;
+	#ifdef HAS_WINDOW
+		/*static*/ CommandContainer		Tower::commands;
+		/*static*/ PClientAttachment	Tower::staticShape;
+		/*static*/ Geometry				Tower::geometry;
+	#endif
 	/*static*/ float					Tower::foundationHeight;
 	/**
 	List of all known tower types (one for each tower turret type).
@@ -282,14 +284,6 @@ namespace Objects
 			return true;
 		}
 	#else
-		/*virtual override*/ void				Tower::VisitAllCommands(FCommandVisitor visitor, bool force)
-		{
-			commands.VisitMembers([visitor,this](const int2&coords, const Command::PBase&cmd)
-			{
-				if (turret->CanAttack() || cmd->name!="Attack")
-					visitor(coords,cmd);
-			},force);
-		}
 
 
 		Tower::AttackTask&			Tower::AppendTask(const Grid::LCellIdI&attackTarget)
@@ -300,6 +294,15 @@ namespace Objects
 		}
 
 		#ifdef HAS_WINDOW
+			/*virtual override*/ void				Tower::VisitAllCommands(FCommandVisitor visitor, bool force)
+			{
+				commands.VisitMembers([visitor,this](const int2&coords, const Command::PBase&cmd)
+				{
+					if (turret->CanAttack() || cmd->name!="Attack")
+						visitor(coords,cmd);
+				},force);
+			}
+
 			/*virtual override*/ bool			Tower::TestIntersection(const TVec3<>&_b, const TVec3<>&_d, float & distance) const
 			{
 				TVec3<> b,d;//,test;
@@ -307,6 +310,7 @@ namespace Objects
 				Mat::rotate(inverse,_d,d);
 				return geometry.TestIntersection(b,d,distance) | turret->TestIntersection(GetEffectiveFoundationHeight(), turretAngleX,turretAngleY,b,d,distance);	//binary or - must evaluate both
 			}
+
 			/*virtual override*/ void			Tower::DescribeType(Command::Base::Label&label, UINT32 descFlags) 
 			{
 				label.BeginBrief();

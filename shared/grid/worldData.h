@@ -12,9 +12,9 @@ namespace World
 		bool					sensoryValid=true;
 	public:
 		Array<CellStack>		cellStack;
+		bool					structureChanged = true;
 		#ifdef HAS_WINDOW
 			bool				lightingOutdated = true;
-			bool				structureChanged = true;
 
 
 		#endif
@@ -209,7 +209,7 @@ namespace World
 
 
 		void					InvalidateSensory() {sensoryValid = false;}
-		void					ValidateSensory() {sensoryValid = true;}
+		void					FlushAndValidateSensory();
 		bool					SensoryIsInvalid()const	{return !sensoryValid;}
 	};
 

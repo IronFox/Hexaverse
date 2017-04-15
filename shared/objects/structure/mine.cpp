@@ -106,19 +106,19 @@ namespace Objects
 	#endif
 
 
-
-	/*virtual override*/ void			Mine::DescribeType(Command::Base::Label&label, UINT32 descFlags)
-	{
-		label.BeginBrief();
-		Super::DescribeType(label,  descFlags);
-		label.MarkBriefEnd();
-		label << "Enabled mines extract any natural resources available in the planet-core beneath their location. They are essential in supplying other structures of the local compound."
-		" Mines should be build only on known occurrences of natural resources."
-		" They cannot be constructed atop each other, since they require a working link to the planet core in order to operate."
-		//" Mines constructed on a height level of -8 or lower are twice as effective."
-		" Mines, like many structures, require "+String(ResourceTag(Resource::Energy))+" from generators to operate."
-		;
-	}
-
+	#ifdef HAS_WINDOW
+		/*virtual override*/ void			Mine::DescribeType(Command::Base::Label&label, UINT32 descFlags)
+		{
+			label.BeginBrief();
+			Super::DescribeType(label,  descFlags);
+			label.MarkBriefEnd();
+			label << "Enabled mines extract any natural resources available in the planet-core beneath their location. They are essential in supplying other structures of the local compound."
+			" Mines should be build only on known occurrences of natural resources."
+			" They cannot be constructed atop each other, since they require a working link to the planet core in order to operate."
+			//" Mines constructed on a height level of -8 or lower are twice as effective."
+			" Mines, like many structures, require "+String(ResourceTag(Resource::Energy))+" from generators to operate."
+			;
+		}
+	#endif
 
 }

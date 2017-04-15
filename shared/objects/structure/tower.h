@@ -143,9 +143,8 @@ namespace Objects
 		#ifdef HAS_WINDOW
 			virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
 			virtual bool			TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override;
-
+			virtual void			DescribeType(Description&, UINT32 descFlags) override;
 		#endif
-		virtual void				DescribeType(Description&, UINT32 descFlags);
 		#ifndef CLIENT
 			virtual void			OnConstructionFinished(float&atTime) override;
 			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;

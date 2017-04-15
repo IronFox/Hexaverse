@@ -14,6 +14,7 @@
 #include <objects/structure/mine.h>
 #include "visual/commandDefinitions.h"
 #include "clientEvents.h"
+#include <objects/structure/tower.h>
 
 namespace LocalApplicationInterface
 {
@@ -683,7 +684,8 @@ namespace Animation
 				{
 					p->queue.Clear();
 					p->productionDone = state->productionDone;
-					p->gatheringPoint.Set(state->gatheringPoint,Objects::selectedEntity == v);
+					p->gatheringPoint.Set(state->gatheringPoint, Objects::IsSelected(v));
+
 					
 					foreach (state->productionTasks,t)
 					{
@@ -755,7 +757,9 @@ namespace Animation
 					UI::UpdateTraffic();
 				#endif
 			}
-			UI::HexGrid::RefreshContacts();
+			#ifdef HAS_WINDOW
+				UI::HexGrid::RefreshContacts();
+			#endif
 		}
 		//else
 			//LogEvent(EventSignificance::Debug,v.get(),"StoredIn unchanged ("+currentlyStoredIn->GetName()+")");
@@ -839,7 +843,7 @@ namespace Animation
 				{
 					p->queue.Clear();
 					p->productionDone = state->productionDone;
-					p->gatheringPoint.Set(state->gatheringPoint,s==Objects::selectedEntity);
+					p->gatheringPoint.Set(state->gatheringPoint,Objects::IsSelected(s));
 					
 					foreach (state->productionTasks,t)
 					{
@@ -899,8 +903,10 @@ namespace Animation
 						{
 							m->SetLinkedToCore(state->linkedToCore,Network::ControlEnabled());
 							m->naturalResources = state->naturalResources;
-							if (Objects::selectedEntity == s)
-								Objects::UpdateChoices(Network::ControlEnabled());
+							#ifdef HAS_WINDOW
+								if (Objects::selectedEntity == s)
+									Objects::UpdateChoices(Network::ControlEnabled());
+							#endif
 						}
 					}
 				}
@@ -1133,8 +1139,10 @@ namespace Animation
 			{
 				LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Placing structure entity during animation at time "+String(Animation::atTime)+"/"+this->time.ToString());
 				Objects::Place(To<Objects::Structure>::DynamicCast(allocatedTarget));
-				if (!allocatedTarget->isOwnedByMe)
-					UI::HexGrid::RefreshContacts();
+				#ifdef HAS_WINDOW
+					if (!allocatedTarget->isOwnedByMe)
+						UI::HexGrid::RefreshContacts();
+				#endif
 			}
 			break;
 			case NewMobileEntity:
@@ -1148,8 +1156,10 @@ namespace Animation
 					Objects::PlaceMobileEntity(v,false);
 					if (v->IsVehicle())	//only vehicles get to be inserted anyhow
 						insertIntoGridLater.Set(v->id);
-					if (!allocatedTarget->isOwnedByMe)
-						UI::HexGrid::RefreshContacts();
+					#ifdef HAS_WINDOW
+						if (!allocatedTarget->isOwnedByMe)
+							UI::HexGrid::RefreshContacts();
+					#endif
 				}
 			}
 			break;
@@ -1184,9 +1194,9 @@ namespace Animation
 
 				float t = 0;
 				Objects::Remove(allocatedTarget,Objects::RemovalType::Reinterpret(removalType),t,Network::ControlEnabled(),removed);
-				if (!allocatedTarget->isOwnedByMe)
-					UI::HexGrid::RefreshContacts();
 				#ifdef HAS_WINDOW
+					if (!allocatedTarget->isOwnedByMe)
+						UI::HexGrid::RefreshContacts();
 					GUI::SignalSituationChange();
 					if (removalType == Objects::RemovalType::UncontrolledExplosion)
 						UI::EventLog::RegisterEntityDestruction(this->time.min, allocatedTarget->isOwnedByMe,allocatedTarget->GetWorldPosition(), allocatedTarget->id, allocatedTarget->GetNiceName());

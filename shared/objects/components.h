@@ -9,9 +9,9 @@
 #include "description.h"
 #include "entityCommand.h"
 #include "clientAttachment.h"
+#include "geometry.h"
 #ifdef HAS_WINDOW
 	#include <al/openal.h>
-	#include "geometry.h"
 #endif
 
 namespace Objects

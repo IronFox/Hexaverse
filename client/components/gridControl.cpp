@@ -8,6 +8,7 @@
 #include "visual/world.h"
 #include "visual/lighting.h"
 #include "clientEvents.h"
+#include <objects/faction.h>
 
 namespace ClientGrid
 {
@@ -37,6 +38,24 @@ namespace ClientGrid
 			Lighting::UpdateAtmosphere(cfg.atmosphereColor);
 			Lighting::UpdateSun(cfg.sunPlaneNormal_Speed,cfg.sunColor);
 		#endif
+	}
+
+
+	void CheckSensory()
+	{
+		if (World::actual.SensoryIsInvalid())
+		{
+			World::actual.FlushAndValidateSensory();
+			Objects::ForeachWorldEntity([](const Objects::PWorldEntity&e)
+			{
+				if (e->isOwnedByMe)
+				{
+					float t= 0;
+					e->RegisterSensory(t);
+				}
+			},false);
+		}
+
 	}
 }
 

@@ -1,5 +1,4 @@
-#ifndef objectGeometryH
-#define objectGeometryH
+#pragma once
 
 #include <container/buffer.h>
 #include <math/vclasses.h>
@@ -246,4 +245,3 @@ namespace Objects
 }
 
 
-#endif
