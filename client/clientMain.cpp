@@ -3581,30 +3581,30 @@ int main( int argc, const char* argv[])
 
 
 	//tests
-	{
-		Random random;
-		for (int i = 0; i < 1000; i++)
-		{
-			BaseGrid::FamiliesChanged ch;
-			ASSERT__(ch.begin() == ch.end());
-			count_t cnt = 0;
-			for (int j = 0; j < 10; j++)
-			{
-				index_t at = random.NextIndex(BaseGrid::NumFamilies);
-				if (!ch.changed[at])
-					cnt++;
-				ch.changed[at] = true;
-			}
-			count_t newCnt = 0;
-			for (auto it = ch.begin(); it != ch.end(); ++it)
-			{
-				ASSERT__(ch.changed[*it]);
-				newCnt++;
-			}
-			ASSERT_EQUAL__(cnt,newCnt);
-		}
-		FATAL__("Test passed. Remove test");
-	}
+	//{
+	//	Random random;
+	//	for (int i = 0; i < 1000; i++)
+	//	{
+	//		BaseGrid::FamiliesChanged ch;
+	//		ASSERT__(ch.begin() == ch.end());
+	//		count_t cnt = 0;
+	//		for (int j = 0; j < 10; j++)
+	//		{
+	//			index_t at = random.NextIndex(BaseGrid::NumFamilies);
+	//			if (!ch.changed[at])
+	//				cnt++;
+	//			ch.changed[at] = true;
+	//		}
+	//		count_t newCnt = 0;
+	//		for (auto it = ch.begin(); it != ch.end(); ++it)
+	//		{
+	//			ASSERT__(ch.changed[*it]);
+	//			newCnt++;
+	//		}
+	//		ASSERT_EQUAL__(cnt,newCnt);
+	//	}
+	//	FATAL__("Test passed. Remove test");
+	//}
 
 
 
@@ -3768,13 +3768,13 @@ int main( int argc, const char* argv[])
 
 
 		ClientGrid::Create();
-		Objects::Renderer::Create();
+		VisualTerrain::Create();		//egg-chicken
+		Objects::Renderer::Create();	//chicken-egg
 		Objects::Create();
 		#ifdef HAS_WINDOW
 			Objects::Command::RefreshCommands(false);
 		#endif
 
-		VisualTerrain::Create();
 
 
 		#ifdef HAS_WINDOW
