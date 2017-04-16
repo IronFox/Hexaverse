@@ -685,49 +685,42 @@ namespace Grid
 			return -1.f;
 		}
 
-	
+		void	GenerateVolume(const Sphere<>&sphere,TVolumeDescriptor&volume) const
+		{
+			static TVolumeDescriptor::Operator op;
+			volume.Clear();
+			UINT32 centerStack = Locate(sphere.center);
+			op.stacksLeft << centerStack;
 
-
-		//void	GenerateVolume(const Sphere<>&sphere,TVolumeDescriptor&volume) const
-		//{
-		//	static TVolumeDescriptor::Operator op;
-		//	volume.Clear();
-		//	UINT32 centerStack = Locate(sphere.center);
-		//	op.stacksLeft << centerStack;
-
-		//	const float br = ToRadius(CellStack::BottomHeight);
-		//	const float tr = ToRadius(CellStack::TopHeight);
-		//	UINT32 next;
-		//	while (op.stacksLeft >> next)
-		//	{
-		//		if (op.stackVisited[next])
-		//			continue;
-		//		op.stackVisited[next] = true;
-		//		const TVec3<>&dir = cells[next].cornerCenter;
-		//		TVec2<> distances;
-		//		TVec3<> bottom,top;
-		//		Vec::mult(dir,br,bottom);
-		//		Vec::mult(dir,tr,top);
-		//		TVolumeDescriptor::TStack&st = volume.coverage.Append();
-		//		st.stackID = next;
-		//		if (!Obj::DetectSphereEdgeIntersection(sphere.center,sphere.radius,bottom,top,distances))
-		//		{
-		//			st.range.SetEmpty(0);
-		//			continue;
-		//		}
-		//	
-		//		st.range.start = (UINT32)floor(std::max(distances.x,0.f) * (CellStack::Range-1));
-		//		st.range.end = 1 + (UINT32)ceil(std::min(distances.y,1.f) * (CellStack::Range-1));
-		//		const auto&n = grid.GetCell(next).neighborhood;
-		//		for (int i = 0; i < n.numNeighbors; i++)
-		//			op.stacksLeft << n.neighborID[i];
-		//	}
-		//	op.ResetVisited(volume);
-		//}
-
-		#ifdef HAS_WINDOW
+			const float br = ToRadius(CellStack::BottomHeight);
+			const float tr = ToRadius(CellStack::TopHeight);
+			UINT32 next;
+			while (op.stacksLeft >> next)
+			{
+				if (op.stackVisited[next])
+					continue;
+				op.stackVisited[next] = true;
+				const TVec3<>&dir = cells[next].cornerCenter;
+				TVec2<> distances;
+				TVec3<> bottom,top;
+				Vec::mult(dir,br,bottom);
+				Vec::mult(dir,tr,top);
+				TVolumeDescriptor::TStack&st = volume.coverage.Append();
+				st.stackID = next;
+				if (!Obj::DetectSphereEdgeIntersection(sphere.center,sphere.radius,bottom,top,distances))
+				{
+					st.range.SetEmpty(0);
+					continue;
+				}
 			
-		#endif
+				st.range.start = (UINT32)floor(std::max(distances.x,0.f) * (CellStack::Range-1));
+				st.range.end = 1 + (UINT32)ceil(std::min(distances.y,1.f) * (CellStack::Range-1));
+				const auto&n = grid.GetCell(next).neighborhood;
+				for (int i = 0; i < n.numNeighbors; i++)
+					op.stacksLeft << n.neighborID[i];
+			}
+			op.ResetVisited(volume);
+		}
 	};
 
 	template <UINT Exponent>

@@ -1,5 +1,6 @@
 #include <global_root.h>
 #include "mine.h"
+#include "../gridAndChoices.h"
 
 namespace Objects
 {
@@ -37,7 +38,7 @@ namespace Objects
 				{
 					int h = Grid::CellStack::ToHeight(j);
 					if ((j == layer-1 || !stack.GetCellU(j).structureCounter) && !GetVehicle(Grid::LCellIdI(location.stackID,h)))
-						stack.LocalOverwrite(h, Grid::Content::Foundation);
+						stack.LocalOverwrite(h, Grid::Content::Foundation,World::actual);
 					else
 					{
 						success = false;

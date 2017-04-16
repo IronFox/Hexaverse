@@ -16,6 +16,7 @@ namespace ClientGrid
 	{
 		Grid::CreateHighAndLow();
 		Grid::CreateResources();
+		World::Create();
 
 		#ifdef HAS_WINDOW
 			GlobalEvents::frameAfterCamera << World::RecompileIfNecessary;

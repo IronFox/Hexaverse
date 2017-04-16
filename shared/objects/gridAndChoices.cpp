@@ -5,6 +5,7 @@
 #include "vehicle.h"
 #include "satellite.h"
 #include "faction.h"
+#include "structure/tower.h"
 #ifndef CLIENT
 	#include "../runtimeConfig.h"
 #endif
@@ -165,7 +166,7 @@ namespace Objects
 			PWorldEntity closestEntity;
 			if (base.turret->GetAmmoNeedPerShot(source.owner) > munitionStorage)
 				return false;
-			const World::Data&world = source.owner->currentState;
+			const World::Data&world = source.owner->knownWorld;
 			source.owner->seeing.VisitAllKeys([&world, &source,sourceLocation,&base,&c2,&closest,&closestEntity](const PWorldEntity&e)
 			{
 //					&& turret->TraceTrajectory(location+1,target.location,trajectory,iat,ic)==Turret::ReachesTarget;		
@@ -327,7 +328,7 @@ namespace Objects
 						if (faction)
 						{
 							faction->RegisterExplosionCrater(targetCell,terrainExplosionRadius,atTime);
-							//faction->currentState.Explode(targetCell,terrainExplosionRadius, changed);
+							//faction->knownWorld.Explode(targetCell,terrainExplosionRadius, changed);
 							//faction->SignalCoverageChange(changed,atTime);
 						}
 
@@ -756,7 +757,7 @@ namespace Objects
 		#ifdef CLIENT
 			World::actual;
 		#else
-			entity.owner->currentState;
+			entity.owner->knownWorld;
 		#endif
 
 		movementChoices.Clear();
@@ -1878,7 +1879,7 @@ namespace Objects
 		#ifdef CLIENT
 			World::actual;
 		#else
-			vehicle->owner->currentState;
+			vehicle->owner->knownWorld;
 		#endif
 
 		if (!ValidDestinationOf<false>(world,*vehicle,to,true,false, false))
@@ -2088,7 +2089,7 @@ namespace Objects
 		#ifdef CLIENT
 			World::actual;
 		#else
-			vehicle->owner->currentState;
+			vehicle->owner->knownWorld;
 		#endif
 		//Timer::Time t0 = timer.Now();
 		const THindranceVector&hindrance = vehicle->base->hindrance;
@@ -2253,7 +2254,7 @@ namespace Objects
 		#ifdef CLIENT
 			World::actual;
 		#else
-			vehicle->owner->currentState;
+			vehicle->owner->knownWorld;
 		#endif
 		if (!flat)
 			if (!vehicle->CanStandOn(world,to -1,ignoreWater,false) /*|| !Grid::LowCellIsClear(to)*/)// || !NothingHere(destination))
@@ -2762,10 +2763,8 @@ namespace Objects
 		bool					ProcessChoiceIntersection(const PWorldEntity&e, const Grid::LCellIdI&choice,  Vehicle::mode_t mode, const PMobileEntity&deployWhat)
 		{
 			Buffer0<Choice>	movementChoices;
-			bool showArrow, hasArrowCellTarget;
-			TVec3<>arrowFrom;
-			Grid::LCellIdI arrowFromCell;
-			GetChoices(e,deployWhat,mode,movementChoices,showArrow,hasArrowCellTarget,arrowFrom,arrowFromCell);
+			TChoiceVisualization vis;
+			GetChoices(e,deployWhat,mode,movementChoices,vis);
 
 			if (!movementChoices.Contains(choice))
 				return false;

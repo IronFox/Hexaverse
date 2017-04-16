@@ -333,6 +333,7 @@ namespace Grid
 			if (volumeCell[uh].content != Content::Clear)
 			{
 				volumeCell[uh].content = Cell::Content::Clear;
+				owner.InvalidateSensory();
 
 				#ifdef HAS_WINDOW
 					lowestOpenCell = std::min(lowestOpenCell, (BYTE)uh);
@@ -373,6 +374,7 @@ namespace Grid
 				#endif /*0*/
 				bool wasSolid = volumeCell[uh].IsOpaque();
 				volumeCell[uh].content = type;
+				owner.InvalidateSensory();
 
 			
 				#ifdef HAS_WINDOW

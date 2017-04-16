@@ -5,6 +5,7 @@
 
 namespace World
 {
+	using namespace Grid;
 
 	Data			actual;
 	#ifndef CLIENT
@@ -43,6 +44,9 @@ namespace World
 		#endif
 
 		GlobalEvents::terrainFlush << FlushAllWorldData;
+		GlobalEvents::objectFlush << [](){
+			actual.ResetStructureCounters(true);
+		};
 	}
 	
 	//void	FlushStackFamily(Array<CellStack>&cellStack,  BYTE family)
@@ -200,7 +204,7 @@ namespace World
 	#endif
 
 
-	void	Data::Explode(const HCellIdI&id,float radius, bool*familyChanged)
+	void	Data::Explode(const HCellIdI&id,float radius, BaseGrid::FamiliesChanged&changed)
 	{
 		const float3 center = high.cells[id.stackID].centerVertex.xyz * ToRadiusf(0.5f + id.height);
 		const float r2 = sqr(radius);
@@ -253,7 +257,7 @@ namespace World
 					#ifdef HAS_WINDOW
 						changed << current;
 					#endif
-					familyChanged[high.grid.GetCell(current).family] = true;
+					changed.changed[high.grid.GetCell(current).family] = true;
 				}
 
 				const auto&n = high.grid.GetCell(current).neighborhood;
@@ -298,17 +302,16 @@ namespace World
 
 	void	Data::Explode(const HCellIdI&id,float radius, float atTime)
 	{
-		bool familyChanged[BaseGrid::NumFamilies] = {false};
-		Explode(id,radius,familyChanged);
-		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
-			if (familyChanged[i])
-			{
-				SignalFamilyStructureChange(i,atTime);
-				#ifdef HAS_WINDOW
-					lightingOutdated = true;
-					structureChanged = true;
-				#endif
-			}
+		BaseGrid::FamiliesChanged changed;
+		Explode(id,radius,changed);
+		foreach (changed,c)
+		{
+			SignalFamilyStructureChange(*c,atTime);
+			structureChanged = true;
+			#ifdef HAS_WINDOW
+				lightingOutdated = true;
+			#endif
+		}
 
 	}
 
@@ -1054,7 +1057,7 @@ namespace World
 
 		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
 			if (familyChanged[i])
-				SignalFamilyStructureChange(i);
+				SignalFamilyStructureChange(i,t);
 	}
 
 	//void				Volume::ChangeSensory(const Grid::HighSetup::TVolumeDescriptor&desc, float t, short changeBy)
@@ -1088,13 +1091,50 @@ namespace World
 
 	void				Data::RegisterExplosionCrater(const Grid::HCellIdI&center, float radius, float t)
 	{
-		Sensor(center,0.5f,radius,Sensor::SolidSphere).ApplyTo(*this,0);
+		Sensor(center,0.5f,radius,Sensor::SolidSphere).ApplyTo(*this,0,t);
+	}
 
-		//bool familyChanged[BaseGrid::NumFamilies] = { false };
-		//Grid::TemplateHelper::ChangeSensory(c3, radius, 0, cellStack.pointer(), familyChanged);
-		//for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
-		//	if (familyChanged[i])
-		//		families[i].changed = true;
+
+	bool			Sensor::Contains(const Grid::LCellIdI&loc) const
+	{
+		switch (type)
+		{
+			case SolidSphere:
+			case ShadedSphere:
+				return Sphere<>(worldCenter,radius).Contains(Grid::ToWorld(loc));
+			break;
+			case SolidCylinder:
+			case ShadedCylinder:
+			{
+				const float hr2 = sqr(radius/Grid::VerticalBase);
+				if (Vec::quadraticDistance(Grid::low.cells[loc.stackID].cornerCenter,Grid::high.cells[gridCenter.stackID].cornerCenter) > hr2)
+					return false;
+				return Grid::CellStack::ToLayer( loc.height ) <= gridCenter.layer;
+			}
+			break;
+			default:
+				FATAL__("Functionality missing for sensor type #"+String((int)type));
+		}
+		return false;
+	}
+
+
+	void			Sensor::GetMaxVolume(Grid::LowSetup::TVolumeDescriptor&desc) const
+	{
+		switch (type)
+		{
+			case SolidSphere:
+			case ShadedSphere:
+				Grid::low.GenerateVolume(Sphere<>(worldCenter,radius+1.f),desc);
+			break;
+			case SolidCylinder:
+			case ShadedCylinder:
+				MakeShaftVolume(desc,[](UINT32){return 0;});
+			break;
+			default:
+				FATAL__("Functionality missing for sensor type #"+String((int)type));
+		}
+
 	}
 
 
@@ -1164,46 +1204,64 @@ namespace World
 		FlushAllData(true);
 	}
 
-	void			Sensor::ApplyShaftTo(World::Data&v, short change, bool*familyChanged, const std::function<UINT32(UINT32 stackID)>&traceFunction)	const
-	{
-		volume.Clear();
-
-		const UINT32 highCenter = this->gridCenter.stackID;
-		op.stacksLeft << highCenter;
-
-		const float r = worldCenter.Length();
-
-		const float hr2 = sqr(radius/r);
-		const TVec3<>& center = Grid::high.cells[highCenter].centerVertex.xyz;
-		UINT32 current;
-		while (op.stacksLeft >> current)
+	template <typename Setup>
+		static void MakeShaftVolumeT(const Setup&setup, typename Setup::TVolumeDescriptor&v, typename Setup::TVolumeDescriptor::Operator&op, UINT32 stackCenter, float radius, UINT32 topLayer, const std::function<UINT32(UINT32 stackID)>&traceFunction)
 		{
-			if (op.stackVisited[current])
-				continue;
-			op.stackVisited[current] = true;
+			v.Clear();
 
-			float d2 = Vec::quadraticDistance(Grid::high.cells[current].centerVertex.xyz,center);
-			if (d2 > hr2)
-				continue;
+			op.stacksLeft << stackCenter;
 
-			auto&cell = volume.coverage.Append();
-			cell.stackID = current;
-			cell.range.end = gridCenter.layer+1;
-			cell.range.start = traceFunction(current);
-			const auto&n = Grid::high.grid.GetCell(current).neighborhood;
-			for (int k = 0; k < n.numNeighbors; k++)
-				op.stacksLeft << n.neighborID[k];
+			//const float r = worldCenter.Length();
+
+			const float hr2 = sqr(radius/Grid::VerticalBase);
+			const TVec3<>& center = setup.cells[stackCenter].centerVertex.xyz;
+			UINT32 current;
+			while (op.stacksLeft >> current)
+			{
+				if (op.stackVisited[current])
+					continue;
+				op.stackVisited[current] = true;
+
+				float d2 = Vec::quadraticDistance(setup.cells[current].centerVertex.xyz,center);
+				if (d2 > hr2)
+					continue;
+
+				auto&cell = v.coverage.Append();
+				cell.stackID = current;
+				cell.range.end = topLayer+1;
+				cell.range.start = traceFunction(current);
+				const auto&n = setup.grid.GetCell(current).neighborhood;
+				for (int k = 0; k < n.numNeighbors; k++)
+					op.stacksLeft << n.neighborID[k];
+			}
+
+			op.ResetVisited(v);
+
 		}
 
-		op.ResetVisited(volume);
-		ApplyVolume(v,change,familyChanged);
+	void			Sensor::MakeShaftVolume(Grid::HighSetup::TVolumeDescriptor&v, const std::function<UINT32(UINT32 stackID)>&traceFunction)	const
+	{
+		MakeShaftVolumeT(Grid::high, v,op,gridCenter.stackID, radius,gridCenter.layer,traceFunction);
+	}
+
+
+	void			Sensor::MakeShaftVolume(Grid::LowSetup::TVolumeDescriptor&v, const std::function<UINT32(UINT32 stackID)>&traceFunction)	const
+	{
+		MakeShaftVolumeT(Grid::low, v,lowOp, Grid::low.Locate(worldCenter), radius,gridCenter.layer,traceFunction);
+	}
+
+	void			Sensor::ApplyShaftTo(World::Data&v, short change, BaseGrid::FamiliesChanged&changed, const std::function<UINT32(UINT32 stackID)>&traceFunction)	const
+	{
+		MakeShaftVolume(volume,traceFunction);
+		ApplyVolume(v,change,changed);
 	}
 
 
 	/*static*/ Grid::HighSetup::TVolumeDescriptor::Operator Sensor::op;
+	/*static*/ Grid::LowSetup::TVolumeDescriptor::Operator Sensor::lowOp;
 	/*static*/ Grid::HighSetup::TVolumeDescriptor	Sensor::volume;
 
-	void		Sensor::ApplySolidSphereTo(World::Data&v, short changeBy, bool*familyChanged)	const
+	void		Sensor::ApplySolidSphereTo(World::Data&v, short changeBy, BaseGrid::FamiliesChanged&familyChanged)	const
 	{
 		volume.Clear();
 		UINT32 centerStack = this->gridCenter.stackID;
@@ -1243,7 +1301,7 @@ namespace World
 	}
 
 
-	/*static*/ void	Sensor::ApplyVolume(World::Data&v, short changeBy, bool*familyChanged)
+	/*static*/ void	Sensor::ApplyVolume(World::Data&v, short changeBy, BaseGrid::FamiliesChanged&familyChanged)
 	{
 
 		#ifdef _DEBUG
@@ -1265,7 +1323,7 @@ namespace World
 			if (c->range.IsEmpty())
 				continue;
 			auto&stack = v.cellStack[c->stackID];
-			familyChanged[Grid::high.grid.GetCell(c->stackID).family] = true;
+			familyChanged.changed[Grid::high.grid.GetCell(c->stackID).family] = true;
 			for (UINT32 layer = c->range.start; layer < c->range.end; layer++)
 			{
 				stack.volumeCell[layer].AlterVisibility(changeBy);
@@ -1274,7 +1332,7 @@ namespace World
 	}
 
 
-	void		Sensor::ApplyShadedSphereTo(World::Data&v, short change, bool*familyChanged)	const
+	void		Sensor::ApplyShadedSphereTo(World::Data&v, short change, BaseGrid::FamiliesChanged&familyChanged)	const
 	{
 		enum
 		{
@@ -1368,7 +1426,7 @@ namespace World
 			if (makeVisible)
 			{
 				c.AlterVisibility(change);
-				familyChanged[Grid::high.grid.GetCell(m->stackID).family] = true;
+				familyChanged.changed[Grid::high.grid.GetCell(m->stackID).family] = true;
 			}
 		}
 
@@ -1379,11 +1437,11 @@ namespace World
 
 
 
-	void		Sensor::ApplyTo(World::Data&v, short change)	const
+	void		Sensor::ApplyTo(World::Data&v, short change, float t)	const
 	{
 		if (v.SensoryIsInvalid())
 			return;
-		bool familyChanged[BaseGrid::NumFamilies] = { false };
+		BaseGrid::FamiliesChanged familyChanged;
 
 		const Timer::Time t0 = timer.Now();
 		switch (type)
@@ -1409,9 +1467,10 @@ namespace World
 
 		LogEvent(EventSignificance::PerformanceMeasurement,nullptr,"Sensory change processed in "+String(timer.GetSecondsSince(t0)));
 
-		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
-			if (familyChanged[i])
-				v.families[i].changed = true;
+		foreach (familyChanged,f)
+		{
+			v.SignalFamilyStructureChange(*f,t);
+		}
 	}
 
 
@@ -1421,6 +1480,7 @@ namespace World
 
 	bool		Data::GridCanSeeAny(const HCellIdU&base, UINT height) const
 	{
+		ASSERT__(this->SensoryIsInvalid());
 		const auto&stack = cellStack[base.stackID];
 		UINT end = std::min(base.layer + height,CellStack::Range);
 		for (UINT layer = base.layer; layer < end; layer++)
@@ -1431,6 +1491,7 @@ namespace World
 
 	bool		Data::GridCanSee(const LCellIdI&center, int height, bool broad) const
 	{
+		ASSERT__(this->SensoryIsInvalid());
 		UINT32 fine = low.grid.GetCell(center.stackID).higherEquivalent;
 		UINT32 layer0 = CellStack::ToLayer(center.height);
 		if (GridCanSeeAny(HCellIdU(fine,layer0),(UINT)height))

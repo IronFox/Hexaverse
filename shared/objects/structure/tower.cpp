@@ -1,6 +1,7 @@
 #include <global_root.h>
 #include "tower.h"
 #include "../structureCompound.h"
+#include "../gridAndChoices.h"
 
 namespace Objects
 {

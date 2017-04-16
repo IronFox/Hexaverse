@@ -4,6 +4,7 @@
 #include <runtimeConfig.h>
 #include "state/gameState.h"
 #include "journalSaveGame.h"
+#include <objects/structure/vehiclePlant.h>
 
 
 namespace Nexus

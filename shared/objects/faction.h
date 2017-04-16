@@ -8,6 +8,7 @@
 #include "../roundNumber.h"
 #include "../sharedContainer.h"
 #include "research.h"
+#include "../grid/resources.h"
 
 namespace Objects
 {
@@ -140,10 +141,12 @@ namespace Objects
 		#ifndef CLIENT
 			friend class ResearchState;
 
-			void		ChangeSensory(const Grid::HighSetup::TVolumeDescriptor&desc, float t, short changeBy);
-			void		ChangeSensory(const Grid::SkySensorState&state, float t, short changeBy);
+			//void		ChangeSensory(const Grid::HighSetup::TVolumeDescriptor&desc, float t, short changeBy);
+			//void		ChangeSensory(const Grid::SkySensorState&state, float t, short changeBy);
 //			void		ReplaceSensory(const Grid::SkySensorState&oldState, const Grid::SkySensorState&newState, float t, short changeBy);
 			void		CheckChanges(float t);
+
+			void		CheckSensory(float&t);
 		#endif
 
 		void			InitID(const TUniqueID&toID, bool nexusFaction);
@@ -231,8 +234,9 @@ namespace Objects
 
 
 
-			World::Data			currentState;
-			Grid::SensorCoverage	visibility;
+			World::Data				knownWorld;
+			Grid::ResourceDiscovery	knownResources;
+			
 
 			count_t				nexusControl,
 								acquiringNexusControl;
@@ -313,8 +317,8 @@ namespace Objects
 
 			bool		CanSee(const PWorldEntity&e, float t)	const;
 
-			bool		GridCanSee(const PWorldEntity&e) const;
-			bool		GridCanSee(const Grid::HighSetup::TVolumeDescriptor&) const;
+			bool		GridCanSee(const PWorldEntity&e, float &t);
+			bool		GridCanSee(const Grid::HighSetup::TVolumeDescriptor&, float &t);
 
 			void		CheckGridVisibility(const PWorldEntity&,float&timeAt);
 
@@ -326,12 +330,9 @@ namespace Objects
 			bool		SignalAppearance(const PWorldEntity&, float&t, bool cascade=true, bool stack=true, index_t incStackBy=1);
 			void		SignalDisappearance(const PWorldEntity&, float&t, bool force = false, bool signalConnectedClient=true);
 
-			void		RegisterSensorCreation(const Grid::SkySensorState&state, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts = nullptr);
-			void		RegisterSensorRemoval(const Grid::SkySensorState&state, float&t, bool checkChangesNow);
-			void		RegisterSensorCreation(const Sphere<>&, int sensorHeight, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts = nullptr);
-			void		RegisterSensorMotion(const Sphere<>&from, int sensorHeight, const Sphere<>&to, float&t, bool checkChangesNow);
-			void		RegisterSensorRemoval(const Sphere<>&, int sensorHeight, float&t, bool checkChangesNow);
-
+			void		RegisterSensorCreation(const World::Sensor&, int sensorHeight, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts = nullptr);
+			void		RegisterSensorRemoval(const World::Sensor&, int sensorHeight, float&t, bool checkChangesNow);
+			void		RegisterSensorMotion(const World::Sensor&from, const World::Sensor&to, float&t, bool checkChangesNow);
 
 			count_t		CountOffGridCoverage(int channelHeight, const TVec3<>&)	const;
 			count_t		CountOffGridCoverage(const Sphere<>&)	const;

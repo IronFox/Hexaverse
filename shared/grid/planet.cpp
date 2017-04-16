@@ -337,8 +337,10 @@ namespace Grid
 				stack.lightingChangedTo = (BYTE)CellStack::Range;
 			});
 			world.lightingOutdated = true;
-			world.structureChanged = true;
 		#endif
+		for (BaseGrid::family_t i = 0; i < BaseGrid::NumFamilies; i++)
+			world.SignalFamilyStructureChange(i);
+		world.structureChanged = true;
 	}
 
 	

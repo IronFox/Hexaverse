@@ -10,6 +10,8 @@
 #include "worldState.h"
 #include "../configurationMode.h"
 #include "../../../client/version.h"
+#include <objects/structure/tower.h>
+#include <grid/resources.h>
 
 namespace FileIO
 {
@@ -992,19 +994,19 @@ namespace FileIO
 		target->SetData(buffer.pointer(),size);
 	}
 
-	void	WriteToListChunk(Grid::WorldData&inData, Riff::Chunk&outChunk)
+	void	WriteToListChunk(World::Data&inData, Riff::Chunk&outChunk)
 	{
 		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 		{
 			TCP::Serial<Protocol::WorldDelta>	delta;
 			delta.Ref().timestamp.rightNow = true;
-			Protocol::GenerateWorldDelta(nullptr, &inData, delta.Ref(),k,true,k+1 == BaseGrid::NumFamilies,Protocol::WorldDeltaType::LocalCopy);
+			Protocol::GenerateWorldDelta(&inData, delta.Ref(),k,true,k+1 == BaseGrid::NumFamilies,Protocol::WorldDeltaType::LocalCopy);
 			SerializeToChunk(delta.Ref().data0,outChunk.AppendBlock(RID::worldTypeChunk));
 		}
 	}
 
 
-	void	ReadFromListChunk(const Riff::Chunk&list, Grid::WorldData&outData)
+	void	ReadFromListChunk(const Riff::Chunk&list, World::Data&outData)
 	{
 		Protocol::TypeDeltaArray	typeArray;
 
@@ -1295,13 +1297,13 @@ namespace FileIO
 						case ChunkName::WorldGroup:
 							if (round == 0)
 							{
-								ReadFromListChunk(*list,Grid::actualWorld);
+								ReadFromListChunk(*list,World::actual);
 							}
 						break;
 						case ChunkName::InitialWorldGroup:
 							if (round == 0)
 							{
-								ReadFromListChunk(*list,Grid::initialWorld);
+								ReadFromListChunk(*list,World::initial);
 							}
 						break;
 						case ChunkName::ResourceSection:
@@ -1335,8 +1337,8 @@ namespace FileIO
 									faction.reset(new Objects::Faction(factionID));
 									Objects::Faction::all << faction;
 
-									faction->currentState.FlushAllData();
-									//foreach (faction->currentState,stat)
+									faction->knownWorld.FlushAllData(true);
+									//foreach (faction->knownWorld,stat)
 									//	stat->ZeroInit();
 								}
 								GetPOD(list,RID::factionAccessToken,faction->accessToken);
@@ -1395,14 +1397,14 @@ namespace FileIO
 										{
 											ASSERT__(DeserializeFromMemory(typeArray,child->pointer(),child->size(),false));
 											ASSERT_LESS__(atFamily, BaseGrid::NumFamilies);
-											faction->currentState.ApplyFamilyDelta(atFamily,typeArray,false,false);
+											faction->knownWorld.ApplyFamilyDelta(atFamily,typeArray,false,false);
 											atFamily++;
 										}
 										//elif (child->IsID(RID::factionWorldCounterChunk))
 										//{
 										//	ASSERT__(DeserializeFromMemory(countArray,child->pointer(),child->size(),false));
 										//	ASSERT_LESS__(atFamily, BaseGrid::NumFamilies);
-										//	faction->currentState.ApplyFamilyDelta(atFamily,typeArray,countArray,false,false);
+										//	faction->knownWorld.ApplyFamilyDelta(atFamily,typeArray,countArray,false,false);
 
 										//	atFamily++;
 										//}
@@ -1418,15 +1420,15 @@ namespace FileIO
 									const UINT32*indices = (const UINT32*)compressed->pointer();
 									const count_t numIndices = compressed->size() / sizeof(UINT32);
 									for (UINT32 i = 0; i < numIndices; i++)
-										faction->visibility.resourcesDiscovered[indices[i]] = true;
+										faction->knownResources.resourcesDiscovered[indices[i]] = true;
 								}
 								else
 								{
 									Riff::Chunk*raw = list->FindFirst(RID::resourcesDiscoveredFull);
 									if (raw)
 									{
-										ASSERT_EQUAL__(raw->size(),faction->visibility.resourcesDiscovered.GetContentSize());
-										memcpy(faction->visibility.resourcesDiscovered.pointer(),raw->pointer(),raw->size());
+										ASSERT_EQUAL__(raw->size(),faction->knownResources.resourcesDiscovered.GetContentSize());
+										faction->knownResources.resourcesDiscovered = ArrayRef<const bool>((const bool*)raw->pointer(),(size_t)raw->size());
 									}
 								}
 							}
@@ -1529,9 +1531,9 @@ namespace FileIO
 	void	WriteActualWorldToContainer(Riff::Chunk&container)
 	{
 		Riff::Chunk*world = CreateNamedList(container,ChunkName::WorldGroup);
-		WriteToListChunk(Grid::actualWorld,*world);
+		WriteToListChunk(World::actual,*world);
 		Riff::Chunk*initialWorld = CreateNamedList(container,ChunkName::InitialWorldGroup);
-		WriteToListChunk(Grid::initialWorld,*initialWorld);
+		WriteToListChunk(World::initial,*initialWorld);
 	}
 
 	void	Save( const PathString&name)
@@ -1661,7 +1663,7 @@ namespace FileIO
 			{
 				TCP::Serial<Protocol::WorldDelta>	delta;
 				delta.Ref().timestamp.rightNow = true;
-				Protocol::GenerateWorldDelta(nullptr,&faction->currentState, delta.Ref(),k,true,k+1 == BaseGrid::NumFamilies,Protocol::WorldDeltaType::LocalCopy);
+				Protocol::GenerateWorldDelta(&faction->knownWorld, delta.Ref(),k,true,k+1 == BaseGrid::NumFamilies,Protocol::WorldDeltaType::LocalCopy);
 				delta.Ref().timestamp.atTime = 0;
 
 				SerializeToChunk(delta.Ref().data0, factionSection->AppendBlock(RID::factionWorldTypeChunk));
@@ -1670,18 +1672,18 @@ namespace FileIO
 			static Buffer0<UINT32>	final;
 			final.Clear();
 
-			for (index_t i = 0; i < faction->visibility.resourcesDiscovered.Count(); i++)
+			for (index_t i = 0; i < faction->knownResources.resourcesDiscovered.Count(); i++)
 			{
-				if (faction->visibility.resourcesDiscovered[i])
+				if (faction->knownResources.resourcesDiscovered[i])
 					final << (UINT32)i;
 			}
 
 			if (final.IsNotEmpty())
 			{
-				if (final.Count()*4 < faction->visibility.resourcesDiscovered.Count())
+				if (final.Count()*4 < faction->knownResources.resourcesDiscovered.Count())
 					factionSection->AppendBlock(RID::resourcesDiscoveredCompressed)->SetData(final.pointer(),final.Count()*4);	//resource discovered - compressed
 				else
-					factionSection->AppendBlock(RID::resourcesDiscoveredFull)->SetData(faction->visibility.resourcesDiscovered);	//resource discovered - full
+					factionSection->AppendBlock(RID::resourcesDiscoveredFull)->SetData(faction->knownResources.resourcesDiscovered);	//resource discovered - full
 			}
 
 

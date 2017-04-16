@@ -238,7 +238,7 @@ namespace Objects
 
 		CommonRegisterStructure(World::actual, location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
 		#ifndef CLIENT
-			CommonRegisterStructure(owner->currentState, location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
+			CommonRegisterStructure(owner->knownWorld, location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
 		#endif
 
 		TStructureNeighborhood	neighborhood;
@@ -305,7 +305,7 @@ namespace Objects
 		LogEvent(EventClass::Preset::debug,this,"Unregistering...");
 		CommonUnregisterStructure(World::actual, location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
 		#ifndef CLIENT
-			CommonUnregisterStructure(owner->currentState, location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
+			CommonUnregisterStructure(owner->knownWorld, location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
 		#endif
 
 		LogEvent(EventClass::Preset::debug,this,"Disconnecting...");
@@ -522,7 +522,7 @@ namespace Objects
 						{
 							LogEvent(EventSignificance::Common,e,"Clearing cell "+Grid::HCellIdI(n.neighborID[j],location.height+a).ToString());
 
-							anyChanged |= stack.MakeLocalHole(location.height+a);
+							anyChanged |= stack.MakeLocalHole(location.height+a,World::actual);
 						}
 				}
 			#endif
@@ -549,7 +549,7 @@ namespace Objects
 				{
 					LogEvent(EventSignificance::Common,e,"Clearing cell "+Grid::HCellIdI(higher,location.height+a).ToString());
 
-					anyChanged |= stack.MakeLocalHole(location.height+a);
+					anyChanged |= stack.MakeLocalHole(location.height+a,World::actual);
 				}
 
 			//if (signalChange)	//i think this breaks the flow. calling objects/methods assume they have to do this manually

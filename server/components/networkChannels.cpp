@@ -213,18 +213,18 @@ namespace Receiver
 			}
 		}
 		if (firstSpectator)
-			World::spectatorWorldState.FlushAllData();
+			World::spectatorWorldState.FlushAllData(true);
 		Protocol::WorldDelta	delta;
 		delta.timestamp.rightNow = true;
 		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 		{
 			if (firstSpectator)
 			{
-				Protocol::GenerateWorldDelta(nullptr,&World::spectatorWorldState,
+				Protocol::GenerateWorldDelta(&World::spectatorWorldState,
 										delta,k,true,k+1 == BaseGrid::NumFamilies,Protocol::WorldDeltaType::ProgressiveInit);
 			}
 			else
-				Protocol::GenerateWorldDelta(nullptr,&World::spectatorWorldState,
+				Protocol::GenerateWorldDelta(&World::spectatorWorldState,
 										delta,k,true,k+1 == BaseGrid::NumFamilies,Protocol::WorldDeltaType::LocalCopy);
 
 			Channels::updateWorld.SendTo(peer,delta);
@@ -555,7 +555,7 @@ namespace Receiver
 
 			static Buffer0<UINT32>	final;
 			final.Clear();
-			auto&discovered = client->faction->visibility.resourcesDiscovered;
+			auto&discovered = client->faction->knownResources.resourcesDiscovered;
 			for (index_t i = 0; i < discovered.Count(); i++)
 			{
 				if (discovered[i])
@@ -587,7 +587,7 @@ namespace Receiver
 		delta.timestamp.rightNow = true;
 		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 		{
-			Protocol::GenerateWorldDelta(client->faction ? &client->faction->visibility : nullptr,  client->faction ? &client->faction->currentState : nullptr,
+			Protocol::GenerateWorldDelta(client->faction ? &client->faction->knownWorld : nullptr,
 									delta,k,true,k+1 == BaseGrid::NumFamilies,newFaction ? Protocol::WorldDeltaType::ProgressiveInit : Protocol::WorldDeltaType::LocalCopy);
 
 			Channels::updateWorld.SendTo(peer,delta);

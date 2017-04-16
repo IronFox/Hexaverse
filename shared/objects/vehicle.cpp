@@ -496,7 +496,7 @@ namespace Objects
 							Grid::LCellIdI prev = pointOfOrigin;
 							for (const auto&dest : waypoints)
 							{
-								Objects::GetWays(owner->currentState,this,prev,possibilities,dest,true,true,false);
+								Objects::GetWays(owner->knownWorld,this,prev,possibilities,dest,true,true,false);
 								bool found = false;
 								for (index_t j = 0; j < possibilities.numWays; j++)
 								{

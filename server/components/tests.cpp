@@ -1,6 +1,10 @@
 #include <global_root.h>
 #include "tests.h"
 #include <sharedContainer.h>
+#include <globalEvents.h>
+#include <objects/structure/storageStructures.h>
+#include <objects/structure/mine.h>
+#include <objects/structure/vehiclePlant.h>
 
 
 
@@ -104,25 +108,16 @@ namespace Test
 	/*virtual override*/ void	Journal::Run(Random&random)
 	{
 		Grid::TPlanetConfig	config;
-		Objects::FlushAllData();
-		Grid::ResetStructureCounters();
+
+		GlobalEvents::FlushObjects();
 		config.extendedCore.heightScale = 0.f;
 		config.extendedCore.baseHeight = -Grid::CellStack::HalfRange;
 		config.liquidHeight = -Grid::CellStack::HalfRange;
 		config.mountains.baseHeight = 1;
 		config.mountains.heightScale = 1.5f;	//cause turbulence
 		config.RandomizeSeeds(random);
-		Grid::actualWorld.BuildWorld(config);
-		Grid::actualWorld.ExportDiscovered(Grid::initialWorld,Grid::WorldDiscovery::FullTerrain);
-
-
-
-
-
-
-
-		Objects::FlushAllData();
-		Grid::ResetStructureCounters();
+		config.BuildWorld(World::actual);
+		World::actual.ExportDiscovered(World::initial,Grid::WorldDiscovery::FullTerrain);
 	}
 
 
@@ -210,16 +205,15 @@ namespace Test
 	/*virtual override*/ void	AutoTargeting::Run(Random&random)
 	{
 		Grid::TPlanetConfig	config;
-		Objects::FlushAllData();
-		Grid::ResetStructureCounters();
+		GlobalEvents::FlushObjects();
 		config.extendedCore.heightScale = 0.f;
 		config.extendedCore.baseHeight = -Grid::CellStack::HalfRange;
 		config.liquidHeight = -Grid::CellStack::HalfRange;
 		config.mountains.baseHeight = 1;
 		config.mountains.heightScale = 1.5f;	//cause turbulence
 		config.RandomizeSeeds(random);
-		Grid::actualWorld.BuildWorld(config);
-		Grid::actualWorld.ExportDiscovered(Grid::initialWorld,Grid::WorldDiscovery::FullTerrain);
+		config.BuildWorld(World::actual);
+		World::actual.ExportDiscovered(World::initial,Grid::WorldDiscovery::FullTerrain);
 
 
 
@@ -280,7 +274,7 @@ namespace Test
 				v->currentStorage.level[v->turret->ammoType] = v->GetMaxStorageCapacity().level[v->turret->ammoType];
 			#endif
 			faction1->SignalAppearance(generator,t);	//make sure tower can see generator
-			//faction1->currentState = Grid::actualWorld;
+			//faction1->knownWorld = World::actual;
 			bool wouldFire = v->FrontQueuePossibleAttacks();
 			if (wouldFire)
 			{
@@ -329,8 +323,7 @@ namespace Test
 		}
 		turret->explosionRadius.constOverride = original;
 		
-		Objects::FlushAllData();
-		Grid::ResetStructureCounters();
+		GlobalEvents::FlushObjects();
 	}
 
 
@@ -353,8 +346,7 @@ namespace Test
 	/*virtual override*/ void	StorageUnits::Run(Random&random)
 	{
 		Grid::TPlanetConfig	config;
-		Objects::FlushAllData();
-		Grid::ResetStructureCounters();
+		GlobalEvents::FlushObjects();
 
 		Objects::PFaction faction(new Objects::Faction(TUniqueID::Empty()));
 		Objects::Faction::all << faction;
@@ -434,8 +426,7 @@ namespace Test
 				ASSERT_EQUAL__(expected1, fuelContainer1->storage.level[Objects::Resource::Fuel]);
 			}
 		}
-		Objects::FlushAllData();
-		Grid::ResetStructureCounters();
+		GlobalEvents::FlushObjects();
 	}
 
 	/*static*/ void VehiclePlant::EnqueueRandom(Objects::PVehiclePlant&plant, Random&random)
@@ -452,8 +443,7 @@ namespace Test
 	/*virtual override*/ void	VehiclePlant::Run(Random&random)
 	{
 		Grid::TPlanetConfig	config;
-		Objects::FlushAllData();
-		Grid::ResetStructureCounters();
+		GlobalEvents::FlushObjects();
 
 		Objects::PFaction faction(new Objects::Faction(TUniqueID::Empty()));
 		Objects::Faction::all << faction;
@@ -472,7 +462,7 @@ namespace Test
 		const auto&n2 = Grid::low.grid.GetCell(plantAt.stackID).neighborhood;
 		for (int i = 0; i < n2.numNeighbors; i++)
 			if (!Objects::GetStructure(Grid::LCellIdI(n2.neighborID[i], plantAt.height)))
-				Grid::actualWorld.Clear(Grid::LCellIdI(n2.neighborID[i], plantAt.height), 0);	//make space for vehicles
+				World::actual.Clear(Grid::LCellIdI(n2.neighborID[i], plantAt.height), 0);	//make space for vehicles
 
 
 		ASSERT__(mine->IsLinkedToCore());
@@ -506,9 +496,7 @@ namespace Test
 		ASSERT__(!plant->IsEnabled());
 
 		Buffer0<Objects::Choice> choices;
-		bool showArrow, hasArrowCellTarget;
-		TVec3<> arrowFrom;
-		Grid::LCellIdI arrowFromCell;
+		Objects::TChoiceVisualization vis;
 
 		for (int i = 0; i < 100; i++)
 		{
@@ -527,7 +515,7 @@ namespace Test
 				{
 					//void			GetChoices(const PWorldEntity&entity, Vehicle::mode_t activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
 
-					Objects::GetChoices(plant, Objects::PVehicle(),Objects::CursorMode::Idle, choices, showArrow, hasArrowCellTarget, arrowFrom, arrowFromCell);
+					Objects::GetChoices(plant, Objects::PVehicle(),Objects::CursorMode::Idle, choices, vis);
 					ASSERT__(choices.IsNotEmpty());
 					Objects::PVehicle v = plant->GetProduction();
 					Grid::LCellIdI choice = choices[random.NextIndex(choices.Count())].location;
@@ -551,8 +539,7 @@ namespace Test
 			ASSERT__(generator->IsEnabled());
 			ASSERT__(mine->IsEnabled());
 		}
-		Objects::FlushAllData();
-		Grid::ResetStructureCounters();
+		GlobalEvents::FlushObjects();
 	}
 
 	
@@ -594,7 +581,7 @@ namespace Test
 			const auto&n2 = Grid::low.grid.GetCell(plantAt.stackID).neighborhood;
 			for (int i = 0; i < n2.numNeighbors; i++)
 				if (!Objects::GetStructure(Grid::LCellIdI(n2.neighborID[i], plantAt.height)))
-					Grid::actualWorld.Clear(Grid::LCellIdI(n2.neighborID[i], plantAt.height), 0);	//make space for vehicles
+					World::actual.Clear(Grid::LCellIdI(n2.neighborID[i], plantAt.height), 0);	//make space for vehicles
 
 
 			ASSERT__(mine->IsLinkedToCore());

@@ -4,7 +4,9 @@
 #include <protocol.h>
 #include <runtimeConfig.h>
 #include <objects/types.h>
+#include <objects/structure/tower.h>
 #include "../evolver.h"
+
 
 namespace Game
 {

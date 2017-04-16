@@ -198,7 +198,7 @@ namespace Objects
 			count_t blobCnt = 0;
 			{
 				auto&fine = World::actual.cellStack[finer];
-				if (fine.LocalOverwrite(target.height - 1, Grid::CellStack::Cell::Content::Road))
+				if (fine.LocalOverwrite(target.height - 1, Grid::CellStack::Cell::Content::Road,World::actual))
 				{
 					Grid::TagCluster(rebuild, finer);
 					blobCnt++;
@@ -207,7 +207,7 @@ namespace Objects
 					if (!Grid::CellStack::bottom.IsClearOrWaterIgnoreStructure())
 						while (h >= bottom && fine.GetCellI(h).IsClearOrWater())
 						{
-							if (fine.LocalOverwrite(h, Grid::CellStack::Cell::Content::Earth))
+							if (fine.LocalOverwrite(h, Grid::CellStack::Cell::Content::Earth,World::actual))
 							{
 								//Grid::TagCluster(rebuild, n);
 								h--;
@@ -228,7 +228,7 @@ namespace Objects
 				//!Grid::cellStack[n].GetCellI(target.height-2).IsSolid() ||
 						((Grid::IsHighPartOfLow(n, prevCell) || Grid::IsHighPartOfLow(n, nextCell)) && fine.GetCellI(target.height-1).content == Grid::Content::Clear))
 					continue;
-				if (fine.LocalOverwrite(target.height - 1, Grid::CellStack::Cell::Content::Road))
+				if (fine.LocalOverwrite(target.height - 1, Grid::CellStack::Cell::Content::Road,World::actual))
 				{
 					Grid::TagCluster(rebuild, n);
 					blobCnt++;
@@ -237,7 +237,7 @@ namespace Objects
 					if (!Grid::CellStack::bottom.IsClearOrWaterIgnoreStructure())
 						while (h >= bottom && fine.GetCellI(h).IsClearOrWater())
 						{
-							if (fine.LocalOverwrite(h, Grid::CellStack::Cell::Content::Earth))
+							if (fine.LocalOverwrite(h, Grid::CellStack::Cell::Content::Earth,World::actual))
 							{
 								//Grid::TagCluster(rebuild, n);
 								h--;
@@ -257,8 +257,7 @@ namespace Objects
 			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 				if (rebuild[k])
 				{
-					Grid::high.family[k].SetOutdated(v.entityTime);
-					Grid::low.family[k].SetOutdated(v.entityTime);
+					World::actual.SignalFamilyStructureChange(k,v.entityTime);
 				}
 			//	Grid::SeeThrough::Update(Grid::SeeThrough::IsEnabled(), v->atCell, v->atHeight);	//don't change cutoff mode
 			for (int h = hChangedDownTo; h < target.height; h++)
@@ -361,7 +360,7 @@ namespace Objects
 
 			const UINT32 higher = Grid::low.grid.GetCell(target.stackID).higherEquivalent;
 			auto&stack = World::actual.cellStack[higher];
-			if (stack.LocalOverwrite(target.height,Grid::Content::Foundation))
+			if (stack.LocalOverwrite(target.height,Grid::Content::Foundation,World::actual))
 			{
 				Grid::TagCluster(rebuild, higher);
 				World::actual.SignalChange(Grid::HCellIdI(higher,target.height));
@@ -376,7 +375,7 @@ namespace Objects
 				if (ConnectTo(stack2.GetCellI(target.height).content))
 				{
 					UINT32 n = BaseGrid::RequireIntersection(Grid::high.grid.GetCell(higher).neighborhood, Grid::high.grid.GetCell(higher2).neighborhood);
-					if (World::actual.cellStack[n].LocalOverwrite(target.height,Grid::Content::Foundation))
+					if (World::actual.cellStack[n].LocalOverwrite(target.height,Grid::Content::Foundation,World::actual))
 					{
 						Grid::TagCluster(rebuild, n);
 						World::actual.SignalChange(Grid::HCellIdI(n,target.height));
@@ -388,8 +387,7 @@ namespace Objects
 			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 				if (rebuild[k])
 				{
-					Grid::high.family[k].SetOutdated(v.entityTime);
-					Grid::low.family[k].SetOutdated(v.entityTime);
+					World::actual.SignalFamilyStructureChange(k,v.entityTime);
 				}
 
 
@@ -430,7 +428,7 @@ namespace Objects
 					if (cell->height < -Grid::CellStack::HalfRange || cell->height >= Grid::CellStack::HalfRange)
 						continue;
 
-					if (World::actual.cellStack[cell->stackID].LocalOverwrite(cell->height,Grid::Content::Foundation))
+					if (World::actual.cellStack[cell->stackID].LocalOverwrite(cell->height,Grid::Content::Foundation,World::actual))
 					{
 						Grid::TagCluster(rebuild, cell->stackID);
 						World::actual.SignalChange(*cell);
@@ -463,7 +461,7 @@ namespace Objects
 					if (cell->height < -Grid::CellStack::HalfRange || cell->height >= Grid::CellStack::HalfRange)
 						continue;
 
-					if (World::actual.cellStack[cell->stackID].MakeLocalHole(cell->height))
+					if (World::actual.cellStack[cell->stackID].MakeLocalHole(cell->height,World::actual))
 					{
 						Grid::TagCluster(rebuild, cell->stackID);
 						World::actual.SignalChange(*cell);
@@ -474,8 +472,7 @@ namespace Objects
 			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 				if (rebuild[k])
 				{
-					Grid::high.family[k].SetOutdated(v.entityTime);
-					Grid::low.family[k].SetOutdated(v.entityTime);
+					World::actual.SignalFamilyStructureChange(k,v.entityTime);
 				}
 
 			SignalClusterAndNeighborsChange(target,v.entityTime);
@@ -928,7 +925,7 @@ namespace Objects
 
 
 			count_t blobCnt = 0;
-			if (World::actual.cellStack[finer].MakeLocalHole(target.height))
+			if (World::actual.cellStack[finer].MakeLocalHole(target.height,World::actual))
 			{
 				Grid::TagCluster(rebuild, finer);
 				blobCnt++;
@@ -938,7 +935,7 @@ namespace Objects
 				for (int j = 0; j < c.neighborhood.numNeighbors; j++)
 				{
 					UINT32 n = c.neighborhood.neighborID[j];
-					if (World::actual.cellStack[n].MakeLocalHole(target.height))
+					if (World::actual.cellStack[n].MakeLocalHole(target.height,World::actual))
 					{
 						Grid::TagCluster(rebuild, n);
 						blobCnt++;
@@ -953,8 +950,7 @@ namespace Objects
 				if (rebuild[k])
 				{
 				//Grid::high.BakeBlockInstruction(Grid::cellStack,k,0,0);
-					Grid::high.family[k].SetOutdated(v.entityTime);
-					Grid::low.family[k].SetOutdated(v.entityTime);
+					World::actual.SignalFamilyStructureChange(k,v.entityTime);
 				}
 			SignalClusterAndNeighborsChange(target,v.entityTime-Times::Dig,&v);
 			MobilePlacementResult rc = v.PlaceExactlyAt(target, Times::Dig,v.entityTime);
@@ -1305,7 +1301,7 @@ namespace Objects
 			roundsToJobCompletion = 0;
 			resourceCostLeft = 0;
 
-			const World::Data&world = v.owner->currentState;
+			const World::Data&world = v.owner->knownWorld;
 			int speed = v.GetOperationSpeed(GetOperationAffinity());
 			//if (destination != v.location)
 			{
@@ -1439,7 +1435,7 @@ namespace Objects
 
 		/*virtual override*/ bool				Sequence::UpdatePath(const MobileEntity&v, const Grid::LCellIdI&_origin, Grid::LCellIdI&destination)
 		{
-			const World::Data&world = v.owner->currentState;
+			const World::Data&world = v.owner->knownWorld;
 //			Grid::LCellIdI destination = _destination;
 			if (v.IsVehicle())
 			{
@@ -1492,7 +1488,7 @@ namespace Objects
 
 		/*virtual override*/ bool		Sequence::IsImplicitlyDone(MobileEntity&v, const Grid::LCellIdI&_destination) const
 		{
-			const World::Data&world = v.owner->currentState;
+			const World::Data&world = v.owner->knownWorld;
 			Grid::LCellIdI destination = _destination;
 			if (v.IsVehicle())
 			{
@@ -1514,7 +1510,7 @@ namespace Objects
 
 		/*virtual override*/ Sequence::begin_t	Sequence::BeginHere(MobileEntity&v, const Grid::LCellIdI&_destination,bool hasToMoveFirst)
 		{
-			const World::Data&world = v.owner->currentState;
+			const World::Data&world = v.owner->knownWorld;
 			Grid::LCellIdI destination = _destination;
 			if (mode != CursorMode::BuildBridgeMode)
 				while (!world.LowCellIsClearIgnoreStructure(destination))

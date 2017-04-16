@@ -4,14 +4,13 @@
 
 namespace World
 {
-	using namespace Grid;
 
 	class Data
 	{
 		int						lockLevel=0;
 		bool					sensoryValid=true;
 	public:
-		Array<CellStack>		cellStack;
+		Array<Grid::CellStack>	cellStack;
 		bool					structureChanged = true;
 		#ifdef HAS_WINDOW
 			bool				lightingOutdated = true;
@@ -87,19 +86,19 @@ namespace World
 		/**
 		Checks if the specified low-resolution cell is not at all covered (not even partially)
 		*/
-		bool					LowCellIsClear(const LCellIdI&cell)const;
-		String					LowCellReport(const LCellIdI&cell)const;
-		bool					LowCellIsClearOrWater(const LCellIdI&cell)const;
-		bool					LowCellHasStructure(const LCellIdI&cell)const;
-		bool					LowCellIsClearIgnoreStructure(const LCellIdI&cell)const;
+		bool					LowCellIsClear(const Grid::LCellIdI&cell)const;
+		String					LowCellReport(const Grid::LCellIdI&cell)const;
+		bool					LowCellIsClearOrWater(const Grid::LCellIdI&cell)const;
+		bool					LowCellHasStructure(const Grid::LCellIdI&cell)const;
+		bool					LowCellIsClearIgnoreStructure(const Grid::LCellIdI&cell)const;
 		/**
 		Determines the weakest and strongest content types found in the specified low-resolution cell
 		@param includeUnknown Consider unknown blocks for outWeakest and outStrongest. If set false, outStrongest and outWeakest may still end up being unknown, if all are unknown
 		@return true, if any Content::Unknown blocks were encountered, false otherwise
 		*/
-		bool					GetStrengthRange(const LCellIdI&cell, Content&outWeakest, Content&outStrongest, bool includeUnknown) const;
+		bool					GetStrengthRange(const Grid::LCellIdI&cell, Grid::Content&outWeakest, Grid::Content&outStrongest, bool includeUnknown) const;
 
-		bool					IsRoad(const LCellIdI&, bool ignoreClearCellsOnEdge) const;
+		bool					IsRoad(const Grid::LCellIdI&, bool ignoreClearCellsOnEdge) const;
 
 		void					FlushAllData(bool resetVisibility);
 		/**
@@ -109,22 +108,22 @@ namespace World
 		@return true if anything changed
 		*/
 		bool					ResetStructureCounters(bool resetVisibility, BaseGrid::FamiliesChanged*changedFamilies=nullptr);
-		void					ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDelta>&data0, bool initialization);
-		void					ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDeltaBlock>&data0, bool initialization, bool actualWorld);
+		void					ApplyFamilyDelta(BYTE family, const Array<Grid::CellStack::TTypeDelta>&data0, bool initialization);
+		void					ApplyFamilyDelta(BYTE family, const Array<Grid::CellStack::TTypeDeltaBlock>&data0, bool initialization, bool actualWorld);
 		//void					ApplyFamilyDelta(Array<CellStack>&stacks, BYTE family, const Array<CellStack::TTypeDeltaBlock>&data0, const Array<CellStack::TStructCountDeltaBlock>&data1, bool initialization);
 
 		/**
 			Signals that the fine geometry in and on the edge of the specified cell has changed.
 			This and horizontally neighboring cells will be updated (TODO)
 		*/
-		void					SignalChange(const LCellIdI&)	{}
+		void					SignalChange(const Grid::LCellIdI&)	{}
 		#ifdef HYBRID_GRID
-			void				SignalChange(const HCellIdI&)	{}
+			void				SignalChange(const Grid::HCellIdI&)	{}
 		#endif
 		/**
 			Executes SignalChange() on all low cells up to and including the specified height
 		*/
-		void					SignalChangeUpTo(const LCellIdI&c)
+		void					SignalChangeUpTo(const Grid::LCellIdI&c)
 		{
 			//for (int h = -CellStack::HalfRange; h <= c.height; h++)	//no point now
 				//SignalChange(LCellIdI(c.cellID,h));
@@ -135,15 +134,15 @@ namespace World
 		@brief Clears all high resolution cells intersecting the specified low resolution cell
 		@return true, if any matter was removed, false otherwise
 		*/
-		bool					Clear(const LCellIdI&ch, float atTime);
+		bool					Clear(const Grid::LCellIdI&ch, float atTime);
 		/**
 		Similar to Clear() but fails if lava is attempted to remove
 		@return true, if no lava was hit, false otherwise
 		*/
-		bool					ClearNonLava(const LCellIdI&ch, float atTime);
-		bool					Overwrite(const LCellIdI&ch, Content with,  float atTime);
-		void					Explode(const HCellIdI&,float radius, float atTime);
-		void					Explode(const HCellIdI&id,float radius, bool*familyChanged);
+		bool					ClearNonLava(const Grid::LCellIdI&ch, float atTime);
+		bool					Overwrite(const Grid::LCellIdI&ch, Grid::Content with,  float atTime);
+		void					Explode(const Grid::HCellIdI&,float radius, float atTime);
+		void					Explode(const Grid::HCellIdI&id,float radius, BaseGrid::FamiliesChanged&familyChanged);
 
 		/**
 		Copies the volumetric composition of the local world data to the specified target according to the specified
@@ -151,7 +150,7 @@ namespace World
 		@param[out] target Target container to hold the filtered world data
 		@param discoveryLevel Level of terrain obfuscation to apply to the copy. If set to FullTerrain, then @a target will contain an exact copy of the local world data.
 		*/
-		void					ExportDiscovered(Data&target, WorldDiscovery discoveryLevel) const;
+		void					ExportDiscovered(Data&target, Grid::WorldDiscovery discoveryLevel) const;
 
 		UINT32					TraceSkySensorLayer(UINT32 highCellCenter, UINT32 startingLayer, int penetration) const;
 		int						TraceSkySensorHeight(UINT32 highCellCenter,  int penetration) const;
@@ -161,27 +160,27 @@ namespace World
 			/**
 			Retrieves the average light-level of all high-resolution cells touched by the specified low-resolution cell
 			*/
-			float				GetAverageLightLevel(const LCellIdI&) const;
+			float				GetAverageLightLevel(const Grid::LCellIdI&) const;
 
 			/**
 			Retrieves the highest light-level among all high-resolution cells touched by the specified low-resolution cell
 			*/
-			float				GetHighestLightLevel(const LCellIdI&id) const;
+			float				GetHighestLightLevel(const Grid::LCellIdI&id) const;
 
 
 			void				UpdateLighting();	//updates local and neighbor stack lighting
 			//void				CompileResources(THull<ResourceVertex>&target, index_t cellOffset, count_t cellCount, FClipHeight clipHeight,const Resource*resources, count_t numResources) const;
 			#ifdef HYBRID_GRID
-				void			SignalLightingChange(const HCellIdI&cellID);
+				void			SignalLightingChange(const Grid::HCellIdI&cellID);
 			#endif
-			void				SignalLightingChange(const LCellIdI&cellID);
+			void				SignalLightingChange(const Grid::LCellIdI&cellID);
 			void				OverrideVisibility(short v);
 		#endif
 
-		bool					HasSensor(const LCellIdI&, float radius) const;
+		bool					HasSensor(const Grid::LCellIdI&, float radius) const;
 
-		bool					GridCanSee(const LCellIdI&, int height, bool broad) const;
-		bool					GridCanSeeAny(const HCellIdU&, UINT height) const;
+		bool					GridCanSee(const Grid::LCellIdI&, int height, bool broad) const;
+		bool					GridCanSeeAny(const Grid::HCellIdU&, UINT height) const;
 
 		/**
 		Prevents all calls to CheckChanges() until UnlockChangeChecking() is called.
@@ -215,7 +214,7 @@ namespace World
 
 	extern Data			actual;
 	#ifndef CLIENT
-		extern Volume		initial;
+		extern Data		initial;
 	#endif
 	
 	
@@ -228,13 +227,16 @@ namespace World
 	{
 	private:
 		static Grid::HighSetup::TVolumeDescriptor::Operator op;
+		static Grid::LowSetup::TVolumeDescriptor::Operator lowOp;
 		static Grid::HighSetup::TVolumeDescriptor	volume;
 
-		static void		ApplyVolume(World::Data&v, short changeBy, bool*familyChanged);
+		static void		ApplyVolume(World::Data&v, short changeBy, BaseGrid::FamiliesChanged&changed);
 
-		void			ApplySolidSphereTo(World::Data&v, short change, bool*familyChanged)	const;
-		void			ApplyShadedSphereTo(World::Data&v, short change, bool*familyChanged)	const;
-		void			ApplyShaftTo(World::Data&v, short change, bool*familyChanged, const std::function<UINT32(UINT32 stackID)>&traceFunction)	const;
+		void			ApplySolidSphereTo(World::Data&v, short change, BaseGrid::FamiliesChanged&changed)	const;
+		void			ApplyShadedSphereTo(World::Data&v, short change, BaseGrid::FamiliesChanged&changed)	const;
+		void			MakeShaftVolume(Grid::HighSetup::TVolumeDescriptor&v, const std::function<UINT32(UINT32 stackID)>&traceFunction)	const;
+		void			MakeShaftVolume(Grid::LowSetup::TVolumeDescriptor&v, const std::function<UINT32(UINT32 stackID)>&traceFunction)	const;
+		void			ApplyShaftTo(World::Data&v, short change, BaseGrid::FamiliesChanged&changed, const std::function<UINT32(UINT32 stackID)>&traceFunction)	const;
 	public:
 		/**
 		3d location of the local sensor
@@ -280,10 +282,32 @@ namespace World
 							gridCenter(Grid::ToLayered(center)),
 							radius(radius),type(t)	{}
 
-		void			ApplyTo(World::Data&, short change)	const;
-		void			InsertInto(World::Data&w) const {ApplyTo(w,+1);}
-		void			RemoveFrom(World::Data&w) const {ApplyTo(w,-1);}
+		void			ApplyTo(World::Data&, short change, float t)	const;
+		void			InsertInto(World::Data&w, float t) const {ApplyTo(w,+1,t);}
+		void			RemoveFrom(World::Data&w, float t) const {ApplyTo(w,-1,t);}
+
+
+		/**
+		Determines whether the local sensor contains the specified location.
+		Note that this does not equal actual visibility unless the specified location is off-grid.
+		If within the terrain grid and using a shaded type, the method only checks theoretical visibility.
+		@param loc Location to check
+		@return true if the location can be visibile, false if it is definitely out of scope
+		*/
+		bool			Contains(const Grid::LCellIdI&loc) const;
+
+		/**
+		Computes the maximum sensor volume in low-resolution.
+		The actual volume may diverge considerably, but never exceed the result
+		@param[out] desc Resulting volume
+		*/
+		void			GetMaxVolume(Grid::LowSetup::TVolumeDescriptor&desc) const;
+
+		
 	};
+
+
+	void	Create();
 
 	
 }

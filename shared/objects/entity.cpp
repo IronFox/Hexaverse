@@ -153,7 +153,7 @@ namespace Objects
 
 		const World::Data&visibleWorld =
 		#ifndef CLIENT
-			owner->currentState
+			owner->knownWorld
 		#else
 			World::actual
 		#endif
@@ -172,7 +172,7 @@ namespace Objects
 		}
 		const World::Data&visibleWorld =
 		#ifndef CLIENT
-			owner->currentState
+			owner->knownWorld
 		#else
 			World::actual
 		#endif
@@ -195,7 +195,7 @@ namespace Objects
 		}
 		const World::Data&visibleWorld =
 		#ifndef CLIENT
-			owner->currentState
+			owner->knownWorld
 		#else
 			World::actual
 		#endif
@@ -213,7 +213,7 @@ namespace Objects
 		}
 		const World::Data&visibleWorld =
 		#ifndef CLIENT
-			owner->currentState
+			owner->knownWorld
 		#else
 			World::actual
 		#endif
@@ -498,14 +498,15 @@ namespace Objects
 	{
 		
 		LogEvent(EventSignificance::Common,this,"Registering sensory ("+loc.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
+		World::Sensor	sensor(GetScanningCenter(loc),GetScanningRange(),GetScannerType());
 		#ifdef CLIENT
 			if (isOwnedByMe)
 			{
-				World::Sensor(GetScanningCenter(loc),GetScanningRange(),GetScannerType()).InsertInto(World::actual);
+				sensor.InsertInto(World::actual);
 			}
 
 		#else
-			owner->RegisterSensorCreation(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),loc.height, atTime,checkChangesNow, newContacts);
+			owner->RegisterSensorCreation(sensor, location.height, atTime,checkChangesNow, newContacts);
 		#endif
 	}
 
@@ -513,18 +514,15 @@ namespace Objects
 	{
 		LogEvent(EventClass::Preset::common,this,"Unregistering sensory ("+loc.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
 		
+		World::Sensor	sensor(GetScanningCenter(loc),GetScanningRange(),GetScannerType());
 		#ifndef CLIENT
-			owner->RegisterSensorRemoval(Sphere<>(Grid::ToWorld(loc), GetScanningRange()),loc.height, atTime,checkChangesNow);
-		#endif
-
-		#ifdef CLIENT
+			owner->RegisterSensorRemoval(sensor, location.height, atTime,checkChangesNow);
+		#else
 			if (isOwnedByMe)
 			{
-				World::Sensor(GetScanningCenter(loc),GetScanningRange(),GetScannerType()).RemoveFrom(World::actual);
+				sensor.RemoveFrom(World::actual);
 			}
 		#endif
-
-
 	}
 
 	#ifndef CLIENT

@@ -3,13 +3,12 @@
 
 #include "./components/stdafx.h"
 
-#include "../shared/grid.h"
-#include "../shared/objects.h"
-#include "../shared/sphereGrid.h"
+#include <grid/worldData.h>
+#include <objects.h>
 
 #include "../client/version.h"
-#include "../shared/protocol.h"
-#include "../shared/runtimeConfig.h"
+#include <protocol.h>
+#include <runtimeConfig.h>
 
 //#include <third_party/bz2/bz2.h>
 #include <io/string_file.h>
@@ -432,9 +431,9 @@ namespace ApplicationInterface
 			Sphere<> explosionSphere(center,explosionRadius);
 			Grid::high.GenerateVolume(explosionSphere,volume);
 
-			Objects::ForeachFaction([explosionSphere](const Objects::PFaction&f)
+			Objects::ForeachFaction([explosionSphere,&atTime](const Objects::PFaction&f)
 			{
-				if (f->GridCanSee(volume) || f->CountOffGridCoverage(explosionSphere))
+				if (f->GridCanSee(volume,atTime) || f->CountOffGridCoverage(explosionSphere))
 				{
 					canSee.Append(f);
 				};
@@ -897,14 +896,13 @@ int main( int argc, const char* argv[])
 
 
 		#ifdef _DEBUG
-			//inTestMode = true;
+			inTestMode = true;
 		#endif
 
-
-
-		Grid::Create0();
+		Grid::CreateHighAndLow();
+		Grid::CreateResources();
+		World::Create();
 		Objects::Create();
-		Grid::Create1();
 
 
 		Reflection::Create();

@@ -1042,7 +1042,7 @@ namespace Objects
 					&& CountPossibleAttacks() > 0 
 					&& ExtCanHit(location,target->location,outTarget)
 					//&& d2 > sqr(turret->explosionRadius)
-					&& TraceTrajectory(owner->currentState, target->location,trajectory,iat,ic)==TurretTrajectory::ReachesTarget;
+					&& TraceTrajectory(owner->knownWorld, target->location,trajectory,iat,ic)==TurretTrajectory::ReachesTarget;
 		}
 
 

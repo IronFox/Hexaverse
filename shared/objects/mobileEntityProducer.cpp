@@ -158,10 +158,8 @@ namespace Objects
 		{
 			if (!AwaitsUserInteraction())
 				return PMobileEntity();
+			TChoiceVisualization vis;
 			Buffer0<Choice>	movementChoices;
-			bool showArrow, hasArrowCellTarget;
-			TVec3<>arrowFrom;
-			Grid::LCellIdI arrowFromCell;
 			PMobileEntity production = GetActiveProduction();
 
 
@@ -176,7 +174,7 @@ namespace Objects
 			}
 			ASSERT_NOT_NULL__(parent);
 
-			GetChoices(*parent,production,CursorMode::Idle,movementChoices,showArrow,hasArrowCellTarget,arrowFrom,arrowFromCell);
+			GetChoices(*parent,production,CursorMode::Idle,movementChoices,vis);
 
 			if (movementChoices.IsEmpty())
 			{

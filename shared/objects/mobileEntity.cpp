@@ -7,6 +7,7 @@
 #include "systems.h"
 #include "prototypes.h"
 #include "../runtimeConfig.h"
+#include "structure/tower.h"
 
 namespace Objects
 {
@@ -164,7 +165,7 @@ namespace Objects
 			Task&task = LockedPeekTask();
 			jobStarted = false;
 
-			const World::Data&world = owner->currentState;
+			const World::Data&world = owner->knownWorld;
 			bool isObstructed = false;
 			//if ( focus != location)
 			{
@@ -625,7 +626,7 @@ namespace Objects
 			{
 				TWays	ways;
 
-				GetMobileWays(owner->currentState, this,  location, ways, Grid::LCellIdI::Invalid, false,false);
+				GetMobileWays(owner->knownWorld, this,  location, ways, Grid::LCellIdI::Invalid, false,false);
 				//random first to maybe not make the same mistake twice
 				for (index_t i = 0; i < ways.numWays; i++)
 				{
@@ -936,18 +937,18 @@ namespace Objects
 
 		bool			MobileEntity::PlotCourse(ArrayRef<Grid::LCellIdI> destination, bool detailedPath, bool virtualPlatformMode/*=false*/)
 		{
-			const World::Data&world = owner->currentState;
+			const World::Data&world = owner->knownWorld;
 			if (IsVehicle())
 			{
 				for (index_t i = 0; i < destination.length(); i++)
 				{
 					Grid::LCellIdI&dest = destination[i];
 
-					while (!owner->currentState.LowCellIsClear(dest) && !MobileDestinationStructureHere(dest,*this))
+					while (!world.LowCellIsClear(dest) && !MobileDestinationStructureHere(dest,*this))
 						dest++;
-					while (owner->currentState.LowCellIsClear(dest-1) || MobileDestinationStructureHere(dest-1,*this))
+					while (world.LowCellIsClear(dest-1) || MobileDestinationStructureHere(dest-1,*this))
 						dest--;
-					if (!virtualPlatformMode && !((Vehicle*)this)->CanStandOn(owner->currentState,dest -1,false,false))
+					if (!virtualPlatformMode && !((Vehicle*)this)->CanStandOn(world,dest -1,false,false))
 						return false;
 				}
 			}
@@ -1038,7 +1039,7 @@ namespace Objects
 
 		bool	MobileEntity::PlotFrontCourse(ArrayRef<Grid::LCellIdI> destination, bool detailedPath)
 		{
-			const World::Data&world = owner->currentState;
+			const World::Data&world = owner->knownWorld;
 
 			if (IsVehicle())
 			{
@@ -1268,7 +1269,7 @@ namespace Objects
 			//if (target.isExplicit)
 			//{
 			//	Grid::LCellIdI	possibilities[6 * 3];
-			//	count_t numWays = Objects::GetWays(v->owner->currentState,(const Objects::Vehicle*)v,prev,possibilities,target.target,true,true);
+			//	count_t numWays = Objects::GetWays(v->owner->knownWorld,(const Objects::Vehicle*)v,prev,possibilities,target.target,true,true);
 			//	bool found = false;
 			//	for (index_t i = 0; i < numWays; i++)
 			//		if (possibilities[i] == target.target)
