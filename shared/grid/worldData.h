@@ -1,87 +1,156 @@
 #pragma once
 
 #include "stack.h"
+#include "../observer.h"
 
 namespace World
 {
 
 	class Data
 	{
+		struct TChange
+		{
+			float			lastChange=0;
+			bool			didChange=false;
+
+			void			Set()
+			{
+				didChange = true;
+			}
+
+			void			Set(float t)
+			{
+				lastChange = vmax(lastChange,t);
+				didChange = true;
+			}
+
+			bool			Reset(float&compareTo)
+			{
+				if (!didChange)
+					return false;
+				didChange = false;
+				compareTo = vmax(compareTo,lastChange);
+				lastChange = 0;
+				return true;
+			}
+		};
+
+		struct FamilyState
+		{
+			TChange			structure;
+			#ifndef CLIENT
+				TChange		clientData;
+			#endif
+
+			void			Reset()
+			{
+				structure = TChange();
+				#ifndef CLIENT
+					clientData = TChange();
+				#endif
+			}
+		};
+
+
 		int						lockLevel=0;
 		bool					sensoryValid=true;
-	public:
+		FixedArray<FamilyState,BaseGrid::NumFamilies>		families;
 		Array<Grid::CellStack>	cellStack;
 		bool					structureChanged = true;
 		#ifdef HAS_WINDOW
 			bool				lightingOutdated = true;
-
-
 		#endif
+
+		index_t					observerKey = InvalidIndex;
+
+		void					SignalChange(const BaseGrid::FamiliesChanged&ch, float atTime);
+	public:
 
 		static const constexpr float MaxOutdated = std::numeric_limits<float>::max();
 
-		struct FamilyState
+		Observer<const Data&,const BaseGrid::FamiliesChanged&,float>		onChange;
+
+
+		class ChangeSequence
 		{
-			float			lastChange;
-			bool			coverageChanged, changed;
+		public:
+			/**
+			Sets the specified cell to the specified content.
+			Signals change if altered
+			@return true if the content actually changed
+			*/
+			bool				Change(const Grid::HCellIdI&, Grid::Content type);
+			bool				Change(const Grid::HCellIdU&, Grid::Content type);
+			/**
+			Identical to the above but operates on the currently selected stack
+			*/
+			bool				Change(int height, Grid::Content type);
+			bool				ChangeL(unsigned layer, Grid::Content type);
+			/**
+			Sets the specified cell to Content::Clear.
+			Signals change if altered
+			@return true if the content actually changed
+			*/
+			bool				Clear(const Grid::HCellIdI&);
+			/**
+			Identical to the above but operates on the currently selected stack
+			*/
+			bool				Clear(int height);
+			bool				ClearL(unsigned height);
 
-			/**/			FamilyState() :lastChange(0), coverageChanged(false), changed(false)
+			bool				AnyChanged() const {return changed.AnyChanged() || selectedStackChanged;}
+
+			/**
+			Selects the specified stack for faster manipulation
+			*/
+			void				SelectStack(UINT32);
+
+			void				ApplyFamilyDelta(BaseGrid::family_t family, const Array<Grid::CellStack::TTypeDelta>&data0, bool initialization);
+			void				ApplyFamilyDelta(BaseGrid::family_t family, const Array<Grid::CellStack::TTypeDeltaBlock>&data0, bool initialization, bool actualWorld);
+
+
+			/**/				ChangeSequence(ChangeSequence&&);
+			/**/				~ChangeSequence();
+
+			void				operator=(const ChangeSequence&) = delete;
+			/**/				ChangeSequence(const ChangeSequence&) = delete;
+		private:
+			friend class Data;
+
+			/**/				ChangeSequence(Data*parent, float t):atTime(t),parent(parent)
 			{}
-			void			Reset()
-			{
-				lastChange = 0;
-				coverageChanged = false;
-				changed = false;
-			}
+			void				SignalChange(UINT32 stackID);
+			static bool			DetailChange(Grid::CellStack&stack, unsigned uh, Grid::Content type);
 
-			void			SignalStructureChange(float t)
-			{
-				lastChange = vmax(lastChange,t);
-				changed = true;
-			}
-			void			SignalStructureChange()
-			{
-				changed = true;
-			}
-
-			void			SignalCoverageChange(float t)
-			{
-				lastChange = vmax(lastChange,t);
-				coverageChanged = true;
-			}
-			void			SignalCoverageChange()
-			{
-				lastChange = 0;
-				coverageChanged = true;
-			}
+			const float			atTime;
+			Data				*parent;
+			UINT32				selectedStackIndex=0;
+			Grid::CellStack		*selectedStack=nullptr;
+			bool				selectedStackChanged=false;
+			BaseGrid::FamiliesChanged	changed;
 		};
-		FixedArray<FamilyState,BaseGrid::NumFamilies>		families;
+		friend class ChangeSequence;
+		friend class Sensor;
 
 		/**/					Data();
+		virtual					~Data();
 
 		void					swap(Data&other)
 		{
 			cellStack.swap(other.cellStack);
 			families.swap(other.families);
+			swp(structureChanged,other.structureChanged);
+			swp(sensoryValid,other.sensoryValid);
+			swp(lockLevel,other.lockLevel);
+			swp(observerKey,other.observerKey);
+
 			#ifdef HAS_WINDOW
 				swp(lightingOutdated,other.lightingOutdated);
-				swp(structureChanged,other.structureChanged);
 			#endif
 		}
 
-		bool					FamilyIsOutdated(index_t i) const {return families[i].changed;}
+		bool					FamilyIsOutdated(index_t i) const {return families[i].structure.didChange;}
 		void					UnsetFamilyOutdated(index_t i) {families[i].Reset();}
-		void					SignalFamilyStructureChange(index_t i, float t) {families[i].SignalStructureChange(t);structureChanged=true;}
-		void					SignalFamilyStructureChange(index_t i) {families[i].SignalStructureChange();structureChanged=true;}
-		void					SignalFamilyCoverageChange(index_t i, float t) {families[i].SignalCoverageChange(t);}
-		void					SignalFamilyCoverageChange(index_t i) {families[i].SignalCoverageChange();}
-		void					SetAllFamiliesOutdated(float t)
-		{
-			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-			{
-				SignalFamilyStructureChange(k,t);
-			}
-		}
 
 		/**
 		Checks if the specified low-resolution cell is not at all covered (not even partially)
@@ -100,7 +169,20 @@ namespace World
 
 		bool					IsRoad(const Grid::LCellIdI&, bool ignoreClearCellsOnEdge) const;
 
-		void					FlushAllData(bool resetVisibility);
+		/**
+		Resets all cells to undefined. Leaves sensory as is.
+		Signals change for all families
+		*/
+		void					FlushTerrain();
+
+
+		/**
+		Begins a new sequence of terrain changes.
+		The sequence automatically performs necessary all signalling upon destruction.
+		The local Data instance must be global
+		*/
+		ChangeSequence			BeginChangeSequence(float t) {ASSERT__(IsGlobalInstance()); return ChangeSequence(this,t);}
+
 		/**
 		Resets the structure counters of all cells
 		@param resetVisibility Also clear out any visibility of any cell
@@ -108,26 +190,7 @@ namespace World
 		@return true if anything changed
 		*/
 		bool					ResetStructureCounters(bool resetVisibility, BaseGrid::FamiliesChanged*changedFamilies=nullptr);
-		void					ApplyFamilyDelta(BYTE family, const Array<Grid::CellStack::TTypeDelta>&data0, bool initialization);
-		void					ApplyFamilyDelta(BYTE family, const Array<Grid::CellStack::TTypeDeltaBlock>&data0, bool initialization, bool actualWorld);
-		//void					ApplyFamilyDelta(Array<CellStack>&stacks, BYTE family, const Array<CellStack::TTypeDeltaBlock>&data0, const Array<CellStack::TStructCountDeltaBlock>&data1, bool initialization);
 
-		/**
-			Signals that the fine geometry in and on the edge of the specified cell has changed.
-			This and horizontally neighboring cells will be updated (TODO)
-		*/
-		void					SignalChange(const Grid::LCellIdI&)	{}
-		#ifdef HYBRID_GRID
-			void				SignalChange(const Grid::HCellIdI&)	{}
-		#endif
-		/**
-			Executes SignalChange() on all low cells up to and including the specified height
-		*/
-		void					SignalChangeUpTo(const Grid::LCellIdI&c)
-		{
-			//for (int h = -CellStack::HalfRange; h <= c.height; h++)	//no point now
-				//SignalChange(LCellIdI(c.cellID,h));
-		}
 
 		//these manipulations should only be called on World::actual, since they alter the outdated state of global families
 		/**
@@ -142,8 +205,7 @@ namespace World
 		bool					ClearNonLava(const Grid::LCellIdI&ch, float atTime);
 		bool					Overwrite(const Grid::LCellIdI&ch, Grid::Content with,  float atTime);
 		void					Explode(const Grid::HCellIdI&,float radius, float atTime);
-		void					Explode(const Grid::HCellIdI&id,float radius, BaseGrid::FamiliesChanged&familyChanged);
-
+		
 		/**
 		Copies the volumetric composition of the local world data to the specified target according to the specified
 		world discovery value.
@@ -170,10 +232,10 @@ namespace World
 
 			void				UpdateLighting();	//updates local and neighbor stack lighting
 			//void				CompileResources(THull<ResourceVertex>&target, index_t cellOffset, count_t cellCount, FClipHeight clipHeight,const Resource*resources, count_t numResources) const;
-			#ifdef HYBRID_GRID
-				void			SignalLightingChange(const Grid::HCellIdI&cellID);
-			#endif
-			void				SignalLightingChange(const Grid::LCellIdI&cellID);
+			//#ifdef HYBRID_GRID
+			//	void			SignalLightingChange(const Grid::HCellIdI&cellID);
+			//#endif
+			//void				SignalLightingChange(const Grid::LCellIdI&cellID);
 			void				OverrideVisibility(short v);
 		#endif
 
@@ -183,29 +245,32 @@ namespace World
 		bool					GridCanSeeAny(const Grid::HCellIdU&, UINT height) const;
 
 		/**
-		Prevents all calls to CheckChanges() until UnlockChangeChecking() is called.
+		Prevents all calls to CommitClientChanges() until UnlockClientChanges() is called.
 		Supports nested calls up to depth 16
 		*/
-		void					LockChangeChecking()	{ASSERT_LESS__(lockLevel,16);lockLevel++; }
+		void					LockClientChanges()	{ASSERT_LESS__(lockLevel,16);lockLevel++; }
 		/**
-		Unlocks calls to CheckChanges(). Calls CheckChanges() automatically, if the lock level falls back to zero
+		Unlocks calls to CommitClientChanges(). Calls CommitClientChanges() automatically, if the lock level falls back to zero
 		*/
-		void					UnlockChangeChecking(float t)	{ASSERT_GREATER__(lockLevel,0); if (--lockLevel == 0) CheckChanges(t);}
+		void					UnlockClientChanges(float&t)	{ASSERT_GREATER__(lockLevel,0); if (--lockLevel == 0) CommitClientChanges(t);}
 
 		/**
-		Processes all families for which FamilyState::changed is true, and detects if the visible terrain
-		coverage actually changed. If so, the respective value FamilyState::coverageChange is set true,
-		and FamilyState::lastChange is set to the specified parameter t.
-		Finally, FamilyState::changed is set false for all families.
+		Must only be called on non-global instances.
+		Sensory must be valid.
+		Compares visible changed terrain to actual terrain, copies where necessary, and sets clientData where changed.
 		*/
-		void					CheckChanges(float t);
+		void					CommitClientChanges(float&t);
 
 		/**
 		Affects the cell and its immediate neighbors only
 		*/
-		void					ChangeSensory(const Grid::HCellIdU&center, float t, short changeBy);
-		void					RegisterExplosionCrater(const Grid::HCellIdI&center, float radius, float t);
+		void					ChangeSensory(const Grid::HCellIdU&center, short changeBy);
+		void					RegisterExplosionCrater(const Grid::HCellIdI&center, float radius);
 
+		/**
+		Checks whether or not the local instance is either @a World::initial or @a World::actual
+		*/
+		bool					IsGlobalInstance()	const;
 
 		void					InvalidateSensory() {sensoryValid = false;}
 		void					FlushAndValidateSensory();
@@ -230,13 +295,13 @@ namespace World
 		static Grid::LowSetup::TVolumeDescriptor::Operator lowOp;
 		static Grid::HighSetup::TVolumeDescriptor	volume;
 
-		static void		ApplyVolume(World::Data&v, short changeBy, BaseGrid::FamiliesChanged&changed);
+		static void		ApplyVolume(World::Data&v, short changeBy);
 
-		void			ApplySolidSphereTo(World::Data&v, short change, BaseGrid::FamiliesChanged&changed)	const;
-		void			ApplyShadedSphereTo(World::Data&v, short change, BaseGrid::FamiliesChanged&changed)	const;
+		void			ApplySolidSphereTo(World::Data&v, short change)	const;
+		void			ApplyShadedSphereTo(const World::Data&w, World::Data&v, short change)	const;
 		void			MakeShaftVolume(Grid::HighSetup::TVolumeDescriptor&v, const std::function<UINT32(UINT32 stackID)>&traceFunction)	const;
 		void			MakeShaftVolume(Grid::LowSetup::TVolumeDescriptor&v, const std::function<UINT32(UINT32 stackID)>&traceFunction)	const;
-		void			ApplyShaftTo(World::Data&v, short change, BaseGrid::FamiliesChanged&changed, const std::function<UINT32(UINT32 stackID)>&traceFunction)	const;
+		void			ApplyShaftTo(World::Data&v, short change, const std::function<UINT32(UINT32 stackID)>&traceFunction)	const;
 	public:
 		/**
 		3d location of the local sensor
@@ -282,9 +347,9 @@ namespace World
 							gridCenter(Grid::ToLayered(center)),
 							radius(radius),type(t)	{}
 
-		void			ApplyTo(World::Data&, short change, float t)	const;
-		void			InsertInto(World::Data&w, float t) const {ApplyTo(w,+1,t);}
-		void			RemoveFrom(World::Data&w, float t) const {ApplyTo(w,-1,t);}
+		void			ApplyTo(World::Data&clientWorld, short change)	const;
+		void			InsertInto(World::Data&clientWorld) const {ApplyTo(clientWorld,+1);}
+		void			RemoveFrom(World::Data&clientWorld) const {ApplyTo(clientWorld,-1);}
 
 
 		/**

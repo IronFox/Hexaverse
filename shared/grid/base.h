@@ -73,11 +73,14 @@ public:
 	static UINT32			IsolatedCornerIndex[IsolatedCornerCount];
 	static bool				CornerIsIsolated[12];
 
+
+	/**
+	Keeps track of which families have changed as a result of some operation.
+	The set is initially defined as empty, indicating no change at all.
+	Use iterator access begin()/end() to iterate over all changed families
+	*/
 	struct FamiliesChanged
 	{
-		bool		changed[NumFamilies] = {false};
-
-
 		struct		const_iterator
 		{
 			constexpr		const_iterator()	{}
@@ -104,8 +107,15 @@ public:
 			}
 		};
 
-		const_iterator		begin() const {return const_iterator(this);}
+		const_iterator		begin() const {return anyChanged? const_iterator(this) : end();}
 		constexpr const_iterator	end() const {return const_iterator(nullptr,NumFamilies);}
+
+		void		Set(family_t f)	{changed[f] = true; anyChanged = true;}
+		bool		AnyChanged() const {return anyChanged;}
+
+	private:
+		bool		changed[NumFamilies] = {false};
+		bool		anyChanged = false;
 	};
 
 	struct TCell

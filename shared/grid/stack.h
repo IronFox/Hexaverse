@@ -232,26 +232,17 @@ namespace Grid
 
 
 			short	visibility=0;
-			bool	oldVisible=false, temporarilyVisible=false;
+			bool	temporarilyVisible=false;
 			BYTE	user=0;
 
 			#ifdef HAS_WINDOW
 				Grid::TVisibility	GetVisibility() const {return Grid::TVisibility(visibility>0);}
 			#endif
 
-			bool	Changed(bool reset)
-			{
-				bool visible = temporarilyVisible || visibility > 0;
-				bool before = oldVisible;
-				if (reset)
-					oldVisible = visibility > 0;	//dont include temp here
-				return visible != before;
-			}
-
 			void	AlterVisibility(short change)
 			{
 				visibility += change;
-				if (change >= 0)
+				if (change >= 0)	//==0 is a special case triggering temporary visibility but leaving actual visibility unchanged
 				{
 					temporarilyVisible = true;
 				}
@@ -446,9 +437,6 @@ namespace Grid
 			#endif
 		#endif
 
-		bool			MakeLocalHole(int h, World::Data&owner);
-
-		bool			LocalOverwrite(int h, Cell::Content type, World::Data&owner);
 
 		/**
 		Attempts to find the most applicable ground relative to the given location.

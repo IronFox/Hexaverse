@@ -20,23 +20,29 @@ namespace World
 
 	void	FlushAllWorldData()
 	{
-		actual.FlushAllData(true);
 		#ifndef CLIENT
-			initial.FlushAllData(true);
+			//GenerateWorldVolume(config,discovery);
+			initial.FlushTerrain();
+			initial.FlushAndValidateSensory();
 		#endif
-
-
+		actual.FlushTerrain();
+		actual.FlushAndValidateSensory();
 	}
+
+
+	/*virtual*/					Data::~Data()
+	{
+		if (!IsGlobalInstance() && !application_shutting_down)
+		{
+			actual.onChange.Unregister(observerKey);
+			observerKey = InvalidIndex;
+		}
+	}
+
 
 	void	Create()
 	{
-		#ifndef CLIENT
-			//GenerateWorldVolume(config,discovery);
-			initial.FlushAllData(true);
-			actual.FlushAllData(true);
-		#else
-			actual.FlushAllData(true);
-		#endif
+		FlushAllWorldData();
 
 
 		#ifdef HAS_WINDOW
@@ -70,7 +76,7 @@ namespace World
 			{
 				rs = true;
 				if (changedFamilies != nullptr)
-					changedFamilies->changed[Grid::high.grid.GetCell(i).family] = true;
+					changedFamilies->Set(Grid::high.grid.GetCell(i).family);
 			}
 		}
 		return rs;
@@ -168,21 +174,21 @@ namespace World
 	
 	
 	}
-
-	HighSetup::TDistanceField	field;
-	void	Data::SignalLightingChange(const HCellIdI&stackID)
-	{
-		lightingOutdated = true;
-		structureChanged = true;
-		const UINT r = CellStack::ToLayer(stackID.height)+1;
-		high.UpdatePlanarDistanceField(stackID.stackID,r,field);
-		for (index_t i = 0; i < HighSetup::TDistanceField::NumEntries; i++)
-			if (field.distance[i] != 0xFFFFFFFF)
-			{
-				cellStack[i].lightingChangedTo = r-field.distance[i];
-				SignalFamilyStructureChange(high.grid.GetCell(i).family);
-			}
-	}
+/*
+		HighSetup::TDistanceField	field;
+		void	Data::SignalLightingChange(const HCellIdI&stackID)
+		{
+			lightingOutdated = true;
+			structureChanged = true;
+			const UINT r = CellStack::ToLayer(stackID.height)+1;
+			high.UpdatePlanarDistanceField(stackID.stackID,r,field);
+			for (index_t i = 0; i < HighSetup::TDistanceField::NumEntries; i++)
+				if (field.distance[i] != 0xFFFFFFFF)
+				{
+					cellStack[i].lightingChangedTo = r-field.distance[i];
+					SignalFamilyStructureChange(high.grid.GetCell(i).family);
+				}
+		}
 
 		#ifdef HYBRID_GRID
 			void	Data::SignalLightingChange(const LCellIdI&stackID)
@@ -199,12 +205,12 @@ namespace World
 						SignalFamilyStructureChange(high.grid.GetCell(i).family);
 					}
 			}
-		#endif
+		#endif*/
 
 	#endif
 
 
-	void	Data::Explode(const HCellIdI&id,float radius, BaseGrid::FamiliesChanged&changed)
+	void	Data::Explode(const HCellIdI&id,float radius, float atTime)
 	{
 		const float3 center = high.cells[id.stackID].centerVertex.xyz * ToRadiusf(0.5f + id.height);
 		const float r2 = sqr(radius);
@@ -220,6 +226,7 @@ namespace World
 
 		bool processed[HighSetup::GridType::CellCount] = {false};
 
+		ChangeSequence seq = BeginChangeSequence(atTime);
 
 		UINT32 current;
 		while (queue >> current)
@@ -227,6 +234,8 @@ namespace World
 			if (processed[current])
 				continue;
 			processed[current] = true;
+			seq.SelectStack(current);
+
 			const TVec3<>&dir = high.cells[current].centerVertex.xyz;
 			TVec3<> lower = dir * ToRadius(-CellStack::HalfRange);
 			TVec3<> upper = dir * ToRadius(CellStack::HalfRange);
@@ -239,7 +248,7 @@ namespace World
 					TVec3<> at = dir * ToRadius(h);
 					if (Vec::quadraticDistance(center,at) < r2)
 					{
-						if (cellStack[current].MakeLocalHole(h,*this))
+						if (seq.Clear(h))
 						{
 							UINT layer = CellStack::ToLayer(h);
 							#ifdef HAS_WINDOW
@@ -257,7 +266,6 @@ namespace World
 					#ifdef HAS_WINDOW
 						changed << current;
 					#endif
-					changed.changed[high.grid.GetCell(current).family] = true;
 				}
 
 				const auto&n = high.grid.GetCell(current).neighborhood;
@@ -300,20 +308,6 @@ namespace World
 	
 	}
 
-	void	Data::Explode(const HCellIdI&id,float radius, float atTime)
-	{
-		BaseGrid::FamiliesChanged changed;
-		Explode(id,radius,changed);
-		foreach (changed,c)
-		{
-			SignalFamilyStructureChange(*c,atTime);
-			structureChanged = true;
-			#ifdef HAS_WINDOW
-				lightingOutdated = true;
-			#endif
-		}
-
-	}
 
 
 	void					Data::ExportDiscovered(Data&target, WorldDiscovery discoveryLevel) const
@@ -633,127 +627,117 @@ namespace World
 	}
 
 
+	Data::ChangeSequence::ChangeSequence(ChangeSequence&&other):
+			atTime(other.atTime),parent(other.parent),
+			selectedStack(other.selectedStack),selectedStackChanged(other.selectedStackChanged),selectedStackIndex(other.selectedStackIndex)
+	{
+		other.parent = nullptr;
+	}
+
+
+	void				Data::ChangeSequence::SignalChange(UINT32 stackID)
+	{
+		changed.Set(Grid::high.grid.GetCell(stackID).family);
+	}
+
+
+	void			Data::SignalChange(const BaseGrid::FamiliesChanged&changed, float atTime)
+	{
+		if (!changed.AnyChanged())
+			return;
+		foreach (changed,c)
+		{
+			families[*c].structure.Set(atTime);
+		}
+		structureChanged = true;
+		#ifdef CLIENT
+			lightingOutdated = true;
+		#endif
+		onChange(*this,changed,atTime);
+	}
+
+	Data::ChangeSequence::~ChangeSequence()
+	{
+		if (parent)
+		{
+			if (selectedStack && selectedStackChanged)
+			{
+				SignalChange(selectedStackIndex);
+			}
+			parent->SignalChange(changed,atTime);
+		}
+	}
+
+
 
 
 	bool	Data::Clear(const LCellIdI&ch, float atTime)
 	{
+		ChangeSequence seq = BeginChangeSequence(atTime);
 		#ifdef HYBRID_GRID
 			index_t finer = Grid::low.grid.GetCell(ch.stackID).higherEquivalent;
 			const auto&c = Grid::high.grid.GetCell(finer);
 		#else
 			index_t finer = ch.stackID;
 		#endif
-		bool rebuild[BaseGrid::NumFamilies] = { false };
 
 		count_t blobCnt = 0;
-		if (cellStack[finer].MakeLocalHole(ch.height,*this))
-		{
-			TagCluster(rebuild, finer);
-			blobCnt++;
-		}
-		//rebuild[Grid::high.grid.GetCell(finer).family] = true;
+		seq.Clear(Grid::HCellIdI(finer,ch.height));
 		#ifdef HYBRID_GRID
 			for (int j = 0; j < c.neighborhood.numNeighbors; j++)
 			{
 				UINT32 n = c.neighborhood.neighborID[j];
-				if (cellStack[n].MakeLocalHole(ch.height,*this))
-				{
-					TagCluster(rebuild, n);
-					blobCnt++;
-				}
-
+				seq.Clear(Grid::HCellIdI(n,ch.height));
 			}
 		#endif
-		if (blobCnt > 0)
-			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-				if (rebuild[k])
-				{
-				//Grid::high.BakeBlockInstruction(Grid::cellStack,k,0,0);
-					SignalFamilyStructureChange(k,atTime);
-				}
-		return blobCnt > 0;
+		return seq.AnyChanged();
 	}
 
 	bool	Data::ClearNonLava(const LCellIdI&ch, float atTime)
 	{
+		ChangeSequence seq = BeginChangeSequence(atTime);
+
 		#ifdef HYBRID_GRID
 			index_t finer = Grid::low.grid.GetCell(ch.stackID).higherEquivalent;
 			const auto&c = Grid::high.grid.GetCell(finer);
 		#else
 			index_t finer = ch.stackID;
 		#endif
-		bool rebuild[BaseGrid::NumFamilies] = { false };
 
 		if (cellStack[finer].GetCellI(ch.height).content == Content::Lava)
 			return false;
-		bool any = false;
-		if (cellStack[finer].MakeLocalHole(ch.height,*this))
-		{
-			TagCluster(rebuild, finer);
-			any = true;
-		}
-		//rebuild[Grid::high.grid.GetCell(finer).family] = true;
+		seq.Clear(Grid::HCellIdI(finer,ch.height));
 		#ifdef HYBRID_GRID
 			for (int j = 0; j < c.neighborhood.numNeighbors; j++)
 			{
 				UINT32 n = c.neighborhood.neighborID[j];
 				if (cellStack[n].GetCellI(ch.height).content == Content::Lava)
 					return false;
-				if (cellStack[n].MakeLocalHole(ch.height,*this))
-				{
-					TagCluster(rebuild, n);
-					any = true;
-				}
-
+				seq.Clear(Grid::HCellIdI(n,ch.height));
 			}
 		#endif
-		if (any)
-			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-				if (rebuild[k])
-				{
-					SignalFamilyStructureChange(k,atTime);
-				}
 		return true;
 	}
 
 
 	bool	Data::Overwrite(const LCellIdI&ch, Content with,  float atTime)
 	{
+		ChangeSequence seq = BeginChangeSequence(atTime);
 		#ifdef HYBRID_GRID
 			index_t finer = Grid::low.grid.GetCell(ch.stackID).higherEquivalent;
 			const auto&c = Grid::high.grid.GetCell(finer);
 		#else
 			index_t finer = ch.stackID;
 		#endif
-		bool rebuild[BaseGrid::NumFamilies] = { false };
-
-		count_t blobCnt = 0;
-		if (cellStack[finer].LocalOverwrite(ch.height,with,*this))
-		{
-			TagCluster(rebuild, finer);
-			blobCnt++;
-		}
-		//rebuild[Grid::high.grid.GetCell(finer).family] = true;
+		seq.Change(Grid::HCellIdI(finer,ch.height),with);
 		#ifdef HYBRID_GRID
 			for (int j = 0; j < c.neighborhood.numNeighbors; j++)
 			{
 				UINT32 n = c.neighborhood.neighborID[j];
-				if (cellStack[n].LocalOverwrite(ch.height,with,*this))
-				{
-					TagCluster(rebuild, n);
-					blobCnt++;
-				}
-
+				seq.Change(Grid::HCellIdI(n,ch.height),with);
 			}
 		#endif
-		if (blobCnt > 0)
-			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-				if (rebuild[k])
-				{
-				//Grid::high.BakeBlockInstruction(Grid::cellStack,k,0,0);
-					SignalFamilyStructureChange(k,atTime);
-				}
-		return blobCnt > 0;
+		return seq.AnyChanged();
 	}
 
 	#ifdef HAS_WINDOW
@@ -817,15 +801,114 @@ namespace World
 
 
 
-	void	Data::ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDeltaBlock>&data0, bool initialization, bool actualWorld)
+	bool				Data::ChangeSequence::Change(const Grid::HCellIdI&at, Grid::Content type)
+	{
+		if (at.height < Grid::CellStack::BottomHeight)
+			return false;
+		return Change(Grid::ToLayered(at),type);
+	}
+	bool				Data::ChangeSequence::Change(const Grid::HCellIdU&at, Grid::Content type)
+	{
+		const unsigned uh = at.layer;
+
+
+		auto&stack = parent->cellStack[at.stackID];
+		if (DetailChange(stack,uh,type))
+		{
+			SignalChange(at.stackID);
+			return true;
+		}
+		return false;
+	}
+
+	/*static*/ bool		Data::ChangeSequence::DetailChange(CellStack&stack, unsigned uh, Grid::Content type)
+	{
+		auto&cell = stack.volumeCell[uh];
+		if (cell.content == type)
+			return false;
+		bool wasSolid = cell.IsOpaque();
+		cell.content = type;
+			
+		#ifdef HAS_WINDOW
+			if (!wasSolid && cell.IsOpaque())
+			{
+				if (stack.lowestOpenCell == (BYTE)uh)
+					while (stack.volumeCell[stack.lowestOpenCell].IsOpaque() && stack.lowestOpenCell < (BYTE)CellStack::Range)
+						stack.lowestOpenCell++;
+
+				stack.highestOpaqueCell = std::max(stack.highestOpaqueCell, (BYTE)uh);
+			}
+			else
+				if (wasSolid && !cell.IsOpaque())
+				{
+					stack.lowestOpenCell = std::min(stack.lowestOpenCell, (BYTE)uh);
+					if (stack.highestOpaqueCell == (BYTE)uh)
+					{
+						while (!stack.volumeCell[stack.highestOpaqueCell].IsOpaque() && stack.highestOpaqueCell > 0)
+							stack.highestOpaqueCell--;
+					}
+				}
+			stack.DebugCheckRange();
+		#endif
+		return true;
+	}
+
+
+	bool				Data::ChangeSequence::ChangeL(unsigned layer, Grid::Content type)
+	{
+		ASSERT_NOT_NULL__(selectedStack);
+		if (DetailChange(*selectedStack,layer,type))
+		{
+			selectedStackChanged = true;
+			return true;
+		}
+		return false;
+	}
+
+	bool				Data::ChangeSequence::Change(int height, Grid::Content type)
+	{
+		if (height < Grid::CellStack::BottomHeight)
+			return false;
+		return ChangeL(Grid::CellStack::ToLayer(height),type);
+	}
+
+	bool				Data::ChangeSequence::Clear(const Grid::HCellIdI&c)
+	{
+		return Change(c,Grid::Content::Clear);
+	}
+
+	bool				Data::ChangeSequence::ClearL(unsigned layer)
+	{
+		return ChangeL(layer,Grid::Content::Clear);
+	}
+
+	bool				Data::ChangeSequence::Clear(int height)
+	{
+		return Change(height,Grid::Content::Clear);
+	}
+
+
+	void				Data::ChangeSequence::SelectStack(UINT32 stackID)
+	{
+		if (selectedStack && selectedStackIndex == stackID)
+			return;
+		if (selectedStackChanged)
+		{
+			SignalChange(selectedStackIndex);
+			selectedStackChanged = false;
+		}
+
+		selectedStack = &parent->cellStack[stackID];
+		selectedStackIndex = stackID;
+	}
+	
+
+	void	Data::ChangeSequence::ApplyFamilyDelta(BaseGrid::family_t family, const Array<CellStack::TTypeDeltaBlock>&data0, bool initialization, bool actualWorld)
 	{
 		ASSERT_LESS__(family, BaseGrid::NumFamilies);
 		const index_t offset = high.grid.GetFamilyOffset(family);
 		const count_t range = high.grid.CountFamilyMembers(family);
 
-		#ifdef HAS_WINDOW
-			Queue<index_t>	changed;
-		#endif
 		bool anyChanged = false;
 		if (data0.IsNotEmpty())
 		{
@@ -837,7 +920,8 @@ namespace World
 					index_t stackIndex = (at % range) + offset;
 					index_t layer = at / range;
 
-					CellStack&stack = cellStack[stackIndex];
+
+					CellStack&stack = parent->cellStack[stackIndex];
 
 					#ifdef _DEBUG
 						if (initialization)
@@ -862,7 +946,7 @@ namespace World
 		}
 	
 		if (anyChanged)
-			InvalidateSensory();
+			changed.Set(family);
 
 		#ifdef CLIENT
 			ASSERT__(actualWorld);	//client only knows one world
@@ -870,35 +954,28 @@ namespace World
 		if (actualWorld)
 		{
 			#ifdef HAS_WINDOW
+				Queue<index_t>	changeQueue;
+
 				if (anyChanged)
 				{
 					for (index_t i = 0; i < range; i++)
-						if (cellStack[i+offset].lightingChangedTo > 0)
+						if (parent->cellStack[i+offset].lightingChangedTo > 0)
 						{
-							cellStack[i+offset].UpdateRange();
-							changed << i+offset;
+							parent->cellStack[i+offset].UpdateRange();
+							changeQueue << i+offset;
 						}
 				}
 			#endif
 
-			if (anyChanged)
-			{
-				SignalFamilyStructureChange(family);
-			}
 
 			#ifdef HAS_WINDOW
 
 				index_t current;
-				while (changed >> current)
+				while (changeQueue >> current)
 				{
-					BYTE h = cellStack[current].lightingChangedTo;
+					BYTE h = parent->cellStack[current].lightingChangedTo;
 					//ASSERT_LESS__(h,CellStack::Range);
 					//if (h+1 >= cellStack[current].lowestOpenCell)
-					{
-						SignalFamilyStructureChange(high.grid.GetCell(current).family);
-						lightingOutdated = true;
-						structureChanged = true;
-					}
 					if (!h)
 						continue;
 					h--;
@@ -910,21 +987,20 @@ namespace World
 					for (BYTE k = 0; k < n.numNeighbors; k++)
 					{
 						UINT32 nid = n.neighborID[k];
-						if (cellStack[nid].lightingChangedTo < h)
+						if (parent->cellStack[nid].lightingChangedTo < h)
 						{
-							cellStack[nid].lightingChangedTo = h;
-							changed << nid;
+							parent->cellStack[nid].lightingChangedTo = h;
+							changeQueue << nid;
 						}
 					}
 				}
 			#endif
 		}
-		//ASSERT_CONCLUSION(data,delta);
 	}
 
 	
 
-	void	Data::ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDelta>&data0, bool initialization)
+	void	Data::ChangeSequence::ApplyFamilyDelta(BaseGrid::family_t family, const Array<CellStack::TTypeDelta>&data0, bool initialization)
 	{
 		const index_t offset = high.grid.GetFamilyOffset(family);
 		const count_t range = high.grid.CountFamilyMembers(family);
@@ -939,7 +1015,7 @@ namespace World
 			const CellStack::TTypeDelta*delta = data0.pointer();
 			for (index_t i = 0; i < range; i++)
 			{
-				CellStack&stack = cellStack[i+offset];
+				CellStack&stack = parent->cellStack[i+offset];
 				bool anyChanged = false;
 				for (index_t j = 0; j < CellStack::Range; j++)
 				{
@@ -968,10 +1044,8 @@ namespace World
 			}
 			ASSERT_CONCLUSION(data0,delta);
 		}
-		SignalFamilyStructureChange(family);
-
 		if (globalChanged)
-			InvalidateSensory();
+			changed.Set(family);
 
 
 		#ifdef HAS_WINDOW
@@ -979,13 +1053,6 @@ namespace World
 			while (changed >> current)
 			{
 				BYTE h = cellStack[current].lightingChangedTo;
-				//ASSERT_LESS__(h,CellStack::Range);
-				//if (h+1 >= cellStack[current].lowestOpenCell)
-				{
-					SignalFamilyStructureChange(high.grid.GetCell(current).family);
-					lightingOutdated = true;
-					structureChanged = true;
-				}
 				if (!h)
 					continue;
 				h--;
@@ -1004,10 +1071,19 @@ namespace World
 					}
 				}
 			}
-
 		#endif
 	}
 
+	bool				Data::IsGlobalInstance()	const
+	{
+		if (this == &actual)
+			return true;
+		#ifndef CLIENT
+			if (this == &initial)
+				return true;
+		#endif
+		return false;
+	}
 
 
 	void				Data::FlushAndValidateSensory()
@@ -1019,45 +1095,46 @@ namespace World
 			for (UINT32 k = 0;  k < Grid::CellStack::Range; k++)
 			{
 				auto&cell = stack.volumeCell[k];
-				cell.oldVisible = false;
 				cell.visibility = 0;
-				cell.temporarilyVisible = false;
 			}
 		}
 		this->sensoryValid = true;
 	}
 
-	void				Data::ChangeSensory(const Grid::HCellIdU&center, float t, short changeBy)
+	void				Data::ChangeSensory(const Grid::HCellIdU&center, short changeBy)
 	{
 		if (SensoryIsInvalid())
 			return;
-		bool familyChanged[BaseGrid::NumFamilies] = { false };
 
 		unsigned bottom = center.layer > 0 ? center.layer - 1 : 0;
 		unsigned top = std::min(Grid::CellStack::Range-1, center.layer + 1);
 
+		#ifdef CLIENT
+			BaseGrid::FamiliesChanged changed;
+		#endif
 
 		const auto&c = high.grid.GetCell(center.stackID);
 		{
-			auto&stack = cellStack[center.stackID];
+			auto&stack = this->cellStack[center.stackID];
 			for (unsigned h = bottom; h <= top; h++)
 				stack.volumeCell[h].AlterVisibility(changeBy);
+			#ifdef CLIENT
+				changed.Set(Grid::high.grid.GetCell(center.stackID).family);
+			#endif
 		}
 
-		familyChanged[c.family] = true;
 		for (int k = 0; k < c.neighborhood.numNeighbors; k++)
 		{
-			familyChanged[high.grid.GetCell(c.neighborhood.neighborID[k]).family] = true;
-
-			auto&stack = cellStack[c.neighborhood.neighborID[k]];
+			auto&stack = this->cellStack[c.neighborhood.neighborID[k]];
 			for (unsigned h = bottom; h <= top; h++)
 				stack.volumeCell[h].AlterVisibility(changeBy);
+			#ifdef CLIENT
+				changed.Set(Grid::high.grid.GetCell(c.neighborhood.neighborID[k]).family);
+			#endif
 		}
-
-
-		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
-			if (familyChanged[i])
-				SignalFamilyStructureChange(i,t);
+		#ifdef CLIENT
+			SignalChange(changed,0);
+		#endif
 	}
 
 	//void				Volume::ChangeSensory(const Grid::HighSetup::TVolumeDescriptor&desc, float t, short changeBy)
@@ -1089,9 +1166,9 @@ namespace World
 				families[i].changed = true;
 	}*/
 
-	void				Data::RegisterExplosionCrater(const Grid::HCellIdI&center, float radius, float t)
+	void				Data::RegisterExplosionCrater(const Grid::HCellIdI&center, float radius)
 	{
-		Sensor(center,0.5f,radius,Sensor::SolidSphere).ApplyTo(*this,0,t);
+		Sensor(center,0.5f,radius,Sensor::SolidSphere).ApplyTo(*this,0);	//causes temporary visibility
 	}
 
 
@@ -1139,11 +1216,11 @@ namespace World
 
 
 
-	void Data::FlushAllData(bool resetVisibility)
+	void Data::FlushTerrain()
 	{
 		for (index_t i = 0; i < cellStack.Count(); i++)
 		{
-			cellStack[i].ZeroInit(resetVisibility);
+			cellStack[i].ZeroInit(false);
 		}
 
 		for (index_t i = 0; i < ARRAYSIZE(families); i++)
@@ -1153,33 +1230,39 @@ namespace World
 
 
 
-	void		Data::CheckChanges(float t)
+	void		Data::CommitClientChanges(float&t)
 	{
 		for (BYTE f = 0; f < BaseGrid::NumFamilies; f++)
 		{
-			if (families[f].changed)
+			if (families[f].structure.Reset(t))
 			{
-				families[f].changed = false;
 				const index_t offset = Grid::high.grid.GetFamilyOffset(f);
 				const count_t range = Grid::high.grid.CountFamilyMembers(f);
 				bool anyChanged = false;
 				Concurrency::parallel_for(offset, offset + range, [this, &anyChanged](index_t i)
 				{
+					CellStack&localStack = cellStack[i];
+					const CellStack&actualStack = actual.cellStack[i];
 					for (unsigned j = 0; j < Grid::CellStack::Range; j++)
 					{
-						CellStack::Cell&cell1 = cellStack[i].volumeCell[j];
-						if (cell1.Changed(true))
-							anyChanged = true;
+						CellStack::Cell&cell1 = localStack.volumeCell[j];
+						if (cell1.TerrainIsVisible())
+						{
+							const CellStack::Cell&source = actualStack.volumeCell[j];
+							if (source.content != cell1.content)
+							{
+								cell1.content = source.content;
+								anyChanged = true;
+							}
+						}
 					}
 				});
 				if (anyChanged)
 				{
-					families[f].coverageChanged = true;
-					families[f].lastChange = t;
+					families[f].clientData.Set(t);
 				}
 			}
 		}
-
 	}
 
 /*
@@ -1201,7 +1284,14 @@ namespace World
 	
 	/**/					Data::Data():cellStack(HighSetup::GridType::CellCount)
 	{
-		FlushAllData(true);
+		this->FlushTerrain();
+		if (!IsGlobalInstance())
+		{
+			observerKey = actual.onChange.Register([this](const Data&,const BaseGrid::FamiliesChanged&fam, float t)
+			{
+				SignalChange(fam,t);
+			});
+		}
 	}
 
 	template <typename Setup>
@@ -1250,10 +1340,10 @@ namespace World
 		MakeShaftVolumeT(Grid::low, v,lowOp, Grid::low.Locate(worldCenter), radius,gridCenter.layer,traceFunction);
 	}
 
-	void			Sensor::ApplyShaftTo(World::Data&v, short change, BaseGrid::FamiliesChanged&changed, const std::function<UINT32(UINT32 stackID)>&traceFunction)	const
+	void			Sensor::ApplyShaftTo(World::Data&v, short change, const std::function<UINT32(UINT32 stackID)>&traceFunction)	const
 	{
 		MakeShaftVolume(volume,traceFunction);
-		ApplyVolume(v,change,changed);
+		ApplyVolume(v,change);
 	}
 
 
@@ -1261,7 +1351,7 @@ namespace World
 	/*static*/ Grid::LowSetup::TVolumeDescriptor::Operator Sensor::lowOp;
 	/*static*/ Grid::HighSetup::TVolumeDescriptor	Sensor::volume;
 
-	void		Sensor::ApplySolidSphereTo(World::Data&v, short changeBy, BaseGrid::FamiliesChanged&familyChanged)	const
+	void		Sensor::ApplySolidSphereTo(World::Data&v, short changeBy)	const
 	{
 		volume.Clear();
 		UINT32 centerStack = this->gridCenter.stackID;
@@ -1297,11 +1387,11 @@ namespace World
 		op.ResetVisited(volume);
 
 
-		ApplyVolume(v, changeBy,familyChanged);
+		ApplyVolume(v, changeBy);
 	}
 
 
-	/*static*/ void	Sensor::ApplyVolume(World::Data&v, short changeBy, BaseGrid::FamiliesChanged&familyChanged)
+	/*static*/ void	Sensor::ApplyVolume(World::Data&v, short changeBy)
 	{
 
 		#ifdef _DEBUG
@@ -1323,7 +1413,6 @@ namespace World
 			if (c->range.IsEmpty())
 				continue;
 			auto&stack = v.cellStack[c->stackID];
-			familyChanged.changed[Grid::high.grid.GetCell(c->stackID).family] = true;
 			for (UINT32 layer = c->range.start; layer < c->range.end; layer++)
 			{
 				stack.volumeCell[layer].AlterVisibility(changeBy);
@@ -1332,7 +1421,7 @@ namespace World
 	}
 
 
-	void		Sensor::ApplyShadedSphereTo(World::Data&v, short change, BaseGrid::FamiliesChanged&familyChanged)	const
+	void		Sensor::ApplyShadedSphereTo(const World::Data&w, World::Data&v, short change)	const
 	{
 		enum
 		{
@@ -1356,6 +1445,7 @@ namespace World
 		Grid::HCellIdU current;
 		while (work >> current)
 		{
+			const auto&s = w.cellStack[current.stackID].volumeCell[current.layer];
 			auto&c = v.cellStack[current.stackID].volumeCell[current.layer];
 			if (c.user&Visited)
 				continue;
@@ -1372,7 +1462,7 @@ namespace World
 			c.user = Visited;
 			marked << current;
 
-			bool translucent = v.cellStack[current.stackID].volumeCell[current.layer].IsClearOrWaterIgnoreStructure();
+			bool translucent = s.IsClearOrWaterIgnoreStructure();
 
 			float visibleWeight=0, totalWeight=0;
 			Grid::high.VisitNeighborsOf(current,[&v,&visibleWeight,&totalWeight, &work,current,d03,c3,translucent](const Grid::HCellIdU&next)
@@ -1426,7 +1516,6 @@ namespace World
 			if (makeVisible)
 			{
 				c.AlterVisibility(change);
-				familyChanged.changed[Grid::high.grid.GetCell(m->stackID).family] = true;
 			}
 		}
 
@@ -1437,40 +1526,33 @@ namespace World
 
 
 
-	void		Sensor::ApplyTo(World::Data&v, short change, float t)	const
+	void		Sensor::ApplyTo(World::Data&v, short change)	const
 	{
 		if (v.SensoryIsInvalid())
 			return;
-		BaseGrid::FamiliesChanged familyChanged;
-
 		const Timer::Time t0 = timer.Now();
 		switch (type)
 		{
 			case SolidSphere:
-				ApplySolidSphereTo(v,change,familyChanged);
+				ApplySolidSphereTo(v,change);
 			break;
 			case ShadedSphere:
-				ApplyShadedSphereTo(v,change,familyChanged);
+				ApplyShadedSphereTo(actual,v,change);
 			break;
 			case SolidCylinder:
-				ApplyShaftTo(v,change,familyChanged,[](UINT32){return 0;});
+				ApplyShaftTo(v,change,[](UINT32){return 0;});
 			break;
 			case ShadedCylinder:
-				ApplyShaftTo(v,change,familyChanged,
-					[this,&v](UINT32 stackID)
+				ApplyShaftTo(v,change,
+					[this](UINT32 stackID)
 					{
-						return v.TraceSkySensorLayer(stackID,gridCenter.layer,this->terrainPenetration);
+						return actual.TraceSkySensorLayer(stackID,gridCenter.layer,this->terrainPenetration);
 					}
 				);
 			break;
 		};
 
 		LogEvent(EventSignificance::PerformanceMeasurement,nullptr,"Sensory change processed in "+String(timer.GetSecondsSince(t0)));
-
-		foreach (familyChanged,f)
-		{
-			v.SignalFamilyStructureChange(*f,t);
-		}
 	}
 
 
