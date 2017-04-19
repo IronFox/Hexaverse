@@ -979,9 +979,9 @@ namespace Objects
 				{
 					float t = 0.f;
 					if (!s && e->IsMobile())
-						e->UnregisterSensory(To<MobileEntity>::Cast(e)->preAnimationLocation,t,false);
+						e->UnregisterSensory(To<MobileEntity>::Cast(e)->preAnimationLocation,t);
 					else
-						e->UnregisterSensory(t,false);
+						e->UnregisterSensory(t);
 					#ifdef THOROUGLY_DEBUG_SENSORY
 						VerifySensory();
 					#endif
@@ -1001,9 +1001,9 @@ namespace Objects
 				{
 					float t = 0.f;
 					if (!s && e->IsMobile())
-						e->RegisterSensory(To<MobileEntity>::Cast(e)->preAnimationLocation,t,false);
+						e->RegisterSensory(To<MobileEntity>::Cast(e)->preAnimationLocation,t);
 					else
-						e->RegisterSensory(t,false);
+						e->RegisterSensory(t);
 					#ifdef THOROUGLY_DEBUG_SENSORY
 						VerifySensory();
 					#endif

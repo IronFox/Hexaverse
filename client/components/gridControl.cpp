@@ -9,14 +9,12 @@
 #include "visual/lighting.h"
 #include "clientEvents.h"
 #include <objects/faction.h>
+#include "network.h"
 
 namespace ClientGrid
 {
 	void	Create()
 	{
-		Grid::CreateHighAndLow();
-		Grid::CreateResources();
-		World::Create();
 
 		#ifdef HAS_WINDOW
 			GlobalEvents::frameAfterCamera << World::RecompileIfNecessary;
@@ -46,15 +44,20 @@ namespace ClientGrid
 	{
 		if (World::actual.SensoryIsInvalid())
 		{
-			World::actual.FlushAndValidateSensory();
-			Objects::ForeachWorldEntity([](const Objects::PWorldEntity&e)
+			if (Network::amSpectator)
+				World::actual.FlushAndValidateSensory(1);
+			else
 			{
-				if (e->isOwnedByMe)
+				World::actual.FlushAndValidateSensory();
+				Objects::ForeachWorldEntity([](const Objects::PWorldEntity&e)
 				{
-					float t= 0;
-					e->RegisterSensory(t);
-				}
-			},false);
+					if (e->isOwnedByMe)
+					{
+						float t= 0;
+						e->RegisterSensory(t);
+					}
+				},false);
+			}
 		}
 
 	}

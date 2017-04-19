@@ -369,7 +369,7 @@ namespace Camera
 		index_t stackID = Grid::high.Locate(scene.location);
 		{
 			int top;
-			if (World::actual.cellStack[stackID].FindTopOccupied(top))
+			if (World::actual.GetStack(stackID).FindTopOccupied(top))
 				ChangeGroundRadius(Grid::ToRadius(top+2));
 		}
 		if (VisualTerrain::SeeThrough::IsEnabled())
@@ -395,7 +395,7 @@ namespace Camera
 		index_t stackID = Grid::high.Locate(scene.location);
 		{
 			int top;
-			if (World::actual.cellStack[stackID].FindTopOccupied(top))
+			if (World::actual.GetStack(stackID).FindTopOccupied(top))
 				ChangeGroundRadius(Grid::ToRadius(top+2));
 		}
 	}

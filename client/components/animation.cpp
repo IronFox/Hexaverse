@@ -1509,9 +1509,9 @@ namespace Animation
 
 				foreach (*worldDelta,block)
 				{
-					BYTE family = block->familyAndLastFlag & 0x7F;
+					BaseGrid::family_t family = block->familyAndLastFlag & 0x7F;
 					//bool last = (block->family & 0x80) != 0;
-					World::actual.ApplyFamilyDelta(family,block->data0,false,true);
+					World::actual.BeginChangeSequence(0).ApplyFamilyDelta(family,block->data0,false,true);
 				}
 				#ifdef HAS_WINDOW
 					World::allowRecompilation = true;

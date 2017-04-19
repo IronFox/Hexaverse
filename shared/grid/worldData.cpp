@@ -85,8 +85,10 @@ namespace World
 
 
 	#ifdef HAS_WINDOW
-	void	Data::UpdateLighting()
+	bool	Data::UpdateLighting(bool force)
 	{
+		if (!lightingOutdated && !force)
+			return false;
 		lightingOutdated = false;
 		Timer::Time t0 = timer.Now();
 
@@ -173,7 +175,7 @@ namespace World
 
 		LogEvent(EventSignificance::PerformanceMeasurement,  "Updated lighting in "+String(timer.GetSecondsSince(t0))+" seconds");
 	
-	
+		return true;
 	}
 /*
 		HighSetup::TDistanceField	field;
@@ -649,8 +651,10 @@ namespace World
 		bool acceptChange = false;
 		#ifdef CLIENT
 			acceptChange = true;
-			if (terrainChanged)
-				lightingOutdated = true;
+			#ifdef HAS_WINDOW
+				if (terrainChanged)
+					lightingOutdated = true;
+			#endif
 		#else
 			acceptChange = !IsGlobalInstance();
 		#endif
@@ -790,12 +794,7 @@ namespace World
 
 	#ifdef HAS_WINDOW
 
-		void	Data::OverrideVisibility(short v)
-		{
-			foreach (cellStack,stack)
-				for (UINT32 l = 0; l < Grid::CellStack::Range; l++)
-					stack->volumeCell[l].visibility = v;
-		}
+
 
 		float	Data::GetAverageLightLevel(const LCellIdI&id) const
 		{
@@ -1038,7 +1037,7 @@ namespace World
 
 	Data::StackAccess::~StackAccess()
 	{
-		#ifdef CLIENT
+		#ifdef HAS_WINDOW
 			if (stack)
 				stack->UpdateRange();
 		#endif
@@ -1218,7 +1217,7 @@ namespace World
 		if (globalChanged)
 		{
 			terrainChanged = true;
-			changed.Set(family);
+			this->changed.Set(family);
 		}
 
 
@@ -1226,7 +1225,7 @@ namespace World
 			index_t current;
 			while (changed >> current)
 			{
-				BYTE h = cellStack[current].lightingChangedTo;
+				BYTE h = parent->cellStack[current].lightingChangedTo;
 				if (!h)
 					continue;
 				h--;
@@ -1238,9 +1237,9 @@ namespace World
 				for (BYTE k = 0; k < n.numNeighbors; k++)
 				{
 					UINT32 nid = n.neighborID[k];
-					if (cellStack[nid].lightingChangedTo < h)
+					if (parent->cellStack[nid].lightingChangedTo < h)
 					{
-						cellStack[nid].lightingChangedTo = h;
+						parent->cellStack[nid].lightingChangedTo = h;
 						changed << nid;
 					}
 				}

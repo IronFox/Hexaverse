@@ -198,10 +198,6 @@ namespace Grid
 
 	void ExtendedPlanetConfig::BuildWorld(World::Data&world) const
 	{
-		#ifdef HAS_WINDOW
-			world.lightingOutdated = true;
-			world.structureChanged = true;
-		#endif
 		world.ResetStructureCounters(true);
 		CellStack::bottom.content = (BYTE)innerCoreType;
 

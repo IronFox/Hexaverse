@@ -521,7 +521,7 @@ namespace Network
 				#endif
 				BYTE family = delta.familyAndLastFlag & 0x7F;
 				bool last = (delta.familyAndLastFlag & 0x80) != 0;
-				World::actual.ApplyFamilyDelta(family,delta.data0,false,true);
+				World::actual.BeginChangeSequence(0).ApplyFamilyDelta(family,delta.data0,false,true);
 
 				#ifdef HAS_WINDOW
 						World::allowRecompilation = last && gameHasBegun;
@@ -807,7 +807,7 @@ namespace Network
 			#ifdef HAS_WINDOW
 				if (amSpectator)
 				{
-					World::actual.OverrideVisibility(1);
+					World::actual.FlushAndValidateSensory(1);
 
 				}
 			#endif
@@ -1397,7 +1397,7 @@ namespace Network
 		client.onSignal = OnSignal;
 		client.onIgnorePackage = OnIgnorePackage;
 
-		Net::initNet();
+		DBG_ASSERT__(Net::initNet());
 		if (RuntimeConfig::udpListen)
 		{
 			broadcastListenSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -1413,7 +1413,8 @@ namespace Network
 				int rc = ::bind(broadcastListenSocket, (const sockaddr*)&me, (int)sizeof(me));
 				if (rc != 0)
 				{
-					LogEvent(EventClass::Preset::operationAborted,nullptr,"Unable to initiate UDP listening for servers on the local area network (maybe another instance of " PRODUCT_NAME " is running already?). Listening will be disabled." );
+					String error = String(Net::err2str(WSAGetLastError()));
+					LogEvent(EventClass::Preset::operationAborted,nullptr,"Unable to initiate UDP listening for servers on the local area network: "+error+" (maybe another instance of " PRODUCT_NAME " is running already?). Listening will be disabled." );
 					RuntimeConfig::udpListen = false;
 					closesocket(broadcastListenSocket);
 					return;

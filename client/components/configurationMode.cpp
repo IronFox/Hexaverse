@@ -200,7 +200,7 @@ namespace ConfigurationMode
 				{
 					st.isLoaded = true;
 					config.BuildWorld(st.copy);
-					st.copy.OverrideVisibility(1);
+					st.copy.FlushAndValidateSensory(1);
 //					ASSERT__(st.copy.cellStack.First().volumeCell[0].content != Grid::Content::Clear);
 				}
 				ActivateDiscovery(forceRebuild, clientWorld);
@@ -1171,7 +1171,7 @@ namespace ConfigurationMode
 		if (serverObjects.IsNotEmpty())
 		{
 			serverObjects.Export();
-			World::actual.OverrideVisibility(1);
+			World::actual.FlushAndValidateSensory(1);
 		}
 		UI::HexGrid::RefreshContacts();
 	}

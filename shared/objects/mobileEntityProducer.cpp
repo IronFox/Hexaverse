@@ -124,7 +124,7 @@ namespace Objects
 				
 			if (c != Grid::LCellIdI::Invalid)
 			{
-				const Grid::CellStack&stack = World::actual.cellStack[Grid::low.grid.GetCell(c.stackID).higherEquivalent];
+				const Grid::CellStack&stack = World::actual.GetStack(Grid::low.grid.GetCell(c.stackID).higherEquivalent);
 				while (stack.GetCellI(c.height).structureCounter > 1)
 					c++;
 				TMatrix4<> sys;

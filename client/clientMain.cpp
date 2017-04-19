@@ -37,6 +37,7 @@
 #include <objects/prototypes.h>
 #include <objects/structure/mine.h>
 #include <objects/structure/laboratory.h>
+#include <boot.h>
 
 #include "components/visual/explosions.h"
 #include "components/visual/objectRendering.h"
@@ -3574,8 +3575,7 @@ int main( int argc, const char* argv[])
 		}
 
 
-		NiceName::Load();
-		ScriptCache::Create();
+		Boot();
 
 		{
 
@@ -3712,9 +3712,7 @@ int main( int argc, const char* argv[])
 			Lighting::Create();
 			VisualTerrain::Create();		//egg-chicken
 			Objects::Renderer::Create();	//chicken-egg
-		#endif
-		Objects::Create();
-		#ifdef HAS_WINDOW
+
 			ConfigurationMode::Create();
 			Objects::Command::RefreshCommands(false);
 		#endif
@@ -3739,11 +3737,6 @@ int main( int argc, const char* argv[])
 			UI::Create();
 		#endif
 
-
-		//#ifdef WHITE_STYLE
-		//	display.SetBackbufferClearColor(1,1,1,0);
-		//#endif
-		Network::Setup();
 
 
 		#ifdef HAS_WINDOW
@@ -3931,12 +3924,11 @@ int main( int argc, const char* argv[])
 			Objects::DestroyComponents();
 		#endif
 		ClientGrid::Destroy();
-		Objects::Destroy();
 		Animation::Destroy();
-		ScriptCache::Destroy();
 
 		application_shutting_down = true;
 
+		GlobalEvents::applicationTerminate();
 
 
 		#ifdef HAS_WINDOW

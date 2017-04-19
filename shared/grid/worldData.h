@@ -236,6 +236,7 @@ namespace World
 		const Grid::CellStack::Cell&	GetCell(const Grid::HCellIdU&id) const { return cellStack[id.stackID].volumeCell[id.layer];}
 		const Grid::CellStack::Cell&	GetCell(const Grid::HCellIdI&id) const { return cellStack[id.stackID].GetCellI(id.height);}
 		const Grid::CellStack&			GetStack(UINT32 stackID) const {return cellStack[stackID];}
+		const Array<Grid::CellStack>&	GetStacks() const {return cellStack;}
 
 
 		/**
@@ -286,13 +287,7 @@ namespace World
 			float				GetHighestLightLevel(const Grid::LCellIdI&id) const;
 
 
-			void				UpdateLighting();	//updates local and neighbor stack lighting
-			//void				CompileResources(THull<ResourceVertex>&target, index_t cellOffset, count_t cellCount, FClipHeight clipHeight,const Resource*resources, count_t numResources) const;
-			//#ifdef HYBRID_GRID
-			//	void			SignalLightingChange(const Grid::HCellIdI&cellID);
-			//#endif
-			//void				SignalLightingChange(const Grid::LCellIdI&cellID);
-			void				OverrideVisibility(short v);
+			bool				UpdateLighting(bool force=false);	//updates local and neighbor stack lighting
 		#endif
 
 		bool					HasSensor(const Grid::LCellIdI&, float radius) const;

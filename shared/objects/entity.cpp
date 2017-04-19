@@ -38,14 +38,14 @@ namespace Objects
 		{
 			return std::min(1.f, 
 					2.f * 
-					float(World::actual.cellStack[
+					float(World::actual.GetStack(
 						#ifdef HYBRID_GRID
 							Grid::low.grid.GetCell(location.stackID).higherEquivalent
 						#else
 							location.stackID
 
 						#endif
-						].GetCellI(location.height).intLightLevel) 
+						).GetCellI(location.height).intLightLevel) 
 					/ 255.f)/**0.75f + 0.25f*/;	//quite the expression, no :P
 		}
 
@@ -481,8 +481,8 @@ namespace Objects
 		{
 			if (from == to)
 				return;
-			UnregisterSensory(from,atTime,false);
-			RegisterSensory(to,atTime,checkChangesNow);	//MUST BE IN THIS ORDER, or sky sensory of satellites and planes breaks
+			UnregisterSensory(from,atTime);
+			RegisterSensory(to,atTime);	//MUST BE IN THIS ORDER, or sky sensory of satellites and planes breaks
 		}
 	#else
 		/*virtual*/ void		WorldEntity::MoveSensoryToCurrentLocation(const Grid::LCellIdI&oldLocation, float&atTime, Buffer0<PWorldEntity>*newContacts/* = nullptr*/)
@@ -502,7 +502,7 @@ namespace Objects
 		#ifdef CLIENT
 			if (isOwnedByMe)
 			{
-				sensor.InsertInto(World::actual);
+				sensor.InsertInto(World::actual,0);
 			}
 
 		#else
@@ -521,7 +521,7 @@ namespace Objects
 		#else
 			if (isOwnedByMe)
 			{
-				sensor.RemoveFrom(World::actual);
+				sensor.RemoveFrom(World::actual,0);
 			}
 		#endif
 	}

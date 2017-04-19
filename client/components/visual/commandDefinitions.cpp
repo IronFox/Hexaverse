@@ -563,9 +563,10 @@ namespace Objects
 						{
 							UINT32 at = v->location.height + Grid::CellStack::HalfRange;
 							UINT32 min = std::max(at,2U)-1;
+							const auto&stack = World::actual.GetStack(i);
 							for (UINT32 j = min; j <= at + 1; j++)
 							{
-								if (World::actual.cellStack[i].volumeCell[j].IsSolid())
+								if (stack.volumeCell[j].IsSolid())
 								{
 									//if (j != at || Grid::vehicleDistanceField.distance[i] > 1)
 									{
@@ -617,9 +618,10 @@ namespace Objects
 						if (Objects::vehicleDistanceField.distance[i] <= 3)
 						{
 							UINT32 at = height + Grid::CellStack::HalfRange;
+							const auto&stack = World::actual.GetStack(i);
 							for (UINT32 j = at - 1; j <= at + 1; j++)
 							{
-								if (!World::actual.cellStack[i].volumeCell[j].IsOccupied())
+								if (!stack.volumeCell[j].IsOccupied())
 								{
 									if (j != at || Objects::vehicleDistanceField.distance[i] > 1)
 									{

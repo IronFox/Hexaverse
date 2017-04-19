@@ -825,7 +825,7 @@ namespace Objects
 						if (e->owner.get() == owner)
 						{
 							float t = 0;
-							e->UnregisterSensory(t,false);
+							e->UnregisterSensory(t);
 						}
 					},false);
 			#endif
@@ -846,7 +846,7 @@ namespace Objects
 					if (e->owner.get() == owner)
 					{
 						float t = 0;
-						e->RegisterSensory(t,false);
+						e->RegisterSensory(t);
 					}
 				},false);
 		#endif

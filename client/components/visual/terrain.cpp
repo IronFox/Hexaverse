@@ -218,7 +218,7 @@ namespace VisualTerrain
 
 
 		for (BYTE i = 0; i < BaseGrid::NumFamilies; i++)
-			BakeBlockInstruction(World::actual.cellStack, i, Clip::NoClip);
+			BakeBlockInstruction(World::actual.GetStacks(), i, Clip::NoClip);
 
 
 
@@ -1354,7 +1354,7 @@ namespace VisualTerrain
 		{
 			BYTE data[sizeof(ResourceCompiler)];	//prevent implicit memset in release mode. i'm serious. visual studio has some funny ideas there...
 			ResourceCompiler&compiler = *(ResourceCompiler*)data;
-			compiler.Setup(World::actual.cellStack.pointer(),&visibility,low.grid.GetCells(),high.grid.GetCells(), low.cells.pointer(),clipHeight,resources, numResources);
+			compiler.Setup(World::actual.GetStacks().pointer(),&visibility,low.grid.GetCells(),high.grid.GetCells(), low.cells.pointer(),clipHeight,resources, numResources);
 			compiler.Compile(i,end,cover,lock);
 		});
 	}
@@ -2568,8 +2568,8 @@ namespace VisualTerrain
 			{
 				if ((newDomain.distance[i] != 0xFFFFFFFF && newHeight) || (newDomain.distance[i] == 0xFFFFFFFF) != (currentCutoffDomain.distance[i] == 0xFFFFFFFF))
 				{
-					BYTE fam = high.grid.GetCell(i).family;
-					World::actual.SignalFamilyStructureChange(fam);
+					BaseGrid::family_t fam = high.grid.GetCell(i).family;
+					VisualTerrain::family[fam].SetOutdated(true,false);
 				}
 			}
 
@@ -2931,11 +2931,11 @@ namespace VisualTerrain
 					familiesRebuilt++;
 					if (SeeThrough::IsEnabled())
 					{
-						BakeBlockInstruction(World::actual.cellStack, k, SeeThrough::ClipHeight);
+						BakeBlockInstruction(World::actual.GetStacks(), k, SeeThrough::ClipHeight);
 					}
 					else
 					{
-						BakeBlockInstruction(World::actual.cellStack, k, Grid::Clip::NoClip);
+						BakeBlockInstruction(World::actual.GetStacks(), k, Grid::Clip::NoClip);
 					}
 				}
 				if (dat.resourceOutdated)
