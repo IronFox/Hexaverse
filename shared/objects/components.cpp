@@ -336,7 +336,7 @@ namespace Objects
 		/*static*/ int				Turret::GetGroundHeight(const Grid::LCellIdI&location)
 		{
 			UINT32 fine = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
-			return World::actual.cellStack[fine].FindTopClearOverNonClear(false);
+			return World::actual.GetStack(fine).FindTopClearOverNonClear(false);
 		}
 
 
@@ -581,7 +581,7 @@ namespace Objects
 
 				cellAt = Grid::high.Locate(b,cellAt);
 				int h = (Grid::HeightFloorFromRadius(fy));
-				if (world.cellStack[cellAt].GetCellI(h).IsOccupied())
+				if (world.GetStack(cellAt).GetCellI(h).IsOccupied())
 				{
 					float3 impactAt = b * (fy);
 					return Vec::quadraticDistance(impactAt, there.worldLocation);
@@ -676,7 +676,7 @@ namespace Objects
 
 					cellAt = Grid::high.Locate(b,cellAt);
 					int h = (Grid::HeightFloorFromRadius(fy));
-					if (actualWorld.cellStack[cellAt].GetCellI(h).IsOccupied())
+					if (actualWorld.GetStack(cellAt).GetCellI(h).IsOccupied())
 					{
 						impactAt = b * (fy);
 						impactCell = Grid::HCellIdI(cellAt,h);
@@ -735,7 +735,7 @@ namespace Objects
 
 				cellAt = Grid::high.Locate(b,cellAt);
 				int h = (Grid::HeightFloorFromRadius(fy));
-				if (world.cellStack[cellAt].GetCellI(h).IsOccupied())
+				if (world.GetStack(cellAt).GetCellI(h).IsOccupied())
 				{
 					impactAt = b * (fy);
 					impactCell = Grid::HCellIdI(cellAt,h);

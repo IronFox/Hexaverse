@@ -293,7 +293,6 @@ namespace Grid
 			{
 				volumeCell[i].visibility = 0;
 				volumeCell[i].temporarilyVisible = false;
-				volumeCell[i].oldVisible = false;
 			}
 
 		}
@@ -322,88 +321,6 @@ namespace Grid
 			}
 		}
 		return rs;
-	}
-
-
-	bool			CellStack::MakeLocalHole(int h, World::Data&owner)
-	{
-		UINT uh = ToLayer(h);
-		if (uh < Range)
-		{
-			if (volumeCell[uh].content != Content::Clear)
-			{
-				volumeCell[uh].content = Cell::Content::Clear;
-				owner.InvalidateSensory();
-
-				#ifdef HAS_WINDOW
-					lowestOpenCell = std::min(lowestOpenCell, (BYTE)uh);
-					if (highestOpaqueCell == (BYTE)uh)
-					{
-						while (!volumeCell[highestOpaqueCell].IsOpaque() && highestOpaqueCell > 0)
-							highestOpaqueCell--;
-					}
-					owner.structureChanged = true;
-					owner.lightingOutdated = true;
-					DebugCheckRange();
-				#endif
-				return true;
-			}
-		}
-		return false;
-	}
-
-
-	bool			CellStack::LocalOverwrite(int h, Cell::Content type, World::Data&owner)
-	{
-		UINT uh = ToLayer(h);
-		if (uh < Range)
-		{
-			if (volumeCell[uh].content != type)
-			{
-				#if 0
-					//this would be nice to capture some errors...
-					//sadly, foundations also register as structures although they are submerged most of the time.
-					//even if type was limited to foundation, mines would instantly trigger an asseration violation.
-					//damn
-					#if defined _DEBUG && !defined CLIENT
-					if (type != Content::Clear && volumeCell[uh].content == Content::Clear)
-					{
-						ASSERT_EQUAL1__(volumeCell[uh].structureCounter,0, uh);
-					}
-					#endif
-				#endif /*0*/
-				bool wasSolid = volumeCell[uh].IsOpaque();
-				volumeCell[uh].content = type;
-				owner.InvalidateSensory();
-
-			
-				#ifdef HAS_WINDOW
-					if (!wasSolid && volumeCell[uh].IsOpaque())
-					{
-						if (lowestOpenCell == (BYTE)uh)
-							while (volumeCell[lowestOpenCell].IsOpaque() && lowestOpenCell < (BYTE)Range)
-								lowestOpenCell++;
-
-						highestOpaqueCell = std::max(highestOpaqueCell, (BYTE)uh);
-					}
-					else
-						if (wasSolid && !volumeCell[uh].IsOpaque())
-						{
-							lowestOpenCell = std::min(lowestOpenCell, (BYTE)uh);
-							if (highestOpaqueCell == (BYTE)uh)
-							{
-								while (!volumeCell[highestOpaqueCell].IsOpaque() && highestOpaqueCell > 0)
-									highestOpaqueCell--;
-							}
-						}
-					owner.structureChanged = true;
-					owner.lightingOutdated = true;
-					DebugCheckRange();
-				#endif
-				return true;
-			}
-		}
-		return false;
 	}
 
 	int CellStack::FindMostApplicableGround(int h, bool canStandOnWater) const

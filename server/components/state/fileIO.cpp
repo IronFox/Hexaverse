@@ -984,6 +984,8 @@ namespace FileIO
 	}
 
 
+	static World::DeltaContainer staticDeltaContainer;
+
 	void SerializeToChunk(const ISerializable&data, Riff::Chunk*target)
 	{
 		static Array<BYTE> buffer;
@@ -996,13 +998,9 @@ namespace FileIO
 
 	void	WriteToListChunk(World::Data&inData, Riff::Chunk&outChunk)
 	{
-		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-		{
-			TCP::Serial<Protocol::WorldDelta>	delta;
-			delta.Ref().timestamp.rightNow = true;
-			Protocol::GenerateWorldDelta(&inData, delta.Ref(),k,true,k+1 == BaseGrid::NumFamilies,Protocol::WorldDeltaType::LocalCopy);
-			SerializeToChunk(delta.Ref().data0,outChunk.AppendBlock(RID::worldTypeChunk));
-		}
+		staticDeltaContainer.CompressState(inData,Protocol::Timestamp(true,0));
+		for (BaseGrid::family_t k = 0; k < BaseGrid::NumFamilies; k++)
+			SerializeToChunk(staticDeltaContainer.delta[k].data0,outChunk.AppendBlock(RID::worldTypeChunk));
 	}
 
 
@@ -1010,8 +1008,10 @@ namespace FileIO
 	{
 		Protocol::TypeDeltaArray	typeArray;
 
+		World::Data::ChangeSequence seq = outData.BeginChangeSequence(0);
+
 		const Riff::Chunk*child;
-		BYTE atFamily = 0;
+		BaseGrid::family_t atFamily = 0;
 		if (child = list.GetFirstChild())
 			do
 			{
@@ -1019,7 +1019,7 @@ namespace FileIO
 				{
 					ASSERT__(DeserializeFromMemory(typeArray,child->pointer(),child->size(),false));
 					ASSERT_LESS__(atFamily, BaseGrid::NumFamilies);
-					outData.ApplyFamilyDelta(atFamily,typeArray,false,true);
+					seq.ApplyFamilyDelta(atFamily,typeArray,false,true);
 
 					atFamily++;
 				}
@@ -1337,7 +1337,7 @@ namespace FileIO
 									faction.reset(new Objects::Faction(factionID));
 									Objects::Faction::all << faction;
 
-									faction->knownWorld.FlushAllData(true);
+									//faction->knownWorld.FlushTerrain();	unnecessary
 									//foreach (faction->knownWorld,stat)
 									//	stat->ZeroInit();
 								}
@@ -1380,39 +1380,43 @@ namespace FileIO
 
 								//BYTE k = 0;
 								//Protocol::WorldDelta	delta;
-								Riff::Chunk*child;
-
-								Protocol::TypeDeltaArray	typeArray;
-								//Riff::Chunk*child;
-								BYTE atFamily = 0;
-
-								if (child = list->First())
-									do
-									{
-									
-											//factionWorldTypeChunk("WTCK"),
-											//factionWorldCounterChunk("WCCK"),
-
-										if (child->IsID(RID::factionWorldTypeChunk))
-										{
-											ASSERT__(DeserializeFromMemory(typeArray,child->pointer(),child->size(),false));
-											ASSERT_LESS__(atFamily, BaseGrid::NumFamilies);
-											faction->knownWorld.ApplyFamilyDelta(atFamily,typeArray,false,false);
-											atFamily++;
-										}
-										//elif (child->IsID(RID::factionWorldCounterChunk))
-										//{
-										//	ASSERT__(DeserializeFromMemory(countArray,child->pointer(),child->size(),false));
-										//	ASSERT_LESS__(atFamily, BaseGrid::NumFamilies);
-										//	faction->knownWorld.ApplyFamilyDelta(atFamily,typeArray,countArray,false,false);
-
-										//	atFamily++;
-										//}
 								
-									}
-									while (child = list->Next());
-								ASSERT_EQUAL__(atFamily,BaseGrid::NumFamilies);
+								{
+									Riff::Chunk*child;
 
+									auto seq = faction->knownWorld.BeginChangeSequence(0);
+									Protocol::TypeDeltaArray	typeArray;
+									//Riff::Chunk*child;
+									BaseGrid::family_t atFamily = 0;
+
+									if (child = list->First())
+										do
+										{
+									
+												//factionWorldTypeChunk("WTCK"),
+												//factionWorldCounterChunk("WCCK"),
+
+											if (child->IsID(RID::factionWorldTypeChunk))
+											{
+												ASSERT__(DeserializeFromMemory(typeArray,child->pointer(),child->size(),false));
+												ASSERT_LESS__(atFamily, BaseGrid::NumFamilies);
+												seq.ApplyFamilyDelta(atFamily,typeArray,false,false);
+												atFamily++;
+											}
+											//elif (child->IsID(RID::factionWorldCounterChunk))
+											//{
+											//	ASSERT__(DeserializeFromMemory(countArray,child->pointer(),child->size(),false));
+											//	ASSERT_LESS__(atFamily, BaseGrid::NumFamilies);
+											//	faction->knownWorld.ApplyFamilyDelta(atFamily,typeArray,countArray,false,false);
+
+											//	atFamily++;
+											//}
+								
+										}
+										while (child = list->Next());
+									ASSERT_EQUAL__(atFamily,BaseGrid::NumFamilies);
+
+								}
 
 								Riff::Chunk*compressed = list->FindFirst(RID::resourcesDiscoveredCompressed);
 								if (compressed)
@@ -1658,15 +1662,11 @@ namespace FileIO
 			}
 
 
+			staticDeltaContainer.CompressState(faction->knownWorld,Protocol::Timestamp(true,0));
 
 			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 			{
-				TCP::Serial<Protocol::WorldDelta>	delta;
-				delta.Ref().timestamp.rightNow = true;
-				Protocol::GenerateWorldDelta(&faction->knownWorld, delta.Ref(),k,true,k+1 == BaseGrid::NumFamilies,Protocol::WorldDeltaType::LocalCopy);
-				delta.Ref().timestamp.atTime = 0;
-
-				SerializeToChunk(delta.Ref().data0, factionSection->AppendBlock(RID::factionWorldTypeChunk));
+				SerializeToChunk(staticDeltaContainer.delta[k].data0, factionSection->AppendBlock(RID::factionWorldTypeChunk));
 			}
 
 			static Buffer0<UINT32>	final;
@@ -1683,7 +1683,7 @@ namespace FileIO
 				if (final.Count()*4 < faction->knownResources.resourcesDiscovered.Count())
 					factionSection->AppendBlock(RID::resourcesDiscoveredCompressed)->SetData(final.pointer(),final.Count()*4);	//resource discovered - compressed
 				else
-					factionSection->AppendBlock(RID::resourcesDiscoveredFull)->SetData(faction->knownResources.resourcesDiscovered);	//resource discovered - full
+					factionSection->AppendBlock(RID::resourcesDiscoveredFull)->SetData(faction->knownResources.resourcesDiscovered.ToRef());	//resource discovered - full
 			}
 
 

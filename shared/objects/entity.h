@@ -523,15 +523,15 @@ namespace Objects
 			health -= damageLevel;
 		}
 
-		void					RegisterSensory(float&atTime, bool checkChangesNow=true) {RegisterSensory(location,atTime,checkChangesNow);}
-		void					UnregisterSensory(float&atTime, bool checkChangesNow=true)  {UnregisterSensory(location,atTime,checkChangesNow);}
+		void					RegisterSensory(float&atTime) {RegisterSensory(location,atTime);}
+		void					UnregisterSensory(float&atTime)  {UnregisterSensory(location,atTime);}
 
-		virtual void			RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true, Buffer0<PWorldEntity>*newContacts = nullptr);
-		virtual void			UnregisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true);
+		virtual void			RegisterSensory(const Grid::LCellIdI&loc, float&atTime, Buffer0<PWorldEntity>*newContacts = nullptr);
+		virtual void			UnregisterSensory(const Grid::LCellIdI&loc, float&atTime);
 		#ifdef CLIENT
 			void				MoveSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to, float&atTime, bool checkChangesNow=true);
 		#else
-			virtual void		MoveSensoryToCurrentLocation(const Grid::LCellIdI&oldLocation, float&atTime, bool checkChangesNow=true, Buffer0<PWorldEntity>*newContacts = nullptr);
+			virtual void		MoveSensoryToCurrentLocation(const Grid::LCellIdI&oldLocation, float&atTime, Buffer0<PWorldEntity>*newContacts = nullptr);
 
 		#endif
 

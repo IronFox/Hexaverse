@@ -168,7 +168,6 @@ namespace Objects
 			World::actual.Clear(focus,v.entityTime);
 			if (v.IsVehicle() && ((Vehicle&)v).base->requirements == Component::VehicleBase::Requirement::Water)
 					World::actual.Overwrite(focus-1,Grid::Content::Water,v.entityTime);
-			SignalClusterAndNeighborsChange(focus,v.entityTime);
 			if (World::actual.LowCellIsClear(focus))
 			{
 				if (v.PlaceExactlyAt(focus,Times::Dig,v.entityTime) == MobilePlacementResult::PlacementFailedMobileDestroyed)
@@ -188,80 +187,37 @@ namespace Objects
 
 			const UINT32 finer = Grid::low.grid.GetCell(target.stackID).higherEquivalent;
 			const auto&c = Grid::high.grid.GetCell(finer);
-			bool rebuild[BaseGrid::NumFamilies] = { false };
+			int bottom = std::max(Grid::CellStack::BottomHeight, target.height-2);
 
-			int hChangedDownTo = target.height-1;
+			auto seq = World::actual.BeginChangeSequence(v.entityTime);
 
-			//int bottom = -Grid::CellStack::HalfRange;
-			int bottom = std::max(-Grid::CellStack::HalfRange, target.height-2);
-
-			count_t blobCnt = 0;
 			{
-				auto&fine = World::actual.cellStack[finer];
-				if (fine.LocalOverwrite(target.height - 1, Grid::CellStack::Cell::Content::Road,World::actual))
+				seq.SelectStack(finer);
+				if (seq.Change(target.height - 1, Grid::Content::Road))
 				{
-					Grid::TagCluster(rebuild, finer);
-					blobCnt++;
-
 					int h = target.height-2;
 					if (!Grid::CellStack::bottom.IsClearOrWaterIgnoreStructure())
-						while (h >= bottom && fine.GetCellI(h).IsClearOrWater())
-						{
-							if (fine.LocalOverwrite(h, Grid::CellStack::Cell::Content::Earth,World::actual))
-							{
-								//Grid::TagCluster(rebuild, n);
-								h--;
-								blobCnt++;
-								hChangedDownTo = std::min(hChangedDownTo,h);
-							}
-							else
-								break;
-						}
+						while (h >= bottom && seq.ChangeConditionally(h,Grid::Content::Earth,World::Condition::IsClearOrWater))
+							h--;
 				}
 			}
-			//rebuild[Grid::high.grid.GetCell(finer).family] = true;
 			for (int j = 0; j < c.neighborhood.numNeighbors; j++)
 			{
 				UINT32 n = c.neighborhood.neighborID[j];
-				auto&fine = World::actual.cellStack[n];
+				seq.SelectStack(n);
 				if (prevCell != target.stackID &&
-				//!Grid::cellStack[n].GetCellI(target.height-2).IsSolid() ||
-						((Grid::IsHighPartOfLow(n, prevCell) || Grid::IsHighPartOfLow(n, nextCell)) && fine.GetCellI(target.height-1).content == Grid::Content::Clear))
-					continue;
-				if (fine.LocalOverwrite(target.height - 1, Grid::CellStack::Cell::Content::Road,World::actual))
+					((Grid::IsHighPartOfLow(n, prevCell) || Grid::IsHighPartOfLow(n, nextCell)) && seq.GetCellI(target.height-1).content == Grid::Content::Clear))
+						continue;
+				if (seq.Change(target.height - 1, Grid::Content::Road))
 				{
-					Grid::TagCluster(rebuild, n);
-					blobCnt++;
-
 					int h = target.height-2;
 					if (!Grid::CellStack::bottom.IsClearOrWaterIgnoreStructure())
-						while (h >= bottom && fine.GetCellI(h).IsClearOrWater())
-						{
-							if (fine.LocalOverwrite(h, Grid::CellStack::Cell::Content::Earth,World::actual))
-							{
-								//Grid::TagCluster(rebuild, n);
-								h--;
-								blobCnt++;
-								hChangedDownTo = std::min(hChangedDownTo,h);
-							}
-							else
-								break;
-						}
+						while (h >= bottom && seq.ChangeConditionally(h,Grid::Content::Earth,World::Condition::IsClearOrWater))
+							h--;
 				}
 
 
 			}
-			World::actual.SignalChangeUpTo(target-1);
-
-
-			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-				if (rebuild[k])
-				{
-					World::actual.SignalFamilyStructureChange(k,v.entityTime);
-				}
-			//	Grid::SeeThrough::Update(Grid::SeeThrough::IsEnabled(), v->atCell, v->atHeight);	//don't change cutoff mode
-			for (int h = hChangedDownTo; h < target.height; h++)
-				SignalClusterAndNeighborsChange(Grid::LCellIdI(target.stackID, h),v.entityTime);
 			return JobDone;
 		}
 
@@ -283,7 +239,8 @@ namespace Objects
 				return CannotStartAbort;
 			}
 
-			const auto&stack = World::actual.cellStack[Grid::low.grid.GetCell(focus.stackID).higherEquivalent];
+
+			const auto&stack = World::actual.GetStack(Grid::low.grid.GetCell(focus.stackID).higherEquivalent);
 			if (stack.GetCellI(v.location.height-1).IsClearOrWater() && focus == v.location+1)
 			{
 				//focus --;
@@ -353,42 +310,27 @@ namespace Objects
 		{
 			Grid::LCellIdI target = FocusToBuildLocation(focus);
 
-			bool rebuild[BaseGrid::NumFamilies] = { false };
 
+			auto seq = World::actual.BeginChangeSequence(v.entityTime);
 
-
-
+			seq.SelectStack(Grid::low.grid.GetCell(target.stackID).higherEquivalent);
 			const UINT32 higher = Grid::low.grid.GetCell(target.stackID).higherEquivalent;
-			auto&stack = World::actual.cellStack[higher];
-			if (stack.LocalOverwrite(target.height,Grid::Content::Foundation,World::actual))
-			{
-				Grid::TagCluster(rebuild, higher);
-				World::actual.SignalChange(Grid::HCellIdI(higher,target.height));
-			}
+			//seq.Change(target.height,Grid::Content::Foundation);
 
 
 			const auto&n = Grid::low.grid.GetCell(target.stackID).neighborhood;
 			for (int j = 0; j < n.numNeighbors; j++)
 			{
 				const UINT32 higher2 = Grid::low.grid.GetCell(n.neighborID[j]).higherEquivalent;
-				const auto&stack2 = World::actual.cellStack[higher2];
-				if (ConnectTo(stack2.GetCellI(target.height).content))
+				seq.SelectStack(higher2);
+				if (ConnectTo(seq.GetCellI(target.height).content))
 				{
 					UINT32 n = BaseGrid::RequireIntersection(Grid::high.grid.GetCell(higher).neighborhood, Grid::high.grid.GetCell(higher2).neighborhood);
-					if (World::actual.cellStack[n].LocalOverwrite(target.height,Grid::Content::Foundation,World::actual))
-					{
-						Grid::TagCluster(rebuild, n);
-						World::actual.SignalChange(Grid::HCellIdI(n,target.height));
-					}
+					seq.SelectStack(n);
+					seq.Change(target.height,Grid::Content::Foundation);
 				}
 			}
 
-
-			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-				if (rebuild[k])
-				{
-					World::actual.SignalFamilyStructureChange(k,v.entityTime);
-				}
 
 
 
@@ -401,7 +343,8 @@ namespace Objects
 		{
 			const Grid::LCellIdI target = focus;
 
-			bool rebuild[BaseGrid::NumFamilies] = { false };
+			auto seq = World::actual.BeginChangeSequence(v.entityTime);
+
 			if (mode == CursorMode::BuildBlockMode)
 			{
 				#ifdef HYBRID_GRID
@@ -425,14 +368,7 @@ namespace Objects
 					{
 						continue;
 					}
-					if (cell->height < -Grid::CellStack::HalfRange || cell->height >= Grid::CellStack::HalfRange)
-						continue;
-
-					if (World::actual.cellStack[cell->stackID].LocalOverwrite(cell->height,Grid::Content::Foundation,World::actual))
-					{
-						Grid::TagCluster(rebuild, cell->stackID);
-						World::actual.SignalChange(*cell);
-					}
+					seq.Change(*cell,Grid::Content::Foundation);
 				}
 			}
 			if (mode == CursorMode::RemoveBlockMode)
@@ -458,24 +394,9 @@ namespace Objects
 					{
 						continue;
 					}
-					if (cell->height < -Grid::CellStack::HalfRange || cell->height >= Grid::CellStack::HalfRange)
-						continue;
-
-					if (World::actual.cellStack[cell->stackID].MakeLocalHole(cell->height,World::actual))
-					{
-						Grid::TagCluster(rebuild, cell->stackID);
-						World::actual.SignalChange(*cell);
-					}
+					seq.Clear(*cell);
 				}
-				//To<MobileEntity>::DynamicCast(v)->PlaceExactlyAt(v->location);
 			}
-			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-				if (rebuild[k])
-				{
-					World::actual.SignalFamilyStructureChange(k,v.entityTime);
-				}
-
-			SignalClusterAndNeighborsChange(target,v.entityTime);
 			return JobDone;
 		}
 
@@ -501,98 +422,10 @@ namespace Objects
 		/*virtual override*/ BaseJob::continue_t	ClearAbove::Finish(MobileEntity&v, const Grid::LCellIdI&focus)
 		{
 			World::actual.Clear(focus,v.entityTime);
-			SignalClusterAndNeighborsChange(focus,v.entityTime);
 			return JobDone;
 		}
 
 
-		///*virtual override*/ bool	BuildFoundation::CanContinue(MobileEntity&v, const Grid::LCellIdI&focus)
-		//{
-		//	const auto & n = Grid::low.grid.GetCell(v.location.stackID).neighborhood;
-		//	bool buildFoundation = true;
-		//	for (int i = 0; i < n.numNeighbors; i++)
-		//	{
-		//		PWorldEntity entity = GetEntity(Grid::LCellIdI(n.neighborID[i],v.location.height-1));
-		//		if (entity && !To<Connector>::DynamicCast(entity))
-		//		{
-		//			LogEvent(EventClass::Preset::commandRejected,&v,this->GetName()+ " (can continue?): "+entity->GetNiceName()+" is in the way");
-
-		//			return false;
-		//		}
-		//	}
-		//	return true;
-		//}
-
-		///*virtual override*/ BaseJob::continue_t	BuildFoundation::Finish(MobileEntity&v, const Grid::LCellIdI&focus)
-		//{
-		//	Structure::CommonFixTerrain(&v,focus,Grid::CellStack::Cell::Content::Foundation,0,true,v.motionTime,true);
-
-		//	//const Grid::LCellIdI target = focus;
-		//	//
-		//	//const UINT32 finer = Grid::low.grid.GetCell(target.stackID).higherEquivalent;
-		//	//const auto&c = Grid::high.grid.GetCell(finer);
-		//	//bool rebuild[BaseGrid::NumFamilies] = { false };
-
-		//	//count_t blobCnt = 0;
-		//	//Grid::CellStack&fine =World::actual.cellStack[finer];
-		//	//int lowest = target.height-1;
-		//	//if (fine.LocalOverwrite(target.height - 1, Grid::CellStack::Cell::Content::Foundation))
-		//	//{
-		//	//	Grid::TagCluster(rebuild, finer);
-		//	//	blobCnt++;
-
-		//	//	int h = target.height-2;
-		//	//	while (h >= -Grid::CellStack::HalfRange && fine.GetCellI(h).IsClearOrWater())
-		//	//	{
-		//	//		if (fine.LocalOverwrite(h, Grid::CellStack::Cell::Content::Earth))
-		//	//		{
-		//	//			//Grid::TagCluster(rebuild, n);
-		//	//			h--;
-		//	//			blobCnt++;
-		//	//		}
-		//	//		else
-		//	//			break;
-		//	//	}
-		//	//	lowest = std::min(lowest,h+1);
-		//	//}
-		//	////rebuild[Grid::high.grid.GetCell(finer).family] = true;
-		//	//for (int j = 0; j < c.neighborhood.numNeighbors; j++)
-		//	//{
-		//	//	UINT32 n = c.neighborhood.neighborID[j];
-		//	//	Grid::CellStack&stack = World::actual.cellStack[n];
-		//	//	if (stack.LocalOverwrite(target.height - 1, Grid::CellStack::Cell::Content::Foundation))
-		//	//	{
-		//	//		Grid::TagCluster(rebuild, n);
-		//	//		blobCnt++;
-		//	//	}
-		//	//	int h = target.height-2;
-		//	//	while (h >= -Grid::CellStack::HalfRange && stack.GetCellI(h).IsClearOrWater())
-		//	//	{
-		//	//		if (stack.LocalOverwrite(h, Grid::CellStack::Cell::Content::Earth))
-		//	//		{
-		//	//			//Grid::TagCluster(rebuild, n);
-		//	//			h--;
-		//	//			blobCnt++;
-		//	//		}
-		//	//		else
-		//	//			break;
-		//	//	}
-		//	//	lowest = std::min(lowest,h+1);
-
-		//	//}
-		//	//World::actual.SignalChangeUpTo(target-1);
-		//	//for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-		//	//	if (rebuild[k])
-		//	//	{
-		//	//		Grid::high.family[k].SetOutdated(v.motionTime);
-		//	//		Grid::low.family[k].SetOutdated(v.motionTime);
-		//	//	}
-		//	////	Grid::SeeThrough::Update(Grid::SeeThrough::IsEnabled(), v->atCell, v->atHeight);	//don't change cutoff mode
-		//	////if (vehicle == selectedEntity)
-		//	//for (int h = lowest; h <= target.height-1; h++)
-		//	//	SignalClusterAndNeighborsChange(Grid::LCellIdI(target.stackID,h),v.motionTime);
-		//	return JobDone;
-		//}
 
 		#ifndef ONE_COMPOUND_PER_FACTION
 
@@ -921,38 +754,19 @@ namespace Objects
 			#else
 				const UINT32 finer = target.stackID;
 			#endif
-			bool rebuild[BaseGrid::NumFamilies] = { false };
 
+			auto seq = World::actual.BeginChangeSequence(v.entityTime);
 
-			count_t blobCnt = 0;
-			if (World::actual.cellStack[finer].MakeLocalHole(target.height,World::actual))
-			{
-				Grid::TagCluster(rebuild, finer);
-				blobCnt++;
-			}
-			//rebuild[Grid::high.grid.GetCell(finer).family] = true;
+			seq.Clear(Grid::HCellIdI(finer,target.height));
+
 			#ifdef HYBRID_GRID
 				for (int j = 0; j < c.neighborhood.numNeighbors; j++)
 				{
 					UINT32 n = c.neighborhood.neighborID[j];
-					if (World::actual.cellStack[n].MakeLocalHole(target.height,World::actual))
-					{
-						Grid::TagCluster(rebuild, n);
-						blobCnt++;
-					}
-
+					seq.Clear(Grid::HCellIdI(n,target.height));
 				}
 			#endif
-			World::actual.SignalChange(target);
 
-
-			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-				if (rebuild[k])
-				{
-				//Grid::high.BakeBlockInstruction(Grid::cellStack,k,0,0);
-					World::actual.SignalFamilyStructureChange(k,v.entityTime);
-				}
-			SignalClusterAndNeighborsChange(target,v.entityTime-Times::Dig,&v);
 			MobilePlacementResult rc = v.PlaceExactlyAt(target, Times::Dig,v.entityTime);
 			if (!Succeeded(rc))
 			{
@@ -1281,13 +1095,13 @@ namespace Objects
 					UINT32 inter = BaseGrid::RequireIntersection(
 									Grid::high.grid.GetCell(Grid::low.grid.GetCell(cell.stackID).higherEquivalent).neighborhood,
 									Grid::high.grid.GetCell(Grid::low.grid.GetCell(nextCell.stackID).higherEquivalent).neighborhood);
-					return world.cellStack[inter].GetCellI(cell.height-1).content == Grid::Content::Road;
+					return world.GetStack(inter).GetCellI(cell.height-1).content == Grid::Content::Road;
 				}
 				case CursorMode::BuildConnectorChainMode:
 					return !!GetStructure(cell);
 				case CursorMode::BuildWallChainMode:
 				{
-					const auto&stack = world.cellStack[Grid::low.grid.GetCell(cell.stackID).higherEquivalent];
+					const auto&stack = world.GetStack(Grid::low.grid.GetCell(cell.stackID).higherEquivalent);
 					Grid::Content c0 = Grid::Content::Reinterpret(stack.GetCellI(cell.height-1).content),
 									c1 = Grid::Content::Reinterpret(stack.GetCellI(cell.height-2).content);
 					return c0 == Grid::Content::Foundation && c1 == Grid::Content::Foundation;

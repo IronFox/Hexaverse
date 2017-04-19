@@ -236,10 +236,7 @@ namespace Objects
 		Super::OnConstructionFinished(atTime);
 
 
-		CommonRegisterStructure(World::actual, location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
-		#ifndef CLIENT
-			CommonRegisterStructure(owner->knownWorld, location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
-		#endif
+		CommonRegisterStructure(location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
 
 		TStructureNeighborhood	neighborhood;
 		GetNeighborhood(owner,ConnectsToDifferentOwnership(), location, neighborhood);
@@ -303,10 +300,7 @@ namespace Objects
 	{
 		Super::OnDestroy(t,atTime);
 		LogEvent(EventClass::Preset::debug,this,"Unregistering...");
-		CommonUnregisterStructure(World::actual, location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
-		#ifndef CLIENT
-			CommonUnregisterStructure(owner->knownWorld, location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
-		#endif
+		CommonUnregisterStructure(location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
 
 		LogEvent(EventClass::Preset::debug,this,"Disconnecting...");
 		DisconnectFromNeighborhood(atTime);
@@ -353,42 +347,45 @@ namespace Objects
 
 
 
-	/*static*/ void Structure::ChangeStructCount(World::Data&world, const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, int changeDirection, float atTime)
+	/*static*/ void Structure::ChangeStructCount(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, int changeDirection, float atTime)
 	{
 		LogEvent(EventSignificance::Debug,nullptr,"ChangeStructCount("+location.ToString()+", broadHeight="+String(broadHeight)+", height="+String(totalHeight)+", foundation="+String(hasFoundation)+", dir="+String(changeDirection)+")");
 
+
 		{
+			auto seq = World::actual.BeginChangeSequence(atTime);
+
 			const int lowEdge = hasFoundation ? -1 : 0;
 			#ifdef HYBRID_GRID
 				const UINT32 higher = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
 				const auto&n = Grid::high.grid.GetCell(higher).neighborhood;
 				for (int j = 0; j < n.numNeighbors; j++)
 				{
-					Grid::CellStack&stack = world.cellStack[n.neighborID[j]];
+					auto acc = seq.AccessStack(n.neighborID[j]);
+					Grid::CellStack&stack = acc.GetStack();
 					for (int h = lowEdge; h < broadHeight; h++)
 						stack.ChangeStructureCounterI(location.height+h,changeDirection);
 				}
-				Grid::CellStack&stack = world.cellStack[higher];
+				auto acc = seq.AccessStack(higher);
+				Grid::CellStack&stack = acc.GetStack();
 			#else
-				Grid::CellStack&stack = world.cellStack[location.stackID];
+				auto acc = seq.AccessStack(location.stackID);
+				Grid::CellStack&stack = acc.GetStack();
 			#endif
 			for (int h = lowEdge; h < broadHeight; h++)
 				stack.ChangeStructureCounterI(location.height+h,2*changeDirection);
 			for (int h = broadHeight; h < totalHeight; h++)
 				stack.ChangeStructureCounterI(location.height+h,changeDirection);
 		}
-
-		if (&world == &World::actual)
-			InvalidateTerrain(location,atTime);
 	}
 
-	/*static*/ void	Structure::CommonRegisterStructure(World::Data&world, const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime)
+	/*static*/ void	Structure::CommonRegisterStructure(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime)
 	{
-		ChangeStructCount(world, location,broadHeight, totalHeight,hasFoundation,+1,atTime);
+		ChangeStructCount(location,broadHeight, totalHeight,hasFoundation,+1,atTime);
 	}
-	/*static*/ void	Structure::CommonUnregisterStructure(World::Data&world, const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime)
+	/*static*/ void	Structure::CommonUnregisterStructure(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime)
 	{
-		ChangeStructCount(world, location,broadHeight, totalHeight,hasFoundation,-1,atTime);
+		ChangeStructCount(location,broadHeight, totalHeight,hasFoundation,-1,atTime);
 	}
 
 
@@ -403,9 +400,7 @@ namespace Objects
 				const auto&n = Grid::high.grid.GetCell(higher).neighborhood;
 				for (int j = 0; j < n.numNeighbors; j++)
 				{
-					const Grid::CellStack&stack = World::actual.cellStack[n.neighborID[j]];
-	//					if (stack.GetCellI(location.height - 1).content != Grid::CellStack::Cell::Content::Foundation)
-	//					return LacksFullFoundation;
+					const Grid::CellStack&stack = World::actual.GetStack(n.neighborID[j]);
 					if (stack.GetCellI(location.height).content != Grid::CellStack::Cell::Content::Clear)
 						return GroundLevelObstruction;
 					for (int h = 1; h < broadHeight; h++)
@@ -413,19 +408,15 @@ namespace Objects
 							return UpperLevelObstruction;
 				}
 			}
-			const Grid::CellStack&stack = World::actual.cellStack[higher];
+			const Grid::CellStack&stack = World::actual.GetStack(higher);
 		#else
-			const Grid::CellStack&stack = World::actual.cellStack[location.stackID];
+			const Grid::CellStack&stack = World::actual.GetStack(location.stackID);
 		#endif
-	//	if (stack.GetCellI(location.height - 1).content != Grid::CellStack::Cell::Content::Foundation)
-		//	return LacksFullFoundation;
 		if (stack.GetCellI(location.height).content != Grid::CellStack::Cell::Content::Clear)
 			return GroundLevelObstruction;
 		for (int h = 1; h < totalHeight; h++)
 			if (stack.GetCellI(location.height + h).content != Grid::CellStack::Cell::Content::Clear)
 				return UpperLevelObstruction;
-
-
 
 		return CanPlace;
 	}
@@ -477,28 +468,7 @@ namespace Objects
 
 	
 
-
-
-	/*static*/ void Structure::InvalidateTerrain(const Grid::LCellIdI&location, float atTime)
-	{
-		bool changed[BaseGrid::NumFamilies] = {};
-		const auto&n = Grid::low.grid.GetCell(location.stackID).neighborhood;
-		for (int j = 0; j < n.numNeighbors; j++)
-		{
-			changed[Grid::low.grid.GetCell(n.neighborID[j]).family] = true;
-		}
-		changed[Grid::low.grid.GetCell(location.stackID).family] = true;
-		for (int i = 0; i < BaseGrid::NumFamilies; i++)
-			if (changed[i])
-			{
-				World::actual.families[i].SignalStructureChange(atTime);
-			}
-		#ifdef HAS_WINDOW
-			World::actual.SignalLightingChange(location);
-		#endif
-	}
-
-
+	
 
 	#ifndef CLIENT
 
@@ -511,67 +481,20 @@ namespace Objects
 			#else
 				const UINT32 higher = location.stackID;
 			#endif
-			//const Grid::Content::type_t foundationType = s.GetFoundationType();
-			bool anyChanged = false;
+			auto seq = World::actual.BeginChangeSequence(atTime);
 			#ifdef HYBRID_GRID
 				for (int j = 0; j < n.numNeighbors; j++)
 				{
-					Grid::CellStack&stack = World::actual.cellStack[n.neighborID[j]];
+					seq.SelectStack(n.neighborID[j]);
 					for (int a = 0; a < broadHeight; a++)
-						if (stack.GetCellI(location.height+a).content != Grid::Content::Clear)
-						{
+						if (seq.Change(location.height+a,Grid::Content::Clear))
 							LogEvent(EventSignificance::Common,e,"Clearing cell "+Grid::HCellIdI(n.neighborID[j],location.height+a).ToString());
-
-							anyChanged |= stack.MakeLocalHole(location.height+a,World::actual);
-						}
 				}
 			#endif
-			Grid::CellStack&stack = World::actual.cellStack[higher];
-			//if (requireCentralBlock && stack.GetCellI(location.height - 1).GetStrength() < needStrength)
-			//{
-			//	LogEvent(EventSignificance::Common,e,"Strengthening cell "+Grid::HCellIdI(higher,location.height-1).ToString());
-			//	anyChanged |= stack.LocalOverwrite(location.height - 1, foundationType);
-			//	if (deep)
-			//	{
-			//		int h = location.height-2;
-			//		int bottom = -Grid::CellStack::HalfRange;
-			//		if (!Grid::CellStack::bottom.IsClearOrWaterIgnoreStructure())
-			//			//bottom = h;
-			//			while (h >= bottom && stack.GetCellI(h).IsClearOrWater())
-			//			{
-			//				anyChanged |= stack.LocalOverwrite(h,  Grid::CellStack::Cell::Content::Earth);
-			//				h--;
-			//			}
-			//	}
-			//}
+			seq.SelectStack(higher);
 			for (int a = 0; a < totalHeight; a++)
-				if (stack.GetCellI(location.height+a).content != Grid::Content::Clear)
-				{
+				if (seq.Change(location.height+a,Grid::Content::Clear))
 					LogEvent(EventSignificance::Common,e,"Clearing cell "+Grid::HCellIdI(higher,location.height+a).ToString());
-
-					anyChanged |= stack.MakeLocalHole(location.height+a,World::actual);
-				}
-
-			//if (signalChange)	//i think this breaks the flow. calling objects/methods assume they have to do this manually
-			//{
-			//	if (broadFoundation)
-			//	{
-			//		for (int h = hChangedDownTo; h < location.height; h++)
-			//			SignalClusterAndNeighborsChange(location + h,atTime);
-			//	}
-			//	else
-			//		for (int h = hChangedDownTo; h < location.height; h++)
-			//			SignalClusterChange(location + h,0,atTime,e);
-			//}
-			//
-
-			if (anyChanged)
-			{
-				World::actual.SignalChangeUpTo(location);	//execute this regardless of signalChange - world becomes invalid otherwise
-
-				if (signalChange)
-					Structure::InvalidateTerrain(location,atTime);
-			}
 		}
 
 

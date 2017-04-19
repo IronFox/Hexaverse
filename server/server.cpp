@@ -3,6 +3,7 @@
 
 #include "./components/stdafx.h"
 
+#include <boot.h>
 #include <grid/worldData.h>
 #include <objects.h>
 
@@ -15,6 +16,7 @@
 #include <io/file_system.h>
 #include <io/riff_handler.h>
 #include <io/config.h>
+#include <globalEvents.h>
 #include "components/tests.h"
 #include "components/aiProcess.h"
 #include "components/remoteControl.h"
@@ -582,19 +584,8 @@ void TerminateNow(bool isMain)
 
 
 		Logging::WriteEvent(EventSignificance::Uncommon,"Closing down",nullptr,nullptr,Objects::OwnerParameter());
-		Network::server.Shutdown();
 
-		if (Game::Config::Nexus::enableAI)
-			AIProcess::End();
-
-
-		Objects::Destroy();
-		Grid::Destroy();
-		UDPBroadCast::Terminate();
-
-		RemoteControl::Destroy();
-		ScriptCache::Destroy();
-
+		GlobalEvents::applicationTerminate();
 
 		Logging::WriteEvent(EventSignificance::Uncommon,"Terminating process",nullptr,nullptr,Objects::OwnerParameter());
 		Logging::End();
@@ -774,11 +765,7 @@ void	StartUp()
 	Network::Start(ParameterConfig::basePort);
 }
 
-void	ShutDown()
-{
-	UDPBroadCast::Terminate();
-	Network::Stop();
-}
+
 
 class ServiceVar : public Reflection::Variable::Base
 {
@@ -873,13 +860,10 @@ int main( int argc, const char* argv[])
 				FATAL__("Something is wrong. Unable to locate server executable, or config/declaration.xml is missing.");
 		}
 
+		Boot();
 
-		NiceName::Load();
-
-		ScriptCache::Create();
 		Evolver::Create();
 		Game::evolver = Evolver::GetDefault();
-
 		Journal::Create();
 
 		World::worldID.Generate();
@@ -899,16 +883,12 @@ int main( int argc, const char* argv[])
 			inTestMode = true;
 		#endif
 
-		Grid::CreateHighAndLow();
-		Grid::CreateResources();
-		World::Create();
-		Objects::Create();
 
 
 		Reflection::Create();
 		Reflection::state.PushFocus();
 		Reflection::state.EnterNewFolder("/Online");
-		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("udpBroadcast",UDPBroadCast::IsStarted,UDPBroadCast::Terminate,[](){UDPBroadCast::Start();})));
+		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("udpBroadcast",UDPBroadCast::IsStarted,UDPBroadCast::Stop,[](){UDPBroadCast::Start();})));
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("info",[]()->bool{return Network::InformationProvider::IsOnline();},Network::InformationProvider::Stop,[](){Network::InformationProvider::Start(ParameterConfig::basePort);})));
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("session",[]()->bool{return Network::server.IsOnline();},[](){Network::SuspendSession();},[](){Network::RestartSession(false);})));
 		Reflection::state.DefineCommand("closeSession",(CLI::Command::function0_t)[](){Network::CloseSession();},CLI::NoCompletion);	//why...?

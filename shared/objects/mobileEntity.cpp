@@ -443,7 +443,7 @@ namespace Objects
 
 				static Buffer0<PWorldEntity> newContacts;
 				newContacts.Clear();
-				this->MoveSensoryToCurrentLocation(oldLocation,entityTime,true,&newContacts);
+				this->MoveSensoryToCurrentLocation(oldLocation,entityTime,&newContacts);
 				foreach (newContacts,c)
 				{
 					float zOffset;
@@ -680,7 +680,7 @@ namespace Objects
 					while (HasTasks() && myTasks.Peek().job)
 					{
 						VehicleJob::BaseJob::begin_t b = myTasks.Peek().job->BeginHere(*this,myTasks.Peek().GetFocus(location),!!completeOnMove);
-						bool cont = true;
+						bool staticDeltaContainer = true;
 						switch (b)
 						{
 							case VehicleJob::BaseJob::Delayed:
@@ -688,7 +688,7 @@ namespace Objects
 							break;
 							case VehicleJob::BaseJob::Started:
 								LogEvent(EventSignificance::Common,this,"Started '"+myTasks.Peek().job->GetName()+"'");
-								cont = false;
+								staticDeltaContainer = false;
 								jobStarted = true;
 								//movementActionLeft = 0;
 							break;
@@ -720,7 +720,7 @@ namespace Objects
 							}
 							break;
 						}
-						if (!cont)
+						if (!staticDeltaContainer)
 							break;
 					};
 

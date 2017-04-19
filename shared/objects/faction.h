@@ -144,9 +144,11 @@ namespace Objects
 			//void		ChangeSensory(const Grid::HighSetup::TVolumeDescriptor&desc, float t, short changeBy);
 			//void		ChangeSensory(const Grid::SkySensorState&state, float t, short changeBy);
 //			void		ReplaceSensory(const Grid::SkySensorState&oldState, const Grid::SkySensorState&newState, float t, short changeBy);
-			void		CheckChanges(float t);
-
+			/**
+			Checks and potentially rebuilds knownWorld sensor state
+			*/
 			void		CheckSensory(float&t);
+
 		#endif
 
 		void			InitID(const TUniqueID&toID, bool nexusFaction);
@@ -287,6 +289,11 @@ namespace Objects
 				gainedVisualAt.Clear();
 			}
 
+			/**
+			Checks and potentially rebuilds knownWorld sensor state
+			*/
+			void		CheckSensory();
+
 
 			/**
 			Checks if the local faction satisfies survival conditions
@@ -330,9 +337,9 @@ namespace Objects
 			bool		SignalAppearance(const PWorldEntity&, float&t, bool cascade=true, bool stack=true, index_t incStackBy=1);
 			void		SignalDisappearance(const PWorldEntity&, float&t, bool force = false, bool signalConnectedClient=true);
 
-			void		RegisterSensorCreation(const World::Sensor&, int sensorHeight, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts = nullptr);
-			void		RegisterSensorRemoval(const World::Sensor&, int sensorHeight, float&t, bool checkChangesNow);
-			void		RegisterSensorMotion(const World::Sensor&from, const World::Sensor&to, float&t, bool checkChangesNow);
+			void		RegisterSensorCreation(const World::Sensor&, int sensorHeight, float&t, Buffer0<PWorldEntity>*newContacts = nullptr);
+			void		RegisterSensorRemoval(const World::Sensor&, int sensorHeight, float&t);
+			void		RegisterSensorMotion(const World::Sensor&from, const World::Sensor&to, float&t);
 
 			count_t		CountOffGridCoverage(int channelHeight, const TVec3<>&)	const;
 			count_t		CountOffGridCoverage(const Sphere<>&)	const;

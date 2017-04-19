@@ -42,9 +42,9 @@ namespace Objects
 		To better support specifics of towers, hybrid structures (narrow on top of broad) are possible.
 		If both broadHeight is specified less than totalHeight, narrowHeight is considered (totalHeight - broadHeight) and to be on top of broadHeight
 		*/
-		static void					ChangeStructCount(World::Data&world, const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, int changeDirection, float atTime);
-		static void					CommonRegisterStructure(World::Data&world, const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime);
-		static void					CommonUnregisterStructure(World::Data&world, const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime);
+		static void					ChangeStructCount(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, int changeDirection, float atTime);
+		static void					CommonRegisterStructure(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime);
+		static void					CommonUnregisterStructure(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime);
 	private:
 
 		bool						RemoveConnectionTo(const PStructure&);
@@ -88,8 +88,6 @@ namespace Objects
 
 		static count_t				CountOccurrences(const OwnerParameter&o,ConstName type);
 
-
-		static void					InvalidateTerrain(const Grid::LCellIdI&location, float atTime);
 
 		#ifndef CLIENT
 

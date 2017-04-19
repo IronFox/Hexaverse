@@ -4,6 +4,7 @@
 #include <objects.h>
 #include <net/tcp.h>
 #include <io/file_system.h>
+#include <protocol.h>
 
 namespace World
 {
@@ -104,48 +105,27 @@ namespace World
 	}
 
 
-	/**
-	Checks that the world state has not changed since the last call of this function
-	@deprecated
-	*/
-	void			DebugCheckWorld(bool restart);
-
 
 	void			SetUnlockedEMPZones(int unlocked);
 
 
+
+	class DeltaContainer
+	{
+	public:
+		Protocol::WorldDelta	delta[BaseGrid::NumFamilies];
+		count_t					numDeltas = 0;
+
+		bool					Process(World::Data&clientData,bool noDelta=false);
+		void					CompressState(World::Data&sourceWorld,const Protocol::Timestamp&t);
+	};
+
+
 	namespace Network
 	{
-
-		/**
-		Signals that a terrain family has changed, and the specified faction should be updated and notified where necessary
-		Calling this method explicitly is usually not necessary since it's called by SignalFamilyChange()
-		@param faction Faction to create the delta for (and to send it to, assuming a client is online)
-		@param familyID Index of the grid family that should be updated/sent
-		@param last Indicates that this is the last family in the sequence
-		@param rightNow Indicates that the sent terrain section should be applied as soon as possible as opposed to the timestamp stored in the respective family
-		*/
-		void		SignalFamilyChangeToFaction(const Objects::PFaction&faction,BYTE familyID, bool last, bool rightNow);
-
-		/**
-		Signals that a terrain family has changed, and all factions should be updated and notified where necessary
-		@param familyID Index of the grid family that should be updated/sent
-		@param last Indicates that this is the last family in the sequence
-		@param rightNow Indicates that the sent terrain section should be applied as soon as possible as opposed to the timestamp stored in the respective family
-		*/
-		void		SignalFamilyChange(BYTE familyID, bool last, bool rightNow);
-
 		bool		CheckCoverageSendTerrain(const Objects::PFaction&faction,const TCP::PPeer&peer);
-
-
-		/**
-		Scans through all global grid families and looks for outdated ones.
-		Outdated families are sent to clients via SignalFamilyChange().
-		Sets terrainChanged if at least one outdated family is encountered.
-		terrainChanged is left unchanged otherwise.
-		*/
-		void		SendChangedFamilies();
-
+		bool		CheckCoverageSendTerrain(const Objects::PFaction&faction);
+		void		CheckAllFactionCoverageAndSendAsNeeded();
 
 		/**
 		Called automatically by Network::CloseSession()

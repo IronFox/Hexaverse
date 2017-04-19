@@ -485,18 +485,18 @@ namespace Objects
 			RegisterSensory(to,atTime,checkChangesNow);	//MUST BE IN THIS ORDER, or sky sensory of satellites and planes breaks
 		}
 	#else
-		/*virtual*/ void		WorldEntity::MoveSensoryToCurrentLocation(const Grid::LCellIdI&oldLocation, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts/* = nullptr*/)
+		/*virtual*/ void		WorldEntity::MoveSensoryToCurrentLocation(const Grid::LCellIdI&oldLocation, float&atTime, Buffer0<PWorldEntity>*newContacts/* = nullptr*/)
 		{
-			this->RegisterSensory(location,entityTime,false,newContacts);
-			this->UnregisterSensory(oldLocation,entityTime,checkChangesNow);
+			this->RegisterSensory(location,entityTime,newContacts);
+			this->UnregisterSensory(oldLocation,entityTime);
 		}
 
 	#endif
 
 
-	/*virtual override*/	void WorldEntity::RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
+	/*virtual override*/	void WorldEntity::RegisterSensory(const Grid::LCellIdI&loc, float&atTime, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
 	{
-		
+		this->SyncTime(atTime);	
 		LogEvent(EventSignificance::Common,this,"Registering sensory ("+loc.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
 		World::Sensor	sensor(GetScanningCenter(loc),GetScanningRange(),GetScannerType());
 		#ifdef CLIENT
@@ -506,17 +506,18 @@ namespace Objects
 			}
 
 		#else
-			owner->RegisterSensorCreation(sensor, location.height, atTime,checkChangesNow, newContacts);
+			owner->RegisterSensorCreation(sensor, location.height, atTime, newContacts);
 		#endif
 	}
 
-	/*virtual override*/	void					WorldEntity::UnregisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/)
+	/*virtual override*/	void					WorldEntity::UnregisterSensory(const Grid::LCellIdI&loc, float&atTime)
 	{
+		this->SyncTime(atTime);	
 		LogEvent(EventClass::Preset::common,this,"Unregistering sensory ("+loc.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
 		
 		World::Sensor	sensor(GetScanningCenter(loc),GetScanningRange(),GetScannerType());
 		#ifndef CLIENT
-			owner->RegisterSensorRemoval(sensor, location.height, atTime,checkChangesNow);
+			owner->RegisterSensorRemoval(sensor, location.height, atTime);
 		#else
 			if (isOwnedByMe)
 			{

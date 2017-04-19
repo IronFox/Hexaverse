@@ -53,7 +53,7 @@ namespace Grid
 
 				Lua::Function<Lua::Table()> compute = prog->RequireGlobal("Compute");
 				Lua::Table result = compute();
-				LogEvent(EventClass::Preset::configurationPrint,"'"+distribution+"' took "+timer.GetSecondsSince(t0)+" seconds");
+				LogEvent(EventClass::Preset::configurationPrint,"'"+distribution+"' took "+String(timer.GetSecondsSince(t0))+" seconds");
 
 				foreach (Resource::all,res)
 				{

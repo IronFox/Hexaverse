@@ -233,7 +233,6 @@ namespace Grid
 
 			short	visibility=0;
 			bool	temporarilyVisible=false;
-			BYTE	user=0;
 
 			#ifdef HAS_WINDOW
 				Grid::TVisibility	GetVisibility() const {return Grid::TVisibility(visibility>0);}
@@ -277,7 +276,7 @@ namespace Grid
 			/**/	Cell() :CompactCell(Content::Clear) {}
 			/**/	Cell(Content t, BYTE /*lightLevel*/) :CompactCell(t)	{}
 			#endif
-			void	SetToIfSolid(BYTE cnt)	{if (IsSolid()) content = cnt;}
+			bool	SetToIfSolid(BYTE cnt)	{if (IsSolid() && content != cnt) {content = cnt; return true;} return false;}
 			bool	IsWater() const { return content == Content::Water; }
 			bool	IsTechnite() const {return content == Content::Technite; }
 			//bool	WaterSurfaceBelow() const { return content == Content::Clear; }
@@ -773,10 +772,6 @@ namespace Grid
 	//float	RandomHeight(const TVec3<>&center0);
 
 
-	/**
-	Destroys all gpu-resouces allocated by local structures. Call ONCE when shutting down
-	*/
-	void				Destroy();
 
 	/**
 	Clipping functions to be used during surface compilation
@@ -788,15 +783,6 @@ namespace Grid
 
 
 
-
-	/**
-	@brief Sets all family entries in \a rebuild to true that the specified high-res cell and its neighbors belong to.
-	
-	Does not alter entries of other families. Does not set values to false.
-	*/
-	void TagCluster(bool*rebuild, index_t cellID);
-
-	UINT32 TagLowCluster(bool *rebuild, const LCellIdI&cell);
 
 
 

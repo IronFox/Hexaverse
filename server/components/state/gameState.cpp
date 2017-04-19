@@ -524,7 +524,7 @@ namespace Game
 
 	void	ProcessChanges(bool thoroughly)
 	{
-		World::Network::SendChangedFamilies();
+		World::Network::CheckAllFactionCoverageAndSendAsNeeded();
 
 		Objects::ForeachMobileEntityIncludingStored([/*&anythingChanged*/](const Objects::PMobileEntity&_v)
 		{

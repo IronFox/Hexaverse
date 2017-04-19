@@ -77,6 +77,7 @@ public:
 	/**
 	Keeps track of which families have changed as a result of some operation.
 	The set is initially defined as empty, indicating no change at all.
+	FamiliesChanged::Set() is thread-safe. Everything else is not.
 	Use iterator access begin()/end() to iterate over all changed families
 	*/
 	struct FamiliesChanged
@@ -110,7 +111,11 @@ public:
 		const_iterator		begin() const {return anyChanged? const_iterator(this) : end();}
 		constexpr const_iterator	end() const {return const_iterator(nullptr,NumFamilies);}
 
-		void		Set(family_t f)	{changed[f] = true; anyChanged = true;}
+		/**
+		Sets the specified family as changed. Thread-safe.
+		*/
+		void		Set(family_t f)	{DBG_ASSERT_LESS__(f,NumFamilies);  changed[f] = true; anyChanged = true;}
+		bool		IsSet(family_t f) const {DBG_ASSERT_LESS__(f,NumFamilies); return changed[f];}
 		bool		AnyChanged() const {return anyChanged;}
 
 	private:

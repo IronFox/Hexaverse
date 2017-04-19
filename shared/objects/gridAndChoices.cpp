@@ -984,25 +984,25 @@ namespace Objects
 			int _h = h;
 			//incremented = false;
 			if (set)
-				_h = std::max(_h, World::actual.cellStack[finer].FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater));
+				_h = std::max(_h, World::actual.GetStack(finer).FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater));
 			else
 			{
-				_h = World::actual.cellStack[finer].FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater);
+				_h = World::actual.GetStack(finer).FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater);
 				set = true;
 			}
 			#ifdef HYBRID_GRID
 				for (int j = 0; j < c.neighborhood.numNeighbors; j++)
-					_h = std::max(_h, World::actual.cellStack[c.neighborhood.neighborID[j]].FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater));
+					_h = std::max(_h, World::actual.GetStack(c.neighborhood.neighborID[j]).FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater));
 			#endif
 			incremented = _h != h;
 			h = _h;
 		}
 
-		if (World::actual.cellStack[finer].GetCellI(h).IsOccupied())
+		if (World::actual.GetStack(finer).GetCellI(h).IsOccupied())
 			return badHeight;
 		#ifdef HYBRID_GRID
 			for (int j = 0; j < c.neighborhood.numNeighbors; j++)
-				if (World::actual.cellStack[c.neighborhood.neighborID[j]].GetCellI(h).IsOccupied())
+				if (World::actual.GetStack(c.neighborhood.neighborID[j]).GetCellI(h).IsOccupied())
 					return badHeight;
 		#endif
 		return h;
@@ -1720,7 +1720,7 @@ namespace Objects
 
 	void AccumulateCellMovementCosts(const World::Data&world, count_t&airCount,count_t&waterCount,count_t&roadCount,const Grid::HCellIdI&cell,count_t multiplier=1)
 	{
-		const Grid::CellStack::Cell&c = world.cellStack[cell.stackID].GetCellI(cell.height);
+		const Grid::CellStack::Cell&c = world.GetStack(cell.stackID).GetCellI(cell.height);
 		switch (c.content)
 		{
 			case Grid::Content::Clear:

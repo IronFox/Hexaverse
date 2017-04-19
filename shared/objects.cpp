@@ -80,13 +80,7 @@ namespace Objects
 	#endif
 
 
-	#ifdef HAS_WINDOW
-
-
-
-
-	#endif
-
+	void					Destroy();
 
 	void					Create()
 	{
@@ -222,6 +216,8 @@ namespace Objects
 				Faction::RecreateNexus();
 			#endif
 		};
+
+		GlobalEvents::applicationTerminate << Destroy;
 
 		GlobalEvents::terrainFlush << []()
 		{

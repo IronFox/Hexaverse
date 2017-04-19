@@ -4,7 +4,8 @@
 namespace GlobalEvents
 {
 	extern Observer<>	terrainFlush,	//erase terrain to factory default. Also includes other elements that are frequently flushed when resetting the scene. If this is called, objectFlush must also be called
-						objectFlush;	//erases objects only. 
+						objectFlush,	//erases objects only. 
+						applicationTerminate;
 
 
 	inline void			FlushObjects()	{objectFlush();}

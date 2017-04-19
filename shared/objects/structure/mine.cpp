@@ -24,7 +24,9 @@ namespace Objects
 				#else
 					const UINT32 higher = location.cellID;
 				#endif
-				Grid::CellStack&stack = World::actual.cellStack[higher];
+				auto seq = World::actual.BeginChangeSequence(atTime);
+				auto acc = seq.AccessStack(higher);
+				Grid::CellStack&stack = acc.GetStack();
 
 				UINT layer = Grid::CellStack::ToLayer(location.height);
 				UINT i = 0;
@@ -36,19 +38,16 @@ namespace Objects
 
 				for (UINT j = layer-1; j >= i && j < layer; j--)
 				{
-					int h = Grid::CellStack::ToHeight(j);
+					const int h = Grid::CellStack::ToHeight(j);
 					if ((j == layer-1 || !stack.GetCellU(j).structureCounter) && !GetVehicle(Grid::LCellIdI(location.stackID,h)))
-						stack.LocalOverwrite(h, Grid::Content::Foundation,World::actual);
+						stack.volumeCell[j].content = Grid::Content::Foundation;
 					else
 					{
 						success = false;
 						break;
 					}
 				}
-				World::actual.SignalChangeUpTo(location-1);
-	//			stack.UpdateLighting();
 			}
-			InvalidateTerrain(location,atTime);
 
 			if (success)
 			{
@@ -79,7 +78,7 @@ namespace Objects
 			#else
 				const UINT32 higher = location.cellID;
 			#endif
-			const Grid::CellStack&stack = World::actual.cellStack[higher];
+			const Grid::CellStack&stack = World::actual.GetStack(higher);
 			UINT layer = Grid::CellStack::ToLayer(location.height);
 			UINT i = 0;
 			if (Grid::CellStack::bottom.content == Grid::Content::Clear)

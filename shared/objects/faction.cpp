@@ -358,19 +358,39 @@ namespace Objects
 				{
 					Objects::PStructure s = _s->lock();
 					if (s)
-						s->RegisterSensory(t,false);
+						s->RegisterSensory(t);
 				}
 				foreach (this->allMobiles,_m)
 				{
 					Objects::PWorldEntity e = _m->lock();
 					if (e)
-						e->RegisterSensory(t,false);
+						e->RegisterSensory(t);
 				}
-
-				CheckChanges(t);
 			}
 		}
+		
 
+		void Faction::CheckSensory()
+		{
+			if (knownWorld.SensoryIsInvalid())
+			{
+				float t = knownWorld.GetMaxChangeTime();
+				knownWorld.FlushAndValidateSensory();
+
+				foreach (this->structures,_s)
+				{
+					Objects::PStructure s = _s->lock();
+					if (s)
+						s->RegisterSensory(t);
+				}
+				foreach (this->allMobiles,_m)
+				{
+					Objects::PWorldEntity e = _m->lock();
+					if (e)
+						e->RegisterSensory(t);
+				}
+			}
+		}
 
 
 		bool Faction::GridCanSee(const Grid::HighSetup::TVolumeDescriptor&v, float &t)
@@ -381,7 +401,7 @@ namespace Objects
 				DBG_ASSERT_LESS__(st->range.start,Grid::CellStack::Range);
 				DBG_ASSERT_LESS_OR_EQUAL__(st->range.end,Grid::CellStack::Range);
 				DBG_ASSERT_LESS_OR_EQUAL__(st->range.start,st->range.end);
-				const auto&stack = knownWorld.cellStack[st->stackID];
+				const auto&stack = knownWorld.GetStack(st->stackID);
 				for (UINT32 layer = st->range.start; layer < st->range.end; layer++)
 				{
 					if (stack.volumeCell[layer].IsCurrentlyVisible())
@@ -401,7 +421,7 @@ namespace Objects
 			const int entityHeight =e->GetHeight();
 			const UINT32 end = std::min(Grid::CellStack::Range,bottom + (UINT32)entityHeight);
 			{
-				const auto&stack = knownWorld.cellStack[fine];
+				const auto&stack = knownWorld.GetStack(fine);
 				//const UINT32 fine2 = c.neighborhood.neighborID[k];
 				for (UINT32 layer = bottom; layer < end; layer++)
 					if (stack.volumeCell[layer].IsCurrentlyVisible())
@@ -463,7 +483,7 @@ namespace Objects
 				if (e->IsStructure())
 				{
 					PStructure s = To<Structure>::Cast(e);
-					Structure::CommonRegisterStructure(knownWorld,e->location,s->GetBroadHeight(),e->GetHeight(),s->HasFoundation(),t);
+					Structure::CommonRegisterStructure(e->location,s->GetBroadHeight(),e->GetHeight(),s->HasFoundation(),t);
 					t += timeEpsilon;
 				}
 
@@ -517,7 +537,7 @@ namespace Objects
 				if (e->IsStructure())
 				{
 					PStructure s = To<Structure>::Cast(e);
-					Structure::CommonUnregisterStructure(knownWorld,e->location,s->GetBroadHeight(),e->GetHeight(),s->HasFoundation(),t);
+					Structure::CommonUnregisterStructure(e->location,s->GetBroadHeight(),e->GetHeight(),s->HasFoundation(),t);
 					t += timeEpsilon;
 				}
 
@@ -645,14 +665,12 @@ namespace Objects
 		}
 
 
-		void		Faction::RegisterSensorCreation(const World::Sensor&sensor, int sensorHeight, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
+		void		Faction::RegisterSensorCreation(const World::Sensor&sensor, int sensorHeight, float&t, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
 		{
 			//if (sensorHeight <= Grid::CellStack::TopHeight)
 			{
 				CheckSensory(t);
 				sensor.InsertInto(knownWorld,t);
-				if (checkChangesNow)
-					CheckChanges(t);
 
 				static Grid::LowSetup::TVolumeDescriptor	desc;
 				sensor.GetMaxVolume(desc);
@@ -693,13 +711,11 @@ namespace Objects
 		}
 
 		//void		Faction::RegisterSensorMotion(const Sphere<>&from, const Sphere<>&to, float t);
-		void		Faction::RegisterSensorRemoval(const World::Sensor&sensor, int sensorHeight, float&t, bool checkChangesNow)
+		void		Faction::RegisterSensorRemoval(const World::Sensor&sensor, int sensorHeight, float&t)
 		{
 			//if (sensorHeight <= Grid::CellStack::TopHeight)
 			CheckSensory(t);
 			sensor.RemoveFrom(knownWorld,t);
-			if (checkChangesNow)
-				CheckChanges(t);
 //			float escaped = sqr(sphere.radius+2);
 			//if (isSatellite)
 			//	LogEvent(EventSignificance::Debug,"Unregistering orbital sensor sphere "+sphere.ToString());
@@ -769,11 +785,6 @@ namespace Objects
 
 
 
-
-		void		Faction::CheckChanges(float t)
-		{
-			knownWorld.CheckChanges(t);
-		}
 
 
 		static bool CheckLimit(count_t currentCount, count_t maxCount, String&errorOut)

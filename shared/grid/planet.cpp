@@ -205,48 +205,53 @@ namespace Grid
 		world.ResetStructureCounters(true);
 		CellStack::bottom.content = (BYTE)innerCoreType;
 
-		Concurrency::parallel_for(index_t(0),HighSetup::GridType::CellCount,[&world,this](index_t i)
+		World::Data::ChangeSequence seq = world.BeginChangeSequence(0);
+
+		Concurrency::parallel_for(index_t(0),HighSetup::GridType::CellCount,[&world,this,&seq](index_t i)
 		{
-			InitUnknown(world.cellStack[i],RandomHeight(high.cells[i].centerVertex.xyz,*this));
+			InitUnknown(seq.AccessStack(i).GetStack(),RandomHeight(high.cells[i].centerVertex.xyz,*this));
 		});
 
 		for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
 		{
 			index_t fine = Grid::low.grid.GetCell(i).higherEquivalent;
-			auto&stack = world.cellStack[fine];
+			auto stackAccess = seq.AccessStack(fine);
+			auto&stack = stackAccess.GetStack();
 			const auto&n = Grid::high.grid.GetCell(fine).neighborhood;
 			for (UINT l = 0; l < CellStack::Range; l++)
 			{
 				if (stack.volumeCell[l].IsClearOrLiquidIgnoreStructure())
 				{
 					int cnt = 0;
-					BYTE cont;
+					BYTE staticDeltaContainer;
 					for (int ni = 0; ni < n.numNeighbors; ni++)
 					{
-						auto&other = world.cellStack[n.neighborID[ni]].volumeCell[l];
+						const auto&other = world.GetCell(Grid::HCellIdU(n.neighborID[ni],l));
 						if (!other.IsClearOrLiquidIgnoreStructure())
 						{
 							cnt ++;
-							cont = other.content;
+							staticDeltaContainer = other.content;
 						}
 					}
 					if (cnt > 1)
 					{
-						stack.volumeCell[l].content = cont;
+						stack.volumeCell[l].content = staticDeltaContainer;
 	
 					}
 					else if (cnt > 0)
 					{
 						for (int ni = 0; ni < n.numNeighbors; ni++)
 						{
-							auto&otherStack = world.cellStack[n.neighborID[ni]];
-							auto&other = otherStack.volumeCell[l];
+							const Grid::HCellIdU	otherAt(n.neighborID[ni],l);
+							const auto&other = world.GetCell(otherAt);
+							//auto&otherStack = world.cellStack[n.neighborID[ni]];
+							//auto&other = otherStack.volumeCell[l];
 							if (!other.IsClearOrLiquidIgnoreStructure())
 							{
-								cont = stack.volumeCell[l].content;
+								staticDeltaContainer = stack.volumeCell[l].content;
 
 								cnt ++;
-								other.content = stack.volumeCell[l].content;
+								seq.Change(otherAt, stack.volumeCell[l].content);
 							}
 						}
 					}
@@ -254,10 +259,10 @@ namespace Grid
 			}
 		}
 
-		Concurrency::parallel_for(index_t(0),LowSetup::GridType::CellCount,[this,&world](index_t i)
+		Concurrency::parallel_for(index_t(0),LowSetup::GridType::CellCount,[this,&world,&seq](index_t i)
 		{
 			index_t fine = Grid::low.grid.GetCell(i).higherEquivalent;
-			auto&centerStack = world.cellStack[fine];
+			auto&centerStack = seq.AccessStack(fine);
 			const auto&n = Grid::high.grid.GetCell(fine).neighborhood;
 			const auto&n0 = Grid::low.grid.GetCell(i).neighborhood;
 			for (int ni = 0; ni < n.numNeighbors; ni++)
@@ -267,24 +272,26 @@ namespace Grid
 
 				const auto&n2 = Grid::high.grid.GetCell(n.neighborID[ni]).neighborhood;
 
-				auto&nStack = world.cellStack[n.neighborID[ni]];
+				auto nStackAccess = seq.AccessStack(n.neighborID[ni]);
+				auto&nStack = nStackAccess.GetStack();
 				for (UINT l = 0; l < CellStack::Range; l++)
 				{
 					if (!nStack.volumeCell[l].IsClearOrLiquidIgnoreStructure())
 						continue;
 					count_t cnt = 0;
-					BYTE cont = 0;
+					BYTE staticDeltaContainer = 0;
 					for (int nj = 0; nj < n2.numNeighbors; nj++)
 					{
-						if (!world.cellStack[n2.neighborID[nj]].volumeCell[l].IsClearOrLiquidIgnoreStructure())
+						const auto&n2c = world.GetCell(Grid::HCellIdU(n2.neighborID[nj],l));
+						if (!n2c.IsClearOrLiquidIgnoreStructure())
 						{
 							cnt ++;
-							cont = world.cellStack[n2.neighborID[nj]].volumeCell[l].content;
+							staticDeltaContainer = n2c.content;
 						}
 					}
 					if (cnt > 3)
 					{
-						nStack.volumeCell[l].content = cont;
+						nStack.volumeCell[l].content = staticDeltaContainer;
 					}
 				}
 
@@ -292,55 +299,30 @@ namespace Grid
 		});
 
 
-		Concurrency::parallel_for(index_t(0),HighSetup::GridType::CellCount,[&world,this](index_t i)
+		Concurrency::parallel_for(index_t(0),HighSetup::GridType::CellCount,[&world,this,&seq](index_t i)
 		{
-			FillTypes(world.cellStack[i]);
+			FillTypes(seq.AccessStack(i).GetStack());
 		});
-
-		//Concurrency::parallel_for (index_t(0), HighSetup::GridType::CellCount, [this](index_t i)
-		//{
-		//	auto&stack = cellStack[i];
-		//	UINT32 stackTop = 0;
-		//	for (UINT l = 0; l+1 < CellStack::Range; l++)
-		//	{
-		//		if (stack.volumeCell[l].content == Content::Grass && !stack.volumeCell[l+1].IsClearOrLiquidIgnoreStructure())
-		//		{
-		//			stack.volumeCell[l].content = Content::Earth;
-		//		}
-		//	}
-		//});
 
 
 		const bool solidProx = CellStack::Cell::IsSolid(liquidOutline) && CellStack::Cell::IsLiquid(liquidCoverage);
 		if (solidProx)
 			for (index_t i = 0; i < HighSetup::GridType::CellCount; i++)
 			{
-				auto&stack = world.cellStack[i];
+				auto stackAccess = seq.AccessStack(i);
+				auto&stack = stackAccess.GetStack();
 				for (UINT l = 0; l < CellStack::Range; l++)
 				{
-					const BYTE cont = stack.volumeCell[l].content;
-					if (solidProx && cont == liquidCoverage)
+					const BYTE staticDeltaContainer = stack.volumeCell[l].content;
+					if (solidProx && staticDeltaContainer == liquidCoverage)
 					{
 						const auto&n = high.grid.GetCell(i).neighborhood;
 						for (BYTE k = 0; k < n.numNeighbors; k++)
-							world.cellStack[n.neighborID[k]].volumeCell[l].SetToIfSolid(liquidOutline);
+							seq.ChangeConditionally(Grid::HCellIdU(n.neighborID[k],l),liquidOutline,World::Condition::IsSolid);
 					}
 
 				}
 			}
-
-		#ifdef HAS_WINDOW
-			Concurrency::parallel_for (index_t(0), HighSetup::GridType::CellCount, [this,&world](index_t i)
-			{
-				auto&stack = world.cellStack[i];
-				stack.UpdateRange();
-				stack.lightingChangedTo = (BYTE)CellStack::Range;
-			});
-			world.lightingOutdated = true;
-		#endif
-		for (BaseGrid::family_t i = 0; i < BaseGrid::NumFamilies; i++)
-			world.SignalFamilyStructureChange(i);
-		world.structureChanged = true;
 	}
 
 	

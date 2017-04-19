@@ -70,11 +70,6 @@ namespace Objects
 	*/
 	void					Create();
 
-	/**
-	Final destruction command. Tries to free as much as possible before returning.
-	Although theoretically not necessary, it also frees all DirectX resources.
-	*/
-	void					Destroy();
 
 
 

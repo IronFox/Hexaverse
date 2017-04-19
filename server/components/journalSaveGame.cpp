@@ -243,7 +243,6 @@ namespace Journal
 			if (factionType != GetType(f))
 				throw RoundException(CLOCATION,"Faction already exists. Types diverge");
 		f->accessToken = accessToken;
-		ASSERT__(f->knownWorld.cellStack.IsNotEmpty());
 		Network::tokenMap.Set(f->accessToken,f);
 
 		World::UpdateEMPZones();
