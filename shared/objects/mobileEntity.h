@@ -535,6 +535,7 @@ namespace Objects
 		#ifndef NO_HIBERNATION
 			virtual const Hibernating*ToHibernating() const override {return this;}
 		#endif
+		virtual void			VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance = false) const override;
 		virtual float			GetScanningRange() const override;
 		virtual String			DescribeScanningRange() const override;
 		#ifndef CLIENT
