@@ -1601,15 +1601,27 @@ namespace World
 
 
 	
-	/**/					Data::Data():cellStack(HighSetup::GridType::CellCount)
+	/**/					Data::Data()
 	{
-		this->FlushTerrain();
-		if (!IsGlobalInstance())
+		if (IsGlobalInstance())
 		{
-			observerKey = actual.onTerrainChange.Register([this](const Data&,const BaseGrid::FamiliesChanged&fam, float t)
-			{
-				SignalChange(fam,t,true);
-			});
+			cellStack.SetSize(HighSetup::GridType::CellCount);
+			FlushTerrain();
+		}
+		else
+		{
+			#ifdef CLIENT
+				FATAL__("this should not happen");
+			#else
+				cellStack = initial.cellStack;
+				//for (BaseGrid::family_t fam = 0; fam < BaseGrid::NumFamilies; fam++)
+				//	families[fam].structureOrSensory.Set(0);	maybe don't declare this a change
+
+				observerKey = actual.onTerrainChange.Register([this](const Data&,const BaseGrid::FamiliesChanged&fam, float t)
+				{
+					SignalChange(fam,t,true);
+				});
+			#endif
 		}
 	}
 
