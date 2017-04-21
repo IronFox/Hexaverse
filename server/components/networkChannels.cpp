@@ -582,9 +582,9 @@ namespace Receiver
 
 		}
 		static World::DeltaContainer staticDeltaContainer;
-		if (newFaction)
-			staticDeltaContainer.Process(client->faction->knownWorld);
-		else
+		//if (newFaction)
+		//	staticDeltaContainer.Process(client->faction->knownWorld);
+		//else
 			staticDeltaContainer.CompressState(client->faction->knownWorld,Protocol::Timestamp(true,0));
 		for (index_t i = 0; i< staticDeltaContainer.numDeltas; i++)
 		{
