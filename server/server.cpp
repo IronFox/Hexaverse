@@ -529,6 +529,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 	//ErrMessage("Hexaverse Server: "+message);
 	std::cerr << message << std::endl;
 	#ifdef _DEBUG
+		__debugbreak();
 		std::abort();
 
 		char confirm[0x100];
@@ -880,7 +881,7 @@ int main( int argc, const char* argv[])
 
 
 		#ifdef _DEBUG
-			inTestMode = true;
+			//inTestMode = true;
 		#endif
 
 
