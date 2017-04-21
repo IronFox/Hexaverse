@@ -494,36 +494,53 @@ namespace Objects
 	#endif
 
 
-	/*virtual override*/	void WorldEntity::RegisterSensory(const Grid::LCellIdI&loc, float&atTime, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
+	/*virtual*/ void			WorldEntity::VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance /*= false*/) const
+	{
+		float range = GetScanningRange();
+		static const float MinSolid = 2.f * Grid::UnitScale;
+		const auto center = GetScanningCenter(loc);
+		if (range > MinSolid)
+		{
+			visitor(World::Sensor(center, MinSolid, World::Sensor::SolidSphere));
+			visitor(World::Sensor(center, range, World::Sensor::ShadedSphere));
+		}
+		else
+			visitor(World::Sensor(center, range, World::Sensor::SolidSphere));
+	}
+
+
+	void WorldEntity::RegisterSensory(const Grid::LCellIdI&loc, float&atTime, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
 	{
 		this->SyncTime(atTime);	
 		LogEvent(EventSignificance::Common,this,"Registering sensory ("+loc.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
-		World::Sensor	sensor(GetScanningCenter(loc),GetScanningRange(),GetScannerType());
-		#ifdef CLIENT
-			if (isOwnedByMe)
-			{
-				sensor.InsertInto(World::actual,0);
-			}
-
-		#else
-			owner->RegisterSensorCreation(sensor, location.height, atTime, newContacts);
-		#endif
+		VisitSensors(loc, [&atTime, newContacts,this](const World::Sensor&sensor)
+		{
+			#ifdef CLIENT
+				if (isOwnedByMe)
+				{
+					sensor.InsertInto(World::actual, atTime);
+				}
+			#else
+				owner->RegisterSensorCreation(sensor, location.height, atTime, newContacts);
+			#endif
+		});
 	}
 
-	/*virtual override*/	void					WorldEntity::UnregisterSensory(const Grid::LCellIdI&loc, float&atTime)
+	void					WorldEntity::UnregisterSensory(const Grid::LCellIdI&loc, float&atTime)
 	{
 		this->SyncTime(atTime);	
 		LogEvent(EventClass::Preset::common,this,"Unregistering sensory ("+loc.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
-		
-		World::Sensor	sensor(GetScanningCenter(loc),GetScanningRange(),GetScannerType());
-		#ifndef CLIENT
-			owner->RegisterSensorRemoval(sensor, location.height, atTime);
-		#else
+		VisitSensors(loc, [&atTime, this](const World::Sensor&sensor)
+		{
+		#ifdef CLIENT
 			if (isOwnedByMe)
 			{
-				sensor.RemoveFrom(World::actual,0);
+				sensor.RemoveFrom(World::actual, atTime);
 			}
+		#else
+			owner->RegisterSensorRemoval(sensor, location.height, atTime);
 		#endif
+		});
 	}
 
 	#ifndef CLIENT

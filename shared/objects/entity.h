@@ -422,7 +422,6 @@ namespace Objects
 		*/
 		virtual float				GetScanningRange() const;
 		virtual float3				GetScanningCenter(const Grid::LCellIdI&loc) const;
-		virtual World::Sensor::type_t	GetScannerType() const {return World::Sensor::SolidSphere;}
 		/**
 		Explicitly describes how the scanning range is computed (only has to explicitly name research, not EMP, but has to include EMP in the resulting numbers)
 		*/
@@ -523,11 +522,19 @@ namespace Objects
 			health -= damageLevel;
 		}
 
+		/**
+		Iterates through all sensors of the local entity
+		@param loc Location to use as entity location (the actual entity location is ignored)
+		@param visitor Function to call
+		@param appearance If true the method only returns sensors that represent its visual appearance
+		*/
+		virtual void			VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance = false) const;
+
 		void					RegisterSensory(float&atTime) {RegisterSensory(location,atTime);}
 		void					UnregisterSensory(float&atTime)  {UnregisterSensory(location,atTime);}
 
-		virtual void			RegisterSensory(const Grid::LCellIdI&loc, float&atTime, Buffer0<PWorldEntity>*newContacts = nullptr);
-		virtual void			UnregisterSensory(const Grid::LCellIdI&loc, float&atTime);
+		void					RegisterSensory(const Grid::LCellIdI&loc, float&atTime, Buffer0<PWorldEntity>*newContacts = nullptr);
+		void					UnregisterSensory(const Grid::LCellIdI&loc, float&atTime);
 		#ifdef CLIENT
 			void				MoveSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to, float&atTime, bool checkChangesNow=true);
 		#else
