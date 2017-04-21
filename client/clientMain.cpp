@@ -3575,7 +3575,6 @@ int main( int argc, const char* argv[])
 		}
 
 
-		Boot();
 
 		{
 
@@ -3611,6 +3610,7 @@ int main( int argc, const char* argv[])
 		}
 
 		applicationStart = timer.Now();
+		Boot();
 
 
 
