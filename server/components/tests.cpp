@@ -816,7 +816,7 @@ namespace Test
 
 
 
-		for (index_t run = 0; run < 100; run++)
+		for (index_t run = 0; run < 10; run++)
 		{
 			World::actual.FlushAllChanges();
 			{
@@ -830,31 +830,42 @@ namespace Test
 				}
 			}
 
-			const auto strucLoc = Grid::LCellIdI(random.Next(Grid::LowSetup::GridType::CellCount - 1), 0);
-
-			VisitHighCells(strucLoc, [](const Grid::HCellIdI&loc, bool isCenter)
-			{
-				ASSERT_EQUAL__(World::actual.GetCell(loc + 1).structureCounter, 0);
-				ASSERT_EQUAL__(World::actual.GetCell(loc).structureCounter, 0);
-				ASSERT_EQUAL__(World::actual.GetCell(loc - 1).structureCounter, 0);
-				ASSERT_EQUAL__(World::actual.GetCell(loc - 2).structureCounter, 0);
-				ASSERT_EQUAL__(World::actual.GetCell(loc).content, Grid::Content::Granite);
-				const BaseGrid::family_t fam = Grid::high.grid.GetCell(loc.stackID).family;
-				ASSERT__(World::actual.FamilyIsOutdated(fam));
-			});
 			World::actual.FlushAllChanges();
 			World::initial = World::actual;
 
 			Objects::PFaction faction = Objects::Faction::Create(TUniqueID::Empty(), "Test:Terrain");	//makes World::initial copy
-			Objects::PVehiclePlant mine(CreateStructure<Objects::VehiclePlant>(faction, strucLoc));
-		
-			VisitHighCells(mine->location,[faction](const Grid::HCellIdI&loc, bool isCenter)
+			ASSERT__(!faction->knownWorld.SensoryIsInvalid());
+
+			const auto strucLoc = Grid::LCellIdI(random.Next(Grid::LowSetup::GridType::CellCount - 1), 0);
+
+			VisitHighCells(strucLoc, [faction](const Grid::HCellIdI&loc, bool isCenter)
 			{
+				const auto&cell = World::actual.GetCell(loc);
+				const auto&myCell = faction->knownWorld.GetCell(loc);
+				ASSERT__(!myCell.IsCurrentlyVisible());	//no structure => no visibility
 				ASSERT_EQUAL__(World::actual.GetCell(loc + 1).structureCounter, 0);
-				ASSERT_EQUAL__(World::actual.GetCell(loc).structureCounter, isCenter ? 2 : 1);
+				ASSERT_EQUAL__(cell.structureCounter, 0);
+				ASSERT_EQUAL__(World::actual.GetCell(loc - 1).structureCounter, 0);
+				ASSERT_EQUAL__(World::actual.GetCell(loc - 2).structureCounter, 0);
+				ASSERT_EQUAL__(cell .content, Grid::Content::Granite);
+			});
+			Objects::PVehiclePlant s(CreateStructure<Objects::VehiclePlant>(faction, strucLoc));
+			float sensorRange = s->GetScanningRange();
+			ASSERT__(!faction->knownWorld.SensoryIsInvalid());
+
+			VisitHighCells(s->location,[faction](const Grid::HCellIdI&loc, bool isCenter)
+			{
+				const auto&cell = World::actual.GetCell(loc);
+				const auto&myCell = faction->knownWorld.GetCell(loc);
+				ASSERT__(myCell.IsCurrentlyVisible());
+				ASSERT__(faction->knownWorld.GetCell(loc + 1).IsCurrentlyVisible());
+				ASSERT__(faction->knownWorld.GetCell(loc-1).IsCurrentlyVisible());
+
+				ASSERT_EQUAL__(World::actual.GetCell(loc + 1).structureCounter, 0);
+				ASSERT_EQUAL__(cell.structureCounter, isCenter ? 2 : 1);
 				ASSERT_EQUAL__(World::actual.GetCell(loc - 1).structureCounter, isCenter ? 2 : 1);
 				ASSERT_EQUAL__(World::actual.GetCell(loc - 2).structureCounter, 0);
-				ASSERT_EQUAL__(World::actual.GetCell(loc).content, Grid::Content::Clear);
+				ASSERT_EQUAL__(cell.content, Grid::Content::Clear);
 				ASSERT_EQUAL__(faction->knownWorld.GetCell(loc).content, Grid::Content::Granite);	//not updated yet
 				const BaseGrid::family_t fam = Grid::high.grid.GetCell(loc.stackID).family;
 				ASSERT__(World::actual.FamilyIsOutdated(fam));
@@ -867,7 +878,7 @@ namespace Test
 
 			ASSERT__(World::terrainChanged);
 
-			VisitHighCells(mine->location, [faction](const Grid::HCellIdI&loc, bool isCenter)
+			VisitHighCells(s->location, [faction](const Grid::HCellIdI&loc, bool isCenter)
 			{
 				ASSERT_EQUAL__(faction->knownWorld.GetCell(loc).content, Grid::Content::Clear);	//updated
 				const BaseGrid::family_t fam = Grid::high.grid.GetCell(loc.stackID).family;
