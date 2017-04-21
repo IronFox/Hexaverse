@@ -1006,6 +1006,8 @@ int main( int argc, const char* argv[])
 
 
 			{
+				
+				Test::Run(Test::TerrainUpdates());
 				Test::Run(Test::AutoTargeting());
 				Test::Run(Test::SharedContainer());
 				Test::Run(Test::ServerClient());

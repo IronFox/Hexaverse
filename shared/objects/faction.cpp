@@ -20,6 +20,14 @@ namespace Objects
 		/*static*/ Buffer0<WFaction>	Faction::all;
 		/*static*/ PFaction				Faction::nexus;
 
+
+		/*static*/ PFaction				Faction::Create(const TUniqueID&id, const String&name/* = ""*/)
+		{
+			PFaction rs(new Faction(id, name));
+			all << rs;
+			return rs;
+		}
+
 		void	Faction::RecreateNexus(const TUniqueID&id)
 		{
 			nexus.reset(new Faction(id, "<Nexus>",true));

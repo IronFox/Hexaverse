@@ -13,13 +13,16 @@ template <typename...T>
 		void	Clear()	{functions.Clear();}
 		void	operator()(T...p)
 		{
-			iterating = true;
+			iterating ++;
 			for (index_t i = 0; i < functions.Count(); i++)
 				functions[i](p...);
-			iterating = false;
-			foreach (dropBuffer,key)
-				Unregister(*key);
-			dropBuffer.Clear();
+			iterating --;
+			if (iterating == 0)
+			{
+				foreach(dropBuffer, key)
+					Unregister(*key);
+				dropBuffer.Clear();
+			}
 		}
 		void	operator+=(const F&f)
 		{
@@ -65,7 +68,7 @@ template <typename...T>
 
 	private:
 		Buffer0<index_t>	dropBuffer;
-		bool				iterating = false;
+		index_t				iterating = 0;
 		Buffer0<F,Swap>		functions;
 		IndexTable<index_t>	keyMap;
 		static index_t		keyCounter;

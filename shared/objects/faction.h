@@ -233,7 +233,7 @@ namespace Objects
 			static PFaction				nexus;
 
 			static PFaction				FindByID(const TUniqueID&);
-
+			static PFaction				Create(const TUniqueID&, const String&name = "");
 
 
 			World::Data				knownWorld;

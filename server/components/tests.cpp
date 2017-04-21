@@ -6,7 +6,7 @@
 #include <objects/structure/mine.h>
 #include <objects/structure/vehiclePlant.h>
 
-
+#include "state/worldState.h"
 
 
 namespace Objects
@@ -445,8 +445,7 @@ namespace Test
 		Grid::TPlanetConfig	config;
 		GlobalEvents::FlushObjects();
 
-		Objects::PFaction faction(new Objects::Faction(TUniqueID::Empty()));
-		Objects::Faction::all << faction;
+		Objects::PFaction faction  = Objects::Faction::Create(TUniqueID::Empty(),"Test:VehiclePlant");
 
 		Grid::LCellIdI	mineAt(0, 1);
 		const auto&n = Grid::low.grid.GetCell(mineAt.stackID).neighborhood;
@@ -792,7 +791,97 @@ namespace Test
 
 			container.Clear();
 		}
+	}
+
+
+	void	VisitHighCells(const Grid::LCellIdI&cell, const std::function<void(const Grid::HCellIdI&, bool)>&f)
+	{
+		#ifdef HYBRID_GRID
+			const UINT32 fine = Grid::low.grid.GetCell(cell.stackID).higherEquivalent;
+			const auto&n = Grid::high.grid.GetCell(fine).neighborhood;
+			f(Grid::HCellIdI(fine, cell.height), true);
+			for (BYTE k = 0; k < n.numNeighbors; k++)
+			{
+				f(Grid::HCellIdI(n.neighborID[k], cell.height), false);
+			}
+		#else
+			f(cell,true);
+		#endif
 
 	}
+
+	/*virtual override*/ void	TerrainUpdates::Run(Random&random)
+	{
+		GlobalEvents::FlushAll();
+
+
+
+		for (index_t run = 0; run < 100; run++)
+		{
+			World::actual.FlushAllChanges();
+			{
+				World::Data::ChangeSequence seq = World::actual.BeginChangeSequence(0);
+				for (index_t i = 0; i < Grid::HighSetup::GridType::CellCount; i++)
+				{
+					auto acc = seq.AccessStack(i);
+					Grid::CellStack&stack = acc.GetStack();
+					for (unsigned k = 0; k < Grid::CellStack::Range; k++)
+						stack.volumeCell[k].content = Grid::Content::Granite;	//fill up with granite
+				}
+			}
+
+			const auto strucLoc = Grid::LCellIdI(random.Next(Grid::LowSetup::GridType::CellCount - 1), 0);
+
+			VisitHighCells(strucLoc, [](const Grid::HCellIdI&loc, bool isCenter)
+			{
+				ASSERT_EQUAL__(World::actual.GetCell(loc + 1).structureCounter, 0);
+				ASSERT_EQUAL__(World::actual.GetCell(loc).structureCounter, 0);
+				ASSERT_EQUAL__(World::actual.GetCell(loc - 1).structureCounter, 0);
+				ASSERT_EQUAL__(World::actual.GetCell(loc - 2).structureCounter, 0);
+				ASSERT_EQUAL__(World::actual.GetCell(loc).content, Grid::Content::Granite);
+				const BaseGrid::family_t fam = Grid::high.grid.GetCell(loc.stackID).family;
+				ASSERT__(World::actual.FamilyIsOutdated(fam));
+			});
+			World::actual.FlushAllChanges();
+			World::initial = World::actual;
+
+			Objects::PFaction faction = Objects::Faction::Create(TUniqueID::Empty(), "Test:Terrain");	//makes World::initial copy
+			Objects::PVehiclePlant mine(CreateStructure<Objects::VehiclePlant>(faction, strucLoc));
+		
+			VisitHighCells(mine->location,[faction](const Grid::HCellIdI&loc, bool isCenter)
+			{
+				ASSERT_EQUAL__(World::actual.GetCell(loc + 1).structureCounter, 0);
+				ASSERT_EQUAL__(World::actual.GetCell(loc).structureCounter, isCenter ? 2 : 1);
+				ASSERT_EQUAL__(World::actual.GetCell(loc - 1).structureCounter, isCenter ? 2 : 1);
+				ASSERT_EQUAL__(World::actual.GetCell(loc - 2).structureCounter, 0);
+				ASSERT_EQUAL__(World::actual.GetCell(loc).content, Grid::Content::Clear);
+				ASSERT_EQUAL__(faction->knownWorld.GetCell(loc).content, Grid::Content::Granite);	//not updated yet
+				const BaseGrid::family_t fam = Grid::high.grid.GetCell(loc.stackID).family;
+				ASSERT__(World::actual.FamilyIsOutdated(fam));
+				ASSERT__(faction->knownWorld.FamilyIsOutdated(fam));
+			});
+
+			World::terrainChanged = false;
+		
+			World::Network::CheckAllFactionCoverageAndSendAsNeeded();
+
+			ASSERT__(World::terrainChanged);
+
+			VisitHighCells(mine->location, [faction](const Grid::HCellIdI&loc, bool isCenter)
+			{
+				ASSERT_EQUAL__(faction->knownWorld.GetCell(loc).content, Grid::Content::Clear);	//updated
+				const BaseGrid::family_t fam = Grid::high.grid.GetCell(loc.stackID).family;
+				ASSERT__(!faction->knownWorld.FamilyIsOutdated(fam));	//should have been handled by CheckAllFactionCoverageAndSendAsNeeded()
+			});
+			GlobalEvents::FlushObjects();
+			DBG_ASSERT__(Objects::structures.IsEmpty());
+			DBG_ASSERT__(Objects::Faction::all.IsEmpty());
+		}
+
+
+		GlobalEvents::FlushAll();
+	}
+
+	
 
 }
