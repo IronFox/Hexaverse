@@ -1461,7 +1461,7 @@ namespace World
 		//Array<Grid::CellStack::TTechniteFactionDelta> fdts(length * Grid::CellStack::Range);
 		//Array<bool> fdtsValid(length * Grid::CellStack::Range);
 
-		bool any = false;
+		bool any = deltaType != WorldDeltaType::ProgressiveUpdate;
 		Concurrency::parallel_for(index_t(0),length*Grid::CellStack::Range,
 		[&tdts,/*&fdts,&fdtsValid,*/length,&any,
 			offset,empty,deltaType,this](index_t i)
