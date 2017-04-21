@@ -1376,6 +1376,11 @@ namespace World
 			case ShadedCylinder:
 				MakeShaftVolume(desc,[](UINT32){return 0;});
 			break;
+			case UpperHalfSolidSphere:
+				Grid::low.GenerateVolume(Sphere<>(worldCenter, radius + 1.f), desc);
+				foreach(desc.coverage, st)
+					st->range.start = gridCenter.layer;
+			break;
 			default:
 				FATAL__("Functionality missing for sensor type #"+String((int)type));
 		}
@@ -1641,11 +1646,11 @@ namespace World
 			{
 				if (op.stackVisited[current])
 					continue;
-				op.stackVisited[current] = true;
 
 				float d2 = Vec::quadraticDistance(setup.cells[current].centerVertex.xyz,center);
 				if (d2 > hr2)
 					continue;
+				op.stackVisited[current] = true;
 
 				auto&cell = v.coverage.Append();
 				cell.stackID = current;
@@ -1719,6 +1724,47 @@ namespace World
 
 
 		ApplyVolume(v, changeBy,seq);
+	}
+
+
+	void		Sensor::ApplyHalfSolidSphereTo(World::Data&v, short changeBy, Data::ChangeSequence&seq)	const
+	{
+		volume.Clear();
+		UINT32 centerStack = this->gridCenter.stackID;
+		op.stacksLeft << centerStack;
+
+		const float br = Grid::ToRadius(Grid::CellStack::BottomHeight);
+		const float tr = Grid::ToRadius(Grid::CellStack::TopHeight);
+		UINT32 next;
+		while (op.stacksLeft >> next)
+		{
+			if (op.stackVisited[next])
+				continue;
+			op.stackVisited[next] = true;
+			const TVec3<>&dir = Grid::high.cells[next].cornerCenter;
+			TVec2<> distances;
+			TVec3<> bottom, top;
+			Vec::mult(dir, br, bottom);
+			Vec::mult(dir, tr, top);
+			Grid::HighSetup::TVolumeDescriptor::TStack&st = volume.coverage.Append();
+			st.stackID = next;
+			if (!Obj::DetectSphereEdgeIntersection(worldCenter, radius, bottom, top, distances))
+			{
+				st.range.SetEmpty(0);
+				continue;
+			}
+
+			st.range.start = this->gridCenter.layer;
+				///(UINT32)floor(std::max(distances.x, 0.f) * (Grid::CellStack::Range - 1));
+			st.range.end = 1 + (UINT32)ceil(std::min(distances.y, 1.f) * (Grid::CellStack::Range - 1));
+			const auto&n = Grid::high.grid.GetCell(next).neighborhood;
+			for (int i = 0; i < n.numNeighbors; i++)
+				op.stacksLeft << n.neighborID[i];
+		}
+		op.ResetVisited(volume);
+
+
+		ApplyVolume(v, changeBy, seq);
 	}
 
 
@@ -1871,6 +1917,9 @@ namespace World
 		const Timer::Time t0 = timer.Now();
 		switch (type)
 		{
+			case UpperHalfSolidSphere:
+				ApplyHalfSolidSphereTo(v, change, seq);
+			break;
 			case SolidSphere:
 				ApplySolidSphereTo(v,change,seq);
 			break;
@@ -1889,6 +1938,8 @@ namespace World
 					,seq
 				);
 			break;
+			default:
+				FATAL__("Unsupported sensor type");
 		};
 
 		LogEvent(EventSignificance::PerformanceMeasurement,nullptr,"Sensory change processed in "+String(timer.GetSecondsSince(t0)));

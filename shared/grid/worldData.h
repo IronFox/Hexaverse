@@ -438,6 +438,7 @@ namespace World
 		static void		ApplyVolume(World::Data&v, short changeBy, Data::ChangeSequence&);
 
 		void			ApplySolidSphereTo(World::Data&v, short change, Data::ChangeSequence&)	const;
+		void			ApplyHalfSolidSphereTo(World::Data&v, short changeBy, Data::ChangeSequence&seq)	const;
 		void			ApplyShadedSphereTo(World::Data&v, short change, Data::ChangeSequence&)	const;
 		void			MakeShaftVolume(Grid::HighSetup::TVolumeDescriptor&v, const std::function<UINT32(UINT32 stackID)>&traceFunction)	const;
 		void			MakeShaftVolume(Grid::LowSetup::TVolumeDescriptor&v, const std::function<UINT32(UINT32 stackID)>&traceFunction)	const;
@@ -465,6 +466,7 @@ namespace World
 		enum type_t
 		{
 			SolidSphere,	//!< Sphere that covers the entire area. Unaffected by terrain
+			UpperHalfSolidSphere,	//!< Upper half of SolidSphere	(including entity base level)
 			ShadedSphere,	//!< Sphere that covers the area where non-occluded by terrain
 			SolidCylinder,	//!< Cylinder stretching down from the specified world center to the bottom of the grid. Unaffected by terrain
 			ShadedCylinder,	//!< Cylinder stretching down from the specified world center to the bottom of the grid. Halted by terrain
@@ -475,7 +477,7 @@ namespace World
 		/**/			Sensor(const float3&center, float radius, type_t t, int terrainPenetration=0)
 							:worldCenter(center),
 							gridCenter(Grid::high.Locate(center),Grid::CellStack::ToLayer(Grid::HeightFloorFromRadius(center.length()))),
-							radius(radius),type(t)	{}
+							radius(radius),type(t), terrainPenetration(terrainPenetration){}
 
 		/**/			Sensor(const Grid::LCellIdI&center, float fLayerOffset, float radius, type_t t)
 							:worldCenter(Grid::ToWorld(center,fLayerOffset)),
