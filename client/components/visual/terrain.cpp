@@ -904,7 +904,10 @@ namespace VisualTerrain
 		void							SetOutdated(bool geometry, bool resources)
 		{
 			if (geometry)
+			{
 				normal.outdated = true;
+				normal.resourceOutdated = true;	//implied
+			}
 			if (resources)
 				normal.resourceOutdated = true;
 		}
