@@ -1569,7 +1569,7 @@ namespace World
 	bool		Data::ProgressiveUpdate(BaseGrid::family_t f,  ArrayData<Grid::CellStack::TTypeDeltaBlock>&delta, float&t, bool noDelta/*=false*/)
 	{
 		ASSERT__(!IsGlobalInstance());
-		ASSERT__(SensoryIsInvalid());
+		ASSERT__(!SensoryIsInvalid());
 		ASSERT_LESS__(f,BaseGrid::NumFamilies);
 		float t0 = 0;
 		if (!families[f].structureOrSensory.Reset(t0))
