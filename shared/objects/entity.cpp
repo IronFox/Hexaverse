@@ -20,9 +20,6 @@
 
 namespace Objects
 {
-	#ifdef CLIENT
-		Buffer0<PWorldEntity>		waste;
-	#endif
 
 
 	GenericHashTable<TUniqueID,PWorldEntity,TUniqueID,Strategy::POD,Strategy::Swap>	idMap;

@@ -182,18 +182,20 @@ namespace Camera
 
 	void Reset()
 	{
-		orbit = WorldScale;
-		targetOrbit = WorldScale;
+		orbit = Grid::MeanPlanetRadius;
+		targetOrbit = Grid::MeanPlanetRadius;
 		orbitBaseFactor = 1.f;
 
 		moveToTarget = false;
 		skyOrbitBase = false;
 		skyGrid = false;
 
-		scene.retraction = float3(0,0,-4 * WorldScale);
+		scene.retraction = float3(0, 0, -4 * WorldScale);
 		scene.location = float3(0, orbit, 0);
 		scene.direction = float3(0, 1, 1).normalized();
-		scene.upAxis = float3(0, 1, 0);
+		scene.upAxis = scene.location;
+		Vec::normalize0(scene.upAxis);
+
 		scene.UpdateView();
 	}
 
@@ -287,8 +289,12 @@ namespace Camera
 
 	void							StopAutoRotation()
 	{
-		autoRotation = false;
-		Reset();
+		if (autoRotation)
+		{
+			autoRotation = false;
+			Reset();
+			scene.UpdateView();
+		}
 	}
 
 	void							ProgressRotation()

@@ -1102,7 +1102,6 @@ namespace Objects
 	}
 	void					Renderer::RenderScene()
 	{
-		waste.Clear();
 		if (!objectView)
 			return;
 

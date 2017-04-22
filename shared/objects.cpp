@@ -209,7 +209,6 @@ namespace Objects
 				#endif
 
 
-				waste.Clear();
 
 			#else
 				Faction::all.Clear();

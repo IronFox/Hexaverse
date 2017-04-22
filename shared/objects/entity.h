@@ -2,7 +2,7 @@
 #define objectEntityH
 
 #include "../uniqueID.h"
-#include <grid/stack.h>
+#include "../grid/stack.h"
 
 #include "turretBase.h"
 #include "types.h"
@@ -630,9 +630,6 @@ namespace Objects
 	};
 
 
-	#ifdef CLIENT
-		extern Buffer0<PWorldEntity>		waste;
-	#endif
 
 
 	template <typename T>

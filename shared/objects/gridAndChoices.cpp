@@ -1360,11 +1360,9 @@ namespace Objects
 			e->OnDestroy(t,timestamp);
 		}
 		#ifdef CLIENT
+			ApplicationInterface::OnVanish(e, t, false);
 			if (isStructure)
 				RefreshCompoundCoverage(timestamp);
-			if (!move)
-				waste << e;
-			ApplicationInterface::OnVanish(e,t,false);
 		#else
 			ApplicationInterface::SignalRemoval(e,t,timestamp);	//must be sent before clearing seeing-list below (UnregisterSensory) or nobody will be told except owner
 

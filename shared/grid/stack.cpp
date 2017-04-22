@@ -115,7 +115,8 @@ namespace Grid
 	{
 		if (height >= BottomHeight && height <= TopHeight)
 		{
-			volumeCell[height + HalfRange].structureCounter += by;
+			UINT layer = ToLayer(height);
+			volumeCell[layer].structureCounter += by;
 		}
 	}
 
