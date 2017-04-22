@@ -24,7 +24,7 @@ namespace Evolver
 		Unsupplied satellites may be destroyed.
 		Must be called once per round.
 		@param t Server time
-		@param terrainChanged Set true if the terrain changed sind the last invocation of this function. If in doubt pass true. 
+		@param terrainChanged Set true if the terrain changed since the last invocation of this function. If in doubt pass true. 
 		*/
 		void			CheckOrbitalSupplyAndSensory(float&t, bool terrainChanged);
 
@@ -333,14 +333,6 @@ namespace Evolver
 
 		void CheckOrbitalSupplyAndSensory(float&t, bool terrainChanged)
 		{
-			if (terrainChanged)
-			{
-				LogEvent(EventSignificance::Debug,nullptr,"Terrain changed, updating ground-sensory");
-				Objects::SubOrbital::planes.Foreach([&t](const Objects::SubOrbital::PPlane&p)
-				{
-					p->RefreshGroundSensor(t);
-				});
-			}
 			#ifndef NO_SATELLITES
 				Objects::RefreshSkyHubConnections();
 			

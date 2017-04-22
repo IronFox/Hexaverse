@@ -10,6 +10,7 @@
 #include "../stringTable.h"
 #include "../luaInterface.h"
 #include "../scriptCache.h"
+#include "../observer.h"
 
 namespace Objects
 {
@@ -161,6 +162,7 @@ namespace Objects
 			Lua::Function<Lua::Reference()>	stateConstructor;
 			Lua::Function<Lua::Reference(Lua::Reference)>	exportState;
 			Lua::Function<void(Lua::Reference,Lua::Reference)> importState;
+			Observer<>			onScriptChange;
 
 			/**/				GlobalState():rootResearch(""){}
 		};

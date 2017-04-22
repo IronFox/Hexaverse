@@ -160,7 +160,6 @@ namespace Animation
 		return (primitives.IsEmpty() && actives.IsEmpty());
 	}
 
-	void		Update();
 }
 
 

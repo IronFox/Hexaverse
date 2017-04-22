@@ -11,6 +11,7 @@
 #include "../configurationMode.h"
 #include "../udpBroadcast.h"
 #include "worldState.h"
+#include <globalEvents.h>
 
 
 
@@ -182,9 +183,7 @@ namespace Network
 		else
 		{
 			Channels::planetConfig.SendTo(server,Grid::currentPlanetConfig,(UINT)UserLevel::PlanetConfigurator);
-			World::Network::SendChangedFamilies();
-
-
+			World::Network::CheckAllFactionCoverageAndSendAsNeeded();
 		}
 	}
 
@@ -291,6 +290,13 @@ namespace Network
 		server.onEvent = Receiver::OnEvent;
 		server.onIgnorePackage = Receiver::OnIgnorePackage;
 		server.onDeserializationFailed = Receiver::OnDeserializationFailed;
+
+
+		GlobalEvents::applicationTerminate << []
+		{
+			server.Shutdown();
+
+		};
 	}
 
 	bool FactionIsActive(const Objects::PFaction&f)
@@ -354,7 +360,7 @@ namespace Network
 
 		Session::isStarted = true;
 
-		World::Network::SendChangedFamilies();
+		World::Network::CheckAllFactionCoverageAndSendAsNeeded();
 	}
 
 
@@ -449,11 +455,10 @@ namespace Network
 
 		}
 
-		Objects::FlushAllData();
-		Grid::FlushAllData();
+		GlobalEvents::FlushAll();
 
 		if ((preserveSpectators || !isOnline) && sendGridChangesToPreservedSpectators)
-			World::Network::SendChangedFamilies();
+			World::Network::CheckAllFactionCoverageAndSendAsNeeded();
 
 		return isOnline;
 

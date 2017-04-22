@@ -4,6 +4,7 @@
 #include "../../shared/uniqueID.h"
 #include <general/timer.h>
 #include <general/monitoredProcess.h>
+#include <globalEvents.h>
 
 namespace AIProcess
 {
@@ -12,6 +13,7 @@ namespace AIProcess
 		CryptographicID	accessToken;
 
 		MonitoredProcess	process;
+		index_t	eventKey = InvalidIndex;
 
 		void	Start()
 		{
@@ -37,6 +39,11 @@ namespace AIProcess
 			ASSERT3__(process.Start(workingDirectory,path,parameterBuffer,false), workingDirectory,path,parameterBuffer);
 		}
 	
+
+		void EventEnd()
+		{
+			detail::process.Terminate();
+		}
 	}
 
 
@@ -49,11 +56,13 @@ namespace AIProcess
 		}
 		detail::accessToken = accessToken;
 		detail::Start();
+		if (detail::eventKey == InvalidIndex)
+			detail::eventKey = GlobalEvents::applicationTerminate.Register(detail::EventEnd);
 	}
 
 	void End()
 	{
-		detail::process.Terminate();
+		detail::EventEnd();
 	}
 
 

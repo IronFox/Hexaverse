@@ -5,6 +5,7 @@
 #include <general/thread_system.h>
 
 #include <string/cli_defaults.h>
+#include <globalEvents.h>
 
 #include "reflection.h"
 
@@ -166,6 +167,12 @@ namespace RemoteControl
 			created = true;
 		};
 
+		index_t	eventKey = InvalidIndex;
+
+		void Destroy()
+		{
+			server.Shutdown();
+		}
 	}
 
 
@@ -187,6 +194,9 @@ namespace RemoteControl
 		}
 		else
 			LogEvent(EventClass::Preset::remoteControlError,"Failed to register remote control server on port "+String(port));
+
+		if (Detail::eventKey == InvalidIndex)
+			Detail::eventKey = GlobalEvents::applicationTerminate.Register(Detail::Destroy);
 	}
 
 
@@ -199,7 +209,6 @@ namespace RemoteControl
 	void	Destroy()
 	{
 		Detail::server.Shutdown();
-
 	}
 
 

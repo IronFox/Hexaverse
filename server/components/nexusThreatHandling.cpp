@@ -4,6 +4,7 @@
 #include <runtimeConfig.h>
 #include "state/gameState.h"
 #include "journalSaveGame.h"
+#include <objects/structure/vehiclePlant.h>
 
 
 namespace Nexus
@@ -84,11 +85,11 @@ namespace Nexus
 		if (impact > 0)
 			foreach (cornerField, at)
 			{
-				float worldDistance = Vec::distance(Grid::low.cells[*at].centerVertex.xyz * Grid::VerticalBase,worldLoc);
+				float worldDistance = Vec::distance(Grid::low.cells[*at].centerVertex.xyz * Grid::MeanPlanetRadius,worldLoc);
 				if (e.owner != Objects::Faction::nexus)
 					worldDistance = vmax(0,worldDistance-entityRange);
 				//float angularDistance = Vec::angle(Grid::low.cells[*at].centerVertex.xyz,loc) * M_PIF/180.f;
-				float stepDistance = worldDistance / Grid::VerticalBase / avg * 0.75f;
+				float stepDistance = worldDistance / Grid::MeanPlanetRadius / avg * 0.75f;
 
 				bool isRed = stepDistance < 4;
 				bool isYellow = stepDistance < 6;

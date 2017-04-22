@@ -38,10 +38,5 @@ namespace ScriptCache
 	*/
 	void		Create();
 
-	/**
-	Releases all cashed objects in main memory.
-	Written files are preserved
-	*/
-	void		Destroy();
 
 }

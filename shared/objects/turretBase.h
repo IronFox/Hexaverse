@@ -3,8 +3,9 @@
 
 #include <container/queue.h>
 #include <container/hashtable.h>
-#include "../sphereGrid.h"
+#include "../grid/stack.h"
 #include "components.h"
+#include "clientAttachment.h"
 
 #ifdef HAS_WINDOW
 	#include <al/openal.h>
@@ -23,22 +24,7 @@ namespace Objects
 
 
 	#ifdef HAS_WINDOW
-		/**
-		Used to cache and render the paraboloid above a turret base
-		*/
-		class ParaboloidBuffer
-		{
-			TVec3<> lastCenter;
-			float lastRange = 0.f;
-			float lastExp = 0.f;
-			TMatrix4<> matrix;
-			DX11::InstructionBlock32	attackInstruction,extendedInstruction;
 
-			static void		MakeHull(DX11::InstructionBlock32&target, const TMatrix4<>&matrix, float flatRange, float explosionRadius, const TVec3<>&center);
-
-		public:
-			void			Render(const Grid::LCellIdI&cell, float zOffset, float flatRange, float explosionRadius, const float4&color, bool extended);
-		};
 	#endif
 
 	class TurretBase 
@@ -83,7 +69,7 @@ namespace Objects
 									
 
 		#ifdef HAS_WINDOW
-			ParaboloidBuffer	paraboloidBuffer;
+			PClientAttachment	paraboloidBuffer;
 		#endif
 
 

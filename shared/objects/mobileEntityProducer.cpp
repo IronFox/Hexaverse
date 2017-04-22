@@ -8,17 +8,12 @@
 #include "faction.h"
 
 
-#ifdef HAS_WINDOW
-	#include "visualChoices.h"
-	#include "rendering.h"
-	#include "visualCommands.h"
-	#include "visualSelection.h"
-	#include "../../client/components/dialog.h"
-#endif
-
 
 namespace Objects
 {
+
+	Observer<MobileEntityProducer&,MobileEntityProducer::WorkItem&>	MobileEntityProducer::onAppendTask;
+
 	UINT32				MobileEntityProducer::ProductionRounds(int costs, bool isActive) const
 	{
 		if (isActive)
@@ -124,13 +119,13 @@ namespace Objects
 
 
 
-	bool						GatheringPoint::Set(const Grid::LCellIdI&point, const PWorldEntity&parent)
+	bool						GatheringPoint::Set(const Grid::LCellIdI&point, bool isSelected)
 	{
 		if (current == point)
 			return false;
 		current = point;
 		#ifdef HAS_WINDOW
-			if (selectedEntity == parent)
+			if (isSelected)
 			{
 				UpdateVisuals();
 			}
@@ -146,7 +141,7 @@ namespace Objects
 				
 			if (c != Grid::LCellIdI::Invalid)
 			{
-				const Grid::CellStack&stack = Grid::actualWorld.cellStack[Grid::low.grid.GetCell(c.stackID).higherEquivalent];
+				const Grid::CellStack&stack = World::actual.GetStack(Grid::low.grid.GetCell(c.stackID).higherEquivalent);
 				while (stack.GetCellI(c.height).structureCounter > 1)
 					c++;
 				TMatrix4<> sys;
@@ -162,7 +157,7 @@ namespace Objects
 				selected = Grid::LCellIdI::Invalid;
 		}
 
-		void				MobileEntityProducer::VisitAllCommands(WorldEntity::FCommandVisitor visitor,bool force)
+		void				MobileEntityProducer::VisitAllCommands(FCommandVisitor visitor,bool force)
 		{
 			for (index_t i = 0; i < queue.Count(); i++)
 				queue[i].commandToTerminate.second->VisitMembers(visitor,force,queue[i].commandToTerminate.first);
@@ -180,10 +175,8 @@ namespace Objects
 		{
 			if (!AwaitsUserInteraction())
 				return PMobileEntity();
+			TChoiceVisualization vis;
 			Buffer0<Choice>	movementChoices;
-			bool showArrow, hasArrowCellTarget;
-			TVec3<>arrowFrom;
-			Grid::LCellIdI arrowFromCell;
 			PMobileEntity production = GetActiveProduction();
 
 
@@ -198,7 +191,7 @@ namespace Objects
 			}
 			ASSERT_NOT_NULL__(parent);
 
-			GetChoices(*parent,production,CursorMode::Idle,movementChoices,showArrow,hasArrowCellTarget,arrowFrom,arrowFromCell);
+			GetChoices(*parent,production,CursorMode::Idle,movementChoices,vis);
 
 			if (movementChoices.IsEmpty())
 			{
@@ -566,6 +559,8 @@ namespace Objects
 				item.name = name;
 				item.cost = price;
 				item.base = base;
+				item.turret = turret;
+				item.queueName = JobName(index,name,rounds);
 				if (prototype)
 				{
 					ASSERT1__(prototype->IsMobile(), prototype->GetName());
@@ -573,57 +568,7 @@ namespace Objects
 				}
 				item.roundsToCompletion = rounds;
 
-				#ifdef HAS_WINDOW
-					item.commandToTerminate.second.reset( new EntityConstructionCommand(JobName(index,item.name,rounds),base,turret,prototype,[id,index]()
-					{
-//						PWorkingStructure s = To<WorkingStructure>::DynamicCast(e);
-	//					ASSERT__(s);
-						PMobileEntityProducer p = To<MobileEntityProducer>::DynamicCast(selectedEntity);
-						ASSERT__(p);
-						if (!index && p->productionDone)
-						{
-							WWorldEntity e = selectedEntity;
-							Dialog::Confirm("Confirm cancellation of production job "+p->queue.First().name+". Material has been invested into this production, which will be lost.",
-							[e,id]()
-							{
-								PWorldEntity e1 = e.lock();
-								if (e1)
-									ApplicationInterface::SignalConstructionAbort(e1->id,id);
-							}
-							,
-							[e,p,id]()->Dialog::CheckResult
-							{
-								PWorldEntity e1 = e.lock();
-								if (!e1 || e1->health <= 0)
-									return Dialog::CheckResult::Abort;
-								if (p->queue.IsEmpty() || p->queue.First().id != id)
-									return Dialog::CheckResult::Abort;
-								if (!controlIsEnabled)
-									return Dialog::CheckResult::OkayNotRightNow;
-								return Dialog::CheckResult::OkayContinue;
-							}
-							);
-
-						}
-						else
-							ApplicationInterface::SignalConstructionAbort(selectedEntity->id,id);	//lossless
-
-					},CommonCmd::CommonButtonCheck));
-					item.commandToTerminate.first = commandOffset + int2(index,0);
-					if (!index)
-					{
-						item.commandToTerminate.second->roundsLeft = rounds;
-						item.commandToTerminate.second->mineralsLeft = price - productionDone;
-					}
-					else
-					{
-						item.commandToTerminate.second->roundsLeft = 0xFFFFFFFF;
-						item.commandToTerminate.second->mineralsLeft = 0xFFFFFFFF;
-					}
-
-					item.commandToTerminate.second->RasterizeImage();
-				#endif
-
+				onAppendTask(*this,item);
 			}
 		}
 

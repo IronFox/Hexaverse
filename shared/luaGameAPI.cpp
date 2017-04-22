@@ -1,16 +1,17 @@
 #include <global_root.h>
 #include "luaGameAPI.h"
 #include "logEvent.h"
-#include "sphereGrid.h"
+#include "grid/stack.h"
+#include "grid/resources.h"
 #include "objects.h"
 
 namespace Lua
 {
 	namespace Detail
 	{
-		void LogLua(const String&msg)
+		void LogLua(const String&msg, const String&programName)
 		{
-			LogEvent(EventClass::Preset::important,"Lua: "+msg);
+			LogEvent(EventClass::Preset::important,programName+"(Lua): "+msg);
 		}
 
 		#ifdef CLIENT
@@ -47,7 +48,7 @@ namespace Lua
 						int highestAt = -1;
 						Grid::Resource::coverage_t highest = 0;
 						for (index_t i = 0; i < Grid::Resource::NumEntries; i++)
-							if (r->known[i])
+							if (Grid::ResourceDiscovery::client.resourcesDiscovered[i])
 							{
 								if (r->coverage[i] > highest)
 								{
@@ -70,14 +71,25 @@ namespace Lua
 				foreach (Grid::Resource::all,r)
 					if (r->GetName() == resourceName)
 					{
-						if (!r->known[stackID])
+						if (!Grid::ResourceDiscovery::client.resourcesDiscovered[stackID])
 							return -1;
 						return r->coverage[stackID];
 					}
 				throw Lua::Exception("GetResourceCoverage(): Resource '"+resourceName+"' does not exist.");
 			}
 		#endif
-		
+
+		Lua::Reference ToTable(Lua::PProgram&p, const TVec3<>&v)
+		{
+			Lua::Table c = p->CreateTable();
+
+			c.SetField("x" ,v.x);
+			c.SetField("y" ,v.y);
+			c.SetField("z" ,v.z);
+
+			return c;
+		}
+
 		Lua::Reference ToTable(Lua::PProgram&p, const Grid::LCellIdI&cell)
 		{
 			Lua::Table c = p->CreateTable();
@@ -137,7 +149,8 @@ namespace Lua
 
 	void DefineGeneralAPI(Lua::Table&api)
 	{
-		api.SetFunction("Log",Detail::LogLua);
+		String name = api.GetProgram()->GetName();
+		api.SetFunction("Log", [name](const String&msg){Detail::LogLua(msg,name);});
 		#ifdef CLIENT
 			api.SetFunction("FindHighestAvailableResourceLocation",Detail::FindHighestAvailableResourceLocation);
 			api.SetFunction("GetResourceCoverage",Detail::GetResourceCoverage);
@@ -155,6 +168,8 @@ namespace Lua
 
 	Lua::Table CreateGeneralAPI(const Lua::PProgram&p)
 	{
+		if (!p)
+			return Lua::Table();
 		Lua::Table api = p->CreateTable();
 		DefineGeneralAPI(api);
 		api.SetGlobal("Game");
@@ -238,6 +253,41 @@ namespace Lua
 			t.SetField("tasks",tasks);
 		}
 	}
+
+
+	void		DefineLowGridCells(Lua::Table&targetTable)
+	{
+		Lua::PProgram p = targetTable.GetProgram();
+		if (!p)
+			return;
+		Array<Lua::Table>	cells(Grid::LowSetup::GridType::CellCount);
+		Lua::Table cellTable = p->CreateTable();
+		targetTable.SetField("lowCells",cellTable);
+		for (index_t i = 0; i < Grid::LowSetup::GridType::CellCount; i++)
+		{
+			Lua::Table t = p->CreateTable();
+			cellTable.SetElement(i+1,t);
+			cells[i] = t;
+
+			t.SetField("index",i+1);
+
+			t.SetField("center",Detail::ToTable(p, Grid::low.cells[i].cornerCenter));
+		}
+
+		for (index_t i = 0; i < Grid::LowSetup::GridType::CellCount; i++)
+		{
+			Lua::Table t = cells[i];
+			Lua::Table nt = p->CreateTable();
+			t.SetField("neighbors",nt);
+
+			const auto&n = Grid::low.grid.GetCell(i).neighborhood;
+			for (BYTE k = 0; k < n.numNeighbors; k++)
+				nt.AppendElement(cells[n.neighborID[k]]);
+		}
+
+	}
+
+
 
 }
 

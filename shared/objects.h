@@ -4,7 +4,7 @@
 #include <container/buffer.h>
 #include <geometry/cgs.h>
 #include <io/cryptographic_hash.h>
-#include "sphereGrid.h"
+#include "grid/stack.h"
 #include <image/converter/magic.h>
 
 #include "uniqueID.h"
@@ -14,7 +14,6 @@
 
 //parts:
 #include "objects/interface.h"
-#include "objects/rendering.h"
 #include "objects/structure.h"
 #include "objects/vehicle.h"
 #include "objects/satellite.h"
@@ -22,8 +21,6 @@
 #include "objects/faction.h"
 #include "objects/prototypes.h"
 #include "objects/gridAndChoices.h"
-#include "objects/visualSelection.h"
-#include "objects/visualChoices.h"
 //#include "objects/interface.h"
 
 
@@ -74,11 +71,6 @@ namespace Objects
 	*/
 	void					Create();
 
-	/**
-	Final destruction command. Tries to free as much as possible before returning.
-	Although theoretically not necessary, it also frees all DirectX resources.
-	*/
-	void					Destroy();
 
 
 
@@ -86,10 +78,6 @@ namespace Objects
 
 
 
-	#ifdef HAS_WINDOW
-		PWorldEntity	GetRayIntersection(const TVec3<>&b, const TVec3<>&d, float&distance);
-		bool			Select(const TVec3<>&b, const TVec3<>&d, float&distance, bool controlEnabled);
-	#endif
 
 
 	#ifndef CLIENT
@@ -112,13 +100,6 @@ namespace Objects
 
 
 
-
-	/**
-	Erases all objects and references to objects. Prototypes are preserved.
-	Should be called whenever the scene is reset to prevent any lingering artifacts from the previous session.
-	*/
-	void				FlushAllData(bool preserveGameState=false);
-
 	#ifndef NO_SATELLITES
 		/**
 		Updates SkyHub connections to SkyPorts,	as well as dependent satellites.
@@ -126,20 +107,6 @@ namespace Objects
 		Should be identical for player faction on client, since the client should know all of its own entities.
 		*/
 		void			RefreshSkyHubConnections();
-	#endif
-
-	#ifdef HAS_WINDOW
-		/**
-		Resets the cursor mode to idle.
-		Updates choices and commands if necessary.
-		@param controlEnabled Pass true if player controls are currently enabled (not disabled due to wrong phase, or open modal dialogs)
-		@return true, if any modes were disabled
-		*/
-		bool			DisableModes(bool controlEnabled);
-	#endif
-
-
-	#ifndef CLIENT
 	#endif
 
 

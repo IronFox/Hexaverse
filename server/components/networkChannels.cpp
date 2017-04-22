@@ -4,6 +4,7 @@
 #include "serverLogEvent.h"
 #include "journalSaveGame.h"
 #include "configurationMode.h"
+#include <objects/structure/mine.h>
 
 extern Random		random;
 
@@ -212,22 +213,19 @@ namespace Receiver
 				Channels::resourceUpdate.SendTo(peer,package);
 			}
 		}
+		static World::DeltaContainer	delta;
 		if (firstSpectator)
-			World::spectatorWorldState.FlushAllData();
-		Protocol::WorldDelta	delta;
-		delta.timestamp.rightNow = true;
-		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 		{
-			if (firstSpectator)
-			{
-				Protocol::GenerateWorldDelta(nullptr,&World::spectatorWorldState,
-										delta,k,true,k+1 == BaseGrid::NumFamilies,Protocol::WorldDeltaType::ProgressiveInit);
-			}
-			else
-				Protocol::GenerateWorldDelta(nullptr,&World::spectatorWorldState,
-										delta,k,true,k+1 == BaseGrid::NumFamilies,Protocol::WorldDeltaType::LocalCopy);
-
-			Channels::updateWorld.SendTo(peer,delta);
+			World::spectatorWorldState.FlushTerrain();
+			World::spectatorWorldState.FlushAndValidateSensory(1);
+			delta.Process(World::spectatorWorldState);
+		}
+		else
+			delta.CompressState(World::spectatorWorldState,Protocol::Timestamp(true,0));
+		for (index_t i = 0; i < delta.numDeltas; i++)
+		{
+			delta.delta[i].timestamp.rightNow = true;
+			Channels::updateWorld.SendTo(peer,delta.delta[i]);
 		}
 
 		SendSessionConfigTo(peer, Objects::PFaction());
@@ -555,7 +553,7 @@ namespace Receiver
 
 			static Buffer0<UINT32>	final;
 			final.Clear();
-			auto&discovered = client->faction->visibility.resourcesDiscovered;
+			auto&discovered = client->faction->knownResources.resourcesDiscovered;
 			for (index_t i = 0; i < discovered.Count(); i++)
 			{
 				if (discovered[i])
@@ -583,14 +581,15 @@ namespace Receiver
 			}
 
 		}
-		Protocol::WorldDelta	delta;
-		delta.timestamp.rightNow = true;
-		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
+		static World::DeltaContainer staticDeltaContainer;
+		//if (newFaction)
+		//	staticDeltaContainer.Process(client->faction->knownWorld);
+		//else
+			staticDeltaContainer.CompressState(client->faction->knownWorld,Protocol::Timestamp(true,0));
+		for (index_t i = 0; i< staticDeltaContainer.numDeltas; i++)
 		{
-			Protocol::GenerateWorldDelta(client->faction ? &client->faction->visibility : nullptr,  client->faction ? &client->faction->currentState : nullptr,
-									delta,k,true,k+1 == BaseGrid::NumFamilies,newFaction ? Protocol::WorldDeltaType::ProgressiveInit : Protocol::WorldDeltaType::LocalCopy);
-
-			Channels::updateWorld.SendTo(peer,delta);
+			staticDeltaContainer.delta[i].timestamp.rightNow = true;
+			Channels::updateWorld.SendTo(peer,staticDeltaContainer.delta[i]);
 		}
 
 		String why;

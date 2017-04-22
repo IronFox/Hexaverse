@@ -114,7 +114,7 @@ namespace Objects
 		@param ignoreWater Upon encountering pure water, the method succeeds if either the local vehicle can stand on water, or this value is set true
 		@param doFloat Allows the vehicle to stand on any substance. Useful for certain construction jobs
 		*/
-		bool					CanStandOn(const Grid::WorldData&world, const Grid::LCellIdI&cell, bool ignoreWater, bool doFloat) const {return base->CanStandOn(world,cell,ignoreWater, doFloat);}
+		bool					CanStandOn(const World::Data&world, const Grid::LCellIdI&cell, bool ignoreWater, bool doFloat) const {return base->CanStandOn(world,cell,ignoreWater, doFloat);}
 
 		bool					IsAutomatedResourceDetector() const {return turret->detectsResources && isAutomated;}
 		bool					IsNonAutomatedResourceDetector() const {return turret->detectsResources && !isAutomated;}
@@ -163,10 +163,8 @@ namespace Objects
 		virtual bool			IsPureVehicle() const override {return true;}
 		virtual bool			IsVehicle() const override {return true;}
 		#ifdef HAS_WINDOW
-			virtual void		DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;
+			virtual void		DescribeType(Command::Base::Label&label, UINT32 descFlags) override;
 			virtual float		GetSoundLevel() const {return GetActivityLevel()*0.25f;}	//save 75% for motion
-			virtual OpenAL::Wave	GetAmbientSound() const {return base->ambientSound;}
-
 		#endif
 
 		//MobileEntity overrides:

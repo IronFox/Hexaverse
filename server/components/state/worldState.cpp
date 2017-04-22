@@ -7,10 +7,10 @@
 namespace World
 {
 
-	Grid::WorldData	spectatorWorldState;
-	bool			terrainChanged=false;
+	World::Data	spectatorWorldState;
 	UINT16			empZonesLocked = 0, unlockedEMPZones = 0xFFFF;
 	TUniqueID		worldID;
+	bool	 terrainChanged = false;
 
 
 
@@ -23,6 +23,53 @@ namespace World
 					simulateLiquids = true;
 
 
+	}
+	
+
+
+	void					DeltaContainer::CompressState(World::Data&sourceWorld,const Protocol::Timestamp&t)
+	{
+			
+		for (BaseGrid::family_t family = 0; family < BaseGrid::NumFamilies; family++)
+		{
+			auto&d = delta[family];
+			sourceWorld.CompressFamilyState(family,d.data0);
+			d.familyAndLastFlag = family;
+			d.timestamp = t;
+		}
+		numDeltas = BaseGrid::NumFamilies;
+		delta[numDeltas-1].familyAndLastFlag.value |= 0x80;
+	}
+
+
+	bool					DeltaContainer::Process(World::Data&clientData,bool noDelta/*=false*/)
+	{
+		numDeltas = 0;
+		Array<Grid::CellStack::TTypeDeltaBlock>	blocks;
+			
+		float t = 0;
+		const bool rightNow = RuntimeConfig::IsInAnyCommandPhase();
+		for (BaseGrid::family_t family = 0; family < BaseGrid::NumFamilies; family++)
+		{
+			if (clientData.ProgressiveUpdate(family,blocks,t,noDelta))
+			{
+				auto&d = delta[numDeltas++];
+				d.data0.swap(blocks);
+				d.familyAndLastFlag = family;
+				d.timestamp.rightNow = rightNow;
+			}
+		}
+
+		if (numDeltas)
+		{
+			if (!rightNow)
+				for (index_t i = 0; i < numDeltas; i++)
+					delta[i].timestamp.atTime = t;
+			delta[numDeltas-1].familyAndLastFlag.value |= 0x80;
+
+			return true;
+		}
+		return false;
 	}
 
 
@@ -37,104 +84,75 @@ namespace World
 
 
 
-
-
-
-
+		/*static*/ DeltaContainer	staticContainer;
 
 
 		bool	CheckCoverageSendTerrain(const Objects::PFaction&faction,const TCP::PPeer&peer)
 		{
-			static Protocol::WorldDelta	delta;
+			faction->CheckSensory();
+			if (!staticContainer.Process(faction->knownWorld,!peer))
+				return false;
 
-			BYTE numChanged = 0;
-			for (BYTE family = 0; family < BaseGrid::NumFamilies; family++)
-				if (faction->visibility.families[family].coverageChanged)
-					numChanged++;
+			for (index_t i = 0; i < staticContainer.numDeltas; i++)
+				Channels::updateWorld.SendTo(peer,staticContainer.delta[i]);
 
-			if (numChanged)
-			{
-				BYTE at = 0;
-				for (BYTE family = 0; family < BaseGrid::NumFamilies; family++)
-					if (faction->visibility.families[family].coverageChanged)
-					{
-						faction->visibility.families[family].coverageChanged = false;
-						at++;
-						Protocol::GenerateWorldDelta(&faction->visibility,
-							&faction->currentState,
-							delta,family,
-							RuntimeConfig::IsInAnyCommandPhase(),
-							at == numChanged,
-							peer ? 
-								Protocol::WorldDeltaType::ProgressiveUpdate 
-								: Protocol::WorldDeltaType::ProgressiveUpdateNoDelta
-						);
-						if (peer)
-							Channels::updateWorld.SendTo(peer,delta);
-					}
-				return true;
-			}
-			return false;
+			return true;
 		}
 
-
-
-
-		void						SignalFamilyChangeToFaction(const Objects::PFaction&faction,BYTE familyId, bool last, bool rightNow)
+		bool	CheckCoverageSendTerrain(const Objects::PFaction&faction)
 		{
-			static Protocol::WorldDelta	delta;
-			GenerateWorldDelta(&faction->visibility,&faction->currentState,delta,familyId,rightNow,last,Protocol::WorldDeltaType::ProgressiveUpdate);
-
+			TCP::PPeer peer;
 			::Network::PClient client;
 			if (::Network::playerMap.Query(faction,client))
+				peer = client->peer.lock();
+			return CheckCoverageSendTerrain(faction,peer);
+		}
+
+
+
+
+		void						SignalFamilyChangeToFaction(const Objects::PFaction&faction,BaseGrid::family_t familyId, bool last, bool rightNow)
+		{
+			static Protocol::WorldDelta	delta;
+			delta.timestamp.atTime = 0;
+			if (faction->knownWorld.ProgressiveUpdate(familyId,delta.data0,delta.timestamp.atTime.value))
 			{
-				Channels::updateWorld.SendTo(client->peer.lock(),delta);
+				delta.timestamp.rightNow = rightNow;
+				delta.familyAndLastFlag = familyId;
+				if (last)
+					delta.familyAndLastFlag.value |= 0x80;
+
+				::Network::PClient client;
+				if (::Network::playerMap.Query(faction,client))
+				{
+					Channels::updateWorld.SendTo(client->peer.lock(),delta);
+				}
 			}
 		}
 
-		void						SignalFamilyChange(BYTE familyId, bool last, bool rightNow)
+		void						CheckAllFactionCoverageAndSendAsNeeded()
 		{
+			if (World::actual.FlushAllChanges())
+				terrainChanged = true;
+
+
+
 			if (::Network::spectators.IsNotEmpty())
 			{
-				static Protocol::WorldDelta	delta;
-				GenerateWorldDelta(nullptr,&spectatorWorldState,delta,familyId,rightNow,last,Protocol::WorldDeltaType::ProgressiveUpdate);
-				for (const auto&s : ::Network::spectators)
-				{
-					Channels::updateWorld.SendTo(s->peer.lock(),delta);
-				}
+				if (staticContainer.Process(spectatorWorldState))
+					for (index_t i = 0; i < staticContainer.numDeltas; i++)
+						for (const auto&s : ::Network::spectators)
+						{
+							Channels::updateWorld.SendTo(s->peer.lock(),staticContainer.delta[i]);
+						}
 			}
 
-
-			SignalFamilyChangeToFaction(Objects::Faction::nexus,familyId,last,rightNow);
+			CheckCoverageSendTerrain(Objects::Faction::nexus);
 			foreach (Objects::Faction::all,_f)
 			{
 				Objects::PFaction faction = _f->lock();
 				if (faction)
-					SignalFamilyChangeToFaction(faction,familyId,last,rightNow);
-			}
-
-
-			Grid::high.family[familyId].normal.outdated = false;
-		}
-
-
-		
-		void SendChangedFamilies()
-		{
-			BYTE changed = 0,counter=0;
-			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-			{
-				if (Grid::high.family[k].normal.outdated)
-					changed ++;
-			}
-			if (changed)
-			{
-				for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-				{
-					if (Grid::high.family[k].normal.outdated)
-						SignalFamilyChange(k,++counter == changed,RuntimeConfig::IsInAnyCommandPhase());
-				}
-				terrainChanged = true;
+					CheckCoverageSendTerrain(faction);
 			}
 		}
 
@@ -142,43 +160,6 @@ namespace World
 
 	}
 
-
-
-
-	void DebugCheckWorld(bool restart)
-	{
-		FATAL__("when is this called?");
-		static Array<Protocol::WorldDelta>	deltas;
-		if (restart)
-			deltas.Clear();
-		if (deltas.IsEmpty())
-		{
-			deltas.SetSize(BaseGrid::NumFamilies);
-			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-			{
-				GenerateWorldDelta(nullptr,nullptr, deltas[k], k, true, k+1==BaseGrid::NumFamilies, Protocol::WorldDeltaType::GlobalCopy);
-			}
-		}
-		else
-		{
-			Protocol::WorldDelta delta;
-			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-			{
-				bool isLast = k+1==BaseGrid::NumFamilies;
-				GenerateWorldDelta(nullptr, nullptr, delta, k, true, isLast, Protocol::WorldDeltaType::GlobalCopy);
-				ASSERT__(delta.data0 == deltas[k].data0);
-				ASSERT__(delta.familyAndLastFlag == deltas[k].familyAndLastFlag);
-				ASSERT__(delta.timestamp.atTime == deltas[k].timestamp.atTime);
-
-			}
-			
-		}
-		deltas.SetSize(BaseGrid::NumFamilies);
-		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-		{
-			std::cout<<(int)k<<": "<<deltas[k].GetSerialSize(false)<<std::endl;
-		}
-	}
 
 
 	
@@ -191,8 +172,6 @@ namespace World
 		{
 			Timer::Time t0 = timer.Now();
 
-			static bool changed[BaseGrid::NumFamilies];
-			memset(changed,false,sizeof(changed));
 			struct TStack
 			{
 				BYTE	volumeCell[Grid::CellStack::Range];
@@ -202,19 +181,21 @@ namespace World
 			for (index_t i = 0; i < Grid::HighSetup::GridType::CellCount; i++)
 			{
 				TStack&target = tempStacks[i];
-				const Grid::CellStack&source = Grid::actualWorld.cellStack[i];
+				const Grid::CellStack&source = World::actual.GetStack(i);
 				for (index_t layer = 0; layer < Grid::CellStack::Range; layer++)
 					target.volumeCell[layer] = source.volumeCell[layer].content;
 			}
 
-			Concurrency::parallel_for(index_t(0),Grid::HighSetup::GridType::CellCount,[](index_t stackIndex)
+			BaseGrid::FamiliesChanged changed;
+
+			Concurrency::parallel_for(index_t(0),Grid::HighSetup::GridType::CellCount,[&changed](index_t stackIndex)
 			{
-				Grid::CellStack&stack = Grid::actualWorld.cellStack[stackIndex];
-				Grid::CellStack*nStacks[6] = {nullptr};
+				const Grid::CellStack&stack = World::actual.GetStack(stackIndex);
+				const Grid::CellStack*nStacks[6] = {nullptr};
 				const auto&neighborhood = Grid::high.grid.GetCell(stackIndex).neighborhood;
 				DBG_ASSERT_LESS_OR_EQUAL__(neighborhood.numNeighbors,ARRAYSIZE(nStacks));
 				for (int i = 0; i < neighborhood.numNeighbors; i++)
-					nStacks[i] = Grid::actualWorld.cellStack + neighborhood.neighborID[i];
+					nStacks[i] = &World::actual.GetStack(neighborhood.neighborID[i]);
 				TStack&target = tempStacks[stackIndex];
 				bool thisChanged = false;
 				for (UINT32 layer = 0; layer < Grid::CellStack::Range; layer++)
@@ -240,36 +221,29 @@ namespace World
 				}
 				if (thisChanged)
 				{
-					changed[Grid::high.grid.GetCell(stackIndex).family] = true;
+					changed.Set(Grid::high.grid.GetCell(stackIndex).family);
 					for (int i = 0; i < neighborhood.numNeighbors; i++)
-						changed[Grid::high.grid.GetCell(neighborhood.neighborID[i]).family] = true;
+						changed.Set(Grid::high.grid.GetCell(neighborhood.neighborID[i]).family);
 				}
 			});
-			for (int i = 0; i < BaseGrid::NumFamilies; i++)
+			auto seq = World::actual.BeginChangeSequence(0);
+			foreach (changed,ch)
 			{
-				if (changed[i])
+				index_t offset = Grid::high.grid.GetFamilyOffset(*ch);
+				count_t cnt = Grid::high.grid.CountFamilyMembers(*ch);
+				for (index_t k = offset; k < offset+cnt; k++)
 				{
-					index_t offset = Grid::high.grid.GetFamilyOffset(i);
-					count_t cnt = Grid::high.grid.CountFamilyMembers(i);
-					for (index_t k = offset; k < offset+cnt; k++)
-					{
-						Grid::CellStack&target = Grid::actualWorld.cellStack[k];
-						const TStack&source = tempStacks[k];
-						for (index_t layer = 0; layer < Grid::CellStack::Range; layer++)
-							target.volumeCell[layer].content = source.volumeCell[layer];
-					}
-					Grid::low.family[i].SetOutdated(0);
-					Grid::high.family[i].SetOutdated(0);
+					auto access = seq.AccessStack(k);
+					Grid::CellStack&target = access.GetStack();
+					const TStack&source = tempStacks[k];
+					for (index_t layer = 0; layer < Grid::CellStack::Range; layer++)
+						target.volumeCell[layer].content = source.volumeCell[layer];
 				}
 			}
 
-			static Buffer0<Objects::PWorldEntity>	waste;
-
-			waste.Clear();
-
-			Objects::ForeachWorldEntity([](const Objects::PWorldEntity&entity)
+			Objects::ForeachWorldEntity([changed,&seq](const Objects::PWorldEntity&entity)
 			{
-				if (!changed[Grid::low.grid.GetCell(entity->location.stackID).family])
+				if (!changed.IsSet(Grid::low.grid.GetCell(entity->location.stackID).family))
 					return;
 
 				const int h = entity->GetHeight();
@@ -280,44 +254,43 @@ namespace World
 					for (int y = 0; y < h; y++)
 					{
 						if (broad)
-							Grid::actualWorld.Clear(entity->location + y,0);
+							seq.Clear(entity->location + y);
 						else
-							Grid::actualWorld.cellStack[entity->location.stackID].MakeLocalHole(entity->location.height+y);
+							seq.Clear(Grid::ToHigh(entity->location+y));
 					}
 				}
 				else
 				{
+					bool kill = false;
 					for (int y = 0; y < h; y++)
 					{
 						if (broad)
 						{
-							if (!Grid::actualWorld.ClearNonLava(entity->location + y,0))
+							if (!seq.ClearNonLava(entity->location + y))
 							{
-								waste << entity;
+								kill = true;
 								break;
 							}
 						}
 						else
 						{
-							if (Grid::actualWorld.cellStack[entity->location.stackID].GetCellI(entity->location.height+y).content == Grid::Content::Lava)
+							const Grid::HCellIdI loc = Grid::ToHigh(entity->location+y);
+							if (!seq.ClearNonLava(loc))
 							{
-								waste << entity;
+								kill = true;
 								break;
 							}
-							Grid::actualWorld.cellStack[entity->location.stackID].MakeLocalHole(entity->location.height+y);
 						}
+					}
+					if (kill)
+					{
+						float t = 0;
+						Objects::Remove(entity,Objects::RemovalType::UncontrolledExplosion,t,false);
 					}
 				}
 			},false);
 			float t = timer.GetSecondsSince(t0);
-			LogEvent(EventSignificance::PerformanceMeasurement,"Time needed to process water: "+String(t));
-
-			for (const auto&e:waste)
-			{
-				float at = 0;
-				Objects::Remove(e,Objects::RemovalType::UncontrolledExplosion,at,false);
-			}
-			waste.Clear();
+			LogEvent(EventSignificance::PerformanceMeasurement,"Time needed to process liquids: "+String(t));
 		}
 
 	}
@@ -325,11 +298,11 @@ namespace World
 	void			BuildConfiguredWorld(Random&random)
 	{
 		Grid::currentPlanetConfig.RandomizeSeeds(random);
-		Grid::actualWorld.BuildWorld(Grid::currentPlanetConfig);
-		Grid::actualWorld.ExportDiscovered(Grid::initialWorld, Config::worldDiscovery);
-		Grid::Resource::FillAll(random);
+		Grid::currentPlanetConfig.BuildWorld(World::actual);
+		World::actual.ExportDiscovered(World::initial, Config::worldDiscovery);
+		Grid::Resource::FillAll(random,Grid::currentCustomResourceDistribution);
 		if (Objects::Faction::nexus)
-			Objects::Faction::nexus->currentState = Grid::initialWorld;
+			Objects::Faction::nexus->knownWorld = World::initial;
 
 		if (RuntimeConfig::gameGoal == Game::Config::Goal::ConquerNexus)
 		{
@@ -345,11 +318,6 @@ namespace World
 					{
 						Game::SpawnNexusBaseAtPoleWithPort(pole);
 					}
-		}
-		for (int i = 0; i < BaseGrid::NumFamilies; i++)
-		{
-			Grid::high.family[i].SetOutdated(0);
-			Grid::low.family[i].SetOutdated(0);
 		}
 	}
 
@@ -405,7 +373,7 @@ namespace World
 
 
 				const int h0 = Objects::FindApplicableGround(Grid::LCellIdI((UINT32)i,0),true);
-				if (h0 == Objects::badHeight || h0 == -Grid::CellStack::HalfRange || !testBase->CanStandOn(Grid::actualWorld,Grid::LCellIdI((UINT32)i,h0-1),false,false))
+				if (h0 == Objects::badHeight || h0 == -Grid::CellStack::HalfRange || !testBase->CanStandOn(World::actual,Grid::LCellIdI((UINT32)i,h0-1),false,false))
 					continue;
 				{
 					const auto&n = Grid::low.grid.GetCell(i).neighborhood;
@@ -413,7 +381,7 @@ namespace World
 					for (int k = 0; k < n.numNeighbors && !broken; k++)
 					{
 						const int h1 = Objects::FindApplicableGround(Grid::LCellIdI(n.neighborID[k],0),true);
-						if (h1 == Objects::badHeight || h1 == -Grid::CellStack::HalfRange || !testBase->CanStandOn(Grid::actualWorld,Grid::LCellIdI(n.neighborID[k],h1-1),false,false))
+						if (h1 == Objects::badHeight || h1 == -Grid::CellStack::HalfRange || !testBase->CanStandOn(World::actual,Grid::LCellIdI(n.neighborID[k],h1-1),false,false))
 							broken = true;
 					}
 					if (broken)

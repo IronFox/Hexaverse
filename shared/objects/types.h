@@ -8,9 +8,13 @@
 
 namespace Objects
 {
-	DECLARE_POINTER_CLASS(BaseCommand)
-		DECLARE_POINTER_CLASS(DeployMobileCommand)
-		DECLARE_POINTER_CLASS(EntityConstructionCommand)
+	namespace Command
+	{
+		DECLARE_POINTER_CLASS(Base)
+			//DECLARE_POINTER_CLASS(DeployMobileCommand)
+			//DECLARE_POINTER_CLASS(EntityConstructionCommand)
+
+	}
 
 	DECLARE_POINTER_CLASS(Hangar)
 	DECLARE_POINTER_CLASS(MobileEntityProducer)
@@ -47,6 +51,8 @@ namespace Objects
 				{
 					DECLARE_POINTER_CLASS(Plane)
 						DECLARE_POINTER_CLASS(Raptor)
+						DECLARE_POINTER_CLASS(CargoPlane)
+						DECLARE_POINTER_CLASS(SensorDrone)
 				}
 				DECLARE_POINTER_CLASS(Vehicle)
 
@@ -78,10 +84,12 @@ namespace Objects
 	class Compound;
 	class Marker;
 	struct TrajectoryEndPoint;
+	struct TChoiceVisualization;
 
 
 	struct ResourceWithMunition;	//enum container
 	struct ResourceWithoutMunition;	//enum container
+
 
 	#ifdef NO_MUNITION
 		typedef ResourceWithoutMunition	Resource;
@@ -90,7 +98,7 @@ namespace Objects
 	#endif
 
 
-	DECLARE_POINTER_CLASS(CommandGroup)
+	
 
 
 	CONSTRUCT_ENUMERATION7(MobilePlacementResult,

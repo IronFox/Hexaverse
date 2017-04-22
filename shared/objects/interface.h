@@ -3,6 +3,8 @@
 
 #include "types.h"
 #include "cursorMode.h"
+#include "../grid/stack.h"
+#include "../uniqueID.h"
 
 
 #ifdef HAS_WINDOW
@@ -18,7 +20,6 @@ The client application must implement these somewhere
 */
 namespace ApplicationInterface
 {
-
 #ifdef CLIENT
 	
 	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick);
@@ -45,10 +46,9 @@ namespace ApplicationInterface
 	void	SignalResearch(const Objects::PResearchTopic&topic);
 
 	#ifdef HAS_WINDOW
-		void	OnSelectionChange(bool stateChangeOnly);
 		void	SignalUserMessage(const String&message);
 	#endif
-	void	OnVanish(const Objects::PWorldEntity&e, Objects::RemovalType t);
+	void	OnVanish(const Objects::PWorldEntity&e, Objects::RemovalType t, bool wasGhost);
 	void	OnAppear(const Objects::PWorldEntity&e);
 #else
 

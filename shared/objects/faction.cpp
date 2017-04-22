@@ -5,13 +5,13 @@
 #include "mobileEntity.h"
 #include "gridAndChoices.h"
 #include "prototypes.h"
-#include "visualSelection.h"
 #include "satellite.h"
 #include "vehicle.h"
 #include "subOrbital.h"
 #include "../sphereGridHelper.h"
 #include "../runtimeConfig.h"
 #include "prototypes.h"
+#include "structure/tower.h"
 
 namespace Objects
 {
@@ -20,6 +20,14 @@ namespace Objects
 
 		/*static*/ Buffer0<WFaction>	Faction::all;
 		/*static*/ PFaction				Faction::nexus;
+
+
+		/*static*/ PFaction				Faction::Create(const TUniqueID&id, const String&name/* = ""*/)
+		{
+			PFaction rs(new Faction(id, name));
+			all << rs;
+			return rs;
+		}
 
 		void	Faction::RecreateNexus(const TUniqueID&id)
 		{
@@ -361,14 +369,60 @@ namespace Objects
 		//}
 
 
-		bool Faction::GridCanSee(const Grid::HighSetup::TVolumeDescriptor&v) const
+		void Faction::CheckSensory(float&t)
 		{
+			if (knownWorld.SensoryIsInvalid())
+			{
+				knownWorld.FlushAndValidateSensory();
+
+				foreach (this->structures,_s)
+				{
+					Objects::PStructure s = _s->lock();
+					if (s)
+						s->RegisterSensory(t);
+				}
+				foreach (this->allMobiles,_m)
+				{
+					Objects::PWorldEntity e = _m->lock();
+					if (e)
+						e->RegisterSensory(t);
+				}
+			}
+		}
+		
+
+		void Faction::CheckSensory()
+		{
+			if (knownWorld.SensoryIsInvalid())
+			{
+				float t = knownWorld.GetMaxChangeTime();
+				knownWorld.FlushAndValidateSensory();
+
+				foreach (this->structures,_s)
+				{
+					Objects::PStructure s = _s->lock();
+					if (s)
+						s->RegisterSensory(t);
+				}
+				foreach (this->allMobiles,_m)
+				{
+					Objects::PWorldEntity e = _m->lock();
+					if (e)
+						e->RegisterSensory(t);
+				}
+			}
+		}
+
+
+		bool Faction::GridCanSee(const Grid::HighSetup::TVolumeDescriptor&v, float &t)
+		{
+			CheckSensory(t);
 			foreach (v.coverage,st)
 			{
 				DBG_ASSERT_LESS__(st->range.start,Grid::CellStack::Range);
 				DBG_ASSERT_LESS_OR_EQUAL__(st->range.end,Grid::CellStack::Range);
 				DBG_ASSERT_LESS_OR_EQUAL__(st->range.start,st->range.end);
-				const auto&stack = visibility.cellStack[st->stackID];
+				const auto&stack = knownWorld.GetStack(st->stackID);
 				for (UINT32 layer = st->range.start; layer < st->range.end; layer++)
 				{
 					if (stack.volumeCell[layer].IsCurrentlyVisible())
@@ -379,15 +433,16 @@ namespace Objects
 		}
 
 
-		bool Faction::GridCanSee(const PWorldEntity&e) const
+		bool Faction::GridCanSee(const PWorldEntity&e, float &t)
 		{
+			CheckSensory(t);
 			const UINT32 fine = Grid::low.grid.GetCell(e->location.stackID).higherEquivalent;
 			const auto&c = Grid::high.grid.GetCell(fine);
 			const UINT32 bottom = Grid::CellStack::ToLayer(e->location.height);
 			const int entityHeight =e->GetHeight();
 			const UINT32 end = std::min(Grid::CellStack::Range,bottom + (UINT32)entityHeight);
 			{
-				const auto&stack = visibility.cellStack[fine];
+				const auto&stack = knownWorld.GetStack(fine);
 				//const UINT32 fine2 = c.neighborhood.neighborID[k];
 				for (UINT32 layer = bottom; layer < end; layer++)
 					if (stack.volumeCell[layer].IsCurrentlyVisible())
@@ -449,7 +504,7 @@ namespace Objects
 				if (e->IsStructure())
 				{
 					PStructure s = To<Structure>::Cast(e);
-					Structure::CommonRegisterStructure(currentState,e->location,s->GetBroadHeight(),e->GetHeight(),s->HasFoundation(),t);
+					Structure::CommonRegisterStructure(e->location,s->GetBroadHeight(),e->GetHeight(),s->HasFoundation(),t);
 					t += timeEpsilon;
 				}
 
@@ -503,7 +558,7 @@ namespace Objects
 				if (e->IsStructure())
 				{
 					PStructure s = To<Structure>::Cast(e);
-					Structure::CommonUnregisterStructure(currentState,e->location,s->GetBroadHeight(),e->GetHeight(),s->HasFoundation(),t);
+					Structure::CommonUnregisterStructure(e->location,s->GetBroadHeight(),e->GetHeight(),s->HasFoundation(),t);
 					t += timeEpsilon;
 				}
 
@@ -528,20 +583,20 @@ namespace Objects
 
 		}
 
-		void		Faction::ChangeSensory(const Grid::HighSetup::TVolumeDescriptor&desc, float t, short changeBy)
-		{
-			visibility.ChangeSensory(desc, t, changeBy);
-		}
-
-		//void		Faction::ChangeSensory(const Grid::LCellIdI&center, float radius, float t, short change)
+		//void		Faction::ChangeSensory(const Grid::HighSetup::TVolumeDescriptor&desc, float t, short changeBy)
 		//{
-		//	visibility.ChangeSensory(center, radius, t, change);
+		//	visibility.ChangeSensory(desc, t, changeBy);
 		//}
 
-		void		Faction::ChangeSensory(const Grid::SkySensorState&state, float t, short change)
-		{
-			visibility.ChangeSensory(state, t, change);
-		}
+		////void		Faction::ChangeSensory(const Grid::LCellIdI&center, float radius, float t, short change)
+		////{
+		////	visibility.ChangeSensory(center, radius, t, change);
+		////}
+
+		//void		Faction::ChangeSensory(const Grid::SkySensorState&state, float t, short change)
+		//{
+		//	visibility.ChangeSensory(state, t, change);
+		//}
 
 		template <typename T>
 		count_t		CountRawSensorCoverage(const TVec3<>&center, const BasicBuffer<T>&scope)
@@ -611,7 +666,7 @@ namespace Objects
 						seeing[e].sightLevel = cover;
 				}
 				else
-					if (!GridCanSee(e))
+					if (!GridCanSee(e,timeAt))
 					{
 						SignalDisappearance(e,timeAt,true);
 					}
@@ -625,7 +680,7 @@ namespace Objects
 						SignalAppearance(e,timeAt,true,false,cover);
 				}
 				else
-					if (GridCanSee(e))
+					if (GridCanSee(e,timeAt))
 					{
 						LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+ ": SignalAppearance at time "+String(timeAt));
 						SignalAppearance(e,timeAt,true,false);
@@ -634,20 +689,15 @@ namespace Objects
 		}
 
 
-		void		Faction::RegisterSensorCreation(const Grid::LSensor&sensor, int sensorHeight, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
+		void		Faction::RegisterSensorCreation(const World::Sensor&sensor, int sensorHeight, float&t, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
 		{
 			//if (sensorHeight <= Grid::CellStack::TopHeight)
 			{
-				static Grid::HighSetup::TVolumeDescriptor	desc0;
-				Grid::high.GenerateVolume(Grid::ToHigh(sensor),desc0);
-				ChangeSensory(desc0,t,1);
-				if (checkChangesNow)
-					CheckChanges(t);
+				CheckSensory(t);
+				sensor.InsertInto(knownWorld,t);
 
 				static Grid::LowSetup::TVolumeDescriptor	desc;
-				Grid::LSensor s2 = sensor;
-				s2.radius ++;
-				Grid::low.GenerateVolume(s2,desc);
+				sensor.GetMaxVolume(desc);
 				foreach (desc.coverage,c)
 				{
 					UINT32 min = c->range.start;
@@ -658,7 +708,7 @@ namespace Objects
 						PWorldEntity e = GetEntity(Grid::LCellIdI(c->stackID,Grid::CellStack::ToHeight(l)));
 						if (!e || e->owner.get() == this)
 							continue;
-						if (GridCanSee(e))
+						if (GridCanSee(e,t))
 						{
 							if (SignalAppearance(e,t,true,false) && newContacts)
 								newContacts->Append(e);
@@ -698,16 +748,11 @@ namespace Objects
 		}
 
 		//void		Faction::RegisterSensorMotion(const Sphere<>&from, const Sphere<>&to, float t);
-		void		Faction::RegisterSensorRemoval(const Grid::LSensor&sensor, int sensorHeight, float&t, bool checkChangesNow)
+		void		Faction::RegisterSensorRemoval(const World::Sensor&sensor, int sensorHeight, float&t)
 		{
 			//if (sensorHeight <= Grid::CellStack::TopHeight)
-			{
-				static Grid::HighSetup::TVolumeDescriptor	desc0;
-				Grid::high.GenerateVolume(Grid::ToHigh(sensor),desc0);
-				ChangeSensory(desc0,t,-1);
-				if (checkChangesNow)
-					CheckChanges(t);
-			}
+			CheckSensory(t);
+			sensor.RemoveFrom(knownWorld,t);
 //			float escaped = sqr(sphere.radius+2);
 			//if (isSatellite)
 			//	LogEvent(EventSignificance::Debug,"Unregistering orbital sensor sphere "+sphere.ToString());
@@ -716,7 +761,7 @@ namespace Objects
 
 			bool offGrid = sensorHeight > Grid::CellStack::TopHeight;
 
-			this->seeing.VisitAllKeys([this,offGrid, sensor](const PWorldEntity&s)
+			this->seeing.VisitAllKeys([this,offGrid, sensor,&t](const PWorldEntity&s)
 			{
 				if (s->IsAboveGrid() != offGrid)
 					return;
@@ -728,7 +773,7 @@ namespace Objects
 					}
 				}
 				else
-					if (!GridCanSee(s))
+					if (!GridCanSee(s,t))
 					{
 						disappear << s;
 					}
@@ -738,50 +783,45 @@ namespace Objects
 			disappear.Clear();
 		}
 
-		void		Faction::RegisterSensorCreation(const Grid::SkySensorState&state, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
-		{
-			ChangeSensory(state,t,+1);
-			if (checkChangesNow)
-				CheckChanges(t);
+		//void		Faction::RegisterSensorCreation(const Grid::SkySensorState&state, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
+		//{
+		//	ChangeSensory(state,t,+1);
+		//	if (checkChangesNow)
+		//		CheckChanges(t);
 
 
-			ForeachWorldEntity([this,&t,newContacts](const PWorldEntity&other)
-			{
-				if (other->owner.get() == this || other->IsAboveGrid())
-					return;
-				if (GridCanSee(other))
-				{
-					SignalAppearance(other,t,true,false);
-					if (newContacts)
-						newContacts->Append(other);
-				}
-			},false);
-		}
-		void		Faction::RegisterSensorRemoval(const Grid::SkySensorState&state, float&t, bool checkChangesNow)
-		{
-			ChangeSensory(state,t,-1);
-			if (checkChangesNow)
-				CheckChanges(t);
+		//	ForeachWorldEntity([this,&t,newContacts](const PWorldEntity&other)
+		//	{
+		//		if (other->owner.get() == this || other->IsAboveGrid())
+		//			return;
+		//		if (GridCanSee(other))
+		//		{
+		//			SignalAppearance(other,t,true,false);
+		//			if (newContacts)
+		//				newContacts->Append(other);
+		//		}
+		//	},false);
+		//}
+		//void		Faction::RegisterSensorRemoval(const Grid::SkySensorState&state, float&t, bool checkChangesNow)
+		//{
+		//	ChangeSensory(state,t,-1);
+		//	if (checkChangesNow)
+		//		CheckChanges(t);
 
-			static Buffer<PWorldEntity>	disappear;
-			this->seeing.VisitAllKeys([this](const PWorldEntity&s)
-			{
-				if (!s->IsAboveGrid() && !GridCanSee(s))
-					disappear << s;
-			});
-			foreach (disappear,s)
-				SignalDisappearance(*s,t);
-			disappear.Clear();
+		//	static Buffer<PWorldEntity>	disappear;
+		//	this->seeing.VisitAllKeys([this](const PWorldEntity&s)
+		//	{
+		//		if (!s->IsAboveGrid() && !GridCanSee(s))
+		//			disappear << s;
+		//	});
+		//	foreach (disappear,s)
+		//		SignalDisappearance(*s,t);
+		//	disappear.Clear();
 
-		}
-
-
+		//}
 
 
-		void		Faction::CheckChanges(float t)
-		{
-			visibility.CheckChanges(t);
-		}
+
 
 
 		static bool CheckLimit(count_t currentCount, count_t maxCount, String&errorOut)
@@ -908,9 +948,7 @@ namespace Objects
 
 		void		Faction::RegisterExplosionCrater(const Grid::HCellIdI&center, float radius, float t)
 		{
-			visibility.RegisterExplosionCrater(center, radius, t);
-
-
+			knownWorld.RegisterExplosionCrater(center, radius, t);
 		}
 
 
@@ -978,9 +1016,9 @@ namespace Objects
 				{
 					float t = 0.f;
 					if (!s && e->IsMobile())
-						e->UnregisterSensory(To<MobileEntity>::Cast(e)->preAnimationLocation,t,false);
+						e->UnregisterSensory(To<MobileEntity>::Cast(e)->preAnimationLocation,t);
 					else
-						e->UnregisterSensory(t,false);
+						e->UnregisterSensory(t);
 					#ifdef THOROUGLY_DEBUG_SENSORY
 						VerifySensory();
 					#endif
@@ -1000,9 +1038,9 @@ namespace Objects
 				{
 					float t = 0.f;
 					if (!s && e->IsMobile())
-						e->RegisterSensory(To<MobileEntity>::Cast(e)->preAnimationLocation,t,false);
+						e->RegisterSensory(To<MobileEntity>::Cast(e)->preAnimationLocation,t);
 					else
-						e->RegisterSensory(t,false);
+						e->RegisterSensory(t);
 					#ifdef THOROUGLY_DEBUG_SENSORY
 						VerifySensory();
 					#endif
@@ -1121,7 +1159,7 @@ namespace Objects
 						//TVec3<> center = Grid::ToWorld(m->location);
 						//if ()
 						bool seen = m->age > 1 &&	//don't delete hostile markers in round <2. grid might be outdated
-									 m->visualization && Grid::actualWorld.GridCanSee(m->location,m->visualization->GetHeight(),m->visualization->IsBroad());
+									 m->visualization && World::actual.GridCanSee(m->location,m->visualization->GetHeight(),m->visualization->IsBroad());
 						/*foreach(structures, s)
 							if ((*s)->isOwnedByMe && (*s)->CanSee(center, 0))
 							{
@@ -1254,10 +1292,7 @@ namespace Objects
 						structureGhosts.FindAndErase(m.visualization);
 					}
 					#ifdef HAS_WINDOW
-						if (selectedEntity == m.visualization)
-						{
-							Deselect(controlEnabled);
-						}
+						ApplicationInterface::OnVanish(m.visualization,RemovalType::Vanished,true);
 					#endif
 					m.visualization.reset();
 				}

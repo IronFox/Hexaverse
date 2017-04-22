@@ -165,13 +165,14 @@ namespace Lua
 			rs = (float)tmp;
 		}
 
-		inline void GetStacked(const PProgram&st, int addr, int&rs)
-		{
-			long long temp;
-			GetStacked(st,addr,temp);
-			rs = (int)temp;
-		}
 
+		inline void GetStacked(const PProgram&st, int addr, UINT8&rs) {long long temp; GetStacked(st,addr,temp); rs = (UINT8)std::max(temp,0LL); }
+		inline void GetStacked(const PProgram&st, int addr, UINT16&rs) {long long temp; GetStacked(st,addr,temp); rs = (UINT16)std::max(temp,0LL); }
+		inline void GetStacked(const PProgram&st, int addr, UINT32&rs) {long long temp; GetStacked(st,addr,temp); rs = (UINT32)std::max(temp,0LL); }
+		inline void GetStacked(const PProgram&st, int addr, UINT64&rs) {long long temp; GetStacked(st,addr,temp); rs = (UINT64)std::max(temp,0LL); }
+		inline void GetStacked(const PProgram&st, int addr, INT8&rs) {long long temp; GetStacked(st,addr,temp); rs = (INT8)temp; }
+		inline void GetStacked(const PProgram&st, int addr, INT16&rs) {long long temp; GetStacked(st,addr,temp); rs = (INT16)temp; }
+		inline void GetStacked(const PProgram&st, int addr, INT32&rs) {long long temp; GetStacked(st,addr,temp); rs = (INT32)temp; }
 
 
 		template <typename T, bool PCall>
@@ -281,6 +282,36 @@ namespace Lua
 
 		template <std::size_t... Is>
 			struct build_indices<0, Is...> : indices<Is...> {};
+
+		//http://stackoverflow.com/questions/11893141/inferring-the-call-signature-of-a-lambda-or-arbitrary-callable-for-make-functio
+		//ecatmur
+		template<typename T> struct remove_class { };
+		template<typename C, typename R, typename... A>
+		struct remove_class<R(C::*)(A...)> { using type = R(A...); };
+		template<typename C, typename R, typename... A>
+		struct remove_class<R(C::*)(A...) const> { using type = R(A...); };
+		template<typename C, typename R, typename... A>
+		struct remove_class<R(C::*)(A...) volatile> { using type = R(A...); };
+		template<typename C, typename R, typename... A>
+		struct remove_class<R(C::*)(A...) const volatile> { using type = R(A...); };
+
+		template<typename T>
+		struct get_signature_impl { using type = typename remove_class<
+			decltype(&std::remove_reference<T>::type::operator())>::type; };
+		template<typename R, typename... A>
+		struct get_signature_impl<R(A...)> { using type = R(A...); };
+		template<typename R, typename... A>
+		struct get_signature_impl<R(&)(A...)> { using type = R(A...); };
+		template<typename R, typename... A>
+		struct get_signature_impl<R(*)(A...)> { using type = R(A...); };
+		template<typename T> using get_signature = typename get_signature_impl<T>::type;
+
+		template<typename F> using make_function_type = std::function<get_signature<F>>;
+		template<typename F> make_function_type<F> ToFunction(F &&f)
+		{
+			return make_function_type<F>(std::forward<F>(f));
+		}
+
 
 
 		template <typename T>
@@ -394,7 +425,13 @@ namespace Lua
 
 		template <typename F>
 			struct LibFunction
-			{};
+			{
+				static void Push(const PProgram&prog, const F&undefined)
+				{
+					PushLibFunctionT(prog,make_function_type<F>(undefined));
+				}
+			
+			};
 		
 		template <typename R, typename...P>
 			struct LibFunction<R(P...)>
@@ -428,20 +465,22 @@ namespace Lua
 	class Program : public std::enable_shared_from_this<Program>
 	{
 		lua_State		*const state;
+		const String	name;
 
-		/**/			Program(lua_State*st):state(st)	{}
+		/**/			Program(lua_State*st, const String&name):state(st),name(name)	{}
 
 	public:
 		/**/			Program() = delete;
 		/**/			Program(const Program&) = delete;
 		/**/			~Program();
 		void			operator=(const Program&) = delete;
+		const String&	GetName() const {return name;}
 
 		/**
 		Creates a new instance.
 		@return new object on success. An empty results indicates a Lua error (most likely insufficient memory)
 		*/
-		static PProgram	Create();
+		static PProgram	Create(const String&name);
 		/**
 		Fetches the internal lua state. Never NULL
 		*/
@@ -649,6 +688,7 @@ namespace Lua
 	{
 		typedef Reference	Super;
 		void			SetTopField(const String&name);
+		void			SetTopField(const char*name);
 		void			SetTopElement(index_t at);
 		bool			AppendTopElement();
 		bool			PushField(const String&name) const;
@@ -711,6 +751,8 @@ namespace Lua
 		*/
 		template <typename T>
 			void		SetField(const String&name, const T&value)	{if (IsEmpty()) return; Detail::ParameterT<T>::Push(GetState(),value); SetTopField(name);}
+		template <typename T>
+			void		SetField(const char*name, const T&value)	{if (IsEmpty()) return; Detail::ParameterT<T>::Push(GetState(),value); SetTopField(name);}
 		/**
 		Sets an index element in the local table.
 		Works for primitive values as well as references
@@ -740,6 +782,21 @@ namespace Lua
 		template <typename F>
 			void		SetFunction(const String&name, const F&function)
 			{
+				if (IsEmpty())
+					return;
+				Detail::LibFunction<F>::Push(GetProgram(),function);
+				SetTopField(name);
+			}
+
+		/**
+		Inserts a new named C function into the local table.
+		Works for native function pointers, and any version of std::function, but not raw functors (including lambda expressions) atm
+		*/
+		template <typename F>
+			void		SetFunction(const char*name, const F&function)
+			{
+				if (IsEmpty())
+					return;
 				Detail::LibFunction<F>::Push(GetProgram(),function);
 				SetTopField(name);
 			}
@@ -778,6 +835,7 @@ namespace Lua
 			{
 				ResetToGlobal(prog,functionName);
 			}
+			/**/		Function(const Reference&ref)	{Super::operator=(ref);}
 			void		operator=(const Reference&ref)	{Super::operator=(ref);}
 
 			void		operator()(args_t...parameters)	const
@@ -805,6 +863,7 @@ namespace Lua
 			{
 				ResetToGlobal(prog,functionName);
 			}
+			/**/		Function(const Reference&ref)	{Super::operator=(ref);}
 			void		operator=(const Reference&ref)	{Super::operator=(ref);}
 
 			return_t	operator()(args_t...parameters)	const

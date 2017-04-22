@@ -19,7 +19,7 @@ namespace UDPBroadCast
 	/**
 	Ends UDP broadcasting
 	*/
-	void		Terminate();
+	void		Stop();
 	/**
 	Resends any UDP broadcasts, if UDP broadcasting has been started and timing is appropriate. Does nothing otherwise
 	*/

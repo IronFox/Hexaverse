@@ -2,17 +2,18 @@
 #define objectEntityH
 
 #include "../uniqueID.h"
-#include "../sphereGrid.h"
+#include "../grid/stack.h"
 
 #include "turretBase.h"
 #include "types.h"
 #include "hibernating.h"
 #include "luaAttribute.h"
-
+#include "description.h"
+#include "entityCommand.h"
+#include "geometry.h"
 
 #ifdef HAS_WINDOW
 	#include <al/openal.h>
-	#include "visualCommands.h"
 #endif
 
 struct SharedPtrHash
@@ -256,8 +257,8 @@ namespace Objects
 		virtual						~WorldEntity();
 
 		#ifdef HAS_WINDOW
-			typedef Objects::CallbackCommand	Command;
-			typedef Objects::FCommandVisitor	FCommandVisitor;
+			//typedef Objects::Command::Base		Command;
+//			typedef Objects::FCommandVisitor	FCommandVisitor;
 
 			OpenAL::Source			ambientSound;
 		#endif
@@ -356,7 +357,6 @@ namespace Objects
 		virtual float				GetActivityLevel() const {return IsHibernating() ? 0.f : (sleeping ? 0.5f : 1.f);}
 		#ifdef HAS_WINDOW
 			virtual float			GetSoundLevel() const {return GetActivityLevel()*0.35f;}
-			virtual OpenAL::Wave	GetAmbientSound() const;
 		#endif
 
 
@@ -413,13 +413,6 @@ namespace Objects
 		*/
 		virtual void				PrototypeSetup()	{};
 
-		#ifdef HAS_WINDOW
-			/**
-			Called once on the prototype instance only, prior to PrototypeSetup().
-			Static geometry should be loaded here so that it is available for commands linked during PrototypeSetup()
-			*/
-			virtual void			PrototypeLoadGeometry() {};
-		#endif
 
 		virtual TFloatRange<int>	GetRelativeScanningBand(const Grid::LCellIdI&loc) const {return FloatRange<int>(-3,+100);}	//Maximum vertical sensor radius up and down from the entity's central height. Currently not affected by EMP
 		inline TFloatRange<int>		GetRelativeScanningBand() const {return GetRelativeScanningBand(location);}	//Maximum vertical sensor radius up and down from the entity's central height. Currently not affected by EMP
@@ -430,6 +423,7 @@ namespace Objects
 		Currently this is overridden by MobileEntity, Vehicle, and Tower
 		*/
 		virtual float				GetScanningRange() const;
+		virtual float3				GetScanningCenter(const Grid::LCellIdI&loc) const;
 		/**
 		Explicitly describes how the scanning range is computed (only has to explicitly name research, not EMP, but has to include EMP in the resulting numbers)
 		*/
@@ -542,22 +536,35 @@ namespace Objects
 			health -= damageLevel;
 		}
 
-		void					RegisterSensory(float&atTime, bool checkChangesNow=true) {RegisterSensory(location,atTime,checkChangesNow);}
-		void					UnregisterSensory(float&atTime, bool checkChangesNow=true)  {UnregisterSensory(location,atTime,checkChangesNow);}
+		/**
+		Iterates through all sensors of the local entity
+		@param loc Location to use as entity location (the actual entity location is ignored)
+		@param visitor Function to call
+		@param appearance If true the method only returns sensors that represent its visual appearance
+		*/
+		virtual void			VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance = false) const;
 
-		virtual void			RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true, Buffer0<PWorldEntity>*newContacts = nullptr);
-		virtual void			UnregisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true);
+		void					RegisterSensory(float&atTime) {RegisterSensory(location,atTime);}
+		void					UnregisterSensory(float&atTime)  {UnregisterSensory(location,atTime);}
+
+		void					RegisterSensory(const Grid::LCellIdI&loc, float&atTime, Buffer0<PWorldEntity>*newContacts = nullptr);
+		void					UnregisterSensory(const Grid::LCellIdI&loc, float&atTime);
 		#ifdef CLIENT
 			void				MoveSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to, float&atTime, bool checkChangesNow=true);
-			virtual void		RegisterWorldSensory(const Grid::HighSetup::TVolumeDescriptor&);
-			virtual void		UnregisterWorldSensory(const Grid::HighSetup::TVolumeDescriptor&);
-			//virtual void		MoveWorldSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to);
 		#else
-			virtual void		MoveSensoryToCurrentLocation(const Grid::LCellIdI&oldLocation, float&atTime, bool checkChangesNow=true, Buffer0<PWorldEntity>*newContacts = nullptr);
+			virtual void		MoveSensoryToCurrentLocation(const Grid::LCellIdI&oldLocation, float&atTime, Buffer0<PWorldEntity>*newContacts = nullptr);
 
 		#endif
 
-
+		#ifdef HAS_WINDOW
+			/**
+			Stores a description of the local type in the specified label
+			@param[out] label Label to store the description in
+			@param deskFlags Combination of descFlag_t to fine-tune the generation process
+			*/
+			virtual void	DescribeType(Description&label, UINT32 descFlags);
+		#endif
+		void				AppendDeploymentCount(Description&outResult, const OwnerParameter&overrideOwner)	const;
 
 
 		#ifdef CLIENT
@@ -572,18 +579,11 @@ namespace Objects
 					DescIncludeUnitCount = 0x20,
 				};
 				//old: includeName, includePrice
-				/**
-				Stores a description of the local type in the specified label
-				@param[out] label Label to store the description in
-				@param deskFlags Combination of descFlag_t to fine-tune the generation process
-				*/
-				virtual void		DescribeType(BaseCommand::Label&label, UINT32 descFlags);
 
 				/**
 				Appends deployment count in the form " Deployed: cnt/max", if any limit is set.
 				Otherwise nothing will be appended.
 				*/
-				void				AppendDeploymentCount(BaseCommand::Label&outResult, const OwnerParameter&overrideOwner)	const;
 				String				CompileDeploymentCount(const OwnerParameter&overrideOwner)	const;
 
 				/**
@@ -644,9 +644,6 @@ namespace Objects
 	};
 
 
-	#ifdef CLIENT
-		extern Buffer0<PWorldEntity>		waste;
-	#endif
 
 
 	template <typename T>

@@ -2,11 +2,12 @@
 
 #ifdef HAS_WINDOW
 
-#include <sphereGrid.h>
+#include <grid/planet.h>
 #include <runtimeConfig.h>
 
 namespace ConfigurationMode
 {
+	void	Create();
 	void	Update(const Grid::ExtendedPlanetConfig&);
 	void	SetActive(bool);
 	void	SetGameConfig(UINT32, RuntimeConfig::GameGoal, Grid::WorldDiscovery);
@@ -47,7 +48,6 @@ namespace ConfigurationMode
 	*/
 	void	UpdatePlanetList(Array<String>&fleetingData);
 
-	void	Tick();
 	void	SignalServerWorldUpdateCompleted();
 }
 

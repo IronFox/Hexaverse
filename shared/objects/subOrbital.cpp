@@ -22,53 +22,18 @@ namespace Objects
 		}
 
 
-
-
-		/*virtual override*/ void		Plane::RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
+		/*virtual override*/ void		Plane::VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance /*= false*/) const
 		{
-			float range = turret->groundScanningRange.GetValue(GetResearchState());
-			Super::RegisterSensory(loc,atTime,checkChangesNow && range <= 0, newContacts);
-			#ifdef CLIENT
-				if (isOwnedByMe)
-					Grid::visibleSubOrbitGrid.ChangeSensory(loc,GetScanningRange(),+1);
-			#endif
-			if (range > 0.f)
+			if (!IsGroundBoundVehicle())
 			{
-				range = EMPModify(range,2);
-				Grid::actualWorld.MapSensorState(loc.stackID,range,loc.height,turret->groundScannerPenetration.GetValue(GetResearchState()),skySensorState);
-				Grid::actualWorld.UpdateSensorState(skySensorState);
-				#ifdef CLIENT
-					if (isOwnedByMe)
-					{
-						LogEvent(EventSignificance::Debug,this,"Registering sky sensory centered on "+loc.ToString()+", range="+String(range));
-						Grid::actualWorld.InsertSensorCoverage(skySensorState);
-					}
-				#else
-					owner->RegisterSensorCreation(skySensorState,atTime,checkChangesNow,newContacts);
-				#endif
+				float range = turret->groundScanningRange.GetValue(GetResearchState());
+				if (range > 0)
+				{
+					range = EMPModify(range, 2);
+					visitor(World::Sensor(loc, 0.5f, range, World::Sensor::ShadedCylinder, (int)turret->groundScannerPenetration.GetValue(GetResearchState())));
+				}
 			}
-		}
-
-		/*virtual override*/ void		Plane::UnregisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/)
-		{
-			float range = turret->groundScanningRange.GetValue(GetResearchState());
-			Super::UnregisterSensory(loc,atTime,checkChangesNow && range <= 0);
-			#ifdef CLIENT
-				if (isOwnedByMe)
-					Grid::visibleSubOrbitGrid.ChangeSensory(loc,GetScanningRange(),-1);
-			#endif
-			if (range > 0.f)
-			{
-				#ifdef CLIENT
-					if (isOwnedByMe)
-					{
-						LogEvent(EventSignificance::Debug,this,"Unregistering sky sensory, hopefully centered on "+loc.ToString());
-						Grid::actualWorld.RemoveSensorCoverage(skySensorState);
-					}
-				#else
-					owner->RegisterSensorRemoval(skySensorState,atTime,checkChangesNow);
-				#endif
-			}
+			Super::VisitSensors(loc, visitor, appearance);
 		}
 
 
@@ -77,7 +42,7 @@ namespace Objects
 
 
 
-			/*virtual override*/ void Plane::DescribeType(BaseCommand::Label&outResult, UINT32 descFlags)
+			/*virtual override*/ void Plane::DescribeType(Description&outResult, UINT32 descFlags)
 			{
 				Super::DescribeType(outResult,descFlags);
 				String speed = "Speed: "+String(this->GetMovementStepsPerRound()) + " (aerial)";
@@ -115,7 +80,7 @@ namespace Objects
 		/*static*/ int				Plane::GetCentralGroundHeight(const Grid::LCellIdI&location)
 		{
 			UINT32 fine = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
-			return Detail::WalkStack(Grid::actualWorld.cellStack[fine],false);
+			return Detail::WalkStack(World::actual.GetStack(fine),false);
 		}
 
 
@@ -157,13 +122,13 @@ namespace Objects
 			#else
 				index_t finer = who->location.stackID;
 			#endif
-			int h = Detail::WalkStack(Grid::actualWorld.cellStack[finer],true);
+			int h = Detail::WalkStack(World::actual.GetStack(finer),true);
 			if (h == badHeight)
 				return badHeight;
 			#ifdef HYBRID_GRID
 				for (int j = 0; j < c.neighborhood.numNeighbors; j++)
 				{
-					int h2 = Detail::WalkStack(Grid::actualWorld.cellStack[c.neighborhood.neighborID[j]],true);
+					int h2 = Detail::WalkStack(World::actual.GetStack(c.neighborhood.neighborID[j]),true);
 					if (h2 == badHeight)
 						return badHeight;
 					h = std::max(h2,h);
@@ -177,54 +142,6 @@ namespace Objects
 
 
 		#ifndef CLIENT
-			bool					Plane::RefreshGroundSensor(float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts/* = nullptr*/)
-			{
-				if (turret->groundScanningRange.IsEmpty())
-					return false;
-				float range = turret->groundScanningRange.GetValue(GetResearchState());
-				if (range > 0.f)
-				{
-					Grid::SkySensorState state = skySensorState;
-					if (Grid::actualWorld.UpdateSensorState(skySensorState))
-					{
-						LogEvent(EventSignificance::Common,this,"Ground-sensor change detected");
-
-						owner->RegisterSensorCreation(skySensorState,atTime,false, newContacts);
-						atTime += timeEpsilon;
-						owner->RegisterSensorRemoval(state,atTime,checkChangesNow);
-						atTime += timeEpsilon;
-						return true;
-					}
-
-				}
-				return false;
-			}
-
-			/*virtual override*/ void		Plane::MoveSensoryToCurrentLocation(const Grid::LCellIdI&oldLocation, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts/* = nullptr*/)
-			{
-				if (oldLocation == location)
-					return;
-				Super::RegisterSensory(location,entityTime,false,newContacts);
-				Super::UnregisterSensory(oldLocation,entityTime,false);
-
-				if (turret->groundScanningRange.IsSet())
-				{
-					float range = turret->groundScanningRange.GetValue(GetResearchState());
-					if (range > 0)
-					{
-						Grid::SkySensorState state = skySensorState;
-						LogEvent(EventSignificance::Common,this,"Processing ground-sensor motion");
-						range = EMPModify(range,2);
-						Grid::actualWorld.MapSensorState(location.stackID,range,location.height,turret->groundScannerPenetration.GetValue(GetResearchState()),skySensorState);
-						Grid::actualWorld.UpdateSensorState(skySensorState);
-
-						owner->RegisterSensorCreation(skySensorState,atTime,false, newContacts);
-						atTime += timeEpsilon;
-						owner->RegisterSensorRemoval(state,atTime,checkChangesNow);
-						atTime += timeEpsilon;
-					}
-				}
-			}
 
 
 			/*virtual override*/ bool		Plane::ProcessRound(float&atTime)
@@ -248,7 +165,7 @@ namespace Objects
 				//VerifyVisibilityNetwork();
 				SyncTime(minTimeOffset);
 				
-				if (cell.height <= Grid::CellStack::TopHeight && !Grid::actualWorld.LowCellIsClear(cell))
+				if (cell.height <= Grid::CellStack::TopHeight && !World::actual.LowCellIsClear(cell))
 				{
 					PHangar s = MobileDestinationStructureHere(cell,*this);
 					if (s && s->Store(To<Vehicle>::Cast(shared_from_this()),entityTime))
@@ -257,7 +174,7 @@ namespace Objects
 					if (failIsFatal)
 					{
 						PStructure st = GetStructure(cell);
-						LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is obstructed by structure "+(st ? st->GetName(): "<>")+": "+Grid::actualWorld.LowCellReport(cell));
+						LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is obstructed by structure "+(st ? st->GetName(): "<>")+": "+World::actual.LowCellReport(cell));
 						FATAL__("Critical abort");
 					}
 
@@ -442,7 +359,7 @@ namespace Objects
 			{
 				Super::VisitAllCommands(visitor,force);
 				if (storeOffset > 0 || force)
-					cmdLeft.VisitMembers(visitor,force);
+					cmdLeft->VisitMembers(visitor,force);
 				index_t at = 0;
 				foreach (stored,s2)
 				{
@@ -459,7 +376,7 @@ namespace Objects
 						break;
 				}
 				if (stored.Count() - storeOffset > MaxVisibleStoreItems || force)
-					cmdRight.VisitMembers(visitor,force);
+					cmdRight->VisitMembers(visitor,force);
 			}
 
 		#endif

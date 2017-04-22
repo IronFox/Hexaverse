@@ -1182,8 +1182,7 @@ namespace Lua
 		lua_pop(st,cnt);
 	}
 
-
-	void Table::SetTopField(const String & name)
+	void Table::SetTopField(const char*name)
 	{
 		lua_State*st = GetState();
 		if (!st)
@@ -1192,10 +1191,16 @@ namespace Lua
 		int top = lua_gettop(st);
 		Super::Push();	
 		lua_insert(st,-2);
-		lua_setfield(st,-2,name.c_str());
+		lua_setfield(st,-2,name);
 		lua_pop(st,1);
 
 		ASSERT_EQUAL__(top-1,lua_gettop(st));
+	}
+
+
+	void Table::SetTopField(const String & name)
+	{
+		SetTopField(name.c_str());
 	}
 	
 
@@ -1384,12 +1389,12 @@ namespace Lua
 	}
 
 
-	/*static*/ PProgram Program::Create()
+	/*static*/ PProgram Program::Create(const String&name)
 	{
 		lua_State*st = luaL_newstate();
 		if (!st)
-			throw Exception("Unable to create new Lua program");
-		PProgram rs(new Program(st));
+			throw Exception("Unable to create new Lua program '"+name+"'. Unknown reason. Out of memory?");
+		PProgram rs(new Program(st,name));
 		lua_atpanic(st, &Detail::Panic);
 
 		static const luaL_Reg loadedlibs[] = {
@@ -1569,6 +1574,7 @@ namespace Lua
 		Table rs;
 		lua_createtable(state,0,0);
 		ASSERT__(rs.ResetFromStack(shared_from_this(),-1));
+		lua_pop(state,1);
 		return rs;
 	}
 
@@ -1706,7 +1712,7 @@ void Lua::Detail::PopStacked(lua_State*st)
 int LuaRun (int argc, const char *argv[]) {
 
 
-	Lua::PProgram prog = Lua::Program::Create();
+	Lua::PProgram prog = Lua::Program::Create("Test");
 	ASSERT__(prog);
 
 	{
