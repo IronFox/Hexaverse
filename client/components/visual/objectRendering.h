@@ -31,9 +31,6 @@ namespace Objects
 										skyPortBeam,
 										arrowInstruction;
 	extern DX11::StreamVBO				arrowBuffer;
-	extern DX11::VBO					sphereVBO[4];
-	extern DX11::IBO32					sphereIBO[4];
-	//extern DX11::InstructionBlock32		rangeInstruction[4];
 
 	extern DX11::InstructionBlock32		cordon,
 										foundation,
@@ -63,6 +60,44 @@ namespace Objects
 
 	namespace Renderer
 	{
+		struct LODGeometry
+		{
+			static const constexpr count_t NumLODs = 4;
+
+			FixedArray<DX11::VBO, NumLODs>		vbo;
+			FixedArray<DX11::IBO32, NumLODs>	ibo;
+			FixedArray<DX11::InstructionBlock32, NumLODs>	instruction;
+			DX11::BaseInstructionBlock			shader;
+
+
+			DX11::InstructionBlock32&			Prepare(int lod)
+			{
+				auto&inst = instruction[lod];
+				if (inst.shader.IsEmpty())
+				{
+					inst.SetBase(shader);
+					inst.vbo = vbo[lod];
+					inst.ibo = ibo[lod];
+				}
+				return inst;
+			}
+
+			void					Destroy()
+			{
+				shader.Clear();
+				foreach(vbo, v)
+					v->Clear();
+				foreach(ibo, i)
+					i->Clear();
+				foreach(instruction, inst)
+					inst->Clear();
+			}
+		};
+
+		extern LODGeometry					sphere, cylinder;
+
+
+
 		struct SmokeTrailIndex
 		{
 			index_t	trailIndex = InvalidIndex;
@@ -190,8 +225,8 @@ namespace Objects
 		void		EndShadowRendering();
 
 
-		void	RenderRangeSphere(const TVec3<>&center, float radius, const float4&color);
-		void	RenderRangeCylinder(const TVec3<>&direction, float bottomRadius, float topRadius, float bottom, float top, const float4&color);
+		void	RenderRangeSphere(const TVec3<>&center, float radius, const float4&color, bool outer);
+		void	RenderRangeCylinder(const TVec3<>&center, float radius, const float4&color, bool outer);
 		void	RenderRange(const Grid::LCellIdI&location, float zOffset, const PTurretBase&base, const float4&color, bool extended);
 
 
@@ -221,6 +256,8 @@ namespace Objects
 		Removes all active smoke trails. May trigger gradual fading in the future
 		*/
 		void	ClearSmokeTrails();
+
+		void	RefreshSelectedSensory();
 
 
 

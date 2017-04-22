@@ -31,6 +31,10 @@ namespace Camera
 namespace Objects
 {
 
+
+
+
+
 	bool						resourceView = true,
 								showHostileRanges = false,
 								showFriendlyRanges = false,
@@ -38,7 +42,7 @@ namespace Objects
 
 
 	DX11::ObjectBuffer<float4>	keyColor, overallTint,
-								cylinderConfig,
+								cutOffConfig,
 								beamBottomColor,
 								beamTopColor;
 
@@ -47,14 +51,12 @@ namespace Objects
 								pathShader,
 								jobShader,
 								attackRingShader,
-								cylinderShader,
 								arrowInstruction,
 								smokeTrailShader,
 								skyPortBeam;
 	DX11::StreamVBO				arrowBuffer;
-	DX11::VBO					sphereVBO[4],cylinderVBO[4];
-	DX11::IBO32					sphereIBO[4],cylinderIBO[4];
-	DX11::InstructionBlock32	sphereInstruction[4],cylinderInstruction[4];
+	
+
 
 	DX11::BaseInstructionBlock	standardCompiledShader, standardLocalizableShader;
 
@@ -63,6 +65,7 @@ namespace Objects
 								userInteractionNotifier,
 								attackRing,
 								gatheringPoint;
+								
 	DX11::BaseInstructionBlock	shadowInstruction;
 
 	DX11::Texture				smokeTexture;
@@ -77,8 +80,101 @@ namespace Objects
 	TMatrix4<>							structureToPlaceSystem;
 
 
+
+
+
+
 	namespace Renderer
 	{
+
+		class SelectionPrimitive
+		{
+		public:
+			float4					tint;
+			TMatrix4<>				innerSys, outerSys;
+			LODGeometry				*geo = nullptr;
+			float4					cutOffConfig;
+			float					radius = 1.f;
+
+			/**/					SelectionPrimitive() {}
+			/**/					SelectionPrimitive(LODGeometry&geo) :geo(&geo) {}
+			void					SetSystems(const Sphere<>&s)
+			{
+				radius = s.radius;
+				cutOffConfig = float4(0, 0, Grid::BottomPlanetRadius, Grid::TopPlanetRadius);
+
+				Mat::Eye(innerSys);
+				innerSys.x.x = innerSys.y.y = innerSys.z.z = s.radius;
+				innerSys.w.xyz = s.center;
+
+				outerSys = innerSys;
+				outerSys.x.x = outerSys.y.y = outerSys.z.z = s.radius + Renderer::RangeShadowExtension;
+
+
+				CheckSystem();
+			}
+
+			void					SetCylinderSystems(const TVec3<>&topCenter, float radius)
+			{
+				const float radialHeight = Vec::length(topCenter);
+				TVec3<> dir = topCenter / radialHeight;
+
+				const float alpha = radius / radialHeight;
+				const float flatRadius = sin(alpha)*radialHeight;
+				const float flatRadialHeight = radialHeight * cos(alpha);
+
+				this->radius = flatRadius;
+
+				const constexpr float h0 = Grid::ToRadius(Grid::CellStack::BottomHeight);
+				const constexpr float hT = Grid::ToRadius(Grid::CellStack::TopHeight);
+
+				const float radiusAtBottom = flatRadius * h0 / radialHeight;
+				float height = flatRadialHeight - h0;
+
+				cutOffConfig = float4(radiusAtBottom, flatRadius, height, radialHeight);
+
+
+				Mat::makeAxisSystem(dir*h0, dir, 2, innerSys);
+
+				outerSys = innerSys;
+
+				CheckSystem();
+
+			}
+
+			void					CheckSystem() const
+			{
+				TVec3<> test;
+				Vec::cross(outerSys.x.xyz, outerSys.y.xyz, test);
+				ASSERT__(Vec::dot(test, outerSys.z.xyz) > 0);
+			}
+
+			void					Render(bool outer);
+
+		};
+		LODGeometry					sphere, cylinder;
+
+		SelectionPrimitive			generalPurposePrimitive(sphere);
+		Buffer0<SelectionPrimitive>	selectionPrimitives;
+
+
+		void SelectionPrimitive::Render(bool outer)
+		{
+			const float d = Vec::distance(Camera::scene.GetAbsoluteLocation(), innerSys.w.xyz);
+			const int instructionIndex = DetermineLODInstruction(d, radius);
+
+			Objects::cutOffConfig.Update(outer ? (this->cutOffConfig + float4(Renderer::RangeShadowExtension, Renderer::RangeShadowExtension, 0, 0)) : this->cutOffConfig);
+			auto&inst = geo->Prepare(instructionIndex);
+
+			overallTint.Update(outer ? float4(0, 0, 0, RangeShadowOpacity) : tint);
+
+			display.SetObjectMatrix(outer ? outerSys : innerSys);
+			display.Render(inst, true);
+		}
+
+
+
+
 
 		void	AdvanceTurretAnimations();
 
@@ -144,6 +240,40 @@ namespace Objects
 		smokeTrails[!smokeTrailIndex.isOrbital].selectedSmokeTrail = InvalidIndex;
 	}
 
+	void	Renderer::RefreshSelectedSensory()
+	{
+		selectionPrimitives.Clear();
+		if (Objects::selectedEntity)
+			Objects::selectedEntity->VisitSensors(Objects::selectedEntity->location, [](const World::Sensor&sensor)
+			{
+				auto&prim = selectionPrimitives.Append();
+				prim.tint = float4(1, 1, 0, 0.8f);
+
+				switch (sensor.type)
+				{
+				case World::Sensor::ShadedSphere:
+				case World::Sensor::SolidSphere:
+					prim.geo = &sphere;
+					prim.SetSystems(Sphere<>(sensor.worldCenter, sensor.radius));
+					break;
+				case World::Sensor::UpperHalfSolidSphere:
+					prim.geo = &sphere;
+					prim.SetSystems(Sphere<>(sensor.worldCenter, sensor.radius));
+					prim.cutOffConfig.z = sensor.worldCenter.Length();
+					break;
+				case World::Sensor::ShadedCylinder:
+				case World::Sensor::SolidCylinder:
+					prim.geo = &cylinder;
+					prim.SetCylinderSystems(sensor.worldCenter, sensor.radius);
+					break;
+				}
+			}
+			,true);
+
+
+
+	}
+
 	void	Renderer::ClearSmokeTrailHighlighting()
 	{
 		smokeTrails[0].selectedSmokeTrail = InvalidIndex;
@@ -157,44 +287,23 @@ namespace Objects
 	}
 
 
-	void Renderer::RenderRangeSphere(const TVec3<>&center, float radius, const float4&color)
+	void Renderer::RenderRangeSphere(const TVec3<>&center, float radius, const float4&color, bool outer)
 	{
-		float d = Vec::distance(Camera::scene.GetAbsoluteLocation(),center);
-		int instructionIndex = DetermineLODInstruction(d,radius);
-		if (sphereInstruction[instructionIndex].shader.IsEmpty())
-		{
-			sphereInstruction[instructionIndex].SetBase(jobShader);
-			sphereInstruction[instructionIndex].vbo = sphereVBO[instructionIndex];
-			sphereInstruction[instructionIndex].ibo = sphereIBO[instructionIndex];
-		}
-		TMatrix4<> scaled = Matrix<>::eye4;
-		scaled.x.x = scaled.y.y = scaled.z.z = radius;
-		scaled.w.xyz = center;
+		generalPurposePrimitive.geo = &sphere;
+		generalPurposePrimitive.SetSystems(Sphere<>(center, radius));
+		generalPurposePrimitive.tint = color;
 
-		overallTint.Update(color);
-				
-		display.SetObjectMatrix(scaled);
-		display.Render(sphereInstruction[instructionIndex],true);
+		generalPurposePrimitive.Render(outer);
 	}
 
-	void	Renderer::RenderRangeCylinder(const TVec3<>&direction, float bottomRadius, float topRadius, float bottom, float top, const float4&color)
+	void	Renderer::RenderRangeCylinder(const TVec3<>&center, float radius, const float4&color, bool outer)
 	{
-		float d = Vec::distance(Camera::scene.GetAbsoluteLocation(),direction*top);
-		int instructionIndex = DetermineLODInstruction(d,topRadius);
-		if (cylinderInstruction[instructionIndex].shader.IsEmpty())
-		{
-			cylinderInstruction[instructionIndex].SetBase(cylinderShader);
-			cylinderInstruction[instructionIndex].vbo = cylinderVBO[instructionIndex];
-			cylinderInstruction[instructionIndex].ibo = cylinderIBO[instructionIndex];
-		}
-		TMatrix4<> sys;
-		Mat::makeAxisSystem(direction*bottom, direction,2,sys);
 
-		overallTint.Update(color);
-		cylinderConfig.Update(float4(bottomRadius,topRadius,top-bottom,0.f));
-				
-		display.SetObjectMatrix(sys);
-		display.Render(cylinderInstruction[instructionIndex],true);
+		generalPurposePrimitive.geo = &cylinder;
+		generalPurposePrimitive.SetCylinderSystems(center, radius);
+		generalPurposePrimitive.tint = color;
+
+		generalPurposePrimitive.Render(outer);
 	}
 
 
@@ -203,13 +312,13 @@ namespace Objects
 	void	Renderer::RenderRange(const Grid::LCellIdI&location, float zOffset, const PTurretBase&base, const float4&color, bool extended)
 	{
 		float explosionRadius = 0;//base->turret->explosionRadius;
-		if (extended)
-			explosionRadius += RangeShadowExtension;
 		switch (base->turret->trajectoryType)
 		{
 			case TrajectoryType::Artillery:
 			{
-				Objects::ParaboloidBuffer::Of(*base).Render(location, 
+				if (extended)
+					explosionRadius += RangeShadowExtension;
+				Objects::ParaboloidBuffer::Of(*base).Render(location,
 					zOffset,base->GetFlatAttackRange(),
 					explosionRadius,color,
 					extended
@@ -219,7 +328,7 @@ namespace Objects
 			case TrajectoryType::Missile:
 			{
 				const TVec3<>&d = Grid::low.cells[location.stackID].centerVertex.xyz;
-				RenderRangeSphere(d * (Grid::ToRadius(location.height)+zOffset),base->GetFlatAttackRange() + explosionRadius,color);
+				RenderRangeSphere(d * (Grid::ToRadius(location.height)+zOffset),base->GetFlatAttackRange() + explosionRadius,color, extended);
 			}
 			break;
 			case TrajectoryType::VerticalBeam:
@@ -250,7 +359,9 @@ namespace Objects
 	void Renderer::Destroy()
 	{
 		keyColor.Clear();
-		cylinderConfig.Clear();
+		sphere.Destroy();
+		cylinder.Destroy();
+		cutOffConfig.Clear();
 		overallTint.Clear();
 		beamBottomColor.Clear();
 		beamTopColor.Clear();
@@ -259,7 +370,7 @@ namespace Objects
 
 		seeThroughShader = stdVehicleShader = DX11::BaseInstructionBlock();
 		standardCompiledShader = standardLocalizableShader =
-			pathShader = jobShader = cylinderShader = 
+			pathShader = jobShader = 
 			attackRingShader = 
 			smokeTrailShader =
 			arrowInstruction = 
@@ -271,54 +382,32 @@ namespace Objects
 		arrowBuffer.Clear();
 		Objects::ParaboloidBuffer::StaticDestroy();
 
-		for (index_t i = 0; i < ARRAYSIZE(sphereVBO); i++)
-		{
-			sphereVBO[i].Clear();
-			sphereIBO[i].Clear();
-			sphereInstruction[i].Clear();
-		}
-		for (index_t i = 0; i < ARRAYSIZE(cylinderVBO); i++)
-		{
-			cylinderVBO[i].Clear();
-			cylinderIBO[i].Clear();
-			cylinderInstruction[i].Clear();
-		}
 	}
 
 	static	void Load(const ObjectMath::Mesh<TDef<float> >&mesh, DX11::VBO&vbo, DX11::IBO32&ibo)
 	{
-				//ASSERT_LESS__(mesh.vertex_field.length(),0x10000);
-
-		Array<Vertex>	vertices(mesh.vertex_field.length());
-		for (index_t i = 0; i < vertices.Count(); i++)
+		Geometry geo;
+		for (index_t i = 0; i < mesh.vertex_field.Count(); i++)
 		{
-			Vertex&vtx = vertices[i];
 			const auto &vIn = mesh.vertex_field[i];
-			vtx.color = float4(1,1,1,1);
-			vtx.normal = vIn.position;
-			vtx.vertex = vIn.position;
+			geo.MakeVertex(vIn.position,float3(),float4(1));
 		}
-		Array<UINT32>	indices(mesh.triangle_field.length()*3 + mesh.quad_field.length()*6);
-		UINT32*iat = indices.pointer();
 		foreach (mesh.triangle_field,t)
 		{
-			*iat++ = UINT32(t->v0 - mesh.vertex_field.pointer());
-			*iat++ = UINT32(t->v1 - mesh.vertex_field.pointer());
-			*iat++ = UINT32(t->v2 - mesh.vertex_field.pointer());
+			geo.MakeTriangle(t->v0 - mesh.vertex_field.pointer(),
+							t->v1 - mesh.vertex_field.pointer(),
+							t->v2 - mesh.vertex_field.pointer());
 		}
 		foreach (mesh.quad_field,t)
 		{
-			*iat++ = UINT32(t->v0 - mesh.vertex_field.pointer());
-			*iat++ = UINT32(t->v1 - mesh.vertex_field.pointer());
-			*iat++ = UINT32(t->v2 - mesh.vertex_field.pointer());
-
-			*iat++ = UINT32(t->v0 - mesh.vertex_field.pointer());
-			*iat++ = UINT32(t->v2 - mesh.vertex_field.pointer());
-			*iat++ = UINT32(t->v3 - mesh.vertex_field.pointer());
+			geo.MakeQuad(t->v0 - mesh.vertex_field.pointer(),
+				t->v1 - mesh.vertex_field.pointer(),
+				t->v2 - mesh.vertex_field.pointer(),
+				t->v3 - mesh.vertex_field.pointer());
 		}
-		ASSERT_CONCLUSION(indices,iat);
-		vbo.CreateFromStructs(vertices);
-		ibo.Create(indices);
+		geo.ComputeNormals();
+		vbo.CreateFromStructs(geo.GetLOD(0).vertices);
+		ibo.Create(geo.GetLOD(0).indices);
 	}
 
 
@@ -350,7 +439,7 @@ namespace Objects
 
 		keyColor.Create(float4(0));
 		overallTint.Create(float4(1));
-		cylinderConfig.Create(float4(1));
+		cutOffConfig.Create(float4(1));
 		{
 			Engine::VertexBinding binding;
 			binding.color.set(6, 4);
@@ -492,13 +581,17 @@ namespace Objects
 				DX11::Shader::Binding(overallTint, "Tint"),
 				DX11::Shader::Binding(Lighting::GPUResources::sunDirection,"Sun"),
 				DX11::Shader::Binding(Lighting::GPUResources::sunColor,"SunColor"),
-				DX11::Shader::Binding(cylinderConfig,"CylinderConfig"),
+				DX11::Shader::Binding(cutOffConfig,"CutOffConfig"),
 			};
 
-			cylinderShader.binding = stdVehicleShader.binding;
-			cylinderShader.shader.LoadFromFile("shaders/translucentCylinder.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
-			cylinderShader.UpdateLayout();
-			cylinderShader.SetTriangles();
+			cylinder.shader.binding = stdVehicleShader.binding;
+			cylinder.shader.shader.LoadFromFile("shaders/translucentCylinder.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
+			cylinder.shader.UpdateLayout();
+			cylinder.shader.SetTriangles();
+			sphere.shader.binding = stdVehicleShader.binding;
+			sphere.shader.shader.LoadFromFile("shaders/translucentSphere.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
+			sphere.shader.UpdateLayout();
+			sphere.shader.SetTriangles();
 		}
 
 		arrowInstruction = pathShader;
@@ -517,13 +610,13 @@ namespace Objects
 			{
 				ObjectMath::Mesh<TDef<float> >	mesh;
 				mesh.buildSphere(20 * (1 << k));
-				Load(mesh,sphereVBO[k],sphereIBO[k]);
+				Load(mesh, sphere.vbo[k], sphere.ibo[k]);
 
 			}
 			{
 				ObjectMath::Mesh<TDef<float> >	mesh;
 				mesh.buildCylinder(20 * (1 << k));
-				Load(mesh,cylinderVBO[k],cylinderIBO[k]);
+				Load(mesh, cylinder.vbo[k], cylinder.ibo[k]);
 			}
 		}
 
@@ -574,6 +667,9 @@ namespace Objects
 		}
 
 		
+		GlobalEvents::invalidateObjectCache << ClearSmokeTrailHighlighting;
+		GlobalEvents::invalidateObjectCache << RefreshSelectedSensory;
+
 		GlobalEvents::frameBegin << Renderer::AdvanceTurretAnimations;
 
 		GlobalEvents::objectFlush << Renderer::Flush << ClearSmokeTrails;
@@ -1299,7 +1395,7 @@ namespace Objects
 	{
 		const TVec3<>&dir = Grid::low.cells[pole].cornerCenter;
 		TVec3<> base;
-		Vec::mult(dir,Grid::VerticalBase,base);
+		Vec::mult(dir,Grid::MeanPlanetRadius,base);
 		TMatrix4<> sys;
 		sys.w.xyz = base;
 		sys.z.xyz = dir;
@@ -1354,45 +1450,15 @@ namespace Objects
 	{
 		{
 			float4 color = extendedShadow ? float4(0,0,0,RangeShadowOpacity) : float4(1,1,0,0.8f);
-			if (selectedEntity)
-			{
-				float scanningRange = selectedEntity->GetScanningRange();
-				if (extendedShadow)
-					scanningRange += RangeShadowExtension;
 
-
-				Renderer::RenderRangeSphere(selectedEntity->GetWorldPosition(),scanningRange,
-					color
-					);
-				float zOffset;
-				PTurretBase base = selectedEntity->GetTurretBase(zOffset);		
-				if (base && base->turret->groundScanningRange.IsSet())
-				{
-					scanningRange = base->GetFlatAttackRange();
-						//cache.groundScanningRange.GetEMPModified(*selectedEntity,base->turret->groundScanningRange)*Grid::UnitScale;
-					//selectedEntity->EMPModify(base->turret->GetGroundScanningRange(selectedEntity->owner),2);
-					float refHeight = Grid::ToRadius(selectedEntity->location.height);
-					float top = Grid::ToRadius(/*selectedEntity->location.height*/Grid::CellStack::HalfRange);
-					float bottom = Grid::ToRadius(-Grid::CellStack::HalfRange);
-					float topR = scanningRange*top/refHeight;
-					float bottomR = scanningRange *bottom/refHeight;
-					if (extendedShadow)
-					{
-						topR += RangeShadowExtension;
-						bottomR += RangeShadowExtension;
-					}
-					RenderRangeCylinder(selectedEntity->system.z.xyz,bottomR,topR,bottom,top,color);
-				}
-
-			}
+			foreach(selectionPrimitives, prim)
+				prim->Render(extendedShadow);
 
 			if (choiceVis.showArrow && choiceVis.hasArrowCellTarget && activeCursorMode == CursorMode::PlaceStructureMode && activeStructureToPlace)
 			{
 				float scanningRange = activeStructureToPlace->GetScanningRange();
-				if (extendedShadow)
-					scanningRange += RangeShadowExtension;
 				Renderer::RenderRangeSphere(structureToPlaceSystem.w.xyz,scanningRange,
-					color
+					color, extendedShadow
 					);
 			}
 		}

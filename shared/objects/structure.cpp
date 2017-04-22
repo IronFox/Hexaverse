@@ -3,6 +3,7 @@
 #include "systems.h"
 #include "../cast.h"
 #include "interface.h"
+#include "../globalEvents.h"
 
 #ifdef HAS_WINDOW
 	#include "entityCommand.h"
@@ -1018,9 +1019,7 @@ namespace Objects
 		#endif
 
 		RefreshCompoundStates(atTime);
-		#ifdef HAS_WINDOW
-			ApplicationInterface::OnSelectionChange(true);
-		#endif
+		GlobalEvents::invalidateObjectCache();
 	}
 
 

@@ -996,9 +996,7 @@ namespace Network
 				}
 			}
 			Objects::Marker::Create(marker.id, type, marker.location, marker.createdInRound, entityID, ownerID, entityType, std::max(RuntimeConfig::roundNumber,marker.createdInRound));
-			#ifdef HAS_WINDOW
-				ApplicationInterface::OnSelectionChange(true);
-			#endif
+			GlobalEvents::invalidateObjectCache();
 		}
 
 		void	MarkerCreationFailedLimitReached(Protocol::Marker&marker);	//must re-send, must know channels, cannot be implemented here
@@ -1006,9 +1004,7 @@ namespace Network
 		void	DestroyMarker(NET(TUniqueID)&mid)
 		{
 			Objects::Marker::Destroy(mid, ControlEnabled());
-			#ifdef HAS_WINDOW
-				ApplicationInterface::OnSelectionChange(true);
-			#endif
+			GlobalEvents::invalidateObjectCache();
 		}
 
 		void	IdentifyFaction(Protocol::IdentifyFaction&id);
@@ -1021,18 +1017,13 @@ namespace Network
 		{
 			uplinkBandwidth = v;
 			RuntimeConfig::hibernationSystemEnabled = v > 0;
-			#ifdef HAS_WINDOW
-				ApplicationInterface::OnSelectionChange(true);
-			#endif
+			GlobalEvents::invalidateObjectCache();
 		}
 
 		void	UnitLimits(Protocol::UnitLimits&limits)
 		{
 			RuntimeConfig::UnitLimits::Import(limits);
-			#ifdef HAS_WINDOW
-				ApplicationInterface::OnSelectionChange(true);
-			#endif
-
+			GlobalEvents::invalidateObjectCache();
 		}
 
 		void	PlanetConfig(Grid::ExtendedPlanetConfig&cfg)
@@ -1712,6 +1703,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 	if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase)
 	{
 		static Buffer0<Objects::Marker> outdated;
+		ClientGrid::CheckSensory();
 		Objects::Marker::GetOutdated(outdated,RuntimeConfig::roundNumber,RuntimeConfig::aiMode ? 100 : 10);
 		foreach(outdated, o)
 		{

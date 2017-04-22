@@ -3,6 +3,7 @@
 
 #ifdef HAS_WINDOW
 #include <math/vector.h>
+#include <observer.h>
 
 namespace Objects
 {
@@ -10,6 +11,8 @@ namespace Objects
 	extern PMobileEntity	selectedMobileEntity;
 	extern PVehicle			selectedVehicle;
 	extern PMobileEntity	deployingMobileEntity;
+
+	extern Observer<>		onSelectionChanged;
 
 
 	void					Select(const PWorldEntity&entity, bool controlEnabled);

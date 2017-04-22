@@ -46,7 +46,6 @@ namespace ApplicationInterface
 	void	SignalResearch(const Objects::PResearchTopic&topic);
 
 	#ifdef HAS_WINDOW
-		void	OnSelectionChange(bool stateChangeOnly);
 		void	SignalUserMessage(const String&message);
 	#endif
 	void	OnVanish(const Objects::PWorldEntity&e, Objects::RemovalType t, bool wasGhost);

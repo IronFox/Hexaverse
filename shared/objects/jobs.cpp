@@ -313,9 +313,9 @@ namespace Objects
 
 			auto seq = World::actual.BeginChangeSequence(v.entityTime);
 
-			seq.SelectStack(Grid::low.grid.GetCell(target.stackID).higherEquivalent);
 			const UINT32 higher = Grid::low.grid.GetCell(target.stackID).higherEquivalent;
-			//seq.Change(target.height,Grid::Content::Foundation);
+			seq.SelectStack(higher);
+			seq.Change(target.height,Grid::Content::Foundation);
 
 
 			const auto&n = Grid::low.grid.GetCell(target.stackID).neighborhood;

@@ -772,7 +772,7 @@ namespace Animation
 		#ifdef HAS_WINDOW
 			if (v == Objects::selectedEntity)
 			{
-				ApplicationInterface::OnSelectionChange(true);
+				GlobalEvents::invalidateObjectCache();
 				Objects::UpdateChoices(Network::ControlEnabled());
 			}
 		#endif
@@ -949,7 +949,7 @@ namespace Animation
 		}
 
 		#ifdef HAS_WINDOW
-			ApplicationInterface::OnSelectionChange(true);	//could be affecting selected network
+			GlobalEvents::invalidateObjectCache();	//could be affecting selected network
 			if (s == Objects::selectedEntity)
 			{
 				Objects::UpdateChoices(Network::ControlEnabled());

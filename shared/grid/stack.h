@@ -54,26 +54,26 @@ namespace Grid
 		static const constexpr float UnitScale = 1.f;
 	#endif
 	static const constexpr float VerticalScale = 0.7f * UnitScale * WorldScale;
-	static const constexpr float VerticalBase = WorldScale;
+
+	static const constexpr float MeanPlanetRadius = WorldScale;
 
 #ifdef GAME_BLOB_SYSTEM
 	Buffer<Volume::Blob>	blobs;
 #endif
 
-	static const float SingleLayerHeight = RawLayerHeight * VerticalScale;
+	static const constexpr float SingleLayerHeight = RawLayerHeight * VerticalScale;
 
-	inline float ToRadiusf(float height)
+	constexpr inline float ToRadiusf(float height)
 	{
 		//ASSERT__(layer < 1000.f);
-		return height * SingleLayerHeight + VerticalBase;
+		return height * SingleLayerHeight + MeanPlanetRadius;
 	}
 	inline float HeightFromRadiusf(float radius)
 	{
-		return (radius - VerticalBase) / SingleLayerHeight;
-
+		return (radius - MeanPlanetRadius) / SingleLayerHeight;
 	}
 
-	inline float ToRadius(int height)
+	constexpr inline float ToRadius(int height)
 	{
 		return ToRadiusf(height);
 	}
@@ -88,6 +88,8 @@ namespace Grid
 	{
 		return (int)floor(HeightFromRadiusf(radius));
 	}
+
+
 
 
 	inline float powi(float f, UINT exponent)
@@ -117,8 +119,8 @@ namespace Grid
 
 		static const unsigned Range = 32;	//range up and down. effective range is thus [-Range/2,+Range/2]
 		static const int HalfRange = (Range >> 1);
-		static const int	TopHeight = HalfRange-1,
-							BottomHeight = -HalfRange;
+		static const constexpr int	TopHeight = HalfRange-1,
+									BottomHeight = -HalfRange;
 
 
 		struct TTypeDelta
@@ -784,6 +786,8 @@ namespace Grid
 
 
 
+	static const constexpr float BottomPlanetRadius = ToRadius(CellStack::BottomHeight);
+	static const constexpr float TopPlanetRadius = ToRadius(CellStack::TopHeight);
 
 
 

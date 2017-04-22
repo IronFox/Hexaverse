@@ -7,6 +7,8 @@
 #include <objects/gridAndChoices.h>
 #include <objects/vehicle.h>
 #include <objects/faction.h>
+#include <globalEvents.h>
+
 
 namespace Objects
 {
@@ -15,6 +17,7 @@ namespace Objects
 	PWorldEntity			selectedEntity;
 	PMobileEntity			selectedMobileEntity;
 	PMobileEntity			deployingMobileEntity;
+	Observer<>				onSelectionChanged;
 
 	void					Select(const PWorldEntity&entity, bool controlEnabled)
 	{
@@ -34,8 +37,10 @@ namespace Objects
 			if (entity)
 				entity->OnSelect();
 		}
-			
-		ApplicationInterface::OnSelectionChange(e == entity);
+		
+		GlobalEvents::invalidateObjectCache();
+		if (e != entity)
+			onSelectionChanged();
 		UpdateChoices(controlEnabled);
 	}
 
@@ -55,7 +60,9 @@ namespace Objects
 		if (e)
 			e->OnDeselect();
 		Command::RefreshCommands(controlEnabled);
-		ApplicationInterface::OnSelectionChange(!e);
+		GlobalEvents::invalidateObjectCache();
+		if (e)
+			onSelectionChanged();
 	}
 
 

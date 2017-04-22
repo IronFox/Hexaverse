@@ -499,7 +499,7 @@ namespace Objects
 		float range = GetScanningRange();
 		static const float MinSolid = 2.f * Grid::UnitScale;
 		const auto center = GetScanningCenter(loc);
-		if (range > MinSolid)
+		if (range > MinSolid && !appearance)
 		{
 			visitor(World::Sensor(center, MinSolid, World::Sensor::SolidSphere));
 			visitor(World::Sensor(center, range, World::Sensor::ShadedSphere));

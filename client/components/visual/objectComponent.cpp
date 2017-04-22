@@ -195,8 +195,8 @@ namespace Objects
 
 
 			((DX11::BaseInstructionBlock&) blastVisualization) = jobShader;
-			blastVisualization.vbo = sphereVBO[0];
-			blastVisualization.ibo = sphereIBO[0];
+			blastVisualization.vbo = Renderer::sphere.vbo[0];
+			blastVisualization.ibo = Renderer::sphere.ibo[0];
 			//shape.depthTest = true;
 
 			t.turret->BuildBlastSystem(trajectory.last().xyz * trajectory.last().w,t.turret->GetExplosionRadius(t.owner),blastSystem);
@@ -525,8 +525,8 @@ namespace Objects
 		{
 			Shape&shape = localizableShapes.Append();
 			((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
-			shape.instruction.vbo = sphereVBO[1];
-			shape.instruction.ibo = sphereIBO[1];
+			shape.instruction.vbo = Renderer::sphere.vbo[1];
+			shape.instruction.ibo = Renderer::sphere.ibo[1];
 			shape.depthTest = true;
 			shape.flareDisplay = false;
 			shape.preRenderDepth = false;
@@ -541,8 +541,8 @@ namespace Objects
 		{
 			Shape&shape = localizableShapes.Append();
 			((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
-			shape.instruction.vbo = sphereVBO[2];
-			shape.instruction.ibo = sphereIBO[2];
+			shape.instruction.vbo = Renderer::sphere.vbo[2];
+			shape.instruction.ibo = Renderer::sphere.ibo[2];
 			shape.depthTest = true;
 			shape.flareDisplay = false;
 			shape.preRenderDepth = false;
@@ -618,8 +618,8 @@ namespace Objects
 
 								Shape&shape = attach.localizableShapes.Append();
 								((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
-								shape.instruction.vbo = sphereVBO[2];
-								shape.instruction.ibo = sphereIBO[2];
+								shape.instruction.vbo = Renderer::sphere.vbo[2];
+								shape.instruction.ibo = Renderer::sphere.ibo[2];
 								shape.depthTest = true;
 								shape.flareDisplay = true;
 

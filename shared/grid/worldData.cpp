@@ -1348,10 +1348,14 @@ namespace World
 			case ShadedSphere:
 				return Sphere<>(worldCenter,radius).Contains(Grid::ToWorld(loc));
 			break;
+			case UpperHalfSolidSphere:
+				return Sphere<>(worldCenter, radius).Contains(Grid::ToWorld(loc)) && Grid::CellStack::ToHeight(gridCenter.layer) <= loc.height;
+			break;
 			case SolidCylinder:
 			case ShadedCylinder:
 			{
-				const float hr2 = sqr(radius/Grid::VerticalBase);
+				const float base = Grid::ToRadius(Grid::CellStack::ToHeight(gridCenter.layer));
+				const float hr2 = sqr(radius / base);
 				if (Vec::quadraticDistance(Grid::low.cells[loc.stackID].cornerCenter,Grid::high.cells[gridCenter.stackID].cornerCenter) > hr2)
 					return false;
 				return Grid::CellStack::ToLayer( loc.height ) <= gridCenter.layer;
@@ -1639,7 +1643,8 @@ namespace World
 
 			//const float r = worldCenter.Length();
 
-			const float hr2 = sqr(radius/Grid::VerticalBase);
+			const float base = Grid::ToRadius(Grid::CellStack::ToHeight(topLayer));
+			const float hr2 = sqr(radius/base);
 			const TVec3<>& center = setup.cells[stackCenter].centerVertex.xyz;
 			UINT32 current;
 			while (op.stacksLeft >> current)
@@ -1689,39 +1694,7 @@ namespace World
 
 	void		Sensor::ApplySolidSphereTo(World::Data&v, short changeBy,Data::ChangeSequence&seq)	const
 	{
-		volume.Clear();
-		UINT32 centerStack = this->gridCenter.stackID;
-		op.stacksLeft << centerStack;
-
-		const float br = Grid::ToRadius(Grid::CellStack::BottomHeight);
-		const float tr = Grid::ToRadius(Grid::CellStack::TopHeight);
-		UINT32 next;
-		while (op.stacksLeft >> next)
-		{
-			if (op.stackVisited[next])
-				continue;
-			op.stackVisited[next] = true;
-			const TVec3<>&dir = Grid::high.cells[next].cornerCenter;
-			TVec2<> distances;
-			TVec3<> bottom,top;
-			Vec::mult(dir,br,bottom);
-			Vec::mult(dir,tr,top);
-			Grid::HighSetup::TVolumeDescriptor::TStack&st = volume.coverage.Append();
-			st.stackID = next;
-			if (!Obj::DetectSphereEdgeIntersection(worldCenter,radius,bottom,top,distances))
-			{
-				st.range.SetEmpty(0);
-				continue;
-			}
-			
-			st.range.start = (UINT32)floor(std::max(distances.x,0.f) * (Grid::CellStack::Range-1));
-			st.range.end = 1 + (UINT32)ceil(std::min(distances.y,1.f) * (Grid::CellStack::Range-1));
-			const auto&n = Grid::high.grid.GetCell(next).neighborhood;
-			for (int i = 0; i < n.numNeighbors; i++)
-				op.stacksLeft << n.neighborID[i];
-		}
-		op.ResetVisited(volume);
-
+		Grid::high.GenerateVolume(Sphere<>(worldCenter, radius),volume);
 
 		ApplyVolume(v, changeBy,seq);
 	}
@@ -1729,41 +1702,12 @@ namespace World
 
 	void		Sensor::ApplyHalfSolidSphereTo(World::Data&v, short changeBy, Data::ChangeSequence&seq)	const
 	{
-		volume.Clear();
-		UINT32 centerStack = this->gridCenter.stackID;
-		op.stacksLeft << centerStack;
-
-		const float br = Grid::ToRadius(Grid::CellStack::BottomHeight);
-		const float tr = Grid::ToRadius(Grid::CellStack::TopHeight);
-		UINT32 next;
-		while (op.stacksLeft >> next)
+		Grid::high.GenerateVolume(Sphere<>(worldCenter, radius), volume);
+		foreach(volume.coverage, c)
 		{
-			if (op.stackVisited[next])
-				continue;
-			op.stackVisited[next] = true;
-			const TVec3<>&dir = Grid::high.cells[next].cornerCenter;
-			TVec2<> distances;
-			TVec3<> bottom, top;
-			Vec::mult(dir, br, bottom);
-			Vec::mult(dir, tr, top);
-			Grid::HighSetup::TVolumeDescriptor::TStack&st = volume.coverage.Append();
-			st.stackID = next;
-			if (!Obj::DetectSphereEdgeIntersection(worldCenter, radius, bottom, top, distances))
-			{
-				st.range.SetEmpty(0);
-				continue;
-			}
-
-			st.range.start = this->gridCenter.layer;
-				///(UINT32)floor(std::max(distances.x, 0.f) * (Grid::CellStack::Range - 1));
-			st.range.end = 1 + (UINT32)ceil(std::min(distances.y, 1.f) * (Grid::CellStack::Range - 1));
-			const auto&n = Grid::high.grid.GetCell(next).neighborhood;
-			for (int i = 0; i < n.numNeighbors; i++)
-				op.stacksLeft << n.neighborID[i];
+			c->range.start = vmax(c->range.start, gridCenter.layer);
+			c->range.end = vmax(c->range.end, gridCenter.layer);
 		}
-		op.ResetVisited(volume);
-
-
 		ApplyVolume(v, changeBy, seq);
 	}
 
@@ -1952,7 +1896,7 @@ namespace World
 
 	bool		Data::GridCanSeeAny(const HCellIdU&base, UINT height) const
 	{
-		ASSERT__(this->SensoryIsInvalid());
+		ASSERT__(!this->SensoryIsInvalid());
 		const auto&stack = cellStack[base.stackID];
 		UINT end = std::min(base.layer + height,CellStack::Range);
 		for (UINT layer = base.layer; layer < end; layer++)
@@ -1963,7 +1907,7 @@ namespace World
 
 	bool		Data::GridCanSee(const LCellIdI&center, int height, bool broad) const
 	{
-		ASSERT__(this->SensoryIsInvalid());
+		ASSERT__(!this->SensoryIsInvalid());
 		UINT32 fine = low.grid.GetCell(center.stackID).higherEquivalent;
 		UINT32 layer0 = CellStack::ToLayer(center.height);
 		if (GridCanSeeAny(HCellIdU(fine,layer0),(UINT)height))

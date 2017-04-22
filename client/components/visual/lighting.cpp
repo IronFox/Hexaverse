@@ -144,7 +144,7 @@ namespace Lighting
 
 	void	UpdateAtmosphere(const float4&fogColor)
 	{
-		UpdateAtmosphere(Grid::VerticalBase * 1.5f, fogColor);
+		UpdateAtmosphere(Grid::MeanPlanetRadius * 1.5f, fogColor);
 
 	}
 

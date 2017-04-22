@@ -209,7 +209,7 @@ namespace Objects
 					Vec::normalize(n);
 					n*= 0.5f * widthScale;
 					if (!smoke)
-						n*= v.First().w / Grid::VerticalBase;;
+						n*= v.First().w / Grid::MeanPlanetRadius;;
 					float d = 0;
 					geo.SetVertexOffsetToCurrent();
 					TVec3<> lastB;

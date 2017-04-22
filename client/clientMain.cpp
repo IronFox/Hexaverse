@@ -244,7 +244,7 @@ namespace LocalApplicationInterface
 		LogEvent(EventSignificance::Debug,"OnPlayerControlBegin("+RuntimeConfig::roundNumber.ToString()+")");
 
 		#ifdef HAS_WINDOW
-			ApplicationInterface::OnSelectionChange(true);
+			GlobalEvents::invalidateObjectCache();
 			UI::RefreshButtonState();
 		#endif
 		#ifndef NO_SATELLITES
@@ -1359,19 +1359,168 @@ namespace ApplicationInterface
 	}
 
 
-	void OnSelectionChange(bool stateChangeOnly)
+
+	void	UpdateSelection(bool force)
 	{
-		if (stateChangeOnly)
-		{
-			if (RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase || !Animation::AllDone())
-				return;
-		}
-		else
-			Objects::Command::CommandGroup::CollapseAll();
-		Objects::Renderer::ClearSmokeTrailHighlighting();
+		if (!force && (RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase || !Animation::AllDone()))
+			return;
 
 		Tutorial::lastDelayingEvent = timer.Now();
-		//bool strip = true;
+
+	#ifndef ONE_COMPOUND_PER_FACTION
+		if (Objects::selectedVehicle)
+		{
+			//if (Objects::selectedVehicle->tasks.IsNotEmpty() && Objects::selectedVehicle->tasks.Peek().job && Objects::selectedVehicle->tasks.Peek().job->mineralCostLeft)
+			Objects::ResourceVector change;
+			const Objects::ResourceVector&current = Objects::selectedVehicle->currentStorage;
+			const Objects::ResourceVector max = Objects::selectedVehicle->GetMaxStorageCapacity();
+			int sum = 0;
+			foreach(Objects::selectedVehicle->myTasks, t)
+				if (t->job)
+					sum += t->job->resourceCostLeft;
+			if (sum)
+			{
+				change.level[Objects::Resource::Minerals] -= sum;//-Objects::selectedVehicle->tasks.Peek().job->mineralCostLeft;
+				UI::Update(
+				#ifndef NO_HIBERNATION
+					Objects::selectedVehicle->GetUplinkTraffic(),
+				#endif
+					current, max, change);
+			}
+			else
+				UI::Update(
+				#ifndef NO_HIBERNATION
+					Objects::selectedVehicle->GetUplinkTraffic(),
+				#endif
+					current, max);
+		}
+		else if (Objects::selectedEntity && Objects::selectedEntity->IsMobile())
+		{
+			FATAL__("not implemented yet");
+		}
+		else if (Objects::selectedEntity && Objects::selectedEntity->IsStructure())
+		{
+			if (Objects::selectedEntity->health > 0)	//ghosts have no health and no network
+			{
+				const Objects::Compound&n = Objects::compounds[To<Objects::Structure>::Cast(Objects::selectedEntity)->compoundID];
+				Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::DynamicCast(Objects::selectedEntity);
+				if (ws)
+				{
+					Objects::ResourceVector change, storage, max;
+					ws->GetResourceVector(change, storage, max);
+					UI::Update(
+					#ifndef NO_HIBERNATION
+						Objects::selectedEntity->GetUplinkTraffic(),
+					#endif
+						n.total.storage, n.total.storageMax, n.total.supply - n.total.demand, storage/*,change, ws->IsEnabled()*/);
+				}
+				else
+					UI::Update(
+					#ifndef NO_HIBERNATION
+						Objects::selectedEntity->GetUplinkTraffic(),
+					#endif
+						n.total.storage, n.total.storageMax, n.total.supply - n.total.demand);
+			}
+			else
+				UI::HideExtraGauges();
+
+
+		}
+		else
+			UI::HideExtraGauges();
+
+	#else
+
+		Objects::PFaction f;
+		if (Objects::selectedEntity)
+			f = Objects::selectedEntity->owner;
+		else
+			f = Objects::Faction::mine;
+		if (f)
+		{
+			if (f->compound.allStructures.IsEmpty())
+			{
+				bool any = false;
+				Objects::structures.Foreach([&any, f](const Objects::PStructure&s)
+				{
+					if (s->owner == f)
+						any = true;
+				});
+				if (any)	//prevent stack overflow
+					Objects::RefreshCompoundCoverage(0);
+			}
+		}
+		if (f)
+		{
+			const Objects::Compound&compound = f->compound;
+			const Objects::ResourceVector&current = compound.total.storage;
+			const Objects::ResourceVector&max = compound.total.storageMax;
+			Objects::ResourceVector change = compound.total.supply - compound.total.demand;
+			Objects::ForeachMobileWorldEntity([f, &change](const Objects::PMobileEntity&v)
+			{
+				if (v->owner != f)
+					return;
+				if (v->myTasks.IsEmpty() || !v->myTasks.Peek().job)
+					return;
+				int opSpeed = v->GetOperationSpeed(v->myTasks.Peek().job->GetOperationAffinity());
+				if (!opSpeed)
+					return;
+				change.level[Objects::Resource::Minerals] -= std::min(opSpeed, v->myTasks.Peek().job->resourceCostLeft);
+
+			}, false);
+
+		#ifndef NO_SATELLITES
+			for (const auto&sat : Objects::satellites)
+			{
+				if (sat->owner == f && sat->RequiresFuel())
+				{
+					change.level[Objects::Resource::Fuel] -= sat->GetFuelConsumptionPerRound() + sat->GetExtraFuelDemand();
+				}
+			}
+		#endif
+
+			Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::DynamicCast(Objects::selectedEntity);
+			if (ws)
+			{
+				Objects::ResourceVector _change, storage, _max, zero;
+				ws->GetResourceVector(_change, storage, _max);
+				UI::Update(
+				#ifndef NO_HIBERNATION
+					Objects::selectedEntity->GetUplinkTraffic(),
+				#endif
+					current, max, change, storage);
+			}
+			else
+				UI::Update(
+				#ifndef NO_HIBERNATION
+					Objects::selectedEntity ? Objects::selectedEntity->GetUplinkTraffic() : 0,
+				#endif
+					current, max, change);
+
+
+		}
+		else
+			UI::HideExtraGauges();
+
+
+	#endif
+
+
+
+		UI::HexGrid::Configure(Objects::selectedEntity);
+		StatePanel::SignalChange();
+
+	}
+
+	void	HandleLocalEntityStatusChange()
+	{
+		UpdateSelection(false);
+	}
+
+
+	void	HandleLocalSelectionChange()
+	{
+		Objects::Command::CommandGroup::CollapseAll();
 		if (Objects::selectedEntity)
 		{
 			Objects::PTurretBase base = Objects::selectedEntity->GetTurretBase();
@@ -1391,162 +1540,13 @@ namespace ApplicationInterface
 					Tutorial::ShowMessage("Hostile Ghosts");
 			}
 
-			if (!stateChangeOnly)
+			if (Objects::selectedMobileEntity && Objects::selectedMobileEntity->IsAboveGrid())
 			{
-				if (Objects::selectedMobileEntity && Objects::selectedMobileEntity->IsAboveGrid())
-				{
-					Camera::TargetSkyOrbit();
-				}
-				else
-					Camera::TargetGroundOrbit();
-
-			}
-		}
-		//if (strip)
-			//Grid::visibleOrbitGrid.StripColor();
-
-		#ifndef ONE_COMPOUND_PER_FACTION
-		if (Objects::selectedVehicle)
-		{
-			//if (Objects::selectedVehicle->tasks.IsNotEmpty() && Objects::selectedVehicle->tasks.Peek().job && Objects::selectedVehicle->tasks.Peek().job->mineralCostLeft)
-			Objects::ResourceVector change;
-			const Objects::ResourceVector&current = Objects::selectedVehicle->currentStorage;
-			const Objects::ResourceVector max = Objects::selectedVehicle->GetMaxStorageCapacity();
-			int sum = 0;
-			foreach (Objects::selectedVehicle->myTasks,t)
-				if (t->job)
-					sum += t->job->resourceCostLeft;
-			if (sum)
-			{
-				change.level[Objects::Resource::Minerals] -= sum;//-Objects::selectedVehicle->tasks.Peek().job->mineralCostLeft;
-				UI::Update(
-						#ifndef NO_HIBERNATION
-							Objects::selectedVehicle->GetUplinkTraffic(),	
-						#endif
-							current,max,change);
+				Camera::TargetSkyOrbit();
 			}
 			else
-				UI::Update(
-						#ifndef NO_HIBERNATION
-							Objects::selectedVehicle->GetUplinkTraffic(),
-						#endif
-						current,max);
+				Camera::TargetGroundOrbit();
 		}
-		else if (Objects::selectedEntity && Objects::selectedEntity->IsMobile())
-		{
-			FATAL__("not implemented yet");
-		}
-		else if (Objects::selectedEntity && Objects::selectedEntity->IsStructure())
-		{
-			if (Objects::selectedEntity->health > 0)	//ghosts have no health and no network
-			{
-				const Objects::Compound&n = Objects::compounds[To<Objects::Structure>::Cast(Objects::selectedEntity)->compoundID];
-				Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::DynamicCast(Objects::selectedEntity);
-				if (ws)
-				{
-					Objects::ResourceVector change, storage, max;
-					ws->GetResourceVector(change, storage, max);
-					UI::Update(
-						#ifndef NO_HIBERNATION
-							Objects::selectedEntity->GetUplinkTraffic(), 
-						#endif
-						n.total.storage, n.total.storageMax, n.total.supply - n.total.demand, storage/*,change, ws->IsEnabled()*/);
-				}
-				else
-					UI::Update(
-						#ifndef NO_HIBERNATION
-							Objects::selectedEntity->GetUplinkTraffic(),
-						#endif
-						n.total.storage, n.total.storageMax, n.total.supply - n.total.demand);
-			}
-			else
-				UI::HideExtraGauges();
-
-
-		}
-		else
-			UI::HideExtraGauges();
-
-		#else
-			
-			Objects::PFaction f;
-			if (Objects::selectedEntity)
-				f = Objects::selectedEntity->owner;
-			else
-				f = Objects::Faction::mine;
-			if (f)
-			{
-				if (f->compound.allStructures.IsEmpty())
-				{
-					bool any = false;
-					Objects::structures.Foreach([&any,f](const Objects::PStructure&s)
-					{
-						if (s->owner == f)
-							any = true;
-					});
-					if (any)	//prevent stack overflow
-						Objects::RefreshCompoundCoverage(0);
-				}
-			}
-			if (f)
-			{
-				const Objects::Compound&compound = f->compound;
-				const Objects::ResourceVector&current = compound.total.storage;
-				const Objects::ResourceVector&max = compound.total.storageMax;
-				Objects::ResourceVector change = compound.total.supply - compound.total.demand;
-				Objects::ForeachMobileWorldEntity([f,&change](const Objects::PMobileEntity&v)
-				{
-					if (v->owner != f)
-						return;
-					if (v->myTasks.IsEmpty() || !v->myTasks.Peek().job)
-						return;
-					int opSpeed = v->GetOperationSpeed(v->myTasks.Peek().job->GetOperationAffinity());
-					if (!opSpeed)
-						return;
-					change.level[Objects::Resource::Minerals] -= std::min(opSpeed, v->myTasks.Peek().job->resourceCostLeft);
-
-				},false);
-
-				#ifndef NO_SATELLITES
-				for (const auto&sat : Objects::satellites)
-				{
-					if (sat->owner == f && sat->RequiresFuel())
-					{
-						change.level[Objects::Resource::Fuel] -= sat->GetFuelConsumptionPerRound() + sat->GetExtraFuelDemand();
-					}
-				}
-				#endif
-
-				Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::DynamicCast(Objects::selectedEntity);
-				if (ws)
-				{
-					Objects::ResourceVector _change, storage, _max,zero;
-					ws->GetResourceVector(_change, storage, _max);
-					UI::Update(
-						#ifndef NO_HIBERNATION
-							Objects::selectedEntity->GetUplinkTraffic(), 
-						#endif
-						current, max, change,storage);
-				}
-				else
-					UI::Update(
-						#ifndef NO_HIBERNATION
-							Objects::selectedEntity ? Objects::selectedEntity->GetUplinkTraffic() : 0, 
-						#endif
-						current, max, change);
-
-
-			}
-			else
-				UI::HideExtraGauges();
-
-
-		#endif
-
-
-
-		UI::HexGrid::Configure(Objects::selectedEntity);
-		StatePanel::SignalChange();
 	}
 	#endif
 }
@@ -3611,7 +3611,10 @@ int main( int argc, const char* argv[])
 
 		applicationStart = timer.Now();
 		Boot();
-
+		GlobalEvents::invalidateObjectCache << ApplicationInterface::HandleLocalEntityStatusChange;
+	#ifdef HAS_WINDOW
+		Objects::onSelectionChanged << ApplicationInterface::HandleLocalSelectionChange;
+	#endif
 
 
 

@@ -3,5 +3,5 @@
 
 namespace GlobalEvents
 {
-	Observer<>	terrainFlush,objectFlush,applicationTerminate;
+	Observer<>	terrainFlush,objectFlush,applicationTerminate, invalidateObjectCache;
 }
