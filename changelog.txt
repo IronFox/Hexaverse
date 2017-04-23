@@ -1,6 +1,7 @@
 v0.6.4
 	+ Base planet types are no longer copied to the configuration directory (except Template.ini), but may be overridden manually.
 	+ Planetary resource distributions can now be defined by Lua programs.
+	+ Redesigned sensory model and world representation. Standard sensory is now obstructed by terrain. Surveyors gained deep ground-scanning capabilities.
 	> Neighboring laboratories now increase each others' research output.
 	> The escape key now also unhides HUD elements (text etc.).
 	> Improved research script. Renamed it to research.v2.lua. Script is no longer copied automatically to user directory.
