@@ -1388,11 +1388,16 @@ namespace Network
 		client.onSignal = OnSignal;
 		client.onIgnorePackage = OnIgnorePackage;
 
-		DBG_ASSERT__(Net::initNet());
+		ASSERT__(Net::initNet());
 		if (RuntimeConfig::udpListen)
 		{
 			broadcastListenSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-			ASSERT_NOT_EQUAL__(broadcastListenSocket, INVALID_SOCKET);
+			if (broadcastListenSocket == INVALID_SOCKET)
+			{
+				String error = String(Net::err2str(WSAGetLastError()));
+				LogEvent(EventClass::Preset::operationAborted, nullptr, "Unable to initiate UDP listening for servers on the local area network: " + error + " (unable to create socket). Listening will be disabled.");
+			}
+			else
 			{
 				sockaddr_in me;
 				memset(&me, 0, sizeof(me));
