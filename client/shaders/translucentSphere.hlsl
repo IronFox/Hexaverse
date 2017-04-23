@@ -46,12 +46,17 @@ void vsMain(A2V input, out V2P output)
 
 float4 psMain(V2P input) : SV_TARGET
 {
-	const float fadeRange = 0.5;
-	float clipFade = (CutOffConfig.w - input.height + fadeRange)/ fadeRange;
-	clipFade = min(clipFade,(input.height - CutOffConfig.z + fadeRange)/ fadeRange);
+	//clip(CutOffConfig.w - input.height);
+	//clip(input.height - CutOffConfig.z);
+	const float fadeRange = 0.25;
+	float clipFade = (CutOffConfig.w - input.height+ fadeRange)/ fadeRange;
+	clipFade = min(clipFade,(input.height - CutOffConfig.z+ fadeRange)/ fadeRange);
 	clip(clipFade);
 	clipFade = min(clipFade, 1.0);
-	//return (float4)(1);
+	////return (float4)(1);
+	//float d = abs(1.0  - abs(dot(input.normal, normalize(input.world))));
+	//d = pow(d, 1000);
+	//return float4(1, 1, 1, 0.2 + 0.8 * d);
 
 
 	//return float4((float3)Shade(input.world),1.0);
