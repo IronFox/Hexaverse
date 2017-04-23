@@ -372,7 +372,7 @@ namespace Camera
 		DebugCheckCamera();
 
 
-		index_t stackID = Grid::high.Locate(scene.location);
+		UINT32 stackID = Grid::high.Locate(scene.location);
 		{
 			int top;
 			if (World::actual.GetStack(stackID).FindTopOccupied(top))
@@ -398,7 +398,7 @@ namespace Camera
 
 	void						ChangeGroundRadiusToFocusedTerrain()
 	{
-		index_t stackID = Grid::high.Locate(scene.location);
+		UINT32 stackID = Grid::high.Locate(scene.location);
 		{
 			int top;
 			if (World::actual.GetStack(stackID).FindTopOccupied(top))

@@ -178,7 +178,7 @@ namespace World
 			const float			atTime;
 			bool				terrainChanged = false;
 			Data				*parent=nullptr;
-			index_t				selectedStackIndex=0;
+			UINT32				selectedStackIndex=0;
 			Grid::CellStack		*selectedStack=nullptr;
 			bool				selectedStackChanged=false;
 			BaseGrid::FamiliesChanged	changed;

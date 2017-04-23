@@ -263,7 +263,7 @@ namespace Lua
 		Array<Lua::Table>	cells(Grid::LowSetup::GridType::CellCount);
 		Lua::Table cellTable = p->CreateTable();
 		targetTable.SetField("lowCells",cellTable);
-		for (index_t i = 0; i < Grid::LowSetup::GridType::CellCount; i++)
+		for (UINT32 i = 0; i < Grid::LowSetup::GridType::CellCount; i++)
 		{
 			Lua::Table t = p->CreateTable();
 			cellTable.SetElement(i+1,t);
@@ -274,7 +274,7 @@ namespace Lua
 			t.SetField("center",Detail::ToTable(p, Grid::low.cells[i].cornerCenter));
 		}
 
-		for (index_t i = 0; i < Grid::LowSetup::GridType::CellCount; i++)
+		for (UINT32 i = 0; i < Grid::LowSetup::GridType::CellCount; i++)
 		{
 			Lua::Table t = cells[i];
 			Lua::Table nt = p->CreateTable();
