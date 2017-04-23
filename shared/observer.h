@@ -8,6 +8,8 @@ template <typename...T>
 	class Observer
 	{
 	public:
+		typedef Observer<T...>	Self;
+
 		typedef std::function<void(T...)>	F;
 
 		void	Clear()	{functions.Clear();}
@@ -64,6 +66,14 @@ template <typename...T>
 					v--;
 			});
 			functions.Erase(at);
+		}
+
+		void		swap(Self&other)
+		{
+			dropBuffer.swap(other.dropBuffer);
+			swp(iterating, other.iterating);
+			functions.swap(other.functions);
+			keyMap.swap(other.keyMap);
 		}
 
 	private:
