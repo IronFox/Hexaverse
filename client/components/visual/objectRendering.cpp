@@ -102,7 +102,7 @@ namespace Objects
 			void					SetSystems(const Sphere<>&s)
 			{
 				radius = s.radius;
-				cutOffConfig = float4(0, 0, Grid::BottomPlanetRadius, Grid::TopPlanetRadius);
+				cutOffConfig = float4(0, 0, Grid::BottomPlanetRadius, std::numeric_limits<float>::max());
 
 				Mat::Eye(innerSys);
 				innerSys.x.x = innerSys.y.y = innerSys.z.z = s.radius;
@@ -127,7 +127,6 @@ namespace Objects
 				this->radius = flatRadius;
 
 				const constexpr float h0 = Grid::ToRadius(Grid::CellStack::BottomHeight);
-				const constexpr float hT = Grid::ToRadius(Grid::CellStack::TopHeight);
 
 				const float radiusAtBottom = flatRadius * h0 / radialHeight;
 				float height = flatRadialHeight - h0;
