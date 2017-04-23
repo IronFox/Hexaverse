@@ -416,7 +416,6 @@ namespace Objects
 
 
 		virtual TFloatRange<int>	GetRelativeScanningBand(const Grid::LCellIdI&loc) const {return FloatRange<int>(-3,+100);}	//Maximum vertical sensor radius up and down from the entity's central height. Currently not affected by EMP
-		inline TFloatRange<int>		GetRelativeScanningBand() const {return GetRelativeScanningBand(location);}	//Maximum vertical sensor radius up and down from the entity's central height. Currently not affected by EMP
 		virtual int					GetMaxHealth() const;
 		virtual String				DescribeMaxHealth() const;
 		/**
