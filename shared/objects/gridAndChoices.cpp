@@ -5,7 +5,6 @@
 #include "vehicle.h"
 #include "satellite.h"
 #include "faction.h"
-#include "subOrbital.h"
 #include "structure/tower.h"
 #ifndef CLIENT
 	#include "../runtimeConfig.h"
@@ -40,16 +39,6 @@ namespace Objects
 				return !vh || vh->owner == v;
 			}
 		#endif
-
-		namespace SubOrbital
-		{
-			bool NoHostilePlaneHere(UINT32 stackID, const OwnerParameter&v)
-			{
-				PPlane vh = GetPlane(stackID,true);
-				return !vh || vh->owner == v
-				;
-			}
-		}
 	#else
 		bool NoHostileVehicleHere(const Grid::LCellIdI&cellID, const OwnerParameter&v, float t)
 		{
@@ -57,17 +46,6 @@ namespace Objects
 			return !vh || vh->owner == v 
 					|| !v->CanSee(vh,t)
 			;
-		}
-
-		namespace SubOrbital
-		{
-			bool NoHostilePlaneHere(UINT32 stackID, const OwnerParameter&v, float t)
-			{
-				PPlane vh = GetPlane(stackID,true);
-				return !vh || vh->owner == v 
-						|| !v->CanSee(vh,t)
-				;
-			}
 		}
 
 		#ifndef NO_SATELLITES
@@ -324,7 +302,7 @@ namespace Objects
 				allLivingAffected << e;
 
 
-				if (e->IsGroundBoundVehicle())
+				if (e->IsVehicle())
 				{
 					affectedVehicles << To<Vehicle>::Cast(e);
 				}
@@ -538,23 +516,6 @@ namespace Objects
 		;
 	}
 
-	namespace SubOrbital
-	{
-		bool NoPlaneHere(const UINT32 stackID)
-		{
-			return !GetPlane(stackID,true);
-		}
-		bool NoPlaneHereExcept(UINT32 stackID, const Plane*v)
-		{
-			PPlane vh = GetPlane(stackID,true);
-			return !vh || vh.get() == v
-				#ifndef CLIENT
-					|| !v->owner->CanSee(vh,v->entityTime)
-				#endif
-			;
-		}
-	}
-
 	#ifndef NO_SATELLITES
 		bool NoSatelliteHere(const UINT32 stackID)
 		{
@@ -660,8 +621,6 @@ namespace Objects
 	{
 		if (cellID.height <= Grid::CellStack::TopHeight)
 			return QueryGrid(vehicleGrid,cellID);
-		if (cellID.height == SubOrbital::Height)
-			return SubOrbital::GetPlane(cellID.stackID,true);
 		#ifndef NO_SATELLITES
 			return GetSatellite(cellID.stackID);
 		#else
@@ -672,8 +631,6 @@ namespace Objects
 	{
 		if (cellID.layer < Grid::CellStack::Range)
 			return QueryGrid(vehicleGrid,cellID);
-		if (cellID.layer == SubOrbital::Layer)
-			return SubOrbital::GetPlane(cellID.stackID,true);
 		#ifndef NO_SATELLITES
 			return GetSatellite(cellID.stackID);
 		#else
@@ -692,24 +649,8 @@ namespace Objects
 		}
 	#endif
 
-	namespace SubOrbital
-	{
-		PPlane		GetPlane(UINT32 flatCellID, bool airborneOnly)
-		{
-			PPlane rs;
-			planes.Foreach([&rs,flatCellID,airborneOnly](const PPlane&s)
-			{
-				if (!rs && s->location.stackID == flatCellID && (!airborneOnly || s->location.height == Height))
-					rs = s;
-			});
-			return rs;
-		}
-	}
-
 	PWorldEntity					GetEntity(const Grid::LCellIdI&cellID)
 	{
-		if (cellID.height == SubOrbital::Height)
-			return SubOrbital::GetPlane(cellID.stackID,true);
 		if (cellID.height > Grid::CellStack::TopHeight)
 		{
 			#ifndef NO_SATELLITES
@@ -730,14 +671,6 @@ namespace Objects
 	{
 		if (cellID.height > Grid::CellStack::TopHeight)
 		{
-			if (cellID.height == SubOrbital::Height)
-			{
-				#ifdef CLIENT
-					return !checkVehiclesOnClient || !SubOrbital::GetPlane(cellID.stackID,true);	//timing issues may cause problems with getVehicle, but sometimes it wont matter
-				#else
-					return !SubOrbital::GetPlane(cellID.stackID,true);
-				#endif
-			}
 			#ifndef NO_SATELLITES
 				if (Satellite::IsSatelliteHeight( cellID.height ))
 				{
@@ -999,7 +932,7 @@ namespace Objects
 				}
 				break;
 				case CursorMode::ClearAboveMode:
-					if (v->IsGroundBoundVehicle())
+					if (v->IsVehicle())
 					{
 						const auto&c = Grid::low.grid.GetCell(location.stackID);
 						if (!world.LowCellIsClear(location + 1))
@@ -1014,7 +947,7 @@ namespace Objects
 					}
 				break;
 				case CursorMode::DigMode:
-					if (v->IsGroundBoundVehicle())
+					if (v->IsVehicle())
 						for (int i = 0; i < n.numNeighbors; i++)
 						{
 							const Grid::LCellIdI	cell(n.neighborID[i], location.height);
@@ -1166,37 +1099,25 @@ namespace Objects
 
 		atTime += timeEpsilon;
 		InsertConstructedEntity(v,atTime,setHealthToFull);
-
-		if (v->IsPlane())
+		if (v->IsVehicle())
 		{
-			//ASSERT__(!satellitesAreLocked);
-			auto plane = To<SubOrbital::Plane>::Cast(v);
-			SubOrbital::planes << plane;
-			if (insertIntoGrid && plane->IsGroundBoundVehicle())
+			PVehicle veh = To<Vehicle>::Cast(v);
+			vehicles << veh;
+			if (insertIntoGrid)
 			{
-				InsertIntoGrid(vehicleGrid,v->location,To<Vehicle>::Cast(plane));
+				InsertIntoGrid(vehicleGrid,v->location,veh);
 			}
 		}
 		else
-			if (v->IsPureVehicle())
+		#ifndef NO_SATELLITES
+			if (v->IsSatellite())
 			{
-				PVehicle veh = To<Vehicle>::Cast(v);
-				vehicles << veh;
-				if (insertIntoGrid)
-				{
-					InsertIntoGrid(vehicleGrid,v->location,veh);
-				}
+				//ASSERT__(!satellitesAreLocked);
+				satellites << To<Satellite>::Cast(v);
 			}
 			else
-				#ifndef NO_SATELLITES
-					if (v->IsSatellite())
-					{
-						//ASSERT__(!satellitesAreLocked);
-						satellites << To<Satellite>::Cast(v);
-					}
-					else
-				#endif
-					FATAL__("Cannot insert. Unexpected mobile: "+v->GetName());
+		#endif
+				FATAL__("Cannot insert. Unexpected mobile: "+v->GetName());
 
 		#ifndef CLIENT
 			ApplicationInterface::SignalNewMobileEntity(v,restored,signalTime);
@@ -1400,7 +1321,7 @@ namespace Objects
 						e->owner->RegisterStoredMobileLoss(e);
 
 				#endif
-				if (v->IsGroundBoundVehicle() && !isRemovedFromGrid)
+				if (v->IsVehicle() && !isRemovedFromGrid)
 				{
 					RemoveFromGrid(vehicleGrid,v->location,To<Objects::Vehicle>::Cast(v));
 				}
@@ -1409,14 +1330,9 @@ namespace Objects
 					storedMobileEntities.FindAndErase(e);
 				else
 				{
-					if (e->IsPlane())
-					{
-						SubOrbital::planes.FindAndErase(e);
-					}
+					if (e->IsVehicle())
+						vehicles.FindAndErase(e);
 					else
-						if (e->IsPureVehicle())
-							vehicles.FindAndErase(e);
-						else
 						#ifndef NO_SATELLITES
 							if (e->IsSatellite())
 							{
@@ -1425,7 +1341,7 @@ namespace Objects
 							}
 							else
 						#endif
-								FATAL__("Type not supported at this point: "+e->GetName());
+							FATAL__("Type not supported at this point: "+e->GetName());
 
 					if (move)
 						storedMobileEntities << v;
@@ -1554,7 +1470,7 @@ namespace Objects
 	bool ValidDestinationOf(const World::Data&world,const Vehicle&v, const Grid::LCellIdI&location, bool isDestination, bool ignoreWater, bool doFloat)
 	{
 		return 
-			(IsClear(world,location) || (isDestination && (IgnoreStructuresAtDestination || MobileDestinationStructureHere(location,v))))
+			(world.LowCellIsClear(location) || (isDestination && (IgnoreStructuresAtDestination || MobileDestinationStructureHere(location,v))))
 			&&
 			(v.CanStandOn(world,location-1,ignoreWater,doFloat))
 			&&
@@ -1598,8 +1514,7 @@ namespace Objects
 					if (!okay)
 						continue;
 				}
-				bool isDest = cell == destination;
-				bool valid = ValidDestinationOf<false>(world,*v,cell, isDest, false, false);
+				bool valid = ValidDestinationOf<false>(world,*v,cell, cell == destination, false, false);
 				if (!valid)
 				{
 					if (j <= 0 && !world.LowCellIsClear(cell))
@@ -1684,61 +1599,13 @@ namespace Objects
 		}
 	#endif
 
-	namespace SubOrbital
-	{
-
-		void GetWays(		const Plane*v,  UINT32 location, 
-								TSubOrbitalWays&outWays, UINT32 destination, 
-								bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute)
-		{
-			outWays.Clear();
-			const auto&n = Grid::low.grid.GetCell(location).neighborhood;
-
-			{
-				//if (!v->CanClimb(j))	//now redundant
-					//continue;
-				for (int i = 0; i < n.numNeighbors; i++)
-				{
-					UINT32	cell = n.neighborID[i];
-
-
-					if (cell==destination)
-					{
-						if (!ignoreVehiclesOnDestination && !NoPlaneHereExcept(cell,v))
-							continue;
-					}
-					else
-					{
-						if (!ignoreFriendlyVehiclesOnRoute)
-						{
-							if (!NoPlaneHereExcept(cell,v))
-								continue;
-						}
-						else
-							#ifdef CLIENT
-								if (!NoHostilePlaneHere(cell,v->owner))
-									continue;
-							#else
-								if (!NoHostilePlaneHere(cell,v->owner,v->entityTime))
-									continue;
-							#endif
-					}
-
-					//DBG_ASSERT__(!GetStructure(cell));//should be implied by LowCellIsClear (except if it's a connector, then not, so don't check this)
-					outWays.Add(cell);
-				}	
-			}
-		}
-
-	}
-
 	
 	void			GetMobileWays(	const World::Data&world,
 							const MobileEntity*v,  const Grid::LCellIdI&location, 
 							TWays&outWays, const Grid::LCellIdI&destination, 
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute)
 	{
-		if (v->IsGroundBoundVehicle())
+		if (v->IsVehicle())
 		{
 			GetWays(world,(const Vehicle*)v, location, outWays, destination,ignoreVehiclesOnDestination,ignoreFriendlyVehiclesOnRoute,false);
 			return;
@@ -1756,16 +1623,6 @@ namespace Objects
 				return;
 			}
 		#endif
-		if (v->IsPlane())
-		{
-			TSubOrbitalWays ways;
-			SubOrbital::GetWays((const SubOrbital::Plane*)v,location.stackID,ways,destination.stackID,ignoreVehiclesOnDestination,ignoreFriendlyVehiclesOnRoute);
-			for (index_t i = 0; i < ways.numWays; i++)
-			{
-				outWays.Add(Grid::LCellIdI(ways.way[i],SubOrbital::Height));
-			}
-			return;
-		}
 
 		DBG_FATAL__("Unexpected mobile type used to determine ways");
 	}
@@ -2032,51 +1889,6 @@ namespace Objects
 		}
 	#endif
 
-	namespace SubOrbital
-	{
-
-		bool AppendShortestPath(const Plane*sat, const Grid::LCellIdI&from,
-								const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath,
-								bool ignoreFriendlyVehiclesOnRoute, bool failIfLimitReached/*=true*/, bool*outWouldFailDueToLimitReached/*=nullptr*/);
-
-		bool AppendShortestPathI(const Plane*sat, const Grid::LCellIdI&from,
-								const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath, bool failIfLimitReached/*=true*/, bool*outWouldFailDueToLimitReached/*=nullptr*/)
-		{
-			static Buffer0<PathNode>	routeI, route;
-			routeI.Clear();
-			route.Clear();
-			bool hasI = AppendShortestPath(sat,from,to,routeI,true,failIfLimitReached,outWouldFailDueToLimitReached);
-			if (!hasI)
-				return false;
-			bool has = AppendShortestPath(sat,from,to,route,false,failIfLimitReached,outWouldFailDueToLimitReached);
-			//foreach (routeI,r)
-			//	ASSERT__(*r != Grid::LCellIdI::Invalid);
-			//if (has)
-			//	foreach (route,r)
-			//		ASSERT__(*r != Grid::LCellIdI::Invalid);
-			if (!has)
-			{
-				oPath.Append(routeI);
-				return true;
-			}
-
-			count_t lenI = 0, len = 0;
-			foreach (routeI,n)
-				lenI += n->movementCostsFromPrevNode;
-			foreach (route,n)
-				len += n->movementCostsFromPrevNode;
-			if (len < lenI * 4)	//less than 400% more
-			{
-				oPath.Append(route);
-				return true;
-			}
-
-			oPath.Append(routeI);		//else: use the one that ignores friendly vehicles
-			return true;
-
-		}
-	}
-
 	PHangar		MobileDestinationStructureHere(const Grid::LCellIdI&location, const MobileEntity&m)
 	{
 		PStructure s = GetStructure(location);
@@ -2098,7 +1910,6 @@ namespace Objects
 		#else
 			vehicle->owner->knownWorld;
 		#endif
-		
 
 		if (!ValidDestinationOf<false>(world,*vehicle,to,true,false, false))
 			return false;
@@ -2300,129 +2111,6 @@ namespace Objects
 			return false;
 		}
 	#endif
-
-
-	namespace SubOrbital
-	{
-		bool AppendShortestPath(const Plane*sat, const Grid::LCellIdI&from,
-								const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath,
-								bool ignoreFriendlyVehiclesOnRoute
-								, bool failIfLimitReached/*=true*/, bool*outWouldFailDueToLimitReached/*=nullptr*/)
-		{
-			if (outWouldFailDueToLimitReached)
-				(*outWouldFailDueToLimitReached) = false;
-
-			if (to.stackID == from.stackID)
-			{
-				for (int h = std::min(to.height,from.height); h <= Grid::CellStack::TopHeight; h++)
-				{
-					#ifdef CLIENT
-						if (!World::actual.LowCellIsClear(Grid::LCellIdI(to.stackID,h)))
-					#else
-						if (!sat->owner->knownWorld.LowCellIsClear(Grid::LCellIdI(to.stackID,h)))
-					#endif
-						return false;
-				}
-				oPath.Append().cell = to;
-				oPath.last().movementCostsFromPrevNode = 5;
-				return true;
-			}
-			else
-			{
-				if (to.height != Height)
-					return false;
-				if (from.height != Height)
-				{
-					for (int h = from.height; h <= Grid::CellStack::TopHeight; h++)
-					{
-						#ifdef CLIENT
-							if (!World::actual.LowCellIsClear(Grid::LCellIdI(from.stackID,h)))
-						#else
-							if (!sat->owner->knownWorld.LowCellIsClear(Grid::LCellIdI(from.stackID,h)))
-						#endif
-							return false;
-					}
-					oPath.Append().cell = Grid::LCellIdI(from.stackID,Height);
-					oPath.last().movementCostsFromPrevNode = 5;
-				}
-			}
-
-
-
-
-			const int speed = sat->GetMovementStepsPerRound();
-			TOrbitalWays	possibilities;
-
-			static const count_t cellCount = Grid::LowSetup::GridType::CellCount;
-
-			struct TNode
-			{
-				UINT32	backLink, minDistance;
-			};
-
-			static Array<TNode>	buffer(cellCount);
-			TNode empty = {0xFFFFFFFF,0xFFFFFFFF};
-			buffer.Fill(empty);
-
-			PriorityQueue<UINT32,int>	queue;
-
-			buffer[from.stackID].minDistance = 0;
-
-			queue.Push( from.stackID,0);
-
-			count_t iterations = 0;
-			UINT32 current;
-			while (queue.PopLeast(current))
-			{
-				iterations ++;
-				if (iterations > 2000)
-				{
-					if (failIfLimitReached)
-					{
-						return false;//let's ignore long ranges
-					}
-					else
-						if (outWouldFailDueToLimitReached)
-							(*outWouldFailDueToLimitReached) = true;
-				}
-
-				TNode&tn = buffer[current];
-
-
-				if (current == to.stackID)
-				{
-					static Buffer<PathNode>	outPath;
-					outPath.Clear();
-
-					while (current < cellCount)
-					{
-						UINT32 next = buffer[current].backLink;
-						int nextCosts = next < buffer.Count() ? 1 : 0;
-						outPath << PathNode(Grid::LCellIdI(current,Height), 1);
-						current = next;
-					}
-					outPath.EraseLast();	//dont need entry point
-					outPath.Revert();
-					oPath.Append(outPath);
-					return true;
-				}
-				GetWays(sat,  current, possibilities, to.stackID, true, ignoreFriendlyVehiclesOnRoute);
-
-				for (index_t i = 0; i < possibilities.numWays; i++)
-				{
-					UINT32 option = possibilities.way[i];
-					TNode&n = buffer[option];
-					if (tn.minDistance + 1 < n.minDistance)
-					{
-						n.minDistance = tn.minDistance + 1;
-						n.backLink = current;
-						queue.Push(option,n.minDistance);
-					}
-				}
-			}
-			return false;
-		}
-	}
 
 	void ReachabilityMapper::Map(const Vehicle*vehicle, const Grid::LCellIdI&from, FBlockTest isBlocked, UINT32 maxRange/*=0xFFFFFFFF*/, bool forceRevertible/*=false*/)
 	{
@@ -2901,94 +2589,7 @@ namespace Objects
 	}
 
 
-	namespace SubOrbital
-	{
-
-		bool AppendShortestDirectPath(const Grid::LCellIdI&from, const UINT32 to, BasicBuffer<PathNode>&oPath)
-		{
-			//Timer::Time t0 = timer.Now();
-
-			UINT32	possibilities[6];
-
-			static const count_t cellCount = Grid::LowSetup::GridType::CellCount;
-
-			struct TNode
-			{
-				UINT32	backLink, minDistance;
-			};
-
-			static Array<TNode>	buffer(cellCount);
-			TNode empty = {0xFFFFFFFF,0xFFFFFFFF};
-			buffer.Fill(empty);
-
-			PriorityQueue<UINT32,int>	queue;
-			//Queue<index_t>	queue;
-
-			buffer[from.stackID].minDistance = 0;
-
-			queue.Push(from.stackID,0);
-
-			count_t iterations = 0;
-			UINT32 current;
-			while (queue.PopLeast(current))
-			{
-				iterations ++;
-				if (iterations > 2000)
-				{
-					//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
-					return false;//let's ignore long ranges
-				}
-
-				TNode&tn = buffer[current];
-
-
-				if (current == to)
-				{
-					static Buffer<PathNode>	outPath;
-					outPath.Clear();
-
-					while (current < cellCount)
-					{
-						UINT32 next = buffer[current].backLink;
-						//GetCellMovementCosts(next, vehicle);
-						outPath << PathNode(Grid::LCellIdI(current,Height),1);
-						current = next;
-					}
-					outPath.EraseLast();	//dont need entry point
-					outPath.Revert();
-					oPath.Append(outPath);
-					//ShowMessage("found route with "+String(outPath.Count())+" steps, requiring "+String(iterations)+" iterations" );
-					//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
-					return true;
-				}
-				count_t ways = GetAllWays(current, possibilities);
-				DBG_ASSERT_LESS_OR_EQUAL__(ways,ARRAYSIZE(possibilities));
-
-
-
-
-
-				for (index_t i = 0; i < ways; i++)
-				{
-					UINT32 option = possibilities[i];
-					TNode&n = buffer[option];
-					int cost = 1;
-					if (tn.minDistance + cost < n.minDistance)
-					{
-						n.minDistance = tn.minDistance + cost;
-						n.backLink = (UINT32)current;
-						queue.Push(option,n.minDistance);
-					}
-				}
-			}
-			//ShowMessage("no route found after "+String(iterations)+" iterations");
-			//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
-			return false;
-		}
-
-
-
-	}
+	
 
 
 	PVehicle		SpawnVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase&base, Component::Turret&turret, bool fillStorage, float&atTime)
@@ -3143,14 +2744,6 @@ namespace Objects
 					To<SkyHub>::Cast(s)->UpdateConnections();
 			}
 		#endif
-		void			Place( const SubOrbital::PPlane&s)
-		{
-			ASSERT__(s);
-			ASSERT3__(s->preAnimationLocation == s->location,s->preAnimationLocation.ToString(),s->location.ToString(),s->GetName());
-			float t = 0;
-			InsertConstructed(s,t);
-			ASSERT1__(SubOrbital::planes.Contains(s),s->GetName());
-		}
 
 		void			PlaceMobileEntity( const PMobileEntity&m, bool insertIntoGridIfVehicle/*=true*/)
 		{
@@ -3165,17 +2758,12 @@ namespace Objects
 				}
 				else
 			#endif
-				if (m->IsPlane())
+				if (m->IsVehicle())
 				{
-					ASSERT1__(SubOrbital::planes.Contains(m),m->GetName());
+					ASSERT1__(vehicles.Contains(m),m->GetName());
 				}
 				else
-					if (m->IsPureVehicle())
-					{
-						ASSERT1__(vehicles.Contains(m),m->GetName());
-					}
-					else
-						FATAL__("Unsupported mobile entity type at this point: "+m->GetName());
+					FATAL__("Unsupported mobile entity type at this point: "+m->GetName());
 		}
 
 
