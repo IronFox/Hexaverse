@@ -952,7 +952,7 @@ namespace Objects
 		bool			MobileEntity::PlotCourse(ArrayRef<Grid::LCellIdI> destination, bool detailedPath, bool virtualPlatformMode/*=false*/)
 		{
 			const World::Data&world = owner->knownWorld;
-			if (IsVehicle())
+			if (IsPureVehicle()) 
 			{
 				for (index_t i = 0; i < destination.length(); i++)
 				{
@@ -1055,7 +1055,7 @@ namespace Objects
 		{
 			const World::Data&world = owner->knownWorld;
 
-			if (IsVehicle())
+			if (IsPureVehicle())
 			{
 				for (auto&dest : destination)
 				{
@@ -1250,12 +1250,12 @@ namespace Objects
 			{
 				UnregisterSensory(t);
 			}
-			if (IsVehicle())
+			if (IsGroundBoundVehicle())
 			{
 				Objects::RemoveVehicleFromGrid(To<Objects::Vehicle>::Cast(shared_from_this()),location);
 			}
 			preAnimationLocation = location = toLocation;
-			if (IsVehicle())
+			if (IsGroundBoundVehicle())
 			{
 				Objects::InsertVehicleIntoGrid(To<Objects::Vehicle>::Cast(shared_from_this()),location);
 			}
@@ -1277,7 +1277,7 @@ namespace Objects
 
 	bool	MobileEntity::Task::AppendPathSegment(const MobileEntity*v, const Grid::LCellIdI&prev, const Task::Focus&target)
 	{
-		if (v->IsVehicle())
+		if (v->IsGroundBoundVehicle())
 		{
 			//would be faster, but too complicated to extract cost
 			//if (target.isExplicit)
@@ -1303,6 +1303,22 @@ namespace Objects
 		}
 		else
 		{
+			if (v->IsPlane())
+			{
+				{
+					count_t offset = path.Count();
+					if (!SubOrbital::AppendShortestPathI((const SubOrbital::Plane*)v, prev, target.target, path))
+						return false;
+				#ifndef CLIENT
+					if (target.isDetailed && path.Count() - offset != 1)
+					{
+						path.Truncate(offset);
+						return false;
+					}
+				#endif
+				}
+			}
+			else
 			#ifndef NO_SATELLITES
 				if (v->IsSatellite())
 				{
@@ -1428,26 +1444,31 @@ namespace Objects
 		{
 			path.Clear();
 			path << PathNode(pointOfOrigin,0);
-			if (v->IsVehicle())
+			if (v->IsGroundBoundVehicle())
 			{
-				if (!AppendShortestDirectPath(pointOfOrigin,foci.Peek().target,path,false))
+				if (!AppendShortestDirectPath(pointOfOrigin, foci.Peek().target, path, false))
 				{
 					return false;	//this would be weird, but happens
 				}
 			}
 			else
-			{
+				if (v->IsPlane())
+				{
+					if (!SubOrbital::AppendShortestDirectPath(pointOfOrigin, foci.Peek().target.stackID, path))
+					{
+						return false;	//this would be weird, but happens
+					}
+				}
+				else
 				#ifndef NO_SATELLITES
 					if (v->IsSatellite())
 					{
-						if (!AppendShortestDirectSatellitePath(pointOfOrigin,foci.Peek().target.stackID,path))
+						if (!AppendShortestDirectSatellitePath(pointOfOrigin, foci.Peek().target.stackID, path))
 							return false;
 					}
 					else
-				#endif
-					FATAL__("Routing not implemented for "+v->GetTypeName());
-
-			}
+					#endif
+						FATAL__("Routing not implemented for " + v->GetTypeName());
 		}
 		#ifdef _DEBUG
 			static StringBuffer strPlottedCourse;
