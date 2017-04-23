@@ -1161,6 +1161,8 @@ namespace Objects
 			DefineWorkingStructure(Objects::MineralContainer::commands);
 			DefineWorkingStructure(Objects::FuelContainer::commands);
 			DefineWorkingStructure(Objects::UraniumStorage::commands);
+			DefineWorkingStructure(Objects::Generator::commands);
+			DefineWorkingStructure(Objects::ReactorCore::commands);
 			DefineLaboratory(Objects::Laboratory::commands);
 			DefineHangar();
 
