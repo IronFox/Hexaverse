@@ -491,7 +491,6 @@ namespace Objects
 				if (e->IsStructure())
 				{
 					PStructure s = To<Structure>::Cast(e);
-					Structure::CommonRegisterStructure(e->location,s->GetBroadHeight(),e->GetHeight(),s->HasFoundation(),t);
 					t += timeEpsilon;
 				}
 
@@ -545,7 +544,6 @@ namespace Objects
 				if (e->IsStructure())
 				{
 					PStructure s = To<Structure>::Cast(e);
-					Structure::CommonUnregisterStructure(e->location,s->GetBroadHeight(),e->GetHeight(),s->HasFoundation(),t);
 					t += timeEpsilon;
 				}
 
