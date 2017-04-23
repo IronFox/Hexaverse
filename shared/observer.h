@@ -72,6 +72,9 @@ template <typename...T>
 			functions.Erase(at);
 		}
 
+		bool		IsEmpty() const { return functions.IsEmpty(); }
+		bool		IsNotEmpty() const { return functions.IsNotEmpty(); }
+
 		void		swap(Self&other)
 		{
 			dropBuffer.swap(other.dropBuffer);
