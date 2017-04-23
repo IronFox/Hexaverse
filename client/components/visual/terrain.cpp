@@ -2884,11 +2884,10 @@ namespace VisualTerrain
 		const TVec3<> worldCenter = ToWorld(center);
 		test.SetCenter(worldCenter,radius);
 		float r2 = radius*radius;
-		Concurrency::parallel_for(index_t(0),LowSetup::GridType::CellCount,[this,worldCenter,r2,change](index_t i)
+		Concurrency::parallel_for(UINT32(0),LowSetup::GridType::CellCount,[this,worldCenter,r2,change](UINT32 i)
 		{
 			//bool anyChanged = false;
 			bool anyVisible = false;
-			UINT32 cell((UINT32)i);
 
 			bool wasIn = false;
 			TVec3<> localCenter = low.cells[i].centerVertex.xyz * orbit;

@@ -135,8 +135,8 @@ namespace World
 			/**
 			Selects the specified stack for faster manipulation
 			*/
-			void				SelectStack(index_t);
-			StackAccess			AccessStack(index_t);
+			void				SelectStack(UINT32);
+			StackAccess			AccessStack(UINT32);
 
 			void				ApplyFamilyDelta(BaseGrid::family_t family, const Array<Grid::CellStack::TTypeDelta>&data0, bool initialization);
 			void				ApplyFamilyDelta(BaseGrid::family_t family, const Array<Grid::CellStack::TTypeDeltaBlock>&data0, bool initialization, bool actualWorld);

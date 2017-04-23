@@ -150,7 +150,7 @@ namespace World
 			UINT32 tp = std::min(top,CellStack::Range-1);
 			for (UINT32 h = tp; /*h > 0 && */h >= bottom && h <= tp; h--)
 			{
-				Concurrency::parallel_for(index_t(0), HighSetup::GridType::CellCount,[this,h](index_t i)
+				Concurrency::parallel_for(UINT32(0), HighSetup::GridType::CellCount,[this,h](UINT32 i)
 				{
 					CellStack&thisStack = cellStack[i];
 					if (h > thisStack.lightingChangedTo)
@@ -1077,7 +1077,7 @@ namespace World
 	}
 
 
-	Data::StackAccess			Data::ChangeSequence::AccessStack(index_t stackID)
+	Data::StackAccess			Data::ChangeSequence::AccessStack(UINT32 stackID)
 	{
 		CellStack&rs = parent->cellStack[stackID];
 		#ifdef HAS_WINDOW
@@ -1088,7 +1088,7 @@ namespace World
 	}
 
 
-	void				Data::ChangeSequence::SelectStack(index_t stackID)
+	void				Data::ChangeSequence::SelectStack(UINT32 stackID)
 	{
 		if (selectedStack && selectedStackIndex == stackID)
 			return;
@@ -1594,7 +1594,7 @@ namespace World
 			else
 			{
 				delta.SetSize(1);
-				delta.First().repitition = tdts.Count();
+				delta.First().repitition = (UINT32)tdts.Count();
 				delta.First().value.newType = 0;
 			}
 		}

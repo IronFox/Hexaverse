@@ -203,14 +203,14 @@ namespace Grid
 
 		World::Data::ChangeSequence seq = world.BeginChangeSequence(0);
 
-		Concurrency::parallel_for(index_t(0),HighSetup::GridType::CellCount,[&world,this,&seq](index_t i)
+		Concurrency::parallel_for(UINT32(0),HighSetup::GridType::CellCount,[&world,this,&seq](UINT32 i)
 		{
 			InitUnknown(seq.AccessStack(i).GetStack(),RandomHeight(high.cells[i].centerVertex.xyz,*this));
 		});
 
-		for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
+		for (UINT32 i = 0; i < LowSetup::GridType::CellCount; i++)
 		{
-			index_t fine = Grid::low.grid.GetCell(i).higherEquivalent;
+			const UINT32 fine = Grid::low.grid.GetCell(i).higherEquivalent;
 			auto stackAccess = seq.AccessStack(fine);
 			auto&stack = stackAccess.GetStack();
 			const auto&n = Grid::high.grid.GetCell(fine).neighborhood;
@@ -255,15 +255,15 @@ namespace Grid
 			}
 		}
 
-		Concurrency::parallel_for(index_t(0),LowSetup::GridType::CellCount,[this,&world,&seq](index_t i)
+		Concurrency::parallel_for(UINT32(0),LowSetup::GridType::CellCount,[this,&world,&seq](UINT32 i)
 		{
-			index_t fine = Grid::low.grid.GetCell(i).higherEquivalent;
+			UINT32 fine = Grid::low.grid.GetCell(i).higherEquivalent;
 			auto&centerStack = seq.AccessStack(fine);
 			const auto&n = Grid::high.grid.GetCell(fine).neighborhood;
 			const auto&n0 = Grid::low.grid.GetCell(i).neighborhood;
 			for (int ni = 0; ni < n.numNeighbors; ni++)
 			{
-				if ((index_t)n0.neighborID[ni] < i)
+				if (n0.neighborID[ni] < i)
 					continue;
 
 				const auto&n2 = Grid::high.grid.GetCell(n.neighborID[ni]).neighborhood;
@@ -295,7 +295,7 @@ namespace Grid
 		});
 
 
-		Concurrency::parallel_for(index_t(0),HighSetup::GridType::CellCount,[&world,this,&seq](index_t i)
+		Concurrency::parallel_for(UINT32(0),HighSetup::GridType::CellCount,[&world,this,&seq](UINT32 i)
 		{
 			FillTypes(seq.AccessStack(i).GetStack());
 		});
@@ -303,7 +303,7 @@ namespace Grid
 
 		const bool solidProx = CellStack::Cell::IsSolid(liquidOutline) && CellStack::Cell::IsLiquid(liquidCoverage);
 		if (solidProx)
-			for (index_t i = 0; i < HighSetup::GridType::CellCount; i++)
+			for (UINT32 i = 0; i < HighSetup::GridType::CellCount; i++)
 			{
 				auto stackAccess = seq.AccessStack(i);
 				auto&stack = stackAccess.GetStack();
