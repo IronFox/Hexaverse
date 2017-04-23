@@ -118,11 +118,21 @@ namespace Objects
 			void					SetCylinderSystems(const TVec3<>&topCenter, float radius)
 			{
 				const float radialHeight = Vec::length(topCenter);
-				TVec3<> dir = topCenter / radialHeight;
+				const TVec3<> dir = topCenter / radialHeight;
 
-				const float alpha = radius / radialHeight;
-				const float flatRadius = sin(alpha)*radialHeight;
-				const float flatRadialHeight = radialHeight * cos(alpha);
+				radius = vmin(radius, radialHeight);
+
+				//const float alpha = asin(radius / radialHeight);
+
+
+				const float flatRadialHeight = //cos(alpha)*sqrt(sqr(radialHeight) - sqr(radius));
+					(sqr(radialHeight) - sqr(radius)) / radialHeight;
+				const float flatRadius = sqrt(sqr(radialHeight) - sqr(radius) - sqr(flatRadialHeight));
+
+
+				//const float alpha = radius / radialHeight;
+				//const float flatRadius = sin(alpha)*radialHeight;
+				//const float flatRadialHeight = radialHeight * cos(alpha);
 
 				this->radius = flatRadius;
 
@@ -131,7 +141,9 @@ namespace Objects
 				const float radiusAtBottom = flatRadius * h0 / radialHeight;
 				float height = flatRadialHeight - h0;
 
-				cutOffConfig = float4(radiusAtBottom, flatRadius, height, radialHeight);
+				float fadeHeight = height;// +0.25f;
+
+				cutOffConfig = float4(radiusAtBottom, flatRadius * fadeHeight / height, fadeHeight, sqrt(sqr(radialHeight) - sqr(radius)));
 
 
 				Mat::makeAxisSystem(dir*h0, dir, 2, innerSys);
@@ -257,10 +269,17 @@ namespace Objects
 					prim.SetSystems(Sphere<>(sensor.worldCenter, sensor.radius));
 					break;
 				case World::Sensor::UpperHalfSolidSphere:
+				{
 					prim.geo = &sphere;
 					prim.SetSystems(Sphere<>(sensor.worldCenter, sensor.radius));
-					prim.cutOffConfig.z = sensor.worldCenter.Length();
+					const float radialHeight = Vec::length(sensor.worldCenter);
+					float radius = vmin(sensor.radius, radialHeight);
+					const float flatRadialHeight = sqrt(sqr(radialHeight) - sqr(radius));
+						//(sqr(radialHeight) - sqr(radius)) / radialHeight;
+					//const float flatRadius = sqrt(sqr(radialHeight) - sqr(radius) - sqr(flatRadialHeight));
+					prim.cutOffConfig.z = flatRadialHeight;
 					break;
+				}
 				case World::Sensor::ShadedCylinder:
 				case World::Sensor::SolidCylinder:
 					prim.geo = &cylinder;
@@ -319,7 +338,7 @@ namespace Objects
 			{
 				if (extended)
 					explosionRadius += RangeShadowExtension;
-				Objects::ParaboloidBuffer::Of(*base).Render(location,
+				Objects::ParaboloidBuffer::Allocate(*base).Render(location,
 					zOffset,base->GetFlatAttackRange(),
 					explosionRadius,color,
 					extended
@@ -1848,7 +1867,7 @@ namespace Objects
 		display.SetObjectMatrix(Matrix<>::eye4);
 		overallTint.Update(noTint);
 	
-		display.SetDepthTest(false,false);
+		display.SetDepthTest(true,false);
 
 
 		display.SetRasterizer(true,false);
@@ -1873,7 +1892,8 @@ namespace Objects
 		},false);
 		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 		overallTint.Update(noTint);
-		
+		display.SetDepthTest(false, false);
+
 		structures.Foreach([orbital](const Objects::PStructure&s)
 		{
 			if (s->IsAboveGrid() != orbital)

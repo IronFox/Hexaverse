@@ -121,7 +121,7 @@ namespace Objects
 	class TaskAttachment : public ClientAttachment
 	{
 	public:
-		DX11::InstructionBlock32		instruction;
+		DX11::InstructionBlock32		instruction;	//!< Used for paths and trajectories
 
 		struct Shape
 		{

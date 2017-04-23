@@ -46,9 +46,9 @@ void vsMain(A2V input, out V2P output)
 	//adjust normal here to inclination etc
 	float3 normal = input.normal;
 	normal.z = (CutOffConfig.x - CutOffConfig.y) / CutOffConfig.z;
-	normal.xy *= normalize(normal.xy)* sqrt(1.0 - sqr(normal.z));
+	normal.xy = normalize(normal.xy)* sqrt(1.0 - sqr(normal.z));
 
-	output.normal = normalize(mul(ObjectMatrix,float4(input.normal,0.0)).xyz);
+	output.normal = (mul(ObjectMatrix,float4(normal,0.0)).xyz);
 	//input.position;
 	output.position = TransformAndProject(output.world);
 	output.color = input.color /** SunColor*/;
@@ -57,7 +57,7 @@ void vsMain(A2V input, out V2P output)
 
 float4 psMain(V2P input) : SV_TARGET
 {
-	const float fadeRange = 0.5;
+	const float fadeRange = 0.25;
 	float clipFade = (CutOffConfig.w - input.height) / fadeRange;
 	clip(clipFade);
 	clipFade = min(clipFade, 1.0);
