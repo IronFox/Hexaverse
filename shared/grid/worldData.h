@@ -215,6 +215,11 @@ namespace World
 		bool					LowCellHasStructure(const Grid::LCellIdI&cell)const;
 		bool					LowCellIsClearIgnoreStructure(const Grid::LCellIdI&cell)const;
 		/**
+		Retrieves the maximum structure count among all high-resolution cells intersecting the specified low-resolution cell ID
+		*/
+		BYTE					GetMaxStructureCount(const Grid::LCellIdI&) const;
+		BYTE					GetMaxStructureCount() const;
+		/**
 		Determines the weakest and strongest content types found in the specified low-resolution cell
 		@param includeUnknown Consider unknown blocks for outWeakest and outStrongest. If set false, outStrongest and outWeakest may still end up being unknown, if all are unknown
 		@return true if any Content::Unknown blocks were encountered, false otherwise

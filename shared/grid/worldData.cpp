@@ -487,6 +487,39 @@ namespace World
 		#endif
 	}
 
+	BYTE					Data::GetMaxStructureCount() const
+	{
+		BYTE rs = 0;
+		foreach(cellStack, stack)
+		{
+			for (UINT layer = 0; layer < CellStack::Range; layer++)
+			{
+				rs = vmax(rs, stack->volumeCell[layer].structureCounter);
+			}
+		}
+		return rs;
+	}
+
+	BYTE					Data::GetMaxStructureCount(const Grid::LCellIdI&cell) const
+	{
+		if (cell.height > CellStack::TopHeight)
+			return 0;
+		if (cell.height < CellStack::BottomHeight)
+			return 0;
+	#ifdef HYBRID_GRID
+		index_t finer = Grid::low.grid.GetCell(cell.stackID).higherEquivalent;
+		const auto&c = Grid::high.grid.GetCell(finer);
+		BYTE rs = cellStack[finer].GetCellI(cell.height).structureCounter;
+		for (int j = 0; j < c.neighborhood.numNeighbors; j++)
+			rs = vmax(rs, cellStack[c.neighborhood.neighborID[j]].GetCellI(cell.height).structureCounter);
+		return rs;
+	#else
+		return cellStack[cell.stackID].GetCellI(cell.height).structureCounter;
+
+	#endif
+
+	}
+
 	bool					Data::LowCellIsClear(const LCellIdI&cell)	const
 	{
 		if (cell.height > CellStack::TopHeight)
