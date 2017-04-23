@@ -1634,6 +1634,24 @@ namespace World
 		}
 	}
 
+
+	/**/					Data::Data(const Data&other)
+	{
+		cellStack = other.cellStack;
+		if (!IsGlobalInstance())
+		{
+			observerKey = actual.onTerrainChange.Register([this](const Data&, const BaseGrid::FamiliesChanged&fam, float t)
+			{
+				SignalChange(fam, t, true);
+			});
+		}
+	}
+
+	void				Data::operator=(const Data&other)
+	{
+		cellStack = other.cellStack;
+	}
+
 	template <typename Setup>
 		static void MakeShaftVolumeT(const Setup&setup, typename Setup::TVolumeDescriptor&v, typename Setup::TVolumeDescriptor::Operator&op, UINT32 stackCenter, float radius, UINT32 topLayer, const std::function<UINT32(UINT32 stackID)>&traceFunction)
 		{

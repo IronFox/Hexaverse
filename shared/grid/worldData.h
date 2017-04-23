@@ -186,7 +186,9 @@ namespace World
 		friend class ChangeSequence;
 
 		/**/					Data();
+		/**/					Data(const Data&);
 		virtual					~Data();
+		void					operator=(const Data&);
 
 		void					swap(Data&other)
 		{
