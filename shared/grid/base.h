@@ -295,11 +295,11 @@ public:
 	};
 
 
-	static const count_t CellsPerEdge = BaseMap::range +1;
+	static const UINT32 CellsPerEdge = BaseMap::range +1;
 
 
 
-	static const count_t CellCount = 12 //corner cells
+	static const UINT32 CellCount = 12 //corner cells
 							+
 							CellsPerEdge * 30	//edge-only cells
 							+

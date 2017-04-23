@@ -3642,8 +3642,8 @@ int main( int argc, const char* argv[])
 
 		applicationStart = timer.Now();
 		Boot();
-		GlobalEvents::invalidateObjectCache << ApplicationInterface::HandleLocalEntityStatusChange;
 	#ifdef HAS_WINDOW
+		GlobalEvents::invalidateObjectCache << ApplicationInterface::HandleLocalEntityStatusChange;
 		Objects::onSelectionChanged << ApplicationInterface::HandleLocalSelectionChange;
 	#endif
 
