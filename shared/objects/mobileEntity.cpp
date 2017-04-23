@@ -1277,7 +1277,7 @@ namespace Objects
 
 	bool	MobileEntity::Task::AppendPathSegment(const MobileEntity*v, const Grid::LCellIdI&prev, const Task::Focus&target)
 	{
-		if (v->IsGroundBoundVehicle())
+		if (v->IsPureVehicle())
 		{
 			//would be faster, but too complicated to extract cost
 			//if (target.isExplicit)
