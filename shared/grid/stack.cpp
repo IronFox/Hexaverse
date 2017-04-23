@@ -117,6 +117,7 @@ namespace Grid
 		{
 			UINT layer = ToLayer(height);
 			volumeCell[layer].structureCounter += by;
+			DBG_ASSERT_LESS_OR_EQUAL__(volumeCell[layer].structureCounter, 2);
 		}
 	}
 
