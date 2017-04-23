@@ -90,6 +90,8 @@ namespace Objects
 
 			virtual void			VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance = false) const override;
 			virtual bool			CanSpawnAboveGrid(int&outHeight) const override {outHeight = Height; return true;}
+			virtual float3			GetScanningCenter(const Grid::LCellIdI&loc) const override;
+			
 
 			//MobileEntity overrides:
 			virtual int				GetMovementStepsPerRound() const override

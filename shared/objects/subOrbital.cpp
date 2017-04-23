@@ -22,24 +22,36 @@ namespace Objects
 		}
 
 
+		/*virtual override*/ float3			Plane::GetScanningCenter(const Grid::LCellIdI&loc) const
+		{
+			return Grid::ToWorld(loc);
+		}
+
+
+
+
 		/*virtual override*/ void		Plane::VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance /*= false*/) const
 		{
-			if (!IsGroundBoundVehicle())
+			float3 scanningCenter = GetScanningCenter(loc);
+			float range2 = GetScanningRange();
+			if (loc.height > Grid::CellStack::TopHeight)
 			{
 				float range = turret->groundScanningRange.GetValue(GetResearchState());
 				if (range > 0)
 				{
 					range = EMPModify(range, 2);
-					visitor(World::Sensor(loc, 0.5f, range, World::Sensor::ShadedCylinder, (int)turret->groundScannerPenetration.GetValue(GetResearchState())));
+					visitor(World::Sensor(scanningCenter, range, World::Sensor::ShadedCylinder, (int)turret->groundScannerPenetration.GetValue(GetResearchState())));
 				}
-				float range2 = GetScanningRange();
 				if (range2 == range)
-					visitor(World::Sensor(loc, 0.5f, range2,World::Sensor::UpperHalfSolidSphere));
+					visitor(World::Sensor(scanningCenter, range2,World::Sensor::UpperHalfSolidSphere));
 				else
 					Super::VisitSensors(loc, visitor, appearance);
 			}
 			else
-				Super::VisitSensors(loc, visitor, appearance);
+			{
+				visitor(World::Sensor(scanningCenter, range2*0.5f, World::Sensor::ShadedSphere));
+			//	Super::VisitSensors(loc, visitor, appearance);
+			}
 		}
 
 
@@ -123,10 +135,10 @@ namespace Objects
 		/*static*/ int				Plane::GetLandingHeight(const Grid::LCellIdI&satelliteLocation)
 		{
 			#ifdef HYBRID_GRID
-				index_t finer = Grid::low.grid.GetCell(satelliteLocation.stackID).higherEquivalent;
+				UINT32 finer = Grid::low.grid.GetCell(satelliteLocation.stackID).higherEquivalent;
 				const auto&c = Grid::high.grid.GetCell(finer);
 			#else
-				index_t finer = who->location.stackID;
+				UINT32 finer = who->location.stackID;
 			#endif
 			int h = Detail::WalkStack(World::actual.GetStack(finer),true);
 			if (h == badHeight)

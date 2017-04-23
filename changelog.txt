@@ -6,6 +6,7 @@ v0.6.4
 	> Improved research script. Renamed it to research.v2.lua. Script is no longer copied automatically to user directory.
 	> Unrelated attacks are now visually executed in parallel.
 	> Radar turret is now initially unlocked.
+	> Suborbital plane now suffer a scanning range penalty when landed.
 	* Target mode is no longer canceled when dragging the camera.
 	* Fixed unit destruction when falling farther than safely possible.
 	* Fixed rounding error in research script.
