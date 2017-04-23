@@ -203,6 +203,7 @@ namespace Objects
 			#endif
 			vehicles.Clear();
 			structures.Clear();
+			SubOrbital::planes.Clear();
 			idMap.Clear();
 			#ifndef ONE_COMPOUND_PER_FACTION
 				compounds.Clear();
