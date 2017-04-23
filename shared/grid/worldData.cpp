@@ -1753,13 +1753,16 @@ namespace World
 
 	void		Sensor::ApplyHalfSolidSphereTo(World::Data&v, short changeBy, Data::ChangeSequence&seq)	const
 	{
-		Grid::high.GenerateVolume(Sphere<>(worldCenter, radius), volume);
-		foreach(volume.coverage, c)
+		if (gridCenter.layer < Grid::CellStack::Range)
 		{
-			c->range.start = vmax(c->range.start, gridCenter.layer);
-			c->range.end = vmax(c->range.end, gridCenter.layer);
+			Grid::high.GenerateVolume(Sphere<>(worldCenter, radius), volume);
+			foreach(volume.coverage, c)
+			{
+				c->range.start = vmax(c->range.start, gridCenter.layer);
+				c->range.end = vmax(c->range.end, gridCenter.layer);
+			}
+			ApplyVolume(v, changeBy, seq);
 		}
-		ApplyVolume(v, changeBy, seq);
 	}
 
 
@@ -1802,7 +1805,7 @@ namespace World
 			Translucent = 0x4
 		};
 
-		const Grid::HCellIdU center(Grid::high.Locate(worldCenter),Grid::CellStack::ToLayer( Grid::HeightFromRadius(Vec::length( worldCenter )) ));
+		const Grid::HCellIdU center(Grid::high.Locate(worldCenter),vmin(Grid::CellStack::Range-1, Grid::CellStack::ToLayer( Grid::HeightFromRadius(Vec::length( worldCenter )) )));
 
 		static Array2D<BYTE> user(Grid::HighSetup::GridType::CellCount,Grid::CellStack::Range,0);
 
