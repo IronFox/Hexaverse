@@ -159,6 +159,7 @@ namespace Objects
 				T				Get(const Lua::Reference&researchState, const LuaAttribute<T,F1>&source, const LuaAttribute<T2,F2>&multiplier, T minimum);
 			bool				IsCurrent() const {return versionCounter == Super::versionCounter;}
 			T					Update(T newValue) {cached = newValue; versionCounter = Super::versionCounter; return cached;}
+			void				Invalidate() { versionCounter = InvalidIndex; }
 		};
 
 	class CachedAttributes
