@@ -11,6 +11,7 @@
 #include "audioInterface.h"
 #include "cameraControl.h"
 #include "clientEvents.h"
+#include "visual/display.h"
 
 
 namespace AudioInterface
@@ -77,7 +78,13 @@ namespace AudioInterface
 
 
 			GlobalEvents::frameAfterCamera << UpdateListener;
+
+			display.RegisterFocusCallbacks(OpenAL::SignalWindowFocusLoss, OpenAL::SignalWindowFocusRestoration);
+
 		}
+
+
+
 	}
 
 	void	SetMasterVolume(float volume)
