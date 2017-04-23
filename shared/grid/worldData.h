@@ -195,7 +195,7 @@ namespace World
 			swp(sensoryValid,other.sensoryValid);
 			swp(lockLevel,other.lockLevel);
 			swp(observerKey,other.observerKey);
-
+			onTerrainChange.swap(other.onTerrainChange);
 			#ifdef HAS_WINDOW
 				swp(lightingOutdated,other.lightingOutdated);
 			#endif
