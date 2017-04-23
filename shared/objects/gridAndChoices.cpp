@@ -1038,10 +1038,10 @@ namespace Objects
 	int FindApplicableGround(const Grid::LCellIdI&cell, bool canStandOnWater)
 	{
 		#ifdef HYBRID_GRID
-			index_t finer = Grid::low.grid.GetCell(cell.stackID).higherEquivalent;
+			UINT32 finer = Grid::low.grid.GetCell(cell.stackID).higherEquivalent;
 			const auto&c = Grid::high.grid.GetCell(finer);
 		#else
-			index_t finer = cell.cellID;
+			UINT32 finer = cell.cellID;
 		#endif
 		bool incremented = true;
 		int h = cell.height;
