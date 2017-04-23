@@ -11,6 +11,7 @@ v0.6.4
 	* Fixed unit destruction when falling farther than safely possible.
 	* Fixed rounding error in research script.
 	* Fixed certain events still being shown when controls are supposed to be hidden.
+	* Fixed smoothness of animated suborbital plane motion.
 	* Fixed destruction events on indestructible units.
 
 v0.6.3	[Feb 26 2017]
