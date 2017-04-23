@@ -12,6 +12,10 @@ template <typename...T>
 
 		typedef std::function<void(T...)>	F;
 
+		/**/	Observer() {}
+		/**/	Observer(const Self&other) = delete;//these aren't inherently bad or impossible but typically imply that something isn't as it should be
+		void	operator=(const Self &other) = delete;
+
 		void	Clear()	{functions.Clear();}
 		void	operator()(T...p)
 		{
