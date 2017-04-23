@@ -32,8 +32,14 @@ namespace Objects
 					range = EMPModify(range, 2);
 					visitor(World::Sensor(loc, 0.5f, range, World::Sensor::ShadedCylinder, (int)turret->groundScannerPenetration.GetValue(GetResearchState())));
 				}
+				float range2 = GetScanningRange();
+				if (range2 == range)
+					visitor(World::Sensor(loc, 0.5f, range2,World::Sensor::UpperHalfSolidSphere));
+				else
+					Super::VisitSensors(loc, visitor, appearance);
 			}
-			Super::VisitSensors(loc, visitor, appearance);
+			else
+				Super::VisitSensors(loc, visitor, appearance);
 		}
 
 
