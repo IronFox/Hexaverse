@@ -26,7 +26,7 @@ namespace Objects
 			}
 	};
 
-	template <typename T, typename Filter>
+	template <typename T, typename Filter= NoFilter>
 		struct LuaAttribute
 		{
 			Lua::Function<T(Lua::Reference)>		luaGetValue;
