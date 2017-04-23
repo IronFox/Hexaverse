@@ -1435,11 +1435,21 @@ namespace Objects
 	
 	}
 
+	bool IsClear(const World::Data&world, const Grid::LCellIdI&location)
+	{
+		return world.LowCellIsClearIgnoreStructure(location) &&
+			(
+				(&world != &World::actual && !world.GridCanSee(location,1,false))	//can't see = not there
+				||
+				World::actual.GetMaxStructureCount(location)<2//use actual world for struct-count (for now)
+			);	
+	}
+
 	template <bool IgnoreStructuresAtDestination>
 	bool ValidDestinationOf(const World::Data&world,const Vehicle&v, const Grid::LCellIdI&location, bool isDestination, bool ignoreWater, bool doFloat)
 	{
 		return 
-			(world.LowCellIsClear(location) || (isDestination && (IgnoreStructuresAtDestination || MobileDestinationStructureHere(location,v))))
+			(IsClear(world,location) || (isDestination && (IgnoreStructuresAtDestination || MobileDestinationStructureHere(location,v))))
 			&&
 			(v.CanStandOn(world,location-1,ignoreWater,doFloat))
 			&&
@@ -1483,7 +1493,8 @@ namespace Objects
 					if (!okay)
 						continue;
 				}
-				bool valid = ValidDestinationOf<false>(world,*v,cell, cell == destination, false, false);
+				bool isDest = cell == destination;
+				bool valid = ValidDestinationOf<false>(world,*v,cell, isDest, false, false);
 				if (!valid)
 				{
 					if (j <= 0 && !world.LowCellIsClear(cell))
@@ -1879,6 +1890,7 @@ namespace Objects
 		#else
 			vehicle->owner->knownWorld;
 		#endif
+		
 
 		if (!ValidDestinationOf<false>(world,*vehicle,to,true,false, false))
 			return false;
