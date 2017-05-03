@@ -1024,6 +1024,12 @@ namespace Network
 			GlobalEvents::invalidateObjectCache();
 		}
 
+		void	TutorialAt(NET(INT32)&at)
+		{
+			Tutorial::SetProgress(at);
+		}
+
+
 		void	UnitLimits(Protocol::UnitLimits&limits)
 		{
 			RuntimeConfig::UnitLimits::Import(limits);
@@ -1130,7 +1136,7 @@ namespace Network
 		TCP::Channel<Protocol::GameConfig,0,Protocol::ChannelID::GameConfig>						gameConfig(Receiver::GameConfig);
 		TCP::Channel<NETA(Package::NetString<256>),0,Protocol::ChannelID::PlanetNames>				planetNames(Receiver::PlanetNames);
 
-
+		TCP::Channel<NET(INT32),0,Protocol::ChannelID::TutorialAt>									tutorialAt(Receiver::TutorialAt);
 
 		TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;
 		TCP::ObjectSender<Protocol::TouchedMarker,Protocol::ChannelID::TouchMarker>					touchMarker;
@@ -1268,6 +1274,8 @@ namespace Network
 			case TCP::Event::ConnectionClosed:
 			{
 				RuntimeConfig::tutorialMode = false;
+				if (!RuntimeConfig::aiMode)
+					RuntimeConfig::serverAddress = ServerAddress();	//prevent any automatic reconnect
 				String err = client.GetError(true);
 
 				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Loss ), nullptr, err.IsNotEmpty() ? err : (ev == TCP::Event::ConnectionLost ? "Connection lost" : "Connection closed"));
@@ -1390,6 +1398,7 @@ namespace Network
 		client.InstallChannel(Channels::gameConfig);
 		client.InstallChannel(Channels::planetNames);
 
+		client.InstallChannel(Channels::tutorialAt);
 
 		client.OpenSignalChannel(Protocol::ChannelID::Pong,0);
 		client.OpenSignalChannel(Protocol::ChannelID::BeginGame,0);

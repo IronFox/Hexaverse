@@ -26,6 +26,7 @@ namespace Game
 	float				factionStartMineralValue=1.f;	//determined during loading
 	float				effectiveAnimationLength = 1.f;
 
+	INT32				tutorialAt=1;
 
 
 	namespace Config
@@ -108,6 +109,7 @@ namespace Game
 		{
 			roundTimerPaused = true;
 			mostFactionsAlive = 0;
+			tutorialAt=1;
 			winner.reset();
 			HandleSessionSuspension();
 		}

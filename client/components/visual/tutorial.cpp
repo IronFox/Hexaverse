@@ -41,10 +41,25 @@ namespace Tutorial
 			}
 		};
 
+		int					progress = 1;
 
 		StringFile			memory;
 
 		StringTable<Message,Strategy::Swap>	messages;
+		GUI::PWindow		taskWindow;
+		Dialog::PDialog		messageWindow;
+
+
+		void				HideGUI()
+		{
+			if (taskWindow)
+				GUI::Hide(taskWindow);
+			if (messageWindow)
+			{
+				GUI::Hide(messageWindow);
+				messageWindow.reset();
+			}
+		}
 	}
 
 	namespace Interactive
@@ -80,13 +95,13 @@ namespace Tutorial
 
 		namespace Trigger
 		{
-			Lua::Function<void()>	begin,checkTaskConditions,onMessageConfirm;
+			Lua::Function<void()>	checkTaskConditions,onMessageConfirm;
+			Lua::Function<void(int)>	begin;
 		}
 
 		namespace API
 		{
 
-			GUI::PWindow	taskWindow;
 
 			struct TTrigger
 			{
@@ -112,25 +127,35 @@ namespace Tutorial
 
 			void	DisplayMessage(String msg, const String&img)
 			{
-				if (taskWindow)
-					GUI::Hide(taskWindow);
+				Detail::HideGUI();
 				
 				ReplaceTags(msg);
-
-				auto w = Dialog::CreateTutorialMessage("", msg,img);
-				w->check = []()->Dialog::CheckResult{ return Network::client.IsConnected() ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort; };
-				w->onConfirm = 
-				[w]()
+				using namespace Detail;
+				messageWindow = Dialog::CreateTutorialMessage("", msg,img);
+				messageWindow->check = []()->Dialog::CheckResult{ return Network::client.IsConnected() ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort; };
+				messageWindow->onConfirm = 
+				[]()
 				{
+					Detail::HideGUI();
 					Trigger::onMessageConfirm();
-					GUI::Hide(w);
 				};
-				w->canBeImplicitlyClosed = false;
-				GUI::Show(w);
+				messageWindow->canBeImplicitlyClosed = false;
+				GUI::Show(messageWindow);
+			}
+
+			void	SignalTaskStart(int taskAt)
+			{
+				if (taskAt == Detail::progress)
+					return;
+				Detail::progress = taskAt;
+				Network::Channels::tutorialAt.SendTo(Network::client,taskAt);
 			}
 
 			void	DescribeTask(String msg)
 			{
+				Detail::HideGUI();
+				using namespace Detail;
+
 				ReplaceTags(msg);
 				if (taskWindow)
 				{
@@ -310,6 +335,8 @@ namespace Tutorial
 		}
 
 
+
+
 		void Create()
 		{
 			try
@@ -324,6 +351,8 @@ namespace Tutorial
 				api.SetFunction("DescribeTask",API::DescribeTask);
 				api.SetFunction("CallDelayed",API::CallDelayed);
 				api.SetFunction("FocusCameraAt",API::FocusCameraAt);
+				api.SetFunction("SignalTaskStart",API::SignalTaskStart);
+
 
 				tutorialProgram->ExecuteFile("../lua/tutorial.lua");
 
@@ -340,6 +369,7 @@ namespace Tutorial
 				Camera::onRotate << SignalCameraRotation;
 				GlobalEvents::frameBegin << ProcessTriggers;
 
+				GlobalEvents::invalidateObjectCache << SignalEntitySelectionChange;	//something happend to the selected unit
 				Objects::onSelectionChanged << SignalEntitySelectionChange;
 			}
 			catch (const std::exception&ex)
@@ -454,7 +484,7 @@ namespace Tutorial
 		Interactive::RebuildFactionUnits();
 		Interactive::RebuildSelected();
 		Interactive::RebuildResearchState();
-		Interactive::Trigger::begin();
+		Interactive::Trigger::begin(Detail::progress);
 	}
 
 	void	SignalRoundStart()
@@ -481,9 +511,19 @@ namespace Tutorial
 	{
 		Interactive::started = false;
 		Interactive::objectTables.Clear();
+		Detail::HideGUI();
+		Detail::progress = 1;
 	}
 
 
+	void	SetProgress(int at)
+	{
+		if (at == Detail::progress)
+			return;
+		Detail::progress = at;
+		if (Interactive::started)
+			Interactive::Trigger::begin(Detail::progress);
+	}
 
 }
 

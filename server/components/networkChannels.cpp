@@ -48,6 +48,8 @@ namespace Channels
 	TCP::Channel<Protocol::ResourceID, PreFaction, Protocol::ChannelID::RequestResource>				requestResource(Receiver::RequestResource);
 	TCP::Channel<Package::NetString<256>, Configurator, Protocol::ChannelID::LoadPlanetByName>		loadPlanetByName(Receiver::LoadPlanetByName);
 	
+	TCP::Channel<NET(INT32),FactionLevel,Protocol::ChannelID::TutorialAt>							tutorialAt(Receiver::TutorialAt);
+
 
 	TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>			clientFactionResponse;
 	TCP::ObjectSender<Protocol::Marker, Protocol::ChannelID::MarkerCreationFailedLimitReached>		markerCreationFailedLimitReached;
@@ -515,7 +517,8 @@ namespace Receiver
 
 		Channels::clientFactionResponse.SendTo(client->peer.lock(),response);
 		Channels::setFactionID.SendTo(client->peer.lock(),client->faction->id);
-
+		if (RuntimeConfig::tutorialMode)
+			Channels::tutorialAt.SendTo(client->peer.lock(),Game::tutorialAt);
 		//CHEAT_SHOW_ALL_RESOURCES
 
 		#ifdef CHEAT_SHOW_ALL_RESOURCES
@@ -892,6 +895,11 @@ namespace Receiver
 		else
 			LogEvent(EventClass::Preset::commandRejected,peer,"Configuration mode is not active. User should not have this level");
 
+	}
+
+	void	TutorialAt(NET(INT32)&at)
+	{
+		Game::tutorialAt = at;
 	}
 
 	void	LoadPlanetByName(Package::NetString<256>&planet, TCP::Peer&peer)

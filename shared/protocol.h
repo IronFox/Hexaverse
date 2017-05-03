@@ -1986,6 +1986,8 @@ namespace Protocol
 			EndConfigurationMode,//c2s: <signal>
 
 			OperationLacksResources, //s2c: OperationLacksResources
+
+			TutorialAt,			// both: int32
 		};
 	}
 

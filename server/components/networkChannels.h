@@ -31,6 +31,7 @@ namespace Receiver
 	void	GameConfig(Protocol::GameConfig&, TCP::Peer&peer);
 	void	RequestResource(Protocol::ResourceID&, TCP::Peer&peer);
 	void	LoadPlanetByName(Package::NetString<256>&, TCP::Peer&peer);
+	void	TutorialAt(NET(INT32)&at);
 
 	/**
 	Handler function to process network signals (packages without payloads)
@@ -91,6 +92,7 @@ namespace Channels
 	extern TCP::Channel<Protocol::GameConfig, Configurator, Protocol::ChannelID::GameConfig>					gameConfig;
 	extern TCP::Channel<Protocol::ResourceID, PreFaction, Protocol::ChannelID::RequestResource>					requestResource;
 	extern TCP::Channel<Package::NetString<256>, Configurator, Protocol::ChannelID::LoadPlanetByName>			loadPlanetByName;
+	extern TCP::Channel<NET(INT32),FactionLevel,Protocol::ChannelID::TutorialAt>								tutorialAt;
 
 
 	extern TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>				clientFactionResponse;

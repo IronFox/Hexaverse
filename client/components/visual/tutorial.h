@@ -25,6 +25,7 @@ namespace Tutorial
 	void	SignalRoundStart();
 	void	SignalEnd();
 	void	SignalResearchChange();
+	void	SetProgress(int);
 }
 
 #endif
