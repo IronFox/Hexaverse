@@ -1,6 +1,4 @@
-#ifndef serverProcessH
-#define serverProcessH
-
+#pragma once
 
 namespace ServerProcess
 {
@@ -8,10 +6,6 @@ namespace ServerProcess
 	void			End();
 	bool			IsRunning();
 	void			Destroy();
+	void			StartTutorialServer();
+
 }
-
-
-
-
-
-#endif

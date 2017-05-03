@@ -146,6 +146,9 @@ namespace Network
 		worldIDString = worldID.ToNiceString();
 	}
 
+
+
+
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id)
 	{
 		return Objects::Faction::GetOrCreate(id);
@@ -1026,7 +1029,9 @@ namespace Network
 
 		void	TutorialAt(NET(INT32)&at)
 		{
-			Tutorial::SetProgress(at);
+			#ifdef HAS_WINDOW
+				Tutorial::SetProgress(at);
+			#endif
 		}
 
 
@@ -1329,8 +1334,10 @@ namespace Network
 					}
 					else
 						LogEvent(EventSignificance::Debug,"Begin Game. Animation NOT done");
-				if (RuntimeConfig::tutorialMode)
-					Tutorial::SignalStart();
+				#ifdef HAS_WINDOW
+					if (RuntimeConfig::tutorialMode)
+						Tutorial::SignalStart();
+				#endif
 			break;
 			case Protocol::ChannelID::Pong:
 				//lastPong = timer.Now();

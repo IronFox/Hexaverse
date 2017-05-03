@@ -257,8 +257,10 @@ namespace LocalApplicationInterface
 
 		pauseAutomaticRoundProgression = false;
 
-		if (RuntimeConfig::tutorialMode)
-			Tutorial::SignalRoundStart();
+		#ifdef HAS_WINDOW
+			if (RuntimeConfig::tutorialMode)
+				Tutorial::SignalRoundStart();
+		#endif
 	}
 }
 
@@ -3314,20 +3316,6 @@ namespace ApplicationInterface
 	}
 
 
-	void	StartTutorial()
-	{
-		RuntimeConfig::serverAddress = Network::ServerAddress("localhost");
-		Dialog::PermanentMessage("Hold on. Getting tutorial server ready.",[]()->Dialog::CheckResult
-		{
-			if (Network::haveFaction)
-			{
-				//Dialog::ShowMessage("Welcome to the Hexaverse Tutorial");
-				return Dialog::CheckResult::Abort;
-			}
-			return Dialog::CheckResult::OkayContinue;
-		});
-		ServerProcess::Begin(true,false,true);
-	}
 
 #endif
 
@@ -3797,23 +3785,7 @@ int main( int argc, const char* argv[])
 			mainMenu->AddCommand("Start Tutorial",
 				[]()
 				{
-					if (ServerProcess::IsRunning())
-					{
-						Dialog::Confirm("In order to start a tutorial server, the local server must be shut down. Continue?",
-						[]()
-						{
-							ServerProcess::End();
-							StartTutorial();
-						},
-						[]()->Dialog::CheckResult
-						{
-							if (!ServerProcess::IsRunning())
-								return Dialog::CheckResult::Confirm;
-							return Dialog::CheckResult::OkayContinue;
-						});
-					}
-					else
-						StartTutorial();
+					ServerProcess::StartTutorialServer();
 				},
 				[](){return !Network::client.IsConnected() && !Network::client.IsAttemptingToConnect();});
 
@@ -3855,9 +3827,9 @@ int main( int argc, const char* argv[])
 			Tutorial::Create();
 
 
-			Tutorial::ShowMessage("Welcome",true);
-			Tutorial::ShowMessage("Tutorials");
-			Tutorial::ShowMessage("Servers");
+			//Tutorial::ShowMessage("Welcome",true);
+			//Tutorial::ShowMessage("Tutorials");
+			//Tutorial::ShowMessage("Servers");
 
 
 			{

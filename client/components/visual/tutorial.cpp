@@ -15,6 +15,7 @@
 #include "objectSelection.h"
 #include "../network.h"
 #include "ui.h"
+#include "../serverProcess.h"
 #include <lua.hpp>
 
 namespace Tutorial
@@ -48,7 +49,7 @@ namespace Tutorial
 		StringTable<Message,Strategy::Swap>	messages;
 		GUI::PWindow		taskWindow;
 		Dialog::PDialog		messageWindow;
-
+		bool				tutorialGameShown=false;
 
 		void				HideGUI()
 		{
@@ -59,6 +60,16 @@ namespace Tutorial
 				GUI::Hide(messageWindow);
 				messageWindow.reset();
 			}
+		}
+
+		bool				RegisterMemory(bool&shown, const String&name)
+		{
+			if (shown)
+				return false;
+			shown = true;
+			Detail::memory << name << nl;
+			Detail::memory.Flush();
+			return true;
 		}
 	}
 
@@ -140,6 +151,7 @@ namespace Tutorial
 					Trigger::onMessageConfirm();
 				};
 				messageWindow->canBeImplicitlyClosed = false;
+				messageWindow->isTutorial = false;	//prevent tutorial message from opening the next message automatically
 				GUI::Show(messageWindow);
 			}
 
@@ -379,6 +391,8 @@ namespace Tutorial
 		}
 	}
 
+
+
 	void	ShowMessage(const String&name, bool forceOpenNow/*=false*/)
 	{
 		if (RuntimeConfig::aiMode)
@@ -386,11 +400,8 @@ namespace Tutorial
 		Detail::Message*msg = Detail::messages.QueryPointer(name);
 		if (!msg)
 			return;
-		if (msg->shown)
+		if (!Detail::RegisterMemory(msg->shown,name))
 			return;
-		msg->shown = true;
-		Detail::memory << name << nl;
-		Detail::memory.Flush();
 		Dialog::EnqueueTutorial(name,msg->lines,msg->image);
 		if (forceOpenNow)
 			Dialog::ShowNextTutorial();
@@ -443,7 +454,8 @@ namespace Tutorial
 				Detail::Message*msg = Detail::messages.QueryPointer(line);
 				if (msg)
 					msg->shown = true;
-			
+				elif (line == "tutorialGame")
+					Detail::tutorialGameShown = true;
 			}
 		
 			Detail::memory.Close();
@@ -476,6 +488,14 @@ namespace Tutorial
 
 
 		Interactive::Create();
+		if (Detail::RegisterMemory(Detail::tutorialGameShown,"tutorialGame"))
+		{
+			Dialog::Confirm("Welcome to Hexaverse. Would you like to start a tutorial game server to learn the game's basics?",[]()
+			{
+				ServerProcess::StartTutorialServer();
+			},
+			[](){return Dialog::CheckResult::OkayContinue;});
+		}
 	}
 
 	void	SignalStart()

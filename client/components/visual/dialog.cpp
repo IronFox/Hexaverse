@@ -438,6 +438,8 @@ namespace Dialog
 	
 	void	ShowNextTutorial()
 	{
+		if (RuntimeConfig::tutorialMode)
+			return;	//they really should not mix
 		GUI::VerifyIntegrity(CLOCATION);
 		if (Detail::pendingTutorials.IsNotEmpty())
 		{

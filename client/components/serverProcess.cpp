@@ -5,6 +5,10 @@
 #include <general/timer.h>
 #include <general/monitoredProcess.h>
 #include <logEvent.h>
+#include "visual/dialog.h"
+
+#include "clientRuntimeConfig.h"
+#include "network.h"
 
 namespace ServerProcess
 {
@@ -66,7 +70,24 @@ namespace ServerProcess
 			ASSERT3__(process.Start(workingDirectory,path,parameters,showWindow), workingDirectory,path,parameterBuffer);
 		}
 
-			
+		
+		void	StartTutorial()
+		{
+			RuntimeConfig::serverAddress = Network::ServerAddress("localhost");
+			#ifdef HAS_WINDOW
+				Dialog::PermanentMessage("Hold on. Getting tutorial server ready.",[]()->Dialog::CheckResult
+				{
+					if (Network::haveFaction)
+					{
+						//Dialog::ShowMessage("Welcome to the Hexaverse Tutorial");
+						return Dialog::CheckResult::Abort;
+					}
+					return Dialog::CheckResult::OkayContinue;
+				});
+			#endif
+			ServerProcess::Begin(true,false,true);
+		}
+
 	}
 
 
@@ -109,6 +130,30 @@ namespace ServerProcess
 	//}
 
 
+
+	void StartTutorialServer()
+	{
+		#ifdef HAS_WINDOW
+		if (ServerProcess::IsRunning())
+		{
+			Dialog::Confirm("In order to start a tutorial server, the local server must be shut down. Continue?",
+			[]()
+			{
+				ServerProcess::End();
+				Detail::StartTutorial();
+			},
+			[]()->Dialog::CheckResult
+			{
+				if (!ServerProcess::IsRunning())
+					return Dialog::CheckResult::Confirm;
+				return Dialog::CheckResult::OkayContinue;
+			});
+		}
+		else
+		#endif
+			Detail::StartTutorial();
+
+	}
 }
 
 
