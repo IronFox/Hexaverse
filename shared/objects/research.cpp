@@ -8,6 +8,7 @@
 #include "../runtimeConfig.h"
 #include "../luaGameAPI.h"
 #include <io/file_system.h>
+#include "structure/laboratory.h"
 
 namespace Objects
 {
@@ -620,7 +621,7 @@ namespace Objects
 		globalState.rootResearch.Clear();
 		globalState.allTopics.Clear();
 
-		globalState.researchProgram = Lua::Program::Create();
+		globalState.researchProgram = Lua::Program::Create("Research");
 		ASSERT__(globalState.researchProgram);
 		{
 			Lua::Table api = Lua::CreateGeneralAPI(globalState.researchProgram);
@@ -685,9 +686,7 @@ namespace Objects
 				Faction::nexus->researchState.LoadNexusResearchState();
 		#endif
 
-		#ifdef HAS_WINDOW
-			Laboratory::ConfigureResearchButtons();
-		#endif
+		globalState.onScriptChange();
 		//globalState.researchProgram.reset();
 	}
 
@@ -826,7 +825,7 @@ namespace Objects
 						if (e->owner.get() == owner)
 						{
 							float t = 0;
-							e->UnregisterSensory(t,false);
+							e->UnregisterSensory(t);
 						}
 					},false);
 			#endif
@@ -847,7 +846,7 @@ namespace Objects
 					if (e->owner.get() == owner)
 					{
 						float t = 0;
-						e->RegisterSensory(t,false);
+						e->RegisterSensory(t);
 					}
 				},false);
 		#endif

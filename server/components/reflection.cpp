@@ -111,6 +111,37 @@ namespace Reflection
 			}
 		};
 
+		class StringReferenceVar : public Base
+		{
+			typedef Base	Super;
+		public:
+			String&	value;
+			String	defaultValue;
+
+
+			/**/		StringReferenceVar(const String&name, Persistence persistence, String&value, unsigned protection=CLI::EraseProtection) : Super(name,"String",persistence, 1,protection),value(value),defaultValue(value)
+			{}
+			virtual String	ToString()		const	override	{return value;}
+			virtual	bool	Set(const String&value)	override
+			{
+				if (this->value != value)
+				{
+					this->value = value;
+					OnChanged();
+				}
+				return true;
+			}
+			virtual String	GetDefault() const override
+			{
+				return defaultValue;
+			}
+
+			virtual void		SetCurrentToDefault() override
+			{
+				defaultValue = value;
+			}
+		};
+
 
 		template <typename T>
 			class TypedVariable : public Base
@@ -619,6 +650,12 @@ namespace Reflection
 			return rs;
 		}
 
+		PBase	SetStringReference(const String&name, String&value, Persistence p)
+		{
+			PBase rs (new StringReferenceVar(name,p, value, CLI::EraseProtection));
+			state.SetVariable(rs);
+			return rs;
+		}
 
 		template <typename T>
 		PBase	Set(const String&name, T&reference, T min, T max, Persistence p)
@@ -955,10 +992,12 @@ namespace Reflection
 		state.EnterNewFolder("World")->attachment = persistenceAttachment;
 			VAR(simulateLiquids,World::Config,false,true,Variable::Persistence::RestoreFromSavegame);
 			ENUMVAR(worldDiscovery,World::Config,Variable::Persistence::PlanetConfig);
+			Variable::SetStringReference("resourceDistribution",Grid::currentCustomResourceDistribution,Variable::Persistence::PlanetConfig);
 
 
 			state.EnterNewFolder("Planet")->attachment = persistenceAttachment;
 				Variable::planetType = Variable::SetString("Type","LushGreen",Variable::Persistence::PlanetConfig);
+
 				state.EnterNewFolder("Config")->attachment.reset(new Variable::FileReferenceAttachment("config/myPlanets",Variable::planetType,FeedMode::IgnoreIfMissing));
 				{
 					/*

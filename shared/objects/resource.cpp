@@ -1,6 +1,6 @@
 #include <global_root.h>
 #include "resource.h"
-#include "../sphereGrid.h"
+#include "../grid/resources.h"
 
 
 namespace Objects
@@ -11,7 +11,7 @@ namespace Objects
 		minerals = Grid::Resource::Sample(ConstName::Resource_Minerals,lowCellID)*TranslationFactor;
 		uranium = Grid::Resource::Sample(ConstName::Resource_Uranium,lowCellID)*TranslationFactor;
 		#ifdef CLIENT
-			return Grid::Resource::Require(ConstName::Resource_Minerals).known[lowCellID];
+			return Grid::ResourceDiscovery::client.resourcesDiscovered[lowCellID];
 		#else
 			return true;
 		#endif

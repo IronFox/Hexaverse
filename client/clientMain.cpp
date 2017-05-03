@@ -24,42 +24,49 @@
 #include <container/string_list.h>
 #include <io/file_system.h>
 
-#include "../shared/sphereGrid.h"
-#include "../shared/objects.h"
+#include <objects.h>
 
-#ifdef HAS_WINDOW
-	#include "components/explosions.h"
-#endif
 
 #include <geometry/bvh.h>
 
 #include "version.h"
-#include "../shared/protocol.h"
-#include "../shared/objects/faction.h"
-#include "../shared/objects/structure.h"
-#include "../shared/objects/gridAndChoices.h"
-#include "../shared/objects/visualSelection.h"
-#include "../shared/objects/visualChoices.h"
-#include "../shared/objects/prototypes.h"
-#include "../shared/objects/rendering.h"
+#include <protocol.h>
+#include <objects/faction.h>
+#include <objects/structure.h>
+#include <objects/gridAndChoices.h>
+#include <objects/prototypes.h>
+#include <objects/structure/mine.h>
+#include <objects/structure/laboratory.h>
+#include <boot.h>
 
-#include "components/network.h"
-#include "components/ui.h"
-#include "components/animation.h"
-#include "components/cameraControl.h"
-#include "components/progressBar.h"
-#include "components/dialog.h"
-#include "components/tutorial.h"
-#include "components/lineRenderer.h"
-#include "components/surfaceRenderer.h"
+#include "components/visual/explosions.h"
+#include "components/visual/objectRendering.h"
+#include "components/visual/objectSelection.h"
+#include "components/visual/objectChoices.h"
+#include "components/visual/terrain.h"
+#include "components/visual/objectCommands.h"
+#include "components/visual/ui.h"
+#include "components/visual/objectComponent.h"
+#include "components/visual/progressBar.h"
+#include "components/visual/dialog.h"
+#include "components/visual/tutorial.h"
+#include "components/visual/lineRenderer.h"
+#include "components/visual/surfaceRenderer.h"
 #include "components/ai.h"
 #include "components/clientRuntimeConfig.h"
-#include "components/world.h"
-#include "components/atmosphere.h"
-#include "components/guiHostList.h"
+#include "components/visual/world.h"
+#include "components/visual/lighting.h"
+#include "components/visual/atmosphere.h"
+#include "components/visual/guiHostList.h"
+#include "components/visual/commandDefinitions.h"
 #include "components/serverProcess.h"
 #include "components/audioInterface.h"
 #include "components/configurationMode.h"
+#include "components/gridControl.h"
+#include "components/network.h"
+#include "components/animation.h"
+#include "components/cameraControl.h"
+#include "components/clientEvents.h"
 
 #include "rc/Resource.h"
 
@@ -237,7 +244,7 @@ namespace LocalApplicationInterface
 		LogEvent(EventSignificance::Debug,"OnPlayerControlBegin("+RuntimeConfig::roundNumber.ToString()+")");
 
 		#ifdef HAS_WINDOW
-			ApplicationInterface::OnSelectionChange(true);
+			GlobalEvents::invalidateObjectCache();
 			UI::RefreshButtonState();
 		#endif
 		#ifndef NO_SATELLITES
@@ -312,7 +319,7 @@ bool	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Gr
 		}
 		if (!foundPath)
 		{
-			if (!Grid::actualWorld.LowCellIsClearIgnoreStructure(target) && target.height+1 <= Grid::CellStack::TopHeight)
+			if (!World::actual.LowCellIsClearIgnoreStructure(target) && target.height+1 <= Grid::CellStack::TopHeight)
 			{
 				target++;
 				return MoveVehicleTo(v,prev,target,flags);
@@ -457,7 +464,6 @@ namespace ApplicationInterface
 			LocalApplicationInterface::DirectTo(v,targets, LocalApplicationInterface::AssembleMotionFlags(detailedPath,leftClick,false),Objects::CursorMode::Idle);
 		#endif
 	}
-
 
 	void	SignalChoiceIntersection(const Objects::PWorldEntity&e,const Grid::LCellIdI&c, Objects::Vehicle::mode_t mode, const Objects::PMobileEntity&deployingWhat)
 	{
@@ -942,9 +948,11 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 		return PathString(base);
 	}
 
-	void WriteLabel(StringFile&file, const Objects::BaseCommand::Label&label, const String&myTypeName)
+	void WriteLabel(StringFile&file, const Objects::Description&label, const String&myTypeName)
 	{
-		foreach(label.rawLines, line)
+
+
+		foreach(label, line)
 		{
 			if (line->first.length() == 0)
 				continue;
@@ -991,7 +999,7 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 		}
 	}
 
-	void WriteDocumentation(const FileSystem::Folder&rootFolder, const FileSystem::Folder&outFolder, StringFile&listFile, const String&typeName, const Objects::BaseCommand::Label&label, const String&pretext = "")
+	void WriteDocumentation(const FileSystem::Folder&rootFolder, const FileSystem::Folder&outFolder, StringFile&listFile, const String&typeName, const Objects::Command::Base::Label&label, const String&pretext = "")
 	{
 		LogEvent(EventSignificance::Uncommon, "Documenting "+typeName);
 
@@ -1230,8 +1238,29 @@ namespace LocalApplicationInterface
 
 namespace ApplicationInterface
 {
-	void	OnVanish(const Objects::PWorldEntity&e, Objects::RemovalType t)
+	void	OnVanish(const Objects::PWorldEntity&e, Objects::RemovalType t, bool wasGhost)
 	{
+		#ifdef HAS_WINDOW
+			if (Objects::selectedEntity == e)
+			{
+				Objects::Deselect(Network::ControlEnabled());
+			}
+		#endif
+		if (wasGhost)
+			return;
+
+		#ifdef HAS_WINDOW
+
+			Objects::PTurretBase b = e->GetTurretBase();
+			if (b)
+			{
+				if (b->turret->continuousRotation)
+					Objects::Renderer::animatedTurrets.FindAndErase(b);
+				if (b->turret->CanAttack())
+					Objects::Renderer::attackers.FindAndErase(e);
+			}
+		#endif
+
 		if (Network::amSpectator)
 			return;
 		if (t == Objects::RemovalType::UncontrolledExplosion && e->isOwnedByMe)
@@ -1266,6 +1295,45 @@ namespace ApplicationInterface
 
 	void	OnAppear(const Objects::PWorldEntity&e)
 	{
+		#ifdef HAS_WINDOW
+			if (!e->ambientSound.IsCreated())
+			{
+				OpenAL::WaveBuffer wbo = Objects::Renderer::GetAmbientSound(*e);
+				//Renderer::GetAmbientSoundOf(e->GetTypeName(),e->GetCTypeName());
+				if (wbo.IsNotEmpty())
+				{
+					e->ambientSound.Create();
+					e->ambientSound.EnqueueWaveBuffer(wbo);
+					e->ambientSound.SetReferenceDistance(3.f,1.5f - (e->IsMobile()? 0.5f : 0.f));
+					static Random random;
+					e->ambientSound.SetPitch(1.f + random.NextFloat(-0.02f,0.02f));
+					#ifdef _DEBUG
+						e->ambientSound.name = e->GetName()+".ambient";
+						e->ambientSound.reference = e.get();
+					#endif
+				}
+			}
+
+			if (e->ambientSound.IsCreated())
+			{
+				e->ambientSound.SetPosition(e->GetWorldPosition());
+				e->ambientSound.SetVelocity(float3());
+				e->ambientSound.SetGain(e->GetSoundLevel());
+				e->ambientSound.SetLooping(true);
+				e->ambientSound.Play();
+			}
+
+
+			Objects::PTurretBase b = e->GetTurretBase();
+			if (b && b->turret->continuousRotation 
+				#ifndef NO_HIBERNATION
+					&& !e->ToHibernating()->IsHibernating()
+				#endif
+			)
+				Objects::Renderer::animatedTurrets << b;
+			if (b && b->turret->CanAttack())
+				Objects::Renderer::attackers << e;
+		#endif
 		//fix: doesn't matter if e->isOwnedByMe is true or not. Must ALWAYS remove existing markers if we see the original again.
 		//reason for this problem: entity ownership change causes vanishing, and thus ghost creation, which was not removed here, because e was suddenly mine.
 		Objects::Marker*m = Objects::Marker::FindByReference(e->id);
@@ -1319,19 +1387,168 @@ namespace ApplicationInterface
 	}
 
 
-	void OnSelectionChange(bool stateChangeOnly)
+
+	void	UpdateSelection(bool force)
 	{
-		if (stateChangeOnly)
-		{
-			if (RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase || !Animation::AllDone())
-				return;
-		}
-		else
-			Objects::CommandGroup::CollapseAll();
-		Objects::Renderer::ClearSmokeTrailHighlighting();
+		if (!force && (RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase || !Animation::AllDone()))
+			return;
 
 		Tutorial::lastDelayingEvent = timer.Now();
-		//bool strip = true;
+
+	#ifndef ONE_COMPOUND_PER_FACTION
+		if (Objects::selectedVehicle)
+		{
+			//if (Objects::selectedVehicle->tasks.IsNotEmpty() && Objects::selectedVehicle->tasks.Peek().job && Objects::selectedVehicle->tasks.Peek().job->mineralCostLeft)
+			Objects::ResourceVector change;
+			const Objects::ResourceVector&current = Objects::selectedVehicle->currentStorage;
+			const Objects::ResourceVector max = Objects::selectedVehicle->GetMaxStorageCapacity();
+			int sum = 0;
+			foreach(Objects::selectedVehicle->myTasks, t)
+				if (t->job)
+					sum += t->job->resourceCostLeft;
+			if (sum)
+			{
+				change.level[Objects::Resource::Minerals] -= sum;//-Objects::selectedVehicle->tasks.Peek().job->mineralCostLeft;
+				UI::Update(
+				#ifndef NO_HIBERNATION
+					Objects::selectedVehicle->GetUplinkTraffic(),
+				#endif
+					current, max, change);
+			}
+			else
+				UI::Update(
+				#ifndef NO_HIBERNATION
+					Objects::selectedVehicle->GetUplinkTraffic(),
+				#endif
+					current, max);
+		}
+		else if (Objects::selectedEntity && Objects::selectedEntity->IsMobile())
+		{
+			FATAL__("not implemented yet");
+		}
+		else if (Objects::selectedEntity && Objects::selectedEntity->IsStructure())
+		{
+			if (Objects::selectedEntity->health > 0)	//ghosts have no health and no network
+			{
+				const Objects::Compound&n = Objects::compounds[To<Objects::Structure>::Cast(Objects::selectedEntity)->compoundID];
+				Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::DynamicCast(Objects::selectedEntity);
+				if (ws)
+				{
+					Objects::ResourceVector change, storage, max;
+					ws->GetResourceVector(change, storage, max);
+					UI::Update(
+					#ifndef NO_HIBERNATION
+						Objects::selectedEntity->GetUplinkTraffic(),
+					#endif
+						n.total.storage, n.total.storageMax, n.total.supply - n.total.demand, storage/*,change, ws->IsEnabled()*/);
+				}
+				else
+					UI::Update(
+					#ifndef NO_HIBERNATION
+						Objects::selectedEntity->GetUplinkTraffic(),
+					#endif
+						n.total.storage, n.total.storageMax, n.total.supply - n.total.demand);
+			}
+			else
+				UI::HideExtraGauges();
+
+
+		}
+		else
+			UI::HideExtraGauges();
+
+	#else
+
+		Objects::PFaction f;
+		if (Objects::selectedEntity)
+			f = Objects::selectedEntity->owner;
+		else
+			f = Objects::Faction::mine;
+		if (f)
+		{
+			if (f->compound.allStructures.IsEmpty())
+			{
+				bool any = false;
+				Objects::structures.Foreach([&any, f](const Objects::PStructure&s)
+				{
+					if (s->owner == f)
+						any = true;
+				});
+				if (any)	//prevent stack overflow
+					Objects::RefreshCompoundCoverage(0);
+			}
+		}
+		if (f)
+		{
+			const Objects::Compound&compound = f->compound;
+			const Objects::ResourceVector&current = compound.total.storage;
+			const Objects::ResourceVector&max = compound.total.storageMax;
+			Objects::ResourceVector change = compound.total.supply - compound.total.demand;
+			Objects::ForeachMobileWorldEntity([f, &change](const Objects::PMobileEntity&v)
+			{
+				if (v->owner != f)
+					return;
+				if (v->myTasks.IsEmpty() || !v->myTasks.Peek().job)
+					return;
+				int opSpeed = v->GetOperationSpeed(v->myTasks.Peek().job->GetOperationAffinity());
+				if (!opSpeed)
+					return;
+				change.level[Objects::Resource::Minerals] -= std::min(opSpeed, v->myTasks.Peek().job->resourceCostLeft);
+
+			}, false);
+
+		#ifndef NO_SATELLITES
+			for (const auto&sat : Objects::satellites)
+			{
+				if (sat->owner == f && sat->RequiresFuel())
+				{
+					change.level[Objects::Resource::Fuel] -= sat->GetFuelConsumptionPerRound() + sat->GetExtraFuelDemand();
+				}
+			}
+		#endif
+
+			Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::DynamicCast(Objects::selectedEntity);
+			if (ws)
+			{
+				Objects::ResourceVector _change, storage, _max, zero;
+				ws->GetResourceVector(_change, storage, _max);
+				UI::Update(
+				#ifndef NO_HIBERNATION
+					Objects::selectedEntity->GetUplinkTraffic(),
+				#endif
+					current, max, change, storage);
+			}
+			else
+				UI::Update(
+				#ifndef NO_HIBERNATION
+					Objects::selectedEntity ? Objects::selectedEntity->GetUplinkTraffic() : 0,
+				#endif
+					current, max, change);
+
+
+		}
+		else
+			UI::HideExtraGauges();
+
+
+	#endif
+
+
+
+		UI::HexGrid::Configure(Objects::selectedEntity);
+		StatePanel::SignalChange();
+
+	}
+
+	void	HandleLocalEntityStatusChange()
+	{
+		UpdateSelection(false);
+	}
+
+
+	void	HandleLocalSelectionChange()
+	{
+		Objects::Command::CommandGroup::CollapseAll();
 		if (Objects::selectedEntity)
 		{
 			Objects::PTurretBase base = Objects::selectedEntity->GetTurretBase();
@@ -1351,165 +1568,13 @@ namespace ApplicationInterface
 					Tutorial::ShowMessage("Hostile Ghosts");
 			}
 
-			if (!stateChangeOnly)
+			if (Objects::selectedMobileEntity && Objects::selectedMobileEntity->IsAboveGrid())
 			{
-				if (Objects::selectedMobileEntity && Objects::selectedMobileEntity->IsAboveGrid())
-				{
-					Camera::TargetSkyOrbit();
-				}
-				else
-					Camera::TargetGroundOrbit();
-
-			}
-		}
-		//if (strip)
-			//Grid::visibleOrbitGrid.StripColor();
-
-		#ifndef ONE_COMPOUND_PER_FACTION
-		if (Objects::selectedVehicle)
-		{
-			//if (Objects::selectedVehicle->tasks.IsNotEmpty() && Objects::selectedVehicle->tasks.Peek().job && Objects::selectedVehicle->tasks.Peek().job->mineralCostLeft)
-			Objects::ResourceVector change;
-			const Objects::ResourceVector&current = Objects::selectedVehicle->currentStorage;
-			const Objects::ResourceVector max = Objects::selectedVehicle->GetMaxStorageCapacity();
-			int sum = 0;
-			foreach (Objects::selectedVehicle->myTasks,t)
-				if (t->job)
-					sum += t->job->resourceCostLeft;
-			if (sum)
-			{
-				change.level[Objects::Resource::Minerals] -= sum;//-Objects::selectedVehicle->tasks.Peek().job->mineralCostLeft;
-				UI::Update(
-						#ifndef NO_HIBERNATION
-							Objects::selectedVehicle->GetUplinkTraffic(),	
-						#endif
-							current,max,change);
+				Camera::TargetSkyOrbit();
 			}
 			else
-				UI::Update(
-						#ifndef NO_HIBERNATION
-							Objects::selectedVehicle->GetUplinkTraffic(),
-						#endif
-						current,max);
+				Camera::TargetGroundOrbit();
 		}
-		else if (Objects::selectedEntity && Objects::selectedEntity->IsMobile())
-		{
-			FATAL__("not implemented yet");
-		}
-		else if (Objects::selectedEntity && Objects::selectedEntity->IsStructure())
-		{
-			if (Objects::selectedEntity->health > 0)	//ghosts have no health and no network
-			{
-				const Objects::Compound&n = Objects::compounds[To<Objects::Structure>::Cast(Objects::selectedEntity)->compoundID];
-				Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::DynamicCast(Objects::selectedEntity);
-				if (ws)
-				{
-					Objects::ResourceVector change, storage, max;
-					ws->GetResourceVector(change, storage, max);
-					UI::Update(
-						#ifndef NO_HIBERNATION
-							Objects::selectedEntity->GetUplinkTraffic(), 
-						#endif
-						n.total.storage, n.total.storageMax, n.total.supply - n.total.demand, storage/*,change, ws->IsEnabled()*/);
-				}
-				else
-					UI::Update(
-						#ifndef NO_HIBERNATION
-							Objects::selectedEntity->GetUplinkTraffic(),
-						#endif
-						n.total.storage, n.total.storageMax, n.total.supply - n.total.demand);
-			}
-			else
-				UI::HideExtraGauges();
-
-
-		}
-		else
-			UI::HideExtraGauges();
-
-		#else
-			
-			Objects::PFaction f;
-			if (Objects::selectedEntity)
-				f = Objects::selectedEntity->owner;
-			else
-				f = Objects::Faction::mine;
-			if (f)
-			{
-				if (f->compound.allStructures.IsEmpty())
-				{
-					bool any = false;
-					Objects::structures.Foreach([&any,f](const Objects::PStructure&s)
-					{
-						if (s->owner == f)
-							any = true;
-					});
-					if (any)	//prevent stack overflow
-						Objects::RefreshCompoundCoverage(0);
-				}
-			}
-			if (f)
-			{
-				const Objects::Compound&compound = f->compound;
-				const Objects::ResourceVector&current = compound.total.storage;
-				const Objects::ResourceVector&max = compound.total.storageMax;
-				Objects::ResourceVector change = compound.total.supply - compound.total.demand;
-				Objects::ForeachMobileWorldEntity([f,&change](const Objects::PMobileEntity&v)
-				{
-					if (v->owner != f)
-						return;
-					if (v->myTasks.IsEmpty() || !v->myTasks.Peek().job)
-						return;
-					int opSpeed = v->GetOperationSpeed(v->myTasks.Peek().job->GetOperationAffinity());
-					if (!opSpeed)
-						return;
-					change.level[Objects::Resource::Minerals] -= std::min(opSpeed, v->myTasks.Peek().job->resourceCostLeft);
-
-				},false);
-
-				#ifndef NO_SATELLITES
-				for (const auto&sat : Objects::satellites)
-				{
-					if (sat->owner == f && sat->RequiresFuel())
-					{
-						change.level[Objects::Resource::Fuel] -= sat->GetFuelConsumptionPerRound() + sat->GetExtraFuelDemand();
-					}
-				}
-				#endif
-
-				Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::DynamicCast(Objects::selectedEntity);
-				if (ws)
-				{
-					Objects::ResourceVector _change, storage, _max,zero;
-					ws->GetResourceVector(_change, storage, _max);
-					UI::Update(
-						#ifndef NO_HIBERNATION
-							Objects::selectedEntity->GetUplinkTraffic(), 
-						#endif
-						current, max, change,storage);
-				}
-				else
-					UI::Update(
-						#ifndef NO_HIBERNATION
-							Objects::selectedEntity ? Objects::selectedEntity->GetUplinkTraffic() : 0, 
-						#endif
-						current, max, change);
-
-
-			}
-			else
-				UI::HideExtraGauges();
-
-
-		#endif
-
-
-
-		UI::HexGrid::Configure(Objects::selectedEntity);
-		StatePanel::SignalChange();
-
-		if (RuntimeConfig::tutorialMode)
-			Tutorial::SignalEntitySelectionChange(stateChangeOnly);
 	}
 	#endif
 }
@@ -1526,7 +1591,7 @@ namespace ApplicationInterface
 		float3 center = Camera::scene.GetAbsoluteLocation() - Camera::scene.GetViewingDirection() * shadowRadius;
 		Vec::setLen(center,Grid::ToRadius(0));
 
-		const float3&up = Grid::GetSunDirection();
+		const float3&up = Lighting::GetSunDirection();
 		Mat::makeAxisSystem(center,-up,2,shadowCamera.viewInvert);
 		Mat::invertSystem(shadowCamera.viewInvert,shadowCamera.view);
 		shadowCamera.UpdateProjection2(-shadowRadius,-shadowRadius,shadowRadius,shadowRadius,100.f,-100.f);
@@ -1547,20 +1612,13 @@ namespace ApplicationInterface
 				cascade
 			#endif
 		);
-		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-		{
-			Grid::TFamily::TData&dat = Grid::high.family[k].normal;
-			if (dat.terrain.shadowInstruction.shader.IsSet())
-				display.Render(dat.terrain.shadowInstruction);
-			if (dat.overlay.shadowInstruction.shader.IsSet())
-				display.Render(dat.overlay.shadowInstruction);
-		}
+		VisualTerrain::RenderShadows();
 	}
 
 	#ifdef CASCADING_SHADOW
 	void RenderShadows(float shadowRadius, index_t cascade)
 	{
-		RenderShadows(shadowRadius,Objects::shadowMap[cascade],Objects::shadowCamera[cascade],Objects::shadowMatrix[cascade],cascade);
+		RenderShadows(shadowRadius,Lighting::GPUResources::shadowMap[cascade],Lighting::GPUResources::shadowCamera[cascade],Lighting::GPUResources::shadowMatrix[cascade],cascade);
 
 	}
 	#endif
@@ -1574,33 +1632,16 @@ static Timer::Time	capTime = timer.Now();
 
 bool loop()
 {
-
-
+	try
+	{
+		GlobalEvents::frameBegin();
 
 	#ifndef HAS_WINDOW
 		Sleep(50);
 		AI::Process(0.5f);
 	#else
 		DebugCheckCamera();
-		Explosions::Update(Engine::timing.delta);
-		if (RuntimeConfig::tutorialMode)
-			Tutorial::ProcessTriggers(Engine::timing.delta);
 
-		if (!Engine::mouse.buttons.pressed)		
-		{
-			if (!Tutorial::movementTutorialIssued && Objects::selectedEntity && Objects::selectedEntity->isOwnedByMe && Objects::selectedEntity->IsMobile() && timer.GetSecondsSince(Tutorial::lastDelayingEvent) > 3.f)
-			{
-				Tutorial::movementTutorialIssued = true;
-				Tutorial::ShowMessage("Move To");
-				Tutorial::lastDelayingEvent = timer.Now();
-			}
-			if (!Tutorial::endRoundTutorialIssued && Network::client.IsConnected() && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && timer.GetSecondsSince(Tutorial::lastDelayingEvent) > 10.f)
-			{
-				Tutorial::endRoundTutorialIssued = true;
-				Tutorial::ShowMessage("End Round");
-				Tutorial::lastDelayingEvent = timer.Now();
-			}
-		}
 
 		#if 1
 		{
@@ -1628,30 +1669,12 @@ bool loop()
 	#endif
 
 
-	Network::Update();
 
-
-	Animation::Update();
 
 
 
 
 	#ifdef HAS_WINDOW
-		ConfigurationMode::Tick();
-
-		bool alwaysDay = RuntimeConfig::FromFile::alwaysDay && !Camera::autoRotation;
-
-		if (!alwaysDay)
-			Grid::PerFrameUpdateSunDirection();
-
-
-		Camera::ProgressRotation();
-
-
-
-		//Resolution windowSize = display.clientSize();
-	
-		//bool rebuildCamera = false;
 
 		if (!GUI::IsModal() && !Camera::locked)
 		{
@@ -1712,22 +1735,15 @@ bool loop()
 			}
 		}
 
-
-		if (alwaysDay)
-			Grid::UpdateSunDirection(sunDirection);
+		GlobalEvents::frameAfterCamera();	//camera is in frameBegin()
 
 
-		Objects::Renderer::AdvanceTurretAnimations();
-
-		World::RecompileIfNecessary();
-		{
-
-	//		static const float shadowRadius = 30.f;
 		
-			//center = float3();
-			//center.Normalized0();
+
+		
+		{
 			#ifdef CASCADING_SHADOW
-				for (index_t i = 0; i < Objects::NumCascades; i++)
+				for (index_t i = 0; i < Lighting::NumCascades; i++)
 				{
 					RenderShadows(-20.f + 30.f * (1 << i) ,i);
 				}
@@ -1738,7 +1754,6 @@ bool loop()
 			Objects::Renderer::EndShadowRendering();
 		}
 
-		AudioInterface::UpdateListener(Camera::scene);
 		display.pick(Camera::scene);
 		static Engine::Frustum<> frustum;
 		Camera::scene.GetFrustum(frustum);
@@ -1752,8 +1767,6 @@ bool loop()
 		{
 			//Atmosphere::Render(Grid::ToRadius(-Grid::CellStack::HalfRange),Grid::ToRadius(Grid::CellStack::HalfRange-1), Camera::scene.GetAbsoluteLocation());
 			Atmosphere::Render(Camera::scene);
-			if (Grid::SeeThrough::IsEnabled() /*&& !Objects::selectedEntity*/)
-				Grid::SeeThrough::Update(Grid::SeeThrough::IsEnabled(), Grid::SeeThrough::LocateCamera());
 
 	//		const Grid::Resource&resource = Grid::Resource::all[Objects::activeResource];
 
@@ -1788,8 +1801,8 @@ bool loop()
 			{
 				display.SetDepthTest(true,true);
 				display.SetBlendMode(Engine::BlendMode::None);
-				Grid::UpdatePlanetRenderingParameters(Grid::ToRadiusf(float(Objects::selectedEntity->location.height)+0.1f));
-				Grid::low.RenderCell(Objects::selectedEntity->location.stackID);
+				VisualTerrain::UpdatePlanetRenderingParameters(Grid::ToRadiusf(float(Objects::selectedEntity->location.height)+0.1f));
+				VisualTerrain::RenderLowCell(Objects::selectedEntity->location.stackID);
 
 				//Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(Objects::selectedEntity);
 				if (Objects::selectedMobileEntity)
@@ -1798,8 +1811,8 @@ bool loop()
 					{
 						foreach (Objects::selectedMobileEntity->myTasks.Peek().foci,f)
 						{
-							Grid::UpdatePlanetRenderingParameters(Grid::ToRadiusf(float(f->target.height)+0.1f));
-							Grid::low.RenderCell(f->target.stackID);
+							VisualTerrain::UpdatePlanetRenderingParameters(Grid::ToRadiusf(float(f->target.height)+0.1f));
+							VisualTerrain::RenderLowCell(f->target.stackID);
 						}
 					}
 				}
@@ -1858,7 +1871,7 @@ bool loop()
 
 			Objects::Renderer::RenderProgressBars();
 
-			if (Objects::showArrow && !GUI::IsModal())
+			if (Objects::choiceVis.showArrow && !GUI::IsModal())
 			{
 	//			display.SetDepthTest(false, false);
 				bool includeWater = false;
@@ -1868,22 +1881,22 @@ bool loop()
 					if (Objects::selectedVehicle /*&& Objects::selectedVehicle->base->moveOnWater*/)
 						includeWater = true;
 				Grid::LCellIdI loc;
-				Objects::hasArrowCellTarget = GetLowCellUnderCursor(loc,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode);
-				if (Objects::hasArrowCellTarget && loc != Objects::arrowCellTarget.cellLocation)
-					Objects::arrowCellTarget = Objects::TrajectoryEndPoint(loc);
-				if (Objects::hasArrowCellTarget)
+				Objects::choiceVis.hasArrowCellTarget = GetLowCellUnderCursor(loc,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode);
+				if (Objects::choiceVis.hasArrowCellTarget && loc != Objects::choiceVis.arrowCellTarget.cellLocation)
+					Objects::choiceVis.arrowCellTarget = Objects::TrajectoryEndPoint(loc);
+				if (Objects::choiceVis.hasArrowCellTarget)
 				{
 				
 					if (Objects::activeCursorMode == Objects::CursorMode::AttackMode
 					 && 
 						(
-							(Objects::selectedMobileEntity && !Objects::selectedMobileEntity->CanHitFrom(Objects::selectedMobileEntity->GetLastPointOfOrigin(),Objects::arrowCellTarget))
+							(Objects::selectedMobileEntity && !Objects::selectedMobileEntity->CanHitFrom(Objects::selectedMobileEntity->GetLastPointOfOrigin(),Objects::choiceVis.arrowCellTarget))
 							||
-							(Objects::selectedEntity && !Objects::selectedEntity->CanHit(Objects::arrowCellTarget))
+							(Objects::selectedEntity && !Objects::selectedEntity->CanHit(Objects::choiceVis.arrowCellTarget))
 						)
 					 //!Objects::Turret::CanHit(Objects::selectedVehicle->GetFlatAttackRange(),Objects::selectedVehicle->GetLastPointOfOrigin(),Objects::arrowCellTarget)
 					 )
-						Objects::hasArrowCellTarget = false;
+						Objects::choiceVis.hasArrowCellTarget = false;
 				}
 
 			}
@@ -1912,14 +1925,14 @@ bool loop()
 
 			foreach(Objects::movementChoices, choice)
 			{
-				Grid::UpdatePlanetRenderingParameters(Grid::ToRadius(choice->location.height + choice->visualVerticalOffset));
-				Grid::low.RenderTransparentCell(choice->location.stackID);
+				VisualTerrain::UpdatePlanetRenderingParameters(Grid::ToRadius(choice->location.height + choice->visualVerticalOffset));
+				VisualTerrain::RenderTransparentLowCell(choice->location.stackID);
 			}
 			if (choice != InvalidIndex)
 			{
 				const Objects::Choice&ch = Objects::movementChoices[choice];
-				Grid::UpdatePlanetRenderingParameters(Grid::ToRadiusf(float(ch.location.height + ch.visualVerticalOffset) + 0.2f));
-				Grid::low.RenderCell(ch.location.stackID);
+				VisualTerrain::UpdatePlanetRenderingParameters(Grid::ToRadiusf(float(ch.location.height + ch.visualVerticalOffset) + 0.2f));
+				VisualTerrain::RenderLowCell(ch.location.stackID);
 			}
 		}
 
@@ -2159,7 +2172,11 @@ bool loop()
 	#endif
 		//textout << "direction: "<<scene.GetViewingDirection()<< nl;
 		//textout << "position: " << scene.location << nl;
-	
+	}
+	catch (const Except::Program::DataConsistencyFault&fault)
+	{
+		Network::SignalProtocolDisruption(fault.what());
+	}
 
 	return !application_shutting_down;// && !Engine::input.pressed[Key::Escape];
 }
@@ -2237,7 +2254,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 			{
 				TVec3<> normal;
-				if (Grid::high.TestHullIntersection(b, d, distance, normal, includeWater))
+				if (VisualTerrain::TestHullIntersection(b, d, distance, normal, includeWater))
 				{
 					#ifdef _DEBUG
 						Debug::lastClickPoint = b + d * distance;
@@ -2247,10 +2264,10 @@ void MyFatal(const FatalDescriptor&descriptor)
 					float3 p = b + d * distance;
 					float height = p.Length();
 					distance = std::numeric_limits<float>::max();
-					index_t stackID = Grid::low.TestGridIntersection(b, d, height, distance);
+					index_t stackID = VisualTerrain::TestLowGridIntersection(b, d, height, distance);
 					if (stackID != InvalidIndex)
 					{
-						result = Grid::LCellIdI((UINT32)stackID,Grid::FromRadius(height));
+						result = Grid::LCellIdI((UINT32)stackID,Grid::HeightFromRadius(height));
 
 						#ifdef _DEBUG
 							Debug::lastClickCell = result;
@@ -2310,7 +2327,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 						if (LocalApplicationInterface::DirectTo(Objects::selectedMobileEntity,target,0,Objects::CursorMode::Idle,false))
 						{
 							ApplicationInterface::SignalNewJob(Objects::selectedMobileEntity,ConstName::Job_Construct,Objects::activeStructureToPlace->GetCTypeName(),target);
-							Objects::arrowFromCell = target;
+							Objects::choiceVis.arrowFromCell = target;
 						}
 				}
 				else
@@ -2352,7 +2369,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 					bool selectionDone = false;
 					if (Objects::CommonCmd::IsModeActive(Objects::CursorMode::BuildBlockMode) || Objects::CommonCmd::IsModeActive(Objects::CursorMode::RemoveBlockMode))
 					{
-						if (Grid::high.TestHullIntersection(b, d, distance, normal,false))
+						if (VisualTerrain::TestHullIntersection(b, d, distance, normal,false))
 						{
 							if (Objects::selectedVehicle)
 							{
@@ -2366,24 +2383,24 @@ void MyFatal(const FatalDescriptor&descriptor)
 									if (Vec::dot(d, normal) > 0.5f)	//flat selection
 									{
 										stackID = Grid::high.Locate(d);
-										h = Grid::FromRadius(r);
+										h = Grid::HeightFromRadius(r);
 									}
 									else
 									{
 										stackID = Grid::high.Locate(d + normal*0.001f);
-										h = Grid::FloorFromRadius(r);
+										h = Grid::HeightFloorFromRadius(r);
 									}
 								}
 								else
 									if (Vec::dot(d, normal) > 0.5f)	//flat selection
 									{
 										stackID = Grid::high.Locate(d);
-										h = int(floor(Grid::FromRadiusf(r)-0.5f));
+										h = int(floor(Grid::HeightFromRadiusf(r)-0.5f));
 									}
 									else
 									{
 										stackID = Grid::high.Locate(d - normal*0.01f);
-										h = Grid::FloorFromRadius(r);
+										h = Grid::HeightFloorFromRadius(r);
 									}
 								String activity = "build";
 								if (Objects::CommonCmd::IsModeActive(Objects::CursorMode::RemoveBlockMode))
@@ -2425,17 +2442,17 @@ void MyFatal(const FatalDescriptor&descriptor)
 						{
 							distance = std::numeric_limits<float>::max();
 
-							if (Grid::high.TestHullIntersection(b, d, distance, normal,false))
+							if (VisualTerrain::TestHullIntersection(b, d, distance, normal,false))
 							{
 								float3 p = b + d * distance;
 								float height = p.Length();
 
 								distance = std::numeric_limits<float>::max();
 
-								index_t stackID = Grid::low.TestGridIntersection(b, d, height, distance);
+								index_t stackID = VisualTerrain::TestLowGridIntersection(b, d, height, distance);
 								if (stackID != InvalidIndex)
 								{
-									Grid::LCellIdI	target((UINT32)stackID,Grid::FromRadius(height));
+									Grid::LCellIdI	target((UINT32)stackID,Grid::HeightFromRadius(height));
 									if (target.height < Grid::CellStack::HalfRange && target.height >= -Grid::CellStack::HalfRange)
 									{
 										Objects::PWorldEntity e = Objects::GetEntity(target);
@@ -2535,17 +2552,17 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 	void ToggleSeeThrough()
 	{
-		bool enable = !Grid::SeeThrough::IsEnabled();
-		Grid::SeeThrough::Update(enable, Grid::SeeThrough::LocateCamera());
+		bool enable = !VisualTerrain::SeeThrough::IsEnabled();
+		VisualTerrain::SeeThrough::Update(enable, VisualTerrain::SeeThrough::LocateCamera());
 		if (enable)
 			Tutorial::ShowMessage("Clip Terrain");
 	}
 
 	void ViewDown()
 	{
-		if (Grid::SeeThrough::GetFocusPoint().height > -Grid::CellStack::HalfRange)
+		if (VisualTerrain::SeeThrough::GetFocusPoint().height > -Grid::CellStack::HalfRange)
 		{
-			Grid::SeeThrough::Update(true, Grid::SeeThrough::LocateCamera()-1);
+			VisualTerrain::SeeThrough::Update(true, VisualTerrain::SeeThrough::LocateCamera()-1);
 			Objects::UpdateChoices(Network::ControlEnabled());
 			Tutorial::ShowMessage("Clip Terrain");
 		}
@@ -2553,9 +2570,9 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 	void ViewUp()
 	{
-		if (Grid::SeeThrough::GetFocusPoint().height < Grid::CellStack::HalfRange)
+		if (VisualTerrain::SeeThrough::GetFocusPoint().height < Grid::CellStack::HalfRange)
 		{
-			Grid::SeeThrough::Update(true, Grid::SeeThrough::LocateCamera() + 1);
+			VisualTerrain::SeeThrough::Update(true, VisualTerrain::SeeThrough::LocateCamera() + 1);
 			Objects::UpdateChoices(Network::ControlEnabled());
 			Tutorial::ShowMessage("Clip Terrain");
 		}
@@ -3270,9 +3287,9 @@ namespace ApplicationInterface
 		)
 		{
 			bool newly = Objects::activeCursorMode == Objects::CursorMode::Idle;
-			Objects::arrowFromCell = Objects::selectedMobileEntity->GetLastPointOfOrigin();
-			Objects::arrowFrom = Grid::low.cells[Objects::arrowFromCell.stackID].centerVertex.xyz * ( Grid::ToRadius(Objects::arrowFromCell.height));
-			Objects::showArrow = true;
+			Objects::choiceVis.arrowFromCell = Objects::selectedMobileEntity->GetLastPointOfOrigin();
+			Objects::choiceVis.arrowFrom = Grid::low.cells[Objects::choiceVis.arrowFromCell.stackID].centerVertex.xyz * ( Grid::ToRadius(Objects::choiceVis.arrowFromCell.height));
+			Objects::choiceVis.showArrow = true;
 			Objects::activeCursorMode = Objects::CursorMode::PlaceStructureMode;
 			if (newly)
 				UI::RefreshButtonState();
@@ -3285,7 +3302,7 @@ namespace ApplicationInterface
 		if (Objects::activeCursorMode == Objects::CursorMode::PlaceStructureMode)
 		{
 			Objects::activeCursorMode = Objects::CursorMode::Idle;
-			Objects::showArrow = false;
+			Objects::choiceVis.showArrow = false;
 			UI::RefreshButtonState();
 		}
 	}
@@ -3547,6 +3564,36 @@ int main( int argc, const char* argv[])
 	#endif
 
 
+
+	//tests
+	//{
+	//	Random random;
+	//	for (int i = 0; i < 1000; i++)
+	//	{
+	//		BaseGrid::FamiliesChanged ch;
+	//		ASSERT__(ch.begin() == ch.end());
+	//		count_t cnt = 0;
+	//		for (int j = 0; j < 10; j++)
+	//		{
+	//			index_t at = random.NextIndex(BaseGrid::NumFamilies);
+	//			if (!ch.changed[at])
+	//				cnt++;
+	//			ch.changed[at] = true;
+	//		}
+	//		count_t newCnt = 0;
+	//		for (auto it = ch.begin(); it != ch.end(); ++it)
+	//		{
+	//			ASSERT__(ch.changed[*it]);
+	//			newCnt++;
+	//		}
+	//		ASSERT_EQUAL__(cnt,newCnt);
+	//	}
+	//	FATAL__("Test passed. Remove test");
+	//}
+
+
+
+
 	try
 	{
 		LogEvent(EventClass::Preset::uncommon,nullptr,"Starting client v" PRODUCT_VERSION);
@@ -3569,10 +3616,6 @@ int main( int argc, const char* argv[])
 		}
 
 
-		NiceName::Load();
-		ScriptCache::Create();
-
-		Network::LoadWorldAccessTokens();
 
 		{
 
@@ -3606,11 +3649,13 @@ int main( int argc, const char* argv[])
 
 			StartConfig::Finish();
 		}
-		LoadHosts();
-
 
 		applicationStart = timer.Now();
-
+		Boot();
+	#ifdef HAS_WINDOW
+		GlobalEvents::invalidateObjectCache << ApplicationInterface::HandleLocalEntityStatusChange;
+		Objects::onSelectionChanged << ApplicationInterface::HandleLocalSelectionChange;
+	#endif
 
 
 
@@ -3705,31 +3750,37 @@ int main( int argc, const char* argv[])
 		#endif
 
 
-		
-		Grid::Create0();
-		Objects::Create();
-		Grid::Create1();
+		ClientGrid::Create();
+
+		#ifdef HAS_WINDOW
+			Lighting::Create();
+			VisualTerrain::Create();		//egg-chicken
+			Objects::Renderer::Create();	//chicken-egg
+
+			ConfigurationMode::Create();
+			Objects::Command::RefreshCommands(false);
+		#endif
+
 
 
 		#ifdef HAS_WINDOW
+			Objects::CreateComponents();
+
 			Camera::Setup(display.pixelAspect());	//creates a menu item, for which Objects::Create() must have been called
 
 
 			Explosions::Create();
+			Objects::Commands::DefineAll();
 		#endif
 		Animation::Create();
-
 
 		Network::Setup();
 
 		#ifdef HAS_WINDOW
+			Camera::Create();
 			UI::Create();
 		#endif
 
-
-		//#ifdef WHITE_STYLE
-		//	display.SetBackbufferClearColor(1,1,1,0);
-		//#endif
 
 
 		#ifdef HAS_WINDOW
@@ -3836,27 +3887,27 @@ int main( int argc, const char* argv[])
 					{
 						LogEvent(EventSignificance::Uncommon, "Rendering type images to "+String(imageTarget.GetLocation())+ "...");
 						Objects::GeometryImage::resultResolution = 1024;
-						Objects::EntityCommand container;
+						Objects::Command::EntityCommand container;
 						Image image;
 						FileSystem::Folder folder(imageTarget);
 						foreach (Objects::structurePrototypes,s)
 						{
 							LogEvent(EventSignificance::Uncommon, "Capturing "+(*s)->GetTypeName());
-							Objects::EntityCommand::UpdateTexture(container,*s,true);
+							Objects::Command::EntityCommand::UpdateTexture(container,*s,true);
 							FinishRendering(folder, container.texture, (*s)->GetTypeName());
 						}
 
 						foreach (Objects::Component::allTurretComponents,c)
 						{
 							LogEvent(EventSignificance::Uncommon, "Capturing "+(*c)->typeName);
-							Objects::EntityConstructionCommand::UpdateTexture(container,nullptr,*c);
+							Objects::Command::EntityConstructionCommand::UpdateTexture(container,nullptr,*c);
 							FinishRendering(folder, container.texture, (*c)->typeName);
 						}
 
 						foreach (Objects::Component::baseComponents,c)
 						{
 							LogEvent(EventSignificance::Uncommon, "Capturing "+(*c)->typeName);
-							Objects::EntityConstructionCommand::UpdateTexture(container,*c,nullptr);
+							Objects::Command::EntityConstructionCommand::UpdateTexture(container,*c,nullptr);
 							FinishRendering(folder, container.texture, (*c)->typeName);
 						}
 					}
@@ -3878,14 +3929,14 @@ int main( int argc, const char* argv[])
 						unitList << "==Structures=="<<nl;
 						foreach (Objects::structurePrototypes,s)
 						{
-							Objects::BaseCommand::Label label;
+							Objects::Command::Base::Label label;
 							(*s)->DescribeType(label,0xFFFFFFFF & ~Objects::WorldEntity::DescIncludeName & ~Objects::WorldEntity::DescIncludeCurrentHealth);
 							String pretext;
 							auto tb = (*s)->GetTurretBase();
 							if (tb)
 							{
-								label.rawLines.Insert(0).first = "Based on [[units/turrets/"+String(MakeValidFilename(tb->turret->typeName))+"|"+tb->turret->typeName+"]] turret";
-								label.rawLines.First().second = true;
+								label.Insert(0).first = "Based on [[units/turrets/"+String(MakeValidFilename(tb->turret->typeName))+"|"+tb->turret->typeName+"]] turret";
+								label.SetBrief(0);
 							}
 							WriteDocumentation(rootFolder, structureFolder,unitList, (*s)->GetTypeName(), label,pretext);
 						}
@@ -3893,7 +3944,7 @@ int main( int argc, const char* argv[])
 						unitList << "==Turrets=="<<nl;
 						foreach (Objects::Component::allTurretComponents,c)
 						{
-							Objects::BaseCommand::Label label;
+							Objects::Command::Base::Label label;
 							(*c)->DescribeType(label,false,false,"",Objects::OwnerParameter());
 							WriteDocumentation(rootFolder, turretFolder,unitList, (*c)->typeName, label);
 						}
@@ -3901,7 +3952,7 @@ int main( int argc, const char* argv[])
 						unitList << "==Vehicle Bases=="<<nl;
 						foreach (Objects::Component::baseComponents,c)
 						{
-							Objects::BaseCommand::Label label;
+							Objects::Command::Base::Label label;
 							(*c)->DescribeType(label,false,false,Objects::OwnerParameter());
 							WriteDocumentation(rootFolder, vbaseFolder,unitList, (*c)->typeName, label);
 						}
@@ -3935,14 +3986,16 @@ int main( int argc, const char* argv[])
 			LineRenderer::Destroy();
 			SurfaceRenderer::Destroy();
 			AudioInterface::Destroy();
+			Objects::Renderer::Destroy();
+			Objects::Command::VisualCommand::textureMap.Clear();
+			Objects::DestroyComponents();
 		#endif
-		Grid::Destroy();
-		Objects::Destroy();
+		ClientGrid::Destroy();
 		Animation::Destroy();
-		ScriptCache::Destroy();
 
 		application_shutting_down = true;
 
+		GlobalEvents::applicationTerminate();
 
 
 		#ifdef HAS_WINDOW

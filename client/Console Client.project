@@ -3,6 +3,7 @@
 	<source path="./">
 		<exclude file="visual.rc2" />
 		<exclude find="consensusLink" />
+		<exclude dir="visual" />
 	</source>
 	<macro name="CLIENT"/>
 	<referenceProject name="DeltaWorks" />

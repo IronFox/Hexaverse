@@ -3,16 +3,22 @@
 #include "../version.h"
 #include "animation.h"
 #include "clientRuntimeConfig.h"
-#include "world.h"
+#include "visual/world.h"
 #include "cameraControl.h"
-#include "ui.h"
-#include "tutorial.h"
-#include "dialog.h"
+#include "visual/ui.h"
+#include "visual/tutorial.h"
+#include "visual/dialog.h"
 #include "ai.h"
 #include "clientRuntimeConfig.h"
 #include "timelapse.h"
 #include "configurationMode.h"
 #include <scriptCache.h>
+#include "gridControl.h"
+#include "visual/objectChoices.h"
+#include "visual/terrain.h"
+#include <grid/resources.h>
+#include "clientEvents.h"
+#include <io/string_file.h>
 
 
 //#define DEBUG_SERVER_LIST	//enable to generate very long artificial server list
@@ -57,6 +63,31 @@ namespace Network
 	bool			newRoundRequested = false;
 
 
+
+	
+	void LoadHosts()
+	{
+		StringFile hosts;
+		if (hosts.Open(RuntimeConfig::ConfigFile("hosts.txt")))
+		{
+			String host;
+			while (hosts >> host)
+				ServerDiscovery::RegisterNewHost(Network::ServerAddress(host),false, false);
+		}
+	}
+
+	void	SaveHosts()
+	{
+		StringFile hosts;
+		if (hosts.Create(RuntimeConfig::ConfigFile("hosts.txt")))
+		{
+			static Buffer0<Network::ServerAddress>	 urls;
+			ServerDiscovery::ListNonAutoAttempts(urls);
+			foreach (urls,url)
+				hosts << url->host << ':' << url->basePort << nl;
+			hosts.Close();
+		}
+	}
 
 	void			LoadScript(const SHA256::HashContainer&id)
 	{
@@ -364,10 +395,9 @@ namespace Network
 	}
 
 
-
 	static void ApplyPlanetConfig(const Grid::TSharedPlanetConfig&config)
 	{
-		config.Apply();
+		ClientGrid::Apply(config);
 	}
 
 
@@ -383,7 +413,7 @@ namespace Network
 
 		roundTimer = -1;
 
-		Objects::FlushAllData();
+		GlobalEvents::FlushObjects();
 		Network::gameProgress.gameOver = false;
 		Network::gameProgress.gameWon = false;
 		Network::gameProgress.status = "";
@@ -400,15 +430,12 @@ namespace Network
 
 		if (alsoFlushWorld)
 		{
-			Grid::FlushAllData();
-			Grid::empZonesLocked = 0;
-			Grid::empZonesUnlocked = ~Grid::empZonesLocked;
+			GlobalEvents::terrainFlush();
 			RuntimeConfig::gameGoal = RuntimeConfig::GameGoal();
 			ApplyPlanetConfig(Grid::TSharedPlanetConfig());
 		}
 
 		#ifdef HAS_WINDOW
-			Objects::Renderer::ClearSmokeTrails();
 			UI::EventLog::Clear();
 
 			amLocated = false;
@@ -498,7 +525,7 @@ namespace Network
 				#endif
 				BYTE family = delta.familyAndLastFlag & 0x7F;
 				bool last = (delta.familyAndLastFlag & 0x80) != 0;
-				Grid::actualWorld.ApplyFamilyDelta(family,delta.data0,false,true);
+				World::actual.BeginChangeSequence(0).ApplyFamilyDelta(family,delta.data0,false,true);
 
 				#ifdef HAS_WINDOW
 						World::allowRecompilation = last && gameHasBegun;
@@ -582,8 +609,10 @@ namespace Network
 			#endif
 			if (vc.state.entityState.timestamp.rightNow)
 			{
-				if (!isOwnedByMe)
-					UI::HexGrid::RefreshContacts();
+				#ifdef HAS_WINDOW
+					if (!isOwnedByMe)
+						UI::HexGrid::RefreshContacts();
+				#endif
 			}
 			else
 			{
@@ -603,8 +632,8 @@ namespace Network
 			#endif
 
 			//#ifdef HAS_WINDOW
-			//	if (Grid::actualWorld.lightingOutdated && World::allowRecompilation)
-			//		Grid::actualWorld.UpdateLighting();
+			//	if (World::actual.lightingOutdated && World::allowRecompilation)
+			//		World::actual.UpdateLighting();
 			//#endif
 
 			Objects::PStructure s = Objects::SpawnStructure(Network::ResolveFaction(sc.owner),  sc.state.entityState.id,sc.state.entityState.location,sc.typeName, sc.state.entityState.timestamp.rightNow, Network::haveID && Network::myID == sc.owner);
@@ -620,8 +649,10 @@ namespace Network
 			}
 			else
 			{
-				if (!s->isOwnedByMe)
-					UI::HexGrid::RefreshContacts();
+				#ifdef HAS_WINDOW
+					if (!s->isOwnedByMe)
+						UI::HexGrid::RefreshContacts();
+				#endif
 			}
 		}
 
@@ -692,8 +723,10 @@ namespace Network
 					#endif
 				}
 
-				if (!e->isOwnedByMe)
-					UI::HexGrid::RefreshContacts();
+				#ifdef HAS_WINDOW
+					if (!e->isOwnedByMe)
+						UI::HexGrid::RefreshContacts();
+				#endif
 			}
 			else
 			{
@@ -778,7 +811,7 @@ namespace Network
 			#ifdef HAS_WINDOW
 				if (amSpectator)
 				{
-					Grid::actualWorld.OverrideVisibility(1);
+					World::actual.FlushAndValidateSensory(1);
 
 				}
 			#endif
@@ -910,7 +943,7 @@ namespace Network
 			if (u.timestamp.rightNow)
 			{
 				#ifdef HAS_WINDOW
-					Grid::UpdateResourceMap(u.resourceName,u.cells);
+					Grid::UpdateResourceMap(u.resourceName,u.cells,Grid::ResourceDiscovery::client);
 				#endif
 			}
 			else
@@ -967,9 +1000,7 @@ namespace Network
 				}
 			}
 			Objects::Marker::Create(marker.id, type, marker.location, marker.createdInRound, entityID, ownerID, entityType, std::max(RuntimeConfig::roundNumber,marker.createdInRound));
-			#ifdef HAS_WINDOW
-				ApplicationInterface::OnSelectionChange(true);
-			#endif
+			GlobalEvents::invalidateObjectCache();
 		}
 
 		void	MarkerCreationFailedLimitReached(Protocol::Marker&marker);	//must re-send, must know channels, cannot be implemented here
@@ -977,9 +1008,7 @@ namespace Network
 		void	DestroyMarker(NET(TUniqueID)&mid)
 		{
 			Objects::Marker::Destroy(mid, ControlEnabled());
-			#ifdef HAS_WINDOW
-				ApplicationInterface::OnSelectionChange(true);
-			#endif
+			GlobalEvents::invalidateObjectCache();
 		}
 
 		void	IdentifyFaction(Protocol::IdentifyFaction&id);
@@ -992,18 +1021,13 @@ namespace Network
 		{
 			uplinkBandwidth = v;
 			RuntimeConfig::hibernationSystemEnabled = v > 0;
-			#ifdef HAS_WINDOW
-				ApplicationInterface::OnSelectionChange(true);
-			#endif
+			GlobalEvents::invalidateObjectCache();
 		}
 
 		void	UnitLimits(Protocol::UnitLimits&limits)
 		{
 			RuntimeConfig::UnitLimits::Import(limits);
-			#ifdef HAS_WINDOW
-				ApplicationInterface::OnSelectionChange(true);
-			#endif
-
+			GlobalEvents::invalidateObjectCache();
 		}
 
 		void	PlanetConfig(Grid::ExtendedPlanetConfig&cfg)
@@ -1318,9 +1342,13 @@ namespace Network
 		DBG_FATAL__("Ignored Package");
 
 	}
+	void		Update();
 
 	void		Setup()
 	{
+		LoadHosts();
+		LoadWorldAccessTokens();
+
 		client.InstallChannel(Channels::helloResponse);
 		client.InstallChannel(Channels::worldData);
 		client.InstallChannel(Channels::newMobileEntity);
@@ -1374,11 +1402,16 @@ namespace Network
 		client.onSignal = OnSignal;
 		client.onIgnorePackage = OnIgnorePackage;
 
-		Net::initNet();
+		ASSERT__(Net::initNet());
 		if (RuntimeConfig::udpListen)
 		{
 			broadcastListenSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-			ASSERT_NOT_EQUAL__(broadcastListenSocket, INVALID_SOCKET);
+			if (broadcastListenSocket == INVALID_SOCKET)
+			{
+				String error = String(Net::err2str(WSAGetLastError()));
+				LogEvent(EventClass::Preset::operationAborted, nullptr, "Unable to initiate UDP listening for servers on the local area network: " + error + " (unable to create socket). Listening will be disabled.");
+			}
+			else
 			{
 				sockaddr_in me;
 				memset(&me, 0, sizeof(me));
@@ -1390,7 +1423,8 @@ namespace Network
 				int rc = ::bind(broadcastListenSocket, (const sockaddr*)&me, (int)sizeof(me));
 				if (rc != 0)
 				{
-					LogEvent(EventClass::Preset::operationAborted,nullptr,"Unable to initiate UDP listening for servers on the local area network (maybe another instance of " PRODUCT_NAME " is running already?). Listening will be disabled." );
+					String error = String(Net::err2str(WSAGetLastError()));
+					LogEvent(EventClass::Preset::operationAborted,nullptr,"Unable to initiate UDP listening for servers on the local area network: "+error+" (maybe another instance of " PRODUCT_NAME " is running already?). Listening will be disabled." );
 					RuntimeConfig::udpListen = false;
 					closesocket(broadcastListenSocket);
 					return;
@@ -1402,6 +1436,7 @@ namespace Network
 		}
 
 
+		GlobalEvents::frameBegin << Update;
 	}
 
 
@@ -1678,15 +1713,16 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 	phaseStarted = timer.Now();
 	#ifdef HAS_WINDOW
 		Objects::UpdateChoices(ControlEnabled());
+		UI::HexGrid::RefreshContacts();
 	#endif
 
-	UI::HexGrid::RefreshContacts();
 	//while (Objects::Network::records.IsNotEmpty() && timer.GetSecondsSince(Objects::Network::records.Peek().recorded) > 10)
 	//	Objects::Network::records.EraseFront();
 	LogEvent(EventSignificance::Common,nullptr,"Server phase changed to "+String(RuntimeConfig::phase.ToString())+" ("+String(c.timeFactor.value)+") @"+String(Animation::atTime));
 	if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase)
 	{
 		static Buffer0<Objects::Marker> outdated;
+		ClientGrid::CheckSensory();
 		Objects::Marker::GetOutdated(outdated,RuntimeConfig::roundNumber,RuntimeConfig::aiMode ? 100 : 10);
 		foreach(outdated, o)
 		{
@@ -1734,11 +1770,7 @@ void	Network::Receiver::LockEmpZones(NET(UINT16)&zones)
 	Grid::empZonesUnlocked = ~zones;
 
 	#ifdef HAS_WINDOW
-		for (int i = 0; i < BaseGrid::NumFamilies; i++)
-		{
-			Grid::high.family[i].SetOutdated(0);
-			Grid::low.family[i].SetOutdated(0);
-		}
+		VisualTerrain::Invalidate();
 	#endif
 	#ifndef NO_SATELLITES
 		Grid::visibleOrbitGrid.Invalidate();
@@ -1848,6 +1880,19 @@ bool		Network::ConnectToConfiguredServerIfAvailable()
 
 	}
 	return false;
+}
+
+
+void	Network::SignalProtocolDisruption(const String&message)
+{
+	LogEvent(EventClass::Preset::error,message);
+	if (client.IsConnected())
+	{
+		#ifdef HAS_WINDOW
+			Dialog::ShowMessage("Protocol disruption detected. Disconnecting from server.");
+		#endif
+		client.Disconnect();
+	}
 }
 
 

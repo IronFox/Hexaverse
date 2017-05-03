@@ -1,14 +1,13 @@
 #include <global_root.h>
 #include "entity.h"
 #include "turretBase.h"
+#include "../grid/worldData.h"
 
 #include "../runtimeConfig.h"
 
 #ifdef HAS_WINDOW
-	#include "visualCommands.h"
 	//#include "gridAndChoices.h"
 	#include "satellite.h"
-	#include "rendering.h"
 #endif
 #ifndef CLIENT
 	#include "faction.h"
@@ -21,9 +20,6 @@
 
 namespace Objects
 {
-	#ifdef CLIENT
-		Buffer0<PWorldEntity>		waste;
-	#endif
 
 
 	GenericHashTable<TUniqueID,PWorldEntity,TUniqueID,Strategy::POD,Strategy::Swap>	idMap;
@@ -39,22 +35,19 @@ namespace Objects
 		{
 			return std::min(1.f, 
 					2.f * 
-					float(Grid::actualWorld.cellStack[
+					float(World::actual.GetStack(
 						#ifdef HYBRID_GRID
 							Grid::low.grid.GetCell(location.stackID).higherEquivalent
 						#else
 							location.stackID
 
 						#endif
-						].GetCellI(location.height).intLightLevel) 
+						).GetCellI(location.height).intLightLevel) 
 					/ 255.f)/**0.75f + 0.25f*/;	//quite the expression, no :P
 		}
 
 
-		/*virtual*/ OpenAL::Wave	WorldEntity::GetAmbientSound() const
-		{
-			return Objects::Renderer::GetAmbientSoundOf(GetTypeName(),GetCTypeName());
-		}
+
 
 
 
@@ -165,15 +158,15 @@ namespace Objects
 			return TurretTrajectory::InvalidTrajectory;
 		}
 
-		const Grid::WorldData&visibleWorld =
+		const World::Data&visibleWorld =
 		#ifndef CLIENT
-			owner->currentState
+			owner->knownWorld
 		#else
-			Grid::actualWorld
+			World::actual
 		#endif
 		;
 
-		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, Grid::actualWorld,TrajectoryEndPoint( location,zOffset ),dest,outSteps,impactAt,impactCell,outAngle);
+		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, World::actual,TrajectoryEndPoint( location,zOffset ),dest,outSteps,impactAt,impactCell,outAngle);
 	}
 
 	TurretTrajectory		WorldEntity::TraceTrajectory(const TrajectoryEndPoint&dest, TVec3<>&impactAt) const
@@ -184,15 +177,15 @@ namespace Objects
 		{
 			return TurretTrajectory::InvalidTrajectory;
 		}
-		const Grid::WorldData&visibleWorld =
+		const World::Data&visibleWorld =
 		#ifndef CLIENT
-			owner->currentState
+			owner->knownWorld
 		#else
-			Grid::actualWorld
+			World::actual
 		#endif
 		;
 
-		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, Grid::actualWorld,TrajectoryEndPoint(location,zOffset),dest,impactAt);
+		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, World::actual,TrajectoryEndPoint(location,zOffset),dest,impactAt);
 	}
 
 
@@ -207,14 +200,14 @@ namespace Objects
 			outSteps.Clear();
 			return TurretTrajectory::InvalidTrajectory;
 		}
-		const Grid::WorldData&visibleWorld =
+		const World::Data&visibleWorld =
 		#ifndef CLIENT
-			owner->currentState
+			owner->knownWorld
 		#else
-			Grid::actualWorld
+			World::actual
 		#endif
 		;
-		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, Grid::actualWorld,TrajectoryEndPoint(source,zOffset),dest,outSteps,impactAt,impactCell,outAngle);
+		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, World::actual,TrajectoryEndPoint(source,zOffset),dest,outSteps,impactAt,impactCell,outAngle);
 	}
 
 	TurretTrajectory		WorldEntity::TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, TVec3<>&impactAt) const
@@ -225,14 +218,14 @@ namespace Objects
 		{
 			return TurretTrajectory::InvalidTrajectory;
 		}
-		const Grid::WorldData&visibleWorld =
+		const World::Data&visibleWorld =
 		#ifndef CLIENT
-			owner->currentState
+			owner->knownWorld
 		#else
-			Grid::actualWorld
+			World::actual
 		#endif
 		;
-		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, Grid::actualWorld,TrajectoryEndPoint(source,zOffset),dest,impactAt);
+		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, World::actual,TrajectoryEndPoint(source,zOffset),dest,impactAt);
 	}
 
 	bool						WorldEntity::CanHitFrom(const Grid::LCellIdI&origin, const TrajectoryEndPoint&dest, float&outAngle) const
@@ -285,6 +278,11 @@ namespace Objects
 	/*virtual*/ float		WorldEntity::GetScanningRange() const
 	{
 		return cache.maxScanningRange.GetEMPModified(*this,GetTable()->maxScanningRange);
+	}
+
+	/*virtual*/ float3		WorldEntity::GetScanningCenter(const Grid::LCellIdI&loc) const
+	{
+		return Grid::low.cells[loc.stackID].centerVertex.xyz * Grid::ToRadiusf(0.5f + loc.height);
 	}
 
 	/*virtual*/ int			WorldEntity::GetConstructionCost() const
@@ -371,7 +369,7 @@ namespace Objects
 			return "";
 		}
 
-		void WorldEntity::AppendDeploymentCount(BaseCommand::Label&outResult, const OwnerParameter&overrideOwner)	const
+		void WorldEntity::AppendDeploymentCount(Description&outResult, const OwnerParameter&overrideOwner)	const
 		{
 			if (RuntimeConfig::UnitLimits::AnySet())
 			{
@@ -381,7 +379,7 @@ namespace Objects
 			}
 		}
 
-		void WorldEntity::DescribeType(BaseCommand::Label&outResult, UINT32 descFlags)
+		void WorldEntity::DescribeType(Description&outResult, UINT32 descFlags)
 		{
 			if (descFlags & DescIncludeName)
 				outResult << GetTypeName();
@@ -486,75 +484,70 @@ namespace Objects
 	
 
 	#ifdef CLIENT
-		/*virtual*/ void WorldEntity::RegisterWorldSensory(const Grid::HighSetup::TVolumeDescriptor&desc)
-		{
-			Grid::actualWorld.InsertSensor(desc);
-
-		}
-
-		/*virtual*/ void WorldEntity::UnregisterWorldSensory(const Grid::HighSetup::TVolumeDescriptor&desc)
-		{
-			Grid::actualWorld.RemoveSensor(desc);
-		}
-
 		void					WorldEntity::MoveSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to, float&atTime, bool checkChangesNow/*=true*/)
 		{
 			if (from == to)
 				return;
-			UnregisterSensory(from,atTime,false);
-			RegisterSensory(to,atTime,checkChangesNow);	//MUST BE IN THIS ORDER, or sky sensory of satellites and planes breaks
+			UnregisterSensory(from,atTime);
+			RegisterSensory(to,atTime);	//MUST BE IN THIS ORDER, or sky sensory of satellites and planes breaks
 		}
 	#else
-		/*virtual*/ void		WorldEntity::MoveSensoryToCurrentLocation(const Grid::LCellIdI&oldLocation, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts/* = nullptr*/)
+		/*virtual*/ void		WorldEntity::MoveSensoryToCurrentLocation(const Grid::LCellIdI&oldLocation, float&atTime, Buffer0<PWorldEntity>*newContacts/* = nullptr*/)
 		{
-			this->RegisterSensory(location,entityTime,false,newContacts);
-			this->UnregisterSensory(oldLocation,entityTime,checkChangesNow);
+			this->RegisterSensory(location,entityTime,newContacts);
+			this->UnregisterSensory(oldLocation,entityTime);
 		}
 
 	#endif
 
 
-	/*virtual override*/	void WorldEntity::RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
+	/*virtual*/ void			WorldEntity::VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance /*= false*/) const
 	{
-		
-		LogEvent(EventSignificance::Common,this,"Registering sensory ("+loc.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
-		#ifdef CLIENT
-			if (isOwnedByMe)
-			{
-				Grid::HighSetup::TVolumeDescriptor desc;
-				Grid::high.GenerateVolume(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),desc);
-				RegisterWorldSensory(desc);
-				#ifdef THOROUGLY_DEBUG_SENSORY
-					VerifySensory();
-				#endif
-			}
-
-		#else
-			owner->RegisterSensorCreation(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),loc.height, atTime,checkChangesNow, newContacts);
-		#endif
+		float range = GetScanningRange();
+		static const float MinSolid = 2.f * Grid::UnitScale;
+		const auto center = GetScanningCenter(loc);
+		if (range > MinSolid && !appearance)
+		{
+			visitor(World::Sensor(center, MinSolid, World::Sensor::SolidSphere));
+			visitor(World::Sensor(center, range, World::Sensor::ShadedSphere));
+		}
+		else
+			visitor(World::Sensor(center, range, World::Sensor::SolidSphere));
 	}
 
-	/*virtual override*/	void					WorldEntity::UnregisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/)
-	{
-		LogEvent(EventClass::Preset::common,this,"Unregistering sensory ("+loc.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
-		
-		#ifndef CLIENT
-			owner->RegisterSensorRemoval(Sphere<>(Grid::ToWorld(loc), GetScanningRange()),loc.height, atTime,checkChangesNow);
-		#endif
 
+	void WorldEntity::RegisterSensory(const Grid::LCellIdI&loc, float&atTime, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
+	{
+		this->SyncTime(atTime);	
+		LogEvent(EventSignificance::Common,this,"Registering sensory ("+loc.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
+		VisitSensors(loc, [&atTime, newContacts,this](const World::Sensor&sensor)
+		{
+			#ifdef CLIENT
+				if (isOwnedByMe)
+				{
+					sensor.InsertInto(World::actual, atTime);
+				}
+			#else
+				owner->RegisterSensorCreation(sensor, location.height, atTime, newContacts);
+			#endif
+		});
+	}
+
+	void					WorldEntity::UnregisterSensory(const Grid::LCellIdI&loc, float&atTime)
+	{
+		this->SyncTime(atTime);	
+		LogEvent(EventClass::Preset::common,this,"Unregistering sensory ("+loc.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
+		VisitSensors(loc, [&atTime, this](const World::Sensor&sensor)
+		{
 		#ifdef CLIENT
 			if (isOwnedByMe)
 			{
-				Grid::HighSetup::TVolumeDescriptor desc;
-				Grid::high.GenerateVolume(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),desc);
-				UnregisterWorldSensory(desc);
-				#ifdef THOROUGLY_DEBUG_SENSORY
-					VerifySensory();
-				#endif
+				sensor.RemoveFrom(World::actual, atTime);
 			}
+		#else
+			owner->RegisterSensorRemoval(sensor, location.height, atTime);
 		#endif
-
-
+		});
 	}
 
 	#ifndef CLIENT

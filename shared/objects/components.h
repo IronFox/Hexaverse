@@ -1,20 +1,18 @@
-#ifndef objectVehicleComponentsH
-#define objectVehicleComponentsH
+#pragma once
 
-#ifdef HAS_WINDOW
-	#include "visualCommands.h"
-	#include "geometry.h"
-	#include <al/openal.h>
-//	#include "entity.h"
-#endif
-
-#include "../sphereGrid.h"
+#include "../grid/worldData.h"
 #include "resource.h"
 #include "cursorMode.h"
 #include "types.h"
 #include "componentAttribute.h"
 #include "luaAttribute.h"
-
+#include "description.h"
+#include "entityCommand.h"
+#include "clientAttachment.h"
+#include "geometry.h"
+#ifdef HAS_WINDOW
+	#include <al/openal.h>
+#endif
 
 namespace Objects
 {
@@ -126,8 +124,8 @@ namespace Objects
 			{
 				static void					TraceAnimationArtilleryTrajectory(float velocity,  float attackAngle, const TrajectoryEndPoint&attackerPosition, const TrajectoryEndPoint&explosionCenter,Buffer0<TVec4<> >&outSteps);
 				static void					TraceAnimationMissileTrajectory(float range, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps);
-				static TurretTrajectory		TraceArtilleryTrajectory(float velocity, const Grid::WorldData&decisionWorld, const Grid::WorldData&actualWorld, const TrajectoryEndPoint&source,  const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle);
-				static TurretTrajectory		TraceMissileTrajectory(float range, const Grid::WorldData&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell);
+				static TurretTrajectory		TraceArtilleryTrajectory(float velocity, const World::Data&decisionWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source,  const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle);
+				static TurretTrajectory		TraceMissileTrajectory(float range, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell);
 				static bool					ArtilleryCanHit(float flatRange, float horizontalDistance, float verticalDistance, float&outAngle);
 				static bool					ArtilleryCanHit(float flatRange, float horizontalDistance, float verticalDistance);
 				static bool					MissileCanHit(float flatRange, const TrajectoryEndPoint&origin, const TrajectoryEndPoint&destination);
@@ -135,11 +133,17 @@ namespace Objects
 
 
 		public:
-			#ifdef HAS_WINDOW
-				CommandContainer			commands;
 
-				Array<std::pair<Geometry,DX11::InstructionBlock32> >	parts;
+			/**
+			Custom attachment to the local component. Not used by server.
+			*/
+			PClientAttachment				attachment;
+			CommandContainer				commands;
+			#ifdef HAS_WINDOW
+				Array<Geometry>				parts;
+				OpenAL::Wave				ambientSound;	//sound used for ambience (25% volume, normal pitch), or motion (100% volume, increased pitch)
 			#endif
+
 
 			
 			String							typeName,shortName;
@@ -150,24 +154,17 @@ namespace Objects
 											
 
 
-			void							FinishCreation(bool scaleToVehicleSize=true);
 
 			void							GetSubSystem(index_t geometryIndex, float angle, TMatrix4<>&outSystem)	const;
 			virtual bool					IsTurret() const {return false;}
 			virtual bool					IsVehicleBase() const {return false;}
 
-			#ifdef HAS_WINDOW
-				//typedef std::function<void(EntityCommand&cmd)>	FCommandVisitor;
-
-				void						VisitAllCommands(FCommandVisitor visitor, bool force);
-			#endif
+			
 
 			bool							TestIntersection(float zOffset, float x, float y, const TVec3<>&b, const TVec3<>&d, float & distance);
 
-			#ifdef HAS_WINDOW
-				void						DescribeType(BaseCommand::Label&label,bool compound, const OwnerParameter&);
-			#endif
-
+			void							DescribeType(Description&,bool compound, const OwnerParameter&);
+			void							VisitAllCommands(FCommandVisitor visitor, bool force);
 		};
 
 
@@ -247,8 +244,8 @@ namespace Objects
 
 			static int						GetGroundHeight(const Grid::LCellIdI&location);
 			//static void						TraceTrajectory(TrajectoryType, float flatRange, const TVec3<>&source, const TVec3<>&dest, Buffer0<TVec4<> >&outSteps);
-			static TurretTrajectory			TraceTrajectory(TrajectoryType, float flatRange, const Grid::WorldData&visibleWorld, const Grid::WorldData&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle);
-			static TurretTrajectory			TraceTrajectory(TrajectoryType type, float flatRange, const Grid::WorldData&visibleWorld, const Grid::WorldData&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, TVec3<>&impactAt)
+			static TurretTrajectory			TraceTrajectory(TrajectoryType, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle);
+			static TurretTrajectory			TraceTrajectory(TrajectoryType type, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, TVec3<>&impactAt)
 			{
 				Buffer0<TVec4<> > outSteps;
 				Grid::HCellIdI impactCell;
@@ -372,25 +369,23 @@ namespace Objects
 			//}
 
 			#ifdef HAS_WINDOW
-				enum geometryType_t
-				{
-					Schematic,
-					Animation,
-					SmokeTrail
-				};
-				static float				CompileTrajectory(const Buffer0<TVec4<> >&v, geometryType_t type, Geometry&outGeo, float widthScale=1.f);
-				void						DescribeType(BaseCommand::Label&label, bool compound, bool includeName, const String&parentType, const OwnerParameter&owner);
 			#endif
+			void							DescribeType(Description&, bool compound, bool includeName, const String&parentType, const OwnerParameter&owner);
+
+
+			enum geometryType_t
+			{
+				Schematic,
+				Animation,
+				SmokeTrail
+			};
+
+			static float					CompileTrajectory(const Buffer0<TVec4<> >&v, geometryType_t type, Geometry&outGeo, float widthScale=1.f);
 
 			/**
 			Checks whether or not the local turret could ever possibly consume resources
 			*/
 			bool							ConsumesResources(ResourceFlagSet&res, const OwnerParameter&) const;
-			void							FinishCreation(bool scaleToVehicleSize=true)
-			{
-				//float fc = (Grid::UnitScale-1.f)*0.5f + 1.f;
-				Super::FinishCreation(scaleToVehicleSize);
-			}
 
 		};
 
@@ -428,9 +423,6 @@ namespace Objects
 			*/
 			FixedArray<BYTE,OperationCount>	acceleration;
 
-			#ifdef HAS_WINDOW
-				OpenAL::Wave				ambientSound;	//sound used for ambience (25% volume, normal pitch), or motion (100% volume, increased pitch)
-			#endif
 
 			//warning: none is broken in pathfinding
 			CONSTRUCT_ENUMERATION3(Requirement, None, AnyBlock ,Water);
@@ -465,11 +457,9 @@ namespace Objects
 			*/
 			static bool						canStandOnUnknown	/*=true*/;
 
-			bool							CanStandOn(const Grid::WorldData&world, const Grid::LCellIdI&, bool ignoreWater, bool doFloat);
+			bool							CanStandOn(const World::Data&world, const Grid::LCellIdI&, bool ignoreWater, bool doFloat);
 
-			#ifdef HAS_WINDOW
-				void						DescribeType(BaseCommand::Label&label, bool compound, bool includeName, const OwnerParameter&);
-			#endif
+			void							DescribeType(Description&, bool compound, bool includeName, const OwnerParameter&);
 
 	
 		};
@@ -499,49 +489,6 @@ namespace Objects
 		namespace Terraformer
 		{
 			extern Buffer<PStructure> canBuild;
-
-			#ifdef HAS_WINDOW
-			namespace Cmd
-			{
-
-		
-				bool	BuildFoundationJob(const Vehicle&v);
-
-
-				//void	ToggleDigMode();
-
-				void	DigDown();
-				//bool	CanDigDown();
-
-
-				template <ConstName Command>
-					void	IssueCommand()
-					{
-						if (!selectedMobileEntity)
-							return;
-						ApplicationInterface::SignalNewJob(selectedMobileEntity, Command,ConstName::Empty);					
-					}
-
-				void	BuildRoad();
-				bool	NotBuilding();
-
-				//void	ClearAbove();
-				//bool	ClearAboveIsActive();
-
-				void	BuildBlock();
-				//bool	BuildBlockIsActive();
-
-				void	RemoveBlock();
-				//bool	RemoveBlockIsActive();
-
-				void	CommitOperation();
-				bool	CommitIsPossibleC(bool);
-				BaseCommand::Flags CommitCheck(bool);
-		
-				bool	ConstructionIsPossible();
-				void	Construct(const PStructure&p);
-			};
-			#endif
 
 
 
@@ -683,5 +630,3 @@ namespace Objects
 }
 
 
-
-#endif

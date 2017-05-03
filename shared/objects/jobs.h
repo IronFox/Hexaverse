@@ -2,7 +2,7 @@
 #define objectJobsH
 
 #include <io/riff_handler.h>
-#include "../sphereGrid.h"
+#include "../grid/stack.h"
 #include "cursorMode.h"
 #include "types.h"
 #include "../uniqueID.h"
@@ -548,7 +548,7 @@ namespace Objects
 
 				void					Guess(const MobileEntity&v, const Grid::LCellIdI&origin, index_t myJobIndex, UINT16 & roundsToJobCompletion, UINT16 & resourceCostLeft)	const;
 
-				bool					DoneHere(const Grid::WorldData&world,const Grid::LCellIdI&cell, const Grid::LCellIdI&nextCell)	const;
+				bool					DoneHere(const World::Data&world,const Grid::LCellIdI&cell, const Grid::LCellIdI&nextCell)	const;
 				virtual bool			UpdatePath(const MobileEntity&v, const Grid::LCellIdI&origin, Grid::LCellIdI&destination)	override;
 
 

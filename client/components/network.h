@@ -2,7 +2,7 @@
 #define networkComponentH
 
 #include "../../shared/protocol.h"
-#include "guiElements.h"
+#include "visual/guiElements.h"
 
 /**
 All network-related aspects. Multiple additions to this namespace exist.
@@ -103,6 +103,12 @@ namespace Network
 	bool HaveFactionKeyForCurrentWorld();
 	void AttemptFactionLogin(bool forceNewFaction, UINT32 factionTypes);
 
+
+	/**
+	Signals that server and client states have deteriorated to a point where communication cannot continue.
+	Causes imminent disconnection
+	*/
+	void	SignalProtocolDisruption(const String&message);
 	
 	namespace ServerDiscovery
 	{
@@ -274,6 +280,9 @@ namespace Network
 
 	void		Setup();
 
+	void		LoadHosts();
+	void		SaveHosts();
+
 
 	class Label
 	{
@@ -364,7 +373,7 @@ namespace Network
 
 	extern Timer::Time		lastPing,lastServerTableUpdate;
 
-	void		Update();
+	
 
 	void		Shutdown();
 
@@ -373,7 +382,6 @@ namespace Network
 
 
 	bool		ConnectToConfiguredServerIfAvailable();
-
 
 }
 

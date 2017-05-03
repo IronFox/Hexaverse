@@ -3,19 +3,20 @@
 
 #include "./components/stdafx.h"
 
-#include "../shared/grid.h"
-#include "../shared/objects.h"
-#include "../shared/sphereGrid.h"
+#include <boot.h>
+#include <grid/worldData.h>
+#include <objects.h>
 
 #include "../client/version.h"
-#include "../shared/protocol.h"
-#include "../shared/runtimeConfig.h"
+#include <protocol.h>
+#include <runtimeConfig.h>
 
 //#include <third_party/bz2/bz2.h>
 #include <io/string_file.h>
 #include <io/file_system.h>
 #include <io/riff_handler.h>
 #include <io/config.h>
+#include <globalEvents.h>
 #include "components/tests.h"
 #include "components/aiProcess.h"
 #include "components/remoteControl.h"
@@ -432,9 +433,9 @@ namespace ApplicationInterface
 			Sphere<> explosionSphere(center,explosionRadius);
 			Grid::high.GenerateVolume(explosionSphere,volume);
 
-			Objects::ForeachFaction([explosionSphere](const Objects::PFaction&f)
+			Objects::ForeachFaction([explosionSphere,&atTime](const Objects::PFaction&f)
 			{
-				if (f->GridCanSee(volume) || f->CountOffGridCoverage(explosionSphere))
+				if (f->GridCanSee(volume,atTime) || f->CountOffGridCoverage(explosionSphere))
 				{
 					canSee.Append(f);
 				};
@@ -528,6 +529,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 	//ErrMessage("Hexaverse Server: "+message);
 	std::cerr << message << std::endl;
 	#ifdef _DEBUG
+		__debugbreak();
 		std::abort();
 
 		char confirm[0x100];
@@ -583,19 +585,8 @@ void TerminateNow(bool isMain)
 
 
 		Logging::WriteEvent(EventSignificance::Uncommon,"Closing down",nullptr,nullptr,Objects::OwnerParameter());
-		Network::server.Shutdown();
 
-		if (Game::Config::Nexus::enableAI)
-			AIProcess::End();
-
-
-		Objects::Destroy();
-		Grid::Destroy();
-		UDPBroadCast::Terminate();
-
-		RemoteControl::Destroy();
-		ScriptCache::Destroy();
-
+		GlobalEvents::applicationTerminate();
 
 		Logging::WriteEvent(EventSignificance::Uncommon,"Terminating process",nullptr,nullptr,Objects::OwnerParameter());
 		Logging::End();
@@ -782,11 +773,7 @@ void	StartUp()
 	Network::Start(ParameterConfig::basePort);
 }
 
-void	ShutDown()
-{
-	UDPBroadCast::Terminate();
-	Network::Stop();
-}
+
 
 class ServiceVar : public Reflection::Variable::Base
 {
@@ -881,13 +868,10 @@ int main( int argc, const char* argv[])
 				FATAL__("Something is wrong. Unable to locate server executable, or config/declaration.xml is missing.");
 		}
 
+		Boot();
 
-		NiceName::Load();
-
-		ScriptCache::Create();
 		Evolver::Create();
 		Game::evolver = Evolver::GetDefault();
-
 		Journal::Create();
 
 		World::worldID.Generate();
@@ -909,15 +893,10 @@ int main( int argc, const char* argv[])
 
 
 
-		Grid::Create0();
-		Objects::Create();
-		Grid::Create1();
-
-
 		Reflection::Create();
 		Reflection::state.PushFocus();
 		Reflection::state.EnterNewFolder("/Online");
-		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("udpBroadcast",UDPBroadCast::IsStarted,UDPBroadCast::Terminate,[](){UDPBroadCast::Start();})));
+		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("udpBroadcast",UDPBroadCast::IsStarted,UDPBroadCast::Stop,[](){UDPBroadCast::Start();})));
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("info",[]()->bool{return Network::InformationProvider::IsOnline();},Network::InformationProvider::Stop,[](){Network::InformationProvider::Start(ParameterConfig::basePort);})));
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("session",[]()->bool{return Network::server.IsOnline();},[](){Network::SuspendSession();},[](){Network::RestartSession(false);})));
 		Reflection::state.DefineCommand("closeSession",(CLI::Command::function0_t)[](){Network::CloseSession();},CLI::NoCompletion);	//why...?
@@ -1035,6 +1014,8 @@ int main( int argc, const char* argv[])
 
 
 			{
+				
+				Test::Run(Test::TerrainUpdates());
 				Test::Run(Test::AutoTargeting());
 				Test::Run(Test::SharedContainer());
 				Test::Run(Test::ServerClient());

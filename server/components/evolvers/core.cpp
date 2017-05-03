@@ -23,7 +23,7 @@ namespace Evolver
 		Unsupplied satellites may be destroyed.
 		Must be called once per round.
 		@param t Server time
-		@param terrainChanged Set true if the terrain changed sind the last invocation of this function. If in doubt pass true. 
+		@param terrainChanged Set true if the terrain changed since the last invocation of this function. If in doubt pass true. 
 		*/
 		void			CheckOrbitalSupplyAndSensory(float&t, bool terrainChanged);
 

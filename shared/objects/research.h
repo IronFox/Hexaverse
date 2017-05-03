@@ -10,6 +10,7 @@
 #include "../stringTable.h"
 #include "../luaInterface.h"
 #include "../scriptCache.h"
+#include "../observer.h"
 
 namespace Objects
 {
@@ -161,6 +162,7 @@ namespace Objects
 			Lua::Function<Lua::Reference()>	stateConstructor;
 			Lua::Function<Lua::Reference(Lua::Reference)>	exportState;
 			Lua::Function<void(Lua::Reference,Lua::Reference)> importState;
+			Observable<>			onScriptChange;
 
 			/**/				GlobalState():rootResearch(""){}
 		};
@@ -179,7 +181,7 @@ namespace Objects
 		Handles changes necessary to advance all endless research topics by one. Should only be used on Nexus faction
 		*/
 		void					AdvanceNexusResearch();
-		void					Contribute()	{totalContribution++;}
+		void					Contribute(int c)	{totalContribution+=c;}
 		void					FinalizeRound(const PFaction&);
 
 		bool					CheckUnlocked(const Component::Base&base, String&errorOut) const	{return true;}
