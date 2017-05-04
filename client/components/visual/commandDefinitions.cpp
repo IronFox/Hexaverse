@@ -1132,7 +1132,11 @@ namespace Objects
 						resourceView = !resourceView;
 						VisualTerrain::Invalidate(false);
 					}
+				#ifdef _DEBUG
+					, Detail::GlobalPermaSwitch(resourceView)
+				#else
 					,Detail::GlobalPermaSwitch(resourceView,[](){return !RuntimeConfig::tutorialMode;})
+				#endif
 				));
 
 			viewCommands->Add( new GlobalCommand("Show Ranges", []()

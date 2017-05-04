@@ -48,18 +48,14 @@ namespace Tutorial
 
 		StringTable<Message,Strategy::Swap>	messages;
 		GUI::PWindow		taskWindow;
-		Dialog::PDialog		messageWindow;
 		bool				tutorialGameShown=false;
+
 
 		void				HideGUI()
 		{
+			GUI::CloseAllModal();
 			if (taskWindow)
 				GUI::Hide(taskWindow);
-			if (messageWindow)
-			{
-				GUI::Hide(messageWindow);
-				messageWindow.reset();
-			}
 		}
 
 		bool				RegisterMemory(bool&shown, const String&name)
@@ -142,12 +138,11 @@ namespace Tutorial
 				
 				ReplaceTags(msg);
 				using namespace Detail;
-				messageWindow = Dialog::CreateTutorialMessage("", msg,img);
+				auto messageWindow = Dialog::CreateTutorialMessage("", msg,img);
 				messageWindow->check = []()->Dialog::CheckResult{ return Network::client.IsConnected() ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort; };
 				messageWindow->onConfirm = 
 				[]()
 				{
-					Detail::HideGUI();
 					Trigger::onMessageConfirm();
 				};
 				messageWindow->canBeImplicitlyClosed = false;
@@ -356,6 +351,7 @@ namespace Tutorial
 				objectTables.Clear();
 				tutorialProgram = Lua::Program::Create("Tutorial");
 				api = Lua::CreateGeneralAPI(tutorialProgram);
+				Lua::DefineLowGridCells(api);
 				myUnits = tutorialProgram->CreateTable();
 				api.SetField("myUnits",myUnits);
 

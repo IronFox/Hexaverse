@@ -139,6 +139,11 @@ namespace GUI
 		if (index == InvalidIndex)
 			return false;
 
+		#ifdef _DEBUG
+			if (window->breakOnHide)
+				__debugbreak();
+		#endif
+
 		window->OnHide();
 		if (index+1 == Detail::visibleWindows.Count())
 		{

@@ -868,6 +868,9 @@ namespace GUI
 		bool				canBeImplicitlyClosed = true;	//!< Indicates that this window can be closed by events such as the Escape being pressed
 		bool				isModal = true;
 
+		#ifdef _DEBUG
+			bool			breakOnHide = false;
+		#endif
 
 		/**/				Window()
 		{

@@ -1655,25 +1655,28 @@ namespace Objects
 			{
 				foreach (v->myTasks,t)
 				{
-					const auto&visual = Objects::TaskAttachment::Of(*t);
-					foreach (visual.localizableShapes,shape)
+					if (t->visualization)
 					{
-						if (shape->selectedOnly && !selected)
-							continue;
-
-						if (shape->flareDisplay)
+						const auto&visual = Objects::TaskAttachment::Of(*t);
+						foreach (visual.localizableShapes,shape)
 						{
-							if (!selected)
-								continue;	//invisible anyway
-							display.SetBlendMode(Engine::BlendMode::FlareBlend);
+							if (shape->selectedOnly && !selected)
+								continue;
+
+							if (shape->flareDisplay)
+							{
+								if (!selected)
+									continue;	//invisible anyway
+								display.SetBlendMode(Engine::BlendMode::FlareBlend);
+							}
+							else
+								display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+
+							display.SetDepthTest(shape->depthTest,false);
+
+							display.SetObjectMatrix(shape->system);
+							display.Render(shape->instruction);
 						}
-						else
-							display.SetBlendMode(Engine::BlendMode::AlphaBlend);
-
-						display.SetDepthTest(shape->depthTest,false);
-
-						display.SetObjectMatrix(shape->system);
-						display.Render(shape->instruction);
 					}
 				}
 			}
@@ -1793,9 +1796,12 @@ namespace Objects
 			{
 				foreach (v->myTasks,t)
 				{
-					const auto&visual = Objects::TaskAttachment::Of(*t);
+					if (t->visualization)
+					{
+						const auto&visual = Objects::TaskAttachment::Of(*t);
 
-					display.Render(visual.instruction);
+						display.Render(visual.instruction);
+					}
 				}
 
 			}

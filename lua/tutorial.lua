@@ -23,6 +23,18 @@ Table	Game.selectedUnit				Table of the currently selected unit. May be nil. Con
 Table	Game.myResearch					Table of all researchable topics, both completed, and open, as well as endless
 Table	Game.myCurrentResearch			Currently active research topic. May be nil. Otherwise also contained by Game.myResearch
 
+Cell[]		Game.lowCells				Ordered table of all planar cells in the world, with:
+Cell
+{
+	Vector	center;			Normalized center vector of the cell
+	Cell[]	neighbors;		Ordered table of all planar neighbor cells
+	int		index;			Linear index of this cell in Game.Cells in [1,#Game.lowCells]
+};
+Vector
+{
+	float	x,y,z;
+};
+
 
 ]]
 
@@ -48,10 +60,19 @@ end
 
 
 
-
-
 --tasks:
-CreateTask(function() Game.DisplayMessage("Welcome to the Hexaverse tutorial.\nThe following tasks will introduce you to the general game mechanics.") end);
+CreateTask(function() Game.DisplayMessage("Welcome to Hexaverse, the planetary strategy game.\n"..
+		"Excavate caves, build stairs into orbit, or just expand around the globe.\n"..
+		"Survive if you can.", 'game.png') end);
+CreateTask(function() Game.DisplayMessage(
+		"What you are seeing now is the planet you are trying to conquer.\n"..
+		"The planetary display attempts to distinguish three primary areas:.\n"..
+		"1: Undiscovered terrain.\n"..
+		"2: Discovered and currently visible terrain.\n"..
+		"3: Discovered but currently out of range.\n"..
+		"Everything you are not currently observing (everything not in 2) may change without you knowing. Half the trick of winning Hexaverse is knowing what you don't know..\n"
+		,'areas.png') end);
+
 
 CreateTask(function() Game.DisplayMessage("Let's get you acquainted with the camera controls.") end);
 
@@ -204,7 +225,7 @@ CreateTask(
 );
 
 
-CreateTask(function() Game.DisplayMessage("Notice how enabling either the generator or mine also enabled the other because your existing base did not supply enough resources for either. The two buildings now supply each other. If either is destroyed, the other may be forced to switch off.") end);
+CreateTask(function() Game.DisplayMessage("Notice how enabling either the generator or mine also enabled the other because your existing base did not supply enough resources. The two buildings now supply each other. If either is destroyed, the other may be forced to switch off.") end);
 
 CreateTask(function() Game.DescribeTask("Please construct a Vehicle Plant using your terraformer. In the bottom screen section, select Build->Factories->Vehicle Plant, and click anywhere on the terrain. Request new rounds until done.") end,
 	function()
@@ -245,7 +266,74 @@ CreateTask(function() Game.DescribeTask("Please task your Vehicle Plant to const
 
 CreateTask(function() Game.DisplayMessage("As long as it's enabled and has access to the required %Minerals%minerals, the vehicle plant will continue producing the items in its queue, left to right. You can abort any job by clicking on it in the list. To automate deployment you may also want to place a gathering point by selecting the vehicle plant in question and right-clicking at the desired destination.") end);
 
+CreateTask(function() Game.DescribeTask("Please wait for your Reactor Core research to complete."); end,
+	function()
+		local res = Game.myResearch['Unlock:ReactorCore'];
+		--FindResearch('Unlock:ReactorCore');
+		if res ~= nil and (res.isCompleted) then
+			TaskDone();
+		else
+			
+		end;
+	end
+);
+
+
+CreateTask(function() Game.DisplayMessage("Reactor Cores cause neighboring Generators to produce twice as much %Energy%energy each round. They are a very useful thing to have. The catch is that you need %Uranium%uranium.") end);
+
+		
+
+CreateTask(function() Game.DescribeTask("Please find some %Uranium%uranium, and construct a mine atop using your terraformer. In the bottom screen section, select Build->Resources->Mine, and click on the terrain cell with the yellow bar. Request new rounds until done.") end,
+	function()
+		local count = 0;
+		for i = 1, #Game.myUnits do
+			local u = Game.myUnits[i];
+			if u.typeName == 'Mine' and Game.GetResourceCoverage('Uranium', u.location.stackID) > 0 then
+				count = count + 1;
+			end;
+		end;
+		if (count >= 1) then
+			TaskDone();
+		end;
+	end
+);
+
+
+
+
+CreateTask(function() Game.DescribeTask("Now, please construct a Reactor Core next to one of your Generators. It must be on the same level") end,
+	function()
+		
+		for i = 1, #Game.myUnits do
+			local u = Game.myUnits[i];
+			if u.typeName == 'Reactor Core' then
+				Game.Log("Found reactor");
+				local cell = Game.lowCells[u.location.stackID];
+				local n = cell.neighbors;
+				for j = 1, #n do
+					Game.Log("Looking at "..n[j].index..", "..u.location.height);
+					local neighbor = FindUnitIn(n[j].index,u.location.height);
+					if (neighbor ~= nil and neighbor.typeName == 'Generator') then
+						TaskDone();
+						return;
+					end;
+				end;
+			end;
+		end;
+	end
+);
+
+
+
+CreateTask(function() Game.DisplayMessage("Reactor Cores are a great way to boost the energy output of your compound. They do tend to concentrate your power production, however, which may pose a rewarding target for hostile forces.","Reactor Core.jpg") end);
+
 CreateTask(function() Game.DisplayMessage("This concludes this tutorial.") end);
+
+
+
+
+
+
 
 
 
@@ -292,6 +380,16 @@ end
 
 
 
+function FindUnitIn(stackID--[[int]], height--[[int]])
+	for i = 1, #Game.myUnits do
+		local u = Game.myUnits[i];
+		if (u.location.stackID == stackID and u.location.height == height) then
+			return u;
+		end;
+	end;
+	return nil;
+end;
+
 
 
 --triggers called by game
@@ -308,10 +406,10 @@ end
 
 
 function OnBegin(atTask--[[int, optional]])
-	Game.Log("(Re)start at task #"..tostring(atTask));
 	if (atTask == nil) then
 		atTask = 1;
 	end;
+	Game.Log("(Re)start at task #"..tostring(atTask));
 	SetTask(atTask);
 end
 
