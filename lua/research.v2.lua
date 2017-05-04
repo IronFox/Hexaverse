@@ -230,7 +230,7 @@ TurretConfig =
 		ExplosionRadius = 3,
 		HorizontalAttackRange = 17,
 		AmmoConsumption = 50,
-		IsUnlocked = false,
+		IsUnlocked = true,
 	},
 	Artillery =
 	{
@@ -523,11 +523,12 @@ improveGroup = Game.CreateResearch(nil,"Improve",'Increase');
 
 
 artilleryUnlock = MakeUnlockResearchable(unlockGroup, nil, TurretConfig, 'Artillery',20);
+empUnlock = MakeUnlockResearchable(unlockGroup, artilleryUnlock, TurretConfig, 'EMP',20);
 launcherUnlock = MakeUnlockResearchable(unlockGroup, nil, TurretConfig, 'MissileLauncher',20);
 --radarUnlock = MakeUnlockResearchable(unlockGroup, nil, TurretConfig, 'Radar',20);
 heavyUnlock = MakeUnlockResearchable(unlockGroup, nil, VehicleBaseConfig, 'HeavyBase',20);
 catUnlock = MakeUnlockResearchable(unlockGroup, nil, VehicleBaseConfig, 'CatamaranBase',20);
-MakeUnlockResearchable(unlockGroup, nil, StructureConfig, 'ReactorCore',20);
+MakeUnlockResearchable(unlockGroup, nil, StructureConfig, 'ReactorCore',10);
 
 attackRangeGroup = Game.CreateResearch(improveGroup,'Attack Range','Research_AttackRange');
 	MakeImproveResearchable(attackRangeGroup, artilleryUnlock, TurretConfig, 'Artillery', 'HorizontalAttackRange',0.005);
