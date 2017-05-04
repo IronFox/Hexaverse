@@ -46,10 +46,10 @@ namespace VisualTerrain
 	{	
 		float4	lastColor;
 		displayMode_t				displayMode = NormalRendering;
-		DX11::BaseInstructionBlock	terrainBase, terrainSphereBase, terrainParaboloidBase,
-									orbitGridBase,
-									terrainShadowBase, 
-									waterBase, waterSphereBase, waterParaboloidBase,
+		ShadedInstruction			orbitGridBase,
+									terrainBase, terrainSphereBase, terrainParaboloidBase,
+									waterBase, waterSphereBase, waterParaboloidBase;
+		DX11::BaseInstructionBlock	terrainShadowBase, 
 									overlayBase, 
 									overlayShadowBase, resourceBase;// , terrainEdgeBase;
 
@@ -322,7 +322,7 @@ namespace VisualTerrain
 		bindings.Append(DX11::Shader::Binding(Instruction::cubeHeightMap,"HeightMap"));
 		bindings.Append(DX11::Shader::Binding(Instruction::heightMapOrientation,"HeightMapOrientation"));
 		
-		Instruction::terrainBase.shader.LoadFromFile("shaders/gridTerrain.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
+		Instruction::terrainBase.LoadQualitiesFromFile("shaders/gridTerrain.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
 
 		
 
@@ -360,13 +360,13 @@ namespace VisualTerrain
 
 			Instruction::orbitGridBase.binding = binding;
 			Instruction::orbitGridBase.SetTriangles();
-			Instruction::orbitGridBase.shader.LoadFromFile("shaders/orbitalGrid.hlsl", "vsMain", "psMain");
+			Instruction::orbitGridBase.LoadQualitiesFromFile("shaders/orbitalGrid.hlsl", "vsMain", "psMain");
 			Instruction::orbitGridBase.UpdateLayout();
 		}
 	
 		{
-			DX11::BaseInstructionBlock&base = Instruction::waterBase;
-			base.shader.LoadFromFile("shaders/gridTerrainWater.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
+			ShadedInstruction&base = Instruction::waterBase;
+			base.LoadQualitiesFromFile("shaders/gridTerrainWater.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
 
 			{
 				/*
@@ -438,7 +438,7 @@ namespace VisualTerrain
 		DX11::Shader::RedefineMacro(DX11::Shader::Macro("SPHERE_DISPLAY","1"));
 		bindings.Append(DX11::Shader::Binding(Instruction::SphereDef,"SphereDef"));
 		bindings.Append(DX11::Shader::Binding(Instruction::SphereColor,"SphereColor"));
-		Instruction::terrainSphereBase.shader.LoadFromFile("shaders/gridTerrain.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
+		Instruction::terrainSphereBase.LoadQualitiesFromFile("shaders/gridTerrain.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
 		DX11::Shader::macroDefinitions.Clear();
 		Instruction::terrainSphereBase.UpdateLayout();
 		bindings.EraseLast();
@@ -448,7 +448,7 @@ namespace VisualTerrain
 		DX11::Shader::RedefineMacro(DX11::Shader::Macro("PARABOLOID_DISPLAY","1"));
 		bindings.Append(DX11::Shader::Binding(Instruction::ParaboloidDirection_Height,"ParaboloidDirection_Height"));
 		bindings.Append(DX11::Shader::Binding(Instruction::ParaboloidColor_FlatRadius,"ParaboloidColor_FlatRadius"));
-		Instruction::terrainParaboloidBase.shader.LoadFromFile("shaders/gridTerrain.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
+		Instruction::terrainParaboloidBase.LoadQualitiesFromFile("shaders/gridTerrain.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
 		DX11::Shader::macroDefinitions.Clear();
 		Instruction::terrainParaboloidBase.UpdateLayout();
 		bindings.EraseLast();
@@ -459,7 +459,7 @@ namespace VisualTerrain
 		DX11::Shader::RedefineMacro(DX11::Shader::Macro("SPHERE_DISPLAY","1"));
 		bindings.Append(DX11::Shader::Binding(Instruction::SphereDef,"SphereDef"));
 		bindings.Append(DX11::Shader::Binding(Instruction::SphereColor,"SphereColor"));
-		Instruction::waterSphereBase.shader.LoadFromFile("shaders/gridTerrainWater.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
+		Instruction::waterSphereBase.LoadQualitiesFromFile("shaders/gridTerrainWater.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
 		DX11::Shader::macroDefinitions.Clear();
 		Instruction::waterSphereBase.UpdateLayout();
 		bindings.EraseLast();
@@ -469,7 +469,7 @@ namespace VisualTerrain
 		DX11::Shader::RedefineMacro(DX11::Shader::Macro("PARABOLOID_DISPLAY","1"));
 		bindings.Append(DX11::Shader::Binding(Instruction::ParaboloidDirection_Height,"ParaboloidDirection_Height"));
 		bindings.Append(DX11::Shader::Binding(Instruction::ParaboloidColor_FlatRadius,"ParaboloidColor_FlatRadius"));
-		Instruction::waterParaboloidBase.shader.LoadFromFile("shaders/gridTerrainWater.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
+		Instruction::waterParaboloidBase.LoadQualitiesFromFile("shaders/gridTerrainWater.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
 		DX11::Shader::macroDefinitions.Clear();
 		Instruction::waterParaboloidBase.UpdateLayout();
 		bindings.EraseLast();
@@ -630,13 +630,16 @@ namespace VisualTerrain
 
 	struct TTerrainHull : public THull<TerrainVertex>
 	{
-		DX11::InstructionBlock32	instruction[3],shadowInstruction;
+		ShadedInstructionBlock32	instruction[3];
+		DX11::InstructionBlock32	shadowInstruction;
 
 		void						Destroy()
 		{
 			THull<TerrainVertex>::Clear();
-			instruction[0] = instruction[1] = instruction[2]
-				= shadowInstruction = DX11::InstructionBlock32();
+			instruction[0].Clear();
+			instruction[1].Clear();
+			instruction[2].Clear();
+			shadowInstruction.Clear();
 		}
 	};
 	struct TResourceHull : public THull<ResourceVertex>
@@ -651,13 +654,14 @@ namespace VisualTerrain
 	};
 	struct TWaterHull : public THull<WaterVertex>
 	{
-		DX11::InstructionBlock32	instruction[3];
+		ShadedInstructionBlock32	instruction[3];
 
 		void						Destroy()
 		{
 			THull<WaterVertex>::Clear();
-			instruction[0] = instruction[1] = instruction[2]
-				= DX11::InstructionBlock32();
+			instruction[0].Clear();
+			instruction[1].Clear();
+			instruction[2].Clear();
 		}
 	};
 
@@ -925,13 +929,17 @@ namespace VisualTerrain
 		lineTex.Clear();
 		gridShader.Clear();
 		transparentGridShader.Clear();
-		overlayBase = overlayShadowBase 
-			= resourceBase = terrainBase 
-			= terrainSphereBase = terrainParaboloidBase 
-			= orbitGridBase
-			= terrainShadowBase
-			= waterBase = waterSphereBase = waterParaboloidBase
-			= DX11::BaseInstructionBlock();
+		overlayBase.Clear();
+		overlayShadowBase.Clear();
+		resourceBase.Clear();
+		terrainBase.Clear();
+		terrainSphereBase.Clear();
+		terrainParaboloidBase.Clear();
+		orbitGridBase.Clear();
+		terrainShadowBase.Clear();
+		waterBase.Clear();
+		waterSphereBase.Clear();
+		waterParaboloidBase.Clear();
 		ParaboloidDirection_Height.Clear();
 		ParaboloidColor_FlatRadius.Clear();
 		SphereDef.Clear();
@@ -1315,15 +1323,15 @@ namespace VisualTerrain
 		if (dat.terrain.instruction[0].shader.IsEmpty())
 		{
 			(DX11::BaseInstructionBlock&)dat.terrain.shadowInstruction = Instruction::terrainShadowBase;
-			(DX11::BaseInstructionBlock&)dat.terrain.instruction[0] = Instruction::terrainBase;
-			(DX11::BaseInstructionBlock&)dat.terrain.instruction[1] = Instruction::terrainParaboloidBase;
-			(DX11::BaseInstructionBlock&)dat.terrain.instruction[2] = Instruction::terrainSphereBase;
+			dat.terrain.instruction[0] = Instruction::terrainBase;
+			dat.terrain.instruction[1] = Instruction::terrainParaboloidBase;
+			dat.terrain.instruction[2] = Instruction::terrainSphereBase;
 
 			(DX11::BaseInstructionBlock&)dat.overlay.instruction = Instruction::overlayBase;
 			(DX11::BaseInstructionBlock&)dat.overlay.shadowInstruction = Instruction::overlayShadowBase;
-			(DX11::BaseInstructionBlock&)dat.water.instruction[0] = Instruction::waterBase;
-			(DX11::BaseInstructionBlock&)dat.water.instruction[1] = Instruction::waterParaboloidBase;
-			(DX11::BaseInstructionBlock&)dat.water.instruction[2] = Instruction::waterSphereBase;
+			dat.water.instruction[0] = Instruction::waterBase;
+			dat.water.instruction[1] = Instruction::waterParaboloidBase;
+			dat.water.instruction[2] = Instruction::waterSphereBase;
 		}
 
 
@@ -2867,7 +2875,7 @@ namespace VisualTerrain
 			out.Set(in.centerDirection,in.ownerCount>1 ? 1.f : 0.f,orbit,opacity,emp);
 		});
 
-		((Engine::DX11::BaseInstructionBlock&)instruction) = Instruction::orbitGridBase;
+		instruction = Instruction::orbitGridBase;
 		instruction.ibo = Instruction::lowGridInstruction.ibo;
 		instruction.vbo.CreateFromStructs(vertices);
 	}

@@ -7,12 +7,12 @@
 #include "terrainInstructions.h"
 #include "objectRendering.h"
 #include "lighting.h"
-
+#include "shadedRenderInstruction.h"
 
 namespace Atmosphere
 {
 	namespace DX11 = Engine::DX11;
-	DX11::InstructionBlock16	instruction;
+	ShadedInstructionBlock16	instruction;
 //	static DX11::ObjectBuffer<float4>	helpers;
 
 
@@ -56,38 +56,9 @@ namespace Atmosphere
 
 	void		Create()
 	{
-		//static const count_t Resolution = 100;
-		//Array<float2>	vertices(Resolution+1);
-		//Array<UINT16>	indices(Resolution*3);
-		//vertices.First() = float2(0,0);
-		//for (index_t i = 0; i < Resolution; i++)
-		//{
-		//	float a = float(i)/float(Resolution) * M_PIF * 2.f;
-		//	vertices[i+1] = float2(cos(a),sin(a)) * 1.4f;
-		//	indices[i*3] = (UINT16)0;
-		//	indices[i*3+1] = (UINT16)(i+1);
-		//	indices[i*3+2] = (UINT16)(((i+1)%Resolution) + 1);
-		//}
 
-
-
-		Array<float2>	vertices(4);
-		Array<UINT16>	indices(6);
-		vertices[0] = float2(-1);
-		vertices[1] = float2(1,-1);
-		vertices[2] = float2(1);
-		vertices[3] = float2(-1,1);
-		indices[0] = 0;
-		indices[1] = 1;
-		indices[2] = 2;
-		indices[3] = 0;
-		indices[4] = 2;
-		indices[5] = 3;
-		
-		instruction.vbo.CreateFromStructs(vertices);
-		instruction.ibo.Create(indices);
-
-		instruction.binding.Append("POSITION",0,DXGI_FORMAT_R32G32_FLOAT);
+		ShadedInstruction base;
+		base.binding.Append("POSITION",0,DXGI_FORMAT_R32G32_FLOAT);
 
 		Buffer0<DX11::Shader::Binding> bindings;
 
@@ -109,9 +80,29 @@ namespace Atmosphere
 		bindings.Append(DX11::Shader::SamplerBinding(true, Engine::TextureFilter::None, 1, "ShadowSampler"));
 		bindings.Append(DX11::Shader::Binding(Lighting::GPUResources::atmosphereConfig, "AtmosphereConfig"));
 
-		instruction.shader.LoadFromFile("shaders/atmosphere.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
-		instruction.SetTriangles();
-		instruction.UpdateLayout();
+		base.LoadQualitiesFromFile("shaders/atmosphere.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
+		base.SetTriangles();
+		base.UpdateLayout();	
+
+
+		Array<float2>	vertices(4);
+		Array<UINT16>	indices(6);
+		vertices[0] = float2(-1);
+		vertices[1] = float2(1,-1);
+		vertices[2] = float2(1);
+		vertices[3] = float2(-1,1);
+		indices[0] = 0;
+		indices[1] = 1;
+		indices[2] = 2;
+		indices[3] = 0;
+		indices[4] = 2;
+		indices[5] = 3;
+		
+		instruction = base;
+		instruction.vbo.CreateFromStructs(vertices);
+		instruction.ibo.Create(indices);
+
+
 	}
 
 	void		Destroy()

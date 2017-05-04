@@ -45,9 +45,10 @@ namespace Objects
 								cutOffConfig,
 								beamBottomColor,
 								beamTopColor;
-
-	DX11::BaseInstructionBlock	stdVehicleShader,
-								seeThroughShader,
+	
+	ShadedInstruction			stdVehicleShader;
+								
+	DX11::BaseInstructionBlock	seeThroughShader,
 								pathShader,
 								jobShader,
 								attackRingShader,
@@ -58,12 +59,12 @@ namespace Objects
 	
 
 
-	DX11::BaseInstructionBlock	standardCompiledShader, standardLocalizableShader;
+	ShadedInstruction			standardCompiledShader, standardLocalizableShader;
 
-	DX11::InstructionBlock32	cordon,
-								foundation,
+	DX11::InstructionBlock32	attackRing;
+	ShadedInstructionBlock32	cordon,
 								userInteractionNotifier,
-								attackRing,
+								foundation,
 								gatheringPoint;
 								
 	DX11::BaseInstructionBlock	shadowInstruction;
@@ -386,14 +387,18 @@ namespace Objects
 
 		smokeTexture.Clear();
 
-		seeThroughShader = stdVehicleShader = DX11::BaseInstructionBlock();
-		standardCompiledShader = standardLocalizableShader =
-			pathShader = jobShader = 
-			attackRingShader = 
-			smokeTrailShader =
-			arrowInstruction = 
-			skyPortBeam = 
-			foundation = cordon = DX11::InstructionBlock32();
+		seeThroughShader.Clear();
+		stdVehicleShader.Clear();
+		standardCompiledShader.Clear();
+		standardLocalizableShader.Clear();
+		pathShader.Clear();
+		jobShader.Clear();
+		attackRingShader.Clear();
+		smokeTrailShader.Clear();
+		arrowInstruction.Clear();
+		skyPortBeam.Clear();
+		foundation.Clear();
+		cordon.Clear();
 		userInteractionNotifier.Clear();
 		attackRing.Clear();
 		gatheringPoint.Clear();
@@ -483,7 +488,7 @@ namespace Objects
 			#endif
 			DX11::Shader::SamplerBinding(true, Engine::TextureFilter::Linear, 1, "ShadowSampler")
 		};
-		stdVehicleShader.shader.LoadFromFile("shaders/vehicleShape.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
+		stdVehicleShader.LoadQualitiesFromFile("shaders/vehicleShape.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
 		stdVehicleShader.UpdateLayout();
 		stdVehicleShader.SetTriangles();
 
@@ -544,7 +549,7 @@ namespace Objects
 		standardCompiledShader = stdVehicleShader;	//same for now
 
 		standardLocalizableShader.binding = stdVehicleShader.binding;
-		standardLocalizableShader.shader.LoadFromFile("shaders/structureShape.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
+		standardLocalizableShader.LoadQualitiesFromFile("shaders/structureShape.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
 		standardLocalizableShader.UpdateLayout();
 		standardLocalizableShader.SetTriangles();
 
@@ -646,7 +651,7 @@ namespace Objects
 								r1 = 2;
 			CompileFlatDisc(geo,Resolution,r0,r1, float4(1,0,0,0), float4(1,0,0,0));	//red = key-color
 
-			(DX11::BaseInstructionBlock&)userInteractionNotifier = stdVehicleShader;
+			userInteractionNotifier = stdVehicleShader;
 			userInteractionNotifier.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
 			userInteractionNotifier.ibo.Create(geo.GetLOD(0).indices);
 
@@ -658,7 +663,7 @@ namespace Objects
 
 			geo.LoadFromObj("objects/gatheringPoint.obj");
 
-			(DX11::BaseInstructionBlock&)gatheringPoint = stdVehicleShader;
+			gatheringPoint = stdVehicleShader;
 			gatheringPoint.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
 			gatheringPoint.ibo.Create(geo.GetLOD(0).indices);
 
@@ -672,14 +677,14 @@ namespace Objects
 			geo.LoadFromObj("objects/cordon.obj");
 
 			geo.Scale(vehicleScale);
-			(DX11::BaseInstructionBlock&)cordon = stdVehicleShader;
+			cordon = stdVehicleShader;
 			cordon.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
 			cordon.ibo.Create(geo.GetLOD(0).indices);
 
 			geo.Clear();
 			geo.LoadFromObj("objects/foundation.obj");
 			//geo.Scale(vehicleScale);
-			(DX11::BaseInstructionBlock&)foundation = stdVehicleShader;
+			foundation = stdVehicleShader;
 			foundation.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
 			foundation.ibo.Create(geo.GetLOD(0).indices);
 		}

@@ -1744,16 +1744,19 @@ bool loop()
 
 		
 		{
-			#ifdef CASCADING_SHADOW
-				for (index_t i = 0; i < Lighting::NumCascades; i++)
-				{
-					RenderShadows(-20.f + 30.f * (1 << i) ,i);
-				}
-			#else
-				RenderShadows(30.f, Objects::shadowMap, Objects::shadowCamera, Objects::shadowMatrix);
-			#endif
+			if (ShadedInstruction::chosenQuality != ShadedInstruction::Quality::Off)
+			{
+				#ifdef CASCADING_SHADOW
+					for (index_t i = 0; i < Lighting::NumCascades; i++)
+					{
+						RenderShadows(-20.f + 30.f * (1 << i) ,i);
+					}
+				#else
+					RenderShadows(30.f, Objects::shadowMap, Objects::shadowCamera, Objects::shadowMatrix);
+				#endif
 
-			Objects::Renderer::EndShadowRendering();
+				Objects::Renderer::EndShadowRendering();
+			}
 		}
 
 		display.pick(Camera::scene);
@@ -3620,6 +3623,12 @@ int main( int argc, const char* argv[])
 				display.config.vertical_sync = StartConfig::GetInt("runtime/vsync");
 				display.config.vertical_sync = display.config.vertical_sync > 0 ? 1 : 0;
 				display.config.fsaa_samples = StartConfig::GetInt("runtime/fsaa",4);
+
+				const String&shadowFilter = StartConfig::GetString("runtime/shadowQuality",ShadedInstruction::Quality().ToString());
+				if (!ShadedInstruction::chosenQuality.Decode(shadowFilter.c_str()))
+				{
+					LogEvent(EventClass::Preset::configurationError,"Unable to apply chosen shadow filter '"+shadowFilter+"': Not supported");
+				}
 
 				UI::resourcesAsList = StartConfig::GetBool("runtime/resourcesAsList",false);
 

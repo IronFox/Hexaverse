@@ -1,5 +1,5 @@
 #include "common.inc.hlsl"
-#include "shadow.hlsli"
+#include "light.hlsli"
 
 
 cbuffer Tint

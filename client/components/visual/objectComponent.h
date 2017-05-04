@@ -8,6 +8,7 @@
 #include <objects/mobileEntity.h>
 #include "../../ExtRenderer/DirectX11.h"
 #include <objects/structure/tower.h>
+#include "shadedRenderInstruction.h"
 
 namespace Objects
 {
@@ -47,7 +48,7 @@ namespace Objects
 		void				FinishCreation(Objects::Component::Base&base, bool scaleToVehicleSize=true);
 	public:
 
-		Array<DX11::InstructionBlock32>				partInstruction;
+		Array<ShadedInstructionBlock32>				partInstruction;
 		static VisualComponent&		Allocate(Objects::Component::Base&);
 		static VisualComponent&		Of(const Objects::Component::Base&);
 
@@ -62,7 +63,7 @@ namespace Objects
 		/**
 		Temporary structure-specific rendering instruction. Updated by Recompile(). Can be used to render the local structure.
 		*/
-		DX11::InstructionBlock32	constShape;
+		ShadedInstructionBlock32	constShape;
 
 
 
@@ -89,7 +90,7 @@ namespace Objects
 		/**
 		Temporary structure-specific rendering instruction. Updated by Recompile(). Can be used to render the local structure.
 		*/
-		DX11::InstructionBlock32	compiledShape;
+		ShadedInstructionBlock32	compiledShape;
 		/**
 		Container of the geometry of the local structure. Updated by RecompileConnectors()
 		*/
