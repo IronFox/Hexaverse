@@ -72,8 +72,9 @@ namespace ServerProcess
 			}
 			catch (const std::exception&ex)
 			{
-				DBG_FATAL__(ex.what());
 				LogEvent(EventClass::Preset::error, ex.what());
+				if (IsDebuggerPresent())
+					DebugBreak();
 			}
 		}
 
