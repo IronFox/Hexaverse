@@ -77,7 +77,7 @@ CreateTask(function() Game.DisplayMessage(
 CreateTask(function() Game.DisplayMessage("Let's get you acquainted with the camera controls.") end);
 
 CreateTask(function() Game.DescribeTask("Zoom the camera by using the mouse-wheel or the up/down arrow-keys."); end, function() if cameraZoomed then TaskDone() end; end);
-CreateTask(function() Game.DescribeTask("Drag the camera by holding the right mouse button and moving the mouse."); end, function() if cameraDragged then TaskDone() end; end);
+CreateTask(function() Game.DescribeTask("Drag the camera by holding the right or middle mouse button and moving the mouse."); end, function() if cameraDragged then TaskDone() end; end);
 CreateTask(function() Game.DescribeTask("Rotate the camera around your current focus by pressing the ASDW keys."); end, function() if cameraRotated then TaskDone() end; end);
 
 CreateTask(function() Game.DisplayMessage("Now that you have some understanding of camera control, let's explore your units.") end);
