@@ -1440,8 +1440,8 @@ namespace World
 			cellStack[i].ZeroInit(false);
 		}
 
-		for (index_t i = 0; i < ARRAYSIZE(families); i++)
-			families[i].structureOrSensory.Set(0);
+		foreach (families,f)
+			f->structureOrSensory.Set(0);
 		InvalidateSensory();
 	}
 
