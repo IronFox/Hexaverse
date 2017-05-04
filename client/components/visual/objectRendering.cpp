@@ -2340,6 +2340,7 @@ namespace Objects
 				structures.Foreach([](const Objects::PStructure&_s)
 				{
 					const Structure&s = *_s;
+					display.SetObjectMatrix(s.system);
 					const auto&vis = Objects::StructureHull::Of(s);
 					_RenderShadow(vis.constShape);
 				});
