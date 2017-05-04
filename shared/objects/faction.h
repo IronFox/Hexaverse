@@ -151,6 +151,8 @@ namespace Objects
 
 		#endif
 
+		count_t			sensorLockLevel=0;
+
 		void			InitID(const TUniqueID&toID, bool nexusFaction);
 
 	public:
@@ -186,6 +188,19 @@ namespace Objects
 			return id.ToString()+":'"+name+"'";
 		}
 
+		
+		struct TSensorLock
+		{
+			Faction*const owner;
+
+			TSensorLock(Faction*f):owner(f)	{f->sensorLockLevel++;}
+			~TSensorLock();
+			TSensorLock(const TSensorLock&other):owner(other.owner) {owner->sensorLockLevel++;}
+			void operator=(const TSensorLock&) = delete;
+		};
+		friend struct TSensorLock;
+
+		TSensorLock LockSensorUpdates() {return this;}
 
 #if 0
 		/**

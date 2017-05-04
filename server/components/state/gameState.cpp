@@ -977,6 +977,8 @@ namespace Game
 	{
 		LogEvent(EventSignificance::Common,"Spawning Nexus base at pole "+String(pole));
 
+		auto sensorLock = Objects::Faction::nexus->LockSensorUpdates();
+
 		ASSERT__(Config::Nexus::haveBases);
 
 		Objects::PNexusPort port;
