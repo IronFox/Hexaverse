@@ -48,7 +48,6 @@ namespace ServerProcess
 
 		void	Start()
 		{
-			char parameterBuffer[32768];
 			PathString	path = GetExecutablePath(),
 						workingDirectory = GetWorkingDirectory();
 
@@ -67,7 +66,15 @@ namespace ServerProcess
 			if (TryResume())
 				return;
 			LogEvent(EventSignificance::Debug,"Starting server process (workingDirectory='"+String(workingDirectory)+"', path='"+String(path)+"', parameters='"+String(parameters)+"', showWindow="+String(showWindow)+")");
-			ASSERT3__(process.Start(workingDirectory,path,parameters,showWindow), workingDirectory,path,parameterBuffer);
+			try
+			{
+				process.Start(workingDirectory,path,parameters,showWindow);
+			}
+			catch (const std::exception&ex)
+			{
+				DBG_FATAL__(ex.what());
+				LogEvent(EventClass::Preset::error, ex.what());
+			}
 		}
 
 		
