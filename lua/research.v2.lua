@@ -60,11 +60,7 @@ end
 function ResearchEntry.NewFloat()
 	return ResearchEntry.New(-1)
 end
-function ResearchEntry:Instantiate()
-	local rs = ResearchEntry.New(self.limit)
-	rs.progress = 0
-	return rs
-end
+
 
 
 ResearchState = {}
@@ -72,27 +68,61 @@ ResearchState.__index = ResearchState
 function ResearchState.New()
 	local rs = {}
 	setmetatable(rs,ResearchState)
-	rs.research = {}
+	rs.researchProgress = {}
 	for k,v in pairs(researchables) do
-		rs.research[k] = v:Instantiate()
+		rs.researchProgress[k] = 0;
 	end
 	return rs
 end
 
-function ResearchState:GetState(key--[[string]])
-	if self.research[key] == nil then
+function ResearchState:GetProgress(key--[[string]])
+	if type( self.researchProgress[key] ) == nil then
 		Game.Log("Research state lacks key '"..tostring(key).."'. Instantiating new");
-		self.research[key] = researchables[key]:Instantiate();
+		self.researchProgress[key] = 0;
 	end;
-	return self.research[key];
+	return self.researchProgress[key];
 end;
 
+
+function ResearchState:SetProgress(key--[[string]], progress--[[int]])
+	self.researchProgress[key] = progress;
+end;
+
+function ResearchState:GetLimit(key--[[string]])
+	if type( researchables[key] ) == nil then
+		return 0;
+	end;
+	return researchables[key].limit;
+end;
+
+
 function ResearchState:Export()
-	return self.research
+	return self.researchProgress;
 end
 
 function ResearchState:Import(exported)
-	self.research = exported
+	if type(exported) ~= 'table' then
+		return;
+	end;
+	self.researchProgress = {};
+	for k,v in pairs(exported) do
+		if type(researchables[k]) ~= 'nil' then
+			if type(v) == 'table' then
+				self.researchProgress[k] = v.progress;
+				Game.Log("Research '"..tostring(k).."' is old table format. Converting...");
+			else
+				self.researchProgress[k] = v;
+			end;
+		else
+			Game.Log("Research '"..tostring(k).."' is not supported by this research script. Ignoring...");
+		end;
+	end;
+	for k,v in pairs(researchables) do
+		if type(self.researchProgress[k]) == 'nil' then
+			Game.Log("Imported research state lacks key '"..tostring(k).."'. Setting to 0 progress");
+			self.researchProgress[k] = 0;
+		end;
+	end;
 end
 
 
@@ -333,21 +363,23 @@ function MakeUnlockResearchable(researchGroup, researchDependency, typeTable, ty
 	{
 		Get = function(state)
 			if state == nil then
+				--Game.Log(key..": no state. false");
 				return false
 			end
-			return state.research[key].progress >= state.research[key].limit
+			--Game.Log(key..": "..state:GetProgress(key)..'/'..state:GetLimit(key));
+			return state:GetProgress(key) >= state:GetLimit(key);
 		end,
 		Describe = function(state)
 			if state == nil then
 				return false
 			end
-			return state.research[key].progress >= state.research[key].limit
+			return state:GetProgress(key) >= state:GetLimit(key)
 		end
 	}
 	
 	return Game.CreateResearch(researchGroup,typeName,nil,
-		function(state,progress) state:GetState(key).progress = progress end,
-		function(state) return state:GetState(key).progress; end, 
+		function(state,progress) state:SetProgress(key, progress) end,
+		function(state) return state:GetProgress(key); end, 
 		researchables[key].limit, researchDependency
 		);
 	
@@ -402,7 +434,7 @@ function MakeImproveResearchable(researchGroup, researchDependency, typeTable, t
 			if state == nil then
 				return original;
 			end
-			local progress = state.research[key].progress;
+			local progress = state:GetProgress(key);
 			local factor = GetResearchImprovementFactor(progress,speed);
 			local result = original * factor;
 			return result;
@@ -412,7 +444,7 @@ function MakeImproveResearchable(researchGroup, researchDependency, typeTable, t
 			if state == nil then
 				return original;
 			end
-			local progress = state.research[key].progress;
+			local progress = state:GetProgress(key);
 			if (progress == 0) then
 				return original;
 			end
@@ -422,8 +454,8 @@ function MakeImproveResearchable(researchGroup, researchDependency, typeTable, t
 	}
 	
 	return Game.CreateResearch(researchGroup,typeName,nil,
-		function(state,progress) state.research[key].progress = progress end,
-		function(state) return state.research[key].progress end, -1, researchDependency
+		function(state,progress) state:SetProgress(key, progress) end,
+		function(state) return state:GetProgress(key) end, -1, researchDependency
 		);
 end
 
