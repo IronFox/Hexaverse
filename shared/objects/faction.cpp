@@ -735,10 +735,19 @@ namespace Objects
 				{
 					if (e->owner.get() == owner)
 						return;
-					if (owner->GridCanSee(e,t))
+					if (e->IsAboveGrid())
 					{
-						owner->SignalAppearance(e,t,true,false);
+						count_t cover = owner->CountOffGridCoverage(e->location.height, e->GetWorldPosition());
+						if (cover > 0)
+						{
+							owner->SignalAppearance(e, t, true, false);
+						}
 					}
+					else
+						if (owner->GridCanSee(e,t))
+						{
+							owner->SignalAppearance(e,t,true,false);
+						}
 
 				},false);
 
