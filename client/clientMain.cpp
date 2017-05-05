@@ -2789,7 +2789,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 	{
 		if (GUI::IsModal())
 			return ;
-		static const String allowed = "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_- <>!'\"'$%^&*()=+.,/\\#@?";
+		static const String allowed = "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_-:; <>!'\"'$%^&*()=+.,/\\#@?";
 		Dialog::Query("Please enter message","",allowed,[](const String&candidate)->bool
 			{
 				return candidate.length() <= 256;
