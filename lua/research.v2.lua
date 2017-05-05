@@ -78,6 +78,15 @@ function ResearchState.New()
 	end
 	return rs
 end
+
+function ResearchState:GetState(key--[[string]])
+	if self.research[key] == nil then
+		Game.Log("Research state lacks key '"..tostring(key).."'. Instantiating new");
+		self.research[key] = researchables[key]:Instantiate();
+	end;
+	return self.research[key];
+end;
+
 function ResearchState:Export()
 	return self.research
 end
@@ -337,8 +346,9 @@ function MakeUnlockResearchable(researchGroup, researchDependency, typeTable, ty
 	}
 	
 	return Game.CreateResearch(researchGroup,typeName,nil,
-		function(state,progress) state.research[key].progress = progress end,
-		function(state) return state.research[key].progress end, researchables[key].limit, researchDependency
+		function(state,progress) state:GetState(key).progress = progress end,
+		function(state) return state:GetState(key).progress; end, 
+		researchables[key].limit, researchDependency
 		);
 	
 end
