@@ -1079,11 +1079,11 @@ int main( int argc, const char* argv[])
 
 		if (!ParameterConfig::startOffline)
 		{
-			StartUp();
 			if (ParameterConfig::startInConfig)
 			{
 				ConfigurationMode::Begin();
 			}
+			StartUp();
 		}
 
 
