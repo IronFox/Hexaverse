@@ -335,10 +335,17 @@ namespace Tutorial
 		{
 			if (!Interactive::started)
 				return;
-			Interactive::RebuildFactionUnits();
-			Interactive::RebuildSelected();
+			try
+			{
+				Interactive::RebuildFactionUnits();
+				Interactive::RebuildSelected();
 
-			Interactive::Trigger::checkTaskConditions();
+				Interactive::Trigger::checkTaskConditions();
+			}
+			catch (const Lua::Exception&ex)
+			{
+				LogEvent(EventClass::Preset::configurationError,ex.what());
+			}
 		}
 
 
