@@ -169,8 +169,8 @@ namespace Objects
 			const World::Data&world = source.owner->knownWorld;
 			source.owner->seeing.VisitAllKeys([&world, &source,sourceLocation,&base,&c2,&closest,&closestEntity](const PWorldEntity&e)
 			{
-//					&& turret->TraceTrajectory(location+1,target.location,trajectory,iat,ic)==Turret::ReachesTarget;		
-				
+				if (e->IsIndestructible())
+					return;
 				Grid::LCellIdI loc;
 				if (!base.ExtCanHit(source.owner,sourceLocation,TrajectoryEndPoint( e->location ),loc))
 					return;
