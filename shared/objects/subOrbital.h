@@ -132,7 +132,7 @@ namespace Objects
 				/**/					Template<Derivative>(Component::Turret*turret) : Super(OwnerParameter(),turret,Grid::LCellIdI(0, 0))
 				{ 
 					#ifdef HAS_WINDOW
-						ASSERT__(staticShape);
+					//	ASSERT__(staticShape);
 						Super::shape = staticShape;
 					#endif		
 				}	//global prototype
