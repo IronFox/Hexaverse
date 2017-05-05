@@ -60,11 +60,13 @@ namespace Objects
 			MobileEntityProducer::Tick(v,t);
 		}
 	#else
-		/*virtual override*/ void				PlaneFactory::VisitAllCommands(FCommandVisitor visitor, bool force)
-		{
-			MobileEntityProducer::VisitAllCommands(visitor,force);
-			Super::VisitAllCommands(visitor,force);
-		}
+		#ifdef HAS_WINDOW
+			/*virtual override*/ void				PlaneFactory::VisitAllCommands(FCommandVisitor visitor, bool force)
+			{
+				MobileEntityProducer::VisitAllCommands(visitor,force);
+				Super::VisitAllCommands(visitor,force);
+			}
+		#endif
 		
 	#endif
 }

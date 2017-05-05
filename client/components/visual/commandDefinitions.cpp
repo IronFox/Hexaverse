@@ -437,10 +437,10 @@ namespace Objects
 
 				void	Land()
 				{
-					if (!selectedMobileEntity || !selectedMobileEntity->IsPlane() || selectedMobileEntity->GetLastPointOfOrigin().height <= Grid::CellStack::TopHeight)
+					if (!selectedMobileEntity || !selectedMobileEntity->IsPlane() || GetPointOfOrigin(*selectedMobileEntity).height <= Grid::CellStack::TopHeight)
 						return;
 					Objects::SubOrbital::PPlane plane = To<Objects::SubOrbital::Plane>::Cast(selectedMobileEntity);
-					auto loc = plane->GetLastPointOfOrigin();
+					auto loc = GetPointOfOrigin(*plane);
 					int h = plane->GetLandingHeight(loc);
 					if (h != badHeight)
 						ApplicationInterface::DirectTo(selectedMobileEntity, Grid::LCellIdI(loc.stackID, h), false, false);
@@ -448,10 +448,10 @@ namespace Objects
 
 				CommandFlags LandCheck(bool controlEnabled)
 				{
-					if (!controlEnabled || !selectedMobileEntity || !selectedMobileEntity->IsPlane() || selectedMobileEntity->GetLastPointOfOrigin().height <= Grid::CellStack::TopHeight)
+					if (!controlEnabled || !selectedMobileEntity || !selectedMobileEntity->IsPlane() || GetPointOfOrigin(*selectedMobileEntity).height <= Grid::CellStack::TopHeight)
 						return CommandFlags::None;
 					Objects::SubOrbital::PPlane plane = To<Objects::SubOrbital::Plane>::Cast(selectedMobileEntity);
-					auto loc = plane->GetLastPointOfOrigin();
+					auto loc = GetPointOfOrigin(*selectedMobileEntity);
 					int h = plane->GetLandingHeight(loc);
 					if (h != badHeight)
 						return CommandFlags::IsEnabled;
@@ -460,14 +460,14 @@ namespace Objects
 
 				void	TakeOff()
 				{
-					if (!selectedMobileEntity || !selectedMobileEntity->IsPlane() || selectedMobileEntity->GetLastPointOfOrigin().height > Grid::CellStack::TopHeight)
+					if (!selectedMobileEntity || !selectedMobileEntity->IsPlane() || GetPointOfOrigin(*selectedMobileEntity).height > Grid::CellStack::TopHeight)
 						return;
-					ApplicationInterface::DirectTo(selectedMobileEntity, Grid::LCellIdI(selectedMobileEntity->GetLastPointOfOrigin().stackID, Objects::SubOrbital::Height), false, false);
+					ApplicationInterface::DirectTo(selectedMobileEntity, Grid::LCellIdI(GetPointOfOrigin(*selectedMobileEntity).stackID, Objects::SubOrbital::Height), false, false);
 				}
 
 				CommandFlags TakeOffCheck(bool controlEnabled)
 				{
-					if (!controlEnabled || !selectedMobileEntity || !selectedMobileEntity->IsPlane() || selectedMobileEntity->GetLastPointOfOrigin().height > Grid::CellStack::TopHeight)
+					if (!controlEnabled || !selectedMobileEntity || !selectedMobileEntity->IsPlane() || GetPointOfOrigin(*selectedMobileEntity).height > Grid::CellStack::TopHeight)
 						return CommandFlags::None;
 					return CommandFlags::IsEnabled;
 				}
