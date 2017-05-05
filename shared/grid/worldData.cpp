@@ -417,14 +417,21 @@ namespace World
 			if (stack.waterRange.IsNotEmpty())
 			{
 				limit = (UINT32)(stack.waterRange.end-1);
+				DBG_ASSERT_LESS2__(limit,CellStack::Range, stack.waterRange.begin, stack.waterRange.end);
 				if (stack.highestOpaqueCell >= stack.lowestOpenCell)
+				{
 					limit = std::max(limit,(UINT32)stack.highestOpaqueCell);
+					DBG_ASSERT_LESS2__(limit,CellStack::Range, stack.lowestOpenCell, stack.highestOpaqueCell);
+				}
 			}
 			else
+			{
 				if (stack.highestOpaqueCell >= stack.lowestOpenCell)
 					limit = stack.highestOpaqueCell;
+				DBG_ASSERT_LESS2__(limit,CellStack::Range, stack.lowestOpenCell, stack.highestOpaqueCell);
+			}
+			limit = vmin( limit, CellStack::Range-1);
 		#endif
-		ASSERT_LESS__(limit,CellStack::Range);
 
 		UINT32 layer = limit;
 		//stack.highestOpaqueCell
