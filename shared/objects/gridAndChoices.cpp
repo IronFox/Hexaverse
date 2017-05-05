@@ -759,7 +759,7 @@ namespace Objects
 		#else
 			entity.owner->knownWorld;
 		#endif
-
+		vis = TChoiceVisualization();
 		movementChoices.Clear();
 		
 		const MobileEntityProducer*p = dynamic_cast<const MobileEntityProducer*>(&entity);// entity.ToProducer();
@@ -1015,11 +1015,12 @@ namespace Objects
 		//showArrow = false;		//why were these here...?
 		//hasArrowCellTarget = false;
 
-		movementChoices.Clear();
 		if (entity)
-		{
 			GetChoices(*entity,deploying,activeCursorMode, movementChoices, vis);
-
+		else
+		{
+			movementChoices.Clear();
+			vis = TChoiceVisualization();
 		}
 	
 	
