@@ -4,7 +4,9 @@
 #include <iostream>
 #include <fstream>
 #include <io/file_system.h>
-#include "../../shared/objects/gridAndChoices.h"
+#include <objects/gridAndChoices.h>
+#include <objects/structure/tower.h>
+#include <objects/structure/mine.h>
 #include "networkChannels.h"
 #include "reflection.h"
 #include "aiProcess.h"
@@ -235,13 +237,12 @@ namespace Journal
 				f.reset(new Objects::Faction(factionID));
 				Objects::Faction::all << f;
 			}
-			f->currentState = Grid::initialWorld;
+			f->knownWorld = World::initial;
 		}
 		else
 			if (factionType != GetType(f))
 				throw RoundException(CLOCATION,"Faction already exists. Types diverge");
 		f->accessToken = accessToken;
-		ASSERT__(f->visibility.cellStack.IsNotEmpty());
 		Network::tokenMap.Set(f->accessToken,f);
 
 		World::UpdateEMPZones();
@@ -1080,7 +1081,7 @@ namespace Journal
 	}
 
 
-	void	Helper::WriteToFile(Grid::WorldData&data, const PathString&filename)
+	void	Helper::WriteToFile(World::Data&data, const PathString&filename)
 	{
 		Riff::Chunk	world;
 		FileIO::WriteToListChunk(data,world);
@@ -1090,7 +1091,7 @@ namespace Journal
 
 	}
 
-	void	Helper::LoadFromFile(Grid::WorldData&data, const PathString&filename)
+	void	Helper::LoadFromFile(World::Data&data, const PathString&filename)
 	{
 		Riff::Chunk world;
 		if (!world.LoadFromFile(filename.c_str()))
@@ -1125,7 +1126,7 @@ namespace Journal
 
 	void	Round::RegisterResourceCoverageKnowledgeLoss(bool execute, const Objects::PFaction&f, UINT32 stackID)
 	{
-		if (!f->visibility.resourcesDiscovered[stackID])
+		if (!f->knownResources.resourcesDiscovered[stackID])
 			return;
 		PFactionEvent ev(new ResourceCoverageKnowledgeLoss(stackID));
 		factionStrands.Set(f->id).factionEvents << ev;
@@ -1177,7 +1178,7 @@ namespace Journal
 
 	/*virtual override*/void			Round::ResourceCoverageKnowledgeLoss::Execute(const Objects::PFaction&f)	const
 	{
-		f->visibility.resourcesDiscovered[stackID] = false;
+		f->knownResources.resourcesDiscovered[stackID] = false;
 	}
 
 
@@ -1256,8 +1257,8 @@ namespace Journal
 	void	Writer::InitNew(const PathString&root)
 	{
 		FileSystem::CreateDirectory(root);
-		Helper::WriteToFile(Grid::actualWorld,root + FOLDER_SLASH+"actual.world");
-		Helper::WriteToFile(Grid::initialWorld,root + FOLDER_SLASH+"visible.world");
+		Helper::WriteToFile(World::actual,root + FOLDER_SLASH+"actual.world");
+		Helper::WriteToFile(World::initial,root + FOLDER_SLASH+"visible.world");
 		foreach (Grid::Resource::all,res)
 		{
 			Helper::WriteToFile(*res,root+FOLDER_SLASH+res->GetName()+".coverage");
@@ -1295,8 +1296,8 @@ namespace Journal
 
 		LogEvent(EventSignificance::Important,"Restoring journal from "+String(root));
 
-		Helper::LoadFromFile(Grid::actualWorld,root + FOLDER_SLASH+"actual.world");
-		Helper::LoadFromFile(Grid::initialWorld,root + FOLDER_SLASH+"visible.world");
+		Helper::LoadFromFile(World::actual,root + FOLDER_SLASH+"actual.world");
+		Helper::LoadFromFile(World::initial,root + FOLDER_SLASH+"visible.world");
 
 		foreach (Grid::Resource::all,res)
 		{
@@ -1397,11 +1398,11 @@ namespace Journal
 			e->Write(stream,0);
 	}
 
-	void	Writer::Continue(const Storage&journal, const Grid::WorldData&world, const Grid::WorldData&initialWorld, const PathString&writeTo)
+	void	Writer::Continue(const Storage&journal, const World::Data&world, const World::Data&initialWorld, const PathString&writeTo)
 	{
 		bool closed = Network::CloseSession();
-		Grid::actualWorld = world;
-		Grid::initialWorld = initialWorld;
+		World::actual = world;
+		World::initial = initialWorld;
 
 		journal.ApplyToGlobalState();
 
@@ -1577,6 +1578,10 @@ namespace Journal
 		if (e->health <= 0)
 		{
 			throw RoundException(CLOCATION,e->GetName()+": Unable to destroy entity. Entity already dead");
+		}
+		if (e->IsIndestructible())
+		{
+			throw RoundException(CLOCATION,e->GetName()+": Unable to destroy entity. Entity is indestructible");
 		}
 		float t = 0;
 		Objects::Remove(e,type,t,false);

@@ -11,6 +11,7 @@
 #include "../configurationMode.h"
 #include "../udpBroadcast.h"
 #include "worldState.h"
+#include <globalEvents.h>
 
 
 
@@ -182,9 +183,7 @@ namespace Network
 		else
 		{
 			Channels::planetConfig.SendTo(server,Grid::currentPlanetConfig,(UINT)UserLevel::PlanetConfigurator);
-			World::Network::SendChangedFamilies();
-
-
+			World::Network::CheckAllFactionCoverageAndSendAsNeeded();
 		}
 	}
 
@@ -223,7 +222,7 @@ namespace Network
 		Protocol::GameProgress progress;
 		progress.gameOver = dead || RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame;
 		progress.gameWon = Game::winner == faction && !!Game::winner;
-		progress.status = FactionStatus(faction);
+		progress.status = RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::None ? "" : FactionStatus(faction);
 		progress.warning = dead ? "Game Over" : FactionWarning(faction,warningReason);
 		Channels::gameProgress.SendTo(peer.lock(),progress);
 	}
@@ -279,6 +278,7 @@ namespace Network
 		server.InstallChannel(Channels::gameConfig);
 		server.InstallChannel(Channels::requestResource);
 		server.InstallChannel(Channels::loadPlanetByName);
+		server.InstallChannel(Channels::tutorialAt);
 
 		server.OpenSignalChannel(Protocol::ChannelID::RequestRoundEnd,(UINT32)UserLevel::CommonFaction);
 		server.OpenSignalChannel(Protocol::ChannelID::RequestContinueRound,(UINT32)UserLevel::CommonFaction);
@@ -291,6 +291,13 @@ namespace Network
 		server.onEvent = Receiver::OnEvent;
 		server.onIgnorePackage = Receiver::OnIgnorePackage;
 		server.onDeserializationFailed = Receiver::OnDeserializationFailed;
+
+
+		GlobalEvents::applicationTerminate << []
+		{
+			server.Shutdown();
+
+		};
 	}
 
 	bool FactionIsActive(const Objects::PFaction&f)
@@ -354,7 +361,7 @@ namespace Network
 
 		Session::isStarted = true;
 
-		World::Network::SendChangedFamilies();
+		World::Network::CheckAllFactionCoverageAndSendAsNeeded();
 	}
 
 
@@ -435,6 +442,7 @@ namespace Network
 		FileIO::Network::HandleSessionClosure();
 		RuntimeConfig::roundNumber = 0;
 		RuntimeConfig::phase = RuntimeConfig::Phase::CommandPhase;
+		RuntimeConfig::tutorialMode = false;
 
 		if (spectators.IsNotEmpty())
 		{
@@ -449,11 +457,10 @@ namespace Network
 
 		}
 
-		Objects::FlushAllData();
-		Grid::FlushAllData();
+		GlobalEvents::FlushAll();
 
 		if ((preserveSpectators || !isOnline) && sendGridChangesToPreservedSpectators)
-			World::Network::SendChangedFamilies();
+			World::Network::CheckAllFactionCoverageAndSendAsNeeded();
 
 		return isOnline;
 

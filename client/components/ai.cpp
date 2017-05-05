@@ -203,7 +203,7 @@ namespace AI
 			}
 			//Objects::Turret::TraceTrajectory(
 			//Objects::Turret::MaxRangeToVelocity(source.GetFlatAttackRange()),
-				//									Grid::actualWorld, source.location,target,detonationAt);
+				//									World::actual, source.location,target,detonationAt);
 			//if (rs == Objects::TurretTrajectory::ReachesTarget
 			// || (rs == Objects::TurretTrajectory::MidFlightImpact && source.turret->GetExplosionRadius(e.owner) > 1 && !source.turret->dealsEMPDamage))
 			{

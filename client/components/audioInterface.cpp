@@ -9,6 +9,9 @@
 #include "../version.h"
 #include "clientRuntimeConfig.h"
 #include "audioInterface.h"
+#include "cameraControl.h"
+#include "clientEvents.h"
+#include "visual/display.h"
 
 
 namespace AudioInterface
@@ -27,6 +30,8 @@ namespace AudioInterface
 		//don't report - this happens once per frame
 		return false;
 	}
+
+	void		UpdateListener();
 
 	void	Create()
 	{
@@ -70,7 +75,16 @@ namespace AudioInterface
 			OpenAL::Listener::SetMaxPlayingSources(64);
 			OpenAL::Listener::RegisterMaxPlayingSourcesCallback(OnSourceCountReduce);
 			OpenAL::Listener::SetGain(2.f);
+
+
+			GlobalEvents::frameAfterCamera << UpdateListener;
+
+			display.RegisterFocusCallbacks(OpenAL::SignalWindowFocusLoss, OpenAL::SignalWindowFocusRestoration);
+
 		}
+
+
+
 	}
 
 	void	SetMasterVolume(float volume)
@@ -85,10 +99,12 @@ namespace AudioInterface
 		OpenAL::Shutdown();
 	}
 
-	void		UpdateListener(const Engine::Aspect<>&aspect)
+	void		UpdateListener()
 	{
+
 		if (isActive)
 		{
+			const Engine::Aspect<>&aspect = Camera::scene;
 			//static TVec3<> last;
 			//OpenAL::Listener::SetVelocity((aspect.GetAbsoluteLocation() - last) / Engine::timing.delta);
 			//last = aspect.GetAbsoluteLocation();

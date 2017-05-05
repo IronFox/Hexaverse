@@ -5,7 +5,8 @@
 #include "../aiProcess.h"
 #include "../journalSaveGame.h"
 #include "../configurationMode.h"
-
+#include <objects/structure/mine.h>
+#include <objects/structure/vehiclePlant.h>
 
 void			ApplicationInterface::SignalFactionsChanged()
 {
@@ -25,6 +26,7 @@ namespace Game
 	float				factionStartMineralValue=1.f;	//determined during loading
 	float				effectiveAnimationLength = 1.f;
 
+	INT32				tutorialAt=1;
 
 
 	namespace Config
@@ -68,7 +70,7 @@ namespace Game
 			static Buffer0<UINT32>	changed;
 			if (!f)
 				return;
-			f->visibility.UpdateResourceCoverage(center,range,changed);
+			f->knownResources.Update(center,range,changed);
 			if (changed.IsEmpty())
 				return;
 			::Network::PClient client;
@@ -107,6 +109,7 @@ namespace Game
 		{
 			roundTimerPaused = true;
 			mostFactionsAlive = 0;
+			tutorialAt=1;
 			winner.reset();
 			HandleSessionSuspension();
 		}
@@ -137,6 +140,8 @@ namespace Game
 				gameConfig.gameFlags |= Protocol::GameFlag::NexusAI;
 			if (ConfigurationMode::IsActive())
 				gameConfig.gameFlags |= Protocol::GameFlag::ConfigurationMode;
+			if (RuntimeConfig::tutorialMode)
+				gameConfig.gameFlags |= Protocol::GameFlag::TutorialMode;
 			if (World::Config::simulateLiquids)
 				gameConfig.gameFlags |= Protocol::GameFlag::SimulateLiquids;
 
@@ -523,7 +528,7 @@ namespace Game
 
 	void	ProcessChanges(bool thoroughly)
 	{
-		World::Network::SendChangedFamilies();
+		World::Network::CheckAllFactionCoverageAndSendAsNeeded();
 
 		Objects::ForeachMobileEntityIncludingStored([/*&anythingChanged*/](const Objects::PMobileEntity&_v)
 		{
@@ -972,6 +977,8 @@ namespace Game
 	{
 		LogEvent(EventSignificance::Common,"Spawning Nexus base at pole "+String(pole));
 
+		auto sensorLock = Objects::Faction::nexus->LockSensorUpdates();
+
 		ASSERT__(Config::Nexus::haveBases);
 
 		Objects::PNexusPort port;
@@ -1028,8 +1035,8 @@ namespace Game
 						distances << i;
 					else
 					{
-						Grid::actualWorld.Clear(Grid::LCellIdI(i,h),0);
-						Grid::actualWorld.Clear(Grid::LCellIdI(i,h+1),0);
+						World::actual.Clear(Grid::LCellIdI(i,h),0);
+						World::actual.Clear(Grid::LCellIdI(i,h+1),0);
 					}
 				}
 
@@ -1041,7 +1048,7 @@ namespace Game
 					int h2 = h + d1;
 					for (int z = h; z <= h2 + 2 ; z++)
 					{
-						Grid::actualWorld.Clear(Grid::LCellIdI(i,z),0);
+						World::actual.Clear(Grid::LCellIdI(i,z),0);
 					//	Grid::TagLowCluster(rebuild,Grid::LCellIdI(i,z));
 					}
 				//	Grid::TagLowCluster(rebuild,Grid::LCellIdI(i,h2-1));
@@ -1072,7 +1079,7 @@ namespace Game
 					{
 						if (z < h || (z >=h2-1 && notCore/* && !deadly*/) || noEdge)
 						{
-							Grid::actualWorld.Overwrite(Grid::LCellIdI(i,z),Grid::Content::Rock,0);
+							World::actual.Overwrite(Grid::LCellIdI(i,z),Grid::Content::Rock,0);
 						}
 						else
 							if (!notDirectEdge)
@@ -1086,7 +1093,7 @@ namespace Game
 					if (notDirectEdge || field.distance[i] == 1)
 						for (int z = h-1; z < h; z++)
 						{
-							Grid::actualWorld.Overwrite(Grid::LCellIdI(i,z),Grid::Content::Road,0);
+							World::actual.Overwrite(Grid::LCellIdI(i,z),Grid::Content::Road,0);
 						}
 				}
 
@@ -1236,7 +1243,7 @@ namespace Game
 					//for (int z = h; z <= h2 + 2 ; z++)
 					{
 						if (!noEdge)
-							Grid::actualWorld.Clear(Grid::LCellIdI(i,h),0);
+							World::actual.Clear(Grid::LCellIdI(i,h),0);
 					//	Grid::TagLowCluster(rebuild,Grid::LCellIdI(i,z));
 					}
 				//	Grid::TagLowCluster(rebuild,Grid::LCellIdI(i,h2-1));

@@ -3,19 +3,20 @@
 
 #include "./components/stdafx.h"
 
-#include "../shared/grid.h"
-#include "../shared/objects.h"
-#include "../shared/sphereGrid.h"
+#include <boot.h>
+#include <grid/worldData.h>
+#include <objects.h>
 
 #include "../client/version.h"
-#include "../shared/protocol.h"
-#include "../shared/runtimeConfig.h"
+#include <protocol.h>
+#include <runtimeConfig.h>
 
 //#include <third_party/bz2/bz2.h>
 #include <io/string_file.h>
 #include <io/file_system.h>
 #include <io/riff_handler.h>
 #include <io/config.h>
+#include <globalEvents.h>
 #include "components/tests.h"
 #include "components/aiProcess.h"
 #include "components/remoteControl.h"
@@ -326,7 +327,7 @@ namespace ApplicationInterface
 		rot.toWorld = toWorld;
 		rot.rotationTime = rotationTime;
 		rot.timestamp.rightNow = false;
-		rot.timestamp.atTime = e->motionTime;
+		rot.timestamp.atTime = e->entityTime;
 
 		foreach (Network::activePlayersAndSpectators,cl)
 		{
@@ -385,7 +386,7 @@ namespace ApplicationInterface
 		preciseAttack.isAutoAttack = attack.isAutoAttack;
 		preciseAttack.attackAngle = attack.attackAngle;
 		preciseAttack.timestamp.rightNow = false;
-		preciseAttack.timestamp.atTime = attack.attackFrom->motionTime;
+		preciseAttack.timestamp.atTime = attack.attackFrom->entityTime;
 	
 		LogEvent(EventSignificance::Debug,attack.attackFrom.get(),"Commencing attack at t="+String(preciseAttack.timestamp.atTime));
 
@@ -432,9 +433,9 @@ namespace ApplicationInterface
 			Sphere<> explosionSphere(center,explosionRadius);
 			Grid::high.GenerateVolume(explosionSphere,volume);
 
-			Objects::ForeachFaction([explosionSphere](const Objects::PFaction&f)
+			Objects::ForeachFaction([explosionSphere,&atTime](const Objects::PFaction&f)
 			{
-				if (f->GridCanSee(volume) || f->CountOffGridCoverage(explosionSphere))
+				if (f->GridCanSee(volume,atTime) || f->CountOffGridCoverage(explosionSphere))
 				{
 					canSee.Append(f);
 				};
@@ -528,6 +529,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 	//ErrMessage("Hexaverse Server: "+message);
 	std::cerr << message << std::endl;
 	#ifdef _DEBUG
+		__debugbreak();
 		std::abort();
 
 		char confirm[0x100];
@@ -583,19 +585,8 @@ void TerminateNow(bool isMain)
 
 
 		Logging::WriteEvent(EventSignificance::Uncommon,"Closing down",nullptr,nullptr,Objects::OwnerParameter());
-		Network::server.Shutdown();
 
-		if (Game::Config::Nexus::enableAI)
-			AIProcess::End();
-
-
-		Objects::Destroy();
-		Grid::Destroy();
-		UDPBroadCast::Terminate();
-
-		RemoteControl::Destroy();
-		ScriptCache::Destroy();
-
+		GlobalEvents::applicationTerminate();
 
 		Logging::WriteEvent(EventSignificance::Uncommon,"Terminating process",nullptr,nullptr,Objects::OwnerParameter());
 		Logging::End();
@@ -648,7 +639,8 @@ namespace ParameterConfig
 
 	PathString	loadFile;
 	bool	startOffline = false,
-			startInConfig = false;
+			startInConfig = false,
+			startInTutorial = false;
 	bool	customWorldID = false;
 	bool	enableRemoteControl = true;
 	const char*	programName="";
@@ -671,10 +663,12 @@ namespace ParameterConfig
 		std::cout << "  --loadAuto/-a [number]\tLoad auto-savegame. number=0 => most recent"<<std::endl;
 		std::cout << "  --offline/-o \tStart offline"<<std::endl;
 		std::cout << "  --config/-c \tStart in configuration mode"<<std::endl;
+		std::cout << "  --tutorial/-t \tStart in tutorial mode"<<std::endl;
 		std::cout << "  --port/-p [basePort]\tUse a non-default base port ("<<DEFAULT_SERVER_BASE_PORT<<" is default)"<<std::endl;
 		std::cout << "  --noRemote/-r \tDisable remote control service"<<std::endl;
 		std::cout << "  --rv4\tStart remote control service using IPv4"<<std::endl;
-		std::cout << "  --test/-t \tRun self-tests, then quit"<<std::endl;
+		std::cout << "  --test \tRun self-tests, then quit"<<std::endl;
+		std::cout << "  --version/-v \tShow version, then quit"<<std::endl;
 		//std::cout << "  --world/-w [worldID] \tuse custom world ID, and start empty"<<std::endl;
 	}
 
@@ -708,16 +702,26 @@ namespace ParameterConfig
 			}
 			break;
 			case Idle:
-				if (!strcmp(arg,"--test") || !strcmp(arg,"-t"))
+				if (!strcmp(arg,"--test"))
 					inTestMode = true;
 				elif (!strcmp(arg,"--rv4"))
 					controlProtocol = TCP::Server::Protocol::IPv4;
+				elif (!strcmp(arg,"--version") || !strcmp(arg,"-v"))
+				{
+					std::cout << SERVER_NAME<<std::endl;
+					exit(0);
+				}
 				elif (!strcmp(arg,"--port") || !strcmp(arg,"-p"))
 					mode = ExpectPort;
 				elif (!strcmp(arg,"--offline") || !strcmp(arg,"-o"))
 					startOffline = true;
 				elif (!strcmp(arg,"--config") || !strcmp(arg,"-c"))
 					startInConfig = true;
+				elif (!strcmp(arg,"--tutorial") || !strcmp(arg,"-t"))
+				{
+					loadFile = "config/tutorial.hsf";
+					startInTutorial = true;
+				}
 				elif (!strcmp(arg,"--loadAuto") || !strcmp(arg,"-a"))
 					mode = ExpectAutoSaveNumber;
 				elif (!strcmp(arg,"--help") || !strcmp(arg,"-h"))
@@ -769,11 +773,7 @@ void	StartUp()
 	Network::Start(ParameterConfig::basePort);
 }
 
-void	ShutDown()
-{
-	UDPBroadCast::Terminate();
-	Network::Stop();
-}
+
 
 class ServiceVar : public Reflection::Variable::Base
 {
@@ -868,13 +868,10 @@ int main( int argc, const char* argv[])
 				FATAL__("Something is wrong. Unable to locate server executable, or config/declaration.xml is missing.");
 		}
 
+		Boot();
 
-		NiceName::Load();
-
-		ScriptCache::Create();
 		Evolver::Create();
 		Game::evolver = Evolver::GetDefault();
-
 		Journal::Create();
 
 		World::worldID.Generate();
@@ -896,15 +893,10 @@ int main( int argc, const char* argv[])
 
 
 
-		Grid::Create0();
-		Objects::Create();
-		Grid::Create1();
-
-
 		Reflection::Create();
 		Reflection::state.PushFocus();
 		Reflection::state.EnterNewFolder("/Online");
-		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("udpBroadcast",UDPBroadCast::IsStarted,UDPBroadCast::Terminate,[](){UDPBroadCast::Start();})));
+		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("udpBroadcast",UDPBroadCast::IsStarted,UDPBroadCast::Stop,[](){UDPBroadCast::Start();})));
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("info",[]()->bool{return Network::InformationProvider::IsOnline();},Network::InformationProvider::Stop,[](){Network::InformationProvider::Start(ParameterConfig::basePort);})));
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("session",[]()->bool{return Network::server.IsOnline();},[](){Network::SuspendSession();},[](){Network::RestartSession(false);})));
 		Reflection::state.DefineCommand("closeSession",(CLI::Command::function0_t)[](){Network::CloseSession();},CLI::NoCompletion);	//why...?
@@ -971,7 +963,7 @@ int main( int argc, const char* argv[])
 		{
 			if (planet.IsNotEmpty())
 			{
-				if (!FileSystem::IsFile(RuntimeConfig::ConfigFile(PathString("config/planets/"+planet+".ini"))))
+				if (!World::IsPlanetIniFile(planet+".ini"))
 				{
 					LogEvent(EventClass::Preset::remoteControlError,"'"+planet+"' is not a valid planet type");
 					return;
@@ -996,11 +988,12 @@ int main( int argc, const char* argv[])
 
 		Reflection::state.DefineCommand("/World/showPlanetTypes",(CLI::Command::function0_t)[]()
 		{
-			Array<FileSystem::File>	planetIniFiles;
+			Array<World::TPlanetIniFile>	planetIniFiles;
 			World::GetAvailablePlanetIniFiles(planetIniFiles);
 
+			CLI::println("-");
 			foreach (planetIniFiles,f)
-				CLI::println(String(f->GetInnerName()));
+				CLI::println(f->name+(f->userDefined.GetLocation().IsNotEmpty()? ( f->factoryDefault.GetLocation().IsNotEmpty() ? " (user override)" :" (user)"): ""));
 			CLI::println("-");
 		},CLI::NoCompletion);
 
@@ -1021,9 +1014,12 @@ int main( int argc, const char* argv[])
 
 
 			{
+				
+				Test::Run(Test::TerrainUpdates());
+				Test::Run(Test::AutoTargeting());
+				Test::Run(Test::SharedContainer());
 				Test::Run(Test::ServerClient());
 				Test::Run(Test::HighGridFamilies());
-				Test::Run(Test::AutoTargeting());
 				Test::Run(Test::Bin2Str());
 				Test::Run(Test::Serialization());
 				Test::Run(Test::VehiclePlant());
@@ -1086,6 +1082,7 @@ int main( int argc, const char* argv[])
 			else
 				Logging::WriteEvent(EventClass::Preset::fileError,"Specified file ("+String(filename)+") does not exist. Skipping loading operation.",nullptr,nullptr,Objects::OwnerParameter());
 		}
+		RuntimeConfig::tutorialMode = ParameterConfig::startInTutorial;
 
 		//Journal::globalWriter.InitNew(RuntimeConfig::ConfigFile("saves/log"));
 		//Journal::globalWriter.ContinueExisting(RuntimeConfig::ConfigFile("saves/log"));

@@ -4,6 +4,8 @@
 #include "../../shared/uniqueID.h"
 #include <general/timer.h>
 #include <general/monitoredProcess.h>
+#include <globalEvents.h>
+#include <logEvent.h>
 
 namespace AIProcess
 {
@@ -12,6 +14,7 @@ namespace AIProcess
 		CryptographicID	accessToken;
 
 		MonitoredProcess	process;
+		index_t	eventKey = InvalidIndex;
 
 		void	Start()
 		{
@@ -34,9 +37,23 @@ namespace AIProcess
 
 			sprintf_s(parameterBuffer,"aiAccessToken='%s' udpListen=false serverURL=localhost",accessToken.ToFullString().c_str());
 
-			ASSERT3__(process.Start(workingDirectory,path,parameterBuffer,false), workingDirectory,path,parameterBuffer);
+			try
+			{
+				process.Start(workingDirectory,path,parameterBuffer,false);
+			}
+			catch (const std::exception&ex)
+			{
+				LogEvent(EventClass::Preset::error, ex.what());
+				if (IsDebuggerPresent())
+					DebugBreak();
+			}
 		}
 	
+
+		void EventEnd()
+		{
+			detail::process.Terminate();
+		}
 	}
 
 
@@ -49,11 +66,13 @@ namespace AIProcess
 		}
 		detail::accessToken = accessToken;
 		detail::Start();
+		if (detail::eventKey == InvalidIndex)
+			detail::eventKey = GlobalEvents::applicationTerminate.Register(detail::EventEnd);
 	}
 
 	void End()
 	{
-		detail::process.Terminate();
+		detail::EventEnd();
 	}
 
 

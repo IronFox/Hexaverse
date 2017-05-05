@@ -2,9 +2,13 @@
 
 hoverformer sometimes tries building roads through buildings
 
+aerial radar and turret
 
-parallel attacks
-adjust research script and renovate overriding
+save/restore faction colors
+
+save planet configuration upon commit in interactive configuration mode. present list of last saves to recover from
+
+make shift-key functionality optional
 
 
 resources 2.0:
@@ -147,6 +151,8 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+parallel attacks
+adjust research script and renovate overriding
 dedicated server should not start in interactive mode.
 Log whether in interactive mode/public/private
 fixed: faction spawning too close to hostile factions

@@ -8,6 +8,7 @@
 #include "../roundNumber.h"
 #include "../sharedContainer.h"
 #include "research.h"
+#include "../grid/resources.h"
 
 namespace Objects
 {
@@ -140,11 +141,17 @@ namespace Objects
 		#ifndef CLIENT
 			friend class ResearchState;
 
-			void		ChangeSensory(const Grid::HighSetup::TVolumeDescriptor&desc, float t, short changeBy);
-			void		ChangeSensory(const Grid::SkySensorState&state, float t, short changeBy);
+			//void		ChangeSensory(const Grid::HighSetup::TVolumeDescriptor&desc, float t, short changeBy);
+			//void		ChangeSensory(const Grid::SkySensorState&state, float t, short changeBy);
 //			void		ReplaceSensory(const Grid::SkySensorState&oldState, const Grid::SkySensorState&newState, float t, short changeBy);
-			void		CheckChanges(float t);
+			/**
+			Checks and potentially rebuilds knownWorld sensor state
+			*/
+			void		CheckSensory(float&t);
+
 		#endif
+
+		count_t			sensorLockLevel=0;
 
 		void			InitID(const TUniqueID&toID, bool nexusFaction);
 
@@ -181,6 +188,19 @@ namespace Objects
 			return id.ToString()+":'"+name+"'";
 		}
 
+		
+		struct TSensorLock
+		{
+			Faction*const owner;
+
+			TSensorLock(Faction*f):owner(f)	{f->sensorLockLevel++;}
+			~TSensorLock();
+			TSensorLock(const TSensorLock&other):owner(other.owner) {owner->sensorLockLevel++;}
+			void operator=(const TSensorLock&) = delete;
+		};
+		friend struct TSensorLock;
+
+		TSensorLock LockSensorUpdates() {return this;}
 
 #if 0
 		/**
@@ -228,11 +248,12 @@ namespace Objects
 			static PFaction				nexus;
 
 			static PFaction				FindByID(const TUniqueID&);
+			static PFaction				Create(const TUniqueID&, const String&name = "");
 
 
-
-			Grid::WorldData			currentState;
-			Grid::VisibilityState	visibility;
+			World::Data				knownWorld;
+			Grid::ResourceDiscovery	knownResources;
+			
 
 			count_t				nexusControl,
 								acquiringNexusControl;
@@ -283,6 +304,11 @@ namespace Objects
 				gainedVisualAt.Clear();
 			}
 
+			/**
+			Checks and potentially rebuilds knownWorld sensor state
+			*/
+			void		CheckSensory();
+
 
 			/**
 			Checks if the local faction satisfies survival conditions
@@ -313,8 +339,8 @@ namespace Objects
 
 			bool		CanSee(const PWorldEntity&e, float t)	const;
 
-			bool		GridCanSee(const PWorldEntity&e) const;
-			bool		GridCanSee(const Grid::HighSetup::TVolumeDescriptor&) const;
+			bool		GridCanSee(const PWorldEntity&e, float &t);
+			bool		GridCanSee(const Grid::HighSetup::TVolumeDescriptor&, float &t);
 
 			void		CheckGridVisibility(const PWorldEntity&,float&timeAt);
 
@@ -326,12 +352,9 @@ namespace Objects
 			bool		SignalAppearance(const PWorldEntity&, float&t, bool cascade=true, bool stack=true, index_t incStackBy=1);
 			void		SignalDisappearance(const PWorldEntity&, float&t, bool force = false, bool signalConnectedClient=true);
 
-			void		RegisterSensorCreation(const Grid::SkySensorState&state, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts = nullptr);
-			void		RegisterSensorRemoval(const Grid::SkySensorState&state, float&t, bool checkChangesNow);
-			void		RegisterSensorCreation(const Sphere<>&, int sensorHeight, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts = nullptr);
-			void		RegisterSensorMotion(const Sphere<>&from, int sensorHeight, const Sphere<>&to, float&t, bool checkChangesNow);
-			void		RegisterSensorRemoval(const Sphere<>&, int sensorHeight, float&t, bool checkChangesNow);
-
+			void		RegisterSensorCreation(const World::Sensor&, int sensorHeight, float&t, Buffer0<PWorldEntity>*newContacts = nullptr);
+			void		RegisterSensorRemoval(const World::Sensor&, int sensorHeight, float&t);
+			void		RegisterSensorMotion(const World::Sensor&from, const World::Sensor&to, float&t);
 
 			count_t		CountOffGridCoverage(int channelHeight, const TVec3<>&)	const;
 			count_t		CountOffGridCoverage(const Sphere<>&)	const;

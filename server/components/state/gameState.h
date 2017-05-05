@@ -4,7 +4,9 @@
 #include <protocol.h>
 #include <runtimeConfig.h>
 #include <objects/types.h>
+#include <objects/structure/tower.h>
 #include "../evolver.h"
+
 
 namespace Game
 {
@@ -20,6 +22,7 @@ namespace Game
 	extern Timer::Time		lastPhaseChange /*= timer.Now()*/;
 	extern bool				roundTimerPaused /*= true*/;
 	extern Evolver::Abstract*evolver;
+	extern INT32			tutorialAt;
 
 	//extern Grid::TSharedPlanetConfig	persistentPlanetInfo;
 

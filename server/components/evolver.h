@@ -2,7 +2,7 @@
 #define componentKernelH
 
 #include <global_string.h>
-#include <sphereGrid.h>
+#include <grid/stack.h>
 
 namespace Evolver
 {

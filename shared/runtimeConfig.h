@@ -25,8 +25,9 @@ namespace RuntimeConfig
 	extern bool		empZones, autoNewRound;
 	extern Phase	phase;
 
-	extern bool hibernationSystemEnabled;
-	extern bool bombsExplodeWhenDestroyed;
+	extern bool		hibernationSystemEnabled;
+	extern bool		bombsExplodeWhenDestroyed;
+	extern bool		tutorialMode;
 
 	typedef ::RoundNumber	RoundNumber;
 	extern RoundNumber roundNumber;

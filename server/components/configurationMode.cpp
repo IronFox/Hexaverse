@@ -4,6 +4,7 @@
 #include "state/gameState.h"
 #include "state/worldState.h"
 #include "state/fileIO.h"
+#include <globalEvents.h>
 
 extern Random random;
 
@@ -47,7 +48,7 @@ void ConfigurationMode::End()
 	//Network::CloseSession(false);
 	Game::Config::factionSupportFlags = originalFlags;
 	LogEvent(EventSignificance::Important,"Ending configuration mode");
-	Objects::FlushAllData(true);
+	GlobalEvents::FlushObjects();
 	Network::server.Shutdown();
 	ASSERT__(!Network::server.IsOnline());
 	Network::activePlayersAndSpectators.Clear();

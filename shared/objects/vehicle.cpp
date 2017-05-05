@@ -1,7 +1,6 @@
 #include <global_root.h>
 #include "vehicle.h"
 #include "satellite.h"
-#include "rendering.h"
 #include "prototypes.h"
 #include "systems.h"
 #include "gridAndChoices.h"
@@ -105,7 +104,7 @@ namespace Objects
 		/*virtual override*/ void		Vehicle::OnConstructionFinished(float&atTime)
 		{
 			Super::OnConstructionFinished(atTime);
-			motionTime = atTime;
+			entityTime = atTime;
 			if (turret->CanAttack())
 			{
 				//leave munitions here. it seems fair that a new tank starts with full ammo, but an emp-tank should not start with full uranium...
@@ -240,16 +239,16 @@ namespace Objects
 			//VerifyVisibilityNetwork();
 			SyncTime(minTimeOffset);
 
-			if (!Grid::actualWorld.LowCellIsClear(cell))
+			if (!World::actual.LowCellIsClear(cell))
 			{
 				PHangar s = MobileDestinationStructureHere(cell,*this);
-				if (s && s->Store(To<Vehicle>::Cast(shared_from_this()),motionTime))
+				if (s && s->Store(To<Vehicle>::Cast(shared_from_this()),entityTime))
 					return MobilePlacementResult::EnteredStructure;
 
 				if (failIsFatal)
 				{
 					PStructure st = GetStructure(cell);
-					LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is obstructed by structure "+(st ? st->GetName(): "<>")+": "+Grid::actualWorld.LowCellReport(cell));
+					LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is obstructed by structure "+(st ? st->GetName(): "<>")+": "+World::actual.LowCellReport(cell));
 					FATAL__("Critical abort");
 				}
 
@@ -263,7 +262,7 @@ namespace Objects
 					if (v->owner == owner)
 					{
 						PHangar s = v->CastToDestinationForType(*this);
-						if (s && s->Store(To<Vehicle>::Cast(shared_from_this()),motionTime))
+						if (s && s->Store(To<Vehicle>::Cast(shared_from_this()),entityTime))
 							return MobilePlacementResult::EnteredStructure;
 					}
 
@@ -290,14 +289,14 @@ namespace Objects
 			location = cell;
 			int fallingHeight = 0;
 			while (location.height-fallingHeight > -Grid::CellStack::HalfRange 
-					&& Grid::actualWorld.LowCellIsClear(Grid::LCellIdI(location.stackID, location.height - fallingHeight - 1))
+					&& World::actual.LowCellIsClear(Grid::LCellIdI(location.stackID, location.height - fallingHeight - 1))
 					&& NoVehicleHereExcept(Grid::LCellIdI(location.stackID, location.height - fallingHeight - 1),this))
 				fallingHeight ++;
 			//if (fallingHeight > 0)
 			{
 				timeCost += Times::Fall * fallingHeight;
 				location = location - fallingHeight;
-				if (!CanClimb(-fallingHeight) || !CanStandOn(Grid::actualWorld,location-1,false,false))
+				if (!CanClimb(-fallingHeight) || !CanStandOn(World::actual,location-1,false,false))
 				{
 					if (cell.stackID != old.stackID)	//at least some horizontal motion
 					{
@@ -318,13 +317,16 @@ namespace Objects
 						//InsertIntoGrid(vehicleGrid,location,To<Vehicle>::Cast(shared_from_this()));
 
 						if (timeCost > 0)
-							ApplicationInterface::SignalMotion(To<Vehicle>::Cast(shared_from_this()),old,location,motionTime,timeCost);
+							ApplicationInterface::SignalMotion(To<Vehicle>::Cast(shared_from_this()),old,location,entityTime,timeCost);
 
-						motionTime += timeCost;
+						entityTime += timeCost;
 						InsertVehicleIntoGrid(To<Vehicle>::Cast(shared_from_this()),location);
 						//RemoveFromGrid(vehicleGrid,location,To<Vehicle>::Cast(shared_from_this()));
 					}
-					LogEvent(EventClass::Preset::commandRejected,this, "Unable to relocate here. Vehicle destroyed.");
+					if (!IsIndestructible())
+						LogEvent(EventClass::Preset::commandRejected,this, "Unable to relocate here. Vehicle destroyed.");
+					else
+						LogEvent(EventClass::Preset::debug,this, "Extended fall. Entity is indestructible.");
 //					Remove(shared_from_this(),RemovalType::UncontrolledExplosion,timeAt,false,true);
 
 					if (failIsFatal)
@@ -352,7 +354,7 @@ namespace Objects
 					if (constructionRoundCounter)
 					{
 						constructionRoundCounter = 0;
-						RegisterChange(WorldEntity::TasksChanged,motionTime);
+						RegisterChange(WorldEntity::TasksChanged,entityTime);
 					}
 				}
 
@@ -371,7 +373,7 @@ namespace Objects
 	
 	#ifdef HAS_WINDOW
 
-		void Vehicle::DescribeType(BaseCommand::Label&outResult, UINT32 descFlags)
+		void Vehicle::DescribeType(Command::Base::Label&outResult, UINT32 descFlags)
 		{
 			outResult.BeginBrief();
 			Super::DescribeType(outResult,descFlags);
@@ -494,7 +496,7 @@ namespace Objects
 							Grid::LCellIdI prev = pointOfOrigin;
 							for (const auto&dest : waypoints)
 							{
-								Objects::GetWays(owner->currentState,this,prev,possibilities,dest,true,true,false);
+								Objects::GetWays(owner->knownWorld,this,prev,possibilities,dest,true,true,false);
 								bool found = false;
 								for (index_t j = 0; j < possibilities.numWays; j++)
 								{

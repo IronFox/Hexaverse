@@ -2,12 +2,12 @@
 #include "mobileEntity.h"
 #include "faction.h"
 #include "gridAndChoices.h"
-#include "rendering.h"
 #include "vehicle.h"
 #include "satellite.h"
 #include "systems.h"
 #include "prototypes.h"
 #include "../runtimeConfig.h"
+#include "structure/tower.h"
 
 namespace Objects
 {
@@ -56,6 +56,20 @@ namespace Objects
 
 
 
+
+	/*virtual override*/ void			MobileEntity::VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance /*= false*/) const
+	{
+		if (turret->detectsResources)
+		{
+			const auto center = GetScanningCenter(loc);
+			float range = GetScanningRange();
+
+			visitor(World::Sensor(center, range, World::Sensor::UpperHalfSolidSphere));
+			visitor(World::Sensor(center, range, World::Sensor::ShadedCylinder,20));
+		}
+		else
+			Super::VisitSensors(loc, visitor, appearance);
+	}
 
 
 	/*virtual override*/ float		MobileEntity::GetScanningRange() const
@@ -165,7 +179,7 @@ namespace Objects
 			Task&task = LockedPeekTask();
 			jobStarted = false;
 
-			const Grid::WorldData&world = owner->currentState;
+			const World::Data&world = owner->knownWorld;
 			bool isObstructed = false;
 			//if ( focus != location)
 			{
@@ -256,7 +270,7 @@ namespace Objects
 										if (AttackIsStationary())
 											attackActionLeft = 0;
 
-										RegisterChange(ActionChanged,motionTime);
+										RegisterChange(ActionChanged,entityTime);
 										task.path.EraseLast();
 										cost = task.path.IsNotEmpty() ? task.path.last().movementCostsFromPrevNode : 1;
 									}
@@ -335,7 +349,7 @@ namespace Objects
 									}
 								}
 								#ifndef CLIENT
-									RegisterChange(TasksChanged,motionTime);
+									RegisterChange(TasksChanged,entityTime);
 								#endif
 								return remaining == 0 || isObstructed ? TaskResult::AllDoneForThisRound : TaskResult::FinishedCanDoMore;
 							}
@@ -349,7 +363,7 @@ namespace Objects
 										if (!AttackIgnoresMotion())
 											attackActionLeft = 0;
 										movementActionLeft = 0;
-										RegisterChange(ActionChanged,motionTime);
+										RegisterChange(ActionChanged,entityTime);
 									}
 
 									hasMoved = true;
@@ -392,14 +406,14 @@ namespace Objects
 				ClearAllTasks(true, CLOCATION);
 				unstable = false;
 				if (isInserted)	//otherwise already killed by Finish() operation
-					Remove(shared_from_this(),RemovalType::UncontrolledExplosion,motionTime,false,false);
+					Remove(shared_from_this(),RemovalType::UncontrolledExplosion,entityTime,false,false);
 			}
 		}
 
 
 		bool			MobileEntity::CompleteOnMove(const Grid::LCellIdI&referenceLocation)
 		{
-			LogEvent(EventSignificance::Common,this,"Completing on-move job '"+completeOnMove->GetName()+ "' at t="+String(motionTime));
+			LogEvent(EventSignificance::Common,this,"Completing on-move job '"+completeOnMove->GetName()+ "' at t="+String(entityTime));
 			VehicleJob::BaseJob::continue_t rs = completeOnMove->Finish(*this,referenceLocation);
 			completeOnMove.reset();
 			unstable = false;
@@ -410,7 +424,7 @@ namespace Objects
 				ClearAllTasks(true, CLOCATION);
 				unstable = false;
 				if (isInserted)	//otherwise already killed by Finish() operation
-					Remove(shared_from_this(),RemovalType::UncontrolledExplosion,motionTime,false,false);
+					Remove(shared_from_this(),RemovalType::UncontrolledExplosion,entityTime,false,false);
 				return false;
 			}
 			if (rs == VehicleJob::BaseJob::TerminalFailure)
@@ -438,12 +452,12 @@ namespace Objects
 				//checkCanStillSee.Clear();
 				//checkStillBeeingSeenBy.Clear();
 
-				float oldTime = motionTime;
-				motionTime += timeCost;
+				float oldTime = entityTime;
+				entityTime += timeCost;
 
 				static Buffer0<PWorldEntity> newContacts;
 				newContacts.Clear();
-				this->MoveSensoryToCurrentLocation(oldLocation,motionTime,true,&newContacts);
+				this->MoveSensoryToCurrentLocation(oldLocation,entityTime,&newContacts);
 				foreach (newContacts,c)
 				{
 					float zOffset;
@@ -501,8 +515,8 @@ namespace Objects
 										}
 										if (anyChanged)
 										{
-											motionTime += timeEpsilon;
-											v2->RegisterChange(TasksChanged,motionTime);
+											entityTime += timeEpsilon;
+											v2->RegisterChange(TasksChanged,entityTime);
 										}
 									}
 									break;
@@ -532,7 +546,7 @@ namespace Objects
 				const auto _this = shared_from_this();
 				ForeachFaction([this,_this](const PFaction&f)
 				{
-					f->CheckGridVisibility(_this,motionTime);
+					f->CheckGridVisibility(_this,entityTime);
 				});
 
 				bool doBreak = false;
@@ -542,7 +556,7 @@ namespace Objects
 						return;
 					if (f == owner)
 						return;
-					if (!f->CanSee(_this,motionTime))
+					if (!f->CanSee(_this,entityTime))
 						return;
 					Grid::LCellIdI loc;
 					if (IsAboveGrid())
@@ -551,14 +565,14 @@ namespace Objects
 							foreach (f->satellites, _s)
 							{
 								PSatellite s = _s->lock();
-								if (s && s->WouldAttack(_this,loc,motionTime))
+								if (s && s->WouldAttack(_this,loc,entityTime))
 								{
 									if (s->AttackNext(loc,true))
 									{
-										LogEvent(EventSignificance::Debug,s.get(),"Auto-targeting moving "+GetName()+" (located at "+location.ToString()+") via closest viable attack target "+loc.ToString()+" at t="+String(motionTime));
+										LogEvent(EventSignificance::Debug,s.get(),"Auto-targeting moving "+GetName()+" (located at "+location.ToString()+") via closest viable attack target "+loc.ToString()+" at t="+String(entityTime));
 										LogEvent(EventSignificance::Important,s.get(),"Auto-targeting moving "+GetNiceName());
 
-										s->Attack(motionTime);
+										s->Attack(entityTime);
 										if (health <= 0)
 										{
 											doBreak = true;
@@ -576,15 +590,15 @@ namespace Objects
 						foreach (f->towers, _t)
 						{
 							PTower t = _t->lock();
-							if (t && t->WouldAttack(_this,loc,motionTime))
+							if (t && t->WouldAttack(_this,loc,entityTime))
 							{
 								if (t->AttackNext(loc,true))
 								{
-									LogEvent(EventSignificance::Debug,t.get(),"Auto-targeting moving "+GetName()+" (located at "+location.ToString()+") via closest viable attack target "+loc.ToString()+" at t="+String(motionTime));
+									LogEvent(EventSignificance::Debug,t.get(),"Auto-targeting moving "+GetName()+" (located at "+location.ToString()+") via closest viable attack target "+loc.ToString()+" at t="+String(entityTime));
 									LogEvent(EventSignificance::Important,t.get(),"Auto-targeting moving "+GetNiceName());
 
-									t->Attack(motionTime);
-									LogEvent(EventSignificance::Debug,t.get(),"t is now "+String(motionTime));
+									t->Attack(entityTime);
+									LogEvent(EventSignificance::Debug,t.get(),"t is now "+String(entityTime));
 									if (health <= 0)
 									{
 										doBreak = true;
@@ -611,7 +625,7 @@ namespace Objects
 			}
 			else
 			{
-				motionTime += timeCost;
+				entityTime += timeCost;
 				#ifndef CLIENT
 					LogEvent(EventSignificance::Common,this,"Silent motion completed");
 				#endif
@@ -626,7 +640,7 @@ namespace Objects
 			{
 				TWays	ways;
 
-				GetMobileWays(owner->currentState, this,  location, ways, Grid::LCellIdI::Invalid, false,false);
+				GetMobileWays(owner->knownWorld, this,  location, ways, Grid::LCellIdI::Invalid, false,false);
 				//random first to maybe not make the same mistake twice
 				for (index_t i = 0; i < ways.numWays; i++)
 				{
@@ -669,7 +683,7 @@ namespace Objects
 					LogEvent(EventClass::Preset::operationAborted,this,"EMP damage: Unable to continue job at this time.");
 					return TaskResult::AllDoneForThisRound;
 				}
-				RegisterChange(TasksChanged,motionTime);
+				RegisterChange(TasksChanged,entityTime);
 				if (!jobStarted)
 				{
 					//jobStarted = true;
@@ -680,7 +694,7 @@ namespace Objects
 					while (HasTasks() && myTasks.Peek().job)
 					{
 						VehicleJob::BaseJob::begin_t b = myTasks.Peek().job->BeginHere(*this,myTasks.Peek().GetFocus(location),!!completeOnMove);
-						bool cont = true;
+						bool staticDeltaContainer = true;
 						switch (b)
 						{
 							case VehicleJob::BaseJob::Delayed:
@@ -688,7 +702,7 @@ namespace Objects
 							break;
 							case VehicleJob::BaseJob::Started:
 								LogEvent(EventSignificance::Common,this,"Started '"+myTasks.Peek().job->GetName()+"'");
-								cont = false;
+								staticDeltaContainer = false;
 								jobStarted = true;
 								//movementActionLeft = 0;
 							break;
@@ -712,7 +726,7 @@ namespace Objects
 									else
 										LogEvent(EventClass::Preset::error,this,"Cannot find parent job '"+parent->GetName()+"'");
 								}
-								RegisterChange(TasksChanged,motionTime);
+								RegisterChange(TasksChanged,entityTime);
 
 								if (completeOnMove && !HasTasks())
 									return AutoMoveComplete();
@@ -720,7 +734,7 @@ namespace Objects
 							}
 							break;
 						}
-						if (!cont)
+						if (!staticDeltaContainer)
 							break;
 					};
 
@@ -762,7 +776,7 @@ namespace Objects
 								LogEvent(EventSignificance::Common,this,"Job ended: '"+job->GetName()+"'");
 
 								EraseFirstTask();
-								RegisterChange(TasksChanged,motionTime);
+								RegisterChange(TasksChanged,entityTime);
 								while (HasTasks() && myTasks.Peek().job && myTasks.Peek().job->IsImplicitlyDone(*this,myTasks.Peek().GetFocus(location)))
 								{
 									LogEvent(EventSignificance::Common,this,"Job has implicitly ended: '"+myTasks.Peek().job->GetName()+"'");
@@ -782,7 +796,7 @@ namespace Objects
 								ClearAllTasks(true, CLOCATION);
 								unstable = false;
 								if (isInserted)	//otherwise already killed by Continue() operation
-									Remove(shared_from_this(),RemovalType::UncontrolledExplosion,motionTime,false,false);
+									Remove(shared_from_this(),RemovalType::UncontrolledExplosion,entityTime,false,false);
 							return TaskResult::AllDoneForThisRound;
 							case VehicleJob::BaseJob::TerminalFailure:
 								LogEvent(EventSignificance::Common,this,"Terminal failure. Remaining tasks dropped.");
@@ -801,7 +815,7 @@ namespace Objects
 				if (HasTasks() && myTasks.Peek().IsMode(CursorMode::AttackMode))
 					return TaskResult::AllDoneForThisRound;
 
-				RegisterChange(TasksChanged,motionTime);
+				RegisterChange(TasksChanged,entityTime);
 				return HandleNormalTask();
 			}
 			
@@ -821,7 +835,7 @@ namespace Objects
 
 			Grid::LCellIdI origin = this->GetLastPointOfOrigin();
 		
-			RegisterChange(TasksChanged,motionTime);
+			RegisterChange(TasksChanged,entityTime);
 
 			if (myTasks.IsEmpty())
 			{
@@ -860,7 +874,7 @@ namespace Objects
 			}
 
 
-			RegisterChange(TasksChanged,motionTime);
+			RegisterChange(TasksChanged,entityTime);
 			Task&task = myTasks.PushFront();
 			task.type = Task::Job;
 			task.name = job->GetName();
@@ -937,18 +951,18 @@ namespace Objects
 
 		bool			MobileEntity::PlotCourse(ArrayRef<Grid::LCellIdI> destination, bool detailedPath, bool virtualPlatformMode/*=false*/)
 		{
-			const Grid::WorldData&world = owner->currentState;
+			const World::Data&world = owner->knownWorld;
 			if (IsVehicle())
 			{
 				for (index_t i = 0; i < destination.length(); i++)
 				{
 					Grid::LCellIdI&dest = destination[i];
 
-					while (!owner->currentState.LowCellIsClear(dest) && !MobileDestinationStructureHere(dest,*this))
+					while (!world.LowCellIsClear(dest) && !MobileDestinationStructureHere(dest,*this))
 						dest++;
-					while (owner->currentState.LowCellIsClear(dest-1) || MobileDestinationStructureHere(dest-1,*this))
+					while (world.LowCellIsClear(dest-1) || MobileDestinationStructureHere(dest-1,*this))
 						dest--;
-					if (!virtualPlatformMode && !((Vehicle*)this)->CanStandOn(owner->currentState,dest -1,false,false))
+					if (!virtualPlatformMode && !((Vehicle*)this)->CanStandOn(world,dest -1,false,false))
 						return false;
 				}
 			}
@@ -1039,7 +1053,7 @@ namespace Objects
 
 		bool	MobileEntity::PlotFrontCourse(ArrayRef<Grid::LCellIdI> destination, bool detailedPath)
 		{
-			const Grid::WorldData&world = owner->currentState;
+			const World::Data&world = owner->knownWorld;
 
 			if (IsVehicle())
 			{
@@ -1066,7 +1080,7 @@ namespace Objects
 
 				myTasks.PushFront(Task("Move To",destination,detailedPath,Task::MoveTo));
 				myTasks.GetOldest().Replot(location, this, FocusChangeType::FullChange,true);
-				RegisterChange(TasksChanged,motionTime);
+				RegisterChange(TasksChanged,entityTime);
 			}
 
 			return true;
@@ -1104,7 +1118,7 @@ namespace Objects
 				else
 					myTasks.EraseBack();
 			}
-			RegisterChange(TasksChanged,motionTime);
+			RegisterChange(TasksChanged,entityTime);
 			return true;
 		}
 
@@ -1120,7 +1134,7 @@ namespace Objects
 			}
 			else
 				myTasks.Clear();
-			RegisterChange(TasksChanged,motionTime);
+			RegisterChange(TasksChanged,entityTime);
 		}
 
 
@@ -1134,7 +1148,7 @@ namespace Objects
 			if (!HasAmmoForShot())
 				return;
 
-			LogEvent(EventSignificance::Debug,this,"Setting local time ("+String(motionTime)+") to attack time="+String(attackTime));
+			LogEvent(EventSignificance::Debug,this,"Setting local time ("+String(entityTime)+") to attack time="+String(attackTime));
 			SyncTime(attackTime,timeEpsilon);
 
 			Task&task = LockedPeekTask();
@@ -1154,7 +1168,7 @@ namespace Objects
 				attackActionLeft -= change;
 				if (!turret->ignoresVehicleMotion)
 					movementActionLeft -= change;
-				RegisterChange(ActionChanged,motionTime);
+				RegisterChange(ActionChanged,entityTime);
 
 				float flightTime;
 
@@ -1171,7 +1185,7 @@ namespace Objects
 						//float delta = std::max(fabs(angles.x - turretAngleX), fabs(angles.y - turretAngleY));
 						float rotTime = Times::TurretRotation/**delta*/;
 						ApplicationInterface::SignalTurretRotation(To<Vehicle>::Cast(shared_from_this()),(ToWorld(trajectory[1]) - ToWorld(trajectory.First())).Normalized0(),rotTime);
-						motionTime += rotTime;
+						entityTime += rotTime;
 
 					//	TVec3<> t0;
 					//	Grid::HCellIdI t1;
@@ -1193,17 +1207,17 @@ namespace Objects
 				at.traceTo = t0;
 
 				ApplicationInterface::SignalAttack(at);
-				ChangeStorage(*this,motionTime,turret->ammoType,-turret->GetAmmoNeedPerShot(owner));
+				ChangeStorage(*this,entityTime,turret->ammoType,-turret->GetAmmoNeedPerShot(owner));
 				
-				motionTime += flightTime;
+				entityTime += flightTime;
 
 				const int damageLevel = (int)floor(turret->GetDamageLevel(owner));
 				if (turret->dealsEMPDamage)
 					ExplodeEMP(at,
-								t1, t0, turret->GetExplosionRadius(owner), damageLevel,motionTime);
+								t1, t0, turret->GetExplosionRadius(owner), damageLevel,entityTime);
 				else
 					Explode(at,
-							t1, t0, turret->GetExplosionRadius(owner), damageLevel,turret->isDoomsday, motionTime);
+							t1, t0, turret->GetExplosionRadius(owner), damageLevel,turret->isDoomsday, entityTime);
 			}
 
 			if (task.foci.IsEmpty())
@@ -1216,9 +1230,9 @@ namespace Objects
 				task.Replot(location,this,FocusChangeType::FirstFocusDropped,true);
 				UnlockTasks();
 			}
-			RegisterChange(TasksChanged,motionTime);
+			RegisterChange(TasksChanged,entityTime);
 			//stateChangedAt = attackTime;	//problematic
-			attackTime = motionTime;
+			attackTime = entityTime;
 		}
 
 
@@ -1269,7 +1283,7 @@ namespace Objects
 			//if (target.isExplicit)
 			//{
 			//	Grid::LCellIdI	possibilities[6 * 3];
-			//	count_t numWays = Objects::GetWays(v->owner->currentState,(const Objects::Vehicle*)v,prev,possibilities,target.target,true,true);
+			//	count_t numWays = Objects::GetWays(v->owner->knownWorld,(const Objects::Vehicle*)v,prev,possibilities,target.target,true,true);
 			//	bool found = false;
 			//	for (index_t i = 0; i < numWays; i++)
 			//		if (possibilities[i] == target.target)
@@ -1470,10 +1484,6 @@ namespace Objects
 						{
 							path << PathNode(*n,1);
 						}
-						#ifdef HAS_WINDOW
-							if (recompileVisualization)
-								RecompilePath(1);
-						#endif
 						pjob->pathChanged = false;
 					}
 					#ifndef CLIENT
@@ -1489,57 +1499,19 @@ namespace Objects
 				{
 					if (!UpdatePath(parent,pointOfOrigin,t))
 						return false;
-					#ifdef HAS_WINDOW
-						if (recompileVisualization)
-							RecompilePath(parent->GetMovementStepsPerRound(),parent->GetPathSize());
-					#endif
 				}
-				
 			break;
 			case Mode:
-				switch (mode)
-				{
-					case CursorMode::AttackMode:
-					{
-						#ifdef HAS_WINDOW		
-							if (recompileVisualization)
-							{
-								static Buffer0<TVec4<> > trajectory;
-								Geometry geo;
-									localizableShapes.Clear();
-								foreach (foci,f)
-								{
-									trajectory.Clear();
-									TVec3<> dummy0;
-									Grid::HCellIdI dummy1;
-									float angle;
-									if (parent->TraceTrajectoryFrom(pointOfOrigin,TrajectoryEndPoint( f->target,0), trajectory,dummy0,dummy1,angle) != TurretTrajectory::InvalidTrajectory)
-									{
-										Component::Turret::CompileTrajectory(trajectory,Component::Turret::Schematic,geo,0.25f);
 
-										Shape&shape = localizableShapes.Append();
-										((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
-										shape.instruction.vbo = sphereVBO[2];
-										shape.instruction.ibo = sphereIBO[2];
-										shape.depthTest = true;
-										shape.flareDisplay = true;
-
-										BuildSystem(trajectory.last().xyz * trajectory.last().w,parent->GetAttackExplosionRadius(),  parent->GetAttackExplosionRadius(),shape.system);
-									}
-								}
-								if (visualization.shader.IsEmpty())
-									(DX11::BaseInstructionBlock&)visualization = pathShader;
-								visualization.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
-								visualization.ibo.Create(geo.GetLOD(0).indices);
-							}
-						#endif
-					}
-					break;
-				}
 			break;
 		}
+		if (recompileVisualization)
+			onVisualizationOutdated(*parent,*this,pointOfOrigin);
 		return true;
 	}
+
+	Observable<const MobileEntity&, MobileEntity::Task&,const Grid::LCellIdI&>	MobileEntity::Task::onVisualizationOutdated;
+
 
 
 	bool					MobileEntity::HasMotionTasks() const
@@ -1615,198 +1587,6 @@ namespace Objects
 
 
 
-	#ifdef HAS_WINDOW
-
-
-	void					MobileEntity::Task::SetLocalizableShape(ConstName shape, const Grid::LCellIdI&location, const OwnerParameter&owner)
-	{
-		localizableShapes.Clear();
-		if (shape == ConstName::DetonationSize_Regular)
-		{
-			Shape&shape = localizableShapes.Append();
-			((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
-			shape.instruction.vbo = sphereVBO[1];
-			shape.instruction.ibo = sphereIBO[1];
-			shape.depthTest = true;
-			shape.flareDisplay = false;
-			shape.preRenderDepth = false;
-			shape.selectedOnly = true;
-
-			float r = Component::Bomb::GetRadius(false,owner);
-			BuildSystem(Grid::ToWorld(location),r, r,shape.system);
-			return;
-		}
-
-		if (shape == ConstName::DetonationSize_Doomsday)
-		{
-			Shape&shape = localizableShapes.Append();
-			((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
-			shape.instruction.vbo = sphereVBO[2];
-			shape.instruction.ibo = sphereIBO[2];
-			shape.depthTest = true;
-			shape.flareDisplay = false;
-			shape.preRenderDepth = false;
-			shape.selectedOnly = true;
-
-			float r = Component::Bomb::GetRadius(true,owner);
-			BuildSystem(Grid::ToWorld(location),r, r,shape.system);
-			return;
-		}
-
-		PStructure p = 	GetPrototypeByName(shape);
-
-		if (p)
-		{
-			Shape&shape = localizableShapes.Append();
-			((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
-
-			shape.instruction.vbo = p->localizableShape->vbo;
-			shape.instruction.ibo = p->localizableShape->ibo;
-			shape.depthTest = true;
-			shape.flareDisplay = type != Job;
-
-			BuildStructureSystem(location,shape.system);
-			return;
-		}
-	}
-
-	void					MobileEntity::Task::RecompilePath(int stepsPerRound, float structureSize/*=vehicleScale*/)
-	{
-		Geometry geo;
-
-		struct TNode
-		{
-			float3	dir,
-					normal;
-			bool	stopHere;
-		};
-
-		Array<TNode>		nodes(path.length());
-		
-		int remaining = stepsPerRound;
-
-		for (index_t i = 0; i+1 < path.Count(); i++)
-		{
-			TNode	&na = nodes[i],
-					&nb = nodes[i+1];
-
-			const Grid::LCellIdI&a = path[i].cell,
-								&b = path[i+1].cell;
-			if (remaining >= path[i+1].movementCostsFromPrevNode)
-			{
-				remaining -= path[i+1].movementCostsFromPrevNode;
-				na.stopHere = false;
-			}
-			else
-			{
-				remaining = stepsPerRound;
-				remaining -= path[i+1].movementCostsFromPrevNode;
-				na.stopHere = true;
-			}
-			float3 p0 = Grid::low.cells[a.stackID].centerVertex.xyz * Grid::ToRadius(a.height);
-			float3 p1 = Grid::low.cells[b.stackID].centerVertex.xyz * Grid::ToRadius(b.height);
-			TVec3<> n,d = p1 - p0;
-			Vec::cross(p0,d,n);
-			na.normal += n;
-			nb.normal += n*0.9f;
-			na.dir += d;
-			nb.dir += d*0.9f;
-		}
-		foreach (nodes, n)
-		{
-			Vec::setLen0(n->dir,structureSize);
-			Vec::setLen0(n->normal,structureSize);
-		}
-
-
-
-		for (index_t i = 0; i+1 < path.Count(); i++)
-		{
-			TNode	&na = nodes[i],
-					&nb = nodes[i+1];
-
-			const Grid::LCellIdI&a = path[i].cell,
-								&b = path[i+1].cell;
-			float3 d0 = Grid::low.cells[a.stackID].centerVertex.xyz;
-			float3 p0 = d0  * Grid::ToRadiusf(float(a.height)+0.5f);
-			float3 d1 = Grid::low.cells[b.stackID].centerVertex.xyz;
-			float3 p1 = d1 * Grid::ToRadiusf(float(b.height)+0.5f);
-
-			float3 c0 = p0 + na.dir;
-			float3 c1 = p1 - nb.dir;
-
-
-			bool edge = i+2 < nodes.Count() && nodes[i+1].stopHere ;
-
-			//!((i+1)% stepsPerRound);
-
-			//TVec3<> d = p1 - p0;
-			//if (a.height == b.height)
-
-			static const int Res = 8;
-			for (int j = (i!=0); j <= Res; j++)
-			{
-				float fj = float(j) / float(Res);
-				TVec3<> p,n,d;
-
-				float op = i > 0 ? 1.f : fj;
-				
-				Vec::resolveBezierCurvePoint(p0,c0,c1,p1,fj,p);
-				//Vec::resolveBezierCurveAxis(p0,c0,c1,p1,fj,d);
-				//Vec::cross(p,d,n);
-				Vec::interpolate(na.normal,nb.normal,fj,n);
-				Vec::setLen(n,structureSize);
-				if (j > 0)
-				{
-					geo.MakeQuad(0,1,4,3);
-					geo.MakeQuad(1,2,5,4);
-
-				}
-				//if (!i)
-				//{
-				//	geo.MakeVertex(p0 + direction[i],d0,float3(0));
-				//	geo.MakeVertex(p0 - direction[i],d0,float3(1));
-				//}
-
-				geo.SetVertexOffsetToCurrent();
-
-				{
-					geo.MakeVertex(p + n,d1,float3(op,1,1));
-					if (j < Res || !edge)
-						geo.MakeVertex(p,d1,float3(0));
-					else
-						geo.MakeVertex(p,d1,float3(op,1,1)*0.7f);
-					geo.MakeVertex(p - n,d1,float3(op,1,1));
-				}
-				if (i+2 == path.Count() && fj > 0.5f)
-				{
-					//geo.SetVertexOffsetToCurrent();
-					//geo.MakeVertex(p + n*2.f,d1,float3(0));
-					//geo.MakeVertex(p - n*2.f,d1,float3(1));
-					break;
-				}
-			}
-		}
-		if (path.Count() > 1)
-		{
-			const Grid::LCellIdI&b = path.last().cell;
-
-			float3 d1 = Grid::low.cells[b.stackID].centerVertex.xyz;
-			float3 p1 = d1 * Grid::ToRadiusf(float(b.height)+0.5f);
-
-			//float s = std::max(0.f,2.f - (fj-0.5f)*4.f);
-			geo.MakeVertex(p1,d1,float3(1));
-			geo.MakeTriangle(0,1,3);
-			geo.MakeTriangle(1,2,3);
-		}
-
-		//geo.Scale(vehicleScale);
-		if (visualization.shader.IsEmpty())
-			(DX11::BaseInstructionBlock&)visualization = pathShader;
-		visualization.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
-		visualization.ibo.Create(geo.GetLOD(0).indices);
-	}
-	#endif
 
 	
 

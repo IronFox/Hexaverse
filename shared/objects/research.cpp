@@ -6,7 +6,9 @@
 #include "../scriptCache.h"
 #include "faction.h"
 #include "../runtimeConfig.h"
+#include "../luaGameAPI.h"
 #include <io/file_system.h>
+#include "structure/laboratory.h"
 
 namespace Objects
 {
@@ -16,10 +18,6 @@ namespace Objects
 	/*static*/ ResearchState::GlobalState		ResearchState::globalState;
 
 
-	/*static*/ void ResearchState::LogLua(const String&msg)
-	{
-		LogEvent(EventClass::Preset::important,"Lua: "+msg);
-	}
 
 	/*static*/ PResearchTopic	ResearchState::CreateResearch(const PResearchTopic&parent, const String&name, const String&iconName, 
 												const ResearchTopic::FSetProgress&setProgress, 
@@ -108,7 +106,7 @@ namespace Objects
 
 			if (ref.IsTable())
 			{
-				Lua::Table t = source.GetField(name);
+				Lua::Table t = ref;
 			
 				a.luaGetValue = t.GetField("Get");
 				if (a.luaGetValue.IsEmpty())
@@ -623,22 +621,11 @@ namespace Objects
 		globalState.rootResearch.Clear();
 		globalState.allTopics.Clear();
 
-		globalState.researchProgram = Lua::Program::Create();
+		globalState.researchProgram = Lua::Program::Create("Research");
 		ASSERT__(globalState.researchProgram);
 		{
-			Lua::Table api = globalState.researchProgram->CreateTable();
-
+			Lua::Table api = Lua::CreateGeneralAPI(globalState.researchProgram);
 			api.SetFunction("CreateResearch",CreateResearch);
-			api.SetFunction("Log",LogLua);
-
-			#ifdef LOWER_RESOLUTION_PLANET
-				api.SetField("LowerResolutionPlanet",true);
-			#else
-				api.SetField("LowerResolutionPlanet",false);
-			#endif
-			api.SetField("UnitScale",Grid::UnitScale);
-
-			api.SetGlobal("Game");
 		}
 
 
@@ -699,9 +686,7 @@ namespace Objects
 				Faction::nexus->researchState.LoadNexusResearchState();
 		#endif
 
-		#ifdef HAS_WINDOW
-			Laboratory::ConfigureResearchButtons();
-		#endif
+		globalState.onScriptChange();
 		//globalState.researchProgram.reset();
 	}
 
@@ -840,7 +825,7 @@ namespace Objects
 						if (e->owner.get() == owner)
 						{
 							float t = 0;
-							e->UnregisterSensory(t,false);
+							e->UnregisterSensory(t);
 						}
 					},false);
 			#endif
@@ -861,7 +846,7 @@ namespace Objects
 					if (e->owner.get() == owner)
 					{
 						float t = 0;
-						e->RegisterSensory(t,false);
+						e->RegisterSensory(t);
 					}
 				},false);
 		#endif
