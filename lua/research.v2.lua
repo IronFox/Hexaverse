@@ -567,8 +567,8 @@ heavyUnlock = MakeUnlockResearchable(unlockGroup, nil, VehicleBaseConfig, 'Heavy
 catUnlock = MakeUnlockResearchable(unlockGroup, nil, VehicleBaseConfig, 'CatamaranBase',20);
 MakeUnlockResearchable(unlockGroup, nil, StructureConfig, 'ReactorCore',10);
 planeFactoryUnlock = MakeUnlockResearchable(unlockGroup, nil, StructureConfig, 'PlaneFactory',20);
-MakeUnlockResearchable(unlockGroup, planeFactoryUnlock, TurretConfig, 'CargoPlane',20);
-MakeUnlockResearchable(unlockGroup, planeFactoryUnlock, TurretConfig, 'Raptor',20);
+MakeUnlockResearchable(unlockGroup, planeFactoryUnlock, TurretConfig, 'CargoPlane',40);
+MakeUnlockResearchable(unlockGroup, planeFactoryUnlock, TurretConfig, 'Raptor',60);
 
 attackRangeGroup = Game.CreateResearch(improveGroup,'Attack Range','Research_AttackRange');
 	MakeImproveResearchable(attackRangeGroup, artilleryUnlock, TurretConfig, 'Artillery', 'HorizontalAttackRange',0.005);
