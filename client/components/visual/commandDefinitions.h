@@ -23,7 +23,8 @@ namespace Objects
 		*/
 		void	ReconfigureResearchButtons();
 
-
+		
+		Grid::LCellIdI	GetPointOfOrigin(const Objects::MobileEntity&e);
 		
 	}
 }

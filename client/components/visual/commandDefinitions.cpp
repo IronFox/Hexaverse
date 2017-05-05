@@ -22,6 +22,14 @@ namespace Objects
 {
 	namespace Commands
 	{
+
+		Grid::LCellIdI	GetPointOfOrigin(const Objects::MobileEntity&e)
+		{
+			if (ShouldQueueCommands())
+				return e.GetLastPointOfOrigin();
+			return e.location;
+		}
+
 		namespace Detail
 		{
 			/**
@@ -424,10 +432,10 @@ namespace Objects
 					{
 						activeCursorMode = CursorMode::PlaceStructureMode;
 						choiceVis.showArrow = true;
-						choiceVis.arrowFromCell = vehicle->GetLastPointOfOrigin();
+						choiceVis.arrowFromCell = GetPointOfOrigin(*vehicle);
 						choiceVis.arrowFrom = Grid::low.cells[choiceVis.arrowFromCell.stackID].centerVertex.xyz * ( Grid::ToRadius(choiceVis.arrowFromCell.height));
 
-						if (!Engine::input.pressed[Key::Shift])
+						if (!ShouldQueueCommands())
 							ApplicationInterface::SignalDropSafeTasks(vehicle);
 					}
 					//else
@@ -508,6 +516,9 @@ namespace Objects
 					return;
 				if (vehicle->location.height < Grid::CellStack::BottomHeight+1)
 					return;
+
+				if (!Objects::ShouldQueueCommands())
+					ApplicationInterface::SignalDropSafeTasks(vehicle);
 				ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_DigDown, ConstName::Empty);
 			}
 
@@ -516,6 +527,8 @@ namespace Objects
 				{
 					if (!selectedMobileEntity)
 						return;
+					if (!Objects::ShouldQueueCommands())
+						ApplicationInterface::SignalDropSafeTasks(selectedMobileEntity);
 					ApplicationInterface::SignalNewJob(selectedMobileEntity, Command,ConstName::Empty);					
 				}
 
@@ -528,6 +541,8 @@ namespace Objects
 					return;
 				if (vehicle->location.height <= Grid::CellStack::BottomHeight)
 					return;
+				if (!Objects::ShouldQueueCommands())
+					ApplicationInterface::SignalDropSafeTasks(vehicle);
 				ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_BuildRoad,ConstName::Empty);
 			}
 
@@ -550,10 +565,10 @@ namespace Objects
 					ASSERT__(v);
 					Grid::high.UpdatePlanarDistanceField(
 						#ifdef HYBRID_GRID
-							Grid::low.grid.GetCell(v->GetLastPointOfOrigin().stackID).higherEquivalent
+							Grid::low.grid.GetCell(GetPointOfOrigin(*v).stackID).higherEquivalent
 							, 8, Objects::vehicleDistanceField);
 						#else
-							v->GetLastPointOfOrigin().stackID
+							GetPointOfOrigin(*v).stackID
 
 							, 4, Objects::vehicleDistanceField);
 						#endif
@@ -597,7 +612,7 @@ namespace Objects
 				CommonCmd::ToggleMode(CursorMode::BuildBlockMode);
 				cellSelection.Clear();
 				buildCandidates.Clear();
-				const int height = v->GetLastPointOfOrigin().height;
+				const int height = GetPointOfOrigin(*v).height;
 
 				if (activeCursorMode == CursorMode::BuildBlockMode)
 				{
@@ -605,10 +620,10 @@ namespace Objects
 					Grid::high.UpdatePlanarDistanceField(
 						#ifdef HYBRID_GRID
 							Grid::low.grid.GetCell(
-								v->GetLastPointOfOrigin().stackID).higherEquivalent
+								GetPointOfOrigin(*v).stackID).higherEquivalent
 							, 8,
 						#else
-							v->GetLastPointOfOrigin().stackID
+							GetPointOfOrigin(*v).stackID
 
 							, 4,
 						#endif

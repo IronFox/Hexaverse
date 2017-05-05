@@ -635,7 +635,7 @@ namespace Objects
 			{
 				activeCursorMode = mode;
 
-				if (!Engine::input.pressed[Key::Shift])
+				if (!ShouldQueueCommands())
 					ApplicationInterface::SignalDropAllTasks(selectedEntity);
 
 			}

@@ -20,6 +20,14 @@ namespace Objects
 	void					Deselect(bool controlEnabled);
 	PWorldEntity			GetRayIntersection(const TVec3<>&b, const TVec3<>&d, float&distance);
 	inline bool				IsSelected(const PWorldEntity&e) {return selectedEntity == e;}
+
+
+
+
+	void					SetShiftMeansQueue(bool);
+	void					SignalShiftPressed();
+	void					SignalShiftReleased();
+	bool					ShouldQueueCommands();
 }
 
 

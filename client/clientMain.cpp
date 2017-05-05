@@ -412,7 +412,11 @@ namespace LocalApplicationInterface
 
 			if (!(flags & Protocol::DirectFlags::Detailed))
 			{
-				Grid::LCellIdI start = me->GetLastPointOfOrigin();
+				#ifdef HAS_WINDOW
+					Grid::LCellIdI start = Objects::Commands::GetPointOfOrigin(*me);
+				#else
+					Grid::LCellIdI start = me->GetLastPointOfOrigin();
+				#endif
 				foreach (targets,t)
 				{
 					if (!MoveVehicleTo(me,start,*t,flags))
@@ -449,6 +453,21 @@ namespace LocalApplicationInterface
 		return flags;
 	}
 
+	
+	UINT8	AssembleMotionFlags(bool detailedPath, bool leftClick)
+	{
+		UINT8 flags = 0;
+		if (detailedPath)
+			flags |= Protocol::DirectFlags::Detailed;
+		if (leftClick)
+			flags |= Protocol::DirectFlags::LeftClick;
+		#ifdef HAS_WINDOW
+			if (!Objects::ShouldQueueCommands())
+				flags |= Protocol::DirectFlags::ClearSafeTasks;
+		#endif
+		return flags;
+	}
+
 	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, UINT8 flags, Objects::Vehicle::mode_t mode)
 	{
 		return DirectTo(v, targets, flags, mode, true);
@@ -461,9 +480,9 @@ namespace ApplicationInterface
 	{
 		return
 		#ifdef HAS_WINDOW
-			LocalApplicationInterface::DirectTo(v,targets, LocalApplicationInterface::AssembleMotionFlags(detailedPath,leftClick,false),Objects::activeCursorMode);
+			LocalApplicationInterface::DirectTo(v,targets, LocalApplicationInterface::AssembleMotionFlags(detailedPath,leftClick),Objects::activeCursorMode);
 		#else
-			LocalApplicationInterface::DirectTo(v,targets, LocalApplicationInterface::AssembleMotionFlags(detailedPath,leftClick,false),Objects::CursorMode::Idle);
+			LocalApplicationInterface::DirectTo(v,targets, LocalApplicationInterface::AssembleMotionFlags(detailedPath,leftClick),Objects::CursorMode::Idle);
 		#endif
 	}
 
@@ -2706,7 +2725,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 						if (possibleTarget && !possibleTarget->isOwnedByMe && Objects::selectedEntity->CanHit( Objects::TrajectoryEndPoint( possibleTarget->location )))
 						{
 							LocalApplicationInterface::DirectTo(Objects::selectedEntity,possibleTarget->location,
-								LocalApplicationInterface::AssembleMotionFlags(false,true,!Engine::input.pressed[Key::Shift]),
+								LocalApplicationInterface::AssembleMotionFlags(false,true),
 								Objects::CursorMode::AttackMode);
 							return;
 						}
@@ -2716,7 +2735,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 						if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,true))
 						{
 							LocalApplicationInterface::DirectTo(Objects::selectedEntity,target,
-								LocalApplicationInterface::AssembleMotionFlags(false,true,!Engine::input.pressed[Key::Shift]),
+								LocalApplicationInterface::AssembleMotionFlags(false,true),
 								Objects::CursorMode::AttackMode);
 							return;
 						}
@@ -2748,7 +2767,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 					int h;
 					if (!Objects::selectedMobileEntity->CanSpawnInGrid() && Objects::selectedMobileEntity->CanSpawnAboveGrid(h))
 						target.height = h;
-					LocalApplicationInterface::DirectTo(Objects::selectedMobileEntity,target, LocalApplicationInterface::AssembleMotionFlags(false,false,!Engine::input.pressed[Key::Shift]),Objects::activeCursorMode);
+					LocalApplicationInterface::DirectTo(Objects::selectedMobileEntity,target, LocalApplicationInterface::AssembleMotionFlags(false,false),Objects::activeCursorMode);
 				}
 			}
 		}
@@ -3632,6 +3651,8 @@ int main( int argc, const char* argv[])
 					LogEvent(EventClass::Preset::configurationError,"Unable to apply chosen shadow filter '"+shadowFilter+"': Not supported");
 				}
 
+				Objects::SetShiftMeansQueue(!StartConfig::GetBool("runtime/alwaysQueueUnitCommands"));
+
 				UI::resourcesAsList = StartConfig::GetBool("runtime/resourcesAsList",false);
 
 				TimeLapse::customBasePath = PathString(StartConfig::GetString("timelapse/outDirectory",""));
@@ -3688,6 +3709,8 @@ int main( int argc, const char* argv[])
 
 			//Engine::input.Bind(Key::Up, Camera::Event::ZoomIn);
 			//Engine::input.Bind(Key::Down, Camera::Event::ZoomOut);
+
+			Engine::input.Bind(Key::Shift, Objects::SignalShiftPressed, Objects::SignalShiftReleased);
 
 			Engine::input.Bind(Key::Left, SelectAndFocusPrev);
 			Engine::input.Bind(Key::Right, SelectAndFocusNext);
