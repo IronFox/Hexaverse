@@ -3493,7 +3493,9 @@ namespace StartConfig
 		if (attrib)
 			return attrib->value;
 		Fix(path,fallback);
-		return fallback;
+		static String staticCopy;
+		staticCopy = fallback;	//fallback might be a temporary string, so this at least keeps it alive
+		return staticCopy;
 	}
 
 	
