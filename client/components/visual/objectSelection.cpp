@@ -9,6 +9,7 @@
 #include <objects/faction.h>
 #include <globalEvents.h>
 
+#include "ui.h"
 
 namespace Objects
 {
@@ -18,6 +19,35 @@ namespace Objects
 	PMobileEntity			selectedMobileEntity;
 	PMobileEntity			deployingMobileEntity;
 	Observable<>				onSelectionChanged;
+	bool					shiftPressed = false,shiftMeansQueue = true;
+
+
+	void					SetShiftMeansQueue(bool b)
+	{
+		shiftMeansQueue = b;
+	}
+
+	void					SignalShiftPressed()
+	{
+		bool n = !shiftPressed;
+		shiftPressed = true;
+		if (shiftMeansQueue && n)
+			UI::RefreshButtonState();
+	}
+
+	void					SignalShiftReleased()
+	{
+		bool n = shiftPressed;
+		shiftPressed = false;
+		if (shiftMeansQueue && n)
+			UI::RefreshButtonState();
+	}
+
+	bool					ShouldQueueCommands()
+	{
+		return shiftPressed || !shiftMeansQueue;
+	}
+
 
 	void					Select(const PWorldEntity&entity, bool controlEnabled)
 	{
