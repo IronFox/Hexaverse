@@ -821,7 +821,7 @@ namespace Test
 			World::actual.FlushAllChanges();
 			{
 				World::Data::ChangeSequence seq = World::actual.BeginChangeSequence(0);
-				for (index_t i = 0; i < Grid::HighSetup::GridType::CellCount; i++)
+				for (UINT32 i = 0; i < Grid::HighSetup::GridType::CellCount; i++)
 				{
 					auto acc = seq.AccessStack(i);
 					Grid::CellStack&stack = acc.GetStack();
