@@ -135,6 +135,7 @@ namespace FileIO
 								mobileEntityType("METY"),
 								mobileEntityParentJobIndex("MJPI"),
 								factionName("NAME"),
+								factionColor("COLR"),
 								nexusAI("NEXA"),	//currently only indicates that nexus ai is active
 								nexusBases("NEXB"),
 								nexusData("NEXD"),
@@ -1354,14 +1355,21 @@ namespace FileIO
 										faction->researchState.SetActiveTopic(Objects::ResearchState::FindTopic(String((const char*)activeResearchChunk->pointer(),activeResearchChunk->size())));
 								}
 
-								Riff::Chunk*nameChunk = list->FindFirst(RID::factionName);
-								if (nameChunk)
 								{
-									faction->name.setLength(nameChunk->size());
-									nameChunk->Get(faction->name.mutablePointer());
+									Riff::Chunk*nameChunk = list->FindFirst(RID::factionName);
+									if (nameChunk)
+									{
+										faction->name.setLength(nameChunk->size());
+										nameChunk->Get(faction->name.mutablePointer());
+									}
+									else
+										faction->name = isNexus ? "<Nexus>" : faction->id.ToString();
 								}
-								else
-									faction->name = isNexus ? "<Nexus>" : faction->id.ToString();
+								{
+									Riff::Chunk*colorChunk = list->FindFirst(RID::factionColor);
+									if (colorChunk && colorChunk->size() == 3*sizeof(float))	//3x4 floats
+										faction->color = Vec::ref3((const float*)colorChunk->pointer());
+								}
 							
 								if (ApplicationInterface::globalVersionOfCurrentFile >= 1038)
 								{
@@ -1636,6 +1644,7 @@ namespace FileIO
 
 			factionSection->AppendBlock(RID::factionID)->SetPODData(faction->id);	//faction id
 			factionSection->AppendBlock(RID::factionName)->SetData(faction->name.c_str(),faction->name.length());
+			factionSection->AppendBlock(RID::factionColor)->SetData(faction->color.v,sizeof(float)*3);
 
 			factionSection->AppendBlock(RID::factionAccessToken)->SetPODData(faction->accessToken);	//faction access token
 
