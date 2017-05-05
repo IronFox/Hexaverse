@@ -335,10 +335,17 @@ namespace Tutorial
 		{
 			if (!Interactive::started)
 				return;
-			Interactive::RebuildFactionUnits();
-			Interactive::RebuildSelected();
+			try
+			{
+				Interactive::RebuildFactionUnits();
+				Interactive::RebuildSelected();
 
-			Interactive::Trigger::checkTaskConditions();
+				Interactive::Trigger::checkTaskConditions();
+			}
+			catch (const Lua::Exception&ex)
+			{
+				LogEvent(EventClass::Preset::configurationError,ex.what());
+			}
 		}
 
 
@@ -496,19 +503,34 @@ namespace Tutorial
 
 	void	SignalStart()
 	{
-		Interactive::started = true;
-		Interactive::RebuildFactionUnits();
-		Interactive::RebuildSelected();
-		Interactive::RebuildResearchState();
-		Interactive::Trigger::begin(Detail::progress);
+		try
+		{
+			Interactive::started = true;
+			Interactive::RebuildFactionUnits();
+			Interactive::RebuildSelected();
+			Interactive::RebuildResearchState();
+			Interactive::Trigger::begin(Detail::progress);
+		}
+		catch (const Lua::Exception&ex)
+		{
+			LogEvent(EventClass::Preset::configurationError,ex.what());
+		}
 	}
 
 	void	SignalRoundStart()
 	{
 		if (!Interactive::started)
 			return;
-		Interactive::RebuildFactionUnits();
-		Interactive::Trigger::checkTaskConditions();
+		try
+		{
+			Interactive::RebuildFactionUnits();
+			Interactive::Trigger::checkTaskConditions();
+		}
+		catch (const Lua::Exception&ex)
+		{
+			LogEvent(EventClass::Preset::configurationError,ex.what());
+		}
+		
 	}
 
 
@@ -518,8 +540,15 @@ namespace Tutorial
 	{
 		if (!Interactive::started || !Objects::Faction::mine)
 			return;
-		Interactive::RebuildResearchState();
-		Interactive::Trigger::checkTaskConditions();
+		try
+		{
+			Interactive::RebuildResearchState();
+			Interactive::Trigger::checkTaskConditions();
+		}
+		catch (const Lua::Exception&ex)
+		{
+			LogEvent(EventClass::Preset::configurationError,ex.what());
+		}
 	}
 
 	
@@ -537,8 +566,15 @@ namespace Tutorial
 		if (at == Detail::progress)
 			return;
 		Detail::progress = at;
-		if (Interactive::started)
-			Interactive::Trigger::begin(Detail::progress);
+		try
+		{
+			if (Interactive::started)
+				Interactive::Trigger::begin(Detail::progress);
+		}
+		catch (const Lua::Exception&ex)
+		{
+			LogEvent(EventClass::Preset::configurationError,ex.what());
+		}
 	}
 
 }

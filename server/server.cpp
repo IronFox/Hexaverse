@@ -1048,14 +1048,7 @@ int main( int argc, const char* argv[])
 			World::BuildConfiguredWorld(random);
 		}
 
-		if (!ParameterConfig::startOffline)
-		{
-			StartUp();
-			if (ParameterConfig::startInConfig)
-			{
-				ConfigurationMode::Begin();
-			}
-		}
+
 
 
 
@@ -1087,6 +1080,16 @@ int main( int argc, const char* argv[])
 				Logging::WriteEvent(EventClass::Preset::fileError,"Specified file ("+String(filename)+") does not exist. Skipping loading operation.",nullptr,nullptr,Objects::OwnerParameter());
 		}
 		RuntimeConfig::tutorialMode = ParameterConfig::startInTutorial;
+
+		if (!ParameterConfig::startOffline)
+		{
+			StartUp();
+			if (ParameterConfig::startInConfig)
+			{
+				ConfigurationMode::Begin();
+			}
+		}
+
 
 		//Journal::globalWriter.InitNew(RuntimeConfig::ConfigFile("saves/log"));
 		//Journal::globalWriter.ContinueExisting(RuntimeConfig::ConfigFile("saves/log"));

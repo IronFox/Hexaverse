@@ -222,7 +222,7 @@ namespace Network
 		Protocol::GameProgress progress;
 		progress.gameOver = dead || RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame;
 		progress.gameWon = Game::winner == faction && !!Game::winner;
-		progress.status = FactionStatus(faction);
+		progress.status = RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::None ? "" : FactionStatus(faction);
 		progress.warning = dead ? "Game Over" : FactionWarning(faction,warningReason);
 		Channels::gameProgress.SendTo(peer.lock(),progress);
 	}

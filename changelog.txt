@@ -16,6 +16,7 @@ v0.6.4
 	* Fixed unit destruction when falling farther than safely possible.
 	* Fixed rounding error in research script.
 	* Fixed certain events still being shown when controls are supposed to be hidden.
+	* Removed 'Progress' string when no game goal is configured.
 	* Fixed smoothness of animated suborbital plane motion.
 	* Fixed destruction events on indestructible units.
 
