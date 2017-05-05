@@ -523,7 +523,7 @@ improveGroup = Game.CreateResearch(nil,"Improve",'Increase');
 
 
 artilleryUnlock = MakeUnlockResearchable(unlockGroup, nil, TurretConfig, 'Artillery',20);
-empUnlock = MakeUnlockResearchable(unlockGroup, artilleryUnlock, TurretConfig, 'EMP',20);
+empUnlock = MakeUnlockResearchable(unlockGroup, artilleryUnlock, TurretConfig, 'EMP',40);
 launcherUnlock = MakeUnlockResearchable(unlockGroup, nil, TurretConfig, 'MissileLauncher',20);
 --radarUnlock = MakeUnlockResearchable(unlockGroup, nil, TurretConfig, 'Radar',20);
 heavyUnlock = MakeUnlockResearchable(unlockGroup, nil, VehicleBaseConfig, 'HeavyBase',20);
