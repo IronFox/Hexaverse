@@ -6,7 +6,7 @@
 
 namespace Objects
 {
-	/*static*/ Observer<Hangar&,Hangar::TStored&>	Hangar::onStored;
+	/*static*/ Observable<Hangar&,Hangar::TStored&>	Hangar::onStored;
 
 	#ifdef HAS_WINDOW
 		/*static*/ index_t			Hangar::storeOffset;

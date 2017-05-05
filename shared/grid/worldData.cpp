@@ -1440,8 +1440,8 @@ namespace World
 			cellStack[i].ZeroInit(false);
 		}
 
-		for (index_t i = 0; i < ARRAYSIZE(families); i++)
-			families[i].structureOrSensory.Set(0);
+		foreach (families,f)
+			f->structureOrSensory.Set(0);
 		InvalidateSensory();
 	}
 
@@ -1645,16 +1645,17 @@ namespace World
 	
 	/**/					Data::Data()
 	{
-		if (IsGlobalInstance())
-		{
+		#ifdef CLIENT
 			cellStack.SetSize(HighSetup::GridType::CellCount);
 			FlushTerrain();
-		}
-		else
-		{
-			#ifdef CLIENT
-				FATAL__("this should not happen");
-			#else
+		#else
+			if (IsGlobalInstance())
+			{
+				cellStack.SetSize(HighSetup::GridType::CellCount);
+				FlushTerrain();
+			}
+			else
+			{
 				cellStack = initial.cellStack;
 				//for (BaseGrid::family_t fam = 0; fam < BaseGrid::NumFamilies; fam++)
 				//	families[fam].structureOrSensory.Set(0);	maybe don't declare this a change
@@ -1663,14 +1664,15 @@ namespace World
 				{
 					SignalChange(fam,t,true);
 				});
-			#endif
-		}
+			}
+		#endif
 	}
 
 
 	/**/					Data::Data(const Data&other)
 	{
 		cellStack = other.cellStack;
+		ASSERT_EQUAL__(cellStack.Count(),HighSetup::GridType::CellCount);
 		if (!IsGlobalInstance())
 		{
 			observerKey = actual.onTerrainChange.Register([this](const Data&, const BaseGrid::FamiliesChanged&fam, float t)

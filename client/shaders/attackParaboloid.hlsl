@@ -1,5 +1,5 @@
 #include "common.inc.hlsl"
-#include "shadow.hlsli"
+#include "light.hlsli"
 
 
 Texture2D <float4> Texture;

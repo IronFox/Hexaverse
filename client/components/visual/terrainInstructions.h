@@ -2,8 +2,7 @@
 
 #ifdef HAS_WINDOW
 
-#include "../../ExtRenderer/DirectX11.h"
-#include <math/vclasses.h>
+#include "shadedRenderInstruction.h"
 
 namespace VisualTerrain
 {
@@ -37,10 +36,8 @@ namespace VisualTerrain
 		extern DX11::ObjectBuffer<THeightMapOrientation>	heightMapOrientation;	//used for lava
 		extern DX11::Texture								cubeHeightMap;	//used for lava
 
-			
-		extern DX11::BaseInstructionBlock	terrainBase, terrainSphereBase, terrainParaboloidBase, 
-											terrainShadowBase, 
-											waterBase, waterSphereBase, waterParaboloidBase,
+		extern ShadedInstruction			waterBase, waterSphereBase, waterParaboloidBase, terrainBase, terrainSphereBase, terrainParaboloidBase;
+		extern DX11::BaseInstructionBlock	terrainShadowBase, 
 											overlayBase, overlayShadowBase, resourceBase;// , terrainEdgeBase;
 	}
 

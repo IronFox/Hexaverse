@@ -45,7 +45,7 @@ namespace World
 
 		static const constexpr float MaxOutdated = std::numeric_limits<float>::max();
 
-		Observer<const Data&,const BaseGrid::FamiliesChanged&,float>		onTerrainChange;
+		Observable<const Data&,const BaseGrid::FamiliesChanged&,float>		onTerrainChange;
 
 		class ChangeSequence;
 		class StackAccess

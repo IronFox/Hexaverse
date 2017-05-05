@@ -127,6 +127,8 @@ namespace Network
 				return;
 		#endif
 
+		RuntimeConfig::tutorialMode = (host.serverInfo.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::TutorialMode) != 0;
+
 		RuntimeConfig::phase = RuntimeConfig::Phase::Uninitialized;
 		gameHasBegun = false;
 
@@ -143,6 +145,9 @@ namespace Network
 		worldID = host.serverInfo.gameInfo.worldID;
 		worldIDString = worldID.ToNiceString();
 	}
+
+
+
 
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id)
 	{
@@ -475,6 +480,8 @@ namespace Network
 				#endif
 				if (response.configurationMode)
 					AttemptFactionLogin(false,Protocol::FactionType::SpectatorFaction);
+				elif (RuntimeConfig::tutorialMode)
+					AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly);
 				else
 				{
 					#ifdef HAS_WINDOW
@@ -760,7 +767,7 @@ namespace Network
 			RuntimeConfig::empZones = (Network::gameFlags & Protocol::GameFlag::EMPZones) != 0;
 			RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(cr.info.gameConfig.gameGoal);
 			RuntimeConfig::phase = RuntimeConfig::Phase::Reinterpret(cr.info.activePhase);
-
+			RuntimeConfig::tutorialMode = (Network::gameFlags & Protocol::GameFlag::TutorialMode) != 0;
 			#ifdef HAS_WINDOW
 				ConfigurationMode::SetGameConfig(Network::gameFlags, RuntimeConfig::gameGoal, Grid::WorldDiscovery::Reinterpret( cr.info.gameConfig.worldDiscovery ));
 				World::allowRecompilation = false;
@@ -1020,6 +1027,14 @@ namespace Network
 			GlobalEvents::invalidateObjectCache();
 		}
 
+		void	TutorialAt(NET(INT32)&at)
+		{
+			#ifdef HAS_WINDOW
+				Tutorial::SetProgress(at);
+			#endif
+		}
+
+
 		void	UnitLimits(Protocol::UnitLimits&limits)
 		{
 			RuntimeConfig::UnitLimits::Import(limits);
@@ -1042,6 +1057,10 @@ namespace Network
 		{
 			Objects::PFaction f = ResolveFaction(state.ownerID);
 			f->researchState.Import(state.serializedData);
+			#ifdef HAS_WINDOW
+				if (RuntimeConfig::tutorialMode && f == Objects::Faction::mine)
+					Tutorial::SignalResearchChange();
+			#endif
 			//Update( state, f);
 		}
 
@@ -1053,6 +1072,8 @@ namespace Network
 				//Dialog::SignalSituationChange();
 				#ifdef HAS_WINDOW
 					UI::RefreshButtonState();
+					if (RuntimeConfig::tutorialMode)
+						Tutorial::SignalResearchChange();
 				#endif
 			}
 		}
@@ -1120,7 +1141,7 @@ namespace Network
 		TCP::Channel<Protocol::GameConfig,0,Protocol::ChannelID::GameConfig>						gameConfig(Receiver::GameConfig);
 		TCP::Channel<NETA(Package::NetString<256>),0,Protocol::ChannelID::PlanetNames>				planetNames(Receiver::PlanetNames);
 
-
+		TCP::Channel<NET(INT32),0,Protocol::ChannelID::TutorialAt>									tutorialAt(Receiver::TutorialAt);
 
 		TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;
 		TCP::ObjectSender<Protocol::TouchedMarker,Protocol::ChannelID::TouchMarker>					touchMarker;
@@ -1257,6 +1278,9 @@ namespace Network
 			case TCP::Event::ConnectionLost:
 			case TCP::Event::ConnectionClosed:
 			{
+				RuntimeConfig::tutorialMode = false;
+				if (!RuntimeConfig::aiMode)
+					RuntimeConfig::serverAddress = ServerAddress();	//prevent any automatic reconnect
 				String err = client.GetError(true);
 
 				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Loss ), nullptr, err.IsNotEmpty() ? err : (ev == TCP::Event::ConnectionLost ? "Connection lost" : "Connection closed"));
@@ -1284,6 +1308,7 @@ namespace Network
 					GUI::Hide(Dialog::loginMenu);
 					Dialog::CheckServersAreShown(true);
 					GUI::SignalSituationChange();
+					Tutorial::SignalEnd();
 				#endif
 
 			}
@@ -1309,6 +1334,10 @@ namespace Network
 					}
 					else
 						LogEvent(EventSignificance::Debug,"Begin Game. Animation NOT done");
+				#ifdef HAS_WINDOW
+					if (RuntimeConfig::tutorialMode)
+						Tutorial::SignalStart();
+				#endif
 			break;
 			case Protocol::ChannelID::Pong:
 				//lastPong = timer.Now();
@@ -1376,6 +1405,7 @@ namespace Network
 		client.InstallChannel(Channels::gameConfig);
 		client.InstallChannel(Channels::planetNames);
 
+		client.InstallChannel(Channels::tutorialAt);
 
 		client.OpenSignalChannel(Protocol::ChannelID::Pong,0);
 		client.OpenSignalChannel(Protocol::ChannelID::BeginGame,0);

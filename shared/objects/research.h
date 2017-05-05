@@ -162,7 +162,7 @@ namespace Objects
 			Lua::Function<Lua::Reference()>	stateConstructor;
 			Lua::Function<Lua::Reference(Lua::Reference)>	exportState;
 			Lua::Function<void(Lua::Reference,Lua::Reference)> importState;
-			Observer<>			onScriptChange;
+			Observable<>			onScriptChange;
 
 			/**/				GlobalState():rootResearch(""){}
 		};

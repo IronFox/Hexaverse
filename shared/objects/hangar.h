@@ -36,7 +36,7 @@ namespace Objects
 			bool			operator==(const PMobileEntity&e) const {return entity.lock() == e;}
 		};
 		Buffer0<TStored>	stored;
-		static Observer<Hangar&,TStored&>	onStored;
+		static Observable<Hangar&,TStored&>	onStored;
 
 		virtual			~Hangar()	{}
 		/**

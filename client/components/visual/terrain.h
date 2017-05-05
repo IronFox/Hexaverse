@@ -4,7 +4,7 @@
 #include <grid/worldData.h>
 #include <math/matrix.h>
 #include <math/vclasses.h>
-#include "../../ExtRenderer/DirectX11.h"
+#include "shadedRenderInstruction.h"
 
 namespace VisualTerrain
 {
@@ -134,7 +134,7 @@ namespace VisualTerrain
 			};
 	
 			Array<Vertex>	vertices;
-			Engine::DX11::InstructionBlock32	instruction;
+			ShadedInstructionBlock32	instruction;
 			void		ForceRecompileNow();
 			void		Render(const Engine::Frustum<>&);
 		#endif

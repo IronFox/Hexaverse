@@ -49,19 +49,6 @@ namespace Objects
 
 
 
-	#ifdef HAS_WINDOW
-
-		namespace DX11 = Engine::DX11;
-	
-
-		//extern bool					showArrow, hasArrowCellTarget;
-		//extern float3				arrowFrom;	//arroa visualization point of origin. Might be the location of a vehicle, or any of the locations in its task queue. Only relevant if showArrow is true
-		//extern TrajectoryEndPoint	arrowCellTarget;
-
-		extern DX11::BaseInstructionBlock	stdVehicleShader;
-
-	#endif
-
 
 
 

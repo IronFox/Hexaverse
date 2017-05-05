@@ -265,7 +265,7 @@ namespace Objects
 		staticGeometry.LoadFromObj(PathString("objects/"+name+".obj"));
 
 		if (shape->constShape.shader.IsEmpty())
-			(DX11::BaseInstructionBlock&)shape->constShape = standardLocalizableShader;
+			shape->constShape = standardLocalizableShader;
 		shape->constShape.vbo.CreateFromStructs(staticGeometry.GetLOD(0).vertices);
 		shape->constShape.ibo.Create(staticGeometry.GetLOD(0).indices);
 	}
@@ -356,7 +356,7 @@ namespace Objects
 		{
 
 			//if (compiledShape.shader.IsEmpty())
-				(DX11::BaseInstructionBlock&)compiledShape = Objects::standardCompiledShader;
+			compiledShape = Objects::standardCompiledShader;
 			compiledShape.vbo.CreateFromStructs(localMesh.GetLOD(0).vertices);
 			compiledShape.ibo.Create(localMesh.GetLOD(0).indices);
 		}
@@ -377,7 +377,7 @@ namespace Objects
 			auto&inst = partInstruction[i];
 			if (scaleToVehicleSize)
 				part.Scale(vehicleScale);
-			(DX11::BaseInstructionBlock&)inst = stdVehicleShader;
+			inst = stdVehicleShader;
 			inst.vbo.CreateFromStructs(part.GetLOD(0).vertices);
 			inst.ibo.Create(part.GetLOD(0).indices);
 		}

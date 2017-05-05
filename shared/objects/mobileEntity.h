@@ -124,7 +124,7 @@ namespace Objects
 
 			PVehicleJob				job;
 
-			static Observer<const MobileEntity&, Task&,const Grid::LCellIdI&>	onVisualizationOutdated;
+			static Observable<const MobileEntity&, Task&,const Grid::LCellIdI&>	onVisualizationOutdated;
 
 
 			/**/					Task()	{}

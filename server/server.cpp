@@ -643,7 +643,8 @@ namespace ParameterConfig
 
 	PathString	loadFile;
 	bool	startOffline = false,
-			startInConfig = false;
+			startInConfig = false,
+			startInTutorial = false;
 	bool	customWorldID = false;
 	bool	enableRemoteControl = true;
 	const char*	programName="";
@@ -666,6 +667,7 @@ namespace ParameterConfig
 		std::cout << "  --loadAuto/-a [number]\tLoad auto-savegame. number=0 => most recent"<<std::endl;
 		std::cout << "  --offline/-o \tStart offline"<<std::endl;
 		std::cout << "  --config/-c \tStart in configuration mode"<<std::endl;
+		std::cout << "  --tutorial/-t \tStart in tutorial mode"<<std::endl;
 		std::cout << "  --port/-p [basePort]\tUse a non-default base port ("<<DEFAULT_SERVER_BASE_PORT<<" is default)"<<std::endl;
 		std::cout << "  --noRemote/-r \tDisable remote control service"<<std::endl;
 		std::cout << "  --rv4\tStart remote control service using IPv4"<<std::endl;
@@ -719,6 +721,11 @@ namespace ParameterConfig
 					startOffline = true;
 				elif (!strcmp(arg,"--config") || !strcmp(arg,"-c"))
 					startInConfig = true;
+				elif (!strcmp(arg,"--tutorial") || !strcmp(arg,"-t"))
+				{
+					loadFile = "config/tutorial.hsf";
+					startInTutorial = true;
+				}
 				elif (!strcmp(arg,"--loadAuto") || !strcmp(arg,"-a"))
 					mode = ExpectAutoSaveNumber;
 				elif (!strcmp(arg,"--help") || !strcmp(arg,"-h"))
@@ -1079,6 +1086,7 @@ int main( int argc, const char* argv[])
 			else
 				Logging::WriteEvent(EventClass::Preset::fileError,"Specified file ("+String(filename)+") does not exist. Skipping loading operation.",nullptr,nullptr,Objects::OwnerParameter());
 		}
+		RuntimeConfig::tutorialMode = ParameterConfig::startInTutorial;
 
 		//Journal::globalWriter.InitNew(RuntimeConfig::ConfigFile("saves/log"));
 		//Journal::globalWriter.ContinueExisting(RuntimeConfig::ConfigFile("saves/log"));

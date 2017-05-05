@@ -90,7 +90,7 @@ namespace Objects
 									productionRoundsLeft=0;
 
 
-		static Observer<MobileEntityProducer&,WorkItem&>	onAppendTask;
+		static Observable<MobileEntityProducer&,WorkItem&>	onAppendTask;
 
 		/**/						MobileEntityProducer(UINT32 productionPerRound):productionPerRound(productionPerRound)
 									{}

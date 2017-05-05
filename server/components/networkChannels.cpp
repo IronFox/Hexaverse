@@ -48,6 +48,8 @@ namespace Channels
 	TCP::Channel<Protocol::ResourceID, PreFaction, Protocol::ChannelID::RequestResource>				requestResource(Receiver::RequestResource);
 	TCP::Channel<Package::NetString<256>, Configurator, Protocol::ChannelID::LoadPlanetByName>		loadPlanetByName(Receiver::LoadPlanetByName);
 	
+	TCP::Channel<NET(INT32),FactionLevel,Protocol::ChannelID::TutorialAt>							tutorialAt(Receiver::TutorialAt);
+
 
 	TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>			clientFactionResponse;
 	TCP::ObjectSender<Protocol::Marker, Protocol::ChannelID::MarkerCreationFailedLimitReached>		markerCreationFailedLimitReached;
@@ -248,6 +250,13 @@ namespace Receiver
 	{
 		if (!peer.attachment)
 			return;
+
+		if (RuntimeConfig::tutorialMode && !peer.IsLocalhost())
+		{
+			LogEvent(EventClass( EventSignificance::ClientFatal, EventFlavor::Loss ), peer,"Server is in tutorial mode. Rejecting connection from non-localhost.");
+			peer.DisconnectPeer();
+		}
+
 		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 		Protocol::ClientFactionResponse response;
 		response.startFactionTypes = _p.startFactionTypes;
@@ -379,18 +388,16 @@ namespace Receiver
 			LogEvent(EventClass( EventSignificance::Important, EventFlavor::Gain ), peer, "Access to nexus faction permitted.");
 			faction = Objects::Faction::nexus;
 		}
-		#ifdef _DEBUG
-			if (faction
-				|| Network::tokenMap.Query(response.factionToken,faction)
-				|| (
-						response.startFactionTypes == Protocol::FactionType::ContinueOnly 
-						&& Objects::Faction::all.IsNotEmpty()
-						&& (faction = Objects::Faction::all.first().lock())
-					)
+		if (faction
+			|| Network::tokenMap.Query(response.factionToken,faction)
+			|| (	response.startFactionTypes == Protocol::FactionType::ContinueOnly 
+					#ifndef _DEBUG
+						&& RuntimeConfig::tutorialMode
+					#endif
+					&& Objects::Faction::all.IsNotEmpty()
+					&& (faction = Objects::Faction::all.first().lock())	//in tutorial mode (or debug mode) take first known faction
 				)
-		#else
-			if (faction || Network::tokenMap.Query(response.factionToken,faction))
-		#endif
+			)
 		{
 			#ifdef _DEBUG
 				response.factionToken = faction->accessToken;
@@ -510,7 +517,8 @@ namespace Receiver
 
 		Channels::clientFactionResponse.SendTo(client->peer.lock(),response);
 		Channels::setFactionID.SendTo(client->peer.lock(),client->faction->id);
-
+		if (RuntimeConfig::tutorialMode)
+			Channels::tutorialAt.SendTo(client->peer.lock(),Game::tutorialAt);
 		//CHEAT_SHOW_ALL_RESOURCES
 
 		#ifdef CHEAT_SHOW_ALL_RESOURCES
@@ -889,6 +897,11 @@ namespace Receiver
 
 	}
 
+	void	TutorialAt(NET(INT32)&at)
+	{
+		Game::tutorialAt = at;
+	}
+
 	void	LoadPlanetByName(Package::NetString<256>&planet, TCP::Peer&peer)
 	{
 		if (ConfigurationMode::IsActive())
@@ -1102,6 +1115,11 @@ namespace Receiver
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(uuid,peer);
 		if (!e)
 			return;
+		if (RuntimeConfig::tutorialMode)
+		{
+			LogEvent(EventClass::Preset::commandRejected,peer,e,"Unable to issue self destruction. Tutorial mode is active");
+			return;
+		}
 		if (e->IsIndestructible())
 		{
 			LogEvent(EventClass::Preset::commandRejected,peer,e,"Unable to issue self destruction. Entity is indestructible");
@@ -1645,7 +1663,11 @@ namespace Receiver
 		{
 			case TCP::Event::ConnectionEstablished:
 				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ), peer,"Client connected");
-
+				if (RuntimeConfig::tutorialMode && !peer.IsLocalhost())
+				{
+					LogEvent(EventClass( EventSignificance::ClientFatal, EventFlavor::Loss ), peer,"Server is in tutorial mode. Rejecting connection from non-localhost.");
+					peer.DisconnectPeer();
+				}
 			break;
 			case TCP::Event::ConnectionClosed:
 			case TCP::Event::ConnectionLost:

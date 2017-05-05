@@ -26,6 +26,7 @@ namespace Game
 	float				factionStartMineralValue=1.f;	//determined during loading
 	float				effectiveAnimationLength = 1.f;
 
+	INT32				tutorialAt=1;
 
 
 	namespace Config
@@ -108,6 +109,7 @@ namespace Game
 		{
 			roundTimerPaused = true;
 			mostFactionsAlive = 0;
+			tutorialAt=1;
 			winner.reset();
 			HandleSessionSuspension();
 		}
@@ -138,6 +140,8 @@ namespace Game
 				gameConfig.gameFlags |= Protocol::GameFlag::NexusAI;
 			if (ConfigurationMode::IsActive())
 				gameConfig.gameFlags |= Protocol::GameFlag::ConfigurationMode;
+			if (RuntimeConfig::tutorialMode)
+				gameConfig.gameFlags |= Protocol::GameFlag::TutorialMode;
 			if (World::Config::simulateLiquids)
 				gameConfig.gameFlags |= Protocol::GameFlag::SimulateLiquids;
 
@@ -972,6 +976,8 @@ namespace Game
 	void SpawnNexusBaseAtPoleWithPort(int pole)
 	{
 		LogEvent(EventSignificance::Common,"Spawning Nexus base at pole "+String(pole));
+
+		auto sensorLock = Objects::Faction::nexus->LockSensorUpdates();
 
 		ASSERT__(Config::Nexus::haveBases);
 

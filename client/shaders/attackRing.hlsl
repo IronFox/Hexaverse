@@ -1,9 +1,5 @@
-/*
-Shader used to render the normal surfaces of all vehicles
-*/
-
 #include "common.inc.hlsl"
-#include "shadow.hlsli"
+#include "light.hlsli"
 
 cbuffer Tint
 {

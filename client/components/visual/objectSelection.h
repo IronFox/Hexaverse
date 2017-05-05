@@ -12,7 +12,7 @@ namespace Objects
 	extern PVehicle			selectedVehicle;
 	extern PMobileEntity	deployingMobileEntity;
 
-	extern Observer<>		onSelectionChanged;
+	extern Observable<>		onSelectionChanged;
 
 
 	void					Select(const PWorldEntity&entity, bool controlEnabled);

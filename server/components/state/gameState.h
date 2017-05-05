@@ -22,6 +22,7 @@ namespace Game
 	extern Timer::Time		lastPhaseChange /*= timer.Now()*/;
 	extern bool				roundTimerPaused /*= true*/;
 	extern Evolver::Abstract*evolver;
+	extern INT32			tutorialAt;
 
 	//extern Grid::TSharedPlanetConfig	persistentPlanetInfo;
 

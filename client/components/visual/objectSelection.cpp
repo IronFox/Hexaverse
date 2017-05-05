@@ -17,7 +17,7 @@ namespace Objects
 	PWorldEntity			selectedEntity;
 	PMobileEntity			selectedMobileEntity;
 	PMobileEntity			deployingMobileEntity;
-	Observer<>				onSelectionChanged;
+	Observable<>				onSelectionChanged;
 
 	void					Select(const PWorldEntity&entity, bool controlEnabled)
 	{

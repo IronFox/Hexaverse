@@ -1,5 +1,4 @@
 #include "common.inc.hlsl"
-#include "shadow.hlsli"
 
 
 cbuffer KeyColor

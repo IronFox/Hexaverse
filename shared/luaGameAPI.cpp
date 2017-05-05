@@ -157,6 +157,12 @@ namespace Lua
 			api.SetFunction("GetCompoundResourceChange",Detail::GetCompoundResourceChange);
 			api.SetFunction("GetCompoundResourceStorage",Detail::GetCompoundResourceStorage);
 		#endif
+		#ifdef CLIENT
+			api.SetFunction("FindHighestAvailableResourceLocation",Detail::FindHighestAvailableResourceLocation);
+			api.SetFunction("GetResourceCoverage",Detail::GetResourceCoverage);
+			api.SetFunction("GetCompoundResourceChange",Detail::GetCompoundResourceChange);
+			api.SetFunction("GetCompoundResourceStorage",Detail::GetCompoundResourceStorage);
+		#endif
 
 		#ifdef LOWER_RESOLUTION_PLANET
 			api.SetField("LowerResolutionPlanet",true);

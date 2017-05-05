@@ -256,6 +256,11 @@ namespace LocalApplicationInterface
 			ApplicationInterface::SignalRoundEnd();
 
 		pauseAutomaticRoundProgression = false;
+
+		#ifdef HAS_WINDOW
+			if (RuntimeConfig::tutorialMode)
+				Tutorial::SignalRoundStart();
+		#endif
 	}
 }
 
@@ -716,11 +721,36 @@ namespace ApplicationInterface
 		#endif
 	}
 
+	static bool IsTerraformingOperation(ConstName jobName)
+	{
+		switch (jobName)
+		{
+			case ConstName::Job_AlterTerrain:
+			case ConstName::Job_BuildHorizontalWall:
+			case ConstName::Job_BuildRoad:
+			case ConstName::Job_BuildWallUp:
+			case ConstName::Job_ClearAbove:
+			case ConstName::Job_DigDown:
+			case ConstName::Job_DigHorizontal:
+			case ConstName::Job_Sequence:
+				return true;
+
+		}
+		return false;
+	}
+
 
 	void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, ConstName parameterName, const Grid::LCellIdI&overrideLocation)
 	{
 		const Grid::LCellIdI targetLocation = overrideLocation != Grid::LCellIdI::Invalid ? overrideLocation : v->GetLastPointOfOrigin();
 		#ifdef HAS_WINDOW
+			if (RuntimeConfig::tutorialMode && IsTerraformingOperation(jobName))
+			{
+				Dialog::ShowMessage("Terraforming is not permitted in this tutorial. You may do so freely on a regular server.");
+				return;
+			}
+
+
 			if (jobName == ConstName::Job_Construct && parameterName != ConstName::Type_Connector)
 			{
 				Objects::NaturalResourceVector	res;
@@ -1626,7 +1656,6 @@ bool loop()
 				s.system.w.xyz = at;
 			});
 
-
 		#if 1
 		{
 			if (RuntimeConfig::FromFile::capFPS > 0)
@@ -1726,16 +1755,19 @@ bool loop()
 
 		
 		{
-			#ifdef CASCADING_SHADOW
-				for (index_t i = 0; i < Lighting::NumCascades; i++)
-				{
-					RenderShadows(-20.f + 30.f * (1 << i) ,i);
-				}
-			#else
-				RenderShadows(30.f, Objects::shadowMap, Objects::shadowCamera, Objects::shadowMatrix);
-			#endif
+			if (ShadedInstruction::chosenQuality != ShadedInstruction::Quality::Off)
+			{
+				#ifdef CASCADING_SHADOW
+					for (index_t i = 0; i < Lighting::NumCascades; i++)
+					{
+						RenderShadows(-20.f + 30.f * (1 << i) ,i);
+					}
+				#else
+					RenderShadows(30.f, Objects::shadowMap, Objects::shadowCamera, Objects::shadowMatrix);
+				#endif
 
-			Objects::Renderer::EndShadowRendering();
+				Objects::Renderer::EndShadowRendering();
+			}
 		}
 
 		display.pick(Camera::scene);
@@ -3309,15 +3341,15 @@ namespace ApplicationInterface
 			Objects::choiceVis.showArrow = false;
 			UI::RefreshButtonState();
 		}
-
 	}
 
 	void	OnWheel(short delta)
 	{
 		if (GUI::HandleMouseWheel(delta) == GUI::WheelRs::NotContained)
 			Camera::Event::WheelAction(delta);
-
 	}
+
+
 
 #endif
 
@@ -3492,7 +3524,9 @@ namespace StartConfig
 		if (attrib)
 			return attrib->value;
 		Fix(path,fallback);
-		return fallback;
+		static String staticCopy;
+		staticCopy = fallback;	//fallback might be a temporary string, so this at least keeps it alive
+		return staticCopy;
 	}
 
 	
@@ -3622,6 +3656,12 @@ int main( int argc, const char* argv[])
 				display.config.vertical_sync = StartConfig::GetInt("runtime/vsync");
 				display.config.vertical_sync = display.config.vertical_sync > 0 ? 1 : 0;
 				display.config.fsaa_samples = StartConfig::GetInt("runtime/fsaa",4);
+
+				const String&shadowFilter = StartConfig::GetString("runtime/shadowQuality",ShadedInstruction::Quality().ToString());
+				if (!ShadedInstruction::chosenQuality.Decode(shadowFilter.c_str()))
+				{
+					LogEvent(EventClass::Preset::configurationError,"Unable to apply chosen shadow filter '"+shadowFilter+"': Not supported");
+				}
 
 				UI::resourcesAsList = StartConfig::GetBool("runtime/resourcesAsList",false);
 
@@ -3784,6 +3824,13 @@ int main( int argc, const char* argv[])
 					Network::client.Disconnect();
 				},
 				[](){return Network::client.IsConnected();});
+			mainMenu->AddCommand("Start Tutorial",
+				[]()
+				{
+					ServerProcess::StartTutorialServer();
+				},
+				[](){return !Network::client.IsConnected() && !Network::client.IsAttemptingToConnect();});
+
 			mainMenu->AddCommand("Quit to Desktop",[](){Dialog::Confirm("Really quit? Any active faction will be preserved server-sided for you to continue later on.",[](){application_shutting_down = true;},[](){return Dialog::CheckResult::OkayContinue;});});
 			mainMenu->FullAutoLayout();
 
@@ -3822,9 +3869,9 @@ int main( int argc, const char* argv[])
 			Tutorial::Create();
 
 
-			Tutorial::ShowMessage("Welcome",true);
-			Tutorial::ShowMessage("Tutorials");
-			Tutorial::ShowMessage("Servers");
+			//Tutorial::ShowMessage("Welcome",true);
+			//Tutorial::ShowMessage("Tutorials");
+			//Tutorial::ShowMessage("Servers");
 
 
 			{

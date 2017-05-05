@@ -10,7 +10,7 @@
 #include <objects/components.h>
 #include <objects/geometry.h>
 #include "lighting.h"
-
+#include "shadedRenderInstruction.h"
 
 
 namespace Objects
@@ -24,22 +24,22 @@ namespace Objects
 
 
 	extern DX11::ObjectBuffer<float4>	keyColor, overallTint;
-	extern DX11::BaseInstructionBlock	stdVehicleShader,
-										seeThroughShader,
+	extern ShadedInstruction			stdVehicleShader;
+	extern DX11::BaseInstructionBlock	seeThroughShader,
 										pathShader,
 										jobShader,
 										skyPortBeam,
 										arrowInstruction;
 	extern DX11::StreamVBO				arrowBuffer;
 
-	extern DX11::InstructionBlock32		cordon,
+	extern ShadedInstructionBlock32		userInteractionNotifier,
+										cordon,
 										foundation,
-										userInteractionNotifier,
 										gatheringPoint;
 	//extern DX11::Texture				hexGrid;
 
 
-	extern DX11::BaseInstructionBlock		standardCompiledShader, standardLocalizableShader;
+	extern ShadedInstruction			standardCompiledShader, standardLocalizableShader;
 
 	inline	int DetermineLODInstruction(float distance, float radius)
 	{

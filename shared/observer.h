@@ -5,15 +5,15 @@
 #include <functional>
 
 template <typename...T>
-	class Observer
+	class Observable
 	{
 	public:
-		typedef Observer<T...>	Self;
+		typedef Observable<T...>	Self;
 
 		typedef std::function<void(T...)>	F;
 
-		/**/	Observer() {}
-		/**/	Observer(const Self&other) = delete;//these aren't inherently bad or impossible but typically imply that something isn't as it should be
+		/**/	Observable() {}
+		/**/	Observable(const Self&other) = delete;//these aren't inherently bad or impossible but typically imply that something isn't as it should be
 		void	operator=(const Self &other) = delete;
 
 		void	Clear()	{functions.Clear();}
@@ -34,7 +34,7 @@ template <typename...T>
 		{
 			functions << f;
 		}
-		Observer&	operator<<(const F&f)
+		Observable&	operator<<(const F&f)
 		{
 			functions << f;
 			return *this;
@@ -92,4 +92,4 @@ template <typename...T>
 	};
 
 template <typename...T>
-	index_t Observer<T...>::keyCounter = 0;
+	index_t Observable<T...>::keyCounter = 0;

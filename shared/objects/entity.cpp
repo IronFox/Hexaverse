@@ -79,6 +79,16 @@ namespace Objects
 		//#endif
 	}
 
+	/*virtual*/ bool				WorldEntity::IsIndestructible() const
+	{
+#ifndef CLIENT
+		return RuntimeConfig::tutorialMode;
+#else
+		return false;
+#endif
+	};
+
+
 	#ifdef HAS_WINDOW
 		bool				WorldEntity::TestIntersection(const Geometry&geo, const TVec3<>&_b, const TVec3<>&_d, float & distance) const
 		{

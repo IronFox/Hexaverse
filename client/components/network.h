@@ -103,7 +103,6 @@ namespace Network
 	bool HaveFactionKeyForCurrentWorld();
 	void AttemptFactionLogin(bool forceNewFaction, UINT32 factionTypes);
 
-
 	/**
 	Signals that server and client states have deteriorated to a point where communication cannot continue.
 	Causes imminent disconnection
@@ -194,6 +193,7 @@ namespace Network
 		void	PlanetConfig(Grid::ExtendedPlanetConfig&);
 		void	ResourceData(Protocol::ResourceData&);
 		void	GameConfig(Protocol::GameConfig&);
+		void	TutorialAt(NET(INT32)&);
 	}
 
 
@@ -240,6 +240,7 @@ namespace Network
 		extern TCP::Channel<Protocol::GameConfig,0,Protocol::ChannelID::GameConfig>						gameConfig;
 		extern TCP::Channel<NETA(Package::NetString<256>),0,Protocol::ChannelID::PlanetNames>			planetNames;
 
+		extern TCP::Channel<NET(INT32),0,Protocol::ChannelID::TutorialAt>								tutorialAt;
 
 		extern TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;
 		extern TCP::ObjectSender<Protocol::TouchedMarker,Protocol::ChannelID::TouchMarker>					touchMarker;

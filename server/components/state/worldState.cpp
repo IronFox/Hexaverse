@@ -139,6 +139,9 @@ namespace World
 
 			if (::Network::spectators.IsNotEmpty())
 			{
+				if (spectatorWorldState.SensoryIsInvalid())
+					spectatorWorldState.FlushAndValidateSensory(1);
+
 				if (staticContainer.Process(spectatorWorldState))
 					for (index_t i = 0; i < staticContainer.numDeltas; i++)
 						for (const auto&s : ::Network::spectators)

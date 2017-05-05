@@ -1,9 +1,10 @@
+#pragma once
+
 #ifdef HAS_WINDOW
-#ifndef cameraControlComponentH
-#define cameraControlComponentH
 
 #include <math/vclasses.h>
 #include <engine/aspect.h>
+#include <observer.h>
 
 #define DebugCheckVector(T, M, MX)
 #define DebugCheckCamera()
@@ -41,6 +42,8 @@ namespace Camera
 
 	extern bool					autoRotation, locked;
 
+
+	extern Observable<>			onZoom, onRotate, onDrag;
 
 	/**
 	Initiates cameras (must be called only once during program start)
@@ -129,5 +132,4 @@ namespace Camera
 }
 
 
-#endif
 #endif

@@ -1531,7 +1531,7 @@ namespace Objects
 		return true;
 	}
 
-	Observer<const MobileEntity&, MobileEntity::Task&,const Grid::LCellIdI&>	MobileEntity::Task::onVisualizationOutdated;
+	Observable<const MobileEntity&, MobileEntity::Task&,const Grid::LCellIdI&>	MobileEntity::Task::onVisualizationOutdated;
 
 
 

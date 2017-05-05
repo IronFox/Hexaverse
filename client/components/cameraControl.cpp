@@ -26,6 +26,7 @@ namespace Camera
 	Engine::OrthographicAspect<>	hud;
 	bool							autoRotation = false,
 									locked = false;
+	Observable<>						onZoom,onRotate,onDrag;
 
 	namespace 
 	{
@@ -170,6 +171,7 @@ namespace Camera
 			scene.retraction.z /= pow(1.1f,param);
 			scene.retraction.z = Math::clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
 			scene.UpdateView();
+			onZoom();
 		}
 	}
 
@@ -181,6 +183,7 @@ namespace Camera
 			scene.retraction.z *= 0.95f;
 			scene.retraction.z = Math::clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
 			scene.UpdateView();
+			onZoom();
 		}
 	}
 
@@ -191,6 +194,7 @@ namespace Camera
 			scene.retraction.z /= 0.95f;
 			scene.retraction.z = Math::clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
 			scene.UpdateView();
+			onZoom();
 		}
 	}
 
@@ -199,7 +203,7 @@ namespace Camera
 		scene.retraction.z *= pow(3.f,-outSpeed);
 		scene.retraction.z = Math::clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
 		scene.UpdateView();
-
+		onZoom();
 	}
 
 
@@ -265,6 +269,7 @@ namespace Camera
 
 
 		scene.UpdateView();
+		onRotate();
 		//moveToTarget = false;	//leave on if on
 	}
 
@@ -460,6 +465,8 @@ namespace Camera
 
 
 		scene.UpdateView();
+		onDrag();
+
 	}
 
 	void						Create()

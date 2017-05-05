@@ -5,6 +5,7 @@
 #include <general/timer.h>
 #include <general/monitoredProcess.h>
 #include <globalEvents.h>
+#include <logEvent.h>
 
 namespace AIProcess
 {
@@ -36,7 +37,16 @@ namespace AIProcess
 
 			sprintf_s(parameterBuffer,"aiAccessToken='%s' udpListen=false serverURL=localhost",accessToken.ToFullString().c_str());
 
-			ASSERT3__(process.Start(workingDirectory,path,parameterBuffer,false), workingDirectory,path,parameterBuffer);
+			try
+			{
+				process.Start(workingDirectory,path,parameterBuffer,false);
+			}
+			catch (const std::exception&ex)
+			{
+				LogEvent(EventClass::Preset::error, ex.what());
+				if (IsDebuggerPresent())
+					DebugBreak();
+			}
 		}
 	
 

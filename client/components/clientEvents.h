@@ -4,7 +4,7 @@
 
 namespace GlobalEvents
 {
-	extern Observer<>	frameBegin,frameAfterCamera;
+	extern Observable<>	frameBegin,frameAfterCamera;
 
 
 }

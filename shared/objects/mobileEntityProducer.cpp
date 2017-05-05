@@ -12,7 +12,7 @@
 namespace Objects
 {
 
-	Observer<MobileEntityProducer&,MobileEntityProducer::WorkItem&>	MobileEntityProducer::onAppendTask;
+	Observable<MobileEntityProducer&,MobileEntityProducer::WorkItem&>	MobileEntityProducer::onAppendTask;
 
 	UINT32				MobileEntityProducer::ProductionRounds(int costs, bool isActive) const
 	{
