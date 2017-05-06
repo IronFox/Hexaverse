@@ -417,7 +417,7 @@ namespace World
 			if (stack.waterRange.IsNotEmpty())
 			{
 				limit = (UINT32)(stack.waterRange.end-1);
-				DBG_ASSERT_LESS2__(limit,CellStack::Range, stack.waterRange.begin, stack.waterRange.end);
+				DBG_ASSERT_LESS2__(limit,CellStack::Range, stack.waterRange.start, stack.waterRange.end);
 				if (stack.highestOpaqueCell >= stack.lowestOpenCell)
 				{
 					limit = std::max(limit,(UINT32)stack.highestOpaqueCell);
