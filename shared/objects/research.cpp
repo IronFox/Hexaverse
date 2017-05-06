@@ -854,15 +854,9 @@ namespace Objects
 		try
 		{
 			#ifdef CLIENT
-				if (owner == Faction::mine.get())
-					ForeachWorldEntity([this](const PWorldEntity&e)
-					{
-						if (e->owner.get() == owner)
-						{
-							float t = 0;
-							e->UnregisterSensory(t);
-						}
-					},false);
+				World::actual.InvalidateSensory();
+			#else
+				owner->knownWorld.InvalidateSensory();
 			#endif
 
 			Lua::Reference deserialized = globalState.researchProgram->DeserializeToReference(ByteReadStream(serializedState));
@@ -873,19 +867,6 @@ namespace Objects
 		{
 			LogEvent(EventClass::Preset::error,e.what());
 		}
-
-		#ifdef CLIENT
-			if (owner == Faction::mine.get())
-				ForeachWorldEntity([this](const PWorldEntity&e)
-				{
-					if (e->owner.get() == owner)
-					{
-						float t = 0;
-						e->RegisterSensory(t);
-					}
-				},false);
-		#endif
-
 	}
 	
 	

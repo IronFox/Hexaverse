@@ -1184,12 +1184,8 @@ namespace Animation
 				if (allocatedTarget->IsMobile())
 				{
 					Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(allocatedTarget);
-					if (v->preAnimationLocation != v->location)
-					{
-						float t = 0.f;
-						v->MoveSensory(v->preAnimationLocation,v->location, t);
-						//v->RegisterSensory(t);
-					}
+					float t = 0.f;
+					v->MoveSensoryToCurrentLocation(t);
 				}
 
 				float t = 0;
@@ -1388,13 +1384,10 @@ namespace Animation
 				//v->Relocate(path->rawPath.last().first,false);
 				v->location = path->rawPath.last().first;
 				//Objects::InsertVehicleIntoGrid(v,v->location);	will be done later
-				if (v->isOwnedByMe && v->preAnimationLocation != v->location)
+				if (v->isOwnedByMe)
 				{
 					float t = 0.f;
-					v->MoveSensory(v->preAnimationLocation,v->location,t);
-
-					//v->MoveWorldSensory(v->preAnimationLocation,v->location);
-					//World::actual.MoveSensor(v->preAnimationLocation,v->location,v->GetScanningRange());
+					v->MoveSensoryToCurrentLocation(t);
 				}
 				v->preAnimationLocation = v->location;
 				allocatedTarget.reset();	//for debugging purposes
@@ -1834,13 +1827,10 @@ namespace Animation
 
 				Objects::ForeachMobileWorldEntity([](const Objects::PMobileEntity&e)
 				{
-					//if ((*v)->preAnimationLocation != (*v)->location)
-						//Objects::RemoveVehicleFromGrid(*v,(*v)->preAnimationLocation);
 					if (e->isOwnedByMe && !Animation::insertIntoGridLater.IsSet(e->id))
 					{
 						float t = 0.f;
-						e->MoveSensory(e->preAnimationLocation,e->location,t);
-//							World::actual.MoveSensor((*v)->preAnimationLocation,(*v)->location,(*v)->GetScanningRange());
+						e->MoveSensoryToCurrentLocation(t);
 					}
 				},false);
 
@@ -1853,7 +1843,7 @@ namespace Animation
 						if (v->isOwnedByMe)
 						{
 							float t = 0.f;
-							v->MoveSensory(v->preAnimationLocation,v->location,t);
+							v->MoveSensoryToCurrentLocation(t);
 						}
 						if (v->IsVehicle() && !v->IsAboveGrid())
 							Objects::InsertVehicleIntoGrid(To<Objects::Vehicle>::Cast(v),v->location);

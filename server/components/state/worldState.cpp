@@ -181,7 +181,7 @@ namespace World
 			};
 			static Array<TStack>	tempStacks;
 			tempStacks.SetSize(Grid::HighSetup::GridType::CellCount);
-			for (index_t i = 0; i < Grid::HighSetup::GridType::CellCount; i++)
+			for (UINT32 i = 0; i < Grid::HighSetup::GridType::CellCount; i++)
 			{
 				TStack&target = tempStacks[i];
 				const Grid::CellStack&source = World::actual.GetStack(i);
@@ -191,7 +191,7 @@ namespace World
 
 			BaseGrid::FamiliesChanged changed;
 
-			Concurrency::parallel_for(index_t(0),Grid::HighSetup::GridType::CellCount,[&changed](index_t stackIndex)
+			Concurrency::parallel_for(UINT32(0),Grid::HighSetup::GridType::CellCount,[&changed](UINT32 stackIndex)
 			{
 				const Grid::CellStack&stack = World::actual.GetStack(stackIndex);
 				const Grid::CellStack*nStacks[6] = {nullptr};
@@ -232,9 +232,9 @@ namespace World
 			auto seq = World::actual.BeginChangeSequence(0);
 			foreach (changed,ch)
 			{
-				index_t offset = Grid::high.grid.GetFamilyOffset(*ch);
+				UINT32 offset = Grid::high.grid.GetFamilyOffset(*ch);
 				count_t cnt = Grid::high.grid.CountFamilyMembers(*ch);
-				for (index_t k = offset; k < offset+cnt; k++)
+				for (UINT32 k = offset; k < offset+cnt; k++)
 				{
 					auto access = seq.AccessStack(k);
 					Grid::CellStack&target = access.GetStack();

@@ -1,14 +1,23 @@
 ﻿Loading screen
 
-hoverformer sometimes tries building roads through buildings
 
 aerial radar and turret
+bomber
 
-save/restore faction colors
+end-game score recording and reporting
+
+laboratory nexus risk, hacking vehicle turret
+laboratories have better yield if grouped but pose risk of virus changing lab group ownership to nexus
+
+
+
+bug: hoverformer sometimes tries building roads through buildings
+
+
+
 
 save planet configuration upon commit in interactive configuration mode. present list of last saves to recover from
 
-make shift-key functionality optional
 
 
 resources 2.0:
@@ -72,14 +81,13 @@ wireless power? ... dedicated compounds?
 
 make generators switch off if not needed
 
-split terraformers and constructors
+split terraformers and constructors. elegance hints that this should not happen
 
 lava ship
 
 send entity id with server messages so user can click on the message to focus on them
 better mine output (refinery)
 
-laboratories have better yield if grouped but pose risk of virus changing lab group ownership to nexus
 
 
 
@@ -151,6 +159,8 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+save/restore faction colors
+make shift-key functionality optional
 parallel attacks
 adjust research script and renovate overriding
 dedicated server should not start in interactive mode.

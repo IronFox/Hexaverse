@@ -234,7 +234,7 @@ namespace Network
 	{
 		SetupServer();
 		StartServer(false);
-		Session::isStarted = true;
+		Session::isStarted = !ConfigurationMode::IsActive();
 
 		InformationProvider::Start(basePort);
 	}

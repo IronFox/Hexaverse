@@ -317,8 +317,8 @@ public:
 	const TCell*GetCells() const {return cellField;}
 	const TCell&GetCell(index_t)const;
 	const TCell&GetCell(family_t family, index_t memberIndex)const;
-	count_t		CountFamilyMembers(family_t family) const;
-	index_t		GetFamilyOffset(family_t family) const;
+	UINT32		CountFamilyMembers(family_t family) const;
+	UINT32		GetFamilyOffset(family_t family) const;
 
 	void		Construct(Array<TCellVertex>&vertices, Array<TNetCell>&cells);	//fourth component contains 0 for center vertices and 1 for outline vertices
 
@@ -824,7 +824,7 @@ template <unsigned Exponent>
 	}
 
 template <unsigned Exponent>
-	index_t		GridSetup<Exponent>::GetFamilyOffset(family_t family) const
+	UINT32	GridSetup<Exponent>::GetFamilyOffset(family_t family) const
 	{
 		if (family == 0)
 		{
@@ -836,7 +836,7 @@ template <unsigned Exponent>
 
 
 template <unsigned Exponent>
-	count_t		GridSetup<Exponent>::CountFamilyMembers(family_t family) const
+	UINT32		GridSetup<Exponent>::CountFamilyMembers(family_t family) const
 	{
 		if (family == 0)
 			return 12 + 30 * CellsPerEdge;

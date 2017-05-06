@@ -193,6 +193,32 @@ namespace Objects
 			keyColor.Update(float4(0.5,0.5,1,1));
 		}
 
+
+
+		/*virtual override*/ void		EntityConstructionCommand::GetCosts(int&costOut, Resource&costTypeOut, int&timeCostOut)
+		{
+			if (getCosts)
+				getCosts(costOut,costTypeOut,timeCostOut);
+			else 
+			{
+				PWorldEntity e = Super::reference.lock();
+				if (e)
+				{
+					costOut = e->GetConstructionCost();
+					timeCostOut = 0;
+					costTypeOut = Resource::Minerals;
+				}
+				else if (turret && base)
+				{
+					costOut = Vehicle::GetPrice(*base,*turret,OwnerParameter());
+					timeCostOut = 0;
+					costTypeOut = Resource::Minerals;
+				}
+				else
+					Super::GetCosts(costOut,costTypeOut,timeCostOut);
+			}
+		}
+
 		/*static*/ void		EntityConstructionCommand::UpdateTexture(VisualCommand&target, Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor/* = float4(0)*/)
 		{
 			float distanceFactor = 1.f;
