@@ -22,14 +22,15 @@ namespace Objects
 	public:
 		typedef Storage::const_iterator	const_iterator;
 
-		bool				isBrief=true;
+		bool				isBrief=true,briefLocked=false;
 
 		void				Clear()
 		{
 			rawLines.Clear();
+			briefLocked = false;
 		}
 
-		void				swap(Description&other) {rawLines.swap(other.rawLines);}
+		void				swap(Description&other) {rawLines.swap(other.rawLines); swp(isBrief,other.isBrief); swp(briefLocked,other.briefLocked); }
 		friend void			swap(Description&a, Description&b)	{a.swap(b);}
 
 		bool				IsEmpty() const {return rawLines.IsEmpty();}
@@ -44,7 +45,7 @@ namespace Objects
 		const_iterator		end() const {return rawLines.end();}
 
 		void				BeginBrief();
-		void				MarkBriefEnd();
+		void				MarkBriefEnd(bool permanently = false);
 		String&				GetLastLine();
 		Description&		operator<<(const String&line);
 	};
