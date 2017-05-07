@@ -538,6 +538,7 @@ namespace Objects
 		*/
 		virtual void				SetResourceStorage(const ResourceVector&vec)	{};
 		virtual bool				IsNexusPort() const {return false;}
+		virtual bool				IsLaboratory() const {return false;}
 
 
 		//WorldEntity overrides:

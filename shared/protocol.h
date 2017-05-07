@@ -1859,7 +1859,13 @@ namespace Protocol
 		, NET(TVec3<>), color
 	)
 
-	typedef NET(UINT32)	SelectResearch;	//can't use index_t
+
+	NETSTRUCT2(QueueResearch
+		, NET(UINT32),	research
+		, NET(BOOL),	drop
+	);
+
+	typedef NETA(UINT32)	ResearchQueue;
 
 	typedef std::pair<UINT16,UINT16>	TUnitLimit;
 
@@ -1969,7 +1975,8 @@ namespace Protocol
 			FactionRequestedNewRound,	// s2c: TUniqueID
 			FactionContinuedRound,		// s2c: TUniqueID
 			ResearchState,		// s2c : ResearchState
-			SelectResearch,		// c2s : SelectResearch -> s2c : SelectResearch
+			QueueResearch,		// c2s : QueueResearch -> s2c : ResearchQueue
+			ResearchQueue,		// s2c : ResearchQueue
 			RequestResource,	// c2s : ResourceID -> s2c : ResourceData
 			ResourceData,		// s2c : ResourceData
 

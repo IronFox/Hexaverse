@@ -177,7 +177,17 @@ namespace Game
 						f->researchState.Export(state.serializedData);
 						ASSERT_LESS__(state.serializedData.Count(),state.serializedData.MaxElementCount);
 						Channels::researchState.SendTo(::Network::server,state,(UINT32)::Network::UserLevel::CommonFaction);
-
+					}
+					if (f->researchState.queueChanged)
+					{
+						f->researchState.queueChanged = false;
+						::Network::PClient client;
+						if (::Network::playerMap.Query(f,client))
+						{
+							Protocol::ResearchQueue queue;
+							f->researchState.ExportResearchQueue(queue);
+							::Channels::researchQueue.SendTo(client->peer.lock(),queue);
+						}
 					}
 				});
 			}

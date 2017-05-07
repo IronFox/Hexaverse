@@ -1064,13 +1064,15 @@ namespace Network
 			//Update( state, f);
 		}
 
-		void	SelectResearch(Protocol::SelectResearch&research)
+		void	ResearchQueue(Protocol::ResearchQueue&research)
 		{
 			if (Objects::Faction::mine)
 			{
-				Objects::Faction::mine->researchState.SetActiveTopic(research);
+				Objects::Faction::mine->researchState.RestoreResearchQueue(research);
 				//Dialog::SignalSituationChange();
 				#ifdef HAS_WINDOW
+					if (Objects::selectedEntity && Objects::selectedEntity->IsWorkingStructure() && To<Objects::WorkingStructure>::Cast(Objects::selectedEntity)->IsLaboratory())
+						UI::HexGrid::Configure(Objects::selectedEntity);
 					UI::RefreshButtonState();
 					if (RuntimeConfig::tutorialMode)
 						Tutorial::SignalResearchChange();
@@ -1136,7 +1138,7 @@ namespace Network
 		TCP::Channel<Grid::ExtendedPlanetConfig, 0, Protocol::ChannelID::PlanetConfig>				planetConfig(Receiver::PlanetConfig);
 		TCP::Channel<Protocol::OperationLacksResources, 0, Protocol::ChannelID::OperationLacksResources>			operationLacksResources(Receiver::OperationLacksResources);
 		TCP::Channel<Protocol::ResearchState, 0, Protocol::ChannelID::ResearchState>					researchState(Receiver::ResearchState);
-		TCP::Channel<Protocol::SelectResearch, 0, Protocol::ChannelID::SelectResearch>				selectResearch(Receiver::SelectResearch);
+		TCP::Channel<Protocol::ResearchQueue, 0, Protocol::ChannelID::ResearchQueue>				researchQueue(Receiver::ResearchQueue);
 		TCP::Channel<Protocol::ResourceData,0,Protocol::ChannelID::ResourceData>					resourceData(Receiver::ResourceData);
 		TCP::Channel<Protocol::GameConfig,0,Protocol::ChannelID::GameConfig>						gameConfig(Receiver::GameConfig);
 		TCP::Channel<NETA(Package::NetString<256>),0,Protocol::ChannelID::PlanetNames>				planetNames(Receiver::PlanetNames);
@@ -1162,6 +1164,7 @@ namespace Network
 		TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>					chatMessage;
 		TCP::ObjectSender<Protocol::ResourceID, Protocol::ChannelID::RequestResource>				requestResource;
 		TCP::ObjectSender<Package::NetString<256>, Protocol::ChannelID::LoadPlanetByName>			loadPlanetByName;
+		TCP::ObjectSender<Protocol::QueueResearch, Protocol::ChannelID::QueueResearch>				queueResearch;
 
 			//	,			//c2s: NET(bool) -> NET(bool)
 			//SetFactionId,		//s2c: NET(TUniqueID)
@@ -1390,7 +1393,7 @@ namespace Network
 		client.InstallChannel(Channels::destroyMarker);
 		client.InstallChannel(Channels::identifyFaction);
 		client.InstallChannel(Channels::researchState);
-		client.InstallChannel(Channels::selectResearch);
+		client.InstallChannel(Channels::researchQueue);
 		client.InstallChannel(Channels::factionOnline);
 		client.InstallChannel(Channels::factionOffline);
 		client.InstallChannel(Channels::factionRequestedNewRound);

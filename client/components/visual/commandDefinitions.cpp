@@ -10,7 +10,9 @@
 #include <objects/structure/laboratory.h>
 #include <objects/structure/mine.h>
 #include <objects/structure/vehiclePlant.h>
+#include <objects/faction.h>
 #include "../clientRuntimeConfig.h"
+#include "../network.h"
 #include "dialog.h"
 #include "objectChoices.h"
 #include "terrain.h"
@@ -32,6 +34,12 @@ namespace Objects
 
 		namespace Detail
 		{
+
+
+
+
+
+
 			/**
 			Relay-functor to convert a single boolean function or variable to Objects::CommandFlags.
 			Depending on the returned boolean value, flag compositions will either be 
@@ -305,7 +313,25 @@ namespace Objects
 				rs->RasterizeImage();
 		}
 
-		static count_t			researchCommandOffset = InvalidIndex;
+		static count_t			researchCommandOffset = InvalidIndex, researchQueueOffset = InvalidIndex;
+
+
+		static	void	ConfigureResearchQueueButtons(CommandContainer&commands)
+		{
+			commands.Truncate(researchQueueOffset);
+			if (Faction::mine && !Faction::mine->researchState.IsIdle())
+			{
+				foreach (Faction::mine->researchState.GetResearchQueue(),r)
+				{
+					Command::PResearchAbortCommand rs(new Command::ResearchAbortCommand(*r,r == Faction::mine->researchState.GetResearchQueue().begin()));
+					if ((*r)->componentReference || (*r)->prototypeReference)
+						rs->RasterizeImage();
+					commands.Add(rs);
+				}
+			}
+
+			commands.Refresh(Network::ControlEnabled());
+		}
 
 		static	void	ConfigureResearchButtons(CommandContainer&commands)
 		{
@@ -317,10 +343,19 @@ namespace Objects
 			{
 				BuildCommand(commands,*res);
 			}
+			commands.AddSpace();
+			researchQueueOffset = commands.Count();
+			ConfigureResearchQueueButtons(commands);
 		}
+
+
 		void	ReconfigureResearchButtons()
 		{
 			ConfigureResearchButtons(Laboratory::commands);
+		}
+		void	ReconfigureResearchQueueButtons()
+		{
+			ConfigureResearchQueueButtons(Laboratory::commands);
 		}
 
 		void	DefineLaboratory(CommandContainer&commands)
@@ -1151,6 +1186,7 @@ namespace Objects
 		{
 			DefineItemHandlers();
 			ResearchState::globalState.onScriptChange << ReconfigureResearchButtons;
+			ResearchState::globalState.onQueueChange << [](Faction*f){ if (f == Faction::mine.get()) ReconfigureResearchQueueButtons();};
 
 			DefineMine(Objects::Mine::commands);
 			DefineVehiclePlant(Objects::VehiclePlant::commands);

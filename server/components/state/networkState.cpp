@@ -272,7 +272,7 @@ namespace Network
 		server.InstallChannel(Channels::touchMarker);
 		server.InstallChannel(Channels::changeMyName);
 		server.InstallChannel(Channels::identifyFactionRecv);
-		server.InstallChannel(Channels::selectResearch);
+		server.InstallChannel(Channels::queueResearch);
 		server.InstallChannel(Channels::chatMessage);
 		server.InstallChannel(Channels::planetConfig);
 		server.InstallChannel(Channels::gameConfig);

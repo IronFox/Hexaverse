@@ -257,6 +257,18 @@ namespace Objects
 		};
 		typedef std::shared_ptr<ResearchCommand>	PResearchCommand;
 
+		class ResearchAbortCommand : public ResearchCommand
+		{
+			typedef ResearchCommand	Super;
+			const bool		isActive;
+		public:
+			/**/			ResearchAbortCommand(const PResearchTopic&topic, bool isActive):Super(topic),isActive(isActive){};
+
+			virtual void	Execute() override;
+			virtual	void	Refresh(bool controlEnabled) override;
+		};
+		typedef std::shared_ptr<ResearchAbortCommand>	PResearchAbortCommand;
+
 
 		class EntityCommand : public CallbackCommand
 		{

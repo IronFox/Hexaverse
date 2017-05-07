@@ -731,17 +731,6 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force);
 namespace ApplicationInterface
 {
 
-	void	SignalResearch(const Objects::PResearchTopic&topic)
-	{
-		#ifdef HAS_WINDOW
-			Network::Channels::selectResearch.SendTo(Network::client,Protocol::SelectResearch((UINT32)topic->serialIndex));
-			if (Objects::selectedEntity && Objects::selectedEntity->IsWorkingStructure() && !To<Objects::WorkingStructure>::Cast( Objects::selectedEntity)->IsEnabled())
-			{
-				Network::Channels::enableStructure.SendTo(Network::client,Protocol::EnableStructure(Objects::selectedEntity->id,true));
-			}
-		#endif
-	}
-
 	static bool IsTerraformingOperation(ConstName jobName)
 	{
 		switch (jobName)

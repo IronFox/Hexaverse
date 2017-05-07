@@ -1352,7 +1352,9 @@ namespace FileIO
 
 									Riff::Chunk*activeResearchChunk = list->FindFirst(RID::activeResearchTopic);
 									if (activeResearchChunk)
-										faction->researchState.SetActiveTopic(Objects::ResearchState::FindTopic(String((const char*)activeResearchChunk->pointer(),activeResearchChunk->size())));
+									{
+										faction->researchState.RestoreResearchQueue(String((const char*)activeResearchChunk->pointer(),activeResearchChunk->size()));
+									}
 								}
 
 								{
@@ -1655,11 +1657,10 @@ namespace FileIO
 				faction->researchState.Export(data);
 				factionSection->AppendBlock(RID::researchState)->SetData(data);
 
-				auto res = faction->researchState.GetActiveTopic();
-				if (res)
+				auto res = faction->researchState.ExportResearchQueue();
+				if (res.IsNotEmpty())
 				{
-					String topic = res->GetPath();
-					factionSection->AppendBlock(RID::activeResearchTopic)->SetData(topic.c_str(),topic.length());
+					factionSection->AppendBlock(RID::activeResearchTopic)->SetData(res.c_str(),res.length());
 				}
 			}
 
