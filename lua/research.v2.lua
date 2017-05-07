@@ -241,7 +241,7 @@ TurretConfig =
 	Surveyor =
 	{
 		Cost = 10,
-		Weight = 1,
+		Weight = 4,
 		HealthMultiplier = 1,
 		ScanningRange = 4,
 		IsUnlocked = true,
