@@ -3,6 +3,8 @@
 #include "state/networkState.h"
 #include "state/gameState.h"
 #include "state/worldState.h"
+#include "state/fileIO.h"
+#include <globalEvents.h>
 
 extern Random random;
 
@@ -32,6 +34,7 @@ void ConfigurationMode::Begin()
 	planetSeed = Random().NextSeed();
 	LogEvent(EventSignificance::Important,"Starting configuration mode");
 	Network::BuildConfiguredWorld();
+	FileIO::RefreshWindowTitle();
 
 	//Network::RestartSession();
 }
@@ -45,7 +48,7 @@ void ConfigurationMode::End()
 	//Network::CloseSession(false);
 	Game::Config::factionSupportFlags = originalFlags;
 	LogEvent(EventSignificance::Important,"Ending configuration mode");
-	Objects::FlushAllData(true);
+	GlobalEvents::FlushObjects();
 	Network::server.Shutdown();
 	ASSERT__(!Network::server.IsOnline());
 	Network::activePlayersAndSpectators.Clear();
@@ -53,7 +56,8 @@ void ConfigurationMode::End()
 	World::BuildConfiguredWorld(random);
 
 
-	Network::RestartSession();
+	Network::RestartSession(true);
+	FileIO::RefreshWindowTitle();
 
 }
 

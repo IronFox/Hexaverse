@@ -5,7 +5,8 @@
 #include <objects/types.h>
 #include <uniqueID.h>
 #include <protocol.h>
-#include <sphereGrid.h>
+#include <grid/resources.h>
+#include <grid/worldData.h>
 #include <fstream>
 #include <io/riff_handler.h>
 #include "evolver.h"
@@ -787,13 +788,14 @@ namespace Journal
 			virtual void	Compile(Entry&)	const override;
 		};
 
-		class SelectResearch : public FactionEventT<SelectResearch>
+		class QueueResearch : public FactionEventT<QueueResearch>
 		{
 		public:
 			Objects::PResearchTopic		topic;
+			bool			drop=false;
 			
-			/**/			SelectResearch() {}
-			/**/			SelectResearch(const Objects::PResearchTopic&t) : topic(t) {}
+			/**/			QueueResearch() {}
+			/**/			QueueResearch(const Objects::PResearchTopic&t,bool drop) : topic(t),drop(drop) {}
 			virtual void	Decode(const Entry&e) override;
 			virtual void	Execute(const Objects::PFaction&) const override;
 
@@ -973,8 +975,8 @@ namespace Journal
 		void	WriteToFile(const Grid::Resource&data, const PathString&filename);
 		void	LoadFromFile(Grid::Resource&data, const PathString&filename);
 	
-		void	WriteToFile(Grid::WorldData&data, const PathString&filename);
-		void	LoadFromFile(Grid::WorldData&data, const PathString&filename);
+		void	WriteToFile(World::Data&data, const PathString&filename);
+		void	LoadFromFile(World::Data&data, const PathString&filename);
 	}
 
 
@@ -994,7 +996,7 @@ namespace Journal
 		Continues an existing log file.
 		*/
 		void	ContinueExisting(const PathString&);
-		void	Continue(const Storage&, const Grid::WorldData&world, const Grid::WorldData&initialWorld, const PathString&writeTo);
+		void	Continue(const Storage&, const World::Data&world, const World::Data&initialWorld, const PathString&writeTo);
 
 		void	Log(const Journal::Entry&);
 		void	Log(const Round::Event&);

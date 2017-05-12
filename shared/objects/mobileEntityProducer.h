@@ -1,16 +1,14 @@
 #ifndef objectMobileEntityProducerH
 #define objectMobileEntityProducerH
 
-#include "../sphereGrid.h"
+#include "../grid/stack.h"
 #include "types.h"
 #include "../uniqueID.h"
-#ifdef HAS_WINDOW
-	#include "visualCommands.h"
-#endif
 #ifndef CLIENT
 	#include "resource.h"
 #endif
-
+#include "entityCommand.h"
+#include "../observer.h"
 
 namespace Objects
 {
@@ -28,7 +26,7 @@ namespace Objects
 
 		Grid::LCellIdI				current = Grid::LCellIdI::Invalid;
 
-		bool						Set(const Grid::LCellIdI&point, const PWorldEntity&parent);
+		bool						Set(const Grid::LCellIdI&point, bool isSelected);
 
 	};
 
@@ -57,11 +55,12 @@ namespace Objects
 			TUniqueID				id;
 			#ifdef CLIENT
 				#ifdef HAS_WINDOW
-					std::pair<int2,PEntityConstructionCommand>	commandToTerminate;
+					std::pair<int2,Command::PBase>	commandToTerminate;
 				#endif
-				String				name;
+				String				name, queueName;
 				int					cost, roundsToCompletion;
 				Component::VehicleBase*		base=nullptr;	//set for vehicles only
+				Component::Turret*		turret=nullptr;	//set for vehicles only
 				PMobileEntity		prototype;	//set for non-vehicles only
 			#else
 				PMobileEntity		producing;
@@ -79,6 +78,7 @@ namespace Objects
 			Component::VehicleBase*	GetVehicleBase() const;
 			bool					CanSpawnInGrid() const;
 			bool					CanSpawnAboveGrid(int&) const;
+			const String&			GetName() const;
 		};
 		//typedef std::pair<PVehicle,Command>		WorkItem;
 		Buffer0<WorkItem>			queue;	//must use buffer here, because elements can be erased and changes are rare
@@ -87,6 +87,8 @@ namespace Objects
 									productionDone=0,	//!< Total amount of minerals invested into the current production. Reset to 0 upon completion
 									productionRoundsLeft=0;
 
+
+		static Observable<MobileEntityProducer&,WorkItem&>	onAppendTask;
 
 		/**/						MobileEntityProducer(UINT32 productionPerRound):productionPerRound(productionPerRound)
 									{}
@@ -103,9 +105,10 @@ namespace Objects
 		}
 
 
-		void						AppendTask(const TUniqueID&id, ConstName baseName, ConstName turretName);
+		void					AppendTask(const TUniqueID&id, ConstName baseName, ConstName turretName);
 
 		#ifdef HAS_WINDOW
+			const int2&				GetCommandOffset() const {return commandOffset;}
 			void					VisitAllCommands(FCommandVisitor visitor,bool force);
 			void					SetCommandOffset(const int2&);
 		#else

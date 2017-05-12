@@ -1,10 +1,12 @@
 #include <global_root.h>
 #include "udpBroadcast.h"
-#include "../../shared/protocol.h"
+#include <protocol.h>
+#include <globalEvents.h>
 #include "../../client/version.h"
 #include "serverLogEvent.h"
 
 #include "state/networkState.h"
+
 
 
 namespace UDPBroadCast
@@ -89,10 +91,19 @@ namespace UDPBroadCast
 
 	}
 
+	void	Stop()
+	{
+		if (broadcastSocket != INVALID_SOCKET)
+		{
+			closesocket(broadcastSocket);
+			broadcastSocket = INVALID_SOCKET;
+		}
+	}
+
 
 	void		Create(UINT16 basePort, const TUniqueID&serverID)
 	{
-	
+		GlobalEvents::applicationTerminate << Stop;
 		packet.hostID = serverID;
 		packet.serverBasePort = basePort;
 		{
@@ -161,14 +172,6 @@ namespace UDPBroadCast
 	}
 
 
-	void	Terminate()
-	{
-		if (broadcastSocket != INVALID_SOCKET)
-		{
-			closesocket(broadcastSocket);
-			broadcastSocket = INVALID_SOCKET;
-		}
-	}
 
 
 	bool		IsStarted()
@@ -201,6 +204,12 @@ namespace UDPBroadCast
 			lastBroadcast = timer.Now();
 		}
 	}
+
+	bool		PacketIsDone()
+	{
+		return true;
+	}
+
 }
 
 

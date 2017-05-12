@@ -103,8 +103,20 @@ namespace Objects
 		bool		operator==(const Grid::LCellIdI&other) const {return location == other;}
 	};
 
-	void			GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Choice>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
-	void			GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Choice>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
+	struct TChoiceVisualization
+	{
+		bool			showArrow=false, 
+						hasArrowCellTarget=false,
+						showTrajectory=false;
+		TrajectoryEndPoint	arrowFrom;
+		Grid::LCellIdI	arrowFromCell;
+		bool			paraboloidTrajectory = false;
+		float			flatTrajectoryRange=1;
+		TrajectoryEndPoint	arrowCellTarget;
+	};
+
+	void			GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis);
+	void			GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis);
 
 	bool			NothingBlockingHere(const Grid::LCellIdI&cellID, bool checkVehiclesOnClient);
 
@@ -157,7 +169,7 @@ namespace Objects
 	typedef TWaysTemplate<UINT32,1>			TOrbitalWays;	//TOrbitalWays MaxLevels must always be == 1
 
 
-	void			GetWays(const Grid::WorldData&world,
+	void			GetWays(const World::Data&world,
 							const Vehicle*v,  const Grid::LCellIdI&location, 
 							TWays&outWays, const Grid::LCellIdI&destination, 
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute, bool forceRevertible);
@@ -166,7 +178,7 @@ namespace Objects
 							TOrbitalWays&outWays, UINT32 destination, 
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute);
 	#endif
-	void			GetMobileWays(	const Grid::WorldData&world,
+	void			GetMobileWays(	const World::Data&world,
 							const MobileEntity*v,  const Grid::LCellIdI&location, 
 							TWays&outWays, const Grid::LCellIdI&destination, 
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute);
@@ -224,9 +236,6 @@ namespace Objects
 		PMobileEntity	AssembleMobileEntity(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation, const String&base, const String&turret);
 
 		bool		GetSentryTarget(const WorldEntity&source, int munitionStorage, const TrajectoryEndPoint&sourceLocation, const TurretBase&base, Grid::LCellIdI&outTarget);
-		void		SignalClusterChange(const Grid::LCellIdI&location, int verticalTolerance,float atTime,const WorldEntity*except);
-		void		SignalVehicleClusterChange(const Grid::LCellIdI&location, int verticalTolerance, float atTime, const WorldEntity*except);
-		void		SignalClusterAndNeighborsChange(const Grid::LCellIdI&location, float atTime, const WorldEntity*except = nullptr);
 		void		Explode(const ApplicationInterface::TAttack& attack, 
 						const Grid::HCellIdI&targetCell, const TVec3<>&center, int explosionRadius, int damageLevel, bool doomsday,
 						float&atTime
@@ -263,7 +272,8 @@ namespace Objects
 	void			Remove( const PWorldEntity&, RemovalType t, float&atTime, bool controlEnabled, bool isRemovedFromGrid=false, bool ignoreIndestructible=false);
 
 	/**
-	Must be called once during start up, after the base grids have been created
+	Must be called once during start up, after the base grids have been created.
+	Updates maxAngleBetweenNeighboringCells, which is required by AppendShortestConstructionPath()
 	*/
 	void			InitGrid();
 

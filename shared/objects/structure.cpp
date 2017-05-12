@@ -3,18 +3,15 @@
 #include "systems.h"
 #include "../cast.h"
 #include "interface.h"
+#include "../globalEvents.h"
 
 #ifdef HAS_WINDOW
-	#include "visualChoices.h"
-	#include "rendering.h"
-	#include "visualCommands.h"
-	#include "../../client/components/dialog.h"
+	#include "entityCommand.h"
 	#include "interface.h"
 #endif
 
 #include "gridAndChoices.h"
 #include "prototypes.h"
-#include "visualSelection.h"
 #include "faction.h"
 #include "satellite.h"
 #include "vehicle.h"
@@ -34,7 +31,7 @@ namespace Objects
 	To the server these are all the buildings that exist, to the client these are all
 	it currently knows about.
 	*/
-	Buffer0<PStructure>			structures;
+	SharedContainer<Structure>	structures;
 	#ifdef CLIENT
 		/**
 		Filter list containing only SkyPorts. Used to faster render certain effects.
@@ -42,15 +39,7 @@ namespace Objects
 		Buffer0<TLinkReference>		skyLinks;
 	#endif
 
-	/**
-	List of all known tower types (one for each tower turret type).
-	Tower types that are not contained in this list can not be constructed cleanly
-	*/
-	Buffer0<PTower>				Tower::globalPrototypes;
 
-	/*static*/ Buffer0<Component::VehicleBase*>	VehiclePlant::baseComponents;
-	/*static*/ Buffer0<Component::Turret*>			VehiclePlant::turretComponents;
-	
 	/*static*/ int				NexusPort::ResistenceRounds = 10;
 
 
@@ -59,50 +48,39 @@ namespace Objects
 		/*static*/ TMatrix4<>		GatheringPoint::selectedVisual;	//!< Point where the respective gathering point should be visualized at. (same cell; may be different height)
 
 		/*static*/ Geometry			Structure::standardConnector;
-		bool						Structure::anyChanged = false;
 
 //		/*static*/ Buffer0<IconCommand>		Connector::commands;
-		/*static*/ CommandContainer			Tower::commands;
-
-		/*static*/ DX11::InstructionBlock32	Mine::shape;
 		///*static*/ DX11::InstructionBlock32	Connector::shape;
 		///*static*/ Geometry					Connector::geometry;
 
-		/*static*/ DX11::InstructionBlock32	Tower::shape;
-		/*static*/ Geometry					Tower::geometry;
 
-		DX11::BaseInstructionBlock			Structure::standardCompiledShader, 
-											Structure::standardLocalizableShader;
 
 
 		
-		static IconCommand			cmdLeft,cmdRight;
+		//static IconCommand			cmdLeft,cmdRight;
 
-		/*static*/ Geometry			VehicleStore::interConnector,
-									Generator::reactorConnector;
+		/*static*/ Geometry			Generator::reactorConnector;
 
 
 	#endif
 
-	/*static*/ float					Tower::foundationHeight;
 
-	#ifndef CLIENT
-		Buffer0<PTower>			towers;	//only used by server ... so far
-	#endif
 
 
 
 	/*static*/ count_t			Structure::CountOccurrences(const OwnerParameter&o,ConstName type)
 	{
 		count_t rs = 0;
-		for (const auto&m : structures)
-			if (m->owner == o && m->GetCTypeName() == type)
+		structures.Foreach([&rs,o,type](const Objects::PStructure&s)
+		{
+			if (s->owner == o && s->GetCTypeName() == type)
 				rs++;
 			else
 			{
 //				if (m->GetCTypeName() == type)
 	//				ShowMessage(m->owner->GetName() + "!="+o->GetName());
 			}
+		});
 		return rs;
 	}
 
@@ -153,118 +131,6 @@ namespace Objects
 		
 		}
 
-	
-		/*virtual override*/ void Tower::Attack(float&attackTime)
-		{
-			ASSERT__(attackQueue.IsNotEmpty());
-
-			const auto target = attackQueue.Pop();
-
-
-			//const Grid::LCellIdI target = task.foci.Pop();
-			float3 dir = Grid::low.cells[target.target.stackID].centerVertex.xyz * Grid::ToRadius(target.target.height) - this->GetWorldPosition();
-			float3 innerDir;
-			Mat::rotate(this->inverse,dir,innerDir);
-			TVec3<> t0;
-			Grid::HCellIdI t1;
-			static Buffer0<TVec4<> > trajectory;
-
-			bool abort = false;
-			float angle;
-			TurretTrajectory t = TraceTrajectory(TrajectoryEndPoint( target.target ),trajectory,t0,t1,angle);
-			if (t != TurretTrajectory::ReachesTarget && target.autoTarget)
-			{
-				t = TurretTrajectory::InvalidTrajectory;
-			}
-
-			if (t != TurretTrajectory::InvalidTrajectory)
-			{
-
-
-				float len = 0;
-				for (index_t i = 1; i < trajectory.length(); i++)
-					len += Vec::distance(ToWorld(trajectory[i-1]),ToWorld(trajectory[i]));
-
-				const float flightTime =  Times::Attack * len;
-
-				{
-					float beginT = attackTime - flightTime - Times::TurretRotation;
-					SyncTime(beginT);
-				}
-
-
-				
-				float change = 1.f / float(GetAttacksPerRound());
-				attackActionLeft -= change;
-				RegisterChange(ActionChanged,motionTime);
-
-				{
-					//float delta = std::max(fabs(angles.x - turretAngleX), fabs(angles.y - turretAngleY));
-					ApplicationInterface::SignalTurretRotation(shared_from_this(),(ToWorld(trajectory[1]) - ToWorld(trajectory.First())).Normalized0(),Times::TurretRotation);
-					motionTime += Times::TurretRotation;
-				}
-
-				ApplicationInterface::TAttack at;
-				at.attackAngle = angle;
-				at.attackFrom = shared_from_this();
-				at.flightTime = flightTime;
-				at.isAutoAttack = target.autoTarget;
-				at.traceTo = t0;
-				ApplicationInterface::SignalAttack(at);
-
-				const int ammoNeed = turret->GetAmmoNeedPerShot(owner);
-				if (storage.level[turret->ammoType] >= ammoNeed)
-					ChangeStorage(*this,attackTime, turret->ammoType,-ammoNeed);
-				else
-				{
-					RefreshCompoundCoverageIfNeeded(motionTime);
-					ResourceVector change;
-					change.level[turret->ammoType] = -ammoNeed;
-					GetCompound().ChangeStorage(change,motionTime);
-					//ASSERT__(change.IsEmpty());
-				}
-				
-
-				
-				motionTime += flightTime;
-				const int damageLevel = (int)floor(turret->GetDamageLevel(owner));
-				const float explosionRadius = turret->GetExplosionRadius(owner);
-
-				if (turret->dealsEMPDamage)
-					ExplodeEMP(at,
-								t1, t0, explosionRadius, damageLevel,motionTime);
-				else
-					Explode(at,
-							t1, t0, explosionRadius, damageLevel,turret->isDoomsday, motionTime);
-
-				RegisterChange((changeType_t)(TasksChanged),motionTime);
-				//stateChangedAt = attackTime;	//problematic
-				attackTime = motionTime;
-			}
-			else
-			{
-				LogEvent(EventClass::Preset::operationAborted,this,"Unable to plot trajectory to target");
-			}
-
-
-
-		}
-
-		/*virtual override*/ bool Tower::FillAttackQueue()
-		{
-			if (!HasAmmoForShot())
-				return false;
-			//index_t freeSlots = attackQueue.Count() < t->GetAttacksPerRound() <  t->GetAttacksPerRound() - t->attackQueue.Count() : 0;
-			if ((int)attackQueue.Count() < CountPossibleAttacks())
-			{
-				Grid::LCellIdI target;
-				return GetSentryTarget(*this,this->storage.level[turret->ammoType], TrajectoryEndPoint( location,GetEffectiveFoundationHeight()),*this,target) && AttackNext(target,true);
-			}
-			else
-				return false;
-
-		}
-
 
 		/*virtual*/ void				WorkingStructure::Tick(ResourceVector&v)
 		{
@@ -274,250 +140,10 @@ namespace Objects
 		}
 
 
-		/*virtual override*/ void			Tower::OnConstructionFinished(float&atTime)
-		{
-			Super::OnConstructionFinished(atTime);
-			ChangeStorage(*this,atTime,turret->ammoType,GetMaxStorageCapacity().level[turret->ammoType] - storage.level[turret->ammoType]);
-			//storage.level[Resource::Munitions] = GetMaxStorageCapacity().level[Resource::Munitions];
-			//LogEvent(EventSignificance::Common,this,"Munition storage changed to "+String(storage.level[Resource::Munitions]));
-
-		}
-
-		
-
-		bool Tower::WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)
-		{
-			if (!HasAmmoForShot() || empDamageLevel != 0 || IsHibernating())
-			{
-				//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
-				return false;
-			}
-
-			static Buffer0<TVec4<> > trajectory;
-
-			TVec3<> iat;
-			Grid::HCellIdI ic;
-			float angle;
-
-			//float d2 = Grid::GetQuadraticGeometricDistance(location+1,target->location);
-			TrajectoryEndPoint endPoint(target->location); 
-			return		//owner->canSee.IsSet(target)
-					/*&&	*/turret->CanAttack() 
-					&& motionTime <= entityTime 
-					&& CountPossibleAttacks() > 0 
-					&& ExtCanHit(owner,TrajectoryEndPoint( location,GetEffectiveFoundationHeight() ), endPoint,outTarget)
-					//&& d2 > sqr(turret->explosionRadius)
-					&& TraceTrajectory(endPoint,trajectory,iat,ic,angle)==TurretTrajectory::ReachesTarget;
-		}
-
-
-
-
 	#endif
 
-	
-	#if 0
-
-		/**/						Wall::Wall(const Grid::LCellIdI&at) :Structure(at, WallClass::staticInstance)
-		{
-			{
-				bool rebuild[BaseGrid::NumFamilies] = {};
-				UINT32 high = Grid::TagLowCluster(rebuild, this->location);
-
-				Grid::cellStack[high].PutLightStructureI(location.height);
-
-				for (int i = 0; i < BaseGrid::NumFamilies; i++)
-					if (rebuild[i])
-						Grid::high.family[i].SetOutdated();
-			}
-		}
-
-		/*virtual override*/ PStructureClass	Wall::GetClass() const
-		{
-			return WallClass::staticInstance;
-		}
-
-
-		/*virtual override*/ void				Wall::OnNewConnection(const PStructure&to, UINT32 acrossHighCell)
-		{
-			//Grid::TFamily
-			if (location.stackID > to->location.cellID)
-			{
-				bool rebuild[BaseGrid::NumFamilies] = {};
-				Grid::TagLowCluster(rebuild, this->location);
-				Grid::TagLowCluster(rebuild, to->location);
-
-				Grid::cellStack[acrossHighCell].PutLightStructureI(location.height);
-
-				for (int i = 0; i < BaseGrid::NumFamilies; i++)
-					if (rebuild[i])
-						Grid::high.family[i].SetOutdated();
-			}
-		}
-
-		/*virtual override*/ void				Wall::OnConnectionLost(const PStructure&to, UINT32 acrossHighCell)
-		{
-			//Grid::TFamily
-			if (location.stackID > to->location.cellID)
-			{
-				bool rebuild[BaseGrid::NumFamilies] = {};
-				Grid::TagLowCluster(rebuild, this->location);
-				Grid::TagLowCluster(rebuild, to->location);
-
-				Grid::cellStack[acrossHighCell].ClearLightStructureI(location.height);
-
-				for (int i = 0; i < BaseGrid::NumFamilies; i++)
-					if (rebuild[i])
-						Grid::high.family[i].SetOutdated();
-			}
-		}
-
-
-
-		/*virtual override*/ bool	WallClass::CanPlace(const Grid::LCellIdI&location)
-		{
-			const auto&stack = Grid::cellStack[Grid::low.grid.GetCell(location.cellID).higherEquivalent];
-			return NoStructureHere(location) && stack.GetCellI(location.height - 1).IsSolid() && !stack.GetCellI(location.height).IsOccupied();
-		}
-		/*virtual override*/ PStructure			WallClass::CreateInstance(const Grid::LCellIdI&location)
-		{
-			PStructure rs(new Wall(location));
-			return rs;
-		}
-		/*virtual override*/ void	WallClass::Setup()
-		{
-			MakeBox(connectorMesh, Box<>(-0.2f, 0.f, 0.f, 0.2f, 1.f, 1.f));
-			MakeCylinder(centralMesh, float3(), 0.2f, 1.f);
-		}
-
-
-
-		/*virtual override*/ bool Wall::ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)
-		{
-			if (other->GetClass() != GetClass())
-				return false;
-			if (other->location.height != this->location.height)
-				return false;
-			return !Grid::cellStack[acrossHighCell].GetCellI(location.height).IsSolid();
-		}
-
-
-
-		/*virtual override*/ void				Wall::Recompile()
-		{
-			changed = false;
-
-			LogEvent("Recompiling " + GetNiceName());
-			localMesh.ClearCompletely();
-
-
-
-
-
-
-
-
-
-
-
-			{
-				const Geometry&source = WallClass::staticInstance->connectorMesh;
-
-				for (index_t lod = 0; lod < source.CountLODs(); lod++)
-				{
-					const Geometry::LOD&data = source.GetLOD(lod);
-					//const Vertex*vertexData = data.vertices.pointer();
-					localMesh.AppendAndActivateNewLOD();
-					const count_t numVertices = data.vertices.Count();
-					foreach(this->connectedTo, c)
-					{
-						if ((*c)->location.stackID > location.cellID)
-							continue;	//only one direction
-						localMesh.SetVertexOffsetToCurrent();
-						const float3&b0 = Grid::low.grid.GetCell(this->location.cellID).center;
-						const float3&b1 = Grid::low.grid.GetCell((*c)->location.cellID).center;
-						const float3 d = b1 - b0;
-						const float scale = d.Length();
-						const float3 d1 = d / scale;
-						const float r0 = Grid::ToRadius(location.height);
-						const float r1 = Grid::ToRadius(location.height+1);
-
-						const float3 x = -(b0 | d1).Normalized() * (r1 - r0);
-						for (index_t i = 0; i < numVertices; i++)
-						{
-							const Vertex&vtx = data.vertices[i];
-							const TVec3<>&position = vtx.vertex;
-							float r = r0 + (r1 - r0) * position.z;
-							TVec3<> np = b0 + d * position.y;
-							Vec::normalize(np);
-							np *= r;
-							np += x * position.x;
-							localMesh.MakeVertex(np, float3(), vtx.color);	//dont care about uv for now
-						}
-						localMesh.AppendTriangleIndices(data.indices);
-					}
-					localMesh.ComputeNormals();
-				}
-			}
-		//	if (connectedTo.Count() != 1)
-			{
-				const Geometry&source = WallClass::staticInstance->centralMesh;
-
-				for (index_t lod = 0; lod < source.CountLODs(); lod++)
-				{
-					const Geometry::LOD&data = source.GetLOD(lod);
-					//const Vertex*vertexData = data.vertices.pointer();
-					localMesh.SetLOD(lod);
-					const count_t numVertices = data.vertices.Count();
-
-					localMesh.SetVertexOffsetToCurrent();
-					TMatrix4<> system = Matrix<>::eye4;
-					const float r0 = Grid::ToRadius(this->location.height);
-					Mat::makeAxisSystem(Grid::low.grid.GetCell(this->location.cellID).center*r0, Grid::low.grid.GetCell(this->location.cellID).center, 2, system);
-					const float scale = Grid::ToRadius(this->location.height + 1) - r0;
-					system.x.xyz *= scale;
-					system.y.xyz *= scale;
-					system.z.xyz *= scale;
-					for (index_t i = 0; i < numVertices; i++)
-					{
-						const Vertex&vtx = data.vertices[i];
-						const TVec3<>&position = vtx.vertex;
-						TVec3<> np,n;
-						//np = system.w.xyz + system.x.xyz * position.x + system.y.xyz * position.y;
-						//Vec::normalize(np);
-						//system.z.xyz = np * scale;
-						//np *= r0 + scale * position.z;
-					
-						Mat::transform(system, vtx.vertex, np);
-						Mat::rotate(system, vtx.normal, n);
-						n /= scale;
-
-
-
-					//	Vec::normalize(np);
-						//np *= Grid::ToRadiusf(float(location.height) + position.z);
-
-						localMesh.MakeVertex(np, n, vtx.color);	//dont care about uv for now
-					}
-					localMesh.AppendTriangleIndices(data.indices);
-				
-				}
-			}
-
-
-			if (shape.shader.IsEmpty())
-				(DX11::BaseInstructionBlock&)shape = stdVehicleShader;
-			shape.vbo.CreateFromStructs(localMesh.GetLOD(0).vertices);
-			shape.ibo.Create(localMesh.GetLOD(0).indices);
-		}
-
-	#endif /*0*/
-	
 
 	Structure::Structure(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&at, bool buildSystem, float time) :Super(owner,at), table(table)
-		#ifdef HAS_WINDOW
-			, localizableShape(nullptr)
-		#endif
 	{
 		if (buildSystem)	//makesystem createsystem
 		{
@@ -575,104 +201,6 @@ namespace Objects
 	}
 
 
-	#ifdef HAS_WINDOW
-	
-		/*virtual override*/ void				Structure::Recompile()
-		{
-			changed = false;
-
-			LogEvent(EventClass::Preset::common, this, "Recompiling geometry");
-			localMesh.ClearCompletely();
-
-			{
-				for (index_t i = 0; i < this->connectedTo.Count(); i++)
-				{
-					PStructure c = this->connectedTo[i].lock();
-					if (!c)
-					{
-						LogEvent(EventClass::Preset::error,this,"Removing lost neighbor connection #"+String(i));
-						connectedTo.Erase(i);
-						i--;
-						continue;
-					}
-					
-					if (c->location.stackID > location.stackID)
-						continue;	//only one direction
-
-					const Geometry*source = GetSourceForConnection(c);
-					if (!source)
-						continue;
-
-					for (index_t lod = 0; lod < source->CountLODs(); lod++)
-					{
-						const Geometry::LOD&data = source->GetLOD(lod);
-						const count_t numVertices = data.vertices.Count();
-						//const Vertex*vertexData = data.vertices.pointer();
-						localMesh.SetLOD(lod);
-
-						localMesh.SetVertexOffsetToCurrent();
-						//const float3&b0 = Grid::low.cells[this->location.stackID].cornerCenter;
-						//const float3&b1 = Grid::low.cells[(*c)->location.stackID].cornerCenter;
-
-						const TVec3<>&center0 = this->GetWorldPosition(),
-									&center1 = c->GetWorldPosition();
-
-						const float height0 = Vec::length(center0),
-									height1 = Vec::length(center1),
-									heightDelta = height1 - height0;
-//						const float3 d = b1 - b0;
-						const float3 centerDelta = center1 - center0;
-						//const float scale = d.Length();
-						const float distance = centerDelta.Length();
-						//const float3 d1 = d / scale;
-						const float3 normalizedDelta = centerDelta / distance;
-						//const float r0 = Grid::ToRadius(location.height) + 0.1f;
-						//const float r1 = Grid::ToRadius(location.height + 1) + 0.1f;
-						//const float rd = r1 - r0;
-						//const float r1y = Grid::ToRadius((*c)->location.height)+0.1f;
-						//const float rdy = r1y - r0;
-						const float l0 = GetLowLighting(this->location + this->GetHeight()-1);
-						const float l1 = GetLowLighting(c->location + this->GetHeight()-1);
-						const float ld = l1 - l0;
-						//const float3 x = -(b0 | d1).Normalized();// * (r1 - r0);
-						const float3 x = -(float3::Reinterpret(center0) | centerDelta).Normalized();// * (r1 - r0);
-						const float horzScaleBase = Vec::length(this->system.x.xyz);
-						const float horzScaleDelta = Vec::length(c->system.x.xyz) - horzScaleBase;
-						for (index_t i = 0; i < numVertices; i++)
-						{
-							//position.y [0,1] is progress from this structure towards neighbor c
-							//position.x [-1,1] is horizontal placement of vertical along orthogonal axis
-							//position.z [0,1] is vertical placement along radial axis
-							const Vertex&vtx = data.vertices[i];
-							const TVec3<>&position = vtx.vertex;
-							//float r = r0 + rdy * position.y + (rd) * position.z;
-							//TVec3<> np = b0 + d * position.y;
-							TVec3<> np = center0 + centerDelta * position.y;
-							Vec::normalize(np);
-							np *= height0 + heightDelta * position.y + Grid::SingleLayerHeight * position.z;
-							np += x * position.x * (horzScaleBase + horzScaleDelta * position.y);
-							float light = l0 + (ld)* position.y;
-							localMesh.MakeVertex(np, float3(), float4(vtx.color.rgb, light));
-						}
-						localMesh.AppendTriangleIndices(data.indices);
-					}
-				}
-				localMesh.ComputeNormals();
-			}
-			if (localMesh.CountLODs())
-			{
-				//if (compiledShape.shader.IsEmpty())
-					(DX11::BaseInstructionBlock&)compiledShape = standardCompiledShader;
-				compiledShape.vbo.CreateFromStructs(localMesh.GetLOD(0).vertices);
-				compiledShape.ibo.Create(localMesh.GetLOD(0).indices);
-			}
-			else
-			{
-				compiledShape.vbo.Clear();
-				compiledShape.ibo.Clear();
-			}
-		}
-	#endif
 
 
 
@@ -699,7 +227,7 @@ namespace Objects
 		}
 		this->connectedTo.Clear();
 		#ifdef HAS_WINDOW
-			this->changed = anyChanged = true;
+			this->changed = true;
 		#endif
 	}
 
@@ -709,10 +237,7 @@ namespace Objects
 		Super::OnConstructionFinished(atTime);
 
 
-		CommonRegisterStructure(Grid::actualWorld, location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
-		#ifndef CLIENT
-			CommonRegisterStructure(owner->currentState, location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
-		#endif
+		CommonRegisterStructure(location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
 
 		TStructureNeighborhood	neighborhood;
 		GetNeighborhood(owner,ConnectsToDifferentOwnership(), location, neighborhood);
@@ -750,7 +275,7 @@ namespace Objects
 				connectedTo << c;
 				c->connectedTo << _this;
 				#ifdef HAS_WINDOW
-					changed = c->changed = Structure::anyChanged = true;
+					changed = c->changed = true;
 				#endif
 				c->OnNewConnection(_this, between, atTime);
 				if (!c->IsConnectedTo(_this))
@@ -764,16 +289,9 @@ namespace Objects
 				}
 				_this->OnNewConnection(c, between, atTime);
 				LogEvent(EventClass::Preset::common,"Connection established between "+GetName()+" and "+c->GetName());
-				#ifdef HAS_WINDOW
-					if (c->changed)
-						c->Recompile();
-				#endif
 
 			}
 		}
-		#ifdef HAS_WINDOW
-			Recompile();
-		#endif
 	}
 
 
@@ -783,351 +301,18 @@ namespace Objects
 	{
 		Super::OnDestroy(t,atTime);
 		LogEvent(EventClass::Preset::debug,this,"Unregistering...");
-		CommonUnregisterStructure(Grid::actualWorld, location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
-		#ifndef CLIENT
-			CommonUnregisterStructure(owner->currentState, location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
-		#endif
+		CommonUnregisterStructure(location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
 
 		LogEvent(EventClass::Preset::debug,this,"Disconnecting...");
 		DisconnectFromNeighborhood(atTime);
 
 		#ifdef HAS_WINDOW
-			this->compiledShape = Engine::DX11::InstructionBlock32();
-			this->localizableShape = nullptr;
-			this->localMesh.ClearCompletely();
+			this->shape.reset();
 			this->changed = false;
 		#endif
 	}
 
 
-	/*virtual override*/	void			Mine::PrototypeSetup()
-	{
-		Super::PrototypeSetup();
-		#ifdef HAS_WINDOW
-			commands.Add( new IconCommand("Restore Core Link",[]()
-			{
-				PMine mine = ToMine(selectedEntity);
-				if (mine)
-				{
-					ApplicationInterface::SignalRestoreCoreLink(mine->id);
-				}
-			},
-			[](bool controlEnabled)
-			{
-				if (!controlEnabled)
-					return BaseCommand::Flags::None;
-				PMine mine = ToMine(selectedEntity);
-				return mine && !mine->IsLinkedToCore() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
-			},
-			NoCosts
-			));
-		#endif
-	}
-
-	#ifdef HAS_WINDOW
-		/*virtual override*/ void				Tower::VisitAllCommands(FCommandVisitor visitor, bool force)
-		{
-			commands.VisitMembers([visitor,this](const int2&coords, const PBaseCommand&cmd)
-			{
-				if (turret->CanAttack() || cmd->name!="Attack")
-					visitor(coords,cmd);
-			},force);
-		}
-
-	#endif
-
-	bool	Tower::setup = false;
-	/*virtual override*/	void			Tower::PrototypeSetup()
-	{
-		Super::PrototypeSetup();
-		if (setup)
-			return;
-		setup = true;
-
-		#ifdef HAS_WINDOW
-			geometry.Clear();
-		#endif
-
-		static const float staticHeight = 1.005f;
-
-		#ifdef HAS_WINDOW
-			String name = GetTypeName();
-			name.set(0, Template::tolower(name.firstChar()));
-			name.replace(' ',"");
-			geometry.LoadFromObj("objects/tower.obj");
-
-			if (shape.shader.IsEmpty())
-				(DX11::BaseInstructionBlock&)shape = standardLocalizableShader;
-			shape.vbo.CreateFromStructs(geometry.GetLOD(0).vertices);
-			shape.ibo.Create(geometry.GetLOD(0).indices);
-			foundationHeight = geometry.GetBoundingBox().z.max;
-
-			ASSERT2__(similar(staticHeight,foundationHeight),staticHeight,foundationHeight);
-		#else
-			foundationHeight = staticHeight;
-		#endif
-	}
-
-
-	
-	/*virtual override*/ float			Tower::GetFlatAttackRange() const
-	{
-		if (!turret->CanAttack())
-			return 0.f;
-		return cache.horizontalAttackRange.GetEMPModified(*this,turret->horizontalAttackRange,Objects::LuaAttribute<float,UnitScaleFilter>(2.f));
-		//EMPModify(turret->GetHorizontalAttackRange(owner,2.f),2.f);
-	}
-
-	/*virtual override*/ String			Tower::DescribeFlatAttackRange() const
-	{
-		if (!turret->CanAttack())
-			return 0.f;
-		return cache.horizontalAttackRange.DescribeEMPModified(*this,turret->horizontalAttackRange,Objects::LuaAttribute<float,UnitScaleFilter>(2.f));
-		//EMPModify(turret->GetHorizontalAttackRange(owner,2.f),2.f);
-	}
-
-
-
-	#ifndef CLIENT
-		/*virtual override*/ void			Tower::ProcessLeftovers(ResourceVector&v, index_t iteration, float atTime)
-		{
-			ResourceVector maxStorage = GetMaxStorageCapacity();
-			index_t targetIteration = 1;
-			#ifndef NO_MUNITION
-				if (storage.level[Resource::Munitions] < maxStorage.level[Resource::Munitions] / 4)
-					targetIteration = 0;
-			#endif
-			if (iteration != targetIteration && iteration != FinalLeftoverIteration)
-				return;
-			for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
-			{
-				if (v.level[i] == 0)
-					continue;
-				if (v.level[i] < 0 )
-				{
-					if (storage.level[i] > 0)
-					{
-						int delta = std::min(-v.level[i], storage.level[i]);
-
-						ChangeStorage(*this,atTime,Resource::Reinterpret(i),-delta);
-
-						v.level[i] += delta;
-					}
-				}
-				else
-				{
-					int capacity = maxStorage.level[i] - storage.level[i];
-					if (capacity > 0)
-					{
-						int delta = std::min(v.level[i], capacity);
-						v.level[i] -= delta;
-
-						ChangeStorage(*this,atTime,Resource::Reinterpret(i),delta);
-					}	
-				}
-			}
-		}
-
-		bool					Tower::AttackNext(const Grid::LCellIdI&target, bool autoTarget)
-		{
-			if (attackQueue.Count() >= MaxStructureTasks)
-			{
-				LogEvent(EventClass::Preset::commandRejected,this,"Max queue length ("+String(MaxStructureTasks)+") reached");
-				return false;
-			}
-			if (!turret->CanAttack())
-			{
-				LogEvent(EventClass::Preset::commandRejected,this,"This tower cannot attack");
-				return false;
-			}
-
-			if (target != location+1)
-			{
-				//Grid::LCellIdI pointOfOrigin = location+1;
-
-
-				//float targetDistance = Grid::GetGeometricDistance(pointOfOrigin,target);
-
-				if (!CanHit(TrajectoryEndPoint( target)))
-				{
-					LogEvent(EventClass::Preset::commandRejected,this,"Destination out of range");
-					return false;
-				}
-			}
-
-			motionTime += timeEpsilon;
-			AttackTask&cmd = attackQueue.Push();
-//			cmd.id.Generate();
-			cmd.target = target;
-			cmd.autoTarget = autoTarget;
-			SignalChange(TasksChanged,motionTime);
-			return true;
-		}
-
-
-		/*virtual override*/ bool			Tower::DirectTo(CursorMode mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
-		{
-		
-			if (mode != Objects::CursorMode::AttackMode || !leftClick)
-				return false;
-			for (const auto&destination : waypoints)
-			{
-				if (!AttackNext(destination,false))
-					return false;
-				LogEvent(EventSignificance::Common,this,"Issued tower attack to "+destination.ToString());
-			}
-			return true;
-		}
-
-		bool					Tower::ClearTasks()
-		{
-			if (attackQueue.IsEmpty())
-				return false;
-			attackQueue.Clear();
-			SignalChange(TasksChanged,0);
-			return true;
-		}
-
-		bool					Tower::DropLastTask()
-		{
-			if (attackQueue.IsEmpty())
-				return false;
-			attackQueue.EraseBack();
-			SignalChange(TasksChanged,0);
-			return true;
-		}
-	#else
-
-		#ifdef HAS_WINDOW
-			/*virtual override*/ bool			Tower::TestIntersection(const TVec3<>&_b, const TVec3<>&_d, float & distance) const
-			{
-				TVec3<> b,d;//,test;
-				Mat::transform(inverse,_b,b);
-				Mat::rotate(inverse,_d,d);
-				return geometry.TestIntersection(b,d,distance) | turret->TestIntersection(GetEffectiveFoundationHeight(), turretAngleX,turretAngleY,b,d,distance);	//binary or - must evaluate both
-			}
-			/*virtual override*/ void			Tower::DescribeType(BaseCommand::Label&label, UINT32 descFlags) 
-			{
-				label.BeginBrief();
-				Super::DescribeType(label,descFlags);
-				label.MarkBriefEnd();
-				if (turret->CanAttack())
-					label << "The unit automatically attacks hostile units in range (possibly extended by its impact explosion radius)."
-							" Towers are the only units that can intercept hostile units during their movement phase."
-							" A hostile mobile unit that enters their attack range is immediately attacked as long as sufficient attack action is left."
-							" This tower will never automatically fire at locations that endanger friendly units."
-							;
-			}
-
-		#endif
-	#endif
-
-
-	bool Mine::LinkToCore(float atTime)
-	{
-		#ifdef CLIENT
-			return isLinkedToCore;
-		#else
-			this->naturalResources = NaturalResourceVector();
-			bool success = true;
-			{
-				#ifdef HYBRID_GRID
-					const UINT32 higher = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
-				#else
-					const UINT32 higher = location.cellID;
-				#endif
-				Grid::CellStack&stack = Grid::actualWorld.cellStack[higher];
-
-				UINT layer = Grid::CellStack::ToLayer(location.height);
-				UINT i = 0;
-				if (Grid::CellStack::bottom.content == Grid::Content::Clear)
-					while (stack.volumeCell[i].content == Grid::Content::Clear && i < layer)
-						i++;	//skip air if no ground
-				if (i == layer)
-					return false;	//this is REALLY weird, because the foundation would be missing
-
-				for (UINT j = layer-1; j >= i && j < layer; j--)
-				{
-					int h = Grid::CellStack::ToHeight(j);
-					if ((j == layer-1 || !stack.GetCellU(j).structureCounter) && !GetVehicle(Grid::LCellIdI(location.stackID,h)))
-						stack.LocalOverwrite(h, Grid::Content::Foundation);
-					else
-					{
-						success = false;
-						break;
-					}
-				}
-				Grid::actualWorld.SignalChangeUpTo(location-1);
-	//			stack.UpdateLighting();
-			}
-			InvalidateTerrain(location,atTime);
-
-			if (success)
-			{
-				naturalResources.SampleWorld(location.stackID);
-				naturalResources *= GetEfficiency();
-			}
-			if (success)
-				RegisterChange(WorldEntity::CanEnableChanged,atTime);
-			return success;
-		#endif
-	}
-
-
-
-
-	bool	Tower::HasAmmoForShot()
-	{
-		return GetCompound().total.storage.level[turret->ammoType] >= turret->GetAmmoNeedPerShot(owner);
-		//compoundID < compounds.Count() && compounds[compoundID].total.storage.level[turret->ammoType] >= turret->ammoNeedPerShot;
-	}
-
-
-
-
-	
-
-
-	bool	Mine::IsLinkedToCore()	const
-	{
-		#ifdef CLIENT
-			return isLinkedToCore;
-		#else
-			#ifdef HYBRID_GRID
-				const UINT32 higher = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
-			#else
-				const UINT32 higher = location.cellID;
-			#endif
-			const Grid::CellStack&stack = Grid::actualWorld.cellStack[higher];
-			UINT layer = Grid::CellStack::ToLayer(location.height);
-			UINT i = 0;
-			if (Grid::CellStack::bottom.content == Grid::Content::Clear)
-				while (stack.volumeCell[i].content == Grid::Content::Clear && i < layer)
-					i++;	//skip air if no ground
-			if (i == layer)
-				return false;	//this is REALLY weird, because the foundation would be missing
-
-			for (; i < layer; i++)
-			{
-				if (stack.GetCellU(i).content != Grid::Content::Foundation)
-					return false;
-			}
-			return true;
-		#endif
-	}
-
-	#ifdef CLIENT
-		void	Mine::SetLinkedToCore(bool b, bool controlEnabled)
-		{
-			if (isLinkedToCore == b)
-				return;
-			isLinkedToCore = b;
-			#ifdef HAS_WINDOW
-				if (selectedEntity.get() == this)
-					UpdateChoices(controlEnabled);
-			#endif
-		}
-	#endif
 
 
 
@@ -1163,42 +348,45 @@ namespace Objects
 
 
 
-	/*static*/ void Structure::ChangeStructCount(Grid::WorldData&world, const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, int changeDirection, float atTime)
+	/*static*/ void Structure::ChangeStructCount(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, int changeDirection, float atTime)
 	{
 		LogEvent(EventSignificance::Debug,nullptr,"ChangeStructCount("+location.ToString()+", broadHeight="+String(broadHeight)+", height="+String(totalHeight)+", foundation="+String(hasFoundation)+", dir="+String(changeDirection)+")");
 
+
 		{
+			auto seq = World::actual.BeginChangeSequence(atTime);
+
 			const int lowEdge = hasFoundation ? -1 : 0;
 			#ifdef HYBRID_GRID
 				const UINT32 higher = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
 				const auto&n = Grid::high.grid.GetCell(higher).neighborhood;
 				for (int j = 0; j < n.numNeighbors; j++)
 				{
-					Grid::CellStack&stack = world.cellStack[n.neighborID[j]];
+					auto acc = seq.AccessStack(n.neighborID[j]);
+					Grid::CellStack&stack = acc.GetStack();
 					for (int h = lowEdge; h < broadHeight; h++)
 						stack.ChangeStructureCounterI(location.height+h,changeDirection);
 				}
-				Grid::CellStack&stack = world.cellStack[higher];
+				auto acc = seq.AccessStack(higher);
+				Grid::CellStack&stack = acc.GetStack();
 			#else
-				Grid::CellStack&stack = world.cellStack[location.stackID];
+				auto acc = seq.AccessStack(location.stackID);
+				Grid::CellStack&stack = acc.GetStack();
 			#endif
 			for (int h = lowEdge; h < broadHeight; h++)
 				stack.ChangeStructureCounterI(location.height+h,2*changeDirection);
 			for (int h = broadHeight; h < totalHeight; h++)
 				stack.ChangeStructureCounterI(location.height+h,changeDirection);
 		}
-
-		if (&world == &Grid::actualWorld)
-			InvalidateTerrain(location,atTime);
 	}
 
-	/*static*/ void	Structure::CommonRegisterStructure(Grid::WorldData&world, const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime)
+	/*static*/ void	Structure::CommonRegisterStructure(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime)
 	{
-		ChangeStructCount(world, location,broadHeight, totalHeight,hasFoundation,+1,atTime);
+		ChangeStructCount(location,broadHeight, totalHeight,hasFoundation,+1,atTime);
 	}
-	/*static*/ void	Structure::CommonUnregisterStructure(Grid::WorldData&world, const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime)
+	/*static*/ void	Structure::CommonUnregisterStructure(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime)
 	{
-		ChangeStructCount(world, location,broadHeight, totalHeight,hasFoundation,-1,atTime);
+		ChangeStructCount(location,broadHeight, totalHeight,hasFoundation,-1,atTime);
 	}
 
 
@@ -1213,9 +401,7 @@ namespace Objects
 				const auto&n = Grid::high.grid.GetCell(higher).neighborhood;
 				for (int j = 0; j < n.numNeighbors; j++)
 				{
-					const Grid::CellStack&stack = Grid::actualWorld.cellStack[n.neighborID[j]];
-	//					if (stack.GetCellI(location.height - 1).content != Grid::CellStack::Cell::Content::Foundation)
-	//					return LacksFullFoundation;
+					const Grid::CellStack&stack = World::actual.GetStack(n.neighborID[j]);
 					if (stack.GetCellI(location.height).content != Grid::CellStack::Cell::Content::Clear)
 						return GroundLevelObstruction;
 					for (int h = 1; h < broadHeight; h++)
@@ -1223,19 +409,15 @@ namespace Objects
 							return UpperLevelObstruction;
 				}
 			}
-			const Grid::CellStack&stack = Grid::actualWorld.cellStack[higher];
+			const Grid::CellStack&stack = World::actual.GetStack(higher);
 		#else
-			const Grid::CellStack&stack = Grid::actualWorld.cellStack[location.stackID];
+			const Grid::CellStack&stack = World::actual.GetStack(location.stackID);
 		#endif
-	//	if (stack.GetCellI(location.height - 1).content != Grid::CellStack::Cell::Content::Foundation)
-		//	return LacksFullFoundation;
 		if (stack.GetCellI(location.height).content != Grid::CellStack::Cell::Content::Clear)
 			return GroundLevelObstruction;
 		for (int h = 1; h < totalHeight; h++)
 			if (stack.GetCellI(location.height + h).content != Grid::CellStack::Cell::Content::Clear)
 				return UpperLevelObstruction;
-
-
 
 		return CanPlace;
 	}
@@ -1257,7 +439,7 @@ namespace Objects
 			{
 				connectedToReactor = reactor;
 				#ifdef HAS_WINDOW
-					changed = anyChanged = true;
+					changed =  true;
 				#endif
 			}
 		}
@@ -1276,7 +458,7 @@ namespace Objects
 				{
 					connectedToReactor = core;
 					#ifdef HAS_WINDOW
-						changed = anyChanged = true;
+						changed = true;
 					#endif
 					return;
 				}
@@ -1285,404 +467,9 @@ namespace Objects
 	}
 
 
-	VehicleStore::VehicleStore(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(table,owner,location, true,atTime)
-	{}
+	
 
-
-	/*virtual override*/ bool						VehicleStore::CanStoreType(const MobileEntity&e) const 
-	{
-		return e.IsVehicle();
-	}
-
-	/*virtual override*/ void				VehicleStore::StoreLocallyFromImport(const PMobileEntity&e)
-	{
-		ASSERT__(e);
-		ASSERT1__(e->IsVehicle(),e->GetName());
-		float t = 0.f;
-		ASSERT__(Hangar::StoreLocally(e,t,false,To<VehicleStore>::Cast(shared_from_this())));
-	}
-
-
-	/*virtual override*/ PHangar			VehicleStore::CastToDestinationForType(const MobileEntity&e)
-	{
-		if (CanStoreType(e))
-		{
-			return To<VehicleStore>::Cast(shared_from_this());
-		}
-		return PHangar();
-	}
-
-
-
-
-
-
-
-	/*virtual override*/ void				VehicleStore::OnNewConnection(const PStructure&s, UINT32 acrossHighCell, float atTime)
-	{
-		Super::OnNewConnection(s,acrossHighCell,atTime);
-
-		PVehicleStore other = To<VehicleStore>::DynamicCast(s);
-		if (other && other->location.height == location.height)
-		{
-			sneighbors.Append(other);
-
-			if (other->park)
-				MergePark(other->park);
-			else
-			{
-				if (park)
-				{
-					park->members.Append(other);
-					other->park = park;
-				}
-				else
-				{
-					park.reset(new Park());
-					park->members.Append(To<VehicleStore>::Cast(shared_from_this()));
-					park->members.Append(other);
-					other->park = park;
-				}
-			}
-
-		}
-
-
-	}
-	/*virtual override*/ void				VehicleStore::OnConnectionLost(const PStructure&s, UINT32 acrossHighCell, float atTime)
-	{
-		Super::OnConnectionLost(s,acrossHighCell,atTime);
-
-		PVehicleStore other = To<VehicleStore>::DynamicCast(s);
-		if (other)
-		{
-			foreach (sneighbors,_s)
-			{
-				if (_s->lock() == other)
-				{
-					sneighbors.erase(_s);
-					break;
-				}
-			}
-		}
-	}
-
-	void						VehicleStore::PropagatePark(const PPark&c)
-	{
-		if (park == c)
-			return;
-		MergePark(c);
-		for (const auto&n : sneighbors)
-			n.lock()->PropagatePark(c);
-	}
-
-
-	void						VehicleStore::MergePark(const PPark&other)
-	{
-		if (other)
-		{
-			if (this->park)
-			{
-				if (park == other)
-					return;
-				//compound->members.Append(other);
-				for (const auto&_store : other->members)
-				{
-					PVehicleStore store = _store.lock();
-					DBG_ASSERT__(store);
-					if (store)
-					{
-						DBG_ASSERT__(!park->Contains(store));
-						DBG_ASSERT__(store->park != park);
-						park->members.Append(store);
-						store->park = park;
-					}
-				}
-				park->vehiclesStored += other->vehiclesStored;
-				other->vehiclesStored = 0;
-			}
-			else
-			{
-				park = other;
-				park->members.Append(To<VehicleStore>::Cast(shared_from_this()));
-				park->vehiclesStored += stored.Count();
-			}
-		}
-	}
-	#if 0
-	bool	VehicleStore::StoreLocally(const PVehicle&v, float&atTime, bool setHealthToFullIfNew/*=true*/)
-	{
-		if (LocalIsFull() || !v || v->owner != owner || v->health <= 0)
-			return false;
-		#ifndef CLIENT
-			v->SyncTime(atTime,timeEpsilon);
-		#endif
-		if (v->isInserted)
-		{
-			Remove(v,RemovalType::EnteredStorage,atTime,false,!v->isInsertedIntoGrid,true);
-			#ifndef NO_HIBERNATION
-				v->Hibernate(false,atTime);
-			#endif
-		}
-		else
-		{
-			if (!GetEntity(v->id))
-			{
-				RegisterNewOffGrid(v,atTime,setHealthToFullIfNew);
-			}
-		}
-		LogEvent(EventSignificance::Common,v.get()," Now stored in "+GetName());
-		v->storedIn = To<VehicleStore>::Cast(shared_from_this());
-		//v->location = location;
-		//#ifndef CLIENT
-		//	v->SignalChange(WorldEntity::PositionChanged,atTime);
-		//#endif
-		this->localStore.Append().vehicle = v;
-
-		#ifdef HAS_WINDOW
-			WVehicle w = v;
-			this->localStore.last().deployCommand.reset(new DeployMobileCommand(v,
-				[w]()
-				{
-					//focus = To<VehicleStore>::DynamicCast(storeEntity).get();
-					if (deployingMobileEntity)
-						deployingMobileEntity.reset();
-					else
-						deployingMobileEntity = w.lock();
-				},
-				[w](bool controlEnabled)
-				{
-					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(controlEnabled);
-					PVehicleStore s = To<VehicleStore>::DynamicCast(selectedEntity);
-					if (deployingMobileEntity && s == selectedEntity && deployingMobileEntity == w.lock() && deployingMobileEntity->health > 0)
-						rs |= BaseCommand::Flags::IsPermaActive;
-					return rs;
-				}
-				));
-			this->localStore.last().deployCommand->RasterizeImage();
-		#endif
-
-		if (park)
-			park->vehiclesStored ++;
-		
-
-		#ifndef CLIENT
-			//RegisterChange(StorageChanged,atTime);	might be irrelevant. let's see
-			v->RegisterChange(StorageChanged,atTime);
-		#endif
-
-		ASSERT1__(!v->isInsertedIntoGrid,GetName(),v->GetName());
-
-		#ifdef _DEBUG
-			CheckMobileEntitySanity();
-		#endif
-
-		return true;
-	}
-	#endif /*0*/
-
-
-	#ifdef HAS_WINDOW
-		/*virtual override*/ void			VehicleStore::PrototypeLoadGeometry()
-		{
-			Super::PrototypeLoadGeometry();
-
-			interConnector.LoadFromObj("objects/vehicleStoreConnector.obj");
-		}
-
-		/*virtual override*/ void			Generator::PrototypeLoadGeometry()
-		{
-			Super::PrototypeLoadGeometry();
-
-			reactorConnector.LoadFromObj("objects/reactorCoreConnector.obj");
-		}
-
-	#endif
-
-
-	/*virtual override*/ void				VehicleStore::PrototypeSetup()
-	{
-		Super::PrototypeSetup();
-
-
-	}
-
-
-	#ifdef HAS_WINDOW
-
-		///*static*/ void				VehicleStore::StaticSignalDeployment()
-		//{
-		//	PVehicleStore st = To<VehicleStore>::DynamicCast(selectedEntity);
-		//	if (st)
-		//		st->SignalDeployment();
-		//}
-
-		//
-
-		//void					VehicleStore::SignalDeployment()
-		//{
-		//	deployingMobileEntity.reset();	//might be unset before this method is called, too
-		//}
-
-		/*virtual override*/ void		VehicleStore::VisitAllCommands(FCommandVisitor visitor, bool force)
-		{
-			Super::VisitAllCommands(visitor,force);
-			if (storeOffset > 0 || force)
-				cmdLeft.VisitMembers(visitor,force);
-			index_t at = 0;
-			if (!park)
-			{
-				foreach (stored,s2)
-				{
-					if (at >= storeOffset || force)
-					{
-						int2 coords;
-						if (at >= storeOffset)
-							coords = cmdLeftCoords + int2(at - storeOffset+1 ,0);
-						s2->deployCommand->VisitMembers(visitor,force,coords);
-					}
-
-					at++;
-					if (at >= storeOffset + MaxVisibleStoreItems && !force)
-						break;
-				}
-				if (stored.Count() - storeOffset > MaxVisibleStoreItems || force)
-					cmdRight.VisitMembers(visitor,force);
-				return;
-			}
-			foreach (park->members,m)
-			{
-				PVehicleStore s = m->lock();
-				DBG_ASSERT__(s);
-				if (s)
-				{
-					foreach (s->stored,s2)
-					{
-						if (at >= storeOffset || force)
-						{
-							int2 coords;
-							if (at >= storeOffset)
-								coords = cmdLeftCoords + int2(at - storeOffset+1 ,0);
-							s2->deployCommand->VisitMembers(visitor,force,coords);
-						}
-
-						at++;
-						if (at >= storeOffset + MaxVisibleStoreItems && !force)
-							break;
-					}
-				}
-				if (at >= storeOffset + MaxVisibleStoreItems)
-					break;
-			}
-			if (this->park->vehiclesStored - storeOffset > MaxVisibleStoreItems || force)
-				cmdRight.VisitMembers(visitor,force);
-		}
-
-	#endif
-
-
-	/*virtual override*/ bool VehicleStore::SharesStorageWith(const PHangar&other) const
-	{
-		if (!other)
-			return false;
-		PVehicleStore store = To<VehicleStore>::DynamicCast( other->ToEntity().shared_from_this() );
-		return store && /*store->owner == owner && */store->park == park;
-	}
-
-	/*virtual override*/ void	VehicleStore::LocalCheckout(const PMobileEntity&e, const Grid::LCellIdI&targetLocation, float&atTime)
-	{
-		Hangar::LocalCheckout(e,targetLocation,atTime);
-		if (park)
-			park->vehiclesStored --;
-	}
-
-
-	#ifdef CLIENT
-		/*virtual override*/ void	VehicleStore::Lose(const PMobileEntity&v)
-		{
-			Hangar::Lose(v);
-			if (park)
-				park->vehiclesStored--;
-		}
-
-	#else
-
-
-		bool						VehicleStore::StoreInPark(const PMobileEntity&v, float&atTime)
-		{
-			if (StoreLocally(v,atTime,false,To<VehicleStore>::Cast(shared_from_this())))
-				return true;
-			if (!park)
-				return false;
-			foreach (park->members,m)
-			{
-				auto locked = m->lock();
-				if (locked->StoreLocally(v,atTime,false,locked))
-					return true;
-			}
-			return false;
-		}
-
-	#endif
-
-	/*virtual override*/ void				VehicleStore::OnDestroy(RemovalType t, float&atTime)
-	{
-		//Buffer0<WVehicleStore>	copy = sneighbors;
-		Super::OnDestroy(t, atTime);	//disconnects from neighborhood. sneighbors should be empty now
-
-
-		if (park)
-		{
-			for (const auto&w : park->members)
-			{
-				PVehicleStore s = w.lock();
-				if (s && s.get() != this)
-				{
-					s->park.reset();
-					#ifndef CLIENT
-						while (stored.IsNotEmpty() && s->StoreLocally(stored.last().entity.lock(),atTime,false,s))
-						{
-							stored.EraseLast();
-						}
-					#endif
-				}
-			}
-			for (const auto&w : park->members)
-			{
-				PVehicleStore s = w.lock();
-				if (s && s.get() != this && !s->park)
-				{
-					s->PropagatePark(PPark(new Park()));
-				}
-			}
-
-		}
-		Hangar::OnDestroy(atTime);
-	}
-
-
-	/*static*/ void Structure::InvalidateTerrain(const Grid::LCellIdI&location, float atTime)
-	{
-		bool changed[BaseGrid::NumFamilies] = {};
-		const auto&n = Grid::low.grid.GetCell(location.stackID).neighborhood;
-		for (int j = 0; j < n.numNeighbors; j++)
-		{
-			changed[Grid::low.grid.GetCell(n.neighborID[j]).family] = true;
-		}
-		changed[Grid::low.grid.GetCell(location.stackID).family] = true;
-		for (int i = 0; i < BaseGrid::NumFamilies; i++)
-			if (changed[i])
-			{
-				Grid::high.family[i].SetOutdated(atTime);
-				Grid::low.family[i].SetOutdated(atTime);
-			}
-		#ifdef HAS_WINDOW
-			Grid::actualWorld.SignalLightingChange(location);
-		#endif
-
-	}
-
-
+	
 
 	#ifndef CLIENT
 
@@ -1695,67 +482,20 @@ namespace Objects
 			#else
 				const UINT32 higher = location.stackID;
 			#endif
-			//const Grid::Content::type_t foundationType = s.GetFoundationType();
-			bool anyChanged = false;
+			auto seq = World::actual.BeginChangeSequence(atTime);
 			#ifdef HYBRID_GRID
 				for (int j = 0; j < n.numNeighbors; j++)
 				{
-					Grid::CellStack&stack = Grid::actualWorld.cellStack[n.neighborID[j]];
+					seq.SelectStack(n.neighborID[j]);
 					for (int a = 0; a < broadHeight; a++)
-						if (stack.GetCellI(location.height+a).content != Grid::Content::Clear)
-						{
+						if (seq.Change(location.height+a,Grid::Content::Clear))
 							LogEvent(EventSignificance::Common,e,"Clearing cell "+Grid::HCellIdI(n.neighborID[j],location.height+a).ToString());
-
-							anyChanged |= stack.MakeLocalHole(location.height+a);
-						}
 				}
 			#endif
-			Grid::CellStack&stack = Grid::actualWorld.cellStack[higher];
-			//if (requireCentralBlock && stack.GetCellI(location.height - 1).GetStrength() < needStrength)
-			//{
-			//	LogEvent(EventSignificance::Common,e,"Strengthening cell "+Grid::HCellIdI(higher,location.height-1).ToString());
-			//	anyChanged |= stack.LocalOverwrite(location.height - 1, foundationType);
-			//	if (deep)
-			//	{
-			//		int h = location.height-2;
-			//		int bottom = -Grid::CellStack::HalfRange;
-			//		if (!Grid::CellStack::bottom.IsClearOrWaterIgnoreStructure())
-			//			//bottom = h;
-			//			while (h >= bottom && stack.GetCellI(h).IsClearOrWater())
-			//			{
-			//				anyChanged |= stack.LocalOverwrite(h,  Grid::CellStack::Cell::Content::Earth);
-			//				h--;
-			//			}
-			//	}
-			//}
+			seq.SelectStack(higher);
 			for (int a = 0; a < totalHeight; a++)
-				if (stack.GetCellI(location.height+a).content != Grid::Content::Clear)
-				{
+				if (seq.Change(location.height+a,Grid::Content::Clear))
 					LogEvent(EventSignificance::Common,e,"Clearing cell "+Grid::HCellIdI(higher,location.height+a).ToString());
-
-					anyChanged |= stack.MakeLocalHole(location.height+a);
-				}
-
-			//if (signalChange)	//i think this breaks the flow. calling objects/methods assume they have to do this manually
-			//{
-			//	if (broadFoundation)
-			//	{
-			//		for (int h = hChangedDownTo; h < location.height; h++)
-			//			SignalClusterAndNeighborsChange(location + h,atTime);
-			//	}
-			//	else
-			//		for (int h = hChangedDownTo; h < location.height; h++)
-			//			SignalClusterChange(location + h,0,atTime,e);
-			//}
-			//
-
-			if (anyChanged)
-			{
-				Grid::actualWorld.SignalChangeUpTo(location);	//execute this regardless of signalChange - world becomes invalid otherwise
-
-				if (signalChange)
-					Structure::InvalidateTerrain(location,atTime);
-			}
 		}
 
 
@@ -1783,7 +523,7 @@ namespace Objects
 
 			OnConnectionLost(other, between, atTime);
 			#ifdef HAS_WINDOW
-				changed = anyChanged = true;
+				changed = true;
 			#endif
 		}
 
@@ -1817,7 +557,7 @@ namespace Objects
 				{
 					connectedTo << c;
 					#ifdef HAS_WINDOW
-						changed = anyChanged = true;
+						changed = true;
 					#endif
 					OnNewConnection(c, between,atTime);
 					c->connectedTo << _this;
@@ -1850,7 +590,7 @@ namespace Objects
 				connectedTo.Erase(i--);
 				limit--;
 				#ifdef HAS_WINDOW
-					c->changed = changed = anyChanged = true;
+					c->changed = changed = true;
 				#endif
 				OnConnectionLost(c, between,atTime);
 				c->OnConnectionLost(_this,between,atTime);
@@ -1879,31 +619,6 @@ namespace Objects
 
 	#endif
 
-	//
-	///*virtual override*/ float		Tower::GetScanningRange() const
-	//{
-	//	return EMPModify(turret->GetScanningRange(owner,turret->CanAttack() ? - 2.f : 2.f), 2.f);
-	//}
-
-	///*virtual override*/ String		Tower::DescribeScanningRange() const
-	//{
-	//	return GetTable()->maxScanningRange.Describe(GetResearchState());
-	//	//cache.maxScanningRange.GetEMPModified(*this,GetTable()->maxScanningRange);
-	//	//
-	//	//		String(GetScanningRange());
-	//}
-
-	///*virtual override*/ int				Tower::GetMaxHealth() const
-	//{
-	//	float base = float(Super::GetMaxHealth()) * turret->healthMultiplier(owner);
-	//	return std::max(1,(int)floor(base));
-	//}
-
-	///*virtual override*/ String				Tower::DescribeMaxHealth() const
-	//{
-	//	return String(GetMaxHealth());
-	//}
-
 
 	/*virtual*/ void				Structure::PrototypeSetup()
 	{
@@ -1912,70 +627,10 @@ namespace Objects
 
 
 
-
-
-	/*virtual override*/ void			Laboratory::PrototypeSetup()
-	{
-		Super::PrototypeSetup();
-
-	}
-
-	/*virtual override*/ bool			Laboratory::IsBuilding(std::pair<int,int>&outProgress) const
-	{
-		if (!IsEnabled() || !owner || owner->researchState.IsIdle())
-			return false;
-		auto topic = owner->researchState.GetActiveTopic();
-		if (topic->maxProgress <= 0)
-			return false;
-		outProgress.first = topic->getProgress(owner->researchState.researchState);
-		outProgress.second = topic->maxProgress;
-		return true;
-	}
-
-
-	#ifdef HAS_WINDOW
-
-		static void BuildCommand(CommandContainer&parent, const PResearchTopic&t)
-		{
-			PResearchCommand rs(new ResearchCommand(t));
-			parent.Add(rs);
-			foreach (t->children,c)
-			{
-				BuildCommand(*rs,*c);
-			}
-			if (t->componentReference || t->prototypeReference)
-				rs->RasterizeImage();
-		}
-
-		/*static*/ count_t			Laboratory::researchCommandOffset = InvalidIndex;
-
-
-
-		/*static*/	void Laboratory::ConfigureResearchButtons()
-		{
-			if (researchCommandOffset == InvalidIndex)
-				researchCommandOffset = commands.Count();
-			else
-				commands.Truncate(researchCommandOffset);
-			foreach (ResearchState::globalState.rootResearch,res)
-			{
-				BuildCommand(commands,*res);
-			}
-		}
-	#endif
-
-
-
 	#ifndef CLIENT
 
-		/*virtual override*/ void			Laboratory::Tick(ResourceVector&vec)
-		{
-			Super::Tick(vec);
-
-			owner->researchState.Contribute();
-		}
 	
-	#ifndef NO_SATELLITES
+		#ifndef NO_SATELLITES
 		/*virtual override*/ void			SkyPort::OnSleepChange(float&t)
 		{
 			Super::OnSleepChange(t);
@@ -1987,25 +642,6 @@ namespace Objects
 				}
 			}
 		#endif
-
-		/*virtual override*/ void			VehiclePlant::OnSleepChange(float&t)
-		{
-			Super::OnSleepChange(t);
-
-			if (IsSleeping() && IsEnabled())
-			{
-				LogEvent(EventSignificance::Common,this,"Fell asleep. Disabling");
-				SetEnabled(false,t);
-			}
-		}
-
-		/*virtual override*/ bool			VehiclePlant::DirectTo(CursorMode mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
-		{
-			if (waypoints.Count() != 1)
-				return false;
-			MobileEntityProducer::UpdateGatheringPoint(waypoints.First());
-			return true;
-		}
 
 		#ifndef NO_SATELLITES
 			/*virtual override*/ bool			SkyPort::DirectTo(CursorMode mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
@@ -2019,38 +655,8 @@ namespace Objects
 	#endif
 
 
-	VehiclePlant::VehiclePlant(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(table,owner, location, atTime),
-		MobileEntityProducer(DefaultProductionPerRound)
-	{
-		#ifdef CLIENT
-			// make some base selected by default
-			ASSERT__(baseComponents.IsNotEmpty())
-
-			foreach (baseComponents,c)
-				if (!owner || (*c)->isUnlocked(owner))
-				{
-					selectedBase = *c;
-					break;
-				}
-			foreach (turretComponents,c)
-				if (!owner || (*c)->isUnlocked(owner))
-				{
-					selectedTurret = *c;
-					break;
-				}
-		#endif
-	}
-
 	
 	#ifndef CLIENT
-
-		/*virtual override*/ void				VehiclePlant::Tick(ResourceVector&v)
-		{
-			v.level[Resource::Energy] -= EnergyConsumption;
-
-			float t = 0.f;	//buildings always come at the beginning
-			MobileEntityProducer::Tick(v,t);
-		}
 
 
 
@@ -2096,12 +702,7 @@ namespace Objects
 		#endif
 
 
-		PVehicle					VehiclePlant::GetProduction() const
-		{
-			return To<Vehicle>::Cast(MobileEntityProducer::GetActiveProduction());
-		}
-
-
+	
 
 
 
@@ -2109,61 +710,12 @@ namespace Objects
 		
 
 
-		void				Tower::AppendTask(const Grid::LCellIdI&attackTarget)
-		{
-			AttackTask&task = attackQueue.Append();
-			task.target = attackTarget;
-
-			#ifdef HAS_WINDOW
-				static Buffer0<TVec4<> > trajectory;
-				trajectory.Clear();
-				TVec3<> impactAt;
-				Grid::HCellIdI dummy1;
-				float angle;
-				//if (Turret::TraceTrajectory(Turret::MaxRangeToVelocity(GetFlatAttackRange()),Grid::actualWorld, location,foundationHeight,attackTarget,trajectory,impactAt,dummy1))
-				if (TraceTrajectory(TrajectoryEndPoint( attackTarget,0),trajectory,impactAt,dummy1,angle) != TurretTrajectory::InvalidTrajectory)
-				{
-
-					static Geometry geo;
-					geo.Clear();
-
-					Component::Turret::CompileTrajectory(trajectory,Component::Turret::Schematic,geo,0.25f);
-
-					if (task.trajectoryVisualization.shader.IsEmpty())
-						(DX11::BaseInstructionBlock&)task.trajectoryVisualization = pathShader;
-					task.trajectoryVisualization.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
-					task.trajectoryVisualization.ibo.Create(geo.GetLOD(0).indices);
-
-
-					((DX11::BaseInstructionBlock&) task.blastVisualization) = jobShader;
-					task.blastVisualization.vbo = sphereVBO[0];
-					task.blastVisualization.ibo = sphereIBO[0];
-					//shape.depthTest = true;
-
-					turret->BuildBlastSystem(trajectory.last().xyz * trajectory.last().w,turret->GetExplosionRadius(owner),task.blastSystem);
-				}
-			#endif
-		}
-
-	
-		Component::VehicleBase*					VehiclePlant::GetProductionBase() const
-		{
-			return queue.IsNotEmpty() ? queue.First().base : nullptr;
-		}
-
 
 
 		#ifdef HAS_WINDOW
 
 
-			/*virtual override*/ void			VehiclePlant::OnSelect()
-			{
-				gatheringPoint.UpdateVisuals();
-			}
-			/*virtual override*/ void			VehiclePlant::OnDeselect()
-			{
-				gatheringPoint.selected = Grid::LCellIdI::Invalid;
-			}
+
 
 			#ifndef NO_SATELLITES
 				/*virtual override*/ void			SkyPort::OnSelect()
@@ -2182,227 +734,9 @@ namespace Objects
 
 
 
-		bool				VehiclePlant::EnqueueSelectedConstruction()
-		{
-			if (selectedBase && selectedTurret)
-			{
-				static Buffer0<Choice>	choices;
-				GetProductionChoices(this,selectedBase,choices);
-				static bool ignoreWarnings = false;
-				if (choices.IsNotEmpty() || ignoreWarnings)
-					ApplicationInterface::SignalConstructionBegin(id, selectedBase->constName, selectedTurret->constName);
-				else
-				{
-
-
-					#ifdef HAS_WINDOW					
-						String waterNotice;
-						if (!selectedBase->moveOnWater)
-							waterNotice = " Note that this vehicle type cannot stand on water. ";
-						TUniqueID myID = id;
-						ConstName baseName = selectedBase->constName;
-						ConstName turretName = selectedTurret->constName;
-						Dialog::Confirm("Cannot find valid spawning locations around '"+GetNiceName()+"' for '"+Vehicle::GetTypeName(selectedBase,selectedTurret)+"'. "+waterNotice+"Are you sure you wish to start this production?",
-								[baseName,turretName,myID]()
-								{
-									ApplicationInterface::SignalConstructionBegin(myID, baseName, turretName);
-									//ignoreWarnings = true;
-								}
-								,
-								[myID]()->Dialog::CheckResult
-								{
-									PVehiclePlant plant = To<VehiclePlant>::DynamicCast(GetEntity(myID));
-									if (!plant || plant->health <= 0)
-										return Dialog::CheckResult::Abort;
-									if (!controlIsEnabled)
-										return Dialog::CheckResult::OkayNotRightNow;
-									return Dialog::CheckResult::OkayContinue;
-								}
-							);
-					#else
-						ApplicationInterface::SignalConstructionBegin(id, selectedBase->constName, selectedTurret->constName);
-					#endif
-				}
-			}
-			return false;
-		}
-	
 	#endif
 
-	#ifndef CLIENT
 
-
-		PVehicle				VehiclePlant::Enqueue(Component::VehicleBase*b, Component::Turret*t)
-		{
-			auto item = MobileEntityProducer::EnqueueProductionOfVehicle(b,t);
-			return item ? To<Vehicle>::Cast(item->producing) : PVehicle();
-		}
-		PVehicle				VehiclePlant::Enqueue(ConstName baseName, ConstName turretName)
-		{
-			auto item = MobileEntityProducer::EnqueueProductionOfVehicle(baseName,turretName);
-			return item ? To<Vehicle>::Cast(item->producing) : PVehicle();
-		}
-
-
-		bool				VehiclePlant::AbortConstruction(const TUniqueID&id)
-		{
-			return MobileEntityProducer::AbortConstruction(id);
-		}
-
-
-	#endif
-	/*virtual override*/ void				VehiclePlant::PrototypeSetup()
-	{
-		Super::PrototypeSetup();
-		baseComponents = Objects::Component::baseComponents;
-		for (const auto& turret:Objects::Component::vehicleTurretComponents)
-			if (turret->mountType == Component::Turret::MountType::Vehicle)
-				turretComponents << turret;
-
-		#ifdef HAS_WINDOW
-			commands.VisitMembers([](const int2&coords,const PBaseCommand&cmd)
-			{
-				if (cmd->name == "Enable")
-				{
-					(*cmd) = IconCommand("Enable",
-						[]()
-						{
-
-							VehiclePlant*s2 = dynamic_cast<VehiclePlant*>(selectedEntity.get());
-							if (s2)
-							{
-								if (!s2->IsEnabled() && !s2->CanEnable())
-								{
-									ApplicationInterface::SignalUserMessage(s2->GetNiceName()+" is switched off because its queue is empty. It will attempt to automatically enable once you enqueue at least one production job using the 'Construct Selected' button. You must first select both a foundation and a turret, however.");
-									return;
-								}
-								ApplicationInterface::SignalEnableStructure(*s2, !s2->IsEnabled());
-							}
-						}
-						,[](bool controlEnabled)
-						{
-							BaseCommand::Flags rs = BaseCommand::Flags::None;
-							VehiclePlant*div = dynamic_cast<VehiclePlant*>(selectedEntity.get());
-							if (controlEnabled && div != nullptr)
-								rs |= BaseCommand::Flags::IsEnabled;
-							if (Cmd::IsEnabled())
-								rs |= BaseCommand::Flags::IsPermaActive;
-							return rs;
-						}
-						,NoCosts
-					);
-				}
-			},true);
-
-
-			commands.Add(int2(4,0),false, new IconCommand("Construct Selected",[]()
-				{
-					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
-					if (plant)
-					{
-						if (plant->selectedBase && plant->selectedTurret)
-							plant->EnqueueSelectedConstruction();
-						else
-						{
-							if (plant->selectedBase)
-								ApplicationInterface::SignalUserMessage(plant->GetNiceName()+" needs to know what turret you want to use in order to enqueue a new production job. Please select one in the top row.");
-							elif (plant->selectedTurret)
-								ApplicationInterface::SignalUserMessage(plant->GetNiceName()+" needs to know what foundation you want to use in order to enqueue a new production job. Please select one in the bottom row.");
-							else
-								ApplicationInterface::SignalUserMessage(plant->GetNiceName()+" needs to know what turret and foundation you want to use in order to enqueue a new production job. Please select one in each top and bottom rows.");
-						}
-					}
-				},
-				[](bool controlEnabled)
-				{
-					if (!controlEnabled)
-						return BaseCommand::Flags::None;
-					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
-					if (plant)
-					{
-						BaseCommand::Flags rs = BaseCommand::Flags::IsEnabled;
-						if (plant->selectedBase && plant->selectedTurret && plant->queue.IsEmpty() /*&& !plant->IsSleeping()*/)
-							rs |= BaseCommand::Flags::IsFlashing | BaseCommand::Flags::SoftFlashing;
-
-						return rs;
-					}
-					else return BaseCommand::Flags::None;
-				},
-				[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
-				{
-					costTypeOut = Resource::Minerals;
-					PVehiclePlant p = To<VehiclePlant>::DynamicCast(selectedEntity);
-					ASSERT__(p);
-					if (!p->selectedBase || !p->selectedTurret)
-					{
-						mineralCostOut = 0;
-						timeCostOut = 0;
-						return;
-					}
-					mineralCostOut = Vehicle::GetPrice(p->selectedBase,p->selectedTurret,p->owner);
-					timeCostOut = p->ProductionRounds(mineralCostOut,false);
-				}
-			));
-
-
-			int at = 0;
-			//vehicleConstructionCommands << VehicleConstructionCommand("Base:",[](const PWorldEntity&){},AlwaysFalse<PWorldEntity const&>,AlwaysFalse<PWorldEntity const&>);
-			foreach (baseComponents,comp)
-			{
-				Component::VehicleBase* c = *comp;
-				commands.Add(int2(5+at,0),false,new EntityConstructionCommand(c->typeName,c,nullptr,PWorldEntity(),[c]()
-				{
-					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
-					if (plant)
-						plant->selectedBase = c;
-				}
-				,[c](bool controlEnabled)
-				{
-					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(controlEnabled);
-					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
-					if (plant && plant->selectedBase == c)
-						rs |= BaseCommand::Flags::IsPermaActive;
-					if (!plant || !c->isUnlocked(plant->owner))
-						rs = BaseCommand::Flags::None;
-					return rs;
-				}));
-				commands.GetLast().second->RasterizeImage();
-				at++;
-			}
-			at = 0;
-			//commands << Command("Turret:",[](const PWorldEntity&){},AlwaysFalse<PWorldEntity const&>,AlwaysFalse<PWorldEntity const&>);
-			foreach (turretComponents,comp)
-			{
-				Component::Turret* c = *comp;
-				commands.Add(int2(3+at,1),false,new EntityConstructionCommand(c->typeName,nullptr,c,PWorldEntity(),[c]()
-				{
-					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
-					if (plant)
-						plant->selectedTurret = c;
-				}
-				,[c](bool controlEnabled)
-				{
-					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(controlEnabled);
-					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
-					if (plant)
-					{
-						if (plant->selectedTurret == c)
-							rs |= BaseCommand::Flags::IsPermaActive;
-						elif (!plant->selectedTurret)
-							rs |= BaseCommand::Flags::IsFlashing | BaseCommand::Flags::SoftFlashing;
-					}
-					if (!plant || !c->isUnlocked(plant->owner))
-						rs = BaseCommand::Flags::None;
-					return rs;
-				}));
-				commands.GetLast().second->RasterizeImage();
-				at++;
-			}
-		#endif
-
-		//commands << Command("Queue:",[](const PWorldEntity&){},AlwaysFalse<PWorldEntity const&>,AlwaysFalse<PWorldEntity const&>);
-
-	}
 
 	/*virtual override*/ void				ReactorCore::PrototypeSetup()
 	{
@@ -2410,11 +744,6 @@ namespace Objects
 	}
 
 	#ifdef HAS_WINDOW
-		/*virtual override*/ void				VehiclePlant::VisitAllCommands(FCommandVisitor visitor, bool force)
-		{
-			MobileEntityProducer::VisitAllCommands(visitor,force);
-			Super::VisitAllCommands(visitor,force);
-		}
 		#ifndef NO_SATELLITES
 			/*virtual override*/ void				SkyPort::VisitAllCommands(FCommandVisitor visitor, bool force)
 			{
@@ -2423,11 +752,6 @@ namespace Objects
 			}
 		#endif
 	#endif
-	/*virtual override*/ bool				VehiclePlant::AwaitsUserInteraction() const 
-	{
-		return  MobileEntityProducer::AwaitsUserInteraction();
-	}
-
 
 	#ifndef NO_SATELLITES
 		/*virtual override*/ bool				SkyPort::AwaitsUserInteraction() const 
@@ -2443,12 +767,6 @@ namespace Objects
 			;
 		}
 	#endif
-
-	/*virtual override*/ bool				VehiclePlant::CanProduce(const PWorldEntity&e) const 
-	{
-		return e->IsVehicle() && baseComponents.Contains(To<Vehicle>::Cast(e)->base)  && turretComponents.Contains(To<Vehicle>::Cast(e)->turret);
-	}
-
 
 	#ifndef NO_SATELLITES
 		/*virtual override*/ void				SkyPort::PrototypeSetup()
@@ -2483,8 +801,8 @@ namespace Objects
 					[](bool controlsEnabled)
 					{
 						if (!controlsEnabled)
-							return BaseCommand::Flags::None;
-						return selectedEntity && !GetSatellite(selectedEntity->location.stackID) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+							return Objects::CommandFlags::None;
+						return selectedEntity && !GetSatellite(selectedEntity->location.stackID) ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
 					}));
 					commands.GetLast().second->RasterizeImage();
 				}
@@ -2677,10 +995,10 @@ namespace Objects
 					faction->compound.workingStructures.Clear();
 				}
 
-				for (const auto&s:structures)
+				structures.Foreach([](const Objects::PStructure&s)
 				{
 					s->owner->compound.AppendStructure(s.get());
-				}
+				});
 			#else
 //				compounds.SetSize(Faction::all...)
 				for (const auto&f0 : Faction::all)
@@ -2701,31 +1019,16 @@ namespace Objects
 		#endif
 
 		RefreshCompoundStates(atTime);
-		#ifdef HAS_WINDOW
-			ApplicationInterface::OnSelectionChange(true);
-		#endif
+		GlobalEvents::invalidateObjectCache();
 	}
 
 
 
 	#ifdef HAS_WINDOW
-	
-		/*virtual override*/ void			Laboratory::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
-		{
-			label.BeginBrief();
-			Super::DescribeType(label,  descFlags);
-			label.MarkBriefEnd();
-			label << "Laboratories research new components and buildings, or improve their attributes."
-			" Each enabled laboratory contributes 1 research point per round to the currently selected faction research goal."
-			" Research aimed at unlocking new components requires a number of research points to be accumulated."
-			" Research aimed at improvement will continuously improve the selected property, but become increasingly less efficient the further research has progressed."
-			" As a result, research facilities are a continuous construction effort and you will most likely never have enough."
-			;
-		}
 
 
 
-		/*virtual override*/ void			NexusPort::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
+		/*virtual override*/ void			NexusPort::DescribeType(Command::Base::Label&label, UINT32 descFlags)
 		{
 			label.BeginBrief();
 			Super::DescribeType(label,  descFlags);
@@ -2741,22 +1044,8 @@ namespace Objects
 		}
 
 
-		/*virtual override*/ void			Mine::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
-		{
-			label.BeginBrief();
-			Super::DescribeType(label,  descFlags);
-			label.MarkBriefEnd();
-			label << "Enabled mines extract any natural resources available in the planet-core beneath their location. They are essential in supplying other structures of the local compound."
-			" Mines should be build only on known occurrences of natural resources."
-			" They cannot be constructed atop each other, since they require a working link to the planet core in order to operate."
-			//" Mines constructed on a height level of -8 or lower are twice as effective."
-			" Mines, like many structures, require "+String(ResourceTag(Resource::Energy))+" from generators to operate."
-			;
-		}
 
-
-
-		/*virtual override*/ void			Generator::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
+		/*virtual override*/ void			Generator::DescribeType(Command::Base::Label&label, UINT32 descFlags)
 		{
 			label.BeginBrief();
 			Super::DescribeType(label,  descFlags);
@@ -2767,7 +1056,7 @@ namespace Objects
 			;
 		}
 
-		/*virtual override*/ void			ReactorCore::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
+		/*virtual override*/ void			ReactorCore::DescribeType(Command::Base::Label&label, UINT32 descFlags)
 		{
 			label.BeginBrief();
 			Super::DescribeType(label,  descFlags);
@@ -2777,20 +1066,9 @@ namespace Objects
 			" Must be placed on the same height level as the generator(s) to connect to."
 			;
 		}
-		/*virtual override*/ void			VehiclePlant::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
-		{
-			label.BeginBrief();
-			Super::DescribeType(label,  descFlags);
-			label.MarkBriefEnd();
-			label << "Enabled vehicle plants produce vehicles of arbitrary configuration at the expense of "
-			+String(ResourceTag(Resource::Minerals))+", and "+String(TimeResourceTag())+"."
-			" A vehicle plant that does not have access to the necessary resources switches off immediately."
-			" Vehicle plants should be placed so that any produced vehicles can stand in the immediate surroundings of the structure."
-			;
-		}
 
 
-		/*virtual override*/ void			WorkingStructure::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
+		/*virtual override*/ void			WorkingStructure::DescribeType(Command::Base::Label&label, UINT32 descFlags)
 		{
 			label.BeginBrief();
 			Super::DescribeType(label,  descFlags);
@@ -2910,7 +1188,7 @@ namespace Objects
 				Compound::lastDisabled = nullptr;
 				SetSleep(false,atTime,false);
 			}
-			atTime = motionTime = std::max(motionTime,atTime)+timeEpsilon;
+			atTime = entityTime = std::max(entityTime,atTime)+timeEpsilon;
 			LogEvent(EventClass::Preset::common,this,"Enabled-state changed "+String(isEnabled)+"->"+String(b)+" at t="+String(atTime)+", given signalStructure="+String(signalStructure)+", refreshNetwork="+String(refreshNetwork));
 			isEnabled = b;
 			RegisterChange(EnableChanged,atTime);

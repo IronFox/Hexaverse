@@ -1,4 +1,4 @@
-= Game Folder =
+= Game Configuration Folder =
 
 Hexaverse creates a runtime folder in ''[my documents]\My Games\Hexaverse''.
 Both client and server retrieve [[config/server|configuration]] files from this folder.

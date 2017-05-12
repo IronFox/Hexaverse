@@ -6,11 +6,15 @@
 #include <math/matrix.h>
 #include <engine/timing.h>
 
-#include "../../shared/sphereGrid.h"
+#include <grid/stack.h>
 #include "clientRuntimeConfig.h"
+#include <objects/satellite.h>
+#include "visual/objectCommands.h"
+#include "visual/terrain.h"
 
-#include "../../shared/objects.h"
 #include "timelapse.h"
+#include "clientEvents.h"
+#include "visual/lighting.h"
 
 
 float3							sunDirection;
@@ -22,6 +26,7 @@ namespace Camera
 	Engine::OrthographicAspect<>	hud;
 	bool							autoRotation = false,
 									locked = false;
+	Observable<>						onZoom,onRotate,onDrag;
 
 	namespace 
 	{
@@ -41,8 +46,8 @@ namespace Camera
 	{
 		float3 axis = (sunDirection | scene.location).Normalized();
 		TMatrix3<> mat;
-		Mat::rotationMatrix(SunOffAngle,axis,mat);
-		Mat::mult(mat,scene.location,sunDirection);
+		Mat::BuildRotationMatrix(SunOffAngle,axis,mat);
+		Mat::Mult(mat,scene.location,sunDirection);
 		sunDirection.Normalize0();
 	}
 
@@ -81,8 +86,8 @@ namespace Camera
 					Rotate(float2());
 
 					TMatrix3<> rot;
-					Mat::rotationMatrix(angle,axis.Normalized(),rot);
-					Mat::mult(rot, sunDirection);
+					Mat::BuildRotationMatrix(angle,axis.Normalized(),rot);
+					Mat::Mult(rot, sunDirection);
 					RealignSunDirection();
 
 				}
@@ -142,6 +147,7 @@ namespace Camera
 			scene.retraction.z /= pow(1.1f,param);
 			scene.retraction.z = Math::clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
 			scene.UpdateView();
+			onZoom();
 		}
 	}
 
@@ -153,6 +159,7 @@ namespace Camera
 			scene.retraction.z *= 0.95f;
 			scene.retraction.z = Math::clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
 			scene.UpdateView();
+			onZoom();
 		}
 	}
 
@@ -163,6 +170,7 @@ namespace Camera
 			scene.retraction.z /= 0.95f;
 			scene.retraction.z = Math::clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
 			scene.UpdateView();
+			onZoom();
 		}
 	}
 
@@ -171,25 +179,27 @@ namespace Camera
 		scene.retraction.z *= pow(3.f,-outSpeed);
 		scene.retraction.z = Math::clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
 		scene.UpdateView();
-
+		onZoom();
 	}
 
 
 
 	void Reset()
 	{
-		orbit = WorldScale;
-		targetOrbit = WorldScale;
+		orbit = Grid::MeanPlanetRadius;
+		targetOrbit = Grid::MeanPlanetRadius;
 		orbitBaseFactor = 1.f;
 
 		moveToTarget = false;
 		skyOrbitBase = false;
 		skyGrid = false;
 
-		scene.retraction = float3(0,0,-4 * WorldScale);
+		scene.retraction = float3(0, 0, -4 * WorldScale);
 		scene.location = float3(0, orbit, 0);
 		scene.direction = float3(0, 1, 1).normalized();
-		scene.upAxis = float3(0, 1, 0);
+		scene.upAxis = scene.location;
+		Vec::normalize0(scene.upAxis);
+
 		scene.UpdateView();
 	}
 
@@ -197,10 +207,10 @@ namespace Camera
 	namespace Cmd
 	{
 
-		Objects::BaseCommand::Flags Check(bool)
+		Objects::CommandFlags Check(bool)
 		{
-			return Objects::BaseCommand::Flags::IsEnabled | 
-					(Camera::SkyGridIsVisible() ? Objects::BaseCommand::Flags::IsPermaActive : Objects::BaseCommand::Flags::None);
+			return Objects::CommandFlags::IsEnabled | 
+					(Camera::SkyGridIsVisible() ? Objects::CommandFlags::IsPermaActive : Objects::CommandFlags::None);
 		}
 	}
 
@@ -226,13 +236,13 @@ namespace Camera
 	void							Rotate(const float2&angleDelta)
 	{
 		TMatrix3<> rot;
-		Mat::rotationMatrix(angleDelta.x, scene.upAxis, rot);
-		Mat::mult(rot, scene.direction);
+		Mat::BuildRotationMatrix(angleDelta.x, scene.upAxis, rot);
+		Mat::Mult(rot, scene.direction);
 		TVec3<> x;
 		Vec::cross(scene.upAxis, scene.direction, x);
 		Vec::normalize0(x);
-		Mat::rotationMatrix(angleDelta.y, x, rot);
-		Mat::mult(rot, scene.direction);
+		Mat::BuildRotationMatrix(angleDelta.y, x, rot);
+		Mat::Mult(rot, scene.direction);
 
 		float angle = Vec::angle(scene.direction, scene.upAxis);
 		if (angle > 90.f)
@@ -243,12 +253,13 @@ namespace Camera
 
 		if (angle < 20.f)
 		{
-			Mat::rotationMatrix(-(20.f - angle), x, rot);
-			Mat::mult(rot, scene.direction);
+			Mat::BuildRotationMatrix(-(20.f - angle), x, rot);
+			Mat::Mult(rot, scene.direction);
 		}
 
 
 		scene.UpdateView();
+		onRotate();
 		//moveToTarget = false;	//leave on if on
 	}
 
@@ -274,7 +285,7 @@ namespace Camera
 			if (!locked)
 			{
 				autoRotation = true;
-				Grid::ResetSunRotation();
+				Lighting::ResetSunRotation();
 			}
 		}
 		else
@@ -283,8 +294,12 @@ namespace Camera
 
 	void							StopAutoRotation()
 	{
-		autoRotation = false;
-		Reset();
+		if (autoRotation)
+		{
+			autoRotation = false;
+			Reset();
+			scene.UpdateView();
+		}
 	}
 
 	void							ProgressRotation()
@@ -294,7 +309,7 @@ namespace Camera
 			static const count_t CameraRotations = 2;
 			static const count_t SunRotations = 5;
 			TVec3<> dir;
-			double at = Grid::GetAcceleratedSunDirection(dir,-float(CameraRotations) / SunRotations);
+			double at = Lighting::GetAcceleratedSunDirection(dir,-float(CameraRotations) / SunRotations);
 			if (fabs(at) >= M_PI*2.0 * CameraRotations)
 			{
 				StopAutoRotation();
@@ -304,7 +319,7 @@ namespace Camera
 			scene.location = float3();
 			scene.retraction.z = -WorldScale * 3.75f;
 			scene.direction = -dir;
-			scene.upAxis = Grid::GetSunSystem().z;
+			scene.upAxis = Lighting::GetSunSystem().z;
 			scene.UpdateView();
 
 			return;
@@ -347,29 +362,29 @@ namespace Camera
 		Vec::normalize0(axis);
 		DebugCheckVector(axis,-2,2);
 		TMatrix3<> rot;
-		Mat::rotationMatrix(-angle,axis,rot);
+		Mat::BuildRotationMatrix(-angle,axis,rot);
 		ASSERT_IS_CONSTRAINED__(angle,-1000,1000);
 		DebugCheckVector(rot.x,-2,2);
 
-		Mat::mult(rot, scene.location);
-		Mat::mult(rot, scene.direction);
+		Mat::Mult(rot, scene.location);
+		Mat::Mult(rot, scene.direction);
 		if (RuntimeConfig::FromFile::alwaysDay)
 		{
-			Mat::mult(rot, sunDirection);
+			Mat::Mult(rot, sunDirection);
 			RealignSunDirection();
 		}
 		DebugCheckVector(scene.location,-10000,10000);
 		DebugCheckCamera();
 
 
-		index_t stackID = Grid::high.Locate(scene.location);
+		UINT32 stackID = Grid::high.Locate(scene.location);
 		{
 			int top;
-			if (Grid::actualWorld.cellStack[stackID].FindTopOccupied(top))
+			if (World::actual.GetStack(stackID).FindTopOccupied(top))
 				ChangeGroundRadius(Grid::ToRadius(top+2));
 		}
-		if (Grid::SeeThrough::IsEnabled())
-			ChangeGroundRadius(std::min(Grid::ToRadius(Grid::SeeThrough::GetFocusPoint().height+2), targetOrbit));
+		if (VisualTerrain::SeeThrough::IsEnabled())
+			ChangeGroundRadius(std::min(Grid::ToRadius(VisualTerrain::SeeThrough::GetFocusPoint().height+2), targetOrbit));
 		ASSERT__(orbit > 0);
 		DebugCheckVector(scene.location,-10000,10000);
 		Vec::setLen0(scene.location, orbit);
@@ -386,6 +401,17 @@ namespace Camera
 
 	}
 
+	void						ChangeGroundRadiusToFocusedTerrain()
+	{
+		UINT32 stackID = Grid::high.Locate(scene.location);
+		{
+			int top;
+			if (World::actual.GetStack(stackID).FindTopOccupied(top))
+				ChangeGroundRadius(Grid::ToRadius(top+2));
+		}
+	}
+
+
 	void							Translate(const float2&angleDelta)
 	{
 		//moveToTarget;
@@ -401,30 +427,25 @@ namespace Camera
 
 
 		TMatrix3<> rot;
-		Mat::rotationMatrix(angleDelta.y, x, rot);
-		Mat::mult(rot, scene.location);
-		Mat::mult(rot, scene.direction);
-		Mat::rotationMatrix(angleDelta.x, y, rot);
-		Mat::mult(rot, scene.location);
-		Mat::mult(rot, scene.direction);
+		Mat::BuildRotationMatrix(angleDelta.y, x, rot);
+		Mat::Mult(rot, scene.location);
+		Mat::Mult(rot, scene.direction);
+		Mat::BuildRotationMatrix(angleDelta.x, y, rot);
+		Mat::Mult(rot, scene.location);
+		Mat::Mult(rot, scene.direction);
 		if (RuntimeConfig::FromFile::alwaysDay)
 		{
-			Mat::mult(rot, sunDirection);
+			Mat::Mult(rot, sunDirection);
 			RealignSunDirection();
 		}
 
 
 
-		index_t stackID = Grid::high.Locate(scene.location);
-		{
-			int top;
-			if (Grid::actualWorld.cellStack[stackID].FindTopOccupied(top))
-				ChangeGroundRadius(Grid::ToRadius(top+2));
-		}
+		ChangeGroundRadiusToFocusedTerrain();
 
-		//targetOrbit = Grid::ToRadius(Grid::actualWorld.cellStack[stackID].FindTopOccupied());
-		if (Grid::SeeThrough::IsEnabled())
-			ChangeGroundRadius(std::min(Grid::ToRadius(Grid::SeeThrough::GetFocusPoint().height+2), targetOrbit));
+		//targetOrbit = Grid::ToRadius(World::actual.cellStack[stackID].FindTopOccupied());
+		if (VisualTerrain::SeeThrough::IsEnabled())
+			ChangeGroundRadius(std::min(Grid::ToRadius(VisualTerrain::SeeThrough::GetFocusPoint().height+2), targetOrbit));
 
 
 		Vec::setLen0(scene.location, orbit);
@@ -434,6 +455,13 @@ namespace Camera
 
 
 		scene.UpdateView();
+		onDrag();
+
+	}
+
+	void						Create()
+	{
+		GlobalEvents::frameBegin << ProgressRotation;
 	}
 
 }

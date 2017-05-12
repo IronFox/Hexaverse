@@ -26,7 +26,7 @@ namespace Objects
 			}
 	};
 
-	template <typename T, typename Filter>
+	template <typename T, typename Filter= NoFilter>
 		struct LuaAttribute
 		{
 			Lua::Function<T(Lua::Reference)>		luaGetValue;
@@ -51,8 +51,8 @@ namespace Objects
 			void		Clear()
 			{
 				constOverride.isSet = false;
-				luaGetValue.Clear();
-				luaDescribeValue.Clear();
+				luaGetValue.ClearReference();
+				luaDescribeValue.ClearReference();
 			}
 
 			T			GetUnfilteredValue(const Lua::Reference&researchState)	const

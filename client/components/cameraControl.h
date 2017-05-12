@@ -1,9 +1,10 @@
+#pragma once
+
 #ifdef HAS_WINDOW
-#ifndef cameraControlComponentH
-#define cameraControlComponentH
 
 #include <math/vclasses.h>
 #include <engine/aspect.h>
+#include <observer.h>
 
 #define DebugCheckVector(T, M, MX)
 #define DebugCheckCamera()
@@ -42,6 +43,8 @@ namespace Camera
 	extern bool					autoRotation, locked;
 
 
+	extern Observable<>			onZoom, onRotate, onDrag;
+
 	/**
 	Initiates cameras (must be called only once during program start)
 	*/
@@ -77,10 +80,7 @@ namespace Camera
 	void						ToggleAutoRotation();
 
 
-	/**
-	Smoothly updates ongoing camera animations. Must be called once per frame
-	*/
-	void						ProgressRotation();
+
 
 	void						StopAutoRotation();
 	/**
@@ -93,7 +93,7 @@ namespace Camera
 	*/
 	void						ChangeGroundRadius(float targetOrbit);
 
-
+	void						ChangeGroundRadiusToFocusedTerrain();
 	
 	/**
 	Switches to sky orbit
@@ -111,7 +111,7 @@ namespace Camera
 
 	bool						SkyGridIsVisible();
 
-
+	void						Create();
 
 	/**
 	Input event handlers
@@ -127,5 +127,4 @@ namespace Camera
 }
 
 
-#endif
 #endif

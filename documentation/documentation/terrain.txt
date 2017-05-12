@@ -11,8 +11,8 @@ Each unit cell completely contains one terrain cell, and shares a number of terr
 A unit requires its central and all edge terrain cells to be clear.
 Conversely, it can stand on central terrain blocks as well as mere ledges (shared terrain blocks) one layer beneath the unit.
 
-[[concepts/vehicle|Vehicles]] will fall (or be destroyed in some cases) if the conditions are not met.
-Structures hover once constructed but remain stationary.
+[[concepts/vehicle|Vehicles]] will fall (and be destroyed in some cases) if these conditions are not met.
+Structures hover after construction but remain stationary.
 
 With the exception of lava, units will automatically remove any terrain moving into their unit cell (e.g. expanding water).
 Lava will mercilessly destroy any unit it touches.

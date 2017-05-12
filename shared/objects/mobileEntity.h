@@ -5,7 +5,8 @@
 #include "../cast.h"
 #include "jobs.h"
 #include "hibernating.h"
-
+#include "../sharedContainer.h"
+#include "../observer.h"
 
 namespace Objects
 {
@@ -39,7 +40,7 @@ namespace Objects
 	Hangar entities may/should reference them however.
 	A link to a hangar structure (storedIn) must be set and not expired.
 	*/
-	extern Buffer0<PMobileEntity>			storedMobileEntities;
+	extern SharedContainer<MobileEntity>			storedMobileEntities;
 
 	/**
 	Checks all mobile entities, both in storage and not, for various consistency aspects.
@@ -72,11 +73,8 @@ namespace Objects
 				Mode,
 				Job,
 			}						type;
-			CursorMode		mode;
+			CursorMode				mode;
 		
-			#ifdef HAS_WINDOW
-				DX11::InstructionBlock32			visualization;
-			#endif
 
 
 
@@ -117,28 +115,16 @@ namespace Objects
 			};
 
 
-			Queue<Focus>	foci;	//function depends on current mode. movement destination(s) if idle, firing target(s) if in attack mode
+			Queue<Focus>			foci;	//function depends on current mode. movement destination(s) if idle, firing target(s) if in attack mode
 			
 			Buffer0<PathNode>		path;
+			PClientAttachment		visualization;
 
 			String					name;
 
 			PVehicleJob				job;
-			#ifdef HAS_WINDOW
-				struct Shape
-				{
-					DX11::InstructionBlock32	instruction;
-					TMatrix4<>		system;
-					bool			depthTest,		//Indicates that the shape should depth-test against the terrain and other complex shapes
-									preRenderDepth = true,	//Effective only if @a depthTest is true. Indicates that this is a complex shape and should be depth-only pre-rendered
-									flareDisplay = false,	//Indicates that the shape is rendered using an add-blend function, and using a white color when not selected. Otherwise black is used, using regular alpha blending
-									selectedOnly = false;	//This shape should only be rendered for selected units
-				};
 
-				Buffer0<Shape>		localizableShapes;
-
-				void				SetLocalizableShape(ConstName structureIdentifier, const Grid::LCellIdI&location, const OwnerParameter&);
-			#endif
+			static Observable<const MobileEntity&, Task&,const Grid::LCellIdI&>	onVisualizationOutdated;
 
 
 			/**/					Task()	{}
@@ -172,10 +158,8 @@ namespace Objects
 				foci.swap(other.foci);
 				path.swap(other.path);
 				name.swap(other.name);
+				visualization.swap(other.visualization);
 				job.swap(other.job);
-				#ifdef HAS_WINDOW
-					localizableShapes.swap(other.localizableShapes);
-				#endif
 			}
 
 			Grid::LCellIdI			GetFocus(const Grid::LCellIdI&fallback)	const
@@ -349,9 +333,9 @@ namespace Objects
 
 			void				BeginMotionPhase(float timeOffset)
 			{
-				motionTime = std::max(motionTime, timeOffset);	//timeAt is usually 0, but may be bigger if the vehicle fell as a result of an explosion. in that case it might be further along the timeline
+				entityTime = std::max(entityTime, timeOffset);	//timeAt is usually 0, but may be bigger if the vehicle fell as a result of an explosion. in that case it might be further along the timeline
 				if (attackActionLeft < 1.f)
-					RegisterChange(ActionChanged,motionTime);
+					RegisterChange(ActionChanged,entityTime);
 				attackActionLeft = 1.f;
 
 				hasMoved = false;
@@ -359,7 +343,7 @@ namespace Objects
 				if (MotionIgnoresAttack())
 				{
 					if (movementActionLeft < 1.f)
-						RegisterChange(ActionChanged,motionTime);
+						RegisterChange(ActionChanged,entityTime);
 					movementActionLeft = 1.f;
 				}
 			}
@@ -367,13 +351,13 @@ namespace Objects
 			{
 				constructionActionLeft=MaxConstructionActionLeft;
 				if (movementActionLeft < 1.f)
-					RegisterChange(ActionChanged,motionTime);
+					RegisterChange(ActionChanged,entityTime);
 				movementActionLeft = 1.f;
 
 				if (AttackIgnoresMotion())
 				{
 					if (attackActionLeft < 1.f)
-						RegisterChange(ActionChanged,motionTime);
+						RegisterChange(ActionChanged,entityTime);
 					attackActionLeft = 1.f;
 
 				}
@@ -394,7 +378,7 @@ namespace Objects
 				{
 					if (flushTasksOnUnlock)
 						return false;
-					motionTime += timeEpsilon;
+					entityTime += timeEpsilon;
 					flushTasksOnUnlock = true;
 					LogEvent(EventSignificance::Debug,this," ...set to clear on unlock");
 					return true;
@@ -402,11 +386,11 @@ namespace Objects
 				
 				if (myTasks.IsNotEmpty() || completeOnMove)
 				{
-					motionTime += timeEpsilon;
+					entityTime += timeEpsilon;
 					jobStarted = false;
 					if (!isReaction)
 						completeOnMove.reset();
-					RegisterChange(TasksChanged,motionTime);
+					RegisterChange(TasksChanged,entityTime);
 					//tasksChanged = true;
 					myTasks.Clear();
 					LogEvent(EventSignificance::Debug,this," ...cleared");
@@ -436,6 +420,13 @@ namespace Objects
 			Attempts to position the vehicle exactly in the specified cell. The vehicle may fall as a result if the area beneath is free
 			*/
 			virtual MobilePlacementResult	PlaceExactlyAt(const Grid::LCellIdI&, float timeCost, float minTimeOffset, bool signalEvent=true, bool isCreated=true, bool failIsFatal=false) = 0;
+		
+
+			/**
+			Handles destructive results of PlaceExactlyAt(), since PlaceExactlyAt() is not allowed to immediately destroy the local entity
+			*/
+			void				HandleNow(MobilePlacementResult);
+
 
 			bool				CompleteOnMove(const Grid::LCellIdI&referenceLocation);
 
@@ -544,6 +535,7 @@ namespace Objects
 		#ifndef NO_HIBERNATION
 			virtual const Hibernating*ToHibernating() const override {return this;}
 		#endif
+		virtual void			VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance = false) const override;
 		virtual float			GetScanningRange() const override;
 		virtual String			DescribeScanningRange() const override;
 		#ifndef CLIENT

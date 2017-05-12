@@ -6,7 +6,9 @@
 #include "../scriptCache.h"
 #include "faction.h"
 #include "../runtimeConfig.h"
+#include "../luaGameAPI.h"
 #include <io/file_system.h>
+#include "structure/laboratory.h"
 
 namespace Objects
 {
@@ -16,10 +18,6 @@ namespace Objects
 	/*static*/ ResearchState::GlobalState		ResearchState::globalState;
 
 
-	/*static*/ void ResearchState::LogLua(const String&msg)
-	{
-		LogEvent(EventClass::Preset::important,"Lua: "+msg);
-	}
 
 	/*static*/ PResearchTopic	ResearchState::CreateResearch(const PResearchTopic&parent, const String&name, const String&iconName, 
 												const ResearchTopic::FSetProgress&setProgress, 
@@ -88,6 +86,18 @@ namespace Objects
 
 	}
 
+	bool			ResearchTopic::CanResearch(const OwnerParameter&owner) const
+	{
+		if (IsGroup())
+			return false;
+		auto st = owner ? owner->researchState.researchState : Lua::Reference();
+		if (ResearchCompleted(st))
+			return false;
+		PResearchTopic p = dependency.lock();
+		return !p || p->ResearchCompleted(st) || (owner && owner->researchState.GetResearchQueue().Contains(p));
+	}
+
+
 
 
 
@@ -108,7 +118,7 @@ namespace Objects
 
 			if (ref.IsTable())
 			{
-				Lua::Table t = source.GetField(name);
+				Lua::Table t = ref;
 			
 				a.luaGetValue = t.GetField("Get");
 				if (a.luaGetValue.IsEmpty())
@@ -522,24 +532,24 @@ namespace Objects
 
 	/*static*/ void			ResearchState::LoadDefaultProgram()
 	{
-		PathString factoryDefault = "../lua/research.lua";
+		PathString factoryDefault = "../lua/research.v2.lua";
 		#if 0 && defined _DEBUG
 			PathString final = factoryDefault;
 		#else
 			FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("config/lua"));
-			PathString final = RuntimeConfig::ConfigFile("config/lua/research.lua");
+			PathString final = RuntimeConfig::ConfigFile("config/lua/research.v2.lua");
 			if (!FileSystem::IsFile(final))
 			{
-				if (FileSystem::CopyFile("../lua/research.lua",final,false))
-					LogEvent(EventClass::Preset::configuration,"Copied ../lua/research.lua to "+String(final));
-				else
-					FATAL__("Unable to copy ../lua/research.lua to "+String(final));
+				final = factoryDefault;
+				#if 0	//leave this disabled. do not copy automatically
+					if (FileSystem::CopyFile("../lua/research.lua",final,false))
+						LogEvent(EventClass::Preset::configuration,"Copied ../lua/research.lua to "+String(final));
+					else
+						FATAL__("Unable to copy ../lua/research.lua to "+String(final));
+				#endif /*0*/
 			}
 		#endif
 		globalState.factoryDefault = ScriptCache::Load(factoryDefault); 
-		//#ifdef _DEBUG
-		//	ActivateProgram(globalState.factoryDefault);
-		//#endif
 		ActivateProgram(ScriptCache::Load(final));
 	}
 
@@ -556,14 +566,6 @@ namespace Objects
 		LogEvent(EventClass::Preset::common,"Activating research script "+Bin2Str::ConvertPOD(script->identifier));
 
 
-		ForeachFaction([](const PFaction&f)
-		{
-			f->researchState.Export(f->researchState.serialData);
-			if (f->researchState.GetActiveTopic())
-				f->researchState.lastTopic = f->researchState.GetActiveTopic()->GetPath();
-			else
-				f->researchState.lastTopic.free();
-		});
 
 		
 
@@ -620,25 +622,27 @@ namespace Objects
 		if (!script)
 			throw Lua::Exception(CLOCATION, Except::globalString("Script is NULL"));
 		LogEvent(EventClass(EventSignificance::Common,EventFlavor::ServerPrivate),"Attempting to activate research program "+Bin2Str::ConvertPOD(script->identifier));
+
+
+		Buffer0<TSerialState,Swap> taskLists;
+		ForeachFaction([&taskLists](const PFaction&f)
+		{
+			auto&entry = taskLists.Append();
+			f->researchState.Export(entry.serialState);
+			entry.researchQueue = f->researchState.ExportResearchQueue();
+		});
+
+
+
+
 		globalState.rootResearch.Clear();
 		globalState.allTopics.Clear();
 
-		globalState.researchProgram = Lua::Program::Create();
+		globalState.researchProgram = Lua::Program::Create("Research");
 		ASSERT__(globalState.researchProgram);
 		{
-			Lua::Table api = globalState.researchProgram->CreateTable();
-
+			Lua::Table api = Lua::CreateGeneralAPI(globalState.researchProgram);
 			api.SetFunction("CreateResearch",CreateResearch);
-			api.SetFunction("Log",LogLua);
-
-			#ifdef LOWER_RESOLUTION_PLANET
-				api.SetField("LowerResolutionPlanet",true);
-			#else
-				api.SetField("LowerResolutionPlanet",false);
-			#endif
-			api.SetField("UnitScale",Grid::UnitScale);
-
-			api.SetGlobal("Game");
 		}
 
 
@@ -681,16 +685,15 @@ namespace Objects
 			InitVehicleBase(**base);
 
 
-		ForeachFaction([](const PFaction&f)
+		index_t at = 0;
+		ForeachFaction([&at,&taskLists](const PFaction&f)
 		{
+			const auto&entry = taskLists[at];
 			f->researchState.researchState = globalState.stateConstructor();
-			if (f->researchState.serialData.IsNotEmpty())
-				f->researchState.Import(f->researchState.serialData);
-
-			if (f->researchState.lastTopic.IsNotEmpty())
-			{
-				f->researchState.SetActiveTopic(FindTopic(f->researchState.lastTopic));
-			}
+			if (entry.serialState.IsNotEmpty())
+				f->researchState.Import(entry.serialState);
+			f->researchState.RestoreResearchQueue(entry.researchQueue);
+			at++;
 		});
 		globalState.script = script;
 
@@ -699,9 +702,7 @@ namespace Objects
 				Faction::nexus->researchState.LoadNexusResearchState();
 		#endif
 
-		#ifdef HAS_WINDOW
-			Laboratory::ConfigureResearchButtons();
-		#endif
+		globalState.onScriptChange();
 		//globalState.researchProgram.reset();
 	}
 
@@ -714,8 +715,6 @@ namespace Objects
 			{
 				if (t.maxProgress > 0)
 					t.setProgress(researchState,t.maxProgress);
-				elif (t.maxProgress < 0)
-					t.setProgress(researchState,10);
 			}
 		}
 		changed = true;
@@ -755,7 +754,7 @@ namespace Objects
 	}
 
 
-	/*static*/ PResearchTopic	ResearchState::FindTopic(const String&path)
+	/*static*/ PResearchTopic	ResearchState::FindTopic(const StringRef&path)
 	{
 		Array<StringRef>	components;
 		explode('/',path,components);
@@ -774,36 +773,136 @@ namespace Objects
 		return serialIndex < globalState.allTopics.Count() ? globalState.allTopics[serialIndex] : PResearchTopic();
 	}
 
-	bool	ResearchState::SetActiveTopic(const PResearchTopic&active)
+	bool	ResearchState::ResearchQueueIsFull() const
 	{
-		if (!active || !active->CanResearch(researchState))
+		return researchQueue.Count() >= MaxResearchQueueLength;
+	}
+
+	bool	ResearchState::AppendResearchTask(const PResearchTopic&active)
+	{
+		if (!active || ResearchQueueIsFull() || !active->CanResearch(researchState,researchQueue.ToRef()) || researchQueue.Contains(active))
 			return false;
-		activeResearch = active;
+		researchQueue << active;
+		return true;
+	}
+
+	bool					ResearchState::DropResearchTask(const PResearchTopic&active)
+	{
+		if (!active)
+			return false;
+		index_t at = researchQueue.GetIndexOf(active);
+		if (at == InvalidIndex)
+			return false;
+		researchQueue.Erase(at);
+		for (index_t i = at; i < researchQueue.Count();)
+		{
+			if (!researchQueue[i]->CanResearch(researchState,researchQueue.SubRef(0,i)))
+			{
+				LogEvent(EventClass::Preset::operationAborted,owner->shared_from_this(),"Unable to continue research "+researchQueue[i]->GetFullName()+". Preconditions lost. Aborting operation");
+				researchQueue.Erase(i);
+			}
+			else
+				i++;
+		}
 		return true;
 	}
 
 
+	void		ResearchState::RestoreResearchQueue(const String&source)
+	{
+		researchQueue.Clear();
+		Array<StringRef> paths;
+		explode(';',source,paths);
+		foreach (paths,p)
+			AppendResearchTask(FindTopic(*p));
+		globalState.onQueueChange(owner);
+	}
+
+	String		ResearchState::ExportResearchQueue()
+	{
+		if (researchQueue.IsEmpty())
+			return "";
+		StringBuffer buffer;
+		foreach (researchQueue,q)
+		{
+			if (buffer.IsNotEmpty())
+				buffer << ';';
+			buffer << (*q)->GetPath();
+		}
+		return buffer.ToString();
+	}
+
+	void		ResearchState::ExportResearchQueue(Array<UINT32>&outRS)
+	{
+		outRS.SetSize(researchQueue.Count());
+		for (index_t i = 0; i < researchQueue.Count(); i++)
+			outRS[i] = ((UINT32)(researchQueue[i]->serialIndex));
+	}
+	void					ResearchState::RestoreResearchQueue(const Array<UINT32>&q)
+	{
+		researchQueue.Clear();
+		foreach (q,e)
+			AppendResearchTask(GetTopic(*e));
+		globalState.onQueueChange(owner);
+	}
+
+
+
+
+	void					ResearchState::AdvanceNexusResearch()
+	{
+		DBG_ASSERT__(factionIsNexus);
+
+		foreach (globalState.allTopics,_t)
+		{
+			auto&t = **_t;
+			if (t.setProgress.IsSet())
+			{
+				if (t.maxProgress < 0)
+					t.setProgress(researchState,t.getProgress(researchState)+1);
+			}
+		}
+		changed = true;
+		BaseAttributeCache::versionCounter++;
+	}
+
 	void					ResearchState::FinalizeRound(const PFaction&f)
 	{
-		if (activeResearch && totalContribution)
+		while (researchQueue.IsNotEmpty() && totalContribution)
 		{
 			int left;
-			int current = activeResearch->getProgress(researchState);
-			if (activeResearch->maxProgress >= 0)
+			const auto&res = researchQueue.First();
+			int current = res->getProgress(researchState);
+			if (res->maxProgress >= 0)
 			{
-				left = activeResearch->maxProgress - current;
-				if (left <= 0)
-					return;
-				totalContribution = vmin(totalContribution,left);
+				left = res->maxProgress - current;
+				if (left <= 0)	//already done...?
+				{
+					LogEvent(EventClass::Preset::important,owner->shared_from_this(),"Research "+res->name+" completed");
+					res->setProgress(researchState,res->maxProgress);
+					researchQueue.Erase(0);
+					queueChanged = true;
+					globalState.onQueueChange(owner);
+					continue;
+				}
+				changed = true;
+				if (totalContribution < left)	//no chance to get done
+				{
+					res->setProgress(researchState,current + totalContribution);
+					break;
+				}
+				totalContribution -= left;
+				res->setProgress(researchState,res->maxProgress);
+				LogEvent(EventClass::Preset::important,owner->shared_from_this(),"Research "+res->name+" completed");
+				researchQueue.Erase(0);
+				queueChanged = true;
+				globalState.onQueueChange(owner);
+				continue;
 			}
 			int next = current + totalContribution;
-			activeResearch->setProgress(researchState,next);
-			ASSERT_EQUAL__(next,activeResearch->getProgress(researchState));
-			changed = true;
-			if (activeResearch->maxProgress >= 0 && next >= activeResearch->maxProgress)
-			{
-				activeResearch.reset();
-			}
+			res->setProgress(researchState,next);
+			DBG_ASSERT_EQUAL__(next,res->getProgress(researchState));
+			break;
 		}
 		totalContribution = 0;
 		BaseAttributeCache::versionCounter++;
@@ -811,7 +910,6 @@ namespace Objects
 
 	void					ResearchState::Import(const ArrayRef<const BYTE>&serializedState)
 	{
-		serialData = serializedState;
 		if (!globalState.researchProgram)
 		{
 			return;
@@ -819,15 +917,9 @@ namespace Objects
 		try
 		{
 			#ifdef CLIENT
-				if (owner == Faction::mine.get())
-					ForeachWorldEntity([this](const PWorldEntity&e)
-					{
-						if (e->owner.get() == owner)
-						{
-							float t = 0;
-							e->UnregisterSensory(t,false);
-						}
-					},false);
+				World::actual.InvalidateSensory();
+			#else
+				owner->knownWorld.InvalidateSensory();
 			#endif
 
 			Lua::Reference deserialized = globalState.researchProgram->DeserializeToReference(ByteReadStream(serializedState));
@@ -838,19 +930,6 @@ namespace Objects
 		{
 			LogEvent(EventClass::Preset::error,e.what());
 		}
-
-		#ifdef CLIENT
-			if (owner == Faction::mine.get())
-				ForeachWorldEntity([this](const PWorldEntity&e)
-				{
-					if (e->owner.get() == owner)
-					{
-						float t = 0;
-						e->RegisterSensory(t,false);
-					}
-				},false);
-		#endif
-
 	}
 	
 	

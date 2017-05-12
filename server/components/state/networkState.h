@@ -97,8 +97,9 @@ namespace Network
 	/**
 	Restarts a previously closed session (via CloseSession() ). A new world should be generated or restored from file
 	prior to calling this function
+	@param logStateAfterRestart If set true, calls LogServerState() after the server has come back online
 	*/
-	void		RestartSession();
+	void		RestartSession(bool logStateAfterRestart);
 
 	/**
 	Signals that the specified peer has issued an invalid operation (possibly a hacking attempt)
@@ -122,9 +123,14 @@ namespace Network
 	bool		AnyHumanPlayersActive();
 
 	/**
-	Configures the local server and starts it
+	Configures the local server and starts it. Also starts information provider on the given base port
 	*/
-	void		Start();
+	void		Start(UINT16 basePort);
+
+	/**
+	Stops the local server and information provider
+	*/
+	void		Stop();
 
 	/**
 	Updates and logs the new user level (if it changed)
@@ -137,6 +143,11 @@ namespace Network
 	Spectator clients are notified of changes if so.
 	*/
 	void		BuildConfiguredWorld();
+
+	/**
+	Prints the current server configuration and state to the console/log file.
+	*/
+	void		LogServerState();
 
 
 	bool CanControl(const Client&c, const Objects::WorldEntity&e);
@@ -180,6 +191,14 @@ namespace Network
 		}
 
 	
+
+	namespace InformationProvider
+	{
+		bool	IsOnline();
+		void	Start(UINT16 basePort);
+		void	Stop();
+	}
+
 
 }
 

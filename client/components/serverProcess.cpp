@@ -5,6 +5,10 @@
 #include <general/timer.h>
 #include <general/monitoredProcess.h>
 #include <logEvent.h>
+#include "visual/dialog.h"
+
+#include "clientRuntimeConfig.h"
+#include "network.h"
 
 namespace ServerProcess
 {
@@ -13,7 +17,7 @@ namespace ServerProcess
 		//CryptographicID	accessToken;
 
 		MonitoredProcess	process;
-		bool				remoteControl = false, configurationMode=false;
+		bool				remoteControl = false, configurationMode=false,tutorialMode=false;
 
 
 		PathString	GetWorkingDirectory()
@@ -44,7 +48,6 @@ namespace ServerProcess
 
 		void	Start()
 		{
-			char parameterBuffer[32768];
 			PathString	path = GetExecutablePath(),
 						workingDirectory = GetWorkingDirectory();
 
@@ -53,6 +56,8 @@ namespace ServerProcess
 				parameters += " -r";
 			if (configurationMode)
 				parameters += " -c";
+			if (tutorialMode)
+				parameters += " -t";
 
 			bool showWindow = false;
 			#ifdef _DEBUG
@@ -61,14 +66,40 @@ namespace ServerProcess
 			if (TryResume())
 				return;
 			LogEvent(EventSignificance::Debug,"Starting server process (workingDirectory='"+String(workingDirectory)+"', path='"+String(path)+"', parameters='"+String(parameters)+"', showWindow="+String(showWindow)+")");
-			ASSERT3__(process.Start(workingDirectory,path,parameters,showWindow), workingDirectory,path,parameterBuffer);
+			try
+			{
+				process.Start(workingDirectory,path,parameters,showWindow);
+			}
+			catch (const std::exception&ex)
+			{
+				LogEvent(EventClass::Preset::error, ex.what());
+				if (IsDebuggerPresent())
+					DebugBreak();
+			}
 		}
 
-			
+		
+		void	StartTutorial()
+		{
+			RuntimeConfig::serverAddress = Network::ServerAddress("localhost");
+			#ifdef HAS_WINDOW
+				Dialog::PermanentMessage("Hold on. Getting tutorial server ready.",[]()->Dialog::CheckResult
+				{
+					if (Network::haveFaction)
+					{
+						//Dialog::ShowMessage("Welcome to the Hexaverse Tutorial");
+						return Dialog::CheckResult::Abort;
+					}
+					return Dialog::CheckResult::OkayContinue;
+				});
+			#endif
+			ServerProcess::Begin(true,false,true);
+		}
+
 	}
 
 
-	void Begin(bool remoteControl/*=true*/, bool configurationMode/*=true*/)
+	void Begin(bool remoteControl/*=true*/, bool configurationMode/*=true*/, bool tutorialMode/*=false*/)
 	{
 		if (Detail::process.IsRunning())
 		{
@@ -77,6 +108,7 @@ namespace ServerProcess
 		}
 		Detail::remoteControl = remoteControl;
 		Detail::configurationMode = configurationMode;
+		Detail::tutorialMode = tutorialMode;
 		Detail::Start();
 	}
 
@@ -106,6 +138,30 @@ namespace ServerProcess
 	//}
 
 
+
+	void StartTutorialServer()
+	{
+		#ifdef HAS_WINDOW
+		if (ServerProcess::IsRunning())
+		{
+			Dialog::Confirm("In order to start a tutorial server, the local server must be shut down. Continue?",
+			[]()
+			{
+				ServerProcess::End();
+				Detail::StartTutorial();
+			},
+			[]()->Dialog::CheckResult
+			{
+				if (!ServerProcess::IsRunning())
+					return Dialog::CheckResult::Confirm;
+				return Dialog::CheckResult::OkayContinue;
+			});
+		}
+		else
+		#endif
+			Detail::StartTutorial();
+
+	}
 }
 
 

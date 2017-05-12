@@ -127,12 +127,27 @@ namespace Test
 	class HighGridFamilies : public Test
 	{
 	public:
-		/**/		HighGridFamilies() : Test("HighGridFamilies")
+		/**/			HighGridFamilies() : Test("HighGridFamilies")
 		{}
 		virtual void	Run(Random&random) override;
 
 	};
-	
+
+	class SharedContainer : public Test
+	{
+	public:
+		/**/			SharedContainer() : Test("SharedContainer")
+		{}
+		virtual void	Run(Random&random) override;
+	};
+
+	class TerrainUpdates : public Test
+	{
+	public:
+		/**/			TerrainUpdates() : Test("TerrainUpdates")
+		{}
+		virtual void	Run(Random&random) override;
+	};
 }
 
 

@@ -1,8 +1,47 @@
-v0.6.3
+v0.6.5
+	> Idle vehicles will no longer constantly attack indestructible units.
+	> Removed the 'Construct Selected' button on vehicle plants. Simply selecting a desired turret will enqueue the chosen vehicle composition.
+	> Surveyor turret is now much heavier, limiting the speed of the standard surveyor vehicle.
+	> Laboratories now maintain a short queue of research tasks to execute.
+
+v0.6.4	[May 5 2017]
+	+ Base planet types are no longer copied to the configuration directory (except Template.ini), but may be overridden manually.
+	+ Planetary resource distributions can now be defined by Lua programs.
+	+ Redesigned sensory model and world representation. Standard sensory is now obstructed by terrain. Surveyors gained deep ground-scanning capabilities.
+	+ Added interactive tutorial mode.
+	+ Added game.ini option to change shadow quality.
+	+ Added game.ini option to always enqueue commands (disables hold-shift-to-queue).
+	> Neighboring laboratories now increase each others' research output.
+	> The escape key now also unhides HUD elements (text etc.).
+	> Improved research script. Renamed it to research.v2.lua. Script is no longer copied automatically to user directory.
+	> Unrelated attacks are now visually executed in parallel.
+	> Radar turret is now initially unlocked.
+	> Re-activated EMP turret type.
+	* Target mode is no longer canceled when dragging the camera.
+	* Fixed unit destruction when falling farther than safely possible.
+	* Fixed rounding error in research script.
+	* Fixed certain events still being shown when controls are supposed to be hidden.
+	* Removed 'Progress' string when no game goal is configured.
+	* Fixed destruction events on indestructible units.
+
+v0.6.3	[Feb 26 2017]
+	> All vehicles now fire automatically if they are idle or move independently of attacks.
 	> When target mode is active with any unit selected, pressing the right mouse button will abort the mode.
 	> Vehicle plants no longer require energy to operate.
+	> Reduced size of Nexus bases.
+	> Configuration mode now automatically uploads local configuration to server. Removed explicit up and download commands.
+	> Added number icons next to changeable values in interactive configuration mode.
+	> Decreased water transparency. Improved contrast to oceanic fog-of-war.
+	> Faction colors are now generated and distributed by the server. Clients render them even in non-spectator mode.
+	> Nexus faction research can now be configured to progress over time. Removed the initial research bonus of that faction.
+	> Improved initial faction placement.
 	* Fixed rare fatal client exception when failing to layout menu components.
-
+	* Fixed rare fatal server exception when Nexus Port changes ownership.
+	* Fixed towers auto-firing only once per round even if they could fire multiple times.
+	* Fixed some hex-commands not showing their price (e.g. 'Obliterate').
+	* Nexus bases located in residual EMP fields now instantaneously suffer EMP damage.
+	* Added missing research state updates to spectators.
+	
 v0.6.2	[Jan 31 2017]
 	+ Added new dialog to remotely load server-known planet presets.
 	> Replaced 'rules' icon with cogwheel.

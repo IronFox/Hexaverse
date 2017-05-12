@@ -1,4 +1,5 @@
 #include <global_root.h>
+#include <global_string.h>
 #include <math/basic.h>
 #include "reflection.h"
 #include "state.h"
@@ -14,10 +15,28 @@ namespace Reflection
 
 	static CLI::PFolder factionFolder;
 
+
+	static const constexpr UINT32 DefaultFactionsPerEMPZone = 
+			#ifdef LOWER_RESOLUTION_PLANET
+					1
+			#else
+					3
+			#endif
+			;
+
+	enum class FeedMode
+	{
+		Original,
+		ConstructIfMissing,
+		IgnoreIfMissing
+	};
+
+
 	namespace Variable
 	{
 		PBase	planetType;	
-	
+		typedef ::String	String;
+
 		void	Walk(const CLI::PFolder&f, const Variable::FCallback&callback)
 		{
 			for (const auto&var : f->variables)
@@ -57,16 +76,50 @@ namespace Reflection
 		}
 
 
+		/**
+		Container for regular string variables.
 
+		*/
 		class StringVar : public Base
 		{
-				typedef Base	Super;
+			typedef Base	Super;
 		public:
 			String	value,
 					defaultValue;
 
 
 			/**/		StringVar(const String&name, Persistence persistence, const String&value, unsigned protection=CLI::EraseProtection) : Super(name,"String",persistence, 1,protection),value(value),defaultValue(value)
+			{}
+			virtual String	ToString()		const	override	{return value;}
+			virtual	bool	Set(const String&value)	override
+			{
+				if (this->value != value)
+				{
+					this->value = value;
+					OnChanged();
+				}
+				return true;
+			}
+			virtual String	GetDefault() const override
+			{
+				return defaultValue;
+			}
+
+			virtual void		SetCurrentToDefault() override
+			{
+				defaultValue = value;
+			}
+		};
+
+		class StringReferenceVar : public Base
+		{
+			typedef Base	Super;
+		public:
+			String&	value;
+			String	defaultValue;
+
+
+			/**/		StringReferenceVar(const String&name, Persistence persistence, String&value, unsigned protection=CLI::EraseProtection) : Super(name,"String",persistence, 1,protection),value(value),defaultValue(value)
 			{}
 			virtual String	ToString()		const	override	{return value;}
 			virtual	bool	Set(const String&value)	override
@@ -282,56 +335,7 @@ namespace Reflection
 				defaultValue = ToString();
 			}
 		};
-		
-		class FactionsPerEMPZone : public Base
-		{
-			typedef Base	Super;
-		public:
-			#ifdef LOWER_RESOLUTION_PLANET
-				UINT32		defaultValue = 1;
-			#else
-				UINT32		defaultValue = 3;
-			#endif
 
-			/**/			FactionsPerEMPZone(const String&name, unsigned protection=CLI::EraseProtection):Super(name, "UInt32",Persistence::RestoreFromSavegame,1,protection)	{}
-			virtual String	ToString()		const	override	{return String(Game::Config::factionsPerZone);}
-			virtual	bool	Set(const String&value)	override
-			{
-				UINT32 old = Game::Config::factionsPerZone;
-				if (!convert(value.c_str(),value.length(),Game::Config::factionsPerZone))
-					return false;
-				if (Game::Config::factionsPerZone < 1 || Game::Config::factionsPerZone > 5)
-				{
-					Game::Config::factionsPerZone = old;
-					return false;
-				}
-				if (old < Game::Config::factionsPerZone && Objects::Faction::all.Count() > 0)
-				{
-					LogEvent(EventClass::Preset::commandRejected,"Unable to increase factionsPerEMPZone while factions exist.");
-					Game::Config::factionsPerZone = old;
-					return false;
-				}
-				if (old != Game::Config::factionsPerZone)
-				{
-					OnChanged();
-					World::UpdateEMPZones(0);
-				}
-				return true;
-			}
-			virtual String		GetSupportedValues() const override 
-			{
-				return "[1,5]"
-						;
-			}
-			virtual String	GetDefault() const override
-			{
-				return defaultValue;
-			}
-			virtual void		SetCurrentToDefault() override
-			{
-				defaultValue = Game::Config::factionsPerZone;
-			}
-		};
 
 		class EMPZones : public Base
 		{
@@ -560,6 +564,57 @@ namespace Reflection
 
 		};
 
+		
+		
+
+
+
+		class FactionsPerEMPZone : public Base
+		{
+			typedef Base	Super;
+		public:
+			UINT32		defaultValue = DefaultFactionsPerEMPZone;
+
+			/**/			FactionsPerEMPZone(const String&name, unsigned protection=CLI::EraseProtection):Super(name, "UInt32",Persistence::RestoreFromSavegame,1,protection)	{}
+			virtual String	ToString()		const	override	{return String(Game::Config::factionsPerZone);}
+			virtual	bool	Set(const String&value)	override
+			{
+				UINT32 old = Game::Config::factionsPerZone;
+				if (!convert(value.c_str(),value.length(),Game::Config::factionsPerZone))
+					return false;
+				if (Game::Config::factionsPerZone < 1 || Game::Config::factionsPerZone > 5)
+				{
+					Game::Config::factionsPerZone = old;
+					return false;
+				}
+				if (old < Game::Config::factionsPerZone && Objects::Faction::all.Count() > 0)
+				{
+					LogEvent(EventClass::Preset::commandRejected,"Unable to increase factionsPerEMPZone while factions exist.");
+					Game::Config::factionsPerZone = old;
+					return false;
+				}
+				if (old != Game::Config::factionsPerZone)
+				{
+					OnChanged();
+					World::UpdateEMPZones(0);
+				}
+				return true;
+			}
+			virtual String		GetSupportedValues() const override 
+			{
+				return "[1,5]"
+						;
+			}
+			virtual String	GetDefault() const override
+			{
+				return defaultValue;
+			}
+			virtual void		SetCurrentToDefault() override
+			{
+				defaultValue = Game::Config::factionsPerZone;
+			}
+		};
+
 
 		class FactionAttachment : public CLI::Folder::Attachable
 		{
@@ -581,8 +636,9 @@ namespace Reflection
 		public:
 			const CLI::PVariable	sourceVariable;
 			const String	base;
+			const FeedMode	mode;
 
-			/**/			FileReferenceAttachment(const String&base, const CLI::PVariable&source):sourceVariable(source),base(base)	{}
+			/**/			FileReferenceAttachment(const String&base, const CLI::PVariable&source, FeedMode mode):sourceVariable(source),base(base),mode(mode)	{}
 		};
 
 
@@ -594,6 +650,12 @@ namespace Reflection
 			return rs;
 		}
 
+		PBase	SetStringReference(const String&name, String&value, Persistence p)
+		{
+			PBase rs (new StringReferenceVar(name,p, value, CLI::EraseProtection));
+			state.SetVariable(rs);
+			return rs;
+		}
 
 		template <typename T>
 		PBase	Set(const String&name, T&reference, T min, T max, Persistence p)
@@ -930,11 +992,13 @@ namespace Reflection
 		state.EnterNewFolder("World")->attachment = persistenceAttachment;
 			VAR(simulateLiquids,World::Config,false,true,Variable::Persistence::RestoreFromSavegame);
 			ENUMVAR(worldDiscovery,World::Config,Variable::Persistence::PlanetConfig);
+			Variable::SetStringReference("resourceDistribution",Grid::currentCustomResourceDistribution,Variable::Persistence::PlanetConfig);
 
 
 			state.EnterNewFolder("Planet")->attachment = persistenceAttachment;
 				Variable::planetType = Variable::SetString("Type","LushGreen",Variable::Persistence::PlanetConfig);
-				state.EnterNewFolder("Config")->attachment.reset(new Variable::FileReferenceAttachment("config/planets",Variable::planetType));
+
+				state.EnterNewFolder("Config")->attachment.reset(new Variable::FileReferenceAttachment("config/myPlanets",Variable::planetType,FeedMode::IgnoreIfMissing));
 				{
 					/*
 					Important:
@@ -985,14 +1049,14 @@ namespace Reflection
 			state.SetVariable(CLI::PVariable(new Variable::SupportedFactions("supportedFactions")));
 
 			VAR(closedGame,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame);
-			VAR(roundTimer,Game::Config,-1,INT_MAX,Variable::Persistence::ConfigOverridesSavegame);
-			VAR(bombsExplodeWhenDestroyed,RuntimeConfig,false,true,Variable::Persistence::ConfigOverridesSavegame);
+			VAR(roundTimer,Game::Config,-1,INT_MAX,Variable::Persistence::RestoreFromSavegame);
+			VAR(bombsExplodeWhenDestroyed,RuntimeConfig,false,true,Variable::Persistence::RestoreFromSavegame);
 			VAR(startBases,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame);
 			VAR(basesRequired,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame);
-			VAR(exposeActionLeftToHostileFactions,Game::Config,false,true,Variable::Persistence::ConfigOverridesSavegame);
+			VAR(exposeActionLeftToHostileFactions,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame);
 			VAR(newVehiclesHaveFullAmmo,Objects,false,true,Variable::Persistence::RestoreFromSavegame);
 			VAR(uplinkBandwidth,Game::Config,1U,1000000U,Variable::Persistence::RestoreFromSavegame);
-			ENUMVAR(doomsdayWeapons,RuntimeConfig,Variable::Persistence::ConfigOverridesSavegame);
+			ENUMVAR(doomsdayWeapons,RuntimeConfig,Variable::Persistence::RestoreFromSavegame);
 			
 			state.SetVariable(CLI::PVariable(new Variable::FactionsPerEMPZone("factionsPerEMPZone")));
 			state.SetVariable(CLI::PVariable(new Variable::EMPZones("empZones")));
@@ -1028,7 +1092,8 @@ namespace Reflection
 				#endif
 				state.SetVariable(CLI::PVariable(new Variable::NexusAIEnabled("enableAI")));
 				//VAR(enableAI,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
-				VAR(threatEstimationFactor,Game::Config::Nexus,0.001f,100.f,Variable::Persistence::ConfigOverridesSavegame);
+				VAR(threatEstimationFactor,Game::Config::Nexus,0.001f,100.f,Variable::Persistence::RestoreFromSavegame);
+				VAR(roundsPerResearchPoint,Game::Config::Nexus,0U,10000U,Variable::Persistence::RestoreFromSavegame);
 				state.SetVariable(CLI::PVariable(new Variable::NexusVehicleTurrets("vehicleTurrets")));
 			state.ExitFolder();
 		state.ExitFolder();
@@ -1053,10 +1118,11 @@ namespace Reflection
 
 	}
 
-	static void Feed(const CLI::PFolder&folder, const PathString&subConfigName, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, bool readOriginal=false);
-	static bool InnerFeed(const CLI::PFolder&folder,const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction);
 
-	static bool FeedSubDirectory(const CLI::PFolder&dir, const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction)
+	static bool Feed(const CLI::PFolder&folder, const PathString&subConfigName, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode mode);
+	static bool InnerFeed(const CLI::PFolder&folder,const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode);
+
+	static bool FeedSubDirectory(const CLI::PFolder&dir, const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction,FeedMode mode)
 	{
 		bool allGood = true;
 		std::shared_ptr<Variable::PersistenceAttachment> a = To<Variable::PersistenceAttachment>::DynamicCast(dir->attachment);
@@ -1073,7 +1139,11 @@ namespace Reflection
 				Variable::planetType->Set("LushGreen");
 
 			//PathString str = RuntimeConfig::ConfigFile( PathString(ref->base + FOLDER_SLASH + ref->sourceVariable->ToString() + ".ini"));
-			Feed(dir,PathString(ref->base + FOLDER_SLASH + ref->sourceVariable->ToString() + ".ini"),testMode,filterFunction);
+			if (!Feed(dir,PathString(ref->base + FOLDER_SLASH + ref->sourceVariable->ToString() + ".ini"),testMode,filterFunction,ref->mode))
+			{
+				LogEvent(EventSignificance::NonFatalError,"Warning: Failed to load referenced input configuration '"+ref->sourceVariable->ToString()+".ini'");
+				return false;
+			}
 		}
 		else
 		{
@@ -1082,7 +1152,7 @@ namespace Reflection
 			{
 				allGood = false;
 			}
-			bool innerGood = InnerFeed(dir,sub,testMode,filterFunction);
+			bool innerGood = InnerFeed(dir,sub,testMode,filterFunction,mode);
 			if (!innerGood)
 				allGood = false;
 
@@ -1090,7 +1160,7 @@ namespace Reflection
 		return allGood;
 	}
 
-	static bool InnerFeed(const CLI::PFolder&folder,const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction)
+	static bool InnerFeed(const CLI::PFolder&folder,const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction,FeedMode mode)
 	{
 		bool allGood = true;
 		for (const auto&var : folder->variables)
@@ -1130,7 +1200,7 @@ namespace Reflection
 		}
 		for (const auto&dir : folder->folders)
 		{
-			if (!FeedSubDirectory(dir,ctx,testMode,filterFunction))
+			if (!FeedSubDirectory(dir,ctx,testMode,filterFunction,mode))
 				allGood = false;
 		}
 		return allGood;
@@ -1163,9 +1233,9 @@ namespace Reflection
 				case Variable::Persistence::ConfigOnly:
 					outBuffer << "Loaded from configuration each time the server is restarted. Not written to savegames."<<nl;
 				break;
-				case Variable::Persistence::ConfigOverridesSavegame:
-					outBuffer << "Written to savegames and applied during loading, but overridden by settings found in configuration files afterwards."<<nl;
-				break;
+				//case Variable::Persistence::ConfigOverridesSavegame:
+				//	outBuffer << "Written to savegames and applied during loading, but overridden by settings found in configuration files afterwards."<<nl;
+				//break;
 				case Variable::Persistence::GameInvariant:
 				case Variable::Persistence::PlanetConfig :	//for now, write the same thing into the config
 					outBuffer << "Written to savegames and restored from there, but cannot be altered once a game has started."<<nl;
@@ -1232,30 +1302,36 @@ namespace Reflection
 		}
 	}
 
-	static void Feed(const CLI::PFolder&folder, const PathString&subConfigName, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, bool readOriginal/*=false*/)
+
+	static bool Feed(const CLI::PFolder&folder, const PathString&subConfigName, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode mode)
 	{
-		if (!readOriginal)
-			Feed(folder,subConfigName,testMode,filterFunction,true);	//read original first
+		bool needThis = true;
+		if (mode != FeedMode::Original)
+			needThis = !Feed(folder,subConfigName,testMode,filterFunction,FeedMode::Original);	//read original first
 		Configuration	config;
 		Config::Context*	ctx = nullptr;
 		
-		const PathString configName = readOriginal ? "./"+subConfigName :  RuntimeConfig::ConfigFile(PathString(subConfigName));
+		const PathString configName = mode == FeedMode::Original ? "./"+subConfigName :  RuntimeConfig::ConfigFile(PathString(subConfigName));
 
-		bool rewrite = true;
+		bool rewrite = false;
 		if (FileSystem::IsFile(configName))
 		{
 			if (!config.LoadFromFile(configName))
 			{
+				rewrite = true;
 				LogEvent(EventClass::Preset::configurationError,"Unable to parse "+String(configName)+":\n"+config.Report());
 			}
 			else
 			{
 				ctx = &config;
-				rewrite = false;
 			}
 		}
 		else
 		{
+			if (mode == FeedMode::ConstructIfMissing)
+				rewrite = true;
+			//already read original at this point. so either the original is good, and the override is not, or both are bad
+#if 0
 			if (FileSystem::IsFile(subConfigName))
 			{
 				LogEvent(EventClass::Preset::configurationPrint,"Restoring missing configuration file '"+String(subConfigName)+"' from base data");
@@ -1263,40 +1339,40 @@ namespace Reflection
 				{
 					if (!config.LoadFromFile(configName))
 					{
+						rewrite = true;
 						LogEvent(EventClass::Preset::configurationError,"Unable to parse "+String(configName)+":\n"+config.Report());
 					}
 					else
 					{
 						ctx = &config;
-						rewrite = false;
 					}
 				}
 			}	
+#endif /*0*/
 		}
 
 		if (!ctx)
 			LogEvent(EventClass::Preset::configuration,"Default configuration loaded");
-		bool allGood = InnerFeed(folder,ctx,testMode,filterFunction);
-		if (!readOriginal && (!allGood || rewrite))
+		bool allGood = (ctx || needThis) && InnerFeed(folder,ctx,testMode,filterFunction,mode);	//will load defaults if executed with ctx=nullptr
+		if (mode != FeedMode::Original && ((ctx && !allGood) || rewrite))
 		{
 			//Feed(folder,subConfigName,testMode,filterFunction,true);
 			StringFile outFile;
 			if (!outFile.Create(configName))
 			{
 				LogEvent(EventClass::Preset::configurationError,"Unable to overwrite '"+String(configName)+"'");
+				allGood = false;
 			}
 			else
 			{
 				LogEvent(EventClass::Preset::configurationPrint,"Writing '"+String(configName)+"'...");
 				DefineConfig(outFile,folder, 0);
 				outFile.Close();
+				allGood = true;
 			}
 		}
-		else
-			if (readOriginal && !allGood && !rewrite)
-			{
-				FATAL__("There were errors while trying to parse original configuration file "+String(configName)+". Fix the errors and restart the application.\nCheck your server logs (My Documents/My Games/Hexaverse/server/logs) for details. Redownloading the application should also fix the issue.")
-			}
+
+		return (ctx && allGood) || !needThis;
 	}
 
 
@@ -1311,8 +1387,8 @@ namespace Reflection
 
 		Feed(state.GetRoot(),localServerINI, false, [](const Variable::PBase&base)->bool
 		{
-			return base->persistence == Variable::Persistence::ConfigOverridesSavegame;
-		});
+			return false;//base->persistence == Variable::Persistence::ConfigOverridesSavegame;
+		},FeedMode::ConstructIfMissing);
 
 		Grid::currentPlanetConfig.GenerateAtmosphereColor();
 
@@ -1350,7 +1426,8 @@ namespace Reflection
 		ASSERT__(f);
 		if (f)
 		{
-			FeedSubDirectory(f, nullptr, false, std::function<bool(const Variable::PBase&)>());
+			if (!FeedSubDirectory(f, nullptr, false, std::function<bool(const Variable::PBase&)>(),FeedMode::IgnoreIfMissing))
+				LogEvent(EventSignificance::NonFatalError,"Warning: Failed to reload planet. Current configuration remains in effect");
 		}
 	}
 
@@ -1359,18 +1436,18 @@ namespace Reflection
 	{
 		FileSystem::Folder	root;
 		ASSERT__(root.IsValidLocation());
-		FileSystem::Folder planetPrototypes = root.FindFolder("config/planets");
+		FileSystem::Folder planetPrototypes = root.FindFolder("config/myPlanets");
 		
 
 		if (planetPrototypes.IsValidLocation())
 		{
-			FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("config/planets"));
+			FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("config/myPlanets"));
 			planetPrototypes.Rewind();
 			FileSystem::File file;
 			while (planetPrototypes.NextFile(".ini",file))
 			{
-				PathString dest = RuntimeConfig::ConfigFile("config/planets/"+file.GetName());
-				if (!FileSystem::IsFile(dest))
+				PathString dest = RuntimeConfig::ConfigFile("config/myPlanets/"+file.GetName());
+				if (file.GetName() == "Template.ini" && !FileSystem::IsFile(dest))
 				{
 					if (!FileSystem::Copy(file.GetLocation(),dest,true))
 					{
@@ -1392,7 +1469,7 @@ namespace Reflection
 			const char*localServerINI = "config/server.ini";
 		#endif
 
-		Feed(state.GetRoot(),localServerINI, testMode,std::function<bool(const Variable::PBase&)>());
+		Feed(state.GetRoot(),localServerINI, testMode,std::function<bool(const Variable::PBase&)>(),FeedMode::ConstructIfMissing);
 
 		Grid::currentPlanetConfig.GenerateAtmosphereColor();
 	}

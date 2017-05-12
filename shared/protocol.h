@@ -7,7 +7,8 @@
 #include <iphlpapi.h>
 #include <net/tcp.h>
 #include <net/containers.h>
-#include "grid.h"
+#include "grid/stack.h"
+#include "grid/planet.h"
 #include "objects.h"
 #include "stringTable.h"
 #include "runtimeConfig.h"
@@ -366,6 +367,8 @@ namespace Protocol
 			T0		NAME0;\
 			T1		NAME1;\
 			T2		NAME2;\
+			NAME()	{}\
+			NAME(const T0&a, const T1&b, const T2&c):NAME0(a),NAME1(b),NAME2(c){}\
 			virtual	serial_size_t				GetSerialSize(bool exportSize) const	override\
 			{\
 				if (NAME1.HasFixedSize() && NAME2.HasFixedSize())\
@@ -1850,12 +1853,19 @@ namespace Protocol
 		, NET(RuntimeConfig::RoundNumber), newRoundNumber
 	)
 
-	NETSTRUCT2(IdentifyUser
+	NETSTRUCT3(IdentifyFaction
 		, NET(TUniqueID), id
 		, Package::NetString<32>, name
+		, NET(TVec3<>), color
 	)
 
-	typedef NET(UINT32)	SelectResearch;	//can't use index_t
+
+	NETSTRUCT2(QueueResearch
+		, NET(UINT32),	research
+		, NET(BOOL),	drop
+	);
+
+	typedef NETA(UINT32)	ResearchQueue;
 
 	typedef std::pair<UINT16,UINT16>	TUnitLimit;
 
@@ -1958,14 +1968,15 @@ namespace Protocol
 			DestroyMarker,		//c2s/s2c: TUniqueID
 			TouchMarker,		//c2s: TouchedMarker
 
-			IdentifyUser,		// [c2s: TUniqueID -> ] s2c: IdentifyUser
+			IdentifyFaction,	// [c2s: TUniqueID -> ] s2c: IdentifyFaction
 			ChangeMyName,		// c2s: ClientName
 			FactionOnline,		// s2c: TUniqueID
 			FactionOffline,		// s2c: TUniqueID
 			FactionRequestedNewRound,	// s2c: TUniqueID
 			FactionContinuedRound,		// s2c: TUniqueID
 			ResearchState,		// s2c : ResearchState
-			SelectResearch,		// c2s : SelectResearch -> s2c : SelectResearch
+			QueueResearch,		// c2s : QueueResearch -> s2c : ResearchQueue
+			ResearchQueue,		// s2c : ResearchQueue
 			RequestResource,	// c2s : ResourceID -> s2c : ResourceData
 			ResourceData,		// s2c : ResourceData
 
@@ -1982,6 +1993,8 @@ namespace Protocol
 			EndConfigurationMode,//c2s: <signal>
 
 			OperationLacksResources, //s2c: OperationLacksResources
+
+			TutorialAt,			// both: int32
 		};
 	}
 
@@ -2012,6 +2025,7 @@ namespace Protocol
 			EMPZones = 0x10,
 			SimulateLiquids = 0x20,
 			ConfigurationMode = 0x40,
+			TutorialMode = 0x80,
 
 			SupportSpectatorFactions = 0x100,
 			SupportRegularFactions = 0x200,
@@ -2045,36 +2059,8 @@ namespace Protocol
 	
 	}
 
-	struct WorldDeltaType
-	{
-		enum delta_type_t
-		{
-			/** *ProgressiveInit*
-			Works on the assumption that the receiving faction client starts from an empty terrain.
-			Initiates the client state to the current world state where visible, and initial world state where not.
-			This type should only be used on completely new factions.
-			*/
-			ProgressiveInit,	
-			ProgressiveUpdate,	//!< Works on the assumption that the recepient has a previous state, which should also be updated if visible
-			ProgressiveUpdateNoDelta,	//!< Like ProgressiveUpdate but generates no delta structure. The passed delta parameter is ignored
-			LocalCopy,		//!< Creates a copy of the specified world-state. Does not update anything. Does not reference any global state
-			GlobalCopy,			//!< Creates a copy of the actual world state, assuming the recepient knows only an empty terrain. Does not update anything
-			GlobalInitialCopy,	//!< Creates a copy of the initial world state, assuming the recepient knows only an empty terrain. Does not update anything
-		};
-	};
 
-	/**
-	Generates a world delta for storage/client notification
-	//@param faction Reference to the respective client faction (must be set if deltaType is ProgressiveInit, ProgressiveUpdate, or FactionCopy)
-	@param vs Faction visibility state. Used for ProgressiveInit and ProgressiveUpdate only
-	@param ws Faction/local world state. Required not-null for ProgressiveUpdate and LocalCopy, ignored otherwise. Updated during ProgressiveUpdate
-	@param[out] delta Resulting delta
-	@param familyID Index of the grid family that the delta should be computed of
-	@param rightNow Indicates that the enclosed timestamp should be flagged as 'rightNow', as opposed to using the grid timestamp
-	@param last Indicates that the result should include the 'last'-flag, which means no deltas will follow this one for the current sequence
-	@param deltaType Type of delta to compute (see delta_type_t for details)
-	*/
-	void			GenerateWorldDelta(Grid::VisibilityState*vs, Grid::WorldData*ws, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, WorldDeltaType::delta_type_t deltaType);
+
 }
 
 

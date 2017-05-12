@@ -4,6 +4,7 @@
 #include <runtimeConfig.h>
 #include "state/gameState.h"
 #include "journalSaveGame.h"
+#include <objects/structure/vehiclePlant.h>
 
 
 namespace Nexus
@@ -84,11 +85,11 @@ namespace Nexus
 		if (impact > 0)
 			foreach (cornerField, at)
 			{
-				float worldDistance = Vec::distance(Grid::low.cells[*at].centerVertex.xyz * Grid::VerticalBase,worldLoc);
+				float worldDistance = Vec::distance(Grid::low.cells[*at].centerVertex.xyz * Grid::MeanPlanetRadius,worldLoc);
 				if (e.owner != Objects::Faction::nexus)
 					worldDistance = vmax(0,worldDistance-entityRange);
 				//float angularDistance = Vec::angle(Grid::low.cells[*at].centerVertex.xyz,loc) * M_PIF/180.f;
-				float stepDistance = worldDistance / Grid::VerticalBase / avg * 0.75f;
+				float stepDistance = worldDistance / Grid::MeanPlanetRadius / avg * 0.75f;
 
 				bool isRed = stepDistance < 4;
 				bool isYellow = stepDistance < 6;
@@ -187,10 +188,10 @@ namespace Nexus
 
 			Objects::PNexusPort compactPortList[12];
 			index_t portAt = 0;
-			foreach(Objects::structures, s)
+			Objects::structures.Foreach([&portAt,&compactPortList](const Objects::PStructure&s)
 			{
 				//bool nexus = (*s)->owner == Objects::Faction::nexus;
-				Objects::PNexusPort p = To<Objects::NexusPort>::DynamicCast(*s);
+				Objects::PNexusPort p = To<Objects::NexusPort>::DynamicCast(s);
 				if (p && BaseGrid::IsIsolatedCorner(p->location.stackID) && p->owner == Objects::Faction::nexus)
 				{
 					ASSERT_LESS__(portAt, BaseGrid::IsolatedCornerCount);
@@ -201,7 +202,7 @@ namespace Nexus
 					//ASSERT__(!ports[portIn]);
 					//ports[portIn] = p;
 				}
-			}
+			});
 			ASSERT_LESS_OR_EQUAL__(portAt, BaseGrid::IsolatedCornerCount);	//some might have changed ownership
 			LogEvent(EventSignificance::Debug,"Identified "+String(portAt)+" Nexus Ports under Nexus faction control");
 
@@ -213,15 +214,11 @@ namespace Nexus
 				friendlyNearNexus[i] = Game::factionStartMineralValue /*- State::Config::nexusStartMineralValue*/;
 			}
 
-			foreach(Objects::vehicles, v)
+			Objects::ForeachWorldEntity([&](const Objects::PWorldEntity&e)
 			{
-				EstimatePresence(**v,(*v)->location,portLocations, hostileNearNexus,constructorNearNexus,friendlyNearNexus);
-			}
+				EstimatePresence(*e,e->location,portLocations, hostileNearNexus,constructorNearNexus,friendlyNearNexus);
+			},false);
 
-			foreach(Objects::structures, s)
-			{
-				EstimatePresence(**s,(*s)->location,portLocations, hostileNearNexus,constructorNearNexus,friendlyNearNexus);
-			}
 			static Buffer0<UINT32> neighborField;
 			NexusStructures::Reset(ports);
 			for (index_t j = 0; j < portAt; j++)

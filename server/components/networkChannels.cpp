@@ -4,6 +4,7 @@
 #include "serverLogEvent.h"
 #include "journalSaveGame.h"
 #include "configurationMode.h"
+#include <objects/structure/mine.h>
 
 extern Random		random;
 
@@ -39,14 +40,16 @@ namespace Channels
 	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::DestroyMarker>							destroyMarker(Receiver::DestroyMarker);
 	TCP::Channel<Protocol::TouchedMarker, FactionLevel, Protocol::ChannelID::TouchMarker>					touchMarker(Receiver::TouchMarker);
 	TCP::Channel<Protocol::ClientName,FactionLevel,Protocol::ChannelID::ChangeMyName>						changeMyName(Receiver::ChangeMyName);
-	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::IdentifyUser>							identifyUserRecv(Receiver::IdentifyUser);
-	TCP::Channel<Protocol::SelectResearch, FactionLevel, Protocol::ChannelID::SelectResearch>				selectResearch(Receiver::SelectResearch);
+	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::IdentifyFaction>						identifyFactionRecv(Receiver::IdentifyFaction);
+	TCP::Channel<Protocol::QueueResearch, FactionLevel, Protocol::ChannelID::QueueResearch>					queueResearch(Receiver::QueueResearch);
 	TCP::Channel<Package::NetString<256>, FactionLevel, Protocol::ChannelID::ChatMessage>					chatMessage(Receiver::ChatMessage);
 	TCP::Channel<Grid::ExtendedPlanetConfig, Configurator, Protocol::ChannelID::PlanetConfig>				planetConfig(Receiver::PlanetConfig);
 	TCP::Channel<Protocol::GameConfig, Configurator, Protocol::ChannelID::GameConfig>						gameConfig(Receiver::GameConfig);
 	TCP::Channel<Protocol::ResourceID, PreFaction, Protocol::ChannelID::RequestResource>				requestResource(Receiver::RequestResource);
 	TCP::Channel<Package::NetString<256>, Configurator, Protocol::ChannelID::LoadPlanetByName>		loadPlanetByName(Receiver::LoadPlanetByName);
 	
+	TCP::Channel<NET(INT32),FactionLevel,Protocol::ChannelID::TutorialAt>							tutorialAt(Receiver::TutorialAt);
+
 
 	TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>			clientFactionResponse;
 	TCP::ObjectSender<Protocol::Marker, Protocol::ChannelID::MarkerCreationFailedLimitReached>		markerCreationFailedLimitReached;
@@ -67,7 +70,7 @@ namespace Channels
 	TCP::ObjectSender<Protocol::ResourceUpdate,Protocol::ChannelID::ResourceUpdate>					resourceUpdate;
 	TCP::ObjectSender<Protocol::GameProgress,Protocol::ChannelID::GameProgress>						gameProgress;
 	TCP::ObjectSender<Protocol::ChangeEntityOwner,Protocol::ChannelID::ChangeEntityOwner>			changeEntityOwner;
-	TCP::ObjectSender<Protocol::IdentifyUser, Protocol::ChannelID::IdentifyUser>					identifyUser;
+	TCP::ObjectSender<Protocol::IdentifyFaction, Protocol::ChannelID::IdentifyFaction>				identifyFaction;
 	TCP::ObjectSender<Protocol::ResearchState, Protocol::ChannelID::ResearchState>					researchState;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionOnline>							factionOnline;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionOffline>							factionOffline;
@@ -83,6 +86,7 @@ namespace Channels
 
 	TCP::ObjectSender<Protocol::UnitLimits,Protocol::ChannelID::UnitLimits>							unitLimits;
 	TCP::ObjectSender<Protocol::OperationLacksResources,Protocol::ChannelID::OperationLacksResources>	operationLacksResources;
+	TCP::ObjectSender<Protocol::ResearchQueue, Protocol::ChannelID::ResearchQueue>					researchQueue;
 
 //	Channel<class Object, unsigned MinUserLevel, UINT32 ChannelID>
 
@@ -140,7 +144,7 @@ namespace Receiver
 		{
 			if (f != exclude)
 			{
-				Channels::identifyUser.SendTo(peer,Protocol::IdentifyUser(f->id,f->name));
+				Channels::identifyFaction.SendTo(peer,Protocol::IdentifyFaction(f->id,f->name,f->color));
 				if (f->online)
 				{
 					Channels::factionOnline.SendTo(peer,f->id);
@@ -179,12 +183,12 @@ namespace Receiver
 
 		peer.SendSignal(Protocol::ChannelID::BeginEverything);
 
-		for (const auto&s : Objects::structures)
+		Objects::structures.Foreach([timestamp,&peer](const Objects::PStructure&s)
 		{
 			Protocol::StructureConstruction st;
 			Game::Network::Describe(st,*s,true,timestamp);
 			Channels::createStructure.SendTo(peer,st);
-		}
+		});
 
 		Objects::ForeachMobileWorldEntity([&peer, timestamp](const Objects::PMobileEntity&v)
 		{
@@ -212,25 +216,31 @@ namespace Receiver
 				Channels::resourceUpdate.SendTo(peer,package);
 			}
 		}
+		static World::DeltaContainer	delta;
 		if (firstSpectator)
-			World::spectatorWorldState.FlushAllData();
-		Protocol::WorldDelta	delta;
-		delta.timestamp.rightNow = true;
-		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 		{
-			if (firstSpectator)
-			{
-				Protocol::GenerateWorldDelta(nullptr,&World::spectatorWorldState,
-										delta,k,true,k+1 == BaseGrid::NumFamilies,Protocol::WorldDeltaType::ProgressiveInit);
-			}
-			else
-				Protocol::GenerateWorldDelta(nullptr,&World::spectatorWorldState,
-										delta,k,true,k+1 == BaseGrid::NumFamilies,Protocol::WorldDeltaType::LocalCopy);
-
-			Channels::updateWorld.SendTo(peer,delta);
+			World::spectatorWorldState.FlushTerrain();
+			World::spectatorWorldState.FlushAndValidateSensory(1);
+			delta.Process(World::spectatorWorldState);
+		}
+		else
+			delta.CompressState(World::spectatorWorldState,Protocol::Timestamp(true,0));
+		for (index_t i = 0; i < delta.numDeltas; i++)
+		{
+			delta.delta[i].timestamp.rightNow = true;
+			Channels::updateWorld.SendTo(peer,delta.delta[i]);
 		}
 
 		SendSessionConfigTo(peer, Objects::PFaction());
+
+		Objects::ForeachFaction([&peer](const Objects::PFaction&f)
+		{
+			Protocol::ResearchState state;
+			state.ownerID = f->id;
+			f->researchState.Export(state.serializedData);
+			ASSERT_LESS__(state.serializedData.Count(),state.serializedData.MaxElementCount);
+			Channels::researchState.SendTo(peer,state);
+		});
 
 		peer.SendSignal(Protocol::ChannelID::EndEverything);
 
@@ -241,6 +251,13 @@ namespace Receiver
 	{
 		if (!peer.attachment)
 			return;
+
+		if (RuntimeConfig::tutorialMode && !peer.IsLocalhost())
+		{
+			LogEvent(EventClass( EventSignificance::ClientFatal, EventFlavor::Loss ), peer,"Server is in tutorial mode. Rejecting connection from non-localhost.");
+			peer.DisconnectPeer();
+		}
+
 		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 		Protocol::ClientFactionResponse response;
 		response.startFactionTypes = _p.startFactionTypes;
@@ -349,12 +366,12 @@ namespace Receiver
 
 			if (ConfigurationMode::IsActive())
 			{
-				Array<FileSystem::File>	iniFiles;
-				World::GetAvailablePlanetIniFiles(iniFiles);
+				Array<String>	planetNames;
+				World::GetAvailablePlanetNames(planetNames);
 				NETA(Package::NetString<256>) names;
-				names.SetSize(iniFiles.Count());
-				for (index_t i = 0; i < iniFiles.Count(); i++)
-					names[i] = String(iniFiles[i].GetInnerName());
+				names.SetSize(planetNames.Count());
+				for (index_t i = 0; i < planetNames.Count(); i++)
+					names[i] = planetNames[i];
 				Channels::planetNames.SendTo(peer,names);
 			}
 
@@ -367,23 +384,21 @@ namespace Receiver
 
 		bool newFaction = false;
 
-		if (Game::Config::Nexus::enableAI && Objects::Faction::nexus->accessToken == response.factionToken && (peer.ToString(false) == "localhost"))
+		if (Game::Config::Nexus::enableAI && Objects::Faction::nexus->accessToken == response.factionToken && peer.IsLocalhost())
 		{
 			LogEvent(EventClass( EventSignificance::Important, EventFlavor::Gain ), peer, "Access to nexus faction permitted.");
 			faction = Objects::Faction::nexus;
 		}
-		#ifdef _DEBUG
-			if (faction
-				|| Network::tokenMap.Query(response.factionToken,faction)
-				|| (
-						response.startFactionTypes == Protocol::FactionType::ContinueOnly 
-						&& Objects::Faction::all.IsNotEmpty()
-						&& (faction = Objects::Faction::all.first().lock())
-					)
+		if (faction
+			|| Network::tokenMap.Query(response.factionToken,faction)
+			|| (	response.startFactionTypes == Protocol::FactionType::ContinueOnly 
+					#ifndef _DEBUG
+						&& RuntimeConfig::tutorialMode
+					#endif
+					&& Objects::Faction::all.IsNotEmpty()
+					&& (faction = Objects::Faction::all.first().lock())	//in tutorial mode (or debug mode) take first known faction
 				)
-		#else
-			if (faction || Network::tokenMap.Query(response.factionToken,faction))
-		#endif
+			)
 		{
 			#ifdef _DEBUG
 				response.factionToken = faction->accessToken;
@@ -503,7 +518,8 @@ namespace Receiver
 
 		Channels::clientFactionResponse.SendTo(client->peer.lock(),response);
 		Channels::setFactionID.SendTo(client->peer.lock(),client->faction->id);
-
+		if (RuntimeConfig::tutorialMode)
+			Channels::tutorialAt.SendTo(client->peer.lock(),Game::tutorialAt);
 		//CHEAT_SHOW_ALL_RESOURCES
 
 		#ifdef CHEAT_SHOW_ALL_RESOURCES
@@ -535,7 +551,11 @@ namespace Receiver
 			ASSERT_LESS__(state.serializedData.Count(),state.serializedData.MaxElementCount);
 			Channels::researchState.SendTo(peer,state);
 		});
-		Channels::selectResearch.SendTo(peer,Protocol::SelectResearch((UINT32)client->faction->researchState.GetActiveTopicIndex()));
+		{
+			Protocol::ResearchQueue queue;
+			client->faction->researchState.ExportResearchQueue(queue);
+			Channels::researchQueue.SendTo(peer,queue);
+		}
 
 		#ifndef CHEAT_SHOW_ALL_RESOURCES
 		if (!newFaction)
@@ -546,7 +566,7 @@ namespace Receiver
 
 			static Buffer0<UINT32>	final;
 			final.Clear();
-			auto&discovered = client->faction->visibility.resourcesDiscovered;
+			auto&discovered = client->faction->knownResources.resourcesDiscovered;
 			for (index_t i = 0; i < discovered.Count(); i++)
 			{
 				if (discovered[i])
@@ -574,14 +594,15 @@ namespace Receiver
 			}
 
 		}
-		Protocol::WorldDelta	delta;
-		delta.timestamp.rightNow = true;
-		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
+		static World::DeltaContainer staticDeltaContainer;
+		//if (newFaction)
+		//	staticDeltaContainer.Process(client->faction->knownWorld);
+		//else
+			staticDeltaContainer.CompressState(client->faction->knownWorld,Protocol::Timestamp(true,0));
+		for (index_t i = 0; i< staticDeltaContainer.numDeltas; i++)
 		{
-			Protocol::GenerateWorldDelta(client->faction ? &client->faction->visibility : nullptr,  client->faction ? &client->faction->currentState : nullptr,
-									delta,k,true,k+1 == BaseGrid::NumFamilies,newFaction ? Protocol::WorldDeltaType::ProgressiveInit : Protocol::WorldDeltaType::LocalCopy);
-
-			Channels::updateWorld.SendTo(peer,delta);
+			staticDeltaContainer.delta[i].timestamp.rightNow = true;
+			Channels::updateWorld.SendTo(peer,staticDeltaContainer.delta[i]);
 		}
 
 		String why;
@@ -674,7 +695,7 @@ namespace Receiver
 		//probably optional later on
 		{
 			//broadcast name and state
-			Channels::identifyUser.SendTo(Network::server,Protocol::IdentifyUser(client->faction->id,client->name),2);
+			Channels::identifyFaction.SendTo(Network::server,Protocol::IdentifyFaction(client->faction->id,client->name,client->faction->color),2);
 			Channels::factionOnline.SendTo(Network::server,client->faction->id,2);
 
 		}
@@ -852,28 +873,19 @@ namespace Receiver
 
 	}
 
-	void	SelectResearch(Protocol::SelectResearch&research, TCP::Peer&peer)
+	void	QueueResearch(Protocol::QueueResearch&research, TCP::Peer&peer)
 	{
 		if (!peer.attachment)
 			return;
 		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 		if (!client->faction)
 			return;
-		Journal::currentRound.Register(true,client->faction,new Journal::Round::SelectResearch(Objects::ResearchState::GetTopic( research)));
+		Journal::currentRound.Register(true,client->faction,new Journal::Round::QueueResearch(Objects::ResearchState::GetTopic( research.research),research.drop));
 	}
 
-	void	IdentifyUser(NET(TUniqueID)&id, TCP::Peer&peer)
+	void	IdentifyFaction(NET(TUniqueID)&id, TCP::Peer&peer)
 	{
 		//LATER
-	/*	for (const auto&weak : Objects::Faction::all)
-		{
-			Objects::PFaction fac = weak.lock();
-			if (fac && fac->
-
-		}
-		State::playerMap.QueryPointer(id);
-*/
-
 	}
 
 	void	PlanetConfig(Grid::ExtendedPlanetConfig&cfg, TCP::Peer&peer)
@@ -890,6 +902,11 @@ namespace Receiver
 
 	}
 
+	void	TutorialAt(NET(INT32)&at)
+	{
+		Game::tutorialAt = at;
+	}
+
 	void	LoadPlanetByName(Package::NetString<256>&planet, TCP::Peer&peer)
 	{
 		if (ConfigurationMode::IsActive())
@@ -903,7 +920,7 @@ namespace Receiver
 
 			if (planet.IsNotEmpty())
 			{
-				if (!FileSystem::IsFile(RuntimeConfig::ConfigFile(PathString("config/planets/"+planet+".ini"))))
+				if (!World::IsPlanetIniFile(planet+".ini"))
 				{
 					LogEvent(EventClass::Preset::remoteControlError,"'"+planet+"' is not a valid planet type");
 					return;
@@ -985,11 +1002,12 @@ namespace Receiver
 		cl->name = name;
 		if (cl->faction)
 		{
-			Protocol::IdentifyUser userID;
-			userID.id = cl->faction->id;
-			userID.name = name;
+			Protocol::IdentifyFaction factionID;
+			factionID.id = cl->faction->id;
+			factionID.name = name;
+			factionID.color = cl->faction->color;
 			cl->faction->name = name;
-			Channels::identifyUser.SendTo(Network::server,userID,2);
+			Channels::identifyFaction.SendTo(Network::server,factionID,2);
 			LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ), peer, "User renamed to '"+name+"'");
 		}
 	}
@@ -1102,7 +1120,16 @@ namespace Receiver
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(uuid,peer);
 		if (!e)
 			return;
-
+		if (RuntimeConfig::tutorialMode)
+		{
+			LogEvent(EventClass::Preset::commandRejected,peer,e,"Unable to issue self destruction. Tutorial mode is active");
+			return;
+		}
+		if (e->IsIndestructible())
+		{
+			LogEvent(EventClass::Preset::commandRejected,peer,e,"Unable to issue self destruction. Entity is indestructible");
+			return;
+		}
 		Journal::currentRound.RegisterEntityDestruction(true,e,e->isInserted ? Objects::RemovalType::ControlledExplosion : Objects::RemovalType::DestroyedInStorage);
 	}
 
@@ -1639,7 +1666,11 @@ namespace Receiver
 		{
 			case TCP::Event::ConnectionEstablished:
 				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ), peer,"Client connected");
-
+				if (RuntimeConfig::tutorialMode && !peer.IsLocalhost())
+				{
+					LogEvent(EventClass( EventSignificance::ClientFatal, EventFlavor::Loss ), peer,"Server is in tutorial mode. Rejecting connection from non-localhost.");
+					peer.DisconnectPeer();
+				}
 			break;
 			case TCP::Event::ConnectionClosed:
 			case TCP::Event::ConnectionLost:
