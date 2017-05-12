@@ -22,6 +22,7 @@ public:
 
 	const Base&				Current() const {return quality[chosenQuality];}
 	void					LoadQualitiesFromFile(const PathString&filename, const String&vsMain, const String&psMain, const Engine::DX11::Shader::Binding*b=NULL, count_t numBindings=0);
+	void					LoadQualitiesFromFile(const PathString&filename, const String&vsMain, const String&gsMain, const String&psMain, const Engine::DX11::Shader::Binding*b=NULL, count_t numBindings=0);
 	void					Clear()
 	{
 		for (index_t i = 0; i < Quality::N; i++)
