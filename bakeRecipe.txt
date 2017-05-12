@@ -25,8 +25,9 @@ client/D3DCompiler_47.dll
 
 server/Server*.exe
 server/config/tutorial.hsf
-server/config/planets/*.ini
+server/config/myPlanets/*.ini
 server/config/declaration.xml
 lua/*.lua
+lua/distributions/*.lua
 
 ControlConsole/ControlConsole*.exe

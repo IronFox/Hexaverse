@@ -729,17 +729,6 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force);
 namespace ApplicationInterface
 {
 
-	void	SignalResearch(const Objects::PResearchTopic&topic)
-	{
-		#ifdef HAS_WINDOW
-			Network::Channels::selectResearch.SendTo(Network::client,Protocol::SelectResearch((UINT32)topic->serialIndex));
-			if (Objects::selectedEntity && Objects::selectedEntity->IsWorkingStructure() && !To<Objects::WorkingStructure>::Cast( Objects::selectedEntity)->IsEnabled())
-			{
-				Network::Channels::enableStructure.SendTo(Network::client,Protocol::EnableStructure(Objects::selectedEntity->id,true));
-			}
-		#endif
-	}
-
 	static bool IsTerraformingOperation(ConstName jobName)
 	{
 		switch (jobName)
@@ -2818,7 +2807,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 	{
 		if (GUI::IsModal())
 			return ;
-		static const String allowed = "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_- <>!'\"'$%^&*()=+.,/\\#@?";
+		static const String allowed = "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_-:; <>!'\"'$%^&*()=+.,/\\#@?";
 		Dialog::Query("Please enter message","",allowed,[](const String&candidate)->bool
 			{
 				return candidate.length() <= 256;
@@ -2993,7 +2982,7 @@ bool	IsIdle(const Objects::PMobileEntity&v)
 				Objects::ForeachWorldEntity([emp,&canAttackAny,v](const Objects::PWorldEntity&other)
 				{
 					if (!canAttackAny && (!emp || !other->empDamageLevel))
-						if (!other->isOwnedByMe && CanHit(v,other->location))
+						if (!other->isOwnedByMe && !other->IsIndestructible() && CanHit(v,other->location))
 							canAttackAny = true;
 				},false);
 				if (canAttackAny)
@@ -3004,7 +2993,7 @@ bool	IsIdle(const Objects::PMobileEntity&v)
 				if (v->IsSatellite())
 				{
 					for (auto other : Objects::satellites)
-						if (!other->isOwnedByMe && CanHit(v,other->location))
+						if (!other->isOwnedByMe && !other->IsIndestructible() && CanHit(v,other->location))
 							if (!emp || !other->empDamageLevel)
 								return true;
 				}

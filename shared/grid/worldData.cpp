@@ -417,14 +417,21 @@ namespace World
 			if (stack.waterRange.IsNotEmpty())
 			{
 				limit = (UINT32)(stack.waterRange.end-1);
+				DBG_ASSERT_LESS2__(limit,CellStack::Range, stack.waterRange.start, stack.waterRange.end);
 				if (stack.highestOpaqueCell >= stack.lowestOpenCell)
+				{
 					limit = std::max(limit,(UINT32)stack.highestOpaqueCell);
+					DBG_ASSERT_LESS2__(limit,CellStack::Range, stack.lowestOpenCell, stack.highestOpaqueCell);
+				}
 			}
 			else
+			{
 				if (stack.highestOpaqueCell >= stack.lowestOpenCell)
 					limit = stack.highestOpaqueCell;
+				DBG_ASSERT_LESS2__(limit,CellStack::Range, stack.lowestOpenCell, stack.highestOpaqueCell);
+			}
+			limit = vmin( limit, CellStack::Range-1);
 		#endif
-		ASSERT_LESS__(limit,CellStack::Range);
 
 		UINT32 layer = limit;
 		//stack.highestOpaqueCell
@@ -1798,6 +1805,31 @@ namespace World
 	}
 
 
+	float Q_rsqrt( float number )
+	{
+		INT32 i;
+		float x2, y;
+		const float threehalfs = 1.5F;
+
+		x2 = number * 0.5F;
+		y  = number;
+		i  = * ( INT32 * ) &y;                       // evil floating point bit level hacking
+		i  = 0x5f3759df - ( i >> 1 );               // what the fuck? 
+		y  = * ( float * ) &i;
+		y  = y * ( threehalfs - ( x2 * y * y ) );   // 1st iteration
+	//	y  = y * ( threehalfs - ( x2 * y * y ) );   // 2nd iteration, this can be removed
+
+		return y;
+	}
+
+
+	void FastNormalize(TVec3<>&v)
+	{
+		float fc = Q_rsqrt(Vec::dot(v));
+		Vec::mult(v,fc);
+	}
+
+
 	void		Sensor::ApplyShadedSphereTo(World::Data&v, short change,Data::ChangeSequence&seq)	const
 	{
 		enum
@@ -1852,8 +1884,12 @@ namespace World
 			{
 				//auto&n = v.cellStack[next.stackID].volumeCell[next.layer];
 				auto&nu = user.Get(next.stackID,next.layer);
-				const TVec3<> n3 = Grid::ToWorld(next);
-				const float3	d3 = (n3-c3).Normalized();
+				TVec3<> n3;
+				Grid::ToWorld(next,n3);
+				TVec3<> d3;
+				Vec::sub(n3,c3,d3);
+				FastNormalize(d3);
+				//const float3	d3 = (n3-c3).Normalized();
 				const float dot = Vec::dot(d3,d03);
 				if (dot > 0)
 				{

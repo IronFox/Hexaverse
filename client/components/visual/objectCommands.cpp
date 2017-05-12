@@ -16,6 +16,7 @@
 #include <objects/components.h>
 #include <image/converter/magic.h>
 #include <objects/research.h>
+#include "../network.h"
 #include "terrain.h"
 
 
@@ -31,6 +32,21 @@ namespace Objects
 
 	namespace Command
 	{
+
+		namespace Net
+		{
+			void QueueResearch(const Objects::PResearchTopic&topic, bool drop)
+			{
+				#ifdef HAS_WINDOW
+					Network::Channels::queueResearch.SendTo(Network::client,Protocol::QueueResearch((UINT32)topic->serialIndex,drop));
+					if (Objects::selectedEntity && Objects::selectedEntity->IsWorkingStructure() && !To<Objects::WorkingStructure>::Cast( Objects::selectedEntity)->IsEnabled())
+					{
+						Network::Channels::enableStructure.SendTo(Network::client,Protocol::EnableStructure(Objects::selectedEntity->id,true));
+					}
+				#endif
+			}
+		}
+
 
 		template <bool ControlEnabled>
 			void RefreshCommand(const int2&, const Command::PBase&cmd)
@@ -77,9 +93,9 @@ namespace Objects
 		/*virtual override*/ void	ResearchCommand::Execute()
 		{
 			Super::Execute();
-			if (selectedEntity && selectedEntity->owner &&  topic->CanResearch(selectedEntity->GetResearchState()))
+			if (selectedEntity && selectedEntity->owner &&  topic->CanResearch(selectedEntity->owner))
 			{
-				ApplicationInterface::SignalResearch(topic);
+				Net::QueueResearch(topic,false);
 				this->Refresh(true);
 			}
 		}
@@ -96,33 +112,48 @@ namespace Objects
 					EntityConstructionCommand::UpdateTexture(*this,nullptr,(Component::Turret*)topic->componentReference);
 		}
 
+
+		/*virtual override*/	void	ResearchAbortCommand::Refresh(bool controlEnabled)
+		{
+			OwnerParameter owner = selectedEntity ? selectedEntity->owner : OwnerParameter();
+			if (topic->IsGroup())
+			{
+				Super::Refresh(controlEnabled);
+			}
+			else
+			{
+				state = Objects::CommandFlags::None;
+				if (isActive)
+					state |= Objects::CommandFlags::IsPermaActive;
+				if (!controlEnabled)
+					return;
+				state |= Objects::CommandFlags::IsEnabled;
+			}
+		}
+
+		/*virtual override*/ void	ResearchAbortCommand::Execute()
+		{
+			if (selectedEntity && selectedEntity->owner == Faction::mine)
+			{
+				Net::QueueResearch(topic,true);
+				//this->Refresh(true);
+			}
+		}
+
+
 		/*virtual override*/	void	ResearchCommand::Refresh(bool controlEnabled)
 		{
 			OwnerParameter owner = selectedEntity ? selectedEntity->owner : OwnerParameter();
 			if (topic->IsGroup())
 			{
 				Super::Refresh(controlEnabled);
-
-
-
-				if (!(state & Flags::IsPermaActive)
-					&&
-					owner && owner->researchState.GetActiveTopic()->IsChildOf(topic)
-					)
-					state |= Flags::IsFlashing | Flags::SoftFlashing;
-				else
-				{
-					state -= Flags::IsFlashing;
-					state -= Flags::SoftFlashing;
-				}
 			}
 			else
 			{
 				state = Objects::CommandFlags::None;
-				if (owner && owner->researchState.GetActiveTopic() == topic)
-					state |= Objects::CommandFlags::IsPermaActive;
-				Lua::Reference st = owner ? owner->researchState.researchState : Lua::Reference();
-				if (!controlEnabled || !topic->CanResearch(st))
+				//if (owner && owner->researchState.GetActiveTopic() == topic)
+				//	state |= Objects::CommandFlags::IsPermaActive;
+				if (!controlEnabled || !topic->CanResearch(owner))
 					return;
 				state |= Objects::CommandFlags::IsEnabled;
 			}
@@ -166,7 +197,7 @@ namespace Objects
 				PResearchTopic dep = topic->dependency.lock();
 				if (dep && (state.IsEmpty() || dep->getProgress(state)<dep->maxProgress))
 					outResult << "Requires completion of "+dep->GetFullName()+" research";
-				outResult.MarkBriefEnd();
+				outResult.MarkBriefEnd(true);
 			}
 
 			PWorldEntity ref = topic->prototypeReference;
@@ -191,6 +222,32 @@ namespace Objects
 		static void SetPrototypeKeyColor()
 		{
 			keyColor.Update(float4(0.5,0.5,1,1));
+		}
+
+
+
+		/*virtual override*/ void		EntityConstructionCommand::GetCosts(int&costOut, Resource&costTypeOut, int&timeCostOut)
+		{
+			if (getCosts)
+				getCosts(costOut,costTypeOut,timeCostOut);
+			else 
+			{
+				PWorldEntity e = Super::reference.lock();
+				if (e)
+				{
+					costOut = e->GetConstructionCost();
+					timeCostOut = 0;
+					costTypeOut = Resource::Minerals;
+				}
+				else if (turret && base)
+				{
+					costOut = Vehicle::GetPrice(*base,*turret,OwnerParameter());
+					timeCostOut = 0;
+					costTypeOut = Resource::Minerals;
+				}
+				else
+					Super::GetCosts(costOut,costTypeOut,timeCostOut);
+			}
 		}
 
 		/*static*/ void		EntityConstructionCommand::UpdateTexture(VisualCommand&target, Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor/* = float4(0)*/)

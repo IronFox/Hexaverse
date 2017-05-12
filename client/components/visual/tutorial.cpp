@@ -259,7 +259,9 @@ namespace Tutorial
 
 			Lua::Reference current;
 			const auto&st = Objects::Faction::mine->researchState.researchState;
-			const index_t at = Objects::Faction::mine->researchState.GetActiveTopicIndex();
+			//const index_t at = Objects::Faction::mine->researchState.GetActiveTopicIndex();
+			Array<UINT32> q;
+			Objects::Faction::mine->researchState.ExportResearchQueue(q);
 			for (index_t i = 0; i < Objects::ResearchState::globalState.allTopics.Count(); i++)
 			{
 				auto t = Objects::ResearchState::GetTopic(i);
@@ -279,8 +281,9 @@ namespace Tutorial
 				outT.SetField("progress",prog);
 				outT.SetField("isCompleted",t->ResearchCompleted(st));
 
-				bool isActive = at==i && (t->maxProgress <= 0 || prog < t->maxProgress);
+				bool isActive = q.IsNotEmpty() && q.First() == i;
 				outT.SetField("isActive",isActive);
+				outT.SetField("isQueued",q.Contains(i));
 
 				if (isActive)
 					current = outT;

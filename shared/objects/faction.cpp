@@ -379,13 +379,13 @@ namespace Objects
 				{
 					Objects::PStructure s = _s->lock();
 					if (s)
-						s->RegisterSensory(t);
+						s->ReapplySensory(t);
 				}
 				foreach (this->allMobiles,_m)
 				{
 					Objects::PWorldEntity e = _m->lock();
 					if (e)
-						e->RegisterSensory(t);
+						e->ReapplySensory(t);
 				}
 			}
 		}
@@ -402,13 +402,13 @@ namespace Objects
 				{
 					Objects::PStructure s = _s->lock();
 					if (s)
-						s->RegisterSensory(t);
+						s->ReapplySensory(t);
 				}
 				foreach (this->allMobiles,_m)
 				{
 					Objects::PWorldEntity e = _m->lock();
 					if (e)
-						e->RegisterSensory(t);
+						e->ReapplySensory(t);
 				}
 			}
 		}
@@ -758,18 +758,34 @@ namespace Objects
 			owner->sensorLockLevel--;
 			if (owner->sensorLockLevel == 0 && owner->knownWorld.SensoryIsInvalid())
 			{
+				LogEvent(EventSignificance::Common,owner->shared_from_this(),"Recomputing sensory");
+				Timer::Time started = timer.Now();
 				float t = 0;
 				owner->CheckSensory();
+				LogEvent(EventSignificance::PerformanceMeasurement,owner->shared_from_this(),"Computed sensory grid coverage in "+String(timer.GetSecondsSince(started)));
+				started = timer.Now();
 				ForeachWorldEntity([this,&t](const PWorldEntity&e)
 				{
 					if (e->owner.get() == owner)
 						return;
-					if (owner->GridCanSee(e,t))
+					if (e->IsAboveGrid())
 					{
-						owner->SignalAppearance(e,t,true,false);
+						count_t cover = owner->CountOffGridCoverage(e->location.height, e->GetWorldPosition());
+						if (cover > 0)
+						{
+							owner->SignalAppearance(e, t, true, false);
+						}
 					}
+					else
+						if (owner->GridCanSee(e,t))
+						{
+							owner->SignalAppearance(e,t,true,false);
+						}
 
 				},false);
+
+				LogEvent(EventSignificance::PerformanceMeasurement,owner->shared_from_this(),"Computed appearances in "+String(timer.GetSecondsSince(started)));
+				started = timer.Now();
 
 				static Buffer<PWorldEntity>	disappear;
 
@@ -792,6 +808,7 @@ namespace Objects
 				foreach (disappear,s)
 					owner->SignalDisappearance(*s,t);
 				disappear.Clear();
+				LogEvent(EventSignificance::PerformanceMeasurement,owner->shared_from_this(),"Computed disappearances in "+String(timer.GetSecondsSince(started)));
 			}
 		}
 
@@ -1069,10 +1086,7 @@ namespace Objects
 				if (e->isOwnedByMe)
 				{
 					float t = 0.f;
-					if (!s && e->IsMobile())
-						e->UnregisterSensory(To<MobileEntity>::Cast(e)->preAnimationLocation,t);
-					else
-						e->UnregisterSensory(t);
+					e->UnregisterSensory(t);
 					#ifdef THOROUGLY_DEBUG_SENSORY
 						VerifySensory();
 					#endif

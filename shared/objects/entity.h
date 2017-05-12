@@ -210,9 +210,19 @@ namespace Objects
 	private:
 		bool						sleeping = false;	//!< Use SetSleep() instead. Indicates that this entity is asleep. Sleeping entities are not considered in the client-side IsIdle() iteration. Sleeping mobile entities will not execute any jobs
 
-	public:
-		#ifndef CLIENT
 
+	public:
+		struct TRegisteredSensor
+		{
+			Grid::LCellIdI			location = Grid::LCellIdI::Invalid;
+			int						empDamageLevel=0;
+
+			bool					IsSet() const {return location != Grid::LCellIdI::Invalid;}
+			bool					operator==(const TRegisteredSensor&other) const {return location == other.location && empDamageLevel == other.empDamageLevel;}
+			bool					operator!=(const TRegisteredSensor&other) const {return !operator==(other);}
+			String					ToString() const {return location.ToString()+"_e"+String(empDamageLevel);}
+		};
+		#ifndef CLIENT
 			float					entityTime=0.f;		//!< Time (in seconds) into the animation phase to calculate event times
 			Random					entityRandom;
 			
@@ -544,17 +554,18 @@ namespace Objects
 		*/
 		virtual void			VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance = false) const;
 
-		void					RegisterSensory(float&atTime) {RegisterSensory(location,atTime);}
-		void					UnregisterSensory(float&atTime)  {UnregisterSensory(location,atTime);}
+		void					RegisterSensory(float&atTime) {registeredSensor = RegisterSensory(location,atTime);}
+		void					UnregisterSensory(float&atTime)  {UnregisterSensory(registeredSensor,atTime);}
+		bool					SensoryIsRegistered() const {return registeredSensor.IsSet();}
 
-		void					RegisterSensory(const Grid::LCellIdI&loc, float&atTime, Buffer0<PWorldEntity>*newContacts = nullptr);
-		void					UnregisterSensory(const Grid::LCellIdI&loc, float&atTime);
-		#ifdef CLIENT
-			void				MoveSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to, float&atTime, bool checkChangesNow=true);
-		#else
-			virtual void		MoveSensoryToCurrentLocation(const Grid::LCellIdI&oldLocation, float&atTime, Buffer0<PWorldEntity>*newContacts = nullptr);
-
-		#endif
+		/**
+		Re-registers the current sensory with the faction.
+		Assumes that grid sensory has been previously flushed
+		*/
+		void					ReapplySensory(float&atTime);
+		TRegisteredSensor		RegisterSensory(const Grid::LCellIdI&loc, float&atTime, Buffer0<PWorldEntity>*newContacts = nullptr);
+		void					UnregisterSensory(TRegisteredSensor&, float&atTime);
+		void					MoveSensoryToCurrentLocation(float&atTime, Buffer0<PWorldEntity>*newContacts = nullptr);
 
 		#ifdef HAS_WINDOW
 			/**
@@ -640,6 +651,8 @@ namespace Objects
 
 		#endif
 
+		private:
+			TRegisteredSensor		registeredSensor;
 
 	};
 

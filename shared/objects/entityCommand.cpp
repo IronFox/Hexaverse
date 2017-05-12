@@ -46,6 +46,11 @@ namespace Objects
 			return newCommand;
 		}
 
+		void			Container::AddSpace()
+		{
+			members.Append();
+			members.Last().first = int2((int)members.Count()-1,0);
+		}
 
 	}
 }

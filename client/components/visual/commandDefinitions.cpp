@@ -10,9 +10,11 @@
 #include <objects/structure/laboratory.h>
 #include <objects/structure/mine.h>
 #include <objects/structure/vehiclePlant.h>
+#include <objects/faction.h>
 #include <objects/structure/planeFactory.h>
 #include <objects/subOrbital.h>
 #include "../clientRuntimeConfig.h"
+#include "../network.h"
 #include "dialog.h"
 #include "objectChoices.h"
 #include "terrain.h"
@@ -35,6 +37,12 @@ namespace Objects
 
 		namespace Detail
 		{
+
+
+
+
+
+
 			/**
 			Relay-functor to convert a single boolean function or variable to Objects::CommandFlags.
 			Depending on the returned boolean value, flag compositions will either be 
@@ -145,7 +153,7 @@ namespace Objects
 							{
 								if (!s2->IsEnabled() && !s2->CanEnable())
 								{
-									ApplicationInterface::SignalUserMessage(s2->GetNiceName()+" is switched off because its queue is empty. It will attempt to automatically enable once you enqueue at least one production job using the 'Construct Selected' button. You must first select both a foundation and a turret, however.");
+									ApplicationInterface::SignalUserMessage(s2->GetNiceName()+" is switched off because its queue is empty. It will attempt to automatically enable once you enqueue at least one production job.");
 									return;
 								}
 								ApplicationInterface::SignalEnableStructure(*s2, !s2->IsEnabled());
@@ -166,55 +174,6 @@ namespace Objects
 				}
 			},true);
 
-
-			commands.Add(int2(4,0),false, new Command::IconCommand("Construct Selected",[]()
-				{
-					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
-					if (plant)
-					{
-						if (plant->selectedBase && plant->selectedTurret)
-							Detail::EnqueueSelectedConstruction(*plant);
-						else
-						{
-							if (plant->selectedBase)
-								ApplicationInterface::SignalUserMessage(plant->GetNiceName()+" needs to know what turret you want to use in order to enqueue a new production job. Please select one in the top row.");
-							elif (plant->selectedTurret)
-								ApplicationInterface::SignalUserMessage(plant->GetNiceName()+" needs to know what foundation you want to use in order to enqueue a new production job. Please select one in the bottom row.");
-							else
-								ApplicationInterface::SignalUserMessage(plant->GetNiceName()+" needs to know what turret and foundation you want to use in order to enqueue a new production job. Please select one in each top and bottom rows.");
-						}
-					}
-				},
-				[](bool controlEnabled)
-				{
-					if (!controlEnabled)
-						return Objects::CommandFlags::None;
-					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
-					if (plant)
-					{
-						Objects::CommandFlags rs = Objects::CommandFlags::IsEnabled;
-						if (plant->selectedBase && plant->selectedTurret && plant->queue.IsEmpty() /*&& !plant->IsSleeping()*/)
-							rs |= Objects::CommandFlags::IsFlashing | Objects::CommandFlags::SoftFlashing;
-
-						return rs;
-					}
-					else return Objects::CommandFlags::None;
-				},
-				[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
-				{
-					costTypeOut = Resource::Minerals;
-					PVehiclePlant p = To<VehiclePlant>::DynamicCast(selectedEntity);
-					ASSERT__(p);
-					if (!p->selectedBase || !p->selectedTurret)
-					{
-						mineralCostOut = 0;
-						timeCostOut = 0;
-						return;
-					}
-					mineralCostOut = Vehicle::GetPrice(p->selectedBase,p->selectedTurret,p->owner);
-					timeCostOut = p->ProductionRounds(mineralCostOut,false);
-				}
-			));
 
 
 			int at = 0;
@@ -250,22 +209,48 @@ namespace Objects
 				{
 					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
 					if (plant)
+					{
 						plant->selectedTurret = c;
-				}
-				,[c](bool controlEnabled)
+
+						if (plant->selectedBase && plant->selectedTurret)
+							Detail::EnqueueSelectedConstruction(*plant);
+						else
+						{
+							if (!plant->selectedTurret)
+								LogEvent(EventClass::Preset::internalError,plant,"No Turret selected for construction");
+							else
+								LogEvent(EventClass::Preset::internalError,plant,"No base selected for construction");
+						}
+					}
+				},
+				[c](bool controlEnabled)
 				{
-					Objects::CommandFlags rs = CommonCmd::CommonButtonCheck(controlEnabled);
+					if (!controlEnabled)
+						return Objects::CommandFlags::None;
 					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
 					if (plant)
 					{
-						if (plant->selectedTurret == c)
-							rs |= Objects::CommandFlags::IsPermaActive;
-						elif (!plant->selectedTurret)
-							rs |= Objects::CommandFlags::IsFlashing | Objects::CommandFlags::SoftFlashing;
+						Objects::CommandFlags rs = Objects::CommandFlags::IsEnabled;
+						if (!c->isUnlocked(plant->owner))
+							rs = Objects::CommandFlags::None;
+
+						return rs;
 					}
-					if (!plant || !c->isUnlocked(plant->owner))
-						rs = Objects::CommandFlags::None;
-					return rs;
+					else return Objects::CommandFlags::None;
+				},
+				[c](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
+				{
+					costTypeOut = Resource::Minerals;
+					PVehiclePlant p = To<VehiclePlant>::DynamicCast(selectedEntity);
+					ASSERT__(p);
+					if (!p->selectedBase)
+					{
+						mineralCostOut = 0;
+						timeCostOut = 0;
+						return;
+					}
+					mineralCostOut = Vehicle::GetPrice(p->selectedBase,c,p->owner);
+					timeCostOut = p->ProductionRounds(mineralCostOut,false);
 				}));
 				To<Objects::Command::VisualCommand>::Cast(commands.GetLast().second)->RasterizeImage();
 				at++;
@@ -400,7 +385,25 @@ namespace Objects
 				rs->RasterizeImage();
 		}
 
-		static count_t			researchCommandOffset = InvalidIndex;
+		static count_t			researchCommandOffset = InvalidIndex, researchQueueOffset = InvalidIndex;
+
+
+		static	void	ConfigureResearchQueueButtons(CommandContainer&commands)
+		{
+			commands.Truncate(researchQueueOffset);
+			if (Faction::mine && !Faction::mine->researchState.IsIdle())
+			{
+				foreach (Faction::mine->researchState.GetResearchQueue(),r)
+				{
+					Command::PResearchAbortCommand rs(new Command::ResearchAbortCommand(*r,r == Faction::mine->researchState.GetResearchQueue().begin()));
+					if ((*r)->componentReference || (*r)->prototypeReference)
+						rs->RasterizeImage();
+					commands.Add(rs);
+				}
+			}
+
+			commands.Refresh(Network::ControlEnabled());
+		}
 
 		static	void	ConfigureResearchButtons(CommandContainer&commands)
 		{
@@ -412,10 +415,19 @@ namespace Objects
 			{
 				BuildCommand(commands,*res);
 			}
+			commands.AddSpace();
+			researchQueueOffset = commands.Count();
+			ConfigureResearchQueueButtons(commands);
 		}
+
+
 		void	ReconfigureResearchButtons()
 		{
 			ConfigureResearchButtons(Laboratory::commands);
+		}
+		void	ReconfigureResearchQueueButtons()
+		{
+			ConfigureResearchQueueButtons(Laboratory::commands);
 		}
 
 		void	DefineLaboratory(CommandContainer&commands)
@@ -1322,6 +1334,7 @@ namespace Objects
 		{
 			DefineItemHandlers();
 			ResearchState::globalState.onScriptChange << ReconfigureResearchButtons;
+			ResearchState::globalState.onQueueChange << [](Faction*f){ if (f == Faction::mine.get()) ReconfigureResearchQueueButtons();};
 
 			DefineMine(Objects::Mine::commands);
 			DefineVehiclePlant(Objects::VehiclePlant::commands);
