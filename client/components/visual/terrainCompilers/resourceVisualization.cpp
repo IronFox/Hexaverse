@@ -61,7 +61,7 @@ namespace VisualTerrain
 				continue;	//nothing known
 
 			#ifndef _DEBUG
-				if (!(lowGridCells[i].cornerFlags & empZonesUnlocked))
+				if (!(lowGridCells[i].cornerFlags & Grid::empZonesUnlocked))
 					continue;
 			#endif
 
