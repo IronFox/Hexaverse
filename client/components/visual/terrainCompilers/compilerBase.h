@@ -85,25 +85,43 @@ namespace VisualTerrain
 	TWeightedColor	GetMixColorU(const Grid::CellStack&stack, unsigned layer, Grid::Content oppositeContent, float&sumBrightnessTo, int&sumVisibilityTo, Grid::Content&outContent);
 	TWeightedColor	GetDownMixColorU(const Grid::CellStack&stack, unsigned layer, Grid::Content oppositeContent, float&sumBrightnessTo, int&sumVisibilityTo, Grid::Content&outContent);
 
-
-
 	template <typename Vtx>
-		struct THull
+		struct TPointSet
 		{
 			Buffer<Vtx, 0>	vertices;
-			Buffer<UINT32, 0>	indices;
 
 
 			void			Clear()
 			{
 				vertices.Clear();
+			}
+
+
+			void		AppendTo(TPointSet<Vtx>&set) const
+			{
+				set.vertices.Append(vertices);
+			}
+
+		};
+
+	template <typename Vtx>
+		struct THull : public TPointSet<Vtx>
+		{
+			typedef TPointSet<Vtx>	Super;
+
+			Buffer<UINT32, 0>	indices;
+
+
+			void			Clear()
+			{
+				Super::Clear();
 				indices.Clear();
 			}
 
 			void		AppendTo(THull<Vtx>&hull) const
 			{
 				UINT32 offset = (UINT32)hull.vertices.Count();
-				hull.vertices.Append(vertices);
+				Super::AppendTo(hull);
 				const UINT32*iFrom = indices.pointer();
 				UINT32*iTo = hull.indices.AppendRow(this->indices.Count());
 				while (iFrom != this->indices.end())
@@ -117,6 +135,65 @@ namespace VisualTerrain
 		};
 
 
+	template <typename T, count_t maxElements>
+		class StaticList
+		{
+		private:
+			static const constexpr count_t MaxElements = maxElements;
+
+			T			data[MaxElements];	//should be POD to work
+			T			*current;
+		public:
+			count_t		Count() const
+			{
+				return current - data;
+			}
+			count_t		size() const
+			{
+				return current - data;
+			}
+
+			T*			begin()
+			{
+				return data;
+			}
+			const T*	begin() const
+			{
+				return data;
+			}
+			T*			end()
+			{
+				return current;
+			}
+			const T*	end() const
+			{
+				return current;
+			}
+				
+			void		Reset()
+			{
+				current = data;
+			}
+
+			T&			Append()
+			{
+				T*rs = current;
+				++current;
+				return *rs;
+			}
+
+			void		operator<<(const T&el)
+			{
+				//DBG_ASSERT_EQUAL__((void*)data ,(void*)castedFirst);
+				DBG_ASSERT__(current - data < MaxElements);
+				(*current) = el;
+				++current;
+			}
+
+			bool		IsEmpty() const {return current == data;}
+			bool		IsNotEmpty() const {return current != data;}
+
+		};
 
 	/**
 	Stack-stored mesh container with constant capacity
@@ -125,85 +202,82 @@ namespace VisualTerrain
 		class StaticMesh
 		{
 		public:
-			static const count_t MaxVertices = maxVertices;
-			static const count_t MaxIndices = maxIndices;
+			static const constexpr count_t MaxVertices = maxVertices;
+			static const constexpr count_t MaxIndices = maxIndices;
 
-			BYTE		vertexData[maxVertices * sizeof(Vtx)];	//prevent constructor execution
-			Vtx			*vertexRange,
-						*vat;
-			UINT16		indexRange[maxIndices],
-						*iat,
-						offset;
+			StaticList<Vtx,MaxVertices>		vertexData;
+			StaticList<UINT16,MaxIndices>	indexData;
 
-			/**/		StaticMesh() :vertexRange((Vtx*)vertexData),vat((Vtx*)vertexData), iat(indexRange), offset(0)	{}
-			/**/		StaticMesh(const StaticMesh<Vtx,maxVertices,maxIndices>&other)	{Reset();}	//nothing for now
+			UINT16		offset;
 
-			void		operator=(const StaticMesh<Vtx,maxVertices,maxIndices>&other)	{Reset();}	//nothing for now
+			///**/		StaticMesh() :vertexRange((Vtx*)vertexData),vat((Vtx*)vertexData), iat(indexRange), offset(0)	{}
+			///**/		StaticMesh(const StaticMesh<Vtx,maxVertices,maxIndices>&other)	{Reset();}	//nothing for now
+
+			//void		operator=(const StaticMesh<Vtx,maxVertices,maxIndices>&other)	{Reset();}	//nothing for now
 
 
 			void		Reset()
 			{
-				vertexRange = ((Vtx*)vertexData);
-				vat = ((Vtx*)vertexData);
-				iat = (indexRange);
+				vertexData.Reset();
+				indexData.Reset();
 				offset = (0);
 			}
 
-			bool		IsEmpty() const {return indexRange == iat;}
-			bool		IsNotEmpty() const {return indexRange != iat;}
+			bool		IsEmpty() const {return indexData.IsEmpty();}
+			bool		IsNotEmpty() const {return indexData.IsNotEmpty();}
 
 
 
 			void		SetOffset()
 						{
-							offset = (UINT16)(vat - vertexRange);
+							offset = (UINT16)(vertexData.Count());
 						}
 
 			StaticMesh&	Quad(int i0, int i1, int i2, int i3)
 						{
-							DBG_ASSERT__(iat - indexRange+6 <= maxIndices);
-							(*iat) = UINT16(i0) + offset;iat++;
-							(*iat) = UINT16(i1) + offset;iat++;
-							(*iat) = UINT16(i2) + offset;iat++;
-							(*iat) = UINT16(i0) + offset;iat++;
-							(*iat) = UINT16(i2) + offset;iat++;
-							(*iat) = UINT16(i3) + offset;iat++;
+							indexData << UINT16(i0) + offset;
+							indexData << UINT16(i1) + offset;
+							indexData << UINT16(i2) + offset;
+							indexData << UINT16(i0) + offset;
+							indexData << UINT16(i2) + offset;
+							indexData << UINT16(i3) + offset;
 							return *this;
 						}
 
 			StaticMesh&	InvQuad(int i0, int i1, int i2, int i3)
 						{
-							DBG_ASSERT__(iat - indexRange+6 <= maxIndices);
-							(*iat) = UINT16(i0) + offset;iat++;
-							(*iat) = UINT16(i2) + offset;iat++;
-							(*iat) = UINT16(i1) + offset;iat++;
-							(*iat) = UINT16(i0) + offset;iat++;
-							(*iat) = UINT16(i3) + offset;iat++;
-							(*iat) = UINT16(i2) + offset;iat++;
+							indexData << UINT16(i0) + offset;
+							indexData << UINT16(i2) + offset;
+							indexData << UINT16(i1) + offset;
+							indexData << UINT16(i0) + offset;
+							indexData << UINT16(i3) + offset;
+							indexData << UINT16(i2) + offset;
 							return *this;
 						}
 			StaticMesh&	operator<<(UINT16 index)
 						{
-							DBG_ASSERT__(iat - indexRange < maxIndices);
-							(*iat) = index + offset;
-							iat++;
+							indexData << index + offset;
 							return *this;
 						}
 			StaticMesh&	operator<<(const Vtx&vtx)
 						{
-							DBG_ASSERT_EQUAL__((void*)vertexRange ,(void*)vertexData);
-							DBG_ASSERT__(vat - vertexRange < maxVertices);
-							(*vat) = vtx;
-							vat++;
+							vertexData << vtx;
 							return *this;
+						}
+
+			Vtx&		NewVertex()
+						{
+							return vertexData.Append();
+
 						}
 
 			void		AppendTo(THull<Vtx>&hull) const
 						{
 							UINT32 offset = (UINT32)hull.vertices.Count();
-							hull.vertices.Append(vertexRange, vat - vertexRange);
-							const UINT16*iFrom = indexRange;
-							UINT32*iTo = hull.indices.AppendRow(iat - indexRange);
+							hull.vertices.Append(vertexData.begin(), vertexData.Count());
+							const UINT16*iFrom = indexData.begin();
+							const UINT16*const iat = indexData.end();
+							UINT32*iTo = hull.indices.AppendRow(indexData.Count());
 							while (iFrom != iat)
 							{
 								(*iTo) = UINT32(*iFrom) + offset;
