@@ -37,7 +37,23 @@ public:
 	void					SetTriangles()	{SetTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);}
 };
 
+class ShadedVertexInstructionBlock : public Engine::DX11::BaseInstructionBlock
+{
+	typedef Engine::DX11::BaseInstructionBlock	Super;
+public:
+	ShadedInstruction		shader;//shadow base
 
+	void					operator=(const ShadedInstruction&inst)
+	{
+		((Engine::DX11::BaseInstructionBlock&)*this) = inst.Current();
+		shader = inst;
+	}
+	void					Clear()
+	{
+		Super::Clear();
+		shader.Clear();
+	}
+};
 
 class ShadedInstructionBlock16 : public Engine::DX11::InstructionBlock16
 {
