@@ -624,8 +624,10 @@ namespace VisualTerrain
 		dat.terrain.Clear();
 		dat.overlay.Clear();
 		dat.water.Clear();
-		CompileSolidTerrain(stacks, dat.terrain, dat.overlay, Grid::high.grid.GetFamilyOffset(family), Grid::high.grid.CountFamilyMembers(family), clipHeight);
-		CompileWater(stacks, dat.water, Grid::high.grid.GetFamilyOffset(family), Grid::high.grid.CountFamilyMembers(family), clipHeight);
+		const index_t offset = Grid::high.grid.GetFamilyOffset(family);
+		const count_t members = Grid::high.grid.CountFamilyMembers(family);
+		CompileSolidTerrain(stacks, dat.terrain, dat.overlay, offset, members, clipHeight);
+		CompileWater(stacks, dat.water, offset, members, clipHeight);
 
 		Box<> box = Box<>::Invalid();
 
