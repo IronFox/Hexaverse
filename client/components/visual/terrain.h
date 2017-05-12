@@ -43,6 +43,7 @@ namespace VisualTerrain
 
 	//scene rendering functions:
 	void	RenderOpaqueTerrain(const Engine::Frustum<>&frustum);
+	void	RenderPlants(const Engine::Frustum<>&frustum);
 	void	RenderShadows();
 	void	RenderWater(const Engine::Frustum<>&frustum);
 	void	RenderOverlay(const Engine::Frustum<>&frustum);

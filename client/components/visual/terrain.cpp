@@ -18,6 +18,7 @@
 #include "terrainCompilers/solidTerrain.h"
 #include "terrainCompilers/water.h"
 #include "terrainCompilers/resourceVisualization.h"
+#include "terrainCompilers/plants.h"
 	
 extern Engine::Display<Engine::DirectX11>	display;
 //namespace Camera
@@ -354,6 +355,31 @@ namespace VisualTerrain
 		Instruction::terrainShadowBase.UpdateLayout();
 		Instruction::terrainShadowBase.SetTriangles();
 
+		Instruction::leafBlobBase.LoadQualitiesFromFile("shaders/gridLeafBlob.hlsl", "vsMain","gsMain", "psMain", bindings.pointer(), bindings.Count());
+		{
+			//TVec3<>	center;
+			//float radius;
+			//float windSensitivity;
+			Instruction::leafBlobBase.binding.Append("Center",0,DXGI_FORMAT_R32G32B32_FLOAT);
+			Instruction::leafBlobBase.binding.Append("Radius_WindSensitivity",0,DXGI_FORMAT_R32G32_FLOAT);
+			Instruction::leafBlobBase.SetPoints();
+			Instruction::leafBlobBase.UpdateLayout();
+		}		
+		Instruction::leafBlobShadowBase.shader.LoadFromFile("shaders/gridLeafBlobShadow.hlsl", "vsMain","gsMain", "psMain");
+		Instruction::leafBlobShadowBase.binding = Instruction::leafBlobBase.binding;
+		Instruction::leafBlobShadowBase.UpdateLayout();
+		Instruction::leafBlobShadowBase.SetPoints();
+
+		Instruction::treeTrunkBase.LoadQualitiesFromFile("shaders/gridTreeTrunk.hlsl", "vsMain","gsMain", "psMain", bindings.pointer(), bindings.Count());
+		{
+			//TVec3<>	center;
+			//float	height,
+			//		radius;
+			Instruction::treeTrunkBase.binding.Append("Center",0,DXGI_FORMAT_R32G32B32_FLOAT);
+			Instruction::treeTrunkBase.binding.Append("Height_Radius",0,DXGI_FORMAT_R32G32_FLOAT);
+			Instruction::treeTrunkBase.SetPoints();
+			Instruction::treeTrunkBase.UpdateLayout();
+		}		
 
 		{
 			Engine::VertexBinding binding;
@@ -521,6 +547,8 @@ namespace VisualTerrain
 				TOverlayHull			overlay;	//!< high-resolution overhanging terrain overlay, transparent
 				TWaterHull				water;		//!< high-resolution overhanging terrain water, transparent, shaded
 				TResourceHull			resources;	//!< low-resolution resource visualization. Similar to @a overlay, but uses different shader
+				TPlantHull<TLeafBlob>	leafBlobs;	//!< high-resolution plant leaf-spheres
+				TPlantHull<TTreeTrunk>	treeTrunks;	//!< high-resolution tree trunks
 			#endif 
 			bool						outdated,resourceOutdated;
 
@@ -536,6 +564,8 @@ namespace VisualTerrain
 					overlay.Destroy();
 					water.Destroy();
 					resources.Destroy();
+					leafBlobs.Destroy();
+					treeTrunks.Destroy();
 				#endif
 			}
 		};
@@ -576,6 +606,10 @@ namespace VisualTerrain
 		overlayBase.Clear();
 		overlayShadowBase.Clear();
 		resourceBase.Clear();
+		leafBlobBase.Clear();
+		leafBlobShadowBase.Clear();
+		treeTrunkBase.Clear();
+		treeTrunkShadowBase.Clear();
 		terrainBase.Clear();
 		terrainSphereBase.Clear();
 		terrainParaboloidBase.Clear();
@@ -624,10 +658,14 @@ namespace VisualTerrain
 		dat.terrain.Clear();
 		dat.overlay.Clear();
 		dat.water.Clear();
+		dat.leafBlobs.Clear();
+		dat.treeTrunks.Clear();
+
 		const index_t offset = Grid::high.grid.GetFamilyOffset(family);
 		const count_t members = Grid::high.grid.CountFamilyMembers(family);
 		CompileSolidTerrain(stacks, dat.terrain, dat.overlay, offset, members, clipHeight);
 		CompileWater(stacks, dat.water, offset, members, clipHeight);
+		CompilePlants(stacks, dat.leafBlobs, dat.treeTrunks, offset, members, clipHeight);
 
 		Box<> box = Box<>::Invalid();
 
@@ -656,6 +694,18 @@ namespace VisualTerrain
 			dat.water.instruction[1] = Instruction::waterParaboloidBase;
 			dat.water.instruction[2] = Instruction::waterSphereBase;
 		}
+
+		if (dat.leafBlobs.instruction.shader.IsEmpty())
+		{
+			(DX11::BaseInstructionBlock&)dat.leafBlobs.shadowInstruction = Instruction::leafBlobShadowBase;
+			dat.leafBlobs.instruction = Instruction::leafBlobBase;
+			(DX11::BaseInstructionBlock&)dat.treeTrunks.shadowInstruction = Instruction::treeTrunkShadowBase;
+			dat.treeTrunks.instruction = Instruction::treeTrunkBase;
+		}
+		dat.leafBlobs.instruction.vbo.CreateFromStructs(dat.leafBlobs.vertices);
+		dat.leafBlobs.shadowInstruction.vbo = dat.leafBlobs.instruction.vbo;
+		dat.treeTrunks.instruction.vbo.CreateFromStructs(dat.treeTrunks.vertices);
+		dat.treeTrunks.shadowInstruction.vbo = dat.treeTrunks.instruction.vbo;
 
 
 		dat.terrain.instruction[0].vbo.CreateFromStructs(dat.terrain.vertices);
@@ -1233,6 +1283,22 @@ namespace VisualTerrain
 			TFamily::TData&dat = family[k].normal;
 			if (frustum.IsVisible(dat.terrainBounds.boundingSphere))
 				display.Render(dat.terrain.instruction[Instruction::displayMode],true);
+		}
+	}
+
+	void	RenderPlants(const Engine::Frustum<>&frustum)
+	{
+		for (BaseGrid::family_t k = 0; k < BaseGrid::NumFamilies; k++)
+		{
+			TFamily::TData&dat = family[k].normal;
+			if (frustum.IsVisible(dat.terrainBounds.boundingSphere))
+				display.LazyRenderVertices(dat.leafBlobs.instruction);
+		}
+		for (BaseGrid::family_t k = 0; k < BaseGrid::NumFamilies; k++)
+		{
+			TFamily::TData&dat = family[k].normal;
+			if (frustum.IsVisible(dat.terrainBounds.boundingSphere))
+				display.LazyRenderVertices(dat.treeTrunks.instruction);
 		}
 	}
 

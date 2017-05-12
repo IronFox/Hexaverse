@@ -120,6 +120,7 @@ namespace Grid
 		TLayer		extendedCore,mountains;
 		BYTE		type = Content::Unknown,
 					liquidCoverage = Content::Water,
+					naturalCover = Content::Forest,	//!< Temporary solution. Set to a plant type, or Grass
 					extendedCoreType = Content::Granite,
 					liquidOutline = Content::Sand;
 		INT32		snowHeight = 5,	//height past which blocks will be covered in snow. Set to >=HalfRange(16) to disable

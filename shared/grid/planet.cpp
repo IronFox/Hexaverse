@@ -85,7 +85,7 @@ namespace Grid
 							content = liquidOutline;
 						else  
 							if (type == Content::Unknown)
-								content = h < 3 ? Content::Grass : Content::Rock;
+								content = h < 3 ? naturalCover : Content::Rock;
 							else
 								content = type;
 					continue;
