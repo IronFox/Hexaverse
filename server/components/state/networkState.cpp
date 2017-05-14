@@ -217,9 +217,10 @@ namespace Network
 	}
 
 
-	void Client::SendProgressUpdate(bool dead, const String&warningReason)
+	void Client::SendProgressUpdate(const String&warningReason)
 	{
 		Protocol::GameProgress progress;
+		const bool dead = !faction || faction->isDead;
 		progress.gameOver = dead || RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame;
 		progress.gameWon = Game::winner == faction && !!Game::winner;
 		progress.status = RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::None ? "" : FactionStatus(faction);
@@ -608,6 +609,11 @@ namespace Network
 
 	bool CanControl(const Client&c, const Objects::WorldEntity&e)
 	{
+		if (!c.faction || c.faction->isDead)
+		{
+			LogEvent(EventClass::Preset::commandRejected,c.peer.lock(),"Unable to comply: Your faction has ended");
+			return false;
+		}
 		if (c.faction != e.owner)
 			return false;
 		if (c.wantNewRound)

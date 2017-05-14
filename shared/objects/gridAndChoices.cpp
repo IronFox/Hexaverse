@@ -1236,7 +1236,12 @@ namespace Objects
 
 	void					Remove( const PWorldEntity&e, RemovalType t, float&timestamp, bool controlEnabled, bool isRemovedFromGrid/*=false*/, bool ignoreIndestructible/*=false*/)
 	{
-		ASSERT__(e);
+		if (!e)
+		{
+			LogEvent(EventClass::Preset::internalError,"Trying to remove null-entity, t="+String(t.ToString())+", timestamp="+String(timestamp)+", isRemovedFromgrid="+String(isRemovedFromGrid));
+			DBG_FATAL__("Trying to remove null-entity");
+			return;
+		}
 		#ifndef CLIENT
 			if (e->IsIndestructible() && !ignoreIndestructible)
 				return;

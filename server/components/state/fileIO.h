@@ -35,6 +35,8 @@ namespace FileIO
 	void			ReadFromListChunk(const Riff::Chunk&, World::Data&);
 	void			Save(const PathString&name);
 	void			Load(const PathString&name);
+	bool			CanSaveRightNow();
+	bool			IsValidSavePhase(RuntimeConfig::Phase p);
 
 	/**
 	Checks whether or not the current configuration and round number makes autosaving appropriate, and executes such.

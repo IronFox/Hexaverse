@@ -260,12 +260,22 @@ namespace Objects
 
 			int					deathInRounds;	//remaining rounds to live if nothing changes. <= 0 means inactive
 
-			bool				hasFuelMine,
-								hasMineralMine,
-								hasMineralContainer,
-								hasGenerator,
-								hasVehiclePlant,
-								hasTerraformer;
+
+
+
+			enum class UnitClass
+			{
+				None = 0x0,
+				FuelMine = 0x1,
+				MineralMine = 0x2,
+				MineralContainer = 0x4,
+				Generator = 0x8,
+				VehiclePlant = 0x10,
+				Terraformer = 0x20,
+			};
+
+			bool				isDead = false;
+			UnitClass			hasUnitClasses = UnitClass::None;
 
 			Buffer0<Marker,Strategy::Adopt>		markers;
 			GenericHashTable<TUniqueID, index_t, TUniqueID>	markerMap,referenceMap;
@@ -443,6 +453,29 @@ namespace Objects
 	void			ForeachMobileEntityIncludingStored(const std::function<void(const PMobileEntity&)>&func, bool includeGhosts);
 }
 
+#ifndef CLIENT
 
+
+inline Objects::Faction::UnitClass	operator|(Objects::Faction::UnitClass a,Objects::Faction::UnitClass b)
+{
+	typedef Objects::Faction::UnitClass UnitClass;
+	typedef std::underlying_type<UnitClass>::type	T;
+	return static_cast<UnitClass>( static_cast<T>(a) | static_cast<T>(b) );
+}
+
+inline void	operator|=(Objects::Faction::UnitClass&a,Objects::Faction::UnitClass b)
+{
+	a = a | b;
+}
+
+inline bool	operator&(Objects::Faction::UnitClass a,Objects::Faction::UnitClass b)
+{
+	typedef Objects::Faction::UnitClass UnitClass;
+	typedef std::underlying_type<UnitClass>::type	T;
+	return (static_cast<T>(a) & static_cast<T>(b) ) != 0;
+}
+		
+
+#endif
 
 #endif

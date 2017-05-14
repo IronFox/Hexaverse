@@ -879,7 +879,21 @@ namespace Objects
 
 		bool		Faction::CanLive(String&whyNot) const
 		{
-			bool hasMineralGeneratorCycle = hasFuelMine && hasMineralMine && hasGenerator;
+			if (isDead)
+			{
+				whyNot = "Died";
+				return false;
+			}
+
+			const bool hasFuelMine = (hasUnitClasses & UnitClass::FuelMine);
+			const bool hasMineralMine = (hasUnitClasses & UnitClass::MineralMine);
+			const bool hasGenerator = (hasUnitClasses & UnitClass::Generator);
+			const bool hasMineralContainer = (hasUnitClasses & UnitClass::MineralContainer);
+			const bool hasTerraformer = (hasUnitClasses & UnitClass::Terraformer);
+			const bool hasVehiclePlant = (hasUnitClasses & UnitClass::VehiclePlant);
+
+			const bool hasMineralGeneratorCycle = hasFuelMine && hasMineralMine && hasGenerator;
+
 			#ifndef ONE_COMPOUND_PER_FACTION
 				if (!hasMineralContainer)
 					hasMineralGeneratorCycle = false;
@@ -1631,23 +1645,44 @@ namespace Objects
 
 		/*static*/ void	Faction::Kill(const PFaction&f)
 		{
+			if (!f)
+			{
+				DBG_FATAL__("Trying to kill null-faction");
+				LogEvent(EventClass::Preset::internalError,nullptr, "Trying to kill null-faction");
+				return;
+			}
+			if (f->isDead)
+			{
+				LogEvent(EventClass::Preset::commandRejected,nullptr, "Faction "+f->id.ToString()+" has already ended");
+				return;
+			}
 			LogEvent(EventSignificance::Debug,nullptr, "Erasing faction "+f->id.ToString());
-			static Buffer0<PWorldEntity>	toDelete;
-			for (index_t i = 0; i < f->structures.Count(); i++)
-				if (!f->structures[i].lock()->IsIndestructible())
-				{
-					toDelete << f->structures[i].lock();
-				}
 
-			for (index_t i = 0; i < f->allMobiles.Count(); i++)
-				//if (vehicles[i]->owner == f)
-				{
-					toDelete << f->allMobiles[i].lock();
-				}
-			float t=0;
-			foreach (toDelete,del)
-				Remove(*del,Objects::RemovalType::ControlledExplosion,t,false);
-			toDelete.Clear();
+			{
+				auto lock = f->LockSensorUpdates();
+				static Buffer0<PWorldEntity>	toDelete;
+				for (index_t i = 0; i < f->structures.Count(); i++)
+					if (!f->structures[i].lock()->IsIndestructible())
+					{
+						toDelete << f->structures[i].lock();
+					}
+
+				for (index_t i = 0; i < f->allMobiles.Count(); i++)
+					//if (vehicles[i]->owner == f)
+					{
+						toDelete << f->allMobiles[i].lock();
+					}
+				float t=0;
+				foreach (toDelete,del)
+					if (*del)
+						Remove(*del,Objects::RemovalType::ControlledExplosion,t,false);
+				toDelete.Clear();
+				ASSERT__(f->allMobiles.IsEmpty());	//should have cascaded
+				ASSERT__(f->structures.IsEmpty());
+			}	//exiting lock: recomputing sensory of f, which is now empty, so should be fast
+
+			f->isDead = true;
+			f->hasUnitClasses = UnitClass::None;
 
 			if (f != nexus)
 			{

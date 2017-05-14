@@ -58,7 +58,7 @@ namespace Network
 		/**
 		Refreshes personal game progress information
 		*/
-		void				SendProgressUpdate(bool dead, const String&warningReason);
+		void				SendProgressUpdate(const String&warningReason);
 
 	};
 	

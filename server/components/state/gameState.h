@@ -184,6 +184,8 @@ namespace Game
 	}
 
 
+	void			RegisterClassGain(const Objects::PWorldEntity&e, Objects::Faction::UnitClass, const String&debugName);
+	count_t			CountLivingPlayerFactions();
 
 	void			PerformNewRoundLogic(float &atTime);	//includes UpdateHibernation()
 

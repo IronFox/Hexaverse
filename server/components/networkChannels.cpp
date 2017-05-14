@@ -453,7 +453,7 @@ namespace Receiver
 		if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
 		{
 			{
-				client->SendProgressUpdate(true,"<null>");
+				client->SendProgressUpdate("");
 			}
 		}
 
@@ -608,7 +608,7 @@ namespace Receiver
 		String why;
 		if (Game::Config::basesRequired && faction->deathInRounds > 0)
 			faction->CanLive(why);
-		client->SendProgressUpdate(false,why);
+		client->SendProgressUpdate(why);
 
 
 		if (!newFaction)
