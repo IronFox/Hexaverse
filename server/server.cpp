@@ -65,9 +65,9 @@ namespace ApplicationInterface
 	}
 
 
-	void	SignalChainReactionExplosion(const Grid::LCellIdI&center, float radius, int damageLevel, float atTime)
+	void	SignalChainReactionExplosion(const Objects::PWorldEntity&causedBy, const Grid::LCellIdI&center, float radius, int damageLevel, float atTime)
 	{
-		Game::evolver->HandleChainReactionExplosion(Evolver::TExplosion( center, radius, damageLevel, atTime ));
+		Game::evolver->HandleChainReactionExplosion(Evolver::TExplosion(causedBy, center, radius, damageLevel, atTime ));
 	}
 
 

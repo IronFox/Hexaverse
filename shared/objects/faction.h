@@ -9,6 +9,7 @@
 #include "../sharedContainer.h"
 #include "research.h"
 #include "../grid/resources.h"
+#include "statistics.h"
 
 namespace Objects
 {
@@ -160,6 +161,7 @@ namespace Objects
 		String		name;
 		bool		online = false;
 		float3		color;
+		Statistics		statistics;
 		ResearchState	researchState;
 		#ifdef CLIENT
 			float3	activeEntityColor,
@@ -298,7 +300,7 @@ namespace Objects
 
 
 
-			/**/		Faction(const TUniqueID&toID, const String&name="", bool isNexus=false):researchState(this,isNexus), name(name)
+			/**/		Faction(const TUniqueID&toID, const String&name="", bool isNexus=false):researchState(this,isNexus), statistics(this), name(name)
 			{
 				nexusControl = acquiringNexusControl = 0;
 				deathInRounds = 0;

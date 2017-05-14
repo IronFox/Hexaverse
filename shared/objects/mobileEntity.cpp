@@ -151,7 +151,7 @@ namespace Objects
 		{
 			if (t == RemovalType::UncontrolledExplosion && RuntimeConfig::bombsExplodeWhenDestroyed && turret == &Component::bomb)
 			{
-				ApplicationInterface::SignalChainReactionExplosion(location, Component::Bomb::GetRadius(false,owner),Component::Bomb::GetDamageLevel(false,owner),atTime);
+				ApplicationInterface::SignalChainReactionExplosion(shared_from_this(), location, Component::Bomb::GetRadius(false,owner),Component::Bomb::GetDamageLevel(false,owner),atTime);
 			}
 
 		}

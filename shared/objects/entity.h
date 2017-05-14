@@ -527,12 +527,6 @@ namespace Objects
 		#endif
 
 
-
-		inline void					TakeDamage(int damageLevel)
-		{
-			health -= damageLevel;
-		}
-
 		/**
 		Iterates through all sensors of the local entity
 		@param loc Location to use as entity location (the actual entity location is ignored)

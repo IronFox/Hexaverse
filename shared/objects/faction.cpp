@@ -160,7 +160,7 @@ namespace Objects
 
 			OwnerParameter oldOwner = e->owner;
 
-
+			oldOwner->statistics.SignalLossOf(e,newOwner,true);
 
 
 

@@ -220,6 +220,9 @@ namespace Objects
 				return;
 			}
 
+			DBG_ASSERT__(attack.attackFrom);
+			
+
 			//if (RuntimeConfig::empZones && Grid::AffectedByEMP(targetCell))
 			//{
 			//	LogEvent(EventClass::Preset::commandRejected,nullptr,"Explosion dissipated due to EMP field in target area");
@@ -242,7 +245,7 @@ namespace Objects
 			static Buffer0<PWorldEntity>	allLivingAffected;
 			static Buffer0<PStructure>		affectedStructures;
 			static Buffer0<PVehicle>		affectedVehicles;
-			ForeachWorldEntity([center,outerRadius,damageLevel,&atTime](const PWorldEntity e)
+			ForeachWorldEntity([center,outerRadius,damageLevel,&atTime,attack](const PWorldEntity e)
 			{
 				if (e->IsIndestructible())
 					return;
@@ -285,19 +288,32 @@ namespace Objects
 				//else
 				if (dist2 <= outerRadius)
 				{
+					if (attack.attackFrom)
+					{
+						int d = vmin(damageLevel,e->health);
+						attack.attackFrom->owner->statistics.SignalDamageDealtTo(e->owner,d);
+						e->owner->statistics.SignalDamageReceivedFrom(attack.attackFrom->owner,d);
+					}
+
+
 					atTime = std::max(atTime,e->entityTime);
-					e->TakeDamage(damageLevel);
+					e->health -= damageLevel;
 					if (e->health <= 0)
 					{
+						if (attack.attackFrom)
+						{
+							attack.attackFrom->owner->statistics.SignalDestructionOfHostile(e);
+							e->owner->statistics.SignalLossOf(e,attack.attackFrom->owner,false);
+						}
+
 						e->SyncTime(atTime);
 						Remove(e,Objects::RemovalType::UncontrolledExplosion,atTime,false);
+						return;	//prevent being added to affected*
 					}
 					else
 					{
 						e->RegisterChange(WorldEntity::HealthChanged,atTime);
 					}
-					if (e->health <= 0)
-						return;	//prevent being added to affect*
 				}
 				allLivingAffected << e;
 
