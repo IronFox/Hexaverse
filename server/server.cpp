@@ -101,26 +101,8 @@ namespace ApplicationInterface
 			Game::Network::UpdateResourceCoverage(_v->owner, _v->location,_v->GetScanningRange(),timestamp);
 		}
 
-		if (Game::Config::basesRequired && v.GetOperationSpeed(Objects::Component::Construct) && !v.owner->hasTerraformer)
-		{
-			LogEvent(EventSignificance::Debug,_v.get(),"Recognized as terraformer. Reevaluating survivial conditions");
-			v.owner->hasTerraformer = true;
-			String whyNot;
-			bool canLive = v.owner->CanLive(whyNot);
-		
-			if (canLive)	//conditions changed
-			{
-				if (v.owner->deathInRounds > 0)
-				{
-					v.owner->deathInRounds = 0;
-					Network::PClient client;
-					if (Network::playerMap.query(v.owner,client))
-						client->SendProgressUpdate(false,whyNot);
-				}
-			}
-			else
-				LogEvent(EventSignificance::Debug,_v.get(),"Nope: "+whyNot);
-		}
+		if (v.GetOperationSpeed(Objects::Component::Construct))
+			Game::RegisterClassGain(_v, Objects::Faction::UnitClass::Terraformer, "terraformer");
 	}
 
 	void	SignalNewStructure(const Objects::PStructure&s, float atTime)
@@ -352,7 +334,7 @@ namespace ApplicationInterface
 
 				foreach (Network::activePlayersAndSpectators,p)
 				{
-					(*p)->SendProgressUpdate(true,"<null>");
+					(*p)->SendProgressUpdate("");
 				}
 			}
 			else
@@ -363,7 +345,7 @@ namespace ApplicationInterface
 					String why;
 					if (Game::Config::basesRequired && f->deathInRounds > 0)
 						f->CanLive(why);
-					client->SendProgressUpdate(false,why);
+					client->SendProgressUpdate(why);
 				}
 				return;
 			}

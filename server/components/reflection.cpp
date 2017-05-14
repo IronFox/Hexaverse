@@ -717,7 +717,7 @@ namespace Reflection
 			Network::PClient client;
 			if (Network::playerMap.Query(faction,client))
 			{
-				client->SendProgressUpdate(true, "");
+				client->SendProgressUpdate("");
 			}
 		}
 

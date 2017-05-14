@@ -50,10 +50,22 @@ namespace FileIO
 		String title = String(PRODUCT_NAME)+" server "+ ::Network::serverID.ToNiceString()+" (world "+ World::worldID.ToNiceString()+")";
 		if (ConfigurationMode::IsActive())
 			title += " INTERACTIVE CONFIGURATION MODE";
+		#ifdef _DEBUG
+			title += " (DEBUG)";
+		#endif
 		SetConsoleTitleA(title.c_str());
 	}
 
 
+	struct FactionFlags
+	{
+		enum flag_t
+		{
+			IsDead = 0x1,
+
+		};
+
+	};
 
 
 
@@ -166,10 +178,12 @@ namespace FileIO
 								fileVersion("VERS"),
 								baseJob("VHBJ"),
 								factionWorldCounterChunk("WCCK"),
+								gamePhase("GAMP"),
 								worldConfig("WCFG"),
 								worldContentTypeCount("WCTC"),
 								worldID("WDID"),
 								factionWorldTypeChunk("WTCK"),
+								factionFlags("FFLG"),
 								terrainExponent("TREX"),
 								researchScript("RESS"),
 								researchState("REST"),
@@ -1154,6 +1168,23 @@ namespace FileIO
 								GetPOD(list,RID::roundNumber,RuntimeConfig::roundNumber);
 								GetOptionalPOD(list,RID::mostFactionsAlive,Game::mostFactionsAlive,(UINT32)0);
 
+								{
+									auto p = list->FindFirst(RID::gamePhase);
+									if (p)
+									{
+										String container(TStringLength(p->size()));
+										p->Get(container.mutablePointer());
+										RuntimeConfig::Phase ph;
+										if (!ph.Decode(container.c_str()) || !IsValidSavePhase(ph))
+										{
+											LogEvent(EventClass::Preset::fileError,"Unable to restore game phase '"+container+"'");
+										}
+										else
+											RuntimeConfig::phase = ph;
+									}
+								}
+
+
 								Game::Config::Nexus::enableAI = list->FindFirst(RID::nexusAI) != nullptr;
 								RuntimeConfig::empZones = false;
 
@@ -1172,7 +1203,7 @@ namespace FileIO
 										}
 										else
 										{
-											LogEvent(EventSignificance::NonFatalError,"Loaded unexpected goal index "+String(goal));
+											LogEvent(EventClass::Preset::fileError,"Loaded unexpected goal index "+String(goal));
 											RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::None;
 										}
 									}
@@ -1208,12 +1239,12 @@ namespace FileIO
 											CLI::PVariable v = Reflection::state.FindVar(key);
 											if (!v)
 											{
-												LogEvent(EventClass::Preset::error,"State::Load(): Unable to find variable '"+key+"' for update");
+												LogEvent(EventClass::Preset::fileError,"State::Load(): Unable to find variable '"+key+"' for update");
 												continue;
 											}
 											if (!v->Set(value))
 											{
-												LogEvent(EventClass::Preset::error,"State::Load(): Unable to update variable '"+key+"' to '"+value+"'. Supported values are "+v->GetSupportedValues());
+												LogEvent(EventClass::Preset::fileError,"State::Load(): Unable to update variable '"+key+"' to '"+value+"'. Supported values are "+v->GetSupportedValues());
 												if (v->name == "gameGoal" && value == "EMPConquerNexus")
 												{
 													RuntimeConfig::empZones = true;
@@ -1254,7 +1285,7 @@ namespace FileIO
 												Objects::PMobileEntity v = Objects::AssembleMobileEntity(Objects::PFaction(),TUniqueID(),Grid::LCellIdI(0,0),base,turret);
 												if (!v)
 												{
-													LogEvent(EventSignificance::NonFatalError,"Unable to assemble mobile entity ("+base+","+turret+")");
+													LogEvent(EventClass::Preset::fileError,"Unable to assemble mobile entity ("+base+","+turret+")");
 												}
 
 												bool doInsert = v && Import(child,vehicleChunk,v,factionMap);
@@ -1372,6 +1403,18 @@ namespace FileIO
 									if (colorChunk && colorChunk->size() == 3*sizeof(float))	//3x4 floats
 										faction->color = Vec::ref3((const float*)colorChunk->pointer());
 								}
+
+								{
+									Riff::Chunk*flagChunk = list->FindFirst(RID::factionFlags);
+									if (flagChunk && flagChunk->size() == sizeof(UINT32))
+									{
+										UINT32 flags;
+										flagChunk->Get(&flags);
+										if (flags & FactionFlags::IsDead)
+											faction->isDead = true;
+									}
+								}
+
 							
 								if (ApplicationInterface::globalVersionOfCurrentFile >= 1038)
 								{
@@ -1516,8 +1559,24 @@ namespace FileIO
 		return RuntimeConfig::ConfigFile("saves/auto/snapshot") + PathString(index)+"."+savFileExtension;
 	}
 
+	bool			IsValidSavePhase(RuntimeConfig::Phase p)
+	{
+		return RuntimeConfig::IsACommandPhase(p) || p == RuntimeConfig::Phase::AnimationPhase || p == RuntimeConfig::Phase::EndOfGame;
+	}
+
+	bool			CanSaveRightNow()
+	{
+		return IsValidSavePhase(RuntimeConfig::phase);
+	}
+
+
 	void AutoSave()
 	{
+		if (!CanSaveRightNow())
+		{
+			LogEvent(EventClass::Preset::commandRejected,"Unable to save game right now. Not in suitable phase");
+			return;
+		}
 		PathString base = RuntimeConfig::ConfigFile("saves/auto/snapshot");
 		FileSystem::CreateDirectory(FileSystem::ExtractFileDir(base));
 		if (FileSystem::IsFile(base+"0."+savFileExtension))
@@ -1550,8 +1609,16 @@ namespace FileIO
 		WriteToListChunk(World::initial,*initialWorld);
 	}
 
+
+
 	void	Save( const PathString&name)
 	{
+		if (!CanSaveRightNow())
+		{
+			LogEvent(EventClass::Preset::commandRejected,"Unable to save game right now. Not in suitable phase");
+			return;
+		}
+
 		static_assert(sizeof(TUniqueID) == TUniqueID::NumBytes, "Alignment fault" );
 
 		Timer::Time t0 = timer.Now();
@@ -1569,6 +1636,11 @@ namespace FileIO
 		general->AppendBlock(RID::roundNumber)->SetPODData(RuntimeConfig::roundNumber);
 		general->AppendBlock(RID::worldConfig)->SetPODData((const Grid::TSharedPlanetConfig&)Grid::currentPlanetConfig);
 		general->AppendBlock(RID::mostFactionsAlive)->SetPODData(Game::mostFactionsAlive);
+		
+		{
+			String phase = RuntimeConfig::phase.ToString();
+			general->AppendBlock(RID::gamePhase, phase.c_str(),phase.length());
+		}
 
 		{
 			static StringBuffer variableBuffer;
@@ -1669,6 +1741,14 @@ namespace FileIO
 			{
 				Riff::Chunk*markerChunk = factionSection->AppendBlock(RID::factionMarkers);
 				SerializeToChunk(faction->markers.CopyToArray(), markerChunk);
+			}
+
+			{
+				UINT32 outFlags = 0;
+				if (faction->isDead)
+					outFlags |= FactionFlags::IsDead;
+				if (outFlags != 0)
+					factionSection->AppendBlock(RID::factionFlags)->SetPODData(outFlags);
 			}
 
 
