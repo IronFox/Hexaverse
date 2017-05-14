@@ -1764,21 +1764,33 @@ namespace Journal
 		e.uuidParameters.Set("MarkerID",markerID);
 	}
 
-	/*virtual override*/ void Round::SelectResearch::Execute(const Objects::PFaction&f) const
+	/*virtual override*/ void Round::QueueResearch::Execute(const Objects::PFaction&f) const
 	{
-		if (!f->researchState.SetActiveTopic(topic))
-			throw RoundException(CLOCATION, "Unable to set '"+topic->GetFullName()+"' as active research topic. Is this a group?");
-		//f->researchState.currentResearch = target;
-		//f->researchState.currentResearchAttribute = attribute;
+		if (drop)
+		{
+			if (!f->researchState.DropResearchTask(topic))
+				throw RoundException(CLOCATION, "Unable to drop '"+topic->GetFullName()+"' from research queue. Has this been queued?");
+		}
+		else
+			if (f->researchState.ResearchQueueIsFull())
+				throw RoundException(CLOCATION, "Unable to append '"+topic->GetFullName()+"' to research queue. Queue is full");
+			else
+				if (!f->researchState.AppendResearchTask(topic))
+					throw RoundException(CLOCATION, "Unable to append '"+topic->GetFullName()+"' to research queue. Is this a group?");
 		Network::PClient cl;
 		if (Network::playerMap.Query(f,cl))
 		{
-			Channels::selectResearch.SendTo(cl->peer.lock(),Protocol::SelectResearch((UINT32)topic->serialIndex));
+			Protocol::ResearchQueue queue;
+			f->researchState.ExportResearchQueue(queue);
+			Channels::researchQueue.SendTo(cl->peer.lock(),queue);
 		}
-		LogEvent(EventSignificance::Uncommon, GetPeerOfFaction(f), "Faction research updated to "+topic->GetFullName());
+		if (drop)
+			LogEvent(EventSignificance::Uncommon, GetPeerOfFaction(f), "Faction research "+topic->GetFullName()+" dropped");
+		else
+			LogEvent(EventSignificance::Uncommon, GetPeerOfFaction(f), "Faction research "+topic->GetFullName()+" appended");
 	}
 
-	/*virtual override*/ void Round::SelectResearch::Decode(const Entry&e)
+	/*virtual override*/ void Round::QueueResearch::Decode(const Entry&e)
 	{
 		String targetPath;
 		e.stringParameters.Require(CLOCATION,"Target",targetPath);
@@ -1786,11 +1798,18 @@ namespace Journal
 		if (!topic)
 		{
 			throw Except::Program::FunctionalityNotImplemented(CLOCATION,"Unknown research target '"+targetPath+"'");
-		}			
+		}
+		int i;
+		if (e.intParameters.TryGet("Drop",i))
+			drop = i != 0;
+		else
+			drop = false;
 	}
-	/*virtual override*/ void Round::SelectResearch::Compile(Entry&e)	const
+	/*virtual override*/ void Round::QueueResearch::Compile(Entry&e)	const
 	{
 		e.stringParameters.Set("Target",topic->GetPath());
+		if (drop)
+			e.intParameters.Set("Drop",1);
 	}
 
 
@@ -2304,7 +2323,7 @@ namespace Journal
 		MAP_ADD(DestroyMarker);
 		MAP_ADD(RestoreCoreLink);
 		MAP_ADD(ConstructionAbort);
-		MAP_ADD(SelectResearch);
+		MAP_ADD(QueueResearch);
 	}
 
 	void	Create()

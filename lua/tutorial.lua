@@ -21,6 +21,19 @@ Table	Game.myUnits					Table of all player-owned units currently known to the cl
 Table	Game.selectedUnit				Table of the currently selected unit. May be nil. Contained by Game.myUnits, if owned by the client faction
 
 Table	Game.myResearch					Table of all researchable topics, both completed, and open, as well as endless
+Research entry table:
+{
+	string	fullName;					Full path to the entry. Unique
+	string	name;						Name of this entry. Not unique
+	bool	isEndless;					True if the research can run indefinitely
+	int		max;						Max research needed to complete research. -1 if endless
+	int		progress;					Current research progress. >= 0
+	bool	isCompleted;				True if research is completed. Always false if endless
+	bool	isActive;					True if this topic is currently being researched. If true, implies isQueued
+	bool	isQueued;					True if this topic is or will be researched
+};
+
+
 Table	Game.myCurrentResearch			Currently active research topic. May be nil. Otherwise also contained by Game.myResearch
 
 Cell[]		Game.lowCells				Ordered table of all planar cells in the world, with:
@@ -136,7 +149,7 @@ CreateTask(function() Game.DescribeTask("Task your laboratory to unlock the Reac
 	function()
 		local res = Game.myResearch['Unlock:ReactorCore'];
 		--FindResearch('Unlock:ReactorCore');
-		if res ~= nil and (res.isActive or res.isCompleted) then
+		if res ~= nil and (res.isQueued or res.isCompleted) then
 			TaskDone();
 		else
 			

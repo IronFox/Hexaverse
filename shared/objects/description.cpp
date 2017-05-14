@@ -8,14 +8,16 @@ namespace Objects
 	{
 		if (rawLines.IsNotEmpty() && rawLines.Last().first.trim().IsNotEmpty() && !rawLines.Last().second)
 			rawLines << std::make_pair("",false);
-		isBrief = true;
+		isBrief = !briefLocked;
 	}
 
-	void				Description::MarkBriefEnd()
+	void				Description::MarkBriefEnd(bool permanently /*= false*/)
 	{
 		if (rawLines.IsNotEmpty() && rawLines.Last().first.trim().IsNotEmpty() && rawLines.Last().second)
 			rawLines << std::make_pair("",false);
 		isBrief = false;
+		if (permanently)
+			briefLocked = true;
 	}
 
 	String&				Description::GetLastLine()

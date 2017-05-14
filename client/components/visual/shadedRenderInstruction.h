@@ -22,6 +22,7 @@ public:
 
 	const Base&				Current() const {return quality[chosenQuality];}
 	void					LoadQualitiesFromFile(const PathString&filename, const String&vsMain, const String&psMain, const Engine::DX11::Shader::Binding*b=NULL, count_t numBindings=0);
+	void					LoadQualitiesFromFile(const PathString&filename, const String&vsMain, const String&gsMain, const String&psMain, const Engine::DX11::Shader::Binding*b=NULL, count_t numBindings=0);
 	void					Clear()
 	{
 		for (index_t i = 0; i < Quality::N; i++)
@@ -36,7 +37,23 @@ public:
 	void					SetTriangles()	{SetTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);}
 };
 
+class ShadedVertexInstructionBlock : public Engine::DX11::BaseInstructionBlock
+{
+	typedef Engine::DX11::BaseInstructionBlock	Super;
+public:
+	ShadedInstruction		shader;//shadow base
 
+	void					operator=(const ShadedInstruction&inst)
+	{
+		((Engine::DX11::BaseInstructionBlock&)*this) = inst.Current();
+		shader = inst;
+	}
+	void					Clear()
+	{
+		Super::Clear();
+		shader.Clear();
+	}
+};
 
 class ShadedInstructionBlock16 : public Engine::DX11::InstructionBlock16
 {

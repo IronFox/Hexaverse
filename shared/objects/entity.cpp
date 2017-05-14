@@ -520,8 +520,8 @@ namespace Objects
 	{
 		if (!registeredSensor.IsSet())
 		{
-			LogEvent(EventClass::Preset::debug,this,"Cannot reapply entity sensory: None known");
-			DBG_FATAL__("Cannot reapply entity sensory: None known");
+			LogEvent(EventClass::Preset::debug,this,"Cannot reapply entity sensory: None known. Registering new");
+			//DBG_FATAL__("Cannot reapply entity sensory: None known");	//this happens during loading
 			RegisterSensory(atTime);
 			return;
 		}

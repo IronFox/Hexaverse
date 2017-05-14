@@ -25,7 +25,7 @@ namespace Receiver
 	void	TouchMarker(Protocol::TouchedMarker&, TCP::Peer&peer);
 	void	ChangeMyName(Protocol::ClientName&, TCP::Peer&peer);
 	void	IdentifyFaction(NET(TUniqueID)&, TCP::Peer&peer);
-	void	SelectResearch(Protocol::SelectResearch&, TCP::Peer&peer);
+	void	QueueResearch(Protocol::QueueResearch&, TCP::Peer&peer);
 	void	ChatMessage(Package::NetString<256>&, TCP::Peer&peer);
 	void	PlanetConfig(Grid::ExtendedPlanetConfig&, TCP::Peer&peer);
 	void	GameConfig(Protocol::GameConfig&, TCP::Peer&peer);
@@ -86,7 +86,7 @@ namespace Channels
 	extern TCP::Channel<Protocol::TouchedMarker, FactionLevel, Protocol::ChannelID::TouchMarker>				touchMarker;
 	extern TCP::Channel<Protocol::ClientName,FactionLevel,Protocol::ChannelID::ChangeMyName>					changeMyName;
 	extern TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::IdentifyFaction>						identifyFactionRecv;
-	extern TCP::Channel<Protocol::SelectResearch, FactionLevel, Protocol::ChannelID::SelectResearch>			selectResearch;
+	extern TCP::Channel<Protocol::QueueResearch, FactionLevel, Protocol::ChannelID::QueueResearch>				queueResearch;
 	extern TCP::Channel<Package::NetString<256>, FactionLevel, Protocol::ChannelID::ChatMessage>				chatMessage;
 	extern TCP::Channel<Grid::ExtendedPlanetConfig, Configurator, Protocol::ChannelID::PlanetConfig>			planetConfig;
 	extern TCP::Channel<Protocol::GameConfig, Configurator, Protocol::ChannelID::GameConfig>					gameConfig;
@@ -129,6 +129,7 @@ namespace Channels
 	#endif
 	extern TCP::ObjectSender<Protocol::UnitLimits,Protocol::ChannelID::UnitLimits>						unitLimits;
 	extern TCP::ObjectSender<Protocol::OperationLacksResources,Protocol::ChannelID::OperationLacksResources>	operationLacksResources;
+	extern TCP::ObjectSender<Protocol::ResearchQueue, Protocol::ChannelID::ResearchQueue>				researchQueue;
 
 //	Channel<class Object, unsigned MinUserLevel, UINT32 ChannelID>
 

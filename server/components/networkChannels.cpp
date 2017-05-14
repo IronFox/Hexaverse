@@ -41,7 +41,7 @@ namespace Channels
 	TCP::Channel<Protocol::TouchedMarker, FactionLevel, Protocol::ChannelID::TouchMarker>					touchMarker(Receiver::TouchMarker);
 	TCP::Channel<Protocol::ClientName,FactionLevel,Protocol::ChannelID::ChangeMyName>						changeMyName(Receiver::ChangeMyName);
 	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::IdentifyFaction>						identifyFactionRecv(Receiver::IdentifyFaction);
-	TCP::Channel<Protocol::SelectResearch, FactionLevel, Protocol::ChannelID::SelectResearch>				selectResearch(Receiver::SelectResearch);
+	TCP::Channel<Protocol::QueueResearch, FactionLevel, Protocol::ChannelID::QueueResearch>					queueResearch(Receiver::QueueResearch);
 	TCP::Channel<Package::NetString<256>, FactionLevel, Protocol::ChannelID::ChatMessage>					chatMessage(Receiver::ChatMessage);
 	TCP::Channel<Grid::ExtendedPlanetConfig, Configurator, Protocol::ChannelID::PlanetConfig>				planetConfig(Receiver::PlanetConfig);
 	TCP::Channel<Protocol::GameConfig, Configurator, Protocol::ChannelID::GameConfig>						gameConfig(Receiver::GameConfig);
@@ -86,6 +86,7 @@ namespace Channels
 
 	TCP::ObjectSender<Protocol::UnitLimits,Protocol::ChannelID::UnitLimits>							unitLimits;
 	TCP::ObjectSender<Protocol::OperationLacksResources,Protocol::ChannelID::OperationLacksResources>	operationLacksResources;
+	TCP::ObjectSender<Protocol::ResearchQueue, Protocol::ChannelID::ResearchQueue>					researchQueue;
 
 //	Channel<class Object, unsigned MinUserLevel, UINT32 ChannelID>
 
@@ -550,7 +551,11 @@ namespace Receiver
 			ASSERT_LESS__(state.serializedData.Count(),state.serializedData.MaxElementCount);
 			Channels::researchState.SendTo(peer,state);
 		});
-		Channels::selectResearch.SendTo(peer,Protocol::SelectResearch((UINT32)client->faction->researchState.GetActiveTopicIndex()));
+		{
+			Protocol::ResearchQueue queue;
+			client->faction->researchState.ExportResearchQueue(queue);
+			Channels::researchQueue.SendTo(peer,queue);
+		}
 
 		#ifndef CHEAT_SHOW_ALL_RESOURCES
 		if (!newFaction)
@@ -868,14 +873,14 @@ namespace Receiver
 
 	}
 
-	void	SelectResearch(Protocol::SelectResearch&research, TCP::Peer&peer)
+	void	QueueResearch(Protocol::QueueResearch&research, TCP::Peer&peer)
 	{
 		if (!peer.attachment)
 			return;
 		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 		if (!client->faction)
 			return;
-		Journal::currentRound.Register(true,client->faction,new Journal::Round::SelectResearch(Objects::ResearchState::GetTopic( research)));
+		Journal::currentRound.Register(true,client->faction,new Journal::Round::QueueResearch(Objects::ResearchState::GetTopic( research.research),research.drop));
 	}
 
 	void	IdentifyFaction(NET(TUniqueID)&id, TCP::Peer&peer)

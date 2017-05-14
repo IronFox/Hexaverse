@@ -235,7 +235,7 @@ namespace Network
 		extern TCP::Channel<Grid::ExtendedPlanetConfig, 0, Protocol::ChannelID::PlanetConfig>			planetConfig;
 		extern TCP::Channel<Protocol::OperationLacksResources, 0, Protocol::ChannelID::OperationLacksResources>			operationLacksResources;
 		extern TCP::Channel<Protocol::ResearchState, 0, Protocol::ChannelID::ResearchState>				researchState;
-		extern TCP::Channel<Protocol::SelectResearch, 0, Protocol::ChannelID::SelectResearch>			selectResearch;
+		extern TCP::Channel<Protocol::ResearchQueue, 0, Protocol::ChannelID::ResearchQueue>				researchQueue;
 		extern TCP::Channel<Protocol::ResourceData,0,Protocol::ChannelID::ResourceData>					resourceData;
 		extern TCP::Channel<Protocol::GameConfig,0,Protocol::ChannelID::GameConfig>						gameConfig;
 		extern TCP::Channel<NETA(Package::NetString<256>),0,Protocol::ChannelID::PlanetNames>			planetNames;
@@ -261,7 +261,7 @@ namespace Network
 		extern TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>				chatMessage;
 		extern TCP::ObjectSender<Protocol::ResourceID, Protocol::ChannelID::RequestResource>			requestResource;
 		extern TCP::ObjectSender<Package::NetString<256>, Protocol::ChannelID::LoadPlanetByName>		loadPlanetByName;
-
+		extern TCP::ObjectSender<Protocol::QueueResearch, Protocol::ChannelID::QueueResearch>			queueResearch;
 		
 	}
 

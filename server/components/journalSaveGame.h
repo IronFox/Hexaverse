@@ -788,13 +788,14 @@ namespace Journal
 			virtual void	Compile(Entry&)	const override;
 		};
 
-		class SelectResearch : public FactionEventT<SelectResearch>
+		class QueueResearch : public FactionEventT<QueueResearch>
 		{
 		public:
 			Objects::PResearchTopic		topic;
+			bool			drop=false;
 			
-			/**/			SelectResearch() {}
-			/**/			SelectResearch(const Objects::PResearchTopic&t) : topic(t) {}
+			/**/			QueueResearch() {}
+			/**/			QueueResearch(const Objects::PResearchTopic&t,bool drop) : topic(t),drop(drop) {}
 			virtual void	Decode(const Entry&e) override;
 			virtual void	Execute(const Objects::PFaction&) const override;
 
