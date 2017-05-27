@@ -6,6 +6,7 @@
 		<exclude dir="visual" />
 	</source>
 	<macro name="CLIENT"/>
+	<macro name="_SCL_SECURE_NO_WARNINGS" />
 	<referenceProject name="DeltaWorks" />
 	<referenceProject name="lua" />
 </project>
