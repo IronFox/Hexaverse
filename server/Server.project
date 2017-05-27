@@ -3,4 +3,5 @@
 	<source path="./" />
 	<referenceProject name="DeltaWorks" includePath="true" />
 	<referenceProject name="lua" includePath="true" />
+	<macro name="_SCL_SECURE_NO_WARNINGS" />
 </project>
