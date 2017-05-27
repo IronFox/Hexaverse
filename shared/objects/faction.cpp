@@ -161,7 +161,7 @@ namespace Objects
 			OwnerParameter oldOwner = e->owner;
 
 			oldOwner->statistics.SignalLossOf(e,newOwner,true);
-
+			newOwner->statistics.SignalUnitAcquired(e,oldOwner);
 
 
 			Remove(e,RemovalType::ChangingOwnership,atTime,true,false,true);

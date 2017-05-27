@@ -291,7 +291,7 @@ namespace Objects
 					if (attack.attackFrom)
 					{
 						int d = vmin(damageLevel,e->health);
-						attack.attackFrom->owner->statistics.SignalDamageDealtTo(e->owner,d);
+						attack.attackFrom->owner->statistics.SignalDamageDealtTo(attack.attackFrom,e->owner,d);
 						e->owner->statistics.SignalDamageReceivedFrom(attack.attackFrom->owner,d);
 					}
 
@@ -302,7 +302,7 @@ namespace Objects
 					{
 						if (attack.attackFrom)
 						{
-							attack.attackFrom->owner->statistics.SignalDestructionOfHostile(e);
+							attack.attackFrom->owner->statistics.SignalDestructionOfHostile(attack.attackFrom,e);
 							e->owner->statistics.SignalLossOf(e,attack.attackFrom->owner,false);
 						}
 
@@ -387,7 +387,7 @@ namespace Objects
 			static Buffer0<PWorldEntity>	toDisable;
 
 
-			ForeachWorldEntity([center,outerRadius,damageLevel,&atTime](const PWorldEntity e)
+			ForeachWorldEntity([center,outerRadius,damageLevel,&atTime,attack](const PWorldEntity e)
 			{
 				float d2 = std::numeric_limits<float>::max();
 				const int h = e->GetHeight();
@@ -401,6 +401,15 @@ namespace Objects
 				}
 				if (d2 <= outerRadius)
 				{
+					if (attack.attackFrom)
+					{
+						int newDamage = std::max(e->empDamageLevel,damageLevel);
+						int dealt = newDamage - e->empDamageLevel;
+						attack.attackFrom->owner->statistics.SignalEMPDamageDealtTo(attack.attackFrom,e->owner,dealt);
+						e->owner->statistics.SignalEMPDamageReceivedFrom(attack.attackFrom->owner,dealt);
+					}
+
+
 					atTime = std::max(atTime,e->entityTime);
 					toDisable << e;
 				}
@@ -1097,6 +1106,9 @@ namespace Objects
 	void	InsertConstructed( const PMobileEntity&v, float&atTime, bool insertIntoGrid/*= true*/, bool setHealthToFull/*=true*/)
 	{
 		//if (insertIntoGrid)
+		if (setHealthToFull && v->owner)
+			v->owner->statistics.SignalUnitAcquired(v,PFaction());
+
 		v->UpdateSystem();
 		ASSERT1__(!v->isInsertedIntoGrid,v->GetName());
 		bool restored = idMap.IsSet(v->id);

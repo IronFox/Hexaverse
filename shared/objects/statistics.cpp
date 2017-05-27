@@ -1,4 +1,5 @@
 #include "statistics.h"
+#include "entity.h"
 
 namespace Objects
 {
@@ -7,24 +8,90 @@ namespace Objects
 
 	}
 
+	Statistics::Interaction&	Statistics::Get(const PFaction&remote)
+	{
+		auto rs = interactionMap.QueryPointer(remote.get());
+		if (rs)
+			return *rs;
+		rs = &interactionMap.Set(remote.get());
+		rs->remote = remote;
+		return *rs;
+	}
+
+	Statistics::UnitStatistics&	Statistics::GetTypeOf(const PWorldEntity&e)
+	{
+		String name = e->GetTypeName();
+		auto rs = unitStatistics.QueryPointer(name);
+		if (rs)
+			return *rs;
+		rs = &unitStatistics.Set(name);
+		rs->typeName = name;
+		return *rs;
+	}
+
+
 	void			Statistics::SignalDamageReceivedFrom(const PFaction&source, int level)
 	{
-
+		Get(source).Get(Interaction::DamageReceived) += level;
 	}
 
-	void			Statistics::SignalDamageDealtTo(const PFaction&receiver, int level)
+	void			Statistics::SignalDamageDealtTo(const PWorldEntity&causedBy, const PFaction&receiver, int level)
 	{
+		Get(receiver).Get(Interaction::DamageDealt)+=level;
+		GetTypeOf(causedBy).Get(UnitStatistics::DamageDealt)+=level;
+	}
 
+	void			Statistics::SignalEMPDamageReceivedFrom(const PFaction&source, int level)
+	{
+		Get(source).Get(Interaction::EMPDamageReceived)+=level;
+	}
+
+	void			Statistics::SignalEMPDamageDealtTo(const PWorldEntity&causedBy, const PFaction&receiver, int level)
+	{
+		Get(receiver).Get(Interaction::EMPDamageDealt)+=level;
+		GetTypeOf(causedBy).Get(UnitStatistics::EMPDamageDealt)+=level;
 	}
 		
-	void			Statistics::SignalDestructionOfHostile(const PWorldEntity&)
+	void			Statistics::SignalDestructionOfHostile(const PWorldEntity&causedBy, const PWorldEntity&destroyed)
 	{
-
+		auto&in = Get(destroyed->owner);
+		in.Get(Interaction::UnitsKilled)++;
+		in.Get(Interaction::ResourcesDestroyed) += destroyed->GetConstructionCost();
+		auto&un = GetTypeOf(causedBy);
+		un.Get(UnitStatistics::UnitsKilled)++;
+		un.Get(UnitStatistics::ResourcesDestroyed) += destroyed->GetConstructionCost();;
 	}
 		
-	void			Statistics::SignalLossOf(const PWorldEntity&, const PFaction&causedBy, bool stolen)
+	void			Statistics::SignalLossOf(const PWorldEntity&destroyed, const PFaction&causedBy, bool stolen)
 	{
+		auto&in = Get(causedBy);
+		if (stolen)
+		{
+			in.Get(Interaction::UnitsStolenBy)++;
+			in.Get(Interaction::ResourcesStolenBy) += destroyed->GetConstructionCost();
+		}
+		else
+		{
+			in.Get(Interaction::UnitsKilledBy)++;
+			in.Get(Interaction::ResourcesDestroyedBy) += destroyed->GetConstructionCost();
+		}
+		auto&un = GetTypeOf(destroyed);
+		un.Get(UnitStatistics::Lost) ++;
+	}
 
+	void			Statistics::SignalUnitAcquired(const PWorldEntity&e, const PFaction&previousOwner)
+	{
+		if (previousOwner)
+		{
+			auto&in = Get(previousOwner);
+			in.Get(Interaction::UnitsStolen)++;
+			in.Get(Interaction::ResourcesStolen) += e->GetConstructionCost();
+		}
+		auto&un = GetTypeOf(e);
+		if (previousOwner)
+			un.Get(UnitStatistics::Stolen) ++;
+		else
+			un.Get(UnitStatistics::Built) ++;
 	}
 
 
