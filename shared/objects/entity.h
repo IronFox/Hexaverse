@@ -439,7 +439,7 @@ namespace Objects
 		virtual String				DescribeScanningRange() const;
 		static float				StaticEMPModify(float raw, float min, int empDamageLevel);
 		float						EMPModify(float raw, float min) const;
-		std::function<float(float)>	BindEMPModifyFunction() const {return std::bind(&WorldEntity::EMPModify,this,std::placeholders::_1,2);}
+		std::function<float(float)>	BindEMPModifyFunction() const {return std::bind(&WorldEntity::EMPModify,this,std::placeholders::_1,2.f);}
 		
 		virtual PTurretBase			GetTurretBase(float &zOffset) { return PTurretBase();}
 		inline PTurretBase			GetTurretBase() { float dummy; return GetTurretBase(dummy);}
