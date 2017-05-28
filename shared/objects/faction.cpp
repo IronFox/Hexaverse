@@ -1490,30 +1490,29 @@ namespace Objects
 			}
 			return size;
 		}
-		/*virtual override*/	bool		Marker::Serialize(IWriteStream&outStream, bool exportSize) const
+		/*virtual override*/	void		Marker::Serialize(IWriteStream&outStream, bool exportSize) const
 		{
-			if (!outStream.WritePrimitive(id) || !outStream.WritePrimitive((UINT8)type)
-				 || !outStream.WritePrimitive(createdInRound)
-				|| !outStream.WritePrimitive(location)
-				)
-				return false;
+			outStream.WritePrimitive(id);
+			outStream.WritePrimitive((UINT8)type);
+			outStream.WritePrimitive(createdInRound);
+			outStream.WritePrimitive(location);
 			if (UtilizesReferenceEntity())
 			{
-				if (!outStream.WritePrimitive(this->referenceEntity) || !outStream.WritePrimitive(this->referenceEntityOwner))
-					return false;
+				outStream.WritePrimitive(this->referenceEntity);
+				outStream.WritePrimitive(this->referenceEntityOwner);
 				String t0 = Convert(this->referencedType[0]);
 				String t1 = Convert(this->referencedType[1]);
-				return t0.Serialize(outStream,true) && t1.Serialize(outStream,true);
+				t0.Serialize(outStream,true);
+				t1.Serialize(outStream,true);
 			}
-			return true;
 		}
-		/*virtual override*/	bool		Marker::Deserialize(IReadStream&inStream, serial_size_t fixedSize)
+		/*virtual override*/	void		Marker::Deserialize(IReadStream&inStream, serial_size_t fixedSize)
 		{
 			UINT8 typei;
-			if (!inStream.ReadPrimitive(id) || !inStream.ReadPrimitive(typei) || !inStream.ReadPrimitive(createdInRound)
-				||  !inStream.ReadPrimitive(location)
-				)
-				return false;
+			inStream.ReadPrimitive(id);
+			inStream.ReadPrimitive(typei);
+			inStream.ReadPrimitive(createdInRound);
+			inStream.ReadPrimitive(location);
 			type = Type::Reinterpret(typei);
 			if (UtilizesReferenceEntity())
 			{
@@ -1525,18 +1524,16 @@ namespace Objects
 					}
 				}
 				String t0,t1;
-				if (!inStream.ReadPrimitive(this->referenceEntity))
-					return false;
+				inStream.ReadPrimitive(this->referenceEntity);
 
 				if (ApplicationInterface::globalVersionOfCurrentFile >= ApplicationInterface::FileVersions::MarkersHaveOwner)
 				{
-					if (!inStream.ReadPrimitive(this->referenceEntityOwner))
-						return false;
+					inStream.ReadPrimitive(this->referenceEntityOwner);
 				}
 				else
 					this->referenceEntityOwner = TUniqueID::Empty();
-				if (!t0.Deserialize(inStream,EmbeddedSize) || !t1.Deserialize(inStream,EmbeddedSize))
-					return false;
+				t0.Deserialize(inStream,EmbeddedSize);
+				t1.Deserialize(inStream,EmbeddedSize);
 				this->referencedType[0] = Convert(t0);
 				this->referencedType[1] = Convert(t1);
 				//this->referenceEntityType.Deserialize(inStream, fixedSize);
@@ -1546,7 +1543,6 @@ namespace Objects
 				referenceEntity = TUniqueID::Empty();
 				referencedType[0] = referencedType[1] = ConstName::Empty;
 			}
-			return true;
 		}
 
 

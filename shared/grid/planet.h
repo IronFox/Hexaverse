@@ -136,35 +136,33 @@ namespace Grid
 			return true;
 		}
 
-		virtual	bool	Serialize(IWriteStream&outStream, bool) const override
+		virtual	void	Serialize(IWriteStream&outStream, bool) const override
 		{
-			return	outStream.WritePrimitive((const TSharedPlanetConfig&)*this)
-					&&	outStream.WritePrimitive((const TLayerConfig&)extendedCore)
-					&&	outStream.WritePrimitive((const TLayerConfig&)mountains)
-					&&	outStream.WritePrimitive(type)
-					&&	outStream.WritePrimitive(liquidCoverage)
-					&&	outStream.WritePrimitive(extendedCoreType)
-					&&	outStream.WritePrimitive(liquidOutline)
-					&&	outStream.WritePrimitive(snowHeight)
-					&&	outStream.WritePrimitive(liquidHeight)
-					&&	outStream.WritePrimitive(lastSeed)
-					;
+			outStream.WritePrimitive((const TSharedPlanetConfig&)*this);
+			outStream.WritePrimitive((const TLayerConfig&)extendedCore);
+			outStream.WritePrimitive((const TLayerConfig&)mountains);
+			outStream.WritePrimitive(type);
+			outStream.WritePrimitive(liquidCoverage);
+			outStream.WritePrimitive(extendedCoreType);
+			outStream.WritePrimitive(liquidOutline);
+			outStream.WritePrimitive(snowHeight);
+			outStream.WritePrimitive(liquidHeight);
+			outStream.WritePrimitive(lastSeed);
 		}
 
-		virtual	bool	Deserialize(IReadStream&inStream, serial_size_t) override
+		virtual	void	Deserialize(IReadStream&inStream, serial_size_t) override
 		{
-			return	inStream.ReadPrimitive((TSharedPlanetConfig&)*this)
-					&&	inStream.ReadPrimitive((TLayerConfig&)extendedCore)
-					&&	inStream.ReadPrimitive((TLayerConfig&)mountains)
-					&&	inStream.ReadPrimitive(type)
-					&&	inStream.ReadPrimitive(liquidCoverage)
-					&&	inStream.ReadPrimitive(extendedCoreType)
-					&&	inStream.ReadPrimitive(liquidOutline)
-					&&	inStream.ReadPrimitive(snowHeight)
-					&&	inStream.ReadPrimitive(liquidHeight)
-					&&	inStream.ReadPrimitive(lastSeed)
-					&&	ApplySeed()
-					;
+			inStream.ReadPrimitive((TSharedPlanetConfig&)*this);
+			inStream.ReadPrimitive((TLayerConfig&)extendedCore);
+			inStream.ReadPrimitive((TLayerConfig&)mountains);
+			inStream.ReadPrimitive(type);
+			inStream.ReadPrimitive(liquidCoverage);
+			inStream.ReadPrimitive(extendedCoreType);
+			inStream.ReadPrimitive(liquidOutline);
+			inStream.ReadPrimitive(snowHeight);
+			inStream.ReadPrimitive(liquidHeight);
+			inStream.ReadPrimitive(lastSeed);
+			ApplySeed();
 		}
 		
 		/**

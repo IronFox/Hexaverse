@@ -654,11 +654,10 @@ namespace Lua
 		Some data (like functions) cannot be serialized and cause a Lua::Exception to be thrown.
 		@param[inout] stream Stream to put the resulting byte data to
 		@param ignoreNonSerializableContent Set true to allow and ignore non-serializable content. Otherwise an exception is thrown upon encountering such
-		@return true if the stream was large enough to hold any serializable data, false otherwise
 		*/
-		bool			Serialize(IWriteStream&stream, bool ignoreNonSerializableContent=false)	const;
+		void			Serialize(IWriteStream&stream, bool ignoreNonSerializableContent=false)	const;
 
-		bool			DeserializeMerge(IReadStream&stream);
+		void			DeserializeMerge(IReadStream&stream);
 		void			SetGlobal(const String&name);
 
 	};

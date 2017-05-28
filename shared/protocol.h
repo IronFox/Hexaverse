@@ -94,13 +94,15 @@ namespace Protocol
 		const size_t bufferSize = expectedSize*2+128;
 		void*data = malloc(bufferSize);
 		serial_size_t actualSize;
-		ASSERT__(SerializeToMemory(serializable,data,(ISerializable::serial_size_t)bufferSize,exportSize,&actualSize));
-		ASSERT_EQUAL__(actualSize,expectedSize);
+		SerializeToMemory(serializable,data,(ISerializable::serial_size_t)bufferSize,exportSize,&actualSize);
+		if (actualSize != expectedSize)
+			throw Except::Memory::SerializationFault(CLOCATION,"Serialization of type "+String(typeid(serializable).name())+" failed. GetSerialSize("+String(exportSize)+") returned "+String(expectedSize)+", serialization required "+String(actualSize));
 		
 		Serializable copy;
-		ASSERT__(DeserializeFromMemory(copy,data,actualSize,exportSize));
+		DeserializeFromMemory(copy,data,actualSize,exportSize);
 		free(data);
-		ASSERT__(serializable == copy);
+		if (serializable != copy)
+			throw Except::Memory::SerializationFault(CLOCATION,"Serialization/deserialization of type "+String(typeid(serializable).name())+" failed with exportSize="+String(exportSize)+". Deserialized data does not match original data");
 	}
 	
 	template <typename Serializable>
@@ -127,19 +129,13 @@ namespace Protocol
 				Super::operator=(other);
 			}
 
-			virtual	bool		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override
+			virtual	void		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override
 			{
 				count_t size;
 				if (fixedSize == EmbeddedSize)
-				{
-					//cout << "reading embedded size "<<endl;
-					if (!inStream.ReadSize(size))
-						return false;
-					//cout << "deciphered "<<size<<" elements"<<endl;
-				}
+					inStream.ReadSize(size);
 				else
 				{
-					//cout << "using fixed size "<<endl;
 					if (!IsISerializable(data))
 						size = (count_t)(fixedSize/sizeof(T));
 					else
@@ -150,32 +146,22 @@ namespace Protocol
 							size = (count_t)(fixedSize/fixedElementSize);
 						}
 						else
-							if (!inStream.ReadSize(size))
-								return false;
+							inStream.ReadSize(size);
 					}
 						//FATAL__("trying to Deserialize an array containing serializable objects from a fixed size stream data section not including any element count");
 				}
 				if (size > MaxSize)
-					return false;
+					throw Except::Memory::SerializationFault(CLOCATION,"Array size "+String(size)+" exceeds maximum safe size "+String(MaxSize));
 
 				SetSize(size);
 				if (!IsISerializable(data))
 				{
-					//cout << "data is not of i-serializable type. reading plain"<<endl;
-					return inStream.Read(data,(serial_size_t)GetContentSize());
+					inStream.Read(data,(serial_size_t)GetContentSize());
+					return;
 				}
 
-				//cout << "data is of i-serializable type. invoking deserializers"<<endl;
 				for (index_t i = 0; i < elements; i++)
-				{
-					if (!DeserializeObject(data+i,sizeof(T),inStream,EmbeddedSize))
-					{
-						//cout << "deserialization of element "<<i<<" with embedded size failed"<<endl;
-						return false;
-					}
-				}
-
-				return true;
+					DeserializeObject(data+i,sizeof(T),inStream,EmbeddedSize);
 			}
 
 		};
@@ -208,22 +194,19 @@ namespace Protocol
 			{
 				return var0.HasFixedSize() && var1.HasFixedSize() && var2.HasFixedSize() && var3.HasFixedSize();
 			}
-			virtual	bool		Serialize(IWriteStream&outStream, bool exportSize) const	override
+			virtual	void		Serialize(IWriteStream&outStream, bool exportSize) const	override
 			{
-				return var0.Serialize(outStream,true) && var1.Serialize(outStream,true) && var2.Serialize(outStream,true) && var3.Serialize(outStream,true);
+				var0.Serialize(outStream,true);
+				var1.Serialize(outStream,true);
+				var2.Serialize(outStream,true);
+				var3.Serialize(outStream,true);
 			}
-			virtual	bool		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override
+			virtual	void		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override
 			{
-				if (!var0.Deserialize(inStream,EmbeddedSize))
-					DBG_FATAL__("Failed to Deserialize var0");
-				if (!var1.Deserialize(inStream,EmbeddedSize))
-					DBG_FATAL__("Failed to Deserialize var1");
-				if (!var2.Deserialize(inStream,EmbeddedSize))
-					DBG_FATAL__("Failed to Deserialize var2");
-				if (!var3.Deserialize(inStream,EmbeddedSize))
-					DBG_FATAL__("Failed to Deserialize var3");
-				return true;
-				//return	var0.Deserialize(inStream,EmbeddedSize) && var1.Deserialize(inStream,EmbeddedSize) && var2.Deserialize(inStream,EmbeddedSize) && var3.Deserialize(inStream,EmbeddedSize);
+				var0.Deserialize(inStream,EmbeddedSize);
+				var1.Deserialize(inStream,EmbeddedSize);
+				var2.Deserialize(inStream,EmbeddedSize);
+				var3.Deserialize(inStream,EmbeddedSize);
 			}
 			void	swap(MultiSerializable4&other)
 			{
@@ -302,59 +285,43 @@ namespace Protocol
 			{\
 				return NAME0.HasFixedSize() && NAME1.HasFixedSize();\
 			}\
-			virtual	bool		Serialize(IWriteStream&outStream, bool exportSize) const	override\
+			virtual	void		Serialize(IWriteStream&outStream, bool exportSize) const	override\
 			{\
 				if (NAME1.HasFixedSize())\
-					return 	NAME0.Serialize(outStream,exportSize) && NAME1.Serialize(outStream,true);\
+				{\
+					NAME0.Serialize(outStream,exportSize);\
+					NAME1.Serialize(outStream,true);\
+					return;\
+				}\
 				if (NAME0.HasFixedSize())\
-					return 	NAME0.Serialize(outStream,true) && NAME1.Serialize(outStream,exportSize);\
-				return 	NAME0.Serialize(outStream,true) && NAME1.Serialize(outStream,true);\
+				{\
+					NAME0.Serialize(outStream,true);\
+					NAME1.Serialize(outStream,exportSize);\
+					return;\
+				}\
+				NAME0.Serialize(outStream,true);\
+				NAME1.Serialize(outStream,true);\
 			}\
-			virtual	bool		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override\
+			virtual	void		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override\
 			{\
 				if (fixedSize != EmbeddedSize)\
 				{\
 					if (NAME0.HasFixedSize())\
 					{\
-						if (!NAME0.Deserialize(inStream,EmbeddedSize))\
-						{\
-							DBG_FATAL__("Const0 Mode: Unable to Deserialize var0/2 "+String(#NAME0));\
-							return false;\
-						}\
+						NAME0.Deserialize(inStream,EmbeddedSize);\
 						fixedSize -= NAME0.GetSerialSize(true);\
-						if (!NAME1.Deserialize(inStream,fixedSize))\
-						{\
-							DBG_FATAL__("Const0 Mode: Unable to Deserialize var1/2 "+String(#NAME1)+" with fixed size "+String(fixedSize));\
-							return false;\
-						}\
-						return true;\
+						NAME1.Deserialize(inStream,fixedSize);\
+						return;\
 					}\
 					if (NAME1.HasFixedSize())\
 					{\
-						if (!NAME0.Deserialize(inStream,fixedSize-NAME1.GetSerialSize(true)))\
-						{\
-							DBG_FATAL__("Const1 Mode: Unable to Deserialize var0/2 "+String(#NAME0)+" with fixed size "+String(fixedSize-NAME1.GetSerialSize(true)));\
-							return false;\
-						}\
-						if (!NAME1.Deserialize(inStream,EmbeddedSize))\
-						{\
-							DBG_FATAL__("Const1 Mode: Unable to Deserialize var1/2 "+String(#NAME1));\
-							return false;\
-						}\
-						return true;\
+						NAME0.Deserialize(inStream,fixedSize-NAME1.GetSerialSize(true));\
+						NAME1.Deserialize(inStream,EmbeddedSize);\
+						return;\
 					}\
 				}\
-				if (!NAME0.Deserialize(inStream,EmbeddedSize))\
-				{\
-					DBG_FATAL__("Unable to Deserialize var0/2 "+String(#NAME0));\
-					return false;\
-				}\
-				if (!NAME1.Deserialize(inStream,EmbeddedSize))\
-				{\
-					DBG_FATAL__("Unable to Deserialize var1/2 "+String(#NAME1));\
-					return false;\
-				}\
-				return true;\
+				NAME0.Deserialize(inStream,EmbeddedSize);\
+				NAME1.Deserialize(inStream,EmbeddedSize);\
 			}\
 			void		swap(NAME&other)	{NAME0.swap(other.NAME0);NAME1.swap(other.NAME1);}\
 		};
@@ -384,92 +351,65 @@ namespace Protocol
 			{\
 				return NAME0.HasFixedSize() && NAME1.HasFixedSize() && NAME2.HasFixedSize();\
 			}\
-			virtual	bool		Serialize(IWriteStream&outStream, bool exportSize) const	override\
+			virtual	void		Serialize(IWriteStream&outStream, bool exportSize) const	override\
 			{\
 				if (NAME1.HasFixedSize() && NAME2.HasFixedSize())\
-					return NAME0.Serialize(outStream,exportSize) && NAME1.Serialize(outStream,true) && NAME2.Serialize(outStream,true);\
+				{\
+					NAME0.Serialize(outStream,exportSize);\
+					NAME1.Serialize(outStream,true);\
+					NAME2.Serialize(outStream,true);\
+					return;\
+				}\
 				if (NAME0.HasFixedSize() && NAME2.HasFixedSize())\
-					return NAME0.Serialize(outStream,true) && NAME1.Serialize(outStream,exportSize) && NAME2.Serialize(outStream,true);\
+				{\
+					NAME0.Serialize(outStream,true);\
+					NAME1.Serialize(outStream,exportSize);\
+					NAME2.Serialize(outStream,true);\
+					return;\
+				}\
 				if (NAME0.HasFixedSize() && NAME1.HasFixedSize())\
-					return NAME0.Serialize(outStream,true) && NAME1.Serialize(outStream,true) && NAME2.Serialize(outStream,exportSize);\
-				return 	NAME0.Serialize(outStream,true) && NAME1.Serialize(outStream,true) && NAME2.Serialize(outStream,true);\
+				{\
+					NAME0.Serialize(outStream,true);\
+					NAME1.Serialize(outStream,true);\
+					NAME2.Serialize(outStream,exportSize);\
+					return;\
+				}\
+				NAME0.Serialize(outStream,true);\
+				NAME1.Serialize(outStream,true);\
+				NAME2.Serialize(outStream,true);\
 			}\
-			virtual	bool		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override\
+			virtual	void		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override\
 			{\
 				if (fixedSize != EmbeddedSize)\
 				{\
 					if (NAME0.HasFixedSize() && NAME2.HasFixedSize())\
 					{\
-						if (!NAME0.Deserialize(inStream,EmbeddedSize))\
-						{\
-							DBG_FATAL__("Const02 Mode: Unable to Deserialize var0/3 "+String(#NAME0));\
-							return false;\
-						}\
-						fixedSize -= NAME0.GetSerialSize(true);\
-						fixedSize -= NAME2.GetSerialSize(true);\
-						if (!NAME1.Deserialize(inStream,fixedSize))\
-							DBG_FATAL__("Const02 Mode: Unable to Deserialize var1/3 "+String(#NAME1)+" with fixed size="+String(fixedSize));\
-						if (!NAME2.Deserialize(inStream,EmbeddedSize))\
-							DBG_FATAL__("Const02 Mode: Unable to Deserialize var2/3 "+String(#NAME2));\
-						return true;\
+						const serial_size_t elementSize = fixedSize-NAME0.GetSerialSize(true)-NAME2.GetSerialSize(true);\
+						NAME0.Deserialize(inStream,EmbeddedSize);\
+						NAME1.Deserialize(inStream,elementSize);\
+						NAME2.Deserialize(inStream,EmbeddedSize);\
+						return;\
 					}\
 					if (NAME1.HasFixedSize() && NAME2.HasFixedSize())\
 					{\
-						serial_size_t elementSize = fixedSize-NAME1.GetSerialSize(true)-NAME2.GetSerialSize(true);\
-						if (!NAME0.Deserialize(inStream,elementSize))\
-						{\
-							DBG_FATAL__("Const12 Mode: Unable to Deserialize var0/3 "+String(#NAME0)+" with fixed size="+String(elementSize));\
-							return false;\
-						}\
-						if (!NAME1.Deserialize(inStream,EmbeddedSize))\
-						{\
-							DBG_FATAL__("Const12 Mode: Unable to Deserialize var1/3 "+String(#NAME1));\
-							return false;\
-						}\
-						if (!NAME2.Deserialize(inStream,EmbeddedSize))\
-						{\
-							DBG_FATAL__("Const12 Mode: Unable to Deserialize var2/3 "+String(#NAME2));\
-							return false;\
-						}\
-						return true;\
+						const serial_size_t elementSize = fixedSize-NAME1.GetSerialSize(true)-NAME2.GetSerialSize(true);\
+						NAME0.Deserialize(inStream,elementSize);\
+						NAME1.Deserialize(inStream,EmbeddedSize);\
+						NAME2.Deserialize(inStream,EmbeddedSize);\
+						return;\
 					}\
 					if (NAME0.HasFixedSize() && NAME1.HasFixedSize())\
 					{\
-						serial_size_t elementSize = fixedSize-NAME0.GetSerialSize(true)-NAME1.GetSerialSize(true);\
-						if (!NAME0.Deserialize(inStream,EmbeddedSize))\
-						{\
-							DBG_FATAL__("Const01 Mode: Unable to Deserialize var0/3 "+String(#NAME0));\
-							return false;\
-						}\
-						if (!NAME1.Deserialize(inStream,EmbeddedSize))\
-						{\
-							DBG_FATAL__("Const01 Mode: Unable to Deserialize var1/3 "+String(#NAME1));\
-							return false;\
-						}\
-						if (!NAME2.Deserialize(inStream,elementSize))\
-						{\
-							DBG_FATAL__("Const01 Mode: Unable to Deserialize var2/3 "+String(#NAME2)+" with fixed size="+String(elementSize));\
-							return false;\
-						}\
-						return true;\
+						const serial_size_t elementSize = fixedSize-NAME0.GetSerialSize(true)-NAME1.GetSerialSize(true);\
+						NAME0.Deserialize(inStream,EmbeddedSize);\
+						NAME1.Deserialize(inStream,EmbeddedSize);\
+						NAME2.Deserialize(inStream,elementSize);\
+						return;\
 					}\
 				}\
-				if (!NAME0.Deserialize(inStream,EmbeddedSize))\
-				{\
-					DBG_FATAL__("Embedded mode: Unable to Deserialize var0/3 "+String(#NAME0));\
-					return false;\
-				}\
-				if (!NAME1.Deserialize(inStream,EmbeddedSize))\
-				{\
-					DBG_FATAL__("Embedded mode: Unable to Deserialize var1/3 "+String(#NAME1));\
-					return false;\
-				}\
-				if (!NAME2.Deserialize(inStream,EmbeddedSize))\
-				{\
-					DBG_FATAL__("Embedded mode: Unable to Deserialize var2/3 "+String(#NAME2));\
-					return false;\
-				}\
-				return true;\
+				NAME0.Deserialize(inStream,EmbeddedSize);\
+				NAME1.Deserialize(inStream,EmbeddedSize);\
+				NAME2.Deserialize(inStream,EmbeddedSize);\
 			}\
 		};
 
@@ -493,13 +433,19 @@ namespace Protocol
 			{\
 				return NAME0.HasFixedSize() && NAME1.HasFixedSize() && NAME2.HasFixedSize() && NAME3.HasFixedSize();\
 			}\
-			virtual	bool		Serialize(IWriteStream&outStream, bool exportSize) const	override\
+			virtual	void		Serialize(IWriteStream&outStream, bool exportSize) const	override\
 			{\
-				return 	NAME0.Serialize(outStream,true) && NAME1.Serialize(outStream,true) && NAME2.Serialize(outStream,true) && NAME3.Serialize(outStream,true);\
+				NAME0.Serialize(outStream,true);\
+				NAME1.Serialize(outStream,true);\
+				NAME2.Serialize(outStream,true);\
+				NAME3.Serialize(outStream,true);\
 			}\
-			virtual	bool		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override\
+			virtual	void		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override\
 			{\
-				return	NAME0.Deserialize(inStream,EmbeddedSize) && NAME1.Deserialize(inStream,EmbeddedSize)&& NAME2.Deserialize(inStream,EmbeddedSize)&& NAME3.Deserialize(inStream,EmbeddedSize);\
+				NAME0.Deserialize(inStream,EmbeddedSize);\
+				NAME1.Deserialize(inStream,EmbeddedSize);\
+				NAME2.Deserialize(inStream,EmbeddedSize);\
+				NAME3.Deserialize(inStream,EmbeddedSize);\
 			}\
 			void		swap(NAME&other)	{NAME0.swap(other.NAME0);NAME1.swap(other.NAME1);NAME2.swap(other.NAME2);NAME3.swap(other.NAME3);}\
 		};
@@ -521,15 +467,21 @@ namespace Protocol
 			{\
 				return NAME0.HasFixedSize() && NAME1.HasFixedSize() && NAME2.HasFixedSize() && NAME3.HasFixedSize() && NAME4.HasFixedSize();\
 			}\
-			virtual	bool		Serialize(IWriteStream&outStream, bool exportSize) const	override\
+			virtual	void		Serialize(IWriteStream&outStream, bool exportSize) const	override\
 			{\
-				return 	NAME0.Serialize(outStream,true) && NAME1.Serialize(outStream,true) && NAME2.Serialize(outStream,true) && NAME3.Serialize(outStream,true)&& NAME4.Serialize(outStream,true);\
+				NAME0.Serialize(outStream,true);\
+				NAME1.Serialize(outStream,true);\
+				NAME2.Serialize(outStream,true);\
+				NAME3.Serialize(outStream,true);\
+				NAME4.Serialize(outStream,true);\
 			}\
-			virtual	bool		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override\
+			virtual	void		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override\
 			{\
-				return	NAME0.Deserialize(inStream,EmbeddedSize) && NAME1.Deserialize(inStream,EmbeddedSize)\
-						&& NAME2.Deserialize(inStream,EmbeddedSize)&& NAME3.Deserialize(inStream,EmbeddedSize)\
-						&& NAME4.Deserialize(inStream,EmbeddedSize);\
+				NAME0.Deserialize(inStream,EmbeddedSize);\
+				NAME1.Deserialize(inStream,EmbeddedSize);\
+				NAME2.Deserialize(inStream,EmbeddedSize);\
+				NAME3.Deserialize(inStream,EmbeddedSize);\
+				NAME4.Deserialize(inStream,EmbeddedSize);\
 			}\
 			void		swap(NAME&other)	{NAME0.swap(other.NAME0);NAME1.swap(other.NAME1);NAME2.swap(other.NAME2);NAME3.swap(other.NAME3);NAME4.swap(other.NAME4);}\
 		};
@@ -552,15 +504,23 @@ namespace Protocol
 			{\
 				return NAME0.HasFixedSize() && NAME1.HasFixedSize() && NAME2.HasFixedSize() && NAME3.HasFixedSize() && NAME4.HasFixedSize() && NAME5.HasFixedSize();\
 			}\
-			virtual	bool		Serialize(IWriteStream&outStream, bool exportSize) const	override\
+			virtual	void		Serialize(IWriteStream&outStream, bool exportSize) const	override\
 			{\
-				return 	NAME0.Serialize(outStream,true) && NAME1.Serialize(outStream,true) && NAME2.Serialize(outStream,true) && NAME3.Serialize(outStream,true)&& NAME4.Serialize(outStream,true)&& NAME5.Serialize(outStream,true);\
+				NAME0.Serialize(outStream,true);\
+				NAME1.Serialize(outStream,true);\
+				NAME2.Serialize(outStream,true);\
+				NAME3.Serialize(outStream,true);\
+				NAME4.Serialize(outStream,true);\
+				NAME5.Serialize(outStream,true);\
 			}\
-			virtual	bool		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override\
+			virtual	void		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override\
 			{\
-				return	NAME0.Deserialize(inStream,EmbeddedSize) && NAME1.Deserialize(inStream,EmbeddedSize)\
-						&& NAME2.Deserialize(inStream,EmbeddedSize)&& NAME3.Deserialize(inStream,EmbeddedSize)\
-						&& NAME4.Deserialize(inStream,EmbeddedSize)&& NAME5.Deserialize(inStream,EmbeddedSize);\
+				NAME0.Deserialize(inStream,EmbeddedSize);\
+				NAME1.Deserialize(inStream,EmbeddedSize);\
+				NAME2.Deserialize(inStream,EmbeddedSize);\
+				NAME3.Deserialize(inStream,EmbeddedSize);\
+				NAME4.Deserialize(inStream,EmbeddedSize);\
+				NAME5.Deserialize(inStream,EmbeddedSize);\
 			}\
 			void		swap(NAME&other)	{NAME0.swap(other.NAME0);NAME1.swap(other.NAME1);NAME2.swap(other.NAME2);NAME3.swap(other.NAME3);NAME4.swap(other.NAME4);NAME5.swap(other.NAME5);}\
 		};
@@ -585,15 +545,25 @@ namespace Protocol
 			{\
 				return NAME0.HasFixedSize() && NAME1.HasFixedSize() && NAME2.HasFixedSize() && NAME3.HasFixedSize() && NAME4.HasFixedSize() && NAME5.HasFixedSize() && NAME6.HasFixedSize();\
 			}\
-			virtual	bool		Serialize(IWriteStream&outStream, bool exportSize) const	override\
+			virtual	void		Serialize(IWriteStream&outStream, bool exportSize) const	override\
 			{\
-				return 	NAME0.Serialize(outStream,true) && NAME1.Serialize(outStream,true) && NAME2.Serialize(outStream,true) && NAME3.Serialize(outStream,true)&& NAME4.Serialize(outStream,true)&& NAME5.Serialize(outStream,true)&& NAME6.Serialize(outStream,true);\
+				NAME0.Serialize(outStream,true);\
+				NAME1.Serialize(outStream,true);\
+				NAME2.Serialize(outStream,true);\
+				NAME3.Serialize(outStream,true);\
+				NAME4.Serialize(outStream,true);\
+				NAME5.Serialize(outStream,true);\
+				NAME6.Serialize(outStream,true);\
 			}\
-			virtual	bool		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override\
+			virtual	void		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override\
 			{\
-				return	NAME0.Deserialize(inStream,EmbeddedSize) && NAME1.Deserialize(inStream,EmbeddedSize)\
-						&& NAME2.Deserialize(inStream,EmbeddedSize)&& NAME3.Deserialize(inStream,EmbeddedSize)\
-						&& NAME4.Deserialize(inStream,EmbeddedSize)&& NAME5.Deserialize(inStream,EmbeddedSize)&& NAME6.Deserialize(inStream,EmbeddedSize);\
+				NAME0.Deserialize(inStream,EmbeddedSize);\
+				NAME1.Deserialize(inStream,EmbeddedSize);\
+				NAME2.Deserialize(inStream,EmbeddedSize);\
+				NAME3.Deserialize(inStream,EmbeddedSize);\
+				NAME4.Deserialize(inStream,EmbeddedSize);\
+				NAME5.Deserialize(inStream,EmbeddedSize);\
+				NAME6.Deserialize(inStream,EmbeddedSize);\
 			}\
 			void		swap(NAME&other)	{NAME0.swap(other.NAME0);NAME1.swap(other.NAME1);NAME2.swap(other.NAME2);NAME3.swap(other.NAME3);NAME4.swap(other.NAME4);NAME5.swap(other.NAME5);NAME6.swap(other.NAME6);}\
 		};
@@ -784,37 +754,35 @@ namespace Protocol
 				return 1;
 			}
 		
-			virtual	bool					Serialize(IWriteStream&outStream, bool exportSize) const override
+			virtual	void					Serialize(IWriteStream&outStream, bool exportSize) const override
 			{
-				if (!outStream.WritePrimitive(active))
-					return false;
+				outStream.WritePrimitive(active);
 				switch (active)
 				{
 					case 0:
-						return true;
+						break;
 					case 1:
-						return option0.Serialize(outStream,exportSize);
+						option0.Serialize(outStream,exportSize);
+						break;
 					default:
-						FATAL__("Invalid state");
+						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Optional<>: "+String(active));
 				}
-				return false;
 			}
-			virtual	bool					Deserialize(IReadStream&inStream, serial_size_t fixedSize) override
+			virtual	void					Deserialize(IReadStream&inStream, serial_size_t fixedSize) override
 			{
 				if (fixedSize != EmbeddedSize)
 					fixedSize --;
-				if (!inStream.ReadPrimitive(active) || active > 2)
-					return false;
+				inStream.ReadPrimitive(active);
 				switch (active)
 				{
 					case 0:
-						return true;
+						break;
 					case 1:
-						return option0.Deserialize(inStream,fixedSize);
+						option0.Deserialize(inStream,fixedSize);
+						break;
 					default:
-						FATAL__("Invalid state");
+						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Optional<>: "+String(active));
 				}
-				return false;
 			}
 
 			const T0*		Get0() const
@@ -860,41 +828,41 @@ namespace Protocol
 				return 1;
 			}
 		
-			virtual	bool					Serialize(IWriteStream&outStream, bool exportSize) const override
+			virtual	void					Serialize(IWriteStream&outStream, bool exportSize) const override
 			{
-				if (!outStream.WritePrimitive(active))
-					return false;
+				outStream.WritePrimitive(active);
 				switch (active)
 				{
 					case 0:
-						return true;
+						break;
 					case 1:
-						return option0.Serialize(outStream,exportSize);
+						option0.Serialize(outStream,exportSize);
+						break;
 					case 2:
-						return option1.Serialize(outStream,exportSize);
+						option1.Serialize(outStream,exportSize);
+						break;
 					default:
-						FATAL__("Invalid state");
+						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective2<>: "+String(active));
 				}
-				return false;
 			}
-			virtual	bool					Deserialize(IReadStream&inStream, serial_size_t fixedSize) override
+			virtual	void					Deserialize(IReadStream&inStream, serial_size_t fixedSize) override
 			{
 				if (fixedSize != EmbeddedSize)
 					fixedSize --;
-				if (!inStream.ReadPrimitive(active) || active > 2)
-					return false;
+				inStream.ReadPrimitive(active);
 				switch (active)
 				{
 					case 0:
-						return true;
+						break;
 					case 1:
-						return option0.Deserialize(inStream,fixedSize);
+						option0.Deserialize(inStream,fixedSize);
+						break;
 					case 2:
-						return option1.Deserialize(inStream,fixedSize);
+						option1.Deserialize(inStream,fixedSize);
+						break;
 					default:
-						FATAL__("Invalid state");
+						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective2<>: "+String(active));
 				}
-				return false;
 			}
 
 			const T1*		Get1() const
@@ -943,45 +911,47 @@ namespace Protocol
 				return 1;
 			}
 		
-			virtual	bool					Serialize(IWriteStream&outStream, bool exportSize) const override
+			virtual	void					Serialize(IWriteStream&outStream, bool exportSize) const override
 			{
-				if (!outStream.WritePrimitive(active))
-					return false;
+				outStream.WritePrimitive(active);
 				switch (active)
 				{
 					case 0:
-						return true;
+						break;
 					case 1:
-						return option0.Serialize(outStream,exportSize);
+						option0.Serialize(outStream,exportSize);
+						break;
 					case 2:
-						return option1.Serialize(outStream,exportSize);
+						option1.Serialize(outStream,exportSize);
+						break;
 					case 3:
-						return option2.Serialize(outStream,exportSize);
+						option2.Serialize(outStream,exportSize);
+						break;
 					default:
-						FATAL__("Invalid state");
+						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective3<>: "+String(active));
 				}
-				return false;
 			}
-			virtual	bool					Deserialize(IReadStream&inStream, serial_size_t fixedSize) override
+			virtual	void					Deserialize(IReadStream&inStream, serial_size_t fixedSize) override
 			{
 				if (fixedSize != EmbeddedSize)
 					fixedSize --;
-				if (!inStream.ReadPrimitive(active) || active > 3)
-					return false;
+				inStream.ReadPrimitive(active);
 				switch (active)
 				{
 					case 0:
-						return true;
+						break;
 					case 1:
-						return option0.Deserialize(inStream,fixedSize);
+						option0.Deserialize(inStream,fixedSize);
+						break;
 					case 2:
-						return option1.Deserialize(inStream,fixedSize);
+						option1.Deserialize(inStream,fixedSize);
+						break;
 					case 3:
-						return option2.Deserialize(inStream,fixedSize);
+						option2.Deserialize(inStream,fixedSize);
+						break;
 					default:
-						FATAL__("Invalid state");
+						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective3<>: "+String(active));
 				}
-				return false;
 			}
 
 			const T2*		Get2() const
@@ -1032,49 +1002,53 @@ namespace Protocol
 				return 1;
 			}
 		
-			virtual	bool					Serialize(IWriteStream&outStream, bool exportSize) const override
+			virtual	void					Serialize(IWriteStream&outStream, bool exportSize) const override
 			{
-				if (!outStream.WritePrimitive(active))
-					return false;
+				outStream.WritePrimitive(active);
 				switch (active)
 				{
 					case 0:
-						return true;
+						break;
 					case 1:
-						return option0.Serialize(outStream,exportSize);
+						option0.Serialize(outStream,exportSize);
+						break;
 					case 2:
-						return option1.Serialize(outStream,exportSize);
+						option1.Serialize(outStream,exportSize);
+						break;
 					case 3:
-						return option2.Serialize(outStream,exportSize);
+						option2.Serialize(outStream,exportSize);
+						break;
 					case 4:
-						return option3.Serialize(outStream,exportSize);
+						option3.Serialize(outStream,exportSize);
+						break;
 					default:
-						FATAL__("Invalid state");
+						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective4<>: "+String(active));
 				}
-				return false;
 			}
-			virtual	bool					Deserialize(IReadStream&inStream, serial_size_t fixedSize) override
+			virtual	void					Deserialize(IReadStream&inStream, serial_size_t fixedSize) override
 			{
 				if (fixedSize != EmbeddedSize)
 					fixedSize --;
-				if (!inStream.ReadPrimitive(active) || active > 4)
-					return false;
+				inStream.ReadPrimitive(active);
 				switch (active)
 				{
 					case 0:
-						return true;
+						break;
 					case 1:
-						return option0.Deserialize(inStream,fixedSize);
+						option0.Deserialize(inStream,fixedSize);
+						break;
 					case 2:
-						return option1.Deserialize(inStream,fixedSize);
+						option1.Deserialize(inStream,fixedSize);
+						break;
 					case 3:
-						return option2.Deserialize(inStream,fixedSize);
+						option2.Deserialize(inStream,fixedSize);
+						break;
 					case 4:
-						return option3.Deserialize(inStream,fixedSize);
+						option3.Deserialize(inStream,fixedSize);
+						break;
 					default:
-						FATAL__("Invalid state");
+						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective4<>: "+String(active));
 				}
-				return false;
 			}
 
 			const T3*		Get3() const
@@ -1118,33 +1092,32 @@ namespace Protocol
 			return GetSerialSizeOfSize(stackID) + 1;
 		}
 		
-		virtual	bool					Serialize(IWriteStream&outStream, bool /*exportSize*/) const override
+		virtual	void					Serialize(IWriteStream&outStream, bool /*exportSize*/) const override
 		{
 			if (*this == Invalid)
 			{
 				BYTE bLayer = 0xFF;
-				return outStream.Write(&bLayer,1);
+				outStream.Write(&bLayer,1);
+				return;
 			}
 			UINT32 layer = Grid::CellStack::ToLayer(height);
 			static_assert(Grid::CellStack::Range <= 255, "Protocol not designed for more than 255 layers");
 			BYTE bLayer = (BYTE)layer;
-			return outStream.Write(&bLayer,1) && outStream.WriteSize(stackID);
+			outStream.Write(&bLayer,1);
+			outStream.WriteSize(stackID);
 		}
 
-		virtual	bool					Deserialize(IReadStream&inStream, serial_size_t /*fixedSize*/) override
+		virtual	void					Deserialize(IReadStream&inStream, serial_size_t /*fixedSize*/) override
 		{
 			BYTE bLayer;
-			if (!inStream.Read(&bLayer,1))
-				return false;
+			inStream.Read(&bLayer,1);
 			if (bLayer == 0xFF)
 			{
 				*this = Invalid;
-				return true;
+				return;
 			}
-			if (!inStream.ReadSize(stackID))
-				return false;
+			inStream.ReadSize(stackID);
 			height = Grid::CellStack::ToHeight((UINT)bLayer);
-			return true;
 		}
 
 		bool						operator==(const Grid::LCellIdI&other) const
@@ -1178,14 +1151,14 @@ namespace Protocol
 			return GetSerialSizeOfSize(value);
 		}
 		
-		virtual	bool					Serialize(IWriteStream&outStream, bool /*exportSize*/) const override
+		virtual	void					Serialize(IWriteStream&outStream, bool /*exportSize*/) const override
 		{
-			return outStream.WriteSize(value);
+			outStream.WriteSize(value);
 		}
 
-		virtual	bool					Deserialize(IReadStream&inStream, serial_size_t /*fixedSize*/) override
+		virtual	void					Deserialize(IReadStream&inStream, serial_size_t /*fixedSize*/) override
 		{
-			return inStream.ReadSize(value);
+			inStream.ReadSize(value);
 		}
 
 		void		operator=(int v)
@@ -1376,7 +1349,7 @@ namespace Protocol
 		{
 			return GetSerialSize(*this);
 		}
-		static	bool					Serialize(IWriteStream&outStream, const Objects::ResourceVector&vec)
+		static	void					Serialize(IWriteStream&outStream, const Objects::ResourceVector&vec)
 		{
 			BYTE flag = 0;
 			for (index_t i = 0; i < Objects::ResourceVector::NumEntries; i++)
@@ -1390,27 +1363,19 @@ namespace Protocol
 					DBG_ASSERT_EQUAL1__(vec.level[i], 0,Objects::Resource::Reinterpret(i).ToString());
 				}
 			}
-			if (!outStream.Write(&flag,1))
-				return false;
+			outStream.Write(&flag,1);
 			for (index_t i = 0; i < Objects::ResourceVector::NumEntries; i++)
-			{
 				if (vec.level[i] > 0)
-				{
-					if (!outStream.WriteSize((serial_size_t)(vec.level[i])))
-						return false;
-				}
-			}
-			return true;
+					outStream.WriteSize((serial_size_t)(vec.level[i]));
 		}
-		virtual	bool					Serialize(IWriteStream&outStream, bool /*exportSize*/) const override
+		virtual	void					Serialize(IWriteStream&outStream, bool /*exportSize*/) const override
 		{
-			return Serialize(outStream,*this);
+			Serialize(outStream,*this);
 		}
-		static	bool					Deserialize(IReadStream&inStream, Objects::ResourceVector&vec)
+		static	void					Deserialize(IReadStream&inStream, Objects::ResourceVector&vec)
 		{
 			BYTE flags;
-			if (!inStream.Read(&flags,1))
-				return false;
+			inStream.Read(&flags,1);
 
 			for (index_t i = 0; i < Objects::ResourceVector::NumEntries; i++)
 			{
@@ -1421,16 +1386,13 @@ namespace Protocol
 					continue;
 				}
 				UINT32 val;
-				if (!inStream.ReadSize(val))
-					return false;
+				inStream.ReadSize(val);
 				vec.level[i] = val;
 			}
-			return true;
 		}
-		virtual	bool					Deserialize(IReadStream&inStream, serial_size_t /*fixedSize*/) override
+		virtual	void					Deserialize(IReadStream&inStream, serial_size_t /*fixedSize*/) override
 		{
-			return Deserialize(inStream,*this);
-
+			Deserialize(inStream,*this);
 		}
 
 
@@ -1559,14 +1521,8 @@ namespace Protocol
 		{
 			return 0;
 		}
-		virtual	bool		Serialize(IWriteStream&outStream, bool exportSize) const	override
-		{
-			return true;
-		}
-		virtual	bool		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override
-		{
-			return true;
-		}
+		virtual	void		Serialize(IWriteStream&outStream, bool exportSize) const	override	{}
+		virtual	void		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override	{}
 
 		void swap(NoData&)	{}
 	};

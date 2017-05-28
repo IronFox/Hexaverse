@@ -870,7 +870,7 @@ int main( int argc, const char* argv[])
 
 
 		#ifdef _DEBUG
-			//inTestMode = true;
+			inTestMode = true;
 		#endif
 
 

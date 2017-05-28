@@ -106,6 +106,7 @@ namespace Logging
 
 void		LogEvent(const EventClass&evClass, const Objects::WorldEntity*, const String&);
 void		LogEvent(const EventClass&evClass, const Objects::OwnerParameter&, const String&);
+void		LogException(const Objects::WorldEntity*, const std::exception&ex);
 
 inline void LogEvent(const EventClass&evClass, const String&msg)
 {

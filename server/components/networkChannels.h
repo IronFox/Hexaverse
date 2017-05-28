@@ -46,7 +46,7 @@ namespace Receiver
 	Handler function to process events where packages have been ignored by the network system
 	*/
 	void		OnIgnorePackage(UINT32 channelId, UINT32 packageSize, TCP::Peer&peer);
-	void		OnDeserializationFailed(UINT32 channel, TCP::Peer&origin);
+	void		OnDeserializationFailed(UINT32 channel, TCP::Peer&origin, const String&exception);
 
 
 }

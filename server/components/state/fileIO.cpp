@@ -459,7 +459,7 @@ namespace FileIO
 			Riff::Chunk*jobChunk = taskChunk->AppendBlock(job->GetDataKey());
 			size_t dataSize = job->GetSerialSize(false);
 			if (dataSize)
-				ASSERT2__(SerializeToMemory(*job,jobChunk->SetData(dataSize),(ISerializable::serial_size_t)dataSize,false), job->GetName(),dataSize);
+				SerializeToCompactMemory(*job,jobChunk->SetData(dataSize),(ISerializable::serial_size_t)dataSize,false);
 			//this fails sometimes. gotta investigate
 		}
 	}
@@ -477,7 +477,7 @@ namespace FileIO
 			if (source)
 			{
 				job = jobType->Instantiate();
-				ASSERT2__(DeserializeFromMemory(*job,source->pointer(),source->size(),false), job->GetName(),source->size());
+				DeserializeFromCompactMemory(*job,source->pointer(),source->size(),false);
 
 
 				source0->OpenStream();
@@ -587,7 +587,7 @@ namespace FileIO
 		helper.id = item.id;
 		helper.productID = item.producing->id;
 		serial_size_t size = helper.GetSerialSize(false);
-		ASSERT1__(SerializeToMemory(helper,parent->AppendBlock(RID::vehiclePlantItem)->SetData(size),size,false),size);
+		SerializeToCompactMemory(helper,parent->AppendBlock(RID::vehiclePlantItem)->SetData(size),size,false);
 	}
 	static void Import(Riff::Chunk*source, Objects::MobileEntityProducer::WorkItem&item, const Objects::PFaction&owner)
 	{
@@ -595,7 +595,7 @@ namespace FileIO
 
 		WorkItemSerializable helper;
 
-		ASSERT1__(DeserializeFromMemory(helper,source->pointer(),source->size(),false),source->size());
+		DeserializeFromCompactMemory(helper,source->pointer(),source->size(),false);
 		if (helper.turretName.IsNotEmpty())
 		{
 			item.producing = Objects::AssembleVehicle(owner,helper.productID,Grid::LCellIdI(0,0),helper.baseName,helper.turretName);
@@ -830,13 +830,13 @@ namespace FileIO
 		helper.autoTarget = item.autoTarget;
 	//	helper.id = item.id;
 		serial_size_t size = helper.GetSerialSize(false);
-		ASSERT1__(SerializeToMemory(helper,parent->AppendBlock(RID::towerItem)->SetData(size),size,false),size);
+		SerializeToCompactMemory(helper,parent->AppendBlock(RID::towerItem)->SetData(size),size,false);
 	}
 	static void Import(Riff::Chunk*source, Objects::Tower::AttackTask&item)
 	{
 		ASSERT1__(source->IsID(RID::towerItem),source->GetID().ToString());
 		AttackItemSerializable helper;
-		ASSERT__(DeserializeFromMemory(helper,source->pointer(),source->size(),false));
+		DeserializeFromCompactMemory(helper,source->pointer(),source->size(),false);
 		item.target = helper.destination;
 //		item.id = helper.id;
 		item.autoTarget = helper.autoTarget;
@@ -1007,7 +1007,7 @@ namespace FileIO
 		ISerializable::serial_size_t size = data.GetSerialSize(false);
 		if (buffer.size() < size)
 			buffer.SetSize(size);
-		ASSERT1__(SerializeToMemory(data,buffer.pointer(),size,false),size);
+		SerializeToCompactMemory(data,buffer.pointer(),size,false);
 		target->SetData(buffer.pointer(),size);
 	}
 
@@ -1032,7 +1032,7 @@ namespace FileIO
 			{
 				if (child->IsID(RID::worldTypeChunk))
 				{
-					ASSERT__(DeserializeFromMemory(typeArray,child->pointer(),child->size(),false));
+					DeserializeFromCompactMemory(typeArray,child->pointer(),child->size(),false);
 					ASSERT_LESS__(atFamily, BaseGrid::NumFamilies);
 					seq.ApplyFamilyDelta(atFamily,typeArray,false,true);
 
@@ -1422,7 +1422,7 @@ namespace FileIO
 									if (markerChunk)
 									{
 										Array<Objects::Marker>	markers;
-										ASSERT__(DeserializeFromMemory(markers, markerChunk->pointer(), markerChunk->size(), false));
+										DeserializeFromCompactMemory(markers, markerChunk->pointer(), markerChunk->size(), false);
 										faction->RestoreMarkers(markers);
 									}
 								}
@@ -1451,7 +1451,7 @@ namespace FileIO
 
 											if (child->IsID(RID::factionWorldTypeChunk))
 											{
-												ASSERT__(DeserializeFromMemory(typeArray,child->pointer(),child->size(),false));
+												DeserializeFromCompactMemory(typeArray,child->pointer(),child->size(),false);
 												ASSERT_LESS__(atFamily, BaseGrid::NumFamilies);
 												seq.ApplyFamilyDelta(atFamily,typeArray,false,false);
 												atFamily++;
