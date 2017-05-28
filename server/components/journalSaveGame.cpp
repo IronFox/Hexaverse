@@ -791,7 +791,7 @@ namespace Journal
 			if (p->get()->GetDataKey() == this->jobID)
 			{
 				auto job = p->get()->Instantiate();
-				ASSERT2__(DeserializeFromMemory(*job,this->jobPayload.pointer(),(serial_size_t)jobPayload.size(),false), job->GetName(),jobPayload.size());
+				DeserializeFromCompactMemory(*job,this->jobPayload.pointer(),(serial_size_t)jobPayload.size(),false), job->GetName(),jobPayload.size();
 				job->Restart(*m);
 				m->RegisterNewJob("",job,focus != Grid::LCellIdI::Invalid ? &focus : nullptr);
 				return;
@@ -1441,14 +1441,22 @@ namespace Journal
 
 	void	Round::LogJobCommandStart(const Objects::PWorldEntity&e, const Objects::VehicleJob::BaseJob&job, const Grid::LCellIdI&focus)
 	{
-		EntityStrand&strand = factionStrands.Set(e->owner->id).entityStrands.Set(e->id);
-		std::shared_ptr<JobCommand> cmd(new JobCommand());
-		strand.Append(cmd);
-		cmd->jobID = job.GetDataKey();
-		cmd->focus = focus;
-		serial_size_t size = job.GetSerialSize(false);
-		cmd->jobPayload.SetSize(size);
-		ASSERT__(SerializeToMemory(job,cmd->jobPayload.pointer(),(serial_size_t)cmd->jobPayload.GetContentSize(),false));
+		try
+		{
+			std::shared_ptr<JobCommand> cmd(new JobCommand());
+			cmd->jobID = job.GetDataKey();
+			cmd->focus = focus;
+			serial_size_t size = job.GetSerialSize(false);
+			cmd->jobPayload.SetSize(size);
+			SerializeToCompactMemory(job,cmd->jobPayload.pointer(),(serial_size_t)cmd->jobPayload.GetContentSize(),false);
+
+			EntityStrand&strand = factionStrands.Set(e->owner->id).entityStrands.Set(e->id);
+			strand.Append(cmd);
+		}
+		catch (const std::exception&ex)
+		{
+			LogException(e.get(),ex);
+		}
 	}
 
 

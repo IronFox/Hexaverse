@@ -68,9 +68,9 @@ namespace Objects
 		}
 
 		#ifndef CLIENT
-			virtual	serial_size_t		GetSerialSize(bool export_size) const override;
-			virtual	bool				Serialize(IWriteStream&out_stream, bool export_size) const override;
-			virtual	bool				Deserialize(IReadStream&in_stream, serial_size_t fixed_size) override;
+			virtual	serial_size_t	GetSerialSize(bool export_size) const override;
+			virtual	void			Serialize(IWriteStream&out_stream, bool export_size) const override;
+			virtual	void			Deserialize(IReadStream&in_stream, serial_size_t fixed_size) override;
 		#endif
 
 		virtual String				GetTypeName() const override { return "Marker (" + String(type.ToString())+")"; }
@@ -87,6 +87,7 @@ namespace Objects
 			&& type == other.type && createdInRound == other.createdInRound 
 			&& referenceEntity == other.referenceEntity && referencedType[0] == other.referencedType[0] && referencedType[1] == other.referencedType[1];
 		}
+		bool						operator!=(const Marker&other) const {return !operator==(other);}
 
 
 		#ifdef CLIENT

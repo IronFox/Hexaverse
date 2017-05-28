@@ -27,9 +27,9 @@ namespace RemoteControl
 			LogEvent(EventSignificance::Debug,nullptr,"In "+String(file)+", line "+String(line)+": '"+str+"'");
 		}
 
-		void OnDeserializationFailed(UINT32 channel, TCP::Peer&origin)
+		void OnDeserializationFailed(UINT32 channel, TCP::Peer&origin, const String&exception)
 		{
-			LogEvent(EventClass::Preset::networkError,nullptr,"RemoteControl: "+origin.ToString()+": Deserialization failed on channel "+String(channel));
+			LogEvent(EventClass::Preset::networkError,nullptr,"RemoteControl: "+origin.ToString()+": Deserialization failed on channel "+String(channel)+": "+exception);
 		}
 
 

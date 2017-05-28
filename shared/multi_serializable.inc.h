@@ -15,15 +15,15 @@
 			{\
 				return Super::HasFixedSize() && var##SUPER_DEPTH.HasFixedSize();\
 			}\
-			virtual	bool		Serialize(IWriteStream&outStream, bool exportSize) const	override\
+			virtual	void		Serialize(IWriteStream&outStream, bool exportSize) const	override\
 			{\
-				return Super::Serialize(outStream,true) && var##SUPER_DEPTH.Serialize(outStream,true);\
+				Super::Serialize(outStream,true);\
+				var##SUPER_DEPTH.Serialize(outStream,true);\
 			}\
-			virtual	bool		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override\
+			virtual	void		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override\
 			{\
-				if (!Super::Deserialize(inStream,EmbeddedSize)) return false;\
-				ASSERT__(var##SUPER_DEPTH.Deserialize(inStream,EmbeddedSize));\
-				return true;\
+				Super::Deserialize(inStream,EmbeddedSize);\
+				var##SUPER_DEPTH.Deserialize(inStream,EmbeddedSize);\
 			}\
 			void	Copy(const Self&other)\
 			{\

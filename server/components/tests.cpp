@@ -29,8 +29,20 @@ namespace Test
 		//std::cout << "Running test '" << typeid(test).name() << "'..." << std::endl;
 		Random random;
 		Timer::Time t0 = timer.Now();
-		test.Run(random);
-		std::cout << "    ...completed. No errors detected after " << timer.GetSecondsSince(t0) << " seconds" << std::endl;
+		try
+		{
+			test.Run(random);
+			std::cout << "    ...completed. No errors detected after " << timer.GetSecondsSince(t0) << " seconds" << std::endl;
+		}
+		catch (const std::exception&ex)
+		{
+			std::cout << "    ...failed. Unhandled exception caught after " << timer.GetSecondsSince(t0) << " seconds:" << std::endl << ex.what()<<std::endl;
+		}
+		catch (...)
+		{
+			std::cout << "    ...failed. Unknown exception caught after " << timer.GetSecondsSince(t0) << " seconds:" << std::endl;
+		}
+
 	}
 
 
@@ -69,7 +81,7 @@ namespace Test
 
 			ASSERT__(client.Connect("localhost:"+String(port)));
 
-			ASSERT__(messageChannel.SendTo(client,"hello"));
+			messageChannel.SendTo(client,"hello");
 
 			Timer::Time t0 = timer.Now();
 			for (;;)

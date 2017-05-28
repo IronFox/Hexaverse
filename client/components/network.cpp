@@ -233,7 +233,7 @@ namespace Network
 
 			static void		OnEvent(TCP::event_t ev, TCP::Peer&peer);
 
-			static void		OnDeserializationFailed(UINT32, TCP::Peer&peer);
+			static void		OnDeserializationFailed(UINT32, TCP::Peer&peer, const String&exception);
 
 			void			ThreadMain() override
 			{
@@ -350,7 +350,7 @@ namespace Network
 		}
 
 
-		/*static*/ void		HostContactAttempt::OnDeserializationFailed(UINT32, TCP::Peer&peer)
+		/*static*/ void		HostContactAttempt::OnDeserializationFailed(UINT32, TCP::Peer&peer, const String&exception)
 		{
 			PHostContactAttempt me = To<HostContactAttempt>::Cast(peer.attachment);
 			if (me)

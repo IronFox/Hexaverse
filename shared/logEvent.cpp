@@ -282,6 +282,11 @@ namespace Logging
 
 }
 
+void		LogException(const Objects::WorldEntity*e, const std::exception&ex)
+{
+	LogEvent(EventClass::Preset::internalError,e,ex.what());
+}
+
 
 
 void LogEvent( const EventClass&type, const Objects::WorldEntity*e, const String&msg)
