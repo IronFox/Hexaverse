@@ -172,8 +172,8 @@ namespace Objects
 				//virtual Riff::TID		GetDataKey() const override {return "BLDF";};
 				//virtual PJob	Instantiate() const override {return PJob(new BuildFoundation());}
 				virtual	serial_size_t	GetSerialSize(bool exportSize) const override	{return 0;};
-				virtual	bool			Serialize(IWriteStream&outStream, bool exportSize) const override {return true;};
-				virtual	bool			Deserialize(IReadStream&inStream, serial_size_t fixedSize) override {return true;};
+				virtual	void			Serialize(IWriteStream&outStream, bool exportSize) const override {};
+				virtual	void			Deserialize(IReadStream&inStream, serial_size_t fixedSize) override {};
 
 			};
 		#else

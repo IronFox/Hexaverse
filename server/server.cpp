@@ -870,7 +870,7 @@ int main( int argc, const char* argv[])
 
 
 		#ifdef _DEBUG
-			inTestMode = true;
+			//inTestMode = true;
 		#endif
 
 
@@ -990,17 +990,18 @@ int main( int argc, const char* argv[])
 
 		if (inTestMode)
 		{
-			std::cout << "Running tests..." << std::endl;
+			std::cout << "Building initial test world..." << std::endl;
 
 			World::BuildConfiguredWorld(random);
 
 
+			std::cout << "Running tests..." << std::endl;
 			{
 				
+				Test::Run(Test::ServerClient());
 				Test::Run(Test::TerrainUpdates());
 				Test::Run(Test::AutoTargeting());
 				Test::Run(Test::SharedContainer());
-				Test::Run(Test::ServerClient());
 				Test::Run(Test::HighGridFamilies());
 				Test::Run(Test::Bin2Str());
 				Test::Run(Test::Serialization());
