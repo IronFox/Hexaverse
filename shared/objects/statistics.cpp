@@ -94,5 +94,20 @@ namespace Objects
 			un.Get(UnitStatistics::Built) ++;
 	}
 
+	/*virtual override*/ serial_size_t	Statistics::GetSerialSize(bool exportSize) const
+	{
+		return 0;
+	}
+
+	/*virtual override*/ void			Statistics::Serialize(IWriteStream&outStream, bool exportSize) const
+	{
+
+	}
+
+	/*virtual override*/ void			Statistics::Deserialize(IReadStream&inStream, serial_size_t fixedSize)
+	{
+
+	}
+
 
 }

@@ -6,7 +6,7 @@
 namespace Objects
 {
 
-	class Statistics
+	class Statistics : public SerializableObject
 	{
 		const Faction*const	owner;
 	public:
@@ -83,6 +83,14 @@ namespace Objects
 		void			SignalDestructionOfHostile(const PWorldEntity&causedBy, const PWorldEntity&);
 		void			SignalLossOf(const PWorldEntity&, const PFaction&causedBy, bool stolen);
 		void			SignalUnitAcquired(const PWorldEntity&, const PFaction&previousOwner);
+
+		
+		virtual	serial_size_t	GetSerialSize(bool exportSize) const override;							//!< Queries the serial size of this object @param export_size True if the result should include additional space required for any size variable such as a string or array length @return Serial size (in bytes) of this object
+		virtual	void			Serialize(IWriteStream&outStream, bool exportSize) const;		//!< Writes the serialized content of the local object to the specified stream. The size of the written data must match the result of GetSerialSize() as long as the object remains unchanged. @param outStream Stream to write to @param exportSize True if the object is expected to export any dynamic size such as string or array length @return true if the object could be fully written to the out stream, false otherwise
+		virtual	void			Deserialize(IReadStream&inStream, serial_size_t fixedSize);			//!< Reads the content of the local object from the specified stream @param inStream Stream to read from @param fixedSize ISerializable::EmbeddedSize if any dynamic object size should be read from the stream or the size in bytes that the local object should adopt to otherwise. If this parameter is ISerializable::EmbeddedSize then the object data was serialized with @b export_size set to true @return true if the object data could be fully read from the out stream, false otherwise
+		virtual	bool			HasFixedSize() const {return false;}									//!< Queries whether this object is of fixed size (always the same no matter what content)
+
+
 	private:
 		PointerTable<Interaction>	interactionMap;
 		StringTable<UnitStatistics>	unitStatistics;
