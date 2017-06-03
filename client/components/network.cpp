@@ -370,7 +370,6 @@ namespace Network
 			PHostContactAttempt me = To<HostContactAttempt>::Cast(peer.attachment);
 			switch (ev)
 			{
-				case TCP::Event::ConnectionClosed:
 				case TCP::Event::ConnectionLost:
 					//me->Release();
 				break;
@@ -1279,7 +1278,6 @@ namespace Network
 			}
 			break;
 			case TCP::Event::ConnectionLost:
-			case TCP::Event::ConnectionClosed:
 			{
 				RuntimeConfig::tutorialMode = false;
 				if (!RuntimeConfig::aiMode)
