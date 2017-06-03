@@ -24,7 +24,7 @@ namespace Network
 {
 	Buffer<PClient>	activePlayersAndSpectators,spectators;
 	GenericHashTable<Objects::OwnerParameter,PClient,Objects::OwnerHash>	playerMap;
-	GenericHashTable<CryptographicID,Objects::PFaction,CryptographicID>		tokenMap;
+	GenericHashTable<CryptographicID,Objects::PFaction>		tokenMap;
 
 
 	

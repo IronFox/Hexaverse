@@ -19,7 +19,7 @@
 struct SharedPtrHash
 {
 	template <typename T>
-	static hash_t	hash(const std::shared_ptr<T>&ptr)
+	static hash_t	ComputeHash(const std::shared_ptr<T>&ptr)
 	{
 		return (hash_t)ptr.get();
 	}
@@ -33,7 +33,7 @@ namespace Objects
 	static const float timeEpsilon = 0.001f;	//time in seconds between subsequent events such that they are sorted correctly on the client
 	typedef SharedPtrHash	OwnerHash;
 
-	extern GenericHashTable<TUniqueID,PWorldEntity,TUniqueID,Strategy::POD,Strategy::Swap>	idMap;
+	extern GenericHashTable<TUniqueID,PWorldEntity>	idMap;
 
 
 	#ifdef HAS_WINDOW
