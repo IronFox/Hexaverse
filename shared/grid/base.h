@@ -257,9 +257,9 @@ public:
 
 		static const CellIdI	Invalid;
 
-		static hash_t	hash(const CellIdI&cell)
+		friend hash_t	Hash(const CellIdI&cell)
 		{
-			return (hash_t)(cell.stackID*31+cell.height);
+			return (hash_t)(cell.stackID*32+cell.height);
 		}
 	private:
 		/**/	CellIdI(index_t stackID, UINT layer) {}
@@ -283,9 +283,9 @@ public:
 
 		String	ToString() const {return String(stackID)+ "["+String(layer)+"]";}
 
-		static hash_t	hash(const CellIdU&cell)
+		friend hash_t	Hash(const CellIdU&cell)
 		{
-			return (hash_t)(cell.stackID*31+cell.layer);
+			return (hash_t)(cell.stackID*32+cell.layer);
 		}
 
 		static const CellIdU	Invalid;
@@ -869,9 +869,9 @@ struct TriangleKey
 	}
 	bool			operator!=(const TriangleKey&k) const { return !operator==(k); }
 
-	static hash_t		hash(const TriangleKey&k)
+	friend hash_t		Hash(const TriangleKey&k)
 	{
-		return HashValue(k.stackID[0]).add(k.stackID[1]).add(k.stackID[2]);
+		return HashValue() << k.stackID[0] << k.stackID[1] << k.stackID[2];
 	}
 
 };
@@ -883,7 +883,7 @@ template <unsigned Exponent>
 	{
 		cells.SetSize(CellCount);
 		Buffer<TCellVertex>	vtx;
-		GenericHashTable<TriangleKey, UINT32, TriangleKey>	vtxMap;
+		GenericHashTable<TriangleKey, UINT32>	vtxMap;
 		for (index_t i = 0; i < CellCount; i++)
 		{
 			TCellVertex&v = vtx.Append();

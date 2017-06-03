@@ -279,7 +279,7 @@ namespace Objects
 			UnitClass			hasUnitClasses = UnitClass::None;
 
 			Buffer0<Marker,Strategy::Adopt>		markers;
-			GenericHashTable<TUniqueID, index_t, TUniqueID>	markerMap,referenceMap;
+			GenericHashTable<TUniqueID, index_t>	markerMap,referenceMap;
 
 			GenericHashTable<PWorldEntity,float,SharedPtrHash>	lostVisualAt,//!< Used for entities that dropped out of contact during the same round
 															gainedVisualAt;

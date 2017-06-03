@@ -82,9 +82,9 @@ struct TUniqueID
 	static const count_t NumBytes = 16;
 	BYTE		bytes[NumBytes];
 
-	static hash_t	hash(const TUniqueID&id)
+	friend hash_t	Hash(const TUniqueID&id)
 	{
-		return stdMemHash(id.bytes,sizeof(id.bytes));
+		return StdMemHash(id.bytes,sizeof(id.bytes));
 	}
 
 	String		ToFullString() const
@@ -189,9 +189,9 @@ public:
 		ASSERT_EQUAL__(read,1);
 	}
 
-	static hash_t	hash(const CryptographicID&id)
+	friend hash_t	Hash(const CryptographicID&id)
 	{
-		return stdMemHash(id.bytes,sizeof(id.bytes));
+		return StdMemHash(id.bytes,sizeof(id.bytes));
 	}
 
 	String		ToString(count_t numBytes=4) const

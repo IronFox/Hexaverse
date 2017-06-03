@@ -14,7 +14,7 @@
 namespace ScriptCache
 {
 	GenericHashTable<PathString,std::pair<PScript,FileSystem::ftime_t> >	map;
-	GenericHashTable<SHA256::HashContainer,PScript,PODHash>	hashMap;
+	GenericHashTable<SHA256::HashContainer,PScript>	hashMap;
 
 	static const PathString cacheFileExtension = ".script";
 

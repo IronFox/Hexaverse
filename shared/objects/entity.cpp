@@ -22,7 +22,7 @@ namespace Objects
 {
 
 
-	GenericHashTable<TUniqueID,PWorldEntity,TUniqueID,Strategy::POD,Strategy::Swap>	idMap;
+	GenericHashTable<TUniqueID,PWorldEntity>	idMap;
 
 	/*static*/ index_t			BaseAttributeCache::versionCounter = 0;
 

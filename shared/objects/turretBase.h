@@ -33,7 +33,7 @@ namespace Objects
 		{
 		public:
 			Queue<Grid::LCellIdI>	queue;
-			GenericHashSet<Grid::LCellIdI,Grid::LCellIdI>	visited;
+			GenericHashSet<Grid::LCellIdI>	visited;
 
 			bool				operator>>(Grid::LCellIdI&next)
 			{

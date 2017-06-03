@@ -287,7 +287,9 @@ namespace FileIO
 			parent->AppendBlock(RID::empDamageLevel)->SetPODData(e.empDamageLevel);
 	}
 
-	static void Import(Riff::Chunk*parent, Objects::WorldEntity&e, const GenericHashTable<TUniqueID,Objects::PFaction,TUniqueID>&ownerMap)
+
+	typedef GenericHashTable<TUniqueID,Objects::PFaction>	FactionMap;
+	static void Import(Riff::Chunk*parent, Objects::WorldEntity&e, const FactionMap&ownerMap)
 	{
 		using namespace ApplicationInterface;
 		Riff::Chunk*source = parent->FindFirst(RID::entity);
@@ -746,7 +748,7 @@ namespace FileIO
 		Export(parent,v.completeOnMove);
 	}
 
-	static bool Import(Riff::Chunk*parent, Riff::Chunk*vehicleChunk,const Objects::PMobileEntity&v, GenericHashTable<TUniqueID,Objects::PFaction,TUniqueID>&factions)
+	static bool Import(Riff::Chunk*parent, Riff::Chunk*vehicleChunk,const Objects::PMobileEntity&v, FactionMap&factions)
 	{
 		//Grid::LCellIdI location;
 		GetPOD(parent,RID::location,v->location);
@@ -887,7 +889,7 @@ namespace FileIO
 	}
 
 	
-	static Objects::PStructure Import(Riff::Chunk*parent, GenericHashTable<TUniqueID,Objects::PFaction,TUniqueID>&factions)
+	static Objects::PStructure Import(Riff::Chunk*parent, FactionMap&factions)
 	{
 		using namespace ApplicationInterface;
 		String typeName;
@@ -1147,7 +1149,7 @@ namespace FileIO
 			}
 		}
 
-		GenericHashTable<TUniqueID,Objects::PFaction,TUniqueID>	factionMap;
+		FactionMap	factionMap;
 		for (int round = 0; round < 2; round++)
 		{
 			Riff::Chunk*name,*list;
