@@ -232,7 +232,7 @@ namespace Objects
 			static PFaction				FindByID(const TUniqueID&id);
 			static PFaction				GetOrCreate(const TUniqueID&id);
 
-			/**/						Faction(const TUniqueID&id):researchState(this,false) {InitID(id,false);}
+			/**/						Faction(const TUniqueID&id):researchState(this,false),statistics(this) {InitID(id,false);}
 
 		#else
 
