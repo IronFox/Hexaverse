@@ -1672,7 +1672,6 @@ namespace Receiver
 					peer.DisconnectPeer();
 				}
 			break;
-			case TCP::Event::ConnectionClosed:
 			case TCP::Event::ConnectionLost:
 			{
 				Network::PClient client = To<Network::Client>::Cast(peer.attachment);
