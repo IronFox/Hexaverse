@@ -306,7 +306,7 @@ namespace AI
 
 		if (attacker)
 		{
-			String id = v->id.ToString();
+			String id = ToString(v->id);
 			static Buffer0<TAttackTarget>	attackTarget;
 			attackTarget.Clear();
 			const float explosionRadius = v->turret->GetExplosionRadius(v->owner);
@@ -519,7 +519,7 @@ namespace AI
 	void	SignalStart(const String&because, const TCodeLocation&caller)
 	{
 		if (done)
-			LogEvent(EventSignificance::Debug,"AI: Starting ("+because+", by "+caller.ToString()+")");
+			LogEvent(EventSignificance::Debug,"AI: Starting ("+because+", by "+String(caller)+")");
 
 		done = false;
 

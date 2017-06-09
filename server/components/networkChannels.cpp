@@ -406,7 +406,7 @@ namespace Receiver
 			Network::PClient other;
 			if (Network::playerMap.Query(faction,other))
 			{
-				LogEvent(EventClass( EventSignificance::Important, EventFlavor::Loss ),peer,"Faction access token recognized, but faction is already being controlled. Disconnecting "+other->ToString());
+				LogEvent(EventClass( EventSignificance::Important, EventFlavor::Loss ),peer,"Faction access token recognized, but faction is already being controlled. Disconnecting "+other->ConvertToString());
 
 				if (faction == Objects::Faction::nexus)
 				{
@@ -1038,13 +1038,13 @@ namespace Receiver
 			//Channels::touchedMarker.SendTo(peer,m);	//knows already
 		}
 		else
-			LogEvent(EventClass::Preset::commandRejected, peer, "Marker " + m.id.value.ToString() + " not found for touch");
+			LogEvent(EventClass::Preset::commandRejected, peer, "Marker " + ToString(m.id) + " not found for touch");
 	}
 
 
 	void	Automate(Protocol::EntityStateUpdate&a, TCP::Peer&peer)
 	{
-		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Automate ("+String(a.doSet)+") entity "+a.entityID.value.ToString());
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Automate ("+String(a.doSet)+") entity "+ToString(a.entityID));
 
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(a.entityID,peer);
 		if (!e)
@@ -1064,7 +1064,7 @@ namespace Receiver
 
 	void	Sleep(Protocol::EntityStateUpdate&a, TCP::Peer&peer)
 	{
-		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Sleep ("+String(a.doSet)+") entity "+a.entityID.value.ToString());
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Sleep ("+String(a.doSet)+") entity "+ToString(a.entityID));
 
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(a.entityID,peer);
 		if (!e)
@@ -1080,7 +1080,7 @@ namespace Receiver
 
 	void	EnableStructure(Protocol::EnableStructure&es, TCP::Peer&peer)
 	{
-		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: "+String(es.enable?"Enable":"Disable")+" structure "+es.id.value.ToString());
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: "+String(es.enable?"Enable":"Disable")+" structure "+ToString(es.id));
 
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(es.id,peer);
 		if (!e)
@@ -1098,7 +1098,7 @@ namespace Receiver
 
 	void	RestoreCoreLink(NET(TUniqueID)&uuid, TCP::Peer&peer)
 	{
-		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Restoring mine core link "+uuid.value.ToString());
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Restoring mine core link "+ToString(uuid));
 
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(uuid, peer);
 		if (!e)
@@ -1115,7 +1115,7 @@ namespace Receiver
 	}
 	void	RemoveEntity(NET(TUniqueID)&uuid, TCP::Peer&peer)
 	{
-		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Removing entity "+uuid.value.ToString());
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Removing entity "+ToString(uuid));
 
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(uuid,peer);
 		if (!e)
@@ -1135,7 +1135,7 @@ namespace Receiver
 
 	void	ConstructionAbort(Protocol::ConstructionAbort&ca, TCP::Peer&peer)
 	{
-		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Aborting vehicle plant construction for entity "+ca.plantID.value.ToString());
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Aborting vehicle plant construction for entity "+ToString(ca.plantID));
 
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(ca.plantID,peer);
 		if (!e)
@@ -1155,7 +1155,8 @@ namespace Receiver
 
 	void	ConstructionBegin(Protocol::ConstructionBegin&cb, TCP::Peer&peer)
 	{
-		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Registering mobile producer construction, given "+String(cb.parameters.Count())+" parameter(s), for entity "+cb.plantID.value.ToString());
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Registering mobile producer construction, given "+String(cb.parameters.Count())+" parameter(s), for entity "
+				+ToString(cb.plantID));
 
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(cb.plantID,peer);
 		if (!e)
@@ -1192,7 +1193,7 @@ namespace Receiver
 
 	void	SignalNewJob(Protocol::StandardJob&sjob, TCP::Peer&peer)
 	{
-		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Registering new Job #"+String(int(sjob.jobName.value))+" for vehicle "+sjob.ownerID.value.ToString());
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Registering new Job #"+String(int(sjob.jobName.value))+" for vehicle "+ToString(sjob.ownerID));
 
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(sjob.ownerID,peer);
 		if (!e)
@@ -1341,7 +1342,7 @@ namespace Receiver
 
 	void	SignalTerrainMod(Protocol::TerrainMod&mod, TCP::Peer&peer)
 	{
-		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Registering new AlterTerrain for vehicle "+mod.id.value.ToString()+", mode="+String(mod.mode.value)+", numCells="+String(mod.cells.Count()));
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Registering new AlterTerrain for vehicle "+ToString(mod.id)+", mode="+String(mod.mode.value)+", numCells="+String(mod.cells.Count()));
 
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(mod.id,peer);
 		if (!e)
@@ -1398,7 +1399,8 @@ namespace Receiver
 
 	void	ChoiceIntersection(Protocol::ChoiceIntersection&ch, TCP::Peer&peer)
 	{
-		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Processing choice intersection in mode "+String(ch.mode)+" at cell "+ch.target.ToString()+" for entity "+ch.id.value.ToString());
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Processing choice intersection in mode "+String(ch.mode)+" at cell "+ch.target.ToString()
+			+" for entity "+ToString(ch.id));
 
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(ch.id,peer);
 		if (!e)
@@ -1419,7 +1421,7 @@ namespace Receiver
 		if (deploying)
 		{
 			deployingWhat = To<Objects::MobileEntity>::DynamicCast(Objects::GetEntity(deploying->value));
-			ASSERT1__(deployingWhat,deploying->value.ToString());
+			ASSERT1__(deployingWhat,deploying->value);
 		}
 
 		if (To<Objects::Hangar>::DynamicCast(e))
@@ -1441,7 +1443,7 @@ namespace Receiver
 			return;
 		}
 		
-		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Drop tasks ("+String(mode.ToString())+") of entity "+drop.targetID.value.ToString());
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Drop tasks ("+String(mode.ToString())+") of entity "+ToString(drop.targetID));
 
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(drop.targetID,peer);
 		if (!e)
@@ -1495,7 +1497,7 @@ namespace Receiver
 		buffer.Clear();
 		foreach (cmd.path,n)
 			buffer << ' '<<n->ToString();
-		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Directing entity "+cmd.id.value.ToString()+" in mode "+String(cmd.mode.value)+" given flags "+String(cmd.directFlags)+" to"+buffer.ToString());
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Directing entity "+ToString(cmd.id)+" in mode "+String(cmd.mode.value)+" given flags "+String(cmd.directFlags)+" to"+buffer.CopyToString());
 
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(cmd.id,peer);
 		if (!e)
@@ -1630,7 +1632,7 @@ namespace Receiver
 			peer.attachment = client;
 			//State::clients << client;
 			client->name = hello;
-			LogEvent(EventClass( EventSignificance::Common, EventFlavor::Gain ),peer,client->ToString()+" joined the session");
+			LogEvent(EventClass( EventSignificance::Common, EventFlavor::Gain ),peer,client->ConvertToString()+" joined the session");
 
 			
 			Protocol::PhaseChange	ph;
@@ -1677,7 +1679,7 @@ namespace Receiver
 				Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 				if (client)
 				{
-					LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Loss ),"Player disconnected: "+client->ToString());
+					LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Loss ),"Player disconnected: "+client->ConvertToString());
 					Network::HandleConnectionLoss(client);
 
 					peer.attachment.reset();

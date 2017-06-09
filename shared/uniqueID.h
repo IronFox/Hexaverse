@@ -19,7 +19,7 @@ namespace Bin2Str
 	{
 		if (c >= '0' && c <= '9')
 			return (BYTE)(c - '0');
-		c = Template::toupper(c);
+		c = CharFunctions::toupper(c);
 		if (c >= 'A' && c <= 'F')
 			return (BYTE)(10 + (c - 'A'));
 		throw Except::Program::ParameterFault("Unable to decode byte-string character '" + String(c) + "': Invalid hexadecimal character");
@@ -92,9 +92,14 @@ struct TUniqueID
 		return Bin2Str::Convert(bytes,NumBytes);
 	}
 
-	String		ToString(count_t numBytes=4) const
+	String		ConvertToString(count_t numBytes=4) const
 	{
 		return Bin2Str::Convert(bytes,numBytes);
+	}
+
+	friend String ToString(const TUniqueID&id)
+	{
+		return id.ConvertToString();
 	}
 
 	String		ToNiceString() const

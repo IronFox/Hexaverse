@@ -1398,7 +1398,7 @@ namespace FileIO
 										nameChunk->Get(faction->name.mutablePointer());
 									}
 									else
-										faction->name = isNexus ? "<Nexus>" : faction->id.ToString();
+										faction->name = isNexus ? "<Nexus>" : ToString(faction->id);
 								}
 								{
 									Riff::Chunk*colorChunk = list->FindFirst(RID::factionColor);
@@ -1544,7 +1544,7 @@ namespace FileIO
 
 		Reflection::LoadOverrides();
 
-		LogEvent(EventSignificance::Uncommon,"Restored world '"+World::worldID.ToNiceString()+"'/"+World::worldID.ToString()+" in round "+RuntimeConfig::roundNumber.ToString());
+		LogEvent(EventSignificance::Uncommon,"Restored world '"+World::worldID.ToNiceString()+"'/"+ToString(World::worldID)+" in round "+RuntimeConfig::roundNumber.ToString());
 		RefreshWindowTitle();
 
 		RuntimeConfig::loadingPhase = false;
@@ -1651,7 +1651,7 @@ namespace FileIO
 			{
 				if (v->WriteToSavegame())
 				{
-					variableBuffer << v->GetPath()<<tab<<v->ToString()<<nl;
+					variableBuffer << v->GetPath()<<tab<<v->ConvertToString()<<nl;
 				}
 			});
 			general->AppendBlock(RID::variableConfiguration,variableBuffer.pointer(),variableBuffer.GetContentSize());

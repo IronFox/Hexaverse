@@ -533,7 +533,7 @@ namespace Animation
 	}
 
 
-	static GenericHashSet<TUniqueID,TUniqueID> insertIntoGridLater;
+	static GenericHashSet<TUniqueID> insertIntoGridLater;
 
 
 	static void AppendTask(const Objects::PMobileEntityProducer&p,const TUniqueID&id, ConstName baseName, ConstName turretName)
@@ -672,7 +672,7 @@ namespace Animation
 			{
 				storeIn = Objects::GetEntity(id->value);
 				storeInHangar = To<Objects::Hangar>::DynamicCast(storeIn);
-				ASSERT1__(storeIn,id->value.ToString());
+				ASSERT1__(storeIn,id->value);
 				ASSERT1__(storeInHangar,storeIn->GetName());
 			}
 
@@ -699,7 +699,7 @@ namespace Animation
 							break;
 							default:
 								FATAL__("Unexpected parameter count: "+String(t->parameters.Count())
-											+" while decoding task "+t->id.value.ToString()
+											+" while decoding task "+ToString(t->id.value)
 											+" of "+v->GetName());
 						}
 						//ASSERT_EQUAL__(t->parameters.Count(),2);
@@ -857,7 +857,7 @@ namespace Animation
 							break;
 							default:
 								FATAL__("Unexpected parameter count: "+String(t->parameters.Count())
-											+" while decoding task "+t->id.value.ToString()
+											+" while decoding task "+ToString(t->id.value)
 											+" of "+s->GetName());
 						}
 						//ASSERT_EQUAL__(t->parameters.Count(),2);
@@ -1044,7 +1044,7 @@ namespace Animation
 	{
 		ASSERT__(path);
 		ASSERT__(path->rawPath.last().first == motion.fromLocation);
-		ASSERT2__(targetEntityID == motion.id,targetEntityID.ToString(),motion.id.value.ToString());
+		ASSERT2__(targetEntityID == motion.id,targetEntityID,motion.id.value);
 		path->rawPath.Append(std::make_pair(motion.toLocation,motion.timestamp.atTime + motion.timeNeeded));
 		path->changed = true;
 		time.Include(FloatRange<float>(motion.timestamp.atTime,motion.timestamp.atTime + motion.timeNeeded));
@@ -1058,7 +1058,7 @@ namespace Animation
 		removalType = e.type;
 		//ASSERT__(target);
 		time.SetMinAndMax(e.timestamp.atTime/*+0.01f*/);
-		LogEvent(EventSignificance::Debug,nullptr,"Registered removal of entity "+e.id.value.ToString()+" ("+Objects::RemovalType::Reinterpret(e.type.value).ToString()+") at t="+time.ToString());
+		LogEvent(EventSignificance::Debug,nullptr,"Registered removal of entity "+ToString(e.id.value)+" ("+Objects::RemovalType::Reinterpret(e.type.value).ToString()+") at t="+ToString(time));
 	}
 	void					Primitive::Init(Protocol::VagueAttackTrajectory&a)
 	{
@@ -1137,7 +1137,7 @@ namespace Animation
 		{
 			case Construction:
 			{
-				LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Placing structure entity during animation at time "+String(Animation::atTime)+"/"+this->time.ToString());
+				LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Placing structure entity during animation at time "+String(Animation::atTime)+"/"+ToString(this->time));
 				Objects::Place(To<Objects::Structure>::DynamicCast(allocatedTarget));
 				#ifdef HAS_WINDOW
 					if (!allocatedTarget->isOwnedByMe)
@@ -1150,7 +1150,7 @@ namespace Animation
 				Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(allocatedTarget);
 				if (v)
 				{
-					LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Placing mobile entity during animation at time "+String(Animation::atTime)+"/"+this->time.ToString());
+					LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Placing mobile entity during animation at time "+String(Animation::atTime)+"/"+ToString(this->time));
 					//MoveSensor(v->preAnimationLocation,v->location,v->turret->scanningRange);
 					v->preAnimationLocation = v->location;
 					Objects::PlaceMobileEntity(v,false);
@@ -1166,11 +1166,11 @@ namespace Animation
 			case DestroyEntity:
 			{
 				allocatedTarget = Objects::GetEntity(targetEntityID);
-				ASSERT1__(allocatedTarget,targetEntityID.ToString());
+				ASSERT1__(allocatedTarget,targetEntityID);
 				if (explode)
 					ExplodeEntity(allocatedTarget);
 				bool removed = false;
-				LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Removing entity during animation at time "+String(Animation::atTime)+"/"+this->time.ToString());
+				LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Removing entity during animation at time "+String(Animation::atTime)+"/"+ToString(this->time));
 				//if (RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
 				{
 					Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(allocatedTarget);
@@ -1203,8 +1203,8 @@ namespace Animation
 			case MovementStream:
 			{
 				allocatedTarget = Objects::GetEntity(targetEntityID);
-				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Starting movement stream at "+String(Animation::atTime)+"/"+this->time.ToString());
-				ASSERT1__(allocatedTarget,targetEntityID.ToString());
+				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Starting movement stream at "+String(Animation::atTime)+"/"+ToString(this->time));
+				ASSERT1__(allocatedTarget,targetEntityID);
 				Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(allocatedTarget);
 				ASSERT1__(v,allocatedTarget->GetName());
 
@@ -1262,7 +1262,7 @@ namespace Animation
 				}
 				else
 				{
-					LogEvent(EventClass::Preset::error,nullptr,"Warning: Unable to identify entity "+targetEntityID.ToString()+" for turret rotation");
+					LogEvent(EventClass::Preset::error,nullptr,"Warning: Unable to identify entity "+ToString(targetEntityID)+" for turret rotation");
 					/*let's ignore this for now. this event is caused, when visibility of
 					its target has been determined but at a latter time by some vehicle.
 					during the motion phase of a different vehicle an automated attack is caused.
@@ -1286,10 +1286,10 @@ namespace Animation
 				if (!attackerTurret)
 				{
 					Objects::PWorldEntity attacker = Objects::GetEntity(targetEntityID);
-					ASSERT2__(attacker,targetEntityID.ToString(),this->time.ToString());
+					ASSERT2__(attacker,targetEntityID,this->time);
 					float zOffset;
 					Objects::PTurretBase base= attacker->GetTurretBase(zOffset);
-					ASSERT2__(base,attacker->GetName(),this->time.ToString());
+					ASSERT2__(base,attacker->GetName(),this->time);
 					attackerTurret = base->turret;
 					ASSERT_NOT_NULL1__(attackerTurret,attacker->GetName());
 					attackRange = base->GetFlatAttackRange();
@@ -1378,7 +1378,7 @@ namespace Animation
 		{
 			case  MovementStream:
 			{
-				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Ending movement stream at "+String(Animation::atTime)+"/"+this->time.ToString());
+				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Ending movement stream at "+String(Animation::atTime)+"/"+ToString(this->time));
 
 				Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(allocatedTarget);
 				ASSERT__(v);
@@ -1469,21 +1469,21 @@ namespace Animation
 				allocatedTarget = Objects::GetEntity(targetEntityID);
 				if (allocatedTarget) //probably got whooped otherwise
 				{
-					ASSERT1__(allocatedTarget,targetEntityID.ToString());
+					ASSERT1__(allocatedTarget,targetEntityID);
 					ApplyState(To<Objects::MobileEntity>::DynamicCast(allocatedTarget),*vehicleState,false,false);
 				}
 				else
-					LogEvent(EventSignificance::NonFatalError,"Unable to update mobile entity "+targetEntityID.ToString()+" at t="+String(t));
+					LogEvent(EventSignificance::NonFatalError,"Unable to update mobile entity "+ToString(targetEntityID)+" at t="+String(t));
 			return Done;
 			case StructureState:
 				allocatedTarget = Objects::GetEntity(targetEntityID);
 				if (allocatedTarget) //probably got whooped otherwise
 				{
-					ASSERT1__(allocatedTarget,targetEntityID.ToString());
+					ASSERT1__(allocatedTarget,targetEntityID);
 					UpdateState(To<Objects::Structure>::DynamicCast(allocatedTarget),*structureState);
 				}
 				else
-					LogEvent(EventSignificance::NonFatalError,"Unable to structure "+targetEntityID.ToString()+" at t="+String(t));
+					LogEvent(EventSignificance::NonFatalError,"Unable to structure "+ToString(targetEntityID)+" at t="+String(t));
 			return Done;
 			case Construction:
 			return Done;

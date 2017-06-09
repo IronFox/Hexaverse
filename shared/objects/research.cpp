@@ -829,7 +829,7 @@ namespace Objects
 				buffer << ';';
 			buffer << (*q)->GetPath();
 		}
-		return buffer.ToString();
+		return buffer.CopyToString();
 	}
 
 	void		ResearchState::ExportResearchQueue(Array<UINT32>&outRS)

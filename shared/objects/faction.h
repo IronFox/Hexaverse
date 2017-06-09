@@ -128,7 +128,7 @@ namespace Objects
 			static SharedContainer<Structure>		structureGhosts;
 			static SharedContainer<MobileEntity>	mobileGhosts;
 			static Buffer0<TVisited>	visitedSystems;
-			static GenericHashTable<TUniqueID, index_t, TUniqueID>	idMap, referenceIDMap,visitedSystemIDMap;
+			static GenericHashTable<TUniqueID, index_t>	idMap, referenceIDMap,visitedSystemIDMap;
 		#endif
 	};
 
@@ -182,13 +182,13 @@ namespace Objects
 				return "<NULL>";
 			if (name.IsNotEmpty())
 				return name;
-			return id.ToString();
+			return ToString(id);
 		}
 		String		GetLogName() const
 		{
 			if (!this)
 				return "<NULL>";
-			return id.ToString()+":'"+name+"'";
+			return ToString(id)+":'"+name+"'";
 		}
 
 		
@@ -224,7 +224,7 @@ namespace Objects
 
 		#ifdef CLIENT
 			static Buffer0<PFaction>	allKnown;
-			static GenericHashTable<TUniqueID,PFaction,TUniqueID>	idMap;
+			static GenericHashTable<TUniqueID,PFaction>	idMap;
 
 			static PFaction				mine;
 

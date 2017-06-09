@@ -126,7 +126,7 @@ namespace ApplicationInterface
 			if (p->CanSee(e,t) || p->faction == target)
 			{
 				TCP::PPeer peer = p->peer.lock();
-				DBG_ASSERT1__(peer,p->ToString());
+				DBG_ASSERT1__(peer,p->ConvertToString());
 				if (peer)
 				{
 					LogEvent(EventSignificance::Common,*peer,e,"Reported seeing ownership change (-> '"+target->GetName()+"')");
@@ -222,18 +222,18 @@ namespace ApplicationInterface
 					(access && !sendToSelf)
 					)
 				{
-					LogEvent(EventSignificance::Debug,(*cl)->ToString()+" reported NOT seeing removal of "+e->GetName()+" (t="+String(t.ToString())+", access="+String(access)+", sendToSelf="+String(sendToSelf)+") at time "+String(atTime) );
+					LogEvent(EventSignificance::Debug,(*cl)->ConvertToString()+" reported NOT seeing removal of "+e->GetName()+" (t="+String(t.ToString())+", access="+String(access)+", sendToSelf="+String(sendToSelf)+") at time "+String(atTime) );
 					continue;
 				}
 				const Protocol::DestroyEntity&send = access ? self : others;
-				LogEvent(EventSignificance::Common,(*cl)->ToString()+" reported seeing removal of "+e->GetName()+" at time "+String(atTime) );
+				LogEvent(EventSignificance::Common,(*cl)->ConvertToString()+" reported seeing removal of "+e->GetName()+" at time "+String(atTime) );
 
 
 				//(*cl)->Hide(e);
 				Channels::destroyEntity.SendTo(peer,send);
 			}
 			else
-				LogEvent(EventSignificance::Debug,(*cl)->ToString()+" reported NOT seeing removal of "+e->GetName()+" (t="+String(t.ToString())+", access="+String(access)+", sendToSelf="+String(sendToSelf)+") at time "+String(atTime) +" - hasPeer="+String((bool)peer));
+				LogEvent(EventSignificance::Debug,(*cl)->ConvertToString()+" reported NOT seeing removal of "+e->GetName()+" (t="+String(t.ToString())+", access="+String(access)+", sendToSelf="+String(sendToSelf)+") at time "+String(atTime) +" - hasPeer="+String((bool)peer));
 		}
 
 	
@@ -290,7 +290,7 @@ namespace ApplicationInterface
 			TCP::PPeer peer = (*cl)->peer.lock();
 			if (peer && Network::CanSee(*cl,v,t0))
 			{
-				LogEvent(EventSignificance::Common,(*cl)->ToString()+" reported seeing motion of "+v->GetName()+" at time "+String(t0)+"+"+String(timeNeeded) );
+				LogEvent(EventSignificance::Common,(*cl)->ConvertToString()+" reported seeing motion of "+v->GetName()+" at time "+String(t0)+"+"+String(timeNeeded) );
 
 				Channels::mobileEntityMotion.SendTo(peer,motion);
 			}
@@ -631,7 +631,7 @@ namespace ParameterConfig
 	void	SetProgramName(const char*base)
 	{
 		const char*slashAt;
-		while (slashAt = Template::strchr(base,FOLDER_SLASH))
+		while (slashAt = CharFunctions::strchr(base,FOLDER_SLASH))
 		{
 			base = slashAt+1;
 		}
@@ -774,7 +774,7 @@ public:
 								checkIsOnline(c),setOffline(offline),setOnline(online)
 							{}
 
-	String					ToString() const override
+	String					ConvertToString() const override
 	{
 		return checkIsOnline();
 	}
@@ -826,11 +826,11 @@ int main( int argc, const char* argv[])
 
 		TCP::onIgnoredException = [](const TCodeLocation&loc, const std::exception&ex)
 		{
-			LogEvent(EventSignificance::Debug,"TCP exception: "+String(loc.ToString())+": "+ex.what());
+			LogEvent(EventSignificance::Debug,"TCP exception: "+String(loc)+": "+ex.what());
 		};
 		TCP::onIgnoredArbitraryException = [](const TCodeLocation&loc)
 		{
-			LogEvent(EventSignificance::Debug,"TCP exception (arbitrary): "+String(loc.ToString()));
+			LogEvent(EventSignificance::Debug,"TCP exception (arbitrary): "+String(loc));
 		};
 
 		SetConsoleCtrlHandler(MyHandlerRoutine,TRUE);
@@ -1073,7 +1073,7 @@ int main( int argc, const char* argv[])
 		//Journal::globalWriter.InitNew(RuntimeConfig::ConfigFile("saves/log"));
 		//Journal::globalWriter.ContinueExisting(RuntimeConfig::ConfigFile("saves/log"));
 
-		Logging::WriteEvent(EventSignificance::Uncommon, "Preparation of world '"+World::worldID.ToNiceString()+"'/" + World::worldID.ToString() + " completed.", nullptr, nullptr,Objects::OwnerParameter());
+		Logging::WriteEvent(EventSignificance::Uncommon, "Preparation of world '"+World::worldID.ToNiceString()+"'/" + ToString(World::worldID) + " completed.", nullptr, nullptr,Objects::OwnerParameter());
 		
 		Network::LogServerState();
 
@@ -1228,7 +1228,7 @@ int main( int argc, const char* argv[])
 
 				for (const auto&p : clientDump)
 				{
-					LogEvent( EventClass( EventSignificance::ClientFatal, EventFlavor::ServerPrivate ),nullptr,"Peer lost: "+p->ToString());
+					LogEvent( EventClass( EventSignificance::ClientFatal, EventFlavor::ServerPrivate ),nullptr,"Peer lost: "+p->ConvertToString());
 					Network::HandleConnectionLoss(p);
 				}
 				clientDump.Clear();

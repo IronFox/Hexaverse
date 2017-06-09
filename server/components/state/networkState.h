@@ -52,7 +52,7 @@ namespace Network
 
 		
 
-		String				ToString() const;
+		String				ConvertToString() const;
 		bool				CanSee(const Objects::PWorldEntity&e, float t)	const;
 
 		/**

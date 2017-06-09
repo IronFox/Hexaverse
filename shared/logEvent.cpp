@@ -222,9 +222,9 @@ namespace Logging
 				if (c)
 				{
 					if (printToConsole)
-						console << c->ToString()<<" ";
+						console << c->ConvertToString()<<" ";
 					if (!inTestMode)
-						logFile << tab << c->ToString();
+						logFile << tab << c->ConvertToString();
 				}
 				else
 			#endif
@@ -243,7 +243,7 @@ namespace Logging
 			if (printToConsole)
 				console << e->GetName()<<" ("<<e->location.ToString()<<"): ";
 			if (!inTestMode)
-				logFile << tab << e->GetTypeName() << tab << e->id.ToString() << tab << e->owner->GetLogName()<<tab<<e->location.ToString();
+				logFile << tab << e->GetTypeName() << tab << ToString(e->id) << tab << e->owner->GetLogName()<<tab<<e->location.ToString();
 		}
 		else
 			if (!inTestMode)

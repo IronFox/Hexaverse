@@ -390,7 +390,7 @@ namespace GUI
 			GUI::PWindow w = Detail::visibleWindows[i];
 			if (w->IsActive() != shouldBeActive)
 			{
-				String msg = String(loc.ToString())+ ": Activity mismatch for window "+String(i+1)+"/"+String(Detail::visibleWindows.Count())+" (active="+String(w->IsActive())+", should be "+String(shouldBeActive)+")";
+				String msg = String(loc)+ ": Activity mismatch for window "+String(i+1)+"/"+String(Detail::visibleWindows.Count())+" (active="+String(w->IsActive())+", should be "+String(shouldBeActive)+")";
 				LogEvent(EventClass::Preset::error,msg);
 				DBG_FATAL__(msg);
 				if (shouldBeActive)

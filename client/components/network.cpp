@@ -52,7 +52,7 @@ namespace Network
 	String			myIDString,serverIDString,worldIDString,activeTokenString;
 	INT32			uplinkBandwidth = -1;
 	
-	GenericHashTable<TUniqueID,CryptographicID,TUniqueID>	accessMap;
+	GenericHashTable<TUniqueID,CryptographicID>	accessMap;
 
 
 	Protocol::GameProgress	gameProgress;
@@ -574,12 +574,12 @@ namespace Network
 							p->Init(vs);
 							p->overwritten++;
 							if (p->overwritten==1 || !(p->overwritten %100000))
-								LogEvent(EventSignificance::Debug, "Rewrote 'mobile state("+vs.entityState.id.value.ToString()+")' primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime.value)+" n="+String(p->overwritten));
+								LogEvent(EventSignificance::Debug, "Rewrote 'mobile state("+ToString(vs.entityState.id)+")' primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime.value)+" n="+String(p->overwritten));
 							return;
 						}
 					}
 					Animation::primitives.Append().Init(vs);
-					LogEvent(EventSignificance::Debug, "Appended 'mobile state("+vs.entityState.id.value.ToString()+")' primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime.value));
+					LogEvent(EventSignificance::Debug, "Appended 'mobile state("+ToString(vs.entityState.id)+")' primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime.value));
 				}
 			}
 		}
@@ -619,7 +619,7 @@ namespace Network
 			else
 			{
 				Animation::primitives.Append().Init(vc,v);
-				LogEvent(EventSignificance::Debug, "Appended 'new mobile entity("+vc.state.entityState.id.value.ToString()+")' primitive to animation sequence at t="+String(vc.state.entityState.timestamp.atTime.value));
+				LogEvent(EventSignificance::Debug, "Appended 'new mobile entity("+ToString(vc.state.entityState.id)+")' primitive to animation sequence at t="+String(vc.state.entityState.timestamp.atTime.value));
 
 			}
 		}
@@ -647,7 +647,7 @@ namespace Network
 			if (!sc.state.entityState.timestamp.rightNow)
 			{
 				Animation::primitives.Append().Init(sc,s);
-				LogEvent(EventSignificance::Debug, "Appended 'new structure("+sc.state.entityState.id.value.ToString()+")' primitive to animation sequence at t="+String(sc.state.entityState.timestamp.atTime.value));
+				LogEvent(EventSignificance::Debug, "Appended 'new structure("+ToString(sc.state.entityState.id)+")' primitive to animation sequence at t="+String(sc.state.entityState.timestamp.atTime.value));
 			}
 			else
 			{
@@ -668,9 +668,9 @@ namespace Network
 			if (vs.entityState.timestamp.rightNow && Animation::AllDone())
 			{
 				Objects::PWorldEntity e =Objects::GetEntity(vs.entityState.id);
-				ASSERT1__(e,vs.entityState.id.value.ToString());
+				ASSERT1__(e,vs.entityState.id);
 				Objects::PStructure s = To<Objects::Structure>::DynamicCast(e);
-				ASSERT1__(s,vs.entityState.id.value.ToString());
+				ASSERT1__(s,vs.entityState.id);
 				Animation::UpdateState(s,vs);
 
 			}
@@ -681,7 +681,7 @@ namespace Network
 				else
 				{
 					Animation::primitives.Append().Init(vs);
-					LogEvent(EventSignificance::Debug, "Appended 'structure state("+vs.entityState.id.value.ToString()+")' primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime.value));
+					LogEvent(EventSignificance::Debug, "Appended 'structure state("+ToString(vs.entityState.id)+")' primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime.value));
 				}
 			}
 
@@ -732,7 +732,7 @@ namespace Network
 			}
 			else
 			{
-				LogEvent(EventSignificance::Debug,nullptr,"Reception of entity destruction message for "+de.id.value.ToString()+" ("+Objects::RemovalType::Reinterpret(de.type.value).ToString()+")");
+				LogEvent(EventSignificance::Debug,nullptr,"Reception of entity destruction message for "+ToString(de.id)+" ("+Objects::RemovalType::Reinterpret(de.type.value).ToString()+")");
 				if (de.timestamp.rightNow)
 					Animation::whenDone.Append().Init(de);
 				else
@@ -759,7 +759,7 @@ namespace Network
 
 			myID = TUniqueID::Empty();
 			Objects::Faction::mine.reset();
-			myIDString = myID.ToString();
+			myIDString = ToString(myID);
 
 			Network::gameFlags = cr.info.gameConfig.gameFlags;
 
@@ -787,7 +787,7 @@ namespace Network
 				activeTokenString = activeToken.ToString();
 				if (!RuntimeConfig::aiMode && !amSpectator)
 				{
-					LogEvent(EventClass::Preset::common,nullptr,"Updating access token of world "+worldID.ToString()+" to "+activeToken.ToString());
+					LogEvent(EventClass::Preset::common,nullptr,"Updating access token of world "+ToString(worldID)+" to "+activeToken.ToString());
 					accessMap.Set(worldID,activeToken);
 					SaveWorldAccessTokens();
 				}
@@ -827,7 +827,7 @@ namespace Network
 			amSpectator = false;
 			myID = id;
 			Objects::Faction::mine = ResolveFaction(myID);
-			myIDString = myID.ToString();
+			myIDString = ToString(myID);
 			Objects::Faction::mine->isOwnedByMe = true;
 		}
 
@@ -1210,19 +1210,19 @@ namespace Network
 		if (RuntimeConfig::aiMode)
 		{
 			ready.factionToken = RuntimeConfig::aiAccessToken;
-			LogEvent(EventClass::Preset::common, nullptr, "Attempting to log in to " + worldID.ToString() + " as AI using token: " + ready.factionToken.value.ToString());
+			LogEvent(EventClass::Preset::common, nullptr, "Attempting to log in to " + ToString(worldID) + " as AI using token: " + ready.factionToken.value.ToString());
 		}
 		elif (!forceNewFaction && accessMap.Query(worldID, ready.factionToken.value))
 		{
-			LogEvent(EventClass::Preset::common,nullptr,"Attempting to use existing access token of world "+worldID.ToString()+": "+ready.factionToken.value.ToString());
+			LogEvent(EventClass::Preset::common,nullptr,"Attempting to use existing access token of world "+ToString(worldID)+": "+ready.factionToken.value.ToString());
 		}
 		else
 		{
 						
 			if (forceNewFaction)
-				LogEvent(EventClass::Preset::common, nullptr, "Forcing new faction in world " + worldID.ToString());
+				LogEvent(EventClass::Preset::common, nullptr, "Forcing new faction in world " + ToString(worldID));
 			else
-				LogEvent(EventClass::Preset::common, nullptr, "No access token found for world " + worldID.ToString());
+				LogEvent(EventClass::Preset::common, nullptr, "No access token found for world " + ToString(worldID));
 
 			ready.factionToken.value = CryptographicID();
 		}
@@ -1492,7 +1492,7 @@ namespace Network
 
 
 	Buffer0<ServerInfo,Swap>	servers;
-	GenericHashTable<TUniqueID,index_t,TUniqueID>	serverMap;
+	GenericHashTable<TUniqueID,index_t>	serverMap;
 
 	Timer::Time		lastPing = timer.Now(),lastServerTableUpdate=timer.Now();
 

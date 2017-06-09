@@ -1534,7 +1534,7 @@ namespace Lua
 		if (!file.Open(filename.c_str()))
 			throw Except::IO::DriveAccess::FileOpenFault(CLOCATION,"Unable to load Lua file '"+String(filename)+"'");
 		UINT len = file.GetSize();
-		TStringLength slen(len);
+		StringType::TStringLength slen(len);
 		String content(slen);
 
 		file.Extract(0,content.mutablePointer(),len);

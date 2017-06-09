@@ -941,7 +941,7 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 
 	bool IsValidFileChar(char c)
 	{
-		if (Template::isalnum(c))
+		if (CharFunctions::isalnum(c))
 			return true;
 		switch (c)
 		{
@@ -3560,7 +3560,7 @@ int main( int argc, const char* argv[])
 		String cfg;
 		for (int i = 1; i < argc; i++)
 			cfg += " "+String(argv[i]);
-		ConfigureClient(WString(cfg.c_str()).c_str());
+		ConfigureClient(StringW(cfg.c_str()).c_str());
 
 	#endif
 

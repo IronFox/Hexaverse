@@ -507,7 +507,7 @@ namespace Objects
 				e->SyncTime(t,timeEpsilon);
 				LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Gained visual of entity, time updated to "+String(t));
 
-				ASSERT1__(gainedVisualAt.SetNew(e,t),e->id.ToString());
+				ASSERT1__(gainedVisualAt.SetNew(e,t),ToString(e->id));
 
 				if (cascade)
 					ApplicationInterface::SignalAppearanceToHostileFaction(shared_from_this(),e,t);
@@ -557,7 +557,7 @@ namespace Objects
 				PTower tower;
 				e->SyncTime(t,timeEpsilon);
 
-				ASSERT1__(lostVisualAt.SetNew(e,t-timeEpsilon),e->id.ToString());
+				ASSERT1__(lostVisualAt.SetNew(e,t-timeEpsilon),ToString(e->id));
 				seeing.Unset(e);
 				if (signalConnectedClient)
 					ApplicationInterface::SignalDisappearanceToHostileFaction(shared_from_this(),e,t);
@@ -1028,11 +1028,11 @@ namespace Objects
 
 	#else
 		/*static*/ Buffer0<PFaction>			Faction::allKnown;
-		/*static*/ GenericHashTable<TUniqueID,PFaction,TUniqueID>	Faction::idMap;
+		/*static*/ GenericHashTable<TUniqueID,PFaction>	Faction::idMap;
 		/*static*/ PFaction						Faction::mine;
 
 		/*static*/ Buffer0<Marker, Strategy::Adopt>	Marker::all; 
-		/*static*/ GenericHashTable<TUniqueID, index_t, TUniqueID>	Marker::idMap,
+		/*static*/ GenericHashTable<TUniqueID, index_t>	Marker::idMap,
 								Marker::referenceIDMap,
 								Marker::visitedSystemIDMap;
 		/*static*/ Buffer0<Marker::TVisited>	Marker::visitedSystems;
@@ -1328,7 +1328,7 @@ namespace Objects
 		/*static*/ void				Marker::Destroy(const TUniqueID&id, bool controlEnabled)
 		{
 			index_t index;
-			ASSERT1__(idMap.QueryAndUnset(id, index),id.ToString());	//this mustn't happen anymore
+			ASSERT1__(idMap.QueryAndUnset(id, index),ToString(id));	//this mustn't happen anymore
 			Marker&m = all[index];
 			if (m.UtilizesReferenceEntity())
 			{
@@ -1584,7 +1584,7 @@ namespace Objects
 			index_t at;
 			if (!markerMap.QueryAndUnset(markerID, at))
 			{
-				LogEvent(EventClass::Preset::error,nullptr,"Unable to destroy Marker. ID not set " + markerID.ToString());
+				LogEvent(EventClass::Preset::error,nullptr,"Unable to destroy Marker. ID not set " + ToString(markerID));
 				return false;
 			}
 			ASSERT_LESS__(at, markers.Count());
@@ -1649,10 +1649,10 @@ namespace Objects
 			}
 			if (f->isDead)
 			{
-				LogEvent(EventClass::Preset::commandRejected,nullptr, "Faction "+f->id.ToString()+" has already ended");
+				LogEvent(EventClass::Preset::commandRejected,nullptr, "Faction "+ToString(f->id)+" has already ended");
 				return;
 			}
-			LogEvent(EventSignificance::Debug,nullptr, "Erasing faction "+f->id.ToString());
+			LogEvent(EventSignificance::Debug,nullptr, "Erasing faction "+ToString(f->id));
 
 			{
 				auto lock = f->LockSensorUpdates();

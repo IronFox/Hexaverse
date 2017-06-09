@@ -283,7 +283,7 @@ namespace Tutorial
 
 				bool isActive = q.IsNotEmpty() && q.First() == i;
 				outT.SetField("isActive",isActive);
-				outT.SetField("isQueued",q.Contains(i));
+				outT.SetField("isQueued",q.Contains((UINT32)i));
 
 				if (isActive)
 					current = outT;
