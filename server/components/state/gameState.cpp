@@ -890,7 +890,7 @@ namespace Game
 							}
 							else
 							{
-								String name = client ? client->ToString() : "Faction "+faction->id.ToString();
+								String name = client ? client->ConvertToString() : "Faction "+ToString(faction->id);
 											
 								LogEvent(EventClass::Preset::factionDeath,name+" died: "+whyNot);
 

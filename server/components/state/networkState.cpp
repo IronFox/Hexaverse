@@ -188,9 +188,9 @@ namespace Network
 	}
 
 
-	String						Client::ToString() const
+	String						Client::ConvertToString() const
 	{
-		return (faction ? faction->id.ToString() : (isSpectator ? "[spectator]" : "[no faction]"))+":'"+name+"'";
+		return (faction ? ToString(faction->id) : (isSpectator ? "[spectator]" : "[no faction]"))+":'"+name+"'";
 	}
 
 	bool		Client::CanSee(const Objects::PWorldEntity&e, float t)	const
@@ -478,9 +478,9 @@ namespace Network
 	{
 		
 		if (server.IsOnline())
-			Logging::WriteEvent(EventSignificance::Important,"Server "+Network::serverID.ToString()+"/"+UDPBroadCast::packet.version+" is online.",nullptr,nullptr,Objects::OwnerParameter());
+			Logging::WriteEvent(EventSignificance::Important,"Server "+ToString(Network::serverID)+"/"+UDPBroadCast::packet.version+" is online.",nullptr,nullptr,Objects::OwnerParameter());
 		else
-			Logging::WriteEvent(EventSignificance::Important,"Server "+Network::serverID.ToString()+"/"+UDPBroadCast::packet.version+" is created but offline.",nullptr,nullptr,Objects::OwnerParameter());
+			Logging::WriteEvent(EventSignificance::Important,"Server "+ToString(Network::serverID)+"/"+UDPBroadCast::packet.version+" is created but offline.",nullptr,nullptr,Objects::OwnerParameter());
 
 		FileIO::RefreshWindowTitle();
 

@@ -47,7 +47,7 @@ namespace Reflection
 
 			void				CheckChanges()
 			{
-				if (lastValue != ToString())
+				if (lastValue != ConvertToString())
 				{
 					OnChanged();
 				}

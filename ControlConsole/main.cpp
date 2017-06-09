@@ -286,9 +286,9 @@ void	Dispatch(const StringRef&line)
 }
 
 
-void OnDeserializationFailed(UINT32 channel, TCP::Peer&peer)
+void OnDeserializationFailed(UINT32 channel, TCP::Peer&peer, const String&exceptionMessage)
 {
-	Console::WriteLine(peer.ToString()+": Deserialization failed on channel "+String(channel));
+	Console::WriteLine(peer.ToString()+": Deserialization failed on channel "+String(channel)+" ("+exceptionMessage+")");
 }
 
 
@@ -371,7 +371,6 @@ void OnEvent(TCP::event_t event, TCP::Peer&peer)
 {
 	switch (event)
 	{
-		case TCP::Event::ConnectionClosed:
 		case TCP::Event::ConnectionFailed:
 		case TCP::Event::ConnectionLost:
 			if (Handler::interactive)

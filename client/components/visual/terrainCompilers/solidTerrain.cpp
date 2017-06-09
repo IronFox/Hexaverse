@@ -503,7 +503,7 @@ namespace VisualTerrain
 		const count_t numBatches = CeilDiv(count,BatchSize);
 		static Array<THull<TerrainVertex> >	hulls;
 		static Array<THull<OverlayVertex> >	covers;
-		count_t numWorkers = System::ParallelLoop::global_instance.getWorkerCount();
+		count_t numWorkers = System::ParallelLoop::GetGlobalWorkerCount();
 		if (hulls.Count() < numWorkers)
 		{
 			hulls.SetSize(numWorkers);
@@ -513,7 +513,7 @@ namespace VisualTerrain
 				
 
 
-		System::parallelFor(numBatches,8,[end,offset, &stacks, clipHeight](index_t i, index_t workerIndex)
+		System::ParallelFor(numBatches,8,[end,offset, &stacks, clipHeight](index_t i, index_t workerIndex)
 		{
 			BYTE data[sizeof(TerrainCompiler)];	//prevent implicit memset in release mode. i'm serious. visual studio has some funny ideas there...
 			TerrainCompiler&compiler = *(TerrainCompiler*)data;

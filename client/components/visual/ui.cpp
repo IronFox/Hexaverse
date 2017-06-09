@@ -2296,7 +2296,7 @@ namespace StatePanel
 						for (const auto&v : other->stored)
 						{
 							Objects::PMobileEntity v1 = v.entity.lock();
-							ASSERT1__(v1,st->ToEntity().id.ToString());
+							ASSERT1__(v1,st->ToEntity().id);
 							if (++cnt > 10)
 							{
 								cachedLines << "...";
@@ -2316,7 +2316,7 @@ namespace StatePanel
 						for (const auto&v : other->stored)
 						{
 							Objects::PMobileEntity v1 = v.entity.lock();
-							ASSERT1__(v1,st->ToEntity().id.ToString());
+							ASSERT1__(v1,st->ToEntity().id);
 							if (++cnt > 10)
 							{
 								cachedLines << "...";
@@ -2335,7 +2335,7 @@ namespace StatePanel
 					for (const auto&v : st->stored)
 					{
 						Objects::PMobileEntity v1 = v.entity.lock();
-						ASSERT1__(v1,st->ToEntity().id.ToString());
+						ASSERT1__(v1,st->ToEntity().id);
 						cachedLines << "  "+v1->GetNiceName();
 					}
 				}
@@ -2556,7 +2556,7 @@ namespace StatePanel
 			for (const auto&v : h.stored)
 			{
 				Objects::PMobileEntity v1 = v.entity.lock();
-				ASSERT1__(v1,h.ToEntity().id.ToString());
+				ASSERT1__(v1,h.ToEntity().id);
 				cachedLines << "  "+v1->GetNiceName();
 			}
 			PopCurrentColor();

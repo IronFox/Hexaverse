@@ -108,7 +108,7 @@ namespace Objects
 		//#ifdef _DEBUG
 		//	return GetTypeName() + " " + id.ToString()+" @"+String((void*)this);
 		//#else
-			return GetTypeName() + " " + id.ToString();
+			return GetTypeName() + " " + ToString(id);
 //		#endif
 	}
 

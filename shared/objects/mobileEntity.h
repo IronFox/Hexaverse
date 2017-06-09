@@ -373,7 +373,7 @@ namespace Objects
 			*/
 			bool				ClearAllTasks(bool isReaction, const TCodeLocation&caller)
 			{
-				LogEvent(EventSignificance::Debug,this,"ClearAllTasks("+String(isReaction)+", "+String(caller.ToString())+")");
+				LogEvent(EventSignificance::Debug,this,"ClearAllTasks("+String(isReaction)+", "+String(caller)+")");
 				if (TasksAreLocked())
 				{
 					if (flushTasksOnUnlock)

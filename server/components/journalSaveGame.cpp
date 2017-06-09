@@ -63,7 +63,7 @@ namespace Journal
 		{
 			Objects::PFaction f = Objects::Faction::FindByID(factionID);
 			if (!f)
-				throw RoundException(CLOCATION, "Round "+roundNumber.ToString()+": Referencing faction '"+factionID.ToString()+"', which does not or no longer exist, and is not being created");
+				throw RoundException(CLOCATION, "Round "+roundNumber.ToString()+": Referencing faction '"+ToString(factionID)+"', which does not or no longer exist, and is not being created");
 
 			for (const auto&ev : fstrand.factionEvents)
 				ev->Execute(f);
@@ -591,7 +591,7 @@ namespace Journal
 		{
 			e = Objects::AssembleVehicle(f,id,loc,baseType,turretType);
 		}
-		LogEvent(EventSignificance::Debug,e.get(),"PureEntityDescriptor::Instantiate("+id.ToString()+")");
+		LogEvent(EventSignificance::Debug,e.get(),"PureEntityDescriptor::Instantiate("+ToString(id)+")");
 		return e;
 	}
 
@@ -740,7 +740,7 @@ namespace Journal
 				buffer.Clear();
 				foreach (targets,t)
 					buffer << ' '<<t->ToString();
-				throw RoundException(CLOCATION, "Unable to direct "+e->GetName()+" to"+buffer.ToString()+" in mode "+String(int(mode)));
+				throw RoundException(CLOCATION, "Unable to direct "+e->GetName()+" to"+buffer.CopyToString()+" in mode "+String(int(mode)));
 			#else
 				throw RoundException(CLOCATION, "Unable to direct "+e->GetName()+" to destination");
 			#endif
@@ -829,7 +829,7 @@ namespace Journal
 		Objects::PMobileEntityProducer p = To<Objects::MobileEntityProducer>::DynamicCast(e);
 
 		if (!p->AbortConstruction(taskID))
-			throw RoundException(CLOCATION, "Failed KOto remove production task '"+taskID.ToString()+"' from "+e->GetName());
+			throw RoundException(CLOCATION, "Failed KOto remove production task '"+ToString(taskID)+"' from "+e->GetName());
 	}
 
 
@@ -1246,7 +1246,7 @@ namespace Journal
 	{
 		if (lockEvents)
 			return;
-		PGlobalEvent ev(new UpdateVariable(var->GetPath(),var->ToString()));
+		PGlobalEvent ev(new UpdateVariable(var->GetPath(),var->ConvertToString()));
 		if (!execute || ev->TryExecute())
 			return;
 		this->globalEvents.Append(ev);
@@ -1272,7 +1272,7 @@ namespace Journal
 		{
 			if (v->WriteToSavegame())
 			{
-				v->lastValue = v->ToString();
+				v->lastValue = v->ConvertToString();
 				currentRound.RegisterPersistentVariableChange(false,v);
 			}
 		});
@@ -1758,9 +1758,9 @@ namespace Journal
 	/*virtual override*/ void Round::DestroyMarker::Execute(const Objects::PFaction&f) const
 	{
 		if (f->DestroyMarker(markerID))
-			LogEvent(EventSignificance::Common, GetPeerOfFaction(f), "Marker " + markerID.ToString() + " destroyed");
+			LogEvent(EventSignificance::Common, GetPeerOfFaction(f), "Marker " + ToString(markerID) + " destroyed");
 		else
-			throw RoundException(CLOCATION, "Marker " + markerID.ToString() + " not found for destruction");
+			throw RoundException(CLOCATION, "Marker " + ToString(markerID) + " not found for destruction");
 	}
 
 	/*virtual override*/ void Round::DestroyMarker::Decode(const Entry&e)
@@ -1880,13 +1880,13 @@ namespace Journal
 			{
 				extra = " (active jobs are";
 				foreach (p->queue,q)
-					extra += " "+q->id.ToString();
+					extra += " "+ToString(q->id);
 				extra += ")";
 			}
-			throw RoundException(CLOCATION,"Tried to abort non-existend construction-plant job '"+taskID.ToString()+"' on plant entity"+extra);
+			throw RoundException(CLOCATION,"Tried to abort non-existend construction-plant job '"+ToString(taskID)+"' on plant entity"+extra);
 		}
 		else
-			LogEvent(EventSignificance::Common,e.get(),"Aborted construction job "+taskID.ToString());
+			LogEvent(EventSignificance::Common,e.get(),"Aborted construction job "+ToString(taskID));
 	}
 
 
@@ -1918,7 +1918,7 @@ namespace Journal
 			Objects::PFaction&f = Objects::Faction::FindByID(fID);
 			if (!f)
 			{
-				LogEvent(EventClass::Preset::commandRejected,"Faction "+fID.ToString()+" not found for event execution "+String(typeid(newEvent).name()));
+				LogEvent(EventClass::Preset::commandRejected,"Faction "+ToString(fID)+" not found for event execution "+String(typeid(newEvent).name()));
 				return;
 			}
 			if (!ev->TryExecute(f))
@@ -2168,7 +2168,7 @@ namespace Journal
 				const TUniqueID&factionID = child->uuidParameters.Require(CLOCATION,"FactionID");
 				FactionStrand*strand = factionStrands.SetNew(factionID);
 				if (!strand)
-					throw Except::Program::UniquenessViolation(CLOCATION, "Faction '"+factionID.ToString()+"' is defined multiple times in this round");
+					throw Except::Program::UniquenessViolation(CLOCATION, "Faction '"+ToString(factionID)+"' is defined multiple times in this round");
 
 
 				foreach(child->children,entityChild)
@@ -2178,13 +2178,13 @@ namespace Journal
 						const TUniqueID&entityID = entityChild->uuidParameters.Require(CLOCATION,"EntityID");
 						EntityStrand*estrand = strand->entityStrands.SetNew(entityID);
 						if (!estrand)
-							throw Except::Program::UniquenessViolation(CLOCATION, "Entity '"+entityID.ToString()+"' is defined multiple times in this round, and faction");
+							throw Except::Program::UniquenessViolation(CLOCATION, "Entity '"+ToString(entityID)+"' is defined multiple times in this round, and faction");
 
 						#ifdef _DEBUG
 							factionStrands.VisitAllEntries([factionID, entityID](const TUniqueID&ofactionID, const FactionStrand&strand)
 							{
 								if (strand.entityStrands.IsSet(ofactionID))
-									throw Except::Program::UniquenessViolation(CLOCATION, "Entity '"+entityID.ToString()+"' is defined in multiple factions ("+ofactionID.ToString()+" and "+factionID.ToString()+")");
+									throw Except::Program::UniquenessViolation(CLOCATION, "Entity '"+ToString(entityID)+"' is defined in multiple factions ("+ToString(ofactionID)+" and "+ToString(factionID)+")");
 							});
 						#endif
 
