@@ -997,7 +997,7 @@ int main( int argc, const char* argv[])
 
 			std::cout << "Running tests..." << std::endl;
 			{
-				
+				Test::Run(Test::CharacterEncoding());
 				Test::Run(Test::ServerClient());
 				Test::Run(Test::TerrainUpdates());
 				Test::Run(Test::AutoTargeting());
