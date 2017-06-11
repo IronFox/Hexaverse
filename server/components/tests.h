@@ -9,6 +9,7 @@
 
 namespace Test
 {
+	typedef RNG<std::mt19937>	Random;
 
 	class Test
 	{
@@ -29,6 +30,12 @@ namespace Test
 
 	void Run(Test&test);
 
+	class CharacterEncoding : public Test
+	{
+	public:
+		/**/			CharacterEncoding() : Test("Character-Encoding"){}
+		virtual void	Run(Random&random) override;
+	};
 
 	class ServerClient : public Test
 	{

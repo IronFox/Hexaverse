@@ -1299,7 +1299,21 @@ namespace World
 	}
 
 
-
+	count_t				Data::CountVisibleCells() const
+	{
+		count_t cnt = 0;
+		for (index_t i = 0; i < cellStack.Count(); i++)
+		{
+			const auto&stack = cellStack[i];
+			for (UINT32 k = 0;  k < Grid::CellStack::Range; k++)
+			{
+				const auto&cell = stack.volumeCell[k];
+				if (cell.IsCurrentlyVisible())
+					cnt++;
+			}
+		}
+		return cnt;
+	}
 
 	void				Data::FlushAndValidateSensory(short initialValue/*=0*/)
 	{

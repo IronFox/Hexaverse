@@ -298,7 +298,7 @@ namespace World
 
 	}
 
-	void			BuildConfiguredWorld(Random&random)
+	void			BuildConfiguredWorld(TwisterRandom&random)
 	{
 		Grid::currentPlanetConfig.RandomizeSeeds(random);
 		Grid::currentPlanetConfig.BuildWorld(World::actual);
@@ -326,14 +326,14 @@ namespace World
 
 	void			BuildConfiguredWorld(UINT32 seed)
 	{
-		Random random(seed);
+		TwisterRandom random(seed);
 		BuildConfiguredWorld(random);
 	}
 
 
 
 
-	index_t			GetFactionStartLocation(Random&random)
+	index_t			GetFactionStartLocation(TwisterRandom&random)
 	{
 		index_t best = InvalidIndex;
 		float bestDist = 0;

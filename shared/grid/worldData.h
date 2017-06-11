@@ -349,6 +349,8 @@ namespace World
 		*/
 		void					FlushAndValidateSensory(short initialValue=0);
 
+		count_t					CountVisibleCells() const;
+
 
 		bool					SensoryIsInvalid()const	{return !sensoryValid;}
 

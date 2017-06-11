@@ -80,10 +80,10 @@ namespace Grid
 		{}
 		void					Name(const String&name, ConstName cname, const float3&color)	{this->name = name; this->cname = cname; this->color = color;}
 		
-		void					FillInternal(Random&random, float p, coverage_t, float density);
-		void					FillInternal(Random&random);
+		void					FillInternal(TwisterRandom&random, float p, coverage_t, float density);
+		void					FillInternal(TwisterRandom&random);
 
-		static void				FillAll(Random&random, const String&distribution);
+		static void				FillAll(TwisterRandom&random, const String&distribution);
 
 		const String&			GetName() const {return name;}
 		ConstName				GetCName() const {return cname;}

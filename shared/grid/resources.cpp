@@ -24,7 +24,7 @@ namespace Grid
 
 
 	
-	/*static*/ void Resource::FillAll(Random&random, const String&distribution)
+	/*static*/ void Resource::FillAll(TwisterRandom&random, const String&distribution)
 	{
 		#ifndef CLIENT
 		if (distribution.IsNotEmpty())
@@ -35,7 +35,7 @@ namespace Grid
 				Lua::Table api = Lua::CreateGeneralAPI(prog);
 				Lua::DefineLowGridCells(api);
 				
-				SimplexNoise n(random.NextSeed());
+				SimplexNoise n(random.MaxNext());
 				api.SetFunction("Simplex",[&n](double x, double y, double z)->double
 				{
 					return n.Get(x,y,z);
@@ -216,14 +216,14 @@ namespace Grid
 	//	rc.Name(name,cname,color);
 	//}
 
-	void Resource::FillInternal(Random&random)
+	void Resource::FillInternal(TwisterRandom&random)
 	{
 		FillInternal(random,probability[resourceIndex],maximum[resourceIndex], density[resourceIndex]);
 	}
 
-	void Resource::FillInternal(Random&random,float p0, coverage_t max, float avgPerCell)
+	void Resource::FillInternal(TwisterRandom&random,float p0, coverage_t max, float avgPerCell)
 	{
-		SimplexNoise n(random.NextSeed());
+		SimplexNoise n(random.MaxNext());
 		//avgPerCell *= UnitScale;
 
 		for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)

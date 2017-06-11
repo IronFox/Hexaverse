@@ -6,7 +6,7 @@
 #include "state/fileIO.h"
 #include <globalEvents.h>
 
-extern Random random;
+extern TwisterRandom random;
 
 namespace ConfigurationMode
 {

@@ -5,6 +5,7 @@
 #include <objects/structure/storageStructures.h>
 #include <objects/structure/mine.h>
 #include <objects/structure/vehiclePlant.h>
+#include <string/encoding.h>
 
 #include "state/worldState.h"
 
@@ -45,6 +46,101 @@ namespace Test
 
 	}
 
+
+
+	static char32_t		RandomUnicodeNoZero(Random&random)
+	{
+		for (;;)
+		{
+			char32_t rs = (char32_t)(UINT32)random.Next(1,0x10FFFF);	//full spectrum, no zeroes
+			if (StringEncoding::IsValidUnicode(rs))
+				return rs;
+		}
+	}
+
+	/*virtual override*/ void CharacterEncoding::Run(Random&random)
+	{
+		for (index_t i = 0; i <= 0x10FFFF; i++)
+		{
+			StringEncoding::UTF8Char ch8;
+			StringEncoding::UTF16Char ch16;
+			const char32_t testChar = (char32_t)i;
+
+			StringEncoding::EncodeUnicode(testChar,ch8);
+			bool haveUTF16 = false;
+			if (StringEncoding::IsValidUnicode(testChar))
+			{
+				StringEncoding::EncodeUnicode(testChar,ch16);
+				haveUTF16 = true;
+			}
+			StringEncoding::AssertValidity(ch8);
+			ASSERT__(StringEncoding::IsValid(ch8));		//if these trigger then AssertValidity() implements a different check than IsValid()
+			if (haveUTF16)
+			{
+				StringEncoding::AssertValidity(ch16);
+				ASSERT__(StringEncoding::IsValid(ch16));	//if these trigger then AssertValidity() implements a different check than IsValid()
+			}
+
+			ASSERT_EQUAL__(StringEncoding::EncodedUTF8Length(testChar),ch8.numCharsUsed);
+
+			char32_t reverse = StringEncoding::ToUnicode(ch8);
+			ASSERT_EQUAL__(reverse,testChar);
+			if (haveUTF16)
+			{
+				reverse = StringEncoding::ToUnicode(ch16);
+				ASSERT_EQUAL__(reverse,testChar);
+			}
+
+			if (i < 0x100)
+			{
+				const char cp1252C = (char)(BYTE)i;
+				char32_t unicode2 = StringEncoding::ToUnicodeFromCP1252(cp1252C);
+				char cp1252C2 = StringEncoding::EncodeUnicodeToCP1252(unicode2);
+				ASSERT_EQUAL__(cp1252C,cp1252C2);
+			}
+		}
+		//okay, so the whole range works. let's test some strings
+
+		for (index_t i = 0; i < 1000; i++)
+		{
+			const count_t length = random.Next(1,1000);
+			String windowsString = TStringLength(length);
+			for (index_t i = 0; i < length; i++)
+				windowsString.set(i,(char)(BYTE)random.Next(1,255));	//full spectrum, no zeroes
+
+			String backConverted;
+			String utf8String;
+			UnicodeString unicodeString;
+			StringEncoding::CP1252ToUTF8(windowsString,utf8String);
+			StringEncoding::UTF8ToCP1252(utf8String,backConverted);
+			ASSERT_EQUAL__(backConverted,windowsString);
+
+			StringEncoding::CP1252ToUnicode(windowsString,unicodeString);
+			StringEncoding::UnicodeToCP1252(unicodeString,backConverted);
+			ASSERT_EQUAL__(backConverted,windowsString);
+		}
+
+
+		for (index_t i = 0; i < 1000; i++)
+		{
+			const count_t length = random.Next(1,1000);
+			UnicodeString unicodeString = TStringLength(length);
+			for (index_t i = 0; i < length; i++)
+				unicodeString.Set(i,RandomUnicodeNoZero(random));
+
+			UnicodeString backConverted;
+			String utf8String;
+			UTF16String utf16String;
+
+			StringEncoding::UnicodeToUTF8(unicodeString,utf8String);
+			StringEncoding::UnicodeToUTF16(unicodeString,utf16String);
+			StringEncoding::UTF8ToUnicode(utf8String,backConverted);
+			ASSERT__(backConverted==unicodeString);
+			StringEncoding::UTF16ToUnicode(utf16String,backConverted);
+			ASSERT__(backConverted==unicodeString);
+		}
+
+	}
 
 
 
