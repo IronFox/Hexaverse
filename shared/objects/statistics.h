@@ -2,6 +2,8 @@
 
 #include "types.h"
 #include <container/hashtable.h>
+#include "resource.h"
+#include <io/json.h>
 
 namespace Objects
 {
@@ -73,6 +75,15 @@ namespace Objects
 			}
 		};
 
+		struct RoundStatistics
+		{
+			ResourceVector	production,consumption;
+			count_t			entityCount=0,
+							entityMineralValue=0,
+							sensorCoverage=0;
+			index_t			mainRound=0;
+		};
+
 
 	public:
 		/**/			Statistics(const Faction*owner);
@@ -83,6 +94,15 @@ namespace Objects
 		void			SignalDestructionOfHostile(const PWorldEntity&causedBy, const PWorldEntity&);
 		void			SignalLossOf(const PWorldEntity&, const PFaction&causedBy, bool stolen);
 		void			SignalUnitAcquired(const PWorldEntity&, const PFaction&previousOwner);
+		/**
+		Invoked for each structure that generates or consumes resources during compound processing
+		*/
+		void			SignalStructureResourceDelta(const PWorldEntity&, const ResourceVector&);
+		/**
+		Invoked once at the end of compound processing
+		*/
+		void			SignalCompoundProcessingEnd();
+		static void		SignalNewRoundBegin(bool mainRound);
 
 		
 		virtual	serial_size_t	GetSerialSize(bool exportSize) const override;							//!< Queries the serial size of this object @param export_size True if the result should include additional space required for any size variable such as a string or array length @return Serial size (in bytes) of this object
@@ -92,12 +112,22 @@ namespace Objects
 
 
 	private:
+		//temporary data:
+		ResourceVector				roundProduction,
+									roundConsumption;
+		count_t						totalEntities=0,
+									totalEntityMineralValue=0;
+
+		//persistent data:
 		PointerTable<Interaction>	interactionMap;
 		StringTable<UnitStatistics>	unitStatistics;
+		Buffer0<RoundStatistics>	history;
 
-		Interaction&	Get(const PFaction&remote);
-		UnitStatistics&	GetTypeOf(const PWorldEntity&);
 
+		//access helpers:
+		Interaction&				Get(const PFaction&remote);
+		UnitStatistics&				GetTypeOf(const PWorldEntity&);
+		RoundStatistics&			GetRoundStat();
 	};
 
 }

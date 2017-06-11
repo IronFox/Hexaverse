@@ -236,7 +236,6 @@ namespace Objects
 					static Buffer0<EventResult>	events;
 					events.Clear();
 				#endif
-
 				ResourceVector vector;
 				#ifdef _DEBUG
 					events << std::make_pair(PStructure(), vector);
@@ -249,7 +248,12 @@ namespace Objects
 						continue;
 					if (s->IsEnabled() && !s->AwaitsUserInteraction())
 					{
-						s->Tick(vector);
+						ResourceVector local;
+						s->Tick(local);
+						vector += local;
+
+						s->owner->statistics.SignalStructureResourceDelta(s,local);
+
 						#ifdef _DEBUG
 							events << std::make_pair(s, vector);
 						#endif

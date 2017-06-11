@@ -222,6 +222,7 @@ namespace Evolver
 			});
 			Objects::ForeachFaction([](const Objects::PFaction&f)
 			{
+				f->statistics.SignalCompoundProcessingEnd();
 				f->researchState.FinalizeRound(f);
 			});
 
@@ -444,6 +445,8 @@ namespace Evolver
 	/*virtual override*/ void Core::FinishRoundProcessing()
 	{
 		RuntimeConfig::roundNumber.main++;
+		
+		Objects::Statistics::SignalNewRoundBegin(true);
 
 		Game::Network::ChangePhase(RuntimeConfig::Phase::CommandPhase,Game::Config::roundTimer > 0 && !Game::roundTimerPaused ? Game::Config::roundTimer : -1);
 	}

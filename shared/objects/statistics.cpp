@@ -1,11 +1,13 @@
 #include "statistics.h"
 #include "entity.h"
+#include "../runtimeConfig.h"
+#include "faction.h"
 
 namespace Objects
 {
 	Statistics::Statistics(const Faction*owner):owner(owner)
 	{
-
+		history.Append();
 	}
 
 	Statistics::Interaction&	Statistics::Get(const PFaction&remote)
@@ -93,6 +95,59 @@ namespace Objects
 		else
 			un.Get(UnitStatistics::Built) ++;
 	}
+
+
+	void			Statistics::SignalStructureResourceDelta(const PWorldEntity&, const ResourceVector&d)
+	{
+		ResourceVector pos,neg;
+		d.SeparateBySign(pos,neg);
+		roundProduction += pos;
+		roundConsumption -= neg;
+	}
+
+	void Statistics::SignalCompoundProcessingEnd()
+	{
+		GetRoundStat().production = roundProduction;
+		GetRoundStat().consumption = roundConsumption;
+
+		roundConsumption.Clear();
+		roundProduction.Clear();
+	}
+
+	/*static*/ void Statistics::SignalNewRoundBegin(bool mainRound)
+	{
+		if (mainRound)
+		{
+			Objects::ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
+			{
+				e->owner->statistics.totalEntities ++;
+				e->owner->statistics.totalEntityMineralValue += e->GetConstructionCost();
+			},false);
+
+			Objects::ForeachFaction([](const Objects::PFaction&f)
+			{
+				auto&stat = f->statistics;
+				{
+					auto&prog = stat.history.Last();
+					prog.entityCount = stat.totalEntities;
+					prog.entityMineralValue = stat.totalEntityMineralValue;
+					f->CheckSensory();
+					prog.sensorCoverage = f->knownWorld.CountVisibleCells();
+					stat.totalEntities = 0;
+					stat.totalEntityMineralValue = 0;
+				}
+				f->statistics.history.Append().mainRound = RuntimeConfig::roundNumber.main;
+			});
+		}
+	}
+
+	Statistics::RoundStatistics&	Statistics::GetRoundStat()
+	{
+		return history.Last();
+	}
+
+
+
 
 	/*virtual override*/ serial_size_t	Statistics::GetSerialSize(bool exportSize) const
 	{
