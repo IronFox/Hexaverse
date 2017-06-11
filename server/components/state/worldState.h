@@ -15,7 +15,7 @@ namespace World
 	Finds a randomized suitable starting location for a new faction.
 	
 	*/
-	index_t			GetFactionStartLocation(Random&random);
+	index_t			GetFactionStartLocation(TwisterRandom&random);
 
 
 	/**
@@ -23,7 +23,7 @@ namespace World
 	Any existing session will be closed, all factions terminated before commencing.
 	*/
 	void			BuildConfiguredWorld(UINT32 seed);
-	void			BuildConfiguredWorld(Random&rnd);
+	void			BuildConfiguredWorld(TwisterRandom&rnd);
 
 
 

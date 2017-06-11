@@ -9,6 +9,7 @@
 
 namespace Test
 {
+	typedef RNG<std::mt19937>	Random;
 
 	class Test
 	{

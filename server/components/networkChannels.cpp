@@ -6,7 +6,7 @@
 #include "configurationMode.h"
 #include <objects/structure/mine.h>
 
-extern Random		random;
+extern TwisterRandom		random;
 
 
 

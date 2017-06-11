@@ -1,5 +1,9 @@
 #pragma once
 
+#include <general/random.h>
+
+typedef RNG<std::mt19937>	TwisterRandom;
+
 namespace World
 {
 	class Data;

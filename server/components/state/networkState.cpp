@@ -17,7 +17,7 @@
 
 #undef StartService
 
-extern Random random;
+extern TwisterRandom random;
 
 
 namespace Network

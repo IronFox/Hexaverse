@@ -34,7 +34,7 @@ UINT32 ApplicationInterface::globalVersionOfCurrentFile = 0;	//file version bein
 
 
 
-Random		random;
+TwisterRandom		random;
 
 
 #ifdef _DEBUG

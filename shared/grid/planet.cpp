@@ -141,13 +141,9 @@ namespace Grid
 		ApplySeed();
 	}
 
-	void	ExtendedPlanetConfig::RandomizeSeeds(Random&random)
+	void	ExtendedPlanetConfig::RandomizeSeeds(TwisterRandom&twisterRandom)
 	{
-		lastSeed = random.GetCurrentSeed();
-		//LogEvent(EventSignificance::Uncommon,"seed randomized "+String(lastSeed));
-		extendedCore.Randomize(random);
-		mountains.Randomize(random);
-		RandomizeSun(random);
+		SetSeed(twisterRandom.Next(std::numeric_limits<UINT32>::max()));
 	}
 
 	

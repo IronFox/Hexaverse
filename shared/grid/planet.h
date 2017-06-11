@@ -181,7 +181,7 @@ namespace Grid
 		Contrary to SetSeed(random.currentSeed()), @a random will actually be advanced by the operation.
 		Using a random variable with current seed equal to @a lastSeed will produce identical results
 		*/
-		void	RandomizeSeeds(Random&random);
+		void	RandomizeSeeds(TwisterRandom&random);
 
 		void	GenerateAtmosphereColorForType(BYTE t)
 		{
