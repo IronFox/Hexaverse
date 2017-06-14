@@ -62,15 +62,15 @@ namespace Test
 	{
 		for (index_t i = 0; i <= 0x10FFFF; i++)
 		{
-			StringEncoding::UTF8Char ch8;
-			StringEncoding::UTF16Char ch16;
+			StringEncoding::UTF8::TChar ch8;
+			StringEncoding::UTF16::TChar ch16;
 			const char32_t testChar = (char32_t)i;
 
-			StringEncoding::FromUTF32::ToUTF8(testChar,ch8);
+			StringEncoding::UTF32::ToUTF8(testChar,ch8);
 			bool haveUTF16 = false;
 			if (StringEncoding::IsValidUnicode(testChar))
 			{
-				StringEncoding::FromUTF32::ToUTF16(testChar,ch16);
+				StringEncoding::UTF32::ToUTF16(testChar,ch16);
 				haveUTF16 = true;
 			}
 			StringEncoding::AssertValidity(ch8);
@@ -81,21 +81,21 @@ namespace Test
 				ASSERT__(StringEncoding::IsValid(ch16));	//if these trigger then AssertValidity() implements a different check than IsValid()
 			}
 
-			ASSERT_EQUAL__(StringEncoding::EncodedUTF8Length(testChar),ch8.numCharsUsed);
+			ASSERT_EQUAL__(StringEncoding::UTF32::ToUTF8Length(testChar),ch8.numCharsUsed);
 
-			char32_t reverse = StringEncoding::FromUTF8::ToUTF32(ch8);
+			char32_t reverse = StringEncoding::UTF8::ToUTF32(ch8);
 			ASSERT_EQUAL__(reverse,testChar);
 			if (haveUTF16)
 			{
-				reverse = StringEncoding::FromUTF16::ToUTF32(ch16);
+				reverse = StringEncoding::UTF16::ToUTF32(ch16);
 				ASSERT_EQUAL__(reverse,testChar);
 			}
 
 			if (i < 0x100)
 			{
 				const char cp1252C = (char)(BYTE)i;
-				char32_t utf322 = StringEncoding::FromCP1252::ToUTF32(cp1252C);
-				char cp1252C2 = StringEncoding::FromUTF32::ToCP1252(utf322);
+				char32_t utf322 = StringEncoding::CP1252::ToUTF32(cp1252C);
+				char cp1252C2 = StringEncoding::UTF32::ToCP1252(utf322);
 				ASSERT_EQUAL__(cp1252C,cp1252C2);
 			}
 		}
@@ -111,12 +111,12 @@ namespace Test
 			String backConverted;
 			String utf8String;
 			UTF32String utf32String;
-			StringEncoding::FromCP1252::ToUTF8(windowsString,utf8String);
-			StringEncoding::FromUTF8::ToCP1252(utf8String,backConverted);
+			StringEncoding::CP1252::ToUTF8(windowsString,utf8String);
+			StringEncoding::UTF8::ToCP1252(utf8String,backConverted);
 			ASSERT_EQUAL__(backConverted,windowsString);
 
-			StringEncoding::FromCP1252::ToUTF32(windowsString,utf32String);
-			StringEncoding::FromUTF32::ToCP1252(utf32String,backConverted);
+			StringEncoding::CP1252::ToUTF32(windowsString,utf32String);
+			StringEncoding::UTF32::ToCP1252(utf32String,backConverted);
 			ASSERT_EQUAL__(backConverted,windowsString);
 		}
 
@@ -132,11 +132,11 @@ namespace Test
 			String utf8String;
 			UTF16String utf16String;
 
-			StringEncoding::FromUTF32::ToUTF8(utf32String,utf8String);
-			StringEncoding::FromUTF32::ToUTF16(utf32String,utf16String);
-			StringEncoding::FromUTF8::ToUTF32(utf8String,backConverted);
+			StringEncoding::UTF32::ToUTF8(utf32String,utf8String);
+			StringEncoding::UTF32::ToUTF16(utf32String,utf16String);
+			StringEncoding::UTF8::ToUTF32(utf8String,backConverted);
 			ASSERT__(backConverted==utf32String);
-			StringEncoding::FromUTF16::ToUTF32(utf16String,backConverted);
+			StringEncoding::UTF16::ToUTF32(utf16String,backConverted);
 			ASSERT__(backConverted==utf32String);
 		}
 
