@@ -6,6 +6,8 @@
 #include "../typeDecl.h"
 #include "../config.h"
 
+using namespace DeltaWorks;
+
 namespace Objects
 {
 	namespace Command

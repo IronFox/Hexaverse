@@ -22,9 +22,9 @@ extern TwisterRandom random;
 
 namespace Network
 {
-	Buffer<PClient>	activePlayersAndSpectators,spectators;
-	GenericHashTable<Objects::OwnerParameter,PClient,Objects::OwnerHash>	playerMap;
-	GenericHashTable<CryptographicID,Objects::PFaction>		tokenMap;
+	Ctr::Buffer<PClient>	activePlayersAndSpectators,spectators;
+	Ctr::GenericHashTable<Objects::OwnerParameter,PClient,Objects::OwnerHash>	playerMap;
+	Ctr::GenericHashTable<CryptographicID,Objects::PFaction>		tokenMap;
 
 
 	
@@ -46,7 +46,7 @@ namespace Network
 
 
 
-		class Updater : public ThreadObject
+		class Updater : public Sys::ThreadObject
 		{
 		public:
 			volatile bool	doEnd = false;
@@ -403,7 +403,7 @@ namespace Network
 			if (preserveSpectators)
 			{
 				Game::Config::factionSupportFlags = Protocol::GameFlag::SupportSpectatorFactions;
-				Buffer0<TCP::PPeer>	dump;
+				Ctr::Buffer0<TCP::PPeer>	dump;
 				server.VisitAllPeers([&dump](const TCP::PPeer&p)
 				{
 					if (p->userLevel < (UINT32)UserLevel::Spectator)

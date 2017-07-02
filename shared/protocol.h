@@ -94,7 +94,7 @@ namespace Protocol
 		const size_t bufferSize = expectedSize*2+128;
 		void*data = malloc(bufferSize);
 		serial_size_t actualSize;
-		SerializeToMemory(serializable,data,(ISerializable::serial_size_t)bufferSize,exportSize,&actualSize);
+		SerializeToMemory(serializable,data,(serial_size_t)bufferSize,exportSize,&actualSize);
 		if (actualSize != expectedSize)
 			throw Except::Memory::SerializationFault(CLOCATION,"Serialization of type "+String(typeid(serializable).name())+" failed. GetSerialSize("+String(exportSize)+") returned "+String(expectedSize)+", serialization required "+String(actualSize));
 		
@@ -119,12 +119,12 @@ namespace Protocol
 
 
 	template<typename T, size_t MaxSize>
-		class NetArray : public Array<T>
+		class NetArray : public Ctr::Array<T>
 		{
 		public:
 			static const constexpr size_t MaxElementCount = MaxSize;
-			typedef Array<T>	Super;
-			void				operator=(const Array<T>&other)
+			typedef Ctr::Array<T>	Super;
+			void				operator=(const Ctr::Array<T>&other)
 			{
 				Super::operator=(other);
 			}
@@ -140,7 +140,7 @@ namespace Protocol
 						size = (count_t)(fixedSize/sizeof(T));
 					else
 					{
-						size_t fixedElementSize = FixedSizeSerializable<T>::GetSize();
+						size_t fixedElementSize = Ctr::FixedSizeSerializable<T>::GetSize();
 						if (fixedElementSize != 0)
 						{
 							size = (count_t)(fixedSize/fixedElementSize);
@@ -151,7 +151,7 @@ namespace Protocol
 						//FATAL__("trying to Deserialize an array containing serializable objects from a fixed size stream data section not including any element count");
 				}
 				if (size > MaxSize)
-					throw Except::Memory::SerializationFault(CLOCATION,"Array size "+String(size)+" exceeds maximum safe size "+String(MaxSize));
+					throw Except::Memory::SerializationFault(CLOCATION,"Ctr::Array size "+String(size)+" exceeds maximum safe size "+String(MaxSize));
 
 				SetSize(size);
 				if (!IsISerializable(data))

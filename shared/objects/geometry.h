@@ -4,6 +4,8 @@
 #include <math/vclasses.h>
 #include <math/matrix.h>
 
+using namespace DeltaWorks;
+
 namespace Objects
 {
 
@@ -31,8 +33,8 @@ namespace Objects
 		class LOD
 		{
 		public:
-			Buffer0<Vertex>	vertices;
-			Buffer0<UINT32>	indices;
+			Ctr::Buffer0<Vertex>	vertices;
+			Ctr::Buffer0<UINT32>	indices;
 
 			void	swap(LOD&other)
 			{
@@ -61,7 +63,7 @@ namespace Objects
 		};
 	private:
 		LOD*		currentLOD;
-		Buffer<LOD, 4, Swap>	lods;
+		Ctr::Buffer<LOD, 4, Swap>	lods;
 		UINT32		vertexOffset,indexOffset;
 		Box<>		boundingBox;
 
@@ -210,7 +212,7 @@ namespace Objects
 			ASSERT__(out == currentLOD->indices.end());
 		}
 
-		void	AppendTriangleIndices(const BasicBuffer<UINT32>&indices)
+		void	AppendTriangleIndices(const Ctr::BasicBuffer<UINT32>&indices)
 		{
 			AppendTriangleIndices(indices.pointer(), indices.count());
 		}

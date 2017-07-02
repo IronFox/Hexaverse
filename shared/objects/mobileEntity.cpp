@@ -455,7 +455,7 @@ namespace Objects
 				float oldTime = entityTime;
 				entityTime += timeCost;
 
-				static Buffer0<PWorldEntity> newContacts;
+				static Ctr::Buffer0<PWorldEntity> newContacts;
 				newContacts.Clear();
 				this->MoveSensoryToCurrentLocation(entityTime,&newContacts);
 				foreach (newContacts,c)
@@ -949,7 +949,7 @@ namespace Objects
 			myTasks.EraseFront();
 		}
 
-		bool			MobileEntity::PlotCourse(ArrayRef<Grid::LCellIdI> destination, bool detailedPath, bool virtualPlatformMode/*=false*/)
+		bool			MobileEntity::PlotCourse(Ctr::ArrayRef<Grid::LCellIdI> destination, bool detailedPath, bool virtualPlatformMode/*=false*/)
 		{
 			const World::Data&world = owner->knownWorld;
 			if (IsVehicle())
@@ -971,7 +971,7 @@ namespace Objects
 
 			while (destination.IsNotEmpty() && destination.First() == pointOfOrigin)
 			{
-				destination = ArrayRef<Grid::LCellIdI>(destination.GetPointer() +1 ,destination.GetLength()-1);
+				destination = Ctr::ArrayRef<Grid::LCellIdI>(destination.GetPointer() +1 ,destination.GetLength()-1);
 			}
 			if (destination.IsEmpty())
 			{
@@ -1008,7 +1008,7 @@ namespace Objects
 					const auto&match = myTasks.GetNewest().foci.GetNewest();
 					while (destination.IsNotEmpty() && destination.First() == match.target)
 					{
-						destination = ArrayRef<Grid::LCellIdI>(destination.GetPointer() +1 ,destination.GetLength()-1);
+						destination = Ctr::ArrayRef<Grid::LCellIdI>(destination.GetPointer() +1 ,destination.GetLength()-1);
 					}
 				}
 				if (destination.IsEmpty())
@@ -1051,7 +1051,7 @@ namespace Objects
 			return true;
 		}
 
-		bool	MobileEntity::PlotFrontCourse(ArrayRef<Grid::LCellIdI> destination, bool detailedPath)
+		bool	MobileEntity::PlotFrontCourse(Ctr::ArrayRef<Grid::LCellIdI> destination, bool detailedPath)
 		{
 			const World::Data&world = owner->knownWorld;
 
@@ -1068,7 +1068,7 @@ namespace Objects
 
 			while (destination.IsNotEmpty() && destination.First() == location)
 			{
-				destination = ArrayRef<Grid::LCellIdI>(destination.GetPointer() +1 ,destination.GetLength()-1);
+				destination = Ctr::ArrayRef<Grid::LCellIdI>(destination.GetPointer() +1 ,destination.GetLength()-1);
 			}
 			if (destination.IsEmpty())
 			{
@@ -1159,7 +1159,7 @@ namespace Objects
 			Mat::rotate(this->inverse,dir,innerDir);
 			TVec3<> t0;
 			Grid::HCellIdI t1;
-			Buffer0<TVec4<> > trajectory;
+			Ctr::Buffer0<TVec4<> > trajectory;
 
 			float angle;	
 			if (TraceTrajectory(TrajectoryEndPoint(target),trajectory,t0,t1,angle))
@@ -1370,9 +1370,9 @@ namespace Objects
 							else
 							{
 								index_t offset = it-path.begin();
-								ArrayRef<PathNode> ref = path.ToRef();
-								ref = ArrayRef<PathNode>(ref.GetPointer() + offset,ref.Count()-offset);
-								Array<PathNode>	nodes = ref;
+								Ctr::ArrayRef<PathNode> ref = path.ToRef();
+								ref = Ctr::ArrayRef<PathNode>(ref.GetPointer() + offset,ref.Count()-offset);
+								Ctr::Array<PathNode>	nodes = ref;
 								path.Clear();
 								path << PathNode(v->location,0);
 								if (!AppendPathSegment(v,v->location,nextFocus))

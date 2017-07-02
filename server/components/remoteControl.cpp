@@ -132,7 +132,7 @@ namespace RemoteControl
 		void	Handler::OnComplete(Package::NetString<1024>&cmd, TCP::Peer&peer)
 		{
 			//LogEvent(EventClass::Preset::remoteControlCommand, Reflection::state.GetContext()+"complete:'"+cmd+"'");
-			StringList alternatives;
+			Ctr::StringList alternatives;
 			String result = Reflection::state.ExtendedComplete(cmd,alternatives);
 			if (alternatives > 1)
 			{

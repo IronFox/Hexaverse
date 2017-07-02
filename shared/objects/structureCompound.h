@@ -30,8 +30,8 @@ namespace Objects
 			float4					color;
 		#endif
 
-		Buffer0<WWorkingStructure>	workingStructures;
-		Buffer0<WStructure>			allStructures;
+		Ctr::Buffer0<WWorkingStructure>	workingStructures;
+		Ctr::Buffer0<WStructure>			allStructures;
 		FullResourceVector			total;
 
 		bool						stable;
@@ -80,9 +80,9 @@ namespace Objects
 
 
 			void			ChangeStorage(ResourceVector&supply, float atTime);
-			FullResourceVector	GetVector(const Array<bool>&virtualEnabled) const;
+			FullResourceVector	GetVector(const Ctr::Array<bool>&virtualEnabled) const;
 		#endif
-		bool				CanEnable(WorkingStructure*, String*outWhy=nullptr, Array<Resource>*outMissedResources=nullptr, bool ignoreCanEnable=false) const;
+		bool				CanEnable(WorkingStructure*, String*outWhy=nullptr, Ctr::Array<Resource>*outMissedResources=nullptr, bool ignoreCanEnable=false) const;
 		void				RefreshState(float atTime);
 		FullResourceVector	GetVector() const;
 

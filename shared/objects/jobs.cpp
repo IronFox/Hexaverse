@@ -40,7 +40,7 @@ namespace Objects
 
 		#ifndef CLIENT
 
-		/*static*/ Buffer0<PVehicleJob>			BaseJob::allJobPrototypes;
+		/*static*/ Ctr::Buffer0<PVehicleJob>			BaseJob::allJobPrototypes;
 		
 		BaseJob::continue_t BaseJob::Continue(MobileEntity&v, const Grid::LCellIdI&focus, bool isNewRound)
 		{
@@ -904,7 +904,7 @@ namespace Objects
 				//	}
 				//	h++;
 
-				//	Array<Grid::HCellIdI> selection(1 + cnt);
+				//	Ctr::Array<Grid::HCellIdI> selection(1 + cnt);
 				//	selection.First() = ground;
 				//	for (int i = 1; i <= cnt; i++)
 				//		selection[i] = ground - i;

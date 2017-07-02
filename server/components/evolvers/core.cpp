@@ -11,7 +11,7 @@ namespace Evolver
 
 	namespace CoreDetails
 	{
-		Queue<TExplosion>	pendingExplosions;
+		Ctr::Queue<TExplosion>	pendingExplosions;
 
 		/**
 		Like vehicles, towers have an attack action floation point value. Unlike vehicles, they are not part of the
@@ -60,7 +60,7 @@ namespace Evolver
 			bool		operator<(const TAttackReference&other) const {return GetInitiative() < other.GetInitiative();}
 		};
 
-		Buffer<TAttackReference>	attackingEntities;
+		Ctr::Buffer<TAttackReference>	attackingEntities;
 		//float						attackTime = 0.f;
 
 
@@ -94,7 +94,7 @@ namespace Evolver
 		}
 
 
-		Buffer<TMovementReference>	movingVehicles,movingVehicles2;
+		Ctr::Buffer<TMovementReference>	movingVehicles,movingVehicles2;
 
 		void		SignalMotionPhase()
 		{

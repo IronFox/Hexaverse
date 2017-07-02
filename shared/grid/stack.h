@@ -2,7 +2,7 @@
 
 
 #include <math/matrix.h>
-#include <engine\aspect.h>
+//#include <engine\aspect.h>
 #include "base.h"
 #include "../stringTable.h"
 #include "../logEvent.h"
@@ -477,8 +477,8 @@ namespace Grid
 	public:
 		typedef GridSetup<Exponent>	GridType;
 		GridType					grid;
-		static Array<BaseGrid::TNetCell>	cells;
-		Array<BaseGrid::TCellVertex>	cellVertices;
+		static Ctr::Array<BaseGrid::TNetCell>	cells;
+		Ctr::Array<BaseGrid::TCellVertex>	cellVertices;
 		TDistanceRange				neighborCellDistances;
 
 
@@ -506,7 +506,7 @@ namespace Grid
 				TIntRange<UINT32>	range;		//range.end is one higher than actual limit
 			};
 
-			Buffer0<TStack>			coverage;
+			Ctr::Buffer0<TStack>		coverage;
 
 			void					Clear()
 			{
@@ -525,7 +525,7 @@ namespace Grid
 			struct Operator
 			{
 				bool	stackVisited[GridType::CellCount];
-				Queue<UINT32>	stacksLeft;
+				Ctr::Queue<UINT32>	stacksLeft;
 
 				/**/		Operator()
 				{
@@ -552,9 +552,9 @@ namespace Grid
 		Determines the extended neighborhood around the given center cell.
 		Should be used for small neighborhoods only since it uses linear search on all already found neighbors
 		*/
-		void						GetExtendedNeighborhood(index_t centerCell, UINT32 maxDistance, BasicBuffer<UINT32>&outNeighbors) const
+		void						GetExtendedNeighborhood(index_t centerCell, UINT32 maxDistance, Ctr::BasicBuffer<UINT32>&outNeighbors) const
 		{
-			Queue<std::pair<index_t, UINT32> >	queue;
+			Ctr::Queue<std::pair<index_t, UINT32> >	queue;
 			queue << std::make_pair(centerCell, 0);
 			std::pair<index_t, UINT32> current;
 			outNeighbors.Clear();
@@ -576,7 +576,7 @@ namespace Grid
 			field.Reset();
 
 			field.distance[centerCell] = 0;
-			Queue<index_t>	queue;
+			Ctr::Queue<index_t>	queue;
 			queue << centerCell;
 			index_t stackID;
 			while (queue >> stackID)
@@ -713,7 +713,7 @@ namespace Grid
 	};
 
 	template <UINT Exponent>
-		Array<BaseGrid::TNetCell>	Setup<Exponent>::cells;
+		Ctr::Array<BaseGrid::TNetCell>	Setup<Exponent>::cells;
 
 	#ifdef LOWER_RESOLUTION_PLANET
 		static const constexpr UINT HighExponent=5;
@@ -849,7 +849,7 @@ namespace Grid
 	};
 	#pragma pack(pop)
 
-	void			FlushStackFamily(Array<CellStack>&cellStack,  BYTE family);
+	void			FlushStackFamily(Ctr::Array<CellStack>&cellStack,  BYTE family);
 	void			FlushAllStackData();
 
 	#ifdef VOXEL_SCANNER

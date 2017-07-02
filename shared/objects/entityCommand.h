@@ -106,7 +106,7 @@ namespace Objects
 		public:
 			typedef std::pair<int2,PBase>	Member;
 		protected:
-			Buffer0<Member>				members;
+			Ctr::Buffer0<Member>		members;
 			const Container				*parent = nullptr;	//!< Must not access members
 
 		public:

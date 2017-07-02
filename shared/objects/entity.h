@@ -33,7 +33,7 @@ namespace Objects
 	static const float timeEpsilon = 0.001f;	//time in seconds between subsequent events such that they are sorted correctly on the client
 	typedef SharedPtrHash	OwnerHash;
 
-	extern GenericHashTable<TUniqueID,PWorldEntity>	idMap;
+	extern Ctr::GenericHashTable<TUniqueID,PWorldEntity>	idMap;
 
 
 	#ifdef HAS_WINDOW
@@ -446,9 +446,9 @@ namespace Objects
 		virtual PConstTurretBase	GetTurretBase(float &zOffset) const { return PConstTurretBase();}
 		inline PConstTurretBase		GetTurretBase() const { float dummy; return GetTurretBase(dummy);}
 
-		TurretTrajectory			TraceTrajectory(const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const;
+		TurretTrajectory			TraceTrajectory(const TrajectoryEndPoint&dest, Ctr::Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const;
 		TurretTrajectory			TraceTrajectory(const TrajectoryEndPoint&dest, TVec3<>&impactAt) const;
-		TurretTrajectory			TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const;
+		TurretTrajectory			TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const;
 		TurretTrajectory			TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, TVec3<>&impactAt) const;
 		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const TrajectoryEndPoint&dest, float&outAngle) const;
 		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const TrajectoryEndPoint&dest) const;
@@ -460,7 +460,7 @@ namespace Objects
 
 
 		#ifndef CLIENT
-			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) = 0;
+			virtual bool			DirectTo(CursorMode, Ctr::ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) = 0;
 
 			/**
 			Forces all tasks to be dropped that do not result in resource loss. Other tasks must remain
@@ -550,9 +550,9 @@ namespace Objects
 		Assumes that grid sensory has been previously flushed
 		*/
 		void					ReapplySensory(float&atTime);
-		TRegisteredSensor		RegisterSensory(const Grid::LCellIdI&loc, float&atTime, Buffer0<PWorldEntity>*newContacts = nullptr);
+		TRegisteredSensor		RegisterSensory(const Grid::LCellIdI&loc, float&atTime, Ctr::Buffer0<PWorldEntity>*newContacts = nullptr);
 		void					UnregisterSensory(TRegisteredSensor&, float&atTime);
-		void					MoveSensoryToCurrentLocation(float&atTime, Buffer0<PWorldEntity>*newContacts = nullptr);
+		void					MoveSensoryToCurrentLocation(float&atTime, Ctr::Buffer0<PWorldEntity>*newContacts = nullptr);
 
 		#ifdef HAS_WINDOW
 			/**
@@ -689,7 +689,7 @@ namespace Objects
 					if (multiplier.IsSet())
 						val*=multiplier.GetValue(researchState);
 					
-					val = vmax(val, minimum);
+					val = Math::Max(val, minimum);
 					cached = val;
 				}
 				return cached;

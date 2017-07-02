@@ -15,10 +15,10 @@ namespace Objects
 	List of all known tower types (one for each tower turret type).
 	Tower types that are not contained in this list can not be constructed cleanly
 	*/
-	Buffer0<PTower>				Tower::globalPrototypes;
+	Ctr::Buffer0<PTower>				Tower::globalPrototypes;
 
 	#ifndef CLIENT
-		Buffer0<PTower>			towers;	//only used by server ... so far
+		Ctr::Buffer0<PTower>			towers;	//only used by server ... so far
 	#endif
 
 
@@ -45,7 +45,7 @@ namespace Objects
 				return false;
 			}
 
-			static Buffer0<TVec4<> > trajectory;
+			static Ctr::Buffer0<TVec4<> > trajectory;
 
 			TVec3<> iat;
 			Grid::HCellIdI ic;
@@ -78,7 +78,7 @@ namespace Objects
 			Mat::rotate(this->inverse,dir,innerDir);
 			TVec3<> t0;
 			Grid::HCellIdI t1;
-			static Buffer0<TVec4<> > trajectory;
+			static Ctr::Buffer0<TVec4<> > trajectory;
 
 			bool abort = false;
 			float angle;
@@ -253,7 +253,7 @@ namespace Objects
 		}
 
 
-		/*virtual override*/ bool			Tower::DirectTo(CursorMode mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
+		/*virtual override*/ bool			Tower::DirectTo(CursorMode mode, Ctr::ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
 		{
 		
 			if (mode != Objects::CursorMode::AttackMode || !leftClick)

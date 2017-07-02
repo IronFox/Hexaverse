@@ -13,12 +13,12 @@ namespace Nexus
 	namespace NexusStructures
 	{
 		#ifdef ONE_COMPOUND_PER_FACTION
-			Buffer0<Objects::WWorkingStructure>	portList[12];
+			Ctr::Buffer0<Objects::WWorkingStructure>	portList[12];
 		#endif
 
 
 
-		void Reset(const ArrayRef<Objects::PNexusPort>&ports)
+		void Reset(const Ctr::ArrayRef<Objects::PNexusPort>&ports)
 		{
 			#ifdef ONE_COMPOUND_PER_FACTION
 				for (int i = 0; i < 12; i++)
@@ -53,7 +53,7 @@ namespace Nexus
 		}
 
 
-		const BasicBuffer<Objects::WWorkingStructure>&
+		const Ctr::BasicBuffer<Objects::WWorkingStructure>&
 			OfPort(const Objects::PNexusPort&p, index_t portIndex)
 		{
 			#ifdef ONE_COMPOUND_PER_FACTION
@@ -68,7 +68,7 @@ namespace Nexus
 
 
 
-	void EstimatePresence(Objects::WorldEntity&e, const Grid::LCellIdI&location, const ArrayRef<index_t>&cornerField, float*hostileNearNexus, float*constructorNearNexus, float*friendlyNearNexus)
+	void EstimatePresence(Objects::WorldEntity&e, const Grid::LCellIdI&location, const Ctr::ArrayRef<index_t>&cornerField, float*hostileNearNexus, float*constructorNearNexus, float*friendlyNearNexus)
 	{
 		const TVec3 < >&loc = Grid::low.cells[location.stackID].centerVertex.xyz;
 		float entityRange = e.GetScanningRange();
@@ -77,7 +77,7 @@ namespace Nexus
 		if (b && b->turret->CanDealDamage())
 		{
 			impact += b->GetDamagePotentialPerRound();
-			entityRange = vmax(entityRange,b->GetFlatAttackRange());
+			entityRange = M::Max(entityRange,b->GetFlatAttackRange());
 		}
 		impact += entityRange;
 		const TVec3<> worldLoc = Grid::ToWorld(location);
@@ -87,7 +87,7 @@ namespace Nexus
 			{
 				float worldDistance = Vec::distance(Grid::low.cells[*at].centerVertex.xyz * Grid::MeanPlanetRadius,worldLoc);
 				if (e.owner != Objects::Faction::nexus)
-					worldDistance = vmax(0,worldDistance-entityRange);
+					worldDistance = M::Max(0,worldDistance-entityRange);
 				//float angularDistance = Vec::angle(Grid::low.cells[*at].centerVertex.xyz,loc) * M_PIF/180.f;
 				float stepDistance = worldDistance / Grid::MeanPlanetRadius / avg * 0.75f;
 
@@ -121,7 +121,7 @@ namespace Nexus
 
 
 
-	static Objects::PNexusPort ClosestPort(const Objects::PWorldEntity&e, const ArrayRef<Objects::PNexusPort>&cornerPorts)
+	static Objects::PNexusPort ClosestPort(const Objects::PWorldEntity&e, const Ctr::ArrayRef<Objects::PNexusPort>&cornerPorts)
 	{
 		float d2 = std::numeric_limits<float>::max();
 		Objects::PNexusPort rs;
@@ -206,8 +206,8 @@ namespace Nexus
 			ASSERT_LESS_OR_EQUAL__(portAt, BaseGrid::IsolatedCornerCount);	//some might have changed ownership
 			LogEvent(EventSignificance::Debug,"Identified "+String(portAt)+" Nexus Ports under Nexus faction control");
 
-			const ArrayRef<Objects::PNexusPort>	ports (compactPortList,portAt);
-			Array<index_t> portLocations(portAt);
+			const Ctr::ArrayRef<Objects::PNexusPort>	ports (compactPortList,portAt);
+			Ctr::Array<index_t> portLocations(portAt);
 			for (index_t i = 0; i < ports.Count(); i++)
 			{
 				portLocations[i] = ports[i]->location.stackID;
@@ -219,7 +219,7 @@ namespace Nexus
 				EstimatePresence(*e,e->location,portLocations, hostileNearNexus,constructorNearNexus,friendlyNearNexus);
 			},false);
 
-			static Buffer0<UINT32> neighborField;
+			static Ctr::Buffer0<UINT32> neighborField;
 			NexusStructures::Reset(ports);
 			for (index_t j = 0; j < portAt; j++)
 			{

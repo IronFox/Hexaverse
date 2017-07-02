@@ -56,7 +56,7 @@ namespace World
 		};
 	}
 	
-	//void	FlushStackFamily(Array<CellStack>&cellStack,  BYTE family)
+	//void	FlushStackFamily(Ctr::Array<CellStack>&cellStack,  BYTE family)
 	//{
 	//	const index_t offset = high.grid.GetFamilyOffset(family);
 	//	const count_t range = high.grid.CountFamilyMembers(family);
@@ -216,8 +216,8 @@ namespace World
 	void	Data::Explode(const HCellIdI&id,float radius, float atTime)
 	{
 		const float3 center = high.cells[id.stackID].centerVertex.xyz * ToRadiusf(0.5f + id.height);
-		const float r2 = sqr(radius);
-		Queue<UINT32> queue;
+		const float r2 = M::sqr(radius);
+		Ctr::Queue<UINT32> queue;
 		
 		#ifdef HAS_WINDOW
 			Queue<UINT32> changed;
@@ -411,7 +411,7 @@ namespace World
 		int penetrationLeft = penetration << 1;	//account for water effect
 
 		const CellStack&stack = cellStack[highCellCenter];
-		UINT32 limit = vmin( startingLayer, CellStack::Range-1);
+		UINT32 limit = M::vmin( startingLayer, CellStack::Range-1);
 
 		#ifdef HAS_WINDOW
 			if (stack.waterRange.IsNotEmpty())
@@ -501,7 +501,7 @@ namespace World
 		{
 			for (UINT layer = 0; layer < CellStack::Range; layer++)
 			{
-				rs = vmax(rs, stack->volumeCell[layer].structureCounter);
+				rs = M::vmax(rs, stack->volumeCell[layer].structureCounter);
 			}
 		}
 		return rs;
@@ -518,7 +518,7 @@ namespace World
 		const auto&c = Grid::high.grid.GetCell(finer);
 		BYTE rs = cellStack[finer].GetCellI(cell.height).structureCounter;
 		for (int j = 0; j < c.neighborhood.numNeighbors; j++)
-			rs = vmax(rs, cellStack[c.neighborhood.neighborID[j]].GetCellI(cell.height).structureCounter);
+			rs = M::vmax(rs, cellStack[c.neighborhood.neighborID[j]].GetCellI(cell.height).structureCounter);
 		return rs;
 	#else
 		return cellStack[cell.stackID].GetCellI(cell.height).structureCounter;
@@ -1110,7 +1110,7 @@ namespace World
 	}
 	
 
-	void	Data::ChangeSequence::ApplyFamilyDelta(BaseGrid::family_t family, const Array<CellStack::TTypeDeltaBlock>&data0, bool initialization, bool actualWorld)
+	void	Data::ChangeSequence::ApplyFamilyDelta(BaseGrid::family_t family, const Ctr::Array<CellStack::TTypeDeltaBlock>&data0, bool initialization, bool actualWorld)
 	{
 		ASSERT_LESS__(family, BaseGrid::NumFamilies);
 		const index_t offset = high.grid.GetFamilyOffset(family);
@@ -1210,7 +1210,7 @@ namespace World
 
 	
 
-	void	Data::ChangeSequence::ApplyFamilyDelta(BaseGrid::family_t family, const Array<CellStack::TTypeDelta>&data0, bool initialization)
+	void	Data::ChangeSequence::ApplyFamilyDelta(BaseGrid::family_t family, const Ctr::Array<CellStack::TTypeDelta>&data0, bool initialization)
 	{
 		const index_t offset = high.grid.GetFamilyOffset(family);
 		const count_t range = high.grid.CountFamilyMembers(family);
@@ -1409,7 +1409,7 @@ namespace World
 			case ShadedCylinder:
 			{
 				const float base = Grid::ToRadius(Grid::CellStack::ToHeight(gridCenter.layer));
-				const float hr2 = sqr(radius / base);
+				const float hr2 = M::sqr(radius / base);
 				if (Vec::quadraticDistance(Grid::low.cells[loc.stackID].cornerCenter,Grid::high.cells[gridCenter.stackID].cornerCenter) > hr2)
 					return false;
 				return Grid::CellStack::ToLayer( loc.height ) <= gridCenter.layer;
@@ -1470,9 +1470,9 @@ namespace World
 
 	
 	template <typename T0, typename T1>
-		static void Compress(const Array<T0>&dts, ArrayData<T1>&dest)
+		static void Compress(const Ctr::Array<T0>&dts, Ctr::ArrayData<T1>&dest)
 		{
-			static Buffer<T1>	blocks;
+			static Ctr::Buffer<T1>	blocks;
 			blocks.Clear();
 			foreach(dts,dt)
 			{
@@ -1488,9 +1488,9 @@ namespace World
 			blocks.CopyToArray(dest);
 		}
 	template <typename T0, typename T1>
-		static void Compress(const Array<T0>&dts, ArrayData<T1>&dest, bool assertNotNull)
+		static void Compress(const Ctr::Array<T0>&dts, Ctr::ArrayData<T1>&dest, bool assertNotNull)
 		{
-			static Buffer<T1>	blocks;
+			static Ctr::Buffer<T1>	blocks;
 			blocks.Clear();
 			foreach(dts,dt)
 			{
@@ -1511,7 +1511,7 @@ namespace World
 		}
 
 
-	void			Data::GenerateDelta(BaseGrid::family_t familyID, WorldDeltaType::delta_type_t deltaType, ArrayData<Grid::CellStack::TTypeDeltaBlock>&delta)
+	void			Data::GenerateDelta(BaseGrid::family_t familyID, WorldDeltaType::delta_type_t deltaType, Ctr::ArrayData<Grid::CellStack::TTypeDeltaBlock>&delta)
 	{
 		const index_t offset = Grid::high.grid.GetFamilyOffset(familyID);
 		const count_t length = Grid::high.grid.CountFamilyMembers(familyID);
@@ -1520,9 +1520,9 @@ namespace World
 
 
 		const Grid::CellStack::Cell empty(Grid::Content::Reinterpret(0),0);
-		Array<Grid::CellStack::TTypeDelta> tdts(writeOutput ? length * Grid::CellStack::Range : 0);
-		//Array<Grid::CellStack::TTechniteFactionDelta> fdts(length * Grid::CellStack::Range);
-		//Array<bool> fdtsValid(length * Grid::CellStack::Range);
+		Ctr::Array<Grid::CellStack::TTypeDelta> tdts(writeOutput ? length * Grid::CellStack::Range : 0);
+		//Ctr::Array<Grid::CellStack::TTechniteFactionDelta> fdts(length * Grid::CellStack::Range);
+		//Ctr::Array<bool> fdtsValid(length * Grid::CellStack::Range);
 
 		bool any = deltaType != WorldDeltaType::ProgressiveUpdate;
 		Concurrency::parallel_for(index_t(0),length*Grid::CellStack::Range,
@@ -1621,7 +1621,7 @@ namespace World
 		}
 	}
 
-	void		Data::CompressFamilyState(BaseGrid::family_t f,  ArrayData<Grid::CellStack::TTypeDeltaBlock>&delta)
+	void		Data::CompressFamilyState(BaseGrid::family_t f,  Ctr::ArrayData<Grid::CellStack::TTypeDeltaBlock>&delta)
 	{
 		ASSERT_LESS__(f,BaseGrid::NumFamilies);
 
@@ -1629,7 +1629,7 @@ namespace World
 	}
 
 
-	bool		Data::ProgressiveUpdate(BaseGrid::family_t f,  ArrayData<Grid::CellStack::TTypeDeltaBlock>&delta, float&t, bool noDelta/*=false*/)
+	bool		Data::ProgressiveUpdate(BaseGrid::family_t f,  Ctr::ArrayData<Grid::CellStack::TTypeDeltaBlock>&delta, float&t, bool noDelta/*=false*/)
 	{
 		ASSERT__(!IsGlobalInstance());
 		ASSERT__(!SensoryIsInvalid());
@@ -1641,7 +1641,7 @@ namespace World
 		GenerateDelta(f,noDelta ?  WorldDeltaType::ProgressiveUpdateNoDelta : WorldDeltaType::ProgressiveUpdate,delta);
 		if (!noDelta && (delta.Count() > 1 || delta.First().value.IsSet()))
 		{
-			t = vmax(t,t0);
+			t = M::vmax(t,t0);
 			return true;
 		}
 		return false;
@@ -1718,7 +1718,7 @@ namespace World
 			//const float r = worldCenter.Length();
 
 			const float base = Grid::ToRadius(Grid::CellStack::ToHeight(topLayer));
-			const float hr2 = sqr(radius/base);
+			const float hr2 = M::sqr(radius/base);
 			const TVec3<>& center = setup.cells[stackCenter].centerVertex.xyz;
 			UINT32 current;
 			while (op.stacksLeft >> current)
@@ -1781,8 +1781,8 @@ namespace World
 			Grid::high.GenerateVolume(Sphere<>(worldCenter, radius), volume);
 			foreach(volume.coverage, c)
 			{
-				c->range.start = vmax(c->range.start, gridCenter.layer);
-				c->range.end = vmax(c->range.end, gridCenter.layer);
+				c->range.start = M::vmax(c->range.start, gridCenter.layer);
+				c->range.end = M::vmax(c->range.end, gridCenter.layer);
 			}
 			ApplyVolume(v, changeBy, seq);
 		}
@@ -1794,7 +1794,7 @@ namespace World
 
 		#ifdef _DEBUG
 		{
-			UINT32 crc = CRC32::getChecksum(volume.coverage.pointer(),volume.coverage.GetContentSize());
+			UINT32 crc = CRC32::Sequence().Append(volume.coverage.pointer(),volume.coverage.GetContentSize()).Finish();
 			LogEvent(EventSignificance::Debug,"Applying sensory change ("+String(changeBy)+"), using descriptor with "+String(volume.coverage.Count())+" stack(s), crc="+IntToHex((int)crc,8));	
 		}
 
@@ -1853,11 +1853,11 @@ namespace World
 			Translucent = 0x4
 		};
 
-		const Grid::HCellIdU center(Grid::high.Locate(worldCenter),vmin(Grid::CellStack::Range-1, Grid::CellStack::ToLayer( Grid::HeightFromRadius(Vec::length( worldCenter )) )));
+		const Grid::HCellIdU center(Grid::high.Locate(worldCenter),M::vmin(Grid::CellStack::Range-1, Grid::CellStack::ToLayer( Grid::HeightFromRadius(Vec::length( worldCenter )) )));
 
-		static Array2D<BYTE> user(Grid::HighSetup::GridType::CellCount,Grid::CellStack::Range,0);
+		static Ctr::Array2D<BYTE> user(Grid::HighSetup::GridType::CellCount,Grid::CellStack::Range,0);
 
-		static Buffer0<Grid::HCellIdU>	marked;
+		static Ctr::Buffer0<Grid::HCellIdU>	marked;
 		marked.Clear();
 
 		{
@@ -1865,7 +1865,7 @@ namespace World
 			cell = Visited | Visible | Translucent;	//is visible
 			marked << center;
 		}
-		Queue<Grid::HCellIdU>	work;
+		Ctr::Queue<Grid::HCellIdU>	work;
 		Grid::high.VisitNeighborsOf(center,[&work](const Grid::HCellIdU&c)
 		{
 			work << c;
@@ -1879,7 +1879,7 @@ namespace World
 				continue;
 			//auto&c = v.cellStack[current.stackID].volumeCell[current.layer];
 			const TVec3<>c3 = Grid::ToWorld(current);
-			if (Vec::quadraticDistance(c3,worldCenter) > sqr(radius))
+			if (Vec::quadraticDistance(c3,worldCenter) > M::sqr(radius))
 				continue;
 
 			float3 d03 = c3-worldCenter;

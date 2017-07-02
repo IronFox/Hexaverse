@@ -278,7 +278,7 @@ namespace Test
 					if (random.NextBool())
 						vec.level[i] = 0;
 					else
-						vec.level[i] = cubic(random.Next(100));
+						vec.level[i] = Math::cubic(random.Next(100));
 				}
 
 				Protocol::VerifySerialization(vec);
@@ -332,7 +332,7 @@ namespace Test
 
 		//Objects::PTower prototype = To<Objects::Tower>::DynamicCast( Objects::GetPrototypeByName(ConstName::Type_ArtilleryTower));
 
-		Buffer0<TVec4<> > trajectory;
+		Ctr::Buffer0<TVec4<> > trajectory;
 		TVec3<> impactAt;
 		Grid::HCellIdI impactCell;
 		auto turret = &Objects::Component::artillery;
@@ -602,7 +602,7 @@ namespace Test
 		ASSERT__(mine->IsEnabled());
 		ASSERT__(!plant->IsEnabled());
 
-		Buffer0<Objects::Choice> choices;
+		Ctr::Buffer0<Objects::Choice> choices;
 		Objects::TChoiceVisualization vis;
 
 		for (int i = 0; i < 100; i++)

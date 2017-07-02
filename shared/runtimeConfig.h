@@ -39,8 +39,8 @@ namespace RuntimeConfig
 		bool		AnySet();
 		bool		Set(ConstName, int);
 		count_t		Get(ConstName, bool ignoreEnabledState=false);
-		void		Export(Array<std::pair<UINT16,UINT16> >&);
-		void		Import(const Array<std::pair<UINT16,UINT16> >&);
+		void		Export(Ctr::Array<std::pair<UINT16,UINT16> >&);
+		void		Import(const Ctr::Array<std::pair<UINT16,UINT16> >&);
 	}
 
 	#ifndef CLIENT

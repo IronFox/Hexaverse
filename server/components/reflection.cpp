@@ -400,7 +400,7 @@ namespace Reflection
 			virtual	bool	Set(const String&value)	override
 			{
 				String old = ConvertToString();
-				static Array<String>vehicleTurretNames;
+				static Ctr::Array<String>vehicleTurretNames;
 
 				explode(',', value, vehicleTurretNames);
 				foreach (vehicleTurretNames,t)
@@ -834,10 +834,10 @@ namespace Reflection
 				String help = child->inner_content.trim();
 				if (help.IsNotEmpty())
 				{
-					static Array<String>	lines;
+					static Ctr::Array<String>	lines;
 					static StringBuffer		fused;
 					fused.Clear();
-					explodeCallback(isNewline<char>,help,lines);
+					explodeCallback(IsNewline<char>,help,lines);
 					//wrap(help,80,lines);
 					foreach (lines,line)
 					{
@@ -1262,7 +1262,7 @@ namespace Reflection
 			outBuffer <<'.'<<nl;
 		}
 
-		static Array<String>	lines;
+		static Ctr::Array<String>	lines;
 		wrap(outBuffer.CopyToString(),80,lines);
 		foreach (lines,line)
 		{

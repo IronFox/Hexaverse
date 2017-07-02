@@ -45,7 +45,7 @@ TwisterRandom		random;
 namespace ApplicationInterface
 {
 
-	void	SignalOperationLacksResources(const Objects::WorldEntity&e, const ArrayRef<Objects::Resource>&resources, float atTime)
+	void	SignalOperationLacksResources(const Objects::WorldEntity&e, const Ctr::ArrayRef<Objects::Resource>&resources, float atTime)
 	{
 		Network::PClient*cl = Network::playerMap.QueryPointer(e.owner);
 		if (!cl && Network::spectators.IsEmpty())
@@ -396,8 +396,8 @@ namespace ApplicationInterface
 		explosion.timestamp.rightNow = false;
 
 		//static GenericHashSet<Objects::OwnerParameter,Objects::OwnerHash>	map;
-		static Buffer0<Objects::OwnerParameter>	canSee;
-		static Buffer0<Network::PClient>	clientsCanSee;
+		static Ctr::Buffer0<Objects::OwnerParameter>	canSee;
+		static Ctr::Buffer0<Network::PClient>	clientsCanSee;
 
 		bool allSee = isDoomsday && RuntimeConfig::doomsdayWeapons == RuntimeConfig::DoomsdayWeapons::Expose;
 
@@ -545,12 +545,12 @@ EnumerationType	GetType(Config::Context*context, const String&path)
 
 
 
-Semaphore mainThreadDone;
+Sys::Semaphore mainThreadDone;
 
 
 void TerminateNow(bool isMain)
 {
-	static Mutex mutex;
+	static Sys::Mutex mutex;
 	mutex.lock();
 		static volatile bool terminated = false;
 		if (terminated)
@@ -970,7 +970,7 @@ int main( int argc, const char* argv[])
 
 		Reflection::state.DefineCommand("/World/showPlanetTypes",(CLI::Command::function0_t)[]()
 		{
-			Array<World::TPlanetIniFile>	planetIniFiles;
+			Ctr::Array<World::TPlanetIniFile>	planetIniFiles;
 			World::GetAvailablePlanetIniFiles(planetIniFiles);
 
 			CLI::println("-");
@@ -1042,7 +1042,7 @@ int main( int argc, const char* argv[])
 			Riff::File a,b;
 			ASSERT__(a.Open(PathString("test0."+FileIO::savFileExtension).c_str()));
 			ASSERT__(b.Open(PathString("test1."+FileIO::savFileExtension).c_str()));
-			Buffer<Riff::TID>	stack;
+			Ctr::Buffer<Riff::TID>	stack;
 			FileIO::Compare(a,b,stack);
 
 		}
@@ -1203,7 +1203,7 @@ int main( int argc, const char* argv[])
 
 			//#ifndef _DEBUG
 			{
-				static Buffer0<TCP::PPeer>	disconnect;
+				static Ctr::Buffer0<TCP::PPeer>	disconnect;
 				Network::server.VisitAllPeers([](const TCP::PPeer&peer)
 				{
 					if (timer.GetSecondsSince(peer->GetLastPackageTime()) > 30.f)
@@ -1217,7 +1217,7 @@ int main( int argc, const char* argv[])
 				disconnect.Clear();
 
 
-				static Buffer0<Network::PClient>	clientDump;
+				static Ctr::Buffer0<Network::PClient>	clientDump;
 				for (const auto&p : Network::activePlayersAndSpectators)
 				{
 					if (p->peer.expired())

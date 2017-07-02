@@ -22,7 +22,7 @@ namespace ApplicationInterface
 {
 #ifdef CLIENT
 	
-	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick);
+	bool	DirectTo(const Objects::PWorldEntity&v, const Ctr::ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick);
 	void	SignalChoiceIntersection(const Objects::PWorldEntity&e,const Grid::LCellIdI&c, Objects::CursorMode mode, const Objects::PMobileEntity&deployingWhat);
 	void	SignalRoundEnd();
 	void	SignalUndoRoundEnd();
@@ -30,7 +30,7 @@ namespace ApplicationInterface
 	bool	ShouldSignalRoundEnd();
 	bool	CanChangeRoundState();
 	void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, ConstName parameterName);
-	void	SignalTerrainModification(const Objects::PVehicle&v,Objects::CursorMode activeCursorMode,const Array<Grid::HCellIdI>&selection);
+	void	SignalTerrainModification(const Objects::PVehicle&v,Objects::CursorMode activeCursorMode,const Ctr::Array<Grid::HCellIdI>&selection);
 	void	SignalDropLastTask(const Objects::PWorldEntity&v);
 	void	SignalDropAllTasks(const Objects::PWorldEntity&v);
 	void	SignalDropSafeTasks(const Objects::PWorldEntity&v);
@@ -94,7 +94,7 @@ namespace ApplicationInterface
 	void	SignalOwnershipChange(const Objects::PWorldEntity&e,const Objects::OwnerParameter&target, float t);
 	void	SignalNexusControlChange(const Objects::PFaction&f);
 	void	SignalChainReactionExplosion(const Grid::LCellIdI&center, float radius, int damageLevel, float atTime);
-	void	SignalOperationLacksResources(const Objects::WorldEntity&, const ArrayRef<Objects::Resource>&resources, float atTime);
+	void	SignalOperationLacksResources(const Objects::WorldEntity&, const Ctr::ArrayRef<Objects::Resource>&resources, float atTime);
 	/**
 	Signals that a new faction has been created or an existing one has been removed.
 	Also replacement as happens when the nexus faction is recreated.

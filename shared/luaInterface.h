@@ -6,6 +6,8 @@
 #include <container/buffer.h>
 #include <functional>
 
+using namespace DeltaWorks;
+
 struct lua_State;
 
 int LuaRun (int argc, const char *argv[]);

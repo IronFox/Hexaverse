@@ -366,7 +366,7 @@ namespace Receiver
 
 			if (ConfigurationMode::IsActive())
 			{
-				Array<String>	planetNames;
+				Ctr::Array<String>	planetNames;
 				World::GetAvailablePlanetNames(planetNames);
 				NETA(Package::NetString<256>) names;
 				names.SetSize(planetNames.Count());
@@ -564,7 +564,7 @@ namespace Receiver
 			Protocol::Timestamp	timestamp;
 			timestamp.rightNow = true;
 
-			static Buffer0<UINT32>	final;
+			static Ctr::Buffer0<UINT32>	final;
 			final.Clear();
 			auto&discovered = client->faction->knownResources.resourcesDiscovered;
 			for (index_t i = 0; i < discovered.Count(); i++)

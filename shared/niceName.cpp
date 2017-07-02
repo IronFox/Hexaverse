@@ -7,7 +7,7 @@
 namespace NiceName
 {
 
-	static Buffer<String>	adjectives,nouns;
+	static Ctr::Buffer<String>	adjectives,nouns;
 	static UINT64	totalCombinations = 0;
 
 	#ifdef CLIENT

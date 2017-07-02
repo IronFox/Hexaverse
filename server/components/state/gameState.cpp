@@ -57,7 +57,7 @@ namespace Game
 			bool		enableAI = false;
 			UINT32		roundsPerResearchPoint=10;
 			float		threatEstimationFactor = 1.f;
-			Array<Objects::Component::Turret*>	vehicleTurrets;
+			Ctr::Array<Objects::Component::Turret*>	vehicleTurrets;
 		}
 	}
 	
@@ -67,7 +67,7 @@ namespace Game
 	{
 		void		UpdateResourceCoverage(const Objects::PFaction&f, const Grid::LCellIdI&center,float range, const Protocol::Timestamp&timestamp)
 		{
-			static Buffer0<UINT32>	changed;
+			static Ctr::Buffer0<UINT32>	changed;
 			if (!f)
 				return;
 			f->knownResources.Update(center,range,changed);
@@ -1000,7 +1000,7 @@ namespace Game
 		if (h == Objects::badHeight)
 			h = 0;	//just spawn it near median
 		static const int R = 5;
-		h = clamp(h,-Grid::CellStack::HalfRange + R + 1,Grid::CellStack::HalfRange - R - 2);
+		h = M::clamp(h,-Grid::CellStack::HalfRange + R + 1,Grid::CellStack::HalfRange - R - 2);
 
 		location.height = h;
 		std::shared_ptr<Objects::NexusPort> port = To<Objects::NexusPort>::Cast(
@@ -1075,7 +1075,7 @@ namespace Game
 
 				Grid::low.UpdatePlanarDistanceField(pole,R+1,field);
 
-				Buffer0<index_t>	distances;
+				Ctr::Buffer0<index_t>	distances;
 
 
 				for (index_t i = 0; i < field.NumEntries; i++)
@@ -1104,7 +1104,7 @@ namespace Game
 					}
 				//	Grid::TagLowCluster(rebuild,Grid::LCellIdI(i,h2-1));
 				}
-				Buffer0<Objects::PWorkingStructure>	alwaysOn;
+				Ctr::Buffer0<Objects::PWorkingStructure>	alwaysOn;
 				for (index_t i : distances)
 				{
 					ASSERT_LESS_OR_EQUAL__(field.distance[i],R);

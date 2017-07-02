@@ -45,7 +45,7 @@ namespace World
 	bool					DeltaContainer::Process(World::Data&clientData,bool noDelta/*=false*/)
 	{
 		numDeltas = 0;
-		Array<Grid::CellStack::TTypeDeltaBlock>	blocks;
+		Ctr::Array<Grid::CellStack::TTypeDeltaBlock>	blocks;
 			
 		float t = 0;
 		const bool rightNow = RuntimeConfig::IsInAnyCommandPhase();
@@ -179,7 +179,7 @@ namespace World
 			{
 				BYTE	volumeCell[Grid::CellStack::Range];
 			};
-			static Array<TStack>	tempStacks;
+			static Ctr::Array<TStack>	tempStacks;
 			tempStacks.SetSize(Grid::HighSetup::GridType::CellCount);
 			for (UINT32 i = 0; i < Grid::HighSetup::GridType::CellCount; i++)
 			{
@@ -404,7 +404,7 @@ namespace World
 					{
 						Objects::PTurretBase base = e->GetTurretBase();
 						if (base)
-							d2 = sqr(sqrt(d2) - base->turret->horizontalAttackRange(e->owner));
+							d2 = M::sqr(sqrt(d2) - base->turret->horizontalAttackRange(e->owner));
 
 						dist2 = std::min(dist2, d2);
 					}
@@ -423,7 +423,7 @@ namespace World
 				static const float PlacementVariance = 0.1f;	//should not exceed 0.1f
 
 				if (Objects::Faction::all.IsEmpty())
-					dist2 = dist2 > MinimumNexusBaseDistance ? sqr(random.NextFloat(1,2)) : 0.f;	//0 should imply to not take this location
+					dist2 = dist2 > MinimumNexusBaseDistance ? M::sqr(random.NextFloat(1,2)) : 0.f;	//0 should imply to not take this location
 				else
 					dist2 *= pow(1.f - PlacementVariance,random.NextFloat(-1,1));	//vary randomly
 
@@ -490,7 +490,7 @@ namespace World
 	}
 
 
-	void		AppendAvailablePlanetInitFilesFrom(bool isFactoryDefault, FileSystem::Folder  folder, Buffer0<TPlanetIniFile,Swap>&outList)
+	void		AppendAvailablePlanetInitFilesFrom(bool isFactoryDefault, FileSystem::Folder  folder, Ctr::Buffer0<TPlanetIniFile,Swap>&outList)
 	{
 		if (!folder.IsValidLocation())
 		{
@@ -520,14 +520,14 @@ namespace World
 	}
 
 
-	void		GetAvailablePlanetIniFiles(Array<TPlanetIniFile>&rsOut)
+	void		GetAvailablePlanetIniFiles(Ctr::Array<TPlanetIniFile>&rsOut)
 	{
-		Buffer0<TPlanetIniFile,Swap> files;
+		Ctr::Buffer0<TPlanetIniFile,Swap> files;
 		
 		AppendAvailablePlanetInitFilesFrom(false, RuntimeConfig::ConfigFile("config/myPlanets"),files);
 		AppendAvailablePlanetInitFilesFrom(true,FileSystem::Folder().FindFolder("config/myPlanets"),files);
 
-		GenericHashTable<String,TPlanetIniFile,StdHash,Swap,Swap>	merged;
+		Ctr::GenericHashTable<String,TPlanetIniFile,Ctr::StdHash,Swap,Swap>	merged;
 		foreach (files,f)
 		{
 			
@@ -545,13 +545,13 @@ namespace World
 
 		merged.exportTo(rsOut);
 
-		ByOperator::QuickSort(rsOut);
+		Sorting::ByOperator::QuickSort(rsOut);
 	}
 
 
-	void			GetAvailablePlanetNames(Array<String>&rsOut)
+	void			GetAvailablePlanetNames(Ctr::Array<String>&rsOut)
 	{
-		Array<TPlanetIniFile>	files;
+		Ctr::Array<TPlanetIniFile>	files;
 		GetAvailablePlanetIniFiles(files);
 		rsOut.SetSize(files.Count());
 		for (index_t i = 0; i < files.Count(); i++)

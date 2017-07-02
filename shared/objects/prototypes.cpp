@@ -7,14 +7,14 @@
 
 namespace Objects
 {
-	Buffer0<PStructure>			structurePrototypes;
+	Ctr::Buffer0<PStructure>			structurePrototypes;
 	#ifndef NO_SATELLITES
-		Buffer0<PSatellite>			satellitePrototypes;
+		Ctr::Buffer0<PSatellite>			satellitePrototypes;
 	#endif
 	namespace Component
 	{
-		Buffer0<VehicleBase*>		baseComponents;
-		Buffer0<Turret*>			vehicleTurretComponents,
+		Ctr::Buffer0<VehicleBase*>		baseComponents;
+		Ctr::Buffer0<Turret*>			vehicleTurretComponents,
 									allTurretComponents;
 	}
 

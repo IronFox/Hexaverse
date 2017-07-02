@@ -12,8 +12,8 @@
 
 namespace Objects
 {
-	Array<PVehicle>			vehicleGrid(Grid::LowSetup::GridType::CellCount * Grid::CellStack::Range);
-	Array<PStructure>		structureGrid(Grid::LowSetup::GridType::CellCount * Grid::CellStack::Range);
+	Ctr::Array<PVehicle>			vehicleGrid(Grid::LowSetup::GridType::CellCount * Grid::CellStack::Range);
+	Ctr::Array<PStructure>		structureGrid(Grid::LowSetup::GridType::CellCount * Grid::CellStack::Range);
 
 
 	
@@ -180,7 +180,7 @@ namespace Objects
 				//	return;
 				//if (d2 < sqr(turret->explosionRadius))
 				//	return;
-				static Buffer0<TVec4<> > trajectory;
+				static Ctr::Buffer0<TVec4<> > trajectory;
 				Grid::HCellIdI ic;
 				TVec3<> iat;
 				float angle;
@@ -239,9 +239,9 @@ namespace Objects
 			float terrainExplosionRadius = float(explosionRadius)-0.5f;
 			//float coreRadius = core*core;
 			float outerRadius = explosionRadius*explosionRadius;
-			static Buffer0<PWorldEntity>	allLivingAffected;
-			static Buffer0<PStructure>		affectedStructures;
-			static Buffer0<PVehicle>		affectedVehicles;
+			static Ctr::Buffer0<PWorldEntity>	allLivingAffected;
+			static Ctr::Buffer0<PStructure>		affectedStructures;
+			static Ctr::Buffer0<PVehicle>		affectedVehicles;
 			ForeachWorldEntity([center,outerRadius,damageLevel,&atTime](const PWorldEntity e)
 			{
 				if (e->IsIndestructible())
@@ -368,7 +368,7 @@ namespace Objects
 							center,explosionRadius,true,false,atTime);
 
 			float outerRadius = explosionRadius*explosionRadius;
-			static Buffer0<PWorldEntity>	toDisable;
+			static Ctr::Buffer0<PWorldEntity>	toDisable;
 
 
 			ForeachWorldEntity([center,outerRadius,damageLevel,&atTime](const PWorldEntity e)
@@ -429,8 +429,8 @@ namespace Objects
 		const auto& n = Grid::low.grid.GetCell(cellID.stackID).neighborhood;
 
 		#ifndef CLIENT
-			int lower = clamp(cellID.height - 1, Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight),
-				upper = clamp(cellID.height + 1, Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight);
+			int lower = Math::clamp(cellID.height - 1, Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight),
+				upper = Math::clamp(cellID.height + 1, Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight);
 			for (int h = lower; h <= upper; h++)
 			{
 				UINT32 layer = Grid::CellStack::ToLayer(h);
@@ -534,7 +534,7 @@ namespace Objects
 
 		
 	template <typename T>
-		void				RemoveFromGrid(Array<T>&grid, const Grid::LCellIdI&location, const T&object)
+		void				RemoveFromGrid(Ctr::Array<T>&grid, const Grid::LCellIdI&location, const T&object)
 		{
 			ASSERT__(object->isInsertedIntoGrid);
 			index_t at = CellToGridIndex(location);
@@ -572,7 +572,7 @@ namespace Objects
 			object->isInsertedIntoGrid = false;
 		}
 	template <typename T>
-		void				InsertIntoGrid(Array<T>&grid, const Grid::LCellIdI&location, const T&object)
+		void				InsertIntoGrid(Ctr::Array<T>&grid, const Grid::LCellIdI&location, const T&object)
 		{
 			ASSERT__(!object->isInsertedIntoGrid);
 			Grid::AssertIsValid(location);
@@ -587,12 +587,12 @@ namespace Objects
 			object->isInsertedIntoGrid = true;
 		}
 	template <typename T>
-		T					QueryGrid(const Array<T>&grid, const Grid::LCellIdI&location)
+		T					QueryGrid(const Ctr::Array<T>&grid, const Grid::LCellIdI&location)
 		{
 			return grid[CellToGridIndex(location)];
 		}
 	template <typename T>
-		T					QueryGrid(const Array<T>&grid, const Grid::LCellIdU&location)
+		T					QueryGrid(const Ctr::Array<T>&grid, const Grid::LCellIdU&location)
 		{
 			return grid[CellToGridIndex(location)];
 		}
@@ -697,7 +697,7 @@ namespace Objects
 
 
 	void	GetProductionChoices(const WorldEntity*producer,Component::VehicleBase*production,
-									BasicBuffer<Choice>&choices)
+									Ctr::BasicBuffer<Choice>&choices)
 	{
 		choices.Clear();	
 		const auto&n = Grid::low.grid.GetCell(producer->location.stackID).neighborhood;
@@ -751,7 +751,7 @@ namespace Objects
 
 
 	
-	void		GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis)
+	void		GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, Ctr::BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis)
 	{
 		const World::Data&world = 
 		#ifdef CLIENT
@@ -1010,7 +1010,7 @@ namespace Objects
 
 
 
-	void					GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis)
+	void					GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, Ctr::BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis)
 	{
 		//showArrow = false;		//why were these here...?
 		//hasArrowCellTarget = false;
@@ -1777,7 +1777,7 @@ namespace Objects
 
 		count_t rest = total - airCount - waterCount - roadCount;
 
-		return Round(	float(hindrance.road) * float(roadCount) / float(total) + 
+		return M::Round(float(hindrance.road) * float(roadCount) / float(total) + 
 						float(hindrance.air) * float(airCount) / float(total) + 
 						float(hindrance.water) * float(waterCount) / float(total) + 
 						float(hindrance.other) * float(rest) / float(total));
@@ -1793,13 +1793,13 @@ namespace Objects
 
 
 	bool AppendShortestPath(const Vehicle*vehicle, const Grid::LCellIdI&from,
-							const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath,
+							const Grid::LCellIdI&to, Ctr::BasicBuffer<PathNode>&oPath,
 							bool ignoreFriendlyVehiclesOnRoute, bool failIfLimitReached/*=true*/, bool*outWouldFailDueToLimitReached/*=nullptr*/);
 
 	bool AppendShortestPathI(const Vehicle*vehicle, const Grid::LCellIdI&from,
-							const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath, bool failIfLimitReached/*=true*/, bool*outWouldFailDueToLimitReached/*=nullptr*/)
+							const Grid::LCellIdI&to, Ctr::BasicBuffer<PathNode>&oPath, bool failIfLimitReached/*=true*/, bool*outWouldFailDueToLimitReached/*=nullptr*/)
 	{
-		static Buffer0<PathNode>	routeI, route;
+		static Ctr::Buffer0<PathNode>	routeI, route;
 		routeI.Clear();
 		route.Clear();
 		bool hasI = AppendShortestPath(vehicle,from,to,routeI,true,failIfLimitReached,outWouldFailDueToLimitReached);
@@ -1883,7 +1883,7 @@ namespace Objects
 
 
 	bool AppendShortestPath(const Vehicle*vehicle, const Grid::LCellIdI&from,
-							const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath,
+							const Grid::LCellIdI&to, Ctr::BasicBuffer<PathNode>&oPath,
 							bool ignoreFriendlyVehiclesOnRoute, bool failIfLimitReached/*=true*/, bool*outWouldFailDueToLimitReached/*=nullptr*/)
 	{
 		bool inRange = true;
@@ -1917,11 +1917,11 @@ namespace Objects
 			int		nodeCosts;
 		};
 
-		static Array<TNode>	buffer(cellCount);
+		static Ctr::Array<TNode>	buffer(cellCount);
 		TNode empty = {0xFFFFFFFF,0xFFFFFFFF,0};
 		buffer.Fill(empty);
 
-		PriorityQueue<index_t,int>	queue;
+		Ctr::PriorityQueue<index_t,int>	queue;
 		#undef IDOF
 		#define IDOF(CELL)	(Grid::CellStack::ToLayer( (CELL).height ) * Grid::LowSetup::GridType::CellCount + (CELL).stackID)
 		#undef DESCOF
@@ -1961,7 +1961,7 @@ namespace Objects
 
 			if (cellID == to)
 			{
-				static Buffer<PathNode>	outPath;
+				static Ctr::Buffer<PathNode>	outPath;
 				outPath.Clear();
 
 				while (current < cellCount)
@@ -2024,7 +2024,7 @@ namespace Objects
 				UINT32	backLink, minDistance;
 			};
 
-			static Array<TNode>	buffer(cellCount);
+			static Ctr::Array<TNode>	buffer(cellCount);
 			TNode empty = {0xFFFFFFFF,0xFFFFFFFF};
 			buffer.Fill(empty);
 
@@ -2119,7 +2119,7 @@ namespace Objects
 		TReachableNode empty = {0xFFFFFFFF,0xFFFFFFFF,0,false,InvalidIndex};
 		buffer.Fill(empty);
 
-		PriorityQueue<index_t,int>	queue;
+		Ctr::PriorityQueue<index_t,int>	queue;
 		#undef IDOF
 		#define IDOF(CELL)	(Grid::CellStack::ToLayer( (CELL).height ) * Grid::LowSetup::GridType::CellCount + (CELL).stackID)
 		#undef DESCOF
@@ -2260,7 +2260,7 @@ namespace Objects
 	}
 
 	
-	bool AppendShortestConstructionPath(const Vehicle*vehicle, bool ignoreWater, bool flat, const Grid::LCellIdI&from, Grid::LCellIdI to, BasicBuffer<Grid::LCellIdI>&oPath)
+	bool AppendShortestConstructionPath(const Vehicle*vehicle, bool ignoreWater, bool flat, const Grid::LCellIdI&from, Grid::LCellIdI to, Ctr::BasicBuffer<Grid::LCellIdI>&oPath)
 	{
 		if (flat)
 			to.height = from.height;
@@ -2292,13 +2292,13 @@ namespace Objects
 		};
 		
 
-		static Array<TNode>	buffer(cellCount);
-		static Array<bool> flatBuffer(Grid::LowSetup::GridType::CellCount);
+		static Ctr::Array<TNode>	buffer(cellCount);
+		static Ctr::Array<bool> flatBuffer(Grid::LowSetup::GridType::CellCount);
 		TNode empty = {0xFFFFFFFF,0xFFFFFFFF};
 		buffer.Fill(empty);
 		flatBuffer.Fill(false);
 
-		PriorityQueue<index_t,int>	queue;
+		Ctr::PriorityQueue<index_t,int>	queue;
 		#undef IDOF
 		#define IDOF(CELL)	(Grid::CellStack::ToLayer( (CELL).height ) * Grid::LowSetup::GridType::CellCount + (CELL).stackID)
 		#undef DESCOF
@@ -2325,7 +2325,7 @@ namespace Objects
 			flatBuffer[cellID.stackID] = true;
 			if (cellID == to)
 			{
-				static Buffer<Grid::LCellIdI>	outPath;
+				static Ctr::Buffer<Grid::LCellIdI>	outPath;
 				outPath.Clear();
 				if (!world.LowCellIsClear(to))
 				{
@@ -2389,7 +2389,7 @@ namespace Objects
 	}
 
 	
-	bool AppendShortestDirectPath(const Grid::LCellIdI&from, const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath, bool penaltizeVerticalMotion/*=true*/, bool constrainVerticalMotion/*=true*/)
+	bool AppendShortestDirectPath(const Grid::LCellIdI&from, const Grid::LCellIdI&to, Ctr::BasicBuffer<PathNode>&oPath, bool penaltizeVerticalMotion/*=true*/, bool constrainVerticalMotion/*=true*/)
 	{
 		//Timer::Time t0 = timer.Now();
 
@@ -2404,11 +2404,11 @@ namespace Objects
 			UINT32	backLink, minDistance;
 		};
 
-		static Array<TNode>	buffer(cellCount);
+		static Ctr::Array<TNode>	buffer(cellCount);
 		TNode empty = {0xFFFFFFFF,0xFFFFFFFF};
 		buffer.Fill(empty);
 
-		PriorityQueue<index_t,int>	queue;
+		Ctr::PriorityQueue<index_t,int>	queue;
 		//Queue<index_t>	queue;
 		#undef IDOF
 		#define IDOF(CELL)	(Grid::CellStack::ToLayer( (CELL).height ) * Grid::LowSetup::GridType::CellCount + (CELL).stackID)
@@ -2436,7 +2436,7 @@ namespace Objects
 
 			if (cellID == to)
 			{
-				static Buffer<PathNode>	outPath;
+				static Ctr::Buffer<PathNode>	outPath;
 				outPath.Clear();
 
 				while (current < cellCount)
@@ -2493,7 +2493,7 @@ namespace Objects
 	}
 
 	
-	bool AppendShortestDirectSatellitePath(const Grid::LCellIdI&from, const UINT32 to, BasicBuffer<PathNode>&oPath)
+	bool AppendShortestDirectSatellitePath(const Grid::LCellIdI&from, const UINT32 to, Ctr::BasicBuffer<PathNode>&oPath)
 	{
 		//Timer::Time t0 = timer.Now();
 
@@ -2506,11 +2506,11 @@ namespace Objects
 			UINT32	backLink, minDistance;
 		};
 
-		static Array<TNode>	buffer(cellCount);
+		static Ctr::Array<TNode>	buffer(cellCount);
 		TNode empty = {0xFFFFFFFF,0xFFFFFFFF};
 		buffer.Fill(empty);
 
-		PriorityQueue<UINT32,int>	queue;
+		Ctr::PriorityQueue<UINT32,int>	queue;
 		//Queue<index_t>	queue;
 
 		buffer[from.stackID].minDistance = 0;
@@ -2533,7 +2533,7 @@ namespace Objects
 
 			if (current == to)
 			{
-				static Buffer<PathNode>	outPath;
+				static Ctr::Buffer<PathNode>	outPath;
 				outPath.Clear();
 
 				while (current < cellCount)
@@ -2778,7 +2778,7 @@ namespace Objects
 	#else
 		bool					ProcessChoiceIntersection(const PWorldEntity&e, const Grid::LCellIdI&choice,  Vehicle::mode_t mode, const PMobileEntity&deployWhat)
 		{
-			Buffer0<Choice>	movementChoices;
+			Ctr::Buffer0<Choice>	movementChoices;
 			TChoiceVisualization vis;
 			GetChoices(e,deployWhat,mode,movementChoices,vis);
 

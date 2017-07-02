@@ -235,17 +235,17 @@ namespace Objects
 		#else
 
 			CryptographicID	accessToken;
-			Buffer0<WMobileEntity>		allMobiles,	//!< All mobiles registered in the world
+			Ctr::Buffer0<WMobileEntity>		allMobiles,	//!< All mobiles registered in the world
 										storedMobiles;	//!< All mobile entities registered stored in some other entity. allMobiles and storedMobiles are exclusive of each other
 			#ifndef NO_SATELLITES
 				Buffer0<WSatellite>		satellites;
 				Buffer0<WSkyHub>		skyHubs;	//overlaps with satellites
 			#endif
-			Buffer0<WStructure>			structures;
+			Ctr::Buffer0<WStructure>			structures;
 
-			Buffer0<WTower>				towers;
+			Ctr::Buffer0<WTower>				towers;
 
-			static Buffer0<WFaction>	all;
+			static Ctr::Buffer0<WFaction>	all;
 			static PFaction				nexus;
 
 			static PFaction				FindByID(const TUniqueID&);
@@ -278,10 +278,10 @@ namespace Objects
 			bool				isDead = false;
 			UnitClass			hasUnitClasses = UnitClass::None;
 
-			Buffer0<Marker,Strategy::Adopt>		markers;
-			GenericHashTable<TUniqueID, index_t>	markerMap,referenceMap;
+			Ctr::Buffer0<Marker,Strategy::Adopt>		markers;
+			Ctr::GenericHashTable<TUniqueID, index_t>	markerMap,referenceMap;
 
-			GenericHashTable<PWorldEntity,float,SharedPtrHash>	lostVisualAt,//!< Used for entities that dropped out of contact during the same round
+			Ctr::GenericHashTable<PWorldEntity,float,SharedPtrHash>	lostVisualAt,//!< Used for entities that dropped out of contact during the same round
 															gainedVisualAt;
 
 			struct SeeingReference
@@ -290,7 +290,7 @@ namespace Objects
 
 
 			};
-			GenericHashTable<PWorldEntity, SeeingReference, SharedPtrHash>	seeing;
+			Ctr::GenericHashTable<PWorldEntity, SeeingReference, SharedPtrHash>	seeing;
 
 
 
@@ -363,7 +363,7 @@ namespace Objects
 			bool		SignalAppearance(const PWorldEntity&, float&t, bool cascade=true, bool stack=true, index_t incStackBy=1);
 			void		SignalDisappearance(const PWorldEntity&, float&t, bool force = false, bool signalConnectedClient=true);
 
-			void		RegisterSensorCreation(const World::Sensor&, int sensorHeight, float&t, Buffer0<PWorldEntity>*newContacts = nullptr);
+			void		RegisterSensorCreation(const World::Sensor&, int sensorHeight, float&t, Ctr::Buffer0<PWorldEntity>*newContacts = nullptr);
 			void		RegisterSensorRemoval(const World::Sensor&, int sensorHeight, float&t);
 			void		RegisterSensorMotion(const World::Sensor&from, const World::Sensor&to, float&t);
 
@@ -380,7 +380,7 @@ namespace Objects
 			Marker&		CreateMarker(const TUniqueID&id, bool priveleged, Marker::Type type, const TUniqueID&referenceID, const TUniqueID&ownerReferenceID);
 			Marker*		FindMarker(const TUniqueID&markerID);
 			bool		DestroyMarker(const TUniqueID&markerID);
-			void		RestoreMarkers(const ArrayData<Marker>&source);
+			void		RestoreMarkers(const Ctr::ArrayData<Marker>&source);
 			Marker*		FindReferenceMarker(Marker::Type type, const TUniqueID&);
 
 			#ifdef ONE_COMPOUND_PER_FACTION

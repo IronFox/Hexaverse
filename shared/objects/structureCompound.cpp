@@ -233,7 +233,7 @@ namespace Objects
 			{
 				#ifdef _DEBUG
 					typedef std::pair<PStructure, ResourceVector>	EventResult;
-					static Buffer0<EventResult>	events;
+					static Ctr::Buffer0<EventResult>	events;
 					events.Clear();
 				#endif
 
@@ -311,7 +311,7 @@ namespace Objects
 		//	change.Negate();
 		//}
 
-		FullResourceVector Compound::GetVector(const Array<bool>&virtualEnabled) const
+		FullResourceVector Compound::GetVector(const Ctr::Array<bool>&virtualEnabled) const
 		{
 			ASSERT_EQUAL__(virtualEnabled.Count(),workingStructures.Count());
 
@@ -353,7 +353,7 @@ namespace Objects
 	Temporarily changes the structure's state to enabled without signalling the change or registering change.
 	This method must be kept in sync with RefreshState() auto-balancing strategy!
 	*/
-	bool				Compound::CanEnable( WorkingStructure*toEnable, String*outWhy/*=nullptr*/, Array<Resource>*outMissedResources/*=nullptr*/, bool ignoreCanEnable/*=false*/) const
+	bool				Compound::CanEnable( WorkingStructure*toEnable, String*outWhy/*=nullptr*/, Ctr::Array<Resource>*outMissedResources/*=nullptr*/, bool ignoreCanEnable/*=false*/) const
 	{
 		DBG_ASSERT_NOT_NULL__(toEnable);
 		if (toEnable->IsHibernating() || (!ignoreCanEnable && !toEnable->CanEnable()))

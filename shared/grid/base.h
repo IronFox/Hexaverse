@@ -2,7 +2,9 @@
 
 #include <math/vclasses.h>
 #include <fractal/segment_map.h>
-#include <fractal/interface.h>
+#include <fractal/geometry.h>
+
+using namespace DeltaWorks;
 
 #include "config.h"
 
@@ -156,7 +158,7 @@ public:
 	static bool IsIsolatedCorner(index_t stackID)	{DBG_ASSERT_LESS__(stackID,12); return CornerIsIsolated[stackID];}
 
 protected:
-	static void UpdateRadii(Array<TNetCell>&cells);
+	static void UpdateRadii(Ctr::Array<TNetCell>&cells);
 	static void	RadialInterpolation(const float3&v0, const float3&v1, float at, float3&out);
 	static void	RadialInterpolation(const float3&v0, const float3&v1, const float3&v2, float xat, float yat, float3&out);
 
@@ -320,7 +322,7 @@ public:
 	UINT32		CountFamilyMembers(family_t family) const;
 	UINT32		GetFamilyOffset(family_t family) const;
 
-	void		Construct(Array<TCellVertex>&vertices, Array<TNetCell>&cells);	//fourth component contains 0 for center vertices and 1 for outline vertices
+	void		Construct(Ctr::Array<TCellVertex>&vertices, Ctr::Array<TNetCell>&cells);	//fourth component contains 0 for center vertices and 1 for outline vertices
 
 };
 template<unsigned Exponent>
@@ -341,7 +343,7 @@ template <unsigned Exponent>
 
 		std::cout<<"Creating "<<fullMap.vertex_count<<"/"<<CellCount<<" cells ..."<<std::endl;
 
-		Fractal::makeSphereGeometry(geometry);
+		Fractal::MakeSphereGeometry(geometry);
 
 		index_t at[12] = { 0, 0, 0, 0, 0 };
 
@@ -879,11 +881,11 @@ struct TriangleKey
 
 
 template <unsigned Exponent>
-	void		GridSetup<Exponent>::Construct(Array<TCellVertex>&vertices, Array<TNetCell>&cells)
+	void		GridSetup<Exponent>::Construct(Ctr::Array<TCellVertex>&vertices, Ctr::Array<TNetCell>&cells)
 	{
 		cells.SetSize(CellCount);
-		Buffer<TCellVertex>	vtx;
-		GenericHashTable<TriangleKey, UINT32>	vtxMap;
+		Ctr::Buffer<TCellVertex>	vtx;
+		Ctr::GenericHashTable<TriangleKey, UINT32>	vtxMap;
 		for (index_t i = 0; i < CellCount; i++)
 		{
 			TCellVertex&v = vtx.Append();
