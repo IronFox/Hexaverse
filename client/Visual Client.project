@@ -6,7 +6,7 @@
 	<macro name="CLIENT"/>
 	<macro name="HAS_WINDOW"/>
 	<macro name="_SCL_SECURE_NO_WARNINGS" />
-	<referenceProject name="DeltaWorks" />
+	<referenceProject name="DW_Engine" />
 	<referenceProject name="lua" />
 	
 	<manifest>DeclareDPIAware.manifest</manifest>

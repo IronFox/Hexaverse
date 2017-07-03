@@ -4,10 +4,11 @@
 #include <math/vclasses.h>
 #include <math/matrix.h>
 
-using namespace DeltaWorks;
 
 namespace Objects
 {
+	using namespace DeltaWorks;
+	using namespace DeltaWorks::Math;
 
 
 

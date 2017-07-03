@@ -16,7 +16,6 @@
 #include <string/string_converter.h>
 #include <general/random.h>
 #include <image/converter/magic.h>
-#include <structure/mapping.h>
 #ifdef HAS_WINDOW
 	#include "./DX11/texture_font.h"
 #endif
@@ -95,7 +94,7 @@ Timer::Time applicationStart;
 
 
 //static Mutex mutex;
-SpinLock	eventLock;
+Sys::SpinLock	eventLock;
 #ifdef HAS_WINDOW
 
 	struct VisualEvent
@@ -3664,11 +3663,12 @@ int main( int argc, const char* argv[])
 	#ifdef HAS_WINDOW
 		GlobalEvents::invalidateObjectCache << ApplicationInterface::HandleLocalEntityStatusChange;
 		Objects::onSelectionChanged << ApplicationInterface::HandleLocalSelectionChange;
+
+		Engine::GlobalAspectConfiguration::worldZIsUp = true;
 	#endif
 
 
 
-		Engine::GlobalAspectConfiguration::worldZIsUp = true;
 		
 		
 		//display.create(Engine::DisplayConfig("TerraLab");

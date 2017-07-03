@@ -275,7 +275,7 @@ namespace ScriptCache
 				{
 					count_t erase = entries.Count()-20;
 					LogEvent(EventClass::Preset::common,"ScriptCache: Found "+String(entries.Count())+" cache entries, exceeding max cache size by "+String(erase));
-					ByOperator::QuickSort(entries);
+					Sorting::ByOperator::QuickSort(entries);
 					for (index_t i = 0; i < erase; i++)
 					{
 						toDelete.Append().swap( entries[i].file );

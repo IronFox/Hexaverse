@@ -5,6 +5,7 @@
 #include <fractal/geometry.h>
 
 using namespace DeltaWorks;
+using namespace DeltaWorks::Math;
 
 #include "config.h"
 
