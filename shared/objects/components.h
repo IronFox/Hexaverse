@@ -140,8 +140,8 @@ namespace Objects
 			PClientAttachment				attachment;
 			CommandContainer				commands;
 			#ifdef HAS_WINDOW
-				Ctr::Array<Geometry>				parts;
-				OpenAL::Wave				ambientSound;	//sound used for ambience (25% volume, normal pitch), or motion (100% volume, increased pitch)
+				Ctr::Array<Geometry>		parts;
+				Engine::OpenAL::Wave		ambientSound;	//sound used for ambience (25% volume, normal pitch), or motion (100% volume, increased pitch)
 			#endif
 
 

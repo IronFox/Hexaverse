@@ -600,7 +600,7 @@ namespace UI
 				else
 					significance *= 0.8f;
 			}
-			UINT32 crc = CRC32::getChecksum(e->GetTypeName().c_str());
+			UINT32 crc = CRC32::Sequence().Append(e->GetTypeName().c_str(),e->GetTypeName().length()).Finish();
 			Random random(crc);
 			significance *= random.NextFloat(0.95f,1.07f);
 		}
@@ -1496,7 +1496,7 @@ namespace UI
 				}
 			});
 			context.collection.Clear();
-			ByComparator::QuickSort(context.commands,Custom::CollectionCommandCompare);
+			Sorting::ByComparator::QuickSort(context.commands,Custom::CollectionCommandCompare);
 			context.Refresh();
 		}
 

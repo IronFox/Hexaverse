@@ -1058,7 +1058,7 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 	}
 
 
-	class StorageThread : public ThreadObject
+	class StorageThread : public Sys::ThreadObject
 	{
 	public:
 		//Image		image;
@@ -1307,7 +1307,7 @@ namespace ApplicationInterface
 		#ifdef HAS_WINDOW
 			if (!e->ambientSound.IsCreated())
 			{
-				OpenAL::WaveBuffer wbo = Objects::Renderer::GetAmbientSound(*e);
+				Engine::OpenAL::WaveBuffer wbo = Objects::Renderer::GetAmbientSound(*e);
 				//Renderer::GetAmbientSoundOf(e->GetTypeName(),e->GetCTypeName());
 				if (wbo.IsNotEmpty())
 				{

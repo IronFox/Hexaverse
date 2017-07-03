@@ -29,6 +29,9 @@ namespace Animation
 	float						projectileAt;	//[0,1], specifies where, along @a activeTrajectory, the projectile currently is
 	bool						projectileActive=false;
 
+
+	namespace OpenAL = Engine::OpenAL;
+
 	#ifdef HAS_WINDOW
 		Objects::Geometry			trajectoryGeometry;
 		DX11::InstructionBlock32	trajectoryVisualization;

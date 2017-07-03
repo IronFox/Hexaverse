@@ -2,6 +2,10 @@
 
 namespace VisualTerrain
 {
+
+	using namespace DeltaWorks;
+	using namespace DeltaWorks::Math;
+
 	class WaterCompiler
 	{
 	public:
@@ -32,7 +36,7 @@ namespace VisualTerrain
 		}
 
 
-		void	Compile(const index_t offset, const index_t end, THull<WaterVertex>&, SpinLock&lock);
+		void	Compile(const index_t offset, const index_t end, THull<WaterVertex>&, Sys::SpinLock&lock);
 		void	CompileLayer(	const index_t i, const UINT ih, const CellStack&stack,
 								const int clipH,const BaseGrid::TNetCell&cell,
 								const BaseGrid::TCellNeighborhood&neighborhood, bool localEMP);
@@ -323,7 +327,7 @@ namespace VisualTerrain
 	}
 
 
-	void	WaterCompiler::Compile(const index_t offset, const index_t end, THull<WaterVertex>&coverHull, SpinLock&lock)
+	void	WaterCompiler::Compile(const index_t offset, const index_t end, THull<WaterVertex>&coverHull, Sys::SpinLock&lock)
 	{
 
 		//for (index_t i = offset; i < offset+BatchSize && i < end; i++ )
@@ -427,7 +431,7 @@ namespace VisualTerrain
 	void		CompileWater(const Array<Grid::CellStack>&stacks, THull<WaterVertex>&cover, index_t offset, count_t count, Grid::FClipHeight clipHeight)
 	{
 		const index_t end = offset + count;
-		SpinLock lock;
+		Sys::SpinLock lock;
 		Concurrency::parallel_for(offset, end, BatchSize,[end,&lock, &cover, &stacks, clipHeight](index_t i)	//looks good - at least in release
 		{
 			BYTE data[sizeof(WaterCompiler)];	//prevent implicit memset in release mode. i'm serious. visual studio has some funny ideas there...

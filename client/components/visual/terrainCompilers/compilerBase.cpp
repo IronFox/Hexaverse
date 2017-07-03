@@ -209,7 +209,7 @@ namespace VisualTerrain
 	{
 		if (rs.r >= 0.f)
 		{
-			rs = Vector<>::zero;
+			rs = M::Vector3<>::zero;
 			//rs.r = (1.f - visibility) ;
 		}
 		else

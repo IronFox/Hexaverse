@@ -31,10 +31,11 @@ namespace Explosions
 	EMPParticles				empParticles;
 	DX11::Texture				ringTexture,
 								particleTexture;
-	Buffer<Explosion,4,Swap>	explosions,empExplosions;
+	Container::Vector0<Explosion,Swappable>	
+								explosions,empExplosions;
 	DX11::BaseInstructionBlock	particleInstruction;
 	DX11::StreamVBO				particleBuffer;
-	OpenAL::Wave				explosionSound,empExplosionSound;
+	Engine::OpenAL::Wave		explosionSound,empExplosionSound;
 
 
 
@@ -186,7 +187,7 @@ namespace Explosions
 				float pitch = (float)(pow(1.5f,i));
 				if (executionTime / pitch < 1.4f)
 					break;
-				OpenAL::Source&source = auxiliarySources[i];
+				Engine::OpenAL::Source&source = auxiliarySources[i];
 				source.Create();
 				source.SetPosition(position);
 				source.SetWaveBuffer(isEMP?empExplosionSound : explosionSound);
@@ -264,10 +265,10 @@ namespace Explosions
 
 		if (AudioInterface::isActive)
 		{
-			explosionSound = OpenAL::Load("resources/explode.wav");
+			explosionSound = Engine::OpenAL::Load("resources/explode.wav");
 			if (explosionSound.IsEmpty())
 				ErrMessage("Warning: Failed to load required wave file.");
-			empExplosionSound = OpenAL::Load("resources/empExplode.wav");
+			empExplosionSound = Engine::OpenAL::Load("resources/empExplode.wav");
 			if (empExplosionSound.IsEmpty())
 				ErrMessage("Warning: Failed to load required wave file.");
 		}
@@ -298,8 +299,8 @@ namespace Explosions
 		particleInstruction = DX11::BaseInstructionBlock();
 		if (AudioInterface::isActive)
 		{
-			OpenAL::Discard(explosionSound);
-			OpenAL::Discard(empExplosionSound);
+			Engine::OpenAL::Discard(explosionSound);
+			Engine::OpenAL::Discard(empExplosionSound);
 		}
 		
 	}

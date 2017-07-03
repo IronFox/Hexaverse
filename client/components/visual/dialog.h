@@ -11,6 +11,9 @@
 
 namespace Dialog
 {
+	using namespace DeltaWorks;
+	using namespace DeltaWorks::Math;
+
 	CONSTRUCT_ENUMERATION4(CheckResult,
 		OkayContinue,		//operation applicable. User can continue any time they wish to
 		OkayNotRightNow,	//often returned when the server is in some non-command mode
@@ -24,7 +27,6 @@ namespace Dialog
 	typedef std::function<bool(const String&)>	FCheckInput;
 	typedef std::function<void(const String&)>	FFetchInput;
 	typedef std::function<void(const char*)>	FOnPassword;
-
 
 
 

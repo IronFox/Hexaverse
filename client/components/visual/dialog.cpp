@@ -541,11 +541,11 @@ namespace Dialog
 			"Beyond the flow of time",
 			"Please hold the line...",
 		};
-		CRC32::beginSequence();
-		CRC32::calcNext(&roundNumber,sizeof(roundNumber));
-		CRC32::calcNext(&factionPointer,sizeof(factionPointer));
+		CRC32::Sequence s;
+		s.AppendPOD(roundNumber);
+		s.AppendPOD(factionPointer);
 		
-		UINT32 random = CRC32::endSequence();
+		UINT32 random = s.Finish();
 
 		return words[random % ARRAYSIZE(words)];
 	}

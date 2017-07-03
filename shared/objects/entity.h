@@ -271,7 +271,7 @@ namespace Objects
 			//typedef Objects::Command::Base		Command;
 //			typedef Objects::FCommandVisitor	FCommandVisitor;
 
-			OpenAL::Source			ambientSound;
+			Engine::OpenAL::Source	ambientSound;
 		#endif
 
 		/**
