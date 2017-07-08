@@ -11,6 +11,22 @@ namespace Test
 {
 	typedef RNG<std::mt19937>	Random;
 
+	class Exception : public Except::Program::GeneralFault
+	{
+		typedef Except::Program::GeneralFault Super;
+	public:
+		/**/		Exception(){}\
+		/**/		Exception(const char*message):Super(message) {}\
+		/**/		Exception(const Except::globalString&string):Super(string){}\
+		/**/		Exception(const TCodeLocation&loc):Super(loc){}\
+		/**/		Exception(const TCodeLocation&loc, const char*message):Super(loc,message) {}\
+		/**/		Exception(const TCodeLocation&loc, const Except::globalString&string):Super(loc,string){}\
+		template <class C>		Exception(const IString<C>&string):Super(string){}\
+		template <class C>		Exception(const TCodeLocation&loc, const IString<C>&string):Super(loc,string){}\
+		static const Except::Name&		StaticGetName()	{static const Except::Name name=Except::Name(Super::StaticGetName(),"/Test::Exception"); return name;}
+		virtual	const char*		GetType()	const override					{return StaticGetName();}
+	};
+
 	class Test
 	{
 	public:
@@ -21,6 +37,12 @@ namespace Test
 
 
 		virtual void	Run(Random&random) = 0;
+
+		void			BeginSection(const String&name)	const;
+		void			Fail(const TCodeLocation&loc, const String&msg)
+		{
+			throw Exception(loc,msg);
+		}
 	};
 
 

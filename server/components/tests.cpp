@@ -33,17 +33,37 @@ namespace Test
 		try
 		{
 			test.Run(random);
-			std::cout << "    ...completed. No errors detected after " << timer.GetSecondsSince(t0) << " seconds" << std::endl;
+			std::cout << "  ...completed. No errors detected after " << timer.GetSecondsSince(t0) << " seconds" << std::endl;
+		}
+		catch (const Exception&ex)
+		{
+			std::cout << "  ...FAILED. Failure detected after " << timer.GetSecondsSince(t0) << " seconds:" << std::endl << ex.what()<<std::endl;
 		}
 		catch (const std::exception&ex)
 		{
-			std::cout << "    ...failed. Unhandled exception caught after " << timer.GetSecondsSince(t0) << " seconds:" << std::endl << ex.what()<<std::endl;
+			std::cout << "  ...FAILED. Unhandled exception caught after " << timer.GetSecondsSince(t0) << " seconds:" << std::endl << ex.what()<<std::endl;
 		}
 		catch (...)
 		{
-			std::cout << "    ...failed. Unknown exception caught after " << timer.GetSecondsSince(t0) << " seconds:" << std::endl;
+			std::cout << "  ...FAILED. Unknown exception caught after " << timer.GetSecondsSince(t0) << " seconds:" << std::endl;
 		}
 
+	}
+
+	void Test::BeginSection(const String&name)	const
+	{
+		std::cout << "    ->"<<name<<std::endl;
+	}
+
+
+
+	static String RandomString(Random&random, size_t minLength, size_t maxLength)
+	{
+		const count_t length = random.Next(minLength,maxLength);
+		String rs = TStringLength(length);
+		for (index_t i = 0; i < length; i++)
+			rs.set(i,(char)(BYTE)random.Next(1,255));	//full spectrum, no zeroes
+		return rs;
 	}
 
 
@@ -103,10 +123,7 @@ namespace Test
 
 		for (index_t i = 0; i < 1000; i++)
 		{
-			const count_t length = random.Next(1,1000);
-			String windowsString = TStringLength(length);
-			for (index_t i = 0; i < length; i++)
-				windowsString.set(i,(char)(BYTE)random.Next(1,255));	//full spectrum, no zeroes
+			String windowsString = RandomString(random,1,1000);
 
 			String backConverted;
 			String utf8String;
@@ -170,7 +187,7 @@ namespace Test
 		const count_t NumIterations = 10;
 		for (index_t i = 0; i < NumIterations; i++)
 		{
-			std::cout << " starting test iteration "<<i<<"/"<<NumIterations<<std::endl;
+			BeginSection("Iteration "+String(i)+"/"+String(NumIterations));
 			quit = false;
 			USHORT port;
 			ASSERT__(server.StartService(0,true,&port));
