@@ -58,6 +58,7 @@ namespace Test
 
 	class Serialization : public Test
 	{
+		void			TestRange(serial_size64_t begin, serial_size64_t end, bool expectException);
 	public:
 		/**/			Serialization() :Test("Serialization")
 		{}

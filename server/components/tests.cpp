@@ -229,11 +229,74 @@ namespace Test
 	}
 
 
+	void			Serialization::TestRange(serial_size64_t begin, serial_size64_t end, bool expectException)
+	{
+		
+		for (serial_size64_t t = begin; t < end; t++)
+		{
+			try
+			{
+				BYTE storage[8];
+
+				MemWriteStream write(storage,sizeof(storage));
+				MemReadStream read(storage,sizeof(storage));
+
+				write.WriteSize(t);
+				const size_t writtenBytes = write.GetCurrent() - storage;
+				const serial_size_t shouldHaveWritten = ISerializable::GetSerialSizeOfSize(t);
+				ASSERT_EQUAL__(writtenBytes,shouldHaveWritten);
+
+				serial_size64_t t2;
+				read.ReadSize(t2);
+				const size_t readBytes = read.GetCurrent() - storage;
+				ASSERT_EQUAL__(readBytes,writtenBytes);
+				ASSERT_EQUAL__(t,t2);
+			}
+			catch (Except::Memory::SerializationFault&ex)
+			{
+				if (expectException)
+					return;	//all good, but no point continuing
+				FATAL__("Unexpected serialization fault while handling serialSize="+String(t)+": "+ex.what());
+			}
+			catch (const std::exception&ex)
+			{
+				FATAL__("Unexpected other exception while handling serialSize="+String(t)+": "+ex.what());
+			}
+		}
+		if (expectException)
+			FATAL__("Expected exception in range ["+String(begin)+","+String(end)+")");
+	}
 
 
 	/*virtual override*/ void	Serialization::Run(Random&random)
 	{
 		ApplicationInterface::globalVersionOfCurrentFile = ApplicationInterface::SupportedFileVersion;
+
+		/*
+		if (size <= 0x3F)
+			return 1;
+		if (size <= 0x3FFF)
+			return 2;
+		if (size <= 0x3FFFFF)
+			return 3;
+		if (size < (1U<<29))
+			return 4;
+		return 8;
+		*/
+
+		TestRange(0,0x5000,false);
+		TestRange(0x3FFFF0,0x40000F,false);
+		TestRange((1U<<29) - 16,(1U<<29) + 16,false);
+		TestRange((1ULL<<61) - 16,(1ULL<<61) + 16,true);	//this should throw an exception
+
+		for (index_t i = 0; i < 1000; i++)
+		{
+			const serial_size64_t begin = random.NextT<serial_size64_t>(0,(1ULL<<61)-16);
+			TestRange(begin,begin+16,false);
+		}
+
+
+
 		for (index_t i = 0; i < 3000; i++)
 		{
 			Objects::Marker m;
