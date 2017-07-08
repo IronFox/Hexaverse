@@ -285,10 +285,51 @@ namespace Test
 	}
 
 
+	/*static*/ void		Serialization::RandomFill(Objects::Marker&m, Random&random)
+	{
+		m.id.Generate();
+		m.createdInRound = random.Next(MaxSerialSize);
+		if (random.NextFloat() > 0.1f)
+		{
+			m.location.stackID = random.Next(Grid::LowSetup::GridType::CellCount - 1);
+			m.location.height = random.Next(-Grid::CellStack::HalfRange, Grid::CellStack::HalfRange - 1);
+		}
+		m.type = Objects::Marker::Type::Reinterpret(random.NextIndex(Objects::Marker::Type::NumberOfPossibilities));
+		if (m.UtilizesReferenceEntity())
+		{
+			m.referenceEntity.Generate();
+			if (random.NextBool())
+			{
+				m.referencedType[0] = Objects::structurePrototypes[random.NextIndex(Objects::structurePrototypes.Count())]->GetCTypeName();
+				m.referencedType[1] = ConstName::Empty;
+			}
+			else
+			{
+				m.referencedType[0] = Objects::Component::baseComponents[random.NextIndex(Objects::Component::baseComponents.Count())]->constName;
+				m.referencedType[1] = Objects::Component::allTurretComponents[random.NextIndex(Objects::Component::allTurretComponents.Count())]->constName;
+			}
+		}
+	}
+
+
+	/*static*/ void		Serialization::RandomFill(Objects::Statistics::UnitStatistics&stat,Random&random)
+	{
+		stat.typeName = RandomString(random,5,16);
+		foreach (stat.metric,m)
+		{
+			if (random.NextBool())
+				*m = random.Next(1,1000)*random.Next(1,1000)*random.Next(1,1000);
+		}
+	}
+
+
+
 	/*virtual override*/ void	Serialization::Run(Random&random)
 	{
 		ApplicationInterface::globalVersionOfCurrentFile = ApplicationInterface::SupportedFileVersion;
 
+
+		BeginSection("Serial Size");
 		/*
 		if (size <= 0x3F)
 			return 1;
@@ -312,33 +353,23 @@ namespace Test
 			TestRange(begin,begin+16,false);
 		}
 
-
+		BeginSection("Statistics::UnitStatistics");
 
 		for (index_t i = 0; i < 3000; i++)
 		{
+			Objects::Statistics::UnitStatistics stat;
+			RandomFill(stat,random);
+
+			Protocol::VerifySerialization(stat);
+		}
+
+
+		BeginSection("Markers");
+		for (index_t i = 0; i < 3000; i++)
+		{
 			Objects::Marker m;
-			m.id.Generate();
-			m.createdInRound = random.Next(MaxSerialSize);
-			if (random.NextFloat() > 0.1f)
-			{
-				m.location.stackID = random.Next(Grid::LowSetup::GridType::CellCount - 1);
-				m.location.height = random.Next(-Grid::CellStack::HalfRange, Grid::CellStack::HalfRange - 1);
-			}
-			m.type = Objects::Marker::Type::Reinterpret(random.NextIndex(Objects::Marker::Type::NumberOfPossibilities));
-			if (m.UtilizesReferenceEntity())
-			{
-				m.referenceEntity.Generate();
-				if (random.NextBool())
-				{
-					m.referencedType[0] = Objects::structurePrototypes[random.NextIndex(Objects::structurePrototypes.Count())]->GetCTypeName();
-					m.referencedType[1] = ConstName::Empty;
-				}
-				else
-				{
-					m.referencedType[0] = Objects::Component::baseComponents[random.NextIndex(Objects::Component::baseComponents.Count())]->constName;
-					m.referencedType[1] = Objects::Component::allTurretComponents[random.NextIndex(Objects::Component::allTurretComponents.Count())]->constName;
-				}
-			}
+			RandomFill(m,random);
+
 			Protocol::VerifySerialization(m);
 		}
 
@@ -352,8 +383,8 @@ namespace Test
 				Protocol::VerifySerialization(coords);
 
 
-				Protocol::PositiveResourceVector vec;
-				for (index_t i = 0; i < Protocol::PositiveResourceVector::NumEntries; i++)
+				Objects::PositiveResourceVector vec;
+				for (index_t i = 0; i < Objects::PositiveResourceVector::NumEntries; i++)
 				{
 					if (random.NextBool())
 						vec.level[i] = 0;

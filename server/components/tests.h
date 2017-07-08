@@ -80,6 +80,9 @@ namespace Test
 
 	class Serialization : public Test
 	{
+		static void		RandomFill(Objects::Marker&m, Random&random);
+		static void		RandomFill(Objects::Statistics::UnitStatistics&,Random&random);
+
 		void			TestRange(serial_size64_t begin, serial_size64_t end, bool expectException);
 	public:
 		/**/			Serialization() :Test("Serialization")
