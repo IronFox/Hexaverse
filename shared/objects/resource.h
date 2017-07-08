@@ -272,6 +272,59 @@ namespace Objects
 
 
 
+	class PositiveResourceVector : public Objects::ResourceVector, public SerializableObject
+	{
+	public:
+
+		/**/	PositiveResourceVector()	{}
+		/**/	PositiveResourceVector(const Objects::ResourceVector&v);
+
+		void	swap(Objects::ResourceVector&other)
+		{
+			std::swap((Objects::ResourceVector&)*this,other);
+		}
+		static	serial_size_t			GetSerialSize(const Objects::ResourceVector&vec);
+
+		virtual	serial_size_t			GetSerialSize(bool /*exportSize*/) const override
+		{
+			return GetSerialSize(*this);
+		}
+		static	void					Serialize(IWriteStream&outStream, const Objects::ResourceVector&vec);
+		virtual	void					Serialize(IWriteStream&outStream, bool /*exportSize*/) const override
+		{
+			Serialize(outStream,*this);
+		}
+		static	void					Deserialize(IReadStream&inStream, Objects::ResourceVector&vec);
+		virtual	void					Deserialize(IReadStream&inStream, serial_size_t /*fixedSize*/) override
+		{
+			Deserialize(inStream,*this);
+		}
+
+
+		bool		operator==(const Objects::ResourceVector&vec) const
+		{
+			return vec == *this;
+		}
+		bool		operator!=(const Objects::ResourceVector&vec) const
+		{
+			return vec != *this;
+		}
+
+		void		operator=(const Objects::ResourceVector&vec)
+		{
+			((Objects::ResourceVector&)*this) = vec;
+		}
+		void		operator=(const Objects::NaturalResourceVector&vec)
+		{
+			((Objects::ResourceVector&)*this) = vec;
+		}	
+	};
+
+
+
+
+
+
 
 	static const char TextoutResourceTagOffset = (char)2;	//global char offset used for mineral output in strings
 	static_assert((index_t)TextoutResourceTagOffset + Resource::NumberOfPossibilities+2 < (index_t)'\n',"Relocate tag offset");

@@ -99,7 +99,7 @@ namespace Protocol
 			throw Except::Memory::SerializationFault(CLOCATION,"Serialization of type "+String(typeid(serializable).name())+" failed. GetSerialSize("+String(exportSize)+") returned "+String(expectedSize)+", serialization required "+String(actualSize));
 		
 		Serializable copy;
-		DeserializeFromMemory(copy,data,actualSize,exportSize);
+		DeserializeFromCompactMemory(copy,data,actualSize,exportSize);
 		free(data);
 		if (serializable != copy)
 			throw Except::Memory::SerializationFault(CLOCATION,"Serialization/deserialization of type "+String(typeid(serializable).name())+" failed with exportSize="+String(exportSize)+". Deserialized data does not match original data");
@@ -1325,95 +1325,7 @@ namespace Protocol
 	//	}	
 	//};
 
-	class PositiveResourceVector : public Objects::ResourceVector, public SerializableObject
-	{
-	public:
-		void	swap(Objects::ResourceVector&other)
-		{
-			std::swap((Objects::ResourceVector&)*this,other);
-		}
-		static	serial_size_t			GetSerialSize(const Objects::ResourceVector&vec)
-		{
-			serial_size_t rs = 1;	//flag byte
-			static_assert(Objects::ResourceVector::NumEntries <= 8, "Adjust protocol");
-			for (index_t i = 0; i < Objects::ResourceVector::NumEntries; i++)
-			{
-				if (vec.level[i] > 0)
-					rs += GetSerialSizeOfSize(abs(vec.level[i]));	//negative values are set to zero
-			}
-			return rs;
-		}
 
-
-		virtual	serial_size_t			GetSerialSize(bool /*exportSize*/) const override
-		{
-			return GetSerialSize(*this);
-		}
-		static	void					Serialize(IWriteStream&outStream, const Objects::ResourceVector&vec)
-		{
-			BYTE flag = 0;
-			for (index_t i = 0; i < Objects::ResourceVector::NumEntries; i++)
-			{
-				if (vec.level[i] > 0)
-				{
-					flag |= (1 << i);
-				}
-				else
-				{
-					DBG_ASSERT_EQUAL1__(vec.level[i], 0,Objects::Resource::Reinterpret(i).ToString());
-				}
-			}
-			outStream.Write(&flag,1);
-			for (index_t i = 0; i < Objects::ResourceVector::NumEntries; i++)
-				if (vec.level[i] > 0)
-					outStream.WriteSize((serial_size_t)(vec.level[i]));
-		}
-		virtual	void					Serialize(IWriteStream&outStream, bool /*exportSize*/) const override
-		{
-			Serialize(outStream,*this);
-		}
-		static	void					Deserialize(IReadStream&inStream, Objects::ResourceVector&vec)
-		{
-			BYTE flags;
-			inStream.Read(&flags,1);
-
-			for (index_t i = 0; i < Objects::ResourceVector::NumEntries; i++)
-			{
-				bool exists = ((flags >> i)&1) != 0;
-				if (!exists)
-				{
-					vec.level[i] = 0;
-					continue;
-				}
-				UINT32 val;
-				inStream.ReadSize(val);
-				vec.level[i] = val;
-			}
-		}
-		virtual	void					Deserialize(IReadStream&inStream, serial_size_t /*fixedSize*/) override
-		{
-			Deserialize(inStream,*this);
-		}
-
-
-		bool		operator==(const Objects::ResourceVector&vec) const
-		{
-			return vec == *this;
-		}
-		bool		operator!=(const Objects::ResourceVector&vec) const
-		{
-			return vec != *this;
-		}
-
-		void		operator=(const Objects::ResourceVector&vec)
-		{
-			((Objects::ResourceVector&)*this) = vec;
-		}
-		void		operator=(const Objects::NaturalResourceVector&vec)
-		{
-			((Objects::ResourceVector&)*this) = vec;
-		}	
-	};
 	//class FullResourceVector : public Objects::FullResourceVector, public SerializableObject
 	//{
 	//public:
@@ -1600,7 +1512,7 @@ namespace Protocol
 	//)
 
 	NETSTRUCT2(MineState
-		, PositiveResourceVector, naturalResources
+		, Objects::PositiveResourceVector, naturalResources
 		, NET(bool), linkedToCore
 	)
 	typedef NET(int)	NexusPortState;
@@ -1617,7 +1529,7 @@ namespace Protocol
 
 	NETSTRUCT4(StructureState
 		, EntityState, entityState
-		, PositiveResourceVector, resourceVector
+		, Objects::PositiveResourceVector, resourceVector
 		, NET(BYTE), flags
 		, SelectiveStructureState, selective
 	)
