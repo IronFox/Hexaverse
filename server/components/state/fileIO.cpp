@@ -289,7 +289,7 @@ namespace FileIO
 	}
 
 
-	typedef Ctr::GenericHashTable<TUniqueID,Objects::PFaction>	FactionMap;
+	typedef GenericHashTable<TUniqueID,Objects::PFaction>	FactionMap;
 	static void Import(Riff::Chunk*parent, Objects::WorldEntity&e, const FactionMap&ownerMap)
 	{
 		using namespace ApplicationInterface;
@@ -1150,7 +1150,6 @@ namespace FileIO
 			}
 		}
 
-		Objects::PFaction lastFaction;	//last imported faction. Used for statistics import
 		FactionMap	factionMap;
 		for (int round = 0; round < 2; round++)
 		{
@@ -1352,14 +1351,20 @@ namespace FileIO
 							}
 						break;
 						case ChunkName::FactionStatisticsSection:
-							if (round == 0 && lastFaction)
-								lastFaction->statistics.ImportFrom(list);
+							if (round == 1)
+							{
+								Objects::PFaction faction;
+								TUniqueID factionID;
+								GetPOD(list,RID::factionID,factionID);
+								factionMap.Query(factionID,faction);
+								ASSERT__ (faction);
+								faction->statistics.ImportFrom(list,factionMap);
+							}
 						break;
 						case ChunkName::FactionSection:
 							if (round == 0)
 							{
 								Objects::PFaction faction;
-								faction;
 								TUniqueID factionID;
 								GetPOD(list,RID::factionID,factionID);
 							
@@ -1382,7 +1387,6 @@ namespace FileIO
 									//foreach (faction->knownWorld,stat)
 									//	stat->ZeroInit();
 								}
-								lastFaction = faction;
 								GetPOD(list,RID::factionAccessToken,faction->accessToken);
 
 								Riff::Chunk*researchStateChunk = list->FindFirst(RID::researchState);
@@ -1786,8 +1790,11 @@ namespace FileIO
 						factionSection->AppendBlock(RID::resourcesDiscoveredFull)->SetData(faction->knownResources.resourcesDiscovered.ToRef());	//resource discovered - full
 				}
 			}
-			Riff::Chunk*factionStatisticsSection = CreateNamedList(container,ChunkName::FactionStatisticsSection);
-			faction->statistics.ExportInto(factionStatisticsSection);
+			{
+				Riff::Chunk*factionStatisticsSection = CreateNamedList(container,ChunkName::FactionStatisticsSection);
+				factionStatisticsSection->AppendBlock(RID::factionID,faction->id.bytes,faction->id.NumBytes);
+				faction->statistics.ExportInto(factionStatisticsSection);
+			}
 		});
 		//LogEvent(EventType::SessionRelated,"World snapshot created in "+String(timer.GetSecondsSince(t0))+" seconds");
 

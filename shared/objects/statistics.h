@@ -5,8 +5,11 @@
 #include "resource.h"
 #include <io/json.h>
 #include <io/riff_handler.h>
+#include "../uniqueID.h"
+
 
 using namespace DeltaWorks;
+
 
 namespace Objects
 {
@@ -15,9 +18,12 @@ namespace Objects
 	{
 		const Faction*const	owner;
 	public:
-		struct Interaction //: public ISerializable
+
+
+		struct Interaction : public ISerializable
 		{
-			WFaction	remote;
+			typedef Interaction Self;
+			TUniqueID	remoteID;
 
 			enum metric_t
 			{
@@ -49,10 +55,17 @@ namespace Objects
 			{
 				metric.Fill(0);
 			}
+
+			virtual	serial_size_t	GetSerialSize(bool exportSize) const override;
+			virtual	void			Serialize(IWriteStream&outStream, bool exportSize) const override;
+			virtual	void			Deserialize(IReadStream&inStream, serial_size_t fixedSize) override;
+			bool					operator==(const Self&other) const {return remoteID == other.remoteID && metric == other.metric;}
+			bool					operator!=(const Self&other) const {return !operator==(other);}
 		};
 
-		struct UnitStatistics
+		struct UnitStatistics : public ISerializable
 		{
+			typedef UnitStatistics	Self;
 			String		typeName;
 
 			enum metric_t
@@ -76,15 +89,24 @@ namespace Objects
 			{
 				metric.Fill(0);
 			}
+			virtual	serial_size_t	GetSerialSize(bool exportSize) const override;
+			virtual	void			Serialize(IWriteStream&outStream, bool exportSize) const override;
+			virtual	void			Deserialize(IReadStream&inStream, serial_size_t fixedSize) override;
+			bool					operator==(const Self&other) const {return typeName == other.typeName && metric == other.metric;}
+			bool					operator!=(const Self&other) const {return !operator==(other);}
 		};
 
-		struct RoundStatistics
+		struct RoundStatistics : public ISerializable
 		{
-			ResourceVector	production,consumption;
+			PositiveResourceVector	production,consumption;
 			UINT64			entityCount=0,
-							entityMineralValue=0,
-							sensorCoverage=0;
-			INT32			mainRound=0;
+							entityMineralValue=0;
+			UINT32			sensorCoverage=0;
+			UINT32			mainRound=0;
+
+			virtual	serial_size_t			GetSerialSize(bool exportSize) const override;
+			virtual	void					Serialize(IWriteStream&outStream, bool exportSize) const override;
+			virtual	void					Deserialize(IReadStream&inStream, serial_size_t fixedSize) override;
 		};
 
 
@@ -111,7 +133,7 @@ namespace Objects
 
 		
 			void		ExportInto(Riff::Chunk*) const;
-			void		ImportFrom(const Riff::Chunk*);
+			void		ImportFrom(const Riff::Chunk*, const GenericHashTable<TUniqueID,Objects::PFaction>&factionMap);
 		#endif
 
 

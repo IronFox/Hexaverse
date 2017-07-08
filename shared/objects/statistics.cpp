@@ -16,7 +16,7 @@ namespace Objects
 		if (rs)
 			return *rs;
 		rs = &interactionMap.Set(remote.get());
-		rs->remote = remote;
+		rs->remoteID = remote->id;
 		return *rs;
 	}
 
@@ -30,6 +30,88 @@ namespace Objects
 		rs->typeName = name;
 		return *rs;
 	}
+
+
+
+	/*virtual override*/	serial_size_t			Statistics::Interaction::GetSerialSize(bool) const
+	{
+		serial_size_t rs = remoteID.NumBytes;
+		foreach (metric,m)
+			rs += GetSerialSizeOfSize(*m);
+		return rs;
+	}
+
+	/*virtual override*/	void					Statistics::Interaction::Serialize(IWriteStream&outStream, bool) const
+	{
+
+		outStream.Write(remoteID.bytes,remoteID.NumBytes);
+		foreach (metric,m)
+			outStream.WriteSize(*m);
+	}
+
+	/*virtual override*/	void					Statistics::Interaction::Deserialize(IReadStream&inStream, serial_size_t)
+	{
+		inStream.Read(remoteID.bytes,remoteID.NumBytes);
+		foreach (metric,m)
+			inStream.ReadSize(*m);
+	}
+
+
+	/*virtual override*/	serial_size_t			Statistics::UnitStatistics::GetSerialSize(bool) const
+	{
+		serial_size_t rs = 0;
+		rs += typeName.GetSerialSize(true);
+		foreach (metric,m)
+			rs += GetSerialSizeOfSize(*m);
+		return rs;
+	}
+
+	/*virtual override*/	void					Statistics::UnitStatistics::Serialize(IWriteStream&outStream, bool) const
+	{
+		typeName.Serialize(outStream,true);
+		foreach (metric,m)
+			outStream.WriteSize(*m);
+	}
+
+	/*virtual override*/	void					Statistics::UnitStatistics::Deserialize(IReadStream&inStream, serial_size_t)
+	{
+		typeName.Deserialize(inStream,EmbeddedSize);
+		foreach (metric,m)
+			inStream.ReadSize(*m);
+	}
+
+	/*virtual override*/	serial_size_t			Statistics::RoundStatistics::GetSerialSize(bool exportSize) const
+	{
+		return	production.GetSerialSize(true)
+			+	consumption.GetSerialSize(true)
+			+	ISerializable::GetSerialSizeOfSize(entityCount)
+			+	ISerializable::GetSerialSizeOfSize(entityMineralValue)
+			+	ISerializable::GetSerialSizeOfSize(sensorCoverage)
+			+	ISerializable::GetSerialSizeOfSize(mainRound);
+
+	}
+
+	/*virtual override*/	void					Statistics::RoundStatistics::Serialize(IWriteStream&outStream, bool exportSize) const
+	{
+		production.Serialize(outStream,true);
+		consumption.Serialize(outStream,true);
+		outStream.WriteSize(entityCount);
+		outStream.WriteSize(entityMineralValue);
+		outStream.WriteSize(sensorCoverage);
+		outStream.WriteSize(mainRound);
+	}
+
+	/*virtual override*/	void					Statistics::RoundStatistics::Deserialize(IReadStream&inStream, serial_size_t fixedSize)
+	{
+		production.Deserialize(inStream,true);
+		consumption.Deserialize(inStream,true);
+		inStream.ReadSize(entityCount);
+		inStream.ReadSize(entityMineralValue);
+		inStream.ReadSize(sensorCoverage);
+		inStream.ReadSize(mainRound);
+	}
+
+
 
 
 	#ifndef CLIENT
@@ -143,41 +225,94 @@ namespace Objects
 		}
 
 
-		enum struct ChunkName : UINT16
+
+		namespace ChunkID
 		{
-			//do not erase elements from here. Mark them deprecated/unused but leave in place
-			History,
-			Units,
-			Interaction,
-			Round,
+			const Riff::TID
+				round("RND "),
+
+				unit("UNIT"),
+				interaction("INTR"),
+
+
+
+				unusedTerm("ZZZZ");	
 
 		};
+
 
 		void			Statistics::ExportInto(Riff::Chunk*chunk) const
 		{
 			{
-				auto history = chunk->AppendNamedList(ChunkName::History);
-
+				
+				BYTE worstCaseData[Interaction::NumMetrics *8];
 
 				foreach (this->history,r)
 				{
-					auto round = history->AppendNamedList(ChunkName::Round);
-
-
+					MemWriteStream stream(worstCaseData,sizeof(worstCaseData));
+					r->Serialize(stream,false);
+					chunk->AppendBlock(ChunkID::round,worstCaseData,stream.GetCurrent()-worstCaseData);
 				}
-
 			}
-
-
-
-
-
-
+			{
+				ByteStream stream;
+				this->unitStatistics.VisitAllValues([chunk,&stream](const UnitStatistics&stat)
+				{
+					stream.Clear();
+					stat.Serialize(stream,false);
+					chunk->AppendBlock(ChunkID::unit,stream);
+				});
+			}
+			{
+				ByteStream stream;
+				this->interactionMap.VisitAllValues([chunk,&stream](const Interaction&stat)
+				{
+					stream.Clear();
+					stat.Serialize(stream,false);
+					chunk->AppendBlock(ChunkID::interaction,stream);
+				});
+			}
 		}
 
-		void			Statistics::ImportFrom(const Riff::Chunk*)
+		void			Statistics::ImportFrom(const Riff::Chunk*chunk, const GenericHashTable<TUniqueID,Objects::PFaction>&factionMap)
 		{
+			history.Clear();
+			unitStatistics.Clear();
+			interactionMap.Clear();
 
+			const Riff::Chunk*child = chunk->GetFirstChild();
+			do
+			{
+				MemReadStream stream(child->pointer(),child->size());
+				if (child->IsID(ChunkID::round))
+				{
+					RoundStatistics stat;
+					stat.Deserialize(stream,child->size());
+					ASSERT_EQUAL__(stream.GetRemainingBytes(),0);
+					history << stat;
+				}
+				else
+				if (child->IsID(ChunkID::unit))
+				{
+					UnitStatistics stat;
+					stat.Deserialize(stream,child->size());
+					ASSERT_EQUAL__(stream.GetRemainingBytes(),0);
+					unitStatistics.Set(stat.typeName,stat);
+				}
+				else
+				if (child->IsID(ChunkID::interaction))
+				{
+					Interaction stat;
+					stat.Deserialize(stream,child->size());
+					ASSERT_EQUAL__(stream.GetRemainingBytes(),0);
+
+					PFaction f;
+					factionMap.Query(stat.remoteID,f);
+					if (f)
+						interactionMap.Set(f.get(),stat);
+				}
+			}
+			while (child = child->GetNextSibling());
 		}
 
 	#endif
