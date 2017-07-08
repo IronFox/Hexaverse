@@ -94,7 +94,7 @@ namespace ApplicationInterface
 	void	SignalOwnershipChange(const Objects::PWorldEntity&e,const Objects::OwnerParameter&target, float t);
 	void	SignalNexusControlChange(const Objects::PFaction&f);
 	void	SignalChainReactionExplosion(const Objects::PWorldEntity&causedBy, const Grid::LCellIdI&center, float radius, int damageLevel, float atTime);
-	void	SignalOperationLacksResources(const Objects::WorldEntity&, const ArrayRef<Objects::Resource>&resources, float atTime);
+	void	SignalOperationLacksResources(const Objects::WorldEntity&, const Ctr::ArrayRef<Objects::Resource>&resources, float atTime);
 	/**
 	Signals that a new faction has been created or an existing one has been removed.
 	Also replacement as happens when the nexus faction is recreated.

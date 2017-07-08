@@ -26,7 +26,7 @@ namespace Test
 
 	typedef std::shared_ptr<Test>	PTest;
 	
-	extern Buffer0<PTest>	all;
+	extern Ctr::Buffer0<PTest>	all;
 
 	void Run(Test&test);
 

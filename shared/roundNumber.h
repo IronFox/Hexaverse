@@ -3,6 +3,8 @@
 #include <global_string.h>
 #include <algorithm>
 
+using namespace DeltaWorks;
+
 struct RoundNumber
 {
 	UINT32		main=0;

@@ -64,13 +64,13 @@ namespace World
 	Queries the file system to determine current state (all returned files existed at the moment of fetching).
 	Any occurring error is logged, and an empty array is returned in this case.
 	*/
-	void			GetAvailablePlanetIniFiles(Array<TPlanetIniFile>&rsOut);
+	void			GetAvailablePlanetIniFiles(Ctr::Array<TPlanetIniFile>&rsOut);
 	/**
 	Fetches the unique names of all available planet types.
 	Duplicates are filtered out. No distinction is made between user-defined and factory default types of identical name.
 	Extensions are omitted.
 	*/
-	void			GetAvailablePlanetNames(Array<String>&rsOut);
+	void			GetAvailablePlanetNames(Ctr::Array<String>&rsOut);
 	/**
 	Checks if the specified ini-filename is one of the available planet ini files
 	@param filename Name of the file (name[.ini]), without folders

@@ -21,7 +21,7 @@ namespace FileIO
 
 
 
-	void			Compare(Riff::File&a, Riff::File&b, Buffer<Riff::TID>&idStack, const String&indent="");
+	void			Compare(Riff::File&a, Riff::File&b, Ctr::Buffer<Riff::TID>&idStack, const String&indent="");
 
 
 

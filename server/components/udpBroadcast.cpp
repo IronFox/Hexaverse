@@ -15,14 +15,14 @@ namespace UDPBroadCast
 	SOCKET	broadcastSocket = INVALID_SOCKET;
 
 
-	Buffer0<sockaddr_in>	everyone;
+	Ctr::Buffer0<sockaddr_in>	everyone;
 	Timer::Time		lastAdapterQuery, lastBroadcast;
 
 	Protocol::THostBroadcastPacket	packet;
 
 
 
-	void UpdateOutAdapters(BasicBuffer<sockaddr_in>&out)
+	void UpdateOutAdapters(Ctr::BasicBuffer<sockaddr_in>&out)
 	{
 		out.Clear();
 

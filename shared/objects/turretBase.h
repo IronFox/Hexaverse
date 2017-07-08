@@ -32,8 +32,8 @@ namespace Objects
 		class AreaHelper
 		{
 		public:
-			Queue<Grid::LCellIdI>	queue;
-			GenericHashSet<Grid::LCellIdI>	visited;
+			Ctr::Queue<Grid::LCellIdI>	queue;
+			Ctr::GenericHashSet<Grid::LCellIdI>	visited;
 
 			bool				operator>>(Grid::LCellIdI&next)
 			{
@@ -64,7 +64,7 @@ namespace Objects
 			float				turretAngleX, turretAngleY;
 		#endif
 		#ifdef HAS_WINDOW
-			OpenAL::Source		activitySound;	//used for rotation by offensive turrets, and arbitrary sounds by others
+			Engine::OpenAL::Source	activitySound;	//used for rotation by offensive turrets, and arbitrary sounds by others
 		#endif
 									
 

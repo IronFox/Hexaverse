@@ -89,7 +89,7 @@ namespace VisualTerrain
 		Mat::BuildRotationMatrix(seedRot,seedAxis,sys2);
 		Mat::Mult(sys1,sys2,sys);
 		Mat::copyOrientation(sys,m);
-		m.w.xyz = Vector<>::zero;
+		m.w.xyz = M::Vector3<>::zero;
 		Mat::resetBottomRow(m);
 
 	}
@@ -779,7 +779,7 @@ namespace VisualTerrain
 	bool	TestHullIntersection(const TVec3<>&b, const TVec3<>&d, float&distance, TVec3<>&outNormal, bool includeWater)
 	{
 		bool rs = false;
-		SpinLock lock;
+		Sys::SpinLock lock;
 		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 		{
 			const TFamily&fam = family[k];

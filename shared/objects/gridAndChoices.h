@@ -44,8 +44,8 @@ namespace Objects
 	};
 
 
-	extern Array<PVehicle>			vehicleGrid;
-	extern Array<PStructure>		structureGrid;
+	extern Ctr::Array<PVehicle>			vehicleGrid;
+	extern Ctr::Array<PStructure>		structureGrid;
 
 	index_t					CellToGridIndex(const Grid::LCellIdU&location);
 
@@ -72,11 +72,11 @@ namespace Objects
 
 
 
-	bool			AppendShortestPathI(const Vehicle*vehicle, const Grid::LCellIdI&from, const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
+	bool			AppendShortestPathI(const Vehicle*vehicle, const Grid::LCellIdI&from, const Grid::LCellIdI&to, Ctr::BasicBuffer<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
 	#ifndef NO_SATELLITES
 		bool		AppendShortestPathI(const Satellite*vehicle, const Grid::LCellIdI&from, const UINT32 toCell, BasicBuffer<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
 	#endif
-	bool			AppendShortestConstructionPath(const Vehicle*vehicle, bool ignoreWater, bool flat, const Grid::LCellIdI&from, Grid::LCellIdI to, BasicBuffer<Grid::LCellIdI>&oPath);
+	bool			AppendShortestConstructionPath(const Vehicle*vehicle, bool ignoreWater, bool flat, const Grid::LCellIdI&from, Grid::LCellIdI to, Ctr::BasicBuffer<Grid::LCellIdI>&oPath);
 	/**
 	Attempts to find the shortest direct path to a destination. Does not check if the path is blocked by terrain or entities.
 	@param from Source location
@@ -85,7 +85,7 @@ namespace Objects
 	@param penaltizeVerticalMotion Increases the cost of vertical motion considerably, such that they are chosen only as a last resourt
 	@param constrainVerticalMotion Only chooses path nodes whoes height lies in the height range defined by @a from.height and @a to.height. If @a from and @a to lie on the same height, then path finding is restricted to 2d
 	*/
-	bool			AppendShortestDirectPath(const Grid::LCellIdI&from, const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath, bool penaltizeVerticalMotion=true, bool constrainVerticalMotion=true);
+	bool			AppendShortestDirectPath(const Grid::LCellIdI&from, const Grid::LCellIdI&to, Ctr::BasicBuffer<PathNode>&oPath, bool penaltizeVerticalMotion=true, bool constrainVerticalMotion=true);
 	#ifndef NO_SATELLITES
 		bool		AppendShortestDirectSatellitePath(const Grid::LCellIdI&from, const UINT32 toCell, BasicBuffer<PathNode>&oPath);
 	#endif
@@ -115,8 +115,8 @@ namespace Objects
 		TrajectoryEndPoint	arrowCellTarget;
 	};
 
-	void			GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis);
-	void			GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis);
+	void			GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, Ctr::BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis);
+	void			GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, Ctr::BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis);
 
 	bool			NothingBlockingHere(const Grid::LCellIdI&cellID, bool checkVehiclesOnClient);
 
@@ -139,7 +139,7 @@ namespace Objects
 	@param production Base type of the vehicle that was produced
 	*/
 	void			GetProductionChoices(const WorldEntity*producer,Component::VehicleBase*production,
-							BasicBuffer<Choice>&choices);
+							Ctr::BasicBuffer<Choice>&choices);
 
 
 	template <typename T, count_t MaxLevels>
@@ -299,7 +299,7 @@ namespace Objects
 
 		};
 		
-		Buffer<MapNode>	result;
+		Ctr::Buffer<MapNode>	result;
 
 		typedef bool (*FBlockTest)(const Grid::LCellIdI&);
 
@@ -326,8 +326,8 @@ namespace Objects
 			index_t	mapped;
 		};
 		bool					logPerformance;
-		Buffer<index_t>			touched;
-		Array<TReachableNode>	buffer;
+		Ctr::Buffer<index_t>		touched;
+		Ctr::Array<TReachableNode>	buffer;
 	};
 }
 

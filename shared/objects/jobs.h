@@ -100,7 +100,7 @@ namespace Objects
 				virtual PJob		Instantiate() const =0;
 				virtual ConstName	GetCTypeName() const = 0;
 
-				static Buffer0<PJob>allJobPrototypes;
+				static Ctr::Buffer0<PJob>allJobPrototypes;
 
 			#endif
 		};
@@ -112,7 +112,7 @@ namespace Objects
 		public:
 			typedef BaseJob	Super;
 
-			Buffer0<Grid::LCellIdI>		path;
+			Ctr::Buffer0<Grid::LCellIdI>path;
 			bool						pathChanged;
 
 			/**/						PathJob(Autocomplete jobAutoCompletion, bool movesToFocusWhenDone):Super(jobAutoCompletion, movesToFocusWhenDone)	{}
@@ -301,11 +301,11 @@ namespace Objects
 			public:
 				typedef BaseJob			Super;
 				CursorMode		mode;
-				Array<Grid::HCellIdI>	selection;
+				Ctr::Array<Grid::HCellIdI>	selection;
 				BYTE					maxHeightDifference;
 
 				/**/					AlterTerrain():Super(Autocomplete::Always,false),maxHeightDifference(1)	{}
-				/**/					AlterTerrain(MobileEntity&v, CursorMode mode, const Array<Grid::HCellIdI>&selection) : BaseJob((int)selection.Count() * BuildWallMineralCosts,v,mode == CursorMode::BuildBlockMode ? Component::TerrainAdd : Component::TerrainRemove,Autocomplete::Always,false),mode(mode),selection(selection),maxHeightDifference(1) {}
+				/**/					AlterTerrain(MobileEntity&v, CursorMode mode, const Ctr::Array<Grid::HCellIdI>&selection) : BaseJob((int)selection.Count() * BuildWallMineralCosts,v,mode == CursorMode::BuildBlockMode ? Component::TerrainAdd : Component::TerrainRemove,Autocomplete::Always,false),mode(mode),selection(selection),maxHeightDifference(1) {}
 				virtual void			Restart(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft((int)selection.Count() * BuildWallMineralCosts,v,GetOperationAffinity());}
 				static Component::operation_t	GetOperationAffinity(CursorMode mode) {return mode == CursorMode::BuildBlockMode ? Component::TerrainAdd : Component::TerrainRemove;}
 				virtual Component::operation_t	GetOperationAffinity() const override {return GetOperationAffinity(mode);}

@@ -11,6 +11,7 @@
 
 namespace Engine
 {
+	using namespace DeltaWorks::Math;
 	static inline size_t Align32(size_t s)
 	{
 		if (s%4)

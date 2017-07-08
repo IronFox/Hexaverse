@@ -17,7 +17,7 @@ namespace Objects
 
 	#ifndef CLIENT
 
-		/*static*/ Buffer0<WFaction>	Faction::all;
+		/*static*/ Ctr::Buffer0<WFaction>	Faction::all;
 		/*static*/ PFaction				Faction::nexus;
 
 
@@ -584,7 +584,7 @@ namespace Objects
 		//}
 
 		template <typename T>
-		count_t		CountRawSensorCoverage(const TVec3<>&center, const BasicBuffer<T>&scope)
+		count_t		CountRawSensorCoverage(const TVec3<>&center, const Ctr::BasicBuffer<T>&scope)
 		{
 			count_t rs = 0;
 			foreach (scope,s)
@@ -597,7 +597,7 @@ namespace Objects
 		}
 
 		template <typename T>
-		count_t		CountRawSensorCoverage(const Sphere<>&sphere, const BasicBuffer<T>&scope)
+		count_t		CountRawSensorCoverage(const Sphere<>&sphere, const Ctr::BasicBuffer<T>&scope)
 		{
 			count_t rs = 0;
 			foreach (scope,s)
@@ -671,7 +671,7 @@ namespace Objects
 		}
 
 
-		void		Faction::RegisterSensorCreation(const World::Sensor&sensor, int sensorHeight, float&t, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
+		void		Faction::RegisterSensorCreation(const World::Sensor&sensor, int sensorHeight, float&t, Ctr::Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
 		{
 			//if (sensorHeight <= Grid::CellStack::TopHeight)
 			{
@@ -758,7 +758,7 @@ namespace Objects
 				LogEvent(EventSignificance::PerformanceMeasurement,owner->shared_from_this(),"Computed appearances in "+String(timer.GetSecondsSince(started)));
 				started = timer.Now();
 
-				static Buffer<PWorldEntity>	disappear;
+				static Ctr::Buffer<PWorldEntity>	disappear;
 
 				owner->seeing.VisitAllKeys([this,&t](const PWorldEntity&e)
 				{
@@ -798,7 +798,7 @@ namespace Objects
 
 			if (!knownWorld.SensoryIsInvalid())
 			{
-				static Buffer<PWorldEntity>	disappear;
+				static Ctr::Buffer<PWorldEntity>	disappear;
 
 				bool offGrid = sensorHeight > Grid::CellStack::TopHeight;
 
@@ -1563,7 +1563,7 @@ namespace Objects
 
 
 
-		void		Faction::RestoreMarkers(const ArrayData<Marker>&source)
+		void		Faction::RestoreMarkers(const Ctr::ArrayData<Marker>&source)
 		{
 			ASSERT__(markers.IsEmpty());
 			ASSERT__(markerMap.IsEmpty());
@@ -1656,7 +1656,7 @@ namespace Objects
 
 			{
 				auto lock = f->LockSensorUpdates();
-				static Buffer0<PWorldEntity>	toDelete;
+				static Ctr::Buffer0<PWorldEntity>	toDelete;
 				for (index_t i = 0; i < f->structures.Count(); i++)
 					if (!f->structures[i].lock()->IsIndestructible())
 					{
@@ -1795,7 +1795,7 @@ namespace Objects
 				{
 					competition++;
 					float dist = Vec::quadraticDistance(candidate,f->color);
-					closest = vmin(dist,closest);
+					closest = M::vmin(dist,closest);
 				}
 			});
 			if (closest > bestDist)

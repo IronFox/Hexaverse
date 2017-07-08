@@ -4,6 +4,9 @@
 #include <container/hashtable.h>
 #include <functional>
 
+using namespace DeltaWorks;
+
+
 template <typename...T>
 	class Observable
 	{
@@ -84,11 +87,11 @@ template <typename...T>
 		}
 
 	private:
-		Buffer0<index_t>	dropBuffer;
-		index_t				iterating = 0;
-		Buffer0<F,Swap>		functions;
-		IndexTable<index_t>	keyMap;
-		static index_t		keyCounter;
+		Ctr::Buffer0<index_t>		dropBuffer;
+		index_t						iterating = 0;
+		Ctr::Buffer0<F,Swap>		functions;
+		Ctr::IndexTable<index_t>	keyMap;
+		static index_t				keyCounter;
 	};
 
 template <typename...T>

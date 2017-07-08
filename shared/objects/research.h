@@ -18,13 +18,13 @@ namespace Objects
 	class ResearchGroup
 	{
 	public:
-		typedef Buffer0<PResearchTopic>	List;
+		typedef Ctr::Buffer0<PResearchTopic>	List;
 		typedef List::iterator			iterator;
 		typedef List::const_iterator	const_iterator;
 
 
 		List					children;
-		StringTable<PResearchTopic>	map;
+		Ctr::StringTable<PResearchTopic>	map;
 		const String			name;
 
 		/**/					ResearchGroup(const String&name):name(name)	{}
@@ -95,7 +95,7 @@ namespace Objects
 		A topic is researchable if it's generally researchable (i.e. not a group), its dependencies are completed,
 		and it can and has not been completed.
 		*/
-		bool					CanResearch(const Lua::Reference&researchState, const ArrayRef<const PResearchTopic>&workQueue) const
+		bool					CanResearch(const Lua::Reference&researchState, const Ctr::ArrayRef<const PResearchTopic>&workQueue) const
 		{
 			if (IsGroup())
 				return false;
@@ -127,7 +127,7 @@ namespace Objects
 
 	private:
 		int						totalContribution = 0;
-		Buffer0<PResearchTopic>	researchQueue;
+		Ctr::Buffer0<PResearchTopic>	researchQueue;
 		bool					factionIsNexus;
 		static void				LogLua(const String&msg);
 		static PResearchTopic	CreateResearch(const PResearchTopic&parent, const String&name, const String&iconName, 
@@ -152,7 +152,7 @@ namespace Objects
 		Lua::Reference			researchState;	//unknown to C++ code
 		struct TSerialState
 		{
-			Array<BYTE>			serialState;
+			Ctr::Array<BYTE>			serialState;
 			String				researchQueue;
 
 			void				swap(TSerialState&other)
@@ -173,7 +173,7 @@ namespace Objects
 			ScriptCache::PScript	script,	//currently loaded program
 									program0,	//absolute fallback program to be used if all fails
 									factoryDefault;	//program defined in install directory
-			Buffer0<PResearchTopic>	allTopics;
+			Ctr::Buffer0<PResearchTopic>	allTopics;
 			ResearchGroup		rootResearch;
 			Lua::PProgram		researchProgram;
 			Lua::Function<Lua::Reference()>	stateConstructor;
@@ -205,20 +205,20 @@ namespace Objects
 		bool					CheckUnlocked(const Component::Base&base, String&errorOut) const	{return true;}
 		bool					CheckUnlocked(ConstName, String&errorOut) const	{return true;}
 		bool					IsIdle() const {return researchQueue.IsEmpty();}
-		ArrayRef<const PResearchTopic>GetResearchQueue() const	{return researchQueue.ToRef();}
+		Ctr::ArrayRef<const PResearchTopic>GetResearchQueue() const	{return researchQueue.ToRef();}
 		PResearchTopic			GetActiveTopic() const {return researchQueue.IsNotEmpty() ? researchQueue.First() : PResearchTopic();}
 		String					ExportResearchQueue();
-		void					ExportResearchQueue(Array<UINT32>&);
+		void					ExportResearchQueue(Ctr::Array<UINT32>&);
 		void					RestoreResearchQueue(const String&paths);
-		void					RestoreResearchQueue(const Array<UINT32>&);
+		void					RestoreResearchQueue(const Ctr::Array<UINT32>&);
 		bool					AppendResearchTask(const PResearchTopic&);
 		bool					AppendResearchTask(index_t serialIndex)	{return AppendResearchTask(GetTopic(serialIndex));}
 		bool					DropResearchTask(const PResearchTopic&);
 		bool					DropResearchTask(index_t serialIndex) 	{return DropResearchTask(GetTopic(serialIndex));}
 		bool					ResearchQueueIsFull() const;
 
-		void					Import(const ArrayRef<const BYTE>&serializedState);
-		void					Export(Array<BYTE>&outSerializedState) const;
+		void					Import(const Ctr::ArrayRef<const BYTE>&serializedState);
+		void					Export(Ctr::Array<BYTE>&outSerializedState) const;
 		static PResearchTopic	GetTopic(index_t);
 		static PResearchTopic	FindTopic(const String&path)	{return FindTopic(path.ref());}
 		static PResearchTopic	FindTopic(const StringRef&path);

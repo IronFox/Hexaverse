@@ -13,8 +13,8 @@
 
 namespace ScriptCache
 {
-	GenericHashTable<PathString,std::pair<PScript,FileSystem::ftime_t> >	map;
-	GenericHashTable<SHA256::HashContainer,PScript>	hashMap;
+	Ctr::GenericHashTable<PathString,std::pair<PScript,FileSystem::ftime_t> >	map;
+	Ctr::GenericHashTable<SHA256::HashContainer,PScript>	hashMap;
 
 	static const PathString cacheFileExtension = ".script";
 
@@ -41,7 +41,7 @@ namespace ScriptCache
 		this->compressed.resizePreserveContent(compressed+4);
 		SHA256::Hash(this->compressed.pointer(),this->compressed.size(),this->identifier);
 
-		LogEvent(EventClass::Preset::common,"  BZ2: "+String(len)+" bytes compressed to "+String(compressed)+" bytes (down to "+String(Round((float)compressed/(float)len * 100.f,1))+"%)");
+		LogEvent(EventClass::Preset::common,"  BZ2: "+String(len)+" bytes compressed to "+String(compressed)+" bytes (down to "+String(M::Round((float)compressed/(float)len * 100.f,1))+"%)");
 		LogEvent(EventClass::Preset::common,"  ID updated to "+Bin2Str::ConvertPOD(this->identifier));
 		return true;
 	}
@@ -135,7 +135,7 @@ namespace ScriptCache
 		if (!f)
 			return rs;
 		FileSystem::fsize_t size = FileSystem::GetFileSize(path);
-		Array<BYTE> compressed(size);
+		Ctr::Array<BYTE> compressed(size);
 		size_t read = fread(compressed.pointer(),1,size,f);
 		fclose(f);
 		if (read != size)
@@ -155,7 +155,7 @@ namespace ScriptCache
 		return DefineFromFleetingCompressedData(id,compressed,false);
 	}
 
-	PScript		DefineFromFleetingCompressedData(const SHA256::HashContainer&id, ArrayData<BYTE>&data, bool createFile/*=true*/)
+	PScript		DefineFromFleetingCompressedData(const SHA256::HashContainer&id, Ctr::ArrayData<BYTE>&data, bool createFile/*=true*/)
 	{
 		if (data.GetLength() < 4)
 		{
@@ -275,7 +275,7 @@ namespace ScriptCache
 				{
 					count_t erase = entries.Count()-20;
 					LogEvent(EventClass::Preset::common,"ScriptCache: Found "+String(entries.Count())+" cache entries, exceeding max cache size by "+String(erase));
-					ByOperator::QuickSort(entries);
+					Sorting::ByOperator::QuickSort(entries);
 					for (index_t i = 0; i < erase; i++)
 					{
 						toDelete.Append().swap( entries[i].file );

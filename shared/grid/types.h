@@ -1,8 +1,9 @@
 #pragma once
 
 #include <general/random.h>
+#include <random>
 
-typedef RNG<std::mt19937>	TwisterRandom;
+typedef DeltaWorks::RNG<std::mt19937>	TwisterRandom;
 
 namespace World
 {

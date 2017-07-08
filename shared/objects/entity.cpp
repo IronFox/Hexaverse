@@ -22,7 +22,7 @@ namespace Objects
 {
 
 
-	GenericHashTable<TUniqueID,PWorldEntity>	idMap;
+	Ctr::GenericHashTable<TUniqueID,PWorldEntity>	idMap;
 
 	/*static*/ index_t			BaseAttributeCache::versionCounter = 0;
 
@@ -148,7 +148,7 @@ namespace Objects
 		#endif
 	}
 
-	TurretTrajectory		WorldEntity::TraceTrajectory(const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const
+	TurretTrajectory		WorldEntity::TraceTrajectory(const TrajectoryEndPoint&dest, Ctr::Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const
 	{
 		float zOffset;
 		PConstTurretBase b = GetTurretBase(zOffset);
@@ -191,7 +191,7 @@ namespace Objects
 
 	
 
-	TurretTrajectory		WorldEntity::TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const
+	TurretTrajectory		WorldEntity::TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const
 	{
 		float zOffset;
 		PConstTurretBase b = GetTurretBase(zOffset);
@@ -483,7 +483,7 @@ namespace Objects
 	#endif
 	
 
-	void		WorldEntity::MoveSensoryToCurrentLocation(float&atTime, Buffer0<PWorldEntity>*newContacts/* = nullptr*/)
+	void		WorldEntity::MoveSensoryToCurrentLocation(float&atTime, Ctr::Buffer0<PWorldEntity>*newContacts/* = nullptr*/)
 	{
 		if (registeredSensor.location == location && registeredSensor.empDamageLevel == empDamageLevel)
 			return;
@@ -546,7 +546,7 @@ namespace Objects
 	}
 
 
-	WorldEntity::TRegisteredSensor WorldEntity::RegisterSensory(const Grid::LCellIdI&loc, float&atTime, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
+	WorldEntity::TRegisteredSensor WorldEntity::RegisterSensory(const Grid::LCellIdI&loc, float&atTime, Ctr::Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
 	{
 		#ifdef CLIENT	//special constraint applied by client: strict register->unregister->register... order
 			if (registeredSensor.location != Grid::LCellIdI::Invalid)
@@ -625,12 +625,12 @@ namespace Objects
 	#ifndef CLIENT
 		void					WorldEntity::ReSeedRandom()
 		{
-			CRC32::beginSequence();
-			CRC32::calcNext(&location,sizeof(location));
-			CRC32::calcNext(&RuntimeConfig::roundNumber,sizeof(RuntimeConfig::roundNumber));
+			CRC32::Sequence s;
+			s.AppendPOD(location);
+			s.AppendPOD(RuntimeConfig::roundNumber);
 			ConstName cName = GetCTypeName();
-			CRC32::calcNext(&cName,sizeof(ConstName));
-			UINT32 seed = CRC32::endSequence();
+			s.AppendPOD(cName);
+			UINT32 seed = s.Finish();
 			//std::cout << "Reseeding "<<GetName()<<" to "<<seed<< std::endl;
 			entityRandom.seed(seed);
 		}

@@ -7,8 +7,8 @@ namespace Objects
 {
 	
 
-	/*static*/ Buffer0<Component::VehicleBase*>		VehiclePlant::baseComponents;
-	/*static*/ Buffer0<Component::Turret*>			VehiclePlant::turretComponents;
+	/*static*/ Ctr::Buffer0<Component::VehicleBase*>		VehiclePlant::baseComponents;
+	/*static*/ Ctr::Buffer0<Component::Turret*>			VehiclePlant::turretComponents;
 	
 	#ifndef CLIENT
 		/*virtual override*/ void				VehiclePlant::Tick(ResourceVector&v)
@@ -31,7 +31,7 @@ namespace Objects
 			}
 		}
 
-		/*virtual override*/ bool			VehiclePlant::DirectTo(CursorMode mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
+		/*virtual override*/ bool			VehiclePlant::DirectTo(CursorMode mode, Ctr::ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
 		{
 			if (waypoints.Count() != 1)
 				return false;

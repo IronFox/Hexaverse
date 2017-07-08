@@ -4,6 +4,7 @@
 
 #include "display.h"
 #include <general/enumeration.h>
+#include <global_string.h>
 
 
 class ShadedInstruction
@@ -15,6 +16,10 @@ public:
 				Unfiltered,
 				Off);
 	typedef Engine::DX11::BaseInstructionBlock	Base;
+	typedef DeltaWorks::PathString	PathString;
+	typedef DeltaWorks::String		String;
+	typedef DeltaWorks::count_t		count_t;
+	typedef DeltaWorks::index_t		index_t;
 
 	Base					quality[Quality::N];
 	static Quality			chosenQuality;

@@ -48,7 +48,7 @@ namespace Test
 
 
 
-	static char32_t		RandomUnicodeNoZero(Random&random)
+	static char32_t		RandomUTF32NoZero(Random&random)
 	{
 		for (;;)
 		{
@@ -62,15 +62,15 @@ namespace Test
 	{
 		for (index_t i = 0; i <= 0x10FFFF; i++)
 		{
-			StringEncoding::UTF8Char ch8;
-			StringEncoding::UTF16Char ch16;
+			StringEncoding::UTF8::TChar ch8;
+			StringEncoding::UTF16::TChar ch16;
 			const char32_t testChar = (char32_t)i;
 
-			StringEncoding::EncodeUnicode(testChar,ch8);
+			StringEncoding::UTF32::ToUTF8(testChar,ch8);
 			bool haveUTF16 = false;
 			if (StringEncoding::IsValidUnicode(testChar))
 			{
-				StringEncoding::EncodeUnicode(testChar,ch16);
+				StringEncoding::UTF32::ToUTF16(testChar,ch16);
 				haveUTF16 = true;
 			}
 			StringEncoding::AssertValidity(ch8);
@@ -81,21 +81,21 @@ namespace Test
 				ASSERT__(StringEncoding::IsValid(ch16));	//if these trigger then AssertValidity() implements a different check than IsValid()
 			}
 
-			ASSERT_EQUAL__(StringEncoding::EncodedUTF8Length(testChar),ch8.numCharsUsed);
+			ASSERT_EQUAL__(StringEncoding::UTF32::ToUTF8Length(testChar),ch8.numCharsUsed);
 
-			char32_t reverse = StringEncoding::ToUnicode(ch8);
+			char32_t reverse = StringEncoding::UTF8::ToUTF32(ch8);
 			ASSERT_EQUAL__(reverse,testChar);
 			if (haveUTF16)
 			{
-				reverse = StringEncoding::ToUnicode(ch16);
+				reverse = StringEncoding::UTF16::ToUTF32(ch16);
 				ASSERT_EQUAL__(reverse,testChar);
 			}
 
 			if (i < 0x100)
 			{
 				const char cp1252C = (char)(BYTE)i;
-				char32_t unicode2 = StringEncoding::ToUnicodeFromCP1252(cp1252C);
-				char cp1252C2 = StringEncoding::EncodeUnicodeToCP1252(unicode2);
+				char32_t utf322 = StringEncoding::CP1252::ToUTF32(cp1252C);
+				char cp1252C2 = StringEncoding::UTF32::ToCP1252(utf322);
 				ASSERT_EQUAL__(cp1252C,cp1252C2);
 			}
 		}
@@ -110,13 +110,13 @@ namespace Test
 
 			String backConverted;
 			String utf8String;
-			UnicodeString unicodeString;
-			StringEncoding::CP1252ToUTF8(windowsString,utf8String);
-			StringEncoding::UTF8ToCP1252(utf8String,backConverted);
+			UTF32String utf32String;
+			StringEncoding::CP1252::ToUTF8(windowsString,utf8String);
+			StringEncoding::UTF8::ToCP1252(utf8String,backConverted);
 			ASSERT_EQUAL__(backConverted,windowsString);
 
-			StringEncoding::CP1252ToUnicode(windowsString,unicodeString);
-			StringEncoding::UnicodeToCP1252(unicodeString,backConverted);
+			StringEncoding::CP1252::ToUTF32(windowsString,utf32String);
+			StringEncoding::UTF32::ToCP1252(utf32String,backConverted);
 			ASSERT_EQUAL__(backConverted,windowsString);
 		}
 
@@ -124,20 +124,20 @@ namespace Test
 		for (index_t i = 0; i < 1000; i++)
 		{
 			const count_t length = random.Next(1,1000);
-			UnicodeString unicodeString = TStringLength(length);
+			UTF32String utf32String = TStringLength(length);
 			for (index_t i = 0; i < length; i++)
-				unicodeString.Set(i,RandomUnicodeNoZero(random));
+				utf32String.Set(i,RandomUTF32NoZero(random));
 
-			UnicodeString backConverted;
+			UTF32String backConverted;
 			String utf8String;
 			UTF16String utf16String;
 
-			StringEncoding::UnicodeToUTF8(unicodeString,utf8String);
-			StringEncoding::UnicodeToUTF16(unicodeString,utf16String);
-			StringEncoding::UTF8ToUnicode(utf8String,backConverted);
-			ASSERT__(backConverted==unicodeString);
-			StringEncoding::UTF16ToUnicode(utf16String,backConverted);
-			ASSERT__(backConverted==unicodeString);
+			StringEncoding::UTF32::ToUTF8(utf32String,utf8String);
+			StringEncoding::UTF32::ToUTF16(utf32String,utf16String);
+			StringEncoding::UTF8::ToUTF32(utf8String,backConverted);
+			ASSERT__(backConverted==utf32String);
+			StringEncoding::UTF16::ToUTF32(utf16String,backConverted);
+			ASSERT__(backConverted==utf32String);
 		}
 
 	}
@@ -278,7 +278,7 @@ namespace Test
 					if (random.NextBool())
 						vec.level[i] = 0;
 					else
-						vec.level[i] = cubic(random.Next(100));
+						vec.level[i] = Math::cubic(random.Next(100));
 				}
 
 				Protocol::VerifySerialization(vec);
@@ -332,7 +332,7 @@ namespace Test
 
 		//Objects::PTower prototype = To<Objects::Tower>::DynamicCast( Objects::GetPrototypeByName(ConstName::Type_ArtilleryTower));
 
-		Buffer0<TVec4<> > trajectory;
+		Ctr::Buffer0<TVec4<> > trajectory;
 		TVec3<> impactAt;
 		Grid::HCellIdI impactCell;
 		auto turret = &Objects::Component::artillery;
@@ -602,7 +602,7 @@ namespace Test
 		ASSERT__(mine->IsEnabled());
 		ASSERT__(!plant->IsEnabled());
 
-		Buffer0<Objects::Choice> choices;
+		Ctr::Buffer0<Objects::Choice> choices;
 		Objects::TChoiceVisualization vis;
 
 		for (int i = 0; i < 100; i++)

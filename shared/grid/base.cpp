@@ -1,6 +1,5 @@
 #include <global_root.h>
 #include "base.h"
-#include <math/complex.h>
 
 /*static*/ UINT32			BaseGrid::IsolatedCornerIndex[IsolatedCornerCount];
 /*static*/ bool				BaseGrid::CornerIsIsolated[12] = {false};
@@ -108,7 +107,7 @@
 		*/
 
 }
-/*static*/ void BaseGrid::UpdateRadii(Array<TNetCell>&cells)
+/*static*/ void BaseGrid::UpdateRadii(Ctr::Array<TNetCell>&cells)
 {
 	foreach(cells, cell)
 	{
@@ -150,7 +149,7 @@ static void Relax(BaseGrid::TCell*cells, count_t numCells)	//dont work well
 	radius /= numCells;
 	//ShowMessage(radius);
 
-	Array<float3>	next(numCells);
+	Ctr::Array<float3>	next(numCells);
 
 	for (index_t generation = 0; generation < 100; generation++)
 	{

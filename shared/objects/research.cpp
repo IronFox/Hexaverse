@@ -9,6 +9,7 @@
 #include "../luaGameAPI.h"
 #include <io/file_system.h>
 #include "structure/laboratory.h"
+#include <io/byte_stream.h>
 
 namespace Objects
 {
@@ -101,7 +102,7 @@ namespace Objects
 
 
 
-	static Array<BaseAttributeTable>	structureTables;
+	static Ctr::Array<BaseAttributeTable>	structureTables;
 
 
 	template <typename T, typename F>
@@ -624,7 +625,7 @@ namespace Objects
 		LogEvent(EventClass(EventSignificance::Common,EventFlavor::ServerPrivate),"Attempting to activate research program "+Bin2Str::ConvertPOD(script->identifier));
 
 
-		Buffer0<TSerialState,Swap> taskLists;
+		Ctr::Buffer0<TSerialState,Swap> taskLists;
 		ForeachFaction([&taskLists](const PFaction&f)
 		{
 			auto&entry = taskLists.Append();
@@ -756,7 +757,7 @@ namespace Objects
 
 	/*static*/ PResearchTopic	ResearchState::FindTopic(const StringRef&path)
 	{
-		Array<StringRef>	components;
+		Ctr::Array<StringRef>	components;
 		explode('/',path,components);
 		PResearchTopic	current = globalState.rootResearch.Find(components.First());
 		for (index_t i = 1; i < components.Count(); i++)
@@ -811,7 +812,7 @@ namespace Objects
 	void		ResearchState::RestoreResearchQueue(const String&source)
 	{
 		researchQueue.Clear();
-		Array<StringRef> paths;
+		Ctr::Array<StringRef> paths;
 		explode(';',source,paths);
 		foreach (paths,p)
 			AppendResearchTask(FindTopic(*p));
@@ -832,13 +833,13 @@ namespace Objects
 		return buffer.CopyToString();
 	}
 
-	void		ResearchState::ExportResearchQueue(Array<UINT32>&outRS)
+	void		ResearchState::ExportResearchQueue(Ctr::Array<UINT32>&outRS)
 	{
 		outRS.SetSize(researchQueue.Count());
 		for (index_t i = 0; i < researchQueue.Count(); i++)
 			outRS[i] = ((UINT32)(researchQueue[i]->serialIndex));
 	}
-	void					ResearchState::RestoreResearchQueue(const Array<UINT32>&q)
+	void					ResearchState::RestoreResearchQueue(const Ctr::Array<UINT32>&q)
 	{
 		researchQueue.Clear();
 		foreach (q,e)
@@ -908,7 +909,7 @@ namespace Objects
 		BaseAttributeCache::versionCounter++;
 	}
 
-	void					ResearchState::Import(const ArrayRef<const BYTE>&serializedState)
+	void					ResearchState::Import(const Ctr::ArrayRef<const BYTE>&serializedState)
 	{
 		if (!globalState.researchProgram)
 		{
@@ -933,7 +934,7 @@ namespace Objects
 	}
 	
 	
-	void					ResearchState::Export(Array<BYTE>&outSerializedState) const
+	void					ResearchState::Export(Ctr::Array<BYTE>&outSerializedState) const
 	{
 		//Buffer0<BYTE> data;
 		if (globalState.exportState.IsEmpty() || researchState.IsEmpty())

@@ -90,6 +90,7 @@ namespace FileIO
 
 		//FactionGroup = WorldGroup + 1024,
 		FactionSection = ResourceSection + 1024,
+		FactionStatisticsSection
 				//FactionID,
 				//FactionAccessToken,
 				//ResourcesDiscovered_Compressed,
@@ -212,7 +213,7 @@ namespace FileIO
 		}
 	
 	template <typename T>
-		inline static void GetPODs(Riff::Chunk*parent, const Riff::TID&id, ArrayData<T>&resultOut)
+		inline static void GetPODs(Riff::Chunk*parent, const Riff::TID&id, Ctr::ArrayData<T>&resultOut)
 		{
 			Riff::Chunk*chk = parent->FindFirst(id);
 			ASSERT_NOT_NULL1__(chk, id.ToString());
@@ -223,7 +224,7 @@ namespace FileIO
 		}
 
 	template <typename T>
-		inline static void GetPODs(Riff::Chunk*parent, const Riff::TID&id, BasicBuffer<T>&resultOut)
+		inline static void GetPODs(Riff::Chunk*parent, const Riff::TID&id, Ctr::BasicBuffer<T>&resultOut)
 		{
 			Riff::Chunk*chk = parent->FindFirst(id);
 			ASSERT_NOT_NULL1__(chk, id.ToString());
@@ -263,7 +264,7 @@ namespace FileIO
 		};
 	}
 
-	static void Export(Riff::Chunk*parent, const Objects::WorldEntity&e, GenericHashSet<Objects::PFaction,SharedPtrHash>&factions)
+	static void Export(Riff::Chunk*parent, const Objects::WorldEntity&e, Ctr::GenericHashSet<Objects::PFaction,SharedPtrHash>&factions)
 	{
 		factions.Set(e.owner);
 		static ByteStream stream;
@@ -288,7 +289,7 @@ namespace FileIO
 	}
 
 
-	typedef GenericHashTable<TUniqueID,Objects::PFaction>	FactionMap;
+	typedef Ctr::GenericHashTable<TUniqueID,Objects::PFaction>	FactionMap;
 	static void Import(Riff::Chunk*parent, Objects::WorldEntity&e, const FactionMap&ownerMap)
 	{
 		using namespace ApplicationInterface;
@@ -379,10 +380,10 @@ namespace FileIO
 		};
 	}
 
-	static void Export(Riff::Chunk*taskChunk, const Queue<Objects::MobileEntity::Task::Focus>&foci)
+	static void Export(Riff::Chunk*taskChunk, const Ctr::Queue<Objects::MobileEntity::Task::Focus>&foci)
 	{
-		static Array<Grid::LCellIdI>	fociArray;
-		static Array<BYTE>	flagArray;
+		static Ctr::Array<Grid::LCellIdI>	fociArray;
+		static Ctr::Array<BYTE>	flagArray;
 		if (foci.IsEmpty())
 			return;
 		fociArray.SetSize(foci.Count());
@@ -397,7 +398,7 @@ namespace FileIO
 		taskChunk->AppendBlock(RID::fociFlags,flagArray.pointer(),flagArray.GetContentSize());
 	}
 
-	static void Import(Riff::Chunk*taskChunk, Queue<Objects::MobileEntity::Task::Focus>&outFoci)
+	static void Import(Riff::Chunk*taskChunk, Ctr::Queue<Objects::MobileEntity::Task::Focus>&outFoci)
 	{
 		Riff::Chunk*source = taskChunk->FindFirst(RID::foci);
 		Riff::Chunk*source1 = taskChunk->FindFirst(RID::fociFlags);
@@ -422,7 +423,7 @@ namespace FileIO
 		}
 	}
 
-	static void Export(Riff::Chunk*taskChunk, const BasicBuffer<Objects::PathNode>&path)
+	static void Export(Riff::Chunk*taskChunk, const Ctr::BasicBuffer<Objects::PathNode>&path)
 	{
 		static_assert(sizeof(Objects::PathNode)==sizeof(Grid::LCellIdI)+sizeof(int), "Struct alignment fault" );
 		if (path.IsEmpty())
@@ -430,7 +431,7 @@ namespace FileIO
 		taskChunk->AppendBlock(RID::path,path.pointer(),path.GetContentSize());
 	}
 
-	static void Import(Riff::Chunk*taskChunk, BasicBuffer<Objects::PathNode>&outPath)
+	static void Import(Riff::Chunk*taskChunk, Ctr::BasicBuffer<Objects::PathNode>&outPath)
 	{
 		Riff::Chunk*source = taskChunk->FindFirst(RID::path);
 		outPath.Clear();
@@ -461,7 +462,7 @@ namespace FileIO
 			Riff::Chunk*jobChunk = taskChunk->AppendBlock(job->GetDataKey());
 			size_t dataSize = job->GetSerialSize(false);
 			if (dataSize)
-				SerializeToCompactMemory(*job,jobChunk->SetData(dataSize),(ISerializable::serial_size_t)dataSize,false);
+				SerializeToCompactMemory(*job,jobChunk->SetData(dataSize),(serial_size_t)dataSize,false);
 			//this fails sometimes. gotta investigate
 		}
 	}
@@ -681,9 +682,9 @@ namespace FileIO
 		return ((UINT16)a & (UINT16)b) != 0;
 	}
 
-	Buffer0<Objects::PMobileEntity>	insertIntoHangar;
+	Ctr::Buffer0<Objects::PMobileEntity>	insertIntoHangar;
 
-	static void Export(Riff::Chunk*parent, Objects::MobileEntity&v, GenericHashSet<Objects::PFaction,SharedPtrHash>&factions)
+	static void Export(Riff::Chunk*parent, Objects::MobileEntity&v, Ctr::GenericHashSet<Objects::PFaction,SharedPtrHash>&factions)
 	{
 		Objects::PHangar store = v.storedIn.lock();
 		if (store)
@@ -846,7 +847,7 @@ namespace FileIO
 
 
 
-	static void Export(Riff::Chunk*parent, Objects::Structure&s, GenericHashSet<Objects::PFaction,SharedPtrHash>&factions)
+	static void Export(Riff::Chunk*parent, Objects::Structure&s, Ctr::GenericHashSet<Objects::PFaction,SharedPtrHash>&factions)
 	{
 		Export(parent,(Objects::WorldEntity&)s,factions);
 		Export(parent,RID::structureType,s.GetTypeName());
@@ -1005,8 +1006,8 @@ namespace FileIO
 
 	void SerializeToChunk(const ISerializable&data, Riff::Chunk*target)
 	{
-		static Array<BYTE> buffer;
-		ISerializable::serial_size_t size = data.GetSerialSize(false);
+		static Ctr::Array<BYTE> buffer;
+		serial_size_t size = data.GetSerialSize(false);
 		if (buffer.size() < size)
 			buffer.SetSize(size);
 		SerializeToCompactMemory(data,buffer.pointer(),size,false);
@@ -1138,7 +1139,7 @@ namespace FileIO
 				ScriptCache::PScript script = ScriptCache::Lookup(id);
 				if (!script)
 				{
-					Array<BYTE>	data;
+					Ctr::Array<BYTE>	data;
 					chunk->Get(data);
 					script = ScriptCache::DefineFromFleetingCompressedData(id,data,false);
 				}
@@ -1149,6 +1150,7 @@ namespace FileIO
 			}
 		}
 
+		Objects::PFaction lastFaction;	//last imported faction. Used for statistics import
 		FactionMap	factionMap;
 		for (int round = 0; round < 2; round++)
 		{
@@ -1225,7 +1227,7 @@ namespace FileIO
 									Riff::Chunk*chk = list->FindFirst(RID::variableConfiguration);
 									ASSERT_NOT_NULL__(chk);
 									String variables(chk->pointer(),chk->size());
-									Array<String> lines;
+									Ctr::Array<String> lines;
 									explode('\n',variables,lines);
 									foreach (lines,line)
 									{
@@ -1349,10 +1351,15 @@ namespace FileIO
 								GetBinary(list,RID::resourceCoverage,res.coverage,sizeof(res.coverage));
 							}
 						break;
+						case ChunkName::FactionStatisticsSection:
+							if (round == 0 && lastFaction)
+								lastFaction->statistics.ImportFrom(list);
+						break;
 						case ChunkName::FactionSection:
 							if (round == 0)
 							{
 								Objects::PFaction faction;
+								faction;
 								TUniqueID factionID;
 								GetPOD(list,RID::factionID,factionID);
 							
@@ -1375,6 +1382,7 @@ namespace FileIO
 									//foreach (faction->knownWorld,stat)
 									//	stat->ZeroInit();
 								}
+								lastFaction = faction;
 								GetPOD(list,RID::factionAccessToken,faction->accessToken);
 
 								Riff::Chunk*researchStateChunk = list->FindFirst(RID::researchState);
@@ -1423,7 +1431,7 @@ namespace FileIO
 									Riff::Chunk*markerChunk = list->FindFirst(RID::factionMarkers);
 									if (markerChunk)
 									{
-										Array<Objects::Marker>	markers;
+										Ctr::Array<Objects::Marker>	markers;
 										DeserializeFromCompactMemory(markers, markerChunk->pointer(), markerChunk->size(), false);
 										faction->RestoreMarkers(markers);
 									}
@@ -1487,7 +1495,7 @@ namespace FileIO
 									if (raw)
 									{
 										ASSERT_EQUAL__(raw->size(),faction->knownResources.resourcesDiscovered.GetContentSize());
-										faction->knownResources.resourcesDiscovered = ArrayRef<const bool>((const bool*)raw->pointer(),(size_t)raw->size());
+										faction->knownResources.resourcesDiscovered = Ctr::ArrayRef<const bool>((const bool*)raw->pointer(),(size_t)raw->size());
 									}
 								}
 							}
@@ -1672,7 +1680,7 @@ namespace FileIO
 		//general->AppendBlock(RID::exposeActionLeftToHostileFactions )->SetPODData(State::Config::exposeActionLeftToHostileFactions );
 		//general->AppendBlock(RID::doomsdayWeapons)->SetPODData((UINT8)RuntimeConfig::doomsdayWeapons);
 
-		GenericHashSet<Objects::PFaction,SharedPtrHash>	allFactions;
+		Ctr::GenericHashSet<Objects::PFaction,SharedPtrHash>	allFactions;
 
 		WriteActualWorldToContainer(container);
 
@@ -1712,73 +1720,74 @@ namespace FileIO
 		allFactions.VisitAllKeys([&container](const Objects::PFaction&faction)
 		{
 			Riff::Chunk*factionSection = CreateNamedList(container,ChunkName::FactionSection);
-		
-			if (faction == Objects::Faction::nexus)
 			{
-				factionSection->AppendBlock(RID::nexusTag);
-			}
-
-			factionSection->AppendBlock(RID::factionID)->SetPODData(faction->id);	//faction id
-			factionSection->AppendBlock(RID::factionName)->SetData(faction->name.c_str(),faction->name.length());
-			factionSection->AppendBlock(RID::factionColor)->SetData(faction->color.v,sizeof(float)*3);
-
-			factionSection->AppendBlock(RID::factionAccessToken)->SetPODData(faction->accessToken);	//faction access token
-
-
-			if (faction->researchState.researchState.IsSet())
-			{
-				Array<BYTE> data;
-				faction->researchState.Export(data);
-				factionSection->AppendBlock(RID::researchState)->SetData(data);
-
-				auto res = faction->researchState.ExportResearchQueue();
-				if (res.IsNotEmpty())
+				if (faction == Objects::Faction::nexus)
 				{
-					factionSection->AppendBlock(RID::activeResearchTopic)->SetData(res.c_str(),res.length());
+					factionSection->AppendBlock(RID::nexusTag);
+				}
+
+				factionSection->AppendBlock(RID::factionID)->SetPODData(faction->id);	//faction id
+				factionSection->AppendBlock(RID::factionName)->SetData(faction->name.c_str(),faction->name.length());
+				factionSection->AppendBlock(RID::factionColor)->SetData(faction->color.v,sizeof(float)*3);
+
+				factionSection->AppendBlock(RID::factionAccessToken)->SetPODData(faction->accessToken);	//faction access token
+
+
+				if (faction->researchState.researchState.IsSet())
+				{
+					Ctr::Array<BYTE> data;
+					faction->researchState.Export(data);
+					factionSection->AppendBlock(RID::researchState)->SetData(data);
+
+					auto res = faction->researchState.ExportResearchQueue();
+					if (res.IsNotEmpty())
+					{
+						factionSection->AppendBlock(RID::activeResearchTopic)->SetData(res.c_str(),res.length());
+					}
+				}
+
+
+				if (faction->markers.IsNotEmpty())
+				{
+					Riff::Chunk*markerChunk = factionSection->AppendBlock(RID::factionMarkers);
+					SerializeToChunk(faction->markers.CopyToArray(), markerChunk);
+				}
+
+				{
+					UINT32 outFlags = 0;
+					if (faction->isDead)
+						outFlags |= FactionFlags::IsDead;
+					if (outFlags != 0)
+						factionSection->AppendBlock(RID::factionFlags)->SetPODData(outFlags);
+				}
+
+
+				staticDeltaContainer.CompressState(faction->knownWorld,Protocol::Timestamp(true,0));
+
+				for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
+				{
+					SerializeToChunk(staticDeltaContainer.delta[k].data0, factionSection->AppendBlock(RID::factionWorldTypeChunk));
+				}
+
+				static Ctr::Buffer0<UINT32>	final;
+				final.Clear();
+
+				for (index_t i = 0; i < faction->knownResources.resourcesDiscovered.Count(); i++)
+				{
+					if (faction->knownResources.resourcesDiscovered[i])
+						final << (UINT32)i;
+				}
+
+				if (final.IsNotEmpty())
+				{
+					if (final.Count()*4 < faction->knownResources.resourcesDiscovered.Count())
+						factionSection->AppendBlock(RID::resourcesDiscoveredCompressed)->SetData(final.pointer(),final.Count()*4);	//resource discovered - compressed
+					else
+						factionSection->AppendBlock(RID::resourcesDiscoveredFull)->SetData(faction->knownResources.resourcesDiscovered.ToRef());	//resource discovered - full
 				}
 			}
-
-
-			if (faction->markers.IsNotEmpty())
-			{
-				Riff::Chunk*markerChunk = factionSection->AppendBlock(RID::factionMarkers);
-				SerializeToChunk(faction->markers.CopyToArray(), markerChunk);
-			}
-
-			{
-				UINT32 outFlags = 0;
-				if (faction->isDead)
-					outFlags |= FactionFlags::IsDead;
-				if (outFlags != 0)
-					factionSection->AppendBlock(RID::factionFlags)->SetPODData(outFlags);
-			}
-
-
-			staticDeltaContainer.CompressState(faction->knownWorld,Protocol::Timestamp(true,0));
-
-			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-			{
-				SerializeToChunk(staticDeltaContainer.delta[k].data0, factionSection->AppendBlock(RID::factionWorldTypeChunk));
-			}
-
-			static Buffer0<UINT32>	final;
-			final.Clear();
-
-			for (index_t i = 0; i < faction->knownResources.resourcesDiscovered.Count(); i++)
-			{
-				if (faction->knownResources.resourcesDiscovered[i])
-					final << (UINT32)i;
-			}
-
-			if (final.IsNotEmpty())
-			{
-				if (final.Count()*4 < faction->knownResources.resourcesDiscovered.Count())
-					factionSection->AppendBlock(RID::resourcesDiscoveredCompressed)->SetData(final.pointer(),final.Count()*4);	//resource discovered - compressed
-				else
-					factionSection->AppendBlock(RID::resourcesDiscoveredFull)->SetData(faction->knownResources.resourcesDiscovered.ToRef());	//resource discovered - full
-			}
-
-
+			Riff::Chunk*factionStatisticsSection = CreateNamedList(container,ChunkName::FactionStatisticsSection);
+			faction->statistics.ExportInto(factionStatisticsSection);
 		});
 		//LogEvent(EventType::SessionRelated,"World snapshot created in "+String(timer.GetSecondsSince(t0))+" seconds");
 
@@ -1801,7 +1810,7 @@ namespace FileIO
 
 
 
-	ChunkName Compare1(Riff::File&a, Riff::File&b, Buffer<Riff::TID>&idStack, const String&indent="")
+	ChunkName Compare1(Riff::File&a, Riff::File&b, Ctr::Buffer<Riff::TID>&idStack, const String&indent="")
 	{
 		ASSERT2__(a.GetID() == b.GetID(),a.GetID().ToString(),b.GetID().ToString());
 		std::cout << indent << a.GetID().ToString() << std::endl;
@@ -1846,7 +1855,7 @@ namespace FileIO
 		}
 		else
 		{
-			static Buffer<BYTE>	data0,data1;
+			static Ctr::Buffer<BYTE>	data0,data1;
 			data0.Clear(); data1.Clear();
 			a.Get(data0.AppendRow(a.GetSize()));
 			b.Get(data1.AppendRow(b.GetSize()));
@@ -1860,7 +1869,7 @@ namespace FileIO
 	}
 
 
-	void Compare(Riff::File&a, Riff::File&b, Buffer<Riff::TID>&idStack, const String&indent/*=""*/)
+	void Compare(Riff::File&a, Riff::File&b, Ctr::Buffer<Riff::TID>&idStack, const String&indent/*=""*/)
 	{
 		bool f0 = a.First();
 		bool f1 = b.First();

@@ -213,7 +213,7 @@ namespace Objects
 			}
 			String	ToString() const
 			{
-				Buffer0<String> rs;
+				Ctr::Buffer0<String> rs;
 				for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
 					if (level[i] != 0)
 						rs << Resource::Reinterpret(i).ToString()+String(": ")+String(level[i]);

@@ -70,7 +70,7 @@ namespace Journal
 
 			ASSERT__(f);
 
-			static GenericHashSet<TUniqueID>	processed;
+			static Ctr::GenericHashSet<TUniqueID>	processed;
 			processed.Clear();
 
 			for (index_t retry = 0; retry < fstrand.entityStrands.Count(); retry++)
@@ -1012,7 +1012,7 @@ namespace Journal
 				break;
 				case 'b':
 				{
-					Array<BYTE>&binary = binaryParameters.Set(paraRef);
+					Ctr::Array<BYTE>&binary = binaryParameters.Set(paraRef);
 					binary.SetSize(valLen/2);
 					Bin2Str::Convert(binary.pointer(),binary.GetLength(),value,valLen);
 				}
@@ -1990,7 +1990,7 @@ namespace Journal
 	}
 
 
-	void	Round::RegisterDirectEntityTo(bool apply, const Objects::PWorldEntity&e, Objects::CursorMode mode, const ArrayRef<Grid::LCellIdI>&target, bool detailed, bool mouseLeftClick, bool clearSafeTasks)
+	void	Round::RegisterDirectEntityTo(bool apply, const Objects::PWorldEntity&e, Objects::CursorMode mode, const Ctr::ArrayRef<Grid::LCellIdI>&target, bool detailed, bool mouseLeftClick, bool clearSafeTasks)
 	{
 		EntityStrand&strand = factionStrands.Set(e->owner->id).entityStrands.Set(e->id);
 		std::shared_ptr<DirectToCommand> cmd(new DirectToCommand());
@@ -2299,7 +2299,7 @@ namespace Journal
 
 
 	//must be string (and not std::type_id) so that loading strings works
-	/*static*/ StringTable<Round::PEvent>	Round::eventMap;
+	/*static*/ Ctr::StringTable<Round::PEvent>	Round::eventMap;
 
 
 

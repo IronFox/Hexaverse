@@ -48,11 +48,11 @@ namespace VisualTerrain
 			this->visibility = visibility;
 		}
 
-		void	Compile(const index_t offset, const index_t end, THull<ResourceVertex>&, SpinLock&lock);
+		void	Compile(const index_t offset, const index_t end, THull<ResourceVertex>&, Sys::SpinLock&lock);
 	};
 
 
-	void	ResourceCompiler::Compile(const index_t offset, const index_t end, THull<ResourceVertex>&coverHull, SpinLock&lock)
+	void	ResourceCompiler::Compile(const index_t offset, const index_t end, THull<ResourceVertex>&coverHull, Sys::SpinLock&lock)
 	{
 		for (index_t i = offset; i < offset+BatchSize && i < end; i++ )
 		{
@@ -267,7 +267,7 @@ namespace VisualTerrain
 	void CompileResources(THull<ResourceVertex>&cover, Grid::ResourceDiscovery&visibility, index_t offset, count_t count, Grid::FClipHeight clipHeight, const Grid::Resource*resources, count_t numResources)
 	{
 		const index_t end = offset + count;
-		SpinLock lock;
+		Sys::SpinLock lock;
 		Concurrency::parallel_for(offset, end, BatchSize,[end,&lock,&visibility, &cover, clipHeight,resources, numResources](index_t i)	//looks good - at least in release
 		{
 			BYTE data[sizeof(ResourceCompiler)];	//prevent implicit memset in release mode. i'm serious. visual studio has some funny ideas there...

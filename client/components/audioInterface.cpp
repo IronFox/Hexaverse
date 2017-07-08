@@ -35,6 +35,8 @@ namespace AudioInterface
 
 	void	Create()
 	{
+		namespace OpenAL = Engine::OpenAL;
+
 		isActive = true;
 		if (!OpenAL::Init())	//test
 		//if (true)
@@ -90,13 +92,13 @@ namespace AudioInterface
 	void	SetMasterVolume(float volume)
 	{
 		if (isActive)
-			OpenAL::Listener::SetGain(2.f * volume);
+			Engine::OpenAL::Listener::SetGain(2.f * volume);
 	}
 
 
 	void		Destroy()
 	{
-		OpenAL::Shutdown();
+		Engine::OpenAL::Shutdown();
 	}
 
 	void		UpdateListener()
@@ -108,8 +110,8 @@ namespace AudioInterface
 			//static TVec3<> last;
 			//OpenAL::Listener::SetVelocity((aspect.GetAbsoluteLocation() - last) / Engine::timing.delta);
 			//last = aspect.GetAbsoluteLocation();
-			OpenAL::Listener::SetPosition(aspect.GetAbsoluteLocation());
-			OpenAL::Listener::SetOrientation(aspect.GetViewingDirection(),aspect.viewInvert.y.xyz,true,false);
+			Engine::OpenAL::Listener::SetPosition(aspect.GetAbsoluteLocation());
+			Engine::OpenAL::Listener::SetOrientation(aspect.GetViewingDirection(),aspect.viewInvert.y.xyz,true,false);
 		}
 	}
 

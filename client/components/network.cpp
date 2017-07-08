@@ -213,7 +213,7 @@ namespace Network
 		TCP::Channel<Protocol::ServerInfo,0,Protocol::InfoChannel::ServerInfo>	serverInfoChannel(OnServerInfo);
 		TCP::Channel<Protocol::Ping,0,Protocol::InfoChannel::Ping>	pingChannel(OnPing);
 
-		class HostContactAttempt : public ThreadObject, public TCP::Peer::Attachment, public std::enable_shared_from_this<HostContactAttempt>
+		class HostContactAttempt : public Sys::ThreadObject, public TCP::Peer::Attachment, public std::enable_shared_from_this<HostContactAttempt>
 		{
 		public:
 			TCP::Client		client;

@@ -12,18 +12,18 @@ namespace Grid
 	{
 		//float topHeight = heights.y;
 		//based on this, h could go up to 40, though chances for that are excessively rare
-		int up0 = (int)Round(heights.y * mountains.heightScale / RawLayerHeight / UnitScale);
+		int up0 = (int)M::Round(heights.y * mountains.heightScale / RawLayerHeight / UnitScale);
 		if (abs(up0) <= mountains.dampening)
 			up0 = 0;
 		else
-			up0 -= mountains.dampening * sign(up0);
-		int up1 = (int)Round(heights.x * extendedCore.heightScale / RawLayerHeight / UnitScale);
+			up0 -= mountains.dampening * M::sign(up0);
+		int up1 = (int)M::Round(heights.x * extendedCore.heightScale / RawLayerHeight / UnitScale);
 		if (abs(up1) <= extendedCore.dampening)
 			up1 = 0;
 		else
-			up1 -= extendedCore.dampening * sign(up1);
-		const int h = clamp(mountains.baseHeight + up0, CellStack::BottomHeight, CellStack::TopHeight - 1);
-		const int coreH = clamp(extendedCore.baseHeight + up1, CellStack::BottomHeight, CellStack::TopHeight - 1);
+			up1 -= extendedCore.dampening * M::sign(up1);
+		const int h = M::clamp(mountains.baseHeight + up0, CellStack::BottomHeight, CellStack::TopHeight - 1);
+		const int coreH = M::clamp(extendedCore.baseHeight + up1, CellStack::BottomHeight, CellStack::TopHeight - 1);
 		
 //			int coreH = clamp(Round(fabs(heights.x) * config.coreScale / RawLayerHeight)-HalfRange, -HalfRange, HalfRange - 1);
 
@@ -167,7 +167,7 @@ namespace Grid
 		//noise.Get(center0.x*2.f + config.productSeed.x, center0.y*2.f + config.productSeed.y, center0.z*2.f + config.productSeed.z) * 0.5 + 0.5f;
 
 		float rf = 1.5f;
-		float depress = smoothstep(0.1f, 0.2f, 
+		float depress = M::smoothstep(0.1f, 0.2f, 
 						0.5f * Get(config.depression0, center0*6.f*rf)
 							+ Get(config.depression1, center0*3.f*rf));
 		float fc = 0.25f * Get(config.depression2, center0*4.f*rf) 

@@ -76,7 +76,7 @@ namespace Game
 		inline void		SetFactionSupportFlagString(const String&supp)
 		{
 			factionSupportFlags = 0;
-			Array<String>	segs;
+			Ctr::Array<String>	segs;
 			explode(',',supp,segs);
 			//bool allGood = true;
 			foreach (segs,seg)
@@ -118,7 +118,7 @@ namespace Game
 							enableAI/* = false*/;
 			extern float	threatEstimationFactor/* = 1.f*/;
 			extern UINT32	roundsPerResearchPoint;
-			extern Array<Objects::Component::Turret*>	vehicleTurrets;
+			extern Ctr::Array<Objects::Component::Turret*>	vehicleTurrets;
 		}
 	}
 	

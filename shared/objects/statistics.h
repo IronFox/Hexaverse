@@ -4,15 +4,18 @@
 #include <container/hashtable.h>
 #include "resource.h"
 #include <io/json.h>
+#include <io/riff_handler.h>
+
+using namespace DeltaWorks;
 
 namespace Objects
 {
 
-	class Statistics : public SerializableObject
+	class Statistics
 	{
 		const Faction*const	owner;
 	public:
-		struct Interaction
+		struct Interaction //: public ISerializable
 		{
 			WFaction	remote;
 
@@ -38,9 +41,9 @@ namespace Objects
 			};
 
 
-			FixedArray<count_t,NumMetrics>		metric;
+			FixedArray<UINT64,NumMetrics>		metric;
 
-			count_t&	Get(metric_t m) {return metric[m];}
+			UINT64&		Get(metric_t m) {return metric[m];}
 
 			/**/		Interaction()
 			{
@@ -65,9 +68,9 @@ namespace Objects
 				NumMetrics
 			};
 
-			FixedArray<count_t,NumMetrics>		metric;
+			FixedArray<UINT64,NumMetrics>		metric;
 		
-			count_t&	Get(metric_t m) {return metric[m];}
+			UINT64&		Get(metric_t m) {return metric[m];}
 
 			/**/		UnitStatistics()
 			{
@@ -78,37 +81,38 @@ namespace Objects
 		struct RoundStatistics
 		{
 			ResourceVector	production,consumption;
-			count_t			entityCount=0,
+			UINT64			entityCount=0,
 							entityMineralValue=0,
 							sensorCoverage=0;
-			index_t			mainRound=0;
+			INT32			mainRound=0;
 		};
 
 
 	public:
 		/**/			Statistics(const Faction*owner);
-		void			SignalDamageReceivedFrom(const PFaction&source, int level);
-		void			SignalDamageDealtTo(const PWorldEntity&causedBy, const PFaction&receiver, int level);
-		void			SignalEMPDamageReceivedFrom(const PFaction&source, int level);
-		void			SignalEMPDamageDealtTo(const PWorldEntity&causedBy, const PFaction&receiver, int level);
-		void			SignalDestructionOfHostile(const PWorldEntity&causedBy, const PWorldEntity&);
-		void			SignalLossOf(const PWorldEntity&, const PFaction&causedBy, bool stolen);
-		void			SignalUnitAcquired(const PWorldEntity&, const PFaction&previousOwner);
-		/**
-		Invoked for each structure that generates or consumes resources during compound processing
-		*/
-		void			SignalStructureResourceDelta(const PWorldEntity&, const ResourceVector&);
-		/**
-		Invoked once at the end of compound processing
-		*/
-		void			SignalCompoundProcessingEnd();
-		static void		SignalNewRoundBegin(bool mainRound);
+
+		#ifndef CLIENT
+			void		SignalDamageReceivedFrom(const PFaction&source, int level);
+			void		SignalDamageDealtTo(const PWorldEntity&causedBy, const PFaction&receiver, int level);
+			void		SignalEMPDamageReceivedFrom(const PFaction&source, int level);
+			void		SignalEMPDamageDealtTo(const PWorldEntity&causedBy, const PFaction&receiver, int level);
+			void		SignalDestructionOfHostile(const PWorldEntity&causedBy, const PWorldEntity&);
+			void		SignalLossOf(const PWorldEntity&, const PFaction&causedBy, bool stolen);
+			void		SignalUnitAcquired(const PWorldEntity&, const PFaction&previousOwner);
+			/**
+			Invoked for each structure that generates or consumes resources during compound processing
+			*/
+			void		SignalStructureResourceDelta(const PWorldEntity&, const ResourceVector&);
+			/**
+			Invoked once at the end of compound processing
+			*/
+			void		SignalCompoundProcessingEnd();
+			static void	SignalNewRoundBegin(bool mainRound);
 
 		
-		virtual	serial_size_t	GetSerialSize(bool exportSize) const override;							//!< Queries the serial size of this object @param export_size True if the result should include additional space required for any size variable such as a string or array length @return Serial size (in bytes) of this object
-		virtual	void			Serialize(IWriteStream&outStream, bool exportSize) const;		//!< Writes the serialized content of the local object to the specified stream. The size of the written data must match the result of GetSerialSize() as long as the object remains unchanged. @param outStream Stream to write to @param exportSize True if the object is expected to export any dynamic size such as string or array length @return true if the object could be fully written to the out stream, false otherwise
-		virtual	void			Deserialize(IReadStream&inStream, serial_size_t fixedSize);			//!< Reads the content of the local object from the specified stream @param inStream Stream to read from @param fixedSize ISerializable::EmbeddedSize if any dynamic object size should be read from the stream or the size in bytes that the local object should adopt to otherwise. If this parameter is ISerializable::EmbeddedSize then the object data was serialized with @b export_size set to true @return true if the object data could be fully read from the out stream, false otherwise
-		virtual	bool			HasFixedSize() const {return false;}									//!< Queries whether this object is of fixed size (always the same no matter what content)
+			void		ExportInto(Riff::Chunk*) const;
+			void		ImportFrom(const Riff::Chunk*);
+		#endif
 
 
 	private:
