@@ -9,6 +9,7 @@
 #include <general/random.h>
 #include <math/SimplexNoise.h>
 #include "types.h"
+#include "../fileVersion.h"
 
 
 static const constexpr float WorldScale = 40.f;
@@ -125,6 +126,8 @@ namespace Grid
 
 		struct TTypeDelta
 		{
+			typedef TTypeDelta Self;
+
 			BYTE		newType;	//0 = Bedrock = no change. Bedrock cannot be applied to normal cells
 
 			bool		operator!=(const TTypeDelta&other) const
@@ -136,22 +139,48 @@ namespace Grid
 				return newType == other.newType;
 			}
 			bool		IsSet() const {return newType != 0;}
+
+			friend void SerialSync(IWriteStream&s, const Self&v)
+			{
+				using Serialization::SerialSync;
+				SerialSync(s,v.newType);
+			}
+			friend void SerialSync(IReadStream&s, Self&v)
+			{
+				using Serialization::SerialSync;
+				SerialSync(s,v.newType);
+			}
 		};
 
 		static_assert(sizeof(TTypeDelta) == 1, "Struct-alignment out of whack");
 
-		#pragma pack(push)
-		#pragma pack(1)
 		struct TTypeDeltaBlock
 		{
+			typedef TTypeDeltaBlock Self;
+
 			UINT32				repitition;
 			TTypeDelta			value;
 			bool		operator!=(const TTypeDeltaBlock&other) const
 			{
 				return repitition != other.repitition || value != other.value;
 			}
+
+			friend void SerialSync(IWriteStream&s, const Self&v)
+			{
+				s.WriteSize(v.repitition);
+				using Serialization::SerialSync;
+				SerialSync(s,v.value);
+			}
+			friend void SerialSync(IReadStream&s, Self&v)
+			{
+				if (ApplicationInterface::globalVersionOfCurrentFile < ApplicationInterface::FileVersions::NewSerializationEngine)
+					s.ReadPrimitive(v.repitition);
+				else
+					s.ReadSize(v.repitition);
+				using Serialization::SerialSync;
+				SerialSync(s,v.value);
+			}
 		};
-		#pragma pack(pop)
 
 		class CompactCell
 		{
@@ -844,8 +873,24 @@ namespace Grid
 	#pragma pack(1)
 	struct TCellResourceCoverage
 	{
+		typedef TCellResourceCoverage Self;
+
 		UINT32		cellIndex;
 		BYTE		coverage;
+
+		friend void		SerialSync(IReadStream&s, Self&v)
+		{
+			using Serialization::SerialSync;
+			s.ReadSize(v.cellIndex);
+			SerialSync(s,v.coverage);
+		}
+		friend void		SerialSync(IWriteStream&s, const Self&v)
+		{
+			using Serialization::SerialSync;
+			s.WriteSize(v.cellIndex);
+			SerialSync(s,v.coverage);
+		}
+
 	};
 	#pragma pack(pop)
 

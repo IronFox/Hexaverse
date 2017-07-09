@@ -41,17 +41,7 @@ namespace Objects
 	}
 
 		
-	/*static*/	serial_size_t			PositiveResourceVector::GetSerialSize(const Objects::ResourceVector&vec)
-	{
-		serial_size_t rs = 1;	//flag byte
-		static_assert(Objects::ResourceVector::NumEntries <= 8, "Adjust protocol");
-		for (index_t i = 0; i < ResourceVector::NumEntries; i++)
-		{
-			if (vec.level[i] > 0)
-				rs += GetSerialSizeOfSize(abs(vec.level[i]));	//negative values are set to zero
-		}
-		return rs;
-	}
+
 
 
 	/*static*/	void					PositiveResourceVector::Serialize(IWriteStream&outStream, const Objects::ResourceVector&vec)

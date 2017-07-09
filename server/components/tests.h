@@ -82,6 +82,9 @@ namespace Test
 	{
 		static void		RandomFill(Objects::Marker&m, Random&random);
 		static void		RandomFill(Objects::Statistics::UnitStatistics&,Random&random);
+		static void		RandomFill(Objects::Statistics::RoundStatistics&,Random&random);
+		static void		RandomFill(Objects::Statistics::MetricTable&table, Random&random);
+		static void		RandomFill(Objects::PositiveResourceVector&, Random&random);
 
 		void			TestRange(serial_size64_t begin, serial_size64_t end, bool expectException);
 	public:

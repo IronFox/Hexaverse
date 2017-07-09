@@ -73,6 +73,13 @@ namespace PortOffset
 
 #include "objects/resource.h"
 
+
+
+
+
+
+
+
 namespace Protocol
 {
 
@@ -86,82 +93,36 @@ namespace Protocol
 
 
 
-	template <typename Serializable>
-	inline void						VerifySerialization(const Serializable&serializable, bool exportSize)
-	{
-		const serial_size_t expectedSize = serializable.GetSerialSize(exportSize);
-
-		const size_t bufferSize = expectedSize*2+128;
-		void*data = malloc(bufferSize);
-		serial_size_t actualSize;
-		SerializeToMemory(serializable,data,(serial_size_t)bufferSize,exportSize,&actualSize);
-		if (actualSize != expectedSize)
-			throw Except::Memory::SerializationFault(CLOCATION,"Serialization of type "+String(typeid(serializable).name())+" failed. GetSerialSize("+String(exportSize)+") returned "+String(expectedSize)+", serialization required "+String(actualSize));
-		
-		Serializable copy;
-		DeserializeFromCompactMemory(copy,data,actualSize,exportSize);
-		free(data);
-		if (serializable != copy)
-			throw Except::Memory::SerializationFault(CLOCATION,"Serialization/deserialization of type "+String(typeid(serializable).name())+" failed with exportSize="+String(exportSize)+". Deserialized data does not match original data");
-	}
-	
-	template <typename Serializable>
-	inline void						VerifySerialization(const Serializable&serializable)
-	{
-		VerifySerialization(serializable,false);
-		VerifySerialization(serializable,true);
-	}
 
 
 
-	#define NET(NATIVE_TYPE)	::Package::Native<NATIVE_TYPE>
+	#define NET(NATIVE_TYPE)	NATIVE_TYPE
+	//::Package::Native<NATIVE_TYPE>
 	#define NETA(TYPE)	::Protocol::NetArray<TYPE,32768>
 
 
 	template<typename T, size_t MaxSize>
-		class NetArray : public Ctr::Array<T>
+		class NetArray : public Array<T>
 		{
 		public:
 			static const constexpr size_t MaxElementCount = MaxSize;
-			typedef Ctr::Array<T>	Super;
+			typedef Array<T>	Super;
+			typedef NetArray<T,MaxSize> Self;
+
 			void				operator=(const Ctr::Array<T>&other)
 			{
 				Super::operator=(other);
 			}
 
-			virtual	void		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override
+			friend	void		SerialSync(IReadStream&s, Self&v)
 			{
-				count_t size;
-				if (fixedSize == EmbeddedSize)
-					inStream.ReadSize(size);
-				else
-				{
-					if (!IsISerializable(data))
-						size = (count_t)(fixedSize/sizeof(T));
-					else
-					{
-						size_t fixedElementSize = Ctr::FixedSizeSerializable<T>::GetSize();
-						if (fixedElementSize != 0)
-						{
-							size = (count_t)(fixedSize/fixedElementSize);
-						}
-						else
-							inStream.ReadSize(size);
-					}
-						//FATAL__("trying to Deserialize an array containing serializable objects from a fixed size stream data section not including any element count");
-				}
+				count_t size = s.ReadSize();
 				if (size > MaxSize)
 					throw Except::Memory::SerializationFault(CLOCATION,"Ctr::Array size "+String(size)+" exceeds maximum safe size "+String(MaxSize));
-
-				SetSize(size);
-				if (!IsISerializable(data))
-				{
-					inStream.Read(data,(serial_size_t)GetContentSize());
-					return;
-				}
-
-				for (index_t i = 0; i < elements; i++)
-					DeserializeObject(data+i,sizeof(T),inStream,EmbeddedSize);
+				using Serialization::SerialSync;
+				v.SetSize(size);
+				for (index_t i = 0; i < v.Count(); i++)
+					SerialSync(s,v[i]);
 			}
 
 		};
@@ -178,7 +139,7 @@ namespace Protocol
 
 
 	template <typename T0, typename T1, typename T2, typename T3>
-		class MultiSerializable4 : public SerializableObject
+		class MultiSerializable4
 		{
 		protected:
 			T0	var0;
@@ -186,34 +147,30 @@ namespace Protocol
 			T2	var2;
 			T3	var3;
 		public:
-			virtual	serial_size_t				GetSerialSize(bool exportSize) const	override
+			typedef MultiSerializable4<T0,T1,T2,T3>	Self;
+			friend void SerialSync(IReadStream&s, Self&v)
 			{
-				return var0.GetSerialSize(true)+var1.GetSerialSize(true) + var2.GetSerialSize(true) + var3.GetSerialSize(true);
+				using Serialization::SerialSync;
+				SerialSync(s,v.var0);
+				SerialSync(s,v.var1);
+				SerialSync(s,v.var2);
+				SerialSync(s,v.var3);
 			}
-			virtual	bool						HasFixedSize() const	override
+			friend void SerialSync(IWriteStream&s, const Self&v)
 			{
-				return var0.HasFixedSize() && var1.HasFixedSize() && var2.HasFixedSize() && var3.HasFixedSize();
-			}
-			virtual	void		Serialize(IWriteStream&outStream, bool exportSize) const	override
-			{
-				var0.Serialize(outStream,true);
-				var1.Serialize(outStream,true);
-				var2.Serialize(outStream,true);
-				var3.Serialize(outStream,true);
-			}
-			virtual	void		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override
-			{
-				var0.Deserialize(inStream,EmbeddedSize);
-				var1.Deserialize(inStream,EmbeddedSize);
-				var2.Deserialize(inStream,EmbeddedSize);
-				var3.Deserialize(inStream,EmbeddedSize);
+				using Serialization::SerialSync;
+				SerialSync(s,v.var0);
+				SerialSync(s,v.var1);
+				SerialSync(s,v.var2);
+				SerialSync(s,v.var3);
 			}
 			void	swap(MultiSerializable4&other)
 			{
-				var0.swap(other.var0);
-				var1.swap(other.var1);
-				var2.swap(other.var2);
-				var3.swap(other.var3);
+				using std::swap;
+				swap(var0,other.var0);
+				swap(var1,other.var1);
+				swap(var2,other.var2);
+				swap(var3,other.var3);
 			}
 			void	Copy(const MultiSerializable4&other)
 			{
@@ -266,69 +223,32 @@ namespace Protocol
 
 
 	#define NETSTRUCT2(NAME,  T0, NAME0, T1, NAME1)	\
-		class NAME : public SerializableObject\
+		class NAME\
 		{\
 		public:\
 			T0		NAME0;\
 			T1		NAME1;\
 			NAME()	{}\
 			NAME(const T0&a, const T1&b):NAME0(a),NAME1(b){}\
-			virtual	serial_size_t				GetSerialSize(bool exportSize) const	override\
+			friend void SerialSync(IReadStream&s, NAME&v)\
 			{\
-				if (NAME1.HasFixedSize())\
-					return NAME0.GetSerialSize(exportSize) + NAME1.GetSerialSize(true);\
-				if (NAME0.HasFixedSize())\
-					return NAME0.GetSerialSize(true) + NAME1.GetSerialSize(exportSize);\
-				return 	NAME0.GetSerialSize(true) + NAME1.GetSerialSize(true);\
+				using Serialization::SerialSync;\
+				SerialSync(s,v.NAME0);\
+				SerialSync(s,v.NAME1);\
 			}\
-			virtual	bool						HasFixedSize() const	override\
+			friend void SerialSync(IWriteStream&s, const NAME&v)\
 			{\
-				return NAME0.HasFixedSize() && NAME1.HasFixedSize();\
+				using Serialization::SerialSync;\
+				SerialSync(s,v.NAME0);\
+				SerialSync(s,v.NAME1);\
 			}\
-			virtual	void		Serialize(IWriteStream&outStream, bool exportSize) const	override\
-			{\
-				if (NAME1.HasFixedSize())\
-				{\
-					NAME0.Serialize(outStream,exportSize);\
-					NAME1.Serialize(outStream,true);\
-					return;\
-				}\
-				if (NAME0.HasFixedSize())\
-				{\
-					NAME0.Serialize(outStream,true);\
-					NAME1.Serialize(outStream,exportSize);\
-					return;\
-				}\
-				NAME0.Serialize(outStream,true);\
-				NAME1.Serialize(outStream,true);\
-			}\
-			virtual	void		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override\
-			{\
-				if (fixedSize != EmbeddedSize)\
-				{\
-					if (NAME0.HasFixedSize())\
-					{\
-						NAME0.Deserialize(inStream,EmbeddedSize);\
-						fixedSize -= NAME0.GetSerialSize(true);\
-						NAME1.Deserialize(inStream,fixedSize);\
-						return;\
-					}\
-					if (NAME1.HasFixedSize())\
-					{\
-						NAME0.Deserialize(inStream,fixedSize-NAME1.GetSerialSize(true));\
-						NAME1.Deserialize(inStream,EmbeddedSize);\
-						return;\
-					}\
-				}\
-				NAME0.Deserialize(inStream,EmbeddedSize);\
-				NAME1.Deserialize(inStream,EmbeddedSize);\
-			}\
-			void		swap(NAME&other)	{NAME0.swap(other.NAME0);NAME1.swap(other.NAME1);}\
+			void		swap(NAME&other)	{using std::swap; swap(NAME0,other.NAME0);swap(NAME1,other.NAME1);}\
+			friend void swap(NAME&a, NAME&b) {a.swap(b);}\
 		};
 
 
 	#define NETSTRUCT3(NAME,  T0, NAME0, T1, NAME1, T2, NAME2)	\
-		class NAME : public SerializableObject\
+		class NAME\
 		{\
 		public:\
 			T0		NAME0;\
@@ -336,81 +256,22 @@ namespace Protocol
 			T2		NAME2;\
 			NAME()	{}\
 			NAME(const T0&a, const T1&b, const T2&c):NAME0(a),NAME1(b),NAME2(c){}\
-			virtual	serial_size_t				GetSerialSize(bool exportSize) const	override\
+			friend void SerialSync(IReadStream&s, NAME&v)\
 			{\
-				if (NAME1.HasFixedSize() && NAME2.HasFixedSize())\
-					return NAME0.GetSerialSize(exportSize) + NAME1.GetSerialSize(true) + NAME2.GetSerialSize(true);\
-				if (NAME0.HasFixedSize() && NAME2.HasFixedSize())\
-					return NAME0.GetSerialSize(true) + NAME1.GetSerialSize(exportSize) + NAME2.GetSerialSize(true);\
-				if (NAME0.HasFixedSize() && NAME1.HasFixedSize())\
-					return NAME0.GetSerialSize(true) + NAME1.GetSerialSize(true) + NAME2.GetSerialSize(exportSize);\
-				return 	NAME0.GetSerialSize(true) + NAME1.GetSerialSize(true) + NAME2.GetSerialSize(true);\
+				using Serialization::SerialSync;\
+				SerialSync(s,v.NAME0);\
+				SerialSync(s,v.NAME1);\
+				SerialSync(s,v.NAME2);\
 			}\
-			void		swap(NAME&other)	{NAME0.swap(other.NAME0);NAME1.swap(other.NAME1);NAME2.swap(other.NAME2);}\
-			virtual	bool						HasFixedSize() const	override\
+			friend void SerialSync(IWriteStream&s, const NAME&v)\
 			{\
-				return NAME0.HasFixedSize() && NAME1.HasFixedSize() && NAME2.HasFixedSize();\
+				using Serialization::SerialSync;\
+				SerialSync(s,v.NAME0);\
+				SerialSync(s,v.NAME1);\
+				SerialSync(s,v.NAME2);\
 			}\
-			virtual	void		Serialize(IWriteStream&outStream, bool exportSize) const	override\
-			{\
-				if (NAME1.HasFixedSize() && NAME2.HasFixedSize())\
-				{\
-					NAME0.Serialize(outStream,exportSize);\
-					NAME1.Serialize(outStream,true);\
-					NAME2.Serialize(outStream,true);\
-					return;\
-				}\
-				if (NAME0.HasFixedSize() && NAME2.HasFixedSize())\
-				{\
-					NAME0.Serialize(outStream,true);\
-					NAME1.Serialize(outStream,exportSize);\
-					NAME2.Serialize(outStream,true);\
-					return;\
-				}\
-				if (NAME0.HasFixedSize() && NAME1.HasFixedSize())\
-				{\
-					NAME0.Serialize(outStream,true);\
-					NAME1.Serialize(outStream,true);\
-					NAME2.Serialize(outStream,exportSize);\
-					return;\
-				}\
-				NAME0.Serialize(outStream,true);\
-				NAME1.Serialize(outStream,true);\
-				NAME2.Serialize(outStream,true);\
-			}\
-			virtual	void		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override\
-			{\
-				if (fixedSize != EmbeddedSize)\
-				{\
-					if (NAME0.HasFixedSize() && NAME2.HasFixedSize())\
-					{\
-						const serial_size_t elementSize = fixedSize-NAME0.GetSerialSize(true)-NAME2.GetSerialSize(true);\
-						NAME0.Deserialize(inStream,EmbeddedSize);\
-						NAME1.Deserialize(inStream,elementSize);\
-						NAME2.Deserialize(inStream,EmbeddedSize);\
-						return;\
-					}\
-					if (NAME1.HasFixedSize() && NAME2.HasFixedSize())\
-					{\
-						const serial_size_t elementSize = fixedSize-NAME1.GetSerialSize(true)-NAME2.GetSerialSize(true);\
-						NAME0.Deserialize(inStream,elementSize);\
-						NAME1.Deserialize(inStream,EmbeddedSize);\
-						NAME2.Deserialize(inStream,EmbeddedSize);\
-						return;\
-					}\
-					if (NAME0.HasFixedSize() && NAME1.HasFixedSize())\
-					{\
-						const serial_size_t elementSize = fixedSize-NAME0.GetSerialSize(true)-NAME1.GetSerialSize(true);\
-						NAME0.Deserialize(inStream,EmbeddedSize);\
-						NAME1.Deserialize(inStream,EmbeddedSize);\
-						NAME2.Deserialize(inStream,elementSize);\
-						return;\
-					}\
-				}\
-				NAME0.Deserialize(inStream,EmbeddedSize);\
-				NAME1.Deserialize(inStream,EmbeddedSize);\
-				NAME2.Deserialize(inStream,EmbeddedSize);\
-			}\
+			void		swap(NAME&other)	{using std::swap; swap(NAME0,other.NAME0);swap(NAME1,other.NAME1);swap(NAME2,other.NAME2);}\
+			friend void swap(NAME&a, NAME&b) {a.swap(b);}\
 		};
 
 			
@@ -418,40 +279,35 @@ namespace Protocol
 			
 			
 	#define NETSTRUCT4(NAME,  T0, NAME0, T1, NAME1, T2, NAME2, T3, NAME3)	\
-		class NAME : public SerializableObject\
+		class NAME\
 		{\
 		public:\
 			T0		NAME0;\
 			T1		NAME1;\
 			T2		NAME2;\
 			T3		NAME3;\
-			virtual	serial_size_t				GetSerialSize(bool exportSize) const	override\
+			friend void SerialSync(IReadStream&s, NAME&v)\
 			{\
-				return 	NAME0.GetSerialSize(true) + NAME1.GetSerialSize(true) + NAME2.GetSerialSize(true) + NAME3.GetSerialSize(true);\
+				using Serialization::SerialSync;\
+				SerialSync(s,v.NAME0);\
+				SerialSync(s,v.NAME1);\
+				SerialSync(s,v.NAME2);\
+				SerialSync(s,v.NAME3);\
 			}\
-			virtual	bool						HasFixedSize() const	override\
+			friend void SerialSync(IWriteStream&s, const NAME&v)\
 			{\
-				return NAME0.HasFixedSize() && NAME1.HasFixedSize() && NAME2.HasFixedSize() && NAME3.HasFixedSize();\
+				using Serialization::SerialSync;\
+				SerialSync(s,v.NAME0);\
+				SerialSync(s,v.NAME1);\
+				SerialSync(s,v.NAME2);\
+				SerialSync(s,v.NAME3);\
 			}\
-			virtual	void		Serialize(IWriteStream&outStream, bool exportSize) const	override\
-			{\
-				NAME0.Serialize(outStream,true);\
-				NAME1.Serialize(outStream,true);\
-				NAME2.Serialize(outStream,true);\
-				NAME3.Serialize(outStream,true);\
-			}\
-			virtual	void		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override\
-			{\
-				NAME0.Deserialize(inStream,EmbeddedSize);\
-				NAME1.Deserialize(inStream,EmbeddedSize);\
-				NAME2.Deserialize(inStream,EmbeddedSize);\
-				NAME3.Deserialize(inStream,EmbeddedSize);\
-			}\
-			void		swap(NAME&other)	{NAME0.swap(other.NAME0);NAME1.swap(other.NAME1);NAME2.swap(other.NAME2);NAME3.swap(other.NAME3);}\
+			void		swap(NAME&other)	{using std::swap; swap(NAME0,other.NAME0);swap(NAME1,other.NAME1);swap(NAME2,other.NAME2);swap(NAME3,other.NAME3);}\
+			friend void swap(NAME&a, NAME&b) {a.swap(b);}\
 		};
 			
 	#define NETSTRUCT5(NAME,  T0, NAME0, T1, NAME1, T2, NAME2, T3, NAME3, T4, NAME4)	\
-		class NAME : public SerializableObject\
+		class NAME\
 		{\
 		public:\
 			T0		NAME0;\
@@ -459,35 +315,30 @@ namespace Protocol
 			T2		NAME2;\
 			T3		NAME3;\
 			T4		NAME4;\
-			virtual	serial_size_t				GetSerialSize(bool exportSize) const	override\
+			friend void SerialSync(IReadStream&s, NAME&v)\
 			{\
-				return 	NAME0.GetSerialSize(true) + NAME1.GetSerialSize(true) + NAME2.GetSerialSize(true) + NAME3.GetSerialSize(true)+ NAME4.GetSerialSize(true);\
+				using Serialization::SerialSync;\
+				SerialSync(s,v.NAME0);\
+				SerialSync(s,v.NAME1);\
+				SerialSync(s,v.NAME2);\
+				SerialSync(s,v.NAME3);\
+				SerialSync(s,v.NAME4);\
 			}\
-			virtual	bool						HasFixedSize() const	override\
+			friend void SerialSync(IWriteStream&s, const NAME&v)\
 			{\
-				return NAME0.HasFixedSize() && NAME1.HasFixedSize() && NAME2.HasFixedSize() && NAME3.HasFixedSize() && NAME4.HasFixedSize();\
+				using Serialization::SerialSync;\
+				SerialSync(s,v.NAME0);\
+				SerialSync(s,v.NAME1);\
+				SerialSync(s,v.NAME2);\
+				SerialSync(s,v.NAME3);\
+				SerialSync(s,v.NAME4);\
 			}\
-			virtual	void		Serialize(IWriteStream&outStream, bool exportSize) const	override\
-			{\
-				NAME0.Serialize(outStream,true);\
-				NAME1.Serialize(outStream,true);\
-				NAME2.Serialize(outStream,true);\
-				NAME3.Serialize(outStream,true);\
-				NAME4.Serialize(outStream,true);\
-			}\
-			virtual	void		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override\
-			{\
-				NAME0.Deserialize(inStream,EmbeddedSize);\
-				NAME1.Deserialize(inStream,EmbeddedSize);\
-				NAME2.Deserialize(inStream,EmbeddedSize);\
-				NAME3.Deserialize(inStream,EmbeddedSize);\
-				NAME4.Deserialize(inStream,EmbeddedSize);\
-			}\
-			void		swap(NAME&other)	{NAME0.swap(other.NAME0);NAME1.swap(other.NAME1);NAME2.swap(other.NAME2);NAME3.swap(other.NAME3);NAME4.swap(other.NAME4);}\
+			void		swap(NAME&other)	{using std::swap; swap(NAME0,other.NAME0);swap(NAME1,other.NAME1);swap(NAME2,other.NAME2);swap(NAME3,other.NAME3);swap(NAME4,other.NAME4);}\
+			friend void swap(NAME&a, NAME&b) {a.swap(b);}\
 		};
 			
 	#define NETSTRUCT6(NAME,  T0, NAME0, T1, NAME1, T2, NAME2, T3, NAME3, T4, NAME4, T5, NAME5)	\
-		class NAME : public SerializableObject\
+		class NAME\
 		{\
 		public:\
 			T0		NAME0;\
@@ -496,38 +347,33 @@ namespace Protocol
 			T3		NAME3;\
 			T4		NAME4;\
 			T5		NAME5;\
-			virtual	serial_size_t				GetSerialSize(bool exportSize) const	override\
+			friend void SerialSync(IReadStream&s, NAME&v)\
 			{\
-				return 	NAME0.GetSerialSize(true) + NAME1.GetSerialSize(true) + NAME2.GetSerialSize(true) + NAME3.GetSerialSize(true)+ NAME4.GetSerialSize(true)+ NAME5.GetSerialSize(true);\
+				using Serialization::SerialSync;\
+				SerialSync(s,v.NAME0);\
+				SerialSync(s,v.NAME1);\
+				SerialSync(s,v.NAME2);\
+				SerialSync(s,v.NAME3);\
+				SerialSync(s,v.NAME4);\
+				SerialSync(s,v.NAME5);\
 			}\
-			virtual	bool						HasFixedSize() const	override\
+			friend void SerialSync(IWriteStream&s, const NAME&v)\
 			{\
-				return NAME0.HasFixedSize() && NAME1.HasFixedSize() && NAME2.HasFixedSize() && NAME3.HasFixedSize() && NAME4.HasFixedSize() && NAME5.HasFixedSize();\
+				using Serialization::SerialSync;\
+				SerialSync(s,v.NAME0);\
+				SerialSync(s,v.NAME1);\
+				SerialSync(s,v.NAME2);\
+				SerialSync(s,v.NAME3);\
+				SerialSync(s,v.NAME4);\
+				SerialSync(s,v.NAME5);\
 			}\
-			virtual	void		Serialize(IWriteStream&outStream, bool exportSize) const	override\
-			{\
-				NAME0.Serialize(outStream,true);\
-				NAME1.Serialize(outStream,true);\
-				NAME2.Serialize(outStream,true);\
-				NAME3.Serialize(outStream,true);\
-				NAME4.Serialize(outStream,true);\
-				NAME5.Serialize(outStream,true);\
-			}\
-			virtual	void		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override\
-			{\
-				NAME0.Deserialize(inStream,EmbeddedSize);\
-				NAME1.Deserialize(inStream,EmbeddedSize);\
-				NAME2.Deserialize(inStream,EmbeddedSize);\
-				NAME3.Deserialize(inStream,EmbeddedSize);\
-				NAME4.Deserialize(inStream,EmbeddedSize);\
-				NAME5.Deserialize(inStream,EmbeddedSize);\
-			}\
-			void		swap(NAME&other)	{NAME0.swap(other.NAME0);NAME1.swap(other.NAME1);NAME2.swap(other.NAME2);NAME3.swap(other.NAME3);NAME4.swap(other.NAME4);NAME5.swap(other.NAME5);}\
+			void		swap(NAME&other)	{using std::swap; swap(NAME0,other.NAME0);swap(NAME1,other.NAME1);swap(NAME2,other.NAME2);swap(NAME3,other.NAME3);swap(NAME4,other.NAME4);swap(NAME5,other.NAME5);}\
+			friend void swap(NAME&a, NAME&b) {a.swap(b);}\
 		};
 
 			
 	#define NETSTRUCT7(NAME,  T0, NAME0, T1, NAME1, T2, NAME2, T3, NAME3, T4, NAME4, T5, NAME5, T6, NAME6)	\
-		class NAME : public SerializableObject\
+		class NAME\
 		{\
 		public:\
 			T0		NAME0;\
@@ -537,35 +383,30 @@ namespace Protocol
 			T4		NAME4;\
 			T5		NAME5;\
 			T6		NAME6;\
-			virtual	serial_size_t				GetSerialSize(bool exportSize) const	override\
+			friend void SerialSync(IReadStream&s, NAME&v)\
 			{\
-				return 	NAME0.GetSerialSize(true) + NAME1.GetSerialSize(true) + NAME2.GetSerialSize(true) + NAME3.GetSerialSize(true)+ NAME4.GetSerialSize(true)+ NAME5.GetSerialSize(true)+ NAME6.GetSerialSize(true);\
+				using Serialization::SerialSync;\
+				SerialSync(s,v.NAME0);\
+				SerialSync(s,v.NAME1);\
+				SerialSync(s,v.NAME2);\
+				SerialSync(s,v.NAME3);\
+				SerialSync(s,v.NAME4);\
+				SerialSync(s,v.NAME5);\
+				SerialSync(s,v.NAME6);\
 			}\
-			virtual	bool						HasFixedSize() const	override\
+			friend void SerialSync(IWriteStream&s, const NAME&v)\
 			{\
-				return NAME0.HasFixedSize() && NAME1.HasFixedSize() && NAME2.HasFixedSize() && NAME3.HasFixedSize() && NAME4.HasFixedSize() && NAME5.HasFixedSize() && NAME6.HasFixedSize();\
+				using Serialization::SerialSync;\
+				SerialSync(s,v.NAME0);\
+				SerialSync(s,v.NAME1);\
+				SerialSync(s,v.NAME2);\
+				SerialSync(s,v.NAME3);\
+				SerialSync(s,v.NAME4);\
+				SerialSync(s,v.NAME5);\
+				SerialSync(s,v.NAME6);\
 			}\
-			virtual	void		Serialize(IWriteStream&outStream, bool exportSize) const	override\
-			{\
-				NAME0.Serialize(outStream,true);\
-				NAME1.Serialize(outStream,true);\
-				NAME2.Serialize(outStream,true);\
-				NAME3.Serialize(outStream,true);\
-				NAME4.Serialize(outStream,true);\
-				NAME5.Serialize(outStream,true);\
-				NAME6.Serialize(outStream,true);\
-			}\
-			virtual	void		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override\
-			{\
-				NAME0.Deserialize(inStream,EmbeddedSize);\
-				NAME1.Deserialize(inStream,EmbeddedSize);\
-				NAME2.Deserialize(inStream,EmbeddedSize);\
-				NAME3.Deserialize(inStream,EmbeddedSize);\
-				NAME4.Deserialize(inStream,EmbeddedSize);\
-				NAME5.Deserialize(inStream,EmbeddedSize);\
-				NAME6.Deserialize(inStream,EmbeddedSize);\
-			}\
-			void		swap(NAME&other)	{NAME0.swap(other.NAME0);NAME1.swap(other.NAME1);NAME2.swap(other.NAME2);NAME3.swap(other.NAME3);NAME4.swap(other.NAME4);NAME5.swap(other.NAME5);NAME6.swap(other.NAME6);}\
+			void		swap(NAME&other)	{using std::swap; swap(NAME0,other.NAME0);swap(NAME1,other.NAME1);swap(NAME2,other.NAME2);swap(NAME3,other.NAME3);swap(NAME4,other.NAME4);swap(NAME5,other.NAME5);swap(NAME6,other.NAME6);}\
+			friend void swap(NAME&a, NAME&b) {a.swap(b);}\
 		};
 
 	#define NETSTRUCT8(NAME,  T0, NAME0, T1, NAME1, T2, NAME2, T3, NAME3, T4, NAME4, T5, NAME5, T6, NAME6, T7, NAME7)	\
@@ -585,6 +426,7 @@ namespace Protocol
 					NAME6(Super::var6),NAME7(Super::var7)\
 					{}\
 			void	operator=(const NAME&other)	{Super::Copy(other);}\
+			friend void swap(NAME&a, NAME&b) {a.swap(b);}\
 		};
 
 	#define NETSTRUCT10(NAME,  T0, NAME0, T1, NAME1, T2, NAME2, T3, NAME3, T4, NAME4, T5, NAME5, T6, NAME6, T7, NAME7,T8, NAME8,T9, NAME9)	\
@@ -606,6 +448,7 @@ namespace Protocol
 					NAME6(Super::var6),NAME7(Super::var7),NAME8(Super::var8),NAME9(Super::var9)\
 					{}\
 			void	operator=(const NAME&other)	{Super::Copy(other);}\
+			friend void swap(NAME&a, NAME&b) {a.swap(b);}\
 		};
 
 	#define NETSTRUCT11(NAME,  T0, NAME0, T1, NAME1, T2, NAME2, T3, NAME3, T4, NAME4, T5, NAME5, T6, NAME6, T7, NAME7,T8, NAME8,T9, NAME9,T10, NAME10)	\
@@ -628,6 +471,7 @@ namespace Protocol
 					NAME6(Super::var6),NAME7(Super::var7),NAME8(Super::var8),NAME9(Super::var9),NAME10(Super::var10)\
 					{}\
 			void	operator=(const NAME&other)	{Super::Copy(other);}\
+			friend void swap(NAME&a, NAME&b) {a.swap(b);}\
 		};
 
 	#define NETSTRUCT12(NAME,  T0, NAME0, T1, NAME1, T2, NAME2, T3, NAME3, T4, NAME4, T5, NAME5, T6, NAME6, T7, NAME7,T8, NAME8,T9, NAME9,T10, NAME10,T11, NAME11)	\
@@ -651,6 +495,7 @@ namespace Protocol
 					NAME6(Super::var6),NAME7(Super::var7),NAME8(Super::var8),NAME9(Super::var9),NAME10(Super::var10),NAME11(Super::var11)\
 					{}\
 			void	operator=(const NAME&other)	{Super::Copy(other);}\
+			friend void swap(NAME&a, NAME&b) {a.swap(b);}\
 		};
 
 	#define NETSTRUCT9(NAME,  T0, NAME0, T1, NAME1, T2, NAME2, T3, NAME3, T4, NAME4, T5, NAME5, T6, NAME6, T7, NAME7,T8, NAME8)	\
@@ -725,13 +570,14 @@ namespace Protocol
 
 	
 	template <typename T0>
-		class Optional : public SerializableObject
+		class Optional
 		{
 		protected:
 			BYTE	active;
 			T0		option0;
 
 		public:
+			typedef Optional<T0>	Self;
 			/**/				Optional():active(0)	{}
 
 			void				swap(Optional&other)
@@ -740,48 +586,35 @@ namespace Protocol
 				option0.swap(other.option0);
 			}
 
-			virtual	serial_size_t			GetSerialSize(bool exportSize) const override
+	
+			friend	void					SerialSync(IWriteStream&s, const Self&v)
 			{
-				switch (active)
-				{
-					case 0:
-						return 1;
-					case 1:
-						return option0.GetSerialSize(exportSize)+1;
-					default:
-						FATAL__("Invalid state");
-				}
-				return 1;
-			}
-		
-			virtual	void					Serialize(IWriteStream&outStream, bool exportSize) const override
-			{
-				outStream.WritePrimitive(active);
-				switch (active)
+				using Serialization::SerialSync;
+				s.WritePrimitive(v.active);
+				switch (v.active)
 				{
 					case 0:
 						break;
 					case 1:
-						option0.Serialize(outStream,exportSize);
+						SerialSync(s,v.option0);
 						break;
 					default:
-						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Optional<>: "+String(active));
+						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Optional<>: "+String(v.active));
 				}
 			}
-			virtual	void					Deserialize(IReadStream&inStream, serial_size_t fixedSize) override
+			friend	void					SerialSync(IReadStream&s, Self&v)
 			{
-				if (fixedSize != EmbeddedSize)
-					fixedSize --;
-				inStream.ReadPrimitive(active);
-				switch (active)
+				using Serialization::SerialSync;
+				s.ReadPrimitive(v.active);
+				switch (v.active)
 				{
 					case 0:
 						break;
 					case 1:
-						option0.Deserialize(inStream,fixedSize);
+						SerialSync(s,v.option0);
 						break;
 					default:
-						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Optional<>: "+String(active));
+						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Optional<>: "+String(v.active));
 				}
 			}
 
@@ -803,6 +636,7 @@ namespace Protocol
 		{
 		protected:
 			typedef Optional<T0>	Super;
+			typedef Selective2<T0,T1>	Self;
 
 			T1		option1;
 		public:
@@ -812,53 +646,39 @@ namespace Protocol
 				option1.swap(other.option1);
 			}
 
-			virtual	serial_size_t			GetSerialSize(bool exportSize) const override
+			
+			friend	void					SerialSync(IWriteStream&s, const Self&v)
 			{
-				switch (active)
-				{
-					case 0:
-						return 1;
-					case 1:
-						return option0.GetSerialSize(exportSize)+1;
-					case 2:
-						return option1.GetSerialSize(exportSize)+1;
-					default:
-						FATAL__("Invalid state");
-				}
-				return 1;
-			}
-		
-			virtual	void					Serialize(IWriteStream&outStream, bool exportSize) const override
-			{
-				outStream.WritePrimitive(active);
-				switch (active)
+				using Serialization::SerialSync;
+				s.WritePrimitive(v.active);
+				switch (v.active)
 				{
 					case 0:
 						break;
 					case 1:
-						option0.Serialize(outStream,exportSize);
+						SerialSync(s,option0);
 						break;
 					case 2:
-						option1.Serialize(outStream,exportSize);
+						SerialSync(s,option1);
 						break;
 					default:
 						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective2<>: "+String(active));
 				}
 			}
-			virtual	void					Deserialize(IReadStream&inStream, serial_size_t fixedSize) override
+
+			friend	void					SerialSync(IReadStream&s, Self&v)
 			{
-				if (fixedSize != EmbeddedSize)
-					fixedSize --;
-				inStream.ReadPrimitive(active);
-				switch (active)
+				using Serialization::SerialSync;
+				s.ReadPrimitive(v.active);
+				switch (v.active)
 				{
 					case 0:
 						break;
 					case 1:
-						option0.Deserialize(inStream,fixedSize);
+						SerialSync(s,option0);
 						break;
 					case 2:
-						option1.Deserialize(inStream,fixedSize);
+						SerialSync(s,option1);
 						break;
 					default:
 						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective2<>: "+String(active));
@@ -884,6 +704,7 @@ namespace Protocol
 		{
 		protected:
 			typedef Selective2<T0,T1>	Super;
+			typedef Selective3<T0,T1,T2>	Self;
 			T2		option2;
 
 		public:
@@ -892,65 +713,48 @@ namespace Protocol
 				Super::swap(other);
 				option2.swap(other.option2);
 			}
+				
+			friend	void					SerialSync(IWriteStream&s, const Self&v)
+			{
+				using Serialization::SerialSync;
+				s.WritePrimitive(v.active);
+				switch (v.active)
+				{
+					case 0:
+						break;
+					case 1:
+						SerialSync(s,v.option0);
+						break;
+					case 2:
+						SerialSync(s,v.option1);
+						break;
+					case 3:
+						SerialSync(s,v.option2);
+						break;
+					default:
+						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective2<>: "+String(v.active));
+				}
+			}
 
-			virtual	serial_size_t			GetSerialSize(bool exportSize) const override
+			friend	void					SerialSync(IReadStream&s, Self&v)
 			{
-				switch (active)
-				{
-					case 0:
-						return 1;
-					case 1:
-						return option0.GetSerialSize(exportSize)+1;
-					case 2:
-						return option1.GetSerialSize(exportSize)+1;
-					case 3:
-						return option2.GetSerialSize(exportSize)+1;
-					default:
-						FATAL__("Invalid state");
-				}
-				return 1;
-			}
-		
-			virtual	void					Serialize(IWriteStream&outStream, bool exportSize) const override
-			{
-				outStream.WritePrimitive(active);
-				switch (active)
+				using Serialization::SerialSync;
+				s.ReadPrimitive(v.active);
+				switch (v.active)
 				{
 					case 0:
 						break;
 					case 1:
-						option0.Serialize(outStream,exportSize);
+						SerialSync(s,v.option0);
 						break;
 					case 2:
-						option1.Serialize(outStream,exportSize);
+						SerialSync(s,v.option1);
 						break;
 					case 3:
-						option2.Serialize(outStream,exportSize);
+						SerialSync(s,v.option2);
 						break;
 					default:
-						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective3<>: "+String(active));
-				}
-			}
-			virtual	void					Deserialize(IReadStream&inStream, serial_size_t fixedSize) override
-			{
-				if (fixedSize != EmbeddedSize)
-					fixedSize --;
-				inStream.ReadPrimitive(active);
-				switch (active)
-				{
-					case 0:
-						break;
-					case 1:
-						option0.Deserialize(inStream,fixedSize);
-						break;
-					case 2:
-						option1.Deserialize(inStream,fixedSize);
-						break;
-					case 3:
-						option2.Deserialize(inStream,fixedSize);
-						break;
-					default:
-						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective3<>: "+String(active));
+						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective2<>: "+String(v.active));
 				}
 			}
 
@@ -973,6 +777,7 @@ namespace Protocol
 		{
 		protected:
 			typedef Selective3<T0,T1,T2>	Super;
+			typedef Selective4<T0,T1,T2,T3>	Self;
 			T3		option3;
 
 		public:
@@ -981,73 +786,53 @@ namespace Protocol
 				Super::swap(other);
 				option3.swap(other.option3);
 			}
+			friend	void					SerialSync(IWriteStream&s, const Self&v)
+			{
+				using Serialization::SerialSync;
+				s.WritePrimitive(v.active);
+				switch (v.active)
+				{
+					case 0:
+						break;
+					case 1:
+						SerialSync(s,v.option0);
+						break;
+					case 2:
+						SerialSync(s,v.option1);
+						break;
+					case 3:
+						SerialSync(s,v.option2);
+						break;
+					case 4:
+						SerialSync(s,v.option3);
+						break;
+					default:
+						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective2<>: "+String(v.active));
+				}
+			}
 
-			virtual	serial_size_t			GetSerialSize(bool exportSize) const override
+			friend	void					SerialSync(IReadStream&s, Self&v)
 			{
-				switch (active)
-				{
-					case 0:
-						return 1;
-					case 1:
-						return option0.GetSerialSize(exportSize)+1;
-					case 2:
-						return option1.GetSerialSize(exportSize)+1;
-					case 3:
-						return option2.GetSerialSize(exportSize)+1;
-					case 4:
-						return option3.GetSerialSize(exportSize)+1;
-					default:
-						FATAL__("Invalid state");
-				}
-				return 1;
-			}
-		
-			virtual	void					Serialize(IWriteStream&outStream, bool exportSize) const override
-			{
-				outStream.WritePrimitive(active);
-				switch (active)
+				using Serialization::SerialSync;
+				s.ReadPrimitive(v.active);
+				switch (v.active)
 				{
 					case 0:
 						break;
 					case 1:
-						option0.Serialize(outStream,exportSize);
+						SerialSync(s,v.option0);
 						break;
 					case 2:
-						option1.Serialize(outStream,exportSize);
+						SerialSync(s,v.option1);
 						break;
 					case 3:
-						option2.Serialize(outStream,exportSize);
+						SerialSync(s,v.option2);
 						break;
 					case 4:
-						option3.Serialize(outStream,exportSize);
+						SerialSync(s,v.option3);
 						break;
 					default:
-						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective4<>: "+String(active));
-				}
-			}
-			virtual	void					Deserialize(IReadStream&inStream, serial_size_t fixedSize) override
-			{
-				if (fixedSize != EmbeddedSize)
-					fixedSize --;
-				inStream.ReadPrimitive(active);
-				switch (active)
-				{
-					case 0:
-						break;
-					case 1:
-						option0.Deserialize(inStream,fixedSize);
-						break;
-					case 2:
-						option1.Deserialize(inStream,fixedSize);
-						break;
-					case 3:
-						option2.Deserialize(inStream,fixedSize);
-						break;
-					case 4:
-						option3.Deserialize(inStream,fixedSize);
-						break;
-					default:
-						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective4<>: "+String(active));
+						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective2<>: "+String(v.active));
 				}
 			}
 
@@ -1068,97 +853,29 @@ namespace Protocol
 
 
 
-	static_assert(sizeof(Grid::CellStack::TTypeDeltaBlock) == sizeof(UINT32) + sizeof(Grid::CellStack::TTypeDelta), "Struct alignment out of whack" );
 //	static_assert(sizeof(Grid::CellStack::TStructCountDeltaBlock) == sizeof(UINT32) + sizeof(Grid::CellStack::TStructCountDelta), "Struct alignment out of whack" );
 
 
 
-	class LCellIdI : public Grid::LCellIdI, public SerializableObject
+
+	struct SerialUnsigned
 	{
-	public:
-		void	swap(Grid::LCellIdI&other)
-		{
-			std::swap((Grid::LCellIdI&)*this, other);
-		}
-
-
-		LCellIdI() {}
-		LCellIdI(const Grid::LCellIdI&source):Grid::LCellIdI(source){}
-
-		virtual	serial_size_t			GetSerialSize(bool /*exportSize*/) const override
-		{
-			if (*this == Invalid)
-				return 1;
-			return GetSerialSizeOfSize(stackID) + 1;
-		}
-		
-		virtual	void					Serialize(IWriteStream&outStream, bool /*exportSize*/) const override
-		{
-			if (*this == Invalid)
-			{
-				BYTE bLayer = 0xFF;
-				outStream.Write(&bLayer,1);
-				return;
-			}
-			UINT32 layer = Grid::CellStack::ToLayer(height);
-			static_assert(Grid::CellStack::Range <= 255, "Protocol not designed for more than 255 layers");
-			BYTE bLayer = (BYTE)layer;
-			outStream.Write(&bLayer,1);
-			outStream.WriteSize(stackID);
-		}
-
-		virtual	void					Deserialize(IReadStream&inStream, serial_size_t /*fixedSize*/) override
-		{
-			BYTE bLayer;
-			inStream.Read(&bLayer,1);
-			if (bLayer == 0xFF)
-			{
-				*this = Invalid;
-				return;
-			}
-			inStream.ReadSize(stackID);
-			height = Grid::CellStack::ToHeight((UINT)bLayer);
-		}
-
-		bool						operator==(const Grid::LCellIdI&other) const
-		{
-			return other == *this;
-		}
-		bool						operator!=(const Grid::LCellIdI&other) const
-		{
-			return other != *this;
-		}
-
-
-		
-		void						operator=(const Grid::LCellIdI&other)
-		{
-			((Grid::LCellIdI&)*this) = other;
-		}
-	};
-
-	struct SerialUnsigned : public SerializableObject
-	{
+		typedef SerialUnsigned Self;
 		serial_size_t	value = 0;
 		
 		void			swap(SerialUnsigned&other)
 		{
 			std::swap(value,other.value);
 		}
-		
-		virtual	serial_size_t			GetSerialSize(bool /*exportSize*/) const override
+
+		friend void SerialSync(IWriteStream&s, const Self&v)
 		{
-			return GetSerialSizeOfSize(value);
-		}
-		
-		virtual	void					Serialize(IWriteStream&outStream, bool /*exportSize*/) const override
-		{
-			outStream.WriteSize(value);
+			s.WriteSize(v.value);
 		}
 
-		virtual	void					Deserialize(IReadStream&inStream, serial_size_t /*fixedSize*/) override
+		friend	void	SerialSync(IReadStream&s, Self&v)
 		{
-			inStream.ReadSize(value);
+			s.ReadSize(v.value);
 		}
 
 		void		operator=(int v)
@@ -1191,13 +908,16 @@ namespace Protocol
 		};
 	}
 
+
+
+
 	NETSTRUCT6(EntityState
 		, Timestamp, timestamp
-		, NET(TUniqueID), id
-		, LCellIdI, location
+		, TUniqueID, id
+		, Grid::LCellIdI, location
 		, SerialUnsigned, health
 		, SerialUnsigned, empDamageLevel
-		, NET(BYTE), entityStateFlags
+		, BYTE, entityStateFlags
 	)
 
 	namespace TaskFlags
@@ -1213,11 +933,11 @@ namespace Protocol
 		, NET(UINT8), type
 		, NET(UINT8), mode
 		, NET(UINT8), taskFlags
-		, NETA(LCellIdI), foci
+		, NETA(Grid::LCellIdI), foci
 		, Package::NetString<256>, name
 		, NET(USHORT), roundsToJobCompletion
 		, NET(USHORT), resourceCostLeft
-		, NETA(LCellIdI), buildPath
+		, NETA(Grid::LCellIdI), buildPath
 		, NET(ConstName), visualizationName	//can also be DetonationSize_Regular or DetonationSize_Doomsday
 	)
 
@@ -1399,7 +1119,7 @@ namespace Protocol
 	NETSTRUCT3(ProducerState
 		, NETA(ProductionTask), productionTasks
 		, NET(UINT32), productionDone
-		, LCellIdI, gatheringPoint
+		, Grid::LCellIdI, gatheringPoint
 	)
 
 
@@ -1422,21 +1142,13 @@ namespace Protocol
 
 	#endif
 
-	struct NoData : public SerializableObject
+	struct NoData
 	{
-		virtual	bool						HasFixedSize() const	override
-		{
-			return true;
-		}
-
-		virtual	serial_size_t				GetSerialSize(bool exportSize) const	override
-		{
-			return 0;
-		}
-		virtual	void		Serialize(IWriteStream&outStream, bool exportSize) const	override	{}
-		virtual	void		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override	{}
+		friend void			SerialSync(IWriteStream&s, const NoData&v){}
+		friend void			SerialSync(IReadStream&s, NoData&v){}
 
 		void swap(NoData&)	{}
+		friend void swap(NoData&, NoData&)	{}
 	};
 
 
@@ -1453,8 +1165,8 @@ namespace Protocol
 	NETSTRUCT5(MobileEntityMotion
 		, Timestamp, timestamp
 		, NET(TUniqueID), id
-		, LCellIdI, fromLocation
-		, LCellIdI, toLocation
+		, Grid::LCellIdI, fromLocation
+		, Grid::LCellIdI, toLocation
 		, NET(float), timeNeeded
 	)
 
@@ -1499,7 +1211,7 @@ namespace Protocol
 	)
 
 
-	typedef LCellIdI	AttackTask;
+	typedef Grid::LCellIdI	AttackTask;
 	//NETSTRUCT2(AttackTask
 	//	, LCellIdI, target
 	//	, NET(TUniqueID), id
@@ -1578,7 +1290,7 @@ namespace Protocol
 
 	NETSTRUCT4(ChoiceIntersection
 		, NET(TUniqueID), id
-		, LCellIdI, target
+		, Grid::LCellIdI, target
 		, NET(UINT16), mode
 		, Optional<NET(TUniqueID)>, deployingWhat
 	)
@@ -1711,7 +1423,7 @@ namespace Protocol
 
 	NETSTRUCT4(Marker
 		, NET(TUniqueID), id
-		, LCellIdI, location		
+		, Grid::LCellIdI, location		
 		, MarkerData, data
 		, NET(RuntimeConfig::RoundNumber), createdInRound
 	)
@@ -1872,9 +1584,26 @@ namespace Protocol
 
 	struct THostBroadcastPacket
 	{
+		typedef THostBroadcastPacket Self;
 		TUniqueID	hostID;
 		char		version[64];
 		UINT16		serverBasePort;
+
+
+		friend void SerialSync(IWriteStream&s, const Self&v)
+		{
+			using Serialization::SerialSync;
+			SerialSync(s,v.hostID);
+			s.Write(v.version,sizeof(v.version));
+			SerialSync(s,v.serverBasePort);
+		}
+		friend void SerialSync(IReadStream&s, Self&v)
+		{
+			using Serialization::SerialSync;
+			SerialSync(s,v.hostID);
+			s.Read(v.version,sizeof(v.version));
+			SerialSync(s,v.serverBasePort);
+		}
 	};
 
 	static const size_t THostBroadcastPacket_size = sizeof(THostBroadcastPacket);

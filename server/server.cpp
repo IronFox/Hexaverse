@@ -469,12 +469,12 @@ namespace ApplicationInterface
 			float radius = range * 0.2f;
 			float3 mod = float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)) * radius;
 			count_t numIt = 0;
-			while (!attack.attackFrom->CanHit(mod + roughAttack.sourcePosition.value,roughAttack.attackAngle.value)
+			while (!attack.attackFrom->CanHit(mod + roughAttack.sourcePosition,roughAttack.attackAngle)
 					//Vec::quadraticDistance(mod + roughAttack.sourcePosition.value, traceToWorld) > sqr(range) 
 				&& ++numIt < 1000)
 				mod = float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)) * radius;
 			ASSERT__(numIt < 1000);
-			roughAttack.sourcePosition.value += mod;
+			roughAttack.sourcePosition += mod;
 		}
 
 		for (const Network::PClient&client : clientsCanSee)
@@ -869,10 +869,6 @@ int main( int argc, const char* argv[])
 
 
 
-		#ifdef _DEBUG
-			//inTestMode = true;
-		#endif
-
 
 
 		Reflection::Create();
@@ -980,7 +976,9 @@ int main( int argc, const char* argv[])
 		},CLI::NoCompletion);
 
 		
-
+		#ifdef _DEBUG
+		//	inTestMode = true;
+		#endif
 
 		if (!inTestMode)
 			Reflection::Load(false);
@@ -997,6 +995,7 @@ int main( int argc, const char* argv[])
 
 			std::cout << "Running tests..." << std::endl;
 			{
+				Test::Run(Test::Serialization());
 				Test::Run(Test::CharacterEncoding());
 				Test::Run(Test::ServerClient());
 				Test::Run(Test::TerrainUpdates());
@@ -1004,7 +1003,6 @@ int main( int argc, const char* argv[])
 				Test::Run(Test::SharedContainer());
 				Test::Run(Test::HighGridFamilies());
 				Test::Run(Test::Bin2Str());
-				Test::Run(Test::Serialization());
 				Test::Run(Test::VehiclePlant());
 				IF_SATELLITES(Test::Run(Test::SkyPort()));
 				Test::Run(Test::StorageUnits());

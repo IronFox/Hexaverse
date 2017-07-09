@@ -272,7 +272,7 @@ namespace Objects
 
 
 
-	class PositiveResourceVector : public Objects::ResourceVector, public SerializableObject
+	class PositiveResourceVector : public Objects::ResourceVector
 	{
 	public:
 
@@ -283,22 +283,19 @@ namespace Objects
 		{
 			std::swap((Objects::ResourceVector&)*this,other);
 		}
-		static	serial_size_t			GetSerialSize(const Objects::ResourceVector&vec);
 
-		virtual	serial_size_t			GetSerialSize(bool /*exportSize*/) const override
+
+		friend void	SerialSync(IReadStream&s, PositiveResourceVector&v)
 		{
-			return GetSerialSize(*this);
+			Deserialize(s,v);
 		}
+		friend void	SerialSync(IWriteStream&s, const PositiveResourceVector&v)
+		{
+			Serialize(s,v);
+		}
+
 		static	void					Serialize(IWriteStream&outStream, const Objects::ResourceVector&vec);
-		virtual	void					Serialize(IWriteStream&outStream, bool /*exportSize*/) const override
-		{
-			Serialize(outStream,*this);
-		}
 		static	void					Deserialize(IReadStream&inStream, Objects::ResourceVector&vec);
-		virtual	void					Deserialize(IReadStream&inStream, serial_size_t /*fixedSize*/) override
-		{
-			Deserialize(inStream,*this);
-		}
 
 
 		bool		operator==(const Objects::ResourceVector&vec) const

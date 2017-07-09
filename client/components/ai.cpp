@@ -295,7 +295,7 @@ namespace AI
 		if (!haveMarker)
 		{
 			Protocol::Marker marker;
-			marker.id.value.Generate();
+			marker.id.Generate();
 			marker.location = v->location;
 			tempMarkers << v->system.w.xyz;
 			static_assert(Objects::Marker::Type::Visited == 2, "Please update marker logic");

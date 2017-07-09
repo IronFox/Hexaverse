@@ -946,9 +946,9 @@ namespace Objects
 		{
 			Lua::Reference exported = globalState.exportState(researchState);
 			ASSERT__(exported.IsSet());
-			ByteStream stream;
+			ByteStreamBuffer stream;
 			exported.Serialize(stream);
-			stream.CopyToArray(outSerializedState);
+			outSerializedState = stream.GetWrittenData();
 		}
 		catch (const std::exception&e)
 		{

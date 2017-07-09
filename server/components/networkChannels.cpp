@@ -428,9 +428,9 @@ namespace Receiver
 		}
 		else
 		{
-			if (response.factionToken.value.IsSet())
+			if (response.factionToken.IsSet())
 			{
-				LogEvent(EventClass( EventSignificance::Important, EventFlavor::UserError ),peer,"Provided token not recognized: "+response.factionToken.value.ToString());
+				LogEvent(EventClass( EventSignificance::Important, EventFlavor::UserError ),peer,"Provided token not recognized: "+response.factionToken.ToString());
 
 				if (Game::Config::closedGame && RuntimeConfig::roundNumber > 0)
 				{
@@ -445,7 +445,7 @@ namespace Receiver
 			else
 			{
 				LogEvent(EventSignificance::Common,peer,"No faction token provided");
-				response.factionToken.value.Generate();
+				response.factionToken.Generate();
 			}
 			newFaction = true;
 		}
@@ -974,19 +974,19 @@ namespace Receiver
 
 	void	RequestResource(Protocol::ResourceID&id, TCP::Peer&peer)
 	{
-		LogEvent(EventClass::Preset::uncommon,peer,"Received resource request for resource "+Bin2Str::ConvertPOD(id.value));
+		LogEvent(EventClass::Preset::uncommon,peer,"Received resource request for resource "+Bin2Str::ConvertPOD(id));
 
 		ScriptCache::PScript script = ScriptCache::Lookup(id);
 		if (script)
 		{
-			LogEvent(EventClass::Preset::uncommon,peer,"Resource "+Bin2Str::ConvertPOD(id.value)+" is script. Dispatching "+String(script->compressed.Count())+" bytes");
+			LogEvent(EventClass::Preset::uncommon,peer,"Resource "+Bin2Str::ConvertPOD(id)+" is script. Dispatching "+String(script->compressed.Count())+" bytes");
 			Protocol::ResourceData data;
 			data.data = script->compressed;	//stupid copy...
 			data.id = id;
 			Channels::resourceData.SendTo(peer,data);
 			return;
 		}
-		LogEvent(EventClass::Preset::uncommon,peer,"Resource "+Bin2Str::ConvertPOD(id.value)+" is unknown");
+		LogEvent(EventClass::Preset::uncommon,peer,"Resource "+Bin2Str::ConvertPOD(id)+" is unknown");
 	}
 
 	
@@ -1030,7 +1030,7 @@ namespace Receiver
 		Objects::Marker *marker = f->FindMarker(m.id);
 		if (marker)
 		{
-			LogEvent(EventSignificance::Common, peer, "Touching " + marker->GetName()+" to round number "+m.newRoundNumber.value.ToString());
+			LogEvent(EventSignificance::Common, peer, "Touching " + marker->GetName()+" to round number "+m.newRoundNumber.ToString());
 			marker->createdInRound = m.newRoundNumber;
 			//Protocol::TouchedMarker m;
 			//m.id = id;
@@ -1193,7 +1193,7 @@ namespace Receiver
 
 	void	SignalNewJob(Protocol::StandardJob&sjob, TCP::Peer&peer)
 	{
-		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Registering new Job #"+String(int(sjob.jobName.value))+" for vehicle "+ToString(sjob.ownerID));
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Registering new Job #"+String(int(sjob.jobName))+" for vehicle "+ToString(sjob.ownerID));
 
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(sjob.ownerID,peer);
 		if (!e)
@@ -1329,7 +1329,7 @@ namespace Receiver
 			break;
 			default:
 			{
-				LogEvent(EventClass::Preset::commandRejected,peer,v,"Illegal job name #"+String(int(sjob.jobName.value)));
+				LogEvent(EventClass::Preset::commandRejected,peer,v,"Illegal job name #"+String(int(sjob.jobName)));
 				Network::InvalidOperation(peer);
 			}
 			return;
@@ -1342,7 +1342,7 @@ namespace Receiver
 
 	void	SignalTerrainMod(Protocol::TerrainMod&mod, TCP::Peer&peer)
 	{
-		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Registering new AlterTerrain for vehicle "+ToString(mod.id)+", mode="+String(mod.mode.value)+", numCells="+String(mod.cells.Count()));
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Registering new AlterTerrain for vehicle "+ToString(mod.id)+", mode="+String(mod.mode)+", numCells="+String(mod.cells.Count()));
 
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(mod.id,peer);
 		if (!e)
@@ -1355,7 +1355,7 @@ namespace Receiver
 			return;
 		}
 
-		Objects::CursorMode mode = (Objects::CursorMode)mod.mode.value;
+		Objects::CursorMode mode = (Objects::CursorMode)mod.mode;
 
 		if (!v->turret->CanDo(Objects::VehicleJob::AlterTerrain::GetOperationAffinity(mode)))
 		{
@@ -1420,14 +1420,14 @@ namespace Receiver
 		
 		if (deploying)
 		{
-			deployingWhat = To<Objects::MobileEntity>::DynamicCast(Objects::GetEntity(deploying->value));
-			ASSERT1__(deployingWhat,deploying->value);
+			deployingWhat = To<Objects::MobileEntity>::DynamicCast(Objects::GetEntity(*deploying));
+			ASSERT1__(deployingWhat,*deploying);
 		}
 
 		if (To<Objects::Hangar>::DynamicCast(e))
 			ASSERT_NOT_NULL1__(deploying,e->GetName());
 
-		Journal::currentRound.RegisterChoiceIntersection(true,e,ch.target,(Objects::Vehicle::mode_t)ch.mode.value,deployingWhat);
+		Journal::currentRound.RegisterChoiceIntersection(true,e,ch.target,(Objects::Vehicle::mode_t)ch.mode,deployingWhat);
 
 		LogEvent(EventSignificance::Common,peer,e,"End: Processed choice intersection in mode "+String(ch.mode)+" at cell "+ch.target.ToString());
 	}
@@ -1437,9 +1437,9 @@ namespace Receiver
 	{
 		Protocol::DropMode mode;
 		
-		if (!mode.Load(drop.dropMode.value))
+		if (!mode.Load(drop.dropMode))
 		{
-			LogEvent(EventClass::Preset::unexpectedBehavior,peer,"Invalid drop mode #"+String(drop.dropMode.value));
+			LogEvent(EventClass::Preset::unexpectedBehavior,peer,"Invalid drop mode #"+String(drop.dropMode));
 			return;
 		}
 		
@@ -1497,7 +1497,7 @@ namespace Receiver
 		buffer.Clear();
 		foreach (cmd.path,n)
 			buffer << ' '<<n->ToString();
-		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Directing entity "+ToString(cmd.id)+" in mode "+String(cmd.mode.value)+" given flags "+String(cmd.directFlags)+" to"+buffer.CopyToString());
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Directing entity "+ToString(cmd.id)+" in mode "+String(cmd.mode)+" given flags "+String(cmd.directFlags)+" to"+buffer.CopyToString());
 
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(cmd.id,peer);
 		if (!e)
@@ -1521,7 +1521,7 @@ namespace Receiver
 		//	LogEvent(EventSignificance::Common,peer,e,"(Directed entity in mode "+String(cmd.mode.value)+" via click "+String(leftClick)+" to "+buffer.ToString()+" (detailed="+String(detailed)+"))");
 		//	return;
 		//}
-		Journal::currentRound.RegisterDirectEntityTo(true,e,(Objects::Vehicle::mode_t)cmd.mode.value,cmd.path,detailed,leftClick,clearSafeTasks);
+		Journal::currentRound.RegisterDirectEntityTo(true,e,(Objects::Vehicle::mode_t)cmd.mode,cmd.path,detailed,leftClick,clearSafeTasks);
 	}
 
 	#if 0
@@ -1608,7 +1608,7 @@ namespace Receiver
 			response.success = false;
 			response.configurationMode = false;
 			response.errorMessage ="Invalid initial username";
-			peer.SendObject(Protocol::ChannelID::Hello,response);
+			peer.SendPackage(TCP::Package(response,Protocol::ChannelID::Hello));
 			return;
 		}
 
@@ -1648,7 +1648,7 @@ namespace Receiver
 			response.success = true;
 			response.configurationMode = ConfigurationMode::IsActive() && peer.IsLocalhost();
 			response.errorMessage ="Userlevel set to "+String(peer.userLevel);
-			peer.SendObject(Protocol::ChannelID::Hello,response);
+			peer.SendPackage( TCP::Package(response, Protocol::ChannelID::Hello ));
 			return;
 		}
 
@@ -1658,7 +1658,7 @@ namespace Receiver
 		response.success = true;
 		response.configurationMode = ConfigurationMode::IsActive() && peer.IsLocalhost();
 		response.errorMessage ="Duplicate Hello detected. Userlevel remains "+String(peer.userLevel);
-		peer.SendObject(Protocol::ChannelID::Hello,response);		
+		peer.SendPackage( TCP::Package(response,Protocol::ChannelID::Hello) );		
 	}
 
 

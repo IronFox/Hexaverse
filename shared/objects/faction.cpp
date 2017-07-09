@@ -1470,43 +1470,22 @@ namespace Objects
 				return b->constName;
 			return ConstName::Empty;
 		}
-		/*virtual override*/	serial_size_t		Marker::GetSerialSize(bool exportSize) const
+
+		/*virtual override*/	void		Marker::Serialize(IWriteStream&s) const
 		{
-			serial_size_t size = sizeof(TUniqueID);	//marker id;
-			size += 1;	//type
-			size += sizeof(createdInRound);
-			size += sizeof(location);
+			s.WritePrimitive(id);
+			s.WritePrimitive((UINT8)type);
+			s.WritePrimitive(createdInRound);
+			s.WritePrimitive(location);
 			if (UtilizesReferenceEntity())
 			{
-				size += 2 * sizeof(TUniqueID);	//referenced entity id
-
-
-				String t0 = Convert(this->referencedType[0]);
-				String t1 = Convert(this->referencedType[1]);
-				size += t0.GetSerialSize(true);
-				size += t1.GetSerialSize(true);
-//				size += sizeof(this->referencedType);
-				//this->referencedType.GetSerialSize(exportSize);
-			}
-			return size;
-		}
-		/*virtual override*/	void		Marker::Serialize(IWriteStream&outStream, bool exportSize) const
-		{
-			outStream.WritePrimitive(id);
-			outStream.WritePrimitive((UINT8)type);
-			outStream.WritePrimitive(createdInRound);
-			outStream.WritePrimitive(location);
-			if (UtilizesReferenceEntity())
-			{
-				outStream.WritePrimitive(this->referenceEntity);
-				outStream.WritePrimitive(this->referenceEntityOwner);
-				String t0 = Convert(this->referencedType[0]);
-				String t1 = Convert(this->referencedType[1]);
-				t0.Serialize(outStream,true);
-				t1.Serialize(outStream,true);
+				s.WritePrimitive(this->referenceEntity);
+				s.WritePrimitive(this->referenceEntityOwner);
+				SerialSync(s,Convert(this->referencedType[0]));
+				SerialSync(s,Convert(this->referencedType[1]));
 			}
 		}
-		/*virtual override*/	void		Marker::Deserialize(IReadStream&inStream, serial_size_t fixedSize)
+		/*virtual override*/	void		Marker::Deserialize(IReadStream&inStream)
 		{
 			UINT8 typei;
 			inStream.ReadPrimitive(id);
@@ -1516,13 +1495,6 @@ namespace Objects
 			type = Type::Reinterpret(typei);
 			if (UtilizesReferenceEntity())
 			{
-				if (fixedSize != EmbeddedSize)
-				{
-					fixedSize -= sizeof(TUniqueID) + 1 + sizeof(createdInRound) + sizeof(TUniqueID) + sizeof(location);
-					{
-						fixedSize -= sizeof(TUniqueID);
-					}
-				}
 				String t0,t1;
 				inStream.ReadPrimitive(this->referenceEntity);
 
@@ -1532,8 +1504,8 @@ namespace Objects
 				}
 				else
 					this->referenceEntityOwner = TUniqueID::Empty();
-				t0.Deserialize(inStream,EmbeddedSize);
-				t1.Deserialize(inStream,EmbeddedSize);
+				SerialSync(inStream,t0);
+				SerialSync(inStream,t1);
 				this->referencedType[0] = Convert(t0);
 				this->referencedType[1] = Convert(t1);
 				//this->referenceEntityType.Deserialize(inStream, fixedSize);

@@ -603,17 +603,12 @@ namespace Objects
 
 
 		
-		/*virtual override*/	void			SelfDetonate::Serialize(IWriteStream&outStream, bool exportSize) const 
+		/*virtual override*/	void			SelfDetonate::Serialize(IWriteStream&outStream) const 
 		{
 			outStream.WritePrimitive(doomsday);
 		}
 
-		/*virtual override*/	serial_size_t	SelfDetonate::GetSerialSize(bool exportSize) const 
-		{
-			return 1;
-		}
-
-		/*virtual override*/	void			SelfDetonate::Deserialize(IReadStream&inStream, serial_size_t fixedSize)
+		/*virtual override*/	void			SelfDetonate::Deserialize(IReadStream&inStream)
 		{
 			inStream.ReadPrimitive(doomsday);
 		}		
@@ -781,31 +776,24 @@ namespace Objects
 			
 
 
-		/*virtual override*/	void			Construct::Serialize(IWriteStream&outStream, bool exportSize) const 
+		/*virtual override*/	void			Construct::Serialize(IWriteStream&outStream) const 
 		{
 			outStream.Write(useID.bytes,(serial_size_t)useID.NumBytes);
-			constructWhat->GetTypeName().Serialize(outStream,exportSize);
-		}
-
-		/*virtual override*/	serial_size_t	Construct::GetSerialSize(bool exportSize) const 
-		{
-			return (serial_size_t)useID.NumBytes + constructWhat->GetTypeName().GetSerialSize(exportSize);
+			SerialSync(outStream,constructWhat->GetTypeName());
 		}
 
 
 
-		/*virtual override*/	void			Construct::Deserialize(IReadStream&inStream, serial_size_t fixedSize)
+		/*virtual override*/	void			Construct::Deserialize(IReadStream&inStream)
 		{
 			String whatName;
 			if (ApplicationInterface::globalVersionOfCurrentFile >= ApplicationInterface::FileVersions::HasUUIDInConstructionJobs)
 			{
 				inStream.Read(useID.bytes,(serial_size_t)useID.NumBytes);
-				if (fixedSize != EmbeddedSize)
-					fixedSize -= useID.NumBytes;
 			}
 			else
 				useID.Generate();
-			whatName.Deserialize(inStream,fixedSize);
+			SerialSync(inStream,whatName);
 
 			constructWhat = GetPrototypeByName(whatName);
 			if (!constructWhat)
@@ -1041,11 +1029,9 @@ namespace Objects
 		}
 
 
-		/*virtual override*/	void			Sequence::Deserialize(IReadStream&inStream, serial_size_t fixedSize)
+		/*virtual override*/	void			Sequence::Deserialize(IReadStream&inStream)
 		{
 			UINT16 i16;
-			if (fixedSize != EmbeddedSize)
-				fixedSize -= 2 + sizeof(Grid::LCellIdI) + 2;
 			inStream.ReadPrimitive(i16);
 			mode = (CursorMode)i16;
 
@@ -1055,7 +1041,7 @@ namespace Objects
 				inStream.ReadPrimitive(lastLocation);
 				inStream.ReadPrimitive(first);
 				inStream.ReadPrimitive(dead);
-				Super::Deserialize(inStream,fixedSize);
+				Super::Deserialize(inStream);
 				return;
 			}
 			if (ApplicationInterface::globalVersionOfCurrentFile ==1036)
@@ -1063,14 +1049,14 @@ namespace Objects
 				String dummy;
 				inStream.ReadPrimitive(lastLocation);
 				inStream.ReadPrimitive(first);
-				dummy.Deserialize(inStream,EmbeddedSize);
-				Super::Deserialize(inStream,EmbeddedSize);
+				SerialSync(inStream,dummy);
+				Super::Deserialize(inStream);
 				return;
 			}
 
 			inStream.ReadPrimitive(lastLocation);
 			inStream.ReadPrimitive(first);
-			Super::Deserialize(inStream,EmbeddedSize);
+			Super::Deserialize(inStream);
 		}
 
 		bool					Sequence::DoneHere(const World::Data&world,const Grid::LCellIdI&cell, const Grid::LCellIdI&nextCell)	const

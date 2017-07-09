@@ -5,6 +5,110 @@
 
 namespace Objects
 {
+
+	UINT64&					Statistics::MetricTable::Fetch(Metric metric)
+	{
+		auto ptr = map.QueryPointer((K)metric);
+		if (ptr)
+			return *ptr;
+		ptr = map.SetNew((K)metric);
+		(*ptr) = 0;
+		return *ptr;
+	}
+
+	UINT64					Statistics::MetricTable::operator[](Metric metric) const
+	{
+		UINT64 rs = 0;
+		map.Query((K)metric,rs);
+		return rs;
+	}
+
+	void					Statistics::MetricTable::Inc(Metric m)
+	{
+		Fetch(m)++;
+	}
+	void					Statistics::MetricTable::Add(Metric m, int delta)
+	{
+		if (delta <= 0)
+		{
+			DBG_ASSERT_EQUAL__(delta,0);
+			return;
+		}
+		Fetch(m) += delta;
+	}
+	void					Statistics::MetricTable::Set(Metric m, count_t value)
+	{
+		if (value == 0)
+		{
+			map.Unset((K)m);
+			return;
+		}
+		map.Set((K)m,value);
+	}
+
+
+	/*virtual override*/	void			Statistics::MetricTable::Serialize(IWriteStream&outStream) const
+	{
+		outStream.WriteSize(map.Count());
+		map.VisitAllEntries([&outStream](K key, UINT64 value)
+		{
+			outStream.WriteSize(key);
+			outStream.WriteSize(value);
+		});
+	}
+	/*virtual override*/	void			Statistics::MetricTable::Deserialize(IReadStream&inStream)
+	{
+		count_t entries = 0;
+		inStream.ReadSize(entries);
+		map.Clear();
+		for (index_t i = 0; i < entries; i++)
+		{
+			K key;
+			UINT64 val;
+			inStream.ReadSize(key);
+			inStream.ReadSize(val);
+			if (val > 0)
+				map.Set(key,val);
+		};
+	}
+
+	bool					Statistics::MetricTable::operator==(const Self&other) const
+	{
+		bool equal = true;
+		map.VisitAllEntries([&other,&equal](K key, UINT64 value)
+		{
+			if (!equal)
+				return;
+			const UINT64*v = other.map.QueryPointer(key);
+			if (!v)
+			{
+				if (value != 0)
+					equal = false;
+				return;
+			}
+			if (value != *v)
+				equal = false;
+		});
+		if (equal)
+			other.map.VisitAllEntries([this,&equal](K key, UINT64 value)
+			{
+				if (!equal)
+					return;
+				const UINT64*v = map.QueryPointer(key);
+				if (!v)
+				{
+					if (value != 0)
+						equal = false;
+					return;
+				}
+				if (value != *v)
+					equal = false;
+			});
+		return equal;
+	}
+
+
+
 	Statistics::Statistics(const Faction*owner):owner(owner)
 	{
 		history.Append();
@@ -33,82 +137,46 @@ namespace Objects
 
 
 
-	/*virtual override*/	serial_size_t			Statistics::Interaction::GetSerialSize(bool) const
-	{
-		serial_size_t rs = remoteID.NumBytes;
-		foreach (metric,m)
-			rs += GetSerialSizeOfSize(*m);
-		return rs;
-	}
 
-	/*virtual override*/	void					Statistics::Interaction::Serialize(IWriteStream&outStream, bool) const
+	/*virtual override*/	void					Statistics::Interaction::Serialize(IWriteStream&outStream) const
 	{
-
 		outStream.Write(remoteID.bytes,remoteID.NumBytes);
-		foreach (metric,m)
-			outStream.WriteSize(*m);
+		metrics.Serialize(outStream);
 	}
 
-	/*virtual override*/	void					Statistics::Interaction::Deserialize(IReadStream&inStream, serial_size_t)
+	/*virtual override*/	void					Statistics::Interaction::Deserialize(IReadStream&inStream)
 	{
 		inStream.Read(remoteID.bytes,remoteID.NumBytes);
-		foreach (metric,m)
-			inStream.ReadSize(*m);
+		metrics.Deserialize(inStream);
 	}
 
 
-	/*virtual override*/	serial_size_t			Statistics::UnitStatistics::GetSerialSize(bool) const
+	/*virtual override*/	void					Statistics::UnitStatistics::Serialize(IWriteStream&outStream) const
 	{
-		serial_size_t rs = 0;
-		rs += typeName.GetSerialSize(true);
-		foreach (metric,m)
-			rs += GetSerialSizeOfSize(*m);
-		return rs;
+		SerialSync(outStream,typeName);
+		metrics.Serialize(outStream);
 	}
 
-	/*virtual override*/	void					Statistics::UnitStatistics::Serialize(IWriteStream&outStream, bool) const
+	/*virtual override*/	void					Statistics::UnitStatistics::Deserialize(IReadStream&inStream)
 	{
-		typeName.Serialize(outStream,true);
-		foreach (metric,m)
-			outStream.WriteSize(*m);
+		SerialSync(inStream,typeName);
+		metrics.Deserialize(inStream);
 	}
 
-	/*virtual override*/	void					Statistics::UnitStatistics::Deserialize(IReadStream&inStream, serial_size_t)
+	/*virtual override*/	void					Statistics::RoundStatistics::Serialize(IWriteStream&s) const
 	{
-		typeName.Deserialize(inStream,EmbeddedSize);
-		foreach (metric,m)
-			inStream.ReadSize(*m);
+		SerialSync(s,production);
+		SerialSync(s,consumption);
+		metrics.Serialize(s);
+		s.WriteSize(mainRound);
 	}
 
-	/*virtual override*/	serial_size_t			Statistics::RoundStatistics::GetSerialSize(bool exportSize) const
+	/*virtual override*/	void					Statistics::RoundStatistics::Deserialize(IReadStream&s)
 	{
-		return	production.GetSerialSize(true)
-			+	consumption.GetSerialSize(true)
-			+	ISerializable::GetSerialSizeOfSize(entityCount)
-			+	ISerializable::GetSerialSizeOfSize(entityMineralValue)
-			+	ISerializable::GetSerialSizeOfSize(sensorCoverage)
-			+	ISerializable::GetSerialSizeOfSize(mainRound);
-
-	}
-
-	/*virtual override*/	void					Statistics::RoundStatistics::Serialize(IWriteStream&outStream, bool exportSize) const
-	{
-		production.Serialize(outStream,true);
-		consumption.Serialize(outStream,true);
-		outStream.WriteSize(entityCount);
-		outStream.WriteSize(entityMineralValue);
-		outStream.WriteSize(sensorCoverage);
-		outStream.WriteSize(mainRound);
-	}
-
-	/*virtual override*/	void					Statistics::RoundStatistics::Deserialize(IReadStream&inStream, serial_size_t fixedSize)
-	{
-		production.Deserialize(inStream,true);
-		consumption.Deserialize(inStream,true);
-		inStream.ReadSize(entityCount);
-		inStream.ReadSize(entityMineralValue);
-		inStream.ReadSize(sensorCoverage);
-		inStream.ReadSize(mainRound);
+		SerialSync(s,production);
+		SerialSync(s,consumption);
+		metrics.Deserialize(s);
+		s.ReadSize(mainRound);
 	}
 
 
@@ -117,34 +185,34 @@ namespace Objects
 	#ifndef CLIENT
 		void			Statistics::SignalDamageReceivedFrom(const PFaction&source, int level)
 		{
-			Get(source).Get(Interaction::DamageReceived) += level;
+			Get(source).metrics.Add(Metric::DamageReceived, level);
 		}
 
 		void			Statistics::SignalDamageDealtTo(const PWorldEntity&causedBy, const PFaction&receiver, int level)
 		{
-			Get(receiver).Get(Interaction::DamageDealt)+=level;
-			GetTypeOf(causedBy).Get(UnitStatistics::DamageDealt)+=level;
+			Get(receiver).metrics.Add(Metric::DamageDealt,level);
+			GetTypeOf(causedBy).metrics.Add(Metric::DamageDealt,level);
 		}
 
 		void			Statistics::SignalEMPDamageReceivedFrom(const PFaction&source, int level)
 		{
-			Get(source).Get(Interaction::EMPDamageReceived)+=level;
+			Get(source).metrics.Add(Metric::EMPDamageReceived,level);
 		}
 
 		void			Statistics::SignalEMPDamageDealtTo(const PWorldEntity&causedBy, const PFaction&receiver, int level)
 		{
-			Get(receiver).Get(Interaction::EMPDamageDealt)+=level;
-			GetTypeOf(causedBy).Get(UnitStatistics::EMPDamageDealt)+=level;
+			Get(receiver).metrics.Add(Metric::EMPDamageDealt,level);
+			GetTypeOf(causedBy).metrics.Add(Metric::EMPDamageDealt,level);
 		}
 		
 		void			Statistics::SignalDestructionOfHostile(const PWorldEntity&causedBy, const PWorldEntity&destroyed)
 		{
 			auto&in = Get(destroyed->owner);
-			in.Get(Interaction::UnitsKilled)++;
-			in.Get(Interaction::ResourcesDestroyed) += destroyed->GetConstructionCost();
+			in.metrics.Inc(Metric::UnitsKilled);
+			in.metrics.Add(Metric::ResourcesDestroyed,destroyed->GetConstructionCost());
 			auto&un = GetTypeOf(causedBy);
-			un.Get(UnitStatistics::UnitsKilled)++;
-			un.Get(UnitStatistics::ResourcesDestroyed) += destroyed->GetConstructionCost();;
+			un.metrics.Inc(Metric::UnitsKilled);
+			un.metrics.Add(Metric::ResourcesDestroyed,destroyed->GetConstructionCost());
 		}
 		
 		void			Statistics::SignalLossOf(const PWorldEntity&destroyed, const PFaction&causedBy, bool stolen)
@@ -152,16 +220,16 @@ namespace Objects
 			auto&in = Get(causedBy);
 			if (stolen)
 			{
-				in.Get(Interaction::UnitsStolenBy)++;
-				in.Get(Interaction::ResourcesStolenBy) += destroyed->GetConstructionCost();
+				in.metrics.Inc(Metric::UnitsStolenBy);
+				in.metrics.Add(Metric::ResourcesStolenBy, destroyed->GetConstructionCost());
 			}
 			else
 			{
-				in.Get(Interaction::UnitsKilledBy)++;
-				in.Get(Interaction::ResourcesDestroyedBy) += destroyed->GetConstructionCost();
+				in.metrics.Inc(Metric::UnitsKilledBy);
+				in.metrics.Add(Metric::ResourcesDestroyedBy,destroyed->GetConstructionCost());
 			}
 			auto&un = GetTypeOf(destroyed);
-			un.Get(UnitStatistics::Lost) ++;
+			un.metrics.Inc(Metric::Lost);
 		}
 
 		void			Statistics::SignalUnitAcquired(const PWorldEntity&e, const PFaction&previousOwner)
@@ -169,14 +237,14 @@ namespace Objects
 			if (previousOwner)
 			{
 				auto&in = Get(previousOwner);
-				in.Get(Interaction::UnitsStolen)++;
-				in.Get(Interaction::ResourcesStolen) += e->GetConstructionCost();
+				in.metrics.Inc(Metric::UnitsStolen);
+				in.metrics.Add(Metric::ResourcesStolen, e->GetConstructionCost());
 			}
 			auto&un = GetTypeOf(e);
 			if (previousOwner)
-				un.Get(UnitStatistics::Stolen) ++;
+				un.metrics.Inc(Metric::Stolen);
 			else
-				un.Get(UnitStatistics::Built) ++;
+				un.metrics.Inc(Metric::Built);
 		}
 
 
@@ -212,10 +280,10 @@ namespace Objects
 					auto&stat = f->statistics;
 					{
 						auto&prog = stat.history.Last();
-						prog.entityCount = stat.totalEntities;
-						prog.entityMineralValue = stat.totalEntityMineralValue;
+						prog.metrics.Set(Metric::CurrentEntityCount,stat.totalEntities);
+						prog.metrics.Set(Metric::CurrentEntityMineralValue, stat.totalEntityMineralValue);
 						f->CheckSensory();
-						prog.sensorCoverage = f->knownWorld.CountVisibleCells();
+						prog.metrics.Set(Metric::CurrentSensorCoverage, f->knownWorld.CountVisibleCells());
 						stat.totalEntities = 0;
 						stat.totalEntityMineralValue = 0;
 					}
@@ -243,32 +311,29 @@ namespace Objects
 
 		void			Statistics::ExportInto(Riff::Chunk*chunk) const
 		{
+			ByteStreamBuffer stream;
 			{
 				
-				BYTE worstCaseData[Interaction::NumMetrics *8];
-
 				foreach (this->history,r)
 				{
-					MemWriteStream stream(worstCaseData,sizeof(worstCaseData));
-					r->Serialize(stream,false);
-					chunk->AppendBlock(ChunkID::round,worstCaseData,stream.GetCurrent()-worstCaseData);
+					stream.Clear();
+					r->Serialize(stream);
+					chunk->AppendBlock(ChunkID::round,stream);
 				}
 			}
 			{
-				ByteStream stream;
 				this->unitStatistics.VisitAllValues([chunk,&stream](const UnitStatistics&stat)
 				{
 					stream.Clear();
-					stat.Serialize(stream,false);
+					stat.Serialize(stream);
 					chunk->AppendBlock(ChunkID::unit,stream);
 				});
 			}
 			{
-				ByteStream stream;
 				this->interactionMap.VisitAllValues([chunk,&stream](const Interaction&stat)
 				{
 					stream.Clear();
-					stat.Serialize(stream,false);
+					stat.Serialize(stream);
 					chunk->AppendBlock(ChunkID::interaction,stream);
 				});
 			}
@@ -287,7 +352,7 @@ namespace Objects
 				if (child->IsID(ChunkID::round))
 				{
 					RoundStatistics stat;
-					stat.Deserialize(stream,child->size());
+					stat.Deserialize(stream);
 					ASSERT_EQUAL__(stream.GetRemainingBytes(),0);
 					history << stat;
 				}
@@ -295,7 +360,7 @@ namespace Objects
 				if (child->IsID(ChunkID::unit))
 				{
 					UnitStatistics stat;
-					stat.Deserialize(stream,child->size());
+					stat.Deserialize(stream);
 					ASSERT_EQUAL__(stream.GetRemainingBytes(),0);
 					unitStatistics.Set(stat.typeName,stat);
 				}
@@ -303,7 +368,7 @@ namespace Objects
 				if (child->IsID(ChunkID::interaction))
 				{
 					Interaction stat;
-					stat.Deserialize(stream,child->size());
+					stat.Deserialize(stream);
 					ASSERT_EQUAL__(stream.GetRemainingBytes(),0);
 
 					PFaction f;

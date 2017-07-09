@@ -492,9 +492,9 @@ namespace Animation
 	{
 		foreach (sourceTask.foci,f)
 			t1.foci.Push().target = *f;
-		t1.mode = (Objects::Vehicle::mode_t) sourceTask.mode.value;
+		t1.mode = (Objects::Vehicle::mode_t) sourceTask.mode;
 		t1.name = sourceTask.name;
-		t1.type = (Objects::Vehicle::Task::type_t) sourceTask.type.value;
+		t1.type = (Objects::Vehicle::Task::type_t) sourceTask.type;
 		if (t1.type == Objects::Vehicle::TaskData::Job)
 		{
 			if (sourceTask.buildPath.IsNotEmpty())
@@ -581,7 +581,7 @@ namespace Animation
 		if (v->IsVehicle())
 		{
 			Objects::PVehicle&veh = To<Objects::Vehicle>::Cast(v);
-			bool newAutomated = (vs.flags.value & Protocol::VehicleFlags::Automated) != 0;
+			bool newAutomated = (vs.flags & Protocol::VehicleFlags::Automated) != 0;
 			automationChange = newAutomated != veh->isAutomated;
 			veh->isAutomated = newAutomated;
 		}
@@ -673,9 +673,9 @@ namespace Animation
 			auto id = info->storedIn.Get0();
 			if (id)
 			{
-				storeIn = Objects::GetEntity(id->value);
+				storeIn = Objects::GetEntity(*id);
 				storeInHangar = To<Objects::Hangar>::DynamicCast(storeIn);
-				ASSERT1__(storeIn,id->value);
+				ASSERT1__(storeIn,*id);
 				ASSERT1__(storeInHangar,storeIn->GetName());
 			}
 
@@ -702,7 +702,7 @@ namespace Animation
 							break;
 							default:
 								FATAL__("Unexpected parameter count: "+String(t->parameters.Count())
-											+" while decoding task "+ToString(t->id.value)
+											+" while decoding task "+ToString(t->id)
 											+" of "+v->GetName());
 						}
 						//ASSERT_EQUAL__(t->parameters.Count(),2);
@@ -860,7 +860,7 @@ namespace Animation
 							break;
 							default:
 								FATAL__("Unexpected parameter count: "+String(t->parameters.Count())
-											+" while decoding task "+ToString(t->id.value)
+											+" while decoding task "+ToString(t->id)
 											+" of "+s->GetName());
 						}
 						//ASSERT_EQUAL__(t->parameters.Count(),2);
@@ -1047,7 +1047,7 @@ namespace Animation
 	{
 		ASSERT__(path);
 		ASSERT__(path->rawPath.last().first == motion.fromLocation);
-		ASSERT2__(targetEntityID == motion.id,targetEntityID,motion.id.value);
+		ASSERT2__(targetEntityID == motion.id,targetEntityID,motion.id);
 		path->rawPath.Append(std::make_pair(motion.toLocation,motion.timestamp.atTime + motion.timeNeeded));
 		path->changed = true;
 		time.Include(FloatRange<float>(motion.timestamp.atTime,motion.timestamp.atTime + motion.timeNeeded));
@@ -1061,14 +1061,14 @@ namespace Animation
 		removalType = e.type;
 		//ASSERT__(target);
 		time.SetMinAndMax(e.timestamp.atTime/*+0.01f*/);
-		LogEvent(EventSignificance::Debug,nullptr,"Registered removal of entity "+ToString(e.id.value)+" ("+Objects::RemovalType::Reinterpret(e.type.value).ToString()+") at t="+ToString(time));
+		LogEvent(EventSignificance::Debug,nullptr,"Registered removal of entity "+ToString(e.id)+" ("+Objects::RemovalType::Reinterpret(e.type).ToString()+") at t="+ToString(time));
 	}
 	void					Primitive::Init(Protocol::VagueAttackTrajectory&a)
 	{
 		type = Attack;
 		targetEntityID = TUniqueID::Empty();
 		attackerTurret = Objects::Component::GetTurretByName(a.turretType);
-		ASSERT_NOT_NULL1__(attackerTurret,(int)a.turretType.value);
+		ASSERT_NOT_NULL1__(attackerTurret,(int)a.turretType);
 		attackRange = a.turretRange;
 		attackAngle = a.attackAngle,
 		attackerPosition = a.sourcePosition;
@@ -1092,7 +1092,7 @@ namespace Animation
 	void					Primitive::Init(Protocol::Explosion&ex)
 	{
 		type = Explosion;
-		explosionCenter = ex.center.value;
+		explosionCenter = ex.center;
 		explosionRadius = ex.radius;
 		empExplosion = ex.isEMP;
 		time.min = ex.timestamp.atTime;
@@ -1120,7 +1120,7 @@ namespace Animation
 		type = ResourceUpdate;
 		resourceUpdate.reset(new Protocol::ResourceUpdate());
 		resourceUpdate->cells.adoptData(up.cells);
-		resourceUpdate->resourceName.adoptData(up.resourceName);
+		resourceUpdate->resourceName = up.resourceName;
 		//Protocol::ResourceUpdate&u
 		time.min = up.timestamp.atTime;
 		time.max = time.min;

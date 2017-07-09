@@ -19,94 +19,98 @@ namespace Objects
 		const Faction*const	owner;
 	public:
 
+		enum class Metric
+		{
+			//VERY Important: if any no longer in use: DO NOT REMOVE. Prepend Deprecated_. These are used for IO, and may be imported from potentially very old savegames
+			DamageReceived,
+			DamageDealt,
+			EMPDamageReceived,
+			EMPDamageDealt,
+			UnitsKilled,
+			ResourcesDestroyed,
+			UnitsStolen,
+			ResourcesStolen,
+
+			UnitsKilledBy,
+			UnitsStolenBy,
+			ResourcesDestroyedBy,
+			ResourcesStolenBy,
+
+			Lost,				//how many of this type we lost
+			Built,				//how many of this type we built
+			Stolen,				//how many of this type we stole
+
+			CurrentEntityCount,
+			CurrentEntityMineralValue,
+			CurrentSensorCoverage,
+
+		};
+
+
+		class MetricTable : public ISerializable
+		{
+		public:
+			typedef MetricTable		Self;
+			typedef std::underlying_type<Metric>::type	K;
+
+
+			UINT64					operator[](Metric metric) const;
+			void					Inc(Metric);
+			void					Add(Metric, int delta);
+			void					Set(Metric, count_t value);
+
+			bool					operator==(const Self&other) const;
+			bool					operator!=(const Self&other) const {return !operator==(other);}
+
+			void					Clear() {map.Clear();}
+
+			virtual	void			Serialize(IWriteStream&outStream) const override;
+			virtual	void			Deserialize(IReadStream&inStream) override;
+
+		private:
+			UINT64&					Fetch(Metric metric);
+
+			GenericHashTable<K,UINT64>	map;
+		};
+
+
 
 		struct Interaction : public ISerializable
 		{
 			typedef Interaction Self;
-			TUniqueID	remoteID;
 
-			enum metric_t
-			{
-				//VERY Important: if any no longer in use: DO NOT REMOVE. Append _Deprecated. These are used for IO, and may be imported from potentially very old savegames
-				DamageReceived,
-				DamageDealt,
-				EMPDamageReceived,
-				EMPDamageDealt,
-				UnitsKilled,
-				ResourcesDestroyed,
-				UnitsStolen,
-				ResourcesStolen,
+			TUniqueID				remoteID;
+			MetricTable				metrics;
 
-				UnitsKilledBy,
-				UnitsStolenBy,
-				ResourcesDestroyedBy,
-				ResourcesStolenBy,
-
-
-				NumMetrics
-			};
-
-
-			FixedArray<UINT64,NumMetrics>		metric;
-
-			UINT64&		Get(metric_t m) {return metric[m];}
-
-			/**/		Interaction()
-			{
-				metric.Fill(0);
-			}
-
-			virtual	serial_size_t	GetSerialSize(bool exportSize) const override;
-			virtual	void			Serialize(IWriteStream&outStream, bool exportSize) const override;
-			virtual	void			Deserialize(IReadStream&inStream, serial_size_t fixedSize) override;
-			bool					operator==(const Self&other) const {return remoteID == other.remoteID && metric == other.metric;}
+			bool					operator==(const Self&other) const {return remoteID == other.remoteID && metrics == other.metrics;}
 			bool					operator!=(const Self&other) const {return !operator==(other);}
+
+			virtual	void			Serialize(IWriteStream&outStream) const override;
+			virtual	void			Deserialize(IReadStream&inStream) override;
 		};
 
 		struct UnitStatistics : public ISerializable
 		{
 			typedef UnitStatistics	Self;
-			String		typeName;
 
-			enum metric_t
-			{
-				//VERY Important: if any no longer in use: DO NOT REMOVE. Append _Deprecated. These are used for IO, and may be imported from potentially very old savegames
-				DamageDealt,	//how much damage this type caused
-				EMPDamageDealt,	//how much EMP damage this type caused
-				UnitsKilled,	//how many units this type killed
-				ResourcesDestroyed,	//how many resources this type destroyed
-				Lost,				//how many of this type we lost
-				Built,				//how many of this type we built
-				Stolen,				//how many of this type we stole
-				NumMetrics
-			};
-
-			FixedArray<UINT64,NumMetrics>		metric;
+			String					typeName;
+			MetricTable				metrics;
 		
-			UINT64&		Get(metric_t m) {return metric[m];}
-
-			/**/		UnitStatistics()
-			{
-				metric.Fill(0);
-			}
-			virtual	serial_size_t	GetSerialSize(bool exportSize) const override;
-			virtual	void			Serialize(IWriteStream&outStream, bool exportSize) const override;
-			virtual	void			Deserialize(IReadStream&inStream, serial_size_t fixedSize) override;
-			bool					operator==(const Self&other) const {return typeName == other.typeName && metric == other.metric;}
+			bool					operator==(const Self&other) const {return typeName == other.typeName && metrics == other.metrics;}
 			bool					operator!=(const Self&other) const {return !operator==(other);}
+
+			virtual	void			Serialize(IWriteStream&outStream) const override;
+			virtual	void			Deserialize(IReadStream&inStream) override;
 		};
 
 		struct RoundStatistics : public ISerializable
 		{
 			PositiveResourceVector	production,consumption;
-			UINT64			entityCount=0,
-							entityMineralValue=0;
-			UINT32			sensorCoverage=0;
-			UINT32			mainRound=0;
-
-			virtual	serial_size_t			GetSerialSize(bool exportSize) const override;
-			virtual	void					Serialize(IWriteStream&outStream, bool exportSize) const override;
-			virtual	void					Deserialize(IReadStream&inStream, serial_size_t fixedSize) override;
+			MetricTable				metrics;
+			UINT32					mainRound;
+			
+			virtual	void			Serialize(IWriteStream&outStream) const override;
+			virtual	void			Deserialize(IReadStream&inStream) override;
 		};
 
 

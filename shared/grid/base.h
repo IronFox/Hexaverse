@@ -264,6 +264,35 @@ public:
 		{
 			return (hash_t)(cell.stackID*32+cell.height);
 		}
+
+		friend void		SerialSync(IWriteStream&s, const CellIdI&v)
+		{
+			using Serialization::SerialSync;
+			if (v == Invalid)
+			{
+				BYTE bLayer = 0xFF;
+				s.Write(&bLayer,1);
+				return;
+			}
+			UINT32 layer = Grid::CellStack::ToLayer(v.height);
+			static_assert(Grid::CellStack::Range <= 255, "Protocol not designed for more than 255 layers");
+			BYTE bLayer = (BYTE)layer;
+			s.Write(&bLayer,1);
+			s.WriteSize(v.stackID);
+		}
+
+		friend	void	SerialSync(IReadStream&s, CellIdI&v)
+		{
+			BYTE bLayer;
+			s.Read(&bLayer,1);
+			if (bLayer == 0xFF)
+			{
+				v = Invalid;
+				return;
+			}
+			s.ReadSize(v.stackID);
+			v.height = Grid::CellStack::ToHeight((UINT)bLayer);
+		}
 	private:
 		/**/	CellIdI(index_t stackID, UINT layer) {}
 	};

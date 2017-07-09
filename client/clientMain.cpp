@@ -492,7 +492,7 @@ namespace ApplicationInterface
 		ch.mode = (UINT16)mode;
 		ch.target = c;
 		if (deployingWhat)
-			ch.deployingWhat.Set0().value = deployingWhat->id;
+			ch.deployingWhat.Set0() = deployingWhat->id;
 		LogEvent(EventSignificance::Common,"Signalling choice intersection with "+ch.target.ToString());
 		Network::Channels::choiceIntersection.SendTo(Network::client,ch);
 
@@ -1276,7 +1276,7 @@ namespace ApplicationInterface
 		{
 			Protocol::Marker marker;
 			static_assert(Objects::Marker::Type::EntityDeath == 0, "Please update marker logic");
-			marker.id.value.Generate();
+			marker.id.Generate();
 			FillMarker(marker, e, marker.data.Set0());
 			LocalApplicationInterface::SignalMarkerCreation(marker);
 			LogEvent(EventSignificance::Debug,e.get(),"Created friendly loss marker for "+e->GetName());
@@ -1292,7 +1292,7 @@ namespace ApplicationInterface
 				{
 				
 					Protocol::Marker marker;
-					marker.id.value.Generate();
+					marker.id.Generate();
 					static_assert(Objects::Marker::Type::HostileContact == 1, "Please update marker logic");
 					FillMarker(marker, e, marker.data.Set1());
 					LocalApplicationInterface::SignalMarkerCreation(marker);

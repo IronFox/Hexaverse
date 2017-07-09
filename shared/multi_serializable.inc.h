@@ -1,35 +1,30 @@
 #define MAKE_MUTLI_SERIALIZABLE_CLASS(SUPER_DEPTH,THIS_DEPTH)\
 	template <M_TYPES##THIS_DEPTH>\
-		class MultiSerializable##THIS_DEPTH: public MultiSerializable##SUPER_DEPTH <M_T##SUPER_DEPTH>\
+		class MultiSerializable##THIS_DEPTH : public MultiSerializable##SUPER_DEPTH <M_T##SUPER_DEPTH>\
 		{\
 		protected:\
 			typedef MultiSerializable##THIS_DEPTH <M_T##THIS_DEPTH>	Self;\
 			typedef MultiSerializable##SUPER_DEPTH <M_T##SUPER_DEPTH>	Super;\
 			T##SUPER_DEPTH	var##SUPER_DEPTH;\
 		public:\
-			virtual	serial_size_t				GetSerialSize(bool exportSize) const	override\
+			friend void SerialSync(IReadStream&s, Self&v)\
 			{\
-				return Super::GetSerialSize(true) + var##SUPER_DEPTH.GetSerialSize(true);\
+				using Serialization::SerialSync;\
+				SerialSync(s,(Super&)v);\
+				SerialSync(s,v.var##SUPER_DEPTH);\
 			}\
-			virtual	bool						HasFixedSize() const	override\
+			friend void SerialSync(IWriteStream&s, const Self&v)\
 			{\
-				return Super::HasFixedSize() && var##SUPER_DEPTH.HasFixedSize();\
-			}\
-			virtual	void		Serialize(IWriteStream&outStream, bool exportSize) const	override\
-			{\
-				Super::Serialize(outStream,true);\
-				var##SUPER_DEPTH.Serialize(outStream,true);\
-			}\
-			virtual	void		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override\
-			{\
-				Super::Deserialize(inStream,EmbeddedSize);\
-				var##SUPER_DEPTH.Deserialize(inStream,EmbeddedSize);\
+				using Serialization::SerialSync;\
+				SerialSync(s,(Super&)v);\
+				SerialSync(s,v.var##SUPER_DEPTH);\
 			}\
 			void	Copy(const Self&other)\
 			{\
 				Super::Copy(other); var##SUPER_DEPTH = other.var##SUPER_DEPTH;\
 			}\
-			void		swap(Self&other)	{var##SUPER_DEPTH.swap(other.var##SUPER_DEPTH);Super::swap(*this);}\
+			void		swap(Self&other)	{using std::swap; swap(var##SUPER_DEPTH,other.var##SUPER_DEPTH);Super::swap(*this);}\
+			friend void swap(Self&a, Self&b) {a.swap(b);}\
 		};
 
-				//return	Super::deserialize(inStream,EmbeddedSize) && var##SUPER_DEPTH.deserialize(inStream,EmbeddedSize);
+				//return	Super::deserialize(inStream) && var##SUPER_DEPTH.deserialize(inStream);

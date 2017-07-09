@@ -791,7 +791,7 @@ namespace Journal
 			if (p->get()->GetDataKey() == this->jobID)
 			{
 				auto job = p->get()->Instantiate();
-				DeserializeFromCompactMemory(*job,this->jobPayload.pointer(),(serial_size_t)jobPayload.size(),false), job->GetName(),jobPayload.size();
+				DeserializeFromCompactMemory(*job,this->jobPayload.pointer(),(serial_size_t)jobPayload.size()), job->GetName(),jobPayload.size();
 				job->Restart(*m);
 				m->RegisterNewJob("",job,focus != Grid::LCellIdI::Invalid ? &focus : nullptr);
 				return;
@@ -1446,9 +1446,11 @@ namespace Journal
 			std::shared_ptr<JobCommand> cmd(new JobCommand());
 			cmd->jobID = job.GetDataKey();
 			cmd->focus = focus;
-			serial_size_t size = job.GetSerialSize(false);
+			SerialSizeScanner scanner;
+			job.Serialize(scanner);
+			const serial_size_t size = scanner.GetTotalSize();
 			cmd->jobPayload.SetSize(size);
-			SerializeToCompactMemory(job,cmd->jobPayload.pointer(),(serial_size_t)cmd->jobPayload.GetContentSize(),false);
+			SerializeToCompactMemory(job,cmd->jobPayload.pointer(),(serial_size_t)cmd->jobPayload.GetContentSize());
 
 			EntityStrand&strand = factionStrands.Set(e->owner->id).entityStrands.Set(e->id);
 			strand.Append(cmd);
@@ -1645,7 +1647,7 @@ namespace Journal
 			if (proto)
 				result.stringParameters.Set("ReferenceNonVehicle",proto->GetTypeName());
 			else
-				throw Round::RoundException(CLOCATION, "Unknown non-vehicle type #" + String(int(source.type0.value)));
+				throw Round::RoundException(CLOCATION, "Unknown non-vehicle type #" + String(int(source.type0)));
 			return;
 		}
 		if (source.type0 == ConstName::Empty)
@@ -1657,12 +1659,12 @@ namespace Journal
 		Objects::Component::Turret*t = Objects::Component::GetTurretByName(source.type1);
 		if (!t)
 		{
-			throw Round::RoundException(CLOCATION, "Unknown turret type #" + String(int(source.type1.value)));
+			throw Round::RoundException(CLOCATION, "Unknown turret type #" + String(int(source.type1)));
 		}
 		Objects::Component::Base*b = Objects::Component::GetVehicleBaseByName(source.type0);
 		if (!b)
 		{
-			throw Round::RoundException(CLOCATION,"Unknown base type #" + String(int(source.type0.value)));
+			throw Round::RoundException(CLOCATION,"Unknown base type #" + String(int(source.type0)));
 		}
 		result.stringParameters.Set("ReferenceTurret",t->typeName);
 		result.stringParameters.Set("ReferenceBase",b->typeName);
@@ -1678,7 +1680,7 @@ namespace Journal
 
 	static void ImportReferenceEntity(Protocol::MarkerReferenceEntity&ref, const Entry&e )
 	{
-		e.uuidParameters.Require(CLOCATION,"ReferenceID",ref.id.value);
+		e.uuidParameters.Require(CLOCATION,"ReferenceID",ref.id);
 		String base,turret;
 		if (e.stringParameters.TryGet("ReferenceBase",base))
 		{

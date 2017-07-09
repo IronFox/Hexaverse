@@ -1077,7 +1077,8 @@ namespace Lua
 			case LUA_TSTRING:  /* strings */
 			{
 				String str;
-				str.Deserialize(stream,ISerializable::EmbeddedSize);
+				using Serialization::SerialSync;
+				SerialSync(stream,str);
 				lua_pushstring(state,str.c_str());
 			}
 			break;
@@ -1739,11 +1740,11 @@ int LuaRun (int argc, const char *argv[]) {
 
 
 		prog->Execute("someVar = 3");
-		ByteStream	testStream;
+		ByteStreamBuffer	testStream;
 		prog->GetGlobal("nested").Serialize(testStream);
 		
 		{
-			MemReadStream reader(testStream.pointer(),(serial_size_t)testStream.GetFillLevel());
+			ByteReadStream reader(testStream.GetWrittenData());
 
 			prog->DeserializeToReference(reader).SetGlobal("nested2");
 		}
@@ -1753,15 +1754,15 @@ int LuaRun (int argc, const char *argv[]) {
 		{
 			Lua::Reference ref;
 			{
-				MemReadStream reader(testStream.pointer(),(serial_size_t)testStream.GetFillLevel());
+				ByteReadStream reader(testStream.GetWrittenData());
 				rs = prog->DeserializeToReference(reader,ref);
 			}
 			deepPrint(ref,"");
 
-			ByteStream str2;
+			ByteStreamBuffer str2;
 			ref.Serialize(str2);
 			{
-				MemReadStream reader(str2.pointer(),(serial_size_t)str2.GetFillLevel());
+				ByteReadStream reader(str2.GetWrittenData());
 				prog->DeserializeToReference(reader).SetGlobal("nested3");
 
 			}

@@ -38,7 +38,7 @@ namespace World
 			d.timestamp = t;
 		}
 		numDeltas = BaseGrid::NumFamilies;
-		delta[numDeltas-1].familyAndLastFlag.value |= 0x80;
+		delta[numDeltas-1].familyAndLastFlag |= 0x80;
 	}
 
 
@@ -65,7 +65,7 @@ namespace World
 			if (!rightNow)
 				for (index_t i = 0; i < numDeltas; i++)
 					delta[i].timestamp.atTime = t;
-			delta[numDeltas-1].familyAndLastFlag.value |= 0x80;
+			delta[numDeltas-1].familyAndLastFlag |= 0x80;
 
 			return true;
 		}
@@ -115,12 +115,12 @@ namespace World
 		{
 			static Protocol::WorldDelta	delta;
 			delta.timestamp.atTime = 0;
-			if (faction->knownWorld.ProgressiveUpdate(familyId,delta.data0,delta.timestamp.atTime.value))
+			if (faction->knownWorld.ProgressiveUpdate(familyId,delta.data0,delta.timestamp.atTime))
 			{
 				delta.timestamp.rightNow = rightNow;
 				delta.familyAndLastFlag = familyId;
 				if (last)
-					delta.familyAndLastFlag.value |= 0x80;
+					delta.familyAndLastFlag |= 0x80;
 
 				::Network::PClient client;
 				if (::Network::playerMap.Query(faction,client))

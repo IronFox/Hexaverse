@@ -6,6 +6,7 @@
 #include <objects/structure/mine.h>
 #include <objects/structure/vehiclePlant.h>
 #include <string/encoding.h>
+#include <io/byte_stream.h>
 
 #include "state/worldState.h"
 
@@ -56,6 +57,24 @@ namespace Test
 	}
 
 
+
+	
+	template <typename Serializable>
+	inline void						VerifySerialization(ByteStreamBuffer&testContainer, const Serializable&serializable)
+	{
+		testContainer.Clear();
+		
+		using DeltaWorks::Serialization::SerialSync;
+		SerialSync(testContainer,serializable);
+		
+
+		
+
+		Serializable copy;
+		SerialSync(ByteReadStream(testContainer.GetWrittenData()),copy);
+		if (serializable != copy)
+			throw Except::Memory::SerializationFault(CLOCATION,"Serialization/deserialization of type "+String(typeid(serializable).name())+" failed. Deserialized data does not match original data");
+	}
 
 	static String RandomString(Random&random, size_t minLength, size_t maxLength)
 	{
@@ -260,7 +279,7 @@ namespace Test
 
 				write.WriteSize(t);
 				const size_t writtenBytes = write.GetCurrent() - storage;
-				const serial_size_t shouldHaveWritten = ISerializable::GetSerialSizeOfSize(t);
+				const serial_size_t shouldHaveWritten = SerialSizeScanner::GetSerialSizeOfSize(t);
 				ASSERT_EQUAL__(writtenBytes,shouldHaveWritten);
 
 				serial_size64_t t2;
@@ -312,15 +331,36 @@ namespace Test
 	}
 
 
+	/*static*/ void		Serialization::RandomFill(Objects::Statistics::MetricTable&table, Random&random)
+	{
+		count_t numMetrics = random.Next(0,16);
+		table.Clear();
+		for (index_t i = 0; i < numMetrics; i++)
+			table.Set((Objects::Statistics::Metric)i,random.Next(0,1<<31));
+	}
+
 	/*static*/ void		Serialization::RandomFill(Objects::Statistics::UnitStatistics&stat,Random&random)
 	{
 		stat.typeName = RandomString(random,5,16);
-		foreach (stat.metric,m)
-		{
-			if (random.NextBool())
-				*m = random.Next(1,1000)*random.Next(1,1000)*random.Next(1,1000);
-		}
+		RandomFill(stat.metrics,random);
 	}
+
+	/*static*/ void		Serialization::RandomFill(Objects::PositiveResourceVector&vec, Random&random)
+	{
+		for (index_t i = 0; i < Objects::ResourceVector::NumEntries; i++)
+			if (random.NextBool())
+				vec.level[i] = random.Next(1,1024);
+	}
+
+
+	/*static*/ void		Serialization::RandomFill(Objects::Statistics::RoundStatistics&stat,Random&random)
+	{
+		RandomFill(stat.consumption,random);
+		RandomFill(stat.production,random);
+		RandomFill(stat.metrics,random);
+		stat.mainRound = random.Next(0,1000);
+	}
+
 
 
 
@@ -352,7 +392,7 @@ namespace Test
 			const serial_size64_t begin = random.NextT<serial_size64_t>(0,(1ULL<<61)-16);
 			TestRange(begin,begin+16,false);
 		}
-
+		ByteStreamBuffer stream;
 		BeginSection("Statistics::UnitStatistics");
 
 		for (index_t i = 0; i < 3000; i++)
@@ -360,7 +400,7 @@ namespace Test
 			Objects::Statistics::UnitStatistics stat;
 			RandomFill(stat,random);
 
-			Protocol::VerifySerialization(stat);
+			VerifySerialization(stream,stat);
 		}
 
 
@@ -370,17 +410,18 @@ namespace Test
 			Objects::Marker m;
 			RandomFill(m,random);
 
-			Protocol::VerifySerialization(m);
+			VerifySerialization(stream,m);
 		}
 
+		BeginSection("Grid Cells");
 		{
-			Protocol::VerifySerialization(Protocol::LCellIdI(Grid::LCellIdI::Invalid));
+			VerifySerialization(stream,Grid::LCellIdI(Grid::LCellIdI::Invalid));
 			for (int i = 0; i < 10000; i++)
 			{
-				Protocol::LCellIdI coords;
+				Grid::LCellIdI coords;
 				coords.stackID = random.Next(Grid::LowSetup::GridType::CellCount-1);
 				coords.height = random.Next(-Grid::CellStack::HalfRange, Grid::CellStack::HalfRange);
-				Protocol::VerifySerialization(coords);
+				VerifySerialization(stream,coords);
 
 
 				Objects::PositiveResourceVector vec;
@@ -392,7 +433,7 @@ namespace Test
 						vec.level[i] = Math::cubic(random.Next(100));
 				}
 
-				Protocol::VerifySerialization(vec);
+				VerifySerialization(stream,vec);
 
 			}
 

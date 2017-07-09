@@ -179,7 +179,7 @@ namespace Network
 		}
 
 	template <index_t Channel, class Item>
-		inline void	SendToOwner(TCP::ObjectSender<Item,Channel>&channel,const Objects::WorldEntity&e,const TCP::Serial<Item>&item)
+		inline void	SendToOwner(TCP::ObjectSender<Item,Channel>&channel,const Objects::WorldEntity&e,TCP::Serial<Item>&item)
 		{
 			PClient*cl = playerMap.QueryPointer(e.owner);
 			if (cl)

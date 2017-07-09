@@ -68,9 +68,8 @@ namespace Objects
 		}
 
 		#ifndef CLIENT
-			virtual	serial_size_t	GetSerialSize(bool export_size) const override;
-			virtual	void			Serialize(IWriteStream&out_stream, bool export_size) const override;
-			virtual	void			Deserialize(IReadStream&in_stream, serial_size_t fixed_size) override;
+			virtual	void			Serialize(IWriteStream&outStream) const override;
+			virtual	void			Deserialize(IReadStream&inStream) override;
 		#endif
 
 		virtual String				GetTypeName() const override { return "Marker (" + String(type.ToString())+")"; }

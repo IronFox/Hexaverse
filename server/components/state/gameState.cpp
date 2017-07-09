@@ -270,7 +270,7 @@ namespace Game
 				else
 				{
 				
-					seq->Guess(v, origin, taskIndex, task.roundsToJobCompletion.value,task.resourceCostLeft.value);
+					seq->Guess(v, origin, taskIndex, task.roundsToJobCompletion,task.resourceCostLeft);
 				}
 				if (t.job->movesToFocusWhenDone)
 					task.taskFlags |= Protocol::TaskFlags::VisualizePathToFocus;
@@ -354,7 +354,7 @@ namespace Game
 					info.resourceVector = v.currentStorage;
 				#endif
 				if (v.isAutomated)
-					state.flags.value |= Protocol::VehicleFlags::Automated;
+					state.flags |= Protocol::VehicleFlags::Automated;
 				info.constructionRoundCounter = v.constructionRoundCounter;
 				state.attackActionLeft = v.attackActionLeft;
 				state.movementActionLeft = v.movementActionLeft;
@@ -388,7 +388,7 @@ namespace Game
 				}
 			}
 			if (v.IsHibernating())
-				state.flags.value |= Protocol::VehicleFlags::Hibernating;
+				state.flags |= Protocol::VehicleFlags::Hibernating;
 
 			Describe(state.entityState,v,owned,timestamp,changeFlags);
 			if (owned)
@@ -431,9 +431,9 @@ namespace Game
 			//state.productionDone = 0;
 			state.flags = 0;
 			if (!w || w->IsEnabled())
-				state.flags.value |= Protocol::StructureFlags::Enabled;
+				state.flags |= Protocol::StructureFlags::Enabled;
 			if (w && w->IsHibernating())
-				state.flags.value |= Protocol::StructureFlags::Hibernating;
+				state.flags |= Protocol::StructureFlags::Hibernating;
 
 			if (w && owned)
 			{

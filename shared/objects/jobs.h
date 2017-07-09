@@ -121,21 +121,14 @@ namespace Objects
 
 
 			virtual bool				UpdatePath(const MobileEntity&v, const Grid::LCellIdI&origin, Grid::LCellIdI&destination) =0;
-			virtual	serial_size_t		GetSerialSize(bool export_size) const override {return (serial_size_t)(path.GetContentSize() + (export_size ? GetSerialSizeOfSize((serial_size_t)path.length()):0));}
-			virtual	void				Serialize(IWriteStream&outStream, bool exportSize) const override
+			virtual	void				Serialize(IWriteStream&outStream) const override
 			{
-				if (exportSize)
-					outStream.WriteSize(path.length());
+				outStream.WriteSize(path.length());
 				outStream.WritePrimitives(path.pointer(),path.length());
 			}
-			virtual	void				Deserialize(IReadStream&inStream, serial_size_t fixedSize) override
+			virtual	void				Deserialize(IReadStream&inStream) override
 			{
-				if (fixedSize == EmbeddedSize)
-				{
-					inStream.ReadSize(fixedSize);
-				}
-				else
-					fixedSize /= sizeof(Grid::LCellIdI);
+				serial_size_t fixedSize = inStream.ReadSize();
 				path.Clear();
 				inStream.ReadPrimitives(path.AppendRow(fixedSize),fixedSize);
 			}
@@ -171,9 +164,8 @@ namespace Objects
 				virtual bool			DelayedBySleep() const override {return delayedBySleep;}
 				//virtual Riff::TID		GetDataKey() const override {return "BLDF";};
 				//virtual PJob	Instantiate() const override {return PJob(new BuildFoundation());}
-				virtual	serial_size_t	GetSerialSize(bool exportSize) const override	{return 0;};
-				virtual	void			Serialize(IWriteStream&outStream, bool exportSize) const override {};
-				virtual	void			Deserialize(IReadStream&inStream, serial_size_t fixedSize) override {};
+				virtual	void			Serialize(IWriteStream&outStream) const override {};
+				virtual	void			Deserialize(IReadStream&inStream) override {};
 
 			};
 		#else
@@ -198,9 +190,8 @@ namespace Objects
 				virtual Riff::TID		GetDataKey() const override {return "BLDR";};
 				virtual ConstName		GetCTypeName() const override {return ConstName::Job_BuildRoad;}
 				virtual PJob			Instantiate() const override {return PJob(new BuildRoad());}
-				virtual	serial_size_t	GetSerialSize(bool export_size) const override {return 8;};
-				virtual	void			Serialize(IWriteStream&outStream, bool exportSize) const override {outStream.WritePrimitive(prevCell); outStream.WritePrimitive(nextCell);}
-				virtual	void			Deserialize(IReadStream&inStream, serial_size_t fixedSize) override {inStream.ReadPrimitive(prevCell); inStream.ReadPrimitive(nextCell);}
+				virtual	void			Serialize(IWriteStream&outStream) const override {outStream.WritePrimitive(prevCell); outStream.WritePrimitive(nextCell);}
+				virtual	void			Deserialize(IReadStream&inStream) override {inStream.ReadPrimitive(prevCell); inStream.ReadPrimitive(nextCell);}
 
 
 				virtual continue_t		Finish(MobileEntity&v, const Grid::LCellIdI&focus)	override;
@@ -241,9 +232,8 @@ namespace Objects
 				virtual Riff::TID		GetDataKey() const override {return "BLDW";};
 				virtual ConstName		GetCTypeName() const override {return ConstName::Job_BuildWallUp;}
 				virtual PJob			Instantiate() const override {return PJob(new BuildWallUp());}
-				virtual	serial_size_t	GetSerialSize(bool export_size) const override {return 0;};
-				virtual	void			Serialize(IWriteStream&outStream, bool exportSize) const override {}
-				virtual	void			Deserialize(IReadStream&inStream, serial_size_t fixedSize) override {}
+				virtual	void			Serialize(IWriteStream&outStream) const override {}
+				virtual	void			Deserialize(IReadStream&inStream) override {}
 
 
 				virtual continue_t		Finish(MobileEntity&v, const Grid::LCellIdI&focus)	override;
@@ -287,9 +277,9 @@ namespace Objects
 
 			//	virtual Riff::TID		GetDataKey() const override {return "BLDF";};
 			//	virtual PJob	Instantiate() const override {return PJob(new BuildFoundation());}
-			//	virtual	serial_size_t	GetSerialSize(bool exportSize) const override	{return 0;};
-			//	virtual	bool			Serialize(IWriteStream&outStream, bool exportSize) const override {return true;};
-			//	virtual	bool			Deserialize(IReadStream&inStream, serial_size_t fixedSize) override {return true;};
+			//	virtual	serial_size_t	GetSerialSize() const override	{return 0;};
+			//	virtual	bool			Serialize(IWriteStream&outStream) const override {return true;};
+			//	virtual	bool			Deserialize(IReadStream&inStream) override {return true;};
 			//};
 
 
@@ -300,8 +290,8 @@ namespace Objects
 			{
 			public:
 				typedef BaseJob			Super;
-				CursorMode		mode;
-				Ctr::Array<Grid::HCellIdI>	selection;
+				CursorMode				mode;
+				Array<Grid::HCellIdI>	selection;
 				BYTE					maxHeightDifference;
 
 				/**/					AlterTerrain():Super(Autocomplete::Always,false),maxHeightDifference(1)	{}
@@ -318,22 +308,21 @@ namespace Objects
 				virtual Riff::TID		GetDataKey() const override {return "ALTT";};
 				virtual ConstName		GetCTypeName() const override {return ConstName::Job_AlterTerrain;}
 				virtual PJob			Instantiate() const override {return PJob(new AlterTerrain());}
-				virtual	serial_size_t	GetSerialSize(bool exportSize) const override {return 3 + selection.GetSerialSize(exportSize);};
-				virtual	void			Serialize(IWriteStream&outStream, bool exportSize) const override
+				virtual	void			Serialize(IWriteStream&outStream) const override
 				{
 					outStream.WritePrimitive((UINT16)mode);
 					outStream.WritePrimitive(maxHeightDifference);
-					selection.Serialize(outStream,exportSize);
+					using Serialization::SerialSync;
+					SerialSync(outStream,selection);
 				}
-				virtual	void			Deserialize(IReadStream&inStream, serial_size_t fixedSize) override
+				virtual	void			Deserialize(IReadStream&inStream) override
 				{
 					UINT16 i16;
 					inStream.ReadPrimitive(i16);
 					inStream.ReadPrimitive(maxHeightDifference);
 					mode = (CursorMode)i16;
-					if (fixedSize != EmbeddedSize)
-						fixedSize -= 2;
-					selection.Deserialize(inStream,fixedSize);
+					using Serialization::SerialSync;
+					SerialSync(inStream,selection);
 				}
 			};
 
@@ -359,9 +348,9 @@ namespace Objects
 					virtual Riff::TID		GetDataKey() const override {return "TRAN";};
 					virtual ConstName		GetCTypeName() const override {return ConstName::Job_Transfer;}
 					virtual PJob			Instantiate() const override {return PJob(new TransferJob());}
-					virtual	serial_size_t	GetSerialSize(bool exportSize) const override {return 2;};
-					virtual	bool			Serialize(IWriteStream&outStream, bool exportSize) const override	{return outStream.WritePrimitive((UINT16)mode);}
-					virtual	bool			Deserialize(IReadStream&inStream, serial_size_t fixedSize) override
+					virtual	serial_size_t	GetSerialSize() const override {return 2;};
+					virtual	bool			Serialize(IWriteStream&outStream) const override	{return outStream.WritePrimitive((UINT16)mode);}
+					virtual	bool			Deserialize(IReadStream&inStream) override
 					{
 						UINT16 i16;
 						if (!inStream.ReadPrimitive(i16))
@@ -389,9 +378,9 @@ namespace Objects
 				virtual Riff::TID		GetDataKey() const override {return "REPA";};
 				virtual ConstName		GetCTypeName() const override {return ConstName::Job_Repair;}
 				virtual PJob			Instantiate() const override {return PJob(new RepairJob());}
-				virtual	serial_size_t	GetSerialSize(bool exportSize) const override {return 0;};
-				virtual	void			Serialize(IWriteStream&outStream, bool exportSize) const override	{}
-				virtual	void			Deserialize(IReadStream&inStream, serial_size_t fixedSize) override {}
+
+				virtual	void			Serialize(IWriteStream&outStream) const override	{}
+				virtual	void			Deserialize(IReadStream&inStream) override {}
 			};
 
 			class ClearAbove : public BaseJob
@@ -411,9 +400,9 @@ namespace Objects
 				virtual Riff::TID		GetDataKey() const override {return "CLRA";};
 				virtual ConstName		GetCTypeName() const override {return ConstName::Job_ClearAbove;}
 				virtual PJob			Instantiate() const override {return PJob(new ClearAbove());}
-				virtual	serial_size_t	GetSerialSize(bool exportSize) const override {return 0;};
-				virtual	void			Serialize(IWriteStream&outStream, bool exportSize) const override	{}
-				virtual	void			Deserialize(IReadStream&inStream, serial_size_t fixedSize) override {}
+
+				virtual	void			Serialize(IWriteStream&outStream) const override	{}
+				virtual	void			Deserialize(IReadStream&inStream) override {}
 
 			};
 
@@ -433,11 +422,9 @@ namespace Objects
 				virtual Riff::TID		GetDataKey() const override {return "DIGH";};
 				virtual ConstName		GetCTypeName() const override {return ConstName::Job_DigHorizontal;}
 				virtual PJob			Instantiate() const override {return PJob(new DigHorizontal());}
-				virtual	serial_size_t	GetSerialSize(bool exportSize) const override {return 0;};
-				virtual	void			Serialize(IWriteStream&outStream, bool exportSize) const override	{}
-				virtual	void			Deserialize(IReadStream&inStream, serial_size_t fixedSize) override {}
 
-
+				virtual	void			Serialize(IWriteStream&outStream) const override	{}
+				virtual	void			Deserialize(IReadStream&inStream) override {}
 			};
 
 			class DigDown : public BaseJob
@@ -460,11 +447,9 @@ namespace Objects
 				virtual ConstName		GetCTypeName() const override {return ConstName::Job_DigDown;}
 
 				virtual PJob			Instantiate() const override {return PJob(new DigDown());}
-				virtual	serial_size_t	GetSerialSize(bool exportSize) const override {return 0;};
-				virtual	void			Serialize(IWriteStream&outStream, bool exportSize) const override	{}
-				virtual	void			Deserialize(IReadStream&inStream, serial_size_t fixedSize) override {}
 
-
+				virtual	void			Serialize(IWriteStream&outStream) const override	{}
+				virtual	void			Deserialize(IReadStream&inStream) override {}
 			};
 
 
@@ -491,12 +476,12 @@ namespace Objects
 				virtual continue_t		Finish(MobileEntity&v, const Grid::LCellIdI&) override;
 				virtual Riff::TID		GetDataKey() const override {return "CONS";};
 				virtual PJob			Instantiate() const override {return PJob(new Construct());}
-				virtual	serial_size_t	GetSerialSize(bool exportSize) const override;
-				virtual	void			Serialize(IWriteStream&outStream, bool exportSize) const override;
-				virtual	void			Deserialize(IReadStream&inStream, serial_size_t fixedSize) override;
 
 				virtual void			Restart(const MobileEntity&v) override;
 				virtual Component::operation_t	GetOperationAffinity() const override {return Component::Construct;}
+
+				virtual	void			Serialize(IWriteStream&outStream) const override;
+				virtual	void			Deserialize(IReadStream&inStream) override;
 			};
 
 
@@ -561,18 +546,15 @@ namespace Objects
 				virtual Riff::TID		GetDataKey() const override {return "SEQC";};
 				virtual ConstName		GetCTypeName() const override {return ConstName::Job_Sequence;}
 				virtual PJob			Instantiate() const override {return PJob(new Sequence());}
-				virtual	serial_size_t	GetSerialSize(bool exportSize) const override
-				{
-					return 2 + sizeof(Grid::LCellIdI) + 1 + Super::GetSerialSize(true);
-				}
-				virtual	void			Serialize(IWriteStream&outStream, bool exportSize) const override
+
+				virtual	void			Serialize(IWriteStream&outStream) const override
 				{
 					outStream.WritePrimitive((UINT16)mode);
 					outStream.WritePrimitive(lastLocation);
 					outStream.WritePrimitive(first);
-					Super::Serialize(outStream,true);
+					Super::Serialize(outStream);
 				}
-				virtual	void			Deserialize(IReadStream&inStream, serial_size_t fixedSize) override;
+				virtual	void			Deserialize(IReadStream&inStream) override;
 			};
 
 
@@ -595,13 +577,13 @@ namespace Objects
 				virtual continue_t		Finish(MobileEntity&v, const Grid::LCellIdI&) override;
 				virtual Riff::TID		GetDataKey() const override {return "SLFD";};
 				virtual PJob			Instantiate() const override {return PJob(new SelfDetonate());}
-				virtual	serial_size_t	GetSerialSize(bool exportSize) const override;
-				virtual	void			Serialize(IWriteStream&outStream, bool exportSize) const override;
-				virtual	void			Deserialize(IReadStream&inStream, serial_size_t fixedSize) override;
 
 				virtual void			Restart(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(doomsday ? DoomsdaySelfDetonationCosts  : RegularSelfDetonationCosts,v,GetOperationAffinity());}
 				virtual Component::operation_t	GetOperationAffinity() const override {return Component::Nuclear;}
 				virtual Resource		GetConsumedResourceType() const override {return Resource::Uranium;}
+			
+				virtual	void			Serialize(IWriteStream&outStream) const override;
+				virtual	void			Deserialize(IReadStream&inStream) override;
 			};
 
 
