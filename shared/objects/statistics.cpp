@@ -345,39 +345,56 @@ namespace Objects
 			unitStatistics.Clear();
 			interactionMap.Clear();
 
-			const Riff::Chunk*child = chunk->GetFirstChild();
-			do
+			if (ApplicationInterface::globalVersionOfCurrentFile >= ApplicationInterface::FileVersions::NewSerializationEngine)
 			{
-				MemReadStream stream(child->pointer(),child->size());
-				if (child->IsID(ChunkID::round))
+				const Riff::Chunk*child = chunk->GetFirstChild();
+				do
 				{
-					RoundStatistics stat;
-					stat.Deserialize(stream);
-					ASSERT_EQUAL__(stream.GetRemainingBytes(),0);
-					history << stat;
-				}
-				else
-				if (child->IsID(ChunkID::unit))
-				{
-					UnitStatistics stat;
-					stat.Deserialize(stream);
-					ASSERT_EQUAL__(stream.GetRemainingBytes(),0);
-					unitStatistics.Set(stat.typeName,stat);
-				}
-				else
-				if (child->IsID(ChunkID::interaction))
-				{
-					Interaction stat;
-					stat.Deserialize(stream);
-					ASSERT_EQUAL__(stream.GetRemainingBytes(),0);
+					const char* chunkType = nullptr;
+					try
+					{
+						if (child->IsID(ChunkID::round))
+						{
+							chunkType = "RoundStatistics";
+							RoundStatistics stat;
+							DeserializeFromCompactMemory(stat,child->pointer(),child->size());
+							history << stat;
+						}
+						else
+						if (child->IsID(ChunkID::unit))
+						{
+							chunkType = "UnitStatistics";
+							UnitStatistics stat;
+							DeserializeFromCompactMemory(stat,child->pointer(),child->size());
+							unitStatistics.Set(stat.typeName,stat);
+						}
+						else
+						if (child->IsID(ChunkID::interaction))
+						{
+							chunkType = "Interaction";
+							Interaction stat;
+							DeserializeFromCompactMemory(stat,child->pointer(),child->size());
 
-					PFaction f;
-					factionMap.Query(stat.remoteID,f);
-					if (f)
-						interactionMap.Set(f.get(),stat);
+							PFaction f;
+							factionMap.Query(stat.remoteID,f);
+							if (f)
+								interactionMap.Set(f.get(),stat);
+						}
+					}
+					catch (const std::exception&ex)
+					{
+						if (chunkType)
+							LogEvent(EventClass::Preset::fileError,"Statistics::ImportFrom(), exception caught in "+String(chunkType)+" chunk: "+ ex.what());
+						else
+							LogEvent(EventClass::Preset::fileError,"Statistics::ImportFrom(), exception caught: "+ String(ex.what()));
+					}
 				}
+				while (child = child->GetNextSibling());
 			}
-			while (child = child->GetNextSibling());
+
+			if (history.IsEmpty() || history.Last().mainRound != RuntimeConfig::roundNumber.main)
+				 history.Append().mainRound = RuntimeConfig::roundNumber.main;
+
 		}
 
 	#endif

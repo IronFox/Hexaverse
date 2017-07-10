@@ -173,10 +173,7 @@ namespace Grid
 			}
 			friend void SerialSync(IReadStream&s, Self&v)
 			{
-				if (ApplicationInterface::globalVersionOfCurrentFile < ApplicationInterface::FileVersions::NewSerializationEngine)
-					s.ReadPrimitive(v.repitition);
-				else
-					s.ReadSize(v.repitition);
+				s.ReadSize(v.repitition);
 				using Serialization::SerialSync;
 				SerialSync(s,v.value);
 			}

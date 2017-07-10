@@ -1039,6 +1039,26 @@ namespace FileIO
 	}
 
 
+	void ReadTypeArrayFromChunk(Protocol::TypeDeltaArray&typeArray, const Riff::Chunk&chunk)
+	{
+		if (ApplicationInterface::globalVersionOfCurrentFile < ApplicationInterface::FileVersions::NewSerializationEngine)
+		{
+			const count_t elements = chunk.size() / 5;
+			typeArray.SetSize(elements);
+			MemReadStream stream(chunk.pointer(),chunk.size());
+			using Serialization::SerialSync;
+			for (index_t i = 0; i < elements; i++)
+			{
+				SerialSync(stream,typeArray[i].repitition);
+				SerialSync(stream,typeArray[i].value);
+			}
+		}
+		else
+		{
+			DeserializeFromCompactMemory(typeArray,chunk.pointer(),chunk.size());
+		}
+	}
+
 	void	ReadFromListChunk(const Riff::Chunk&list, World::Data&outData)
 	{
 		Protocol::TypeDeltaArray	typeArray;
@@ -1052,7 +1072,7 @@ namespace FileIO
 			{
 				if (child->IsID(RID::worldTypeChunk))
 				{
-					DeserializeFromCompactMemory(typeArray,child->pointer(),child->size());
+					ReadTypeArrayFromChunk(typeArray,*child);
 					ASSERT_LESS__(atFamily, BaseGrid::NumFamilies);
 					seq.ApplyFamilyDelta(atFamily,typeArray,false,true);
 
@@ -1497,7 +1517,7 @@ namespace FileIO
 
 												if (child->IsID(RID::factionWorldTypeChunk))
 												{
-													DeserializeFromCompactMemory(typeArray,child->pointer(),child->size());
+													ReadTypeArrayFromChunk(typeArray,*child);
 													ASSERT_LESS__(atFamily, BaseGrid::NumFamilies);
 													seq.ApplyFamilyDelta(atFamily,typeArray,false,false);
 													atFamily++;
