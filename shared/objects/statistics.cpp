@@ -384,13 +384,15 @@ namespace Objects
 					catch (const std::exception&ex)
 					{
 						if (chunkType)
-							LogEvent(EventClass::Preset::fileError,"Statistics::ImportFrom(), exception caught in "+String(chunkType)+" chunk: "+ ex.what());
+							LogEvent(EventClass::Preset::fileError,"Statistics::ImportFrom(): Exception caught in "+String(chunkType)+" chunk: "+ ex.what());
 						else
-							LogEvent(EventClass::Preset::fileError,"Statistics::ImportFrom(), exception caught: "+ String(ex.what()));
+							LogEvent(EventClass::Preset::fileError,"Statistics::ImportFrom(): Exception caught: "+ String(ex.what()));
 					}
 				}
 				while (child = child->GetNextSibling());
 			}
+			else
+				LogEvent(EventClass::Preset::error,"Statistics::ImportFrom(): Incompatible transient format encountered. Skipping import");
 
 			if (history.IsEmpty() || history.Last().mainRound != RuntimeConfig::roundNumber.main)
 				 history.Append().mainRound = RuntimeConfig::roundNumber.main;
