@@ -307,7 +307,7 @@ namespace Test
 	/*static*/ void		Serialization::RandomFill(Objects::Marker&m, Random&random)
 	{
 		m.id.Generate();
-		m.createdInRound = random.Next(MaxSerialSize);
+		m.createdInRound = random();
 		if (random.NextFloat() > 0.1f)
 		{
 			m.location.stackID = random.Next(Grid::LowSetup::GridType::CellCount - 1);
