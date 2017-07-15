@@ -148,7 +148,7 @@ namespace Grid
 	LowSetup			low;
 	
 	#ifdef VOXEL_SCANNER
-		Array<LowCellStack>	lowCellStack;
+		Ctr::Array<LowCellStack>	lowCellStack;
 	#endif
 
 
@@ -650,6 +650,15 @@ namespace Grid
 
 
 	#ifdef HYBRID_GRID
+		void ToWorld(const HCellIdU&id,TVec3<>&rs)
+		{
+			Vec::mult(high.cells[id.stackID].centerVertex.xyz,Grid::ToRadius(CellStack::ToHeight(id.layer)),rs);
+		}
+		void ToWorld(const HCellIdI&id,TVec3<>&rs)
+		{
+			Vec::mult(high.cells[id.stackID].centerVertex.xyz,Grid::ToRadius(id.height),rs);
+		}
+
 		TVec3<> ToWorld(const HCellIdU&id)
 		{
 			return high.cells[id.stackID].centerVertex.xyz * Grid::ToRadius(CellStack::ToHeight(id.layer));
@@ -675,14 +684,26 @@ namespace Grid
 			return high.cells[id.stackID].centerVertex.xyz * (offset + Grid::ToRadius(id.height));
 		}
 	#endif
-	TVec3<> ToWorld(const LCellIdU&id)
+
+	void ToWorld(const LCellIdU&id,TVec3<>&rs)
+	{
+		Vec::mult(low.cells[id.stackID].centerVertex.xyz,Grid::ToRadius(CellStack::ToHeight(id.layer)),rs);
+	}
+	void ToWorld(const LCellIdI&id,TVec3<>&rs)
+	{
+		Vec::mult(low.cells[id.stackID].centerVertex.xyz,Grid::ToRadius(id.height),rs);
+	}
+
+	TVec3<>  ToWorld(const LCellIdU&id)
 	{
 		return low.cells[id.stackID].centerVertex.xyz * Grid::ToRadius(CellStack::ToHeight(id.layer));
 	}
-	TVec3<> ToWorld(const LCellIdI&id)
+	TVec3<>  ToWorld(const LCellIdI&id)
 	{
 		return low.cells[id.stackID].centerVertex.xyz * Grid::ToRadius(id.height);
 	}
+
+
 	TVec3<> ToWorld(const LCellIdU&id, float fLayerOffset)
 	{
 		return low.cells[id.stackID].centerVertex.xyz * Grid::ToRadiusf(fLayerOffset + CellStack::ToHeight(id.layer));

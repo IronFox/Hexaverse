@@ -34,7 +34,7 @@ UINT32 ApplicationInterface::globalVersionOfCurrentFile = 0;	//file version bein
 
 
 
-Random		random;
+TwisterRandom		random;
 
 
 #ifdef _DEBUG
@@ -45,7 +45,7 @@ Random		random;
 namespace ApplicationInterface
 {
 
-	void	SignalOperationLacksResources(const Objects::WorldEntity&e, const ArrayRef<Objects::Resource>&resources, float atTime)
+	void	SignalOperationLacksResources(const Objects::WorldEntity&e, const Ctr::ArrayRef<Objects::Resource>&resources, float atTime)
 	{
 		Network::PClient*cl = Network::playerMap.QueryPointer(e.owner);
 		if (!cl && Network::spectators.IsEmpty())
@@ -65,9 +65,9 @@ namespace ApplicationInterface
 	}
 
 
-	void	SignalChainReactionExplosion(const Grid::LCellIdI&center, float radius, int damageLevel, float atTime)
+	void	SignalChainReactionExplosion(const Objects::PWorldEntity&causedBy, const Grid::LCellIdI&center, float radius, int damageLevel, float atTime)
 	{
-		Game::evolver->HandleChainReactionExplosion(Evolver::TExplosion( center, radius, damageLevel, atTime ));
+		Game::evolver->HandleChainReactionExplosion(Evolver::TExplosion(causedBy, center, radius, damageLevel, atTime ));
 	}
 
 
@@ -101,26 +101,8 @@ namespace ApplicationInterface
 			Game::Network::UpdateResourceCoverage(_v->owner, _v->location,_v->GetScanningRange(),timestamp);
 		}
 
-		if (Game::Config::basesRequired && v.GetOperationSpeed(Objects::Component::Construct) && !v.owner->hasTerraformer)
-		{
-			LogEvent(EventSignificance::Debug,_v.get(),"Recognized as terraformer. Reevaluating survivial conditions");
-			v.owner->hasTerraformer = true;
-			String whyNot;
-			bool canLive = v.owner->CanLive(whyNot);
-		
-			if (canLive)	//conditions changed
-			{
-				if (v.owner->deathInRounds > 0)
-				{
-					v.owner->deathInRounds = 0;
-					Network::PClient client;
-					if (Network::playerMap.query(v.owner,client))
-						client->SendProgressUpdate(false,whyNot);
-				}
-			}
-			else
-				LogEvent(EventSignificance::Debug,_v.get(),"Nope: "+whyNot);
-		}
+		if (v.GetOperationSpeed(Objects::Component::Construct))
+			Game::RegisterClassGain(_v, Objects::Faction::UnitClass::Terraformer, "terraformer");
 	}
 
 	void	SignalNewStructure(const Objects::PStructure&s, float atTime)
@@ -144,7 +126,7 @@ namespace ApplicationInterface
 			if (p->CanSee(e,t) || p->faction == target)
 			{
 				TCP::PPeer peer = p->peer.lock();
-				DBG_ASSERT1__(peer,p->ToString());
+				DBG_ASSERT1__(peer,p->ConvertToString());
 				if (peer)
 				{
 					LogEvent(EventSignificance::Common,*peer,e,"Reported seeing ownership change (-> '"+target->GetName()+"')");
@@ -240,18 +222,18 @@ namespace ApplicationInterface
 					(access && !sendToSelf)
 					)
 				{
-					LogEvent(EventSignificance::Debug,(*cl)->ToString()+" reported NOT seeing removal of "+e->GetName()+" (t="+String(t.ToString())+", access="+String(access)+", sendToSelf="+String(sendToSelf)+") at time "+String(atTime) );
+					LogEvent(EventSignificance::Debug,(*cl)->ConvertToString()+" reported NOT seeing removal of "+e->GetName()+" (t="+String(t.ToString())+", access="+String(access)+", sendToSelf="+String(sendToSelf)+") at time "+String(atTime) );
 					continue;
 				}
 				const Protocol::DestroyEntity&send = access ? self : others;
-				LogEvent(EventSignificance::Common,(*cl)->ToString()+" reported seeing removal of "+e->GetName()+" at time "+String(atTime) );
+				LogEvent(EventSignificance::Common,(*cl)->ConvertToString()+" reported seeing removal of "+e->GetName()+" at time "+String(atTime) );
 
 
 				//(*cl)->Hide(e);
 				Channels::destroyEntity.SendTo(peer,send);
 			}
 			else
-				LogEvent(EventSignificance::Debug,(*cl)->ToString()+" reported NOT seeing removal of "+e->GetName()+" (t="+String(t.ToString())+", access="+String(access)+", sendToSelf="+String(sendToSelf)+") at time "+String(atTime) +" - hasPeer="+String((bool)peer));
+				LogEvent(EventSignificance::Debug,(*cl)->ConvertToString()+" reported NOT seeing removal of "+e->GetName()+" (t="+String(t.ToString())+", access="+String(access)+", sendToSelf="+String(sendToSelf)+") at time "+String(atTime) +" - hasPeer="+String((bool)peer));
 		}
 
 	
@@ -308,7 +290,7 @@ namespace ApplicationInterface
 			TCP::PPeer peer = (*cl)->peer.lock();
 			if (peer && Network::CanSee(*cl,v,t0))
 			{
-				LogEvent(EventSignificance::Common,(*cl)->ToString()+" reported seeing motion of "+v->GetName()+" at time "+String(t0)+"+"+String(timeNeeded) );
+				LogEvent(EventSignificance::Common,(*cl)->ConvertToString()+" reported seeing motion of "+v->GetName()+" at time "+String(t0)+"+"+String(timeNeeded) );
 
 				Channels::mobileEntityMotion.SendTo(peer,motion);
 			}
@@ -352,7 +334,7 @@ namespace ApplicationInterface
 
 				foreach (Network::activePlayersAndSpectators,p)
 				{
-					(*p)->SendProgressUpdate(true,"<null>");
+					(*p)->SendProgressUpdate("");
 				}
 			}
 			else
@@ -363,7 +345,7 @@ namespace ApplicationInterface
 					String why;
 					if (Game::Config::basesRequired && f->deathInRounds > 0)
 						f->CanLive(why);
-					client->SendProgressUpdate(false,why);
+					client->SendProgressUpdate(why);
 				}
 				return;
 			}
@@ -414,8 +396,8 @@ namespace ApplicationInterface
 		explosion.timestamp.rightNow = false;
 
 		//static GenericHashSet<Objects::OwnerParameter,Objects::OwnerHash>	map;
-		static Buffer0<Objects::OwnerParameter>	canSee;
-		static Buffer0<Network::PClient>	clientsCanSee;
+		static Ctr::Buffer0<Objects::OwnerParameter>	canSee;
+		static Ctr::Buffer0<Network::PClient>	clientsCanSee;
 
 		bool allSee = isDoomsday && RuntimeConfig::doomsdayWeapons == RuntimeConfig::DoomsdayWeapons::Expose;
 
@@ -487,12 +469,12 @@ namespace ApplicationInterface
 			float radius = range * 0.2f;
 			float3 mod = float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)) * radius;
 			count_t numIt = 0;
-			while (!attack.attackFrom->CanHit(mod + roughAttack.sourcePosition.value,roughAttack.attackAngle.value)
+			while (!attack.attackFrom->CanHit(mod + roughAttack.sourcePosition,roughAttack.attackAngle)
 					//Vec::quadraticDistance(mod + roughAttack.sourcePosition.value, traceToWorld) > sqr(range) 
 				&& ++numIt < 1000)
 				mod = float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)) * radius;
 			ASSERT__(numIt < 1000);
-			roughAttack.sourcePosition.value += mod;
+			roughAttack.sourcePosition += mod;
 		}
 
 		for (const Network::PClient&client : clientsCanSee)
@@ -563,12 +545,12 @@ EnumerationType	GetType(Config::Context*context, const String&path)
 
 
 
-Semaphore mainThreadDone;
+Sys::Semaphore mainThreadDone;
 
 
 void TerminateNow(bool isMain)
 {
-	static Mutex mutex;
+	static Sys::Mutex mutex;
 	mutex.lock();
 		static volatile bool terminated = false;
 		if (terminated)
@@ -649,7 +631,7 @@ namespace ParameterConfig
 	void	SetProgramName(const char*base)
 	{
 		const char*slashAt;
-		while (slashAt = Template::strchr(base,FOLDER_SLASH))
+		while (slashAt = CharFunctions::strchr(base,FOLDER_SLASH))
 		{
 			base = slashAt+1;
 		}
@@ -792,7 +774,7 @@ public:
 								checkIsOnline(c),setOffline(offline),setOnline(online)
 							{}
 
-	String					ToString() const override
+	String					ConvertToString() const override
 	{
 		return checkIsOnline();
 	}
@@ -844,11 +826,11 @@ int main( int argc, const char* argv[])
 
 		TCP::onIgnoredException = [](const TCodeLocation&loc, const std::exception&ex)
 		{
-			LogEvent(EventSignificance::Debug,"TCP exception: "+String(loc.ToString())+": "+ex.what());
+			LogEvent(EventSignificance::Debug,"TCP exception: "+String(loc)+": "+ex.what());
 		};
 		TCP::onIgnoredArbitraryException = [](const TCodeLocation&loc)
 		{
-			LogEvent(EventSignificance::Debug,"TCP exception (arbitrary): "+String(loc.ToString()));
+			LogEvent(EventSignificance::Debug,"TCP exception (arbitrary): "+String(loc));
 		};
 
 		SetConsoleCtrlHandler(MyHandlerRoutine,TRUE);
@@ -886,10 +868,6 @@ int main( int argc, const char* argv[])
 			RemoteControl::Start(ParameterConfig::basePort,ParameterConfig::controlProtocol);
 
 
-
-		#ifdef _DEBUG
-			//inTestMode = true;
-		#endif
 
 
 
@@ -988,7 +966,7 @@ int main( int argc, const char* argv[])
 
 		Reflection::state.DefineCommand("/World/showPlanetTypes",(CLI::Command::function0_t)[]()
 		{
-			Array<World::TPlanetIniFile>	planetIniFiles;
+			Ctr::Array<World::TPlanetIniFile>	planetIniFiles;
 			World::GetAvailablePlanetIniFiles(planetIniFiles);
 
 			CLI::println("-");
@@ -998,7 +976,9 @@ int main( int argc, const char* argv[])
 		},CLI::NoCompletion);
 
 		
-
+		#ifdef _DEBUG
+		//	inTestMode = true;
+		#endif
 
 		if (!inTestMode)
 			Reflection::Load(false);
@@ -1008,20 +988,21 @@ int main( int argc, const char* argv[])
 
 		if (inTestMode)
 		{
-			std::cout << "Running tests..." << std::endl;
+			std::cout << "Building initial test world..." << std::endl;
 
 			World::BuildConfiguredWorld(random);
 
 
+			std::cout << "Running tests..." << std::endl;
 			{
-				
+				Test::Run(Test::Serialization());
+				Test::Run(Test::CharacterEncoding());
+				Test::Run(Test::ServerClient());
 				Test::Run(Test::TerrainUpdates());
 				Test::Run(Test::AutoTargeting());
 				Test::Run(Test::SharedContainer());
-				Test::Run(Test::ServerClient());
 				Test::Run(Test::HighGridFamilies());
 				Test::Run(Test::Bin2Str());
-				Test::Run(Test::Serialization());
 				Test::Run(Test::VehiclePlant());
 				IF_SATELLITES(Test::Run(Test::SkyPort()));
 				Test::Run(Test::StorageUnits());
@@ -1044,14 +1025,7 @@ int main( int argc, const char* argv[])
 			World::BuildConfiguredWorld(random);
 		}
 
-		if (!ParameterConfig::startOffline)
-		{
-			StartUp();
-			if (ParameterConfig::startInConfig)
-			{
-				ConfigurationMode::Begin();
-			}
-		}
+
 
 
 
@@ -1066,7 +1040,7 @@ int main( int argc, const char* argv[])
 			Riff::File a,b;
 			ASSERT__(a.Open(PathString("test0."+FileIO::savFileExtension).c_str()));
 			ASSERT__(b.Open(PathString("test1."+FileIO::savFileExtension).c_str()));
-			Buffer<Riff::TID>	stack;
+			Ctr::Buffer<Riff::TID>	stack;
 			FileIO::Compare(a,b,stack);
 
 		}
@@ -1084,10 +1058,20 @@ int main( int argc, const char* argv[])
 		}
 		RuntimeConfig::tutorialMode = ParameterConfig::startInTutorial;
 
+		if (!ParameterConfig::startOffline)
+		{
+			if (ParameterConfig::startInConfig)
+			{
+				ConfigurationMode::Begin();
+			}
+			StartUp();
+		}
+
+
 		//Journal::globalWriter.InitNew(RuntimeConfig::ConfigFile("saves/log"));
 		//Journal::globalWriter.ContinueExisting(RuntimeConfig::ConfigFile("saves/log"));
 
-		Logging::WriteEvent(EventSignificance::Uncommon, "Preparation of world '"+World::worldID.ToNiceString()+"'/" + World::worldID.ToString() + " completed.", nullptr, nullptr,Objects::OwnerParameter());
+		Logging::WriteEvent(EventSignificance::Uncommon, "Preparation of world '"+World::worldID.ToNiceString()+"'/" + ToString(World::worldID) + " completed.", nullptr, nullptr,Objects::OwnerParameter());
 		
 		Network::LogServerState();
 
@@ -1217,7 +1201,7 @@ int main( int argc, const char* argv[])
 
 			//#ifndef _DEBUG
 			{
-				static Buffer0<TCP::PPeer>	disconnect;
+				static Ctr::Buffer0<TCP::PPeer>	disconnect;
 				Network::server.VisitAllPeers([](const TCP::PPeer&peer)
 				{
 					if (timer.GetSecondsSince(peer->GetLastPackageTime()) > 30.f)
@@ -1231,7 +1215,7 @@ int main( int argc, const char* argv[])
 				disconnect.Clear();
 
 
-				static Buffer0<Network::PClient>	clientDump;
+				static Ctr::Buffer0<Network::PClient>	clientDump;
 				for (const auto&p : Network::activePlayersAndSpectators)
 				{
 					if (p->peer.expired())
@@ -1242,7 +1226,7 @@ int main( int argc, const char* argv[])
 
 				for (const auto&p : clientDump)
 				{
-					LogEvent( EventClass( EventSignificance::ClientFatal, EventFlavor::ServerPrivate ),nullptr,"Peer lost: "+p->ToString());
+					LogEvent( EventClass( EventSignificance::ClientFatal, EventFlavor::ServerPrivate ),nullptr,"Peer lost: "+p->ConvertToString());
 					Network::HandleConnectionLoss(p);
 				}
 				clientDump.Clear();

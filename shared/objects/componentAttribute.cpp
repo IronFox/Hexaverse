@@ -7,8 +7,8 @@ namespace Objects
 {
 	namespace Component
 	{
-		static IndexTable<String>				map0;
-		static StringTable<Attribute::type_t>	map1;
+		static Ctr::IndexTable<String>				map0;
+		static Ctr::StringTable<Attribute::type_t>	map1;
 		/*static*/ void		Attribute::Map::Set(type_t t, const String&s)
 		{
 			map0.Set(t,s);

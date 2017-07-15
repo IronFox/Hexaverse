@@ -259,7 +259,9 @@ namespace Tutorial
 
 			Lua::Reference current;
 			const auto&st = Objects::Faction::mine->researchState.researchState;
-			const index_t at = Objects::Faction::mine->researchState.GetActiveTopicIndex();
+			//const index_t at = Objects::Faction::mine->researchState.GetActiveTopicIndex();
+			Array<UINT32> q;
+			Objects::Faction::mine->researchState.ExportResearchQueue(q);
 			for (index_t i = 0; i < Objects::ResearchState::globalState.allTopics.Count(); i++)
 			{
 				auto t = Objects::ResearchState::GetTopic(i);
@@ -279,8 +281,9 @@ namespace Tutorial
 				outT.SetField("progress",prog);
 				outT.SetField("isCompleted",t->ResearchCompleted(st));
 
-				bool isActive = at==i && (t->maxProgress <= 0 || prog < t->maxProgress);
+				bool isActive = q.IsNotEmpty() && q.First() == i;
 				outT.SetField("isActive",isActive);
+				outT.SetField("isQueued",q.Contains((UINT32)i));
 
 				if (isActive)
 					current = outT;
@@ -335,10 +338,17 @@ namespace Tutorial
 		{
 			if (!Interactive::started)
 				return;
-			Interactive::RebuildFactionUnits();
-			Interactive::RebuildSelected();
+			try
+			{
+				Interactive::RebuildFactionUnits();
+				Interactive::RebuildSelected();
 
-			Interactive::Trigger::checkTaskConditions();
+				Interactive::Trigger::checkTaskConditions();
+			}
+			catch (const Lua::Exception&ex)
+			{
+				LogEvent(EventClass::Preset::configurationError,ex.what());
+			}
 		}
 
 
@@ -496,19 +506,34 @@ namespace Tutorial
 
 	void	SignalStart()
 	{
-		Interactive::started = true;
-		Interactive::RebuildFactionUnits();
-		Interactive::RebuildSelected();
-		Interactive::RebuildResearchState();
-		Interactive::Trigger::begin(Detail::progress);
+		try
+		{
+			Interactive::started = true;
+			Interactive::RebuildFactionUnits();
+			Interactive::RebuildSelected();
+			Interactive::RebuildResearchState();
+			Interactive::Trigger::begin(Detail::progress);
+		}
+		catch (const Lua::Exception&ex)
+		{
+			LogEvent(EventClass::Preset::configurationError,ex.what());
+		}
 	}
 
 	void	SignalRoundStart()
 	{
 		if (!Interactive::started)
 			return;
-		Interactive::RebuildFactionUnits();
-		Interactive::Trigger::checkTaskConditions();
+		try
+		{
+			Interactive::RebuildFactionUnits();
+			Interactive::Trigger::checkTaskConditions();
+		}
+		catch (const Lua::Exception&ex)
+		{
+			LogEvent(EventClass::Preset::configurationError,ex.what());
+		}
+		
 	}
 
 
@@ -518,8 +543,15 @@ namespace Tutorial
 	{
 		if (!Interactive::started || !Objects::Faction::mine)
 			return;
-		Interactive::RebuildResearchState();
-		Interactive::Trigger::checkTaskConditions();
+		try
+		{
+			Interactive::RebuildResearchState();
+			Interactive::Trigger::checkTaskConditions();
+		}
+		catch (const Lua::Exception&ex)
+		{
+			LogEvent(EventClass::Preset::configurationError,ex.what());
+		}
 	}
 
 	
@@ -537,8 +569,15 @@ namespace Tutorial
 		if (at == Detail::progress)
 			return;
 		Detail::progress = at;
-		if (Interactive::started)
-			Interactive::Trigger::begin(Detail::progress);
+		try
+		{
+			if (Interactive::started)
+				Interactive::Trigger::begin(Detail::progress);
+		}
+		catch (const Lua::Exception&ex)
+		{
+			LogEvent(EventClass::Preset::configurationError,ex.what());
+		}
 	}
 
 }

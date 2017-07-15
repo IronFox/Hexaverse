@@ -3,11 +3,14 @@
 #ifdef HAS_WINDOW
 
 #include "../../ExtRenderer/DirectX11.h"
-
+#include <math/vector.h>
 
 
 namespace SurfaceRenderer
 {
+	using namespace DeltaWorks;
+	using namespace DeltaWorks::Math;
+
 	void	Create();
 	void	Destroy();
 

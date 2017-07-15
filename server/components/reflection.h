@@ -5,6 +5,8 @@
 #include <string/cli.h>
 #include <string/cli_defaults.h>
 
+using namespace DeltaWorks;
+
 /**
 The reflection module handles all configurable variables, including loadable planets.
 All variables are mapped to CLI (Command Line Interpretor) entries, that may execute arbitrary code on change.
@@ -47,7 +49,7 @@ namespace Reflection
 
 			void				CheckChanges()
 			{
-				if (lastValue != ToString())
+				if (lastValue != ConvertToString())
 				{
 					OnChanged();
 				}

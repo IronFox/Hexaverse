@@ -972,49 +972,46 @@ namespace Lua
 		}
 
 
-		bool SerializeCurrentTable(lua_State *L, IWriteStream&stream, bool ignoreNonSerializableContent);
+		void SerializeCurrentTable(lua_State *L, IWriteStream&stream, bool ignoreNonSerializableContent);
 
 
-		bool	SerializePart(lua_State*L, IWriteStream&stream, int at, bool ignoreNonSerializableContent)
+		void	SerializePart(lua_State*L, IWriteStream&stream, int at, bool ignoreNonSerializableContent)
 		{
 			int t = lua_type(L, at);
-			if (!stream.WritePrimitive((BYTE)t))
-				return false;
+			stream.WritePrimitive((BYTE)t);
 			switch (t)
 			{
 				case LUA_TSTRING:  /* strings */
 				{
 					size_t len = lua_rawlen(L,at);
-					return stream.WriteSize(len) && stream.Write(lua_tostring(L,at),(serial_size_t)len);
-					//String(lua_tostring(L, at)).Serialize(stream,true);
-					//String("").Serialize(stream,true);
+					stream.WriteSize(len);
+					stream.Write(lua_tostring(L,at),(serial_size_t)len);
 				}
 				break;
 				case LUA_TBOOLEAN:
-					return stream.WritePrimitive((BYTE)(lua_toboolean(L,at)!=0));
+					stream.WritePrimitive((BYTE)(lua_toboolean(L,at)!=0));
 				break;
 				case LUA_TNUMBER:
 				{
 					bool isInt = lua_isinteger(L,at)!=0;
-					if (!stream.WritePrimitive(isInt))
-						return false;
+					stream.WritePrimitive(isInt);
 					if (isInt)
-						return stream.WritePrimitive(lua_tointeger(L,at));
-					return stream.WritePrimitive(lua_tonumber(L,at));
+						stream.WritePrimitive(lua_tointeger(L,at));
+					else
+						stream.WritePrimitive(lua_tonumber(L,at));
 				}
 				break;
 				case LUA_TTABLE:
 					ASSERT_EQUAL__(at,-1);
-					return SerializeCurrentTable(L,stream,ignoreNonSerializableContent);
+					SerializeCurrentTable(L,stream,ignoreNonSerializableContent);
 				break;
 				default:
 					if (!ignoreNonSerializableContent)
 						throw Exception(CLOCATION, "Lua type #"+String(t)+" '"+lua_typename(L, t)+"' is not suitable for serialization");
 			}
-			return true;
 		}
 
-		bool SerializeCurrentTable(lua_State *L, IWriteStream&stream, bool ignoreNonSerializableContent)
+		void SerializeCurrentTable(lua_State *L, IWriteStream&stream, bool ignoreNonSerializableContent)
 		{
 			lua_pushnil(L);
 
@@ -1025,20 +1022,16 @@ namespace Lua
 				cnt++;
 			}
 
-			if (!stream.WriteSize(cnt))
-				return false;
+			stream.WriteSize(cnt);
 
 			lua_pushnil(L);
 
 			while(lua_next(L, -2) != 0)
 			{
-				if (!SerializePart(L,stream,-2,ignoreNonSerializableContent))	//key
-					return false;
-				if (!SerializePart(L,stream,-1,ignoreNonSerializableContent))	//value
-					return false;
+				SerializePart(L,stream,-2,ignoreNonSerializableContent);	//key
+				SerializePart(L,stream,-1,ignoreNonSerializableContent);	//value
 				lua_pop(L, 1);
 			}
-			return true;
 		}
 
 
@@ -1050,123 +1043,106 @@ namespace Lua
 
 	}
 
-	bool SerializeTop(lua_State*state, IWriteStream&stream, bool ignoreNonSerializableContent)
+	void SerializeTop(lua_State*state, IWriteStream&stream, bool ignoreNonSerializableContent)
 	{
 		Detail::StackChecker chk(state);
 		int top = lua_gettop(state);
-		if (!Detail::SerializePart(state,stream,-1,ignoreNonSerializableContent))
+		try
+		{
+			Detail::SerializePart(state,stream,-1,ignoreNonSerializableContent);
+		}
+		catch (...)
 		{
 			lua_settop(state,top);
-			return false;
+			throw;
 		}
-		return true;
 	}
 
 
-	bool PushTable(lua_State*state, IReadStream&stream);
+	void PushTable(lua_State*state, IReadStream&stream);
 
 
 	/**
 	Pushes the next variable to the lua stack as found in the specified stream
 	@param True on success, false otherwise. The stack is left unchanged if the function fails.
 	*/
-	bool PushFromStream(lua_State*state, IReadStream&stream)
+	void PushFromStream(lua_State*state, IReadStream&stream)
 	{
 		if (!state)
-			return false;
+			throw Exception("Lua state is null");
 		BYTE t;
-		if (!stream.ReadPrimitive(t))
-			return false;
+		stream.ReadPrimitive(t);
 		switch (t)
 		{
 			case LUA_TSTRING:  /* strings */
 			{
 				String str;
-				if (!str.Deserialize(stream,ISerializable::EmbeddedSize))
-					return false;
+				using Serialization::SerialSync;
+				SerialSync(stream,str);
 				lua_pushstring(state,str.c_str());
 			}
 			break;
 			case LUA_TBOOLEAN:
 			{
 				BYTE val;
-				if (!stream.ReadPrimitive(val))
-					return false;
+				stream.ReadPrimitive(val);
 				lua_pushboolean(state,val);
 			}
 			break;
 			case LUA_TNUMBER:
 			{
 				bool isInt;
-				if (!stream.ReadPrimitive(isInt))
-					return false;
+				stream.ReadPrimitive(isInt);
 				if (isInt)
 				{
 					LUA_INTEGER inum;
-					if (!stream.ReadPrimitive(inum))
-						return false;
+					stream.ReadPrimitive(inum);
 					lua_pushinteger(state,inum);
 				}
 				else
 				{
 					LUA_NUMBER num;
-					if (!stream.ReadPrimitive(num))
-						return false;
+					stream.ReadPrimitive(num);
 					lua_pushnumber(state,num);
 				}
 			}
 			break;
 			case LUA_TTABLE:
-				return PushTable(state,stream);
+				PushTable(state,stream);
+			break;
 			default:
 				lua_pushnil(state);
 		}
-		return true;
 	}
 
 	
-	bool InsertIntoPushedTable(lua_State*state, IReadStream&stream, count_t numElements)
+	void InsertIntoPushedTable(lua_State*state, IReadStream&stream, count_t numElements)
 	{
 		for (index_t i = 0; i < numElements; i++)
 		{
-			if (!PushFromStream(state, stream))
-			{
-				lua_pop(state,1);
-				return false;
-			}
-			if (!PushFromStream(state, stream))
-			{
-				lua_pop(state,1);
-				lua_pop(state,1);
-				return false;
-			}
-			//stackDump(state);
+			PushFromStream(state, stream);
+			PushFromStream(state, stream);
 			lua_settable(state,-3);
 		}
-		return true;
 	}
 
-	bool PushTable(lua_State*state, IReadStream&stream)
+	void PushTable(lua_State*state, IReadStream&stream)
 	{
 		count_t numElements;
-		if (!stream.ReadSize(numElements))
-			return false;
+		stream.ReadSize(numElements);
 
 		lua_createtable (state, 0, (int)numElements);
 		InsertIntoPushedTable(state,stream,numElements);
 
-		return true;
 	}
 
 
-	bool InsertIntoPushedTable(lua_State*state, IReadStream&stream)
+	void InsertIntoPushedTable(lua_State*state, IReadStream&stream)
 	{
 		count_t numElements;
-		if (!stream.ReadSize(numElements))
-			return false;
+		stream.ReadSize(numElements);
 		InsertIntoPushedTable(state,stream,numElements);
 
-		return true;
 	}
 
 
@@ -1481,8 +1457,13 @@ namespace Lua
 	{
 		Detail::StackChecker chk(state);
 
-		if (!Lua::PushFromStream(state,data))
+		try
 		{
+			Lua::PushFromStream(state,data);
+		}
+		catch (...)
+		{
+			lua_settop(state,chk.initialDepth);
 			return false;
 		}
 		bool rs = outReference.ResetFromStack(shared_from_this(),-1);
@@ -1504,7 +1485,7 @@ namespace Lua
 	}
 
 
-	bool		Reference::DeserializeMerge(IReadStream&stream)
+	void		Reference::DeserializeMerge(IReadStream&stream)
 	{
 		if (IsEmpty())
 			throw Lua::Exception(CLOCATION,"Trying to deserialize/merge into undefined reference");
@@ -1514,7 +1495,7 @@ namespace Lua
 		bool rs;
 		try
 		{
-			rs = InsertIntoPushedTable(st, stream);
+			InsertIntoPushedTable(st, stream);
 		}
 		catch (...)
 		{
@@ -1523,11 +1504,10 @@ namespace Lua
 		}
 		lua_pop(st, 1);
 		DBG_ASSERT_EQUAL__(top,lua_gettop(st));
-		return rs;
 	}
 
 
-	bool		Reference::Serialize(IWriteStream&stream, bool ignoreNonSerializableContent/*=false*/)	const
+	void		Reference::Serialize(IWriteStream&stream, bool ignoreNonSerializableContent/*=false*/)	const
 	{
 		if (IsEmpty())
 			throw Lua::Exception(CLOCATION,"Trying to serialize undefined reference");
@@ -1537,7 +1517,7 @@ namespace Lua
 		bool rs;
 		try
 		{
-			rs = SerializeTop(st,stream,ignoreNonSerializableContent);
+			SerializeTop(st,stream,ignoreNonSerializableContent);
 		}
 		catch (...)
 		{
@@ -1546,7 +1526,6 @@ namespace Lua
 		}
 		lua_pop(st, 1);
 		DBG_ASSERT_EQUAL__(top,lua_gettop(st));
-		return rs;
 	}
 
 
@@ -1556,7 +1535,7 @@ namespace Lua
 		if (!file.Open(filename.c_str()))
 			throw Except::IO::DriveAccess::FileOpenFault(CLOCATION,"Unable to load Lua file '"+String(filename)+"'");
 		UINT len = file.GetSize();
-		TStringLength slen(len);
+		StringType::TStringLength slen(len);
 		String content(slen);
 
 		file.Extract(0,content.mutablePointer(),len);
@@ -1761,11 +1740,11 @@ int LuaRun (int argc, const char *argv[]) {
 
 
 		prog->Execute("someVar = 3");
-		ByteStream	testStream;
-		rs = prog->GetGlobal("nested").Serialize(testStream);
+		ByteStreamBuffer	testStream;
+		prog->GetGlobal("nested").Serialize(testStream);
 		
 		{
-			MemReadStream reader(testStream.pointer(),(serial_size_t)testStream.GetFillLevel());
+			ByteReadStream reader(testStream.GetWrittenData());
 
 			prog->DeserializeToReference(reader).SetGlobal("nested2");
 		}
@@ -1775,15 +1754,15 @@ int LuaRun (int argc, const char *argv[]) {
 		{
 			Lua::Reference ref;
 			{
-				MemReadStream reader(testStream.pointer(),(serial_size_t)testStream.GetFillLevel());
+				ByteReadStream reader(testStream.GetWrittenData());
 				rs = prog->DeserializeToReference(reader,ref);
 			}
 			deepPrint(ref,"");
 
-			ByteStream str2;
+			ByteStreamBuffer str2;
 			ref.Serialize(str2);
 			{
-				MemReadStream reader(str2.pointer(),(serial_size_t)str2.GetFillLevel());
+				ByteReadStream reader(str2.GetWrittenData());
 				prog->DeserializeToReference(reader).SetGlobal("nested3");
 
 			}

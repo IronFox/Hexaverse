@@ -213,7 +213,7 @@ namespace Objects
 			}
 			String	ToString() const
 			{
-				Buffer0<String> rs;
+				Ctr::Buffer0<String> rs;
 				for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
 					if (level[i] != 0)
 						rs << Resource::Reinterpret(i).ToString()+String(": ")+String(level[i]);
@@ -269,6 +269,56 @@ namespace Objects
 	
 	
 	};
+
+
+
+	class PositiveResourceVector : public Objects::ResourceVector
+	{
+	public:
+
+		/**/	PositiveResourceVector()	{}
+		/**/	PositiveResourceVector(const Objects::ResourceVector&v);
+
+		void	swap(Objects::ResourceVector&other)
+		{
+			std::swap((Objects::ResourceVector&)*this,other);
+		}
+
+
+		friend void	SerialSync(IReadStream&s, PositiveResourceVector&v)
+		{
+			Deserialize(s,v);
+		}
+		friend void	SerialSync(IWriteStream&s, const PositiveResourceVector&v)
+		{
+			Serialize(s,v);
+		}
+
+		static	void					Serialize(IWriteStream&outStream, const Objects::ResourceVector&vec);
+		static	void					Deserialize(IReadStream&inStream, Objects::ResourceVector&vec);
+
+
+		bool		operator==(const Objects::ResourceVector&vec) const
+		{
+			return vec == *this;
+		}
+		bool		operator!=(const Objects::ResourceVector&vec) const
+		{
+			return vec != *this;
+		}
+
+		void		operator=(const Objects::ResourceVector&vec)
+		{
+			((Objects::ResourceVector&)*this) = vec;
+		}
+		void		operator=(const Objects::NaturalResourceVector&vec)
+		{
+			((Objects::ResourceVector&)*this) = vec;
+		}	
+	};
+
+
+
 
 
 

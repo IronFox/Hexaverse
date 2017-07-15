@@ -21,7 +21,7 @@ namespace Objects
 	/*static*/ bool				TurretBase::CheckArea(const OwnerParameter&myFaction, const Grid::LCellIdI&origin, float explosionRadius)
 	{
 		AreaHelper	helper;
-
+		using Math::sqr;
 		
 		{
 			const auto&n = Grid::low.grid.GetCell(origin.stackID).neighborhood;
@@ -69,6 +69,7 @@ namespace Objects
 
 	bool					TurretBase::ExtCanHit(const OwnerParameter&myFaction, const TrajectoryEndPoint&source, const TrajectoryEndPoint&destIn, Grid::LCellIdI&destOut)	const
 	{
+		using Math::sqr;
 		//const float velocity = Turret::MaxRangeToVelocity(GetFlatAttackRange());
 		const float range = GetFlatAttackRange();
 		//const float extRange = range + (turret->explosionRadius);

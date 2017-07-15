@@ -11,7 +11,7 @@ namespace Evolver
 
 	namespace CoreDetails
 	{
-		Queue<TExplosion>	pendingExplosions;
+		Ctr::Queue<TExplosion>	pendingExplosions;
 
 		/**
 		Like vehicles, towers have an attack action floation point value. Unlike vehicles, they are not part of the
@@ -60,7 +60,7 @@ namespace Evolver
 			bool		operator<(const TAttackReference&other) const {return GetInitiative() < other.GetInitiative();}
 		};
 
-		Buffer<TAttackReference>	attackingEntities;
+		Ctr::Buffer<TAttackReference>	attackingEntities;
 		//float						attackTime = 0.f;
 
 
@@ -94,7 +94,7 @@ namespace Evolver
 		}
 
 
-		Buffer<TMovementReference>	movingVehicles,movingVehicles2;
+		Ctr::Buffer<TMovementReference>	movingVehicles,movingVehicles2;
 
 		void		SignalMotionPhase()
 		{
@@ -222,6 +222,7 @@ namespace Evolver
 			});
 			Objects::ForeachFaction([](const Objects::PFaction&f)
 			{
+				f->statistics.SignalCompoundProcessingEnd();
 				f->researchState.FinalizeRound(f);
 			});
 
@@ -389,7 +390,11 @@ namespace Evolver
 		{
 			static TExplosion exp;
 			while (pendingExplosions >> exp)
-				Objects::Explode(ApplicationInterface::TAttack(),Grid::ToHigh(exp.center),Grid::ToWorld(exp.center),exp.radius,exp.damageLevel,false,exp.atTime);
+			{
+				ApplicationInterface::TAttack at;
+				at.attackFrom = exp.causedBy;
+				Objects::Explode(at,Grid::ToHigh(exp.center),Grid::ToWorld(exp.center),exp.radius,exp.damageLevel,false,exp.atTime);
+			}
 
 			switch (RuntimeConfig::phase)
 			{
@@ -440,6 +445,8 @@ namespace Evolver
 	/*virtual override*/ void Core::FinishRoundProcessing()
 	{
 		RuntimeConfig::roundNumber.main++;
+		
+		Objects::Statistics::SignalNewRoundBegin(true);
 
 		Game::Network::ChangePhase(RuntimeConfig::Phase::CommandPhase,Game::Config::roundTimer > 0 && !Game::roundTimerPaused ? Game::Config::roundTimer : -1);
 	}

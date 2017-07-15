@@ -9,6 +9,10 @@
 
 namespace Lighting
 {
+
+	using namespace DeltaWorks;
+	using namespace DeltaWorks::Math;
+
 	static const count_t NumCascades = 2;
 	namespace DX11 = Engine::DX11;
 

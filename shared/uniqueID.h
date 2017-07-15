@@ -19,7 +19,7 @@ namespace Bin2Str
 	{
 		if (c >= '0' && c <= '9')
 			return (BYTE)(c - '0');
-		c = Template::toupper(c);
+		c = CharFunctions::toupper(c);
 		if (c >= 'A' && c <= 'F')
 			return (BYTE)(10 + (c - 'A'));
 		throw Except::Program::ParameterFault("Unable to decode byte-string character '" + String(c) + "': Invalid hexadecimal character");
@@ -48,9 +48,9 @@ namespace Bin2Str
 	template <typename T>
 		inline String ConvertPOD(const T&data, size_t maxBytes=4)
 		{
-			return Convert(&data,vmin(maxBytes,sizeof(T)));
+			return Convert(&data,M::vmin(maxBytes,sizeof(T)));
 		}
-	inline String Convert(const Array<BYTE>&v)
+	inline String Convert(const Ctr::Array<BYTE>&v)
 	{
 		return Convert(v.pointer(),v.size());
 	}
@@ -82,9 +82,9 @@ struct TUniqueID
 	static const count_t NumBytes = 16;
 	BYTE		bytes[NumBytes];
 
-	static hash_t	hash(const TUniqueID&id)
+	friend hash_t	Hash(const TUniqueID&id)
 	{
-		return stdMemHash(id.bytes,sizeof(id.bytes));
+		return StdMemHash(id.bytes,sizeof(id.bytes));
 	}
 
 	String		ToFullString() const
@@ -92,9 +92,14 @@ struct TUniqueID
 		return Bin2Str::Convert(bytes,NumBytes);
 	}
 
-	String		ToString(count_t numBytes=4) const
+	String		ConvertToString(count_t numBytes=4) const
 	{
 		return Bin2Str::Convert(bytes,numBytes);
+	}
+
+	friend String ToString(const TUniqueID&id)
+	{
+		return id.ConvertToString();
 	}
 
 	String		ToNiceString() const
@@ -132,6 +137,16 @@ struct TUniqueID
 		return CompareTo(other) >= 0;
 	}
 
+	friend void SerialSync(IWriteStream&s, const TUniqueID&v)
+	{
+		s.Write(v.bytes,v.NumBytes);
+	}
+	friend void SerialSync(IReadStream&s, TUniqueID&v)
+	{
+		s.Read(v.bytes,v.NumBytes);
+	}
+
+
 	void		Generate()
 	{
 		UUID	uuid;
@@ -152,6 +167,7 @@ static_assert(sizeof(TUniqueID) == 16, "Struct packing not appropriate for uniqu
 
 class CryptographicID
 {
+	typedef CryptographicID Self;
 	BYTE	bytes[32];
 
 public:
@@ -189,9 +205,9 @@ public:
 		ASSERT_EQUAL__(read,1);
 	}
 
-	static hash_t	hash(const CryptographicID&id)
+	friend hash_t	Hash(const CryptographicID&id)
 	{
-		return stdMemHash(id.bytes,sizeof(id.bytes));
+		return StdMemHash(id.bytes,sizeof(id.bytes));
 	}
 
 	String		ToString(count_t numBytes=4) const
@@ -207,9 +223,17 @@ public:
 	void		Decode(const String&source)
 	{
 		Bin2Str::Convert(bytes, sizeof(bytes), source);
-
-
 	}
+
+	friend void SerialSync(IWriteStream&s, const Self&v)
+	{
+		s.Write(v.bytes,sizeof(v.bytes));
+	}
+	friend void SerialSync(IReadStream&s, Self&v)
+	{
+		s.Read(v.bytes,sizeof(v.bytes));
+	}
+
 
 	bool		operator==(const CryptographicID&other)	const
 	{

@@ -2,6 +2,7 @@
 #define stringTableH
 
 #include <stdint.h>
+#include <interface/serializable.h>
 
 typedef uint8_t ConstNameRootType;
 
@@ -81,6 +82,16 @@ enum class ConstName : ConstNameRootType	//DO NOT WRITE TO PERSISTENT STORAGE!!!
 
 	NumTypes,
 };
+
+
+inline void SerialSync(DeltaWorks::IReadStream&s, ConstName&v)
+{
+	s.ReadPrimitive((ConstNameRootType&)v);
+}
+inline void SerialSync(DeltaWorks::IWriteStream&s, ConstName v)
+{
+	s.WritePrimitive((ConstNameRootType)v);
+}
 
 
 static_assert(sizeof(ConstName) == sizeof(ConstNameRootType), "compiler broken");

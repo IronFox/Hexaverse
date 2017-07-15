@@ -28,7 +28,7 @@
 //
 //}
 
-extern float3					sunDirection;
+extern M::float3				sunDirection;
 static const float				SunOffAngle = 35.f;	//divergence between vertical axis and sun direction. 0 would be cenit
 
 
@@ -57,18 +57,18 @@ namespace Camera
 	/**
 	Rotates camera viewing direction by the given angle deltas
 	*/
-	void						Rotate(const float2&angleDelta);
+	void						Rotate(const M::float2&angleDelta);
 	/**
 	Rotates the focus position around the planet center by the given angle delta.
 	Aborts any ongoing targeted translation
 	*/
-	void						Translate(const float2&angleDelta);
+	void						Translate(const M::float2&angleDelta);
 
 	/**
 	Initiates targeted translation (smoothly animated rotation of focus point around planet center)
 	@param direction Direction from planet center to smoothly translate to. Normalized automatically
 	*/
-	void						TranslateTo(const float3&direction);
+	void						TranslateTo(const M::float3&direction);
 	/**
 	Stops any ongoing targeted translation
 	*/

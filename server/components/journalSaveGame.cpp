@@ -63,14 +63,14 @@ namespace Journal
 		{
 			Objects::PFaction f = Objects::Faction::FindByID(factionID);
 			if (!f)
-				throw RoundException(CLOCATION, "Round "+roundNumber.ToString()+": Referencing faction '"+factionID.ToString()+"', which does not or no longer exist, and is not being created");
+				throw RoundException(CLOCATION, "Round "+roundNumber.ToString()+": Referencing faction '"+ToString(factionID)+"', which does not or no longer exist, and is not being created");
 
 			for (const auto&ev : fstrand.factionEvents)
 				ev->Execute(f);
 
 			ASSERT__(f);
 
-			static GenericHashSet<TUniqueID,TUniqueID>	processed;
+			static Ctr::GenericHashSet<TUniqueID>	processed;
 			processed.Clear();
 
 			for (index_t retry = 0; retry < fstrand.entityStrands.Count(); retry++)
@@ -591,7 +591,7 @@ namespace Journal
 		{
 			e = Objects::AssembleVehicle(f,id,loc,baseType,turretType);
 		}
-		LogEvent(EventSignificance::Debug,e.get(),"PureEntityDescriptor::Instantiate("+id.ToString()+")");
+		LogEvent(EventSignificance::Debug,e.get(),"PureEntityDescriptor::Instantiate("+ToString(id)+")");
 		return e;
 	}
 
@@ -740,7 +740,7 @@ namespace Journal
 				buffer.Clear();
 				foreach (targets,t)
 					buffer << ' '<<t->ToString();
-				throw RoundException(CLOCATION, "Unable to direct "+e->GetName()+" to"+buffer.ToString()+" in mode "+String(int(mode)));
+				throw RoundException(CLOCATION, "Unable to direct "+e->GetName()+" to"+buffer.CopyToString()+" in mode "+String(int(mode)));
 			#else
 				throw RoundException(CLOCATION, "Unable to direct "+e->GetName()+" to destination");
 			#endif
@@ -791,7 +791,7 @@ namespace Journal
 			if (p->get()->GetDataKey() == this->jobID)
 			{
 				auto job = p->get()->Instantiate();
-				ASSERT2__(DeserializeFromMemory(*job,this->jobPayload.pointer(),(serial_size_t)jobPayload.size(),false), job->GetName(),jobPayload.size());
+				DeserializeFromCompactMemory(*job,this->jobPayload.pointer(),(serial_size_t)jobPayload.size()), job->GetName(),jobPayload.size();
 				job->Restart(*m);
 				m->RegisterNewJob("",job,focus != Grid::LCellIdI::Invalid ? &focus : nullptr);
 				return;
@@ -829,7 +829,7 @@ namespace Journal
 		Objects::PMobileEntityProducer p = To<Objects::MobileEntityProducer>::DynamicCast(e);
 
 		if (!p->AbortConstruction(taskID))
-			throw RoundException(CLOCATION, "Failed KOto remove production task '"+taskID.ToString()+"' from "+e->GetName());
+			throw RoundException(CLOCATION, "Failed KOto remove production task '"+ToString(taskID)+"' from "+e->GetName());
 	}
 
 
@@ -1012,7 +1012,7 @@ namespace Journal
 				break;
 				case 'b':
 				{
-					Array<BYTE>&binary = binaryParameters.Set(paraRef);
+					Ctr::Array<BYTE>&binary = binaryParameters.Set(paraRef);
 					binary.SetSize(valLen/2);
 					Bin2Str::Convert(binary.pointer(),binary.GetLength(),value,valLen);
 				}
@@ -1246,7 +1246,7 @@ namespace Journal
 	{
 		if (lockEvents)
 			return;
-		PGlobalEvent ev(new UpdateVariable(var->GetPath(),var->ToString()));
+		PGlobalEvent ev(new UpdateVariable(var->GetPath(),var->ConvertToString()));
 		if (!execute || ev->TryExecute())
 			return;
 		this->globalEvents.Append(ev);
@@ -1272,7 +1272,7 @@ namespace Journal
 		{
 			if (v->WriteToSavegame())
 			{
-				v->lastValue = v->ToString();
+				v->lastValue = v->ConvertToString();
 				currentRound.RegisterPersistentVariableChange(false,v);
 			}
 		});
@@ -1441,14 +1441,24 @@ namespace Journal
 
 	void	Round::LogJobCommandStart(const Objects::PWorldEntity&e, const Objects::VehicleJob::BaseJob&job, const Grid::LCellIdI&focus)
 	{
-		EntityStrand&strand = factionStrands.Set(e->owner->id).entityStrands.Set(e->id);
-		std::shared_ptr<JobCommand> cmd(new JobCommand());
-		strand.Append(cmd);
-		cmd->jobID = job.GetDataKey();
-		cmd->focus = focus;
-		serial_size_t size = job.GetSerialSize(false);
-		cmd->jobPayload.SetSize(size);
-		ASSERT__(SerializeToMemory(job,cmd->jobPayload.pointer(),(serial_size_t)cmd->jobPayload.GetContentSize(),false));
+		try
+		{
+			std::shared_ptr<JobCommand> cmd(new JobCommand());
+			cmd->jobID = job.GetDataKey();
+			cmd->focus = focus;
+			SerialSizeScanner scanner;
+			job.Serialize(scanner);
+			const serial_size_t size = scanner.GetTotalSize();
+			cmd->jobPayload.SetSize(size);
+			SerializeToCompactMemory(job,cmd->jobPayload.pointer(),(serial_size_t)cmd->jobPayload.GetContentSize());
+
+			EntityStrand&strand = factionStrands.Set(e->owner->id).entityStrands.Set(e->id);
+			strand.Append(cmd);
+		}
+		catch (const std::exception&ex)
+		{
+			LogException(e.get(),ex);
+		}
 	}
 
 
@@ -1637,7 +1647,7 @@ namespace Journal
 			if (proto)
 				result.stringParameters.Set("ReferenceNonVehicle",proto->GetTypeName());
 			else
-				throw Round::RoundException(CLOCATION, "Unknown non-vehicle type #" + String(int(source.type0.value)));
+				throw Round::RoundException(CLOCATION, "Unknown non-vehicle type #" + String(int(source.type0)));
 			return;
 		}
 		if (source.type0 == ConstName::Empty)
@@ -1649,12 +1659,12 @@ namespace Journal
 		Objects::Component::Turret*t = Objects::Component::GetTurretByName(source.type1);
 		if (!t)
 		{
-			throw Round::RoundException(CLOCATION, "Unknown turret type #" + String(int(source.type1.value)));
+			throw Round::RoundException(CLOCATION, "Unknown turret type #" + String(int(source.type1)));
 		}
 		Objects::Component::Base*b = Objects::Component::GetVehicleBaseByName(source.type0);
 		if (!b)
 		{
-			throw Round::RoundException(CLOCATION,"Unknown base type #" + String(int(source.type0.value)));
+			throw Round::RoundException(CLOCATION,"Unknown base type #" + String(int(source.type0)));
 		}
 		result.stringParameters.Set("ReferenceTurret",t->typeName);
 		result.stringParameters.Set("ReferenceBase",b->typeName);
@@ -1670,7 +1680,7 @@ namespace Journal
 
 	static void ImportReferenceEntity(Protocol::MarkerReferenceEntity&ref, const Entry&e )
 	{
-		e.uuidParameters.Require(CLOCATION,"ReferenceID",ref.id.value);
+		e.uuidParameters.Require(CLOCATION,"ReferenceID",ref.id);
 		String base,turret;
 		if (e.stringParameters.TryGet("ReferenceBase",base))
 		{
@@ -1750,9 +1760,9 @@ namespace Journal
 	/*virtual override*/ void Round::DestroyMarker::Execute(const Objects::PFaction&f) const
 	{
 		if (f->DestroyMarker(markerID))
-			LogEvent(EventSignificance::Common, GetPeerOfFaction(f), "Marker " + markerID.ToString() + " destroyed");
+			LogEvent(EventSignificance::Common, GetPeerOfFaction(f), "Marker " + ToString(markerID) + " destroyed");
 		else
-			throw RoundException(CLOCATION, "Marker " + markerID.ToString() + " not found for destruction");
+			throw RoundException(CLOCATION, "Marker " + ToString(markerID) + " not found for destruction");
 	}
 
 	/*virtual override*/ void Round::DestroyMarker::Decode(const Entry&e)
@@ -1764,21 +1774,33 @@ namespace Journal
 		e.uuidParameters.Set("MarkerID",markerID);
 	}
 
-	/*virtual override*/ void Round::SelectResearch::Execute(const Objects::PFaction&f) const
+	/*virtual override*/ void Round::QueueResearch::Execute(const Objects::PFaction&f) const
 	{
-		if (!f->researchState.SetActiveTopic(topic))
-			throw RoundException(CLOCATION, "Unable to set '"+topic->GetFullName()+"' as active research topic. Is this a group?");
-		//f->researchState.currentResearch = target;
-		//f->researchState.currentResearchAttribute = attribute;
+		if (drop)
+		{
+			if (!f->researchState.DropResearchTask(topic))
+				throw RoundException(CLOCATION, "Unable to drop '"+topic->GetFullName()+"' from research queue. Has this been queued?");
+		}
+		else
+			if (f->researchState.ResearchQueueIsFull())
+				throw RoundException(CLOCATION, "Unable to append '"+topic->GetFullName()+"' to research queue. Queue is full");
+			else
+				if (!f->researchState.AppendResearchTask(topic))
+					throw RoundException(CLOCATION, "Unable to append '"+topic->GetFullName()+"' to research queue. Is this a group?");
 		Network::PClient cl;
 		if (Network::playerMap.Query(f,cl))
 		{
-			Channels::selectResearch.SendTo(cl->peer.lock(),Protocol::SelectResearch((UINT32)topic->serialIndex));
+			Protocol::ResearchQueue queue;
+			f->researchState.ExportResearchQueue(queue);
+			Channels::researchQueue.SendTo(cl->peer.lock(),queue);
 		}
-		LogEvent(EventSignificance::Uncommon, GetPeerOfFaction(f), "Faction research updated to "+topic->GetFullName());
+		if (drop)
+			LogEvent(EventSignificance::Uncommon, GetPeerOfFaction(f), "Faction research "+topic->GetFullName()+" dropped");
+		else
+			LogEvent(EventSignificance::Uncommon, GetPeerOfFaction(f), "Faction research "+topic->GetFullName()+" appended");
 	}
 
-	/*virtual override*/ void Round::SelectResearch::Decode(const Entry&e)
+	/*virtual override*/ void Round::QueueResearch::Decode(const Entry&e)
 	{
 		String targetPath;
 		e.stringParameters.Require(CLOCATION,"Target",targetPath);
@@ -1786,11 +1808,18 @@ namespace Journal
 		if (!topic)
 		{
 			throw Except::Program::FunctionalityNotImplemented(CLOCATION,"Unknown research target '"+targetPath+"'");
-		}			
+		}
+		int i;
+		if (e.intParameters.TryGet("Drop",i))
+			drop = i != 0;
+		else
+			drop = false;
 	}
-	/*virtual override*/ void Round::SelectResearch::Compile(Entry&e)	const
+	/*virtual override*/ void Round::QueueResearch::Compile(Entry&e)	const
 	{
 		e.stringParameters.Set("Target",topic->GetPath());
+		if (drop)
+			e.intParameters.Set("Drop",1);
 	}
 
 
@@ -1853,13 +1882,13 @@ namespace Journal
 			{
 				extra = " (active jobs are";
 				foreach (p->queue,q)
-					extra += " "+q->id.ToString();
+					extra += " "+ToString(q->id);
 				extra += ")";
 			}
-			throw RoundException(CLOCATION,"Tried to abort non-existend construction-plant job '"+taskID.ToString()+"' on plant entity"+extra);
+			throw RoundException(CLOCATION,"Tried to abort non-existend construction-plant job '"+ToString(taskID)+"' on plant entity"+extra);
 		}
 		else
-			LogEvent(EventSignificance::Common,e.get(),"Aborted construction job "+taskID.ToString());
+			LogEvent(EventSignificance::Common,e.get(),"Aborted construction job "+ToString(taskID));
 	}
 
 
@@ -1891,7 +1920,7 @@ namespace Journal
 			Objects::PFaction&f = Objects::Faction::FindByID(fID);
 			if (!f)
 			{
-				LogEvent(EventClass::Preset::commandRejected,"Faction "+fID.ToString()+" not found for event execution "+String(typeid(newEvent).name()));
+				LogEvent(EventClass::Preset::commandRejected,"Faction "+ToString(fID)+" not found for event execution "+String(typeid(newEvent).name()));
 				return;
 			}
 			if (!ev->TryExecute(f))
@@ -1963,7 +1992,7 @@ namespace Journal
 	}
 
 
-	void	Round::RegisterDirectEntityTo(bool apply, const Objects::PWorldEntity&e, Objects::CursorMode mode, const ArrayRef<Grid::LCellIdI>&target, bool detailed, bool mouseLeftClick, bool clearSafeTasks)
+	void	Round::RegisterDirectEntityTo(bool apply, const Objects::PWorldEntity&e, Objects::CursorMode mode, const Ctr::ArrayRef<Grid::LCellIdI>&target, bool detailed, bool mouseLeftClick, bool clearSafeTasks)
 	{
 		EntityStrand&strand = factionStrands.Set(e->owner->id).entityStrands.Set(e->id);
 		std::shared_ptr<DirectToCommand> cmd(new DirectToCommand());
@@ -2141,7 +2170,7 @@ namespace Journal
 				const TUniqueID&factionID = child->uuidParameters.Require(CLOCATION,"FactionID");
 				FactionStrand*strand = factionStrands.SetNew(factionID);
 				if (!strand)
-					throw Except::Program::UniquenessViolation(CLOCATION, "Faction '"+factionID.ToString()+"' is defined multiple times in this round");
+					throw Except::Program::UniquenessViolation(CLOCATION, "Faction '"+ToString(factionID)+"' is defined multiple times in this round");
 
 
 				foreach(child->children,entityChild)
@@ -2151,13 +2180,13 @@ namespace Journal
 						const TUniqueID&entityID = entityChild->uuidParameters.Require(CLOCATION,"EntityID");
 						EntityStrand*estrand = strand->entityStrands.SetNew(entityID);
 						if (!estrand)
-							throw Except::Program::UniquenessViolation(CLOCATION, "Entity '"+entityID.ToString()+"' is defined multiple times in this round, and faction");
+							throw Except::Program::UniquenessViolation(CLOCATION, "Entity '"+ToString(entityID)+"' is defined multiple times in this round, and faction");
 
 						#ifdef _DEBUG
 							factionStrands.VisitAllEntries([factionID, entityID](const TUniqueID&ofactionID, const FactionStrand&strand)
 							{
 								if (strand.entityStrands.IsSet(ofactionID))
-									throw Except::Program::UniquenessViolation(CLOCATION, "Entity '"+entityID.ToString()+"' is defined in multiple factions ("+ofactionID.ToString()+" and "+factionID.ToString()+")");
+									throw Except::Program::UniquenessViolation(CLOCATION, "Entity '"+ToString(entityID)+"' is defined in multiple factions ("+ToString(ofactionID)+" and "+ToString(factionID)+")");
 							});
 						#endif
 
@@ -2272,7 +2301,7 @@ namespace Journal
 
 
 	//must be string (and not std::type_id) so that loading strings works
-	/*static*/ StringTable<Round::PEvent>	Round::eventMap;
+	/*static*/ Ctr::StringTable<Round::PEvent>	Round::eventMap;
 
 
 
@@ -2304,7 +2333,7 @@ namespace Journal
 		MAP_ADD(DestroyMarker);
 		MAP_ADD(RestoreCoreLink);
 		MAP_ADD(ConstructionAbort);
-		MAP_ADD(SelectResearch);
+		MAP_ADD(QueueResearch);
 	}
 
 	void	Create()

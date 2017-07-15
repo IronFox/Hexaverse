@@ -2,7 +2,10 @@
 
 #include <math/vclasses.h>
 #include <fractal/segment_map.h>
-#include <fractal/interface.h>
+#include <fractal/geometry.h>
+
+using namespace DeltaWorks;
+using namespace DeltaWorks::Math;
 
 #include "config.h"
 
@@ -156,7 +159,7 @@ public:
 	static bool IsIsolatedCorner(index_t stackID)	{DBG_ASSERT_LESS__(stackID,12); return CornerIsIsolated[stackID];}
 
 protected:
-	static void UpdateRadii(Array<TNetCell>&cells);
+	static void UpdateRadii(Ctr::Array<TNetCell>&cells);
 	static void	RadialInterpolation(const float3&v0, const float3&v1, float at, float3&out);
 	static void	RadialInterpolation(const float3&v0, const float3&v1, const float3&v2, float xat, float yat, float3&out);
 
@@ -257,9 +260,38 @@ public:
 
 		static const CellIdI	Invalid;
 
-		static hash_t	hash(const CellIdI&cell)
+		friend hash_t	Hash(const CellIdI&cell)
 		{
-			return (hash_t)(cell.stackID*31+cell.height);
+			return (hash_t)(cell.stackID*32+cell.height);
+		}
+
+		friend void		SerialSync(IWriteStream&s, const CellIdI&v)
+		{
+			using Serialization::SerialSync;
+			if (v == Invalid)
+			{
+				BYTE bLayer = 0xFF;
+				s.Write(&bLayer,1);
+				return;
+			}
+			UINT32 layer = Grid::CellStack::ToLayer(v.height);
+			static_assert(Grid::CellStack::Range <= 255, "Protocol not designed for more than 255 layers");
+			BYTE bLayer = (BYTE)layer;
+			s.Write(&bLayer,1);
+			s.WriteSize(v.stackID);
+		}
+
+		friend	void	SerialSync(IReadStream&s, CellIdI&v)
+		{
+			BYTE bLayer;
+			s.Read(&bLayer,1);
+			if (bLayer == 0xFF)
+			{
+				v = Invalid;
+				return;
+			}
+			s.ReadSize(v.stackID);
+			v.height = Grid::CellStack::ToHeight((UINT)bLayer);
 		}
 	private:
 		/**/	CellIdI(index_t stackID, UINT layer) {}
@@ -283,9 +315,9 @@ public:
 
 		String	ToString() const {return String(stackID)+ "["+String(layer)+"]";}
 
-		static hash_t	hash(const CellIdU&cell)
+		friend hash_t	Hash(const CellIdU&cell)
 		{
-			return (hash_t)(cell.stackID*31+cell.layer);
+			return (hash_t)(cell.stackID*32+cell.layer);
 		}
 
 		static const CellIdU	Invalid;
@@ -317,10 +349,10 @@ public:
 	const TCell*GetCells() const {return cellField;}
 	const TCell&GetCell(index_t)const;
 	const TCell&GetCell(family_t family, index_t memberIndex)const;
-	count_t		CountFamilyMembers(family_t family) const;
-	index_t		GetFamilyOffset(family_t family) const;
+	UINT32		CountFamilyMembers(family_t family) const;
+	UINT32		GetFamilyOffset(family_t family) const;
 
-	void		Construct(Array<TCellVertex>&vertices, Array<TNetCell>&cells);	//fourth component contains 0 for center vertices and 1 for outline vertices
+	void		Construct(Ctr::Array<TCellVertex>&vertices, Ctr::Array<TNetCell>&cells);	//fourth component contains 0 for center vertices and 1 for outline vertices
 
 };
 template<unsigned Exponent>
@@ -341,7 +373,7 @@ template <unsigned Exponent>
 
 		std::cout<<"Creating "<<fullMap.vertex_count<<"/"<<CellCount<<" cells ..."<<std::endl;
 
-		Fractal::makeSphereGeometry(geometry);
+		Fractal::MakeSphereGeometry(geometry);
 
 		index_t at[12] = { 0, 0, 0, 0, 0 };
 
@@ -824,7 +856,7 @@ template <unsigned Exponent>
 	}
 
 template <unsigned Exponent>
-	index_t		GridSetup<Exponent>::GetFamilyOffset(family_t family) const
+	UINT32	GridSetup<Exponent>::GetFamilyOffset(family_t family) const
 	{
 		if (family == 0)
 		{
@@ -836,7 +868,7 @@ template <unsigned Exponent>
 
 
 template <unsigned Exponent>
-	count_t		GridSetup<Exponent>::CountFamilyMembers(family_t family) const
+	UINT32		GridSetup<Exponent>::CountFamilyMembers(family_t family) const
 	{
 		if (family == 0)
 			return 12 + 30 * CellsPerEdge;
@@ -869,9 +901,9 @@ struct TriangleKey
 	}
 	bool			operator!=(const TriangleKey&k) const { return !operator==(k); }
 
-	static hash_t		hash(const TriangleKey&k)
+	friend hash_t		Hash(const TriangleKey&k)
 	{
-		return HashValue(k.stackID[0]).add(k.stackID[1]).add(k.stackID[2]);
+		return HashValue() << k.stackID[0] << k.stackID[1] << k.stackID[2];
 	}
 
 };
@@ -879,11 +911,11 @@ struct TriangleKey
 
 
 template <unsigned Exponent>
-	void		GridSetup<Exponent>::Construct(Array<TCellVertex>&vertices, Array<TNetCell>&cells)
+	void		GridSetup<Exponent>::Construct(Ctr::Array<TCellVertex>&vertices, Ctr::Array<TNetCell>&cells)
 	{
 		cells.SetSize(CellCount);
-		Buffer<TCellVertex>	vtx;
-		GenericHashTable<TriangleKey, UINT32, TriangleKey>	vtxMap;
+		Ctr::Buffer<TCellVertex>	vtx;
+		Ctr::GenericHashTable<TriangleKey, UINT32>	vtxMap;
 		for (index_t i = 0; i < CellCount; i++)
 		{
 			TCellVertex&v = vtx.Append();

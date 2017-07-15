@@ -18,13 +18,13 @@ namespace Grid
 	#endif
 
 
-	/*static*/ Buffer0<Resource>	Resource::all;
+	/*static*/ Ctr::Buffer0<Resource>	Resource::all;
 
 	String							currentCustomResourceDistribution="clustered";
 
 
 	
-	/*static*/ void Resource::FillAll(Random&random, const String&distribution)
+	/*static*/ void Resource::FillAll(TwisterRandom&random, const String&distribution)
 	{
 		#ifndef CLIENT
 		if (distribution.IsNotEmpty())
@@ -35,7 +35,7 @@ namespace Grid
 				Lua::Table api = Lua::CreateGeneralAPI(prog);
 				Lua::DefineLowGridCells(api);
 				
-				SimplexNoise n(random.NextSeed());
+				SimplexNoise n(random.MaxNext());
 				api.SetFunction("Simplex",[&n](double x, double y, double z)->double
 				{
 					return n.Get(x,y,z);
@@ -216,14 +216,14 @@ namespace Grid
 	//	rc.Name(name,cname,color);
 	//}
 
-	void Resource::FillInternal(Random&random)
+	void Resource::FillInternal(TwisterRandom&random)
 	{
 		FillInternal(random,probability[resourceIndex],maximum[resourceIndex], density[resourceIndex]);
 	}
 
-	void Resource::FillInternal(Random&random,float p0, coverage_t max, float avgPerCell)
+	void Resource::FillInternal(TwisterRandom&random,float p0, coverage_t max, float avgPerCell)
 	{
-		SimplexNoise n(random.NextSeed());
+		SimplexNoise n(random.MaxNext());
 		//avgPerCell *= UnitScale;
 
 		for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
@@ -267,9 +267,9 @@ namespace Grid
 					{
 						float factor = want / float(std::max((count_t)1,familyTotal[k]));
 						float magnitude = log(factor);
-						factor = pow(4.f,float(sign(factor-1.f))/(retries*2 + 1));
+						factor = pow(4.f,float(M::sign(factor-1.f))/(retries*2 + 1));
 						p *= factor;
-						p = clamp(p,0.0001f,10000.f);
+						p = M::clamp(p,0.0001f,10000.f);
 						LogEvent(EventSignificance::Debug,nullptr," Family found out of range ("+String(want)+"<-"+String(float(std::max((count_t)1,familyTotal[k])))
 									+"), p adjusted by "+String(factor)+" to "+String(p)+". Randomizing...");
 					}
@@ -316,7 +316,7 @@ namespace Grid
 
 
 	#ifdef CLIENT
-		void		UpdateResourceMap(ConstName resourceName,const ArrayData<TCellResourceCoverage>&data, ResourceDiscovery&setSensor)
+		void		UpdateResourceMap(ConstName resourceName,const Ctr::ArrayData<TCellResourceCoverage>&data, ResourceDiscovery&setSensor)
 		{
 			foreach (Resource::all, res)
 				if (res->GetCName() == resourceName)
@@ -354,11 +354,11 @@ namespace Grid
 	}
 
 
-	void		ResourceDiscovery::Update(const Grid::LCellIdI&center,float range, BasicBuffer<UINT32>&outNewDiscoveries)
+	void		ResourceDiscovery::Update(const Grid::LCellIdI&center,float range, Ctr::BasicBuffer<UINT32>&outNewDiscoveries)
 	{
-		static IndexSet covered;
-		static Buffer0<UINT32>	coverage;
-		static Queue<UINT32>	stacks;
+		static Ctr::IndexSet covered;
+		static Ctr::Buffer0<UINT32>	coverage;
+		static Ctr::Queue<UINT32>	stacks;
 		covered.Clear();
 		coverage.Clear();
 		stacks.Clear();
@@ -372,7 +372,7 @@ namespace Grid
 		while (stacks >> stackID)
 		{
 			const TVec3<> world = Grid::ToWorld(Grid::LCellIdI(stackID,center.height));
-			if (Vec::quadraticDistance(world,worldCenter) > sqr(range))
+			if (Vec::quadraticDistance(world,worldCenter) > M::sqr(range))
 				continue;
 			if (!covered.IsSet(stackID))
 			{

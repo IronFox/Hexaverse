@@ -12,7 +12,7 @@ namespace Grid
 	class ResourceDiscovery
 	{
 	public:
-		FixedArray<bool,Grid::LowSetup::GridType::CellCount>			resourcesDiscovered;//discovers all resources (for now)
+		Ctr::FixedArray<bool,Grid::LowSetup::GridType::CellCount>			resourcesDiscovered;//discovers all resources (for now)
 
 		bool				familyChanged[BaseGrid::NumFamilies] = {false};
 
@@ -29,7 +29,7 @@ namespace Grid
 		@param range Sphere radius to detect resources within
 		@param[inout] outNewDiscoveries Buffer to add newly discovered cell stacks to. Cleared automatically
 		*/
-		void				Update(const Grid::LCellIdI&center,float range, BasicBuffer<UINT32>&outNewDiscoveries);
+		void				Update(const Grid::LCellIdI&center,float range, Ctr::BasicBuffer<UINT32>&outNewDiscoveries);
 
 		
 		/**
@@ -66,7 +66,7 @@ namespace Grid
 		static float			probability[],density[];
 		static coverage_t		maximum[];
 
-		static Buffer0<Resource>all;
+		static Ctr::Buffer0<Resource>all;
 		static void				Create(const String&name, ConstName cname, const float3&color, index_t);
 		static Resource&		Require(const String&name);
 		static Resource&		Require(ConstName name);
@@ -80,10 +80,10 @@ namespace Grid
 		{}
 		void					Name(const String&name, ConstName cname, const float3&color)	{this->name = name; this->cname = cname; this->color = color;}
 		
-		void					FillInternal(Random&random, float p, coverage_t, float density);
-		void					FillInternal(Random&random);
+		void					FillInternal(TwisterRandom&random, float p, coverage_t, float density);
+		void					FillInternal(TwisterRandom&random);
 
-		static void				FillAll(Random&random, const String&distribution);
+		static void				FillAll(TwisterRandom&random, const String&distribution);
 
 		const String&			GetName() const {return name;}
 		ConstName				GetCName() const {return cname;}
@@ -95,7 +95,7 @@ namespace Grid
 
 	void					CreateResources();
 	#ifdef CLIENT
-		void				UpdateResourceMap(ConstName resourceName,const ArrayData<TCellResourceCoverage>&, ResourceDiscovery&setKnown);
+		void				UpdateResourceMap(ConstName resourceName,const Ctr::ArrayData<TCellResourceCoverage>&, ResourceDiscovery&setKnown);
 	#endif
 }
 

@@ -38,14 +38,14 @@ namespace World
 			d.timestamp = t;
 		}
 		numDeltas = BaseGrid::NumFamilies;
-		delta[numDeltas-1].familyAndLastFlag.value |= 0x80;
+		delta[numDeltas-1].familyAndLastFlag |= 0x80;
 	}
 
 
 	bool					DeltaContainer::Process(World::Data&clientData,bool noDelta/*=false*/)
 	{
 		numDeltas = 0;
-		Array<Grid::CellStack::TTypeDeltaBlock>	blocks;
+		Ctr::Array<Grid::CellStack::TTypeDeltaBlock>	blocks;
 			
 		float t = 0;
 		const bool rightNow = RuntimeConfig::IsInAnyCommandPhase();
@@ -65,7 +65,7 @@ namespace World
 			if (!rightNow)
 				for (index_t i = 0; i < numDeltas; i++)
 					delta[i].timestamp.atTime = t;
-			delta[numDeltas-1].familyAndLastFlag.value |= 0x80;
+			delta[numDeltas-1].familyAndLastFlag |= 0x80;
 
 			return true;
 		}
@@ -115,12 +115,12 @@ namespace World
 		{
 			static Protocol::WorldDelta	delta;
 			delta.timestamp.atTime = 0;
-			if (faction->knownWorld.ProgressiveUpdate(familyId,delta.data0,delta.timestamp.atTime.value))
+			if (faction->knownWorld.ProgressiveUpdate(familyId,delta.data0,delta.timestamp.atTime))
 			{
 				delta.timestamp.rightNow = rightNow;
 				delta.familyAndLastFlag = familyId;
 				if (last)
-					delta.familyAndLastFlag.value |= 0x80;
+					delta.familyAndLastFlag |= 0x80;
 
 				::Network::PClient client;
 				if (::Network::playerMap.Query(faction,client))
@@ -179,9 +179,9 @@ namespace World
 			{
 				BYTE	volumeCell[Grid::CellStack::Range];
 			};
-			static Array<TStack>	tempStacks;
+			static Ctr::Array<TStack>	tempStacks;
 			tempStacks.SetSize(Grid::HighSetup::GridType::CellCount);
-			for (index_t i = 0; i < Grid::HighSetup::GridType::CellCount; i++)
+			for (UINT32 i = 0; i < Grid::HighSetup::GridType::CellCount; i++)
 			{
 				TStack&target = tempStacks[i];
 				const Grid::CellStack&source = World::actual.GetStack(i);
@@ -191,7 +191,7 @@ namespace World
 
 			BaseGrid::FamiliesChanged changed;
 
-			Concurrency::parallel_for(index_t(0),Grid::HighSetup::GridType::CellCount,[&changed](index_t stackIndex)
+			Concurrency::parallel_for(UINT32(0),Grid::HighSetup::GridType::CellCount,[&changed](UINT32 stackIndex)
 			{
 				const Grid::CellStack&stack = World::actual.GetStack(stackIndex);
 				const Grid::CellStack*nStacks[6] = {nullptr};
@@ -232,9 +232,9 @@ namespace World
 			auto seq = World::actual.BeginChangeSequence(0);
 			foreach (changed,ch)
 			{
-				index_t offset = Grid::high.grid.GetFamilyOffset(*ch);
+				UINT32 offset = Grid::high.grid.GetFamilyOffset(*ch);
 				count_t cnt = Grid::high.grid.CountFamilyMembers(*ch);
-				for (index_t k = offset; k < offset+cnt; k++)
+				for (UINT32 k = offset; k < offset+cnt; k++)
 				{
 					auto access = seq.AccessStack(k);
 					Grid::CellStack&target = access.GetStack();
@@ -298,7 +298,7 @@ namespace World
 
 	}
 
-	void			BuildConfiguredWorld(Random&random)
+	void			BuildConfiguredWorld(TwisterRandom&random)
 	{
 		Grid::currentPlanetConfig.RandomizeSeeds(random);
 		Grid::currentPlanetConfig.BuildWorld(World::actual);
@@ -326,14 +326,14 @@ namespace World
 
 	void			BuildConfiguredWorld(UINT32 seed)
 	{
-		Random random(seed);
+		TwisterRandom random(seed);
 		BuildConfiguredWorld(random);
 	}
 
 
 
 
-	index_t			GetFactionStartLocation(Random&random)
+	index_t			GetFactionStartLocation(TwisterRandom&random)
 	{
 		index_t best = InvalidIndex;
 		float bestDist = 0;
@@ -404,7 +404,7 @@ namespace World
 					{
 						Objects::PTurretBase base = e->GetTurretBase();
 						if (base)
-							d2 = sqr(sqrt(d2) - base->turret->horizontalAttackRange(e->owner));
+							d2 = M::sqr(sqrt(d2) - base->turret->horizontalAttackRange(e->owner));
 
 						dist2 = std::min(dist2, d2);
 					}
@@ -423,7 +423,7 @@ namespace World
 				static const float PlacementVariance = 0.1f;	//should not exceed 0.1f
 
 				if (Objects::Faction::all.IsEmpty())
-					dist2 = dist2 > MinimumNexusBaseDistance ? sqr(random.NextFloat(1,2)) : 0.f;	//0 should imply to not take this location
+					dist2 = dist2 > MinimumNexusBaseDistance ? M::sqr(random.NextFloat(1,2)) : 0.f;	//0 should imply to not take this location
 				else
 					dist2 *= pow(1.f - PlacementVariance,random.NextFloat(-1,1));	//vary randomly
 
@@ -490,7 +490,7 @@ namespace World
 	}
 
 
-	void		AppendAvailablePlanetInitFilesFrom(bool isFactoryDefault, FileSystem::Folder  folder, Buffer0<TPlanetIniFile,Swap>&outList)
+	void		AppendAvailablePlanetInitFilesFrom(bool isFactoryDefault, FileSystem::Folder  folder, Ctr::Buffer0<TPlanetIniFile,Swap>&outList)
 	{
 		if (!folder.IsValidLocation())
 		{
@@ -520,14 +520,14 @@ namespace World
 	}
 
 
-	void		GetAvailablePlanetIniFiles(Array<TPlanetIniFile>&rsOut)
+	void		GetAvailablePlanetIniFiles(Ctr::Array<TPlanetIniFile>&rsOut)
 	{
-		Buffer0<TPlanetIniFile,Swap> files;
+		Ctr::Buffer0<TPlanetIniFile,Swap> files;
 		
 		AppendAvailablePlanetInitFilesFrom(false, RuntimeConfig::ConfigFile("config/myPlanets"),files);
 		AppendAvailablePlanetInitFilesFrom(true,FileSystem::Folder().FindFolder("config/myPlanets"),files);
 
-		GenericHashTable<String,TPlanetIniFile,StdHash,Swap,Swap>	merged;
+		Ctr::GenericHashTable<String,TPlanetIniFile,Ctr::StdHash,Swap,Swap>	merged;
 		foreach (files,f)
 		{
 			
@@ -545,13 +545,13 @@ namespace World
 
 		merged.exportTo(rsOut);
 
-		ByOperator::QuickSort(rsOut);
+		Sorting::ByOperator::QuickSort(rsOut);
 	}
 
 
-	void			GetAvailablePlanetNames(Array<String>&rsOut)
+	void			GetAvailablePlanetNames(Ctr::Array<String>&rsOut)
 	{
-		Array<TPlanetIniFile>	files;
+		Ctr::Array<TPlanetIniFile>	files;
 		GetAvailablePlanetIniFiles(files);
 		rsOut.SetSize(files.Count());
 		for (index_t i = 0; i < files.Count(); i++)

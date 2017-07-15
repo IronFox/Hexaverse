@@ -220,7 +220,7 @@ namespace Objects
 
 	}
 
-	OpenAL::Wave	Renderer::GetAmbientSound(const WorldEntity&e)
+	Engine::OpenAL::Wave	Renderer::GetAmbientSound(const WorldEntity&e)
 	{
 		if (e.IsVehicle())
 			return ((const Vehicle&)e).base->ambientSound;
@@ -228,14 +228,14 @@ namespace Objects
 	}
 
 
-	OpenAL::WaveBuffer	Renderer::GetAmbientSoundOf(const String&entityTypeName, ConstName _entityType)
+	Engine::OpenAL::WaveBuffer	Renderer::GetAmbientSoundOf(const String&entityTypeName, ConstName _entityType)
 	{
 		index_t key = (index_t)_entityType;
-		static IndexTable<OpenAL::Wave>	waveTable;
-		OpenAL::WaveBuffer result;
+		static IndexTable<Engine::OpenAL::Wave>	waveTable;
+		Engine::OpenAL::WaveBuffer result;
 		if (waveTable.Query(key,result))
 			return result;
-		result = OpenAL::Load("resources/objectSounds/"+entityTypeName+".wav");
+		result = Engine::OpenAL::Load("resources/objectSounds/"+entityTypeName+".wav");
 		waveTable.Set(key,result);	//don't care if it's empty
 		return result;
 	}
@@ -407,7 +407,7 @@ namespace Objects
 
 	}
 
-	static	void Load(const ObjectMath::Mesh<TDef<float> >&mesh, DX11::VBO&vbo, DX11::IBO32&ibo)
+	static	void Load(const M::Mesh<TDef<float> >&mesh, DX11::VBO&vbo, DX11::IBO32&ibo)
 	{
 		Geometry geo;
 		for (index_t i = 0; i < mesh.vertex_field.Count(); i++)
@@ -631,13 +631,13 @@ namespace Objects
 		for (int k = 0; k < 4; k++)
 		{
 			{
-				ObjectMath::Mesh<TDef<float> >	mesh;
+				M::Mesh<TDef<float> >	mesh;
 				mesh.buildSphere(20 * (1 << k));
 				Load(mesh, sphere.vbo[k], sphere.ibo[k]);
 
 			}
 			{
-				ObjectMath::Mesh<TDef<float> >	mesh;
+				M::Mesh<TDef<float> >	mesh;
 				mesh.buildCylinder(20 * (1 << k));
 				Load(mesh, cylinder.vbo[k], cylinder.ibo[k]);
 			}

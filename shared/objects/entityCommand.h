@@ -8,8 +8,11 @@
 
 namespace Objects
 {
+
 	namespace Command
 	{
+		using namespace DeltaWorks::Math;
+
 		class Base;
 		class Container;
 
@@ -106,7 +109,7 @@ namespace Objects
 		public:
 			typedef std::pair<int2,PBase>	Member;
 		protected:
-			Buffer0<Member>				members;
+			Ctr::Buffer0<Member>		members;
 			const Container				*parent = nullptr;	//!< Must not access members
 
 		public:
@@ -120,17 +123,20 @@ namespace Objects
 			void			VisitMembers(const FVisitor&visitor, bool force)	const
 			{
 				foreach (members,m)
-					m->second->VisitMembers(visitor,force,Base::coordOffset + baseCoords + m->first);
+					if (m->second)
+						m->second->VisitMembers(visitor,force,Base::coordOffset + baseCoords + m->first);
 			}
 
 			void			Refresh(bool controlEnabled)
 			{
 				foreach (members,m)
-					m->second->Refresh(controlEnabled);
+					if (m->second)
+						m->second->Refresh(controlEnabled);
 			}
 
 			PBase			Add(Base*newCommand)	{ return Add(PBase(newCommand));}
 			PBase			Add(const PBase&newCommand);
+			void			AddSpace();
 			PBase			Add(const int2&coords, bool relativeCoords, Base*newCommand)	{ return Add(coords, relativeCoords, PBase(newCommand));}
 			PBase			Add(const int2&coords, bool relativeCoords, const PBase&newCommand);
 			const Member&	GetLast() const {return members.last();}

@@ -24,7 +24,7 @@ namespace Engine
 		class TextureFont	//! DX11 texture font object usable in combination with the Textout class
 		{
 		public:
-			typedef float (*FOnTag)(const float3&, char, float scaleX, float scaleY);
+			typedef float (*FOnTag)(const M::float3&, char, float scaleX, float scaleY);
 			typedef float (*FTagWidth)(char);
 
 		protected:
@@ -34,13 +34,13 @@ namespace Engine
 				unsigned		width,
 								height,
 								yoffset;
-				Rect<float>		texcoords;
+				M::Rect<float>	texcoords;
 			};
 
 			static const size_t	NumFloatsPerVertex = 8;
-			typedef TVec<float,NumFloatsPerVertex>	TVertex;
+			typedef M::TVec<float,NumFloatsPerVertex>	TVertex;
 			static const size_t MaxStream = 64;
-			float2				pixelOffset;
+			M::float2			pixelOffset;
 
 			TVertex				vertices[MaxStream];
 
@@ -48,12 +48,12 @@ namespace Engine
 			TCharacter				chars[0x100];
 			float					height,
 									scale;
-			ObjectBuffer<float4>	colorBuffer;
+			ObjectBuffer<M::float4>	colorBuffer;
 			StreamVBO				stream;
 			BaseInstructionBlock	instruction;
 			unsigned			at = 0;
 			bool				tagMode = false;
-			TIntRange<char>		tagRange;
+			M::TIntRange<char>	tagRange;
 
 			FOnTag				onTag = nullptr;
 			FTagWidth			tagWidth = nullptr;
@@ -61,7 +61,7 @@ namespace Engine
 
 			//TFontState			stateCopy;
 
-			TMatrix4<>			m;
+			M::TMatrix4<>		m;
 
 			//float3				beginAt;
 								
@@ -88,7 +88,7 @@ namespace Engine
 				tagMode = true;
 				this->onTag = onTag;
 				this->tagWidth = tagWidth;
-				this->tagRange = IntRange(tagRangeBegin,tagRangeEnd);
+				this->tagRange = M::IntRange(tagRangeBegin,tagRangeEnd);
 			}
 			void				EndTagMode()
 			{

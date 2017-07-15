@@ -17,14 +17,14 @@
 
 #undef StartService
 
-extern Random random;
+extern TwisterRandom random;
 
 
 namespace Network
 {
-	Buffer<PClient>	activePlayersAndSpectators,spectators;
-	GenericHashTable<Objects::OwnerParameter,PClient,Objects::OwnerHash>	playerMap;
-	GenericHashTable<CryptographicID,Objects::PFaction,CryptographicID>		tokenMap;
+	Ctr::Buffer<PClient>	activePlayersAndSpectators,spectators;
+	Ctr::GenericHashTable<Objects::OwnerParameter,PClient,Objects::OwnerHash>	playerMap;
+	Ctr::GenericHashTable<CryptographicID,Objects::PFaction>		tokenMap;
 
 
 	
@@ -46,7 +46,7 @@ namespace Network
 
 
 
-		class Updater : public ThreadObject
+		class Updater : public Sys::ThreadObject
 		{
 		public:
 			volatile bool	doEnd = false;
@@ -188,9 +188,9 @@ namespace Network
 	}
 
 
-	String						Client::ToString() const
+	String						Client::ConvertToString() const
 	{
-		return (faction ? faction->id.ToString() : (isSpectator ? "[spectator]" : "[no faction]"))+":'"+name+"'";
+		return (faction ? ToString(faction->id) : (isSpectator ? "[spectator]" : "[no faction]"))+":'"+name+"'";
 	}
 
 	bool		Client::CanSee(const Objects::PWorldEntity&e, float t)	const
@@ -217,9 +217,10 @@ namespace Network
 	}
 
 
-	void Client::SendProgressUpdate(bool dead, const String&warningReason)
+	void Client::SendProgressUpdate(const String&warningReason)
 	{
 		Protocol::GameProgress progress;
+		const bool dead = !faction || faction->isDead;
 		progress.gameOver = dead || RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame;
 		progress.gameWon = Game::winner == faction && !!Game::winner;
 		progress.status = RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::None ? "" : FactionStatus(faction);
@@ -234,7 +235,7 @@ namespace Network
 	{
 		SetupServer();
 		StartServer(false);
-		Session::isStarted = true;
+		Session::isStarted = !ConfigurationMode::IsActive();
 
 		InformationProvider::Start(basePort);
 	}
@@ -272,7 +273,7 @@ namespace Network
 		server.InstallChannel(Channels::touchMarker);
 		server.InstallChannel(Channels::changeMyName);
 		server.InstallChannel(Channels::identifyFactionRecv);
-		server.InstallChannel(Channels::selectResearch);
+		server.InstallChannel(Channels::queueResearch);
 		server.InstallChannel(Channels::chatMessage);
 		server.InstallChannel(Channels::planetConfig);
 		server.InstallChannel(Channels::gameConfig);
@@ -402,7 +403,7 @@ namespace Network
 			if (preserveSpectators)
 			{
 				Game::Config::factionSupportFlags = Protocol::GameFlag::SupportSpectatorFactions;
-				Buffer0<TCP::PPeer>	dump;
+				Ctr::Buffer0<TCP::PPeer>	dump;
 				server.VisitAllPeers([&dump](const TCP::PPeer&p)
 				{
 					if (p->userLevel < (UINT32)UserLevel::Spectator)
@@ -477,9 +478,9 @@ namespace Network
 	{
 		
 		if (server.IsOnline())
-			Logging::WriteEvent(EventSignificance::Important,"Server "+Network::serverID.ToString()+"/"+UDPBroadCast::packet.version+" is online.",nullptr,nullptr,Objects::OwnerParameter());
+			Logging::WriteEvent(EventSignificance::Important,"Server "+ToString(Network::serverID)+"/"+UDPBroadCast::packet.version+" is online.",nullptr,nullptr,Objects::OwnerParameter());
 		else
-			Logging::WriteEvent(EventSignificance::Important,"Server "+Network::serverID.ToString()+"/"+UDPBroadCast::packet.version+" is created but offline.",nullptr,nullptr,Objects::OwnerParameter());
+			Logging::WriteEvent(EventSignificance::Important,"Server "+ToString(Network::serverID)+"/"+UDPBroadCast::packet.version+" is created but offline.",nullptr,nullptr,Objects::OwnerParameter());
 
 		FileIO::RefreshWindowTitle();
 
@@ -608,6 +609,11 @@ namespace Network
 
 	bool CanControl(const Client&c, const Objects::WorldEntity&e)
 	{
+		if (!c.faction || c.faction->isDead)
+		{
+			LogEvent(EventClass::Preset::commandRejected,c.peer.lock(),"Unable to comply: Your faction has ended");
+			return false;
+		}
 		if (c.faction != e.owner)
 			return false;
 		if (c.wantNewRound)

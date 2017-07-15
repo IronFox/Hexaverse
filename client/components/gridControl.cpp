@@ -54,7 +54,7 @@ namespace ClientGrid
 					if (e->isOwnedByMe)
 					{
 						float t= 0;
-						e->RegisterSensory(t);
+						e->ReapplySensory(t);
 					}
 				},false);
 			}

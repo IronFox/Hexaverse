@@ -40,7 +40,7 @@ namespace Objects
 
 		#ifndef CLIENT
 
-		/*static*/ Buffer0<PVehicleJob>			BaseJob::allJobPrototypes;
+		/*static*/ Ctr::Buffer0<PVehicleJob>			BaseJob::allJobPrototypes;
 		
 		BaseJob::continue_t BaseJob::Continue(MobileEntity&v, const Grid::LCellIdI&focus, bool isNewRound)
 		{
@@ -603,19 +603,14 @@ namespace Objects
 
 
 		
-		/*virtual override*/	bool			SelfDetonate::Serialize(IWriteStream&outStream, bool exportSize) const 
+		/*virtual override*/	void			SelfDetonate::Serialize(IWriteStream&outStream) const 
 		{
-			return outStream.WritePrimitive(doomsday);
+			outStream.WritePrimitive(doomsday);
 		}
 
-		/*virtual override*/	serial_size_t	SelfDetonate::GetSerialSize(bool exportSize) const 
+		/*virtual override*/	void			SelfDetonate::Deserialize(IReadStream&inStream)
 		{
-			return 1;
-		}
-
-		/*virtual override*/	bool			SelfDetonate::Deserialize(IReadStream&inStream, serial_size_t fixedSize)
-		{
-			return inStream.ReadPrimitive(doomsday);
+			inStream.ReadPrimitive(doomsday);
 		}		
 		
 		/**/					SelfDetonate::SelfDetonate(MobileEntity&v, ConstName p)	
@@ -781,47 +776,34 @@ namespace Objects
 			
 
 
-		/*virtual override*/	bool			Construct::Serialize(IWriteStream&outStream, bool exportSize) const 
+		/*virtual override*/	void			Construct::Serialize(IWriteStream&outStream) const 
 		{
-			return outStream.Write(useID.bytes,(serial_size_t)useID.NumBytes) && constructWhat->GetTypeName().Serialize(outStream,exportSize);
-		}
-
-		/*virtual override*/	serial_size_t	Construct::GetSerialSize(bool exportSize) const 
-		{
-			return (serial_size_t)useID.NumBytes + constructWhat->GetTypeName().GetSerialSize(exportSize);
+			outStream.Write(useID.bytes,(serial_size_t)useID.NumBytes);
+			SerialSync(outStream,constructWhat->GetTypeName());
 		}
 
 
 
-		/*virtual override*/	bool			Construct::Deserialize(IReadStream&inStream, serial_size_t fixedSize)
+		/*virtual override*/	void			Construct::Deserialize(IReadStream&inStream)
 		{
 			String whatName;
 			if (ApplicationInterface::globalVersionOfCurrentFile >= ApplicationInterface::FileVersions::HasUUIDInConstructionJobs)
 			{
-				if (!inStream.Read(useID.bytes,(serial_size_t)useID.NumBytes))
-					return false;
-				if (fixedSize != EmbeddedSize)
-					fixedSize -= useID.NumBytes;
+				inStream.Read(useID.bytes,(serial_size_t)useID.NumBytes);
 			}
 			else
 				useID.Generate();
-			if (!whatName.Deserialize(inStream,fixedSize))
-				return false;
+			SerialSync(inStream,whatName);
 
 			constructWhat = GetPrototypeByName(whatName);
 			if (!constructWhat)
 			{
 				if (whatName == "Artillery Tower" || whatName=="Cannon Tower")
 					constructWhat = GetPrototypeByName(ConstName::Type_LauncherTower);
-				ASSERT1__(constructWhat,whatName);
+				if (!constructWhat)
+					throw Except::Memory::SerializationFault(CLOCATION,"Unable to determine construction type of '"+whatName+"'");
 			}
 			jobAutoCompletion = !!To<Connector>::DynamicCast(constructWhat) ? Autocomplete::Always : Autocomplete::IfSatellite;
-
-			if (constructWhat)
-				this->jobAutoCompletion = !!To<Connector>::DynamicCast(constructWhat) ? Autocomplete::Always : Autocomplete::IfSatellite;
-
-			//!!To<Connector>::DynamicCast(constructWhat);
-			return !!constructWhat;
 		};
 
 		/*virtual override*/ void			Construct::Restart(const MobileEntity&v)
@@ -910,7 +892,7 @@ namespace Objects
 				//	}
 				//	h++;
 
-				//	Array<Grid::HCellIdI> selection(1 + cnt);
+				//	Ctr::Array<Grid::HCellIdI> selection(1 + cnt);
 				//	selection.First() = ground;
 				//	for (int i = 1; i <= cnt; i++)
 				//		selection[i] = ground - i;
@@ -1047,36 +1029,36 @@ namespace Objects
 		}
 
 
-		/*virtual override*/	bool			Sequence::Deserialize(IReadStream&inStream, serial_size_t fixedSize)
+		/*virtual override*/	void			Sequence::Deserialize(IReadStream&inStream)
 		{
 			UINT16 i16;
-			if (fixedSize != EmbeddedSize)
-				fixedSize -= 2 + sizeof(Grid::LCellIdI) + 2;
-			if (!inStream.ReadPrimitive(i16))
-				return false;
+			inStream.ReadPrimitive(i16);
 			mode = (CursorMode)i16;
 
 			if (ApplicationInterface::globalVersionOfCurrentFile == 1035)
 			{
 				bool dead = false;
-				bool success = inStream.ReadPrimitive(lastLocation) && inStream.ReadPrimitive(first)
-					&& inStream.ReadPrimitive(dead)
-					&& Super::Deserialize(inStream,fixedSize);
-//						deadBecause = dead ? "imported" : "";
-				return success;
+				inStream.ReadPrimitive(lastLocation);
+				inStream.ReadPrimitive(first);
+				inStream.ReadPrimitive(dead);
+				Super::Deserialize(inStream);
+				return;
 			}
 			if (ApplicationInterface::globalVersionOfCurrentFile ==1036)
 			{
 				String dummy;
-				return inStream.ReadPrimitive(lastLocation) && inStream.ReadPrimitive(first)
-						&& dummy.Deserialize(inStream,EmbeddedSize)
-						&& Super::Deserialize(inStream,EmbeddedSize);
+				inStream.ReadPrimitive(lastLocation);
+				inStream.ReadPrimitive(first);
+				SerialSync(inStream,dummy);
+				Super::Deserialize(inStream);
+				return;
 			}
 
-			return inStream.ReadPrimitive(lastLocation) && inStream.ReadPrimitive(first)
-					&& Super::Deserialize(inStream,EmbeddedSize);
-				
+			inStream.ReadPrimitive(lastLocation);
+			inStream.ReadPrimitive(first);
+			Super::Deserialize(inStream);
 		}
+
 		bool					Sequence::DoneHere(const World::Data&world,const Grid::LCellIdI&cell, const Grid::LCellIdI&nextCell)	const
 		{
 			switch (mode)

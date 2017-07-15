@@ -3,6 +3,8 @@
 
 #include <global_string.h>
 
+using namespace DeltaWorks;
+
 namespace Objects
 {
 	namespace Component

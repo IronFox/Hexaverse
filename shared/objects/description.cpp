@@ -8,14 +8,16 @@ namespace Objects
 	{
 		if (rawLines.IsNotEmpty() && rawLines.Last().first.trim().IsNotEmpty() && !rawLines.Last().second)
 			rawLines << std::make_pair("",false);
-		isBrief = true;
+		isBrief = !briefLocked;
 	}
 
-	void				Description::MarkBriefEnd()
+	void				Description::MarkBriefEnd(bool permanently /*= false*/)
 	{
 		if (rawLines.IsNotEmpty() && rawLines.Last().first.trim().IsNotEmpty() && rawLines.Last().second)
 			rawLines << std::make_pair("",false);
 		isBrief = false;
+		if (permanently)
+			briefLocked = true;
 	}
 
 	String&				Description::GetLastLine()
@@ -58,7 +60,7 @@ namespace Objects
 				wrappedLines << *l;
 				continue;
 			}
-			Array<String>	split;
+			Ctr::Array<String>	split;
 			wrap(l->first,60,split);
 			foreach (split,s)
 			{

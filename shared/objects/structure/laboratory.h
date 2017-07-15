@@ -9,7 +9,7 @@ namespace Objects
 		typedef WorkingStructureT<Laboratory>	Super;
 		friend class Super;
 
-		Buffer0<WLaboratory>		labNeighbors;
+		Ctr::Buffer0<WLaboratory>	labNeighbors;
 
 
         /**/						Laboratory(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(table,owner, location, atTime)	{};
@@ -54,6 +54,7 @@ namespace Objects
 		//WorkingStructure overrides:
 		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override	{v.level[Resource::Energy] = -EnergyConsumption;}
 		virtual bool				WouldLikeToEnable() const {return true;}
+		virtual bool				IsLaboratory() const override {return true;}
 		#ifndef CLIENT
 			virtual void			Tick(ResourceVector&) override;
 		#endif

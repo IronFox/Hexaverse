@@ -266,7 +266,7 @@ namespace Lua
 		Lua::PProgram p = targetTable.GetProgram();
 		if (!p)
 			return;
-		Array<Lua::Table>	cells(Grid::LowSetup::GridType::CellCount);
+		Ctr::Array<Lua::Table>	cells(Grid::LowSetup::GridType::CellCount);
 		Lua::Table cellTable = p->CreateTable();
 		targetTable.SetField("lowCells",cellTable);
 		for (UINT32 i = 0; i < Grid::LowSetup::GridType::CellCount; i++)

@@ -11,6 +11,7 @@ namespace VisualTerrain
 	namespace Instruction
 	{	
 		namespace DX11 = Engine::DX11;
+		using namespace DeltaWorks;
 
 		enum displayMode_t
 		{
@@ -19,16 +20,16 @@ namespace VisualTerrain
 			SphereColored
 		};
 
-		extern displayMode_t				displayMode;
-		extern DX11::ObjectBuffer<float4>	ParaboloidDirection_Height,SphereDef,SphereColor;
-		extern DX11::ObjectBuffer<float4>	ParaboloidColor_FlatRadius;
+		extern displayMode_t					displayMode;
+		extern DX11::ObjectBuffer<M::float4>	ParaboloidDirection_Height,SphereDef,SphereColor;
+		extern DX11::ObjectBuffer<M::float4>	ParaboloidColor_FlatRadius;
 
 
 		struct THeightMapOrientation
 		{
-			TMatrix4<>	orientation0,
-						orientation1,
-						orientation2;
+			M::TMatrix4<>	orientation0,
+							orientation1,
+							orientation2;
 		};
 
 		static const size_t sTHeightMapOrientation = sizeof(THeightMapOrientation);

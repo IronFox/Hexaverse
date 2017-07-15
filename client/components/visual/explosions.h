@@ -12,10 +12,14 @@
 namespace Explosions
 {
 	namespace DX11 = Engine::DX11;
+	namespace M = DeltaWorks::Math;
+	namespace Container = DeltaWorks::Container;
+
+	using namespace DeltaWorks;
 
 	struct PackedParticle
 	{
-		TVec4<>					positionSize,
+		M::TVec4<>				positionSize,
 								color;
 	};
 
@@ -27,11 +31,11 @@ namespace Explosions
 								z;
 		const static float		BaseTTL;//=0.5f;
 
-		float3					origin,
+		M::float3				origin,
 								inertia,
 								normalizedUp,
 								world;
-		float4					color;
+		M::float4				color;
 
 
 		bool					operator<(const Particle&other) const
@@ -42,13 +46,13 @@ namespace Explosions
 
 
 
-	class Particles : public Buffer<Particle>
+	class Particles : public Container::Vector0<Particle>
 	{
 	public:
-		TVec3<>					particleColor;
+		M::TVec3<>				particleColor;
 
-		/**/					Particles(const TVec3<>&particleColor):particleColor(particleColor)	{}
-		/**/					Particles(float particleColorR, float particleColorG, float particleColorB){Vec::def(particleColor,particleColorR,particleColorG,particleColorB);}
+		/**/					Particles(const M::TVec3<>&particleColor):particleColor(particleColor)	{}
+		/**/					Particles(float particleColorR, float particleColorG, float particleColorB){M::Vec::def(particleColor,particleColorR,particleColorG,particleColorB);}
 
 		void					Update(float delta, Particles*shiftDustTo)
 								{
@@ -83,12 +87,14 @@ namespace Explosions
 										Particle&p = at(i);
 										float relative = p.ttl/p.maxTTL;
 									
-										Vec::mult(p.inertia,clamped(friction+relative,0,1));
-										Vec::mad(p.world,p.inertia,delta);//*clamped(particle->ttl/(particle->max_ttl/2),0,1));
+										M::Vec::mult(p.inertia,M::Clamp01(friction+relative));
+										M::Vec::mad(p.world,p.inertia,delta);//*clamped(particle->ttl/(particle->max_ttl/2),0,1));
 										
-										float3 pdelta = p.world - p.origin;
-										float d = Vec::dot(pdelta,p.normalizedUp);
-										float3 i2 = pdelta - p.normalizedUp * d;
+										using M::sqr;
+
+										M::float3 pdelta = p.world - p.origin;
+										float d = M::Vec::dot(pdelta,p.normalizedUp);
+										M::float3 i2 = pdelta - p.normalizedUp * d;
 										p.inertia += p.normalizedUp * delta*SMOKE_UPDRIFT*5 * (1.f - relative);
 										p.inertia -= i2 * delta * SMOKE_UPDRIFT * 0.3f * relative;// * (1.f - relative);
 
@@ -97,7 +103,7 @@ namespace Explosions
 										p.color.alpha = sqr(relative)*0.1;
 										float r = sqr(sqr(relative));
 										//if (shiftDustTo)
-										Vec::mult(particleColor,r,p.color.rgb);
+										M::Vec::mult(particleColor,r,p.color.rgb);
 											//Vec::def(p.color.rgb,r*particleColor.r,r*particleColor.g,r*particleColor.b);
 										//else
 											//Vec::set(p.color.rgb,0);
@@ -128,17 +134,17 @@ namespace Explosions
 	{
 	public:
 		static DX11::InstructionBlock16		ringInstruction;
-		static DX11::ObjectBuffer<float4>	ringColor;
+		static DX11::ObjectBuffer<M::float4>ringColor;
 
 
 		//Engine::Light				*light_source;
 		float						progress,
 									size,	//=25
 									executionTime;
-		float3						location,
+		M::float3					location,
 									normal1,
 									color;
-		OpenAL::Source				source,auxiliarySources[6];
+		Engine::OpenAL::Source		source,auxiliarySources[6];
 
 		static const float          ParticleSpeed,//=0.7f,
 									SmallerDelay,//=0.1f,
@@ -171,11 +177,11 @@ namespace Explosions
 										normal1.y = (float)rand()/RAND_MAX*2-1;
 										normal1.z = (float)rand()/RAND_MAX*2-1;
 
-										Vec::normalize0(normal1);
+										M::Vec::normalize0(normal1);
 									}
-		void						Create(const TVec3<>&position, float size_, float duration, bool isEMP);
+		void						Create(const M::TVec3<>&position, float size_, float duration, bool isEMP);
 		bool						Update(Particles&particles, float delta);
-		void						RenderRings(const float3&color);
+		void						RenderRings(const M::float3&color);
 	};
 
 
@@ -183,10 +189,11 @@ namespace Explosions
 	//extern EXMP
 	extern DX11::Texture				ringTexture,
 										particleTexture;
-	extern Buffer<Explosion,4,Swap>		explosions;
+	extern Container::Vector0<Explosion,Swappable>	
+										explosions;
 	extern DX11::BaseInstructionBlock	particleInstruction;
 	extern DX11::StreamVBO				particleBuffer;
-	extern OpenAL::Wave					explosionSound,empExplosionSound;
+	extern Engine::OpenAL::Wave			explosionSound,empExplosionSound;
 
 
 	void				Create();
@@ -198,8 +205,8 @@ namespace Explosions
 
 	inline bool			NoneActive() {return explosions.IsEmpty();}
 
-	void				InitExplosion(const TVec3<>&coordinates, bool isEMP, float size=25.f, float duration = 1.3f);
-	void				InitExplosion(const TVec3<>&coordinates, bool isEMP, float size, float duration, const std::function<void()>&onQuarterDone);
+	void				InitExplosion(const M::TVec3<>&coordinates, bool isEMP, float size=25.f, float duration = 1.3f);
+	void				InitExplosion(const M::TVec3<>&coordinates, bool isEMP, float size, float duration, const std::function<void()>&onQuarterDone);
 }
 
 

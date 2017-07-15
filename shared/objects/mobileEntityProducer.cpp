@@ -159,7 +159,7 @@ namespace Objects
 			if (!AwaitsUserInteraction())
 				return PMobileEntity();
 			TChoiceVisualization vis;
-			Buffer0<Choice>	movementChoices;
+			Ctr::Buffer0<Choice>	movementChoices;
 			PMobileEntity production = GetActiveProduction();
 
 

@@ -39,7 +39,7 @@ namespace Objects
 
 	public:
 
-		static Buffer0<PTower>		globalPrototypes;
+		static Ctr::Buffer0<PTower>	globalPrototypes;
 
 		ResourceVector				storage;
 
@@ -82,7 +82,7 @@ namespace Objects
 
 			AttackTask&				AppendTask(const Grid::LCellIdI&attackTarget);
 		#else
-			Queue<AttackTask>		attackQueue;
+			Ctr::Queue<AttackTask>	attackQueue;
 
 
 			void					BeginAttackPhase()	{}
@@ -147,7 +147,7 @@ namespace Objects
 		#endif
 		#ifndef CLIENT
 			virtual void			OnConstructionFinished(float&atTime) override;
-			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
+			virtual bool			DirectTo(CursorMode, Ctr::ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 		#endif
 		//virtual int					GetConstructionCost() const override {return this->GetTable()->constructionCost.getValue(GetResearchState()) + turret->productionCosts(owner);}
 		#ifndef NO_HIBERNATION

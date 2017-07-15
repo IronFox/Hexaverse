@@ -475,7 +475,7 @@ namespace Objects
 			}
 		}
 
-		bool	Vehicle::DirectTo(mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
+		bool	Vehicle::DirectTo(mode_t mode, Ctr::ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
 		{
 			switch (mode)
 			{
@@ -489,7 +489,7 @@ namespace Objects
 					{
 						const Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
 
-						Buffer0<PathNode> path;
+						Ctr::Buffer0<PathNode> path;
 						TWays	possibilities;
 						if (detailedPath)
 						{

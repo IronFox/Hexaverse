@@ -203,7 +203,7 @@
 			float4 color(1,1,1,1);
 			if (info.rightVersion)
 			{
-				text = " "+info.id.ToNiceString()+" / "+host.serverInfo.gameInfo.worldID.value.ToNiceString();
+				text = " "+info.id.ToNiceString()+" / "+host.serverInfo.gameInfo.worldID.ToNiceString();
 				if (info.haveToken)
 					text += " (continue)";
 			}
@@ -216,7 +216,7 @@
 				}
 				else
 				{
-					text = " "+info.id.ToNiceString()+" / "+host.serverInfo.gameInfo.worldID.value.ToNiceString();
+					text = " "+info.id.ToNiceString()+" / "+host.serverInfo.gameInfo.worldID.ToNiceString();
 					text += "\n (Version Mismatch)";
 				}
 			}
@@ -232,7 +232,7 @@
 		bool incompatible = !info.rightVersion || info.protocolIncompatible;
 		{
 			AddTab(p,String(host.serverInfo.gameInfo.numFactionsOnline) + "/" + String(host.serverInfo.gameInfo.numFactionsCreated),incompatible,0.01f,GUI::TAnchor::RelativeToScreen);
-			AddTab(p,host.serverInfo.gameInfo.roundNumber.value.ToString(),incompatible,0.01f,GUI::TAnchor::RelativeToScreen);
+			AddTab(p,host.serverInfo.gameInfo.roundNumber.ToString(),incompatible,0.01f,GUI::TAnchor::RelativeToScreen);
 			PLabel l = AddTab(p,CompileRules(host.serverInfo),incompatible,0.01f,GUI::TAnchor::RelativeToScreen);
 			l->zoom *= 0.9f;
 
@@ -264,7 +264,7 @@
 
 		if (!info.rightVersion && !info.protocolIncompatible)
 		{
-			PLabel label = MakeTabLabel("Server identifies as '"+String(host.serverInfo.hostInfo.value.version)+'\'',0.7f);
+			PLabel label = MakeTabLabel("Server identifies as '"+String(host.serverInfo.hostInfo.version)+'\'',0.7f);
 			label->SetColor(incompatibleColor);
 			label->anchorConfig.Top().SetLastOf(p,0.005f,GUI::TAnchor::RelativeToScreen);
 			p->AddComponent( label );

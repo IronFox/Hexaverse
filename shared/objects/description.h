@@ -3,6 +3,8 @@
 #include <global_string.h>
 #include <container/buffer.h>
 
+using namespace DeltaWorks;
+
 namespace Objects
 {
 	class WrappedDescription;
@@ -15,21 +17,22 @@ namespace Objects
 	{
 	public:
 		typedef std::pair<String, bool>		Line;
-		typedef Buffer0<Line>	Storage;
+		typedef Ctr::Buffer0<Line>	Storage;
 	private:
 		Storage			rawLines;
 		friend class WrappedDescription;
 	public:
 		typedef Storage::const_iterator	const_iterator;
 
-		bool				isBrief=true;
+		bool				isBrief=true,briefLocked=false;
 
 		void				Clear()
 		{
 			rawLines.Clear();
+			briefLocked = false;
 		}
 
-		void				swap(Description&other) {rawLines.swap(other.rawLines);}
+		void				swap(Description&other) {rawLines.swap(other.rawLines); swp(isBrief,other.isBrief); swp(briefLocked,other.briefLocked); }
 		friend void			swap(Description&a, Description&b)	{a.swap(b);}
 
 		bool				IsEmpty() const {return rawLines.IsEmpty();}
@@ -44,7 +47,7 @@ namespace Objects
 		const_iterator		end() const {return rawLines.end();}
 
 		void				BeginBrief();
-		void				MarkBriefEnd();
+		void				MarkBriefEnd(bool permanently = false);
 		String&				GetLastLine();
 		Description&		operator<<(const String&line);
 	};
@@ -60,7 +63,7 @@ namespace Objects
 		Finished (wrapped) lines, ready for visualization.
 		The boolean is true for brief lines, false for extended lines
 		*/
-		Buffer0<std::pair<String, bool> >		wrappedLines;
+		Ctr::Buffer0<std::pair<String, bool> >		wrappedLines;
 
 		/**/				WrappedDescription()	{}
 		/**/				WrappedDescription(const Description&desc);

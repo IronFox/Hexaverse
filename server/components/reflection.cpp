@@ -67,12 +67,12 @@ namespace Reflection
 			{
 				Journal::currentRound.RegisterPersistentVariableChange(false,To<Base>::Cast(shared_from_this()));
 			}
-			lastValue = ToString();
+			lastValue = ConvertToString();
 		};
 
 		void				Base::SetupBase()
 		{
-			lastValue = ToString();
+			lastValue = ConvertToString();
 		}
 
 
@@ -90,7 +90,7 @@ namespace Reflection
 
 			/**/		StringVar(const String&name, Persistence persistence, const String&value, unsigned protection=CLI::EraseProtection) : Super(name,"String",persistence, 1,protection),value(value),defaultValue(value)
 			{}
-			virtual String	ToString()		const	override	{return value;}
+			virtual String	ConvertToString()		const	override	{return value;}
 			virtual	bool	Set(const String&value)	override
 			{
 				if (this->value != value)
@@ -121,7 +121,7 @@ namespace Reflection
 
 			/**/		StringReferenceVar(const String&name, Persistence persistence, String&value, unsigned protection=CLI::EraseProtection) : Super(name,"String",persistence, 1,protection),value(value),defaultValue(value)
 			{}
-			virtual String	ToString()		const	override	{return value;}
+			virtual String	ConvertToString()		const	override	{return value;}
 			virtual	bool	Set(const String&value)	override
 			{
 				if (this->value != value)
@@ -156,7 +156,7 @@ namespace Reflection
 				{
 					defaultValue = reference;
 				}
-				virtual String	ToString()		const	override	{return String(*reference);}
+				virtual String	ConvertToString()		const	override	{return String(*reference);}
 				virtual	bool	Set(const String&value)	override
 				{
 					T old = *reference;
@@ -175,7 +175,7 @@ namespace Reflection
 				}
 				virtual String		GetSupportedValues() const override 
 				{
-					return range.ToString();
+					return ToString(range);
 				}
 
 				virtual void		SetCurrentToDefault() override
@@ -200,7 +200,7 @@ namespace Reflection
 				}
 				
 				/**/			MappedEnumVariable(const String&name, Persistence p, RefT&reference, unsigned protection=CLI::EraseProtection):Super(name,MakeTypeName(),p,1,protection),reference(&reference),defaultValue((RefT)T())	{}
-				virtual String	ToString()		const	override	{return T::Reinterpret(*reference).ToString();}
+				virtual String	ConvertToString()		const	override	{return T::Reinterpret(*reference).ToString();}
 				virtual	bool	Set(const String&value)	override
 				{
 					T temp;
@@ -247,7 +247,7 @@ namespace Reflection
 			public:
 
 				/**/			EnumVariable(const String&name, Persistence p, T&reference, unsigned protection=CLI::EraseProtection):Super(name,p,reference,protection)	{}
-				virtual String	ToString()		const	override	{return reference->ToString();}
+				virtual String	ConvertToString()		const	override	{return reference->ToString();}
 
 				virtual String	GetDefault() const override
 				{
@@ -264,16 +264,16 @@ namespace Reflection
 			String			defaultValue = "true";
 
 			/**/			NexusAIEnabled(const String&name, unsigned protection=CLI::EraseProtection):Super(name, "bool",Persistence::RestoreFromSavegame,1,protection)	{}
-			virtual String	ToString()		const	override	{return String(Game::Config::Nexus::enableAI);}
+			virtual String	ConvertToString()		const	override	{return String(Game::Config::Nexus::enableAI);}
 			virtual	bool	Set(const String&value)	override
 			{
-				String old = ToString();
+				String old = ConvertToString();
 				bool val;
 				bool rs = convert(value.c_str(),val);
 				if (!rs)
 					return false;
 				Game::Config::Nexus::enableAI = val;
-				if (old != ToString())
+				if (old != ConvertToString())
 				{
 					if (Network::SessionIsStarted())
 					{
@@ -296,7 +296,7 @@ namespace Reflection
 			}
 			virtual void		SetCurrentToDefault() override
 			{
-				defaultValue = ToString();
+				defaultValue = ConvertToString();
 			}
 		};
 
@@ -308,12 +308,12 @@ namespace Reflection
 			String			defaultValue = "All";
 
 			/**/			SupportedFactions(const String&name, unsigned protection=CLI::EraseProtection):Super(name, "Flagset",Persistence::RestoreFromSavegame,1,protection)	{}
-			virtual String	ToString()		const	override	{return Game::Config::FactionSupportFlagString();}
+			virtual String	ConvertToString()		const	override	{return Game::Config::FactionSupportFlagString();}
 			virtual	bool	Set(const String&value)	override
 			{
-				String old = ToString();
+				String old = ConvertToString();
 				Game::Config::SetFactionSupportFlagString(value);
-				if (old != ToString())
+				if (old != ConvertToString())
 				{
 					OnChanged();
 				}
@@ -332,7 +332,7 @@ namespace Reflection
 			}
 			virtual void		SetCurrentToDefault() override
 			{
-				defaultValue = ToString();
+				defaultValue = ConvertToString();
 			}
 		};
 
@@ -344,7 +344,7 @@ namespace Reflection
 			bool			defaultValue = true;
 
 			/**/			EMPZones(const String&name, unsigned protection=CLI::EraseProtection):Super(name, "Bool",Persistence::RestoreFromSavegame,1,protection)	{}
-			virtual String	ToString()		const	override	{return String(RuntimeConfig::empZones);}
+			virtual String	ConvertToString()		const	override	{return String(RuntimeConfig::empZones);}
 			virtual	bool	Set(const String&value)	override
 			{
 				bool old = RuntimeConfig::empZones;
@@ -385,7 +385,7 @@ namespace Reflection
 			String			defaultValue = "Cannon, Artillery, Radar";
 
 			/**/			NexusVehicleTurrets(const String&name, unsigned protection=CLI::EraseProtection):Super(name,"Turretset",Persistence::RestoreFromSavegame,1,protection)	{}
-			virtual String	ToString()		const	override
+			virtual String	ConvertToString()		const	override
 			{
 				static StringBuffer buffer;
 				buffer.Clear();
@@ -395,12 +395,12 @@ namespace Reflection
 						buffer << ',';
 					buffer << (*t)->typeName;
 				}
-				return buffer.ToString();
+				return buffer.CopyToString();
 			}
 			virtual	bool	Set(const String&value)	override
 			{
-				String old = ToString();
-				static Array<String>vehicleTurretNames;
+				String old = ConvertToString();
+				static Ctr::Array<String>vehicleTurretNames;
 
 				explode(',', value, vehicleTurretNames);
 				foreach (vehicleTurretNames,t)
@@ -413,7 +413,7 @@ namespace Reflection
 				Game::Config::Nexus::vehicleTurrets.SetSize(vehicleTurretNames.Count());
 				for (index_t i = 0; i < vehicleTurretNames.Count(); i++)
 					Game::Config::Nexus::vehicleTurrets[i] = Objects::Component::GetTurretByName(vehicleTurretNames[i]);
-				if (ToString() != old)
+				if (ConvertToString() != old)
 				{
 					OnChanged();
 				}
@@ -438,7 +438,7 @@ namespace Reflection
 			}
 			virtual void		SetCurrentToDefault() override
 			{
-				defaultValue = ToString();
+				defaultValue = ConvertToString();
 			}
 		};
 
@@ -449,7 +449,7 @@ namespace Reflection
 			bool defaultValue = false;
 
 			/**/			ConfigMode(unsigned protection=CLI::EraseProtection):Super("configMode","bool",Persistence::Temporary,1,protection)	{}
-			virtual String	ToString()		const	override
+			virtual String	ConvertToString()		const	override
 			{
 				return ConfigurationMode::IsActive();
 			}
@@ -497,7 +497,7 @@ namespace Reflection
 
 			/**/			UnitLimit(const String&name, ConstName key, unsigned protection=CLI::EraseProtection):Super(name,"Count16",Persistence::RestoreFromSavegame,1,protection),key(key)
 			{}
-			virtual String	ToString()		const	override	{return String(Get());}
+			virtual String	ConvertToString()		const	override	{return String(Get());}
 			virtual	bool	Set(const String&value)	override
 			{
 				int v;
@@ -534,7 +534,7 @@ namespace Reflection
 
 			/**/			UnitLimitEnabled(const String&name, unsigned protection=CLI::EraseProtection):Super(name,"bool",Persistence::RestoreFromSavegame,1,protection)
 			{}
-			virtual String	ToString()		const	override	{return String(RuntimeConfig::UnitLimits::IsEnabled());}
+			virtual String	ConvertToString()		const	override	{return String(RuntimeConfig::UnitLimits::IsEnabled());}
 			virtual	bool	Set(const String&value)	override
 			{
 				bool enable;
@@ -576,7 +576,7 @@ namespace Reflection
 			UINT32		defaultValue = DefaultFactionsPerEMPZone;
 
 			/**/			FactionsPerEMPZone(const String&name, unsigned protection=CLI::EraseProtection):Super(name, "UInt32",Persistence::RestoreFromSavegame,1,protection)	{}
-			virtual String	ToString()		const	override	{return String(Game::Config::factionsPerZone);}
+			virtual String	ConvertToString()		const	override	{return String(Game::Config::factionsPerZone);}
 			virtual	bool	Set(const String&value)	override
 			{
 				UINT32 old = Game::Config::factionsPerZone;
@@ -717,7 +717,7 @@ namespace Reflection
 			Network::PClient client;
 			if (Network::playerMap.Query(faction,client))
 			{
-				client->SendProgressUpdate(true, "");
+				client->SendProgressUpdate("");
 			}
 		}
 
@@ -725,7 +725,7 @@ namespace Reflection
 		{
 			Objects::ForeachFaction([](const Objects::PFaction&f)
 			{
-				CLI::println(f->name + " - " + f->id.ToString());
+				CLI::println(f->name + " - " + f->id.ConvertToString());
 			});
 		}
 
@@ -734,7 +734,7 @@ namespace Reflection
 			Objects::ForeachFaction([name](const Objects::PFaction&f)
 			{
 				if (f->name.findIgnoreCase(name))
-					CLI::println(f->name + " - " + f->id.ToString());
+					CLI::println(f->name + " - " + f->id.ConvertToString());
 			});
 		}
 
@@ -765,7 +765,7 @@ namespace Reflection
 			/**/				Name(const Objects::PFaction&f):CLI::Variable("name","String",1,CLI::FullProtection),faction(f)
 			{}
 
-			virtual	String		ToString()			const override	{Objects::PFaction f = faction.lock(); if (f) return f->name; return "<null>";}
+			virtual	String		ConvertToString()			const override	{Objects::PFaction f = faction.lock(); if (f) return f->name; return "<null>";}
 			virtual	bool		Set(const String&value)	{return false;}
 		};
 
@@ -777,7 +777,7 @@ namespace Reflection
 			/**/				Client(const Objects::PFaction&f):CLI::Variable("client","Network Address",1,CLI::FullProtection),faction(f)
 			{}
 
-			virtual	String		ToString()			const override
+			virtual	String		ConvertToString()			const override
 			{
 				Objects::PFaction f = faction.lock(); 
 				if (!f) 
@@ -834,10 +834,10 @@ namespace Reflection
 				String help = child->inner_content.trim();
 				if (help.IsNotEmpty())
 				{
-					static Array<String>	lines;
+					static Ctr::Array<String>	lines;
 					static StringBuffer		fused;
 					fused.Clear();
-					explodeCallback(isNewline<char>,help,lines);
+					explodeCallback(IsNewline<char>,help,lines);
 					//wrap(help,80,lines);
 					foreach (lines,line)
 					{
@@ -849,7 +849,7 @@ namespace Reflection
 							fused << trimmed;
 						}
 					}
-					//if (fused.ToString().find("The higher, the thinner, sharper and"))
+					//if (fused.ConvertToString().find("The higher, the thinner, sharper and"))
 					//{
 					//	bool brk = true;
 					//}
@@ -1138,10 +1138,10 @@ namespace Reflection
 			if (testMode)
 				Variable::planetType->Set("LushGreen");
 
-			//PathString str = RuntimeConfig::ConfigFile( PathString(ref->base + FOLDER_SLASH + ref->sourceVariable->ToString() + ".ini"));
-			if (!Feed(dir,PathString(ref->base + FOLDER_SLASH + ref->sourceVariable->ToString() + ".ini"),testMode,filterFunction,ref->mode))
+			//PathString str = RuntimeConfig::ConfigFile( PathString(ref->base + FOLDER_SLASH + ref->sourceVariable->ConvertToString() + ".ini"));
+			if (!Feed(dir,PathString(ref->base + FOLDER_SLASH + ref->sourceVariable->ConvertToString() + ".ini"),testMode,filterFunction,ref->mode))
 			{
-				LogEvent(EventSignificance::NonFatalError,"Warning: Failed to load referenced input configuration '"+ref->sourceVariable->ToString()+".ini'");
+				LogEvent(EventSignificance::NonFatalError,"Warning: Failed to load referenced input configuration '"+ref->sourceVariable->ConvertToString()+".ini'");
 				return false;
 			}
 		}
@@ -1262,8 +1262,8 @@ namespace Reflection
 			outBuffer <<'.'<<nl;
 		}
 
-		static Array<String>	lines;
-		wrap(outBuffer.ToString(),80,lines);
+		static Ctr::Array<String>	lines;
+		wrap(outBuffer.CopyToString(),80,lines);
 		foreach (lines,line)
 		{
 			String trimmed = line->trim();
@@ -1284,7 +1284,7 @@ namespace Reflection
 				continue;
 			WriteHelp(outFile,var,indent,var->name+": ");
 			WriteIndent(outFile,indent);
-			outFile << var->name << '='<<var->ToString() << nl;
+			outFile << var->name << '='<<var->ConvertToString() << nl;
 		}
 		for (const auto&dir : folder->folders)
 		{

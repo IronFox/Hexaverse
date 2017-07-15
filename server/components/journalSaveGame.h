@@ -125,7 +125,7 @@ namespace Journal
 				}
 
 			};
-			Buffer0<TEntry,Adopt>	entries;
+			Ctr::Buffer0<TEntry,Adopt>	entries;
 
 			void	Set(const String&key, const T&value)
 			{
@@ -203,7 +203,7 @@ namespace Journal
 				return rs;
 			}
 
-			count_t		GetArray(const String&p, ArrayData<T>&field) const
+			count_t		GetArray(const String&p, Ctr::ArrayData<T>&field) const
 			{
 				count_t cnt = CountMatches(p);
 				field.SetSize(cnt);
@@ -239,8 +239,8 @@ namespace Journal
 		ParameterStore<String>				stringParameters;
 		ParameterStore<Grid::LCellIdI>		locationParameters;
 		ParameterStore<int>					intParameters;
-		ParameterStore<Array<BYTE> >		binaryParameters;
-		Buffer0<Entry,Swap>					children;
+		ParameterStore<Ctr::Array<BYTE> >	binaryParameters;
+		Ctr::Buffer0<Entry,Swap>			children;
 
 		//CONSTRUCT_ENUMERATION22(Type,
 		//	None,
@@ -678,7 +678,7 @@ namespace Journal
 		public:
 			bool			leftClick, detailed, clearSafeTasks;
 			Objects::CursorMode mode;
-			Array<Grid::LCellIdI>	targets;
+			Ctr::Array<Grid::LCellIdI>	targets;
 			
 			virtual void	Decode(const Entry&e) override;
 			virtual Event*	Instantiate() const override {return new DirectToCommand();};
@@ -693,7 +693,7 @@ namespace Journal
 		{
 		public:
 			Riff::TID		jobID;
-			Array<BYTE>		jobPayload;
+			Ctr::Array<BYTE>		jobPayload;
 			Grid::LCellIdI	focus = Grid::LCellIdI::Invalid;
 
 			virtual void	Decode(const Entry&e) override;
@@ -788,13 +788,14 @@ namespace Journal
 			virtual void	Compile(Entry&)	const override;
 		};
 
-		class SelectResearch : public FactionEventT<SelectResearch>
+		class QueueResearch : public FactionEventT<QueueResearch>
 		{
 		public:
 			Objects::PResearchTopic		topic;
+			bool			drop=false;
 			
-			/**/			SelectResearch() {}
-			/**/			SelectResearch(const Objects::PResearchTopic&t) : topic(t) {}
+			/**/			QueueResearch() {}
+			/**/			QueueResearch(const Objects::PResearchTopic&t,bool drop) : topic(t),drop(drop) {}
 			virtual void	Decode(const Entry&e) override;
 			virtual void	Execute(const Objects::PFaction&) const override;
 
@@ -807,9 +808,9 @@ namespace Journal
 		General-purpose storage for round events
 		*/
 		template <typename EventType>
-		class EventStorage : public Buffer0<std::shared_ptr<EventType> >
+		class EventStorage : public Ctr::Buffer0<std::shared_ptr<EventType> >
 		{
-			typedef Buffer0<std::shared_ptr<EventType> >	Super;
+			typedef Ctr::Buffer0<std::shared_ptr<EventType> >	Super;
 		public:
 			index_t				FindLast(const std::type_info&t) const
 			{
@@ -864,7 +865,7 @@ namespace Journal
 		{
 		public:
 			EventStorage<FactionEvent>			factionEvents;
-			GenericHashTable<TUniqueID,EntityStrand,TUniqueID,Copy,Swap>	entityStrands;
+			Ctr::GenericHashTable<TUniqueID,EntityStrand,Ctr::StdHash,Copy,Swap>	entityStrands;
 
 			void			swap(FactionStrand&other)
 			{
@@ -883,7 +884,7 @@ namespace Journal
 		};
 
 
-		GenericHashTable<TUniqueID,FactionStrand,TUniqueID,Copy,Swap>	factionStrands;
+		Ctr::GenericHashTable<TUniqueID,FactionStrand,Ctr::StdHash,Copy,Swap>	factionStrands;
 		EventStorage<GlobalEvent>		globalEvents;
 		
 		RuntimeConfig::RoundNumber		roundNumber;
@@ -899,7 +900,7 @@ namespace Journal
 			swp(evolver,other.evolver);
 
 		}
-		static StringTable<PEvent>	eventMap;
+		static Ctr::StringTable<PEvent>	eventMap;
 		
 		void	Decode(const Entry&roundRootEntry);
 
@@ -910,7 +911,7 @@ namespace Journal
 		*/
 		void	LogFactionCreation(const Objects::PFaction&f, Round::CreateFaction::FactionType type);
 		void	RegisterDropEntityCommands(bool execute, const Objects::PWorldEntity&, Protocol::DropMode);
-		void	RegisterDirectEntityTo(bool execute, const Objects::PWorldEntity&, Objects::CursorMode mode, const ArrayRef<Grid::LCellIdI>&target, bool detailed, bool mouseLeftClick, bool clearSafeTasks);
+		void	RegisterDirectEntityTo(bool execute, const Objects::PWorldEntity&, Objects::CursorMode mode, const Ctr::ArrayRef<Grid::LCellIdI>&target, bool detailed, bool mouseLeftClick, bool clearSafeTasks);
 		void	RegisterChoiceIntersection(bool execute, const Objects::PWorldEntity&,const Grid::LCellIdI&target, Objects::CursorMode mode, const Objects::PWorldEntity&deployingWhat);
 		void	LogJobCommandStart(const Objects::PWorldEntity&, const Objects::VehicleJob::BaseJob&, const Grid::LCellIdI&focus);
 		void	LogFactionOffline(const Objects::PFaction&);
@@ -954,7 +955,7 @@ namespace Journal
 	{
 	public:
 
-		Buffer0<Entry,Swap>	entries;
+		Ctr::Buffer0<Entry,Swap>	entries;
 
 
 		void	Load(const PathString&);

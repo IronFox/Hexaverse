@@ -257,6 +257,18 @@ namespace Objects
 		};
 		typedef std::shared_ptr<ResearchCommand>	PResearchCommand;
 
+		class ResearchAbortCommand : public ResearchCommand
+		{
+			typedef ResearchCommand	Super;
+			const bool		isActive;
+		public:
+			/**/			ResearchAbortCommand(const PResearchTopic&topic, bool isActive):Super(topic),isActive(isActive){};
+
+			virtual void	Execute() override;
+			virtual	void	Refresh(bool controlEnabled) override;
+		};
+		typedef std::shared_ptr<ResearchAbortCommand>	PResearchAbortCommand;
+
 
 		class EntityCommand : public CallbackCommand
 		{
@@ -268,6 +280,7 @@ namespace Objects
 
 			/**/				EntityCommand()	{}
 			/**/				EntityCommand(const String&name, const PWorldEntity&e,   FOnExecute f, FCheck c) : Super(name,f,c),reference(e) {}
+			/**/				EntityCommand(const String&name, const PWorldEntity&e,   FOnExecute f, FCheck c, FGetCosts costs) : Super(name,f,c,costs),reference(e) {}
 			///**/				EntityCommand(const int2&coords, const String&name, const PWorldEntity&e,   FOnExecute f, FCheck c) : Super(name,f,c),reference(e)
 			//{
 			//	SetCoords(coords);
@@ -297,8 +310,8 @@ namespace Objects
 			unsigned			mineralsLeft = 0xFFFFFFFF;
 
 			/**/				EntityConstructionCommand()	{}
-			/**/				EntityConstructionCommand(const String&name, Component::VehicleBase*base, Component::Turret*turret, const PWorldEntity&e,   FOnExecute f, FCheck c) 
-							: Super(name,e,f,c), base(base),turret(turret) {}
+			/**/				EntityConstructionCommand(const String&name, Component::VehicleBase*base, Component::Turret*turret, const PWorldEntity&e,   FOnExecute f, FCheck c, FGetCosts costs=FGetCosts()) 
+							: Super(name,e,f,c,getCosts), base(base),turret(turret) {}
 			///**/				EntityConstructionCommand(const int2&coords, const String&name, Component::VehicleBase*base, Component::Turret*turret, const PWorldEntity&e,   FOnExecute f, FCheck c)
 			//				: Super(name,e,f,c), base(base),turret(turret)
 			//{
@@ -316,6 +329,7 @@ namespace Objects
 					UpdateTexture(base,turret);
 			}
 
+			virtual void		GetCosts(int&costOut, Resource&costTypeOut, int&timeCostOut) override;
 			static void			UpdateTexture(VisualCommand&target, Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor = float4(0));
 			void				UpdateTexture(Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor = float4(0));
 		};
