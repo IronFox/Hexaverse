@@ -1,4 +1,5 @@
 v0.6.5
+	+ Implemented rudimentary loading splash screen.
 	> Idle vehicles will no longer constantly attack indestructible units.
 	> Removed the 'Construct Selected' button on vehicle plants. Simply selecting a desired turret will enqueue the chosen vehicle composition.
 	> Surveyor turret is now much heavier, limiting the speed of the standard surveyor vehicle.

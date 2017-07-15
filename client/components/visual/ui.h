@@ -627,8 +627,8 @@ namespace UI
 		inline int2			GetFocusLocation()
 		{
 			return int2(1,1);
-			//float textWidth = 300.f / display.clientWidth();
-			//return int2(ceil(textWidth * display.pixelAspect() / stepX + 0.37f),1);
+			//float textWidth = 300.f / display.GetClientWidth();
+			//return int2(ceil(textWidth * display.GetPixelAspect() / stepX + 0.37f),1);
 
 		}
 

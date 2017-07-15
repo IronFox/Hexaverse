@@ -2257,7 +2257,7 @@ namespace Objects
 		#endif
 	)
 	{
-		display.pick(shadowCamera);
+		display.Pick(shadowCamera);
 
 			
 		display.ClearTarget(shadowMap);
@@ -2413,7 +2413,7 @@ namespace Objects
 			display.TargetFBO(fbo);
 			display.ClearTarget(fbo,float4(tone.rgb*0.5f,tone.a));//, float4(0,1,0,1));
 
-			display.pick(camera);
+			display.Pick(camera);
 
 			display.StoreRendererState();
 

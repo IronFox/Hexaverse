@@ -453,12 +453,15 @@ namespace Engine
 				void			CreateFromStructs(const ArrayData<T>&data, BufferAccess access = BufferAccess::Immutable) {CreateFromStructs(data.pointer(),data.length(),access);}
 			template <typename T>
 				void			CreateFromStructs(const BasicBuffer<T>&data, BufferAccess access = BufferAccess::Immutable) {CreateFromStructs(data.pointer(),data.length(),access);}
+			template <typename T>
+				void			CreateFromStructs(const std::initializer_list<T>&data, BufferAccess access = BufferAccess::Immutable)	{CreateFromStructs(&*data.begin(),data.size(),access);}
 			template <typename T0>
 				void			UpdateStructs(const T0*data, count_t numStructs) {Super::Update((const void*)data,numStructs * sizeof(T0));}
 			template <typename T0>
 				void			UpdateStructs(const ArrayData<T0>&data) {UpdateStructs(data.pointer(),data.length());}
 			template <typename T0>
 				void			UpdateStructs(const BasicBuffer<T0>&data) {UpdateStructs(data.pointer(),data.length());}
+
 
 			void				swap(VBO&other)	{Super::swap(other); std::swap(vertexCount,other.vertexCount);}
 
@@ -479,9 +482,10 @@ namespace Engine
 			{
 				typedef TypedBuffer<T>	Super;
 			public:
-				void				Create(const T*data, count_t numEntries, BufferAccess access = BufferAccess::Immutable)	{Super::Create(data,sizeof(T)*numEntries,numEntries,access,D3D11_BIND_INDEX_BUFFER);}
-				void				Create(const ArrayData<T>&data, BufferAccess access = BufferAccess::Immutable)	{Create(data.pointer(),data.length(),access);}
-				void				Create(const BasicBuffer<T>&data, BufferAccess access = BufferAccess::Immutable)	{Create(data.pointer(),data.length(),access);}
+				void			Create(const T*data, count_t numEntries, BufferAccess access = BufferAccess::Immutable)	{Super::Create(data,sizeof(T)*numEntries,numEntries,access,D3D11_BIND_INDEX_BUFFER);}
+				void			Create(const ArrayRef<T>&data, BufferAccess access = BufferAccess::Immutable)	{Create(data.pointer(),data.length(),access);}
+				void			Create(const BasicBuffer<T>&data, BufferAccess access = BufferAccess::Immutable)	{Create(data.pointer(),data.length(),access);}
+				void			Create(const std::initializer_list<T>&data, BufferAccess access = BufferAccess::Immutable)	{Create(&*data.begin(),data.size(),access);}
 			};
 
 		typedef IBO<UINT16>	IBO16;
@@ -1018,7 +1022,7 @@ namespace Engine
 		//static void						capture(Image&target);																			//!< Copies the current visible image to the specified image
 		//static			void						capture(FloatImage&target);																			//!< Copies the current visible image to the specified image
 		//static			void						capture(Texture&target, unsigned width, unsigned height);										//!< Captures the current back buffer content to the specified texture
-		//static			void						captureDepth(Texture&target, unsigned width, unsigned height);									//!< Captures the current back buffer depth content to the specified texture
+		//static			void						CaptureDepth(Texture&target, unsigned width, unsigned height);									//!< Captures the current back buffer depth content to the specified texture
 
 		/**/						DirectX11();
 

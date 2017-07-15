@@ -129,7 +129,7 @@ namespace VisualTerrain
 						float a = float(j) / float(Resolution) * 2.f * M_PIF;
 				
 						TVec3<> p;
-						Mat::transform(system,float3(cos(a)*r,sin(a)*r,0.f),p);
+						Mat::Transform(system,float3(cos(a)*r,sin(a)*r,0.f),p);
 						//Vec::center(cell.cornerVertex[j].xyz,cell.centerVertex.xyz,p);
 						Vec::normalize(p);
 						mesh << ResourceVertex(float4(p,1.f),h,p,float4(color,level),1.f);
@@ -143,7 +143,7 @@ namespace VisualTerrain
 						{
 							float a = float(j) / float(Resolution) * 2.f * M_PIF;
 							TVec3<> p;
-							Mat::transform(system,float3(cos(a)*r,sin(a)*r,0.f),p);
+							Mat::Transform(system,float3(cos(a)*r,sin(a)*r,0.f),p);
 							//Vec::center(cell.cornerVertex[j].xyz,cell.centerVertex.xyz,p);
 							Vec::normalize(p);
 							float3 n = (p - cell.centerVertex.xyz).Normalized();
@@ -176,7 +176,7 @@ namespace VisualTerrain
 						float a = float(j) / float(Resolution) * 2.f * M_PIF;
 				
 						TVec3<> p;
-						Mat::transform(system,float3(cos(a)*r,sin(a)*r,0.f),p);
+						Mat::Transform(system,float3(cos(a)*r,sin(a)*r,0.f),p);
 						//Vec::center(cell.cornerVertex[j].xyz,cell.centerVertex.xyz,p);
 						Vec::normalize(p);
 						mesh << ResourceVertex(float4(p,1.f),h2,p,float4(color,level),1.f);
@@ -190,7 +190,7 @@ namespace VisualTerrain
 						{
 							float a = float(j) / float(Resolution) * 2.f * M_PIF;
 							TVec3<> p;
-							Mat::transform(system,float3(cos(a)*r,sin(a)*r,0.f),p);
+							Mat::Transform(system,float3(cos(a)*r,sin(a)*r,0.f),p);
 							//Vec::center(cell.cornerVertex[j].xyz,cell.centerVertex.xyz,p);
 							Vec::normalize(p);
 							float3 n = (p - cell.centerVertex.xyz).Normalized();
@@ -222,7 +222,7 @@ namespace VisualTerrain
 					float a = float(j) / float(Resolution) * 2.f * M_PIF;
 				
 					TVec3<> p;
-					Mat::transform(system,float3(cos(a)*r,sin(a)*r,0.f),p);
+					Mat::Transform(system,float3(cos(a)*r,sin(a)*r,0.f),p);
 					//Vec::center(cell.cornerVertex[j].xyz,cell.centerVertex.xyz,p);
 					Vec::normalize(p);
 					mesh << ResourceVertex(float4(p,1.f),h2,p,float4(color,level),1.f);
@@ -236,7 +236,7 @@ namespace VisualTerrain
 					{
 						float a = float(j) / float(Resolution) * 2.f * M_PIF;
 						TVec3<> p;
-						Mat::transform(system,float3(cos(a)*r,sin(a)*r,0.f),p);
+						Mat::Transform(system,float3(cos(a)*r,sin(a)*r,0.f),p);
 						//Vec::center(cell.cornerVertex[j].xyz,cell.centerVertex.xyz,p);
 						Vec::normalize(p);
 						float3 n = (p - cell.centerVertex.xyz).Normalized();

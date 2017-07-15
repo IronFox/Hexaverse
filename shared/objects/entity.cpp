@@ -92,7 +92,7 @@ namespace Objects
 		bool				WorldEntity::TestIntersection(const Geometry&geo, const TVec3<>&_b, const TVec3<>&_d, float & distance) const
 		{
 			TVec3<> b,d;//,test;
-			Mat::transform(inverse,_b,b);
+			Mat::Transform(inverse,_b,b);
 			Mat::rotate(inverse,_d,d);
 			//Vec::normalize0(d);
 			return geo.TestIntersection(b,d,distance);

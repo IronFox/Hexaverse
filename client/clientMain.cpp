@@ -66,6 +66,7 @@
 #include "components/animation.h"
 #include "components/cameraControl.h"
 #include "components/clientEvents.h"
+#include "components/loading.h"
 
 #include "rc/Resource.h"
 
@@ -644,8 +645,8 @@ namespace ApplicationInterface
 
 	bool	IsFullScreen()
 	{
-		Resolution screen = display.getScreenSize();
-		return display.clientSize() == screen;
+		Resolution screen = display.GetScreenSize();
+		return display.GetClientSize() == screen;
 	}
 
 
@@ -656,14 +657,15 @@ namespace ApplicationInterface
 		static bool storedIsMaximized = false;
 		if (isFull == IsFullScreen())
 			return;
-		Resolution screen = display.getScreenSize();
+		Resolution screen = display.GetScreenSize();
 		if (!isFull)
 		{
 			//is fullscreen => restore
 
-			display.resizeWindow(screen.width,screen.height,Engine::DisplayConfig::ResizableBorder);
+			display.SetBorderStyle(Engine::DisplayConfig::ResizableBorder);
+			display.ResizeWindow(screen.width,screen.height);
 			if (hasAnyStored)
-				display.locateWindow(stored);
+				display.PositionWindow(stored);
 			if (storedIsMaximized)
 				display.Maximize();
 
@@ -682,15 +684,15 @@ namespace ApplicationInterface
 			//is not fullscreen => enter fullscreen
 			if (!display.IsMaximized())
 			{
-				stored = display.windowLocation();
+				stored = display.GetWindowLocation();
 				hasAnyStored = true;
 				storedIsMaximized = false;
 			}
 			else
 				storedIsMaximized = true;//leave stored as is
-			display.locateWindow(0,0,screen.width,screen.height);
-			display.resizeWindow(screen.width,screen.height,Engine::DisplayConfig::NoBorder);
-			display.locateWindow(0,0,screen.width,screen.height);
+			//display.PositionWindow(0,0,screen.width,screen.height);
+			display.SetBorderStyle(Engine::DisplayConfig::NoBorder);
+			display.PositionWindow(0,0,screen.width,screen.height);
 
 
 			::SetWindowPos(Engine::context.getWindow(),       // handle to window
@@ -1766,7 +1768,7 @@ bool loop()
 			}
 		}
 
-		display.pick(Camera::scene);
+		display.Pick(Camera::scene);
 		static Engine::Frustum<> frustum;
 		Camera::scene.GetFrustum(frustum);
 
@@ -1964,7 +1966,7 @@ bool loop()
 		//}
 		//#endif
 
-		display.pick(Camera::hud);
+		display.Pick(Camera::hud);
 			display.SetRasterizer(true,false);
 			display.SetDepthTest(false,false);
 			display.SetBlendMode(Engine::BlendMode::AlphaBlend);
@@ -2059,7 +2061,7 @@ bool loop()
 
 				textout.PushState();
 				textout.Scale(eventFontScale,eventFontScale);
-				textout.MoveTo(0.0f, 280.f/display.clientHeight() + historyHeight);
+				textout.MoveTo(0.0f, 280.f/display.GetClientHeight() + historyHeight);
 				for (index_t i = events.Count() - rows; i < events.Count(); i++)
 					//if (events[i].stackID < 10)
 					{
@@ -2157,11 +2159,11 @@ bool loop()
 		
 		
 			UI::RenderCommands();
-			display.pick(Camera::hud);
+			display.Pick(Camera::hud);
 			GUI::RenderNonModal();
 
 			UI::RenderHint();
-			display.pick(Camera::hud);
+			display.Pick(Camera::hud);
 			GUI::RenderModal();
 
 
@@ -2216,10 +2218,10 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 	void	onWindowResize(const Resolution&, UINT32)
 	{
-		Camera::scene.UpdateProjection2(display.pixelAspect(),0.1f,1000.f);
-	//	textout.SetScale(1.f/display.clientWidth(),1.f/display.clientHeight());
+		Camera::scene.UpdateProjection2(display.GetPixelAspect(),0.1f,1000.f);
+	//	textout.SetScale(1.f/display.GetClientWidth(),1.f/display.GetClientHeight());
 
-		textout.SetScale(1.f / display.clientWidth(), 1.f / display.clientHeight());
+		textout.SetScale(1.f / display.GetClientWidth(), 1.f / display.GetClientHeight());
 
 		UI::OnWindowResize();
 		GUI::OnWindowResize();
@@ -3669,7 +3671,7 @@ int main( int argc, const char* argv[])
 
 
 
-		
+		Loading::Begin();
 		
 		//display.create(Engine::DisplayConfig("TerraLab");
 
@@ -3686,194 +3688,196 @@ int main( int argc, const char* argv[])
 				,Resolution(1280,800),onWindowResize
 				,Engine::DisplayConfig::Icon(IDI_CLIENT)
 				 );
-
-			display.ScanShaderHeader("shaders");
-
-
-			textout.GetActiveFont()->LoadFromFile("Font/font.xml");
-
-
-			LineRenderer::Create();
-			SurfaceRenderer::Create();
-
-			//Engine::input.Bind(Key::Up, Camera::Event::ZoomIn);
-			//Engine::input.Bind(Key::Down, Camera::Event::ZoomOut);
-
-			Engine::input.Bind(Key::Shift, Objects::SignalShiftPressed, Objects::SignalShiftReleased);
-
-			Engine::input.Bind(Key::Left, SelectAndFocusPrev);
-			Engine::input.Bind(Key::Right, SelectAndFocusNext);
-			Engine::input.Bind(Key::Space, SelectAndFocusNextIdle);
-
-			Engine::input.Bind(Key::G, Camera::ToggleOrbit);
-
-			Engine::input.Bind(Key::PageDown, ViewDown);
-			Engine::input.Bind(Key::PageUp, ViewUp);
-
-			Engine::input.Bind(Key::Alt, ResumeBatchConstruction, AbortBatchConstruction);
-			
-
-		//	Engine::input.Bind(Key::PageDown, DeclineCamera);
-			//Engine::input.Bind(Key::PageUp, InclineCamera);
-
-			Engine::input.Bind(Key::Backspace, UndoTask);
-			Engine::input.Bind(Key::Escape, AbortMode);
-			Engine::input.Bind(Key::Enter, SignalRoundEndOrMaximize);
-			Engine::input.Bind(Key::Return, SignalRoundEndOrMaximize);
-			Engine::input.Bind(Key::Tab, UI::ShowSession);
-			Engine::input.Bind(Key::T,[](){}, QueryAndSendChatMessage);
-			Engine::input.Bind(Key::R,Camera::ToggleAutoRotation);
-//			Engine::input.Bind(Key::R,ToggleResourceView);
-			Engine::input.Bind(Key::Ctrl,ToggleSeeThrough);
-
-			Engine::input.Bind(Key::H,ToggleControlGUI);
-
-			Engine::input.BindCtrl(Key::C,ConfigurationMode::OnCopy);
-			Engine::input.BindCtrl(Key::V,ConfigurationMode::OnPaste);
-
-			Engine::input.Bind(Key::MouseButton0, Select, GUI::HandleMouseUp);
-			Engine::input.BindCtrl(Key::MouseButton0, Select);
-			Engine::input.Bind(Key::RightMouseButton, BeginCameraDrag,EndCameraDrag<true>);
-			Engine::input.Bind(Key::MiddleMouseButton, BeginCameraDrag,EndCameraDrag<false>);
-
-			Engine::input.Bind(Key::F4, ToggleCameraLock);
-			Engine::input.Bind(Key::F3, SaveScreenshot);
-			Engine::input.Bind(Key::F2,ToggleTimeLapse);
-
-			#ifdef RAYTRACE
-				Engine::input.Bind(Key::Up,ZoomIn);
-				Engine::input.Bind(Key::Down,ZoomOut);
-			#endif
-
-
-
-
-			Engine::mouse.BindWheel(OnWheel);
-
-			textout.SetScale(1.f/display.clientWidth(),1.f/display.clientHeight());
-
-
 			display.SetBackbufferClearColor(0,0,0,0);
 
-			ProgressBar::Create();
-			Dialog::Create();
+			Loading::SetupDisplay(display);
 
-		#endif
-
-
-		ClientGrid::Create();
-
-		#ifdef HAS_WINDOW
-			Lighting::Create();
-			VisualTerrain::Create();		//egg-chicken
-			Objects::Renderer::Create();	//chicken-egg
-
-			ConfigurationMode::Create();
-			Objects::Command::RefreshCommands(false);
-		#endif
-
-
-
-		#ifdef HAS_WINDOW
-			Objects::CreateComponents();
-
-			Camera::Setup(display.pixelAspect());	//creates a menu item, for which Objects::Create() must have been called
-
-
-			Explosions::Create();
-			Objects::Commands::DefineAll();
-		#endif
-		Animation::Create();
-
-		Network::Setup();
-
-		#ifdef HAS_WINDOW
-			Camera::Create();
-			UI::Create();
-		#endif
-
-
-
-		#ifdef HAS_WINDOW
-
-			mainMenu.reset(new Dialog::Menu(0.25f,"Main"));
-			mainMenu->AddCommand("Change Nickname",LocalApplicationInterface::QueryNickname);
-			mainMenu->AddCommand("Abandon faction",Network::AbandonCurrentFaction,[](){return Network::amOnline && Network::haveFaction;});
-			mainMenu->AddCommand("Disconnect",
-				[]()
-				{
-					Network::client.Disconnect();
-				},
-				[](){return Network::client.IsConnected();});
-			mainMenu->AddCommand("Start Tutorial",
-				[]()
-				{
-					ServerProcess::StartTutorialServer();
-				},
-				[](){return !Network::client.IsConnected() && !Network::client.IsAttemptingToConnect();});
-
-			mainMenu->AddCommand("Quit to Desktop",[](){Dialog::Confirm("Really quit? Any active faction will be preserved server-sided for you to continue later on.",[](){application_shutting_down = true;},[](){return Dialog::CheckResult::OkayContinue;});});
-			mainMenu->FullAutoLayout();
-
-			Dialog::loginMenu->AddCommand("Continue existing faction",[](){Network::AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly);},
-			[]()
-			{
-				return Network::amOnline && !Network::haveFaction 
-				#ifndef _DEBUG
-				&& Network::HaveFactionKeyForCurrentWorld() 
-				#endif
-				&& RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase;
-			}
-			);
-			AddFactionCreationChoice("Spectate",Protocol::FactionType::SpectatorFaction, Protocol::GameFlag::SupportSpectatorFactions);
-			AddFactionCreationChoice("Create new faction",Protocol::FactionType::RegularFaction, Protocol::GameFlag::SupportRegularFactions);
-
-			
-
-
-			if (RuntimeConfig::FromFile::alwaysDay)
-			{
-				TMatrix3<> mat,rot;
-				Mat::makeAxisSystem(float3::reinterpret(Camera::scene.location).Normalized(),2,mat);
-				Mat::BuildRotationMatrix(SunOffAngle, mat.x,rot);
-				Mat::Mult(rot,mat.z,sunDirection);
-			}
-
-
-			Atmosphere::Create();
-			#if !defined HAS_WINDOW || !defined _DEBUG
-				if (RuntimeConfig::aiMode)
-					ShowWindow(Engine::context.getWindow(),SW_MINIMIZE);
-			#endif
+			display.ScanShaderHeader("shaders");
+			textout.GetActiveFont()->LoadFromFile("Font/font.xml");
+			textout.SetScale(1.f/display.GetClientWidth(),1.f/display.GetClientHeight());
 			textout.GetActiveFont()->BeginTagMode(StatePanel::OnTag,StatePanel::TagWidth,
 					Objects::TextoutResourceTagOffset,(char)(Objects::TextoutResourceTagOffset+(char)Objects::Resource::NumberOfPossibilities + 2));
-			Tutorial::Create();
+
+			Loading::SetupText(textout);
 
 
-			//Tutorial::ShowMessage("Welcome",true);
-			//Tutorial::ShowMessage("Tutorials");
-			//Tutorial::ShowMessage("Servers");
+			//now we can print text
 
-
-			{
-				String name;
+			Loading::Stage("Primitive Renderer",
+				[]()
 				{
-					StringFile userName(RuntimeConfig::ConfigFile("userName.txt"));
-					if (userName.IsActive())
-						userName >> name;
-				}
-				if ( Package::NetString<32>::IsValid(name) 
-						&& name.length() > 3 && name.length() <= 16)
+					LineRenderer::Create();
+					SurfaceRenderer::Create();
+				});
+
+			Loading::Stage("Control Bindings",
+				[]()
 				{
-					Network::chosenNickname = name;
-				}
-				else
-				{
-				}
-				LocalApplicationInterface::QueryNicknameIfEmpty();
-			}
+					Engine::input.Bind(Key::Shift, Objects::SignalShiftPressed, Objects::SignalShiftReleased);
+
+					Engine::input.Bind(Key::Left, SelectAndFocusPrev);
+					Engine::input.Bind(Key::Right, SelectAndFocusNext);
+					Engine::input.Bind(Key::Space, SelectAndFocusNextIdle);
+
+					Engine::input.Bind(Key::G, Camera::ToggleOrbit);
+
+					Engine::input.Bind(Key::PageDown, ViewDown);
+					Engine::input.Bind(Key::PageUp, ViewUp);
+
+					Engine::input.Bind(Key::Alt, ResumeBatchConstruction, AbortBatchConstruction);
+
+					Engine::input.Bind(Key::Backspace, UndoTask);
+					Engine::input.Bind(Key::Escape, AbortMode);
+					Engine::input.Bind(Key::Enter, SignalRoundEndOrMaximize);
+					Engine::input.Bind(Key::Return, SignalRoundEndOrMaximize);
+					Engine::input.Bind(Key::Tab, UI::ShowSession);
+					Engine::input.Bind(Key::T,[](){}, QueryAndSendChatMessage);
+					Engine::input.Bind(Key::R,Camera::ToggleAutoRotation);
+		//			Engine::input.Bind(Key::R,ToggleResourceView);
+					Engine::input.Bind(Key::Ctrl,ToggleSeeThrough);
+
+					Engine::input.Bind(Key::H,ToggleControlGUI);
+
+					Engine::input.BindCtrl(Key::C,ConfigurationMode::OnCopy);
+					Engine::input.BindCtrl(Key::V,ConfigurationMode::OnPaste);
+
+					Engine::input.Bind(Key::MouseButton0, Select, GUI::HandleMouseUp);
+					Engine::input.BindCtrl(Key::MouseButton0, Select);
+					Engine::input.Bind(Key::RightMouseButton, BeginCameraDrag,EndCameraDrag<true>);
+					Engine::input.Bind(Key::MiddleMouseButton, BeginCameraDrag,EndCameraDrag<false>);
+
+					Engine::input.Bind(Key::F4, ToggleCameraLock);
+					Engine::input.Bind(Key::F3, SaveScreenshot);
+					Engine::input.Bind(Key::F2,ToggleTimeLapse);
+
+					#ifdef RAYTRACE
+						Engine::input.Bind(Key::Up,ZoomIn);
+						Engine::input.Bind(Key::Down,ZoomOut);
+					#endif
 
 
+
+
+					Engine::mouse.BindWheel(OnWheel);
+				});
+
+			Loading::Stage("Progress Bars",ProgressBar::Create);
+			Loading::Stage("Dialogs",Dialog::Create);
+
+		#endif
+
+		Loading::Stage("Client Grid",ClientGrid::Create);
+
+		#ifdef HAS_WINDOW
+			Loading::Stage("Lighting",Lighting::Create);
+			Loading::Stage("Visual Terrain",VisualTerrain::Create);		//egg-chicken
+			Loading::Stage("Object Rendering", Objects::Renderer::Create);	//chicken-egg
+
+			Loading::Stage("Configuration Mode",
+				[]()
+				{
+					ConfigurationMode::Create();
+					Objects::Command::RefreshCommands(false);
+				});
+
+			Loading::Stage("Object Components", Objects::CreateComponents);
+
+			Loading::Stage("Cameras",[](){Camera::Setup(display.GetPixelAspect());});
+
+
+			Loading::Stage("Explosions", Explosions::Create);
+			Loading::Stage("Object Commands", Objects::Commands::DefineAll);
+			Loading::Stage("UI", UI::Create);
+		#endif
+		Loading::Stage("Animation", Animation::Create);
+		Loading::Stage("Network", Network::Setup);
+
+
+		#ifdef HAS_WINDOW
+
+			Loading::Stage("Main Menu",
+				[]()
+				{
+					mainMenu.reset(new Dialog::Menu(0.25f,"Main"));
+					mainMenu->AddCommand("Change Nickname",LocalApplicationInterface::QueryNickname);
+					mainMenu->AddCommand("Abandon faction",Network::AbandonCurrentFaction,[](){return Network::amOnline && Network::haveFaction;});
+					mainMenu->AddCommand("Disconnect",
+						[]()
+						{
+							Network::client.Disconnect();
+						},
+						[](){return Network::client.IsConnected();});
+					mainMenu->AddCommand("Start Tutorial",
+						[]()
+						{
+							ServerProcess::StartTutorialServer();
+						},
+						[](){return !Network::client.IsConnected() && !Network::client.IsAttemptingToConnect();});
+
+					mainMenu->AddCommand("Quit to Desktop",[](){Dialog::Confirm("Really quit? Any active faction will be preserved server-sided for you to continue later on.",[](){application_shutting_down = true;},[](){return Dialog::CheckResult::OkayContinue;});});
+					mainMenu->FullAutoLayout();
+				});
+
+			Loading::Stage("Login Menu",
+				[]()
+				{
+					Dialog::loginMenu->AddCommand("Continue existing faction",[](){Network::AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly);},
+					[]()
+					{
+						return Network::amOnline && !Network::haveFaction 
+						#ifndef _DEBUG
+						&& Network::HaveFactionKeyForCurrentWorld() 
+						#endif
+						&& RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase;
+					}
+					);
+					AddFactionCreationChoice("Spectate",Protocol::FactionType::SpectatorFaction, Protocol::GameFlag::SupportSpectatorFactions);
+					AddFactionCreationChoice("Create new faction",Protocol::FactionType::RegularFaction, Protocol::GameFlag::SupportRegularFactions);
+				});
+			
+
+			Loading::Stage("Atmosphere",
+				[]()
+				{
+					if (RuntimeConfig::FromFile::alwaysDay)
+					{
+						TMatrix3<> mat,rot;
+						Mat::makeAxisSystem(float3::reinterpret(Camera::scene.location).Normalized(),2,mat);
+						Mat::BuildRotationMatrix(SunOffAngle, mat.x,rot);
+						Mat::Mult(rot,mat.z,sunDirection);
+					}
+
+
+					Atmosphere::Create();
+				});
+
+
+			Loading::Stage("Tutorial",Tutorial::Create);
+
+
+			Loading::Stage("Unit Names",[]()
+				{
+					String name;
+					{
+						StringFile userName(RuntimeConfig::ConfigFile("userName.txt"));
+						if (userName.IsActive())
+							userName >> name;
+					}
+					if ( Package::NetString<32>::IsValid(name) 
+							&& name.length() > 3 && name.length() <= 16)
+					{
+						Network::chosenNickname = name;
+					}
+					else
+					{
+					}
+					LocalApplicationInterface::QueryNicknameIfEmpty();
+				});
+
+
+			Loading::Finish();
+//			textout.SetScale(1.f/display.GetClientWidth(),1.f/display.GetClientHeight());	//apparently can't restore this...
+			
 			if (RuntimeConfig::documentationRootFolder.DoesExist())
 			{
 				{
@@ -3957,10 +3961,11 @@ int main( int argc, const char* argv[])
 			}
 			else
 			{
-				display.assign(loop);
-				display.execute();
+				display.Assign(loop);
+				display.Execute();
 			}
 		#else
+			Loading::Finish();
 			while (!application_shutting_down && loop())
 			{};
 				
@@ -3995,7 +4000,7 @@ int main( int argc, const char* argv[])
 
 		#ifdef HAS_WINDOW
 			storageThread.Terminate();
-			display.destroy();
+			display.Destroy();
 		#endif
 
 		ServerProcess::Destroy();

@@ -362,7 +362,7 @@ namespace Objects
 		float d2 =distance;
 		if (!_oDetectOpticalBoxIntersection(boundingBox,b,d,d2))
 			return false;
-		//Mat::transform(system,b,test);
+		//Mat::Transform(system,b,test);
 		bool rs = false;
 		const auto&lod = GetLOD(CountLODs() - 1);
 		const Vertex*vtx = lod.vertices.pointer();

@@ -95,11 +95,11 @@ namespace GUI
 
 	static UINT ViewPortWidth()
 	{
-		return std::max(100U,display.clientWidth());
+		return std::max(100U,display.GetClientWidth());
 	}
 	static UINT ViewPortHeight()
 	{
-		return std::max(100U,display.clientHeight());
+		return std::max(100U,display.GetClientHeight());
 	}
 
 	static float2 ViewPortSizef()
@@ -486,7 +486,7 @@ namespace GUI
 
 		float left = rect.x.max + TScrollbar::ContentSpacing;
 		float right = left + TScrollbar::Width;
-		float buttonHeight = TScrollbar::Width * display.pixelAspect();
+		float buttonHeight = TScrollbar::Width * display.GetPixelAspect();
 		Rect<> topButton(left,rect.y.max - buttonHeight,right,rect.y.max);
 		Rect<> bottomButton(left,rect.y.min,right,rect.y.min + buttonHeight);
 
@@ -1633,14 +1633,14 @@ namespace GUI
 
 	/*virtual override*/ float	Checkbox::GetIdealWidth() const
 	{
-		float checkBoxWidth = textZoom*zoom * textout.GetScaledHeight() / display.pixelAspect() * 1.5f;
+		float checkBoxWidth = textZoom*zoom * textout.GetScaledHeight() / display.GetPixelAspect() * 1.5f;
 		return Super::GetIdealWidth() + checkBoxWidth;
 	}
 
 
 	/*virtual override*/ bool	Checkbox::UpdateHeight()
 	{
-		float checkBoxWidth = textZoom*zoom * textout.GetScaledHeight() / display.pixelAspect() * 1.5f;
+		float checkBoxWidth = textZoom*zoom * textout.GetScaledHeight() / display.GetPixelAspect() * 1.5f;
 		return Super::UpdateHeight(FloatRange(rect.x.min + checkBoxWidth,rect.x.max ));
 	}
 
@@ -1651,7 +1651,7 @@ namespace GUI
 		Super::RenderText(lit);
 		SurfaceRenderer::SetColor(lit ? float4(0.7f):float4(0.5f));
 		float checkBoxHeight = textZoom*zoom * textout.GetScaledHeight();
-		float checkBoxWidth = checkBoxHeight / display.pixelAspect();
+		float checkBoxWidth = checkBoxHeight / display.GetPixelAspect();
 		float top = rect.y.center() + checkBoxHeight*0.7f;// Super::extraSpacing * checkBoxHeight;
 		TFloatRect box = TFloatRect(rect.x.min,top - checkBoxHeight,rect.x.min+checkBoxWidth,top);
 		SurfaceRenderer::Rasterize(box);

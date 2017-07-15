@@ -214,8 +214,10 @@ namespace Camera
 		}
 	}
 
+	void							ProgressRotation();
 
-	void Setup(float pixelAspect)
+
+	void							Setup(float pixelAspect)
 	{
 		scene.UpdateProjection2(pixelAspect,0.1f,1000.f);
 
@@ -229,6 +231,9 @@ namespace Camera
 			Objects::GlobalCommand("Show Sky Grid", 
 			&Camera::ToggleOrbit, &Cmd::Check));
 		#endif
+
+		GlobalEvents::frameBegin << ProgressRotation;
+
 	}
 
 
@@ -461,7 +466,6 @@ namespace Camera
 
 	void						Create()
 	{
-		GlobalEvents::frameBegin << ProgressRotation;
 	}
 
 }

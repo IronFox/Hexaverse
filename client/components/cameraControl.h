@@ -111,7 +111,6 @@ namespace Camera
 
 	bool						SkyGridIsVisible();
 
-	void						Create();
 
 	/**
 	Input event handlers

@@ -94,7 +94,7 @@ namespace Objects
 			/**/			CallbackCommand(const String&name, const FOnExecute&exec, const FCheck&check, const FGetCosts&getCosts):Super(name), execute(exec),check(check),getCosts(getCosts)	{}
 			/**/			CallbackCommand(const String&name, const FOnExecute&exec, const FCheck&check):Super(name), execute(exec),check(check)	{}
 
-			virtual void	Execute() override												{execute();}
+			virtual void	Execute() override												{Execute();}
 			virtual	void	Refresh(bool controlEnabled) override							{state = check(controlEnabled);}
 			virtual void	GetCosts(int&costOut, Resource&costTypeOut, int&timeCostOut) override	{if (getCosts) getCosts(costOut,costTypeOut,timeCostOut); else Super::GetCosts(costOut,costTypeOut,timeCostOut);}
 		};

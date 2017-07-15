@@ -1048,7 +1048,7 @@ namespace UI
 				cellCoords += int2(3,1);
 			float x;
 			if (flipX)
-				x = (-1+2.f * display.pixelAspect()) - stepX *2 * cellCoords.x - float(1 - (cellCoords.y % 2)) * stepX;
+				x = (-1+2.f * display.GetPixelAspect()) - stepX *2 * cellCoords.x - float(1 - (cellCoords.y % 2)) * stepX;
 			else
 				x = -1.f + stepX *2 * cellCoords.x + float(1 - (cellCoords.y % 2)) * stepX;
 			float2	rs(x, -1.f + stepY * cellCoords.y);
@@ -1175,7 +1175,7 @@ namespace UI
 			instruction.UpdateLayout();
 			instruction.SetPoints();
 
-			camera.UpdateProjection(-1,-1,-1+2.f * display.pixelAspect(),1,-1,1);
+			camera.UpdateProjection(-1,-1,-1+2.f * display.GetPixelAspect(),1,-1,1);
 			camera.depthTest = Engine::NoDepthTest;
 
 			friendlyGroups.Create();
@@ -1195,9 +1195,9 @@ namespace UI
 		void						OnWindowResize()
 		{
 			barProjectionCamera.region.x.max = 0.9f;
-			//1.f / display.pixelAspect();
+			//1.f / display.GetPixelAspect();
 
-			camera.UpdateProjection(-1,-1,-1+2.f * display.pixelAspect(),1,-1,1);
+			camera.UpdateProjection(-1,-1,-1+2.f * display.GetPixelAspect(),1,-1,1);
 			foreach (allGuiCells,cell)
 				cell->Update(camera);
 			RefreshContacts();
@@ -1282,8 +1282,8 @@ namespace UI
 			bool stationary = stationaryCounter > 0.25f;
 			bool extStationary = stationaryCounter > 1.5f;
 
-			camera.UpdateProjection2(-1,-1,-1+2.f * display.pixelAspect(),1,-1,1);
-			display.pick(camera);
+			camera.UpdateProjection2(-1,-1,-1+2.f * display.GetPixelAspect(),1,-1,1);
+			display.Pick(camera);
 
 			display.SetRasterizer(true,false);
 			display.SetDepthTest(false,false);
@@ -1366,7 +1366,7 @@ namespace UI
 			if (hoveringOver)
 			{
 				//tooltips
-				display.pick(UI::textoutCamera);
+				display.Pick(UI::textoutCamera);
 
 				textout.PushState();
 				float2 base = Engine::mouse.location.windowRelative * 2.f - 1.f;
@@ -1441,7 +1441,7 @@ namespace UI
 
 			//static Engine::Aspect<> aspect;
 			//aspect.depthTest = Engine::VisualEnum::NoDepthTest;
-			//display.pick(aspect);
+			//display.Pick(aspect);
 			//SurfaceRenderer::SetColor(float4(1,0,0,0.4));
 			//foreach (activeCells,c)
 			//{
@@ -1505,9 +1505,9 @@ namespace UI
 			if (!showControlsAndContacts)
 				return;
 			//this is off:
-			//currentContactListWidth = std::max(1, int((display.pixelAspect()-0.67f)*15));
-			const float viewPortRange = 2.f * display.pixelAspect();
-			const float screenRelativeRightPanel = 300.f / display.clientWidth();
+			//currentContactListWidth = std::max(1, int((display.GetPixelAspect()-0.67f)*15));
+			const float viewPortRange = 2.f * display.GetPixelAspect();
+			const float screenRelativeRightPanel = 300.f / display.GetClientWidth();
 			const float inViewPortRange = screenRelativeRightPanel * viewPortRange;
 			const int hexOffset = 5;
 			const float leftOffset = stepX *2 * hexOffset + float(1 - (hexOffset % 2)) * stepX;
@@ -1516,8 +1516,8 @@ namespace UI
 			currentContactListWidth = iconRange-2;
 
 
-			//camera.UpdateProjection2(-1,-1,-1+2.f * display.pixelAspect(),1,-1,1);
-			float len = 300.f / display.clientWidth();
+			//camera.UpdateProjection2(-1,-1,-1+2.f * display.GetPixelAspect(),1,-1,1);
+			float len = 300.f / display.GetClientWidth();
 			textout.MoveTo(1.f - len,0.95f);
 
 
@@ -1643,7 +1643,7 @@ namespace UI
 		barProjectionCamera.UpdateView();
 		barProjectionCamera.UpdateProjection2(1.f,0.1f,1000,35.f);
 		barProjectionCamera.depthTest = Engine::NoDepthTest;
-		barProjectionCamera.region.x.max = 1.f / display.pixelAspect();
+		barProjectionCamera.region.x.max = 1.f / display.GetPixelAspect();
 
 		textoutCamera.UpdateProjection(-1,-1,1,1,-1,1);
 		textoutCamera.depthTest = Engine::NoDepthTest;
@@ -1810,12 +1810,12 @@ namespace UI
 
 		if (resourcesAsList)
 		{
-			display.pick(textoutCamera);
+			display.Pick(textoutCamera);
 				textout.PushState();
 				textout.Scale(2.5f,2.5f);
 				float lineHeight = textout.GetScaledHeight()*1.2f;
 				SurfaceRenderer::SetColor(float4(0,0,0,0.6f));
-				float w = 0.2f / display.pixelAspect();
+				float w = 0.2f / display.GetPixelAspect();
 				//textout.locate(-1.f + 0.01f,-1.f + textout.GetScaledHeight()*1.2f*(y+6));
 				Rect<> t(-1,lineHeight*4.f-1.f,w*2.f - 1.f,lineHeight*11.5f - 1.f);
 				SurfaceRenderer::Rasterize(
@@ -1845,10 +1845,10 @@ namespace UI
 		else
 		{
 
-			barProjectionCamera.region.x.max = 1.f / display.pixelAspect();
+			barProjectionCamera.region.x.max = 1.f / display.GetPixelAspect();
 			//(sin(Engine::timing.now)*0.5f+0.5f) + 0.5f;
 
-			display.pick(barProjectionCamera);
+			display.Pick(barProjectionCamera);
 
 
 
@@ -1890,7 +1890,7 @@ namespace UI
 					res->UpdateTextProjection(barProjectionCamera);
 				}
 
-			display.pick(textoutCamera);
+			display.Pick(textoutCamera);
 				textout.PushState();
 				textout.Scale(4.f,4.f);
 				textout.SetColor(1,1,1);
@@ -1968,7 +1968,7 @@ namespace StatePanel
 			#endif
 		}
 		return tagIconSize * scaleX;
-		//;*2.f/display.pixelAspect();
+		//;*2.f/display.GetPixelAspect();
 	}
 
 
@@ -2575,7 +2575,7 @@ namespace StatePanel
 		//textout.GetActiveFont()->EndTagMode();
 		textout.PushState();
 
-		float len = 300.f / display.clientWidth();
+		float len = 300.f / display.GetClientWidth();
 		//if (len == 0)
 			//len = textout.GetScaledWidth("012345678901234567890123456789012345");
 		textout.MoveTo(1.f - len,0.95f);

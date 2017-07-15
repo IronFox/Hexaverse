@@ -649,7 +649,7 @@ namespace Objects
 		/*virtual overrider*/ bool			Vehicle::TestIntersection(const TVec3<>&_b, const TVec3<>&_d, float & distance) const
 		{
 			TVec3<> b,d;//,test;
-			Mat::transform(inverse,_b,b);
+			Mat::Transform(inverse,_b,b);
 			Mat::rotate(inverse,_d,d);
 			
 			return base->TestIntersection(0,0,0,b,d,distance) | turret->TestIntersection(this->base->height, turretAngleX,turretAngleY,b,d,distance);	//binary or - must evaluate both

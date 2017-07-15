@@ -322,7 +322,7 @@ namespace Objects
 		{
 		// {return Super::TestIntersection(geometry,b,d,distance);}
 			TVec3<> b,d;//,test;
-			Mat::transform(inverse,_b,b);
+			Mat::Transform(inverse,_b,b);
 			Mat::rotate(inverse,_d,d);
 			
 			return geometry.TestIntersection(b,d,distance) | 	//binary or - must evaluate both

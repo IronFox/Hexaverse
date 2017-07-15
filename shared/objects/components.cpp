@@ -1652,7 +1652,7 @@ namespace Objects
 					//system1.w.xyz += system1.z.xyz * zOffset;
 					system1.w.z = zOffset;
 					Mat::invertSystem(system1,inverse);
-					Mat::transform(inverse,_b,b);
+					Mat::Transform(inverse,_b,b);
 					Mat::rotate(inverse,_d,d);
 					rs |= parts.First().TestIntersection(b,d,distance);
 				}
@@ -1661,7 +1661,7 @@ namespace Objects
 					GetSubSystem(1,y,system2);
 					Mat::transformSystem(system1,system2);
 					Mat::invertSystem(system2,inverse);
-					Mat::transform(inverse,_b,b);
+					Mat::Transform(inverse,_b,b);
 					Mat::rotate(inverse,_d,d);
 					rs |= parts[1].TestIntersection(b,d,distance);
 				}

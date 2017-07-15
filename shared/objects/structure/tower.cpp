@@ -307,7 +307,7 @@ namespace Objects
 			/*virtual override*/ bool			Tower::TestIntersection(const TVec3<>&_b, const TVec3<>&_d, float & distance) const
 			{
 				TVec3<> b,d;//,test;
-				Mat::transform(inverse,_b,b);
+				Mat::Transform(inverse,_b,b);
 				Mat::rotate(inverse,_d,d);
 				return geometry.TestIntersection(b,d,distance) | turret->TestIntersection(GetEffectiveFoundationHeight(), turretAngleX,turretAngleY,b,d,distance);	//binary or - must evaluate both
 			}
