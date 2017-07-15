@@ -52,7 +52,7 @@ namespace Network
 	String			myIDString,serverIDString,worldIDString,activeTokenString;
 	INT32			uplinkBandwidth = -1;
 	
-	GenericHashTable<TUniqueID,CryptographicID,TUniqueID>	accessMap;
+	GenericHashTable<TUniqueID,CryptographicID>	accessMap;
 
 
 	Protocol::GameProgress	gameProgress;
@@ -139,7 +139,7 @@ namespace Network
 			GUI::SignalSituationChange();
 		#endif
 
-		serverID = host.serverInfo.hostInfo.value.hostID;
+		serverID = host.serverInfo.hostInfo.hostID;
 		serverIDString = Network::serverID.ToNiceString();
 
 		worldID = host.serverInfo.gameInfo.worldID;
@@ -213,7 +213,7 @@ namespace Network
 		TCP::Channel<Protocol::ServerInfo,0,Protocol::InfoChannel::ServerInfo>	serverInfoChannel(OnServerInfo);
 		TCP::Channel<Protocol::Ping,0,Protocol::InfoChannel::Ping>	pingChannel(OnPing);
 
-		class HostContactAttempt : public ThreadObject, public TCP::Peer::Attachment, public std::enable_shared_from_this<HostContactAttempt>
+		class HostContactAttempt : public Sys::ThreadObject, public TCP::Peer::Attachment, public std::enable_shared_from_this<HostContactAttempt>
 		{
 		public:
 			TCP::Client		client;
@@ -233,7 +233,7 @@ namespace Network
 
 			static void		OnEvent(TCP::event_t ev, TCP::Peer&peer);
 
-			static void		OnDeserializationFailed(UINT32, TCP::Peer&peer);
+			static void		OnDeserializationFailed(UINT32, TCP::Peer&peer, const String&exception);
 
 			void			ThreadMain() override
 			{
@@ -344,13 +344,13 @@ namespace Network
 		{
 			PHostContactAttempt me = To<HostContactAttempt>::Cast(peer.attachment);
 			me->lastInfo = info;
-			info.hostInfo.value.version[ARRAYSIZE(info.hostInfo.value.version)-1] = 0;
+			info.hostInfo.version[ARRAYSIZE(info.hostInfo.version)-1] = 0;
 			me->hasInfo = true;
-			me->rightVersion = !strcmp(info.hostInfo.value.version, SERVER_NAME);
+			me->rightVersion = !strcmp(info.hostInfo.version, SERVER_NAME);
 		}
 
 
-		/*static*/ void		HostContactAttempt::OnDeserializationFailed(UINT32, TCP::Peer&peer)
+		/*static*/ void		HostContactAttempt::OnDeserializationFailed(UINT32, TCP::Peer&peer, const String&exception)
 		{
 			PHostContactAttempt me = To<HostContactAttempt>::Cast(peer.attachment);
 			if (me)
@@ -370,7 +370,6 @@ namespace Network
 			PHostContactAttempt me = To<HostContactAttempt>::Cast(peer.attachment);
 			switch (ev)
 			{
-				case TCP::Event::ConnectionClosed:
 				case TCP::Event::ConnectionLost:
 					//me->Release();
 				break;
@@ -518,7 +517,7 @@ namespace Network
 					}
 
 				Animation::primitives.Append().Init(delta);
-				LogEvent(EventSignificance::Debug, "Appended world delta primitive to animation sequence at t="+String(delta.timestamp.atTime.value));
+				LogEvent(EventSignificance::Debug, "Appended world delta primitive to animation sequence at t="+String(delta.timestamp.atTime));
 			}
 			else
 			{
@@ -575,12 +574,12 @@ namespace Network
 							p->Init(vs);
 							p->overwritten++;
 							if (p->overwritten==1 || !(p->overwritten %100000))
-								LogEvent(EventSignificance::Debug, "Rewrote 'mobile state("+vs.entityState.id.value.ToString()+")' primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime.value)+" n="+String(p->overwritten));
+								LogEvent(EventSignificance::Debug, "Rewrote 'mobile state("+ToString(vs.entityState.id)+")' primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime)+" n="+String(p->overwritten));
 							return;
 						}
 					}
 					Animation::primitives.Append().Init(vs);
-					LogEvent(EventSignificance::Debug, "Appended 'mobile state("+vs.entityState.id.value.ToString()+")' primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime.value));
+					LogEvent(EventSignificance::Debug, "Appended 'mobile state("+ToString(vs.entityState.id)+")' primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime));
 				}
 			}
 		}
@@ -620,7 +619,7 @@ namespace Network
 			else
 			{
 				Animation::primitives.Append().Init(vc,v);
-				LogEvent(EventSignificance::Debug, "Appended 'new mobile entity("+vc.state.entityState.id.value.ToString()+")' primitive to animation sequence at t="+String(vc.state.entityState.timestamp.atTime.value));
+				LogEvent(EventSignificance::Debug, "Appended 'new mobile entity("+ToString(vc.state.entityState.id)+")' primitive to animation sequence at t="+String(vc.state.entityState.timestamp.atTime));
 
 			}
 		}
@@ -648,7 +647,7 @@ namespace Network
 			if (!sc.state.entityState.timestamp.rightNow)
 			{
 				Animation::primitives.Append().Init(sc,s);
-				LogEvent(EventSignificance::Debug, "Appended 'new structure("+sc.state.entityState.id.value.ToString()+")' primitive to animation sequence at t="+String(sc.state.entityState.timestamp.atTime.value));
+				LogEvent(EventSignificance::Debug, "Appended 'new structure("+ToString(sc.state.entityState.id)+")' primitive to animation sequence at t="+String(sc.state.entityState.timestamp.atTime));
 			}
 			else
 			{
@@ -669,9 +668,9 @@ namespace Network
 			if (vs.entityState.timestamp.rightNow && Animation::AllDone())
 			{
 				Objects::PWorldEntity e =Objects::GetEntity(vs.entityState.id);
-				ASSERT1__(e,vs.entityState.id.value.ToString());
+				ASSERT1__(e,vs.entityState.id);
 				Objects::PStructure s = To<Objects::Structure>::DynamicCast(e);
-				ASSERT1__(s,vs.entityState.id.value.ToString());
+				ASSERT1__(s,vs.entityState.id);
 				Animation::UpdateState(s,vs);
 
 			}
@@ -682,7 +681,7 @@ namespace Network
 				else
 				{
 					Animation::primitives.Append().Init(vs);
-					LogEvent(EventSignificance::Debug, "Appended 'structure state("+vs.entityState.id.value.ToString()+")' primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime.value));
+					LogEvent(EventSignificance::Debug, "Appended 'structure state("+ToString(vs.entityState.id)+")' primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime));
 				}
 			}
 
@@ -733,13 +732,13 @@ namespace Network
 			}
 			else
 			{
-				LogEvent(EventSignificance::Debug,nullptr,"Reception of entity destruction message for "+de.id.value.ToString()+" ("+Objects::RemovalType::Reinterpret(de.type.value).ToString()+")");
+				LogEvent(EventSignificance::Debug,nullptr,"Reception of entity destruction message for "+ToString(de.id)+" ("+Objects::RemovalType::Reinterpret(de.type).ToString()+")");
 				if (de.timestamp.rightNow)
 					Animation::whenDone.Append().Init(de);
 				else
 				{
 					Animation::primitives.Append().Init(de);
-					LogEvent(EventSignificance::Debug, "Appended 'destruction' primitive to animation sequence at t="+String(de.timestamp.atTime.value));
+					LogEvent(EventSignificance::Debug, "Appended 'destruction' primitive to animation sequence at t="+String(de.timestamp.atTime));
 				}
 			}
 		}
@@ -760,7 +759,7 @@ namespace Network
 
 			myID = TUniqueID::Empty();
 			Objects::Faction::mine.reset();
-			myIDString = myID.ToString();
+			myIDString = ToString(myID);
 
 			Network::gameFlags = cr.info.gameConfig.gameFlags;
 
@@ -788,7 +787,7 @@ namespace Network
 				activeTokenString = activeToken.ToString();
 				if (!RuntimeConfig::aiMode && !amSpectator)
 				{
-					LogEvent(EventClass::Preset::common,nullptr,"Updating access token of world "+worldID.ToString()+" to "+activeToken.ToString());
+					LogEvent(EventClass::Preset::common,nullptr,"Updating access token of world "+ToString(worldID)+" to "+activeToken.ToString());
 					accessMap.Set(worldID,activeToken);
 					SaveWorldAccessTokens();
 				}
@@ -828,7 +827,7 @@ namespace Network
 			amSpectator = false;
 			myID = id;
 			Objects::Faction::mine = ResolveFaction(myID);
-			myIDString = myID.ToString();
+			myIDString = ToString(myID);
 			Objects::Faction::mine->isOwnedByMe = true;
 		}
 
@@ -862,7 +861,7 @@ namespace Network
 				if (!found)
 				{
 					Animation::primitives.Append().Init(m);
-					LogEvent(EventSignificance::Debug, "Appended 'mobile entity motion' primitive to animation sequence at t="+String(m.timestamp.atTime.value));
+					LogEvent(EventSignificance::Debug, "Appended 'mobile entity motion' primitive to animation sequence at t="+String(m.timestamp.atTime));
 				}
 
 			}
@@ -879,7 +878,7 @@ namespace Network
 			else
 			{
 				Animation::primitives.Append().Init(a);
-				LogEvent(EventSignificance::Debug, "Appended 'vague trajectory' primitive to animation sequence at t="+String(a.timestamp.atTime.value));
+				LogEvent(EventSignificance::Debug, "Appended 'vague trajectory' primitive to animation sequence at t="+String(a.timestamp.atTime));
 			}
 			
 		}
@@ -895,7 +894,7 @@ namespace Network
 			else
 			{
 				Animation::primitives.Append().Init(a);
-				LogEvent(EventSignificance::Debug, "Appended 'precise trajectory' primitive to animation sequence at t="+String(a.timestamp.atTime.value));
+				LogEvent(EventSignificance::Debug, "Appended 'precise trajectory' primitive to animation sequence at t="+String(a.timestamp.atTime));
 			}
 			
 		}
@@ -911,7 +910,7 @@ namespace Network
 			else
 			{
 				Animation::primitives.Append().Init(ex);
-				LogEvent(EventSignificance::Debug, "Appended 'explosion' primitive to animation sequence at t="+String(ex.timestamp.atTime.value));
+				LogEvent(EventSignificance::Debug, "Appended 'explosion' primitive to animation sequence at t="+String(ex.timestamp.atTime));
 			}
 			
 		}
@@ -929,12 +928,12 @@ namespace Network
 				float3 innerDir;
 				Mat::rotate(v->inverse,dir,innerDir);
 				v->turretAngleX = Vec::angle2PI(innerDir.xy) + M_PIF/2.f;
-				v->turretAngleY = -(90.f - Vec::angle(rot.toWorld.value,Grid::low.cells[v->location.stackID].centerVertex.xyz)) * M_PIF / 180.f;
+				v->turretAngleY = -(90.f - Vec::angle(rot.toWorld,Grid::low.cells[v->location.stackID].centerVertex.xyz)) * M_PIF / 180.f;
 			}
 			else
 			{
 				Animation::primitives.Append().Init(rot);
-				LogEvent(EventSignificance::Debug, "Appended 'entity turret rotation' primitive to animation sequence at t="+String(rot.timestamp.atTime.value));
+				LogEvent(EventSignificance::Debug, "Appended 'entity turret rotation' primitive to animation sequence at t="+String(rot.timestamp.atTime));
 			}
 		}
 
@@ -952,7 +951,7 @@ namespace Network
 			else
 			{
 				Animation::primitives.Append().Init(u);
-				LogEvent(EventSignificance::Debug, "Appended 'resource update' primitive to animation sequence at t="+String(u.timestamp.atTime.value));
+				LogEvent(EventSignificance::Debug, "Appended 'resource update' primitive to animation sequence at t="+String(u.timestamp.atTime));
 			}
 
 		}
@@ -1082,10 +1081,10 @@ namespace Network
 
 		void	ResourceData(Protocol::ResourceData&dat)
 		{
-			LogEvent(EventClass::Preset::uncommon,"Received resource "+Bin2Str::ConvertPOD(dat.id.value));
+			LogEvent(EventClass::Preset::uncommon,"Received resource "+Bin2Str::ConvertPOD(dat.id));
 			if (dat.id == requestedResearchScript)
 			{
-				LogEvent(EventClass::Preset::uncommon,"Resource "+Bin2Str::ConvertPOD(dat.id.value)+" is research script");
+				LogEvent(EventClass::Preset::uncommon,"Resource "+Bin2Str::ConvertPOD(dat.id)+" is research script");
 				ScriptCache::PScript script = ScriptCache::DefineFromFleetingCompressedData(dat.id, dat.data);
 				if (script)
 				{
@@ -1189,7 +1188,7 @@ namespace Network
 
 			Protocol::ClientFactionRequest ready;
 			ready.startFactionTypes = 0;
-			ready.factionToken.value = CryptographicID();
+			ready.factionToken = CryptographicID();
 			LogEvent(EventClass::Preset::uncommon, nullptr, "Abandoning current faction");
 			Channels::clientFactionRequest.SendTo(client,ready);
 
@@ -1211,21 +1210,21 @@ namespace Network
 		if (RuntimeConfig::aiMode)
 		{
 			ready.factionToken = RuntimeConfig::aiAccessToken;
-			LogEvent(EventClass::Preset::common, nullptr, "Attempting to log in to " + worldID.ToString() + " as AI using token: " + ready.factionToken.value.ToString());
+			LogEvent(EventClass::Preset::common, nullptr, "Attempting to log in to " + ToString(worldID) + " as AI using token: " + ready.factionToken.ToString());
 		}
-		elif (!forceNewFaction && accessMap.Query(worldID, ready.factionToken.value))
+		elif (!forceNewFaction && accessMap.Query(worldID, ready.factionToken))
 		{
-			LogEvent(EventClass::Preset::common,nullptr,"Attempting to use existing access token of world "+worldID.ToString()+": "+ready.factionToken.value.ToString());
+			LogEvent(EventClass::Preset::common,nullptr,"Attempting to use existing access token of world "+ToString(worldID)+": "+ready.factionToken.ToString());
 		}
 		else
 		{
 						
 			if (forceNewFaction)
-				LogEvent(EventClass::Preset::common, nullptr, "Forcing new faction in world " + worldID.ToString());
+				LogEvent(EventClass::Preset::common, nullptr, "Forcing new faction in world " + ToString(worldID));
 			else
-				LogEvent(EventClass::Preset::common, nullptr, "No access token found for world " + worldID.ToString());
+				LogEvent(EventClass::Preset::common, nullptr, "No access token found for world " + ToString(worldID));
 
-			ready.factionToken.value = CryptographicID();
+			ready.factionToken = CryptographicID();
 		}
 
 
@@ -1279,7 +1278,6 @@ namespace Network
 			}
 			break;
 			case TCP::Event::ConnectionLost:
-			case TCP::Event::ConnectionClosed:
 			{
 				RuntimeConfig::tutorialMode = false;
 				if (!RuntimeConfig::aiMode)
@@ -1494,7 +1492,7 @@ namespace Network
 
 
 	Buffer0<ServerInfo,Swap>	servers;
-	GenericHashTable<TUniqueID,index_t,TUniqueID>	serverMap;
+	GenericHashTable<TUniqueID,index_t>	serverMap;
 
 	Timer::Time		lastPing = timer.Now(),lastServerTableUpdate=timer.Now();
 
@@ -1597,9 +1595,9 @@ namespace Network
 						s.info.gameInfo.numFactionsCreated = sqr(rng.get(0,16));
 						s.info.gameInfo.numFactionsOnline = rng.get(s.info.gameInfo.numFactionsCreated);
 						s.info.gameInfo.roundNumber = sqr(sqr(rng.get(8)));
-						s.info.gameInfo.worldID.value.Generate();
-						s.info.hostInfo.value.hostID = s.id;
-						s.info.hostInfo.value.serverBasePort = DEFAULT_SERVER_BASE_PORT;
+						s.info.gameInfo.worldID.Generate();
+						s.info.hostInfo.hostID = s.id;
+						s.info.hostInfo.serverBasePort = DEFAULT_SERVER_BASE_PORT;
 						s.rightVersion = true;
 						s.selected = false;
 					}
@@ -1615,13 +1613,13 @@ namespace Network
 					if (a.hasContact && (a.hasInfo || a.protocolIncompatible))
 					{
 						index_t at;
-						if (!serverMap.query(a.lastInfo.hostInfo.value.hostID,at))
+						if (!serverMap.query(a.lastInfo.hostInfo.hostID,at))
 						{
 							at = servers.Count();
 							servers.Append();
 							servers.last().haveToken = 	a.protocolIncompatible ? false : accessMap.IsSet(a.lastInfo.gameInfo.worldID);
 							servers.last().protocolIncompatible = a.protocolIncompatible;
-							servers.last().id = a.protocolIncompatible ? TUniqueID::Empty() : a.lastInfo.hostInfo.value.hostID;
+							servers.last().id = a.protocolIncompatible ? TUniqueID::Empty() : a.lastInfo.hostInfo.hostID;
 							servers.last().rightVersion = a.rightVersion && !a.protocolIncompatible;
 							//if (!a.protocolIncompatible)
 							serverMap.Set(servers.last().id,at);
@@ -1631,7 +1629,7 @@ namespace Network
 
 						if (info.addresses.IsNotEmpty())
 						{
-							if (info.addresses.Last().serverInfo.gameInfo.worldID.value != a.lastInfo.gameInfo.worldID)
+							if (info.addresses.Last().serverInfo.gameInfo.worldID != a.lastInfo.gameInfo.worldID)
 							{
 								LogEvent(EventClass::Preset::error,"Received mismatching world IDs from host "+info.id.ToNiceString()+". Ignoring address "+a.address.ToString());
 								continue;
@@ -1673,7 +1671,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 {
 	ASSERT__(!eventsLocked);
 
-	switch (c.newPhase.value)
+	switch (c.newPhase)
 	{
 		case RuntimeConfig::Phase::AnimationPhase:
 			#ifdef HAS_WINDOW
@@ -1737,7 +1735,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 
 	//while (Objects::Network::records.IsNotEmpty() && timer.GetSecondsSince(Objects::Network::records.Peek().recorded) > 10)
 	//	Objects::Network::records.EraseFront();
-	LogEvent(EventSignificance::Common,nullptr,"Server phase changed to "+String(RuntimeConfig::phase.ToString())+" ("+String(c.timeFactor.value)+") @"+String(Animation::atTime));
+	LogEvent(EventSignificance::Common,nullptr,"Server phase changed to "+String(RuntimeConfig::phase.ToString())+" ("+String(c.timeFactor)+") @"+String(Animation::atTime));
 	if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase)
 	{
 		static Buffer0<Objects::Marker> outdated;
@@ -1843,7 +1841,7 @@ void	Network::Receiver::IdentifyFaction(Protocol::IdentifyFaction&id)
 {
 	Objects::OwnerParameter faction = Network::ResolveFaction(id.id);
 	faction->name = id.name;
-	faction->color = id.color.value;
+	faction->color = id.color;
 	#ifdef HAS_WINDOW
 		UI::RefreshSessionView();
 	#endif

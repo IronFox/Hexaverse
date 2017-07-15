@@ -138,8 +138,8 @@ namespace World
 			void				SelectStack(UINT32);
 			StackAccess			AccessStack(UINT32);
 
-			void				ApplyFamilyDelta(BaseGrid::family_t family, const Array<Grid::CellStack::TTypeDelta>&data0, bool initialization);
-			void				ApplyFamilyDelta(BaseGrid::family_t family, const Array<Grid::CellStack::TTypeDeltaBlock>&data0, bool initialization, bool actualWorld);
+			void				ApplyFamilyDelta(BaseGrid::family_t family, const Ctr::Array<Grid::CellStack::TTypeDelta>&data0, bool initialization);
+			void				ApplyFamilyDelta(BaseGrid::family_t family, const Ctr::Array<Grid::CellStack::TTypeDeltaBlock>&data0, bool initialization, bool actualWorld);
 
 
 			/**
@@ -243,7 +243,7 @@ namespace World
 		const Grid::CellStack::Cell&	GetCell(const Grid::HCellIdU&id) const { return cellStack[id.stackID].volumeCell[id.layer];}
 		const Grid::CellStack::Cell&	GetCell(const Grid::HCellIdI&id) const { return cellStack[id.stackID].GetCellI(id.height);}
 		const Grid::CellStack&			GetStack(UINT32 stackID) const {return cellStack[stackID];}
-		const Array<Grid::CellStack>&	GetStacks() const {return cellStack;}
+		const Ctr::Array<Grid::CellStack>&	GetStacks() const {return cellStack;}
 
 
 		/**
@@ -302,7 +302,7 @@ namespace World
 		bool					GridCanSee(const Grid::LCellIdI&, int height, bool broad) const;
 		bool					GridCanSeeAny(const Grid::HCellIdU&, UINT height) const;
 
-		float					GetMaxChangeTime() const {float t = 0; foreach (families,fam) t = vmax(t,fam->structureOrSensory.lastChange); return t;}
+		float					GetMaxChangeTime() const {float t = 0; foreach (families,fam) t = M::vmax(t,fam->structureOrSensory.lastChange); return t;}
 
 		/**
 		@brief	Checks for changes in the specified family and possibly generates a delta by comparison with World::actual.
@@ -320,14 +320,14 @@ namespace World
 		@param noDelta If set true, @a delta is not altered and the method always returns false, but internal grid is updated and flagged unchanged as needed
 		@return true if noDelta is false and changes were detected, false otherwise. @a t remains unchanged if no changes were detected or noDelta is true
 		*/
-		bool					ProgressiveUpdate(BaseGrid::family_t f,  ArrayData<Grid::CellStack::TTypeDeltaBlock>&delta, float&t, bool noDelta=false);
+		bool					ProgressiveUpdate(BaseGrid::family_t f,  Ctr::ArrayData<Grid::CellStack::TTypeDeltaBlock>&delta, float&t, bool noDelta=false);
 
 		/**
 		@brief Compresses the specified family of the local world state as is.
 
 		Change flags or timestamps are ignored.
 		*/
-		void					CompressFamilyState(BaseGrid::family_t f,  ArrayData<Grid::CellStack::TTypeDeltaBlock>&delta);
+		void					CompressFamilyState(BaseGrid::family_t f,  Ctr::ArrayData<Grid::CellStack::TTypeDeltaBlock>&delta);
 
 		/**
 		Affects the cell and its immediate neighbors only
@@ -349,6 +349,8 @@ namespace World
 		*/
 		void					FlushAndValidateSensory(short initialValue=0);
 
+		count_t					CountVisibleCells() const;
+
 
 		bool					SensoryIsInvalid()const	{return !sensoryValid;}
 
@@ -367,7 +369,7 @@ namespace World
 
 			void			Set(float t)
 			{
-				lastChange = vmax(lastChange,t);
+				lastChange = M::vmax(lastChange,t);
 				didChange = true;
 			}
 
@@ -376,7 +378,7 @@ namespace World
 				if (!didChange)
 					return false;
 				didChange = false;
-				compareTo = vmax(compareTo,lastChange);
+				compareTo = M::vmax(compareTo,lastChange);
 				lastChange = 0;
 				return true;
 			}
@@ -400,8 +402,8 @@ namespace World
 
 		int						lockLevel=0;
 		bool					sensoryValid=true;
-		FixedArray<FamilyState,BaseGrid::NumFamilies>		families;
-		Array<Grid::CellStack>	cellStack;
+		Ctr::FixedArray<FamilyState,BaseGrid::NumFamilies>		families;
+		Ctr::Array<Grid::CellStack>	cellStack;
 		#ifdef HAS_WINDOW
 			bool				lightingOutdated = true;
 		#endif
@@ -420,7 +422,7 @@ namespace World
 		@param last Indicates that the result should include the 'last'-flag, which means no deltas will follow this one for the current sequence
 		@param deltaType Type of delta to compute (see delta_type_t for details)
 		*/
-		void					GenerateDelta(BaseGrid::family_t familyID, WorldDeltaType::delta_type_t deltaType, ArrayData<Grid::CellStack::TTypeDeltaBlock>&delta);
+		void					GenerateDelta(BaseGrid::family_t familyID, WorldDeltaType::delta_type_t deltaType, Ctr::ArrayData<Grid::CellStack::TTypeDeltaBlock>&delta);
 
 	};
 

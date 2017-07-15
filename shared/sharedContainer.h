@@ -11,11 +11,10 @@ The container is currently not thread-safe but allows insert and removal operati
 When appending while iteration is in progress, the iteration will also iterate over the new elements
 */
 template <typename T>
-	class SharedContainer : private Buffer0<std::shared_ptr<T> >
+	class SharedContainer : private Ctr::Buffer0<std::shared_ptr<T> >
 	{
-		typedef Buffer0<std::shared_ptr<T> >	Super;
+		typedef Ctr::Buffer0<std::shared_ptr<T> >	Super;
 		typedef std::shared_ptr<T>				PT;
-		typedef SSIZE_T							sindex_t;
 
 		static_assert(sizeof(sindex_t) == sizeof(index_t),"Type size error");
 

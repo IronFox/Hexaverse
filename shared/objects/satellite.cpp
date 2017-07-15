@@ -776,7 +776,7 @@ namespace Objects
 		}
 
 	
-		bool	Satellite::DirectTo(mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
+		bool	Satellite::DirectTo(mode_t mode, Ctr::ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
 		{
 			switch (mode)
 			{

@@ -52,23 +52,23 @@ namespace Network
 
 		
 
-		String				ToString() const;
+		String				ConvertToString() const;
 		bool				CanSee(const Objects::PWorldEntity&e, float t)	const;
 
 		/**
 		Refreshes personal game progress information
 		*/
-		void				SendProgressUpdate(bool dead, const String&warningReason);
+		void				SendProgressUpdate(const String&warningReason);
 
 	};
 	
 
-	extern Buffer<PClient>	activePlayersAndSpectators,spectators;
+	extern Ctr::Buffer<PClient>	activePlayersAndSpectators,spectators;
 	/**
 	Direct mapping from factions to online players. If a lookup fails, the respective player is not online. Only one entry per faction is allowed
 	*/
-	extern GenericHashTable<Objects::OwnerParameter,PClient,Objects::OwnerHash>		playerMap;
-	extern GenericHashTable<CryptographicID,Objects::PFaction,CryptographicID>		tokenMap;
+	extern Ctr::GenericHashTable<Objects::OwnerParameter,PClient,Objects::OwnerHash>		playerMap;
+	extern Ctr::GenericHashTable<CryptographicID,Objects::PFaction>		tokenMap;
 
 
 
@@ -179,7 +179,7 @@ namespace Network
 		}
 
 	template <index_t Channel, class Item>
-		inline void	SendToOwner(TCP::ObjectSender<Item,Channel>&channel,const Objects::WorldEntity&e,const TCP::Serial<Item>&item)
+		inline void	SendToOwner(TCP::ObjectSender<Item,Channel>&channel,const Objects::WorldEntity&e,TCP::Serial<Item>&item)
 		{
 			PClient*cl = playerMap.QueryPointer(e.owner);
 			if (cl)

@@ -8,6 +8,9 @@
 
 namespace LineRenderer
 {
+	using namespace DeltaWorks;
+	using namespace DeltaWorks::Math;
+
 	void	Create();
 	void	Destroy();
 

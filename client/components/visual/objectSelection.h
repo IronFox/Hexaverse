@@ -7,6 +7,9 @@
 
 namespace Objects
 {
+	using namespace DeltaWorks;
+	using namespace DeltaWorks::Math;
+
 	extern PWorldEntity		selectedEntity;
 	extern PMobileEntity	selectedMobileEntity;
 	extern PVehicle			selectedVehicle;

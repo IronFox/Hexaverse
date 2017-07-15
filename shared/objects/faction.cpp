@@ -18,7 +18,7 @@ namespace Objects
 
 	#ifndef CLIENT
 
-		/*static*/ Buffer0<WFaction>	Faction::all;
+		/*static*/ Ctr::Buffer0<WFaction>	Faction::all;
 		/*static*/ PFaction				Faction::nexus;
 
 
@@ -161,8 +161,8 @@ namespace Objects
 
 			OwnerParameter oldOwner = e->owner;
 
-
-
+			oldOwner->statistics.SignalLossOf(e,newOwner,true);
+			newOwner->statistics.SignalUnitAcquired(e,oldOwner);
 
 
 			Remove(e,RemovalType::ChangingOwnership,atTime,true,false,true);
@@ -520,7 +520,7 @@ namespace Objects
 				e->SyncTime(t,timeEpsilon);
 				LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Gained visual of entity, time updated to "+String(t));
 
-				ASSERT1__(gainedVisualAt.SetNew(e,t),e->id.ToString());
+				ASSERT1__(gainedVisualAt.SetNew(e,t),ToString(e->id));
 
 				if (cascade)
 					ApplicationInterface::SignalAppearanceToHostileFaction(shared_from_this(),e,t);
@@ -570,7 +570,7 @@ namespace Objects
 				PTower tower;
 				e->SyncTime(t,timeEpsilon);
 
-				ASSERT1__(lostVisualAt.SetNew(e,t-timeEpsilon),e->id.ToString());
+				ASSERT1__(lostVisualAt.SetNew(e,t-timeEpsilon),ToString(e->id));
 				seeing.Unset(e);
 				if (signalConnectedClient)
 					ApplicationInterface::SignalDisappearanceToHostileFaction(shared_from_this(),e,t);
@@ -597,7 +597,7 @@ namespace Objects
 		//}
 
 		template <typename T>
-		count_t		CountRawSensorCoverage(const TVec3<>&center, const BasicBuffer<T>&scope)
+		count_t		CountRawSensorCoverage(const TVec3<>&center, const Ctr::BasicBuffer<T>&scope)
 		{
 			count_t rs = 0;
 			foreach (scope,s)
@@ -610,7 +610,7 @@ namespace Objects
 		}
 
 		template <typename T>
-		count_t		CountRawSensorCoverage(const Sphere<>&sphere, const BasicBuffer<T>&scope)
+		count_t		CountRawSensorCoverage(const Sphere<>&sphere, const Ctr::BasicBuffer<T>&scope)
 		{
 			count_t rs = 0;
 			foreach (scope,s)
@@ -687,7 +687,7 @@ namespace Objects
 		}
 
 
-		void		Faction::RegisterSensorCreation(const World::Sensor&sensor, int sensorHeight, float&t, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
+		void		Faction::RegisterSensorCreation(const World::Sensor&sensor, int sensorHeight, float&t, Ctr::Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
 		{
 			//if (sensorHeight <= Grid::CellStack::TopHeight)
 			{
@@ -787,7 +787,7 @@ namespace Objects
 				LogEvent(EventSignificance::PerformanceMeasurement,owner->shared_from_this(),"Computed appearances in "+String(timer.GetSecondsSince(started)));
 				started = timer.Now();
 
-				static Buffer<PWorldEntity>	disappear;
+				static Ctr::Buffer<PWorldEntity>	disappear;
 
 				owner->seeing.VisitAllKeys([this,&t](const PWorldEntity&e)
 				{
@@ -827,7 +827,7 @@ namespace Objects
 
 			if (!knownWorld.SensoryIsInvalid())
 			{
-				static Buffer<PWorldEntity>	disappear;
+				static Ctr::Buffer<PWorldEntity>	disappear;
 
 				bool offGrid = sensorHeight > Grid::CellStack::TopHeight;
 
@@ -908,7 +908,21 @@ namespace Objects
 
 		bool		Faction::CanLive(String&whyNot) const
 		{
-			bool hasMineralGeneratorCycle = hasFuelMine && hasMineralMine && hasGenerator;
+			if (isDead)
+			{
+				whyNot = "Died";
+				return false;
+			}
+
+			const bool hasFuelMine = (hasUnitClasses & UnitClass::FuelMine);
+			const bool hasMineralMine = (hasUnitClasses & UnitClass::MineralMine);
+			const bool hasGenerator = (hasUnitClasses & UnitClass::Generator);
+			const bool hasMineralContainer = (hasUnitClasses & UnitClass::MineralContainer);
+			const bool hasTerraformer = (hasUnitClasses & UnitClass::Terraformer);
+			const bool hasVehiclePlant = (hasUnitClasses & UnitClass::VehiclePlant);
+
+			const bool hasMineralGeneratorCycle = hasFuelMine && hasMineralMine && hasGenerator;
+
 			#ifndef ONE_COMPOUND_PER_FACTION
 				if (!hasMineralContainer)
 					hasMineralGeneratorCycle = false;
@@ -1043,11 +1057,11 @@ namespace Objects
 
 	#else
 		/*static*/ Buffer0<PFaction>			Faction::allKnown;
-		/*static*/ GenericHashTable<TUniqueID,PFaction,TUniqueID>	Faction::idMap;
+		/*static*/ GenericHashTable<TUniqueID,PFaction>	Faction::idMap;
 		/*static*/ PFaction						Faction::mine;
 
 		/*static*/ Buffer0<Marker, Strategy::Adopt>	Marker::all; 
-		/*static*/ GenericHashTable<TUniqueID, index_t, TUniqueID>	Marker::idMap,
+		/*static*/ GenericHashTable<TUniqueID, index_t>	Marker::idMap,
 								Marker::referenceIDMap,
 								Marker::visitedSystemIDMap;
 		/*static*/ Buffer0<Marker::TVisited>	Marker::visitedSystems;
@@ -1344,7 +1358,7 @@ namespace Objects
 		/*static*/ void				Marker::Destroy(const TUniqueID&id, bool controlEnabled)
 		{
 			index_t index;
-			ASSERT1__(idMap.QueryAndUnset(id, index),id.ToString());	//this mustn't happen anymore
+			ASSERT1__(idMap.QueryAndUnset(id, index),ToString(id));	//this mustn't happen anymore
 			Marker&m = all[index];
 			if (m.UtilizesReferenceEntity())
 			{
@@ -1486,73 +1500,42 @@ namespace Objects
 				return b->constName;
 			return ConstName::Empty;
 		}
-		/*virtual override*/	serial_size_t		Marker::GetSerialSize(bool exportSize) const
+
+		/*virtual override*/	void		Marker::Serialize(IWriteStream&s) const
 		{
-			serial_size_t size = sizeof(TUniqueID);	//marker id;
-			size += 1;	//type
-			size += sizeof(createdInRound);
-			size += sizeof(location);
+			s.WritePrimitive(id);
+			s.WritePrimitive((UINT8)type);
+			s.WritePrimitive(createdInRound);
+			s.WritePrimitive(location);
 			if (UtilizesReferenceEntity())
 			{
-				size += 2 * sizeof(TUniqueID);	//referenced entity id
-
-
-				String t0 = Convert(this->referencedType[0]);
-				String t1 = Convert(this->referencedType[1]);
-				size += t0.GetSerialSize(true);
-				size += t1.GetSerialSize(true);
-//				size += sizeof(this->referencedType);
-				//this->referencedType.GetSerialSize(exportSize);
+				s.WritePrimitive(this->referenceEntity);
+				s.WritePrimitive(this->referenceEntityOwner);
+				SerialSync(s,Convert(this->referencedType[0]));
+				SerialSync(s,Convert(this->referencedType[1]));
 			}
-			return size;
 		}
-		/*virtual override*/	bool		Marker::Serialize(IWriteStream&outStream, bool exportSize) const
-		{
-			if (!outStream.WritePrimitive(id) || !outStream.WritePrimitive((UINT8)type)
-				 || !outStream.WritePrimitive(createdInRound)
-				|| !outStream.WritePrimitive(location)
-				)
-				return false;
-			if (UtilizesReferenceEntity())
-			{
-				if (!outStream.WritePrimitive(this->referenceEntity) || !outStream.WritePrimitive(this->referenceEntityOwner))
-					return false;
-				String t0 = Convert(this->referencedType[0]);
-				String t1 = Convert(this->referencedType[1]);
-				return t0.Serialize(outStream,true) && t1.Serialize(outStream,true);
-			}
-			return true;
-		}
-		/*virtual override*/	bool		Marker::Deserialize(IReadStream&inStream, serial_size_t fixedSize)
+		/*virtual override*/	void		Marker::Deserialize(IReadStream&inStream)
 		{
 			UINT8 typei;
-			if (!inStream.ReadPrimitive(id) || !inStream.ReadPrimitive(typei) || !inStream.ReadPrimitive(createdInRound)
-				||  !inStream.ReadPrimitive(location)
-				)
-				return false;
+			inStream.ReadPrimitive(id);
+			inStream.ReadPrimitive(typei);
+			inStream.ReadPrimitive(createdInRound);
+			inStream.ReadPrimitive(location);
 			type = Type::Reinterpret(typei);
 			if (UtilizesReferenceEntity())
 			{
-				if (fixedSize != EmbeddedSize)
-				{
-					fixedSize -= sizeof(TUniqueID) + 1 + sizeof(createdInRound) + sizeof(TUniqueID) + sizeof(location);
-					{
-						fixedSize -= sizeof(TUniqueID);
-					}
-				}
 				String t0,t1;
-				if (!inStream.ReadPrimitive(this->referenceEntity))
-					return false;
+				inStream.ReadPrimitive(this->referenceEntity);
 
 				if (ApplicationInterface::globalVersionOfCurrentFile >= ApplicationInterface::FileVersions::MarkersHaveOwner)
 				{
-					if (!inStream.ReadPrimitive(this->referenceEntityOwner))
-						return false;
+					inStream.ReadPrimitive(this->referenceEntityOwner);
 				}
 				else
 					this->referenceEntityOwner = TUniqueID::Empty();
-				if (!t0.Deserialize(inStream,EmbeddedSize) || !t1.Deserialize(inStream,EmbeddedSize))
-					return false;
+				SerialSync(inStream,t0);
+				SerialSync(inStream,t1);
 				this->referencedType[0] = Convert(t0);
 				this->referencedType[1] = Convert(t1);
 				//this->referenceEntityType.Deserialize(inStream, fixedSize);
@@ -1562,7 +1545,6 @@ namespace Objects
 				referenceEntity = TUniqueID::Empty();
 				referencedType[0] = referencedType[1] = ConstName::Empty;
 			}
-			return true;
 		}
 
 
@@ -1583,7 +1565,7 @@ namespace Objects
 
 
 
-		void		Faction::RestoreMarkers(const ArrayData<Marker>&source)
+		void		Faction::RestoreMarkers(const Ctr::ArrayData<Marker>&source)
 		{
 			ASSERT__(markers.IsEmpty());
 			ASSERT__(markerMap.IsEmpty());
@@ -1604,7 +1586,7 @@ namespace Objects
 			index_t at;
 			if (!markerMap.QueryAndUnset(markerID, at))
 			{
-				LogEvent(EventClass::Preset::error,nullptr,"Unable to destroy Marker. ID not set " + markerID.ToString());
+				LogEvent(EventClass::Preset::error,nullptr,"Unable to destroy Marker. ID not set " + ToString(markerID));
 				return false;
 			}
 			ASSERT_LESS__(at, markers.Count());
@@ -1661,23 +1643,44 @@ namespace Objects
 
 		/*static*/ void	Faction::Kill(const PFaction&f)
 		{
-			LogEvent(EventSignificance::Debug,nullptr, "Erasing faction "+f->id.ToString());
-			static Buffer0<PWorldEntity>	toDelete;
-			for (index_t i = 0; i < f->structures.Count(); i++)
-				if (!f->structures[i].lock()->IsIndestructible())
-				{
-					toDelete << f->structures[i].lock();
-				}
+			if (!f)
+			{
+				DBG_FATAL__("Trying to kill null-faction");
+				LogEvent(EventClass::Preset::internalError,nullptr, "Trying to kill null-faction");
+				return;
+			}
+			if (f->isDead)
+			{
+				LogEvent(EventClass::Preset::commandRejected,nullptr, "Faction "+ToString(f->id)+" has already ended");
+				return;
+			}
+			LogEvent(EventSignificance::Debug,nullptr, "Erasing faction "+ToString(f->id));
 
-			for (index_t i = 0; i < f->allMobiles.Count(); i++)
-				//if (vehicles[i]->owner == f)
-				{
-					toDelete << f->allMobiles[i].lock();
-				}
-			float t=0;
-			foreach (toDelete,del)
-				Remove(*del,Objects::RemovalType::ControlledExplosion,t,false);
-			toDelete.Clear();
+			{
+				auto lock = f->LockSensorUpdates();
+				static Ctr::Buffer0<PWorldEntity>	toDelete;
+				for (index_t i = 0; i < f->structures.Count(); i++)
+					if (!f->structures[i].lock()->IsIndestructible())
+					{
+						toDelete << f->structures[i].lock();
+					}
+
+				for (index_t i = 0; i < f->allMobiles.Count(); i++)
+					//if (vehicles[i]->owner == f)
+					{
+						toDelete << f->allMobiles[i].lock();
+					}
+				float t=0;
+				foreach (toDelete,del)
+					if (*del)
+						Remove(*del,Objects::RemovalType::ControlledExplosion,t,false);
+				toDelete.Clear();
+				ASSERT__(f->allMobiles.IsEmpty());	//should have cascaded
+				ASSERT__(f->structures.IsEmpty());
+			}	//exiting lock: recomputing sensory of f, which is now empty, so should be fast
+
+			f->isDead = true;
+			f->hasUnitClasses = UnitClass::None;
 
 			if (f != nexus)
 			{
@@ -1794,7 +1797,7 @@ namespace Objects
 				{
 					competition++;
 					float dist = Vec::quadraticDistance(candidate,f->color);
-					closest = vmin(dist,closest);
+					closest = M::vmin(dist,closest);
 				}
 			});
 			if (closest > bestDist)

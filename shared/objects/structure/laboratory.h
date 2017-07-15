@@ -9,7 +9,7 @@ namespace Objects
 		typedef WorkingStructureT<Laboratory>	Super;
 		friend class Super;
 
-		Buffer0<WLaboratory>		labNeighbors;
+		Ctr::Buffer0<WLaboratory>	labNeighbors;
 
 
         /**/						Laboratory(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(table,owner, location, atTime)	{};

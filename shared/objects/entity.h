@@ -19,7 +19,7 @@
 struct SharedPtrHash
 {
 	template <typename T>
-	static hash_t	hash(const std::shared_ptr<T>&ptr)
+	static hash_t	ComputeHash(const std::shared_ptr<T>&ptr)
 	{
 		return (hash_t)ptr.get();
 	}
@@ -33,7 +33,7 @@ namespace Objects
 	static const float timeEpsilon = 0.001f;	//time in seconds between subsequent events such that they are sorted correctly on the client
 	typedef SharedPtrHash	OwnerHash;
 
-	extern GenericHashTable<TUniqueID,PWorldEntity,TUniqueID,Strategy::POD,Strategy::Swap>	idMap;
+	extern Ctr::GenericHashTable<TUniqueID,PWorldEntity>	idMap;
 
 
 	#ifdef HAS_WINDOW
@@ -271,7 +271,7 @@ namespace Objects
 			//typedef Objects::Command::Base		Command;
 //			typedef Objects::FCommandVisitor	FCommandVisitor;
 
-			OpenAL::Source			ambientSound;
+			Engine::OpenAL::Source	ambientSound;
 		#endif
 
 		/**
@@ -440,16 +440,16 @@ namespace Objects
 		virtual String				DescribeScanningRange() const;
 		static float				StaticEMPModify(float raw, float min, int empDamageLevel);
 		float						EMPModify(float raw, float min) const;
-		std::function<float(float)>	BindEMPModifyFunction() const {return std::bind(&WorldEntity::EMPModify,this,std::placeholders::_1,2);}
+		std::function<float(float)>	BindEMPModifyFunction() const {return std::bind(&WorldEntity::EMPModify,this,std::placeholders::_1,2.f);}
 		
 		virtual PTurretBase			GetTurretBase(float &zOffset) { return PTurretBase();}
 		inline PTurretBase			GetTurretBase() { float dummy; return GetTurretBase(dummy);}
 		virtual PConstTurretBase	GetTurretBase(float &zOffset) const { return PConstTurretBase();}
 		inline PConstTurretBase		GetTurretBase() const { float dummy; return GetTurretBase(dummy);}
 
-		TurretTrajectory			TraceTrajectory(const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const;
+		TurretTrajectory			TraceTrajectory(const TrajectoryEndPoint&dest, Ctr::Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const;
 		TurretTrajectory			TraceTrajectory(const TrajectoryEndPoint&dest, TVec3<>&impactAt) const;
-		TurretTrajectory			TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const;
+		TurretTrajectory			TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const;
 		TurretTrajectory			TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, TVec3<>&impactAt) const;
 		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const TrajectoryEndPoint&dest, float&outAngle) const;
 		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const TrajectoryEndPoint&dest) const;
@@ -461,7 +461,7 @@ namespace Objects
 
 
 		#ifndef CLIENT
-			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) = 0;
+			virtual bool			DirectTo(CursorMode, Ctr::ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) = 0;
 
 			/**
 			Forces all tasks to be dropped that do not result in resource loss. Other tasks must remain
@@ -540,12 +540,6 @@ namespace Objects
 		#endif
 
 
-
-		inline void					TakeDamage(int damageLevel)
-		{
-			health -= damageLevel;
-		}
-
 		/**
 		Iterates through all sensors of the local entity
 		@param loc Location to use as entity location (the actual entity location is ignored)
@@ -563,9 +557,9 @@ namespace Objects
 		Assumes that grid sensory has been previously flushed
 		*/
 		void					ReapplySensory(float&atTime);
-		TRegisteredSensor		RegisterSensory(const Grid::LCellIdI&loc, float&atTime, Buffer0<PWorldEntity>*newContacts = nullptr);
+		TRegisteredSensor		RegisterSensory(const Grid::LCellIdI&loc, float&atTime, Ctr::Buffer0<PWorldEntity>*newContacts = nullptr);
 		void					UnregisterSensory(TRegisteredSensor&, float&atTime);
-		void					MoveSensoryToCurrentLocation(float&atTime, Buffer0<PWorldEntity>*newContacts = nullptr);
+		void					MoveSensoryToCurrentLocation(float&atTime, Ctr::Buffer0<PWorldEntity>*newContacts = nullptr);
 
 		#ifdef HAS_WINDOW
 			/**
@@ -702,7 +696,7 @@ namespace Objects
 					if (multiplier.IsSet())
 						val*=multiplier.GetValue(researchState);
 					
-					val = vmax(val, minimum);
+					val = Math::Max(val, minimum);
 					cached = val;
 				}
 				return cached;

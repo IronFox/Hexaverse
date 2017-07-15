@@ -9,6 +9,7 @@
 #include "../sharedContainer.h"
 #include "research.h"
 #include "../grid/resources.h"
+#include "statistics.h"
 
 namespace Objects
 {
@@ -67,9 +68,8 @@ namespace Objects
 		}
 
 		#ifndef CLIENT
-			virtual	serial_size_t		GetSerialSize(bool export_size) const override;
-			virtual	bool				Serialize(IWriteStream&out_stream, bool export_size) const override;
-			virtual	bool				Deserialize(IReadStream&in_stream, serial_size_t fixed_size) override;
+			virtual	void			Serialize(IWriteStream&outStream) const override;
+			virtual	void			Deserialize(IReadStream&inStream) override;
 		#endif
 
 		virtual String				GetTypeName() const override { return "Marker (" + String(type.ToString())+")"; }
@@ -86,6 +86,7 @@ namespace Objects
 			&& type == other.type && createdInRound == other.createdInRound 
 			&& referenceEntity == other.referenceEntity && referencedType[0] == other.referencedType[0] && referencedType[1] == other.referencedType[1];
 		}
+		bool						operator!=(const Marker&other) const {return !operator==(other);}
 
 
 		#ifdef CLIENT
@@ -126,7 +127,7 @@ namespace Objects
 			static SharedContainer<Structure>		structureGhosts;
 			static SharedContainer<MobileEntity>	mobileGhosts;
 			static Buffer0<TVisited>	visitedSystems;
-			static GenericHashTable<TUniqueID, index_t, TUniqueID>	idMap, referenceIDMap,visitedSystemIDMap;
+			static GenericHashTable<TUniqueID, index_t>	idMap, referenceIDMap,visitedSystemIDMap;
 		#endif
 	};
 
@@ -160,6 +161,7 @@ namespace Objects
 		String		name;
 		bool		online = false;
 		float3		color;
+		Statistics		statistics;
 		ResearchState	researchState;
 		#ifdef CLIENT
 			float3	activeEntityColor,
@@ -179,13 +181,13 @@ namespace Objects
 				return "<NULL>";
 			if (name.IsNotEmpty())
 				return name;
-			return id.ToString();
+			return ToString(id);
 		}
 		String		GetLogName() const
 		{
 			if (!this)
 				return "<NULL>";
-			return id.ToString()+":'"+name+"'";
+			return ToString(id)+":'"+name+"'";
 		}
 
 		
@@ -221,7 +223,7 @@ namespace Objects
 
 		#ifdef CLIENT
 			static Buffer0<PFaction>	allKnown;
-			static GenericHashTable<TUniqueID,PFaction,TUniqueID>	idMap;
+			static GenericHashTable<TUniqueID,PFaction>	idMap;
 
 			static PFaction				mine;
 
@@ -229,23 +231,23 @@ namespace Objects
 			static PFaction				FindByID(const TUniqueID&id);
 			static PFaction				GetOrCreate(const TUniqueID&id);
 
-			/**/						Faction(const TUniqueID&id):researchState(this,false) {InitID(id,false);}
+			/**/						Faction(const TUniqueID&id):researchState(this,false),statistics(this) {InitID(id,false);}
 
 		#else
 
 			CryptographicID	accessToken;
-			Buffer0<WMobileEntity>		allMobiles,	//!< All mobiles registered in the world
+			Ctr::Buffer0<WMobileEntity>		allMobiles,	//!< All mobiles registered in the world
 										storedMobiles;	//!< All mobile entities registered stored in some other entity. allMobiles and storedMobiles are exclusive of each other
 			Buffer0<SubOrbital::WPlane>	planes;
 			#ifndef NO_SATELLITES
 				Buffer0<WSatellite>		satellites;
 				Buffer0<WSkyHub>		skyHubs;	//overlaps with satellites
 			#endif
-			Buffer0<WStructure>			structures;
+			Ctr::Buffer0<WStructure>			structures;
 
-			Buffer0<WTower>				towers;
+			Ctr::Buffer0<WTower>				towers;
 
-			static Buffer0<WFaction>	all;
+			static Ctr::Buffer0<WFaction>	all;
 			static PFaction				nexus;
 
 			static PFaction				FindByID(const TUniqueID&);
@@ -261,17 +263,27 @@ namespace Objects
 
 			int					deathInRounds;	//remaining rounds to live if nothing changes. <= 0 means inactive
 
-			bool				hasFuelMine,
-								hasMineralMine,
-								hasMineralContainer,
-								hasGenerator,
-								hasVehiclePlant,
-								hasTerraformer;
 
-			Buffer0<Marker,Strategy::Adopt>		markers;
-			GenericHashTable<TUniqueID, index_t, TUniqueID>	markerMap,referenceMap;
 
-			GenericHashTable<PWorldEntity,float,SharedPtrHash>	lostVisualAt,//!< Used for entities that dropped out of contact during the same round
+
+			enum class UnitClass
+			{
+				None = 0x0,
+				FuelMine = 0x1,
+				MineralMine = 0x2,
+				MineralContainer = 0x4,
+				Generator = 0x8,
+				VehiclePlant = 0x10,
+				Terraformer = 0x20,
+			};
+
+			bool				isDead = false;
+			UnitClass			hasUnitClasses = UnitClass::None;
+
+			Ctr::Buffer0<Marker,Strategy::Adopt>		markers;
+			Ctr::GenericHashTable<TUniqueID, index_t>	markerMap,referenceMap;
+
+			Ctr::GenericHashTable<PWorldEntity,float,SharedPtrHash>	lostVisualAt,//!< Used for entities that dropped out of contact during the same round
 															gainedVisualAt;
 
 			struct SeeingReference
@@ -280,7 +292,7 @@ namespace Objects
 
 
 			};
-			GenericHashTable<PWorldEntity, SeeingReference, SharedPtrHash>	seeing;
+			Ctr::GenericHashTable<PWorldEntity, SeeingReference, SharedPtrHash>	seeing;
 
 
 
@@ -289,7 +301,7 @@ namespace Objects
 
 
 
-			/**/		Faction(const TUniqueID&toID, const String&name="", bool isNexus=false):researchState(this,isNexus), name(name)
+			/**/		Faction(const TUniqueID&toID, const String&name="", bool isNexus=false):researchState(this,isNexus), statistics(this), name(name)
 			{
 				nexusControl = acquiringNexusControl = 0;
 				deathInRounds = 0;
@@ -353,7 +365,7 @@ namespace Objects
 			bool		SignalAppearance(const PWorldEntity&, float&t, bool cascade=true, bool stack=true, index_t incStackBy=1);
 			void		SignalDisappearance(const PWorldEntity&, float&t, bool force = false, bool signalConnectedClient=true);
 
-			void		RegisterSensorCreation(const World::Sensor&, int sensorHeight, float&t, Buffer0<PWorldEntity>*newContacts = nullptr);
+			void		RegisterSensorCreation(const World::Sensor&, int sensorHeight, float&t, Ctr::Buffer0<PWorldEntity>*newContacts = nullptr);
 			void		RegisterSensorRemoval(const World::Sensor&, int sensorHeight, float&t);
 			void		RegisterSensorMotion(const World::Sensor&from, const World::Sensor&to, float&t);
 
@@ -370,7 +382,7 @@ namespace Objects
 			Marker&		CreateMarker(const TUniqueID&id, bool priveleged, Marker::Type type, const TUniqueID&referenceID, const TUniqueID&ownerReferenceID);
 			Marker*		FindMarker(const TUniqueID&markerID);
 			bool		DestroyMarker(const TUniqueID&markerID);
-			void		RestoreMarkers(const ArrayData<Marker>&source);
+			void		RestoreMarkers(const Ctr::ArrayData<Marker>&source);
 			Marker*		FindReferenceMarker(Marker::Type type, const TUniqueID&);
 
 			#ifdef ONE_COMPOUND_PER_FACTION
@@ -444,6 +456,29 @@ namespace Objects
 	void			ForeachMobileEntityIncludingStored(const std::function<void(const PMobileEntity&)>&func, bool includeGhosts);
 }
 
+#ifndef CLIENT
 
+
+inline Objects::Faction::UnitClass	operator|(Objects::Faction::UnitClass a,Objects::Faction::UnitClass b)
+{
+	typedef Objects::Faction::UnitClass UnitClass;
+	typedef std::underlying_type<UnitClass>::type	T;
+	return static_cast<UnitClass>( static_cast<T>(a) | static_cast<T>(b) );
+}
+
+inline void	operator|=(Objects::Faction::UnitClass&a,Objects::Faction::UnitClass b)
+{
+	a = a | b;
+}
+
+inline bool	operator&(Objects::Faction::UnitClass a,Objects::Faction::UnitClass b)
+{
+	typedef Objects::Faction::UnitClass UnitClass;
+	typedef std::underlying_type<UnitClass>::type	T;
+	return (static_cast<T>(a) & static_cast<T>(b) ) != 0;
+}
+		
+
+#endif
 
 #endif

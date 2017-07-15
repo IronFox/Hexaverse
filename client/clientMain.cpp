@@ -16,7 +16,6 @@
 #include <string/string_converter.h>
 #include <general/random.h>
 #include <image/converter/magic.h>
-#include <structure/mapping.h>
 #ifdef HAS_WINDOW
 	#include "./DX11/texture_font.h"
 #endif
@@ -95,7 +94,7 @@ Timer::Time applicationStart;
 
 
 //static Mutex mutex;
-SpinLock	eventLock;
+Sys::SpinLock	eventLock;
 #ifdef HAS_WINDOW
 
 	struct VisualEvent
@@ -491,7 +490,7 @@ namespace ApplicationInterface
 		ch.mode = (UINT16)mode;
 		ch.target = c;
 		if (deployingWhat)
-			ch.deployingWhat.Set0().value = deployingWhat->id;
+			ch.deployingWhat.Set0() = deployingWhat->id;
 		LogEvent(EventSignificance::Common,"Signalling choice intersection with "+ch.target.ToString());
 		Network::Channels::choiceIntersection.SendTo(Network::client,ch);
 
@@ -939,7 +938,7 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 
 	bool IsValidFileChar(char c)
 	{
-		if (Template::isalnum(c))
+		if (CharFunctions::isalnum(c))
 			return true;
 		switch (c)
 		{
@@ -1057,7 +1056,7 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 	}
 
 
-	class StorageThread : public ThreadObject
+	class StorageThread : public Sys::ThreadObject
 	{
 	public:
 		//Image		image;
@@ -1275,7 +1274,7 @@ namespace ApplicationInterface
 		{
 			Protocol::Marker marker;
 			static_assert(Objects::Marker::Type::EntityDeath == 0, "Please update marker logic");
-			marker.id.value.Generate();
+			marker.id.Generate();
 			FillMarker(marker, e, marker.data.Set0());
 			LocalApplicationInterface::SignalMarkerCreation(marker);
 			LogEvent(EventSignificance::Debug,e.get(),"Created friendly loss marker for "+e->GetName());
@@ -1291,7 +1290,7 @@ namespace ApplicationInterface
 				{
 				
 					Protocol::Marker marker;
-					marker.id.value.Generate();
+					marker.id.Generate();
 					static_assert(Objects::Marker::Type::HostileContact == 1, "Please update marker logic");
 					FillMarker(marker, e, marker.data.Set1());
 					LocalApplicationInterface::SignalMarkerCreation(marker);
@@ -1306,7 +1305,7 @@ namespace ApplicationInterface
 		#ifdef HAS_WINDOW
 			if (!e->ambientSound.IsCreated())
 			{
-				OpenAL::WaveBuffer wbo = Objects::Renderer::GetAmbientSound(*e);
+				Engine::OpenAL::WaveBuffer wbo = Objects::Renderer::GetAmbientSound(*e);
 				//Renderer::GetAmbientSoundOf(e->GetTypeName(),e->GetCTypeName());
 				if (wbo.IsNotEmpty())
 				{
@@ -3591,7 +3590,7 @@ int main( int argc, const char* argv[])
 		String cfg;
 		for (int i = 1; i < argc; i++)
 			cfg += " "+String(argv[i]);
-		ConfigureClient(WString(cfg.c_str()).c_str());
+		ConfigureClient(StringW(cfg.c_str()).c_str());
 
 	#endif
 
@@ -3695,11 +3694,12 @@ int main( int argc, const char* argv[])
 	#ifdef HAS_WINDOW
 		GlobalEvents::invalidateObjectCache << ApplicationInterface::HandleLocalEntityStatusChange;
 		Objects::onSelectionChanged << ApplicationInterface::HandleLocalSelectionChange;
+
+		Engine::GlobalAspectConfiguration::worldZIsUp = true;
 	#endif
 
 
 
-		Engine::GlobalAspectConfiguration::worldZIsUp = true;
 		
 		
 		//display.create(Engine::DisplayConfig("TerraLab");

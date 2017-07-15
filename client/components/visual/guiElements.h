@@ -12,6 +12,8 @@
 
 namespace GUI
 {
+	using namespace DeltaWorks;
+	using namespace DeltaWorks::Math;
 
 	namespace DX11 = Engine::DX11;
 

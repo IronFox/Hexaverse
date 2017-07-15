@@ -50,10 +50,22 @@ namespace FileIO
 		String title = String(PRODUCT_NAME)+" server "+ ::Network::serverID.ToNiceString()+" (world "+ World::worldID.ToNiceString()+")";
 		if (ConfigurationMode::IsActive())
 			title += " INTERACTIVE CONFIGURATION MODE";
+		#ifdef _DEBUG
+			title += " (DEBUG)";
+		#endif
 		SetConsoleTitleA(title.c_str());
 	}
 
 
+	struct FactionFlags
+	{
+		enum flag_t
+		{
+			IsDead = 0x1,
+
+		};
+
+	};
 
 
 
@@ -78,6 +90,7 @@ namespace FileIO
 
 		//FactionGroup = WorldGroup + 1024,
 		FactionSection = ResourceSection + 1024,
+		FactionStatisticsSection
 				//FactionID,
 				//FactionAccessToken,
 				//ResourcesDiscovered_Compressed,
@@ -166,10 +179,12 @@ namespace FileIO
 								fileVersion("VERS"),
 								baseJob("VHBJ"),
 								factionWorldCounterChunk("WCCK"),
+								gamePhase("GAMP"),
 								worldConfig("WCFG"),
 								worldContentTypeCount("WCTC"),
 								worldID("WDID"),
 								factionWorldTypeChunk("WTCK"),
+								factionFlags("FFLG"),
 								terrainExponent("TREX"),
 								researchScript("RESS"),
 								researchState("REST"),
@@ -198,7 +213,7 @@ namespace FileIO
 		}
 	
 	template <typename T>
-		inline static void GetPODs(Riff::Chunk*parent, const Riff::TID&id, ArrayData<T>&resultOut)
+		inline static void GetPODs(Riff::Chunk*parent, const Riff::TID&id, Ctr::ArrayData<T>&resultOut)
 		{
 			Riff::Chunk*chk = parent->FindFirst(id);
 			ASSERT_NOT_NULL1__(chk, id.ToString());
@@ -209,7 +224,7 @@ namespace FileIO
 		}
 
 	template <typename T>
-		inline static void GetPODs(Riff::Chunk*parent, const Riff::TID&id, BasicBuffer<T>&resultOut)
+		inline static void GetPODs(Riff::Chunk*parent, const Riff::TID&id, Ctr::BasicBuffer<T>&resultOut)
 		{
 			Riff::Chunk*chk = parent->FindFirst(id);
 			ASSERT_NOT_NULL1__(chk, id.ToString());
@@ -249,10 +264,10 @@ namespace FileIO
 		};
 	}
 
-	static void Export(Riff::Chunk*parent, const Objects::WorldEntity&e, GenericHashSet<Objects::PFaction,SharedPtrHash>&factions)
+	static void Export(Riff::Chunk*parent, const Objects::WorldEntity&e, Ctr::GenericHashSet<Objects::PFaction,SharedPtrHash>&factions)
 	{
 		factions.Set(e.owner);
-		static ByteStream stream;
+		static ByteStreamBuffer stream;
 		stream.Clear();
 
 
@@ -267,13 +282,15 @@ namespace FileIO
 			flags |= EntityFlag::IsSleeping;
 		stream.Append(flags);
 		
-		parent->AppendBlock(RID::entity,stream.pointer(),stream.GetFillLevel());
+		parent->AppendBlock(RID::entity,stream);
 		parent->AppendBlock(RID::location)->SetPODData(e.location);
 		if (e.empDamageLevel)
 			parent->AppendBlock(RID::empDamageLevel)->SetPODData(e.empDamageLevel);
 	}
 
-	static void Import(Riff::Chunk*parent, Objects::WorldEntity&e, const GenericHashTable<TUniqueID,Objects::PFaction,TUniqueID>&ownerMap)
+
+	typedef GenericHashTable<TUniqueID,Objects::PFaction>	FactionMap;
+	static void Import(Riff::Chunk*parent, Objects::WorldEntity&e, const FactionMap&ownerMap)
 	{
 		using namespace ApplicationInterface;
 		Riff::Chunk*source = parent->FindFirst(RID::entity);
@@ -363,10 +380,10 @@ namespace FileIO
 		};
 	}
 
-	static void Export(Riff::Chunk*taskChunk, const Queue<Objects::MobileEntity::Task::Focus>&foci)
+	static void Export(Riff::Chunk*taskChunk, const Ctr::Queue<Objects::MobileEntity::Task::Focus>&foci)
 	{
-		static Array<Grid::LCellIdI>	fociArray;
-		static Array<BYTE>	flagArray;
+		static Ctr::Array<Grid::LCellIdI>	fociArray;
+		static Ctr::Array<BYTE>	flagArray;
 		if (foci.IsEmpty())
 			return;
 		fociArray.SetSize(foci.Count());
@@ -381,7 +398,7 @@ namespace FileIO
 		taskChunk->AppendBlock(RID::fociFlags,flagArray.pointer(),flagArray.GetContentSize());
 	}
 
-	static void Import(Riff::Chunk*taskChunk, Queue<Objects::MobileEntity::Task::Focus>&outFoci)
+	static void Import(Riff::Chunk*taskChunk, Ctr::Queue<Objects::MobileEntity::Task::Focus>&outFoci)
 	{
 		Riff::Chunk*source = taskChunk->FindFirst(RID::foci);
 		Riff::Chunk*source1 = taskChunk->FindFirst(RID::fociFlags);
@@ -406,7 +423,7 @@ namespace FileIO
 		}
 	}
 
-	static void Export(Riff::Chunk*taskChunk, const BasicBuffer<Objects::PathNode>&path)
+	static void Export(Riff::Chunk*taskChunk, const Ctr::BasicBuffer<Objects::PathNode>&path)
 	{
 		static_assert(sizeof(Objects::PathNode)==sizeof(Grid::LCellIdI)+sizeof(int), "Struct alignment fault" );
 		if (path.IsEmpty())
@@ -414,7 +431,7 @@ namespace FileIO
 		taskChunk->AppendBlock(RID::path,path.pointer(),path.GetContentSize());
 	}
 
-	static void Import(Riff::Chunk*taskChunk, BasicBuffer<Objects::PathNode>&outPath)
+	static void Import(Riff::Chunk*taskChunk, Ctr::BasicBuffer<Objects::PathNode>&outPath)
 	{
 		Riff::Chunk*source = taskChunk->FindFirst(RID::path);
 		outPath.Clear();
@@ -427,12 +444,31 @@ namespace FileIO
 		}
 	}
 
+
+	template <typename T>
+	void SetSerialData(Riff::Chunk&chunk,const T&object)
+	{
+		using Serialization::SerialSync;
+		SerialSizeScanner scanner;
+		SerialSync(scanner,object);
+		if (scanner.GetTotalSize())
+			SerializeToCompactMemory(object,chunk.SetData(scanner.GetTotalSize()),scanner.GetTotalSize());
+	}
+
+	template <typename T>
+	void Attach(Riff::Chunk*parent, const Riff::TID&chunkID, const T&object)
+	{
+		Riff::Chunk*chunk = parent->AppendBlock(chunkID);
+		SetSerialData(*chunk,object);
+	}
+
+
 	static void Export(Riff::Chunk*taskChunk, const Objects::PVehicleJob&job)
 	{
 		if (job)
 		{
 			Riff::Chunk*baseChunk = taskChunk->AppendBlock(RID::baseJob);
-			static ByteStream	stream;
+			static ByteStreamBuffer	stream;
 			stream.Clear();
 			stream << job->roundsToJobCompletion << job->resourceCostLeft;// << job->jobAutoCompletion << job->movesToFocusWhenDone;
 			stream << job->ioID;
@@ -442,11 +478,7 @@ namespace FileIO
 			if (parent)
 				taskChunk->AppendBlock(RID::mobileEntityParentJobIndex)->SetPODData(parent->ioID);
 
-			Riff::Chunk*jobChunk = taskChunk->AppendBlock(job->GetDataKey());
-			size_t dataSize = job->GetSerialSize(false);
-			if (dataSize)
-				ASSERT2__(SerializeToMemory(*job,jobChunk->SetData(dataSize),(ISerializable::serial_size_t)dataSize,false), job->GetName(),dataSize);
-			//this fails sometimes. gotta investigate
+			Attach(taskChunk,job->GetDataKey(),*job);
 		}
 	}
 	static void Import(Riff::Chunk*taskChunk, Objects::PVehicleJob&job)
@@ -463,7 +495,7 @@ namespace FileIO
 			if (source)
 			{
 				job = jobType->Instantiate();
-				ASSERT2__(DeserializeFromMemory(*job,source->pointer(),source->size(),false), job->GetName(),source->size());
+				DeserializeFromCompactMemory(*job,source->pointer(),source->size());
 
 
 				source0->OpenStream();
@@ -525,10 +557,10 @@ namespace FileIO
 		Export(taskChunk,t.path);
 		Export(taskChunk,RID::taskName,t.name);
 
-		static ByteStream stream;
+		static ByteStreamBuffer stream;
 		stream.Clear();
 		stream << (UINT16)t.mode << (UINT16)t.type;
-		taskChunk->AppendBlock(RID::taskData,stream.pointer(),stream.GetFillLevel());
+		taskChunk->AppendBlock(RID::taskData,stream);
 		Export(taskChunk,t.job);
 	}
 
@@ -572,8 +604,8 @@ namespace FileIO
 		}
 		helper.id = item.id;
 		helper.productID = item.producing->id;
-		serial_size_t size = helper.GetSerialSize(false);
-		ASSERT1__(SerializeToMemory(helper,parent->AppendBlock(RID::vehiclePlantItem)->SetData(size),size,false),size);
+
+		Attach(parent,RID::vehiclePlantItem,helper);
 	}
 	static void Import(Riff::Chunk*source, Objects::MobileEntityProducer::WorkItem&item, const Objects::PFaction&owner)
 	{
@@ -581,7 +613,7 @@ namespace FileIO
 
 		WorkItemSerializable helper;
 
-		ASSERT1__(DeserializeFromMemory(helper,source->pointer(),source->size(),false),source->size());
+		DeserializeFromCompactMemory(helper,source->pointer(),source->size());
 		if (helper.turretName.IsNotEmpty())
 		{
 			item.producing = Objects::AssembleVehicle(owner,helper.productID,Grid::LCellIdI(0,0),helper.baseName,helper.turretName);
@@ -656,6 +688,17 @@ namespace FileIO
 
 	};
 
+
+	void	SerialSync(IReadStream&s, MobileEntityFlag&v)
+	{
+		s.ReadPrimitive((UINT16&)v);
+	}
+
+	void	SerialSync(IWriteStream&s, MobileEntityFlag v)
+	{
+		s.WritePrimitive((UINT16)v);
+	}
+
 	void	operator|=(MobileEntityFlag&a, MobileEntityFlag b)
 	{
 		a = (MobileEntityFlag)((UINT16)a | (UINT16)b);
@@ -665,9 +708,9 @@ namespace FileIO
 		return ((UINT16)a & (UINT16)b) != 0;
 	}
 
-	Buffer0<Objects::PMobileEntity>	insertIntoHangar;
+	Ctr::Buffer0<Objects::PMobileEntity>	insertIntoHangar;
 
-	static void Export(Riff::Chunk*parent, Objects::MobileEntity&v, GenericHashSet<Objects::PFaction,SharedPtrHash>&factions)
+	static void Export(Riff::Chunk*parent, Objects::MobileEntity&v, Ctr::GenericHashSet<Objects::PFaction,SharedPtrHash>&factions)
 	{
 		Objects::PHangar store = v.storedIn.lock();
 		if (store)
@@ -699,7 +742,7 @@ namespace FileIO
 			Export(parent,*p);
 		}
 
-		static ByteStream stream;
+		static ByteStreamBuffer stream;
 		stream.Clear();
 		stream.Append(v.attackActionLeft);
 		stream.Append(v.movementActionLeft);
@@ -717,7 +760,7 @@ namespace FileIO
 		//stream.Append(v.hasConstructedThisRound);
 		//stream.Append(v.hasMoved);
 		
-		parent->AppendBlock(RID::vehicle,stream.pointer(),stream.GetFillLevel());
+		parent->AppendBlock(RID::vehicle,stream);
 		if (v.IsPureVehicle())
 		{
 			Objects::Vehicle&veh = (Objects::Vehicle&)v;
@@ -732,7 +775,7 @@ namespace FileIO
 		Export(parent,v.completeOnMove);
 	}
 
-	static bool Import(Riff::Chunk*parent, Riff::Chunk*vehicleChunk,const Objects::PMobileEntity&v, GenericHashTable<TUniqueID,Objects::PFaction,TUniqueID>&factions)
+	static bool Import(Riff::Chunk*parent, Riff::Chunk*vehicleChunk,const Objects::PMobileEntity&v, FactionMap&factions)
 	{
 		//Grid::LCellIdI location;
 		GetPOD(parent,RID::location,v->location);
@@ -815,14 +858,14 @@ namespace FileIO
 		helper.destination = item.target;
 		helper.autoTarget = item.autoTarget;
 	//	helper.id = item.id;
-		serial_size_t size = helper.GetSerialSize(false);
-		ASSERT1__(SerializeToMemory(helper,parent->AppendBlock(RID::towerItem)->SetData(size),size,false),size);
+
+		Attach(parent,RID::towerItem,helper);
 	}
 	static void Import(Riff::Chunk*source, Objects::Tower::AttackTask&item)
 	{
 		ASSERT1__(source->IsID(RID::towerItem),source->GetID().ToString());
 		AttackItemSerializable helper;
-		ASSERT__(DeserializeFromMemory(helper,source->pointer(),source->size(),false));
+		DeserializeFromCompactMemory(helper,source->pointer(),source->size());
 		item.target = helper.destination;
 //		item.id = helper.id;
 		item.autoTarget = helper.autoTarget;
@@ -830,7 +873,7 @@ namespace FileIO
 
 
 
-	static void Export(Riff::Chunk*parent, Objects::Structure&s, GenericHashSet<Objects::PFaction,SharedPtrHash>&factions)
+	static void Export(Riff::Chunk*parent, Objects::Structure&s, Ctr::GenericHashSet<Objects::PFaction,SharedPtrHash>&factions)
 	{
 		Export(parent,(Objects::WorldEntity&)s,factions);
 		Export(parent,RID::structureType,s.GetTypeName());
@@ -873,7 +916,7 @@ namespace FileIO
 	}
 
 	
-	static Objects::PStructure Import(Riff::Chunk*parent, GenericHashTable<TUniqueID,Objects::PFaction,TUniqueID>&factions)
+	static Objects::PStructure Import(Riff::Chunk*parent, FactionMap&factions)
 	{
 		using namespace ApplicationInterface;
 		String typeName;
@@ -987,23 +1030,34 @@ namespace FileIO
 
 	static World::DeltaContainer staticDeltaContainer;
 
-	void SerializeToChunk(const ISerializable&data, Riff::Chunk*target)
-	{
-		static Array<BYTE> buffer;
-		ISerializable::serial_size_t size = data.GetSerialSize(false);
-		if (buffer.size() < size)
-			buffer.SetSize(size);
-		ASSERT1__(SerializeToMemory(data,buffer.pointer(),size,false),size);
-		target->SetData(buffer.pointer(),size);
-	}
 
 	void	WriteToListChunk(World::Data&inData, Riff::Chunk&outChunk)
 	{
 		staticDeltaContainer.CompressState(inData,Protocol::Timestamp(true,0));
 		for (BaseGrid::family_t k = 0; k < BaseGrid::NumFamilies; k++)
-			SerializeToChunk(staticDeltaContainer.delta[k].data0,outChunk.AppendBlock(RID::worldTypeChunk));
+			Attach(&outChunk,RID::worldTypeChunk, staticDeltaContainer.delta[k].data0);
 	}
 
+
+	void ReadTypeArrayFromChunk(Protocol::TypeDeltaArray&typeArray, const Riff::Chunk&chunk)
+	{
+		if (ApplicationInterface::globalVersionOfCurrentFile < ApplicationInterface::FileVersions::NewSerializationEngine)
+		{
+			const count_t elements = chunk.size() / 5;
+			typeArray.SetSize(elements);
+			MemReadStream stream(chunk.pointer(),chunk.size());
+			using Serialization::SerialSync;
+			for (index_t i = 0; i < elements; i++)
+			{
+				SerialSync(stream,typeArray[i].repitition);
+				SerialSync(stream,typeArray[i].value);
+			}
+		}
+		else
+		{
+			DeserializeFromCompactMemory(typeArray,chunk.pointer(),chunk.size());
+		}
+	}
 
 	void	ReadFromListChunk(const Riff::Chunk&list, World::Data&outData)
 	{
@@ -1018,7 +1072,7 @@ namespace FileIO
 			{
 				if (child->IsID(RID::worldTypeChunk))
 				{
-					ASSERT__(DeserializeFromMemory(typeArray,child->pointer(),child->size(),false));
+					ReadTypeArrayFromChunk(typeArray,*child);
 					ASSERT_LESS__(atFamily, BaseGrid::NumFamilies);
 					seq.ApplyFamilyDelta(atFamily,typeArray,false,true);
 
@@ -1046,54 +1100,62 @@ namespace FileIO
 		}
 		else
 		{
-			Riff::Chunk*vers = file.FindFirst(RID::fileVersion);
-			if (!vers)
+			try
 			{
-				LogEvent(EventClass::Preset::error,"Unable to read version number");
-
-				failed = true;
-			}
-			else
-			{
-				UINT32 vid;
-				if (vers->size() != 4)
+				Riff::Chunk*vers = file.FindFirst(RID::fileVersion);
+				if (!vers)
 				{
-					LogEvent(EventClass::Preset::error,"Version size mismatch");
+					LogEvent(EventClass::Preset::error,"Unable to read version number");
 
 					failed = true;
 				}
 				else
 				{
-					vers->Get(&vid);
-					if (vid < 1035)
+					UINT32 vid;
+					if (vers->size() != 4)
 					{
-						LogEvent(EventClass::Preset::error,"Version not supported anymore. Expected >= 1035, found "+String(vid));
+						LogEvent(EventClass::Preset::error,"Version size mismatch");
 
 						failed = true;
 					}
 					else
-						if (vid > ApplicationInterface::SupportedFileVersion)
+					{
+						vers->Get(&vid);
+						if (vid < 1035)
 						{
-							LogEvent(EventClass::Preset::error,"Unsupported version: "+String(vid)+". Versions are supported up to "+String(ApplicationInterface::SupportedFileVersion));
+							LogEvent(EventClass::Preset::error,"Version not supported anymore. Expected >= 1035, found "+String(vid));
+
 							failed = true;
 						}
 						else
-							ApplicationInterface::globalVersionOfCurrentFile = vid;
-				}
+							if (vid > ApplicationInterface::SupportedFileVersion)
+							{
+								LogEvent(EventClass::Preset::error,"Unsupported version: "+String(vid)+". Versions are supported up to "+String(ApplicationInterface::SupportedFileVersion));
+								failed = true;
+							}
+							else
+								ApplicationInterface::globalVersionOfCurrentFile = vid;
+					}
 
+				}
+				UINT32 contentTypeCount = 0;
+				GetOptionalPOD(&file,RID::worldContentTypeCount,contentTypeCount,(UINT32)12);
+				if (contentTypeCount != Grid::Content::NumberOfPossibilities)
+				{
+					LogEvent(EventClass::Preset::error,"Grid content type count extracted from file is "+String(contentTypeCount)+". Local count is "+String(Grid::Content::NumberOfPossibilities));
+					failed = true;
+				}
+				UINT32 exponent = 6;
+				GetOptionalPOD(&file, RID::terrainExponent,exponent,6U);
+				if (exponent != Grid::HighExponent)
+				{
+					LogEvent(EventClass::Preset::error,"Grid exponent extracted from file is "+String(exponent)+". Local exponent is "+String(Grid::HighExponent));
+					failed = true;
+				}
 			}
-			UINT32 contentTypeCount = 0;
-			GetOptionalPOD(&file,RID::worldContentTypeCount,contentTypeCount,(UINT32)12);
-			if (contentTypeCount != Grid::Content::NumberOfPossibilities)
+			catch (const std::exception&ex)
 			{
-				LogEvent(EventClass::Preset::error,"Grid content type count extracted from file is "+String(contentTypeCount)+". Local count is "+String(Grid::Content::NumberOfPossibilities));
-				failed = true;
-			}
-			UINT32 exponent = 6;
-			GetOptionalPOD(&file, RID::terrainExponent,exponent,6U);
-			if (exponent != Grid::HighExponent)
-			{
-				LogEvent(EventClass::Preset::error,"Grid exponent extracted from file is "+String(exponent)+". Local exponent is "+String(Grid::HighExponent));
+				LogEvent(EventClass::Preset::error,String("Exception while loading ")+String(filename)+": "+ex.what());
 				failed = true;
 			}
 		}
@@ -1112,7 +1174,7 @@ namespace FileIO
 		bool nexusFound = false, worldInfoFound = false;
 
 
-
+		try
 		{
 			Riff::Chunk*chunk = file.FindFirst(RID::researchScript);
 			if (chunk)
@@ -1122,7 +1184,7 @@ namespace FileIO
 				ScriptCache::PScript script = ScriptCache::Lookup(id);
 				if (!script)
 				{
-					Array<BYTE>	data;
+					Ctr::Array<BYTE>	data;
 					chunk->Get(data);
 					script = ScriptCache::DefineFromFleetingCompressedData(id,data,false);
 				}
@@ -1132,8 +1194,13 @@ namespace FileIO
 					Objects::ResearchState::LoadDefaultProgram();
 			}
 		}
+		catch (const std::exception&ex)
+		{
+			LogEvent(EventClass::Preset::error,String("Exception while loading research script of ")+String(filename)+": "+ex.what());
+			failed = true;
+		}
 
-		GenericHashTable<TUniqueID,Objects::PFaction,TUniqueID>	factionMap;
+		FactionMap	factionMap;
 		for (int round = 0; round < 2; round++)
 		{
 			Riff::Chunk*name,*list;
@@ -1143,313 +1210,362 @@ namespace FileIO
 					ASSERT_EQUAL__(name->size(),2);
 					UINT16 nameID;
 					name->Get(&nameID);
-					switch ((ChunkName)nameID)
+					try
 					{
-						case ChunkName::WorldInfoGroup:
-							if (round == 0)
-							{
-								ASSERT__(!worldInfoFound);
-								worldInfoFound = true;
-								GetPOD(list,RID::worldID,World::worldID);
-								GetPOD(list,RID::roundNumber,RuntimeConfig::roundNumber);
-								GetOptionalPOD(list,RID::mostFactionsAlive,Game::mostFactionsAlive,(UINT32)0);
-
-								Game::Config::Nexus::enableAI = list->FindFirst(RID::nexusAI) != nullptr;
-								RuntimeConfig::empZones = false;
-
-								if (ApplicationInterface::globalVersionOfCurrentFile < ApplicationInterface::FileVersions::FirstVersionWithVariables)
+						switch ((ChunkName)nameID)
+						{
+							case ChunkName::WorldInfoGroup:
+								if (round == 0)
 								{
-									GetPOD(list,RID::closedGame,Game::Config::closedGame);
-									GetOptionalPOD(list,RID::nexusBases,Game::Config::Nexus::haveBases,false);
-									UINT16 goal;
-									GetPOD(list,RID::goal,goal);
-									if (!RuntimeConfig::gameGoal.Load(goal))
+									ASSERT__(!worldInfoFound);
+									worldInfoFound = true;
+									GetPOD(list,RID::worldID,World::worldID);
+									GetPOD(list,RID::roundNumber,RuntimeConfig::roundNumber);
+									GetOptionalPOD(list,RID::mostFactionsAlive,Game::mostFactionsAlive,(UINT32)0);
+
 									{
-										if (goal == 2)
+										auto p = list->FindFirst(RID::gamePhase);
+										if (p)
 										{
-											RuntimeConfig::empZones = true;
-											RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::ConquerNexus;
-										}
-										else
-										{
-											LogEvent(EventSignificance::NonFatalError,"Loaded unexpected goal index "+String(goal));
-											RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::None;
-										}
-									}
-									GetPOD(list,RID::startBases,Game::Config::startBases);
-									GetPOD(list,RID::basesRequired,Game::Config::basesRequired );
-									GetOptionalPOD(list,RID::newVehiclesHaveFullAmmo,Objects::newVehiclesHaveFullAmmo,true);
-									GetOptionalPOD(list,RID::exposeActionLeftToHostileFactions,Game::Config::exposeActionLeftToHostileFactions,true);
-									{
-										UINT8 v;
-										GetOptionalPOD(list,RID::doomsdayWeapons,v,(UINT8)0);
-										RuntimeConfig::doomsdayWeapons.Load(v);
-									}
-									GetOptionalPOD(list,RID::factionSupportFlags,Game::Config::factionSupportFlags,Protocol::GameFlag::AllFactionSupport);
-								}
-								else
-								{
-									Riff::Chunk*chk = list->FindFirst(RID::variableConfiguration);
-									ASSERT_NOT_NULL__(chk);
-									String variables(chk->pointer(),chk->size());
-									Array<String> lines;
-									explode('\n',variables,lines);
-									foreach (lines,line)
-									{
-										if (line->IsEmpty())
-											continue;
-										index_t tabAt = line->find(tab);
-										ASSERT__(tabAt);
-										if (tabAt)
-										{
-											String key = "/"+line->subStringRef(0,tabAt-1);
-											StringRef value = line->subStringRef((int)tabAt);
-		
-											CLI::PVariable v = Reflection::state.FindVar(key);
-											if (!v)
+											String container(TStringLength(p->size()));
+											p->Get(container.mutablePointer());
+											RuntimeConfig::Phase ph;
+											if (!ph.Decode(container.c_str()) || !IsValidSavePhase(ph))
 											{
-												LogEvent(EventClass::Preset::error,"State::Load(): Unable to find variable '"+key+"' for update");
-												continue;
+												LogEvent(EventClass::Preset::fileError,"Unable to restore game phase '"+container+"'");
 											}
-											if (!v->Set(value))
-											{
-												LogEvent(EventClass::Preset::error,"State::Load(): Unable to update variable '"+key+"' to '"+value+"'. Supported values are "+v->GetSupportedValues());
-												if (v->name == "gameGoal" && value == "EMPConquerNexus")
-												{
-													RuntimeConfig::empZones = true;
-													RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::ConquerNexus;
-												}
-											}
+											else
+												RuntimeConfig::phase = ph;
 										}
 									}
 
 
-								}
-								//Grid::TSharedPlanetConfig persistentPlanetInfo;
-								GetPOD(list,RID::worldConfig,(Grid::TSharedPlanetConfig&)Grid::currentPlanetConfig);
-								Grid::CellStack::bottom.content = (BYTE)Grid::currentPlanetConfig.innerCoreType;
+									Game::Config::Nexus::enableAI = list->FindFirst(RID::nexusAI) != nullptr;
+									RuntimeConfig::empZones = false;
 
-
-							}
-						break;
-						case ChunkName::ObjectGroup:
-							if (round == 1)
-							{
-						
-								Riff::Chunk*child;
-								if (child = list->First())
-									do
+									if (ApplicationInterface::globalVersionOfCurrentFile < ApplicationInterface::FileVersions::FirstVersionWithVariables)
 									{
-										if (child->IsID(RIFF_LIST))
+										GetPOD(list,RID::closedGame,Game::Config::closedGame);
+										GetOptionalPOD(list,RID::nexusBases,Game::Config::Nexus::haveBases,false);
+										UINT16 goal;
+										GetPOD(list,RID::goal,goal);
+										if (!RuntimeConfig::gameGoal.Load(goal))
 										{
-											Riff::Chunk*vehicleChunk = child->FindFirst(RID::vehicle);
-											if (vehicleChunk)
+											if (goal == 2)
 											{
-												String base,turret;
-												if (!ImportOptional(child,RID::mobileEntityType,base))
-												{
-													Import(child,RID::vehicleBase,base);
-													Import(child,RID::vehicleTurret,turret);
-												}
-												Objects::PMobileEntity v = Objects::AssembleMobileEntity(Objects::PFaction(),TUniqueID(),Grid::LCellIdI(0,0),base,turret);
-												if (!v)
-												{
-													LogEvent(EventSignificance::NonFatalError,"Unable to assemble mobile entity ("+base+","+turret+")");
-												}
-
-												bool doInsert = v && Import(child,vehicleChunk,v,factionMap);
-												#if defined CHEAT_FULL_STORAGE && !defined ONE_COMPOUND_PER_FACTION
-													 v->currentStorage = v->GetMaxStorageCapacity();
-												#endif
-												if (doInsert)
-												{
-													float t =0;
-													Objects::InsertConstructed(v,t,true,false);
-												}
-												else
-												{
-													//Objects::storedVehicles << v;
-													//v->owner->storedVehicles << v;
-													//Objects::idMap.Set(v->id,v);
-													//v->isInserted = v->isInsertedIntoGrid = false;
-												}
+												RuntimeConfig::empZones = true;
+												RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::ConquerNexus;
 											}
 											else
 											{
-												//child->FindFirst(RID::vehiclePlant),child->FindFirst(RID::towerActionLeft)
-												Objects::PStructure s = Import(child,factionMap);
-												if (s)
+												LogEvent(EventClass::Preset::fileError,"Loaded unexpected goal index "+String(goal));
+												RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::None;
+											}
+										}
+										GetPOD(list,RID::startBases,Game::Config::startBases);
+										GetPOD(list,RID::basesRequired,Game::Config::basesRequired );
+										GetOptionalPOD(list,RID::newVehiclesHaveFullAmmo,Objects::newVehiclesHaveFullAmmo,true);
+										GetOptionalPOD(list,RID::exposeActionLeftToHostileFactions,Game::Config::exposeActionLeftToHostileFactions,true);
+										{
+											UINT8 v;
+											GetOptionalPOD(list,RID::doomsdayWeapons,v,(UINT8)0);
+											RuntimeConfig::doomsdayWeapons.Load(v);
+										}
+										GetOptionalPOD(list,RID::factionSupportFlags,Game::Config::factionSupportFlags,Protocol::GameFlag::AllFactionSupport);
+									}
+									else
+									{
+										Riff::Chunk*chk = list->FindFirst(RID::variableConfiguration);
+										ASSERT_NOT_NULL__(chk);
+										String variables(chk->pointer(),chk->size());
+										Ctr::Array<String> lines;
+										explode('\n',variables,lines);
+										foreach (lines,line)
+										{
+											if (line->IsEmpty())
+												continue;
+											index_t tabAt = line->find(tab);
+											ASSERT__(tabAt);
+											if (tabAt)
+											{
+												String key = "/"+line->subStringRef(0,tabAt-1);
+												StringRef value = line->subStringRef((int)tabAt);
+		
+												CLI::PVariable v = Reflection::state.FindVar(key);
+												if (!v)
 												{
-													float t =0;
-													Objects::InsertConstructed(s,t,false,false);
+													LogEvent(EventClass::Preset::fileError,"State::Load(): Unable to find variable '"+key+"' for update");
+													continue;
+												}
+												if (!v->Set(value))
+												{
+													LogEvent(EventClass::Preset::fileError,"State::Load(): Unable to update variable '"+key+"' to '"+value+"'. Supported values are "+v->GetSupportedValues());
+													if (v->name == "gameGoal" && value == "EMPConquerNexus")
+													{
+														RuntimeConfig::empZones = true;
+														RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::ConquerNexus;
+													}
 												}
 											}
 										}
-										else
-											FATAL__("Encountered unexpected block type in object-group: "+String(child->GetID().ToString()));
+
+
 									}
-									while (child = list->Next());
+									//Grid::TSharedPlanetConfig persistentPlanetInfo;
+									GetPOD(list,RID::worldConfig,(Grid::TSharedPlanetConfig&)Grid::currentPlanetConfig);
+									Grid::CellStack::bottom.content = (BYTE)Grid::currentPlanetConfig.innerCoreType;
 
 
-								Objects::RefreshCompoundCoverage(0);
-
-							}
-						break;
-						case ChunkName::WorldGroup:
-							if (round == 0)
-							{
-								ReadFromListChunk(*list,World::actual);
-							}
-						break;
-						case ChunkName::InitialWorldGroup:
-							if (round == 0)
-							{
-								ReadFromListChunk(*list,World::initial);
-							}
-						break;
-						case ChunkName::ResourceSection:
-							if (round == 0)
-							{
-								String resourceName;
-								Import(list,RID::resourceName,resourceName);
-								Grid::Resource&res = Grid::Resource::Require(resourceName);
-								GetBinary(list,RID::resourceCoverage,res.coverage,sizeof(res.coverage));
-							}
-						break;
-						case ChunkName::FactionSection:
-							if (round == 0)
-							{
-								Objects::PFaction faction;
-								TUniqueID factionID;
-								GetPOD(list,RID::factionID,factionID);
-							
-								bool isNexus = false;
-								if (list->FindFirst(RID::nexusTag))
-								{
-									isNexus = true;
-									ASSERT__(!nexusFound);
-									nexusFound = true;
-									Objects::Faction::RecreateNexus(factionID);
-									faction = Objects::Faction::nexus;
-									LogEvent(EventSignificance::Common,"Loading nexus faction");
 								}
-								else
+							break;
+							case ChunkName::ObjectGroup:
+								if (round == 1)
 								{
-									faction.reset(new Objects::Faction(factionID));
-									Objects::Faction::all << faction;
-
-									//faction->knownWorld.FlushTerrain();	unnecessary
-									//foreach (faction->knownWorld,stat)
-									//	stat->ZeroInit();
-								}
-								GetPOD(list,RID::factionAccessToken,faction->accessToken);
-
-								Riff::Chunk*researchStateChunk = list->FindFirst(RID::researchState);
-								if (researchStateChunk)
-								{
-									faction->researchState.Import(researchStateChunk->ReferenceData());
-
-
-									Riff::Chunk*activeResearchChunk = list->FindFirst(RID::activeResearchTopic);
-									if (activeResearchChunk)
-									{
-										faction->researchState.RestoreResearchQueue(String((const char*)activeResearchChunk->pointer(),activeResearchChunk->size()));
-									}
-								}
-
-								{
-									Riff::Chunk*nameChunk = list->FindFirst(RID::factionName);
-									if (nameChunk)
-									{
-										faction->name.setLength(nameChunk->size());
-										nameChunk->Get(faction->name.mutablePointer());
-									}
-									else
-										faction->name = isNexus ? "<Nexus>" : faction->id.ToString();
-								}
-								{
-									Riff::Chunk*colorChunk = list->FindFirst(RID::factionColor);
-									if (colorChunk && colorChunk->size() == 3*sizeof(float))	//3x4 floats
-										faction->color = Vec::ref3((const float*)colorChunk->pointer());
-								}
-							
-								if (ApplicationInterface::globalVersionOfCurrentFile >= 1038)
-								{
-									Riff::Chunk*markerChunk = list->FindFirst(RID::factionMarkers);
-									if (markerChunk)
-									{
-										Array<Objects::Marker>	markers;
-										ASSERT__(DeserializeFromMemory(markers, markerChunk->pointer(), markerChunk->size(), false));
-										faction->RestoreMarkers(markers);
-									}
-								}
-
-								factionMap.Set(faction->id,faction);
-								if (!isNexus)
-									::Network::tokenMap.Set(faction->accessToken,faction);	//dont even allow access if nexus
-
-								//BYTE k = 0;
-								//Protocol::WorldDelta	delta;
-								
-								{
+						
 									Riff::Chunk*child;
-
-									auto seq = faction->knownWorld.BeginChangeSequence(0);
-									Protocol::TypeDeltaArray	typeArray;
-									//Riff::Chunk*child;
-									BaseGrid::family_t atFamily = 0;
-
 									if (child = list->First())
 										do
 										{
-									
-												//factionWorldTypeChunk("WTCK"),
-												//factionWorldCounterChunk("WCCK"),
-
-											if (child->IsID(RID::factionWorldTypeChunk))
+											if (child->IsID(RIFF_LIST))
 											{
-												ASSERT__(DeserializeFromMemory(typeArray,child->pointer(),child->size(),false));
-												ASSERT_LESS__(atFamily, BaseGrid::NumFamilies);
-												seq.ApplyFamilyDelta(atFamily,typeArray,false,false);
-												atFamily++;
-											}
-											//elif (child->IsID(RID::factionWorldCounterChunk))
-											//{
-											//	ASSERT__(DeserializeFromMemory(countArray,child->pointer(),child->size(),false));
-											//	ASSERT_LESS__(atFamily, BaseGrid::NumFamilies);
-											//	faction->knownWorld.ApplyFamilyDelta(atFamily,typeArray,countArray,false,false);
+												Riff::Chunk*vehicleChunk = child->FindFirst(RID::vehicle);
+												if (vehicleChunk)
+												{
+													String base,turret;
+													if (!ImportOptional(child,RID::mobileEntityType,base))
+													{
+														Import(child,RID::vehicleBase,base);
+														Import(child,RID::vehicleTurret,turret);
+													}
+													Objects::PMobileEntity v = Objects::AssembleMobileEntity(Objects::PFaction(),TUniqueID(),Grid::LCellIdI(0,0),base,turret);
+													if (!v)
+													{
+														LogEvent(EventClass::Preset::fileError,"Unable to assemble mobile entity ("+base+","+turret+")");
+													}
 
-											//	atFamily++;
-											//}
-								
+													bool doInsert = v && Import(child,vehicleChunk,v,factionMap);
+													#if defined CHEAT_FULL_STORAGE && !defined ONE_COMPOUND_PER_FACTION
+														 v->currentStorage = v->GetMaxStorageCapacity();
+													#endif
+													if (doInsert)
+													{
+														float t =0;
+														Objects::InsertConstructed(v,t,true,false);
+													}
+													else
+													{
+														//Objects::storedVehicles << v;
+														//v->owner->storedVehicles << v;
+														//Objects::idMap.Set(v->id,v);
+														//v->isInserted = v->isInsertedIntoGrid = false;
+													}
+												}
+												else
+												{
+													//child->FindFirst(RID::vehiclePlant),child->FindFirst(RID::towerActionLeft)
+													Objects::PStructure s = Import(child,factionMap);
+													if (s)
+													{
+														float t =0;
+														Objects::InsertConstructed(s,t,false,false);
+													}
+												}
+											}
+											else
+												FATAL__("Encountered unexpected block type in object-group: "+String(child->GetID().ToString()));
 										}
 										while (child = list->Next());
-									ASSERT_EQUAL__(atFamily,BaseGrid::NumFamilies);
+
+
+									Objects::RefreshCompoundCoverage(0);
 
 								}
-
-								Riff::Chunk*compressed = list->FindFirst(RID::resourcesDiscoveredCompressed);
-								if (compressed)
+							break;
+							case ChunkName::WorldGroup:
+								if (round == 0)
 								{
-									const UINT32*indices = (const UINT32*)compressed->pointer();
-									const count_t numIndices = compressed->size() / sizeof(UINT32);
-									for (UINT32 i = 0; i < numIndices; i++)
-										faction->knownResources.resourcesDiscovered[indices[i]] = true;
+									ReadFromListChunk(*list,World::actual);
 								}
-								else
+							break;
+							case ChunkName::InitialWorldGroup:
+								if (round == 0)
 								{
-									Riff::Chunk*raw = list->FindFirst(RID::resourcesDiscoveredFull);
-									if (raw)
+									ReadFromListChunk(*list,World::initial);
+								}
+							break;
+							case ChunkName::ResourceSection:
+								if (round == 0)
+								{
+									String resourceName;
+									Import(list,RID::resourceName,resourceName);
+									Grid::Resource&res = Grid::Resource::Require(resourceName);
+									GetBinary(list,RID::resourceCoverage,res.coverage,sizeof(res.coverage));
+								}
+							break;
+							case ChunkName::FactionStatisticsSection:
+								if (round == 1)
+								{
+									Objects::PFaction faction;
+									TUniqueID factionID;
+									GetPOD(list,RID::factionID,factionID);
+									factionMap.Query(factionID,faction);
+									ASSERT__ (faction);
+									faction->statistics.ImportFrom(list,factionMap);
+								}
+							break;
+							case ChunkName::FactionSection:
+								if (round == 0)
+								{
+									Objects::PFaction faction;
+									TUniqueID factionID;
+									GetPOD(list,RID::factionID,factionID);
+							
+									bool isNexus = false;
+									if (list->FindFirst(RID::nexusTag))
 									{
-										ASSERT_EQUAL__(raw->size(),faction->knownResources.resourcesDiscovered.GetContentSize());
-										faction->knownResources.resourcesDiscovered = ArrayRef<const bool>((const bool*)raw->pointer(),(size_t)raw->size());
+										isNexus = true;
+										ASSERT__(!nexusFound);
+										nexusFound = true;
+										Objects::Faction::RecreateNexus(factionID);
+										faction = Objects::Faction::nexus;
+										LogEvent(EventSignificance::Common,"Loading nexus faction");
+									}
+									else
+									{
+										faction.reset(new Objects::Faction(factionID));
+										Objects::Faction::all << faction;
+
+										//faction->knownWorld.FlushTerrain();	unnecessary
+										//foreach (faction->knownWorld,stat)
+										//	stat->ZeroInit();
+									}
+									GetPOD(list,RID::factionAccessToken,faction->accessToken);
+
+									Riff::Chunk*researchStateChunk = list->FindFirst(RID::researchState);
+									if (researchStateChunk)
+									{
+										faction->researchState.Import(researchStateChunk->ReferenceData());
+
+
+										Riff::Chunk*activeResearchChunk = list->FindFirst(RID::activeResearchTopic);
+										if (activeResearchChunk)
+										{
+											faction->researchState.RestoreResearchQueue(String((const char*)activeResearchChunk->pointer(),activeResearchChunk->size()));
+										}
+									}
+
+									{
+										Riff::Chunk*nameChunk = list->FindFirst(RID::factionName);
+										if (nameChunk)
+										{
+											faction->name.setLength(nameChunk->size());
+											nameChunk->Get(faction->name.mutablePointer());
+										}
+										else
+											faction->name = isNexus ? "<Nexus>" : ToString(faction->id);
+									}
+									{
+										Riff::Chunk*colorChunk = list->FindFirst(RID::factionColor);
+										if (colorChunk && colorChunk->size() == 3*sizeof(float))	//3x4 floats
+											faction->color = Vec::ref3((const float*)colorChunk->pointer());
+									}
+
+									{
+										Riff::Chunk*flagChunk = list->FindFirst(RID::factionFlags);
+										if (flagChunk && flagChunk->size() == sizeof(UINT32))
+										{
+											UINT32 flags;
+											flagChunk->Get(&flags);
+											if (flags & FactionFlags::IsDead)
+												faction->isDead = true;
+										}
+									}
+
+							
+									if (ApplicationInterface::globalVersionOfCurrentFile >= 1038)
+									{
+										Riff::Chunk*markerChunk = list->FindFirst(RID::factionMarkers);
+										if (markerChunk)
+										{
+											Ctr::Array<Objects::Marker>	markers;
+											DeserializeFromCompactMemory(markers, markerChunk->pointer(), markerChunk->size());
+											faction->RestoreMarkers(markers);
+										}
+									}
+
+									factionMap.Set(faction->id,faction);
+									if (!isNexus)
+										::Network::tokenMap.Set(faction->accessToken,faction);	//dont even allow access if nexus
+
+									//BYTE k = 0;
+									//Protocol::WorldDelta	delta;
+								
+									{
+										Riff::Chunk*child;
+
+										auto seq = faction->knownWorld.BeginChangeSequence(0);
+										Protocol::TypeDeltaArray	typeArray;
+										//Riff::Chunk*child;
+										BaseGrid::family_t atFamily = 0;
+
+										if (child = list->First())
+											do
+											{
+									
+													//factionWorldTypeChunk("WTCK"),
+													//factionWorldCounterChunk("WCCK"),
+
+												if (child->IsID(RID::factionWorldTypeChunk))
+												{
+													ReadTypeArrayFromChunk(typeArray,*child);
+													ASSERT_LESS__(atFamily, BaseGrid::NumFamilies);
+													seq.ApplyFamilyDelta(atFamily,typeArray,false,false);
+													atFamily++;
+												}
+												//elif (child->IsID(RID::factionWorldCounterChunk))
+												//{
+												//	ASSERT__(DeserializeFromMemory(countArray,child->pointer(),child->size(),false));
+												//	ASSERT_LESS__(atFamily, BaseGrid::NumFamilies);
+												//	faction->knownWorld.ApplyFamilyDelta(atFamily,typeArray,countArray,false,false);
+
+												//	atFamily++;
+												//}
+								
+											}
+											while (child = list->Next());
+										ASSERT_EQUAL__(atFamily,BaseGrid::NumFamilies);
+
+									}
+
+									Riff::Chunk*compressed = list->FindFirst(RID::resourcesDiscoveredCompressed);
+									if (compressed)
+									{
+										const UINT32*indices = (const UINT32*)compressed->pointer();
+										const count_t numIndices = compressed->size() / sizeof(UINT32);
+										for (UINT32 i = 0; i < numIndices; i++)
+											faction->knownResources.resourcesDiscovered[indices[i]] = true;
+									}
+									else
+									{
+										Riff::Chunk*raw = list->FindFirst(RID::resourcesDiscoveredFull);
+										if (raw)
+										{
+											ASSERT_EQUAL__(raw->size(),faction->knownResources.resourcesDiscovered.GetContentSize());
+											faction->knownResources.resourcesDiscovered = Ctr::ArrayRef<const bool>((const bool*)raw->pointer(),(size_t)raw->size());
+										}
 									}
 								}
-							}
-						break;
-						default:
-							FATAL__("Unsupported object group encountered: "+String(nameID));
+							break;
+							default:
+								FATAL__("Unsupported object group encountered: "+String(nameID));
 
+						}
+
+					}
+					catch (const std::exception&ex)
+					{
+						LogEvent(EventClass::Preset::error,"Exception while processing RIFF chunk id #"+String(nameID)+": "+ex.what());
+						failed = true;
 					}
 
 				}
@@ -1499,7 +1615,7 @@ namespace FileIO
 
 		Reflection::LoadOverrides();
 
-		LogEvent(EventSignificance::Uncommon,"Restored world '"+World::worldID.ToNiceString()+"'/"+World::worldID.ToString()+" in round "+RuntimeConfig::roundNumber.ToString());
+		LogEvent(EventSignificance::Uncommon,"Restored world '"+World::worldID.ToNiceString()+"'/"+ToString(World::worldID)+" in round "+RuntimeConfig::roundNumber.ToString());
 		RefreshWindowTitle();
 
 		RuntimeConfig::loadingPhase = false;
@@ -1516,8 +1632,24 @@ namespace FileIO
 		return RuntimeConfig::ConfigFile("saves/auto/snapshot") + PathString(index)+"."+savFileExtension;
 	}
 
+	bool			IsValidSavePhase(RuntimeConfig::Phase p)
+	{
+		return RuntimeConfig::IsACommandPhase(p) || p == RuntimeConfig::Phase::AnimationPhase || p == RuntimeConfig::Phase::EndOfGame;
+	}
+
+	bool			CanSaveRightNow()
+	{
+		return IsValidSavePhase(RuntimeConfig::phase);
+	}
+
+
 	void AutoSave()
 	{
+		if (!CanSaveRightNow())
+		{
+			LogEvent(EventClass::Preset::commandRejected,"Unable to save game right now. Not in suitable phase");
+			return;
+		}
 		PathString base = RuntimeConfig::ConfigFile("saves/auto/snapshot");
 		FileSystem::CreateDirectory(FileSystem::ExtractFileDir(base));
 		if (FileSystem::IsFile(base+"0."+savFileExtension))
@@ -1550,8 +1682,16 @@ namespace FileIO
 		WriteToListChunk(World::initial,*initialWorld);
 	}
 
+
+
 	void	Save( const PathString&name)
 	{
+		if (!CanSaveRightNow())
+		{
+			LogEvent(EventClass::Preset::commandRejected,"Unable to save game right now. Not in suitable phase");
+			return;
+		}
+
 		static_assert(sizeof(TUniqueID) == TUniqueID::NumBytes, "Alignment fault" );
 
 		Timer::Time t0 = timer.Now();
@@ -1569,6 +1709,11 @@ namespace FileIO
 		general->AppendBlock(RID::roundNumber)->SetPODData(RuntimeConfig::roundNumber);
 		general->AppendBlock(RID::worldConfig)->SetPODData((const Grid::TSharedPlanetConfig&)Grid::currentPlanetConfig);
 		general->AppendBlock(RID::mostFactionsAlive)->SetPODData(Game::mostFactionsAlive);
+		
+		{
+			String phase = RuntimeConfig::phase.ToString();
+			general->AppendBlock(RID::gamePhase, phase.c_str(),phase.length());
+		}
 
 		{
 			static StringBuffer variableBuffer;
@@ -1577,7 +1722,7 @@ namespace FileIO
 			{
 				if (v->WriteToSavegame())
 				{
-					variableBuffer << v->GetPath()<<tab<<v->ToString()<<nl;
+					variableBuffer << v->GetPath()<<tab<<v->ConvertToString()<<nl;
 				}
 			});
 			general->AppendBlock(RID::variableConfiguration,variableBuffer.pointer(),variableBuffer.GetContentSize());
@@ -1598,7 +1743,7 @@ namespace FileIO
 		//general->AppendBlock(RID::exposeActionLeftToHostileFactions )->SetPODData(State::Config::exposeActionLeftToHostileFactions );
 		//general->AppendBlock(RID::doomsdayWeapons)->SetPODData((UINT8)RuntimeConfig::doomsdayWeapons);
 
-		GenericHashSet<Objects::PFaction,SharedPtrHash>	allFactions;
+		Ctr::GenericHashSet<Objects::PFaction,SharedPtrHash>	allFactions;
 
 		WriteActualWorldToContainer(container);
 
@@ -1638,65 +1783,75 @@ namespace FileIO
 		allFactions.VisitAllKeys([&container](const Objects::PFaction&faction)
 		{
 			Riff::Chunk*factionSection = CreateNamedList(container,ChunkName::FactionSection);
-		
-			if (faction == Objects::Faction::nexus)
 			{
-				factionSection->AppendBlock(RID::nexusTag);
-			}
-
-			factionSection->AppendBlock(RID::factionID)->SetPODData(faction->id);	//faction id
-			factionSection->AppendBlock(RID::factionName)->SetData(faction->name.c_str(),faction->name.length());
-			factionSection->AppendBlock(RID::factionColor)->SetData(faction->color.v,sizeof(float)*3);
-
-			factionSection->AppendBlock(RID::factionAccessToken)->SetPODData(faction->accessToken);	//faction access token
-
-
-			if (faction->researchState.researchState.IsSet())
-			{
-				Array<BYTE> data;
-				faction->researchState.Export(data);
-				factionSection->AppendBlock(RID::researchState)->SetData(data);
-
-				auto res = faction->researchState.ExportResearchQueue();
-				if (res.IsNotEmpty())
+				if (faction == Objects::Faction::nexus)
 				{
-					factionSection->AppendBlock(RID::activeResearchTopic)->SetData(res.c_str(),res.length());
+					factionSection->AppendBlock(RID::nexusTag);
+				}
+
+				factionSection->AppendBlock(RID::factionID)->SetPODData(faction->id);	//faction id
+				factionSection->AppendBlock(RID::factionName)->SetData(faction->name.c_str(),faction->name.length());
+				factionSection->AppendBlock(RID::factionColor)->SetData(faction->color.v,sizeof(float)*3);
+
+				factionSection->AppendBlock(RID::factionAccessToken)->SetPODData(faction->accessToken);	//faction access token
+
+
+				if (faction->researchState.researchState.IsSet())
+				{
+					Ctr::Array<BYTE> data;
+					faction->researchState.Export(data);
+					factionSection->AppendBlock(RID::researchState)->SetData(data);
+
+					auto res = faction->researchState.ExportResearchQueue();
+					if (res.IsNotEmpty())
+					{
+						factionSection->AppendBlock(RID::activeResearchTopic)->SetData(res.c_str(),res.length());
+					}
+				}
+
+
+				if (faction->markers.IsNotEmpty())
+				{
+					Riff::Chunk*markerChunk = factionSection->AppendBlock(RID::factionMarkers);
+					SetSerialData(*markerChunk,faction->markers.ToRef());
+				}
+
+				{
+					UINT32 outFlags = 0;
+					if (faction->isDead)
+						outFlags |= FactionFlags::IsDead;
+					if (outFlags != 0)
+						factionSection->AppendBlock(RID::factionFlags)->SetPODData(outFlags);
+				}
+
+
+				staticDeltaContainer.CompressState(faction->knownWorld,Protocol::Timestamp(true,0));
+
+				for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
+					Attach(factionSection,RID::factionWorldTypeChunk,staticDeltaContainer.delta[k].data0);
+
+				static Ctr::Buffer0<UINT32>	final;
+				final.Clear();
+
+				for (index_t i = 0; i < faction->knownResources.resourcesDiscovered.Count(); i++)
+				{
+					if (faction->knownResources.resourcesDiscovered[i])
+						final << (UINT32)i;
+				}
+
+				if (final.IsNotEmpty())
+				{
+					if (final.Count()*4 < faction->knownResources.resourcesDiscovered.Count())
+						factionSection->AppendBlock(RID::resourcesDiscoveredCompressed)->SetData(final.pointer(),final.Count()*4);	//resource discovered - compressed
+					else
+						factionSection->AppendBlock(RID::resourcesDiscoveredFull)->SetData(faction->knownResources.resourcesDiscovered.ToRef());	//resource discovered - full
 				}
 			}
-
-
-			if (faction->markers.IsNotEmpty())
 			{
-				Riff::Chunk*markerChunk = factionSection->AppendBlock(RID::factionMarkers);
-				SerializeToChunk(faction->markers.CopyToArray(), markerChunk);
+				Riff::Chunk*factionStatisticsSection = CreateNamedList(container,ChunkName::FactionStatisticsSection);
+				factionStatisticsSection->AppendBlock(RID::factionID,faction->id.bytes,faction->id.NumBytes);
+				faction->statistics.ExportInto(factionStatisticsSection);
 			}
-
-
-			staticDeltaContainer.CompressState(faction->knownWorld,Protocol::Timestamp(true,0));
-
-			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-			{
-				SerializeToChunk(staticDeltaContainer.delta[k].data0, factionSection->AppendBlock(RID::factionWorldTypeChunk));
-			}
-
-			static Buffer0<UINT32>	final;
-			final.Clear();
-
-			for (index_t i = 0; i < faction->knownResources.resourcesDiscovered.Count(); i++)
-			{
-				if (faction->knownResources.resourcesDiscovered[i])
-					final << (UINT32)i;
-			}
-
-			if (final.IsNotEmpty())
-			{
-				if (final.Count()*4 < faction->knownResources.resourcesDiscovered.Count())
-					factionSection->AppendBlock(RID::resourcesDiscoveredCompressed)->SetData(final.pointer(),final.Count()*4);	//resource discovered - compressed
-				else
-					factionSection->AppendBlock(RID::resourcesDiscoveredFull)->SetData(faction->knownResources.resourcesDiscovered.ToRef());	//resource discovered - full
-			}
-
-
 		});
 		//LogEvent(EventType::SessionRelated,"World snapshot created in "+String(timer.GetSecondsSince(t0))+" seconds");
 
@@ -1719,7 +1874,7 @@ namespace FileIO
 
 
 
-	ChunkName Compare1(Riff::File&a, Riff::File&b, Buffer<Riff::TID>&idStack, const String&indent="")
+	ChunkName Compare1(Riff::File&a, Riff::File&b, Ctr::Buffer<Riff::TID>&idStack, const String&indent="")
 	{
 		ASSERT2__(a.GetID() == b.GetID(),a.GetID().ToString(),b.GetID().ToString());
 		std::cout << indent << a.GetID().ToString() << std::endl;
@@ -1764,7 +1919,7 @@ namespace FileIO
 		}
 		else
 		{
-			static Buffer<BYTE>	data0,data1;
+			static Ctr::Buffer<BYTE>	data0,data1;
 			data0.Clear(); data1.Clear();
 			a.Get(data0.AppendRow(a.GetSize()));
 			b.Get(data1.AppendRow(b.GetSize()));
@@ -1778,7 +1933,7 @@ namespace FileIO
 	}
 
 
-	void Compare(Riff::File&a, Riff::File&b, Buffer<Riff::TID>&idStack, const String&indent/*=""*/)
+	void Compare(Riff::File&a, Riff::File&b, Ctr::Buffer<Riff::TID>&idStack, const String&indent/*=""*/)
 	{
 		bool f0 = a.First();
 		bool f1 = b.First();

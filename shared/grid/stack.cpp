@@ -148,7 +148,7 @@ namespace Grid
 	LowSetup			low;
 	
 	#ifdef VOXEL_SCANNER
-		Array<LowCellStack>	lowCellStack;
+		Ctr::Array<LowCellStack>	lowCellStack;
 	#endif
 
 

@@ -154,9 +154,9 @@ namespace Engine
 				HRESULT __stdcall Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID* ppData, UINT* pBytes);
 				HRESULT __stdcall Close(LPCVOID pData);
 
-				IncludeHandler(const ::PathString&relativeTo);
+				IncludeHandler(const PathString&relativeTo);
 			private:
-				::PathString path;
+				PathString path;
 			};
 
 			struct Binding
@@ -869,7 +869,7 @@ namespace Engine
 		class Mesh
 		{
 		private:
-			::Buffer<float>	vfield;
+			Container::Vector<float>	vfield;
 
 		public:
 			VertexBinding	binding;
@@ -895,8 +895,8 @@ namespace Engine
 				}
 			}
 
-			void		MakeVertex(const TVec3<>&p, const TVec2<>&uv)	{vfield << p.x << p.y << p.z; if (hasUV) vfield << uv.x << uv.y; }
-			void		MakeVertex(const TVec3<>&p){vfield << p.x << p.y << p.z; if (hasUV) vfield << 0 << 0; }
+			void		MakeVertex(const M::TVec3<>&p, const M::TVec2<>&uv)	{vfield << p.x << p.y << p.z; if (hasUV) vfield << uv.x << uv.y; }
+			void		MakeVertex(const M::TVec3<>&p){vfield << p.x << p.y << p.z; if (hasUV) vfield << 0 << 0; }
 			void		MakeVertex(float x, float y, float z){vfield << x << y << z; if (hasUV) vfield << 0 << 0; }
 			VBO			Upload()
 			{
@@ -922,7 +922,7 @@ namespace Engine
 
 		struct CameraData
 		{
-			TMatrix4<>		projectionMatrix,
+			M::TMatrix4<>	projectionMatrix,
 							viewMatrix,
 							viewProjectionMatrix,
 							worldCamera;
@@ -942,11 +942,11 @@ namespace Engine
 		DX11::Handle<ID3D11RasterizerState>		rasterizerState[2][2];
 		DX11::Handle<ID3D11BlendState>			blendState[BlendMode::NumberOfPossibilities];
 		DX11::ObjectBuffer<CameraData>			cameraBuffer;
-		DX11::ObjectBuffer<TMatrix4<> >			objectBuffer;
-		DX11::ObjectBuffer<TVec4<> >			objectPositionBuffer;	//quicker version
+		DX11::ObjectBuffer<M::TMatrix4<> >		objectBuffer;
+		DX11::ObjectBuffer<M::TVec4<> >			objectPositionBuffer;	//quicker version
 		DX11::ObjectBuffer<float>				timeBuffer;
 		Buffer<DX11::Shader::Binding,0,Swap>	baseBindings;
-		float4				clearColor;
+		M::float4			clearColor;
 
 		DXGI_SAMPLE_DESC	fsaa;
 
@@ -980,10 +980,10 @@ namespace Engine
 			//			void				unbindFrameBufferObject(const Resolution&new_resolution);
 		inline			void				onModelviewChange();
 
-		virtual	void				enableLight(Light*)	override	{};
-		virtual	void				disableLight(Light*)	override	{};
-		virtual	void				updateLight(Light*)	override	{};
-		virtual	void				updateLightPosition(Light*)	override	{};
+		virtual	void				enableLight(const PLight&)	override	{};
+		virtual	void				disableLight(const PLight&)	override	{};
+		virtual	void				updateLight(const PLight&)	override	{};
+		virtual	void				updateLightPosition(const PLight&)	override	{};
 
 
 	public:
@@ -1067,8 +1067,8 @@ namespace Engine
 
 
 		void						SetBackbufferClearColor(float r, float g, float b, float a)	{clearColor.Set(r,g,b,a);}
-		void						SetBackbufferClearColor(const TVec4<>&c)					{clearColor = c;}
-		void						SetBackbufferClearColor(const TVec3<>&c)					{clearColor.rgb = c;}
+		void						SetBackbufferClearColor(const M::TVec4<>&c)					{clearColor = c;}
+		void						SetBackbufferClearColor(const M::TVec3<>&c)					{clearColor.rgb = c;}
 
 		/**
 		@brief Pushes the current render state (depth-test,rasterizer,blend-mode) to the stack
@@ -1084,16 +1084,16 @@ namespace Engine
 		inline void					setDepthTest(Engine::VisualEnum::eDepthTest test)	{ SetDepthTest(test != Engine::VisualEnum::NoDepthTest,true);}
 
 
-		void						SetCameraMatrices(const TMatrix4<>&view, const TMatrix4<>&projection, const TMatrix4<>&viewInvert);
-		void						SetObjectMatrix(const TMatrix4<>&matrix);
-		void						SetObjectPosition(const TVec4<>&pos);
+		void						SetCameraMatrices(const M::TMatrix4<>&view, const M::TMatrix4<>&projection, const M::TMatrix4<>&viewInvert);
+		void						SetObjectMatrix(const M::TMatrix4<>&matrix);
+		void						SetObjectPosition(const M::TVec4<>&pos);
 
 		DX11::Handle<ID3D11DepthStencilState>	CreateDepthStencilState(bool depthTest, bool depthWrite);
 
 		bool						TargetFBO(const FBO&fbo);
 		void						TargetBackbuffer();
-		void						ClearTarget(const FBO&fbo, const TVec4<>&color = Vector4<>::zero);
-		void						ClearTargetColor(const FBO&fbo, const TVec4<>&color = Vector4<>::zero);
+		void						ClearTarget(const FBO&fbo, const M::TVec4<>&color = M::Vector4<>::zero);
+		void						ClearTargetColor(const FBO&fbo, const M::TVec4<>&color = M::Vector4<>::zero);
 		void						ClearTargetDepth(const FBO&fbo);
 		void						ClearDepth();
 

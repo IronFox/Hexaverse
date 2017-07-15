@@ -98,7 +98,7 @@ namespace Objects
 				CommonFixTerrain(this,location,GetBroadHeight(),GetHeight(),signalChange,atTime);
 			}
 
-			virtual bool			DirectTo(CursorMode mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override	{return false;}
+			virtual bool			DirectTo(CursorMode mode, Ctr::ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override	{return false;}
 
 		#endif
 
@@ -129,7 +129,7 @@ namespace Objects
 		/**
 		List of all structures, the local structure is connected to. Symmetric. The connected structures must have a link back to the local structure.
 		*/
-		Buffer0<WStructure>				connectedTo;
+		Ctr::Buffer0<WStructure>				connectedTo;
 		#ifdef HAS_WINDOW
 			/**
 			Indicates whether or not the local structure has changed since the last shape recompilation. Cleared by StructureShape::RecompileConnectors()
@@ -678,7 +678,7 @@ namespace Objects
 			//MobileEntityProducer overrides
 			#ifndef CLIENT
 				virtual void			SignalNewProductionEnqueued() override {float t = 0; SetEnabled(true,t);}
-				virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
+				virtual bool			DirectTo(CursorMode, Ctr::ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 			#endif
 			virtual bool				CanProduce(const PWorldEntity&e) const override;
 

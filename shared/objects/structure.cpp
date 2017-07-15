@@ -641,7 +641,7 @@ namespace Objects
 		#endif
 
 		#ifndef NO_SATELLITES
-			/*virtual override*/ bool			SkyPort::DirectTo(CursorMode mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
+			/*virtual override*/ bool			SkyPort::DirectTo(CursorMode mode, Ctr::ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
 			{
 				if (waypoints.Count() != 1)
 					return false;
@@ -1154,7 +1154,7 @@ namespace Objects
 				{
 					Compound&network = GetCompound();
 					String outWhy;
-					Array<Resource> missingResources;
+					Ctr::Array<Resource> missingResources;
 					if (!network.CanEnable(this,&outWhy,&missingResources))
 					{
 						LogEvent(EventClass::Preset::operationAborted,this,"Cannot enable: Insufficient resource supply in compound ("+outWhy+")");

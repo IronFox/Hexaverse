@@ -115,9 +115,9 @@ namespace Objects
 			};
 
 
-			Queue<Focus>			foci;	//function depends on current mode. movement destination(s) if idle, firing target(s) if in attack mode
+			Ctr::Queue<Focus>		foci;	//function depends on current mode. movement destination(s) if idle, firing target(s) if in attack mode
 			
-			Buffer0<PathNode>		path;
+			Ctr::Buffer0<PathNode>	path;
 			PClientAttachment		visualization;
 
 			String					name;
@@ -128,7 +128,7 @@ namespace Objects
 
 
 			/**/					Task()	{}
-			/**/					Task(const String&name, const ArrayRef<Grid::LCellIdI>&destination, bool isDetailed, type_t type, mode_t mode=CursorMode::Idle) : TaskData(type,mode), name(name)
+			/**/					Task(const String&name, const Ctr::ArrayRef<Grid::LCellIdI>&destination, bool isDetailed, type_t type, mode_t mode=CursorMode::Idle) : TaskData(type,mode), name(name)
 			{
 				ASSERT__(destination.IsNotEmpty());
 				for (index_t i = 0; i+1 < destination.length(); i++)
@@ -198,7 +198,7 @@ namespace Objects
 		#ifdef CLIENT
 			Grid::LCellIdI		preAnimationLocation;
 		#endif
-		Queue<Task,Swap>		myTasks;
+		Ctr::Queue<Task,Swap>	myTasks;
 
 		WHangar					storedIn;
 
@@ -318,8 +318,8 @@ namespace Objects
 			bool				HasTasks() const {return myTasks.IsNotEmpty();}
 		#else
 
-			bool				PlotCourse(ArrayRef<Grid::LCellIdI> destination, bool detailedPath, bool virtualPlatformMode=false);
-			bool				PlotFrontCourse(ArrayRef<Grid::LCellIdI> destination, bool detailedPath);
+			bool				PlotCourse(Ctr::ArrayRef<Grid::LCellIdI> destination, bool detailedPath, bool virtualPlatformMode=false);
+			bool				PlotFrontCourse(Ctr::ArrayRef<Grid::LCellIdI> destination, bool detailedPath);
 			virtual	void		SetupSystem() override {UpdateSystem();}
 			void				RegisterNewJob(
 										const String&localizableShapeIdentifier,
@@ -373,7 +373,7 @@ namespace Objects
 			*/
 			bool				ClearAllTasks(bool isReaction, const TCodeLocation&caller)
 			{
-				LogEvent(EventSignificance::Debug,this,"ClearAllTasks("+String(isReaction)+", "+String(caller.ToString())+")");
+				LogEvent(EventSignificance::Debug,this,"ClearAllTasks("+String(isReaction)+", "+String(caller)+")");
 				if (TasksAreLocked())
 				{
 					if (flushTasksOnUnlock)

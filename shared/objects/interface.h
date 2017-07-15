@@ -5,6 +5,7 @@
 #include "cursorMode.h"
 #include "../grid/stack.h"
 #include "../uniqueID.h"
+#include "../fileVersion.h"
 
 
 #ifdef HAS_WINDOW
@@ -51,22 +52,7 @@ namespace ApplicationInterface
 	void	OnAppear(const Objects::PWorldEntity&e);
 #else
 
-	extern UINT32			globalVersionOfCurrentFile;
-
-	static const UINT32	SupportedFileVersion = 1045;	//doubles as current file version to write to files
-
-	struct FileVersions
-	{
-		enum version_t : UINT32
-		{
-			HasUUIDInConstructionJobs = 1041,
-			FirstVersionWithVariables = 1042,
-			MarkersHaveOwner = 1043,
-			CurrentEntityHealthIsFloat = 1044,
-			EntitiesHaveFlags = 1045,
-		};
-	};
-
+	
 
 	struct TAttack
 	{
@@ -93,8 +79,8 @@ namespace ApplicationInterface
 	void	SignalAppearanceToHostileFaction(const Objects::OwnerParameter&target, const Objects::PWorldEntity&e, float atTime);
 	void	SignalOwnershipChange(const Objects::PWorldEntity&e,const Objects::OwnerParameter&target, float t);
 	void	SignalNexusControlChange(const Objects::PFaction&f);
-	void	SignalChainReactionExplosion(const Grid::LCellIdI&center, float radius, int damageLevel, float atTime);
-	void	SignalOperationLacksResources(const Objects::WorldEntity&, const ArrayRef<Objects::Resource>&resources, float atTime);
+	void	SignalChainReactionExplosion(const Objects::PWorldEntity&causedBy, const Grid::LCellIdI&center, float radius, int damageLevel, float atTime);
+	void	SignalOperationLacksResources(const Objects::WorldEntity&, const Ctr::ArrayRef<Objects::Resource>&resources, float atTime);
 	/**
 	Signals that a new faction has been created or an existing one has been removed.
 	Also replacement as happens when the nexus faction is recreated.

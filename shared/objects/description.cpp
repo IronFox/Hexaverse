@@ -60,7 +60,7 @@ namespace Objects
 				wrappedLines << *l;
 				continue;
 			}
-			Array<String>	split;
+			Ctr::Array<String>	split;
 			wrap(l->first,60,split);
 			foreach (split,s)
 			{

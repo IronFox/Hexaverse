@@ -7,6 +7,8 @@
 
 namespace Tutorial
 {
+	using namespace DeltaWorks;
+
 	void	ShowMessage(const String&name, bool forceOpenNow=false);
 	void	HideMessage(const String&name);
 

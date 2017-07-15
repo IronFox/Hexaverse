@@ -409,7 +409,7 @@ namespace Objects
 
 		/*static*/ bool						Turret::Detail::MissileCanHit(float flatRange, const TrajectoryEndPoint&origin, const TrajectoryEndPoint&destination)
 		{
-			return sqr(flatRange) >= Vec::quadraticDistance(origin.worldLocation,destination.worldLocation);
+			return Math::sqr(flatRange) >= Vec::quadraticDistance(origin.worldLocation,destination.worldLocation);
 		}
 
 
@@ -422,7 +422,7 @@ namespace Objects
 
 
 		
-		/*static*/ void							Turret::TraceAnimationTrajectory(TrajectoryType t, float flatRange,  float attackAngle, const TrajectoryEndPoint&from,const TrajectoryEndPoint&to, Buffer0<TVec4<> >&outSteps)
+		/*static*/ void							Turret::TraceAnimationTrajectory(TrajectoryType t, float flatRange,  float attackAngle, const TrajectoryEndPoint&from,const TrajectoryEndPoint&to, Ctr::Buffer0<TVec4<> >&outSteps)
 		{
 			outSteps.Clear();
 
@@ -449,10 +449,10 @@ namespace Objects
 			}
 		}
 
-		/*static*/ void							Turret::Detail::TraceAnimationMissileTrajectory(float range, const TrajectoryEndPoint&here, const TrajectoryEndPoint&there, Buffer0<TVec4<> >&outSteps)
+		/*static*/ void							Turret::Detail::TraceAnimationMissileTrajectory(float range, const TrajectoryEndPoint&here, const TrajectoryEndPoint&there, Ctr::Buffer0<TVec4<> >&outSteps)
 		{
 			float d2 = Vec::quadraticDistance(here.worldLocation,there.worldLocation);
-			if (d2 > sqr(range))
+			if (d2 > M::sqr(range))
 			{
 				LogEvent(EventClass::Preset::error,"TraceMissileTrajectory(): Distance to target ("+String(sqrt(d2))+") exceeds maximum range ("+String(range)+") of missile turret. Ignoring for now.");
 				//DBG_FATAL__("Trajectory out of range: "+String(sqrt(d2))+">="+String(range));
@@ -485,7 +485,7 @@ namespace Objects
 		}
 
 
-		/*static*/ void							Turret::Detail::TraceAnimationArtilleryTrajectory(float velocity,  float angle, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest,Buffer0<TVec4<> >&outSteps)
+		/*static*/ void							Turret::Detail::TraceAnimationArtilleryTrajectory(float velocity,  float angle, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest,Ctr::Buffer0<TVec4<> >&outSteps)
 		{
 			const float sn = sin(angle),
 						cs = cos(angle);
@@ -497,7 +497,7 @@ namespace Objects
 
 			const float h = dest.radius - source.radius;
 
-			const float tEnd = (velocity * sn + sqrt(sqr(velocity*sn) - 2.f * g * h)) / g;
+			const float tEnd = (velocity * sn + sqrt(M::sqr(velocity*sn) - 2.f * g * h)) / g;
 
 
 			const int resolution = std::max<int>(2,distance*4);
@@ -508,7 +508,7 @@ namespace Objects
 			{
 				float t01 = float(i) / float(resolution);
 				const float t = t01 * tEnd;
-				float fy = source.radius + (velocity * t*sn - 0.5f * g * sqr(t));
+				float fy = source.radius + (velocity * t*sn - 0.5f * g * M::sqr(t));
 				TVec3<> b;
 				Vec::interpolate(source.worldLocation,dest.worldLocation,t01,b);
 				Vec::normalize(b);
@@ -518,7 +518,7 @@ namespace Objects
 		}
 
 
-		/*static*/ TurretTrajectory			Turret::TraceTrajectory(TrajectoryType t, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle)
+		/*static*/ TurretTrajectory			Turret::TraceTrajectory(TrajectoryType t, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle)
 		{
 			outSteps.Clear();
 			outAngle = 0;
@@ -559,7 +559,7 @@ namespace Objects
 			const int resolution = std::max<int>(2,std::max(distance*2.f,distance * sn * 5.f));
 
 			float delta = there.radius - here.radius;
-			float tEnd = (velocity * sn + sqrt(sqr(velocity*sn) - 2.f * g * delta)) / g;
+			float tEnd = (velocity * sn + sqrt(M::sqr(velocity*sn) - 2.f * g * delta)) / g;
 
 
 
@@ -579,7 +579,7 @@ namespace Objects
 			{
 				float t01 = float(i) / float(resolution);
 				const float t = t01 * tEnd;
-				float fy = here.radius + (velocity * t*sn - 0.5f * g * sqr(t));
+				float fy = here.radius + (velocity * t*sn - 0.5f * g * M::sqr(t));
 				TVec3<> b;
 				Vec::interpolate(here.worldLocation,there.worldLocation,t01,b);
 				Vec::normalize(b);
@@ -596,7 +596,7 @@ namespace Objects
 			return 0;
 		}
 
-		/*static*/ TurretTrajectory			Turret::Detail::TraceArtilleryTrajectory(float velocity, const World::Data&decisionWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle)
+		/*static*/ TurretTrajectory			Turret::Detail::TraceArtilleryTrajectory(float velocity, const World::Data&decisionWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle)
 		{
 			Turret::TAngles angles = Turret::GetAngleForDistance(velocity,source,dest);
 			if (angles.numAngles == 0)
@@ -648,7 +648,7 @@ namespace Objects
 
 				const int resolution = std::max<int>(2,std::max(distance*2.f,distance * sn * 5.f));
 
-				float tEnd = (velocity * sn + sqrt(sqr(velocity*sn) - 2.f * g * h)) / g;
+				float tEnd = (velocity * sn + sqrt(M::sqr(velocity*sn) - 2.f * g * h)) / g;
 
 
 
@@ -674,7 +674,7 @@ namespace Objects
 				{
 					float t01 = float(i) / float(resolution);
 					const float t = t01 * tEnd;
-					float fy = source.radius + (velocity * t*sn - 0.5f * g * sqr(t));
+					float fy = source.radius + (velocity * t*sn - 0.5f * g * M::sqr(t));
 					TVec3<> b;
 					Vec::interpolate(source.worldLocation,dest.worldLocation,t01,b);
 					Vec::normalize(b);
@@ -705,7 +705,7 @@ namespace Objects
 			}
 		}
 
-		/*static*/ TurretTrajectory			Turret::Detail::TraceMissileTrajectory(float range, const World::Data&world, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell)
+		/*static*/ TurretTrajectory			Turret::Detail::TraceMissileTrajectory(float range, const World::Data&world, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell)
 		{
 		/*
 
@@ -715,7 +715,7 @@ namespace Objects
 			const float3 here = Grid::low.cells[source.stackID].centerVertex.xyz * h0;
 		*/
 			float d2 = Vec::quadraticDistance(source.worldLocation,dest.worldLocation);
-			if (d2 > sqr(range))
+			if (d2 > M::sqr(range))
 				return TurretTrajectory::InvalidTrajectory;
 
 
@@ -783,7 +783,7 @@ namespace Objects
 
 
 
-		Buffer<PStructure> Terraformer::canBuild;
+		Ctr::Buffer<PStructure> Terraformer::canBuild;
 
 		void			Terraformer::Configure(Turret&component)
 		{
@@ -1253,7 +1253,7 @@ namespace Objects
 				void	Configure(VehicleBase&component)
 				{
 					#ifdef HAS_WINDOW
-						component.ambientSound = OpenAL::Load("resources/objectSounds/plane.wav");
+						component.ambientSound = Engine::OpenAL::Load("resources/objectSounds/plane.wav");
 					#endif
 					component.shortName = "Airborne";
 					component.constName = ConstName::VehicleBase_Plane;
@@ -1333,7 +1333,7 @@ namespace Objects
 				component.height = component.parts.First().GetBoundingBox().z.max;
 				ASSERT2__(similar(staticHeight,component.height),staticHeight,component.height);
 
-				component.ambientSound = OpenAL::Load("resources/objectSounds/hoverbase.wav");
+				component.ambientSound = Engine::OpenAL::Load("resources/objectSounds/hoverbase.wav");
 
 			#else
 				component.height = staticHeight;
@@ -1374,7 +1374,7 @@ namespace Objects
 				component.height = component.parts.First().GetBoundingBox().z.max;
 				ASSERT2__(similar(staticHeight,component.height),staticHeight,component.height);
 
-				component.ambientSound = OpenAL::Load("resources/objectSounds/heavybase.wav");
+				component.ambientSound = Engine::OpenAL::Load("resources/objectSounds/heavybase.wav");
 			#else
 				component.height = staticHeight;
 			#endif
@@ -1415,7 +1415,7 @@ namespace Objects
 				component.height = component.parts.First().GetBoundingBox().z.max;
 				ASSERT2__(similar(staticHeight,component.height),staticHeight,component.height);
 
-				component.ambientSound = OpenAL::Load("resources/objectSounds/catbase.wav");
+				component.ambientSound = Engine::OpenAL::Load("resources/objectSounds/catbase.wav");
 			#else
 				component.height = staticHeight;
 			#endif
