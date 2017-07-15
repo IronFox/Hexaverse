@@ -96,37 +96,13 @@ namespace ApplicationInterface
 			}
 		}
 
-		if (_v->IsVehicle() && To<Objects::Vehicle>::Cast(_v)->turret->detectsResources)
+		if (_v->IsGroundBoundVehicle() && To<Objects::Vehicle>::Cast(_v)->turret->detectsResources)
 		{
 			Game::Network::UpdateResourceCoverage(_v->owner, _v->location,_v->GetScanningRange(),timestamp);
 		}
 
 		if (v.GetOperationSpeed(Objects::Component::Construct))
 			Game::RegisterClassGain(_v, Objects::Faction::UnitClass::Terraformer, "terraformer");
-		if (_v->IsGroundBoundVehicle() && To<Objects::Vehicle>::Cast(_v)->turret->detectsResources)
-		{
-			Game::Network::UpdateResourceCoverage(_v->owner, _v->location,_v->GetScanningRange(),timestamp);
-		}
-		if (Game::Config::basesRequired && v.GetOperationSpeed(Objects::Component::Construct) && !(v.owner->hasUnitClasses & Objects::Faction::UnitClass::Terraformer))
-		{
-			LogEvent(EventSignificance::Debug,_v.get(),"Recognized as terraformer. Reevaluating survivial conditions");
-			v.owner->hasUnitClasses |= Objects::Faction::UnitClass::Terraformer;
-			String whyNot;
-			bool canLive = v.owner->CanLive(whyNot);
-		
-			if (canLive)	//conditions changed
-			{
-				if (v.owner->deathInRounds > 0)
-				{
-					v.owner->deathInRounds = 0;
-					Network::PClient client;
-					if (Network::playerMap.query(v.owner,client))
-						client->SendProgressUpdate(whyNot);
-				}
-			}
-			else
-				LogEvent(EventSignificance::Debug,_v.get(),"Nope: "+whyNot);
-		}
 	}
 
 	void	SignalNewStructure(const Objects::PStructure&s, float atTime)
