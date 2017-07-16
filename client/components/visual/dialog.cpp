@@ -13,6 +13,7 @@
 #include <cast.h>
 #include <logEvent.h>
 #include "../clientRuntimeConfig.h"
+#include "../clientEvents.h"
 
 namespace DX11 = Engine::DX11; 
 
@@ -837,7 +838,6 @@ namespace Dialog
 
 
 
-	PMenu				loginMenu;
 	GUI::PWindow	serverChoice;
 
 
@@ -847,14 +847,13 @@ namespace Dialog
 		GUI::Create();
 
 
-		loginMenu.reset(new Menu(0.25f,"Login"));
-		loginMenu->canBeImplicitlyClosed = false;	//once visible, must explicitly close
 
 		serverChoice.reset(new GUI::Window());
 		serverChoice->SetCenteredWidth(0.9f,GUI::TAnchor::RelativeToScreen);
 		serverChoice->canBeImplicitlyClosed = false;
 
 
+		GlobalEvents::applicationTerminate << Destroy;
 	}
 
 
@@ -874,7 +873,6 @@ namespace Dialog
 
 	void	Destroy()
 	{
-		loginMenu.reset();
 		Detail::pendingTutorials.Clear();
 		GUI::Destroy();
 	}

@@ -1,4 +1,7 @@
-#include <global_root.h>
+#include <scriptCache.h>
+#include <grid/resources.h>
+#include <io/string_file.h>
+
 #include "network.h"
 #include "../version.h"
 #include "animation.h"
@@ -8,17 +11,15 @@
 #include "visual/ui.h"
 #include "visual/tutorial.h"
 #include "visual/dialog.h"
+#include "visual/menu.h"
 #include "ai.h"
 #include "clientRuntimeConfig.h"
 #include "timelapse.h"
 #include "configurationMode.h"
-#include <scriptCache.h>
 #include "gridControl.h"
 #include "visual/objectChoices.h"
 #include "visual/terrain.h"
-#include <grid/resources.h>
 #include "clientEvents.h"
-#include <io/string_file.h>
 
 
 //#define DEBUG_SERVER_LIST	//enable to generate very long artificial server list
@@ -484,7 +485,7 @@ namespace Network
 				else
 				{
 					#ifdef HAS_WINDOW
-						GUI::Show(Dialog::loginMenu);
+						GUI::Show(Menu::login);
 					#endif
 				}
 				#ifdef HAS_WINDOW
@@ -794,7 +795,7 @@ namespace Network
 				Network::Channels::changeMyName.SendTo(Network::client,Network::chosenNickname);
 
 				#ifdef HAS_WINDOW
-					GUI::Hide(Dialog::loginMenu);
+					GUI::Hide(Menu::login);
 					//if (ConfigurationMode::IsActive())
 					//	UI::HexGrid::Configure
 					//	GUI::Show(Dialog::configMenu);
@@ -806,7 +807,7 @@ namespace Network
 				LogEvent(EventClass::Preset::uncommon, nullptr, "Server response: Faction void.");
 				FlushFaction(true);
 				#ifdef HAS_WINDOW
-					GUI::Show(Dialog::loginMenu);
+					GUI::Show(Menu::login);
 				#endif
 			}
 
@@ -1193,7 +1194,7 @@ namespace Network
 			Channels::clientFactionRequest.SendTo(client,ready);
 
 			#ifdef HAS_WINDOW
-				GUI::Show(Dialog::loginMenu);
+				GUI::Show(Menu::login);
 			#endif
 		}
 	}
@@ -1306,7 +1307,7 @@ namespace Network
 
 				#ifdef HAS_WINDOW
 					ConfigurationMode::SetActive(false);
-					GUI::Hide(Dialog::loginMenu);
+					GUI::Hide(Menu::login);
 					Dialog::CheckServersAreShown(true);
 					GUI::SignalSituationChange();
 					Tutorial::SignalEnd();

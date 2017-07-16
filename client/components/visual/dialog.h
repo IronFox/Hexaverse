@@ -258,7 +258,6 @@ namespace Dialog
 	
 
 
-	extern PMenu				loginMenu;
 	extern GUI::PWindow	serverChoice;
 
 

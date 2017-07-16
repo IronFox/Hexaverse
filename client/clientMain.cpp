@@ -58,6 +58,7 @@
 #include "components/visual/atmosphere.h"
 #include "components/visual/guiHostList.h"
 #include "components/visual/commandDefinitions.h"
+#include "components/visual/menu.h"
 #include "components/serverProcess.h"
 #include "components/audioInterface.h"
 #include "components/configurationMode.h"
@@ -67,6 +68,7 @@
 #include "components/cameraControl.h"
 #include "components/clientEvents.h"
 #include "components/loading.h"
+#include "components/localInterface.h"
 
 #include "rc/Resource.h"
 
@@ -86,7 +88,6 @@ extern "C"
 	Engine::Textout<DX11::TextureFont>	textout;
 
 
-	Dialog::PMenu		mainMenu,helpMenu;
 
 #endif
 
@@ -2870,11 +2871,11 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 
 
 
-		if (!GUI::IsVisible(mainMenu))
+		if (!GUI::IsVisible(Menu::main))
 		{
 			if (!UI::showControlsAndContacts)
 				ToggleControlGUI();	
-			GUI::Show(mainMenu);
+			GUI::Show(Menu::main);
 		}
 	
 		GUI::SignalSituationChange();
@@ -3252,41 +3253,7 @@ namespace ApplicationInterface
 		while (to != from);
 	}
 
-	void AddFactionCreationChoice(const String&line, UINT32 typeFlags, UINT32 supportFactionFlag)
-	{
-		Dialog::loginMenu->AddCommand(line,
-		[typeFlags,supportFactionFlag]()
-		{
-			if (Network::HaveFactionKeyForCurrentWorld() && typeFlags != Protocol::FactionType::SpectatorFaction)
-			{
-				Dialog::Confirm("A faction key is known for this world ("+Network::worldIDString+"). If you create a new faction, this key will be lost, and control of your old faction will irreversible be abandoned. Please confirm.",
-				[typeFlags](){
-					Network::AttemptFactionLogin(true,typeFlags);
-					GUI::Hide(Dialog::loginMenu);
-				},[supportFactionFlag]()
-				{
-					if (!Network::amOnline || Network::haveFaction || !(supportFactionFlag & Network::gameFlags))
-						return Dialog::CheckResult::Abort;
-					if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase)
-						return Dialog::CheckResult::OkayNotRightNow;
-					return Dialog::CheckResult::OkayContinue;
-				});
-			}
-			else
-			{
-				Network::AttemptFactionLogin(true,typeFlags);
-				GUI::Hide(Dialog::loginMenu);
-			}
-		},[supportFactionFlag](){return Network::amOnline && !Network::haveFaction && (Network::gameFlags & supportFactionFlag) 
-			&& (
-					RuntimeConfig::IsInAnyCommandPhase() 
-						|| RuntimeConfig::phase  == RuntimeConfig::Phase::AnimationPhase 
-						|| RuntimeConfig::phase  == RuntimeConfig::Phase::EndOfGame
-				)
-			;},false);
 
-
-	}
 
 	void	ResumeBatchConstruction()
 	{
@@ -3794,81 +3761,8 @@ int main( int argc, const char* argv[])
 
 		#ifdef HAS_WINDOW
 
-			Loading::Stage("Main Menu",
-				[]()
-				{
-					{
-						helpMenu.reset(new Dialog::Menu(0.3f,"Help"));
-						helpMenu->AddCommand("Show Basic Controls",
-							[]()
-							{
-								Tutorial::ShowMessage("Controls",true,true);
-							});
-						helpMenu->AddCommand("Revisit All Tutorial Messages",
-							[]()
-							{
-								Dialog::Confirm("You are about to reset the game's memory on which tutorial messages you have so far seen. All messages will be shown again where considered approprote.\n"
-												"Continue?",
-									[]()
-									{
-										Tutorial::FlushMemory();
-									});
-							});
-						helpMenu->AddCommand("Start Interactive Tutorial",
-							[]()
-							{
-								ServerProcess::StartTutorialServer();
-							},
-							[](){return !Network::client.IsConnected() && !Network::client.IsAttemptingToConnect();});
+			Loading::Stage("Main Menu",Menu::Create);
 
-						{
-							float2 margin = helpMenu->GetOutlineMargin();
-							margin.y *= 10.f;
-							helpMenu->SetOutlineMargin(margin);
-						}
-						helpMenu->FullAutoLayout();
-					}
-					{
-						mainMenu.reset(new Dialog::Menu(0.25f,"Main"));
-						mainMenu->AddCommand("Change Nickname",LocalApplicationInterface::QueryNickname);
-						mainMenu->AddCommand("Abandon faction",Network::AbandonCurrentFaction,[](){return Network::amOnline && Network::haveFaction;});
-						mainMenu->AddCommand("Disconnect",
-							[]()
-							{
-								Network::client.Disconnect();
-							},
-							[](){return Network::client.IsConnected();});
-						mainMenu->AddCommand("Help",
-							[]()
-							{
-								GUI::Show(helpMenu);
-							},
-							std::function<bool()>(),
-							false
-							);
-
-						mainMenu->AddCommand("Quit to Desktop",[](){Dialog::Confirm("Really quit? Any active faction will be preserved server-sided for you to continue later on.",[](){application_shutting_down = true;},[](){return Dialog::CheckResult::OkayContinue;});});
-						mainMenu->FullAutoLayout();
-					}
-				});
-
-			Loading::Stage("Login Menu",
-				[]()
-				{
-					Dialog::loginMenu->AddCommand("Continue existing faction",[](){Network::AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly);},
-					[]()
-					{
-						return Network::amOnline && !Network::haveFaction 
-						#ifndef _DEBUG
-						&& Network::HaveFactionKeyForCurrentWorld() 
-						#endif
-						&& RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase;
-					}
-					);
-					AddFactionCreationChoice("Spectate",Protocol::FactionType::SpectatorFaction, Protocol::GameFlag::SupportSpectatorFactions);
-					AddFactionCreationChoice("Create new faction",Protocol::FactionType::RegularFaction, Protocol::GameFlag::SupportRegularFactions);
-				});
-			
 
 			Loading::Stage("Atmosphere",
 				[]()
@@ -3885,31 +3779,29 @@ int main( int argc, const char* argv[])
 					Atmosphere::Create();
 				});
 
-
 			Loading::Stage("Tutorial",Tutorial::Create);
-
-
-			Loading::Stage("Unit Names",[]()
-				{
-					String name;
-					{
-						StringFile userName(RuntimeConfig::ConfigFile("userName.txt"));
-						if (userName.IsActive())
-							userName >> name;
-					}
-					if ( Package::NetString<32>::IsValid(name) 
-							&& name.length() > 3 && name.length() <= 16)
-					{
-						Network::chosenNickname = name;
-					}
-					else
-					{
-					}
-					LocalApplicationInterface::QueryNicknameIfEmpty();
-				});
-
-
 			Loading::Finish();
+
+
+			{
+				String name;
+				{
+					StringFile userName(RuntimeConfig::ConfigFile("userName.txt"));
+					if (userName.IsActive())
+						userName >> name;
+				}
+				if ( Package::NetString<16>::IsValid(name) 
+						&& name.length() > 3)
+				{
+					Network::chosenNickname = name;
+				}
+				else
+				{
+				}
+				LocalApplicationInterface::QueryNicknameIfEmpty();
+			};
+
+
 //			textout.SetScale(1.f/display.GetClientWidth(),1.f/display.GetClientHeight());	//apparently can't restore this...
 			
 			if (RuntimeConfig::documentationRootFolder.DoesExist())
