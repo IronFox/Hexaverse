@@ -11,9 +11,9 @@ template <typename...T>
 	class Observable
 	{
 	public:
+		typedef std::function<void(T...)>	F;
 		typedef Observable<T...>	Self;
 
-		typedef std::function<void(T...)>	F;
 
 		/**/	Observable() {}
 		/**/	Observable(const Self&other) = delete;//these aren't inherently bad or impossible but typically imply that something isn't as it should be
@@ -24,7 +24,7 @@ template <typename...T>
 		{
 			iterating ++;
 			for (index_t i = 0; i < functions.Count(); i++)
-				functions[i](p...);
+				functions[i].function(p...);
 			iterating --;
 			if (iterating == 0)
 			{
@@ -35,27 +35,29 @@ template <typename...T>
 		}
 		void	operator+=(const F&f)
 		{
-			functions << f;
+			functions.Append().function =f;
 		}
 		Observable&	operator<<(const F&f)
 		{
-			functions << f;
+			functions.Append().function =f;
 			return *this;
 		}
 
 		index_t		Register(const F&f)
 		{
 			index_t at = functions.Count();
-			functions << f;
+			TFunction&func = functions.Append();
+			func.function = f;
 			keyCounter++;
-			//index_t key;
-			//DBG_ASSERT1__(!keyMap.findKeyOf(at,key),key);
+			func.key = keyCounter;
 			keyMap.Set(keyCounter,at);
 			return keyCounter;
 		}
 
 		void		Unregister(index_t key)
 		{
+			if (key == InvalidIndex)
+				return;
 			if (iterating)
 			{
 				dropBuffer << key;
@@ -72,6 +74,7 @@ template <typename...T>
 				if (v > at)
 					v--;
 			});
+			DBG_ASSERT_EQUAL__(functions[at].key,key);
 			functions.Erase(at);
 		}
 
@@ -87,9 +90,21 @@ template <typename...T>
 		}
 
 	private:
+		struct TFunction
+		{
+			F		function;
+			index_t	key = InvalidIndex;
+
+			void	swap(TFunction&other)
+			{
+				function.swap(other.function);
+				swp(key,other.key);
+			}
+		};
+
 		Ctr::Buffer0<index_t>		dropBuffer;
 		index_t						iterating = 0;
-		Ctr::Buffer0<F,Swap>		functions;
+		Ctr::Buffer0<TFunction,Swap>functions;
 		Ctr::IndexTable<index_t>	keyMap;
 		static index_t				keyCounter;
 	};
