@@ -225,52 +225,82 @@ namespace GUI
 	}
 
 
+	bool	CloseTopModal()
+	{
+		VerifyIntegrity(CLOCATION);
+		if (Detail::visibleWindows.IsEmpty())
+			return false;
+		GUI::PWindow w = Detail::visibleWindows.Last();
+		if (!w->canBeImplicitlyClosed)
+			return false;
+		Hide(w);
+		return true;
+	}
+
+	bool	CloseAllModalBeneath(const PWindow&w)
+	{
+		VerifyIntegrity(CLOCATION);
+		index_t at = Detail::visibleWindows.GetIndexOf(w);
+		if (at == InvalidIndex)
+			return false;
+
+		for (index_t i = 0; i <= at; i++)
+		{
+			GUI::PWindow w = Detail::visibleWindows[i];
+			if (w->canBeImplicitlyClosed)
+			{
+				Hide(w);
+				i--;
+				at--;
+			}
+		}
+
+		return true;
+	}
 
 
 	bool	CloseAllModal()
 	{
 		VerifyIntegrity(CLOCATION);
-		if (Detail::visibleWindows.IsNotEmpty())
-		{
-			bool anyNonClosable = false;
-			foreach (Detail::visibleWindows,w)
-				if (!(*w)->canBeImplicitlyClosed)
-				{
-					anyNonClosable = true;
-					break;
-				}
+		if (Detail::visibleWindows.IsEmpty())
+			return false;
 
-			if (anyNonClosable)
+		bool anyNonClosable = false;
+		foreach (Detail::visibleWindows,w)
+			if (!(*w)->canBeImplicitlyClosed)
 			{
-				bool rs = false;
-				for (index_t i = 0; i < Detail::visibleWindows.Count(); i++)
-				{
-					GUI::PWindow w = Detail::visibleWindows[i];
-					if (w->canBeImplicitlyClosed)
-					{
-						Hide(w);
-						i--;
-						rs = true;
-					}
-				}
-				GUI::VerifyIntegrity(CLOCATION);
-				return rs;
+				anyNonClosable = true;
+				break;
 			}
-			else
+
+		if (anyNonClosable)
+		{
+			bool rs = false;
+			for (index_t i = 0; i < Detail::visibleWindows.Count(); i++)
 			{
-				foreach (Detail::visibleWindows,_d)
+				GUI::PWindow w = Detail::visibleWindows[i];
+				if (w->canBeImplicitlyClosed)
 				{
-					PWindow d = *_d;
-					d->OnHide();
+					Hide(w);
+					i--;
+					rs = true;
 				}
-				Detail::visibleWindows.last()->SetActive(false);
-				Detail::visibleWindows.Clear();
 			}
 			GUI::VerifyIntegrity(CLOCATION);
-			return true;
+			return rs;
 		}
-		VerifyIntegrity(CLOCATION);
-		return false;
+		else
+		{
+			foreach (Detail::visibleWindows,_d)
+			{
+				PWindow d = *_d;
+				d->OnHide();
+			}
+			Detail::visibleWindows.last()->SetActive(false);
+			Detail::visibleWindows.Clear();
+		}
+		GUI::VerifyIntegrity(CLOCATION);
+		return true;
 	}
 
 

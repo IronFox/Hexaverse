@@ -1023,10 +1023,21 @@ namespace GUI
 	*/
 	bool				IsModal();
 	/**
-	Closes all modal dialogs
+	Closes all modal dialogs.
+	Dialogs declared as non implicitly closable are unaffected
 	@return true, if any modal dialogs were closed
 	*/
 	bool				CloseAllModal();
+	/**
+	Closes the top-most modal dialog.
+	If the top-most dialog is declared as non implicitly closable, then the function fails.
+	@return true, if any modal dialog was closed
+	*/
+	bool				CloseTopModal();
+	/**
+	If the specified window is shown open, it is closed, and all closable windows beneath it
+	*/
+	bool				CloseAllModalBeneath(const PWindow&);
 	/**
 	Renders visible non-modal windows/dialogs up to the first modal window
 	*/
