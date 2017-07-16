@@ -86,7 +86,7 @@ extern "C"
 	Engine::Textout<DX11::TextureFont>	textout;
 
 
-	Dialog::PMenu		mainMenu;
+	Dialog::PMenu		mainMenu,helpMenu;
 
 #endif
 
@@ -2557,7 +2557,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 					FileSystem::CreateDirectory(outDirName);
 					LogEvent(EventClass::Preset::uncommon,"Time lapse enabled. Writing to "+String(outDirName));
 					Dialog::PermanentMessage("Time lapse recording is enabled. Camera is locked. Press F2 to end time lapse recording",[](){return TimeLapse::enabled ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;});
-				},[](){return Dialog::CheckResult::OkayContinue;});
+				});
 			}
 		}
 	}
@@ -2860,7 +2860,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 	void	AbortMode()
 	{
 		Camera::StopAutoRotation();
-		if (GUI::CloseAllModal())
+		if (GUI::CloseTopModal())
 		{
 			LocalApplicationInterface::QueryNicknameIfEmpty();
 			return;
@@ -2876,8 +2876,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 				ToggleControlGUI();	
 			GUI::Show(mainMenu);
 		}
-		else
-			GUI::Hide(mainMenu);
+	
 		GUI::SignalSituationChange();
 	}
 
@@ -3798,24 +3797,59 @@ int main( int argc, const char* argv[])
 			Loading::Stage("Main Menu",
 				[]()
 				{
-					mainMenu.reset(new Dialog::Menu(0.25f,"Main"));
-					mainMenu->AddCommand("Change Nickname",LocalApplicationInterface::QueryNickname);
-					mainMenu->AddCommand("Abandon faction",Network::AbandonCurrentFaction,[](){return Network::amOnline && Network::haveFaction;});
-					mainMenu->AddCommand("Disconnect",
-						[]()
-						{
-							Network::client.Disconnect();
-						},
-						[](){return Network::client.IsConnected();});
-					mainMenu->AddCommand("Start Tutorial",
-						[]()
-						{
-							ServerProcess::StartTutorialServer();
-						},
-						[](){return !Network::client.IsConnected() && !Network::client.IsAttemptingToConnect();});
+					{
+						helpMenu.reset(new Dialog::Menu(0.3f,"Help"));
+						helpMenu->AddCommand("Show Basic Controls",
+							[]()
+							{
+								Tutorial::ShowMessage("Controls",true,true);
+							});
+						helpMenu->AddCommand("Revisit All Tutorial Messages",
+							[]()
+							{
+								Dialog::Confirm("You are about to reset the game's memory on which tutorial messages you have so far seen. All messages will be shown again where considered approprote.\n"
+												"Continue?",
+									[]()
+									{
+										Tutorial::FlushMemory();
+									});
+							});
+						helpMenu->AddCommand("Start Interactive Tutorial",
+							[]()
+							{
+								ServerProcess::StartTutorialServer();
+							},
+							[](){return !Network::client.IsConnected() && !Network::client.IsAttemptingToConnect();});
 
-					mainMenu->AddCommand("Quit to Desktop",[](){Dialog::Confirm("Really quit? Any active faction will be preserved server-sided for you to continue later on.",[](){application_shutting_down = true;},[](){return Dialog::CheckResult::OkayContinue;});});
-					mainMenu->FullAutoLayout();
+						{
+							float2 margin = helpMenu->GetOutlineMargin();
+							margin.y *= 10.f;
+							helpMenu->SetOutlineMargin(margin);
+						}
+						helpMenu->FullAutoLayout();
+					}
+					{
+						mainMenu.reset(new Dialog::Menu(0.25f,"Main"));
+						mainMenu->AddCommand("Change Nickname",LocalApplicationInterface::QueryNickname);
+						mainMenu->AddCommand("Abandon faction",Network::AbandonCurrentFaction,[](){return Network::amOnline && Network::haveFaction;});
+						mainMenu->AddCommand("Disconnect",
+							[]()
+							{
+								Network::client.Disconnect();
+							},
+							[](){return Network::client.IsConnected();});
+						mainMenu->AddCommand("Help",
+							[]()
+							{
+								GUI::Show(helpMenu);
+							},
+							std::function<bool()>(),
+							false
+							);
+
+						mainMenu->AddCommand("Quit to Desktop",[](){Dialog::Confirm("Really quit? Any active faction will be preserved server-sided for you to continue later on.",[](){application_shutting_down = true;},[](){return Dialog::CheckResult::OkayContinue;});});
+						mainMenu->FullAutoLayout();
+					}
 				});
 
 			Loading::Stage("Login Menu",
