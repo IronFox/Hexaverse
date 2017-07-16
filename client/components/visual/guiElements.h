@@ -859,10 +859,12 @@ namespace GUI
 		{
 			outerRect= rect;
 			outerRect.x.max += GetVisibleScrollbarContentExpansion();
-			outerRect.Expand(0.015f);
+			outerRect.x.Expand(outlineMargin.x);
+			outerRect.y.Expand(outlineMargin.y);
 		}
 		Rect<>				outerRect = Rect<>(0,0,1,1);
 		bool				nestedCall = false;
+		float2				outlineMargin = float2(0.015f);
 
 	public:
 		Rect<>				context = Rect<>(0,0,1,1);
@@ -880,6 +882,13 @@ namespace GUI
 			Super::SetCenteredWidth(0.75f,GUI::TAnchor::RelativeToScreen);
 			Super::SetLocation(Math::TFloatRect(float2(0.25f),float2(0.5f)));
 		}
+
+		void				SetOutlineMargin(const float2&v)
+		{
+			outlineMargin = v;
+			UpdateOuterRect();
+		}
+		const float2&		GetOutlineMargin() const {return outlineMargin;}
 
 		virtual bool		AutoLayout(const Rect<>&context) override
 		{
