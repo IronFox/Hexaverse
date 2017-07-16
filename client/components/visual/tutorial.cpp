@@ -63,10 +63,52 @@ namespace Tutorial
 			if (shown)
 				return false;
 			shown = true;
-			Detail::memory << name << nl;
-			Detail::memory.Flush();
+			memory << name << nl;
+			memory.Flush();
 			return true;
 		}
+
+		PathString	GetMemoryFilename()
+		{
+			return RuntimeConfig::ConfigFile("tutorialMemory.txt");
+		}
+
+		void	InitMemoryFile()
+		{
+			const PathString filename = GetMemoryFilename();
+			if (memory.Open(filename))
+			{
+				String line;
+				while (memory >> line)
+				{
+					Message*msg = messages.QueryPointer(line);
+					if (msg)
+						msg->shown = true;
+					elif (line == "tutorialGame")
+						tutorialGameShown = true;
+				}
+		
+				memory.Close();
+				memory.Append(filename);
+			}
+			else
+				memory.Create(filename);
+
+		}
+
+		void	FlushMemoryFile()
+		{
+			messages.VisitAllValues([](Message&m)
+			{
+				m.shown = false;
+			});
+			memory.Close();
+			memory.Create(GetMemoryFilename());
+			if (tutorialGameShown)
+				memory << "tutorialGame" << nl;
+			memory.Flush();
+		}
+
 	}
 
 	namespace Interactive
@@ -399,14 +441,14 @@ namespace Tutorial
 
 
 
-	void	ShowMessage(const String&name, bool forceOpenNow/*=false*/)
+	void	ShowMessage(const String&name, bool forceOpenNow/*=false*/, bool overrideMemory/*=false*/)
 	{
 		if (RuntimeConfig::aiMode)
 			return;
 		Detail::Message*msg = Detail::messages.QueryPointer(name);
 		if (!msg)
 			return;
-		if (!Detail::RegisterMemory(msg->shown,name))
+		if (!Detail::RegisterMemory(msg->shown,name) && !overrideMemory)
 			return;
 		Dialog::EnqueueTutorial(name,msg->lines,msg->image);
 		if (forceOpenNow)
@@ -418,6 +460,10 @@ namespace Tutorial
 		Dialog::RemoveTutorial(name);
 	}
 
+	void	FlushMemory()
+	{
+		Detail::FlushMemoryFile();
+	}
 
 
 	void	Create()
@@ -451,25 +497,7 @@ namespace Tutorial
 
 		FileSystem::CreateDirectory("config");
 
-//		#ifndef _DEBUG
-		if (Detail::memory.Open(RuntimeConfig::ConfigFile("tutorialMemory.txt")))
-		{
-			String line;
-			while (Detail::memory >> line)
-			{
-				Detail::Message*msg = Detail::messages.QueryPointer(line);
-				if (msg)
-					msg->shown = true;
-				elif (line == "tutorialGame")
-					Detail::tutorialGameShown = true;
-			}
-		
-			Detail::memory.Close();
-			Detail::memory.Append(RuntimeConfig::ConfigFile("tutorialMemory.txt"));
-		}
-		else
-	//	#endif
-			Detail::memory.Create(RuntimeConfig::ConfigFile("tutorialMemory.txt"));
+		Detail::InitMemoryFile();
 	
 
 		GlobalEvents::frameBegin << []()
