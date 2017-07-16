@@ -29,10 +29,15 @@ namespace Loading
 			};
 			Queue<TTask>	tasks;
 		
-			RECT oldWindowLocation;
+			RECT									oldWindowLocation;
+			Engine::DisplayConfig::border_style_t	oldBorderStyle;
+			Engine::DisplayConfig::FOnResize		oldOnResize;
+
 			Display	*display=nullptr;
 			Engine::VirtualTextout*textout = nullptr;
-			Engine::DisplayConfig::border_style_t	oldBorderStyle;
+
+
+
 			float	imageAspect = 1.f;
 			DX11::InstructionBlock16	instruction;
 
@@ -82,6 +87,8 @@ namespace Loading
 
 				windowPos.right = screen.width/2 + width /2;
 				windowPos.bottom = screen.height/2 + height/2;
+
+				oldOnResize = Engine::context.ReplaceOnResize(Engine::DisplayConfig::FOnResize());
 
 				display->PositionWindow(windowPos);
 
@@ -140,6 +147,8 @@ namespace Loading
 
 				display->SetBorderStyle(Detail::oldBorderStyle);
 				display->PositionWindow(Detail::oldWindowLocation);
+				Engine::context.ReplaceOnResize(oldOnResize);
+				oldOnResize(display->GetSize(),Engine::DisplayConfig::ResizeDragHasEnded);	//make sure fonts are rescaled
 
 				instruction.Clear();
 
@@ -189,6 +198,7 @@ namespace Loading
 			Detail::oldBorderStyle = display.GetBorderStyle();
 
 			display.SetBorderStyle(Engine::DisplayConfig::NoBorder);
+			
 			Detail::LoadResources();
 		}
 
