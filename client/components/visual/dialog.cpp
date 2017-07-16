@@ -747,6 +747,12 @@ namespace Dialog
 		return d;
 	}
 
+
+	WDialog	Confirm(const String&query, const FOnConfirm&onConfirm)
+	{
+		return Confirm(query,onConfirm,[](){return CheckResult::OkayContinue;});
+	}
+
 	/**
 	Creates a new modal dialog on top of any other active modal dialogs
 	*/
