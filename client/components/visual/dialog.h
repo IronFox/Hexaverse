@@ -242,7 +242,7 @@ namespace Dialog
 				{
 					execute();
 					if (autoHide)
-						GUI::Hide(To<GUI::Window>::Cast(this->shared_from_this()));
+						GUI::CloseAllModalBeneath(To<GUI::Window>::Cast(this->shared_from_this()));
 				},
 				check
 			));
