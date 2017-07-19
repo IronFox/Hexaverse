@@ -628,6 +628,7 @@ namespace Engine
 
 
 			/**/					ShaderInstructionBlock():topology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST),stride(0)	{}
+			virtual					~ShaderInstructionBlock(){};
 
 			void					SetPoints()	{topology = D3D_PRIMITIVE_TOPOLOGY_POINTLIST;}
 			void					SetLines()	{topology = D3D_PRIMITIVE_TOPOLOGY_LINELIST;}
