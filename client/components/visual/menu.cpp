@@ -4,10 +4,50 @@
 #include "../network.h"
 #include "../localInterface.h"
 #include "../clientEvents.h"
+#include "shadedRenderInstruction.h"
 
 namespace Menu
 {
 	Dialog::PMenu	main,help,login;
+	GUI::PWindow	options;
+
+
+	namespace Configuration
+	{
+		void	Update(const String&path, const String&value)
+		{}
+
+	}
+
+
+	static void AddOptionSlider(const String&name, float min, float max, float initial, const std::function<void(float&)>&onChange)
+	{
+
+		GUI::PSlider s(new GUI::Slider());
+		s->Setup(initial,max, 1.f,0.2f);
+		s->SetOnChange(onChange);
+		s->SetText(name);
+		options->AnchorBelowPrevious(s);
+	}
+
+	static void CreateOptionsMenu()
+	{
+		options.reset(new GUI::Window());
+		options->FillHorizontally(0.1f);
+		options->AnchorTop(0.1f);
+		options->AnchorBelowPrevious(new GUI::Label("Options",2.f));
+		AddOptionSlider("Shadow Quality", 0, ShadedInstruction::Quality::N-1, ShadedInstruction::chosenQuality, [](float&q)
+		{
+			auto old = ShadedInstruction::chosenQuality;
+			ShadedInstruction::chosenQuality.Load(Round(q));
+			q = ShadedInstruction::chosenQuality;
+			if (old != ShadedInstruction::chosenQuality)
+			{
+				Configuration::Update("runtime/shadowQuality",ShadedInstruction::chosenQuality.ToString());
+				GlobalEvents::shadowQualityChanged();
+			}
+		});
+	}
 
 	static void	CreateHelpMenu()
 	{
@@ -61,6 +101,11 @@ namespace Menu
 			std::function<bool()>(),
 			false
 			);
+		main->AddCommand("Options",
+			[]()
+			{
+				GUI::Show(options);
+			});
 
 		main->AddCommand("Quit to Desktop",[](){Dialog::Confirm("Really quit? Any active faction will be preserved server-sided for you to continue later on.",[](){application_shutting_down = true;},[](){return Dialog::CheckResult::OkayContinue;});});
 		main->FullAutoLayout();
@@ -123,6 +168,7 @@ namespace Menu
 
 	void Create()
 	{
+		CreateOptionsMenu();
 		CreateHelpMenu();
 		CreateMainMenu();
 		CreateLoginMenu();
@@ -132,6 +178,7 @@ namespace Menu
 			main.reset();
 			help.reset();
 			login.reset();
+			options.reset();
 		};
 	}
 
