@@ -611,6 +611,53 @@ namespace GUI
 	};
 
 
+
+	class Slider : public Label
+	{
+		typedef Label	Super;
+	protected:
+		virtual void		OnTextChange() override;
+		virtual void		OnWindowSizeChange() override
+		{
+			OnTextChange();	//force re-evaluation of text-width
+		}
+	public:
+		typedef std::function<void(float&)>	FOnChange;
+
+		/**/				Slider();
+		virtual PComponent	HandleMouseDown() override;
+		virtual WheelRs		HandleMouseWheel(short) override;
+		virtual void		SignalMouseUp() override;
+		virtual void		SignalMouseMotion(const TVec2<>&mouseAt, bool clipAreaContainsMouse) override;
+		virtual void		Render() override;
+		void				Setup(float current, float max, float slideStep, float minTextWidth=0) {this->current = current; this->max = max; this->slideStep = slideStep; this->minTextWidth = minTextWidth;}
+		float				GetMax() const {return max;}
+		float				GetCurrent() const {return current;}
+		void				SetOnChange(const FOnChange&f)	{onChange = f;}
+
+
+		static constexpr float Height = 0.03f;
+		static constexpr float BarWidth = 0.03f;
+		static constexpr float ContentSpacing = 0.006f;
+	private:
+		float				current=0,max=1,slideStep=1, minTextWidth=0,textWidth=0;		//!< Slider maximum value (inclusive)
+		TFloatRange<>		dragRange;
+		Rect<>				barBack,	//!< Shadow behind slider
+							bar;		//!< Actual grabbable bar
+		bool				showMarkers=true;
+		float				markersEvery=1.f;
+		bool				outlineContainsMouse = false,
+							barContainsMouse = false,
+							dragging = false;
+		bool				mouseDown = false,slideLeftOnClick =false;
+		float				dragRelative = 0;
+		FOnChange			onChange;
+		bool				changed =false;
+
+	};
+	typedef std::shared_ptr<Slider>	PSlider;
+
+
 	class Panel : public Area
 	{
 		typedef Area Super;

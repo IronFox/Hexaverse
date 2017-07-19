@@ -501,6 +501,120 @@ namespace GUI
 		return rs;
 	}
 
+
+	Slider::Slider()
+	{
+		Super::alignCenter = false;
+	}
+
+
+
+	/*virtual override*/ void		Slider::OnTextChange()
+	{
+		float scale = GetTotalFontScale();
+		textWidth = Super::GetIdealWidth();
+	}
+
+
+	/*virtual override*/ void	Slider::Render()
+	{
+		Super::Render();	
+		const float top = rect.y.max - ContentSpacing;
+		const float bottom = top - Height;
+
+		const float left = rect.x.min + std::max(minTextWidth, textWidth + ContentSpacing);
+		const float right = rect.x.max - ContentSpacing;
+
+		barBack = Rect<>(left,bottom,right,top);
+		SurfaceRenderer::SetColor(float4(0,0,0,0.9));
+		SurfaceRenderer::Rasterize(barBack);
+
+		dragRange = Math::FloatRange(left + BarWidth/2.f,right-BarWidth/2.f);
+
+		const float barCenter = dragRange.Derelativate(current/max);
+		bar = Rect<>(barCenter-BarWidth/2.f,barBack.y.min,barCenter+BarWidth/2.f,barBack.y.max);
+		RenderArea(bar,barContainsMouse,dragging,float3(1));
+	}
+
+
+	/*virtual override*/ WheelRs	Slider::HandleMouseWheel(short delta)
+	{
+		//if (outlineContainsMouse || barContainsMouse)	//always scroll
+		{
+			if (!dragging)
+			{
+				//constexpr float speed = -1.f / 5.f;
+				current = clamp(current + slideStep * delta,0,max);
+				if (onChange)
+					onChange(current);
+				return WheelRs::Processed;
+			}
+			return WheelRs::Ignored;
+		}
+		//return up->HandleMouseWheel(delta) || down->HandleMouseWheel(delta);
+	}
+
+	/*virtual override*/ void		Slider::SignalMouseMotion(const TVec2<>&mouseAt, bool clipAreaContainsMouse)
+	{
+		Super::SignalMouseMotion(mouseAt,clipAreaContainsMouse);
+		outlineContainsMouse = barBack.Contains(mouseAt) && !bar.Contains(mouseAt) && clipAreaContainsMouse;
+		slideLeftOnClick = mouseAt.x < bar.x.min;
+		if (dragging)
+		{
+			current = clamp((dragRange.Relativate(mouseAt.x - dragRelative)) * max,0, max);
+			changed = true;
+		}
+		else
+		{
+			barContainsMouse = bar.Contains(mouseAt);
+			dragRelative = mouseAt.x - bar.x.center();
+		}
+	}
+
+
+	/*virtual override*/ void Slider::SignalMouseUp()
+	{
+		if (mouseDown)
+		{
+			if (slideLeftOnClick)
+			{
+				current -= slideStep;
+				current = std::max(0.f,current);
+			}
+			else
+			{
+				current += slideStep;
+				current = std::min(max,current);
+			}
+			changed = true;
+		}
+		if (changed && onChange)
+			onChange(current);
+		dragging = false;
+		mouseDown = false;
+		changed = false;
+	}
+
+	/*virtual override*/ PComponent	Slider::HandleMouseDown()
+	{
+		if (!ContainsMouse())
+			return PComponent();
+
+		if (outlineContainsMouse)
+		{
+			mouseDown = true;
+		}
+		elif (barContainsMouse)
+		{
+			dragging = true;
+		}
+
+		return shared_from_this();
+	}
+
+
+
+
 	void	Panel::TScrollbar::Render(const Rect<>&rect)
 	{
 		
