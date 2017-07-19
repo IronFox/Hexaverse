@@ -5,6 +5,7 @@
 #include "display.h"
 #include <general/enumeration.h>
 #include <global_string.h>
+#include "../clientEvents.h"
 
 
 class ShadedInstruction
@@ -43,8 +44,36 @@ public:
 class ShadedVertexInstructionBlock : public Engine::DX11::BaseInstructionBlock
 {
 	typedef Engine::DX11::BaseInstructionBlock	Super;
+	index_t					callback=InvalidIndex;
 public:
 	ShadedInstruction		shader;//shadow base
+
+	/**/					ShadedVertexInstructionBlock()
+	{
+		callback = GlobalEvents::shadowQualityChanged.Register([this](){SignalShadowQualityChange();});
+	}
+	/**/					ShadedVertexInstructionBlock(const ShadedVertexInstructionBlock&other):Super(other)
+	{
+		shader = other.shader;
+		callback = GlobalEvents::shadowQualityChanged.Register([this](){SignalShadowQualityChange();});
+	}
+	virtual					~ShadedVertexInstructionBlock()
+	{
+		if (!application_shutting_down)
+			GlobalEvents::shadowQualityChanged.Unregister(callback);
+		callback = InvalidIndex;
+	}
+
+	void					operator=(const ShadedVertexInstructionBlock&other)
+	{
+		((Super&)*this) = other;
+		shader = other.shader;
+	}
+
+	void					SignalShadowQualityChange()
+	{
+		((Engine::DX11::ShaderInstructionBlock&)*this) = shader.Current();
+	}
 
 	void					operator=(const ShadedInstruction&inst)
 	{
@@ -61,8 +90,38 @@ public:
 class ShadedInstructionBlock16 : public Engine::DX11::InstructionBlock16
 {
 	typedef Engine::DX11::InstructionBlock16	Super;
+	index_t					callback=InvalidIndex;
 public:
+	typedef ShadedInstructionBlock16	Self;
 	ShadedInstruction		shader;//shadow base
+
+
+	/**/					ShadedInstructionBlock16()
+	{
+		callback = GlobalEvents::shadowQualityChanged.Register([this](){SignalShadowQualityChange();});
+	}
+	/**/					ShadedInstructionBlock16(const Self&other):Super(other)
+	{
+		shader = other.shader;
+		callback = GlobalEvents::shadowQualityChanged.Register([this](){SignalShadowQualityChange();});
+	}
+	virtual					~ShadedInstructionBlock16()
+	{
+		if (!application_shutting_down)
+			GlobalEvents::shadowQualityChanged.Unregister(callback);
+		callback = InvalidIndex;
+	}
+
+	void					operator=(const Self&other)
+	{
+		((Super&)*this) = other;
+		shader = other.shader;
+	}
+
+	void					SignalShadowQualityChange()
+	{
+		((Engine::DX11::ShaderInstructionBlock&)*this) = shader.Current();
+	}
 
 	void					operator=(const ShadedInstruction&inst)
 	{
@@ -79,8 +138,39 @@ public:
 class ShadedInstructionBlock32 : public Engine::DX11::InstructionBlock32
 {
 	typedef Engine::DX11::InstructionBlock32	Super;
+	index_t					callback=InvalidIndex;
 public:
+	typedef ShadedInstructionBlock32	Self;
 	ShadedInstruction		shader;
+
+
+
+	/**/					ShadedInstructionBlock32()
+	{
+		callback = GlobalEvents::shadowQualityChanged.Register([this](){SignalShadowQualityChange();});
+	}
+	/**/					ShadedInstructionBlock32(const Self&other):Super(other)
+	{
+		shader = other.shader;
+		callback = GlobalEvents::shadowQualityChanged.Register([this](){SignalShadowQualityChange();});
+	}
+	virtual					~ShadedInstructionBlock32()
+	{
+		if (!application_shutting_down)
+			GlobalEvents::shadowQualityChanged.Unregister(callback);
+		callback = InvalidIndex;
+	}
+
+	void					operator=(const Self&other)
+	{
+		((Super&)*this) = other;
+		shader = other.shader;
+	}
+
+	void					SignalShadowQualityChange()
+	{
+		((Engine::DX11::ShaderInstructionBlock&)*this) = shader.Current();
+	}
 
 	void					operator=(const ShadedInstruction&inst)
 	{
