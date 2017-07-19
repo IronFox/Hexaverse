@@ -237,6 +237,20 @@ namespace Engine
 	}
 
 
+	DXGI_SAMPLE_DESC			DirectX11::_CompileSampleDesc(BYTE numFSAASamples)	const
+	{
+		DXGI_SAMPLE_DESC rs;
+		rs.Quality = 0;
+		if (numFSAASamples > 1 && knownQualityLevels)
+		{
+			rs.Quality = knownQualityLevels - 1;
+		}
+		rs.Count = std::max<BYTE>(1, (BYTE)(knownQualityLevels ? numFSAASamples : 1));             // how many multisamples
+		return rs;
+	}
+
+
+
 	bool			DirectX11::CreateContext(HWND hWnd, TVisualConfig&config, const Resolution&res)
 	{
 		DXGI_SWAP_CHAIN_DESC scd;
@@ -251,15 +265,9 @@ namespace Engine
 		vsync = config.vertical_sync;
 
 		scd.SampleDesc.Quality = 0;
-		if (config.fsaa_samples > 1 && knownQualityLevels)
-		{
-			scd.SampleDesc.Quality = knownQualityLevels - 1;
-		}
-		//config.fsaa_samples > 1 ? D3D11_STANDARD_MULTISAMPLE_PATTERN : 0;
-		scd.SampleDesc.Count = std::max<BYTE>(1, (BYTE)(knownQualityLevels ? config.fsaa_samples : 1));             // how many multisamples
+		scd.SampleDesc.Count = 1;
 		scd.Windowed = TRUE;                                    // windowed/full-screen mode
 		
-		this->fsaa = scd.SampleDesc;
 
 
 		UINT flags = 0;
@@ -269,7 +277,7 @@ namespace Engine
 		// create a device, device context and swap chain using the information in the scd struct
 		
 
-		D3D_FEATURE_LEVEL inputFeatureLevel = D3D_FEATURE_LEVEL_10_0;
+		D3D_FEATURE_LEVEL inputFeatureLevel = D3D_FEATURE_LEVEL_10_1;
 
 		//D3D_FEATURE_LEVEL_11_0;
 
@@ -363,26 +371,29 @@ namespace Engine
 
 
 	    //DX11::Handle<ID3D11Texture2D> pBackBuffer;
-	    rs = swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)backbufferTexture.Init());
+	    rs = swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)backbufferOut.Init());
 		if (rs != S_OK)
 		{
 			ReportError(rs, CLOCATION);
 			DestroyContext();
 			return false;
 		}
+
+		_currentFSAASamples = config.fsaa_samples;
+
 	    // use the back buffer address to create the render target
-		rs = dev->CreateRenderTargetView(backbufferTexture, NULL, backbufferView.Init());
-		if (rs != S_OK)
-		{
-			ReportError(rs, CLOCATION);
-			DestroyContext();
-			return false;
-		}
+		//rs = dev->CreateRenderTargetView(backbufferTexture, NULL, backbufferView.Init());
+		//if (rs != S_OK)
+		//{
+		//	ReportError(rs, CLOCATION);
+		//	DestroyContext();
+		//	return false;
+		//}
 		//pBackBuffer.Release();
 
 
-		if (!_CreateDepthStencilTarget(res))
-			return false;
+		//if (!_CreateDepthStencilTarget(res))
+		//	return false;
 
 
 
@@ -451,6 +462,9 @@ namespace Engine
 
 
 		_currentResolution = res;
+
+		backbuffer.CreateMSAA(res,DXGI_FORMAT_R8G8B8A8_UNORM,true,_CompileSampleDesc(_currentFSAASamples));
+
 		return true;
 	}
 
@@ -553,7 +567,7 @@ namespace Engine
 	void	DirectX11::TargetBackbuffer()
 	{
 		UnbindShaderResources();
-		devcon->OMSetRenderTargets(1, backbufferView.Reference(),backbufferDepthView);
+		devcon->OMSetRenderTargets(1, backbuffer.colorTarget[0].rtView.Reference(),backbuffer.depthStencilTarget.dsView);
 	//	devcon->OMSetRenderTargets(1, backbufferView.Reference(),NULL);
 	}
 
@@ -587,9 +601,8 @@ namespace Engine
 		cameraBuffer.Clear();
 		objectBuffer.Clear();
 		objectPositionBuffer.Clear();
-		backbufferView.Clear();
-		backbufferTexture.Clear();
-		backbufferDepthView.Clear();
+		backbuffer.Clear();
+		backbufferOut.Clear();
 		Release(swapchain);
 		Release(dev);
 		Release(devcon);
@@ -638,9 +651,8 @@ namespace Engine
 		UnbindShaderResources();
 		devcon->OMSetRenderTargets(0, NULL, NULL);
 
-		backbufferView.Clear();
-		backbufferDepthView.Clear();
-		backbufferTexture.Clear();
+		backbufferOut.Clear();
+		backbuffer.Clear();
 		HRESULT rs = swapchain->ResizeBuffers(1,res.width,res.height,DXGI_FORMAT_R8G8B8A8_UNORM,0);
 		if (rs != S_OK)
 		{
@@ -650,7 +662,7 @@ namespace Engine
 			return;
 		}
 	    //DX11::Handle<ID3D11Texture2D> pBackBuffer;
-	    rs = swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)backbufferTexture.Init());
+	    rs = swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)backbufferOut.Init());
 		if (rs != S_OK)
 		{
 			ReportError(rs, CLOCATION);
@@ -658,23 +670,8 @@ namespace Engine
 			application_shutting_down = true;
 			return;
 		}
-	    // use the back buffer address to create the render target
-		rs = dev->CreateRenderTargetView(backbufferTexture, NULL, backbufferView.Init());
-		if (rs != S_OK)
-		{
-			ReportError(rs, CLOCATION);
-			DestroyContext();
-			application_shutting_down = true;
-			return;
-		}
-		//backbufferTexture.Release();
+		backbuffer.CreateMSAA(res,DXGI_FORMAT_R8G8B8A8_UNORM,true,_CompileSampleDesc(_currentFSAASamples));
 
-		if (!_CreateDepthStencilTarget(res))
-		{
-			DestroyContext();
-			application_shutting_down = true;
-			return;
-		}
 
 		TargetBackbuffer();
 	}
@@ -699,24 +696,25 @@ namespace Engine
 	void		DirectX11::NextFrameNoClr()
 	{
 		lazyPixelShaderHandle = nullptr;
+
+		devcon->ResolveSubresource(backbufferOut,D3D11CalcSubresource(0,0,1),backbuffer.colorTarget[0].GetHandle2D(),D3D11CalcSubresource(0,0,1),DXGI_FORMAT_R8G8B8A8_UNORM);
+
+//		GetDeviceContext()->CopyResource(backbufferOut,backbuffer.colorTarget[0].GetHandle2D());
 		swapchain->Present(vsync,0);
 		timeBuffer.Update(Engine::timing.now);
 	}
 
 	void		DirectX11::NextFrame()
 	{
-		lazyPixelShaderHandle = nullptr;
-		swapchain->Present(vsync,0);
-		 
-		devcon->ClearRenderTargetView(backbufferView, clearColor.v); // Next frame
+		NextFrameNoClr();
+		devcon->ClearRenderTargetView(backbuffer.colorTarget[0].rtView, clearColor.v); // Next frame
 			//D3DXCOLOR(clearColor.r,clearColor.g,clearColor.b,clearColor.a)); // Next frame
-		devcon->ClearDepthStencilView(backbufferDepthView,  D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1, 0);
-		timeBuffer.Update(Engine::timing.now);
+		devcon->ClearDepthStencilView(backbuffer.depthStencilTarget.dsView,  D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1, 0);
 	}
 
 	void		DirectX11::ClearDepth()
 	{
-		devcon->ClearDepthStencilView(backbufferDepthView,  D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1, 0);
+		devcon->ClearDepthStencilView(backbuffer.depthStencilTarget.dsView,  D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1, 0);
 	
 	}
 
@@ -1775,6 +1773,65 @@ namespace Engine
 	}
 
 
+	void					DX11::FBO::CreateMSAA(const Resolution&res,DXGI_FORMAT format, bool depthStencil, const DXGI_SAMPLE_DESC&desc)
+	{
+		CreateMSAA(res,&format,1,depthStencil,desc);
+	}
+
+
+	void					DX11::FBO::CreateMSAA(const Resolution&res,const DXGI_FORMAT*format, count_t numTargets, bool depthStencil, const DXGI_SAMPLE_DESC&sdesc)
+	{
+		Clear();
+
+		supportsMips = NoMips;
+
+		D3D11_TEXTURE2D_DESC	desc;
+		memset(&desc,0,sizeof(desc));
+		desc.Width = res.width;
+		desc.Height = res.height;
+		desc.MipLevels = 1;
+
+		desc.ArraySize = 1;
+		desc.Usage = D3D11_USAGE_DEFAULT;
+		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
+		desc.CPUAccessFlags = 0;
+		desc.SampleDesc = sdesc;
+
+		
+		for (index_t i = 0; i < numTargets && i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; i++)
+		{
+			this->numTargets++;
+			desc.Format = format[i];
+
+			HRESULT hr = DirectX11::globalInstance->GetDevice()->CreateTexture2D(&desc,NULL,colorTarget[i].handle2D.Init());
+			if (hr != S_OK)
+			{
+				Clear();
+				DirectX11::globalInstance->ReportError(hr, CLOCATION);
+				return;
+			}
+			D3D11_RENDER_TARGET_VIEW_DESC resDesc;
+			ZeroMemory(&resDesc,sizeof(resDesc));
+			resDesc.Format = desc.Format;
+			resDesc.ViewDimension = sdesc.Count == 1 ?  D3D11_RTV_DIMENSION_TEXTURE2D : D3D11_RTV_DIMENSION_TEXTURE2DMS;
+			resDesc.Texture2D.MipSlice = 0;
+			auto dev = DirectX11::globalInstance->GetDevice();
+			hr = dev->CreateRenderTargetView(colorTarget[i].handle2D,&resDesc,colorTarget[i].rtView.Init());
+			if (hr != S_OK)
+			{
+				Clear();
+				DirectX11::globalInstance->ReportError(hr, CLOCATION);
+				return;
+			}
+			colorTarget[i].resolution = Resolution3D(res,1);
+			colorTarget[i]._CreateView(desc);
+			colorTarget[i]._SetMipLevels(desc.MipLevels);
+		}
+
+		if (depthStencil)
+			depthStencilTarget.CreateMSAA(res,sdesc);
+	}
+
 
 	void					DX11::FBO::Create(Resolution res, DXGI_FORMAT format, bool depthStencil/*=false*/, mips_t mips /*=NoMips*/)
 	{
@@ -2798,7 +2855,7 @@ namespace Engine
 		D3D11_SHADER_RESOURCE_VIEW_DESC resDesc;
 		ZeroMemory(&resDesc,sizeof(resDesc));
 		resDesc.Format = desc.Format;
-		resDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+		resDesc.ViewDimension = desc.SampleDesc.Count == 1 ? D3D11_SRV_DIMENSION_TEXTURE2D : D3D11_SRV_DIMENSION_TEXTURE2DMS;
 		resDesc.Texture2D.MipLevels = desc.MipLevels;
 		resDesc.Texture2D.MostDetailedMip = 0;
 
@@ -2858,6 +2915,15 @@ namespace Engine
 	void					DX11::DepthStencilTexture::Create(const Resolution&res)
 	{
 
+		DXGI_SAMPLE_DESC desc;
+		desc.Count = 1;
+		desc.Quality = 0;
+		CreateMSAA(res,desc);
+	}
+
+	void					DX11::DepthStencilTexture::CreateMSAA(const Resolution&res, const DXGI_SAMPLE_DESC&sdesc)
+	{
+
 	/*
 		You would create the Texture2D with DXGI_FORMAT_R24G8_TYPELESS, create the depth stencil view with DXGI_FORMAT_D24_UNORM_S8_UINT, and create the shader resource view with DXGI_FORMAT_R24_UNORM_X8_TYPELESS
 	*/
@@ -2873,9 +2939,11 @@ namespace Engine
 		desc.Format = DXGI_FORMAT_R24G8_TYPELESS;
 		//DXGI_FORMAT_D24_UNORM_S8_UINT;
 		desc.Usage = D3D11_USAGE_DEFAULT;
-		desc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
+		desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+		if (sdesc.Count == 1 || DirectX11::globalInstance->GetFeatureLevel() >= D3D_FEATURE_LEVEL_10_1)
+			desc.BindFlags |= D3D11_BIND_SHADER_RESOURCE;
 		desc.CPUAccessFlags = 0;
-		desc.SampleDesc.Count = 1;
+		desc.SampleDesc = sdesc;
 
 		//UINT layers = _CountMipLevels(res);
 
@@ -2897,7 +2965,7 @@ namespace Engine
 		D3D11_DEPTH_STENCIL_VIEW_DESC descDSV;
 		descDSV.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 		descDSV.Texture2D.MipSlice = 0;
-		descDSV.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+		descDSV.ViewDimension = sdesc.Count == 1 ? D3D11_DSV_DIMENSION_TEXTURE2D : D3D11_DSV_DIMENSION_TEXTURE2DMS;
 		descDSV.Flags = 0;
 
 		// Create the depth stencil view
@@ -2916,7 +2984,7 @@ namespace Engine
 			ZeroMemory(&resDesc,sizeof(resDesc));
 			resDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
 			//DXGI_FORMAT_R32_FLOAT;
-			resDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+			resDesc.ViewDimension = sdesc.Count == 1 ? D3D11_SRV_DIMENSION_TEXTURE2D : D3D11_SRV_DIMENSION_TEXTURE2DMS;
 			resDesc.Texture2D.MipLevels = desc.MipLevels;
 			resDesc.Texture2D.MostDetailedMip = 0;
 
@@ -2933,6 +3001,8 @@ namespace Engine
 		}
 		mipLevels = 1;
 	}
+
+	#if 0
 
 	bool	DirectX11::_CreateDepthStencilTarget(const Resolution&res)
 	{
@@ -2975,6 +3045,7 @@ namespace Engine
 		}
 		return true;
 	}
+	#endif /*0*/
 
 	void		DirectX11::SetCameraMatrices(const TMatrix4<>&view, const TMatrix4<>&projection, const TMatrix4<>&viewInvert)
 	{
@@ -3142,7 +3213,7 @@ namespace Engine
 
 	void						DirectX11::Capture(Image&target)
 	{
-		Copy(backbufferTexture,target);
+		Copy(backbuffer.colorTarget[0].GetHandle2D(),target);
 	}
 
 

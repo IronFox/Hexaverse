@@ -743,6 +743,7 @@ namespace Engine
 			Handle<ID3D11ShaderResourceView>	view;
 		public:
 			void					Create(const Resolution&);
+			void					CreateMSAA(const Resolution&,const DXGI_SAMPLE_DESC&);
 			void					Clear()
 			{
 				handle2D.Clear();
@@ -842,6 +843,8 @@ namespace Engine
 			void				Create(Resolution3D res, DXGI_FORMAT, mips_t mips = NoMips);	//!< Creates one target, clears rest
 			void				Create(Resolution res, const DXGI_FORMAT*, count_t numTargets, bool depthStencil=false, mips_t mips = NoMips);
 			void				Create(Resolution3D res, const DXGI_FORMAT*, count_t numTargets, mips_t mips = NoMips);
+			void				CreateMSAA(const Resolution&,DXGI_FORMAT, bool depthStencil, const DXGI_SAMPLE_DESC&);
+			void				CreateMSAA(const Resolution&,const DXGI_FORMAT*, count_t numTargets, bool depthStencil, const DXGI_SAMPLE_DESC&);
 
 			Resolution			GetResolution() const {return numTargets ? Resolution(colorTarget[0].GetResolution()) : Resolution(depthStencilTarget.GetResolution());}
 			const Resolution3D&	GetResolution3D() const {return numTargets ? colorTarget[0].GetResolution() : depthStencilTarget.GetResolution();}
@@ -940,9 +943,14 @@ namespace Engine
 		IDXGISwapChain		*swapchain;             // the pointer to the swap chain interface
 		ID3D11Device		*dev;                     // the pointer to our Direct3D device interface
 		ID3D11DeviceContext *devcon;           // the pointer to our Direct3D device context
-		DX11::Handle<ID3D11Texture2D>			backbufferTexture;
-		DX11::Handle<ID3D11RenderTargetView>	backbufferView;
-		DX11::Handle<ID3D11DepthStencilView>	backbufferDepthView;
+		//DX11::Handle<ID3D11Texture2D>			backbufferTexture;
+		//DX11::Handle<ID3D11RenderTargetView>	backbufferView;
+		//DX11::Handle<ID3D11DepthStencilView>	backbufferDepthView;
+
+		DX11::Handle<ID3D11Texture2D>			backbufferOut;
+		DX11::FBO								backbuffer;	//deferred output
+
+
 		DX11::Handle<ID3D11DepthStencilState>	depthStencilState[2][2];
 		DX11::Handle<ID3D11RasterizerState>		rasterizerState[2][2];
 		DX11::Handle<ID3D11BlendState>			blendState[BlendMode::NumberOfPossibilities];
@@ -953,7 +961,7 @@ namespace Engine
 		Buffer<DX11::Shader::Binding,0,Swap>	baseBindings;
 		M::float4			clearColor;
 
-		DXGI_SAMPLE_DESC	fsaa;
+		//DXGI_SAMPLE_DESC	fsaa;
 
 		int					errorCode;
 		String				errorString;
@@ -1114,11 +1122,12 @@ namespace Engine
 
 		D3D_FEATURE_LEVEL			GetFeatureLevel() const {return featureLevel;}
 	private:
-		bool						_CreateDepthStencilTarget(const Resolution&res);
+//		bool						_CreateDepthStencilTarget(const Resolution&res);
 		void						_CreateBlendState(BlendMode mode,bool enable,D3D11_BLEND srcColor, D3D11_BLEND dstColor, D3D11_BLEND_OP colorOp,  D3D11_BLEND srcAlpha, D3D11_BLEND dstAlpha, D3D11_BLEND_OP alphaOp);
+		DXGI_SAMPLE_DESC			_CompileSampleDesc(BYTE numFSAASamples)	const;
 
 		Resolution					_currentResolution;
-		
+		BYTE						_currentFSAASamples = 0;
 
 
 	};
