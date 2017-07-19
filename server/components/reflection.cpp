@@ -1357,18 +1357,19 @@ namespace Reflection
 		if (mode != FeedMode::Original && ((ctx && !allGood) || rewrite))
 		{
 			//Feed(folder,subConfigName,testMode,filterFunction,true);
-			StringFile outFile;
-			if (!outFile.Create(configName))
+			try
 			{
-				LogEvent(EventClass::Preset::configurationError,"Unable to overwrite '"+String(configName)+"'");
-				allGood = false;
-			}
-			else
-			{
+				StringFile outFile;
+				outFile.Create(configName);
 				LogEvent(EventClass::Preset::configurationPrint,"Writing '"+String(configName)+"'...");
 				DefineConfig(outFile,folder, 0);
 				outFile.Close();
 				allGood = true;
+			}
+			catch (const std::exception&ex)
+			{
+				LogEvent(EventClass::Preset::configurationError,"Unable to overwrite '"+String(configName)+"'");
+				allGood = false;
 			}
 		}
 

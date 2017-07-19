@@ -36,12 +36,12 @@ namespace NiceName
 		StringFile file;
 		String line;
 
-		ASSERT1__(file.Open(PRE_PATH L"resources/nice/nouns.txt"), FileSystem::GetWorkingDirectory());
+		file.Open(PRE_PATH L"resources/nice/nouns.txt"), FileSystem::GetWorkingDirectory();
 
 		while (file >> line)
 			nouns << line;
 
-		ASSERT__(file.Open(PRE_PATH L"resources/nice/adjectives.txt"));
+		file.Open(PRE_PATH L"resources/nice/adjectives.txt");
 
 		while (file >> line)
 			adjectives << MakeNiceAdjective(line);

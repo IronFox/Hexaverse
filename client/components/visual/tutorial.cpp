@@ -76,8 +76,9 @@ namespace Tutorial
 		void	InitMemoryFile()
 		{
 			const PathString filename = GetMemoryFilename();
-			if (memory.Open(filename))
+			try
 			{
+				memory.Open(filename);
 				String line;
 				while (memory >> line)
 				{
@@ -91,8 +92,10 @@ namespace Tutorial
 				memory.Close();
 				memory.Append(filename);
 			}
-			else
+			catch (...)
+			{
 				memory.Create(filename);
+			}
 
 		}
 

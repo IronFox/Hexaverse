@@ -68,25 +68,34 @@ namespace Network
 	
 	void LoadHosts()
 	{
-		StringFile hosts;
-		if (hosts.Open(RuntimeConfig::ConfigFile("hosts.txt")))
+		try
 		{
+			StringFile hosts;
+			hosts.Open(RuntimeConfig::ConfigFile("hosts.txt"));
 			String host;
 			while (hosts >> host)
 				ServerDiscovery::RegisterNewHost(Network::ServerAddress(host),false, false);
 		}
+		catch (...)
+		{}
 	}
 
 	void	SaveHosts()
 	{
-		StringFile hosts;
-		if (hosts.Create(RuntimeConfig::ConfigFile("hosts.txt")))
+		try
 		{
+			StringFile hosts;
+			hosts.Create(RuntimeConfig::ConfigFile("hosts.txt"));
+		
 			static Buffer0<Network::ServerAddress>	 urls;
 			ServerDiscovery::ListNonAutoAttempts(urls);
 			foreach (urls,url)
 				hosts << url->host << ':' << url->basePort << nl;
 			hosts.Close();
+		}
+		catch (const std::exception&ex)
+		{
+			LogException(nullptr,ex);
 		}
 	}
 
