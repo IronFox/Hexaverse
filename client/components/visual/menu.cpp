@@ -36,17 +36,18 @@ namespace Menu
 		options->FillHorizontally(0.1f);
 		options->AnchorTop(0.1f);
 		options->AnchorBelowPrevious(new GUI::Label("Options",2.f));
-		AddOptionSlider("Shadow Quality", 0, ShadedInstruction::Quality::N-1, ShadedInstruction::chosenQuality, [](float&q)
+		AddOptionSlider("Shadow Quality", 0, ShadedInstruction::Quality::N-1, ShadedInstruction::Quality::N-1 - ShadedInstruction::chosenQuality, [](float&q)
 		{
 			auto old = ShadedInstruction::chosenQuality;
-			ShadedInstruction::chosenQuality.Load(Round(q));
-			q = ShadedInstruction::chosenQuality;
+			ShadedInstruction::chosenQuality.Load(ShadedInstruction::Quality::N-1 -Round(q));
+			q = ShadedInstruction::Quality::N-1 - ShadedInstruction::chosenQuality;
 			if (old != ShadedInstruction::chosenQuality)
 			{
 				Configuration::Update("runtime/shadowQuality",ShadedInstruction::chosenQuality.ToString());
 				GlobalEvents::shadowQualityChanged();
 			}
 		});
+
 	}
 
 	static void	CreateHelpMenu()
