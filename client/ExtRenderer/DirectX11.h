@@ -1111,6 +1111,8 @@ namespace Engine
 
 		const Resolution&			GetResolution()	const	{return _currentResolution;}
 
+
+		D3D_FEATURE_LEVEL			GetFeatureLevel() const {return featureLevel;}
 	private:
 		bool						_CreateDepthStencilTarget(const Resolution&res);
 		void						_CreateBlendState(BlendMode mode,bool enable,D3D11_BLEND srcColor, D3D11_BLEND dstColor, D3D11_BLEND_OP colorOp,  D3D11_BLEND srcAlpha, D3D11_BLEND dstAlpha, D3D11_BLEND_OP alphaOp);
