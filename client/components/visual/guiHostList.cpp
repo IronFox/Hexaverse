@@ -28,7 +28,7 @@
 		label->anchorConfig.Top().Set(0.01f);
 		label->anchorConfig.Left().Set(0.01f);
 		label->SetText(text);
-		label->zoom = zoom;
+		label->SetLocalFontScale(zoom);
 		label->extraSpacing = 0;
 		return label;
 	};
@@ -234,7 +234,7 @@
 			AddTab(p,String(host.serverInfo.gameInfo.numFactionsOnline) + "/" + String(host.serverInfo.gameInfo.numFactionsCreated),incompatible,0.01f,GUI::TAnchor::RelativeToScreen);
 			AddTab(p,host.serverInfo.gameInfo.roundNumber.ToString(),incompatible,0.01f,GUI::TAnchor::RelativeToScreen);
 			PLabel l = AddTab(p,CompileRules(host.serverInfo),incompatible,0.01f,GUI::TAnchor::RelativeToScreen);
-			l->zoom *= 0.9f;
+			l->SetLocalFontScale(l->GetLocalFontScale() * 0.9f);
 
 		}
 
@@ -388,7 +388,7 @@
 				);
 			
 			}));
-			forget->zoom *= 0.9f;
+			forget->SetLocalFontScale(forget->GetLocalFontScale() * 0.9f);
 			forget->extraSpacing *= 0.5f;
 			forget->LockIdealWidth();
 			forget->anchorConfig.Top().Set(0.f);

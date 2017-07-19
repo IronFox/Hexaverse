@@ -1225,6 +1225,11 @@ namespace GUI
 		}
 	}
 
+	float			TextField::GetTotalFontScale() const
+	{
+		return zoom * textZoom;
+	}
+
 	/*virtual*/ float			TextField::GetIdealWidth() const
 	{
 		textout.PushState();
@@ -1663,14 +1668,14 @@ namespace GUI
 
 	/*virtual override*/ float	Checkbox::GetIdealWidth() const
 	{
-		float checkBoxWidth = textZoom*zoom * textout.GetScaledHeight() / display.GetPixelAspect() * 1.5f;
+		float checkBoxWidth = GetTotalFontScale() * textout.GetScaledHeight() / display.GetPixelAspect() * 1.5f;
 		return Super::GetIdealWidth() + checkBoxWidth;
 	}
 
 
 	/*virtual override*/ bool	Checkbox::UpdateHeight()
 	{
-		float checkBoxWidth = textZoom*zoom * textout.GetScaledHeight() / display.GetPixelAspect() * 1.5f;
+		float checkBoxWidth = GetTotalFontScale() * textout.GetScaledHeight() / display.GetPixelAspect() * 1.5f;
 		return Super::UpdateHeight(FloatRange(rect.x.min + checkBoxWidth,rect.x.max ));
 	}
 
@@ -1680,7 +1685,7 @@ namespace GUI
 		//Super::BaseRender(lit,false);
 		Super::RenderText(lit);
 		SurfaceRenderer::SetColor(lit ? float4(0.7f):float4(0.5f));
-		float checkBoxHeight = textZoom*zoom * textout.GetScaledHeight();
+		float checkBoxHeight = GetTotalFontScale() * textout.GetScaledHeight();
 		float checkBoxWidth = checkBoxHeight / display.GetPixelAspect();
 		float top = rect.y.center() + checkBoxHeight*0.7f;// Super::extraSpacing * checkBoxHeight;
 		TFloatRect box = TFloatRect(rect.x.min,top - checkBoxHeight,rect.x.min+checkBoxWidth,top);

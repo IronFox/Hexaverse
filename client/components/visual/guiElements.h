@@ -301,6 +301,7 @@ namespace GUI
 		Array<float2>	lineAt;
 		float4			color = float4(1,1,1,1);
 		float			textHeight = 1.f;
+		float			zoom = 1.f;
 		bool			widthLockedToIdeal=false;
 		bool			UpdateIdealWidth();
 
@@ -309,17 +310,20 @@ namespace GUI
 		bool			UpdateHeight(const TFloatRange<>&hRange);
 
 		virtual float	GetIdealWidth() const;
+		virtual void	OnTextChange() {};
 
 	public:
 		typedef Area	Super;
 
 		bool			alignCenter = true;
-		float			zoom = 1.f;
 		
 		float			extraSpacing = 0.75f;	//!< Vertical extra spacing in multiples of line-height
 
 		void			SetColor(const float4&color)	{this->color = color;}
 		void			SetColor(float r, float g, float b, float a = 1.f)	{this->color = float4(r,g,b,a);}
+		void			SetLocalFontScale(float zoom)	{this->zoom = zoom; OnTextChange();}
+		float			GetLocalFontScale() const {return zoom;}
+		float			GetTotalFontScale() const;
 
 		void			SetText(const String&string)
 		{
@@ -327,6 +331,7 @@ namespace GUI
 				return;
 			rawText.SetSize(1);
 			rawText.First() = string;
+			OnTextChange();
 			Super::InvalidateSize();
 			UpdateHeight();
 		}
@@ -335,6 +340,7 @@ namespace GUI
 			if (rawText == string)
 				return;
 			rawText = string;
+			OnTextChange();
 			Super::InvalidateSize();
 			UpdateHeight();
 		}
@@ -361,7 +367,7 @@ namespace GUI
 		/**/			Label(const String&text, float scale=1.f)
 		{
 			Super::fillBackground = false;
-			Super::zoom = scale;
+			Super::SetLocalFontScale(scale);
 			SetText(text);
 			SetIdealWidth();
 		}

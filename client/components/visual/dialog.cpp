@@ -579,7 +579,7 @@ namespace Dialog
 
 		d->textField->SetText( list );
 		d->textField->alignCenter = false;
-		d->textField->zoom = 0.9f;
+		d->textField->SetLocalFontScale(0.9f);
 		d->ReLayout();
 
 		GUI::VerifyIntegrity(CLOCATION);
