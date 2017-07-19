@@ -251,6 +251,8 @@ namespace GUI
 			{
 				Hide(w);
 				i--;
+				if (at == 0)
+					return true;
 				at--;
 			}
 		}
