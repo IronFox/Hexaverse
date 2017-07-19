@@ -806,7 +806,7 @@ namespace GUI
 
 	bool			Area::UpdateHeightIfNecessary()
 	{
-		if (this->sizeVersion == windowResolutionVersion)
+		if (localWindowResolutionVersion == windowResolutionVersion && !invalidatedForceHeightUpdate)
 			return false;
 		return UpdateHeight();
 	}
@@ -894,8 +894,12 @@ namespace GUI
 
 	bool			Area::UpdateHeight()
 	{
-		this->sizeVersion = windowResolutionVersion;
-		
+		if (localWindowResolutionVersion != windowResolutionVersion)
+		{
+			OnWindowSizeChange();
+			localWindowResolutionVersion = windowResolutionVersion;
+		}
+		invalidatedForceHeightUpdate = false;
 		return Super::UpdateHeight();
 	}
 

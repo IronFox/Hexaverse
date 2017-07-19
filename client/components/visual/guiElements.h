@@ -216,9 +216,14 @@ namespace GUI
 	class Area : public Component
 	{
 	private:
-		index_t			sizeVersion = InvalidIndex;
+		bool			invalidatedForceHeightUpdate=true;
+		index_t			localWindowResolutionVersion = InvalidIndex;
 	protected:
 		void			BaseRender(bool lit, bool flipped);
+		/**
+		Called by Area::UpdateHeight() if the local window size version does not match the current global window size version
+		*/
+		virtual void	OnWindowSizeChange()	{};
 	public:
 		typedef Component	Super;
 
@@ -236,7 +241,7 @@ namespace GUI
 
 		void			InvalidateSize()
 		{
-			sizeVersion = InvalidIndex;
+			invalidatedForceHeightUpdate = true;
 		}
 		virtual void	Render() override	{if (fillBackground) BaseRender(false,false);}
 	};
