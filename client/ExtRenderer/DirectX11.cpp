@@ -237,15 +237,15 @@ namespace Engine
 	}
 
 
-	DXGI_SAMPLE_DESC			DirectX11::_CompileSampleDesc(BYTE numFSAASamples)	const
+	DXGI_SAMPLE_DESC			DirectX11::_CompileSampleDesc(const MSAAConfig&cfg)	const
 	{
 		DXGI_SAMPLE_DESC rs;
 		rs.Quality = 0;
-		if (numFSAASamples > 1 && knownQualityLevels)
+		if (cfg.sampleCount > 1)
 		{
-			rs.Quality = knownQualityLevels - 1;
+			rs.Quality = cfg.numQualityLevels - 1;
 		}
-		rs.Count = std::max<BYTE>(1, (BYTE)(knownQualityLevels ? numFSAASamples : 1));             // how many multisamples
+		rs.Count = cfg.sampleCount;
 		return rs;
 	}
 
@@ -348,26 +348,30 @@ namespace Engine
 			}
 		}
 
+		_msaaConfigs.Clear();
 
-		if (!knownQualityLevels && config.fsaa_samples > 1)
+		for (UINT s = 1; s < D3D10_MAX_MULTISAMPLE_SAMPLE_COUNT; s++)
 		{
-			//UINT maxQuality;
-			rs = dev->CheckMultisampleQualityLevels(scd.BufferDesc.Format, config.fsaa_samples, &knownQualityLevels);
+			UINT numLevels = 0;
+			rs = dev->CheckMultisampleQualityLevels(scd.BufferDesc.Format, s, &numLevels);
 			if (rs != S_OK)
 			{
 				ReportError(rs, CLOCATION);
 				DestroyContext();
 				return false;
 			}
-
-			if (knownQualityLevels > 0)
+			if (numLevels != 0)
 			{
-				errorCode = ERR_RETRY;
-				errorString = "Determined sample quality levels at " + String(knownQualityLevels);
-				DestroyContext();
-				return false;
-			}	//else: no point retrying
+				auto&msaa = _msaaConfigs.Append();
+				msaa.numQualityLevels = numLevels;
+				msaa.sampleCount = s;
+			}
 		}
+
+		
+		_currentMSAAConfig = _FindMSAAConfig(config.fsaa_samples);
+
+
 
 
 	    //DX11::Handle<ID3D11Texture2D> pBackBuffer;
@@ -379,7 +383,6 @@ namespace Engine
 			return false;
 		}
 
-		_currentFSAASamples = config.fsaa_samples;
 
 	    // use the back buffer address to create the render target
 		//rs = dev->CreateRenderTargetView(backbufferTexture, NULL, backbufferView.Init());
@@ -463,9 +466,19 @@ namespace Engine
 
 		_currentResolution = res;
 
-		backbuffer.CreateMSAA(res,DXGI_FORMAT_R8G8B8A8_UNORM,true,_CompileSampleDesc(_currentFSAASamples));
+		_backbuffer.CreateMSAA(res,DXGI_FORMAT_R8G8B8A8_UNORM,true,_CompileSampleDesc(_msaaConfigs[_currentMSAAConfig]));
 
 		return true;
+	}
+
+	index_t				DirectX11::_FindMSAAConfig(BYTE numSamples) const
+	{
+		foreach (_msaaConfigs,cfg)
+			if (cfg->sampleCount == numSamples)
+				return cfg - _msaaConfigs.pointer();
+
+		return 0;
+
 	}
 
 
@@ -567,7 +580,7 @@ namespace Engine
 	void	DirectX11::TargetBackbuffer()
 	{
 		UnbindShaderResources();
-		devcon->OMSetRenderTargets(1, backbuffer.colorTarget[0].rtView.Reference(),backbuffer.depthStencilTarget.dsView);
+		devcon->OMSetRenderTargets(1, _backbuffer.colorTarget[0].rtView.Reference(),_backbuffer.depthStencilTarget.dsView);
 	//	devcon->OMSetRenderTargets(1, backbufferView.Reference(),NULL);
 	}
 
@@ -601,7 +614,7 @@ namespace Engine
 		cameraBuffer.Clear();
 		objectBuffer.Clear();
 		objectPositionBuffer.Clear();
-		backbuffer.Clear();
+		_backbuffer.Clear();
 		backbufferOut.Clear();
 		Release(swapchain);
 		Release(dev);
@@ -612,7 +625,7 @@ namespace Engine
 	}
 
 
-	DirectX11::DirectX11() :swapchain(NULL), dev(NULL), devcon(NULL), errorCode(0), knownQualityLevels(0)
+	DirectX11::DirectX11() :swapchain(NULL), dev(NULL), devcon(NULL), errorCode(0)
 	{}
 
 
@@ -652,7 +665,7 @@ namespace Engine
 		devcon->OMSetRenderTargets(0, NULL, NULL);
 
 		backbufferOut.Clear();
-		backbuffer.Clear();
+		_backbuffer.Clear();
 		HRESULT rs = swapchain->ResizeBuffers(1,res.width,res.height,DXGI_FORMAT_R8G8B8A8_UNORM,0);
 		if (rs != S_OK)
 		{
@@ -670,11 +683,23 @@ namespace Engine
 			application_shutting_down = true;
 			return;
 		}
-		backbuffer.CreateMSAA(res,DXGI_FORMAT_R8G8B8A8_UNORM,true,_CompileSampleDesc(_currentFSAASamples));
+		_backbuffer.CreateMSAA(res,DXGI_FORMAT_R8G8B8A8_UNORM,true,_CompileSampleDesc(_msaaConfigs[_currentMSAAConfig]));
 
 
 		TargetBackbuffer();
 	}
+
+
+	void		DirectX11::SetMSAAMode(index_t mode)
+	{
+		if (mode == _currentMSAAConfig)
+			return;
+		if (mode >= _msaaConfigs.Count())
+			throw Except::Program::ParameterFault("Chosen MSAA mode is out of bounds");
+		_currentMSAAConfig = mode;
+		_nextBackbuffer.CreateMSAA(_currentResolution,DXGI_FORMAT_R8G8B8A8_UNORM,true,_CompileSampleDesc(_msaaConfigs[_currentMSAAConfig]));
+	}
+
 
 	void		DirectX11::SetViewport(const RECT&region, const Resolution&windowRes)
 	{
@@ -697,8 +722,12 @@ namespace Engine
 	{
 		lazyPixelShaderHandle = nullptr;
 
-		devcon->ResolveSubresource(backbufferOut,D3D11CalcSubresource(0,0,1),backbuffer.colorTarget[0].GetHandle2D(),D3D11CalcSubresource(0,0,1),DXGI_FORMAT_R8G8B8A8_UNORM);
-
+		devcon->ResolveSubresource(backbufferOut,D3D11CalcSubresource(0,0,1),_backbuffer.colorTarget[0].GetHandle2D(),D3D11CalcSubresource(0,0,1),DXGI_FORMAT_R8G8B8A8_UNORM);
+		if (_nextBackbuffer.IsNotEmpty())
+		{
+			_backbuffer = _nextBackbuffer;
+			_nextBackbuffer.Clear();
+		}
 //		GetDeviceContext()->CopyResource(backbufferOut,backbuffer.colorTarget[0].GetHandle2D());
 		swapchain->Present(vsync,0);
 		timeBuffer.Update(Engine::timing.now);
@@ -707,14 +736,14 @@ namespace Engine
 	void		DirectX11::NextFrame()
 	{
 		NextFrameNoClr();
-		devcon->ClearRenderTargetView(backbuffer.colorTarget[0].rtView, clearColor.v); // Next frame
+		devcon->ClearRenderTargetView(_backbuffer.colorTarget[0].rtView, clearColor.v); // Next frame
 			//D3DXCOLOR(clearColor.r,clearColor.g,clearColor.b,clearColor.a)); // Next frame
-		devcon->ClearDepthStencilView(backbuffer.depthStencilTarget.dsView,  D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1, 0);
+		devcon->ClearDepthStencilView(_backbuffer.depthStencilTarget.dsView,  D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1, 0);
 	}
 
 	void		DirectX11::ClearDepth()
 	{
-		devcon->ClearDepthStencilView(backbuffer.depthStencilTarget.dsView,  D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1, 0);
+		devcon->ClearDepthStencilView(_backbuffer.depthStencilTarget.dsView,  D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1, 0);
 	
 	}
 
@@ -3213,7 +3242,7 @@ namespace Engine
 
 	void						DirectX11::Capture(Image&target)
 	{
-		Copy(backbuffer.colorTarget[0].GetHandle2D(),target);
+		Copy(_backbuffer.colorTarget[0].GetHandle2D(),target);
 	}
 
 

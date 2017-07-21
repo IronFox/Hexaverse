@@ -948,7 +948,6 @@ namespace Engine
 		//DX11::Handle<ID3D11DepthStencilView>	backbufferDepthView;
 
 		DX11::Handle<ID3D11Texture2D>			backbufferOut;
-		DX11::FBO								backbuffer;	//deferred output
 
 
 		DX11::Handle<ID3D11DepthStencilState>	depthStencilState[2][2];
@@ -967,8 +966,12 @@ namespace Engine
 		String				errorString;
 		D3D_FEATURE_LEVEL	featureLevel;
 
-		UINT				vsync, 
-							knownQualityLevels;
+		UINT				vsync;
+
+
+
+
+
 
 		ID3D11PixelShader	*lazyPixelShaderHandle = nullptr;
 		int					shaderLockLevel = 0;
@@ -1000,6 +1003,12 @@ namespace Engine
 
 
 	public:
+		struct MSAAConfig
+		{
+			UINT			sampleCount=1,
+							numQualityLevels=1;
+		};
+
 		void			ReportError(HRESULT, const TCodeLocation&);
 		//static void					BuildMipMaps(const GL::FBO&, unsigned target, const GLShader::Instance&mipMapShader);
 		//static void					BuildMipMaps(const GL::Texture::Reference&, const GLShader::Instance&mipMapShader, GLenum format=GL_RGBA8);
@@ -1118,16 +1127,23 @@ namespace Engine
 		void						ScanShaderHeader(const PathString&path);
 
 		const Resolution&			GetResolution()	const	{return _currentResolution;}
-
+		ArrayRef<const MSAAConfig>	GetMSAAModes() const {return _msaaConfigs.ToRef();}
+		index_t						GetCurrentMSAAMode() const {return _currentMSAAConfig;}
+		BYTE						GetCurrentMSAARate() const {return _msaaConfigs[_currentMSAAConfig].sampleCount;}
+		void						SetMSAAMode(index_t mode);
+		void						SelectMSAARate(BYTE numSamples) {SetMSAAMode(_FindMSAAConfig(numSamples));}
 
 		D3D_FEATURE_LEVEL			GetFeatureLevel() const {return featureLevel;}
 	private:
 //		bool						_CreateDepthStencilTarget(const Resolution&res);
 		void						_CreateBlendState(BlendMode mode,bool enable,D3D11_BLEND srcColor, D3D11_BLEND dstColor, D3D11_BLEND_OP colorOp,  D3D11_BLEND srcAlpha, D3D11_BLEND dstAlpha, D3D11_BLEND_OP alphaOp);
-		DXGI_SAMPLE_DESC			_CompileSampleDesc(BYTE numFSAASamples)	const;
+		DXGI_SAMPLE_DESC			_CompileSampleDesc(const MSAAConfig&)	const;
+		index_t						_FindMSAAConfig(BYTE numSamples) const;
 
 		Resolution					_currentResolution;
-		BYTE						_currentFSAASamples = 0;
+		index_t						_currentMSAAConfig;
+		Buffer0<MSAAConfig>			_msaaConfigs;
+		DX11::FBO					_backbuffer,_nextBackbuffer;	//deferred output
 
 
 	};
