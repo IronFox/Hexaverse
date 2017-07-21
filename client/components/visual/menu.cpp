@@ -20,13 +20,20 @@ namespace Menu
 	}
 
 
-	static void AddOptionSlider(const String&name, float min, float max, float initial, const std::function<void(float&)>&onChange)
+	static void AddOptionSlider(const String&name, float min, float max, float initial, const std::function<void(float&)>&onChange, const std::function<String()>&toString)
 	{
 
 		GUI::PSlider s(new GUI::Slider());
 		s->Setup(initial,max, 1.f,0.2f);
-		s->SetOnChange(onChange);
-		s->SetText(name);
+		std::weak_ptr<GUI::Slider> w = s;
+		s->SetOnChange([onChange,toString,w,name](float&f)
+		{
+			onChange(f);
+			const auto s = w.lock();
+			if (s)
+				s->SetText(name+" ("+toString()+")");
+		});
+		s->SetText(name+" ("+toString()+")");
 		options->AnchorBelowPrevious(s);
 	}
 
@@ -37,17 +44,40 @@ namespace Menu
 		options->AnchorTop(0.1f);
 		options->AnchorBelowPrevious(new GUI::Label("Options",2.f));
 		AddOptionSlider("Shadow Quality", 0, ShadedInstruction::Quality::N-1, ShadedInstruction::Quality::N-1 - ShadedInstruction::chosenQuality, [](float&q)
-		{
-			auto old = ShadedInstruction::chosenQuality;
-			ShadedInstruction::chosenQuality.Load(ShadedInstruction::Quality::N-1 -Round(q));
-			q = ShadedInstruction::Quality::N-1 - ShadedInstruction::chosenQuality;
-			if (old != ShadedInstruction::chosenQuality)
 			{
-				Configuration::Update("runtime/shadowQuality",ShadedInstruction::chosenQuality.ToString());
-				GlobalEvents::shadowQualityChanged();
+				auto old = ShadedInstruction::chosenQuality;
+				ShadedInstruction::chosenQuality.Load(ShadedInstruction::Quality::N-1 -Round(q));
+				q = ShadedInstruction::Quality::N-1 - ShadedInstruction::chosenQuality;
+				if (old != ShadedInstruction::chosenQuality)
+				{
+					Configuration::Update("runtime/shadowQuality",ShadedInstruction::chosenQuality.ToString());
+					GlobalEvents::shadowQualityChanged();
+				}
+			},
+			[]() -> String
+			{
+				return ShadedInstruction::chosenQuality.ToString();
 			}
-		});
+		);
 
+		const auto modes = display.GetMSAAModes();
+		if (modes.Count() > 1)
+		{
+			AddOptionSlider("Anti-Aliasing", 0, modes.Count()-1, display.GetCurrentMSAAMode(), [](float&q)
+			{
+				auto old = display.GetCurrentMSAAMode();
+				display.SetMSAAMode(Math::Max(0.f,Round(q)));
+				q = display.GetCurrentMSAAMode();
+				if (old != display.GetCurrentMSAAMode())
+					Configuration::Update("runtime/fsaa",display.GetCurrentMSAARate());
+			},
+			[]()->String
+			{
+				BYTE samples = display.GetCurrentMSAARate();
+				return samples > 1 ? String(samples)+"x" : "off";
+			}
+			);
+		}
 	}
 
 	static void	CreateHelpMenu()
