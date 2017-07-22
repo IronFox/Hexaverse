@@ -20,11 +20,13 @@ namespace Menu
 	}
 
 
+	static const float MinTextWidth=0.2f;	//measured in multiples of a whole screen width
+
 	static void AddOptionSlider(const String&name, float min, float max, float initial, const std::function<void(float&)>&onChange, const std::function<String()>&toString)
 	{
 
 		GUI::PSlider s(new GUI::Slider());
-		s->Setup(initial,max, 1.f,0.2f);
+		s->Setup(initial,max, 1.f,MinTextWidth);
 		std::weak_ptr<GUI::Slider> w = s;
 		s->SetOnChange([onChange,toString,w,name](float&f)
 		{
@@ -35,6 +37,30 @@ namespace Menu
 		});
 		s->SetText(name+" ("+toString()+")");
 		options->AnchorBelowPrevious(s);
+	}
+
+	static void AddCheckBox(const String&name,bool initial, const std::function<void(bool)>&onChange)
+	{
+		GUI::PPanel p(new GUI::Panel());
+		GUI::PLabel l(new GUI::Label(name));
+		GUI::PCheckbox c(new GUI::Checkbox("",initial,onChange));
+		p->AddComponent(l);
+		p->AddComponent(c);
+
+		l->extraSpacing = 0;
+		l->fillBackground = false;
+		l->alignCenter = false;
+		l->anchorConfig.Top().Set(0);
+		l->anchorConfig.Left().Set(0);
+		l->SetSize(float2(MinTextWidth,0));
+		c->AnchorTop(0);
+		//c->extraSpacing = 0.1f;
+		c->anchorConfig.Left().Set(MinTextWidth,GUI::TAnchor::RelativeToScreen);
+
+		p->autoHeight = true;
+		p->fillBackground = false;
+
+		options->AnchorBelowPrevious(p);
 	}
 
 	static void CreateOptionsMenu()
