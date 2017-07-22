@@ -104,6 +104,19 @@ namespace Menu
 			}
 			);
 		}
+
+
+		AddCheckBox("Vertical Sync",display.IsVSyncActive(),[](bool enabled)
+		{
+			bool old = display.IsVSyncActive();
+			if (old != enabled)
+			{
+				display.SetVSyncActive(enabled);
+				Configuration::Update("runtime/vsync",enabled);
+			}
+		});
+
+
 		options->autoHeight = true;
 		options->FullAutoLayout();
 	}
