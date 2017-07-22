@@ -1133,6 +1133,9 @@ namespace Engine
 		void						SetMSAAMode(index_t mode);
 		void						SelectMSAARate(BYTE numSamples) {SetMSAAMode(_FindMSAAConfig(numSamples));}
 
+		bool						IsVSyncActive() const {return vsync != 0;}
+		void						SetVSyncActive(bool a) {vsync = a ? 1 : 0;}
+
 		D3D_FEATURE_LEVEL			GetFeatureLevel() const {return featureLevel;}
 	private:
 //		bool						_CreateDepthStencilTarget(const Resolution&res);
