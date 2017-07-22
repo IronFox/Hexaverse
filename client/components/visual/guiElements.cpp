@@ -1796,7 +1796,18 @@ namespace GUI
 	/*virtual override*/ bool	Checkbox::UpdateHeight()
 	{
 		float checkBoxWidth = GetTotalFontScale() * textout.GetScaledHeight() / display.GetPixelAspect() * 1.5f;
-		return Super::UpdateHeight(FloatRange(rect.x.min + checkBoxWidth,rect.x.max ));
+
+		const auto prev = rect;
+
+		Super::UpdateHeight(FloatRange(rect.x.min + checkBoxWidth,rect.x.max ));
+		
+		const float checkBoxHeight = GetTotalFontScale() * textout.GetScaledHeight() * 1.4f;	//vertical translation (see Render())
+
+		float currentHeight = rect.y.GetExtent();
+		if (currentHeight < checkBoxHeight)
+			rect.y.min = rect.y.max - checkBoxHeight;
+
+		return !M::similar(rect.y.min,prev.y.min);
 	}
 
 	/*virtual override*/ void Checkbox::Render()
