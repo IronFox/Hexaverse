@@ -104,6 +104,8 @@ namespace Menu
 			}
 			);
 		}
+		options->autoHeight = true;
+		options->FullAutoLayout();
 	}
 
 	static void	CreateHelpMenu()
