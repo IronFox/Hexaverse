@@ -5,6 +5,7 @@
 #include "../localInterface.h"
 #include "../clientEvents.h"
 #include "shadedRenderInstruction.h"
+#include "../../version.h"
 
 namespace Menu
 {
@@ -14,8 +15,23 @@ namespace Menu
 
 	namespace Configuration
 	{
+
+		PathString	outConfigPath;
+
+		DeltaWorks::Configuration*config;
+
+		void	Assign(DeltaWorks::Configuration&cfg, const PathString&userConfigPath)
+		{
+			config = &cfg;
+			outConfigPath = userConfigPath;
+		}
+
+
 		void	Update(const String&path, const String&value)
-		{}
+		{
+			config->Define(path,value);
+			config->SaveToFile(outConfigPath,PRODUCT_NAME);
+		}
 
 	}
 
@@ -130,7 +146,7 @@ namespace Menu
 			if (old != enabled)
 			{
 				display.SetVSyncActive(enabled);
-				Configuration::Update("runtime/vsync",enabled);
+				Configuration::Update("runtime/vsync",enabled ? 1 : 0);
 			}
 		});
 		

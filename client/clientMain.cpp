@@ -3593,6 +3593,9 @@ int main( int argc, const char* argv[])
 			StartConfig::Load(userConfigPath);
 
 			#ifdef HAS_WINDOW
+
+				Menu::Configuration::Assign(StartConfig::destConfig, userConfigPath);
+
 				String val = StartConfig::GetString("runtime/capFPS","-1");
 				if (!val.equalsIgnoreCase("off"))
 					convert(val.c_str(),RuntimeConfig::FromFile::capFPS);
