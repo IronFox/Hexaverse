@@ -19,8 +19,6 @@ extern Engine::Display<Engine::DirectX11>	display;
 
 namespace GUI
 {
-	index_t windowResolutionVersion = 0;
-
 	namespace Detail
 	{
 		Buffer0<GUI::PWindow,Swap>		visibleWindows;
@@ -84,8 +82,49 @@ namespace GUI
 				visibleWindows.last()->DetectEnabledState();
 		}
 
-
+		Buffer<Component*>	allComponents;
 	}
+
+
+	AnchorModifier::AnchorModifier(Component*cmp):parent(cmp)
+	{
+		(*(AnchorConfig*)this) = parent->GetAnchorConfig();
+	}
+
+	AnchorModifier::~AnchorModifier()
+	{
+		if (parent)
+			parent->SetAnchorConfig(*this);
+	}
+
+	AnchorModifier::AnchorModifier(AnchorModifier&&other)
+	{
+		(*(AnchorConfig*)this) = std::move(other);
+		parent = other.parent;
+		other.parent = nullptr;
+	}
+
+
+
+
+	Component::Component()
+	{
+		Detail::allComponents << this;
+	}
+
+	/*virtual*/			Component::~Component()
+	{
+		if (!application_shutting_down)
+			Detail::allComponents.FindAndErase(this);
+	}
+
+	void Component::InvalidateAutoLayout()
+	{
+		PWindow w = GetWindow();
+		if (w)
+			w->SignalLayoutChange();
+	}
+
 
 
 
@@ -323,7 +362,7 @@ namespace GUI
 		for (index_t i = Detail::visibleWindows.Count()-1; i< Detail::visibleWindows.Count(); i--)
 		{
 			const auto&wnd = Detail::visibleWindows[i];
-			wnd->SignalMouseMotion(lastMouseLocation,true);
+			wnd->OnMouseMove(lastMouseLocation,true);
 			if (wnd->isModal)
 				break;
 		}
@@ -337,18 +376,18 @@ namespace GUI
 		}
 	}
 
-	WheelRs	HandleMouseWheel(short delta)
+	WheelRs	OnMouseWheel(short delta)
 	{
 		for (index_t i = Detail::visibleWindows.Count()-1; i < Detail::visibleWindows.Count(); i--)
 		{
 			PWindow w = Detail::visibleWindows[i];
-			WheelRs rs = w->HandleMouseWheel(delta);
+			WheelRs rs = w->OnMouseWheel(delta);
 			if (w->isModal && rs == WheelRs::NotContained)
 				rs = WheelRs::Ignored;
 			if (rs != WheelRs::NotContained)
 			{
 				if (rs == WheelRs::Processed)
-					w->SignalMouseMotion(Engine::mouse.location.windowRelative,true);
+					w->OnMouseMove(Engine::mouse.location.windowRelative,true);
 					
 				return rs;
 			}
@@ -356,12 +395,12 @@ namespace GUI
 		return WheelRs::NotContained;
 	}
 
-	bool	HandleMouseDown()
+	bool	OnMouseDown()
 	{
 		for (index_t i = Detail::visibleWindows.Count()-1; i < Detail::visibleWindows.Count(); i--)
 		{
 			PWindow w = Detail::visibleWindows[i];
-			mousePressedComponent = w->HandleMouseDown();
+			mousePressedComponent = w->OnMouseDown();
 			if (mousePressedComponent || w->isModal)
 				return true;
 		}
@@ -373,7 +412,7 @@ namespace GUI
 	{
 		if (mousePressedComponent)
 		{
-			mousePressedComponent->SignalMouseUp();
+			mousePressedComponent->OnMouseUp();
 			mousePressedComponent.reset();
 		}
 
@@ -490,40 +529,32 @@ namespace GUI
 
 	}
 
-	/*virtual override*/ bool	Panel::AutoLayout(const Rect<>&context)
+
+	/*virtual override*/ bool	Panel::ResolveAnchorAxis(int axis, const Rect<>&context)
 	{
-		bool rs = Super::AutoLayout(context); 
-		//Rect<> childSpace = rect;
+		bool rs = Super::ResolveAnchorAxis(axis,context); 
+		Rect<> childSpace = GetRect();
 		if (vscroll.visible)
-			rect.x.max = vmax(rect.x.min, rect.x.max - TScrollbar::ContentSpacing - TScrollbar::Width);
+			childSpace.x.max = vmax(childSpace.x.min, childSpace.x.max - TScrollbar::ContentSpacing - TScrollbar::Width);
 		foreach (components,c) 
-			rs |= (*c)->AutoLayout(rect);
+			rs |= (*c)->ResolveAnchorAxis(axis,childSpace);
 		return rs;
 	}
 
 
 	Slider::Slider()
-	{
-		Super::alignCenter = false;
-	}
+	{}
 
-
-
-	/*virtual override*/ void		Slider::OnTextChange()
-	{
-		float scale = GetTotalFontScale();
-		textWidth = Super::GetIdealWidth();
-	}
 
 
 	/*virtual override*/ void	Slider::Render()
 	{
-		Super::Render();	
-		const float top = rect.y.max - ContentSpacing;
+		const auto&rect = GetRect();
+		const float top = rect.y.max;
 		const float bottom = top - Height;
 
-		const float left = rect.x.min + std::max(minTextWidth, textWidth + ContentSpacing);
-		const float right = rect.x.max - ContentSpacing;
+		const float left = rect.x.min;
+		const float right = rect.x.max;
 
 		barBack = Rect<>(left,bottom,right,top);
 		SurfaceRenderer::SetColor(float4(0,0,0,0.9));
@@ -537,9 +568,9 @@ namespace GUI
 	}
 
 
-	/*virtual override*/ WheelRs	Slider::HandleMouseWheel(short delta)
+	/*virtual override*/ WheelRs	Slider::OnMouseWheel(short delta)
 	{
-		//if (outlineContainsMouse || barContainsMouse)	//always scroll
+		if (this->ContainsMouse())
 		{
 			if (!dragging)
 			{
@@ -551,14 +582,17 @@ namespace GUI
 			}
 			return WheelRs::Ignored;
 		}
+		else
+			return WheelRs::NotContained;
 		//return up->HandleMouseWheel(delta) || down->HandleMouseWheel(delta);
 	}
 
-	/*virtual override*/ void		Slider::SignalMouseMotion(const TVec2<>&mouseAt, bool clipAreaContainsMouse)
+	/*virtual override*/ void		Slider::OnMouseMove(const TVec2<>&mouseAt, bool clipAreaContainsMouse)
 	{
-		Super::SignalMouseMotion(mouseAt,clipAreaContainsMouse);
+		Super::OnMouseMove(mouseAt,clipAreaContainsMouse);
 		outlineContainsMouse = barBack.Contains(mouseAt) && !bar.Contains(mouseAt) && clipAreaContainsMouse;
-		slideLeftOnClick = mouseAt.x < bar.x.min;
+		lastMouseX = mouseAt.x;
+		//slideLeftOnClick = mouseAt.x < bar.x.min;
 		if (dragging)
 		{
 			current = clamp((dragRange.Relativate(mouseAt.x - dragRelative)) * max,0, max);
@@ -572,10 +606,11 @@ namespace GUI
 	}
 
 
-	/*virtual override*/ void Slider::SignalMouseUp()
+	/*virtual override*/ void Slider::OnMouseUp()
 	{
 		if (mouseDown)
 		{
+			bool slideLeftOnClick = lastMouseX < bar.x.min;
 			if (slideLeftOnClick)
 			{
 				current -= slideStep;
@@ -595,7 +630,7 @@ namespace GUI
 		changed = false;
 	}
 
-	/*virtual override*/ PComponent	Slider::HandleMouseDown()
+	/*virtual override*/ PComponent	Slider::OnMouseDown()
 	{
 		if (!ContainsMouse())
 			return PComponent();
@@ -650,7 +685,7 @@ namespace GUI
 	}
 
 
-	WheelRs	Panel::TScrollbar::HandleMouseWheel(short delta)
+	WheelRs	Panel::TScrollbar::OnMouseWheel(short delta)
 	{
 		if (!visible)
 			return WheelRs::NotContained;
@@ -668,7 +703,7 @@ namespace GUI
 		//return up->HandleMouseWheel(delta) || down->HandleMouseWheel(delta);
 	}
 
-	void		Panel::TScrollbar::SignalMouseMotion(const TVec2<>&mouseAt, bool clipAreaContainsMouse)
+	void		Panel::TScrollbar::OnMouseMove(const TVec2<>&mouseAt, bool clipAreaContainsMouse)
 	{
 		if (visible)
 		{
@@ -683,15 +718,15 @@ namespace GUI
 				barContainsMouse = bar.Contains(mouseAt);
 				dragRelative = mouseAt.y - bar.y.max;
 			}
-			up->SignalMouseMotion(mouseAt,clipAreaContainsMouse);
-			down->SignalMouseMotion(mouseAt,clipAreaContainsMouse);
+			up->OnMouseMove(mouseAt,clipAreaContainsMouse);
+			down->OnMouseMove(mouseAt,clipAreaContainsMouse);
 		}
 		else
 			outlineContainsMouse = false;
 	}
 
 
-	void Panel::TScrollbar::SignalMouseUp()
+	void Panel::TScrollbar::OnMouseUp()
 	{
 		if (mouseDown)
 		{
@@ -711,15 +746,15 @@ namespace GUI
 
 	}
 
-	PComponent	Panel::TScrollbar::HandleMouseDown()
+	PComponent	Panel::TScrollbar::OnMouseDown()
 	{
 		if (visible)
 		{
 			PComponent c;
-			c = up->HandleMouseDown();
+			c = up->OnMouseDown();
 			if (c)
 				return c;
-			c = down->HandleMouseDown();
+			c = down->OnMouseDown();
 			if (c)
 				return c;
 			if (outlineContainsMouse)
@@ -793,7 +828,7 @@ namespace GUI
 	/*virtual override*/ void	Panel::Render()
 	{
 		Super::Render(); 
-
+		const auto&rect = GetRect();
 		if (vscroll.visible)
 		{
 			vscroll.Render(rect);
@@ -806,44 +841,44 @@ namespace GUI
 	}
 
 
-	/*virtual override*/ bool	Panel::UpdateHeight()
+	/*virtual override*/ bool	Panel::UpdateDynamicSize()
 	{
-		bool rs = Super::UpdateHeight();
+		bool rs = Super::UpdateDynamicSize();
 		foreach (components,c)
-			rs |= (*c)->UpdateHeight();
+			rs |= (*c)->UpdateDynamicSize();
 
 		if (autoHeight)
 		{
 			float lowest = std::numeric_limits<float>::max();
 			foreach (components,c)
 			{
-				const auto&bottom = (*c)->anchorConfig.Bottom();
-				const auto&top = (*c)->anchorConfig.Top();
+				const auto&bottom = (*c)->GetAnchorConfig().Bottom();
+				const auto&top = (*c)->GetAnchorConfig().Top();
 				switch (bottom.type)
 				{
 					case TAnchor::Disabled:
-						lowest = std::min(lowest, (*c)->GetLocation().y.min);
+						lowest = std::min(lowest, (*c)->GetRect().y.min);
 					break;
 					case TAnchor::Fixed:
 						if (bottom.references.IsEmpty() && top.type == TAnchor::Disabled)
 						{
 							float dist = bottom.distanceFromReference;
 							if (bottom.distanceType != TAnchor::RelativeToParentComponent)
-								lowest = std::min(lowest,rect.y.max - (*c)->GetLocation().y.GetExtent() - bottom.ToScreenDistance(0.f,false));
+								lowest = std::min(lowest,GetRect().y.max - (*c)->GetRect().y.GetExtent() - bottom.ToScreenDistance(0.f,false));
 						}
 					break;
 					case TAnchor::Auto:
 						if (top.type == TAnchor::Auto)
 						{
-							lowest = std::min(lowest,rect.y.max - (*c)->GetLocation().y.GetExtent());
+							lowest = std::min(lowest,GetRect().y.max - (*c)->GetRect().y.GetExtent());
 						}
 					break;
 				}
 			}
 			if (components.IsEmpty())
-				lowest = rect.y.max;
+				lowest = GetRect().y.max;
 			float newY = lowest;// - autoHeightSpacing;
-			float currentHeight = rect.y.max - newY;
+			float currentHeight = GetRect().y.max - newY;
 			bool newVScroll = currentHeight > maxHeight;
 			bool changed = vscroll.visible != newVScroll;
 			rs |= changed;
@@ -851,23 +886,58 @@ namespace GUI
 			{
 				vscroll.scrollMax = currentHeight;
 				vscroll.viewSize = maxHeight;
-				float barSize = vmax(maxHeight,0.2f * rect.y.GetExtent()*currentHeight);
+				float barSize = vmax(maxHeight,0.2f * GetHeight()*currentHeight);
 				float overSize = barSize - maxHeight;
 				vscroll.scrollMax += overSize;
 				vscroll.viewSize += overSize;
 
-				newY = rect.y.max - maxHeight;
-				rs |= Set(rect.y.min,newY);
-				vscroll.Enable(this,rect);
+				newY = GetRect().y.max - maxHeight;
+				{
+					auto rect = GetRect();
+					rs |= Set(rect.y.min,newY);
+					SetRect(rect);
+				}
+				vscroll.Enable(this,GetRect());
 			}
 			else
 			{
 				vscroll.visible = false;
-				rs |= Set(rect.y.min,newY);
+				{
+					auto rect = GetRect();
+					rs |= Set(rect.y.min,newY);
+					SetRect(rect);
+				}
 			}
 		}
 
 		return rs;
+	}
+
+	bool			Component::SetEnabled(bool newEnabled)
+	{
+		if (newEnabled == localState.isEnabled) 
+			return false;
+
+		localState.isEnabled = newEnabled; 
+		OnEnableChange();
+		if (parentState.isEnabled)
+		{
+			PropagateToChildren(CreatePropagating());
+			return true;
+		}
+		return false;
+	}
+
+	void			Component::SetParent(const PWindow&w, const PComponent&c)
+	{
+		ASSERT__(!c || parent.expired());
+		parent = c;
+		AcceptParentWindow(w);
+		if (c)
+		{
+			AcceptStateFromParent(c->CreatePropagating());
+			InvalidateAutoLayout();
+		}
 	}
 
 
@@ -910,56 +980,49 @@ namespace GUI
 		return textout.GetFont().GetWidth(c) * textout.state.scale_x;
 	}
 
-	void OnWindowResize()
+	void OnScreenResize(const Resolution&res)
 	{
-		windowResolutionVersion++;
-		if (windowResolutionVersion == InvalidIndex)
-			windowResolutionVersion++;
+		foreach (Detail::allComponents,c)
+			(*c)->OnScreenSizeChange(res);
 	}
 
 
 	static const float textZoom = 1.5f;
 
-	bool			Area::UpdateHeightIfNecessary()
-	{
-		if (localWindowResolutionVersion == windowResolutionVersion && !invalidatedForceHeightUpdate)
-			return false;
-		return UpdateHeight();
-	}
 
 
-	/*virtual override*/ void	Panel::SignalMouseMotion(const TVec2<>&mouseAt, bool clipAreaContainsMouse)
+	/*virtual override*/ void	Panel::OnMouseMove(const TVec2<>&mouseAt, bool clipAreaContainsMouse)
 	{
-		Super::SignalMouseMotion(mouseAt,clipAreaContainsMouse);
+		Super::OnMouseMove(mouseAt,clipAreaContainsMouse);
 
 	
-		vscroll.SignalMouseMotion(mouseAt,clipAreaContainsMouse);
+		vscroll.OnMouseMove(mouseAt,clipAreaContainsMouse);
 		
 		TVec2<> moved = mouseAt;
 		moved.y += vscroll.GetOffset();
 
 		for (const auto&c : components)
 		{
-			c->SignalMouseMotion(moved,ContainsMouse());
+			c->OnMouseMove(moved,ContainsMouse());
 		}
 	}
 
 
-	/*virtual override*/ WheelRs	Panel::HandleMouseWheel(short delta)
+	/*virtual override*/ WheelRs	Panel::OnMouseWheel(short delta)
 	{
 		if (!ContainsMouse())
 			return WheelRs::NotContained;
 
 		for (index_t i = components.Count()-1; i < components.Count(); --i)
 		{
-			WheelRs rs = components[i]->HandleMouseWheel(delta);
+			WheelRs rs = components[i]->OnMouseWheel(delta);
 			if (rs == WheelRs::Processed)
 				return rs;
 			if (rs == WheelRs::Ignored)
 				break;
 		}
 
-		if (vscroll.HandleMouseWheel(delta) == WheelRs::Processed)
+		if (vscroll.OnMouseWheel(delta) == WheelRs::Processed)
 			return WheelRs::Processed;
 
 		return WheelRs::Ignored;
@@ -967,9 +1030,9 @@ namespace GUI
 	}
 
 
-	/*virtual override*/ PComponent	Panel::HandleMouseDown()
+	/*virtual override*/ PComponent	Panel::OnMouseDown()
 	{
-		PComponent c = vscroll.HandleMouseDown();
+		PComponent c = vscroll.OnMouseDown();
 		if (c)
 			return c;
 
@@ -980,44 +1043,48 @@ namespace GUI
 
 		for (index_t i = components.Count()-1; i < components.Count(); --i)
 		{
-			PComponent c = components[i]->HandleMouseDown();
+			PComponent c = components[i]->OnMouseDown();
 			if (c)
 				return c;
 		}
-		return Super::HandleMouseDown();
+		return Super::OnMouseDown();
 	}
 
 
 	void			Panel::AnchorBelowPrevious(const PComponent&newComponent, float distanceFromSides /*= 0.015f*/,  float distanceToPrevious/* = 0.015f*/, TAnchor::distanceType_t distanceType/*=TAnchor::RelativeToScreen*/)
 	{
+		auto cfg = newComponent->GetAnchorConfig();
+
 		if (components.IsNotEmpty())
-			newComponent->anchorConfig.Top().Set(components.last(), distanceToPrevious,distanceType);
+			cfg.Top().Set(components.last(), distanceToPrevious,distanceType);
 		else
-			newComponent->anchorConfig.Top().Set(distanceToPrevious,distanceType);
+			cfg.Top().Set(distanceToPrevious,distanceType);
 		
-		newComponent->anchorConfig.Left().Set(distanceFromSides,distanceType);
-		newComponent->anchorConfig.Right().Set(distanceFromSides,distanceType);
+		cfg.Left().Set(distanceFromSides,distanceType);
+		cfg.Right().Set(distanceFromSides,distanceType);
+		newComponent->SetAnchorConfig(cfg);
 		components.Append(newComponent);
+		newComponent->SetParent(GetWindow(),shared_from_this());
 	}
 
 
-	void				Area::BaseRender(bool lit, bool flipped)
+	void				Box::BaseRender(bool lit, bool flipped)
 	{
-		RenderArea(rect,lit,flipped,backgroundTone);
+		RenderArea(GetRect(),lit,flipped,backgroundTone);
 	}
 
 	static const float CellSize = 0.01f;
 
-	bool			Area::UpdateHeight()
+
+	/*virtual*/ bool	Component::UpdateDynamicSize()
 	{
-		if (localWindowResolutionVersion != windowResolutionVersion)
-		{
-			OnWindowSizeChange();
-			localWindowResolutionVersion = windowResolutionVersion;
-		}
-		invalidatedForceHeightUpdate = false;
-		return Super::UpdateHeight();
+		const float h = GetContentHeight();
+		if (h < 0)
+			return false;
+		return SetHeight(h);
 	}
+
+
 
 	/*virtual override*/ bool			Panel::DetectEnabledState()
 	{
@@ -1053,17 +1120,13 @@ namespace GUI
 
 
 
-	bool			BaseInput::UpdateHeight()
+	/*virtual override*/ float			BaseInput::GetContentHeight() const
 	{
 		textout.PushState();
 			textout.Scale(textZoom,textZoom);
-
-			float newMin = this->rect.y.max - textout.GetScaledHeight() * 2.5f;
-			bool same = Math::similar(newMin,this->rect.y.min);
-			this->rect.y.min = newMin;
-
+			const float rs = textout.GetScaledHeight() * 2.5f;
 		textout.PopState();
-		return Super::UpdateHeight() || !same;
+		return rs;
 	}
 
 
@@ -1195,7 +1258,7 @@ namespace GUI
 
 	/*virtual override*/ void			BaseInput::Render()
 	{
-		core = rect;
+		core = GetRect();
 		textout.PushState();
 		textout.Scale(textZoom,textZoom);
 		core.Expand(-textout.GetScaledHeight()*0.4f);
@@ -1319,6 +1382,8 @@ namespace GUI
 		
 		foreach (Detail::visibleWindows,d)
 		{
+			if ((*d)->RelayoutRequired())
+				(*d)->FullAutoLayout();
 			if ((*d)->isModal)
 				break;
 			(*d)->Render();
@@ -1371,31 +1436,43 @@ namespace GUI
 	{
 		float w = GetIdealWidth();
 
-		bool changed = Set(rect.x.max, rect.x.min + w);
+		bool changed = SetWidth(w);
 
 		return changed;
 	}
 
 	void			TextField::SetIdealWidth()
 	{
-
 		if (UpdateIdealWidth())
-			InvalidateSize();
+			InvalidateAutoLayout();
 	}
 
 
 
 
-	bool		TextField::UpdateHeight()
+	/*virtual override*/ float		TextField::GetContentHeight() const
 	{
-		return UpdateHeight(rect.x);
+		return textHeight;
 	}
 
-	/*virtual override*/ bool		TextField::UpdateHeight(const TFloatRange<>&hRange)
+	/*virtual override*/ bool	TextField::UpdateDynamicSize()
 	{
 		bool changed = false;
 		if (widthLockedToIdeal)
+		{
 			changed = UpdateIdealWidth();
+		}
+		return Super::UpdateDynamicSize() || changed;	//queries TextField::ContentHeight()
+	}
+
+	void		TextField::ReWrap()
+	{
+		//const auto hRange = GetRect().x;
+		const float width = GetWidth();
+		const float center = width/2;
+		#ifdef _DEBUG
+			wrappedAtWidth = width;
+		#endif
 
 		textout.PushState();
 		textout.Scale(textZoom*zoom,textZoom*zoom);
@@ -1404,38 +1481,31 @@ namespace GUI
 		Array<String>	wrapped;
 		for (const String&raw : rawText)
 		{
-			wrapf(raw,hRange.GetExtent()*0.9f,CharWidth,wrapped);
+			wrapf(raw,width*0.9f,CharWidth,wrapped);
 			wrappedText.MoveAppend(wrapped);
 		}
 		lineAt.SetSize(wrappedText.Count());
-		float lineHeight = textout.GetScaledHeight();
-		float y = -lineHeight*(extraSpacing);
+		const float lineHeight = textout.GetScaledHeight();
+		const float y = -lineHeight*(extraSpacing);
 		for (index_t i = 0; i < lineAt.Count(); i++)
 		{
 			lineAt[i] =
 				float2(
 					alignCenter ? 
-						hRange.center() - textout.QueryScaledWidth(wrappedText[i])*0.5f
+						center - textout.QueryScaledWidth(wrappedText[i])*0.5f
 						:
-						hRange.min,
+						0,
 				y - lineHeight * (i));
 		}
 		textHeight = textout.GetScaledHeight() * (float(wrappedText.Count()) + extraSpacing*2.f);
-
-		changed |= Set(this->rect.y.min,rect.y.max - textHeight);
-
 		textout.PopState();
-		return Super::UpdateHeight() || changed;
 	}
+
 
 
 
 	/*virtual override*/ void			TextField::Render()
 	{
-		UpdateHeightIfNecessary();
-	
-	
-		
 		bool lit = IsLit();
 
 		if (fillBackground)
@@ -1456,8 +1526,8 @@ namespace GUI
 
 		//textout.locate(rect.x.min + rect.x.GetExtent()*0.05f,rect.y.max - textout.GetScaledHeight()*1.5f);
 		//float lineHeight = textout.GetScaledHeight();
-		float top = rect.y.max;
-
+		const float top = GetRect().y.max;
+		const float left = GetRect().x.min;
 
 		float4 baseColor;
 		if (IsEnabled())
@@ -1468,19 +1538,17 @@ namespace GUI
 		textout.SetColor(baseColor & this->color);
 		for (index_t i = 0; i < wrappedText.Count(); i++)
 		{
-			textout.MoveTo(lineAt[i].x,lineAt[i].y+top);
+			textout.MoveTo(lineAt[i].x+left,lineAt[i].y+top);
 			textout << wrappedText[i];
 		}
 		textout.PopState();
 	}
 
-	/*virtual override*/ bool	Image::UpdateHeight()
+	/*virtual override*/ float	Image::GetContentHeight() const
 	{
-		if (texture.IsEmpty() || !autoSetHeight)
-			return Super::UpdateHeight();
-
+	
 		const Resolution3D imageResolution = texture.GetResolution();
-		const float2 relativeComponentSize = float2(rect.x.GetExtent(),rect.y.GetExtent());
+		const float2 relativeComponentSize = float2(GetWidth(),GetHeight());
 		const float2 viewportSize = ViewPortSizef();
 		const float2 pixelComponentSize = relativeComponentSize & viewportSize;
 		const float2 pixelImageSize = float2(imageResolution.width,imageResolution.height);
@@ -1492,9 +1560,7 @@ namespace GUI
 		const float wantPixelImageHeight = pixelComponentSize.x / imageResolution.GetFlatAspect();
 		const float wantRelativeHeight = wantPixelImageHeight / float(ViewPortHeight());
 
-		bool change = Set(rect.y.min,rect.y.max - wantRelativeHeight);
-
-		return Super::UpdateHeight() || change;
+		return wantRelativeHeight;
 	}
 
 
@@ -1510,7 +1576,7 @@ namespace GUI
 		Resolution3D res = texture.GetResolution();
 		float2 resf = float2(res.width,res.height);
 
-		float2 size = float2(rect.x.GetExtent(),rect.y.GetExtent());
+		float2 size = float2(GetWidth(),GetHeight());
 		float2 pixelDim = size & ViewPortSizef();
 		float aspect = pixelDim.x / pixelDim.y;
 		float wantAspect = resf.x / resf.y;
@@ -1528,7 +1594,7 @@ namespace GUI
 		matrix.x.x = size.x;
 		matrix.y.y = size.y;
 
-		matrix.w.xy = float2(rect.x.center() - size.x*0.5f,rect.y.center() - size.y*0.5f);
+		matrix.w.xy = float2(GetRect().x.center() - size.x*0.5f,GetRect().y.center() - size.y*0.5f);
 
 		display.SetObjectMatrix(matrix);
 		texturedQuad.quickSlots.First() = texture;
@@ -1536,36 +1602,30 @@ namespace GUI
 		display.RenderVertices(texturedQuad);
 	}
 
-	/*virtual*/ void	Component::SignalMouseMotion(const TVec2<>&mouseAt, bool clipAreaContainsMouse)
+	/*virtual*/ void	Component::OnMouseMove(const TVec2<>&mouseAt, bool clipAreaContainsMouse)
 	{
-		containsMouse = clipAreaContainsMouse && rect.Contains(mouseAt);
+		containsMouse = clipAreaContainsMouse && GetRect().Contains(mouseAt);
 	}
 
 
 	void			Component::MoveTopTo(float h)
 	{
-		float delta = h - rect.y.max;
-		rect.y.Translate(delta);
+		float delta = h - GetRect().y.max;
+		TranslateRect(float2(0,delta));
 	}
 
 	bool			Component::FullAutoLayout(const Rect<>&context)
 	{
 		count_t numRounds = 0;
-		bool rs = UpdateHeight();
+		bool rs = UpdateDynamicSize();
 		for (;;)
 		{
-			if (!AutoLayout(context))
-			{
-				//nothing changed
-				rs |= UpdateHeightIfNecessary();
-				return rs;
-			}
-			if (!UpdateHeight())
-			{
-				//layout changed, but heights stayed the same
-				return rs;
-			}
+			const bool changed0 = ResolveAnchorAxis(0,context);
+			const bool changed1 = ResolveAnchorAxis(1,context);
+			const bool sizeChanged = UpdateDynamicSize();
 
+			if (!changed0 && !changed1 && !sizeChanged)
+				return rs;
 			rs = true;
 			numRounds++;
 
@@ -1582,45 +1642,17 @@ namespace GUI
 	}
 
 
-	bool			Component::LayoutAxis(int axis, const Rect<>&context)
+	bool			Component::ResolveAnchorAxis(int axis, const Rect<>&context)
 	{
 		const Axial<TAnchor>&anchor = anchorConfig.axis[axis];
-		TFloatRange<>&a = rect.axis[axis];
-
-		bool rs = false;
-		//if (anchor.center.IsActive())
-		//{
-		//	ASSERT__(!anchor.min.IsActive());
-		//	ASSERT__(!anchor.max.IsActive());
-		//	const TAnchor&anc = anchor.center;
-		//	const float dist = anc.distanceIsRelative ? anc.distanceFromReference * context.axis[axis].GetExtent() : anc.distanceFromReference;
-		//	if (anc.references.IsNotEmpty())
-		//	{
-		//		float avg = 0.f;
-		//		count_t cnt = 0;
-		//		foreach (anc.references,ref0)
-		//		{
-		//			PComponent ref = ref0->lock();
-		//			if (ref)
-		//			{
-		//				avg += ref->GetLocation().axis[axis].center();
-		//				cnt++;
-		//			}
-		//		}
-		//		if (cnt > 0)
-		//		{
-		//			avg /= cnt;
-		//			rs |= SetCenter(a, avg + dist);
-		//		}
-		//	}
-		//	else
-		//		rs |= SetCenter(a, context.axis[axis].center() + dist);
-
-		//	return rs;
-		//}
 
 		if (anchor.min.IsInactive() && anchor.max.IsInactive())
 			return false;
+		
+		auto rect = GetRect();
+		TFloatRange<>&a = rect.axis[axis];
+		bool rs = false;
+
 		if (anchor.min.IsAuto() && anchor.max.IsAuto())
 		{
 			{
@@ -1656,6 +1688,8 @@ namespace GUI
 			float top = std::min(ctx.max,center + ext*0.5f);
 			bool changed = Set(a.max,top);
 			a.min = a.max - ext;
+
+			SetRect(rect);
 			return changed;
 		}
 
@@ -1680,7 +1714,7 @@ namespace GUI
 				foreach (anc.references,ref0)
 				{
 					PComponent ref = ref0->lock();
-					highest = std::max(highest,ref->GetLocation().axis[axis].max);
+					highest = std::max(highest,ref->GetRect().axis[axis].max);
 				}
 				if (highest > -std::numeric_limits<float>::max())
 					rs |= Set(a.min, highest + dist);
@@ -1701,7 +1735,7 @@ namespace GUI
 				foreach (anc.references,ref0)
 				{
 					PComponent ref = ref0->lock();
-					lowest = std::min(lowest,ref->GetLocation().axis[axis].min);
+					lowest = std::min(lowest,ref->GetRect().axis[axis].min);
 				}
 				if (lowest < std::numeric_limits<float>::max())
 					rs |= Set(a.max, lowest - dist);
@@ -1715,20 +1749,25 @@ namespace GUI
 		if (!anchor.min.IsFixed())
 			rs |= Set(a.min,a.max - extent);
 
+		SetRect(rect);
 
 		return rs;
 	}
 
 	Component&			Component::FillHorizontally(float spacing, TAnchor::distanceType_t type /*= TAnchor::RelativeToParentComponent*/)
 	{
-		anchorConfig.Left().Set(spacing,type);
-		anchorConfig.Right().Set(spacing,type);
+		auto cfg = anchorConfig;
+		cfg.Left().Set(spacing,type);
+		cfg.Right().Set(spacing,type);
+		SetAnchorConfig(cfg);
 		return *this;
 	}
 	
 	Component&			Component::AnchorTop(float spacing, TAnchor::distanceType_t type/* = TAnchor::RelativeToParentComponent*/)
 	{
-		anchorConfig.Top().Set(spacing,type);
+		auto cfg = anchorConfig;
+		cfg.Top().Set(spacing,type);
+		SetAnchorConfig(cfg);
 		return *this;
 	}
 
@@ -1738,8 +1777,10 @@ namespace GUI
 		float extra = 1.f - w;
 		if (type == TAnchor::AbsolutePixels)
 			extra = float(ViewPortWidth()) - w;
-		anchorConfig.Left().Set(extra*0.5f,type);
-		anchorConfig.Right().Set(extra*0.5f,type);
+		auto cfg = anchorConfig;
+		cfg.Left().Set(extra*0.5f,type);
+		cfg.Right().Set(extra*0.5f,type);
+		SetAnchorConfig(cfg);
 		return *this;
 	}
 
@@ -1761,15 +1802,17 @@ namespace GUI
 		return changed;
 	}
 
-
-	/*virtual*/ bool	Component::AutoLayout(const Rect<>&context)
+	#if 0
+	/*virtual*/ bool	Component::ResolveAnchors(const Rect<>&context)
 	{
+		//if (!resolveAnchors)
+		//	return false;
 		bool rs = false;
-		rs |= LayoutAxis(0,context);
-		rs |= LayoutAxis(1,context);
+		rs |= ResolveAnchorAxis(0,context);
+		rs |= ResolveAnchorAxis(1,context);
 		return rs;
 	}
-
+	#endif /*0*/
 
 	static bool CheckHovering(const Rect<>&area)
 	{
@@ -1793,21 +1836,13 @@ namespace GUI
 	}
 
 
-	/*virtual override*/ bool	Checkbox::UpdateHeight()
+	/*virtual override*/ float	Checkbox::GetContentHeight() const
 	{
-		float checkBoxWidth = GetTotalFontScale() * textout.GetScaledHeight() / display.GetPixelAspect() * 1.5f;
-
-		const auto prev = rect;
-
-		Super::UpdateHeight(FloatRange(rect.x.min + checkBoxWidth,rect.x.max ));
+		const float textHeight = Super::GetContentHeight();
 		
-		const float checkBoxHeight = GetTotalFontScale() * textout.GetScaledHeight() * 1.4f;	//vertical translation (see Render())
+		const float checkBoxHeight = GetTotalFontScale() * textout.GetScaledHeight() * 1.4f;	//compensate vertical translation (see Render())
 
-		float currentHeight = rect.y.GetExtent();
-		if (currentHeight < checkBoxHeight)
-			rect.y.min = rect.y.max - checkBoxHeight;
-
-		return !M::similar(rect.y.min,prev.y.min);
+		return Math::Max(textHeight,checkBoxHeight);
 	}
 
 	/*virtual override*/ void Checkbox::Render()
@@ -1818,8 +1853,8 @@ namespace GUI
 		SurfaceRenderer::SetColor(lit ? float4(0.7f):float4(0.5f));
 		float checkBoxHeight = GetTotalFontScale() * textout.GetScaledHeight();
 		float checkBoxWidth = checkBoxHeight / display.GetPixelAspect();
-		float top = rect.y.center() + checkBoxHeight*0.7f;// Super::extraSpacing * checkBoxHeight;
-		TFloatRect box = TFloatRect(rect.x.min,top - checkBoxHeight,rect.x.min+checkBoxWidth,top);
+		float top = GetRect().y.center() + checkBoxHeight*0.7f;// Super::extraSpacing * checkBoxHeight;
+		TFloatRect box = TFloatRect(GetRect().x.min,top - checkBoxHeight,GetRect().x.min+checkBoxWidth,top);
 		SurfaceRenderer::Rasterize(box);
 		if (isChecked)
 		{
@@ -1833,6 +1868,12 @@ namespace GUI
 		LineRenderer::SetColor(lit ? float4(1) : float4(0.7f));
 		LineRenderer::Rasterize(box);
 		LineRenderer::Flush();
+	}
+
+
+	/*virtual override*/ PWindow	Window::GetWindow()
+	{
+		return To<Window>::Cast(shared_from_this());
 	}
 
 }

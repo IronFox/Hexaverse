@@ -211,7 +211,7 @@ namespace ConfigurationMode
 		void				MaterialDialog::Create(bool allowUnknown, bool allowLiquids)
 		{
 			materialButtons.Clear();
-			window.reset(new GUI::Window());
+			window = GUI::Window::Create();
 			//window->autoHeight = false;
 			for (index_t i  = 0; i < Grid::Content::NumberOfPossibilities; i++)
 			{
@@ -237,12 +237,16 @@ namespace ConfigurationMode
 				float x = 0.25f * (window->CountComponents()%4);
 				float x2 = 0.25f * (3-(window->CountComponents()%4));
 				button->SetLocation(Math::TFloatRect(float2(),float2(0.15f,0.15f)));
-				button->anchorConfig.Left().Set(x);
-				button->anchorConfig.Right().Set(x2);
-				if (window->CountComponents()>=4)
-					button->anchorConfig.Top().Set(window->GetComponents()[4*(window->CountComponents()/4-1)], 0.01f);
-				else
-					button->anchorConfig.Top().Set(0.f);
+				{
+					auto cfg = button->GetAnchorConfig();
+					cfg.Left().Set(x);
+					cfg.Right().Set(x2);
+					if (window->CountComponents()>=4)
+						cfg.Top().Set(window->GetComponents()[4*(window->CountComponents()/4-1)], 0.01f);
+					else
+						cfg.Top().Set(0.f);
+					button->SetAnchorConfig(cfg);
+				}
 				//if ((i%4)!=0)
 				//{
 				//	button->anchorConfig.Left().SetLastOf(window,0.01f);
@@ -261,9 +265,13 @@ namespace ConfigurationMode
 				float b = 0.2f * ((window->CountComponents()/4)+1);
 				button->SetLocation(Math::TFloatRect(float2(),float2(1.f,0.2f)));
 //				button->anchorConfig.Top().Set(b);
-				button->anchorConfig.Left().Set(0);
-				button->anchorConfig.Right().Set(0);
-				button->anchorConfig.Top().SetLastOf(window, 0.01f);
+				{
+					auto cfg = button->GetAnchorConfig();
+					cfg.Left().Set(0);
+					cfg.Right().Set(0);
+					cfg.Top().SetLastOf(window, 0.01f);
+					button->SetAnchorConfig(cfg);
+				}
 			
 				button->SetOnPress([this]()
 				{
@@ -360,12 +368,16 @@ namespace ConfigurationMode
 		{
 			planetListWindow->ClearComponents();
 			planetListWindow->SetCenteredWidth(0.7f,GUI::TAnchor::RelativeToScreen);
-			planetListWindow->autoHeight = true;
-			planetListWindow->maxHeight = 0.7f;
+			planetListWindow->SetAutomaticHeight(true);
+			planetListWindow->SetMaxAutoHeight(0.7f);
 			planetListWindow->fillBackground = false;
 			GUI::PComponent label = planetListWindow->AddNewComponent(new GUI::Label("Planets",1.2f));
-			label->anchorConfig.Top().Set(0);
-			label->anchorConfig.Left().Set(0);
+			{
+				auto cfg = label->GetAnchorConfig();
+				cfg.Top().Set(0);
+				cfg.Left().Set(0);
+				label->SetAnchorConfig(cfg);
+			}
 			foreach (planetList,p)
 			{
 				index_t myIndex = p - planetList.pointer();
@@ -375,11 +387,16 @@ namespace ConfigurationMode
 					GUI::Hide(planetListWindow);
 					LoadServerWorld(false);
 				}));
-				button->anchorConfig.Top().SetLastOf(planetListWindow,0.02f);
-				button->anchorConfig.axis[0].min.Set(0);
-				button->anchorConfig.axis[0].max.Set(0);
+				{
+					auto cfg = button->GetAnchorConfig();
+					cfg.Top().SetLastOf(planetListWindow,0.02f);
+					cfg.axis[0].min.Set(0);
+					cfg.axis[0].max.Set(0);
+					button->SetAnchorConfig(cfg);
+				}
 				planetListWindow->AddComponent(button);
 			}
+
 			planetListWindow->FullAutoLayout();
 		}
 
@@ -841,7 +858,7 @@ namespace ConfigurationMode
 			created = true;
 
 
-			planetListWindow.reset(new GUI::Window());
+			planetListWindow = GUI::Window::Create();
 			RebuildPlanetList();
 
 			XML::Container declarations;

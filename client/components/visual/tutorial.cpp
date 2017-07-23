@@ -212,19 +212,21 @@ namespace Tutorial
 				if (taskWindow)
 				{
 					To<GUI::Label>::Cast(taskWindow->GetComponents().First())->SetText(msg);
-					taskWindow->InvalidateSize();
 				}
 				else
 				{
-					taskWindow.reset(new GUI::Window());
+					taskWindow = GUI::Window::Create();
 					taskWindow->canBeImplicitlyClosed = false;
 
 					taskWindow->AddNewComponent(new GUI::Label(msg))->AnchorTop(0).FillHorizontally(0);
-					taskWindow->autoHeight = true;
-					taskWindow->autoCenter = false;
-					taskWindow->anchorConfig.Left().Unset();
-					taskWindow->anchorConfig.Right().Set(0.1f);
-					taskWindow->anchorConfig.Bottom().Set(0.1f);
+					taskWindow->SetAutomaticHeight(true);
+					taskWindow->SetAutoCenter(false);
+					{
+						auto mod = taskWindow->ModifyAnchorconfig();
+						mod.Left().Unset();
+						mod.Right().Set(0.1f);
+						mod.Bottom().Set(0.1f);
+					}
 					taskWindow->SetSize(float2(0.25));
 					taskWindow->isModal = false;
 				}

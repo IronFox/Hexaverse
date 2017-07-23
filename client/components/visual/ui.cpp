@@ -1192,7 +1192,7 @@ namespace UI
 		bool		hasFocusButton = false;
 
 
-		void						OnWindowResize()
+		void						OnScreenResize()
 		{
 			barProjectionCamera.region.x.max = 0.9f;
 			//1.f / display.GetPixelAspect();

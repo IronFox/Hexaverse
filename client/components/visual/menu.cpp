@@ -22,12 +22,46 @@ namespace Menu
 
 	static const float MinTextWidth=0.2f;	//measured in multiples of a whole screen width
 
+
+	static GUI::PLabel AddOption(const String&name, const GUI::PComponent&c)
+	{
+		GUI::PPanel p(new GUI::Panel());
+		GUI::PLabel l(new GUI::Label(name));
+		p->AddComponent(l);
+		p->AddComponent(c);
+
+		l->SetExtraSpacing( 0 );
+		l->fillBackground = false;
+		l->alignCenter = false;
+		{
+			auto mod = l->ModifyAnchorconfig();
+			//mod.Top().Set(0);
+			mod.Top().SetAuto();
+			mod.Bottom().SetAuto();
+			mod.Left().Set(0);
+
+		}
+		l->SetSize(float2(MinTextWidth,0));
+		c->AnchorTop(0);
+		{
+			auto mod = c->ModifyAnchorconfig();
+			mod.Left().Set(MinTextWidth,GUI::TAnchor::RelativeToScreen);
+			mod.Right().Set(0);
+		}
+
+		p->SetAutomaticHeight(true);
+		p->fillBackground = false;
+
+		options->AnchorBelowPrevious(p);
+		return l;
+	}
+
 	static void AddOptionSlider(const String&name, float min, float max, float initial, const std::function<void(float&)>&onChange, const std::function<String()>&toString)
 	{
-
 		GUI::PSlider s(new GUI::Slider());
-		s->Setup(initial,max, 1.f,MinTextWidth);
-		std::weak_ptr<GUI::Slider> w = s;
+		s->Setup(initial,max, 1.f);
+		auto label = AddOption(name,s);
+		std::weak_ptr<GUI::Label> w = label;
 		s->SetOnChange([onChange,toString,w,name](float&f)
 		{
 			onChange(f);
@@ -35,40 +69,23 @@ namespace Menu
 			if (s)
 				s->SetText(name+" ("+toString()+")");
 		});
-		s->SetText(name+" ("+toString()+")");
-		options->AnchorBelowPrevious(s);
+		label->SetText(name+" ("+toString()+")");
 	}
 
 	static void AddCheckBox(const String&name,bool initial, const std::function<void(bool)>&onChange)
-	{
-		GUI::PPanel p(new GUI::Panel());
-		GUI::PLabel l(new GUI::Label(name));
+	{	
 		GUI::PCheckbox c(new GUI::Checkbox("",initial,onChange));
-		p->AddComponent(l);
-		p->AddComponent(c);
-
-		l->extraSpacing = 0;
-		l->fillBackground = false;
-		l->alignCenter = false;
-		l->anchorConfig.Top().Set(0);
-		l->anchorConfig.Left().Set(0);
-		l->SetSize(float2(MinTextWidth,0));
-		c->AnchorTop(0);
-		//c->extraSpacing = 0.1f;
-		c->anchorConfig.Left().Set(MinTextWidth,GUI::TAnchor::RelativeToScreen);
-
-		p->autoHeight = true;
-		p->fillBackground = false;
-
-		options->AnchorBelowPrevious(p);
+		AddOption(name,c);
 	}
 
 	static void CreateOptionsMenu()
 	{
-		options.reset(new GUI::Window());
+		options = GUI::Window::Create();
+		options->SetAutoCenter(false);
 		options->FillHorizontally(0.1f);
 		options->AnchorTop(0.1f);
 		options->AnchorBelowPrevious(new GUI::Label("Options",2.f));
+		
 		AddOptionSlider("Shadow Quality", 0, ShadedInstruction::Quality::N-1, ShadedInstruction::Quality::N-1 - ShadedInstruction::chosenQuality, [](float&q)
 			{
 				auto old = ShadedInstruction::chosenQuality;
@@ -85,7 +102,6 @@ namespace Menu
 				return ShadedInstruction::chosenQuality.ToString();
 			}
 		);
-
 		const auto modes = display.GetMSAAModes();
 		if (modes.Count() > 1)
 		{
@@ -115,15 +131,15 @@ namespace Menu
 				Configuration::Update("runtime/vsync",enabled);
 			}
 		});
-
-
-		options->autoHeight = true;
+		
+		options->SetAutomaticHeight(true);
 		options->FullAutoLayout();
 	}
 
 	static void	CreateHelpMenu()
 	{
-		help.reset(new Dialog::Menu(0.3f,"Help"));
+		help = Dialog::Menu::Create();
+		help->Setup(0.3f,"Help");
 		help->AddCommand("Show Basic Controls",
 			[]()
 			{
@@ -156,7 +172,8 @@ namespace Menu
 
 	static void CreateMainMenu()
 	{
-		main.reset(new Dialog::Menu(0.25f,"Main"));
+		main = Dialog::Menu::Create();
+		main->Setup(0.25f,"Main");
 		main->AddCommand("Change Nickname",LocalApplicationInterface::QueryNickname);
 		main->AddCommand("Abandon faction",Network::AbandonCurrentFaction,[](){return Network::amOnline && Network::haveFaction;});
 		main->AddCommand("Disconnect",
@@ -180,7 +197,7 @@ namespace Menu
 			});
 
 		main->AddCommand("Quit to Desktop",[](){Dialog::Confirm("Really quit? Any active faction will be preserved server-sided for you to continue later on.",[](){application_shutting_down = true;},[](){return Dialog::CheckResult::OkayContinue;});});
-		main->FullAutoLayout();
+		//main->FullAutoLayout();
 	}
 
 
@@ -220,7 +237,8 @@ namespace Menu
 
 	static void CreateLoginMenu()
 	{
-		login.reset(new Dialog::Menu(0.25f,"Login"));
+		login = Dialog::Menu::Create();
+		login->Setup(0.25f,"Login");
 		login->canBeImplicitlyClosed = false;	//once visible, must explicitly close
 
 		login->AddCommand("Continue existing faction",[](){Network::AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly);},

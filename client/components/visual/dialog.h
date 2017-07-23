@@ -35,6 +35,10 @@ namespace Dialog
 	class Dialog : public GUI::Window
 	{
 		typedef GUI::Window	Super;
+		friend class Super;
+
+	protected:
+		/**/			Dialog()	{}
 	public:
 		//CONSTRUCT_ENUMERATION5(Type, Confirmation, Message, TutorialMessage, StringQuery,FactionList);
 
@@ -59,6 +63,11 @@ namespace Dialog
 							sendNullPasswordOnAbortByUser = false;
 
 		Rect<>				totalSize;
+
+		static std::shared_ptr<Dialog>	Create()
+		{
+			return Super::CreateDerivative<Dialog>();
+		}
 
 		//std::function<void(Dialog&)>	reLayout;
 
@@ -214,25 +223,39 @@ namespace Dialog
 	void	Destroy();
 
 
-
+	class Menu;
+	typedef std::shared_ptr<Menu>	PMenu;
 
 
 	class Menu : public GUI::Window
 	{
 		typedef GUI::Window	Super;
+
+		friend class Super;
+	protected:
+		/**/		Menu(){}
 	public:
-		/**/				Menu(float initialAbsoulteWidth, const String&title)
+		void		Setup(float initialAbsoluteWidth, const String&title)
 		{
-			Super::SetCenteredWidth(initialAbsoulteWidth,GUI::TAnchor::RelativeToScreen);
+			if (Super::DoesAutoCenter())
+				SetWidth(initialAbsoluteWidth);
+			else
+				Super::SetCenteredWidth(initialAbsoluteWidth,GUI::TAnchor::RelativeToScreen);
 			Super::fillBackground = false;
 
 			if (title.IsNotEmpty())
 			{
 				GUI::PLabel label(new GUI::Label());
 				label->SetText(title);
-				label->extraSpacing = 0.1f;
+				label->SetExtraSpacing( 0.1f );
 				Super::AnchorBelowPrevious(label,0.015f,0.f);
 			}
+		}
+
+		static PMenu		Create()
+		{
+			return Super::CreateDerivative<Menu>();;
+
 		}
 
 
@@ -253,7 +276,6 @@ namespace Dialog
 
 
 	};
-	typedef std::shared_ptr<Menu>	PMenu;
 
 	
 

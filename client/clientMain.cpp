@@ -2217,15 +2217,15 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 #ifdef HAS_WINDOW
 
-	void	onWindowResize(const Resolution&, UINT32)
+	void	onWindowResize(const Resolution&res, UINT32)
 	{
 		Camera::scene.UpdateProjection2(display.GetPixelAspect(),0.1f,1000.f);
 	//	textout.SetScale(1.f/display.GetClientWidth(),1.f/display.GetClientHeight());
 
 		textout.SetScale(1.f / display.GetClientWidth(), 1.f / display.GetClientHeight());
 
-		UI::OnWindowResize();
-		GUI::OnWindowResize();
+		UI::OnScreenResize();
+		GUI::OnScreenResize(res);
 		UpdateHistoryHeight();
 	}
 
@@ -2305,7 +2305,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 	{
 		Tutorial::lastDelayingEvent = timer.Now();
 
-		if (GUI::HandleMouseDown() || UI::HandleClick())
+		if (GUI::OnMouseDown() || UI::HandleClick())
 			return;
 		if (Rect<>(0.f,0.97f,0.1f,1.f).Contains(Engine::mouse.location.windowRelative))
 		{
@@ -3289,7 +3289,7 @@ namespace ApplicationInterface
 
 	void	OnWheel(short delta)
 	{
-		if (GUI::HandleMouseWheel(delta) == GUI::WheelRs::NotContained)
+		if (GUI::OnMouseWheel(delta) == GUI::WheelRs::NotContained)
 			Camera::Event::WheelAction(delta);
 	}
 

@@ -635,7 +635,7 @@ namespace UI
 		extern bool					hasFocusButton;
 
 
-		void						OnWindowResize();
+		void						OnScreenResize();
 
 		void						Destroy();
 
@@ -685,9 +685,9 @@ namespace UI
 	}
 
 
-	inline void OnWindowResize()
+	inline void OnScreenResize()
 	{
-		HexGrid::OnWindowResize();
+		HexGrid::OnScreenResize();
 	}
 
 
