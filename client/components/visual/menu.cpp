@@ -47,6 +47,8 @@ namespace Menu
 			auto mod = c->ModifyAnchorconfig();
 			mod.Left().Set(MinTextWidth,GUI::TAnchor::RelativeToScreen);
 			mod.Right().Set(0);
+			mod.Top().SetAuto();
+			mod.Bottom().SetAuto();
 		}
 
 		p->SetAutomaticHeight(true);

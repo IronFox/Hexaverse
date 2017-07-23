@@ -21,6 +21,8 @@ namespace GUI
 {
 	namespace Detail
 	{
+		static const float textZoom = 1.5f;
+
 		Buffer0<GUI::PWindow,Swap>		visibleWindows;
 		Engine::OrthographicAspect<>	aspect;
 
@@ -542,6 +544,17 @@ namespace GUI
 	}
 
 
+
+	/*static*/ float		Slider::GetThumbPixelWidth()
+	{
+		return Detail::textZoom * 25;
+	}
+
+	/*static*/ float		Slider::GetPixelHeight()
+	{
+		return Detail::textZoom * 15;
+	}
+
 	Slider::Slider()
 	{}
 
@@ -551,7 +564,7 @@ namespace GUI
 	{
 		const auto&rect = GetRect();
 		const float top = rect.y.max;
-		const float bottom = top - Height;
+		const float bottom = rect.y.min;
 
 		const float left = rect.x.min;
 		const float right = rect.x.max;
@@ -560,10 +573,10 @@ namespace GUI
 		SurfaceRenderer::SetColor(float4(0,0,0,0.9));
 		SurfaceRenderer::Rasterize(barBack);
 
-		dragRange = Math::FloatRange(left + BarWidth/2.f,right-BarWidth/2.f);
+		dragRange = Math::FloatRange(left + relativeThumbWidth/2.f,right-relativeThumbWidth/2.f);
 
 		const float barCenter = dragRange.Derelativate(current/max);
-		bar = Rect<>(barCenter-BarWidth/2.f,barBack.y.min,barCenter+BarWidth/2.f,barBack.y.max);
+		bar = Rect<>(barCenter-relativeThumbWidth/2.f,barBack.y.min,barCenter+relativeThumbWidth/2.f,barBack.y.max);
 		RenderArea(bar,barContainsMouse,dragging,float3(1));
 	}
 
@@ -987,7 +1000,6 @@ namespace GUI
 	}
 
 
-	static const float textZoom = 1.5f;
 
 
 
@@ -1123,7 +1135,7 @@ namespace GUI
 	/*virtual override*/ float			BaseInput::GetContentHeight() const
 	{
 		textout.PushState();
-			textout.Scale(textZoom,textZoom);
+			textout.Scale(Detail::textZoom);
 			const float rs = textout.GetScaledHeight() * 2.5f;
 		textout.PopState();
 		return rs;
@@ -1260,7 +1272,7 @@ namespace GUI
 	{
 		core = GetRect();
 		textout.PushState();
-		textout.Scale(textZoom,textZoom);
+		textout.Scale(Detail::textZoom);
 		core.Expand(-textout.GetScaledHeight()*0.4f);
 		//core.Scale(0.97f);
 
@@ -1412,13 +1424,13 @@ namespace GUI
 
 	float			TextField::GetTotalFontScale() const
 	{
-		return zoom * textZoom;
+		return zoom * Detail::textZoom;
 	}
 
 	/*virtual*/ float			TextField::GetIdealWidth() const
 	{
 		textout.PushState();
-		textout.Scale(textZoom*zoom,textZoom*zoom);
+		textout.Scale(Detail::textZoom*zoom);
 		float w = 0.f;
 
 		foreach (rawText,t)
@@ -1475,7 +1487,7 @@ namespace GUI
 		#endif
 
 		textout.PushState();
-		textout.Scale(textZoom*zoom,textZoom*zoom);
+		textout.Scale(Detail::textZoom*zoom);
 
 		wrappedText.Clear();
 		Array<String>	wrapped;
@@ -1518,7 +1530,7 @@ namespace GUI
 	void TextField::RenderText(bool lit)
 	{
 		textout.PushState();
-		textout.Scale(textZoom*zoom,textZoom*zoom);
+		textout.Scale(Detail::textZoom*zoom);
 
 		//bool hovering = !Super::sensitiveToMouse || (enabled && ContainsMouse());
 

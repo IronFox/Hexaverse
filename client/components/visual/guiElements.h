@@ -754,6 +754,14 @@ namespace GUI
 	class Slider : public Component
 	{
 		typedef Component	Super;
+
+	protected:
+		virtual void		OnScreenSizeChange(const Resolution&res)
+		{
+			relativeHeight = GetPixelHeight() / res.height;
+			relativeThumbWidth = GetThumbPixelWidth() / res.width;
+			UpdateDynamicSize();
+		}
 	public:
 		typedef std::function<void(float&)>	FOnChange;
 
@@ -767,10 +775,16 @@ namespace GUI
 		float				GetMax() const {return max;}
 		float				GetCurrent() const {return current;}
 		void				SetOnChange(const FOnChange&f)	{onChange = f;}
-		virtual float		GetContentHeight() const override	{return Height;}
+		virtual float		GetContentHeight() const override	{return GetHeight();}
 
-		static constexpr float Height = 0.03f;
-		static constexpr float BarWidth = 0.03f;
+		static float		GetThumbPixelWidth();
+		static float		GetPixelHeight();
+
+		float				GetHeight() const	{return relativeHeight;}
+		float				GetThumbWidth() const {return relativeThumbWidth;}
+
+		//static constexpr float Height = 0.03f;
+		//static constexpr float BarWidth = 0.03f;
 	private:
 		float				current=0,max=1,		//!< Slider maximum value (inclusive)
 							slideStep=1;
@@ -779,6 +793,7 @@ namespace GUI
 							bar;		//!< Actual grabbable bar
 		bool				showMarkers=true;
 		float				markersEvery=1.f;
+		float				relativeHeight=1,relativeThumbWidth = 1;
 		bool				outlineContainsMouse = false,
 							barContainsMouse = false,
 							dragging = false;
