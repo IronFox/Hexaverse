@@ -665,13 +665,13 @@ namespace ApplicationInterface
 		{
 			//is fullscreen => restore
 
-			display.SetBorderStyle(Engine::DisplayConfig::ResizableBorder);
-			display.ResizeWindow(screen.width,screen.height);
+			//display.ResizeWindow(screen.width,screen.height);...why was this here?
 			if (hasAnyStored)
 				display.PositionWindow(stored);
+			display.SetBorderStyle(Engine::DisplayConfig::ResizableBorder);
 			if (storedIsMaximized)
 				display.Maximize();
-
+			#ifndef _DEBUG
 			::SetWindowPos(Engine::context.getWindow(),       // handle to window
 				HWND_NOTOPMOST,  // placement-order handle
 				0,     // horizontal position
@@ -680,6 +680,7 @@ namespace ApplicationInterface
 				0, // height
 				SWP_NOMOVE | SWP_NOSIZE // window-positioning options);
 				);
+			#endif
 
 		}
 		else
@@ -692,12 +693,18 @@ namespace ApplicationInterface
 				storedIsMaximized = false;
 			}
 			else
+			{
+				stored = display.GetPreMaxiMinimizeLocation();
+				hasAnyStored = true;
 				storedIsMaximized = true;//leave stored as is
+				display.Restore();
+			}
 			//display.PositionWindow(0,0,screen.width,screen.height);
 			display.SetBorderStyle(Engine::DisplayConfig::NoBorder);
 			display.PositionWindow(0,0,screen.width,screen.height);
 
 
+			#ifndef _DEBUG
 			::SetWindowPos(Engine::context.getWindow(),       // handle to window
 				HWND_TOPMOST,  // placement-order handle
 				0,     // horizontal position
@@ -706,6 +713,7 @@ namespace ApplicationInterface
 				0, // height
 				SWP_NOMOVE | SWP_NOSIZE // window-positioning options);
 				);
+			#endif
 
 		}
 	}
