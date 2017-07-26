@@ -3656,7 +3656,7 @@ int main( int argc, const char* argv[])
 		#ifdef HAS_WINDOW
 			storageThread.start();
 
-			Engine::CreateDisplay(display,
+			UINT32 loadedFlags = Engine::CreateDisplay(display,
 				RuntimeConfig::ConfigFile("window"),
 				RuntimeConfig::aiMode ? "AI":
 				PRODUCT_NAME
@@ -3666,6 +3666,10 @@ int main( int argc, const char* argv[])
 				,Resolution(1280,800),onWindowResize
 				,Engine::DisplayConfig::Icon(IDI_CLIENT)
 				 );
+			if (loadedFlags & Engine::DisplayConfig::IsFullscreen)
+			{
+				SetFullScreen(true);
+			}
 			display.SetBackbufferClearColor(0,0,0,0);
 
 			Loading::SetupDisplay(display);

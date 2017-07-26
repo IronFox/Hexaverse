@@ -30,6 +30,8 @@ namespace Loading
 			Queue<TTask>	tasks;
 		
 			RECT									oldWindowLocation;
+			UINT32									oldDisplayFlags=0;
+			bool									oldWasMaximized=false;
 			Engine::DisplayConfig::border_style_t	oldBorderStyle;
 			Engine::DisplayConfig::FOnResize		oldOnResize;
 
@@ -88,8 +90,13 @@ namespace Loading
 				windowPos.right = screen.width/2 + width /2;
 				windowPos.bottom = screen.height/2 + height/2;
 
+				oldWasMaximized = display->IsMaximized();
+				oldDisplayFlags = Engine::Context::GetLastSignalledDisplayFlags();
+				oldWindowLocation = oldWasMaximized ? display->GetPreMaxiMinimizeLocation() : display->GetWindowLocation();
+				oldBorderStyle = display->GetBorderStyle();
 				oldOnResize = Engine::context.ReplaceOnResize(Engine::DisplayConfig::FOnResize());
 
+				display->SetBorderStyle(Engine::DisplayConfig::NoBorder);
 				display->PositionWindow(windowPos);
 
 				if (textout)
@@ -144,11 +151,13 @@ namespace Loading
 				display->RestoreRendererState();
 
 				textout->PopState();
-
-				display->SetBorderStyle(Detail::oldBorderStyle);
+				
 				display->PositionWindow(Detail::oldWindowLocation);
+				if (oldWasMaximized)
+					display->Maximize();
+				display->SetBorderStyle(Detail::oldBorderStyle);
 				Engine::context.ReplaceOnResize(oldOnResize);
-				oldOnResize(display->GetSize(),Engine::DisplayConfig::ResizeDragHasEnded);	//make sure fonts are rescaled
+				oldOnResize(display->GetClientSize(),Detail::oldDisplayFlags);
 
 				instruction.Clear();
 
@@ -194,11 +203,7 @@ namespace Loading
 		{
 			ASSERT_IS_NULL__(Detail::display);
 			Detail::display = &display;
-			Detail::oldWindowLocation = display.GetWindowLocation();
-			Detail::oldBorderStyle = display.GetBorderStyle();
-
-			display.SetBorderStyle(Engine::DisplayConfig::NoBorder);
-			
+		
 			Detail::LoadResources();
 		}
 
