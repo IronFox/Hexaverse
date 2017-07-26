@@ -10,6 +10,7 @@
 #include "../../ExtRenderer/DirectX11.h"
 #include <typeDecl.h>
 #include <cast.h>
+#include "uiScale.h"
 
 namespace GUI
 {
@@ -154,33 +155,9 @@ namespace GUI
 	{
 	public:
 		const Rect<>&	GetRect() const {return rect;}
-		bool			SetWidth(float w)
-		{
-			if (M::similar(this->rect.x.GetExtent(),w))
-				return false;
-			rect.x.max = rect.x.min + w;
-			OnHorizontalRectChange();
-			OnWidthChange();
-			OnRectChange();
-			return true;
-		}
-		bool			SetHeight(float h)
-		{
-			if (M::similar(this->rect.y.GetExtent(), h))
-				return false;
-			rect.y.max = rect.y.min + h;
-			OnVerticalRectChange();
-			OnHeightChange();
-			OnRectChange();
-			return true;
-		}
-		void			SetSize(const TVec2<>&size)
-		{
-			auto r = rect;
-			r.x.max = r.x.min + size.x;
-			r.y.max = r.y.min + size.y;
-			SetRect(r);
-		}
+		bool			SetWidth(float w);
+		bool			SetHeight(float h);
+		void			SetSize(const TVec2<>&size);
 		float			GetWidth() const {return rect.x.GetExtent();}
 		float			GetHeight() const {return rect.y.GetExtent();}
 
@@ -200,27 +177,7 @@ namespace GUI
 			OnTranslate(delta);
 		}
 
-		void			SetRect(const Rect<>&rect)
-		{
-			const bool hChange = rect.x != this->rect.x;
-			const bool vChange = rect.y != this->rect.y;
-			if (!hChange && !vChange)
-				return;
-			const bool widthChange = !Math::similar(rect.x.GetExtent(),this->rect.x.GetExtent());
-			const bool heightChange = !Math::similar(rect.y.GetExtent(),this->rect.y.GetExtent());
-			this->rect = rect;
-
-			if (hChange)
-				OnHorizontalRectChange();
-			if (vChange)
-				OnVerticalRectChange();
-			if (widthChange)
-				OnWidthChange();
-			if (heightChange)
-				OnHeightChange();
-			OnRectChange();
-		}
-
+		void			SetRect(const Rect<>&rect);
 	private:
 		Rect<>			rect;
 	};
@@ -244,7 +201,7 @@ namespace GUI
 		WComponent		parent;
 		WWindow			window;
 
-		friend void		OnScreenResize(const Resolution&res);
+		friend void		SignalScreenResize();
 
 	protected:
 		static void		Darken(const Rect<>&rect, float alpha=0.9f, bool flush=false);
@@ -253,7 +210,7 @@ namespace GUI
 
 
 		virtual void	OnEnableChange()	{};
-		virtual void	OnScreenSizeChange(const Resolution&)	{}
+		virtual void	OnScreenSizeOrUIScaleChange()	{}
 
 		/**
 		Fetches the screen-relative height of the local component, given its current location (and width).
@@ -446,8 +403,9 @@ namespace GUI
 		virtual float	GetIdealWidth() const;
 		virtual void	OnTextChange() {};
 		virtual void	OnWidthChange() {ReWrap();SetHeight(textHeight);}
-		virtual void	OnScreenSizeChange(const Resolution&res) override 
+		virtual void	OnScreenSizeOrUIScaleChange() override
 		{
+			Super::OnScreenSizeOrUIScaleChange();
 			ReWrap();
 			SetHeight(textHeight);
 		}
@@ -756,12 +714,7 @@ namespace GUI
 		typedef Component	Super;
 
 	protected:
-		virtual void		OnScreenSizeChange(const Resolution&res)
-		{
-			relativeHeight = GetPixelHeight() / res.height;
-			relativeThumbWidth = GetThumbPixelWidth() / res.width;
-			UpdateDynamicSize();
-		}
+		virtual void		OnScreenSizeOrUIScaleChange() override;
 	public:
 		typedef std::function<void(float&)>	FOnChange;
 
@@ -771,7 +724,8 @@ namespace GUI
 		virtual void		OnMouseUp() override;
 		virtual void		OnMouseMove(const TVec2<>&mouseAt, bool clipAreaContainsMouse) override;
 		virtual void		Render() override;
-		void				Setup(float current, float max, float slideStep) {this->current = current; this->max = max; this->slideStep = slideStep;}
+		void				Setup(float current, float max, float slideStep) {this->current = current; this->max = max; this->slideStep = slideStep;numMarkers = markersEvery ? 1+(max / markersEvery) : 0;}
+		void				SetupMarkers(float markerStep, bool show)	{this->markersEvery = markerStep; showMarkers = show; numMarkers = markersEvery ? 1+(max / markersEvery) : 0;}
 		float				GetMax() const {return max;}
 		float				GetCurrent() const {return current;}
 		void				SetOnChange(const FOnChange&f)	{onChange = f;}
@@ -792,6 +746,7 @@ namespace GUI
 		Rect<>				barBack,	//!< Shadow behind slider
 							bar;		//!< Actual grabbable bar
 		bool				showMarkers=true;
+		count_t				numMarkers=0;
 		float				markersEvery=1.f;
 		float				relativeHeight=1,relativeThumbWidth = 1;
 		bool				outlineContainsMouse = false,
@@ -955,9 +910,12 @@ namespace GUI
 			}
 			return false;
 		}
-		void			AnchorBelowPrevious(Component*newComponent, float distanceFromSides = 0.015f, float distanceToPrevious = 0.015f, TAnchor::distanceType_t distanceType=TAnchor::RelativeToScreen)
+		template <typename Component>
+		std::shared_ptr<Component>		AnchorBelowPrevious(Component*newComponent, float distanceFromSides = 0.015f, float distanceToPrevious = 0.015f, TAnchor::distanceType_t distanceType=TAnchor::RelativeToScreen)
 		{
-			AnchorBelowPrevious(PComponent(newComponent),distanceFromSides,distanceToPrevious,distanceType);
+			std::shared_ptr<Component> c(newComponent);
+			AnchorBelowPrevious(c,distanceFromSides,distanceToPrevious,distanceType);
+			return c;
 		}
 		void			AnchorBelowPrevious(const PComponent&newComponent, float distanceFromSides = 0.015f,  float distanceToPrevious = 0.015f, TAnchor::distanceType_t distanceType=TAnchor::RelativeToScreen);
 
@@ -1239,7 +1197,7 @@ namespace GUI
 	*/
 	void				VerifyIntegrity(const TCodeLocation&);
 
-	void				OnScreenResize(const Resolution&);
+	void				SignalScreenResize();
 
 
 	void				Create();

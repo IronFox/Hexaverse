@@ -4,7 +4,10 @@
 
 namespace GlobalEvents
 {
-	extern Observable<>	frameBegin,frameAfterCamera,shadowQualityChanged;
+	extern Observable<>	frameBegin,
+						frameAfterCamera,
+						shadowQualityChanged,
+						uiScaleChanged;
 
 
 }

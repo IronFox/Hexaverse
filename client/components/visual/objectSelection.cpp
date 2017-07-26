@@ -27,6 +27,11 @@ namespace Objects
 		shiftMeansQueue = b;
 	}
 
+	bool					ShiftMeansQueue()
+	{
+		return shiftMeansQueue;
+	}
+
 	void					SignalShiftPressed()
 	{
 		bool n = !shiftPressed;

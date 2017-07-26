@@ -59,6 +59,7 @@
 #include "components/visual/guiHostList.h"
 #include "components/visual/commandDefinitions.h"
 #include "components/visual/menu.h"
+#include "components/visual/uiScale.h"
 #include "components/serverProcess.h"
 #include "components/audioInterface.h"
 #include "components/configurationMode.h"
@@ -69,6 +70,7 @@
 #include "components/clientEvents.h"
 #include "components/loading.h"
 #include "components/localInterface.h"
+#include "components/clientEvents.h"
 
 #include "rc/Resource.h"
 
@@ -269,7 +271,7 @@ namespace LocalApplicationInterface
 
 	void	OnTutorialsChanged()
 	{
-		UI::HexGrid::BottomRightPanel::Refresh();
+		UI::HexGrid::BottomRightPanel::Refresh(UI::HexGrid::GetGridConfig());
 	}
 
 #endif
@@ -2217,16 +2219,23 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 #ifdef HAS_WINDOW
 
-	void	onWindowResize(const Resolution&res, UINT32)
+	void	UpdateFontScale()
 	{
-		Camera::scene.UpdateProjection2(display.GetPixelAspect(),0.1f,1000.f);
-	//	textout.SetScale(1.f/display.GetClientWidth(),1.f/display.GetClientHeight());
+		textout.SetScale(UI::GetScale() / display.GetClientWidth(), UI::GetScale() / display.GetClientHeight());
+	}
 
-		textout.SetScale(1.f / display.GetClientWidth(), 1.f / display.GetClientHeight());
+	void	onWindowResize(const Resolution&res, UINT32 flags)
+	{
+		if (flags & Engine::DisplayConfig::ResizeDragHasEnded)
+		{
+			Camera::scene.UpdateProjection2(display.GetPixelAspect(),0.1f,1000.f);
 
-		UI::OnScreenResize();
-		GUI::OnScreenResize(res);
-		UpdateHistoryHeight();
+			UpdateFontScale();
+
+			UI::OnScreenResize();
+			GUI::SignalScreenResize();
+			UpdateHistoryHeight();
+		}
 	}
 
 
@@ -3663,9 +3672,10 @@ int main( int argc, const char* argv[])
 
 			display.ScanShaderHeader("shaders");
 			textout.GetActiveFont()->LoadFromFile("Font/font.xml");
-			textout.SetScale(1.f/display.GetClientWidth(),1.f/display.GetClientHeight());
+			UpdateFontScale();
 			textout.GetActiveFont()->BeginTagMode(StatePanel::OnTag,StatePanel::TagWidth,
 					Objects::TextoutResourceTagOffset,(char)(Objects::TextoutResourceTagOffset+(char)Objects::Resource::NumberOfPossibilities + 2));
+			GlobalEvents::uiScaleChanged += UpdateFontScale;
 
 			Loading::SetupText(textout);
 

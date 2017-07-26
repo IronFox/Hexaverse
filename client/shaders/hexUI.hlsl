@@ -1,9 +1,9 @@
 #include "common.inc.hlsl"
 
 
-cbuffer VisualCode
+cbuffer VisualCodeRGB_CellSize
 {
-	float4 VisualCode;
+	float4 VisualCodeRGB_CellSize;
 };
 cbuffer Center
 {
@@ -45,11 +45,11 @@ float2 PushTriangle(inout TriangleStream<G2P> stream, float2 last, float cellInd
 	stream.Append(output);
 	output.uv = float3(last * 0.5 + 0.5,1.0);
 	output.uv.y = 1.0 - output.uv.y;
-	output.position = Project(Center + float4(last*CELL_SIZE,0,0));
+	output.position = Project(Center + float4(last*VisualCodeRGB_CellSize.w,0,0));
 	stream.Append(output);
 	output.uv = float3(next * 0.5 + 0.5,1.0);
 	output.uv.y = 1.0 - output.uv.y;
-	output.position = Project(Center + float4(next*CELL_SIZE,0,0));
+	output.position = Project(Center + float4(next*VisualCodeRGB_CellSize.w,0,0));
 	stream.Append(output);
 	stream.RestartStrip();
 
@@ -86,7 +86,7 @@ float4 psMain(G2P input) : SV_TARGET
 	float edge = smoothstep(0.85,0.89,input.uv.z);
 
 	s *= (1.0 - edge);
-	s += edge * max(VisualCode.r, VisualCode.g);
+	s += edge * max(VisualCodeRGB_CellSize.r, VisualCodeRGB_CellSize.g);
 	float3 color = s.rgb;
 	//(float3)s;
 	//s.a = 1.0;
@@ -100,21 +100,21 @@ float4 psMain(G2P input) : SV_TARGET
 
 
 
-	color *= lerp((float3)1.0, float3(1.0, 0.5, 0.5),VisualCode.r);
+	color *= lerp((float3)1.0, float3(1.0, 0.5, 0.5),VisualCodeRGB_CellSize.r);
 
 
-	//color *= lerp((float3)1.0, float3(0.25,0.25,1.0),smoothstep(0.65,0.89,input.uv.z) * VisualCode.g );
-	color *= lerp((float3)1.0, float3(0.25,0.25,1.0),(sqr(input.uv.y)+ sqr(1.0 - input.uv.y))* VisualCode.g );
+	//color *= lerp((float3)1.0, float3(0.25,0.25,1.0),smoothstep(0.65,0.89,input.uv.z) * VisualCodeRGB_CellSize.g );
+	color *= lerp((float3)1.0, float3(0.25,0.25,1.0),(sqr(input.uv.y)+ sqr(1.0 - input.uv.y))* VisualCodeRGB_CellSize.g );
 
 
-	color = lerp(color,(float3)0.5,VisualCode.b);
+	color = lerp(color,(float3)0.5,VisualCodeRGB_CellSize.b);
 
 
 
 	//sqr(sqr(sqr(sqr(min(1.0,1.05*input.uv.z)))));
 	//s = 1.0 - (1.0 - s) * (1.0 - edge*0.5);
 	//g *= 1.0 - edge*0.75;
-	float a = smoothstep(0.0,0.05,1.0 - input.uv.z) * (1.0 - VisualCode.b);
+	float a = smoothstep(0.0,0.05,1.0 - input.uv.z) * (1.0 - VisualCodeRGB_CellSize.b);
 	//if (input.uv.z > 0.8)
 		//g = 1.0 - g;
 	return float4(color,(0.75+s.a*0.25)*a);

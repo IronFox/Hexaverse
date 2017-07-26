@@ -18,6 +18,7 @@ namespace AudioInterface
 {
 
 	bool	isActive = false;
+	static float masterVolume = 1.f;
 
 
 	bool OnSourceCountReduce(count_t n)
@@ -93,9 +94,16 @@ namespace AudioInterface
 
 	void	SetMasterVolume(float volume)
 	{
+		masterVolume = volume;
 		if (isActive)
 			Engine::OpenAL::Listener::SetGain(2.f * volume);
 	}
+
+	float	GetMasterVolume()
+	{
+		return masterVolume;
+	}
+
 
 
 	void		Destroy()

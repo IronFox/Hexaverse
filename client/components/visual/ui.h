@@ -130,9 +130,20 @@ namespace UI
 	*/
 	namespace HexGrid
 	{
-		static const float CellSize = 0.075f;
-		static const float stepY = (0.5f + 1.f) * CellSize;
-		static const float stepX = 0.86602540378443864676372317075294f * CellSize;
+
+		struct TGridConfig
+		{
+			float	cellSize,
+					stepX,
+					stepY;
+		};
+
+		TGridConfig	GetGridConfig();
+
+		
+		//static const float CellSize = 0.075f;
+		//static const float stepY = (0.5f + 1.f) * CellSize;
+		//static const float stepX = 0.86602540378443864676372317075294f * CellSize;
 
 		extern count_t					currentContactListWidth;
 		//static const int2 ContactListOffset(5,2);
@@ -163,7 +174,7 @@ namespace UI
 			public:
 				/**/					TutorialCommand() : Super("Tutorial") {}
 
-				virtual void			Refresh(bool)
+				virtual void			Refresh(bool) override
 				{
 					state = Dialog::HasMoreTutorials() && !GUI::IsModal() ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
 				}
@@ -305,7 +316,7 @@ namespace UI
 			/**
 			Updates state and presence of all buttons of this panel
 			*/
-			void		Refresh();
+			void		Refresh(const TGridConfig&);
 		}
 
 
@@ -454,7 +465,7 @@ namespace UI
 			index_t									offset=0;
 			TIntRange<index_t>						visibleRange;
 
-			void					RebuildCommands();
+			void					RebuildCommands(const TGridConfig&cfg);
 			void					RemoveCommandIcons();
 		public:
 
@@ -474,7 +485,7 @@ namespace UI
 			/**
 			Flushes and reallocates gui cells as necessary. Redetects horizontal scrolling constraints and shows arrow buttons as necessary
 			*/
-			void					Refresh();
+			void					Refresh(const TGridConfig&cfg);
 			/**
 			Allocates arrow commands. Must be called once at program start or row creation.
 			*/
@@ -579,12 +590,12 @@ namespace UI
 			/**
 			Updates projectedRect
 			*/
-			void		Update(const Engine::Aspect<>&aspect);
+			void		Update(const TGridConfig&cfg, const Engine::Aspect<>&aspect);
 
 			/**
 			Determines the center floating point coordinates of this cell in the range [-1..-1+pixelAspect*2],[-1,+1]
 			*/
-			float2		ToFloatCoords() const;
+			float2		ToFloatCoords(const TGridConfig&cfg) const;
 
 			static void Radial(float cellIndex, TVec2<>&rs);
 			/**
@@ -615,7 +626,7 @@ namespace UI
 
 
 		extern DX11::BaseInstructionBlock	instruction;
-		extern DX11::ObjectBuffer<float4>	center,color;
+		extern DX11::ObjectBuffer<float4>	center,visualCodeRGB_CellSize;
 		extern Engine::OrthographicAspect<> camera;
 
 
@@ -649,7 +660,7 @@ namespace UI
 		/*
 			Renders in viewport -1 to +1
 		*/
-		void						RenderCommands();
+		void						RenderCommands(const TGridConfig&);
 		void						RenderHint();
 
 		/**

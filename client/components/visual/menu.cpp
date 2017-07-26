@@ -5,7 +5,10 @@
 #include "../localInterface.h"
 #include "../clientEvents.h"
 #include "shadedRenderInstruction.h"
+#include "../clientRuntimeConfig.h"
 #include "../../version.h"
+#include "../audioInterface.h"
+#include "objectSelection.h"
 
 namespace Menu
 {
@@ -62,7 +65,7 @@ namespace Menu
 		{
 			auto mod = c->ModifyAnchorconfig();
 			mod.Left().Set(MinTextWidth,GUI::TAnchor::RelativeToScreen);
-			mod.Right().Set(0);
+			mod.Right().Set(0.01f);
 			mod.Top().SetAuto();
 			mod.Bottom().SetAuto();
 		}
@@ -74,20 +77,23 @@ namespace Menu
 		return l;
 	}
 
-	static void AddOptionSlider(const String&name, float min, float max, float initial, const std::function<void(float&)>&onChange, const std::function<String()>&toString)
+	static GUI::PSlider AddOptionSlider(const String&name, float min, float max, float slide, float initial, const std::function<void(float&)>&onChange, const std::function<String()>&toString)
 	{
 		GUI::PSlider s(new GUI::Slider());
-		s->Setup(initial,max, 1.f);
+		s->Setup(initial-min,max-min, slide);
 		auto label = AddOption(name,s);
 		std::weak_ptr<GUI::Label> w = label;
-		s->SetOnChange([onChange,toString,w,name](float&f)
+		s->SetOnChange([onChange,toString,w,name,min](float&f0)
 		{
-			onChange(f);
+			float f1 = f0 + min;
+			onChange(f1);
+			f0 = f1 - min;
 			const auto s = w.lock();
 			if (s)
 				s->SetText(name+" ("+toString()+")");
 		});
 		label->SetText(name+" ("+toString()+")");
+		return s;
 	}
 
 	static void AddCheckBox(const String&name,bool initial, const std::function<void(bool)>&onChange)
@@ -104,7 +110,20 @@ namespace Menu
 		options->AnchorTop(0.1f);
 		options->AnchorBelowPrevious(new GUI::Label("Options",2.f));
 		
-		AddOptionSlider("Shadow Quality", 0, ShadedInstruction::Quality::N-1, ShadedInstruction::Quality::N-1 - ShadedInstruction::chosenQuality, [](float&q)
+		AddOptionSlider("UI Scale", 0.5f, 2.f, 0.125f,UI::GetScale(), [](float&q)
+		{
+			q = Round(q * 8.f)*0.125f;
+			UI::SetScale(q);
+			Configuration::Update("runtime/uiScale",q);
+		},
+		[]()->String
+		{
+			return String(Round(UI::GetScale() * 100))+"%";
+		}
+		)->SetupMarkers(0.25f,true);
+
+
+		AddOptionSlider("Shadow Quality", 0, ShadedInstruction::Quality::N-1, 1, ShadedInstruction::Quality::N-1 - ShadedInstruction::chosenQuality, [](float&q)
 			{
 				auto old = ShadedInstruction::chosenQuality;
 				ShadedInstruction::chosenQuality.Load(ShadedInstruction::Quality::N-1 -Round(q));
@@ -123,7 +142,7 @@ namespace Menu
 		const auto modes = display.GetMSAAModes();
 		if (modes.Count() > 1)
 		{
-			AddOptionSlider("Anti-Aliasing", 0, modes.Count()-1, display.GetCurrentMSAAMode(), [](float&q)
+			AddOptionSlider("Anti-Aliasing", 0, modes.Count()-1, 1,display.GetCurrentMSAAMode(), [](float&q)
 			{
 				auto old = display.GetCurrentMSAAMode();
 				display.SetMSAAMode(Math::Max(0.f,Round(q)));
@@ -149,7 +168,42 @@ namespace Menu
 				Configuration::Update("runtime/vsync",enabled ? 1 : 0);
 			}
 		});
-		
+
+		if (AudioInterface::isActive)
+			AddOptionSlider("Sound Level", 0, 1.f, 0.25f,AudioInterface::GetMasterVolume(), [](float&q)
+			{
+				auto old = AudioInterface::GetMasterVolume();
+				if (old != q)
+				{
+					AudioInterface::SetMasterVolume(q);
+					Configuration::Update("runtime/soundVolume",q);
+				}
+			},
+			[]()->String
+			{
+				return String(Round(AudioInterface::GetMasterVolume() * 100))+"%";
+			}
+			)->SetupMarkers(0.25f,false);
+
+		AddCheckBox("Auto-Queue Unit Commands",!Objects::ShiftMeansQueue(),[](bool enabled)
+		{
+			bool old = !Objects::ShiftMeansQueue();
+			if (old != enabled)
+			{
+				Objects::SetShiftMeansQueue(!enabled);
+				Configuration::Update("runtime/alwaysQueueUnitCommands",enabled);
+			}
+		});
+
+		{
+			GUI::PButton button(new GUI::Button("OK",[](){GUI::Hide(options);}));
+			//button->LockIdealWidth();
+			options->AnchorBelowPrevious(button);
+			button->SetCenteredWidth(0.5f,GUI::TAnchor::RelativeToScreen);
+		}
+
+		options->SetAutoHeightSpacing(0.02f);
+
 		options->SetAutomaticHeight(true);
 		options->FullAutoLayout();
 	}
@@ -166,7 +220,7 @@ namespace Menu
 		help->AddCommand("Revisit All Tutorial Messages",
 			[]()
 			{
-				Dialog::Confirm("You are about to reset the game's memory on which tutorial messages you have so far seen. All messages will be shown again where considered approprote.\n"
+				Dialog::Confirm("You are about to reset the game's memory of tutorial messages you have been shown. All messages will be shown again where considered appropriate.\n"
 								"Continue?",
 					[]()
 					{

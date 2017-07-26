@@ -10,6 +10,7 @@
 #include "lineRenderer.h"
 #include <engine/aspect.h>
 #include <objects.h>
+#include "../clientEvents.h"
 
 namespace DX11 = Engine::DX11; 
 
@@ -85,6 +86,60 @@ namespace GUI
 		}
 
 		Buffer<Component*>	allComponents;
+	}
+
+
+	bool			ComponentLocation::SetWidth(float w)
+	{
+		if (M::similar(this->rect.x.GetExtent(),w))
+			return false;
+		ASSERT__(!isnan(w));
+		rect.x.max = rect.x.min + w;
+		OnHorizontalRectChange();
+		OnWidthChange();
+		OnRectChange();
+		return true;
+	}
+	bool			ComponentLocation::SetHeight(float h)
+	{
+		if (M::similar(this->rect.y.GetExtent(), h))
+			return false;
+		ASSERT__(!isnan(h));
+		rect.y.max = rect.y.min + h;
+		OnVerticalRectChange();
+		OnHeightChange();
+		OnRectChange();
+		return true;
+	}
+	void			ComponentLocation::SetSize(const TVec2<>&size)
+	{
+		auto r = rect;
+		r.x.max = r.x.min + size.x;
+		r.y.max = r.y.min + size.y;
+		SetRect(r);
+	}
+	void			ComponentLocation::SetRect(const Rect<>&rect)
+	{
+		const bool hChange = rect.x != this->rect.x;
+		const bool vChange = rect.y != this->rect.y;
+		if (!hChange && !vChange)
+			return;
+
+		rect.AssertIsNotNaN();
+
+		const bool widthChange = !Math::similar(rect.x.GetExtent(),this->rect.x.GetExtent());
+		const bool heightChange = !Math::similar(rect.y.GetExtent(),this->rect.y.GetExtent());
+		this->rect = rect;
+
+		if (hChange)
+			OnHorizontalRectChange();
+		if (vChange)
+			OnVerticalRectChange();
+		if (widthChange)
+			OnWidthChange();
+		if (heightChange)
+			OnHeightChange();
+		OnRectChange();
 	}
 
 
@@ -544,15 +599,22 @@ namespace GUI
 	}
 
 
+	/*virtual override*/ void		Slider::OnScreenSizeOrUIScaleChange() 
+	{
+		Super::OnScreenSizeOrUIScaleChange();
+		relativeHeight = GetPixelHeight() / display.GetClientHeight();
+		relativeThumbWidth = GetThumbPixelWidth() / display.GetClientWidth();
+		UpdateDynamicSize();
+	}
 
 	/*static*/ float		Slider::GetThumbPixelWidth()
 	{
-		return Detail::textZoom * 25;
+		return Detail::textZoom * 25 * UI::GetScale();
 	}
 
 	/*static*/ float		Slider::GetPixelHeight()
 	{
-		return Detail::textZoom * 15;
+		return Detail::textZoom * 15 * UI::GetScale();
 	}
 
 	Slider::Slider()
@@ -573,10 +635,32 @@ namespace GUI
 		SurfaceRenderer::SetColor(float4(0,0,0,0.9));
 		SurfaceRenderer::Rasterize(barBack);
 
-		dragRange = Math::FloatRange(left + relativeThumbWidth/2.f,right-relativeThumbWidth/2.f);
 
+		dragRange = Math::FloatRange(left + relativeThumbWidth/2.f,right-relativeThumbWidth/2.f);
 		const float barCenter = dragRange.Derelativate(current/max);
 		bar = Rect<>(barCenter-relativeThumbWidth/2.f,barBack.y.min,barCenter+relativeThumbWidth/2.f,barBack.y.max);
+
+		if (showMarkers)
+		{
+			float4 markerColor(1,1,1,0.5f);
+			float y0 = rect.y.Derelativate(0.2f);
+			float y1 = rect.y.Derelativate(0.8f);
+			Rect<> marker;
+			marker.y.Set(y0,y1);
+			SurfaceRenderer::SetColor(markerColor);
+			for (index_t i = 0; i < numMarkers; i++)
+			{
+				float fi = dragRange.Derelativate((float(i) * markersEvery) / max);
+				if (!bar.x.Contains(fi))
+				{
+					marker.x.SetCenter(fi,2.f/display.GetClientWidth());
+					SurfaceRenderer::Rasterize(marker);
+					//LineRenderer::Rasterize(float3(fi,rect.y.min,0.f), markerColor, float3(fi,y0,0.f),markerColor);
+					//LineRenderer::Rasterize(float3(fi,rect.y.max,0.f), markerColor, float3(fi,y1,0.f),markerColor);
+				}
+			}
+		}
+
 		RenderArea(bar,barContainsMouse,dragging,float3(1));
 	}
 
@@ -890,7 +974,7 @@ namespace GUI
 			}
 			if (components.IsEmpty())
 				lowest = GetRect().y.max;
-			float newY = lowest;// - autoHeightSpacing;
+			float newY = lowest - autoHeightSpacing;
 			float currentHeight = GetRect().y.max - newY;
 			bool newVScroll = currentHeight > maxHeight;
 			bool changed = vscroll.visible != newVScroll;
@@ -993,10 +1077,10 @@ namespace GUI
 		return textout.GetFont().GetWidth(c) * textout.state.scale_x;
 	}
 
-	void OnScreenResize(const Resolution&res)
+	void SignalScreenResize()
 	{
 		foreach (Detail::allComponents,c)
-			(*c)->OnScreenSizeChange(res);
+			(*c)->OnScreenSizeOrUIScaleChange();
 	}
 
 
@@ -1325,6 +1409,14 @@ namespace GUI
 	void		Create()
 	{
 		Image::StaticCreate();
+
+		GlobalEvents::uiScaleChanged += []()
+		{
+			foreach (Detail::visibleWindows,w)
+				(*w)->InvalidateAutoLayout();
+			SignalScreenResize();
+		};
+
 	}
 
 	/*static*/ void Image::StaticDestroy()
@@ -1643,7 +1735,12 @@ namespace GUI
 
 			#ifdef _DEBUG
 				if (numRounds > 900)
-					ShowMessage(__func__ ": Debug: GUI will abort auto-layout shortly. Attach now and debug.");
+				{
+					if (IsDebuggerPresent())
+						DebugBreak();
+					else
+						ShowMessage(__func__ ": Debug: GUI will abort auto-layout shortly. Attach now and debug.");
+				}
 
 			#endif
 
@@ -1800,6 +1897,7 @@ namespace GUI
 
 	/*static*/ bool		Component::Set(float&ref, float to)
 	{
+		ASSERT__(!isnan(to));
 		bool changed = !Math::similar(ref,to);
 		ref = to;
 		return changed;

@@ -480,7 +480,7 @@ namespace UI
 		void			Clear()
 		{
 			HexGrid::animationTimeLine.commands.Clear();
-			HexGrid::animationTimeLine.Refresh();
+			HexGrid::animationTimeLine.Refresh(HexGrid::GetGridConfig());
 		}
 
 		void			RegisterAttack(float time, bool isFriendly,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const Objects::Renderer::SmokeTrailIndex&smokeTrailIndex)
@@ -490,7 +490,7 @@ namespace UI
 			if (!isFriendly)
 				cmd->state |= Objects::CommandFlags::IsFlashing;
 			HexGrid::animationTimeLine.commands << Objects::Command::PVisualCommand(cmd);
-			HexGrid::animationTimeLine.Refresh();
+			HexGrid::animationTimeLine.Refresh(HexGrid::GetGridConfig());
 		}
 
 		void			RegisterEntityDestruction(float time, bool isOwnedByMe,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const String&entityName)
@@ -500,7 +500,7 @@ namespace UI
 				cmd->state |= Objects::CommandFlags::IsFlashing;
 			cmd->fallbackTargetName = entityName;
 			HexGrid::animationTimeLine.commands << Objects::Command::PVisualCommand(cmd);
-			HexGrid::animationTimeLine.Refresh();
+			HexGrid::animationTimeLine.Refresh(HexGrid::GetGridConfig());
 		}
 
 		bool			HasRegisteredHostileActivity()
@@ -877,10 +877,10 @@ namespace UI
 				offset += currentContactListWidth;
 			}
 
-			Refresh();
+			Refresh(HexGrid::GetGridConfig());
 		}
 
-		void	DynamicRow::Refresh()
+		void	DynamicRow::Refresh(const TGridConfig&cfg)
 		{
 			bool moreRight;
 			{
@@ -909,7 +909,7 @@ namespace UI
 				GridCell&cell = AllocateCell(leftCommand);
 				cell.gridCoords = leftCommand->gridCoords;
 				cell.flipY = true;
-				cell.Update(camera);
+				cell.Update(cfg,camera);
 			}
 			else
 				FindAndDeleteCell(leftCommand);
@@ -918,14 +918,14 @@ namespace UI
 				GridCell&cell = AllocateCell(rightCommand);
 				cell.gridCoords = DynamicRowOffset + int2(currentContactListWidth+1,rowIndex);
 				cell.flipY = true;
-				cell.Update(camera);
+				cell.Update(cfg,camera);
 			}
 			else
 				FindAndDeleteCell(rightCommand);
 
 //				rightCommand->gridCoords.x = int(ContactListOffset.x + 1+currentContactListWidth);
 
-			RebuildCommands();
+			RebuildCommands(cfg);
 		}
 
 		void	DynamicRow::RemoveCommandIcons()
@@ -942,7 +942,7 @@ namespace UI
 			FindAndDeleteCell(leftCommand);
 		}
 
-		void							DynamicRow::RebuildCommands()
+		void							DynamicRow::RebuildCommands(const TGridConfig&cfg)
 		{
 			RemoveCommandIcons();
 			if (!showControlsAndContacts)
@@ -953,7 +953,7 @@ namespace UI
 				GridCell&cell = AllocateCell(cmd);
 				cell.gridCoords = DynamicRowOffset + int2(i+1,rowIndex);
 				cell.flipY = true;
-				cell.Update(camera);
+				cell.Update(cfg,camera);
 				lastVisible << cmd;
 			}
 		}
@@ -997,16 +997,16 @@ namespace UI
 				commands.Clear();
 			}
 
-			static void Add(const int2&coords, const Objects::Command::PVisualCommand&cmd)
+			static void Add(const TGridConfig&cfg,const int2&coords, const Objects::Command::PVisualCommand&cmd)
 			{
 				GridCell&cell = AllocateCell(cmd);
 				cell.gridCoords = coords;
 				cell.flipX = true;
-				cell.Update(camera);
+				cell.Update(cfg,camera);
 				cmd->Refresh(Network::ControlEnabled());
 			}
 
-			void			Refresh()
+			void			Refresh(const TGridConfig&cfg)
 			{
 				if (!showControlsAndContacts)
 				{
@@ -1015,7 +1015,7 @@ namespace UI
 					return;
 				}
 				foreach (commands,c)
-					Add((*c)->gridCoords, *c);
+					Add(cfg,(*c)->gridCoords, *c);
 			}
 		}
 
@@ -1027,11 +1027,11 @@ namespace UI
 	{
 
 
-		void		GridCell::Update(const Engine::Aspect<>&aspect)
+		void		GridCell::Update(const TGridConfig&cfg, const Engine::Aspect<>&aspect)
 		{
-			float2 center = ToFloatCoords();
-			float2 topRight = center + float2(CellSize*0.9f),
-					bottomLeft = center - float2(CellSize*0.9f);
+			float2 center = ToFloatCoords(cfg);
+			float2 topRight = center + float2(cfg.cellSize*0.9f),
+					bottomLeft = center - float2(cfg.cellSize*0.9f);
 			float3 topRightP,bottomLeftP;
 			aspect.Project(float3(topRight,0),topRightP);
 			aspect.Project(float3(bottomLeft,0),bottomLeftP);
@@ -1041,17 +1041,17 @@ namespace UI
 			projectedRect.y.min = bottomLeftP.y * 0.5f + 0.5f;
 			projectedRect.y.max = topRightP.y * 0.5f + 0.5f;
 		}
-		float2		GridCell::ToFloatCoords() const
+		float2		GridCell::ToFloatCoords(const TGridConfig&cfg) const
 		{
 			int2 cellCoords = gridCoords;
 			if (!flipX && !flipY)
 				cellCoords += int2(3,1);
 			float x;
 			if (flipX)
-				x = (-1+2.f * display.GetPixelAspect()) - stepX *2 * cellCoords.x - float(1 - (cellCoords.y % 2)) * stepX;
+				x = (-1+2.f * display.GetPixelAspect()) - cfg.stepX *2 * cellCoords.x - float(1 - (cellCoords.y % 2)) * cfg.stepX;
 			else
-				x = -1.f + stepX *2 * cellCoords.x + float(1 - (cellCoords.y % 2)) * stepX;
-			float2	rs(x, -1.f + stepY * cellCoords.y);
+				x = -1.f + cfg.stepX *2 * cellCoords.x + float(1 - (cellCoords.y % 2)) * cfg.stepX;
+			float2	rs(x, -1.f + cfg.stepY * cellCoords.y);
 			if (flipY)
 				rs.y = -rs.y;
 			return rs;
@@ -1144,7 +1144,7 @@ namespace UI
 
 
 		DX11::BaseInstructionBlock	instruction;
-		DX11::ObjectBuffer<float4>	center,color;
+		DX11::ObjectBuffer<float4>	center,visualCodeRGB_CellSize;
 		Engine::OrthographicAspect<> camera;
 		//Buffer0<Group>	friendlyGroups,hostileGroups;
 
@@ -1155,7 +1155,7 @@ namespace UI
 		void						Create()
 		{
 			center.Create(float4());
-			color.Create(float4(1));
+			visualCodeRGB_CellSize.Create(float4(1));
 
 			instruction.quickSlots.SetSize(1);
 
@@ -1164,14 +1164,10 @@ namespace UI
 				DX11::Shader::Binding(0,"Texture"),
 				DX11::Shader::SamplerBinding(true,Engine::TextureFilter::Trilinear,1,"Sampler"),
 				DX11::Shader::Binding(center,"Center"),
-				DX11::Shader::Binding(color,"VisualCode"),
+				DX11::Shader::Binding(visualCodeRGB_CellSize,"VisualCodeRGB_CellSize"),
 			};
 
-			count_t numSet = DX11::Shader::macroDefinitions.Count();
-			DX11::Shader::RedefineMacro(DX11::Shader::Macro("CELL_SIZE",CellSize*0.9f));
 			instruction.shader.LoadFromFile("shaders/hexUI.hlsl","vsMain", "gsMain", "psMain",bindings, ARRAYSIZE(bindings));
-
-			DX11::Shader::macroDefinitions.Truncate(numSet);
 			instruction.UpdateLayout();
 			instruction.SetPoints();
 
@@ -1196,21 +1192,18 @@ namespace UI
 		{
 			barProjectionCamera.region.x.max = 0.9f;
 			//1.f / display.GetPixelAspect();
-
+			const auto cfg = GetGridConfig();
 			camera.UpdateProjection(-1,-1,-1+2.f * display.GetPixelAspect(),1,-1,1);
 			foreach (allGuiCells,cell)
-				cell->Update(camera);
+				cell->Update(cfg,camera);
 			RefreshContacts();
-			//if (hasFocusButton)
-			//{
-			//	selectedFocus.gridCoords = GetFocusLocation();
-			//}
 		}
+
 
 		void						Destroy()
 		{
 			center.Clear();
-			color.Clear();
+			visualCodeRGB_CellSize.Clear();
 			instruction.Clear();
 			allGuiCells.Clear();
 			//groupFocusCommands.Clear();
@@ -1261,7 +1254,7 @@ namespace UI
 		/*
 			Renders in viewport -1 to +1
 		*/
-		void						RenderCommands()
+		void						RenderCommands(const TGridConfig&cfg)
 		{
 			//static int2 lastMouse;
 			float flashOpacity = 	((UINT64)floor(Engine::timing.now*2.0))%2;
@@ -1297,7 +1290,7 @@ namespace UI
 			{
 				if (c->command->texture.IsNotEmpty())
 				{
-					float2 world = c->ToFloatCoords();
+					float2 world = c->ToFloatCoords(cfg);
 					float3 at;
 					camera.Project(float3(world,0),at);
 					at.xy = at.xy*0.5f + 0.5f;
@@ -1331,8 +1324,9 @@ namespace UI
 					//	code.xy = float2(0);
 						code.z = 0.5f;
 					}
+					code.w = cfg.cellSize;
 						//color.Update(float4(1,1,1,0.5));
-					color.Update(code);
+					visualCodeRGB_CellSize.Update(code);
 
 					center.Update(float4(world,0,1));
 					instruction.quickSlots.First() = c->command->texture;
@@ -1456,6 +1450,8 @@ namespace UI
 
 		Buffer0<Objects::Command::PVisualCommand>	allocatedEntityCommands;
 			
+		TGridConfig	visitCfg;
+
 		void	VisitAddCommand(const int2&coords,const Objects::Command::PBase&cmd)
 		{
 			auto vcmd = To<Objects::Command::VisualCommand>::DynamicCast( cmd);
@@ -1465,7 +1461,7 @@ namespace UI
 			GridCell&cell = AllocateCell(vcmd,isNew);
 			cmd->Refresh(Network::ControlEnabled());
 			cell.gridCoords = coords;
-			cell.Update(camera);
+			cell.Update(visitCfg,camera);
 			if (isNew)
 				allocatedEntityCommands<<vcmd;
 		}
@@ -1479,7 +1475,7 @@ namespace UI
 
 		}
 
-		static void CollectionToCommands(CollectionTemplateRow<Objects::WWorldEntity>&context)
+		static void CollectionToCommands(const TGridConfig&cfg, CollectionTemplateRow<Objects::WWorldEntity>&context)
 		{
 			context.commands.Clear();
 			context.collection.VisitAllValues([&context](Buffer0<Objects::WWorldEntity>&entries)
@@ -1497,22 +1493,40 @@ namespace UI
 			});
 			context.collection.Clear();
 			Sorting::ByComparator::QuickSort(context.commands,Custom::CollectionCommandCompare);
-			context.Refresh();
+			context.Refresh(cfg);
 		}
+
+		TGridConfig	GetGridConfig()
+		{
+			static const float CellSize = 0.075f;
+			static const float stepY = (0.5f + 1.f) * CellSize;
+			static const float stepX = 0.86602540378443864676372317075294f * CellSize;
+
+			const float scale = UI::GetScale();
+			TGridConfig rs;
+			rs.cellSize = CellSize * scale;
+			rs.stepX = stepX * scale;
+			rs.stepY = stepY * scale;
+			return rs;
+		}
+
+		
+
 
 		void					RefreshContacts()
 		{
 			if (!showControlsAndContacts)
 				return;
+			auto cfg = GetGridConfig();
 			//this is off:
 			//currentContactListWidth = std::max(1, int((display.GetPixelAspect()-0.67f)*15));
 			const float viewPortRange = 2.f * display.GetPixelAspect();
 			const float screenRelativeRightPanel = 300.f / display.GetClientWidth();
 			const float inViewPortRange = screenRelativeRightPanel * viewPortRange;
 			const int hexOffset = 5;
-			const float leftOffset = stepX *2 * hexOffset + float(1 - (hexOffset % 2)) * stepX;
+			const float leftOffset = cfg.stepX *2 * hexOffset + float(1 - (hexOffset % 2)) * cfg.stepX;
 			const float remainder = viewPortRange - inViewPortRange - leftOffset;
-			const int iconRange = std::max(3,(int)(remainder / stepX / 2));
+			const int iconRange = std::max(3,(int)(remainder / cfg.stepX / 2));
 			currentContactListWidth = iconRange-2;
 
 
@@ -1548,8 +1562,8 @@ namespace UI
 					else
 						hostileGroups.collection.Set(key).Append(e);
 				},true);
-				CollectionToCommands(friendlyGroups);
-				CollectionToCommands(hostileGroups);
+				CollectionToCommands(cfg,friendlyGroups);
+				CollectionToCommands(cfg,hostileGroups);
 			}
 				
 
@@ -1559,9 +1573,9 @@ namespace UI
 					Tutorial::ShowMessage("Hostile Contacts");
 			#endif
 
-			animationTimeLine.Refresh();
+			animationTimeLine.Refresh(cfg);
 
-			BottomRightPanel::Refresh();
+			BottomRightPanel::Refresh(cfg);
 			//display.SetDepthTest(false,false);
 			//display.SetRasterizer(true,false);
 		}
@@ -1577,6 +1591,7 @@ namespace UI
 		{
 			if (ConfigurationMode::ReconfigureVisualCommands())	//configuration mode has its own buttons; should not be removed while active
 				return;
+			const auto cfg = GetGridConfig();
 			ClearCommands();
 
 			bool showControls = showControlsAndContacts && e
@@ -1585,6 +1600,7 @@ namespace UI
 					#endif
 					;
 
+			visitCfg = cfg;
 			if (showControlsAndContacts)
 				Objects::globalCommands.VisitMembers(&VisitAddCommand,false);
 
@@ -1603,7 +1619,7 @@ namespace UI
 				cell.gridCoords = GetFocusLocation();
 				cell.flipY = true;
 				cell.flipX = true;
-				cell.Update(camera);
+				cell.Update(cfg,camera);
 			}
 			else
 			{
@@ -1635,6 +1651,9 @@ namespace UI
 	{
 		HexGrid::Create();
 		Gauge::StaticCreate();
+
+		GlobalEvents::uiScaleChanged += OnScreenResize;	//mostly the same effect
+
 
 		//camera.location = float3(0,-100,0);
 		barProjectionCamera.retraction = float3(0,0,-120);
@@ -1795,7 +1814,7 @@ namespace UI
 
 	void	RenderCommands()
 	{
-		HexGrid::RenderCommands();
+		HexGrid::RenderCommands(HexGrid::GetGridConfig());
 		//if (!Objects::selectedEntity)
 		//{
 		//	return;

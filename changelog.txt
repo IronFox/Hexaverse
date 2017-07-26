@@ -1,5 +1,7 @@
 v0.6.5
-	+ Implemented rudimentary loading splash screen.
+	+ Added options dialog.
+	+ Added option to change UI scale.
+	+ Implemented loading splash screen.
 	+ Added help sub-menu with some new options.
 	> Idle vehicles will no longer constantly attack indestructible units.
 	> Removed the 'Construct Selected' button on vehicle plants. Simply selecting a desired turret will enqueue the chosen vehicle composition.
