@@ -9,6 +9,8 @@ namespace GlobalEvents
 						shadowQualityChanged,
 						uiScaleChanged;
 
+	extern Observable<bool>	onFullscreenChange;
+
 
 }
 

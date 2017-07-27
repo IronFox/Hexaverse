@@ -10,6 +10,11 @@
 #include "../audioInterface.h"
 #include "objectSelection.h"
 
+bool	IsFullScreen();
+void	SetFullScreen(bool isFull);
+
+
+
 namespace Menu
 {
 	Dialog::PMenu	main,help,login;
@@ -96,10 +101,11 @@ namespace Menu
 		return s;
 	}
 
-	static void AddCheckBox(const String&name,bool initial, const std::function<void(bool)>&onChange)
+	static GUI::PCheckbox AddCheckBox(const String&name,bool initial, const std::function<void(bool)>&onChange)
 	{	
 		GUI::PCheckbox c(new GUI::Checkbox("",initial,onChange));
 		AddOption(name,c);
+		return c;
 	}
 
 	static void CreateOptionsMenu()
@@ -168,6 +174,21 @@ namespace Menu
 				Configuration::Update("runtime/vsync",enabled ? 1 : 0);
 			}
 		});
+
+		{
+			GUI::PCheckbox box = AddCheckBox("Full Screen (Alt+Enter)",IsFullScreen(),[](bool enabled)
+			{
+				bool old = IsFullScreen();
+				if (old != enabled)
+					SetFullScreen(enabled);
+			});
+
+			GlobalEvents::onFullscreenChange << [box](bool fullscreen)
+			{
+				box->SetChecked(fullscreen,false);
+			};
+		}
+
 
 		if (AudioInterface::isActive)
 			AddOptionSlider("Sound Level", 0, 1.f, 0.25f,AudioInterface::GetMasterVolume(), [](float&q)

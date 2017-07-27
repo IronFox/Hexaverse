@@ -716,6 +716,8 @@ namespace ApplicationInterface
 			#endif
 
 		}
+
+		GlobalEvents::onFullscreenChange(isFull);
 	}
 
 #endif
