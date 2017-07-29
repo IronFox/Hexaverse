@@ -508,8 +508,7 @@ namespace GUI
 		std::function<void()>	onPress;
 		std::function<bool()>	check;
 
-		//String					baseLabel;
-//		TextField::SetText;
+		bool					alwaysDown = false;
 
 	protected:
 		virtual bool	ClientIsLit() const override {return IsActive() && IsEnabled() && ContainsMouse();}
@@ -529,12 +528,8 @@ namespace GUI
 		}
 
 
-
-		//void			SetText(const String&string)
-		//{
-		//	baseLabel = string;
-		//	DetectEnabledState();
-		//}
+		void			SetAlwaysDown(bool down) {alwaysDown = down;}
+		bool			IsAlwaysDown() const {return alwaysDown;}
 
 
 		void			SetOnPress(const std::function<void()>&event)
@@ -572,8 +567,8 @@ namespace GUI
 		{
 			bool lit = IsLit();
 			bool flipped = mousePressedComponent.get() == this;
-			Super::BaseRender(lit && !flipped,lit && flipped);
-			Super::RenderText(lit);
+			Super::BaseRender((lit && !flipped),(lit && flipped)  || alwaysDown);
+			Super::RenderText(lit || alwaysDown);
 		}
 
 		virtual PComponent	OnMouseDown() override
