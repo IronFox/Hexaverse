@@ -897,6 +897,8 @@ namespace GUI
 
 		virtual bool		AddComponent(const PComponent&c)
 		{
+			if (!c)
+				return false;
 			if (components.Contains(c))
 				return false;
 			components << c;
@@ -905,6 +907,7 @@ namespace GUI
 		}
 		virtual PComponent	AddNewComponent(Component*c)
 		{
+			ASSERT_NOT_NULL__(c);
 			PComponent comp(c);
 			ASSERT__(AddComponent(comp));
 			return comp;
@@ -912,7 +915,7 @@ namespace GUI
 
 		virtual bool		RemoveComponent(const PComponent&c)
 		{
-			if (c->GetParent().get() != this)
+			if (!c || c->GetParent().get() != this)
 				return false;
 			ASSERT__(components.FindAndErase(c));
 			c->SetParent(PWindow(),PComponent());
