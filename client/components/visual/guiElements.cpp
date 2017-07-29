@@ -1678,7 +1678,11 @@ namespace GUI
 		const float wantPixelImageHeight = pixelComponentSize.x / imageResolution.GetFlatAspect();
 		const float wantRelativeHeight = wantPixelImageHeight / float(ViewPortHeight());
 
-		ASSERT__(!isnan(wantRelativeHeight));
+		if (isnan(wantRelativeHeight))
+		{
+			DBG_FATAL__("Relative height is nan");
+			return -1;	//no change
+		}
 
 		return wantRelativeHeight;
 	}
