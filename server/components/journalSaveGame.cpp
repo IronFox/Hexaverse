@@ -1344,7 +1344,7 @@ namespace Journal
 		catch (const Except::Exception&ex)
 		{
 			if (ex.hasLocation)
-				Except::fatal(ex.location,ex.what());
+				Except::TriggerFatal(ex.location,ex.what());
 			else
 				FATAL__(ex.what());
 		}
