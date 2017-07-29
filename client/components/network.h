@@ -94,7 +94,7 @@ namespace Network
 
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id);
 	void					ConnectTo(const Host&);
-
+	bool DidVisit(const TUniqueID&worldID);
 	void SaveWorldAccessTokens();
 
 	void LoadWorldAccessTokens();

@@ -63,11 +63,37 @@ namespace Network
 	Timer::Time		phaseStarted;
 	bool			newRoundRequested = false;
 
+	GenericHashSet<TUniqueID>	visitedWorldMap;
 
 
+	void RegisterVisited(const TUniqueID&worldID)
+	{
+		if (visitedWorldMap.SetNew(worldID))
+			SaveHosts();
+	}
+
+	bool DidVisit(const TUniqueID&worldID)
+	{
+		return visitedWorldMap.IsSet(worldID);
+	}
 	
 	void LoadHosts()
 	{
+		try
+		{
+			StringFile visitedWorlds;
+			visitedWorlds.Open(RuntimeConfig::ConfigFile("visitedWorlds.txt"));
+			String visited;
+			while (visitedWorlds >> visited)
+			{
+				TUniqueID id;
+				if (id.Decode(visited))
+					visitedWorldMap.Set(id);
+			}
+		}
+		catch (...)
+		{}
+
 		try
 		{
 			StringFile hosts;
@@ -82,6 +108,20 @@ namespace Network
 
 	void	SaveHosts()
 	{
+		try
+		{
+			StringFile visited;
+			visited.Create(RuntimeConfig::ConfigFile("visitedWorlds.txt"));
+			static Array<TUniqueID>	 worlds;
+			visitedWorldMap.exportKeys(worlds);
+			foreach (worlds,world)
+				visited << world->ToFullString() << nl;
+			visited.Close();
+		}
+		catch (const std::exception&ex)
+		{
+			LogException(nullptr,ex);
+		}
 		try
 		{
 			StringFile hosts;
@@ -787,6 +827,7 @@ namespace Network
 			haveFaction = cr.startFactionTypes != 0;
 			if (haveFaction)
 			{
+				RegisterVisited(worldID);
 				amSpectator = cr.startFactionTypes == Protocol::FactionType::SpectatorFaction;
 				#ifdef HAS_WINDOW
 					Objects::resourceView = !amSpectator;
