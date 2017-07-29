@@ -32,6 +32,7 @@ namespace GUI
 		DECLARE_POINTER_CLASS(Image);
 		DECLARE_POINTER_CLASS(Panel);
 			DECLARE_POINTER_CLASS(ButtonPanel);
+			DECLARE_POINTER_CLASS(TabCollection);
 			DECLARE_POINTER_CLASS(Window);
 	
 
@@ -1057,6 +1058,135 @@ namespace GUI
 		}
 
 
+
+	};
+
+
+	class TabCollection : public Panel
+	{
+		typedef Panel Super;
+
+	protected:
+		
+	public:
+		typedef std::function<void()>	FOnTabChange;
+
+		/**
+		Adds a new tab to the collection to the right of the local collection.
+		If this is the first tab, then it is selected immediately.
+		@param caption Caption to use for the tab. May be empty or already in use (but probably should not)
+		@return Handle to the panel of the new tab. The panel is anchored to fill most of the local collection area
+		*/
+		PPanel			AddTab(const String&caption);
+		/**
+		Retrieves the index of the specified tab.
+		This method may be used to determine if a panel belongs to this collection.
+		@param tabPanel Panel of the tab to find the index of
+		@return Index of the found tab, or InvalidIndex if it was not found
+		*/
+		index_t			GetTabIndex(const PPanel&tabPanel)	const;
+		
+		#if 0	//too complicated for now. may add later
+		/**
+		Changes the order of tabs such that the specified tab is moved to the specified location.
+		The tab is effectively removed from its old location and inserted into the new location.
+		If it was previously active, then it still is now.
+		The method triggers a fatal exception if the specified panel is not found.
+		@param tabPanel Panel of the tab to set the index of
+		@param to The index to move the panel to
+		*/
+		void			SetTabIndex(const PPanel&tabPanel, index_t to);
+		#endif /*0*/
+
+		/**
+		Updates the caption associated with the specified tab panel.
+		The method triggers a fatal exception if the specified panel is not found.
+		*/
+		void			SetCaptionOf(const PPanel&, const String&caption);
+		/**
+		Retrieves the caption of the tab associated with the specified panel.
+		The method triggers a fatal exception if the specified panel is not found.
+		*/
+		const String&	GetCaptionOf(const PPanel&)	const;
+		/**
+		Fetches the panel associated with the currently active tab.
+		May return an empty pointer if the collection is currently empty.
+		*/
+		PPanel			GetActiveTab() const;
+		/**
+		Fetches the caption of the active tab.
+		May return an empty string if the collection is currently empty.
+		*/
+		const String&	GetActiveCaption() const;
+		/**
+		Fetches the index of the active tab.
+		May return InvalidIndex if the collection is currently empty.
+		*/
+		index_t			GetActiveTabIndex() const	{return activeIndex;}
+		/**
+		Changes the currently active tab to the one associated with the specified panel.
+		The method triggers a fatal exception if the specified panel is neither null nor found.
+		Nothing changes or is triggered if the specified tab is already active or null.
+		@param tabPanel Panel of the tab to activate
+		@param triggerCallback Set true to invoke any set tab-change callback function
+		*/
+		void			SetActiveTab(const PPanel&tabPanel, bool triggerCallback=true)		{if (tabPanel) SetActiveTab(GetTabIndex(tabPanel),triggerCallback);}
+		/**
+		Defines a new callback function to call whenever the active tab changes.
+		*/
+		void			SetOnTabChange(const FOnTabChange&onChange)	{onTabChange = onChange;}
+
+		#if 0
+		/**
+		Removes the tab associated with the specified panel from the local collection.
+		The operation may trigger an on-tab-change event.
+		The method triggers a fatal exception if the specified panel is neither null nor found.
+		*/
+		void			RemoveTab(const PPanel&);
+		#endif /*0*/
+
+		/**
+		Removes all tabs in the local collection.
+		The operation may trigger an on-tab-change event.
+		@return true if any tabs were removed, false otherwise
+		*/
+		bool			ClearTabs();
+
+		bool			IsEmpty() const {return tabs.IsEmpty();}
+		bool			IsNotEmpty() const {return tabs.IsNotEmpty();}
+		count_t			CountTabs() const {return tabs.Count();}
+
+	protected:
+		virtual void	OnTabChange();
+
+	private:
+		virtual bool	AddComponent(const PComponent&c) override	{return false;}
+		virtual bool	RemoveComponent(const PComponent&c) override {return false;}
+		virtual bool	ClearComponents() override {return false;}
+
+
+
+		struct TTab
+		{
+			PPanel	panel;
+			PButton	button;
+
+			friend void swap(TTab&a, TTab&b)
+			{
+				a.panel.swap(b.panel);
+				a.button.swap(b.button);
+			}
+		};
+
+		PPanel			buttonPanel;
+
+		FOnTabChange	onTabChange;
+		Buffer0<TTab>	tabs;
+		TTab			active;
+		index_t			activeIndex = InvalidIndex;
+
+		void			SetActiveTab(index_t, bool triggerCallback);
+		void			Setup();
 
 	};
 

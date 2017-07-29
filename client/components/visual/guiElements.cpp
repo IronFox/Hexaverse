@@ -1998,6 +1998,150 @@ namespace GUI
 		return To<Window>::Cast(shared_from_this());
 	}
 
+
+
+
+
+
+	void			TabCollection::Setup()
+	{
+		if (buttonPanel)
+			return;
+		this->fillBackground = false;
+		buttonPanel.reset(new Panel());
+		buttonPanel->SetAutomaticHeight(true);
+		buttonPanel->fillBackground = false;
+		buttonPanel->SetAutoHeightSpacing(0.02f);
+		{
+			auto mod = buttonPanel->ModifyAnchorConfig();
+			mod.Left().Set(0);
+			mod.Right().Set(0);
+			mod.Top().Set(0);
+		}
+
+		Super::AddComponent(buttonPanel);
+	}
+
+
+	PPanel			TabCollection::AddTab(const String&caption)
+	{
+		Setup();
+
+		auto&tab = tabs.Append();
+		tab.panel.reset(new Panel());
+		tab.panel->edges.top = false;
+		{
+			auto mod = tab.panel->ModifyAnchorConfig();
+			mod.Left().Set(0);
+			mod.Right().Set(0);
+			mod.Top().Set(buttonPanel,0);
+			mod.Bottom().Set(0);
+		}
+		WPanel p = tab.panel;
+		tab.button.reset(new Button(caption,[this,p]()
+		{
+			SetActiveTab(p.lock());
+		}));
+
+		{
+			auto mod = tab.button->ModifyAnchorConfig();
+			mod.Left().SetLastOf(buttonPanel,0.01f);
+			mod.Top().Set(0);
+		}
+		tab.button->SetVerticalPadding(0.25f);
+		tab.button->LockToIdealWidth();
+		buttonPanel->AddComponent(tab.button);
+
+		if (tabs.Count() == 1)
+			SetActiveTab(0,true);
+		return tab.panel;
+	}
+
+	index_t			TabCollection::GetTabIndex(const PPanel&tabPanel)	const
+	{
+		if (!tabPanel)
+			return InvalidIndex;
+		for (index_t i = 0; i < tabs.Count(); i++)
+			if (tabs[i].panel == tabPanel)
+				return i;
+		return InvalidIndex;
+	}
+
+	void			TabCollection::SetCaptionOf(const PPanel&tabPanel, const String&caption)
+	{
+		if (!tabPanel)
+			return;
+		index_t at = GetTabIndex(tabPanel);
+		ASSERT__(at != InvalidIndex);
+		tabs[at].button->SetText(caption);
+	}
+
+	const String&	TabCollection::GetCaptionOf(const PPanel&tabPanel)	const
+	{
+		index_t at = GetTabIndex(tabPanel);
+		ASSERT__(at != InvalidIndex);
+		return tabs[at].button->GetText().First();
+	}
+
+	PPanel			TabCollection::GetActiveTab() const
+	{
+		return active.panel;
+	}
+
+	const String&	TabCollection::GetActiveCaption() const
+	{
+		static const String empty;
+		if (active.button)
+			return active.button->GetText().First();
+		return empty;
+	}
+
+	bool			TabCollection::ClearTabs()
+	{
+		if (!buttonPanel->HasComponents())
+			return false;
+		Super::RemoveComponent(active.panel);
+		buttonPanel->ClearComponents();
+		tabs.Clear();
+		activeIndex = InvalidIndex;
+		active = TTab();
+		OnTabChange();
+		return true;
+	}
+
+	/*virtual*/ void	TabCollection::OnTabChange()
+	{
+		if (onTabChange)
+			onTabChange();
+	}
+
+
+	void			TabCollection::SetActiveTab(index_t tabIndex, bool triggerCallback)
+	{
+		if (tabIndex == activeIndex)
+			return;
+		ASSERT__(tabIndex < tabs.Count());
+
+		Super::RemoveComponent(active.panel);
+		if (active.button)
+		{
+			active.button->SetAlwaysDown(false);
+			active.button->edges = Quad<bool>(true);
+			active.button->ModifyAnchorConfig().Bottom().Unset();
+		}
+
+		activeIndex = tabIndex;
+		active = tabs[tabIndex];
+		{
+			active.button->SetAlwaysDown(true);
+			active.button->ModifyAnchorConfig().Bottom().Set(0);
+			active.button->edges = Quad<bool>(true,false,true,true);
+		}
+		Super::AddComponent(active.panel);
+	}
+
+
+
 }
 
 #endif
