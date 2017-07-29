@@ -469,8 +469,9 @@ namespace GUI
 	{
 		if (mousePressedComponent)
 		{
-			mousePressedComponent->OnMouseUp();
+			auto up = mousePressedComponent;
 			mousePressedComponent.reset();
+			up->OnMouseUp();
 		}
 
 	}
@@ -1676,6 +1677,8 @@ namespace GUI
 
 		const float wantPixelImageHeight = pixelComponentSize.x / imageResolution.GetFlatAspect();
 		const float wantRelativeHeight = wantPixelImageHeight / float(ViewPortHeight());
+
+		ASSERT__(!isnan(wantRelativeHeight));
 
 		return wantRelativeHeight;
 	}
