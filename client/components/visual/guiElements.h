@@ -33,6 +33,7 @@ namespace GUI
 		DECLARE_POINTER_CLASS(Panel);
 			DECLARE_POINTER_CLASS(ButtonPanel);
 			DECLARE_POINTER_CLASS(TabCollection);
+			DECLARE_POINTER_CLASS(TabBar);
 			DECLARE_POINTER_CLASS(Window);
 	
 
@@ -206,7 +207,7 @@ namespace GUI
 
 	protected:
 		static void		Darken(const Rect<>&rect, float alpha=0.9f, bool flush=false);
-		static void		RenderArea(const Rect<>&rect, bool lit, bool flip, const float3&backgroundTone, const Quad<bool>&edges);
+		static void		RenderArea(const Rect<>&rect, bool lit, bool flip, const float3&backgroundTone, const Quad<bool>&edges, float lowOpacity=1, float highOpacity=1);
 		virtual bool	ClientIsLit() const {return true;}
 
 
@@ -325,6 +326,8 @@ namespace GUI
 
 		Quad<bool>		edges = Quad<bool>(true);
 		bool			fillBackground = true;
+		float			bottomOpacity = 1.f,
+						topOpacity = 1.f;
 		float3			backgroundTone = float3(1);
 
 		virtual void	Render() override	{if (fillBackground) BaseRender(false,false);}
@@ -568,7 +571,7 @@ namespace GUI
 		{
 			bool lit = IsLit();
 			bool flipped = mousePressedComponent.get() == this;
-			Super::BaseRender((lit && !flipped),(lit && flipped)  || alwaysDown);
+			Super::BaseRender((lit && !flipped)  || alwaysDown,(lit && flipped));
 			Super::RenderText(lit || alwaysDown);
 		}
 
@@ -606,6 +609,16 @@ namespace GUI
 		//String					baseLabel;
 //		TextField::SetText;
 
+		void			Setup()
+		{
+			Super::alignCenter = false;
+			Super::ScaleVerticalPadding(0.5f);
+			Super::fillBackground = false;
+			auto padding = Super::GetPadding();
+			padding.left = 2;
+			Super::SetPadding(padding);
+		}
+
 	protected:
 		virtual bool	ClientIsLit() const override {return IsActive() && IsEnabled() && ContainsMouse();}
 		virtual float	GetIdealWidth() const override;
@@ -613,17 +626,13 @@ namespace GUI
 	public:
 		/**/			Checkbox()
 		{
-			Super::alignCenter = false;
-			Super::ScaleVerticalPadding(0.5f);
-			Super::fillBackground = false;
+			Setup();
 			SetText("");
 		}
 
 		/**/			Checkbox(const String&text, bool checked, std::function<void(bool)> onChanged = std::function<void(bool)>(), std::function<bool()> check = std::function<bool()>() )
 		{
-			Super::alignCenter = false;
-			Super::fillBackground = false;
-			Super::ScaleVerticalPadding(0.5f);
+			Setup();
 			this->onChanged = onChanged;
 			this->check = check;
 			isChecked = checked;
@@ -860,6 +869,7 @@ namespace GUI
 		*/
 		float			maxHeight = 0.8f;
 	public:
+		/**/			Panel()	{topOpacity = 0.75f; bottomOpacity = 0.75f;}
 		bool			DeterminesHeightAutomatically() const {return autoHeight;}
 		void			SetAutomaticHeight(bool b) {if (autoHeight == b) return; autoHeight = b; this->InvalidateAutoLayout();}
 		float			GetAutoHeightSpacing() const {return autoHeightSpacing;}
@@ -1062,12 +1072,81 @@ namespace GUI
 	};
 
 
+	class TabBar : public Panel
+	{
+		typedef Panel Super;
+	public:
+		typedef std::function<void()>	FOnTabChange;
+
+		/**/			TabBar();
+		/**
+		Adds a new tab to the bar, to the right of the last added tab (if any).
+		If this is the first tab, then it is selected immediately.
+		@param caption Caption to use for the tab. May be empty or already in use (but probably should not)
+		@return Handle to the panel of the new tab. The panel is anchored to fill most of the local collection area
+		*/
+		PButton			AddTab(const String&caption);
+		/**
+		Retrieves the index of the specified tab.
+		This method may be used to determine if a button belongs to this bar.
+		@param tabButton Button of the tab to find the index of
+		@return Index of the found tab, or InvalidIndex if it was not found
+		*/
+		index_t			GetTabIndex(const PButton&tabButton)	const;
+		/**
+		Fetches the button associated with the currently active tab.
+		May return an empty pointer if the bar is currently empty.
+		*/
+		PButton			GetActiveTab() const;
+		/**
+		Fetches the index of the active tab.
+		May return InvalidIndex if the collection is currently empty.
+		*/
+		index_t			GetActiveTabIndex() const	{return activeIndex;}
+		/**
+		Changes the currently active tab to the one associated with the specified button.
+		The method triggers a fatal exception if the specified panel is neither null nor found.
+		Nothing changes or is triggered if the specified tab is already active or null.
+		@param tabPanel Panel of the tab to activate
+		@param triggerCallback Set true to invoke any set tab-change callback function
+		*/
+		void			SetActiveTab(const PButton&tabButton, bool triggerCallback=true)		{if (tabButton) SetActiveTab(GetTabIndex(tabButton),triggerCallback);}
+		/**
+		Defines a new callback function to call whenever the active tab changes.
+		*/
+		void			SetOnTabChange(const FOnTabChange&onChange)	{onTabChange = onChange;}
+
+		/**
+		Removes all tabs in the local collection.
+		The operation may trigger an on-tab-change event.
+		@return true if any tabs were removed, false otherwise
+		*/
+		bool			ClearTabs()	{if (!Super::HasComponents()) return false; Super::ClearComponents(); active.reset(); activeIndex = InvalidIndex; OnTabChange(); return true;}
+
+		bool			IsEmpty() const {return !Super::HasComponents();}
+		bool			IsNotEmpty() const {return Super::HasComponents();}
+		count_t			CountTabs() const {return Super::CountComponents();}
+	
+	protected:
+		virtual void	OnTabChange();
+
+	private:
+		static void		ConfigureInactive(const PButton&);
+		static void		ConfigureActive(const PButton&);
+		virtual bool	AddComponent(const PComponent&c) override	{return false;}
+		virtual bool	RemoveComponent(const PComponent&c) override {return false;}
+		virtual bool	ClearComponents() override {return false;}
+
+		FOnTabChange	onTabChange;
+		PButton			active;
+		index_t			activeIndex = InvalidIndex;
+
+		void			SetActiveTab(index_t, bool triggerCallback);
+	};
+
 	class TabCollection : public Panel
 	{
 		typedef Panel Super;
-
-	protected:
-		
 	public:
 		typedef std::function<void()>	FOnTabChange;
 
@@ -1134,7 +1213,7 @@ namespace GUI
 		/**
 		Defines a new callback function to call whenever the active tab changes.
 		*/
-		void			SetOnTabChange(const FOnTabChange&onChange)	{onTabChange = onChange;}
+		void			SetOnTabChange(const FOnTabChange&onChange);
 
 		#if 0
 		/**
@@ -1178,7 +1257,7 @@ namespace GUI
 			}
 		};
 
-		PPanel			buttonPanel;
+		PTabBar			tabBar;
 
 		FOnTabChange	onTabChange;
 		Buffer0<TTab>	tabs;

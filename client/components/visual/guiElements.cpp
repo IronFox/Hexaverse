@@ -1038,26 +1038,27 @@ namespace GUI
 	}
 
 
-	/*static*/ void				Component::RenderArea(const Rect<>&rect, bool lit, bool flip, const float3&backgroundTone, const Quad<bool>&edges)
+	/*static*/ void				Component::RenderArea(const Rect<>&rect, bool lit, bool flip, const float3&backgroundTone, const Quad<bool>&edges, float lowOpacity/*=1*/, float highOpacity/*=1*/)
 	{
-		float low = 0.55f;  //0.3;
+		float low = 0.1f;  //0.3;
 		float high = lit ? 0.89f : 0.77f;   //0.8f : 0.6;
+		high *= high;
 		if (flip)
 			std::swap(low,high);
 
 		//low = sqrt(low);
-		float4 lowColor(low,low,low,low);
+		float4 lowColor(low,low,low,lowOpacity);
 		Vec::stretch(lowColor.rgb,backgroundTone,lowColor.rgb);
 		//high = sqrt(high);
-		float4 highColor(high,high,high,high);
+		float4 highColor(high,high,high,highOpacity);
 		Vec::stretch(highColor.rgb,backgroundTone,highColor.rgb);
 
 		SurfaceRenderer::Rasterize(float2(rect.x.min,rect.y.min), lowColor, float2(rect.x.max,rect.y.min),lowColor, float2(rect.x.max,rect.y.max), highColor, float2(rect.x.min,rect.y.max),highColor);
 		SurfaceRenderer::Flush();
 		
 
-		float4 lineLowColor(backgroundTone,low*low);
-		float4 lineHighColor(backgroundTone,high*high);
+		float4 lineLowColor(backgroundTone*0.5f,lowOpacity*0.5f);
+		float4 lineHighColor(backgroundTone*0.5f,highOpacity*0.5f);
 	
 		if (edges.bottom)
 			LineRenderer::Rasterize(float3(rect.x.min,rect.y.min,0.f), lineLowColor, float3(rect.x.max,rect.y.min,0.f),lineLowColor);
@@ -1169,7 +1170,7 @@ namespace GUI
 
 	void				Box::BaseRender(bool lit, bool flipped)
 	{
-		RenderArea(GetRect(),lit,flipped,backgroundTone,edges);
+		RenderArea(GetRect(),lit,flipped,backgroundTone,edges,bottomOpacity,topOpacity);
 	}
 
 	static const float CellSize = 0.01f;
@@ -2000,26 +2001,120 @@ namespace GUI
 
 
 
+	/**/			TabBar::TabBar()
+	{
+		SetAutomaticHeight(true);
+		fillBackground = false;
+		SetAutoHeightSpacing(0.02f);
+
+	}
+
+	
+	PButton			TabBar::AddTab(const String&caption)
+	{
+		//auto&tab = tabs.Append();
+		PButton tab(new Button(caption));
+		WButton b = tab;
+		tab->SetOnPress([this,b]()
+		{
+			SetActiveTab(b.lock());
+		});
+
+		{
+			auto mod = tab->ModifyAnchorConfig();
+			if (Super::HasComponents())
+				mod.Left().Set(Super::GetComponents().Last(),0.01f);
+			else
+				mod.Left().Set(0);
+			mod.Top().Set(0);
+		}
+		tab->SetVerticalPadding(0.25f);
+		tab->LockToIdealWidth();
+
+		ConfigureInactive(tab);
+
+		Super::AddComponent(tab);
+
+		if (Super::CountComponents() == 1)
+			SetActiveTab(0,true);
+		return tab;
+	}
+
+	index_t			TabBar::GetTabIndex(const PButton&tabButton)	const
+	{
+		if (!tabButton)
+			return InvalidIndex;
+		return Super::GetComponents().GetIndexOf(tabButton);
+	}
+
+	/*virtual*/ void	TabBar::OnTabChange()
+	{
+		if (onTabChange)
+			onTabChange();
+	}
+
+	/*static*/ void		TabBar::ConfigureInactive(const PButton&active)
+	{
+		active->SetAlwaysDown(false);
+		active->edges = Quad<bool>(true);
+		active->bottomOpacity = 1;
+		active->ModifyAnchorConfig().Bottom().Unset();
+		active->topOpacity = 0.85f;
+		active->bottomOpacity = 0.85f;
+		active->SetColor(float4(1,1,1,0.85f));
+
+	}
+	/*static*/ void		TabBar::ConfigureActive(const PButton&active)
+	{
+		active->SetAlwaysDown(true);
+		active->ModifyAnchorConfig().Bottom().Set(0);
+		active->topOpacity = 1.f;
+		active->bottomOpacity = 0;
+		active->edges = Quad<bool>(true,false,true,true);
+		active->SetColor(float4(1));
+	}
+
+
+	void			TabBar::SetActiveTab(index_t tabIndex, bool triggerCallback)
+	{
+		if (tabIndex == activeIndex)
+			return;
+		ASSERT__(tabIndex < CountComponents());
+		if (active)
+		{
+			ConfigureInactive(active);
+		}
+
+		activeIndex = tabIndex;
+		active = To<Button>::Cast( GetComponents()[tabIndex] );
+		{
+			ConfigureActive(active);
+		}
+		if (triggerCallback)
+			OnTabChange();
+	}
 
 
 
 	void			TabCollection::Setup()
 	{
-		if (buttonPanel)
+		if (tabBar)
 			return;
 		this->fillBackground = false;
-		buttonPanel.reset(new Panel());
-		buttonPanel->SetAutomaticHeight(true);
-		buttonPanel->fillBackground = false;
-		buttonPanel->SetAutoHeightSpacing(0.02f);
+		tabBar.reset(new TabBar());
 		{
-			auto mod = buttonPanel->ModifyAnchorConfig();
+			auto mod = tabBar->ModifyAnchorConfig();
 			mod.Left().Set(0);
 			mod.Right().Set(0);
 			mod.Top().Set(0);
 		}
+		tabBar->SetOnTabChange([this]()
+		{
+			if (tabBar->GetActiveTabIndex() != InvalidIndex)
+				this->SetActiveTab(tabBar->GetActiveTabIndex(),true);
+		});
 
-		Super::AddComponent(buttonPanel);
+		Super::AddComponent(tabBar);
 	}
 
 
@@ -2034,26 +2129,10 @@ namespace GUI
 			auto mod = tab.panel->ModifyAnchorConfig();
 			mod.Left().Set(0);
 			mod.Right().Set(0);
-			mod.Top().Set(buttonPanel,0);
+			mod.Top().Set(tabBar,0);
 			mod.Bottom().Set(0);
 		}
-		WPanel p = tab.panel;
-		tab.button.reset(new Button(caption,[this,p]()
-		{
-			SetActiveTab(p.lock());
-		}));
-
-		{
-			auto mod = tab.button->ModifyAnchorConfig();
-			mod.Left().SetLastOf(buttonPanel,0.01f);
-			mod.Top().Set(0);
-		}
-		tab.button->SetVerticalPadding(0.25f);
-		tab.button->LockToIdealWidth();
-		buttonPanel->AddComponent(tab.button);
-
-		if (tabs.Count() == 1)
-			SetActiveTab(0,true);
+		tab.button = tabBar->AddTab(caption);
 		return tab.panel;
 	}
 
@@ -2096,12 +2175,17 @@ namespace GUI
 		return empty;
 	}
 
+	void			TabCollection::SetOnTabChange(const FOnTabChange&onChange)
+	{
+		onTabChange = onChange;
+	}
+
 	bool			TabCollection::ClearTabs()
 	{
-		if (!buttonPanel->HasComponents())
+		if (tabs.IsEmpty())
 			return false;
 		Super::RemoveComponent(active.panel);
-		buttonPanel->ClearComponents();
+		tabBar->ClearTabs();
 		tabs.Clear();
 		activeIndex = InvalidIndex;
 		active = TTab();
@@ -2122,22 +2206,13 @@ namespace GUI
 			return;
 		ASSERT__(tabIndex < tabs.Count());
 
+		if (tabBar)
+			tabBar->SetActiveTab(tabs[tabIndex].button,false);
 		Super::RemoveComponent(active.panel);
-		if (active.button)
-		{
-			active.button->SetAlwaysDown(false);
-			active.button->edges = Quad<bool>(true);
-			active.button->ModifyAnchorConfig().Bottom().Unset();
-		}
-
 		activeIndex = tabIndex;
-		active = tabs[tabIndex];
-		{
-			active.button->SetAlwaysDown(true);
-			active.button->ModifyAnchorConfig().Bottom().Set(0);
-			active.button->edges = Quad<bool>(true,false,true,true);
-		}
 		Super::AddComponent(active.panel);
+		if (triggerCallback)
+			OnTabChange();
 	}
 
 
