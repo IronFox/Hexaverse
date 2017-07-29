@@ -395,20 +395,28 @@ namespace GUI
 		float			textHeight = 1.f;
 		float			zoom = 1.f;
 		bool			widthLockedToIdeal=false;
+		bool			heightLockedToIdeal=true;
+		Quad<float>		padding;	//Vertical spacing is measured in multiples of line-heights, horizontal in multiples of X-letter-widths
+
 		bool			UpdateIdealWidth();
-		float			extraSpacing = 0.75f;	//!< Vertical extra spacing in multiples of line-height
+
+		void			ReWrapSetHeight()
+		{
+			ReWrap();
+			if (heightLockedToIdeal) 
+				SetHeight(textHeight);
+		}
 
 	protected:
 		void			RenderText(bool lit);
 
 		virtual float	GetIdealWidth() const;
 		virtual void	OnTextChange() {};
-		virtual void	OnWidthChange() {ReWrap();SetHeight(textHeight);}
+		virtual void	OnWidthChange() {ReWrapSetHeight();}
 		virtual void	OnScreenSizeOrUIScaleChange() override
 		{
 			Super::OnScreenSizeOrUIScaleChange();
-			ReWrap();
-			SetHeight(textHeight);
+			ReWrapSetHeight();
 		}
 
 		virtual float	GetContentHeight() const override;
@@ -418,15 +426,24 @@ namespace GUI
 
 		bool			alignCenter = true;
 		
+		/**/			TextField()
+		{
+			padding.bottom = padding.top = 0.75f;
+			padding.left = padding.right = 1;
+		}
+
 		/**
 		Sets the extra spacing at the top and bottom in multiples of line heights. Default is 0.75
 		*/
-		void			SetExtraSpacing(float spacing)	{extraSpacing = spacing;ReWrap();SetHeight(textHeight);}
-		float			GetExtraSpacing() const {return extraSpacing;}
+		void			SetVerticalPadding(float topAndBottom)	{SetVerticalPadding(topAndBottom,topAndBottom);}
+		void			SetVerticalPadding(float top, float bottom)	{padding.top = top; padding.bottom = bottom; ReWrapSetHeight();}
+		void			ScaleVerticalPadding(float factor)			{padding.bottom *= factor; padding.top *= factor; ReWrapSetHeight();}
+		void			SetPadding(const Quad<float>&padding)		{this->padding = padding; if (this->widthLockedToIdeal) SetToIdealWidth(); ReWrapSetHeight();}
+		const Quad<float>&GetPadding() const {return padding;}
 
 		void			SetColor(const float4&color)	{this->color = color;}
 		void			SetColor(float r, float g, float b, float a = 1.f)	{this->color = float4(r,g,b,a);}
-		void			SetLocalFontScale(float zoom)	{this->zoom = zoom; ReWrap();UpdateDynamicSize();OnTextChange();}
+		void			SetLocalFontScale(float zoom)	{this->zoom = zoom; ReWrap(); UpdateDynamicSize();OnTextChange();}
 		float			GetLocalFontScale() const {return zoom;}
 		float			GetTotalFontScale() const;
 
@@ -450,8 +467,16 @@ namespace GUI
 			OnTextChange();
 		}
 
-		void			SetIdealWidth();
-		void			LockIdealWidth(bool doLock=true)	{widthLockedToIdeal = doLock; if (doLock) SetIdealWidth();}
+		const Array<String>&GetText() const {return rawText;}
+
+		void			SetToIdealWidth();
+
+		float			GetTextHeight() const {return textHeight;}
+
+		void			LockToIdealWidth(bool doLock=true)	{widthLockedToIdeal = doLock; if (doLock) SetToIdealWidth();}
+		bool			IsLockedToIdealWidth() const {return widthLockedToIdeal;}
+		void			LockToIdealHeight(bool doLock=true)	{heightLockedToIdeal = doLock; if (doLock) SetHeight(textHeight);}
+		bool			IsLockedToIdealHeight() const {return heightLockedToIdeal;}
 
 		virtual bool	UpdateDynamicSize() override;
 		virtual void	Render() override;
@@ -472,7 +497,7 @@ namespace GUI
 			Super::fillBackground = false;
 			Super::SetLocalFontScale(scale);
 			SetText(text);
-			SetIdealWidth();
+			SetToIdealWidth();
 		}
 	};
 
@@ -500,7 +525,7 @@ namespace GUI
 			this->onPress = onPress;
 			this->check = check;
 			SetText(text);
-			SetIdealWidth();
+			SetToIdealWidth();
 		}
 
 
@@ -593,7 +618,7 @@ namespace GUI
 		/**/			Checkbox()
 		{
 			Super::alignCenter = false;
-			Super::SetExtraSpacing(Super::GetExtraSpacing() / 2);
+			Super::ScaleVerticalPadding(0.5f);
 			Super::fillBackground = false;
 			SetText("");
 		}
@@ -602,12 +627,12 @@ namespace GUI
 		{
 			Super::alignCenter = false;
 			Super::fillBackground = false;
-			Super::SetExtraSpacing(Super::GetExtraSpacing() / 2);
+			Super::ScaleVerticalPadding(0.5f);
 			this->onChanged = onChanged;
 			this->check = check;
 			isChecked = checked;
 			SetText(text);
-			SetIdealWidth();
+			SetToIdealWidth();
 		}
 
 		void			SetChecked(bool checked, bool doSignal = true)

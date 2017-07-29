@@ -54,7 +54,7 @@ namespace Menu
 		p->AddComponent(l);
 		p->AddComponent(c);
 
-		l->SetExtraSpacing( 0 );
+		l->SetVerticalPadding( 0 );
 		l->fillBackground = false;
 		l->alignCenter = false;
 		{

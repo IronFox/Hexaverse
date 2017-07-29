@@ -33,7 +33,7 @@
 		}
 		label->SetText(text);
 		label->SetLocalFontScale(zoom);
-		label->SetExtraSpacing( 0);
+		label->SetVerticalPadding( 0);
 		return label;
 	};
 
@@ -415,8 +415,8 @@
 			
 			}));
 			forget->SetLocalFontScale(forget->GetLocalFontScale() * 0.9f);
-			forget->SetExtraSpacing(forget->GetExtraSpacing() * 0.5f);
-			forget->LockIdealWidth();
+			forget->ScaleVerticalPadding(0.5f);
+			forget->LockToIdealWidth();
 			{
 				auto cfg = forget->GetAnchorConfig();
 				cfg.Top().Set(0.f);
@@ -492,7 +492,7 @@
 				mod.Top().SetLastOf(Dialog::serverChoice,0.025f,GUI::TAnchor::RelativeToScreen);
 				mod.Left().Set(0.f);
 			}
-			b->LockIdealWidth();
+			b->LockToIdealWidth();
 
 			Dialog::serverChoice->AddComponent( b );
 			

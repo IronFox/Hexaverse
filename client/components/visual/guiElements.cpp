@@ -1539,8 +1539,9 @@ namespace GUI
 				w1 += CharWidth(*c);
 			w = std::max(w,w1);
 		}
+		w += textout.GetScaledWidth('X') * (padding.left + padding.right);
 		textout.PopState();
-		return w/ 0.85f;
+		return w;
 	}
 
 	bool			TextField::UpdateIdealWidth()
@@ -1552,7 +1553,7 @@ namespace GUI
 		return changed;
 	}
 
-	void			TextField::SetIdealWidth()
+	void			TextField::SetToIdealWidth()
 	{
 		if (UpdateIdealWidth())
 			InvalidateAutoLayout();
@@ -1563,7 +1564,7 @@ namespace GUI
 
 	/*virtual override*/ float		TextField::GetContentHeight() const
 	{
-		return textHeight;
+		return heightLockedToIdeal ? textHeight : -1;
 	}
 
 	/*virtual override*/ bool	TextField::UpdateDynamicSize()
@@ -1595,20 +1596,24 @@ namespace GUI
 			wrapf(raw,width*0.9f,CharWidth,wrapped);
 			wrappedText.MoveAppend(wrapped);
 		}
+		if (wrappedText.IsEmpty())
+			wrappedText.Append();	//at least one empty line
 		lineAt.SetSize(wrappedText.Count());
 		const float lineHeight = textout.GetScaledHeight();
-		const float y = -lineHeight*(extraSpacing);
+		const float y = -lineHeight*(padding.top);
+		const float leftPadding = textout.GetScaledWidth('X') * padding.left;
 		for (index_t i = 0; i < lineAt.Count(); i++)
 		{
 			lineAt[i] =
 				float2(
-					alignCenter ? 
+					
+					(	alignCenter ? 
 						center - textout.QueryScaledWidth(wrappedText[i])*0.5f
 						:
-						0,
+						leftPadding),
 				y - lineHeight * (i));
 		}
-		textHeight = textout.GetScaledHeight() * (float(wrappedText.Count()) + extraSpacing*2.f);
+		textHeight = textout.GetScaledHeight() * (float(wrappedText.Count()) + padding.top + padding.bottom);
 		textout.PopState();
 	}
 

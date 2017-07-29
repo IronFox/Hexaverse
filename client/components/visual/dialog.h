@@ -247,7 +247,7 @@ namespace Dialog
 			{
 				GUI::PLabel label(new GUI::Label());
 				label->SetText(title);
-				label->SetExtraSpacing( 0.1f );
+				label->SetVerticalPadding( 0.1f );
 				Super::AnchorBelowPrevious(label,0.015f,0.f);
 			}
 		}
