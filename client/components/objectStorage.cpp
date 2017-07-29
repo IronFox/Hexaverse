@@ -12,7 +12,7 @@ namespace Objects
 	void	Storage::Clear()
 	{
 		objects.Clear();
-		storedObjects.Clear();
+		storedMobiles.Clear();
 		markerObjects.Clear();
 		markers.Clear();
 		unitLimits.Clear();
@@ -23,18 +23,20 @@ namespace Objects
 	{
 		ASSERT__(!loaded);
 		//Clear();
-		
+		World::actual.InvalidateSensory();	//prevent expensive removal operations
 		Objects::ForeachWorldEntityIncludingStored([this](const PWorldEntity&e)
 		{
 			e->isInserted = false;
 			e->isInsertedIntoGrid = false;
+			float t = 0;
+			e->UnregisterSensory(t);
 			if (e->health <= 0)
 				markerObjects << e;
 			else
 			{
 				PHangar h;
 				if (e->IsMobile() && (h = To<MobileEntity>::Cast(e)->storedIn.lock()))
-					storedObjects << std::make_pair(h, To<MobileEntity>::Cast(e)); 
+					storedMobiles << std::make_pair(h, To<MobileEntity>::Cast(e)); 
 				else
 					objects << e; 
 			}
@@ -77,7 +79,7 @@ namespace Objects
 			elif (e->IsStructure())
 				Marker::structureGhosts << To<Structure>::Cast(e);
 		}
-		for (const auto&p : storedObjects)
+		for (const auto&p : storedMobiles)
 		{
 			p.first->StoreLocallyFromImport(p.second);
 		}
