@@ -1180,6 +1180,10 @@ namespace GUI
 		const float h = GetContentHeight();
 		if (h < 0)
 			return false;
+
+		if (anchorConfig.Top().IsFixed() && anchorConfig.Bottom().IsFixed())
+			return false;
+
 		return SetHeight(h);
 	}
 
