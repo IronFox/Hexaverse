@@ -205,7 +205,7 @@ namespace GUI
 
 	protected:
 		static void		Darken(const Rect<>&rect, float alpha=0.9f, bool flush=false);
-		static void		RenderArea(const Rect<>&rect, bool lit, bool flip, const float3&backgroundTone);
+		static void		RenderArea(const Rect<>&rect, bool lit, bool flip, const float3&backgroundTone, const Quad<bool>&edges);
 		virtual bool	ClientIsLit() const {return true;}
 
 
@@ -322,6 +322,7 @@ namespace GUI
 	public:
 		typedef Component	Super;
 
+		Quad<bool>		edges = Quad<bool>(true);
 		bool			fillBackground = true;
 		float3			backgroundTone = float3(1);
 

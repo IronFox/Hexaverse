@@ -661,7 +661,7 @@ namespace GUI
 			}
 		}
 
-		RenderArea(bar,barContainsMouse,dragging,float3(1));
+		RenderArea(bar,barContainsMouse,dragging,float3(1),Quad<bool>(true));
 	}
 
 
@@ -773,7 +773,7 @@ namespace GUI
 		SurfaceRenderer::Rasterize(outline);
 
 		bar = Rect<>(outline.x.min,outline.y.Derelativate(1.f - (viewTop + viewSize) / scrollMax),outline.x.max,outline.y.Derelativate(1.f - (viewTop) / scrollMax));
-		RenderArea(bar,barContainsMouse,dragging,float3(1));
+		RenderArea(bar,barContainsMouse,dragging,float3(1),Quad<bool>(true));
 
 		up->SetLocation(topButton);
 		up->Render();
@@ -1038,7 +1038,7 @@ namespace GUI
 	}
 
 
-	/*static*/ void				Component::RenderArea(const Rect<>&rect, bool lit, bool flip, const float3&backgroundTone)
+	/*static*/ void				Component::RenderArea(const Rect<>&rect, bool lit, bool flip, const float3&backgroundTone, const Quad<bool>&edges)
 	{
 		float low = 0.55f;  //0.3;
 		float high = lit ? 0.89f : 0.77f;   //0.8f : 0.6;
@@ -1059,11 +1059,14 @@ namespace GUI
 		float4 lineLowColor(backgroundTone,low*low);
 		float4 lineHighColor(backgroundTone,high*high);
 	
-
-		LineRenderer::Rasterize(float3(rect.x.min,rect.y.min,0.f), lineLowColor, float3(rect.x.max,rect.y.min,0.f),lineLowColor);
-		LineRenderer::Rasterize(float3(rect.x.max,rect.y.max,0.f), lineHighColor, float3(rect.x.min,rect.y.max,0.f),lineHighColor);
-		LineRenderer::Rasterize(float3(rect.x.max,rect.y.min,0.f),lineLowColor, float3(rect.x.max,rect.y.max,0.f), lineHighColor);
-		LineRenderer::Rasterize(float3(rect.x.min,rect.y.max,0.f),lineHighColor, float3(rect.x.min,rect.y.min,0.f), lineLowColor);
+		if (edges.bottom)
+			LineRenderer::Rasterize(float3(rect.x.min,rect.y.min,0.f), lineLowColor, float3(rect.x.max,rect.y.min,0.f),lineLowColor);
+		if (edges.top)
+			LineRenderer::Rasterize(float3(rect.x.max,rect.y.max,0.f), lineHighColor, float3(rect.x.min,rect.y.max,0.f),lineHighColor);
+		if (edges.right)
+			LineRenderer::Rasterize(float3(rect.x.max,rect.y.min,0.f),lineLowColor, float3(rect.x.max,rect.y.max,0.f), lineHighColor);
+		if (edges.left)
+			LineRenderer::Rasterize(float3(rect.x.min,rect.y.max,0.f),lineHighColor, float3(rect.x.min,rect.y.min,0.f), lineLowColor);
 		LineRenderer::Flush();
 	}
 	
@@ -1166,7 +1169,7 @@ namespace GUI
 
 	void				Box::BaseRender(bool lit, bool flipped)
 	{
-		RenderArea(GetRect(),lit,flipped,backgroundTone);
+		RenderArea(GetRect(),lit,flipped,backgroundTone,edges);
 	}
 
 	static const float CellSize = 0.01f;
@@ -1361,7 +1364,7 @@ namespace GUI
 		//core.Scale(0.97f);
 
 		if (fillBackground)
-			RenderArea(core,false,true,backgroundTone);
+			RenderArea(core,false,true,backgroundTone,Quad<bool>(true));
 
 		StringRef text = GetText();
 
