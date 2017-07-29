@@ -275,7 +275,7 @@ namespace GUI
 
 		void			InvalidateAutoLayout();
 
-		AnchorModifier	ModifyAnchorconfig() {return this;}
+		AnchorModifier	ModifyAnchorConfig() {return this;}
 		const AnchorConfig&GetAnchorConfig() const {return anchorConfig;}
 		virtual void	SetAnchorConfig(const Axial2<TAnchor>&cfg)	{anchorConfig = cfg; InvalidateAutoLayout();}
 

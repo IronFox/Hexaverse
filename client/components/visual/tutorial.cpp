@@ -222,7 +222,7 @@ namespace Tutorial
 					taskWindow->SetAutomaticHeight(true);
 					taskWindow->SetAutoCenter(false);
 					{
-						auto mod = taskWindow->ModifyAnchorconfig();
+						auto mod = taskWindow->ModifyAnchorConfig();
 						mod.Left().Unset();
 						mod.Right().Set(0.1f);
 						mod.Bottom().Set(0.1f);

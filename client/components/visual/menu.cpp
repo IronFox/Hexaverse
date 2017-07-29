@@ -58,7 +58,7 @@ namespace Menu
 		l->fillBackground = false;
 		l->alignCenter = false;
 		{
-			auto mod = l->ModifyAnchorconfig();
+			auto mod = l->ModifyAnchorConfig();
 			//mod.Top().Set(0);
 			mod.Top().SetAuto();
 			mod.Bottom().SetAuto();
@@ -68,7 +68,7 @@ namespace Menu
 		l->SetSize(float2(MinTextWidth,0));
 		c->AnchorTop(0);
 		{
-			auto mod = c->ModifyAnchorconfig();
+			auto mod = c->ModifyAnchorConfig();
 			mod.Left().Set(MinTextWidth,GUI::TAnchor::RelativeToScreen);
 			mod.Right().Set(0.01f);
 			mod.Top().SetAuto();

@@ -282,12 +282,12 @@
 		{
 			PLabel label = MakeTabLabel("Server identifies as '"+String(host.serverInfo.hostInfo.version)+'\'',0.7f);
 			label->SetColor(incompatibleColor);
-			label->ModifyAnchorconfig().Top().SetLastOf(p,0.005f,GUI::TAnchor::RelativeToScreen);
+			label->ModifyAnchorConfig().Top().SetLastOf(p,0.005f,GUI::TAnchor::RelativeToScreen);
 			p->AddComponent( label );
 					
 			label = MakeTabLabel("Client expected '" SERVER_NAME "\'",0.7f);
 			label->SetColor(incompatibleColor);
-			label->ModifyAnchorconfig().Top().SetLastOf(p,0.005f,GUI::TAnchor::RelativeToScreen);
+			label->ModifyAnchorConfig().Top().SetLastOf(p,0.005f,GUI::TAnchor::RelativeToScreen);
 			p->AddComponent( label );
 		}
 
@@ -352,7 +352,7 @@
 			serverListPanel->fillBackground = false;
 		}
 		serverListPanel->ClearComponents();
-		serverListPanel->ModifyAnchorconfig().Top().SetAllOf(Dialog::serverChoice,0);
+		serverListPanel->ModifyAnchorConfig().Top().SetAllOf(Dialog::serverChoice,0);
 		Dialog::serverChoice->AddComponent( serverListPanel );
 
 
@@ -440,7 +440,7 @@
 
 			PButtonPanel p = ConstructPanel(info);
 
-			p->ModifyAnchorconfig().Top().SetLastOf(serverListPanel,0.015f,GUI::TAnchor::RelativeToScreen);
+			p->ModifyAnchorConfig().Top().SetLastOf(serverListPanel,0.015f,GUI::TAnchor::RelativeToScreen);
 			serverListPanel->AddComponent( p );
 		}
 
@@ -453,10 +453,10 @@
 		if (Network::servers.IsEmpty())
 		{
 			PButtonPanel p(new ButtonPanel());
-			p->ModifyAnchorconfig().Top().SetAllOf(Dialog::serverChoice,0.025f,GUI::TAnchor::RelativeToScreen);
+			p->ModifyAnchorConfig().Top().SetAllOf(Dialog::serverChoice,0.025f,GUI::TAnchor::RelativeToScreen);
 
 			PLabel label = MakeTabLabel(" No Servers Found",0.7f);
-			label->ModifyAnchorconfig().Left().Set(0.1f,GUI::TAnchor::RelativeToScreen);
+			label->ModifyAnchorConfig().Left().Set(0.1f,GUI::TAnchor::RelativeToScreen);
 			label->SetColor(1,1,1,0.7f);
 			p->AddComponent( label );
 			p->SetAutomaticHeight(true);
@@ -488,7 +488,7 @@
 			[]()->bool {return !Network::client.IsAttemptingToConnect() && !Network::client.IsConnected();}
 			));
 			{
-				auto mod = b->ModifyAnchorconfig();
+				auto mod = b->ModifyAnchorConfig();
 				mod.Top().SetLastOf(Dialog::serverChoice,0.025f,GUI::TAnchor::RelativeToScreen);
 				mod.Left().Set(0.f);
 			}
@@ -535,12 +535,12 @@
 			[]()->bool {return !Network::client.IsAttemptingToConnect() && !Network::client.IsConnected() && ServerProcess::IsRunning();}
 			);
 			{
-				auto mod = start->ModifyAnchorconfig();
+				auto mod = start->ModifyAnchorConfig();
 				mod.Top() = addHostButton->GetAnchorConfig().Top();
 				mod.Left().Set(addHostButton,0.02f);
 			}
 			{
-				auto mod = stop->ModifyAnchorconfig();
+				auto mod = stop->ModifyAnchorConfig();
 				mod.Top() = addHostButton->GetAnchorConfig().Top();
 				mod.Left().Set(start,0.02f);
 			}
