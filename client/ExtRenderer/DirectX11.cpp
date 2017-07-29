@@ -153,7 +153,7 @@ namespace Engine
 		 
 		//ErrMessage(errorString);
 		//this is actually a fatal exception. It just should not happen
-		Except::fatal(location,errorString);
+		Except::TriggerFatal(location,errorString);
 		//FATAL__(errorString);
 	}
 
