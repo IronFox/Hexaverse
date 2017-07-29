@@ -367,7 +367,7 @@ namespace ConfigurationMode
 		void		RebuildPlanetList()
 		{
 			planetListWindow->ClearComponents();
-			planetListWindow->SetCenteredWidth(0.7f,GUI::TAnchor::RelativeToScreen);
+			planetListWindow->SetWidth(0.7f);
 			planetListWindow->SetAutomaticHeight(true);
 			planetListWindow->SetMaxAutoHeight(0.7f);
 			planetListWindow->fillBackground = false;
