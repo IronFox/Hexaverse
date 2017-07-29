@@ -19,7 +19,7 @@
 
 	static const float VisualTabWidth = 0.2f;
 
-	GUI::PLabel	MakeTabLabel(const String&text, float zoom)
+	GUI::PLabel	MakeHeaderLabel(const String&text, float zoom)
 	{
 		using namespace GUI;
 		PLabel label (new GUI::Label());
@@ -38,17 +38,19 @@
 	};
 
 
-	GUI::PLabel	AddTab(const GUI::PPanel&context, const String&name, bool incompatible, float verticalSpacing = 0.f, GUI::TAnchor::distanceType_t verticalSpacingIsRelative = GUI::TAnchor::RelativeToScreen)
+	GUI::PLabel	AddHeader(const GUI::PPanel&context, const String&name, bool incompatible, float verticalSpacing = 0.f, GUI::TAnchor::distanceType_t verticalSpacingIsRelative = GUI::TAnchor::RelativeToScreen)
 	{
 		using namespace GUI;
-		PLabel label=MakeTabLabel(name,1.1f);
+		PLabel label=MakeHeaderLabel(name,1.1f);
 		{
 			auto cfg = label->GetAnchorConfig();
 			cfg.Top().Set(verticalSpacing,verticalSpacingIsRelative);
 			if (context->HasComponents())
 				cfg.Left().Set(context->GetComponents().last(),0.f);
 			else
+			{
 				cfg.Left().Set(0.f);
+			}
 			label->SetAnchorConfig(cfg);
 		}
 		context->AddComponent(label);
@@ -57,9 +59,9 @@
 		return label;
 	}
 
-	GUI::PLabel	AddTab(const String&name, bool incompatible)
+	GUI::PLabel	AddHeader(const String&name, bool incompatible)
 	{
-		return AddTab(Dialog::serverChoice,name,incompatible);
+		return AddHeader(Dialog::serverChoice,name,incompatible);
 	}
 
 	static String CompileRules(const Protocol::ServerInfo&info)
@@ -234,7 +236,7 @@
 					text += "\n (Version Mismatch)";
 				}
 			}
-			PLabel headLine = MakeTabLabel(text,1.1f);
+			PLabel headLine = MakeHeaderLabel(text,1.1f);
 			headLine->SetColor(color);
 			SetTop(headLine,0.01f);
 			info.headLine = headLine;
@@ -245,9 +247,9 @@
 
 		bool incompatible = !info.rightVersion || info.protocolIncompatible;
 		{
-			AddTab(p,String(host.serverInfo.gameInfo.numFactionsOnline) + "/" + String(host.serverInfo.gameInfo.numFactionsCreated),incompatible,0.01f,GUI::TAnchor::RelativeToScreen);
-			AddTab(p,host.serverInfo.gameInfo.roundNumber.ToString(),incompatible,0.01f,GUI::TAnchor::RelativeToScreen);
-			PLabel l = AddTab(p,CompileRules(host.serverInfo),incompatible,0.01f,GUI::TAnchor::RelativeToScreen);
+			AddHeader(p,String(host.serverInfo.gameInfo.numFactionsOnline) + "/" + String(host.serverInfo.gameInfo.numFactionsCreated),incompatible,0.01f,GUI::TAnchor::RelativeToScreen);
+			AddHeader(p,host.serverInfo.gameInfo.roundNumber.ToString(),incompatible,0.01f,GUI::TAnchor::RelativeToScreen);
+			PLabel l = AddHeader(p,CompileRules(host.serverInfo),incompatible,0.01f,GUI::TAnchor::RelativeToScreen);
 			l->SetLocalFontScale(l->GetLocalFontScale() * 0.9f);
 
 		}
@@ -258,7 +260,7 @@
 		bool first = true;
 		foreach (info.addresses,addr)
 		{
-			PLabel label = MakeTabLabel(addr->address.ToString()+ " (ping "+String((int)ceil(addr->ping*1000))+')',0.7f);
+			PLabel label = MakeHeaderLabel(ToString(addr->address)+ " (ping "+String((int)ceil(addr->ping*1000))+')',0.7f);
 			if (info.rightVersion && !info.protocolIncompatible)
 				label->SetColor(float4(1,1,1,0.7f));
 			else
@@ -280,12 +282,12 @@
 
 		if (!info.rightVersion && !info.protocolIncompatible)
 		{
-			PLabel label = MakeTabLabel("Server identifies as '"+String(host.serverInfo.hostInfo.version)+'\'',0.7f);
+			PLabel label = MakeHeaderLabel("Server identifies as '"+String(host.serverInfo.hostInfo.version)+'\'',0.7f);
 			label->SetColor(incompatibleColor);
 			label->ModifyAnchorConfig().Top().SetLastOf(p,0.005f,GUI::TAnchor::RelativeToScreen);
 			p->AddComponent( label );
 					
-			label = MakeTabLabel("Client expected '" SERVER_NAME "\'",0.7f);
+			label = MakeHeaderLabel("Client expected '" SERVER_NAME "\'",0.7f);
 			label->SetColor(incompatibleColor);
 			label->ModifyAnchorConfig().Top().SetLastOf(p,0.005f,GUI::TAnchor::RelativeToScreen);
 			p->AddComponent( label );
@@ -334,10 +336,10 @@
 		SetTop(Dialog::serverChoice,0.1f);
 		Dialog::serverChoice->SetMaxAutoHeight(0.8f);
 
-		AddTab("HostID/WorldID",false);
-		AddTab("Factions online",false);
-		AddTab("Round Number",false);
-		AddTab("Rules",false);
+		AddHeader("HostID/WorldID",false);
+		AddHeader("Factions online",false);
+		AddHeader("Round Number",false);
+		AddHeader("Rules",false);
 
 		bool attemptingConnection = Network::client.IsAttemptingToConnect();
 
@@ -384,7 +386,7 @@
 			
 			
 
-			PLabel label = MakeTabLabel("Still trying to query '"+failed->ToString()+"'...",0.7f);
+			PLabel label = MakeHeaderLabel("Still trying to query '"+ToString(*failed)+"'...",0.7f);
 //			label->anchorConfig.Left().Set(0.1f,false);
 			label->SetColor(1,0.75f,0.75f,0.9f);
 			{
@@ -398,7 +400,7 @@
 			PButton forget(new Button("Forget this host",
 			[url]()
 			{
-				Dialog::Confirm("'"+url.ToString()+"' will be removed from the list of actively checked hosts. Please confirm.",
+				Dialog::Confirm("'"+ToString(url)+"' will be removed from the list of actively checked hosts. Please confirm.",
 				[url]()
 				{
 					if (Network::ServerDiscovery::TryRemoveHost(url))
@@ -455,7 +457,7 @@
 			PButtonPanel p(new ButtonPanel());
 			p->ModifyAnchorConfig().Top().SetAllOf(Dialog::serverChoice,0.025f,GUI::TAnchor::RelativeToScreen);
 
-			PLabel label = MakeTabLabel(" No Servers Found",0.7f);
+			PLabel label = MakeHeaderLabel(" No Servers Found",0.7f);
 			label->ModifyAnchorConfig().Left().Set(0.1f,GUI::TAnchor::RelativeToScreen);
 			label->SetColor(1,1,1,0.7f);
 			p->AddComponent( label );
