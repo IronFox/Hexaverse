@@ -3336,7 +3336,7 @@ void ParseKeyValue(const String&key, const String&value)
 		elif(key == "serverURL")
 		{
 			RuntimeConfig::serverAddress = Network::ServerAddress(value);
-			LogEvent(EventClass::Preset::configuration, nullptr, "Server address set to "+RuntimeConfig::serverAddress.ToString());
+			LogEvent(EventClass::Preset::configuration, nullptr, "Server address set to "+ToString(RuntimeConfig::serverAddress));
 		}
 		elif(key == "documentHere")
 		{

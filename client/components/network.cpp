@@ -1682,7 +1682,7 @@ namespace Network
 						{
 							if (info.addresses.Last().serverInfo.gameInfo.worldID != a.lastInfo.gameInfo.worldID)
 							{
-								LogEvent(EventClass::Preset::error,"Received mismatching world IDs from host "+info.id.ToNiceString()+". Ignoring address "+a.address.ToString());
+								LogEvent(EventClass::Preset::error,"Received mismatching world IDs from host "+info.id.ToNiceString()+". Ignoring address "+ToString(a.address));
 								continue;
 							}
 						}

@@ -65,7 +65,7 @@ namespace Network
 
 		bool				IsLocalhost() const {return host == "localhost" || host == "127.0.0.1" || host == "::1";}
 
-		String				ToString() const {return basePort != DEFAULT_SERVER_BASE_PORT ? host + ':' + String(basePort) : host;}
+		friend String		ToString(const ServerAddress&a) {return a.basePort != DEFAULT_SERVER_BASE_PORT ? a.host + ':' + String(a.basePort) : a.host;}
 	};
 
 	class Host
