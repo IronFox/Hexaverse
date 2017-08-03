@@ -1,10 +1,10 @@
-﻿Loading screen
-
+﻿end-game score recording and reporting
 
 aerial radar and turret
 bomber
 
-end-game score recording and reporting
+icon floater for insufficient resources to continue job
+
 
 laboratory nexus risk, hacking vehicle turret
 laboratories have better yield if grouped but pose risk of virus changing lab group ownership to nexus
@@ -59,15 +59,15 @@ new mine system:
 		
 
 
-hostile ghosts die after one round
+bug: hostile ghosts sometimes die after one round
 
-auto relocation fails if some other non-move task immediately follows (e.g. transfer resources)
+bug: auto relocation fails if some other non-move task immediately follows (e.g. transfer resources)
 potentially undo last (movement) task if build job is rejected
 
 
-still have loss of initial AI world state. easy to reproduce: new planet with ai (all seems good) -> save anywhere -> immediately load -> bamm
+bug: still have loss of initial AI world state. easy to reproduce: new planet with ai (all seems good) -> save anywhere -> immediately load -> bamm
 
-water has no bottom cap, and the bounding box/sphere/w/e is sometimes off by a little
+bug: water has no bottom cap
 
 
 working structure enable-replacement (replace one enable working structure with another that is better suited to stabilize the compound)
@@ -80,8 +80,6 @@ wireless power? ... dedicated compounds?
 
 
 make generators switch off if not needed
-
-split terraformers and constructors. elegance hints that this should not happen
 
 lava ship
 
@@ -159,6 +157,7 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+Loading screen
 save/restore faction colors
 make shift-key functionality optional
 parallel attacks
