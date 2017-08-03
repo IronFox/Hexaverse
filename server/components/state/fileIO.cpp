@@ -1410,7 +1410,13 @@ namespace FileIO
 									GetPOD(list,RID::factionID,factionID);
 									factionMap.Query(factionID,faction);
 									ASSERT__ (faction);
-									faction->statistics.ImportFrom(list,factionMap);
+									if (ApplicationInterface::globalVersionOfCurrentFile >= ApplicationInterface::FileVersions::NewSerializationEngine)
+										faction->statistics.ImportFrom(list,factionMap);
+									else
+									{
+										LogEvent(EventClass::Preset::error,"Statistics::ImportFrom(): Incompatible transient format encountered. Skipping import");
+										faction->statistics.Clear();
+									}
 								}
 							break;
 							case ChunkName::FactionSection:

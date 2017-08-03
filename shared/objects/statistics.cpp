@@ -294,112 +294,119 @@ namespace Objects
 
 
 
-		namespace ChunkID
-		{
-			const Riff::TID
-				round("RND "),
 
-				unit("UNIT"),
-				interaction("INTR"),
-
-
-
-				unusedTerm("ZZZZ");	
-
-		};
-
-
-		void			Statistics::ExportInto(Riff::Chunk*chunk) const
-		{
-			ByteStreamBuffer stream;
-			{
-				
-				foreach (this->history,r)
-				{
-					stream.Clear();
-					r->Serialize(stream);
-					chunk->AppendBlock(ChunkID::round,stream);
-				}
-			}
-			{
-				this->unitStatistics.VisitAllValues([chunk,&stream](const UnitStatistics&stat)
-				{
-					stream.Clear();
-					stat.Serialize(stream);
-					chunk->AppendBlock(ChunkID::unit,stream);
-				});
-			}
-			{
-				this->interactionMap.VisitAllValues([chunk,&stream](const Interaction&stat)
-				{
-					stream.Clear();
-					stat.Serialize(stream);
-					chunk->AppendBlock(ChunkID::interaction,stream);
-				});
-			}
-		}
-
-		void			Statistics::ImportFrom(const Riff::Chunk*chunk, const GenericHashTable<TUniqueID,Objects::PFaction>&factionMap)
-		{
-			history.Clear();
-			unitStatistics.Clear();
-			interactionMap.Clear();
-
-			if (ApplicationInterface::globalVersionOfCurrentFile >= ApplicationInterface::FileVersions::NewSerializationEngine)
-			{
-				const Riff::Chunk*child = chunk->GetFirstChild();
-				do
-				{
-					const char* chunkType = nullptr;
-					try
-					{
-						if (child->IsID(ChunkID::round))
-						{
-							chunkType = "RoundStatistics";
-							RoundStatistics stat;
-							DeserializeFromCompactMemory(stat,child->pointer(),child->size());
-							history << stat;
-						}
-						else
-						if (child->IsID(ChunkID::unit))
-						{
-							chunkType = "UnitStatistics";
-							UnitStatistics stat;
-							DeserializeFromCompactMemory(stat,child->pointer(),child->size());
-							unitStatistics.Set(stat.typeName,stat);
-						}
-						else
-						if (child->IsID(ChunkID::interaction))
-						{
-							chunkType = "Interaction";
-							Interaction stat;
-							DeserializeFromCompactMemory(stat,child->pointer(),child->size());
-
-							PFaction f;
-							factionMap.Query(stat.remoteID,f);
-							if (f)
-								interactionMap.Set(f.get(),stat);
-						}
-					}
-					catch (const std::exception&ex)
-					{
-						if (chunkType)
-							LogEvent(EventClass::Preset::fileError,"Statistics::ImportFrom(): Exception caught in "+String(chunkType)+" chunk: "+ ex.what());
-						else
-							LogEvent(EventClass::Preset::fileError,"Statistics::ImportFrom(): Exception caught: "+ String(ex.what()));
-					}
-				}
-				while (child = child->GetNextSibling());
-			}
-			else
-				LogEvent(EventClass::Preset::error,"Statistics::ImportFrom(): Incompatible transient format encountered. Skipping import");
-
-			if (history.IsEmpty() || history.Last().mainRound != RuntimeConfig::roundNumber.main)
-				 history.Append().mainRound = RuntimeConfig::roundNumber.main;
-
-		}
 
 	#endif
+
+	namespace ChunkID
+	{
+		const Riff::TID
+			round("RND "),
+
+			unit("UNIT"),
+			interaction("INTR"),
+
+
+
+			unusedTerm("ZZZZ");	
+
+	};
+
+
+		
+	void			Statistics::ExportInto(Riff::Chunk*chunk) const
+	{
+		ByteStreamBuffer stream;
+		{
+				
+			foreach (this->history,r)
+			{
+				stream.Clear();
+				r->Serialize(stream);
+				chunk->AppendBlock(ChunkID::round,stream);
+			}
+		}
+		{
+			this->unitStatistics.VisitAllValues([chunk,&stream](const UnitStatistics&stat)
+			{
+				stream.Clear();
+				stat.Serialize(stream);
+				chunk->AppendBlock(ChunkID::unit,stream);
+			});
+		}
+		{
+			this->interactionMap.VisitAllValues([chunk,&stream](const Interaction&stat)
+			{
+				stream.Clear();
+				stat.Serialize(stream);
+				chunk->AppendBlock(ChunkID::interaction,stream);
+			});
+		}
+	}
+
+	void			Statistics::Clear()
+	{
+		unitStatistics.Clear();
+		interactionMap.Clear();
+		history.Clear();
+		history.Append().mainRound = RuntimeConfig::roundNumber.main;
+	}
+
+	void			Statistics::ImportFrom(const Riff::Chunk*chunk, const GenericHashTable<TUniqueID,Objects::PFaction>&factionMap)
+	{
+		history.Clear();
+		unitStatistics.Clear();
+		interactionMap.Clear();
+
+		const Riff::Chunk*child = chunk->GetFirstChild();
+		do
+		{
+			const char* chunkType = nullptr;
+			try
+			{
+				if (child->IsID(ChunkID::round))
+				{
+					chunkType = "RoundStatistics";
+					RoundStatistics stat;
+					DeserializeFromCompactMemory(stat,child->pointer(),child->size());
+					history << stat;
+				}
+				else
+				if (child->IsID(ChunkID::unit))
+				{
+					chunkType = "UnitStatistics";
+					UnitStatistics stat;
+					DeserializeFromCompactMemory(stat,child->pointer(),child->size());
+					unitStatistics.Set(stat.typeName,stat);
+				}
+				else
+				if (child->IsID(ChunkID::interaction))
+				{
+					chunkType = "Interaction";
+					Interaction stat;
+					DeserializeFromCompactMemory(stat,child->pointer(),child->size());
+
+					PFaction f;
+					factionMap.Query(stat.remoteID,f);
+					if (f)
+						interactionMap.Set(f.get(),stat);
+				}
+			}
+			catch (const std::exception&ex)
+			{
+				if (chunkType)
+					LogEvent(EventClass::Preset::fileError,"Statistics::ImportFrom(): Exception caught in "+String(chunkType)+" chunk: "+ ex.what());
+				else
+					LogEvent(EventClass::Preset::fileError,"Statistics::ImportFrom(): Exception caught: "+ String(ex.what()));
+			}
+		}
+		while (child = child->GetNextSibling());
+
+		if (history.IsEmpty() || history.Last().mainRound != RuntimeConfig::roundNumber.main)
+				history.Append().mainRound = RuntimeConfig::roundNumber.main;
+
+	}
+
 
 	Statistics::RoundStatistics&	Statistics::GetRoundStat()
 	{

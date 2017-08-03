@@ -136,10 +136,11 @@ namespace Objects
 			static void	SignalNewRoundBegin(bool mainRound);
 
 		
-			void		ExportInto(Riff::Chunk*) const;
-			void		ImportFrom(const Riff::Chunk*, const GenericHashTable<TUniqueID,Objects::PFaction>&factionMap);
 		#endif
 
+		void			ExportInto(Riff::Chunk*) const;
+		void			ImportFrom(const Riff::Chunk*, const GenericHashTable<TUniqueID,Objects::PFaction>&factionMap);
+		void			Clear();
 
 	private:
 		//temporary data:
