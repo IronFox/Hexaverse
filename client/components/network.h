@@ -194,6 +194,15 @@ namespace Network
 		void	ResourceData(Protocol::ResourceData&);
 		void	GameConfig(Protocol::GameConfig&);
 		void	TutorialAt(NET(INT32)&);
+
+		namespace Statistics
+		{
+			void	BeginSequence(TUniqueID&id);
+			void	EndSequence();
+			void	Round(Objects::Statistics::Round&);
+			void	FactionInteraction(Objects::Statistics::FactionInteraction&);
+			void	EntityType(Objects::Statistics::EntityType&);
+		}
 	}
 
 
@@ -241,6 +250,14 @@ namespace Network
 		extern TCP::Channel<NETA(Package::NetString<256>),0,Protocol::ChannelID::PlanetNames>			planetNames;
 
 		extern TCP::Channel<NET(INT32),0,Protocol::ChannelID::TutorialAt>								tutorialAt;
+
+		namespace Statistics
+		{
+			extern TCP::Channel<TUniqueID, 0, Protocol::ChannelID::BeginStatisticsSequence>				beginSequence;
+			extern TCP::Channel<Objects::Statistics::Round, 0, Protocol::ChannelID::RoundStatistics>		round;
+			extern TCP::Channel<Objects::Statistics::EntityType, 0, Protocol::ChannelID::EntityTypeStatistics>	entityType;
+			extern TCP::Channel<Objects::Statistics::FactionInteraction, 0, Protocol::ChannelID::FactionInteractionStatistics>	factionInteraction;
+		}
 
 		extern TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;
 		extern TCP::ObjectSender<Protocol::TouchedMarker,Protocol::ChannelID::TouchMarker>					touchMarker;

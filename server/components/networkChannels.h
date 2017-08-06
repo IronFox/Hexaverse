@@ -1,8 +1,9 @@
 #ifndef serverNetworkChannelsH
 #define serverNetworkChannelsH
 
-#include "../../shared/protocol.h"
+#include <protocol.h>
 #include "state.h"
+#include <objects/statistics.h>
 
 namespace Receiver
 {
@@ -130,6 +131,14 @@ namespace Channels
 	extern TCP::ObjectSender<Protocol::UnitLimits,Protocol::ChannelID::UnitLimits>						unitLimits;
 	extern TCP::ObjectSender<Protocol::OperationLacksResources,Protocol::ChannelID::OperationLacksResources>	operationLacksResources;
 	extern TCP::ObjectSender<Protocol::ResearchQueue, Protocol::ChannelID::ResearchQueue>				researchQueue;
+
+	namespace Statistics
+	{
+		extern TCP::ObjectSender<TUniqueID, Protocol::ChannelID::BeginStatisticsSequence>				beginSequence;
+		extern TCP::ObjectSender<Objects::Statistics::Round, Protocol::ChannelID::RoundStatistics>		round;
+		extern TCP::ObjectSender<Objects::Statistics::EntityType, Protocol::ChannelID::EntityTypeStatistics>	entityType;
+		extern TCP::ObjectSender<Objects::Statistics::FactionInteraction, Protocol::ChannelID::FactionInteractionStatistics>	factionInteraction;
+	}
 
 //	Channel<class Object, unsigned MinUserLevel, UINT32 ChannelID>
 

@@ -88,7 +88,14 @@ namespace Channels
 	TCP::ObjectSender<Protocol::OperationLacksResources,Protocol::ChannelID::OperationLacksResources>	operationLacksResources;
 	TCP::ObjectSender<Protocol::ResearchQueue, Protocol::ChannelID::ResearchQueue>					researchQueue;
 
-//	Channel<class Object, unsigned MinUserLevel, UINT32 ChannelID>
+	namespace Statistics
+	{
+		TCP::ObjectSender<TUniqueID, Protocol::ChannelID::BeginStatisticsSequence>					beginSequence;
+		TCP::ObjectSender<Objects::Statistics::Round, Protocol::ChannelID::RoundStatistics>			round;
+		TCP::ObjectSender<Objects::Statistics::EntityType, Protocol::ChannelID::EntityTypeStatistics>	entityType;
+		TCP::ObjectSender<Objects::Statistics::FactionInteraction, Protocol::ChannelID::FactionInteractionStatistics>	factionInteraction;
+	}
+
 
 }
 
@@ -241,10 +248,7 @@ namespace Receiver
 			ASSERT_LESS__(state.serializedData.Count(),state.serializedData.MaxElementCount);
 			Channels::researchState.SendTo(peer,state);
 		});
-
 		peer.SendSignal(Protocol::ChannelID::EndEverything);
-
-
 	}
 
 	void	ClientFaction(Protocol::ClientFactionRequest&_p, TCP::Peer&peer)

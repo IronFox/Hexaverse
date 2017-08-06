@@ -1575,6 +1575,12 @@ namespace Protocol
 			OperationLacksResources, //s2c: OperationLacksResources
 
 			TutorialAt,			// both: int32
+
+			BeginStatisticsSequence,	//s2c: TUniqueID (factionID)
+			EndStatisticsSequence,		//s2c: <signal>
+			RoundStatistics,			//s2c: Statistics::Round
+			EntityTypeStatistics,		//s2c: Statistics::EntityType
+			FactionInteractionStatistics,	//s2c: Statistics::FactionInteraction
 		};
 	}
 

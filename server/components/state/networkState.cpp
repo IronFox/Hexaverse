@@ -225,6 +225,54 @@ namespace Network
 		progress.gameWon = Game::winner == faction && !!Game::winner;
 		progress.status = RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::None ? "" : FactionStatus(faction);
 		progress.warning = dead ? "Game Over" : FactionWarning(faction,warningReason);
+
+		if (progress.gameOver && faction && RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame)
+		{
+			//send only statistics of local faction
+			auto&peer = *this->peer.lock();
+			Channels::Statistics::beginSequence.SendTo(peer,faction->id);
+
+			faction->statistics.VisitRounds([&peer](const Objects::Statistics::Round&r)
+			{
+				Channels::Statistics::round.SendTo(peer,r);
+			});
+			faction->statistics.VisitEntityTypes([&peer](const Objects::Statistics::EntityType&t)
+			{
+				Channels::Statistics::entityType.SendTo(peer,t);
+			});
+			faction->statistics.VisitFactionInteractions([&peer](const Objects::Statistics::FactionInteraction&i)
+			{
+				Channels::Statistics::factionInteraction.SendTo(peer,i);
+			});
+			peer.SendSignal(Protocol::ChannelID::EndStatisticsSequence);
+		}
+
+
+		if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
+		{
+			auto&peer = *this->peer.lock();
+			//game over: send statistics of all factions
+
+			Objects::ForeachFaction([&peer](const Objects::PFaction&f)
+			{
+				Channels::Statistics::beginSequence.SendTo(peer,f->id);
+
+				f->statistics.VisitRounds([&peer](const Objects::Statistics::Round&r)
+				{
+					Channels::Statistics::round.SendTo(peer,r);
+				});
+				f->statistics.VisitEntityTypes([&peer](const Objects::Statistics::EntityType&t)
+				{
+					Channels::Statistics::entityType.SendTo(peer,t);
+				});
+				f->statistics.VisitFactionInteractions([&peer](const Objects::Statistics::FactionInteraction&i)
+				{
+					Channels::Statistics::factionInteraction.SendTo(peer,i);
+				});
+				peer.SendSignal(Protocol::ChannelID::EndStatisticsSequence);
+			});
+		}
+
 		Channels::gameProgress.SendTo(peer.lock(),progress);
 	}
 

@@ -1145,6 +1145,59 @@ namespace Network
 			
 		}
 
+
+
+		namespace Statistics
+		{
+			static Objects::WFaction target;
+
+			void	BeginSequence(TUniqueID&id)
+			{
+				if (!target.expired())
+				{
+					LogEvent(EventClass::Preset::networkError,"Sequence violation. Statistics sequence on "+target.lock()->GetLogName()+" should have been ended");
+					DBG_FATAL__("Sequence violation");
+					EndSequence();
+				}
+
+				Objects::PFaction f = Objects::Faction::FindByID(id);
+				LogEvent(EventClass::Preset::common,"Starting statistics sequence on "+f->GetLogName());
+				target = f;
+				f->statistics.BeginLoading();
+			}
+
+			void	EndSequence()
+			{
+				auto f = target.lock();
+				target.reset();
+
+				f->statistics.EndLoading();
+			}
+
+			void	Round(Objects::Statistics::Round&r)
+			{
+				auto f = target.lock();
+				if (!f)
+					throw Except::Program::DataConsistencyFault(CLOCATION,"Unable to load round statistics: Not in sequence or sequence faction has meanwhile expired");
+				f->statistics.Load(std::move(r));
+			}
+			void	FactionInteraction(Objects::Statistics::FactionInteraction&i)
+			{
+				auto f = target.lock();
+				if (!f)
+					throw Except::Program::DataConsistencyFault(CLOCATION,"Unable to load faction interaction statistics: Not in sequence or sequence faction has meanwhile expired");
+				f->statistics.Load(std::move(i));
+			}
+			void	EntityType(Objects::Statistics::EntityType&t)
+			{
+				auto f = target.lock();
+				if (!f)
+					throw Except::Program::DataConsistencyFault(CLOCATION,"Unable to load entity type statistics: Not in sequence or sequence faction has meanwhile expired");
+				f->statistics.Load(std::move(t));
+			}
+		}
+
+
 	}
 
 
@@ -1194,6 +1247,15 @@ namespace Network
 		TCP::Channel<NETA(Package::NetString<256>),0,Protocol::ChannelID::PlanetNames>				planetNames(Receiver::PlanetNames);
 
 		TCP::Channel<NET(INT32),0,Protocol::ChannelID::TutorialAt>									tutorialAt(Receiver::TutorialAt);
+
+		namespace Statistics
+		{
+			TCP::Channel<TUniqueID, 0, Protocol::ChannelID::BeginStatisticsSequence>				beginSequence(Receiver::Statistics::BeginSequence);
+			TCP::Channel<Objects::Statistics::Round, 0, Protocol::ChannelID::RoundStatistics>		round(Receiver::Statistics::Round);
+			TCP::Channel<Objects::Statistics::EntityType, 0, Protocol::ChannelID::EntityTypeStatistics>	entityType(Receiver::Statistics::EntityType);
+			TCP::Channel<Objects::Statistics::FactionInteraction, 0, Protocol::ChannelID::FactionInteractionStatistics>	factionInteraction(Receiver::Statistics::FactionInteraction);
+		}
+
 
 		TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;
 		TCP::ObjectSender<Protocol::TouchedMarker,Protocol::ChannelID::TouchMarker>					touchMarker;
@@ -1372,6 +1434,9 @@ namespace Network
 	{
 		switch (signal)
 		{
+			case Protocol::ChannelID::EndStatisticsSequence:
+				Receiver::Statistics::EndSequence();
+			break;
 			case Protocol::ChannelID::BeginGame:
 				#ifdef HAS_WINDOW
 					World::allowRecompilation = true;
@@ -1409,6 +1474,12 @@ namespace Network
 		DBG_FATAL__("Ignored Package");
 
 	}
+	void OnIgnoredException(const TCodeLocation&loc, const std::exception&ex)
+	{
+		LogEvent(EventClass::Preset::networkError,String(loc)+": Ignored(TCP): "+ex.what());
+		DBG_FATAL__("Ignored Exception");
+	}
+
 	void		Update();
 
 	void		Setup()
@@ -1459,16 +1530,23 @@ namespace Network
 
 		client.InstallChannel(Channels::tutorialAt);
 
+		client.InstallChannel(Channels::Statistics::beginSequence);
+		client.InstallChannel(Channels::Statistics::entityType);
+		client.InstallChannel(Channels::Statistics::round);
+		client.InstallChannel(Channels::Statistics::factionInteraction);
+
 		client.OpenSignalChannel(Protocol::ChannelID::Pong,0);
 		client.OpenSignalChannel(Protocol::ChannelID::BeginGame,0);
 		client.OpenSignalChannel(Protocol::ChannelID::BeginEverything,0);
 		client.OpenSignalChannel(Protocol::ChannelID::EndEverything,0);
+		client.OpenSignalChannel(Protocol::ChannelID::EndStatisticsSequence,0);
 
 
 		client.SetAsync(false);
 		client.onEvent = OnEvent;
 		client.onSignal = OnSignal;
 		client.onIgnorePackage = OnIgnorePackage;
+		TCP::onIgnoredException = OnIgnoredException;
 
 		ASSERT__(Net::initNet());
 		if (RuntimeConfig::udpListen)
