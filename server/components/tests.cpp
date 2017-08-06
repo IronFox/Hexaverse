@@ -339,7 +339,7 @@ namespace Test
 			table.Set((Objects::Statistics::Metric)i,random.Next(0,1<<31));
 	}
 
-	/*static*/ void		Serialization::RandomFill(Objects::Statistics::UnitStatistics&stat,Random&random)
+	/*static*/ void		Serialization::RandomFill(Objects::Statistics::EntityType&stat,Random&random)
 	{
 		stat.typeName = RandomString(random,5,16);
 		RandomFill(stat.metrics,random);
@@ -353,7 +353,7 @@ namespace Test
 	}
 
 
-	/*static*/ void		Serialization::RandomFill(Objects::Statistics::RoundStatistics&stat,Random&random)
+	/*static*/ void		Serialization::RandomFill(Objects::Statistics::Round&stat,Random&random)
 	{
 		RandomFill(stat.consumption,random);
 		RandomFill(stat.production,random);
@@ -393,11 +393,11 @@ namespace Test
 			TestRange(begin,begin+16,false);
 		}
 		ByteStreamBuffer stream;
-		BeginSection("Statistics::UnitStatistics");
+		BeginSection("Statistics::EntityType");
 
 		for (index_t i = 0; i < 3000; i++)
 		{
-			Objects::Statistics::UnitStatistics stat;
+			Objects::Statistics::EntityType stat;
 			RandomFill(stat,random);
 
 			VerifySerialization(stream,stat);

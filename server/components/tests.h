@@ -81,8 +81,8 @@ namespace Test
 	class Serialization : public Test
 	{
 		static void		RandomFill(Objects::Marker&m, Random&random);
-		static void		RandomFill(Objects::Statistics::UnitStatistics&,Random&random);
-		static void		RandomFill(Objects::Statistics::RoundStatistics&,Random&random);
+		static void		RandomFill(Objects::Statistics::EntityType&,Random&random);
+		static void		RandomFill(Objects::Statistics::Round&,Random&random);
 		static void		RandomFill(Objects::Statistics::MetricTable&table, Random&random);
 		static void		RandomFill(Objects::PositiveResourceVector&, Random&random);
 

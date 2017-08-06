@@ -47,28 +47,37 @@ namespace Objects
 	}
 
 
-	/*virtual override*/	void			Statistics::MetricTable::Serialize(IWriteStream&outStream) const
+	void			SerialSync(IWriteStream&s, const Statistics::MetricTable&m)
 	{
-		outStream.WriteSize(map.Count());
-		map.VisitAllEntries([&outStream](K key, UINT64 value)
+		s.WriteSize(m.map.Count());
+		m.map.VisitAllEntries([&s](Statistics::MetricTable::K key, UINT64 value)
 		{
-			outStream.WriteSize(key);
-			outStream.WriteSize(value);
+			if (value > 0)
+			{
+				s.WriteSize(key);
+				s.WriteSize(value);
+			}
 		});
 	}
-	/*virtual override*/	void			Statistics::MetricTable::Deserialize(IReadStream&inStream)
+
+	void			SerialSync(IReadStream&s, Statistics::MetricTable&m)
 	{
 		count_t entries = 0;
-		inStream.ReadSize(entries);
-		map.Clear();
+		s.ReadSize(entries);
+		m.map.Clear();
 		for (index_t i = 0; i < entries; i++)
 		{
-			K key;
+			Statistics::MetricTable::K key;
 			UINT64 val;
-			inStream.ReadSize(key);
-			inStream.ReadSize(val);
+			s.ReadSize(key);
+
+			if (key >= (UINT64)Statistics::Metric::Count)
+				throw Except::Memory::SerializationFault(CLOCATION,"Deserialized key #"+String(key)+" exceeds valid metric range");
+
+			s.ReadSize(val);
+
 			if (val > 0)
-				map.Set(key,val);
+				m.map.Set(key,val);
 		};
 	}
 
@@ -114,7 +123,7 @@ namespace Objects
 		history.Append();
 	}
 
-	Statistics::Interaction&	Statistics::Get(const PFaction&remote)
+	Statistics::FactionInteraction&	Statistics::Get(const PFaction&remote)
 	{
 		auto rs = interactionMap.QueryPointer(remote.get());
 		if (rs)
@@ -124,13 +133,13 @@ namespace Objects
 		return *rs;
 	}
 
-	Statistics::UnitStatistics&	Statistics::GetTypeOf(const PWorldEntity&e)
+	Statistics::EntityType&	Statistics::GetTypeOf(const PWorldEntity&e)
 	{
 		String name = e->GetTypeName();
-		auto rs = unitStatistics.QueryPointer(name);
+		auto rs = entityTypes.QueryPointer(name);
 		if (rs)
 			return *rs;
-		rs = &unitStatistics.Set(name);
+		rs = &entityTypes.Set(name);
 		rs->typeName = name;
 		return *rs;
 	}
@@ -138,45 +147,51 @@ namespace Objects
 
 
 
-	/*virtual override*/	void					Statistics::Interaction::Serialize(IWriteStream&outStream) const
+	/*virtual override*/	void					Statistics::FactionInteraction::Serialize(IWriteStream&s) const
 	{
-		outStream.Write(remoteID.bytes,remoteID.NumBytes);
-		metrics.Serialize(outStream);
+		using Serialization::SerialSync;
+		s.Write(remoteID.bytes,remoteID.NumBytes);
+		SerialSync(s,metrics);
 	}
 
-	/*virtual override*/	void					Statistics::Interaction::Deserialize(IReadStream&inStream)
+	/*virtual override*/	void					Statistics::FactionInteraction::Deserialize(IReadStream&s)
 	{
-		inStream.Read(remoteID.bytes,remoteID.NumBytes);
-		metrics.Deserialize(inStream);
+		using Serialization::SerialSync;
+		s.Read(remoteID.bytes,remoteID.NumBytes);
+		SerialSync(s,metrics);
 	}
 
 
-	/*virtual override*/	void					Statistics::UnitStatistics::Serialize(IWriteStream&outStream) const
+	/*virtual override*/	void					Statistics::EntityType::Serialize(IWriteStream&s) const
 	{
-		SerialSync(outStream,typeName);
-		metrics.Serialize(outStream);
+		using Serialization::SerialSync;
+		SerialSync(s,typeName);
+		SerialSync(s,metrics);
 	}
 
-	/*virtual override*/	void					Statistics::UnitStatistics::Deserialize(IReadStream&inStream)
+	/*virtual override*/	void					Statistics::EntityType::Deserialize(IReadStream&s)
 	{
-		SerialSync(inStream,typeName);
-		metrics.Deserialize(inStream);
+		using Serialization::SerialSync;
+		SerialSync(s,typeName);
+		SerialSync(s,metrics);
 	}
 
-	/*virtual override*/	void					Statistics::RoundStatistics::Serialize(IWriteStream&s) const
+	/*virtual override*/	void					Statistics::Round::Serialize(IWriteStream&s) const
 	{
+		using Serialization::SerialSync;
 		SerialSync(s,production);
 		SerialSync(s,consumption);
-		metrics.Serialize(s);
-		s.WriteSize(mainRound);
+		SerialSync(s,metrics);
+		SerialSync(s,mainRound);
 	}
 
-	/*virtual override*/	void					Statistics::RoundStatistics::Deserialize(IReadStream&s)
+	/*virtual override*/	void					Statistics::Round::Deserialize(IReadStream&s)
 	{
+		using Serialization::SerialSync;
 		SerialSync(s,production);
 		SerialSync(s,consumption);
-		metrics.Deserialize(s);
-		s.ReadSize(mainRound);
+		SerialSync(s,metrics);
+		SerialSync(s,mainRound);
 	}
 
 
@@ -327,7 +342,7 @@ namespace Objects
 			}
 		}
 		{
-			this->unitStatistics.VisitAllValues([chunk,&stream](const UnitStatistics&stat)
+			this->entityTypes.VisitAllValues([chunk,&stream](const EntityType&stat)
 			{
 				stream.Clear();
 				stat.Serialize(stream);
@@ -335,7 +350,7 @@ namespace Objects
 			});
 		}
 		{
-			this->interactionMap.VisitAllValues([chunk,&stream](const Interaction&stat)
+			this->interactionMap.VisitAllValues([chunk,&stream](const FactionInteraction&stat)
 			{
 				stream.Clear();
 				stat.Serialize(stream);
@@ -346,17 +361,60 @@ namespace Objects
 
 	void			Statistics::Clear()
 	{
-		unitStatistics.Clear();
-		interactionMap.Clear();
-		history.Clear();
-		history.Append().mainRound = RuntimeConfig::roundNumber.main;
+		BeginLoading();
+		EndLoading();
 	}
 
-	void			Statistics::ImportFrom(const Riff::Chunk*chunk, const GenericHashTable<TUniqueID,Objects::PFaction>&factionMap)
+	void			Statistics::BeginLoading()
 	{
 		history.Clear();
-		unitStatistics.Clear();
+		entityTypes.Clear();
 		interactionMap.Clear();
+	}
+
+	void			Statistics::Load(const Round&stat)
+	{
+		if (history.Count() > 10000)
+			history.Erase(0,history.Count()-10000);	//just erase. ignore
+		history << stat;
+	}
+	void			Statistics::Load(const EntityType&stat)
+	{
+		if (entityTypes.Count() > 10000)
+			throw Except::Memory::SerializationFault(CLOCATION,"Number of loaded unit type statistics ("+String(entityTypes.Count())+") number exceeds allowed range");
+		entityTypes.Set(stat.typeName,stat);
+	}
+	void			Statistics::Load(const FactionInteraction&inter)
+	{
+		PFaction f = Objects::Faction::FindByID(inter.remoteID);
+		if (f)
+			interactionMap.Set(f.get(),inter);
+	}
+
+
+	void			Statistics::DeserializeRound(const void*data, serial_size_t size)
+	{
+		Round stat;
+		DeserializeFromCompactMemory(stat,data,size);
+		Load(stat);
+	}
+	void			Statistics::DeserializeEntityType(const void*data, serial_size_t size)
+	{
+		EntityType stat;
+		DeserializeFromCompactMemory(stat,data,size);
+		Load(stat);
+	}
+	void			Statistics::DeserializeFactionInteraction(const void*data, serial_size_t size)
+	{
+		FactionInteraction stat;
+		DeserializeFromCompactMemory(stat,data,size);
+		Load(stat);
+	}
+
+	void			Statistics::ImportFrom(const Riff::Chunk*chunk)
+	{
+		BeginLoading();
+
 
 		const Riff::Chunk*child = chunk->GetFirstChild();
 		do
@@ -366,30 +424,20 @@ namespace Objects
 			{
 				if (child->IsID(ChunkID::round))
 				{
-					chunkType = "RoundStatistics";
-					RoundStatistics stat;
-					DeserializeFromCompactMemory(stat,child->pointer(),child->size());
-					history << stat;
+					chunkType = "Round";
+					DeserializeRound(child->pointer(),child->size());
 				}
 				else
 				if (child->IsID(ChunkID::unit))
 				{
-					chunkType = "UnitStatistics";
-					UnitStatistics stat;
-					DeserializeFromCompactMemory(stat,child->pointer(),child->size());
-					unitStatistics.Set(stat.typeName,stat);
+					chunkType = "EntityType";
+					DeserializeEntityType(child->pointer(),child->size());
 				}
 				else
 				if (child->IsID(ChunkID::interaction))
 				{
-					chunkType = "Interaction";
-					Interaction stat;
-					DeserializeFromCompactMemory(stat,child->pointer(),child->size());
-
-					PFaction f;
-					factionMap.Query(stat.remoteID,f);
-					if (f)
-						interactionMap.Set(f.get(),stat);
+					chunkType = "FactionInteraction";
+					DeserializeFactionInteraction(child->pointer(),child->size());
 				}
 			}
 			catch (const std::exception&ex)
@@ -402,20 +450,33 @@ namespace Objects
 		}
 		while (child = child->GetNextSibling());
 
-		if (history.IsEmpty() || history.Last().mainRound != RuntimeConfig::roundNumber.main)
-				history.Append().mainRound = RuntimeConfig::roundNumber.main;
+		EndLoading();
+	}
 
+	void Statistics::EndLoading()
+	{
+		for (index_t i = 0; i < history.Count(); i++)
+		{
+			bool good = true;
+			if (history[i].mainRound > RuntimeConfig::roundNumber.main)
+				good = false;
+			elif (i && history[i].mainRound <= history[i-1].mainRound)
+				good = false;
+
+			if (!good)
+			{
+				history.Erase(i--);
+			}
+		}
+		if (history.IsEmpty() || history.Last().mainRound != RuntimeConfig::roundNumber.main)
+			history.Append().mainRound = RuntimeConfig::roundNumber.main;
 	}
 
 
-	Statistics::RoundStatistics&	Statistics::GetRoundStat()
+	Statistics::Round&	Statistics::GetRoundStat()
 	{
 		return history.Last();
 	}
-
-
-
-
 
 
 }
