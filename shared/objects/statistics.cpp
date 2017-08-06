@@ -367,28 +367,31 @@ namespace Objects
 
 	void			Statistics::BeginLoading()
 	{
+		if (isLoading)
+			throw Except::Program::DataConsistencyFault(CLOCATION,"Trying to restart loading sequence without prior invocation of EndLoading()");
+		isLoading = true;
 		history.Clear();
 		entityTypes.Clear();
 		interactionMap.Clear();
 	}
 
-	void			Statistics::Load(const Round&stat)
+	void			Statistics::Load(Round&&stat)
 	{
 		if (history.Count() > 10000)
-			history.Erase(0,history.Count()-10000);	//just erase. ignore
-		history << stat;
+			history.Erase(0,1000);	//just erase some. ignore
+		history.MoveAppend(stat);
 	}
-	void			Statistics::Load(const EntityType&stat)
+	void			Statistics::Load(EntityType&&stat)
 	{
 		if (entityTypes.Count() > 10000)
 			throw Except::Memory::SerializationFault(CLOCATION,"Number of loaded unit type statistics ("+String(entityTypes.Count())+") number exceeds allowed range");
-		entityTypes.Set(stat.typeName,stat);
+		entityTypes.Set(stat.typeName) = std::move(stat);
 	}
-	void			Statistics::Load(const FactionInteraction&inter)
+	void			Statistics::Load(FactionInteraction&&inter)
 	{
 		PFaction f = Objects::Faction::FindByID(inter.remoteID);
 		if (f)
-			interactionMap.Set(f.get(),inter);
+			interactionMap.Set(f.get()) = std::move(inter);
 	}
 
 
@@ -396,19 +399,19 @@ namespace Objects
 	{
 		Round stat;
 		DeserializeFromCompactMemory(stat,data,size);
-		Load(stat);
+		Load(std::move(stat));
 	}
 	void			Statistics::DeserializeEntityType(const void*data, serial_size_t size)
 	{
 		EntityType stat;
 		DeserializeFromCompactMemory(stat,data,size);
-		Load(stat);
+		Load(std::move(stat));
 	}
 	void			Statistics::DeserializeFactionInteraction(const void*data, serial_size_t size)
 	{
 		FactionInteraction stat;
 		DeserializeFromCompactMemory(stat,data,size);
-		Load(stat);
+		Load(std::move(stat));
 	}
 
 	void			Statistics::ImportFrom(const Riff::Chunk*chunk)
@@ -455,6 +458,10 @@ namespace Objects
 
 	void Statistics::EndLoading()
 	{
+		if (!isLoading)
+			throw Except::Program::DataConsistencyFault(CLOCATION,"Trying to end loading sequence without prior invocation of BeginLoading()");
+		isLoading = false;
+
 		for (index_t i = 0; i < history.Count(); i++)
 		{
 			bool good = true;

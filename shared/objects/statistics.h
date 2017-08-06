@@ -62,7 +62,6 @@ namespace Objects
 			typedef MetricTable		Self;
 			typedef std::underlying_type<Metric>::type	K;
 
-
 			UINT64					operator[](Metric metric) const;
 			void					Inc(Metric);
 			void					Add(Metric, int delta);
@@ -170,13 +169,30 @@ namespace Objects
 		Loads a new FactionInteraction item from serialized data. May throw exceptions
 		*/
 		void			DeserializeFactionInteraction(const void*,serial_size_t);
-		void			Load(const Round&stat);
-		void			Load(const EntityType&stat);
-		void			Load(const FactionInteraction&inter);
+		void			Load(Round&&stat);
+		void			Load(EntityType&&stat);
+		void			Load(FactionInteraction&&inter);
 		/**
 		Concludes loading. Regardless of wether items were actually loaded, this method will assure the local Statistics instance is valid
 		*/
 		void			EndLoading();
+
+
+
+
+		void			VisitRounds(const std::function<void(const Round&)>&f) const
+		{
+			foreach (history,h)
+				f(*h);
+		}
+		void			VisitFactionInteractions(const std::function<void(const FactionInteraction&)>&f) const
+		{
+			interactionMap.VisitAllValues(f);
+		}
+		void			VisitEntityTypes(const std::function<void(const EntityType&)>&f) const
+		{
+			entityTypes.VisitAllValues(f);
+		}
 
 	private:
 		//temporary data:
@@ -184,6 +200,7 @@ namespace Objects
 									roundConsumption;
 		count_t						totalEntities=0,
 									totalEntityMineralValue=0;
+		bool						isLoading = false;
 
 		//persistent data:
 		PointerTable<FactionInteraction>	interactionMap;
