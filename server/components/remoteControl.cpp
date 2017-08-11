@@ -115,10 +115,10 @@ namespace RemoteControl
 			CLI::onFocusChange = ExecutionContext::OnFocusChange;
 			ExecutionContext::currentPeer = &peer;
 
-			index_t equalAt = cmd.GetIndexOf('=');
-			if (equalAt)
+			index_t equalAt = cmd.Find('=');
+			if (equalAt != InvalidIndex)
 			{
-				cmd = "set "+cmd.subString(0,equalAt-1) + ' '+cmd.subString(equalAt);
+				cmd = "set "+cmd.subString(0,equalAt) + ' '+cmd.subString(equalAt+1);
 			}
 			if (!Reflection::state.Interpret(cmd))
 			{

@@ -81,7 +81,7 @@ namespace Game
 			//bool allGood = true;
 			foreach (segs,seg)
 			{
-				seg->trimThis();
+				seg->TrimThis();
 				if (*seg == "All")
 					factionSupportFlags |= Protocol::GameFlag::AllFactionSupport;
 				else

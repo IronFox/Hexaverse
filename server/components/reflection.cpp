@@ -405,7 +405,7 @@ namespace Reflection
 				explode(',', value, vehicleTurretNames);
 				foreach (vehicleTurretNames,t)
 				{
-					t->trimThis();
+					t->TrimThis();
 					Objects::Component::Turret*ct = Objects::Component::GetTurretByName(*t);
 					if (!ct || ct->mountType != Objects::Component::Turret::MountType::Vehicle)
 						return false;
@@ -699,7 +699,7 @@ namespace Reflection
 				LogEvent(EventClass::Preset::remoteControlError, "Error: This folder is not a faction folder");
 				return;
 			}
-			String r = reason.trimRef();
+			String r = reason.TrimRef();
 			if (r.IsEmpty())
 			{
 				LogEvent(EventClass::Preset::remoteControlError, "Error: No reason given");
@@ -733,7 +733,7 @@ namespace Reflection
 		{
 			Objects::ForeachFaction([name](const Objects::PFaction&f)
 			{
-				if (f->name.findIgnoreCase(name))
+				if (f->name.ContainsIgnoreCase(name))
 					CLI::println(f->name + " - " + f->id.ConvertToString());
 			});
 		}
@@ -831,7 +831,7 @@ namespace Reflection
 					allGood = false;
 					continue;
 				}
-				String help = child->inner_content.trim();
+				String help = child->inner_content.Trim();
 				if (help.IsNotEmpty())
 				{
 					static Ctr::Array<String>	lines;
@@ -841,7 +841,7 @@ namespace Reflection
 					//wrap(help,80,lines);
 					foreach (lines,line)
 					{
-						StringRef trimmed = line->trimRef();
+						StringRef trimmed = line->TrimRef();
 						if (trimmed.length())
 						{
 							if (fused.IsNotEmpty())
@@ -880,8 +880,8 @@ namespace Reflection
 					allGood = false;
 					continue;
 				}
-				if (child->inner_content.trim().IsNotEmpty())
-					v->SetUniqueHelp(child->inner_content.trim());
+				if (child->inner_content.Trim().IsNotEmpty())
+					v->SetUniqueHelp(child->inner_content.Trim());
 
 				continue;
 			}
@@ -895,8 +895,8 @@ namespace Reflection
 					allGood = false;
 					continue;
 				}
-				if (child->inner_content.trim().IsNotEmpty())
-					f->SetUniqueHelp(child->inner_content.trim());
+				if (child->inner_content.Trim().IsNotEmpty())
+					f->SetUniqueHelp(child->inner_content.Trim());
 				if (!DeclareFolder(*child,f))
 					allGood = false;
 				continue;
@@ -1070,8 +1070,8 @@ namespace Reflection
 					for (const Objects::PStructure&p:Objects::structurePrototypes)
 					{
 						String key = p->GetTypeName();
-						key.replace(' ','_');
-						state.SetVariable(CLI::PVariable(new Variable::UnitLimit(key,p->GetCTypeName())));
+						key.FindAndReplace(' ','_');
+						state.SetVariable(CLI::PVariable(new Variable::UnitLimit(key,p->GetType())));
 					}
 				state.ExitFolder();
 
@@ -1079,7 +1079,7 @@ namespace Reflection
 					for (const auto&c:Objects::Component::allTurretComponents)
 					{
 						String key = c->typeName;
-						key.replace(' ','_');
+						key.FindAndReplace(' ','_');
 						state.SetVariable(CLI::PVariable(new Variable::UnitLimit(key,c->constName)));
 					}
 				state.ExitFolder();
@@ -1266,7 +1266,7 @@ namespace Reflection
 		wrap(outBuffer.CopyToString(),80,lines);
 		foreach (lines,line)
 		{
-			String trimmed = line->trim();
+			String trimmed = line->Trim();
 			if (trimmed.IsNotEmpty())
 			{
 				WriteIndent(outFile,indent);

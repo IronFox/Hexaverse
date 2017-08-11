@@ -916,7 +916,7 @@ namespace Receiver
 		if (ConfigurationMode::IsActive())
 		{
 			LogEvent(EventClass::Preset::configurationPrint,peer,"Received request for planet preset '"+planet+"'...");
-			if (planet.contains('/') || planet.contains('\\'))
+			if (planet.Contains('/') || planet.Contains('\\'))
 			{
 				LogEvent(EventClass::Preset::commandRejected,peer,"Planet name contained path separators. Rejecting request.");
 				return;
@@ -933,7 +933,7 @@ namespace Receiver
 
 			if (planet.IsNotEmpty())
 			{
-				Reflection::Variable::planetType->Set(planet.trim());
+				Reflection::Variable::planetType->Set(planet.Trim());
 				Reflection::ReloadPlanet();
 			}
 			Network::BuildConfiguredWorld();
@@ -1606,7 +1606,7 @@ namespace Receiver
 	#endif /*0*/
 	void	Hello(Protocol::Hello&hello, TCP::Peer&peer)
 	{
-		if (hello.trim().IsEmpty())
+		if (hello.Trim().IsEmpty())
 		{
 			Protocol::HelloResponse response;
 			response.success = false;

@@ -139,8 +139,8 @@ namespace Objects
 
 	static void InitTable(String baseName, BaseAttributeTable&t)
 	{
-		baseName.eraseCharacter(' ');
-		baseName.eraseCharacter('-');
+		baseName.EraseCharacter(' ');
+		baseName.EraseCharacter('-');
 		
 		static Lua::Table configTable;
 		if (configTable.IsEmpty())
@@ -165,8 +165,8 @@ namespace Objects
 	static Lua::Table InitComponent(const Lua::Table&parent, String&path, Component::Base&b)
 	{
 		String baseName = b.typeName;
-		baseName.eraseCharacter(' ');
-		baseName.eraseCharacter('-');
+		baseName.EraseCharacter(' ');
+		baseName.EraseCharacter('-');
 
 		path += '.'+baseName;
 

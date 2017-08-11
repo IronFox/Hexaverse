@@ -1433,7 +1433,7 @@ namespace Objects
 			{
 				outResult.BeginBrief();
 				const String upperName = parentType.IsNotEmpty() ? parentType+"-Turret" : "Turret";
-				const String lowerName = upperName.copyToLowerCase();
+				const String lowerName = upperName.CopyToLowerCase();
 				if (includeName)
 				{
 					const String nameAppend = isDoomsday ? ", DOOMSDAY" : "";

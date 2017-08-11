@@ -6,14 +6,14 @@ namespace Objects
 {
 	void				Description::BeginBrief()
 	{
-		if (rawLines.IsNotEmpty() && rawLines.Last().first.trim().IsNotEmpty() && !rawLines.Last().second)
+		if (rawLines.IsNotEmpty() && rawLines.Last().first.Trim().IsNotEmpty() && !rawLines.Last().second)
 			rawLines << std::make_pair("",false);
 		isBrief = !briefLocked;
 	}
 
 	void				Description::MarkBriefEnd(bool permanently /*= false*/)
 	{
-		if (rawLines.IsNotEmpty() && rawLines.Last().first.trim().IsNotEmpty() && rawLines.Last().second)
+		if (rawLines.IsNotEmpty() && rawLines.Last().first.Trim().IsNotEmpty() && rawLines.Last().second)
 			rawLines << std::make_pair("",false);
 		isBrief = false;
 		if (permanently)
@@ -27,7 +27,7 @@ namespace Objects
 
 	Description&		Description::operator<<(const String&line)
 	{
-		if (isBrief && (line.IsEmpty() || line.firstChar() != ' '))
+		if (isBrief && (line.IsEmpty() || line.FirstChar() != ' '))
 			rawLines << std::make_pair("  "+line,isBrief);
 		else
 			rawLines << std::make_pair(line,isBrief);

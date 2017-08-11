@@ -32,9 +32,9 @@ namespace RuntimeConfig
 	PathString	ConfigFile(PathString base)
 	{
 		#if SYSTEM==WINDOWS
-			base.replace(L'/',L'\\');
+			base.FindAndReplace(L'/',L'\\');
 		#else
-			base.replace(L'\\',L'/');
+			base.FindAndReplace(L'\\',L'/');
 		#endif
 		FileSystem::File f;
 		if (!actual.Find(base,f,false))

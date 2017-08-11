@@ -252,11 +252,11 @@ namespace Logging
 				else
 					logFile << tab << tab<<tab<<tab;
 
-		if (message.contains('\n') || message.contains('\r'))
+		if (message.Contains('\n') || message.Contains('\r'))
 		{
 			String copy = message;
-			copy.replace('\n',' ');
-			copy.replace('\r',"");
+			copy.FindAndReplace('\n',' ');
+			copy.FindAndReplace('\r',"");
 			if (!inTestMode)
 				logFile << tab << copy << nl;
 		}

@@ -257,14 +257,14 @@ namespace Objects
 							foreach (this->satellites,sat)
 								if (sat->lock() == e)
 								{
-									this->satellites.erase(sat);
+									this->satellites.Erase(sat);
 									break;
 								}
 							if (To<Satellite>::Cast(e)->IsSkyHub())
 								foreach (this->skyHubs,sat)
 									if (sat->lock() == e)
 									{
-										this->skyHubs.erase(sat);
+										this->skyHubs.Erase(sat);
 										break;
 									}
 							}

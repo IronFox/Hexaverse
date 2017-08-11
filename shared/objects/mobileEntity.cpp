@@ -1538,7 +1538,7 @@ namespace Objects
 			if (t->IsJob() && (at == loc || at+1 == loc || at-1 == loc))
 			{
 				#ifdef CLIENT
-					if (t->name.beginsWithCaseIgnore("construct "))
+					if (t->name.BeginsWithIgnoreCase("construct "))
 				#else
 					if (To<VehicleJob::Construct>::DynamicCast(t->job))
 				#endif

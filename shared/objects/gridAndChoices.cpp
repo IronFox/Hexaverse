@@ -1328,7 +1328,7 @@ namespace Objects
 					foreach (skyLinks,link)
 						if (link->second.lock() == e)
 						{
-							skyLinks.erase(link);
+							skyLinks.Erase(link);
 							break;
 						}
 				}

@@ -1284,12 +1284,12 @@ namespace FileIO
 										{
 											if (line->IsEmpty())
 												continue;
-											index_t tabAt = line->find(tab);
-											ASSERT__(tabAt);
-											if (tabAt)
+											index_t tabAt = line->Find(tab);
+											ASSERT__(tabAt != InvalidIndex);
+											if (tabAt != InvalidIndex)
 											{
-												String key = "/"+line->subStringRef(0,tabAt-1);
-												StringRef value = line->subStringRef((int)tabAt);
+												String key = "/"+line->SubStringRef(0,tabAt);
+												StringRef value = line->SubStringRef(tabAt+1);
 		
 												CLI::PVariable v = Reflection::state.FindVar(key);
 												if (!v)

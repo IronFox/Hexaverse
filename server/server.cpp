@@ -529,7 +529,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 template <typename EnumerationType>
 EnumerationType	GetType(Config::Context*context, const String&path)
 {
-	String value = context->GetString(path).trim();
+	String value = context->GetString(path).Trim();
 	if (value.IsEmpty())
 	{
 		FATAL__("Trying to extract grid content type from '"+context->name+"/"+path+"' but item is not defined");
@@ -720,7 +720,7 @@ namespace ParameterConfig
 				else
 				{
 					PathString path = arg;
-					if (path.endsWithCaseIgnore(FileIO::savFileExtension) && FileSystem::IsFile(arg))
+					if (path.EndsWithIgnoreCase(FileIO::savFileExtension) && FileSystem::IsFile(arg))
 					{
 						mode = ExpectFilename;
 						Process(arg);
@@ -950,7 +950,7 @@ int main( int argc, const char* argv[])
 
 			if (planet.IsNotEmpty())
 			{
-				Reflection::Variable::planetType->Set(planet.trim());
+				Reflection::Variable::planetType->Set(planet.Trim());
 				Reflection::ReloadPlanet();
 			}
 			if (discovery.IsNotEmpty())

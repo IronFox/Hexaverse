@@ -105,7 +105,7 @@ namespace Grid
 	{
 		ASSERT_LESS__(stackID, ARRAYSIZE(((Resource*)nullptr)->coverage));
 		foreach (all,res)
-			if (res->name.equalsIgnoreCase(resourceName))
+			if (res->name.EqualsIgnoreCase(resourceName))
 				return res->coverage[stackID];
 		FATAL__("Unable to locate resource '"+resourceName+'"');	//may be disabled later when resources are fully dynamic
 		return 0;
@@ -123,7 +123,7 @@ namespace Grid
 	/*static*/ Resource&		Resource::Require(const String&name)
 	{
 		foreach (all,res)
-			if (res->name.equalsIgnoreCase(name))
+			if (res->name.EqualsIgnoreCase(name))
 				return *res;
 
 		FATAL__("Unable to locate resource '"+name+'"');

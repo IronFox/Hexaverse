@@ -512,7 +512,7 @@ namespace World
 
 	bool			IsPlanetIniFile(const String&filename)
 	{
-		if (!filename.endsWith(".ini"))
+		if (!filename.EndsWith(".ini"))
 			return IsPlanetIniFile(filename+".ini");
 		return FileSystem::Folder(RuntimeConfig::ConfigFile("config/myPlanets")).FindFile(PathString(filename)) != nullptr
 				||
