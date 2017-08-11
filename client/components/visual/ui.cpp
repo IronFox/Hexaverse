@@ -2056,11 +2056,11 @@ namespace StatePanel
 			cachedLines << name;
 		else
 		{
-			index_t split = name.GetIndexOf('\'');
-			if (split == 0)
-				split = name.GetIndexOf(' ');
-			cachedLines << name.subStringRef(0,split-1);
-			cachedLines << String(' ')+name.subStringRef((int)split-1);
+			index_t split = name.Find('\'');
+			if (split == InvalidIndex)
+				split = name.Find(' ');
+			cachedLines << name.subStringRef(0,split);
+			cachedLines << String(' ')+name.SubStringRef(split);
 				
 			#ifdef _DEBUG
 				cachedLines << ' '+e.GetName();

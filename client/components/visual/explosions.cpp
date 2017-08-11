@@ -315,14 +315,14 @@ namespace Explosions
 		{
 			if (!explosions[i].Update(glowParticles,delta))
 			{
-				explosions.erase(i--);
+				explosions.Erase(i--);
 			}
 		}
 		for (index_t i = 0; i < empExplosions.count(); i++)
 		{
 			if (!empExplosions[i].Update(empParticles,delta))
 			{
-				empExplosions.erase(i--);
+				empExplosions.Erase(i--);
 			}
 		}
 	}

@@ -38,7 +38,7 @@ namespace ConfigurationMode
 
 		const String& FindDeclaration(const String& path)
 		{
-			if (!path.beginsWith('/'))
+			if (!path.BeginsWith('/'))
 				return FindDeclaration('/'+path);
 			static String empty = "";
 			const String*ptr = declarations.QueryPointer(path);
@@ -60,7 +60,7 @@ namespace ConfigurationMode
 					String base = ch->inner_content;
 					explode('\n',base,lines);
 					foreach(lines,ln)
-						ln->trimThis();
+						ln->TrimThis();
 					
 					declarations.Set(path+'/'+str,implode('\n',lines));
 				}
@@ -323,7 +323,7 @@ namespace ConfigurationMode
 				return;
 			grp.customLabel << grp.name;
 			grp.customLabel.MarkBriefEnd();
-			grp.customLabel << hint.trimRef();
+			grp.customLabel << hint.TrimRef();
 		}
 
 

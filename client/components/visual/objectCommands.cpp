@@ -477,7 +477,7 @@ namespace Objects
 		void			VisualCommand::LoadIconByName(const String&name)
 		{
 			String name2 = name;
-			name2.replaceCharacters(NotValidFSChar,'-');
+			name2.FindAndReplace(NotValidFSChar,'-');
 
 			PathString filename = PathString("resources/icons/"+name2+".png");
 			if (!FileSystem::IsFile(filename))

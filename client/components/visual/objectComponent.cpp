@@ -246,8 +246,8 @@ namespace Objects
 		std::shared_ptr<StructureHull> shape(new StructureHull());
 		staticShape = shape;
 		String name = geometryName;
-		name.set(0, CharFunctions::tolower(name.firstChar()));
-		name.replace(' ',"");
+		name.Set(0, CharFunctions::tolower(name.FirstChar()));
+		name.FindAndReplace(' ',"");
 		staticGeometry.Clear();
 		staticGeometry.LoadFromObj(PathString("objects/"+name+".obj"));
 

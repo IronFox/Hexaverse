@@ -173,8 +173,8 @@ namespace Tutorial
 			void ReplaceTags(String&msg)
 			{
 				for (index_t i = 0; i < Objects::Resource::N; i++)
-					msg.replace('%'+String(Objects::Resource::Reinterpret(i).ToString())+'%',Objects::ResourceTag(i));
-				msg.replace("%Time%",Objects::TimeResourceTag());
+					msg.FindAndReplace('%'+String(Objects::Resource::Reinterpret(i).ToString())+'%',Objects::ResourceTag(i));
+				msg.FindAndReplace("%Time%",Objects::TimeResourceTag());
 			}
 
 			void	DisplayMessage(String msg, const String&img)
@@ -486,12 +486,12 @@ namespace Tutorial
 				explode('\n',xmessage.inner_content,msg->lines);
 				for (auto&line : msg->lines)
 				{
-					line.trimThis();
-					line.replace("%PRODUCT_NAME%",PRODUCT_NAME);
-					line.replace("%FUEL%",Objects::ResourceTag(Objects::Resource::Fuel));
-					line.replace("%MINERALS%",Objects::ResourceTag(Objects::Resource::Minerals));
-					line.replace("%URANIUM%",Objects::ResourceTag(Objects::Resource::Uranium));
-					line.replace("%ENERGY%",Objects::ResourceTag(Objects::Resource::Energy));
+					line.TrimThis();
+					line.FindAndReplace("%PRODUCT_NAME%",PRODUCT_NAME);
+					line.FindAndReplace("%FUEL%",Objects::ResourceTag(Objects::Resource::Fuel));
+					line.FindAndReplace("%MINERALS%",Objects::ResourceTag(Objects::Resource::Minerals));
+					line.FindAndReplace("%URANIUM%",Objects::ResourceTag(Objects::Resource::Uranium));
+					line.FindAndReplace("%ENERGY%",Objects::ResourceTag(Objects::Resource::Energy));
 					
 				}
 			}

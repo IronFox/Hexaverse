@@ -968,7 +968,7 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 
 	PathString MakeValidFilename(String base)
 	{
-		base.eraseCharacters(IsValidFileChar,false);
+		base.EraseCharacters(IsValidFileChar,false);
 		return PathString(base);
 	}
 
@@ -983,29 +983,29 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 			if (line->second)
 				file << "*";
 			String linkedLine = line->first;
-			linkedLine.replace("Hrz. Attack range","[[concepts/attack range|Hrz. Attack range]]");
-			linkedLine.replace("Base horizontal attack range","[[concepts/attack range|Base horizontal attack range]]");
-			linkedLine.replace("Initiative","[[concepts/initiative|Initiative]]");
-			linkedLine.replace("Weight","[[concepts/vehicle|Weight]]");
-			linkedLine.replace("Carrying capacity","[[concepts/vehicle|Carrying capacity]]");
-//			linkedLine.replace("Base scanning range","[[concepts/sensory|Base scanning range]]");
-			linkedLine.replace("scanning range","[[concepts/scanning range]]");
-			linkedLine.replace("Scanning range","[[concepts/scanning range|Scanning range]]");
-			linkedLine.replace("compound","[[concepts/compound]]");
-			linkedLine.replace("phase","[[concepts/phase]]");
-			linkedLine.replace("attack action","[[concepts/action pool|attack action]]");
-			linkedLine.replace("resources","[[concepts/resources]]");
+			linkedLine.FindAndReplace("Hrz. Attack range","[[concepts/attack range|Hrz. Attack range]]");
+			linkedLine.FindAndReplace("Base horizontal attack range","[[concepts/attack range|Base horizontal attack range]]");
+			linkedLine.FindAndReplace("Initiative","[[concepts/initiative|Initiative]]");
+			linkedLine.FindAndReplace("Weight","[[concepts/vehicle|Weight]]");
+			linkedLine.FindAndReplace("Carrying capacity","[[concepts/vehicle|Carrying capacity]]");
+//			linkedLine.FindAndReplace("Base scanning range","[[concepts/sensory|Base scanning range]]");
+			linkedLine.FindAndReplace("scanning range","[[concepts/scanning range]]");
+			linkedLine.FindAndReplace("Scanning range","[[concepts/scanning range|Scanning range]]");
+			linkedLine.FindAndReplace("compound","[[concepts/compound]]");
+			linkedLine.FindAndReplace("phase","[[concepts/phase]]");
+			linkedLine.FindAndReplace("attack action","[[concepts/action pool|attack action]]");
+			linkedLine.FindAndReplace("resources","[[concepts/resources]]");
 			
 
 			
 			
 			foreach (Objects::structurePrototypes,s)
 			{
-				String name = (*s)->GetTypeName().copyToLowerCase();
-				if (name.equalsIgnoreCase(myTypeName))
+				String name = (*s)->GetTypeName().CopyToLowerCase();
+				if (name.EqualsIgnoreCase(myTypeName))
 					continue;
 
-				linkedLine.replace(name,"[[units/structures/"+name+"]]");
+				linkedLine.FindAndReplace(name,"[[units/structures/"+name+"]]");
 			}
 
 
@@ -1028,13 +1028,13 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 		LogEvent(EventSignificance::Uncommon, "Documenting "+typeName);
 
 		PathString name = MakeValidFilename( typeName );
-		PathString outName = (name+".prefix").convertToLowerCase();
+		PathString outName = (name+".prefix").ConvertToLowerCase();
 		StringFile file;
 		if (!outFolder.IsValidLocation())
 			FileSystem::CreateDirectory(outFolder.GetLocation());
 
 		String relative = String(FileSystem::GetRelativePath(rootFolder.GetLocation(),outFolder.GetLocation()));
-		relative.replace('\\','/');
+		relative.FindAndReplace('\\','/');
 		PathString outPath = outFolder.FindFile(outName,false)->GetLocation();
 		listFile << "* [[units/"<<relative<<'/'<<typeName<<'|'<<typeName <<"]]"<< nl;
 		file.Create(outPath);
@@ -2806,7 +2806,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 			},
 			[](const String&msg)
 			{
-				if (msg.trimRef().length() > 0)
+				if (msg.TrimRef().length() > 0)
 				{
 					if (Network::client.IsConnected())
 						Network::Channels::chatMessage.SendTo(Network::client,msg);
@@ -3616,7 +3616,7 @@ int main( int argc, const char* argv[])
 				Menu::Configuration::Assign(StartConfig::destConfig, userConfigPath);
 
 				String val = StartConfig::GetString("runtime/capFPS","-1");
-				if (!val.equalsIgnoreCase("off"))
+				if (!val.EqualsIgnoreCase("off"))
 					convert(val.c_str(),RuntimeConfig::FromFile::capFPS);
 				RuntimeConfig::FromFile::alwaysDay = StartConfig::GetBool("runtime/alwaysDay",true);
 				display.config.vertical_sync = StartConfig::GetInt("runtime/vsync");

@@ -1602,11 +1602,11 @@ namespace Network
 
 	/*explicit*/			ServerAddress::ServerAddress(const String&url)
 	{
-		index_t portAt = url.find(':');
-		if (portAt)
+		index_t portAt = url.Find(':');
+		if (portAt != InvalidIndex)
 		{
-			host = url.subStringRef(0,portAt-1);
-			StringRef conv = url.subStringRef((int)portAt);
+			host = url.subStringRef(0,portAt);
+			StringRef conv = url.SubStringRef(portAt+1);
 			if (!convert(conv.pointer(),conv.length(),basePort))
 			{
 				throw Except::Program::ParameterFault(CLOCATION, "Unable to parse port component '" + String(conv) + "' of '"+url+"'");
