@@ -63,8 +63,8 @@ namespace Console
 	static void ClearLine()
 	{
 		std::cout << '\r';
-		for (index_t i = 0; i < lastLine.length(); i++)
-			if (lastLine.get(i) != '\t')
+		for (index_t i = 0; i < lastLine.GetLength(); i++)
+			if (lastLine[i] != '\t')
 				std::cout << ' ';
 			else
 				std::cout << '\t';
