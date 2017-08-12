@@ -52,6 +52,13 @@ namespace Test
 
 	void Run(Test&test);
 
+	class StringMethods : public Test
+	{
+	public:
+		/**/			StringMethods() : Test("String Methods"){}
+		virtual void	Run(Random&random) override;
+	};
+
 	class CharacterEncoding : public Test
 	{
 	public:

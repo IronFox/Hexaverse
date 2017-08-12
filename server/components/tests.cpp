@@ -248,6 +248,129 @@ namespace Test
 	}
 
 
+	/*virtual override*/ void	StringMethods::Run(Random&random)
+	{
+		String test0 = "hello WORLD helloWORLD HELLO world";
+
+		//contains:
+		if (!test0.Contains("hello"))
+			Fail(CLOCATION,"String lookup failure");
+		if (!test0.Contains("world"))
+			Fail(CLOCATION,"String lookup failure");
+		if (test0.Contains("World"))
+			Fail(CLOCATION,"String lookup failure");
+		if (!test0.ContainsIgnoreCase("World"))
+			Fail(CLOCATION,"String lookup failure");
+		
+
+		ASSERT_EQUAL__(test0.Find("WORLD"),6);
+		ASSERT_EQUAL__(test0.Find("WORLD",6),6);
+		ASSERT_EQUAL__(test0.Find("WORLD",7),17);
+		ASSERT_EQUAL__(test0.Find("WORLD",17),17);
+		ASSERT_EQUAL__(test0.Find("WORLD",18),InvalidIndex);
+		ASSERT_EQUAL__(test0.FindIgnoreCase("WORLD",18),29);
+
+		ASSERT_EQUAL__(test0.FindLast("WORLD"),17);
+		ASSERT_EQUAL__(test0.FindLast("WORLD",17),17);
+		ASSERT_EQUAL__(test0.FindLast("WORLD",16),6);
+
+		ASSERT_EQUAL__(test0.FindWord("hello"),0);
+		ASSERT_EQUAL__(test0.FindWord("hello",1),InvalidIndex);
+		ASSERT_EQUAL__(test0.FindWordIgnoreCase("hello",1),23);
+
+		ASSERT_EQUAL__(test0.FindLastWord("HELLO"),23);
+		ASSERT_EQUAL__(test0.FindLastWord("HELLO",23),23);
+		ASSERT_EQUAL__(test0.FindLastWord("HELLO",24),23);
+		ASSERT_EQUAL__(test0.FindLastWord("HELLO",22),InvalidIndex);
+		ASSERT_EQUAL__(test0.FindLastWordIgnoreCase("world",22),6);
+		ASSERT_EQUAL__(test0.FindLastWordIgnoreCase("world",6),6);
+		ASSERT_EQUAL__(test0.FindLastWordIgnoreCase("world",5),InvalidIndex);
+
+
+
+		{
+			count_t cnt = 0;
+			index_t at = 0;
+			while (at < test0.GetLength())
+			{
+				at = test0.Find("hello",at);
+				if (at == InvalidIndex)
+					break;
+				at++;
+				cnt++;
+			}
+			if (cnt != 2)
+				Fail(CLOCATION,"Expected 2 occurrences. Found "+String(cnt));
+		}
+		{
+			count_t cnt = 0;
+			index_t at = 0;
+			while (at < test0.GetLength())
+			{
+				at = test0.FindIgnoreCase("hello",at);
+				if (at == InvalidIndex)
+					break;
+				at++;
+				cnt++;
+			}
+			if (cnt != 3)
+				Fail(CLOCATION,"Expected 3 occurrences. Found "+String(cnt));
+		}
+		{
+			count_t cnt = 0;
+			index_t at = 0;
+			while (at < test0.GetLength())
+			{
+				at = test0.FindWord("hello",at);
+				if (at == InvalidIndex)
+					break;
+				at++;
+				cnt++;
+			}
+			if (cnt != 1)
+				Fail(CLOCATION,"Expected 1 occurrences. Found "+String(cnt));
+		}
+		{
+			count_t cnt = 0;
+			index_t at = 0;
+			while (at < test0.GetLength())
+			{
+				at = test0.FindWordIgnoreCase("hello",at);
+				if (at == InvalidIndex)
+					break;
+				at++;
+				cnt++;
+			}
+			if (cnt != 2)
+				Fail(CLOCATION,"Expected 2 occurrences. Found "+String(cnt));
+		}
+
+
+
+		{
+			count_t cnt = 0;
+			index_t at = InvalidIndex;
+			for (;;)
+			{
+				at = test0.FindLastWordIgnoreCase("world",at);
+				if (at == InvalidIndex)
+					break;
+				at--;
+				cnt++;
+			}
+			if (cnt != 2)
+				Fail(CLOCATION,"Expected 2 occurrences. Found "+String(cnt));
+		}
+
+
+
+
+
+	}
+
+
+
+
 
 	/*virtual override*/ void	Journal::Run(Random&random)
 	{
