@@ -164,7 +164,7 @@ namespace Objects
 			newOwner->statistics.SignalUnitAcquired(e,oldOwner);
 
 
-			Remove(e,RemovalType::ChangingOwnership,atTime,true,false,true);
+			ForceRemove(e,RemovalType::ChangingOwnership,atTime);
 			e->owner = newOwner;
 			atTime += 0.025f;
 			
@@ -965,9 +965,9 @@ namespace Objects
 				ConstName type = turret->constName;
 				return researchState.CheckUnlocked(*turret,errorOut) && CheckLimit(CountMobileType(type), RuntimeConfig::UnitLimits::Get(type), errorOut);
 			}
-			ConstName type = e->GetCTypeName();
+			EntityType type = e->GetType();
 			if (e->IsStructure())
-				return researchState.CheckUnlocked(type,errorOut) && CheckLimit(CountStructureType(type), RuntimeConfig::UnitLimits::Get(type), errorOut);
+				return researchState.CheckUnlocked(type.baseType,errorOut) && CheckLimit(CountStructureType(type.baseType), RuntimeConfig::UnitLimits::Get(type.baseType), errorOut);
 			FATAL__("Unknown type: "+e->GetName());
 			return false;
 		}
@@ -993,7 +993,7 @@ namespace Objects
 			count_t rs = 0;
 			foreach (this->structures, s0)
 			{
-				if (s0->lock()->GetCTypeName() == structureType)
+				if (s0->lock()->GetType() == structureType)
 					rs ++;
 			}
 			return rs;
@@ -1247,7 +1247,7 @@ namespace Objects
 		}
 
 
-		/*static*/ void				Marker::Create(const TUniqueID&id, Type type, const Grid::LCellIdI&location, const RoundNumber& createdInRound, const TUniqueID&referenceID, const TUniqueID&referenceOwnerID, ConstName referenceType[2], const RoundNumber& currentRound)
+		/*static*/ void				Marker::Create(const TUniqueID&id, Type type, const Grid::LCellIdI&location, const RoundNumber& createdInRound, const TUniqueID&referenceID, const TUniqueID&referenceOwnerID, EntityType referenceType, const RoundNumber& currentRound)
 		{
 			const index_t newIndex = all.Count();
 			Marker&m = all.Append();
@@ -1263,37 +1263,35 @@ namespace Objects
 			{
 				m.referenceEntity = referenceID;
 				referenceIDMap.Set(referenceID,newIndex);
-				m.referencedType[0] = referenceType[0];
-				m.referencedType[1] = referenceType[1];
-				if (referenceType[1] != ConstName::Empty)
+				m.referencedType = referenceType;
+
+				PWorldEntity prototype = Objects::GetNonVehiclePrototypeByName(referenceType);
+				if (prototype)
 				{
-					//vehicle
-					Component::VehicleBase* base = Component::GetVehicleBaseByName(referenceType[0]);
-					Component::Turret* turret = Component::GetTurretByName(referenceType[1]);
-					ASSERT1__(base, referenceType);
-					ASSERT1__(turret, referenceType);
-					m.visualization.reset(new Vehicle(OwnerParameter(), location, base, turret));
-					mobileGhosts << To<MobileEntity>::Cast( m.visualization );
+					ASSERT1__(prototype, referenceType);
+					m.visualization = (prototype->CreateNewInstance(OwnerParameter(), location, 0));
+					if (prototype->IsStructure())
+						structureGhosts << To<Structure>::Cast(m.visualization);
+					else
+						if (prototype->IsMobile())
+							mobileGhosts << To<MobileEntity>::Cast( m.visualization);
+						else
+							LogEvent(EventSignificance::NonFatalError,"Unable to classify ghost for '"+prototype->GetTypeName()+"'");
 				}
 				else
 				{
-					//structure
-					PWorldEntity prototype = Objects::GetNonVehiclePrototypeByName(referenceType[0]);
-					if (prototype)
+					//vehicle
+					if (referenceType.HasTurret())
 					{
-						ASSERT1__(prototype, referenceType);
-						m.visualization = (prototype->CreateNewInstance(OwnerParameter(), location, 0));
-						if (prototype->IsStructure())
-							structureGhosts << To<Structure>::Cast(m.visualization);
-						else
-							if (prototype->IsMobile())
-								mobileGhosts << To<MobileEntity>::Cast( m.visualization);
-							else
-								LogEvent(EventSignificance::NonFatalError,"Unable to classify ghost for '"+prototype->GetTypeName()+"'");
+						Component::VehicleBase* base = Component::GetVehicleBaseByName(referenceType.baseType);
+						Component::Turret* turret = Component::GetTurretByName(referenceType.turretType);
+						ASSERT1__(base, referenceType);
+						ASSERT1__(turret, referenceType);
+						m.visualization.reset(new Vehicle(OwnerParameter(), location, base, turret));
+						mobileGhosts << To<MobileEntity>::Cast( m.visualization );
 					}
 					else
-						LogEvent(EventSignificance::NonFatalError,"Unable to create ghost for type #"+String((int)referenceType[0]));
-
+						LogEvent(EventSignificance::NonFatalError,"Unable to create ghost for type #"+String((int)referenceType.baseType));
 				}
 
 				if (m.visualization)
@@ -1439,37 +1437,7 @@ namespace Objects
 	#else
 
 
-		String Convert(ConstName name)
-		{
-			if (name == ConstName::Empty)
-				return "";
-			PWorldEntity e = GetPrototypeByName(name);
-			if (e)
-				return e->GetTypeName();
-			Component::Turret* t = Component::GetTurretByName(name);
-			if (t)
-				return t->typeName;
-			Component::VehicleBase* b = Component::GetVehicleBaseByName(name);
-			if (b)
-				return b->typeName;
-			return "";
-		}
 
-		ConstName Convert(const String&name)
-		{
-			if (name == "")
-				return ConstName::Empty;
-			PWorldEntity e = GetPrototypeByName(name);
-			if (e)
-				return e->GetCTypeName();
-			Component::Turret* t = Component::GetTurretByName(name);
-			if (t)
-				return t->constName;
-			Component::VehicleBase* b = Component::GetVehicleBaseByName(name);
-			if (b)
-				return b->constName;
-			return ConstName::Empty;
-		}
 
 		/*virtual override*/	void		Marker::Serialize(IWriteStream&s) const
 		{
@@ -1481,8 +1449,7 @@ namespace Objects
 			{
 				s.WritePrimitive(this->referenceEntity);
 				s.WritePrimitive(this->referenceEntityOwner);
-				SerialSync(s,Convert(this->referencedType[0]));
-				SerialSync(s,Convert(this->referencedType[1]));
+				SerialSync(s,ToString(referencedType));
 			}
 		}
 		/*virtual override*/	void		Marker::Deserialize(IReadStream&inStream)
@@ -1495,7 +1462,7 @@ namespace Objects
 			type = Type::Reinterpret(typei);
 			if (UtilizesReferenceEntity())
 			{
-				String t0,t1;
+				String t0;
 				inStream.ReadPrimitive(this->referenceEntity);
 
 				if (ApplicationInterface::globalVersionOfCurrentFile >= ApplicationInterface::FileVersions::MarkersHaveOwner)
@@ -1505,15 +1472,13 @@ namespace Objects
 				else
 					this->referenceEntityOwner = TUniqueID::Empty();
 				SerialSync(inStream,t0);
-				SerialSync(inStream,t1);
-				this->referencedType[0] = Convert(t0);
-				this->referencedType[1] = Convert(t1);
+				this->referencedType = DecodeType(t0);
 				//this->referenceEntityType.Deserialize(inStream, fixedSize);
 			}
 			else
 			{
 				referenceEntity = TUniqueID::Empty();
-				referencedType[0] = referencedType[1] = ConstName::Empty;
+				referencedType = EntityType();
 			}
 		}
 
@@ -1643,7 +1608,7 @@ namespace Objects
 				float t=0;
 				foreach (toDelete,del)
 					if (*del)
-						Remove(*del,Objects::RemovalType::ControlledExplosion,t,false);
+						Remove(*del,Objects::RemovalType::ControlledExplosion,t);
 				toDelete.Clear();
 				ASSERT__(f->allMobiles.IsEmpty());	//should have cascaded
 				ASSERT__(f->structures.IsEmpty());

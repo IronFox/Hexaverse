@@ -487,7 +487,7 @@ namespace Reflection
 		{
 			typedef Base	Super;
 		public:
-			const ConstName	key;
+			const Objects::EntityType	key;
 			UINT16			defaultValue;
 
 			UINT16			Get() const
@@ -495,7 +495,7 @@ namespace Reflection
 				return (UINT16)RuntimeConfig::UnitLimits::Get(key,true);
 			}
 
-			/**/			UnitLimit(const String&name, ConstName key, unsigned protection=CLI::EraseProtection):Super(name,"Count16",Persistence::RestoreFromSavegame,1,protection),key(key)
+			/**/			UnitLimit(const String&name, Objects::EntityType key, unsigned protection=CLI::EraseProtection):Super(name,"Count16",Persistence::RestoreFromSavegame,1,protection),key(key)
 			{}
 			virtual String	ConvertToString()		const	override	{return String(Get());}
 			virtual	bool	Set(const String&value)	override

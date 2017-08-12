@@ -262,7 +262,7 @@ namespace Objects
 
 
 		Engine::OpenAL::Wave	GetAmbientSound(const WorldEntity&e);
-		Engine::OpenAL::Wave	GetAmbientSoundOf(const String&entityTypeName, ConstName entityType);
+		Engine::OpenAL::Wave	GetAmbientSoundOf(const String&entityTypeName, EntityType entityType);
 
 	}
 

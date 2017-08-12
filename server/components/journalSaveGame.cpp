@@ -1594,7 +1594,7 @@ namespace Journal
 			throw RoundException(CLOCATION,e->GetName()+": Unable to destroy entity. Entity is indestructible");
 		}
 		float t = 0;
-		Objects::Remove(e,type,t,false);
+		Objects::Remove(e,type,t);
 		if (To<Objects::Structure>::DynamicCast(e))
 			Objects::RefreshCompoundCoverageIfNeeded(t);
 
@@ -1603,34 +1603,26 @@ namespace Journal
 	static bool ConvertReferenceEntity(const Protocol::MarkerReferenceEntity&source, Objects::Marker&dest )
 	{
 		dest.referenceEntity = source.id;
-		dest.referencedType[0] = source.type0;
-		dest.referencedType[1] = source.type1;
-		if (dest.referencedType[0] == ConstName::Empty && dest.referencedType[1] == ConstName::Empty)
-			return true;
-		if (dest.referencedType[1] == ConstName::Empty)
-		{
-			if (!Objects::GetNonVehiclePrototypeByName(dest.referencedType[0]))
-			{
-				LogEvent(EventClass::Preset::commandRejected, "Unknown structure type #" + String(int(dest.referencedType[0])));
-				return false;
-			}
-			return true;
-		}
-		if (dest.referencedType[0] == ConstName::Empty)
+		dest.referencedType = source.type;
+		if (dest.referencedType.IsInvalid())
 		{
 			LogEvent(EventClass::Preset::commandRejected, "Unknown marker format");
 			return false;
 		}
-
-		//String turretName = source.type.subStringRef((int)separatorAt);
-		if (!Objects::Component::GetTurretByName(dest.referencedType[1]))
+		if (dest.referencedType.IsEmpty())
+			return true;
+		if (Objects::GetNonVehiclePrototypeByName(dest.referencedType))
+			return true;
+		if (!Objects::Component::GetVehicleBaseByName(dest.referencedType.baseType))
 		{
-			LogEvent(EventClass::Preset::commandRejected, "Unknown turret type #" + String(int(dest.referencedType[1])));
+			LogEvent(EventClass::Preset::commandRejected, "Unknown base type #" + String(int(dest.referencedType.baseType)));
 			return false;
 		}
-		if (!Objects::Component::GetVehicleBaseByName(dest.referencedType[0]))
+
+		//String turretName = source.type.subStringRef((int)separatorAt);
+		if (!Objects::Component::GetTurretByName(dest.referencedType.turretType))
 		{
-			LogEvent(EventClass::Preset::commandRejected, "Unknown base type #" + String(int(dest.referencedType[0])));
+			LogEvent(EventClass::Preset::commandRejected, "Unknown turret type #" + String(int(dest.referencedType.turretType)));
 			return false;
 		}
 		return true;
@@ -1639,35 +1631,13 @@ namespace Journal
 	static void ExportReferenceEntity(const Protocol::MarkerReferenceEntity&source, Entry&result )
 	{
 		result.uuidParameters.Set("ReferenceID",source.id);
-		if (source.type0 == ConstName::Empty && source.type1 == ConstName::Empty)
-			return;
-		if (source.type1 == ConstName::Empty)
-		{
-			Objects::PWorldEntity proto = Objects::GetNonVehiclePrototypeByName(source.type0);
-			if (proto)
-				result.stringParameters.Set("ReferenceNonVehicle",proto->GetTypeName());
-			else
-				throw Round::RoundException(CLOCATION, "Unknown non-vehicle type #" + String(int(source.type0)));
-			return;
-		}
-		if (source.type0 == ConstName::Empty)
+		if (source.type.IsInvalid())
 		{
 			throw Round::RoundException(CLOCATION, "Unknown marker format");
 		}
-
-		//String turretName = source.type.subStringRef((int)separatorAt);
-		Objects::Component::Turret*t = Objects::Component::GetTurretByName(source.type1);
-		if (!t)
-		{
-			throw Round::RoundException(CLOCATION, "Unknown turret type #" + String(int(source.type1)));
-		}
-		Objects::Component::Base*b = Objects::Component::GetVehicleBaseByName(source.type0);
-		if (!b)
-		{
-			throw Round::RoundException(CLOCATION,"Unknown base type #" + String(int(source.type0)));
-		}
-		result.stringParameters.Set("ReferenceTurret",t->typeName);
-		result.stringParameters.Set("ReferenceBase",b->typeName);
+		if (source.type.IsEmpty())
+			return;
+		result.stringParameters.Set("ReferenceType",ToString(source.type));
 	}
 
 
@@ -1681,22 +1651,11 @@ namespace Journal
 	static void ImportReferenceEntity(Protocol::MarkerReferenceEntity&ref, const Entry&e )
 	{
 		e.uuidParameters.Require(CLOCATION,"ReferenceID",ref.id);
-		String base,turret;
-		if (e.stringParameters.TryGet("ReferenceBase",base))
-		{
-			e.stringParameters.Require(CLOCATION,"ReferenceTurret",turret);
-			ref.type0 = Require(Objects::Component::GetVehicleBaseByName(base))->constName;
-			ref.type1 = Require(Objects::Component::GetTurretByName(turret))->constName;
-			return;
-		}
-		if (e.stringParameters.TryGet("ReferenceNonVehicle",base))
-		{
-			ref.type0 = Require(Objects::GetNonVehiclePrototypeByName(base))->GetCTypeName();
-			ref.type1 = ConstName::Empty;
-			return;
-		}
-		ref.type0 = ConstName::Empty;
-		ref.type1 = ConstName::Empty;
+		String type;
+		if (e.stringParameters.TryGet("ReferenceType",type))
+			ref.type = Objects::DecodeType(type);
+		else
+			ref.type = Objects::EntityType();
 	}
 
 
@@ -1752,7 +1711,7 @@ namespace Journal
 		//ConvertMarker(marker, outMarker);
 		String ref;
 		if (marker.UtilizesReferenceEntity())
-			ref = ", referencing #"+String(int(marker.referencedType[0]))+"-#"+String(int(marker.referencedType[1]));
+			ref = ", referencing #"+String(int(marker.referencedType.baseType))+"-#"+String(int(marker.referencedType.turretType));
 		LogEvent(EventSignificance::Common, peer, marker.GetName()+" created"+ref);
 	}
 

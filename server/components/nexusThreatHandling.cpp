@@ -356,7 +356,7 @@ namespace Nexus
 						
 						Objects::Component::Turret* turret = Game::Config::Nexus::vehicleTurrets[p->entityRandom.NextIndex(Game::Config::Nexus::vehicleTurrets.Count())];
 						float t = 0;
-						Objects::PVehicle v = Objects::SpawnVehicle(Objects::Faction::nexus, location, &Objects::Component::hoverbase, turret, true, t);
+						Objects::PVehicle v = Objects::InsertNewVehicle(Objects::Faction::nexus, location, &Objects::Component::hoverbase, turret, true, t);
 						Journal::currentRound.LogEntityCreation(v);
 						EstimatePresence(*v,v->location,  portLocations,hostileNearNexus,constructorNearNexus, friendlyNearNexus);
 					//	Objects::VerifyVisibilityNetwork();

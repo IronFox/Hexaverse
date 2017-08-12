@@ -126,7 +126,7 @@ namespace Objects
 
 		//BaseEntity overrides:
 		virtual String				GetTypeName() const override { return turret->typeName+" Tower"; };
-		virtual ConstName			GetCTypeName() const override {return turret->constTowerName;}
+		virtual EntityType			GetType() const override {return EntityType(ConstName::Type_Tower, turret->constName);}
 
 		//WorldEntity overrides:
 		#ifndef CLIENT

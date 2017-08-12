@@ -288,7 +288,7 @@ namespace World
 					if (kill)
 					{
 						float t = 0;
-						Objects::Remove(entity,Objects::RemovalType::UncontrolledExplosion,t,false);
+						Objects::Remove(entity,Objects::RemovalType::UncontrolledExplosion,t);
 					}
 				}
 			},false);

@@ -7,6 +7,7 @@
 #include <iphlpapi.h>
 #include <net/tcp.h>
 #include <net/containers.h>
+#include "objects/entityType.h"
 #include "grid/stack.h"
 #include "grid/planet.h"
 #include "objects.h"
@@ -938,7 +939,7 @@ namespace Protocol
 		, NET(USHORT), roundsToJobCompletion
 		, NET(USHORT), resourceCostLeft
 		, NETA(Grid::LCellIdI), buildPath
-		, NET(ConstName), visualizationName	//can also be DetonationSize_Regular or DetonationSize_Doomsday
+		, Objects::EntityType, visualizationName	//can also be DetonationSize_Regular or DetonationSize_Doomsday
 	)
 
 	//class ResourceVector : public Objects::ResourceVector, public SerializableObject
@@ -1111,14 +1112,15 @@ namespace Protocol
 		};
 	}
 
-	typedef NetArray<ConstName,Objects::MaxProductionTasks> ProductionDesc;
+	
 	NETSTRUCT2(ProductionTask
-		, ProductionDesc, parameters
-		, NET(TUniqueID), id
+		, Objects::EntityType, type
+		, TUniqueID, id
 	)
+	typedef NetArray<ProductionTask,Objects::MaxProductionTasks> ProductionTasks;
 	NETSTRUCT3(ProducerState
-		, NETA(ProductionTask), productionTasks
-		, NET(UINT32), productionDone
+		, ProductionTasks, productionTasks
+		, UINT32, productionDone
 		, Grid::LCellIdI, gatheringPoint
 	)
 
@@ -1248,17 +1250,16 @@ namespace Protocol
 
 
 
-	NETSTRUCT4(NewMobileEntity
+	NETSTRUCT3(NewMobileEntity
 		, MobileState, state
 		, NET(TUniqueID), owner
-		, NET(ConstName), turretName
-		, NET(ConstName), baseName
+		, Objects::EntityType, type
 	)
 
 	NETSTRUCT3(StructureConstruction
 		, StructureState, state
 		, NET(TUniqueID), owner
-		, NET(ConstName), typeName
+		, Objects::EntityType, type
 	)
 
 
@@ -1298,7 +1299,7 @@ namespace Protocol
 	NETSTRUCT3(StandardJob
 		, NET(TUniqueID), ownerID
 		, NET(ConstName), jobName
-		, NET(ConstName), parameterName
+		, Objects::EntityType, parameterName
 		)
 
 	typedef NetArray<Grid::HCellIdI,256>	CellArray;
@@ -1411,11 +1412,10 @@ namespace Protocol
 		, NET(bool), doSet
 	)
 
-	NETSTRUCT4(MarkerReferenceEntity
+	NETSTRUCT3(MarkerReferenceEntity
 		, NET(TUniqueID), id
 		, NET(TUniqueID), owner
-		, NET(ConstName), type0
-		, NET(ConstName), type1
+		, Objects::EntityType, type
 	)
 
 	static_assert(Objects::Marker::Type::NumberOfPossibilities == 3, "Please adjust marker logic");
@@ -1447,7 +1447,7 @@ namespace Protocol
 
 	typedef NETA(UINT32)	ResearchQueue;
 
-	typedef std::pair<UINT16,UINT16>	TUnitLimit;
+	typedef std::pair<Objects::EntityType,UINT16>	TUnitLimit;
 
 	typedef NETA(TUnitLimit)	UnitLimits;
 

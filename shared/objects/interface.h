@@ -30,7 +30,7 @@ namespace ApplicationInterface
 	bool	HasSignalledRoundEnd();
 	bool	ShouldSignalRoundEnd();
 	bool	CanChangeRoundState();
-	void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, ConstName parameterName);
+	void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, Objects::EntityType parameterName);
 	void	SignalTerrainModification(const Objects::PVehicle&v,Objects::CursorMode activeCursorMode,const Array<Grid::HCellIdI>&selection);
 	void	SignalDropLastTask(const Objects::PWorldEntity&v);
 	void	SignalDropAllTasks(const Objects::PWorldEntity&v);

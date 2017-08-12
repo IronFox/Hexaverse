@@ -645,7 +645,7 @@ namespace Network
 			Objects::PMobileEntity v;
 			auto m = vc.state.myMobileEntity.Get0();
 			bool place = vc.state.entityState.timestamp.rightNow && (!m || m->storedIn.Get0() == 0);
-			v = Objects::SpawnMobileEntity(Network::ResolveFaction(vc.owner),  vc.state.entityState.id,vc.state.entityState.location,vc.baseName,vc.turretName,place,Network::haveID && Network::myID == vc.owner);
+			v = Objects::SpawnMobileEntity(Network::ResolveFaction(vc.owner),  vc.state.entityState.id,vc.state.entityState.location,vc.type,place,Network::haveID && Network::myID == vc.owner);
 			if (vc.state.entityState.timestamp.rightNow)
 				LogEvent(EventSignificance::Common,v.get(),  "Placed vehicle entity outside animation");
 			bool isOwnedByMe = v->isOwnedByMe;
@@ -688,7 +688,7 @@ namespace Network
 			//		World::actual.UpdateLighting();
 			//#endif
 
-			Objects::PStructure s = Objects::SpawnStructure(Network::ResolveFaction(sc.owner),  sc.state.entityState.id,sc.state.entityState.location,sc.typeName, sc.state.entityState.timestamp.rightNow, Network::haveID && Network::myID == sc.owner);
+			Objects::PStructure s = Objects::SpawnStructure(Network::ResolveFaction(sc.owner),  sc.state.entityState.id,sc.state.entityState.location,sc.type, sc.state.entityState.timestamp.rightNow, Network::haveID && Network::myID == sc.owner);
 			ASSERT__(s);
 			if (sc.state.entityState.timestamp.rightNow)
 				LogEvent(EventSignificance::Common,s.get(),  "Placed structure entity outside animation");
@@ -760,7 +760,7 @@ namespace Network
 					{
 						float t = 0;
 						if (Objects::GetEntity(e->id))
-							Objects::Remove(e,type, t,Network::ControlEnabled());
+							Objects::Remove(e,type, t);
 						#ifdef HAS_WINDOW
 							GUI::SignalSituationChange();
 						#endif
@@ -769,7 +769,7 @@ namespace Network
 				else
 				{
 					float t = 0;
-					Objects::Remove(e,type, t,Network::ControlEnabled());
+					Objects::Remove(e,type, t);
 					#ifdef HAS_WINDOW
 						GUI::SignalSituationChange();
 					#endif
@@ -1023,7 +1023,7 @@ namespace Network
 		void	CreateMarker(Protocol::Marker&marker)
 		{
 			TUniqueID	entityID = TUniqueID::Empty(), ownerID = TUniqueID::Empty();
-			ConstName	entityType[2];
+			Objects::EntityType	entityType;
 			Objects::Marker::Type type;
 
 			const Protocol::MarkerReferenceEntity*entity = marker.data.Get0();
@@ -1032,8 +1032,7 @@ namespace Network
 				type = Objects::Marker::Type::Reinterpret(0);
 				entityID = entity->id;
 				ownerID = entity->owner;
-				entityType[0] = entity->type0;
-				entityType[1] = entity->type1;
+				entityType = entity->type;
 			}
 			else
 			{
@@ -1043,8 +1042,7 @@ namespace Network
 					type = Objects::Marker::Type::Reinterpret(1);
 					entityID = entity->id;
 					ownerID = entity->owner;
-					entityType[0] = entity->type0;
-					entityType[1] = entity->type1;
+					entityType = entity->type;
 				}
 				else
 				{
@@ -1889,6 +1887,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			f->roundChangeNotifications = 0;
 		};
 	if (RuntimeConfig::IsInAnyCommandPhase())
+	{
 		if (gameHasBegun)
 		{
 			if (Animation::AllDone())
@@ -1903,6 +1902,13 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 		}
 		else
 			LogEvent(EventSignificance::Debug,"Command phase. Game has NOT begun");
+	}
+	else
+		if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
+		{
+			//GUI::Statistics::Update();
+			//GUI::Show(GUI::Statistics::window);
+		}
 
 	#ifdef HAS_WINDOW
 		GUI::SignalSituationChange();

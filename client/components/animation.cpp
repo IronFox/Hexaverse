@@ -539,9 +539,9 @@ namespace Animation
 	static GenericHashSet<TUniqueID> insertIntoGridLater;
 
 
-	static void AppendTask(const Objects::PMobileEntityProducer&p,const TUniqueID&id, ConstName baseName, ConstName turretName)
+	static void AppendTask(const Objects::PMobileEntityProducer&p,const TUniqueID&id, Objects::EntityType type)
 	{
-		p->AppendTask(id,baseName,turretName);
+		p->AppendTask(id,type);
 	}
 
 	static void StoreLocally(const Objects::PHangar&h,const Objects::PVehicle&v,float&t,bool setHealthToFull)
@@ -691,23 +691,7 @@ namespace Animation
 
 					
 					foreach (state->productionTasks,t)
-					{
-						switch (t->parameters.Count())
-						{
-							case 1:
-								AppendTask(p,t->id,t->parameters.First(),ConstName::Empty);
-							break;
-							case 2:
-								AppendTask(p,t->id,t->parameters.First(),t->parameters.last());
-							break;
-							default:
-								FATAL__("Unexpected parameter count: "+String(t->parameters.Count())
-											+" while decoding task "+ToString(t->id)
-											+" of "+v->GetName());
-						}
-						//ASSERT_EQUAL__(t->parameters.Count(),2);
-							
-					}
+						AppendTask(p,t->id,t->type);
 				}
 			}
 
@@ -850,21 +834,7 @@ namespace Animation
 					
 					foreach (state->productionTasks,t)
 					{
-						switch (t->parameters.Count())
-						{
-							case 1:
-								AppendTask(p,t->id,t->parameters.First(),ConstName::Empty);
-							break;
-							case 2:
-								AppendTask(p,t->id,t->parameters.First(),t->parameters.last());
-							break;
-							default:
-								FATAL__("Unexpected parameter count: "+String(t->parameters.Count())
-											+" while decoding task "+ToString(t->id)
-											+" of "+s->GetName());
-						}
-						//ASSERT_EQUAL__(t->parameters.Count(),2);
-							
+						AppendTask(p,t->id,t->type);
 					}
 				}
 			}
@@ -1172,7 +1142,6 @@ namespace Animation
 				ASSERT1__(allocatedTarget,targetEntityID);
 				if (explode)
 					ExplodeEntity(allocatedTarget);
-				bool removed = false;
 				LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Removing entity during animation at time "+String(Animation::atTime)+"/"+ToString(this->time));
 				//if (RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
 				{
@@ -1181,7 +1150,6 @@ namespace Animation
 					{
 						if (!insertIntoGridLater.IsSet(v->id) && removalType != Objects::RemovalType::DestroyedInStorage && !v->IsAboveGrid())
 							Objects::RemoveVehicleFromGrid(v,v->preAnimationLocation);
-						removed = true;	//is set anyway. placeVehicleLater indicates it is already removed
 					}
 				}
 				if (allocatedTarget->IsMobile())
@@ -1192,7 +1160,7 @@ namespace Animation
 				}
 
 				float t = 0;
-				Objects::Remove(allocatedTarget,Objects::RemovalType::Reinterpret(removalType),t,Network::ControlEnabled(),removed);
+				Objects::Remove(allocatedTarget,Objects::RemovalType::Reinterpret(removalType),t);
 				#ifdef HAS_WINDOW
 					if (!allocatedTarget->isOwnedByMe)
 						UI::HexGrid::RefreshContacts();

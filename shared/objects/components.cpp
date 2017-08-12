@@ -861,7 +861,6 @@ namespace Objects
 			component.typeName = "Artillery";
 			component.shortName = " Artillery";
 			component.constName = ConstName::Turret_Artillery;
-			component.constTowerName = ConstName::Type_ArtilleryTower;
 
 			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 24;
@@ -882,7 +881,6 @@ namespace Objects
 			component.typeName = "Missile Launcher";
 			component.shortName = " Launcher";
 			component.constName = ConstName::Turret_Launcher;
-			component.constTowerName = ConstName::Type_LauncherTower;
 
 			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 24;
@@ -905,7 +903,6 @@ namespace Objects
 			component.typeName = "Cannon";
 			component.shortName = "tank";
 			component.constName = ConstName::Turret_Cannon;
-			component.constTowerName = ConstName::Type_CannonTower;
 
 			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 20;
@@ -927,7 +924,6 @@ namespace Objects
 			component.typeName = "EMP";
 			component.shortName = " EMP";
 			component.constName = ConstName::Turret_EMP;
-			component.constTowerName = ConstName::Type_EMPTower;
 
 			#ifndef ONE_COMPOUND_PER_FACTION
 				component.baseStorageCapacity.level[Resource::Uranium] = 150;
@@ -1193,7 +1189,6 @@ namespace Objects
 			component.typeName = "Mechanic";
 			component.shortName = "mechanic";
 			component.constName = ConstName::Turret_Mechanic;
-			component.constTowerName = ConstName::Type_MechanicTower;
 
 			#ifndef ONE_COMPOUND_PER_FACTION
 				component.baseStorageCapacity.level[Resource::Minerals] = 100;
@@ -1212,7 +1207,6 @@ namespace Objects
 			component.typeName = "Radar";
 			component.shortName = "radar";
 			component.constName = ConstName::Turret_Radar;
-			component.constTowerName = ConstName::Type_RadarTower;
 
 			component.continuousRotation = true;
 			component.continuousRotationSpeed = 2.f;

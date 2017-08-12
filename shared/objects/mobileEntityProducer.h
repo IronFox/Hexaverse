@@ -105,7 +105,7 @@ namespace Objects
 		}
 
 
-		void					AppendTask(const TUniqueID&id, ConstName baseName, ConstName turretName);
+		void						AppendTask(const TUniqueID&id, EntityType);
 
 		#ifdef HAS_WINDOW
 			const int2&				GetCommandOffset() const {return commandOffset;}

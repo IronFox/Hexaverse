@@ -93,7 +93,7 @@ class VehiclePlant : public WorkingStructureT<VehiclePlant>, public MobileEntity
 
 		//BaseEntity overrides:
 		virtual String				GetTypeName() const override { return "Vehicle Plant"; };
-		virtual ConstName			GetCTypeName() const override {return ConstName::Type_VehiclePlant;}
+		virtual EntityType			GetType() const override {return ConstName::Type_VehiclePlant;}
 
 
 		#ifdef HAS_WINDOW

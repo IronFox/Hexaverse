@@ -764,7 +764,7 @@ namespace ApplicationInterface
 	}
 
 
-	void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, ConstName parameterName, const Grid::LCellIdI&overrideLocation)
+	void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, Objects::EntityType parameterName, const Grid::LCellIdI&overrideLocation)
 	{
 		const Grid::LCellIdI targetLocation = overrideLocation != Grid::LCellIdI::Invalid ? overrideLocation : v->GetLastPointOfOrigin();
 		#ifdef HAS_WINDOW
@@ -781,7 +781,7 @@ namespace ApplicationInterface
 				if (res.SampleWorld(targetLocation.stackID))
 				{
 					const auto& proto = Objects::GetPrototypeByName(parameterName);
-					ASSERT1__(proto,(int)parameterName);
+					ASSERT1__(proto,ToString(parameterName));
 					String name = proto->GetTypeName();
 					TUniqueID id = v->id;
 					if (parameterName != ConstName::Type_Mine && res.IsNotEmpty())
@@ -840,7 +840,7 @@ namespace ApplicationInterface
 
 	}
 
-	void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, ConstName parameterName)
+	void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, Objects::EntityType parameterName)
 	{
 		SignalNewJob(v,jobName,parameterName,Grid::LCellIdI::Invalid);
 	}
@@ -1217,17 +1217,7 @@ void FillMarker(Protocol::Marker&marker, const Objects::PWorldEntity&e, Protocol
 	marker.location = e->location;
 	outE.id = e->id;
 	outE.owner = e->owner->id;
-	Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(e);
-	if (!v)
-	{
-		outE.type0 = e->GetCTypeName();
-		outE.type1 = ConstName::Empty;
-	}
-	else
-	{
-		outE.type0 = v->base->constName;
-		outE.type1 = v->turret->constName;
-	}
+	outE.type = e->GetType();
 }
 
 
@@ -2360,7 +2350,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 					else
 						if (LocalApplicationInterface::DirectTo(Objects::selectedMobileEntity,target,0,Objects::CursorMode::Idle,false))
 						{
-							ApplicationInterface::SignalNewJob(Objects::selectedMobileEntity,ConstName::Job_Construct,Objects::activeStructureToPlace->GetCTypeName(),target);
+							ApplicationInterface::SignalNewJob(Objects::selectedMobileEntity,ConstName::Job_Construct,Objects::activeStructureToPlace->GetType(),target);
 							Objects::choiceVis.arrowFromCell = target;
 						}
 				}

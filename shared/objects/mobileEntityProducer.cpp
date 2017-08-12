@@ -483,7 +483,7 @@ namespace Objects
 		}
 		#endif
 
-		void				MobileEntityProducer::AppendTask(const TUniqueID&id, ConstName baseName, ConstName turretName)
+		void				MobileEntityProducer::AppendTask(const TUniqueID&id, EntityType type)
 		{
 			//PSatellite	satellite;
 			//VehicleBase* base;
@@ -495,20 +495,10 @@ namespace Objects
 			Component::VehicleBase* base = nullptr;
 			Component::Turret* turret = nullptr;
 			PWorldEntity prototype;
-			if (turretName != ConstName::Empty)
-			{
-				base = Component::GetVehicleBaseByName(baseName);
-				turret = Component::GetTurretByName(turretName);
-				ASSERT_NOT_NULL1__(turret, (int)turretName);
-				ASSERT_NOT_NULL1__(base, (int)baseName);
 
-				price = Vehicle::GetPrice(base,turret,parent->owner);
-				name = Vehicle::GetTypeName(base,turret);
-			}
-			else
+			prototype = GetNonVehiclePrototypeByName(type);
+			if (prototype)
 			{
-				prototype = GetNonVehiclePrototypeByName(baseName);
-				ASSERT1__(prototype, (int)baseName);
 				prototype->owner = parent->owner;
 					price = prototype->GetConstructionCost();
 				prototype->owner.reset();
@@ -519,6 +509,17 @@ namespace Objects
 					turret = To<Vehicle>::Cast(prototype)->turret;
 				}
 			}
+			else
+			{
+				base = Component::GetVehicleBaseByName(type.baseType);
+				turret = Component::GetTurretByName(type.turretType);
+				ASSERT_NOT_NULL1__(turret, (int)type.turretType);
+				ASSERT_NOT_NULL1__(base, (int)type.baseType);
+
+				price = Vehicle::GetPrice(base,turret,parent->owner);
+				name = Vehicle::GetTypeName(base,turret);
+			}
+			
 
 			{
 				//PVehicle vehicle(new Vehicle(location,base,turret));

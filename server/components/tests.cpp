@@ -441,14 +441,11 @@ namespace Test
 		{
 			m.referenceEntity.Generate();
 			if (random.NextBool())
-			{
-				m.referencedType[0] = Objects::structurePrototypes[random.NextIndex(Objects::structurePrototypes.Count())]->GetCTypeName();
-				m.referencedType[1] = ConstName::Empty;
-			}
+				m.referencedType = Objects::structurePrototypes[random.NextIndex(Objects::structurePrototypes.Count())]->GetType();
 			else
 			{
-				m.referencedType[0] = Objects::Component::baseComponents[random.NextIndex(Objects::Component::baseComponents.Count())]->constName;
-				m.referencedType[1] = Objects::Component::allTurretComponents[random.NextIndex(Objects::Component::allTurretComponents.Count())]->constName;
+				m.referencedType.baseType = Objects::Component::baseComponents[random.NextIndex(Objects::Component::baseComponents.Count())]->constName;
+				m.referencedType.turretType = Objects::Component::allTurretComponents[random.NextIndex(Objects::Component::allTurretComponents.Count())]->constName;
 			}
 		}
 	}
@@ -699,8 +696,8 @@ namespace Test
 
 			t++;
 			faction1->SignalDisappearance(generator,t);
-			Objects::Remove(v,Objects::RemovalType::Vanished,t,true);
-			Objects::Remove(generator,Objects::RemovalType::Vanished,t,true);
+			Objects::Remove(v,Objects::RemovalType::Vanished,t);
+			Objects::Remove(generator,Objects::RemovalType::Vanished,t);
 
 
 		}
@@ -915,8 +912,8 @@ namespace Test
 			ASSERT__(v1);
 			ASSERT__(Objects::GetVehicle(v0->location) == v0);
 			ASSERT__(Objects::GetVehicle(v1->location) == v1);
-			Objects::Remove(v0,	Objects::RemovalType::ControlledExplosion,t,false);
-			Objects::Remove(v1, Objects::RemovalType::ControlledExplosion,t, false);
+			Objects::Remove(v0,	Objects::RemovalType::ControlledExplosion,t);
+			Objects::Remove(v1, Objects::RemovalType::ControlledExplosion,t);
 			ASSERT__(Objects::vehicles.IsEmpty());
 			ASSERT__(generator->IsEnabled());
 			ASSERT__(mine->IsEnabled());

@@ -406,7 +406,7 @@ namespace Objects
 				ClearAllTasks(true, CLOCATION);
 				unstable = false;
 				if (isInserted)	//otherwise already killed by Finish() operation
-					Remove(shared_from_this(),RemovalType::UncontrolledExplosion,entityTime,false,false);
+					Remove(shared_from_this(),RemovalType::UncontrolledExplosion,entityTime);
 			}
 		}
 
@@ -424,7 +424,7 @@ namespace Objects
 				ClearAllTasks(true, CLOCATION);
 				unstable = false;
 				if (isInserted)	//otherwise already killed by Finish() operation
-					Remove(shared_from_this(),RemovalType::UncontrolledExplosion,entityTime,false,false);
+					Remove(shared_from_this(),RemovalType::UncontrolledExplosion,entityTime);
 				return false;
 			}
 			if (rs == VehicleJob::BaseJob::TerminalFailure)
@@ -796,7 +796,7 @@ namespace Objects
 								ClearAllTasks(true, CLOCATION);
 								unstable = false;
 								if (isInserted)	//otherwise already killed by Continue() operation
-									Remove(shared_from_this(),RemovalType::UncontrolledExplosion,entityTime,false,false);
+									Remove(shared_from_this(),RemovalType::UncontrolledExplosion,entityTime);
 							return TaskResult::AllDoneForThisRound;
 							case VehicleJob::BaseJob::TerminalFailure:
 								LogEvent(EventSignificance::Common,this,"Terminal failure. Remaining tasks dropped.");

@@ -68,12 +68,12 @@ namespace Objects
 
 
 
-	/*static*/ count_t			Structure::CountOccurrences(const OwnerParameter&o,ConstName type)
+	/*static*/ count_t			Structure::CountOccurrences(const OwnerParameter&o,EntityType type)
 	{
 		count_t rs = 0;
 		structures.Foreach([&rs,o,type](const Objects::PStructure&s)
 		{
-			if (s->owner == o && s->GetCTypeName() == type)
+			if (s->owner == o && s->GetType() == type)
 				rs++;
 			else
 			{

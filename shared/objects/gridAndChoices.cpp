@@ -307,7 +307,7 @@ namespace Objects
 						}
 
 						e->SyncTime(atTime);
-						Remove(e,Objects::RemovalType::UncontrolledExplosion,atTime,false);
+						Remove(e,Objects::RemovalType::UncontrolledExplosion,atTime);
 						return;	//prevent being added to affected*
 					}
 					else
@@ -1264,7 +1264,7 @@ namespace Objects
 
 
 
-	void					Remove( const PWorldEntity&e, RemovalType t, float&timestamp, bool controlEnabled, bool isRemovedFromGrid/*=false*/, bool ignoreIndestructible/*=false*/)
+	static void					InternalRemove( const PWorldEntity&e, RemovalType t, float&timestamp, bool isRemovedFromGrid/*=false*/, bool ignoreIndestructible/*=false*/)
 	{
 		if (!e)
 		{
@@ -1418,6 +1418,17 @@ namespace Objects
 
 		e->isInserted = false;
 	}
+
+	void			Remove( const PWorldEntity&e, RemovalType t, float&atTime)
+	{
+		InternalRemove(e,t,atTime,!e->isInsertedIntoGrid,false);
+	}
+
+	void			ForceRemove(const PWorldEntity&e, RemovalType t, float&atTime)
+	{
+		InternalRemove(e,t,atTime,!e->isInsertedIntoGrid,true);
+	}
+
 
 
 
@@ -2609,12 +2620,12 @@ namespace Objects
 	
 
 
-	PVehicle		SpawnVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase&base, Component::Turret&turret, bool fillStorage, float&atTime)
+	PVehicle		InsertNewVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase&base, Component::Turret&turret, bool fillStorage, float&atTime)
 	{
-		return SpawnVehicle(owner,baseLocation,&base,&turret,fillStorage,atTime);
+		return InsertNewVehicle(owner,baseLocation,&base,&turret,fillStorage,atTime);
 	}
 
-	PVehicle SpawnVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase*base, Component::Turret*turret, bool fillStorage, float&atTime)
+	PVehicle InsertNewVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase*base, Component::Turret*turret, bool fillStorage, float&atTime)
 	{
 		PVehicle vehicle(new Vehicle(owner, baseLocation,base,turret));
 		#ifdef CLIENT
@@ -2635,31 +2646,7 @@ namespace Objects
 	}
 
 
-	#ifdef CLIENT
-		PVehicle		SpawnVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName base, ConstName turret, bool placeNow, bool isOwnedByMe)
-	#else
-		PVehicle		AssembleVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation, const String&base, const String&turret)
-	#endif
-	{
-		Component::Turret* t = Component::GetTurretByName(turret);
-		Component::VehicleBase* b = Component::GetVehicleBaseByName(base);
-		ASSERT__(b);
-		ASSERT__(t);
-		PVehicle vehicle(new Vehicle(owner, baseLocation,b,t));
-		vehicle->location = baseLocation;
-		vehicle->id = id;
-		vehicle->UpdateSystem();
-		#ifdef CLIENT
-			vehicle->UpdateNiceName();
-			vehicle->isOwnedByMe = isOwnedByMe;
-			if (placeNow)
-				Place(vehicle);
-			//else
-			//	unplacedIDMap.Set(id,vehicle);
-		#endif
-		return vehicle;
-	}
-
+	
 
 
 	#ifndef CLIENT
@@ -2683,20 +2670,45 @@ namespace Objects
 			return s;
 		}
 
-	#else
-
-		PMobileEntity		SpawnMobileEntity(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName base, ConstName turret, bool placeNow, bool isOwnedByMe)
+		PVehicle		AssembleVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation, const String&base, const String&turret)
 		{
-			if (turret != ConstName::Empty)
-				return Objects::SpawnVehicle(owner,  id,baseLocation,base,turret,placeNow,isOwnedByMe);
-			return Objects::SpawnNonVehicleMobile(owner,  id,baseLocation,base,placeNow,isOwnedByMe);
+			Component::Turret* t = Component::GetTurretByName(turret);
+			Component::VehicleBase* b = Component::GetVehicleBaseByName(base);
+			ASSERT__(b);
+			ASSERT__(t);
+			PVehicle vehicle(new Vehicle(owner, baseLocation,b,t));
+			vehicle->location = baseLocation;
+			vehicle->id = id;
+			vehicle->UpdateSystem();
+			return vehicle;
 		}
 
-		PMobileEntity			SpawnNonVehicleMobile(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName type, bool placeNow, bool isOwnedByMe)
+	#else
+
+		PVehicle		SpawnVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,EntityType type, bool placeNow, bool isOwnedByMe)
 		{
-			PWorldEntity	proto = GetNonVehiclePrototypeByName(type);
-			ASSERT1__(proto,(int)type);
-			ASSERT1__(proto->IsMobile(),proto->GetTypeName());
+			Component::Turret* t = Component::GetTurretByName(type.turretType);
+			Component::VehicleBase* b = Component::GetVehicleBaseByName(type.baseType);
+			ASSERT__(b);
+			ASSERT__(t);
+			PVehicle vehicle(new Vehicle(owner, baseLocation,b,t));
+			vehicle->location = baseLocation;
+			vehicle->id = id;
+			vehicle->UpdateSystem();
+			#ifdef CLIENT
+				vehicle->UpdateNiceName();
+				vehicle->isOwnedByMe = isOwnedByMe;
+				if (placeNow)
+					Place(vehicle);
+				//else
+				//	unplacedIDMap.Set(id,vehicle);
+			#endif
+			return vehicle;
+		}
+
+
+		PMobileEntity			SpawnNonVehicleMobile(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,const PMobileEntity&proto, bool placeNow, bool isOwnedByMe)
+		{
 			PMobileEntity s = To<MobileEntity>::Cast( proto->CreateNewInstance(owner,baseLocation,0) );
 			s->location = baseLocation;
 			s->id = id;
@@ -2709,10 +2721,30 @@ namespace Objects
 			return s;
 		}
 
-		PStructure		SpawnStructure(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&location,ConstName type, bool placeNow, bool isOwnedByMe)
+		PMobileEntity		SpawnMobileEntity(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,EntityType type, bool placeNow, bool isOwnedByMe)
+		{
+
+			PWorldEntity proto = GetNonVehiclePrototypeByName(type);
+			if (proto)
+			{
+				ASSERT1__(proto->IsMobile(),proto->GetTypeName());
+				return SpawnNonVehicleMobile(owner,id,baseLocation,To<MobileEntity>::Cast( proto ),placeNow,isOwnedByMe);
+			}
+			return SpawnVehicle(owner,  id,baseLocation,type,placeNow,isOwnedByMe);
+		}
+
+		PMobileEntity			SpawnNonVehicleMobile(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,EntityType type, bool placeNow, bool isOwnedByMe)
+		{
+			PWorldEntity proto = GetNonVehiclePrototypeByName(type);
+			ASSERT1__(proto,ToString(type));
+			ASSERT1__(proto->IsMobile(),proto->GetTypeName());
+			return SpawnNonVehicleMobile(owner,id,baseLocation,To<MobileEntity>::Cast( proto ),placeNow,isOwnedByMe);
+		}
+
+		PStructure		SpawnStructure(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&location,EntityType type, bool placeNow, bool isOwnedByMe)
 		{
 			foreach (structurePrototypes,p)
-				if ((*p)->GetCTypeName() == type)
+				if ((*p)->GetType() == type)
 				{
 					//PStructure s = (*p)->CreateNewInstance(location);
 					PStructure s = To<Structure>::Cast((*p)->CreateNewInstance(owner,location,0));
@@ -2731,7 +2763,7 @@ namespace Objects
 
 					return s;
 				}
-			FATAL__("Type not found for construction #" + String((int)type));
+			FATAL__("Type not found for construction: " + ToString(type));
 			return PStructure();
 		}
 		void			Place( const PStructure&s)

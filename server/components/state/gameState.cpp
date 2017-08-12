@@ -235,18 +235,7 @@ namespace Game
 
 		void	Describe(Protocol::ProductionTask&task, const Objects::MobileEntityProducer::WorkItem&element)
 		{
-			if (element.producing->IsVehicle())
-			{
-				Objects::PVehicle v = To<Objects::Vehicle>::Cast(element.producing);
-				task.parameters.SetSize(2);
-				task.parameters.first() = v->base->constName;
-				task.parameters.last() = v->turret->constName;
-			}
-			else
-			{
-				task.parameters.SetSize(1);
-				task.parameters.first() = element.producing->GetCTypeName();
-			}
+			task.type = element.producing->GetType();
 			task.id = element.id;
 		}
 
@@ -290,7 +279,7 @@ namespace Game
 				std::shared_ptr<Objects::VehicleJob::Construct> constJob = To<Objects::VehicleJob::Construct>::DynamicCast(t.job);
 				if (constJob)
 				{
-					task.visualizationName = constJob->constructWhat->GetCTypeName();
+					task.visualizationName = constJob->constructWhat->GetType();
 				}
 				else
 				{
@@ -401,17 +390,7 @@ namespace Game
 
 		void	Describe(Protocol::NewMobileEntity&cnst, const Objects::MobileEntity&v, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags)
 		{
-			if (v.IsVehicle())
-			{
-				const Objects::Vehicle&veh = (const Objects::Vehicle&)v;
-				cnst.baseName = veh.base->constName;
-				cnst.turretName = veh.turret->constName;
-			}
-			else
-			{
-				cnst.baseName = v.GetCTypeName();
-				cnst.turretName = ConstName::Empty;
-			}
+			cnst.type = v.GetType();
 			cnst.owner = v.owner->id;
 			Describe(cnst.state,v,owned,timestamp,changeFlags);
 		}
@@ -486,7 +465,7 @@ namespace Game
 
 		void	Describe(Protocol::StructureConstruction&cnst, const Objects::Structure&s, bool owned, const Protocol::Timestamp&timestamp)
 		{
-			cnst.typeName = s.GetCTypeName();
+			cnst.type = s.GetType();
 			cnst.owner = s.owner->id;
 			Describe(cnst.state,s,owned,timestamp,0xFFFFFFFF);
 
@@ -1175,7 +1154,7 @@ namespace Game
 						if (field.distance[i] == RadarDistance)
 						{
 							std::shared_ptr<Objects::Tower> tower = To<Objects::Tower>::Cast(
-								Objects::GetPrototypeByName(ConstName::Type_RadarTower)->CreateNewInstance(Objects::Faction::nexus,
+								Objects::GetPrototypeByName(Objects::EntityType(ConstName::Type_Tower,ConstName::Turret_Radar))->CreateNewInstance(Objects::Faction::nexus,
 								Grid::LCellIdI(i,h),
 								0));
 							tower->CorrectTerrain(false,0);
@@ -1410,9 +1389,9 @@ namespace Game
 			Objects::RefreshCompoundCoverage(t);
 
 
-			Objects::SpawnVehicle(f,at0,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
-			Objects::SpawnVehicle(f,at3,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
-			Objects::SpawnVehicle(f,at4,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,t);
+			Objects::InsertNewVehicle(f,at0,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
+			Objects::InsertNewVehicle(f,at3,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
+			Objects::InsertNewVehicle(f,at4,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,t);
 
 		}
 		else
@@ -1424,12 +1403,12 @@ namespace Game
 			Grid::LCellIdI at4 = Grid::LCellIdI(n.neighborID[4],0);
 
 			float t = 0;
-			Objects::SpawnVehicle(f,Grid::LCellIdI((UINT32)startLocation,0),Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
-			Objects::SpawnVehicle(f,at1,Objects::Component::hoverbase, Objects::Component::radar,true,t);
-			Objects::SpawnVehicle(f,at3,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,t);
-			Objects::SpawnVehicle(f,at2,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
-			Objects::SpawnVehicle(f,at4,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
-			Objects::SpawnVehicle(f,at0,Objects::Component::hoverbase, Objects::Component::artillery,true,t);
+			Objects::InsertNewVehicle(f,Grid::LCellIdI((UINT32)startLocation,0),Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
+			Objects::InsertNewVehicle(f,at1,Objects::Component::hoverbase, Objects::Component::radar,true,t);
+			Objects::InsertNewVehicle(f,at3,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,t);
+			Objects::InsertNewVehicle(f,at2,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
+			Objects::InsertNewVehicle(f,at4,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
+			Objects::InsertNewVehicle(f,at0,Objects::Component::hoverbase, Objects::Component::artillery,true,t);
 		}
 	}
 

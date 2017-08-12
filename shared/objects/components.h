@@ -190,8 +190,6 @@ namespace Objects
 			};
 
 
-			ConstName						constTowerName;
-
 			IFunc							healthMultiplier;
 			Resource						ammoType;
 			Ctr::FixedArray<IFunc,OperationCount>operationSpeed;

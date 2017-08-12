@@ -224,19 +224,18 @@ namespace Objects
 	{
 		if (e.IsVehicle())
 			return ((const Vehicle&)e).base->ambientSound;
-		return GetAmbientSoundOf(e.GetTypeName(),e.GetCTypeName());
+		return GetAmbientSoundOf(e.GetTypeName(),e.GetType());
 	}
 
 
-	Engine::OpenAL::WaveBuffer	Renderer::GetAmbientSoundOf(const String&entityTypeName, ConstName _entityType)
+	Engine::OpenAL::WaveBuffer	Renderer::GetAmbientSoundOf(const String&entityTypeName, EntityType entityType)
 	{
-		index_t key = (index_t)_entityType;
-		static IndexTable<Engine::OpenAL::Wave>	waveTable;
+		static GenericHashTable<EntityType, Engine::OpenAL::Wave>	waveTable;
 		Engine::OpenAL::WaveBuffer result;
-		if (waveTable.Query(key,result))
+		if (waveTable.Query(entityType,result))
 			return result;
 		result = Engine::OpenAL::Load("resources/objectSounds/"+entityTypeName+".wav");
-		waveTable.Set(key,result);	//don't care if it's empty
+		waveTable.Set(entityType,result);	//don't care if it's empty
 		return result;
 	}
 

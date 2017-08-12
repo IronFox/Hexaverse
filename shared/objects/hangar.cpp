@@ -52,7 +52,7 @@ namespace Objects
 			for(const auto&v:stored)
 			{
 				ASSERT1__(!v.entity.expired(),ToEntity().GetName());
-				Remove(v.entity.lock(),RemovalType::DestroyedInStorage,t,false,true);
+				Remove(v.entity.lock(),RemovalType::DestroyedInStorage,t);
 			}
 		#endif
 		stored.Clear();
@@ -143,7 +143,7 @@ namespace Objects
 
 		if (e->isInserted)
 		{
-			Remove(e,RemovalType::EnteredStorage,atTime,false,!e->isInsertedIntoGrid,true);
+			ForceRemove(e,RemovalType::EnteredStorage,atTime);
 			#ifndef NO_HIBERNATION
 				e->Hibernate(false,atTime);
 			#endif

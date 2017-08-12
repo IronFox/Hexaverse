@@ -4,6 +4,7 @@
 #include <algorithm>
 //#include <general/undef.h>
 #include <io/file_system.h>
+#include <container/hashtable.h>
 
 #undef NEAR
 #define NEAR	//weeeird. but if i don't do this, the following include will explode
@@ -65,7 +66,7 @@ namespace RuntimeConfig
 
 	namespace UnitLimits
 	{
-		static UINT16	map[(unsigned)ConstName::NumTypes];
+		static DeltaWorks::GenericHashTable<Objects::EntityType,UINT16>	map;
 
 		static bool isSet = false;
 		static bool isEnabled = true;
@@ -88,56 +89,53 @@ namespace RuntimeConfig
 		void		Reset()
 		{
 			isSet = false;
-			memset(map,0,sizeof(map));
+			map.Clear();
 		}
-		bool		Set(ConstName entry, int value)
+		bool		Set(Objects::EntityType entry, int value)
 		{
-			if (entry >= ConstName::NumTypes)
+			if (entry.IsEmpty() || entry.IsInvalid())
 				return false;
 			if (value < 0)
 				return false;
 			isSet = true;
 			//ASSERT__(value >= 0);
-			map[(unsigned)entry] = (UINT16)std::min<UINT16>(0xFFFF,value);
+			UINT16 val = (UINT16)std::min<UINT16>(0xFFFF,value);
+			if (val != 0)
+				map.Set(entry,val);
+			else
+				map.Unset(entry);
 			return true;
 		}
-		count_t		Get(ConstName entry, bool ignoreEnabledState/*=false*/)
+		count_t		Get(Objects::EntityType entry, bool ignoreEnabledState/*=false*/)
 		{
-			return (isEnabled || ignoreEnabledState) ? map[(unsigned)entry] : 0xFFFF;
+			return (isEnabled || ignoreEnabledState) ? map.Get(entry,0) : 0xFFFF;
 		}
 
-		void		Export(Ctr::Array<std::pair<UINT16,UINT16> >&result)
+		void		Export(Ctr::Array<std::pair<Objects::EntityType,UINT16> >&result)
 		{
 			if (isEnabled)
 			{
-				count_t nonZero = 0;
-				for (index_t i = 0; i < ARRAYSIZE(map); i++)
-					if (map[i])
-						nonZero++;
+				const count_t nonZero = map.Count();
+
 				result.SetSize(nonZero);
 				index_t at = 0;
-				for (index_t i = 0; i < ARRAYSIZE(map); i++)
-					if (map[i])
-					{
-						result[at++] = std::make_pair((UINT16)i,map[i]);
-					}
+				map.VisitAllEntries([&result,&at](const Objects::EntityType&key, UINT16 value)
+				{
+					result[at++] = std::make_pair(key,value);
+				});
 			}
 			else
 			{
-				result.SetSize(ARRAYSIZE(map));
-				for (index_t i = 0; i < ARRAYSIZE(map); i++)
-				{
-					result[i] = std::make_pair((UINT16)i,0xFFFF);
-				}
+				result.Clear();
 			}
 		}
 
-		void		Import(const Ctr::Array<std::pair<UINT16,UINT16> >&input)
+		void		Import(const Ctr::Array<std::pair<Objects::EntityType,UINT16> >&input)
 		{
 			Reset();
 			isSet = true;
 			foreach (input, entry)
-				map[entry->first] = entry->second;
+				map.Set(entry->first,entry->second);
 		}
 
 	}

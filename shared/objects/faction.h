@@ -2,6 +2,7 @@
 #define factionH
 
 #include "entity.h"
+#include "entityType.h"
 #include "types.h"
 #include "structureCompound.h"
 #include "../stringTable.h"
@@ -38,7 +39,8 @@ namespace Objects
 
 		TUniqueID					referenceEntity = TUniqueID::Empty(),	//!< Usage depends on type
 									referenceEntityOwner = TUniqueID::Empty();
-		ConstName					referencedType[2];
+		EntityType					referencedType;
+		
 
 		Type						type;
 		RoundNumber					createdInRound;
@@ -50,14 +52,12 @@ namespace Objects
 		static const count_t		MaxMarkersPerFaction = 256;
 
 		/**/						Marker() :BaseEntity(TEmpty())
-		{
-			referencedType[0] = referencedType[1] = ConstName::Empty;
-		}
+		{}
 
 		void						adoptData(Marker&other)
 		{
 			referenceEntity = other.referenceEntity;
-			memcpy(referencedType,other.referencedType,sizeof(referencedType));
+			referencedType = other.referencedType;
 			type = other.type;
 			createdInRound = other.createdInRound;
 
@@ -73,7 +73,7 @@ namespace Objects
 		#endif
 
 		virtual String				GetTypeName() const override { return "Marker (" + String(type.ToString())+")"; }
-		virtual ConstName			GetCTypeName() const override {return ConstName::Type_Marker;}
+		virtual EntityType			GetType() const override {return ConstName::Type_Marker;}
 
 
 		static_assert(Objects::Marker::Type::NumberOfPossibilities == 3, "Please adjust marker logic");
@@ -84,7 +84,7 @@ namespace Objects
 		{ 
 			return id == other.id && location == other.location 
 			&& type == other.type && createdInRound == other.createdInRound 
-			&& referenceEntity == other.referenceEntity && referencedType[0] == other.referencedType[0] && referencedType[1] == other.referencedType[1];
+			&& referenceEntity == other.referenceEntity && referencedType == other.referencedType;
 		}
 		bool						operator!=(const Marker&other) const {return !operator==(other);}
 
@@ -114,7 +114,7 @@ namespace Objects
 				}
 			};
 
-			static void				Create(const TUniqueID&id, Type type, const Grid::LCellIdI&location, const RoundNumber&createdInRound, const TUniqueID&referenceID, const TUniqueID&referenceOwnerID, ConstName referenceType[2], const RoundNumber& currentRound);
+			static void				Create(const TUniqueID&id, Type type, const Grid::LCellIdI&location, const RoundNumber&createdInRound, const TUniqueID&referenceID, const TUniqueID&referenceOwnerID, EntityType referenceType, const RoundNumber& currentRound);
 			static void				Destroy(const TUniqueID&id, bool controlEnabled);
 			static Marker*			FindByReference(const TUniqueID&referenceID);
 			static Marker*			Find(const TUniqueID&referenceID);

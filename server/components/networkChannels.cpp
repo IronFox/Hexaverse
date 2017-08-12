@@ -111,8 +111,7 @@ namespace Receiver
 	{
 		e.id = source.referenceEntity;
 		e.owner = source.referenceEntityOwner;
-		e.type0 = source.referencedType[0];
-		e.type1 = source.referencedType[1];
+		e.type = source.referencedType;
 	}
 
 
@@ -805,7 +804,7 @@ namespace Receiver
 		static_assert(Objects::Marker::Type::NumberOfPossibilities == 3, "Please adjust marker logic");
 		const Protocol::MarkerReferenceEntity*e = m.data.Get0();
 		Protocol::MarkerReferenceEntity ref;
-		ref.type0 = ref.type1 = ConstName::Empty;
+		ref.type = Objects::EntityType();
 		Objects::Marker::Type type;
 		TUniqueID	refID = TUniqueID::Empty();
 		if (e)
@@ -1304,7 +1303,7 @@ namespace Receiver
 
 				Objects::PStructure p;
 				foreach (Objects::structurePrototypes,proto)
-					if ((*proto)->GetCTypeName() == sjob.parameterName)
+					if ((*proto)->GetType() == sjob.parameterName)
 					{
 						p = *proto;
 						break;
@@ -1325,7 +1324,7 @@ namespace Receiver
 			break;
 			case ConstName::Job_SelfDetonate:
 			{
-				job.reset(new VehicleJob::SelfDetonate(*v,sjob.parameterName));
+				job.reset(new VehicleJob::SelfDetonate(*v,sjob.parameterName.baseType));
 				target = v->GetLastPointOfOrigin();
 				v->RegisterNewJob("", job,&target);
 				LogEvent(EventSignificance::Common,peer,e,"Registered new job "+job->GetName());

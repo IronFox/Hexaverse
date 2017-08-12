@@ -3,6 +3,7 @@
 #include "satellite.h"
 #include "vehicle.h"
 #include "structure.h"
+#include "entityType.h"
 
 
 namespace Objects
@@ -19,32 +20,115 @@ namespace Objects
 	}
 
 
-	ConstName		ComponentOrPrototypeToCName(const String&name)
+	
+	String			ToString(const EntityType&t)
 	{
-		PWorldEntity e;
-		
-		#ifndef NO_SATELLITES
-			e = GetSatellitePrototypeByName(name);
-			if (e)
-				return e->GetCTypeName();
-		#endif
-		e = GetPrototypeByName(name);
+		if (t.HasTurret())
+		{
+			StringBuffer rs;
+			Component::Base*b = Component::GetTurretByName(t.turretType);
+			if (b)
+				rs << b->typeName;
+			else
+				rs << "#"<<int(t.turretType);
+			rs << ':';
+
+			if (t.baseType == ConstName::Type_Tower)
+				rs << "Tower";
+			else
+			{
+				b = Component::GetVehicleBaseByName(t.baseType);
+				if (b)
+					rs << b->typeName;
+				else
+					rs << "#"<<int(t.baseType);
+			}
+			return rs.ToStringRef();
+		}
+		auto e = GetPrototypeByName(t.baseType);
 		if (e)
-			return e->GetCTypeName();
+			return e->GetTypeName();
+		return "#"+String(int(t.baseType));
+	}
+
+	EntityType		DecodeType(const String&combined)
+	{
+		EntityType rs;
+		index_t at = combined.Find(':');
+		StringRef base = combined.ToRef();
+		if (at != InvalidIndex)
+		{
+			const StringRef baseName = combined.SubStringRef(at+1);
+			const StringRef turretName = combined.SubStringRef(0,at);
+			if (baseName == "Tower")
+				rs.baseType = ConstName::Type_Tower;
+			else
+			{
+				auto base = Component::GetVehicleBaseByName(baseName);
+				if (base == nullptr)
+					throw Except::Program::ParameterFault(CLOCATION,"Unable to decode base type name '"+String(baseName)+"'");
+				rs.baseType = base->constName;
+			}
+
+			auto turret = Component::GetTurretByName(turretName);
+			if (turret == nullptr)
+				throw Except::Program::ParameterFault(CLOCATION,"Unable to decode turret type name '"+String(turretName)+"'");
+			rs.turretType = turret->constName;
+		}
+		else
+			rs = ComponentOrPrototypeToCName(base);
+		if (rs.IsInvalid())
+			throw Except::Program::ParameterFault(CLOCATION,"Final type declaration '"+ToString(rs)+"' is not valid");
+		return rs;
+	}
+
+
+	ConstName		ComponentToCName(const StringRef&name)
+	{
 		Component::Base*b = Component::GetTurretByName(name);
 		if (b)
 			return b->constName;
 		b = Component::GetVehicleBaseByName(name);
 		if (b)
 			return b->constName;
-		return ConstName::Empty;
+		if (name == "Tower")
+			return ConstName::Type_Tower;
+		throw Except::Program::ParameterFault(CLOCATION,"Unable to encode component type '"+String(name)+"'");
+	}
+
+	ConstName		ComponentToCName(const String&name)
+	{
+		return ComponentToCName(name.ToRef());
 	}
 
 
-	String			ComponentOrPrototypeToString(ConstName name)
+	EntityType		ComponentOrPrototypeToCName(const StringRef&name)
 	{
-		if (name == ConstName::Empty)
+		PWorldEntity e;
+		
+		#ifndef NO_SATELLITES
+			e = GetSatellitePrototypeByName(name);
+			if (e)
+				return e->GetType();
+		#endif
+		e = GetPrototypeByName(name);
+		if (e)
+			return e->GetType();
+		return ComponentToCName(name);
+	}
+
+
+	EntityType		ComponentOrPrototypeToCName(const String&name)
+	{
+		return ComponentOrPrototypeToCName(name.ToRef());
+	}
+
+
+	String			ComponentOrPrototypeToString(EntityType name)
+	{
+		if (name.IsEmpty() || !name.IsValid())
 			return "";
+
 		PWorldEntity e;
  		#ifndef NO_SATELLITES
 			e = GetSatellitePrototypeByName(name);
@@ -54,12 +138,18 @@ namespace Objects
 		e = GetPrototypeByName(name);
 		if (e)
 			return e->GetTypeName();
-		Component::Base*b = Component::GetTurretByName(name);
+
+		if (name.HasTurret())
+			return "";	//dual type cannot resolve to component
+
+		Component::Base*b = Component::GetTurretByName(name.baseType);
 		if (b)
 			return b->typeName;
-		b = Component::GetVehicleBaseByName(name);
+		b = Component::GetVehicleBaseByName(name.baseType);
 		if (b)
 			return b->typeName;
+		if (name == ConstName::Type_Tower)
+			return "Tower";
 		return "";
 	}
 
@@ -69,6 +159,10 @@ namespace Objects
 
 		PSatellite		GetSatellitePrototypeByName(const String&name)
 		{
+			return GetSatellitePrototypeByName(name.ToRef());
+		}
+		PSatellite		GetSatellitePrototypeByName(const StringRef&name)
+		{
 			if (name.IsNotEmpty())
 			{
 				foreach (satellitePrototypes,p)
@@ -77,12 +171,12 @@ namespace Objects
 			}
 			return PSatellite();
 		}
-		PSatellite		GetSatellitePrototypeByName(ConstName name)
+		PSatellite		GetSatellitePrototypeByName(EntityType name)
 		{
 			if (name != ConstName::Empty)
 			{
 				foreach (satellitePrototypes,p)
-					if ((*p)->GetCTypeName() == name)
+					if ((*p)->GetType() == name)
 						return *p;
 			}
 			return PSatellite();
@@ -90,12 +184,12 @@ namespace Objects
 
 	#endif
 
-	PStructure		GetPrototypeByName(ConstName structureTypeName)
+	PStructure		GetPrototypeByName(EntityType structureTypeName)
 	{
-		if (structureTypeName != ConstName::Empty)
+		if (structureTypeName.IsNotEmpty())
 		{
 			foreach (structurePrototypes,p)
-				if ((*p)->GetCTypeName() == structureTypeName)
+				if ((*p)->GetType() == structureTypeName)
 					return *p;
 		}
 		return PStructure();
@@ -103,16 +197,21 @@ namespace Objects
 	
 	PStructure		GetPrototypeByName(const String&structureTypeName)
 	{
+		return GetPrototypeByName(structureTypeName.ToRef());
+	}
+
+	PStructure		GetPrototypeByName(const StringRef&structureTypeName)
+	{
 		if (structureTypeName.IsNotEmpty())
 		{
 			foreach (structurePrototypes,p)
 				if ((*p)->GetTypeName() == structureTypeName)
 					return *p;
 			foreach (structurePrototypes,p)
-				if ((*p)->GetTypeName().find(' '))
+				if ((*p)->GetTypeName().Contains(' '))
 				{
 					String pn = (*p)->GetTypeName();
-					pn.eraseCharacter(' ');
+					pn.EraseCharacter(' ');
 					if (pn == structureTypeName)
 						return *p;
 				}
@@ -121,9 +220,9 @@ namespace Objects
 	}
 
 
-	PWorldEntity	GetNonVehiclePrototypeByName(ConstName typeName)
+	PWorldEntity	GetNonVehiclePrototypeByName(EntityType typeName)
 	{
-		if (typeName == ConstName::Empty)
+		if (typeName.IsEmpty())
 			return PWorldEntity();
 		PWorldEntity rs;
 		rs = GetPrototypeByName(typeName);
@@ -138,6 +237,10 @@ namespace Objects
 	}
 
 	PWorldEntity	GetNonVehiclePrototypeByName(const String&typeName)
+	{
+		return GetNonVehiclePrototypeByName(typeName.ToRef());
+	}
+	PWorldEntity	GetNonVehiclePrototypeByName(const StringRef&typeName)
 	{
 		if (typeName.IsEmpty())
 			return PWorldEntity();
@@ -158,6 +261,11 @@ namespace Objects
 	{
 
 		Base*			GetByName(const String&name)
+		{
+			return GetByName(name.ToRef());
+		}
+
+		Base*			GetByName(const StringRef&name)
 		{
 			Base* rs = GetVehicleBaseByName(name);
 			if (rs)
@@ -189,6 +297,11 @@ namespace Objects
 
 		VehicleBase*	GetVehicleBaseByName(const String&name)
 		{
+			return GetVehicleBaseByName(name.ToRef());
+		}
+
+		VehicleBase*	GetVehicleBaseByName(const StringRef&name)
+		{
 			//Buffer0<VehicleBase*>		baseComponents;
 			//Buffer0<Turret*>			turretComponents;
 			//if (structureTypeName.IsNotEmpty())
@@ -198,10 +311,10 @@ namespace Objects
 						return *p;
 
 				foreach (baseComponents,p)
-					if ((*p)->typeName.find(' '))
+					if ((*p)->typeName.Contains(' '))
 					{
 						String pn = (*p)->typeName;
-						pn.eraseCharacter(' ');
+						pn.EraseCharacter(' ');
 						if (pn == name)
 							return *p;
 					}
@@ -211,6 +324,11 @@ namespace Objects
 
 
 		Turret*			GetTurretByName(const String&name)
+		{
+			return GetTurretByName(name.ToRef());
+		}
+
+		Turret*			GetTurretByName(const StringRef&name)
 		{
 			//Buffer0<VehicleBase*>		baseComponents;
 			//Buffer0<Turret*>			turretComponents;
@@ -224,10 +342,10 @@ namespace Objects
 				}
 
 				foreach (allTurretComponents,p)
-					if ((*p)->typeName.find(' '))
+					if ((*p)->typeName.Contains(' '))
 					{
 						String pn = (*p)->typeName;
-						pn.eraseCharacter(' ');
+						pn.EraseCharacter(' ');
 						if (pn == name)
 							return *p;
 					}

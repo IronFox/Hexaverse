@@ -354,7 +354,7 @@ namespace Objects
 				}
 				elif (IsStructure())
 				{
-					ConstName cname = GetCTypeName();
+					const EntityType cname = GetType();
 					cnt = Structure::CountOccurrences(overrideOwner,cname);
 					limit = RuntimeConfig::UnitLimits::Get(cname);
 				}
@@ -628,7 +628,7 @@ namespace Objects
 			CRC32::Sequence s;
 			s.AppendPOD(location);
 			s.AppendPOD(RuntimeConfig::roundNumber);
-			ConstName cName = GetCTypeName();
+			EntityType cName = GetType();
 			s.AppendPOD(cName);
 			UINT32 seed = s.Finish();
 			//std::cout << "Reseeding "<<GetName()<<" to "<<seed<< std::endl;

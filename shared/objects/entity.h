@@ -45,6 +45,7 @@ namespace Objects
 	#endif
 
 
+
 	/**
 	Root-class for all entity-like objects.
 	Every derivative of this class inherits a globally unique identifier, and a world-location (including matrix).
@@ -122,14 +123,11 @@ namespace Objects
 		*/
 		virtual String				GetTypeName() const = 0;
 		/**
-		Same as GetTypeName() except, that a ConstName enumeration value is returned
+		Retrieves the ConstName-based type of the local instance
 		Remember that these name indices may change during version updates and can therefore
 		NOT be used for disk IO.
 		*/
-		virtual ConstName			GetCTypeName() const = 0;
-
-	
-	
+		virtual EntityType			GetType() const = 0;
 	};
 
 

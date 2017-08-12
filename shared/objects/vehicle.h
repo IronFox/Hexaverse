@@ -4,6 +4,7 @@
 #include "mobileEntity.h"
 #include "turretBase.h"
 #include "../sharedContainer.h"
+#include "entityType.h"
 
 namespace Objects
 {
@@ -144,8 +145,7 @@ namespace Objects
 
 		//BaseEntity overrides:
 		virtual String			GetTypeName() const override {return GetTypeName(base,turret);}
-		virtual ConstName		GetCTypeName() const override {return ConstName::Type_Vehicle;}
-
+		virtual EntityType		GetType() const override {return EntityType(base->constName,turret->constName);}
 
 		//WorldEntity overrides:
 		virtual int				GetConstructionCost() const override {return cache.constructionCost.IsCurrent() ? cache.constructionCost.cached : cache.constructionCost.Update( GetPrice() );}

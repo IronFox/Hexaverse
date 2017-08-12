@@ -518,7 +518,7 @@ namespace Objects
 
 
 	
-	void						TaskAttachment::SetLocalizableShape(ConstName shape, const Grid::LCellIdI&location, const OwnerParameter&owner)
+	void						TaskAttachment::SetLocalizableShape(EntityType shape, const Grid::LCellIdI&location, const OwnerParameter&owner)
 	{
 		localizableShapes.Clear();
 		if (shape == ConstName::DetonationSize_Regular)

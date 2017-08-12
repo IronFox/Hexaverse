@@ -539,7 +539,7 @@ namespace UI
 			Objects::PWorldEntity e = entries.First().lock();
 			ASSERT__(e);
 			if (e->IsStructure())
-				return Objects::GetPrototypeByName(e->GetCTypeName());
+				return Objects::GetPrototypeByName(e->GetType());
 			return e;	//good enough
 		}
 

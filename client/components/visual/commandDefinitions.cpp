@@ -531,7 +531,7 @@ namespace Objects
 
 				if (!Objects::ShouldQueueCommands())
 					ApplicationInterface::SignalDropSafeTasks(vehicle);
-				ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_DigDown, ConstName::Empty);
+				ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_DigDown, Objects::EntityType());
 			}
 
 			template <ConstName Command>
@@ -541,7 +541,7 @@ namespace Objects
 						return;
 					if (!Objects::ShouldQueueCommands())
 						ApplicationInterface::SignalDropSafeTasks(selectedMobileEntity);
-					ApplicationInterface::SignalNewJob(selectedMobileEntity, Command,ConstName::Empty);					
+					ApplicationInterface::SignalNewJob(selectedMobileEntity, Command,Objects::EntityType());
 				}
 
 
@@ -555,7 +555,7 @@ namespace Objects
 					return;
 				if (!Objects::ShouldQueueCommands())
 					ApplicationInterface::SignalDropSafeTasks(vehicle);
-				ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_BuildRoad,ConstName::Empty);
+				ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_BuildRoad,Objects::EntityType());
 			}
 
 

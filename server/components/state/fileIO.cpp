@@ -938,7 +938,7 @@ namespace FileIO
 			{
 				if (typeName == "Artillery Tower" || typeName == "Cannon Tower")
 				{
-					proto = Objects::GetPrototypeByName(ConstName::Type_LauncherTower);
+					proto = Objects::GetPrototypeByName( Objects::EntityType(ConstName::Type_Tower, ConstName::Turret_Launcher) );
 				}
 			}
 		}

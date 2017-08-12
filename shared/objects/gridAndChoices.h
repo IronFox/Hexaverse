@@ -210,14 +210,14 @@ namespace Objects
 							onlineUplinkTraffic;
 		#endif
 		void		MoveGridVehicle(const PVehicle&v, const Grid::LCellIdI&from, const Grid::LCellIdI&to);
-		PStructure	SpawnStructure(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&location,ConstName type, bool placeNow, bool isOwnedByMe);
-		PVehicle	SpawnVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName base, ConstName turret, bool placeNow, bool isOwnedByMe);
-		PMobileEntity	SpawnNonVehicleMobile(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName type, bool placeNow, bool isOwnedByMe);
+		PStructure	SpawnStructure(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&location,EntityType type, bool placeNow, bool isOwnedByMe);
+		PVehicle	SpawnVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,EntityType type, bool placeNow, bool isOwnedByMe);
+		PMobileEntity	SpawnNonVehicleMobile(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,EntityType type, bool placeNow, bool isOwnedByMe);
 		/**
 		Selectively spawns either a vehicle or a satellite, depending on the parameters
 		In order to spawn a satellite, @a turret must be @a ConstName::Empty, and @base be a valid satellite type name
 		*/
-		PMobileEntity	SpawnMobileEntity(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName base, ConstName turret, bool placeNow, bool isOwnedByMe);
+		PMobileEntity	SpawnMobileEntity(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,EntityType type, bool placeNow, bool isOwnedByMe);
 		void		Place( const PStructure&s);
 		void		Place( const PVehicle&vehicle, bool insertIntoGrid=true);
 		#ifndef NO_SATELLITES
@@ -262,14 +262,94 @@ namespace Objects
 
 	#endif
 
-	PVehicle		SpawnVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase*base, Component::Turret*turret, bool fillStorage, float&atTime);
-	PVehicle		SpawnVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase&base, Component::Turret&turret, bool fillStorage, float&atTime);
+	/**
+	Constructs a new vehicle using the specified parameters, and inserts it into the local scene.
+	It receives full health, and a newly generated ID.
+	Server-side only: The owner, if specified, is notified during the internal call to InsertConstructed().
+	@param owner Owner of the new vehicle. Recorded in the respective member variable of the new entity. May be empty.
+	@param baseLocation Position to place the new vehicle at. Must be valid.
+		Server-side only:
+			If the given location is unsuitable, a better location is looked for vertically via Vehicle::PositionOnTop().
+			A critical failure (FATAL__) is triggered if no suitable location was found.
+		Client-side only:
+			No checks are performed. The location must be completely valid and suitable for this vehicle type.
+	@param base Vehicle base to use. Must not be null. Typically taken from Objects::Component::*
+	@param turret Turret to use for the vehicle. Must not be null. Typically taken from Objects::Component::*
+	@param fillStorage Automatically fill any available vehicle storage to the maximum. Left empty otherwise
+	@param[in,out] atTime Time to register the insertion at. The given value will be incremented at least once by timeEpsilon
+	@return Pointer to the newly created vehicle. Never null
+	*/
+	PVehicle		InsertNewVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase*base, Component::Turret*turret, bool fillStorage, float&atTime);
+	/**
+	@copydoc InsertNewVehicle(const OwnerParameter&,const Grid::LCellIdI&,Component::VehicleBase*,Component::Turret*,bool,float&);
+	*/
+	PVehicle		InsertNewVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase&base, Component::Turret&turret, bool fillStorage, float&atTime);
+	/**
+	Inserts a pre-constructed mobile entity into the scene.
+	This function is called automatically by InsertNewVehicle().
+	Otherwise only called when a vehicle is inserted into the scene from off-grid storage.
+	Invokes OnConstructionFinished() on the entity unless restored from storage, which is detected by checking if the entity ID has previously been registered.
+	If the entity has previously been registered as off-grid, it will be unregistered from the owner (if any) as such.
+	Any containing hangar entity is NOT notified of this operation.
+	Updates grid, global lists, and owner registers where necessary.
+	Various callback functions are invoked as a result to the insertion, potentially causing complex handling of sensor-appearances,
+	both to the owning and any hostile faction(s).
+	Client-side the operation will update scene rendering, server-side various network messages may be caused.
+	@param v Mobile entity to insert. Must not be null. A critical failure (FATAL__) is triggered if the entity has previously been inserted
+	@param[in,out] atTime Time to register the insertion at. The given value will be incremented at least once by timeEpsilon
+	@param insertIntoGrid Set true to insert the vehicle into the respective grid. Currently effective only if the specified entity is a vehicle
+	@param setHealthToFull Set true to change entity health to 100%. Health remains unchanged otherwise
+	*/
 	void			InsertConstructed(const PMobileEntity&v, float&atTime, bool insertIntoGrid= true, bool setHealthToFull=true);
+	/**
+	Inserts a newly constructed structure entity into the scene.
+	Invokes OnConstructionFinished() on the entity.
+	Updates grid, global lists, and owner registers where necessary.
+	Various callback functions are invoked as a result to the insertion, potentially causing complex handling of sensor-appearances,
+	both to the owning and any hostile faction(s).
+	Client-side the operation will update scene rendering, server-side various network messages may be caused.
+	@param s Structure entity to insert. Must not be null. A critical failure (FATAL__) is triggered if the entity has previously been inserted
+	@param[in,out] atTime Time to register the insertion at. The given value will be incremented at least once by timeEpsilon
+	@param refreshNetworkNow Set true to immediately check changes in compound networks via RefreshCompoundCoverage(), false to simply register changes
+	@param setHealthToFull Set true to change entity health to 100%. Health remains unchanged otherwise
+	*/
 	void			InsertConstructed(const PStructure&s, float&atTime, bool refreshNetworkNow=false, bool setHealthToFull=true);
+
+	/**
+	Inserts a newly constructed mobile entity into off-grid storage, implying it has entered storage of some hangar entity.
+	Any containing hangar entity is NOT notified of this operation.
+	Invokes OnConstructionFinished() on the entity.
+	Updates global lists, and owner registers where necessary.
+	@param v Mobile entity to insert. Must not be null. A critical failure (FATAL__) is triggered if the entity has previously been inserted into the scene or registered
+	@param[in,out] atTime Time to register the insertion at. The given value will be incremented at least once by timeEpsilon
+	@param setHealthToFull Set true to change entity health to 100%. Health remains unchanged otherwise
+	*/
 	void			RegisterNewOffGrid(const PMobileEntity&v, float&atTime, bool setHealthToFull=true);
 
 
-	void			Remove( const PWorldEntity&, RemovalType t, float&atTime, bool controlEnabled, bool isRemovedFromGrid=false, bool ignoreIndestructible=false);
+	/**
+	@brief Completely removes the specified entity from scene or off-grid storage.
+
+	Invokes OnDestroy() on the entity, unless t is RemovalType::EnteredStorage.
+	Updates grid, global lists, and owner registers where necessary.
+	Various callback functions are invoked as a result to the removal, potentially causing complex handling of sensor-disappearances,
+	both to the owning and any hostile faction(s).
+	(Potentially cascading) Explosions may also be triggered by this function.
+	Client-side, the operation will update scene rendering, server-side various network messages may be caused.
+	@param e Entity to remove. Should exist. Triggers a log-entry and a debug-only critical failure if null.
+	Passing an indestructible entity causes the function to fail silently.
+	@param t Removal type. Must match the current state of the entity. I.e. RemovalType::DestroyedInStorage must be passed iff the specified entity is currently registered in off-grid storage
+	@param[in,out] atTime Time to register the removal at. The given value will be incremented at least once by timeEpsilon
+	*/
+	void			Remove( const PWorldEntity&e, RemovalType t, float&atTime);
+
+	/**
+	@copydoc Remove()
+
+	Unlike Remove(), this function also removes indestructible entities.
+	@param e Entity to remove. Should exist. Triggers a log-entry and a debug-only critical failure if null.
+	*/
+	void			ForceRemove(const PWorldEntity&e, RemovalType t, float&atTime);
 
 	/**
 	Must be called once during start up, after the base grids have been created.

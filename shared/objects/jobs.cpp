@@ -590,7 +590,7 @@ namespace Objects
 			float radius = Component::Bomb::GetRadius(doomsday,v.owner);
 			int damageLevel = Component::Bomb::GetDamageLevel(doomsday,v.owner);
 
-			Remove(v.shared_from_this(),Objects::RemovalType::ControlledExplosion,v.entityTime,true);
+			Remove(v.shared_from_this(),Objects::RemovalType::ControlledExplosion,v.entityTime);
 			v.entityTime += timeEpsilon;
 
 	
@@ -799,7 +799,7 @@ namespace Objects
 			if (!constructWhat)
 			{
 				if (whatName == "Artillery Tower" || whatName=="Cannon Tower")
-					constructWhat = GetPrototypeByName(ConstName::Type_LauncherTower);
+					constructWhat = GetPrototypeByName(EntityType(ConstName::Type_Tower,ConstName::Turret_Launcher));
 				if (!constructWhat)
 					throw Except::Memory::SerializationFault(CLOCATION,"Unable to determine construction type of '"+whatName+"'");
 			}
@@ -1009,7 +1009,7 @@ namespace Objects
 			{
 				if (dynamic_cast<Connector*>(existing.get()))
 				{
-					Remove(existing,Objects::RemovalType::BeingReplaced,v.entityTime,false);
+					Remove(existing,Objects::RemovalType::BeingReplaced,v.entityTime);
 					v.entityTime += 0.025f;
 					existing.reset();
 					DBG_ASSERT__(!GetStructure(target));

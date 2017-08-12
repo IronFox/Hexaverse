@@ -68,7 +68,7 @@ namespace Objects
 
 
 		virtual String				GetTypeName() const override { return "Mine"; };
-		virtual ConstName			GetCTypeName() const override {return ConstName::Type_Mine;}
+		virtual EntityType			GetType() const override {return ConstName::Type_Mine;}
 
 
 		virtual bool				SignalEnvironmentChange(const TStructureNeighborhood&neighborhood, float atTime) override
