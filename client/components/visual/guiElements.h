@@ -971,6 +971,8 @@ namespace GUI
 		bool	OnComponentsChanged() {lastLitTriState = -1; return true;};
 
 	public:
+		/**/			ButtonPanel()	{topOpacity = 1.f; bottomOpacity = 1.f;}
+
 		virtual void	SetActive(bool isActive) override
 		{
 			this->active = isActive;
