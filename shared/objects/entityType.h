@@ -47,6 +47,15 @@ namespace Objects
 		bool		IsValid() const		{return HasNoTurret() || (IsNotEmpty() && BaseRequiresTurret(baseType));}
 		bool		IsInvalid() const	{return HasTurret() && (IsEmpty() || !BaseRequiresTurret(baseType));}
 
+		String		ToNumericString() const
+		{
+			if (IsEmpty())
+				return "<empty>";
+			if (HasNoTurret())
+				return '#'+String(int(baseType));
+			return '#'+String(int(turretType))+":#"+String(int(baseType));
+		}
+
 		static bool	BaseRequiresTurret(ConstName baseType)
 		{
 			switch (baseType)
