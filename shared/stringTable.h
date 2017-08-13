@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <interface/serializable.h>
 #include <interface/hashable.h>
+#include <global_string.h>
 
 typedef uint8_t ConstNameRootType;
 
@@ -78,6 +79,13 @@ enum class ConstName : ConstNameRootType	//DO NOT WRITE TO PERSISTENT STORAGE!!!
 
 	NumTypes,
 };
+
+
+
+inline DeltaWorks::String ToString(ConstName v)
+{
+	return '#'+DeltaWorks::String(int(v));
+}
 
 
 inline void SerialSync(DeltaWorks::IReadStream&s, ConstName&v)
