@@ -311,12 +311,12 @@ namespace Objects
 			return v;
 		}
 
-		MobileEntityProducer::WorkItem*				MobileEntityProducer::EnqueueProductionOfVehicle(ConstName baseName, ConstName turretName)
+		MobileEntityProducer::WorkItem*				MobileEntityProducer::EnqueueProductionOfVehicle(EntityType t)
 		{
 			WorldEntity*parent = dynamic_cast<WorldEntity*>(this);
 			ASSERT_NOT_NULL__(parent);
-			Component::VehicleBase* base = Component::GetVehicleBaseByName(baseName);
-			Component::Turret* turret = Component::GetTurretByName(turretName);
+			Component::VehicleBase* base = Component::baseComponents.Find(t.baseType);
+			Component::Turret* turret = Component::vehicleTurretComponents.Find(t.turretType);
 			if (!turret)
 			{
 				LogEvent(EventClass::Preset::commandRejected,parent,"Invalid turret component");
@@ -496,7 +496,7 @@ namespace Objects
 			Component::Turret* turret = nullptr;
 			PWorldEntity prototype;
 
-			prototype = GetNonVehiclePrototypeByName(type);
+			prototype = Prototypes::Find(type);
 			if (prototype)
 			{
 				prototype->owner = parent->owner;
@@ -511,8 +511,8 @@ namespace Objects
 			}
 			else
 			{
-				base = Component::GetVehicleBaseByName(type.baseType);
-				turret = Component::GetTurretByName(type.turretType);
+				base = Component::baseComponents.Find(type.baseType);
+				turret = Component::vehicleTurretComponents.Find(type.turretType);
 				ASSERT_NOT_NULL1__(turret, (int)type.turretType);
 				ASSERT_NOT_NULL1__(base, (int)type.baseType);
 

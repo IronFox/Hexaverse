@@ -51,7 +51,7 @@ class VehiclePlant : public WorkingStructureT<VehiclePlant>, public MobileEntity
 			bool					AbortConstruction(const TUniqueID&);
 			PVehicle				SpawnFinishedProductionAnywhere();
 			PVehicle				Enqueue(Component::VehicleBase*, Component::Turret*);
-			PVehicle				Enqueue(ConstName baseName, ConstName turretName);
+			PVehicle				Enqueue(EntityType t);
 			PVehicle				GetProduction() const;
 			//PVehicle				CompleteProduction();
 			virtual void			Tick(ResourceVector&) override;

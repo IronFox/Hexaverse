@@ -300,9 +300,9 @@ namespace Nexus
 									//Objects::Component::Turret* turret = State::Config::Nexus::vehicleTurrets[choice];
 									//Objects::MobileEntityProducer::WorkItem item = vplant->EnqueueProductionOfVehicle(&Objects::Component::hoverbase,turret);
 									//Objects::PVehicle v = To<Objects::Vehicle>::Cast(item.producing);
-									ConstName	parameters[2] = {ConstName::VehicleBase_HoverBase, Game::Config::Nexus::vehicleTurrets[choice]->constName};
+									Objects::EntityType	t = {ConstName::VehicleBase_HoverBase, Game::Config::Nexus::vehicleTurrets[choice]->constName};
 									LogEvent(EventSignificance::Common,vplant.get(),"Enqueueing vehicle production job due to high threat level");
-									Journal::currentRound.RegisterProductionJobStart(true,vplant,plant,parameters,2);
+									Journal::currentRound.RegisterProductionJobStart(true,vplant,plant,t);
 									
 									if (vplant->queue.IsNotEmpty())	//shit happens
 									{

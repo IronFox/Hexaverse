@@ -2655,7 +2655,7 @@ namespace Objects
 			if (turret.IsNotEmpty())
 				return AssembleVehicle(owner,id,baseLocation,base,turret);
 			
-			PWorldEntity	proto = GetNonVehiclePrototypeByName(base);
+			PWorldEntity	proto = Prototypes::all.FindByName(base);
 			if (!proto)
 				return PMobileEntity();
 			ASSERT1__(proto,base);
@@ -2670,10 +2670,24 @@ namespace Objects
 			return s;
 		}
 
+
+		PVehicle		AssembleVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation, const EntityType&type)
+		{
+			Component::Turret* t = Component::vehicleTurretComponents.Find(type.turretType);
+			Component::VehicleBase* b = Component::baseComponents.Find(type.baseType);
+			ASSERT__(b);
+			ASSERT__(t);
+			PVehicle vehicle(new Vehicle(owner, baseLocation,b,t));
+			vehicle->location = baseLocation;
+			vehicle->id = id;
+			vehicle->UpdateSystem();
+			return vehicle;
+		}
+
 		PVehicle		AssembleVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation, const String&base, const String&turret)
 		{
-			Component::Turret* t = Component::GetTurretByName(turret);
-			Component::VehicleBase* b = Component::GetVehicleBaseByName(base);
+			Component::Turret* t = Component::vehicleTurretComponents.FindByName(turret);
+			Component::VehicleBase* b = Component::baseComponents.FindByName(base);
 			ASSERT__(b);
 			ASSERT__(t);
 			PVehicle vehicle(new Vehicle(owner, baseLocation,b,t));
@@ -2687,8 +2701,8 @@ namespace Objects
 
 		PVehicle		SpawnVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,EntityType type, bool placeNow, bool isOwnedByMe)
 		{
-			Component::Turret* t = Component::GetTurretByName(type.turretType);
-			Component::VehicleBase* b = Component::GetVehicleBaseByName(type.baseType);
+			Component::Turret* t = Component::vehicleTurretComponents.Find(type.turretType);
+			Component::VehicleBase* b = Component::baseComponents.Find(type.baseType);
 			ASSERT__(b);
 			ASSERT__(t);
 			PVehicle vehicle(new Vehicle(owner, baseLocation,b,t));
@@ -2724,7 +2738,7 @@ namespace Objects
 		PMobileEntity		SpawnMobileEntity(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,EntityType type, bool placeNow, bool isOwnedByMe)
 		{
 
-			PWorldEntity proto = GetNonVehiclePrototypeByName(type);
+			PWorldEntity proto = Prototypes::Find(type);
 			if (proto)
 			{
 				ASSERT1__(proto->IsMobile(),proto->GetTypeName());
@@ -2735,7 +2749,7 @@ namespace Objects
 
 		PMobileEntity			SpawnNonVehicleMobile(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,EntityType type, bool placeNow, bool isOwnedByMe)
 		{
-			PWorldEntity proto = GetNonVehiclePrototypeByName(type);
+			PWorldEntity proto = Prototypes::Find(type);
 			ASSERT1__(proto,ToString(type));
 			ASSERT1__(proto->IsMobile(),proto->GetTypeName());
 			return SpawnNonVehicleMobile(owner,id,baseLocation,To<MobileEntity>::Cast( proto ),placeNow,isOwnedByMe);
@@ -2743,27 +2757,27 @@ namespace Objects
 
 		PStructure		SpawnStructure(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&location,EntityType type, bool placeNow, bool isOwnedByMe)
 		{
-			foreach (structurePrototypes,p)
-				if ((*p)->GetType() == type)
+			auto proto = Prototypes::structures.Find(type);
+			if (proto)
+			{
+				//PStructure s = (*p)->CreateNewInstance(location);
+				PStructure s = To<Structure>::Cast(proto->CreateNewInstance(owner,location,0));
+				s->health = s->GetMaxHealth();
+				s->id = id;
+				s->UpdateNiceName();
+				s->isOwnedByMe = isOwnedByMe;
+				//LogEvent(EventSignificance::Common, s.get(),"Constructed " + s->GetName());
+				if (placeNow)
 				{
-					//PStructure s = (*p)->CreateNewInstance(location);
-					PStructure s = To<Structure>::Cast((*p)->CreateNewInstance(owner,location,0));
-					s->health = s->GetMaxHealth();
-					s->id = id;
-					s->UpdateNiceName();
-					s->isOwnedByMe = isOwnedByMe;
-					//LogEvent(EventSignificance::Common, s.get(),"Constructed " + s->GetName());
-					if (placeNow)
-					{
-						Place(s);
-					}
-					//else
-					//	unplacedIDMap.Set(id,s);
-
-
-					return s;
+					Place(s);
 				}
-			FATAL__("Type not found for construction: " + ToString(type));
+				//else
+				//	unplacedIDMap.Set(id,s);
+
+
+				return s;
+			}
+			FATAL__("Type not found for construction: " + type.ToNumericString());
 			return PStructure();
 		}
 		void			Place( const PStructure&s)

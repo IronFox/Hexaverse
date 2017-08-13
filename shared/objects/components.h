@@ -486,11 +486,10 @@ namespace Objects
 
 		namespace Terraformer
 		{
-			extern Ctr::Buffer<PStructure> canBuild;
-
-
-
 			void		Configure(Turret&);
+
+			bool		CanBuild(const PStructure&proto);
+
 		};
 
 		namespace Bomb

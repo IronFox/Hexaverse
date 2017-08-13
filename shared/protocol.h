@@ -1314,10 +1314,9 @@ namespace Protocol
 		, NET(TUniqueID), taskId
 	)
 
-	typedef NetArray<ConstName,4>	ConstructionParameters;
 	NETSTRUCT2(ConstructionBegin
 		, NET(TUniqueID), plantID
-		, ConstructionParameters, parameters
+		, Objects::EntityType, type
 	)
 
 	NETSTRUCT2(EnableStructure

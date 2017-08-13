@@ -87,11 +87,6 @@ namespace Test
 
 	class Serialization : public Test
 	{
-		static void		RandomFill(Objects::Marker&m, Random&random);
-		static void		RandomFill(Objects::Statistics::EntityType&,Random&random);
-		static void		RandomFill(Objects::Statistics::Round&,Random&random);
-		static void		RandomFill(Objects::Statistics::MetricTable&table, Random&random);
-		static void		RandomFill(Objects::PositiveResourceVector&, Random&random);
 
 		void			TestRange(serial_size64_t begin, serial_size64_t end, bool expectException);
 	public:
@@ -100,6 +95,12 @@ namespace Test
 
 		virtual void	Run(Random&random)	override;
 
+		static void		RandomFill(Objects::EntityType&t, Random&random);
+		static void		RandomFill(Objects::Marker&m, Random&random);
+		static void		RandomFill(Objects::Statistics::EntityType&,Random&random);
+		static void		RandomFill(Objects::Statistics::Round&,Random&random);
+		static void		RandomFill(Objects::Statistics::MetricTable&table, Random&random);
+		static void		RandomFill(Objects::PositiveResourceVector&, Random&random);
 	};
 
 	class StorageUnits : public Test

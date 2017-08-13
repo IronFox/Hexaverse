@@ -1265,7 +1265,7 @@ namespace Objects
 				referenceIDMap.Set(referenceID,newIndex);
 				m.referencedType = referenceType;
 
-				PWorldEntity prototype = Objects::GetNonVehiclePrototypeByName(referenceType);
+				PWorldEntity prototype = Objects::Prototypes::all.Find(referenceType);
 				if (prototype)
 				{
 					ASSERT1__(prototype, referenceType);
@@ -1283,8 +1283,8 @@ namespace Objects
 					//vehicle
 					if (referenceType.HasTurret())
 					{
-						Component::VehicleBase* base = Component::GetVehicleBaseByName(referenceType.baseType);
-						Component::Turret* turret = Component::GetTurretByName(referenceType.turretType);
+						Component::VehicleBase* base = Component::baseComponents.Find(referenceType.baseType);
+						Component::Turret* turret = Component::vehicleTurretComponents.Find(referenceType.turretType);
 						ASSERT1__(base, referenceType);
 						ASSERT1__(turret, referenceType);
 						m.visualization.reset(new Vehicle(OwnerParameter(), location, base, turret));

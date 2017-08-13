@@ -620,7 +620,7 @@ namespace FileIO
 		}
 		else
 		{
-			Objects::PWorldEntity proto = Objects::GetNonVehiclePrototypeByName(helper.baseName);
+			Objects::PWorldEntity proto = Objects::Prototypes::all.FindByName(helper.baseName);
 			ASSERT1__(proto,helper.baseName);
 			ASSERT1__(proto->IsMobile(),proto->GetTypeName());
 			item.producing = To<Objects::MobileEntity>::Cast(proto->CreateNewInstance(owner,Grid::LCellIdI(0,0),0));
@@ -923,14 +923,7 @@ namespace FileIO
 		Import(parent,RID::structureType,typeName);
 		Grid::LCellIdI location;
 		GetPOD(parent,RID::location,location);
-		if (globalVersionOfCurrentFile <= 1038)
-		{
-			if (typeName == "VehicleStore")
-				typeName = "Vehicle Store";
-			elif (typeName == "NexusPort")
-				typeName = "Nexus Port";
-		}
-		Objects::PStructure proto = Objects::GetPrototypeByName(typeName);
+		Objects::PStructure proto = Objects::Prototypes::structures.FindByName(typeName);
 
 		if (globalVersionOfCurrentFile <= 1038)
 		{
@@ -938,7 +931,7 @@ namespace FileIO
 			{
 				if (typeName == "Artillery Tower" || typeName == "Cannon Tower")
 				{
-					proto = Objects::GetPrototypeByName( Objects::EntityType(ConstName::Type_Tower, ConstName::Turret_Launcher) );
+					proto = Objects::Prototypes::structures.Find( Objects::EntityType(ConstName::Type_Tower, ConstName::Turret_Launcher) );
 				}
 			}
 		}
@@ -1089,6 +1082,8 @@ namespace FileIO
 	{
 		RuntimeConfig::loadingPhase = true;
 		insertIntoHangar.Clear();
+
+		Objects::Statistics::EnterFileMode();
 
 		Riff::Container file;
 		bool failed = false;
@@ -1699,6 +1694,8 @@ namespace FileIO
 		}
 
 		static_assert(sizeof(TUniqueID) == TUniqueID::NumBytes, "Alignment fault" );
+
+		Objects::Statistics::EnterFileMode();
 
 		Timer::Time t0 = timer.Now();
 

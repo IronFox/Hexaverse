@@ -73,9 +73,9 @@ namespace Objects
 				entity->OnSelect();
 		}
 		
-		GlobalEvents::invalidateObjectCache();
 		if (e != entity)
 			onSelectionChanged();
+		GlobalEvents::invalidateObjectCache();
 		UpdateChoices(controlEnabled);
 	}
 
@@ -95,9 +95,9 @@ namespace Objects
 		if (e)
 			e->OnDeselect();
 		Command::RefreshCommands(controlEnabled);
-		GlobalEvents::invalidateObjectCache();
 		if (e)
 			onSelectionChanged();
+		GlobalEvents::invalidateObjectCache();
 	}
 
 

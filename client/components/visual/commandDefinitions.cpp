@@ -94,7 +94,7 @@ namespace Objects
 					Objects::GetProductionChoices(&plant,plant.selectedBase,choices);
 					static bool ignoreWarnings = false;
 					if (choices.IsNotEmpty() || ignoreWarnings)
-						ApplicationInterface::SignalConstructionBegin(plant.id, plant.selectedBase->constName, plant.selectedTurret->constName);
+						ApplicationInterface::SignalConstructionBegin(plant.id, {plant.selectedBase->constName, plant.selectedTurret->constName});
 					else
 					{
 
@@ -104,12 +104,11 @@ namespace Objects
 							if (!plant.selectedBase->moveOnWater)
 								waterNotice = " Note that this vehicle type cannot stand on water. ";
 							TUniqueID myID = plant.id;
-							ConstName baseName = plant.selectedBase->constName;
-							ConstName turretName = plant.selectedTurret->constName;
+							EntityType type = {plant.selectedBase->constName,plant.selectedTurret->constName};
 							Dialog::Confirm("Cannot find valid spawning locations around '"+plant.GetNiceName()+"' for '"+Vehicle::GetTypeName(plant.selectedBase,plant.selectedTurret)+"'. "+waterNotice+"Are you sure you wish to start this production?",
-									[baseName,turretName,myID]()
+									[type,myID]()
 									{
-										ApplicationInterface::SignalConstructionBegin(myID, baseName, turretName);
+										ApplicationInterface::SignalConstructionBegin(myID, type);
 										//ignoreWarnings = true;
 									}
 									,
@@ -846,26 +845,28 @@ namespace Objects
 
 			int at = 0;
 
-			foreach(Component::Terraformer::canBuild, b)
-			{
-				PStructure s = *b;
-				structureGroup[s->GetCategory()]->Add(new Command::EntityConstructionCommand(/*"Build " + */(*b)->GetTypeName(), nullptr,nullptr,*b,std::bind(&Detail::TerraformerConstruct, *b),
-				[s](bool controlsEnabled)
+			ASSERT__(Prototypes::structures.IsNotEmpty());
+			foreach(Prototypes::structures, b)
+				if (Component::Terraformer::CanBuild(*b))
 				{
-					bool constructingMe = (activeCursorMode == CursorMode::PlaceStructureMode
-							&& activeStructureToPlace == s);
-					bool unlocked = selectedEntity && s->GetTable()->isUnlocked.GetValue(selectedEntity->GetResearchState());
-					Objects::CommandFlags rs = controlsEnabled && 
-						(activeCursorMode == CursorMode::Idle
-						|| constructingMe
-						) && unlocked
-						? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
-					if (constructingMe)
-						rs |= Objects::CommandFlags::IsPermaActive;
-					return rs;
+					PStructure s = *b;
+					structureGroup[s->GetCategory()]->Add(new Command::EntityConstructionCommand(/*"Build " + */(*b)->GetTypeName(), nullptr,nullptr,*b,std::bind(&Detail::TerraformerConstruct, *b),
+					[s](bool controlsEnabled)
+					{
+						bool constructingMe = (activeCursorMode == CursorMode::PlaceStructureMode
+								&& activeStructureToPlace == s);
+						bool unlocked = selectedEntity && s->GetTable()->isUnlocked.GetValue(selectedEntity->GetResearchState());
+						Objects::CommandFlags rs = controlsEnabled && 
+							(activeCursorMode == CursorMode::Idle
+							|| constructingMe
+							) && unlocked
+							? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
+						if (constructingMe)
+							rs |= Objects::CommandFlags::IsPermaActive;
+						return rs;
+					}
+					));
 				}
-				));
-			}
 		}
 
 

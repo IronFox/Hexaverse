@@ -1664,7 +1664,8 @@ namespace GUI
 
 	/*virtual override*/ float	Image::GetContentHeight() const
 	{
-	
+		if (texture.IsEmpty())
+			return -1;	//no change
 		const Resolution3D imageResolution = texture.GetResolution();
 		const float2 relativeComponentSize = float2(GetWidth(),GetHeight());
 		const float2 viewportSize = ViewPortSizef();

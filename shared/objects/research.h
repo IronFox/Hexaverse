@@ -211,6 +211,7 @@ namespace Objects
 		void					ExportResearchQueue(Ctr::Array<UINT32>&);
 		void					RestoreResearchQueue(const String&paths);
 		void					RestoreResearchQueue(const Ctr::Array<UINT32>&);
+		bool					ResearchIsPlanned(const PResearchTopic&)	const;
 		bool					AppendResearchTask(const PResearchTopic&);
 		bool					AppendResearchTask(index_t serialIndex)	{return AppendResearchTask(GetTopic(serialIndex));}
 		bool					DropResearchTask(const PResearchTopic&);

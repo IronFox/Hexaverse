@@ -118,66 +118,20 @@ namespace Objects
 		LogEvent(EventSignificance::PerformanceMeasurement, nullptr, "Vehicle grid of "+String(vehicleGrid.GetContentSize())+" bytes allocated");
 		LogEvent(EventSignificance::PerformanceMeasurement, nullptr, "Structure grid of "+String(structureGrid.GetContentSize())+" bytes allocated");
 
-
-
-
-		structurePrototypes << Mine::globalPrototype;
-		structurePrototypes << Generator::globalPrototype;
-		structurePrototypes << ReactorCore::globalPrototype;
-		structurePrototypes << MunitionFactory::globalPrototype;
-		structurePrototypes << VehiclePlant::globalPrototype;
-		structurePrototypes << Laboratory::globalPrototype;
-		structurePrototypes << Connector::globalPrototype;
-		structurePrototypes << FuelContainer::globalPrototype;
-		structurePrototypes << MineralContainer::globalPrototype;
-		structurePrototypes << MunitionStorage::globalPrototype; //DO NOT COMMENT. Nexus bases feature these
-		structurePrototypes << UraniumStorage::globalPrototype;
-		structurePrototypes << NexusPort::globalPrototype;
-		structurePrototypes << VehicleStore::globalPrototype;
-		
-		#ifndef NO_SATELLITES
-			structurePrototypes << SkyPort::globalPrototype;
-
-			satellitePrototypes << SkyHub::globalPrototype;
-			satellitePrototypes << SkyGuardian::globalPrototype;
-			satellitePrototypes << Ragnarok::globalPrototype;
-			//satellitePrototypes << StarPort::globalPrototype;
-		#endif
-
-
-		Tower::globalPrototypes.Append().reset(new Tower(&Component::launcher));
-		PStructure launcherTower = Tower::globalPrototypes.last();
-		//Tower::globalPrototypes.Append().reset(new Tower(artillery));
-		Tower::globalPrototypes.Append().reset(new Tower(&Component::radar));
-		Tower::globalPrototypes.Append().reset(new Tower(&Component::armored));
-		structurePrototypes.Append(Tower::globalPrototypes);
-
-
-
 		LogEvent(EventSignificance::Debug, nullptr, "Structure static setup");
-
 		Structure::StaticSetup();
 
-
-		Component::ConfigureAll();
+		LogEvent(EventSignificance::Debug, nullptr, "Registering prototypes");
+		Prototypes::RegisterAll();
 
 
 
 		Hangar::StaticSetup();
 
-
-
-		#ifndef NO_SATELLITES
-			foreach(satellitePrototypes, p)
-				(*p)->PrototypeSetup();
-		#endif
-		foreach(structurePrototypes, p)
+		foreach (Prototypes::all,p)
 			(*p)->PrototypeSetup();
 
 		ResearchState::StaticCreate();	//all prototypes good. time to set the tables
-
-
-
 
 		InitGrid();
 
@@ -242,7 +196,7 @@ namespace Objects
 		#endif
 		vehicles.Clear();
 		structures.Clear();
-		structurePrototypes.Clear();
+		Prototypes::Destroy();
 		Component::DestroyAll();
 	}
 	

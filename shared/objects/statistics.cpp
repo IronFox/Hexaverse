@@ -2,9 +2,23 @@
 #include "entity.h"
 #include "../runtimeConfig.h"
 #include "faction.h"
+#include "prototypes.h"
 
 namespace Objects
 {
+
+	static bool statisticsInNetworkMode = true;
+
+	/*static*/ void		Statistics::EnterFileMode()
+	{
+		statisticsInNetworkMode = false;
+	}
+
+	/*static*/ void		Statistics::EnterNetworkMode()
+	{
+		statisticsInNetworkMode = true;
+	}
+
 
 	UINT64&					Statistics::MetricTable::Fetch(Metric metric)
 	{
@@ -135,12 +149,12 @@ namespace Objects
 
 	Statistics::EntityType&	Statistics::GetTypeOf(const PWorldEntity&e)
 	{
-		String name = e->GetTypeName();
-		auto rs = entityTypes.QueryPointer(name);
+		const auto type = e->GetType();
+		auto rs = entityTypes.QueryPointer(type);
 		if (rs)
 			return *rs;
-		rs = &entityTypes.Set(name);
-		rs->typeName = name;
+		rs = &entityTypes.Set(type);
+		rs->type = type;
 		return *rs;
 	}
 
@@ -165,14 +179,24 @@ namespace Objects
 	/*virtual override*/	void					Statistics::EntityType::Serialize(IWriteStream&s) const
 	{
 		using Serialization::SerialSync;
-		SerialSync(s,typeName);
+		if (statisticsInNetworkMode)
+			SerialSync(s,type);
+		else
+			SerialSync(s,ToString(type));
 		SerialSync(s,metrics);
 	}
 
 	/*virtual override*/	void					Statistics::EntityType::Deserialize(IReadStream&s)
 	{
 		using Serialization::SerialSync;
-		SerialSync(s,typeName);
+		if (statisticsInNetworkMode)
+			SerialSync(s,type);
+		else
+		{
+			String str;
+			SerialSync(s,str);
+			type = DecodeType(str);
+		}
 		SerialSync(s,metrics);
 	}
 
@@ -385,7 +409,7 @@ namespace Objects
 	{
 		if (entityTypes.Count() > 10000)
 			throw Except::Memory::SerializationFault(CLOCATION,"Number of loaded unit type statistics ("+String(entityTypes.Count())+") number exceeds allowed range");
-		entityTypes.Set(stat.typeName) = std::move(stat);
+		entityTypes.Set(stat.type) = std::move(stat);
 	}
 	void			Statistics::Load(FactionInteraction&&inter)
 	{
@@ -484,6 +508,5 @@ namespace Objects
 	{
 		return history.Last();
 	}
-
 
 }

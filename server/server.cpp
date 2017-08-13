@@ -329,13 +329,8 @@ namespace ApplicationInterface
 		{
 			if (f->nexusControl >= Game::Config::GetTargetNexusCount())
 			{
-				Game::Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
 				Game::winner = f;
-
-				foreach (Network::activePlayersAndSpectators,p)
-				{
-					(*p)->SendProgressUpdate("");
-				}
+				Game::Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
 			}
 			else
 			{

@@ -1037,7 +1037,7 @@ namespace Animation
 	{
 		type = Attack;
 		targetEntityID = TUniqueID::Empty();
-		attackerTurret = Objects::Component::GetTurretByName(a.turretType);
+		attackerTurret = Objects::Component::allTurretComponents.Find(a.turretType);
 		ASSERT_NOT_NULL1__(attackerTurret,(int)a.turretType);
 		attackRange = a.turretRange;
 		attackAngle = a.attackAngle,

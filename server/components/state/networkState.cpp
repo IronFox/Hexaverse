@@ -230,6 +230,7 @@ namespace Network
 		{
 			//send only statistics of local faction
 			auto&peer = *this->peer.lock();
+			Objects::Statistics::EnterNetworkMode();
 			Channels::Statistics::beginSequence.SendTo(peer,faction->id);
 
 			faction->statistics.VisitRounds([&peer](const Objects::Statistics::Round&r)
@@ -252,7 +253,7 @@ namespace Network
 		{
 			auto&peer = *this->peer.lock();
 			//game over: send statistics of all factions
-
+			Objects::Statistics::EnterNetworkMode();
 			Objects::ForeachFaction([&peer](const Objects::PFaction&f)
 			{
 				Channels::Statistics::beginSequence.SendTo(peer,f->id);

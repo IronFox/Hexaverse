@@ -192,14 +192,7 @@ namespace Journal
 
 	Round::PureEntityDescriptor::PureEntityDescriptor(const Objects::PWorldEntity&we)
 	{
-		if (we->IsVehicle())
-		{
-			Objects::PVehicle v = To<Objects::Vehicle>::Cast(we);
-			this->baseType = v->base->typeName;
-			this->turretType = v->turret->typeName;
-		}
-		else
-			this->baseType = we->GetTypeName();
+		this->type = we->GetType();
 	}
 
 	Round::CreateEntity::CreateEntity(const Objects::PWorldEntity&we):desc(we),location(we->location),entityID(we->id)
@@ -580,7 +573,7 @@ namespace Journal
 
 	Objects::PWorldEntity Round::PureEntityDescriptor::Instantiate(const Objects::PFaction&f, const TUniqueID&id, const Grid::LCellIdI&loc) const
 	{
-		Objects::PWorldEntity proto = Objects::GetNonVehiclePrototypeByName(baseType);
+		Objects::PWorldEntity proto = Objects::Prototypes::Find(type);
 		Objects::PWorldEntity e;
 		if (proto)
 		{
@@ -589,7 +582,7 @@ namespace Journal
 		}
 		else
 		{
-			e = Objects::AssembleVehicle(f,id,loc,baseType,turretType);
+			e = Objects::AssembleVehicle(f,id,loc,type);
 		}
 		LogEvent(EventSignificance::Debug,e.get(),"PureEntityDescriptor::Instantiate("+ToString(id)+")");
 		return e;
@@ -597,26 +590,13 @@ namespace Journal
 
 	void	Round::PureEntityDescriptor::Compile(Entry&e) const
 	{
-		if (this->turretType.IsNotEmpty())
-		{
-			e.stringParameters.Set("VehicleTurret",this->turretType);
-			e.stringParameters.Set("VehicleBase",this->baseType);
-		}
-		else
-			e.stringParameters.Set("EntityType",this->baseType);
+		e.stringParameters.Set("EntityType",ToString(type));
 	}
 
 	void	Round::PureEntityDescriptor::Decode(const Entry&e)
 	{
-		if (e.stringParameters.TryGet("VehicleTurret",this->turretType))
-		{
-			baseType = e.stringParameters.Require(CLOCATION,"VehicleBase");
-		}
-		else
-		{
-			baseType = e.stringParameters.Require(CLOCATION,"EntityType");
-			turretType = "";
-		}
+		String t = e.stringParameters.Require(CLOCATION,"EntityType");
+		type = Objects::DecodeType(t);
 	}
 
 
@@ -1611,16 +1591,16 @@ namespace Journal
 		}
 		if (dest.referencedType.IsEmpty())
 			return true;
-		if (Objects::GetNonVehiclePrototypeByName(dest.referencedType))
+		if (Objects::Prototypes::Find(dest.referencedType))
 			return true;
-		if (!Objects::Component::GetVehicleBaseByName(dest.referencedType.baseType))
+		if (!Objects::Component::baseComponents.Find(dest.referencedType.baseType))
 		{
 			LogEvent(EventClass::Preset::commandRejected, "Unknown base type #" + String(int(dest.referencedType.baseType)));
 			return false;
 		}
 
 		//String turretName = source.type.subStringRef((int)separatorAt);
-		if (!Objects::Component::GetTurretByName(dest.referencedType.turretType))
+		if (!Objects::Component::vehicleTurretComponents.Find(dest.referencedType.turretType))
 		{
 			LogEvent(EventClass::Preset::commandRejected, "Unknown turret type #" + String(int(dest.referencedType.turretType)));
 			return false;
@@ -1741,11 +1721,18 @@ namespace Journal
 				throw RoundException(CLOCATION, "Unable to drop '"+topic->GetFullName()+"' from research queue. Has this been queued?");
 		}
 		else
+		{
+			if (f->researchState.ResearchIsPlanned(topic))
+			{
+				LogEvent(EventSignificance::Uncommon, GetPeerOfFaction(f), "Faction research "+topic->GetFullName()+" is already in the queue");
+				return;
+			}
 			if (f->researchState.ResearchQueueIsFull())
 				throw RoundException(CLOCATION, "Unable to append '"+topic->GetFullName()+"' to research queue. Queue is full");
 			else
 				if (!f->researchState.AppendResearchTask(topic))
 					throw RoundException(CLOCATION, "Unable to append '"+topic->GetFullName()+"' to research queue. Is this a group?");
+		}
 		Network::PClient cl;
 		if (Network::playerMap.Query(f,cl))
 		{
@@ -2027,7 +2014,7 @@ namespace Journal
 		LogFactionOnline(f,false);
 	}
 
-	void	Round::RegisterProductionJobStart(bool apply, const Objects::PWorldEntity&e, const Objects::PMobileEntityProducer&asProducer, const ConstName*parameters, count_t parameterCount)
+	void	Round::RegisterProductionJobStart(bool apply, const Objects::PWorldEntity&e, const Objects::PMobileEntityProducer&asProducer, const Objects::EntityType&t)
 	{
 		if (apply && asProducer->queue.GetLength() >= Objects::MaxProductionTasks)
 		{
@@ -2038,58 +2025,46 @@ namespace Journal
 		std::shared_ptr<NewEntityProduction> cmd(new NewEntityProduction());
 		cmd->insertAt = InvalidIndex;	//last
 
-		switch (parameterCount)
+		Objects::PWorldEntity proto = Objects::Prototypes::Find(t);
+		if (proto)
 		{
-			case 2:
+			if (!proto->IsMobile())
 			{
-				Objects::Component::Turret*turret = Objects::Component::GetTurretByName(parameters[1]);
-				Objects::Component::Base*base = Objects::Component::GetVehicleBaseByName(parameters[0]);
-				if (!turret || !base)
-				{
-					LogEvent(EventClass::Preset::commandRejected,e.get(),"Cannot produce that");
-					return;
-				}
-				if (!turret->isUnlocked.GetValue(e->GetResearchState()))
-				{
-					LogEvent(EventClass::Preset::commandRejected,e.get(), "Cannot build "+turret->typeName+" since it has not been researched yet");
-					return;
-				}
-				if (!base->isUnlocked.GetValue(e->GetResearchState()))
-				{
-					LogEvent(EventClass::Preset::commandRejected,e.get(), "Cannot build "+base->typeName+" since it has not been researched yet");
-					return;
-				}
-				cmd->desc.turretType = turret->typeName;
-				cmd->desc.baseType = base->typeName;
-			}
-			break;
-			case 1:
-			{
-				Objects::PWorldEntity proto = Objects::GetNonVehiclePrototypeByName(parameters[0]);
-				if (!proto || !proto->IsMobile())
-				{
-					LogEvent(EventClass::Preset::commandRejected,e.get(),"Cannot produce that");
-					return;
-				}
-				if (!proto->IsUnlockedAtState(e->GetResearchState()))
-				{
-					LogEvent(EventClass::Preset::commandRejected,e.get(), "Cannot build "+proto->GetTypeName()+" since it has not been researched yet");
-					return;
-				}
-
-				cmd->desc.baseType = proto->GetTypeName();
-			}
-			break;
-			default:
 				LogEvent(EventClass::Preset::commandRejected,e.get(),"Cannot produce that");
 				return;
-			break;
+			}
+			if (!proto->IsUnlockedAtState(e->GetResearchState()))
+			{
+				LogEvent(EventClass::Preset::commandRejected,e.get(), "Cannot build "+proto->GetTypeName()+" since it has not been researched yet");
+				return;
+			}
+		}
+		else
+		{
+			Objects::Component::Turret*turret = Objects::Component::vehicleTurretComponents.Find(t.turretType);
+			Objects::Component::Base*base = Objects::Component::baseComponents.Find(t.baseType);
+			if (!turret || !base)
+			{
+				LogEvent(EventClass::Preset::commandRejected,e.get(),"Cannot produce that");
+				return;
+			}
+			if (!turret->isUnlocked.GetValue(e->GetResearchState()))
+			{
+				LogEvent(EventClass::Preset::commandRejected,e.get(), "Cannot build "+turret->typeName+" since it has not been researched yet");
+				return;
+			}
+			if (!base->isUnlocked.GetValue(e->GetResearchState()))
+			{
+				LogEvent(EventClass::Preset::commandRejected,e.get(), "Cannot build "+base->typeName+" since it has not been researched yet");
+				return;
+			}
 		}
 
 		EntityStrand&strand = factionStrands.Set(e->owner->id).entityStrands.Set(e->id);
 
 		cmd->taskID.Generate();
 		cmd->newEntityID.Generate();
+		cmd->desc.type = t;
 		strand.Append(cmd);
 		if (apply)
 			strand.last()->Execute(e);

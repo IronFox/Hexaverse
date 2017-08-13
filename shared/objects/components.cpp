@@ -777,20 +777,21 @@ namespace Objects
 
 
 
-		Ctr::Buffer<PStructure> Terraformer::canBuild;
+		bool			Terraformer::CanBuild(const PStructure&proto)
+		{
+			return !proto->IsIndestructible()
+					#ifdef ONE_COMPOUND_PER_FACTION
+						&& !To<Connector>::DynamicCast(proto)
+					#endif
+					#ifdef NO_MUNITION
+						&& !To<MunitionFactory>::DynamicCast(proto) && !To<MunitionStorage>::DynamicCast(proto)
+					#endif
+			;
+		}
+
 
 		void			Terraformer::Configure(Turret&component)
 		{
-			foreach (structurePrototypes,p)
-				if (!(*p)->IsIndestructible())
-					#ifdef ONE_COMPOUND_PER_FACTION
-						if (!To<Connector>::DynamicCast(*p))
-					#endif
-					#ifdef NO_MUNITION
-						if (!To<MunitionFactory>::DynamicCast(*p) && !To<MunitionStorage>::DynamicCast(*p))
-					#endif
-					canBuild << *p;
-
 			#ifdef HAS_WINDOW		
 				component.parts.SetSize(1);
 

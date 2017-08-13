@@ -13,7 +13,7 @@ namespace Reflection
 {
 	CLI::Interpreter	state;
 
-	static CLI::PFolder factionFolder;
+	static CLI::PFolder factionFolder,gameFolder;
 
 
 	static const constexpr UINT32 DefaultFactionsPerEMPZone = 
@@ -75,6 +75,46 @@ namespace Reflection
 			lastValue = ConvertToString();
 		}
 
+
+
+		class GameHasEnded : public Base
+		{
+			typedef Base	Super;
+		public:
+			/**/		GameHasEnded(unsigned protection=CLI::EraseProtection) : Super("gameHasEnded","String",Persistence::Temporary, 1,protection)
+			{}
+
+			bool			GetState() const
+			{
+				return RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame;
+			}
+
+			virtual String	ConvertToString()		const	override	{return GetState();}
+			virtual	bool	Set(const String&value)	override
+			{
+				bool b;
+				if (!Convert(value,b))
+					return false;
+				if (GetState() == b)
+					return true;
+				if (b)
+				{
+					Game::Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
+					OnChanged();
+					return true;
+				}
+				else
+					LogEvent(EventClass::Preset::commandRejected,"Cannot undo game-end.");
+				return false;
+			}
+			virtual String	GetDefault() const override
+			{
+				return "false";
+			}
+
+			virtual void		SetCurrentToDefault() override
+			{}
+		};
 
 		/**
 		Container for regular string variables.
@@ -406,13 +446,13 @@ namespace Reflection
 				foreach (vehicleTurretNames,t)
 				{
 					t->TrimThis();
-					Objects::Component::Turret*ct = Objects::Component::GetTurretByName(*t);
+					Objects::Component::Turret*ct = Objects::Component::vehicleTurretComponents.FindByName(*t);
 					if (!ct || ct->mountType != Objects::Component::Turret::MountType::Vehicle)
 						return false;
 				}
 				Game::Config::Nexus::vehicleTurrets.SetSize(vehicleTurretNames.Count());
 				for (index_t i = 0; i < vehicleTurretNames.Count(); i++)
-					Game::Config::Nexus::vehicleTurrets[i] = Objects::Component::GetTurretByName(vehicleTurretNames[i]);
+					Game::Config::Nexus::vehicleTurrets[i] = Objects::Component::vehicleTurretComponents.FindByName(vehicleTurretNames[i]);
 				if (ConvertToString() != old)
 				{
 					OnChanged();
@@ -962,8 +1002,6 @@ namespace Reflection
 	}
 
 	
-
-	
 	void PrintLn(const String&line)
 	{
 		LogEvent(EventClass::Preset::remoteControlCommand,"Response: '"+line+"'");
@@ -981,11 +1019,16 @@ namespace Reflection
 
 		FactionCommands::Create();
 
-		factionFolder = state.EnterNewFolder("Factions");
-		state.DefineCommand("names", FactionCommands::ListNames);
-		state.DefineCommand("find name", FactionCommands::FindName);
-		state.ExitFolder();
+		gameFolder = state.EnterNewFolder("Game");
+		{
+			state.SetVariable(CLI::PVariable(new Variable::GameHasEnded()));
 
+			factionFolder = state.EnterNewFolder("Factions");
+			state.DefineCommand("names", FactionCommands::ListNames);
+			state.DefineCommand("find name", FactionCommands::FindName);
+			state.ExitFolder();
+		}
+		state.ExitFolder();
 
 		CLI::PAttachment persistenceAttachment(new Variable::PersistenceAttachment());
 
@@ -1067,7 +1110,7 @@ namespace Reflection
 				state.SetVariable(CLI::PVariable(new Variable::UnitLimitEnabled("Enabled")));
 
 				state.EnterNewFolder("Structures")->attachment = persistenceAttachment;
-					for (const Objects::PStructure&p:Objects::structurePrototypes)
+					for (const Objects::PStructure&p:Objects::Prototypes::structures)
 					{
 						String key = p->GetTypeName();
 						key.FindAndReplace(' ','_');

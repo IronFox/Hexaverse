@@ -1158,7 +1158,7 @@ namespace Receiver
 
 	void	ConstructionBegin(Protocol::ConstructionBegin&cb, TCP::Peer&peer)
 	{
-		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Registering mobile producer construction, given "+String(cb.parameters.Count())+" parameter(s), for entity "
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Registering mobile producer construction, given type "+ToString(cb.type)+", for plant "
 				+ToString(cb.plantID));
 
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(cb.plantID,peer);
@@ -1168,7 +1168,7 @@ namespace Receiver
 		Objects::PMobileEntityProducer p = To<Objects::MobileEntityProducer>::DynamicCast(e);
 		if (p)
 		{
-			Journal::currentRound.RegisterProductionJobStart(true,e,p,cb.parameters.pointer(),cb.parameters.Count());
+			Journal::currentRound.RegisterProductionJobStart(true,e,p,cb.type);
 			return;
 		}
 		LogEvent(EventClass::Preset::commandRejected,peer,e,"Tried to issue construction job on incompatible entity");
@@ -1301,13 +1301,7 @@ namespace Receiver
 
 				target = v->GetLastPointOfOrigin();
 
-				Objects::PStructure p;
-				foreach (Objects::structurePrototypes,proto)
-					if ((*proto)->GetType() == sjob.parameterName)
-					{
-						p = *proto;
-						break;
-					}
+				Objects::PStructure p = Objects::Prototypes::structures.Find(sjob.parameterName);
 				if (p)
 				{	
 					job.reset(new VehicleJob::Construct(*v,p));

@@ -538,8 +538,8 @@ namespace UI
 		{
 			Objects::PWorldEntity e = entries.First().lock();
 			ASSERT__(e);
-			if (e->IsStructure())
-				return Objects::GetPrototypeByName(e->GetType());
+			if (!e->IsVehicle())
+				return Objects::Prototypes::Find(e->GetType());
 			return e;	//good enough
 		}
 

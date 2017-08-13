@@ -440,13 +440,7 @@ namespace Test
 		if (m.UtilizesReferenceEntity())
 		{
 			m.referenceEntity.Generate();
-			if (random.NextBool())
-				m.referencedType = Objects::structurePrototypes[random.NextIndex(Objects::structurePrototypes.Count())]->GetType();
-			else
-			{
-				m.referencedType.baseType = Objects::Component::baseComponents[random.NextIndex(Objects::Component::baseComponents.Count())]->constName;
-				m.referencedType.turretType = Objects::Component::allTurretComponents[random.NextIndex(Objects::Component::allTurretComponents.Count())]->constName;
-			}
+			RandomFill(m.referencedType,random);
 		}
 	}
 
@@ -461,8 +455,21 @@ namespace Test
 
 	/*static*/ void		Serialization::RandomFill(Objects::Statistics::EntityType&stat,Random&random)
 	{
-		stat.typeName = RandomString(random,5,16);
+		RandomFill(stat.type,random);
 		RandomFill(stat.metrics,random);
+	}
+
+	/*static*/ void		Serialization::RandomFill(Objects::EntityType&t,Random&random)
+	{
+		if (random.NextBool())
+		{
+			//prototyped:
+			t = Objects::Prototypes::all[random.NextIndex(Objects::Prototypes::all.Count())]->GetType();
+			return;
+		}
+		//vehicle assembly:
+		t.baseType = Objects::Component::baseComponents[random.NextIndex(Objects::Component::baseComponents.Count())]->constName;
+		t.turretType = Objects::Component::vehicleTurretComponents[random.NextIndex(Objects::Component::vehicleTurretComponents.Count())]->constName;
 	}
 
 	/*static*/ void		Serialization::RandomFill(Objects::PositiveResourceVector&vec, Random&random)

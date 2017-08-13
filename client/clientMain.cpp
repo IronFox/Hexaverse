@@ -523,21 +523,11 @@ namespace ApplicationInterface
 		Network::Channels::constructionAbort.SendTo(Network::client,ca);
 	}
 
-	void	SignalConstructionBegin(const TUniqueID&plantID,ConstName baseName, ConstName turretName)
+	void	SignalConstructionBegin(const TUniqueID&plantID,Objects::EntityType type)
 	{
 		Protocol::ConstructionBegin	cb;
 		cb.plantID = plantID;
-		if (turretName != ConstName::Empty)
-		{
-			cb.parameters.SetSize(2);
-			cb.parameters.First() = baseName;
-			cb.parameters.last() = turretName;
-		}
-		else
-		{
-			cb.parameters.SetSize(1);
-			cb.parameters.First() = baseName;
-		}
+		cb.type = type;
 		Network::Channels::constructionBegin.SendTo(Network::client,cb);
 	}
 
@@ -581,8 +571,7 @@ namespace ApplicationInterface
 	{
 		Protocol::ConstructionBegin	cb;
 		cb.plantID = towerID;
-		cb.parameters.SetSize(1);
-		cb.parameters.First() = newTurret->constName;
+		cb.type = newTurret->constName;
 		Network::Channels::constructionBegin.SendTo(Network::client,cb);
 	}
 
@@ -780,7 +769,7 @@ namespace ApplicationInterface
 				Objects::NaturalResourceVector	res;
 				if (res.SampleWorld(targetLocation.stackID))
 				{
-					const auto& proto = Objects::GetPrototypeByName(parameterName);
+					const auto& proto = Objects::Prototypes::structures.Find(parameterName);
 					ASSERT1__(proto,ToString(parameterName));
 					String name = proto->GetTypeName();
 					TUniqueID id = v->id;
@@ -999,7 +988,7 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 
 			
 			
-			foreach (Objects::structurePrototypes,s)
+			foreach (Objects::Prototypes::structures,s)
 			{
 				String name = (*s)->GetTypeName().CopyToLowerCase();
 				if (name.EqualsIgnoreCase(myTypeName))
@@ -3832,7 +3821,7 @@ int main( int argc, const char* argv[])
 						Objects::Command::EntityCommand container;
 						Image image;
 						FileSystem::Folder folder(imageTarget);
-						foreach (Objects::structurePrototypes,s)
+						foreach (Objects::Prototypes::all,s)
 						{
 							LogEvent(EventSignificance::Uncommon, "Capturing "+(*s)->GetTypeName());
 							Objects::Command::EntityCommand::UpdateTexture(container,*s,true);
@@ -3869,7 +3858,7 @@ int main( int argc, const char* argv[])
 						unitList << "=Unit Types and Components="<<nl;
 
 						unitList << "==Structures=="<<nl;
-						foreach (Objects::structurePrototypes,s)
+						foreach (Objects::Prototypes::structures,s)
 						{
 							Objects::Command::Base::Label label;
 							(*s)->DescribeType(label,0xFFFFFFFF & ~Objects::WorldEntity::DescIncludeName & ~Objects::WorldEntity::DescIncludeCurrentHealth);

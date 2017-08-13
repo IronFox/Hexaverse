@@ -119,7 +119,7 @@ namespace Objects
 
 		#ifndef CLIENT
 			WorkItem*				EnqueueProductionOf(const PMobileEntity&e, index_t at = InvalidIndex);
-			WorkItem*				EnqueueProductionOfVehicle(ConstName baseName, ConstName turretName);
+			WorkItem*				EnqueueProductionOfVehicle(EntityType);
 			WorkItem*				EnqueueProductionOfVehicle(Component::VehicleBase*selectedBase, Component::Turret*selectedTurret);
 			#ifndef NO_SATELLITES
 				WorkItem*			EnqueueProductionOfSatellite(ConstName typeName);

@@ -37,7 +37,7 @@ namespace ApplicationInterface
 	void	SignalDropSafeTasks(const Objects::PWorldEntity&v);
 	void	SignalRestoreCoreLink(const TUniqueID&mineId);
 	void	SignalConstructionAbort(const TUniqueID&plantId,const TUniqueID&taskId);
-	void	SignalConstructionBegin(const TUniqueID&plantId,ConstName baseName, ConstName turretName);
+	void	SignalConstructionBegin(const TUniqueID&plantId,Objects::EntityType);
 	void	SignalRemoval(const Objects::PWorldEntity&);
 	void	SignalConstructTowerTurret(const TUniqueID&towerID,const Objects::Component::Turret*&newTurret);
 	void	SignalAutomation(const Objects::PWorldEntity&e, bool doAutomate);

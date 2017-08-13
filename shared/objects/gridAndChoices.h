@@ -228,6 +228,7 @@ namespace Objects
 
 
 	#else
+		PVehicle	AssembleVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation, const EntityType&t);
 		PVehicle	AssembleVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation, const String&base, const String&turret);
 		/**
 		Selectively constructs a vehicle or a satellite, depending on the given configuration.

@@ -6,6 +6,7 @@
 #include <io/json.h>
 #include <io/riff_handler.h>
 #include "../uniqueID.h"
+#include "entityType.h"
 
 
 using namespace DeltaWorks;
@@ -101,10 +102,10 @@ namespace Objects
 		{
 			typedef EntityType	Self;
 
-			String					typeName;
+			Objects::EntityType		type;
 			MetricTable				metrics;
 		
-			bool					operator==(const Self&other) const {return typeName == other.typeName && metrics == other.metrics;}
+			bool					operator==(const Self&other) const {return type == other.type && metrics == other.metrics;}
 			bool					operator!=(const Self&other) const {return !operator==(other);}
 
 			virtual	void			Serialize(IWriteStream&outStream) const override;
@@ -177,7 +178,14 @@ namespace Objects
 		*/
 		void			EndLoading();
 
-
+		/**
+		Changes serialization mode to use strings rather than EntityType
+		*/
+		static void		EnterFileMode();
+		/**
+		Changes serialization mode to use EntityType rather than strings
+		*/
+		static void		EnterNetworkMode();
 
 
 		void			VisitRounds(const std::function<void(const Round&)>&f) const
@@ -204,7 +212,7 @@ namespace Objects
 
 		//persistent data:
 		PointerTable<FactionInteraction>	interactionMap;
-		StringTable<EntityType>		entityTypes;
+		HashTable<Objects::EntityType,EntityType>	entityTypes;
 		Buffer0<Round>				history;
 
 

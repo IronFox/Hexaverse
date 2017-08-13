@@ -553,8 +553,7 @@ namespace Objects
 			return;
 		}
 
-		PStructure p = 	GetPrototypeByName(shape);
-
+		PStructure p = 	Prototypes::structures.Find(shape);
 		if (p)
 		{
 			Shape&shape = localizableShapes.Append();

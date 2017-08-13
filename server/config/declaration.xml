@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <declaration>
-	<context name="Factions">All currently existing factions
-		<command name="names">Lists all factions with their chosen names and first few ID digits.</command>
-		<command name="find">Lists all factions whose chosen name contains or equals the specifed parameter. Ignores case.</command>
+	<context name="Game">
+		<variable name="gameHasEnded" default="false" />
+		<context name="Factions">
+			<command name="names" />
+			<command name="find" />
+		</context>
 	</context>
 	<context name="World">Settings related to the current world
 		<variable name="simulateLiquids" default="true">
@@ -17,9 +20,9 @@
 			&apos;Liquids&apos; will expose all liquids in general (currently water and lava).
 			&apos;FullTerrain&apos; exposes all initial terrain information to all clients (excluding terrain modifications caused by subsequent changes, e.g. nexus base construction).
 		</variable>
-		<variable name="resourceDistribution" default="">
+		<variable name="resourceDistribution" default="clustered">
 			Sets a custom Lua resource destribution script.
-			Set to '' to use the internal distribution script.
+			Set to &apos;&apos; to use the internal distribution script.
 			Any non-empty string X implies that [installDir]\lua\distributions\X.lua exists and is a valid Lua script.
 			If the required script does not exist or cannot be executed, then the internal program is used instead, which uses the planet-specific density and max values.
 		</variable>
@@ -127,11 +130,6 @@
 			ConquerNexus: Three AI bases are spawned around the globe. Their center Nexus Ports must be conquered by building anything next to it. Additional Nexus Ports are spawned if EMP zones are active. Two/three (depending on number of unlocked zones) Nexus Ports must be conquered to win.
 		</variable>
 		<variable name="supportedFactions" default="Spectator, Regular">Comma-separated list of supported faction types.</variable>
-		<variable name="factionsPerEMPZone">
-			The maximum number of allowed factions per unlocked zone. If more factions are created, more zones will be unlocked. The resulting number of unlocked zones is rounded up.
-			Example: factionsPerEMPZone set to 3 causes the first three factions to share the same zone. The fourth faction will permanently unlock a new zone.
-			This value cannot be increased if any factions (besides the Nexus faction) exist.
-		</variable>
 		<variable name="closedGame" default="false">Indicates that new factions can be created only during round 0.</variable>
 		<variable name="roundTimer" default="60">
 			Time in seconds that players can remain in command phase. once the deadline is reached, rounds will be progressed.
@@ -141,13 +139,6 @@
 		<variable name="startBases" default="true">New players are given minimal bases (that meet the constraints of basesRequired)</variable>
 		<variable name="basesRequired" default="false">Indicates that players must maintain minimal bases to be considered &apos;alive&apos;. Minimal bases include a mandatory compound capable of generating infinite amounts of minerals. Such a compound includes a live mine that can deliver at least 10 units of fuel, one that can deliver at least 5 units of minerals, and a generator. Additionally, the player must own at least one terraformer or a vehicle plant that can be switched on. If any one of these conditions is not met, a death counter will count down each round for the respective faction, until it reaches zero. If it does, all vehicles and structures of that faction are destroyed. If the game is closed and only one faction remains, that faction is declared victor.</variable>
 		<variable name="exposeActionLeftToHostileFactions" default="true">Sends effective vehicle initiative to hostile factions</variable>
-		<variable name="empZones" default="true">
-			Establishes auto-retracting EMP zones that constraint player expansion depending on faction-count.
-			Initially the EMP zones will cover most of the planet. As faction count increases, EMP zones will slowly retract to expose more terrain to expand into.
-			If enabled and gameGoal is set to ConquerNexus, then secondary Nexus Ports will be spawned on poles that are not covered by Nexus stations.
-			Enabling this value on a live session (via the control console) will fail if any factions exist (the Nexus faction does not count).
-			Otherwise EMP zones may be enabled or disabled as desired, but the presence of Nexus Ports remains unaffected prior to constructing a new world.
-		</variable>
 		<variable name="newVehiclesHaveFullAmmo" default="true">
 			New offensive vehicles using normal ammunition start with full ammo.
 			Effective only for vehicles actually requiring ammunition, and using default ammunition.
@@ -161,6 +152,18 @@
 			&apos;Expose&apos; will notify clients of both the explosion and resulting crater even if they cannot actually see the explosion.
 			&apos;Conceal&apos; will treat them like ordinary weaponry: if explosion and/or affected terrain are in scanning range, the effects will be partially or completely visible.
 		</variable>
+		<variable name="factionsPerEMPZone" default="1">
+			The maximum number of allowed factions per unlocked zone. If more factions are created, more zones will be unlocked. The resulting number of unlocked zones is rounded up.
+			Example: factionsPerEMPZone set to 3 causes the first three factions to share the same zone. The fourth faction will permanently unlock a new zone.
+			This value cannot be increased if any factions (besides the Nexus faction) exist.
+		</variable>
+		<variable name="empZones" default="true">
+			Establishes auto-retracting EMP zones that constraint player expansion depending on faction-count.
+			Initially the EMP zones will cover most of the planet. As faction count increases, EMP zones will slowly retract to expose more terrain to expand into.
+			If enabled and gameGoal is set to ConquerNexus, then secondary Nexus Ports will be spawned on poles that are not covered by Nexus stations.
+			Enabling this value on a live session (via the control console) will fail if any factions exist (the Nexus faction does not count).
+			Otherwise EMP zones may be enabled or disabled as desired, but the presence of Nexus Ports remains unaffected prior to constructing a new world.
+		</variable>
 		<context name="UnitLimits">
 			Total number of structures/vehicles that may be deployed by any one faction.
 			Only deployment is counted. Vehicles may be stored in vehicle stores to avoid being counted.
@@ -171,6 +174,7 @@
 				<variable name="Reactor_Core" default="0" />
 				<variable name="Munition_Factory" default="4" />
 				<variable name="Vehicle_Plant" default="4" />
+				<variable name="Laboratory" default="0" />
 				<variable name="Connector" default="1024" />
 				<variable name="Fuel_Container" default="8" />
 				<variable name="Mineral_Container" default="8" />
@@ -196,10 +200,6 @@
 		</context>
 		<context name="Nexus">Nexus faction settings
 			<variable name="haveBases" default="true">If enabled then Nexus bases are constructed around 3 of the 12 planet poles. Only affects newly created worlds.</variable>
-			<variable name="roundsPerResearchPoint" default="10">
-				The number of rounds necessary for the Nexus faction to gain one research point in every endless research topic.
-				Set 0 to disable Nexus research.
-			</variable>
 			<variable name="enableAI" default="true">
 				Enables the AI to process units of the Nexus faction.
 				Spawns nexus vehicles, and AI client to control nexus vehicles/structures (if any).
@@ -208,6 +208,10 @@
 			<variable name="threatEstimationFactor" default="0.5">
 				Linearly affects density of nexus vehicles.
 				If density is saturated, vehicle production/spawning halts.
+			</variable>
+			<variable name="roundsPerResearchPoint" default="10">
+				The number of rounds necessary for the Nexus faction to gain one research point in every endless research topic.
+				Set 0 to disable Nexus research.
 			</variable>
 			<variable name="vehicleTurrets" default="Cannon,Artillery,Radar">
 				List of turrets that the AI will spawn if &apos;nexus&apos; is set to true.

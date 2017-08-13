@@ -795,11 +795,11 @@ namespace Objects
 				useID.Generate();
 			SerialSync(inStream,whatName);
 
-			constructWhat = GetPrototypeByName(whatName);
+			constructWhat = Prototypes::structures.FindByName(whatName);
 			if (!constructWhat)
 			{
 				if (whatName == "Artillery Tower" || whatName=="Cannon Tower")
-					constructWhat = GetPrototypeByName(EntityType(ConstName::Type_Tower,ConstName::Turret_Launcher));
+					constructWhat = Prototypes::structures.Find(EntityType(ConstName::Type_Tower,ConstName::Turret_Launcher));
 				if (!constructWhat)
 					throw Except::Memory::SerializationFault(CLOCATION,"Unable to determine construction type of '"+whatName+"'");
 			}

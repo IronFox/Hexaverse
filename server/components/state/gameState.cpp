@@ -223,7 +223,13 @@ namespace Game
 			}
 
 
-
+			if (to == RuntimeConfig::Phase::EndOfGame)
+			{
+				foreach (::Network::activePlayersAndSpectators,p)
+				{
+					(*p)->SendProgressUpdate("");
+				}
+			}
 
 			//if (to == RuntimeConfig::Phase::CommandPhase)
 				//DebugCheckWorld();	//this assumes the world does not change. if it does, this will fail
@@ -913,14 +919,13 @@ namespace Game
 			{
 				if (livingPlayerFactions == 0)
 				{
-					Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
 					LogEvent(EventClass::Preset::factionDeath,"All factions destroyed. Application requires restart.");
+					Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
 				}
 				else
 				if (livingPlayerFactions == 1)
 				{
 					LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain),"Only one faction left. Declaring winner.");
-					Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
 
 					winner.reset();
 					for (index_t i = 0; i < Objects::Faction::all.Count(); i++)
@@ -933,11 +938,12 @@ namespace Game
 						}
 					}
 
-					::Network::PClient client;
-					if (::Network::playerMap.Query(winner,client))
-					{
-						client->SendProgressUpdate("");
-					}
+					//::Network::PClient client;
+					//if (::Network::playerMap.Query(winner,client))
+					//{
+					//	client->SendProgressUpdate("");
+					//}
+					Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
 				}
 			}
 
@@ -1132,6 +1138,8 @@ namespace Game
 				int generatorCount = 0,
 					connectorCount = 0;
 				float t = 0;
+				const auto radarPrototype = Objects::Prototypes::structures.Find({ConstName::Type_Tower,ConstName::Turret_Radar});
+				ASSERT__(radarPrototype);
 				for (index_t i : distances)
 				{
 					//ASSERT_LESS_OR_EQUAL__(field.distance[i],R);
@@ -1154,7 +1162,7 @@ namespace Game
 						if (field.distance[i] == RadarDistance)
 						{
 							std::shared_ptr<Objects::Tower> tower = To<Objects::Tower>::Cast(
-								Objects::GetPrototypeByName(Objects::EntityType(ConstName::Type_Tower,ConstName::Turret_Radar))->CreateNewInstance(Objects::Faction::nexus,
+								radarPrototype->CreateNewInstance(Objects::Faction::nexus,
 								Grid::LCellIdI(i,h),
 								0));
 							tower->CorrectTerrain(false,0);
