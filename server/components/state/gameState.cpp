@@ -148,6 +148,12 @@ namespace Game
 			gameConfig.gameFlags |= Config::factionSupportFlags;
 			if (!allowSpectatorFactions)
 				gameConfig.gameFlags &= ~Protocol::GameFlag::SupportSpectatorFactions;
+
+			if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
+			{
+				gameConfig.gameFlags |= Protocol::GameFlag::GameHasEnded | Protocol::GameFlag::SupportSpectatorFactions;	//always support spectator in this case
+			}
+
 		}
 
 		void	AssembleGameInfo(Protocol::GameInfo&info, bool allowSpectatorFactions)

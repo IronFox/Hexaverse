@@ -71,6 +71,8 @@
 			result += "Interactive Configuration Mode";
 		else if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::TutorialMode)
 			result += "Tutorial Mode";
+		else if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::GameHasEnded)
+			result += "Game Has Ended";
 		else
 		{
 			switch (info.gameInfo.gameConfig.gameGoal)

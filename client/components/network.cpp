@@ -1159,8 +1159,13 @@ namespace Network
 				}
 
 				Objects::PFaction f = Objects::Faction::FindByID(id);
+
+				if (!f)
+					throw Except::Program::DataConsistencyFault(CLOCATION,"Unable to locate faction "+ToString(id));
+
 				LogEvent(EventClass::Preset::common,"Starting statistics sequence on "+f->GetLogName());
 				target = f;
+				
 				f->statistics.BeginLoading();
 			}
 
@@ -1168,8 +1173,8 @@ namespace Network
 			{
 				auto f = target.lock();
 				target.reset();
-
-				f->statistics.EndLoading();
+				if (f)
+					f->statistics.EndLoading();
 			}
 
 			void	Round(Objects::Statistics::Round&r)

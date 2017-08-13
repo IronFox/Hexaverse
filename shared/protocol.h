@@ -1628,9 +1628,10 @@ namespace Protocol
 			SimulateLiquids = 0x20,
 			ConfigurationMode = 0x40,
 			TutorialMode = 0x80,
+			GameHasEnded = 0x100,
 
-			SupportSpectatorFactions = 0x100,
-			SupportRegularFactions = 0x200,
+			SupportSpectatorFactions = 0x1000,
+			SupportRegularFactions = 0x2000,
 
 
 		};

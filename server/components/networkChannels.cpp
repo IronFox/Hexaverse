@@ -269,6 +269,11 @@ namespace Receiver
 		Game::Network::AssembleGameInfo(response.info, peer.IsLocalhost());
 		//response.info = CompileWorldInfo();
 
+
+		if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
+			response.startFactionTypes = Protocol::FactionType::SpectatorFaction;	//automatic spectator status
+
+
 		if (!response.startFactionTypes || response.startFactionTypes == Protocol::FactionType::SpectatorFaction)
 		{
 			if (Network::activePlayersAndSpectators.FindAndErase(client))
@@ -323,8 +328,12 @@ namespace Receiver
 			break;
 			case Protocol::FactionType::SpectatorFaction:
 			{
-				factionTypeNotSupported = !peer.IsLocalhost()
-											|| !(Game::Config::factionSupportFlags & Protocol::GameFlag::SupportSpectatorFactions);
+				factionTypeNotSupported =	RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame &&
+											(
+												!peer.IsLocalhost()
+												|| !(Game::Config::factionSupportFlags & Protocol::GameFlag::SupportSpectatorFactions)
+											)
+											;
 				if (factionTypeNotSupported && !peer.IsLocalhost())
 					LogEvent(EventClass::Preset::commandRejected,peer,"Spectator type is allowed only from localhost, but peer is "+peer.ToString());
 			}
@@ -455,9 +464,8 @@ namespace Receiver
 
 		if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
 		{
-			{
-				client->SendProgressUpdate("");
-			}
+			FATAL__("Should not be here");
+			return;
 		}
 
 
