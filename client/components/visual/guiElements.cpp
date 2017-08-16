@@ -1892,7 +1892,16 @@ namespace GUI
 		SetAnchorConfig(cfg);
 		return *this;
 	}
-	
+
+	Component&			Component::FillVertically(float spacing, TAnchor::distanceType_t type /*= TAnchor::RelativeToParentComponent*/)
+	{
+		auto cfg = anchorConfig;
+		cfg.Top().Set(spacing,type);
+		cfg.Bottom().Set(spacing,type);
+		SetAnchorConfig(cfg);
+		return *this;
+	}
+
 	Component&			Component::AnchorTop(float spacing, TAnchor::distanceType_t type/* = TAnchor::RelativeToParentComponent*/)
 	{
 		auto cfg = anchorConfig;

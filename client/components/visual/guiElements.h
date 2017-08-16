@@ -21,20 +21,22 @@ namespace GUI
 
 
 	DECLARE_POINTER_CLASS(Component);
-		DECLARE_POINTER_CLASS(TextField);
-			DECLARE_POINTER_CLASS(Checkbox);
-			DECLARE_POINTER_CLASS(Label);
-			DECLARE_POINTER_CLASS(Button);
-				DECLARE_POINTER_CLASS(ScrollButton);
-		DECLARE_POINTER_CLASS(BaseInput);
-			DECLARE_POINTER_CLASS(Input);
-			DECLARE_POINTER_CLASS(PasswordInput);
 		DECLARE_POINTER_CLASS(Image);
-		DECLARE_POINTER_CLASS(Panel);
-			DECLARE_POINTER_CLASS(ButtonPanel);
-			DECLARE_POINTER_CLASS(TabCollection);
-			DECLARE_POINTER_CLASS(TabBar);
-			DECLARE_POINTER_CLASS(Window);
+		DECLARE_POINTER_CLASS(Slider);
+		DECLARE_POINTER_CLASS(Box);
+			DECLARE_POINTER_CLASS(TextField);
+				DECLARE_POINTER_CLASS(Checkbox);
+				DECLARE_POINTER_CLASS(Label);
+				DECLARE_POINTER_CLASS(Button);
+					DECLARE_POINTER_CLASS(ScrollButton);
+			DECLARE_POINTER_CLASS(BaseInput);
+				DECLARE_POINTER_CLASS(Input);
+				DECLARE_POINTER_CLASS(PasswordInput);
+			DECLARE_POINTER_CLASS(Panel);
+				DECLARE_POINTER_CLASS(ButtonPanel);
+				DECLARE_POINTER_CLASS(TabCollection);
+				DECLARE_POINTER_CLASS(TabBar);
+				DECLARE_POINTER_CLASS(Window);
 	
 
 	CONSTRUCT_ENUMERATION3(WheelRs,
@@ -224,6 +226,9 @@ namespace GUI
 		TPropagating	CreatePropagating() const {return TPropagating(IsEnabled(),IsLit());}
 		virtual void	OnRectChange() override		{InvalidateAutoLayout();};
 		virtual void	PropagateToChildren(const PWindow&)	{}
+
+		static bool		Set(float&ref, float to);
+		static bool		SetCenter(TFloatRange<>&ref, float to);
 		
 
 		Axial2<TAnchor>	anchorConfig;
@@ -231,9 +236,6 @@ namespace GUI
 
 		/**/			Component();
 		virtual			~Component();
-
-		static bool		Set(float&ref, float to);
-		static bool		SetCenter(TFloatRange<>&ref, float to);
 
 		bool			IsEnabled() const {return localState.isEnabled && parentState.isEnabled;}
 		bool			IsLit() const {return ClientIsLit() && parentState.isLit;}
@@ -287,6 +289,7 @@ namespace GUI
 		*/
 		Component&		SetCenteredWidth(float w, TAnchor::distanceType_t type);
 		Component&		FillHorizontally(float spacing, TAnchor::distanceType_t type = TAnchor::RelativeToParentComponent);
+		Component&		FillVertically(float spacing, TAnchor::distanceType_t type = TAnchor::RelativeToParentComponent);
 		Component&		AnchorTop(float spacing, TAnchor::distanceType_t type = TAnchor::RelativeToParentComponent);
 
 		void			AcceptStateFromParent(const TPropagating&p)	{parentState = p; PropagateToChildren(CreatePropagating());}
