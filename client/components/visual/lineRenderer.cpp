@@ -81,6 +81,20 @@ namespace LineRenderer
 		_at = _outBuffer;
 
 	}
+
+	void	Baked::Bake()
+	{
+		((DX11::BaseInstructionBlock&)instruction) = lines;
+		instruction.vbo.CreateFromStructs(vertices);
+		instruction.ibo.Create(indices);
+		Clear();
+	}
+
+	void	Baked::Rasterize() const
+	{
+		display.Render(instruction,true);
+	}
+
 }
 
 #endif
