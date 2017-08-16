@@ -350,7 +350,7 @@ namespace Objects
 			{
 				geometry.Clear();
 				String name = GetTypeName();
-				name.set(0, Template::tolower(name.FirstChar()));
+				name.Set(0, Template::tolower(name.FirstChar()));
 				name.FindAndReplace(' ',"");
 				geometry.LoadFromObj(PathString("objects/"+name+".obj"));
 				if (shape.shader.IsEmpty())

@@ -113,7 +113,7 @@ namespace Network
 			StringFile visited;
 			visited.Create(RuntimeConfig::ConfigFile("visitedWorlds.txt"));
 			static Array<TUniqueID>	 worlds;
-			visitedWorldMap.exportKeys(worlds);
+			visitedWorldMap.ExportKeys(worlds);
 			foreach (worlds,world)
 				visited << world->ToFullString() << nl;
 			visited.Close();
@@ -248,7 +248,7 @@ namespace Network
 			}
 		}
 
-		LogEvent(EventClass::Preset::common,nullptr,"World access map imported. "+String(accessMap.count())+" entry/ies loaded.");
+		LogEvent(EventClass::Preset::common,nullptr,"World access map imported. "+String(accessMap.Count())+" entry/ies loaded.");
 		fclose(f);
 	}
 

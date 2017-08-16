@@ -280,8 +280,8 @@ namespace VisualTerrain
 		Instruction::lowGridInstruction.shader = Instruction::gridShader;
 		{
 			Engine::VertexBinding	binding;
-			binding.vertex.set(0, 4);
-			binding.normal.unset();
+			binding.vertex.Set(0, 4);
+			binding.normal.Unset();
 			binding.floats_per_vertex = 4;
 			Instruction::lowGridInstruction.binding = binding;
 		}
@@ -332,9 +332,9 @@ namespace VisualTerrain
 
 		{
 			//Engine::VertexBinding binding;
-			//binding.vertex.set(0, 4);
-			//binding.normal.set(4, 4);
-			//binding.color.set(8, 4);
+			//binding.vertex.Set(0, 4);
+			//binding.normal.Set(4, 4);
+			//binding.color.Set(8, 4);
 			//binding.floats_per_vertex = 12;
 			Instruction::terrainBase.binding.Append("POSITION",0,DXGI_FORMAT_R32G32B32A32_FLOAT);
 			Instruction::terrainBase.binding.Append("NORMAL",0,DXGI_FORMAT_R8G8B8A8_SNORM);
@@ -357,9 +357,9 @@ namespace VisualTerrain
 
 		{
 			Engine::VertexBinding binding;
-			binding.vertex.set(0, 4);
-			binding.normal.set(4, 4);
-			binding.color.set(8,1);
+			binding.vertex.Set(0, 4);
+			binding.normal.Set(4, 4);
+			binding.color.Set(8,1);
 			binding.floats_per_vertex = 9;
 
 			Instruction::orbitGridBase.binding = binding;
@@ -379,9 +379,9 @@ namespace VisualTerrain
 			float		light;	//water derives color from shader variable
 				*/
 				Engine::VertexBinding binding;
-				binding.vertex.set(0, 4);
-				binding.normal.set(4, 3);
-				binding.color.set(7, 1);
+				binding.vertex.Set(0, 4);
+				binding.normal.Set(4, 3);
+				binding.color.Set(7, 1);
 				binding.floats_per_vertex = 8;
 				base.binding = binding;
 				base.UpdateLayout();
@@ -398,9 +398,9 @@ namespace VisualTerrain
 		}
 		{
 			Engine::VertexBinding binding;
-			binding.vertex.set(0, 3);
-			binding.normal.unset();
-			binding.color.set(3, 1);
+			binding.vertex.Set(0, 3);
+			binding.normal.Unset();
+			binding.color.Set(3, 1);
 			binding.floats_per_vertex = 4;
 			{
 				DX11::BaseInstructionBlock&base = Instruction::overlayBase;
@@ -423,9 +423,9 @@ namespace VisualTerrain
 			base.shader.LoadFromFile("shaders/gridResourceVisualization.hlsl", "vsMain", "psMain"/*, bindings, ARRAYSIZE(bindings)*/);
 			{
 				Engine::VertexBinding binding;
-				binding.vertex.set(0, 4);
-				binding.normal.set(4, 4);
-				binding.color.set(8, 4);
+				binding.vertex.Set(0, 4);
+				binding.normal.Set(4, 4);
+				binding.color.Set(8, 4);
 				binding.floats_per_vertex = 12;
 				base.binding = binding;
 				base.UpdateLayout();

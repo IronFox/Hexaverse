@@ -62,7 +62,7 @@ namespace Explosions
 									static const float threshold = 0.8f;
 									float friction = pow(0.1f,delta);
 									bool any_died = false;
-									for (index_t i = 0; i < count(); i++)
+									for (index_t i = 0; i < Count(); i++)
 									{
 										Particle&p = at(i);
 										p.ttl -= delta;
@@ -73,7 +73,7 @@ namespace Explosions
 									{
 										static Buffer<Particle>	updated_particles;
 										updated_particles.reset();
-										for (index_t i = 0; i < count(); i++)
+										for (index_t i = 0; i < Count(); i++)
 											if (at(i).ttl > 0 && (!shiftDustTo || at(i).ttl >= at(i).maxTTL * threshold))
 												updated_particles << at(i);
 											else
@@ -82,7 +82,7 @@ namespace Explosions
 										this->swap(updated_particles);
 									}
 
-									for (index_t i = 0; i < count(); i++)
+									for (index_t i = 0; i < Count(); i++)
 									{
 										Particle&p = at(i);
 										float relative = p.ttl/p.maxTTL;

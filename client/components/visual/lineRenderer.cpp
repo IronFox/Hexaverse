@@ -22,8 +22,8 @@ namespace LineRenderer
 		lines.vbo = geometry;
 		{
 			Engine::VertexBinding binding;
-			binding.normal.unset();
-			binding.color.set(3, 4);
+			binding.normal.Unset();
+			binding.color.Set(3, 4);
 			binding.floats_per_vertex = 7;
 			lines.binding = binding;
 		}

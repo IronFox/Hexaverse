@@ -74,7 +74,7 @@ namespace Game
 			if (changed.IsEmpty())
 				return;
 			::Network::PClient client;
-			if (!::Network::playerMap.query(f,client))
+			if (!::Network::playerMap.Query(f,client))
 				return;
 			TCP::PPeer peer = client->peer.lock();
 			if (!peer)
@@ -502,7 +502,7 @@ namespace Game
 				{
 					f->deathInRounds = 0;
 					::Network::PClient client;
-					if (::Network::playerMap.query(f,client))
+					if (::Network::playerMap.Query(f,client))
 						client->SendProgressUpdate(whyNot);
 				}
 			}

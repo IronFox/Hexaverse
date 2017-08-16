@@ -1439,8 +1439,8 @@ namespace GUI
 		{
 			texturedQuad.quickSlots.SetSize(1);
 			Engine::VertexBinding vtx;
-			vtx.vertex.set(0,2);
-			vtx.normal.unset();
+			vtx.vertex.Set(0,2);
+			vtx.normal.Unset();
 			vtx.floats_per_vertex = 2;
 			texturedQuad.binding = vtx;
 

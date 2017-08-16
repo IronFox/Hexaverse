@@ -217,9 +217,9 @@ namespace Explosions
 		particleTexture.Load(image);
 
 		Engine::VertexBinding	binding;
-		binding.vertex.set(0,2);
-		binding.normal.unset();
-		binding.color.unset();
+		binding.vertex.Set(0,2);
+		binding.normal.Unset();
+		binding.color.Unset();
 		binding.texcoords.Clear();
 		binding.floats_per_vertex = 2;
 
@@ -311,14 +311,14 @@ namespace Explosions
 		glowParticles.Update(delta,&dustParticles);
 		dustParticles.Update(delta,nullptr);
 		empParticles.Update(delta,nullptr);
-		for (index_t i = 0; i < explosions.count(); i++)
+		for (index_t i = 0; i < explosions.Count(); i++)
 		{
 			if (!explosions[i].Update(glowParticles,delta))
 			{
 				explosions.Erase(i--);
 			}
 		}
-		for (index_t i = 0; i < empExplosions.count(); i++)
+		for (index_t i = 0; i < empExplosions.Count(); i++)
 		{
 			if (!empExplosions[i].Update(empParticles,delta))
 			{

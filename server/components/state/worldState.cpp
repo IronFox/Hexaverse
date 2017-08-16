@@ -543,7 +543,7 @@ namespace World
 				merged.Set(f->name).swap(*f);
 		}
 
-		merged.exportTo(rsOut);
+		merged.ExportTo(rsOut);
 
 		Sorting::ByOperator::QuickSort(rsOut);
 	}

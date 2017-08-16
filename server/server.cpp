@@ -145,7 +145,7 @@ namespace ApplicationInterface
 			return;
 		}
 		Network::PClient client;
-		if (!Network::playerMap.query(target,client))
+		if (!Network::playerMap.Query(target,client))
 			return;
 		//if (!client->ShowNew(e))
 			//return;	//already knows this
@@ -247,7 +247,7 @@ namespace ApplicationInterface
 			return;
 		}
 		Network::PClient client;
-		if (!Network::playerMap.query(target,client))
+		if (!Network::playerMap.Query(target,client))
 			return;
 		Protocol::DestroyEntity de;
 		de.id = e->id;

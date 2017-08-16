@@ -136,9 +136,9 @@ namespace RemoteControl
 			String result = Reflection::state.ExtendedComplete(cmd,alternatives);
 			if (alternatives > 1)
 			{
-				for (index_t i = 0; i < alternatives.count() && i < 5; i++)
+				for (index_t i = 0; i < alternatives.Count() && i < 5; i++)
 					Channels::response.SendTo(peer,alternatives[i]);
-				if (alternatives.count() > 5)
+				if (alternatives.Count() > 5)
 					Channels::response.SendTo(peer,"(...)");
 					
 				Channels::response.SendTo(peer,"--");

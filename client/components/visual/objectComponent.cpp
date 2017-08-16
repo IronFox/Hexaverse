@@ -85,7 +85,7 @@ namespace Objects
 			float2 p (fr0,height);
 			Vec::setLen(p,height);
 			float fr1 = Vec::distance(p,float2(0,height));
-			//float error = p.Length() - height;
+			//float error = p.GetLength() - height;
 					
 
 			float z = Component::Turret::MaxHeightAtHDistance(effectiveRange,fr1);
@@ -302,8 +302,8 @@ namespace Objects
 								heightDelta = height1 - height0;
 //						const float3 d = b1 - b0;
 					const float3 centerDelta = center1 - center0;
-					//const float scale = d.Length();
-					const float distance = centerDelta.Length();
+					//const float scale = d.GetLength();
+					const float distance = centerDelta.GetLength();
 					//const float3 d1 = d / scale;
 					const float3 normalizedDelta = centerDelta / distance;
 					//const float r0 = Grid::ToRadius(location.height) + 0.1f;

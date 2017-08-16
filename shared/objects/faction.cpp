@@ -517,7 +517,7 @@ namespace Objects
 				return true;
 			}
 			return false;
-			//ASSERT_EQUAL__(canSee.count(),gainedVisualAt.Count());
+			//ASSERT_EQUAL__(canSee.Count(),gainedVisualAt.Count());
 		}
 
 		void		Faction::SignalDisappearance(const PWorldEntity&e, float&t, bool force, bool signalConnectedClient/*=true*/)
@@ -564,7 +564,7 @@ namespace Objects
 
 				e->SyncTime(t,timeEpsilon);
 			}
-			//ASSERT_EQUAL__(canSee.count(),gainedVisualAt.Count());
+			//ASSERT_EQUAL__(canSee.Count(),gainedVisualAt.Count());
 
 		}
 

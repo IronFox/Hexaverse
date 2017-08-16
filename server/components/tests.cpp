@@ -81,7 +81,7 @@ namespace Test
 		const count_t length = random.Next(minLength,maxLength);
 		String rs = TStringLength(length);
 		for (index_t i = 0; i < length; i++)
-			rs.set(i,(char)(BYTE)random.Next(1,255));	//full spectrum, no zeroes
+			rs.Set(i,(char)(BYTE)random.Next(1,255));	//full spectrum, no zeroes
 		return rs;
 	}
 

@@ -67,7 +67,7 @@ template <typename...T>
 			if (!keyMap.QueryAndUnset(key,at))
 				return;
 			//index_t k;
-			//DBG_ASSERT1__(!keyMap.findKeyOf(at,k),k);
+			//DBG_ASSERT1__(!keyMap.FindKeyOf(at,k),k);
 			keyMap.VisitAllValues([at](index_t&v)
 			{
 				DBG_ASSERT__(v != at);

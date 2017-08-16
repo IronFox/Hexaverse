@@ -464,7 +464,7 @@ namespace Objects
 		cutOffConfig.Create(float4(1));
 		{
 			Engine::VertexBinding binding;
-			binding.color.set(6, 4);
+			binding.color.Set(6, 4);
 			binding.floats_per_vertex = 10;
 			stdVehicleShader.binding = binding;
 			seeThroughShader.binding = binding;
@@ -495,8 +495,8 @@ namespace Objects
 		{
 			{
 				Engine::VertexBinding binding;
-				binding.vertex.set(0,2);
-				binding.normal.unset();
+				binding.vertex.Set(0,2);
+				binding.normal.Unset();
 				binding.floats_per_vertex = 2;
 				skyPortBeam.binding = binding;
 			}

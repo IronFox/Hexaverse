@@ -18,14 +18,16 @@ namespace SurfaceRenderer
 	static float *const _end = _outBuffer + maxTriangles * 3 * fpv;
 	
 
+
+
 	void	Create()
 	{
 		geometry.Create(maxTriangles*3, sizeof(float) * fpv);
 		triangles.vbo = geometry;
 		{
 			Engine::VertexBinding binding;
-			binding.normal.unset();
-			binding.color.set(2, 4);
+			binding.normal.Unset();
+			binding.color.Set(2, 4);
 			binding.floats_per_vertex = (UINT16)fpv;
 			triangles.binding = binding;
 		}

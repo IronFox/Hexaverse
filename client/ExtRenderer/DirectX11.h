@@ -889,11 +889,11 @@ namespace Engine
 			{
 				vfield.clear();
 				this->hasUV = hasUV;
-				binding.normal.unset();
+				binding.normal.Unset();
 				if (hasUV)
 				{
 					binding.texcoords.SetSize(1);
-					binding.texcoords.First().set(3,2);
+					binding.texcoords.First().Set(3,2);
 					binding.floats_per_vertex = 5;
 				}
 				else

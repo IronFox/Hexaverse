@@ -1688,7 +1688,7 @@ bool loop()
 					if (!rightMouseDragged)
 					{
 						float2 delta = Engine::mouse.location.absolute - rightMouseDragFrom;
-						if (delta.Length() > 20.f)
+						if (delta.GetLength() > 20.f)
 						{
 							rightMouseDragged = true;
 						}
@@ -2275,7 +2275,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 					//if (test)
 						//return false;
 					float3 p = b + d * distance;
-					float height = p.Length();
+					float height = p.GetLength();
 					distance = std::numeric_limits<float>::max();
 					index_t stackID = VisualTerrain::TestLowGridIntersection(b, d, height, distance);
 					if (stackID != InvalidIndex)
@@ -2458,7 +2458,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 							if (VisualTerrain::TestHullIntersection(b, d, distance, normal,false))
 							{
 								float3 p = b + d * distance;
-								float height = p.Length();
+								float height = p.GetLength();
 
 								distance = std::numeric_limits<float>::max();
 

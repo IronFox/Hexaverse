@@ -102,7 +102,7 @@ namespace Engine
 			height = 0;
 			unsigned lowest = UNSIGNED_UNDEF;
 		
-			for (index_t i = 0; i < xfont->children.count(); i++)
+			for (index_t i = 0; i < xfont->children.Count(); i++)
 			{
 				const XML::Node&xchar = xfont->children[i];
 				if (xchar.name != "char")

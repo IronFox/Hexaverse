@@ -836,13 +836,13 @@ namespace Engine
 		Array<D3D_SHADER_MACRO>macros;
 		if (macroDefinitions.IsNotEmpty())
 		{
-			macros.SetSize(macroDefinitions.count()+1);
-			for (index_t i = 0; i < macroDefinitions.count(); i++)
+			macros.SetSize(macroDefinitions.Count()+1);
+			for (index_t i = 0; i < macroDefinitions.Count(); i++)
 			{
 				macros[i].Definition = macroDefinitions[i].definition.c_str();
 				macros[i].Name = macroDefinitions[i].name.c_str();
 			}
-			macros[macroDefinitions.count()].Definition = macros[macroDefinitions.count()].Name = NULL;
+			macros[macroDefinitions.Count()].Definition = macros[macroDefinitions.Count()].Name = NULL;
 		}
 
 
@@ -851,17 +851,17 @@ namespace Engine
 			Load<ID3D11VertexShader>(vertexStage,filename,vertexShaderName,DirectX11::globalInstance->GetVertexShaderProfile(),[this](const void*data, SIZE_T size, ID3D11VertexShader**shader)->HRESULT
 			{
 				return DirectX11::globalInstance->GetDevice()->CreateVertexShader(data,size,NULL,shader);
-			},base.pointer(),base.count(),b,numBindings,macros.pointer());
+			},base.pointer(),base.Count(),b,numBindings,macros.pointer());
 		if (geometryShaderName.IsNotEmpty())
 			Load<ID3D11GeometryShader>(geometryStage,filename,geometryShaderName,DirectX11::globalInstance->GetGeometryShaderProfile(),[this](const void*data, SIZE_T size, ID3D11GeometryShader**shader)->HRESULT
 			{
 				return DirectX11::globalInstance->GetDevice()->CreateGeometryShader(data,size,NULL,shader);
-			},base.pointer(),base.count(),b,numBindings,macros.pointer());
+			},base.pointer(),base.Count(),b,numBindings,macros.pointer());
 		if (pixelShaderName.IsNotEmpty())
 			Load<ID3D11PixelShader>(pixelStage,filename,pixelShaderName,DirectX11::globalInstance->GetPixelShaderProfile(),[this](const void*data, SIZE_T size, ID3D11PixelShader**shader)->HRESULT
 			{
 				return DirectX11::globalInstance->GetDevice()->CreatePixelShader(data,size,NULL,shader);
-			},base.pointer(),base.count(),b,numBindings,macros.pointer());
+			},base.pointer(),base.Count(),b,numBindings,macros.pointer());
 	}
 
 	void			DX11::Shader::LoadGeometryStreamFromFile(const PathString&filename, const String&vertexShaderName, const String&geometryShaderName, const Array<StreamBinding>&outDefinition, const Binding*b/*=NULL*/, count_t numBindings/*=0*/)
@@ -871,13 +871,13 @@ namespace Engine
 		Array<D3D_SHADER_MACRO>macros;
 		if (macroDefinitions.IsNotEmpty())
 		{
-			macros.SetSize(macroDefinitions.count()+1);
-			for (index_t i = 0; i < macroDefinitions.count(); i++)
+			macros.SetSize(macroDefinitions.Count()+1);
+			for (index_t i = 0; i < macroDefinitions.Count(); i++)
 			{
 				macros[i].Definition = macroDefinitions[i].definition.c_str();
 				macros[i].Name = macroDefinitions[i].name.c_str();
 			}
-			macros[macroDefinitions.count()].Definition = macros[macroDefinitions.count()].Name = NULL;
+			macros[macroDefinitions.Count()].Definition = macros[macroDefinitions.Count()].Name = NULL;
 		}
 
 
@@ -885,7 +885,7 @@ namespace Engine
 		Load<ID3D11VertexShader>(vertexStage,filename,vertexShaderName,"vs_5_0",[this](const void*data, SIZE_T size, ID3D11VertexShader**shader)->HRESULT
 		{
 			return DirectX11::globalInstance->GetDevice()->CreateVertexShader(data,size,NULL,shader);
-		},base.pointer(),base.count(),b,numBindings,macros.pointer());
+		},base.pointer(),base.Count(),b,numBindings,macros.pointer());
 		if (geometryShaderName.IsNotEmpty())
 			Load<ID3D11GeometryShader>(geometryStage,filename,geometryShaderName,"gs_5_0",[this,outDefinition](const void*data, SIZE_T size, ID3D11GeometryShader**shader)->HRESULT
 			{
@@ -905,7 +905,7 @@ namespace Engine
 				}
 				//return DirectX11::globalInstance->GetDevice()->CreateGeometryShaderWithStreamOutput(data,size,entries,at,/*&stride*/NULL,/*1*/0,/*D3D11_SO_NO_RASTERIZED_STREAM*/0,NULL,shader);
 				return DirectX11::globalInstance->GetDevice()->CreateGeometryShaderWithStreamOutput(data,size,entries,at,&stride,1,D3D11_SO_NO_RASTERIZED_STREAM,NULL,shader);
-			},base.pointer(),base.count(),b,numBindings,macros.pointer());
+			},base.pointer(),base.Count(),b,numBindings,macros.pointer());
 
 	}
 
@@ -922,29 +922,29 @@ namespace Engine
 		Array<D3D_SHADER_MACRO>macros;
 		if (macroDefinitions.IsNotEmpty())
 		{
-			macros.SetSize(macroDefinitions.count()+1);
-			for (index_t i = 0; i < macroDefinitions.count(); i++)
+			macros.SetSize(macroDefinitions.Count()+1);
+			for (index_t i = 0; i < macroDefinitions.Count(); i++)
 			{
 				macros[i].Definition = macroDefinitions[i].definition.c_str();
 				macros[i].Name = macroDefinitions[i].name.c_str();
 			}
-			macros[macroDefinitions.count()].Definition = macros[macroDefinitions.count()].Name = NULL;
+			macros[macroDefinitions.Count()].Definition = macros[macroDefinitions.Count()].Name = NULL;
 		}
 
 		const BasicBuffer<Binding,Swap>&base = DirectX11::globalInstance->GetBaseBindings();
 		Load<ID3D11VertexShader>(vertexStage,baseFilename+".vs.hlsl",vertexShaderName,"vs_5_0",[this](const void*data, SIZE_T size, ID3D11VertexShader**shader)->HRESULT
 		{
 			return DirectX11::globalInstance->GetDevice()->CreateVertexShader(data,size,NULL,shader);
-		},base.pointer(),base.count(),b,numBindings,macros.pointer());
+		},base.pointer(),base.Count(),b,numBindings,macros.pointer());
 		if (geometryShaderName.IsNotEmpty())
 			Load<ID3D11GeometryShader>(geometryStage,baseFilename+".gs.hlsl",geometryShaderName,"gs_5_0",[this](const void*data, SIZE_T size, ID3D11GeometryShader**shader)->HRESULT
 			{
 				return DirectX11::globalInstance->GetDevice()->CreateGeometryShader(data,size,NULL,shader);
-			},base.pointer(),base.count(),b,numBindings,macros.pointer());
+			},base.pointer(),base.Count(),b,numBindings,macros.pointer());
 		Load<ID3D11PixelShader>(pixelStage,baseFilename+".ps.hlsl",pixelShaderName,"ps_5_0",[this](const void*data, SIZE_T size, ID3D11PixelShader**shader)->HRESULT
 		{
 			return DirectX11::globalInstance->GetDevice()->CreatePixelShader(data,size,NULL,shader);
-		},base.pointer(),base.count(),b,numBindings,macros.pointer());
+		},base.pointer(),base.Count(),b,numBindings,macros.pointer());
 	}
 
 	/*static*/ Buffer<DX11::Shader::Macro,0,Strategy::Swap>	DX11::Shader::macroDefinitions;
@@ -1471,17 +1471,17 @@ namespace Engine
 	void	DX11::VertexDescription::SetTo(const VertexBinding&binding)
 	{
 		desc.clear();
-		if (binding.vertex.isSet())
+		if (binding.vertex.IsSet())
 			Translate(desc.append(), binding.vertex,"POSITION");
-		if (binding.color.isSet())
+		if (binding.color.IsSet())
 			Translate(desc.append(), binding.color,"COLOR");
-		if (binding.normal.isSet())
+		if (binding.normal.IsSet())
 			Translate(desc.append(), binding.normal,"NORMAL");
-		if (binding.tangent.isSet())
+		if (binding.tangent.IsSet())
 			Translate(desc.append(), binding.tangent,"TANGENT");
-		for (index_t i = 0; i < binding.texcoords.Count() && desc.count() < 64; i++)
+		for (index_t i = 0; i < binding.texcoords.Count() && desc.Count() < 64; i++)
 		{
-			if (binding.texcoords[i].isSet())
+			if (binding.texcoords[i].IsSet())
 				Translate(desc.append(), binding.texcoords[i],"TEXCOORD",(UINT)i);
 		}
 		stride[0] = binding.floats_per_vertex * 4;
@@ -1544,17 +1544,17 @@ namespace Engine
 	/*static*/ UINT	DX11::Shader::_CompileStreamLayout(const Engine::VertexBinding&binding,D3D11_SO_DECLARATION_ENTRY*desc, UINT descLen )
 	{
 		UINT current = 0;
-		if (binding.vertex.isSet())
+		if (binding.vertex.IsSet())
 			Translate(desc[current++], binding.vertex,"POSITION");
-		if (binding.color.isSet())
+		if (binding.color.IsSet())
 			Translate(desc[current++], binding.color,"COLOR");
-		if (binding.normal.isSet())
+		if (binding.normal.IsSet())
 			Translate(desc[current++], binding.normal,"NORMAL");
-		if (binding.tangent.isSet())
+		if (binding.tangent.IsSet())
 			Translate(desc[current++], binding.tangent,"TANGENT");
 		for (index_t i = 0; i < binding.texcoords.Count() && current < descLen; i++)
 		{
-			if (binding.texcoords[i].isSet())
+			if (binding.texcoords[i].IsSet())
 				Translate(desc[current++], binding.texcoords[i],"TEXCOORD",(UINT)i);
 		}
 		return current;

@@ -215,7 +215,7 @@ namespace Objects
 
 		void	AppendTriangleIndices(const Ctr::BasicBuffer<UINT32>&indices)
 		{
-			AppendTriangleIndices(indices.pointer(), indices.count());
+			AppendTriangleIndices(indices.pointer(), indices.Count());
 		}
 
 		void	AppendQuadIndices(const UINT32*indices, count_t numIndices)
