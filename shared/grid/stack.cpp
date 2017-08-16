@@ -404,7 +404,7 @@ namespace Grid
 		bool tagged[HighSetup::GridType::CellCount];
 		memset(tagged, false, sizeof(tagged));
 
-			for (index_t i = 0; i < low.cells.count(); i++)
+			for (index_t i = 0; i < low.cells.Count(); i++)
 			{
 				#ifdef HYBRID_GRID
 				index_t high = low.grid.GetCell(i).higherEquivalent;

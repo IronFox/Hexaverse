@@ -1715,7 +1715,7 @@ namespace World
 
 			op.stacksLeft << stackCenter;
 
-			//const float r = worldCenter.Length();
+			//const float r = worldCenter.GetLength();
 
 			const float base = Grid::ToRadius(Grid::CellStack::ToHeight(topLayer));
 			const float hr2 = M::sqr(radius/base);

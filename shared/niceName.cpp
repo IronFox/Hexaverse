@@ -20,14 +20,14 @@ namespace NiceName
 	static String& MakeNice(String&in)
 	{
 		in.ConvertToLowerCase();
-		in.set(0,CharFunctions::toupper(in.GetChar(0)));
+		in.Set(0,CharFunctions::toupper(in.GetChar(0)));
 		return in;
 	}
 	static String& MakeNiceAdjective(String&in)
 	{
 		//for now, same
 		in.ConvertToLowerCase();
-		in.set(0,CharFunctions::toupper(in.GetChar(0)));
+		in.Set(0,CharFunctions::toupper(in.GetChar(0)));
 		return in;
 	}
 

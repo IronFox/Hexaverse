@@ -937,7 +937,7 @@ template <unsigned Exponent>
 			for (BYTE j = 0; j < n.numNeighbors; j++)
 			{
 				TriangleKey key(i, n.neighborID[j], n.neighborID[(j + 1) % n.numNeighbors]);
-				if (vtxMap.query(key, id))
+				if (vtxMap.Query(key, id))
 				{
 					TCellVertex&v = vtx[id];
 					DBG_ASSERT_LESS__(v.ownerCount,3);
@@ -948,7 +948,7 @@ template <unsigned Exponent>
 					TVec3<> center;
 					Vec::center(cellField[key.stackID[0]].center, cellField[key.stackID[1]].center, cellField[key.stackID[2]].center, center);
 					id = (UINT32)vtx.Count();
-					vtxMap.set(key, id);
+					vtxMap.Set(key, id);
 					TCellVertex&v = vtx.Append();
 					v.centerDirection = center;
 					v.ownerCount = 1;

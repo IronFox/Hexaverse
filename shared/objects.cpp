@@ -457,7 +457,7 @@ namespace Objects
 					const float3&b0 = Grid::low.grid.GetCell(this->location.cellID).center;
 					const float3&b1 = Grid::low.grid.GetCell((*c)->location.cellID).center;
 					const float3 d = b1 - b0;
-					const float scale = d.Length();
+					const float scale = d.GetLength();
 					const float3 d1 = d / scale;
 					const float r0 = Grid::ToRadius(location.height);
 					const float r1 = Grid::ToRadius(location.height + 1);
