@@ -2240,6 +2240,7 @@ namespace GUI
 			tabBar->SetActiveTab(tabs[tabIndex].button,false);
 		Super::RemoveComponent(active.panel);
 		activeIndex = tabIndex;
+		active = tabs[tabIndex];
 		Super::AddComponent(active.panel);
 		if (triggerCallback)
 			OnTabChange();
