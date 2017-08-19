@@ -70,6 +70,15 @@ namespace SurfaceRenderer
 		void	Bake();
 		void	Rasterize()	const;
 
+		friend void	swap(Baked&a, Baked&b)
+		{
+			using std::swap;
+			swap(a.instruction,b.instruction);
+			swap(a.vertices,b.vertices);
+			swap(a.indices,b.indices);
+			swap(a.indexOffset,b.indexOffset);
+		}
+
 	private:
 		DX11::InstructionBlock32	instruction;
 
