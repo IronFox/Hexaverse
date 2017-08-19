@@ -510,9 +510,12 @@ namespace GUI
 
 	class Button : public TextField
 	{
+	public:
+		typedef std::function<void()>	FTrigger;
+	private:
 		typedef TextField	Super;
 
-		std::function<void()>	onPress;
+		FTrigger		onPress;
 		std::function<bool()>	check;
 
 		bool					alwaysDown = false;
@@ -539,10 +542,29 @@ namespace GUI
 		bool			IsAlwaysDown() const {return alwaysDown;}
 
 
-		void			SetOnPress(const std::function<void()>&event)
+		/**
+		Updates the trigger function executed with the local button is pressed
+		@return Previous trigger function
+		*/
+		FTrigger		SetTriggerFunction(const FTrigger&event)
 		{
+			FTrigger rs = onPress;
 			onPress = event;
+			return rs;
 		}
+
+		const FTrigger&	GetTriggerFunction() const
+		{
+			return onPress;
+		}
+
+		void			Trigger()	const
+		{
+			if (onPress)
+				onPress();
+		}
+
+
 
 		void			SetCheck(const std::function<bool()>&check)
 		{
@@ -997,7 +1019,7 @@ namespace GUI
 
 
 
-		void			SetOnPress(const std::function<void()>&event)
+		void			SetTriggerFunction(const std::function<void()>&event)
 		{
 			onPress = event;
 		}

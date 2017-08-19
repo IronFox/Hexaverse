@@ -321,15 +321,15 @@ namespace Dialog
 					}
 					return canConfirmNow;
 				});
-				confirmButton->SetOnPress(std::bind(&Dialog::Confirm,d,false));
+				confirmButton->SetTriggerFunction(std::bind(&Dialog::Confirm,d,false));
 			}
 
 			if (cancelButton)
 			{
-				cancelButton->SetOnPress(std::bind(&Dialog::DumpMe,dialog.get()));
+				cancelButton->SetTriggerFunction(std::bind(&Dialog::DumpMe,dialog.get()));
 			}
 
-					//confirmButton->SetOnPress
+					//confirmButton->SetTriggerFunction
 
 			//dialog->reLayout = [textField,confirmButton,cancelButton,inputField,imageField](Dialog&dialog)
 			//{
@@ -530,7 +530,7 @@ namespace Dialog
 		d->confirmButton->DetectEnabledState();
 
 		if (sendNullPasswordOnAbortByUser)
-			d->cancelButton->SetOnPress([d](){d->onPassword(nullptr); d->DumpMe();});
+			d->cancelButton->SetTriggerFunction([d](){d->onPassword(nullptr); d->DumpMe();});
 
 		d->ReLayout();
 		GUI::VerifyIntegrity(CLOCATION);
@@ -802,7 +802,7 @@ namespace Dialog
 		d->onConfirm = [onAnswer](){onAnswer(true);};
 		d->onNo = [onAnswer](){onAnswer(false);};
 		d->textField->SetText( query );
-		d->helpButton->SetOnPress([help,check]() {ShowMessage(help,check);});
+		d->helpButton->SetTriggerFunction([help,check]() {ShowMessage(help,check);});
 		d->ReLayout();
 		GUI::VerifyIntegrity(CLOCATION);
 		return d;

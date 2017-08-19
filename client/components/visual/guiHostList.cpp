@@ -180,7 +180,7 @@
 				return versionMatch && !Network::client.IsAttemptingToConnect() && !Network::client.IsConnected();
 			});
 
-			info.buttonPanel->SetOnPress([id]()
+			info.buttonPanel->SetTriggerFunction([id]()
 			{
 				Network::ServerInfo*info = nullptr;
 				foreach (Network::servers,srv)
@@ -512,7 +512,7 @@
 			start->SetEnabled(!running);
 			WButton wstart = start;
 			WButton wstop = stop;
-			start->SetOnPress([wstart,wstop]()
+			start->SetTriggerFunction([wstart,wstop]()
 			{
 				ServerProcess::Begin(true);
 				PButton b = wstart.lock();
@@ -522,7 +522,7 @@
 				if (b)
 					b->SetEnabled(true);
 			});
-			stop->SetOnPress([wstart,wstop]()
+			stop->SetTriggerFunction([wstart,wstop]()
 			{
 				ServerProcess::End();
 				PButton b = wstart.lock();

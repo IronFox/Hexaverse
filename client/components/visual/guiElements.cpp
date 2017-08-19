@@ -2032,7 +2032,7 @@ namespace GUI
 		//auto&tab = tabs.Append();
 		PButton tab(new Button(caption));
 		WButton b = tab;
-		tab->SetOnPress([this,b]()
+		tab->SetTriggerFunction([this,b]()
 		{
 			SetActiveTab(b.lock());
 		});

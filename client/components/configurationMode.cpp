@@ -251,7 +251,7 @@ namespace ConfigurationMode
 				//{
 				//	button->anchorConfig.Left().SetLastOf(window,0.01f);
 				//}
-				button->SetOnPress([this,i]()
+				button->SetTriggerFunction([this,i]()
 				{
 					GUI::Hide(window);
 					this->onSelect((BYTE)i);
@@ -273,7 +273,7 @@ namespace ConfigurationMode
 					button->SetAnchorConfig(cfg);
 				}
 			
-				button->SetOnPress([this]()
+				button->SetTriggerFunction([this]()
 				{
 					GUI::Hide(window);
 				});
