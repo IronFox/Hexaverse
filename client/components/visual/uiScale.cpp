@@ -13,7 +13,7 @@ namespace UI
 
 	void				SetScale(float newScale)
 	{
-		if (DeltaWorks::Math::similar(scale,newScale))
+		if (DeltaWorks::Math::Similar(scale,newScale))
 			return;
 		scale = newScale;
 		GlobalEvents::uiScaleChanged();

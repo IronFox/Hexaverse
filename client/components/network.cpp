@@ -1745,7 +1745,7 @@ namespace Network
 					if (a.hasContact && (a.hasInfo || a.protocolIncompatible))
 					{
 						index_t at;
-						if (!serverMap.query(a.lastInfo.hostInfo.hostID,at))
+						if (!serverMap.Query(a.lastInfo.hostInfo.hostID,at))
 						{
 							at = servers.Count();
 							servers.Append();

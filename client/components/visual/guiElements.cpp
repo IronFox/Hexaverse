@@ -91,7 +91,7 @@ namespace GUI
 
 	bool			ComponentLocation::SetWidth(float w)
 	{
-		if (M::similar(this->rect.x.GetExtent(),w))
+		if (M::Similar(this->rect.x.GetExtent(),w))
 			return false;
 		ASSERT__(!isnan(w));
 		rect.x.max = rect.x.min + w;
@@ -102,7 +102,7 @@ namespace GUI
 	}
 	bool			ComponentLocation::SetHeight(float h)
 	{
-		if (M::similar(this->rect.y.GetExtent(), h))
+		if (M::Similar(this->rect.y.GetExtent(), h))
 			return false;
 		ASSERT__(!isnan(h));
 		rect.y.max = rect.y.min + h;
@@ -127,8 +127,8 @@ namespace GUI
 
 		rect.AssertIsNotNaN();
 
-		const bool widthChange = !Math::similar(rect.x.GetExtent(),this->rect.x.GetExtent());
-		const bool heightChange = !Math::similar(rect.y.GetExtent(),this->rect.y.GetExtent());
+		const bool widthChange = !Math::Similar(rect.x.GetExtent(),this->rect.x.GetExtent());
+		const bool heightChange = !Math::Similar(rect.y.GetExtent(),this->rect.y.GetExtent());
 		this->rect = rect;
 
 		if (hChange)
@@ -1928,7 +1928,7 @@ namespace GUI
 	/*static*/ bool		Component::Set(float&ref, float to)
 	{
 		ASSERT__(!isnan(to));
-		bool changed = !Math::similar(ref,to);
+		bool changed = !Math::Similar(ref,to);
 		ref = to;
 		return changed;
 	}
@@ -1937,7 +1937,7 @@ namespace GUI
 	{
 		float current = ref.center();
 
-		bool changed = !Math::similar(current,to);
+		bool changed = !Math::Similar(current,to);
 		ref.SetCenter(to);
 		return changed;
 	}

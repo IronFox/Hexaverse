@@ -337,7 +337,7 @@ namespace Objects
 
 				if (a0 > 0)
 					rs.idealAngle[rs.numAngles++] = a0;
-				if (a1 > 0 && (rs.numAngles == 0 || !M::similar(a0,a1)))
+				if (a1 > 0 && (rs.numAngles == 0 || !M::Similar(a0,a1)))
 					rs.idealAngle[rs.numAngles++] = a1;
 				return rs;
 			}

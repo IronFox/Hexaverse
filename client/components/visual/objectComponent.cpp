@@ -225,7 +225,7 @@ namespace Objects
 			(*p)->shape = Objects::Tower::staticShape;
 
 		float h = Objects::Tower::geometry.GetBoundingBox().z.max;
-		ASSERT2__(similar(h,Objects::Tower::foundationHeight),h,Objects::Tower::foundationHeight);
+		ASSERT2__(Similar(h,Objects::Tower::foundationHeight),h,Objects::Tower::foundationHeight);
 		Objects::Tower::foundationHeight = h;
 
 

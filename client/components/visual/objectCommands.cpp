@@ -482,7 +482,7 @@ namespace Objects
 			PathString filename = PathString("resources/icons/"+name2+".png");
 			if (!FileSystem::IsFile(filename))
 				filename = PathString("resources/icons/Question-Mark.png");
-			if (textureMap.query(filename,texture))
+			if (textureMap.Query(filename,texture))
 				return;
 			try
 			{

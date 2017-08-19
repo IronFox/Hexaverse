@@ -1246,7 +1246,7 @@ namespace Objects
 
 				component.parts.First().LoadFromObj("objects/hoverbase.obj");
 				component.height = component.parts.First().GetBoundingBox().z.max;
-				ASSERT2__(similar(staticHeight,component.height),staticHeight,component.height);
+				ASSERT2__(Similar(staticHeight,component.height),staticHeight,component.height);
 
 				component.ambientSound = Engine::OpenAL::Load("resources/objectSounds/hoverbase.wav");
 
@@ -1287,7 +1287,7 @@ namespace Objects
 
 				component.parts.First().LoadFromObj("objects/heavyBase.obj");
 				component.height = component.parts.First().GetBoundingBox().z.max;
-				ASSERT2__(similar(staticHeight,component.height),staticHeight,component.height);
+				ASSERT2__(Similar(staticHeight,component.height),staticHeight,component.height);
 
 				component.ambientSound = Engine::OpenAL::Load("resources/objectSounds/heavybase.wav");
 			#else
@@ -1328,7 +1328,7 @@ namespace Objects
 
 				component.parts.First().LoadFromObj("objects/catBase.obj");
 				component.height = component.parts.First().GetBoundingBox().z.max;
-				ASSERT2__(similar(staticHeight,component.height),staticHeight,component.height);
+				ASSERT2__(Similar(staticHeight,component.height),staticHeight,component.height);
 
 				component.ambientSound = Engine::OpenAL::Load("resources/objectSounds/catbase.wav");
 			#else

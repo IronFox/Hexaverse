@@ -267,7 +267,7 @@ namespace Grid
 					{
 						float factor = want / float(std::max((count_t)1,familyTotal[k]));
 						float magnitude = log(factor);
-						factor = pow(4.f,float(M::sign(factor-1.f))/(retries*2 + 1));
+						factor = pow(4.f,float(M::Sign(factor-1.f))/(retries*2 + 1));
 						p *= factor;
 						p = M::clamp(p,0.0001f,10000.f);
 						LogEvent(EventSignificance::Debug,nullptr," Family found out of range ("+String(want)+"<-"+String(float(std::max((count_t)1,familyTotal[k])))
