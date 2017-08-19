@@ -95,6 +95,10 @@ namespace GUI
 			return false;
 		ASSERT__(!isnan(w));
 		rect.x.max = rect.x.min + w;
+
+		DBG_ASSERT_IS_CONSTRAINED__(rect.x.max,Lower,Upper);
+
+
 		OnHorizontalRectChange();
 		OnWidthChange();
 		OnRectChange();
@@ -106,6 +110,10 @@ namespace GUI
 			return false;
 		ASSERT__(!isnan(h));
 		rect.y.max = rect.y.min + h;
+
+		DBG_ASSERT_IS_CONSTRAINED__(rect.y.max,Lower,Upper);
+
+
 		OnVerticalRectChange();
 		OnHeightChange();
 		OnRectChange();
@@ -130,6 +138,11 @@ namespace GUI
 		const bool widthChange = !Math::Similar(rect.x.GetExtent(),this->rect.x.GetExtent());
 		const bool heightChange = !Math::Similar(rect.y.GetExtent(),this->rect.y.GetExtent());
 		this->rect = rect;
+
+		DBG_ASSERT_IS_CONSTRAINED__(rect.x.min,Lower,Upper);
+		DBG_ASSERT_IS_CONSTRAINED__(rect.x.max,Lower,Upper);
+		DBG_ASSERT_IS_CONSTRAINED__(rect.y.min,Lower,Upper);
+		DBG_ASSERT_IS_CONSTRAINED__(rect.y.max,Lower,Upper);
 
 		if (hChange)
 			OnHorizontalRectChange();

@@ -183,6 +183,7 @@ namespace GUI
 
 		void			SetRect(const Rect<>&rect);
 	private:
+		static const constexpr float Lower = -10000.f, Upper = 10000.f;
 		Rect<>			rect;
 	};
 
