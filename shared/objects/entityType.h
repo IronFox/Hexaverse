@@ -56,17 +56,26 @@ namespace Objects
 			return '#'+String(int(turretType))+":#"+String(int(baseType));
 		}
 
-		static bool	BaseRequiresTurret(ConstName baseType)
+		static bool	IsVehicleBase(ConstName baseType)
 		{
 			switch (baseType)
 			{
 				case ConstName::VehicleBase_CatBase:
 				case ConstName::VehicleBase_HeavyBase:
 				case ConstName::VehicleBase_HoverBase:
-				case ConstName::Type_Tower:
 					return true;
 			}
 			return false;
+		}
+
+		static bool	BaseRequiresTurret(ConstName baseType)
+		{
+			return IsVehicleBase(baseType) || baseType == ConstName::Type_Tower;
+		}
+
+		bool IsVehicle() const
+		{
+			return HasTurret() && IsVehicleBase(baseType);
 		}
 
 		friend void SerialSync(DeltaWorks::IReadStream&s, EntityType&v)
