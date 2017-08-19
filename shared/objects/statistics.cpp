@@ -3,6 +3,8 @@
 #include "../runtimeConfig.h"
 #include "faction.h"
 #include "prototypes.h"
+#include "../cast.h"
+#include "mobileEntity.h"
 
 namespace Objects
 {
@@ -225,47 +227,76 @@ namespace Objects
 		void			Statistics::SignalDamageReceivedFrom(const PFaction&source, int level)
 		{
 			Get(source).metrics.Add(Metric::DamageReceived, level);
+			history.Last().metrics.Add(Metric::DamageReceived,level);
 		}
 
 		void			Statistics::SignalDamageDealtTo(const PWorldEntity&causedBy, const PFaction&receiver, int level)
 		{
 			Get(receiver).metrics.Add(Metric::DamageDealt,level);
 			GetTypeOf(causedBy).metrics.Add(Metric::DamageDealt,level);
+			history.Last().metrics.Add(Metric::DamageDealt,level);
 		}
 
 		void			Statistics::SignalEMPDamageReceivedFrom(const PFaction&source, int level)
 		{
 			Get(source).metrics.Add(Metric::EMPDamageReceived,level);
+			history.Last().metrics.Add(Metric::EMPDamageReceived,level);
 		}
 
 		void			Statistics::SignalEMPDamageDealtTo(const PWorldEntity&causedBy, const PFaction&receiver, int level)
 		{
 			Get(receiver).metrics.Add(Metric::EMPDamageDealt,level);
 			GetTypeOf(causedBy).metrics.Add(Metric::EMPDamageDealt,level);
+			history.Last().metrics.Add(Metric::EMPDamageDealt,level);
 		}
 		
 		void			Statistics::SignalDestructionOfHostile(const PWorldEntity&causedBy, const PWorldEntity&destroyed)
 		{
+			int res = destroyed->GetConstructionCost();
+			#ifndef ONE_COMPOUND_PER_FACTION
+				if (destroyed->IsMobile())
+				{
+					res += To<MobileEntity>::Cast(destroyed)->currentStorage.Sum();
+				}
+			#endif
+
 			auto&in = Get(destroyed->owner);
 			in.metrics.Inc(Metric::UnitsKilled);
-			in.metrics.Add(Metric::ResourcesDestroyed,destroyed->GetConstructionCost());
+			in.metrics.Add(Metric::ResourcesDestroyed,res);
 			auto&un = GetTypeOf(causedBy);
 			un.metrics.Inc(Metric::UnitsKilled);
-			un.metrics.Add(Metric::ResourcesDestroyed,destroyed->GetConstructionCost());
+			un.metrics.Add(Metric::ResourcesDestroyed,res);
+
+			history.Last().metrics.Inc(Metric::UnitsKilled);
+			history.Last().metrics.Add(Metric::ResourcesDestroyed,res);
 		}
 		
 		void			Statistics::SignalLossOf(const PWorldEntity&destroyed, const PFaction&causedBy, bool stolen)
 		{
+			int res = destroyed->GetConstructionCost();
+			#ifndef ONE_COMPOUND_PER_FACTION
+				if (destroyed->IsMobile())
+				{
+					res += To<MobileEntity>::Cast(destroyed)->currentStorage.Sum();
+				}
+			#endif
+
 			auto&in = Get(causedBy);
 			if (stolen)
 			{
-				in.metrics.Inc(Metric::UnitsStolenBy);
-				in.metrics.Add(Metric::ResourcesStolenBy, destroyed->GetConstructionCost());
+				in.metrics.Inc(Metric::UnitsStolenByOther);
+				in.metrics.Add(Metric::ResourcesStolenByOther, res);
+
+				history.Last().metrics.Inc(Metric::UnitsStolenByOther);
+				history.Last().metrics.Add(Metric::ResourcesStolenByOther, res);
 			}
 			else
 			{
-				in.metrics.Inc(Metric::UnitsKilledBy);
-				in.metrics.Add(Metric::ResourcesDestroyedBy,destroyed->GetConstructionCost());
+				in.metrics.Inc(Metric::UnitsKilledByOther);
+				in.metrics.Add(Metric::ResourcesDestroyedByOther,res);
+
+				history.Last().metrics.Inc(Metric::UnitsKilledByOther);
+				history.Last().metrics.Add(Metric::ResourcesDestroyedByOther, res);
 			}
 			auto&un = GetTypeOf(destroyed);
 			un.metrics.Inc(Metric::Lost);
@@ -273,17 +304,34 @@ namespace Objects
 
 		void			Statistics::SignalUnitAcquired(const PWorldEntity&e, const PFaction&previousOwner)
 		{
+			int res = e->GetConstructionCost();
+			#ifndef ONE_COMPOUND_PER_FACTION
+				if (destroyed->IsMobile())
+				{
+					res += To<MobileEntity>::Cast(destroyed)->currentStorage.Sum();
+				}
+			#endif	
+				
 			if (previousOwner)
 			{
 				auto&in = Get(previousOwner);
 				in.metrics.Inc(Metric::UnitsStolen);
-				in.metrics.Add(Metric::ResourcesStolen, e->GetConstructionCost());
+				in.metrics.Add(Metric::ResourcesStolen, res);
+
+				history.Last().metrics.Inc(Metric::UnitsStolen);
+				history.Last().metrics.Add(Metric::ResourcesStolen, res);
 			}
+			else
+			{
+				history.Last().metrics.Inc(Metric::UnitsBuilt);
+				history.Last().metrics.Add(Metric::ResourcesUsedForConstruction, res);
+			}
+
 			auto&un = GetTypeOf(e);
 			if (previousOwner)
-				un.metrics.Inc(Metric::Stolen);
+				un.metrics.Inc(Metric::UnitsStolen);
 			else
-				un.metrics.Inc(Metric::Built);
+				un.metrics.Inc(Metric::UnitsBuilt);
 		}
 
 

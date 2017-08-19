@@ -24,7 +24,7 @@ namespace Objects
 		Enumeration of all supported metrics.
 		These are inserted into a hash-table and may therefor grow arbitrarily large.
 
-		IMPORTANT: if any no longer in use: DO NOT REMOVE!
+		IMPORTANT: if any no longer in use: DO NOT REMOVE! Do not change order
 		Prepend Deprecated_. These are used for IO, and may be imported from potentially very old savegames.
 		*/
 		enum class Metric
@@ -35,21 +35,23 @@ namespace Objects
 			EMPDamageDealt,
 			UnitsKilled,
 			ResourcesDestroyed,
-			UnitsStolen,
+			UnitsStolen,				//how many of this type we stole
 			ResourcesStolen,
 
-			UnitsKilledBy,
-			UnitsStolenBy,
-			ResourcesDestroyedBy,
-			ResourcesStolenBy,
+			UnitsKilledByOther,
+			UnitsStolenByOther,
+			ResourcesDestroyedByOther,
+			ResourcesStolenByOther,
 
 			Lost,				//how many of this type we lost
-			Built,				//how many of this type we built
-			Stolen,				//how many of this type we stole
+			UnitsBuilt,				//how many of this type we built
+			Deprecated0,
 
 			CurrentEntityCount,
 			CurrentEntityMineralValue,
 			CurrentSensorCoverage,
+
+			ResourcesUsedForConstruction,	//how many resources (minerals probably) were converted into other stuff (entities probably). Conversion into electricity does not count
 
 
 
