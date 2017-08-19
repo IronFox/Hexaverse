@@ -450,6 +450,7 @@ namespace GUI
 		const Quad<float>&GetPadding() const {return padding;}
 
 		void			SetColor(const float4&color)	{this->color = color;}
+		void			SetColor(const float3&color, float alpha = 1.f)	{this->color.rgb = color; this->color.a = alpha;}
 		void			SetColor(float r, float g, float b, float a = 1.f)	{this->color = float4(r,g,b,a);}
 		void			SetLocalFontScale(float zoom)	{this->zoom = zoom; ReWrap(); UpdateDynamicSize();OnTextChange();}
 		float			GetLocalFontScale() const {return zoom;}
