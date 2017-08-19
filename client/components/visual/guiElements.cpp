@@ -986,7 +986,7 @@ namespace GUI
 					break;
 				}
 			}
-			if (components.IsEmpty())
+			if (lowest == std::numeric_limits<float>::max())
 				lowest = GetRect().y.max;
 			float newY = lowest - autoHeightSpacing;
 			float currentHeight = GetRect().y.max - newY;
