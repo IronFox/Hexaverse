@@ -562,7 +562,7 @@ namespace Protocol
 
 	NETSTRUCT3(HelloResponse
 		, NET(bool), success
-		, NET(bool), configurationMode
+		, UINT32, gameFlags
 		, Package::NetString<256>, errorMessage	//in case stateAccepted is false
 	)
 

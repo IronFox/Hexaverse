@@ -11,6 +11,8 @@
 #include <typeDecl.h>
 #include <cast.h>
 #include "uiScale.h"
+#include "surfaceRenderer.h"
+#include "lineRenderer.h"
 
 namespace GUI
 {
@@ -24,6 +26,7 @@ namespace GUI
 		DECLARE_POINTER_CLASS(Image);
 		DECLARE_POINTER_CLASS(Slider);
 		DECLARE_POINTER_CLASS(Box);
+			DECLARE_POINTER_CLASS(PlotStack);
 			DECLARE_POINTER_CLASS(TextField);
 				DECLARE_POINTER_CLASS(Checkbox);
 				DECLARE_POINTER_CLASS(Label);
@@ -262,7 +265,7 @@ namespace GUI
 		
 		virtual bool	UpdateDynamicSize();
 
-		virtual void	Render() {};
+		virtual void	Render();
 
 		virtual bool	ResolveAnchorAxis(int axis, const Rect<>&context);
 
@@ -334,8 +337,106 @@ namespace GUI
 						topOpacity = 1.f;
 		float3			backgroundTone = float3(1);
 
-		virtual void	Render() override	{if (fillBackground) BaseRender(false,false);}
+		virtual void	Render() override	{Super::Render(); if (fillBackground) BaseRender(false,false);}
 	};
+
+	/**
+	Stacked function plot component.
+	*/
+	class PlotStack : public Box
+	{
+		typedef Box		Super;
+	public:
+		class Plot
+		{
+		public:
+
+			/**
+			Adds a new node to the plot.
+			@param x X slot of the height value. Must be greater than any nodes previously added to this plot.
+					Intermediate nodes are automatically added if missing. The first node added this way defines the left most sampling point.
+			*/
+			void	AddNode(const index_t x, const float y);
+
+			friend void swap(Plot&a, Plot&b)
+			{
+				using std::swap;
+				swap(a.surface,b.surface);
+				swap(a.lines,b.lines);
+				swap(a.color,b.color);
+				swap(a.stack,b.stack);
+				swap(a.start,b.start);
+				swap(a.data,b.data);
+				swap(a.changed,b.changed);
+			}
+
+			float	Sample(index_t x) const;
+
+		private:
+			void	RenderSurfaces()	const;
+			void	RenderLines()	const;
+			void	Replot(const Rect<>&componentRect, const Rect<>&dataRect);
+
+
+			void	MakeVertex(const float x, const float y);
+
+			struct TPoint
+			{
+				float	yRaw,
+						yMin, yMax;
+			};
+
+			SurfaceRenderer::Baked	surface;
+			LineRenderer::Baked		lines;
+			float3					color;
+			WPlotStack				stack;
+			index_t					start = InvalidIndex;
+			Buffer0<TPoint>			data;
+			bool					changed = true;
+
+			friend class PlotStack;
+		};
+
+		count_t	CountPlots() const
+		{
+			return graphs.Count();
+		}
+
+		void	ClearPlots()
+		{
+			graphs.Clear();
+			xRange = TIntRange<index_t>::Invalid;
+			yRange = TFloatRange<>::Invalid;
+		}
+
+		/**
+		Adds a a plot on top of any previously added plots, and returns a reference to it.
+		The reference is valid only until AddPlot() is called next.
+		Adding nodes to a plot other than the last returned causes undefined behavior.
+		*/
+		Plot&	AddPlot(const float3&color)
+		{
+			Plot&rs = graphs.Append();
+			rs.color = color;
+			rs.stack = To<PlotStack>::Cast(shared_from_this());
+			return rs;
+		}
+
+		virtual void	Render() override;
+
+		float	SampleStackedHeight(index_t) const;
+
+	protected:
+		virtual void	OnRectChange() override;
+	private:
+
+		Rect<>			GetPlotRect() const;
+		Buffer0<Plot>	graphs;
+		TIntRange<index_t>	xRange = TIntRange<index_t>::Invalid;
+		TFloatRange<>		yRange = TFloatRange<>::Invalid;
+		friend class Plot;
+	};
+
 
 	class BaseInput : public Box
 	{
@@ -1263,6 +1364,12 @@ namespace GUI
 		bool			IsEmpty() const {return tabs.IsEmpty();}
 		bool			IsNotEmpty() const {return tabs.IsNotEmpty();}
 		count_t			CountTabs() const {return tabs.Count();}
+
+	
+		virtual void Render() override
+		{
+			Super::Render();
+		}
 
 	protected:
 		virtual void	OnTabChange();

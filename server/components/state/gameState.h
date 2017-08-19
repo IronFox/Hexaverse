@@ -137,6 +137,7 @@ namespace Game
 											| Objects::WorldEntity::HibernationChanged;
 
 
+		UINT32		AssembleGameFlags(bool allowSpectatorFactions);
 		void		AssembleGameConfig(Protocol::GameConfig&info, bool allowSpectatorFactions);
 		void		AssembleGameInfo(Protocol::GameInfo&info, bool allowSpectatorFactions);
 		/**
@@ -179,6 +180,8 @@ namespace Game
 		Called automatically by Network::RestartSession()
 		*/
 		void		HandleSessionRestart();
+
+		void		SendStatisticsTo(TCP::Peer & peer, const Objects::PFaction & faction);
 
 
 	}

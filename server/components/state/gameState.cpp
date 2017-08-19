@@ -99,6 +99,27 @@ namespace Game
 		}
 
 
+		void SendStatisticsTo(TCP::Peer & peer, const Objects::PFaction & faction)
+		{
+			Objects::Statistics::EnterNetworkMode();
+			Channels::Statistics::beginSequence.SendTo(peer,faction->id);
+
+			faction->statistics.VisitRounds([&peer](const Objects::Statistics::Round&r)
+			{
+				Channels::Statistics::round.SendTo(peer,r);
+			},true);
+			faction->statistics.VisitEntityTypes([&peer](const Objects::Statistics::EntityType&t)
+			{
+				Channels::Statistics::entityType.SendTo(peer,t);
+			});
+			faction->statistics.VisitFactionInteractions([&peer](const Objects::Statistics::FactionInteraction&i)
+			{
+				Channels::Statistics::factionInteraction.SendTo(peer,i);
+			});
+			peer.SendSignal(Protocol::ChannelID::EndStatisticsSequence);
+		}
+
+
 		void		HandleSessionSuspension()
 		{
 			if (Config::Nexus::enableAI)
@@ -122,37 +143,44 @@ namespace Game
 		}
 
 
+		UINT32		AssembleGameFlags(bool allowSpectatorFactions)
+		{
+			UINT32 rs = 0;
+			if (Config::closedGame)
+				rs |= Protocol::GameFlag::ClosedGame;
+			if (RuntimeConfig::empZones)
+				rs |= Protocol::GameFlag::EMPZones;
+			if (Config::basesRequired)
+				rs |= Protocol::GameFlag::BasesRequired;
+			if (Config::startBases)
+				rs |= Protocol::GameFlag::StartBases;
+			if (Config::Nexus::enableAI)
+				rs |= Protocol::GameFlag::NexusAI;
+			if (ConfigurationMode::IsActive() && allowSpectatorFactions)
+				rs |= Protocol::GameFlag::ConfigurationMode;
+			if (RuntimeConfig::tutorialMode)
+				rs |= Protocol::GameFlag::TutorialMode;
+			if (World::Config::simulateLiquids)
+				rs |= Protocol::GameFlag::SimulateLiquids;
+
+			rs |= Config::factionSupportFlags;
+			if (!allowSpectatorFactions)
+				rs &= ~Protocol::GameFlag::SupportSpectatorFactions;
+
+			if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
+			{
+				rs |= Protocol::GameFlag::GameHasEnded | Protocol::GameFlag::SupportSpectatorFactions;	//always support spectator in this case
+			}
+			return rs;
+		}
+
+
 		void		AssembleGameConfig(Protocol::GameConfig&gameConfig, bool allowSpectatorFactions)
 		{
 			gameConfig.researchScript = Objects::ResearchState::GetScriptIdentifier();
 			gameConfig.gameGoal = (UINT32)RuntimeConfig::gameGoal;
-			gameConfig.gameFlags = 0;
+			gameConfig.gameFlags = AssembleGameFlags(allowSpectatorFactions);
 			gameConfig.worldDiscovery = (BYTE)World::Config::worldDiscovery;
-			if (Config::closedGame)
-				gameConfig.gameFlags |= Protocol::GameFlag::ClosedGame;
-			if (RuntimeConfig::empZones)
-				gameConfig.gameFlags |= Protocol::GameFlag::EMPZones;
-			if (Config::basesRequired)
-				gameConfig.gameFlags |= Protocol::GameFlag::BasesRequired;
-			if (Config::startBases)
-				gameConfig.gameFlags |= Protocol::GameFlag::StartBases;
-			if (Config::Nexus::enableAI)
-				gameConfig.gameFlags |= Protocol::GameFlag::NexusAI;
-			if (ConfigurationMode::IsActive())
-				gameConfig.gameFlags |= Protocol::GameFlag::ConfigurationMode;
-			if (RuntimeConfig::tutorialMode)
-				gameConfig.gameFlags |= Protocol::GameFlag::TutorialMode;
-			if (World::Config::simulateLiquids)
-				gameConfig.gameFlags |= Protocol::GameFlag::SimulateLiquids;
-
-			gameConfig.gameFlags |= Config::factionSupportFlags;
-			if (!allowSpectatorFactions)
-				gameConfig.gameFlags &= ~Protocol::GameFlag::SupportSpectatorFactions;
-
-			if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
-			{
-				gameConfig.gameFlags |= Protocol::GameFlag::GameHasEnded | Protocol::GameFlag::SupportSpectatorFactions;	//always support spectator in this case
-			}
 
 		}
 

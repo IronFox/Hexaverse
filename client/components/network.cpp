@@ -12,6 +12,7 @@
 #include "visual/tutorial.h"
 #include "visual/dialog.h"
 #include "visual/menu.h"
+#include "visual/guiStatistics.h"
 #include "ai.h"
 #include "clientRuntimeConfig.h"
 #include "timelapse.h"
@@ -524,10 +525,12 @@ namespace Network
 			if (response.success)
 			{
 				LogEvent(EventClass::Preset::common, nullptr, "Status confirmed ('"+response.errorMessage+"')");
+				const bool configurationMode = (response.gameFlags & Protocol::GameFlag::ConfigurationMode) != 0;
+				const bool gameEndSpectatorMode = (response.gameFlags & Protocol::GameFlag::GameHasEnded) != 0;
 				#ifdef HAS_WINDOW
-					ConfigurationMode::SetActive(response.configurationMode);
+					ConfigurationMode::SetActive(configurationMode);
 				#endif
-				if (response.configurationMode)
+				if (configurationMode || gameEndSpectatorMode)
 					AttemptFactionLogin(false,Protocol::FactionType::SpectatorFaction);
 				elif (RuntimeConfig::tutorialMode)
 					AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly);
@@ -1174,7 +1177,10 @@ namespace Network
 				auto f = target.lock();
 				target.reset();
 				if (f)
+				{
 					f->statistics.EndLoading();
+					GUI::Statistics::Update();
+				}
 			}
 
 			void	Round(Objects::Statistics::Round&r)
@@ -1911,8 +1917,8 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 	else
 		if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
 		{
-			//GUI::Statistics::Update();
-			//GUI::Show(GUI::Statistics::window);
+			GUI::Statistics::Update();
+			GUI::Show(GUI::Statistics::window);
 		}
 
 	#ifdef HAS_WINDOW

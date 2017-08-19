@@ -1054,6 +1054,11 @@ namespace Objects
 	
 	static void	InsertConstructedEntity(const PWorldEntity&e, float&atTime, bool setHealthToFull)
 	{
+		#ifndef CLIENT
+			if (setHealthToFull && e->owner)
+				e->owner->statistics.SignalUnitAcquired(e,PFaction());
+		#endif
+
 		ASSERT1__(!e->isInserted, e->GetName());
 		#ifndef CLIENT
 			e->SyncTime(atTime);
@@ -1106,11 +1111,6 @@ namespace Objects
 	void	InsertConstructed( const PMobileEntity&v, float&atTime, bool insertIntoGrid/*= true*/, bool setHealthToFull/*=true*/)
 	{
 		//if (insertIntoGrid)
-		#ifndef CLIENT
-			if (setHealthToFull && v->owner)
-				v->owner->statistics.SignalUnitAcquired(v,PFaction());
-		#endif
-
 		v->UpdateSystem();
 		ASSERT1__(!v->isInsertedIntoGrid,v->GetName());
 		bool restored = idMap.IsSet(v->id);

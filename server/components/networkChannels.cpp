@@ -247,6 +247,13 @@ namespace Receiver
 			ASSERT_LESS__(state.serializedData.Count(),state.serializedData.MaxElementCount);
 			Channels::researchState.SendTo(peer,state);
 		});
+
+
+		Objects::ForeachFaction([&peer](const Objects::PFaction&f)
+		{
+			Game::Network::SendStatisticsTo(peer,f);
+		});
+
 		peer.SendSignal(Protocol::ChannelID::EndEverything);
 	}
 
@@ -1611,7 +1618,7 @@ namespace Receiver
 		{
 			Protocol::HelloResponse response;
 			response.success = false;
-			response.configurationMode = false;
+			response.gameFlags = 0;
 			response.errorMessage ="Invalid initial username";
 			peer.SendPackage(TCP::Package(response,Protocol::ChannelID::Hello));
 			return;
@@ -1651,7 +1658,7 @@ namespace Receiver
 
 			Protocol::HelloResponse response;
 			response.success = true;
-			response.configurationMode = ConfigurationMode::IsActive() && peer.IsLocalhost();
+			response.gameFlags = Game::Network::AssembleGameFlags(peer.IsLocalhost());
 			response.errorMessage ="Userlevel set to "+String(peer.userLevel);
 			peer.SendPackage( TCP::Package(response, Protocol::ChannelID::Hello ));
 			return;
@@ -1661,7 +1668,7 @@ namespace Receiver
 		ChangeMyName(hello,peer);
 		Protocol::HelloResponse response;
 		response.success = true;
-		response.configurationMode = ConfigurationMode::IsActive() && peer.IsLocalhost();
+		response.gameFlags = Game::Network::AssembleGameFlags(peer.IsLocalhost());
 		response.errorMessage ="Duplicate Hello detected. Userlevel remains "+String(peer.userLevel);
 		peer.SendPackage( TCP::Package(response,Protocol::ChannelID::Hello) );		
 	}

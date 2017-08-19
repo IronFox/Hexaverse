@@ -136,7 +136,9 @@ namespace Objects
 
 	Statistics::Statistics(const Faction*owner):owner(owner)
 	{
-		history.Append();
+		#ifndef CLIENT
+			history.Append().mainRound = RuntimeConfig::roundNumber.main;
+		#endif
 	}
 
 	Statistics::FactionInteraction&	Statistics::Get(const PFaction&remote)
@@ -306,7 +308,7 @@ namespace Objects
 		{
 			int res = e->GetConstructionCost();
 			#ifndef ONE_COMPOUND_PER_FACTION
-				if (destroyed->IsMobile())
+				if (e->IsMobile())
 				{
 					res += To<MobileEntity>::Cast(destroyed)->currentStorage.Sum();
 				}
@@ -547,8 +549,10 @@ namespace Objects
 				history.Erase(i--);
 			}
 		}
-		if (history.IsEmpty() || history.Last().mainRound != RuntimeConfig::roundNumber.main)
-			history.Append().mainRound = RuntimeConfig::roundNumber.main;
+		#ifndef CLIENT
+			if (history.IsEmpty() || history.Last().mainRound != RuntimeConfig::roundNumber.main)
+				history.Append().mainRound = RuntimeConfig::roundNumber.main;
+		#endif
 	}
 
 

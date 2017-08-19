@@ -190,11 +190,26 @@ namespace Objects
 		static void		EnterNetworkMode();
 
 
-		void			VisitRounds(const std::function<void(const Round&)>&f) const
-		{
-			foreach (history,h)
-				f(*h);
-		}
+		#ifdef CLIENT
+			void			VisitRounds(const std::function<void(const Round&)>&f) const
+			{
+				foreach (history,h)
+					f(*h);
+			}
+		#else
+
+			void			VisitRounds(const std::function<void(const Round&)>&f, bool omitLast) const
+			{
+				if (omitLast)
+				{
+					for (index_t i = 0; i+1 < history.Count(); i++)
+						f(history[i]);
+				}
+				else
+					foreach (history,h)
+						f(*h);
+			}
+		#endif
 		void			VisitFactionInteractions(const std::function<void(const FactionInteraction&)>&f) const
 		{
 			interactionMap.VisitAllValues(f);

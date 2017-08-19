@@ -230,22 +230,7 @@ namespace Network
 		{
 			//send only statistics of local faction
 			auto&peer = *this->peer.lock();
-			Objects::Statistics::EnterNetworkMode();
-			Channels::Statistics::beginSequence.SendTo(peer,faction->id);
-
-			faction->statistics.VisitRounds([&peer](const Objects::Statistics::Round&r)
-			{
-				Channels::Statistics::round.SendTo(peer,r);
-			});
-			faction->statistics.VisitEntityTypes([&peer](const Objects::Statistics::EntityType&t)
-			{
-				Channels::Statistics::entityType.SendTo(peer,t);
-			});
-			faction->statistics.VisitFactionInteractions([&peer](const Objects::Statistics::FactionInteraction&i)
-			{
-				Channels::Statistics::factionInteraction.SendTo(peer,i);
-			});
-			peer.SendSignal(Protocol::ChannelID::EndStatisticsSequence);
+			Game::Network::SendStatisticsTo(peer,faction);
 		}
 
 
@@ -253,24 +238,9 @@ namespace Network
 		{
 			auto&peer = *this->peer.lock();
 			//game over: send statistics of all factions
-			Objects::Statistics::EnterNetworkMode();
 			Objects::ForeachFaction([&peer](const Objects::PFaction&f)
 			{
-				Channels::Statistics::beginSequence.SendTo(peer,f->id);
-
-				f->statistics.VisitRounds([&peer](const Objects::Statistics::Round&r)
-				{
-					Channels::Statistics::round.SendTo(peer,r);
-				});
-				f->statistics.VisitEntityTypes([&peer](const Objects::Statistics::EntityType&t)
-				{
-					Channels::Statistics::entityType.SendTo(peer,t);
-				});
-				f->statistics.VisitFactionInteractions([&peer](const Objects::Statistics::FactionInteraction&i)
-				{
-					Channels::Statistics::factionInteraction.SendTo(peer,i);
-				});
-				peer.SendSignal(Protocol::ChannelID::EndStatisticsSequence);
+				Game::Network::SendStatisticsTo(peer,f);
 			});
 		}
 
@@ -434,6 +404,7 @@ namespace Network
 		return true;
 
 	}
+
 
 	bool		SessionIsStarted()
 	{

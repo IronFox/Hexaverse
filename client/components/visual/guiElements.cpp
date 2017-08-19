@@ -6,8 +6,6 @@
 #include "../../ExtRenderer/DirectX11.h"
 #include "../../DX11/texture_font.h"
 #include <container/buffer.h>
-#include "surfaceRenderer.h"
-#include "lineRenderer.h"
 #include <engine/aspect.h>
 #include <objects.h>
 #include "../clientEvents.h"
@@ -175,6 +173,8 @@ namespace GUI
 	}
 
 
+	/*virtual*/ void	Component::Render()
+	{}
 
 
 	Component::Component()
@@ -2245,6 +2245,162 @@ namespace GUI
 		if (triggerCallback)
 			OnTabChange();
 	}
+
+
+
+	void	PlotStack::Plot::AddNode(const index_t x, const float y)
+	{
+		PPlotStack s = stack.lock();
+
+		if (start == InvalidIndex)
+			start = x;
+		else
+		{
+			ASSERT_GREATER_OR_EQUAL__(x,start + data.Count());
+			float yOff = data.Last().yRaw;
+
+			const count_t intermediate = x - start - data.Count();
+
+			const index_t from = data.Count();
+			for (index_t xi = 0; xi < intermediate; xi++)
+			{
+				float fi = float(xi + 1) / float(intermediate + 1);
+				const float y0 = yOff * (1.f - fi) + y * (fi);
+				const float sampled = s->SampleStackedHeight(xi + from);
+				if (s->CountPlots() == 1 && sampled != 0)
+				{
+					const float sampled = s->SampleStackedHeight(xi + from);
+					FATAL__("Got "+String(sampled));
+				}
+				data << TPoint{y0,sampled,sampled+y0};
+			}
+		}
+
+		const float sampled = s->SampleStackedHeight(x);
+		const float yTop = y + sampled;
+		data << TPoint{y,sampled,yTop};
+
+		s->xRange.Include(x);
+		s->yRange.Include(yTop);
+
+		changed = true;
+	}
+
+
+	void	PlotStack::Plot::RenderSurfaces() const
+	{
+		surface.Rasterize();
+	}
+
+	void	PlotStack::Plot::RenderLines() const
+	{
+		lines.Rasterize();
+	}
+
+	/*virtual override*/ void	PlotStack::Render()
+	{
+		Super::Render();
+		const Rect<> plotRect = GetPlotRect();
+		foreach (graphs,g)
+			if (g->changed)
+				g->Replot(GetRect(),plotRect);
+		foreach (graphs,g)
+			g->RenderSurfaces();
+		foreach (graphs,g)
+			g->RenderLines();
+	}
+
+	/*virtual override*/ void	PlotStack::OnRectChange()
+	{
+		Super::OnRectChange();
+		const Rect<> plotRect = GetPlotRect();
+		foreach (graphs,g)
+			g->Replot(GetRect(),plotRect);
+	}
+
+	Rect<>			PlotStack::GetPlotRect() const
+	{
+		return Rect<>(xRange.start,0.f,xRange.end-1,yRange.max).ExpandRelatively(0.05f);
+	}
+
+
+
+	float	PlotStack::SampleStackedHeight(index_t x) const
+	{
+		if (!xRange.Contains(x))
+			return 0;
+
+		float rs = 0;
+		foreach (graphs,g)
+			rs += g->Sample(x);
+
+		return rs;
+	}
+
+
+	float	PlotStack::Plot::Sample(index_t x) const
+	{
+		if (x < start)
+			return 0;
+		x -= start;
+
+		if (x >= data.Count())
+			return 0;
+		return data[x].yRaw;
+	}
+
+
+	void	PlotStack::Plot::MakeVertex(const float x, const float y)
+	{
+		const float2	p{x,y};
+		lines.AddVertex(p,float4(color,1.f));
+		surface.AddVertex(p,float4(color,0.5f));
+	}
+
+
+	void	PlotStack::Plot::Replot(const Rect<>&componentRect, const Rect<>&dataRect)
+	{
+		changed = false;
+
+
+		surface.Clear();
+		lines.Clear();
+
+
+		for (index_t i = 0; i < data.Count(); i++)
+		{
+			float rX = dataRect.x.Relativate(i);
+			ASSERT_IS_CONSTRAINED__(rX,0,1);
+			MakeVertex( 
+				componentRect.x.Derelativate( rX ),
+				componentRect.y.Derelativate( dataRect.y.Relativate(data[i].yMin) )
+				);
+
+			MakeVertex( 
+				componentRect.x.Derelativate( rX ),
+				componentRect.y.Derelativate( dataRect.y.Relativate(data[i].yMax) )
+				);
+		}
+
+		for (index_t i = 1; i < data.Count(); i++)
+		{
+
+			surface.AddQuad(
+				((i-1)*2+1),
+				((i-1)*2),
+				((i)*2),
+				((i)*2+1));
+			lines.AddLine(
+				((i-1)*2+1),
+				((i)*2+1));
+		}
+		lines.AddLine(0,1);
+		lines.AddLine(data.Count()*2-1,data.Count()*2-2);
+
+		lines.Bake();
+		surface.Bake();
+	}
+
 
 
 
