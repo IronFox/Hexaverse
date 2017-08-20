@@ -2,6 +2,7 @@
 #include <objects/statistics.h>
 #include <objects/faction.h>
 #include <objects/prototypes.h>
+#include "../network.h"
 
 namespace GUI
 {
@@ -43,6 +44,7 @@ namespace GUI
 		static FFilter				lastFilter;
 		static index_t				lastFilterID = InvalidIndex;
 		static IndexTable<PButton>	filterButtons;
+		static UINT32				endRound=0;
 
 		static const float linePadding = 0.01f;
 
@@ -58,51 +60,172 @@ namespace GUI
 		}
 
 
-
-		static void AddStatsLine(const String&line)
+		namespace Stats
 		{
-			PLabel caption{new Label{line}};
-			statsPanel->AnchorBelowPrevious(caption,0.01f,0);
-			caption->alignCenter = false;
-			caption->SetVerticalPadding(linePadding);
-		}
 
-		static void AddUserLine(const String&prefix,const Objects::PFaction&f,const String&postFix)
-		{
-			PPanel panel{new Panel{}};
-			panel->fillBackground = false;
-			panel->SetAutomaticHeight(true);
+			bool left = true;
 
-			PLabel prefixLabel{new Label{prefix+' '}};
-			prefixLabel->alignCenter = false;
-			prefixLabel->LockToIdealHeight();
-			prefixLabel->LockToIdealWidth();
-			prefixLabel->ModifyAnchorConfig().Top().Set(0);
-			prefixLabel->ModifyAnchorConfig().Left().Set(0);
-			prefixLabel->SetVerticalPadding(linePadding);
-			panel->AddComponent(prefixLabel);
-			
-			PLabel factionLabel{new Label{f->GetName()}};
-			factionLabel->alignCenter = false;
-			factionLabel->SetColor(f->color);
-			factionLabel->ModifyAnchorConfig().Top().Set(0);
-			factionLabel->ModifyAnchorConfig().Left().Set(prefixLabel,0);
-			factionLabel->SetVerticalPadding(linePadding);
-			panel->AddComponent(factionLabel);
-			
-			if (postFix.IsNotEmpty())
+			static void Reset()
 			{
-				PLabel postFixLabel{new Label{' '+postFix}};
-				postFixLabel->ModifyAnchorConfig().Top().Set(0);
-				postFixLabel->ModifyAnchorConfig().Left().Set(factionLabel,0);
-				postFixLabel->alignCenter = false;
-				postFixLabel->SetVerticalPadding(linePadding);
-				panel->AddComponent(postFixLabel);
+				statsPanel->ClearComponents();
+				left = true;
 			}
 
-			statsPanel->AnchorBelowPrevious(panel,0.01f,0);
+			static void AddRow(const PComponent&c)
+			{
+				auto mod = c->ModifyAnchorConfig();
+				if (left)
+				{
+					mod.Left().Set(0);
+					mod.Top().Set(statsPanel->GetComponents().Last(),0);
+					if (statsPanel->CountComponents() > 1)
+						mod.Top().references << statsPanel->GetComponents().GetFromEnd(1);
+					mod.Right().Set(0.5f);
+				}
+				else
+				{
+					mod.Left().Set(0.5f);
+					mod.Top().Set(statsPanel->GetComponents().GetFromEnd(1),0);
+					if (statsPanel->CountComponents() > 2)
+						mod.Top().references << statsPanel->GetComponents().GetFromEnd(2);
+					mod.Right().Set(0);
+				}
+
+				statsPanel->AddComponent(c);
+				left = !left;
+			}
+
+			static void AddLine(const String&line)
+			{
+				PLabel caption{new Label{line}};
+				caption->alignCenter = false;
+				caption->SetVerticalPadding(linePadding);
+				AddRow(caption);
+			}
+
+			static void AddUserLine(const String&prefix,const Objects::PFaction&f,const String&postFix)
+			{
+				PPanel panel{new Panel{}};
+				panel->fillBackground = false;
+				panel->SetAutomaticHeight(true);
+
+				PLabel prefixLabel{new Label{prefix+' '}};
+				prefixLabel->alignCenter = false;
+				prefixLabel->LockToIdealHeight();
+				prefixLabel->LockToIdealWidth();
+				prefixLabel->ModifyAnchorConfig().Top().Set(0);
+				prefixLabel->ModifyAnchorConfig().Left().Set(0);
+				prefixLabel->SetVerticalPadding(linePadding);
+				panel->AddComponent(prefixLabel);
+			
+				PLabel factionLabel{new Label{f->GetName()}};
+				factionLabel->alignCenter = false;
+				factionLabel->SetColor(f->color);
+				factionLabel->ModifyAnchorConfig().Top().Set(0);
+				factionLabel->ModifyAnchorConfig().Left().Set(prefixLabel,0);
+				factionLabel->SetVerticalPadding(linePadding);
+				panel->AddComponent(factionLabel);
+			
+				if (postFix.IsNotEmpty())
+				{
+					PLabel postFixLabel{new Label{' '+postFix}};
+					postFixLabel->ModifyAnchorConfig().Top().Set(0);
+					postFixLabel->ModifyAnchorConfig().Left().Set(factionLabel,0);
+					postFixLabel->alignCenter = false;
+					postFixLabel->SetVerticalPadding(linePadding);
+					panel->AddComponent(postFixLabel);
+				}
+				AddRow(panel);
+			}
+
 		}
 
+
+		static void BuildFactionStatistics(const Objects::PFaction&f)
+		{
+			{
+				String title = f->GetName();
+				if (Network::winningFactionID == f->id)
+					title += " (WINNER)";
+				PLabel caption{new Label{title,1.2f}};
+				caption->SetColor(f->color);
+				//caption->alignCenter = false;
+				statsPanel->AnchorBelowPrevious(caption);
+			}
+
+			UINT64 totalEntitiesKilled = 0, totalEntitiesLost = 0, totalEntitiesProduced = 0, totalDamageDealt = 0, totalDamageReceived = 0;
+			f->statistics.VisitRounds([&](const Objects::Statistics::Round&r)
+			{
+				typedef Objects::Statistics::Metric M;
+				totalEntitiesProduced += r.metrics[M::UnitsBuilt];
+				totalEntitiesLost += r.metrics[M::UnitsKilledByOther] + r.metrics[M::UnitsStolenByOther];
+				totalEntitiesKilled += r.metrics[M::UnitsKilled];
+				totalDamageDealt += r.metrics[M::DamageDealt] + r.metrics[M::EMPDamageDealt];
+				totalDamageReceived += r.metrics[M::DamageReceived] + r.metrics[M::EMPDamageReceived];
+			});
+
+			UINT64 totalMobilesBuilt = 0;
+			UINT64 totalStructuresBuilt = 0;
+
+			f->statistics.VisitEntityTypes([&](const Objects::Statistics::EntityType&t)
+			{
+				typedef Objects::Statistics::Metric M;
+				bool isMobile = false;
+				if (t.type.IsVehicle() || !Objects::Prototypes::structures.Find(t.type))
+					isMobile = true;
+
+				if (isMobile)
+					totalMobilesBuilt += t.metrics[M::UnitsBuilt];
+				else
+					totalStructuresBuilt += t.metrics[M::UnitsBuilt];
+
+			});
+
+			Stats::AddLine("First round: "+String(f->statistics.GetStartingRound()));
+			Stats::AddLine("Final round: "+String(f->statistics.GetFinalRound()) + (f->statistics.GetFinalRound() == endRound ? " (game end)":""));
+
+			Stats::AddLine("Mobiles produced: "+String(totalMobilesBuilt));
+			Stats::AddLine("Structures built: "+String(totalStructuresBuilt));
+			Stats::AddLine("Units destroyed: "+String(totalEntitiesKilled));
+			Stats::AddLine("Damage dealt: "+String(totalDamageDealt));
+			Stats::AddLine("Units lost: "+String(totalEntitiesLost));
+			Stats::AddLine("Damage received: "+String(totalDamageReceived));
+
+				
+			Objects::PFaction nemesis,prey;
+
+			UINT64 damageNemesis=0,damagePrey =0;
+
+			f->statistics.VisitFactionInteractions([&](const Objects::Statistics::FactionInteraction&inter)
+			{
+				typedef Objects::Statistics::Metric M;
+				const UINT64 dealt = inter.metrics[M::DamageDealt];
+				const UINT64 received = inter.metrics[M::DamageReceived];
+				if (dealt > damagePrey)
+				{
+					damagePrey = dealt;
+					prey = Objects::Faction::FindByID(inter.remoteID);
+				}
+				if (received > damageNemesis)
+				{
+					damageNemesis = received;
+					nemesis = Objects::Faction::FindByID(inter.remoteID);
+				}
+			});
+
+			if (nemesis && nemesis == prey)
+			{
+				if (damageNemesis > damagePrey)
+					prey.reset();
+				else
+					nemesis.reset();
+			}
+
+			if (prey)
+				Stats::AddUserLine("Prey:",prey,"("+String(damagePrey)+" damage dealt)");
+			if (nemesis)
+				Stats::AddUserLine("Nemesis:",nemesis,"("+String(damageNemesis)+" damage received)");
+		}
 
 		static void RebuildStackedGraphAndStats()
 		{
@@ -116,89 +239,16 @@ namespace GUI
 					Objects::ForeachFaction([](const Objects::PFaction&f)
 					{
 						AddPlot(f);
-					});
+					},true);
 			}
 
 
 
-			statsPanel->ClearComponents();
+			Stats::Reset();
 			if (!chosenFaction.expired())
 			{
-				Objects::PFaction f = chosenFaction.lock();
+				BuildFactionStatistics(chosenFaction.lock());
 
-				PLabel caption{new Label{f->GetName(),1.2f}};
-				caption->SetColor(f->color);
-				caption->alignCenter = false;
-				statsPanel->AnchorBelowPrevious(caption);
-
-				UINT64 totalEntitiesKilled = 0, totalEntitiesLost = 0, totalEntitiesProduced = 0, totalDamageDealt = 0, totalDamageReceived = 0;
-				f->statistics.VisitRounds([&](const Objects::Statistics::Round&r)
-				{
-					typedef Objects::Statistics::Metric M;
-					totalEntitiesProduced += r.metrics[M::UnitsBuilt];
-					totalEntitiesLost += r.metrics[M::UnitsKilledByOther] + r.metrics[M::UnitsStolenByOther];
-					totalEntitiesKilled += r.metrics[M::UnitsKilled];
-					totalDamageDealt += r.metrics[M::DamageDealt] + r.metrics[M::EMPDamageDealt];
-					totalDamageReceived += r.metrics[M::DamageReceived] + r.metrics[M::EMPDamageReceived];
-				});
-
-				UINT64 totalMobilesBuilt = 0;
-				UINT64 totalStructuresBuilt = 0;
-
-				f->statistics.VisitEntityTypes([&](const Objects::Statistics::EntityType&t)
-				{
-					typedef Objects::Statistics::Metric M;
-					bool isMobile = false;
-					if (t.type.IsVehicle() || !Objects::Prototypes::structures.Find(t.type))
-						isMobile = true;
-
-					if (isMobile)
-						totalMobilesBuilt += t.metrics[M::UnitsBuilt];
-					else
-						totalStructuresBuilt += t.metrics[M::UnitsBuilt];
-
-				});
-
-				AddStatsLine("Mobiles produced: "+String(totalMobilesBuilt));
-				AddStatsLine("Structures built: "+String(totalStructuresBuilt));
-				AddStatsLine("Damage dealt: "+String(totalDamageDealt));
-				AddStatsLine("Units lost: "+String(totalEntitiesLost));
-				AddStatsLine("Damage received: "+String(totalDamageReceived));
-
-				
-				Objects::PFaction nemesis,prey;
-
-				UINT64 damageNemesis=0,damagePrey =0;
-
-				f->statistics.VisitFactionInteractions([&](const Objects::Statistics::FactionInteraction&inter)
-				{
-					typedef Objects::Statistics::Metric M;
-					const UINT64 dealt = inter.metrics[M::DamageDealt];
-					const UINT64 received = inter.metrics[M::DamageReceived];
-					if (dealt > damagePrey)
-					{
-						damagePrey = dealt;
-						prey = Objects::Faction::FindByID(inter.remoteID);
-					}
-					if (received > damageNemesis)
-					{
-						damageNemesis = received;
-						nemesis = Objects::Faction::FindByID(inter.remoteID);
-					}
-				});
-
-				if (nemesis && nemesis == prey)
-				{
-					if (damageNemesis > damagePrey)
-						prey.reset();
-					else
-						nemesis.reset();
-				}
-
-				if (prey)
-					AddUserLine("Prey:",prey,"("+String(damagePrey)+" damage dealt)");
-				if (nemesis)
-					AddUserLine("Nemesis:",nemesis,"("+String(damageNemesis)+" damage received)");
 			}
 
 		}
@@ -252,6 +302,14 @@ namespace GUI
 
 		void	Update()
 		{
+			endRound = 0;
+			Objects::ForeachFaction([](const Objects::PFaction&f)
+			{
+				endRound = M::Max(endRound,f->statistics.GetFinalRound());
+			},true);
+
+
+
 			if (!window)
 			{
 				window = GUI::Window::Create();
@@ -266,6 +324,7 @@ namespace GUI
 				factionPanel.reset(new Panel{});
 				statsPanel.reset(new Panel{});
 
+				statsPanel->fillBackground = false;
 				factionPanel->fillBackground = false;
 				metricPanel->fillBackground = false;
 
@@ -313,7 +372,8 @@ namespace GUI
 					AddMetric("Number of Units", Objects::Statistics::Metric::CurrentEntityCount);
 					AddMetric("Value of Units", Objects::Statistics::Metric::CurrentEntityMineralValue,true);
 					AddMetric("Sensor Coverage", Objects::Statistics::Metric::CurrentSensorCoverage);
-					AddMetric("Units lost", Objects::Statistics::Metric::Lost);
+					AddMetric("Units destroyed", Objects::Statistics::Metric::UnitsKilled);
+					AddMetric("Units lost", Objects::Statistics::Metric::UnitsKilledByOther);
 					AddMetric("Damage Dealt", Objects::Statistics::Metric::DamageDealt);
 					AddMetric("Damage Received", Objects::Statistics::Metric::DamageReceived);
 					AddMetric("Resources Destroyed", Objects::Statistics::Metric::ResourcesDestroyed);
@@ -363,7 +423,7 @@ namespace GUI
 				factionPanel->AnchorBelowPrevious(button,0.005f);
 				if (f == chosenFaction.lock())
 					button->Trigger();
-			});
+			},true);
 
 			RebuildStackedGraphAndStats();
 		}
