@@ -375,6 +375,8 @@ namespace Objects
 			count_t		CountOffGridCoverage(int channelHeight, const TVec3<>&)	const;
 			count_t		CountOffGridCoverage(const Sphere<>&)	const;
 
+			count_t		GetOffensiveCapabilities() const;
+
 			/**
 			Temporarily inserts a spherical sensor as to visualize the impact of a doomsday crater
 			*/
@@ -422,7 +424,6 @@ namespace Objects
 //		void	VerifyVisibilityNetwork();
 		bool	CanWithdrawFromStorage(const MobileEntity&v, Resource res, int demand);
 		int		GetStorage(const MobileEntity&v, Resource res);
-
 	#else
 		void	ChangeOwnership( const PWorldEntity&e,const OwnerParameter&newOwner, bool isNowMine);
 	#endif

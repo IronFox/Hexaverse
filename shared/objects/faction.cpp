@@ -21,6 +21,31 @@ namespace Objects
 		/*static*/ PFaction				Faction::nexus;
 
 
+		count_t Faction::GetOffensiveCapabilities() const
+		{
+			count_t rs = 0;
+			foreach (allMobiles,m0)
+			{
+				PMobileEntity m = m0->lock();
+				if (m)
+					rs += m->GetDamagePotentialPerRound();
+			}
+			foreach (storedMobiles,m0)
+			{
+				PMobileEntity m = m0->lock();
+				if (m)
+					rs += m->GetDamagePotentialPerRound();
+			}
+			foreach (towers,t0)
+			{
+				PTower t = t0->lock();
+				if (t)
+					rs += t->GetDamagePotentialPerRound();
+			}
+			return rs;
+		}
+
+
 		/*static*/ PFaction				Faction::Create(const TUniqueID&id, const String&name/* = ""*/)
 		{
 			PFaction rs(new Faction(id, name));
