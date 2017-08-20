@@ -536,11 +536,16 @@ namespace UI
 
 		Objects::PWorldEntity	Group::GetPrototype() const
 		{
-			Objects::PWorldEntity e = entries.First().lock();
-			ASSERT__(e);
-			if (!e->IsVehicle())
-				return Objects::Prototypes::Find(e->GetType());
-			return e;	//good enough
+			Objects::PWorldEntity rs;
+			foreach (entries,e0)
+			{
+				rs = e0->lock();
+				if (rs)
+					break;
+			}
+			if (!rs || rs->IsVehicle())
+				return rs;
+			return Objects::Prototypes::Find(rs->GetType());
 		}
 
 		bool		Group::InitSelection()
