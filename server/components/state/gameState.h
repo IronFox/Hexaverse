@@ -18,7 +18,9 @@ namespace Game
 	Not decremented when factions die. Restored from savegame.
 	*/
 	extern UINT32			mostFactionsAlive	/*=0*/;
-	extern Objects::PFaction	winner;	//if set indicates game is over
+
+	extern Objects::PFaction	winner;	//if set indicates game is over. Do not set manually. Use DeclareWinner()
+
 	extern Timer::Time		lastPhaseChange /*= timer.Now()*/;
 	extern bool				roundTimerPaused /*= true*/;
 	extern Evolver::Abstract*evolver;
@@ -192,6 +194,13 @@ namespace Game
 
 	void			PerformNewRoundLogic(float &atTime);	//includes UpdateHibernation()
 
+
+	/**
+	Sets the game winner to the specified faction.
+	Updates game phase to EndOfGame, and notifies all clients.
+	Winner must have been empty before.
+	*/
+	void			DeclareWinner(const Objects::PFaction&);
 
 	/**
 	Redetermines the mineral value offset used to calculate when to spawn AI units

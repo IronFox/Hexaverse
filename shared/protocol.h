@@ -1575,6 +1575,8 @@ namespace Protocol
 
 			TutorialAt,			// both: int32
 
+			WinningFaction,		// s2c: TUniqueID (if game has winner)
+
 			BeginStatisticsSequence,	//s2c: TUniqueID (factionID)
 			EndStatisticsSequence,		//s2c: <signal>
 			RoundStatistics,			//s2c: Statistics::Round

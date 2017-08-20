@@ -320,7 +320,6 @@ namespace ApplicationInterface
 	}
 
 
-
 	void	SignalNexusControlChange(const Objects::PFaction&f)
 	{
 		if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
@@ -328,10 +327,7 @@ namespace ApplicationInterface
 		if (RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::ConquerNexus)
 		{
 			if (f->nexusControl >= Game::Config::GetTargetNexusCount())
-			{
-				Game::winner = f;
-				Game::Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
-			}
+				Game::DeclareWinner(f);
 			else
 			{
 				Network::PClient client;

@@ -88,6 +88,8 @@ namespace Channels
 	TCP::ObjectSender<Protocol::OperationLacksResources,Protocol::ChannelID::OperationLacksResources>	operationLacksResources;
 	TCP::ObjectSender<Protocol::ResearchQueue, Protocol::ChannelID::ResearchQueue>					researchQueue;
 
+	TCP::ObjectSender<TUniqueID, Protocol::ChannelID::WinningFaction>								winningFaction;
+
 	namespace Statistics
 	{
 		TCP::ObjectSender<TUniqueID, Protocol::ChannelID::BeginStatisticsSequence>					beginSequence;
@@ -253,6 +255,9 @@ namespace Receiver
 		{
 			Game::Network::SendStatisticsTo(peer,f);
 		});
+
+		if (Game::winner)
+			Channels::winningFaction.SendTo(peer,Game::winner->id);
 
 		peer.SendSignal(Protocol::ChannelID::EndEverything);
 	}

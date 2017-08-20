@@ -34,6 +34,7 @@ namespace Network
 
 
 	extern Protocol::GameProgress	gameProgress;
+	extern TUniqueID				winningFactionID;
 
 	extern float			animationTimeFactor,	//!< Speed factor applied to active animations. Updated when server issues next animation phase.
 							roundTimer;

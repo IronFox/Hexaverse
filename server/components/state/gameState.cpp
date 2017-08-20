@@ -794,13 +794,19 @@ namespace Game
 		return livingPlayerFactions;
 	}
 
+
+	void	DeclareWinner(const Objects::PFaction&w)
+	{
+		DBG_ASSERT__(w);
+		DBG_ASSERT__(!winner);
+		winner = w;
+		Channels::winningFaction.SendTo(::Network::server,Game::winner->id,Channels::FactionLevel);
+		Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
+	}
+
+
 	void PerformNewRoundLogic(float&atTime)
 	{
-
-		
-
-
-
 		if (Config::basesRequired)
 		{
 			foreach (Objects::Faction::all,_f)
@@ -967,8 +973,7 @@ namespace Game
 						Objects::PFaction faction = Objects::Faction::all[i].lock();	
 						if (faction && !faction->isDead)
 						{
-							DBG_ASSERT__(!winner);
-							winner = faction;
+							DeclareWinner(faction);
 						}
 					}
 
@@ -977,7 +982,6 @@ namespace Game
 					//{
 					//	client->SendProgressUpdate("");
 					//}
-					Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
 				}
 			}
 

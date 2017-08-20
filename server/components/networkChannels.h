@@ -132,6 +132,7 @@ namespace Channels
 	extern TCP::ObjectSender<Protocol::OperationLacksResources,Protocol::ChannelID::OperationLacksResources>	operationLacksResources;
 	extern TCP::ObjectSender<Protocol::ResearchQueue, Protocol::ChannelID::ResearchQueue>				researchQueue;
 
+	extern TCP::ObjectSender<TUniqueID, Protocol::ChannelID::WinningFaction>							winningFaction;
 	namespace Statistics
 	{
 		extern TCP::ObjectSender<TUniqueID, Protocol::ChannelID::BeginStatisticsSequence>				beginSequence;

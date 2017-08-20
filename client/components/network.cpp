@@ -58,6 +58,8 @@ namespace Network
 
 
 	Protocol::GameProgress	gameProgress;
+	TUniqueID				winningFactionID = TUniqueID::Empty();
+
 
 	float			animationTimeFactor = 1,
 					roundTimer = 0;
@@ -467,6 +469,7 @@ namespace Network
 		roundTimer = -1;
 
 		GlobalEvents::FlushObjects();
+		Network::winningFactionID = TUniqueID::Empty();
 		Network::gameProgress.gameOver = false;
 		Network::gameProgress.gameWon = false;
 		Network::gameProgress.status = "";
@@ -1147,6 +1150,13 @@ namespace Network
 		}
 
 
+		void	WinningFaction(TUniqueID&id)
+		{
+			winningFactionID = id;
+			GUI::Statistics::Update();
+		}
+
+
 
 		namespace Statistics
 		{
@@ -1256,6 +1266,7 @@ namespace Network
 		TCP::Channel<NETA(Package::NetString<256>),0,Protocol::ChannelID::PlanetNames>				planetNames(Receiver::PlanetNames);
 
 		TCP::Channel<NET(INT32),0,Protocol::ChannelID::TutorialAt>									tutorialAt(Receiver::TutorialAt);
+		TCP::Channel<TUniqueID,0,Protocol::ChannelID::WinningFaction>								winningFaction(Receiver::WinningFaction);
 
 		namespace Statistics
 		{
@@ -1538,6 +1549,7 @@ namespace Network
 		client.InstallChannel(Channels::planetNames);
 
 		client.InstallChannel(Channels::tutorialAt);
+		client.InstallChannel(Channels::winningFaction);
 
 		client.InstallChannel(Channels::Statistics::beginSequence);
 		client.InstallChannel(Channels::Statistics::entityType);
