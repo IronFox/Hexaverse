@@ -2343,7 +2343,7 @@ namespace GUI
 		const Rect<> plotRect = GetPlotRect();
 		foreach (graphs,g)
 			if (g->changed)
-				g->Replot(GetRect(),plotRect);
+				g->Replot(GetRect(),plotRect, g == graphs.begin());
 		foreach (graphs,g)
 			g->RenderSurfaces();
 		foreach (graphs,g)
@@ -2355,7 +2355,7 @@ namespace GUI
 		Super::OnRectChange();
 		const Rect<> plotRect = GetPlotRect();
 		foreach (graphs,g)
-			g->Replot(GetRect(),plotRect);
+			g->Replot(GetRect(),plotRect, g == graphs.begin());
 	}
 
 	Rect<>			PlotStack::GetPlotRect() const
@@ -2398,7 +2398,7 @@ namespace GUI
 	}
 
 
-	void	PlotStack::Plot::Replot(const Rect<>&componentRect, const Rect<>&dataRect)
+	void	PlotStack::Plot::Replot(const Rect<>&componentRect, const Rect<>&dataRect, bool addBottomLine)
 	{
 		changed = false;
 
@@ -2433,6 +2433,11 @@ namespace GUI
 			lines.AddLine(
 				((i-1)*2+1),
 				((i)*2+1));
+
+			if (addBottomLine)
+				lines.AddLine(
+					((i-1)*2),
+					((i)*2));
 		}
 		lines.AddLine(0,1);
 		lines.AddLine(data.Count()*2-1,data.Count()*2-2);

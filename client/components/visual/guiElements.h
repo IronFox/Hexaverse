@@ -375,7 +375,7 @@ namespace GUI
 		private:
 			void	RenderSurfaces()	const;
 			void	RenderLines()	const;
-			void	Replot(const Rect<>&componentRect, const Rect<>&dataRect);
+			void	Replot(const Rect<>&componentRect, const Rect<>&dataRect, bool addBottomLine);
 
 
 			void	MakeVertex(const float x, const float y);
