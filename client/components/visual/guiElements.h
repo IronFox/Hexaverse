@@ -949,7 +949,12 @@ namespace GUI
 			void		Enable(Panel*,const Rect<>&rect);
 			void		Render(const Rect<>&rect);
 			float		GetOffset() const {return visible ? -viewTop : 0;}
-			static constexpr float Width = 0.03f;
+
+			static float	GetPixelWidth();
+			static float	GetScreenWidth();
+			static float	GetButtonScreenHeight();
+
+			//static constexpr float Width = 0.03f;
 			static constexpr float ContentSpacing = 0.006f;
 		};
 
@@ -988,7 +993,7 @@ namespace GUI
 		*/
 		float			GetVisibleScrollbarContentExpansion() const
 		{
-			return vscroll.visible ? TScrollbar::Width+TScrollbar::ContentSpacing : 0;
+			return vscroll.visible ? TScrollbar::GetScreenWidth()+TScrollbar::ContentSpacing : 0;
 		}
 
 		bool			autoHeight = false;
@@ -1440,6 +1445,11 @@ namespace GUI
 				return rs;
 			}
 
+
+		void				OnScreenSizeOrUIScaleChange()
+		{
+			UpdateOuterRect();
+		}
 
 	public:
 		Rect<>				context = Rect<>(0,0,1,1);

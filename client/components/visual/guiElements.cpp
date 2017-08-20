@@ -607,7 +607,7 @@ namespace GUI
 		bool rs = Super::ResolveAnchorAxis(axis,context); 
 		Rect<> childSpace = GetRect();
 		if (vscroll.visible)
-			childSpace.x.max = vmax(childSpace.x.min, childSpace.x.max - TScrollbar::ContentSpacing - TScrollbar::Width);
+			childSpace.x.max = vmax(childSpace.x.min, childSpace.x.max - GetVisibleScrollbarContentExpansion());
 		foreach (components,c) 
 			rs |= (*c)->ResolveAnchorAxis(axis,childSpace);
 		return rs;
@@ -621,6 +621,23 @@ namespace GUI
 		relativeThumbWidth = GetThumbPixelWidth() / ViewPortWidth();
 		UpdateDynamicSize();
 	}
+
+
+	/*static*/ float		Panel::TScrollbar::GetPixelWidth()
+	{
+		return Detail::textZoom * 15 * UI::GetScale();
+	}
+	
+	/*static*/ float		Panel::TScrollbar::GetScreenWidth()
+	{
+		return float(GetPixelWidth()) / ViewPortWidth();
+	}
+
+	/*static*/ float		Panel::TScrollbar::GetButtonScreenHeight()
+	{
+		return float(GetPixelWidth()) / ViewPortHeight();
+	}
+
 
 	/*static*/ float		Slider::GetThumbPixelWidth()
 	{
@@ -777,11 +794,14 @@ namespace GUI
 		}
 
 
-		float left = rect.x.max + TScrollbar::ContentSpacing;
-		float right = left + TScrollbar::Width;
-		float buttonHeight = TScrollbar::Width * display.GetPixelAspect();
-		Rect<> topButton(left,rect.y.max - buttonHeight,right,rect.y.max);
-		Rect<> bottomButton(left,rect.y.min,right,rect.y.min + buttonHeight);
+		const float left = rect.x.max - TScrollbar::GetScreenWidth() - ContentSpacing * 0.5f;
+		const float right = rect.x.max - ContentSpacing * 0.5f;
+		const float top = rect.y.max - ContentSpacing * 0.5f;
+		const float bottom = rect.y.min + ContentSpacing * 0.5f;
+		//const float aspect = display.GetPixelAspect();
+		const float buttonHeight = TScrollbar::GetButtonScreenHeight();
+		Rect<> topButton(left,top - buttonHeight,right,top);
+		Rect<> bottomButton(left,bottom,right,bottom + buttonHeight);
 
 		outline = Rect<>(left,bottomButton.y.max + TScrollbar::ContentSpacing,right,topButton.y.min - TScrollbar::ContentSpacing);
 		SurfaceRenderer::SetColor(float4(0,0,0,0.9));
@@ -968,68 +988,74 @@ namespace GUI
 		foreach (components,c)
 			rs |= (*c)->UpdateDynamicSize();
 
-		if (autoHeight)
+		float lowest = std::numeric_limits<float>::max();
+		foreach (components,c)
 		{
-			float lowest = std::numeric_limits<float>::max();
-			foreach (components,c)
+			const auto&bottom = (*c)->GetAnchorConfig().Bottom();
+			const auto&top = (*c)->GetAnchorConfig().Top();
+			switch (bottom.type)
 			{
-				const auto&bottom = (*c)->GetAnchorConfig().Bottom();
-				const auto&top = (*c)->GetAnchorConfig().Top();
-				switch (bottom.type)
-				{
-					case TAnchor::Disabled:
-						lowest = std::min(lowest, (*c)->GetRect().y.min);
-					break;
-					case TAnchor::Fixed:
-						if (bottom.references.IsEmpty() && top.type == TAnchor::Disabled)
-						{
-							float dist = bottom.distanceFromReference;
-							if (bottom.distanceType != TAnchor::RelativeToParentComponent)
-								lowest = std::min(lowest,GetRect().y.max - (*c)->GetRect().y.GetExtent() - bottom.ToScreenDistance(0.f,false));
-						}
-					break;
-					case TAnchor::Auto:
-						if (top.type == TAnchor::Auto)
-						{
-							lowest = std::min(lowest,GetRect().y.max - (*c)->GetRect().y.GetExtent());
-						}
-					break;
-				}
-			}
-			if (lowest == std::numeric_limits<float>::max())
-				lowest = GetRect().y.max;
-			float newY = lowest - autoHeightSpacing;
-			float currentHeight = GetRect().y.max - newY;
-			bool newVScroll = currentHeight > maxHeight;
-			bool changed = vscroll.visible != newVScroll;
-			rs |= changed;
-			if (newVScroll)
-			{
-				vscroll.scrollMax = currentHeight;
-				vscroll.viewSize = maxHeight;
-				float barSize = vmax(maxHeight,0.2f * GetHeight()*currentHeight);
-				float overSize = barSize - maxHeight;
-				vscroll.scrollMax += overSize;
-				vscroll.viewSize += overSize;
-
-				newY = GetRect().y.max - maxHeight;
-				{
-					auto rect = GetRect();
-					rs |= Set(rect.y.min,newY);
-					SetRect(rect);
-				}
-				vscroll.Enable(this,GetRect());
-			}
-			else
-			{
-				vscroll.visible = false;
-				{
-					auto rect = GetRect();
-					rs |= Set(rect.y.min,newY);
-					SetRect(rect);
-				}
+				case TAnchor::Disabled:
+					lowest = std::min(lowest, (*c)->GetRect().y.min);
+				break;
+				case TAnchor::Fixed:
+					if (bottom.references.IsEmpty() && top.type == TAnchor::Disabled)
+					{
+						float dist = bottom.distanceFromReference;
+						if (bottom.distanceType != TAnchor::RelativeToParentComponent)
+							lowest = std::min(lowest,GetRect().y.max - (*c)->GetRect().y.GetExtent() - bottom.ToScreenDistance(0.f,false));
+					}
+				break;
+				case TAnchor::Auto:
+					if (top.type == TAnchor::Auto)
+					{
+						lowest = std::min(lowest,GetRect().y.max - (*c)->GetRect().y.GetExtent());
+					}
+				break;
 			}
 		}
+		if (lowest == std::numeric_limits<float>::max())
+			lowest = GetRect().y.max;
+		float newY = lowest - autoHeightSpacing;
+		const float currentHeight = GetRect().y.max - newY;
+
+		const float maxHeight = autoHeight ? this->maxHeight : GetRect().y.GetExtent();
+
+		bool newVScroll = currentHeight > maxHeight;
+		bool changed = vscroll.visible != newVScroll;
+		rs |= changed;
+		if (newVScroll)
+		{
+			vscroll.scrollMax = currentHeight;
+			vscroll.viewSize = maxHeight;
+			float barSize = vmax(maxHeight,0.2f * GetHeight()*currentHeight);
+			float overSize = barSize - maxHeight;
+			vscroll.scrollMax += overSize;
+			vscroll.viewSize += overSize;
+
+			newY = GetRect().y.max - maxHeight;
+
+			if (autoHeight)
+			{
+				auto rect = GetRect();
+				rs |= Set(rect.y.min,newY);
+				SetRect(rect);
+			}
+			vscroll.Enable(this,GetRect());
+		}
+		else
+		{
+			vscroll.visible = false;
+
+			if (autoHeight)
+			{
+				auto rect = GetRect();
+				rs |= Set(rect.y.min,newY);
+				SetRect(rect);
+			}
+		}
+		
+
 
 		return rs;
 	}
