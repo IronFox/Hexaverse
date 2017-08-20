@@ -340,14 +340,7 @@ namespace Objects
 					foreach (Faction::all,f)
 					{
 						bool changed[BaseGrid::NumFamilies] = {false};
-						PFaction faction = f->lock();
-						if (faction)
-						{
-							faction->RegisterExplosionCrater(targetCell,terrainExplosionRadius,atTime);
-							//faction->knownWorld.Explode(targetCell,terrainExplosionRadius, changed);
-							//faction->SignalCoverageChange(changed,atTime);
-						}
-
+						(*f)->RegisterExplosionCrater(targetCell,terrainExplosionRadius,atTime);
 					}
 
 				foreach (affectedStructures, s)

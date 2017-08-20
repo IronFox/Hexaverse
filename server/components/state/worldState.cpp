@@ -153,9 +153,8 @@ namespace World
 			CheckCoverageSendTerrain(Objects::Faction::nexus);
 			foreach (Objects::Faction::all,_f)
 			{
-				Objects::PFaction faction = _f->lock();
-				if (faction)
-					CheckCoverageSendTerrain(faction);
+				const Objects::PFaction&faction = *_f;
+				CheckCoverageSendTerrain(faction);
 			}
 		}
 

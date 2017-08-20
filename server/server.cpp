@@ -397,7 +397,7 @@ namespace ApplicationInterface
 		{
 			//just set all. I'm lazy, and these are rare
 			foreach (Objects::Faction::all, f)
-				canSee.Append(f->lock());
+				canSee.Append(*f);
 			canSee.Append(Objects::Faction::nexus);
 		}
 		else

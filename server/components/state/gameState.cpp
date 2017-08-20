@@ -806,8 +806,8 @@ namespace Game
 
 		for (index_t i = 0; i < Objects::Faction::all.Count(); i++)
 		{
-			Objects::PFaction faction = Objects::Faction::all[i].lock();	//only player factions here: nexus is not included in ::all
-			if (faction && !faction->isDead)
+			const Objects::PFaction&faction = Objects::Faction::all[i];	//only player factions here: nexus is not included in ::all
+			if (!faction->isDead)
 				livingPlayerFactions ++;
 		}
 
@@ -834,9 +834,8 @@ namespace Game
 		{
 			foreach (Objects::Faction::all,_f)
 			{
-				Objects::PFaction faction = _f->lock();
-				if (faction)
-					faction->hasUnitClasses = Objects::Faction::UnitClass::None;
+				const Objects::PFaction&faction = *_f;
+				faction->hasUnitClasses = Objects::Faction::UnitClass::None;
 			}
 
 			Objects::RefreshCompoundCoverageIfNeeded(atTime);
@@ -901,7 +900,7 @@ namespace Game
 			count_t livingPlayerFactions = CountLivingPlayerFactions();
 			for (index_t i = 0; i < Objects::Faction::all.Count(); i++)
 			{
-				Objects::PFaction faction = Objects::Faction::all[i].lock();	//only player factions here: nexus is not included in ::all
+				Objects::PFaction faction = Objects::Faction::all[i];	//only player factions here: nexus is not included in ::all
 				if (faction)
 				{
 					String whyNot;
@@ -993,7 +992,7 @@ namespace Game
 					winner.reset();
 					for (index_t i = 0; i < Objects::Faction::all.Count(); i++)
 					{
-						Objects::PFaction faction = Objects::Faction::all[i].lock();	
+						Objects::PFaction faction = Objects::Faction::all[i];
 						if (faction && !faction->isDead)
 						{
 							DeclareWinner(faction);

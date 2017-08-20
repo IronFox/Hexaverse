@@ -17,7 +17,7 @@ namespace Objects
 
 	#ifndef CLIENT
 
-		/*static*/ Ctr::Buffer0<WFaction>	Faction::all;
+		/*static*/ Ctr::Buffer0<PFaction>	Faction::all;
 		/*static*/ PFaction				Faction::nexus;
 
 
@@ -1194,15 +1194,9 @@ namespace Objects
 				func(Faction::nexus);
 			for (index_t i = 0; i < Faction::all.Count(); i++)
 			{
-				PFaction f = Faction::all[i].lock();
-				if (!f)
-				{
-					Faction::all.Erase(i);
-					i--;
-				}
-				else
-					if (!f->isDead || includeDead)
-						func(f);
+				PFaction f = Faction::all[i];
+				if (!f->isDead || includeDead)
+					func(f);
 			}
 		#endif
 	}
@@ -1690,19 +1684,21 @@ namespace Objects
 			f->isDead = true;
 			f->hasUnitClasses = UnitClass::None;
 
-			if (f != nexus)
-			{
-				for (index_t i = 0; i < all.Count(); i++)
-					if (all[i].lock() == f)
-					{
-						all.Erase(i);
-						break;
-					}
-				LogEvent(EventClass::Preset::factionDeath, "Faction terminated: " + f->GetLogName());
-				ApplicationInterface::SignalFactionsChanged();
-			}
-			else
-				LogEvent(EventClass::Preset::remoteControlError, "Destructible entities destroyed, but cannot terminate nexus faction itself");
+			LogEvent(EventClass::Preset::factionDeath, "Destructible entities destroyed");
+			ApplicationInterface::SignalFactionsChanged();
+
+			//if (f != nexus)
+			//{
+			//	for (index_t i = 0; i < all.Count(); i++)
+			//		if (all[i].lock() == f)
+			//		{
+			//			all.Erase(i);
+			//			break;
+			//		}
+			//	LogEvent(EventClass::Preset::factionDeath, "Faction terminated: " + f->GetLogName());
+			//}
+			//else
+			//	LogEvent(EventClass::Preset::remoteControlError, "Destructible entities destroyed, but cannot terminate nexus faction itself");
 		}
 
 		/*static*/ PFaction			Faction::FindByID(const TUniqueID&id)
@@ -1711,7 +1707,7 @@ namespace Objects
 				return nexus;
 			foreach (all,_f)
 			{
-				PFaction f = _f->lock();
+				const PFaction&f = *_f;
 				if (f && f->id == id)
 					return f;
 			}

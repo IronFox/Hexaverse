@@ -1001,14 +1001,9 @@ namespace Objects
 				});
 			#else
 //				compounds.SetSize(Faction::all...)
-				for (const auto&f0 : Faction::all)
+				for (const auto&f : Faction::all)
 				{
-					PFaction faction = f0.lock();
-					DBG_ASSERT__(faction);
-					if (faction)
-					{
-						faction->UpdateCompoundCoverage();
-					}
+					f->UpdateCompoundCoverage();
 				}
 
 				Faction::nexus->UpdateCompoundCoverage();

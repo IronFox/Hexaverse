@@ -245,7 +245,7 @@ namespace Objects
 
 			Ctr::Buffer0<WTower>				towers;
 
-			static Ctr::Buffer0<WFaction>	all;
+			static Ctr::Buffer0<PFaction>	all;
 			static PFaction				nexus;
 
 			static PFaction				FindByID(const TUniqueID&);

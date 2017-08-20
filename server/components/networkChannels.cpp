@@ -420,7 +420,7 @@ namespace Receiver
 						&& RuntimeConfig::tutorialMode
 					#endif
 					&& Objects::Faction::all.IsNotEmpty()
-					&& (faction = Objects::Faction::all.first().lock())	//in tutorial mode (or debug mode) take first known faction
+					&& (faction = Objects::Faction::all.First())	//in tutorial mode (or debug mode) take first known faction
 				)
 			)
 		{
@@ -460,8 +460,8 @@ namespace Receiver
 				{
 					foreach (Objects::Faction::all,f)
 					{
-						ASSERT__(f->lock()->accessToken != response.factionToken);
-						LogEvent(EventSignificance::Debug,peer,"Known token: "+f->lock()->accessToken.ToString());
+						ASSERT__((*f)->accessToken != response.factionToken);
+						LogEvent(EventSignificance::Debug,peer,"Known token: "+(*f)->accessToken.ToString());
 					}
 				}
 
@@ -765,8 +765,7 @@ namespace Receiver
 			//LogEvent(EventClass::Preset::commandRejected ,peer,"Tried to access non-existent entity");
 			for (auto f : Objects::Faction::all)
 			{
-				Objects::PFaction faction = f.lock();
-				if (faction && faction->FindMarker(eid))
+				if (f->FindMarker(eid))
 				{
 					LogEvent(EventClass::Preset::commandRejected, peer, "Access denied (this is a marker/ghost/contact)");
 					//LogEvent(EventSignificance::Debug, peer, "(because it doesn't exist)");
