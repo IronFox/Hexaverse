@@ -787,8 +787,8 @@ namespace Reflection
 		void		Create()
 		{
 			terminate.reset(new CLI::Command(CLI::Command::Name("terminate reason"), &TerminateCommand, CLI::NoCompletion));
-			terminate->SetUniqueHelp("Terminates this faction and all of its destructible units. If the local faction is the Nexus faction, then it'll lose all its units but won't be deleted."
-							" Unless you have some backup savegame, this operation is irreversible. Don't use this on live ");
+			terminate->SetUniqueHelp("Terminates this faction and all of its destructible units."
+							" Unless you have some backup savegame, this operation is irreversible. Don't use this on live sessions, unless you have a very good reason to remove some player faction. Players will NOT like this.");
 
 		}
 
