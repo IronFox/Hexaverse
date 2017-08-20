@@ -232,11 +232,10 @@ namespace Objects
 			static PFaction				GetOrCreate(const TUniqueID&id);
 
 			/**/						Faction(const TUniqueID&id):researchState(this,false),statistics(this) {InitID(id,false);}
-
 		#else
 
-			CryptographicID	accessToken;
-			Ctr::Buffer0<WMobileEntity>		allMobiles,	//!< All mobiles registered in the world
+			CryptographicID				accessToken;
+			Ctr::Buffer0<WMobileEntity>	allMobiles,	//!< All mobiles registered in the world
 										storedMobiles;	//!< All mobile entities registered stored in some other entity. allMobiles and storedMobiles are exclusive of each other
 			#ifndef NO_SATELLITES
 				Buffer0<WSatellite>		satellites;
@@ -338,6 +337,11 @@ namespace Objects
 			Operates in O(n), n = number of structures owned by the local faction
 			*/
 			count_t		CountStructureType(ConstName structureType) const;
+			/**
+			Counts the number of mobiles/structures owned by the local faction that provide the specified turret type
+			Operates in O(n), n = number of units owned by the local faction
+			*/
+			count_t		CountTurretType(ConstName turretType) const;
 
 			//void		SignalCoverageChange(const bool*familiesChanges, float atTime);
 

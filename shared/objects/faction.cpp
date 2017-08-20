@@ -1000,6 +1000,22 @@ namespace Objects
 		}
 
 
+		count_t		Faction::CountTurretType(ConstName turretType) const
+		{
+			count_t rs = 0;
+			foreach (this->towers, t0)
+			{
+				if (t0->lock()->turret->constName == turretType)
+					rs ++;
+			}
+			foreach (this->allMobiles, m0)
+			{
+				if (m0->lock()->turret->constName == turretType)
+					rs ++;
+			}
+			return rs;
+		}
+
 
 
 		void		Faction::RegisterExplosionCrater(const Grid::HCellIdI&center, float radius, float t)
