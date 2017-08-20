@@ -627,7 +627,7 @@ namespace Animation
 					elif (currentTasks.IsNotEmpty() && Mergeable(newTasks.Last(),currentTasks.Last()))
 					{
 						while (currentTasks.IsNotEmpty() && !Mergeable(newTasks.First(),currentTasks.First()))
-							currentTasks.erase(index_t(0));
+							currentTasks.Erase(0);
 						if (currentTasks.IsEmpty())
 							fullRebuild = true;
 						else
