@@ -41,7 +41,10 @@ namespace GUI
 
 		static Objects::WFaction	chosenFaction;
 		static FFilter				lastFilter;
+		static index_t				lastFilterID = InvalidIndex;
+		static IndexTable<PButton>	filterButtons;
 
+		static const float linePadding = 0.01f;
 
 		static void AddPlot(const Objects::PFaction&f)
 		{
@@ -54,10 +57,14 @@ namespace GUI
 			});
 		}
 
+
+
 		static void AddStatsLine(const String&line)
 		{
 			PLabel caption{new Label{line}};
-			statsPanel->AnchorBelowPrevious(caption);
+			statsPanel->AnchorBelowPrevious(caption,0.01f,0);
+			caption->alignCenter = false;
+			caption->SetVerticalPadding(linePadding);
 		}
 
 		static void AddUserLine(const String&prefix,const Objects::PFaction&f,const String&postFix)
@@ -67,16 +74,20 @@ namespace GUI
 			panel->SetAutomaticHeight(true);
 
 			PLabel prefixLabel{new Label{prefix+' '}};
+			prefixLabel->alignCenter = false;
 			prefixLabel->LockToIdealHeight();
 			prefixLabel->LockToIdealWidth();
 			prefixLabel->ModifyAnchorConfig().Top().Set(0);
 			prefixLabel->ModifyAnchorConfig().Left().Set(0);
+			prefixLabel->SetVerticalPadding(linePadding);
 			panel->AddComponent(prefixLabel);
 			
 			PLabel factionLabel{new Label{f->GetName()}};
+			factionLabel->alignCenter = false;
 			factionLabel->SetColor(f->color);
 			factionLabel->ModifyAnchorConfig().Top().Set(0);
 			factionLabel->ModifyAnchorConfig().Left().Set(prefixLabel,0);
+			factionLabel->SetVerticalPadding(linePadding);
 			panel->AddComponent(factionLabel);
 			
 			if (postFix.IsNotEmpty())
@@ -84,10 +95,12 @@ namespace GUI
 				PLabel postFixLabel{new Label{' '+postFix}};
 				postFixLabel->ModifyAnchorConfig().Top().Set(0);
 				postFixLabel->ModifyAnchorConfig().Left().Set(factionLabel,0);
+				postFixLabel->alignCenter = false;
+				postFixLabel->SetVerticalPadding(linePadding);
 				panel->AddComponent(postFixLabel);
 			}
 
-			statsPanel->AnchorBelowPrevious(panel);
+			statsPanel->AnchorBelowPrevious(panel,0.01f,0);
 		}
 
 
@@ -113,8 +126,9 @@ namespace GUI
 			{
 				Objects::PFaction f = chosenFaction.lock();
 
-				PLabel caption{new Label{f->GetName()}};
+				PLabel caption{new Label{f->GetName(),1.2f}};
 				caption->SetColor(f->color);
+				caption->alignCenter = false;
 				statsPanel->AnchorBelowPrevious(caption);
 
 				UINT64 totalEntitiesKilled = 0, totalEntitiesLost = 0, totalEntitiesProduced = 0, totalDamageDealt = 0, totalDamageReceived = 0;
@@ -192,13 +206,32 @@ namespace GUI
 		static PButton AddStackFilter(const String&name, const FFilter&filter, bool trigger=false)
 		{
 			PButton button{new Button{name}};
-			//overviewMetrics << button;
+			static index_t idCounter = 0;
+			const index_t myID = idCounter++;
 
-			metricPanel->AnchorBelowPrevious(button);
-			button->SetTriggerFunction([filter]()
+			filterButtons.Set(myID,button);
+
+			metricPanel->AnchorBelowPrevious(button,0.005f);
+			WButton w = button;
+			button->SetTriggerFunction([filter,w,myID]()
 			{
+				PButton button = w.lock();
+				if (!button)
+					return;
+				if (button->IsAlwaysDown())
+					return;
+
+				if (lastFilterID != InvalidIndex)
+				{
+					PButton other = filterButtons.Require(lastFilterID);
+					other->SetAlwaysDown(false);
+				}
+				button->SetAlwaysDown(true);
+
+				lastFilterID = myID;
 				lastFilter = filter;
 				RebuildStackedGraphAndStats();
+
 			});
 
 			if (trigger)
@@ -232,6 +265,9 @@ namespace GUI
 				metricPanel.reset(new Panel{});
 				factionPanel.reset(new Panel{});
 				statsPanel.reset(new Panel{});
+
+				factionPanel->fillBackground = false;
+				metricPanel->fillBackground = false;
 
 				window->AddComponent(factionPanel);
 				window->AddComponent(metricPanel);
@@ -324,7 +360,7 @@ namespace GUI
 					button->SetAlwaysDown(!button->IsAlwaysDown());
 					RebuildStackedGraphAndStats();
 				});
-				factionPanel->AnchorBelowPrevious(button);
+				factionPanel->AnchorBelowPrevious(button,0.005f);
 				if (f == chosenFaction.lock())
 					button->Trigger();
 			});
