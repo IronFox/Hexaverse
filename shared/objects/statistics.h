@@ -190,6 +190,16 @@ namespace Objects
 		static void		EnterNetworkMode();
 
 
+		UINT32			GetStartingRound() const
+		{
+			return history.IsNotEmpty() ? history.First().mainRound : 0;
+		}
+
+		UINT32			GetFinalRound() const
+		{
+			return history.IsNotEmpty() ? history.Last().mainRound : 0;
+		}
+
 		#ifdef CLIENT
 			void			VisitRounds(const std::function<void(const Round&)>&f) const
 			{
