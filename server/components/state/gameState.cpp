@@ -799,9 +799,12 @@ namespace Game
 	{
 		DBG_ASSERT__(w);
 		DBG_ASSERT__(!winner);
+		LogEvent(EventClass{EventSignificance::Important,EventFlavor::ServerPrivate},"Declared winner: "+w->GetLogName());
+		LogEvent(EventClass::Preset::winningFaction,"Congratulations. "+w->GetName()+" wins this game!");
 		winner = w;
 		Channels::winningFaction.SendTo(::Network::server,Game::winner->id,Channels::FactionLevel);
-		Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
+		if (RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame)
+			Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
 	}
 
 

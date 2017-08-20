@@ -68,6 +68,7 @@ struct EventClass
 							important,
 							debug,
 							factionDeath,
+							winningFaction,
 							commandRejected,
 							operationAborted,
 							configuration,

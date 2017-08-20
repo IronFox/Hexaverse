@@ -32,6 +32,7 @@ EventClass	EventClass::Preset::error = EventClass(EventSignificance::NonFatalErr
 			EventClass::Preset::common = EventClass(EventSignificance::Common),
 			EventClass::Preset::debug = EventClass(EventSignificance::Debug),
 			EventClass::Preset::factionDeath = EventClass(EventSignificance::FactionFatal, EventFlavor::Loss),
+			EventClass::Preset::winningFaction = EventClass(EventSignificance::Important, EventFlavor::Gain),
 			EventClass::Preset::commandRejected = EventClass(EventSignificance::NonFatalError,EventFlavor::UserError),
 			EventClass::Preset::operationAborted = EventClass(EventSignificance::NonFatalError,EventFlavor::Loss),
 			EventClass::Preset::configuration = EventClass(EventSignificance::Common,EventFlavor::Neutral),
