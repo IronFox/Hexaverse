@@ -422,7 +422,7 @@
 			forget->ScaleVerticalPadding(0.5f);
 			forget->LockToIdealWidth();
 			{
-				auto cfg = forget->GetAnchorConfig();
+				auto cfg = forget->ModifyAnchorConfig();
 				cfg.Top().Set(0.f);
 				cfg.Right().Set(0.f);
 			}
@@ -430,9 +430,8 @@
 			p->AddComponent( forget );
 
 			{
-				auto cfg = pb->GetAnchorConfig();
+				auto cfg = pb->ModifyAnchorConfig();
 				cfg.Right().Set(forget,10,GUI::TAnchor::AbsolutePixels);
-				pb->SetAnchorConfig(cfg);
 			}
 
 			serverListPanel->AddComponent( p );
