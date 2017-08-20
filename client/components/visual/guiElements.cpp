@@ -1603,6 +1603,7 @@ namespace GUI
 				w1 += CharWidth(*c);
 			w = std::max(w,w1);
 		}
+		w *= 1.01f;
 		w += textout.GetScaledWidth('X') * (padding.left + padding.right);
 		textout.PopState();
 		return w;
@@ -1657,7 +1658,7 @@ namespace GUI
 		Array<String>	wrapped;
 		for (const String&raw : rawText)
 		{
-			wrapf(raw,width*0.9f,CharWidth,wrapped);
+			wrapf(raw,width,CharWidth,wrapped);
 			wrappedText.MoveAppend(wrapped);
 		}
 		if (wrappedText.IsEmpty())
@@ -2466,7 +2467,7 @@ namespace GUI
 				const TFloatRange<float> fx = FloatRange<float>(this->xRange.start,this->xRange.end-1);
 				float xLineStep = GetAxisStep(fx);
 
-				const index_t start = ceil(float(this->xRange.start) / xLineStep);
+				const index_t start = ceil(float(this->xRange.start+1) / xLineStep);
 				const count_t count = floor(float(this->xRange.GetExtent()) / xLineStep);
 
 				for (index_t i = start; i < start + count; i++)
