@@ -227,7 +227,7 @@ namespace GUI
 			if (punchingBag.faction)
 				Stats::AddUserLine("Punching Bag:",punchingBag.faction);
 			if (largestArmy.faction)
-				Stats::AddUserLine("General:",largestArmy.faction);
+				Stats::AddUserLine("Gun Hoarder:",largestArmy.faction);
 		}
 
 		static void BuildFactionStatistics(const Objects::PFaction&f)
