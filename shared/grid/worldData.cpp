@@ -1021,7 +1021,7 @@ namespace World
 	{
 		if (height < Grid::CellStack::BottomHeight)
 			return false;
-		return ChangeConditionally(Grid::CellStack::ToLayer(height),type,cond);
+		return ChangeConditionallyU(Grid::CellStack::ToLayer(height),type,cond);
 	}
 
 	bool				Data::ChangeSequence::ChangeConditionallyU(unsigned layer, /*Grid::Content*/ BYTE type, const FCondition&cond)
