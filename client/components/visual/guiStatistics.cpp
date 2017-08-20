@@ -86,7 +86,10 @@ namespace GUI
 				if (left)
 				{
 					mod.Left().Set(0);
-					mod.Top().Set(statsPanel->GetComponents().Last(),0);
+					if (statsPanel->GetComponents().IsNotEmpty())
+						mod.Top().Set(statsPanel->GetComponents().Last(),0);
+					else
+						mod.Top().Set(0.03f);
 					if (statsPanel->CountComponents() > 1)
 						mod.Top().references << statsPanel->GetComponents().GetFromEnd(1);
 					mod.Right().Set(0.5f);
@@ -94,7 +97,10 @@ namespace GUI
 				else
 				{
 					mod.Left().Set(0.5f);
-					mod.Top().Set(statsPanel->GetComponents().GetFromEnd(1),0);
+					if (statsPanel->CountComponents() > 1)
+						mod.Top().Set(statsPanel->GetComponents().GetFromEnd(1),0);
+					else
+						mod.Top().Set(0.03f);
 					if (statsPanel->CountComponents() > 2)
 						mod.Top().references << statsPanel->GetComponents().GetFromEnd(2);
 					mod.Right().Set(0);
