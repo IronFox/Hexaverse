@@ -917,6 +917,15 @@ namespace GUI
 		}
 	}
 
+	/*virtual override*/ void Button::Render()
+	{
+		bool lit = IsLit();
+		bool flipped = mousePressedComponent.get() == this;
+		Super::BaseRender((lit && !flipped)  || alwaysDown,(lit && flipped) || (alwaysDown && flipWhenAlwaysDown));
+		Super::RenderText(lit || alwaysDown);
+	}
+
+
 	/*static*/ void		ScrollButton::RenderArrow(const Rect<>&r, direction_t dir, bool lit)
 	{
 		SurfaceRenderer::SetColor(float4(1,1,1,lit?0.75f:0.5f));

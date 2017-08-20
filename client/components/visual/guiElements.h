@@ -621,7 +621,8 @@ namespace GUI
 		FTrigger		onPress;
 		std::function<bool()>	check;
 
-		bool					alwaysDown = false;
+		bool			alwaysDown = false;
+		bool			flipWhenAlwaysDown = true;
 
 	protected:
 		virtual bool	ClientIsLit() const override {return IsActive() && IsEnabled() && ContainsMouse();}
@@ -695,13 +696,7 @@ namespace GUI
 			return changed;
 		}
 
-		virtual void Render() override
-		{
-			bool lit = IsLit();
-			bool flipped = mousePressedComponent.get() == this;
-			Super::BaseRender((lit && !flipped)  || alwaysDown,(lit && flipped));
-			Super::RenderText(lit || alwaysDown);
-		}
+		virtual void Render() override;
 
 		virtual PComponent	OnMouseDown() override
 		{
