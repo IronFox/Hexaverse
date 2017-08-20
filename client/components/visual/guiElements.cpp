@@ -24,6 +24,7 @@ namespace GUI
 
 		Buffer0<GUI::PWindow,Swap>		visibleWindows;
 		Engine::OrthographicAspect<>	aspect;
+		Resolution						lastClientSpace;
 
 		struct Viewport
 		{
@@ -204,11 +205,11 @@ namespace GUI
 
 	static UINT ViewPortWidth()
 	{
-		return std::max(100U,display.GetClientWidth());
+		return std::max(100U,Detail::lastClientSpace.width);
 	}
 	static UINT ViewPortHeight()
 	{
-		return std::max(100U,display.GetClientHeight());
+		return std::max(100U,Detail::lastClientSpace.height);
 	}
 
 	static float2 ViewPortSizef()
@@ -616,8 +617,8 @@ namespace GUI
 	/*virtual override*/ void		Slider::OnScreenSizeOrUIScaleChange() 
 	{
 		Super::OnScreenSizeOrUIScaleChange();
-		relativeHeight = GetPixelHeight() / display.GetClientHeight();
-		relativeThumbWidth = GetThumbPixelWidth() / display.GetClientWidth();
+		relativeHeight = GetPixelHeight() / ViewPortHeight();
+		relativeThumbWidth = GetThumbPixelWidth() / ViewPortWidth();
 		UpdateDynamicSize();
 	}
 
@@ -667,7 +668,7 @@ namespace GUI
 				float fi = dragRange.Derelativate((float(i) * markersEvery) / max);
 				if (!bar.x.Contains(fi))
 				{
-					marker.x.SetCenter(fi,2.f/display.GetClientWidth());
+					marker.x.SetCenter(fi,2.f/ViewPortWidth());
 					SurfaceRenderer::Rasterize(marker);
 					//LineRenderer::Rasterize(float3(fi,rect.y.min,0.f), markerColor, float3(fi,y0,0.f),markerColor);
 					//LineRenderer::Rasterize(float3(fi,rect.y.max,0.f), markerColor, float3(fi,y1,0.f),markerColor);
@@ -1097,6 +1098,7 @@ namespace GUI
 
 	void SignalScreenResize()
 	{
+		Detail::lastClientSpace = display.GetClientSize();
 		foreach (Detail::allComponents,c)
 			(*c)->OnScreenSizeOrUIScaleChange();
 	}
