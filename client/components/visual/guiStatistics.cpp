@@ -43,6 +43,7 @@ namespace GUI
 		static Objects::WFaction	chosenFaction;
 		static FFilter				lastFilter;
 		static index_t				lastFilterID = InvalidIndex;
+		static bool					integrateFilter = false;
 		static IndexTable<PButton>	filterButtons;
 		static UINT32				endRound=0;
 
@@ -53,9 +54,16 @@ namespace GUI
 			const auto&stat = f->statistics;
 			PlotStack::Plot&g = overviewGraph->AddPlot(f->color);
 
-			stat.VisitRounds([&g](const Objects::Statistics::Round&round)
+			float last = 0;
+			stat.VisitRounds([&g,&last](const Objects::Statistics::Round&round)
 			{
-				g.AddNode(round.mainRound,lastFilter(round));
+				float current = lastFilter(round);
+				if (integrateFilter)
+				{
+					last += current;
+					current = last;
+				}
+				g.AddNode(round.mainRound,current);
 			});
 		}
 
@@ -253,7 +261,7 @@ namespace GUI
 
 		}
 
-		static PButton AddStackFilter(const String&name, const FFilter&filter, bool trigger=false)
+		static PButton AddStackFilter(const String&name, const FFilter&filter, bool trigger=false, bool integrate=false)
 		{
 			PButton button{new Button{name}};
 			static index_t idCounter = 0;
@@ -263,7 +271,7 @@ namespace GUI
 
 			metricPanel->AnchorBelowPrevious(button,0.005f);
 			WButton w = button;
-			button->SetTriggerFunction([filter,w,myID]()
+			button->SetTriggerFunction([filter,w,myID,integrate]()
 			{
 				PButton button = w.lock();
 				if (!button)
@@ -280,6 +288,7 @@ namespace GUI
 
 				lastFilterID = myID;
 				lastFilter = filter;
+				integrateFilter = integrate;
 				RebuildStackedGraphAndStats();
 
 			});
@@ -295,9 +304,9 @@ namespace GUI
 			return AddStackFilter(name, [res](const Objects::Statistics::Round&r){return r.production.level[res];},false);
 		}
 
-		static PButton AddMetric(const String&name, const Objects::Statistics::Metric m, bool trigger = false)
+		static PButton AddMetric(const String&name, const Objects::Statistics::Metric m, bool trigger = false, bool integrate=false)
 		{
-			return AddStackFilter(name, [m](const Objects::Statistics::Round&r){return r.metrics[m];},trigger);
+			return AddStackFilter(name, [m](const Objects::Statistics::Round&r){return r.metrics[m];},trigger,integrate);
 		}
 
 		void	Update()
@@ -369,14 +378,17 @@ namespace GUI
 
 
 				{
+					AddMetric("Winning Score", Objects::Statistics::Metric::WinningScore, true);
 					AddMetric("Number of Units", Objects::Statistics::Metric::CurrentEntityCount);
-					AddMetric("Value of Units", Objects::Statistics::Metric::CurrentEntityMineralValue,true);
+					AddMetric("Value of Units", Objects::Statistics::Metric::CurrentEntityMineralValue);
 					AddMetric("Sensor Coverage", Objects::Statistics::Metric::CurrentSensorCoverage);
-					AddMetric("Units destroyed", Objects::Statistics::Metric::UnitsKilled);
-					AddMetric("Units lost", Objects::Statistics::Metric::UnitsKilledByOther);
-					AddMetric("Damage Dealt", Objects::Statistics::Metric::DamageDealt);
-					AddMetric("Damage Received", Objects::Statistics::Metric::DamageReceived);
-					AddMetric("Resources Destroyed", Objects::Statistics::Metric::ResourcesDestroyed);
+					AddMetric("Units destroyed", Objects::Statistics::Metric::UnitsKilled,false,true);
+					AddMetric("Units lost", Objects::Statistics::Metric::UnitsKilledByOther,false,true);
+					AddMetric("Damage Dealt", Objects::Statistics::Metric::DamageDealt,false,true);
+					AddMetric("Damage Received", Objects::Statistics::Metric::DamageReceived,false,true);
+					AddMetric("Resources Destroyed", Objects::Statistics::Metric::ResourcesDestroyed,false,true);
+					AddMetric("Nexus Ports owned", Objects::Statistics::Metric::NexusPortsOwned);
+					AddMetric("Nexus Ports controlled", Objects::Statistics::Metric::NexusPortsControlled);
 					AddProduction("Mineral Output",Objects::Resource::Minerals);
 					AddProduction("Fuel Output",Objects::Resource::Fuel);
 					AddProduction("Uranium Output",Objects::Resource::Uranium);
