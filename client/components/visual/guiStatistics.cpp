@@ -118,7 +118,7 @@ namespace GUI
 				AddRow(caption);
 			}
 
-			static void AddUserLine(const String&prefix,const Objects::PFaction&f,const String&postFix)
+			static void AddUserLine(const String&prefix,const Objects::PFaction&f,const String&postFix="")
 			{
 				PPanel panel{new Panel{}};
 				panel->fillBackground = false;
@@ -155,6 +155,80 @@ namespace GUI
 
 		}
 
+		struct TFactionStats
+		{
+			UINT64 totalEntitiesKilled = 0,
+					totalEntitiesLost = 0, 
+					totalEntitiesProduced = 0, 
+					totalDamageDealt = 0, 
+					highestOffensiveCapabilities = 0,
+					totalDamageReceived = 0;
+		};
+
+		static TFactionStats GetFactionStats(const Objects::PFaction&f)
+		{
+			TFactionStats rs;
+			f->statistics.VisitRounds([&](const Objects::Statistics::Round&r)
+			{
+				typedef Objects::Statistics::Metric M;
+				rs.totalEntitiesProduced += r.metrics[M::UnitsBuilt];
+				rs.totalEntitiesLost += r.metrics[M::UnitsKilledByOther] + r.metrics[M::UnitsStolenByOther];
+				rs.totalEntitiesKilled += r.metrics[M::UnitsKilled];
+				rs.totalDamageDealt += r.metrics[M::DamageDealt] + r.metrics[M::EMPDamageDealt];
+				rs.totalDamageReceived += r.metrics[M::DamageReceived] + r.metrics[M::EMPDamageReceived];
+				rs.highestOffensiveCapabilities = std::max(rs.highestOffensiveCapabilities,r.metrics[M::OffensiveCapabilities]);
+			});
+			return rs;
+		}
+
+
+		struct TVictor
+		{
+			UINT64 score = 0;
+			Objects::PFaction	faction;
+
+			void	Check(const Objects::PFaction&other, UINT64 otherScore)
+			{
+				if (score >= otherScore)
+					return;
+				score = otherScore;
+				faction = other;
+			}
+		};
+
+		static void BuildGeneralStatistics()
+		{
+			{
+				String title = "Match Overview";
+				PLabel caption{new Label{title,1.2f}};
+				statsPanel->AnchorBelowPrevious(caption);
+			}
+
+			Stats::AddLine("World: "+Network::worldIDString);
+			Stats::AddLine("Participants: "+String(Objects::Faction::allKnown.Count()));
+
+
+			Stats::AddLine("Total rounds: "+String(endRound));
+
+			Objects::PFaction winner = Objects::Faction::FindByID(Network::winningFactionID);
+			if (winner)
+				Stats::AddUserLine("Winner:",winner,"");
+
+			TVictor	warlord, punchingBag, largestArmy;
+			Objects::ForeachFaction([&](const Objects::PFaction&f)
+			{
+				const TFactionStats stats= GetFactionStats(f);
+				warlord.Check(f,stats.totalDamageDealt);
+				punchingBag.Check(f,stats.totalDamageReceived);
+				largestArmy.Check(f,stats.highestOffensiveCapabilities);
+			});
+			if (warlord.faction)
+				Stats::AddUserLine("Warlord:",warlord.faction);
+			if (punchingBag.faction)
+				Stats::AddUserLine("Punching Bag:",punchingBag.faction);
+			if (largestArmy.faction)
+				Stats::AddUserLine("General:",largestArmy.faction);
+		}
 
 		static void BuildFactionStatistics(const Objects::PFaction&f)
 		{
@@ -168,16 +242,7 @@ namespace GUI
 				statsPanel->AnchorBelowPrevious(caption);
 			}
 
-			UINT64 totalEntitiesKilled = 0, totalEntitiesLost = 0, totalEntitiesProduced = 0, totalDamageDealt = 0, totalDamageReceived = 0;
-			f->statistics.VisitRounds([&](const Objects::Statistics::Round&r)
-			{
-				typedef Objects::Statistics::Metric M;
-				totalEntitiesProduced += r.metrics[M::UnitsBuilt];
-				totalEntitiesLost += r.metrics[M::UnitsKilledByOther] + r.metrics[M::UnitsStolenByOther];
-				totalEntitiesKilled += r.metrics[M::UnitsKilled];
-				totalDamageDealt += r.metrics[M::DamageDealt] + r.metrics[M::EMPDamageDealt];
-				totalDamageReceived += r.metrics[M::DamageReceived] + r.metrics[M::EMPDamageReceived];
-			});
+			const auto fStats = GetFactionStats(f);
 
 			UINT64 totalMobilesBuilt = 0;
 			UINT64 totalStructuresBuilt = 0;
@@ -201,10 +266,10 @@ namespace GUI
 
 			Stats::AddLine("Mobiles produced: "+String(totalMobilesBuilt));
 			Stats::AddLine("Structures built: "+String(totalStructuresBuilt));
-			Stats::AddLine("Units destroyed: "+String(totalEntitiesKilled));
-			Stats::AddLine("Damage dealt: "+String(totalDamageDealt));
-			Stats::AddLine("Units lost: "+String(totalEntitiesLost));
-			Stats::AddLine("Damage received: "+String(totalDamageReceived));
+			Stats::AddLine("Units destroyed: "+String(fStats.totalEntitiesKilled));
+			Stats::AddLine("Damage dealt: "+String(fStats.totalDamageDealt));
+			Stats::AddLine("Units lost: "+String(fStats.totalEntitiesLost));
+			Stats::AddLine("Damage received: "+String(fStats.totalDamageReceived));
 
 				
 			Objects::PFaction nemesis,prey;
@@ -265,11 +330,9 @@ namespace GUI
 
 			Stats::Reset();
 			if (!chosenFaction.expired())
-			{
 				BuildFactionStatistics(chosenFaction.lock());
-
-			}
-
+			else
+				BuildGeneralStatistics();
 		}
 
 		static PButton AddStackFilter(const String&name, const FFilter&filter, bool trigger=false, bool integrate=false)
