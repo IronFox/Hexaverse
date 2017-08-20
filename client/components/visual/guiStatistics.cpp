@@ -114,7 +114,8 @@ namespace GUI
 			{
 				PLabel caption{new Label{line}};
 				caption->alignCenter = false;
-				caption->SetVerticalPadding(linePadding);
+				//caption->SetVerticalPadding(linePadding);
+				caption->SetPadding(0);
 				AddRow(caption);
 			}
 
@@ -130,7 +131,9 @@ namespace GUI
 				prefixLabel->LockToIdealWidth();
 				prefixLabel->ModifyAnchorConfig().Top().Set(0);
 				prefixLabel->ModifyAnchorConfig().Left().Set(0);
-				prefixLabel->SetVerticalPadding(linePadding);
+				//prefixLabel->SetVerticalPadding(linePadding);
+				prefixLabel->SetPadding(0.f);
+				prefixLabel->LockToIdealWidth();
 				panel->AddComponent(prefixLabel);
 			
 				PLabel factionLabel{new Label{f->GetName()}};
@@ -138,7 +141,9 @@ namespace GUI
 				factionLabel->SetColor(f->color);
 				factionLabel->ModifyAnchorConfig().Top().Set(0);
 				factionLabel->ModifyAnchorConfig().Left().Set(prefixLabel,0);
-				factionLabel->SetVerticalPadding(linePadding);
+				//factionLabel->SetVerticalPadding(linePadding);
+				factionLabel->SetPadding(0.f);
+				factionLabel->LockToIdealWidth();
 				panel->AddComponent(factionLabel);
 			
 				if (postFix.IsNotEmpty())
@@ -147,7 +152,9 @@ namespace GUI
 					postFixLabel->ModifyAnchorConfig().Top().Set(0);
 					postFixLabel->ModifyAnchorConfig().Left().Set(factionLabel,0);
 					postFixLabel->alignCenter = false;
-					postFixLabel->SetVerticalPadding(linePadding);
+					//postFixLabel->SetVerticalPadding(linePadding);
+					postFixLabel->SetPadding(0.f);
+					postFixLabel->LockToIdealWidth();
 					panel->AddComponent(postFixLabel);
 				}
 				AddRow(panel);
@@ -162,7 +169,12 @@ namespace GUI
 					totalEntitiesProduced = 0, 
 					totalDamageDealt = 0, 
 					highestOffensiveCapabilities = 0,
+					mostTerraformers = 0,
+					mostFactories = 0,
 					totalDamageReceived = 0;
+
+			UINT64	totalMobilesBuilt = 0;
+			UINT64	totalStructuresBuilt = 0;
 		};
 
 		static TFactionStats GetFactionStats(const Objects::PFaction&f)
@@ -176,8 +188,27 @@ namespace GUI
 				rs.totalEntitiesKilled += r.metrics[M::UnitsKilled];
 				rs.totalDamageDealt += r.metrics[M::DamageDealt] + r.metrics[M::EMPDamageDealt];
 				rs.totalDamageReceived += r.metrics[M::DamageReceived] + r.metrics[M::EMPDamageReceived];
+
 				rs.highestOffensiveCapabilities = std::max(rs.highestOffensiveCapabilities,r.metrics[M::OffensiveCapabilities]);
+				rs.mostTerraformers = std::max(rs.mostTerraformers,r.metrics[M::NumTerraformers]);
+				rs.mostFactories = std::max(rs.mostFactories,r.metrics[M::NumFactories]);
 			});
+
+
+
+			f->statistics.VisitEntityTypes([&](const Objects::Statistics::EntityType&t)
+			{
+				typedef Objects::Statistics::Metric M;
+				bool isMobile = false;
+				if (t.type.IsVehicle() || !Objects::Prototypes::structures.Find(t.type))
+					isMobile = true;
+
+				if (isMobile)
+					rs.totalMobilesBuilt += t.metrics[M::UnitsBuilt];
+				else
+					rs.totalStructuresBuilt += t.metrics[M::UnitsBuilt];
+			});
+
 			return rs;
 		}
 
@@ -214,20 +245,29 @@ namespace GUI
 			if (winner)
 				Stats::AddUserLine("Winner:",winner,"");
 
-			TVictor	warlord, punchingBag, largestArmy;
+			TVictor	warlord, punchingBag, largestArmy, mostTerraformers, mostStructuresBuilt, mostMobilesBuilt;
 			Objects::ForeachFaction([&](const Objects::PFaction&f)
 			{
 				const TFactionStats stats= GetFactionStats(f);
 				warlord.Check(f,stats.totalDamageDealt);
 				punchingBag.Check(f,stats.totalDamageReceived);
 				largestArmy.Check(f,stats.highestOffensiveCapabilities);
+				mostTerraformers.Check(f,stats.mostTerraformers);
+				mostStructuresBuilt.Check(f,stats.totalStructuresBuilt);
+				mostMobilesBuilt.Check(f,stats.totalMobilesBuilt);
 			});
 			if (warlord.faction)
-				Stats::AddUserLine("Warlord:",warlord.faction);
+				Stats::AddUserLine("Most inflicted:",warlord.faction);
 			if (punchingBag.faction)
-				Stats::AddUserLine("Punching Bag:",punchingBag.faction);
+				Stats::AddUserLine("Most lost:",punchingBag.faction);
 			if (largestArmy.faction)
-				Stats::AddUserLine("Gun Hoarder:",largestArmy.faction);
+				Stats::AddUserLine("Biggest arsenal:",largestArmy.faction);
+			if (mostTerraformers.faction)
+				Stats::AddUserLine("Most Terraformers:",mostTerraformers.faction);
+			if (mostStructuresBuilt.faction)
+				Stats::AddUserLine("Most buildings built:",mostStructuresBuilt.faction);
+			if (mostMobilesBuilt.faction)
+				Stats::AddUserLine("Most mobiles built:",mostMobilesBuilt.faction);
 		}
 
 		static void BuildFactionStatistics(const Objects::PFaction&f)
@@ -244,28 +284,12 @@ namespace GUI
 
 			const auto fStats = GetFactionStats(f);
 
-			UINT64 totalMobilesBuilt = 0;
-			UINT64 totalStructuresBuilt = 0;
-
-			f->statistics.VisitEntityTypes([&](const Objects::Statistics::EntityType&t)
-			{
-				typedef Objects::Statistics::Metric M;
-				bool isMobile = false;
-				if (t.type.IsVehicle() || !Objects::Prototypes::structures.Find(t.type))
-					isMobile = true;
-
-				if (isMobile)
-					totalMobilesBuilt += t.metrics[M::UnitsBuilt];
-				else
-					totalStructuresBuilt += t.metrics[M::UnitsBuilt];
-
-			});
 
 			Stats::AddLine("First round: "+String(f->statistics.GetStartingRound()));
 			Stats::AddLine("Final round: "+String(f->statistics.GetFinalRound()) + (f->statistics.GetFinalRound() == endRound ? " (game end)":""));
 
-			Stats::AddLine("Mobiles produced: "+String(totalMobilesBuilt));
-			Stats::AddLine("Structures built: "+String(totalStructuresBuilt));
+			Stats::AddLine("Mobiles produced: "+String(fStats.totalMobilesBuilt));
+			Stats::AddLine("Structures built: "+String(fStats.totalStructuresBuilt));
 			Stats::AddLine("Units destroyed: "+String(fStats.totalEntitiesKilled));
 			Stats::AddLine("Damage dealt: "+String(fStats.totalDamageDealt));
 			Stats::AddLine("Units lost: "+String(fStats.totalEntitiesLost));
@@ -302,9 +326,9 @@ namespace GUI
 			}
 
 			if (prey)
-				Stats::AddUserLine("Prey:",prey,"("+String(damagePrey)+" damage dealt)");
+				Stats::AddUserLine("Prey:",prey/*,"("+String(damagePrey)+" damage dealt)"*/);
 			if (nemesis)
-				Stats::AddUserLine("Nemesis:",nemesis,"("+String(damageNemesis)+" damage received)");
+				Stats::AddUserLine("Nemesis:",nemesis/*,"("+String(damageNemesis)+" damage received)"*/);
 		}
 
 		static void RebuildStackedGraphAndStats()
@@ -343,6 +367,7 @@ namespace GUI
 
 			filterButtons.Set(myID,button);
 
+			button->SetVerticalPadding(0.5f);
 			metricPanel->AnchorBelowPrevious(button,0.005f);
 			WButton w = button;
 			button->SetTriggerFunction([filter,w,myID,integrate]()
@@ -460,14 +485,16 @@ namespace GUI
 					AddMetric("Number of Units", Objects::Statistics::Metric::CurrentEntityCount);
 					AddMetric("Value of Units", Objects::Statistics::Metric::CurrentEntityMineralValue);
 					AddMetric("Sensor Coverage", Objects::Statistics::Metric::CurrentSensorCoverage);
+					AddMetric("Offensive strength", Objects::Statistics::Metric::OffensiveCapabilities);
 					AddMetric("Units destroyed", Objects::Statistics::Metric::UnitsKilled,false,true);
 					AddMetric("Units lost", Objects::Statistics::Metric::UnitsKilledByOther,false,true);
-					AddMetric("Damage Dealt", Objects::Statistics::Metric::DamageDealt,false,true);
-					AddMetric("Damage Received", Objects::Statistics::Metric::DamageReceived,false,true);
-					AddMetric("Resources Destroyed", Objects::Statistics::Metric::ResourcesDestroyed,false,true);
+					AddMetric("Damage inflicted", Objects::Statistics::Metric::DamageDealt,false,true);
+					AddMetric("Damage suffered", Objects::Statistics::Metric::DamageReceived,false,true);
+					AddMetric("Resources destroyed", Objects::Statistics::Metric::ResourcesDestroyed,false,true);
 					AddMetric("Nexus Ports owned", Objects::Statistics::Metric::NexusPortsOwned);
 					AddMetric("Nexus Ports controlled", Objects::Statistics::Metric::NexusPortsControlled);
 					AddMetric("Research speed", Objects::Statistics::Metric::ResearchSpeed);
+					AddMetric("Terraformers", Objects::Statistics::Metric::NumTerraformers);
 					AddProduction("Mineral Output",Objects::Resource::Minerals);
 					AddProduction("Fuel Output",Objects::Resource::Fuel);
 					AddProduction("Uranium Output",Objects::Resource::Uranium);
