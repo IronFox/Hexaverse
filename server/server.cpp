@@ -501,6 +501,19 @@ void MyFatal(const FatalDescriptor&descriptor)
 	DisplayMessage(PRODUCT_NAME" Server Error",message,false);
 	//ErrMessage("Hexaverse Server: "+message);
 	std::cerr << message << std::endl;
+
+	try
+	{
+		PathString out = RuntimeConfig::ConfigFile("saves/crash.hsf");
+		Logging::WriteEvent(EventClass::Preset::uncommon,"Trying to save game to "+String(out),nullptr,nullptr,Objects::OwnerParameter());
+		FileIO::Save(out);
+		Logging::WriteEvent(EventClass::Preset::uncommon,"Success",nullptr,nullptr,Objects::OwnerParameter());
+	}
+	catch (...)
+	{
+		Logging::WriteEvent(EventClass::Preset::error,"Failed to save to file",nullptr,nullptr,Objects::OwnerParameter());
+	}
+
 	#ifdef _DEBUG
 		__debugbreak();
 		std::abort();
