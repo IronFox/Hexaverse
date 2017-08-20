@@ -126,7 +126,7 @@ namespace Objects
 
 
 	private:
-		int						totalContribution = 0;
+		int						totalContribution = 0,	lastSpeed = 0;
 		Ctr::Buffer0<PResearchTopic>	researchQueue;
 		bool					factionIsNexus;
 		static void				LogLua(const String&msg);
@@ -217,6 +217,8 @@ namespace Objects
 		bool					DropResearchTask(const PResearchTopic&);
 		bool					DropResearchTask(index_t serialIndex) 	{return DropResearchTask(GetTopic(serialIndex));}
 		bool					ResearchQueueIsFull() const;
+
+		int						GetResearchSpeed() const	{return lastSpeed;}
 
 		void					Import(const Ctr::ArrayRef<const BYTE>&serializedState);
 		void					Export(Ctr::Array<BYTE>&outSerializedState) const;

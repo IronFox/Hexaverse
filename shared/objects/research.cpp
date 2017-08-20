@@ -910,6 +910,7 @@ namespace Objects
 			DBG_ASSERT_EQUAL__(next,res->getProgress(researchState));
 			break;
 		}
+		lastSpeed = totalContribution;
 		totalContribution = 0;
 		BaseAttributeCache::versionCounter++;
 	}
