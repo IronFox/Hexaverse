@@ -1047,9 +1047,12 @@ namespace GUI
 		AcceptParentWindow(w);
 		if (c)
 		{
+			active = c->active;
 			AcceptStateFromParent(c->CreatePropagating());
 			InvalidateAutoLayout();
 		}
+		else
+			active = false;
 	}
 
 
