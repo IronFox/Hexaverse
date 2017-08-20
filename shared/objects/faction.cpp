@@ -21,6 +21,12 @@ namespace Objects
 		/*static*/ PFaction				Faction::nexus;
 
 
+
+		count_t	Faction::GetWinningScore() const
+		{
+			return 100000 * this->nexusControl + 10000ULL* this->acquiringNexusControl + GetOffensiveCapabilities()*100 + GetTotalEntityValue();
+		}
+
 		count_t Faction::GetOffensiveCapabilities() const
 		{
 			count_t rs = 0;

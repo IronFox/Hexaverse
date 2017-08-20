@@ -375,6 +375,7 @@ namespace Objects
 			count_t		CountOffGridCoverage(int channelHeight, const TVec3<>&)	const;
 			count_t		CountOffGridCoverage(const Sphere<>&)	const;
 
+			count_t		GetWinningScore() const;
 			count_t		GetOffensiveCapabilities() const;
 			count_t		GetTotalEntityValue() const;
 
