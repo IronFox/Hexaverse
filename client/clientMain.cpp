@@ -497,7 +497,7 @@ namespace ApplicationInterface
 		ch.target = c;
 		if (deployingWhat)
 			ch.deployingWhat.Set0() = deployingWhat->id;
-		LogEvent(EventSignificance::Common,"Signalling choice intersection with "+ch.target.ToString());
+		LogEvent(EventSignificance::Common,"Signalling choice intersection with "+ToString(ch.target));
 		Network::Channels::choiceIntersection.SendTo(Network::client,ch);
 
 		#ifdef HAS_WINDOW
@@ -2473,7 +2473,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 										selectionDone = true;
 										#ifdef _DEBUG
 											if (Engine::input.pressed[Key::Shift])
-												ShowMessage(target.ToString());
+												ShowMessage(ToString(target));
 										#endif
 									}
 								}

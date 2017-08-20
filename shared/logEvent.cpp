@@ -176,6 +176,14 @@ namespace Logging
 		{
 			return operator<<('\n');
 		}
+		
+		template <typename T>
+			LogBuffer&	operator<<(const T&item)
+			{
+				buffer << ToString(item);
+				return *this;
+			}
+
 	}	logFile,console;
 
 	void	Flush(LogBuffer&buffer, bool toSyslog)
@@ -242,9 +250,9 @@ namespace Logging
 		if (e)
 		{
 			if (printToConsole)
-				console << e->GetName()<<" ("<<e->location.ToString()<<"): ";
+				console << e->GetName()<<" ("<<e->location<<"): ";
 			if (!inTestMode)
-				logFile << tab << e->GetTypeName() << tab << ToString(e->id) << tab << e->owner->GetLogName()<<tab<<e->location.ToString();
+				logFile << tab << e->GetTypeName() << tab << ToString(e->id) << tab << e->owner->GetLogName()<<tab<<e->location;
 		}
 		else
 			if (!inTestMode)

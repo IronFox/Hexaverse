@@ -185,7 +185,7 @@ namespace AI
 
 			TVec3<> detonationAt;
 			Objects::TurretTrajectory rs = source.TraceTrajectory(Objects::TrajectoryEndPoint( target),detonationAt);
-			LogEvent(EventSignificance::Debug,&source,"Checking possible attack trajectory to "+candidate.GetName()+", attacking "+target.ToString()+", detonating at "+Vec::toString(detonationAt)+": "+rs.ToString());
+			LogEvent(EventSignificance::Debug,&source,"Checking possible attack trajectory to "+candidate.GetName()+", attacking "+ToString(target)+", detonating at "+Vec::toString(detonationAt)+": "+rs.ToString());
 
 			if (rs == Objects::TurretTrajectory::InvalidTrajectory)
 			{

@@ -256,7 +256,7 @@ public:
 		void	operator++(int)	{height ++ ;}
 		void	operator--(int) {height --;}
 
-		String	ToString() const {return String(stackID)+ "[h="+String(height)+"]";}
+		friend String	ToString(const CellIdI&id) {return String(id.stackID)+ "[h="+String(id.height)+"]";}
 
 		static const CellIdI	Invalid;
 
@@ -313,7 +313,7 @@ public:
 
 		static UINT32 LayerSum(UINT32 base, int delta)	{if (delta >= 0) return base + delta; ASSERT_GREATER_OR_EQUAL__(base,(UINT32)-delta); return base + delta;}
 
-		String	ToString() const {return String(stackID)+ "["+String(layer)+"]";}
+		friend String	ToString(const CellIdU&id) {return String(id.stackID)+ "["+String(id.layer)+"]";}
 
 		friend hash_t	Hash(const CellIdU&cell)
 		{

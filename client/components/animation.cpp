@@ -547,7 +547,7 @@ namespace Animation
 	static void StoreLocally(const Objects::PHangar&h,const Objects::PVehicle&v,float&t,bool setHealthToFull)
 	{
 		if (!h->StoreLocally(v,t,setHealthToFull,h))
-			throw Except::Program::DataConsistencyFault(CLOCATION,"Failed to store "+v->GetName()+" in hangar "+h->ToEntity().GetName()+" at "+h->ToEntity().location.ToString());
+			throw Except::Program::DataConsistencyFault(CLOCATION,"Failed to store "+v->GetName()+" in hangar "+h->ToEntity().GetName()+" at "+ToString(h->ToEntity().location));
 	}
 
 
@@ -561,8 +561,8 @@ namespace Animation
 								&& vs.entityState.location != Grid::LCellIdI::Invalid;
 		if (locationChanged)
 		{
-			LogEvent(EventClass::Preset::debug,v.get(), "ApplyState(): Updating location: "+v->location.ToString()+"->"+vs.entityState.location.ToString());
-			ASSERT3__(v->preAnimationLocation == v->location, v->GetName(), v->preAnimationLocation.ToString(), v->location.ToString());
+			LogEvent(EventClass::Preset::debug,v.get(), "ApplyState(): Updating location: "+ToString(v->location)+"->"+ToString(vs.entityState.location));
+			ASSERT3__(v->preAnimationLocation == v->location, v->GetName(), v->preAnimationLocation, v->location);
 			v->Relocate(vs.entityState.location,false);	//this moves sensors. not good during animation phase. however, this is a rare and isolated process (not part of a sequence of updates)
 		}
 		v->health = vs.entityState.health;
@@ -735,7 +735,7 @@ namespace Animation
 				ASSERT1__(vs.entityState.location != Grid::LCellIdI::Invalid,v->GetName());
 				ASSERT1__(!v->isInsertedIntoGrid,v->GetName());
 				currentlyStoredIn->LocalCheckout(veh,vs.entityState.location,f);
-				LogEvent(EventSignificance::Debug,v.get(),"Checked out to "+vs.entityState.location.ToString());
+				LogEvent(EventSignificance::Debug,v.get(),"Checked out to "+ToString(vs.entityState.location));
 				ASSERT1__(v->location == vs.entityState.location,v->GetName());
 				ASSERT1__(v->isInserted,v->GetName());
 				ASSERT1__(Objects::vehicles.Contains(v),v->GetName());
@@ -1181,7 +1181,7 @@ namespace Animation
 
 				if (!insertIntoGridLater.IsSet(v->id))
 				{
-					ASSERT2__(v->preAnimationLocation == v->location ,v->preAnimationLocation.ToString(),v->location.ToString());
+					ASSERT2__(v->preAnimationLocation == v->location ,v->preAnimationLocation,v->location);
 					//#ifdef HAS_WINDOW
 					//	if (v->isOwnedByMe && v->IsVehicle())
 					//		ASSERT1__(World::actual.HasSensor(v->location,v->GetScanningRange()),v->id.ToString());

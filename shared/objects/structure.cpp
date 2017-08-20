@@ -350,7 +350,8 @@ namespace Objects
 
 	/*static*/ void Structure::ChangeStructCount(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, int changeDirection, float atTime)
 	{
-		LogEvent(EventSignificance::Debug,nullptr,"ChangeStructCount("+location.ToString()+", broadHeight="+String(broadHeight)+", height="+String(totalHeight)+", foundation="+String(hasFoundation)+", dir="+String(changeDirection)+")");
+		using StringConversion::ToString;
+		LogEvent(EventSignificance::Debug,nullptr,"ChangeStructCount("+ToString(location)+", broadHeight="+String(broadHeight)+", height="+String(totalHeight)+", foundation="+String(hasFoundation)+", dir="+String(changeDirection)+")");
 
 
 		{
@@ -483,19 +484,20 @@ namespace Objects
 				const UINT32 higher = location.stackID;
 			#endif
 			auto seq = World::actual.BeginChangeSequence(atTime);
+			using StringConversion::ToString;
 			#ifdef HYBRID_GRID
 				for (int j = 0; j < n.numNeighbors; j++)
 				{
 					seq.SelectStack(n.neighborID[j]);
 					for (int a = 0; a < broadHeight; a++)
 						if (seq.Change(location.height+a,Grid::Content::Clear))
-							LogEvent(EventSignificance::Common,e,"Clearing cell "+Grid::HCellIdI(n.neighborID[j],location.height+a).ToString());
+							LogEvent(EventSignificance::Common,e,"Clearing cell "+ToString(Grid::HCellIdI(n.neighborID[j],location.height+a)));
 				}
 			#endif
 			seq.SelectStack(higher);
 			for (int a = 0; a < totalHeight; a++)
 				if (seq.Change(location.height+a,Grid::Content::Clear))
-					LogEvent(EventSignificance::Common,e,"Clearing cell "+Grid::HCellIdI(higher,location.height+a).ToString());
+					LogEvent(EventSignificance::Common,e,"Clearing cell "+ToString(Grid::HCellIdI(higher,location.height+a)));
 		}
 
 

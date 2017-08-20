@@ -199,7 +199,7 @@ namespace Objects
 			if (closest != Grid::LCellIdI::Invalid)
 			{
 				ASSERT__(closestEntity->isInserted);
-				LogEvent(EventSignificance::Debug,&source,"Auto-targeting "+closestEntity->GetName()+" (located at "+closestEntity->location.ToString()+") via closest viable trajectory target "+closest.ToString());
+				LogEvent(EventSignificance::Debug,&source,"Auto-targeting "+closestEntity->GetName()+" (located at "+ToString(closestEntity->location)+") via closest viable trajectory target "+ToString(closest));
 				LogEvent(EventClass( EventSignificance::Important, EventFlavor::Neutral),&source,"Auto-targeting "+closestEntity->GetNiceName());
 
 				outTarget = closest;
@@ -576,16 +576,16 @@ namespace Objects
 				}
 				if (grid[at])
 					LogEvent(EventClass::Preset::error,grid[at].get(),"Found instead of "+object->GetName());
-				String clone = cloneAt != InvalidIndex ? " {found clone ("+cloneIs->GetName()+") at "+Grid::LCellIdI(cloneAt%Grid::LowSetup::GridType::CellCount,Grid::CellStack::ToHeight((UINT32)( cloneAt/Grid::LowSetup::GridType::CellCount))).ToString()+"}" : "";
+				String clone = cloneAt != InvalidIndex ? " {found clone ("+cloneIs->GetName()+") at "+ToString(Grid::LCellIdI(cloneAt%Grid::LowSetup::GridType::CellCount,Grid::CellStack::ToHeight((UINT32)( cloneAt/Grid::LowSetup::GridType::CellCount))))+"}" : "";
 				if (foundAt != InvalidIndex)
 				{
 					Grid::LCellIdI actualLocation(foundAt%Grid::LowSetup::GridType::CellCount,Grid::CellStack::ToHeight((UINT32)( foundAt/Grid::LowSetup::GridType::CellCount)));
-					FATAL__("Trying to remove "+object->GetName()+" from location "+String(at)+"/"+location.ToString()+", but object resides in "+String(foundAt)+"/"+actualLocation.ToString()+clone);
+					FATAL__("Trying to remove "+object->GetName()+" from location "+String(at)+"/"+ToString(location)+", but object resides in "+String(foundAt)+"/"+ToString(actualLocation)+clone);
 				}
 				else
-					FATAL__("Trying to remove "+object->GetName()+" from location "+String(at)+"/"+location.ToString()+", but object is not mapped in the grid"+clone);
+					FATAL__("Trying to remove "+object->GetName()+" from location "+String(at)+"/"+ToString(location)+", but object is not mapped in the grid"+clone);
 			}
-			LogEvent(EventSignificance::Common,object.get(),"Removed from grid location "+String(at)+"/"+location.ToString());
+			LogEvent(EventSignificance::Common,object.get(),"Removed from grid location "+String(at)+"/"+ToString(location));
 			grid[at].reset();
 			object->isInsertedIntoGrid = false;
 		}
@@ -597,10 +597,10 @@ namespace Objects
 			index_t at = CellToGridIndex(location);
 			if (grid[at])
 			{
-				FATAL__("Trying to register "+object->GetName()+"(@"+object->location.ToString()+") at "+location.ToString()+": Cell occupied by "+grid[at]->GetName()+"(@"+grid[at]->location.ToString()+")");
+				FATAL__("Trying to register "+object->GetName()+"(@"+ToString(object->location)+") at "+ToString(location)+": Cell occupied by "+grid[at]->GetName()+"(@"+ToString(grid[at]->location)+")");
 			}
-			ASSERT3__(!grid[at],grid[at]->GetName(),location.ToString(),object->GetName());
-			LogEvent(EventSignificance::Common,object.get(),"Inserted into grid location "+String(at)+"/"+location.ToString());
+			ASSERT3__(!grid[at],grid[at]->GetName(),location,object->GetName());
+			LogEvent(EventSignificance::Common,object.get(),"Inserted into grid location "+String(at)+"/"+ToString(location));
 			grid[at] = object;
 			object->isInsertedIntoGrid = true;
 		}
@@ -1056,7 +1056,7 @@ namespace Objects
 		#ifndef CLIENT
 			e->SyncTime(atTime);
 
-			ASSERT2__(To<Connector>::DynamicCast(e) || NothingBlockingHere(e->location,false),e->GetName(),e->location.ToString());
+			ASSERT2__(To<Connector>::DynamicCast(e) || NothingBlockingHere(e->location,false),e->GetName(),e->location);
 			e->ResetAllChange();
 		#else
 			ASSERT__(To<Connector>::DynamicCast(e) || e->IsMobile() || NothingBlockingHere(e->location,false));
@@ -1076,7 +1076,7 @@ namespace Objects
 			ASSERT1__(storedMobileEntities.FindAndErase(e),e->GetName());
 		if (!restored)
 			e->OnConstructionFinished(atTime);
-		LogEvent(EventSignificance::Common, e.get(),String(restored ? "Redeployed" : "Deployed")+" to "+e->location.ToString()+" at t="+String(atTime));
+		LogEvent(EventSignificance::Common, e.get(),String(restored ? "Redeployed" : "Deployed")+" to "+ToString(e->location)+" at t="+String(atTime));
 		if (!restored)
 		{
 			if (setHealthToFull)
@@ -1183,12 +1183,12 @@ namespace Objects
 				break;
 			}
 			existing = QueryGrid(structureGrid,s->location+h);
-			ASSERT4__(!existing,s->GetName(),s->location.ToString(),h,existing->GetName());
+			ASSERT4__(!existing,s->GetName(),s->location,h,existing->GetName());
 		}
 		if (s->HasFoundation())
 		{
 			existing = QueryGrid(structureGrid,s->location-1);
-			ASSERT3__(!existing,s->GetName(),s->location.ToString(),existing->GetName());
+			ASSERT3__(!existing,s->GetName(),s->location,existing->GetName());
 		}
 
 		InsertConstructedEntity(s,atTime,setHealthToFull);
@@ -2623,7 +2623,7 @@ namespace Objects
 		PVehicle vehicle(new Vehicle(owner, baseLocation,base,turret));
 		#ifdef CLIENT
 			vehicle->location = baseLocation;
-			ASSERT3__(vehicle->preAnimationLocation == vehicle->location,vehicle->preAnimationLocation.ToString(),vehicle->location.ToString(),vehicle->GetName());
+			ASSERT3__(vehicle->preAnimationLocation == vehicle->location,vehicle->preAnimationLocation,vehicle->location,vehicle->GetName());
 			//vehicle->preAnimationLocation = vehicle->location;
 		#else
 			vehicle->health = vehicle->GetMaxHealth();	//or else PositionOnTop will fail
@@ -2781,7 +2781,7 @@ namespace Objects
 		void			Place( const PVehicle&vehicle, bool insertIntoGrid/*=true*/)
 		{
 			ASSERT__(vehicle);
-			ASSERT3__(vehicle->preAnimationLocation == vehicle->location,vehicle->preAnimationLocation.ToString(),vehicle->location.ToString(),vehicle->GetName());
+			ASSERT3__(vehicle->preAnimationLocation == vehicle->location,vehicle->preAnimationLocation,vehicle->location,vehicle->GetName());
 			float t = 0;
 			//vehicle->preAnimationLocation = vehicle->location;
 			InsertConstructed(vehicle,t,insertIntoGrid,false);
@@ -2804,7 +2804,7 @@ namespace Objects
 		void			PlaceMobileEntity( const PMobileEntity&m, bool insertIntoGridIfVehicle/*=true*/)
 		{
 			ASSERT__(m);
-			ASSERT3__(m->preAnimationLocation == m->location,m->preAnimationLocation.ToString(),m->location.ToString(),m->GetName());
+			ASSERT3__(m->preAnimationLocation == m->location,m->preAnimationLocation,m->location,m->GetName());
 			float t = 0;
 			InsertConstructed(m,t,insertIntoGridIfVehicle);
 			#ifndef NO_SATELLITES
@@ -2869,7 +2869,7 @@ namespace Objects
 				MobilePlacementResult result = v->PlaceExactlyAt(c,0,0,false,false);
 				if (Failed(result))
 				{
-					FATAL__(v->GetName()+": Failed to position non-constructed at "+c.ToString());
+					FATAL__(v->GetName()+": Failed to position non-constructed at "+ToString(c));
 				}
 				if (result == MobilePlacementResult::PlacementOkay || result == MobilePlacementResult::PlacementOkayFellDown)
 				{

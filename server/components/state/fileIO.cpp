@@ -1580,7 +1580,7 @@ namespace FileIO
 		for (const Objects::PMobileEntity&v : insertIntoHangar)
 		{
 			Objects::PHangar s = To<Objects::Hangar>::DynamicCast(Objects::GetEntity(v->location));
-			ASSERT2__(s,v->GetName(),v->location.ToString());
+			ASSERT2__(s,v->GetName(),v->location);
 			s->StoreLocallyFromImport(v);
 		}
 		insertIntoHangar.Clear();

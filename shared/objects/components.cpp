@@ -44,9 +44,10 @@ namespace Objects
 	}
 
 
-	String			TrajectoryEndPoint::ToString() const
+	String			ToString(const TrajectoryEndPoint&endPoint)
 	{
-		return worldLocation.ToString()+"/"+cellLocation.ToString()+" r="+String(radius);
+		using StringConversion::ToString;
+		return ToString(endPoint.worldLocation)+"/"+ToString(endPoint.cellLocation)+" r="+ToString(endPoint.radius);
 	}
 
 
@@ -597,7 +598,7 @@ namespace Objects
 			{
 				if (velocity < 50.f)
 				{
-					LogEvent(EventClass::Preset::internalError,"Unable to determine feasible angles for artillery trajectory at v="+String(velocity)+", source="+source.ToString()+", dest="+dest.ToString()+". Increasing velocity and retrying.");
+					LogEvent(EventClass::Preset::internalError,"Unable to determine feasible angles for artillery trajectory at v="+String(velocity)+", source="+ToString(source)+", dest="+ToString(dest)+". Increasing velocity and retrying.");
 					velocity = velocity > 0 ? velocity * 1.1f : 1.f;	//should not be zero, but it's better to handle this case here anyway. Otherwise we're causing a stack overflow in no-time
 					return TraceArtilleryTrajectory(velocity,decisionWorld,actualWorld,source, dest,outSteps,impactAt,impactCell,outAngle);
 				}
@@ -621,7 +622,7 @@ namespace Objects
 			for (int j = 0; j < angles.numAngles; j++)
 			{
 				float d2 = PreTraceArtillery(velocity,angles.idealAngle[j], source,dest,distance,decisionWorld);
-				LogEvent(EventSignificance::Debug,source.ToString()+"->"+dest.ToString()+ ": Angle "+String(j)+"/"+String(angles.numAngles)+" "+String(angles.idealAngle[j])+" lead to distance "+String(d2));
+				LogEvent(EventSignificance::Debug,ToString(source)+"->"+ToString(dest)+ ": Angle "+String(j)+"/"+String(angles.numAngles)+" "+String(angles.idealAngle[j])+" lead to distance "+String(d2));
 				if (d2 < leastDistance)
 				{
 					leastDistance = d2;

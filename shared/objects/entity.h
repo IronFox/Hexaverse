@@ -218,7 +218,10 @@ namespace Objects
 			bool					IsSet() const {return location != Grid::LCellIdI::Invalid;}
 			bool					operator==(const TRegisteredSensor&other) const {return location == other.location && empDamageLevel == other.empDamageLevel;}
 			bool					operator!=(const TRegisteredSensor&other) const {return !operator==(other);}
-			String					ToString() const {return location.ToString()+"_e"+String(empDamageLevel);}
+			friend String			ToString(const TRegisteredSensor&sensor) 
+			{ 
+				return ToString(sensor.location)+"_e"+String(sensor.empDamageLevel);
+			}
 		};
 		#ifndef CLIENT
 			float					entityTime=0.f;		//!< Time (in seconds) into the animation phase to calculate event times

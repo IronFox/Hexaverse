@@ -262,7 +262,8 @@ namespace Objects
 			{
 				if (!AttackNext(destination,false))
 					return false;
-				LogEvent(EventSignificance::Common,this,"Issued tower attack to "+destination.ToString());
+				using StringConversion::ToString;
+				LogEvent(EventSignificance::Common,this,"Issued tower attack to "+ToString(destination));
 			}
 			return true;
 		}

@@ -530,7 +530,7 @@ namespace Objects
 		}
 
 		this->SyncTime(atTime);
-		LogEvent(EventSignificance::Common,this,"Reapplying sensory ("+registeredSensor.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
+		LogEvent(EventSignificance::Common,this,"Reapplying sensory ("+ToString(registeredSensor)+", "+String(GetScanningRange())+") at time "+String(atTime));
 		VisitSensors(registeredSensor.location, [&atTime, this](const World::Sensor&sensor)
 		{
 			#ifdef CLIENT
@@ -551,8 +551,8 @@ namespace Objects
 		#ifdef CLIENT	//special constraint applied by client: strict register->unregister->register... order
 			if (registeredSensor.location != Grid::LCellIdI::Invalid)
 			{
-				LogEvent(EventClass::Preset::debug,this,"Double sensor registration detected (old="+registeredSensor.ToString()+", new="+loc.ToString()+"/emp "+String(empDamageLevel)+")");
-				DBG_FATAL__("Double sensor registration detected (old="+registeredSensor.ToString()+", new="+loc.ToString()+"/emp "+String(empDamageLevel)+")");
+				LogEvent(EventClass::Preset::debug,this,"Double sensor registration detected (old="+ToString(registeredSensor)+", new="+ToString(loc)+"/emp "+String(empDamageLevel)+")");
+				DBG_FATAL__("Double sensor registration detected (old="+ToString(registeredSensor)+", new="+ToString(loc)+"/emp "+String(empDamageLevel)+")");
 				if (loc == registeredSensor.location && empDamageLevel == registeredSensor.empDamageLevel)
 					return registeredSensor;	//graceful exit
 				UnregisterSensory(registeredSensor,atTime);
@@ -563,7 +563,7 @@ namespace Objects
 		rs.empDamageLevel = empDamageLevel;
 
 		this->SyncTime(atTime);
-		LogEvent(EventSignificance::Common,this,"Registering sensory ("+loc.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
+		LogEvent(EventSignificance::Common,this,"Registering sensory ("+ToString(loc)+", "+String(GetScanningRange())+") at time "+String(atTime));
 		VisitSensors(loc, [&atTime, newContacts,this](const World::Sensor&sensor)
 		{
 			#ifdef CLIENT
@@ -582,13 +582,13 @@ namespace Objects
 	{
 		if (sensor.location == Grid::LCellIdI::Invalid)
 		{
-			DBG_FATAL__("Double sensor unregistration detected (now="+sensor.ToString()+")");
+			DBG_FATAL__("Double sensor unregistration detected (now="+ToString(sensor)+")");
 			return;	//graceful exit
 		}
 		#ifdef CLIENT
 			if (registeredSensor != sensor)
 			{
-				DBG_FATAL__("Bad sensor unregistration detected (local="+registeredSensor.ToString()+", given="+sensor.ToString()+")");
+				DBG_FATAL__("Bad sensor unregistration detected (local="+ToString(registeredSensor)+", given="+ToString(sensor)+")");
 				UnregisterSensory(registeredSensor,atTime);
 				return;
 			}
@@ -606,7 +606,7 @@ namespace Objects
 
 		
 		this->SyncTime(atTime);	
-		LogEvent(EventClass::Preset::common,this,"Unregistering sensory ("+sensor.location.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
+		LogEvent(EventClass::Preset::common,this,"Unregistering sensory ("+ToString(sensor.location)+", "+String(GetScanningRange())+") at time "+String(atTime));
 		VisitSensors(sensor.location, [&atTime, this](const World::Sensor&sensor)
 		{
 		#ifdef CLIENT

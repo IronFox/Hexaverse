@@ -1415,7 +1415,7 @@ namespace Receiver
 
 	void	ChoiceIntersection(Protocol::ChoiceIntersection&ch, TCP::Peer&peer)
 	{
-		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Processing choice intersection in mode "+String(ch.mode)+" at cell "+ch.target.ToString()
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Processing choice intersection in mode "+String(ch.mode)+" at cell "+ToString(ch.target)
 			+" for entity "+ToString(ch.id));
 
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(ch.id,peer);
@@ -1445,7 +1445,7 @@ namespace Receiver
 
 		Journal::currentRound.RegisterChoiceIntersection(true,e,ch.target,(Objects::Vehicle::mode_t)ch.mode,deployingWhat);
 
-		LogEvent(EventSignificance::Common,peer,e,"End: Processed choice intersection in mode "+String(ch.mode)+" at cell "+ch.target.ToString());
+		LogEvent(EventSignificance::Common,peer,e,"End: Processed choice intersection in mode "+String(ch.mode)+" at cell "+ToString(ch.target));
 	}
 
 	
@@ -1512,7 +1512,7 @@ namespace Receiver
 		static StringBuffer buffer;
 		buffer.Clear();
 		foreach (cmd.path,n)
-			buffer << ' '<<n->ToString();
+			buffer << ' '<<ToString(*n);
 		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Directing entity "+ToString(cmd.id)+" in mode "+String(cmd.mode)+" given flags "+String(cmd.directFlags)+" to"+buffer.CopyToString());
 
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(cmd.id,peer);
@@ -1521,7 +1521,7 @@ namespace Receiver
 		foreach (cmd.path,n)
 			if (!ValidCell(*n))
 			{
-				LogEvent(EventClass::Preset::commandRejected, peer, e, "Parameter fault ("+n->ToString()+")");
+				LogEvent(EventClass::Preset::commandRejected, peer, e, "Parameter fault ("+ToString(*n)+")");
 				return;
 			}
 		const bool leftClick = (cmd.directFlags & Protocol::DirectFlags::LeftClick) != 0;

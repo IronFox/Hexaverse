@@ -2070,9 +2070,9 @@ namespace StatePanel
 		}
 
 		#ifdef _DEBUG
-			cachedLines << " Location: "+e.location.ToString();
+			cachedLines << " Location: "+ToString(e.location);
 			if (e.IsMobile())
-				cachedLines << " Last point of origin: "+((const Objects::MobileEntity&)e).GetLastPointOfOrigin().ToString();
+				cachedLines << " Last point of origin: "+ToString(((const Objects::MobileEntity&)e).GetLastPointOfOrigin());
 			cachedLines << " x: "+Vec::toString(e.system.x.xyz);
 			cachedLines << " y: "+Vec::toString(e.system.y.xyz);
 			cachedLines << " z: "+Vec::toString(e.system.z.xyz);

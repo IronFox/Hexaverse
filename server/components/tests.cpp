@@ -907,7 +907,7 @@ namespace Test
 					Grid::LCellIdI choice = choices[random.NextIndex(choices.Count())].location;
 					Objects::ProcessChoiceIntersection(plant, choice, Objects::CursorMode::Idle, Objects::PVehicle());
 					ASSERT_EQUAL__(v->health, v->GetMaxHealth());
-					ASSERT2__(v->location == choice, v->location.ToString(), choice.ToString());
+					ASSERT2__(v->location == choice, v->location, choice);
 					if (!v0)
 						v0 = v;
 					else

@@ -497,7 +497,7 @@ namespace Objects
 								}
 								if (badTask)
 								{
-									LogEvent(EventSignificance::Common,v2.get(),"Dangerous movement into range of "+(*c)->GetName()+" at "+(*c)->location.ToString()+" detected.");
+									LogEvent(EventSignificance::Common,v2.get(),"Dangerous movement into range of "+(*c)->GetName()+" at "+ToString((*c)->location)+" detected.");
 									LogEvent(EventSignificance::Uncommon,v2.get(),"Dangerous movement into range of "+(*c)->GetNiceName()+" detected.");
 									if (v2.get() == this)
 									{
@@ -594,7 +594,7 @@ namespace Objects
 							{
 								if (t->AttackNext(loc,true))
 								{
-									LogEvent(EventSignificance::Debug,t.get(),"Auto-targeting moving "+GetName()+" (located at "+location.ToString()+") via closest viable attack target "+loc.ToString()+" at t="+String(entityTime));
+									LogEvent(EventSignificance::Debug,t.get(),"Auto-targeting moving "+GetName()+" (located at "+ToString(location)+") via closest viable attack target "+ToString(loc)+" at t="+String(entityTime));
 									LogEvent(EventSignificance::Important,t.get(),"Auto-targeting moving "+GetNiceName());
 
 									t->Attack(entityTime);
@@ -1243,7 +1243,7 @@ namespace Objects
 		{
 			if (toLocation == location)
 				return;
-			LogEvent(EventSignificance::Common,this,"Relocating to "+toLocation.ToString()+" ("+String(updateSystem)+")");
+			LogEvent(EventSignificance::Common,this,"Relocating to "+ToString(toLocation)+" ("+String(updateSystem)+")");
 			static Grid::HighSetup::TVolumeDescriptor desc;
 			float t = 0.f;
 			if (isOwnedByMe)

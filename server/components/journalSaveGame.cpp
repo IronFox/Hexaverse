@@ -460,21 +460,22 @@ namespace Journal
 
 	/*virtual override*/ void			Round::EntityStateCheck::Execute(const Objects::PWorldEntity&e)	const
 	{
+		using StringConversion::ToString;
 		#undef EVERIFY
-		#define EVERIFY(_VAR_)	if (_VAR_ != e->_VAR_) LogEvent(EventClass::Preset::configuration,e->GetName()+ ": Verification failed " #_VAR_ ": "+String(_VAR_)+" expected, but found "+String(e->_VAR_));
+		#define EVERIFY(_VAR_)	if (_VAR_ != e->_VAR_) LogEvent(EventClass::Preset::configuration,e->GetName()+ ": Verification failed " #_VAR_ ": "+ToString(_VAR_)+" expected, but found "+ToString(e->_VAR_));
 		//throw RoundException(CLOCATION,e->GetName()+ ": Verification failed " #_VAR_ ": "+String(_VAR_)+" expected, but found "+String(e->_VAR_));
 		EVERIFY(empDamageLevel);
 		EVERIFY(health);
-		EVERIFY(location.ToString());
+		EVERIFY(location);
 
 		#undef EVERIFY2
-		#define EVERIFY2(_VAR_,_OTHER_)	if (_VAR_ != _OTHER_) LogEvent(EventClass::Preset::configuration,e->GetName()+ ": Verification failed " #_VAR_ ": "+String(_VAR_)+" expected, but found "+String(_OTHER_));
+		#define EVERIFY2(_VAR_,_OTHER_)	if (_VAR_ != _OTHER_) LogEvent(EventClass::Preset::configuration,e->GetName()+ ": Verification failed " #_VAR_ ": "+ToString(_VAR_)+" expected, but found "+ToString(_OTHER_));
 		//throw RoundException(CLOCATION,e->GetName()+ ": Verification failed " #_VAR_ ": "+String(_VAR_)+" expected, but found "+String(_OTHER_));
 		EVERIFY2((int)nextTaskMode,(int)GetNextTaskMode(e));
 		EVERIFY2(storedMinerals,GetStoredMinerals(e));
 		EVERIFY2(jobMineralsLeft,GetJobMineralsLeft(e));
 		EVERIFY2(taskListLength,GetTaskListLength(e));
-		EVERIFY2(nextTaskFocus.ToString(),GetNextTaskFocus(e).ToString());
+		EVERIFY2(nextTaskFocus,GetNextTaskFocus(e));
 		EVERIFY2(isEnabled,IsEnabled(e));
 
 	}
@@ -680,7 +681,7 @@ namespace Journal
 		Objects::PMobileEntity md = deploy && deploy->IsMobile() ? To<Objects::MobileEntity>::Cast(deploy) : Objects::PMobileEntity();
 		if (!Objects::ProcessChoiceIntersection(e,target,mode,md))
 		{
-			throw RoundException(CLOCATION, "Unable to handle choice intersection of "+e->GetName()+" with "+target.ToString()+" in mode "+String(int(mode))+", while deploying "+(md?md->GetName():""));
+			throw RoundException(CLOCATION, "Unable to handle choice intersection of "+e->GetName()+" with "+ToString(target)+" in mode "+String(int(mode))+", while deploying "+(md?md->GetName():""));
 		}
 
 	}
@@ -719,7 +720,7 @@ namespace Journal
 				static StringBuffer buffer;
 				buffer.Clear();
 				foreach (targets,t)
-					buffer << ' '<<t->ToString();
+					buffer << ' '<<ToString(*t);
 				throw RoundException(CLOCATION, "Unable to direct "+e->GetName()+" to"+buffer.CopyToString()+" in mode "+String(int(mode)));
 			#else
 				throw RoundException(CLOCATION, "Unable to direct "+e->GetName()+" to destination");
@@ -1025,7 +1026,7 @@ namespace Journal
 					StringRef sHeight(dotAt+1, valLen  - (dotAt-value) -1);
 					if (target.stackID >= Grid::LowSetup::GridType::CellCount)
 					{
-						throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, "Decoded stack ID of "+String(paraRef)+"=" +target.ToString()+" is out of range, while decoding line "+String(line,lineLen));
+						throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, "Decoded stack ID of "+String(paraRef)+"=" +ToString(target)+" is out of range, while decoding line "+String(line,lineLen));
 					}
 
 					#ifndef NO_SATELLITES
@@ -1044,7 +1045,7 @@ namespace Journal
 							IF_SATELLITES(&& target.height != Objects::Satellite::BaseResidenceHeight && target.height != Objects::Satellite::DeclinedResidenceHeight)
 							)
 						{
-							throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, "Decoded height of "+String(paraRef)+"=" +target.ToString()+" is out of range, while decoding line "+String(line,lineLen));
+							throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, "Decoded height of "+String(paraRef)+"=" +ToString(target)+" is out of range, while decoding line "+String(line,lineLen));
 						}
 					}
 					locationParameters.Set(paraRef,target);

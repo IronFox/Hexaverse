@@ -189,10 +189,10 @@ namespace Objects
 			MobilePlacementResult rs = v->PlaceExactlyAt(c,0,0,false,false);
 			if (Failed(rs))
 			{
-				LogEvent(EventClass::Preset::fatal,v.get(),"Failed to position non-constructed at "+c.ToString());
+				LogEvent(EventClass::Preset::fatal,v.get(),"Failed to position non-constructed at "+ToString(c));
 				FATAL__("Failed to position entity as designated position");
 			}
-			LogEvent(EventSignificance::Debug,parent,"Successfully spawned finished production  "+production->GetNiceName()+" at "+c.ToString()+" with placement result "+String(rs.ToString()));
+			LogEvent(EventSignificance::Debug,parent,"Successfully spawned finished production  "+production->GetNiceName()+" at "+ToString(c)+" with placement result "+String(rs.ToString()));
 
 			if (rs != MobilePlacementResult::EnteredStructure)
 				InsertConstructed(v,t);

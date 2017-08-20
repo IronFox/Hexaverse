@@ -73,7 +73,7 @@ namespace Objects
 		/**/			TrajectoryEndPoint(const Grid::LCellIdI&, float zOffset);
 		explicit		TrajectoryEndPoint(const Grid::LCellIdI&);
 
-		String			ToString() const;
+		friend String	ToString(const TrajectoryEndPoint&);
 	};
 
 	/**
