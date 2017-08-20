@@ -693,7 +693,8 @@ namespace GUI
 			}
 		}
 
-		RenderArea(bar,barContainsMouse,dragging,float3(1),Quad<bool>(true));
+		RenderArea(bar,barContainsMouse,dragging,float3(1));
+		RenderOutline(bar,float3(1),true);
 	}
 
 
@@ -808,7 +809,8 @@ namespace GUI
 		SurfaceRenderer::Rasterize(outline);
 
 		bar = Rect<>(outline.x.min,outline.y.Derelativate(1.f - (viewTop + viewSize) / scrollMax),outline.x.max,outline.y.Derelativate(1.f - (viewTop) / scrollMax));
-		RenderArea(bar,barContainsMouse,dragging,float3(1),Quad<bool>(true));
+		RenderArea(bar,barContainsMouse,dragging,float3(1));
+		RenderOutline(bar,float3(1),true);
 
 		up->SetLocation(topButton);
 		up->Render();
@@ -1091,7 +1093,7 @@ namespace GUI
 	}
 
 
-	/*static*/ void				Component::RenderArea(const Rect<>&rect, bool lit, bool flip, const float3&backgroundTone, const Quad<bool>&edges, float lowOpacity/*=1*/, float highOpacity/*=1*/)
+	/*static*/ void				Component::RenderArea(const Rect<>&rect, bool lit, bool flip, const float3&backgroundTone, float lowOpacity/*=1*/, float highOpacity/*=1*/)
 	{
 		float low = 0.1f;  //0.3;
 		float high = lit ? 0.89f : 0.77f;   //0.8f : 0.6;
@@ -1108,8 +1110,10 @@ namespace GUI
 
 		SurfaceRenderer::Rasterize(float2(rect.x.min,rect.y.min), lowColor, float2(rect.x.max,rect.y.min),lowColor, float2(rect.x.max,rect.y.max), highColor, float2(rect.x.min,rect.y.max),highColor);
 		SurfaceRenderer::Flush();
-		
+	}
 
+	/*static*/ void				Component::RenderOutline(const Rect<>&rect, const float3&backgroundTone, const Quad<bool>&edges, float lowOpacity/*=1*/, float highOpacity/*=1*/)
+	{
 		float4 lineLowColor(backgroundTone*0.5f,lowOpacity*0.5f);
 		float4 lineHighColor(backgroundTone*0.5f,highOpacity*0.5f);
 	
@@ -1224,7 +1228,9 @@ namespace GUI
 
 	void				Box::BaseRender(bool lit, bool flipped)
 	{
-		RenderArea(GetRect(),lit,flipped,backgroundTone,edges,bottomOpacity,topOpacity);
+		const Rect<>&r = GetRect();
+		RenderArea(r,lit,flipped,backgroundTone,bottomOpacity,topOpacity);
+		RenderOutline(r,backgroundTone,true,bottomOpacity,topOpacity);
 	}
 
 	static const float CellSize = 0.01f;
@@ -1423,7 +1429,10 @@ namespace GUI
 		//core.Scale(0.97f);
 
 		if (fillBackground)
-			RenderArea(core,false,true,backgroundTone,Quad<bool>(true));
+		{
+			RenderArea(core,false,true,backgroundTone);
+			RenderOutline(core,backgroundTone,true);
+		}
 
 		StringRef text = GetText();
 
@@ -2322,6 +2331,7 @@ namespace GUI
 
 		s->xRange.Include(x);
 		s->yRange.Include(yTop);
+		s->SignalAxesChanged();
 
 		changed = true;
 	}
@@ -2340,27 +2350,194 @@ namespace GUI
 	/*virtual override*/ void	PlotStack::Render()
 	{
 		Super::Render();
-		const Rect<> plotRect = GetPlotRect();
+		bool anyChanged = axesChanged;
 		foreach (graphs,g)
 			if (g->changed)
-				g->Replot(GetRect(),plotRect, g == graphs.begin());
+			{
+				anyChanged = true;
+				break;
+			}
+		if (anyChanged)
+			Replot();
+
 		foreach (graphs,g)
 			g->RenderSurfaces();
 		foreach (graphs,g)
 			g->RenderLines();
+
+
+		axes.Rasterize();
+
+		{
+			BeginLabelPrint();
+			foreach (labels,label)
+			{
+				textout.MoveTo(label->coords);
+				textout << label->caption;
+			}
+
+			EndLabelPrint();
+		}
+
+
+		Box::RenderOutline(GetRect(),float3(1),true);
 	}
 
-	/*virtual override*/ void	PlotStack::OnRectChange()
+	void PlotStack::BeginLabelPrint()
+	{
+		textout.PushState();
+
+		textout.Scale(Detail::textZoom*0.8f);
+		float g = 0.6f;
+		textout.SetColor(g,g,g);
+	}
+
+	void PlotStack::EndLabelPrint()
+	{
+		textout.PopState();
+	}
+
+
+	float	PlotStack::GetAxisStep(const TFloatRange<>&valueRange) const
+	{
+		const float range = valueRange.GetExtent();
+		const float lg = log(range) / log(10.f);
+		const int digits = int(floor(lg));
+		const float base = pow(10.f,digits);
+		const float relative = range / base;
+		if (relative < 2.f)
+			return base*0.5f;
+		if (relative < 5.f)
+			return base;
+		return base * 2.f;
+	}
+
+	void	PlotStack::Replot()
 	{
 		Super::OnRectChange();
+
+		static const float labelPadding = 0.01f;
+		BeginLabelPrint();
+			rightSpace = std::max(0.025f,textout.GetScaledWidth(String(yRange.max)) + labelPadding * 2.f);
+		EndLabelPrint();
+
+		const Rect<> plotScope = GetPlotScope();
 		const Rect<> plotRect = GetPlotRect();
 		foreach (graphs,g)
-			g->Replot(GetRect(),plotRect, g == graphs.begin());
+			g->Replot(plotRect,plotScope, g == graphs.begin());
+
+
+		const Rect<>&cRect = GetRect();
+		{
+			axesChanged = false;
+
+			axes.Clear();
+
+			//const Rect<> plotRect = GetPlotRect();
+
+
+
+			const float yRange = plotRect.y.min - cRect.y.min;
+			const float xRange = cRect.x.max - plotRect.x.max;
+
+			const float4 color{float3{0.5f},1.f};
+
+			axes.SetIndexOffsetToVertexCount();
+			axes.AddVertex(float2(plotRect.x.min,cRect.y.min + yRange*0.1f),color);
+			axes.AddVertex(float2(plotRect.x.min,cRect.y.min + yRange*0.9f),color);
+			axes.AddLine(0,1);
+
+			axes.AddVertex(float2(plotRect.x.max,cRect.y.min + yRange*0.1f),color);
+			axes.AddVertex(float2(plotRect.x.max,cRect.y.min + yRange*0.9f),color);
+			axes.AddLine(2,3);
+			axes.AddLine(1,3);
+
+			axes.SetIndexOffsetToVertexCount();
+			axes.AddVertex(float2(plotRect.x.max + xRange*0.1f,plotRect.y.min),color);
+			axes.AddVertex(float2(plotRect.x.max + xRange*0.9f,plotRect.y.min),color);
+			axes.AddLine(0,1);
+
+			axes.AddVertex(float2(plotRect.x.max + xRange*0.1f,plotRect.y.max),color);
+			axes.AddVertex(float2(plotRect.x.max + xRange*0.9f,plotRect.y.max),color);
+			axes.AddLine(2,3);
+			axes.AddLine(0,2);
+
+			{
+				const TFloatRange<float> fx = FloatRange<float>(this->xRange.start,this->xRange.end-1);
+				float xLineStep = GetAxisStep(fx);
+
+				const index_t start = ceil(float(this->xRange.start) / xLineStep);
+				const count_t count = floor(float(this->xRange.GetExtent()) / xLineStep);
+
+				for (index_t i = start; i < start + count; i++)
+				{
+					const float rel = fx.Relativate(xLineStep * i);
+					const float x = plotRect.x.Derelativate(rel);
+					axes.SetIndexOffsetToVertexCount();
+					axes.AddVertex(float2(x,cRect.y.min + yRange*0.3f),color);
+					axes.AddVertex(float2(x,cRect.y.min + yRange*0.7f),color);
+					axes.AddLine(0,1);
+				}
+			}
+
+			{
+				const TFloatRange<float> fy = FloatRange<float>(0,this->yRange.max);
+				float xLineStep = GetAxisStep(fy);
+
+				const index_t start = 1;
+				const count_t count = floor(float(fy.GetExtent()) / xLineStep);
+
+				for (index_t i = start; i < start + count; i++)
+				{
+					const float rel = fy.Relativate(xLineStep * i);
+					const float y = plotRect.y.Derelativate(rel);
+					axes.SetIndexOffsetToVertexCount();
+					axes.AddVertex(float2(plotRect.x.max + xRange*0.3f,y),color);
+					axes.AddVertex(float2(plotRect.x.max + xRange*0.7f,y),color);
+					axes.AddLine(0,1);
+				}
+			}
+
+			axes.Bake();
+
+
+			BeginLabelPrint();
+			labels.Clear();
+			{
+				labels.Append().caption = String(this->xRange.start);
+				labels.Last().coords = float2(plotRect.x.min + 0.005f,cRect.y.min + yRange * 0.5f + textout.GetScaledHeight()*0.5f);
+			}
+			{
+				labels.Append().caption = String(this->xRange.end-1);
+				labels.Last().coords = float2(plotRect.x.max - 0.005f - textout.GetScaledWidth(labels.Last().caption),cRect.y.min + yRange * 0.5f + textout.GetScaledHeight()*0.5f);
+			}
+			{
+				labels.Append().caption = "0";
+				labels.Last().coords = float2(plotRect.x.max + labelPadding,plotRect.y.min + textout.GetScaledHeight());
+			}
+			{
+				labels.Append().caption = String(this->yRange.max);
+				labels.Last().coords = float2(plotRect.x.max + labelPadding,plotRect.y.max);
+			}
+
+			EndLabelPrint();
+		}
+
+	}
+
+	Rect<>			PlotStack::GetPlotScope() const
+	{
+		return Rect<>(xRange.start,0.f,xRange.end-1,yRange.max);
 	}
 
 	Rect<>			PlotStack::GetPlotRect() const
 	{
-		return Rect<>(xRange.start,0.f,xRange.end-1,yRange.max).ExpandRelatively(0.05f);
+		Rect<> rs = GetRect();
+		rs.x.min += 0.025f;
+		rs.x.max -= rightSpace;
+		rs.y.min += 0.05f;
+		rs.y.max -= 0.05f;
+		return rs;
 	}
 
 
@@ -2409,7 +2586,7 @@ namespace GUI
 
 		for (index_t i = 0; i < data.Count(); i++)
 		{
-			float rX = dataRect.x.Relativate(i);
+			float rX = dataRect.x.Relativate(i + start);
 			ASSERT_IS_CONSTRAINED__(rX,0,1);
 			MakeVertex( 
 				componentRect.x.Derelativate( rX ),

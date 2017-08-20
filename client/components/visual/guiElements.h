@@ -213,7 +213,9 @@ namespace GUI
 
 	protected:
 		static void		Darken(const Rect<>&rect, float alpha=0.9f, bool flush=false);
-		static void		RenderArea(const Rect<>&rect, bool lit, bool flip, const float3&backgroundTone, const Quad<bool>&edges, float lowOpacity=1, float highOpacity=1);
+		static void		RenderArea(const Rect<>&rect, bool lit, bool flip, const float3&backgroundTone, float lowOpacity=1, float highOpacity=1);
+		static void		RenderOutline(const Rect<>&rect, const float3&backgroundTone, const Quad<bool>&edges, float lowOpacity=1, float highOpacity=1);
+
 		virtual bool	ClientIsLit() const {return true;}
 
 
@@ -414,6 +416,7 @@ namespace GUI
 			graphs.Clear();
 			xRange = TIntRange<index_t>::Invalid;
 			yRange = TFloatRange<>::Invalid;
+			SignalAxesChanged();
 		}
 
 		/**
@@ -431,13 +434,32 @@ namespace GUI
 
 		virtual void	Render() override;
 
-		float	SampleStackedHeight(index_t) const;
+		void			SignalAxesChanged()	{axesChanged = true;}
+		float			SampleStackedHeight(index_t) const;
 
 	protected:
-		virtual void	OnRectChange() override;
+		virtual void	OnRectChange() override	{Replot();}
+		virtual void	OnScreenSizeOrUIScaleChange() override	{Replot();}
+
+		void			Replot();
 	private:
 
+		float			GetAxisStep(const TFloatRange<>&valueRange) const;
+		void			BeginLabelPrint();
+		void			EndLabelPrint();
+
+		struct TLabel
+		{
+			String		caption;
+			float2		coords;
+		};
+		Buffer0<TLabel>	labels;
+
+		bool			axesChanged = false;
+		LineRenderer::Baked	axes;
+		Rect<>			GetPlotScope() const;
 		Rect<>			GetPlotRect() const;
+		float			rightSpace = 0.1f;
 		Buffer0<Plot>	graphs;
 		TIntRange<index_t>	xRange = TIntRange<index_t>::Invalid;
 		TFloatRange<>		yRange = TFloatRange<>::Invalid;
