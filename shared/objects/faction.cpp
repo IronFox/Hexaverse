@@ -45,6 +45,31 @@ namespace Objects
 			return rs;
 		}
 
+		count_t		Faction::GetTotalEntityValue() const
+		{
+			count_t rs = 0;
+			foreach (allMobiles,m0)
+			{
+				PMobileEntity m = m0->lock();
+				if (m)
+					rs += m->GetConstructionCost();
+			}
+			foreach (storedMobiles,m0)
+			{
+				PMobileEntity m = m0->lock();
+				if (m)
+					rs += m->GetConstructionCost();
+			}
+			foreach (structures,s0)
+			{
+				PStructure s = s0->lock();
+				if (s)
+					rs += s->GetConstructionCost();
+			}
+			return rs;
+		}
+
+
 
 		/*static*/ PFaction				Faction::Create(const TUniqueID&id, const String&name/* = ""*/)
 		{

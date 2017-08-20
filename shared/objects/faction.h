@@ -376,6 +376,7 @@ namespace Objects
 			count_t		CountOffGridCoverage(const Sphere<>&)	const;
 
 			count_t		GetOffensiveCapabilities() const;
+			count_t		GetTotalEntityValue() const;
 
 			/**
 			Temporarily inserts a spherical sensor as to visualize the impact of a doomsday crater
