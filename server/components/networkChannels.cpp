@@ -250,11 +250,11 @@ namespace Receiver
 			Channels::researchState.SendTo(peer,state);
 		});
 
-
+		//if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
 		Objects::ForeachFaction([&peer](const Objects::PFaction&f)
 		{
 			Game::Network::SendStatisticsTo(peer,f);
-		});
+		},true);
 
 		if (Game::winner)
 			Channels::winningFaction.SendTo(peer,Game::winner->id);

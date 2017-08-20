@@ -1111,14 +1111,14 @@ namespace Objects
 	#endif
 
 
-	void			ForeachFaction(const std::function<void(const PFaction&)>&func)
+	void			ForeachFaction(const std::function<void(const PFaction&)>&func, bool includeDead/*=false*/)
 	{
 		#ifdef CLIENT
 			foreach (Faction::allKnown,a)
 				func(*a);
 		#else
 			
-			if (Faction::nexus)
+			if (Faction::nexus && (!Faction::nexus->isDead || includeDead))
 				func(Faction::nexus);
 			for (index_t i = 0; i < Faction::all.Count(); i++)
 			{
@@ -1129,7 +1129,8 @@ namespace Objects
 					i--;
 				}
 				else
-					func(f);
+					if (!f->isDead || includeDead)
+						func(f);
 			}
 		#endif
 	}

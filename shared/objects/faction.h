@@ -426,7 +426,7 @@ namespace Objects
 	/**
 	Iterates through all factions, including the nexus faction
 	*/
-	void			ForeachFaction(const std::function<void(const PFaction&)>&func);
+	void			ForeachFaction(const std::function<void(const PFaction&)>&func, bool includeDead=false);
 
 	/**
 	Iterates through all entities that are located in the world, potentially including ghosts (ghosts on client only)
