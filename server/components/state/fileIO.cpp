@@ -1406,7 +1406,7 @@ namespace FileIO
 									factionMap.Query(factionID,faction);
 									ASSERT__ (faction);
 									if (ApplicationInterface::globalVersionOfCurrentFile >= ApplicationInterface::FileVersions::NewSerializationEngine)
-										faction->statistics.ImportFrom(list);
+										faction->statistics.ImportFrom(list,faction->isDead);
 									else
 									{
 										LogEvent(EventClass::Preset::error,"Statistics::ImportFrom(): Incompatible transient format encountered. Skipping import");

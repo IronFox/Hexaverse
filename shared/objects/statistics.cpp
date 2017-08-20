@@ -436,7 +436,7 @@ namespace Objects
 	void			Statistics::Clear()
 	{
 		BeginLoading();
-		EndLoading();
+		EndLoading(false);
 	}
 
 	void			Statistics::BeginLoading()
@@ -488,7 +488,7 @@ namespace Objects
 		Load(std::move(stat));
 	}
 
-	void			Statistics::ImportFrom(const Riff::Chunk*chunk)
+	void			Statistics::ImportFrom(const Riff::Chunk*chunk, bool factionIsDead)
 	{
 		BeginLoading();
 
@@ -527,10 +527,10 @@ namespace Objects
 		}
 		while (child = child->GetNextSibling());
 
-		EndLoading();
+		EndLoading(factionIsDead);
 	}
 
-	void Statistics::EndLoading()
+	void Statistics::EndLoading(bool factionIsDead)
 	{
 		if (!isLoading)
 			throw Except::Program::DataConsistencyFault(CLOCATION,"Trying to end loading sequence without prior invocation of BeginLoading()");
@@ -551,7 +551,8 @@ namespace Objects
 		}
 		#ifndef CLIENT
 			if (history.IsEmpty() || history.Last().mainRound != RuntimeConfig::roundNumber.main)
-				history.Append().mainRound = RuntimeConfig::roundNumber.main;
+				if (!factionIsDead)
+					history.Append().mainRound = RuntimeConfig::roundNumber.main;
 		#endif
 	}
 

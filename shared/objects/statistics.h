@@ -150,7 +150,7 @@ namespace Objects
 		#endif
 
 		void			ExportInto(Riff::Chunk*) const;
-		void			ImportFrom(const Riff::Chunk*);
+		void			ImportFrom(const Riff::Chunk*, bool factionIsDead);
 		void			Clear();
 
 
@@ -178,7 +178,7 @@ namespace Objects
 		/**
 		Concludes loading. Regardless of wether items were actually loaded, this method will assure the local Statistics instance is valid
 		*/
-		void			EndLoading();
+		void			EndLoading(bool factionIsDead);
 
 		/**
 		Changes serialization mode to use strings rather than EntityType

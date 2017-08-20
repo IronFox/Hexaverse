@@ -1188,7 +1188,7 @@ namespace Network
 				target.reset();
 				if (f)
 				{
-					f->statistics.EndLoading();
+					f->statistics.EndLoading(false);
 					GUI::Statistics::Update();
 				}
 			}
