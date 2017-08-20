@@ -373,6 +373,15 @@ namespace Objects
 						prog.metrics.Set(Metric::CurrentEntityMineralValue, stat.totalEntityMineralValue);
 						f->CheckSensory();
 						prog.metrics.Set(Metric::CurrentSensorCoverage, f->knownWorld.CountVisibleCells());
+						prog.metrics.Set(Metric::OffensiveCapabilities, f->GetOffensiveCapabilities());
+						prog.metrics.Set(Metric::NumTerraformers, f->CountTurretType(ConstName::Turret_Terraformer));
+						prog.metrics.Set(Metric::NumFactories, f->CountStructureType(ConstName::Type_VehiclePlant));
+						prog.metrics.Set(Metric::NumLaboratories, f->CountStructureType(ConstName::Type_Laboratory));
+						prog.metrics.Set(Metric::ResearchSpeed, f->researchState.GetResearchSpeed());
+						prog.metrics.Set(Metric::WinningScore,f->GetWinningScore());
+						prog.metrics.Set(Metric::NexusPortsOwned,f->acquiringNexusControl + f->nexusControl);
+						prog.metrics.Set(Metric::NexusPortsControlled,f->nexusControl);
+
 						stat.totalEntities = 0;
 						stat.totalEntityMineralValue = 0;
 					}

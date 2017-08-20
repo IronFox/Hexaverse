@@ -54,6 +54,14 @@ namespace Objects
 			ResourcesUsedForConstruction,	//how many resources (minerals probably) were converted into other stuff (entities probably). Conversion into electricity does not count
 
 
+			OffensiveCapabilities,
+			NumTerraformers,
+			NumFactories,
+			NumLaboratories,
+			ResearchSpeed,
+			WinningScore,
+			NexusPortsOwned,
+			NexusPortsControlled,
 
 			Count
 		};
