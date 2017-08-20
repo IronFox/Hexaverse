@@ -15,6 +15,7 @@ namespace GUI
 		PPlotStack			overviewGraph;
 		//Buffer0<PButton>	overviewMetrics, overviewFactions;
 		PointerTable<PButton>	factionButtonMap;
+		PCheckbox				excludeNexusFromOverview;
 
 		#if 0
 		overview:
@@ -244,10 +245,14 @@ namespace GUI
 					AddPlot(chosenFaction.lock());
 				}
 				else
-					Objects::ForeachFaction([](const Objects::PFaction&f)
+				{
+					const bool excludeNexus = excludeNexusFromOverview->IsChecked();
+					Objects::ForeachFaction([excludeNexus](const Objects::PFaction&f)
 					{
-						AddPlot(f);
+						if (!excludeNexus || f->name != "<Nexus>")
+							AddPlot(f);
 					},true);
+				}
 			}
 
 
@@ -326,6 +331,10 @@ namespace GUI
 				window->SetWidth(0.75f);
 				window->SetHeight(0.75f);
 
+				excludeNexusFromOverview.reset(new Checkbox{"Exclude Nexus from overview",true,[](bool)
+				{
+					RebuildStackedGraphAndStats();
+				}});
 
 				overviewGraph.reset(new PlotStack{});
 
@@ -378,7 +387,7 @@ namespace GUI
 
 
 				{
-					AddMetric("Winning Score", Objects::Statistics::Metric::WinningScore, true);
+					AddMetric("Score", Objects::Statistics::Metric::WinningScore, true);
 					AddMetric("Number of Units", Objects::Statistics::Metric::CurrentEntityCount);
 					AddMetric("Value of Units", Objects::Statistics::Metric::CurrentEntityMineralValue);
 					AddMetric("Sensor Coverage", Objects::Statistics::Metric::CurrentSensorCoverage);
@@ -389,6 +398,7 @@ namespace GUI
 					AddMetric("Resources Destroyed", Objects::Statistics::Metric::ResourcesDestroyed,false,true);
 					AddMetric("Nexus Ports owned", Objects::Statistics::Metric::NexusPortsOwned);
 					AddMetric("Nexus Ports controlled", Objects::Statistics::Metric::NexusPortsControlled);
+					AddMetric("Research speed", Objects::Statistics::Metric::ResearchSpeed);
 					AddProduction("Mineral Output",Objects::Resource::Minerals);
 					AddProduction("Fuel Output",Objects::Resource::Fuel);
 					AddProduction("Uranium Output",Objects::Resource::Uranium);
@@ -404,6 +414,7 @@ namespace GUI
 			}
 
 			factionPanel->ClearComponents();
+			factionPanel->AnchorBelowPrevious(excludeNexusFromOverview);
 			factionButtonMap.Clear();
 			Objects::ForeachFaction([](const Objects::PFaction&f)
 			{
