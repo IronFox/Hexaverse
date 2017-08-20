@@ -32,8 +32,11 @@ namespace Objects
 		{
 			StringBuffer rs;
 			rs	<< Component::allTurretComponents.ToTypeName(t.turretType)
-				<< ':'
-				<< Component::baseComponents.ToTypeName(t.baseType);
+				<< ':';
+			if (t.baseType == ConstName::Type_Tower)
+				rs << "Tower";
+			else
+				rs << Component::baseComponents.ToTypeName(t.baseType);
 			return rs.ToStringRef();
 		}
 		return Prototypes::all.ToTypeName(t);
