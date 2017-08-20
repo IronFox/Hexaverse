@@ -397,6 +397,13 @@ namespace GUI
 			friend class PlotStack;
 		};
 
+		/**/	PlotStack()
+		{
+			//Super::backgroundTone = float3();
+			Super::fillBackground = false;
+
+		}
+
 		count_t	CountPlots() const
 		{
 			return graphs.Count();
