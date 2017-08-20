@@ -95,7 +95,26 @@ namespace Objects
 		{
 			ForeachWorldEntity([](const Objects::PWorldEntity&e)
 			{
-				ASSERT1__(GetEntity(e->location) == e, e->location.ToString());
+				if (e->IsAboveGrid())
+					return;
+				if (e->IsMobile())
+				{
+					const PMobileEntity found = GetMobileEntity(e->location);
+					if (found != e)
+					{
+						const String foundName = found ? (found->GetTypeName() + ' '+ found->GetName()) : "null";
+						FATAL__("Expected to find "+e->GetTypeName()+" "+e->GetName()+" in location "+ToString(e->location)+", but found "+foundName);
+					}
+				}
+				elif (e->IsStructure())
+				{
+					const PStructure found = GetStructure(e->location);
+					if (found != e)
+					{
+						const String foundName = found ? (found->GetTypeName() + ' '+ found->GetName()) : "null";
+						FATAL__("Expected to find "+e->GetTypeName()+" "+e->GetName()+" in location "+ToString(e->location)+", but found "+foundName);
+					}
+				}
 			},false);
 		}
 
