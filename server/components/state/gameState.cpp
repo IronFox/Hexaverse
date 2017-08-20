@@ -259,6 +259,26 @@ namespace Game
 
 			if (to == RuntimeConfig::Phase::EndOfGame)
 			{
+				if (!winner)
+				{
+					UINT64 biggestScore = 0;
+					Objects::PFaction newWinner;
+
+					Objects::ForeachFaction([&](const Objects::PFaction&f)
+					{
+						if (f == Objects::Faction::nexus)
+							return;
+						const UINT64 score = f->GetWinningScore();
+						if (score > biggestScore)
+						{
+							biggestScore = score;
+							newWinner = f;
+						}
+					});
+					if (newWinner)
+						DeclareWinner(newWinner);
+				}
+
 				foreach (::Network::activePlayersAndSpectators,p)
 				{
 					(*p)->SendProgressUpdate("");
