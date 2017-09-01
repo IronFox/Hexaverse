@@ -28,6 +28,12 @@ Random random;
 
 namespace Dialog
 {
+	/*virtual override*/ void				Menu::OnScreenSizeOrUIScaleChange()
+	{
+		Super::OnScreenSizeOrUIScaleChange();
+		FullAutoLayout();
+	}
+
 	namespace Detail
 	{
 

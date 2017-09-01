@@ -220,7 +220,6 @@ namespace GUI
 
 
 		virtual void	OnEnableChange()	{};
-		virtual void	OnScreenSizeOrUIScaleChange()	{}
 
 		/**
 		Fetches the screen-relative height of the local component, given its current location (and width).
@@ -238,6 +237,11 @@ namespace GUI
 		
 
 		Axial2<TAnchor>	anchorConfig;
+	public:	//do not call outside container classes:
+
+		virtual void	OnScreenSizeOrUIScaleChange()	{}
+
+
 	public:
 
 		/**/			Component();
@@ -299,7 +303,7 @@ namespace GUI
 		Component&		AnchorTop(float spacing, TAnchor::distanceType_t type = TAnchor::RelativeToParentComponent);
 
 		void			AcceptStateFromParent(const TPropagating&p)	{parentState = p; PropagateToChildren(CreatePropagating());}
-		void			AcceptParentWindow(const PWindow&w)	{if (window.lock() != w) {window = w;PropagateToChildren(w);}}
+		void			AcceptParentWindow(const PWindow&w);
 	};
 
 
@@ -1029,6 +1033,13 @@ namespace GUI
 			return vscroll.visible ? TScrollbar::GetScreenWidth()+TScrollbar::ContentSpacing : 0;
 		}
 
+		virtual void	OnScreenSizeOrUIScaleChange() override
+		{
+			Super::OnScreenSizeOrUIScaleChange();
+			foreach (components,c)
+				(*c)->OnScreenSizeOrUIScaleChange();
+		}
+
 		bool			autoHeight = false;
 		float			autoHeightSpacing = 0.f;//0.015f;
 		/**
@@ -1462,7 +1473,8 @@ namespace GUI
 		bool				nestedCall = false;
 		float2				outlineMargin = float2(0.015f);
 		bool				autoCenter = true,
-							relayoutRequired = true;
+							relayoutRequired = true,
+							visible = false;
 
 
 	protected:
@@ -1478,9 +1490,10 @@ namespace GUI
 				return rs;
 			}
 
-
+	public:
 		void				OnScreenSizeOrUIScaleChange()
 		{
+			Super::OnScreenSizeOrUIScaleChange();
 			UpdateOuterRect();
 		}
 
@@ -1500,6 +1513,7 @@ namespace GUI
 		}
 
 
+		bool				IsVisible() const {return visible;}
 
 		virtual PWindow		GetWindow() override;
 
@@ -1598,7 +1612,8 @@ namespace GUI
 			return false;
 		}
 
-		virtual void	OnHide() {};
+		virtual void	OnHide() {visible = false;}
+		virtual void	OnShow() {visible = true; SetActive(true); OnScreenSizeOrUIScaleChange();}
 		virtual bool	SignalChange() {return true;}
 	};
 

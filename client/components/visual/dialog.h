@@ -259,6 +259,8 @@ namespace Dialog
 		}
 
 
+		virtual void				OnScreenSizeOrUIScaleChange() override;
+
 		GUI::PButton				AddCommand(const String&name, const std::function<void()>&execute, const std::function<bool()>&check = std::function<bool()>(), bool autoHide=true)
 		{
 			GUI::PButton button(new GUI::Button(name,

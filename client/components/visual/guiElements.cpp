@@ -293,7 +293,7 @@ namespace GUI
 		if (Detail::visibleWindows.IsNotEmpty())
 			Detail::visibleWindows.last()->SetActive(false);
 		Detail::visibleWindows << window;
-		window->SetActive(true);
+		window->OnShow();
 		SignalSituationChange();
 		OverrideSignalMouseMotion();
 	}
@@ -1077,6 +1077,19 @@ namespace GUI
 		return false;
 	}
 
+
+	void			Component::AcceptParentWindow(const PWindow&w)
+	{
+		if (window.lock() != w)
+		{
+			window = w;
+			PropagateToChildren(w);
+			if (w && w->IsVisible())
+				OnScreenSizeOrUIScaleChange();
+		}
+
+	}
+
 	void			Component::SetParent(const PWindow&w, const PComponent&c)
 	{
 		ASSERT__(!c || parent.expired());
@@ -1087,6 +1100,8 @@ namespace GUI
 			active = c->active;
 			AcceptStateFromParent(c->CreatePropagating());
 			InvalidateAutoLayout();
+			if (w && w->IsVisible())
+				OnScreenSizeOrUIScaleChange();
 		}
 		else
 			active = false;
@@ -1141,8 +1156,8 @@ namespace GUI
 	void SignalScreenResize()
 	{
 		Detail::lastClientSpace = display.GetClientSize();
-		foreach (Detail::allComponents,c)
-			(*c)->OnScreenSizeOrUIScaleChange();
+		foreach (Detail::visibleWindows,w)
+			(*w)->OnScreenSizeOrUIScaleChange();
 	}
 
 
