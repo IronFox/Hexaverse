@@ -546,5 +546,16 @@ namespace GUI
 
 			RebuildStackedGraphAndStats();
 		}
+
+		void Show()
+		{
+			GUI::Show(window);
+		}
+
+		void Hide()
+		{
+			GUI::Hide(window);
+		}
 	}
+
 }

@@ -1930,7 +1930,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 		if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
 		{
 			GUI::Statistics::Update();
-			GUI::Show(GUI::Statistics::window);
+			GUI::Statistics::Show();
 		}
 
 	#ifdef HAS_WINDOW

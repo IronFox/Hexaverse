@@ -8,9 +8,9 @@ namespace GUI
 {
 	namespace Statistics
 	{
-		extern PWindow	window;
-
 		void	Update();
+		void	Show();
+		void	Hide();
 	}
 }
 
