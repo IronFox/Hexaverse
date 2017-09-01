@@ -278,7 +278,7 @@ namespace Menu
 			margin.y *= 10.f;
 			help->SetOutlineMargin(margin);
 		}
-		help->dbgTrack = true;
+		//help->dbgTrack = true;
 		//help->FullAutoLayout();
 	}
 
