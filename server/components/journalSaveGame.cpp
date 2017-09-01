@@ -1303,8 +1303,6 @@ namespace Journal
 
 		Game::Config::Nexus::enableAI = ai;
 
-		Reflection::LoadOverrides();
-
 		if (Game::Config::Nexus::enableAI)
 			AIProcess::Begin(Objects::Faction::nexus->accessToken);
 

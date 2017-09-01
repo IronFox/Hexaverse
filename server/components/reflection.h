@@ -104,11 +104,6 @@ namespace Reflection
 	void	Load(bool inTestMode);
 
 	/**
-	Reloads configuration files and updates all variables that are tagged as ConfigOverridesSavegame
-	*/
-	void	LoadOverrides();
-
-	/**
 	Reloads all config settings from the respective ini file(s)
 	*/
 	void	ReloadPlanet();

@@ -1421,24 +1421,6 @@ namespace Reflection
 
 
 
-	void	LoadOverrides()
-	{
-		#ifdef _DEBUG
-			const char*localServerINI = "config/debug_server.ini";
-		#else
-			const char*localServerINI = "config/server.ini";
-		#endif
-
-		Feed(state.GetRoot(),localServerINI, false, [](const Variable::PBase&base)->bool
-		{
-			return false;//base->persistence == Variable::Persistence::ConfigOverridesSavegame;
-		},FeedMode::ConstructIfMissing);
-
-		Grid::currentPlanetConfig.GenerateAtmosphereColor();
-
-
-	}
-
 	static CLI::PFolder FindFolderWithAttachmentSource(const CLI::PVariable&v, const CLI::PFolder&current)
 	{
 		std::shared_ptr<Variable::PersistenceAttachment> a = To<Variable::PersistenceAttachment>::DynamicCast(current->attachment);

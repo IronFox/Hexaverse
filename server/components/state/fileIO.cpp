@@ -1614,8 +1614,6 @@ namespace FileIO
 			World::SetUnlockedEMPZones(unlocked);
 		}
 
-		Reflection::LoadOverrides();
-
 		LogEvent(EventSignificance::Uncommon,"Restored world '"+World::worldID.ToNiceString()+"'/"+ToString(World::worldID)+" in round "+RuntimeConfig::roundNumber.ToString());
 		RefreshWindowTitle();
 
