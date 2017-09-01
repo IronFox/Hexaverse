@@ -236,7 +236,7 @@ namespace Reflection
 
 				static constexpr String	MakeTypeName()
 				{
-					return T::GetName();
+					return T::GetName() + String(" Enumeration");
 				}
 				
 				/**/			MappedEnumVariable(const String&name, Persistence p, RefT&reference, unsigned protection=CLI::EraseProtection):Super(name,MakeTypeName(),p,1,protection),reference(&reference),defaultValue((RefT)T())	{}
