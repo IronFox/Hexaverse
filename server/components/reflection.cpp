@@ -877,6 +877,35 @@ namespace Reflection
 		state.PopFocus();
 	}
 
+	static bool SetHelp(CLI::NamedItem&item, String help)
+	{
+		help.EraseCharacter('\r');
+		help.EraseCharacter('\t');
+		help.TrimThis();
+		if (help.IsNotEmpty())
+		{
+			static Ctr::Array<String>	lines;
+			static StringBuffer		fused;
+			fused.Clear();
+			explodeCallback(IsNewline<char>,help,lines);
+			//wrap(help,80,lines);
+			foreach (lines,line)
+			{
+				StringRef trimmed = line->TrimRef();
+				if (trimmed.length())
+				{
+					if (fused.IsNotEmpty())
+						fused << nl;
+					fused << trimmed;
+				}
+			}
+			Package::AssertValidity(fused.ToStringRef(),1024);
+			item.SetUniqueHelp(fused.ToStringRef());
+			return true;
+		}
+		return false;
+	}
+
 	static bool DeclareFolder(const XML::Node&node, const CLI::PFolder&context)
 	{
 		bool allGood = true;
@@ -898,32 +927,7 @@ namespace Reflection
 					allGood = false;
 					continue;
 				}
-				String help = child->inner_content.Trim();
-				if (help.IsNotEmpty())
-				{
-					static Ctr::Array<String>	lines;
-					static StringBuffer		fused;
-					fused.Clear();
-					explodeCallback(IsNewline<char>,help,lines);
-					//wrap(help,80,lines);
-					foreach (lines,line)
-					{
-						StringRef trimmed = line->TrimRef();
-						if (trimmed.length())
-						{
-							if (fused.IsNotEmpty())
-								fused << nl;
-							fused << trimmed;
-						}
-					}
-					//if (fused.ConvertToString().find("The higher, the thinner, sharper and"))
-					//{
-					//	bool brk = true;
-					//}
-					v->SetUniqueHelp(fused.ToStringRef());
-				}
-
-
+				SetHelp(*v,child->inner_content);
 				String value;
 				if (child->Query("default",value) && value.IsNotEmpty())
 				{
@@ -947,8 +951,7 @@ namespace Reflection
 					allGood = false;
 					continue;
 				}
-				if (child->inner_content.Trim().IsNotEmpty())
-					v->SetUniqueHelp(child->inner_content.Trim());
+				SetHelp(*v,child->inner_content);
 
 				continue;
 			}
@@ -962,8 +965,7 @@ namespace Reflection
 					allGood = false;
 					continue;
 				}
-				if (child->inner_content.Trim().IsNotEmpty())
-					f->SetUniqueHelp(child->inner_content.Trim());
+				SetHelp(*f,child->inner_content);
 				if (!DeclareFolder(*child,f))
 					allGood = false;
 				continue;
