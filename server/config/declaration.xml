@@ -1,12 +1,31 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <declaration>
-	<context name="Game">
-		<variable name="gameHasEnded" default="false" />
+	<context name="Game">More general settings and state variables of the currently running game
+		<variable name="gameHasEnded" default="false">
+			Describes wether the current game has ended. May be changed from false to true, but not the other way around.
+			An ended game can only be resumed if a pre-ended savegame is loaded.
+			If changed, all clients are notified of the ended game, and statistics are dispatched.
+		</variable>
+		<variable name="round">
+			Retrieves the current round number
+		</variable>
+		<variable name="phase">
+			Retrieves the current game phase. Due to their short duration, phases other than command phases or EndOfGame are rarely returned
+		</variable>
 		<context name="Factions">
-			<command name="names" />
-			<command name="find" />
+			Provides access to individual factions.
+			Factions are primarily listed by unique ID.
+			Use the 'names' or 'find' commands to retrieve the ID of a faction
+			<command name="names">
+				Lists the names along with the guid of all factions
+			</command>
+			<command name="find">
+				Finds and lists all factions that contain the specified name parameter.
+				Search is case-insensitive
+			</command>
 		</context>
 	</context>
+	
 	<context name="World">Settings related to the current world
 		<variable name="simulateLiquids" default="true">
 			Enables or liquid expansion. Lava and water will expand horizontally and downwards, and eventually floodfill all available space.
