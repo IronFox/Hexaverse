@@ -2800,8 +2800,8 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 	{
 		bool	IsValidNickname(const String&candidate)
 		{
-			return Package::NetString<32>::IsValid(candidate) 
-				&& candidate.length() > 3 && candidate.length() <= 16;
+			return Package::IsValid(candidate,32)
+				&& candidate.length() > 3;
 		}
 
 
@@ -3796,8 +3796,7 @@ int main( int argc, const char* argv[])
 					if (userName.IsActive())
 						userName >> name;
 				}
-				if ( Package::NetString<16>::IsValid(name) 
-						&& name.length() > 3)
+				if ( LocalApplicationInterface::IsValidNickname(name))
 				{
 					Network::chosenNickname = name;
 				}

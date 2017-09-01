@@ -143,7 +143,7 @@ namespace Console
 				input.Clear();
 			break;
 			default:
-				if (Package::NetString<1024>::IsValidChar(c))
+				if (Package::IsValidChar(c))
 				{
 					input << c;
 					if (lastLine.length()+1 < (count_t)Sys::getConsoleWidth())
