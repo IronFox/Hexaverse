@@ -9,6 +9,7 @@
 #include "../../version.h"
 #include "../audioInterface.h"
 #include "objectSelection.h"
+#include "guiStatistics.h"
 
 bool	IsFullScreen();
 void	SetFullScreen(bool isFull);
@@ -17,7 +18,7 @@ void	SetFullScreen(bool isFull);
 
 namespace Menu
 {
-	Dialog::PMenu	main,help,login;
+	Dialog::PMenu	main,help,login,game;
 	GUI::PWindow	options;
 
 
@@ -229,6 +230,23 @@ namespace Menu
 		options->FullAutoLayout();
 	}
 
+	static void CreateGameMenu()
+	{
+		game = Dialog::Menu::Create();
+		game->Setup(0.3f,"Game");
+
+		game->AddCommand("Change Nickname",LocalApplicationInterface::QueryNickname);
+		game->AddCommand("Abandon faction",Network::AbandonCurrentFaction,[](){return Network::amOnline && Network::haveFaction && RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame;});
+		game->AddCommand("Show statistics", GUI::Statistics::Show,[](){return Network::amOnline && RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame;});
+		game->AddCommand("Disconnect",
+			[]()
+			{
+				Network::client.Disconnect();
+			},
+			[](){return Network::client.IsConnected();});
+		//game->FullAutoLayout();
+	}
+
 	static void	CreateHelpMenu()
 	{
 		help = Dialog::Menu::Create();
@@ -260,21 +278,16 @@ namespace Menu
 			margin.y *= 10.f;
 			help->SetOutlineMargin(margin);
 		}
-		help->FullAutoLayout();
+		help->dbgTrack = true;
+		//help->FullAutoLayout();
 	}
 
 	static void CreateMainMenu()
 	{
 		main = Dialog::Menu::Create();
 		main->Setup(0.25f,"Main");
-		main->AddCommand("Change Nickname",LocalApplicationInterface::QueryNickname);
-		main->AddCommand("Abandon faction",Network::AbandonCurrentFaction,[](){return Network::amOnline && Network::haveFaction;});
-		main->AddCommand("Disconnect",
-			[]()
-			{
-				Network::client.Disconnect();
-			},
-			[](){return Network::client.IsConnected();});
+		main->AddCommand("Game",[](){GUI::Show(game);},std::function<bool()>(),false);
+		
 		main->AddCommand("Help",
 			[]()
 			{
@@ -355,6 +368,7 @@ namespace Menu
 		CreateHelpMenu();
 		CreateMainMenu();
 		CreateLoginMenu();
+		CreateGameMenu();
 
 		GlobalEvents::applicationTerminate << []()
 		{
