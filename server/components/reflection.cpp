@@ -1052,6 +1052,13 @@ namespace Reflection
 		{
 			state.SetVariable(CLI::PVariable(new Variable::GameHasEnded()));
 
+			Variable::SetReadOnlyCallbackVariable("round","Round",[]()
+			{
+				return RuntimeConfig::roundNumber.ToString();
+			});
+
+			Variable::SetEnum("phase",RuntimeConfig::phase,Variable::Persistence::Temporary,true);
+
 			factionFolder = state.EnterNewFolder("Factions");
 			state.DefineCommand("names", FactionCommands::ListNames);
 			state.DefineCommand("find name", FactionCommands::FindName);
