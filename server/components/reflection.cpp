@@ -655,6 +655,25 @@ namespace Reflection
 			}
 		};
 
+		/**
+		Variable that executes a std::function to retrieve the current string representation.
+		It does not allow modification or deletion
+		*/
+		class ReadOnlyCallbackVariable : public Base
+		{
+		public:
+			typedef Base	Super;
+			typedef std::function<String()>	FCallback;
+
+			const FCallback	callback;
+
+			/**/			ReadOnlyCallbackVariable(const String&name, const String&type,const FCallback&callback)
+							:Super(name, type,Persistence::Temporary,1,CLI::FullProtection),callback(callback)	{}
+
+			virtual String	ConvertToString()		const	override {return callback();}
+			virtual	bool	Set(const String&value)	override {return false;}
+		};
+
 
 		class FactionAttachment : public CLI::Folder::Attachable
 		{
@@ -717,6 +736,14 @@ namespace Reflection
 		PBase	SetMappedEnum(const String&name, RefT&enumReference, Persistence p)
 		{
 			PBase rs (new MappedEnumVariable<T,RefT>(name,p,enumReference,CLI::EraseProtection));
+			state.SetVariable(rs);
+			return rs;
+		}
+
+
+		PBase	SetReadOnlyCallbackVariable(const String&name, const String&type, const std::function<String()>&f)
+		{
+			PBase rs {new ReadOnlyCallbackVariable{name,type,f}};
 			state.SetVariable(rs);
 			return rs;
 		}
