@@ -12,7 +12,7 @@ namespace GUI
 		PPanel			factionPanel,
 						metricPanel,
 						statsPanel;
-		PPlotStack			overviewGraph;
+		PMultiPlot			overviewGraph;
 		//Buffer0<PButton>	overviewMetrics, overviewFactions;
 		PointerTable<PButton>	factionButtonMap;
 		PCheckbox				excludeNexusFromOverview;
@@ -53,10 +53,10 @@ namespace GUI
 		static void AddPlot(const Objects::PFaction&f)
 		{
 			const auto&stat = f->statistics;
-			PlotStack::Plot&g = overviewGraph->AddPlot(f->color);
+			overviewGraph->NextPlot(f->color);
 
 			float last = 0;
-			stat.VisitRounds([&g,&last](const Objects::Statistics::Round&round)
+			stat.VisitRounds([&last](const Objects::Statistics::Round&round)
 			{
 				float current = lastFilter(round);
 				if (integrateFilter)
@@ -64,7 +64,7 @@ namespace GUI
 					last += current;
 					current = last;
 				}
-				g.AddNode(round.mainRound,current);
+				overviewGraph->AddNode(round.mainRound,current);
 			});
 		}
 
@@ -430,7 +430,7 @@ namespace GUI
 					RebuildStackedGraphAndStats();
 				}});
 
-				overviewGraph.reset(new PlotStack{});
+				overviewGraph.reset(new MultiPlot{});
 
 				metricPanel.reset(new Panel{});
 				factionPanel.reset(new Panel{});

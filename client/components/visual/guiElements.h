@@ -26,7 +26,7 @@ namespace GUI
 		DECLARE_POINTER_CLASS(Image);
 		DECLARE_POINTER_CLASS(Slider);
 		DECLARE_POINTER_CLASS(Box);
-			DECLARE_POINTER_CLASS(PlotStack);
+			DECLARE_POINTER_CLASS(MultiPlot);
 			DECLARE_POINTER_CLASS(TextField);
 				DECLARE_POINTER_CLASS(Checkbox);
 				DECLARE_POINTER_CLASS(Label);
@@ -343,12 +343,16 @@ namespace GUI
 	};
 
 	/**
-	Stacked function plot component.
+	Multi-plot drawing component.
+	May display plots as percentual stacks, or overlapping lines
 	*/
-	class PlotStack : public Box
+	class MultiPlot : public Component
 	{
-		typedef Box		Super;
-	public:
+		typedef Component	Super;
+	
+		/**
+		Set of X-Y-coordinates that form the final plot
+		*/
 		class Plot
 		{
 		public:
@@ -358,7 +362,7 @@ namespace GUI
 			@param x X slot of the height value. Must be greater than any nodes previously added to this plot.
 					Intermediate nodes are automatically added if missing. The first node added this way defines the left most sampling point.
 			*/
-			void	AddNode(const index_t x, const float y);
+			void	AddNode(MultiPlot*owner, const index_t x, const float y);
 
 			friend void swap(Plot&a, Plot&b)
 			{
@@ -366,7 +370,6 @@ namespace GUI
 				swap(a.surface,b.surface);
 				swap(a.lines,b.lines);
 				swap(a.color,b.color);
-				swap(a.stack,b.stack);
 				swap(a.start,b.start);
 				swap(a.data,b.data);
 				swap(a.changed,b.changed);
@@ -374,10 +377,10 @@ namespace GUI
 
 			float	Sample(index_t x) const;
 
-		private:
+		
 			void	RenderSurfaces()	const;
 			void	RenderLines()	const;
-			void	Replot(const Rect<>&componentRect, const Rect<>&dataRect, bool addBottomLine);
+			void	Replot(const Rect<>&componentRect, const Rect<>&dataRect, bool addBottomLine, bool stack);
 
 
 			void	MakeVertex(const float x, const float y);
@@ -391,52 +394,58 @@ namespace GUI
 			SurfaceRenderer::Baked	surface;
 			LineRenderer::Baked		lines;
 			float3					color;
-			WPlotStack				stack;
 			index_t					start = InvalidIndex;
 			Buffer0<TPoint>			data;
 			bool					changed = true;
 
-			friend class PlotStack;
 		};
 
-		/**/	PlotStack()
-		{
-			//Super::backgroundTone = float3();
-			Super::fillBackground = false;
-
-		}
+	public:
+		/**/	MultiPlot()
+		{}
 
 		count_t	CountPlots() const
 		{
-			return graphs.Count();
+			return plots.Count();
 		}
 
 		void	ClearPlots()
 		{
-			graphs.Clear();
+			plots.Clear();
 			xRange = TIntRange<index_t>::Invalid;
-			yRange = TFloatRange<>::Invalid;
+			stackedYRange = TFloatRange<>::Invalid;
+			rawYRange = TFloatRange<>::Invalid;
 			SignalAxesChanged();
 		}
 
 		/**
-		Adds a a plot on top of any previously added plots, and returns a reference to it.
-		The reference is valid only until AddPlot() is called next.
-		Adding nodes to a plot other than the last returned causes undefined behavior.
+		Adds a new node to the current plot.
+		@param x X slot of the height value. Must be greater than any nodes previously added to the current plot.
+				Intermediate nodes are automatically added if missing. The first node added this way defines the left most sampling point.
+		@param y Y coordinate of the point. Arbitrary. Must not be NaN or +/-INF
 		*/
-		Plot&	AddPlot(const float3&color)
+		void	AddNode(const index_t x, const float y)
 		{
-			Plot&rs = graphs.Append();
-			rs.color = color;
-			rs.stack = To<PlotStack>::Cast(shared_from_this());
-			return rs;
+			plots.Last().AddNode(this,x,y);
 		}
+
+		/**
+		Adds a new plot
+		*/
+		void	NextPlot(const float3&color)
+		{
+			Plot&rs = plots.Append();
+			rs.color = color;
+		}
+
 
 		virtual void	Render() override;
 
 		void			SignalAxesChanged()	{axesChanged = true;}
 		float			SampleStackedHeight(index_t) const;
 
+		bool			IsStacked() const {return isStack;}
+		void			SetStacked(bool stacked) {if (stacked == isStack) return; isStack = stacked;  Replot();}
 	protected:
 		virtual void	OnRectChange() override	{Replot();}
 		virtual void	OnScreenSizeOrUIScaleChange() override	{Replot();}
@@ -460,9 +469,11 @@ namespace GUI
 		Rect<>			GetPlotScope() const;
 		Rect<>			GetPlotRect() const;
 		float			rightSpace = 0.1f;
-		Buffer0<Plot>	graphs;
+		Buffer0<Plot>	plots;
+		bool			isStack = false;
 		TIntRange<index_t>	xRange = TIntRange<index_t>::Invalid;
-		TFloatRange<>		yRange = TFloatRange<>::Invalid;
+		TFloatRange<>		stackedYRange = TFloatRange<>::Invalid,
+							rawYRange = TFloatRange<>::Invalid;
 		friend class Plot;
 	};
 

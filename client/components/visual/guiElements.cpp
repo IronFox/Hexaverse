@@ -2298,9 +2298,8 @@ namespace GUI
 
 
 
-	void	PlotStack::Plot::AddNode(const index_t x, const float y)
+	void	MultiPlot::Plot::AddNode(MultiPlot*s, const index_t x, const float y)
 	{
-		PPlotStack s = stack.lock();
 
 		if (start == InvalidIndex)
 			start = x;
@@ -2331,28 +2330,29 @@ namespace GUI
 		data << TPoint{y,sampled,yTop};
 
 		s->xRange.Include(x);
-		s->yRange.Include(yTop);
+		s->stackedYRange.Include(yTop);
+		s->rawYRange.Include(y);
 		s->SignalAxesChanged();
 
 		changed = true;
 	}
 
 
-	void	PlotStack::Plot::RenderSurfaces() const
+	void	MultiPlot::Plot::RenderSurfaces() const
 	{
 		surface.Rasterize();
 	}
 
-	void	PlotStack::Plot::RenderLines() const
+	void	MultiPlot::Plot::RenderLines() const
 	{
 		lines.Rasterize();
 	}
 
-	/*virtual override*/ void	PlotStack::Render()
+	/*virtual override*/ void	MultiPlot::Render()
 	{
 		Super::Render();
 		bool anyChanged = axesChanged;
-		foreach (graphs,g)
+		foreach (plots,g)
 			if (g->changed)
 			{
 				anyChanged = true;
@@ -2361,9 +2361,14 @@ namespace GUI
 		if (anyChanged)
 			Replot();
 
-		foreach (graphs,g)
+		display.StoreRendererState();
+		display.SetRasterizer(true,true);
+		foreach (plots,g)
 			g->RenderSurfaces();
-		foreach (graphs,g)
+
+		display.RestoreRendererState();
+
+		foreach (plots,g)
 			g->RenderLines();
 
 
@@ -2384,7 +2389,7 @@ namespace GUI
 		Box::RenderOutline(GetRect(),float3(1),true);
 	}
 
-	void PlotStack::BeginLabelPrint()
+	void MultiPlot::BeginLabelPrint()
 	{
 		textout.PushState();
 
@@ -2393,13 +2398,13 @@ namespace GUI
 		textout.SetColor(g,g,g);
 	}
 
-	void PlotStack::EndLabelPrint()
+	void MultiPlot::EndLabelPrint()
 	{
 		textout.PopState();
 	}
 
 
-	float	PlotStack::GetAxisStep(const TFloatRange<>&valueRange) const
+	float	MultiPlot::GetAxisStep(const TFloatRange<>&valueRange) const
 	{
 		const float range = valueRange.GetExtent();
 		const float lg = log(range) / log(10.f);
@@ -2413,19 +2418,20 @@ namespace GUI
 		return base * 2.f;
 	}
 
-	void	PlotStack::Replot()
+	void	MultiPlot::Replot()
 	{
 		Super::OnRectChange();
 
 		static const float labelPadding = 0.01f;
+		const float yMax = isStack ? stackedYRange.max : rawYRange.max;
 		BeginLabelPrint();
-			rightSpace = std::max(0.025f,textout.GetScaledWidth(String(yRange.max)) + labelPadding * 2.f);
+			rightSpace = std::max(0.025f,textout.GetScaledWidth(String(yMax)) + labelPadding * 2.f);
 		EndLabelPrint();
 
 		const Rect<> plotScope = GetPlotScope();
 		const Rect<> plotRect = GetPlotRect();
-		foreach (graphs,g)
-			g->Replot(plotRect,plotScope, g == graphs.begin());
+		foreach (plots,g)
+			g->Replot(plotRect,plotScope, g == plots.begin() && isStack, isStack);
 
 
 		const Rect<>&cRect = GetRect();
@@ -2482,7 +2488,7 @@ namespace GUI
 			}
 
 			{
-				const TFloatRange<float> fy = FloatRange<float>(0,this->yRange.max);
+				const TFloatRange<float> fy = FloatRange<float>(0,yMax);
 				float xLineStep = GetAxisStep(fy);
 
 				const index_t start = 1;
@@ -2517,7 +2523,7 @@ namespace GUI
 				labels.Last().coords = float2(plotRect.x.max + labelPadding,plotRect.y.min + textout.GetScaledHeight());
 			}
 			{
-				labels.Append().caption = String(this->yRange.max);
+				labels.Append().caption = String(yMax);
 				labels.Last().coords = float2(plotRect.x.max + labelPadding,plotRect.y.max);
 			}
 
@@ -2526,12 +2532,12 @@ namespace GUI
 
 	}
 
-	Rect<>			PlotStack::GetPlotScope() const
+	Rect<>			MultiPlot::GetPlotScope() const
 	{
-		return Rect<>(xRange.start,0.f,xRange.end-1,yRange.max);
+		return Rect<>(xRange.start,0.f,xRange.end-1,isStack ? stackedYRange.max : rawYRange.max);
 	}
 
-	Rect<>			PlotStack::GetPlotRect() const
+	Rect<>			MultiPlot::GetPlotRect() const
 	{
 		Rect<> rs = GetRect();
 		rs.x.min += 0.025f;
@@ -2543,20 +2549,20 @@ namespace GUI
 
 
 
-	float	PlotStack::SampleStackedHeight(index_t x) const
+	float	MultiPlot::SampleStackedHeight(index_t x) const
 	{
 		if (!xRange.Contains(x))
 			return 0;
 
 		float rs = 0;
-		foreach (graphs,g)
+		foreach (plots,g)
 			rs += g->Sample(x);
 
 		return rs;
 	}
 
 
-	float	PlotStack::Plot::Sample(index_t x) const
+	float	MultiPlot::Plot::Sample(index_t x) const
 	{
 		if (x < start)
 			return 0;
@@ -2568,7 +2574,7 @@ namespace GUI
 	}
 
 
-	void	PlotStack::Plot::MakeVertex(const float x, const float y)
+	void	MultiPlot::Plot::MakeVertex(const float x, const float y)
 	{
 		const float2	p{x,y};
 		lines.AddVertex(p,float4(color,1.f));
@@ -2576,7 +2582,7 @@ namespace GUI
 	}
 
 
-	void	PlotStack::Plot::Replot(const Rect<>&componentRect, const Rect<>&dataRect, bool addBottomLine)
+	void	MultiPlot::Plot::Replot(const Rect<>&componentRect, const Rect<>&dataRect, bool addBottomLine, bool stacked)
 	{
 		changed = false;
 
@@ -2584,41 +2590,118 @@ namespace GUI
 		surface.Clear();
 		lines.Clear();
 
-
-		for (index_t i = 0; i < data.Count(); i++)
+		if (data.Count() > 1)
 		{
-			float rX = dataRect.x.Relativate(i + start);
-			ASSERT_IS_CONSTRAINED__(rX,0,1);
-			MakeVertex( 
-				componentRect.x.Derelativate( rX ),
-				componentRect.y.Derelativate( dataRect.y.Relativate(data[i].yMin) )
-				);
+			//if (stacked)
+			{
+				for (index_t i = 0; i < data.Count(); i++)
+				{
+					const float rX = dataRect.x.Relativate(i + start);
+					const float y0 = stacked ? data[i].yMin : 0;
+					const float y1 = stacked ? data[i].yMax : data[i].yRaw;
+					ASSERT_IS_CONSTRAINED__(rX,0,1);
+					MakeVertex( 
+						componentRect.x.Derelativate( rX ),
+						componentRect.y.Derelativate( dataRect.y.Relativate(y0) )
+						);
 
-			MakeVertex( 
-				componentRect.x.Derelativate( rX ),
-				componentRect.y.Derelativate( dataRect.y.Relativate(data[i].yMax) )
-				);
+					MakeVertex( 
+						componentRect.x.Derelativate( rX ),
+						componentRect.y.Derelativate( dataRect.y.Relativate(y1) )
+						);
+				}
+
+				for (index_t i = 1; i < data.Count(); i++)
+				{
+
+					surface.AddQuad(
+						((i-1)*2+1),
+						((i-1)*2),
+						((i)*2),
+						((i)*2+1));
+					lines.AddLine(
+						((i-1)*2+1),
+						((i)*2+1));
+
+					if (addBottomLine)
+						lines.AddLine(
+							((i-1)*2),
+							((i)*2));
+				}
+				lines.AddLine(0,1);
+				lines.AddLine(data.Count()*2-1,data.Count()*2-2);
+			}
+			#if 0
+			else
+			{
+				const float w = ViewPortWidth();
+				const float h = ViewPortHeight();
+
+				struct TPoint
+				{
+					float2	raw,dir,normal,base,final;
+				};
+
+				Array<TPoint> points(data.Count());
+				for (index_t i = 0; i < data.Count(); i++)
+				{
+					const float rX = dataRect.x.Relativate(i + start);
+					ASSERT_IS_CONSTRAINED__(rX,0,1);
+					const float x = componentRect.x.Derelativate( rX );
+					const float y = componentRect.y.Derelativate( dataRect.y.Relativate(data[i].yRaw) );
+					points[i].raw.x = x * w;
+					points[i].raw.y = y * h;
+
+					MakeVertex(x,y);
+				}
+
+				for (index_t i = 0; i+1 < points.Count(); i++)
+				{
+					auto&p = points[i];
+					p.dir = points[i+1].raw - points[i].raw;
+					p.normal = float2{p.dir.y,-p.dir.x}.Normalize0();
+					p.base = p.raw + p.normal * 20 * UI::GetScale();
+				}
+
+				for (index_t i = 1; i+1 < points.Count(); i++)
+				{
+					const float2&n1 = points[i].normal;
+					const float2&b0 = points[i-1].base,
+								&b1 = points[i].base,
+								&d0 = points[i-1].dir;
+					const float2 bd = b1 - b0;
+					const float div = Vec::dot(d0,n1);
+					if (fabs(div) > TypeInfo<float>::error)
+					{
+						const float alpha = Vec::dot(n1, b1 - b0) / div;
+						points[i].final = b0 + alpha * d0;
+					}
+					else
+						points[i].final = points[i].base;
+				}
+
+				{
+					points.First().final = points.First().base;
+					points.Last().final = points.GetFromEnd(1).base + points.GetFromEnd(1).dir;
+				}
+				foreach (points,p)
+				{
+					MakeVertex(p->final.x / w, p->final.y / h);
+				}
+
+
+
+				for (index_t i = 1; i < data.Count(); i++)
+				{
+					surface.AddQuadInv(i-1,i,i+data.Count(),i+data.Count()-1);
+					lines.AddLine(
+						i-1,
+						i);
+				}
+
+			}
+			#endif
 		}
-
-		for (index_t i = 1; i < data.Count(); i++)
-		{
-
-			surface.AddQuad(
-				((i-1)*2+1),
-				((i-1)*2),
-				((i)*2),
-				((i)*2+1));
-			lines.AddLine(
-				((i-1)*2+1),
-				((i)*2+1));
-
-			if (addBottomLine)
-				lines.AddLine(
-					((i-1)*2),
-					((i)*2));
-		}
-		lines.AddLine(0,1);
-		lines.AddLine(data.Count()*2-1,data.Count()*2-2);
 
 		lines.Bake();
 		surface.Bake();
