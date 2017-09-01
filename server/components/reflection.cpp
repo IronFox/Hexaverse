@@ -726,9 +726,9 @@ namespace Reflection
 
 
 		template <typename T>
-		PBase	SetEnum(const String&name, T&enumReference, Persistence p)
+		PBase	SetEnum(const String&name, T&enumReference, Persistence p, bool readonly = false)
 		{
-			PBase rs (new EnumVariable<T>(name,p,enumReference,CLI::EraseProtection));
+			PBase rs (new EnumVariable<T>(name,p,enumReference,readonly ? CLI::FullProtection : CLI::EraseProtection));
 			state.SetVariable(rs);
 			return rs;
 		}
