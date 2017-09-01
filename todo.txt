@@ -1,4 +1,6 @@
-﻿end-game score recording and reporting
+﻿music
+
+explosion optimization or options
 
 aerial radar and turret
 bomber
@@ -157,6 +159,7 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+end-game score recording and reporting
 Loading screen
 save/restore faction colors
 make shift-key functionality optional

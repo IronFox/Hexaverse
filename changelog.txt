@@ -1,4 +1,6 @@
 v0.6.5
+	+ Added remote control commands to end game at any time.
+	+ Added statistics recording and end-game display.
 	+ Added options dialog.
 	+ Added option to change UI scale.
 	+ Implemented loading splash screen.
