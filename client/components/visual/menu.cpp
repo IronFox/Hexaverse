@@ -238,12 +238,7 @@ namespace Menu
 		game->AddCommand("Change Nickname",LocalApplicationInterface::QueryNickname);
 		game->AddCommand("Abandon faction",Network::AbandonCurrentFaction,[](){return Network::amOnline && Network::haveFaction && RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame;});
 		game->AddCommand("Show statistics", GUI::Statistics::Show,[](){return Network::amOnline && RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame;});
-		game->AddCommand("Disconnect",
-			[]()
-			{
-				Network::client.Disconnect();
-			},
-			[](){return Network::client.IsConnected();});
+
 		//game->FullAutoLayout();
 	}
 
@@ -286,6 +281,13 @@ namespace Menu
 	{
 		main = Dialog::Menu::Create();
 		main->Setup(0.25f,"Main");
+
+		main->AddCommand("Disconnect",
+		[]()
+		{
+			Network::client.Disconnect();
+		},
+		[](){return Network::client.IsConnected();});
 		main->AddCommand("Game",[](){GUI::Show(game);},std::function<bool()>(),false);
 		
 		main->AddCommand("Help",
