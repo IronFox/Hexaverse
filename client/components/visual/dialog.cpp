@@ -929,6 +929,8 @@ namespace Dialog
 	{
 		GUI::VerifyIntegrity(CLOCATION);
 
+		Music::SignalServerListShown(doShow);
+
 		if (doShow)
 		{
 			ShowBottom(serverChoice);
