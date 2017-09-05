@@ -31,11 +31,11 @@ namespace Explosions
 								z;
 		const static float		BaseTTL;//=0.5f;
 
-		M::float3				origin,
+		float3				origin,
 								inertia,
 								normalizedUp,
 								world;
-		M::float4				color;
+		float4				color;
 
 
 		bool					operator<(const Particle&other) const
@@ -88,20 +88,20 @@ namespace Explosions
 										float relative = p.ttl/p.maxTTL;
 									
 										M::Vec::mult(p.inertia,M::Clamp01(friction+relative));
-										M::Vec::mad(p.world,p.inertia,delta);//*clamped(particle->ttl/(particle->max_ttl/2),0,1));
+										M::Vec::mad(p.world,p.inertia,delta);//*M::Clamp(particle->ttl/(particle->max_ttl/2),0,1));
 										
-										using M::sqr;
+										using M::Sqr;
 
-										M::float3 pdelta = p.world - p.origin;
+										float3 pdelta = p.world - p.origin;
 										float d = M::Vec::dot(pdelta,p.normalizedUp);
-										M::float3 i2 = pdelta - p.normalizedUp * d;
+										float3 i2 = pdelta - p.normalizedUp * d;
 										p.inertia += p.normalizedUp * delta*SMOKE_UPDRIFT*5 * (1.f - relative);
 										p.inertia -= i2 * delta * SMOKE_UPDRIFT * 0.3f * relative;// * (1.f - relative);
 
 								//        particle->position[1] += particle->inertia[1]*eveTiming.delta;
 
-										p.color.alpha = sqr(relative)*0.1;
-										float r = sqr(sqr(relative));
+										p.color.alpha = M::Sqr(relative)*0.1;
+										float r = M::Sqr(M::Sqr(relative));
 										//if (shiftDustTo)
 										M::Vec::mult(particleColor,r,p.color.rgb);
 											//Vec::def(p.color.rgb,r*particleColor.r,r*particleColor.g,r*particleColor.b);
@@ -134,14 +134,14 @@ namespace Explosions
 	{
 	public:
 		static DX11::InstructionBlock16		ringInstruction;
-		static DX11::ObjectBuffer<M::float4>ringColor;
+		static DX11::ObjectBuffer<float4>ringColor;
 
 
 		//Engine::Light				*light_source;
 		float						progress,
 									size,	//=25
 									executionTime;
-		M::float3					location,
+		float3					location,
 									normal1,
 									color;
 		Engine::OpenAL::Source		source,auxiliarySources[6];
@@ -181,7 +181,7 @@ namespace Explosions
 									}
 		void						Create(const M::TVec3<>&position, float size_, float duration, bool isEMP);
 		bool						Update(Particles&particles, float delta);
-		void						RenderRings(const M::float3&color);
+		void						RenderRings(const float3&color);
 	};
 
 

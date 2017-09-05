@@ -42,7 +42,7 @@ namespace Objects
 			virtual void	RasterizeImage()	{}
 			virtual void	LoadIcon();
 			DX11::Texture	texture;
-			TFloatRect		screenRect;
+			M::TFloatRect	screenRect;
 			void			LoadIconByName(const String&name);
 			/**
 			Queries any subsequent costs of an execution of the local command

@@ -71,10 +71,10 @@ namespace ApplicationInterface
 	void	SignalRemoval(const Objects::PWorldEntity&e, Objects::RemovalType t, float atTime);
 	void	SignalNewStructure(const Objects::PStructure&s, float atTime);
 	void	SignalMotion(const Objects::PMobileEntity&v, const Grid::LCellIdI&from,const Grid::LCellIdI&to, float t0, float timeNeeded);
-	void	SignalTurretRotation(const Objects::PWorldEntity&v, const TVec3<>&toDirection, float rotationTime);
+	void	SignalTurretRotation(const Objects::PWorldEntity&v, const M::TVec3<>&toDirection, float rotationTime);
 	void	SignalAttack(const TAttack&);
-	void	SignalExplosion(const TAttack&, const TVec3<>&center,float explosionRadius,bool isEMP, bool isDoomsday,float atTime);
-	//void	SignalExplosion(const TVec3<>&center,float explosionRadius,bool isEMP, float atTime);
+	void	SignalExplosion(const TAttack&, const M::TVec3<>&center,float explosionRadius,bool isEMP, bool isDoomsday,float atTime);
+	//void	SignalExplosion(const M::TVec3<>&center,float explosionRadius,bool isEMP, float atTime);
 	void	SignalDisappearanceToHostileFaction(const Objects::OwnerParameter&target, const Objects::PWorldEntity&e, float atTime);
 	void	SignalAppearanceToHostileFaction(const Objects::OwnerParameter&target, const Objects::PWorldEntity&e, float atTime);
 	void	SignalOwnershipChange(const Objects::PWorldEntity&e,const Objects::OwnerParameter&target, float t);

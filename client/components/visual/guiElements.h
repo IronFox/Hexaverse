@@ -17,7 +17,6 @@
 namespace GUI
 {
 	using namespace DeltaWorks;
-	using namespace DeltaWorks::Math;
 
 	namespace DX11 = Engine::DX11;
 
@@ -161,10 +160,10 @@ namespace GUI
 	class ComponentLocation
 	{
 	public:
-		const Rect<>&	GetRect() const {return rect;}
+		const M::Rect<>&	GetRect() const {return rect;}
 		bool			SetWidth(float w);
 		bool			SetHeight(float h);
-		void			SetSize(const TVec2<>&size);
+		void			SetSize(const M::TVec2<>&size);
 		float			GetWidth() const {return rect.x.GetExtent();}
 		float			GetHeight() const {return rect.y.GetExtent();}
 
@@ -174,20 +173,20 @@ namespace GUI
 		virtual void	OnVerticalRectChange()	{};
 		virtual void	OnWidthChange()		{};
 		virtual void	OnHeightChange()	{};
-		virtual void	OnTranslate(const TVec2<>&delta)	{};
+		virtual void	OnTranslate(const M::TVec2<>&delta)	{};
 
 		void			TranslateRect(const float2&delta)
 		{
-			Rect<> r = rect;
+			M::Rect<> r = rect;
 			r.Translate(delta);
 			SetRect(r);
 			OnTranslate(delta);
 		}
 
-		void			SetRect(const Rect<>&rect);
+		void			SetRect(const M::Rect<>&rect);
 	private:
 		static const constexpr float Lower = -10000.f, Upper = 10000.f;
-		Rect<>			rect;
+		M::Rect<>			rect;
 	};
 
 
@@ -212,9 +211,9 @@ namespace GUI
 		friend void		SignalScreenResize();
 
 	protected:
-		static void		Darken(const Rect<>&rect, float alpha=0.9f, bool flush=false);
-		static void		RenderArea(const Rect<>&rect, bool lit, bool flip, const float3&backgroundTone, float lowOpacity=1, float highOpacity=1);
-		static void		RenderOutline(const Rect<>&rect, const float3&backgroundTone, const Quad<bool>&edges, float lowOpacity=1, float highOpacity=1);
+		static void		Darken(const M::Rect<>&rect, float alpha=0.9f, bool flush=false);
+		static void		RenderArea(const M::Rect<>&rect, bool lit, bool flip, const float3&backgroundTone, float lowOpacity=1, float highOpacity=1);
+		static void		RenderOutline(const M::Rect<>&rect, const float3&backgroundTone, const M::Quad<bool>&edges, float lowOpacity=1, float highOpacity=1);
 
 		virtual bool	ClientIsLit() const {return true;}
 
@@ -233,7 +232,7 @@ namespace GUI
 		virtual void	PropagateToChildren(const PWindow&)	{}
 
 		static bool		Set(float&ref, float to);
-		static bool		SetCenter(TFloatRange<>&ref, float to);
+		static bool		SetCenter(M::TFloatRange<>&ref, float to);
 		
 
 		Axial2<TAnchor>	anchorConfig;
@@ -267,16 +266,16 @@ namespace GUI
 		virtual PComponent	OnMouseDown() {return PComponent();}
 		virtual WheelRs	OnMouseWheel(short) {return ContainsMouse() ? WheelRs::Ignored : WheelRs::NotContained;}
 		virtual void	OnMouseUp()	{}
-		virtual void	OnMouseMove(const TVec2<>&mouseAt, bool clipAreaContainsMouse);
+		virtual void	OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse);
 		
 		virtual bool	UpdateDynamicSize();
 
 		virtual void	Render();
 
-		virtual bool	ResolveAnchorAxis(int axis, const Rect<>&context);
+		virtual bool	ResolveAnchorAxis(int axis, const M::Rect<>&context);
 
 		virtual void	Translate(const float2&delta)	{TranslateRect(delta); /*InvalidateAnchorResolution();*/}
-		virtual void	SetLocation(const Rect<>&loc) {SetRect(loc);}
+		virtual void	SetLocation(const M::Rect<>&loc) {SetRect(loc);}
 		virtual bool	HasComponent(const PComponent&c) const {return c.get() == this;}
 
 
@@ -284,7 +283,7 @@ namespace GUI
 		PComponent		GetParent() const {return parent.lock();}
 		virtual PWindow	GetWindow() {return window.lock();}
 
-		bool			FullAutoLayout(const Rect<>&context);
+		bool			FullAutoLayout(const M::Rect<>&context);
 
 
 		void			InvalidateAutoLayout();
@@ -337,7 +336,7 @@ namespace GUI
 	public:
 		typedef Component	Super;
 
-		Quad<bool>		edges = Quad<bool>(true);
+		M::Quad<bool>		edges = M::Quad<bool>(true);
 		bool			fillBackground = true;
 		float			bottomOpacity = 1.f,
 						topOpacity = 1.f;
@@ -384,7 +383,7 @@ namespace GUI
 		
 			void	RenderSurfaces()	const;
 			void	RenderLines()	const;
-			void	Replot(const Rect<>&componentRect, const Rect<>&dataRect, bool addBottomLine, bool stack);
+			void	Replot(const M::Rect<>&componentRect, const M::Rect<>&dataRect, bool addBottomLine, bool stack);
 
 
 			void	MakeVertex(const float x, const float y);
@@ -416,9 +415,9 @@ namespace GUI
 		void	ClearPlots()
 		{
 			plots.Clear();
-			xRange = TIntRange<index_t>::Invalid;
-			stackedYRange = TFloatRange<>::Invalid;
-			rawYRange = TFloatRange<>::Invalid;
+			xRange = M::TIntRange<index_t>::Invalid;
+			stackedYRange = M::TFloatRange<>::Invalid;
+			rawYRange = M::TFloatRange<>::Invalid;
 			SignalAxesChanged();
 		}
 
@@ -457,7 +456,7 @@ namespace GUI
 		void			Replot();
 	private:
 
-		float			GetAxisStep(const TFloatRange<>&valueRange) const;
+		float			GetAxisStep(const M::TFloatRange<>&valueRange) const;
 		void			BeginLabelPrint();
 		void			EndLabelPrint();
 
@@ -470,14 +469,14 @@ namespace GUI
 
 		bool			axesChanged = false;
 		LineRenderer::Baked	axes;
-		Rect<>			GetPlotScope() const;
-		Rect<>			GetPlotRect() const;
+		M::Rect<>			GetPlotScope() const;
+		M::Rect<>			GetPlotRect() const;
 		float			rightSpace = 0.1f;
 		Buffer0<Plot>	plots;
 		bool			isStack = false;
-		TIntRange<index_t>	xRange = TIntRange<index_t>::Invalid;
-		TFloatRange<>		stackedYRange = TFloatRange<>::Invalid,
-							rawYRange = TFloatRange<>::Invalid;
+		M::TIntRange<index_t>	xRange = M::TIntRange<index_t>::Invalid;
+		M::TFloatRange<>		stackedYRange = M::TFloatRange<>::Invalid,
+							rawYRange = M::TFloatRange<>::Invalid;
 		friend class Plot;
 	};
 
@@ -485,7 +484,7 @@ namespace GUI
 	class BaseInput : public Box
 	{
 		typedef Box	Super;
-		Rect<>			core;
+		M::Rect<>			core;
 
 	protected:
 
@@ -549,7 +548,7 @@ namespace GUI
 		float			zoom = 1.f;
 		bool			widthLockedToIdeal=false;
 		bool			heightLockedToIdeal=true;
-		Quad<float>		padding;	//Vertical spacing is measured in multiples of line-heights, horizontal in multiples of X-letter-widths
+		M::Quad<float>		padding;	//Vertical spacing is measured in multiples of line-heights, horizontal in multiples of X-letter-widths
 
 		bool			UpdateIdealWidth();
 
@@ -591,8 +590,8 @@ namespace GUI
 		void			SetVerticalPadding(float topAndBottom)	{SetVerticalPadding(topAndBottom,topAndBottom);}
 		void			SetVerticalPadding(float top, float bottom)	{padding.top = top; padding.bottom = bottom; ReWrapSetHeight();}
 		void			ScaleVerticalPadding(float factor)			{padding.bottom *= factor; padding.top *= factor; ReWrapSetHeight();}
-		void			SetPadding(const Quad<float>&padding)		{this->padding = padding; if (this->widthLockedToIdeal) SetToIdealWidth(); ReWrapSetHeight();}
-		const Quad<float>&GetPadding() const {return padding;}
+		void			SetPadding(const M::Quad<float>&padding)		{this->padding = padding; if (this->widthLockedToIdeal) SetToIdealWidth(); ReWrapSetHeight();}
+		const M::Quad<float>&GetPadding() const {return padding;}
 
 		void			SetColor(const float4&color)	{this->color = color;}
 		void			SetColor(const float3&color, float alpha = 1.f)	{this->color.rgb = color; this->color.a = alpha;}
@@ -901,7 +900,7 @@ namespace GUI
 			RenderArrow(GetRect(),direction,lit);
 		}
 
-		static void		RenderArrow(const Rect<>&, direction_t, bool lit);
+		static void		RenderArrow(const M::Rect<>&, direction_t, bool lit);
 
 	};
 
@@ -920,7 +919,7 @@ namespace GUI
 		virtual PComponent	OnMouseDown() override;
 		virtual WheelRs		OnMouseWheel(short) override;
 		virtual void		OnMouseUp() override;
-		virtual void		OnMouseMove(const TVec2<>&mouseAt, bool clipAreaContainsMouse) override;
+		virtual void		OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse) override;
 		virtual void		Render() override;
 		void				Setup(float current, float max, float slideStep) {this->current = current; this->max = max; this->slideStep = slideStep;numMarkers = markersEvery ? 1+(max / markersEvery) : 0;}
 		void				SetupMarkers(float markerStep, bool show)	{this->markersEvery = markerStep; showMarkers = show; numMarkers = markersEvery ? 1+(max / markersEvery) : 0;}
@@ -940,8 +939,8 @@ namespace GUI
 	private:
 		float				current=0,max=1,		//!< Slider maximum value (inclusive)
 							slideStep=1;
-		TFloatRange<>		dragRange;
-		Rect<>				barBack,	//!< Shadow behind slider
+		M::TFloatRange<>		dragRange;
+		M::Rect<>				barBack,	//!< Shadow behind slider
 							bar;		//!< Actual grabbable bar
 		bool				showMarkers=true;
 		count_t				numMarkers=0;
@@ -971,7 +970,7 @@ namespace GUI
 			float		viewTop=0.f,	//!< counting top (=0) down (>=0)
 						targetViewTop=0.f;
 			float		viewSize = 0.2f;
-			Rect<>		outline,	//!< Shadow behind scrollbar. Does not contain buttons, but does contain bar
+			M::Rect<>		outline,	//!< Shadow behind scrollbar. Does not contain buttons, but does contain bar
 						bar;		//!< Actual grabbable bar
 			PScrollButton		up,down;
 			Panel		*owner=nullptr;
@@ -982,9 +981,9 @@ namespace GUI
 			PComponent	OnMouseDown();
 			WheelRs		OnMouseWheel(short);
 			void		OnMouseUp();
-			void		OnMouseMove(const TVec2<>&mouseAt, bool clipAreaContainsMouse);
-			void		Enable(Panel*,const Rect<>&rect);
-			void		Render(const Rect<>&rect);
+			void		OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse);
+			void		Enable(Panel*,const M::Rect<>&rect);
+			void		Render(const M::Rect<>&rect);
 			float		GetOffset() const {return visible ? -viewTop : 0;}
 
 			static float	GetPixelWidth();
@@ -1061,14 +1060,14 @@ namespace GUI
 		virtual void	SetActive(bool isActive) override;
 		virtual bool	UpdateDynamicSize() override;
 		virtual void	Render() override;
-		virtual bool	ResolveAnchorAxis(int axis, const Rect<>&context) override;
+		virtual bool	ResolveAnchorAxis(int axis, const M::Rect<>&context) override;
 		virtual void	Translate(const float2&delta)	{Super::Translate(delta); foreach (components,c) (*c)->Translate(delta);}
 
 		virtual bool	HasComponent(const PComponent&c) const override {if (c.get() == this) return true; foreach (components, c2) if ((*c2)->HasComponent(c)) return true; return false;}
 		virtual WheelRs	OnMouseWheel(short) override;
 		virtual PComponent	OnMouseDown() override;
 		virtual void	OnMouseUp() override {vscroll.OnMouseUp();}
-		virtual void	OnMouseMove(const TVec2<>&mouseAt, bool clipAreaContainsMouse) override;
+		virtual void	OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse) override;
 
 
 
@@ -1198,7 +1197,7 @@ namespace GUI
 			return Super::DetectEnabledState() || changed;
 		}
 
-		virtual void	OnMouseMove(const TVec2<>&mouseAt, bool clipAreaContainsMouse) override
+		virtual void	OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse) override
 		{
 			Super::OnMouseMove(mouseAt,clipAreaContainsMouse);
 			bool lit = IsLit();
@@ -1469,7 +1468,7 @@ namespace GUI
 			outerRect.x.Expand(outlineMargin.x);
 			outerRect.y.Expand(outlineMargin.y);
 		}
-		Rect<>				outerRect = Rect<>(0,0,1,1);
+		M::Rect<>				outerRect = M::Rect<>(0,0,1,1);
 		bool				nestedCall = false;
 		float2				outlineMargin = float2(0.015f);
 		bool				autoCenter = true,
@@ -1486,7 +1485,7 @@ namespace GUI
 				std::shared_ptr<T> rs(new T());
 				rs->autoHeight = true;
 				//Super::SetCenteredWidth(0.75f,GUI::TAnchor::RelativeToScreen);
-				rs->SetLocation(Math::TFloatRect(float2(0.25f),float2(0.5f)));
+				rs->SetLocation(M::TFloatRect(float2(0.25f),float2(0.5f)));
 				return rs;
 			}
 
@@ -1498,7 +1497,7 @@ namespace GUI
 		}
 
 	public:
-		Rect<>				context = Rect<>(0,0,1,1);
+		M::Rect<>				context = M::Rect<>(0,0,1,1);
 		bool				canBeImplicitlyClosed = true;	//!< Indicates that this window can be closed by events such as the Escape being pressed
 		bool				isModal = true;
 
@@ -1572,7 +1571,7 @@ namespace GUI
 			if (autoCenter)
 			{
 				float2 delta = context.center() - GetRect().center();
-				if (!Vec::similar(delta,Vector2<>::zero))
+				if (!Vec::similar(delta,M::Vector2<>::zero))
 					Super::Translate(delta);
 			}
 			UpdateOuterRect();
@@ -1603,7 +1602,7 @@ namespace GUI
 				if (autoCenter)
 				{
 					float2 delta = context.center() - GetRect().center();
-					if (!Vec::similar(delta,Vector2<>::zero))
+					if (!Vec::similar(delta,M::Vector2<>::zero))
 						Super::Translate(delta);
 				}
 				UpdateOuterRect();

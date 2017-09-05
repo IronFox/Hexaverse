@@ -37,7 +37,7 @@ namespace VisualTerrain
 
 		TWeightedColor	GetMixColorU(index_t stackIndex,  UINT ih, Content oppositeContent, float&brightness, int&sumVisibilityTo, Content&outContent) const;
 		TWeightedColor	GetDownMixColorU(index_t stackIndex,  UINT ih, Content oppositeContent, float&brightness, int&sumVisibilityTo, Content&outContent) const;
-//			static void ApplyEMP(UINT16 cornerFlags,TVec4<>&rs);
+//			static void ApplyEMP(UINT16 cornerFlags,M::TVec4<>&rs);
 		static bool FlagsAffectedByEMP(UINT16 cornerFlags) {return !(cornerFlags & Grid::empZonesUnlocked);}
 		static bool AffectedByEMP(index_t stackIndex);
 
@@ -49,11 +49,11 @@ namespace VisualTerrain
 									const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighborhood);
 		void	CompileAboveTerrainOutline(const UINT ih, const int ir,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors);
 		void	CompileCap(	const UINT ih,const BaseGrid::TNetCell&cell, const bool capped, const CellStack::Cell&thisCell, 
-							const TFloatRange<>&,const BaseGrid::TCellNeighborhood&, const CellStack&);
+							const M::TFloatRange<>&,const BaseGrid::TCellNeighborhood&, const CellStack&);
 		void	CompileDownCap(	const UINT ih,const BaseGrid::TNetCell&cell, const CellStack::Cell&thisCell, 
 								const int ir,const BaseGrid::TCellNeighborhood&, const CellStack&);
 		void	CompileFaceToNeighbor(const int j, const UINT ih, const int ir,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors,TLitColor newCornerColor[6], 
-										const CellStack::Cell&thisCell, const CellStack::Cell&lastCell, const TFloatRange<>&range);
+										const CellStack::Cell&thisCell, const CellStack::Cell&lastCell, const M::TFloatRange<>&range);
 		void	DeliverResults(THull<TerrainVertex>&solidHull, THull<OverlayVertex>&coverHull);
 	};
 
@@ -99,7 +99,7 @@ namespace VisualTerrain
 
 
 	
-	void	TerrainCompiler::CompileCap(const UINT ih,const BaseGrid::TNetCell&cell, const bool capped, const CellStack::Cell&thisCell, const TFloatRange<>&range,const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack)
+	void	TerrainCompiler::CompileCap(const UINT ih,const BaseGrid::TNetCell&cell, const bool capped, const CellStack::Cell&thisCell, const M::TFloatRange<>&range,const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack)
 	{
 
 		bool mixes0;
@@ -203,7 +203,7 @@ namespace VisualTerrain
 
 	void	TerrainCompiler::CompileFaceToNeighbor(const int j, const UINT ih, const int ir,const BaseGrid::TNetCell&cell,
 											const BaseGrid::TCellNeighborhood&neighbors,TLitColor newCornerColor[6], const CellStack::Cell&thisCell, const CellStack::Cell&lastCell,
-											const TFloatRange<>&range )
+											const M::TFloatRange<>&range )
 	{
 		const UINT32 n0 = neighbors.neighborID[j];
 		const UINT32 n1 = neighbors.neighborID[(j + 1) % cell.numCorners];
@@ -241,7 +241,7 @@ namespace VisualTerrain
 
 			if (!filled || ncutoff)
 			{
-				TVec3<> normal;
+				M::TVec3<> normal;
 				const auto&v1 = cell.cornerVertex[(j + 1) % cell.numCorners];
 				const auto&v0 = cell.cornerVertex[j];
 				Vec::cross(v0.xyz, v0.xyz - v1.xyz, normal);
@@ -294,11 +294,11 @@ namespace VisualTerrain
 			return;
 		}
 
-		const TFloatRange<> range = FloatRange(
+		const M::TFloatRange<> range = M::FloatRange(
 			Grid::ToRadius(ir),
 			Grid::ToRadius(ir + 1));
 		{
-			//float b = smoothstep(0.9, 1, range.max / WorldScale)*0.9f + 0.1f;
+			//float b = M::SmoothStep(0.9, 1, range.max / WorldScale)*0.9f + 0.1f;
 			static const float delta = 0.1f;
 
 			solidMesh.SetOffset();
@@ -402,11 +402,11 @@ namespace VisualTerrain
 		}
 
 
-		const TFloatRange<> range = FloatRange(
+		const M::TFloatRange<> range = M::FloatRange(
 			Grid::ToRadius(-1-CellStack::HalfRange),
 			Grid::ToRadius(-CellStack::HalfRange));
 		{
-			//float b = smoothstep(0.9, 1, range.max / WorldScale)*0.9f + 0.1f;
+			//float b = M::SmoothStep(0.9, 1, range.max / WorldScale)*0.9f + 0.1f;
 			static const float delta = 0.1f;
 
 			solidMesh.SetOffset();
@@ -442,7 +442,7 @@ namespace VisualTerrain
 				//begin--;
 			UINT32 end = (UINT32)stack.highestOpaqueCell + 1;
 
-			//TVec4<> cornerColor[6];
+			//M::TVec4<> cornerColor[6];
 
 			for (int j = 0; j < cell.numCorners; j++)
 			{
@@ -500,7 +500,7 @@ namespace VisualTerrain
 	{
 		const index_t end = offset + count;
 		//SpinLock lock;
-		const count_t numBatches = CeilDiv(count,BatchSize);
+		const count_t numBatches = M::CeilDiv(count,BatchSize);
 		static Array<THull<TerrainVertex> >	hulls;
 		static Array<THull<OverlayVertex> >	covers;
 		count_t numWorkers = System::ParallelLoop::GetGlobalWorkerCount();

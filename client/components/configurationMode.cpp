@@ -236,7 +236,7 @@ namespace ConfigurationMode
 				float b = 0.2f * (window->CountComponents()/4);
 				float x = 0.25f * (window->CountComponents()%4);
 				float x2 = 0.25f * (3-(window->CountComponents()%4));
-				button->SetLocation(Math::TFloatRect(float2(),float2(0.15f,0.15f)));
+				button->SetLocation(M::TFloatRect(float2(),float2(0.15f,0.15f)));
 				{
 					auto cfg = button->GetAnchorConfig();
 					cfg.Left().Set(x);
@@ -263,7 +263,7 @@ namespace ConfigurationMode
 			{
 				GUI::PButton button(new GUI::Button("Abort"));
 				float b = 0.2f * ((window->CountComponents()/4)+1);
-				button->SetLocation(Math::TFloatRect(float2(),float2(1.f,0.2f)));
+				button->SetLocation(M::TFloatRect(float2(),float2(1.f,0.2f)));
 //				button->anchorConfig.Top().Set(b);
 				{
 					auto cfg = button->GetAnchorConfig();

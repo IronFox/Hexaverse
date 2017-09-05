@@ -21,7 +21,7 @@ namespace Objects
 	/*static*/ bool				TurretBase::CheckArea(const OwnerParameter&myFaction, const Grid::LCellIdI&origin, float explosionRadius)
 	{
 		AreaHelper	helper;
-		using Math::sqr;
+		using M::Sqr;
 		
 		{
 			const auto&n = Grid::low.grid.GetCell(origin.stackID).neighborhood;
@@ -33,13 +33,13 @@ namespace Objects
 				helper << origin - 1;
 		}
 		Grid::LCellIdI current;
-		const TVec3<> source3 = Grid::ToWorld(origin);
-		float range2 = sqr(explosionRadius);
+		const M::TVec3<> source3 = Grid::ToWorld(origin);
+		float range2 = M::Sqr(explosionRadius);
 
 		while (helper >> current)
 		{
 
-			TVec3<> world = Grid::ToWorld(current);
+			M::TVec3<> world = Grid::ToWorld(current);
 			float fromSource2 = Vec::quadraticDistance(source3,world);
 			if (fromSource2 > range2)
 				continue;
@@ -69,20 +69,20 @@ namespace Objects
 
 	bool					TurretBase::ExtCanHit(const OwnerParameter&myFaction, const TrajectoryEndPoint&source, const TrajectoryEndPoint&destIn, Grid::LCellIdI&destOut)	const
 	{
-		using Math::sqr;
+		using M::Sqr;
 		//const float velocity = Turret::MaxRangeToVelocity(GetFlatAttackRange());
 		const float range = GetFlatAttackRange();
 		//const float extRange = range + (turret->explosionRadius);
-		//const float range2 = sqr(range);
-		//const float extRange2 = sqr(extRange);
-		//const TVec3<> source3 = Grid::ToWorld(source);
-		//TVec3<> dest3 = Grid::ToWorld(destIn);
+		//const float range2 = M::Sqr(range);
+		//const float extRange2 = M::Sqr(extRange);
+		//const M::TVec3<> source3 = Grid::ToWorld(source);
+		//M::TVec3<> dest3 = Grid::ToWorld(destIn);
 		//float distance2 = Vec::quadraticDistance(source3,dest3);
 		//if (Turret::GetAngleForDistance(velocity,source,destIn))
 		//if (distance2 > extRange2)
 		//	return false;
 		const float explosionRadius = turret->GetExplosionRadius(myFaction);
-		const float explosionRadius2 = sqr(explosionRadius);
+		const float explosionRadius2 = M::Sqr(explosionRadius);
 		if (Component::Turret::CanHit(turret->trajectoryType, range,source,destIn)
 			&& CheckArea(myFaction,destIn.cellLocation,explosionRadius))
 		{
@@ -105,7 +105,7 @@ namespace Objects
 		Grid::LCellIdI current;
 		while (helper >> current)
 		{
-			TVec3<> world = Grid::ToWorld(current);
+			M::TVec3<> world = Grid::ToWorld(current);
 			float fromDest2 = Vec::quadraticDistance(destIn.worldLocation,world);
 			if (fromDest2 > explosionRadius2)
 				continue;

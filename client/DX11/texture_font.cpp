@@ -10,7 +10,6 @@ namespace Engine
 {
 	namespace DX11
 	{
-		using namespace DeltaWorks::Math;
 
 		TextureFont::TextureFont():scale(1.0f)
 		{

@@ -12,7 +12,6 @@
 namespace Dialog
 {
 	using namespace DeltaWorks;
-	using namespace DeltaWorks::Math;
 
 	CONSTRUCT_ENUMERATION4(CheckResult,
 		OkayContinue,		//operation applicable. User can continue any time they wish to
@@ -62,7 +61,7 @@ namespace Dialog
 		bool				isTutorial = false,
 							sendNullPasswordOnAbortByUser = false;
 
-		Rect<>				totalSize;
+		M::Rect<>				totalSize;
 
 		static std::shared_ptr<Dialog>	Create()
 		{
@@ -181,8 +180,8 @@ namespace Dialog
 	/**
 	Queues a tutorial message. Allows hiding all following tutorials
 	*/
-	WDialog	EnqueueTutorial(const String&key, const Array<String>&text, const String&imageName = "", const Rect<>&screenReference = Rect<>::Invalid);
-	PDialog	CreateTutorialMessage(const String&key, const ArrayRef<const String>&text, const String&imageName = "", const Rect<>&screenReference = Rect<>::Invalid);
+	WDialog	EnqueueTutorial(const String&key, const Array<String>&text, const String&imageName = "", const M::Rect<>&screenReference = M::Rect<>::Invalid);
+	PDialog	CreateTutorialMessage(const String&key, const ArrayRef<const String>&text, const String&imageName = "", const M::Rect<>&screenReference = M::Rect<>::Invalid);
 
 	bool	RemoveTutorial(const String&key);
 	bool	RemoveTutorial(const PDialog&dialog);

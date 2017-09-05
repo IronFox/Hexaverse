@@ -86,10 +86,10 @@ namespace Objects
 	void MobileEntity::UpdateSystem()
 	{
 		ASSERT_LESS__(location.stackID, Grid::LowSetup::GridType::CellCount);
-		TVec3<> oldLocation = system.w.xyz;
-		const TVec3<>&up = Grid::low.cells[location.stackID].cornerCenter;
+		M::TVec3<> oldLocation = system.w.xyz;
+		const M::TVec3<>&up = Grid::low.cells[location.stackID].cornerCenter;
 		//centerVertex.xyz;
-		TVec3<> y, x,z;
+		M::TVec3<> y, x,z;
 		system.w.xyz = up * Grid::ToRadiusf(float(location.height) /*+ 0.025f*/);
 		z = oldLocation- system.w.xyz;
 
@@ -483,7 +483,7 @@ namespace Objects
 								{
 									for (const auto&node : task.path)
 									{
-										//TVec3<> world = Grid::ToWorld(node.cell);
+										//M::TVec3<> world = Grid::ToWorld(node.cell);
 										//float zOffset;
 										//const auto&base = m->GetTurretBase(zOffset);
 										Grid::LCellIdI actual;
@@ -1157,9 +1157,9 @@ namespace Objects
 			float3 dir = Grid::low.cells[target.stackID].centerVertex.xyz * Grid::ToRadius(target.height) - this->GetWorldPosition();
 			float3 innerDir;
 			Mat::rotate(this->inverse,dir,innerDir);
-			TVec3<> t0;
+			M::TVec3<> t0;
 			Grid::HCellIdI t1;
-			Ctr::Buffer0<TVec4<> > trajectory;
+			Ctr::Buffer0<M::TVec4<> > trajectory;
 
 			float angle;	
 			if (TraceTrajectory(TrajectoryEndPoint(target),trajectory,t0,t1,angle))
@@ -1187,7 +1187,7 @@ namespace Objects
 						ApplicationInterface::SignalTurretRotation(To<Vehicle>::Cast(shared_from_this()),(ToWorld(trajectory[1]) - ToWorld(trajectory.First())).Normalized0(),rotTime);
 						entityTime += rotTime;
 
-					//	TVec3<> t0;
+					//	M::TVec3<> t0;
 					//	Grid::HCellIdI t1;
 					//	if (RecompileTrajectory(t0,t1))
 					//	{

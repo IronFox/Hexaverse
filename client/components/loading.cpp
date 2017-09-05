@@ -73,7 +73,7 @@ namespace Loading
 
 				instruction.binding.Append("POSITION",0,DXGI_FORMAT_R32G32_FLOAT);
 				instruction.ibo.Create({0,1,2, 0,2,3});
-				instruction.vbo.CreateFromStructs({M::float2(-1),M::float2(1,-1),M::float2(1),M::float2(-1,1)});
+				instruction.vbo.CreateFromStructs({float2(-1),float2(1,-1),float2(1),float2(-1,1)});
 				instruction.SetTriangles();
 				instruction.UpdateLayout();
 

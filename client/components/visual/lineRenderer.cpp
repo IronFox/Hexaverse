@@ -49,7 +49,7 @@ namespace LineRenderer
 		Rasterize(p0, _color, p1, _color);
 	}
 
-	void	Rasterize(const TFloatRect&r)
+	void	Rasterize(const M::TFloatRect&r)
 	{
 		float3	p0 = float3(r.x.min, r.y.min, 0 ),
 				p1 = float3(r.x.max, r.y.min, 0 ),

@@ -14,6 +14,7 @@
 #include <logEvent.h>
 #include "../clientRuntimeConfig.h"
 #include "../clientEvents.h"
+#include "music.h"
 
 namespace DX11 = Engine::DX11; 
 
@@ -257,7 +258,7 @@ namespace Dialog
 					textField->SetAnchorConfig(cfg);
 				}
 				//textField->anchorConfig.axis[1].center.Set(imageField,0.f);
-	//			imageField->SetLocation(Rect<>(0,1,0.25,0.75f));
+	//			imageField->SetLocation(M::Rect<>(0,1,0.25,0.75f));
 				//textField->rect.Set(0.405f,0.25f,0.75f,0.75f);
 				//imageField->rect.Set(0.25f,0.25f,0.4f,0.75f);
 				textField->alignCenter = false;
@@ -382,7 +383,7 @@ namespace Dialog
 			//	if (imageField)
 			//		imageField->rect.y = textField->rect.y;
 
-			//	Rect<> r = textField->rect;
+			//	M::Rect<> r = textField->rect;
 			//	if (imageField)
 			//		r.Include(imageField->rect);
 			//	if (inputField)
@@ -703,7 +704,7 @@ namespace Dialog
 		return GUI::Hide(dialog);
 	}
 
-	PDialog	CreateTutorialMessage(const String&key, const ArrayRef<const String>&text, const String&imageName /*= ""*/, const Rect<>&screenReference /*= Rect<>::Invalid*/)
+	PDialog	CreateTutorialMessage(const String&key, const ArrayRef<const String>&text, const String&imageName /*= ""*/, const M::Rect<>&screenReference /*= M::Rect<>::Invalid*/)
 	{
 
 		
@@ -753,7 +754,7 @@ namespace Dialog
 	}
 
 
-	WDialog	EnqueueTutorial(const String&key, const Array<String>&text, const String&imageName /*= ""*/, const Rect<>&screenReference /*= Rect<>::Invalid*/)
+	WDialog	EnqueueTutorial(const String&key, const Array<String>&text, const String&imageName /*= ""*/, const M::Rect<>&screenReference /*= M::Rect<>::Invalid*/)
 	{
 		GUI::VerifyIntegrity(CLOCATION);
 		if (!Detail::showTutorials)

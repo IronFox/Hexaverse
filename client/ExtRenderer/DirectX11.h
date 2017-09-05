@@ -958,7 +958,7 @@ namespace Engine
 		DX11::ObjectBuffer<M::TVec4<> >			objectPositionBuffer;	//quicker version
 		DX11::ObjectBuffer<float>				timeBuffer;
 		Buffer<DX11::Shader::Binding,0,Swap>	baseBindings;
-		M::float4			clearColor;
+		float4				clearColor;
 
 		//DXGI_SAMPLE_DESC	fsaa;
 

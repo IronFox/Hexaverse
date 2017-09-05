@@ -1175,12 +1175,12 @@ namespace Protocol
 	NETSTRUCT8(VagueAttackTrajectory
 		, Timestamp, timestamp
 		, NET(float), flightTime
-		, NET(TVec3<>), sourcePosition
+		, NET(M::TVec3<>), sourcePosition
 		, NET(ConstName), turretType
 		, NET(float), turretRange
 		, NET(float), attackAngle
 		, NET(float), explosionRadius
-		, NET(TVec3<>), traceTo
+		, NET(M::TVec3<>), traceTo
 	)
 
 	NETSTRUCT6(PreciseAttackTrajectory
@@ -1188,7 +1188,7 @@ namespace Protocol
 		, NET(float), flightTime
 		, NET(TUniqueID), attacker
 		, NET(float), attackAngle
-		, NET(TVec3<>), traceTo
+		, NET(M::TVec3<>), traceTo
 		, NET(bool), isAutoAttack
 	)
 
@@ -1201,7 +1201,7 @@ namespace Protocol
 
 	NETSTRUCT4(Explosion
 		, Timestamp, timestamp
-		, NET(TVec3<>), center
+		, NET(M::TVec3<>), center
 		, NET(float), radius
 		, NET(bool), isEMP
 	)
@@ -1435,7 +1435,7 @@ namespace Protocol
 	NETSTRUCT3(IdentifyFaction
 		, NET(TUniqueID), id
 		, Package::NetString<32>, name
-		, NET(TVec3<>), color
+		, NET(M::TVec3<>), color
 	)
 
 

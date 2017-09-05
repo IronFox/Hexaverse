@@ -119,13 +119,13 @@ namespace Menu
 		
 		AddOptionSlider("UI Scale", 0.5f, 2.f, 0.125f,UI::GetScale(), [](float&q)
 		{
-			q = Round(q * 8.f)*0.125f;
+			q = M::Round(q * 8.f)*0.125f;
 			UI::SetScale(q);
 			Configuration::Update("runtime/uiScale",q);
 		},
 		[]()->String
 		{
-			return String(Round(UI::GetScale() * 100))+"%";
+			return String(M::Round(UI::GetScale() * 100))+"%";
 		}
 		)->SetupMarkers(0.25f,true);
 
@@ -133,7 +133,7 @@ namespace Menu
 		AddOptionSlider("Shadow Quality", 0, ShadedInstruction::Quality::N-1, 1, ShadedInstruction::Quality::N-1 - ShadedInstruction::chosenQuality, [](float&q)
 			{
 				auto old = ShadedInstruction::chosenQuality;
-				ShadedInstruction::chosenQuality.Load(ShadedInstruction::Quality::N-1 -Round(q));
+				ShadedInstruction::chosenQuality.Load(ShadedInstruction::Quality::N-1 -M::Round(q));
 				q = ShadedInstruction::Quality::N-1 - ShadedInstruction::chosenQuality;
 				if (old != ShadedInstruction::chosenQuality)
 				{
@@ -152,7 +152,7 @@ namespace Menu
 			AddOptionSlider("Anti-Aliasing", 0, modes.Count()-1, 1,display.GetCurrentMSAAMode(), [](float&q)
 			{
 				auto old = display.GetCurrentMSAAMode();
-				display.SetMSAAMode(Math::Max(0.f,Round(q)));
+				display.SetMSAAMode(Math::Max(0.f,M::Round(q)));
 				q = display.GetCurrentMSAAMode();
 				if (old != display.GetCurrentMSAAMode())
 					Configuration::Update("runtime/fsaa",display.GetCurrentMSAARate());
@@ -203,7 +203,7 @@ namespace Menu
 			},
 			[]()->String
 			{
-				return String(Round(AudioInterface::GetMasterVolume() * 100))+"%";
+				return String(M::Round(AudioInterface::GetMasterVolume() * 100))+"%";
 			}
 			)->SetupMarkers(0.25f,false);
 

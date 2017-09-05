@@ -58,7 +58,7 @@ namespace Objects
 	}
 
 
-	/*static*/ void	ParaboloidBuffer::MakeHull(Engine::DX11::InstructionBlock32&target, const TMatrix4<>&matrix, float flatRange, float explosionRadius, const TVec3<>&center)
+	/*static*/ void	ParaboloidBuffer::MakeHull(Engine::DX11::InstructionBlock32&target, const M::TMatrix4<>&matrix, float flatRange, float explosionRadius, const M::TVec3<>&center)
 	{
 		float effectiveRange = (flatRange);
 
@@ -94,9 +94,9 @@ namespace Objects
 
 
 			float slope = Component::Turret::MaxHeightSlopeAtHDistance(effectiveRange,fr1);
-			float r = sqrt(sqr(slope) + 1.f);
+			float r = sqrt(M::Sqr(slope) + 1.f);
 			slope /= r;
-			float rest = sqrt(1.f - sqr(slope));
+			float rest = sqrt(1.f - M::Sqr(slope));
 
 			for (int ia = 0; ia < AngularResolution; ia++)
 			{
@@ -134,10 +134,10 @@ namespace Objects
 
 	void ParaboloidBuffer::Render(const Grid::LCellIdI&cell, float zOffset, float flatRange, float explosionRadius, const float4&color, bool extended)
 	{
-		const TVec3<>&normalizedUp = Grid::low.cells[cell.stackID].centerVertex.xyz;
+		const M::TVec3<>&normalizedUp = Grid::low.cells[cell.stackID].centerVertex.xyz;
 
 
-		const TVec3<> center = normalizedUp * (zOffset + Grid::ToRadius(cell.height));
+		const M::TVec3<> center = normalizedUp * (zOffset + Grid::ToRadius(cell.height));
 
 		//float d = Vec::distance(scene.GetAbsoluteLocation(),center);
 		//int instructionIndex = DetermineLODInstruction(radius / d);
@@ -174,9 +174,9 @@ namespace Objects
 	}
 	void TowerAttackVisualization::Recompile(const Tower & t, const Grid::LCellIdI & attackTarget)
 	{
-		static Buffer0<TVec4<> > trajectory;
+		static Buffer0<M::TVec4<> > trajectory;
 		trajectory.Clear();
-		TVec3<> impactAt;
+		M::TVec3<> impactAt;
 		Grid::HCellIdI dummy1;
 		float angle;
 		//if (Turret::TraceTrajectory(Turret::MaxRangeToVelocity(GetFlatAttackRange()),World::actual, location,foundationHeight,attackTarget,trajectory,impactAt,dummy1))
@@ -225,7 +225,7 @@ namespace Objects
 			(*p)->shape = Objects::Tower::staticShape;
 
 		float h = Objects::Tower::geometry.GetBoundingBox().z.max;
-		ASSERT2__(Similar(h,Objects::Tower::foundationHeight),h,Objects::Tower::foundationHeight);
+		ASSERT2__(M::Similar(h,Objects::Tower::foundationHeight),h,Objects::Tower::foundationHeight);
 		Objects::Tower::foundationHeight = h;
 
 
@@ -294,7 +294,7 @@ namespace Objects
 					//const float3&b0 = Grid::low.cells[this->location.stackID].cornerCenter;
 					//const float3&b1 = Grid::low.cells[(*c)->location.stackID].cornerCenter;
 
-					const TVec3<>&center0 = structure.GetWorldPosition(),
+					const M::TVec3<>&center0 = structure.GetWorldPosition(),
 								&center1 = c->GetWorldPosition();
 
 					const float height0 = Vec::length(center0),
@@ -324,10 +324,10 @@ namespace Objects
 						//position.x [-1,1] is horizontal placement of vertical along orthogonal axis
 						//position.z [0,1] is vertical placement along radial axis
 						const Vertex&vtx = data.vertices[i];
-						const TVec3<>&position = vtx.vertex;
+						const M::TVec3<>&position = vtx.vertex;
 						//float r = r0 + rdy * position.y + (rd) * position.z;
-						//TVec3<> np = b0 + d * position.y;
-						TVec3<> np = center0 + centerDelta * position.y;
+						//M::TVec3<> np = b0 + d * position.y;
+						M::TVec3<> np = center0 + centerDelta * position.y;
 						Vec::normalize(np);
 						np *= height0 + heightDelta * position.y + Grid::SingleLayerHeight * position.z;
 						np += x * position.x * (horzScaleBase + horzScaleDelta * position.y);
@@ -414,7 +414,7 @@ namespace Objects
 			}
 			float3 p0 = Grid::low.cells[a.stackID].centerVertex.xyz * Grid::ToRadius(a.height);
 			float3 p1 = Grid::low.cells[b.stackID].centerVertex.xyz * Grid::ToRadius(b.height);
-			TVec3<> n,d = p1 - p0;
+			M::TVec3<> n,d = p1 - p0;
 			Vec::cross(p0,d,n);
 			na.normal += n;
 			nb.normal += n*0.9f;
@@ -449,14 +449,14 @@ namespace Objects
 
 			//!((i+1)% stepsPerRound);
 
-			//TVec3<> d = p1 - p0;
+			//M::TVec3<> d = p1 - p0;
 			//if (a.height == b.height)
 
 			static const int Res = 8;
 			for (int j = (i!=0); j <= Res; j++)
 			{
 				float fj = float(j) / float(Res);
-				TVec3<> p,n,d;
+				M::TVec3<> p,n,d;
 
 				float op = i > 0 ? 1.f : fj;
 				
@@ -602,13 +602,13 @@ namespace Objects
 				{
 					case CursorMode::AttackMode:
 					{
-						static Buffer0<TVec4<> > trajectory;
+						static Buffer0<M::TVec4<> > trajectory;
 						Geometry geo;
 						attach.localizableShapes.Clear();
 						foreach (t.foci,f)
 						{
 							trajectory.Clear();
-							TVec3<> dummy0;
+							M::TVec3<> dummy0;
 							Grid::HCellIdI dummy1;
 							float angle;
 							if (e.TraceTrajectoryFrom(pointOfOrigin,TrajectoryEndPoint( f->target,0), trajectory,dummy0,dummy1,angle) != TurretTrajectory::InvalidTrajectory)

@@ -99,7 +99,7 @@ namespace Objects
 
 			struct TVisited
 			{
-				TMatrix4<>			system;
+				M::TMatrix4<>			system;
 				UINT32				age;
 			};
 
@@ -213,7 +213,7 @@ namespace Objects
 		@param id Unique faction ID
 		@param iteration Passing a different iteration alters the resulting color in a random way
 		*/		
-		static void IDToColor(TVec3<>&outColor, const TUniqueID&id, int iteration=0);
+		static void IDToColor(M::TVec3<>&outColor, const TUniqueID&id, int iteration=0);
 #endif /*0*/
 
 
@@ -372,8 +372,8 @@ namespace Objects
 			void		RegisterSensorRemoval(const World::Sensor&, int sensorHeight, float&t);
 			void		RegisterSensorMotion(const World::Sensor&from, const World::Sensor&to, float&t);
 
-			count_t		CountOffGridCoverage(int channelHeight, const TVec3<>&)	const;
-			count_t		CountOffGridCoverage(const Sphere<>&)	const;
+			count_t		CountOffGridCoverage(int channelHeight, const M::TVec3<>&)	const;
+			count_t		CountOffGridCoverage(const M::Sphere<>&)	const;
 
 			count_t		GetWinningScore() const;
 			count_t		GetOffensiveCapabilities() const;

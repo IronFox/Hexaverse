@@ -181,7 +181,7 @@ namespace UI
 		{
 			Construct();
 		}
-		TMatrix4<> system = Matrix<>::eye4;
+		M::TMatrix4<> system = M::Matrix<>::eye4;
 		system.w.xyz = base;
 		system.z.xyz *= hScale;
 		#ifndef NO_HIBERNATION
@@ -483,7 +483,7 @@ namespace UI
 			HexGrid::animationTimeLine.Refresh(HexGrid::GetGridConfig());
 		}
 
-		void			RegisterAttack(float time, bool isFriendly,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const Objects::Renderer::SmokeTrailIndex&smokeTrailIndex)
+		void			RegisterAttack(float time, bool isFriendly,  const M::TVec3<>&focusLocation, const TUniqueID&focusEntityID, const Objects::Renderer::SmokeTrailIndex&smokeTrailIndex)
 		{
 			HexGrid::Custom::AnimationEventFocusCommand*cmd = new HexGrid::Custom::AnimationEventFocusCommand("Attack","Attack",focusLocation,focusEntityID,time,isFriendly,!isFriendly);
 			cmd->smokeTrailIndex = smokeTrailIndex;
@@ -493,7 +493,7 @@ namespace UI
 			HexGrid::animationTimeLine.Refresh(HexGrid::GetGridConfig());
 		}
 
-		void			RegisterEntityDestruction(float time, bool isOwnedByMe,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const String&entityName)
+		void			RegisterEntityDestruction(float time, bool isOwnedByMe,  const M::TVec3<>&focusLocation, const TUniqueID&focusEntityID, const String&entityName)
 		{
 			HexGrid::Custom::AnimationEventFocusCommand*cmd = new HexGrid::Custom::AnimationEventFocusCommand("Entity Death","Entity Death",focusLocation,focusEntityID,time,isOwnedByMe,isOwnedByMe);
 			if (isOwnedByMe)	//flipped logic
@@ -601,7 +601,7 @@ namespace UI
 			if (e->health <= 0)
 			{
 				if (e->isOwnedByMe)
-					significance *= 15.f / (1.f + sqr(e->health));
+					significance *= 15.f / (1.f + M::Sqr(e->health));
 				else
 					significance *= 0.8f;
 			}
@@ -654,7 +654,7 @@ namespace UI
 			}
 
 
-			AnimationEventFocusCommand::AnimationEventFocusCommand(const String&name, const String&iconName, const TVec3<>&focusLocation, const TUniqueID&focusID, float atTime, bool isFriendly, bool isHostileActivity)
+			AnimationEventFocusCommand::AnimationEventFocusCommand(const String&name, const String&iconName, const M::TVec3<>&focusLocation, const TUniqueID&focusID, float atTime, bool isFriendly, bool isHostileActivity)
 								: Super(name),focusLocation(focusLocation),atTime(atTime),isFriendly(isFriendly),isHostileActivity(isHostileActivity),focusTarget(focusID)
 			{
 				LoadIconByName(iconName);
@@ -901,9 +901,9 @@ namespace UI
 					else
 						newOffset = 0;
 				}
-				visibleRange = IntRange(index_t(0),scopeWidth);
+				visibleRange = M::IntRange(index_t(0),scopeWidth);
 				if (newOffset > 0)
-					visibleRange = IntRange(newOffset,scopeWidth);
+					visibleRange = M::IntRange(newOffset,scopeWidth);
 				moreRight = visibleRange.GetExtent() > currentContactListWidth;
 				if (moreRight)
 					visibleRange.end = visibleRange.start + currentContactListWidth;
@@ -1062,28 +1062,28 @@ namespace UI
 			return rs;
 		}
 
-		/*static*/ void GridCell::Radial(float cellIndex, TVec2<>&rs)
+		/*static*/ void GridCell::Radial(float cellIndex, M::TVec2<>&rs)
 		{
 			float a = cellIndex / 6.0f * M_PIF * 2.0f;
 			rs.x = -sin(a);
 			rs.y = cos(a);
 		}
 
-		bool		GridCell::Contains(const TVec2<>&p) const
+		bool		GridCell::Contains(const M::TVec2<>&p) const
 		{
 			if (!projectedRect.Contains(p))
 				return false;
 
-			TVec2<> relative;
+			M::TVec2<> relative;
 			projectedRect.Relativate(p,relative);
 			relative = relative * 2.f - 1.f;
-			TVec2<> prev;
+			M::TVec2<> prev;
 			Radial(0,prev);
 			for (int i = 0; i < 6; i++)
 			{
-				TVec2<> next;
+				M::TVec2<> next;
 				Radial((i+1)%6,next);
-				TVec2<> change,sb;
+				M::TVec2<> change,sb;
 				Vec::sub(next,prev,change);
 				swp(change.x,change.y);
 				change.x = -change.x;
@@ -1387,19 +1387,19 @@ namespace UI
 				
 				count_t lineCount = hoveringBrief ? hoveringText.CountBriefLines() : hoveringText.wrappedLines.Count();
 				float h = textout.GetScaledHeight()*(lineCount-1);
-				Rect<> r;
+				M::Rect<> r;
 
 				if (hoveringOver->flipX)
 				{
 					if (hoveringOver->flipY)
 					{
 						textout.MoveTo(base - float2(hoveringWidth,textout.GetScaledHeight()));
-						r = Rect<>(base -float2(hoveringWidth,textout.GetScaledHeight() + h+textout.GetScaledHeight()),base + float2(0,-textout.GetScaledHeight()*0.8f));
+						r = M::Rect<>(base -float2(hoveringWidth,textout.GetScaledHeight() + h+textout.GetScaledHeight()),base + float2(0,-textout.GetScaledHeight()*0.8f));
 					}
 					else
 					{
 						textout.MoveTo(base + float2(-hoveringWidth,h + textout.GetScaledHeight()));
-						r = Rect<>(base-float2(hoveringWidth,0) ,base + float2(0,h + textout.GetScaledHeight()*1.2f));
+						r = M::Rect<>(base-float2(hoveringWidth,0) ,base + float2(0,h + textout.GetScaledHeight()*1.2f));
 					}
 				}
 				else
@@ -1409,12 +1409,12 @@ namespace UI
 					if (hoveringOver->flipY)
 					{
 						textout.MoveTo(base - float2(0,textout.GetScaledHeight()));
-						r = Rect<>(base -float2(0,textout.GetScaledHeight() + h+textout.GetScaledHeight()),base + float2(hoveringWidth,-textout.GetScaledHeight()*0.8f));
+						r = M::Rect<>(base -float2(0,textout.GetScaledHeight() + h+textout.GetScaledHeight()),base + float2(hoveringWidth,-textout.GetScaledHeight()*0.8f));
 					}
 					else
 					{
 						textout.MoveTo(base + float2(0,h + textout.GetScaledHeight()));
-						r = Rect<>(base ,base + float2(hoveringWidth,h + textout.GetScaledHeight()*1.2f));
+						r = M::Rect<>(base ,base + float2(hoveringWidth,h + textout.GetScaledHeight()*1.2f));
 					}
 				}
 
@@ -1422,7 +1422,7 @@ namespace UI
 				//r.x.max = r.x.max * 0.5f + 0.5f;
 				//r.y.min = r.y.min * 0.5f + 0.5f;
 				//r.y.max = r.y.max * 0.5f + 0.5f;
-				//Rect<>r(0,0,1,1);
+				//M::Rect<>r(0,0,1,1);
 
 				SurfaceRenderer::Rasterize(r);
 				SurfaceRenderer::Flush();
@@ -1841,7 +1841,7 @@ namespace UI
 				SurfaceRenderer::SetColor(float4(0,0,0,0.6f));
 				float w = 0.2f / display.GetPixelAspect();
 				//textout.locate(-1.f + 0.01f,-1.f + textout.GetScaledHeight()*1.2f*(y+6));
-				Rect<> t(-1,lineHeight*4.f-1.f,w*2.f - 1.f,lineHeight*11.5f - 1.f);
+				M::Rect<> t(-1,lineHeight*4.f-1.f,w*2.f - 1.f,lineHeight*11.5f - 1.f);
 				SurfaceRenderer::Rasterize(
 					float2(t.x.min,t.y.min),float4(0,0,0,0.8f),
 					float2(t.x.max,t.y.min),float4(0,0,0,0.2f),
@@ -2082,7 +2082,7 @@ namespace StatePanel
 			cachedLines << " y: "+Vec::toString(e.system.y.xyz);
 			cachedLines << " z: "+Vec::toString(e.system.z.xyz);
 			cachedLines << " w: "+Vec::toString(e.system.w.xyz);
-			TVec3<> wz = e.system.w.xyz;
+			M::TVec3<> wz = e.system.w.xyz;
 			Vec::normalize(wz);
 			cachedLines << " w1: "+Vec::toString(wz);
 		#else
@@ -2170,7 +2170,7 @@ namespace StatePanel
 			if (e.IsVehicle())
 			{
 				const Objects::Vehicle*veh = (const Objects::Vehicle*)(&e);
-				cachedLines << " Turret-Overweight: "+String((int)vmax(0,veh->turret->weight(e.owner) - floor(veh->base->GetCarryingCapacity(e.owner))));
+				cachedLines << " Turret-Overweight: "+String((int)M::Max(0,veh->turret->weight(e.owner) - floor(veh->base->GetCarryingCapacity(e.owner))));
 				cachedLines << " Movement Initiative: "+String((int)v->GetMovementInitiative())+"/"+String((int)veh->base->initiative);
 			}
 			#ifndef NO_SATELLITES

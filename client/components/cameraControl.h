@@ -9,7 +9,7 @@
 #define DebugCheckVector(T, M, MX)
 #define DebugCheckCamera()
 
-//inline void			DebugCheckVector(const TVec3<>&test, float min, float max)
+//inline void			DebugCheckVector(const M::TVec3<>&test, float min, float max)
 //{
 //	ASSERT_IS_CONSTRAINED3__(test.v,min,max);
 //	ASSERT__(!isinf(test.x));
@@ -23,12 +23,12 @@
 //}
 //void			DebugCheckCamera()
 //{
-//	const TVec3<>&test = scene.GetViewingDirection();
+//	const M::TVec3<>&test = scene.GetViewingDirection();
 //	DebugCheckVector(test,-1,1);
 //
 //}
 
-extern M::float3				sunDirection;
+extern float3					sunDirection;
 static const float				SunOffAngle = 35.f;	//divergence between vertical axis and sun direction. 0 would be cenit
 
 
@@ -57,18 +57,18 @@ namespace Camera
 	/**
 	Rotates camera viewing direction by the given angle deltas
 	*/
-	void						Rotate(const M::float2&angleDelta);
+	void						Rotate(const float2&angleDelta);
 	/**
 	Rotates the focus position around the planet center by the given angle delta.
 	Aborts any ongoing targeted translation
 	*/
-	void						Translate(const M::float2&angleDelta);
+	void						Translate(const float2&angleDelta);
 
 	/**
 	Initiates targeted translation (smoothly animated rotation of focus point around planet center)
 	@param direction Direction from planet center to smoothly translate to. Normalized automatically
 	*/
-	void						TranslateTo(const M::float3&direction);
+	void						TranslateTo(const float3&direction);
 	/**
 	Stops any ongoing targeted translation
 	*/

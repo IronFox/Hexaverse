@@ -9,7 +9,6 @@
 namespace SurfaceRenderer
 {
 	using namespace DeltaWorks;
-	using namespace DeltaWorks::Math;
 
 	namespace DX11 = Engine::DX11;
 
@@ -17,12 +16,12 @@ namespace SurfaceRenderer
 	void	Destroy();
 
 	void	SetColor(const float4&color);
-	void	Rasterize(const Rect<>&);
-	void	RasterizeConvexPolygon(const TVec2<>*field, count_t numVertices);
-	void	Rasterize(const TVec2<>&p0, const TVec2<>&p1, const TVec2<>&p2);
-	void	Rasterize(const TVec2<>&p0, const TVec2<>&p1, const TVec2<>&p2, const TVec2<>&p3);
-	void	Rasterize(const TVec2<>&p0, const TVec4<>&c0, const TVec2<>&p1, const TVec4<>&c1, const TVec2<>&p2, const TVec4<>&c2);
-	void	Rasterize(const TVec2<>&p0, const TVec4<>&c0, const TVec2<>&p1, const TVec4<>&c1, const TVec2<>&p2, const TVec4<>&c2, const TVec2<>&p3, const TVec4<>&c3);
+	void	Rasterize(const M::Rect<>&);
+	void	RasterizeConvexPolygon(const M::TVec2<>*field, count_t numVertices);
+	void	Rasterize(const M::TVec2<>&p0, const M::TVec2<>&p1, const M::TVec2<>&p2);
+	void	Rasterize(const M::TVec2<>&p0, const M::TVec2<>&p1, const M::TVec2<>&p2, const M::TVec2<>&p3);
+	void	Rasterize(const M::TVec2<>&p0, const M::TVec4<>&c0, const M::TVec2<>&p1, const M::TVec4<>&c1, const M::TVec2<>&p2, const M::TVec4<>&c2);
+	void	Rasterize(const M::TVec2<>&p0, const M::TVec4<>&c0, const M::TVec2<>&p1, const M::TVec4<>&c1, const M::TVec2<>&p2, const M::TVec4<>&c2, const M::TVec2<>&p3, const M::TVec4<>&c3);
 	//void	Rasterize(const float3&p0, const float4&c0, const float3&p1, const float4&c1);
 	void	Flush();
 
@@ -32,11 +31,11 @@ namespace SurfaceRenderer
 	public:
 		struct TVertex
 		{
-			M::float2	position;
-			M::float4	color;
+			float2	position;
+			float4	color;
 		};
 
-		void		AddVertex(const M::float2&p, const M::float4&color = M::float4(1)) {TVertex&v = AddVertex(); v.position = p; v.color = color;}
+		void		AddVertex(const float2&p, const float4&color = float4(1)) {TVertex&v = AddVertex(); v.position = p; v.color = color;}
 		void		Add(const TVertex&vtx) {vertices.Append(vtx);}
 		TVertex&	AddVertex() {return vertices.Append();}
 		void		AddTriangle(index_t v0, index_t v1, index_t v2)

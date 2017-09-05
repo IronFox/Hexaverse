@@ -13,7 +13,7 @@ namespace Objects
 
 
 
-	static void MakeBox2(Geometry&geometry, const Box<>&box, count_t ySegments, const float4&color = float4(1))
+	static void MakeBox2(Geometry&geometry, const M::Box<>&box, count_t ySegments, const float4&color = float4(1))
 	{
 		geometry.SetVertexOffsetToCurrent();
 		for (index_t iy = 0; iy <= ySegments; iy++)
@@ -71,7 +71,7 @@ namespace Objects
 
 
 
-	static void MakeBox3(Geometry&geometry, const Box<>&box, const float4&color = float4(1))
+	static void MakeBox3(Geometry&geometry, const M::Box<>&box, const float4&color = float4(1))
 	{
 		const float x0 = box.x.Derelativate(0.05f);
 		const float x1 = box.x.Derelativate(0.95f);
@@ -197,7 +197,7 @@ namespace Objects
 		}
 	}
 
-	void MakeBox(Geometry&geometry, const Box<>&box, const float4&color = float4(1))
+	void MakeBox(Geometry&geometry, const M::Box<>&box, const float4&color = float4(1))
 	{
 		geometry.SetVertexOffsetToCurrent();
 		geometry.MakeVertex(float3(box.x.min, box.y.max, box.z.min), float3(-1, 0, 0), color);
@@ -250,11 +250,11 @@ namespace Objects
 				Vec::clear(v->normal);
 			for (index_t i = 0; i < idx.Count(); i += 3)
 			{
-				TVec3<> n;
+				M::TVec3<> n;
 				Vertex&v0 = vtx[idx[i]],
 					&v1 = vtx[idx[i + 1]],
 					&v2 = vtx[idx[i + 2]];
-				Obj::triangleNormal(v0.vertex, v1.vertex, v2.vertex, n);
+				M::Obj::triangleNormal(v0.vertex, v1.vertex, v2.vertex, n);
 				v0.normal += n;
 				v1.normal += n;
 				v2.normal += n;
@@ -333,7 +333,7 @@ namespace Objects
 	}
 
 
-	const Box<>&			Geometry::GetBoundingBox()	const
+	const M::Box<>&			Geometry::GetBoundingBox()	const
 	{
 		return boundingBox;
 
@@ -341,7 +341,7 @@ namespace Objects
 
 	void			Geometry::UpdateBoundingBox()
 	{
-		boundingBox = Box<>::Invalid();
+		boundingBox = M::Box<>::Invalid();
 
 		if (!CountLODs())
 			return;
@@ -354,7 +354,7 @@ namespace Objects
 	}
 
 
-	bool			Geometry::TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance)	const
+	bool			Geometry::TestIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float & distance)	const
 	{
 		if (!CountLODs())
 			return false;
@@ -366,12 +366,12 @@ namespace Objects
 		bool rs = false;
 		const auto&lod = GetLOD(CountLODs() - 1);
 		const Vertex*vtx = lod.vertices.pointer();
-		//TVec3<> _p0,_p1,_p2;
+		//M::TVec3<> _p0,_p1,_p2;
 
 
 		for (index_t i = 0; i < lod.indices.Count(); i += 3)
 		{
-			if (Obj::detectOpticalIntersection(
+			if (M::Obj::detectOpticalIntersection(
 				vtx[lod.indices[i]].vertex,
 				vtx[lod.indices[i + 1]].vertex,
 				vtx[lod.indices[i + 2]].vertex, b, d, distance))

@@ -124,7 +124,7 @@ namespace Objects
 		/**
 		Currently not used. Supposed to hold the index section after the local mesh has been embedded into a larger vertex/index-buffer
 		*/
-		//TIntRange<UINT32>			compiledSection;
+		//M::TIntRange<UINT32>			compiledSection;
 	
 
 		/**
@@ -352,7 +352,7 @@ namespace Objects
 
 			virtual PWorldEntity		CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override { return PWorldEntity(new Derivative(table,owner, location,atTime)); }
 			#ifdef HAS_WINDOW
-				virtual bool			TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override {return Super::TestIntersection(geometry,b,d,distance);}
+				virtual bool			TestIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float & distance) const override {return Super::TestIntersection(geometry,b,d,distance);}
 				virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override {commands.VisitMembers(visitor,force);};
 
 			#endif
@@ -598,7 +598,7 @@ namespace Objects
 
 			#ifdef CLIENT
 				#ifdef HAS_WINDOW
-					virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override {return Super::TestIntersection(geometry,b,d,distance);}
+					virtual bool		TestIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float & distance) const override {return Super::TestIntersection(geometry,b,d,distance);}
 					virtual void		VisitAllCommands(FCommandVisitor visitor, bool force) override {commands.VisitMembers(visitor,force);};
 				#endif
 			#endif

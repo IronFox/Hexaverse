@@ -28,7 +28,7 @@ namespace GUI
 
 		struct Viewport
 		{
-			Rect<>	view;
+			M::Rect<>	view;
 			float2	offset,
 					relativeOffset;
 
@@ -37,18 +37,18 @@ namespace GUI
 		Buffer0<Viewport>	viewportStack;
 		float2	totalOffset;
 
-		void	LoadView(const Rect<>&view, const float2&offset)
+		void	LoadView(const M::Rect<>&view, const float2&offset)
 		{
 			LineRenderer::Flush();
 			SurfaceRenderer::Flush();
-			Rect<> view2 = view;
+			M::Rect<> view2 = view;
 			view2.Translate(offset);
 			aspect.UpdateProjection(view2,-1,1);
 			aspect.region = view;
 			display.Pick(aspect);
 		}
 
-		void	PushLoadView(const Rect<>&view, const float2&offset=float2())
+		void	PushLoadView(const M::Rect<>&view, const float2&offset=float2())
 		{
 
 			viewportStack.Append().view = view;
@@ -72,7 +72,7 @@ namespace GUI
 				LoadView(viewportStack.last().view,viewportStack.last().offset);
 			else
 			{
-				LoadView(Rect<>(0,0,1,1),float2());
+				LoadView(M::Rect<>(0,0,1,1),float2());
 				totalOffset = float2();
 			}
 		}
@@ -118,14 +118,14 @@ namespace GUI
 		OnRectChange();
 		return true;
 	}
-	void			ComponentLocation::SetSize(const TVec2<>&size)
+	void			ComponentLocation::SetSize(const M::TVec2<>&size)
 	{
 		auto r = rect;
 		r.x.max = r.x.min + size.x;
 		r.y.max = r.y.min + size.y;
 		SetRect(r);
 	}
-	void			ComponentLocation::SetRect(const Rect<>&rect)
+	void			ComponentLocation::SetRect(const M::Rect<>&rect)
 	{
 		const bool hChange = rect.x != this->rect.x;
 		const bool vChange = rect.y != this->rect.y;
@@ -134,8 +134,8 @@ namespace GUI
 
 		rect.AssertIsNotNaN();
 
-		const bool widthChange = !Math::Similar(rect.x.GetExtent(),this->rect.x.GetExtent());
-		const bool heightChange = !Math::Similar(rect.y.GetExtent(),this->rect.y.GetExtent());
+		const bool widthChange = !M::Similar(rect.x.GetExtent(),this->rect.x.GetExtent());
+		const bool heightChange = !M::Similar(rect.y.GetExtent(),this->rect.y.GetExtent());
 		this->rect = rect;
 
 		DBG_ASSERT_IS_CONSTRAINED__(rect.x.min,Lower,Upper);
@@ -602,12 +602,12 @@ namespace GUI
 	}
 
 
-	/*virtual override*/ bool	Panel::ResolveAnchorAxis(int axis, const Rect<>&context)
+	/*virtual override*/ bool	Panel::ResolveAnchorAxis(int axis, const M::Rect<>&context)
 	{
 		bool rs = Super::ResolveAnchorAxis(axis,context); 
-		Rect<> childSpace = GetRect();
+		M::Rect<> childSpace = GetRect();
 		if (vscroll.visible)
-			childSpace.x.max = vmax(childSpace.x.min, childSpace.x.max - GetVisibleScrollbarContentExpansion());
+			childSpace.x.max = M::Max(childSpace.x.min, childSpace.x.max - GetVisibleScrollbarContentExpansion());
 		foreach (components,c) 
 			rs |= (*c)->ResolveAnchorAxis(axis,childSpace);
 		return rs;
@@ -663,21 +663,21 @@ namespace GUI
 		const float left = rect.x.min;
 		const float right = rect.x.max;
 
-		barBack = Rect<>(left,bottom,right,top);
+		barBack = M::Rect<>(left,bottom,right,top);
 		SurfaceRenderer::SetColor(float4(0,0,0,0.9));
 		SurfaceRenderer::Rasterize(barBack);
 
 
-		dragRange = Math::FloatRange(left + relativeThumbWidth/2.f,right-relativeThumbWidth/2.f);
+		dragRange = M::FloatRange(left + relativeThumbWidth/2.f,right-relativeThumbWidth/2.f);
 		const float barCenter = dragRange.Derelativate(current/max);
-		bar = Rect<>(barCenter-relativeThumbWidth/2.f,barBack.y.min,barCenter+relativeThumbWidth/2.f,barBack.y.max);
+		bar = M::Rect<>(barCenter-relativeThumbWidth/2.f,barBack.y.min,barCenter+relativeThumbWidth/2.f,barBack.y.max);
 
 		if (showMarkers)
 		{
 			float4 markerColor(1,1,1,0.5f);
 			float y0 = rect.y.Derelativate(0.2f);
 			float y1 = rect.y.Derelativate(0.8f);
-			Rect<> marker;
+			M::Rect<> marker;
 			marker.y.Set(y0,y1);
 			SurfaceRenderer::SetColor(markerColor);
 			for (index_t i = 0; i < numMarkers; i++)
@@ -705,7 +705,7 @@ namespace GUI
 			if (!dragging)
 			{
 				//constexpr float speed = -1.f / 5.f;
-				current = clamp(current + slideStep * delta,0,max);
+				current = M::Clamp(current + slideStep * delta,0,max);
 				if (onChange)
 					onChange(current);
 				return WheelRs::Processed;
@@ -717,7 +717,7 @@ namespace GUI
 		//return up->HandleMouseWheel(delta) || down->HandleMouseWheel(delta);
 	}
 
-	/*virtual override*/ void		Slider::OnMouseMove(const TVec2<>&mouseAt, bool clipAreaContainsMouse)
+	/*virtual override*/ void		Slider::OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse)
 	{
 		Super::OnMouseMove(mouseAt,clipAreaContainsMouse);
 		outlineContainsMouse = barBack.Contains(mouseAt) && !bar.Contains(mouseAt) && clipAreaContainsMouse;
@@ -725,7 +725,7 @@ namespace GUI
 		//slideLeftOnClick = mouseAt.x < bar.x.min;
 		if (dragging)
 		{
-			current = clamp((dragRange.Relativate(mouseAt.x - dragRelative)) * max,0, max);
+			current = M::Clamp((dragRange.Relativate(mouseAt.x - dragRelative)) * max,0, max);
 			changed = true;
 		}
 		else
@@ -780,18 +780,18 @@ namespace GUI
 
 
 
-	void	Panel::TScrollbar::Render(const Rect<>&rect)
+	void	Panel::TScrollbar::Render(const M::Rect<>&rect)
 	{
 		
-		targetViewTop = vmin(targetViewTop,scrollMax - viewSize);
-		float speed = vmax(1.f,fabs(targetViewTop - viewTop))*2.f;
+		targetViewTop = M::Min(targetViewTop,scrollMax - viewSize);
+		float speed = M::Max(1.f,fabs(targetViewTop - viewTop))*2.f;
 		if (targetViewTop > viewTop)
 		{
-			viewTop = vmin(targetViewTop, viewTop + Engine::timing.delta*speed);
+			viewTop = M::Min(targetViewTop, viewTop + Engine::timing.delta*speed);
 		}
 		elif (targetViewTop < viewTop)
 		{
-			viewTop = vmax(targetViewTop, viewTop - Engine::timing.delta*speed);
+			viewTop = M::Max(targetViewTop, viewTop - Engine::timing.delta*speed);
 		}
 
 
@@ -801,14 +801,14 @@ namespace GUI
 		const float bottom = rect.y.min + ContentSpacing * 0.5f;
 		//const float aspect = display.GetPixelAspect();
 		const float buttonHeight = TScrollbar::GetButtonScreenHeight();
-		Rect<> topButton(left,top - buttonHeight,right,top);
-		Rect<> bottomButton(left,bottom,right,bottom + buttonHeight);
+		M::Rect<> topButton(left,top - buttonHeight,right,top);
+		M::Rect<> bottomButton(left,bottom,right,bottom + buttonHeight);
 
-		outline = Rect<>(left,bottomButton.y.max + TScrollbar::ContentSpacing,right,topButton.y.min - TScrollbar::ContentSpacing);
+		outline = M::Rect<>(left,bottomButton.y.max + TScrollbar::ContentSpacing,right,topButton.y.min - TScrollbar::ContentSpacing);
 		SurfaceRenderer::SetColor(float4(0,0,0,0.9));
 		SurfaceRenderer::Rasterize(outline);
 
-		bar = Rect<>(outline.x.min,outline.y.Derelativate(1.f - (viewTop + viewSize) / scrollMax),outline.x.max,outline.y.Derelativate(1.f - (viewTop) / scrollMax));
+		bar = M::Rect<>(outline.x.min,outline.y.Derelativate(1.f - (viewTop + viewSize) / scrollMax),outline.x.max,outline.y.Derelativate(1.f - (viewTop) / scrollMax));
 		RenderArea(bar,barContainsMouse,dragging,float3(1));
 		RenderOutline(bar,float3(1),true);
 
@@ -828,8 +828,8 @@ namespace GUI
 			if (!dragging)
 			{
 				constexpr float speed = -1.f / 5.f;
-				viewTop = clamp(viewTop + speed * viewSize* delta,0,scrollMax - viewSize);
-				targetViewTop = clamp(targetViewTop + speed * viewSize* delta,0,scrollMax - viewSize);
+				viewTop = M::Clamp(viewTop + speed * viewSize* delta,0,scrollMax - viewSize);
+				targetViewTop = M::Clamp(targetViewTop + speed * viewSize* delta,0,scrollMax - viewSize);
 				return WheelRs::Processed;
 			}
 			return WheelRs::Ignored;
@@ -837,7 +837,7 @@ namespace GUI
 		//return up->HandleMouseWheel(delta) || down->HandleMouseWheel(delta);
 	}
 
-	void		Panel::TScrollbar::OnMouseMove(const TVec2<>&mouseAt, bool clipAreaContainsMouse)
+	void		Panel::TScrollbar::OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse)
 	{
 		if (visible)
 		{
@@ -845,7 +845,7 @@ namespace GUI
 			scrollDownOnClick = mouseAt.y < bar.y.min;
 			if (dragging)
 			{
-				viewTop = targetViewTop = clamp((1.f-outline.y.Relativate(mouseAt.y - dragRelative)) * scrollMax,0, scrollMax-viewSize);
+				viewTop = targetViewTop = M::Clamp((1.f-outline.y.Relativate(mouseAt.y - dragRelative)) * scrollMax,0, scrollMax-viewSize);
 			}
 			else
 			{
@@ -866,13 +866,13 @@ namespace GUI
 		{
 			if (scrollDownOnClick)
 			{
-				targetViewTop += vmax(viewSize, scrollMax /10.f);
-				targetViewTop = vmin(targetViewTop,scrollMax - viewSize);	
+				targetViewTop += M::Max(viewSize, scrollMax /10.f);
+				targetViewTop = M::Min(targetViewTop,scrollMax - viewSize);	
 			}
 			else
 			{
-				targetViewTop -= vmax(viewSize, scrollMax /10.f);
-				targetViewTop = vmax(targetViewTop,0);	
+				targetViewTop -= M::Max(viewSize, scrollMax /10.f);
+				targetViewTop = M::Max(targetViewTop,0);	
 			}
 		}
 		dragging = false;
@@ -905,7 +905,7 @@ namespace GUI
 		return PComponent();
 	}
 
-	void	Panel::TScrollbar::Enable(Panel*p,const Rect<>&rect)
+	void	Panel::TScrollbar::Enable(Panel*p,const M::Rect<>&rect)
 	{
 		owner = p;
 		if (!up)
@@ -913,13 +913,13 @@ namespace GUI
 			up.reset(new ScrollButton(ScrollButton::Up,[this,p]()
 			{
 				targetViewTop -= viewSize;
-				targetViewTop = vmax(targetViewTop,0);	
+				targetViewTop = M::Max(targetViewTop,0);	
 			}));
 
 			down.reset(new ScrollButton(ScrollButton::Down,[this,p]()
 			{
 				targetViewTop += viewSize;
-				targetViewTop = vmin(targetViewTop,scrollMax - viewSize);
+				targetViewTop = M::Min(targetViewTop,scrollMax - viewSize);
 			}));
 			up->SetActive(p->IsActive());
 			down->SetActive(p->IsActive());
@@ -948,7 +948,7 @@ namespace GUI
 	}
 
 
-	/*static*/ void		ScrollButton::RenderArrow(const Rect<>&r, direction_t dir, bool lit)
+	/*static*/ void		ScrollButton::RenderArrow(const M::Rect<>&r, direction_t dir, bool lit)
 	{
 		SurfaceRenderer::SetColor(float4(1,1,1,lit?0.75f:0.5f));
 
@@ -1030,7 +1030,7 @@ namespace GUI
 		{
 			vscroll.scrollMax = currentHeight;
 			vscroll.viewSize = maxHeight;
-			float barSize = vmax(maxHeight,0.2f * GetHeight()*currentHeight);
+			float barSize = M::Max(maxHeight,0.2f * GetHeight()*currentHeight);
 			float overSize = barSize - maxHeight;
 			vscroll.scrollMax += overSize;
 			vscroll.viewSize += overSize;
@@ -1108,7 +1108,7 @@ namespace GUI
 	}
 
 
-	/*static*/ void				Component::RenderArea(const Rect<>&rect, bool lit, bool flip, const float3&backgroundTone, float lowOpacity/*=1*/, float highOpacity/*=1*/)
+	/*static*/ void				Component::RenderArea(const M::Rect<>&rect, bool lit, bool flip, const float3&backgroundTone, float lowOpacity/*=1*/, float highOpacity/*=1*/)
 	{
 		float low = 0.1f;  //0.3;
 		float high = lit ? 0.89f : 0.77f;   //0.8f : 0.6;
@@ -1127,7 +1127,7 @@ namespace GUI
 		SurfaceRenderer::Flush();
 	}
 
-	/*static*/ void				Component::RenderOutline(const Rect<>&rect, const float3&backgroundTone, const Quad<bool>&edges, float lowOpacity/*=1*/, float highOpacity/*=1*/)
+	/*static*/ void				Component::RenderOutline(const M::Rect<>&rect, const float3&backgroundTone, const M::Quad<bool>&edges, float lowOpacity/*=1*/, float highOpacity/*=1*/)
 	{
 		float4 lineLowColor(backgroundTone*0.5f,lowOpacity*0.5f);
 		float4 lineHighColor(backgroundTone*0.5f,highOpacity*0.5f);
@@ -1164,14 +1164,14 @@ namespace GUI
 
 
 
-	/*virtual override*/ void	Panel::OnMouseMove(const TVec2<>&mouseAt, bool clipAreaContainsMouse)
+	/*virtual override*/ void	Panel::OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse)
 	{
 		Super::OnMouseMove(mouseAt,clipAreaContainsMouse);
 
 	
 		vscroll.OnMouseMove(mouseAt,clipAreaContainsMouse);
 		
-		TVec2<> moved = mouseAt;
+		M::TVec2<> moved = mouseAt;
 		moved.y += vscroll.GetOffset();
 
 		for (const auto&c : components)
@@ -1243,7 +1243,7 @@ namespace GUI
 
 	void				Box::BaseRender(bool lit, bool flipped)
 	{
-		const Rect<>&r = GetRect();
+		const M::Rect<>&r = GetRect();
 		RenderArea(r,lit,flipped,backgroundTone,bottomOpacity,topOpacity);
 		RenderOutline(r,backgroundTone,true,bottomOpacity,topOpacity);
 	}
@@ -1568,7 +1568,7 @@ namespace GUI
 		}
 
 
-		Detail::LoadView(Rect<>(0,0,1,1),float2());
+		Detail::LoadView(M::Rect<>(0,0,1,1),float2());
 		
 		foreach (Detail::visibleWindows,d)
 		{
@@ -1588,7 +1588,7 @@ namespace GUI
 		}
 
 
-		Detail::LoadView(Rect<>(0,0,1,1),float2());
+		Detail::LoadView(M::Rect<>(0,0,1,1),float2());
 		
 		bool nonModal = true;
 		foreach (Detail::visibleWindows,d)
@@ -1774,7 +1774,7 @@ namespace GUI
 
 		bool lit = IsLit();
 	
-		TMatrix4<> matrix = Matrix<>::eye4;
+		M::TMatrix4<> matrix = M::Matrix<>::eye4;
 		
 		Resolution3D res = texture.GetResolution();
 		float2 resf = float2(res.width,res.height);
@@ -1805,7 +1805,7 @@ namespace GUI
 		display.RenderVertices(texturedQuad);
 	}
 
-	/*virtual*/ void	Component::OnMouseMove(const TVec2<>&mouseAt, bool clipAreaContainsMouse)
+	/*virtual*/ void	Component::OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse)
 	{
 		containsMouse = clipAreaContainsMouse && GetRect().Contains(mouseAt);
 	}
@@ -1817,7 +1817,7 @@ namespace GUI
 		TranslateRect(float2(0,delta));
 	}
 
-	bool			Component::FullAutoLayout(const Rect<>&context)
+	bool			Component::FullAutoLayout(const M::Rect<>&context)
 	{
 		count_t numRounds = 0;
 		bool rs = UpdateDynamicSize();
@@ -1850,7 +1850,7 @@ namespace GUI
 	}
 
 
-	bool			Component::ResolveAnchorAxis(int axis, const Rect<>&context)
+	bool			Component::ResolveAnchorAxis(int axis, const M::Rect<>&context)
 	{
 		const Axial<TAnchor>&anchor = anchorConfig.axis[axis];
 
@@ -1858,7 +1858,7 @@ namespace GUI
 			return false;
 		
 		auto rect = GetRect();
-		TFloatRange<>&a = rect.axis[axis];
+		M::TFloatRange<>&a = rect.axis[axis];
 		bool rs = false;
 
 		if (anchor.min.IsAuto() && anchor.max.IsAuto())
@@ -1890,7 +1890,7 @@ namespace GUI
 					return false;
 				}
 			}
-			const TFloatRange<>&ctx = context.axis[axis];
+			const M::TFloatRange<>&ctx = context.axis[axis];
 			float ext = a.GetExtent();
 			float center = ctx.GetCenter();
 			float top = std::min(ctx.max,center + ext*0.5f);
@@ -2006,22 +2006,22 @@ namespace GUI
 	/*static*/ bool		Component::Set(float&ref, float to)
 	{
 		ASSERT__(!isnan(to));
-		bool changed = !Math::Similar(ref,to);
+		bool changed = !M::Similar(ref,to);
 		ref = to;
 		return changed;
 	}
 
-	/*static*/ bool		Component::SetCenter(TFloatRange<>&ref, float to)
+	/*static*/ bool		Component::SetCenter(M::TFloatRange<>&ref, float to)
 	{
 		float current = ref.center();
 
-		bool changed = !Math::Similar(current,to);
+		bool changed = !M::Similar(current,to);
 		ref.SetCenter(to);
 		return changed;
 	}
 
 	#if 0
-	/*virtual*/ bool	Component::ResolveAnchors(const Rect<>&context)
+	/*virtual*/ bool	Component::ResolveAnchors(const M::Rect<>&context)
 	{
 		//if (!resolveAnchors)
 		//	return false;
@@ -2032,13 +2032,13 @@ namespace GUI
 	}
 	#endif /*0*/
 
-	static bool CheckHovering(const Rect<>&area)
+	static bool CheckHovering(const M::Rect<>&area)
 	{
 		return area.Contains(Engine::mouse.location.windowRelative);
 	}
 
 
-	/*static*/ void	Component::Darken(const Rect<>&rect, float alpha/*=0.9f*/, bool flush/*=false*/)
+	/*static*/ void	Component::Darken(const M::Rect<>&rect, float alpha/*=0.9f*/, bool flush/*=false*/)
 	{
 		SurfaceRenderer::SetColor(float4(0,0,0,alpha));
 		SurfaceRenderer::Rasterize(rect);
@@ -2072,12 +2072,12 @@ namespace GUI
 		float checkBoxHeight = GetTotalFontScale() * textout.GetScaledHeight();
 		float checkBoxWidth = checkBoxHeight / display.GetPixelAspect();
 		float top = GetRect().y.center() + checkBoxHeight*0.7f;// Super::extraSpacing * checkBoxHeight;
-		TFloatRect box = TFloatRect(GetRect().x.min,top - checkBoxHeight,GetRect().x.min+checkBoxWidth,top);
+		M::TFloatRect box = M::TFloatRect(GetRect().x.min,top - checkBoxHeight,GetRect().x.min+checkBoxWidth,top);
 		SurfaceRenderer::Rasterize(box);
 		if (isChecked)
 		{
 			//SurfaceRenderer::SetColor(lit ? float4(0.7f):float4(0.4f));
-			TFloatRect inner = box;
+			M::TFloatRect inner = box;
 			inner.Scale(0.8f);
 			SurfaceRenderer::SetColor(lit ? float4(1.f):float4(0.7f));
 			SurfaceRenderer::Rasterize(inner);
@@ -2151,7 +2151,7 @@ namespace GUI
 	/*static*/ void		TabBar::ConfigureInactive(const PButton&active)
 	{
 		active->SetAlwaysDown(false);
-		active->edges = Quad<bool>(true);
+		active->edges = M::Quad<bool>(true);
 		active->bottomOpacity = 1;
 		active->ModifyAnchorConfig().Bottom().Unset();
 		active->topOpacity = 0.85f;
@@ -2165,7 +2165,7 @@ namespace GUI
 		active->ModifyAnchorConfig().Bottom().Set(0);
 		active->topOpacity = 1.f;
 		active->bottomOpacity = 0;
-		active->edges = Quad<bool>(true,false,true,true);
+		active->edges = M::Quad<bool>(true,false,true,true);
 		active->SetColor(float4(1));
 	}
 
@@ -2419,7 +2419,7 @@ namespace GUI
 	}
 
 
-	float	MultiPlot::GetAxisStep(const TFloatRange<>&valueRange) const
+	float	MultiPlot::GetAxisStep(const M::TFloatRange<>&valueRange) const
 	{
 		const float range = valueRange.GetExtent();
 		const float lg = log(range) / log(10.f);
@@ -2443,19 +2443,19 @@ namespace GUI
 			rightSpace = std::max(0.025f,textout.GetScaledWidth(String(yMax)) + labelPadding * 2.f);
 		EndLabelPrint();
 
-		const Rect<> plotScope = GetPlotScope();
-		const Rect<> plotRect = GetPlotRect();
+		const M::Rect<> plotScope = GetPlotScope();
+		const M::Rect<> plotRect = GetPlotRect();
 		foreach (plots,g)
 			g->Replot(plotRect,plotScope, g == plots.begin() && isStack, isStack);
 
 
-		const Rect<>&cRect = GetRect();
+		const M::Rect<>&cRect = GetRect();
 		{
 			axesChanged = false;
 
 			axes.Clear();
 
-			//const Rect<> plotRect = GetPlotRect();
+			//const M::Rect<> plotRect = GetPlotRect();
 
 
 
@@ -2485,7 +2485,7 @@ namespace GUI
 			axes.AddLine(0,2);
 
 			{
-				const TFloatRange<float> fx = FloatRange<float>(this->xRange.start,this->xRange.end-1);
+				const M::TFloatRange<float> fx = M::FloatRange<float>(this->xRange.start,this->xRange.end-1);
 				float xLineStep = GetAxisStep(fx);
 
 				const index_t start = ceil(float(this->xRange.start+1) / xLineStep);
@@ -2503,7 +2503,7 @@ namespace GUI
 			}
 
 			{
-				const TFloatRange<float> fy = FloatRange<float>(0,yMax);
+				const M::TFloatRange<float> fy = M::FloatRange<float>(0,yMax);
 				float xLineStep = GetAxisStep(fy);
 
 				const index_t start = 1;
@@ -2547,14 +2547,14 @@ namespace GUI
 
 	}
 
-	Rect<>			MultiPlot::GetPlotScope() const
+	M::Rect<>			MultiPlot::GetPlotScope() const
 	{
-		return Rect<>(xRange.start,0.f,xRange.end-1,isStack ? stackedYRange.max : rawYRange.max);
+		return M::Rect<>(xRange.start,0.f,xRange.end-1,isStack ? stackedYRange.max : rawYRange.max);
 	}
 
-	Rect<>			MultiPlot::GetPlotRect() const
+	M::Rect<>			MultiPlot::GetPlotRect() const
 	{
-		Rect<> rs = GetRect();
+		M::Rect<> rs = GetRect();
 		rs.x.min += 0.025f;
 		rs.x.max -= rightSpace;
 		rs.y.min += 0.05f;
@@ -2597,7 +2597,7 @@ namespace GUI
 	}
 
 
-	void	MultiPlot::Plot::Replot(const Rect<>&componentRect, const Rect<>&dataRect, bool addBottomLine, bool stacked)
+	void	MultiPlot::Plot::Replot(const M::Rect<>&componentRect, const M::Rect<>&dataRect, bool addBottomLine, bool stacked)
 	{
 		changed = false;
 

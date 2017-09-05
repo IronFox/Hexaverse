@@ -101,7 +101,7 @@ namespace Objects
 	}
 
 
-	PWorldEntity					GetRayIntersection(const TVec3<>&b, const TVec3<>&d, float&distance)
+	PWorldEntity					GetRayIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float&distance)
 	{
 		PWorldEntity newSel;
 		ForeachWorldEntity([b,d,&distance,&newSel](const Objects::PWorldEntity&e)
@@ -115,7 +115,7 @@ namespace Objects
 		return newSel;
 	}
 
-	bool					Select(const TVec3<>&b, const TVec3<>&d, float&distance,bool controlEnabled)
+	bool					Select(const M::TVec3<>&b, const M::TVec3<>&d, float&distance,bool controlEnabled)
 	{
 		//if (Compound::Transfer::isActive)
 			//return false;

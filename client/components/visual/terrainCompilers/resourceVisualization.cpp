@@ -102,11 +102,11 @@ namespace VisualTerrain
 
 			float h;
 			const auto&cell = lowNetCells[i];
-			TMatrix4<>	system;
+			M::TMatrix4<>	system;
 
 
 			h =  Grid::ToRadiusf( float(Grid::CellStack::ToHeight(layer))+add);
-			const TVec3<>&center = structureCenter? cell.cornerCenter : cell.centerVertex.xyz;
+			const M::TVec3<>&center = structureCenter? cell.cornerCenter : cell.centerVertex.xyz;
 			Mat::makeAxisSystem(center * h,center,2,system);
 			float r = cell.minCornerDistance * h / 4.f * 1.5f;	//dark coat
 
@@ -128,7 +128,7 @@ namespace VisualTerrain
 					{
 						float a = float(j) / float(Resolution) * 2.f * M_PIF;
 				
-						TVec3<> p;
+						M::TVec3<> p;
 						Mat::Transform(system,float3(cos(a)*r,sin(a)*r,0.f),p);
 						//Vec::center(cell.cornerVertex[j].xyz,cell.centerVertex.xyz,p);
 						Vec::normalize(p);
@@ -142,7 +142,7 @@ namespace VisualTerrain
 						for (int j = 0; j < Resolution; j ++)
 						{
 							float a = float(j) / float(Resolution) * 2.f * M_PIF;
-							TVec3<> p;
+							M::TVec3<> p;
 							Mat::Transform(system,float3(cos(a)*r,sin(a)*r,0.f),p);
 							//Vec::center(cell.cornerVertex[j].xyz,cell.centerVertex.xyz,p);
 							Vec::normalize(p);
@@ -175,7 +175,7 @@ namespace VisualTerrain
 					{
 						float a = float(j) / float(Resolution) * 2.f * M_PIF;
 				
-						TVec3<> p;
+						M::TVec3<> p;
 						Mat::Transform(system,float3(cos(a)*r,sin(a)*r,0.f),p);
 						//Vec::center(cell.cornerVertex[j].xyz,cell.centerVertex.xyz,p);
 						Vec::normalize(p);
@@ -189,7 +189,7 @@ namespace VisualTerrain
 						for (int j = 0; j < Resolution; j ++)
 						{
 							float a = float(j) / float(Resolution) * 2.f * M_PIF;
-							TVec3<> p;
+							M::TVec3<> p;
 							Mat::Transform(system,float3(cos(a)*r,sin(a)*r,0.f),p);
 							//Vec::center(cell.cornerVertex[j].xyz,cell.centerVertex.xyz,p);
 							Vec::normalize(p);
@@ -221,7 +221,7 @@ namespace VisualTerrain
 				{
 					float a = float(j) / float(Resolution) * 2.f * M_PIF;
 				
-					TVec3<> p;
+					M::TVec3<> p;
 					Mat::Transform(system,float3(cos(a)*r,sin(a)*r,0.f),p);
 					//Vec::center(cell.cornerVertex[j].xyz,cell.centerVertex.xyz,p);
 					Vec::normalize(p);
@@ -235,7 +235,7 @@ namespace VisualTerrain
 					for (int j = 0; j < Resolution; j ++)
 					{
 						float a = float(j) / float(Resolution) * 2.f * M_PIF;
-						TVec3<> p;
+						M::TVec3<> p;
 						Mat::Transform(system,float3(cos(a)*r,sin(a)*r,0.f),p);
 						//Vec::center(cell.cornerVertex[j].xyz,cell.centerVertex.xyz,p);
 						Vec::normalize(p);

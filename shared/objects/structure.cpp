@@ -45,7 +45,7 @@ namespace Objects
 
 	#ifdef HAS_WINDOW
 		/*static*/ Grid::LCellIdI	GatheringPoint::selected;			//!< Gathering point of selected entity (if any, or invalid)
-		/*static*/ TMatrix4<>		GatheringPoint::selectedVisual;	//!< Point where the respective gathering point should be visualized at. (same cell; may be different height)
+		/*static*/ M::TMatrix4<>		GatheringPoint::selectedVisual;	//!< Point where the respective gathering point should be visualized at. (same cell; may be different height)
 
 		/*static*/ Geometry			Structure::standardConnector;
 

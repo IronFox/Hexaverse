@@ -14,13 +14,13 @@ namespace Lighting
 
 			DX11::FBO						shadowMap[NumCascades];
 			Engine::OrthographicAspect<>	shadowCamera[NumCascades];
-			DX11::ObjectBuffer<TMatrix4<> >	shadowMatrix[NumCascades];
+			DX11::ObjectBuffer<M::TMatrix4<> >	shadowMatrix[NumCascades];
 		#else
 			DX11::FBO						shadowMap;
 			Engine::OrthographicAspect<>	shadowCamera;
-			DX11::ObjectBuffer<TMatrix4<> >	shadowMatrix;
+			DX11::ObjectBuffer<M::TMatrix4<> >	shadowMatrix;
 		#endif
-		DX11::ObjectBuffer<VecN<float,8> >	atmosphereConfig;
+		DX11::ObjectBuffer<M::VecN<float,8> >	atmosphereConfig;
 		DX11::ObjectBuffer<float4>			sunDirection,sunColor;
 
 	}
@@ -32,15 +32,15 @@ namespace Lighting
 			for (index_t i = 0; i < NumCascades; i++)
 			{
 				GPUResources::shadowMap[i].Create(Resolution(1024,1024),nullptr,0,true);
-				GPUResources::shadowMatrix[i].Create(Matrix<>::eye4);
+				GPUResources::shadowMatrix[i].Create(M::Matrix<>::eye4);
 			}
 		#else
 	//		shadowMap.Create(Resolution(4096,4096),&dbgFormat,1,true);
 			GPUResources::shadowMap.Create(Resolution(4096,4096),nullptr,0,true);
-			GPUResources::shadowMatrix.Create(Matrix<>::eye4);
+			GPUResources::shadowMatrix.Create(M::Matrix<>::eye4);
 		#endif
 
-		GPUResources::atmosphereConfig.Create(VecN<float,8>());
+		GPUResources::atmosphereConfig.Create(M::VecN<float,8>());
 		UpdateAtmosphere(Grid::currentPlanetConfig.atmosphereColor);
 
 		GPUResources::sunDirection.Create(float4());
@@ -74,7 +74,7 @@ namespace Lighting
 	{
 		float4	plane_Speed = float4(0,0,1,0.5f);
 		float4	color = float4(1);
-		TMatrix3<>	sunSystem = Matrix<>::eye3;
+		M::TMatrix3<>	sunSystem = M::Matrix<>::eye3;
 		float3	sunDirection(1,0,0);
 		double progression = 0.0;
 	}
@@ -106,7 +106,7 @@ namespace Lighting
 		UpdateSunDirection(SunDetails::sunDirection,true);
 	}
 
-	double	GetAcceleratedSunDirection(TVec3<>&outDir, float speedFactor/*=1.f*/)
+	double	GetAcceleratedSunDirection(M::TVec3<>&outDir, float speedFactor/*=1.f*/)
 	{
 		double angle = SunDetails::progression*speedFactor;
 		Vec::def(outDir,cos(angle),sin(angle),0);
@@ -115,7 +115,7 @@ namespace Lighting
 	}
 
 
-	const TMatrix3<>& GetSunSystem()
+	const M::TMatrix3<>& GetSunSystem()
 	{
 		return SunDetails::sunSystem;
 	}
@@ -150,8 +150,8 @@ namespace Lighting
 
 	void	UpdateAtmosphere(float radius, const float4&fogColor)
 	{
-		VecN<float,8>	atmosphereCfg;
-		atmosphereCfg[0] = sqr(radius);
+		M::VecN<float,8>	atmosphereCfg;
+		atmosphereCfg[0] = M::Sqr(radius);
 		atmosphereCfg[1] = radius;
 		atmosphereCfg[2] = 0;
 		atmosphereCfg[3] = 0;

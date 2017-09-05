@@ -45,7 +45,7 @@ namespace Camera
 	static void							RealignSunDirection()
 	{
 		float3 axis = (sunDirection | scene.location).Normalized();
-		TMatrix3<> mat;
+		M::TMatrix3<> mat;
 		Mat::BuildRotationMatrix(SunOffAngle,axis,mat);
 		Mat::Mult(mat,scene.location,sunDirection);
 		sunDirection.Normalize0();
@@ -66,7 +66,7 @@ namespace Camera
 			float dist = std::numeric_limits<float>::max();
 			targetOrbit = Grid::ToRadius(Objects::Satellite::BaseResidenceHeight);
 			if (
-				Obj::detectOpticalSphereIntersection(Vector<>::zero,targetOrbit,scene.GetAbsoluteLocation(),-scene.GetViewingDirection(),dist)
+				M::Obj::detectOpticalSphereIntersection(Vector<>::zero,targetOrbit,scene.GetAbsoluteLocation(),-scene.GetViewingDirection(),dist)
 			
 				&&
 				Vec::angle(scene.GetAbsoluteLocation() - scene.GetViewingDirection() * dist, scene.GetAbsoluteLocation()) < 90.f
@@ -85,7 +85,7 @@ namespace Camera
 					scene.retraction.z = -dist;
 					Rotate(float2());
 
-					TMatrix3<> rot;
+					M::TMatrix3<> rot;
 					Mat::BuildRotationMatrix(angle,axis.Normalized(),rot);
 					Mat::Mult(rot, sunDirection);
 					RealignSunDirection();
@@ -145,7 +145,7 @@ namespace Camera
 		{
 			//negative is wheel down
 			scene.retraction.z /= pow(1.1f,param);
-			scene.retraction.z = Math::clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
+			scene.retraction.z = M::Clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
 			scene.UpdateView();
 			onZoom();
 		}
@@ -157,7 +157,7 @@ namespace Camera
 		if (!locked)
 		{
 			scene.retraction.z *= 0.95f;
-			scene.retraction.z = Math::clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
+			scene.retraction.z = M::Clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
 			scene.UpdateView();
 			onZoom();
 		}
@@ -168,7 +168,7 @@ namespace Camera
 		if (!locked)
 		{
 			scene.retraction.z /= 0.95f;
-			scene.retraction.z = Math::clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
+			scene.retraction.z = M::Clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
 			scene.UpdateView();
 			onZoom();
 		}
@@ -177,7 +177,7 @@ namespace Camera
 	void	Event::Zoom(float outSpeed)
 	{
 		scene.retraction.z *= pow(3.f,-outSpeed);
-		scene.retraction.z = Math::clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
+		scene.retraction.z = M::Clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
 		scene.UpdateView();
 		onZoom();
 	}
@@ -240,10 +240,10 @@ namespace Camera
 
 	void							Rotate(const float2&angleDelta)
 	{
-		TMatrix3<> rot;
+		M::TMatrix3<> rot;
 		Mat::BuildRotationMatrix(angleDelta.x, scene.upAxis, rot);
 		Mat::Mult(rot, scene.direction);
-		TVec3<> x;
+		M::TVec3<> x;
 		Vec::cross(scene.upAxis, scene.direction, x);
 		Vec::normalize0(x);
 		Mat::BuildRotationMatrix(angleDelta.y, x, rot);
@@ -313,7 +313,7 @@ namespace Camera
 		{
 			static const count_t CameraRotations = 2;
 			static const count_t SunRotations = 5;
-			TVec3<> dir;
+			M::TVec3<> dir;
 			double at = Lighting::GetAcceleratedSunDirection(dir,-float(CameraRotations) / SunRotations);
 			if (fabs(at) >= M_PI*2.0 * CameraRotations)
 			{
@@ -348,7 +348,7 @@ namespace Camera
 
 		if (!moveToTarget)
 			return;
-		TVec3<> axis;
+		M::TVec3<> axis;
 		Vec::cross(scene.location,targetDirection,axis);
 		DebugCheckVector(scene.location,-10000,10000);
 		float angle = Vec::angle(scene.location,targetDirection);
@@ -360,13 +360,13 @@ namespace Camera
 		}
 		cameraSpeed += Engine::timing.delta;
 		cameraSpeed = std::min(1.f,cameraSpeed);
-		float speed = cameraSpeed * sqrt(smoothstep(0.f,45.f,angle));
+		float speed = cameraSpeed * sqrt(M::SmoothStep(0.f,45.f,angle));
 		angle = std::min(5.f*speed,angle);
 		//angle *= 1.f - pow(0.2f,Engine::timing.delta );
 		
 		Vec::normalize0(axis);
 		DebugCheckVector(axis,-2,2);
-		TMatrix3<> rot;
+		M::TMatrix3<> rot;
 		Mat::BuildRotationMatrix(-angle,axis,rot);
 		ASSERT_IS_CONSTRAINED__(angle,-1000,1000);
 		DebugCheckVector(rot.x,-2,2);
@@ -423,7 +423,7 @@ namespace Camera
 
 		AbortTargetedTranslation();
 
-		TVec3<> x, y;
+		M::TVec3<> x, y;
 		float3 up = scene.GetAbsoluteLocation();
 		Vec::cross(up, scene.direction, x);
 		Vec::normalize0(x);
@@ -431,7 +431,7 @@ namespace Camera
 		Vec::normalize0(y);
 
 
-		TMatrix3<> rot;
+		M::TMatrix3<> rot;
 		Mat::BuildRotationMatrix(angleDelta.y, x, rot);
 		Mat::Mult(rot, scene.location);
 		Mat::Mult(rot, scene.direction);

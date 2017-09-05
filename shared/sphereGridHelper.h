@@ -96,11 +96,11 @@ namespace Grid
 		}
 		
 		template <typename Stack>
-		void		ChangeSensory(const TVec3<>&worldCenter, float radius, short change, Stack*cellStack, bool*familyChanged)
+		void		ChangeSensory(const M::TVec3<>&worldCenter, float radius, short change, Stack*cellStack, bool*familyChanged)
 		{
 			Timer::Time t0 = timer.Now();
 
-			//Math::Box<> test;
+			//M::Box<> test;
 			//test.SetCenter(worldCenter,radius);
 			//for (BYTE family = 0; family < BaseGrid::NumFamilies; family++)
 			//{
@@ -117,10 +117,10 @@ namespace Grid
 			//		Grid::HCellIdU cell((UINT32)i,0U);
 			//		{
 			//			Grid::HCellIdU aboveTop(cell.stackID, Grid::CellStack::Range);
-			//			TVec3<> bottom = Grid::ToWorld(cell),
+			//			M::TVec3<> bottom = Grid::ToWorld(cell),
 			//					top = Grid::ToWorld(aboveTop);
 
-			//			anyVisible = Obj::DetectSphereEdgeIntersection(worldCenter,radius,bottom,top);
+			//			anyVisible = M::Obj::DetectSphereEdgeIntersection(worldCenter,radius,bottom,top);
 			//		}
 			//		if (!anyVisible)
 			//			return;
@@ -129,7 +129,7 @@ namespace Grid
 			//		for (unsigned j = 0; j < Grid::CellStack::Range; j++)
 			//		{
 			//			cell.layer = j;
-			//			if (Vec::quadraticDistance(Grid::ToWorld(cell),worldCenter) > sqr(radius))
+			//			if (Vec::quadraticDistance(Grid::ToWorld(cell),worldCenter) > M::Sqr(radius))
 			//			{
 			//				if (wasIn)
 			//					break;
@@ -170,12 +170,12 @@ namespace Grid
 				auto&c = cellStack[current.stackID].volumeCell[current.layer];
 				if (c.user&Visited)
 					continue;
-				const TVec3<>c3 = Grid::ToWorld(current);
-				if (Vec::quadraticDistance(c3,worldCenter) > sqr(radius))
+				const M::TVec3<>c3 = Grid::ToWorld(current);
+				if (Vec::quadraticDistance(c3,worldCenter) > M::Sqr(radius))
 					continue;
 
 				float3 d03 = c3-worldCenter;
-				const TVec3<>&up = Grid::high.grid.GetCell(current.stackID).center;
+				const M::TVec3<>&up = Grid::high.grid.GetCell(current.stackID).center;
 				d03 -= up * Vec::dot(d03,up);//bend around sphere
 				d03 += up * Grid::SingleLayerHeight* float((int)current.layer - (int)center.layer);
 				d03.Normalize0();
@@ -189,7 +189,7 @@ namespace Grid
 				Grid::high.VisitNeighborsOf(current,[cellStack,&visibleWeight,&totalWeight, &work,current,worldCenter,d03,c3,translucent](const Grid::HCellIdU&next)
 				{
 					auto&n = cellStack[next.stackID].volumeCell[next.layer];
-					const TVec3<> n3 = Grid::ToWorld(next);
+					const M::TVec3<> n3 = Grid::ToWorld(next);
 					const float3	d3 = (n3-c3).Normalized();
 					const float dot = Vec::dot(d3,d03);
 					if (dot > 0)

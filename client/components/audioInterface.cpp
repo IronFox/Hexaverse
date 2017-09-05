@@ -117,7 +117,7 @@ namespace AudioInterface
 		if (isActive)
 		{
 			const Engine::Aspect<>&aspect = Camera::scene;
-			//static TVec3<> last;
+			//static M::TVec3<> last;
 			//OpenAL::Listener::SetVelocity((aspect.GetAbsoluteLocation() - last) / Engine::timing.delta);
 			//last = aspect.GetAbsoluteLocation();
 			Engine::OpenAL::Listener::SetPosition(aspect.GetAbsoluteLocation());

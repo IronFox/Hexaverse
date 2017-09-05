@@ -11,7 +11,6 @@
 
 namespace Engine
 {
-	using namespace DeltaWorks::Math;
 	static inline size_t Align32(size_t s)
 	{
 		if (s%4)
@@ -411,7 +410,7 @@ namespace Engine
 			cameraBuffer.Create(data,DX11::BufferAccess::Dynamic,D3D11_BIND_CONSTANT_BUFFER);
 		}
 		{	//create object buffer
-			objectBuffer.Create(Matrix<>::eye4,DX11::BufferAccess::Dynamic,D3D11_BIND_CONSTANT_BUFFER);
+			objectBuffer.Create(M::Matrix<>::eye4,DX11::BufferAccess::Dynamic,D3D11_BIND_CONSTANT_BUFFER);
 		}
 		{	//create object position buffer
 			objectPositionBuffer.Create(float4(),DX11::BufferAccess::Dynamic,D3D11_BIND_CONSTANT_BUFFER);
@@ -748,12 +747,12 @@ namespace Engine
 	}
 
 	
-	void		DirectX11::ClearTarget(const FBO&fbo, const TVec4<>&color /*= Vector4<>::zero*/)
+	void		DirectX11::ClearTarget(const FBO&fbo, const M::TVec4<>&color /*= Vector4<>::zero*/)
 	{
 		ClearTargetColor(fbo,color);
 		ClearTargetDepth(fbo);
 	}
-	void		DirectX11::ClearTargetColor(const FBO&fbo, const TVec4<>&color /*= Vector4<>::zero*/)
+	void		DirectX11::ClearTargetColor(const FBO&fbo, const M::TVec4<>&color /*= Vector4<>::zero*/)
 	{
 		for (index_t i = 0; i < fbo.numTargets; i++)
 			devcon->ClearRenderTargetView(fbo.colorTarget[i].rtView, color.v);
@@ -2156,7 +2155,7 @@ namespace Engine
 		{
 			typedef Scaler<T,SumT>	S;
 			typedef T	Type;
-			typedef TVec4<T>	CopyType;
+			typedef M::TVec4<T>	CopyType;
 			static const size_t Stride = sizeof(T)*4;
 
 			static void	Mix2(const T*a, const T*b, T*out)
@@ -2225,7 +2224,7 @@ namespace Engine
 		{
 			typedef Scaler<T,SumT>	S;
 			typedef T	Type;
-			typedef TVec3<T>	CopyType;
+			typedef M::TVec3<T>	CopyType;
 			static const size_t Stride = sizeof(T)*3;
 
 			static void	Mix2(const T*a, const T*b, T*out)
@@ -2254,7 +2253,7 @@ namespace Engine
 		{
 			typedef Scaler<T,SumT>	S;
 			typedef T	Type;
-			typedef TVec2<T>	CopyType;
+			typedef M::TVec2<T>	CopyType;
 			static const size_t Stride = sizeof(T)*2;
 
 			static void	Mix2(const T*a, const T*b, T*out)
@@ -3076,7 +3075,7 @@ namespace Engine
 	}
 	#endif /*0*/
 
-	void		DirectX11::SetCameraMatrices(const TMatrix4<>&view, const TMatrix4<>&projection, const TMatrix4<>&viewInvert)
+	void		DirectX11::SetCameraMatrices(const M::TMatrix4<>&view, const M::TMatrix4<>&projection, const M::TMatrix4<>&viewInvert)
 	{
 		CameraData data;
 		data.projectionMatrix = projection;
@@ -3087,11 +3086,11 @@ namespace Engine
 		cameraBuffer.Update(data);
 	}
 
-	void		DirectX11::SetObjectMatrix(const TMatrix4<>&matrix)
+	void		DirectX11::SetObjectMatrix(const M::TMatrix4<>&matrix)
 	{
 		objectBuffer.Update(matrix);
 	}
-	void		DirectX11::SetObjectPosition(const TVec4<>&pos)
+	void		DirectX11::SetObjectPosition(const M::TVec4<>&pos)
 	{
 		objectPositionBuffer.Update(pos);
 	}

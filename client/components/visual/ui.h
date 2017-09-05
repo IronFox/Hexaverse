@@ -368,7 +368,7 @@ namespace UI
 			{
 			public:
 				typedef	Objects::Command::VisualCommand	Super;
-				TVec3<>				focusLocation;
+				M::TVec3<>				focusLocation;
 				float				atTime;
 
 				/**
@@ -384,7 +384,7 @@ namespace UI
 				Objects::Renderer::SmokeTrailIndex	smokeTrailIndex;
 				String				fallbackTargetName;
 			
-				/**/				AnimationEventFocusCommand(const String&name, const String&iconName, const TVec3<>&focusLocation, const TUniqueID&focusID, 
+				/**/				AnimationEventFocusCommand(const String&name, const String&iconName, const M::TVec3<>&focusLocation, const TUniqueID&focusID, 
 																float atTime, bool isFriendly, bool isHostileActivity);
 
 				Objects::PWorldEntity	GetTarget()	const;
@@ -463,7 +463,7 @@ namespace UI
 			Buffer0<Objects::Command::PVisualCommand>		lastVisible;
 			std::shared_ptr<Custom::ArrowCommand>	leftCommand,rightCommand;
 			index_t									offset=0;
-			TIntRange<index_t>						visibleRange;
+			M::TIntRange<index_t>						visibleRange;
 
 			void					RebuildCommands(const TGridConfig&cfg);
 			void					RemoveCommandIcons();
@@ -576,7 +576,7 @@ namespace UI
 			Location of this button on the current viewport (for faster click lookup).
 			Updated by Update()
 			*/
-			Rect<>		projectedRect;
+			M::Rect<>		projectedRect;
 			/**
 			Configures button grid orientation.
 			Default orientation is left to right, and bottom to top.
@@ -597,12 +597,12 @@ namespace UI
 			*/
 			float2		ToFloatCoords(const TGridConfig&cfg) const;
 
-			static void Radial(float cellIndex, TVec2<>&rs);
+			static void Radial(float cellIndex, M::TVec2<>&rs);
 			/**
 			Determines whether the specified viewport coordinates lie inside the local cell button.
 			This calculation takes into account the hexagonal shape of the local button, accelerated by first querying @a projectedRect
 			*/
-			bool		Contains(const TVec2<>&p) const;
+			bool		Contains(const M::TVec2<>&p) const;
 		};
 
 
@@ -686,8 +686,8 @@ namespace UI
 	namespace EventLog
 	{
 		void			Clear();
-		void			RegisterAttack(float time, bool isFriendly,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const Objects::Renderer::SmokeTrailIndex&smokeTrailIndex);
-		void			RegisterEntityDestruction(float time, bool isOwnedByMe,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const String&entityName);
+		void			RegisterAttack(float time, bool isFriendly,  const M::TVec3<>&focusLocation, const TUniqueID&focusEntityID, const Objects::Renderer::SmokeTrailIndex&smokeTrailIndex);
+		void			RegisterEntityDestruction(float time, bool isOwnedByMe,  const M::TVec3<>&focusLocation, const TUniqueID&focusEntityID, const String&entityName);
 		/**
 		Checks if any events have been registered in the log that signals hostile activity (attacks, units dying etc)
 		*/

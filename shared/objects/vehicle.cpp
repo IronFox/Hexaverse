@@ -646,9 +646,9 @@ namespace Objects
 
 
 
-		/*virtual overrider*/ bool			Vehicle::TestIntersection(const TVec3<>&_b, const TVec3<>&_d, float & distance) const
+		/*virtual overrider*/ bool			Vehicle::TestIntersection(const M::TVec3<>&_b, const M::TVec3<>&_d, float & distance) const
 		{
-			TVec3<> b,d;//,test;
+			M::TVec3<> b,d;//,test;
 			Mat::Transform(inverse,_b,b);
 			Mat::rotate(inverse,_d,d);
 			

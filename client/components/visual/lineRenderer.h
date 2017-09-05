@@ -9,7 +9,6 @@
 namespace LineRenderer
 {
 	using namespace DeltaWorks;
-	using namespace DeltaWorks::Math;
 	namespace DX11 = Engine::DX11;
 
 	void	Create();
@@ -18,7 +17,7 @@ namespace LineRenderer
 	void	SetColor(const float4&color);
 	void	Rasterize(const float3&p0, const float3&p1);
 	void	Rasterize(const float3&p0, const float4&c0, const float3&p1, const float4&c1);
-	void	Rasterize(const TFloatRect&);
+	void	Rasterize(const M::TFloatRect&);
 	void	Flush();
 
 
@@ -28,12 +27,12 @@ namespace LineRenderer
 	public:
 		struct TVertex
 		{
-			M::float3	position;
-			M::float4	color;
+			float3	position;
+			float4	color;
 		};
 
-		void		AddVertex(const M::float2&p, const M::float4&color = M::float4(1)) {TVertex&v = AddVertex(); v.position.xy = p; v.color = color;}
-		void		AddVertex(const M::float3&p, const M::float4&color = M::float4(1)) {TVertex&v = AddVertex(); v.position = p; v.color = color;}
+		void		AddVertex(const float2&p, const float4&color = float4(1)) {TVertex&v = AddVertex(); v.position.xy = p; v.color = color;}
+		void		AddVertex(const float3&p, const float4&color = float4(1)) {TVertex&v = AddVertex(); v.position = p; v.color = color;}
 		void		Add(const TVertex&vtx) {vertices.Append(vtx);}
 		TVertex&	AddVertex() {return vertices.Append();}
 		void		AddLine(index_t v0, index_t v1)

@@ -195,13 +195,13 @@ namespace Objects
 					return;
 
 				
-				//if (d2 > sqr(maxRange))
+				//if (d2 > M::Sqr(maxRange))
 				//	return;
-				//if (d2 < sqr(turret->explosionRadius))
+				//if (d2 < M::Sqr(turret->explosionRadius))
 				//	return;
-				static Ctr::Buffer0<TVec4<> > trajectory;
+				static Ctr::Buffer0<M::TVec4<> > trajectory;
 				Grid::HCellIdI ic;
-				TVec3<> iat;
+				M::TVec3<> iat;
 				float angle;
 				if (Component::Turret::TraceTrajectory(base.turret->trajectoryType,base.GetFlatAttackRange(),   
 							world, World::actual,sourceLocation,TrajectoryEndPoint( loc ),trajectory,
@@ -230,7 +230,7 @@ namespace Objects
 
 		
 		void Explode(const ApplicationInterface::TAttack& attack, 
-					 const Grid::HCellIdI&targetCell, const TVec3<>&center, int explosionRadius, int damageLevel, bool doomsday,
+					 const Grid::HCellIdI&targetCell, const M::TVec3<>&center, int explosionRadius, int damageLevel, bool doomsday,
 					 float&atTime)
 		{
 			if (doomsday && RuntimeConfig::doomsdayWeapons == RuntimeConfig::DoomsdayWeapons::Disallow)
@@ -271,8 +271,8 @@ namespace Objects
 				float dist2 = std::numeric_limits<float>::max(),
 						dist2IncludingBase = dist2;
 				const int h = e->GetHeight();
-				const TVec3<>&c = Grid::low.cells[e->location.stackID].cornerCenter;
-				TVec3<> p;
+				const M::TVec3<>&c = Grid::low.cells[e->location.stackID].cornerCenter;
+				M::TVec3<> p;
 				for (int k = 0; k <= h; k++)
 				{
 					Vec::mult(c,Grid::ToRadius(e->location.height + k),p);
@@ -309,7 +309,7 @@ namespace Objects
 				{
 					if (attack.attackFrom)
 					{
-						int d = vmin(damageLevel,e->health);
+						int d = M::Min(damageLevel,e->health);
 						attack.attackFrom->owner->statistics.SignalDamageDealtTo(attack.attackFrom,e->owner,d);
 						e->owner->statistics.SignalDamageReceivedFrom(attack.attackFrom->owner,d);
 					}
@@ -389,7 +389,7 @@ namespace Objects
 		}
 	
 		void ExplodeEMP(const ApplicationInterface::TAttack& attack, 
-						const Grid::HCellIdI&targetCell, const TVec3<>&center, int explosionRadius, int damageLevel, float&atTime)
+						const Grid::HCellIdI&targetCell, const M::TVec3<>&center, int explosionRadius, int damageLevel, float&atTime)
 		{
 			ApplicationInterface::SignalExplosion(
 							attack, 
@@ -403,8 +403,8 @@ namespace Objects
 			{
 				float d2 = std::numeric_limits<float>::max();
 				const int h = e->GetHeight();
-				const TVec3<>&c = Grid::low.cells[e->location.stackID].cornerCenter;
-				TVec3<> p;
+				const M::TVec3<>&c = Grid::low.cells[e->location.stackID].cornerCenter;
+				M::TVec3<> p;
 				for (int k = 0; k <= h; k++)
 				{
 					Vec::mult(c,Grid::ToRadius(e->location.height + k),p);
@@ -466,8 +466,8 @@ namespace Objects
 		const auto& n = Grid::low.grid.GetCell(cellID.stackID).neighborhood;
 
 		#ifndef CLIENT
-			int lower = Math::clamp(cellID.height - 1, Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight),
-				upper = Math::clamp(cellID.height + 1, Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight);
+			int lower = M::Clamp(cellID.height - 1, Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight),
+				upper = M::Clamp(cellID.height + 1, Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight);
 			for (int h = lower; h <= upper; h++)
 			{
 				UINT32 layer = Grid::CellStack::ToLayer(h);
@@ -2286,13 +2286,13 @@ namespace Objects
 		float max = 0.f;
 		for (index_t i = 0; i < Grid::LowSetup::GridType::CellCount; i++)
 		{
-			const TVec3<>&d0 = Grid::low.cells[i].centerVertex.xyz;
+			const M::TVec3<>&d0 = Grid::low.cells[i].centerVertex.xyz;
 
 			const auto&n = Grid::low.grid.GetCell(i).neighborhood;
 			for (int c = 0; c < n.numNeighbors; c++)
 				if (n.neighborID[c] > i)
 				{
-					const TVec3<>&d1 = Grid::low.cells[n.neighborID[c]].centerVertex.xyz;
+					const M::TVec3<>&d1 = Grid::low.cells[n.neighborID[c]].centerVertex.xyz;
 
 					float a = Vec::angle(d0,d1);
 					max = std::max(max,a);
@@ -2304,8 +2304,8 @@ namespace Objects
 
 	int EstimateMinimumRemainingCost(const Grid::LCellIdI&from, const Grid::LCellIdI&to, int minHorizontalCost, int minVerticalCost)
 	{
-		const TVec3<>&d0 = Grid::low.cells[from.stackID].centerVertex.xyz;
-		const TVec3<>&d1 = Grid::low.cells[to.stackID].centerVertex.xyz;
+		const M::TVec3<>&d0 = Grid::low.cells[from.stackID].centerVertex.xyz;
+		const M::TVec3<>&d1 = Grid::low.cells[to.stackID].centerVertex.xyz;
 		float a = Vec::angle(d0,d1);
 		int hSteps = (int)floor(a / maxAngleBetweenNeighboringCells);
 		int vSteps = abs(from.height - to.height);
@@ -2448,7 +2448,7 @@ namespace Objects
 
 		Grid::LCellIdI	possibilities[6 * 3 + 2];
 
-		const TIntRange<int> heightRange = IntRange(std::min(from.height,to.height),std::max(from.height,to.height)+1);
+		const M::TIntRange<int> heightRange = M::IntRange(std::min(from.height,to.height),std::max(from.height,to.height)+1);
 
 		static const count_t cellCount = Grid::LowSetup::GridType::CellCount * Grid::CellStack::Range;
 

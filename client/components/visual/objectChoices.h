@@ -22,12 +22,12 @@ namespace Objects
 	Detects the ray-intersection with currently visible choices (in movementChoices)
 	@return Index of the intersected choices, or InvalidIndex, if none was detected
 	*/
-	index_t				DetectChoiceIntersection(const TVec3<>&b, const TVec3<>&d, float&distance);
+	index_t				DetectChoiceIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float&distance);
 	/**
 	Detects and handles any ray-choice-intersection
 	@return true, if a choices intersection was determined (and handled), false otherwise
 	*/
-	bool				HandleChoiceIntersection(const TVec3<>&b, const TVec3<>&d, float distance);
+	bool				HandleChoiceIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float distance);
 	/**
 	Resets the cursor mode to idle.
 	Updates choices and commands if necessary.

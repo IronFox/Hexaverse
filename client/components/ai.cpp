@@ -15,7 +15,7 @@ namespace LocalApplicationInterface
 namespace AI
 {
 	Buffer0<Objects::PVehicle>	vehicles;
-	Buffer0<TVec3<> >	tempMarkers;
+	Buffer0<M::TVec3<> >	tempMarkers;
 
 
 	static Random random;
@@ -67,7 +67,7 @@ namespace AI
 
 
 
-	static void EstimateThreatLevelFrom(Objects::WorldEntity&e, const TVec3<>&reference, bool ignoreHostiles, bool canIgnoreThreat, TThreatEstimation &current)
+	static void EstimateThreatLevelFrom(Objects::WorldEntity&e, const M::TVec3<>&reference, bool ignoreHostiles, bool canIgnoreThreat, TThreatEstimation &current)
 	{
 		if (e.isOwnedByMe)
 		{
@@ -83,7 +83,7 @@ namespace AI
 			return;
 		//Objects::PTurretBase b = e.GetTurretBase();
 		float distance = Vec::quadraticDistance(e.system.w.xyz,reference);
-		if (distance < sqr(e.GetScanningRange()))
+		if (distance < M::Sqr(e.GetScanningRange()))
 			current.beingSeen = true;
 
 		//if (!b)
@@ -91,7 +91,7 @@ namespace AI
 
 		//if (b->CanHit(e.owner,e.location,))
 		if (e.CanHit(reference))
-		//if (distance < sqr(b->GetAttackRange() + b->turret->GetExplosionRadius(e.owner) - 1))
+		//if (distance < M::Sqr(b->GetAttackRange() + b->turret->GetExplosionRadius(e.owner) - 1))
 		{
 			Objects::PTurretBase b = e.GetTurretBase();
 			current.damageThreat += b->turret->GetDamageLevel(e.owner) * b->GetAttacksPerRound();
@@ -99,7 +99,7 @@ namespace AI
 	}
 
 
-	static void EstimateThreatFromAll(const TVec3<>&reference, bool ignoreHostiles, bool canIgnoreThreat, TThreatEstimation&threat)
+	static void EstimateThreatFromAll(const M::TVec3<>&reference, bool ignoreHostiles, bool canIgnoreThreat, TThreatEstimation&threat)
 	{
 		threat = TThreatEstimation();
 		Objects::ForeachWorldEntity([reference,ignoreHostiles,canIgnoreThreat,&threat](const Objects::PWorldEntity&e)
@@ -116,7 +116,7 @@ namespace AI
 		if (!(Grid::low.cells[location.stackID].cornerFlags & Grid::empZonesUnlocked))
 			return true;
 
-		const TVec3<> reference = Grid::ToWorld(location);
+		const M::TVec3<> reference = Grid::ToWorld(location);
 		TThreatEstimation threat;
 		EstimateThreatFromAll(reference,currentIsOverconfident,  currentCanIgnoreThreat,threat);
 
@@ -149,7 +149,7 @@ namespace AI
 	struct TAttackTarget
 	{
 		Grid::LCellIdI target;
-		TVec3<>		explosionAt;
+		M::TVec3<>		explosionAt;
 		float		priority;
 		bool		midflightExplosion = false;
 
@@ -160,9 +160,9 @@ namespace AI
 	};
 
 
-	static float ProcessAttackPriority(Objects::WorldEntity&e,const TVec3<>&explosionCenter,float maxExplosionRadius)
+	static float ProcessAttackPriority(Objects::WorldEntity&e,const M::TVec3<>&explosionCenter,float maxExplosionRadius)
 	{
-		if (e.isOwnedByMe || Vec::quadraticDistance(explosionCenter,e.system.w.xyz) > sqr(maxExplosionRadius))
+		if (e.isOwnedByMe || Vec::quadraticDistance(explosionCenter,e.system.w.xyz) > M::Sqr(maxExplosionRadius))
 			return 0.f;
 		Objects::PTurretBase b = e.GetTurretBase();
 		float rs = e.GetScanningRange();
@@ -183,7 +183,7 @@ namespace AI
 		{
 			const float explosionRadius = source.turret->GetExplosionRadius(source.owner);
 
-			TVec3<> detonationAt;
+			M::TVec3<> detonationAt;
 			Objects::TurretTrajectory rs = source.TraceTrajectory(Objects::TrajectoryEndPoint( target),detonationAt);
 			LogEvent(EventSignificance::Debug,&source,"Checking possible attack trajectory to "+candidate.GetName()+", attacking "+ToString(target)+", detonating at "+Vec::toString(detonationAt)+": "+rs.ToString());
 
@@ -320,14 +320,14 @@ namespace AI
 			{
 				if (!attackTarget[at].midflightExplosion)
 					continue;
-				const TVec3<>&ref = attackTarget[at].explosionAt;
+				const M::TVec3<>&ref = attackTarget[at].explosionAt;
 				bool conflict = false;
 				Objects::ForeachWorldEntity([ref,explosionRadius,&conflict](const Objects::PWorldEntity&e)
 				{
 					if (!conflict && e->isOwnedByMe)
 					{
 						float distance = Vec::quadraticDistance(e->GetWorldPosition(),ref);
-						if ( distance < sqr(explosionRadius))
+						if ( distance < M::Sqr(explosionRadius))
 						{
 							conflict = true;
 						}
@@ -404,7 +404,7 @@ namespace AI
 		{
 			foreach (mapper.result,n)
 			{
-				const TVec3<> reference = Grid::ToWorld(n->cell);
+				const M::TVec3<> reference = Grid::ToWorld(n->cell);
 				float goodWeight = 0;
 				float badWeight = 0;
 				Objects::ForeachWorldEntity([&goodWeight,&badWeight,reference](const Objects::PWorldEntity&e)
@@ -450,7 +450,7 @@ namespace AI
 			
 				float score = (1.f + goodWeight) / (1.f+badWeight) / (1.f + float(abs(n->movementCostsFromRoot- minMotion * 3 / 2))*0.01f);
 				{
-					float extent = 1.f + sqr(sqr(sqr(random.NextFloat())));
+					float extent = 1.f + M::Sqr(M::Sqr(M::Sqr(random.NextFloat())));
 					if (random.NextBool())
 						extent = 1.f / extent;
 					score *= extent;				
@@ -480,7 +480,7 @@ namespace AI
 		if (e.ignoreThreatRounds < 0)
 			e.ignoreThreatRounds = 0;
 		Objects::PTurretBase b = e.GetTurretBase();
-		const TVec3<>&ref = e.GetWorldPosition();
+		const M::TVec3<>&ref = e.GetWorldPosition();
 		if (b && b->turret->CanDealDamage())
 		{
 			float r = b->GetFlatAttackRange() + b->turret->explosionRadius.GetValue(e.GetResearchState());
@@ -491,7 +491,7 @@ namespace AI
 				if (e->isOwnedByMe && e->turret->CanAttack() && !e->turret->dealsEMPDamage)
 				{
 					float d2 = Vec::quadraticDistance(e->GetWorldPosition(),ref);
-					if (d2 < sqr(r*1.2f))	//might be okay anyway
+					if (d2 < M::Sqr(r*1.2f))	//might be okay anyway
 					{
 						float p = e->GetDamagePotentialPerRound();
 						if (!e->turret->ignoresVehicleMotion)

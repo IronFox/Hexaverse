@@ -1742,9 +1742,9 @@ namespace Network
 						s.info.gameInfo.gameConfig.gameFlags = Protocol::GameFlag::AllFactionSupport;
 						s.info.gameInfo.gameConfig.gameGoal = (BYTE)rng.get(RuntimeConfig::GameGoal::N -1);
 						s.info.gameInfo.gameConfig.worldDiscovery = (BYTE)rng.get(Grid::WorldDiscovery::N -1);
-						s.info.gameInfo.numFactionsCreated = sqr(rng.get(0,16));
+						s.info.gameInfo.numFactionsCreated = M::Sqr(rng.get(0,16));
 						s.info.gameInfo.numFactionsOnline = rng.get(s.info.gameInfo.numFactionsCreated);
-						s.info.gameInfo.roundNumber = sqr(sqr(rng.get(8)));
+						s.info.gameInfo.roundNumber = M::Sqr(M::Sqr(rng.get(8)));
 						s.info.gameInfo.worldID.Generate();
 						s.info.hostInfo.hostID = s.id;
 						s.info.hostInfo.serverBasePort = DEFAULT_SERVER_BASE_PORT;

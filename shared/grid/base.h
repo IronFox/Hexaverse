@@ -5,7 +5,6 @@
 #include <fractal/geometry.h>
 
 using namespace DeltaWorks;
-using namespace DeltaWorks::Math;
 
 #include "config.h"
 
@@ -430,7 +429,7 @@ template <unsigned Exponent>
 			ASSERT_EQUAL1__(at[i], 5, i);
 
 			float3 axis = geometry.vertexField[i];
-			TMatrix3<> matrix, transpose;
+			M::TMatrix3<> matrix, transpose;
 			Mat::makeAxisSystem(axis, 2, matrix);
 			Mat::transpose(matrix, transpose);
 
@@ -945,7 +944,7 @@ template <unsigned Exponent>
 				}
 				else
 				{
-					TVec3<> center;
+					M::TVec3<> center;
 					Vec::center(cellField[key.stackID[0]].center, cellField[key.stackID[1]].center, cellField[key.stackID[2]].center, center);
 					id = (UINT32)vtx.Count();
 					vtxMap.Set(key, id);

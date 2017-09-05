@@ -24,7 +24,7 @@ namespace Engine
 		class TextureFont	//! DX11 texture font object usable in combination with the Textout class
 		{
 		public:
-			typedef float (*FOnTag)(const M::float3&, char, float scaleX, float scaleY);
+			typedef float (*FOnTag)(const float3&, char, float scaleX, float scaleY);
 			typedef float (*FTagWidth)(char);
 
 		protected:
@@ -40,7 +40,7 @@ namespace Engine
 			static const size_t	NumFloatsPerVertex = 8;
 			typedef M::TVec<float,NumFloatsPerVertex>	TVertex;
 			static const size_t MaxStream = 64;
-			M::float2			pixelOffset;
+			float2			pixelOffset;
 
 			TVertex				vertices[MaxStream];
 
@@ -48,7 +48,7 @@ namespace Engine
 			TCharacter				chars[0x100];
 			float					height,
 									scale;
-			ObjectBuffer<M::float4>	colorBuffer;
+			ObjectBuffer<float4>	colorBuffer;
 			StreamVBO				stream;
 			BaseInstructionBlock	instruction;
 			unsigned			at = 0;

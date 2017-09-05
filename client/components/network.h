@@ -308,7 +308,7 @@ namespace Network
 	public:
 		String					text;
 		//float					visualLength;
-		float4					color = Vector4<>::one;
+		float4					color = M::Vector4<>::one;
 		
 
 		void					swap(Label&other)

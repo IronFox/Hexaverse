@@ -18,7 +18,7 @@ namespace Grid
 	UINT16				empZonesLocked = 0,
 						empZonesUnlocked = 0xFFFF;
 
-	//static Resource::coverage_t	GetResourceCoverage(const TVec3<>&seed, const TVec3<>&center0,float rarity,Resource::coverage_t maxYield, float probabilityModifier);
+	//static Resource::coverage_t	GetResourceCoverage(const M::TVec3<>&seed, const M::TVec3<>&center0,float rarity,Resource::coverage_t maxYield, float probabilityModifier);
 
 
 
@@ -230,7 +230,7 @@ namespace Grid
 
 		void	CellStack::Cell::SetLightLevel(float v)
 		{
-			BYTE val = BYTE(clamped(v * 0xFF,0,0xFF));
+			BYTE val = BYTE(M::Clamp(v * 0xFF,0,0xFF));
 			if (IsOpaque())
 				val = 0;
 			else
@@ -243,7 +243,7 @@ namespace Grid
 	
 		void	CellStack::Cell::SetIntLightLevel(int v)
 		{
-			BYTE val = BYTE(clamped(v,0,0xFF));
+			BYTE val = BYTE(M::Clamp(v,0,0xFF));
 			if (IsOpaque())
 				val = 0;
 			else
@@ -281,7 +281,7 @@ namespace Grid
 		#ifdef HAS_WINDOW
 			lowestOpenCell = (BYTE)Range;
 			highestOpaqueCell = (BYTE)Range-1;
-			waterRange = IntRange<BYTE>(0,0);
+			waterRange = M::IntRange<BYTE>(0,0);
 		#endif
 		for (UINT i = 0; i < Range; i++)
 		{
@@ -553,8 +553,8 @@ namespace Grid
 			ASSERT_LESS__(a.stackID,low.cells.Count());	//just to be sure ... for now
 			ASSERT_LESS__(b.stackID,low.cells.Count());
 		#endif
-		TVec3<> wa = low.cells[a.stackID].centerVertex.xyz * ToRadius(a.height);
-		TVec3<> wb = low.cells[b.stackID].centerVertex.xyz * ToRadius(b.height);
+		M::TVec3<> wa = low.cells[a.stackID].centerVertex.xyz * ToRadius(a.height);
+		M::TVec3<> wb = low.cells[b.stackID].centerVertex.xyz * ToRadius(b.height);
 		return Vec::quadraticDistance(wa,wb);
 	}
 
@@ -585,7 +585,7 @@ namespace Grid
 		//void	SetSphereDisplay(float3 center, float radius, const float4&color)
 		//{
 		//	Instruction::useSphereDisplay = true;
-		//	float4 def(center,sqr(radius));
+		//	float4 def(center,M::Sqr(radius));
 		//	if (def != Instruction::lastDef)
 		//	{
 		//		//LogEvent(EventSignificance::Debug,nullptr,"change1 detected");
@@ -650,73 +650,73 @@ namespace Grid
 
 
 	#ifdef HYBRID_GRID
-		void ToWorld(const HCellIdU&id,TVec3<>&rs)
+		void ToWorld(const HCellIdU&id,M::TVec3<>&rs)
 		{
 			Vec::mult(high.cells[id.stackID].centerVertex.xyz,Grid::ToRadius(CellStack::ToHeight(id.layer)),rs);
 		}
-		void ToWorld(const HCellIdI&id,TVec3<>&rs)
+		void ToWorld(const HCellIdI&id,M::TVec3<>&rs)
 		{
 			Vec::mult(high.cells[id.stackID].centerVertex.xyz,Grid::ToRadius(id.height),rs);
 		}
 
-		TVec3<> ToWorld(const HCellIdU&id)
+		M::TVec3<> ToWorld(const HCellIdU&id)
 		{
 			return high.cells[id.stackID].centerVertex.xyz * Grid::ToRadius(CellStack::ToHeight(id.layer));
 		}
-		TVec3<> ToWorld(const HCellIdI&id)
+		M::TVec3<> ToWorld(const HCellIdI&id)
 		{
 			return high.cells[id.stackID].centerVertex.xyz * Grid::ToRadius(id.height);
 		}
-		TVec3<> ToWorld(const HCellIdU&id, float fLayerOffset)
+		M::TVec3<> ToWorld(const HCellIdU&id, float fLayerOffset)
 		{
 			return high.cells[id.stackID].centerVertex.xyz * Grid::ToRadiusf(fLayerOffset + CellStack::ToHeight(id.layer));
 		}
-		TVec3<> ToWorld(const HCellIdI&id, float fLayerOffset)
+		M::TVec3<> ToWorld(const HCellIdI&id, float fLayerOffset)
 		{
 			return high.cells[id.stackID].centerVertex.xyz * Grid::ToRadiusf(fLayerOffset + id.height);
 		}
-		TVec3<> ToWorldR(const HCellIdU&id, float offset)
+		M::TVec3<> ToWorldR(const HCellIdU&id, float offset)
 		{
 			return high.cells[id.stackID].centerVertex.xyz * (offset + Grid::ToRadius(CellStack::ToHeight(id.layer)));
 		}
-		TVec3<> ToWorldR(const HCellIdI&id, float offset)
+		M::TVec3<> ToWorldR(const HCellIdI&id, float offset)
 		{
 			return high.cells[id.stackID].centerVertex.xyz * (offset + Grid::ToRadius(id.height));
 		}
 	#endif
 
-	void ToWorld(const LCellIdU&id,TVec3<>&rs)
+	void ToWorld(const LCellIdU&id,M::TVec3<>&rs)
 	{
 		Vec::mult(low.cells[id.stackID].centerVertex.xyz,Grid::ToRadius(CellStack::ToHeight(id.layer)),rs);
 	}
-	void ToWorld(const LCellIdI&id,TVec3<>&rs)
+	void ToWorld(const LCellIdI&id,M::TVec3<>&rs)
 	{
 		Vec::mult(low.cells[id.stackID].centerVertex.xyz,Grid::ToRadius(id.height),rs);
 	}
 
-	TVec3<>  ToWorld(const LCellIdU&id)
+	M::TVec3<>  ToWorld(const LCellIdU&id)
 	{
 		return low.cells[id.stackID].centerVertex.xyz * Grid::ToRadius(CellStack::ToHeight(id.layer));
 	}
-	TVec3<>  ToWorld(const LCellIdI&id)
+	M::TVec3<>  ToWorld(const LCellIdI&id)
 	{
 		return low.cells[id.stackID].centerVertex.xyz * Grid::ToRadius(id.height);
 	}
 
 
-	TVec3<> ToWorld(const LCellIdU&id, float fLayerOffset)
+	M::TVec3<> ToWorld(const LCellIdU&id, float fLayerOffset)
 	{
 		return low.cells[id.stackID].centerVertex.xyz * Grid::ToRadiusf(fLayerOffset + CellStack::ToHeight(id.layer));
 	}
-	TVec3<> ToWorld(const LCellIdI&id, float fLayerOffset)
+	M::TVec3<> ToWorld(const LCellIdI&id, float fLayerOffset)
 	{
 		return low.cells[id.stackID].centerVertex.xyz * Grid::ToRadiusf(fLayerOffset + id.height);
 	}
-	TVec3<> ToWorldR(const LCellIdU&id, float offset)
+	M::TVec3<> ToWorldR(const LCellIdU&id, float offset)
 	{
 		return low.cells[id.stackID].centerVertex.xyz * (offset + Grid::ToRadius(CellStack::ToHeight(id.layer)));
 	}
-	TVec3<> ToWorldR(const LCellIdI&id, float offset)
+	M::TVec3<> ToWorldR(const LCellIdI&id, float offset)
 	{
 		return low.cells[id.stackID].centerVertex.xyz * (offset + Grid::ToRadius(id.height));
 	}
@@ -741,8 +741,8 @@ namespace Grid
 		{
 			Timer::Time t0 = timer.Now();
 
-			Math::Box<> test;
-			const TVec3<> worldCenter = ToWorld(center);
+			M::Box<> test;
+			const M::TVec3<> worldCenter = ToWorld(center);
 			test.SetCenter(worldCenter,radius);
 			for (BYTE family = 0; family < BaseGrid::NumFamilies; family++)
 			{
@@ -758,10 +758,10 @@ namespace Grid
 					Grid::HCellIdU cell((UINT32)i,0U);
 					{
 						Grid::HCellIdU aboveTop(cell.stackID, Grid::CellStack::Range);
-						TVec3<> bottom = Grid::ToWorld(cell),
+						M::TVec3<> bottom = Grid::ToWorld(cell),
 								top = Grid::ToWorld(aboveTop);
 
-						anyVisible = Obj::DetectSphereEdgeIntersection(worldCenter,radius,bottom,top);
+						anyVisible = M::Obj::DetectSphereEdgeIntersection(worldCenter,radius,bottom,top);
 					}
 					if (!anyVisible)
 						return;
@@ -770,7 +770,7 @@ namespace Grid
 					for (unsigned j = 0; j < Grid::CellStack::Range; j++)
 					{
 						cell.layer = j;
-						if (Vec::quadraticDistance(Grid::ToWorld(cell),worldCenter) > sqr(radius))
+						if (Vec::quadraticDistance(Grid::ToWorld(cell),worldCenter) > M::Sqr(radius))
 						{
 							if (wasIn)
 								break;

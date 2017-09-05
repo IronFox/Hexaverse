@@ -24,7 +24,7 @@
 		using namespace GUI;
 		PLabel label (new GUI::Label());
 		label->alignCenter = false;
-		label->SetLocation(Rect<>(0,0,VisualTabWidth,0.f));
+		label->SetLocation(M::Rect<>(0,0,VisualTabWidth,0.f));
 		{
 			auto cfg = label->GetAnchorConfig();
 			cfg.Top().Set(0.01f);

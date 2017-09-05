@@ -640,33 +640,33 @@ namespace Objects
 		//}
 
 		template <typename T>
-		count_t		CountRawSensorCoverage(const TVec3<>&center, const Ctr::BasicBuffer<T>&scope)
+		count_t		CountRawSensorCoverage(const M::TVec3<>&center, const Ctr::BasicBuffer<T>&scope)
 		{
 			count_t rs = 0;
 			foreach (scope,s)
 			{
 				auto sat = s->lock();
-				if (sat && Sphere<>(sat->GetWorldPosition(),sat->GetScanningRange()).Contains(center))
+				if (sat && M::Sphere<>(sat->GetWorldPosition(),sat->GetScanningRange()).Contains(center))
 					rs++;
 			}
 			return rs;
 		}
 
 		template <typename T>
-		count_t		CountRawSensorCoverage(const Sphere<>&sphere, const Ctr::BasicBuffer<T>&scope)
+		count_t		CountRawSensorCoverage(const M::Sphere<>&sphere, const Ctr::BasicBuffer<T>&scope)
 		{
 			count_t rs = 0;
 			foreach (scope,s)
 			{
 				auto sat = s->lock();
-				if (sat && Sphere<>(sat->GetWorldPosition(),sat->GetScanningRange()).Intersects(sphere))
+				if (sat && M::Sphere<>(sat->GetWorldPosition(),sat->GetScanningRange()).Intersects(sphere))
 					rs++;
 			}
 			return rs;
 		}
 
 		
-		count_t		Faction::CountOffGridCoverage(int channelHeight, const TVec3<>&p)	const
+		count_t		Faction::CountOffGridCoverage(int channelHeight, const M::TVec3<>&p)	const
 		{
 			#ifndef NO_SATELLITES
 				if (Satellite::IsSatelliteHeight(channelHeight))
@@ -676,7 +676,7 @@ namespace Objects
 			return 0;
 		}
 
-		count_t		Faction::CountOffGridCoverage(const Sphere<>&p)	const
+		count_t		Faction::CountOffGridCoverage(const M::Sphere<>&p)	const
 		{
 			count_t rs = 0;
 			#ifndef NO_SATELLITES
@@ -839,7 +839,7 @@ namespace Objects
 			}
 		}
 
-		//void		Faction::RegisterSensorMotion(const Sphere<>&from, const Sphere<>&to, float t);
+		//void		Faction::RegisterSensorMotion(const M::Sphere<>&from, const M::Sphere<>&to, float t);
 		void		Faction::RegisterSensorRemoval(const World::Sensor&sensor, int sensorHeight, float&t)
 		{
 			//if (sensorHeight <= Grid::CellStack::TopHeight)
@@ -848,7 +848,7 @@ namespace Objects
 			else
 				knownWorld.InvalidateSensory();
 			sensor.RemoveFrom(knownWorld,t);
-//			float escaped = sqr(sphere.radius+2);
+//			float escaped = M::Sqr(sphere.radius+2);
 			//if (isSatellite)
 			//	LogEvent(EventSignificance::Debug,"Unregistering orbital sensor sphere "+sphere.ToString());
 
@@ -1275,7 +1275,7 @@ namespace Objects
 					break;
 					case Type::HostileContact:
 					{
-						//TVec3<> center = Grid::ToWorld(m->location);
+						//M::TVec3<> center = Grid::ToWorld(m->location);
 						//if ()
 						bool seen = m->age > 1 &&	//don't delete hostile markers in round <2. grid might be outdated
 									 m->visualization && World::actual.GridCanSee(m->location,m->visualization->GetHeight(),m->visualization->IsBroad());
@@ -1376,7 +1376,7 @@ namespace Objects
 			{
 				if (type == Type::Visited)//should be always true but regardless
 				{
-					TMatrix4<> system;
+					M::TMatrix4<> system;
 					Mat::makeAxisSystem(Grid::ToWorld(m.location),Grid::low.cells[m.location.stackID].centerVertex.xyz,2,system);
 					index_t systemID = visitedSystems.Count();
 					visitedSystems.Append().system = system;
@@ -1770,7 +1770,7 @@ namespace Objects
 	}
 
 #if 0
-	/*static*/ void Faction::IDToColor(TVec3<>&rs, const TUniqueID&id, int iteration/*=0*/)
+	/*static*/ void Faction::IDToColor(M::TVec3<>&rs, const TUniqueID&id, int iteration/*=0*/)
 	{
 		USHORT	v0 = *(const USHORT*)id.bytes,
 				v1 = *(((const USHORT*)id.bytes)+1),
@@ -1779,7 +1779,7 @@ namespace Objects
 		int secondary = (primary + (v1 % 2) + 1) % 3;
 		float secondaryLevel = (float(v2)/float(0xFFFF));
 		Vec::clear(rs);
-		rs.v[primary] = sqrt(1.f - sqr(secondaryLevel));
+		rs.v[primary] = sqrt(1.f - M::Sqr(secondaryLevel));
 		rs.v[secondary] = secondaryLevel;
 	}
 #endif /*0*/
@@ -1791,7 +1791,7 @@ namespace Objects
 		float bestDist = -1;
 		for (index_t i = 0; i < 20; i++)
 		{
-			TVec3<> candidate;
+			M::TVec3<> candidate;
 			Vec::HSL2RGB(float3(random.NextFloat(),0.5f + random.NextFloat(0.5f),0.5f),candidate);
 			count_t competition = 0;
 			float closest = std::numeric_limits<float>::max();
@@ -1801,7 +1801,7 @@ namespace Objects
 				{
 					competition++;
 					float dist = Vec::quadraticDistance(candidate,f->color);
-					closest = M::vmin(dist,closest);
+					closest = M::Min(dist,closest);
 				}
 			});
 			if (closest > bestDist)

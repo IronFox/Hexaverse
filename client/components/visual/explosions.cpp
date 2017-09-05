@@ -98,9 +98,9 @@ namespace Explosions
 
 
 
-		TMatrix4<>	ringMatrix;
+		M::TMatrix4<>	ringMatrix;
 
-		ringColor.Update(float4(color,1.f - sqr(relative)));
+		ringColor.Update(float4(color,1.f - M::Sqr(relative)));
 
 		Mat::makeAxisSystem(location,up,2,ringMatrix);
 		ringMatrix.x.xyz *= size*relative;
@@ -167,7 +167,7 @@ namespace Explosions
 		return true;
 	}
 
-	void						Explosion::Create(const TVec3<>&position, float size_, float duration, bool isEMP)
+	void						Explosion::Create(const M::TVec3<>&position, float size_, float duration, bool isEMP)
 	{
 		location = position;
 		size = size_;
@@ -393,7 +393,7 @@ namespace Explosions
 	}
 
 
-	void		InitExplosion(const TVec3<>&coordinates, bool isEMP, float size/*=25.f*/, float duration /*= 1.3f*/)
+	void		InitExplosion(const M::TVec3<>&coordinates, bool isEMP, float size/*=25.f*/, float duration /*= 1.3f*/)
 	{
 		Explosion&explosion = isEMP?empExplosions.Append(): explosions.Append();
 		explosion.Create(coordinates,size,duration,isEMP);
@@ -401,7 +401,7 @@ namespace Explosions
 		//Physics::signalExplosion(coordinates,1000000.f);
 	}
 
-	void		InitExplosion(const TVec3<>&coordinates, bool isEMP, float size, float duration, const std::function<void()>&onQuarterDone)
+	void		InitExplosion(const M::TVec3<>&coordinates, bool isEMP, float size, float duration, const std::function<void()>&onQuarterDone)
 	{
 		Explosion&explosion = isEMP? empExplosions.Append() :  explosions.Append();
 		explosion.Create(coordinates,size,duration,isEMP);

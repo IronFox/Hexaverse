@@ -143,7 +143,7 @@ namespace World
 
 
 			/**
-			Similar to Clear() but does not remove lava
+			M::Similar to Clear() but does not remove lava
 			@return true if no lava was hit, false otherwise. Non-lava terrain is always removed
 			*/
 			bool				ClearNonLava(const Grid::LCellIdI&c);
@@ -256,7 +256,7 @@ namespace World
 
 
 		/**
-		Similar to Clear() but fails if lava is attempted to remove
+		M::Similar to Clear() but fails if lava is attempted to remove
 		@return true if no lava was hit, false otherwise. Non-lava terrain is always removed
 		*/
 		bool					ClearNonLava(const Grid::LCellIdI&ch, float atTime);
@@ -302,7 +302,7 @@ namespace World
 		bool					GridCanSee(const Grid::LCellIdI&, int height, bool broad) const;
 		bool					GridCanSeeAny(const Grid::HCellIdU&, UINT height) const;
 
-		float					GetMaxChangeTime() const {float t = 0; foreach (families,fam) t = M::vmax(t,fam->structureOrSensory.lastChange); return t;}
+		float					GetMaxChangeTime() const {float t = 0; foreach (families,fam) t = M::Max(t,fam->structureOrSensory.lastChange); return t;}
 
 		/**
 		@brief	Checks for changes in the specified family and possibly generates a delta by comparison with World::actual.
@@ -369,7 +369,7 @@ namespace World
 
 			void			Set(float t)
 			{
-				lastChange = M::vmax(lastChange,t);
+				lastChange = M::Max(lastChange,t);
 				didChange = true;
 			}
 
@@ -378,7 +378,7 @@ namespace World
 				if (!didChange)
 					return false;
 				didChange = false;
-				compareTo = M::vmax(compareTo,lastChange);
+				compareTo = M::Max(compareTo,lastChange);
 				lastChange = 0;
 				return true;
 			}

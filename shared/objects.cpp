@@ -204,14 +204,14 @@ namespace Objects
 		class RayWalker
 		{
 		public:	
-			TVec3<> atPos;
-			const TVec3<> toPos;
+			M::TVec3<> atPos;
+			const M::TVec3<> toPos;
 			Grid::LCellIdI atCell;
 			const Grid::LCellIdI toCell;
 			count_t cellsTouched;
 			bool	shaded;
 
-			/**/	RayWalker(const Grid::LCellIdI&from, const Grid::LCellIdI&to, const TVec3<>&fromLocation, const TVec3<>&toLocation):
+			/**/	RayWalker(const Grid::LCellIdI&from, const Grid::LCellIdI&to, const M::TVec3<>&fromLocation, const M::TVec3<>&toLocation):
 				atPos(fromLocation),toPos(toLocation),atCell(from),toCell(to),cellsTouched(0),shaded(false)
 			{
 
@@ -248,7 +248,7 @@ namespace Objects
 					for (BYTE k = 0; k < n.numNeighbors; k++)
 					{
 						Grid::LCellIdI id(n.neighborID[k],h);
-						const TVec3<> remote = Grid::low.cells[id.stackID.centerVertex.xyz * Grid::ToRadius(id.height);
+						const M::TVec3<> remote = Grid::low.cells[id.stackID.centerVertex.xyz * Grid::ToRadius(id.height);
 						float cd2 = Vec::quadraticDistance(remote,toPos);
 						if (cd2 < d2)
 						{
@@ -259,7 +259,7 @@ namespace Objects
 					if (h != atCell.height)
 					{
 						Grid::LCellIdI id(atCell.cellID,h);
-						const TVec3<> remote = Grid::low.cells[id.stackID.centerVertex.xyz * Grid::ToRadius(id.height);
+						const M::TVec3<> remote = Grid::low.cells[id.stackID.centerVertex.xyz * Grid::ToRadius(id.height);
 						float cd2 = Vec::quadraticDistance(remote,toPos);
 						if (cd2 < d2)
 						{
@@ -279,9 +279,9 @@ namespace Objects
 
 	#ifdef CLIENT
 
-		bool	SphereEdgeDetection(const TVec3<>&center, float radius, const TVec3<>&point0, const TVec3<>&point1 )
+		bool	SphereEdgeDetection(const M::TVec3<>&center, float radius, const M::TVec3<>&point0, const M::TVec3<>&point1 )
 		{
-			return Obj::DetectSphereEdgeIntersection(center,radius,point0,point1);
+			return M::Obj::DetectSphereEdgeIntersection(center,radius,point0,point1);
 		
 		}
 	
@@ -355,7 +355,7 @@ namespace Objects
 	}
 	/*virtual override*/ void	RoadClass::Setup()
 	{
-		MakeBox3(connectorMesh, Box<>(-0.7f, 0.f, 0.f, 0.7f, 1.f, 0.11f), float4(float3(0.25f), 1.f));
+		MakeBox3(connectorMesh, M::Box<>(-0.7f, 0.f, 0.f, 0.7f, 1.f, 0.11f), float4(float3(0.25f), 1.f));
 		MakeCylinder3(centralMesh, float3(), 0.7f, 0.1f, float4(float3(0.25f), 1.f));
 	}
 
@@ -397,10 +397,10 @@ namespace Objects
 		c1.state.position = Grid::low.grid.GetCell(n1->location.cellID).center * r1;
 
 
-		TVec3<>			position,
+		M::TVec3<>			position,
 		direction,
 		up;				//!< Up axis. Must be normalized and orthogonal to @a direction
-		TVec2<>			scale;
+		M::TVec2<>			scale;
 		float			angle0,
 		angle1,
 		texcoord0,
@@ -467,9 +467,9 @@ namespace Objects
 					for (index_t i = 0; i < numVertices; i++)
 					{
 						const Vertex&vtx = data.vertices[i];
-						const TVec3<>&position = vtx.vertex;
+						const M::TVec3<>&position = vtx.vertex;
 						float r = r0 + (r1 - r0) * position.z;
-						TVec3<> np = b0 + d * position.y + x * position.x / r;
+						M::TVec3<> np = b0 + d * position.y + x * position.x / r;
 						Vec::normalize(np);
 						float3 up = np;
 						np *= r;
@@ -495,7 +495,7 @@ namespace Objects
 				const count_t numVertices = data.vertices.Count();
 
 				localMesh.SetVertexOffsetToCurrent();
-				TMatrix4<> system = Matrix<>::eye4;
+				M::TMatrix4<> system = M::Matrix<>::eye4;
 				const float r0 = Grid::ToRadius(this->location.height);
 				Mat::makeAxisSystem(Grid::low.grid.GetCell(this->location.cellID).center*r0, Grid::low.grid.GetCell(this->location.cellID).center, 2, system);
 				const float scale = Grid::ToRadius(this->location.height + 1) - r0;
@@ -505,8 +505,8 @@ namespace Objects
 				for (index_t i = 0; i < numVertices; i++)
 				{
 					const Vertex&vtx = data.vertices[i];
-					const TVec3<>&position = vtx.vertex;
-					TVec3<> np, n;
+					const M::TVec3<>&position = vtx.vertex;
+					M::TVec3<> np, n;
 					np = system.w.xyz + system.x.xyz * position.x + system.y.xyz * position.y;
 					Vec::normalize(np);
 					system.z.xyz = np * scale;

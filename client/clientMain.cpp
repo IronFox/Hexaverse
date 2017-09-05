@@ -1109,18 +1109,18 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 								if (pixel[3] > 0 && pixel[3] < 255)
 								{
 									//#ifdef WHITE_STYLE
-									//	TVec3<> intermediate;
+									//	M::TVec3<> intermediate;
 									//	Vec::mult(Vec::ref3(pixel),1.f / 255.f,intermediate);
 									//	float a = float(pixel[3])/255.f;
 									//	Vec::addVal(intermediate,a - 1.f);
 									//	Vec::div(intermediate,a);
-									//	Vec::clamp(intermediate,0,1);
+									//	Vec::M::Clamp(intermediate,0,1);
 									//	Vec::mult(intermediate,255.f,Vec::ref3(pixel));
 	
 									//#else
 										pixel[3] = Vec::max(Vec::ref4(pixel));
 										float scale = 255.f / float(pixel[3]);
-										TVec3<> temp;
+										M::TVec3<> temp;
 										Vec::mult(Vec::ref3(pixel),scale,temp);
 										//float max = Vec::max(temp);
 										Vec::clamp(temp,0,255);
@@ -1584,7 +1584,7 @@ namespace ApplicationInterface
 
 
 #ifdef HAS_WINDOW
-	void RenderShadows(float shadowRadius, DX11::FBO&shadowMap, Engine::OrthographicAspect<>&shadowCamera, DX11::ObjectBuffer<TMatrix4<> >&shadowMatrix
+	void RenderShadows(float shadowRadius, DX11::FBO&shadowMap, Engine::OrthographicAspect<>&shadowCamera, DX11::ObjectBuffer<M::TMatrix4<> >&shadowMatrix
 	#ifdef CASCADING_SHADOW
 		,index_t cascade
 	#endif
@@ -2129,7 +2129,7 @@ bool loop()
 						bool blinkOn = ((timer.Now()/(timer.GetTicksPerSecond()/5))%2) != 0;
 						textout.SetColor(1,0.2,0.2,blinkOn ? 0.5f : 1.f);
 					}
-					textout<<Round(remaining)<<nl;
+					textout<<M::Round(remaining)<<nl;
 					textout.PopState();
 				}
 
@@ -2266,7 +2266,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 			#endif
 
 			{
-				TVec3<> normal;
+				M::TVec3<> normal;
 				if (VisualTerrain::TestHullIntersection(b, d, distance, normal, includeWater))
 				{
 					#ifdef _DEBUG
@@ -2305,7 +2305,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 		if (GUI::OnMouseDown() || UI::HandleClick())
 			return;
-		if (Rect<>(0.f,0.97f,0.1f,1.f).Contains(Engine::mouse.location.windowRelative))
+		if (M::Rect<>(0.f,0.97f,0.1f,1.f).Contains(Engine::mouse.location.windowRelative))
 		{
 			LocalApplicationInterface::QueryNickname();
 			return;
@@ -2378,7 +2378,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 				bool handledChoice = Objects::HandleChoiceIntersection(b, d, distance);
 				if (!handledChoice)
 				{
-					TVec3<> normal;
+					M::TVec3<> normal;
 					bool selectionDone = false;
 					if (Objects::CommonCmd::IsModeActive(Objects::CursorMode::BuildBlockMode) || Objects::CommonCmd::IsModeActive(Objects::CursorMode::RemoveBlockMode))
 					{
@@ -3775,7 +3775,7 @@ int main( int argc, const char* argv[])
 				{
 					if (RuntimeConfig::FromFile::alwaysDay)
 					{
-						TMatrix3<> mat,rot;
+						M::TMatrix3<> mat,rot;
 						Mat::makeAxisSystem(float3::reinterpret(Camera::scene.location).Normalized(),2,mat);
 						Mat::BuildRotationMatrix(SunOffAngle, mat.x,rot);
 						Mat::Mult(rot,mat.z,sunDirection);
@@ -3892,8 +3892,10 @@ int main( int argc, const char* argv[])
 			}
 			else
 			{
+
 				display.Assign(loop);
 				display.Execute();
+
 			}
 		#else
 			Loading::Finish();

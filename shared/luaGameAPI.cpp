@@ -79,7 +79,7 @@ namespace Lua
 			}
 		#endif
 
-		Lua::Reference ToTable(Lua::PProgram&p, const TVec3<>&v)
+		Lua::Reference ToTable(Lua::PProgram&p, const M::TVec3<>&v)
 		{
 			Lua::Table c = p->CreateTable();
 

@@ -48,7 +48,7 @@ namespace Bin2Str
 	template <typename T>
 		inline String ConvertPOD(const T&data, size_t maxBytes=4)
 		{
-			return Convert(&data,M::vmin(maxBytes,sizeof(T)));
+			return Convert(&data,M::Min(maxBytes,sizeof(T)));
 		}
 	inline String Convert(const Ctr::Array<BYTE>&v)
 	{

@@ -265,7 +265,7 @@ namespace Objects
 			if (!base || !turret)
 				SetPrototypeKeyColor();
 
-			TMatrix4<> sys = Matrix<>::eye4;
+			M::TMatrix4<> sys = M::Matrix<>::eye4;
 			sys.x.x = sys.y.y = sys.z.z = 2.5f;
 			
 			display.SetObjectMatrix(sys);
