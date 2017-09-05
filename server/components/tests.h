@@ -162,7 +162,7 @@ namespace Test
 		{}
 
 		static Grid::LCellIdI	RandomCell(Random&random);
-		static Grid::LCellIdI	RandomCellAtRange(Random&random,const Grid::LCellIdI&, const TFloatRange<>&);
+		static Grid::LCellIdI	RandomCellAtRange(Random&random,const Grid::LCellIdI&, const M::TFloatRange<>&);
 		
 
 		virtual void	Run(Random&random)	override;

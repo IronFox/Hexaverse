@@ -190,9 +190,9 @@ namespace Reflection
 			public:
 				T				*const reference;
 				T				defaultValue;
-				const TFloatRange<T>	range;
+				const M::TFloatRange<T>	range;
 				
-				/**/			TypedVariable(const String&name, Persistence p, T&reference, T min, T max, unsigned protection=CLI::EraseProtection):Super(name,TypeInfo<T>::name,p,1,protection),reference(&reference),range(FloatRange(min,max))
+				/**/			TypedVariable(const String&name, Persistence p, T&reference, T min, T max, unsigned protection=CLI::EraseProtection):Super(name,TypeInfo<T>::name,p,1,protection),reference(&reference),range(M::FloatRange(min,max))
 				{
 					defaultValue = reference;
 				}

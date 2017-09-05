@@ -297,7 +297,7 @@ namespace ApplicationInterface
 		}
 	}
 
-	void	SignalTurretRotation(const Objects::PWorldEntity&e, const TVec3<>&toWorld, float rotationTime)
+	void	SignalTurretRotation(const Objects::PWorldEntity&e, const M::TVec3<>&toWorld, float rotationTime)
 	{
 		if (!e)
 		{
@@ -377,7 +377,7 @@ namespace ApplicationInterface
 	}
 
 
-	void	SignalExplosion(const TAttack&attack, const TVec3<>&center,float explosionRadius,bool isEMP, bool isDoomsday, float atTime)
+	void	SignalExplosion(const TAttack&attack, const M::TVec3<>&center,float explosionRadius,bool isEMP, bool isDoomsday, float atTime)
 	{
 		Protocol::Explosion explosion;
 		explosion.center = center;
@@ -403,7 +403,7 @@ namespace ApplicationInterface
 		else
 		{
 			static Grid::HighSetup::TVolumeDescriptor volume;
-			Sphere<> explosionSphere(center,explosionRadius);
+			M::Sphere<> explosionSphere(center,explosionRadius);
 			Grid::high.GenerateVolume(explosionSphere,volume);
 
 			Objects::ForeachFaction([explosionSphere,&atTime](const Objects::PFaction&f)
@@ -449,7 +449,7 @@ namespace ApplicationInterface
 			roughAttack.turretRange = base->GetFlatAttackRange();
 			roughAttack.explosionRadius = base->turret->GetExplosionRadius(attack.attackFrom->owner);
 
-			const TVec3<>& traceToWorld = attack.traceTo;
+			const M::TVec3<>& traceToWorld = attack.traceTo;
 
 			roughAttack.sourcePosition = attack.attackFrom->GetWorldPosition() + Grid::low.cells[attack.attackFrom->location.stackID].centerVertex.xyz * zOffset;
 			//attack.timestamp.atTime = v->timeAt;

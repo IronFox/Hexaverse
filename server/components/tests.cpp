@@ -17,7 +17,7 @@ namespace Objects
 	Extracts all possible user choices for the current state of a given entity, and an active cursor mode.
 	Usually this function is not required to be called manually.
 	*/
-//	void			GetChoices(const PWorldEntity&entity, Vehicle::mode_t activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
+//	void			GetChoices(const PWorldEntity&entity, Vehicle::mode_t activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, M::TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
 
 
 }
@@ -611,8 +611,8 @@ namespace Test
 
 		//Objects::PTower prototype = To<Objects::Tower>::DynamicCast( Objects::GetPrototypeByName(ConstName::Type_ArtilleryTower));
 
-		Ctr::Buffer0<TVec4<> > trajectory;
-		TVec3<> impactAt;
+		Ctr::Buffer0<M::TVec4<> > trajectory;
+		M::TVec3<> impactAt;
 		Grid::HCellIdI impactCell;
 		auto turret = &Objects::Component::artillery;
 		int outOfScanning = 0;
@@ -645,11 +645,11 @@ namespace Test
 			#endif
 			Objects::RefreshCompoundCoverage(0);
 
-			Grid::LCellIdI	vehicleAt = RandomCellAtRange(random, generatorAt, FloatRange(0.f, turret->GetHorizontalAttackRange(faction0) + turret->GetExplosionRadius(faction0) * 2));	//allow out-of-range
+			Grid::LCellIdI	vehicleAt = RandomCellAtRange(random, generatorAt, M::FloatRange(0.f, turret->GetHorizontalAttackRange(faction0) + turret->GetExplosionRadius(faction0) * 2));	//allow out-of-range
 			vehicleAt.height = Objects::FindApplicableGround(vehicleAt,true);
 			while (vehicleAt.height == Objects::badHeight)
 			{
-				vehicleAt = RandomCellAtRange(random, generatorAt, FloatRange(0.f, turret->GetHorizontalAttackRange(faction0) + turret->GetExplosionRadius(faction0) * 2));	//allow out-of-range
+				vehicleAt = RandomCellAtRange(random, generatorAt, M::FloatRange(0.f, turret->GetHorizontalAttackRange(faction0) + turret->GetExplosionRadius(faction0) * 2));	//allow out-of-range
 				vehicleAt.height = Objects::FindApplicableGround(vehicleAt,true);
 			}
 
@@ -721,7 +721,7 @@ namespace Test
 			random.Next(-Grid::CellStack::HalfRange+1,Grid::CellStack::HalfRange-2)
 		);
 	}
-	/*static*/ Grid::LCellIdI	AutoTargeting::RandomCellAtRange(Random&random,const Grid::LCellIdI&center, const TFloatRange<>&range)
+	/*static*/ Grid::LCellIdI	AutoTargeting::RandomCellAtRange(Random&random,const Grid::LCellIdI&center, const M::TFloatRange<>&range)
 	{
 		Grid::LCellIdI	candidate = RandomCell(random);
 		while (candidate == center || !range.Contains( Grid::GetGeometricDistance(center,candidate)))
@@ -899,7 +899,7 @@ namespace Test
 				net.TickEnd(0);
 				if (plant->AwaitsUserInteraction())
 				{
-					//void			GetChoices(const PWorldEntity&entity, Vehicle::mode_t activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
+					//void			GetChoices(const PWorldEntity&entity, Vehicle::mode_t activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, M::TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
 
 					Objects::GetChoices(plant, Objects::PVehicle(),Objects::CursorMode::Idle, choices, vis);
 					ASSERT__(choices.IsNotEmpty());
@@ -1001,7 +1001,7 @@ namespace Test
 
 			Buffer0<Objects::Choice> choices;
 			bool showArrow, hasArrowCellTarget;
-			TVec3<> arrowFrom;
+			M::TVec3<> arrowFrom;
 			Grid::LCellIdI arrowFromCell;
 
 			count_t twoCount = 0;
@@ -1045,7 +1045,7 @@ namespace Test
 
 					if (plant->AwaitsUserInteraction())
 					{
-						//void			GetChoices(const PWorldEntity&entity, Vehicle::mode_t activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
+						//void			GetChoices(const PWorldEntity&entity, Vehicle::mode_t activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, M::TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
 
 						Objects::GetChoices(plant, Objects::PVehicle(),Objects::CursorMode::Idle, choices, showArrow, hasArrowCellTarget, arrowFrom, arrowFromCell);
 						if (choices.IsEmpty())

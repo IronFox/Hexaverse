@@ -27,7 +27,7 @@ namespace Nexus
 				if (!Objects::Faction::nexus || ports.IsEmpty())
 					return;
 
-				TVec3<> centers[12];
+				M::TVec3<> centers[12];
 				DBG_ASSERT_LESS_OR_EQUAL__(ports.Count(),12);
 				for (index_t i = 0; i < ports.Count(); i++)
 					centers[i] = Grid::low.cells[ports[i]->location.stackID].centerVertex.xyz;
@@ -70,7 +70,7 @@ namespace Nexus
 
 	void EstimatePresence(Objects::WorldEntity&e, const Grid::LCellIdI&location, const Ctr::ArrayRef<index_t>&cornerField, float*hostileNearNexus, float*constructorNearNexus, float*friendlyNearNexus)
 	{
-		const TVec3 < >&loc = Grid::low.cells[location.stackID].centerVertex.xyz;
+		const M::TVec3 < >&loc = Grid::low.cells[location.stackID].centerVertex.xyz;
 		float entityRange = e.GetScanningRange();
 		float impact = e.GetConstructionCost();
 		Objects::PTurretBase b = e.GetTurretBase();
@@ -80,7 +80,7 @@ namespace Nexus
 			entityRange = M::Max(entityRange,b->GetFlatAttackRange());
 		}
 		impact += entityRange;
-		const TVec3<> worldLoc = Grid::ToWorld(location);
+		const M::TVec3<> worldLoc = Grid::ToWorld(location);
 		const float avg = Grid::low.neighborCellDistances.GetAverage();
 		if (impact > 0)
 			foreach (cornerField, at)
