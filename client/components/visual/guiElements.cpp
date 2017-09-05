@@ -1659,15 +1659,18 @@ namespace GUI
 
 	void		TextField::ReWrap()
 	{
-		//const auto hRange = GetRect().x;
-		const float width = GetWidth();
+		textout.PushState();
+		textout.Scale(Detail::textZoom*zoom);
+		
+		const float leftPadding = textout.GetScaledWidth('X') * padding.left;
+		const float rightPadding = textout.GetScaledWidth('X') * padding.right;
+		const float width = GetWidth() - leftPadding - rightPadding;
 		const float center = width/2;
 		#ifdef _DEBUG
 			wrappedAtWidth = width;
 		#endif
 
-		textout.PushState();
-		textout.Scale(Detail::textZoom*zoom);
+	
 
 		wrappedText.Clear();
 		Array<String>	wrapped;
@@ -1681,7 +1684,6 @@ namespace GUI
 		lineAt.SetSize(wrappedText.Count());
 		const float lineHeight = textout.GetScaledHeight();
 		const float y = -lineHeight*(padding.top);
-		const float leftPadding = textout.GetScaledWidth('X') * padding.left;
 		for (index_t i = 0; i < lineAt.Count(); i++)
 		{
 			lineAt[i] =
