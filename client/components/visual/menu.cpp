@@ -268,11 +268,11 @@ namespace Menu
 			},
 			[](){return !Network::client.IsConnected() && !Network::client.IsAttemptingToConnect();});
 
-		{
+		/*{
 			float2 margin = help->GetOutlineMargin();
 			margin.y *= 10.f;
 			help->SetOutlineMargin(margin);
-		}
+		}*/
 		//help->dbgTrack = true;
 		//help->FullAutoLayout();
 	}
