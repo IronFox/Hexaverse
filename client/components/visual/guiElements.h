@@ -1477,7 +1477,6 @@ namespace GUI
 
 
 	protected:
-		bool				logFullAutoLayout = false;
 
 		/**/				Window()	{}
 
@@ -1492,9 +1491,12 @@ namespace GUI
 			}
 
 	public:
+		bool				logFullAutoLayout = false;
+
 		void				OnScreenSizeOrUIScaleChange()
 		{
 			Super::OnScreenSizeOrUIScaleChange();
+			FullAutoLayout(CLOCATION);
 			UpdateOuterRect();
 		}
 
@@ -1563,13 +1565,13 @@ namespace GUI
 		}
 
 		bool			RelayoutRequired() const {return relayoutRequired;}
-		bool			FullAutoLayout();
+		bool			FullAutoLayout(const TCodeLocation&caller);
 
 		virtual bool	DetectEnabledState() override
 		{
 			if (Super::DetectEnabledState())
 			{
-				FullAutoLayout();
+				FullAutoLayout(CLOCATION);
 				return true;
 			}
 			return false;
@@ -1582,7 +1584,7 @@ namespace GUI
 				if (!nestedCall)
 				{
 					nestedCall= true;
-					FullAutoLayout();	
+					FullAutoLayout(CLOCATION);	
 					nestedCall = false;
 				}
 				if (autoCenter)
@@ -1598,7 +1600,7 @@ namespace GUI
 		}
 
 		virtual void	OnHide() {visible = false;}
-		virtual void	OnShow() {visible = true; SetActive(true); OnScreenSizeOrUIScaleChange();}
+		virtual void	OnShow();
 		virtual bool	SignalChange() {return true;}
 	};
 

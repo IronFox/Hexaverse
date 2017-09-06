@@ -106,7 +106,7 @@ namespace Dialog
 
 		void		ReLayout()
 		{
-			Super::FullAutoLayout();
+			Super::FullAutoLayout(CLOCATION);
 		}
 
 		virtual	void	OnHide() override

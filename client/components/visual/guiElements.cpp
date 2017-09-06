@@ -1573,7 +1573,7 @@ namespace GUI
 		foreach (Detail::visibleWindows,d)
 		{
 			if ((*d)->RelayoutRequired())
-				(*d)->FullAutoLayout();
+				(*d)->FullAutoLayout(CLOCATION);
 			if ((*d)->isModal)
 				break;
 			(*d)->Render();
@@ -2096,10 +2096,23 @@ namespace GUI
 		return To<Window>::Cast(shared_from_this());
 	}
 
-	bool			Window::FullAutoLayout()
+	/*virtual*/ void	Window::OnShow()
 	{
 		if (logFullAutoLayout)
-			LogEvent(EventClass::Preset::gui,"Window["+String(this)+"]::FullAutoLayout()");
+			LogEvent(EventClass::Preset::gui,"Window["+String(this)+"]::OnShow()");
+
+		visible = true; 
+		SetActive(true); 
+		OnScreenSizeOrUIScaleChange();
+	}
+
+	bool			Window::FullAutoLayout(const TCodeLocation&caller)
+	{
+		if (nestedCall)
+			return false;
+		nestedCall = true;
+		if (logFullAutoLayout)
+			LogEvent(EventClass::Preset::gui,"Window["+String(this)+"]::FullAutoLayout("+String(caller)+")");
 
 		AcceptStateFromParent(TPropagating());
 		bool rs = Super::FullAutoLayout(context);
@@ -2112,6 +2125,7 @@ namespace GUI
 				Super::Translate(delta);
 		}
 		UpdateOuterRect();
+		nestedCall = false;
 
 		return rs;
 	}

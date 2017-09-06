@@ -397,7 +397,7 @@ namespace ConfigurationMode
 				planetListWindow->AddComponent(button);
 			}
 
-			planetListWindow->FullAutoLayout();
+			planetListWindow->FullAutoLayout(CLOCATION);
 		}
 
 

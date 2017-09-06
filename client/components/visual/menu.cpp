@@ -50,12 +50,17 @@ namespace Menu
 
 	static GUI::PLabel AddOption(const String&name, const GUI::PComponent&c)
 	{
+		LogEvent(EventClass::Preset::gui,"CreateOptionsMenu()["+String(options.get())+"].AddOption("+name+", ...)");
+
 		GUI::PPanel p(new GUI::Panel());
 		GUI::PLabel l(new GUI::Label(name));
 		p->AddComponent(l);
 		p->AddComponent(c);
 
-		l->SetVerticalPadding( 0 );
+		l->SetPadding( 0 );
+
+
+
 		l->fillBackground = false;
 		l->alignCenter = false;
 		{
@@ -112,6 +117,8 @@ namespace Menu
 	static void CreateOptionsMenu()
 	{
 		options = GUI::Window::Create();
+		LogEvent(EventClass::Preset::gui,"CreateOptionsMenu(): "+String(options.get()));
+		options->logFullAutoLayout = true;
 		options->SetAutoCenter(false);
 		options->FillHorizontally(0.1f);
 		options->AnchorTop(0.1f);
@@ -227,7 +234,7 @@ namespace Menu
 		options->SetAutoHeightSpacing(0.02f);
 
 		options->SetAutomaticHeight(true);
-		options->FullAutoLayout();
+		options->FullAutoLayout(CLOCATION);
 	}
 
 	static void CreateGameMenu()

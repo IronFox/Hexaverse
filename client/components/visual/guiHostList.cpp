@@ -553,7 +553,7 @@
 		}
 		
 
-		Dialog::serverChoice->FullAutoLayout();
+		Dialog::serverChoice->FullAutoLayout(CLOCATION);
 		if (isActive)
 		{
 			Dialog::serverChoice->SetActive(isActive);

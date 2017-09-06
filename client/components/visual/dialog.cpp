@@ -33,7 +33,6 @@ namespace Dialog
 	{
 		LogEvent(EventClass::Preset::gui,"Menu["+String(this)+"/"+myTitle+"]::OnScreenSizeOrUIScaleChange()");
 		Super::OnScreenSizeOrUIScaleChange();
-		FullAutoLayout();
 	}
 
 	GUI::PButton				Menu::AddCommand(const String&name, const std::function<void()>&execute, const std::function<bool()>&check /*= std::function<bool()>()*/, bool autoHide/*=true*/)
