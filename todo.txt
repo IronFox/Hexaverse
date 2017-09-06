@@ -1,5 +1,4 @@
-﻿music
-
+﻿
 explosion optimization or options
 
 aerial radar and turret
@@ -159,6 +158,7 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+music
 end-game score recording and reporting
 Loading screen
 save/restore faction colors

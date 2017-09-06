@@ -1,4 +1,5 @@
 v0.6.5
+	+ Added background music to server selection screen.
 	+ Added remote control commands to end game at any time.
 	+ Added statistics recording and end-game display.
 	+ Added options dialog.
