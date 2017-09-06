@@ -31,9 +31,48 @@ namespace Dialog
 {
 	/*virtual override*/ void				Menu::OnScreenSizeOrUIScaleChange()
 	{
+		LogEvent(EventClass::Preset::gui,"Menu["+String(this)+"/"+myTitle+"]::OnScreenSizeOrUIScaleChange()");
 		Super::OnScreenSizeOrUIScaleChange();
 		FullAutoLayout();
 	}
+
+	GUI::PButton				Menu::AddCommand(const String&name, const std::function<void()>&execute, const std::function<bool()>&check /*= std::function<bool()>()*/, bool autoHide/*=true*/)
+	{
+		GUI::PButton button(new GUI::Button(name,
+			[execute,this,autoHide]()
+			{
+				execute();
+				if (autoHide)
+					GUI::CloseAllModalBeneath(To<GUI::Window>::Cast(this->shared_from_this()));
+			},
+			check
+		));
+		Super::AnchorBelowPrevious(button,0.f,Super::components.IsEmpty() ? 0.f : 0.015f);
+
+		LogEvent(EventClass::Preset::gui,"Menu["+String(this)+"/"+myTitle+"]::AddCommand("+name+", ...)");
+
+		return button;
+	}
+
+	void		Menu::Setup(float initialAbsoluteWidth, const String&title)
+	{
+		myTitle = title;
+		if (Super::DoesAutoCenter())
+			SetWidth(initialAbsoluteWidth);
+		else
+			Super::SetCenteredWidth(initialAbsoluteWidth,GUI::TAnchor::RelativeToScreen);
+		Super::fillBackground = false;
+
+		if (title.IsNotEmpty())
+		{
+			GUI::PLabel label(new GUI::Label());
+			label->SetText(title);
+			label->SetVerticalPadding( 0.1f );
+			Super::AnchorBelowPrevious(label,0.015f,0.f);
+		}
+		LogEvent(EventClass::Preset::gui,"Menu["+String(this)+"]::Setup("+String(initialAbsoluteWidth)+","+myTitle+")");
+	}
+
 
 	namespace Detail
 	{

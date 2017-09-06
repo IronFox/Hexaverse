@@ -80,6 +80,7 @@ struct EventClass
 							remoteControlResponse,
 							remoteControlCommand,
 							remoteControlError,
+							gui,	//!< GUI-Components
 							common	//!< Internal normal process that should be logged but not displayed
 							;
 	};

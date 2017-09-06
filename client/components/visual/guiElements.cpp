@@ -2096,6 +2096,27 @@ namespace GUI
 		return To<Window>::Cast(shared_from_this());
 	}
 
+	bool			Window::FullAutoLayout()
+	{
+		if (logFullAutoLayout)
+			LogEvent(EventClass::Preset::gui,"Window["+String(this)+"]::FullAutoLayout()");
+
+		AcceptStateFromParent(TPropagating());
+		bool rs = Super::FullAutoLayout(context);
+		relayoutRequired = false;
+
+		if (autoCenter)
+		{
+			float2 delta = context.center() - GetRect().center();
+			if (!Vec::similar(delta,M::Vector2<>::zero))
+				Super::Translate(delta);
+		}
+		UpdateOuterRect();
+
+		return rs;
+	}
+
+
 
 
 	/**/			TabBar::TabBar()

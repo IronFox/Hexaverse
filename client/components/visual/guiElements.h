@@ -1477,6 +1477,8 @@ namespace GUI
 
 
 	protected:
+		bool				logFullAutoLayout = false;
+
 		/**/				Window()	{}
 
 		template <typename T>	
@@ -1561,23 +1563,7 @@ namespace GUI
 		}
 
 		bool			RelayoutRequired() const {return relayoutRequired;}
-
-		bool			FullAutoLayout()
-		{
-			AcceptStateFromParent(TPropagating());
-			bool rs = Super::FullAutoLayout(context);
-			relayoutRequired = false;
-
-			if (autoCenter)
-			{
-				float2 delta = context.center() - GetRect().center();
-				if (!Vec::similar(delta,M::Vector2<>::zero))
-					Super::Translate(delta);
-			}
-			UpdateOuterRect();
-
-			return rs;
-		}
+		bool			FullAutoLayout();
 
 		virtual bool	DetectEnabledState() override
 		{

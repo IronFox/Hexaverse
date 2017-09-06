@@ -45,6 +45,7 @@ EventClass	EventClass::Preset::error = EventClass(EventSignificance::NonFatalErr
 			EventClass::Preset::remoteControlCommand = EventClass(EventSignificance::Uncommon,EventFlavor::ServerPrivate),
 			EventClass::Preset::remoteControlError = EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),
 			EventClass::Preset::important = EventClass(EventSignificance::Important),
+			EventClass::Preset::gui = EventClass(EventSignificance::Common),
 			EventClass::Preset::uncommon = EventClass(EventSignificance::Uncommon);
 
 namespace Logging

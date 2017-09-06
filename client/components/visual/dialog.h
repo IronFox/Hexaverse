@@ -230,50 +230,23 @@ namespace Dialog
 	{
 		typedef GUI::Window	Super;
 
+		String		myTitle;
+
 		friend class Super;
 	protected:
-		/**/		Menu(){}
+		/**/		Menu(){Super::logFullAutoLayout = true;}
 	public:
-		void		Setup(float initialAbsoluteWidth, const String&title)
-		{
-			if (Super::DoesAutoCenter())
-				SetWidth(initialAbsoluteWidth);
-			else
-				Super::SetCenteredWidth(initialAbsoluteWidth,GUI::TAnchor::RelativeToScreen);
-			Super::fillBackground = false;
-
-			if (title.IsNotEmpty())
-			{
-				GUI::PLabel label(new GUI::Label());
-				label->SetText(title);
-				label->SetVerticalPadding( 0.1f );
-				Super::AnchorBelowPrevious(label,0.015f,0.f);
-			}
-		}
+		void		Setup(float initialAbsoluteWidth, const String&title);
 
 		static PMenu		Create()
 		{
 			return Super::CreateDerivative<Menu>();;
-
 		}
 
 
 		virtual void				OnScreenSizeOrUIScaleChange() override;
 
-		GUI::PButton				AddCommand(const String&name, const std::function<void()>&execute, const std::function<bool()>&check = std::function<bool()>(), bool autoHide=true)
-		{
-			GUI::PButton button(new GUI::Button(name,
-				[execute,this,autoHide]()
-				{
-					execute();
-					if (autoHide)
-						GUI::CloseAllModalBeneath(To<GUI::Window>::Cast(this->shared_from_this()));
-				},
-				check
-			));
-			Super::AnchorBelowPrevious(button,0.f,Super::components.IsEmpty() ? 0.f : 0.015f);
-			return button;
-		}
+		GUI::PButton				AddCommand(const String&name, const std::function<void()>&execute, const std::function<bool()>&check = std::function<bool()>(), bool autoHide=true);
 
 
 	};
