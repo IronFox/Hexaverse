@@ -304,7 +304,7 @@ namespace Menu
 				GUI::Show(options);
 			});
 
-		main->AddCommand("Quit to Desktop",[](){Dialog::Confirm("Really quit? Any active faction will be preserved server-sided for you to continue later on.",[](){application_shutting_down = true;},[](){return Dialog::CheckResult::OkayContinue;});});
+		main->AddCommand("Quit to Desktop",[](){Dialog::Confirm("Return to Windows?",[](){application_shutting_down = true;},[](){return Dialog::CheckResult::OkayContinue;});});
 		//main->FullAutoLayout();
 	}
 
