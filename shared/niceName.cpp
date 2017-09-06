@@ -7,7 +7,7 @@
 namespace NiceName
 {
 
-	static Buffer<String>	adjectives,nouns;
+	static Ctr::Buffer<String>	adjectives,nouns;
 	static UINT64	totalCombinations = 0;
 
 	#ifdef CLIENT
@@ -20,14 +20,14 @@ namespace NiceName
 	static String& MakeNice(String&in)
 	{
 		in.convertToLowerCase();
-		in.set(0,Template::toupper(in.get(0)));
+		in.set(0,CharFunctions::toupper(in.get(0)));
 		return in;
 	}
 	static String& MakeNiceAdjective(String&in)
 	{
 		//for now, same
 		in.convertToLowerCase();
-		in.set(0,Template::toupper(in.get(0)));
+		in.set(0,CharFunctions::toupper(in.get(0)));
 		return in;
 	}
 
@@ -39,7 +39,7 @@ namespace NiceName
 		ASSERT1__(file.Open(PRE_PATH L"resources/nice/nouns.txt"), FileSystem::GetWorkingDirectory());
 
 		while (file >> line)
-			nouns << MakeNice(line);
+			nouns << line;
 
 		ASSERT__(file.Open(PRE_PATH L"resources/nice/adjectives.txt"));
 

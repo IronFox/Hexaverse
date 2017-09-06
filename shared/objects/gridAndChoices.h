@@ -44,8 +44,8 @@ namespace Objects
 	};
 
 
-	extern Array<PVehicle>			vehicleGrid;
-	extern Array<PStructure>		structureGrid;
+	extern Ctr::Array<PVehicle>			vehicleGrid;
+	extern Ctr::Array<PStructure>		structureGrid;
 
 	index_t					CellToGridIndex(const Grid::LCellIdU&location);
 
@@ -89,11 +89,11 @@ namespace Objects
 	}
 
 
-	bool			AppendShortestPathI(const Vehicle*vehicle, const Grid::LCellIdI&from, const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
+	bool			AppendShortestPathI(const Vehicle*vehicle, const Grid::LCellIdI&from, const Grid::LCellIdI&to, Ctr::BasicBuffer<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
 	#ifndef NO_SATELLITES
 		bool		AppendShortestPathI(const Satellite*vehicle, const Grid::LCellIdI&from, const UINT32 toCell, BasicBuffer<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
 	#endif
-	bool			AppendShortestConstructionPath(const Vehicle*vehicle, bool ignoreWater, bool flat, const Grid::LCellIdI&from, Grid::LCellIdI to, BasicBuffer<Grid::LCellIdI>&oPath);
+	bool			AppendShortestConstructionPath(const Vehicle*vehicle, bool ignoreWater, bool flat, const Grid::LCellIdI&from, Grid::LCellIdI to, Ctr::BasicBuffer<Grid::LCellIdI>&oPath);
 	/**
 	Attempts to find the shortest direct path to a destination. Does not check if the path is blocked by terrain or entities.
 	@param from Source location
@@ -102,7 +102,7 @@ namespace Objects
 	@param penaltizeVerticalMotion Increases the cost of vertical motion considerably, such that they are chosen only as a last resourt
 	@param constrainVerticalMotion Only chooses path nodes whoes height lies in the height range defined by @a from.height and @a to.height. If @a from and @a to lie on the same height, then path finding is restricted to 2d
 	*/
-	bool			AppendShortestDirectPath(const Grid::LCellIdI&from, const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath, bool penaltizeVerticalMotion=true, bool constrainVerticalMotion=true);
+	bool			AppendShortestDirectPath(const Grid::LCellIdI&from, const Grid::LCellIdI&to, Ctr::BasicBuffer<PathNode>&oPath, bool penaltizeVerticalMotion=true, bool constrainVerticalMotion=true);
 	#ifndef NO_SATELLITES
 		bool		AppendShortestDirectSatellitePath(const Grid::LCellIdI&from, const UINT32 toCell, BasicBuffer<PathNode>&oPath);
 	#endif
@@ -120,8 +120,20 @@ namespace Objects
 		bool		operator==(const Grid::LCellIdI&other) const {return location == other;}
 	};
 
-	void			GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Choice>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
-	void			GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Choice>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
+	struct TChoiceVisualization
+	{
+		bool			showArrow=false, 
+						hasArrowCellTarget=false,
+						showTrajectory=false;
+		TrajectoryEndPoint	arrowFrom;
+		Grid::LCellIdI	arrowFromCell;
+		bool			paraboloidTrajectory = false;
+		float			flatTrajectoryRange=1;
+		TrajectoryEndPoint	arrowCellTarget;
+	};
+
+	void			GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, Ctr::BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis);
+	void			GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, Ctr::BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis);
 
 	bool			NothingBlockingHere(const Grid::LCellIdI&cellID, bool checkVehiclesOnClient);
 
@@ -144,7 +156,7 @@ namespace Objects
 	@param production Base type of the vehicle that was produced
 	*/
 	void			GetProductionChoices(const WorldEntity*producer,Component::VehicleBase*production,
-							BasicBuffer<Choice>&choices);
+							Ctr::BasicBuffer<Choice>&choices);
 
 
 	template <typename T, count_t MaxLevels>
@@ -174,7 +186,7 @@ namespace Objects
 	typedef TWaysTemplate<UINT32,1>			TOrbitalWays,TSubOrbitalWays;	//TOrbitalWays MaxLevels must always be == 1
 
 
-	void			GetWays(const Grid::WorldData&world,
+	void			GetWays(const World::Data&world,
 							const Vehicle*v,  const Grid::LCellIdI&location, 
 							TWays&outWays, const Grid::LCellIdI&destination, 
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute, bool forceRevertible);
@@ -183,7 +195,7 @@ namespace Objects
 							TOrbitalWays&outWays, UINT32 destination, 
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute);
 	#endif
-	void			GetMobileWays(	const Grid::WorldData&world,
+	void			GetMobileWays(	const World::Data&world,
 							const MobileEntity*v,  const Grid::LCellIdI&location, 
 							TWays&outWays, const Grid::LCellIdI&destination, 
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute);
@@ -242,9 +254,6 @@ namespace Objects
 		PMobileEntity	AssembleMobileEntity(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation, const String&base, const String&turret);
 
 		bool		GetSentryTarget(const WorldEntity&source, int munitionStorage, const TrajectoryEndPoint&sourceLocation, const TurretBase&base, Grid::LCellIdI&outTarget);
-		void		SignalClusterChange(const Grid::LCellIdI&location, int verticalTolerance,float atTime,const WorldEntity*except);
-		void		SignalVehicleClusterChange(const Grid::LCellIdI&location, int verticalTolerance, float atTime, const WorldEntity*except);
-		void		SignalClusterAndNeighborsChange(const Grid::LCellIdI&location, float atTime, const WorldEntity*except = nullptr);
 		void		Explode(const ApplicationInterface::TAttack& attack, 
 						const Grid::HCellIdI&targetCell, const TVec3<>&center, int explosionRadius, int damageLevel, bool doomsday,
 						float&atTime
@@ -281,7 +290,8 @@ namespace Objects
 	void			Remove( const PWorldEntity&, RemovalType t, float&atTime, bool controlEnabled, bool isRemovedFromGrid=false, bool ignoreIndestructible=false);
 
 	/**
-	Must be called once during start up, after the base grids have been created
+	Must be called once during start up, after the base grids have been created.
+	Updates maxAngleBetweenNeighboringCells, which is required by AppendShortestConstructionPath()
 	*/
 	void			InitGrid();
 
@@ -307,7 +317,7 @@ namespace Objects
 
 		};
 		
-		Buffer<MapNode>	result;
+		Ctr::Buffer<MapNode>	result;
 
 		typedef bool (*FBlockTest)(const Grid::LCellIdI&);
 
@@ -334,8 +344,8 @@ namespace Objects
 			index_t	mapped;
 		};
 		bool					logPerformance;
-		Buffer<index_t>			touched;
-		Array<TReachableNode>	buffer;
+		Ctr::Buffer<index_t>		touched;
+		Ctr::Array<TReachableNode>	buffer;
 	};
 }
 

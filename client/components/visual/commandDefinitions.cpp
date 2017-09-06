@@ -1,0 +1,1383 @@
+#include <global_root.h>
+#include "commandDefinitions.h"
+#include "objectCommands.h"
+#include <objects/structure.h>
+#include "objectSelection.h"
+#include <objects/research.h>
+#include <objects/gridAndChoices.h>
+#include <objects/vehicle.h>
+#include <objects/prototypes.h>
+#include <objects/structure/laboratory.h>
+#include <objects/structure/mine.h>
+#include <objects/structure/vehiclePlant.h>
+#include <objects/faction.h>
+#include <objects/structure/planeFactory.h>
+#include <objects/subOrbital.h>
+#include "../clientRuntimeConfig.h"
+#include "../network.h"
+#include "dialog.h"
+#include "objectChoices.h"
+#include "terrain.h"
+#include "objectRendering.h"
+#include "../cameraControl.h"
+
+
+
+namespace Objects
+{
+	namespace Commands
+	{
+
+		Grid::LCellIdI	GetPointOfOrigin(const Objects::MobileEntity&e)
+		{
+			if (ShouldQueueCommands())
+				return e.GetLastPointOfOrigin();
+			return e.location;
+		}
+
+		namespace Detail
+		{
+
+
+
+
+
+
+			/**
+			Relay-functor to convert a single boolean function or variable to Objects::CommandFlags.
+			Depending on the returned boolean value, flag compositions will either be 
+			Objects::CommandFlags::IsEnabled | Objects::CommandFlags::IsPermaActive 
+			or
+			Objects::CommandFlags::IsEnabled
+			*/
+			class GlobalPermaSwitch
+			{
+				std::function<bool()>	getState,enabled;
+			public:
+				/**/	GlobalPermaSwitch(const std::function<bool()>&f,const std::function<bool()>&enabled=std::function<bool()>()):getState(f),enabled(enabled)
+				{}
+				/**/	GlobalPermaSwitch(bool&b,const std::function<bool()>&enabled=std::function<bool()>()):getState([&b](){return b;}),enabled(enabled)
+				{}
+
+
+				Objects::CommandFlags	operator()(bool)
+				{
+					Objects::CommandFlags rs= getState() ? Objects::CommandFlags::IsPermaActive : Objects::CommandFlags::None;
+					if (!enabled || enabled())
+						rs |= Objects::CommandFlags::IsEnabled;
+					return rs;
+				}
+
+
+			};
+
+			static void				EnableWorkingStructure()
+			{
+				Objects::WorkingStructure*s2 = dynamic_cast<Objects::WorkingStructure*>(selectedEntity.get());
+				if (s2)
+				{
+					ApplicationInterface::SignalEnableStructure(*s2, !s2->IsEnabled());
+					//s2->SetEnabled(!s2->IsEnabled());
+				}
+			}
+
+			static bool				WorkingStructureIsEnabled()
+			{
+				Objects::WorkingStructure*s2 = dynamic_cast<Objects::WorkingStructure*>(selectedEntity.get());
+				return s2 && s2->IsEnabled();
+			};
+
+
+
+			static bool				EnqueueSelectedConstruction(VehiclePlant&plant)
+			{
+				if (plant.selectedBase && plant.selectedTurret)
+				{
+					static Buffer0<Objects::Choice>	choices;
+					Objects::GetProductionChoices(&plant,plant.selectedBase,choices);
+					static bool ignoreWarnings = false;
+					if (choices.IsNotEmpty() || ignoreWarnings)
+						ApplicationInterface::SignalConstructionBegin(plant.id, plant.selectedBase->constName, plant.selectedTurret->constName);
+					else
+					{
+
+
+						#ifdef HAS_WINDOW					
+							String waterNotice;
+							if (!plant.selectedBase->moveOnWater)
+								waterNotice = " Note that this vehicle type cannot stand on water. ";
+							TUniqueID myID = plant.id;
+							ConstName baseName = plant.selectedBase->constName;
+							ConstName turretName = plant.selectedTurret->constName;
+							Dialog::Confirm("Cannot find valid spawning locations around '"+plant.GetNiceName()+"' for '"+Vehicle::GetTypeName(plant.selectedBase,plant.selectedTurret)+"'. "+waterNotice+"Are you sure you wish to start this production?",
+									[baseName,turretName,myID]()
+									{
+										ApplicationInterface::SignalConstructionBegin(myID, baseName, turretName);
+										//ignoreWarnings = true;
+									}
+									,
+									[myID]()->Dialog::CheckResult
+									{
+										PVehiclePlant plant = To<VehiclePlant>::DynamicCast(GetEntity(myID));
+										if (!plant || plant->health <= 0)
+											return Dialog::CheckResult::Abort;
+										if (!Objects::controlIsEnabled)
+											return Dialog::CheckResult::OkayNotRightNow;
+										return Dialog::CheckResult::OkayContinue;
+									}
+								);
+						#else
+							ApplicationInterface::SignalConstructionBegin(id, selectedBase->constName, selectedTurret->constName);
+						#endif
+					}
+				}
+				return false;
+			}
+	
+
+		}
+
+		void DefineVehiclePlant(CommandContainer&commands)
+		{
+			DefineWorkingStructure(commands);
+			commands.VisitMembers([](const int2&coords,const Command::PBase&cmd)
+			{
+				if (cmd->name == "Enable")
+				{
+					(*cmd) = Command::IconCommand("Enable",
+						[]()
+						{
+
+							VehiclePlant*s2 = dynamic_cast<VehiclePlant*>(selectedEntity.get());
+							if (s2)
+							{
+								if (!s2->IsEnabled() && !s2->CanEnable())
+								{
+									ApplicationInterface::SignalUserMessage(s2->GetNiceName()+" is switched off because its queue is empty. It will attempt to automatically enable once you enqueue at least one production job.");
+									return;
+								}
+								ApplicationInterface::SignalEnableStructure(*s2, !s2->IsEnabled());
+							}
+						}
+						,[](bool controlEnabled)
+						{
+							Objects::CommandFlags rs = Objects::CommandFlags::None;
+							VehiclePlant*div = dynamic_cast<VehiclePlant*>(selectedEntity.get());
+							if (controlEnabled && div != nullptr)
+								rs |= Objects::CommandFlags::IsEnabled;
+							if (Detail::WorkingStructureIsEnabled())
+								rs |= Objects::CommandFlags::IsPermaActive;
+							return rs;
+						}
+						,NoCosts
+					);
+				}
+			},true);
+
+
+
+			int at = 0;
+			//vehicleConstructionCommands << VehicleConstructionCommand("Base:",[](const PWorldEntity&){},AlwaysFalse<PWorldEntity const&>,AlwaysFalse<PWorldEntity const&>);
+			foreach (VehiclePlant::baseComponents,comp)
+			{
+				Component::VehicleBase* c = *comp;
+				commands.Add(int2(5+at,0),false,new Command::EntityConstructionCommand(c->typeName,c,nullptr,PWorldEntity(),[c]()
+				{
+					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
+					if (plant)
+						plant->selectedBase = c;
+				}
+				,[c](bool controlEnabled)
+				{
+					Objects::CommandFlags rs = CommonCmd::CommonButtonCheck(controlEnabled);
+					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
+					if (plant && plant->selectedBase == c)
+						rs |= Objects::CommandFlags::IsPermaActive;
+					if (!plant || !c->isUnlocked(plant->owner))
+						rs = Objects::CommandFlags::None;
+					return rs;
+				}));
+				To<Objects::Command::VisualCommand>::Cast(commands.GetLast().second)->RasterizeImage();
+				at++;
+			}
+			at = 0;
+			//commands << Command("Turret:",[](const PWorldEntity&){},AlwaysFalse<PWorldEntity const&>,AlwaysFalse<PWorldEntity const&>);
+			foreach (VehiclePlant::turretComponents,comp)
+			{
+				Component::Turret* c = *comp;
+				commands.Add(int2(3+at,1),false,new Command::EntityConstructionCommand(c->typeName,nullptr,c,PWorldEntity(),[c]()
+				{
+					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
+					if (plant)
+					{
+						plant->selectedTurret = c;
+
+						if (plant->selectedBase && plant->selectedTurret)
+							Detail::EnqueueSelectedConstruction(*plant);
+						else
+						{
+							if (!plant->selectedTurret)
+								LogEvent(EventClass::Preset::internalError,plant,"No Turret selected for construction");
+							else
+								LogEvent(EventClass::Preset::internalError,plant,"No base selected for construction");
+						}
+					}
+				},
+				[c](bool controlEnabled)
+				{
+					if (!controlEnabled)
+						return Objects::CommandFlags::None;
+					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
+					if (plant)
+					{
+						Objects::CommandFlags rs = Objects::CommandFlags::IsEnabled;
+						if (!c->isUnlocked(plant->owner))
+							rs = Objects::CommandFlags::None;
+
+						return rs;
+					}
+					else return Objects::CommandFlags::None;
+				},
+				[c](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
+				{
+					costTypeOut = Resource::Minerals;
+					PVehiclePlant p = To<VehiclePlant>::DynamicCast(selectedEntity);
+					ASSERT__(p);
+					if (!p->selectedBase)
+					{
+						mineralCostOut = 0;
+						timeCostOut = 0;
+						return;
+					}
+					mineralCostOut = Vehicle::GetPrice(p->selectedBase,c,p->owner);
+					timeCostOut = p->ProductionRounds(mineralCostOut,false);
+				}));
+				To<Objects::Command::VisualCommand>::Cast(commands.GetLast().second)->RasterizeImage();
+				at++;
+			}
+		
+		}
+
+
+		void DefinePlaneFactory(CommandContainer&commands)
+		{
+			DefineWorkingStructure(commands);
+			commands.VisitMembers([](const int2&coords, const Command::PBase&cmd)
+			{
+				if (cmd->name == "Enable")
+				{
+					(*cmd) = Command::IconCommand("Enable",
+						[]()
+					{
+
+						PlaneFactory*s2 = dynamic_cast<PlaneFactory*>(selectedEntity.get());
+						if (s2)
+						{
+							if (!s2->IsEnabled() && !s2->CanEnable())
+							{
+								ApplicationInterface::SignalUserMessage(s2->GetNiceName() + " is switched off because its queue is empty. It will attempt to automatically enable once you enqueue at least one production job using the 'Construct Selected' button. You must first select both a foundation and a turret, however.");
+								return;
+							}
+							ApplicationInterface::SignalEnableStructure(*s2, !s2->IsEnabled());
+						}
+					}
+						, [](bool controlEnabled)
+					{
+						Objects::CommandFlags rs = Objects::CommandFlags::None;
+						PlaneFactory*div = dynamic_cast<PlaneFactory *> (selectedEntity.get());
+						if (controlEnabled && div != nullptr)
+							rs |= Objects::CommandFlags::IsEnabled;
+						if (Detail::WorkingStructureIsEnabled())
+							rs |= Objects::CommandFlags::IsPermaActive;
+						return rs;
+					}
+						, NoCosts
+						);
+				}
+			}, true);
+
+
+			foreach(Objects::SubOrbital::prototypes, proto)
+			{
+				auto p = *proto;
+				Command::PEntityConstructionCommand cmd(new Command::EntityConstructionCommand("Construct " + p->GetTypeName(), nullptr, nullptr, p, [p]()
+					{
+						PPlaneFactory factory = To<PlaneFactory>::DynamicCast(selectedEntity);
+						if (!factory)
+							return;
+						ApplicationInterface::SignalConstructionBegin(factory->id, p->GetCTypeName(), ConstName::Empty);
+					}
+					,
+					[p](bool controlEnabled)
+					{
+						if (!controlEnabled)
+							return CommandFlags::None;
+						PlaneFactory*plant = dynamic_cast<PlaneFactory*>(selectedEntity.get());
+						if (plant)
+						{
+							CommandFlags rs = p->turret->isUnlocked.GetValue(selectedEntity->GetResearchState()) ? CommandFlags::IsEnabled : CommandFlags::None;
+							return rs;
+						}
+						return CommandFlags::None;
+					}
+				));
+
+				commands.Add(cmd);
+				cmd->RasterizeImage();
+			}
+		}
+
+		void DefineMine(CommandContainer&commands)
+		{
+			DefineWorkingStructure(commands);
+			commands.Add( new Command::IconCommand("Restore Core Link",[]()
+			{
+				PMine mine = ToMine(selectedEntity);
+				if (mine)
+				{
+					ApplicationInterface::SignalRestoreCoreLink(mine->id);
+				}
+			},
+			[](bool controlEnabled)
+			{
+				if (!controlEnabled)
+					return Objects::CommandFlags::None;
+				PMine mine = ToMine(selectedEntity);
+				return mine && !mine->IsLinkedToCore() ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
+			},
+			NoCosts
+			));
+		}
+
+		void DefineWorkingStructure(CommandContainer & commands)
+		{
+			commands.baseCoords = int2(3,0);
+
+			commands.Add(new Command::IconCommand("Enable",&Detail::EnableWorkingStructure,
+			[](bool controlEnabled)->Objects::CommandFlags
+			{
+				Objects::CommandFlags rs = Objects::CommandFlags::None;
+				Objects::WorkingStructure*div = dynamic_cast<Objects::WorkingStructure*>(selectedEntity.get());
+				if (controlEnabled)
+				{
+					if (div && div->CanEnable())
+					{
+						rs |= Objects::CommandFlags::IsEnabled;
+					}
+				}
+				if (div && div->IsEnabled())
+					rs |= Objects::CommandFlags::IsPermaActive;
+				return rs;
+			}
+			,NoCosts
+			));
+		}
+
+		static void BuildCommand(CommandContainer&parent, const PResearchTopic&t)
+		{
+			Command::PResearchCommand rs(new Command::ResearchCommand(t));
+			parent.Add(rs);
+			foreach (t->children,c)
+			{
+				BuildCommand(*rs,*c);
+			}
+			if (t->componentReference || t->prototypeReference)
+				rs->RasterizeImage();
+		}
+
+		static count_t			researchCommandOffset = InvalidIndex, researchQueueOffset = InvalidIndex;
+
+
+		static	void	ConfigureResearchQueueButtons(CommandContainer&commands)
+		{
+			commands.Truncate(researchQueueOffset);
+			if (Faction::mine && !Faction::mine->researchState.IsIdle())
+			{
+				foreach (Faction::mine->researchState.GetResearchQueue(),r)
+				{
+					Command::PResearchAbortCommand rs(new Command::ResearchAbortCommand(*r,r == Faction::mine->researchState.GetResearchQueue().begin()));
+					if ((*r)->componentReference || (*r)->prototypeReference)
+						rs->RasterizeImage();
+					commands.Add(rs);
+				}
+			}
+
+			commands.Refresh(Network::ControlEnabled());
+		}
+
+		static	void	ConfigureResearchButtons(CommandContainer&commands)
+		{
+			if (researchCommandOffset == InvalidIndex)
+				researchCommandOffset = commands.Count();
+			else
+				commands.Truncate(researchCommandOffset);
+			foreach (ResearchState::globalState.rootResearch,res)
+			{
+				BuildCommand(commands,*res);
+			}
+			commands.AddSpace();
+			researchQueueOffset = commands.Count();
+			ConfigureResearchQueueButtons(commands);
+		}
+
+
+		void	ReconfigureResearchButtons()
+		{
+			ConfigureResearchButtons(Laboratory::commands);
+		}
+		void	ReconfigureResearchQueueButtons()
+		{
+			ConfigureResearchQueueButtons(Laboratory::commands);
+		}
+
+		void	DefineLaboratory(CommandContainer&commands)
+		{
+			DefineWorkingStructure(commands);
+			ConfigureResearchButtons(commands);
+		}
+
+
+		namespace Detail
+		{
+			namespace SubOrbitalCmd
+			{
+				Objects::CommandFlags CheckGridVisibility(bool)
+				{
+					return Objects::CommandFlags::IsEnabled |
+						(Camera::SubOrbitalGridIsVisible() ? Objects::CommandFlags::IsPermaActive : Objects::CommandFlags::None);
+				}
+
+				void	Land()
+				{
+					if (!selectedMobileEntity || !selectedMobileEntity->IsPlane() || GetPointOfOrigin(*selectedMobileEntity).height <= Grid::CellStack::TopHeight)
+						return;
+					Objects::SubOrbital::PPlane plane = To<Objects::SubOrbital::Plane>::Cast(selectedMobileEntity);
+					auto loc = GetPointOfOrigin(*plane);
+					int h = plane->GetLandingHeight(loc);
+					if (h != badHeight)
+						ApplicationInterface::DirectTo(selectedMobileEntity, Grid::LCellIdI(loc.stackID, h), false, false);
+				}
+
+				CommandFlags LandCheck(bool controlEnabled)
+				{
+					if (!controlEnabled || !selectedMobileEntity || !selectedMobileEntity->IsPlane() || GetPointOfOrigin(*selectedMobileEntity).height <= Grid::CellStack::TopHeight)
+						return CommandFlags::None;
+					Objects::SubOrbital::PPlane plane = To<Objects::SubOrbital::Plane>::Cast(selectedMobileEntity);
+					auto loc = GetPointOfOrigin(*selectedMobileEntity);
+					int h = plane->GetLandingHeight(loc);
+					if (h != badHeight)
+						return CommandFlags::IsEnabled;
+					return CommandFlags::None;
+				}
+
+				void	TakeOff()
+				{
+					if (!selectedMobileEntity || !selectedMobileEntity->IsPlane() || GetPointOfOrigin(*selectedMobileEntity).height > Grid::CellStack::TopHeight)
+						return;
+					ApplicationInterface::DirectTo(selectedMobileEntity, Grid::LCellIdI(GetPointOfOrigin(*selectedMobileEntity).stackID, Objects::SubOrbital::Height), false, false);
+				}
+
+				CommandFlags TakeOffCheck(bool controlEnabled)
+				{
+					if (!controlEnabled || !selectedMobileEntity || !selectedMobileEntity->IsPlane() || GetPointOfOrigin(*selectedMobileEntity).height > Grid::CellStack::TopHeight)
+						return CommandFlags::None;
+					return CommandFlags::IsEnabled;
+				}
+			}
+		
+
+
+			//struct CellCoords : public int2
+			//{
+
+			//	/**/		CellCoords(int x, int y):int2(x,y)
+			//	{}
+
+
+			//	CellCoords	operator++(int)
+			//	{
+			//		CellCoords rs = *this;
+			//		if (y == 0)
+			//			y = 1;
+			//		else
+			//		{
+			//			x++;
+			//			y = 0;
+			//		}
+			//		return rs;
+			//	}
+			//	CellCoords&	operator++()
+			//	{
+			//		if (y == 0)
+			//			y = 1;
+			//		else
+			//		{
+			//			x++;
+			//			y = 0;
+			//		}
+			//		return *this;
+			//	}
+
+			//};
+
+
+			void ConfigureStandardOffset(Objects::Component::Turret&component)
+			{
+				component.commands.baseCoords = int2(3,0);
+			}
+
+
+			bool	NotModifyBlockMode(const Vehicle&v)
+			{
+				return activeCursorMode != CursorMode::BuildBlockMode && activeCursorMode != CursorMode::RemoveBlockMode;
+			}
+
+			/*static*/ bool TerraformerNotBuilding()
+			{
+				PMobileEntity v = selectedMobileEntity;
+				return v && (!v->HasTasks() || !v->myTasks.Peek().IsJob());
+			}
+
+			/*static*/ void TerraformerConstruct(const PStructure&p)
+			{
+				PMobileEntity vehicle = selectedMobileEntity;
+				if (!vehicle)
+					return;
+				if (activeCursorMode != CursorMode::PlaceStructureMode)
+				{
+					//bool directPlace = !Engine::input.pressed[Key::Ctrl] && vehicle->myTasks.IsNotEmpty() && vehicle->myTasks.GetNewest().type == MobileEntity::Task::MoveTo;
+					//if (directPlace)
+					//{
+					//	const Grid::LCellIdI last = vehicle->GetLastPointOfOrigin();
+					//	const Grid::LCellIdI prev = vehicle->GetPrevPointOfOrigin();
+					//	const auto&n = Grid::low.grid.GetCell(last.stackID).neighborhood;
+					//	
+					//	for (int k = 0; k < n.numNeighbors; k++)
+					//		if (n.neighborID[k] == prev.stackID)
+					//		{
+					//			directPlace = false;
+					//			break;
+					//		}
+					//}
+
+					//if (!directPlace)
+					{
+						activeCursorMode = CursorMode::PlaceStructureMode;
+						choiceVis.showArrow = true;
+						choiceVis.arrowFromCell = GetPointOfOrigin(*vehicle);
+						choiceVis.arrowFrom = Grid::low.cells[choiceVis.arrowFromCell.stackID].centerVertex.xyz * ( Grid::ToRadius(choiceVis.arrowFromCell.height));
+
+						if (!ShouldQueueCommands())
+							ApplicationInterface::SignalDropSafeTasks(vehicle);
+					}
+					//else
+						//ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_Construct, p->GetCTypeName());	
+							//this still works, but seemed unintuitive rather quickly
+					activeStructureToPlace = p;
+				}
+				else
+				{
+					activeCursorMode = CursorMode::Idle;
+					choiceVis.showArrow = false;
+				}
+
+
+				//SignalNewJob(vehicle, ConstName::Job_Construct, p->GetCTypeName());
+			}
+
+/*
+
+			void Terraformer::Cmd::ToggleDigMode()
+			{
+				CommonCmd::ToggleMode(CursorMode::DigMode);
+			}
+*/
+
+			//void Terraformer::Cmd::ClearAbove()
+			//{
+			//	CommonCmd::ToggleMode(CursorMode::ClearAboveMode);
+			//}
+
+			//bool Terraformer::Cmd::ClearAboveIsActive(const PWorldEntity&e)
+			//{
+			//	return CommonCmd::IsModeActive(e,CursorMode::ClearAboveMode);
+			//}
+	
+			//bool Terraformer::Cmd::BuildBlockIsActive(const PWorldEntity&e)
+			//{
+			//	return CommonCmd::IsModeActive(e,CursorMode::BuildBlockMode);
+			//}
+
+
+
+			//bool Terraformer::Cmd::RemoveBlockIsActive(const PWorldEntity&e)	
+			//{
+			//	return CommonCmd::IsModeActive(e,CursorMode::RemoveBlockMode);
+			//}
+	 
+
+
+			bool TerraformerCommitIsPossibleC(bool controlEnabled)
+			{
+				return controlEnabled && 
+					(CommonCmd::IsModeActive(CursorMode::BuildBlockMode) || CommonCmd::IsModeActive(CursorMode::RemoveBlockMode));
+			}
+
+			Objects::CommandFlags TerraformerCommitCheck(bool controlEnabled)
+			{
+				return TerraformerCommitIsPossibleC(controlEnabled) ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
+			}
+
+	
+		/*	bool VehicleCmd::AbortIsPossible(const PWorldEntity&e)
+			{
+				PVehicle v = To<Vehicle>::DynamicCast(e);
+				return (activeCursorMode != CursorMode::Idle || (v && v->tasks.IsNotEmpty()));
+			}*/
+
+			bool TerraformerConstructionIsPossible()
+			{
+				return CommonCmd::IsModeActive(CursorMode::Idle) && TerraformerNotBuilding(); 
+			}
+		
+	
+			/*static*/ void					TerraformerDigDown()
+			{
+				PVehicle vehicle = To<Vehicle>::DynamicCast(selectedMobileEntity);
+				if (!vehicle)
+					return;
+				if (vehicle->location.height < Grid::CellStack::BottomHeight+1)
+					return;
+
+				if (!Objects::ShouldQueueCommands())
+					ApplicationInterface::SignalDropSafeTasks(vehicle);
+				ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_DigDown, ConstName::Empty);
+			}
+
+			template <ConstName Command>
+				void	IssueCommand()
+				{
+					if (!selectedMobileEntity)
+						return;
+					if (!Objects::ShouldQueueCommands())
+						ApplicationInterface::SignalDropSafeTasks(selectedMobileEntity);
+					ApplicationInterface::SignalNewJob(selectedMobileEntity, Command,ConstName::Empty);					
+				}
+
+
+
+			void					TerraformerBuildRoad()
+			{
+				PVehicle vehicle = To<Vehicle>::DynamicCast(selectedMobileEntity);
+				if (!vehicle)
+					return;
+				if (vehicle->location.height <= Grid::CellStack::BottomHeight)
+					return;
+				if (!Objects::ShouldQueueCommands())
+					ApplicationInterface::SignalDropSafeTasks(vehicle);
+				ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_BuildRoad,ConstName::Empty);
+			}
+
+
+
+
+
+			void	TerraformerRemoveBlock()
+			{
+				PVehicle v = To<Vehicle>::DynamicCast(selectedMobileEntity);
+				if (!v)
+					return;
+				CommonCmd::ToggleMode(CursorMode::RemoveBlockMode);
+
+				cellSelection.Clear();
+				removeCandidates.Clear();
+
+				if (activeCursorMode == CursorMode::RemoveBlockMode)
+				{
+					ASSERT__(v);
+					Grid::high.UpdatePlanarDistanceField(
+						#ifdef HYBRID_GRID
+							Grid::low.grid.GetCell(GetPointOfOrigin(*v).stackID).higherEquivalent
+							, 8, Objects::vehicleDistanceField);
+						#else
+							GetPointOfOrigin(*v).stackID
+
+							, 4, Objects::vehicleDistanceField);
+						#endif
+					for (UINT32 i = 0; i < (UINT32)Grid::high.grid.CellCount; i++)
+					{
+						if (Objects::vehicleDistanceField.distance[i] <= 3)
+						{
+							UINT32 at = v->location.height + Grid::CellStack::HalfRange;
+							UINT32 min = std::max(at,2U)-1;
+							const auto&stack = World::actual.GetStack(i);
+							for (UINT32 j = min; j <= at + 1; j++)
+							{
+								if (stack.volumeCell[j].IsSolid())
+								{
+									//if (j != at || Grid::vehicleDistanceField.distance[i] > 1)
+									{
+										removeCandidates << Grid::HCellIdU(i, j);
+									}
+
+								}
+
+							}
+
+						}
+
+					}
+
+
+				}
+
+				if (v == selectedEntity)
+					UpdateChoices(true);
+			}
+
+
+			void	TerraformerBuildBlock()
+			{
+				PVehicle v = To<Vehicle>::DynamicCast(selectedMobileEntity);
+				if (!v)
+					return;
+				CommonCmd::ToggleMode(CursorMode::BuildBlockMode);
+				cellSelection.Clear();
+				buildCandidates.Clear();
+				const int height = GetPointOfOrigin(*v).height;
+
+				if (activeCursorMode == CursorMode::BuildBlockMode)
+				{
+					ASSERT__(v);
+					Grid::high.UpdatePlanarDistanceField(
+						#ifdef HYBRID_GRID
+							Grid::low.grid.GetCell(
+								GetPointOfOrigin(*v).stackID).higherEquivalent
+							, 8,
+						#else
+							GetPointOfOrigin(*v).stackID
+
+							, 4,
+						#endif
+						 Objects::vehicleDistanceField);
+					for (UINT32 i = 0; i < (UINT32)Grid::high.grid.CellCount; i++)
+					{
+						if (Objects::vehicleDistanceField.distance[i] <= 3)
+						{
+							UINT32 at = height + Grid::CellStack::HalfRange;
+							const auto&stack = World::actual.GetStack(i);
+							for (UINT32 j = at - 1; j <= at + 1; j++)
+							{
+								if (!stack.volumeCell[j].IsOccupied())
+								{
+									if (j != at || Objects::vehicleDistanceField.distance[i] > 1)
+									{
+										buildCandidates << Grid::HCellIdU(i, j);
+									}
+
+								}
+
+							}
+
+						}
+
+					}
+
+
+				}
+
+				if (v == selectedEntity)
+					UpdateChoices(true);
+			}
+
+			void					TerraformerCommitOperation()
+			{
+				PVehicle v = To<Vehicle>::DynamicCast(selectedMobileEntity);
+				if (!v)
+					return;
+				Array<Grid::HCellIdI>	selection;
+				Objects::cellSelection.MoveToArray(selection,true);
+				removeCandidates.Clear();
+				buildCandidates.Clear();
+
+				ApplicationInterface::SignalTerrainModification(v,activeCursorMode,selection );
+
+				activeCursorMode = CursorMode::Idle;
+			}
+
+		}
+
+		void	DefinePlane(Objects::Component::Turret&component)
+		{
+			Detail::ConfigureStandardOffset(component);
+
+			component.commands.Add(new Command::IconCommand("Take Off", &Detail::SubOrbitalCmd::TakeOff, &Detail::SubOrbitalCmd::TakeOffCheck, NoCosts));
+			component.commands.Add(new Command::IconCommand("Land", &Detail::SubOrbitalCmd::Land, &Detail::SubOrbitalCmd::LandCheck, NoCosts));
+		}
+
+		void	DefineSensorDrone(Objects::Component::Turret&component)
+		{
+			DefinePlane(component);
+		}
+
+		void	DefineRaptor(Objects::Component::Turret&component)
+		{
+			DefinePlane(component);
+
+			component.commands.Add(new Command::IconCommand("Attack", &CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>, NoCosts));
+		}
+
+		void	DefineCargoPlane(Objects::Component::Turret&component)
+		{
+			DefinePlane(component);
+		}
+
+		void	DefineTerraformer(Objects::Component::Turret&component)
+		{
+			Detail::ConfigureStandardOffset(component);
+
+
+			Command::PCommandGroup	buildGroup = Command::AddChild(component.commands,"Build"),
+							terraformGroup = Command::AddChild(component.commands,"Terraform"),
+							terraformRemoveGround = Command::AddChild(*terraformGroup,"Remove Ground"),
+							terraformAddGround = Command::AddChild(*terraformGroup,"Add Ground"),
+							structureGroup[Structure::Category::N];
+
+			#ifndef ONE_COMPOUND_PER_FACTION
+				PCommandGroup	transferGroup = component.commands.AddChild("Transfer");
+			#endif
+
+			for (index_t i = 0; i < Structure::Category::N; i++)
+			{
+				#ifdef ONE_COMPOUND_PER_FACTION
+					if (i == Structure::Category::Infrastructure)
+						continue;
+				#endif
+				structureGroup[i] =	Command::AddChild(*buildGroup,Structure::Category::Reinterpret(i).ToString());
+			}
+
+			
+
+
+			terraformRemoveGround->Add( new Command::IconCommand("Dig Horizontally", &CommonCmd::ToggleMode<CursorMode::DigMode>
+				, &CommonCmd::ModeCheck<CursorMode::DigMode>
+				,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
+				{
+					costTypeOut = Resource::Minerals;
+					mineralCostOut = 0;
+					ASSERT__(selectedMobileEntity);
+					//PVehicle v = To<Vehicle>::Cast(e);
+					timeCostOut = selectedMobileEntity->GetOperationRounds(VehicleJob::DigHorizontalMineralCosts,Component::TerrainRemove);
+				}
+				));
+			terraformRemoveGround->Add( new Command::IconCommand("Dig Down", &Detail::TerraformerDigDown, 
+				&CommonCmd::IdleCheck
+				,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
+				{
+					costTypeOut = Resource::Minerals;
+					mineralCostOut = 0;
+					ASSERT__(selectedMobileEntity);
+//						PVehicle v = To<Vehicle>::Cast(selectedMobileEntity);
+					timeCostOut = selectedMobileEntity->GetOperationRounds(VehicleJob::DigDownMineralCosts,Component::TerrainRemove);
+				}
+			));
+			terraformRemoveGround->Add( new Command::IconCommand("Clear Above", &CommonCmd::ToggleMode<CursorMode::ClearAboveMode>
+				, &CommonCmd::ModeCheck<CursorMode::ClearAboveMode>
+				,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
+				{
+					costTypeOut = Resource::Minerals;
+					mineralCostOut = 0;
+					ASSERT__(selectedMobileEntity);
+//						PVehicle v = To<Vehicle>::Cast(e);
+					timeCostOut = selectedMobileEntity->GetOperationRounds(VehicleJob::ClearAboveMineralCosts,Component::TerrainRemove);
+				}
+			));
+
+			terraformAddGround->Add( new Command::IconCommand("Build Wall Up", &Detail::IssueCommand<ConstName::Job_BuildWallUp>
+				,&CommonCmd::IdleCheck
+				,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
+				{
+					costTypeOut = Resource::Minerals;
+					mineralCostOut = VehicleJob::BuildWallMineralCosts;
+					ASSERT__(selectedMobileEntity);
+					//PVehicle v = To<Vehicle>::Cast(e);
+					timeCostOut = selectedMobileEntity->GetOperationRounds(mineralCostOut,Component::TerrainAdd);
+				}
+			));
+			terraformAddGround->Add( new Command::IconCommand("Build Horizontal Wall", &Detail::IssueCommand<ConstName::Job_BuildHorizontalWall>
+				,&CommonCmd::IdleCheck
+				,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
+				{
+					costTypeOut = Resource::Minerals;
+					mineralCostOut = VehicleJob::BuildWallMineralCosts;
+					ASSERT__(selectedMobileEntity);
+					//PVehicle v = To<Vehicle>::Cast(e);
+					timeCostOut = selectedMobileEntity->GetOperationRounds(mineralCostOut,Component::TerrainAdd);
+				}
+			));
+
+			Command::PBase buildRoad(new Command::IconCommand("Build Road", &Detail::TerraformerBuildRoad
+				,&CommonCmd::IdleCheck
+				,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
+				{
+					costTypeOut = Resource::Minerals;
+					mineralCostOut = VehicleJob::BuildRoadMineralCosts;
+					ASSERT__(selectedMobileEntity);
+					//PVehicle v = To<Vehicle>::Cast(e);
+					timeCostOut = selectedMobileEntity->GetOperationRounds(mineralCostOut,Component::TerrainAdd);
+				}
+			));
+
+			terraformAddGround->Add( buildRoad );
+			if (structureGroup[Structure::Category::Infrastructure])
+				structureGroup[Structure::Category::Infrastructure]->Add(buildRoad);
+
+			#ifndef ONE_COMPOUND_PER_FACTION
+				transferGroup->Add(new IconCommand("Withdraw Resources",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
+				transferGroup->Add(new IconCommand("Deposit Resources",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
+
+				structureGroup[Structure::Category::Infrastructure]->Add(new IconCommand("Build Connectors to", &CommonCmd::ToggleMode<CursorMode::BuildConnectorChainMode>, &CommonCmd::ModeCheck<CursorMode::BuildConnectorChainMode>,NoCosts));
+			#else
+
+			#endif
+
+			Command::PBase buildRoadTo(new Command::IconCommand("Build Road to", &CommonCmd::ToggleMode<CursorMode::BuildRoadChainMode>, &CommonCmd::ModeCheck<CursorMode::BuildRoadChainMode>, NoCosts));
+			Command::PBase buildBridgeTo( new Command::IconCommand("Build Bridge to", &CommonCmd::ToggleMode<CursorMode::BuildBridgeMode>, &CommonCmd::ModeCheck<CursorMode::BuildBridgeMode>,NoCosts) );
+
+			terraformAddGround->Add( buildRoadTo);
+			terraformAddGround->Add( buildBridgeTo);
+			if (structureGroup[Structure::Category::Infrastructure])
+			{
+				structureGroup[Structure::Category::Infrastructure]->Add(buildRoadTo);
+				structureGroup[Structure::Category::Infrastructure]->Add(buildBridgeTo);
+			}
+
+			terraformRemoveGround->Add( new Command::IconCommand("Dig Tunnel to", &CommonCmd::ToggleMode<CursorMode::DigTunnelMode>, &CommonCmd::ModeCheck<CursorMode::DigTunnelMode>,NoCosts));
+			terraformAddGround->Add( new Command::IconCommand("Build Wall to", &CommonCmd::ToggleMode<CursorMode::BuildWallChainMode>, &CommonCmd::ModeCheck<CursorMode::BuildWallChainMode>,NoCosts));
+
+
+			terraformAddGround->Add( new Command::IconCommand("Build Blocks", &Detail::TerraformerBuildBlock, &CommonCmd::ModeCheck<CursorMode::BuildBlockMode>,NoCosts));
+			terraformAddGround->Add( new Command::IconCommand("Commit", &Detail::TerraformerCommitOperation, &Detail::TerraformerCommitCheck
+				,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
+				{
+					costTypeOut = Resource::Minerals;
+					mineralCostOut = (int)cellSelection.Count();
+					ASSERT__(selectedMobileEntity);
+					//PVehicle v = To<Vehicle>::Cast(e);
+					timeCostOut = selectedMobileEntity->GetOperationRounds(mineralCostOut,activeCursorMode != CursorMode::BuildBlockMode ? Component::TerrainRemove : Component::TerrainAdd);
+					if (activeCursorMode != CursorMode::BuildBlockMode)
+						mineralCostOut = 0;
+				}
+			));
+			terraformRemoveGround->Add( new Command::IconCommand("Remove Blocks", &Detail::TerraformerRemoveBlock, &CommonCmd::ModeCheck<CursorMode::RemoveBlockMode>,NoCosts));
+			terraformRemoveGround->Add( new Command::IconCommand("Commit", &Detail::TerraformerCommitOperation, &Detail::TerraformerCommitCheck
+				,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
+				{
+					costTypeOut = Resource::Minerals;
+					mineralCostOut = (int)cellSelection.Count();
+					ASSERT__(selectedMobileEntity);
+					//PVehicle v = To<Vehicle>::Cast(e);
+					timeCostOut = selectedMobileEntity->GetOperationRounds(mineralCostOut,activeCursorMode != CursorMode::BuildBlockMode ? Component::TerrainRemove : Component::TerrainAdd);
+					if (activeCursorMode != CursorMode::BuildBlockMode)
+						mineralCostOut = 0;
+				}
+			));
+
+				
+
+
+		
+
+
+			int at = 0;
+
+			foreach(Component::Terraformer::canBuild, b)
+			{
+				PStructure s = *b;
+				structureGroup[s->GetCategory()]->Add(new Command::EntityConstructionCommand(/*"Build " + */(*b)->GetTypeName(), nullptr,nullptr,*b,std::bind(&Detail::TerraformerConstruct, *b),
+				[s](bool controlsEnabled)
+				{
+					bool constructingMe = (activeCursorMode == CursorMode::PlaceStructureMode
+							&& activeStructureToPlace == s);
+					bool unlocked = selectedEntity && s->GetTable()->isUnlocked.GetValue(selectedEntity->GetResearchState());
+					Objects::CommandFlags rs = controlsEnabled && 
+						(activeCursorMode == CursorMode::Idle
+						|| constructingMe
+						) && unlocked
+						? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
+					if (constructingMe)
+						rs |= Objects::CommandFlags::IsPermaActive;
+					return rs;
+				}
+				));
+			}
+		}
+
+
+		void	DefineBomb(Component::Turret&component)
+		{
+			Detail::ConfigureStandardOffset(component);
+
+			component.commands.Add( new Command::IconCommand("Self Detonate", &Detail::IssueCommand<ConstName::DetonationSize_Regular>
+				, &CommonCmd::IdleCheck
+				,[](int&resourceCostOut, Resource&costTypeOut, int&timeCostOut)
+				{
+					resourceCostOut = 0;
+					ASSERT__(selectedMobileEntity);
+					//PVehicle v = To<Vehicle>::Cast(e);
+					timeCostOut = selectedMobileEntity->GetOperationRounds(VehicleJob::RegularSelfDetonationCosts,Component::Nuclear);
+				}
+				));
+
+			component.commands.Add( new Command::IconCommand("Obliterate", &Detail::IssueCommand<ConstName::DetonationSize_Doomsday>
+				, &CommonCmd::IdleCheck
+				,[](int&resourceCostOut, Resource&costTypeOut, int&timeCostOut)
+				{
+					resourceCostOut = VehicleJob::DoomsdaySelfDetonationCosts;
+					costTypeOut = Resource::Uranium;
+					ASSERT__(selectedMobileEntity);
+					//PVehicle v = To<Vehicle>::Cast(e);
+					timeCostOut = selectedMobileEntity->GetOperationRounds(VehicleJob::DoomsdaySelfDetonationCosts,Component::Nuclear);
+				}
+				));
+
+			#ifndef ONE_COMPOUND_PER_FACTION
+				component.commands.Add( new IconCommand("Withdraw Uranium",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
+				component.commands.Add( new IconCommand("Deposit Uranium",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
+			#endif
+		}
+
+		void DefineResourceTransfer(Component::Turret&component, Resource res)
+		{
+			Detail::ConfigureStandardOffset(component);
+			#ifndef ONE_COMPOUND_PER_FACTION
+				String resource = component.ammoType.ToString();
+				component.commands.Add( new IconCommand("Withdraw "+resource,&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
+				component.commands.Add( new IconCommand("Deposit "+resource,&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
+			#endif
+
+		}
+
+		void DefineOffensive(Component::Turret&component)
+		{
+			Detail::ConfigureStandardOffset(component);
+			#ifndef NO_MUNITION
+				DefineResourceTransfer(component,component.ammoType);
+			#endif
+	
+			component.commands.Add( new Command::IconCommand("Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
+		}
+
+		void DefineMechanic(Component::Turret&component)
+		{
+			DefineResourceTransfer(component,Resource::Minerals);
+			component.commands.Add( new Command::IconCommand("Repair",&CommonCmd::ToggleMode<CursorMode::RepairMode>, &CommonCmd::ModeCheck<CursorMode::RepairMode>,NoCosts));
+		}
+
+		void DefineAutomatable(Component::Turret&component)
+		{
+			Detail::ConfigureStandardOffset(component);
+
+			component.commands.Add( new Command::IconCommand("Automate", &VehicleCmd::Automate, &VehicleCmd::AutomatedCheck,NoCosts));
+		}
+
+		void DefineHangar()
+		{
+	
+			Hangar::cmdLeftCoords = int2(4,1) + Command::Base::coordOffset;
+			Hangar::cmdRightCoords = Hangar::cmdLeftCoords + int2(Hangar::MaxVisibleStoreItems+1,0);
+
+			Hangar::cmdLeft.reset(new Command::IconCommand("Left",
+				[]()
+				{
+					if (selectedEntity && selectedEntity->IsHangar())
+					{
+						PHangar h = To<Hangar>::DynamicCast(selectedEntity);
+						if (h && Hangar::storeOffset > 0)
+						{
+							if (Hangar::storeOffset > Hangar::MaxVisibleStoreItems)
+								Hangar::storeOffset -= Hangar::MaxVisibleStoreItems;
+							else
+								Hangar::storeOffset = 0;
+							Command::RefreshCommands(true);
+						}
+					}
+				},
+				[](bool controlEnabled)
+				{
+					return Hangar::storeOffset > 0 && controlEnabled
+						 ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
+				},
+				NoCosts));
+
+			Hangar::cmdRight.reset( new Command::IconCommand("Right",
+				[]()
+				{
+					if (selectedEntity && selectedEntity->IsHangar())
+					{
+						PHangar h = To<Hangar>::DynamicCast(selectedEntity);
+						if (!h)
+							return;
+						if (h->GetLoad() <= Hangar::storeOffset)
+							Hangar::storeOffset = 0;
+						else
+						{
+							count_t remaining = h->GetLoad() - (Hangar::storeOffset);
+							if (remaining > Hangar::MaxVisibleStoreItems)
+								Hangar::storeOffset += Hangar::MaxVisibleStoreItems;
+							//else
+								//storeOffset = s->CountVehiclesInPark() - MaxVehiclesPerStore;
+						}
+						Command::RefreshCommands(true);
+					}
+				},
+				[](bool controlEnabled)
+				{
+					if (selectedEntity && selectedEntity->IsHangar())
+					{
+						PHangar h = To<Hangar>::DynamicCast(selectedEntity);
+						return h && h->GetLoad() > Hangar::storeOffset + Hangar::MaxVisibleStoreItems
+						  && controlEnabled
+						   ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
+					}
+					return Objects::CommandFlags::None;
+				},
+				NoCosts));
+		}
+
+					
+		
+		void DefineItemHandlers()
+		{
+			Hangar::onStored << [](Hangar&h,Hangar::TStored&item)
+			{
+				WMobileEntity w = item.entity;
+				Command::PVisualCommand cmd(new Command::DeployMobileCommand(w.lock(),
+					[w]()
+					{
+						//focus = To<VehicleStore>::DynamicCast(storeEntity).get();
+						if (deployingMobileEntity)
+							deployingMobileEntity.reset();
+						else
+							deployingMobileEntity = w.lock();
+					},
+					[w](bool controlEnabled)
+					{
+						Objects::CommandFlags rs = CommonCmd::CommonButtonCheck(controlEnabled);
+						if (selectedEntity->IsHangar())
+						{
+							if (deployingMobileEntity && deployingMobileEntity == w.lock() && deployingMobileEntity->health > 0)
+								rs |= Objects::CommandFlags::IsPermaActive;
+						}
+						return rs;
+					}
+					));
+				cmd->RasterizeImage();
+
+				item.deployCommand = cmd;
+			};
+			MobileEntityProducer::onAppendTask << [](MobileEntityProducer&p, MobileEntityProducer::WorkItem&item)
+			{
+				index_t index = p.queue.Count()-1;
+				auto id = item.id;
+
+				std::shared_ptr<Command::EntityConstructionCommand> cmd(
+					new Command::EntityConstructionCommand(
+						item.queueName,item.base,item.turret,item.prototype,[id,index]()
+				{
+					Objects::PMobileEntityProducer p = To<Objects::MobileEntityProducer>::DynamicCast(Objects::selectedEntity);
+					ASSERT__(p);
+					if (!index && p->productionDone)
+					{
+						WWorldEntity e = selectedEntity;
+						Dialog::Confirm("Confirm cancellation of production job "+p->queue.First().name+". Material has been invested into this production, which will be lost.",
+						[e,id]()
+						{
+							PWorldEntity e1 = e.lock();
+							if (e1)
+								ApplicationInterface::SignalConstructionAbort(e1->id,id);
+						}
+						,
+						[e,p,id]()->Dialog::CheckResult
+						{
+							PWorldEntity e1 = e.lock();
+							if (!e1 || e1->health <= 0)
+								return Dialog::CheckResult::Abort;
+							if (p->queue.IsEmpty() || p->queue.First().id != id)
+								return Dialog::CheckResult::Abort;
+							if (!controlIsEnabled)
+								return Dialog::CheckResult::OkayNotRightNow;
+							return Dialog::CheckResult::OkayContinue;
+						}
+						);
+
+					}
+					else
+						ApplicationInterface::SignalConstructionAbort(selectedEntity->id,id);	//lossless
+
+				},CommonCmd::CommonButtonCheck));
+
+				item.commandToTerminate.second = cmd;
+
+				item.commandToTerminate.first = p.GetCommandOffset() + int2(index,0);
+				if (!index)
+				{
+					cmd->roundsLeft = item.roundsToCompletion;
+					cmd->mineralsLeft = item.cost;
+					if (index == 0)
+						cmd->mineralsLeft -= p.productionDone;
+				}
+				else
+				{
+					cmd->roundsLeft = 0xFFFFFFFF;
+					cmd->mineralsLeft = 0xFFFFFFFF;
+				}
+
+				cmd->RasterizeImage();
+
+			};
+
+		}
+
+
+		void DefineGlobalCommands()
+		{
+			using namespace Command;
+
+			globalCommands.baseCoords = Command::Base::coordOffset;
+			globalCommands.Add(int2(-1, 0),false,new GlobalCommand("End Round",
+			[]()
+			{
+				if (ApplicationInterface::HasSignalledRoundEnd())
+					ApplicationInterface::SignalUndoRoundEnd();
+				else
+					ApplicationInterface::SignalRoundEnd();
+			}, 
+			[](bool controlEnabled)->Objects::CommandFlags
+			{
+				Objects::CommandFlags rs = Objects::CommandFlags::None;
+				if (ApplicationInterface::CanChangeRoundState())
+					rs |= Objects::CommandFlags::IsEnabled;
+				if (ApplicationInterface::HasSignalledRoundEnd())
+					rs |= Objects::CommandFlags::IsPermaActive;
+				else
+					if (ApplicationInterface::ShouldSignalRoundEnd())
+						rs |= Objects::CommandFlags::IsFlashing;
+				return rs;
+			}));
+			globalCommands.Add(int2(0, 0),false,new GlobalCommand("Auto End Round",
+			[]()
+			{
+				if (!RuntimeConfig::autoNewRound && ApplicationInterface::ShouldSignalRoundEnd())
+					ApplicationInterface::SignalRoundEnd();
+				RuntimeConfig::autoNewRound = !RuntimeConfig::autoNewRound;
+			},
+			[](bool controlEnabled)->Objects::CommandFlags
+			{
+				Objects::CommandFlags rs = Objects::CommandFlags::None;
+				rs |= Objects::CommandFlags::IsEnabled;
+				if (RuntimeConfig::autoNewRound)
+					rs |= Objects::CommandFlags::IsPermaActive;
+				return rs;
+			}));
+
+			viewCommands = AddChild(globalCommands,int2(1,0),false,"View");
+
+
+			viewCommands->Add( new GlobalCommand("Clip Terrain", &GlobalCmd::ToggleSeeThrough
+					,Detail::GlobalPermaSwitch(VisualTerrain::SeeThrough::IsEnabled)
+				));
+			viewCommands->Add( new GlobalCommand("Clip-View Down", &GlobalCmd::SeeThroughDown
+					,[](bool)->Objects::CommandFlags{return GlobalCmd::SeeThroughIsActive() ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;}
+				));
+			viewCommands->Add( new GlobalCommand("Clip-View Up", &GlobalCmd::SeeThroughUp
+					,[](bool)->Objects::CommandFlags{return GlobalCmd::SeeThroughIsActive() ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;}
+				));
+
+			viewCommands->Add( new GlobalCommand("Hide Objects", &GlobalCmd::ToggleObjectView
+					,Detail::GlobalPermaSwitch([](){return !Objects::objectView;})
+				));
+
+
+			viewCommands->Add( new GlobalCommand("Show Resources", []()
+					{
+						resourceView = !resourceView;
+						VisualTerrain::Invalidate(false);
+					}
+				#ifdef _DEBUG
+					, Detail::GlobalPermaSwitch(resourceView)
+				#else
+					,Detail::GlobalPermaSwitch(resourceView,[](){return !RuntimeConfig::tutorialMode;})
+				#endif
+				));
+
+			viewCommands->Add( new GlobalCommand("Show Ranges", []()
+					{
+						showFriendlyRanges = !showFriendlyRanges;
+					}
+					, Detail::GlobalPermaSwitch(showFriendlyRanges)
+				));
+			viewCommands->Add( new GlobalCommand("Show Hostile Ranges", []()
+					{
+						showHostileRanges = !showHostileRanges;
+					}
+					,Detail::GlobalPermaSwitch(showHostileRanges)
+				));
+
+			viewCommands->Add(new GlobalCommand("Show Sky Grid",
+					&Camera::ToggleOrbit, &Detail::SubOrbitalCmd::CheckGridVisibility));
+
+		}
+				
+
+		void	DefineAll()
+		{
+			DefineItemHandlers();
+			ResearchState::globalState.onScriptChange << ReconfigureResearchButtons;
+			ResearchState::globalState.onQueueChange << [](Faction*f){ if (f == Faction::mine.get()) ReconfigureResearchQueueButtons();};
+
+			DefineMine(Objects::Mine::commands);
+			DefineVehiclePlant(Objects::VehiclePlant::commands);
+			DefinePlaneFactory(Objects::PlaneFactory::commands);
+			DefineWorkingStructure(Objects::MineralContainer::commands);
+			DefineWorkingStructure(Objects::FuelContainer::commands);
+			DefineWorkingStructure(Objects::UraniumStorage::commands);
+			DefineWorkingStructure(Objects::Generator::commands);
+			DefineWorkingStructure(Objects::ReactorCore::commands);
+			DefineLaboratory(Objects::Laboratory::commands);
+			DefineHangar();
+
+			DefineTerraformer(Component::terraformer);
+			DefineBomb(Component::bomb);
+			DefineOffensive(Component::artillery);
+			DefineOffensive(Component::launcher);
+			DefineOffensive(Component::armored);
+			DefineOffensive(Component::emp);
+
+			#ifndef NO_MUNITION
+				DefineResourceTransfer(Component::munitionTransporter,Resource::Munitions);
+			#endif
+			DefineMechanic(Component::mechanic);
+			DefineAutomatable(Component::resourceScanner);
+
+			DefineRaptor(Component::SubOrbital::raptor);
+			DefineSensorDrone(Component::SubOrbital::sensorDrone);
+			DefineCargoPlane(Component::SubOrbital::cargoPlane);
+
+
+			foreach (Objects::Component::vehicleTurretComponents,tc)
+				(*tc)->VisitAllCommands([](const int2&,const Command::PBase&cmd){ To<Command::VisualCommand>::Cast(cmd)->RasterizeImage();},true);
+			foreach (Objects::Component::baseComponents,bc)
+				(*bc)->VisitAllCommands([](const int2&,const Command::PBase&cmd){To<Command::VisualCommand>::Cast(cmd)->RasterizeImage();},true);
+
+			DefineGlobalCommands();
+
+		}
+
+	}
+
+
+
+
+
+}

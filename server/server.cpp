@@ -3,19 +3,20 @@
 
 #include "./components/stdafx.h"
 
-#include "../shared/grid.h"
-#include "../shared/objects.h"
-#include "../shared/sphereGrid.h"
+#include <boot.h>
+#include <grid/worldData.h>
+#include <objects.h>
 
 #include "../client/version.h"
-#include "../shared/protocol.h"
-#include "../shared/runtimeConfig.h"
+#include <protocol.h>
+#include <runtimeConfig.h>
 
 //#include <third_party/bz2/bz2.h>
 #include <io/string_file.h>
 #include <io/file_system.h>
 #include <io/riff_handler.h>
 #include <io/config.h>
+#include <globalEvents.h>
 #include "components/tests.h"
 #include "components/aiProcess.h"
 #include "components/remoteControl.h"
@@ -27,12 +28,13 @@
 #include "components/reflection.h"
 #include <luaInterface.h>
 #include "components/configurationMode.h"
+#include "components/nexusThreatHandling.h"
 
 UINT32 ApplicationInterface::globalVersionOfCurrentFile = 0;	//file version being loaded right now
 
 
 
-Random		random;
+TwisterRandom		random;
 
 
 #ifdef _DEBUG
@@ -43,7 +45,7 @@ Random		random;
 namespace ApplicationInterface
 {
 
-	void	SignalOperationLacksResources(const Objects::WorldEntity&e, const ArrayRef<Objects::Resource>&resources, float atTime)
+	void	SignalOperationLacksResources(const Objects::WorldEntity&e, const Ctr::ArrayRef<Objects::Resource>&resources, float atTime)
 	{
 		Network::PClient*cl = Network::playerMap.QueryPointer(e.owner);
 		if (!cl && Network::spectators.IsEmpty())
@@ -63,9 +65,9 @@ namespace ApplicationInterface
 	}
 
 
-	void	SignalChainReactionExplosion(const Grid::LCellIdI&center, float radius, int damageLevel, float atTime)
+	void	SignalChainReactionExplosion(const Objects::PWorldEntity&causedBy, const Grid::LCellIdI&center, float radius, int damageLevel, float atTime)
 	{
-		Game::evolver->HandleChainReactionExplosion(Evolver::TExplosion( center, radius, damageLevel, atTime ));
+		Game::evolver->HandleChainReactionExplosion(Evolver::TExplosion(causedBy, center, radius, damageLevel, atTime ));
 	}
 
 
@@ -94,44 +96,19 @@ namespace ApplicationInterface
 			}
 		}
 
-		if (_v->IsVehicle() && To<Objects::Vehicle>::Cast(_v)->turret->detectsResources)
+		if (_v->IsGroundBoundVehicle() && To<Objects::Vehicle>::Cast(_v)->turret->detectsResources)
 		{
 			Game::Network::UpdateResourceCoverage(_v->owner, _v->location,_v->GetScanningRange(),timestamp);
 		}
 
-	if (_v->IsGroundBoundVehicle() && To<Objects::Vehicle>::Cast(_v)->turret->detectsResources)
-	{
-		Game::Network::UpdateResourceCoverage(_v->owner, _v->location,_v->GetScanningRange(),timestamp);
-	}
-		if (Game::Config::basesRequired && v.GetOperationSpeed(Objects::Component::Construct) && !v.owner->hasTerraformer)
-		{
-			LogEvent(EventSignificance::Debug,_v.get(),"Recognized as terraformer. Reevaluating survivial conditions");
-			v.owner->hasTerraformer = true;
-			String whyNot;
-			bool canLive = v.owner->CanLive(whyNot);
-		
-			if (canLive)	//conditions changed
-			{
-				if (v.owner->deathInRounds > 0)
-				{
-					v.owner->deathInRounds = 0;
-					Network::PClient client;
-					if (Network::playerMap.query(v.owner,client))
-						client->SendProgressUpdate(false,whyNot);
-				}
-			}
-			else
-				LogEvent(EventSignificance::Debug,_v.get(),"Nope: "+whyNot);
-		}
+		if (v.GetOperationSpeed(Objects::Component::Construct))
+			Game::RegisterClassGain(_v, Objects::Faction::UnitClass::Terraformer, "terraformer");
 	}
 
 	void	SignalNewStructure(const Objects::PStructure&s, float atTime)
 	{
 		const Objects::Structure&v = *s;
 
-		//State::PClient*cl = State::playerMap.QueryPointer(v.owner);
-		//if (!cl)
-		//	return;
 
 		LogEvent(EventSignificance::Common,s.get(),"Signalling new structure to owner at t="+String(atTime));
 		Protocol::StructureConstruction	w;
@@ -139,21 +116,6 @@ namespace ApplicationInterface
 		Game::Network::Describe(w,*s,true,timestamp);
 		Network::SendToOwner(Channels::createStructure,v,w);
 
-
-		//State::Describe(w2.Ref(),s,true,&parent);
-		//w.Seal();
-		//w2.Seal();
-
-		//Channels::createStructure.SendTo((*cl)->peer.lock(),w);
-
-		//SendToOwner(Channels::createStructure,v,w);
-
-		//foreach (State::clients,cl)
-		//{
-		//	TCP::PPeer peer = (*cl)->peer.lock();
-		//	if (peer && Receiver::CanSee(*cl,s))
-		//		Channels::createStructure.SendTo(peer,Receiver::HasAccess(*cl,s) ? w2 : w);
-		//}
 	}
 
 
@@ -164,7 +126,7 @@ namespace ApplicationInterface
 			if (p->CanSee(e,t) || p->faction == target)
 			{
 				TCP::PPeer peer = p->peer.lock();
-				DBG_ASSERT1__(peer,p->ToString());
+				DBG_ASSERT1__(peer,p->ConvertToString());
 				if (peer)
 				{
 					LogEvent(EventSignificance::Common,*peer,e,"Reported seeing ownership change (-> '"+target->GetName()+"')");
@@ -260,18 +222,18 @@ namespace ApplicationInterface
 					(access && !sendToSelf)
 					)
 				{
-					LogEvent(EventSignificance::Debug,(*cl)->ToString()+" reported NOT seeing removal of "+e->GetName()+" (t="+String(t.ToString())+", access="+String(access)+", sendToSelf="+String(sendToSelf)+") at time "+String(atTime) );
+					LogEvent(EventSignificance::Debug,(*cl)->ConvertToString()+" reported NOT seeing removal of "+e->GetName()+" (t="+String(t.ToString())+", access="+String(access)+", sendToSelf="+String(sendToSelf)+") at time "+String(atTime) );
 					continue;
 				}
 				const Protocol::DestroyEntity&send = access ? self : others;
-				LogEvent(EventSignificance::Common,(*cl)->ToString()+" reported seeing removal of "+e->GetName()+" at time "+String(atTime) );
+				LogEvent(EventSignificance::Common,(*cl)->ConvertToString()+" reported seeing removal of "+e->GetName()+" at time "+String(atTime) );
 
 
 				//(*cl)->Hide(e);
 				Channels::destroyEntity.SendTo(peer,send);
 			}
 			else
-				LogEvent(EventSignificance::Debug,(*cl)->ToString()+" reported NOT seeing removal of "+e->GetName()+" (t="+String(t.ToString())+", access="+String(access)+", sendToSelf="+String(sendToSelf)+") at time "+String(atTime) +" - hasPeer="+String((bool)peer));
+				LogEvent(EventSignificance::Debug,(*cl)->ConvertToString()+" reported NOT seeing removal of "+e->GetName()+" (t="+String(t.ToString())+", access="+String(access)+", sendToSelf="+String(sendToSelf)+") at time "+String(atTime) +" - hasPeer="+String((bool)peer));
 		}
 
 	
@@ -328,7 +290,7 @@ namespace ApplicationInterface
 			TCP::PPeer peer = (*cl)->peer.lock();
 			if (peer && Network::CanSee(*cl,v,t0))
 			{
-				LogEvent(EventSignificance::Common,(*cl)->ToString()+" reported seeing motion of "+v->GetName()+" at time "+String(t0)+"+"+String(timeNeeded) );
+				LogEvent(EventSignificance::Common,(*cl)->ConvertToString()+" reported seeing motion of "+v->GetName()+" at time "+String(t0)+"+"+String(timeNeeded) );
 
 				Channels::mobileEntityMotion.SendTo(peer,motion);
 			}
@@ -347,7 +309,7 @@ namespace ApplicationInterface
 		rot.toWorld = toWorld;
 		rot.rotationTime = rotationTime;
 		rot.timestamp.rightNow = false;
-		rot.timestamp.atTime = e->motionTime;
+		rot.timestamp.atTime = e->entityTime;
 
 		foreach (Network::activePlayersAndSpectators,cl)
 		{
@@ -372,7 +334,7 @@ namespace ApplicationInterface
 
 				foreach (Network::activePlayersAndSpectators,p)
 				{
-					(*p)->SendProgressUpdate(true,"<null>");
+					(*p)->SendProgressUpdate("");
 				}
 			}
 			else
@@ -383,74 +345,13 @@ namespace ApplicationInterface
 					String why;
 					if (Game::Config::basesRequired && f->deathInRounds > 0)
 						f->CanLive(why);
-					client->SendProgressUpdate(false,why);
+					client->SendProgressUpdate(why);
 				}
 				return;
 			}
 		}
 	}
 
-
-	/*
-		if (!e)
-		{
-			LogEvent(EventClass::Preset::commandRejected,nullptr, "NULL attempting attack");
-			return;
-		}
-		LogEvent(EventSignificance::Common,e.get(),"Attacking "+traceTo.ToString()+" in "+String(flightTime)+" seconds");
-		Protocol::EntityAttack roughAttack,preciseAttack;
-		float zOffset;
-		Objects::PTurretBase base = e->GetTurretBase(zOffset);
-		ASSERT__(base);
-		preciseAttack.turretType = base->turret->constName;
-		preciseAttack.traceTo = traceTo;
-
-		preciseAttack.timestamp.rightNow = false;
-		const float3 traceToWorld = Grid::ToWorld(traceTo);
-
-		preciseAttack.sourcePosition = e->system.w.xyz + e->system.z.xyz * zOffset;
-		//attack.timestamp.atTime = v->timeAt;
-	
-		{
-			Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(e);
-			if (v)
-				preciseAttack.timestamp.atTime = v->timeAt;
-			else
-			{
-				Objects::PTower t = To<Objects::Tower>::DynamicCast(e);
-				if (t)
-					preciseAttack.timestamp.atTime = t->timeAt;
-				else
-				{
-					LogEvent(EventClass::Preset::commandRejected,e.get(), "Incompatible entity attempting attack");
-					return;	
-				}
-			}
-		}
-
-		preciseAttack.flightTime = flightTime;
-		roughAttack = preciseAttack;
-
-		const float range = base->GetAttackRange();
-		float radius = range * 0.2f;
-		float3 mod = float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)) * radius;
-		count_t numIt = 0;
-		while (Vec::quadraticDistance(mod + roughAttack.sourcePosition.value, traceToWorld) > sqr(range) && ++numIt < 1000)
-			mod = float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)) * radius;
-		ASSERT__(numIt < 1000);
-		roughAttack.sourcePosition.value += mod;
-
-		for (auto cl : State::clients)
-		{
-			TCP::PPeer peer = (cl)->peer.lock();
-			if (!peer)
-				continue;
-			if (Receiver::CanSee(cl,e,preciseAttack.timestamp.atTime))
-				Channels::entityAttack.SendTo(peer,preciseAttack);
-			else
-				if (cl->faction
-		}
-		*/
 
 
 	void	SignalAttack(const TAttack&attack)
@@ -467,7 +368,7 @@ namespace ApplicationInterface
 		preciseAttack.isAutoAttack = attack.isAutoAttack;
 		preciseAttack.attackAngle = attack.attackAngle;
 		preciseAttack.timestamp.rightNow = false;
-		preciseAttack.timestamp.atTime = attack.attackFrom->motionTime;
+		preciseAttack.timestamp.atTime = attack.attackFrom->entityTime;
 	
 		LogEvent(EventSignificance::Debug,attack.attackFrom.get(),"Commencing attack at t="+String(preciseAttack.timestamp.atTime));
 
@@ -495,8 +396,8 @@ namespace ApplicationInterface
 		explosion.timestamp.rightNow = false;
 
 		//static GenericHashSet<Objects::OwnerParameter,Objects::OwnerHash>	map;
-		static Buffer0<Objects::OwnerParameter>	canSee;
-		static Buffer0<Network::PClient>	clientsCanSee;
+		static Ctr::Buffer0<Objects::OwnerParameter>	canSee;
+		static Ctr::Buffer0<Network::PClient>	clientsCanSee;
 
 		bool allSee = isDoomsday && RuntimeConfig::doomsdayWeapons == RuntimeConfig::DoomsdayWeapons::Expose;
 
@@ -514,9 +415,9 @@ namespace ApplicationInterface
 			Sphere<> explosionSphere(center,explosionRadius);
 			Grid::high.GenerateVolume(explosionSphere,volume);
 
-			Objects::ForeachFaction([explosionSphere](const Objects::PFaction&f)
+			Objects::ForeachFaction([explosionSphere,&atTime](const Objects::PFaction&f)
 			{
-				if (f->GridCanSee(volume) || f->CountOffGridCoverage(explosionSphere))
+				if (f->GridCanSee(volume,atTime) || f->CountOffGridCoverage(explosionSphere))
 				{
 					canSee.Append(f);
 				};
@@ -568,12 +469,12 @@ namespace ApplicationInterface
 			float radius = range * 0.2f;
 			float3 mod = float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)) * radius;
 			count_t numIt = 0;
-			while (!attack.attackFrom->CanHit(mod + roughAttack.sourcePosition.value,roughAttack.attackAngle.value)
+			while (!attack.attackFrom->CanHit(mod + roughAttack.sourcePosition,roughAttack.attackAngle)
 					//Vec::quadraticDistance(mod + roughAttack.sourcePosition.value, traceToWorld) > sqr(range) 
 				&& ++numIt < 1000)
 				mod = float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)) * radius;
 			ASSERT__(numIt < 1000);
-			roughAttack.sourcePosition.value += mod;
+			roughAttack.sourcePosition += mod;
 		}
 
 		for (const Network::PClient&client : clientsCanSee)
@@ -591,93 +492,6 @@ namespace ApplicationInterface
 }
 
 
-
-
-namespace InformationProvider
-{
-	TCP::Server		server;
-	bool			created = false;
-
-	void	OnPing(Protocol::Ping&ping, TCP::Peer&peer);
-
-	TCP::ObjectSender<Protocol::ServerInfo,Protocol::InfoChannel::ServerInfo>	infoSender;
-	TCP::Channel<Protocol::Ping,0,Protocol::InfoChannel::Ping>	pingChannel(OnPing);
-
-	void	OnPing(Protocol::Ping&ping, TCP::Peer&peer)
-	{
-		pingChannel.SendTo(peer,ping);
-	}
-
-
-
-	class Updater : public ThreadObject
-	{
-	public:
-		volatile bool	doEnd = false;
-
-		void	ThreadMain() override
-		{
-			Protocol::ServerInfo infoGlobal,infoLocal;
-			infoGlobal.hostInfo = UDPBroadCast::packet;
-			infoLocal.hostInfo = UDPBroadCast::packet;
-
-			while (!application_shutting_down && !doEnd)
-			{
-				Sleep(1000);
-				Game::Network::AssembleGameInfo(infoGlobal.gameInfo,false);
-				Game::Network::AssembleGameInfo(infoLocal.gameInfo,true);
-
-				server.VisitAllPeers([infoGlobal,infoLocal](const TCP::PPeer&p)
-				{
-					if (p->IsLocalhost())
-						infoSender.SendTo(p,infoLocal);
-					else
-						infoSender.SendTo(p,infoGlobal);
-				});
-				//infoSender.SendTo(server,info);
-			}
-			server.EndService();
-		}
-	}		updater;
-
-
-	void		Start(UINT16 basePort)
-	{
-		if (!created)
-		{
-			created = true;
-			server.InstallChannel(pingChannel);
-		}
-
-		UINT16 port = basePort + PortOffset::Info;
-
-		if (!server.StartService(port))
-			FATAL__("Unable to register information server. Chances are, a server is already running on port "+String(port)+".")
-		else
-		{
-			LogEvent(EventSignificance::Uncommon,"Info server started on port "+String(port));
-			updater.doEnd = false;
-			updater.start();
-		}
-
-
-
-	}
-
-	void		Stop()
-	{
-		updater.doEnd = true;
-		updater.awaitCompletion();
-	}
-
-	void		Destroy()
-	{
-		//should end on its own
-	
-	}
-
-
-}
 
 void TerminateNow(bool isMain);
 
@@ -697,8 +511,12 @@ void MyFatal(const FatalDescriptor&descriptor)
 	//ErrMessage("Hexaverse Server: "+message);
 	std::cerr << message << std::endl;
 	#ifdef _DEBUG
+		__debugbreak();
+		std::abort();
+
 		char confirm[0x100];
 		std::cin.getline(confirm,sizeof(confirm));
+
 	#endif
 
 	TerminateNow(true);
@@ -725,308 +543,14 @@ EnumerationType	GetType(Config::Context*context, const String&path)
 	return rs;
 }
 
-//template <typename T>
-//T	GetPrimitive(Config::Context*context, const String&path)
-//{
-//	const Config::Context::Attribute*attrib = context->GetAttrib(path);
-//	if (!attrib)
-//	{
-//		FATAL__("Trying to extract primitive from '"+context->name+"/"+path+"' but item is not defined");
-//	}
-//	
-//	String raw = attrib->value;
-//	if (raw.endsWith(';'))
-//		raw = raw.subStringRef(0,raw.length()-1);
-//	T rs;
-//	if (!convert(raw.c_str(),rs))
-//	{
-//		FATAL__("Trying to extract primitive from '"+context->name+"/"+path+"' but '"+raw+"' cannot be converted to designated type");
-//	}
-//	return rs;
-//}
-
-//void GetConfig(Grid::TPlanetConfig::TLayer&layer, Config::Context*context, const String&path)
-//{
-//	layer.baseHeight = GetPrimitive<int>(context,path+"/baseHeight");
-//	layer.heightScale = GetPrimitive<float>(context,path+"/noiseHeightScale");
-//	layer.frequency = GetPrimitive<float>(context,path+"/frequency");
-//	layer.dampening = GetPrimitive<int>(context,path+"/dampening");
-//	ASSERT_IS_CONSTRAINED__(layer.dampening, 0, 10);
-//
-//
-//}
 
 
-void EstimatePresence(Objects::WorldEntity&e, const Grid::LCellIdI&location, float*hostileNearNexus, float*constructorNearNexus, float*friendlyNearNexus)
-{
-	const TVec3 < >&loc = Grid::low.cells[location.stackID].centerVertex.xyz;
-	float impact = e.GetConstructionCost();
-	if (impact > 0)
-		for (index_t i = 0; i < 12; i++)
-			if (BaseGrid::IsIsolatedCorner(i))
-			{
-				float opacity = std::max(0.f,Vec::dot(Grid::low.cells[i].centerVertex.xyz, loc));
-				//opacity = Grid::powi(opacity,2);
-				if (opacity > 0)
-				{
-					if (e.owner != Objects::Faction::nexus)
-					{
-						hostileNearNexus[i] += opacity * impact;
-
-						Objects::PTurretBase b = e.GetTurretBase();
-						if (b && b->turret->CanDo(Objects::Component::Construct))
-						{
-							constructorNearNexus[i] += Grid::powi(opacity,64);
-						}
-					}
-					else
-					{
-						if (e.IsMobile())
-							friendlyNearNexus[i] += opacity * impact;
-					}
-				}
-			}
-}
-
-
-
-static Objects::PNexusPort ClosestPort(const Objects::PWorldEntity&e, const Objects::PNexusPort cornerPorts[12])
-{
-	float d2 = std::numeric_limits<float>::max();
-	Objects::PNexusPort rs;
-	for (int i = 0; i < 12; i++)
-	{
-		if (!cornerPorts[i])
-			continue;
-		float nd2 = Vec::quadraticDistance(e->GetWorldPosition(),cornerPorts[i]->GetWorldPosition());
-		if (nd2 < d2)
-		{
-			d2 = nd2;
-			rs = cornerPorts[i];
-		}
-	}
-	return rs;
-}
-
-
-void ProcessAICoverage()
-{
-	if (Game::Config::Nexus::enableAI
-		//#ifdef _DEBUG
-		//	|| State::Config::Nexus::haveBases
-		//#endif
-
-	)
-	{
-		//LogEvent(EventType::SessionRelated,"Processing AI coverage");
-		float	hostileNearNexus[12] = { 0 }, // will assume nexus-ports are where they are supposed to be and use corner locations
-			friendlyNearNexus[12] = { 0 },
-			constructorNearNexus[12] = {0};
-
-		if (Game::Config::startBases)
-		{
-			
-
-		//			Objects::PMine mine = To<Objects::Mine>::Cast(
-		//			Objects::Mine::globalPrototype->CreateNewInstance(client->faction,location,0));
-		//		mine->CorrectTerrain(false,0,true);
-		//		Objects::InsertConstructed(mine,0);
-		//		
-		//		Objects::PGenerator generator = To<Objects::Generator>::Cast(
-		//			Objects::Generator::globalPrototype->CreateNewInstance(client->faction,at1,0));
-		//		generator->CorrectTerrain(false,0,true);
-		//		generator->SetEnabledOverride(true);
-		//		Objects::InsertConstructed(generator,0);
-		//		
-		//		std::shared_ptr<Objects::MineralContainer> container = To<Objects::MineralContainer>::Cast(
-		//			Objects::MineralContainer::globalPrototype->CreateNewInstance(client->faction,at2,0));
-		//		container->CorrectTerrain(false,0,true);
-		//		Objects::InsertConstructed(container,0);
-
-
-
-
-		//		Objects::SpawnVehicle(client->faction,at3,Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
-		//		Objects::SpawnVehicle(client->faction,at4,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,0);
-
-
-		}
-
-
-		for (int i = 0; i < 12; i++)
-			if (BaseGrid::IsIsolatedCorner(i))
-				friendlyNearNexus[i] = Game::factionStartMineralValue /*- State::Config::nexusStartMineralValue*/;
-		Objects::PNexusPort ports[12];
-		index_t portAt = 0;
-		foreach(Objects::structures, s)
-		{
-			//bool nexus = (*s)->owner == Objects::Faction::nexus;
-			Objects::PNexusPort p = To<Objects::NexusPort>::DynamicCast(*s);
-			if (p && BaseGrid::IsIsolatedCorner((*s)->location.stackID))
-			{
-				ASSERT_LESS__(portAt, BaseGrid::IsolatedCornerCount);
-				portAt++;
-				index_t portIn = (*s)->location.stackID;
-				ASSERT_LESS__(portIn, 12);
-				ASSERT__(!ports[portIn]);
-				ports[portIn] = p;
-			}
-		}
-		ASSERT_EQUAL__(portAt, BaseGrid::IsolatedCornerCount);
-
-		foreach(Objects::vehicles, v)
-		{
-			EstimatePresence(**v,(*v)->location,hostileNearNexus,constructorNearNexus,friendlyNearNexus);
-		}
-
-		foreach(Objects::structures, s)
-		{
-			EstimatePresence(**s,(*s)->location,hostileNearNexus,constructorNearNexus,friendlyNearNexus);
-		}
-		static Buffer0<UINT32> neighborField;
-		for (int i = 0; i < 12; i++)
-			if (BaseGrid::IsIsolatedCorner(i) && (Grid::empZonesUnlocked & (1<<i)))
-			{
-				Objects::PNexusPort p = ports[i];
-				if (RuntimeConfig::roundNumber - p->lastSpawnRound < 5 || p->owner != Objects::Faction::nexus)
-					continue;	//not allowed to spawn anything for the moment
-
-				float threatLevel = sqr(hostileNearNexus[i] )*Game::Config::Nexus::threatEstimationFactor
-						*1e-3f;
-				LogEvent(EventSignificance::Debug, "Threat level for " + ports[i]->GetName() + " considered " + String(threatLevel));
-				if (Game::Config::Nexus::haveBases)
-				{
-					Objects::RefreshCompoundCoverageIfNeeded(0);
-
-					Objects::Compound&n = p->GetCompound();
-					count_t producing = 0,
-							existing = 0;
-					for (Objects::WWorkingStructure _ws : n.workingStructures)
-					{
-						Objects::PWorkingStructure	ws = _ws.lock();
-						if (!ws)
-							continue;
-						#ifndef NO_HIBERNATION
-							if (ws->ToHibernating()->IsHibernating())
-								continue;
-						#endif
-						if (Grid::AffectedByEMP(ws->location) || ClosestPort(ws,ports) != p)
-							continue;
-						if (ws->health < ws->GetMaxHealth())
-							friendlyNearNexus[i] -= ws->GetConstructionCost();
-						Objects::PMobileEntityProducer plant = To<Objects::MobileEntityProducer>::DynamicCast(ws);
-						if (plant)
-						{
-							existing++;
-							if (plant->AwaitsUserInteraction())
-							{
-								float t = 0;
-								Objects::PMobileEntity v = plant->SpawnFinishedProductionAnywhere(t);
-								if (!v)
-								{
-									producing++;	//dont count
-									continue;
-								}
-								Journal::currentRound.RegisterChoiceIntersection(false,ws,v->location,Objects::CursorMode::Idle,v);
-								EstimatePresence(*v,v->location,hostileNearNexus,constructorNearNexus,friendlyNearNexus);
-							}
-							if (plant->queue.IsNotEmpty())
-							{
-								producing++;
-								ASSERT__(plant->queue.first().producing->owner == Objects::Faction::nexus);
-								EstimatePresence(*plant->queue.first().producing,ws->location,hostileNearNexus,constructorNearNexus,friendlyNearNexus);
-							}
-						}
-					}
-
-	//				if (producing < existing)
-					{
-						while (producing < existing && (friendlyNearNexus[i] < threatLevel || (constructorNearNexus[i] > 0.2f && friendlyNearNexus[i] < Game::factionStartMineralValue + 20.f)))
-						{
-							for (Objects::WWorkingStructure _ws : n.workingStructures)
-							{
-								Objects::PWorkingStructure ws = _ws.lock();
-								if (!ws)
-									continue;
-								Objects::PMobileEntityProducer plant = To<Objects::MobileEntityProducer>::DynamicCast(ws);
-		//						Objects::MobileEntityProducer*plant = ws->ToProducer();
-								Objects::PVehiclePlant vplant = To<Objects::VehiclePlant>::DynamicCast(ws);
-								if (plant && vplant && plant->queue.IsEmpty())
-								{
-									index_t choice = vplant->entityRandom.NextIndex(Game::Config::Nexus::vehicleTurrets.Count());
-									//random.getIndex(State::Config::Nexus::vehicleTurrets.Count() - 1);
-									ASSERT_LESS__(choice,Game::Config::Nexus::vehicleTurrets.Count());
-									//Objects::Component::Turret* turret = State::Config::Nexus::vehicleTurrets[choice];
-									//Objects::MobileEntityProducer::WorkItem item = vplant->EnqueueProductionOfVehicle(&Objects::Component::hoverbase,turret);
-									//Objects::PVehicle v = To<Objects::Vehicle>::Cast(item.producing);
-									ConstName	parameters[2] = {ConstName::VehicleBase_HoverBase, Game::Config::Nexus::vehicleTurrets[choice]->constName};
-									LogEvent(EventSignificance::Common,vplant.get(),"Enqueueing vehicle production job due to high threat level");
-									Journal::currentRound.RegisterProductionJobStart(true,vplant,plant,parameters,2);
-									
-									EstimatePresence(*vplant->queue.last().producing,vplant->location,hostileNearNexus,constructorNearNexus,friendlyNearNexus);
-									producing++;
-									break;
-								}
-							}
-						}
-					}
-
-			
-					#ifdef ONE_COMPOUND_PER_FACTION
-						break;	//only one compound for nexus faction. all done
-					#endif
-
-				}
-				else
-				while (friendlyNearNexus[i] < threatLevel || (constructorNearNexus[i] > 0.2f && friendlyNearNexus[i] < Game::factionStartMineralValue + 20.f))
-				{
-					LogEvent(EventSignificance::Debug, "Spawning nexus unit near " + p->GetName());
-					p->lastSpawnRound = RuntimeConfig::roundNumber;
-
-
-					Grid::LCellIdI location = Grid::LCellIdI::Invalid;
-					Grid::low.GetExtendedNeighborhood(i, 3, neighborField);
-					foreach(neighborField, n)
-					{
-						Grid::LCellIdI candidate(*n, ports[i]->location.height);
-						Grid::AssertIsValid(candidate);
-						candidate.height = Objects::FindApplicableGround(candidate, true);
-
-						if (candidate.height != Objects::badHeight && !Objects::GetVehicle(candidate))
-						{
-							location = candidate;
-							break;
-						}
-
-					}
-
-					if (location != Grid::LCellIdI::Invalid)
-					{
-						Objects::Component::Turret* turret = Game::Config::Nexus::vehicleTurrets[random.NextIndex(Game::Config::Nexus::vehicleTurrets.Count())];
-						float t = 0;
-						Objects::PVehicle v = Objects::SpawnVehicle(Objects::Faction::nexus, location, &Objects::Component::hoverbase, turret, true, t);
-						Journal::currentRound.LogEntityCreation(v);
-						EstimatePresence(*v,v->location, hostileNearNexus,constructorNearNexus, friendlyNearNexus);
-					//	Objects::VerifyVisibilityNetwork();
-					}
-					else
-					{
-						LogEvent(EventSignificance::Debug, "Unable to spawn nexus vehicle. Not enough space near " + ports[i]->GetName());
-						break;
-					}
-				}
-
-			}
-	}
-}
-
-
-Semaphore mainThreadDone;
+Sys::Semaphore mainThreadDone;
 
 
 void TerminateNow(bool isMain)
 {
-	static Mutex mutex;
+	static Sys::Mutex mutex;
 	mutex.lock();
 		static volatile bool terminated = false;
 		if (terminated)
@@ -1043,25 +567,13 @@ void TerminateNow(bool isMain)
 
 
 		Logging::WriteEvent(EventSignificance::Uncommon,"Closing down",nullptr,nullptr,Objects::OwnerParameter());
-		Network::server.Shutdown();
 
-		if (Game::Config::Nexus::enableAI)
-			AIProcess::End();
-
-
-		InformationProvider::Destroy();
-		Objects::Destroy();
-		Grid::Destroy();
-		UDPBroadCast::Terminate();
-
-		RemoteControl::Destroy();
-
+		GlobalEvents::applicationTerminate();
 
 		Logging::WriteEvent(EventSignificance::Uncommon,"Terminating process",nullptr,nullptr,Objects::OwnerParameter());
 		Logging::End();
 
 	mutex.release();
-
 	TerminateProcess(GetCurrentProcess(),0);
 
 	
@@ -1082,11 +594,6 @@ BOOL WINAPI MyHandlerRoutine(_In_  DWORD dwCtrlType)
 	
 	}
 	return FALSE;
-}
-
-void LogConfig(const String&msg)
-{
-	Logging::WriteEvent(EventClass::Preset::configurationPrint,msg,nullptr,nullptr,Objects::OwnerParameter());
 }
 
 
@@ -1114,7 +621,8 @@ namespace ParameterConfig
 
 	PathString	loadFile;
 	bool	startOffline = false,
-			startInConfig = false;
+			startInConfig = false,
+			startInTutorial = false;
 	bool	customWorldID = false;
 	bool	enableRemoteControl = true;
 	const char*	programName="";
@@ -1123,7 +631,7 @@ namespace ParameterConfig
 	void	SetProgramName(const char*base)
 	{
 		const char*slashAt;
-		while (slashAt = Template::strchr(base,FOLDER_SLASH))
+		while (slashAt = CharFunctions::strchr(base,FOLDER_SLASH))
 		{
 			base = slashAt+1;
 		}
@@ -1137,10 +645,12 @@ namespace ParameterConfig
 		std::cout << "  --loadAuto/-a [number]\tLoad auto-savegame. number=0 => most recent"<<std::endl;
 		std::cout << "  --offline/-o \tStart offline"<<std::endl;
 		std::cout << "  --config/-c \tStart in configuration mode"<<std::endl;
+		std::cout << "  --tutorial/-t \tStart in tutorial mode"<<std::endl;
 		std::cout << "  --port/-p [basePort]\tUse a non-default base port ("<<DEFAULT_SERVER_BASE_PORT<<" is default)"<<std::endl;
 		std::cout << "  --noRemote/-r \tDisable remote control service"<<std::endl;
 		std::cout << "  --rv4\tStart remote control service using IPv4"<<std::endl;
-		std::cout << "  --test/-t \tRun self-tests, then quit"<<std::endl;
+		std::cout << "  --test \tRun self-tests, then quit"<<std::endl;
+		std::cout << "  --version/-v \tShow version, then quit"<<std::endl;
 		//std::cout << "  --world/-w [worldID] \tuse custom world ID, and start empty"<<std::endl;
 	}
 
@@ -1174,16 +684,26 @@ namespace ParameterConfig
 			}
 			break;
 			case Idle:
-				if (!strcmp(arg,"--test") || !strcmp(arg,"-t"))
+				if (!strcmp(arg,"--test"))
 					inTestMode = true;
 				elif (!strcmp(arg,"--rv4"))
 					controlProtocol = TCP::Server::Protocol::IPv4;
+				elif (!strcmp(arg,"--version") || !strcmp(arg,"-v"))
+				{
+					std::cout << SERVER_NAME<<std::endl;
+					exit(0);
+				}
 				elif (!strcmp(arg,"--port") || !strcmp(arg,"-p"))
 					mode = ExpectPort;
 				elif (!strcmp(arg,"--offline") || !strcmp(arg,"-o"))
 					startOffline = true;
 				elif (!strcmp(arg,"--config") || !strcmp(arg,"-c"))
 					startInConfig = true;
+				elif (!strcmp(arg,"--tutorial") || !strcmp(arg,"-t"))
+				{
+					loadFile = "config/tutorial.hsf";
+					startInTutorial = true;
+				}
 				elif (!strcmp(arg,"--loadAuto") || !strcmp(arg,"-a"))
 					mode = ExpectAutoSaveNumber;
 				elif (!strcmp(arg,"--help") || !strcmp(arg,"-h"))
@@ -1232,16 +752,10 @@ namespace ParameterConfig
 void	StartUp()
 {
 	UDPBroadCast::Start();
-	Network::Start();
-	InformationProvider::Start(ParameterConfig::basePort);
+	Network::Start(ParameterConfig::basePort);
 }
 
-void	ShutDown()
-{
-	UDPBroadCast::Terminate();
-	Network::server.StopService();
-	InformationProvider::Stop();
-}
+
 
 class ServiceVar : public Reflection::Variable::Base
 {
@@ -1260,7 +774,7 @@ public:
 								checkIsOnline(c),setOffline(offline),setOnline(online)
 							{}
 
-	String					ToString() const override
+	String					ConvertToString() const override
 	{
 		return checkIsOnline();
 	}
@@ -1312,11 +826,11 @@ int main( int argc, const char* argv[])
 
 		TCP::onIgnoredException = [](const TCodeLocation&loc, const std::exception&ex)
 		{
-			LogEvent(EventSignificance::Debug,"TCP exception: "+String(loc.ToString())+": "+ex.what());
+			LogEvent(EventSignificance::Debug,"TCP exception: "+String(loc)+": "+ex.what());
 		};
 		TCP::onIgnoredArbitraryException = [](const TCodeLocation&loc)
 		{
-			LogEvent(EventSignificance::Debug,"TCP exception (arbitrary): "+String(loc.ToString()));
+			LogEvent(EventSignificance::Debug,"TCP exception (arbitrary): "+String(loc));
 		};
 
 		SetConsoleCtrlHandler(MyHandlerRoutine,TRUE);
@@ -1336,12 +850,10 @@ int main( int argc, const char* argv[])
 				FATAL__("Something is wrong. Unable to locate server executable, or config/declaration.xml is missing.");
 		}
 
-
-		NiceName::Load();
+		Boot();
 
 		Evolver::Create();
 		Game::evolver = Evolver::GetDefault();
-
 		Journal::Create();
 
 		World::worldID.Generate();
@@ -1357,23 +869,14 @@ int main( int argc, const char* argv[])
 
 
 
-		#ifdef _DEBUG
-			//inTestMode = true;
-		#endif
-
-
-
-		Grid::Create0();
-		Objects::Create();
-		Grid::Create1();
 
 
 		Reflection::Create();
 		Reflection::state.PushFocus();
 		Reflection::state.EnterNewFolder("/Online");
-		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("udpBroadcast",UDPBroadCast::IsStarted,UDPBroadCast::Terminate,[](){UDPBroadCast::Start();})));
-		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("info",[]()->bool{return InformationProvider::server.IsOnline();},InformationProvider::Stop,[](){InformationProvider::Start(ParameterConfig::basePort);})));
-		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("session",[]()->bool{return Network::server.IsOnline();},[](){Network::SuspendSession();},Network::RestartSession)));
+		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("udpBroadcast",UDPBroadCast::IsStarted,UDPBroadCast::Stop,[](){UDPBroadCast::Start();})));
+		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("info",[]()->bool{return Network::InformationProvider::IsOnline();},Network::InformationProvider::Stop,[](){Network::InformationProvider::Start(ParameterConfig::basePort);})));
+		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("session",[]()->bool{return Network::server.IsOnline();},[](){Network::SuspendSession();},[](){Network::RestartSession(false);})));
 		Reflection::state.DefineCommand("closeSession",(CLI::Command::function0_t)[](){Network::CloseSession();},CLI::NoCompletion);	//why...?
 
 		Reflection::state.PopFocus();
@@ -1438,7 +941,7 @@ int main( int argc, const char* argv[])
 		{
 			if (planet.IsNotEmpty())
 			{
-				if (!FileSystem::IsFile(RuntimeConfig::ConfigFile(PathString("config/planets/"+planet+".ini"))))
+				if (!World::IsPlanetIniFile(planet+".ini"))
 				{
 					LogEvent(EventClass::Preset::remoteControlError,"'"+planet+"' is not a valid planet type");
 					return;
@@ -1463,24 +966,19 @@ int main( int argc, const char* argv[])
 
 		Reflection::state.DefineCommand("/World/showPlanetTypes",(CLI::Command::function0_t)[]()
 		{
-			FileSystem::Folder folder = RuntimeConfig::ConfigFile("config/planets");
-			if (!folder.IsValidLocation())
-			{
-				LogEvent(EventClass::Preset::remoteControlError,"Internal error: Unable to locate planets-directory");
-				return;
-			}
-			FileSystem::File file;
-			folder.Rewind();
+			Ctr::Array<World::TPlanetIniFile>	planetIniFiles;
+			World::GetAvailablePlanetIniFiles(planetIniFiles);
+
 			CLI::println("-");
-			while (folder.NextFile("ini",file))
-			{
-				CLI::println(String(file.GetInnerName()));
-			}
+			foreach (planetIniFiles,f)
+				CLI::println(f->name+(f->userDefined.GetLocation().IsNotEmpty()? ( f->factoryDefault.GetLocation().IsNotEmpty() ? " (user override)" :" (user)"): ""));
 			CLI::println("-");
 		},CLI::NoCompletion);
 
 		
-
+		#ifdef _DEBUG
+		//	inTestMode = true;
+		#endif
 
 		if (!inTestMode)
 			Reflection::Load(false);
@@ -1490,17 +988,21 @@ int main( int argc, const char* argv[])
 
 		if (inTestMode)
 		{
-			std::cout << "Running tests..." << std::endl;
+			std::cout << "Building initial test world..." << std::endl;
 
 			World::BuildConfiguredWorld(random);
 
 
+			std::cout << "Running tests..." << std::endl;
 			{
-				Test::Run(Test::ServerClient());
-				Test::Run(Test::HighGridFamilies());
-				Test::Run(Test::AutoTargeting());
-				Test::Run(Test::Bin2Str());
 				Test::Run(Test::Serialization());
+				Test::Run(Test::CharacterEncoding());
+				Test::Run(Test::ServerClient());
+				Test::Run(Test::TerrainUpdates());
+				Test::Run(Test::AutoTargeting());
+				Test::Run(Test::SharedContainer());
+				Test::Run(Test::HighGridFamilies());
+				Test::Run(Test::Bin2Str());
 				Test::Run(Test::VehiclePlant());
 				IF_SATELLITES(Test::Run(Test::SkyPort()));
 				Test::Run(Test::StorageUnits());
@@ -1524,56 +1026,6 @@ int main( int argc, const char* argv[])
 		}
 
 
-		//{
-		//	State::Config::Nexus::vehicleTurrets.SetSize(State::Config::nexusVehicleTurretNames.Count());
-		//	for (index_t i = 0; i < State::Config::nexusVehicleTurretNames.Count(); i++)
-		//	{
-		//		State::Config::Nexus::vehicleTurrets[i] = Objects::Component::GetTurretByName(State::Config::nexusVehicleTurretNames[i]);
-		//		if (!State::Config::Nexus::vehicleTurrets[i])
-		//		{
-		//			FATAL__("Nexus AI: '" + State::Config::nexusVehicleTurretNames[i] + "' is not a valid turret name");
-		//		}
-		//	}
-		//	//State::Config::nexusVehicleTurretNames.Clear();
-		//}
-
-
-
-
-
-
-
-
-
-
-
-		//State::currentState = Grid::cellStack;	//reference for deltas
-
-		//Array<BYTE>	out(Grid::cellStack.GetContentSize());
-
-		//for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-		//{
-		//	const index_t offset = Grid::high.grid.GetFamilyOffset(k);
-		//	const index_t range = Grid::high.grid.CountFamilyMembers(k) * Grid::CellStack::Range;
-		//	Timer::Time t0 = timer.Now();
-		//	size_t size = BZ2::compress(Grid::cellStack.pointer()+offset,sizeof(Grid::CellStack::Cell)*range,out.pointer(),out.GetContentSize());
-		//	std::cout << (int)k<< " "<<timer.GetSecondsSince(t0)<<std::endl;;;
-		//}
-		//std::flush(std::cout);
-		//ShowMessage(String(size)+"/"+String(Grid::cellStack.GetContentSize()));
-
-
-
-
-
-		if (!ParameterConfig::startOffline)
-		{
-			StartUp();
-			if (ParameterConfig::startInConfig)
-			{
-				ConfigurationMode::Begin();
-			}
-		}
 
 
 
@@ -1588,7 +1040,7 @@ int main( int argc, const char* argv[])
 			Riff::File a,b;
 			ASSERT__(a.Open(PathString("test0."+FileIO::savFileExtension).c_str()));
 			ASSERT__(b.Open(PathString("test1."+FileIO::savFileExtension).c_str()));
-			Buffer<Riff::TID>	stack;
+			Ctr::Buffer<Riff::TID>	stack;
 			FileIO::Compare(a,b,stack);
 
 		}
@@ -1604,100 +1056,25 @@ int main( int argc, const char* argv[])
 			else
 				Logging::WriteEvent(EventClass::Preset::fileError,"Specified file ("+String(filename)+") does not exist. Skipping loading operation.",nullptr,nullptr,Objects::OwnerParameter());
 		}
+		RuntimeConfig::tutorialMode = ParameterConfig::startInTutorial;
+
+		if (!ParameterConfig::startOffline)
+		{
+			if (ParameterConfig::startInConfig)
+			{
+				ConfigurationMode::Begin();
+			}
+			StartUp();
+		}
+
 
 		//Journal::globalWriter.InitNew(RuntimeConfig::ConfigFile("saves/log"));
 		//Journal::globalWriter.ContinueExisting(RuntimeConfig::ConfigFile("saves/log"));
 
-		Logging::WriteEvent(EventSignificance::Uncommon, "Preparation of world '"+World::worldID.ToNiceString()+"'/" + World::worldID.ToString() + " completed.", nullptr, nullptr,Objects::OwnerParameter());
-		Logging::WriteEvent(EventSignificance::Important,"Server "+Network::serverID.ToString()+"/"+UDPBroadCast::packet.version+" is online.",nullptr,nullptr,Objects::OwnerParameter());
-		FileIO::RefreshWindowTitle();
+		Logging::WriteEvent(EventSignificance::Uncommon, "Preparation of world '"+World::worldID.ToNiceString()+"'/" + ToString(World::worldID) + " completed.", nullptr, nullptr,Objects::OwnerParameter());
+		
+		Network::LogServerState();
 
-	
-		LogConfig("AI is configured as follows:");
-		if (Game::Config::Nexus::enableAI)
-		{
-			LogConfig(" -Nexus-AI enabled");
-			LogConfig(" -ThreatEstimationFactor=" + String(Game::Config::Nexus::threatEstimationFactor));
-			//LogConfig(" -NexusTurrets=" + implode(',', State::Config::Nexus::vehicleTurretNames));
-		}
-		else
-			LogConfig(" -Disabled");
-
-		LogConfig("This game is configured as follows:");
-		#ifndef NO_HIBERNATION
-			LogConfig(" -Uplink traffic per faction is limited to "+String(State::Config::uplinkBandwidth));
-		#endif
-
-		LogConfig(" -Factions: "+Game::Config::FactionSupportFlagString());
-
-		if (World::Config::simulateLiquids)
-			LogConfig(" -Liquids: Expanding.");
-		else
-			LogConfig(" -Liquids: Static.");
-		switch (RuntimeConfig::gameGoal)
-		{
-			case RuntimeConfig::GameGoal::None:
-				LogConfig(" -Goal: None.");
-			break;
-			case RuntimeConfig::GameGoal::ConquerNexus:
-				static_assert(BaseGrid::IsolatedCornerCount==3,"Unexpected count");
-				LogConfig(" -Goal: Connect and enable 2+ Nexus Ports.");
-			break;
-		}
-		if (Game::Config::closedGame)
-			LogConfig(" -Closed: Joining will be restricted to first round and access tokens. Game can be won.");
-		else
-			LogConfig(" -Open: Players can join any time. Game is endless.");
-		if (Game::Config::Nexus::haveBases)
-			LogConfig(" -Nexus-Bases: Nexus bases will be randomly created during world creation");
-		else
-			LogConfig(" -No Nexus-Bases: Nexus bases will not be created");
-
-		switch (RuntimeConfig::doomsdayWeapons)
-		{
-			case RuntimeConfig::DoomsdayWeapons::Conceal:
-				LogConfig(" -Doomsday weapons: Treated like normal weapons (must be in sensor range to see)");
-			break;
-			case RuntimeConfig::DoomsdayWeapons::Disallow:
-				LogConfig(" -Doomsday weapons: Forbidden to fire (can still be built, however)");
-			break;
-			case RuntimeConfig::DoomsdayWeapons::Expose:
-				LogConfig(" -Doomsday weapons: Doomsday explosions are made visible to all factions");
-			break;
-			default:
-				LogConfig(" -Doomsday weapons: "+String(RuntimeConfig::doomsdayWeapons.ToString()));
-			break;
-		}
-
-		if (Game::Config::roundTimer > 0)
-			LogConfig(" -Round Timer: Rounds beyond the first may last at most "+String(Game::Config::roundTimer)+" seconds.");
-		else
-			LogConfig(" -No Round Timer: Rounds end when all players requested so.");
-		if (Game::Config::basesRequired)
-			LogConfig(" -Bases Required: Factions that do not meet the station requirements die after five rounds.");
-		else
-			LogConfig(" -No Survival Conditions: Factions live forever (although their vehicles/structures might not).");
-		if (Game::Config::startBases)
-			LogConfig(" -Bases: New factions are given minimal bases.");
-		else
-			LogConfig(" -Flexibility: New factions are given vehicles, but no structures.");
-		if (Objects::newVehiclesHaveFullAmmo)
-			LogConfig(" -Ammo: New vehicles using standard ammo are given full ammo.");
-		else
-			LogConfig(" -No Ammo: New vehicles have zero ammo.");
-		if (Game::Config::exposeActionLeftToHostileFactions)
-			LogConfig(" -Expose Vehicle Initiative: Vehicle initiative is exposed to hostile factions.");
-		else
-			LogConfig(" -Private Vehicle Action: Vehicle movement is not exposed to hostile factions.");
-		if (RuntimeConfig::empZones)
-			LogConfig(" -EMP Zones: Vehicles enterting residual EMP fields will suffer extensive EMP damage.");
-		else
-			LogConfig(" -No EMP Zones: The entire planet is freely accessible.");
-
-		if (FileIO::Config::saveEveryNRounds > 0)
-			LogConfig(" -Auto-saves will be created every "+String(FileIO::Config::saveEveryNRounds)+" round(s).");
-		if (FileIO::Config::saveWhenAllQuit)
-			LogConfig(" -Auto-saves will be created when all quit.");
 
 
 		//FATAL__("test");
@@ -1773,9 +1150,9 @@ int main( int argc, const char* argv[])
 					Objects::ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
 					{
 						e->ReSeedRandom();
-					});
+					},false);
 
-					ProcessAICoverage();
+					Nexus::ProcessCoverage();
 
 					Journal::currentRound.roundNumber = RuntimeConfig::roundNumber;
 					Journal::currentRound.evolver = Game::evolver;
@@ -1824,7 +1201,7 @@ int main( int argc, const char* argv[])
 
 			//#ifndef _DEBUG
 			{
-				static Buffer0<TCP::PPeer>	disconnect;
+				static Ctr::Buffer0<TCP::PPeer>	disconnect;
 				Network::server.VisitAllPeers([](const TCP::PPeer&peer)
 				{
 					if (timer.GetSecondsSince(peer->GetLastPackageTime()) > 30.f)
@@ -1838,7 +1215,7 @@ int main( int argc, const char* argv[])
 				disconnect.Clear();
 
 
-				static Buffer0<Network::PClient>	clientDump;
+				static Ctr::Buffer0<Network::PClient>	clientDump;
 				for (const auto&p : Network::activePlayersAndSpectators)
 				{
 					if (p->peer.expired())
@@ -1849,7 +1226,7 @@ int main( int argc, const char* argv[])
 
 				for (const auto&p : clientDump)
 				{
-					LogEvent( EventClass( EventSignificance::ClientFatal, EventFlavor::ServerPrivate ),nullptr,"Peer lost: "+p->ToString());
+					LogEvent( EventClass( EventSignificance::ClientFatal, EventFlavor::ServerPrivate ),nullptr,"Peer lost: "+p->ConvertToString());
 					Network::HandleConnectionLoss(p);
 				}
 				clientDump.Clear();

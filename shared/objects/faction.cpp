@@ -5,21 +5,29 @@
 #include "mobileEntity.h"
 #include "gridAndChoices.h"
 #include "prototypes.h"
-#include "visualSelection.h"
 #include "satellite.h"
 #include "vehicle.h"
 #include "subOrbital.h"
 #include "../sphereGridHelper.h"
 #include "../runtimeConfig.h"
 #include "prototypes.h"
+#include "structure/tower.h"
 
 namespace Objects
 {
 
 	#ifndef CLIENT
 
-		/*static*/ Buffer0<WFaction>	Faction::all;
+		/*static*/ Ctr::Buffer0<WFaction>	Faction::all;
 		/*static*/ PFaction				Faction::nexus;
+
+
+		/*static*/ PFaction				Faction::Create(const TUniqueID&id, const String&name/* = ""*/)
+		{
+			PFaction rs(new Faction(id, name));
+			all << rs;
+			return rs;
+		}
 
 		void	Faction::RecreateNexus(const TUniqueID&id)
 		{
@@ -153,8 +161,8 @@ namespace Objects
 
 			OwnerParameter oldOwner = e->owner;
 
-
-
+			oldOwner->statistics.SignalLossOf(e,newOwner,true);
+			newOwner->statistics.SignalUnitAcquired(e,oldOwner);
 
 
 			Remove(e,RemovalType::ChangingOwnership,atTime,true,false,true);
@@ -361,14 +369,60 @@ namespace Objects
 		//}
 
 
-		bool Faction::GridCanSee(const Grid::HighSetup::TVolumeDescriptor&v) const
+		void Faction::CheckSensory(float&t)
 		{
+			if (knownWorld.SensoryIsInvalid())
+			{
+				knownWorld.FlushAndValidateSensory();
+
+				foreach (this->structures,_s)
+				{
+					Objects::PStructure s = _s->lock();
+					if (s)
+						s->ReapplySensory(t);
+				}
+				foreach (this->allMobiles,_m)
+				{
+					Objects::PWorldEntity e = _m->lock();
+					if (e)
+						e->ReapplySensory(t);
+				}
+			}
+		}
+		
+
+		void Faction::CheckSensory()
+		{
+			if (knownWorld.SensoryIsInvalid())
+			{
+				float t = knownWorld.GetMaxChangeTime();
+				knownWorld.FlushAndValidateSensory();
+
+				foreach (this->structures,_s)
+				{
+					Objects::PStructure s = _s->lock();
+					if (s)
+						s->ReapplySensory(t);
+				}
+				foreach (this->allMobiles,_m)
+				{
+					Objects::PWorldEntity e = _m->lock();
+					if (e)
+						e->ReapplySensory(t);
+				}
+			}
+		}
+
+
+		bool Faction::GridCanSee(const Grid::HighSetup::TVolumeDescriptor&v, float &t)
+		{
+			CheckSensory(t);
 			foreach (v.coverage,st)
 			{
 				DBG_ASSERT_LESS__(st->range.start,Grid::CellStack::Range);
 				DBG_ASSERT_LESS_OR_EQUAL__(st->range.end,Grid::CellStack::Range);
 				DBG_ASSERT_LESS_OR_EQUAL__(st->range.start,st->range.end);
-				const auto&stack = visibility.cellStack[st->stackID];
+				const auto&stack = knownWorld.GetStack(st->stackID);
 				for (UINT32 layer = st->range.start; layer < st->range.end; layer++)
 				{
 					if (stack.volumeCell[layer].IsCurrentlyVisible())
@@ -379,15 +433,16 @@ namespace Objects
 		}
 
 
-		bool Faction::GridCanSee(const PWorldEntity&e) const
+		bool Faction::GridCanSee(const PWorldEntity&e, float &t)
 		{
+			CheckSensory(t);
 			const UINT32 fine = Grid::low.grid.GetCell(e->location.stackID).higherEquivalent;
 			const auto&c = Grid::high.grid.GetCell(fine);
 			const UINT32 bottom = Grid::CellStack::ToLayer(e->location.height);
 			const int entityHeight =e->GetHeight();
 			const UINT32 end = std::min(Grid::CellStack::Range,bottom + (UINT32)entityHeight);
 			{
-				const auto&stack = visibility.cellStack[fine];
+				const auto&stack = knownWorld.GetStack(fine);
 				//const UINT32 fine2 = c.neighborhood.neighborID[k];
 				for (UINT32 layer = bottom; layer < end; layer++)
 					if (stack.volumeCell[layer].IsCurrentlyVisible())
@@ -449,7 +504,6 @@ namespace Objects
 				if (e->IsStructure())
 				{
 					PStructure s = To<Structure>::Cast(e);
-					Structure::CommonRegisterStructure(currentState,e->location,s->GetBroadHeight(),e->GetHeight(),s->HasFoundation(),t);
 					t += timeEpsilon;
 				}
 
@@ -466,7 +520,7 @@ namespace Objects
 				e->SyncTime(t,timeEpsilon);
 				LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Gained visual of entity, time updated to "+String(t));
 
-				ASSERT1__(gainedVisualAt.SetNew(e,t),e->id.ToString());
+				ASSERT1__(gainedVisualAt.SetNew(e,t),ToString(e->id));
 
 				if (cascade)
 					ApplicationInterface::SignalAppearanceToHostileFaction(shared_from_this(),e,t);
@@ -503,7 +557,6 @@ namespace Objects
 				if (e->IsStructure())
 				{
 					PStructure s = To<Structure>::Cast(e);
-					Structure::CommonUnregisterStructure(currentState,e->location,s->GetBroadHeight(),e->GetHeight(),s->HasFoundation(),t);
 					t += timeEpsilon;
 				}
 
@@ -517,7 +570,7 @@ namespace Objects
 				PTower tower;
 				e->SyncTime(t,timeEpsilon);
 
-				ASSERT1__(lostVisualAt.SetNew(e,t-timeEpsilon),e->id.ToString());
+				ASSERT1__(lostVisualAt.SetNew(e,t-timeEpsilon),ToString(e->id));
 				seeing.Unset(e);
 				if (signalConnectedClient)
 					ApplicationInterface::SignalDisappearanceToHostileFaction(shared_from_this(),e,t);
@@ -528,23 +581,23 @@ namespace Objects
 
 		}
 
-		void		Faction::ChangeSensory(const Grid::HighSetup::TVolumeDescriptor&desc, float t, short changeBy)
-		{
-			visibility.ChangeSensory(desc, t, changeBy);
-		}
-
-		//void		Faction::ChangeSensory(const Grid::LCellIdI&center, float radius, float t, short change)
+		//void		Faction::ChangeSensory(const Grid::HighSetup::TVolumeDescriptor&desc, float t, short changeBy)
 		//{
-		//	visibility.ChangeSensory(center, radius, t, change);
+		//	visibility.ChangeSensory(desc, t, changeBy);
 		//}
 
-		void		Faction::ChangeSensory(const Grid::SkySensorState&state, float t, short change)
-		{
-			visibility.ChangeSensory(state, t, change);
-		}
+		////void		Faction::ChangeSensory(const Grid::LCellIdI&center, float radius, float t, short change)
+		////{
+		////	visibility.ChangeSensory(center, radius, t, change);
+		////}
+
+		//void		Faction::ChangeSensory(const Grid::SkySensorState&state, float t, short change)
+		//{
+		//	visibility.ChangeSensory(state, t, change);
+		//}
 
 		template <typename T>
-		count_t		CountRawSensorCoverage(const TVec3<>&center, const BasicBuffer<T>&scope)
+		count_t		CountRawSensorCoverage(const TVec3<>&center, const Ctr::BasicBuffer<T>&scope)
 		{
 			count_t rs = 0;
 			foreach (scope,s)
@@ -557,7 +610,7 @@ namespace Objects
 		}
 
 		template <typename T>
-		count_t		CountRawSensorCoverage(const Sphere<>&sphere, const BasicBuffer<T>&scope)
+		count_t		CountRawSensorCoverage(const Sphere<>&sphere, const Ctr::BasicBuffer<T>&scope)
 		{
 			count_t rs = 0;
 			foreach (scope,s)
@@ -611,7 +664,7 @@ namespace Objects
 						seeing[e].sightLevel = cover;
 				}
 				else
-					if (!GridCanSee(e))
+					if (!GridCanSee(e,timeAt))
 					{
 						SignalDisappearance(e,timeAt,true);
 					}
@@ -625,7 +678,7 @@ namespace Objects
 						SignalAppearance(e,timeAt,true,false,cover);
 				}
 				else
-					if (GridCanSee(e))
+					if (GridCanSee(e,timeAt))
 					{
 						LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+ ": SignalAppearance at time "+String(timeAt));
 						SignalAppearance(e,timeAt,true,false);
@@ -634,37 +687,40 @@ namespace Objects
 		}
 
 
-		void		Faction::RegisterSensorCreation(const Grid::LSensor&sensor, int sensorHeight, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
+		void		Faction::RegisterSensorCreation(const World::Sensor&sensor, int sensorHeight, float&t, Ctr::Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
 		{
 			//if (sensorHeight <= Grid::CellStack::TopHeight)
 			{
-				static Grid::HighSetup::TVolumeDescriptor	desc0;
-				Grid::high.GenerateVolume(Grid::ToHigh(sensor),desc0);
-				ChangeSensory(desc0,t,1);
-				if (checkChangesNow)
-					CheckChanges(t);
+				if (!sensorLockLevel)
+					CheckSensory(t);
+				else
+					knownWorld.InvalidateSensory();
+				sensor.InsertInto(knownWorld,t);
 
-				static Grid::LowSetup::TVolumeDescriptor	desc;
-				Grid::LSensor s2 = sensor;
-				s2.radius ++;
-				Grid::low.GenerateVolume(s2,desc);
-				foreach (desc.coverage,c)
+				if (!knownWorld.SensoryIsInvalid())
 				{
-					UINT32 min = c->range.start;
-					if (min)
-						min--;
-					for (UINT l = min; l < c->range.end; l++)
+					static Grid::LowSetup::TVolumeDescriptor	desc;
+					sensor.GetMaxVolume(desc);
+					foreach (desc.coverage,c)
 					{
-						PWorldEntity e = GetEntity(Grid::LCellIdI(c->stackID,Grid::CellStack::ToHeight(l)));
-						if (!e || e->owner.get() == this)
-							continue;
-						if (GridCanSee(e))
+						UINT32 min = c->range.start;
+						if (min)
+							min--;
+						for (UINT l = min; l < c->range.end; l++)
 						{
-							if (SignalAppearance(e,t,true,false) && newContacts)
-								newContacts->Append(e);
+							PWorldEntity e = GetEntity(Grid::LCellIdI(c->stackID,Grid::CellStack::ToHeight(l)));
+							if (!e || e->owner.get() == this)
+								continue;
+							if (GridCanSee(e,t))
+							{
+								if (SignalAppearance(e,t,true,false) && newContacts)
+									newContacts->Append(e);
+							}
 						}
 					}
 				}
+				else
+					ASSERT_IS_NULL__(newContacts);
 			}
 			#ifndef NO_SATELLITES
 				if (Objects::Satellite::IsSatelliteHeight(sensorHeight))
@@ -684,104 +740,159 @@ namespace Objects
 			#endif
 			if (SubOrbital::Height == sensorHeight)
 			{
-				foreach (Objects::SubOrbital::planes,p)
+				Objects::SubOrbital::planes.Foreach([&sensor,this,newContacts,&t](const SubOrbital::PPlane&plane)
 				{
-					SubOrbital::PPlane plane = *p;
 					if (plane->owner.get() != this && sensor.Contains(plane->location))
 					{
 						if (SignalAppearance(plane,t,true) && newContacts)
 							newContacts->Append(plane);
 					}
 				}
+				);
 			}
 			
 		}
 
+		Faction::TSensorLock::~TSensorLock()
+		{
+			owner->sensorLockLevel--;
+			if (owner->sensorLockLevel == 0 && owner->knownWorld.SensoryIsInvalid())
+			{
+				LogEvent(EventSignificance::Common,owner->shared_from_this(),"Recomputing sensory");
+				Timer::Time started = timer.Now();
+				float t = 0;
+				owner->CheckSensory();
+				LogEvent(EventSignificance::PerformanceMeasurement,owner->shared_from_this(),"Computed sensory grid coverage in "+String(timer.GetSecondsSince(started)));
+				started = timer.Now();
+				ForeachWorldEntity([this,&t](const PWorldEntity&e)
+				{
+					if (e->owner.get() == owner)
+						return;
+					if (e->IsAboveGrid())
+					{
+						count_t cover = owner->CountOffGridCoverage(e->location.height, e->GetWorldPosition());
+						if (cover > 0)
+						{
+							owner->SignalAppearance(e, t, true, false);
+						}
+					}
+					else
+						if (owner->GridCanSee(e,t))
+						{
+							owner->SignalAppearance(e,t,true,false);
+						}
+
+				},false);
+
+				LogEvent(EventSignificance::PerformanceMeasurement,owner->shared_from_this(),"Computed appearances in "+String(timer.GetSecondsSince(started)));
+				started = timer.Now();
+
+				static Ctr::Buffer<PWorldEntity>	disappear;
+
+				owner->seeing.VisitAllKeys([this,&t](const PWorldEntity&e)
+				{
+					if (e->IsAboveGrid())
+					{
+						count_t cover = owner->CountOffGridCoverage(e->location.height, e->GetWorldPosition());
+						if (cover == 0)
+						{
+							disappear << e;
+						}
+					}
+					else
+						if (!owner->GridCanSee(e,t))
+						{
+							disappear << e;
+						}
+				});
+				foreach (disappear,s)
+					owner->SignalDisappearance(*s,t);
+				disappear.Clear();
+				LogEvent(EventSignificance::PerformanceMeasurement,owner->shared_from_this(),"Computed disappearances in "+String(timer.GetSecondsSince(started)));
+			}
+		}
+
 		//void		Faction::RegisterSensorMotion(const Sphere<>&from, const Sphere<>&to, float t);
-		void		Faction::RegisterSensorRemoval(const Grid::LSensor&sensor, int sensorHeight, float&t, bool checkChangesNow)
+		void		Faction::RegisterSensorRemoval(const World::Sensor&sensor, int sensorHeight, float&t)
 		{
 			//if (sensorHeight <= Grid::CellStack::TopHeight)
-			{
-				static Grid::HighSetup::TVolumeDescriptor	desc0;
-				Grid::high.GenerateVolume(Grid::ToHigh(sensor),desc0);
-				ChangeSensory(desc0,t,-1);
-				if (checkChangesNow)
-					CheckChanges(t);
-			}
+			if (!sensorLockLevel)
+				CheckSensory(t);
+			else
+				knownWorld.InvalidateSensory();
+			sensor.RemoveFrom(knownWorld,t);
 //			float escaped = sqr(sphere.radius+2);
 			//if (isSatellite)
 			//	LogEvent(EventSignificance::Debug,"Unregistering orbital sensor sphere "+sphere.ToString());
 
-			static Buffer<PWorldEntity>	disappear;
-
-			bool offGrid = sensorHeight > Grid::CellStack::TopHeight;
-
-			this->seeing.VisitAllKeys([this,offGrid, sensor](const PWorldEntity&s)
+			if (!knownWorld.SensoryIsInvalid())
 			{
-				if (s->IsAboveGrid() != offGrid)
-					return;
-				if (s->IsAboveGrid())
+				static Ctr::Buffer<PWorldEntity>	disappear;
+
+				bool offGrid = sensorHeight > Grid::CellStack::TopHeight;
+
+				this->seeing.VisitAllKeys([this,offGrid, sensor,&t](const PWorldEntity&s)
 				{
-					if (sensor.Contains(s->location))
+					if (s->IsAboveGrid() != offGrid)
+						return;
+					if (s->IsAboveGrid())
 					{
-						disappear << s;
+						if (sensor.Contains(s->location))
+						{
+							disappear << s;
+						}
 					}
-				}
-				else
-					if (!GridCanSee(s))
-					{
-						disappear << s;
-					}
-			});
-			foreach (disappear,s)
-				SignalDisappearance(*s,t);
-			disappear.Clear();
+					else
+						if (!GridCanSee(s,t))
+						{
+							disappear << s;
+						}
+				});
+				foreach (disappear,s)
+					SignalDisappearance(*s,t);
+				disappear.Clear();
+			}
 		}
 
-		void		Faction::RegisterSensorCreation(const Grid::SkySensorState&state, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
-		{
-			ChangeSensory(state,t,+1);
-			if (checkChangesNow)
-				CheckChanges(t);
+		//void		Faction::RegisterSensorCreation(const Grid::SkySensorState&state, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
+		//{
+		//	ChangeSensory(state,t,+1);
+		//	if (checkChangesNow)
+		//		CheckChanges(t);
 
 
-			ForeachWorldEntity([this,&t,newContacts](const PWorldEntity&other)
-			{
-				if (other->owner.get() == this || other->IsAboveGrid())
-					return;
-				if (GridCanSee(other))
-				{
-					SignalAppearance(other,t,true,false);
-					if (newContacts)
-						newContacts->Append(other);
-				}
-			});
-		}
-		void		Faction::RegisterSensorRemoval(const Grid::SkySensorState&state, float&t, bool checkChangesNow)
-		{
-			ChangeSensory(state,t,-1);
-			if (checkChangesNow)
-				CheckChanges(t);
+		//	ForeachWorldEntity([this,&t,newContacts](const PWorldEntity&other)
+		//	{
+		//		if (other->owner.get() == this || other->IsAboveGrid())
+		//			return;
+		//		if (GridCanSee(other))
+		//		{
+		//			SignalAppearance(other,t,true,false);
+		//			if (newContacts)
+		//				newContacts->Append(other);
+		//		}
+		//	},false);
+		//}
+		//void		Faction::RegisterSensorRemoval(const Grid::SkySensorState&state, float&t, bool checkChangesNow)
+		//{
+		//	ChangeSensory(state,t,-1);
+		//	if (checkChangesNow)
+		//		CheckChanges(t);
 
-			static Buffer<PWorldEntity>	disappear;
-			this->seeing.VisitAllKeys([this](const PWorldEntity&s)
-			{
-				if (!s->IsAboveGrid() && !GridCanSee(s))
-					disappear << s;
-			});
-			foreach (disappear,s)
-				SignalDisappearance(*s,t);
-			disappear.Clear();
+		//	static Buffer<PWorldEntity>	disappear;
+		//	this->seeing.VisitAllKeys([this](const PWorldEntity&s)
+		//	{
+		//		if (!s->IsAboveGrid() && !GridCanSee(s))
+		//			disappear << s;
+		//	});
+		//	foreach (disappear,s)
+		//		SignalDisappearance(*s,t);
+		//	disappear.Clear();
 
-		}
-
-
+		//}
 
 
-		void		Faction::CheckChanges(float t)
-		{
-			visibility.CheckChanges(t);
-		}
+
 
 
 		static bool CheckLimit(count_t currentCount, count_t maxCount, String&errorOut)
@@ -797,7 +908,21 @@ namespace Objects
 
 		bool		Faction::CanLive(String&whyNot) const
 		{
-			bool hasMineralGeneratorCycle = hasFuelMine && hasMineralMine && hasGenerator;
+			if (isDead)
+			{
+				whyNot = "Died";
+				return false;
+			}
+
+			const bool hasFuelMine = (hasUnitClasses & UnitClass::FuelMine);
+			const bool hasMineralMine = (hasUnitClasses & UnitClass::MineralMine);
+			const bool hasGenerator = (hasUnitClasses & UnitClass::Generator);
+			const bool hasMineralContainer = (hasUnitClasses & UnitClass::MineralContainer);
+			const bool hasTerraformer = (hasUnitClasses & UnitClass::Terraformer);
+			const bool hasVehiclePlant = (hasUnitClasses & UnitClass::VehiclePlant);
+
+			const bool hasMineralGeneratorCycle = hasFuelMine && hasMineralMine && hasGenerator;
+
 			#ifndef ONE_COMPOUND_PER_FACTION
 				if (!hasMineralContainer)
 					hasMineralGeneratorCycle = false;
@@ -908,9 +1033,7 @@ namespace Objects
 
 		void		Faction::RegisterExplosionCrater(const Grid::HCellIdI&center, float radius, float t)
 		{
-			visibility.RegisterExplosionCrater(center, radius, t);
-
-
+			knownWorld.RegisterExplosionCrater(center, radius, t);
 		}
 
 
@@ -934,16 +1057,16 @@ namespace Objects
 
 	#else
 		/*static*/ Buffer0<PFaction>			Faction::allKnown;
-		/*static*/ GenericHashTable<TUniqueID,PFaction,TUniqueID>	Faction::idMap;
+		/*static*/ GenericHashTable<TUniqueID,PFaction>	Faction::idMap;
 		/*static*/ PFaction						Faction::mine;
 
 		/*static*/ Buffer0<Marker, Strategy::Adopt>	Marker::all; 
-		/*static*/ GenericHashTable<TUniqueID, index_t, TUniqueID>	Marker::idMap,
+		/*static*/ GenericHashTable<TUniqueID, index_t>	Marker::idMap,
 								Marker::referenceIDMap,
 								Marker::visitedSystemIDMap;
 		/*static*/ Buffer0<Marker::TVisited>	Marker::visitedSystems;
-		/*static*/ Buffer0<PStructure>	Marker::structureGhosts;
-		/*static*/ Buffer0<PMobileEntity>	Marker::mobileGhosts;
+		/*static*/ SharedContainer<Structure>		Marker::structureGhosts;
+		/*static*/ SharedContainer<MobileEntity>	Marker::mobileGhosts;
 
 		/*static*/ PFaction				Faction::FindByID(const TUniqueID&id)
 		{
@@ -971,15 +1094,13 @@ namespace Objects
 
 		void	ChangeOwnership( const PWorldEntity&e,const OwnerParameter&newOwner, bool isNowMine)
 		{
+			LogEvent(EventSignificance::Debug, e.get(),"Changing ownership to "+newOwner->GetName());
 			PStructure s = To<Structure>::DynamicCast(e);
 			#ifdef CLIENT
 				if (e->isOwnedByMe)
 				{
 					float t = 0.f;
-					if (!s && e->IsMobile())
-						e->UnregisterSensory(To<MobileEntity>::Cast(e)->preAnimationLocation,t,false);
-					else
-						e->UnregisterSensory(t,false);
+					e->UnregisterSensory(t);
 					#ifdef THOROUGLY_DEBUG_SENSORY
 						VerifySensory();
 					#endif
@@ -999,9 +1120,9 @@ namespace Objects
 				{
 					float t = 0.f;
 					if (!s && e->IsMobile())
-						e->RegisterSensory(To<MobileEntity>::Cast(e)->preAnimationLocation,t,false);
+						e->RegisterSensory(To<MobileEntity>::Cast(e)->preAnimationLocation,t);
 					else
-						e->RegisterSensory(t,false);
+						e->RegisterSensory(t);
 					#ifdef THOROUGLY_DEBUG_SENSORY
 						VerifySensory();
 					#endif
@@ -1044,78 +1165,39 @@ namespace Objects
 
 
 
-	void			ForeachMobileWorldEntity(const std::function<void(const PMobileEntity&)>&func)
+	void			ForeachMobileWorldEntity(const std::function<void(const PMobileEntity&)>&func, bool includeGhosts)
 	{
-		for (const PMobileEntity&e : vehicles)
-			func(e);
+		vehicles.Foreach(func);
 		#ifndef NO_SATELLITES
-			for (const PMobileEntity&e : satellites)
-				func(e);
+			satellites.Foreach(func);
 		#endif
-		for (const PMobileEntity&e : SubOrbital::planes)
-			func(e);
-	}
-
-	void			ForeachMobileEntityIncludingStored(const std::function<void(const PMobileEntity&)>&func)
-	{
-		for (const PMobileEntity&e : vehicles)
-			func(e);
-		#ifndef NO_SATELLITES
-			for (const PMobileEntity&e : satellites)
-				func(e);
-		#endif
-		for (const PMobileEntity&e : SubOrbital::planes)
-			func(e);
-		for (const PMobileEntity&e : storedMobileEntities)
-			func(e);
+		SubOrbital::planes.Foreach(func);
 		#ifdef CLIENT
-			for (const PMobileEntity&e : Marker::mobileGhosts)
-				func(e);
+			if (includeGhosts)
+				Marker::mobileGhosts.Foreach(func);
 		#endif
 	}
 
-
-	void			ForeachWorldEntityIncludingStored(const std::function<void(const PWorldEntity&)>&func)
+	void			ForeachMobileEntityIncludingStored(const std::function<void(const PMobileEntity&)>&func, bool includeGhosts)
 	{
-		for (const PWorldEntity&e : vehicles)
-			func(e);
-		for (const PWorldEntity&e : storedMobileEntities)
-			func(e);
-		#ifndef NO_SATELLITES
-			for (const PWorldEntity&e : satellites)
-				func(e);
-		#endif
-		for (const PMobileEntity&e : SubOrbital::planes)
-			func(e);
-		for (const PWorldEntity&e : structures)
-			func(e);
-		#ifdef CLIENT
-			for (const PWorldEntity&e : Marker::structureGhosts)
-				func(e);
-			for (const PWorldEntity&e : Marker::mobileGhosts)
-				func(e);
-		#endif
-
-
+		ForeachMobileWorldEntity(func,includeGhosts);
+		storedMobileEntities.Foreach(func);
 	}
 
-	void ForeachWorldEntity(const std::function<void(const PWorldEntity&)>&func)
+
+	void			ForeachWorldEntityIncludingStored(const std::function<void(const PWorldEntity&)>&func, bool includeGhosts)
 	{
-		for (const PWorldEntity&e : vehicles)
-			func(e);
-		#ifndef NO_SATELLITES
-			for (const PWorldEntity&e : satellites)
-				func(e);
-		#endif
-		for (const PWorldEntity&e : SubOrbital::planes)
-			func(e);
-		for (const PWorldEntity&e : structures)
-			func(e);
+		ForeachWorldEntity(func,includeGhosts);
+		storedMobileEntities.Foreach(func);
+	}
+
+	void ForeachWorldEntity(const std::function<void(const PWorldEntity&)>&func, bool includeGhosts)
+	{
+		ForeachMobileWorldEntity(func,includeGhosts);
+		structures.Foreach(func);
 		#ifdef CLIENT
-			for (const PWorldEntity&e : Marker::structureGhosts)
-				func(e);
-			for (const PWorldEntity&e : Marker::mobileGhosts)
-				func(e);
+			if (includeGhosts)
+				Marker::structureGhosts.Foreach(func);
 		#endif
 	}
 
@@ -1159,7 +1241,7 @@ namespace Objects
 						//TVec3<> center = Grid::ToWorld(m->location);
 						//if ()
 						bool seen = m->age > 1 &&	//don't delete hostile markers in round <2. grid might be outdated
-									 m->visualization && Grid::actualWorld.GridCanSee(m->location,m->visualization->GetHeight(),m->visualization->IsBroad());
+									 m->visualization && World::actual.GridCanSee(m->location,m->visualization->GetHeight(),m->visualization->IsBroad());
 						/*foreach(structures, s)
 							if ((*s)->isOwnedByMe && (*s)->CanSee(center, 0))
 							{
@@ -1276,7 +1358,7 @@ namespace Objects
 		/*static*/ void				Marker::Destroy(const TUniqueID&id, bool controlEnabled)
 		{
 			index_t index;
-			ASSERT1__(idMap.QueryAndUnset(id, index),id.ToString());	//this mustn't happen anymore
+			ASSERT1__(idMap.QueryAndUnset(id, index),ToString(id));	//this mustn't happen anymore
 			Marker&m = all[index];
 			if (m.UtilizesReferenceEntity())
 			{
@@ -1292,10 +1374,7 @@ namespace Objects
 						structureGhosts.FindAndErase(m.visualization);
 					}
 					#ifdef HAS_WINDOW
-						if (selectedEntity == m.visualization)
-						{
-							Deselect(controlEnabled);
-						}
+						ApplicationInterface::OnVanish(m.visualization,RemovalType::Vanished,true);
 					#endif
 					m.visualization.reset();
 				}
@@ -1421,73 +1500,42 @@ namespace Objects
 				return b->constName;
 			return ConstName::Empty;
 		}
-		/*virtual override*/	serial_size_t		Marker::GetSerialSize(bool exportSize) const
+
+		/*virtual override*/	void		Marker::Serialize(IWriteStream&s) const
 		{
-			serial_size_t size = sizeof(TUniqueID);	//marker id;
-			size += 1;	//type
-			size += sizeof(createdInRound);
-			size += sizeof(location);
+			s.WritePrimitive(id);
+			s.WritePrimitive((UINT8)type);
+			s.WritePrimitive(createdInRound);
+			s.WritePrimitive(location);
 			if (UtilizesReferenceEntity())
 			{
-				size += 2 * sizeof(TUniqueID);	//referenced entity id
-
-
-				String t0 = Convert(this->referencedType[0]);
-				String t1 = Convert(this->referencedType[1]);
-				size += t0.GetSerialSize(true);
-				size += t1.GetSerialSize(true);
-//				size += sizeof(this->referencedType);
-				//this->referencedType.GetSerialSize(exportSize);
+				s.WritePrimitive(this->referenceEntity);
+				s.WritePrimitive(this->referenceEntityOwner);
+				SerialSync(s,Convert(this->referencedType[0]));
+				SerialSync(s,Convert(this->referencedType[1]));
 			}
-			return size;
 		}
-		/*virtual override*/	bool		Marker::Serialize(IWriteStream&outStream, bool exportSize) const
-		{
-			if (!outStream.WritePrimitive(id) || !outStream.WritePrimitive((UINT8)type)
-				 || !outStream.WritePrimitive(createdInRound)
-				|| !outStream.WritePrimitive(location)
-				)
-				return false;
-			if (UtilizesReferenceEntity())
-			{
-				if (!outStream.WritePrimitive(this->referenceEntity) || !outStream.WritePrimitive(this->referenceEntityOwner))
-					return false;
-				String t0 = Convert(this->referencedType[0]);
-				String t1 = Convert(this->referencedType[1]);
-				return t0.Serialize(outStream,true) && t1.Serialize(outStream,true);
-			}
-			return true;
-		}
-		/*virtual override*/	bool		Marker::Deserialize(IReadStream&inStream, serial_size_t fixedSize)
+		/*virtual override*/	void		Marker::Deserialize(IReadStream&inStream)
 		{
 			UINT8 typei;
-			if (!inStream.ReadPrimitive(id) || !inStream.ReadPrimitive(typei) || !inStream.ReadPrimitive(createdInRound)
-				||  !inStream.ReadPrimitive(location)
-				)
-				return false;
+			inStream.ReadPrimitive(id);
+			inStream.ReadPrimitive(typei);
+			inStream.ReadPrimitive(createdInRound);
+			inStream.ReadPrimitive(location);
 			type = Type::Reinterpret(typei);
 			if (UtilizesReferenceEntity())
 			{
-				if (fixedSize != EmbeddedSize)
-				{
-					fixedSize -= sizeof(TUniqueID) + 1 + sizeof(createdInRound) + sizeof(TUniqueID) + sizeof(location);
-					{
-						fixedSize -= sizeof(TUniqueID);
-					}
-				}
 				String t0,t1;
-				if (!inStream.ReadPrimitive(this->referenceEntity))
-					return false;
+				inStream.ReadPrimitive(this->referenceEntity);
 
 				if (ApplicationInterface::globalVersionOfCurrentFile >= ApplicationInterface::FileVersions::MarkersHaveOwner)
 				{
-					if (!inStream.ReadPrimitive(this->referenceEntityOwner))
-						return false;
+					inStream.ReadPrimitive(this->referenceEntityOwner);
 				}
 				else
 					this->referenceEntityOwner = TUniqueID::Empty();
-				if (!t0.Deserialize(inStream,EmbeddedSize) || !t1.Deserialize(inStream,EmbeddedSize))
-					return false;
+				SerialSync(inStream,t0);
+				SerialSync(inStream,t1);
 				this->referencedType[0] = Convert(t0);
 				this->referencedType[1] = Convert(t1);
 				//this->referenceEntityType.Deserialize(inStream, fixedSize);
@@ -1497,7 +1545,6 @@ namespace Objects
 				referenceEntity = TUniqueID::Empty();
 				referencedType[0] = referencedType[1] = ConstName::Empty;
 			}
-			return true;
 		}
 
 
@@ -1518,7 +1565,7 @@ namespace Objects
 
 
 
-		void		Faction::RestoreMarkers(const ArrayData<Marker>&source)
+		void		Faction::RestoreMarkers(const Ctr::ArrayData<Marker>&source)
 		{
 			ASSERT__(markers.IsEmpty());
 			ASSERT__(markerMap.IsEmpty());
@@ -1539,7 +1586,7 @@ namespace Objects
 			index_t at;
 			if (!markerMap.QueryAndUnset(markerID, at))
 			{
-				LogEvent(EventClass::Preset::error,nullptr,"Unable to destroy Marker. ID not set " + markerID.ToString());
+				LogEvent(EventClass::Preset::error,nullptr,"Unable to destroy Marker. ID not set " + ToString(markerID));
 				return false;
 			}
 			ASSERT_LESS__(at, markers.Count());
@@ -1596,23 +1643,44 @@ namespace Objects
 
 		/*static*/ void	Faction::Kill(const PFaction&f)
 		{
-			LogEvent(EventSignificance::Debug,nullptr, "Erasing faction "+f->id.ToString());
-			static Buffer0<PWorldEntity>	toDelete;
-			for (index_t i = 0; i < f->structures.Count(); i++)
-				if (!f->structures[i].lock()->IsIndestructible())
-				{
-					toDelete << f->structures[i].lock();
-				}
+			if (!f)
+			{
+				DBG_FATAL__("Trying to kill null-faction");
+				LogEvent(EventClass::Preset::internalError,nullptr, "Trying to kill null-faction");
+				return;
+			}
+			if (f->isDead)
+			{
+				LogEvent(EventClass::Preset::commandRejected,nullptr, "Faction "+ToString(f->id)+" has already ended");
+				return;
+			}
+			LogEvent(EventSignificance::Debug,nullptr, "Erasing faction "+ToString(f->id));
 
-			for (index_t i = 0; i < f->allMobiles.Count(); i++)
-				//if (vehicles[i]->owner == f)
-				{
-					toDelete << f->allMobiles[i].lock();
-				}
-			float t=0;
-			foreach (toDelete,del)
-				Remove(*del,Objects::RemovalType::ControlledExplosion,t,false);
-			toDelete.Clear();
+			{
+				auto lock = f->LockSensorUpdates();
+				static Ctr::Buffer0<PWorldEntity>	toDelete;
+				for (index_t i = 0; i < f->structures.Count(); i++)
+					if (!f->structures[i].lock()->IsIndestructible())
+					{
+						toDelete << f->structures[i].lock();
+					}
+
+				for (index_t i = 0; i < f->allMobiles.Count(); i++)
+					//if (vehicles[i]->owner == f)
+					{
+						toDelete << f->allMobiles[i].lock();
+					}
+				float t=0;
+				foreach (toDelete,del)
+					if (*del)
+						Remove(*del,Objects::RemovalType::ControlledExplosion,t,false);
+				toDelete.Clear();
+				ASSERT__(f->allMobiles.IsEmpty());	//should have cascaded
+				ASSERT__(f->structures.IsEmpty());
+			}	//exiting lock: recomputing sensory of f, which is now empty, so should be fast
+
+			f->isDead = true;
+			f->hasUnitClasses = UnitClass::None;
 
 			if (f != nexus)
 			{
@@ -1697,6 +1765,7 @@ namespace Objects
 		return float(random()) / float(random.max());
 	}
 
+#if 0
 	/*static*/ void Faction::IDToColor(TVec3<>&rs, const TUniqueID&id, int iteration/*=0*/)
 	{
 		USHORT	v0 = *(const USHORT*)id.bytes,
@@ -1709,15 +1778,57 @@ namespace Objects
 		rs.v[primary] = sqrt(1.f - sqr(secondaryLevel));
 		rs.v[secondary] = secondaryLevel;
 	}
+#endif /*0*/
 
-	void		Faction::InitID(const TUniqueID&toID, bool recomputeColor/*=true*/)
+#ifndef CLIENT
+	/*static*/ void Faction::FindFreeColor(float3&outColor)
+	{
+		static Random random;
+		float bestDist = -1;
+		for (index_t i = 0; i < 20; i++)
+		{
+			TVec3<> candidate;
+			Vec::HSL2RGB(float3(random.NextFloat(),0.5f + random.NextFloat(0.5f),0.5f),candidate);
+			count_t competition = 0;
+			float closest = std::numeric_limits<float>::max();
+			ForeachFaction([&](const PFaction&f)
+			{
+				if (&f->color != &outColor)
+				{
+					competition++;
+					float dist = Vec::quadraticDistance(candidate,f->color);
+					closest = M::vmin(dist,closest);
+				}
+			});
+			if (closest > bestDist)
+			{
+				bestDist = closest;
+				outColor = candidate;
+			}
+			if (!competition)
+			{
+			//	LogEvent(EventClass::Preset::configurationPrint,"No other faction. Using color as is");
+				break;	//no point randomizing more often
+			}
+		}
+		//LogEvent(EventClass::Preset::configurationPrint,"Final color is "+outColor.ToString());
+	}
+#endif
+
+	void		Faction::InitID(const TUniqueID&toID,bool nexusFaction)
 	{
 		if (toID == TUniqueID::Empty())
 			id.Generate();
 		else
 			id = toID;
-		if (recomputeColor)
-			IDToColor(color,id);
+		#ifndef CLIENT
+			if (nexusFaction)
+				color = float3 (1.f, 0.25f, 0.25f);
+			else
+				FindFreeColor(color);
+		#else
+			color = float3();
+		#endif
 	}
 
 }

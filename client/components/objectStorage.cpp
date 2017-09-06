@@ -4,6 +4,8 @@
 #include <objects/vehicle.h>
 #include <objects.h>
 #include <runtimeConfig.h>
+#include "visual/terrain.h"
+#include "clientEvents.h"
 
 namespace Objects
 {
@@ -36,19 +38,25 @@ namespace Objects
 				else
 					objects << e; 
 			}
-		});
+		},true);
 		markers.swap(Marker::all);
 		RuntimeConfig::UnitLimits::Export(unitLimits);
-		Objects::FlushAllData(true);
-		Grid::actualWorld.ResetStructureCounters(!preserveGridVisibility);
-		Grid::SetAllFamiliesOutdated(0);
+		GlobalEvents::FlushObjects();
+		BaseGrid::FamiliesChanged	fam;
+		if (World::actual.ResetStructureCounters(!preserveGridVisibility,&fam))
+		{
+			#ifdef HAS_WINDOW
+				foreach (fam,f)
+					VisualTerrain::InvalidateFamily(*f);	//recompile as a result to structure counts (they darken the terrain) reset
+			#endif
+		}
 		loaded = true;
 	}
 
 	void	Storage::Export()
 	{
-		Objects::FlushAllData(true);
-		Grid::actualWorld.ResetStructureCounters(true);
+		GlobalEvents::FlushObjects();
+		World::actual.ResetStructureCounters(true);
 		markers.swap(Marker::all);
 		RuntimeConfig::UnitLimits::Import(unitLimits);
 		for (const PWorldEntity&e : objects)

@@ -9,7 +9,7 @@ namespace Objects
 {
 
 	/*static*/ Buffer0<ConstName>	SkyHub::supportsProduction;
-	Buffer0<PSatellite>	satellites;
+	SharedContainer<Satellite>	satellites;
 	//bool					satellitesAreLocked = false;
 
 	#ifndef ONE_COMPOUND_PER_FACTION
@@ -116,12 +116,12 @@ namespace Objects
 		if (turret->baseGroundScanningRange > 0.f)
 		{
 			float range = EMPModify(turret->GetGroundScanningRange(owner),2);
-			Grid::actualWorld.MapSensorState(loc.stackID,range,loc.height,turret->groundScannerPenetration,skySensorState);
-			Grid::actualWorld.UpdateSensorState(skySensorState);
+			World::actual.MapSensorState(loc.stackID,range,loc.height,turret->groundScannerPenetration,skySensorState);
+			World::actual.UpdateSensorState(skySensorState);
 			#ifdef CLIENT
 				if (isOwnedByMe)
 				{
-					Grid::actualWorld.InsertSensorCoverage(skySensorState);
+					World::actual.InsertSensorCoverage(skySensorState);
 				}
 			#else
 				owner->RegisterSensorCreation(skySensorState,atTime,checkChangesNow,newContacts);
@@ -141,7 +141,7 @@ namespace Objects
 			#ifdef CLIENT
 				if (isOwnedByMe)
 				{
-					Grid::actualWorld.RemoveSensorCoverage(skySensorState);
+					World::actual.RemoveSensorCoverage(skySensorState);
 				}
 			#else
 				owner->RegisterSensorRemoval(skySensorState,atTime,checkChangesNow);
@@ -157,7 +157,7 @@ namespace Objects
 			if (turret->baseGroundScanningRange > 0.f)
 			{
 				Grid::SkySensorState state = skySensorState;
-				if (Grid::actualWorld.UpdateSensorState(skySensorState))
+				if (World::actual.UpdateSensorState(skySensorState))
 				{
 					LogEvent(EventSignificance::Common,this,"Ground-sensor change detected");
 
@@ -202,9 +202,9 @@ namespace Objects
 		//	if (turret->groundScanningRange > 0.f)
 		//	{
 		//		float range = EMPModify(turret->groundScanningRange,2);
-		//		Grid::actualWorld.MapSensorState(location.stackID,range,location.height,turret->groundScannerPenetration,skySensorState);
-		//		Grid::actualWorld.UpdateSensorState(skySensorState);
-		//		Grid::actualWorld.InsertSensorCoverage(skySensorState);
+		//		World::actual.MapSensorState(location.stackID,range,location.height,turret->groundScannerPenetration,skySensorState);
+		//		World::actual.UpdateSensorState(skySensorState);
+		//		World::actual.InsertSensorCoverage(skySensorState);
 		//	}
 		//}
 
@@ -215,7 +215,7 @@ namespace Objects
 
 		//	if (turret->groundScanningRange > 0.f)
 		//	{
-		//		Grid::actualWorld.RemoveSensorCoverage(skySensorState);
+		//		World::actual.RemoveSensorCoverage(skySensorState);
 		//	}
 		//}
 
@@ -229,12 +229,12 @@ namespace Objects
 
 		//		if (turret->groundScanningRange > 0.f)
 		//		{
-		//			Grid::actualWorld.RemoveSensorCoverage(skySensorState);
+		//			World::actual.RemoveSensorCoverage(skySensorState);
 
 		//			float range = EMPModify(turret->groundScanningRange,2);
-		//			Grid::actualWorld.MapSensorState(to.stackID,range,to.height,turret->groundScannerPenetration,skySensorState);
-		//			Grid::actualWorld.UpdateSensorState(skySensorState);
-		//			Grid::actualWorld.InsertSensorCoverage(skySensorState);
+		//			World::actual.MapSensorState(to.stackID,range,to.height,turret->groundScannerPenetration,skySensorState);
+		//			World::actual.UpdateSensorState(skySensorState);
+		//			World::actual.InsertSensorCoverage(skySensorState);
 		//		}
 		//	}
 
@@ -245,25 +245,25 @@ namespace Objects
 
 			/*virtual*/ void WorldEntity::RegisterWorldSensory()
 			{
-				Grid::actualWorld.InsertSensor(location,GetScanningRange());
+				World::actual.InsertSensor(location,GetScanningRange());
 
 			}
 
 			/*virtual*/ void WorldEntity::UnregisterWorldSensory()
 			{
-				Grid::actualWorld.RemoveSensor(location,GetScanningRange());
+				World::actual.RemoveSensor(location,GetScanningRange());
 			}
 
 			/*virtual*/ void	WorldEntity::MoveWorldSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to)
 			{
-				Grid::actualWorld.MoveSensor(from,to,GetScanningRange());
+				World::actual.MoveSensor(from,to,GetScanningRange());
 			}
 
 		#endif /*0*/
 
 
 
-		/*virtual override*/ void Satellite::DescribeType(BaseCommand::Label&outResult, UINT32 descFlags)
+		/*virtual override*/ void Satellite::DescribeType(Command::Base::Label&outResult, UINT32 descFlags)
 		{
 			Super::DescribeType(outResult,descFlags);
 			outResult.BeginBrief();
@@ -401,13 +401,13 @@ namespace Objects
 		#else
 			index_t finer = who->location.stackID;
 		#endif
-		int h = Grid::actualWorld.cellStack[finer].FindTopClearOverNonClear(true);
+		int h = World::actual.cellStack[finer].FindTopClearOverNonClear(true);
 		if (h == badHeight)
 			return badHeight;
 		#ifdef HYBRID_GRID
 			for (int j = 0; j < c.neighborhood.numNeighbors; j++)
 			{
-				int h2 = Grid::actualWorld.cellStack[c.neighborhood.neighborID[j]].FindTopClearOverNonClear(true);
+				int h2 = World::actual.cellStack[c.neighborhood.neighborID[j]].FindTopClearOverNonClear(true);
 				if (h2 == badHeight)
 					return badHeight;
 				h = std::max(h2,h);
@@ -428,11 +428,11 @@ namespace Objects
 			commands.Add(new
 				EntityConstructionCommand(s->GetTypeName(), nullptr,nullptr, s,
 				exec,
-				[isStructure](bool controlEnabled)->BaseCommand::Flags
+				[isStructure](bool controlEnabled)->Objects::CommandFlags
 				{
 					if (!isStructure)
 						return CommonCmd::IdleCheck(controlEnabled);
-					return MyCmd::CanBuildStructure() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+					return MyCmd::CanBuildStructure() ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
 				}
 				))->RasterizeImage();
 		#endif
@@ -626,8 +626,8 @@ namespace Objects
 				Grid::SkySensorState state = skySensorState;
 				LogEvent(EventSignificance::Common,this,"Processing ground-sensor motion");
 				float range = EMPModify(turret->groundScanningRange,2);
-				Grid::actualWorld.MapSensorState(newLocation.stackID,range,newLocation.height,turret->groundScannerPenetration,skySensorState);
-				Grid::actualWorld.UpdateSensorState(skySensorState);
+				World::actual.MapSensorState(newLocation.stackID,range,newLocation.height,turret->groundScannerPenetration,skySensorState);
+				World::actual.UpdateSensorState(skySensorState);
 
 				owner->RegisterSensorCreation(skySensorState,atTime,false, newContacts);
 				atTime += timeEpsilon;
@@ -776,7 +776,7 @@ namespace Objects
 		}
 
 	
-		bool	Satellite::DirectTo(mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
+		bool	Satellite::DirectTo(mode_t mode, Ctr::ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
 		{
 			switch (mode)
 			{
@@ -895,7 +895,7 @@ namespace Objects
 			float fromDest2 = Vec::quadraticDistance(dest3,world);
 			if (fromDest2 > sqr(turret->explosionRadius))
 				continue;
-			if (!Grid::actualWorld.LowCellIsClear(current) || 
+			if (!World::actual.LowCellIsClear(current) || 
 				!Turret::CanHit(turret->trajectoryType, range,source,zOffset,current))
 				continue;
 			//float fromSource2 = Vec::quadraticDistance(source3,world);
@@ -928,7 +928,7 @@ namespace Objects
 
 	
 	#ifndef CLIENT
-		/*virtual override*/ bool					Satellite::FillAttackQueue()
+		/*virtual override*/ bool					Satellite::FrontQueuePossibleAttacks()
 		{
 			if (!turret->CanAttack() || !HasAmmoForShot())
 			{
@@ -1042,7 +1042,7 @@ namespace Objects
 					&& CountPossibleAttacks() > 0 
 					&& ExtCanHit(location,target->location,outTarget)
 					//&& d2 > sqr(turret->explosionRadius)
-					&& TraceTrajectory(owner->currentState, target->location,trajectory,iat,ic)==TurretTrajectory::ReachesTarget;
+					&& TraceTrajectory(owner->knownWorld, target->location,trajectory,iat,ic)==TurretTrajectory::ReachesTarget;
 		}
 
 

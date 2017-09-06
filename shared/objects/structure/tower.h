@@ -1,0 +1,187 @@
+#pragma once
+
+#include "../structure.h"
+
+
+namespace Objects
+{
+	/**
+	Stationary defence building
+	All towers feature turrets on their top, which define their functionality. Towers and satellites are the only
+	WorldEntity's that can fire automatically during movement phase. They are therefore particularly effective against approaching
+	vehicles, and must typically be disabled via EMP first.
+	*/
+	class Tower : public WorkingStructure, public TurretBase
+	{
+	private:
+		static bool					setup;
+		typedef WorkingStructure	Super;
+		friend class Super;
+		friend void Create();
+		//friend class WorkingStructureT<Tower>;
+		/**/						Tower(Component::Turret*turret) : TurretBase(turret)
+		{
+			#ifdef HAS_WINDOW
+				Super::shape = staticShape;
+			#endif
+		}
+		/**/						Tower(BaseAttributeTable*table, Component::Turret*turret, const OwnerParameter&owner, const Grid::LCellIdI&location, float time) 
+									: Super(table,owner,location,true,time),TurretBase(turret)
+		{
+			#ifdef HAS_WINDOW
+				Super::shape = staticShape;
+			#endif
+		}
+
+		//WorkingEntity overrides (private):
+		virtual bool				WouldLikeToEnable() const override {return true;}
+
+
+	public:
+
+		static Ctr::Buffer0<PTower>	globalPrototypes;
+
+		ResourceVector				storage;
+
+
+		struct AttackTask
+		{
+			//TUniqueID				id;
+			Grid::LCellIdI			target;
+
+			#ifdef CLIENT
+				PClientAttachment	visualization;
+			#else
+				bool				autoTarget;
+			#endif
+
+		};
+
+
+		static float				foundationHeight;	//unscaled height of the base geometry, and vertical offset to position turret
+		static float				GetEffectiveFoundationHeight() {return foundationHeight * Grid::UnitScale;}
+
+
+
+		float						attackActionLeft=1.f;
+
+		#ifdef CLIENT
+			Buffer0<AttackTask>			attackQueue;
+
+			#ifdef HAS_WINDOW
+				static CommandContainer	commands;
+				/**
+				Render-ready, object-space instruction to be used for all instances of this structure type
+				*/
+				static PClientAttachment	staticShape;
+				/**
+				Intersectable, object-space geometry of all instances of this structure type
+				*/
+				static Geometry			geometry;
+			#endif
+
+			AttackTask&				AppendTask(const Grid::LCellIdI&attackTarget);
+		#else
+			Ctr::Queue<AttackTask>	attackQueue;
+
+
+			void					BeginAttackPhase()	{}
+
+			bool					AttackNext(const Grid::LCellIdI&target, bool autoTarget);
+			bool					ClearTasks();
+			bool					DropLastTask();
+
+			bool					WouldAttack(const PWorldEntity&e, Grid::LCellIdI&outTarget, float entityTime);
+			bool					IsIdleButCouldAttack(float atTime) {return attackQueue.IsEmpty() && HasAmmoForShot();}
+
+		#endif
+
+
+
+
+		#ifndef ONE_COMPOUND_PER_FACTION
+			ResourceVector			GetMaxStorageCapacity()	const	{return turret->baseStorageCapacity * 2;};
+		#else
+			ResourceVector			GetMaxStorageCapacity()	const	{return ResourceVector();};
+		#endif
+
+
+
+
+		//WorkingStructure overrides:
+		virtual void				GetResourceVector(ResourceVector&, ResourceVector&storage, ResourceVector&max) const override	{storage = this->storage; max = GetMaxStorageCapacity();}
+		#ifndef CLIENT
+			virtual void			ProcessLeftovers(ResourceVector&v, index_t iteration, float atTime) override;
+		#endif
+		virtual void				SetResourceStorage(const ResourceVector&storage)override
+		{
+			this->storage = storage;
+			this->storage.Cap(this->GetMaxStorageCapacity());
+		};
+
+		//Structure overrides:
+		virtual bool				ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)	override	{return true;}
+		virtual placement_t			CheckPlacement(const Grid::LCellIdI&location) override { return CommonCheckStructurePlacement(location,2,true); }
+		virtual int					GetHeight() const override {return 2;}
+
+		//BaseEntity overrides:
+		virtual String				GetTypeName() const override { return turret->typeName+" Tower"; };
+		virtual ConstName			GetCTypeName() const override {return turret->constTowerName;}
+
+		//WorldEntity overrides:
+		#ifndef CLIENT
+			virtual void			ClearSafeTasks() override	{this->ClearTasks();};
+		#endif
+		virtual bool				IsTower() const override {return true;}
+		virtual float3				GetScanningCenter(const Grid::LCellIdI&loc) const override;
+
+		//virtual float				GetScanningRange() const override;
+		//virtual String				DescribeScanningRange() const override;
+		//virtual int					GetMaxHealth() const override;
+		//virtual String				DescribeMaxHealth() const override;
+		virtual void				PrototypeSetup()	override;
+		#ifdef HAS_WINDOW
+			virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
+			virtual bool			TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override;
+			virtual void			DescribeType(Description&, UINT32 descFlags) override;
+		#endif
+		#ifndef CLIENT
+			virtual void			OnConstructionFinished(float&atTime) override;
+			virtual bool			DirectTo(CursorMode, Ctr::ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
+		#endif
+		//virtual int					GetConstructionCost() const override {return this->GetTable()->constructionCost.getValue(GetResearchState()) + turret->productionCosts(owner);}
+		#ifndef NO_HIBERNATION
+			virtual int				GetUplinkTraffic() const override {return turret->uplinkTraffic;}
+			virtual int				GetUplinkPriority() const override {return 1000;}
+		#endif
+		virtual PWorldEntity		CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override {return PWorldEntity(new Tower(table,turret,owner,location,atTime));};
+		virtual PTurretBase			GetTurretBase(float&zOffset) override { zOffset = GetEffectiveFoundationHeight(); return To<Tower>::Cast(shared_from_this());}
+		virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = GetEffectiveFoundationHeight(); return To<const Tower>::Cast(shared_from_this());}
+
+		//Structure overrides:
+		virtual int					GetBroadHeight() const override {return std::max(1,GetHeight()-1);}
+		virtual Category			GetCategory() const override {return Category::Defense;}
+
+		//TurretBase overrides:
+		virtual OwnerParameter		GetOwner() const override {return owner;};
+		virtual bool				NextTaskIsAttack() const override {return health > 0 && attackQueue.IsNotEmpty();}
+		virtual float				GetAttackActionLeft() const override {return attackActionLeft;};
+		virtual float				GetFlatAttackRange() const override;
+		virtual String				DescribeFlatAttackRange() const override;
+		virtual bool				HasAmmoForShot() override;
+		#ifndef CLIENT
+			virtual void			Attack(float&)	override;
+			virtual bool			FrontQueuePossibleAttacks() override;
+		#endif
+	};
+
+
+
+	inline PTower		ToTower(const PWorldEntity&e)
+	{
+		PWorkingStructure ws = ToWorkingStructure(e);
+		if (!ws || !ws->IsTower())
+			return PTower();
+		return To<Tower>::Cast(ws);
+	}	
+}

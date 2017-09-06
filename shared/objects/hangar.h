@@ -3,11 +3,8 @@
 
 
 #include "types.h"
-#include "../sphereGrid.h"
-
-#ifdef HAS_WINDOW
-	#include "visualCommands.h"
-#endif
+#include "../grid/stack.h"
+#include "../observer.h"
 
 namespace Objects
 {
@@ -22,7 +19,7 @@ namespace Objects
 
 			static int2				cmdLeftCoords,
 									cmdRightCoords;
-			static IconCommand		cmdLeft,		//!< Arrow button to scroll left
+			static Command::PBase	cmdLeft,		//!< Arrow button to scroll left
 									cmdRight;		//!< Arrow button to scroll right
 		#endif
 
@@ -30,7 +27,7 @@ namespace Objects
 		{
 			WMobileEntity	entity;
 			#ifdef HAS_WINDOW
-				PDeployMobileCommand	deployCommand;
+				Command::PBase	deployCommand;
 			#endif
 
 			/**/			TStored()	{}
@@ -38,7 +35,8 @@ namespace Objects
 
 			bool			operator==(const PMobileEntity&e) const {return entity.lock() == e;}
 		};
-		Buffer0<TStored>	stored;
+		Ctr::Buffer0<TStored>	stored;
+		static Observable<Hangar&,TStored&>	onStored;
 
 		virtual			~Hangar()	{}
 		/**
@@ -59,6 +57,11 @@ namespace Objects
 		Checks the actual storage, not the @a storedIn member of @a e
 		*/
 		bool			HasStoredLocally(const PMobileEntity&e) const;
+
+		/**
+		Queries the number of currently loaded mobile entities
+		*/
+		virtual count_t	GetLoad() const =0;
 
 		/**
 		Must be called from the WorldEntity::OnDestroy() override.

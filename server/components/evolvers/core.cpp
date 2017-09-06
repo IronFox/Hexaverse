@@ -12,7 +12,7 @@ namespace Evolver
 
 	namespace CoreDetails
 	{
-		Queue<TExplosion>	pendingExplosions;
+		Ctr::Queue<TExplosion>	pendingExplosions;
 
 		/**
 		Like vehicles, towers have an attack action floation point value. Unlike vehicles, they are not part of the
@@ -24,7 +24,7 @@ namespace Evolver
 		Unsupplied satellites may be destroyed.
 		Must be called once per round.
 		@param t Server time
-		@param terrainChanged Set true if the terrain changed sind the last invocation of this function. If in doubt pass true. 
+		@param terrainChanged Set true if the terrain changed since the last invocation of this function. If in doubt pass true. 
 		*/
 		void			CheckOrbitalSupplyAndSensory(float&t, bool terrainChanged);
 
@@ -61,8 +61,8 @@ namespace Evolver
 			bool		operator<(const TAttackReference&other) const {return GetInitiative() < other.GetInitiative();}
 		};
 
-		Buffer<TAttackReference>	attackingEntities;
-		float						attackTime = 0.f;
+		Ctr::Buffer<TAttackReference>	attackingEntities;
+		//float						attackTime = 0.f;
 
 
 
@@ -95,16 +95,23 @@ namespace Evolver
 		}
 
 
-		Buffer<TMovementReference>	movingVehicles,movingVehicles2;
+		Ctr::Buffer<TMovementReference>	movingVehicles,movingVehicles2;
 
 		void		SignalMotionPhase()
 		{
-			Objects::ForeachMobileWorldEntity([](const Objects::PMobileEntity&v)
+			float attackTime = 0;
+			Objects::ForeachWorldEntity([&attackTime](const Objects::PWorldEntity&e)
+			{
+				attackTime = std::max(attackTime,e->entityTime);
+
+			},false);
+
+			Objects::ForeachMobileWorldEntity([attackTime](const Objects::PMobileEntity&v)
 			{
 				v->BeginMotionPhase(attackTime);
 				if (v->IsBuilding() || v->NextTaskIsMotion())
 					movingVehicles.Append(TMovementReference(v));
-			});
+			},false);
 		}
 
 		bool		ProcessNextVehicleAttack()
@@ -123,14 +130,14 @@ namespace Evolver
 				SignalMotionPhase();
 				return false;
 			}
+			Objects::PWorldEntity e = attackingEntities.last().eref.lock();
 			Objects::PTurretBase b = attackingEntities.last().tref.lock();
-			b->Attack(attackTime);
+			b->Attack(e->entityTime);
 			//PWorldEntity e = attackingEntities.last().eref.lock();
 
 			while (attackingEntities.IsNotEmpty())
 			{
 				b = attackingEntities.last().tref.lock();
-				Objects::PWorldEntity e = attackingEntities.last().eref.lock();
 				if (!b || !b->NextTaskIsAttack() || b->CountPossibleAttacks() <= 0 || !b->HasAmmoForShot() || !e || e->empDamageLevel)
 					attackingEntities.EraseLast();	//happened
 				else
@@ -191,7 +198,7 @@ namespace Evolver
 			{
 				if (doHeal(e))
 					e->HealEMPDamage(atTime);
-			});
+			},false);
 		}
 
 
@@ -216,30 +223,39 @@ namespace Evolver
 			});
 			Objects::ForeachFaction([](const Objects::PFaction&f)
 			{
+				f->statistics.SignalCompoundProcessingEnd();
 				f->researchState.FinalizeRound(f);
 			});
+
+			if (Objects::Faction::nexus && Game::Config::Nexus::roundsPerResearchPoint)
+			{
+				if (((RuntimeConfig::roundNumber.main+1)%Game::Config::Nexus::roundsPerResearchPoint)==0)
+				{
+					LogEvent(EventSignificance::Common,Objects::Faction::nexus,"Advancing Nexus research state");
+					Objects::Faction::nexus->researchState.AdvanceNexusResearch();
+				}
+			}
 
 
 			Objects::ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
 			{
-				e->ResetMotionTime();
-			});
+				e->ResetEntityTime();
+			},false);
 
 			Objects::ForeachMobileWorldEntity([](const Objects::PMobileEntity&v)
 			{
 				if (v->IsHibernating())
 					return;
-				attackTime = 0;
 				v->BeginAttackPhase();
 
 				Objects::PTurretBase b = v->GetTurretBase();
 				if (!b || !b->turret->CanAttack() || !b->CountPossibleAttacks())
 					return;
 
-				if (v->IsSentry())
+				//if (v->IsSentry())
 				{
-					if (v->myTasks.IsEmpty())
-						v->FillAttackQueue();
+					if (v->myTasks.IsEmpty() || (b->turret->ignoresVehicleMotion && !v->NextTaskIsAttack()))
+						v->FrontQueuePossibleAttacks();
 				}
 
 				if (v->NextTaskIsAttack())
@@ -254,13 +270,13 @@ namespace Evolver
 					{
 						LogEvent(EventClass::Preset::commandRejected,v.get(),"Insufficient ammunition. Attacks cancelled");
 						v->EraseFirstTask();
-						v->RegisterChange(Objects::WorldEntity::TasksChanged,v->motionTime);
+						v->RegisterChange(Objects::WorldEntity::TasksChanged,v->entityTime);
 					}
 					//ref.initiative = v->GetAttackInitiative();
 					//ref.attacksLeft = v->CountPossibleAttacks();
 				}
 
-			}
+			},false
 			);
 			Objects::ForeachFaction([](const Objects::PFaction&f)
 			{
@@ -269,18 +285,17 @@ namespace Evolver
 					Objects::PTower t = _t->lock();
 					if (!t || t->IsHibernating())
 						continue;
-					attackTime = 0;
 					t->BeginAttackPhase();
 
 					if (t->turret->CanAttack())
 					{
-						if (t->attackQueue.IsEmpty() && !t->FillAttackQueue())
+						if (t->attackQueue.IsEmpty() && !t->FrontQueuePossibleAttacks())
 							continue;
 						if (!t->HasAmmoForShot())
 						{
 							LogEvent(EventClass::Preset::commandRejected,t.get(),"Insufficient ammunition. Attacks cancelled");
 							t->attackQueue.Clear();
-							t->RegisterChange(Objects::WorldEntity::TasksChanged,t->motionTime);
+							t->RegisterChange(Objects::WorldEntity::TasksChanged,t->entityTime);
 							continue;
 						}
 
@@ -319,12 +334,6 @@ namespace Evolver
 
 		void CheckOrbitalSupplyAndSensory(float&t, bool terrainChanged)
 		{
-			if (terrainChanged)
-			{
-				LogEvent(EventSignificance::Debug,nullptr,"Terrain changed, updating ground-sensory");
-				foreach (Objects::SubOrbital::planes,p)
-					(*p)->RefreshGroundSensor(t);
-			}
 			#ifndef NO_SATELLITES
 				Objects::RefreshSkyHubConnections();
 			
@@ -352,7 +361,7 @@ namespace Evolver
 							Grid::LCellIdI newLocation = sat->location;
 							newLocation.height = Objects::Satellite::DeclinedResidenceHeight;
 							//t+= 0.025f;
-							sat->PlaceExactlyAt(newLocation, 0.1f, 0.f);
+							sat->HandleNow(sat->PlaceExactlyAt(newLocation, 0.1f, 0.f));
 						}
 					}
 					else
@@ -361,7 +370,7 @@ namespace Evolver
 							LogEvent( EventClass(EventSignificance::Uncommon, EventFlavor::Gain),sat.get(),"Satellite height restored");
 							Grid::LCellIdI newLocation = sat->location;
 							newLocation.height = Objects::Satellite::BaseResidenceHeight;
-							sat->PlaceExactlyAt(newLocation, 0.1f, 0.f);
+							sat->HandleNow(sat->PlaceExactlyAt(newLocation, 0.1f, 0.f));
 						}
 				}
 				//satellitesAreLocked = false;
@@ -380,7 +389,11 @@ namespace Evolver
 		{
 			static TExplosion exp;
 			while (pendingExplosions >> exp)
-				Objects::Explode(ApplicationInterface::TAttack(),Grid::ToHigh(exp.center),Grid::ToWorld(exp.center),exp.radius,exp.damageLevel,false,exp.atTime);
+			{
+				ApplicationInterface::TAttack at;
+				at.attackFrom = exp.causedBy;
+				Objects::Explode(at,Grid::ToHigh(exp.center),Grid::ToWorld(exp.center),exp.radius,exp.damageLevel,false,exp.atTime);
+			}
 
 			switch (RuntimeConfig::phase)
 			{
@@ -400,8 +413,8 @@ namespace Evolver
 						animationLength = 0.f;
 						Objects::ForeachWorldEntityIncludingStored([&animationLength](const Objects::PWorldEntity&m)
 						{
-							animationLength = std::max(m->motionTime,animationLength);
-						});
+							animationLength = std::max(m->entityTime,animationLength);
+						},false);
 						Game::PerformNewRoundLogic(animationLength);
 						ResetTowerAttackAction(animationLength);
 						CheckOrbitalSupplyAndSensory(animationLength,World::terrainChanged);
@@ -431,6 +444,8 @@ namespace Evolver
 	/*virtual override*/ void Core::FinishRoundProcessing()
 	{
 		RuntimeConfig::roundNumber.main++;
+		
+		Objects::Statistics::SignalNewRoundBegin(true);
 
 		Game::Network::ChangePhase(RuntimeConfig::Phase::CommandPhase,Game::Config::roundTimer > 0 && !Game::roundTimerPaused ? Game::Config::roundTimer : -1);
 	}

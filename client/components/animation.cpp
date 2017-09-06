@@ -1,14 +1,20 @@
 #include <global_root.h>
 #include "animation.h"
 #include "network.h"
-#include "ui.h"
-#include "world.h"
+#include "visual/world.h"
 #include "clientRuntimeConfig.h"
 #include "ai.h"
-#ifdef HAS_WINDOW
-	#include "explosions.h"
-#endif
+#include <grid/resources.h>
+#include "visual/ui.h"
+#include "visual/explosions.h"
+#include "visual/objectSelection.h"
+#include "visual/objectComponent.h"
+#include "visual/objectChoices.h"
 #include "configurationMode.h"
+#include <objects/structure/mine.h>
+#include "visual/commandDefinitions.h"
+#include "clientEvents.h"
+#include <objects/structure/tower.h>
 
 namespace LocalApplicationInterface
 {
@@ -23,7 +29,10 @@ namespace Animation
 	float						projectileAt;	//[0,1], specifies where, along @a activeTrajectory, the projectile currently is
 	bool						projectileActive=false;
 
+
+
 	#ifdef HAS_WINDOW
+		namespace OpenAL = Engine::OpenAL;
 		Objects::Geometry			trajectoryGeometry;
 		DX11::InstructionBlock32	trajectoryVisualization;
 		DX11::ObjectBuffer<float4>	trajectoryProgression,trajectoryTint;
@@ -103,7 +112,7 @@ namespace Animation
 				if (d < 2.f)
 					canDo = false;
 			}
-		});
+		},true);
 		return canDo;
 	}
 
@@ -124,7 +133,7 @@ namespace Animation
 			if (v->myTasks.Peek().type == Objects::Vehicle::Task::MoveTo && v->myTasks.Count() == 1)
 			{
 				Grid::LCellIdI last = v->GetLastPointOfOrigin();
-				if (!Grid::Resource::all.First().known[last.stackID])
+				if (!Grid::ResourceDiscovery::client.resourcesDiscovered[last.stackID])
 				{
 					float competition = 100.f;
 					float ally = 100.f;
@@ -163,7 +172,7 @@ namespace Animation
 		//Grid::LCellIdI closest = Grid::LCellIdI::Invalid;
 		//float closestCompetingDistance = 0;
 
-		const bool*known = Grid::Resource::all.First().known;
+		const auto&known = Grid::ResourceDiscovery::client.resourcesDiscovered;
 
 	
 		for (int retries = 0; retries < 2; retries++)
@@ -246,9 +255,8 @@ namespace Animation
 			//LogEvent(EventSignificance::Debug,nullptr,"Automation issued by "+String(loc.ToString()));
 			AI::vehicles.Clear();
 		}
-		foreach(Objects::vehicles, _v)
+		Objects::vehicles.Foreach([](const Objects::PVehicle&v)
 		{
-			Objects::PVehicle v = *_v;
 			if (v->isOwnedByMe)
 			{
 				if (v->isAutomated && v->turret->detectsResources)
@@ -259,7 +267,7 @@ namespace Animation
 						AI::vehicles << v;
 					}
 			}
-		}
+		});
 		if (RuntimeConfig::aiMode)
 		{
 			DBG_ASSERT__(!Network::newRoundRequested);
@@ -272,6 +280,7 @@ namespace Animation
 
 	bool						LocateProjectile(float3&outPosition, float3&out);
 
+	void Update();
 
 	void						Create()
 	{
@@ -307,6 +316,8 @@ namespace Animation
 			missileHissSource.SetLooping(true);
 
 		#endif
+
+		GlobalEvents::frameBegin << Update;
 	}
 
 	void						Destroy()
@@ -387,7 +398,7 @@ namespace Animation
 		outMerged.mode = localVersion.mode;
 		outMerged.job = localVersion.job;
 		#ifdef HAS_WINDOW
-			outMerged.localizableShapes.adoptData(localVersion.localizableShapes);
+			outMerged.visualization.swap(localVersion.visualization);
 		#endif
 		outMerged.name.adoptData(localVersion.name);
 		outMerged.type = localVersion.type;
@@ -481,9 +492,9 @@ namespace Animation
 	{
 		foreach (sourceTask.foci,f)
 			t1.foci.Push().target = *f;
-		t1.mode = (Objects::Vehicle::mode_t) sourceTask.mode.value;
+		t1.mode = (Objects::Vehicle::mode_t) sourceTask.mode;
 		t1.name = sourceTask.name;
-		t1.type = (Objects::Vehicle::Task::type_t) sourceTask.type.value;
+		t1.type = (Objects::Vehicle::Task::type_t) sourceTask.type;
 		if (t1.type == Objects::Vehicle::TaskData::Job)
 		{
 			if (sourceTask.buildPath.IsNotEmpty())
@@ -516,8 +527,8 @@ namespace Animation
 								loc.height = h;
 						}
 					#endif
-
-					t1.SetLocalizableShape(sourceTask.visualizationName,loc,e.owner);
+					
+					Objects::TaskAttachment::Allocate(t1).SetLocalizableShape(sourceTask.visualizationName,loc,e.owner);
 				}
 			#endif
 		}
@@ -525,7 +536,20 @@ namespace Animation
 	}
 
 
-	static GenericHashSet<TUniqueID,TUniqueID> insertIntoGridLater;
+	static GenericHashSet<TUniqueID> insertIntoGridLater;
+
+
+	static void AppendTask(const Objects::PMobileEntityProducer&p,const TUniqueID&id, ConstName baseName, ConstName turretName)
+	{
+		p->AppendTask(id,baseName,turretName);
+	}
+
+	static void StoreLocally(const Objects::PHangar&h,const Objects::PVehicle&v,float&t,bool setHealthToFull)
+	{
+		if (!h->StoreLocally(v,t,setHealthToFull,h))
+			throw Except::Program::DataConsistencyFault(CLOCATION,"Failed to store "+v->GetName()+" in hangar "+h->ToEntity().GetName()+" at "+h->ToEntity().location.ToString());
+	}
+
 
 	void ApplyState(const Objects::PMobileEntity&v, Protocol::MobileState&vs, bool isNew, bool isNewForEMP)
 	{
@@ -557,7 +581,7 @@ namespace Animation
 		if (v->IsGroundBoundVehicle())
 		{
 			Objects::PVehicle&veh = To<Objects::Vehicle>::Cast(v);
-			bool newAutomated = (vs.flags.value & Protocol::VehicleFlags::Automated) != 0;
+			bool newAutomated = (vs.flags & Protocol::VehicleFlags::Automated) != 0;
 			automationChange = newAutomated != veh->isAutomated;
 			veh->isAutomated = newAutomated;
 		}
@@ -649,9 +673,9 @@ namespace Animation
 			auto id = info->storedIn.Get0();
 			if (id)
 			{
-				storeIn = Objects::GetEntity(id->value);
+				storeIn = Objects::GetEntity(*id);
 				storeInHangar = To<Objects::Hangar>::DynamicCast(storeIn);
-				ASSERT1__(storeIn,id->value.ToString());
+				ASSERT1__(storeIn,*id);
 				ASSERT1__(storeInHangar,storeIn->GetName());
 			}
 
@@ -663,21 +687,22 @@ namespace Animation
 				{
 					p->queue.Clear();
 					p->productionDone = state->productionDone;
-					p->gatheringPoint.Set(state->gatheringPoint,v);
+					p->gatheringPoint.Set(state->gatheringPoint, Objects::IsSelected(v));
+
 					
 					foreach (state->productionTasks,t)
 					{
 						switch (t->parameters.Count())
 						{
 							case 1:
-								p->AppendTask(t->id,t->parameters.First(),ConstName::Empty);
+								AppendTask(p,t->id,t->parameters.First(),ConstName::Empty);
 							break;
 							case 2:
-								p->AppendTask(t->id,t->parameters.First(),t->parameters.last());
+								AppendTask(p,t->id,t->parameters.First(),t->parameters.last());
 							break;
 							default:
 								FATAL__("Unexpected parameter count: "+String(t->parameters.Count())
-											+" while decoding task "+t->id.value.ToString()
+											+" while decoding task "+ToString(t->id)
 											+" of "+v->GetName());
 						}
 						//ASSERT_EQUAL__(t->parameters.Count(),2);
@@ -712,8 +737,8 @@ namespace Animation
 					currentlyStoredIn->Lose(veh);
 				else
 					insertIntoGridLater.Unset(v->id);
-				storeInHangar->StoreLocally(veh,f,false,storeInHangar);
-				ASSERT1__(!v->isInsertedIntoGrid,v->GetName());
+				StoreLocally(storeInHangar,veh,f,false);
+				ASSERT1__(!v->isInsertedIntoGrid,v->GetName());	//should never happen. If failed, StoreLocally would have thrown an exception
 
 				#ifdef HAS_WINDOW
 					if (!currentlyStoredIn)
@@ -735,7 +760,9 @@ namespace Animation
 					UI::UpdateTraffic();
 				#endif
 			}
-			UI::HexGrid::RefreshContacts();
+			#ifdef HAS_WINDOW
+				UI::HexGrid::RefreshContacts();
+			#endif
 		}
 		//else
 			//LogEvent(EventSignificance::Debug,v.get(),"StoredIn unchanged ("+currentlyStoredIn->GetName()+")");
@@ -748,7 +775,7 @@ namespace Animation
 		#ifdef HAS_WINDOW
 			if (v == Objects::selectedEntity)
 			{
-				ApplicationInterface::OnSelectionChange(true);
+				GlobalEvents::invalidateObjectCache();
 				Objects::UpdateChoices(Network::ControlEnabled());
 			}
 		#endif
@@ -819,21 +846,21 @@ namespace Animation
 				{
 					p->queue.Clear();
 					p->productionDone = state->productionDone;
-					p->gatheringPoint.Set(state->gatheringPoint,s);
+					p->gatheringPoint.Set(state->gatheringPoint,Objects::IsSelected(s));
 					
 					foreach (state->productionTasks,t)
 					{
 						switch (t->parameters.Count())
 						{
 							case 1:
-								p->AppendTask(t->id,t->parameters.First(),ConstName::Empty);
+								AppendTask(p,t->id,t->parameters.First(),ConstName::Empty);
 							break;
 							case 2:
-								p->AppendTask(t->id,t->parameters.First(),t->parameters.last());
+								AppendTask(p,t->id,t->parameters.First(),t->parameters.last());
 							break;
 							default:
 								FATAL__("Unexpected parameter count: "+String(t->parameters.Count())
-											+" while decoding task "+t->id.value.ToString()
+											+" while decoding task "+ToString(t->id)
 											+" of "+s->GetName());
 						}
 						//ASSERT_EQUAL__(t->parameters.Count(),2);
@@ -853,7 +880,10 @@ namespace Animation
 					foreach (state->attackTasks,at)
 					{
 						//ASSERT_EQUAL__(t->parameters.Count(),2);
-						t->AppendTask(*at);
+						auto&task = t->AppendTask(*at);
+						#ifdef HAS_WINDOW
+							Objects::TowerAttackVisualization::Allocate(task).Recompile(*t,*at);
+						#endif
 					}
 				}
 			}
@@ -876,6 +906,10 @@ namespace Animation
 						{
 							m->SetLinkedToCore(state->linkedToCore,Network::ControlEnabled());
 							m->naturalResources = state->naturalResources;
+							#ifdef HAS_WINDOW
+								if (Objects::selectedEntity == s)
+									Objects::UpdateChoices(Network::ControlEnabled());
+							#endif
 						}
 					}
 				}
@@ -918,7 +952,7 @@ namespace Animation
 		}
 
 		#ifdef HAS_WINDOW
-			ApplicationInterface::OnSelectionChange(true);	//could be affecting selected network
+			GlobalEvents::invalidateObjectCache();	//could be affecting selected network
 			if (s == Objects::selectedEntity)
 			{
 				Objects::UpdateChoices(Network::ControlEnabled());
@@ -1013,7 +1047,7 @@ namespace Animation
 	{
 		ASSERT__(path);
 		ASSERT__(path->rawPath.last().first == motion.fromLocation);
-		ASSERT2__(targetEntityID == motion.id,targetEntityID.ToString(),motion.id.value.ToString());
+		ASSERT2__(targetEntityID == motion.id,targetEntityID,motion.id);
 		path->rawPath.Append(std::make_pair(motion.toLocation,motion.timestamp.atTime + motion.timeNeeded));
 		path->changed = true;
 		time.Include(FloatRange<float>(motion.timestamp.atTime,motion.timestamp.atTime + motion.timeNeeded));
@@ -1027,14 +1061,14 @@ namespace Animation
 		removalType = e.type;
 		//ASSERT__(target);
 		time.SetMinAndMax(e.timestamp.atTime/*+0.01f*/);
-		LogEvent(EventSignificance::Debug,nullptr,"Registered removal of entity "+e.id.value.ToString()+" ("+Objects::RemovalType::Reinterpret(e.type.value).ToString()+") at t="+time.ToString());
+		LogEvent(EventSignificance::Debug,nullptr,"Registered removal of entity "+ToString(e.id)+" ("+Objects::RemovalType::Reinterpret(e.type).ToString()+") at t="+ToString(time));
 	}
 	void					Primitive::Init(Protocol::VagueAttackTrajectory&a)
 	{
 		type = Attack;
 		targetEntityID = TUniqueID::Empty();
 		attackerTurret = Objects::Component::GetTurretByName(a.turretType);
-		ASSERT_NOT_NULL1__(attackerTurret,(int)a.turretType.value);
+		ASSERT_NOT_NULL1__(attackerTurret,(int)a.turretType);
 		attackRange = a.turretRange;
 		attackAngle = a.attackAngle,
 		attackerPosition = a.sourcePosition;
@@ -1058,7 +1092,7 @@ namespace Animation
 	void					Primitive::Init(Protocol::Explosion&ex)
 	{
 		type = Explosion;
-		explosionCenter = ex.center.value;
+		explosionCenter = ex.center;
 		explosionRadius = ex.radius;
 		empExplosion = ex.isEMP;
 		time.min = ex.timestamp.atTime;
@@ -1086,7 +1120,7 @@ namespace Animation
 		type = ResourceUpdate;
 		resourceUpdate.reset(new Protocol::ResourceUpdate());
 		resourceUpdate->cells.adoptData(up.cells);
-		resourceUpdate->resourceName.adoptData(up.resourceName);
+		resourceUpdate->resourceName = up.resourceName;
 		//Protocol::ResourceUpdate&u
 		time.min = up.timestamp.atTime;
 		time.max = time.min;
@@ -1106,10 +1140,12 @@ namespace Animation
 		{
 			case Construction:
 			{
-				LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Placing structure entity during animation at time "+String(Animation::atTime)+"/"+this->time.ToString());
+				LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Placing structure entity during animation at time "+String(Animation::atTime)+"/"+ToString(this->time));
 				Objects::Place(To<Objects::Structure>::DynamicCast(allocatedTarget));
-				if (!allocatedTarget->isOwnedByMe)
-					UI::HexGrid::RefreshContacts();
+				#ifdef HAS_WINDOW
+					if (!allocatedTarget->isOwnedByMe)
+						UI::HexGrid::RefreshContacts();
+				#endif
 			}
 			break;
 			case NewMobileEntity:
@@ -1117,25 +1153,27 @@ namespace Animation
 				Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(allocatedTarget);
 				if (v)
 				{
-					LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Placing mobile entity during animation at time "+String(Animation::atTime)+"/"+this->time.ToString());
+					LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Placing mobile entity during animation at time "+String(Animation::atTime)+"/"+ToString(this->time));
 					//MoveSensor(v->preAnimationLocation,v->location,v->turret->scanningRange);
 					v->preAnimationLocation = v->location;
 					Objects::PlaceMobileEntity(v,false);
 					if (v->IsGroundBoundVehicle())	//only vehicles get to be inserted anyhow
 						insertIntoGridLater.Set(v->id);
-					if (!allocatedTarget->isOwnedByMe)
-						UI::HexGrid::RefreshContacts();
+					#ifdef HAS_WINDOW
+						if (!allocatedTarget->isOwnedByMe)
+							UI::HexGrid::RefreshContacts();
+					#endif
 				}
 			}
 			break;
 			case DestroyEntity:
 			{
 				allocatedTarget = Objects::GetEntity(targetEntityID);
-				ASSERT1__(allocatedTarget,targetEntityID.ToString());
+				ASSERT1__(allocatedTarget,targetEntityID);
 				if (explode)
 					ExplodeEntity(allocatedTarget);
 				bool removed = false;
-				LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Removing entity during animation at time "+String(Animation::atTime)+"/"+this->time.ToString());
+				LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Removing entity during animation at time "+String(Animation::atTime)+"/"+ToString(this->time));
 				//if (RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
 				{
 					Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(allocatedTarget);
@@ -1149,19 +1187,15 @@ namespace Animation
 				if (allocatedTarget->IsMobile())
 				{
 					Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(allocatedTarget);
-					if (v->preAnimationLocation != v->location)
-					{
-						float t = 0.f;
-						v->MoveSensory(v->preAnimationLocation,v->location, t);
-						//v->RegisterSensory(t);
-					}
+					float t = 0.f;
+					v->MoveSensoryToCurrentLocation(t);
 				}
 
 				float t = 0;
 				Objects::Remove(allocatedTarget,Objects::RemovalType::Reinterpret(removalType),t,Network::ControlEnabled(),removed);
-				if (!allocatedTarget->isOwnedByMe)
-					UI::HexGrid::RefreshContacts();
 				#ifdef HAS_WINDOW
+					if (!allocatedTarget->isOwnedByMe)
+						UI::HexGrid::RefreshContacts();
 					GUI::SignalSituationChange();
 					if (removalType == Objects::RemovalType::UncontrolledExplosion)
 						UI::EventLog::RegisterEntityDestruction(this->time.min, allocatedTarget->isOwnedByMe,allocatedTarget->GetWorldPosition(), allocatedTarget->id, allocatedTarget->GetNiceName());
@@ -1172,8 +1206,8 @@ namespace Animation
 			case MovementStream:
 			{
 				allocatedTarget = Objects::GetEntity(targetEntityID);
-				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Starting movement stream at "+String(Animation::atTime)+"/"+this->time.ToString());
-				ASSERT1__(allocatedTarget,targetEntityID.ToString());
+				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Starting movement stream at "+String(Animation::atTime)+"/"+ToString(this->time));
+				ASSERT1__(allocatedTarget,targetEntityID);
 				Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(allocatedTarget);
 				ASSERT1__(v,allocatedTarget->GetName());
 
@@ -1181,8 +1215,6 @@ namespace Animation
 				{
 					ASSERT2__(v->preAnimationLocation == v->location ,v->preAnimationLocation.ToString(),v->location.ToString());
 					//#ifdef HAS_WINDOW
-					//	if (v->isOwnedByMe && v->IsGroundBoundVehicle())
-					//		ASSERT1__(Grid::actualWorld.HasSensor(v->location,v->GetScanningRange()),v->id.ToString());
 					//#endif
 					v->preAnimationLocation = v->location;
 					if (v->IsVehicle() && !v->IsAboveGrid())
@@ -1231,7 +1263,7 @@ namespace Animation
 				}
 				else
 				{
-					LogEvent(EventClass::Preset::error,nullptr,"Warning: Unable to identify entity "+targetEntityID.ToString()+" for turret rotation");
+					LogEvent(EventClass::Preset::error,nullptr,"Warning: Unable to identify entity "+ToString(targetEntityID)+" for turret rotation");
 					/*let's ignore this for now. this event is caused, when visibility of
 					its target has been determined but at a latter time by some vehicle.
 					during the motion phase of a different vehicle an automated attack is caused.
@@ -1255,10 +1287,10 @@ namespace Animation
 				if (!attackerTurret)
 				{
 					Objects::PWorldEntity attacker = Objects::GetEntity(targetEntityID);
-					ASSERT2__(attacker,targetEntityID.ToString(),this->time.ToString());
+					ASSERT2__(attacker,targetEntityID,this->time);
 					float zOffset;
 					Objects::PTurretBase base= attacker->GetTurretBase(zOffset);
-					ASSERT2__(base,attacker->GetName(),this->time.ToString());
+					ASSERT2__(base,attacker->GetName(),this->time);
 					attackerTurret = base->turret;
 					ASSERT_NOT_NULL1__(attackerTurret,attacker->GetName());
 					attackRange = base->GetFlatAttackRange();
@@ -1347,7 +1379,7 @@ namespace Animation
 		{
 			case  MovementStream:
 			{
-				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Ending movement stream at "+String(Animation::atTime)+"/"+this->time.ToString());
+				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Ending movement stream at "+String(Animation::atTime)+"/"+ToString(this->time));
 
 				Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(allocatedTarget);
 				ASSERT__(v);
@@ -1355,13 +1387,10 @@ namespace Animation
 				//v->Relocate(path->rawPath.last().first,false);
 				v->location = path->rawPath.last().first;
 				//Objects::InsertVehicleIntoGrid(v,v->location);	will be done later
-				if (v->isOwnedByMe && v->preAnimationLocation != v->location)
+				if (v->isOwnedByMe)
 				{
 					float t = 0.f;
-					v->MoveSensory(v->preAnimationLocation,v->location,t);
-
-					//v->MoveWorldSensory(v->preAnimationLocation,v->location);
-					//Grid::actualWorld.MoveSensor(v->preAnimationLocation,v->location,v->GetScanningRange());
+					v->MoveSensoryToCurrentLocation(t);
 				}
 				v->preAnimationLocation = v->location;
 				allocatedTarget.reset();	//for debugging purposes
@@ -1441,21 +1470,21 @@ namespace Animation
 				allocatedTarget = Objects::GetEntity(targetEntityID);
 				if (allocatedTarget) //probably got whooped otherwise
 				{
-					ASSERT1__(allocatedTarget,targetEntityID.ToString());
+					ASSERT1__(allocatedTarget,targetEntityID);
 					ApplyState(To<Objects::MobileEntity>::DynamicCast(allocatedTarget),*vehicleState,false,false);
 				}
 				else
-					LogEvent(EventSignificance::NonFatalError,"Unable to update mobile entity "+targetEntityID.ToString()+" at t="+String(t));
+					LogEvent(EventSignificance::NonFatalError,"Unable to update mobile entity "+ToString(targetEntityID)+" at t="+String(t));
 			return Done;
 			case StructureState:
 				allocatedTarget = Objects::GetEntity(targetEntityID);
 				if (allocatedTarget) //probably got whooped otherwise
 				{
-					ASSERT1__(allocatedTarget,targetEntityID.ToString());
+					ASSERT1__(allocatedTarget,targetEntityID);
 					UpdateState(To<Objects::Structure>::DynamicCast(allocatedTarget),*structureState);
 				}
 				else
-					LogEvent(EventSignificance::NonFatalError,"Unable to structure "+targetEntityID.ToString()+" at t="+String(t));
+					LogEvent(EventSignificance::NonFatalError,"Unable to structure "+ToString(targetEntityID)+" at t="+String(t));
 			return Done;
 			case Construction:
 			return Done;
@@ -1464,7 +1493,7 @@ namespace Animation
 			case DestroyEntity:
 			return Done;
 			case ResourceUpdate:
-				Grid::UpdateResourceMap(resourceUpdate->resourceName,resourceUpdate->cells);
+				Grid::UpdateResourceMap(resourceUpdate->resourceName,resourceUpdate->cells,Grid::ResourceDiscovery::client);
 			return Done;
 			case TerrainChange:
 			{
@@ -1474,9 +1503,9 @@ namespace Animation
 
 				foreach (*worldDelta,block)
 				{
-					BYTE family = block->familyAndLastFlag & 0x7F;
+					BaseGrid::family_t family = block->familyAndLastFlag & 0x7F;
 					//bool last = (block->family & 0x80) != 0;
-					Grid::actualWorld.ApplyFamilyDelta(family,block->data0,false,true);
+					World::actual.BeginChangeSequence(0).ApplyFamilyDelta(family,block->data0,false,true);
 				}
 				#ifdef HAS_WINDOW
 					World::allowRecompilation = true;
@@ -1801,15 +1830,12 @@ namespace Animation
 
 				Objects::ForeachMobileWorldEntity([](const Objects::PMobileEntity&e)
 				{
-					//if ((*v)->preAnimationLocation != (*v)->location)
-						//Objects::RemoveVehicleFromGrid(*v,(*v)->preAnimationLocation);
 					if (e->isOwnedByMe && !Animation::insertIntoGridLater.IsSet(e->id))
 					{
 						float t = 0.f;
-						e->MoveSensory(e->preAnimationLocation,e->location,t);
-//							Grid::actualWorld.MoveSensor((*v)->preAnimationLocation,(*v)->location,(*v)->GetScanningRange());
+						e->MoveSensoryToCurrentLocation(t);
 					}
-				});
+				},false);
 
 
 				Animation::insertIntoGridLater.VisitAllKeys([](const TUniqueID&key)
@@ -1820,7 +1846,7 @@ namespace Animation
 						if (v->isOwnedByMe)
 						{
 							float t = 0.f;
-							v->MoveSensory(v->preAnimationLocation,v->location,t);
+							v->MoveSensoryToCurrentLocation(t);
 						}
 						if (v->IsVehicle() && !v->IsAboveGrid())
 							Objects::InsertVehicleIntoGrid(To<Objects::Vehicle>::Cast(v),v->location);
@@ -1831,7 +1857,7 @@ namespace Animation
 				Objects::ForeachMobileWorldEntity([](const Objects::PMobileEntity&e)
 				{
 					e->preAnimationLocation = e->location;
-				});
+				},false);
 
 				if (RuntimeConfig::IsInAnyCommandPhase() && Network::gameHasBegun)
 				{

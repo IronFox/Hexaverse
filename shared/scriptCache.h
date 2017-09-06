@@ -3,6 +3,7 @@
 #include <global_string.h>
 #include <io/cryptographic_hash.h>
 
+using namespace DeltaWorks;
 
 /**
 Management structure for scripts cached locally and transferred to clients on demand
@@ -15,7 +16,7 @@ namespace ScriptCache
 		SHA256::HashContainer	identifier;
 		PathString				filename;
 		String					content;
-		Array<BYTE>				compressed;
+		Ctr::Array<BYTE>				compressed;
 
 
 		bool					Recompress();
@@ -30,6 +31,13 @@ namespace ScriptCache
 	PScript		LoadContent(const String&content);
 
 	PScript		Lookup(const SHA256::HashContainer&id);
-	PScript		DefineFromFleetingCompressedData(const SHA256::HashContainer&id,ArrayData<BYTE>&data, bool createFile=true);
+	PScript		DefineFromFleetingCompressedData(const SHA256::HashContainer&id,Ctr::ArrayData<BYTE>&data, bool createFile=true);
+
+	/**
+	Cleans up outdated cache files on client.
+	Does currently nothing on server, but should be called for future expansions
+	*/
+	void		Create();
+
 
 }

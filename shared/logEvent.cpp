@@ -59,15 +59,15 @@ namespace Logging
 	}
 
 
-	SharedLogFile outFile;
+	SharedLogFile outFile;	//max 10MB
 
 
 	#ifndef HAS_WINDOW
-	class ConsoleThread : public ThreadObject
+	class ConsoleThread : public Sys::ThreadObject
 	{
 		volatile bool doEnd;
 	public:
-		WorkPipe<String> pipe;
+		Ctr::WorkPipe<String> pipe;
 
 		virtual void ThreadMain() override
 		{
@@ -121,14 +121,14 @@ namespace Logging
 		FileSystem::File file;
 		PathString ext = FileSystem::ExtractFileExt(path);
 		typedef std::pair<FileSystem::ftime_t,PathString>  Entry;
-		Buffer0<Entry>	entries;
+		Ctr::Buffer0<Entry>	entries;
 		while (folder.NextFile(ext,file))
 		{
 			entries << std::make_pair(file.GetModificationTime(), file.GetLocation());
 		}
 		if (entries.Count() > 10)
 		{
-			ByComparator::QuickSort(entries,[](const Entry&a, const Entry&b){return a.first < b.first ? -1 : (a.first == b.first ? 0 : 1);});
+			Sorting::ByComparator::QuickSort(entries,[](const Entry&a, const Entry&b){return a.first < b.first ? -1 : (a.first == b.first ? 0 : 1);});
 			for (index_t i = 0; i+10 <= entries.Count(); i++)
 			{
 				FileSystem::UnlinkFile(entries[i].second);
@@ -137,9 +137,9 @@ namespace Logging
 
 
 
-		if (!outFile.Open(path))
+		if (!outFile.Open(path,10*1024*1024))
 		{
-			LogEvent(EventClass::Preset::error , getLastError());
+			LogEvent(EventClass::Preset::error , Sys::getLastError());
 		}
 		
 		#ifndef HAS_WINDOW
@@ -199,7 +199,7 @@ namespace Logging
 				return;
 		}
 
-		static SpinLock lock;
+		static Sys::SpinLock lock;
 
 		lock.lock();
 
@@ -222,9 +222,9 @@ namespace Logging
 				if (c)
 				{
 					if (printToConsole)
-						console << c->ToString()<<" ";
+						console << c->ConvertToString()<<" ";
 					if (!inTestMode)
-						logFile << tab << c->ToString();
+						logFile << tab << c->ConvertToString();
 				}
 				else
 			#endif
@@ -243,7 +243,7 @@ namespace Logging
 			if (printToConsole)
 				console << e->GetName()<<" ("<<e->location.ToString()<<"): ";
 			if (!inTestMode)
-				logFile << tab << e->GetTypeName() << tab << e->id.ToString() << tab << e->owner->GetLogName()<<tab<<e->location.ToString();
+				logFile << tab << e->GetTypeName() << tab << ToString(e->id) << tab << e->owner->GetLogName()<<tab<<e->location.ToString();
 		}
 		else
 			if (!inTestMode)
@@ -280,6 +280,11 @@ namespace Logging
 	}
 
 
+}
+
+void		LogException(const Objects::WorldEntity*e, const std::exception&ex)
+{
+	LogEvent(EventClass::Preset::internalError,e,ex.what());
 }
 
 

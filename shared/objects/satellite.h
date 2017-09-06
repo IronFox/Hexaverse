@@ -30,6 +30,7 @@
 #include "mobileEntity.h"
 #include "interface.h"
 #include "mobileEntityProducer.h"
+#include "../sharedContainer.h"
 
 namespace Objects
 {
@@ -195,7 +196,7 @@ namespace Objects
 		//TurretBase overrides:
 		virtual float			GetFlatAttackRange() const override;
 		#ifndef CLIENT
-			virtual bool		FillAttackQueue()override;
+			virtual bool		FrontQueuePossibleAttacks()override;
 		#endif
 
 		//WorldEntity overrides:
@@ -206,7 +207,7 @@ namespace Objects
 		virtual bool			CanSpawnAboveGrid(int&outHeight) const {outHeight = BaseResidenceHeight; return true;}
 
 		#ifdef HAS_WINDOW
-			virtual void		DescribeType(BaseCommand::Label&outResult, UINT32 descFlags) override;
+			virtual void		DescribeType(Command::Base::Label&outResult, UINT32 descFlags) override;
 			//virtual void		RegisterWorldSensory() override;
 			//virtual void		UnregisterWorldSensory() override;
 //			virtual void		MoveWorldSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to) override;
@@ -246,7 +247,7 @@ namespace Objects
 		virtual bool			MotionIgnoresAttack() const override {return false;}
 		virtual float			GetPathSize() const override {return 1.f;}
 		#ifndef CLIENT
-			bool				DirectTo(mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
+			bool				DirectTo(mode_t mode, Ctr::ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 			MobilePlacementResult	PlaceExactlyAt(const Grid::LCellIdI&, float timeCost, float minTimeOffset, bool signalEvent=true, bool isCreated=true, bool failIsFatal=false) override;
 		#endif
 
@@ -339,7 +340,7 @@ namespace Objects
 			Super::PrototypeSetup();
 			turret = GetTurretType();
 			#ifdef HAS_WINDOW
-				commands.baseCoords = int2(4,0)+BaseCommand::coordOffset;
+				commands.baseCoords = int2(4,0)+Command::Base::coordOffset;
 			#endif
 		}
 
@@ -573,7 +574,7 @@ namespace Objects
 
 
 
-	extern Buffer0<PSatellite>	satellites;
+	extern SharedContainer<Satellite>	satellites;
 	//extern bool					satellitesAreLocked;
 
 }

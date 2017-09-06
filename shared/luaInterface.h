@@ -6,6 +6,8 @@
 #include <container/buffer.h>
 #include <functional>
 
+using namespace DeltaWorks;
+
 struct lua_State;
 
 int LuaRun (int argc, const char *argv[]);
@@ -17,6 +19,7 @@ Lua-related definitions and helpers
 namespace Lua
 {
 	class Reference;
+	class NamedReference;
 	class Program;
 	class Table;
 	typedef std::shared_ptr<Program> PProgram;
@@ -100,11 +103,14 @@ namespace Lua
 
 
 		void PushParameter(lua_State *state, long long i);
+		void PushParameter(lua_State *state, bool b);
 		inline void PushParameter(lua_State *state, int i) {PushParameter(state,(long long)i);}
+		inline void PushParameter(lua_State *state, unsigned i) {PushParameter(state,(long long)i);}
 		void PushParameter(lua_State *state, double i);
 		void PushParameter(lua_State *state, void*p);
 		void PushParameter(lua_State *state, const Reference&);
 		void PushStrParameter(lua_State *state, const String&str);
+		void PushStrParameter(lua_State *state, const char*str);
 
 
 
@@ -121,6 +127,14 @@ namespace Lua
 			struct ParameterT<String>
 			{
 				static void Push(lua_State *state, const String&v)
+				{
+					PushStrParameter(state,v);
+				}
+			};
+		template <>
+			struct ParameterT<const char*>
+			{
+				static void Push(lua_State *state, const char*v)
 				{
 					PushStrParameter(state,v);
 				}
@@ -153,13 +167,14 @@ namespace Lua
 			rs = (float)tmp;
 		}
 
-		inline void GetStacked(const PProgram&st, int addr, int&rs)
-		{
-			long long temp;
-			GetStacked(st,addr,temp);
-			rs = (int)temp;
-		}
 
+		inline void GetStacked(const PProgram&st, int addr, UINT8&rs) {long long temp; GetStacked(st,addr,temp); rs = (UINT8)std::max(temp,0LL); }
+		inline void GetStacked(const PProgram&st, int addr, UINT16&rs) {long long temp; GetStacked(st,addr,temp); rs = (UINT16)std::max(temp,0LL); }
+		inline void GetStacked(const PProgram&st, int addr, UINT32&rs) {long long temp; GetStacked(st,addr,temp); rs = (UINT32)std::max(temp,0LL); }
+		inline void GetStacked(const PProgram&st, int addr, UINT64&rs) {long long temp; GetStacked(st,addr,temp); rs = (UINT64)std::max(temp,0LL); }
+		inline void GetStacked(const PProgram&st, int addr, INT8&rs) {long long temp; GetStacked(st,addr,temp); rs = (INT8)temp; }
+		inline void GetStacked(const PProgram&st, int addr, INT16&rs) {long long temp; GetStacked(st,addr,temp); rs = (INT16)temp; }
+		inline void GetStacked(const PProgram&st, int addr, INT32&rs) {long long temp; GetStacked(st,addr,temp); rs = (INT32)temp; }
 
 
 		template <typename T, bool PCall>
@@ -269,6 +284,36 @@ namespace Lua
 
 		template <std::size_t... Is>
 			struct build_indices<0, Is...> : indices<Is...> {};
+
+		//http://stackoverflow.com/questions/11893141/inferring-the-call-signature-of-a-lambda-or-arbitrary-callable-for-make-functio
+		//ecatmur
+		template<typename T> struct remove_class { };
+		template<typename C, typename R, typename... A>
+		struct remove_class<R(C::*)(A...)> { using type = R(A...); };
+		template<typename C, typename R, typename... A>
+		struct remove_class<R(C::*)(A...) const> { using type = R(A...); };
+		template<typename C, typename R, typename... A>
+		struct remove_class<R(C::*)(A...) volatile> { using type = R(A...); };
+		template<typename C, typename R, typename... A>
+		struct remove_class<R(C::*)(A...) const volatile> { using type = R(A...); };
+
+		template<typename T>
+		struct get_signature_impl { using type = typename remove_class<
+			decltype(&std::remove_reference<T>::type::operator())>::type; };
+		template<typename R, typename... A>
+		struct get_signature_impl<R(A...)> { using type = R(A...); };
+		template<typename R, typename... A>
+		struct get_signature_impl<R(&)(A...)> { using type = R(A...); };
+		template<typename R, typename... A>
+		struct get_signature_impl<R(*)(A...)> { using type = R(A...); };
+		template<typename T> using get_signature = typename get_signature_impl<T>::type;
+
+		template<typename F> using make_function_type = std::function<get_signature<F>>;
+		template<typename F> make_function_type<F> ToFunction(F &&f)
+		{
+			return make_function_type<F>(std::forward<F>(f));
+		}
+
 
 
 		template <typename T>
@@ -382,7 +427,13 @@ namespace Lua
 
 		template <typename F>
 			struct LibFunction
-			{};
+			{
+				static void Push(const PProgram&prog, const F&undefined)
+				{
+					PushLibFunctionT(prog,make_function_type<F>(undefined));
+				}
+			
+			};
 		
 		template <typename R, typename...P>
 			struct LibFunction<R(P...)>
@@ -416,20 +467,22 @@ namespace Lua
 	class Program : public std::enable_shared_from_this<Program>
 	{
 		lua_State		*const state;
+		const String	name;
 
-		/**/			Program(lua_State*st):state(st)	{}
+		/**/			Program(lua_State*st, const String&name):state(st),name(name)	{}
 
 	public:
 		/**/			Program() = delete;
 		/**/			Program(const Program&) = delete;
 		/**/			~Program();
 		void			operator=(const Program&) = delete;
+		const String&	GetName() const {return name;}
 
 		/**
 		Creates a new instance.
 		@return new object on success. An empty results indicates a Lua error (most likely insufficient memory)
 		*/
-		static PProgram	Create();
+		static PProgram	Create(const String&name);
 		/**
 		Fetches the internal lua state. Never NULL
 		*/
@@ -442,7 +495,11 @@ namespace Lua
 		@return true if the specified global was found and @a outRef updated, otherwise
 		*/
 		bool			FindGlobal(const String&name, Reference&outRef);
-		Reference		FindGlobal(const String&name);
+		NamedReference	FindGlobal(const String&name);
+		/**
+		Like FindGlobal(const String&), but throws a Lua exception, if the global is not found
+		*/
+		NamedReference	RequireGlobal(const String&name);
 
 		/**
 		Attempts to execute an arbitrary lua script chunk in protected mode.
@@ -499,30 +556,24 @@ namespace Lua
 			if (prog)
 				EraseReference(prog->GetState(),(int)(size_t)raw);
 		}
-		void	SetReference(WProgram prog, int refID)
+		void	SetReference(WProgram prog, int refID, const String&name)
 		{
 			this->prog = prog;
 			this->refID.reset((int*)(size_t)refID,[prog](int*ptr){Discard(prog,ptr);});
-
-			if (IsTableReference() && !IsTable())
-				throw Exception("Trying to assigning non-table Lua reference to table reference variable");
-			if (IsFunctionReference() && !IsFunction())
-				throw Exception("Trying to assigning non-function Lua reference to function reference variable");
+			SignalChange(name);
 		}
 	protected:
-
-		virtual bool	IsTableReference() const	{return false;}
-		virtual bool	IsFunctionReference() const	{return false;}
-		
+		virtual void	SignalChange(const String&name) {};
 	public:
 
 		/**/		Reference(){}
 		virtual		~Reference() {};
+		void		operator=(const Reference&other);
 
 		/**
 		Clears any locally held Lua references
 		*/
-		void		Clear()	{prog.reset(); refID.reset();}
+		void		ClearReference()	{prog.reset(); refID.reset();}
 
 
 		/**
@@ -548,7 +599,7 @@ namespace Lua
 			{
 				return false;
 			}
-			SetReference(prog, global);
+			SetReference(prog, global,name);
 			return true;
 		}
 
@@ -556,6 +607,7 @@ namespace Lua
 		bool		IsEmpty() const {return !IsSet();}
 		bool		IsTable() const;
 		bool		IsFunction() const;
+		virtual bool	IsNamedReference() const {return false;}
 
 		void		swap(Reference&other)
 		{
@@ -606,13 +658,28 @@ namespace Lua
 		Some data (like functions) cannot be serialized and cause a Lua::Exception to be thrown.
 		@param[inout] stream Stream to put the resulting byte data to
 		@param ignoreNonSerializableContent Set true to allow and ignore non-serializable content. Otherwise an exception is thrown upon encountering such
-		@return true if the stream was large enough to hold any serializable data, false otherwise
 		*/
-		bool			Serialize(IWriteStream&stream, bool ignoreNonSerializableContent=false)	const;
+		void			Serialize(IWriteStream&stream, bool ignoreNonSerializableContent=false)	const;
 
-		bool			DeserializeMerge(IReadStream&stream);
+		void			DeserializeMerge(IReadStream&stream);
 		void			SetGlobal(const String&name);
 
+	};
+
+	class NamedReference : public Reference
+	{
+		String			name;
+
+		friend class Table;
+
+		/**/			NamedReference(const String&name):name(name)	{}
+	protected:
+		virtual void	SignalChange(const String&name)	{this->name = name;}
+	public:
+		/**/			NamedReference()	{}
+		virtual bool	IsNamedReference() const override {return true;}
+
+		const String&	GetName() const {return name;}
 	};
 
 	/**
@@ -622,31 +689,34 @@ namespace Lua
 	{
 		typedef Reference	Super;
 		void			SetTopField(const String&name);
+		void			SetTopField(const char*name);
 		void			SetTopElement(index_t at);
 		bool			AppendTopElement();
 		bool			PushField(const String&name) const;
 		bool			PushElement(index_t) const;
 		void			Pop(int cnt);
 	protected:
-		virtual bool	IsTableReference() const override	{return true;}
-
+		virtual void	SignalChange(const String&) override;
 	public:
 		/**/			Table()	{}
-		/**/			Table(const Reference&ref)
-		{
-			operator=(ref);
-		}
+		/**/			Table(const Reference&ref):Super(ref){};
 		/**
 		Fetches a reference for the specified field in the local table.
 		The result may be empty if the specified field was not found
 		*/
-		Reference		GetField(const String&name)	const;
+		NamedReference	GetField(const String&name)	const;
 		/**
 		Fetches a reference for the specified index (usually in the range [1,GetLength()]).
 		The result may be empty if the specified index was not found
 		*/
 		Reference		GetElement(index_t at) const;
 
+		/**
+		Clears out all elements of the local table
+		*/
+		void			ClearTable();
+		void			UnsetField(const String&name);
+		void			UnsetElement(index_t at);
 		/**
 		Fetches the value of the specified field in the local table.
 		Intended to be used for primitive values like ints or strings, but may be used for Reference objects, too
@@ -682,6 +752,8 @@ namespace Lua
 		*/
 		template <typename T>
 			void		SetField(const String&name, const T&value)	{if (IsEmpty()) return; Detail::ParameterT<T>::Push(GetState(),value); SetTopField(name);}
+		template <typename T>
+			void		SetField(const char*name, const T&value)	{if (IsEmpty()) return; Detail::ParameterT<T>::Push(GetState(),value); SetTopField(name);}
 		/**
 		Sets an index element in the local table.
 		Works for primitive values as well as references
@@ -701,14 +773,8 @@ namespace Lua
 				return AppendTopElement();
 			}
 
-		/**
-		Updates the local reference.
-		The specified reference must be a table (and not empty).
-		In debug mode this method will raise a fatal exception otherwise
-		@return true if the local reference was updated
-		*/
-		bool			Reset(const Reference&ref);
-		void			operator=(const Reference&ref);
+
+		void			operator=(const Reference&other)	{Super::operator=(other);}
 
 		/**
 		Inserts a new named C function into the local table.
@@ -717,6 +783,21 @@ namespace Lua
 		template <typename F>
 			void		SetFunction(const String&name, const F&function)
 			{
+				if (IsEmpty())
+					return;
+				Detail::LibFunction<F>::Push(GetProgram(),function);
+				SetTopField(name);
+			}
+
+		/**
+		Inserts a new named C function into the local table.
+		Works for native function pointers, and any version of std::function, but not raw functors (including lambda expressions) atm
+		*/
+		template <typename F>
+			void		SetFunction(const char*name, const F&function)
+			{
+				if (IsEmpty())
+					return;
 				Detail::LibFunction<F>::Push(GetProgram(),function);
 				SetTopField(name);
 			}
@@ -735,11 +816,9 @@ namespace Lua
 		typedef Reference	Super;
 	protected:
 		/**/			BaseFunction()	{};
-		virtual bool	IsFunctionReference() const override	{return true;}
-
+		virtual void	SignalChange(const String&) override;
 	public:
-		bool			Reset(const Reference&ref);
-		void			operator=(const Reference&ref);
+		void			operator=(const Reference&other)	{Super::operator=(other);}
 	};
 
 
@@ -757,12 +836,14 @@ namespace Lua
 			{
 				ResetToGlobal(prog,functionName);
 			}
+			/**/		Function(const Reference&ref)	{Super::operator=(ref);}
 			void		operator=(const Reference&ref)	{Super::operator=(ref);}
 
 			void		operator()(args_t...parameters)	const
 			{
 				if (IsEmpty())
-					throw Except::Program::GeneralFault("Lua: Trying to call empty function");
+					return;	//allow return-less functions to just fail silently
+					//throw Except::Program::GeneralFault("Lua: Trying to call empty function");
 				lua_State*state = GetProgram()->GetState();
 				Super::Push();
 				int numParameters = Detail::PushParameters(state,parameters...);
@@ -783,6 +864,7 @@ namespace Lua
 			{
 				ResetToGlobal(prog,functionName);
 			}
+			/**/		Function(const Reference&ref)	{Super::operator=(ref);}
 			void		operator=(const Reference&ref)	{Super::operator=(ref);}
 
 			return_t	operator()(args_t...parameters)	const

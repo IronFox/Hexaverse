@@ -17,6 +17,12 @@
 			&apos;Liquids&apos; will expose all liquids in general (currently water and lava).
 			&apos;FullTerrain&apos; exposes all initial terrain information to all clients (excluding terrain modifications caused by subsequent changes, e.g. nexus base construction).
 		</variable>
+		<variable name="resourceDistribution" default="">
+			Sets a custom Lua resource destribution script.
+			Set to '' to use the internal distribution script.
+			Any non-empty string X implies that [installDir]\lua\distributions\X.lua exists and is a valid Lua script.
+			If the required script does not exist or cannot be executed, then the internal program is used instead, which uses the planet-specific density and max values.
+		</variable>
 		<context name="Planet">
 			<variable name="Type" default="LushGreen">
 				The following defines which planet type to use.
@@ -190,6 +196,10 @@
 		</context>
 		<context name="Nexus">Nexus faction settings
 			<variable name="haveBases" default="true">If enabled then Nexus bases are constructed around 3 of the 12 planet poles. Only affects newly created worlds.</variable>
+			<variable name="roundsPerResearchPoint" default="10">
+				The number of rounds necessary for the Nexus faction to gain one research point in every endless research topic.
+				Set 0 to disable Nexus research.
+			</variable>
 			<variable name="enableAI" default="true">
 				Enables the AI to process units of the Nexus faction.
 				Spawns nexus vehicles, and AI client to control nexus vehicles/structures (if any).

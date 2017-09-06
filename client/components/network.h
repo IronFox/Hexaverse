@@ -2,7 +2,7 @@
 #define networkComponentH
 
 #include "../../shared/protocol.h"
-#include "guiElements.h"
+#include "visual/guiElements.h"
 
 /**
 All network-related aspects. Multiple additions to this namespace exist.
@@ -30,7 +30,7 @@ namespace Network
 	extern CryptographicID		activeToken;
 	extern String				myIDString,serverIDString,worldIDString,activeTokenString;
 	
-	extern GenericHashTable<TUniqueID,CryptographicID,TUniqueID>	accessMap;
+	extern GenericHashTable<TUniqueID,CryptographicID>	accessMap;
 
 
 	extern Protocol::GameProgress	gameProgress;
@@ -62,6 +62,8 @@ namespace Network
 			host.adoptData(other.host);
 			basePort = other.basePort;
 		}
+
+		bool				IsLocalhost() const {return host == "localhost" || host == "127.0.0.1" || host == "::1";}
 
 		String				ToString() const {return basePort != DEFAULT_SERVER_BASE_PORT ? host + ':' + String(basePort) : host;}
 	};
@@ -101,6 +103,11 @@ namespace Network
 	bool HaveFactionKeyForCurrentWorld();
 	void AttemptFactionLogin(bool forceNewFaction, UINT32 factionTypes);
 
+	/**
+	Signals that server and client states have deteriorated to a point where communication cannot continue.
+	Causes imminent disconnection
+	*/
+	void	SignalProtocolDisruption(const String&message);
 	
 	namespace ServerDiscovery
 	{
@@ -177,7 +184,7 @@ namespace Network
 
 		void	DestroyMarker(NET(TUniqueID)&mid);
 
-		void	IdentifyUser(Protocol::IdentifyUser&id);
+		void	IdentifyFaction(Protocol::IdentifyFaction&id);
 		void	FactionOnline(NET(TUniqueID)&);
 		void	FactionOffline(NET(TUniqueID)&);
 		void	FactionRequestedNewRound(NET(TUniqueID)&);
@@ -186,6 +193,7 @@ namespace Network
 		void	PlanetConfig(Grid::ExtendedPlanetConfig&);
 		void	ResourceData(Protocol::ResourceData&);
 		void	GameConfig(Protocol::GameConfig&);
+		void	TutorialAt(NET(INT32)&);
 	}
 
 
@@ -217,7 +225,7 @@ namespace Network
 		extern TCP::Channel<Protocol::Marker, 0, Protocol::ChannelID::MarkerCreationFailedLimitReached>	markerCreationFailedLimitReached;
 		extern TCP::Channel<NET(TUniqueID), 0, Protocol::ChannelID::DestroyMarker>						destroyMarker;
 
-		extern TCP::Channel<Protocol::IdentifyUser, 0, Protocol::ChannelID::IdentifyUser>				identifyUser;
+		extern TCP::Channel<Protocol::IdentifyFaction, 0, Protocol::ChannelID::IdentifyFaction>			identifyFaction;
 		extern TCP::Channel<NET(TUniqueID), 0, Protocol::ChannelID::FactionOnline>						factionOnline;
 		extern TCP::Channel<NET(TUniqueID), 0, Protocol::ChannelID::FactionOffline>						factionOffline;
 		extern TCP::Channel<NET(TUniqueID), 0, Protocol::ChannelID::FactionRequestedNewRound>			factionRequestedNewRound;
@@ -227,10 +235,12 @@ namespace Network
 		extern TCP::Channel<Grid::ExtendedPlanetConfig, 0, Protocol::ChannelID::PlanetConfig>			planetConfig;
 		extern TCP::Channel<Protocol::OperationLacksResources, 0, Protocol::ChannelID::OperationLacksResources>			operationLacksResources;
 		extern TCP::Channel<Protocol::ResearchState, 0, Protocol::ChannelID::ResearchState>				researchState;
-		extern TCP::Channel<Protocol::SelectResearch, 0, Protocol::ChannelID::SelectResearch>			selectResearch;
+		extern TCP::Channel<Protocol::ResearchQueue, 0, Protocol::ChannelID::ResearchQueue>				researchQueue;
 		extern TCP::Channel<Protocol::ResourceData,0,Protocol::ChannelID::ResourceData>					resourceData;
 		extern TCP::Channel<Protocol::GameConfig,0,Protocol::ChannelID::GameConfig>						gameConfig;
+		extern TCP::Channel<NETA(Package::NetString<256>),0,Protocol::ChannelID::PlanetNames>			planetNames;
 
+		extern TCP::Channel<NET(INT32),0,Protocol::ChannelID::TutorialAt>								tutorialAt;
 
 		extern TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;
 		extern TCP::ObjectSender<Protocol::TouchedMarker,Protocol::ChannelID::TouchMarker>					touchMarker;
@@ -250,7 +260,8 @@ namespace Network
 		extern TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>				changeMyName;
 		extern TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>				chatMessage;
 		extern TCP::ObjectSender<Protocol::ResourceID, Protocol::ChannelID::RequestResource>			requestResource;
-
+		extern TCP::ObjectSender<Package::NetString<256>, Protocol::ChannelID::LoadPlanetByName>		loadPlanetByName;
+		extern TCP::ObjectSender<Protocol::QueueResearch, Protocol::ChannelID::QueueResearch>			queueResearch;
 		
 	}
 
@@ -269,6 +280,9 @@ namespace Network
 	void		OnSignal(UINT32 signal, TCP::Peer&origin);
 
 	void		Setup();
+
+	void		LoadHosts();
+	void		SaveHosts();
 
 
 	class Label
@@ -322,6 +336,14 @@ namespace Network
 		//	return false;
 		//}
 
+		bool					HasLocalhost() const
+		{
+			foreach (addresses,u)
+				if (u->address.IsLocalhost())
+					return true;
+			return false;
+		}
+
 		bool					HasAddress(const ServerAddress&addr) const
 		{
 			foreach(addresses, u)
@@ -348,11 +370,11 @@ namespace Network
 	};
 
 	extern Buffer0<ServerInfo,Swap>	servers;
-	extern GenericHashTable<TUniqueID,index_t,TUniqueID>	serverMap;
+	extern GenericHashTable<TUniqueID,index_t>	serverMap;
 
 	extern Timer::Time		lastPing,lastServerTableUpdate;
 
-	void		Update();
+	
 
 	void		Shutdown();
 
@@ -361,7 +383,6 @@ namespace Network
 
 
 	bool		ConnectToConfiguredServerIfAvailable();
-
 
 }
 

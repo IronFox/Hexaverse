@@ -9,12 +9,12 @@
 
 namespace Objects
 {
-	extern Buffer0<PStructure>			structurePrototypes;
+	extern Ctr::Buffer0<PStructure>			structurePrototypes;
 	namespace Component
 	{
-		extern Buffer0<VehicleBase*>	baseComponents;
-		extern Buffer0<Turret*>			vehicleTurretComponents,
-										allTurretComponents;
+		extern Ctr::Buffer0<VehicleBase*>	baseComponents;
+		extern Ctr::Buffer0<Turret*>		vehicleTurretComponents,
+											allTurretComponents;
 
 	}
 	#ifndef NO_SATELLITES

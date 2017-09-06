@@ -10,6 +10,7 @@
 #include <general/timer.h>
 #include "../shared/protocol.h"
 
+using namespace DeltaWorks;
 
 HANDLE mainThreadHandle = nullptr;
 
@@ -22,8 +23,8 @@ BOOL WINAPI MyHandlerRoutine(_In_  DWORD dwCtrlType)
 		case CTRL_SHUTDOWN_EVENT:
 			//TerminateNow(false);
 			application_shutting_down = true;
-			if (cancelSynchronousIo)
-				cancelSynchronousIo(mainThreadHandle);
+			if (Sys::cancelSynchronousIo)
+				Sys::cancelSynchronousIo(mainThreadHandle);
 			else
 				TerminateProcess(GetCurrentProcess(),0);
 			//exit(0);
@@ -93,7 +94,7 @@ namespace Console
 	{
 		lastLine = Truncate(context.ref(),30);
 		lastLine += '>';
-		lastLine += Truncate(input.ToStringRef(),getConsoleWidth() - lastLine.length());
+		lastLine += Truncate(input.ToStringRef(),Sys::getConsoleWidth() - lastLine.length());
 	}
 
 	void	Refresh()
@@ -122,7 +123,7 @@ namespace Console
 			case '\b':
 				if (input.IsNotEmpty())
 				{
-					if (input.last() != '\t' && lastLine.length() +2 < (count_t)getConsoleWidth())
+					if (input.last() != '\t' && lastLine.length() +2 < (count_t)Sys::getConsoleWidth())
 					{
 						std::cout << "\b \b";
 						refresh = false;
@@ -145,7 +146,7 @@ namespace Console
 				if (Package::NetString<1024>::IsValidChar(c))
 				{
 					input << c;
-					if (lastLine.length()+1 < (count_t)getConsoleWidth())
+					if (lastLine.length()+1 < (count_t)Sys::getConsoleWidth())
 					{
 						std::cout << c;
 						refresh = false;
@@ -286,13 +287,13 @@ void	Dispatch(const StringRef&line)
 }
 
 
-void OnDeserializationFailed(UINT32 channel, TCP::Peer&peer)
+void OnDeserializationFailed(UINT32 channel, TCP::Peer&peer, const String&exceptionMessage)
 {
-	Console::WriteLine(peer.ToString()+": Deserialization failed on channel "+String(channel));
+	Console::WriteLine(peer.ToString()+": Deserialization failed on channel "+String(channel)+" ("+exceptionMessage+")");
 }
 
 
-Event	exitLock;
+Sys::Event	exitLock;
 
 namespace ParameterConfig
 {
@@ -371,7 +372,6 @@ void OnEvent(TCP::event_t event, TCP::Peer&peer)
 {
 	switch (event)
 	{
-		case TCP::Event::ConnectionClosed:
 		case TCP::Event::ConnectionFailed:
 		case TCP::Event::ConnectionLost:
 			if (Handler::interactive)

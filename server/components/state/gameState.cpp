@@ -5,11 +5,12 @@
 #include "../aiProcess.h"
 #include "../journalSaveGame.h"
 #include "../configurationMode.h"
-
+#include <objects/structure/mine.h>
+#include <objects/structure/vehiclePlant.h>
 
 void			ApplicationInterface::SignalFactionsChanged()
 {
-	Game::mostFactionsAlive = std::max(Game::mostFactionsAlive, (UINT32)Objects::Faction::all.Count());
+	Game::mostFactionsAlive = std::max(Game::mostFactionsAlive, Game::CountLivingPlayerFactions());
 	Reflection::SignalFactionsChanged();
 }
 
@@ -25,6 +26,7 @@ namespace Game
 	float				factionStartMineralValue=1.f;	//determined during loading
 	float				effectiveAnimationLength = 1.f;
 
+	INT32				tutorialAt=1;
 
 
 	namespace Config
@@ -53,8 +55,9 @@ namespace Game
 						;
 
 			bool		enableAI = false;
+			UINT32		roundsPerResearchPoint=10;
 			float		threatEstimationFactor = 1.f;
-			Array<Objects::Component::Turret*>	vehicleTurrets;
+			Ctr::Array<Objects::Component::Turret*>	vehicleTurrets;
 		}
 	}
 	
@@ -64,10 +67,10 @@ namespace Game
 	{
 		void		UpdateResourceCoverage(const Objects::PFaction&f, const Grid::LCellIdI&center,float range, const Protocol::Timestamp&timestamp)
 		{
-			static Buffer0<UINT32>	changed;
+			static Ctr::Buffer0<UINT32>	changed;
 			if (!f)
 				return;
-			f->visibility.UpdateResourceCoverage(center,range,changed);
+			f->knownResources.Update(center,range,changed);
 			if (changed.IsEmpty())
 				return;
 			::Network::PClient client;
@@ -106,6 +109,7 @@ namespace Game
 		{
 			roundTimerPaused = true;
 			mostFactionsAlive = 0;
+			tutorialAt=1;
 			winner.reset();
 			HandleSessionSuspension();
 		}
@@ -136,6 +140,8 @@ namespace Game
 				gameConfig.gameFlags |= Protocol::GameFlag::NexusAI;
 			if (ConfigurationMode::IsActive())
 				gameConfig.gameFlags |= Protocol::GameFlag::ConfigurationMode;
+			if (RuntimeConfig::tutorialMode)
+				gameConfig.gameFlags |= Protocol::GameFlag::TutorialMode;
 			if (World::Config::simulateLiquids)
 				gameConfig.gameFlags |= Protocol::GameFlag::SimulateLiquids;
 
@@ -157,6 +163,11 @@ namespace Game
 
 		void	ChangePhase(RuntimeConfig::Phase to, float timeWindow/* = -1*/)
 		{
+			if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
+			{
+				DBG_FATAL__("Trying to change from end-of-game to "+String(to.ToString()));
+				return;
+			}
 			if (RuntimeConfig::IsACommandPhase(to))
 			{
 				Objects::ForeachFaction([](const Objects::PFaction&f)
@@ -171,7 +182,17 @@ namespace Game
 						f->researchState.Export(state.serializedData);
 						ASSERT_LESS__(state.serializedData.Count(),state.serializedData.MaxElementCount);
 						Channels::researchState.SendTo(::Network::server,state,(UINT32)::Network::UserLevel::CommonFaction);
-
+					}
+					if (f->researchState.queueChanged)
+					{
+						f->researchState.queueChanged = false;
+						::Network::PClient client;
+						if (::Network::playerMap.Query(f,client))
+						{
+							Protocol::ResearchQueue queue;
+							f->researchState.ExportResearchQueue(queue);
+							::Channels::researchQueue.SendTo(client->peer.lock(),queue);
+						}
 					}
 				});
 			}
@@ -249,7 +270,7 @@ namespace Game
 				else
 				{
 				
-					seq->Guess(v, origin, taskIndex, task.roundsToJobCompletion.value,task.resourceCostLeft.value);
+					seq->Guess(v, origin, taskIndex, task.roundsToJobCompletion,task.resourceCostLeft);
 				}
 				if (t.job->movesToFocusWhenDone)
 					task.taskFlags |= Protocol::TaskFlags::VisualizePathToFocus;
@@ -333,7 +354,7 @@ namespace Game
 					info.resourceVector = v.currentStorage;
 				#endif
 				if (v.isAutomated)
-					state.flags.value |= Protocol::VehicleFlags::Automated;
+					state.flags |= Protocol::VehicleFlags::Automated;
 				info.constructionRoundCounter = v.constructionRoundCounter;
 				state.attackActionLeft = v.attackActionLeft;
 				state.movementActionLeft = v.movementActionLeft;
@@ -367,7 +388,7 @@ namespace Game
 				}
 			}
 			if (v.IsHibernating())
-				state.flags.value |= Protocol::VehicleFlags::Hibernating;
+				state.flags |= Protocol::VehicleFlags::Hibernating;
 
 			Describe(state.entityState,v,owned,timestamp,changeFlags);
 			if (owned)
@@ -410,9 +431,9 @@ namespace Game
 			//state.productionDone = 0;
 			state.flags = 0;
 			if (!w || w->IsEnabled())
-				state.flags.value |= Protocol::StructureFlags::Enabled;
+				state.flags |= Protocol::StructureFlags::Enabled;
 			if (w && w->IsHibernating())
-				state.flags.value |= Protocol::StructureFlags::Hibernating;
+				state.flags |= Protocol::StructureFlags::Hibernating;
 
 			if (w && owned)
 			{
@@ -474,6 +495,31 @@ namespace Game
 	}
 
 
+	void RegisterClassGain(const Objects::PWorldEntity&e, Objects::Faction::UnitClass cl, const String&debugName)
+	{
+		if (Config::basesRequired && !(e->owner->hasUnitClasses & cl))
+		{
+			const auto&f = e->owner;
+			LogEvent(EventSignificance::Debug,e.get(),"Recognized as "+debugName+". Reevaluating survivial conditions");
+			f->hasUnitClasses |= cl;
+			String whyNot;
+			bool canLive = f->CanLive(whyNot);
+		
+			if (canLive)	//conditions changed
+			{
+				if (f->deathInRounds > 0)
+				{
+					f->deathInRounds = 0;
+					::Network::PClient client;
+					if (::Network::playerMap.query(f,client))
+						client->SendProgressUpdate(whyNot);
+				}
+			}
+			else
+				LogEvent(EventSignificance::Debug,e.get(),"Nope: "+whyNot);
+		}
+	}
+
 	void	ResetFactionStartMineralValue()
 	{
 		if (Config::startBases)
@@ -522,7 +568,7 @@ namespace Game
 
 	void	ProcessChanges(bool thoroughly)
 	{
-		World::Network::SendChangedFamilies();
+		World::Network::CheckAllFactionCoverageAndSendAsNeeded();
 
 		Objects::ForeachMobileEntityIncludingStored([/*&anythingChanged*/](const Objects::PMobileEntity&_v)
 		{
@@ -555,11 +601,11 @@ namespace Game
 					}			
 				v.ResetAllChange();
 			}
-		});
+		},false);
 
-		foreach (Objects::structures, _s)
+		Objects::structures.Foreach([](const Objects::PStructure&_s)
 		{
-			Objects::Structure&s = **_s;
+			Objects::Structure&s = *_s;
 			if (s.changeFlags)
 			{
 				//anythingChanged = true;
@@ -570,8 +616,8 @@ namespace Game
 				Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),s.changeTimer);
 
 				TCP::Serial<Protocol::StructureState>	w0,w1;
-				Network::Describe(w0.Ref(),**_s,false,timestamp,s.changeFlags);
-				Network::Describe(w1.Ref(),**_s,true,timestamp,s.changeFlags);
+				Network::Describe(w0.Ref(),s,false,timestamp,s.changeFlags);
+				Network::Describe(w1.Ref(),s,true,timestamp,s.changeFlags);
 				w0.Seal();
 				w1.Seal();
 				if (!othersNeedToKnow)
@@ -584,13 +630,13 @@ namespace Game
 						if (::Network::CanSeeAsOwner(*cl,s))
 							Channels::setStructureState.SendTo((*cl)->peer.lock(),w1);
 						else
-							if (::Network::CanSee(*cl,*_s,0))
+							if (::Network::CanSee(*cl,_s,0))
 								Channels::setStructureState.SendTo((*cl)->peer.lock(),w0);
 						//Channels::setStructureState.SendTo((*cl)->peer.lock(),Receiver::HasAccess(*cl,s) ? w1 : w0);
 					}
 				s.ResetAllChange();
 			}
-		}
+		});
 
 		if (thoroughly)
 		{
@@ -713,6 +759,22 @@ namespace Game
 		}
 	#endif
 
+
+	count_t CountLivingPlayerFactions()
+	{
+
+		count_t livingPlayerFactions = 0;
+
+		for (index_t i = 0; i < Objects::Faction::all.Count(); i++)
+		{
+			Objects::PFaction faction = Objects::Faction::all[i].lock();	//only player factions here: nexus is not included in ::all
+			if (faction && !faction->isDead)
+				livingPlayerFactions ++;
+		}
+
+		return livingPlayerFactions;
+	}
+
 	void PerformNewRoundLogic(float&atTime)
 	{
 
@@ -726,14 +788,7 @@ namespace Game
 			{
 				Objects::PFaction faction = _f->lock();
 				if (faction)
-				{
-					faction->hasFuelMine = false;
-					faction->hasMineralMine = false;
-					faction->hasMineralContainer = false;
-					faction->hasGenerator = false;
-					faction->hasVehiclePlant = false;
-					faction->hasTerraformer = false;
-				}
+					faction->hasUnitClasses = Objects::Faction::UnitClass::None;
 			}
 
 			Objects::RefreshCompoundCoverageIfNeeded(atTime);
@@ -742,15 +797,16 @@ namespace Game
 			{
 				if (c.workingStructures.IsEmpty())
 					return;	//pure technite factions don't have units. Also, depending on server settings, some factions might not either
-				bool hasFuelMine = false,
-					hasMineralMine = false,
-					hasMineralContainer = Objects::Mine::MineralStorage > 0,
-					hasGenerator = false,
-					hasVehiclePlant = false;
+				typedef Objects::Faction::UnitClass	UC;
+
+				UC	uc = UC::None;
+				if (Objects::Mine::MineralStorage > 0)
+					uc |= UC::MineralContainer;
+					 
 
 
 				#ifdef ONE_COMPOUND_PER_FACTION
-					hasMineralContainer = true;	//don't need
+					uc |= UC::MineralContainer;	//don't need
 				#endif
 				Objects::ResourceVector dummy,storage;
 				Objects::OwnerParameter o;
@@ -767,12 +823,12 @@ namespace Game
 					if (mine && mine->IsLinkedToCore())
 					{
 						if (mine->naturalResources.fuel >= 10)
-							hasFuelMine = true;
+							uc |= Objects::Faction::UnitClass::FuelMine;
 						if (mine->naturalResources.minerals >= 5)
-							hasMineralMine = true;
+							uc |= Objects::Faction::UnitClass::MineralMine;
 					}
 					if (To<Objects::Generator>::DynamicCast(s))
-						hasGenerator = true;
+						uc |= Objects::Faction::UnitClass::Generator;
 
 					#ifndef ONE_COMPOUND_PER_FACTION
 						s->GetResourceVector(dummy,dummy,storage);
@@ -780,30 +836,24 @@ namespace Game
 							hasMineralContainer = true;
 					#endif
 					if (To<Objects::VehiclePlant>::DynamicCast(s))
-						hasVehiclePlant = true;
+						uc |= Objects::Faction::UnitClass::VehiclePlant;
 				}
 				Objects::PFaction f = o;//c.workingStructures.first().lock()->owner;
 				if (f)
-				{
-					f->hasFuelMine |= hasFuelMine;
-					f->hasMineralMine |= hasMineralMine;
-					f->hasMineralContainer |= hasMineralContainer;
-					f->hasGenerator |= hasGenerator;
-					f->hasVehiclePlant |= hasVehiclePlant;
-				}
+					f->hasUnitClasses |= uc;
 			});
 
 			Objects::ForeachMobileEntityIncludingStored([](const Objects::PMobileEntity&v)
 			{
 				if (v->GetOperationSpeed(Objects::Component::Construct))
-				{
-					v->owner->hasTerraformer = true;
-				}
-			});
+					v->owner->hasUnitClasses |= Objects::Faction::UnitClass::Terraformer;
+			},false);
 
+
+			count_t livingPlayerFactions = CountLivingPlayerFactions();
 			for (index_t i = 0; i < Objects::Faction::all.Count(); i++)
 			{
-				Objects::PFaction faction = Objects::Faction::all[i].lock();
+				Objects::PFaction faction = Objects::Faction::all[i].lock();	//only player factions here: nexus is not included in ::all
 				if (faction)
 				{
 					String whyNot;
@@ -821,12 +871,11 @@ namespace Game
 						{
 							faction->deathInRounds = 0;
 							if (client)
-								client->SendProgressUpdate(false,whyNot);
+								client->SendProgressUpdate(whyNot);
 						}
 					}
 					else
 					{
-						bool dead = false;
 						if (!faction->deathInRounds)
 						{
 							faction->deathInRounds = 5;
@@ -841,8 +890,7 @@ namespace Game
 							}
 							else
 							{
-								dead = true;
-								String name = client ? client->ToString() : "Faction "+faction->id.ToString();
+								String name = client ? client->ConvertToString() : "Faction "+ToString(faction->id);
 											
 								LogEvent(EventClass::Preset::factionDeath,name+" died: "+whyNot);
 
@@ -862,6 +910,9 @@ namespace Game
 								*/
 
 								Objects::Faction::Kill(faction);
+								ASSERT__(livingPlayerFactions > 0)
+								livingPlayerFactions--;
+								#if 0
 								if (client)
 									::Network::activePlayersAndSpectators.FindAndErase(client);
 								::Network::tokenMap.Unset(faction->accessToken);
@@ -870,45 +921,56 @@ namespace Game
 								if (client)
 									client->faction.reset();
 								i--;
-
-								if (Config::closedGame)
-								{
-									if (Objects::Faction::all.IsEmpty())
-									{
-										LogEvent(EventClass::Preset::factionDeath,"All factions destroyed. Application requires restart.");
-										//application_shutting_down = true;
-									}
-									else
-									if (Objects::Faction::all.Count() == 1)
-									{
-										if (RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame)
-										{
-											LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain),"Only one faction left. Declaring winner.");
-											Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
-											winner = Objects::Faction::all.first().lock();
-											::Network::PClient client;
-											//debugCheckProgress = true;
-											if (::Network::playerMap.Query(winner,client))
-											{
-												client->SendProgressUpdate(true,whyNot);
-											}
-										}
-									}
-								}
+								#endif /*0*/
 							}
 						}
 						if (client)
-							client->SendProgressUpdate(dead,whyNot);
+							client->SendProgressUpdate(whyNot);
+					}
+				}
+			}
+
+			if (Config::closedGame && RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame)
+			{
+				if (livingPlayerFactions == 0)
+				{
+					Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
+					LogEvent(EventClass::Preset::factionDeath,"All factions destroyed. Application requires restart.");
+				}
+				else
+				if (livingPlayerFactions == 1)
+				{
+					LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain),"Only one faction left. Declaring winner.");
+					Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
+
+					winner.reset();
+					for (index_t i = 0; i < Objects::Faction::all.Count(); i++)
+					{
+						Objects::PFaction faction = Objects::Faction::all[i].lock();	
+						if (faction && !faction->isDead)
+						{
+							DBG_ASSERT__(!winner);
+							winner = faction;
+						}
+					}
+
+					::Network::PClient client;
+					if (::Network::playerMap.Query(winner,client))
+					{
+						client->SendProgressUpdate("");
 					}
 				}
 			}
 
 
-
-
 		}
 
+		UpdateResidualEMPDamage(atTime);
+	}
 
+
+	void			UpdateResidualEMPDamage(float&atTime)
+	{
 		Objects::ForeachWorldEntity([&atTime](const Objects::PWorldEntity&e)
 		{
 			if (e->owner == Objects::Faction::nexus && e->IsAboveGrid())
@@ -921,11 +983,8 @@ namespace Game
 			}
 			elif (e->owner == Objects::Faction::nexus)
 				e->HealAllEMPDamage(atTime);	//immediately heal when a new area gets unlocked
-		});
-
-	
+		},false);
 	}
-
 
 
 	
@@ -941,7 +1000,7 @@ namespace Game
 		if (h == Objects::badHeight)
 			h = 0;	//just spawn it near median
 		static const int R = 5;
-		h = clamp(h,-Grid::CellStack::HalfRange + R + 1,Grid::CellStack::HalfRange - R - 2);
+		h = M::clamp(h,-Grid::CellStack::HalfRange + R + 1,Grid::CellStack::HalfRange - R - 2);
 
 		location.height = h;
 		std::shared_ptr<Objects::NexusPort> port = To<Objects::NexusPort>::Cast(
@@ -968,6 +1027,8 @@ namespace Game
 	void SpawnNexusBaseAtPoleWithPort(int pole)
 	{
 		LogEvent(EventSignificance::Common,"Spawning Nexus base at pole "+String(pole));
+
+		auto sensorLock = Objects::Faction::nexus->LockSensorUpdates();
 
 		ASSERT__(Config::Nexus::haveBases);
 
@@ -998,11 +1059,23 @@ namespace Game
 			//	bool rebuild[BaseGrid::NumFamilies] = { false };
 
 				Grid::LowSetup::TDistanceField field;
-				static const int R = 5;
+				#ifdef LOWER_RESOLUTION_PLANET
+					static const int R = 4;
+					static const int MissileDistance = 4;
+					static const int RadarDistance = 3;
+					static const int OuterFactoryDistance = 2;
+					static const int MaxFactories = 3;
+				#else
+					static const int R = 5;
+					static const int MissileDistance = 5;
+					static const int RadarDistance = 4;
+					static const int OuterFactoryDistance = 3;
+					static const int MaxFactories = 4;
+				#endif
 
 				Grid::low.UpdatePlanarDistanceField(pole,R+1,field);
 
-				Buffer0<index_t>	distances;
+				Ctr::Buffer0<index_t>	distances;
 
 
 				for (index_t i = 0; i < field.NumEntries; i++)
@@ -1013,8 +1086,8 @@ namespace Game
 						distances << i;
 					else
 					{
-						Grid::actualWorld.Clear(Grid::LCellIdI(i,h),0);
-						Grid::actualWorld.Clear(Grid::LCellIdI(i,h+1),0);
+						World::actual.Clear(Grid::LCellIdI(i,h),0);
+						World::actual.Clear(Grid::LCellIdI(i,h+1),0);
 					}
 				}
 
@@ -1026,12 +1099,12 @@ namespace Game
 					int h2 = h + d1;
 					for (int z = h; z <= h2 + 2 ; z++)
 					{
-						Grid::actualWorld.Clear(Grid::LCellIdI(i,z),0);
+						World::actual.Clear(Grid::LCellIdI(i,z),0);
 					//	Grid::TagLowCluster(rebuild,Grid::LCellIdI(i,z));
 					}
 				//	Grid::TagLowCluster(rebuild,Grid::LCellIdI(i,h2-1));
 				}
-				Buffer0<Objects::PWorkingStructure>	alwaysOn;
+				Ctr::Buffer0<Objects::PWorkingStructure>	alwaysOn;
 				for (index_t i : distances)
 				{
 					ASSERT_LESS_OR_EQUAL__(field.distance[i],R);
@@ -1057,7 +1130,7 @@ namespace Game
 					{
 						if (z < h || (z >=h2-1 && notCore/* && !deadly*/) || noEdge)
 						{
-							Grid::actualWorld.Overwrite(Grid::LCellIdI(i,z),Grid::Content::Rock,0);
+							World::actual.Overwrite(Grid::LCellIdI(i,z),Grid::Content::Rock,0);
 						}
 						else
 							if (!notDirectEdge)
@@ -1071,7 +1144,7 @@ namespace Game
 					if (notDirectEdge || field.distance[i] == 1)
 						for (int z = h-1; z < h; z++)
 						{
-							Grid::actualWorld.Overwrite(Grid::LCellIdI(i,z),Grid::Content::Road,0);
+							World::actual.Overwrite(Grid::LCellIdI(i,z),Grid::Content::Road,0);
 						}
 				}
 
@@ -1088,7 +1161,7 @@ namespace Game
 					#if 1
 					if (Grid::low.grid.GetCell(i).family == 0)	//align of family members implies family zero members are along edges between nexus poles
 					{
-						if (field.distance[i] == 5)
+						if (field.distance[i] == MissileDistance)
 						{
 							#ifndef _DEBUG
 								std::shared_ptr<Objects::Tower> tower = To<Objects::Tower>::Cast(
@@ -1099,7 +1172,7 @@ namespace Game
 								Objects::InsertConstructed(tower,t);
 							#endif
 						}
-						if (field.distance[i] == 4)
+						if (field.distance[i] == RadarDistance)
 						{
 							std::shared_ptr<Objects::Tower> tower = To<Objects::Tower>::Cast(
 								Objects::GetPrototypeByName(ConstName::Type_RadarTower)->CreateNewInstance(Objects::Faction::nexus,
@@ -1109,32 +1182,69 @@ namespace Game
 							Objects::InsertConstructed(tower,t);
 						}
 
-						if (field.distance[i] == (2))
+						if (field.distance[i] == OuterFactoryDistance)
 						{
-							if (generatorCount == 4)
+							if (factoryCount == MaxFactories)
 							{
-								Objects::PMunitionStorage storage = To<Objects::MunitionStorage>::Cast(
-									Objects::MunitionStorage::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
-									Grid::LCellIdI(i,h),
-									0));
-								storage->CorrectTerrain(false,0);
-								storage->storage = storage->maxStorage;
-								Objects::InsertConstructed(storage,t);
-								alwaysOn << storage;
+								#ifdef LOWER_RESOLUTION_PLANET
+									Objects::PGenerator generator = To<Objects::Generator>::Cast(
+										Objects::Generator::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
+										Grid::LCellIdI(i,h),
+										0));
+									generator->CorrectTerrain(false,0);
+									Objects::InsertConstructed(generator,t);
+									generatorCount++;
+									alwaysOn << generator;	//only need three generators switched on
+								#else
+									Objects::PMunitionFactory factory = To<Objects::MunitionFactory>::Cast(
+										Objects::MunitionFactory::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
+										Grid::LCellIdI(i,h),
+										0));
+									factory->CorrectTerrain(false,0);
+									Objects::InsertConstructed(factory,t);
+									alwaysOn << factory;
+								#endif
 							}
 							else
 							{
-								Objects::PGenerator generator = To<Objects::Generator>::Cast(
-									Objects::Generator::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
+								Objects::PVehiclePlant plant = To<Objects::VehiclePlant>::Cast(
+									Objects::VehiclePlant::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
 									Grid::LCellIdI(i,h),
 									0));
-								generator->CorrectTerrain(false,0);
-								Objects::InsertConstructed(generator,t);
-								generatorCount++;
-								if (generatorCount < 4)
-									alwaysOn << generator;	//only need three generators switched on
+								plant->CorrectTerrain(false,0);
+								Objects::InsertConstructed(plant,t);
+								factoryCount++;
 							}
 						}
+
+						#ifndef LOWER_RESOLUTION_PLANET
+							if (field.distance[i] == (2))
+							{
+								if (generatorCount == 4)
+								{
+									Objects::PMunitionStorage storage = To<Objects::MunitionStorage>::Cast(
+										Objects::MunitionStorage::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
+										Grid::LCellIdI(i,h),
+										0));
+									storage->CorrectTerrain(false,0);
+									storage->storage = storage->maxStorage;
+									Objects::InsertConstructed(storage,t);
+									alwaysOn << storage;
+								}
+								else
+								{
+									Objects::PGenerator generator = To<Objects::Generator>::Cast(
+										Objects::Generator::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
+										Grid::LCellIdI(i,h),
+										0));
+									generator->CorrectTerrain(false,0);
+									Objects::InsertConstructed(generator,t);
+									generatorCount++;
+									if (generatorCount < 4)
+										alwaysOn << generator;	//only need three generators switched on
+								}
+							}
+						#endif
 
 						if (field.distance[i] == 1 /*|| field.distance[i] == 4*/)
 						{
@@ -1146,29 +1256,6 @@ namespace Game
 								connector->CorrectTerrain(false,0);
 								Objects::InsertConstructed(connector,t);
 								connectorCount++;
-							}
-						}
-						if (field.distance[i] == (3))
-						{
-							if (factoryCount == 4)
-							{
-								Objects::PMunitionFactory factory = To<Objects::MunitionFactory>::Cast(
-									Objects::MunitionFactory::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
-									Grid::LCellIdI(i,h),
-									0));
-								factory->CorrectTerrain(false,0);
-								Objects::InsertConstructed(factory,t);
-								alwaysOn << factory;
-							}
-							else
-							{
-								Objects::PVehiclePlant plant = To<Objects::VehiclePlant>::Cast(
-									Objects::VehiclePlant::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
-									Grid::LCellIdI(i,h),
-									0));
-								plant->CorrectTerrain(false,0);
-								Objects::InsertConstructed(plant,t);
-								factoryCount++;
 							}
 						}
 					}
@@ -1207,7 +1294,7 @@ namespace Game
 					//for (int z = h; z <= h2 + 2 ; z++)
 					{
 						if (!noEdge)
-							Grid::actualWorld.Clear(Grid::LCellIdI(i,h),0);
+							World::actual.Clear(Grid::LCellIdI(i,h),0);
 					//	Grid::TagLowCluster(rebuild,Grid::LCellIdI(i,z));
 					}
 				//	Grid::TagLowCluster(rebuild,Grid::LCellIdI(i,h2-1));

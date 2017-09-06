@@ -2,7 +2,7 @@
 #define fileIOH
 
 #include <io/riff_handler.h>
-#include <sphereGrid.h>
+#include <grid/worldData.h>
 #include <runtimeConfig.h>
 
 
@@ -21,7 +21,7 @@ namespace FileIO
 
 
 
-	void			Compare(Riff::File&a, Riff::File&b, Buffer<Riff::TID>&idStack, const String&indent="");
+	void			Compare(Riff::File&a, Riff::File&b, Ctr::Buffer<Riff::TID>&idStack, const String&indent="");
 
 
 
@@ -31,10 +31,12 @@ namespace FileIO
 	@param inData Data to serialize. Is not altered. Reference only for compatibilty with existing functions.
 	@param outChunk Riff-Chunk to write to
 	*/
-	void			WriteToListChunk(Grid::WorldData&inData, Riff::Chunk&outChunk);
-	void			ReadFromListChunk(const Riff::Chunk&, Grid::WorldData&);
+	void			WriteToListChunk(World::Data&inData, Riff::Chunk&outChunk);
+	void			ReadFromListChunk(const Riff::Chunk&, World::Data&);
 	void			Save(const PathString&name);
 	void			Load(const PathString&name);
+	bool			CanSaveRightNow();
+	bool			IsValidSavePhase(RuntimeConfig::Phase p);
 
 	/**
 	Checks whether or not the current configuration and round number makes autosaving appropriate, and executes such.

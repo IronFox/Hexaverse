@@ -5,7 +5,9 @@
 	</source>
 	<macro name="CLIENT"/>
 	<macro name="HAS_WINDOW"/>
-	<referenceProject name="DeltaWorks" />
+	<macro name="_SCL_SECURE_NO_WARNINGS" />
+	<referenceProject name="DeltaWorksCore" />
+	<referenceProject name="DeltaWorksEngine" />
 	<referenceProject name="lua" />
 	
 	<manifest>DeclareDPIAware.manifest</manifest>
@@ -17,7 +19,7 @@
 		<linkDirectory if_platform="x64">./libs/Win64</linkDirectory>
 		<link>OpenAL32.lib</link>
 	</includeLibrary>
-	<includeLibrary name="Microsoft DirectX SDK (June 2010)">
+	<includeLibrary warn_if_not_found="false" name="Microsoft DirectX SDK (June 2010)">
 		<rootRegistryHint>HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Microsoft\DirectX\Microsoft DirectX SDK (June 2010)\InstallPath</rootRegistryHint>
 		<include>./Include</include>
 		<linkDirectory if_platform="x32">./Lib/x86</linkDirectory>

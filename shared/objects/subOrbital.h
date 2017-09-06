@@ -13,9 +13,6 @@
 
 namespace Objects
 {
-	#ifdef HAS_WINDOW
-		extern DX11::BaseInstructionBlock	stdVehicleShader;	//don't want to include rendering.h here
-	#endif
 
 	namespace SubOrbital
 	{
@@ -36,28 +33,20 @@ namespace Objects
 			};
 
 		public:
+		#ifdef HAS_WINDOW
+			/**
+			Type-shared appearance
+			*/
+			PClientAttachment		shape;
+		#endif
 			static count_t			CountTurretOccurrences(const OwnerParameter&,Component::Turret*);
 
-
-			/**
-			Sensor state of the shaft-sensor that scans the ground beneath the plane.
-			Currently all planes carry one such, even if they cannot actually scan the ground.
-			*/
-			Grid::SkySensorState	skySensorState;
 
 			int						GetCentralGroundHeight() const;
 			static int				GetCentralGroundHeight(const Grid::LCellIdI&location);
 			int						GetLandingHeight() const	{return GetLandingHeight(location);}
 			static int				GetLandingHeight(const Grid::LCellIdI&location);
 
-			#ifdef HAS_WINDOW
-				/**
-				Visualization instruction responsible for visualizing the core component of the local satellite
-				References a static object unique to each satellite class.
-				Kinda like a vtable pointer for satellite rendering instructions
-				*/
-				DX11::InstructionBlock32	*baseRenderingInstruction;
-			#endif
 
 			#ifndef CLIENT
 				/**
@@ -65,7 +54,7 @@ namespace Objects
 				@return true, if changes were detected and applied, false otherwise
 				*/
 				bool				AttackNext(Grid::LCellIdI target, bool autoTarget);
-				bool				RefreshGroundSensor(float&atTime, bool checkChangesNow=true, Buffer0<PWorldEntity>*newContacts = nullptr);
+				bool				AttackFirst(Grid::LCellIdI target, bool autoTarget);
 			#endif
 
 			//new overridables:
@@ -79,7 +68,7 @@ namespace Objects
 			virtual float			GetFlatAttackRange() const override;
 			virtual String			DescribeFlatAttackRange() const override;
 			#ifndef CLIENT
-				virtual bool		FillAttackQueue()override;
+				virtual bool		FrontQueuePossibleAttacks()override;
 			#endif
 
 			//WorldEntity overrides:
@@ -91,21 +80,18 @@ namespace Objects
 			virtual bool			IsPlane() const override {return true;}
 			virtual PTurretBase		GetTurretBase(float&zOffset) override { zOffset = 0.f; return To<MobileEntity>::Cast(shared_from_this());}
 			virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = 0.f; return To<const MobileEntity>::Cast(shared_from_this());}
-			virtual TFloatRange<int>	GetRelativeScanningBand(const Grid::LCellIdI&loc) const override {return FloatRange<int>(IsAboveGrid(loc)? -100 : -3,+100);}	//Maximum vertical sensor radius up and down from the entity's central height. Currently not affected by EMP
 			virtual bool			IsUnlockedAtState(const Lua::Reference&researchState) const	{return turret->isUnlocked.GetValue(researchState);}
 
 			#ifdef HAS_WINDOW
-				virtual void		DescribeType(BaseCommand::Label&outResult, UINT32 descFlags) override;
+				virtual void		DescribeType(Description&outResult, UINT32 descFlags) override;
 				virtual void		VisitAllCommands(FCommandVisitor visitor,bool force) override {turret->VisitAllCommands(visitor,force);};
 				virtual float		GetSoundLevel() const {return IsGroundBoundVehicle() ? 0.f : GetActivityLevel()*0.25f;}	//save 75% for motion
 			#endif
 
-			virtual void			RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true, Buffer0<PWorldEntity>*newContacts = nullptr) override;
-			virtual void			UnregisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true) override;
-			#ifndef CLIENT
-				virtual void		MoveSensoryToCurrentLocation(const Grid::LCellIdI&oldLocation, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts/* = nullptr*/) override;
-			#endif
+			virtual void			VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance = false) const override;
 			virtual bool			CanSpawnAboveGrid(int&outHeight) const override {outHeight = Height; return true;}
+			virtual float3			GetScanningCenter(const Grid::LCellIdI&loc) const override;
+			
 
 			//MobileEntity overrides:
 			virtual int				GetMovementStepsPerRound() const override
@@ -138,25 +124,26 @@ namespace Objects
 				/**/					Template<Derivative>(const OwnerParameter&owner, Component::Turret*turret, const Grid::LCellIdI&location):Super(owner,turret,location)
 				{
 					#ifdef HAS_WINDOW
-						Super::baseRenderingInstruction = &shape;
+						ASSERT__(staticShape);
+						Super::shape = staticShape;
 					#endif		
 
 				}
 				/**/					Template<Derivative>(Component::Turret*turret) : Super(OwnerParameter(),turret,Grid::LCellIdI(0, 0))
 				{ 
 					#ifdef HAS_WINDOW
-						Super::baseRenderingInstruction = &shape;
+					//	ASSERT__(staticShape);
+						Super::shape = staticShape;
 					#endif		
 				}	//global prototype
 
 			public:
 				static const std::shared_ptr<Derivative>	globalPrototype;
 				#ifdef HAS_WINDOW
-					static CommandContainer	commands;
-					/**
-					Render-ready, object-space instruction to be used for all instances of this structure type
-					*/
-					static DX11::InstructionBlock32	shape;
+	
+
+					static CommandContainer		commands;
+					static PClientAttachment	staticShape;
 					/**
 					Intersectable, object-space geometry of all instances of this structure type
 					*/
@@ -170,8 +157,6 @@ namespace Objects
 				virtual void			PrototypeSetup() override;
 				virtual PWorldEntity	CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override {return PWorldEntity(new Derivative(owner, location)); }
 				#ifdef HAS_WINDOW
-					virtual void		PrototypeLoadGeometry() override;
-
 					virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override;
 					virtual void		VisitAllCommands(FCommandVisitor visitor,bool force) override {Super::VisitAllCommands(visitor,force); commands.VisitMembers(visitor,force);};
 				#endif
@@ -185,7 +170,7 @@ namespace Objects
 			template <typename Derivative>
 				/*static*/ CommandContainer		Template<Derivative>::commands;
 			template <typename Derivative>
-				/*static*/ DX11::InstructionBlock32	Template<Derivative>::shape;
+				/*static*/ PClientAttachment	Template<Derivative>::staticShape;
 			template <typename Derivative>
 				/*static*/ Geometry		Template<Derivative>::geometry;
 
@@ -210,28 +195,7 @@ namespace Objects
 			/*virtual override*/	void			Template<Derivative>::PrototypeSetup()
 			{
 				turret = GetTurretType();
-				#ifdef HAS_WINDOW
-					commands.baseCoords = int2(4,0)+BaseCommand::coordOffset;
-				#endif
 			}
-
-		#ifdef HAS_WINDOW
-			template <typename Derivative>
-				/*virtual override*/	void		Template<Derivative>::PrototypeLoadGeometry()
-				{
-					geometry.Clear();
-					String name = GetTypeName();
-					name.set(0, ::Template::tolower(name.firstChar()));
-					name.replace(' ',"");
-					geometry.LoadFromObj(PathString("objects/"+name+".obj"));
-					geometry.Scale(vehicleScale);
-					if (shape.shader.IsEmpty())
-						(DX11::BaseInstructionBlock&)shape = stdVehicleShader;
-					shape.vbo.CreateFromStructs(geometry.GetLOD(0).vertices);
-					shape.ibo.Create(geometry.GetLOD(0).indices);
-
-				}
-		#endif
 
 
 
@@ -314,7 +278,7 @@ namespace Objects
 			//HangarStructure overrides:
 			virtual const WorldEntity&	ToEntity() const override {return *this;}
 			virtual WorldEntity&		ToEntity() override {return *this;}
-
+			virtual count_t				GetLoad() const override { return this->stored.Count(); }
 			virtual bool	CanStoreType(const MobileEntity&e) const override {return e.IsVehicle() && !e.IsHangar();}
 			virtual void	StoreLocallyFromImport(const PMobileEntity&e) override;
 			#ifndef CLIENT
@@ -358,7 +322,7 @@ namespace Objects
 		};
 
 
-		extern Buffer0<PPlane>		planes;
+		extern SharedContainer<Plane>		planes;
 	}
 }
 

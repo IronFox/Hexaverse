@@ -2,15 +2,17 @@
 
 #ifdef HAS_WINDOW
 
-#include <sphereGrid.h>
+#include <grid/planet.h>
 #include <runtimeConfig.h>
 
 namespace ConfigurationMode
 {
+	void	Create();
 	void	Update(const Grid::ExtendedPlanetConfig&);
 	void	SetActive(bool);
 	void	SetGameConfig(UINT32, RuntimeConfig::GameGoal, Grid::WorldDiscovery);
 	bool	IsActive();
+	bool	ViewingServerVersion();
 	void	RandomizeSeed();
 
 	/**
@@ -25,18 +27,28 @@ namespace ConfigurationMode
 	Assures that the server-received world is currently loaded and not any locally generated planet.
 	Does nothing if this is already the case.
 	Must be called before applying world deltas
+	@return true if the server world is loaded, and updates may be applied. Returns true if configuration mode is currently inactive
 	*/
-	void	RestoreServerWorld();
+	bool	RestoreServerWorld();
 	void	RestoreServerObjects();
 
 	/**
 	Executed if the user enters the Ctrl+C key combination
 	*/
 	void	OnCopy();
+	
 	/**
 	Executed if the user enters the Ctrl+V key combination
 	*/
 	void	OnPaste();
+
+	/**
+	Notifies the configuration mode of a new list of available planet presets
+	The specified list @a fleetingData will be adopted and left empty
+	*/
+	void	UpdatePlanetList(Array<String>&fleetingData);
+
+	void	SignalServerWorldUpdateCompleted();
 }
 
 #endif

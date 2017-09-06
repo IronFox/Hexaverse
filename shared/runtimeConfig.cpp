@@ -23,6 +23,7 @@ namespace RuntimeConfig
 
 	bool hibernationSystemEnabled = false;
 	bool bombsExplodeWhenDestroyed = true;
+	bool tutorialMode = false;
 	RoundNumber roundNumber;
 	Phase	phase;
 
@@ -105,7 +106,7 @@ namespace RuntimeConfig
 			return (isEnabled || ignoreEnabledState) ? map[(unsigned)entry] : 0xFFFF;
 		}
 
-		void		Export(Array<std::pair<UINT16,UINT16> >&result)
+		void		Export(Ctr::Array<std::pair<UINT16,UINT16> >&result)
 		{
 			if (isEnabled)
 			{
@@ -131,7 +132,7 @@ namespace RuntimeConfig
 			}
 		}
 
-		void		Import(const Array<std::pair<UINT16,UINT16> >&input)
+		void		Import(const Ctr::Array<std::pair<UINT16,UINT16> >&input)
 		{
 			Reset();
 			isSet = true;

@@ -9,6 +9,9 @@
 #include "../version.h"
 #include "clientRuntimeConfig.h"
 #include "audioInterface.h"
+#include "cameraControl.h"
+#include "clientEvents.h"
+#include "visual/display.h"
 
 
 namespace AudioInterface
@@ -28,8 +31,12 @@ namespace AudioInterface
 		return false;
 	}
 
+	void		UpdateListener();
+
 	void	Create()
 	{
+		namespace OpenAL = Engine::OpenAL;
+
 		isActive = true;
 		if (!OpenAL::Init())	//test
 		//if (true)
@@ -70,30 +77,41 @@ namespace AudioInterface
 			OpenAL::Listener::SetMaxPlayingSources(64);
 			OpenAL::Listener::RegisterMaxPlayingSourcesCallback(OnSourceCountReduce);
 			OpenAL::Listener::SetGain(2.f);
+
+
+			GlobalEvents::frameAfterCamera << UpdateListener;
+
+			display.RegisterFocusCallbacks(OpenAL::SignalWindowFocusLoss, OpenAL::SignalWindowFocusRestoration);
+
 		}
+
+
+
 	}
 
 	void	SetMasterVolume(float volume)
 	{
 		if (isActive)
-			OpenAL::Listener::SetGain(2.f * volume);
+			Engine::OpenAL::Listener::SetGain(2.f * volume);
 	}
 
 
 	void		Destroy()
 	{
-		OpenAL::Shutdown();
+		Engine::OpenAL::Shutdown();
 	}
 
-	void		UpdateListener(const Engine::Aspect<>&aspect)
+	void		UpdateListener()
 	{
+
 		if (isActive)
 		{
+			const Engine::Aspect<>&aspect = Camera::scene;
 			//static TVec3<> last;
 			//OpenAL::Listener::SetVelocity((aspect.GetAbsoluteLocation() - last) / Engine::timing.delta);
 			//last = aspect.GetAbsoluteLocation();
-			OpenAL::Listener::SetPosition(aspect.GetAbsoluteLocation());
-			OpenAL::Listener::SetOrientation(aspect.GetViewingDirection(),aspect.viewInvert.y.xyz,true,false);
+			Engine::OpenAL::Listener::SetPosition(aspect.GetAbsoluteLocation());
+			Engine::OpenAL::Listener::SetOrientation(aspect.GetViewingDirection(),aspect.viewInvert.y.xyz,true,false);
 		}
 	}
 

@@ -10,6 +10,7 @@
 #include "../stringTable.h"
 #include "../luaInterface.h"
 #include "../scriptCache.h"
+#include "../observer.h"
 
 namespace Objects
 {
@@ -17,13 +18,13 @@ namespace Objects
 	class ResearchGroup
 	{
 	public:
-		typedef Buffer0<PResearchTopic>	List;
+		typedef Ctr::Buffer0<PResearchTopic>	List;
 		typedef List::iterator			iterator;
 		typedef List::const_iterator	const_iterator;
 
 
 		List					children;
-		StringTable<PResearchTopic>	map;
+		Ctr::StringTable<PResearchTopic>	map;
 		const String			name;
 
 		/**/					ResearchGroup(const String&name):name(name)	{}
@@ -94,15 +95,18 @@ namespace Objects
 		A topic is researchable if it's generally researchable (i.e. not a group), its dependencies are completed,
 		and it can and has not been completed.
 		*/
-		bool					CanResearch(const Lua::Reference&researchState) const
+		bool					CanResearch(const Lua::Reference&researchState, const Ctr::ArrayRef<const PResearchTopic>&workQueue) const
 		{
 			if (IsGroup())
 				return false;
 			if (ResearchCompleted(researchState))
 				return false;
 			PResearchTopic p = dependency.lock();
-			return !p || p->ResearchCompleted(researchState);
+			return !p || p->ResearchCompleted(researchState) || workQueue.Contains(p);
 		}
+
+		bool					CanResearch(const OwnerParameter&) const;
+
 	};
 
 	/**
@@ -123,9 +127,8 @@ namespace Objects
 
 	private:
 		int						totalContribution = 0;
-		PResearchTopic			activeResearch;
+		Ctr::Buffer0<PResearchTopic>	researchQueue;
 		bool					factionIsNexus;
-		String					lastTopic;
 		static void				LogLua(const String&msg);
 		static PResearchTopic	CreateResearch(const PResearchTopic&parent, const String&name, const String&iconName, 
 												const ResearchTopic::FSetProgress&setProgress, 
@@ -134,19 +137,35 @@ namespace Objects
 												);
 		static void				InnerLoad(const ScriptCache::PScript&script);
 		static void				RequireLoad(const ScriptCache::PScript&script);
+		void					LoadNexusResearchState();
 	public:
 
-		bool					changed = false;
+		bool					changed = false, queueChanged = false;
 
 		static void				StaticCreate();
 		static void				ActivateProgram(const ScriptCache::PScript&script);
 		static void				LoadDefaultProgram();
 
-
+		static const count_t	MaxResearchQueueLength = 4;
 
 
 		Lua::Reference			researchState;	//unknown to C++ code
-		Array<BYTE>				serialData;
+		struct TSerialState
+		{
+			Ctr::Array<BYTE>			serialState;
+			String				researchQueue;
+
+			void				swap(TSerialState&other)
+			{
+				serialState.swap(other.serialState);
+				researchQueue.swap(other.researchQueue);
+			}
+
+			friend void swap(TSerialState&a,TSerialState&b)
+			{
+				a.swap(b);
+			}
+		};
 
 
 		struct GlobalState
@@ -154,12 +173,14 @@ namespace Objects
 			ScriptCache::PScript	script,	//currently loaded program
 									program0,	//absolute fallback program to be used if all fails
 									factoryDefault;	//program defined in install directory
-			Buffer0<PResearchTopic>	allTopics;
+			Ctr::Buffer0<PResearchTopic>	allTopics;
 			ResearchGroup		rootResearch;
 			Lua::PProgram		researchProgram;
 			Lua::Function<Lua::Reference()>	stateConstructor;
 			Lua::Function<Lua::Reference(Lua::Reference)>	exportState;
 			Lua::Function<void(Lua::Reference,Lua::Reference)> importState;
+			Observable<>			onScriptChange;
+			Observable<Faction*>	onQueueChange;
 
 			/**/				GlobalState():rootResearch(""){}
 		};
@@ -174,20 +195,33 @@ namespace Objects
 		/**/					ResearchState(const ResearchState&)=delete;
 		void					operator=(const ResearchState&)=delete;
 
-		void					Contribute()	{totalContribution++;}
+		/**
+		Handles changes necessary to advance all endless research topics by one. Should only be used on Nexus faction
+		*/
+		void					AdvanceNexusResearch();
+		void					Contribute(int c)	{totalContribution+=c;}
 		void					FinalizeRound(const PFaction&);
 
 		bool					CheckUnlocked(const Component::Base&base, String&errorOut) const	{return true;}
 		bool					CheckUnlocked(ConstName, String&errorOut) const	{return true;}
-		bool					IsIdle() const {PResearchTopic t = GetActiveTopic(); return !t || t->ResearchCompleted(researchState);}
-		PResearchTopic			GetActiveTopic() const	{return activeResearch;}
-		index_t					GetActiveTopicIndex() const {return activeResearch ? activeResearch->serialIndex : InvalidIndex;}
-		bool					SetActiveTopic(const PResearchTopic&active);
-		void					SetActiveTopic(index_t serialIndex)	{SetActiveTopic(GetTopic(serialIndex));}
-		void					Import(const ArrayRef<const BYTE>&serializedState);
-		void					Export(Array<BYTE>&outSerializedState) const;
+		bool					IsIdle() const {return researchQueue.IsEmpty();}
+		Ctr::ArrayRef<const PResearchTopic>GetResearchQueue() const	{return researchQueue.ToRef();}
+		PResearchTopic			GetActiveTopic() const {return researchQueue.IsNotEmpty() ? researchQueue.First() : PResearchTopic();}
+		String					ExportResearchQueue();
+		void					ExportResearchQueue(Ctr::Array<UINT32>&);
+		void					RestoreResearchQueue(const String&paths);
+		void					RestoreResearchQueue(const Ctr::Array<UINT32>&);
+		bool					AppendResearchTask(const PResearchTopic&);
+		bool					AppendResearchTask(index_t serialIndex)	{return AppendResearchTask(GetTopic(serialIndex));}
+		bool					DropResearchTask(const PResearchTopic&);
+		bool					DropResearchTask(index_t serialIndex) 	{return DropResearchTask(GetTopic(serialIndex));}
+		bool					ResearchQueueIsFull() const;
+
+		void					Import(const Ctr::ArrayRef<const BYTE>&serializedState);
+		void					Export(Ctr::Array<BYTE>&outSerializedState) const;
 		static PResearchTopic	GetTopic(index_t);
-		static PResearchTopic	FindTopic(const String&path);
+		static PResearchTopic	FindTopic(const String&path)	{return FindTopic(path.ref());}
+		static PResearchTopic	FindTopic(const StringRef&path);
 	};
 
 	

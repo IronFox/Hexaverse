@@ -3,8 +3,10 @@
 	<source path="./">
 		<exclude file="visual.rc2" />
 		<exclude find="consensusLink" />
+		<exclude dir="visual" />
 	</source>
 	<macro name="CLIENT"/>
-	<referenceProject name="DeltaWorks" />
+	<macro name="_SCL_SECURE_NO_WARNINGS" />
+	<referenceProject name="DeltaWorksCore" />
 	<referenceProject name="lua" />
 </project>

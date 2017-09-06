@@ -2,23 +2,24 @@
 #define objectEntityH
 
 #include "../uniqueID.h"
-#include "../sphereGrid.h"
+#include "../grid/stack.h"
 
 #include "turretBase.h"
 #include "types.h"
 #include "hibernating.h"
 #include "luaAttribute.h"
-
+#include "description.h"
+#include "entityCommand.h"
+#include "geometry.h"
 
 #ifdef HAS_WINDOW
 	#include <al/openal.h>
-	#include "visualCommands.h"
 #endif
 
 struct SharedPtrHash
 {
 	template <typename T>
-	static hash_t	hash(const std::shared_ptr<T>&ptr)
+	static hash_t	ComputeHash(const std::shared_ptr<T>&ptr)
 	{
 		return (hash_t)ptr.get();
 	}
@@ -32,7 +33,7 @@ namespace Objects
 	static const float timeEpsilon = 0.001f;	//time in seconds between subsequent events such that they are sorted correctly on the client
 	typedef SharedPtrHash	OwnerHash;
 
-	extern GenericHashTable<TUniqueID,PWorldEntity,TUniqueID,Strategy::POD,Strategy::Swap>	idMap;
+	extern Ctr::GenericHashTable<TUniqueID,PWorldEntity>	idMap;
 
 
 	#ifdef HAS_WINDOW
@@ -158,6 +159,7 @@ namespace Objects
 				T				Get(const Lua::Reference&researchState, const LuaAttribute<T,F1>&source, const LuaAttribute<T2,F2>&multiplier, T minimum);
 			bool				IsCurrent() const {return versionCounter == Super::versionCounter;}
 			T					Update(T newValue) {cached = newValue; versionCounter = Super::versionCounter; return cached;}
+			void				Invalidate() { versionCounter = InvalidIndex; }
 		};
 
 	class CachedAttributes
@@ -208,15 +210,25 @@ namespace Objects
 	private:
 		bool						sleeping = false;	//!< Use SetSleep() instead. Indicates that this entity is asleep. Sleeping entities are not considered in the client-side IsIdle() iteration. Sleeping mobile entities will not execute any jobs
 
-	public:
-		#ifndef CLIENT
 
-			float					motionTime=0.f;		//!< Time (in seconds) into the motion phase to calculate event times
+	public:
+		struct TRegisteredSensor
+		{
+			Grid::LCellIdI			location = Grid::LCellIdI::Invalid;
+			int						empDamageLevel=0;
+
+			bool					IsSet() const {return location != Grid::LCellIdI::Invalid;}
+			bool					operator==(const TRegisteredSensor&other) const {return location == other.location && empDamageLevel == other.empDamageLevel;}
+			bool					operator!=(const TRegisteredSensor&other) const {return !operator==(other);}
+			String					ToString() const {return location.ToString()+"_e"+String(empDamageLevel);}
+		};
+		#ifndef CLIENT
+			float					entityTime=0.f;		//!< Time (in seconds) into the animation phase to calculate event times
 			Random					entityRandom;
 			
 			void					ReSeedRandom();
 
-			void					ResetMotionTime()	{motionTime = 0;}
+			void					ResetEntityTime()	{entityTime = 0;}
 
 		#endif
 
@@ -228,26 +240,26 @@ namespace Objects
 		inline void					SyncTime(float&remoteTime, float timeOffset)
 		{
 			#ifndef CLIENT
-				remoteTime = motionTime = std::max(motionTime,remoteTime) + timeOffset;
+				remoteTime = entityTime = std::max(entityTime,remoteTime) + timeOffset;
 			#endif
 		}
 		inline void					SyncTime(float&remoteTime)
 		{
 			#ifndef CLIENT
-				remoteTime = motionTime = std::max(motionTime,remoteTime);
+				remoteTime = entityTime = std::max(entityTime,remoteTime);
 			#endif
 		}
 
 		inline void					SyncTime(WorldEntity&other, float&remoteTime, float timeOffset)
 		{
 			#ifndef CLIENT
-				other.motionTime = remoteTime = motionTime = std::max(motionTime,std::max(remoteTime,other.motionTime)) + timeOffset;
+				other.entityTime = remoteTime = entityTime = std::max(entityTime,std::max(remoteTime,other.entityTime)) + timeOffset;
 			#endif
 		}
 		inline void					SyncTime(WorldEntity&other, float&remoteTime)
 		{
 			#ifndef CLIENT
-				other.motionTime = remoteTime = motionTime = std::max(motionTime,std::max(remoteTime,other.motionTime));
+				other.entityTime = remoteTime = entityTime = std::max(entityTime,std::max(remoteTime,other.entityTime));
 			#endif
 		}
 
@@ -256,10 +268,10 @@ namespace Objects
 		virtual						~WorldEntity();
 
 		#ifdef HAS_WINDOW
-			typedef Objects::CallbackCommand	Command;
-			typedef Objects::FCommandVisitor	FCommandVisitor;
+			//typedef Objects::Command::Base		Command;
+//			typedef Objects::FCommandVisitor	FCommandVisitor;
 
-			OpenAL::Source			ambientSound;
+			Engine::OpenAL::Source	ambientSound;
 		#endif
 
 		/**
@@ -276,7 +288,7 @@ namespace Objects
 		#endif
 
 		int							health;
-		int							empDamageLevel = 0;	//!< Number of rounds that scanners are disabled due to emp-damage. Also affects extend of damage
+		int							empDamageLevel = 0;	//!< Number of rounds that scanners are disabled due to emp-damage. Also affects extent of damage
 
 		bool						unstable;	//!< Indicates that something is wrong with the consumption vector of the local network. Or the vehicle state is unstable. Again, DO NOT CHANGE.
 
@@ -356,7 +368,6 @@ namespace Objects
 		virtual float				GetActivityLevel() const {return IsHibernating() ? 0.f : (sleeping ? 0.5f : 1.f);}
 		#ifdef HAS_WINDOW
 			virtual float			GetSoundLevel() const {return GetActivityLevel()*0.35f;}
-			virtual OpenAL::Wave	GetAmbientSound() const;
 		#endif
 
 
@@ -413,16 +424,8 @@ namespace Objects
 		*/
 		virtual void				PrototypeSetup()	{};
 
-		#ifdef HAS_WINDOW
-			/**
-			Called once on the prototype instance only, prior to PrototypeSetup().
-			Static geometry should be loaded here so that it is available for commands linked during PrototypeSetup()
-			*/
-			virtual void			PrototypeLoadGeometry() {};
-		#endif
 
 		virtual TFloatRange<int>	GetRelativeScanningBand(const Grid::LCellIdI&loc) const {return FloatRange<int>(-3,+100);}	//Maximum vertical sensor radius up and down from the entity's central height. Currently not affected by EMP
-		inline TFloatRange<int>		GetRelativeScanningBand() const {return GetRelativeScanningBand(location);}	//Maximum vertical sensor radius up and down from the entity's central height. Currently not affected by EMP
 		virtual int					GetMaxHealth() const;
 		virtual String				DescribeMaxHealth() const;
 		/**
@@ -430,22 +433,23 @@ namespace Objects
 		Currently this is overridden by MobileEntity, Vehicle, and Tower
 		*/
 		virtual float				GetScanningRange() const;
+		virtual float3				GetScanningCenter(const Grid::LCellIdI&loc) const;
 		/**
 		Explicitly describes how the scanning range is computed (only has to explicitly name research, not EMP, but has to include EMP in the resulting numbers)
 		*/
 		virtual String				DescribeScanningRange() const;
 		static float				StaticEMPModify(float raw, float min, int empDamageLevel);
 		float						EMPModify(float raw, float min) const;
-		std::function<float(float)>	BindEMPModifyFunction() const {return std::bind(&WorldEntity::EMPModify,this,std::placeholders::_1,2);}
+		std::function<float(float)>	BindEMPModifyFunction() const {return std::bind(&WorldEntity::EMPModify,this,std::placeholders::_1,2.f);}
 		
 		virtual PTurretBase			GetTurretBase(float &zOffset) { return PTurretBase();}
 		inline PTurretBase			GetTurretBase() { float dummy; return GetTurretBase(dummy);}
 		virtual PConstTurretBase	GetTurretBase(float &zOffset) const { return PConstTurretBase();}
 		inline PConstTurretBase		GetTurretBase() const { float dummy; return GetTurretBase(dummy);}
 
-		TurretTrajectory			TraceTrajectory(const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const;
+		TurretTrajectory			TraceTrajectory(const TrajectoryEndPoint&dest, Ctr::Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const;
 		TurretTrajectory			TraceTrajectory(const TrajectoryEndPoint&dest, TVec3<>&impactAt) const;
-		TurretTrajectory			TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const;
+		TurretTrajectory			TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const;
 		TurretTrajectory			TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, TVec3<>&impactAt) const;
 		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const TrajectoryEndPoint&dest, float&outAngle) const;
 		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const TrajectoryEndPoint&dest) const;
@@ -457,7 +461,7 @@ namespace Objects
 
 
 		#ifndef CLIENT
-			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) = 0;
+			virtual bool			DirectTo(CursorMode, Ctr::ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) = 0;
 
 			/**
 			Forces all tasks to be dropped that do not result in resource loss. Other tasks must remain
@@ -506,7 +510,7 @@ namespace Objects
 		virtual PHangar				CastToDestinationForType(const MobileEntity&e) {return PHangar();}
 		virtual bool				IsHangar() const {return false;}
 
-		virtual bool				IsIndestructible() const	{return false;};
+		virtual bool				IsIndestructible() const;
 
 		/**
 		Checks if the local entity is currently above the regular grid (e.g. a satellite)
@@ -536,28 +540,36 @@ namespace Objects
 		#endif
 
 
+		/**
+		Iterates through all sensors of the local entity
+		@param loc Location to use as entity location (the actual entity location is ignored)
+		@param visitor Function to call
+		@param appearance If true the method only returns sensors that represent its visual appearance
+		*/
+		virtual void			VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance = false) const;
 
-		inline void					TakeDamage(int damageLevel)
-		{
-			health -= damageLevel;
-		}
+		void					RegisterSensory(float&atTime) {registeredSensor = RegisterSensory(location,atTime);}
+		void					UnregisterSensory(float&atTime)  {UnregisterSensory(registeredSensor,atTime);}
+		bool					SensoryIsRegistered() const {return registeredSensor.IsSet();}
 
-		void					RegisterSensory(float&atTime, bool checkChangesNow=true) {RegisterSensory(location,atTime,checkChangesNow);}
-		void					UnregisterSensory(float&atTime, bool checkChangesNow=true)  {UnregisterSensory(location,atTime,checkChangesNow);}
+		/**
+		Re-registers the current sensory with the faction.
+		Assumes that grid sensory has been previously flushed
+		*/
+		void					ReapplySensory(float&atTime);
+		TRegisteredSensor		RegisterSensory(const Grid::LCellIdI&loc, float&atTime, Ctr::Buffer0<PWorldEntity>*newContacts = nullptr);
+		void					UnregisterSensory(TRegisteredSensor&, float&atTime);
+		void					MoveSensoryToCurrentLocation(float&atTime, Ctr::Buffer0<PWorldEntity>*newContacts = nullptr);
 
-		virtual void			RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true, Buffer0<PWorldEntity>*newContacts = nullptr);
-		virtual void			UnregisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true);
-		#ifdef CLIENT
-			void				MoveSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to, float&atTime, bool checkChangesNow=true);
-			virtual void		RegisterWorldSensory(const Grid::HighSetup::TVolumeDescriptor&);
-			virtual void		UnregisterWorldSensory(const Grid::HighSetup::TVolumeDescriptor&);
-			//virtual void		MoveWorldSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to);
-		#else
-			virtual void		MoveSensoryToCurrentLocation(const Grid::LCellIdI&oldLocation, float&atTime, bool checkChangesNow=true, Buffer0<PWorldEntity>*newContacts = nullptr);
-
+		#ifdef HAS_WINDOW
+			/**
+			Stores a description of the local type in the specified label
+			@param[out] label Label to store the description in
+			@param deskFlags Combination of descFlag_t to fine-tune the generation process
+			*/
+			virtual void	DescribeType(Description&label, UINT32 descFlags);
 		#endif
-
-
+		void				AppendDeploymentCount(Description&outResult, const OwnerParameter&overrideOwner)	const;
 
 
 		#ifdef CLIENT
@@ -572,18 +584,11 @@ namespace Objects
 					DescIncludeUnitCount = 0x20,
 				};
 				//old: includeName, includePrice
-				/**
-				Stores a description of the local type in the specified label
-				@param[out] label Label to store the description in
-				@param deskFlags Combination of descFlag_t to fine-tune the generation process
-				*/
-				virtual void		DescribeType(BaseCommand::Label&label, UINT32 descFlags);
 
 				/**
 				Appends deployment count in the form " Deployed: cnt/max", if any limit is set.
 				Otherwise nothing will be appended.
 				*/
-				void				AppendDeploymentCount(BaseCommand::Label&outResult, const OwnerParameter&overrideOwner)	const;
 				String				CompileDeploymentCount(const OwnerParameter&overrideOwner)	const;
 
 				/**
@@ -640,13 +645,12 @@ namespace Objects
 
 		#endif
 
+		private:
+			TRegisteredSensor		registeredSensor;
 
 	};
 
 
-	#ifdef CLIENT
-		extern Buffer0<PWorldEntity>		waste;
-	#endif
 
 
 	template <typename T>
@@ -659,9 +663,9 @@ namespace Objects
 					T val = source.GetValue(e.GetResearchState());
 					if (bonus.IsSet())
 						val += bonus.GetValue(e.GetResearchState());
-					cached = WorldEntity::StaticEMPModify(val,2.f * Grid::UnitScale,e.empDamageLevel);
+					cached = val;
 				}
-				return cached;
+				return WorldEntity::StaticEMPModify(cached,2.f * Grid::UnitScale,e.empDamageLevel);;
 			}
 	template <typename T>
 		template <typename F1, typename F2>
@@ -692,7 +696,7 @@ namespace Objects
 					if (multiplier.IsSet())
 						val*=multiplier.GetValue(researchState);
 					
-					val = vmax(val, minimum);
+					val = Math::Max(val, minimum);
 					cached = val;
 				}
 				return cached;

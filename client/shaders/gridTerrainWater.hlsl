@@ -45,7 +45,7 @@ struct V2P
 	float3 world : World;
 	float3 normal : Normal;
 	float intensity : Intensity;
-	float2 visibility : COLOR;
+	float2 visibility_empFree : COLOR;
 	float3 diffuseSpecularFresnel : DiffuseSpecular;
 	float4 atmosphere : Atmosphere;
 };
@@ -62,8 +62,8 @@ void vsMain(A2V input, out V2P output)
 	output.world = input.position.xyz;
 	output.position = TransformAndProject(output.world);
 	output.intensity = input.position.w;
-	output.visibility.x = (fmod(input.visibility,0.25)*4.0-0.05)/0.9;
-	output.visibility.y = 1.0 - floor(input.visibility*4.0)*0.25;
+	output.visibility_empFree.x = (fmod(input.visibility,0.25)*4.0-0.05)/0.9;
+	output.visibility_empFree.y = 1.0 - floor(input.visibility*4.0)*0.25;	//int(4*input.visibility) can vary between 0 (no EMP effects) and 3 (full effect)
 	output.diffuseSpecularFresnel.x = max(0.0, dot(input.normal.xyz, Sun.xyz));
 
 	float3 reflected = normalize(reflect(output.world- WorldCamera[3].xyz, output.normal));
@@ -120,15 +120,21 @@ float4 psMain(V2P input) : SV_TARGET
 
 	float4 rs = float4(/*tone **/ SunColor.rgb * WaterColor.rgb * ((diffuse *0.3 + (specular * 1.6) + 0.4) ),
 		 (WaterColor.a + specular) * (0.5 + 0.5*input.diffuseSpecularFresnel.z));
-	rs.a += 1.0 - sqr(sqr(1.0 - input.diffuseSpecularFresnel.z));
+	//rs.a += 1.0 - sqr(sqr(1.0 - input.diffuseSpecularFresnel.z))*0.5;
+	rs.a += 1.0 -pow(abs(1.0 - input.diffuseSpecularFresnel.z),12)*0.9;
+
+
+
 	//clip(input.visibility-0.01);
 	float avg = Avg(rs.rgb) * 0.5 + 0.5;
 	//rs.rgb = lerp((rs.rgb + avg /** 2.0*/)/2.0, rs.rgb, saturate(input.visibility + rs.a*0.5));
-	rs.rgb = lerp((float3)(diffuse+specular+0.4), rs.rgb, saturate(input.visibility.x*0.75+0.25 /*+ rs.a*0.5*/));
-	rs.rg *= 0.5 + 0.5 * input.visibility.y;
-	rs.ab += 0.25  * (1.0 - input.visibility.y);
+	rs.rgb = lerp(SunColor.rgb * (diffuse+specular*0.5+0.1), rs.rgb, saturate(input.visibility_empFree.x*0.6+0.4 /*+ rs.a*0.5*/));
 
-	rs.rgb *= intensity;
+	rs.rg *= 0.5 + 0.5 * input.visibility_empFree.y;	//degrade red and green in the presence of EMP down to 50%
+	rs.ab += 0.25  * (1.0 - input.visibility_empFree.y);	//increase blue in the presence of EMP up to +0.25
+	rs.a += 0.2 * (1.0 - input.visibility_empFree.x);
+
+	rs.rgb *= intensity;	//grid
 
 	#if defined(SPHERE_DISPLAY) || defined(PARABOLOID_DISPLAY)
 

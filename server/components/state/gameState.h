@@ -4,7 +4,9 @@
 #include <protocol.h>
 #include <runtimeConfig.h>
 #include <objects/types.h>
+#include <objects/structure/tower.h>
 #include "../evolver.h"
+
 
 namespace Game
 {
@@ -20,6 +22,7 @@ namespace Game
 	extern Timer::Time		lastPhaseChange /*= timer.Now()*/;
 	extern bool				roundTimerPaused /*= true*/;
 	extern Evolver::Abstract*evolver;
+	extern INT32			tutorialAt;
 
 	//extern Grid::TSharedPlanetConfig	persistentPlanetInfo;
 
@@ -73,7 +76,7 @@ namespace Game
 		inline void		SetFactionSupportFlagString(const String&supp)
 		{
 			factionSupportFlags = 0;
-			Array<String>	segs;
+			Ctr::Array<String>	segs;
 			explode(',',supp,segs);
 			//bool allGood = true;
 			foreach (segs,seg)
@@ -114,7 +117,8 @@ namespace Game
 			extern bool		startBases/* = false*/,
 							enableAI/* = false*/;
 			extern float	threatEstimationFactor/* = 1.f*/;
-			extern Array<Objects::Component::Turret*>	vehicleTurrets;
+			extern UINT32	roundsPerResearchPoint;
+			extern Ctr::Array<Objects::Component::Turret*>	vehicleTurrets;
 		}
 	}
 	
@@ -180,6 +184,8 @@ namespace Game
 	}
 
 
+	void			RegisterClassGain(const Objects::PWorldEntity&e, Objects::Faction::UnitClass, const String&debugName);
+	count_t			CountLivingPlayerFactions();
 
 	void			PerformNewRoundLogic(float &atTime);	//includes UpdateHibernation()
 
@@ -201,6 +207,11 @@ namespace Game
 	@param thoroughly If set, also checks faction terrain changes that currently offline
 	*/
 	void			ProcessChanges(bool thoroughly);
+
+	/**
+	Updates EMP damage caused by residual EMP fields. This is called automatically at the end of round processing
+	*/
+	void			UpdateResidualEMPDamage(float&atTime);
 
 
 	void			SpawnNexusBaseAtPoleWithPort(int pole);

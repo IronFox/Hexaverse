@@ -1,9 +1,10 @@
+#pragma once
+
 #ifdef HAS_WINDOW
-#ifndef cameraControlComponentH
-#define cameraControlComponentH
 
 #include <math/vclasses.h>
 #include <engine/aspect.h>
+#include <observer.h>
 
 #define DebugCheckVector(T, M, MX)
 #define DebugCheckCamera()
@@ -27,7 +28,7 @@
 //
 //}
 
-extern float3					sunDirection;
+extern M::float3				sunDirection;
 static const float				SunOffAngle = 35.f;	//divergence between vertical axis and sun direction. 0 would be cenit
 
 
@@ -42,6 +43,8 @@ namespace Camera
 	extern bool					autoRotation, locked;
 
 
+	extern Observable<>			onZoom, onRotate, onDrag;
+
 	/**
 	Initiates cameras (must be called only once during program start)
 	*/
@@ -54,18 +57,18 @@ namespace Camera
 	/**
 	Rotates camera viewing direction by the given angle deltas
 	*/
-	void						Rotate(const float2&angleDelta);
+	void						Rotate(const M::float2&angleDelta);
 	/**
 	Rotates the focus position around the planet center by the given angle delta.
 	Aborts any ongoing targeted translation
 	*/
-	void						Translate(const float2&angleDelta);
+	void						Translate(const M::float2&angleDelta);
 
 	/**
 	Initiates targeted translation (smoothly animated rotation of focus point around planet center)
 	@param direction Direction from planet center to smoothly translate to. Normalized automatically
 	*/
-	void						TranslateTo(const float3&direction);
+	void						TranslateTo(const M::float3&direction);
 	/**
 	Stops any ongoing targeted translation
 	*/
@@ -77,10 +80,7 @@ namespace Camera
 	void						ToggleAutoRotation();
 
 
-	/**
-	Smoothly updates ongoing camera animations. Must be called once per frame
-	*/
-	void						ProgressRotation();
+
 
 	void						StopAutoRotation();
 	/**
@@ -93,7 +93,7 @@ namespace Camera
 	*/
 	void						ChangeGroundRadius(float targetOrbit);
 
-
+	void						ChangeGroundRadiusToFocusedTerrain();
 	
 	/**
 	Switches to sky orbit
@@ -116,7 +116,7 @@ namespace Camera
 	bool						SkyGridIsVisible();
 	bool						SubOrbitalGridIsVisible();
 
-
+	void						Create();
 
 	/**
 	Input event handlers
@@ -132,5 +132,4 @@ namespace Camera
 }
 
 
-#endif
 #endif

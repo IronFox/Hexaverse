@@ -3,8 +3,9 @@
 
 #include <container/queue.h>
 #include <container/hashtable.h>
-#include "../sphereGrid.h"
+#include "../grid/stack.h"
 #include "components.h"
+#include "clientAttachment.h"
 
 #ifdef HAS_WINDOW
 	#include <al/openal.h>
@@ -23,22 +24,7 @@ namespace Objects
 
 
 	#ifdef HAS_WINDOW
-		/**
-		Used to cache and render the paraboloid above a turret base
-		*/
-		class ParaboloidBuffer
-		{
-			TVec3<> lastCenter;
-			float lastRange = 0.f;
-			float lastExp = 0.f;
-			TMatrix4<> matrix;
-			DX11::InstructionBlock32	attackInstruction,extendedInstruction;
 
-			static void		MakeHull(DX11::InstructionBlock32&target, const TMatrix4<>&matrix, float flatRange, float explosionRadius, const TVec3<>&center);
-
-		public:
-			void			Render(const Grid::LCellIdI&cell, float zOffset, float flatRange, float explosionRadius, const float4&color, bool extended);
-		};
 	#endif
 
 	class TurretBase 
@@ -46,8 +32,8 @@ namespace Objects
 		class AreaHelper
 		{
 		public:
-			Queue<Grid::LCellIdI>	queue;
-			GenericHashSet<Grid::LCellIdI,Grid::LCellIdI>	visited;
+			Ctr::Queue<Grid::LCellIdI>	queue;
+			Ctr::GenericHashSet<Grid::LCellIdI>	visited;
 
 			bool				operator>>(Grid::LCellIdI&next)
 			{
@@ -78,12 +64,12 @@ namespace Objects
 			float				turretAngleX, turretAngleY;
 		#endif
 		#ifdef HAS_WINDOW
-			OpenAL::Source		activitySound;	//used for rotation by offensive turrets, and arbitrary sounds by others
+			Engine::OpenAL::Source	activitySound;	//used for rotation by offensive turrets, and arbitrary sounds by others
 		#endif
 									
 
 		#ifdef HAS_WINDOW
-			ParaboloidBuffer	paraboloidBuffer;
+			PClientAttachment	paraboloidBuffer;
 		#endif
 
 
@@ -102,7 +88,7 @@ namespace Objects
 		virtual float			GetAttackActionLeft() const=0;
 
 		int						GetAttacksPerRound() const	{return turret->GetAttacksPerRound(GetOwner());}
-		int						GetDamagePotentialPerRound() const {OwnerParameter owner = GetOwner(); return turret->GetAttacksPerRound(owner) * turret->GetDamageLevel(owner);}
+		int						GetDamagePotentialPerRound() const {OwnerParameter owner = GetOwner(); return std::max(1,turret->GetAttacksPerRound(owner)) * turret->GetDamageLevel(owner);}
 		float					GetAttackInitiative()const	{return turret->initiative * GetAttackActionLeft();}
 		int						CountPossibleAttacks() const {return GetAttacksPerRound() * GetAttackActionLeft();}
 		virtual bool			NextTaskIsAttack() const = 0;
@@ -133,7 +119,7 @@ namespace Objects
 
 		#ifndef CLIENT
 			virtual void		Attack(float&currentTime) = 0;
-			virtual bool		FillAttackQueue() = 0;
+			virtual bool		FrontQueuePossibleAttacks() = 0;
 		#endif
 	};
 
