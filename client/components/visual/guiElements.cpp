@@ -1665,7 +1665,7 @@ namespace GUI
 		const float leftPadding = textout.GetScaledWidth('X') * padding.left;
 		const float rightPadding = textout.GetScaledWidth('X') * padding.right;
 		const float width = GetWidth() - leftPadding - rightPadding;
-		const float center = width/2;
+		const float center = width/2 + leftPadding;
 		#ifdef _DEBUG
 			wrappedAtWidth = width;
 		#endif
