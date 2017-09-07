@@ -2800,8 +2800,10 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 	{
 		bool	IsValidNickname(const String&candidate)
 		{
-			return Package::IsValid(candidate,32)
-				&& candidate.length() > 3;
+			if (candidate.length() < 4)
+				return false;
+			bool rs = Package::IsValid(candidate,32);
+			return rs;
 		}
 
 
