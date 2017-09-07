@@ -59,6 +59,7 @@ namespace Dialog
 		FFetchInput			fetchInput;
 		FOnPassword			onPassword;
 		bool				isTutorial = false,
+							autoNextTutorial = true,
 							sendNullPasswordOnAbortByUser = false;
 
 		M::Rect<>				totalSize;
@@ -180,8 +181,8 @@ namespace Dialog
 	/**
 	Queues a tutorial message. Allows hiding all following tutorials
 	*/
-	WDialog	EnqueueTutorial(const String&key, const Array<String>&text, const String&imageName = "", const M::Rect<>&screenReference = M::Rect<>::Invalid);
-	PDialog	CreateTutorialMessage(const String&key, const ArrayRef<const String>&text, const String&imageName = "", const M::Rect<>&screenReference = M::Rect<>::Invalid);
+	WDialog	EnqueueTutorial(const String&key, const Array<String>&text, const String&imageName = "", bool prioritize=false);
+	PDialog	CreateTutorialMessage(const String&key, const ArrayRef<const String>&text, const String&imageName = "");
 
 	bool	RemoveTutorial(const String&key);
 	bool	RemoveTutorial(const PDialog&dialog);
@@ -196,7 +197,7 @@ namespace Dialog
 	bool	ShowingFactions();
 
 
-	void	ShowNextTutorial();
+	void	ShowNextTutorial(bool autoNext);
 
 	bool	HasMoreTutorials();
 

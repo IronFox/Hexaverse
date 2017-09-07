@@ -473,7 +473,8 @@ namespace Dialog
 		if (confirmButton && !confirmButton->IsEnabled())
 			return;	//would, if it could
 		GUI::VerifyIntegrity(CLOCATION);
-		bool tut = isTutorial;
+		const bool tut = isTutorial;
+		const bool nextTut = tut && autoNextTutorial;
 		if (!fetchInput && !onPassword)
 		{
 			if (onConfirm)
@@ -496,10 +497,10 @@ namespace Dialog
 			DumpMe();
 		}
 
-		if (tut && Detail::pendingTutorials.IsNotEmpty() && !GUI::IsModal())
+		if (nextTut && Detail::pendingTutorials.IsNotEmpty() && !GUI::IsModal())
 		//Detail::visibleDialogs.IsEmpty())
 		{
-			ShowNextTutorial();
+			ShowNextTutorial(true);
 		}
 		return;
 	}
@@ -540,14 +541,16 @@ namespace Dialog
 
 
 	
-	void	ShowNextTutorial()
+	void	ShowNextTutorial(bool autoNext)
 	{
 		if (RuntimeConfig::tutorialMode)
 			return;	//they really should not mix
 		GUI::VerifyIntegrity(CLOCATION);
 		if (Detail::pendingTutorials.IsNotEmpty())
 		{
-			Show(Detail::pendingTutorials.Peek());
+			auto tut = Detail::pendingTutorials.Peek();
+			tut->autoNextTutorial = autoNext;
+			Show(tut);
 			Detail::pendingTutorials.EraseFront();
 			GUI::VerifyIntegrity(CLOCATION);
 		}
@@ -740,7 +743,7 @@ namespace Dialog
 		return GUI::Hide(dialog);
 	}
 
-	PDialog	CreateTutorialMessage(const String&key, const ArrayRef<const String>&text, const String&imageName /*= ""*/, const M::Rect<>&screenReference /*= M::Rect<>::Invalid*/)
+	PDialog	CreateTutorialMessage(const String&key, const ArrayRef<const String>&text, const String&imageName /*= ""*/)
 	{
 
 		
@@ -790,14 +793,19 @@ namespace Dialog
 	}
 
 
-	WDialog	EnqueueTutorial(const String&key, const Array<String>&text, const String&imageName /*= ""*/, const M::Rect<>&screenReference /*= M::Rect<>::Invalid*/)
+	WDialog	EnqueueTutorial(const String&key, const Array<String>&text, const String&imageName /*= ""*/, bool prioritize/*=false*/)
 	{
 		GUI::VerifyIntegrity(CLOCATION);
 		if (!Detail::showTutorials)
 			return PDialog();
 
-		PDialog d = CreateTutorialMessage(key, text, imageName, screenReference);
-		Detail::pendingTutorials.Push(d);
+		PDialog d = CreateTutorialMessage(key, text, imageName);
+		if (prioritize)
+		{
+			Detail::pendingTutorials.PushFront(d);
+		}
+		else
+			Detail::pendingTutorials.Push(d);
 
 		OnTutorialsChanged();
 

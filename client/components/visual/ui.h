@@ -181,7 +181,7 @@ namespace UI
 
 				virtual void			Execute() override
 				{
-					Dialog::ShowNextTutorial();
+					Dialog::ShowNextTutorial(true);
 				}
 
 				virtual void			CompileLabel(Label&outResult) override

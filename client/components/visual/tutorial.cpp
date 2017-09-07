@@ -455,9 +455,9 @@ namespace Tutorial
 			return;
 		if (!Detail::RegisterMemory(msg->shown,name) && !overrideMemory)
 			return;
-		Dialog::EnqueueTutorial(name,msg->lines,msg->image);
+		Dialog::EnqueueTutorial(name,msg->lines,msg->image,forceOpenNow);
 		if (forceOpenNow)
-			Dialog::ShowNextTutorial();
+			Dialog::ShowNextTutorial(!overrideMemory);
 	}
 
 	void	HideMessage(const String&name)
