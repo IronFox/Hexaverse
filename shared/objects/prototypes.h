@@ -7,6 +7,7 @@
 #include <global_string.h>
 #include <functional>
 #include <container/hashtable.h>
+#include "entityType.h"
 
 namespace Objects
 {

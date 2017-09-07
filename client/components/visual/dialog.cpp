@@ -1,5 +1,3 @@
-#ifdef HAS_WINDOW
-
 #include <global_root.h>
 #include "dialog.h"
 #include <engine/display.h>
@@ -995,5 +993,3 @@ namespace Dialog
 
 }
 
-
-#endif
