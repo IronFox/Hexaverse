@@ -398,6 +398,16 @@ namespace Objects
 					if ((descFlags & DescIncludeCurrentHealth))
 						outResult << "Health: " +String(this->health);
 			}
+			
+			if (!owner && Faction::mine)	//prototype
+			{
+				if (!this->IsUnlockedAtState(Faction::mine->researchState.researchState))
+				{
+					outResult << "[More Research Required]";
+				}
+			}
+			
+
 			if (descFlags & DescIncludePrice)
 				outResult << "Price: "+String(ResourceTag(Resource::Minerals)) + String(" ") + String(this->GetConstructionCost());
 			if ((descFlags & DescIncludeUnitCount))
