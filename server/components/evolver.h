@@ -39,6 +39,7 @@ namespace Evolver
 
 		void				ProcessRound()	{BeginRoundProcessing(); while (ContinueRoundProcessing()); FinishRoundProcessing();}
 
+		virtual bool		IsActive() const =0;
 
 
 	};

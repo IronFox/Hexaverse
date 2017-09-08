@@ -1183,6 +1183,10 @@ int main( int argc, const char* argv[])
 					if (Network::AnyHumanPlayersActive())
 						Game::roundTimerPaused = false;
 					Game::evolver->FinishRoundProcessing();
+
+					Objects::PFaction f = Game::postEvolutionWinner.lock();
+					if (f)
+						Game::DeclareWinner(f);
 				}
 			}
 			else if (!RuntimeConfig::IsInAnyCommandPhase())

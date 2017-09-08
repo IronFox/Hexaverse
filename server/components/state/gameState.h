@@ -20,6 +20,7 @@ namespace Game
 	extern UINT32			mostFactionsAlive	/*=0*/;
 
 	extern Objects::PFaction	winner;	//if set indicates game is over. Do not set manually. Use DeclareWinner()
+	extern Objects::WFaction	postEvolutionWinner;	//if winner is declared while evolver is active, this variable is set instead for later
 
 	extern Timer::Time		lastPhaseChange /*= timer.Now()*/;
 	extern bool				roundTimerPaused /*= true*/;

@@ -21,6 +21,7 @@ namespace Game
 	UINT32				mostFactionsAlive=0;
 	Evolver::Abstract	*evolver = nullptr;
 	Objects::PFaction	winner;	//if set indicates game is over
+	Objects::WFaction	postEvolutionWinner;	//if winner is declared while evolver is active, this variable is set instead for later
 	Timer::Time			lastPhaseChange = timer.Now();
 	bool				roundTimerPaused = true;
 	float				factionStartMineralValue=1.f;	//determined during loading
@@ -819,6 +820,12 @@ namespace Game
 	{
 		DBG_ASSERT__(w);
 		DBG_ASSERT__(!winner);
+		if (evolver->IsActive())
+		{
+			postEvolutionWinner = w;
+			return;
+		}
+		postEvolutionWinner.reset();
 		LogEvent(EventClass{EventSignificance::Important,EventFlavor::ServerPrivate},"Declared winner: "+w->GetLogName());
 		LogEvent(EventClass::Preset::winningFaction,"Congratulations. "+w->GetName()+" wins this game!");
 		winner = w;
