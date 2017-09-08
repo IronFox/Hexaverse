@@ -3617,6 +3617,8 @@ int main( int argc, const char* argv[])
 				TimeLapse::customBasePath = PathString(StartConfig::GetString("timelapse/outDirectory",""));
 				TimeLapse::frameDelaySeconds = StartConfig::GetFloat("timelapse/frameDelaySeconds",0.2f);
 				TimeLapse::maxCompressionPNG = StartConfig::GetBool("timelapse/maxCompressionPNG");
+				
+				UI::SetScale(StartConfig::GetFloat("runtime/uiScale",1.f));
 
 				if (!RuntimeConfig::aiMode && StartConfig::GetBool("runtime/soundEnabled",true))
 				{
