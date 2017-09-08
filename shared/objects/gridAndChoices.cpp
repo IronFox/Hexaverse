@@ -203,10 +203,19 @@ namespace Objects
 				Grid::HCellIdI ic;
 				M::TVec3<> iat;
 				float angle;
-				if (Component::Turret::TraceTrajectory(base.turret->trajectoryType,base.GetFlatAttackRange(),   
+				const auto rs = Component::Turret::TraceTrajectory(base.turret->trajectoryType,base.GetFlatAttackRange(),   
 							world, World::actual,sourceLocation,TrajectoryEndPoint( loc ),trajectory,
-							iat,ic,angle) != TurretTrajectory::ReachesTarget)
+							iat,ic,angle);
+				
+				if (rs == TurretTrajectory::InvalidTrajectory)
 					return;
+				if (rs == TurretTrajectory::MidFlightImpact)
+				{
+					float3 last = trajectory.Last().xyz * trajectory.Last().w;
+					float dist = Vec::quadraticDistance(last,Grid::ToWorld( e->location ));
+					if (dist > M::Sqr( base.turret->explosionRadius.GetValue(source.GetResearchState())))
+						return;
+				}
 				float d2 = Grid::GetQuadraticGeometricDistance(sourceLocation.cellLocation,loc);
 				if (d2 < c2)
 				{
