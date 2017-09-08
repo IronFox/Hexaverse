@@ -1440,8 +1440,8 @@ namespace Protocol
 
 
 	NETSTRUCT2(QueueResearch
-		, NET(UINT32),	research
-		, NET(BOOL),	drop
+		, UINT32,	research
+		, bool,		drop
 	);
 
 	typedef NETA(UINT32)	ResearchQueue;
