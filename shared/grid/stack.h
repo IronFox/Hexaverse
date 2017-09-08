@@ -383,7 +383,7 @@ namespace Grid
 			BYTE			lowestOpenCell=0,
 							highestOpaqueCell=0,
 							lightingChangedTo=0;
-			TIntRange<BYTE>	waterRange;
+			M::TIntRange<BYTE>	waterRange;
 		#endif
 
 
@@ -478,9 +478,9 @@ namespace Grid
 
 	class Resource;
 
-	struct TDistanceRange : public TFloatRange<>
+	struct TDistanceRange : public M::TFloatRange<>
 	{
-		typedef TFloatRange<>	Super;
+		typedef M::TFloatRange<>	Super;
 
 		float	sum=0;
 		count_t	numSamples=0;
@@ -529,7 +529,7 @@ namespace Grid
 			struct TStack
 			{
 				UINT32				stackID;	//high-resolution cell IDs
-				TIntRange<UINT32>	range;		//range.end is one higher than actual limit
+				M::TIntRange<UINT32>range;		//range.end is one higher than actual limit
 			};
 
 			Ctr::Buffer0<TStack>		coverage;
@@ -643,7 +643,7 @@ namespace Grid
 		@param startID index of the stack to start from
 		@return Closest matching stack index
 		*/
-		UINT32			Locate(const TVec3<>&v, UINT32 startID = 0)	const
+		UINT32			Locate(const M::TVec3<>&v, UINT32 startID = 0)	const
 		{
 			UINT32 stackID = startID;
 			for (;;)
@@ -682,7 +682,7 @@ namespace Grid
 
 		}
 
-		static float FindStackMaxHeight(const TIntRange<>&range, const CellStack&stack)
+		static float FindStackMaxHeight(const M::TIntRange<>&range, const CellStack&stack)
 		{
 			foreach(stack.sections, section)
 				if (section->range.Intersects(range))
@@ -691,7 +691,7 @@ namespace Grid
 
 			return -1.f;
 		}
-		static float FindStackMaxHeightAbove(const TIntRange<>&range, const CellStack&stack)
+		static float FindStackMaxHeightAbove(const M::TIntRange<>&range, const CellStack&stack)
 		{
 			foreach(stack.sections, section)
 				if (range.Contains(section->range.start) && range.end < section->range.end)
@@ -700,7 +700,7 @@ namespace Grid
 			return -1.f;
 		}
 
-		void	GenerateVolume(const Sphere<>&sphere,TVolumeDescriptor&volume) const
+		void	GenerateVolume(const M::Sphere<>&sphere,TVolumeDescriptor&volume) const
 		{
 			static TVolumeDescriptor::Operator op;
 			volume.Clear();
@@ -715,14 +715,14 @@ namespace Grid
 				if (op.stackVisited[next])
 					continue;
 				op.stackVisited[next] = true;
-				const TVec3<>&dir = cells[next].cornerCenter;
-				TVec2<> distances;
-				TVec3<> bottom,top;
+				const M::TVec3<>&dir = cells[next].cornerCenter;
+				M::TVec2<> distances;
+				M::TVec3<> bottom,top;
 				Vec::mult(dir,br,bottom);
 				Vec::mult(dir,tr,top);
 				TVolumeDescriptor::TStack&st = volume.coverage.Append();
 				st.stackID = next;
-				if (!Obj::DetectSphereEdgeIntersection(sphere.center,sphere.radius,bottom,top,distances))
+				if (!M::Obj::DetectSphereEdgeIntersection(sphere.center,sphere.radius,bottom,top,distances))
 				{
 					st.range.SetEmpty(0);
 					continue;
@@ -777,11 +777,11 @@ namespace Grid
 
 	
 	
-	inline float Get(const SimplexNoise&n, const TVec3<>&p)
+	inline float Get(const SimplexNoise&n, const M::TVec3<>&p)
 	{
 		return (float)n.Get(p.x,p.y,p.z);
 	}
-	inline float GetContinuous(const SimplexNoise&n, const TVec3<>&p)
+	inline float GetContinuous(const SimplexNoise&n, const M::TVec3<>&p)
 	{
 		return (float)n.GetUniform(p.x,p.y,p.z);
 	}
@@ -797,7 +797,7 @@ namespace Grid
 	///**
 	//Calculates a fractal random height for the given center direction
 	//*/
-	//float	RandomHeight(const TVec3<>&center0);
+	//float	RandomHeight(const M::TVec3<>&center0);
 
 
 
@@ -844,22 +844,22 @@ namespace Grid
 	bool	AffectedByEMP(const LCellIdI&);
 
 
-	void	ToWorld(const HCellIdU&,TVec3<>&rs);
-	void	ToWorld(const HCellIdI&,TVec3<>&rs);
-	void	ToWorld(const LCellIdU&,TVec3<>&rs);
-	void	ToWorld(const LCellIdI&,TVec3<>&rs);
-	TVec3<> ToWorld(const HCellIdU&);
-	TVec3<> ToWorld(const HCellIdI&);
-	TVec3<> ToWorld(const LCellIdU&);
-	TVec3<> ToWorld(const LCellIdI&);
-	TVec3<> ToWorld(const HCellIdU&, float fLayerOffset);
-	TVec3<> ToWorld(const HCellIdI&, float fLayerOffset);
-	TVec3<> ToWorld(const LCellIdU&, float fLayerOffset);
-	TVec3<> ToWorld(const LCellIdI&, float fLayerOffset);
-	TVec3<> ToWorldR(const HCellIdU&, float radiusOffset);
-	TVec3<> ToWorldR(const HCellIdI&, float radiusOffset);
-	TVec3<> ToWorldR(const LCellIdU&, float radiusOffset);
-	TVec3<> ToWorldR(const LCellIdI&, float radiusOffset);
+	void	ToWorld(const HCellIdU&,M::TVec3<>&rs);
+	void	ToWorld(const HCellIdI&,M::TVec3<>&rs);
+	void	ToWorld(const LCellIdU&,M::TVec3<>&rs);
+	void	ToWorld(const LCellIdI&,M::TVec3<>&rs);
+	M::TVec3<> ToWorld(const HCellIdU&);
+	M::TVec3<> ToWorld(const HCellIdI&);
+	M::TVec3<> ToWorld(const LCellIdU&);
+	M::TVec3<> ToWorld(const LCellIdI&);
+	M::TVec3<> ToWorld(const HCellIdU&, float fLayerOffset);
+	M::TVec3<> ToWorld(const HCellIdI&, float fLayerOffset);
+	M::TVec3<> ToWorld(const LCellIdU&, float fLayerOffset);
+	M::TVec3<> ToWorld(const LCellIdI&, float fLayerOffset);
+	M::TVec3<> ToWorldR(const HCellIdU&, float radiusOffset);
+	M::TVec3<> ToWorldR(const HCellIdI&, float radiusOffset);
+	M::TVec3<> ToWorldR(const LCellIdU&, float radiusOffset);
+	M::TVec3<> ToWorldR(const LCellIdI&, float radiusOffset);
 
 	inline HCellIdI	ToHigh(const LCellIdI&cellID)	{return HCellIdI(low.grid.GetCell(cellID.stackID).higherEquivalent,cellID.height); }
 	inline HCellIdU	ToHigh(const LCellIdU&cellID)	{return HCellIdU(low.grid.GetCell(cellID.stackID).higherEquivalent,cellID.layer); }

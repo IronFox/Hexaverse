@@ -19,12 +19,12 @@ namespace Objects
 		static const int			FuelDemand = 20;
 		static const int			EnergyConsumption = 0;
 
-		static Buffer0<ConstName>	prototypes;
+		static Buffer0<EntityType>	prototypes;
 
 
 		//BaseEntity overrides:
 		virtual String				GetTypeName() const override { return "Plane Factory"; };
-		virtual ConstName			GetCTypeName() const override {return ConstName::Type_PlaneFactory;}
+		virtual EntityType			GetType() const override {return ConstName::Type_PlaneFactory;}
 
 		//WorkingStructure overrides:
 		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override;

@@ -88,7 +88,16 @@ namespace Channels
 	TCP::ObjectSender<Protocol::OperationLacksResources,Protocol::ChannelID::OperationLacksResources>	operationLacksResources;
 	TCP::ObjectSender<Protocol::ResearchQueue, Protocol::ChannelID::ResearchQueue>					researchQueue;
 
-//	Channel<class Object, unsigned MinUserLevel, UINT32 ChannelID>
+	TCP::ObjectSender<TUniqueID, Protocol::ChannelID::WinningFaction>								winningFaction;
+
+	namespace Statistics
+	{
+		TCP::ObjectSender<TUniqueID, Protocol::ChannelID::BeginStatisticsSequence>					beginSequence;
+		TCP::ObjectSender<Objects::Statistics::Round, Protocol::ChannelID::RoundStatistics>			round;
+		TCP::ObjectSender<Objects::Statistics::EntityType, Protocol::ChannelID::EntityTypeStatistics>	entityType;
+		TCP::ObjectSender<Objects::Statistics::FactionInteraction, Protocol::ChannelID::FactionInteractionStatistics>	factionInteraction;
+	}
+
 
 }
 
@@ -104,8 +113,7 @@ namespace Receiver
 	{
 		e.id = source.referenceEntity;
 		e.owner = source.referenceEntityOwner;
-		e.type0 = source.referencedType[0];
-		e.type1 = source.referencedType[1];
+		e.type = source.referencedType;
 	}
 
 
@@ -242,9 +250,16 @@ namespace Receiver
 			Channels::researchState.SendTo(peer,state);
 		});
 
+		//if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
+		Objects::ForeachFaction([&peer](const Objects::PFaction&f)
+		{
+			Game::Network::SendStatisticsTo(peer,f);
+		},true);
+
+		if (Game::winner)
+			Channels::winningFaction.SendTo(peer,Game::winner->id);
+
 		peer.SendSignal(Protocol::ChannelID::EndEverything);
-
-
 	}
 
 	void	ClientFaction(Protocol::ClientFactionRequest&_p, TCP::Peer&peer)
@@ -265,6 +280,11 @@ namespace Receiver
 		response.planetConfig = Grid::currentPlanetConfig;
 		Game::Network::AssembleGameInfo(response.info, peer.IsLocalhost());
 		//response.info = CompileWorldInfo();
+
+
+		if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
+			response.startFactionTypes = Protocol::FactionType::SpectatorFaction;	//automatic spectator status
+
 
 		if (!response.startFactionTypes || response.startFactionTypes == Protocol::FactionType::SpectatorFaction)
 		{
@@ -320,8 +340,12 @@ namespace Receiver
 			break;
 			case Protocol::FactionType::SpectatorFaction:
 			{
-				factionTypeNotSupported = !peer.IsLocalhost()
-											|| !(Game::Config::factionSupportFlags & Protocol::GameFlag::SupportSpectatorFactions);
+				factionTypeNotSupported =	RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame &&
+											(
+												!peer.IsLocalhost()
+												|| !(Game::Config::factionSupportFlags & Protocol::GameFlag::SupportSpectatorFactions)
+											)
+											;
 				if (factionTypeNotSupported && !peer.IsLocalhost())
 					LogEvent(EventClass::Preset::commandRejected,peer,"Spectator type is allowed only from localhost, but peer is "+peer.ToString());
 			}
@@ -396,7 +420,7 @@ namespace Receiver
 						&& RuntimeConfig::tutorialMode
 					#endif
 					&& Objects::Faction::all.IsNotEmpty()
-					&& (faction = Objects::Faction::all.first().lock())	//in tutorial mode (or debug mode) take first known faction
+					&& (faction = Objects::Faction::all.First())	//in tutorial mode (or debug mode) take first known faction
 				)
 			)
 		{
@@ -436,8 +460,8 @@ namespace Receiver
 				{
 					foreach (Objects::Faction::all,f)
 					{
-						ASSERT__(f->lock()->accessToken != response.factionToken);
-						LogEvent(EventSignificance::Debug,peer,"Known token: "+f->lock()->accessToken.ToString());
+						ASSERT__((*f)->accessToken != response.factionToken);
+						LogEvent(EventSignificance::Debug,peer,"Known token: "+(*f)->accessToken.ToString());
 					}
 				}
 
@@ -452,9 +476,8 @@ namespace Receiver
 
 		if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
 		{
-			{
-				client->SendProgressUpdate("");
-			}
+			FATAL__("Should not be here");
+			return;
 		}
 
 
@@ -742,8 +765,7 @@ namespace Receiver
 			//LogEvent(EventClass::Preset::commandRejected ,peer,"Tried to access non-existent entity");
 			for (auto f : Objects::Faction::all)
 			{
-				Objects::PFaction faction = f.lock();
-				if (faction && faction->FindMarker(eid))
+				if (f->FindMarker(eid))
 				{
 					LogEvent(EventClass::Preset::commandRejected, peer, "Access denied (this is a marker/ghost/contact)");
 					//LogEvent(EventSignificance::Debug, peer, "(because it doesn't exist)");
@@ -801,7 +823,7 @@ namespace Receiver
 		static_assert(Objects::Marker::Type::NumberOfPossibilities == 3, "Please adjust marker logic");
 		const Protocol::MarkerReferenceEntity*e = m.data.Get0();
 		Protocol::MarkerReferenceEntity ref;
-		ref.type0 = ref.type1 = ConstName::Empty;
+		ref.type = Objects::EntityType();
 		Objects::Marker::Type type;
 		TUniqueID	refID = TUniqueID::Empty();
 		if (e)
@@ -912,7 +934,7 @@ namespace Receiver
 		if (ConfigurationMode::IsActive())
 		{
 			LogEvent(EventClass::Preset::configurationPrint,peer,"Received request for planet preset '"+planet+"'...");
-			if (planet.contains('/') || planet.contains('\\'))
+			if (planet.Contains('/') || planet.Contains('\\'))
 			{
 				LogEvent(EventClass::Preset::commandRejected,peer,"Planet name contained path separators. Rejecting request.");
 				return;
@@ -929,7 +951,7 @@ namespace Receiver
 
 			if (planet.IsNotEmpty())
 			{
-				Reflection::Variable::planetType->Set(planet.trim());
+				Reflection::Variable::planetType->Set(planet.Trim());
 				Reflection::ReloadPlanet();
 			}
 			Network::BuildConfiguredWorld();
@@ -1155,7 +1177,7 @@ namespace Receiver
 
 	void	ConstructionBegin(Protocol::ConstructionBegin&cb, TCP::Peer&peer)
 	{
-		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Registering mobile producer construction, given "+String(cb.parameters.Count())+" parameter(s), for entity "
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Registering mobile producer construction, given type "+ToString(cb.type)+", for plant "
 				+ToString(cb.plantID));
 
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(cb.plantID,peer);
@@ -1165,7 +1187,7 @@ namespace Receiver
 		Objects::PMobileEntityProducer p = To<Objects::MobileEntityProducer>::DynamicCast(e);
 		if (p)
 		{
-			Journal::currentRound.RegisterProductionJobStart(true,e,p,cb.parameters.pointer(),cb.parameters.Count());
+			Journal::currentRound.RegisterProductionJobStart(true,e,p,cb.type);
 			return;
 		}
 		LogEvent(EventClass::Preset::commandRejected,peer,e,"Tried to issue construction job on incompatible entity");
@@ -1298,13 +1320,7 @@ namespace Receiver
 
 				target = v->GetLastPointOfOrigin();
 
-				Objects::PStructure p;
-				foreach (Objects::structurePrototypes,proto)
-					if ((*proto)->GetCTypeName() == sjob.parameterName)
-					{
-						p = *proto;
-						break;
-					}
+				Objects::PStructure p = Objects::Prototypes::structures.Find(sjob.parameterName);
 				if (p)
 				{	
 					job.reset(new VehicleJob::Construct(*v,p));
@@ -1321,7 +1337,7 @@ namespace Receiver
 			break;
 			case ConstName::Job_SelfDetonate:
 			{
-				job.reset(new VehicleJob::SelfDetonate(*v,sjob.parameterName));
+				job.reset(new VehicleJob::SelfDetonate(*v,sjob.parameterName.baseType));
 				target = v->GetLastPointOfOrigin();
 				v->RegisterNewJob("", job,&target);
 				LogEvent(EventSignificance::Common,peer,e,"Registered new job "+job->GetName());
@@ -1401,7 +1417,7 @@ namespace Receiver
 
 	void	ChoiceIntersection(Protocol::ChoiceIntersection&ch, TCP::Peer&peer)
 	{
-		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Processing choice intersection in mode "+String(ch.mode)+" at cell "+ch.target.ToString()
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Processing choice intersection in mode "+String(ch.mode)+" at cell "+ToString(ch.target)
 			+" for entity "+ToString(ch.id));
 
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(ch.id,peer);
@@ -1431,7 +1447,7 @@ namespace Receiver
 
 		Journal::currentRound.RegisterChoiceIntersection(true,e,ch.target,(Objects::Vehicle::mode_t)ch.mode,deployingWhat);
 
-		LogEvent(EventSignificance::Common,peer,e,"End: Processed choice intersection in mode "+String(ch.mode)+" at cell "+ch.target.ToString());
+		LogEvent(EventSignificance::Common,peer,e,"End: Processed choice intersection in mode "+String(ch.mode)+" at cell "+ToString(ch.target));
 	}
 
 	
@@ -1498,7 +1514,7 @@ namespace Receiver
 		static StringBuffer buffer;
 		buffer.Clear();
 		foreach (cmd.path,n)
-			buffer << ' '<<n->ToString();
+			buffer << ' '<<ToString(*n);
 		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Directing entity "+ToString(cmd.id)+" in mode "+String(cmd.mode)+" given flags "+String(cmd.directFlags)+" to"+buffer.CopyToString());
 
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(cmd.id,peer);
@@ -1507,7 +1523,7 @@ namespace Receiver
 		foreach (cmd.path,n)
 			if (!ValidCell(*n))
 			{
-				LogEvent(EventClass::Preset::commandRejected, peer, e, "Parameter fault ("+n->ToString()+")");
+				LogEvent(EventClass::Preset::commandRejected, peer, e, "Parameter fault ("+ToString(*n)+")");
 				return;
 			}
 		const bool leftClick = (cmd.directFlags & Protocol::DirectFlags::LeftClick) != 0;
@@ -1604,11 +1620,11 @@ namespace Receiver
 	#endif /*0*/
 	void	Hello(Protocol::Hello&hello, TCP::Peer&peer)
 	{
-		if (hello.trim().IsEmpty())
+		if (hello.Trim().IsEmpty())
 		{
 			Protocol::HelloResponse response;
 			response.success = false;
-			response.configurationMode = false;
+			response.gameFlags = 0;
 			response.errorMessage ="Invalid initial username";
 			peer.SendPackage(TCP::Package(response,Protocol::ChannelID::Hello));
 			return;
@@ -1648,7 +1664,7 @@ namespace Receiver
 
 			Protocol::HelloResponse response;
 			response.success = true;
-			response.configurationMode = ConfigurationMode::IsActive() && peer.IsLocalhost();
+			response.gameFlags = Game::Network::AssembleGameFlags(peer.IsLocalhost());
 			response.errorMessage ="Userlevel set to "+String(peer.userLevel);
 			peer.SendPackage( TCP::Package(response, Protocol::ChannelID::Hello ));
 			return;
@@ -1658,7 +1674,7 @@ namespace Receiver
 		ChangeMyName(hello,peer);
 		Protocol::HelloResponse response;
 		response.success = true;
-		response.configurationMode = ConfigurationMode::IsActive() && peer.IsLocalhost();
+		response.gameFlags = Game::Network::AssembleGameFlags(peer.IsLocalhost());
 		response.errorMessage ="Duplicate Hello detected. Userlevel remains "+String(peer.userLevel);
 		peer.SendPackage( TCP::Package(response,Protocol::ChannelID::Hello) );		
 	}

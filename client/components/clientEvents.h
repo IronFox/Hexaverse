@@ -4,7 +4,12 @@
 
 namespace GlobalEvents
 {
-	extern Observable<>	frameBegin,frameAfterCamera;
+	extern Observable<>	frameBegin,
+						frameAfterCamera,
+						shadowQualityChanged,
+						uiScaleChanged;
+
+	extern Observable<bool>	onFullscreenChange;
 
 
 }

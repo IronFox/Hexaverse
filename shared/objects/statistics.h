@@ -6,6 +6,7 @@
 #include <io/json.h>
 #include <io/riff_handler.h>
 #include "../uniqueID.h"
+#include "entityType.h"
 
 
 using namespace DeltaWorks;
@@ -19,40 +20,58 @@ namespace Objects
 		const Faction*const	owner;
 	public:
 
+		/**
+		Enumeration of all supported metrics.
+		These are inserted into a hash-table and may therefor grow arbitrarily large.
+
+		IMPORTANT: if any no longer in use: DO NOT REMOVE! Do not change order
+		Prepend Deprecated_. These are used for IO, and may be imported from potentially very old savegames.
+		*/
 		enum class Metric
 		{
-			//VERY Important: if any no longer in use: DO NOT REMOVE. Prepend Deprecated_. These are used for IO, and may be imported from potentially very old savegames
 			DamageReceived,
 			DamageDealt,
 			EMPDamageReceived,
 			EMPDamageDealt,
 			UnitsKilled,
 			ResourcesDestroyed,
-			UnitsStolen,
+			UnitsStolen,				//how many of this type we stole
 			ResourcesStolen,
 
-			UnitsKilledBy,
-			UnitsStolenBy,
-			ResourcesDestroyedBy,
-			ResourcesStolenBy,
+			UnitsKilledByOther,
+			UnitsStolenByOther,
+			ResourcesDestroyedByOther,
+			ResourcesStolenByOther,
 
 			Lost,				//how many of this type we lost
-			Built,				//how many of this type we built
-			Stolen,				//how many of this type we stole
+			UnitsBuilt,				//how many of this type we built
+			Deprecated0,
 
 			CurrentEntityCount,
 			CurrentEntityMineralValue,
 			CurrentSensorCoverage,
 
+			ResourcesUsedForConstruction,	//how many resources (minerals probably) were converted into other stuff (entities probably). Conversion into electricity does not count
+
+
+			OffensiveCapabilities,
+			NumTerraformers,
+			NumFactories,
+			NumLaboratories,
+			ResearchSpeed,
+			WinningScore,
+			NexusPortsOwned,
+			NexusPortsControlled,
+
+			Count
 		};
 
 
-		class MetricTable : public ISerializable
+		class MetricTable
 		{
 		public:
 			typedef MetricTable		Self;
 			typedef std::underlying_type<Metric>::type	K;
-
 
 			UINT64					operator[](Metric metric) const;
 			void					Inc(Metric);
@@ -64,8 +83,8 @@ namespace Objects
 
 			void					Clear() {map.Clear();}
 
-			virtual	void			Serialize(IWriteStream&outStream) const override;
-			virtual	void			Deserialize(IReadStream&inStream) override;
+			friend void				SerialSync(IWriteStream&outStream, const MetricTable&);
+			friend void				SerialSync(IReadStream&inStream, MetricTable&);
 
 		private:
 			UINT64&					Fetch(Metric metric);
@@ -75,9 +94,9 @@ namespace Objects
 
 
 
-		struct Interaction : public ISerializable
+		struct FactionInteraction : public ISerializable
 		{
-			typedef Interaction Self;
+			typedef FactionInteraction Self;
 
 			TUniqueID				remoteID;
 			MetricTable				metrics;
@@ -89,21 +108,21 @@ namespace Objects
 			virtual	void			Deserialize(IReadStream&inStream) override;
 		};
 
-		struct UnitStatistics : public ISerializable
+		struct EntityType : public ISerializable
 		{
-			typedef UnitStatistics	Self;
+			typedef EntityType	Self;
 
-			String					typeName;
+			Objects::EntityType		type;
 			MetricTable				metrics;
 		
-			bool					operator==(const Self&other) const {return typeName == other.typeName && metrics == other.metrics;}
+			bool					operator==(const Self&other) const {return type == other.type && metrics == other.metrics;}
 			bool					operator!=(const Self&other) const {return !operator==(other);}
 
 			virtual	void			Serialize(IWriteStream&outStream) const override;
 			virtual	void			Deserialize(IReadStream&inStream) override;
 		};
 
-		struct RoundStatistics : public ISerializable
+		struct Round : public ISerializable
 		{
 			PositiveResourceVector	production,consumption;
 			MetricTable				metrics;
@@ -136,10 +155,87 @@ namespace Objects
 			static void	SignalNewRoundBegin(bool mainRound);
 
 		
-			void		ExportInto(Riff::Chunk*) const;
-			void		ImportFrom(const Riff::Chunk*, const GenericHashTable<TUniqueID,Objects::PFaction>&factionMap);
 		#endif
 
+		void			ExportInto(Riff::Chunk*) const;
+		void			ImportFrom(const Riff::Chunk*, bool factionIsDead);
+		void			Clear();
+
+
+		//Sequential loading functions
+
+		/**
+		Flushes all local data and awaits Load*() calls. Always finish with EndLoading()
+		*/
+		void			BeginLoading();
+		/**
+		Loads a new Round item from serialized data. May throw exceptions
+		*/
+		void			DeserializeRound(const void*, serial_size_t);
+		/**
+		Loads a new EntityType item from serialized data. May throw exceptions
+		*/
+		void			DeserializeEntityType(const void*,serial_size_t);
+		/**
+		Loads a new FactionInteraction item from serialized data. May throw exceptions
+		*/
+		void			DeserializeFactionInteraction(const void*,serial_size_t);
+		void			Load(Round&&stat);
+		void			Load(EntityType&&stat);
+		void			Load(FactionInteraction&&inter);
+		/**
+		Concludes loading. Regardless of wether items were actually loaded, this method will assure the local Statistics instance is valid
+		*/
+		void			EndLoading(bool factionIsDead);
+
+		/**
+		Changes serialization mode to use strings rather than EntityType
+		*/
+		static void		EnterFileMode();
+		/**
+		Changes serialization mode to use EntityType rather than strings
+		*/
+		static void		EnterNetworkMode();
+
+
+		UINT32			GetStartingRound() const
+		{
+			return history.IsNotEmpty() ? history.First().mainRound : 0;
+		}
+
+		UINT32			GetFinalRound() const
+		{
+			return history.IsNotEmpty() ? history.Last().mainRound : 0;
+		}
+
+		#ifdef CLIENT
+			void			VisitRounds(const std::function<void(const Round&)>&f) const
+			{
+				foreach (history,h)
+					f(*h);
+			}
+		#else
+
+			void			VisitRounds(const std::function<void(const Round&)>&f, bool omitLast) const
+			{
+				if (omitLast)
+				{
+					for (index_t i = 0; i+1 < history.Count(); i++)
+						f(history[i]);
+				}
+				else
+					foreach (history,h)
+						f(*h);
+			}
+		#endif
+		void			VisitFactionInteractions(const std::function<void(const FactionInteraction&)>&f) const
+		{
+			interactionMap.VisitAllValues(f);
+		}
+		void			VisitEntityTypes(const std::function<void(const EntityType&)>&f) const
+		{
+			entityTypes.VisitAllValues(f);
+		}
 
 	private:
 		//temporary data:
@@ -147,17 +243,18 @@ namespace Objects
 									roundConsumption;
 		count_t						totalEntities=0,
 									totalEntityMineralValue=0;
+		bool						isLoading = false;
 
 		//persistent data:
-		PointerTable<Interaction>	interactionMap;
-		StringTable<UnitStatistics>	unitStatistics;
-		Buffer0<RoundStatistics>	history;
+		PointerTable<FactionInteraction>	interactionMap;
+		HashTable<Objects::EntityType,EntityType>	entityTypes;
+		Buffer0<Round>				history;
 
 
 		//access helpers:
-		Interaction&				Get(const PFaction&remote);
-		UnitStatistics&				GetTypeOf(const PWorldEntity&);
-		RoundStatistics&			GetRoundStat();
+		FactionInteraction&		Get(const PFaction&remote);
+		EntityType&				GetTypeOf(const PWorldEntity&);
+		Round&					GetRoundStat();
 	};
 
 }

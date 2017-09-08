@@ -1,5 +1,3 @@
-#ifdef HAS_WINDOW
-
 #include <global_root.h>
 #include "dialog.h"
 #include <engine/display.h>
@@ -13,6 +11,8 @@
 #include <cast.h>
 #include <logEvent.h>
 #include "../clientRuntimeConfig.h"
+#include "../clientEvents.h"
+#include "music.h"
 
 namespace DX11 = Engine::DX11; 
 
@@ -27,6 +27,50 @@ Random random;
 
 namespace Dialog
 {
+	/*virtual override*/ void				Menu::OnScreenSizeOrUIScaleChange()
+	{
+		LogEvent(EventClass::Preset::gui,"Menu["+String(this)+"/"+myTitle+"]::OnScreenSizeOrUIScaleChange()");
+		Super::OnScreenSizeOrUIScaleChange();
+	}
+
+	GUI::PButton				Menu::AddCommand(const String&name, const std::function<void()>&execute, const std::function<bool()>&check /*= std::function<bool()>()*/, bool autoHide/*=true*/)
+	{
+		GUI::PButton button(new GUI::Button(name,
+			[execute,this,autoHide]()
+			{
+				execute();
+				if (autoHide)
+					GUI::CloseAllModalBeneath(To<GUI::Window>::Cast(this->shared_from_this()));
+			},
+			check
+		));
+		Super::AnchorBelowPrevious(button,0.f,Super::components.IsEmpty() ? 0.f : 0.015f);
+
+		LogEvent(EventClass::Preset::gui,"Menu["+String(this)+"/"+myTitle+"]::AddCommand("+name+", ...)");
+
+		return button;
+	}
+
+	void		Menu::Setup(float initialAbsoluteWidth, const String&title)
+	{
+		myTitle = title;
+		if (Super::DoesAutoCenter())
+			SetWidth(initialAbsoluteWidth);
+		else
+			Super::SetCenteredWidth(initialAbsoluteWidth,GUI::TAnchor::RelativeToScreen);
+		Super::fillBackground = false;
+
+		if (title.IsNotEmpty())
+		{
+			GUI::PLabel label(new GUI::Label());
+			label->SetText(title);
+			label->SetVerticalPadding( 0.1f );
+			Super::AnchorBelowPrevious(label,0.015f,0.f);
+		}
+		LogEvent(EventClass::Preset::gui,"Menu["+String(this)+"]::Setup("+String(initialAbsoluteWidth)+","+myTitle+")");
+	}
+
+
 	namespace Detail
 	{
 
@@ -54,18 +98,41 @@ namespace Dialog
 
 		PDialog	NewModalDialog(UINT32 componentFlags, const String&confirmWord, bool isTutorial)
 		{
-			PDialog dialog(new Dialog());
+			PDialog dialog = Dialog::Create();
 			Configure(dialog,componentFlags,confirmWord, isTutorial);
 			Show(dialog);
 			return dialog;
+		}
+
+
+		static void SetLeft(const GUI::PComponent&c, float v)
+		{
+			auto cfg = c->GetAnchorConfig();
+			cfg.Left().Set(v);
+			c->SetAnchorConfig(cfg);
+		}
+		static void SetRight(const GUI::PComponent&c, float v)
+		{
+			auto cfg = c->GetAnchorConfig();
+			cfg.Right().Set(v);
+			c->SetAnchorConfig(cfg);
 		}
 
 		void Configure(PDialog dialog, UINT32 componentFlags, const String&confirmWord, bool isTutorial)
 		{
 			dialog->isTutorial = isTutorial;
 
-			dialog->anchorConfig.Left().Set(0.25f);
-			dialog->anchorConfig.Right().Set(0.25f);
+			if (dialog->DoesAutoCenter())
+			{
+				dialog->SetWidth(0.5f);
+			}
+			else
+			{
+				auto cfg = dialog->GetAnchorConfig();
+				cfg.Left().Set(0.25f);
+				cfg.Right().Set(0.25f);
+				dialog->SetAnchorConfig(cfg);
+			}
 			
 			dialog->fillBackground = false;
 			//GUI::PComponent	common(new GUI::Area());
@@ -73,11 +140,15 @@ namespace Dialog
 			GUI::PPanel	textPanel(new GUI::Panel());
 			GUI::PLabel textField(new GUI::Label());
 			textPanel->AddComponent(textField);
-			textField->anchorConfig.Left().Set(0.f);
-			textField->anchorConfig.Right().Set(0.f);
-			textField->anchorConfig.Top().Set(0.f);
-			textPanel->anchorConfig = textField->anchorConfig;
-			textPanel->autoHeight = true;
+			{
+				auto cfg = textField->GetAnchorConfig();
+				cfg.Left().Set(0.f);
+				cfg.Right().Set(0.f);
+				cfg.Top().Set(0.f);
+				textField->SetAnchorConfig(cfg);
+				textPanel->SetAnchorConfig(cfg);
+			}
+			textPanel->SetAutomaticHeight(true);
 			dialog->AddComponent(textPanel);
 			
 			//height controlled by content
@@ -89,12 +160,17 @@ namespace Dialog
 			Buffer0<std::pair<float,GUI::PButton> > buttons;
 
 
+			
 			if (componentFlags & ComponentFlags::Input)
 			{
 				inputField.reset(new GUI::Input());
-				inputField->anchorConfig.Left().Set(0.f);
-				inputField->anchorConfig.Right().Set(0.f);
-				inputField->anchorConfig.Top().Set(textField,0.f);//0.025f);
+				{
+					auto cfg = inputField->GetAnchorConfig();
+					cfg.Left().Set(0.f);
+					cfg.Right().Set(0.f);
+					cfg.Top().Set(textField,0.f);//0.025f);
+					inputField->SetAnchorConfig(cfg);
+				}
 				WDialog wd = dialog;
 				inputField->onEnter = [wd]()
 				{
@@ -107,32 +183,48 @@ namespace Dialog
 			if (componentFlags & ComponentFlags::PasswordInput)
 			{
 				passwordInputField.reset(new GUI::PasswordInput());
-				passwordInputField->anchorConfig.Left().Set(0.f);
-				passwordInputField->anchorConfig.Right().Set(0.f);
-				passwordInputField->anchorConfig.Top().Set(textField,0.f);//0.025f);
+				{
+					GUI::AnchorConfig cfg;
+					cfg.Left().Set(0.f);
+					cfg.Right().Set(0.f);
+					cfg.Top().Set(textField,0.f);//0.025f);
+					passwordInputField->SetAnchorConfig(cfg);
+				}
 				textPanel->AddComponent (passwordInputField);
 			}
 
 			if (componentFlags & ComponentFlags::ConfirmButton)
 			{
 				confirmButton.reset(new GUI::Button(confirmWord));
-				confirmButton->anchorConfig.Left().Set(0.f);
-				confirmButton->anchorConfig.Right().Set(0.f);
-				confirmButton->anchorConfig.Top().Set(textPanel,0.015f,GUI::TAnchor::RelativeToScreen);
+				{
+					GUI::AnchorConfig cfg;
+					cfg.Left().Set(0.f);
+					cfg.Right().Set(0.f);
+					cfg.Top().Set(textPanel,0.015f,GUI::TAnchor::RelativeToScreen);
+					confirmButton->SetAnchorConfig(cfg);
+				}
 				dialog->AddComponent( confirmButton);
 				buttons << std::make_pair(1, confirmButton);
 			}
 			if (componentFlags & ComponentFlags::HelpButton)
 			{
 				helpButton.reset(new GUI::Button("?"));
-				helpButton->anchorConfig.Top().Set(textPanel,0.015f,GUI::TAnchor::RelativeToScreen);
+				{
+					GUI::AnchorConfig cfg;
+					cfg.Top().Set(textPanel,0.015f,GUI::TAnchor::RelativeToScreen);
+					helpButton->SetAnchorConfig(cfg);
+				}
 				dialog->AddComponent(helpButton);
 				buttons << std::make_pair(0.25f, helpButton);
 			}
 			if (componentFlags & ComponentFlags::NoButton)
 			{
 				noButton.reset(new GUI::Button("No"));
-				noButton->anchorConfig.Top().Set(textPanel,0.015f,GUI::TAnchor::RelativeToScreen);
+				{
+					GUI::AnchorConfig cfg;
+					cfg.Top().Set(textPanel,0.015f,GUI::TAnchor::RelativeToScreen);
+					noButton->SetAnchorConfig(cfg);
+				}
 				dialog->AddComponent( noButton);
 				buttons << std::make_pair(1, noButton);
 			}
@@ -142,9 +234,13 @@ namespace Dialog
 
 				//if (confirmButton)
 				//	confirmButton->anchorConfig.Right().Set(0.505f);
-				cancelButton->anchorConfig.Left().Set(0.505f);
-				cancelButton->anchorConfig.Right().Set(0.f);
-				cancelButton->anchorConfig.Top().Set(textPanel,0.015f,GUI::TAnchor::RelativeToScreen);
+				{
+					GUI::AnchorConfig cfg;
+					cfg.Left().Set(0.505f);
+					cfg.Right().Set(0.f);
+					cfg.Top().Set(textPanel,0.015f,GUI::TAnchor::RelativeToScreen);
+					cancelButton->SetAnchorConfig(cfg);
+				}
 				dialog->AddComponent(cancelButton);
 				buttons << std::make_pair(1, cancelButton);
 			}
@@ -158,13 +254,13 @@ namespace Dialog
 				
 				for (index_t i = 0; i < buttons.Count(); i++)
 				{
-					buttons[i].second->anchorConfig.Left().Set(at*width + 0.005f*(i != 0));
+					SetLeft(buttons[i].second,at*width + 0.005f*(i != 0));
 					at += buttons[i].first;
 				}
 				at = 0.f;
 				for (index_t i = buttons.Count()-1; i < buttons.Count(); i--)
 				{
-					buttons[i].second->anchorConfig.Right().Set(at*width + 0.005f*(i+1 != buttons.Count()));
+					SetRight(buttons[i].second,at*width + 0.005f*(i+1 != buttons.Count()));
 					at += buttons[i].first;
 				}
 			}
@@ -175,22 +271,30 @@ namespace Dialog
 				imageField.reset(new GUI::Image());
 				
 
-				textField->anchorConfig.Left().Set(0.405f);
-				imageField->anchorConfig.Left().Set(0.f);
-				imageField->anchorConfig.Right().Set(0.6f);
-				imageField->anchorConfig.Top().Set(0.05f);
-				if (confirmButton)
 				{
-					//imageField->autoSetHeight = false;
-					//imageField->anchorConfig.Bottom().Set(confirmButton,0.03f,false);
-					imageField->autoSetHeight = true;
-					imageField->anchorConfig.Top().SetAuto();
-					imageField->anchorConfig.Bottom().SetAuto();
+					auto cfg = imageField->GetAnchorConfig();
+					cfg.Left().Set(0.f);
+					cfg.Right().Set(0.6f);
+					cfg.Top().Set(0.05f);
+					if (confirmButton)
+					{
+						//imageField->autoSetHeight = false;
+						//imageField->anchorConfig.Bottom().Set(confirmButton,0.03f,false);
+						imageField->SetAutoHeight(true);
+						cfg.Top().SetAuto();
+						cfg.Bottom().SetAuto();
+					}
+					imageField->SetAnchorConfig(cfg);
 				}
-				textField->anchorConfig.Bottom().SetAuto();
-				textField->anchorConfig.Top().SetAuto();
+				{
+					auto cfg = textField->GetAnchorConfig();
+					cfg.Left().Set(0.405f);
+					cfg.Bottom().SetAuto();
+					cfg.Top().SetAuto();
+					textField->SetAnchorConfig(cfg);
+				}
 				//textField->anchorConfig.axis[1].center.Set(imageField,0.f);
-	//			imageField->SetLocation(Rect<>(0,1,0.25,0.75f));
+	//			imageField->SetLocation(M::Rect<>(0,1,0.25,0.75f));
 				//textField->rect.Set(0.405f,0.25f,0.75f,0.75f);
 				//imageField->rect.Set(0.25f,0.25f,0.4f,0.75f);
 				textField->alignCenter = false;
@@ -260,15 +364,15 @@ namespace Dialog
 					}
 					return canConfirmNow;
 				});
-				confirmButton->SetOnPress(std::bind(&Dialog::Confirm,d,false));
+				confirmButton->SetTriggerFunction(std::bind(&Dialog::Confirm,d,false));
 			}
 
 			if (cancelButton)
 			{
-				cancelButton->SetOnPress(std::bind(&Dialog::DumpMe,dialog.get()));
+				cancelButton->SetTriggerFunction(std::bind(&Dialog::DumpMe,dialog.get()));
 			}
 
-					//confirmButton->SetOnPress
+					//confirmButton->SetTriggerFunction
 
 			//dialog->reLayout = [textField,confirmButton,cancelButton,inputField,imageField](Dialog&dialog)
 			//{
@@ -315,7 +419,7 @@ namespace Dialog
 			//	if (imageField)
 			//		imageField->rect.y = textField->rect.y;
 
-			//	Rect<> r = textField->rect;
+			//	M::Rect<> r = textField->rect;
 			//	if (imageField)
 			//		r.Include(imageField->rect);
 			//	if (inputField)
@@ -369,7 +473,8 @@ namespace Dialog
 		if (confirmButton && !confirmButton->IsEnabled())
 			return;	//would, if it could
 		GUI::VerifyIntegrity(CLOCATION);
-		bool tut = isTutorial;
+		const bool tut = isTutorial;
+		const bool nextTut = tut && autoNextTutorial;
 		if (!fetchInput && !onPassword)
 		{
 			if (onConfirm)
@@ -392,10 +497,10 @@ namespace Dialog
 			DumpMe();
 		}
 
-		if (tut && Detail::pendingTutorials.IsNotEmpty() && !GUI::IsModal())
+		if (nextTut && Detail::pendingTutorials.IsNotEmpty() && !GUI::IsModal())
 		//Detail::visibleDialogs.IsEmpty())
 		{
-			ShowNextTutorial();
+			ShowNextTutorial(true);
 		}
 		return;
 	}
@@ -436,14 +541,16 @@ namespace Dialog
 
 
 	
-	void	ShowNextTutorial()
+	void	ShowNextTutorial(bool autoNext)
 	{
 		if (RuntimeConfig::tutorialMode)
 			return;	//they really should not mix
 		GUI::VerifyIntegrity(CLOCATION);
 		if (Detail::pendingTutorials.IsNotEmpty())
 		{
-			Show(Detail::pendingTutorials.Peek());
+			auto tut = Detail::pendingTutorials.Peek();
+			tut->autoNextTutorial = autoNext;
+			Show(tut);
 			Detail::pendingTutorials.EraseFront();
 			GUI::VerifyIntegrity(CLOCATION);
 		}
@@ -469,7 +576,7 @@ namespace Dialog
 		d->confirmButton->DetectEnabledState();
 
 		if (sendNullPasswordOnAbortByUser)
-			d->cancelButton->SetOnPress([d](){d->onPassword(nullptr); d->DumpMe();});
+			d->cancelButton->SetTriggerFunction([d](){d->onPassword(nullptr); d->DumpMe();});
 
 		d->ReLayout();
 		GUI::VerifyIntegrity(CLOCATION);
@@ -578,7 +685,7 @@ namespace Dialog
 
 		d->textField->SetText( list );
 		d->textField->alignCenter = false;
-		d->textField->zoom = 0.9f;
+		d->textField->SetLocalFontScale(0.9f);
 		d->ReLayout();
 
 		GUI::VerifyIntegrity(CLOCATION);
@@ -636,14 +743,14 @@ namespace Dialog
 		return GUI::Hide(dialog);
 	}
 
-	PDialog	CreateTutorialMessage(const String&key, const ArrayRef<const String>&text, const String&imageName /*= ""*/, const Rect<>&screenReference /*= Rect<>::Invalid*/)
+	PDialog	CreateTutorialMessage(const String&key, const ArrayRef<const String>&text, const String&imageName /*= ""*/)
 	{
 
 		
 		static StringTable<DX11::Texture,Strategy::Swap>	textureMap;
 
 
-		PDialog d(new Dialog());
+		PDialog d = Dialog::Create();
 
 
 		DX11::Texture setTexture;
@@ -673,7 +780,7 @@ namespace Dialog
 		bool hasImage = setTexture.IsNotEmpty();
 		Detail::Configure(d,hasImage ?  Detail::ComponentFlags::ConfirmButton|Detail::ComponentFlags::Image : Detail::ComponentFlags::ConfirmButton, "Got it", true);
 		if (hasImage)
-			d->image->texture = setTexture;
+			d->image->SetTexture(setTexture);
 		d->textField->SetText(text);
 
 		d->key = key;
@@ -686,14 +793,19 @@ namespace Dialog
 	}
 
 
-	WDialog	EnqueueTutorial(const String&key, const Array<String>&text, const String&imageName /*= ""*/, const Rect<>&screenReference /*= Rect<>::Invalid*/)
+	WDialog	EnqueueTutorial(const String&key, const Array<String>&text, const String&imageName /*= ""*/, bool prioritize/*=false*/)
 	{
 		GUI::VerifyIntegrity(CLOCATION);
 		if (!Detail::showTutorials)
 			return PDialog();
 
-		PDialog d = CreateTutorialMessage(key, text, imageName, screenReference);
-		Detail::pendingTutorials.Push(d);
+		PDialog d = CreateTutorialMessage(key, text, imageName);
+		if (prioritize)
+		{
+			Detail::pendingTutorials.PushFront(d);
+		}
+		else
+			Detail::pendingTutorials.Push(d);
 
 		OnTutorialsChanged();
 
@@ -741,10 +853,16 @@ namespace Dialog
 		d->onConfirm = [onAnswer](){onAnswer(true);};
 		d->onNo = [onAnswer](){onAnswer(false);};
 		d->textField->SetText( query );
-		d->helpButton->SetOnPress([help,check]() {ShowMessage(help,check);});
+		d->helpButton->SetTriggerFunction([help,check]() {ShowMessage(help,check);});
 		d->ReLayout();
 		GUI::VerifyIntegrity(CLOCATION);
 		return d;
+	}
+
+
+	WDialog	Confirm(const String&query, const FOnConfirm&onConfirm)
+	{
+		return Confirm(query,onConfirm,[](){return CheckResult::OkayContinue;});
 	}
 
 	/**
@@ -831,7 +949,6 @@ namespace Dialog
 
 
 
-	PMenu				loginMenu;
 	GUI::PWindow	serverChoice;
 
 
@@ -841,20 +958,22 @@ namespace Dialog
 		GUI::Create();
 
 
-		loginMenu.reset(new Menu(0.25f,"Login"));
-		loginMenu->canBeImplicitlyClosed = false;	//once visible, must explicitly close
 
-		serverChoice.reset(new GUI::Window());
+		serverChoice = GUI::Window::Create();
+		serverChoice->SetAutoCenter(false);
 		serverChoice->SetCenteredWidth(0.9f,GUI::TAnchor::RelativeToScreen);
 		serverChoice->canBeImplicitlyClosed = false;
 
 
+		GlobalEvents::applicationTerminate << Destroy;
 	}
 
 
 	void	CheckServersAreShown(bool doShow)
 	{
 		GUI::VerifyIntegrity(CLOCATION);
+
+		Music::SignalServerListShown(doShow);
 
 		if (doShow)
 		{
@@ -868,7 +987,6 @@ namespace Dialog
 
 	void	Destroy()
 	{
-		loginMenu.reset();
 		Detail::pendingTutorials.Clear();
 		GUI::Destroy();
 	}
@@ -883,5 +1001,3 @@ namespace Dialog
 
 }
 
-
-#endif

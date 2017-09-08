@@ -38,7 +38,7 @@ namespace ScriptCache
 		}
 		(*(UINT32*)this->compressed.pointer()) = (UINT32)len;
 
-		this->compressed.resizePreserveContent(compressed+4);
+		this->compressed.ResizePreserveContent(compressed+4);
 		SHA256::Hash(this->compressed.pointer(),this->compressed.size(),this->identifier);
 
 		LogEvent(EventClass::Preset::common,"  BZ2: "+String(len)+" bytes compressed to "+String(compressed)+" bytes (down to "+String(M::Round((float)compressed/(float)len * 100.f,1))+"%)");

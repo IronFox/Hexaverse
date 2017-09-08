@@ -34,6 +34,7 @@ namespace Network
 
 
 	extern Protocol::GameProgress	gameProgress;
+	extern TUniqueID				winningFactionID;
 
 	extern float			animationTimeFactor,	//!< Speed factor applied to active animations. Updated when server issues next animation phase.
 							roundTimer;
@@ -65,7 +66,7 @@ namespace Network
 
 		bool				IsLocalhost() const {return host == "localhost" || host == "127.0.0.1" || host == "::1";}
 
-		String				ToString() const {return basePort != DEFAULT_SERVER_BASE_PORT ? host + ':' + String(basePort) : host;}
+		friend String		ToString(const ServerAddress&a) {return a.basePort != DEFAULT_SERVER_BASE_PORT ? a.host + ':' + String(a.basePort) : a.host;}
 	};
 
 	class Host
@@ -94,7 +95,7 @@ namespace Network
 
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id);
 	void					ConnectTo(const Host&);
-
+	bool DidVisit(const TUniqueID&worldID);
 	void SaveWorldAccessTokens();
 
 	void LoadWorldAccessTokens();
@@ -194,6 +195,15 @@ namespace Network
 		void	ResourceData(Protocol::ResourceData&);
 		void	GameConfig(Protocol::GameConfig&);
 		void	TutorialAt(NET(INT32)&);
+
+		namespace Statistics
+		{
+			void	BeginSequence(TUniqueID&id);
+			void	EndSequence();
+			void	Round(Objects::Statistics::Round&);
+			void	FactionInteraction(Objects::Statistics::FactionInteraction&);
+			void	EntityType(Objects::Statistics::EntityType&);
+		}
 	}
 
 
@@ -241,6 +251,14 @@ namespace Network
 		extern TCP::Channel<NETA(Package::NetString<256>),0,Protocol::ChannelID::PlanetNames>			planetNames;
 
 		extern TCP::Channel<NET(INT32),0,Protocol::ChannelID::TutorialAt>								tutorialAt;
+
+		namespace Statistics
+		{
+			extern TCP::Channel<TUniqueID, 0, Protocol::ChannelID::BeginStatisticsSequence>				beginSequence;
+			extern TCP::Channel<Objects::Statistics::Round, 0, Protocol::ChannelID::RoundStatistics>		round;
+			extern TCP::Channel<Objects::Statistics::EntityType, 0, Protocol::ChannelID::EntityTypeStatistics>	entityType;
+			extern TCP::Channel<Objects::Statistics::FactionInteraction, 0, Protocol::ChannelID::FactionInteractionStatistics>	factionInteraction;
+		}
 
 		extern TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;
 		extern TCP::ObjectSender<Protocol::TouchedMarker,Protocol::ChannelID::TouchMarker>					touchMarker;
@@ -290,7 +308,7 @@ namespace Network
 	public:
 		String					text;
 		//float					visualLength;
-		float4					color = Vector4<>::one;
+		float4					color = M::Vector4<>::one;
 		
 
 		void					swap(Label&other)

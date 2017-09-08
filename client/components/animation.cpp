@@ -24,7 +24,7 @@ namespace LocalApplicationInterface
 
 namespace Animation
 {
-	typedef Buffer0<TVec4<> >	Trajectory;
+	typedef Buffer0<M::TVec4<> >	Trajectory;
 	Trajectory					activeTrajectory;
 	float						projectileAt;	//[0,1], specifies where, along @a activeTrajectory, the projectile currently is
 	bool						projectileActive=false;
@@ -53,8 +53,8 @@ namespace Animation
 
 	bool EstimateThreatLevel(const Objects::PWorldEntity&self,   Grid::LCellIdI&location, float&closestCompetition, float&closestAlly, float&closestGhost)
 	{
-		const TVec3<>&reference = Grid::low.cells[location.stackID].centerVertex.xyz;
-		TVec3<> world = reference * Grid::ToRadius(location.height);
+		const M::TVec3<>&reference = Grid::low.cells[location.stackID].centerVertex.xyz;
+		M::TVec3<> world = reference * Grid::ToRadius(location.height);
 
 		bool canDo = true;
 		Objects::ForeachWorldEntity([&canDo,world,reference,self,&closestCompetition,&closestAlly,&closestGhost](const Objects::PWorldEntity&e)
@@ -67,7 +67,7 @@ namespace Animation
 			if (!e->isOwnedByMe)
 			{
 				float d2 = Vec::quadraticDistance(world,e->system.w.xyz);
-				if (d2 < sqr(e->GetScanningRange()))
+				if (d2 < M::Sqr(e->GetScanningRange()))
 				{
 					canDo = false;
 					return;
@@ -137,7 +137,7 @@ namespace Animation
 				{
 					float competition = 100.f;
 					float ally = 100.f;
-					float ghost = sqr(maxGhost);
+					float ghost = M::Sqr(maxGhost);
 					bool canDo = true;
 					foreach (v->myTasks.GetNewest().path,node)
 					{
@@ -186,7 +186,7 @@ namespace Animation
 
 				float competition = 100.f;
 				float ally = 100.f;
-				float ghost = sqr(maxGhost);
+				float ghost = M::Sqr(maxGhost);
 
 
 				if (!(Grid::low.cells[node->cell.stackID].cornerFlags & Grid::empZonesUnlocked))
@@ -214,14 +214,14 @@ namespace Animation
 							}
 					}
 					if (at == node || at->predecessor == InvalidIndex)	//first or last
-						score += CeilDiv(at->customScore,2);	//consider half
+						score += M::CeilDiv(at->customScore,2);	//consider half
 					else
-						score += CeilDiv(at->customScore,3);	//consider one third
+						score += M::CeilDiv(at->customScore,3);	//consider one third
 					if (at->predecessor == InvalidIndex)
 						break;
 					at = mapper.result + at->predecessor;
 				}
-				float ghostFear = sqr(maxGhost) / ((ghost));
+				float ghostFear = M::Sqr(maxGhost) / ((ghost));
 				float dist = float(node->movementCostsFromRoot) * sqrt(ally) / sqrt(competition) / float(score+1) * ghostFear;
 				if (dist > closestDistance)
 					continue;
@@ -539,15 +539,15 @@ namespace Animation
 	static GenericHashSet<TUniqueID> insertIntoGridLater;
 
 
-	static void AppendTask(const Objects::PMobileEntityProducer&p,const TUniqueID&id, ConstName baseName, ConstName turretName)
+	static void AppendTask(const Objects::PMobileEntityProducer&p,const TUniqueID&id, Objects::EntityType type)
 	{
-		p->AppendTask(id,baseName,turretName);
+		p->AppendTask(id,type);
 	}
 
 	static void StoreLocally(const Objects::PHangar&h,const Objects::PVehicle&v,float&t,bool setHealthToFull)
 	{
 		if (!h->StoreLocally(v,t,setHealthToFull,h))
-			throw Except::Program::DataConsistencyFault(CLOCATION,"Failed to store "+v->GetName()+" in hangar "+h->ToEntity().GetName()+" at "+h->ToEntity().location.ToString());
+			throw Except::Program::DataConsistencyFault(CLOCATION,"Failed to store "+v->GetName()+" in hangar "+h->ToEntity().GetName()+" at "+ToString(h->ToEntity().location));
 	}
 
 
@@ -561,8 +561,8 @@ namespace Animation
 								&& vs.entityState.location != Grid::LCellIdI::Invalid;
 		if (locationChanged)
 		{
-			LogEvent(EventClass::Preset::debug,v.get(), "ApplyState(): Updating location: "+v->location.ToString()+"->"+vs.entityState.location.ToString());
-			ASSERT3__(v->preAnimationLocation == v->location, v->GetName(), v->preAnimationLocation.ToString(), v->location.ToString());
+			LogEvent(EventClass::Preset::debug,v.get(), "ApplyState(): Updating location: "+ToString(v->location)+"->"+ToString(vs.entityState.location));
+			ASSERT3__(v->preAnimationLocation == v->location, v->GetName(), v->preAnimationLocation, v->location);
 			v->Relocate(vs.entityState.location,false);	//this moves sensors. not good during animation phase. however, this is a rare and isolated process (not part of a sequence of updates)
 		}
 		v->health = vs.entityState.health;
@@ -627,7 +627,7 @@ namespace Animation
 					elif (currentTasks.IsNotEmpty() && Mergeable(newTasks.Last(),currentTasks.Last()))
 					{
 						while (currentTasks.IsNotEmpty() && !Mergeable(newTasks.First(),currentTasks.First()))
-							currentTasks.erase(index_t(0));
+							currentTasks.Erase(0);
 						if (currentTasks.IsEmpty())
 							fullRebuild = true;
 						else
@@ -691,23 +691,7 @@ namespace Animation
 
 					
 					foreach (state->productionTasks,t)
-					{
-						switch (t->parameters.Count())
-						{
-							case 1:
-								AppendTask(p,t->id,t->parameters.First(),ConstName::Empty);
-							break;
-							case 2:
-								AppendTask(p,t->id,t->parameters.First(),t->parameters.last());
-							break;
-							default:
-								FATAL__("Unexpected parameter count: "+String(t->parameters.Count())
-											+" while decoding task "+ToString(t->id)
-											+" of "+v->GetName());
-						}
-						//ASSERT_EQUAL__(t->parameters.Count(),2);
-							
-					}
+						AppendTask(p,t->id,t->type);
 				}
 			}
 
@@ -751,7 +735,7 @@ namespace Animation
 				ASSERT1__(vs.entityState.location != Grid::LCellIdI::Invalid,v->GetName());
 				ASSERT1__(!v->isInsertedIntoGrid,v->GetName());
 				currentlyStoredIn->LocalCheckout(veh,vs.entityState.location,f);
-				LogEvent(EventSignificance::Debug,v.get(),"Checked out to "+vs.entityState.location.ToString());
+				LogEvent(EventSignificance::Debug,v.get(),"Checked out to "+ToString(vs.entityState.location));
 				ASSERT1__(v->location == vs.entityState.location,v->GetName());
 				ASSERT1__(v->isInserted,v->GetName());
 				ASSERT1__(Objects::vehicles.Contains(v) || Objects::SubOrbital::planes.Contains(v),v->GetName());
@@ -850,21 +834,7 @@ namespace Animation
 					
 					foreach (state->productionTasks,t)
 					{
-						switch (t->parameters.Count())
-						{
-							case 1:
-								AppendTask(p,t->id,t->parameters.First(),ConstName::Empty);
-							break;
-							case 2:
-								AppendTask(p,t->id,t->parameters.First(),t->parameters.last());
-							break;
-							default:
-								FATAL__("Unexpected parameter count: "+String(t->parameters.Count())
-											+" while decoding task "+ToString(t->id)
-											+" of "+s->GetName());
-						}
-						//ASSERT_EQUAL__(t->parameters.Count(),2);
-							
+						AppendTask(p,t->id,t->type);
 					}
 				}
 			}
@@ -1050,7 +1020,7 @@ namespace Animation
 		ASSERT2__(targetEntityID == motion.id,targetEntityID,motion.id);
 		path->rawPath.Append(std::make_pair(motion.toLocation,motion.timestamp.atTime + motion.timeNeeded));
 		path->changed = true;
-		time.Include(FloatRange<float>(motion.timestamp.atTime,motion.timestamp.atTime + motion.timeNeeded));
+		time.Include(M::FloatRange<float>(motion.timestamp.atTime,motion.timestamp.atTime + motion.timeNeeded));
 	}
 	void					Primitive::Init(Protocol::DestroyEntity&e)
 	{
@@ -1067,7 +1037,7 @@ namespace Animation
 	{
 		type = Attack;
 		targetEntityID = TUniqueID::Empty();
-		attackerTurret = Objects::Component::GetTurretByName(a.turretType);
+		attackerTurret = Objects::Component::allTurretComponents.Find(a.turretType);
 		ASSERT_NOT_NULL1__(attackerTurret,(int)a.turretType);
 		attackRange = a.turretRange;
 		attackAngle = a.attackAngle,
@@ -1172,7 +1142,6 @@ namespace Animation
 				ASSERT1__(allocatedTarget,targetEntityID);
 				if (explode)
 					ExplodeEntity(allocatedTarget);
-				bool removed = false;
 				LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Removing entity during animation at time "+String(Animation::atTime)+"/"+ToString(this->time));
 				//if (RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
 				{
@@ -1181,7 +1150,6 @@ namespace Animation
 					{
 						if (!insertIntoGridLater.IsSet(v->id) && removalType != Objects::RemovalType::DestroyedInStorage && !v->IsAboveGrid())
 							Objects::RemoveVehicleFromGrid(v,v->preAnimationLocation);
-						removed = true;	//is set anyway. placeVehicleLater indicates it is already removed
 					}
 				}
 				if (allocatedTarget->IsMobile())
@@ -1192,7 +1160,7 @@ namespace Animation
 				}
 
 				float t = 0;
-				Objects::Remove(allocatedTarget,Objects::RemovalType::Reinterpret(removalType),t,Network::ControlEnabled(),removed);
+				Objects::Remove(allocatedTarget,Objects::RemovalType::Reinterpret(removalType),t);
 				#ifdef HAS_WINDOW
 					if (!allocatedTarget->isOwnedByMe)
 						UI::HexGrid::RefreshContacts();
@@ -1213,7 +1181,7 @@ namespace Animation
 
 				if (!insertIntoGridLater.IsSet(v->id))
 				{
-					ASSERT2__(v->preAnimationLocation == v->location ,v->preAnimationLocation.ToString(),v->location.ToString());
+					ASSERT2__(v->preAnimationLocation == v->location ,v->preAnimationLocation,v->location);
 					//#ifdef HAS_WINDOW
 					//#endif
 					v->preAnimationLocation = v->location;
@@ -1308,7 +1276,7 @@ namespace Animation
 				
 				{
 					//Grid::HCellIdI impactCell;
-					//TVec3<> impactAt;
+					//M::TVec3<> impactAt;
 					Objects::Component::Turret::TraceAnimationTrajectory(
 						attackerTurret->trajectoryType, attackRange,attackAngle, attackerPosition,explosionCenter,
 						activeTrajectory);
@@ -1327,7 +1295,7 @@ namespace Animation
 						trajectoryVisualization.ibo.Create(trajectoryGeometry.GetLOD(0).indices);
 
 
-						auto smokeTrailIndex = Objects::Renderer::RegisterSmokeTrail(activeTrajectory,Vec::dot(attackerPosition) > sqr(Grid::ToRadius(Grid::CellStack::TopHeight+1)));
+						auto smokeTrailIndex = Objects::Renderer::RegisterSmokeTrail(activeTrajectory,Vec::dot(attackerPosition) > M::Sqr(Grid::ToRadius(Grid::CellStack::TopHeight+1)));
 						if (doRegister)
 						{
 							UI::EventLog::RegisterAttack(this->time.min, isFriendly,attackerPosition, attackerID, smokeTrailIndex);
@@ -1415,7 +1383,7 @@ namespace Animation
 					const Objects::Marker&m = Objects::Marker::all[i];
 					if (m.type != Objects::Marker::Type::HostileContact)
 						continue;
-					if (Vec::quadraticDistance(Grid::ToWorld(m.location),explosionCenter) < sqr(explosionRadius))
+					if (Vec::quadraticDistance(Grid::ToWorld(m.location),explosionCenter) < M::Sqr(explosionRadius))
 					{
 						LogEvent(EventSignificance::Common,nullptr,m.GetName()+ " considered near occuring explosion. Dropping marker");
 						LocalApplicationInterface::SignalMarkerDeletion(m.id);
@@ -1432,7 +1400,7 @@ namespace Animation
 					const Objects::Marker&m = Objects::Marker::all[i];
 					if (m.type != Objects::Marker::Type::HostileContact)
 						continue;
-					if (Vec::quadraticDistance(Grid::ToWorld(m.location),explosionCenter) < sqr(explosionRadius))
+					if (Vec::quadraticDistance(Grid::ToWorld(m.location),explosionCenter) < M::Sqr(explosionRadius))
 					{
 						LogEvent(EventSignificance::Common,nullptr,m.GetName()+ " considered near occuring explosion. Dropping marker");
 						LocalApplicationInterface::SignalMarkerDeletion(m.id);
@@ -1530,15 +1498,15 @@ namespace Animation
 			break;
 			case Attack:
 			{
-				float y = x;//sqr((x - 0.5f) * 2.f) * sign(x-0.5f) * 0.5f + 0.5f;
+				float y = x;//M::Sqr((x - 0.5f) * 2.f) * sign(x-0.5f) * 0.5f + 0.5f;
 				projectileAt = y;
 				#ifdef HAS_WINDOW
 					trajectoryProgression.Update(float4(y * maxProjectileProjection,1.f,5.f,1.f));
 
 					index_t at = std::min(index_t(x * activeTrajectory.GetLength()),activeTrajectory.GetLength()-1);
-					const TVec4<>&v = activeTrajectory[at];
+					const M::TVec4<>&v = activeTrajectory[at];
 					missileHissSource.SetPosition(v.xyz * v.w);
-					float volume = sqr(sqr(1.f - x))*0.75f + 0.25f;
+					float volume = M::Sqr(M::Sqr(1.f - x))*0.75f + 0.25f;
 					//missileHissSource.SetGain(volume);
 					missileHissSource.SetPitch(0.75f + x);
 
@@ -1556,7 +1524,7 @@ namespace Animation
 				{
 					float dummy;
 					Objects::PTurretBase b = allocatedTarget->GetTurretBase(dummy);
-					TVec2<> angles;
+					M::TVec2<> angles;
 					Vec::interpolate(rotateFrom,rotateTo,x,angles);
 					//Objects::PVehicle v = To<Objects::Vehicle>::Cast(target);
 					b->turretAngleX = angles.x;
@@ -1593,7 +1561,7 @@ namespace Animation
 								&b = rawPath[i+1].first;
 			const float3&p0 = na.position;
 			const float3&p1 = nb.position;
-			TVec3<> n,d = p1 - p0;
+			M::TVec3<> n,d = p1 - p0;
 			Vec::cross(p0,d,n);
 			na.normal += n;
 			nb.normal += n*0.9f;
@@ -1637,9 +1605,9 @@ namespace Animation
 
 			const Grid::LCellIdI&a = rawPath[i].first,
 								&b = rawPath[i+1].first;
-			const TVec3<>&d0 = Grid::low.cells[a.stackID].cornerCenter; //centerVertex.xyz;
+			const M::TVec3<>&d0 = Grid::low.cells[a.stackID].cornerCenter; //centerVertex.xyz;
 			float3 p0 = d0  * Grid::ToRadiusf(float(a.height));
-			const TVec3<>&d1 = Grid::low.cells[b.stackID].cornerCenter;// centerVertex.xyz;
+			const M::TVec3<>&d1 = Grid::low.cells[b.stackID].cornerCenter;// centerVertex.xyz;
 			float3 p1 = d1 * Grid::ToRadiusf(float(b.height));
 
 			float3 c0 = p0 + na.dir;
@@ -1650,18 +1618,18 @@ namespace Animation
 			//LogEvent(EventSignificance::Debug,target.get()," Relative ("+String(i)+"/"+String(rawPath.Count())+")="+String(relative));
 			//!((i+1)% stepsPerRound);
 
-			//TVec3<> d = p1 - p0;
+			//M::TVec3<> d = p1 - p0;
 			//if (a.height == b.height)
 
 			
 			float fj = relative;
 
-			TVec3<> p;
+			M::TVec3<> p;
 			Vec::resolveBezierCurvePoint(p0,c0,c1,p1,fj,p);
 
-			TMatrix4<>&sys = target->system;
+			M::TMatrix4<>&sys = target->system;
 			#ifdef HAS_WINDOW
-				const TVec3<> prev = sys.w.xyz;
+				const M::TVec3<> prev = sys.w.xyz;
 			#endif
 			if (!target->IsVehicle())
 			{
@@ -1675,7 +1643,7 @@ namespace Animation
 			}
 			else
 			{
-				TVec3<> n,d,axis;
+				M::TVec3<> n,d,axis;
 				Vec::resolveBezierCurveAxis(p0,c0,c1,p1,fj,axis);
 
 				if (target->IsPlane())
@@ -1699,7 +1667,7 @@ namespace Animation
 				target->ambientSound.SetPosition(sys.w.xyz);
 				target->ambientSound.SetVelocity((sys.w.xyz - prev) / Engine::timing.delta);
 				float x = t / rawPath.last().second;
-				float activity = 1.f - (sqr(((x - 0.5f)*2.f)));
+				float activity = 1.f - (M::Sqr(((x - 0.5f)*2.f)));
 				target->ambientSound.SetPitch(1.f + activity * 0.5f);
 				target->ambientSound.SetGain(std::min(target->GetSoundLevel() + activity,1.f));
 				target->activitySound.SetPosition(sys.w.xyz);

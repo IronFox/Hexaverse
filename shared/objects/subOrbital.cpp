@@ -192,7 +192,7 @@ namespace Objects
 					if (failIsFatal)
 					{
 						PStructure st = GetStructure(cell);
-						LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is obstructed by structure "+(st ? st->GetName(): "<>")+": "+World::actual.LowCellReport(cell));
+						LogEvent(EventClass::Preset::fatal,this,"Target cell ("+ToString(cell)+") is obstructed by structure "+(st ? st->GetName(): "<>")+": "+World::actual.LowCellReport(cell));
 						FATAL__("Critical abort");
 					}
 
@@ -221,7 +221,7 @@ namespace Objects
 						{
 							if (failIsFatal)
 							{
-								LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is obstructed by "+v->GetName());
+								LogEvent(EventClass::Preset::fatal,this,"Target cell ("+ToString(cell)+") is obstructed by "+v->GetName());
 								FATAL__("Critical abort");
 							}
 							if (!v->HasMotionTasks() || v->ConstructingHere(v->location))

@@ -225,6 +225,25 @@ namespace Network
 		progress.gameWon = Game::winner == faction && !!Game::winner;
 		progress.status = RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::None ? "" : FactionStatus(faction);
 		progress.warning = dead ? "Game Over" : FactionWarning(faction,warningReason);
+
+		if (progress.gameOver && faction && RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame)
+		{
+			//send only statistics of local faction
+			auto&peer = *this->peer.lock();
+			Game::Network::SendStatisticsTo(peer,faction);
+		}
+
+
+		if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
+		{
+			auto&peer = *this->peer.lock();
+			//game over: send statistics of all factions
+			Objects::ForeachFaction([&peer](const Objects::PFaction&f)
+			{
+				Game::Network::SendStatisticsTo(peer,f);
+			});
+		}
+
 		Channels::gameProgress.SendTo(peer.lock(),progress);
 	}
 
@@ -385,6 +404,7 @@ namespace Network
 		return true;
 
 	}
+
 
 	bool		SessionIsStarted()
 	{

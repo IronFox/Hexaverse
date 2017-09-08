@@ -19,7 +19,7 @@ namespace Objects
 	public:
 		#ifdef HAS_WINDOW
 			static Grid::LCellIdI	selected;			//!< Gathering point of selected entity (if any, or invalid)
-			static TMatrix4<>		selectedVisual;		//!< Point where the respective gathering point should be visualized at. (same cell; may be different height)
+			static M::TMatrix4<>		selectedVisual;		//!< Point where the respective gathering point should be visualized at. (same cell; may be different height)
 
 			void					UpdateVisuals();
 		#endif
@@ -107,7 +107,7 @@ namespace Objects
 		}
 
 
-		void					AppendTask(const TUniqueID&id, ConstName baseName, ConstName turretName);
+		void						AppendTask(const TUniqueID&id, EntityType);
 
 		#ifdef HAS_WINDOW
 			const int2&				GetCommandOffset() const {return commandOffset;}
@@ -121,7 +121,7 @@ namespace Objects
 
 		#ifndef CLIENT
 			WorkItem*				EnqueueProductionOf(const PMobileEntity&e, index_t at = InvalidIndex);
-			WorkItem*				EnqueueProductionOfVehicle(ConstName baseName, ConstName turretName);
+			WorkItem*				EnqueueProductionOfVehicle(EntityType);
 			WorkItem*				EnqueueProductionOfVehicle(Component::VehicleBase*selectedBase, Component::Turret*selectedTurret);
 			#ifndef NO_SATELLITES
 				WorkItem*			EnqueueProductionOfSatellite(ConstName typeName);

@@ -10,10 +10,18 @@ using namespace DeltaWorks;
 /**
 The reflection module handles all configurable variables, including loadable planets.
 All variables are mapped to CLI (Command Line Interpretor) entries, that may execute arbitrary code on change.
+
+The primary purpose is to allow remote control of the server.
+Although local modules can theoretically execute these commands via the Reflection::state, this is currently not done.
 */
 namespace Reflection
 {
-
+	/**
+	State container.
+	The interpretor maintains all folders, variables, and commands currently registered.
+	It may be accessed to query or modify the folder state, as well as execute commands.
+	It is currently utilized only by remote control access
+	*/
 	extern CLI::Interpreter	state;
 
 	namespace Variable
@@ -28,7 +36,7 @@ namespace Reflection
 		)
 
 		/**
-		Basic variable abstruction, providing callbacks for change detection
+		Basic variable abstraction, providing callbacks for change detection
 		*/
 		class Base : public CLI::Variable
 		{
@@ -102,11 +110,6 @@ namespace Reflection
 	If a planet type is targeted that is not a prototype planet, then a new planet type file will be generated and filled with default values.
 	*/
 	void	Load(bool inTestMode);
-
-	/**
-	Reloads configuration files and updates all variables that are tagged as ConfigOverridesSavegame
-	*/
-	void	LoadOverrides();
 
 	/**
 	Reloads all config settings from the respective ini file(s)

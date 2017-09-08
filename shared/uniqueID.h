@@ -48,7 +48,7 @@ namespace Bin2Str
 	template <typename T>
 		inline String ConvertPOD(const T&data, size_t maxBytes=4)
 		{
-			return Convert(&data,M::vmin(maxBytes,sizeof(T)));
+			return Convert(&data,M::Min(maxBytes,sizeof(T)));
 		}
 	inline String Convert(const Ctr::Array<BYTE>&v)
 	{
@@ -161,6 +161,29 @@ struct TUniqueID
 		return rs;
 	}
 
+	bool		Decode(const char*str, size_t len)
+	{
+		if (len != NumBytes*2)
+			return false;
+		try
+		{
+			Bin2Str::Convert(bytes,NumBytes,str,len);
+			return true;
+		}
+		catch (...)
+		{}
+		return false;
+	}
+
+	bool		Decode(const char*str)
+	{
+		return Decode(str,strlen(str));
+	}
+	bool		Decode(const String&str)
+	{
+		return Decode(str.c_str(),str.length());
+	}
+
 };
 static_assert(sizeof(TUniqueID) == 16, "Struct packing not appropriate for unique ID");
 
@@ -220,6 +243,11 @@ public:
 		return Bin2Str::Convert(bytes, sizeof(bytes));
 	}
 
+	void		Export(Array<BYTE>&outArray) const
+	{
+		outArray.resizeAndCopy(bytes,ARRAYSIZE(bytes));
+	}
+
 	void		Decode(const String&source)
 	{
 		Bin2Str::Convert(bytes, sizeof(bytes), source);
@@ -244,6 +272,14 @@ public:
 		return 0 != memcmp(bytes,other.bytes,sizeof(bytes));
 	}
 
+	bool		operator==(const ArrayRef<BYTE>&other)	const
+	{
+		return other.GetLength() == sizeof(bytes) && !memcmp(bytes,other.pointer(),sizeof(bytes));
+	}
+	bool		operator!=(const ArrayRef<BYTE>&other)	const
+	{
+		return !operator==(other);
+	}
 };
 
 

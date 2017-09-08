@@ -4,326 +4,167 @@
 #include "vehicle.h"
 #include "structure.h"
 #include "subOrbital.h"
+#include "entityType.h"
+
+#include "structure/tower.h"
+#include "structure/mine.h"
+#include "structure/vehiclePlant.h"
+#include "structure/planeFactory.h"
+#include "structure/vehicleStore.h"
+#include "structure/laboratory.h"
 
 
 namespace Objects
 {
-	Ctr::Buffer0<PStructure>			structurePrototypes;
-	#ifndef NO_SATELLITES
-		Ctr::Buffer0<PSatellite>			satellitePrototypes;
-	#endif
 	namespace Component
 	{
-		Ctr::Buffer0<VehicleBase*>		baseComponents;
-		Ctr::Buffer0<Turret*>			vehicleTurretComponents,
+		Collection<VehicleBase>		baseComponents;
+		Collection<Turret>			vehicleTurretComponents,
 									allTurretComponents;
+		Collection<Base>			allComponents;
 	}
 
 
-	ConstName		ComponentOrPrototypeToCName(const String&name)
+	
+	String			ToString(const EntityType&t)
 	{
-		PWorldEntity e;
+		if (t.IsEmpty())
+			return "<empty>";
+		if (t.HasTurret())
+		{
+			StringBuffer rs;
+			rs	<< Component::allTurretComponents.ToTypeName(t.turretType)
+				<< ':';
+			if (t.baseType == ConstName::Type_Tower)
+				rs << "Tower";
+			else
+				rs << Component::baseComponents.ToTypeName(t.baseType);
+			return rs.ToStringRef();
+		}
+		return Prototypes::all.ToTypeName(t);
+	}
+
+	EntityType		DecodeType(const String&combined)
+	{
+		if (combined == "<empty>")
+			return EntityType();
+		EntityType rs;
+		index_t at = combined.Find(':');
+		StringRef base = combined.ToRef();
+		if (at != InvalidIndex)
+		{
+			const StringRef baseName = combined.SubStringRef(at+1);
+			const StringRef turretName = combined.SubStringRef(0,at);
+			if (baseName == "Tower")
+				rs.baseType = ConstName::Type_Tower;
+			else
+				rs.baseType = Component::baseComponents.ToType(baseName);
+			rs.turretType = Component::allTurretComponents.ToType(turretName);
+		}
+		else
+			rs = Prototypes::all.ToType(base);
+		if (rs.IsInvalid())
+			throw Except::Program::ParameterFault(CLOCATION,"Final type declaration '"+ToString(rs)+"' is not valid");
+		return rs;
+	}
+
+
+	namespace Prototypes
+	{
+
+		Collection<WorldEntity>		all;
+		Collection<Structure>		structures;
+		Collection<SubOrbital::Plane>		planes;
+		#ifndef NO_SATELLITES
+			Collection<Satellite>	satellites;
+		#endif
+
+
+		void	Destroy()
+		{
+			all.Clear();
+			structures.Clear();
+			planes.Clear();
+			#ifndef NO_SATELLITES
+				satellites.Clear();
+			#endif
+		}
+
+		void RegisterAll()
+		{
+			Component::ConfigureAll();
+
+
+
+			structures	
+				<< Mine::globalPrototype
+				<< Generator::globalPrototype
+				<< ReactorCore::globalPrototype
+				<< MunitionFactory::globalPrototype
+				<< VehiclePlant::globalPrototype
+				<< Laboratory::globalPrototype
+				<< Connector::globalPrototype
+				<< FuelContainer::globalPrototype
+				<< MineralContainer::globalPrototype
+				<< MunitionStorage::globalPrototype //DO NOT COMMENT. Nexus bases feature these
+				<< UraniumStorage::globalPrototype
+				<< NexusPort::globalPrototype
+				<< VehicleStore::globalPrototype
+				<< PlaneFactory::globalPrototype
+				;
 		
-		#ifndef NO_SATELLITES
-			e = GetSatellitePrototypeByName(name);
-			if (e)
-				return e->GetCTypeName();
-		#endif
-		e = GetPrototypeByName(name);
-		if (e)
-			return e->GetCTypeName();
-		Component::Base*b = Component::GetTurretByName(name);
-		if (b)
-			return b->constName;
-		b = Component::GetVehicleBaseByName(name);
-		if (b)
-			return b->constName;
-		return ConstName::Empty;
-	}
+			#ifndef NO_SATELLITES
+				structures << SkyPort::globalPrototype;
+
+				satellites 
+					<< SkyHub::globalPrototype
+					<< SkyGuardian::globalPrototype
+					<< Ragnarok::globalPrototype
+					;
+			#endif
+
+			planes	<< SubOrbital::Raptor::globalPrototype
+					<< SubOrbital::CargoPlane::globalPrototype
+					<< SubOrbital::SensorDrone::globalPrototype
+					;
 
 
-	String			ComponentOrPrototypeToString(ConstName name)
-	{
-		if (name == ConstName::Empty)
-			return "";
-		PWorldEntity e;
- 		#ifndef NO_SATELLITES
-			e = GetSatellitePrototypeByName(name);
-			if (e)
-				return e->GetTypeName();
-		#endif
-		e = SubOrbital::GetPrototypeByName(name);
-		if (e)
-			return e->GetTypeName();
-		e = GetPrototypeByName(name);
-		if (e)
-			return e->GetTypeName();
-		Component::Base*b = Component::GetTurretByName(name);
-		if (b)
-			return b->typeName;
-		b = Component::GetVehicleBaseByName(name);
-		if (b)
-			return b->typeName;
-		return "";
-	}
+			Tower::globalPrototypes.Append().reset(new Tower(&Component::launcher));
+			//Tower::globalPrototypes.Append().reset(new Tower(artillery));
+			Tower::globalPrototypes.Append().reset(new Tower(&Component::radar));
+			Tower::globalPrototypes.Append().reset(new Tower(&Component::armored));
+			structures.IncludeList(Tower::globalPrototypes);
 
-	namespace SubOrbital
-	{
-		Buffer0<PPlane>			prototypes;
 
-		PPlane		GetPrototypeByName(ConstName name)
-		{
-			if (name != ConstName::Empty)
-			{
-				foreach (prototypes,p)
-					if ((*p)->GetCTypeName() == name)
-						return *p;
-			}
-			return PPlane();
+
+
+
+
+
+
+
+			//all specitic prototypes must be set at this point
+			all.Include(structures);
+			all.Include(planes);
+			#ifndef NO_SATELLITES
+				all.Include(satellites);
+			#endif
 		}
 
-		PPlane		GetPrototypeByName(const String& name)
+
+
+		PWorldEntity	Find(EntityType t)
 		{
-			if (name.IsNotEmpty())
-			{
-				foreach (prototypes,p)
-					if ((*p)->GetTypeName() == name)
-						return *p;
-
-				foreach (prototypes,p)
-					if ((*p)->GetTypeName().find(' '))
-					{
-						String pn = (*p)->GetTypeName();
-						pn.eraseCharacter(' ');
-						if (pn == name)
-							return *p;
-					}
-			}
-
-			return PPlane();
-		}	
-	}
-
-	
-
-	#ifndef NO_SATELLITES
-
-		PSatellite		GetSatellitePrototypeByName(const String&name)
-		{
-			if (name.IsNotEmpty())
-			{
-				foreach (satellitePrototypes,p)
-					if ((*p)->GetTypeName() == name)
-						return *p;
-			}
-			return PSatellite();
-		}
-		PSatellite		GetSatellitePrototypeByName(ConstName name)
-		{
-			if (name != ConstName::Empty)
-			{
-				foreach (satellitePrototypes,p)
-					if ((*p)->GetCTypeName() == name)
-						return *p;
-			}
-			return PSatellite();
+			return all.Find(t);
 		}
 
-	#endif
 
-	PStructure		GetPrototypeByName(ConstName structureTypeName)
-	{
-		if (structureTypeName != ConstName::Empty)
-		{
-			foreach (structurePrototypes,p)
-				if ((*p)->GetCTypeName() == structureTypeName)
-					return *p;
-		}
-		return PStructure();
 	}
-	
-	PStructure		GetPrototypeByName(const String&structureTypeName)
-	{
-		if (structureTypeName.IsNotEmpty())
-		{
-			foreach (structurePrototypes,p)
-				if ((*p)->GetTypeName() == structureTypeName)
-					return *p;
-			foreach (structurePrototypes,p)
-				if ((*p)->GetTypeName().find(' '))
-				{
-					String pn = (*p)->GetTypeName();
-					pn.eraseCharacter(' ');
-					if (pn == structureTypeName)
-						return *p;
-				}
-		}
-		return PStructure();
-	}
-
-
-	PWorldEntity	GetNonVehiclePrototypeByName(ConstName typeName)
-	{
-		if (typeName == ConstName::Empty)
-			return PWorldEntity();
-		PWorldEntity rs;
-		rs = GetPrototypeByName(typeName);
-		if (rs)
-			return rs;
-		#ifndef NO_SATELLITES
-			rs = GetSatellitePrototypeByName(typeName);
-			if (rs)
-				return rs;
-		#endif
-		rs = SubOrbital::GetPrototypeByName(typeName);
-		if (rs)
-			return rs;
-		return PWorldEntity();
-	}
-
-	PWorldEntity	GetNonVehiclePrototypeByName(const String&typeName)
-	{
-		if (typeName.IsEmpty())
-			return PWorldEntity();
-		PWorldEntity rs;
-		rs = GetPrototypeByName(typeName);
-		if (rs)
-			return rs;
-		#ifndef NO_SATELLITES
-			rs = GetSatellitePrototypeByName(typeName);
-			if (rs)
-				return rs;
-		#endif
-		rs = SubOrbital::GetPrototypeByName(typeName);
-		if (rs)
-			return rs;
-		return PWorldEntity();
-	}
-
 
 	namespace Component
 	{
-
-		Base*			GetByName(const String&name)
-		{
-			Base* rs = GetVehicleBaseByName(name);
-			if (rs)
-				return rs;
-			return GetTurretByName(name);
-		}
-
-		Base*			GetByName(ConstName name)
-		{
-			Base* rs = GetVehicleBaseByName(name);
-			if (rs)
-				return rs;
-			return GetTurretByName(name);
-		}
-
-
-		VehicleBase*	GetVehicleBaseByName(ConstName name)
-		{
-			//Buffer0<VehicleBase*>		baseComponents;
-			//Buffer0<Turret*>			turretComponents;
-			//if (structureTypeName.IsNotEmpty())
-			{
-				foreach(baseComponents, p)
-					if ((*p)->constName == name)
-						return *p;
-			}
-			return nullptr;
-		}
-
-		VehicleBase*	GetVehicleBaseByName(const String&name)
-		{
-			//Buffer0<VehicleBase*>		baseComponents;
-			//Buffer0<Turret*>			turretComponents;
-			//if (structureTypeName.IsNotEmpty())
-			{
-				foreach(baseComponents, p)
-					if ((*p)->typeName == name)
-						return *p;
-
-				foreach (baseComponents,p)
-					if ((*p)->typeName.find(' '))
-					{
-						String pn = (*p)->typeName;
-						pn.eraseCharacter(' ');
-						if (pn == name)
-							return *p;
-					}
-			}
-			return nullptr;
-		}
-
-
-		Turret*			GetTurretByName(const String&name)
-		{
-			//Buffer0<VehicleBase*>		baseComponents;
-			//Buffer0<Turret*>			turretComponents;
-			//if (structureTypeName.IsNotEmpty())
-			{
-				foreach(allTurretComponents, p)
-				{
-					const String&cname = (*p)->typeName;
-					if (cname == name)
-						return *p;
-				}
-
-				foreach (allTurretComponents,p)
-					if ((*p)->typeName.find(' '))
-					{
-						String pn = (*p)->typeName;
-						pn.eraseCharacter(' ');
-						if (pn == name)
-							return *p;
-					}
-
-			}
-			return nullptr;
-		}
-
-		Turret*			GetTurretByName(ConstName name)
-		{
-			//Buffer0<VehicleBase*>		baseComponents;
-			//Buffer0<Turret*>			turretComponents;
-			//if (structureTypeName.IsNotEmpty())
-			{
-				foreach(allTurretComponents, p)
-					if ((*p)->constName == name)
-						return *p;
-			}
-			return nullptr;
-		}
-
-
 		void ConfigureAll()
 		{
-			/*order change: by moving registration of applicable turret and base components before Configure() calls,
-			research registration can check whether a congigured component should be able to register research at all
-			*/
-			allTurretComponents << &radar 
-								#ifndef NO_SATELLITES
-									<< &skyHubTurret << &protonCannon << &ragnarok << &starPort
-								#endif
-								<< &armored << &artillery << &launcher << &emp
-                                << &SubOrbital::raptor << &SubOrbital::cargoPlane << &SubOrbital::sensorDrone
-								<< &bomb
-								<< &terraformer << &resourceScanner
-								#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
-									<< &munitionTransporter
-								#endif
-								<< &mechanic;
-								;
-			for (auto t: allTurretComponents)
-				if (t->mountType == Component::Turret::MountType::Vehicle)
-					vehicleTurretComponents << t;
-			baseComponents << &hoverbase << &heavybase << &catbase;
-
-
-
-
-
 			Artillery::Configure(artillery);
 			Launcher::Configure(launcher);
 			EMP::Configure(emp);
@@ -353,6 +194,37 @@ namespace Objects
 			SubOrbital::SensorDrone::Configure(SubOrbital::sensorDrone);
 
 
+
+
+
+
+
+
+
+
+			allTurretComponents << &radar 
+								#ifndef NO_SATELLITES
+									<< &skyHubTurret << &protonCannon << &ragnarok << &starPort
+								#endif
+								<< &armored << &artillery << &launcher << &emp
+                                << &SubOrbital::raptor << &SubOrbital::cargoPlane << &SubOrbital::sensorDrone
+								<< &bomb
+								<< &terraformer << &resourceScanner
+								#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
+									<< &munitionTransporter
+								#endif
+								<< &mechanic;
+								;
+			for (auto t: allTurretComponents)
+				if (t->mountType == Component::Turret::MountType::Vehicle)
+					vehicleTurretComponents << t;
+			baseComponents << &hoverbase << &heavybase << &catbase;
+
+			allComponents.Include(baseComponents);
+			allComponents.Include(allTurretComponents);
+
+
+		
 		}
 
 		void DestroyAll()
@@ -362,6 +234,7 @@ namespace Objects
 			vehicleTurretComponents.Clear();
 			allTurretComponents.Clear();
 			baseComponents.Clear();
+			allComponents.Clear();
 		}
 	}
 }

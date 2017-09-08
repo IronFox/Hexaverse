@@ -1,4 +1,11 @@
 v0.6.5
+	+ Added background music to server selection screen.
+	+ Added remote control commands to end game at any time.
+	+ Added statistics recording and end-game display.
+	+ Added options dialog.
+	+ Added option to change UI scale.
+	+ Implemented loading splash screen.
+	+ Added help sub-menu with some new options.
 	> Idle vehicles will no longer constantly attack indestructible units.
 	> Removed the 'Construct Selected' button on vehicle plants. Simply selecting a desired turret will enqueue the chosen vehicle composition.
 	> Surveyor turret is now much heavier, limiting the speed of the standard surveyor vehicle.

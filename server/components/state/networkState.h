@@ -41,8 +41,8 @@ namespace Network
 		Protocol::ClientName		name;
 		std::weak_ptr<TCP::Peer>	peer;
 		//Timer::Time					lastPing;
-		Objects::PFaction			faction;
-		bool						wantNewRound=false;
+		Objects::PFaction	faction;
+		bool				wantNewRound=false;
 
 
 		/**

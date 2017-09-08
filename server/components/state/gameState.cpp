@@ -74,7 +74,7 @@ namespace Game
 			if (changed.IsEmpty())
 				return;
 			::Network::PClient client;
-			if (!::Network::playerMap.query(f,client))
+			if (!::Network::playerMap.Query(f,client))
 				return;
 			TCP::PPeer peer = client->peer.lock();
 			if (!peer)
@@ -96,6 +96,27 @@ namespace Game
 
 				Channels::resourceUpdate.SendTo(peer,package);
 			}
+		}
+
+
+		void SendStatisticsTo(TCP::Peer & peer, const Objects::PFaction & faction)
+		{
+			Objects::Statistics::EnterNetworkMode();
+			Channels::Statistics::beginSequence.SendTo(peer,faction->id);
+
+			faction->statistics.VisitRounds([&peer](const Objects::Statistics::Round&r)
+			{
+				Channels::Statistics::round.SendTo(peer,r);
+			},true);
+			faction->statistics.VisitEntityTypes([&peer](const Objects::Statistics::EntityType&t)
+			{
+				Channels::Statistics::entityType.SendTo(peer,t);
+			});
+			faction->statistics.VisitFactionInteractions([&peer](const Objects::Statistics::FactionInteraction&i)
+			{
+				Channels::Statistics::factionInteraction.SendTo(peer,i);
+			});
+			peer.SendSignal(Protocol::ChannelID::EndStatisticsSequence);
 		}
 
 
@@ -122,32 +143,45 @@ namespace Game
 		}
 
 
+		UINT32		AssembleGameFlags(bool allowSpectatorFactions)
+		{
+			UINT32 rs = 0;
+			if (Config::closedGame)
+				rs |= Protocol::GameFlag::ClosedGame;
+			if (RuntimeConfig::empZones)
+				rs |= Protocol::GameFlag::EMPZones;
+			if (Config::basesRequired)
+				rs |= Protocol::GameFlag::BasesRequired;
+			if (Config::startBases)
+				rs |= Protocol::GameFlag::StartBases;
+			if (Config::Nexus::enableAI)
+				rs |= Protocol::GameFlag::NexusAI;
+			if (ConfigurationMode::IsActive() && allowSpectatorFactions)
+				rs |= Protocol::GameFlag::ConfigurationMode;
+			if (RuntimeConfig::tutorialMode)
+				rs |= Protocol::GameFlag::TutorialMode;
+			if (World::Config::simulateLiquids)
+				rs |= Protocol::GameFlag::SimulateLiquids;
+
+			rs |= Config::factionSupportFlags;
+			if (!allowSpectatorFactions)
+				rs &= ~Protocol::GameFlag::SupportSpectatorFactions;
+
+			if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
+			{
+				rs |= Protocol::GameFlag::GameHasEnded | Protocol::GameFlag::SupportSpectatorFactions;	//always support spectator in this case
+			}
+			return rs;
+		}
+
+
 		void		AssembleGameConfig(Protocol::GameConfig&gameConfig, bool allowSpectatorFactions)
 		{
 			gameConfig.researchScript = Objects::ResearchState::GetScriptIdentifier();
 			gameConfig.gameGoal = (UINT32)RuntimeConfig::gameGoal;
-			gameConfig.gameFlags = 0;
+			gameConfig.gameFlags = AssembleGameFlags(allowSpectatorFactions);
 			gameConfig.worldDiscovery = (BYTE)World::Config::worldDiscovery;
-			if (Config::closedGame)
-				gameConfig.gameFlags |= Protocol::GameFlag::ClosedGame;
-			if (RuntimeConfig::empZones)
-				gameConfig.gameFlags |= Protocol::GameFlag::EMPZones;
-			if (Config::basesRequired)
-				gameConfig.gameFlags |= Protocol::GameFlag::BasesRequired;
-			if (Config::startBases)
-				gameConfig.gameFlags |= Protocol::GameFlag::StartBases;
-			if (Config::Nexus::enableAI)
-				gameConfig.gameFlags |= Protocol::GameFlag::NexusAI;
-			if (ConfigurationMode::IsActive())
-				gameConfig.gameFlags |= Protocol::GameFlag::ConfigurationMode;
-			if (RuntimeConfig::tutorialMode)
-				gameConfig.gameFlags |= Protocol::GameFlag::TutorialMode;
-			if (World::Config::simulateLiquids)
-				gameConfig.gameFlags |= Protocol::GameFlag::SimulateLiquids;
 
-			gameConfig.gameFlags |= Config::factionSupportFlags;
-			if (!allowSpectatorFactions)
-				gameConfig.gameFlags &= ~Protocol::GameFlag::SupportSpectatorFactions;
 		}
 
 		void	AssembleGameInfo(Protocol::GameInfo&info, bool allowSpectatorFactions)
@@ -223,7 +257,33 @@ namespace Game
 			}
 
 
+			if (to == RuntimeConfig::Phase::EndOfGame)
+			{
+				if (!winner)
+				{
+					UINT64 biggestScore = 0;
+					Objects::PFaction newWinner;
 
+					Objects::ForeachFaction([&](const Objects::PFaction&f)
+					{
+						if (f == Objects::Faction::nexus)
+							return;
+						const UINT64 score = f->GetWinningScore();
+						if (score > biggestScore)
+						{
+							biggestScore = score;
+							newWinner = f;
+						}
+					});
+					if (newWinner)
+						DeclareWinner(newWinner);
+				}
+
+				foreach (::Network::activePlayersAndSpectators,p)
+				{
+					(*p)->SendProgressUpdate("");
+				}
+			}
 
 			//if (to == RuntimeConfig::Phase::CommandPhase)
 				//DebugCheckWorld();	//this assumes the world does not change. if it does, this will fail
@@ -235,18 +295,7 @@ namespace Game
 
 		void	Describe(Protocol::ProductionTask&task, const Objects::MobileEntityProducer::WorkItem&element)
 		{
-			if (element.producing->IsPureVehicle())
-			{
-				Objects::PVehicle v = To<Objects::Vehicle>::Cast(element.producing);
-				task.parameters.SetSize(2);
-				task.parameters.first() = v->base->constName;
-				task.parameters.last() = v->turret->constName;
-			}
-			else
-			{
-				task.parameters.SetSize(1);
-				task.parameters.first() = element.producing->GetCTypeName();
-			}
+			task.type = element.producing->GetType();
 			task.id = element.id;
 		}
 
@@ -290,7 +339,7 @@ namespace Game
 				std::shared_ptr<Objects::VehicleJob::Construct> constJob = To<Objects::VehicleJob::Construct>::DynamicCast(t.job);
 				if (constJob)
 				{
-					task.visualizationName = constJob->constructWhat->GetCTypeName();
+					task.visualizationName = constJob->constructWhat->GetType();
 				}
 				else
 				{
@@ -401,17 +450,7 @@ namespace Game
 
 		void	Describe(Protocol::NewMobileEntity&cnst, const Objects::MobileEntity&v, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags)
 		{
-			if (v.IsPureVehicle())
-			{
-				const Objects::Vehicle&veh = (const Objects::Vehicle&)v;
-				cnst.baseName = veh.base->constName;
-				cnst.turretName = veh.turret->constName;
-			}
-			else
-			{
-				cnst.baseName = v.GetCTypeName();
-				cnst.turretName = ConstName::Empty;
-			}
+			cnst.type = v.GetType();
 			cnst.owner = v.owner->id;
 			Describe(cnst.state,v,owned,timestamp,changeFlags);
 		}
@@ -486,7 +525,7 @@ namespace Game
 
 		void	Describe(Protocol::StructureConstruction&cnst, const Objects::Structure&s, bool owned, const Protocol::Timestamp&timestamp)
 		{
-			cnst.typeName = s.GetCTypeName();
+			cnst.type = s.GetType();
 			cnst.owner = s.owner->id;
 			Describe(cnst.state,s,owned,timestamp,0xFFFFFFFF);
 
@@ -511,7 +550,7 @@ namespace Game
 				{
 					f->deathInRounds = 0;
 					::Network::PClient client;
-					if (::Network::playerMap.query(f,client))
+					if (::Network::playerMap.Query(f,client))
 						client->SendProgressUpdate(whyNot);
 				}
 			}
@@ -767,28 +806,36 @@ namespace Game
 
 		for (index_t i = 0; i < Objects::Faction::all.Count(); i++)
 		{
-			Objects::PFaction faction = Objects::Faction::all[i].lock();	//only player factions here: nexus is not included in ::all
-			if (faction && !faction->isDead)
+			const Objects::PFaction&faction = Objects::Faction::all[i];	//only player factions here: nexus is not included in ::all
+			if (!faction->isDead)
 				livingPlayerFactions ++;
 		}
 
 		return livingPlayerFactions;
 	}
 
+
+	void	DeclareWinner(const Objects::PFaction&w)
+	{
+		DBG_ASSERT__(w);
+		DBG_ASSERT__(!winner);
+		LogEvent(EventClass{EventSignificance::Important,EventFlavor::ServerPrivate},"Declared winner: "+w->GetLogName());
+		LogEvent(EventClass::Preset::winningFaction,"Congratulations. "+w->GetName()+" wins this game!");
+		winner = w;
+		Channels::winningFaction.SendTo(::Network::server,Game::winner->id,Channels::FactionLevel);
+		if (RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame)
+			Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
+	}
+
+
 	void PerformNewRoundLogic(float&atTime)
 	{
-
-		
-
-
-
 		if (Config::basesRequired)
 		{
 			foreach (Objects::Faction::all,_f)
 			{
-				Objects::PFaction faction = _f->lock();
-				if (faction)
-					faction->hasUnitClasses = Objects::Faction::UnitClass::None;
+				const Objects::PFaction&faction = *_f;
+				faction->hasUnitClasses = Objects::Faction::UnitClass::None;
 			}
 
 			Objects::RefreshCompoundCoverageIfNeeded(atTime);
@@ -853,7 +900,7 @@ namespace Game
 			count_t livingPlayerFactions = CountLivingPlayerFactions();
 			for (index_t i = 0; i < Objects::Faction::all.Count(); i++)
 			{
-				Objects::PFaction faction = Objects::Faction::all[i].lock();	//only player factions here: nexus is not included in ::all
+				Objects::PFaction faction = Objects::Faction::all[i];	//only player factions here: nexus is not included in ::all
 				if (faction)
 				{
 					String whyNot;
@@ -934,31 +981,29 @@ namespace Game
 			{
 				if (livingPlayerFactions == 0)
 				{
-					Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
 					LogEvent(EventClass::Preset::factionDeath,"All factions destroyed. Application requires restart.");
+					Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
 				}
 				else
 				if (livingPlayerFactions == 1)
 				{
 					LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain),"Only one faction left. Declaring winner.");
-					Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
 
 					winner.reset();
 					for (index_t i = 0; i < Objects::Faction::all.Count(); i++)
 					{
-						Objects::PFaction faction = Objects::Faction::all[i].lock();	
+						Objects::PFaction faction = Objects::Faction::all[i];
 						if (faction && !faction->isDead)
 						{
-							DBG_ASSERT__(!winner);
-							winner = faction;
+							DeclareWinner(faction);
 						}
 					}
 
-					::Network::PClient client;
-					if (::Network::playerMap.Query(winner,client))
-					{
-						client->SendProgressUpdate("");
-					}
+					//::Network::PClient client;
+					//if (::Network::playerMap.Query(winner,client))
+					//{
+					//	client->SendProgressUpdate("");
+					//}
 				}
 			}
 
@@ -1153,6 +1198,8 @@ namespace Game
 				int generatorCount = 0,
 					connectorCount = 0;
 				float t = 0;
+				const auto radarPrototype = Objects::Prototypes::structures.Find({ConstName::Type_Tower,ConstName::Turret_Radar});
+				ASSERT__(radarPrototype);
 				for (index_t i : distances)
 				{
 					//ASSERT_LESS_OR_EQUAL__(field.distance[i],R);
@@ -1175,7 +1222,7 @@ namespace Game
 						if (field.distance[i] == RadarDistance)
 						{
 							std::shared_ptr<Objects::Tower> tower = To<Objects::Tower>::Cast(
-								Objects::GetPrototypeByName(ConstName::Type_RadarTower)->CreateNewInstance(Objects::Faction::nexus,
+								radarPrototype->CreateNewInstance(Objects::Faction::nexus,
 								Grid::LCellIdI(i,h),
 								0));
 							tower->CorrectTerrain(false,0);
@@ -1410,9 +1457,9 @@ namespace Game
 			Objects::RefreshCompoundCoverage(t);
 
 
-			Objects::SpawnVehicle(f,at0,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
-			Objects::SpawnVehicle(f,at3,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
-			Objects::SpawnVehicle(f,at4,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,t);
+			Objects::InsertNewVehicle(f,at0,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
+			Objects::InsertNewVehicle(f,at3,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
+			Objects::InsertNewVehicle(f,at4,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,t);
 
 		}
 		else
@@ -1424,12 +1471,12 @@ namespace Game
 			Grid::LCellIdI at4 = Grid::LCellIdI(n.neighborID[4],0);
 
 			float t = 0;
-			Objects::SpawnVehicle(f,Grid::LCellIdI((UINT32)startLocation,0),Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
-			Objects::SpawnVehicle(f,at1,Objects::Component::hoverbase, Objects::Component::radar,true,t);
-			Objects::SpawnVehicle(f,at3,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,t);
-			Objects::SpawnVehicle(f,at2,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
-			Objects::SpawnVehicle(f,at4,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
-			Objects::SpawnVehicle(f,at0,Objects::Component::hoverbase, Objects::Component::artillery,true,t);
+			Objects::InsertNewVehicle(f,Grid::LCellIdI((UINT32)startLocation,0),Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
+			Objects::InsertNewVehicle(f,at1,Objects::Component::hoverbase, Objects::Component::radar,true,t);
+			Objects::InsertNewVehicle(f,at3,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,t);
+			Objects::InsertNewVehicle(f,at2,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
+			Objects::InsertNewVehicle(f,at4,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
+			Objects::InsertNewVehicle(f,at0,Objects::Component::hoverbase, Objects::Component::artillery,true,t);
 		}
 	}
 

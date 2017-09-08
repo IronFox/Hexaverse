@@ -153,9 +153,8 @@ namespace World
 			CheckCoverageSendTerrain(Objects::Faction::nexus);
 			foreach (Objects::Faction::all,_f)
 			{
-				Objects::PFaction faction = _f->lock();
-				if (faction)
-					CheckCoverageSendTerrain(faction);
+				const Objects::PFaction&faction = *_f;
+				CheckCoverageSendTerrain(faction);
 			}
 		}
 
@@ -288,7 +287,7 @@ namespace World
 					if (kill)
 					{
 						float t = 0;
-						Objects::Remove(entity,Objects::RemovalType::UncontrolledExplosion,t,false);
+						Objects::Remove(entity,Objects::RemovalType::UncontrolledExplosion,t);
 					}
 				}
 			},false);
@@ -512,7 +511,7 @@ namespace World
 
 	bool			IsPlanetIniFile(const String&filename)
 	{
-		if (!filename.endsWith(".ini"))
+		if (!filename.EndsWith(".ini"))
 			return IsPlanetIniFile(filename+".ini");
 		return FileSystem::Folder(RuntimeConfig::ConfigFile("config/myPlanets")).FindFile(PathString(filename)) != nullptr
 				||
@@ -543,7 +542,7 @@ namespace World
 				merged.Set(f->name).swap(*f);
 		}
 
-		merged.exportTo(rsOut);
+		merged.ExportTo(rsOut);
 
 		Sorting::ByOperator::QuickSort(rsOut);
 	}

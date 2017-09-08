@@ -6,6 +6,7 @@
 #include <general/monitoredProcess.h>
 #include <logEvent.h>
 #include "visual/dialog.h"
+#include "clientEvents.h"
 
 #include "clientRuntimeConfig.h"
 #include "network.h"
@@ -18,7 +19,11 @@ namespace ServerProcess
 
 		MonitoredProcess	process;
 		bool				remoteControl = false, configurationMode=false,tutorialMode=false;
-
+		#ifdef HAS_WINDOW
+			Dialog::WDialog	holdOn;
+			index_t			holdOnID;
+			Timer::Time		holdOnCreated;
+		#endif
 
 		PathString	GetWorkingDirectory()
 		{
@@ -83,7 +88,7 @@ namespace ServerProcess
 		{
 			RuntimeConfig::serverAddress = Network::ServerAddress("localhost");
 			#ifdef HAS_WINDOW
-				Dialog::PermanentMessage("Hold on. Getting tutorial server ready.",[]()->Dialog::CheckResult
+				holdOn = Dialog::PermanentMessage("Hold on. Getting tutorial server ready.",[]()->Dialog::CheckResult
 				{
 					if (Network::haveFaction)
 					{
@@ -91,6 +96,30 @@ namespace ServerProcess
 						return Dialog::CheckResult::Abort;
 					}
 					return Dialog::CheckResult::OkayContinue;
+				});
+				holdOnCreated = timer.Now();
+
+				holdOnID = GlobalEvents::frameBegin.Register([]()
+				{
+					Dialog::PDialog d = holdOn.lock();
+					if (!d || !GUI::IsVisible(d))
+					{
+						GlobalEvents::frameBegin.Unregister(holdOnID);
+						holdOnID = InvalidIndex;
+						return;
+					}
+					if (timer.GetSecondsSince(holdOnCreated) > 30)
+					{
+						End();
+						GUI::Hide(d);
+						GlobalEvents::frameBegin.Unregister(holdOnID);
+						holdOnID = InvalidIndex;
+						RuntimeConfig::serverAddress = Network::ServerAddress();
+						Dialog::ShowMessage("Tutorial server took too long to start. Something went wrong. Please check any available logs in\n"
+								+String(FileSystem::Folder( RuntimeConfig::ConfigDir()).ParentLocation()->GetLocation())
+							+"\nSorry about this :S");
+					}
+
 				});
 			#endif
 			ServerProcess::Begin(true,false,true);

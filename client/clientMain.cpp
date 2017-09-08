@@ -58,6 +58,8 @@
 #include "components/visual/atmosphere.h"
 #include "components/visual/guiHostList.h"
 #include "components/visual/commandDefinitions.h"
+#include "components/visual/menu.h"
+#include "components/visual/uiScale.h"
 #include "components/serverProcess.h"
 #include "components/audioInterface.h"
 #include "components/configurationMode.h"
@@ -65,6 +67,9 @@
 #include "components/network.h"
 #include "components/animation.h"
 #include "components/cameraControl.h"
+#include "components/clientEvents.h"
+#include "components/loading.h"
+#include "components/localInterface.h"
 #include "components/clientEvents.h"
 
 #include "rc/Resource.h"
@@ -85,7 +90,6 @@ extern "C"
 	Engine::Textout<DX11::TextureFont>	textout;
 
 
-	Dialog::PMenu		mainMenu;
 
 #endif
 
@@ -267,7 +271,7 @@ namespace LocalApplicationInterface
 
 	void	OnTutorialsChanged()
 	{
-		UI::HexGrid::BottomRightPanel::Refresh();
+		UI::HexGrid::BottomRightPanel::Refresh(UI::HexGrid::GetGridConfig());
 	}
 
 #endif
@@ -491,7 +495,7 @@ namespace ApplicationInterface
 		ch.target = c;
 		if (deployingWhat)
 			ch.deployingWhat.Set0() = deployingWhat->id;
-		LogEvent(EventSignificance::Common,"Signalling choice intersection with "+ch.target.ToString());
+		LogEvent(EventSignificance::Common,"Signalling choice intersection with "+ToString(ch.target));
 		Network::Channels::choiceIntersection.SendTo(Network::client,ch);
 
 		#ifdef HAS_WINDOW
@@ -517,21 +521,11 @@ namespace ApplicationInterface
 		Network::Channels::constructionAbort.SendTo(Network::client,ca);
 	}
 
-	void	SignalConstructionBegin(const TUniqueID&plantID,ConstName baseName, ConstName turretName)
+	void	SignalConstructionBegin(const TUniqueID&plantID,Objects::EntityType type)
 	{
 		Protocol::ConstructionBegin	cb;
 		cb.plantID = plantID;
-		if (turretName != ConstName::Empty)
-		{
-			cb.parameters.SetSize(2);
-			cb.parameters.First() = baseName;
-			cb.parameters.last() = turretName;
-		}
-		else
-		{
-			cb.parameters.SetSize(1);
-			cb.parameters.First() = baseName;
-		}
+		cb.type = type;
 		Network::Channels::constructionBegin.SendTo(Network::client,cb);
 	}
 
@@ -575,8 +569,7 @@ namespace ApplicationInterface
 	{
 		Protocol::ConstructionBegin	cb;
 		cb.plantID = towerID;
-		cb.parameters.SetSize(1);
-		cb.parameters.First() = newTurret->constName;
+		cb.type = newTurret->constName;
 		Network::Channels::constructionBegin.SendTo(Network::client,cb);
 	}
 
@@ -642,8 +635,8 @@ namespace ApplicationInterface
 
 	bool	IsFullScreen()
 	{
-		Resolution screen = display.getScreenSize();
-		return display.clientSize() == screen;
+		Resolution screen = display.GetScreenSize();
+		return display.GetClientSize() == screen;
 	}
 
 
@@ -654,17 +647,18 @@ namespace ApplicationInterface
 		static bool storedIsMaximized = false;
 		if (isFull == IsFullScreen())
 			return;
-		Resolution screen = display.getScreenSize();
+		Resolution screen = display.GetScreenSize();
 		if (!isFull)
 		{
 			//is fullscreen => restore
 
-			display.resizeWindow(screen.width,screen.height,Engine::DisplayConfig::ResizableBorder);
+			//display.ResizeWindow(screen.width,screen.height);...why was this here?
 			if (hasAnyStored)
-				display.locateWindow(stored);
+				display.PositionWindow(stored);
+			display.SetBorderStyle(Engine::DisplayConfig::ResizableBorder);
 			if (storedIsMaximized)
 				display.Maximize();
-
+			#ifndef _DEBUG
 			::SetWindowPos(Engine::context.getWindow(),       // handle to window
 				HWND_NOTOPMOST,  // placement-order handle
 				0,     // horizontal position
@@ -673,6 +667,7 @@ namespace ApplicationInterface
 				0, // height
 				SWP_NOMOVE | SWP_NOSIZE // window-positioning options);
 				);
+			#endif
 
 		}
 		else
@@ -680,17 +675,23 @@ namespace ApplicationInterface
 			//is not fullscreen => enter fullscreen
 			if (!display.IsMaximized())
 			{
-				stored = display.windowLocation();
+				stored = display.GetWindowLocation();
 				hasAnyStored = true;
 				storedIsMaximized = false;
 			}
 			else
+			{
+				stored = display.GetPreMaxiMinimizeLocation();
+				hasAnyStored = true;
 				storedIsMaximized = true;//leave stored as is
-			display.locateWindow(0,0,screen.width,screen.height);
-			display.resizeWindow(screen.width,screen.height,Engine::DisplayConfig::NoBorder);
-			display.locateWindow(0,0,screen.width,screen.height);
+				display.Restore();
+			}
+			//display.PositionWindow(0,0,screen.width,screen.height);
+			display.SetBorderStyle(Engine::DisplayConfig::NoBorder);
+			display.PositionWindow(0,0,screen.width,screen.height);
 
 
+			#ifndef _DEBUG
 			::SetWindowPos(Engine::context.getWindow(),       // handle to window
 				HWND_TOPMOST,  // placement-order handle
 				0,     // horizontal position
@@ -699,8 +700,11 @@ namespace ApplicationInterface
 				0, // height
 				SWP_NOMOVE | SWP_NOSIZE // window-positioning options);
 				);
+			#endif
 
 		}
+
+		GlobalEvents::onFullscreenChange(isFull);
 	}
 
 #endif
@@ -747,7 +751,7 @@ namespace ApplicationInterface
 	}
 
 
-	void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, ConstName parameterName, const Grid::LCellIdI&overrideLocation)
+	void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, Objects::EntityType parameterName, const Grid::LCellIdI&overrideLocation)
 	{
 		const Grid::LCellIdI targetLocation = overrideLocation != Grid::LCellIdI::Invalid ? overrideLocation : v->GetLastPointOfOrigin();
 		#ifdef HAS_WINDOW
@@ -763,8 +767,8 @@ namespace ApplicationInterface
 				Objects::NaturalResourceVector	res;
 				if (res.SampleWorld(targetLocation.stackID))
 				{
-					const auto& proto = Objects::GetPrototypeByName(parameterName);
-					ASSERT1__(proto,(int)parameterName);
+					const auto& proto = Objects::Prototypes::structures.Find(parameterName);
+					ASSERT1__(proto,ToString(parameterName));
 					String name = proto->GetTypeName();
 					TUniqueID id = v->id;
 					if (parameterName != ConstName::Type_Mine && res.IsNotEmpty())
@@ -823,7 +827,7 @@ namespace ApplicationInterface
 
 	}
 
-	void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, ConstName parameterName)
+	void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, Objects::EntityType parameterName)
 	{
 		SignalNewJob(v,jobName,parameterName,Grid::LCellIdI::Invalid);
 	}
@@ -951,7 +955,7 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 
 	PathString MakeValidFilename(String base)
 	{
-		base.eraseCharacters(IsValidFileChar,false);
+		base.EraseCharacters(IsValidFileChar,false);
 		return PathString(base);
 	}
 
@@ -966,29 +970,29 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 			if (line->second)
 				file << "*";
 			String linkedLine = line->first;
-			linkedLine.replace("Hrz. Attack range","[[concepts/attack range|Hrz. Attack range]]");
-			linkedLine.replace("Base horizontal attack range","[[concepts/attack range|Base horizontal attack range]]");
-			linkedLine.replace("Initiative","[[concepts/initiative|Initiative]]");
-			linkedLine.replace("Weight","[[concepts/vehicle|Weight]]");
-			linkedLine.replace("Carrying capacity","[[concepts/vehicle|Carrying capacity]]");
-//			linkedLine.replace("Base scanning range","[[concepts/sensory|Base scanning range]]");
-			linkedLine.replace("scanning range","[[concepts/scanning range]]");
-			linkedLine.replace("Scanning range","[[concepts/scanning range|Scanning range]]");
-			linkedLine.replace("compound","[[concepts/compound]]");
-			linkedLine.replace("phase","[[concepts/phase]]");
-			linkedLine.replace("attack action","[[concepts/action pool|attack action]]");
-			linkedLine.replace("resources","[[concepts/resources]]");
+			linkedLine.FindAndReplace("Hrz. Attack range","[[concepts/attack range|Hrz. Attack range]]");
+			linkedLine.FindAndReplace("Base horizontal attack range","[[concepts/attack range|Base horizontal attack range]]");
+			linkedLine.FindAndReplace("Initiative","[[concepts/initiative|Initiative]]");
+			linkedLine.FindAndReplace("Weight","[[concepts/vehicle|Weight]]");
+			linkedLine.FindAndReplace("Carrying capacity","[[concepts/vehicle|Carrying capacity]]");
+//			linkedLine.FindAndReplace("Base scanning range","[[concepts/sensory|Base scanning range]]");
+			linkedLine.FindAndReplace("scanning range","[[concepts/scanning range]]");
+			linkedLine.FindAndReplace("Scanning range","[[concepts/scanning range|Scanning range]]");
+			linkedLine.FindAndReplace("compound","[[concepts/compound]]");
+			linkedLine.FindAndReplace("phase","[[concepts/phase]]");
+			linkedLine.FindAndReplace("attack action","[[concepts/action pool|attack action]]");
+			linkedLine.FindAndReplace("resources","[[concepts/resources]]");
 			
 
 			
 			
-			foreach (Objects::structurePrototypes,s)
+			foreach (Objects::Prototypes::structures,s)
 			{
-				String name = (*s)->GetTypeName().copyToLowerCase();
-				if (name.equalsIgnoreCase(myTypeName))
+				String name = (*s)->GetTypeName().CopyToLowerCase();
+				if (name.EqualsIgnoreCase(myTypeName))
 					continue;
 
-				linkedLine.replace(name,"[[units/structures/"+name+"]]");
+				linkedLine.FindAndReplace(name,"[[units/structures/"+name+"]]");
 			}
 
 
@@ -1011,13 +1015,13 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 		LogEvent(EventSignificance::Uncommon, "Documenting "+typeName);
 
 		PathString name = MakeValidFilename( typeName );
-		PathString outName = (name+".prefix").convertToLowerCase();
+		PathString outName = (name+".prefix").ConvertToLowerCase();
 		StringFile file;
 		if (!outFolder.IsValidLocation())
 			FileSystem::CreateDirectory(outFolder.GetLocation());
 
 		String relative = String(FileSystem::GetRelativePath(rootFolder.GetLocation(),outFolder.GetLocation()));
-		relative.replace('\\','/');
+		relative.FindAndReplace('\\','/');
 		PathString outPath = outFolder.FindFile(outName,false)->GetLocation();
 		listFile << "* [[units/"<<relative<<'/'<<typeName<<'|'<<typeName <<"]]"<< nl;
 		file.Create(outPath);
@@ -1103,18 +1107,18 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 								if (pixel[3] > 0 && pixel[3] < 255)
 								{
 									//#ifdef WHITE_STYLE
-									//	TVec3<> intermediate;
+									//	M::TVec3<> intermediate;
 									//	Vec::mult(Vec::ref3(pixel),1.f / 255.f,intermediate);
 									//	float a = float(pixel[3])/255.f;
 									//	Vec::addVal(intermediate,a - 1.f);
 									//	Vec::div(intermediate,a);
-									//	Vec::clamp(intermediate,0,1);
+									//	Vec::M::Clamp(intermediate,0,1);
 									//	Vec::mult(intermediate,255.f,Vec::ref3(pixel));
 	
 									//#else
 										pixel[3] = Vec::max(Vec::ref4(pixel));
 										float scale = 255.f / float(pixel[3]);
-										TVec3<> temp;
+										M::TVec3<> temp;
 										Vec::mult(Vec::ref3(pixel),scale,temp);
 										//float max = Vec::max(temp);
 										Vec::clamp(temp,0,255);
@@ -1200,17 +1204,7 @@ void FillMarker(Protocol::Marker&marker, const Objects::PWorldEntity&e, Protocol
 	marker.location = e->location;
 	outE.id = e->id;
 	outE.owner = e->owner->id;
-	if (!e->IsPureVehicle())
-	{
-		outE.type0 = e->GetCTypeName();
-		outE.type1 = ConstName::Empty;
-	}
-	else
-	{
-		Objects::PVehicle v = To<Objects::Vehicle>::Cast(e);
-		outE.type0 = v->base->constName;
-		outE.type1 = v->turret->constName;
-	}
+	outE.type = e->GetType();
 }
 
 
@@ -1588,7 +1582,7 @@ namespace ApplicationInterface
 
 
 #ifdef HAS_WINDOW
-	void RenderShadows(float shadowRadius, DX11::FBO&shadowMap, Engine::OrthographicAspect<>&shadowCamera, DX11::ObjectBuffer<TMatrix4<> >&shadowMatrix
+	void RenderShadows(float shadowRadius, DX11::FBO&shadowMap, Engine::OrthographicAspect<>&shadowCamera, DX11::ObjectBuffer<M::TMatrix4<> >&shadowMatrix
 	#ifdef CASCADING_SHADOW
 		,index_t cascade
 	#endif
@@ -1655,7 +1649,7 @@ bool loop()
 				auto&s = *plane;
 				if (s.IsGroundBoundVehicle())
 					return;
-				TVec3<> at = Grid::ToWorld(s.location);
+				M::TVec3<> at = Grid::ToWorld(s.location);
 				double offset = (((UINT32)s.id.bytes[1]<<16) | ((UINT32)s.id.bytes[2]<<8) | ((UINT32)s.id.bytes[3]));
 				at.x += (sin(offset + Engine::timing.now))*0.025f;
 				at.y += (sin(offset + Engine::timing.now*1.2784))*0.025f;
@@ -1705,7 +1699,7 @@ bool loop()
 					if (!rightMouseDragged)
 					{
 						float2 delta = Engine::mouse.location.absolute - rightMouseDragFrom;
-						if (delta.Length() > 20.f)
+						if (delta.GetLength() > 20.f)
 						{
 							rightMouseDragged = true;
 						}
@@ -1777,7 +1771,7 @@ bool loop()
 			}
 		}
 
-		display.pick(Camera::scene);
+		display.Pick(Camera::scene);
 		static Engine::Frustum<> frustum;
 		Camera::scene.GetFrustum(frustum);
 
@@ -1979,7 +1973,7 @@ bool loop()
 		//}
 		//#endif
 
-		display.pick(Camera::hud);
+		display.Pick(Camera::hud);
 			display.SetRasterizer(true,false);
 			display.SetDepthTest(false,false);
 			display.SetBlendMode(Engine::BlendMode::AlphaBlend);
@@ -2074,7 +2068,7 @@ bool loop()
 
 				textout.PushState();
 				textout.Scale(eventFontScale,eventFontScale);
-				textout.MoveTo(0.0f, 280.f/display.clientHeight() + historyHeight);
+				textout.MoveTo(0.0f, 280.f/display.GetClientHeight() + historyHeight);
 				for (index_t i = events.Count() - rows; i < events.Count(); i++)
 					//if (events[i].stackID < 10)
 					{
@@ -2150,7 +2144,7 @@ bool loop()
 						bool blinkOn = ((timer.Now()/(timer.GetTicksPerSecond()/5))%2) != 0;
 						textout.SetColor(1,0.2,0.2,blinkOn ? 0.5f : 1.f);
 					}
-					textout<<Round(remaining)<<nl;
+					textout<<M::Round(remaining)<<nl;
 					textout.PopState();
 				}
 
@@ -2172,11 +2166,11 @@ bool loop()
 		
 		
 			UI::RenderCommands();
-			display.pick(Camera::hud);
+			display.Pick(Camera::hud);
 			GUI::RenderNonModal();
 
 			UI::RenderHint();
-			display.pick(Camera::hud);
+			display.Pick(Camera::hud);
 			GUI::RenderModal();
 
 
@@ -2229,16 +2223,23 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 #ifdef HAS_WINDOW
 
-	void	onWindowResize(const Resolution&, UINT32)
+	void	UpdateFontScale()
 	{
-		Camera::scene.UpdateProjection2(display.pixelAspect(),0.1f,1000.f);
-	//	textout.SetScale(1.f/display.clientWidth(),1.f/display.clientHeight());
+		textout.SetScale(UI::GetScale() / display.GetClientWidth(), UI::GetScale() / display.GetClientHeight());
+	}
 
-		textout.SetScale(1.f / display.clientWidth(), 1.f / display.clientHeight());
+	void	onWindowResize(const Resolution&res, UINT32 flags)
+	{
+		if (flags & Engine::DisplayConfig::ResizeDragHasEnded)
+		{
+			Camera::scene.UpdateProjection2(display.GetPixelAspect(),0.1f,1000.f);
 
-		UI::OnWindowResize();
-		GUI::OnWindowResize();
-		UpdateHistoryHeight();
+			UpdateFontScale();
+
+			UI::OnScreenResize();
+			GUI::SignalScreenResize();
+			UpdateHistoryHeight();
+		}
 	}
 
 
@@ -2289,7 +2290,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 				}
 			}*/
 			{
-				TVec3<> normal;
+				M::TVec3<> normal;
 				if (VisualTerrain::TestHullIntersection(b, d, distance, normal, includeWater))
 				{
 					#ifdef _DEBUG
@@ -2298,7 +2299,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 					//if (test)
 						//return false;
 					float3 p = b + d * distance;
-					float height = p.Length();
+					float height = p.GetLength();
 					distance = std::numeric_limits<float>::max();
 					index_t stackID = VisualTerrain::TestLowGridIntersection(b, d, height, distance);
 					if (stackID != InvalidIndex)
@@ -2326,9 +2327,9 @@ void MyFatal(const FatalDescriptor&descriptor)
 	{
 		Tutorial::lastDelayingEvent = timer.Now();
 
-		if (GUI::HandleMouseDown() || UI::HandleClick())
+		if (GUI::OnMouseDown() || UI::HandleClick())
 			return;
-		if (Rect<>(0.f,0.97f,0.1f,1.f).Contains(Engine::mouse.location.windowRelative))
+		if (M::Rect<>(0.f,0.97f,0.1f,1.f).Contains(Engine::mouse.location.windowRelative))
 		{
 			LocalApplicationInterface::QueryNickname();
 			return;
@@ -2364,7 +2365,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 					else
 						if (LocalApplicationInterface::DirectTo(Objects::selectedMobileEntity,target,0,Objects::CursorMode::Idle,false))
 						{
-							ApplicationInterface::SignalNewJob(Objects::selectedMobileEntity,ConstName::Job_Construct,Objects::activeStructureToPlace->GetCTypeName(),target);
+							ApplicationInterface::SignalNewJob(Objects::selectedMobileEntity,ConstName::Job_Construct,Objects::activeStructureToPlace->GetType(),target);
 							Objects::choiceVis.arrowFromCell = target;
 						}
 				}
@@ -2403,7 +2404,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 				bool handledChoice = Objects::HandleChoiceIntersection(b, d, distance);
 				if (!handledChoice)
 				{
-					TVec3<> normal;
+					M::TVec3<> normal;
 					bool selectionDone = false;
 					if (Objects::CommonCmd::IsModeActive(Objects::CursorMode::BuildBlockMode) || Objects::CommonCmd::IsModeActive(Objects::CursorMode::RemoveBlockMode))
 					{
@@ -2483,7 +2484,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 							if (VisualTerrain::TestHullIntersection(b, d, distance, normal,false))
 							{
 								float3 p = b + d * distance;
-								float height = p.Length();
+								float height = p.GetLength();
 
 								distance = std::numeric_limits<float>::max();
 
@@ -2498,7 +2499,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 										selectionDone = true;
 										#ifdef _DEBUG
 											if (Engine::input.pressed[Key::Shift])
-												ShowMessage(target.ToString());
+												ShowMessage(ToString(target));
 										#endif
 									}
 								}
@@ -2581,7 +2582,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 					FileSystem::CreateDirectory(outDirName);
 					LogEvent(EventClass::Preset::uncommon,"Time lapse enabled. Writing to "+String(outDirName));
 					Dialog::PermanentMessage("Time lapse recording is enabled. Camera is locked. Press F2 to end time lapse recording",[](){return TimeLapse::enabled ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;});
-				},[](){return Dialog::CheckResult::OkayContinue;});
+				});
 			}
 		}
 	}
@@ -2813,7 +2814,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 			},
 			[](const String&msg)
 			{
-				if (msg.trimRef().length() > 0)
+				if (msg.TrimRef().length() > 0)
 				{
 					if (Network::client.IsConnected())
 						Network::Channels::chatMessage.SendTo(Network::client,msg);
@@ -2828,8 +2829,10 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 	{
 		bool	IsValidNickname(const String&candidate)
 		{
-			return Package::NetString<32>::IsValid(candidate) 
-				&& candidate.length() > 3 && candidate.length() <= 16;
+			if (candidate.length() < 4)
+				return false;
+			bool rs = Package::IsValid(candidate,32);
+			return rs;
 		}
 
 
@@ -2887,7 +2890,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 	void	AbortMode()
 	{
 		Camera::StopAutoRotation();
-		if (GUI::CloseAllModal())
+		if (GUI::CloseTopModal())
 		{
 			LocalApplicationInterface::QueryNicknameIfEmpty();
 			return;
@@ -2897,14 +2900,13 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 
 
 
-		if (!GUI::IsVisible(mainMenu))
+		if (!GUI::IsVisible(Menu::main))
 		{
 			if (!UI::showControlsAndContacts)
 				ToggleControlGUI();	
-			GUI::Show(mainMenu);
+			GUI::Show(Menu::main);
 		}
-		else
-			GUI::Hide(mainMenu);
+	
 		GUI::SignalSituationChange();
 	}
 
@@ -3282,41 +3284,7 @@ namespace ApplicationInterface
 		while (to != from);
 	}
 
-	void AddFactionCreationChoice(const String&line, UINT32 typeFlags, UINT32 supportFactionFlag)
-	{
-		Dialog::loginMenu->AddCommand(line,
-		[typeFlags,supportFactionFlag]()
-		{
-			if (Network::HaveFactionKeyForCurrentWorld() && typeFlags != Protocol::FactionType::SpectatorFaction)
-			{
-				Dialog::Confirm("A faction key is known for this world ("+Network::worldIDString+"). If you create a new faction, this key will be lost, and control of your old faction will irreversible be abandoned. Please confirm.",
-				[typeFlags](){
-					Network::AttemptFactionLogin(true,typeFlags);
-					GUI::Hide(Dialog::loginMenu);
-				},[supportFactionFlag]()
-				{
-					if (!Network::amOnline || Network::haveFaction || !(supportFactionFlag & Network::gameFlags))
-						return Dialog::CheckResult::Abort;
-					if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase)
-						return Dialog::CheckResult::OkayNotRightNow;
-					return Dialog::CheckResult::OkayContinue;
-				});
-			}
-			else
-			{
-				Network::AttemptFactionLogin(true,typeFlags);
-				GUI::Hide(Dialog::loginMenu);
-			}
-		},[supportFactionFlag](){return Network::amOnline && !Network::haveFaction && (Network::gameFlags & supportFactionFlag) 
-			&& (
-					RuntimeConfig::IsInAnyCommandPhase() 
-						|| RuntimeConfig::phase  == RuntimeConfig::Phase::AnimationPhase 
-						|| RuntimeConfig::phase  == RuntimeConfig::Phase::EndOfGame
-				)
-			;},false);
 
-
-	}
 
 	void	ResumeBatchConstruction()
 	{
@@ -3352,7 +3320,7 @@ namespace ApplicationInterface
 
 	void	OnWheel(short delta)
 	{
-		if (GUI::HandleMouseWheel(delta) == GUI::WheelRs::NotContained)
+		if (GUI::OnMouseWheel(delta) == GUI::WheelRs::NotContained)
 			Camera::Event::WheelAction(delta);
 	}
 
@@ -3380,7 +3348,7 @@ void ParseKeyValue(const String&key, const String&value)
 		elif(key == "serverURL")
 		{
 			RuntimeConfig::serverAddress = Network::ServerAddress(value);
-			LogEvent(EventClass::Preset::configuration, nullptr, "Server address set to "+RuntimeConfig::serverAddress.ToString());
+			LogEvent(EventClass::Preset::configuration, nullptr, "Server address set to "+ToString(RuntimeConfig::serverAddress));
 		}
 		elif(key == "documentHere")
 		{
@@ -3656,8 +3624,11 @@ int main( int argc, const char* argv[])
 			StartConfig::Load(userConfigPath);
 
 			#ifdef HAS_WINDOW
+
+				Menu::Configuration::Assign(StartConfig::destConfig, userConfigPath);
+
 				String val = StartConfig::GetString("runtime/capFPS","-1");
-				if (!val.equalsIgnoreCase("off"))
+				if (!val.EqualsIgnoreCase("off"))
 					convert(val.c_str(),RuntimeConfig::FromFile::capFPS);
 				RuntimeConfig::FromFile::alwaysDay = StartConfig::GetBool("runtime/alwaysDay",true);
 				display.config.vertical_sync = StartConfig::GetInt("runtime/vsync");
@@ -3700,14 +3671,14 @@ int main( int argc, const char* argv[])
 
 
 
-		
+		Loading::Begin();
 		
 		//display.create(Engine::DisplayConfig("TerraLab");
 
 		#ifdef HAS_WINDOW
 			storageThread.start();
 
-			Engine::CreateDisplay(display,
+			UINT32 loadedFlags = Engine::CreateDisplay(display,
 				RuntimeConfig::ConfigFile("window"),
 				RuntimeConfig::aiMode ? "AI":
 				PRODUCT_NAME
@@ -3717,173 +3688,138 @@ int main( int argc, const char* argv[])
 				,Resolution(1280,800),onWindowResize
 				,Engine::DisplayConfig::Icon(IDI_CLIENT)
 				 );
-
-			display.ScanShaderHeader("shaders");
-
-
-			textout.GetActiveFont()->LoadFromFile("Font/font.xml");
-
-
-			LineRenderer::Create();
-			SurfaceRenderer::Create();
-
-			//Engine::input.Bind(Key::Up, Camera::Event::ZoomIn);
-			//Engine::input.Bind(Key::Down, Camera::Event::ZoomOut);
-
-			Engine::input.Bind(Key::Shift, Objects::SignalShiftPressed, Objects::SignalShiftReleased);
-
-			Engine::input.Bind(Key::Left, SelectAndFocusPrev);
-			Engine::input.Bind(Key::Right, SelectAndFocusNext);
-			Engine::input.Bind(Key::Space, SelectAndFocusNextIdle);
-
-			Engine::input.Bind(Key::G, Camera::ToggleOrbit);
-
-			Engine::input.Bind(Key::PageDown, ViewDown);
-			Engine::input.Bind(Key::PageUp, ViewUp);
-
-			Engine::input.Bind(Key::Alt, ResumeBatchConstruction, AbortBatchConstruction);
-			
-
-		//	Engine::input.Bind(Key::PageDown, DeclineCamera);
-			//Engine::input.Bind(Key::PageUp, InclineCamera);
-
-			Engine::input.Bind(Key::Backspace, UndoTask);
-			Engine::input.Bind(Key::Escape, AbortMode);
-			Engine::input.Bind(Key::Enter, SignalRoundEndOrMaximize);
-			Engine::input.Bind(Key::Return, SignalRoundEndOrMaximize);
-			Engine::input.Bind(Key::Tab, UI::ShowSession);
-			Engine::input.Bind(Key::T,[](){}, QueryAndSendChatMessage);
-			Engine::input.Bind(Key::R,Camera::ToggleAutoRotation);
-//			Engine::input.Bind(Key::R,ToggleResourceView);
-			Engine::input.Bind(Key::Ctrl,ToggleSeeThrough);
-
-			Engine::input.Bind(Key::H,ToggleControlGUI);
-
-			Engine::input.BindCtrl(Key::C,ConfigurationMode::OnCopy);
-			Engine::input.BindCtrl(Key::V,ConfigurationMode::OnPaste);
-
-			Engine::input.Bind(Key::MouseButton0, Select, GUI::HandleMouseUp);
-			Engine::input.BindCtrl(Key::MouseButton0, Select);
-			Engine::input.Bind(Key::RightMouseButton, BeginCameraDrag,EndCameraDrag<true>);
-			Engine::input.Bind(Key::MiddleMouseButton, BeginCameraDrag,EndCameraDrag<false>);
-
-			Engine::input.Bind(Key::F4, ToggleCameraLock);
-			Engine::input.Bind(Key::F3, SaveScreenshot);
-			Engine::input.Bind(Key::F2,ToggleTimeLapse);
-
-			#ifdef RAYTRACE
-				Engine::input.Bind(Key::Up,ZoomIn);
-				Engine::input.Bind(Key::Down,ZoomOut);
-			#endif
-
-
-
-
-			Engine::mouse.BindWheel(OnWheel);
-
-			textout.SetScale(1.f/display.clientWidth(),1.f/display.clientHeight());
-
-
+			if (loadedFlags & Engine::DisplayConfig::IsFullscreen)
+			{
+				SetFullScreen(true);
+			}
 			display.SetBackbufferClearColor(0,0,0,0);
 
-			ProgressBar::Create();
-			Dialog::Create();
+			Loading::SetupDisplay(display);
 
-		#endif
-
-
-		ClientGrid::Create();
-
-		#ifdef HAS_WINDOW
-			Lighting::Create();
-			VisualTerrain::Create();		//egg-chicken
-			Objects::Renderer::Create();	//chicken-egg
-
-			ConfigurationMode::Create();
-			Objects::Command::RefreshCommands(false);
-		#endif
-
-
-
-		#ifdef HAS_WINDOW
-			Objects::CreateComponents();
-
-			Camera::Setup(display.pixelAspect());	//creates a menu item, for which Objects::Create() must have been called
-
-
-			Explosions::Create();
-			Objects::Commands::DefineAll();
-		#endif
-		Animation::Create();
-
-		Network::Setup();
-
-		#ifdef HAS_WINDOW
-			Camera::Create();
-			UI::Create();
-		#endif
-
-
-
-		#ifdef HAS_WINDOW
-
-			mainMenu.reset(new Dialog::Menu(0.25f,"Main"));
-			mainMenu->AddCommand("Change Nickname",LocalApplicationInterface::QueryNickname);
-			mainMenu->AddCommand("Abandon faction",Network::AbandonCurrentFaction,[](){return Network::amOnline && Network::haveFaction;});
-			mainMenu->AddCommand("Disconnect",
-				[]()
-				{
-					Network::client.Disconnect();
-				},
-				[](){return Network::client.IsConnected();});
-			mainMenu->AddCommand("Start Tutorial",
-				[]()
-				{
-					ServerProcess::StartTutorialServer();
-				},
-				[](){return !Network::client.IsConnected() && !Network::client.IsAttemptingToConnect();});
-
-			mainMenu->AddCommand("Quit to Desktop",[](){Dialog::Confirm("Really quit? Any active faction will be preserved server-sided for you to continue later on.",[](){application_shutting_down = true;},[](){return Dialog::CheckResult::OkayContinue;});});
-			mainMenu->FullAutoLayout();
-
-			Dialog::loginMenu->AddCommand("Continue existing faction",[](){Network::AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly);},
-			[]()
-			{
-				return Network::amOnline && !Network::haveFaction 
-				#ifndef _DEBUG
-				&& Network::HaveFactionKeyForCurrentWorld() 
-				#endif
-				&& RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase;
-			}
-			);
-			AddFactionCreationChoice("Spectate",Protocol::FactionType::SpectatorFaction, Protocol::GameFlag::SupportSpectatorFactions);
-			AddFactionCreationChoice("Create new faction",Protocol::FactionType::RegularFaction, Protocol::GameFlag::SupportRegularFactions);
-
-			
-
-
-			if (RuntimeConfig::FromFile::alwaysDay)
-			{
-				TMatrix3<> mat,rot;
-				Mat::makeAxisSystem(float3::reinterpret(Camera::scene.location).Normalized(),2,mat);
-				Mat::BuildRotationMatrix(SunOffAngle, mat.x,rot);
-				Mat::Mult(rot,mat.z,sunDirection);
-			}
-
-
-			Atmosphere::Create();
-			#if !defined HAS_WINDOW || !defined _DEBUG
-				if (RuntimeConfig::aiMode)
-					ShowWindow(Engine::context.getWindow(),SW_MINIMIZE);
-			#endif
+			display.ScanShaderHeader("shaders");
+			textout.GetActiveFont()->LoadFromFile("Font/font.xml");
+			UpdateFontScale();
 			textout.GetActiveFont()->BeginTagMode(StatePanel::OnTag,StatePanel::TagWidth,
 					Objects::TextoutResourceTagOffset,(char)(Objects::TextoutResourceTagOffset+(char)Objects::Resource::NumberOfPossibilities + 2));
-			Tutorial::Create();
+			GlobalEvents::uiScaleChanged += UpdateFontScale;
+
+			Loading::SetupText(textout);
 
 
-			//Tutorial::ShowMessage("Welcome",true);
-			//Tutorial::ShowMessage("Tutorials");
-			//Tutorial::ShowMessage("Servers");
+			//now we can print text
+
+			Loading::Stage("Primitive Renderer",
+				[]()
+				{
+					LineRenderer::Create();
+					SurfaceRenderer::Create();
+				});
+
+			Loading::Stage("Control Bindings",
+				[]()
+				{
+					Engine::input.Bind(Key::Shift, Objects::SignalShiftPressed, Objects::SignalShiftReleased);
+
+					Engine::input.Bind(Key::Left, SelectAndFocusPrev);
+					Engine::input.Bind(Key::Right, SelectAndFocusNext);
+					Engine::input.Bind(Key::Space, SelectAndFocusNextIdle);
+
+					Engine::input.Bind(Key::G, Camera::ToggleOrbit);
+
+					Engine::input.Bind(Key::PageDown, ViewDown);
+					Engine::input.Bind(Key::PageUp, ViewUp);
+
+					Engine::input.Bind(Key::Alt, ResumeBatchConstruction, AbortBatchConstruction);
+
+					Engine::input.Bind(Key::Backspace, UndoTask);
+					Engine::input.Bind(Key::Escape, AbortMode);
+					Engine::input.Bind(Key::Enter, SignalRoundEndOrMaximize);
+					Engine::input.Bind(Key::Return, SignalRoundEndOrMaximize);
+					Engine::input.Bind(Key::Tab, UI::ShowSession);
+					Engine::input.Bind(Key::T,[](){}, QueryAndSendChatMessage);
+					Engine::input.Bind(Key::R,Camera::ToggleAutoRotation);
+		//			Engine::input.Bind(Key::R,ToggleResourceView);
+					Engine::input.Bind(Key::Ctrl,ToggleSeeThrough);
+
+					Engine::input.Bind(Key::H,ToggleControlGUI);
+
+					Engine::input.BindCtrl(Key::C,ConfigurationMode::OnCopy);
+					Engine::input.BindCtrl(Key::V,ConfigurationMode::OnPaste);
+
+					Engine::input.Bind(Key::MouseButton0, Select, GUI::HandleMouseUp);
+					Engine::input.BindCtrl(Key::MouseButton0, Select);
+					Engine::input.Bind(Key::RightMouseButton, BeginCameraDrag,EndCameraDrag<true>);
+					Engine::input.Bind(Key::MiddleMouseButton, BeginCameraDrag,EndCameraDrag<false>);
+
+					Engine::input.Bind(Key::F4, ToggleCameraLock);
+					Engine::input.Bind(Key::F3, SaveScreenshot);
+					Engine::input.Bind(Key::F2,ToggleTimeLapse);
+
+					#ifdef RAYTRACE
+						Engine::input.Bind(Key::Up,ZoomIn);
+						Engine::input.Bind(Key::Down,ZoomOut);
+					#endif
+
+
+
+
+					Engine::mouse.BindWheel(OnWheel);
+				});
+
+			Loading::Stage("Progress Bars",ProgressBar::Create);
+			Loading::Stage("Dialogs",Dialog::Create);
+
+		#endif
+
+		Loading::Stage("Client Grid",ClientGrid::Create);
+
+		#ifdef HAS_WINDOW
+			Loading::Stage("Lighting",Lighting::Create);
+			Loading::Stage("Visual Terrain",VisualTerrain::Create);		//egg-chicken
+			Loading::Stage("Object Rendering", Objects::Renderer::Create);	//chicken-egg
+
+			Loading::Stage("Configuration Mode",
+				[]()
+				{
+					ConfigurationMode::Create();
+					Objects::Command::RefreshCommands(false);
+				});
+
+			Loading::Stage("Object Components", Objects::CreateComponents);
+
+			Loading::Stage("Cameras",[](){Camera::Setup(display.GetPixelAspect());});
+
+
+			Loading::Stage("Explosions", Explosions::Create);
+			Loading::Stage("Object Commands", Objects::Commands::DefineAll);
+			Loading::Stage("UI", UI::Create);
+		#endif
+		Loading::Stage("Animation", Animation::Create);
+		Loading::Stage("Network", Network::Setup);
+
+
+		#ifdef HAS_WINDOW
+
+			Loading::Stage("Main Menu",Menu::Create);
+
+
+			Loading::Stage("Atmosphere",
+				[]()
+				{
+					if (RuntimeConfig::FromFile::alwaysDay)
+					{
+						M::TMatrix3<> mat,rot;
+						Mat::makeAxisSystem(float3::reinterpret(Camera::scene.location).Normalized(),2,mat);
+						Mat::BuildRotationMatrix(SunOffAngle, mat.x,rot);
+						Mat::Mult(rot,mat.z,sunDirection);
+					}
+
+
+					Atmosphere::Create();
+				});
+
+			Loading::Stage("Tutorial",Tutorial::Create);
+			Loading::Finish();
 
 
 			{
@@ -3893,8 +3829,7 @@ int main( int argc, const char* argv[])
 					if (userName.IsActive())
 						userName >> name;
 				}
-				if ( Package::NetString<32>::IsValid(name) 
-						&& name.length() > 3 && name.length() <= 16)
+				if ( LocalApplicationInterface::IsValidNickname(name))
 				{
 					Network::chosenNickname = name;
 				}
@@ -3902,9 +3837,11 @@ int main( int argc, const char* argv[])
 				{
 				}
 				LocalApplicationInterface::QueryNicknameIfEmpty();
-			}
+			};
 
 
+//			textout.SetScale(1.f/display.GetClientWidth(),1.f/display.GetClientHeight());	//apparently can't restore this...
+			
 			if (RuntimeConfig::documentationRootFolder.DoesExist())
 			{
 				{
@@ -3916,7 +3853,7 @@ int main( int argc, const char* argv[])
 						Objects::Command::EntityCommand container;
 						Image image;
 						FileSystem::Folder folder(imageTarget);
-						foreach (Objects::structurePrototypes,s)
+						foreach (Objects::Prototypes::all,s)
 						{
 							LogEvent(EventSignificance::Uncommon, "Capturing "+(*s)->GetTypeName());
 							Objects::Command::EntityCommand::UpdateTexture(container,*s,true);
@@ -3938,13 +3875,6 @@ int main( int argc, const char* argv[])
 							Objects::Command::EntityConstructionCommand::UpdateTexture(container,*c,nullptr);
 							FinishRendering(folder, container.texture, (*c)->typeName);
 						}
-
-						foreach(Objects::SubOrbital::prototypes, s)
-						{
-							LogEvent(EventSignificance::Uncommon, "Capturing "+(*s)->GetTypeName());
-							Objects::Command::EntityCommand::UpdateTexture(container,*s,true);
-							FinishRendering(folder, container.texture, (*s)->GetTypeName());
-						}
 					}
 				}
 				{
@@ -3963,7 +3893,7 @@ int main( int argc, const char* argv[])
 						unitList << "=Unit Types and Components="<<nl;
 
 						unitList << "==Structures=="<<nl;
-						foreach (Objects::structurePrototypes,s)
+						foreach (Objects::Prototypes::structures,s)
 						{
 							Objects::Command::Base::Label label;
 							(*s)->DescribeType(label,0xFFFFFFFF & ~Objects::WorldEntity::DescIncludeName & ~Objects::WorldEntity::DescIncludeCurrentHealth);
@@ -3996,7 +3926,7 @@ int main( int argc, const char* argv[])
 						}
 
 						unitList << "==Sub Orbital Planes=="<<nl;
-						foreach (Objects::SubOrbital::prototypes,s)
+						foreach (Objects::Prototypes::planes,s)
 						{
 							Objects::Description label;
 							(*s)->DescribeType(label,0xFFFFFFFF & ~Objects::WorldEntity::DescIncludeName & ~Objects::WorldEntity::DescIncludeCurrentHealth);
@@ -4008,10 +3938,13 @@ int main( int argc, const char* argv[])
 			}
 			else
 			{
-				display.assign(loop);
-				display.execute();
+
+				display.Assign(loop);
+				display.Execute();
+
 			}
 		#else
+			Loading::Finish();
 			while (!application_shutting_down && loop())
 			{};
 				
@@ -4046,7 +3979,7 @@ int main( int argc, const char* argv[])
 
 		#ifdef HAS_WINDOW
 			storageThread.Terminate();
-			display.destroy();
+			display.Destroy();
 		#endif
 
 		ServerProcess::Destroy();

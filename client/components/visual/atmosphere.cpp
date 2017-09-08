@@ -23,20 +23,20 @@ namespace Atmosphere
 	//		return;
 	//	float centerRadius = std::min(d-0.1f,upperPlanetRadius);
 	////	(/*upperPlanetRadius + */lowerPlanetRadius) * 0.5f/*/ 2.f*/;
-	//	float distanceFromCenter = sqr(centerRadius) / d;
-	//	float radius = sqrt(sqr(centerRadius) - sqr(distanceFromCenter));
+	//	float distanceFromCenter = M::Sqr(centerRadius) / d;
+	//	float radius = sqrt(M::Sqr(centerRadius) - M::Sqr(distanceFromCenter));
 
 	//	float3 normal = cameraPosition / d;
 	//	float3 center = normal * distanceFromCenter;
 
-		TMatrix4<> m;
+		M::TMatrix4<> m;
 		Mat::Mult(mainCamera.viewInvert,mainCamera.projectionInvert,m);
 	//	Mat::transpose(m);	//might not be necessary
 
 		display.SetObjectMatrix(m);
 
 
-		//TMatrix4<> system;
+		//M::TMatrix4<> system;
 		//Mat::makeAxisSystem(center,normal,2,system);
 		//system.x.xyz *= radius;
 		//system.y.xyz *= radius;

@@ -666,10 +666,7 @@ namespace Objects
 			#else
 				for (const auto&f: Faction::all)
 				{
-					PFaction faction = f.lock();
-					DBG_ASSERT__(faction);
-					if (faction)
-						func(faction->compound);
+					func(f->compound);
 				}
 				func(Faction::nexus->compound);
 			#endif

@@ -117,7 +117,26 @@ namespace Objects
 		{
 			ForeachWorldEntity([](const Objects::PWorldEntity&e)
 			{
-				ASSERT1__(GetEntity(e->location) == e, e->location.ToString());
+				if (e->IsAboveGrid())
+					return;
+				if (e->IsMobile())
+				{
+					const PMobileEntity found = GetMobileEntity(e->location);
+					if (found != e)
+					{
+						const String foundName = found ? (found->GetTypeName() + ' '+ found->GetName()) : "null";
+						FATAL__("Expected to find "+e->GetTypeName()+" "+e->GetName()+" in location "+ToString(e->location)+", but found "+foundName);
+					}
+				}
+				elif (e->IsStructure())
+				{
+					const PStructure found = GetStructure(e->location);
+					if (found != e)
+					{
+						const String foundName = found ? (found->GetTypeName() + ' '+ found->GetName()) : "null";
+						FATAL__("Expected to find "+e->GetTypeName()+" "+e->GetName()+" in location "+ToString(e->location)+", but found "+foundName);
+					}
+				}
 			},false);
 		}
 
@@ -198,13 +217,13 @@ namespace Objects
 					return;
 
 				
-				//if (d2 > sqr(maxRange))
+				//if (d2 > M::Sqr(maxRange))
 				//	return;
-				//if (d2 < sqr(turret->explosionRadius))
+				//if (d2 < M::Sqr(turret->explosionRadius))
 				//	return;
-				static Ctr::Buffer0<TVec4<> > trajectory;
+				static Ctr::Buffer0<M::TVec4<> > trajectory;
 				Grid::HCellIdI ic;
-				TVec3<> iat;
+				M::TVec3<> iat;
 				float angle;
 				if (Component::Turret::TraceTrajectory(base.turret->trajectoryType,base.GetFlatAttackRange(),   
 							world, World::actual,sourceLocation,TrajectoryEndPoint( loc ),trajectory,
@@ -221,7 +240,7 @@ namespace Objects
 			if (closest != Grid::LCellIdI::Invalid)
 			{
 				ASSERT__(closestEntity->isInserted);
-				LogEvent(EventSignificance::Debug,&source,"Auto-targeting "+closestEntity->GetName()+" (located at "+closestEntity->location.ToString()+") via closest viable trajectory target "+closest.ToString());
+				LogEvent(EventSignificance::Debug,&source,"Auto-targeting "+closestEntity->GetName()+" (located at "+ToString(closestEntity->location)+") via closest viable trajectory target "+ToString(closest));
 				LogEvent(EventClass( EventSignificance::Important, EventFlavor::Neutral),&source,"Auto-targeting "+closestEntity->GetNiceName());
 
 				outTarget = closest;
@@ -233,7 +252,7 @@ namespace Objects
 
 		
 		void Explode(const ApplicationInterface::TAttack& attack, 
-					 const Grid::HCellIdI&targetCell, const TVec3<>&center, int explosionRadius, int damageLevel, bool doomsday,
+					 const Grid::HCellIdI&targetCell, const M::TVec3<>&center, int explosionRadius, int damageLevel, bool doomsday,
 					 float&atTime)
 		{
 			if (doomsday && RuntimeConfig::doomsdayWeapons == RuntimeConfig::DoomsdayWeapons::Disallow)
@@ -274,8 +293,8 @@ namespace Objects
 				float dist2 = std::numeric_limits<float>::max(),
 						dist2IncludingBase = dist2;
 				const int h = e->GetHeight();
-				const TVec3<>&c = Grid::low.cells[e->location.stackID].cornerCenter;
-				TVec3<> p;
+				const M::TVec3<>&c = Grid::low.cells[e->location.stackID].cornerCenter;
+				M::TVec3<> p;
 				for (int k = 0; k <= h; k++)
 				{
 					Vec::mult(c,Grid::ToRadius(e->location.height + k),p);
@@ -312,7 +331,7 @@ namespace Objects
 				{
 					if (attack.attackFrom)
 					{
-						int d = vmin(damageLevel,e->health);
+						int d = M::Min(damageLevel,e->health);
 						attack.attackFrom->owner->statistics.SignalDamageDealtTo(attack.attackFrom,e->owner,d);
 						e->owner->statistics.SignalDamageReceivedFrom(attack.attackFrom->owner,d);
 					}
@@ -329,7 +348,7 @@ namespace Objects
 						}
 
 						e->SyncTime(atTime);
-						Remove(e,Objects::RemovalType::UncontrolledExplosion,atTime,false);
+						Remove(e,Objects::RemovalType::UncontrolledExplosion,atTime);
 						return;	//prevent being added to affected*
 					}
 					else
@@ -362,14 +381,7 @@ namespace Objects
 					foreach (Faction::all,f)
 					{
 						bool changed[BaseGrid::NumFamilies] = {false};
-						PFaction faction = f->lock();
-						if (faction)
-						{
-							faction->RegisterExplosionCrater(targetCell,terrainExplosionRadius,atTime);
-							//faction->knownWorld.Explode(targetCell,terrainExplosionRadius, changed);
-							//faction->SignalCoverageChange(changed,atTime);
-						}
-
+						(*f)->RegisterExplosionCrater(targetCell,terrainExplosionRadius,atTime);
 					}
 
 				foreach (affectedStructures, s)
@@ -399,7 +411,7 @@ namespace Objects
 		}
 	
 		void ExplodeEMP(const ApplicationInterface::TAttack& attack, 
-						const Grid::HCellIdI&targetCell, const TVec3<>&center, int explosionRadius, int damageLevel, float&atTime)
+						const Grid::HCellIdI&targetCell, const M::TVec3<>&center, int explosionRadius, int damageLevel, float&atTime)
 		{
 			ApplicationInterface::SignalExplosion(
 							attack, 
@@ -413,8 +425,8 @@ namespace Objects
 			{
 				float d2 = std::numeric_limits<float>::max();
 				const int h = e->GetHeight();
-				const TVec3<>&c = Grid::low.cells[e->location.stackID].cornerCenter;
-				TVec3<> p;
+				const M::TVec3<>&c = Grid::low.cells[e->location.stackID].cornerCenter;
+				M::TVec3<> p;
 				for (int k = 0; k <= h; k++)
 				{
 					Vec::mult(c,Grid::ToRadius(e->location.height + k),p);
@@ -476,8 +488,8 @@ namespace Objects
 		const auto& n = Grid::low.grid.GetCell(cellID.stackID).neighborhood;
 
 		#ifndef CLIENT
-			int lower = Math::clamp(cellID.height - 1, Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight),
-				upper = Math::clamp(cellID.height + 1, Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight);
+			int lower = M::Clamp(cellID.height - 1, Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight),
+				upper = M::Clamp(cellID.height + 1, Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight);
 			for (int h = lower; h <= upper; h++)
 			{
 				UINT32 layer = Grid::CellStack::ToLayer(h);
@@ -622,16 +634,16 @@ namespace Objects
 				}
 				if (grid[at])
 					LogEvent(EventClass::Preset::error,grid[at].get(),"Found instead of "+object->GetName());
-				String clone = cloneAt != InvalidIndex ? " {found clone ("+cloneIs->GetName()+") at "+Grid::LCellIdI(cloneAt%Grid::LowSetup::GridType::CellCount,Grid::CellStack::ToHeight((UINT32)( cloneAt/Grid::LowSetup::GridType::CellCount))).ToString()+"}" : "";
+				String clone = cloneAt != InvalidIndex ? " {found clone ("+cloneIs->GetName()+") at "+ToString(Grid::LCellIdI(cloneAt%Grid::LowSetup::GridType::CellCount,Grid::CellStack::ToHeight((UINT32)( cloneAt/Grid::LowSetup::GridType::CellCount))))+"}" : "";
 				if (foundAt != InvalidIndex)
 				{
 					Grid::LCellIdI actualLocation(foundAt%Grid::LowSetup::GridType::CellCount,Grid::CellStack::ToHeight((UINT32)( foundAt/Grid::LowSetup::GridType::CellCount)));
-					FATAL__("Trying to remove "+object->GetName()+" from location "+String(at)+"/"+location.ToString()+", but object resides in "+String(foundAt)+"/"+actualLocation.ToString()+clone);
+					FATAL__("Trying to remove "+object->GetName()+" from location "+String(at)+"/"+ToString(location)+", but object resides in "+String(foundAt)+"/"+ToString(actualLocation)+clone);
 				}
 				else
-					FATAL__("Trying to remove "+object->GetName()+" from location "+String(at)+"/"+location.ToString()+", but object is not mapped in the grid"+clone);
+					FATAL__("Trying to remove "+object->GetName()+" from location "+String(at)+"/"+ToString(location)+", but object is not mapped in the grid"+clone);
 			}
-			LogEvent(EventSignificance::Common,object.get(),"Removed from grid location "+String(at)+"/"+location.ToString());
+			LogEvent(EventSignificance::Common,object.get(),"Removed from grid location "+String(at)+"/"+ToString(location));
 			grid[at].reset();
 			object->isInsertedIntoGrid = false;
 		}
@@ -643,10 +655,10 @@ namespace Objects
 			index_t at = CellToGridIndex(location);
 			if (grid[at])
 			{
-				FATAL__("Trying to register "+object->GetName()+"(@"+object->location.ToString()+") at "+location.ToString()+": Cell occupied by "+grid[at]->GetName()+"(@"+grid[at]->location.ToString()+")");
+				FATAL__("Trying to register "+object->GetName()+"(@"+ToString(object->location)+") at "+ToString(location)+": Cell occupied by "+grid[at]->GetName()+"(@"+ToString(grid[at]->location)+")");
 			}
-			ASSERT3__(!grid[at],grid[at]->GetName(),location.ToString(),object->GetName());
-			LogEvent(EventSignificance::Common,object.get(),"Inserted into grid location "+String(at)+"/"+location.ToString());
+			ASSERT3__(!grid[at],grid[at]->GetName(),location,object->GetName());
+			LogEvent(EventSignificance::Common,object.get(),"Inserted into grid location "+String(at)+"/"+ToString(location));
 			grid[at] = object;
 			object->isInsertedIntoGrid = true;
 		}
@@ -1121,11 +1133,16 @@ namespace Objects
 	
 	static void	InsertConstructedEntity(const PWorldEntity&e, float&atTime, bool setHealthToFull)
 	{
+		#ifndef CLIENT
+			if (setHealthToFull && e->owner)
+				e->owner->statistics.SignalUnitAcquired(e,PFaction());
+		#endif
+
 		ASSERT1__(!e->isInserted, e->GetName());
 		#ifndef CLIENT
 			e->SyncTime(atTime);
 
-			ASSERT2__(To<Connector>::DynamicCast(e) || NothingBlockingHere(e->location,false),e->GetName(),e->location.ToString());
+			ASSERT2__(To<Connector>::DynamicCast(e) || NothingBlockingHere(e->location,false),e->GetName(),e->location);
 			e->ResetAllChange();
 		#else
 			ASSERT__(To<Connector>::DynamicCast(e) || e->IsMobile() || NothingBlockingHere(e->location,false));
@@ -1145,7 +1162,7 @@ namespace Objects
 			ASSERT1__(storedMobileEntities.FindAndErase(e),e->GetName());
 		if (!restored)
 			e->OnConstructionFinished(atTime);
-		LogEvent(EventSignificance::Common, e.get(),String(restored ? "Redeployed" : "Deployed")+" to "+e->location.ToString()+" at t="+String(atTime));
+		LogEvent(EventSignificance::Common, e.get(),String(restored ? "Redeployed" : "Deployed")+" to "+ToString(e->location)+" at t="+String(atTime));
 		if (!restored)
 		{
 			if (setHealthToFull)
@@ -1173,11 +1190,6 @@ namespace Objects
 	void	InsertConstructed( const PMobileEntity&v, float&atTime, bool insertIntoGrid/*= true*/, bool setHealthToFull/*=true*/)
 	{
 		//if (insertIntoGrid)
-		#ifndef CLIENT
-			if (setHealthToFull && v->owner)
-				v->owner->statistics.SignalUnitAcquired(v,PFaction());
-		#endif
-
 		v->UpdateSystem();
 		ASSERT1__(!v->isInsertedIntoGrid,v->GetName());
 		bool restored = idMap.IsSet(v->id);
@@ -1269,12 +1281,12 @@ namespace Objects
 				break;
 			}
 			existing = QueryGrid(structureGrid,s->location+h);
-			ASSERT4__(!existing,s->GetName(),s->location.ToString(),h,existing->GetName());
+			ASSERT4__(!existing,s->GetName(),s->location,h,existing->GetName());
 		}
 		if (s->HasFoundation())
 		{
 			existing = QueryGrid(structureGrid,s->location-1);
-			ASSERT3__(!existing,s->GetName(),s->location.ToString(),existing->GetName());
+			ASSERT3__(!existing,s->GetName(),s->location,existing->GetName());
 		}
 
 		InsertConstructedEntity(s,atTime,setHealthToFull);
@@ -1343,7 +1355,7 @@ namespace Objects
 
 
 
-	void					Remove( const PWorldEntity&e, RemovalType t, float&timestamp, bool controlEnabled, bool isRemovedFromGrid/*=false*/, bool ignoreIndestructible/*=false*/)
+	static void					InternalRemove( const PWorldEntity&e, RemovalType t, float&timestamp, bool isRemovedFromGrid/*=false*/, bool ignoreIndestructible/*=false*/)
 	{
 		if (!e)
 		{
@@ -1502,6 +1514,17 @@ namespace Objects
 
 		e->isInserted = false;
 	}
+
+	void			Remove( const PWorldEntity&e, RemovalType t, float&atTime)
+	{
+		InternalRemove(e,t,atTime,!e->isInsertedIntoGrid,false);
+	}
+
+	void			ForceRemove(const PWorldEntity&e, RemovalType t, float&atTime)
+	{
+		InternalRemove(e,t,atTime,!e->isInsertedIntoGrid,true);
+	}
+
 
 
 
@@ -2594,13 +2617,13 @@ namespace Objects
 		float max = 0.f;
 		for (index_t i = 0; i < Grid::LowSetup::GridType::CellCount; i++)
 		{
-			const TVec3<>&d0 = Grid::low.cells[i].centerVertex.xyz;
+			const M::TVec3<>&d0 = Grid::low.cells[i].centerVertex.xyz;
 
 			const auto&n = Grid::low.grid.GetCell(i).neighborhood;
 			for (int c = 0; c < n.numNeighbors; c++)
 				if (n.neighborID[c] > i)
 				{
-					const TVec3<>&d1 = Grid::low.cells[n.neighborID[c]].centerVertex.xyz;
+					const M::TVec3<>&d1 = Grid::low.cells[n.neighborID[c]].centerVertex.xyz;
 
 					float a = Vec::angle(d0,d1);
 					max = std::max(max,a);
@@ -2612,8 +2635,8 @@ namespace Objects
 
 	int EstimateMinimumRemainingCost(const Grid::LCellIdI&from, const Grid::LCellIdI&to, int minHorizontalCost, int minVerticalCost)
 	{
-		const TVec3<>&d0 = Grid::low.cells[from.stackID].centerVertex.xyz;
-		const TVec3<>&d1 = Grid::low.cells[to.stackID].centerVertex.xyz;
+		const M::TVec3<>&d0 = Grid::low.cells[from.stackID].centerVertex.xyz;
+		const M::TVec3<>&d1 = Grid::low.cells[to.stackID].centerVertex.xyz;
 		float a = Vec::angle(d0,d1);
 		int hSteps = (int)floor(a / maxAngleBetweenNeighboringCells);
 		int vSteps = abs(from.height - to.height);
@@ -2756,7 +2779,7 @@ namespace Objects
 
 		Grid::LCellIdI	possibilities[6 * 3 + 2];
 
-		const TIntRange<int> heightRange = IntRange(std::min(from.height,to.height),std::max(from.height,to.height)+1);
+		const M::TIntRange<int> heightRange = M::IntRange(std::min(from.height,to.height),std::max(from.height,to.height)+1);
 
 		static const count_t cellCount = Grid::LowSetup::GridType::CellCount * Grid::CellStack::Range;
 
@@ -3027,17 +3050,17 @@ namespace Objects
 	}
 
 
-	PVehicle		SpawnVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase&base, Component::Turret&turret, bool fillStorage, float&atTime)
+	PVehicle		InsertNewVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase&base, Component::Turret&turret, bool fillStorage, float&atTime)
 	{
-		return SpawnVehicle(owner,baseLocation,&base,&turret,fillStorage,atTime);
+		return InsertNewVehicle(owner,baseLocation,&base,&turret,fillStorage,atTime);
 	}
 
-	PVehicle SpawnVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase*base, Component::Turret*turret, bool fillStorage, float&atTime)
+	PVehicle InsertNewVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase*base, Component::Turret*turret, bool fillStorage, float&atTime)
 	{
 		PVehicle vehicle(new Vehicle(owner, baseLocation,base,turret));
 		#ifdef CLIENT
 			vehicle->location = baseLocation;
-			ASSERT3__(vehicle->preAnimationLocation == vehicle->location,vehicle->preAnimationLocation.ToString(),vehicle->location.ToString(),vehicle->GetName());
+			ASSERT3__(vehicle->preAnimationLocation == vehicle->location,vehicle->preAnimationLocation,vehicle->location,vehicle->GetName());
 			//vehicle->preAnimationLocation = vehicle->location;
 		#else
 			vehicle->health = vehicle->GetMaxHealth();	//or else PositionOnTop will fail
@@ -3053,31 +3076,7 @@ namespace Objects
 	}
 
 
-	#ifdef CLIENT
-		PVehicle		SpawnVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName base, ConstName turret, bool placeNow, bool isOwnedByMe)
-	#else
-		PVehicle		AssembleVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation, const String&base, const String&turret)
-	#endif
-	{
-		Component::Turret* t = Component::GetTurretByName(turret);
-		Component::VehicleBase* b = Component::GetVehicleBaseByName(base);
-		ASSERT__(b);
-		ASSERT__(t);
-		PVehicle vehicle(new Vehicle(owner, baseLocation,b,t));
-		vehicle->location = baseLocation;
-		vehicle->id = id;
-		vehicle->UpdateSystem();
-		#ifdef CLIENT
-			vehicle->UpdateNiceName();
-			vehicle->isOwnedByMe = isOwnedByMe;
-			if (placeNow)
-				Place(vehicle);
-			//else
-			//	unplacedIDMap.Set(id,vehicle);
-		#endif
-		return vehicle;
-	}
-
+	
 
 
 	#ifndef CLIENT
@@ -3086,7 +3085,7 @@ namespace Objects
 			if (turret.IsNotEmpty())
 				return AssembleVehicle(owner,id,baseLocation,base,turret);
 			
-			PWorldEntity	proto = GetNonVehiclePrototypeByName(base);
+			PWorldEntity	proto = Prototypes::all.FindByName(base);
 			if (!proto)
 				return PMobileEntity();
 			ASSERT1__(proto,base);
@@ -3101,20 +3100,59 @@ namespace Objects
 			return s;
 		}
 
-	#else
 
-		PMobileEntity		SpawnMobileEntity(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName base, ConstName turret, bool placeNow, bool isOwnedByMe)
+		PVehicle		AssembleVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation, const EntityType&type)
 		{
-			if (turret != ConstName::Empty)
-				return Objects::SpawnVehicle(owner,  id,baseLocation,base,turret,placeNow,isOwnedByMe);
-			return Objects::SpawnNonVehicleMobile(owner,  id,baseLocation,base,placeNow,isOwnedByMe);
+			Component::Turret* t = Component::vehicleTurretComponents.Find(type.turretType);
+			Component::VehicleBase* b = Component::baseComponents.Find(type.baseType);
+			ASSERT__(b);
+			ASSERT__(t);
+			PVehicle vehicle(new Vehicle(owner, baseLocation,b,t));
+			vehicle->location = baseLocation;
+			vehicle->id = id;
+			vehicle->UpdateSystem();
+			return vehicle;
 		}
 
-		PMobileEntity			SpawnNonVehicleMobile(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName type, bool placeNow, bool isOwnedByMe)
+		PVehicle		AssembleVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation, const String&base, const String&turret)
 		{
-			PWorldEntity	proto = GetNonVehiclePrototypeByName(type);
-			ASSERT1__(proto,(int)type);
-			ASSERT1__(proto->IsMobile(),proto->GetTypeName());
+			Component::Turret* t = Component::vehicleTurretComponents.FindByName(turret);
+			Component::VehicleBase* b = Component::baseComponents.FindByName(base);
+			ASSERT__(b);
+			ASSERT__(t);
+			PVehicle vehicle(new Vehicle(owner, baseLocation,b,t));
+			vehicle->location = baseLocation;
+			vehicle->id = id;
+			vehicle->UpdateSystem();
+			return vehicle;
+		}
+
+	#else
+
+		PVehicle		SpawnVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,EntityType type, bool placeNow, bool isOwnedByMe)
+		{
+			Component::Turret* t = Component::vehicleTurretComponents.Find(type.turretType);
+			Component::VehicleBase* b = Component::baseComponents.Find(type.baseType);
+			ASSERT__(b);
+			ASSERT__(t);
+			PVehicle vehicle(new Vehicle(owner, baseLocation,b,t));
+			vehicle->location = baseLocation;
+			vehicle->id = id;
+			vehicle->UpdateSystem();
+			#ifdef CLIENT
+				vehicle->UpdateNiceName();
+				vehicle->isOwnedByMe = isOwnedByMe;
+				if (placeNow)
+					Place(vehicle);
+				//else
+				//	unplacedIDMap.Set(id,vehicle);
+			#endif
+			return vehicle;
+		}
+
+
+		PMobileEntity			SpawnNonVehicleMobile(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,const PMobileEntity&proto, bool placeNow, bool isOwnedByMe)
+		{
 			PMobileEntity s = To<MobileEntity>::Cast( proto->CreateNewInstance(owner,baseLocation,0) );
 			s->location = baseLocation;
 			s->id = id;
@@ -3127,29 +3165,49 @@ namespace Objects
 			return s;
 		}
 
-		PStructure		SpawnStructure(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&location,ConstName type, bool placeNow, bool isOwnedByMe)
+		PMobileEntity		SpawnMobileEntity(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,EntityType type, bool placeNow, bool isOwnedByMe)
 		{
-			foreach (structurePrototypes,p)
-				if ((*p)->GetCTypeName() == type)
+
+			PWorldEntity proto = Prototypes::Find(type);
+			if (proto)
+			{
+				ASSERT1__(proto->IsMobile(),proto->GetTypeName());
+				return SpawnNonVehicleMobile(owner,id,baseLocation,To<MobileEntity>::Cast( proto ),placeNow,isOwnedByMe);
+			}
+			return SpawnVehicle(owner,  id,baseLocation,type,placeNow,isOwnedByMe);
+		}
+
+		PMobileEntity			SpawnNonVehicleMobile(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,EntityType type, bool placeNow, bool isOwnedByMe)
+		{
+			PWorldEntity proto = Prototypes::Find(type);
+			ASSERT1__(proto,ToString(type));
+			ASSERT1__(proto->IsMobile(),proto->GetTypeName());
+			return SpawnNonVehicleMobile(owner,id,baseLocation,To<MobileEntity>::Cast( proto ),placeNow,isOwnedByMe);
+		}
+
+		PStructure		SpawnStructure(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&location,EntityType type, bool placeNow, bool isOwnedByMe)
+		{
+			auto proto = Prototypes::structures.Find(type);
+			if (proto)
+			{
+				//PStructure s = (*p)->CreateNewInstance(location);
+				PStructure s = To<Structure>::Cast(proto->CreateNewInstance(owner,location,0));
+				s->health = s->GetMaxHealth();
+				s->id = id;
+				s->UpdateNiceName();
+				s->isOwnedByMe = isOwnedByMe;
+				//LogEvent(EventSignificance::Common, s.get(),"Constructed " + s->GetName());
+				if (placeNow)
 				{
-					//PStructure s = (*p)->CreateNewInstance(location);
-					PStructure s = To<Structure>::Cast((*p)->CreateNewInstance(owner,location,0));
-					s->health = s->GetMaxHealth();
-					s->id = id;
-					s->UpdateNiceName();
-					s->isOwnedByMe = isOwnedByMe;
-					//LogEvent(EventSignificance::Common, s.get(),"Constructed " + s->GetName());
-					if (placeNow)
-					{
-						Place(s);
-					}
-					//else
-					//	unplacedIDMap.Set(id,s);
-
-
-					return s;
+					Place(s);
 				}
-			FATAL__("Type not found for construction #" + String((int)type));
+				//else
+				//	unplacedIDMap.Set(id,s);
+
+
+				return s;
+			}
+			FATAL__("Type not found for construction: " + type.ToNumericString());
 			return PStructure();
 		}
 		void			Place( const PStructure&s)
@@ -3160,7 +3218,7 @@ namespace Objects
 		void			Place( const PVehicle&vehicle, bool insertIntoGrid/*=true*/)
 		{
 			ASSERT__(vehicle);
-			ASSERT3__(vehicle->preAnimationLocation == vehicle->location,vehicle->preAnimationLocation.ToString(),vehicle->location.ToString(),vehicle->GetName());
+			ASSERT3__(vehicle->preAnimationLocation == vehicle->location,vehicle->preAnimationLocation,vehicle->location,vehicle->GetName());
 			float t = 0;
 			//vehicle->preAnimationLocation = vehicle->location;
 			InsertConstructed(vehicle,t,insertIntoGrid,false);
@@ -3182,7 +3240,7 @@ namespace Objects
 		void			Place( const SubOrbital::PPlane&s)
 		{
 			ASSERT__(s);
-			ASSERT3__(s->preAnimationLocation == s->location,s->preAnimationLocation.ToString(),s->location.ToString(),s->GetName());
+			ASSERT3__(s->preAnimationLocation == s->location,s->preAnimationLocation,s->location,s->GetName());
 			float t = 0;
 			InsertConstructed(s,t);
 			ASSERT1__(SubOrbital::planes.Contains(s),s->GetName());
@@ -3191,7 +3249,7 @@ namespace Objects
 		void			PlaceMobileEntity( const PMobileEntity&m, bool insertIntoGridIfVehicle/*=true*/)
 		{
 			ASSERT__(m);
-			ASSERT3__(m->preAnimationLocation == m->location,m->preAnimationLocation.ToString(),m->location.ToString(),m->GetName());
+			ASSERT3__(m->preAnimationLocation == m->location,m->preAnimationLocation,m->location,m->GetName());
 			float t = 0;
 			InsertConstructed(m,t,insertIntoGridIfVehicle);
 			#ifndef NO_SATELLITES
@@ -3261,7 +3319,7 @@ namespace Objects
 				MobilePlacementResult result = v->PlaceExactlyAt(c,0,0,false,false);
 				if (Failed(result))
 				{
-					FATAL__(v->GetName()+": Failed to position non-constructed at "+c.ToString());
+					FATAL__(v->GetName()+": Failed to position non-constructed at "+ToString(c));
 				}
 				if (result == MobilePlacementResult::PlacementOkay || result == MobilePlacementResult::PlacementOkayFellDown)
 				{

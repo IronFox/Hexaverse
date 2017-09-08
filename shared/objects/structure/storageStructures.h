@@ -99,7 +99,7 @@ namespace Objects
 		/**/						FuelContainer()	{maxStorage.level[Resource::Fuel] = 400; }	//global prototype
 	public:
 		virtual String				GetTypeName() const override { return "Fuel Container"; };
-		virtual ConstName			GetCTypeName() const override {return ConstName::Type_FuelContainer;}
+		virtual EntityType			GetType() const override {return ConstName::Type_FuelContainer;}
 
 	};
 
@@ -114,7 +114,7 @@ namespace Objects
 		/**/						MineralContainer()	{maxStorage.level[Resource::Minerals] = 400; }	//global prototype
 	public:
 		virtual String				GetTypeName() const override { return "Mineral Container"; };
-		virtual ConstName			GetCTypeName() const override {return ConstName::Type_MineralContainer;}
+		virtual EntityType			GetType() const override {return ConstName::Type_MineralContainer;}
 
 	};
 
@@ -129,7 +129,7 @@ namespace Objects
 		/**/						UraniumStorage()	{maxStorage.level[Resource::Uranium] = 400; }	//global prototype
 	public:
 		virtual String				GetTypeName() const override { return "Uranium Storage"; };
-		virtual ConstName			GetCTypeName() const override {return ConstName::Type_UraniumStorage;}
+		virtual EntityType			GetType() const override {return ConstName::Type_UraniumStorage;}
 
 	};
 
@@ -156,7 +156,7 @@ namespace Objects
 		}	//global prototype
 	public:
 		virtual String				GetTypeName() const override { return "Munition Storage"; };
-		virtual ConstName			GetCTypeName() const override {return ConstName::Type_MunitionStorage;}
+		virtual EntityType			GetType() const override {return ConstName::Type_MunitionStorage;}
 
 	};
 
@@ -215,7 +215,7 @@ namespace Objects
 
 
 		virtual String				GetTypeName() const override { return "Munition Factory"; };
-		virtual ConstName			GetCTypeName() const override {return ConstName::Type_MunitionFactory;}
+		virtual EntityType			GetType() const override {return ConstName::Type_MunitionFactory;}
 
 
 		#ifdef HAS_WINDOW

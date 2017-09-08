@@ -144,8 +144,8 @@ namespace Objects
 				const Grid::CellStack&stack = World::actual.GetStack(Grid::low.grid.GetCell(c.stackID).higherEquivalent);
 				while (stack.GetCellI(c.height).structureCounter > 1)
 					c++;
-				TMatrix4<> sys;
-				const TVec3<>&dir = Grid::low.cells[c.stackID].centerVertex.xyz;
+				M::TMatrix4<> sys;
+				const M::TVec3<>&dir = Grid::low.cells[c.stackID].centerVertex.xyz;
 				float h = Grid::ToRadiusf(float(c.height));
 				Mat::makeAxisSystem(dir*h,dir,2,sys);
 				sys.x.xyz *= 0.75f * Grid::UnitScale;
@@ -214,10 +214,10 @@ namespace Objects
 			MobilePlacementResult rs = v->PlaceExactlyAt(c,0,0,false,false);
 			if (Failed(rs))
 			{
-				LogEvent(EventClass::Preset::fatal,v.get(),"Failed to position non-constructed at "+c.ToString());
+				LogEvent(EventClass::Preset::fatal,v.get(),"Failed to position non-constructed at "+ToString(c));
 				FATAL__("Failed to position entity as designated position");
 			}
-			LogEvent(EventSignificance::Debug,parent,"Successfully spawned finished production  "+production->GetNiceName()+" at "+c.ToString()+" with placement result "+String(rs.ToString()));
+			LogEvent(EventSignificance::Debug,parent,"Successfully spawned finished production  "+production->GetNiceName()+" at "+ToString(c)+" with placement result "+String(rs.ToString()));
 
 			if (rs != MobilePlacementResult::EnteredStructure)
 				InsertConstructed(v,t);
@@ -336,12 +336,12 @@ namespace Objects
 			return v;
 		}
 
-		MobileEntityProducer::WorkItem*				MobileEntityProducer::EnqueueProductionOfVehicle(ConstName baseName, ConstName turretName)
+		MobileEntityProducer::WorkItem*				MobileEntityProducer::EnqueueProductionOfVehicle(EntityType t)
 		{
 			WorldEntity*parent = dynamic_cast<WorldEntity*>(this);
 			ASSERT_NOT_NULL__(parent);
-			Component::VehicleBase* base = Component::GetVehicleBaseByName(baseName);
-			Component::Turret* turret = Component::GetTurretByName(turretName);
+			Component::VehicleBase* base = Component::baseComponents.Find(t.baseType);
+			Component::Turret* turret = Component::vehicleTurretComponents.Find(t.turretType);
 			if (!turret)
 			{
 				LogEvent(EventClass::Preset::commandRejected,parent,"Invalid turret component");
@@ -508,7 +508,7 @@ namespace Objects
 		}
 		#endif
 
-		void				MobileEntityProducer::AppendTask(const TUniqueID&id, ConstName baseName, ConstName turretName)
+		void				MobileEntityProducer::AppendTask(const TUniqueID&id, EntityType type)
 		{
 			//PSatellite	satellite;
 			//VehicleBase* base;
@@ -520,20 +520,10 @@ namespace Objects
 			Component::VehicleBase* base = nullptr;
 			Component::Turret* turret = nullptr;
 			PWorldEntity prototype;
-			if (turretName != ConstName::Empty)
-			{
-				base = Component::GetVehicleBaseByName(baseName);
-				turret = Component::GetTurretByName(turretName);
-				ASSERT_NOT_NULL1__(turret, (int)turretName);
-				ASSERT_NOT_NULL1__(base, (int)baseName);
 
-				price = Vehicle::GetPrice(base,turret,parent->owner);
-				name = Vehicle::GetTypeName(base,turret);
-			}
-			else
+			prototype = Prototypes::Find(type);
+			if (prototype)
 			{
-				prototype = GetNonVehiclePrototypeByName(baseName);
-				ASSERT1__(prototype, (int)baseName);
 				prototype->owner = parent->owner;
 					price = prototype->GetConstructionCost();
 				prototype->owner.reset();
@@ -544,6 +534,17 @@ namespace Objects
 					turret = To<Vehicle>::Cast(prototype)->turret;
 				}
 			}
+			else
+			{
+				base = Component::baseComponents.Find(type.baseType);
+				turret = Component::vehicleTurretComponents.Find(type.turretType);
+				ASSERT_NOT_NULL1__(turret, (int)type.turretType);
+				ASSERT_NOT_NULL1__(base, (int)type.baseType);
+
+				price = Vehicle::GetPrice(base,turret,parent->owner);
+				name = Vehicle::GetTypeName(base,turret);
+			}
+			
 
 			{
 				//PVehicle vehicle(new Vehicle(location,base,turret));

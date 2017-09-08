@@ -2,9 +2,25 @@
 #include "entity.h"
 #include "../runtimeConfig.h"
 #include "faction.h"
+#include "prototypes.h"
+#include "../cast.h"
+#include "mobileEntity.h"
 
 namespace Objects
 {
+
+	static bool statisticsInNetworkMode = true;
+
+	/*static*/ void		Statistics::EnterFileMode()
+	{
+		statisticsInNetworkMode = false;
+	}
+
+	/*static*/ void		Statistics::EnterNetworkMode()
+	{
+		statisticsInNetworkMode = true;
+	}
+
 
 	UINT64&					Statistics::MetricTable::Fetch(Metric metric)
 	{
@@ -47,28 +63,37 @@ namespace Objects
 	}
 
 
-	/*virtual override*/	void			Statistics::MetricTable::Serialize(IWriteStream&outStream) const
+	void			SerialSync(IWriteStream&s, const Statistics::MetricTable&m)
 	{
-		outStream.WriteSize(map.Count());
-		map.VisitAllEntries([&outStream](K key, UINT64 value)
+		s.WriteSize(m.map.Count());
+		m.map.VisitAllEntries([&s](Statistics::MetricTable::K key, UINT64 value)
 		{
-			outStream.WriteSize(key);
-			outStream.WriteSize(value);
+			if (value > 0)
+			{
+				s.WriteSize(key);
+				s.WriteSize(value);
+			}
 		});
 	}
-	/*virtual override*/	void			Statistics::MetricTable::Deserialize(IReadStream&inStream)
+
+	void			SerialSync(IReadStream&s, Statistics::MetricTable&m)
 	{
 		count_t entries = 0;
-		inStream.ReadSize(entries);
-		map.Clear();
+		s.ReadSize(entries);
+		m.map.Clear();
 		for (index_t i = 0; i < entries; i++)
 		{
-			K key;
+			Statistics::MetricTable::K key;
 			UINT64 val;
-			inStream.ReadSize(key);
-			inStream.ReadSize(val);
+			s.ReadSize(key);
+
+			if (key >= (UINT64)Statistics::Metric::Count)
+				throw Except::Memory::SerializationFault(CLOCATION,"Deserialized key #"+String(key)+" exceeds valid metric range");
+
+			s.ReadSize(val);
+
 			if (val > 0)
-				map.Set(key,val);
+				m.map.Set(key,val);
 		};
 	}
 
@@ -111,10 +136,12 @@ namespace Objects
 
 	Statistics::Statistics(const Faction*owner):owner(owner)
 	{
-		history.Append();
+		#ifndef CLIENT
+			history.Append().mainRound = RuntimeConfig::roundNumber.main;
+		#endif
 	}
 
-	Statistics::Interaction&	Statistics::Get(const PFaction&remote)
+	Statistics::FactionInteraction&	Statistics::Get(const PFaction&remote)
 	{
 		auto rs = interactionMap.QueryPointer(remote.get());
 		if (rs)
@@ -124,59 +151,75 @@ namespace Objects
 		return *rs;
 	}
 
-	Statistics::UnitStatistics&	Statistics::GetTypeOf(const PWorldEntity&e)
+	Statistics::EntityType&	Statistics::GetTypeOf(const PWorldEntity&e)
 	{
-		String name = e->GetTypeName();
-		auto rs = unitStatistics.QueryPointer(name);
+		const auto type = e->GetType();
+		auto rs = entityTypes.QueryPointer(type);
 		if (rs)
 			return *rs;
-		rs = &unitStatistics.Set(name);
-		rs->typeName = name;
+		rs = &entityTypes.Set(type);
+		rs->type = type;
 		return *rs;
 	}
 
 
 
 
-	/*virtual override*/	void					Statistics::Interaction::Serialize(IWriteStream&outStream) const
+	/*virtual override*/	void					Statistics::FactionInteraction::Serialize(IWriteStream&s) const
 	{
-		outStream.Write(remoteID.bytes,remoteID.NumBytes);
-		metrics.Serialize(outStream);
+		using Serialization::SerialSync;
+		s.Write(remoteID.bytes,remoteID.NumBytes);
+		SerialSync(s,metrics);
 	}
 
-	/*virtual override*/	void					Statistics::Interaction::Deserialize(IReadStream&inStream)
+	/*virtual override*/	void					Statistics::FactionInteraction::Deserialize(IReadStream&s)
 	{
-		inStream.Read(remoteID.bytes,remoteID.NumBytes);
-		metrics.Deserialize(inStream);
+		using Serialization::SerialSync;
+		s.Read(remoteID.bytes,remoteID.NumBytes);
+		SerialSync(s,metrics);
 	}
 
 
-	/*virtual override*/	void					Statistics::UnitStatistics::Serialize(IWriteStream&outStream) const
+	/*virtual override*/	void					Statistics::EntityType::Serialize(IWriteStream&s) const
 	{
-		SerialSync(outStream,typeName);
-		metrics.Serialize(outStream);
+		using Serialization::SerialSync;
+		if (statisticsInNetworkMode)
+			SerialSync(s,type);
+		else
+			SerialSync(s,ToString(type));
+		SerialSync(s,metrics);
 	}
 
-	/*virtual override*/	void					Statistics::UnitStatistics::Deserialize(IReadStream&inStream)
+	/*virtual override*/	void					Statistics::EntityType::Deserialize(IReadStream&s)
 	{
-		SerialSync(inStream,typeName);
-		metrics.Deserialize(inStream);
+		using Serialization::SerialSync;
+		if (statisticsInNetworkMode)
+			SerialSync(s,type);
+		else
+		{
+			String str;
+			SerialSync(s,str);
+			type = DecodeType(str);
+		}
+		SerialSync(s,metrics);
 	}
 
-	/*virtual override*/	void					Statistics::RoundStatistics::Serialize(IWriteStream&s) const
+	/*virtual override*/	void					Statistics::Round::Serialize(IWriteStream&s) const
 	{
+		using Serialization::SerialSync;
 		SerialSync(s,production);
 		SerialSync(s,consumption);
-		metrics.Serialize(s);
-		s.WriteSize(mainRound);
+		SerialSync(s,metrics);
+		SerialSync(s,mainRound);
 	}
 
-	/*virtual override*/	void					Statistics::RoundStatistics::Deserialize(IReadStream&s)
+	/*virtual override*/	void					Statistics::Round::Deserialize(IReadStream&s)
 	{
+		using Serialization::SerialSync;
 		SerialSync(s,production);
 		SerialSync(s,consumption);
-		metrics.Deserialize(s);
-		s.ReadSize(mainRound);
+		SerialSync(s,metrics);
+		SerialSync(s,mainRound);
 	}
 
 
@@ -186,47 +229,76 @@ namespace Objects
 		void			Statistics::SignalDamageReceivedFrom(const PFaction&source, int level)
 		{
 			Get(source).metrics.Add(Metric::DamageReceived, level);
+			history.Last().metrics.Add(Metric::DamageReceived,level);
 		}
 
 		void			Statistics::SignalDamageDealtTo(const PWorldEntity&causedBy, const PFaction&receiver, int level)
 		{
 			Get(receiver).metrics.Add(Metric::DamageDealt,level);
 			GetTypeOf(causedBy).metrics.Add(Metric::DamageDealt,level);
+			history.Last().metrics.Add(Metric::DamageDealt,level);
 		}
 
 		void			Statistics::SignalEMPDamageReceivedFrom(const PFaction&source, int level)
 		{
 			Get(source).metrics.Add(Metric::EMPDamageReceived,level);
+			history.Last().metrics.Add(Metric::EMPDamageReceived,level);
 		}
 
 		void			Statistics::SignalEMPDamageDealtTo(const PWorldEntity&causedBy, const PFaction&receiver, int level)
 		{
 			Get(receiver).metrics.Add(Metric::EMPDamageDealt,level);
 			GetTypeOf(causedBy).metrics.Add(Metric::EMPDamageDealt,level);
+			history.Last().metrics.Add(Metric::EMPDamageDealt,level);
 		}
 		
 		void			Statistics::SignalDestructionOfHostile(const PWorldEntity&causedBy, const PWorldEntity&destroyed)
 		{
+			int res = destroyed->GetConstructionCost();
+			#ifndef ONE_COMPOUND_PER_FACTION
+				if (destroyed->IsMobile())
+				{
+					res += To<MobileEntity>::Cast(destroyed)->currentStorage.Sum();
+				}
+			#endif
+
 			auto&in = Get(destroyed->owner);
 			in.metrics.Inc(Metric::UnitsKilled);
-			in.metrics.Add(Metric::ResourcesDestroyed,destroyed->GetConstructionCost());
+			in.metrics.Add(Metric::ResourcesDestroyed,res);
 			auto&un = GetTypeOf(causedBy);
 			un.metrics.Inc(Metric::UnitsKilled);
-			un.metrics.Add(Metric::ResourcesDestroyed,destroyed->GetConstructionCost());
+			un.metrics.Add(Metric::ResourcesDestroyed,res);
+
+			history.Last().metrics.Inc(Metric::UnitsKilled);
+			history.Last().metrics.Add(Metric::ResourcesDestroyed,res);
 		}
 		
 		void			Statistics::SignalLossOf(const PWorldEntity&destroyed, const PFaction&causedBy, bool stolen)
 		{
+			int res = destroyed->GetConstructionCost();
+			#ifndef ONE_COMPOUND_PER_FACTION
+				if (destroyed->IsMobile())
+				{
+					res += To<MobileEntity>::Cast(destroyed)->currentStorage.Sum();
+				}
+			#endif
+
 			auto&in = Get(causedBy);
 			if (stolen)
 			{
-				in.metrics.Inc(Metric::UnitsStolenBy);
-				in.metrics.Add(Metric::ResourcesStolenBy, destroyed->GetConstructionCost());
+				in.metrics.Inc(Metric::UnitsStolenByOther);
+				in.metrics.Add(Metric::ResourcesStolenByOther, res);
+
+				history.Last().metrics.Inc(Metric::UnitsStolenByOther);
+				history.Last().metrics.Add(Metric::ResourcesStolenByOther, res);
 			}
 			else
 			{
-				in.metrics.Inc(Metric::UnitsKilledBy);
-				in.metrics.Add(Metric::ResourcesDestroyedBy,destroyed->GetConstructionCost());
+				in.metrics.Inc(Metric::UnitsKilledByOther);
+				in.metrics.Add(Metric::ResourcesDestroyedByOther,res);
+
+				history.Last().metrics.Inc(Metric::UnitsKilledByOther);
+				history.Last().metrics.Add(Metric::ResourcesDestroyedByOther, res);
 			}
 			auto&un = GetTypeOf(destroyed);
 			un.metrics.Inc(Metric::Lost);
@@ -234,17 +306,34 @@ namespace Objects
 
 		void			Statistics::SignalUnitAcquired(const PWorldEntity&e, const PFaction&previousOwner)
 		{
+			int res = e->GetConstructionCost();
+			#ifndef ONE_COMPOUND_PER_FACTION
+				if (e->IsMobile())
+				{
+					res += To<MobileEntity>::Cast(destroyed)->currentStorage.Sum();
+				}
+			#endif	
+				
 			if (previousOwner)
 			{
 				auto&in = Get(previousOwner);
 				in.metrics.Inc(Metric::UnitsStolen);
-				in.metrics.Add(Metric::ResourcesStolen, e->GetConstructionCost());
+				in.metrics.Add(Metric::ResourcesStolen, res);
+
+				history.Last().metrics.Inc(Metric::UnitsStolen);
+				history.Last().metrics.Add(Metric::ResourcesStolen, res);
 			}
+			else
+			{
+				history.Last().metrics.Inc(Metric::UnitsBuilt);
+				history.Last().metrics.Add(Metric::ResourcesUsedForConstruction, res);
+			}
+
 			auto&un = GetTypeOf(e);
 			if (previousOwner)
-				un.metrics.Inc(Metric::Stolen);
+				un.metrics.Inc(Metric::UnitsStolen);
 			else
-				un.metrics.Inc(Metric::Built);
+				un.metrics.Inc(Metric::UnitsBuilt);
 		}
 
 
@@ -284,6 +373,15 @@ namespace Objects
 						prog.metrics.Set(Metric::CurrentEntityMineralValue, stat.totalEntityMineralValue);
 						f->CheckSensory();
 						prog.metrics.Set(Metric::CurrentSensorCoverage, f->knownWorld.CountVisibleCells());
+						prog.metrics.Set(Metric::OffensiveCapabilities, f->GetOffensiveCapabilities());
+						prog.metrics.Set(Metric::NumTerraformers, f->CountTurretType(ConstName::Turret_Terraformer));
+						prog.metrics.Set(Metric::NumFactories, f->CountStructureType(ConstName::Type_VehiclePlant));
+						prog.metrics.Set(Metric::NumLaboratories, f->CountStructureType(ConstName::Type_Laboratory));
+						prog.metrics.Set(Metric::ResearchSpeed, f->researchState.GetResearchSpeed());
+						prog.metrics.Set(Metric::WinningScore,f->GetWinningScore());
+						prog.metrics.Set(Metric::NexusPortsOwned,f->acquiringNexusControl + f->nexusControl);
+						prog.metrics.Set(Metric::NexusPortsControlled,f->nexusControl);
+
 						stat.totalEntities = 0;
 						stat.totalEntityMineralValue = 0;
 					}
@@ -294,121 +392,183 @@ namespace Objects
 
 
 
-		namespace ChunkID
-		{
-			const Riff::TID
-				round("RND "),
 
-				unit("UNIT"),
-				interaction("INTR"),
-
-
-
-				unusedTerm("ZZZZ");	
-
-		};
-
-
-		void			Statistics::ExportInto(Riff::Chunk*chunk) const
-		{
-			ByteStreamBuffer stream;
-			{
-				
-				foreach (this->history,r)
-				{
-					stream.Clear();
-					r->Serialize(stream);
-					chunk->AppendBlock(ChunkID::round,stream);
-				}
-			}
-			{
-				this->unitStatistics.VisitAllValues([chunk,&stream](const UnitStatistics&stat)
-				{
-					stream.Clear();
-					stat.Serialize(stream);
-					chunk->AppendBlock(ChunkID::unit,stream);
-				});
-			}
-			{
-				this->interactionMap.VisitAllValues([chunk,&stream](const Interaction&stat)
-				{
-					stream.Clear();
-					stat.Serialize(stream);
-					chunk->AppendBlock(ChunkID::interaction,stream);
-				});
-			}
-		}
-
-		void			Statistics::ImportFrom(const Riff::Chunk*chunk, const GenericHashTable<TUniqueID,Objects::PFaction>&factionMap)
-		{
-			history.Clear();
-			unitStatistics.Clear();
-			interactionMap.Clear();
-
-			if (ApplicationInterface::globalVersionOfCurrentFile >= ApplicationInterface::FileVersions::NewSerializationEngine)
-			{
-				const Riff::Chunk*child = chunk->GetFirstChild();
-				do
-				{
-					const char* chunkType = nullptr;
-					try
-					{
-						if (child->IsID(ChunkID::round))
-						{
-							chunkType = "RoundStatistics";
-							RoundStatistics stat;
-							DeserializeFromCompactMemory(stat,child->pointer(),child->size());
-							history << stat;
-						}
-						else
-						if (child->IsID(ChunkID::unit))
-						{
-							chunkType = "UnitStatistics";
-							UnitStatistics stat;
-							DeserializeFromCompactMemory(stat,child->pointer(),child->size());
-							unitStatistics.Set(stat.typeName,stat);
-						}
-						else
-						if (child->IsID(ChunkID::interaction))
-						{
-							chunkType = "Interaction";
-							Interaction stat;
-							DeserializeFromCompactMemory(stat,child->pointer(),child->size());
-
-							PFaction f;
-							factionMap.Query(stat.remoteID,f);
-							if (f)
-								interactionMap.Set(f.get(),stat);
-						}
-					}
-					catch (const std::exception&ex)
-					{
-						if (chunkType)
-							LogEvent(EventClass::Preset::fileError,"Statistics::ImportFrom(): Exception caught in "+String(chunkType)+" chunk: "+ ex.what());
-						else
-							LogEvent(EventClass::Preset::fileError,"Statistics::ImportFrom(): Exception caught: "+ String(ex.what()));
-					}
-				}
-				while (child = child->GetNextSibling());
-			}
-			else
-				LogEvent(EventClass::Preset::error,"Statistics::ImportFrom(): Incompatible transient format encountered. Skipping import");
-
-			if (history.IsEmpty() || history.Last().mainRound != RuntimeConfig::roundNumber.main)
-				 history.Append().mainRound = RuntimeConfig::roundNumber.main;
-
-		}
 
 	#endif
 
-	Statistics::RoundStatistics&	Statistics::GetRoundStat()
+	namespace ChunkID
 	{
-		return history.Last();
+		const Riff::TID
+			round("RND "),
+
+			unit("UNIT"),
+			interaction("INTR"),
+
+
+
+			unusedTerm("ZZZZ");	
+
+	};
+
+
+		
+	void			Statistics::ExportInto(Riff::Chunk*chunk) const
+	{
+		ByteStreamBuffer stream;
+		{
+				
+			foreach (this->history,r)
+			{
+				stream.Clear();
+				r->Serialize(stream);
+				chunk->AppendBlock(ChunkID::round,stream);
+			}
+		}
+		{
+			this->entityTypes.VisitAllValues([chunk,&stream](const EntityType&stat)
+			{
+				stream.Clear();
+				stat.Serialize(stream);
+				chunk->AppendBlock(ChunkID::unit,stream);
+			});
+		}
+		{
+			this->interactionMap.VisitAllValues([chunk,&stream](const FactionInteraction&stat)
+			{
+				stream.Clear();
+				stat.Serialize(stream);
+				chunk->AppendBlock(ChunkID::interaction,stream);
+			});
+		}
+	}
+
+	void			Statistics::Clear()
+	{
+		BeginLoading();
+		EndLoading(false);
+	}
+
+	void			Statistics::BeginLoading()
+	{
+		if (isLoading)
+			throw Except::Program::DataConsistencyFault(CLOCATION,"Trying to restart loading sequence without prior invocation of EndLoading()");
+		isLoading = true;
+		history.Clear();
+		entityTypes.Clear();
+		interactionMap.Clear();
+	}
+
+	void			Statistics::Load(Round&&stat)
+	{
+		if (history.Count() > 10000)
+			history.Erase(0,1000);	//just erase some. ignore
+		history.MoveAppend(stat);
+	}
+	void			Statistics::Load(EntityType&&stat)
+	{
+		if (entityTypes.Count() > 10000)
+			throw Except::Memory::SerializationFault(CLOCATION,"Number of loaded unit type statistics ("+String(entityTypes.Count())+") number exceeds allowed range");
+		entityTypes.Set(stat.type) = std::move(stat);
+	}
+	void			Statistics::Load(FactionInteraction&&inter)
+	{
+		PFaction f = Objects::Faction::FindByID(inter.remoteID);
+		if (f)
+			interactionMap.Set(f.get()) = std::move(inter);
 	}
 
 
+	void			Statistics::DeserializeRound(const void*data, serial_size_t size)
+	{
+		Round stat;
+		DeserializeFromCompactMemory(stat,data,size);
+		Load(std::move(stat));
+	}
+	void			Statistics::DeserializeEntityType(const void*data, serial_size_t size)
+	{
+		EntityType stat;
+		DeserializeFromCompactMemory(stat,data,size);
+		Load(std::move(stat));
+	}
+	void			Statistics::DeserializeFactionInteraction(const void*data, serial_size_t size)
+	{
+		FactionInteraction stat;
+		DeserializeFromCompactMemory(stat,data,size);
+		Load(std::move(stat));
+	}
+
+	void			Statistics::ImportFrom(const Riff::Chunk*chunk, bool factionIsDead)
+	{
+		BeginLoading();
 
 
+		const Riff::Chunk*child = chunk->GetFirstChild();
+		do
+		{
+			const char* chunkType = nullptr;
+			try
+			{
+				if (child->IsID(ChunkID::round))
+				{
+					chunkType = "Round";
+					DeserializeRound(child->pointer(),child->size());
+				}
+				else
+				if (child->IsID(ChunkID::unit))
+				{
+					chunkType = "EntityType";
+					DeserializeEntityType(child->pointer(),child->size());
+				}
+				else
+				if (child->IsID(ChunkID::interaction))
+				{
+					chunkType = "FactionInteraction";
+					DeserializeFactionInteraction(child->pointer(),child->size());
+				}
+			}
+			catch (const std::exception&ex)
+			{
+				if (chunkType)
+					LogEvent(EventClass::Preset::fileError,"Statistics::ImportFrom(): Exception caught in "+String(chunkType)+" chunk: "+ ex.what());
+				else
+					LogEvent(EventClass::Preset::fileError,"Statistics::ImportFrom(): Exception caught: "+ String(ex.what()));
+			}
+		}
+		while (child = child->GetNextSibling());
 
+		EndLoading(factionIsDead);
+	}
+
+	void Statistics::EndLoading(bool factionIsDead)
+	{
+		if (!isLoading)
+			throw Except::Program::DataConsistencyFault(CLOCATION,"Trying to end loading sequence without prior invocation of BeginLoading()");
+		isLoading = false;
+
+		for (index_t i = 0; i < history.Count(); i++)
+		{
+			bool good = true;
+			if (history[i].mainRound > RuntimeConfig::roundNumber.main)
+				good = false;
+			elif (i && history[i].mainRound <= history[i-1].mainRound)
+				good = false;
+
+			if (!good)
+			{
+				history.Erase(i--);
+			}
+		}
+		#ifndef CLIENT
+			if (history.IsEmpty() || history.Last().mainRound != RuntimeConfig::roundNumber.main)
+				if (!factionIsDead)
+					history.Append().mainRound = RuntimeConfig::roundNumber.main;
+		#endif
+	}
+
+
+	Statistics::Round&	Statistics::GetRoundStat()
+	{
+		return history.Last();
+	}
 
 }

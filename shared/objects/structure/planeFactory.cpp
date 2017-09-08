@@ -5,7 +5,7 @@
 
 namespace Objects
 {
-	Buffer0<ConstName>			PlaneFactory::prototypes;
+	Buffer0<EntityType>			PlaneFactory::prototypes;
 
 
 	/*virtual override*/ void		PlaneFactory::GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&)	const
@@ -22,17 +22,17 @@ namespace Objects
 	
 	/*virtual override*/ bool				PlaneFactory::CanProduce(const PWorldEntity&e) const 
 	{
-		return e->IsPlane() && prototypes.Contains(e->GetCTypeName());
+		return e->IsPlane() && prototypes.Contains(e->GetType());
 	}
 
 	/*virtual override*/ void				PlaneFactory::PrototypeSetup()
 	{
 		Super::PrototypeSetup();
 
-		foreach (Objects::SubOrbital::prototypes,proto)
+		foreach (Objects::Prototypes::planes,proto)
 		{
 			auto p = *proto;
-			prototypes << p->GetCTypeName();
+			prototypes << p->GetType();
 		}
 
 	}

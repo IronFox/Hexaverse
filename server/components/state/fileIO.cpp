@@ -620,7 +620,7 @@ namespace FileIO
 		}
 		else
 		{
-			Objects::PWorldEntity proto = Objects::GetNonVehiclePrototypeByName(helper.baseName);
+			Objects::PWorldEntity proto = Objects::Prototypes::all.FindByName(helper.baseName);
 			ASSERT1__(proto,helper.baseName);
 			ASSERT1__(proto->IsMobile(),proto->GetTypeName());
 			item.producing = To<Objects::MobileEntity>::Cast(proto->CreateNewInstance(owner,Grid::LCellIdI(0,0),0));
@@ -923,14 +923,7 @@ namespace FileIO
 		Import(parent,RID::structureType,typeName);
 		Grid::LCellIdI location;
 		GetPOD(parent,RID::location,location);
-		if (globalVersionOfCurrentFile <= 1038)
-		{
-			if (typeName == "VehicleStore")
-				typeName = "Vehicle Store";
-			elif (typeName == "NexusPort")
-				typeName = "Nexus Port";
-		}
-		Objects::PStructure proto = Objects::GetPrototypeByName(typeName);
+		Objects::PStructure proto = Objects::Prototypes::structures.FindByName(typeName);
 
 		if (globalVersionOfCurrentFile <= 1038)
 		{
@@ -938,7 +931,7 @@ namespace FileIO
 			{
 				if (typeName == "Artillery Tower" || typeName == "Cannon Tower")
 				{
-					proto = Objects::GetPrototypeByName(ConstName::Type_LauncherTower);
+					proto = Objects::Prototypes::structures.Find( Objects::EntityType(ConstName::Type_Tower, ConstName::Turret_Launcher) );
 				}
 			}
 		}
@@ -1089,6 +1082,8 @@ namespace FileIO
 	{
 		RuntimeConfig::loadingPhase = true;
 		insertIntoHangar.Clear();
+
+		Objects::Statistics::EnterFileMode();
 
 		Riff::Container file;
 		bool failed = false;
@@ -1284,12 +1279,12 @@ namespace FileIO
 										{
 											if (line->IsEmpty())
 												continue;
-											index_t tabAt = line->find(tab);
-											ASSERT__(tabAt);
-											if (tabAt)
+											index_t tabAt = line->Find(tab);
+											ASSERT__(tabAt != InvalidIndex);
+											if (tabAt != InvalidIndex)
 											{
-												String key = "/"+line->subStringRef(0,tabAt-1);
-												StringRef value = line->subStringRef((int)tabAt);
+												String key = "/"+line->SubStringRef(0,tabAt);
+												StringRef value = line->SubStringRef(tabAt+1);
 		
 												CLI::PVariable v = Reflection::state.FindVar(key);
 												if (!v)
@@ -1410,7 +1405,13 @@ namespace FileIO
 									GetPOD(list,RID::factionID,factionID);
 									factionMap.Query(factionID,faction);
 									ASSERT__ (faction);
-									faction->statistics.ImportFrom(list,factionMap);
+									if (ApplicationInterface::globalVersionOfCurrentFile >= ApplicationInterface::FileVersions::NewSerializationEngine)
+										faction->statistics.ImportFrom(list,faction->isDead);
+									else
+									{
+										LogEvent(EventClass::Preset::error,"Statistics::ImportFrom(): Incompatible transient format encountered. Skipping import");
+										faction->statistics.Clear();
+									}
 								}
 							break;
 							case ChunkName::FactionSection:
@@ -1579,7 +1580,7 @@ namespace FileIO
 		for (const Objects::PMobileEntity&v : insertIntoHangar)
 		{
 			Objects::PHangar s = To<Objects::Hangar>::DynamicCast(Objects::GetEntity(v->location));
-			ASSERT2__(s,v->GetName(),v->location.ToString());
+			ASSERT2__(s,v->GetName(),v->location);
 			s->StoreLocallyFromImport(v);
 		}
 		insertIntoHangar.Clear();
@@ -1612,8 +1613,6 @@ namespace FileIO
 
 			World::SetUnlockedEMPZones(unlocked);
 		}
-
-		Reflection::LoadOverrides();
 
 		LogEvent(EventSignificance::Uncommon,"Restored world '"+World::worldID.ToNiceString()+"'/"+ToString(World::worldID)+" in round "+RuntimeConfig::roundNumber.ToString());
 		RefreshWindowTitle();
@@ -1693,6 +1692,8 @@ namespace FileIO
 		}
 
 		static_assert(sizeof(TUniqueID) == TUniqueID::NumBytes, "Alignment fault" );
+
+		Objects::Statistics::EnterFileMode();
 
 		Timer::Time t0 = timer.Now();
 

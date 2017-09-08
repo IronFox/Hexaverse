@@ -19,15 +19,15 @@ namespace NiceName
 
 	static String& MakeNice(String&in)
 	{
-		in.convertToLowerCase();
-		in.set(0,CharFunctions::toupper(in.get(0)));
+		in.ConvertToLowerCase();
+		in.Set(0,CharFunctions::toupper(in.GetChar(0)));
 		return in;
 	}
 	static String& MakeNiceAdjective(String&in)
 	{
 		//for now, same
-		in.convertToLowerCase();
-		in.set(0,CharFunctions::toupper(in.get(0)));
+		in.ConvertToLowerCase();
+		in.Set(0,CharFunctions::toupper(in.GetChar(0)));
 		return in;
 	}
 
@@ -36,12 +36,12 @@ namespace NiceName
 		StringFile file;
 		String line;
 
-		ASSERT1__(file.Open(PRE_PATH L"resources/nice/nouns.txt"), FileSystem::GetWorkingDirectory());
+		file.Open(PRE_PATH L"resources/nice/nouns.txt"), FileSystem::GetWorkingDirectory();
 
 		while (file >> line)
 			nouns << line;
 
-		ASSERT__(file.Open(PRE_PATH L"resources/nice/adjectives.txt"));
+		file.Open(PRE_PATH L"resources/nice/adjectives.txt");
 
 		while (file >> line)
 			adjectives << MakeNiceAdjective(line);

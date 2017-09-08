@@ -79,7 +79,7 @@ namespace Objects
 
 
 
-	TMatrix4<>							structureToPlaceSystem;
+	M::TMatrix4<>							structureToPlaceSystem;
 
 
 
@@ -93,14 +93,14 @@ namespace Objects
 		{
 		public:
 			float4					tint;
-			TMatrix4<>				innerSys, outerSys;
+			M::TMatrix4<>				innerSys, outerSys;
 			LODGeometry				*geo = nullptr;
 			float4					cutOffConfig;
 			float					radius = 1.f;
 
 			/**/					SelectionPrimitive() {}
 			/**/					SelectionPrimitive(LODGeometry&geo) :geo(&geo) {}
-			void					SetSystems(const Sphere<>&s)
+			void					SetSystems(const M::Sphere<>&s)
 			{
 				radius = s.radius;
 				cutOffConfig = float4(0, 0, Grid::BottomPlanetRadius, std::numeric_limits<float>::max());
@@ -116,19 +116,19 @@ namespace Objects
 				CheckSystem();
 			}
 
-			void					SetCylinderSystems(const TVec3<>&topCenter, float radius)
+			void					SetCylinderSystems(const M::TVec3<>&topCenter, float radius)
 			{
 				const float radialHeight = Vec::length(topCenter);
-				const TVec3<> dir = topCenter / radialHeight;
+				const M::TVec3<> dir = topCenter / radialHeight;
 
-				radius = vmin(radius, radialHeight);
+				radius = M::Min(radius, radialHeight);
 
 				//const float alpha = asin(radius / radialHeight);
 
 
-				const float flatRadialHeight = //cos(alpha)*sqrt(sqr(radialHeight) - sqr(radius));
-					(sqr(radialHeight) - sqr(radius)) / radialHeight;
-				const float flatRadius = sqrt(sqr(radialHeight) - sqr(radius) - sqr(flatRadialHeight));
+				const float flatRadialHeight = //cos(alpha)*sqrt(M::Sqr(radialHeight) - M::Sqr(radius));
+					(M::Sqr(radialHeight) - M::Sqr(radius)) / radialHeight;
+				const float flatRadius = sqrt(M::Sqr(radialHeight) - M::Sqr(radius) - M::Sqr(flatRadialHeight));
 
 
 				//const float alpha = radius / radialHeight;
@@ -144,7 +144,7 @@ namespace Objects
 
 				float fadeHeight = height;// +0.25f;
 
-				cutOffConfig = float4(radiusAtBottom, flatRadius * fadeHeight / height, fadeHeight, sqrt(sqr(radialHeight) - sqr(radius)));
+				cutOffConfig = float4(radiusAtBottom, flatRadius * fadeHeight / height, fadeHeight, sqrt(M::Sqr(radialHeight) - M::Sqr(radius)));
 
 
 				Mat::makeAxisSystem(dir*h0, dir, 2, innerSys);
@@ -157,7 +157,7 @@ namespace Objects
 
 			void					CheckSystem() const
 			{
-				TVec3<> test;
+				M::TVec3<> test;
 				Vec::cross(outerSys.x.xyz, outerSys.y.xyz, test);
 				ASSERT__(Vec::dot(test, outerSys.z.xyz) > 0);
 			}
@@ -198,7 +198,7 @@ namespace Objects
 			index_t								selectedSmokeTrail = InvalidIndex;
 
 			void	Render();
-			index_t	RegisterSmokeTrail(const Buffer0<TVec4<> >&trajectory)
+			index_t	RegisterSmokeTrail(const Buffer0<M::TVec4<> >&trajectory)
 			{
 				index_t result = smokeTrails.Count();
 				DX11::InstructionBlock32&trail = smokeTrails.Append();
@@ -225,24 +225,23 @@ namespace Objects
 	{
 		if (e.IsVehicle())
 			return ((const Vehicle&)e).base->ambientSound;
-		return GetAmbientSoundOf(e.GetTypeName(),e.GetCTypeName());
+		return GetAmbientSoundOf(e.GetTypeName(),e.GetType());
 	}
 
 
-	Engine::OpenAL::WaveBuffer	Renderer::GetAmbientSoundOf(const String&entityTypeName, ConstName _entityType)
+	Engine::OpenAL::WaveBuffer	Renderer::GetAmbientSoundOf(const String&entityTypeName, EntityType entityType)
 	{
-		index_t key = (index_t)_entityType;
-		static IndexTable<Engine::OpenAL::Wave>	waveTable;
+		static GenericHashTable<EntityType, Engine::OpenAL::Wave>	waveTable;
 		Engine::OpenAL::WaveBuffer result;
-		if (waveTable.Query(key,result))
+		if (waveTable.Query(entityType,result))
 			return result;
 		result = Engine::OpenAL::Load("resources/objectSounds/"+entityTypeName+".wav");
-		waveTable.Set(key,result);	//don't care if it's empty
+		waveTable.Set(entityType,result);	//don't care if it's empty
 		return result;
 	}
 
 
-	Renderer::SmokeTrailIndex	Renderer::RegisterSmokeTrail(const Buffer0<TVec4<> >&trajectory, bool aboveGrid)
+	Renderer::SmokeTrailIndex	Renderer::RegisterSmokeTrail(const Buffer0<M::TVec4<> >&trajectory, bool aboveGrid)
 	{
 		return SmokeTrailIndex(smokeTrails[aboveGrid].RegisterSmokeTrail(trajectory), aboveGrid);
 	}
@@ -267,17 +266,17 @@ namespace Objects
 				case World::Sensor::ShadedSphere:
 				case World::Sensor::SolidSphere:
 					prim.geo = &sphere;
-					prim.SetSystems(Sphere<>(sensor.worldCenter, sensor.radius));
+					prim.SetSystems(M::Sphere<>(sensor.worldCenter, sensor.radius));
 					break;
 				case World::Sensor::UpperHalfSolidSphere:
 				{
 					prim.geo = &sphere;
-					prim.SetSystems(Sphere<>(sensor.worldCenter, sensor.radius));
+					prim.SetSystems(M::Sphere<>(sensor.worldCenter, sensor.radius));
 					const float radialHeight = Vec::length(sensor.worldCenter);
-					float radius = vmin(sensor.radius, radialHeight);
-					const float flatRadialHeight = sqrt(sqr(radialHeight) - sqr(radius));
-						//(sqr(radialHeight) - sqr(radius)) / radialHeight;
-					//const float flatRadius = sqrt(sqr(radialHeight) - sqr(radius) - sqr(flatRadialHeight));
+					float radius = M::Min(sensor.radius, radialHeight);
+					const float flatRadialHeight = sqrt(M::Sqr(radialHeight) - M::Sqr(radius));
+						//(M::Sqr(radialHeight) - M::Sqr(radius)) / radialHeight;
+					//const float flatRadius = sqrt(M::Sqr(radialHeight) - M::Sqr(radius) - M::Sqr(flatRadialHeight));
 					prim.cutOffConfig.z = flatRadialHeight;
 					break;
 				}
@@ -307,17 +306,16 @@ namespace Objects
 	}
 
 
-
-	void Renderer::RenderRangeSphere(const TVec3<>&center, float radius, const float4&color, bool outer)
+	void Renderer::RenderRangeSphere(const M::TVec3<>&center, float radius, const float4&color, bool outer)
 	{
 		generalPurposePrimitive.geo = &sphere;
-		generalPurposePrimitive.SetSystems(Sphere<>(center, radius));
+		generalPurposePrimitive.SetSystems(M::Sphere<>(center, radius));
 		generalPurposePrimitive.tint = color;
 
 		generalPurposePrimitive.Render(outer);
 	}
 
-	void	Renderer::RenderRangeCylinder(const TVec3<>&center, float radius, const float4&color, bool outer)
+	void	Renderer::RenderRangeCylinder(const M::TVec3<>&center, float radius, const float4&color, bool outer)
 	{
 
 		generalPurposePrimitive.geo = &cylinder;
@@ -348,7 +346,7 @@ namespace Objects
 			break;
 			case TrajectoryType::Missile:
 			{
-				const TVec3<>&d = Grid::low.cells[location.stackID].centerVertex.xyz;
+				const M::TVec3<>&d = Grid::low.cells[location.stackID].centerVertex.xyz;
 				RenderRangeSphere(d * (Grid::ToRadius(location.height)+zOffset),base->GetFlatAttackRange() + explosionRadius,color, extended);
 			}
 			break;
@@ -358,7 +356,7 @@ namespace Objects
 					int h = Satellite::GetGroundHeight(location);
 					if (h != badHeight)
 					{
-						const TVec3<>&d = Grid::low.cells[location.stackID].centerVertex.xyz;
+						const M::TVec3<>&d = Grid::low.cells[location.stackID].centerVertex.xyz;
 						RenderRangeSphere(d * (Grid::ToRadius(h)+zOffset),base->GetFlatAttackRange() + explosionRadius,color);
 					}
 				#endif
@@ -468,7 +466,7 @@ namespace Objects
 		cutOffConfig.Create(float4(1));
 		{
 			Engine::VertexBinding binding;
-			binding.color.set(6, 4);
+			binding.color.Set(6, 4);
 			binding.floats_per_vertex = 10;
 			stdVehicleShader.binding = binding;
 			seeThroughShader.binding = binding;
@@ -499,8 +497,8 @@ namespace Objects
 		{
 			{
 				Engine::VertexBinding binding;
-				binding.vertex.set(0,2);
-				binding.normal.unset();
+				binding.vertex.Set(0,2);
+				binding.normal.Unset();
 				binding.floats_per_vertex = 2;
 				skyPortBeam.binding = binding;
 			}
@@ -715,13 +713,13 @@ namespace Objects
 
 
 		
-	void Renderer::RenderScaledComponent(TMatrix4<> system, float h, float scale, const Component::Base&comp, float x, float y)
+	void Renderer::RenderScaledComponent(M::TMatrix4<> system, float h, float scale, const Component::Base&comp, float x, float y)
 	{
 		system.w.xyz += system.z.xyz * h;
 		system.x.xyz *= scale;
 		system.y.xyz *= scale;
 		system.z.xyz *= scale;
-		TMatrix4<> sub;
+		M::TMatrix4<> sub;
 		const auto&attachment = Objects::VisualComponent::Of(comp);
 		if (comp.parts.Count() > 0)
 		{
@@ -747,7 +745,7 @@ namespace Objects
 		display.SetObjectMatrix(e.system);
 	}
 
-	static void _RenderSimpleLocated(Structure&s, const TMatrix4<>&system)
+	static void _RenderSimpleLocated(Structure&s, const M::TMatrix4<>&system)
 	{
 		const auto&shape = StructureHull::Of(s).constShape;
 		display.Render(shape, true);
@@ -763,14 +761,14 @@ namespace Objects
 	}
 
 	#ifndef NO_SATELLITES
-		static void _RenderSimpleLocated(Satellite&s, const TMatrix4<>&system)
+		static void _RenderSimpleLocated(Satellite&s, const M::TMatrix4<>&system)
 		{
 			display.Render(*s.baseRenderingInstruction, true);
 			Renderer::RenderComponent(system, 0.f, *s.turret, s.turretAngleX, s.turretAngleY);
 		}
 	#endif
 
-	static void _RenderSimpleLocated(SubOrbital::Plane&p, const TMatrix4<>&system)
+	static void _RenderSimpleLocated(SubOrbital::Plane&p, const M::TMatrix4<>&system)
 	{
 		const auto&shape = StructureHull::Of(p).constShape;
 		display.Render(shape, true);
@@ -786,14 +784,14 @@ namespace Objects
 	}
 
 
-	static void _RenderSimpleLocated(Vehicle&v, const TMatrix4<>&system)
+	static void _RenderSimpleLocated(Vehicle&v, const M::TMatrix4<>&system)
 	{
 		Renderer::RenderComponent(system,0,*v.base,0,0);
 		Renderer::RenderComponent(system,v.base->height,*v.turret,v.turretAngleX,v.turretAngleY);
 	}
 
 
-	static void _RenderSimpleLocated(WorldEntity&e, const TMatrix4<>&system)
+	static void _RenderSimpleLocated(WorldEntity&e, const M::TMatrix4<>&system)
 	{
 		if (e.IsStructure())
 		{
@@ -833,11 +831,11 @@ namespace Objects
 
 	void	Renderer::RenderSimpleIdentity(WorldEntity&e, bool includeFoundationIfStructure/*=false*/)
 	{
-		display.SetObjectMatrix(Matrix<>::eye4);
+		display.SetObjectMatrix(M::Matrix<>::eye4);
 		if (e.IsStructure() )
 			if (includeFoundationIfStructure)
 				display.Render(foundation, true);
-		_RenderSimpleLocated(e,Matrix<>::eye4);
+		_RenderSimpleLocated(e,M::Matrix<>::eye4);
 	}
 
 
@@ -952,7 +950,7 @@ namespace Objects
 		{
 			display.SetObjectMatrix(s.system);
 			{
-				TVec3<> color;
+				M::TVec3<> color;
 				Vec::interpolate(s.owner->inactiveEntityColor,s.owner->activeEntityColor,s.GetActivityLevel(),color);
 				{
 					if (s.unstable)
@@ -981,7 +979,7 @@ namespace Objects
 	{
 		display.SetObjectMatrix(s.system);
 		{
-			TVec3<> color;
+			M::TVec3<> color;
 			Vec::interpolate(s.owner->inactiveEntityColor,s.owner->activeEntityColor,s.GetActivityLevel(),color);
 			{
 				if (s.unstable)
@@ -1010,7 +1008,7 @@ namespace Objects
 		_Locate(s);
 		bool workingStructure = s.IsWorkingStructure();
 		{
-			TVec3<> color;
+			M::TVec3<> color;
 			Vec::interpolate(s.owner->inactiveEntityColor,s.owner->activeEntityColor,s.GetActivityLevel(),color);
 
 			{
@@ -1049,9 +1047,9 @@ namespace Objects
 	}
 
 
-	void	Renderer::RenderComponent(TMatrix4<> system, float h, const Component::Base&comp, float x, float y)
+	void	Renderer::RenderComponent(M::TMatrix4<> system, float h, const Component::Base&comp, float x, float y)
 	{
-		TMatrix4<> sub;
+		M::TMatrix4<> sub;
 		const auto&attachment = Objects::VisualComponent::Of(comp);
 
 		if (comp.parts.Count() > 0)
@@ -1087,7 +1085,7 @@ namespace Objects
 	void Renderer::Render(const Vehicle&v, float light)
 	{
 		{
-			TVec3<> color;
+			M::TVec3<> color;
 			Vec::interpolate(v.owner->inactiveEntityColor,v.owner->activeEntityColor,v.GetActivityLevel(),color);
 			{
 				if (v.unstable)
@@ -1104,14 +1102,14 @@ namespace Objects
 
 	void					ApplyStateTint(const WorldEntity&e, const float4&baseTint, bool selected)
 	{
-		TVec4<> effectiveTint={0,0,0,0};
+		M::TVec4<> effectiveTint={0,0,0,0};
 
 
 		if (e.empDamageLevel)
 		{
-			float baseOpacity = sqr(0.5f + 0.5f * (float)sin(Engine::timing.now*15.0));
+			float baseOpacity = M::Sqr(0.5f + 0.5f * (float)sin(Engine::timing.now*15.0));
 			float opacity = (std::min(1.f,float(e.empDamageLevel) / 2.f)) * baseOpacity;
-			//TVec4<> tint;
+			//M::TVec4<> tint;
 			Vec::interpolate(baseTint,float4(0,0,1,1),opacity,effectiveTint);
 
 
@@ -1222,7 +1220,7 @@ namespace Objects
 			//	
 			//	//if (s.compiledShape.vbo.IsSet())
 			//	//{
-			//	//	display.SetObjectMatrix(Matrix<>::eye4);
+			//	//	display.SetObjectMatrix(M::Matrix<>::eye4);
 			//	//	display.Render(s.compiledShape,true);
 			//	//}
 			//	_RenderSimple(s);
@@ -1297,7 +1295,7 @@ namespace Objects
 
 		if (Marker::visitedSystems.IsNotEmpty())
 		{
-			display.SetObjectMatrix(Matrix<>::eye4);
+			display.SetObjectMatrix(M::Matrix<>::eye4);
 			keyColor.Update(float4(0,1,1,1.f));
 			foreach (Marker::visitedSystems,_sys)
 			{
@@ -1307,7 +1305,7 @@ namespace Objects
 				display.Render(userInteractionNotifier,true);
 			}
 		}
-		display.SetObjectMatrix(Matrix<>::eye4);
+		display.SetObjectMatrix(M::Matrix<>::eye4);
 
 		overallTint.Update(noTint);
 
@@ -1471,9 +1469,9 @@ namespace Objects
 				//				float4(color,0.25),
 				//				float4(color,0.25));
 
-	void	Renderer::RenderBeam(const TVec3<>&base, float height, float width)
+	void	Renderer::RenderBeam(const M::TVec3<>&base, float height, float width)
 	{
-		TMatrix4<> sys;
+		M::TMatrix4<> sys;
 		sys.w.xyz = base;
 		sys.z.xyz = base;
 		Vec::normalize(sys.z.xyz);
@@ -1493,10 +1491,10 @@ namespace Objects
 
 	void	Renderer::RenderPoleBeam(int pole, float width)
 	{
-		const TVec3<>&dir = Grid::low.cells[pole].cornerCenter;
-		TVec3<> base;
+		const M::TVec3<>&dir = Grid::low.cells[pole].cornerCenter;
+		M::TVec3<> base;
 		Vec::mult(dir,Grid::MeanPlanetRadius,base);
-		TMatrix4<> sys;
+		M::TMatrix4<> sys;
 		sys.w.xyz = base;
 		sys.z.xyz = dir;
 		Vec::cross(sys.z.xyz,sys.w.xyz - Camera::scene.GetAbsoluteLocation(),sys.x.xyz);
@@ -1514,13 +1512,13 @@ namespace Objects
 		
 	}
 
-	void	Renderer::SetBeamColor(const float4&bottomColor, const TVec4<>&topColor)
+	void	Renderer::SetBeamColor(const float4&bottomColor, const M::TVec4<>&topColor)
 	{
 		beamBottomColor.Update(bottomColor);
 		beamTopColor.Update(topColor);
 	}
 
-	void	Renderer::RenderBeam(const TVec3<>&base, float height, float width, const float4&bottomColor, const TVec4<>&topColor)
+	void	Renderer::RenderBeam(const M::TVec3<>&base, float height, float width, const float4&bottomColor, const M::TVec4<>&topColor)
 	{
 		SetBeamColor(bottomColor,topColor);
 		RenderBeam(base,height,width);
@@ -1588,11 +1586,11 @@ namespace Objects
 
 
 
-		display.SetObjectMatrix(Matrix<>::eye4);
+		display.SetObjectMatrix(M::Matrix<>::eye4);
 	}
 
 
-	static void _RenderAttackRing(TMatrix4<>&sys, int i)
+	static void _RenderAttackRing(M::TMatrix4<>&sys, int i)
 	{
 		float fc = 1.f + float(i) * 0.175f;
 		sys.x.xyz *= fc;
@@ -1725,7 +1723,7 @@ namespace Objects
 		},false);
 
 
-		display.SetObjectMatrix(Matrix<>::eye4);
+		display.SetObjectMatrix(M::Matrix<>::eye4);
 			
 		display.SetDepthTest(true,false);
 
@@ -1813,7 +1811,7 @@ namespace Objects
 			}
 		
 		});
-		display.SetObjectMatrix(Matrix<>::eye4);
+		display.SetObjectMatrix(M::Matrix<>::eye4);
 
 
 
@@ -1832,8 +1830,8 @@ namespace Objects
 		{
 			if (at->IsAboveGrid() != orbital)
 				continue;
-			TMatrix4<> sys;
-			const TVec3<>&up = Grid::low.cells[at->location.stackID].cornerCenter;
+			M::TMatrix4<> sys;
+			const M::TVec3<>&up = Grid::low.cells[at->location.stackID].cornerCenter;
 			Mat::makeAxisSystem(at->system.w.xyz, up,2,sys);
 			sys.x.xyz *= Grid::UnitScale;
 			sys.y.xyz *= Grid::UnitScale;
@@ -1872,7 +1870,7 @@ namespace Objects
 
 		}
 
-		display.SetObjectMatrix(Matrix<>::eye4);
+		display.SetObjectMatrix(M::Matrix<>::eye4);
 		overallTint.Update(noTint);
 	
 		display.SetDepthTest(true,false);
@@ -1943,7 +1941,7 @@ namespace Objects
 		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 
 
-		TVec4<> selectedTint;
+		M::TVec4<> selectedTint;
 
 		if (selectedEntity && selectedEntity->IsAboveGrid() == orbital)
 		{
@@ -2059,7 +2057,7 @@ namespace Objects
 				display.SetDepthTest(true,true);
 				bool includeFoundation = false;//activeStructureToPlace->HasFoundation();	<- is correct but job visualization doesn't use foundations
 				display.LinkShader(jobShader,false,true);
-					//TMatrix4<> sys;
+					//M::TMatrix4<> sys;
 					BuildStructureSystem(choiceVis.arrowCellTarget.cellLocation,structureToPlaceSystem);
 					display.SetObjectMatrix(structureToPlaceSystem);
 					overallTint.Update(noTint);	//all zero tint makes shapes invisible
@@ -2072,7 +2070,7 @@ namespace Objects
 						display.Render(foundation, true);
 					_RenderSimpleLocated(*activeStructureToPlace,structureToPlaceSystem);
 				display.UnlockShader();
-				display.SetObjectMatrix(Matrix<>::eye4);
+				display.SetObjectMatrix(M::Matrix<>::eye4);
 			}
 		}
 
@@ -2100,7 +2098,7 @@ namespace Objects
 	{
 		void RenderFlyingUnitBeams(const Objects::PMobileEntity&e)
 		{
-			TVec3<> color = e->owner ? e->owner->activeEntityColor : float3();
+			M::TVec3<> color = e->owner ? e->owner->activeEntityColor : float3();
 			SetBeamColor(float4(color,0.25),
 						float4(color,0.25));
 			const float bottom = Grid::ToRadius(-Grid::CellStack::HalfRange);
@@ -2197,7 +2195,7 @@ namespace Objects
 				}
 				if (render)
 				{
-					TMatrix4<> sys = ws->system;
+					M::TMatrix4<> sys = ws->system;
 					Vec::cross(sys.z.xyz,sys.w.xyz - Camera::scene.GetAbsoluteLocation(),sys.x.xyz);
 					Vec::normalize0(sys.x.xyz);
 					Vec::cross(sys.x.xyz,sys.z.xyz,sys.y.xyz);
@@ -2223,7 +2221,7 @@ namespace Objects
 				{
 					if (nexusSet[i])
 						continue;
-					TVec3<> color;
+					M::TVec3<> color;
 					if (BaseGrid::IsIsolatedCorner(i))
 					{
 						color= float3(1.0,0.6,0.5);
@@ -2264,10 +2262,10 @@ namespace Objects
 	}
 
 
-	static void _RenderShadow(TMatrix4<> system, float h, const Component::Base&comp, float x, float y)
+	static void _RenderShadow(M::TMatrix4<> system, float h, const Component::Base&comp, float x, float y)
 	{
 		system.w.xyz += system.z.xyz * h;
-		TMatrix4<> sub;
+		M::TMatrix4<> sub;
 		const auto&visual = Objects::VisualComponent::Of(comp);
 		if (comp.parts.Count() > 0)
 		{
@@ -2288,9 +2286,9 @@ namespace Objects
 
 	}
 		
-	static void _RenderShadowS(TMatrix4<> system, float h, float scale, const Component::Base&comp, float x, float y)
+	static void _RenderShadowS(M::TMatrix4<> system, float h, float scale, const Component::Base&comp, float x, float y)
 	{
-		TMatrix4<> sub;
+		M::TMatrix4<> sub;
 		const auto&visual = Objects::VisualComponent::Of(comp);
 
 		if (comp.parts.Count() > 0)
@@ -2359,17 +2357,17 @@ namespace Objects
 
 	void					Renderer::RenderShadows(
 		#ifdef CASCADING_SHADOW
-			DX11::FBO&shadowMap, Engine::OrthographicAspect<>&shadowCamera, DX11::ObjectBuffer<TMatrix4<> >&shadowMatrix
+			DX11::FBO&shadowMap, Engine::OrthographicAspect<>&shadowCamera, DX11::ObjectBuffer<M::TMatrix4<> >&shadowMatrix
 		#endif
 	)
 	{
-		display.pick(shadowCamera);
+		display.Pick(shadowCamera);
 
 			
 		display.ClearTarget(shadowMap);
 		
 		{
-			TMatrix4<>	m;
+			M::TMatrix4<>	m;
 			Mat::Mult(shadowCamera.projection,shadowCamera.view,m);
 			shadowMatrix.Update(m);
 		}
@@ -2421,7 +2419,7 @@ namespace Objects
 				{
 					_RenderShadow(*v);
 				});
-				display.SetObjectMatrix(Matrix<>::eye4);
+				display.SetObjectMatrix(M::Matrix<>::eye4);
 
 				structures.Foreach([](const Objects::PStructure&_s)
 				{
@@ -2440,11 +2438,11 @@ namespace Objects
 					if (b)
 					{
 						_RenderShadowS(s.system, zOffset/Grid::UnitScale /*Compensate for rescaled system matrix of structures: systems.cpp*/, 2.f/Grid::UnitScale,*b->turret, b->turretAngleX, b->turretAngleY);
-						display.SetObjectMatrix(Matrix<>::eye4);
+						display.SetObjectMatrix(M::Matrix<>::eye4);
 					}
 
 				});
-				//display.SetObjectMatrix(Matrix<>::eye4);
+				//display.SetObjectMatrix(M::Matrix<>::eye4);
 				//return;
 
 				structures.Foreach([](const Objects::PStructure&_s)
@@ -2454,7 +2452,7 @@ namespace Objects
 					const auto&vis = Objects::StructureHull::Of(s);
 					_RenderShadow(vis.constShape);
 				});
-				display.SetObjectMatrix(Matrix<>::eye4);
+				display.SetObjectMatrix(M::Matrix<>::eye4);
 				display.UnlockShader();
 			#endif /*0*/
 		}
@@ -2523,7 +2521,7 @@ namespace Objects
 			display.TargetFBO(fbo);
 			display.ClearTarget(fbo,float4(tone.rgb*0.5f,tone.a));//, float4(0,1,0,1));
 
-			display.pick(camera);
+			display.Pick(camera);
 
 			display.StoreRendererState();
 

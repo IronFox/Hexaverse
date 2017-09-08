@@ -51,7 +51,7 @@ class VehiclePlant : public WorkingStructureT<VehiclePlant>, public MobileEntity
 			bool					AbortConstruction(const TUniqueID&);
 			PVehicle				SpawnFinishedProductionAnywhere();
 			PVehicle				Enqueue(Component::VehicleBase*, Component::Turret*);
-			PVehicle				Enqueue(ConstName baseName, ConstName turretName);
+			PVehicle				Enqueue(EntityType t);
 			PVehicle				GetProduction() const;
 			//PVehicle				CompleteProduction();
 			virtual void			Tick(ResourceVector&) override;
@@ -93,7 +93,7 @@ class VehiclePlant : public WorkingStructureT<VehiclePlant>, public MobileEntity
 
 		//BaseEntity overrides:
 		virtual String				GetTypeName() const override { return "Vehicle Plant"; };
-		virtual ConstName			GetCTypeName() const override {return ConstName::Type_VehiclePlant;}
+		virtual EntityType			GetType() const override {return ConstName::Type_VehiclePlant;}
 
 
 		#ifdef HAS_WINDOW

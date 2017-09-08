@@ -71,11 +71,11 @@ namespace VisualTerrain
 		/**/	TLitColor(const TWeightedColor&base, float lightLevel, float emp=0.f):Super(base),lightLevel(lightLevel),emp(emp)	{}
 		/**/	TLitColor(float lightLevel, float emp=0.f):lightLevel(lightLevel),emp(emp)	{}
 		/**/	TLitColor(const Grid::TVisibility&v):visibility(v.value)	{}
-		void	CompileFinalColor(TVec4<>&)	const;
+		void	CompileFinalColor(M::TVec4<>&)	const;
 
 	private:
-		static void ApplyEMP(float intensity,TVec3<>&rs);
-		void	CapColor(TVec3<>&rs)	const;
+		static void ApplyEMP(float intensity,M::TVec3<>&rs);
+		void	CapColor(M::TVec3<>&rs)	const;
 	};
 
 

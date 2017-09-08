@@ -32,6 +32,7 @@ EventClass	EventClass::Preset::error = EventClass(EventSignificance::NonFatalErr
 			EventClass::Preset::common = EventClass(EventSignificance::Common),
 			EventClass::Preset::debug = EventClass(EventSignificance::Debug),
 			EventClass::Preset::factionDeath = EventClass(EventSignificance::FactionFatal, EventFlavor::Loss),
+			EventClass::Preset::winningFaction = EventClass(EventSignificance::Important, EventFlavor::Gain),
 			EventClass::Preset::commandRejected = EventClass(EventSignificance::NonFatalError,EventFlavor::UserError),
 			EventClass::Preset::operationAborted = EventClass(EventSignificance::NonFatalError,EventFlavor::Loss),
 			EventClass::Preset::configuration = EventClass(EventSignificance::Common,EventFlavor::Neutral),
@@ -44,6 +45,7 @@ EventClass	EventClass::Preset::error = EventClass(EventSignificance::NonFatalErr
 			EventClass::Preset::remoteControlCommand = EventClass(EventSignificance::Uncommon,EventFlavor::ServerPrivate),
 			EventClass::Preset::remoteControlError = EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),
 			EventClass::Preset::important = EventClass(EventSignificance::Important),
+			EventClass::Preset::gui = EventClass(EventSignificance::Common),
 			EventClass::Preset::uncommon = EventClass(EventSignificance::Uncommon);
 
 namespace Logging
@@ -175,6 +177,14 @@ namespace Logging
 		{
 			return operator<<('\n');
 		}
+		
+		template <typename T>
+			LogBuffer&	operator<<(const T&item)
+			{
+				buffer << ToString(item);
+				return *this;
+			}
+
 	}	logFile,console;
 
 	void	Flush(LogBuffer&buffer, bool toSyslog)
@@ -241,9 +251,9 @@ namespace Logging
 		if (e)
 		{
 			if (printToConsole)
-				console << e->GetName()<<" ("<<e->location.ToString()<<"): ";
+				console << e->GetName()<<" ("<<e->location<<"): ";
 			if (!inTestMode)
-				logFile << tab << e->GetTypeName() << tab << ToString(e->id) << tab << e->owner->GetLogName()<<tab<<e->location.ToString();
+				logFile << tab << e->GetTypeName() << tab << ToString(e->id) << tab << e->owner->GetLogName()<<tab<<e->location;
 		}
 		else
 			if (!inTestMode)
@@ -252,11 +262,11 @@ namespace Logging
 				else
 					logFile << tab << tab<<tab<<tab;
 
-		if (message.contains('\n') || message.contains('\r'))
+		if (message.Contains('\n') || message.Contains('\r'))
 		{
 			String copy = message;
-			copy.replace('\n',' ');
-			copy.replace('\r',"");
+			copy.FindAndReplace('\n',' ');
+			copy.FindAndReplace('\r',"");
 			if (!inTestMode)
 				logFile << tab << copy << nl;
 		}

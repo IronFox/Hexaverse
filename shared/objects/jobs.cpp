@@ -47,7 +47,7 @@ namespace Objects
 			String error;
 			if (!CanContinue(v,focus,error))
 			{
-				ASSERT3__(error.IsNotEmpty(), GetName(), v.GetName(), focus.ToString());
+				ASSERT3__(error.IsNotEmpty(), GetName(), v.GetName(), focus);
 				LogEvent(EventClass::Preset::operationAborted,&v,"Unable to continue '"+GetName()+"' ("+error+").");	//cant use GetName(), once we call ClearTasks()
 				return TerminalFailure;
 			}
@@ -291,7 +291,7 @@ namespace Objects
 		{
 			if (this->movesToFocusWhenDone && !World::actual.LowCellIsClear(focus))
 			{
-				outError = "Cannot build wall here: "+(focus).ToString()+" is not empty";
+				outError = "Cannot build wall here: "+ToString(focus)+" is not empty";
 				return false;
 			}
 
@@ -299,7 +299,7 @@ namespace Objects
 			PStructure existing = GetStructure(target);	//this isn't caught by LowCellIsClear() since we don't want connectors to be submerged either
 			if (existing)
 			{
-				outError = "Cannot build wall here: "+(target).ToString()+" is occupied by "+existing->GetName();
+				outError = "Cannot build wall here: "+ToString(target)+" is occupied by "+existing->GetName();
 				return false;
 			}
 			return true;
@@ -590,7 +590,7 @@ namespace Objects
 			float radius = Component::Bomb::GetRadius(doomsday,v.owner);
 			int damageLevel = Component::Bomb::GetDamageLevel(doomsday,v.owner);
 
-			Remove(v.shared_from_this(),Objects::RemovalType::ControlledExplosion,v.entityTime,true);
+			Remove(v.shared_from_this(),Objects::RemovalType::ControlledExplosion,v.entityTime);
 			v.entityTime += timeEpsilon;
 
 	
@@ -642,7 +642,7 @@ namespace Objects
 			
 			if (!e || !v.owner->CanSee(e,v.entityTime) || e.get() == &v)
 			{
-				outError = "Nothing in focus cell "+focus.ToString();
+				outError = "Nothing in focus cell "+ToString(focus);
 				return false;
 			}
 			if (e->health == e->GetMaxHealth())
@@ -666,7 +666,7 @@ namespace Objects
 			PWorldEntity target = GetEntity(focus);
 			if (!target || !v.owner->CanSee(target,v.entityTime) || target.get() == &v)
 			{
-				LogEvent(EventClass::Preset::commandRejected,&v,this->GetName()+ ": Nothing in focus cell "+focus.ToString());
+				LogEvent(EventClass::Preset::commandRejected,&v,this->GetName()+ ": Nothing in focus cell "+ToString(focus));
 				return JobDone;
 			}
 			if (target->health == target->GetMaxHealth())
@@ -795,11 +795,11 @@ namespace Objects
 				useID.Generate();
 			SerialSync(inStream,whatName);
 
-			constructWhat = GetPrototypeByName(whatName);
+			constructWhat = Prototypes::structures.FindByName(whatName);
 			if (!constructWhat)
 			{
 				if (whatName == "Artillery Tower" || whatName=="Cannon Tower")
-					constructWhat = GetPrototypeByName(ConstName::Type_LauncherTower);
+					constructWhat = Prototypes::structures.Find(EntityType(ConstName::Type_Tower,ConstName::Turret_Launcher));
 				if (!constructWhat)
 					throw Except::Memory::SerializationFault(CLOCATION,"Unable to determine construction type of '"+whatName+"'");
 			}
@@ -1009,7 +1009,7 @@ namespace Objects
 			{
 				if (dynamic_cast<Connector*>(existing.get()))
 				{
-					Remove(existing,Objects::RemovalType::BeingReplaced,v.entityTime,false);
+					Remove(existing,Objects::RemovalType::BeingReplaced,v.entityTime);
 					v.entityTime += 0.025f;
 					existing.reset();
 					DBG_ASSERT__(!GetStructure(target));
@@ -1023,7 +1023,7 @@ namespace Objects
 
 			PStructure s = To<Structure>::Cast(constructWhat->CreateNewInstance(v.owner, target, v.entityTime));
 			s->id = useID;
-			LogEvent(EventSignificance::Common,&v,"Constructed " + s->GetName()+" at "+s->location.ToString());
+			LogEvent(EventSignificance::Common,&v,"Constructed " + s->GetName()+" at "+ToString(s->location));
 			InsertConstructed(s,v.entityTime,true);
 			return JobDone;
 		}

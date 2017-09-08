@@ -2,6 +2,7 @@
 #define factionH
 
 #include "entity.h"
+#include "entityType.h"
 #include "types.h"
 #include "structureCompound.h"
 #include "../stringTable.h"
@@ -38,7 +39,8 @@ namespace Objects
 
 		TUniqueID					referenceEntity = TUniqueID::Empty(),	//!< Usage depends on type
 									referenceEntityOwner = TUniqueID::Empty();
-		ConstName					referencedType[2];
+		EntityType					referencedType;
+		
 
 		Type						type;
 		RoundNumber					createdInRound;
@@ -50,14 +52,12 @@ namespace Objects
 		static const count_t		MaxMarkersPerFaction = 256;
 
 		/**/						Marker() :BaseEntity(TEmpty())
-		{
-			referencedType[0] = referencedType[1] = ConstName::Empty;
-		}
+		{}
 
 		void						adoptData(Marker&other)
 		{
 			referenceEntity = other.referenceEntity;
-			memcpy(referencedType,other.referencedType,sizeof(referencedType));
+			referencedType = other.referencedType;
 			type = other.type;
 			createdInRound = other.createdInRound;
 
@@ -73,7 +73,7 @@ namespace Objects
 		#endif
 
 		virtual String				GetTypeName() const override { return "Marker (" + String(type.ToString())+")"; }
-		virtual ConstName			GetCTypeName() const override {return ConstName::Type_Marker;}
+		virtual EntityType			GetType() const override {return ConstName::Type_Marker;}
 
 
 		static_assert(Objects::Marker::Type::NumberOfPossibilities == 3, "Please adjust marker logic");
@@ -84,7 +84,7 @@ namespace Objects
 		{ 
 			return id == other.id && location == other.location 
 			&& type == other.type && createdInRound == other.createdInRound 
-			&& referenceEntity == other.referenceEntity && referencedType[0] == other.referencedType[0] && referencedType[1] == other.referencedType[1];
+			&& referenceEntity == other.referenceEntity && referencedType == other.referencedType;
 		}
 		bool						operator!=(const Marker&other) const {return !operator==(other);}
 
@@ -99,7 +99,7 @@ namespace Objects
 
 			struct TVisited
 			{
-				TMatrix4<>			system;
+				M::TMatrix4<>			system;
 				UINT32				age;
 			};
 
@@ -114,7 +114,7 @@ namespace Objects
 				}
 			};
 
-			static void				Create(const TUniqueID&id, Type type, const Grid::LCellIdI&location, const RoundNumber&createdInRound, const TUniqueID&referenceID, const TUniqueID&referenceOwnerID, ConstName referenceType[2], const RoundNumber& currentRound);
+			static void				Create(const TUniqueID&id, Type type, const Grid::LCellIdI&location, const RoundNumber&createdInRound, const TUniqueID&referenceID, const TUniqueID&referenceOwnerID, EntityType referenceType, const RoundNumber& currentRound);
 			static void				Destroy(const TUniqueID&id, bool controlEnabled);
 			static Marker*			FindByReference(const TUniqueID&referenceID);
 			static Marker*			Find(const TUniqueID&referenceID);
@@ -213,7 +213,7 @@ namespace Objects
 		@param id Unique faction ID
 		@param iteration Passing a different iteration alters the resulting color in a random way
 		*/		
-		static void IDToColor(TVec3<>&outColor, const TUniqueID&id, int iteration=0);
+		static void IDToColor(M::TVec3<>&outColor, const TUniqueID&id, int iteration=0);
 #endif /*0*/
 
 
@@ -232,11 +232,10 @@ namespace Objects
 			static PFaction				GetOrCreate(const TUniqueID&id);
 
 			/**/						Faction(const TUniqueID&id):researchState(this,false),statistics(this) {InitID(id,false);}
-
 		#else
 
-			CryptographicID	accessToken;
-			Ctr::Buffer0<WMobileEntity>		allMobiles,	//!< All mobiles registered in the world
+			CryptographicID				accessToken;
+			Ctr::Buffer0<WMobileEntity>	allMobiles,	//!< All mobiles registered in the world
 										storedMobiles;	//!< All mobile entities registered stored in some other entity. allMobiles and storedMobiles are exclusive of each other
 			Buffer0<SubOrbital::WPlane>	planes;
 			#ifndef NO_SATELLITES
@@ -247,7 +246,7 @@ namespace Objects
 
 			Ctr::Buffer0<WTower>				towers;
 
-			static Ctr::Buffer0<WFaction>	all;
+			static Ctr::Buffer0<PFaction>	all;
 			static PFaction				nexus;
 
 			static PFaction				FindByID(const TUniqueID&);
@@ -339,6 +338,11 @@ namespace Objects
 			Operates in O(n), n = number of structures owned by the local faction
 			*/
 			count_t		CountStructureType(ConstName structureType) const;
+			/**
+			Counts the number of mobiles/structures owned by the local faction that provide the specified turret type
+			Operates in O(n), n = number of units owned by the local faction
+			*/
+			count_t		CountTurretType(ConstName turretType) const;
 
 			//void		SignalCoverageChange(const bool*familiesChanges, float atTime);
 
@@ -369,8 +373,12 @@ namespace Objects
 			void		RegisterSensorRemoval(const World::Sensor&, int sensorHeight, float&t);
 			void		RegisterSensorMotion(const World::Sensor&from, const World::Sensor&to, float&t);
 
-			count_t		CountOffGridCoverage(int channelHeight, const TVec3<>&)	const;
-			count_t		CountOffGridCoverage(const Sphere<>&)	const;
+			count_t		CountOffGridCoverage(int channelHeight, const M::TVec3<>&)	const;
+			count_t		CountOffGridCoverage(const M::Sphere<>&)	const;
+
+			count_t		GetWinningScore() const;
+			count_t		GetOffensiveCapabilities() const;
+			count_t		GetTotalEntityValue() const;
 
 			/**
 			Temporarily inserts a spherical sensor as to visualize the impact of a doomsday crater
@@ -419,7 +427,6 @@ namespace Objects
 //		void	VerifyVisibilityNetwork();
 		bool	CanWithdrawFromStorage(const MobileEntity&v, Resource res, int demand);
 		int		GetStorage(const MobileEntity&v, Resource res);
-
 	#else
 		void	ChangeOwnership( const PWorldEntity&e,const OwnerParameter&newOwner, bool isNowMine);
 	#endif
@@ -427,7 +434,7 @@ namespace Objects
 	/**
 	Iterates through all factions, including the nexus faction
 	*/
-	void			ForeachFaction(const std::function<void(const PFaction&)>&func);
+	void			ForeachFaction(const std::function<void(const PFaction&)>&func, bool includeDead=false);
 
 	/**
 	Iterates through all entities that are located in the world, potentially including ghosts (ghosts on client only)

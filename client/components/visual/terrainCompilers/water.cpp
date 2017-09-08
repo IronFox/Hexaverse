@@ -4,7 +4,6 @@ namespace VisualTerrain
 {
 
 	using namespace DeltaWorks;
-	using namespace DeltaWorks::Math;
 
 	class WaterCompiler
 	{
@@ -41,11 +40,11 @@ namespace VisualTerrain
 								const int clipH,const BaseGrid::TNetCell&cell,
 								const BaseGrid::TCellNeighborhood&neighborhood, bool localEMP);
 		void	CompileFaceToNeighbor(const int j, const UINT ih, const int ir,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors,float newCornerColor[6], 
-									const CellStack::Cell&thisCell, const TFloatRange<>&range, bool localEMP);
+									const CellStack::Cell&thisCell, const M::TFloatRange<>&range, bool localEMP);
 		void	CompileBottomLayer(const CellStack&stack, const int clipH,const BaseGrid::TNetCell&cell,
 									const BaseGrid::TCellNeighborhood&neighbors, bool empThis);
 		void	CompileCap(	const UINT ih,const BaseGrid::TNetCell&cell, const bool capped, const CellStack::Cell&thisCell, 
-							const TFloatRange<>&range, const BaseGrid::TCellNeighborhood&neighbors, 
+							const M::TFloatRange<>&range, const BaseGrid::TCellNeighborhood&neighbors, 
 							const CellStack&stack, bool empThis);
 
 		static float	GetWaterLightLevel(const CellStack::Cell&cell);
@@ -74,17 +73,17 @@ namespace VisualTerrain
 		}
 
 
-		const TFloatRange<> range = FloatRange(
+		const M::TFloatRange<> range = M::FloatRange(
 			Grid::ToRadius(-1-CellStack::HalfRange),
 			Grid::ToRadius(-CellStack::HalfRange));
 		{
-			//float b = smoothstep(0.9, 1, range.max / WorldScale)*0.9f + 0.1f;
+			//float b = M::SmoothStep(0.9, 1, range.max / WorldScale)*0.9f + 0.1f;
 			static const float delta = 0.1f;
 
 			//mesh.SetOffset();
 
-			//const TVec3<> baseColor = thisCell.GetBaseColor();
-			//const TVec3<> nextColor = nextCell.IsOpaque() && nextCell.Mixes() ? nextCell.GetBaseColor() : baseColor;
+			//const M::TVec3<> baseColor = thisCell.GetBaseColor();
+			//const M::TVec3<> nextColor = nextCell.IsOpaque() && nextCell.Mixes() ? nextCell.GetBaseColor() : baseColor;
 			//const bool capped = nextCell.IsOpaque();
 			//if (!capped
 				//)
@@ -101,7 +100,7 @@ namespace VisualTerrain
 
 	void	WaterCompiler::CompileFaceToNeighbor(const int j, const UINT ih, const int ir,const BaseGrid::TNetCell&cell,
 											const BaseGrid::TCellNeighborhood&neighbors,float newCornerLight[6], const CellStack::Cell&thisCell, 
-											const TFloatRange<>&range,
+											const M::TFloatRange<>&range,
 											bool localEMP )
 	{
 			//const UINT32 n1 = neighbors.neighborID[(j + 1) % cell.numCorners];
@@ -119,7 +118,7 @@ namespace VisualTerrain
 			//				lowerLight1 = wasEmpty ? newCornerLight[j] : cornerBrightness[j],
 			//				lowerLight2 = wasEmpty ? newCornerLight[(j + 1) % cell.numCorners] : cornerBrightness[(j + 1) % cell.numCorners];
 			//		
-			//		TVec3<> normal;
+			//		M::TVec3<> normal;
 			//		const auto&v1 = cell.cornerVertex[(j + 1) % cell.numCorners];
 			//		const auto&v0 = cell.cornerVertex[j];
 			//		Vec::cross(v0.xyz, v0.xyz - v1.xyz, normal);
@@ -144,7 +143,7 @@ namespace VisualTerrain
 		//bool wasEmpty = false;
 		const bool ncutoff = Grid::IsClipped(clipHeight, n1, ir);
 		{
-			//TVec4<>	color1 = newCornerColor[j],
+			//M::TVec4<>	color1 = newCornerColor[j],
 			//		color2 = newCornerColor[(j + 1) % cell.numCorners],
 			//		lowerColor1 = wasEmpty ? newCornerColor[j] : cornerColor[j],
 			//		lowerColor2 = wasEmpty ? newCornerColor[(j + 1) % cell.numCorners] : cornerColor[(j + 1) % cell.numCorners];
@@ -176,7 +175,7 @@ namespace VisualTerrain
 						lowerLight1 = wasEmpty ? newCornerLight[j] : cornerBrightness[j],
 						lowerLight2 = wasEmpty ? newCornerLight[(j + 1) % cell.numCorners] : cornerBrightness[(j + 1) % cell.numCorners];
 						
-				TVec3<> normal;
+				M::TVec3<> normal;
 				const auto&v1 = cell.cornerVertex[(j + 1) % cell.numCorners];
 				const auto&v0 = cell.cornerVertex[j];
 				Vec::cross(v0.xyz, v0.xyz - v1.xyz, normal);
@@ -196,7 +195,7 @@ namespace VisualTerrain
 
 /*
 
-				TVec3<> normal;
+				M::TVec3<> normal;
 				const auto&v1 = cell.cornerVertex[(j + 1) % cell.numCorners];
 				const auto&v0 = cell.cornerVertex[j];
 				Vec::cross(v0.xyz, v0.xyz - v1.xyz, normal);
@@ -225,14 +224,14 @@ namespace VisualTerrain
 
 	float	WaterCompiler::GetWaterLightLevel(UINT32 stackID, UINT32 layer) const
 	{
-		return GetWaterLightLevel(stacks[stackID].volumeCell[vmin(layer,CellStack::Range-1)]);
+		return GetWaterLightLevel(stacks[stackID].volumeCell[M::Min(layer,CellStack::Range-1)]);
 	}
 
 
 
-	void	WaterCompiler::CompileCap(const UINT ih,const BaseGrid::TNetCell&cell, const bool capped, const CellStack::Cell&thisCell, const TFloatRange<>&range,const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack, bool empThis)
+	void	WaterCompiler::CompileCap(const UINT ih,const BaseGrid::TNetCell&cell, const bool capped, const CellStack::Cell&thisCell, const M::TFloatRange<>&range,const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack, bool empThis)
 	{
-		const UINT layer = vmin(ih, CellStack::Range-1);
+		const UINT layer = M::Min(ih, CellStack::Range-1);
 		float light0 = GetWaterLightLevel(stack.volumeCell[layer]);
 		
 		mesh.SetOffset();
@@ -280,7 +279,7 @@ namespace VisualTerrain
 			return;
 		}
 
-		const TFloatRange<> range = FloatRange(
+		const M::TFloatRange<> range = M::FloatRange(
 			Grid::ToRadius(ir),
 			Grid::ToRadius(ir + 1));
 		{
@@ -293,7 +292,7 @@ namespace VisualTerrain
 			{
 							
 				//color0.rgb = waterColor;
-				//CompileCap(const UINT ih,const BaseGrid::TNetCell&cell, const bool capped, const CellStack::Cell&thisCell, const TFloatRange<>&range,const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack)
+				//CompileCap(const UINT ih,const BaseGrid::TNetCell&cell, const bool capped, const CellStack::Cell&thisCell, const M::TFloatRange<>&range,const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack)
 				CompileCap(ih+1,cell,capped,thisCell,range,neighbors,stack, empThis);
 			
 			}
@@ -344,7 +343,7 @@ namespace VisualTerrain
 		//		//begin--;
 		//	UINT32 end = (UINT32)stack.highestOpaqueCell + 1;
 
-		//	//TVec4<> cornerColor[6];
+		//	//M::TVec4<> cornerColor[6];
 
 		//	for (int j = 0; j < cell.numCorners; j++)
 		//	{
@@ -388,7 +387,7 @@ namespace VisualTerrain
 
 
 			
-			TIntRange<BYTE> waterRange = stack.waterRange;
+			M::TIntRange<BYTE> waterRange = stack.waterRange;
 
 			//waterRange.end = (BYTE)std::min<UINT>(waterRange.end, CellStack::ToLayer(clipHeight(i)));
 			waterRange.start = (BYTE)std::min<UINT>(waterRange.start, CellStack::ToLayer(clipHeight(i)-1));
@@ -397,7 +396,7 @@ namespace VisualTerrain
 			{
 				UINT32 n = neighbors.neighborID[j];
 				const ::Grid::CellStack&stack = stacks[n];
-				TIntRange<BYTE> otherRange = stack.waterRange;
+				M::TIntRange<BYTE> otherRange = stack.waterRange;
 				//otherRange.end = (BYTE)std::min<UINT>(otherRange.end, CellStack::ToLayer(clipHeight(n)));
 				otherRange.start = (BYTE)std::min<UINT>(otherRange.start, CellStack::ToLayer(clipHeight(n)-1));
 

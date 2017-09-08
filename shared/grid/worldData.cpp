@@ -216,7 +216,7 @@ namespace World
 	void	Data::Explode(const HCellIdI&id,float radius, float atTime)
 	{
 		const float3 center = high.cells[id.stackID].centerVertex.xyz * ToRadiusf(0.5f + id.height);
-		const float r2 = M::sqr(radius);
+		const float r2 = M::Sqr(radius);
 		Ctr::Queue<UINT32> queue;
 		
 		#ifdef HAS_WINDOW
@@ -224,7 +224,7 @@ namespace World
 		#endif
 		queue << id.stackID;
 
-		Box<> b;
+		M::Box<> b;
 		b.SetCenter(center,radius);
 
 		bool processed[HighSetup::GridType::CellCount] = {false};
@@ -239,16 +239,16 @@ namespace World
 			processed[current] = true;
 			seq.SelectStack(current);
 
-			const TVec3<>&dir = high.cells[current].centerVertex.xyz;
-			TVec3<> lower = dir * ToRadius(-CellStack::HalfRange);
-			TVec3<> upper = dir * ToRadius(CellStack::HalfRange);
+			const M::TVec3<>&dir = high.cells[current].centerVertex.xyz;
+			M::TVec3<> lower = dir * ToRadius(-CellStack::HalfRange);
+			M::TVec3<> upper = dir * ToRadius(CellStack::HalfRange);
 			float dummy = Vec::distance(upper,lower);
 			if (b.Contains(lower) || b.Contains(upper) || _oDetectOpticalBoxIntersection(b,lower,(upper-lower)/dummy,dummy))
 			{
 				bool anyChanged = false;
 				for (int h = -CellStack::HalfRange; h < CellStack::HalfRange; h++)
 				{
-					TVec3<> at = dir * ToRadius(h);
+					M::TVec3<> at = dir * ToRadius(h);
 					if (Vec::quadraticDistance(center,at) < r2)
 					{
 						if (seq.Clear(h))
@@ -387,8 +387,8 @@ namespace World
 
 	//	const float r = ToRadius(refHeight);
 	//	//radius /= r;
-	//	const float hr2 = sqr(radius/r);
-	//	const TVec3<>& center = high.cells[highCenter].centerVertex.xyz;
+	//	const float hr2 = M::Sqr(radius/r);
+	//	const M::TVec3<>& center = high.cells[highCenter].centerVertex.xyz;
 	//	UINT32 current;
 	//	while (openCells >> current)
 	//	{
@@ -411,7 +411,7 @@ namespace World
 		int penetrationLeft = penetration << 1;	//account for water effect
 
 		const CellStack&stack = cellStack[highCellCenter];
-		UINT32 limit = M::vmin( startingLayer, CellStack::Range-1);
+		UINT32 limit = M::Min( startingLayer, CellStack::Range-1);
 
 		#ifdef HAS_WINDOW
 			if (stack.waterRange.IsNotEmpty())
@@ -430,7 +430,7 @@ namespace World
 					limit = stack.highestOpaqueCell;
 				DBG_ASSERT_LESS2__(limit,CellStack::Range, stack.lowestOpenCell, stack.highestOpaqueCell);
 			}
-			limit = vmin( limit, CellStack::Range-1);
+			limit = M::Min( limit, CellStack::Range-1);
 		#endif
 
 		UINT32 layer = limit;
@@ -501,7 +501,7 @@ namespace World
 		{
 			for (UINT layer = 0; layer < CellStack::Range; layer++)
 			{
-				rs = M::vmax(rs, stack->volumeCell[layer].structureCounter);
+				rs = M::Max(rs, stack->volumeCell[layer].structureCounter);
 			}
 		}
 		return rs;
@@ -518,7 +518,7 @@ namespace World
 		const auto&c = Grid::high.grid.GetCell(finer);
 		BYTE rs = cellStack[finer].GetCellI(cell.height).structureCounter;
 		for (int j = 0; j < c.neighborhood.numNeighbors; j++)
-			rs = M::vmax(rs, cellStack[c.neighborhood.neighborID[j]].GetCellI(cell.height).structureCounter);
+			rs = M::Max(rs, cellStack[c.neighborhood.neighborID[j]].GetCellI(cell.height).structureCounter);
 		return rs;
 	#else
 		return cellStack[cell.stackID].GetCellI(cell.height).structureCounter;
@@ -633,12 +633,12 @@ namespace World
 			outStrongest = outWeakest = Content::Reinterpret((cellStack[finer].GetCellI(cell.height).content));
 			bool anyUnknown = false;
 			int s0 = CellStack::Cell::typeStrength[outStrongest];
-			TFloatRange<int> strength = FloatRange<int>(s0,s0);
+			M::TFloatRange<int> strength = M::FloatRange<int>(s0,s0);
 			if (outStrongest == Content::Unknown)
 			{
 				anyUnknown = true;
 				if (!includeUnknown)
-					strength = MaxInvalidRange<int>();
+					strength = M::MaxInvalidRange<int>();
 			}
 			for (int j = 0; j < c.neighborhood.numNeighbors; j++)
 			{
@@ -1021,7 +1021,7 @@ namespace World
 	{
 		if (height < Grid::CellStack::BottomHeight)
 			return false;
-		return ChangeConditionally(Grid::CellStack::ToLayer(height),type,cond);
+		return ChangeConditionallyU(Grid::CellStack::ToLayer(height),type,cond);
 	}
 
 	bool				Data::ChangeSequence::ChangeConditionallyU(unsigned layer, /*Grid::Content*/ BYTE type, const FCondition&cond)
@@ -1400,16 +1400,16 @@ namespace World
 		{
 			case SolidSphere:
 			case ShadedSphere:
-				return Sphere<>(worldCenter,radius).Contains(Grid::ToWorld(loc));
+				return M::Sphere<>(worldCenter,radius).Contains(Grid::ToWorld(loc));
 			break;
 			case UpperHalfSolidSphere:
-				return Sphere<>(worldCenter, radius).Contains(Grid::ToWorld(loc)) && Grid::CellStack::ToHeight(gridCenter.layer) <= loc.height;
+				return M::Sphere<>(worldCenter, radius).Contains(Grid::ToWorld(loc)) && Grid::CellStack::ToHeight(gridCenter.layer) <= loc.height;
 			break;
 			case SolidCylinder:
 			case ShadedCylinder:
 			{
 				const float base = Grid::ToRadius(Grid::CellStack::ToHeight(gridCenter.layer));
-				const float hr2 = M::sqr(radius / base);
+				const float hr2 = M::Sqr(radius / base);
 				if (Vec::quadraticDistance(Grid::low.cells[loc.stackID].cornerCenter,Grid::high.cells[gridCenter.stackID].cornerCenter) > hr2)
 					return false;
 				return Grid::CellStack::ToLayer( loc.height ) <= gridCenter.layer;
@@ -1428,14 +1428,14 @@ namespace World
 		{
 			case SolidSphere:
 			case ShadedSphere:
-				Grid::low.GenerateVolume(Sphere<>(worldCenter,radius+1.f),desc);
+				Grid::low.GenerateVolume(M::Sphere<>(worldCenter,radius+1.f),desc);
 			break;
 			case SolidCylinder:
 			case ShadedCylinder:
 				MakeShaftVolume(desc,[](UINT32){return 0;});
 			break;
 			case UpperHalfSolidSphere:
-				Grid::low.GenerateVolume(Sphere<>(worldCenter, radius + 1.f), desc);
+				Grid::low.GenerateVolume(M::Sphere<>(worldCenter, radius + 1.f), desc);
 				foreach(desc.coverage, st)
 					st->range.start = gridCenter.layer;
 			break;
@@ -1641,7 +1641,7 @@ namespace World
 		GenerateDelta(f,noDelta ?  WorldDeltaType::ProgressiveUpdateNoDelta : WorldDeltaType::ProgressiveUpdate,delta);
 		if (!noDelta && (delta.Count() > 1 || delta.First().value.IsSet()))
 		{
-			t = M::vmax(t,t0);
+			t = M::Max(t,t0);
 			return true;
 		}
 		return false;
@@ -1715,11 +1715,11 @@ namespace World
 
 			op.stacksLeft << stackCenter;
 
-			//const float r = worldCenter.Length();
+			//const float r = worldCenter.GetLength();
 
 			const float base = Grid::ToRadius(Grid::CellStack::ToHeight(topLayer));
-			const float hr2 = M::sqr(radius/base);
-			const TVec3<>& center = setup.cells[stackCenter].centerVertex.xyz;
+			const float hr2 = M::Sqr(radius/base);
+			const M::TVec3<>& center = setup.cells[stackCenter].centerVertex.xyz;
 			UINT32 current;
 			while (op.stacksLeft >> current)
 			{
@@ -1768,7 +1768,7 @@ namespace World
 
 	void		Sensor::ApplySolidSphereTo(World::Data&v, short changeBy,Data::ChangeSequence&seq)	const
 	{
-		Grid::high.GenerateVolume(Sphere<>(worldCenter, radius),volume);
+		Grid::high.GenerateVolume(M::Sphere<>(worldCenter, radius),volume);
 
 		ApplyVolume(v, changeBy,seq);
 	}
@@ -1778,11 +1778,11 @@ namespace World
 	{
 		if (gridCenter.layer < Grid::CellStack::Range)
 		{
-			Grid::high.GenerateVolume(Sphere<>(worldCenter, radius), volume);
+			Grid::high.GenerateVolume(M::Sphere<>(worldCenter, radius), volume);
 			foreach(volume.coverage, c)
 			{
-				c->range.start = M::vmax(c->range.start, gridCenter.layer);
-				c->range.end = M::vmax(c->range.end, gridCenter.layer);
+				c->range.start = M::Max(c->range.start, gridCenter.layer);
+				c->range.end = M::Max(c->range.end, gridCenter.layer);
 			}
 			ApplyVolume(v, changeBy, seq);
 		}
@@ -1837,7 +1837,7 @@ namespace World
 	}
 
 
-	void FastNormalize(TVec3<>&v)
+	void FastNormalize(M::TVec3<>&v)
 	{
 		float fc = Q_rsqrt(Vec::dot(v));
 		Vec::mult(v,fc);
@@ -1853,7 +1853,7 @@ namespace World
 			Translucent = 0x4
 		};
 
-		const Grid::HCellIdU center(Grid::high.Locate(worldCenter),M::vmin(Grid::CellStack::Range-1, Grid::CellStack::ToLayer( Grid::HeightFromRadius(Vec::length( worldCenter )) )));
+		const Grid::HCellIdU center(Grid::high.Locate(worldCenter),M::Min(Grid::CellStack::Range-1, Grid::CellStack::ToLayer( Grid::HeightFromRadius(Vec::length( worldCenter )) )));
 
 		static Ctr::Array2D<BYTE> user(Grid::HighSetup::GridType::CellCount,Grid::CellStack::Range,0);
 
@@ -1878,12 +1878,12 @@ namespace World
 			if (u&Visited)
 				continue;
 			//auto&c = v.cellStack[current.stackID].volumeCell[current.layer];
-			const TVec3<>c3 = Grid::ToWorld(current);
-			if (Vec::quadraticDistance(c3,worldCenter) > M::sqr(radius))
+			const M::TVec3<>c3 = Grid::ToWorld(current);
+			if (Vec::quadraticDistance(c3,worldCenter) > M::Sqr(radius))
 				continue;
 
 			float3 d03 = c3-worldCenter;
-			const TVec3<>&up = Grid::high.grid.GetCell(current.stackID).center;
+			const M::TVec3<>&up = Grid::high.grid.GetCell(current.stackID).center;
 			d03 -= up * Vec::dot(d03,up);//bend around sphere
 			d03 += up * Grid::SingleLayerHeight* float((int)current.layer - (int)center.layer);
 			d03.Normalize0();
@@ -1898,9 +1898,9 @@ namespace World
 			{
 				//auto&n = v.cellStack[next.stackID].volumeCell[next.layer];
 				auto&nu = user.Get(next.stackID,next.layer);
-				TVec3<> n3;
+				M::TVec3<> n3;
 				Grid::ToWorld(next,n3);
-				TVec3<> d3;
+				M::TVec3<> d3;
 				Vec::sub(n3,c3,d3);
 				FastNormalize(d3);
 				//const float3	d3 = (n3-c3).Normalized();
@@ -2028,7 +2028,7 @@ namespace World
 	}
 	
 /*
-	void		Data::ChangeSensorCoverage(const Sphere<>&state, signed char change)
+	void		Data::ChangeSensorCoverage(const M::Sphere<>&state, signed char change)
 	{
 		bool familyChanged[BaseGrid::NumFamilies] = {false};
 		TemplateHelper::ChangeSensory(state.center,state.radius,change,cellStack.pointer(),familyChanged);
@@ -2079,12 +2079,12 @@ namespace World
 		#endif
 	}
 
-	//void				Data::InsertSensor(const Sphere<>&desc)
+	//void				Data::InsertSensor(const M::Sphere<>&desc)
 	//{
 	//	ChangeSensorCoverage(desc,1);
 	//}
 
-	//void				Data::RemoveSensor(const Sphere<>&desc)
+	//void				Data::RemoveSensor(const M::Sphere<>&desc)
 	//{
 	//	ChangeSensorCoverage(desc,-1);
 	//}

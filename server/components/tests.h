@@ -52,6 +52,13 @@ namespace Test
 
 	void Run(Test&test);
 
+	class StringMethods : public Test
+	{
+	public:
+		/**/			StringMethods() : Test("String Methods"){}
+		virtual void	Run(Random&random) override;
+	};
+
 	class CharacterEncoding : public Test
 	{
 	public:
@@ -80,11 +87,6 @@ namespace Test
 
 	class Serialization : public Test
 	{
-		static void		RandomFill(Objects::Marker&m, Random&random);
-		static void		RandomFill(Objects::Statistics::UnitStatistics&,Random&random);
-		static void		RandomFill(Objects::Statistics::RoundStatistics&,Random&random);
-		static void		RandomFill(Objects::Statistics::MetricTable&table, Random&random);
-		static void		RandomFill(Objects::PositiveResourceVector&, Random&random);
 
 		void			TestRange(serial_size64_t begin, serial_size64_t end, bool expectException);
 	public:
@@ -93,6 +95,12 @@ namespace Test
 
 		virtual void	Run(Random&random)	override;
 
+		static void		RandomFill(Objects::EntityType&t, Random&random);
+		static void		RandomFill(Objects::Marker&m, Random&random);
+		static void		RandomFill(Objects::Statistics::EntityType&,Random&random);
+		static void		RandomFill(Objects::Statistics::Round&,Random&random);
+		static void		RandomFill(Objects::Statistics::MetricTable&table, Random&random);
+		static void		RandomFill(Objects::PositiveResourceVector&, Random&random);
 	};
 
 	class StorageUnits : public Test
@@ -154,7 +162,7 @@ namespace Test
 		{}
 
 		static Grid::LCellIdI	RandomCell(Random&random);
-		static Grid::LCellIdI	RandomCellAtRange(Random&random,const Grid::LCellIdI&, const TFloatRange<>&);
+		static Grid::LCellIdI	RandomCellAtRange(Random&random,const Grid::LCellIdI&, const M::TFloatRange<>&);
 		
 
 		virtual void	Run(Random&random)	override;

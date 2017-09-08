@@ -45,7 +45,7 @@ namespace Objects
 	{
 		//outerDistance = std::max(0.f,outerDistance);
 		float d = log(1.f + std::max(0.f,(distance-radius)/radius));
-		return 3 - clamp((int)d,0,3);
+		return 3 - M::Clamp((int)d,0,3);
 	}
 
 	
@@ -131,10 +131,10 @@ namespace Objects
 
 
 
-		void	RenderBeam(const TVec3<>&base, float height, float width, const float4&bottomColor, const TVec4<>&topColor);
-		void	RenderBeam(const TVec3<>&base, float height, float width);
+		void	RenderBeam(const M::TVec3<>&base, float height, float width, const float4&bottomColor, const M::TVec4<>&topColor);
+		void	RenderBeam(const M::TVec3<>&base, float height, float width);
 		void	RenderPoleBeam(int pole, float width);
-		void	SetBeamColor(const float4&bottomColor, const TVec4<>&topColor);
+		void	SetBeamColor(const float4&bottomColor, const M::TVec4<>&topColor);
 
 
 
@@ -161,8 +161,8 @@ namespace Objects
 		@param system Vehicle system
 		@param comp Component to render
 		*/
-		void	RenderComponent(TMatrix4<> system, float h, const Component::Base&comp, float x, float y);
-		void	RenderScaledComponent(TMatrix4<> system, float h, float scale, const Component::Base&comp, float x, float y);
+		void	RenderComponent(M::TMatrix4<> system, float h, const Component::Base&comp, float x, float y);
+		void	RenderScaledComponent(M::TMatrix4<> system, float h, float scale, const Component::Base&comp, float x, float y);
 
 		/**
 		Renders both components (base/turret) of a vehicle. No extra calls beyond RenderComnponent()
@@ -219,7 +219,7 @@ namespace Objects
 			Updates @a shadowMap, using the current configuration of @a shadowCamera
 			*/
 			void	RenderShadows(index_t cascade);
-			void	RenderShadows(DX11::FBO&shadowMap, Engine::OrthographicAspect<>&shadowCamera, DX11::ObjectBuffer<TMatrix4<> >&shadowMatrix);
+			void	RenderShadows(DX11::FBO&shadowMap, Engine::OrthographicAspect<>&shadowCamera, DX11::ObjectBuffer<M::TMatrix4<> >&shadowMatrix);
 
 		#else
 			void	RenderShadows();
@@ -228,8 +228,8 @@ namespace Objects
 		void		EndShadowRendering();
 
 
-		void	RenderRangeSphere(const TVec3<>&center, float radius, const float4&color, bool outer);
-		void	RenderRangeCylinder(const TVec3<>&center, float radius, const float4&color, bool outer);
+		void	RenderRangeSphere(const M::TVec3<>&center, float radius, const float4&color, bool outer);
+		void	RenderRangeCylinder(const M::TVec3<>&center, float radius, const float4&color, bool outer);
 		void	RenderRange(const Grid::LCellIdI&location, float zOffset, const PTurretBase&base, const float4&color, bool extended);
 
 
@@ -246,7 +246,7 @@ namespace Objects
 		Registers a new smoke trail as created by a weapon discharge
 		@return Index to the newly created smoke trail. Valid until ClearSmokeTrails() is called.
 		*/
-		SmokeTrailIndex	RegisterSmokeTrail(const Buffer0<TVec4<> >&trajectory, bool aboveGrid);
+		SmokeTrailIndex	RegisterSmokeTrail(const Buffer0<M::TVec4<> >&trajectory, bool aboveGrid);
 
 		/**
 		Tints the specified smoke trail in pulsing red.
@@ -265,7 +265,7 @@ namespace Objects
 
 
 		Engine::OpenAL::Wave	GetAmbientSound(const WorldEntity&e);
-		Engine::OpenAL::Wave	GetAmbientSoundOf(const String&entityTypeName, ConstName entityType);
+		Engine::OpenAL::Wave	GetAmbientSoundOf(const String&entityTypeName, EntityType entityType);
 
 	}
 

@@ -69,11 +69,11 @@ namespace Objects
 		float			radius=0;	//!< Distance from planet center
 
 		/**/			TrajectoryEndPoint()	{}
-		/**/			TrajectoryEndPoint(const TVec3<>&worldLocation);
+		/**/			TrajectoryEndPoint(const M::TVec3<>&worldLocation);
 		/**/			TrajectoryEndPoint(const Grid::LCellIdI&, float zOffset);
 		explicit		TrajectoryEndPoint(const Grid::LCellIdI&);
 
-		String			ToString() const;
+		friend String	ToString(const TrajectoryEndPoint&);
 	};
 
 	/**
@@ -122,10 +122,10 @@ namespace Objects
 
 			struct Detail
 			{
-				static void					TraceAnimationArtilleryTrajectory(float velocity,  float attackAngle, const TrajectoryEndPoint&attackerPosition, const TrajectoryEndPoint&explosionCenter,Ctr::Buffer0<TVec4<> >&outSteps);
-				static void					TraceAnimationMissileTrajectory(float range, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<TVec4<> >&outSteps);
-				static TurretTrajectory		TraceArtilleryTrajectory(float velocity, const World::Data&decisionWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source,  const TrajectoryEndPoint&dest, Ctr::Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle);
-				static TurretTrajectory		TraceMissileTrajectory(float range, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell);
+				static void					TraceAnimationArtilleryTrajectory(float velocity,  float attackAngle, const TrajectoryEndPoint&attackerPosition, const TrajectoryEndPoint&explosionCenter,Ctr::Buffer0<M::TVec4<> >&outSteps);
+				static void					TraceAnimationMissileTrajectory(float range, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps);
+				static TurretTrajectory		TraceArtilleryTrajectory(float velocity, const World::Data&decisionWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source,  const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps, M::TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle);
+				static TurretTrajectory		TraceMissileTrajectory(float range, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps, M::TVec3<>&impactAt, Grid::HCellIdI&impactCell);
 				static bool					ArtilleryCanHit(float flatRange, float horizontalDistance, float verticalDistance, float&outAngle);
 				static bool					ArtilleryCanHit(float flatRange, float horizontalDistance, float verticalDistance);
 				static bool					MissileCanHit(float flatRange, const TrajectoryEndPoint&origin, const TrajectoryEndPoint&destination);
@@ -155,13 +155,13 @@ namespace Objects
 
 
 
-			void							GetSubSystem(index_t geometryIndex, float angle, TMatrix4<>&outSystem)	const;
+			void							GetSubSystem(index_t geometryIndex, float angle, M::TMatrix4<>&outSystem)	const;
 			virtual bool					IsTurret() const {return false;}
 			virtual bool					IsVehicleBase() const {return false;}
 
 			
 
-			bool							TestIntersection(float zOffset, float x, float y, const TVec3<>&b, const TVec3<>&d, float & distance);
+			bool							TestIntersection(float zOffset, float x, float y, const M::TVec3<>&b, const M::TVec3<>&d, float & distance);
 
 			void							DescribeType(Description&,bool compound, const OwnerParameter&);
 			void							VisitAllCommands(FCommandVisitor visitor, bool force);
@@ -190,8 +190,6 @@ namespace Objects
 				Plane,
 			};
 
-
-			ConstName						constTowerName;
 
 			IFunc							healthMultiplier;
 			Resource						ammoType;
@@ -244,17 +242,17 @@ namespace Objects
 												}
 
 			static int						GetGroundHeight(const Grid::LCellIdI&location);
-			//static void						TraceTrajectory(TrajectoryType, float flatRange, const TVec3<>&source, const TVec3<>&dest, Buffer0<TVec4<> >&outSteps);
-			static TurretTrajectory			TraceTrajectory(TrajectoryType, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle);
-			static TurretTrajectory			TraceTrajectory(TrajectoryType type, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, TVec3<>&impactAt)
+			//static void						TraceTrajectory(TrajectoryType, float flatRange, const M::TVec3<>&source, const M::TVec3<>&dest, Buffer0<M::TVec4<> >&outSteps);
+			static TurretTrajectory			TraceTrajectory(TrajectoryType, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps, M::TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle);
+			static TurretTrajectory			TraceTrajectory(TrajectoryType type, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, M::TVec3<>&impactAt)
 			{
-				Ctr::Buffer0<TVec4<> > outSteps;
+				Ctr::Buffer0<M::TVec4<> > outSteps;
 				Grid::HCellIdI impactCell;
 				float angle;
 				return TraceTrajectory(type, flatRange,visibleWorld, actualWorld,source,dest,outSteps,impactAt,impactCell,angle);
 			}
 			virtual bool					IsTurret() const override {return true;}
-			static void						TraceAnimationTrajectory(TrajectoryType, float flatRange, float attackAngle, const TrajectoryEndPoint&attackerPosition, const TrajectoryEndPoint&explosionCenter,Ctr::Buffer0<TVec4<> >&outTrajectory);
+			static void						TraceAnimationTrajectory(TrajectoryType, float flatRange, float attackAngle, const TrajectoryEndPoint&attackerPosition, const TrajectoryEndPoint&explosionCenter,Ctr::Buffer0<M::TVec4<> >&outTrajectory);
 
 
 			float							GetOperationSpeed(operation_t op, const OwnerParameter&owner) const;
@@ -274,13 +272,13 @@ namespace Objects
 
 			static float					VelocityToMaxVerticalHeight(float v)
 			{
-				return M::sqr(v) / (2.f * g);
+				return M::Sqr(v) / (2.f * g);
 
 			}
 
 			static float					MaxRangeAtHeight(float horizontalRange, float verticalDistance)
 			{
-				float q = M::sqr(horizontalRange) - 2.f * horizontalRange * verticalDistance;
+				float q = M::Sqr(horizontalRange) - 2.f * horizontalRange * verticalDistance;
 				if (q < 0)
 					return - 1.f;
 				return sqrt(q);
@@ -288,7 +286,7 @@ namespace Objects
 
 			static float					MaxHeightAtHDistance(float horizontalRange, float horizontalDistance)
 			{
-				return -0.5f / horizontalRange * M::sqr(horizontalDistance) + horizontalRange * 0.5f;
+				return -0.5f / horizontalRange * M::Sqr(horizontalDistance) + horizontalRange * 0.5f;
 			}
 
 			static float					MaxHeightSlopeAtHDistance(float horizontalRange, float horizontalDistance)
@@ -310,7 +308,7 @@ namespace Objects
 					return -1.f;
 				float a = acos(q);
 
-				float q2 = velocity2 * M::sqr(sin(a)) + 2.f * g * verticalDistance;
+				float q2 = velocity2 * M::Sqr(sin(a)) + 2.f * g * verticalDistance;
 				ASSERT_GREATER_OR_EQUAL__(q2,0);
 				q = sqrt(q2);
 
@@ -328,9 +326,9 @@ namespace Objects
 			{
 				//verticalDistance = -verticalDistance;
 				//v *= (1.f + TypeInfo<float>::error);
-				float velocity2 = M::sqr(v);
+				float velocity2 = M::Sqr(v);
 				TAngles rs;
-				float q0 = M::sqr(velocity2) - g  * (g * M::sqr(horizontalDistance) + 2.f * verticalDistance * velocity2 );
+				float q0 = M::Sqr(velocity2) - g  * (g * M::Sqr(horizontalDistance) + 2.f * verticalDistance * velocity2 );
 				if (q0 < 0)
 					return rs;
 
@@ -340,7 +338,7 @@ namespace Objects
 
 				if (a0 > 0)
 					rs.idealAngle[rs.numAngles++] = a0;
-				if (a1 > 0 && (rs.numAngles == 0 || !M::similar(a0,a1)))
+				if (a1 > 0 && (rs.numAngles == 0 || !M::Similar(a0,a1)))
 					rs.idealAngle[rs.numAngles++] = a1;
 				return rs;
 			}
@@ -350,8 +348,8 @@ namespace Objects
 
 
 
-			void							BuildBlastSystem(const Grid::LCellIdI&location, float radius, TMatrix4<>&system) const;
-			void							BuildBlastSystem(const TVec3<>&location, float radius, TMatrix4<>&system) const;
+			void							BuildBlastSystem(const Grid::LCellIdI&location, float radius, M::TMatrix4<>&system) const;
+			void							BuildBlastSystem(const M::TVec3<>&location, float radius, M::TMatrix4<>&system) const;
 
 			bool							CanAttack() const {return attacksPerRound.IsSet();}
 			bool							CanDealDamage() const {return damageLevel.IsSet();}
@@ -381,7 +379,7 @@ namespace Objects
 				SmokeTrail
 			};
 
-			static float					CompileTrajectory(const Ctr::Buffer0<TVec4<> >&v, geometryType_t type, Geometry&outGeo, float widthScale=1.f);
+			static float					CompileTrajectory(const Ctr::Buffer0<M::TVec4<> >&v, geometryType_t type, Geometry&outGeo, float widthScale=1.f);
 
 			/**
 			Checks whether or not the local turret could ever possibly consume resources
@@ -489,11 +487,10 @@ namespace Objects
 
 		namespace Terraformer
 		{
-			extern Ctr::Buffer<PStructure> canBuild;
-
-
-
 			void		Configure(Turret&);
+
+			bool		CanBuild(const PStructure&proto);
+
 		};
 
 		namespace Bomb
@@ -657,7 +654,7 @@ namespace Objects
 
 	}
 
-	inline float3 ToWorld(const TVec4<>&trajectoryPoint)
+	inline float3 ToWorld(const M::TVec4<>&trajectoryPoint)
 	{
 		return trajectoryPoint.xyz * trajectoryPoint.w;
 	}

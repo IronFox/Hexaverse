@@ -18,7 +18,7 @@
 namespace Objects
 {
 
-	/**/			TrajectoryEndPoint::TrajectoryEndPoint(const TVec3<>&worldLocation)
+	/**/			TrajectoryEndPoint::TrajectoryEndPoint(const M::TVec3<>&worldLocation)
 	{
 		radius = Vec::length(worldLocation);
 		cellLocation.stackID = Grid::low.Locate(worldLocation,0);
@@ -45,9 +45,10 @@ namespace Objects
 	}
 
 
-	String			TrajectoryEndPoint::ToString() const
+	String			ToString(const TrajectoryEndPoint&endPoint)
 	{
-		return worldLocation.ToString()+"/"+cellLocation.ToString()+" r="+String(radius);
+		using StringConversion::ToString;
+		return ToString(endPoint.worldLocation)+"/"+ToString(endPoint.cellLocation)+" r="+ToString(endPoint.radius);
 	}
 
 
@@ -158,13 +159,13 @@ namespace Objects
 
 
 
-		void		Turret::BuildBlastSystem(const TVec3<>&location, float radius, TMatrix4<>&system) const
+		void		Turret::BuildBlastSystem(const M::TVec3<>&location, float radius, M::TMatrix4<>&system) const
 		{
 			BuildSystem(location,radius,radius,system);
 		}
 
 
-		void		Turret::BuildBlastSystem(const Grid::LCellIdI&location, float radius, TMatrix4<>&system)	const
+		void		Turret::BuildBlastSystem(const Grid::LCellIdI&location, float radius, M::TMatrix4<>&system)	const
 		{
 			BuildSystem(location,radius,radius,system);
 		}
@@ -202,13 +203,13 @@ namespace Objects
 
 
 		#ifdef HAS_WINDOW
-			/*static*/ float			Turret::CompileTrajectory(const Buffer0<TVec4<> >&v, geometryType_t type, Geometry&geo, float widthScale/*=1.f*/)
+			/*static*/ float			Turret::CompileTrajectory(const Buffer0<M::TVec4<> >&v, geometryType_t type, Geometry&geo, float widthScale/*=1.f*/)
 			{
 				bool schematic = type == Schematic;
 				bool smoke = type == SmokeTrail;
 				if (v.IsNotEmpty())
 				{
-					TVec3<> n;
+					M::TVec3<> n;
 					float3 front = v.First().xyz * v.First().w;
 					float3 back = v.last().xyz * v.last().w;
 					Vec::cross(front,back-front,n);
@@ -218,7 +219,7 @@ namespace Objects
 						n*= v.First().w / Grid::MeanPlanetRadius;;
 					float d = 0;
 					geo.SetVertexOffsetToCurrent();
-					TVec3<> lastB;
+					M::TVec3<> lastB;
 					float innerWhite = schematic ? 1.f : 1.1f;
 					float innerOpacity = schematic ? 1.5f : 1.1f;
 					float outerWhite = schematic ? 1.0f : 0.f;
@@ -235,8 +236,8 @@ namespace Objects
 					{
 						for (index_t i = 0; i < v.Count(); i++)
 						{
-							const TVec4<>&_b = v[i];
-							TVec3<>b = _b.xyz * _b.w;
+							const M::TVec4<>&_b = v[i];
+							M::TVec3<>b = _b.xyz * _b.w;
 
 
 							if (i)
@@ -251,9 +252,9 @@ namespace Objects
 
 					for (index_t i = 0; i < v.Count(); i++)
 					{
-						const TVec4<>&_b = v[i];
-						TVec3<>b = _b.xyz * _b.w;
-						TVec3<> upNormal;
+						const M::TVec4<>&_b = v[i];
+						M::TVec3<>b = _b.xyz * _b.w;
+						M::TVec3<> upNormal;
 						if (i > 0)
 						{
 							if (schematic)
@@ -284,8 +285,8 @@ namespace Objects
 						{
 							if (smoke && v.Count() > 1)
 							{
-								const TVec4<>&_b2 = v[1];
-								TVec3<>b2 = _b2.xyz * _b2.w;
+								const M::TVec4<>&_b2 = v[1];
+								M::TVec3<>b2 = _b2.xyz * _b2.w;
 
 								Vec::cross(n,b2-b,upNormal);
 								Vec::normalize(upNormal);
@@ -295,7 +296,7 @@ namespace Objects
 						float io = innerOpacity;
 						if (schematic)
 						{
-							float fc = 1.f - sqr((float(i) - (v.Count()/2)) / float(v.Count()/2));
+							float fc = 1.f - M::Sqr((float(i) - (v.Count()/2)) / float(v.Count()/2));
 							oo *= fc;
 							io *= fc;
 						}
@@ -329,7 +330,7 @@ namespace Objects
 		#endif
 
 
-		///*static*/ bool						Turret::CanHit(float flatRange, const TVec3<>&origin, const TVec3<>&dest)
+		///*static*/ bool						Turret::CanHit(float flatRange, const M::TVec3<>&origin, const M::TVec3<>&dest)
 		//{
 		//	float hDest = Vec::length(dest);
 		//	float hOrigin = Vec::length(origin);
@@ -409,7 +410,7 @@ namespace Objects
 
 		/*static*/ bool						Turret::Detail::MissileCanHit(float flatRange, const TrajectoryEndPoint&origin, const TrajectoryEndPoint&destination)
 		{
-			return Math::sqr(flatRange) >= Vec::quadraticDistance(origin.worldLocation,destination.worldLocation);
+			return M::Sqr(flatRange) >= Vec::quadraticDistance(origin.worldLocation,destination.worldLocation);
 		}
 
 
@@ -422,7 +423,7 @@ namespace Objects
 
 
 		
-		/*static*/ void							Turret::TraceAnimationTrajectory(TrajectoryType t, float flatRange,  float attackAngle, const TrajectoryEndPoint&from,const TrajectoryEndPoint&to, Ctr::Buffer0<TVec4<> >&outSteps)
+		/*static*/ void							Turret::TraceAnimationTrajectory(TrajectoryType t, float flatRange,  float attackAngle, const TrajectoryEndPoint&from,const TrajectoryEndPoint&to, Ctr::Buffer0<M::TVec4<> >&outSteps)
 		{
 			outSteps.Clear();
 
@@ -449,10 +450,10 @@ namespace Objects
 			}
 		}
 
-		/*static*/ void							Turret::Detail::TraceAnimationMissileTrajectory(float range, const TrajectoryEndPoint&here, const TrajectoryEndPoint&there, Ctr::Buffer0<TVec4<> >&outSteps)
+		/*static*/ void							Turret::Detail::TraceAnimationMissileTrajectory(float range, const TrajectoryEndPoint&here, const TrajectoryEndPoint&there, Ctr::Buffer0<M::TVec4<> >&outSteps)
 		{
 			float d2 = Vec::quadraticDistance(here.worldLocation,there.worldLocation);
-			if (d2 > M::sqr(range))
+			if (d2 > M::Sqr(range))
 			{
 				LogEvent(EventClass::Preset::error,"TraceMissileTrajectory(): Distance to target ("+String(sqrt(d2))+") exceeds maximum range ("+String(range)+") of missile turret. Ignoring for now.");
 				//DBG_FATAL__("Trajectory out of range: "+String(sqrt(d2))+">="+String(range));
@@ -470,13 +471,13 @@ namespace Objects
 			const int resolution = std::max<int>(2,distance*2);
 
 			float lastH = here.radius;
-			TVec3<> lastB = here.worldLocation;
+			M::TVec3<> lastB = here.worldLocation;
 			for (int i = 0; i <= resolution; i++)
 			{
 				float t01 = float(i) / float(resolution);
 			
 				float fy = here.radius + (t01 * h);
-				TVec3<> b;
+				M::TVec3<> b;
 				Vec::interpolate(here.worldLocation,there.worldLocation,t01,b);
 				Vec::normalize(b);
 				outSteps << float4(b,fy);
@@ -485,7 +486,7 @@ namespace Objects
 		}
 
 
-		/*static*/ void							Turret::Detail::TraceAnimationArtilleryTrajectory(float velocity,  float angle, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest,Ctr::Buffer0<TVec4<> >&outSteps)
+		/*static*/ void							Turret::Detail::TraceAnimationArtilleryTrajectory(float velocity,  float angle, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest,Ctr::Buffer0<M::TVec4<> >&outSteps)
 		{
 			const float sn = sin(angle),
 						cs = cos(angle);
@@ -497,19 +498,19 @@ namespace Objects
 
 			const float h = dest.radius - source.radius;
 
-			const float tEnd = (velocity * sn + sqrt(M::sqr(velocity*sn) - 2.f * g * h)) / g;
+			const float tEnd = (velocity * sn + sqrt(M::Sqr(velocity*sn) - 2.f * g * h)) / g;
 
 
 			const int resolution = std::max<int>(2,distance*4);
 
 			float lastH = source.radius;
-			TVec3<> lastB = source.worldLocation;
+			M::TVec3<> lastB = source.worldLocation;
 			for (int i = 0; i <= resolution; i++)
 			{
 				float t01 = float(i) / float(resolution);
 				const float t = t01 * tEnd;
-				float fy = source.radius + (velocity * t*sn - 0.5f * g * M::sqr(t));
-				TVec3<> b;
+				float fy = source.radius + (velocity * t*sn - 0.5f * g * M::Sqr(t));
+				M::TVec3<> b;
 				Vec::interpolate(source.worldLocation,dest.worldLocation,t01,b);
 				Vec::normalize(b);
 				outSteps << float4(b,fy);
@@ -518,7 +519,7 @@ namespace Objects
 		}
 
 
-		/*static*/ TurretTrajectory			Turret::TraceTrajectory(TrajectoryType t, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle)
+		/*static*/ TurretTrajectory			Turret::TraceTrajectory(TrajectoryType t, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps, M::TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle)
 		{
 			outSteps.Clear();
 			outAngle = 0;
@@ -559,7 +560,7 @@ namespace Objects
 			const int resolution = std::max<int>(2,std::max(distance*2.f,distance * sn * 5.f));
 
 			float delta = there.radius - here.radius;
-			float tEnd = (velocity * sn + sqrt(M::sqr(velocity*sn) - 2.f * g * delta)) / g;
+			float tEnd = (velocity * sn + sqrt(M::Sqr(velocity*sn) - 2.f * g * delta)) / g;
 
 
 
@@ -574,13 +575,13 @@ namespace Objects
 
 			
 			float lastH = here.radius;
-			TVec3<> lastB = here.worldLocation;
+			M::TVec3<> lastB = here.worldLocation;
 			for (int i = 0; i <= resolution; i++)
 			{
 				float t01 = float(i) / float(resolution);
 				const float t = t01 * tEnd;
-				float fy = here.radius + (velocity * t*sn - 0.5f * g * M::sqr(t));
-				TVec3<> b;
+				float fy = here.radius + (velocity * t*sn - 0.5f * g * M::Sqr(t));
+				M::TVec3<> b;
 				Vec::interpolate(here.worldLocation,there.worldLocation,t01,b);
 				Vec::normalize(b);
 //				outSteps << float4(b,fy);
@@ -596,14 +597,14 @@ namespace Objects
 			return 0;
 		}
 
-		/*static*/ TurretTrajectory			Turret::Detail::TraceArtilleryTrajectory(float velocity, const World::Data&decisionWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle)
+		/*static*/ TurretTrajectory			Turret::Detail::TraceArtilleryTrajectory(float velocity, const World::Data&decisionWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps, M::TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle)
 		{
 			Turret::TAngles angles = Turret::GetAngleForDistance(velocity,source,dest);
 			if (angles.numAngles == 0)
 			{
 				if (velocity < 50.f)
 				{
-					LogEvent(EventClass::Preset::internalError,"Unable to determine feasible angles for artillery trajectory at v="+String(velocity)+", source="+source.ToString()+", dest="+dest.ToString()+". Increasing velocity and retrying.");
+					LogEvent(EventClass::Preset::internalError,"Unable to determine feasible angles for artillery trajectory at v="+String(velocity)+", source="+ToString(source)+", dest="+ToString(dest)+". Increasing velocity and retrying.");
 					velocity = velocity > 0 ? velocity * 1.1f : 1.f;	//should not be zero, but it's better to handle this case here anyway. Otherwise we're causing a stack overflow in no-time
 					return TraceArtilleryTrajectory(velocity,decisionWorld,actualWorld,source, dest,outSteps,impactAt,impactCell,outAngle);
 				}
@@ -627,7 +628,7 @@ namespace Objects
 			for (int j = 0; j < angles.numAngles; j++)
 			{
 				float d2 = PreTraceArtillery(velocity,angles.idealAngle[j], source,dest,distance,decisionWorld);
-				LogEvent(EventSignificance::Debug,source.ToString()+"->"+dest.ToString()+ ": Angle "+String(j)+"/"+String(angles.numAngles)+" "+String(angles.idealAngle[j])+" lead to distance "+String(d2));
+				LogEvent(EventSignificance::Debug,ToString(source)+"->"+ToString(dest)+ ": Angle "+String(j)+"/"+String(angles.numAngles)+" "+String(angles.idealAngle[j])+" lead to distance "+String(d2));
 				if (d2 < leastDistance)
 				{
 					leastDistance = d2;
@@ -648,7 +649,7 @@ namespace Objects
 
 				const int resolution = std::max<int>(2,std::max(distance*2.f,distance * sn * 5.f));
 
-				float tEnd = (velocity * sn + sqrt(M::sqr(velocity*sn) - 2.f * g * h)) / g;
+				float tEnd = (velocity * sn + sqrt(M::Sqr(velocity*sn) - 2.f * g * h)) / g;
 
 
 
@@ -669,13 +670,13 @@ namespace Objects
 
 			
 				float lastH = source.radius;
-				TVec3<> lastB = source.worldLocation;
+				M::TVec3<> lastB = source.worldLocation;
 				for (int i = 0; i <= resolution; i++)
 				{
 					float t01 = float(i) / float(resolution);
 					const float t = t01 * tEnd;
-					float fy = source.radius + (velocity * t*sn - 0.5f * g * M::sqr(t));
-					TVec3<> b;
+					float fy = source.radius + (velocity * t*sn - 0.5f * g * M::Sqr(t));
+					M::TVec3<> b;
 					Vec::interpolate(source.worldLocation,dest.worldLocation,t01,b);
 					Vec::normalize(b);
 					outSteps << float4(b,fy);
@@ -705,7 +706,7 @@ namespace Objects
 			}
 		}
 
-		/*static*/ TurretTrajectory			Turret::Detail::TraceMissileTrajectory(float range, const World::Data&world, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell)
+		/*static*/ TurretTrajectory			Turret::Detail::TraceMissileTrajectory(float range, const World::Data&world, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps, M::TVec3<>&impactAt, Grid::HCellIdI&impactCell)
 		{
 		/*
 
@@ -715,7 +716,7 @@ namespace Objects
 			const float3 here = Grid::low.cells[source.stackID].centerVertex.xyz * h0;
 		*/
 			float d2 = Vec::quadraticDistance(source.worldLocation,dest.worldLocation);
-			if (d2 > M::sqr(range))
+			if (d2 > M::Sqr(range))
 				return TurretTrajectory::InvalidTrajectory;
 
 
@@ -728,13 +729,13 @@ namespace Objects
 			UINT32 cellAt = Grid::low.grid.GetCell(source.cellLocation.stackID).higherEquivalent;
 
 			float lastH = source.radius;
-			TVec3<> lastB = source.worldLocation;
+			M::TVec3<> lastB = source.worldLocation;
 			for (int i = 0; i <= resolution; i++)
 			{
 				float t01 = float(i) / float(resolution);
 			
 				float fy = source.radius + (t01 * h);
-				TVec3<> b;
+				M::TVec3<> b;
 				Vec::interpolate(source.worldLocation,dest.worldLocation,t01,b);
 				Vec::normalize(b);
 				outSteps << float4(b,fy);
@@ -783,20 +784,21 @@ namespace Objects
 
 
 
-		Ctr::Buffer<PStructure> Terraformer::canBuild;
+		bool			Terraformer::CanBuild(const PStructure&proto)
+		{
+			return !proto->IsIndestructible()
+					#ifdef ONE_COMPOUND_PER_FACTION
+						&& !To<Connector>::DynamicCast(proto)
+					#endif
+					#ifdef NO_MUNITION
+						&& !To<MunitionFactory>::DynamicCast(proto) && !To<MunitionStorage>::DynamicCast(proto)
+					#endif
+			;
+		}
+
 
 		void			Terraformer::Configure(Turret&component)
 		{
-			foreach (structurePrototypes,p)
-				if (!(*p)->IsIndestructible())
-					#ifdef ONE_COMPOUND_PER_FACTION
-						if (!To<Connector>::DynamicCast(*p))
-					#endif
-					#ifdef NO_MUNITION
-						if (!To<MunitionFactory>::DynamicCast(*p) && !To<MunitionStorage>::DynamicCast(*p))
-					#endif
-					canBuild << *p;
-
 			#ifdef HAS_WINDOW		
 				component.parts.SetSize(1);
 
@@ -867,7 +869,6 @@ namespace Objects
 			component.typeName = "Artillery";
 			component.shortName = " Artillery";
 			component.constName = ConstName::Turret_Artillery;
-			component.constTowerName = ConstName::Type_ArtilleryTower;
 
 			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 24;
@@ -888,7 +889,6 @@ namespace Objects
 			component.typeName = "Missile Launcher";
 			component.shortName = " Launcher";
 			component.constName = ConstName::Turret_Launcher;
-			component.constTowerName = ConstName::Type_LauncherTower;
 
 			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 24;
@@ -911,7 +911,6 @@ namespace Objects
 			component.typeName = "Cannon";
 			component.shortName = "tank";
 			component.constName = ConstName::Turret_Cannon;
-			component.constTowerName = ConstName::Type_CannonTower;
 
 			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 20;
@@ -933,7 +932,6 @@ namespace Objects
 			component.typeName = "EMP";
 			component.shortName = " EMP";
 			component.constName = ConstName::Turret_EMP;
-			component.constTowerName = ConstName::Type_EMPTower;
 
 			#ifndef ONE_COMPOUND_PER_FACTION
 				component.baseStorageCapacity.level[Resource::Uranium] = 150;
@@ -1199,7 +1197,6 @@ namespace Objects
 			component.typeName = "Mechanic";
 			component.shortName = "mechanic";
 			component.constName = ConstName::Turret_Mechanic;
-			component.constTowerName = ConstName::Type_MechanicTower;
 
 			#ifndef ONE_COMPOUND_PER_FACTION
 				component.baseStorageCapacity.level[Resource::Minerals] = 100;
@@ -1218,7 +1215,6 @@ namespace Objects
 			component.typeName = "Radar";
 			component.shortName = "radar";
 			component.constName = ConstName::Turret_Radar;
-			component.constTowerName = ConstName::Type_RadarTower;
 
 			component.continuousRotation = true;
 			component.continuousRotationSpeed = 2.f;
@@ -1276,7 +1272,6 @@ namespace Objects
 				component.typeName = "Raptor";
 				component.shortName = " Raptor";
 				component.constName = ConstName::Type_Raptor;	//let's see if i can use the same name here
-				component.constTowerName = ConstName::Empty;	//not used
 
 				component.mountType = Turret::MountType::Plane;
 
@@ -1296,7 +1291,6 @@ namespace Objects
 				component.typeName = "Sensor Drone";
 				component.shortName = " Sensor";
 				component.constName = ConstName::Type_SensorDrone;
-				component.constTowerName = ConstName::Empty;
 
 				component.mountType = Turret::MountType::Plane;
 				component.initiative = 110;
@@ -1310,7 +1304,6 @@ namespace Objects
 				component.typeName = "Cargo Plane";
 				component.shortName = " Cargo";
 				component.constName = ConstName::Type_CargoPlane;	//let's see if i can use the same name here
-				component.constTowerName = ConstName::Empty;	//not used
 
 				component.mountType = Turret::MountType::Plane;
 				component.initiative = 60;
@@ -1331,7 +1324,7 @@ namespace Objects
 
 				component.parts.First().LoadFromObj("objects/hoverbase.obj");
 				component.height = component.parts.First().GetBoundingBox().z.max;
-				ASSERT2__(similar(staticHeight,component.height),staticHeight,component.height);
+				ASSERT2__(M::Similar(staticHeight,component.height),staticHeight,component.height);
 
 				component.ambientSound = Engine::OpenAL::Load("resources/objectSounds/hoverbase.wav");
 
@@ -1339,7 +1332,7 @@ namespace Objects
 				component.height = staticHeight;
 			#endif
 
-			//MakeBox(component.parts.First().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.35f));
+			//MakeBox(component.parts.First().first, M::Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.35f));
 			component.typeName = "Hoverbase";
 			component.shortName = "Hover";
 			component.constName = ConstName::VehicleBase_HoverBase;
@@ -1372,7 +1365,7 @@ namespace Objects
 
 				component.parts.First().LoadFromObj("objects/heavyBase.obj");
 				component.height = component.parts.First().GetBoundingBox().z.max;
-				ASSERT2__(similar(staticHeight,component.height),staticHeight,component.height);
+				ASSERT2__(M::Similar(staticHeight,component.height),staticHeight,component.height);
 
 				component.ambientSound = Engine::OpenAL::Load("resources/objectSounds/heavybase.wav");
 			#else
@@ -1380,7 +1373,7 @@ namespace Objects
 			#endif
 
 
-			//MakeBox(component.parts.First().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.35f));
+			//MakeBox(component.parts.First().first, M::Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.35f));
 			component.typeName = "Heavy Base";
 			component.shortName = "Heavy";
 			component.constName = ConstName::VehicleBase_HeavyBase;
@@ -1413,7 +1406,7 @@ namespace Objects
 
 				component.parts.First().LoadFromObj("objects/catBase.obj");
 				component.height = component.parts.First().GetBoundingBox().z.max;
-				ASSERT2__(similar(staticHeight,component.height),staticHeight,component.height);
+				ASSERT2__(M::Similar(staticHeight,component.height),staticHeight,component.height);
 
 				component.ambientSound = Engine::OpenAL::Load("resources/objectSounds/catbase.wav");
 			#else
@@ -1421,7 +1414,7 @@ namespace Objects
 			#endif
 
 
-			//MakeBox(component.parts.First().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.35f));
+			//MakeBox(component.parts.First().first, M::Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.35f));
 			component.typeName = "Catamaran Base";
 			component.shortName = "Cat";
 			component.constName = ConstName::VehicleBase_CatBase;
@@ -1513,7 +1506,7 @@ namespace Objects
 			{
 				outResult.BeginBrief();
 				const String upperName = parentType.IsNotEmpty() ? parentType+"-Turret" : "Turret";
-				const String lowerName = upperName.copyToLowerCase();
+				const String lowerName = upperName.CopyToLowerCase();
 				if (includeName)
 				{
 					const String nameAppend = isDoomsday ? ", DOOMSDAY" : "";
@@ -1720,19 +1713,19 @@ namespace Objects
 	
 		}
 
-		bool							Base::TestIntersection(float zOffset, float x, float y, const TVec3<>&_b, const TVec3<>&_d, float & distance)
+		bool							Base::TestIntersection(float zOffset, float x, float y, const M::TVec3<>&_b, const M::TVec3<>&_d, float & distance)
 		{
 			#ifdef HAS_WINDOW
 				bool rs = false;
-				TMatrix4<> system1,system2,inverse;
-				TVec3<> b,d;
+				M::TMatrix4<> system1,system2,inverse;
+				M::TVec3<> b,d;
 				if (parts.Count() > 0)
 				{
 					GetSubSystem(0,x,system1);
 					//system1.w.xyz += system1.z.xyz * zOffset;
 					system1.w.z = zOffset;
 					Mat::invertSystem(system1,inverse);
-					Mat::transform(inverse,_b,b);
+					Mat::Transform(inverse,_b,b);
 					Mat::rotate(inverse,_d,d);
 					rs |= parts.First().TestIntersection(b,d,distance);
 				}
@@ -1741,7 +1734,7 @@ namespace Objects
 					GetSubSystem(1,y,system2);
 					Mat::transformSystem(system1,system2);
 					Mat::invertSystem(system2,inverse);
-					Mat::transform(inverse,_b,b);
+					Mat::Transform(inverse,_b,b);
 					Mat::rotate(inverse,_d,d);
 					rs |= parts[1].TestIntersection(b,d,distance);
 				}
@@ -1753,7 +1746,7 @@ namespace Objects
 		}
 
 
-		void							Base::GetSubSystem(index_t geometryIndex, float angle, TMatrix4<>&outSystem)	const
+		void							Base::GetSubSystem(index_t geometryIndex, float angle, M::TMatrix4<>&outSystem)	const
 		{
 			Mat::Eye(outSystem);
 			if (angle == 0)

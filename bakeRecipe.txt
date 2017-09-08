@@ -16,6 +16,7 @@ client/resources/textures/*.png
 client/resources/tutorial/*.png
 client/resources/tutorial/*.jpg
 client/resources/tutorial/*.xml
+client/resources/audio/*.mp3
 client/oalinst.exe
 client/dxwebsetup.exe
 client/OpenAL32.dll

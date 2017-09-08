@@ -27,6 +27,11 @@ namespace Objects
 		shiftMeansQueue = b;
 	}
 
+	bool					ShiftMeansQueue()
+	{
+		return shiftMeansQueue;
+	}
+
 	void					SignalShiftPressed()
 	{
 		bool n = !shiftPressed;
@@ -68,9 +73,9 @@ namespace Objects
 				entity->OnSelect();
 		}
 		
-		GlobalEvents::invalidateObjectCache();
 		if (e != entity)
 			onSelectionChanged();
+		GlobalEvents::invalidateObjectCache();
 		UpdateChoices(controlEnabled);
 	}
 
@@ -90,13 +95,13 @@ namespace Objects
 		if (e)
 			e->OnDeselect();
 		Command::RefreshCommands(controlEnabled);
-		GlobalEvents::invalidateObjectCache();
 		if (e)
 			onSelectionChanged();
+		GlobalEvents::invalidateObjectCache();
 	}
 
 
-	PWorldEntity					GetRayIntersection(const TVec3<>&b, const TVec3<>&d, float&distance)
+	PWorldEntity					GetRayIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float&distance)
 	{
 		PWorldEntity newSel;
 		ForeachWorldEntity([b,d,&distance,&newSel](const Objects::PWorldEntity&e)
@@ -110,7 +115,7 @@ namespace Objects
 		return newSel;
 	}
 
-	bool					Select(const TVec3<>&b, const TVec3<>&d, float&distance,bool controlEnabled)
+	bool					Select(const M::TVec3<>&b, const M::TVec3<>&d, float&distance,bool controlEnabled)
 	{
 		//if (Compound::Transfer::isActive)
 			//return false;

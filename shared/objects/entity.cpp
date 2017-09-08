@@ -90,10 +90,10 @@ namespace Objects
 
 
 	#ifdef HAS_WINDOW
-		bool				WorldEntity::TestIntersection(const Geometry&geo, const TVec3<>&_b, const TVec3<>&_d, float & distance) const
+		bool				WorldEntity::TestIntersection(const Geometry&geo, const M::TVec3<>&_b, const M::TVec3<>&_d, float & distance) const
 		{
-			TVec3<> b,d;//,test;
-			Mat::transform(inverse,_b,b);
+			M::TVec3<> b,d;//,test;
+			Mat::Transform(inverse,_b,b);
 			Mat::rotate(inverse,_d,d);
 			//Vec::normalize0(d);
 			return geo.TestIntersection(b,d,distance);
@@ -149,7 +149,7 @@ namespace Objects
 		#endif
 	}
 
-	TurretTrajectory		WorldEntity::TraceTrajectory(const TrajectoryEndPoint&dest, Ctr::Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const
+	TurretTrajectory		WorldEntity::TraceTrajectory(const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps, M::TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const
 	{
 		float zOffset;
 		PConstTurretBase b = GetTurretBase(zOffset);
@@ -170,7 +170,7 @@ namespace Objects
 		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, World::actual,TrajectoryEndPoint( location,zOffset ),dest,outSteps,impactAt,impactCell,outAngle);
 	}
 
-	TurretTrajectory		WorldEntity::TraceTrajectory(const TrajectoryEndPoint&dest, TVec3<>&impactAt) const
+	TurretTrajectory		WorldEntity::TraceTrajectory(const TrajectoryEndPoint&dest, M::TVec3<>&impactAt) const
 	{
 		float zOffset;
 		PConstTurretBase b = GetTurretBase(zOffset);
@@ -192,7 +192,7 @@ namespace Objects
 
 	
 
-	TurretTrajectory		WorldEntity::TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const
+	TurretTrajectory		WorldEntity::TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps, M::TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const
 	{
 		float zOffset;
 		PConstTurretBase b = GetTurretBase(zOffset);
@@ -211,7 +211,7 @@ namespace Objects
 		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, World::actual,TrajectoryEndPoint(source,zOffset),dest,outSteps,impactAt,impactCell,outAngle);
 	}
 
-	TurretTrajectory		WorldEntity::TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, TVec3<>&impactAt) const
+	TurretTrajectory		WorldEntity::TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, M::TVec3<>&impactAt) const
 	{
 		float zOffset;
 		PConstTurretBase b = GetTurretBase(zOffset);
@@ -318,12 +318,12 @@ namespace Objects
 
 	//bool		WorldEntity::CanSee(const PWorldEntity&other) const
 	//{
-	//	return Vec::quadraticDistance(system.w.xyz,other->system.w.xyz) <= sqr(GetScanningRange());
+	//	return Vec::quadraticDistance(system.w.xyz,other->system.w.xyz) <= M::Sqr(GetScanningRange());
 	//}
 
-	//bool		WorldEntity::CanSee(const TVec3<>&center, float radius)	const
+	//bool		WorldEntity::CanSee(const M::TVec3<>&center, float radius)	const
 	//{
-	//	return Vec::quadraticDistance(system.w.xyz,center) <= sqr(GetScanningRange()+radius);
+	//	return Vec::quadraticDistance(system.w.xyz,center) <= M::Sqr(GetScanningRange()+radius);
 	//}
 
 
@@ -357,7 +357,7 @@ namespace Objects
 				}
 				elif (IsStructure())
 				{
-					ConstName cname = GetCTypeName();
+					const EntityType cname = GetType();
 					cnt = Structure::CountOccurrences(overrideOwner,cname);
 					limit = RuntimeConfig::UnitLimits::Get(cname);
 				}
@@ -533,7 +533,7 @@ namespace Objects
 		}
 
 		this->SyncTime(atTime);
-		LogEvent(EventSignificance::Common,this,"Reapplying sensory ("+registeredSensor.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
+		LogEvent(EventSignificance::Common,this,"Reapplying sensory ("+ToString(registeredSensor)+", "+String(GetScanningRange())+") at time "+String(atTime));
 		VisitSensors(registeredSensor.location, [&atTime, this](const World::Sensor&sensor)
 		{
 			#ifdef CLIENT
@@ -554,8 +554,8 @@ namespace Objects
 		#ifdef CLIENT	//special constraint applied by client: strict register->unregister->register... order
 			if (registeredSensor.location != Grid::LCellIdI::Invalid)
 			{
-				LogEvent(EventClass::Preset::debug,this,"Double sensor registration detected (old="+registeredSensor.ToString()+", new="+loc.ToString()+"/emp "+String(empDamageLevel)+")");
-				DBG_FATAL__("Double sensor registration detected (old="+registeredSensor.ToString()+", new="+loc.ToString()+"/emp "+String(empDamageLevel)+")");
+				LogEvent(EventClass::Preset::debug,this,"Double sensor registration detected (old="+ToString(registeredSensor)+", new="+ToString(loc)+"/emp "+String(empDamageLevel)+")");
+				DBG_FATAL__("Double sensor registration detected (old="+ToString(registeredSensor)+", new="+ToString(loc)+"/emp "+String(empDamageLevel)+")");
 				if (loc == registeredSensor.location && empDamageLevel == registeredSensor.empDamageLevel)
 					return registeredSensor;	//graceful exit
 				UnregisterSensory(registeredSensor,atTime);
@@ -566,7 +566,7 @@ namespace Objects
 		rs.empDamageLevel = empDamageLevel;
 
 		this->SyncTime(atTime);
-		LogEvent(EventSignificance::Common,this,"Registering sensory ("+loc.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
+		LogEvent(EventSignificance::Common,this,"Registering sensory ("+ToString(loc)+", "+String(GetScanningRange())+") at time "+String(atTime));
 		VisitSensors(loc, [&atTime, newContacts,this](const World::Sensor&sensor)
 		{
 			#ifdef CLIENT
@@ -585,13 +585,13 @@ namespace Objects
 	{
 		if (sensor.location == Grid::LCellIdI::Invalid)
 		{
-			DBG_FATAL__("Double sensor unregistration detected (now="+sensor.ToString()+")");
+			DBG_FATAL__("Double sensor unregistration detected (now="+ToString(sensor)+")");
 			return;	//graceful exit
 		}
 		#ifdef CLIENT
 			if (registeredSensor != sensor)
 			{
-				DBG_FATAL__("Bad sensor unregistration detected (local="+registeredSensor.ToString()+", given="+sensor.ToString()+")");
+				DBG_FATAL__("Bad sensor unregistration detected (local="+ToString(registeredSensor)+", given="+ToString(sensor)+")");
 				UnregisterSensory(registeredSensor,atTime);
 				return;
 			}
@@ -609,7 +609,7 @@ namespace Objects
 
 		
 		this->SyncTime(atTime);	
-		LogEvent(EventClass::Preset::common,this,"Unregistering sensory ("+sensor.location.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
+		LogEvent(EventClass::Preset::common,this,"Unregistering sensory ("+ToString(sensor.location)+", "+String(GetScanningRange())+") at time "+String(atTime));
 		VisitSensors(sensor.location, [&atTime, this](const World::Sensor&sensor)
 		{
 		#ifdef CLIENT
@@ -631,7 +631,7 @@ namespace Objects
 			CRC32::Sequence s;
 			s.AppendPOD(location);
 			s.AppendPOD(RuntimeConfig::roundNumber);
-			ConstName cName = GetCTypeName();
+			EntityType cName = GetType();
 			s.AppendPOD(cName);
 			UINT32 seed = s.Finish();
 			//std::cout << "Reseeding "<<GetName()<<" to "<<seed<< std::endl;
