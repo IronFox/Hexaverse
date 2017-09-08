@@ -133,7 +133,7 @@ namespace RuntimeConfig
 		void		Import(const Ctr::Array<std::pair<Objects::EntityType,UINT16> >&input)
 		{
 			Reset();
-			isSet = true;
+			isSet = input.IsNotEmpty();
 			foreach (input, entry)
 				map.Set(entry->first,entry->second);
 		}
