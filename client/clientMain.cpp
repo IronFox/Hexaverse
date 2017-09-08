@@ -1371,7 +1371,7 @@ namespace ApplicationInterface
 				#else
 					true;
 				#endif
-			LogEvent(EventClass(isCommon ? EventSignificance::Common : EventSignificance::Important,EventFlavor::Loss),"Hostile contact: "+e->GetNiceName()+ (RuntimeConfig::autoNewRound ? ". Pausing automatic round progression.":"."));
+			LogEvent(EventClass(isCommon ? EventSignificance::Common : EventSignificance::Important,EventFlavor::Loss),"Hostile contact: "+e->GetNiceName()+ (RuntimeConfig::autoNewRound && !LocalApplicationInterface::pauseAutomaticRoundProgression ? ". Pausing automatic round progression.":"."));
 			LocalApplicationInterface::pauseAutomaticRoundProgression = true;
 		}
 	}
