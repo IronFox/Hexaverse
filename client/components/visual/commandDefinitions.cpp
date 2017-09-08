@@ -1196,6 +1196,7 @@ namespace Objects
 			DefineWorkingStructure(Objects::UraniumStorage::commands);
 			DefineWorkingStructure(Objects::Generator::commands);
 			DefineWorkingStructure(Objects::ReactorCore::commands);
+			DefineWorkingStructure(Objects::NexusPort::commands);
 			DefineLaboratory(Objects::Laboratory::commands);
 			DefineHangar();
 
