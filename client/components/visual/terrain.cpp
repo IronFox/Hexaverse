@@ -36,8 +36,12 @@ namespace VisualTerrain
 	namespace DX11 = Engine::DX11;
 	using namespace Grid;
 
-	M::Box<>		unitSphereFamilyBoundingBox[BaseGrid::NumFamilies];
-	M::Box<>		planetFamilyBoundingBox[BaseGrid::NumFamilies];
+
+	OrbitGrid	visibleSubOrbitGrid;
+
+
+	M::Box<>	unitSphereFamilyBoundingBox[BaseGrid::NumFamilies];
+	M::Box<>	planetFamilyBoundingBox[BaseGrid::NumFamilies];
 
 
 
@@ -1089,37 +1093,94 @@ namespace VisualTerrain
 	}
 
 
+	void		OrbitGrid::ChangeSensory(const Grid::HCellIdI&center, float radius, signed char change)
+	{
+		UINT32 at = Grid::low.Locate(Grid::ToWorld(center));
+		ChangeSensory(Grid::LCellIdI(at,center.height),radius,change);
+	}
+
+	void		OrbitGrid::ChangeSensory(const M::TVec3<>&worldCenter, float radius, signed char change)
+	{
+		Timer::Time t0 = timer.Now();
+		LogEvent(EventSignificance::Debug,nullptr,"Processing orbital sensor change around center "+ToString(worldCenter)+", radius="+String(radius)+", change="+String(change));
+
+		static Grid::LowSetup::TVolumeDescriptor vol;
+		static Grid::LowSetup::TVolumeDescriptor::Operator op;
+		vol.Clear();
+		op.stacksLeft << Grid::low.Locate(worldCenter);
+		const float r2 = M::Sqr(radius);
+		UINT32	next;
+		while (op.stacksLeft >> next)
+		{
+			if (op.stackVisited[next])
+				continue;
+			const M::TVec3<> localCenter = low.cells[next].centerVertex.xyz * orbit;
+			float dist2 = Vec::quadraticDistance(localCenter,worldCenter);
+			if (dist2 > r2)
+				continue;
+
+			const auto&n = Grid::low.grid.GetCell(next).neighborhood;
+
+			for (BYTE k = 0; k < n.numNeighbors; k++)
+				op.stacksLeft << n.neighborID[k];
+
+			op.stackVisited[next] = true;
+			vol.coverage.Append().stackID = next;
+		}
+		op.ResetVisited(vol);
+
+
+		foreach (vol.coverage,v)
+		{
+			cells[v->stackID].visible += change;
+			DBG_ASSERT_GREATER_OR_EQUAL__(cells[v->stackID].visible,0);
+		}
+		if (vol.coverage.IsNotEmpty())
+			valid = false;
+		LogEvent(EventSignificance::PerformanceMeasurement,nullptr,"Orbital sensory change processed in "+String(timer.GetSecondsSince(t0))+". Used orbit was "+String(orbit));
+	}
+
+	index_t		OrbitGrid::TestIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float&distance)	const
+	{
+		if (!M::Obj::detectOpticalSphereIntersection(M::Vector3<>::zero,orbit,b,d,distance))
+			return InvalidIndex;
+		M::TVec3<> p;
+		Vec::mad(b,d,distance,p);
+		return Grid::low.Locate(p);
+	}
 
 	
 	void		OrbitGrid::ChangeSensory(const LCellIdI&center, float radius, signed char change)
 	{
-		Timer::Time t0 = timer.Now();
-		LogEvent(EventSignificance::Debug,nullptr,"Processing orbital sensor change around center "+ToString(center)+", radius="+String(radius)+", change="+String(change));
+		ChangeSensory(Grid::ToWorld(center),radius,change);
 
-		M::Box<> test;
-		const M::TVec3<> worldCenter = ToWorld(center);
-		test.SetCenter(worldCenter,radius);
-		float r2 = radius*radius;
-		Concurrency::parallel_for(UINT32(0),LowSetup::GridType::CellCount,[this,worldCenter,r2,change](UINT32 i)
-		{
-			//bool anyChanged = false;
-			bool anyVisible = false;
+		//Timer::Time t0 = timer.Now();
+		//LogEvent(EventSignificance::Debug,nullptr,"Processing orbital sensor change around center "+ToString(center)+", radius="+String(radius)+", change="+String(change));
 
-			bool wasIn = false;
-			M::TVec3<> localCenter = low.cells[i].centerVertex.xyz * orbit;
-			float dist2 = Vec::quadraticDistance(localCenter,worldCenter);
-			if (dist2 <= r2)
-			{
-				cells[i].visible += change;
-				DBG_ASSERT_GREATER_OR_EQUAL__(cells[i].visible,0);
+		//M::Box<> test;
+		//const M::TVec3<> worldCenter = ToWorld(center);
+		//test.SetCenter(worldCenter,radius);
+		//float r2 = radius*radius;
+		//Concurrency::parallel_for(UINT32(0),LowSetup::GridType::CellCount,[this,worldCenter,r2,change](UINT32 i)
+		//{
+		//	//bool anyChanged = false;
+		//	bool anyVisible = false;
 
-				//DBG_ASSERT_LESS_OR_EQUAL__(cells[i].visible,1);	//enable to debug in scenarios where sensors do not overlap
-				valid = false;
-			}
-		});
+		//	bool wasIn = false;
+		//	M::TVec3<> localCenter = low.cells[i].centerVertex.xyz * orbit;
+		//	float dist2 = Vec::quadraticDistance(localCenter,worldCenter);
+		//	if (dist2 <= r2)
+		//	{
+		//		cells[i].visible += change;
+		//		DBG_ASSERT_GREATER_OR_EQUAL__(cells[i].visible,0);
 
-		LogEvent(EventSignificance::PerformanceMeasurement,nullptr,"Orbital sensory change processed in "+String(timer.GetSecondsSince(t0))+". Used orbit was "+String(orbit));
-		//ShowMessage(timer.GetSecondsSince(t0));
+		//		//DBG_ASSERT_LESS_OR_EQUAL__(cells[i].visible,1);	//enable to debug in scenarios where sensors do not overlap
+		//		valid = false;
+		//	}
+		//});
+
+		//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,"Orbital sensory change processed in "+String(timer.GetSecondsSince(t0))+". Used orbit was "+String(orbit));
+		////ShowMessage(timer.GetSecondsSince(t0));
 	}
 
 

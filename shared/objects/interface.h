@@ -45,6 +45,9 @@ namespace ApplicationInterface
 	void	SignalEnableStructure(Objects::Structure&s, bool enabled);
 	void	SignalTargetLessAttack(const Objects::PWorldEntity&e);
 	
+	void	SignalExtraGridSensorCreation(const World::Sensor&);
+	void	SignalExtraGridSensorRemoval(const World::Sensor&);
+
 	#ifdef HAS_WINDOW
 		void	SignalUserMessage(const String&message);
 	#endif

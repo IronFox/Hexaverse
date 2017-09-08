@@ -572,6 +572,8 @@ namespace Objects
 			#ifdef CLIENT
 				if (isOwnedByMe)
 				{
+					if (IsAboveGrid())
+						ApplicationInterface::SignalExtraGridSensorCreation(sensor);
 					sensor.InsertInto(World::actual, atTime);
 				}
 			#else
@@ -610,15 +612,17 @@ namespace Objects
 		
 		this->SyncTime(atTime);	
 		LogEvent(EventClass::Preset::common,this,"Unregistering sensory ("+ToString(sensor.location)+", "+String(GetScanningRange())+") at time "+String(atTime));
-		VisitSensors(sensor.location, [&atTime, this](const World::Sensor&sensor)
+		VisitSensors(sensor.location, [&atTime, this, sensor](const World::Sensor&sensor1)
 		{
 		#ifdef CLIENT
 			if (isOwnedByMe)
 			{
-				sensor.RemoveFrom(World::actual, atTime);
+				if (IsAboveGrid(sensor.location))
+					ApplicationInterface::SignalExtraGridSensorRemoval(sensor1);
+				sensor1.RemoveFrom(World::actual, atTime);
 			}
 		#else
-			owner->RegisterSensorRemoval(sensor, location.height, atTime);
+			owner->RegisterSensorRemoval(sensor1, location.height, atTime);
 		#endif
 		});
 		sensor.empDamageLevel = 0;

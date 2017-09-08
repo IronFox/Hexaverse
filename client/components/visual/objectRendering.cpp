@@ -693,8 +693,8 @@ namespace Objects
 		}
 		
 		
-		/*Grid::visibleSubOrbitGrid.orbit = Grid::ToRadius(SubOrbital::Height);
-		Grid::visibleSubOrbitGrid.Clear();	*/	
+		VisualTerrain::visibleSubOrbitGrid.orbit = Grid::ToRadius(SubOrbital::Height);
+		VisualTerrain::visibleSubOrbitGrid.Clear();
 
 		
 		GlobalEvents::invalidateObjectCache << ClearSmokeTrailHighlighting;

@@ -505,6 +505,28 @@ namespace ApplicationInterface
 	}
 
 
+	
+	void	SignalExtraGridSensorCreation(const World::Sensor&s)
+	{
+		#ifdef HAS_WINDOW
+		if (s.type == World::Sensor::ShadedSphere || s.type == World::Sensor::SolidSphere || s.type == World::Sensor::UpperHalfSolidSphere)
+		{
+			VisualTerrain::visibleSubOrbitGrid.ChangeSensory(s.worldCenter,s.radius,1);
+		}
+		#endif
+	}
+
+	void	SignalExtraGridSensorRemoval(const World::Sensor&s)
+	{
+		#ifdef HAS_WINDOW
+		if (s.type == World::Sensor::ShadedSphere || s.type == World::Sensor::SolidSphere || s.type == World::Sensor::UpperHalfSolidSphere)
+		{
+			VisualTerrain::visibleSubOrbitGrid.ChangeSensory(s.worldCenter,s.radius,-1);
+		}
+		#endif
+	}
+
+
 	void	SignalTargetLessAttack(const Objects::PWorldEntity&e)
 	{
 	//	Grid::LCellIdI loc = e->location;
@@ -1872,8 +1894,12 @@ bool loop()
 			#endif
 
 			
-			//if (Camera::SubOrbitalGridIsVisible())
-			//	Grid::visibleSubOrbitGrid.Render(frustum);
+			if (Camera::SubOrbitalGridIsVisible())
+			{
+				if (!VisualTerrain::visibleSubOrbitGrid.valid)
+					VisualTerrain::visibleSubOrbitGrid.ForceRecompileNow();
+				VisualTerrain::visibleSubOrbitGrid.Render(frustum);
+			}
 
 			Objects::Renderer::RenderTranslucent(true);
 
@@ -2280,15 +2306,15 @@ void MyFatal(const FatalDescriptor&descriptor)
 			}
 			#endif
 
-			/*if (Camera::SubOrbitalGridIsVisible())
+			if (Camera::SubOrbitalGridIsVisible())
 			{
-				index_t stackID = Grid::low.TestGridIntersection(b, d, Grid::visibleSubOrbitGrid.orbit, distance);
+				index_t stackID = VisualTerrain::visibleSubOrbitGrid.TestIntersection(b, d, distance);
 				if (stackID != InvalidIndex && Vec::dot(Grid::low.cells[stackID].centerVertex.xyz,d) < 0.f)
 				{
 					result = Grid::LCellIdI((UINT32)stackID,Objects::SubOrbital::Height);
 					return true;
 				}
-			}*/
+			}
 			{
 				M::TVec3<> normal;
 				if (VisualTerrain::TestHullIntersection(b, d, distance, normal, includeWater))
