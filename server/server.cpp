@@ -506,7 +506,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 	{
 		PathString out = RuntimeConfig::ConfigFile("saves/crash.hsf");
 		Logging::WriteEvent(EventClass::Preset::uncommon,"Trying to save game to "+String(out),nullptr,nullptr,Objects::OwnerParameter());
-		FileIO::Save(out);
+		FileIO::Save(out,RuntimeConfig::phase);
 		Logging::WriteEvent(EventClass::Preset::uncommon,"Success",nullptr,nullptr,Objects::OwnerParameter());
 	}
 	catch (...)
@@ -897,7 +897,7 @@ int main( int argc, const char* argv[])
 			Reflection::state.DefineCommand("autoSaveNow",FileIO::AutoSave,CLI::NoCompletion);
 			Reflection::state.DefineCommand("saveTo fileName",(CLI::Command::function1_t)[](const String&path)
 			{
-				FileIO::Save(PathString(path));
+				FileIO::Save(PathString(path),RuntimeConfig::phase);
 			},CLI::FileCompletion);
 
 			Reflection::state.DefineCommand("loadFrom fileName",(CLI::Command::function1_t)[](const String&path)
@@ -1038,9 +1038,9 @@ int main( int argc, const char* argv[])
 		{
 			Logging::WriteEvent(EventSignificance::Uncommon,"Testing server.",nullptr,nullptr,Objects::OwnerParameter());
 
-			FileIO::Save(PathString("test0."+FileIO::savFileExtension));
+			FileIO::Save(PathString("test0."+FileIO::savFileExtension),RuntimeConfig::phase);
 			FileIO::Load(PathString("test0."+FileIO::savFileExtension));
-			FileIO::Save(PathString("test1."+FileIO::savFileExtension));
+			FileIO::Save(PathString("test1."+FileIO::savFileExtension),RuntimeConfig::phase);
 
 			Riff::File a,b;
 			ASSERT__(a.Open(PathString("test0."+FileIO::savFileExtension).c_str()));
@@ -1183,6 +1183,10 @@ int main( int argc, const char* argv[])
 					if (Network::AnyHumanPlayersActive())
 						Game::roundTimerPaused = false;
 					Game::evolver->FinishRoundProcessing();
+					
+					if (FileIO::Config::saveWhenAllQuit)
+						if (!Network::AnyHumanPlayersActive())
+							FileIO::AutoSave();
 
 					Objects::PFaction f = Game::postEvolutionWinner.lock();
 					if (f)

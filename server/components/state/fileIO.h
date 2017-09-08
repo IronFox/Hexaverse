@@ -33,7 +33,7 @@ namespace FileIO
 	*/
 	void			WriteToListChunk(World::Data&inData, Riff::Chunk&outChunk);
 	void			ReadFromListChunk(const Riff::Chunk&, World::Data&);
-	void			Save(const PathString&name);
+	void			Save(const PathString&name, RuntimeConfig::Phase savePhase);
 	void			Load(const PathString&name);
 	bool			CanSaveRightNow();
 	bool			IsValidSavePhase(RuntimeConfig::Phase p);

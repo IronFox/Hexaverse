@@ -1230,7 +1230,10 @@ namespace FileIO
 												LogEvent(EventClass::Preset::fileError,"Unable to restore game phase '"+container+"'");
 											}
 											else
-												RuntimeConfig::phase = ph;
+												if (RuntimeConfig::IsACommandPhase(ph))
+													RuntimeConfig::phase = ph;
+												else
+													RuntimeConfig::phase = RuntimeConfig::Phase::CommandPhase;
 										}
 									}
 
@@ -1657,7 +1660,7 @@ namespace FileIO
 			for (int i = 8; i >= 0; i--)
 				FileSystem::MoveFile(base+PathString(i)+'.'+savFileExtension,base+PathString(i+1)+'.'+savFileExtension);
 		}
-		Save(base+"0."+savFileExtension);
+		Save(base+"0."+savFileExtension, RuntimeConfig::Phase::CommandPhase);
 
 		#ifdef SAVE_FILE_TEST
 			State::Load(base+"0."+savFileExtension);
@@ -1683,7 +1686,7 @@ namespace FileIO
 
 
 
-	void	Save( const PathString&name)
+	void	Save( const PathString&name, RuntimeConfig::Phase savePhase)
 	{
 		if (!CanSaveRightNow())
 		{
@@ -1712,7 +1715,7 @@ namespace FileIO
 		general->AppendBlock(RID::mostFactionsAlive)->SetPODData(Game::mostFactionsAlive);
 		
 		{
-			String phase = RuntimeConfig::phase.ToString();
+			String phase = savePhase.ToString();
 			general->AppendBlock(RID::gamePhase, phase.c_str(),phase.length());
 		}
 

@@ -1709,8 +1709,6 @@ namespace Receiver
 				{
 					LogEvent(EventClass::Preset::uncommon,"Last active player has disconnected. Pausing round timer");
 					Game::roundTimerPaused = true;
-					if (FileIO::Config::saveWhenAllQuit)
-						FileIO::AutoSave();
 				}
 			}
 			break;
