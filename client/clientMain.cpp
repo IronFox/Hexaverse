@@ -1391,7 +1391,7 @@ namespace ApplicationInterface
 				#else
 					true;
 				#endif
-			LogEvent(EventClass(isCommon ? EventSignificance::Common : EventSignificance::Important,EventFlavor::Loss),"Hostile contact: "+e->GetNiceName()+ (RuntimeConfig::autoNewRound ? ". Pausing automatic round progression.":"."));
+			LogEvent(EventClass(isCommon ? EventSignificance::Common : EventSignificance::Important,EventFlavor::Loss),"Hostile contact: "+e->GetNiceName()+ (RuntimeConfig::autoNewRound && !LocalApplicationInterface::pauseAutomaticRoundProgression ? ". Pausing automatic round progression.":"."));
 			LocalApplicationInterface::pauseAutomaticRoundProgression = true;
 		}
 	}
@@ -3674,6 +3674,8 @@ int main( int argc, const char* argv[])
 				TimeLapse::customBasePath = PathString(StartConfig::GetString("timelapse/outDirectory",""));
 				TimeLapse::frameDelaySeconds = StartConfig::GetFloat("timelapse/frameDelaySeconds",0.2f);
 				TimeLapse::maxCompressionPNG = StartConfig::GetBool("timelapse/maxCompressionPNG");
+				
+				UI::SetScale(StartConfig::GetFloat("runtime/uiScale",1.f));
 
 				if (!RuntimeConfig::aiMode && StartConfig::GetBool("runtime/soundEnabled",true))
 				{
