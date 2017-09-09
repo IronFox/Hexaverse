@@ -1189,6 +1189,8 @@ int main( int argc, const char* argv[])
 						Game::DeclareWinner(f);
 					if (FileIO::postEvolutionAutoSave)
 						FileIO::AutoSave();
+					else
+						FileIO::CheckAutoSave(false);	//round number is formally incremented at the beginning of the command phase, but animation phase produces a delay anyways, so better save here
 				}
 			}
 			else if (!RuntimeConfig::IsInAnyCommandPhase() && !RuntimeConfig::GameHasEnded())
