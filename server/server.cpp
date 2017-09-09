@@ -67,7 +67,7 @@ namespace ApplicationInterface
 
 	void	SignalChainReactionExplosion(const Objects::PWorldEntity&causedBy, const Grid::LCellIdI&center, float radius, int damageLevel, float atTime)
 	{
-		Game::evolver->HandleChainReactionExplosion(Evolver::TExplosion(causedBy, center, radius, damageLevel, atTime ));
+		Game::GetEvolver()->HandleChainReactionExplosion(Evolver::TExplosion(causedBy, center, radius, damageLevel, atTime ));
 	}
 
 
@@ -857,7 +857,7 @@ int main( int argc, const char* argv[])
 		Boot();
 
 		Evolver::Create();
-		Game::evolver = Evolver::GetDefault();
+		Game::SetDefaultEvolver();
 		Journal::Create();
 
 		World::worldID.Generate();
@@ -1160,7 +1160,7 @@ int main( int argc, const char* argv[])
 					Nexus::ProcessCoverage();
 
 					Journal::currentRound.roundNumber = RuntimeConfig::roundNumber;
-					Journal::currentRound.evolver = Game::evolver;
+					Journal::currentRound.evolver = Game::GetEvolver();
 					Reflection::CheckAllSaveGameVariables();
 					Journal::currentRound.AppendEntityVerification();
 
@@ -1170,7 +1170,7 @@ int main( int argc, const char* argv[])
 					foreach (Network::activePlayersAndSpectators,p)
 						(*p)->wantNewRound = false;
 
-					Game::evolver->BeginRoundProcessing();
+					Game::BeginRoundProcessing();
 					Game::ProcessChanges(true);
 				}
 
@@ -1182,22 +1182,22 @@ int main( int argc, const char* argv[])
 				{
 					if (Network::AnyHumanPlayersActive())
 						Game::roundTimerPaused = false;
-					Game::evolver->FinishRoundProcessing();
 					
 					if (FileIO::Config::saveWhenAllQuit)
 						if (!Network::AnyHumanPlayersActive())
 							FileIO::AutoSave();
 
+					Game::FinishRoundProcessing();
 					Objects::PFaction f = Game::postEvolutionWinner.lock();
 					if (f)
 						Game::DeclareWinner(f);
 				}
 			}
-			else if (!RuntimeConfig::IsInAnyCommandPhase())
+			else if (!RuntimeConfig::IsInAnyCommandPhase() && !RuntimeConfig::GameHasEnded())
 			{
-				if (!Game::evolver->ContinueRoundProcessing())
+				if (!Game::ContinueRoundProcessing())
 				{
-					float animationLength = Game::evolver->animationLength;
+					float animationLength = Game::GetEvolver()->animationLength;
 					Game::effectiveAnimationLength = std::min(10.f,animationLength);
 					Game::Network::ChangePhase(RuntimeConfig::Phase::AnimationPhase,std::max(1.f,animationLength / 10.f));
 				}

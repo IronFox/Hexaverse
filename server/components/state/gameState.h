@@ -24,7 +24,7 @@ namespace Game
 
 	extern Timer::Time		lastPhaseChange /*= timer.Now()*/;
 	extern bool				roundTimerPaused /*= true*/;
-	extern Evolver::Abstract*evolver;
+	//extern Evolver::Abstract*evolver;
 	extern INT32			tutorialAt;
 
 	//extern Grid::TSharedPlanetConfig	persistentPlanetInfo;
@@ -214,6 +214,18 @@ namespace Game
 		void		UpdateHibernation();
 	#endif
 
+
+	Evolver::Abstract*	GetEvolver();
+	void			SetDefaultEvolver();
+
+	/**
+	Executes BeginRoundProcessing() of the active evolver
+	*/
+	void			BeginRoundProcessing();
+	void			FinishRoundProcessing();
+	bool			ContinueRoundProcessing();
+
+	bool			IsProcessingRound();
 
 	/**
 	Detects all changes in entities and world states and sends updates to the respective clients

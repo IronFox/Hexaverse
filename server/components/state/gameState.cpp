@@ -30,6 +30,43 @@ namespace Game
 	INT32				tutorialAt=1;
 
 
+
+	void				SetDefaultEvolver()
+	{
+		evolver = Evolver::GetDefault();
+	}
+
+	Evolver::Abstract*	GetEvolver()
+	{
+		return evolver;
+	}
+
+	void			BeginRoundProcessing()
+	{
+		ASSERT__(!evolverActive);
+		evolverActive = true;
+		evolver->BeginRoundProcessing();
+	}
+
+	void			FinishRoundProcessing()
+	{
+		ASSERT__(evolverActive);
+		evolverActive = false;
+		evolver->FinishRoundProcessing();
+	}
+
+	bool			ContinueRoundProcessing()
+	{
+		ASSERT__(evolverActive);
+		return evolver->ContinueRoundProcessing();
+	}
+
+	bool			IsProcessingRound()
+	{
+		return evolverActive;
+	}
+
+
 	namespace Config
 	{
 		int			roundTimer = -1;
@@ -820,7 +857,7 @@ namespace Game
 	{
 		DBG_ASSERT__(w);
 		DBG_ASSERT__(!winner);
-		if (evolver->IsActive())
+		if (evolverActive)
 		{
 			postEvolutionWinner = w;
 			return;
