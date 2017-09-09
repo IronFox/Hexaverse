@@ -432,9 +432,7 @@ namespace Evolver
 
 	/*virtual override*/ void	Core::BeginRoundProcessing()
 	{
-		active = true;
 		CoreDetails::BeginRoundProcessing();
-
 	}
 
 	/*virtual override*/ bool	Core::ContinueRoundProcessing()
@@ -445,14 +443,11 @@ namespace Evolver
 
 	/*virtual override*/ void Core::FinishRoundProcessing()
 	{
-		ASSERT__(active);
 		RuntimeConfig::roundNumber.main++;
 		
 		Objects::Statistics::SignalNewRoundBegin(true);
 
 		Game::Network::ChangePhase(RuntimeConfig::Phase::CommandPhase,Game::Config::roundTimer > 0 && !Game::roundTimerPaused ? Game::Config::roundTimer : -1);
-
-		active = false;
 	}
 
 	/*virtual override*/ void		Core::HandleChainReactionExplosion(const TExplosion&explosion)

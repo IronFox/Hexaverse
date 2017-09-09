@@ -38,10 +38,6 @@ namespace Evolver
 		virtual void		HandleChainReactionExplosion(const TExplosion&)=0;
 
 		void				ProcessRound()	{BeginRoundProcessing(); while (ContinueRoundProcessing()); FinishRoundProcessing();}
-
-		virtual bool		IsActive() const =0;
-
-
 	};
 
 	void				Create();
