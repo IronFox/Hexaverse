@@ -1105,7 +1105,7 @@ int main( int argc, const char* argv[])
 
 			if (RuntimeConfig::IsInAnyCommandPhase())
 			{
-				bool newRoundNow = false;
+				bool newRoundNow = Game::endRoundNow;
 
 				if (Game::Config::roundTimer > 0 && !Game::roundTimerPaused)
 				{
@@ -1152,6 +1152,7 @@ int main( int argc, const char* argv[])
 
 				if (newRoundNow)
 				{
+					Game::endRoundNow = false;
 					Objects::ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
 					{
 						e->ReSeedRandom();

@@ -1,6 +1,7 @@
 v0.6.5
 	+ Added background music to server selection screen.
 	+ Added remote control commands to end game at any time.
+	+ Added remote control command to immediately end round.
 	+ Added statistics recording and end-game display.
 	+ Added options dialog.
 	+ Added option to change UI scale.

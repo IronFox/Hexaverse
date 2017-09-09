@@ -26,7 +26,7 @@ namespace Game
 	extern bool				roundTimerPaused /*= true*/;
 	//extern Evolver::Abstract*evolver;
 	extern INT32			tutorialAt;
-
+	extern bool				endRoundNow;
 	//extern Grid::TSharedPlanetConfig	persistentPlanetInfo;
 
 

@@ -750,6 +750,19 @@ namespace Reflection
 	}
 
 
+	namespace RoundCommands
+	{
+		void		EndRound()
+		{
+			if (RuntimeConfig::GameHasEnded())
+			{
+				LogEvent(EventClass::Preset::remoteControlError, "Error: Game has ended");
+				return;
+			}
+			Game::endRoundNow = true;
+		}
+
+	}
 
 	namespace FactionCommands
 	{
@@ -1056,6 +1069,8 @@ namespace Reflection
 			{
 				return RuntimeConfig::roundNumber.ToString();
 			});
+
+			state.DefineCommand("endRound",RoundCommands::EndRound)->SetUniqueHelp("Ends the current round, regardless of timer state or player requests. Valid only if the server state is currently in any command phase");
 
 			Variable::SetEnum("phase",RuntimeConfig::phase,Variable::Persistence::Temporary,true);
 
