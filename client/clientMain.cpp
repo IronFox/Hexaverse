@@ -60,6 +60,7 @@
 #include "components/visual/commandDefinitions.h"
 #include "components/visual/menu.h"
 #include "components/visual/uiScale.h"
+#include "components/visual/music.h"
 #include "components/serverProcess.h"
 #include "components/audioInterface.h"
 #include "components/configurationMode.h"
@@ -3681,6 +3682,7 @@ int main( int argc, const char* argv[])
 				{
 					AudioInterface::Create();
 					AudioInterface::SetMasterVolume(StartConfig::GetFloat("runtime/soundVolume",1.f));
+					Music::SetVolume(StartConfig::GetFloat("runtime/musicVolume",0.5f));
 				}
 
 			#endif

@@ -8,6 +8,7 @@
 #include "../clientRuntimeConfig.h"
 #include "../../version.h"
 #include "../audioInterface.h"
+#include "music.h"
 #include "objectSelection.h"
 #include "guiStatistics.h"
 
@@ -199,6 +200,7 @@ namespace Menu
 
 
 		if (AudioInterface::isActive)
+		{
 			AddOptionSlider("Sound Level", 0, 1.f, 0.25f,AudioInterface::GetMasterVolume(), [](float&q)
 			{
 				auto old = AudioInterface::GetMasterVolume();
@@ -213,6 +215,22 @@ namespace Menu
 				return String(M::Round(AudioInterface::GetMasterVolume() * 100))+"%";
 			}
 			)->SetupMarkers(0.25f,false);
+
+			AddOptionSlider("Music Level", 0, 1.f, 0.25f,Music::GetVolume(), [](float&q)
+			{
+				auto old = Music::GetVolume();
+				if (old != q)
+				{
+					Music::SetVolume(q);
+					Configuration::Update("runtime/musicVolume",q);
+				}
+			},
+			[]()->String
+			{
+				return String(M::Round(Music::GetVolume() * 100))+"%";
+			}
+			)->SetupMarkers(0.25f,false);
+		}
 
 		AddCheckBox("Auto-Queue Unit Commands",!Objects::ShiftMeansQueue(),[](bool enabled)
 		{
