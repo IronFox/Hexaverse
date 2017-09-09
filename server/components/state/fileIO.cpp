@@ -16,6 +16,8 @@
 namespace FileIO
 {
 	RuntimeConfig::RoundNumber			lastSaveRound;
+	bool					postEvolutionAutoSave = false;
+
 	namespace Config
 	{
 		int			saveEveryNRounds = 10;
@@ -27,7 +29,7 @@ namespace FileIO
 		void		HandleSessionClosure()
 		{
 			lastSaveRound = 0;
-
+			postEvolutionAutoSave = false;
 		}
 	}
 
@@ -1647,6 +1649,7 @@ namespace FileIO
 
 	void AutoSave()
 	{
+		postEvolutionAutoSave = false;
 		if (!CanSaveRightNow())
 		{
 			LogEvent(EventClass::Preset::commandRejected,"Unable to save game right now. Not in suitable phase");
