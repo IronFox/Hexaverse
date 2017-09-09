@@ -9,6 +9,19 @@ namespace Music
 
 	Engine::OpenAL::MusicPlayer	player;
 
+	float	musicVolume = 0.5f;
+
+	float	GetVolume()
+	{
+		return musicVolume;
+	}
+
+	void	SetVolume(float v)
+	{
+		musicVolume = v;
+		player.SetVolume(v);
+	}
+
 
 	void	SignalServerListShown(bool doShow)
 	{
@@ -19,7 +32,7 @@ namespace Music
 
 		if (doShow)
 		{
-			player.SetVolume(0.25f);
+			player.SetVolume(musicVolume);
 			player.Begin("resources/audio/Hexaverse Title M4.mp3",true);
 		}
 		else
