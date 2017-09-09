@@ -5,7 +5,8 @@
 namespace Music
 {
 	void	SignalServerListShown(bool);
-
+	float	GetVolume();
+	void	SetVolume(float v);
 
 }
 
