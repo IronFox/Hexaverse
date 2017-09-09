@@ -35,7 +35,8 @@ namespace FileIO
 
 	void CheckAutoSave(bool tempIncrementRoundNumber)
 	{
-		if (Config::saveEveryNRounds > 0 && !((RuntimeConfig::roundNumber.main+1)%FileIO::Config::saveEveryNRounds))
+		const count_t inc = tempIncrementRoundNumber ? 1 : 0;
+		if (Config::saveEveryNRounds > 0 && !((RuntimeConfig::roundNumber.main+inc)%FileIO::Config::saveEveryNRounds))
 		{
 			if (tempIncrementRoundNumber)
 				RuntimeConfig::roundNumber.main++;
@@ -1865,8 +1866,8 @@ namespace FileIO
 
 		if (container.SaveToFile(name.c_str()))
 		{
-			LogEvent(EventSignificance::Debug,"World snapshot written to "+String(name)+" in "+String(timer.GetSecondsSince(t0))+" seconds");
-			LogEvent(EventSignificance::Uncommon,"World snapshot created in "+String(timer.GetSecondsSince(t0))+" seconds");
+			LogEvent(EventSignificance::Uncommon,"World snapshot, round "+RuntimeConfig::roundNumber.ToString()+", written to "+String(name)+" in "+String(timer.GetSecondsSince(t0))+" seconds");
+			//LogEvent(EventSignificance::Uncommon,"World snapshot created in "+String(timer.GetSecondsSince(t0))+" seconds");
 		}
 		else
 			LogEvent(EventClass::Preset::error,"Unable to write world to "+String(name));

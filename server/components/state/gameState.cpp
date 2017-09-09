@@ -291,11 +291,6 @@ namespace Game
 			#endif
 
 
-			if (to == RuntimeConfig::Phase::AnimationPhase)
-			{
-				FileIO::CheckAutoSave(true);	//round number is formally incremented at the beginning of the command phase, but animation phase produces a delay anyways, so better save here
-			}
-
 
 			if (to == RuntimeConfig::Phase::EndOfGame)
 			{
