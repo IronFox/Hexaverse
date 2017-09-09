@@ -1153,7 +1153,9 @@ namespace Network
 		void	WinningFaction(TUniqueID&id)
 		{
 			winningFactionID = id;
-			GUI::Statistics::Update();
+			#ifdef HAS_WINDOW
+				GUI::Statistics::Update();
+			#endif
 		}
 
 
@@ -1189,7 +1191,9 @@ namespace Network
 				if (f)
 				{
 					f->statistics.EndLoading(false);
-					GUI::Statistics::Update();
+					#ifdef HAS_WINDOW
+						GUI::Statistics::Update();
+					#endif
 				}
 			}
 
@@ -1929,8 +1933,10 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 	else
 		if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
 		{
-			GUI::Statistics::Update();
-			GUI::Statistics::Show();
+			#ifdef HAS_WINDOW
+				GUI::Statistics::Update();
+				GUI::Statistics::Show();
+			#endif
 		}
 
 	#ifdef HAS_WINDOW
