@@ -23,7 +23,7 @@ namespace Game
 	Objects::PFaction	winner;	//if set indicates game is over
 	Objects::WFaction	postEvolutionWinner;	//if winner is declared while evolver is active, this variable is set instead for later
 	Timer::Time			lastPhaseChange = timer.Now();
-	bool				roundTimerPaused = true;
+	bool				roundTimerPaused = true,endRoundNow=false, evolverActive = false;
 	float				factionStartMineralValue=1.f;	//determined during loading
 	float				effectiveAnimationLength = 1.f;
 
@@ -169,7 +169,9 @@ namespace Game
 			roundTimerPaused = true;
 			mostFactionsAlive = 0;
 			tutorialAt=1;
+			endRoundNow = false;
 			winner.reset();
+			postEvolutionWinner.reset();
 			HandleSessionSuspension();
 		}
 
