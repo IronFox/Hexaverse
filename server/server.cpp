@@ -1182,15 +1182,12 @@ int main( int argc, const char* argv[])
 				{
 					if (Network::AnyHumanPlayersActive())
 						Game::roundTimerPaused = false;
-					
-					if (FileIO::Config::saveWhenAllQuit)
-						if (!Network::AnyHumanPlayersActive())
-							FileIO::AutoSave();
-
 					Game::FinishRoundProcessing();
 					Objects::PFaction f = Game::postEvolutionWinner.lock();
 					if (f)
 						Game::DeclareWinner(f);
+					if (FileIO::postEvolutionAutoSave)
+						FileIO::AutoSave();
 				}
 			}
 			else if (!RuntimeConfig::IsInAnyCommandPhase() && !RuntimeConfig::GameHasEnded())
