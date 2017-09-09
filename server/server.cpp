@@ -96,7 +96,7 @@ namespace ApplicationInterface
 			}
 		}
 
-		if (_v->IsGroundBoundVehicle() && To<Objects::Vehicle>::Cast(_v)->turret->detectsResources)
+		if (_v->IsGroundBoundVehicle() && (To<Objects::Vehicle>::Cast(_v)->turret->detectsResources))
 		{
 			Game::Network::UpdateResourceCoverage(_v->owner, _v->location,_v->GetScanningRange(),timestamp);
 		}
