@@ -56,7 +56,7 @@ namespace RuntimeConfig
 
 	inline bool	IsACommandPhase(Phase p)	{return p == Phase::CommandPhase;}
 	inline bool IsInAnyCommandPhase()	{return IsACommandPhase(phase);}
-
+	inline bool	GameHasEnded() {return phase == Phase::EndOfGame;}
 }
 
 
