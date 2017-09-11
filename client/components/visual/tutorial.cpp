@@ -473,72 +473,70 @@ namespace Tutorial
 
 	void	Create()
 	{
-		#ifdef HAS_WINDOW
-
-			XML::Container xtutorials;
-			xtutorials.LoadFromFile("resources/tutorial/messages.xml");
-			for (const auto&xmessage : xtutorials.root_node.children)
+		XML::Container xtutorials;
+		xtutorials.LoadFromFile("resources/tutorial/messages.xml");
+		for (const auto&xmessage : xtutorials.root_node.children)
+		{
+			if (xmessage.name == "message")
 			{
-				if (xmessage.name == "message")
+				String name;
+				ASSERT__(xmessage.Query("name",name));
+				Detail::Message*msg = Detail::messages.SetNew(name);
+				xmessage.Query("image",msg->image);	//optional
+				explode('\n',xmessage.inner_content,msg->lines);
+				for (auto&line : msg->lines)
 				{
-					String name;
-					ASSERT__(xmessage.Query("name",name));
-					Detail::Message*msg = Detail::messages.SetNew(name);
-					xmessage.Query("image",msg->image);	//optional
-					explode('\n',xmessage.inner_content,msg->lines);
-					for (auto&line : msg->lines)
-					{
-						line.TrimThis();
-						line.FindAndReplace("%PRODUCT_NAME%",PRODUCT_NAME);
-						line.FindAndReplace("%FUEL%",Objects::ResourceTag(Objects::Resource::Fuel));
-						line.FindAndReplace("%MINERALS%",Objects::ResourceTag(Objects::Resource::Minerals));
-						line.FindAndReplace("%URANIUM%",Objects::ResourceTag(Objects::Resource::Uranium));
-						line.FindAndReplace("%ENERGY%",Objects::ResourceTag(Objects::Resource::Energy));
+					line.TrimThis();
+					line.FindAndReplace("%PRODUCT_NAME%",PRODUCT_NAME);
+					line.FindAndReplace("%FUEL%",Objects::ResourceTag(Objects::Resource::Fuel));
+					line.FindAndReplace("%MINERALS%",Objects::ResourceTag(Objects::Resource::Minerals));
+					line.FindAndReplace("%URANIUM%",Objects::ResourceTag(Objects::Resource::Uranium));
+					line.FindAndReplace("%ENERGY%",Objects::ResourceTag(Objects::Resource::Energy));
 					
-					}
 				}
-				else
-					FATAL__("Found unexpected entry in tutorial text file");
-		
 			}
+			else
+				FATAL__("Found unexpected entry in tutorial text file");
+		
+		}
 
-			FileSystem::CreateDirectory("config");
+		FileSystem::CreateDirectory("config");
 
-			Detail::InitMemoryFile();
+		Detail::InitMemoryFile();
 	
 
-			GlobalEvents::frameBegin << []()
+		GlobalEvents::frameBegin << []()
+		{
+			if (!Engine::mouse.buttons.pressed)		
 			{
-				if (!Engine::mouse.buttons.pressed)		
+				if (!Tutorial::movementTutorialIssued && Objects::selectedEntity && Objects::selectedEntity->isOwnedByMe && Objects::selectedEntity->IsMobile() && timer.GetSecondsSince(Tutorial::lastDelayingEvent) > 3.f)
 				{
-					if (!Tutorial::movementTutorialIssued && Objects::selectedEntity && Objects::selectedEntity->isOwnedByMe && Objects::selectedEntity->IsMobile() && timer.GetSecondsSince(Tutorial::lastDelayingEvent) > 3.f)
-					{
-						Tutorial::movementTutorialIssued = true;
-						Tutorial::ShowMessage("Move To");
-						Tutorial::lastDelayingEvent = timer.Now();
-					}
-					if (!Tutorial::endRoundTutorialIssued && Network::client.IsConnected() && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && timer.GetSecondsSince(Tutorial::lastDelayingEvent) > 10.f)
-					{
-						Tutorial::endRoundTutorialIssued = true;
-						Tutorial::ShowMessage("End Round");
-						Tutorial::lastDelayingEvent = timer.Now();
-					}
+					Tutorial::movementTutorialIssued = true;
+					Tutorial::ShowMessage("Move To");
+					Tutorial::lastDelayingEvent = timer.Now();
 				}
-			};
-
-			if (!RuntimeConfig::aiMode)
-			{
-				Interactive::Create();
-				if (Detail::RegisterMemory(Detail::tutorialGameShown,"tutorialGame"))
+				if (!Tutorial::endRoundTutorialIssued && Network::client.IsConnected() && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && timer.GetSecondsSince(Tutorial::lastDelayingEvent) > 10.f)
 				{
-					Dialog::Confirm("Welcome to Hexaverse. Would you like to start a tutorial game server to learn the game's basics?",[]()
-					{
-						ServerProcess::StartTutorialServer();
-					},
-					[](){return Dialog::CheckResult::OkayContinue;});
+					Tutorial::endRoundTutorialIssued = true;
+					Tutorial::ShowMessage("End Round");
+					Tutorial::lastDelayingEvent = timer.Now();
 				}
 			}
-		#endif
+		};
+
+		if (!RuntimeConfig::aiMode)
+		{
+			Interactive::Create();
+			if (Detail::RegisterMemory(Detail::tutorialGameShown,"tutorialGame"))
+			{
+				Dialog::Confirm("Welcome to Hexaverse. Would you like to start a tutorial game server to learn the game's basics?",[]()
+				{
+					ServerProcess::StartTutorialServer();
+				},
+				[](){return Dialog::CheckResult::OkayContinue;});
+			}
+		}
+
 	}
 
 	void	SignalStart()
