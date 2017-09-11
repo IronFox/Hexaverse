@@ -1092,7 +1092,7 @@ namespace Engine
 			String errMessage,extInfo=String(filename);
 			if (errors)
 			{
-				errMessage = String((const char*)errors->GetBufferPointer(),errors->GetBufferSize());
+				errMessage = String((const char*)errors->GetBufferPointer(),errors->GetBufferSize()).TrimThis();
 				extInfo = String(filename)+": "+errMessage;
 			}
 			if (hr != S_OK)
