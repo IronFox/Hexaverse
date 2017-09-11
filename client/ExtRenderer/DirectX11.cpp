@@ -143,11 +143,13 @@ namespace Engine
 	/*static*/ DirectX11			*DirectX11::globalInstance = NULL;
 
 
-	void			DirectX11::ReportError(HRESULT rs, const TCodeLocation&location)
+	void			DirectX11::ReportError(HRESULT rs, const TCodeLocation&location, const String&extInfo)
 	{
 		errorCode = (int)rs;
 		_com_error err(rs);
 		errorString = err.ErrorMessage();
+		if (extInfo.IsNotEmpty())
+			errorString += " ("+extInfo+")";
 			//String(DXGetErrorString(rs)) + " ("+ DXGetErrorDescription(rs)+")";
 		 
 		//ErrMessage(errorString);
@@ -1086,16 +1088,24 @@ namespace Engine
 			DX11::Shader::IncludeHandler inc(filename);
 			
 			HRESULT hr = D3DCompile(code.pointer(),code.length(),String(FileSystem::ExtractFileNameExt(filename)).c_str(),macros, &inc , functionName.c_str(), profile,  0, 0, result.Init(), errors.Init());
+			
+			String errMessage,extInfo=String(filename);
 			if (errors)
 			{
-				String msg = String((const char*)errors->GetBufferPointer(),errors->GetBufferSize());
-				ErrMessage(msg);
+				errMessage = String((const char*)errors->GetBufferPointer(),errors->GetBufferSize());
+				extInfo = String(filename)+": "+errMessage;
 			}
 			if (hr != S_OK)
 			{
-				DirectX11::globalInstance->ReportError(hr, CLOCATION);
+				DirectX11::globalInstance->ReportError(hr, CLOCATION,extInfo);
 				throw Except::Renderer::ShaderRejected();
 			}
+
+			#ifdef _DEBUG
+				if (errMessage.IsNotEmpty())
+					ErrMessage(errMessage);
+			#endif
+
 			f = FOPEN(compiledPath.c_str(),"wb");
 			fwrite(result->GetBufferPointer(),result->GetBufferSize(),1,f);
 			fclose(f);

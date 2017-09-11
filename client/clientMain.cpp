@@ -3854,11 +3854,13 @@ int main( int argc, const char* argv[])
 
 			{
 				String name;
+				try
 				{
 					StringFile userName(RuntimeConfig::ConfigFile("userName.txt"));
-					if (userName.IsActive())
-						userName >> name;
+					userName >> name;
 				}
+				catch (...)
+				{}
 				if ( LocalApplicationInterface::IsValidNickname(name))
 				{
 					Network::chosenNickname = name;

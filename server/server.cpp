@@ -592,7 +592,7 @@ BOOL WINAPI MyHandlerRoutine(_In_  DWORD dwCtrlType)
 		case CTRL_C_EVENT:
 		case CTRL_CLOSE_EVENT:
 		case CTRL_SHUTDOWN_EVENT:
-			LogEvent(EventSignificance::Uncommon,"Received close event. Terminating");
+			LogEvent(EventSignificance::Uncommon,"Received close event #"+String(dwCtrlType)+". Terminating");
 			TerminateNow(false);
 		return TRUE;
 	
