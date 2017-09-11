@@ -473,68 +473,72 @@ namespace Tutorial
 
 	void	Create()
 	{
-		XML::Container xtutorials;
-		xtutorials.LoadFromFile("resources/tutorial/messages.xml");
-		for (const auto&xmessage : xtutorials.root_node.children)
-		{
-			if (xmessage.name == "message")
+		#ifdef HAS_WINDOW
+
+			XML::Container xtutorials;
+			xtutorials.LoadFromFile("resources/tutorial/messages.xml");
+			for (const auto&xmessage : xtutorials.root_node.children)
 			{
-				String name;
-				ASSERT__(xmessage.Query("name",name));
-				Detail::Message*msg = Detail::messages.SetNew(name);
-				xmessage.Query("image",msg->image);	//optional
-				explode('\n',xmessage.inner_content,msg->lines);
-				for (auto&line : msg->lines)
+				if (xmessage.name == "message")
 				{
-					line.TrimThis();
-					line.FindAndReplace("%PRODUCT_NAME%",PRODUCT_NAME);
-					line.FindAndReplace("%FUEL%",Objects::ResourceTag(Objects::Resource::Fuel));
-					line.FindAndReplace("%MINERALS%",Objects::ResourceTag(Objects::Resource::Minerals));
-					line.FindAndReplace("%URANIUM%",Objects::ResourceTag(Objects::Resource::Uranium));
-					line.FindAndReplace("%ENERGY%",Objects::ResourceTag(Objects::Resource::Energy));
+					String name;
+					ASSERT__(xmessage.Query("name",name));
+					Detail::Message*msg = Detail::messages.SetNew(name);
+					xmessage.Query("image",msg->image);	//optional
+					explode('\n',xmessage.inner_content,msg->lines);
+					for (auto&line : msg->lines)
+					{
+						line.TrimThis();
+						line.FindAndReplace("%PRODUCT_NAME%",PRODUCT_NAME);
+						line.FindAndReplace("%FUEL%",Objects::ResourceTag(Objects::Resource::Fuel));
+						line.FindAndReplace("%MINERALS%",Objects::ResourceTag(Objects::Resource::Minerals));
+						line.FindAndReplace("%URANIUM%",Objects::ResourceTag(Objects::Resource::Uranium));
+						line.FindAndReplace("%ENERGY%",Objects::ResourceTag(Objects::Resource::Energy));
 					
+					}
 				}
-			}
-			else
-				FATAL__("Found unexpected entry in tutorial text file");
+				else
+					FATAL__("Found unexpected entry in tutorial text file");
 		
-		}
+			}
 
-		FileSystem::CreateDirectory("config");
+			FileSystem::CreateDirectory("config");
 
-		Detail::InitMemoryFile();
+			Detail::InitMemoryFile();
 	
 
-		GlobalEvents::frameBegin << []()
-		{
-			if (!Engine::mouse.buttons.pressed)		
+			GlobalEvents::frameBegin << []()
 			{
-				if (!Tutorial::movementTutorialIssued && Objects::selectedEntity && Objects::selectedEntity->isOwnedByMe && Objects::selectedEntity->IsMobile() && timer.GetSecondsSince(Tutorial::lastDelayingEvent) > 3.f)
+				if (!Engine::mouse.buttons.pressed)		
 				{
-					Tutorial::movementTutorialIssued = true;
-					Tutorial::ShowMessage("Move To");
-					Tutorial::lastDelayingEvent = timer.Now();
+					if (!Tutorial::movementTutorialIssued && Objects::selectedEntity && Objects::selectedEntity->isOwnedByMe && Objects::selectedEntity->IsMobile() && timer.GetSecondsSince(Tutorial::lastDelayingEvent) > 3.f)
+					{
+						Tutorial::movementTutorialIssued = true;
+						Tutorial::ShowMessage("Move To");
+						Tutorial::lastDelayingEvent = timer.Now();
+					}
+					if (!Tutorial::endRoundTutorialIssued && Network::client.IsConnected() && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && timer.GetSecondsSince(Tutorial::lastDelayingEvent) > 10.f)
+					{
+						Tutorial::endRoundTutorialIssued = true;
+						Tutorial::ShowMessage("End Round");
+						Tutorial::lastDelayingEvent = timer.Now();
+					}
 				}
-				if (!Tutorial::endRoundTutorialIssued && Network::client.IsConnected() && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && timer.GetSecondsSince(Tutorial::lastDelayingEvent) > 10.f)
+			};
+
+			if (!RuntimeConfig::aiMode)
+			{
+				Interactive::Create();
+				if (Detail::RegisterMemory(Detail::tutorialGameShown,"tutorialGame"))
 				{
-					Tutorial::endRoundTutorialIssued = true;
-					Tutorial::ShowMessage("End Round");
-					Tutorial::lastDelayingEvent = timer.Now();
+					Dialog::Confirm("Welcome to Hexaverse. Would you like to start a tutorial game server to learn the game's basics?",[]()
+					{
+						ServerProcess::StartTutorialServer();
+					},
+					[](){return Dialog::CheckResult::OkayContinue;});
 				}
 			}
-		};
-
-
-
-		Interactive::Create();
-		if (Detail::RegisterMemory(Detail::tutorialGameShown,"tutorialGame"))
-		{
-			Dialog::Confirm("Welcome to Hexaverse. Would you like to start a tutorial game server to learn the game's basics?",[]()
-			{
-				ServerProcess::StartTutorialServer();
-			},
-			[](){return Dialog::CheckResult::OkayContinue;});
-		}
+		#endif
 	}
 
 	void	SignalStart()
