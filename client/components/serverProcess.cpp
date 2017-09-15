@@ -86,6 +86,7 @@ namespace ServerProcess
 		
 		void	StartTutorial()
 		{
+			LogEvent(EventClass::Preset::uncommon,"Starting tutorial server...");
 			RuntimeConfig::serverAddress = Network::ServerAddress("localhost");
 			#ifdef HAS_WINDOW
 				holdOn = Dialog::PermanentMessage("Hold on. Getting tutorial server ready.",[]()->Dialog::CheckResult

@@ -1009,7 +1009,7 @@ namespace Engine
 							numQualityLevels=1;
 		};
 
-		void			ReportError(HRESULT, const TCodeLocation&);
+		void			ReportError(HRESULT, const TCodeLocation&, const String&extInfo="");
 		//static void					BuildMipMaps(const GL::FBO&, unsigned target, const GLShader::Instance&mipMapShader);
 		//static void					BuildMipMaps(const GL::Texture::Reference&, const GLShader::Instance&mipMapShader, GLenum format=GL_RGBA8);
 

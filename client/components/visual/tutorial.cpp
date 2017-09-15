@@ -524,17 +524,19 @@ namespace Tutorial
 			}
 		};
 
-
-
-		Interactive::Create();
-		if (Detail::RegisterMemory(Detail::tutorialGameShown,"tutorialGame"))
+		if (!RuntimeConfig::aiMode)
 		{
-			Dialog::Confirm("Welcome to Hexaverse. Would you like to start a tutorial game server to learn the game's basics?",[]()
+			Interactive::Create();
+			if (Detail::RegisterMemory(Detail::tutorialGameShown,"tutorialGame"))
 			{
-				ServerProcess::StartTutorialServer();
-			},
-			[](){return Dialog::CheckResult::OkayContinue;});
+				Dialog::Confirm("Welcome to Hexaverse. Would you like to start a tutorial game server to learn the game's basics?",[]()
+				{
+					ServerProcess::StartTutorialServer();
+				},
+				[](){return Dialog::CheckResult::OkayContinue;});
+			}
 		}
+
 	}
 
 	void	SignalStart()
