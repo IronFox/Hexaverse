@@ -3733,6 +3733,13 @@ int main( int argc, const char* argv[])
 						Engine::input.Bind(Key::Down,ZoomOut);
 					#endif
 
+						Engine::input.Bind(Key::X,[]()
+						{
+							const float baseRadius = 16;
+							const float3 center = Camera::scene.GetAbsoluteLocation() - Camera::scene.GetViewingDirection() * baseRadius*2;
+
+							Explosions::InitExplosion(center,false,baseRadius * 4, Objects::ExplosionTime(baseRadius));
+						});
 
 
 
