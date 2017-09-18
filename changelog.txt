@@ -5,6 +5,7 @@ v0.6.5
 	+ Added statistics recording and end-game display.
 	+ Added options dialog.
 	+ Added option to change UI scale.
+	+ Added option to limit explosion particle count.
 	+ Implemented loading splash screen.
 	+ Added help sub-menu with some new options.
 	> Idle vehicles will no longer constantly attack indestructible units.

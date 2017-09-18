@@ -11,6 +11,7 @@
 #include "music.h"
 #include "objectSelection.h"
 #include "guiStatistics.h"
+#include "explosions.h"
 
 bool	IsFullScreen();
 void	SetFullScreen(bool isFull);
@@ -198,10 +199,32 @@ namespace Menu
 			};
 		}
 
+		
+		static const float minParticles = 500,
+							maxParticles = 100000;
+		static const float expBase = 1.5f;
+		static const float	minExponent = floor(log(minParticles) / log(expBase)),
+							maxExponent = ceil(log(maxParticles) / log(expBase));
+		const float		current = log(Explosions::maxConcurrentParticles) / log(expBase);
+		
+		AddOptionSlider("Max Explosion Particles", minExponent, maxExponent, 2, current, [](float&q)
+			{
+				count_t nVal = pow(expBase,q);
+				if (Explosions::maxConcurrentParticles != nVal)
+				{
+					Explosions::maxConcurrentParticles = nVal;
+					Configuration::Update("runtime/maxExplosionParticles",Explosions::maxConcurrentParticles);
+				}
+			},
+			[]() -> String
+			{
+				return Explosions::maxConcurrentParticles;
+			}
+		);
 
 		if (AudioInterface::isActive)
 		{
-			AddOptionSlider("Sound Level", 0, 1.f, 0.25f,AudioInterface::GetMasterVolume(), [](float&q)
+			AddOptionSlider("Sound Volume", 0, 1.f, 0.25f,AudioInterface::GetMasterVolume(), [](float&q)
 			{
 				auto old = AudioInterface::GetMasterVolume();
 				if (old != q)
@@ -216,7 +239,7 @@ namespace Menu
 			}
 			)->SetupMarkers(0.25f,false);
 
-			AddOptionSlider("Music Level", 0, 1.f, 0.25f,Music::GetVolume(), [](float&q)
+			AddOptionSlider("Music Volume", 0, 1.f, 0.25f,Music::GetVolume(), [](float&q)
 			{
 				auto old = Music::GetVolume();
 				if (old != q)
