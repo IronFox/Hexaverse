@@ -1,4 +1,4 @@
-v0.6.5
+v0.6.5	[Sep 20 2017]
 	+ Added background music to server selection screen.
 	+ Added remote control commands to end game at any time.
 	+ Added remote control command to immediately end round.
