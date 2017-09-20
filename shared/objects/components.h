@@ -30,11 +30,38 @@ namespace Objects
 
 
 	CONSTRUCT_ENUMERATION3(
-		TurretTrajectory,
+		TraceResult,
 			InvalidTrajectory,
 			ReachesTarget,
 			MidFlightImpact
 	);
+
+	struct ImpactDetails
+	{
+		TraceResult			result;
+		M::TVec3<>			impactAt;	//!< World location of any detected impact. Valid only if result!=TrajectoryResult::InvalidTrajectory
+		Grid::HCellIdI		impactCell;	//!< High resolution cell location of any detected impact. Valid only if result!=TrajectoryResult::InvalidTrajectory
+		float				artilleryAngle=0;	//!< Used artillery angle for this impact. Valid only if result!=TrajectoryResult::InvalidTrajectory, and used weapon is artillery
+		/**
+		Geometric distance to the given destination.
+		Valid only if result != TrajectoryResult::InvalidTrajectory
+		*/
+		float				distanceToTarget=0;
+
+		friend String		ToString(const ImpactDetails&det)
+		{
+			if (det.result == TraceResult::InvalidTrajectory)
+				return "No Impact";
+			return String(det.result.ToString())+": @"+ToString(det.impactAt)+"/"+ToString(det.impactCell)+", dist="+String(det.distanceToTarget);
+		}
+
+		operator TraceResult() const {return result;}
+		bool				operator==(const TraceResult&rs) const {return result == rs;}
+		bool				operator!=(const TraceResult&rs) const {return result != rs;}
+	};
+
+
+
 	static const float g = 9.80665f;
 
 	CONSTRUCT_ENUMERATION3(TrajectoryType, Artillery, Missile, VerticalBeam);
@@ -124,8 +151,8 @@ namespace Objects
 			{
 				static void					TraceAnimationArtilleryTrajectory(float velocity,  float attackAngle, const TrajectoryEndPoint&attackerPosition, const TrajectoryEndPoint&explosionCenter,Ctr::Buffer0<M::TVec4<> >&outSteps);
 				static void					TraceAnimationMissileTrajectory(float range, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps);
-				static TurretTrajectory		TraceArtilleryTrajectory(float velocity, const World::Data&decisionWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source,  const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps, M::TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle);
-				static TurretTrajectory		TraceMissileTrajectory(float range, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps, M::TVec3<>&impactAt, Grid::HCellIdI&impactCell);
+				static ImpactDetails		TraceArtilleryTrajectory(float velocity, const World::Data&decisionWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source,  const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps);
+				static ImpactDetails		TraceMissileTrajectory(float range, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps);
 				static bool					ArtilleryCanHit(float flatRange, float horizontalDistance, float verticalDistance, float&outAngle);
 				static bool					ArtilleryCanHit(float flatRange, float horizontalDistance, float verticalDistance);
 				static bool					MissileCanHit(float flatRange, const TrajectoryEndPoint&origin, const TrajectoryEndPoint&destination);
@@ -229,6 +256,8 @@ namespace Objects
 			float							continuousRotationSpeed = 1;	//angles per second rotation speed, effective only, if continuousRotation is set true
 
 
+			static Timer::Time				timeSpentTracing;
+			static count_t					traceCount;
 
 			/**/							Turret():
 												#ifdef NO_MUNITION
@@ -242,13 +271,11 @@ namespace Objects
 
 			static int						GetGroundHeight(const Grid::LCellIdI&location);
 			//static void						TraceTrajectory(TrajectoryType, float flatRange, const M::TVec3<>&source, const M::TVec3<>&dest, Buffer0<M::TVec4<> >&outSteps);
-			static TurretTrajectory			TraceTrajectory(TrajectoryType, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps, M::TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle);
-			static TurretTrajectory			TraceTrajectory(TrajectoryType type, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, M::TVec3<>&impactAt)
+			static ImpactDetails			TraceTrajectory(TrajectoryType, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps);
+			static ImpactDetails			TraceTrajectory(TrajectoryType type, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest)
 			{
 				Ctr::Buffer0<M::TVec4<> > outSteps;
-				Grid::HCellIdI impactCell;
-				float angle;
-				return TraceTrajectory(type, flatRange,visibleWorld, actualWorld,source,dest,outSteps,impactAt,impactCell,angle);
+				return TraceTrajectory(type, flatRange,visibleWorld, actualWorld,source,dest,outSteps);
 			}
 			virtual bool					IsTurret() const override {return true;}
 			static void						TraceAnimationTrajectory(TrajectoryType, float flatRange, float attackAngle, const TrajectoryEndPoint&attackerPosition, const TrajectoryEndPoint&explosionCenter,Ctr::Buffer0<M::TVec4<> >&outTrajectory);

@@ -16,6 +16,9 @@
 
 namespace Objects
 {
+	Timer::Time				Component::Turret::timeSpentTracing = 0;
+	count_t					Component::Turret::traceCount=0;
+
 
 	/**/			TrajectoryEndPoint::TrajectoryEndPoint(const M::TVec3<>&worldLocation)
 	{
@@ -513,35 +516,36 @@ namespace Objects
 		}
 
 
-		/*static*/ TurretTrajectory			Turret::TraceTrajectory(TrajectoryType t, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps, M::TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle)
+		/*static*/ ImpactDetails			Turret::TraceTrajectory(TrajectoryType t, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps)
 		{
 			outSteps.Clear();
-			outAngle = 0;
 			switch (t)
 			{
 				case TrajectoryType::Artillery:
-					return Detail::TraceArtilleryTrajectory(Turret::MaxRangeToVelocity(flatRange),visibleWorld,actualWorld,source, dest, outSteps,impactAt, impactCell,outAngle);
+					return Detail::TraceArtilleryTrajectory(Turret::MaxRangeToVelocity(flatRange),visibleWorld,actualWorld,source, dest, outSteps);
 				break;
 				case TrajectoryType::Missile:
-					return Detail::TraceMissileTrajectory(flatRange,actualWorld,source, dest, outSteps,impactAt, impactCell);
+					return Detail::TraceMissileTrajectory(flatRange,actualWorld,source, dest, outSteps);
 				break;
 				case TrajectoryType::VerticalBeam:
 				{
+					ImpactDetails rs;
 					int h = GetGroundHeight(source.cellLocation);
 					if (h == badHeight)
-						return TurretTrajectory::InvalidTrajectory;
+						return rs;
 					outSteps.Clear();
 					float4 p(Grid::low.cells[source.cellLocation.stackID].cornerCenter,Grid::ToRadius(h));
 					outSteps.Append(p);
-					impactAt = p.xyz * p.w;
-					impactCell = Grid::HCellIdI(Grid::low.grid.GetCell(source.cellLocation.stackID).higherEquivalent,h);
-					return TurretTrajectory::ReachesTarget;
+					rs.result = TraceResult::ReachesTarget;
+					rs.impactAt = p.xyz * p.w;
+					rs.impactCell = Grid::HCellIdI(Grid::low.grid.GetCell(source.cellLocation.stackID).higherEquivalent,h);
+					return rs;
 				}
 				break;
 				default:
 					FATAL__("Incompatible trajectory type "+String(t.ToString()));
 			}
-			return TurretTrajectory::InvalidTrajectory;
+			return ImpactDetails{};
 
 		}
 
@@ -591,21 +595,23 @@ namespace Objects
 			return 0;
 		}
 
-		/*static*/ TurretTrajectory			Turret::Detail::TraceArtilleryTrajectory(float velocity, const World::Data&decisionWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps, M::TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle)
+		/*static*/ ImpactDetails			Turret::Detail::TraceArtilleryTrajectory(float velocity, const World::Data&decisionWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps)
 		{
 			Turret::TAngles angles = Turret::GetAngleForDistance(velocity,source,dest);
 			if (angles.numAngles == 0)
 			{
 				if (velocity < 50.f)
 				{
-					LogEvent(EventClass::Preset::internalError,"Unable to determine feasible angles for artillery trajectory at v="+String(velocity)+", source="+ToString(source)+", dest="+ToString(dest)+". Increasing velocity and retrying.");
+					//LogEvent(EventClass::Preset::internalError,"Unable to determine feasible angles for artillery trajectory at v="+String(velocity)+", source="+ToString(source)+", dest="+ToString(dest)+". Increasing velocity and retrying.");
 					velocity = velocity > 0 ? velocity * 1.1f : 1.f;	//should not be zero, but it's better to handle this case here anyway. Otherwise we're causing a stack overflow in no-time
-					return TraceArtilleryTrajectory(velocity,decisionWorld,actualWorld,source, dest,outSteps,impactAt,impactCell,outAngle);
+					return TraceArtilleryTrajectory(velocity,decisionWorld,actualWorld,source, dest,outSteps);
 				}
 
-				return TurretTrajectory::InvalidTrajectory;
+				return ImpactDetails{};
 			}
 
+			Turret::traceCount++;
+			const Timer::Time t0 = timer.Now();
 		/*	const float h0 = zOffset + Grid::ToRadiusf(0.05f + source.height);
 			const float h1 = Grid::ToRadiusf(0.05f + dest.height);
 			const float3 there = Grid::low.cells[dest.stackID].centerVertex.xyz * h1;
@@ -634,8 +640,9 @@ namespace Objects
 
 
 			{
+				ImpactDetails rs;
 				outSteps.Clear();
-				float angle = outAngle = angles.idealAngle[k];
+				float angle = rs.artilleryAngle = angles.idealAngle[k];
 				LogEvent(EventSignificance::Debug,"Using angle "+String(k)+"/"+String(angles.numAngles)+" "+String(angle));
 				float sn = sin(angle),
 						cs = cos(angle);
@@ -647,11 +654,12 @@ namespace Objects
 
 
 
-				impactAt = dest.worldLocation;
+				rs.impactAt = dest.worldLocation;
+				const auto impactAtHCell = Grid::ToHigh(dest.cellLocation);
 				#ifdef HYBRID_GRID
-					impactCell = Grid::HCellIdI(Grid::low.grid.GetCell(dest.cellLocation.stackID).higherEquivalent,dest.cellLocation.height);
+					rs.impactCell = Grid::HCellIdI(Grid::low.grid.GetCell(dest.cellLocation.stackID).higherEquivalent,dest.cellLocation.height);
 				#else
-					impactCell = dest.cellLocation;
+					rs.impactCell = dest.cellLocation;
 				#endif
 
 				//const float3 up = (here + there).Normalized0();
@@ -679,13 +687,17 @@ namespace Objects
 					int h = (Grid::HeightFloorFromRadius(fy));
 					if (actualWorld.GetStack(cellAt).GetCellI(h).IsOccupied())
 					{
-						impactAt = b * (fy);
-						impactCell = Grid::HCellIdI(cellAt,h);
-						return Vec::distance(impactAt,dest.worldLocation) < 0.1f ? TurretTrajectory::ReachesTarget : TurretTrajectory::MidFlightImpact;
+						rs.impactAt = b * (fy);
+						rs.impactCell = Grid::HCellIdI(cellAt,h);
+						rs.distanceToTarget = Vec::distance(rs.impactAt,dest.worldLocation);
+						rs.result = rs.distanceToTarget < 0.1f || impactAtHCell == Grid::HCellIdI(cellAt,h) ? TraceResult::ReachesTarget : TraceResult::MidFlightImpact;
+						
+						Turret::timeSpentTracing += timer.Now() - t0;
+						return rs;
 					}
 				}
 
-				impactCell = Grid::HCellIdI(
+				rs.impactCell = Grid::HCellIdI(
 					#ifdef HYBRID_GRID
 						Grid::low.grid.GetCell(dest.cellLocation.stackID).higherEquivalent
 					#else
@@ -693,14 +705,16 @@ namespace Objects
 
 					#endif
 				,dest.cellLocation.height);
-				impactAt = Grid::ToWorld(impactCell);
 				float3 last = outSteps.last().xyz * outSteps.last().w;
-	//			ASSERT2__(Vec::similar(impactAt,last),Vec::toString(impactAt),last.ToString());
-				return TurretTrajectory::ReachesTarget;
+				rs.impactAt = dest.worldLocation;//last;//Grid::ToWorld(rs.impactCell);
+				//rs.distanceToTarget = Vec::distance(rs.impactAt,dest.worldLocation);
+				rs.result = TraceResult::ReachesTarget;
+				Turret::timeSpentTracing += timer.Now() - t0;
+				return rs;
 			}
 		}
 
-		/*static*/ TurretTrajectory			Turret::Detail::TraceMissileTrajectory(float range, const World::Data&world, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps, M::TVec3<>&impactAt, Grid::HCellIdI&impactCell)
+		/*static*/ ImpactDetails			Turret::Detail::TraceMissileTrajectory(float range, const World::Data&world, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps)
 		{
 		/*
 
@@ -711,8 +725,10 @@ namespace Objects
 		*/
 			float d2 = Vec::quadraticDistance(source.worldLocation,dest.worldLocation);
 			if (d2 > M::Sqr(range))
-				return TurretTrajectory::InvalidTrajectory;
+				return ImpactDetails{};
 
+			Turret::traceCount++;
+			const Timer::Time t0 = timer.Now();
 
 			const float3 up = (source.worldLocation + dest.worldLocation).Normalized0();
 			float distance = sqrt(d2);
@@ -721,6 +737,7 @@ namespace Objects
 
 			const int resolution = std::max<int>(2,distance*2);
 			UINT32 cellAt = Grid::low.grid.GetCell(source.cellLocation.stackID).higherEquivalent;
+			const auto impactAtHCell = Grid::ToHigh(dest.cellLocation);
 
 			float lastH = source.radius;
 			M::TVec3<> lastB = source.worldLocation;
@@ -738,22 +755,30 @@ namespace Objects
 				int h = (Grid::HeightFloorFromRadius(fy));
 				if (world.GetStack(cellAt).GetCellI(h).IsOccupied())
 				{
-					impactAt = b * (fy);
-					impactCell = Grid::HCellIdI(cellAt,h);
-					return TurretTrajectory::MidFlightImpact;
+					ImpactDetails rs;
+					rs.impactAt = b * (fy);
+					rs.impactCell = Grid::HCellIdI(cellAt,h);
+					rs.distanceToTarget = Vec::distance(rs.impactAt,dest.worldLocation);
+					rs.result = rs.distanceToTarget < 0.1f || impactAtHCell == Grid::HCellIdI(cellAt,h) ? TraceResult::ReachesTarget : TraceResult::MidFlightImpact;
+					Turret::timeSpentTracing += timer.Now() - t0;
+					return rs;
 				}
 			}
-			impactCell = Grid::HCellIdI(
+			ImpactDetails rs;
+			rs.impactCell = Grid::HCellIdI(
 				#ifdef HYBRID_GRID
 					Grid::low.grid.GetCell(dest.cellLocation.stackID).higherEquivalent
 				#else
 					dest.cellLocation.stackID
 				#endif
 			,dest.cellLocation.height);
-			impactAt = Grid::ToWorld(impactCell);
+
 			float3 last = outSteps.last().xyz * outSteps.last().w;
-	//			ASSERT2__(Vec::similar(impactAt,last),Vec::toString(impactAt),last.ToString());
-			return TurretTrajectory::ReachesTarget;
+			rs.impactAt = dest.worldLocation;//Grid::ToWorld(rs.impactCell);
+			//rs.distanceToTarget = Vec::distance(rs.impactAt,dest.worldLocation);
+			rs.result = TraceResult::ReachesTarget;
+			Turret::timeSpentTracing += timer.Now() - t0;
+			return rs;
 		}
 
 

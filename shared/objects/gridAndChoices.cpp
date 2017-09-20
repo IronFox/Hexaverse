@@ -199,23 +199,21 @@ namespace Objects
 				//	return;
 				//if (d2 < M::Sqr(turret->explosionRadius))
 				//	return;
-				static Ctr::Buffer0<M::TVec4<> > trajectory;
-				Grid::HCellIdI ic;
-				M::TVec3<> iat;
-				float angle;
-				const auto rs = Component::Turret::TraceTrajectory(base.turret->trajectoryType,base.GetFlatAttackRange(),   
-							world, World::actual,sourceLocation,TrajectoryEndPoint( loc ),trajectory,
-							iat,ic,angle);
 				
-				if (rs == TurretTrajectory::InvalidTrajectory)
-					return;
-				if (rs == TurretTrajectory::MidFlightImpact)
-				{
-					float3 last = trajectory.Last().xyz * trajectory.Last().w;
-					float dist = Vec::quadraticDistance(last,Grid::ToWorld( e->location ));
-					if (dist > M::Sqr( base.turret->explosionRadius.GetValue(source.GetResearchState())))
-						return;
-				}
+				//
+				//static Ctr::Buffer0<M::TVec4<> > trajectory;
+				//const auto rs = Component::Turret::TraceTrajectory(base.turret->trajectoryType,base.GetFlatAttackRange(),   
+				//			world, world/*World::actual*/,sourceLocation,TrajectoryEndPoint( loc ),trajectory);
+				//
+				//if (rs == TraceResult::InvalidTrajectory)
+				//	return;
+				//if (rs == TraceResult::MidFlightImpact)
+				//{
+				//	float3 last = trajectory.Last().xyz * trajectory.Last().w;
+				//	float dist = Vec::quadraticDistance(last,Grid::ToWorld( e->location ));
+				//	if (dist > M::Sqr( base.turret->explosionRadius.GetValue(source.GetResearchState())))
+				//		return;
+				//}
 				float d2 = Grid::GetQuadraticGeometricDistance(sourceLocation.cellLocation,loc);
 				if (d2 < c2)
 				{
