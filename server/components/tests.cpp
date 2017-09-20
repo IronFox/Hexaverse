@@ -78,7 +78,7 @@ namespace Test
 
 	static String RandomString(Random&random, size_t minLength, size_t maxLength)
 	{
-		const count_t length = random.Next(minLength,maxLength);
+		const count_t length = random.NextT<count_t>(minLength,maxLength);
 		String rs = TStringLength(length);
 		for (index_t i = 0; i < length; i++)
 			rs.Set(i,(char)(BYTE)random.Next(1,255));	//full spectrum, no zeroes
@@ -450,7 +450,7 @@ namespace Test
 		count_t numMetrics = random.Next(0,16);
 		table.Clear();
 		for (index_t i = 0; i < numMetrics; i++)
-			table.Set((Objects::Statistics::Metric)i,random.Next(0,1<<31));
+			table.Set((Objects::Statistics::Metric)i,random.Next(0,std::numeric_limits<int>::max()));
 	}
 
 	/*static*/ void		Serialization::RandomFill(Objects::Statistics::EntityType&stat,Random&random)
