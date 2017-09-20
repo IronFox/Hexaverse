@@ -8,6 +8,7 @@ v0.6.5	[Sep 20 2017]
 	+ Added option to limit explosion particle count.
 	+ Implemented loading splash screen.
 	+ Added help sub-menu with some new options.
+	> Automatic target choice (e.g. by a tower) now traces candidate trajectories to improve precision.
 	> Idle vehicles will no longer constantly attack indestructible units.
 	> Removed the 'Construct Selected' button on vehicle plants. Simply selecting a desired turret will enqueue the chosen vehicle composition.
 	> Surveyor turret is now much heavier, limiting the speed of the standard surveyor vehicle.

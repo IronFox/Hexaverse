@@ -47,9 +47,6 @@ namespace Objects
 
 			static Ctr::Buffer0<M::TVec4<> > trajectory;
 
-			M::TVec3<> iat;
-			Grid::HCellIdI ic;
-			float angle;
 
 			//float d2 = Grid::GetQuadraticGeometricDistance(location+1,target->location);
 			TrajectoryEndPoint endPoint(target->location); 
@@ -59,7 +56,7 @@ namespace Objects
 					&& CountPossibleAttacks() > 0 
 					&& ExtCanHit(owner,TrajectoryEndPoint( location,GetEffectiveFoundationHeight() ), endPoint,outTarget)
 					//&& d2 > M::Sqr(turret->explosionRadius)
-					&& TraceTrajectory(endPoint,trajectory,iat,ic,angle)==TurretTrajectory::ReachesTarget;
+					&& TraceTrajectory(endPoint,trajectory)==TraceResult::ReachesTarget;
 		}
 
 
@@ -76,19 +73,16 @@ namespace Objects
 			float3 dir = Grid::low.cells[target.target.stackID].centerVertex.xyz * Grid::ToRadius(target.target.height) - this->GetWorldPosition();
 			float3 innerDir;
 			Mat::rotate(this->inverse,dir,innerDir);
-			M::TVec3<> t0;
-			Grid::HCellIdI t1;
 			static Ctr::Buffer0<M::TVec4<> > trajectory;
 
 			bool abort = false;
-			float angle;
-			TurretTrajectory t = TraceTrajectory(TrajectoryEndPoint( target.target ),trajectory,t0,t1,angle);
-			if (t != TurretTrajectory::ReachesTarget && target.autoTarget)
+			auto rs = TraceTrajectory(TrajectoryEndPoint( target.target ),trajectory);
+			if (rs != TraceResult::ReachesTarget && target.autoTarget)
 			{
-				t = TurretTrajectory::InvalidTrajectory;
+				rs = ImpactDetails{};
 			}
 
-			if (t != TurretTrajectory::InvalidTrajectory)
+			if (rs != TraceResult::InvalidTrajectory)
 			{
 
 
@@ -116,11 +110,11 @@ namespace Objects
 				}
 
 				ApplicationInterface::TAttack at;
-				at.attackAngle = angle;
+				at.attackAngle = rs.artilleryAngle;
 				at.attackFrom = shared_from_this();
 				at.flightTime = flightTime;
 				at.isAutoAttack = target.autoTarget;
-				at.traceTo = t0;
+				at.traceTo = rs.impactAt;
 				ApplicationInterface::SignalAttack(at);
 
 				const int ammoNeed = turret->GetAmmoNeedPerShot(owner);
@@ -142,11 +136,10 @@ namespace Objects
 				const float explosionRadius = turret->GetExplosionRadius(owner);
 
 				if (turret->dealsEMPDamage)
-					ExplodeEMP(at,
-								t1, t0, explosionRadius, damageLevel,entityTime);
+					ExplodeEMP(at,rs.impactCell,rs.impactAt, explosionRadius, damageLevel,entityTime);
 				else
 					Explode(at,
-							t1, t0, explosionRadius, damageLevel,turret->isDoomsday, entityTime);
+							rs.impactCell,rs.impactAt, explosionRadius, damageLevel,turret->isDoomsday, entityTime);
 
 				RegisterChange((changeType_t)(TasksChanged),entityTime);
 				//stateChangedAt = attackTime;	//problematic

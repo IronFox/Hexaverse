@@ -78,7 +78,7 @@ namespace Test
 
 	static String RandomString(Random&random, size_t minLength, size_t maxLength)
 	{
-		const count_t length = random.Next(minLength,maxLength);
+		const count_t length = random.NextT<count_t>(minLength,maxLength);
 		String rs = TStringLength(length);
 		for (index_t i = 0; i < length; i++)
 			rs.Set(i,(char)(BYTE)random.Next(1,255));	//full spectrum, no zeroes
@@ -450,7 +450,7 @@ namespace Test
 		count_t numMetrics = random.Next(0,16);
 		table.Clear();
 		for (index_t i = 0; i < numMetrics; i++)
-			table.Set((Objects::Statistics::Metric)i,random.Next(0,1<<31));
+			table.Set((Objects::Statistics::Metric)i,random.Next(0,std::numeric_limits<int>::max()));
 	}
 
 	/*static*/ void		Serialization::RandomFill(Objects::Statistics::EntityType&stat,Random&random)
@@ -588,6 +588,15 @@ namespace Test
 		//return result;
 	}
 
+	
+	template <typename T>
+	std::shared_ptr<T> CreateFilledStorageStructure(const Objects::OwnerParameter&owner, const Grid::LCellIdI&location)
+	{
+		auto rs = CreateStructure<T>(owner,location);
+		rs->storage = rs->maxStorage;
+		return rs;
+	}
+
 
 	/*virtual override*/ void	AutoTargeting::Run(Random&random)
 	{
@@ -602,6 +611,8 @@ namespace Test
 		config.BuildWorld(World::actual);
 		World::actual.ExportDiscovered(World::initial,Grid::WorldDiscovery::FullTerrain);
 
+		ASSERT_EQUAL__(Objects::structures.Count(), 0);
+		ASSERT_EQUAL__(Objects::vehicles.Count(), 0);
 
 
 		Objects::PFaction faction0(new Objects::Faction(TUniqueID::Empty())),
@@ -611,9 +622,10 @@ namespace Test
 
 		//Objects::PTower prototype = To<Objects::Tower>::DynamicCast( Objects::GetPrototypeByName(ConstName::Type_ArtilleryTower));
 
+		const Timer::Time startT = Objects::Component::Turret::timeSpentTracing;
+		const count_t startC = Objects::Component::Turret::traceCount;
+
 		Ctr::Buffer0<M::TVec4<> > trajectory;
-		M::TVec3<> impactAt;
-		Grid::HCellIdI impactCell;
 		auto turret = &Objects::Component::artillery;
 		int outOfScanning = 0;
 		auto original = turret->explosionRadius.constOverride;
@@ -631,17 +643,35 @@ namespace Test
 			Objects::PGenerator generator(CreateStructure<Objects::Generator>(faction0, generatorAt));
 
 			#ifdef ONE_COMPOUND_PER_FACTION
-			{
-				Grid::LCellIdI	munitionStoreAt = RandomCell(random);
-				munitionStoreAt.height = Objects::FindApplicableGround(munitionStoreAt,true);
-				while (munitionStoreAt.height == Objects::badHeight)
+				//draw from filled container:
+				Objects::PWorldEntity storage;
+				if (turret->ammoNeedPerShot(faction1) != 0)
 				{
-					munitionStoreAt = RandomCell(random);
+					Grid::LCellIdI	munitionStoreAt = RandomCell(random);
 					munitionStoreAt.height = Objects::FindApplicableGround(munitionStoreAt,true);
+					while (munitionStoreAt.height == Objects::badHeight)
+					{
+						munitionStoreAt = RandomCell(random);
+						munitionStoreAt.height = Objects::FindApplicableGround(munitionStoreAt,true);
+					}
+					switch (turret->ammoType)
+					{
+						#ifndef NO_MUNITION
+							case Objects::Resource::Munitions:
+								storage = CreateFilledStorageStructure<Objects::MunitionStorage>(faction1, munitionStoreAt);
+							break;s
+						#endif
+						case Objects::Resource::Fuel:
+							storage = CreateFilledStorageStructure<Objects::FuelContainer>(faction1, munitionStoreAt);
+						break;
+						case Objects::Resource::Uranium:
+							storage = CreateFilledStorageStructure<Objects::UraniumStorage>(faction1, munitionStoreAt);
+						break;
+						case Objects::Resource::Minerals:
+							storage = CreateFilledStorageStructure<Objects::MineralContainer>(faction1, munitionStoreAt);
+						break;
+					}
 				}
-				Objects::PMunitionStorage storage(CreateStructure<Objects::MunitionStorage>(faction1, munitionStoreAt));
-				storage->storage = storage->maxStorage;
-			}
 			#endif
 			Objects::RefreshCompoundCoverage(0);
 
@@ -660,9 +690,11 @@ namespace Test
 			#ifndef ONE_COMPOUND_PER_FACTION
 				v->currentStorage.level[v->turret->ammoType] = v->GetMaxStorageCapacity().level[v->turret->ammoType];
 			#endif
-			faction1->SignalAppearance(generator,t);	//make sure tower can see generator
+			faction1->SignalAppearance(generator,t);	//make sure vehicle can see generator
 			//faction1->knownWorld = World::actual;
+			faction1->CheckSensory();
 			bool wouldFire = v->FrontQueuePossibleAttacks();
+			ASSERT__(!faction1->knownWorld.SensoryIsInvalid());
 			if (wouldFire)
 			{
 				//check target
@@ -671,23 +703,50 @@ namespace Test
 					ASSERT__(task.IsMode(Objects::CursorMode::AttackMode));
 					for (const auto&target : task.foci)
 					{
-						Objects::TurretTrajectory	tr;
-						float angle;
-						if (tr = v->TraceTrajectory(Objects::TrajectoryEndPoint( target.target ),trajectory,impactAt,impactCell,angle))
-						{
-							ASSERT__(tr == Objects::TurretTrajectory::ReachesTarget);
-							if (Grid::GetGeometricDistance(vehicleAt,generatorAt) > v->GetScanningRange())
-								outOfScanning++;
 
-							float distance = Vec::distance(impactAt,Grid::ToWorld(v->location));
-							if (distance <= v->GetAttackExplosionRadius())
+						
+						const Objects::TrajectoryEndPoint	point{ target.target };
+						const auto rs = v->TraceTrajectory(point,trajectory);
+						if (rs == Objects::TraceResult::InvalidTrajectory)
+							Fail(CLOCATION,"Invalid trajectory generated. Target out of range?");
+						
+						const float explosionRadius = v->GetAttackExplosionRadius();
+						const bool beyondSensorRange = (Grid::GetGeometricDistance(vehicleAt,generatorAt) > v->GetScanningRange());
+
+
+						if (rs != Objects::TraceResult::ReachesTarget)
+						{
+							ASSERT__(!faction1->knownWorld.SensoryIsInvalid());
+							//1) auto target is chosen based on currently visible terrain, not actual terrain, so this can happen
+							//2) auto target can chose trajectories that are not precise hits
+							const auto hitContent = World::actual.GetCell(rs.impactCell);
+							const bool visible = faction1->knownWorld.GetCell(rs.impactCell).TerrainIsVisible();
+							const bool hit = rs.distanceToTarget < explosionRadius;
+							if (!hit && visible)
 							{
-								//baaaaad
-								bool chk = Objects::TurretBase::CheckArea(faction1, target.target, turret->GetExplosionRadius(faction1));
-								ASSERT__(!chk);
+								Fail(CLOCATION,"Trajectory fails to reach target, depiste knowing of obstactle. Error="+String(rs.distanceToTarget)+"/exp="+String(explosionRadius));
 							}
-							ASSERT_GREATER__(distance,v->turret->GetExplosionRadius(v->owner));
+/*
+							const float error = Vec::distance(rs.impactAt,point.worldLocation);
+							Fail(CLOCATION,"Trajectory fails to reach target, with error="+String(error)+"/exp="+String(explosionRadius));*/
 						}
+						
+						if (beyondSensorRange)
+							outOfScanning++;
+
+						const float distanceToSelf = Vec::distance(rs.impactAt,Grid::ToWorld(v->location));
+						if (distanceToSelf <= explosionRadius)
+						{
+							//baaaaad (hits itself)
+							if (rs.distanceToTarget == 0)//can only count on CheckArea() if we did not deviate
+							{
+					   			bool chk = Objects::TurretBase::CheckArea(faction1, target.target, rs.impactAt, explosionRadius);
+								ASSERT__(!chk);
+								Fail(CLOCATION,"Predictable self-hit detected.");
+							}
+						}
+						//ASSERT_GREATER__(distanceToSelf,v->turret->GetExplosionRadius(v->owner));
+						
 					}
 				}
 			
@@ -705,12 +764,25 @@ namespace Test
 			faction1->SignalDisappearance(generator,t);
 			Objects::Remove(v,Objects::RemovalType::Vanished,t);
 			Objects::Remove(generator,Objects::RemovalType::Vanished,t);
+			#ifdef ONE_COMPOUND_PER_FACTION
+				if (storage)
+					Objects::Remove(storage,Objects::RemovalType::Vanished,t);
+			#endif
 
+			ASSERT_EQUAL__(Objects::structures.Count(), 0);
+			ASSERT_EQUAL__(Objects::vehicles.Count(), 0);
 
 		}
 		turret->explosionRadius.constOverride = original;
 		
 		GlobalEvents::FlushObjects();
+
+
+		const Timer::Time deltaT = Objects::Component::Turret::timeSpentTracing - startT;
+		const count_t deltaC = Objects::Component::Turret::traceCount - startC;
+
+		std::cout << "        Finished "<<deltaC<<" trajectory traces in "<<timer.ToSeconds(deltaT)<<" sec. => "<<(timer.ToSeconds(deltaT)/deltaC)<<" sec. per trace"<<std::endl;
+
 	}
 
 

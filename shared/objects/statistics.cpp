@@ -59,6 +59,9 @@ namespace Objects
 			map.Unset((K)m);
 			return;
 		}
+		#ifdef X64
+			DBG_ASSERT_LESS__(value,(1ULL<<61));
+		#endif
 		map.Set((K)m,value);
 	}
 

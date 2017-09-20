@@ -448,10 +448,10 @@ namespace Objects
 		virtual PConstTurretBase	GetTurretBase(float &zOffset) const { return PConstTurretBase();}
 		inline PConstTurretBase		GetTurretBase() const { float dummy; return GetTurretBase(dummy);}
 
-		TurretTrajectory			TraceTrajectory(const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps, M::TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const;
-		TurretTrajectory			TraceTrajectory(const TrajectoryEndPoint&dest, M::TVec3<>&impactAt) const;
-		TurretTrajectory			TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps, M::TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const;
-		TurretTrajectory			TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, M::TVec3<>&impactAt) const;
+		ImpactDetails				TraceTrajectory(const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps) const;
+		ImpactDetails				TraceTrajectory(const TrajectoryEndPoint&dest) const;
+		ImpactDetails				TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps) const;
+		ImpactDetails				TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest) const;
 		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const TrajectoryEndPoint&dest, float&outAngle) const;
 		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const TrajectoryEndPoint&dest) const;
 		bool						CanHit(const TrajectoryEndPoint&dest, float&outAngle) const;

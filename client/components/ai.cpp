@@ -183,21 +183,20 @@ namespace AI
 		{
 			const float explosionRadius = source.turret->GetExplosionRadius(source.owner);
 
-			M::TVec3<> detonationAt;
-			Objects::TurretTrajectory rs = source.TraceTrajectory(Objects::TrajectoryEndPoint( target),detonationAt);
-			LogEvent(EventSignificance::Debug,&source,"Checking possible attack trajectory to "+candidate.GetName()+", attacking "+ToString(target)+", detonating at "+Vec::toString(detonationAt)+": "+rs.ToString());
+			const auto rs = source.TraceTrajectory(Objects::TrajectoryEndPoint( target));
+			LogEvent(EventSignificance::Debug,&source,"Checking possible attack trajectory to "+candidate.GetName()+", attacking "+ToString(target)+", detonating at "+ToString(rs));
 
-			if (rs == Objects::TurretTrajectory::InvalidTrajectory)
+			if (rs == Objects::TraceResult::InvalidTrajectory)
 			{
 				LogEvent(EventSignificance::Debug,&source,"Cannot trace good trajectory to destination. Invalid trajectory");
 				return;
 			}
-			if (rs != Objects::TurretTrajectory::ReachesTarget)
+			if (rs != Objects::TraceResult::ReachesTarget)
 			{
-				float distanceToTarget = Vec::distance(detonationAt,candidate.system.w.xyz);
-				if (distanceToTarget > explosionRadius)
+				//float distanceToTarget = Vec::distance(detonationAt,candidate.system.w.xyz);
+				if (rs.distanceToTarget > explosionRadius)
 				{
-					LogEvent(EventSignificance::Debug,&source,"Cannot trace good trajectory to destination. Final distance is "+String(distanceToTarget)+"/"+String(explosionRadius));
+					LogEvent(EventSignificance::Debug,&source,"Cannot trace good trajectory to destination. Final distance is "+String(rs.distanceToTarget)+"/"+String(explosionRadius));
 					return;
 				}
 			}
@@ -209,22 +208,22 @@ namespace AI
 			{
 				LogEvent(EventSignificance::Debug,&source,"Trajectory checks out");
 				count_t needAttacks = ceil(float(std::max(1,candidate.health)) / source.turret->GetDamageLevel(source.owner));
-				if (rs != Objects::TurretTrajectory::ReachesTarget)
+				if (rs != Objects::TraceResult::ReachesTarget)
 					needAttacks ++;
 				//if (rs == Objects::Turret::ReachesTarget)
 				float priority = 0.f;
-				Objects::ForeachWorldEntity([&priority,detonationAt,explosionRadius](const Objects::PWorldEntity&e)
+				Objects::ForeachWorldEntity([&priority,explosionRadius,rs](const Objects::PWorldEntity&e)
 				{
-					priority += ProcessAttackPriority(*e,detonationAt,explosionRadius);
+					priority += ProcessAttackPriority(*e,rs.impactAt,explosionRadius);
 				},true);
 				LogEvent(EventSignificance::Debug,&source,"Base Priority considered "+String(priority));
 				for (index_t i = 0; i < needAttacks; i++)
 				{
 					TAttackTarget&t = attackTarget.Append();
-					t.explosionAt = detonationAt;
+					t.explosionAt = rs.impactAt;
 					t.priority = priority / (1.f + float(i)*0.1f);
 					t.target = target;
-					t.midflightExplosion = rs == Objects::TurretTrajectory::MidFlightImpact;
+					t.midflightExplosion = (rs == Objects::TraceResult::MidFlightImpact);
 				}
 			}
 		}	
