@@ -1285,12 +1285,6 @@ namespace Objects
 
 	static void					InternalRemove( const PWorldEntity&e, RemovalType t, float&timestamp, bool isRemovedFromGrid/*=false*/, bool ignoreIndestructible/*=false*/)
 	{
-		if (!e)
-		{
-			LogEvent(EventClass::Preset::internalError,"Trying to remove null-entity, t="+String(t.ToString())+", timestamp="+String(timestamp)+", isRemovedFromgrid="+String(isRemovedFromGrid));
-			DBG_FATAL__("Trying to remove null-entity");
-			return;
-		}
 		#ifndef CLIENT
 			if (e->IsIndestructible() && !ignoreIndestructible)
 				return;
@@ -1440,11 +1434,23 @@ namespace Objects
 
 	void			Remove( const PWorldEntity&e, RemovalType t, float&atTime)
 	{
+		if (!e)
+		{
+			LogEvent(EventClass::Preset::internalError,"Trying to remove null-entity, t="+String(t.ToString())+", timestamp="+String(atTime));
+			DBG_FATAL__("Trying to remove null-entity");
+			return;
+		}
 		InternalRemove(e,t,atTime,!e->isInsertedIntoGrid,false);
 	}
 
 	void			ForceRemove(const PWorldEntity&e, RemovalType t, float&atTime)
 	{
+		if (!e)
+		{
+			LogEvent(EventClass::Preset::internalError,"Trying to remove null-entity, t="+String(t.ToString())+", timestamp="+String(atTime));
+			DBG_FATAL__("Trying to remove null-entity");
+			return;
+		}
 		InternalRemove(e,t,atTime,!e->isInsertedIntoGrid,true);
 	}
 
