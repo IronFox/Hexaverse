@@ -1241,6 +1241,8 @@ namespace Game
 				float t = 0;
 				const auto radarPrototype = Objects::Prototypes::structures.Find({ConstName::Type_Tower,ConstName::Turret_Radar});
 				ASSERT__(radarPrototype);
+				const auto launcherPrototype = Objects::Prototypes::structures.Find({ConstName::Type_Tower,ConstName::Turret_Launcher});
+				ASSERT__(launcherPrototype);
 				for (index_t i : distances)
 				{
 					//ASSERT_LESS_OR_EQUAL__(field.distance[i],R);
@@ -1253,7 +1255,7 @@ namespace Game
 						{
 							#ifndef _DEBUG
 								std::shared_ptr<Objects::Tower> tower = To<Objects::Tower>::Cast(
-									Objects::GetPrototypeByName(ConstName::Type_LauncherTower)->CreateNewInstance(Objects::Faction::nexus,
+									launcherPrototype->CreateNewInstance(Objects::Faction::nexus,
 									Grid::LCellIdI(i,h),
 									0));
 								tower->CorrectTerrain(false,0);
