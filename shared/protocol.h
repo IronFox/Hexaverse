@@ -7,6 +7,7 @@
 #include <iphlpapi.h>
 #include <net/tcp.h>
 #include <net/containers.h>
+#include "objects/entityType.h"
 #include "grid/stack.h"
 #include "grid/planet.h"
 #include "objects.h"
@@ -561,7 +562,7 @@ namespace Protocol
 
 	NETSTRUCT3(HelloResponse
 		, NET(bool), success
-		, NET(bool), configurationMode
+		, UINT32, gameFlags
 		, Package::NetString<256>, errorMessage	//in case stateAccepted is false
 	)
 
@@ -938,7 +939,7 @@ namespace Protocol
 		, NET(USHORT), roundsToJobCompletion
 		, NET(USHORT), resourceCostLeft
 		, NETA(Grid::LCellIdI), buildPath
-		, NET(ConstName), visualizationName	//can also be DetonationSize_Regular or DetonationSize_Doomsday
+		, Objects::EntityType, visualizationName	//can also be DetonationSize_Regular or DetonationSize_Doomsday
 	)
 
 	//class ResourceVector : public Objects::ResourceVector, public SerializableObject
@@ -1111,14 +1112,15 @@ namespace Protocol
 		};
 	}
 
-	typedef NetArray<ConstName,Objects::MaxProductionTasks> ProductionDesc;
+	
 	NETSTRUCT2(ProductionTask
-		, ProductionDesc, parameters
-		, NET(TUniqueID), id
+		, Objects::EntityType, type
+		, TUniqueID, id
 	)
+	typedef NetArray<ProductionTask,Objects::MaxProductionTasks> ProductionTasks;
 	NETSTRUCT3(ProducerState
-		, NETA(ProductionTask), productionTasks
-		, NET(UINT32), productionDone
+		, ProductionTasks, productionTasks
+		, UINT32, productionDone
 		, Grid::LCellIdI, gatheringPoint
 	)
 
@@ -1173,12 +1175,12 @@ namespace Protocol
 	NETSTRUCT8(VagueAttackTrajectory
 		, Timestamp, timestamp
 		, NET(float), flightTime
-		, NET(TVec3<>), sourcePosition
+		, NET(M::TVec3<>), sourcePosition
 		, NET(ConstName), turretType
 		, NET(float), turretRange
 		, NET(float), attackAngle
 		, NET(float), explosionRadius
-		, NET(TVec3<>), traceTo
+		, NET(M::TVec3<>), traceTo
 	)
 
 	NETSTRUCT6(PreciseAttackTrajectory
@@ -1186,7 +1188,7 @@ namespace Protocol
 		, NET(float), flightTime
 		, NET(TUniqueID), attacker
 		, NET(float), attackAngle
-		, NET(TVec3<>), traceTo
+		, NET(M::TVec3<>), traceTo
 		, NET(bool), isAutoAttack
 	)
 
@@ -1199,7 +1201,7 @@ namespace Protocol
 
 	NETSTRUCT4(Explosion
 		, Timestamp, timestamp
-		, NET(TVec3<>), center
+		, NET(M::TVec3<>), center
 		, NET(float), radius
 		, NET(bool), isEMP
 	)
@@ -1248,17 +1250,16 @@ namespace Protocol
 
 
 
-	NETSTRUCT4(NewMobileEntity
+	NETSTRUCT3(NewMobileEntity
 		, MobileState, state
 		, NET(TUniqueID), owner
-		, NET(ConstName), turretName
-		, NET(ConstName), baseName
+		, Objects::EntityType, type
 	)
 
 	NETSTRUCT3(StructureConstruction
 		, StructureState, state
 		, NET(TUniqueID), owner
-		, NET(ConstName), typeName
+		, Objects::EntityType, type
 	)
 
 
@@ -1298,7 +1299,7 @@ namespace Protocol
 	NETSTRUCT3(StandardJob
 		, NET(TUniqueID), ownerID
 		, NET(ConstName), jobName
-		, NET(ConstName), parameterName
+		, Objects::EntityType, parameterName
 		)
 
 	typedef NetArray<Grid::HCellIdI,256>	CellArray;
@@ -1313,10 +1314,9 @@ namespace Protocol
 		, NET(TUniqueID), taskId
 	)
 
-	typedef NetArray<ConstName,4>	ConstructionParameters;
 	NETSTRUCT2(ConstructionBegin
 		, NET(TUniqueID), plantID
-		, ConstructionParameters, parameters
+		, Objects::EntityType, type
 	)
 
 	NETSTRUCT2(EnableStructure
@@ -1411,11 +1411,10 @@ namespace Protocol
 		, NET(bool), doSet
 	)
 
-	NETSTRUCT4(MarkerReferenceEntity
+	NETSTRUCT3(MarkerReferenceEntity
 		, NET(TUniqueID), id
 		, NET(TUniqueID), owner
-		, NET(ConstName), type0
-		, NET(ConstName), type1
+		, Objects::EntityType, type
 	)
 
 	static_assert(Objects::Marker::Type::NumberOfPossibilities == 3, "Please adjust marker logic");
@@ -1436,18 +1435,18 @@ namespace Protocol
 	NETSTRUCT3(IdentifyFaction
 		, NET(TUniqueID), id
 		, Package::NetString<32>, name
-		, NET(TVec3<>), color
+		, NET(M::TVec3<>), color
 	)
 
 
 	NETSTRUCT2(QueueResearch
-		, NET(UINT32),	research
-		, NET(BOOL),	drop
+		, UINT32,	research
+		, bool,		drop
 	);
 
 	typedef NETA(UINT32)	ResearchQueue;
 
-	typedef std::pair<UINT16,UINT16>	TUnitLimit;
+	typedef std::pair<Objects::EntityType,UINT16>	TUnitLimit;
 
 	typedef NETA(TUnitLimit)	UnitLimits;
 
@@ -1575,6 +1574,14 @@ namespace Protocol
 			OperationLacksResources, //s2c: OperationLacksResources
 
 			TutorialAt,			// both: int32
+
+			WinningFaction,		// s2c: TUniqueID (if game has winner)
+
+			BeginStatisticsSequence,	//s2c: TUniqueID (factionID)
+			EndStatisticsSequence,		//s2c: <signal>
+			RoundStatistics,			//s2c: Statistics::Round
+			EntityTypeStatistics,		//s2c: Statistics::EntityType
+			FactionInteractionStatistics,	//s2c: Statistics::FactionInteraction
 		};
 	}
 
@@ -1623,9 +1630,10 @@ namespace Protocol
 			SimulateLiquids = 0x20,
 			ConfigurationMode = 0x40,
 			TutorialMode = 0x80,
+			GameHasEnded = 0x100,
 
-			SupportSpectatorFactions = 0x100,
-			SupportRegularFactions = 0x200,
+			SupportSpectatorFactions = 0x1000,
+			SupportRegularFactions = 0x2000,
 
 
 		};

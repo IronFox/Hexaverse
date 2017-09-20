@@ -300,7 +300,7 @@ namespace Objects
 			#ifdef HAS_WINDOW
 				virtual void		PrototypeLoadGeometry() override;
 
-				virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override;
+				virtual bool		TestIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float & distance) const override;
 				virtual void		VisitAllCommands(FCommandVisitor visitor,bool force) override {Super::VisitAllCommands(visitor,force); commands.VisitMembers(visitor,force);};
 			#endif
 
@@ -318,11 +318,11 @@ namespace Objects
 			/*static*/ Geometry		SatelliteTemplate<Derivative>::geometry;
 
 		template <typename Derivative>
-		/*virtual overrider*/ bool			SatelliteTemplate<Derivative>::TestIntersection(const TVec3<>&_b, const TVec3<>&_d, float & distance) const
+		/*virtual overrider*/ bool			SatelliteTemplate<Derivative>::TestIntersection(const M::TVec3<>&_b, const M::TVec3<>&_d, float & distance) const
 		{
 		// {return Super::TestIntersection(geometry,b,d,distance);}
-			TVec3<> b,d;//,test;
-			Mat::transform(inverse,_b,b);
+			M::TVec3<> b,d;//,test;
+			Mat::Transform(inverse,_b,b);
 			Mat::rotate(inverse,_d,d);
 			
 			return geometry.TestIntersection(b,d,distance) | 	//binary or - must evaluate both
@@ -350,8 +350,8 @@ namespace Objects
 			{
 				geometry.Clear();
 				String name = GetTypeName();
-				name.set(0, Template::tolower(name.firstChar()));
-				name.replace(' ',"");
+				name.Set(0, Template::tolower(name.FirstChar()));
+				name.FindAndReplace(' ',"");
 				geometry.LoadFromObj(PathString("objects/"+name+".obj"));
 				if (shape.shader.IsEmpty())
 					(DX11::BaseInstructionBlock&)shape = stdVehicleShader;

@@ -5,6 +5,7 @@
 #include <general/enumeration.h>
 #include <global_string.h>
 #include "roundNumber.h"
+#include "objects/entityType.h"
 
 namespace RuntimeConfig
 {
@@ -37,10 +38,10 @@ namespace RuntimeConfig
 		void		Enable(bool doEnable);
 		void		Reset();
 		bool		AnySet();
-		bool		Set(ConstName, int);
-		count_t		Get(ConstName, bool ignoreEnabledState=false);
-		void		Export(Ctr::Array<std::pair<UINT16,UINT16> >&);
-		void		Import(const Ctr::Array<std::pair<UINT16,UINT16> >&);
+		bool		Set(Objects::EntityType, int);
+		count_t		Get(Objects::EntityType, bool ignoreEnabledState=false);
+		void		Export(Ctr::Array<std::pair<Objects::EntityType,UINT16> >&);
+		void		Import(const Ctr::Array<std::pair<Objects::EntityType,UINT16> >&);
 	}
 
 	#ifndef CLIENT
@@ -55,7 +56,7 @@ namespace RuntimeConfig
 
 	inline bool	IsACommandPhase(Phase p)	{return p == Phase::CommandPhase;}
 	inline bool IsInAnyCommandPhase()	{return IsACommandPhase(phase);}
-
+	inline bool	GameHasEnded() {return phase == Phase::EndOfGame;}
 }
 
 

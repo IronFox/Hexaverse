@@ -157,7 +157,7 @@ namespace Objects
 				virtual void			PrototypeSetup() override;
 				virtual PWorldEntity	CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override {return PWorldEntity(new Derivative(owner, location)); }
 				#ifdef HAS_WINDOW
-					virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override;
+					virtual bool		TestIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float & distance) const override;
 					virtual void		VisitAllCommands(FCommandVisitor visitor,bool force) override {Super::VisitAllCommands(visitor,force); commands.VisitMembers(visitor,force);};
 				#endif
 
@@ -175,12 +175,12 @@ namespace Objects
 				/*static*/ Geometry		Template<Derivative>::geometry;
 
 			template <typename Derivative>
-			/*virtual overrider*/ bool			Template<Derivative>::TestIntersection(const TVec3<>&_b, const TVec3<>&_d, float & distance) const
+			/*virtual overrider*/ bool			Template<Derivative>::TestIntersection(const M::TVec3<>&_b, const M::TVec3<>&_d, float & distance) const
 			{
 			// {return Super::TestIntersection(geometry,b,d,distance);}
-				TVec3<> b,d;//,test;
-				Mat::transform(inverse,_b,b);
-				Mat::rotate(inverse,_d,d);
+				M::TVec3<> b,d;//,test;
+				Mat::Transform(inverse,_b,b);
+				Mat::Rotate(inverse,_d,d);
 			
 				return geometry.TestIntersection(b,d,distance) | 	//binary or - must evaluate both
 						turret->TestIntersection(0.f, turretAngleX,turretAngleY,b,d,distance);
@@ -221,7 +221,7 @@ namespace Objects
 
 			//BaseEntity overrides:
 			virtual String			GetTypeName() const override {return "Raptor";}
-			virtual ConstName		GetCTypeName() const override {return ConstName::Type_Raptor;}
+			virtual EntityType		GetType() const override {return ConstName::Type_Raptor;}
 
 			//SatelliteTemplate overrides:
 			virtual Component::Turret*
@@ -253,7 +253,7 @@ namespace Objects
 
 			//BaseEntity overrides:
 			virtual String			GetTypeName() const override {return "Cargo Plane";}
-			virtual ConstName		GetCTypeName() const override {return ConstName::Type_CargoPlane;}
+			virtual EntityType		GetType() const override {return ConstName::Type_CargoPlane;}
 
 			//SatelliteTemplate overrides:
 			virtual Component::Turret*
@@ -304,7 +304,7 @@ namespace Objects
 
 			//BaseEntity overrides:
 			virtual String			GetTypeName() const override {return "Sensor Drone";}
-			virtual ConstName		GetCTypeName() const override {return ConstName::Type_SensorDrone;}
+			virtual EntityType		GetType() const override {return ConstName::Type_SensorDrone;}
 
 			//SatelliteTemplate overrides:
 			virtual Component::Turret*

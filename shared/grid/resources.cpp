@@ -105,7 +105,7 @@ namespace Grid
 	{
 		ASSERT_LESS__(stackID, ARRAYSIZE(((Resource*)nullptr)->coverage));
 		foreach (all,res)
-			if (res->name.equalsIgnoreCase(resourceName))
+			if (res->name.EqualsIgnoreCase(resourceName))
 				return res->coverage[stackID];
 		FATAL__("Unable to locate resource '"+resourceName+'"');	//may be disabled later when resources are fully dynamic
 		return 0;
@@ -123,7 +123,7 @@ namespace Grid
 	/*static*/ Resource&		Resource::Require(const String&name)
 	{
 		foreach (all,res)
-			if (res->name.equalsIgnoreCase(name))
+			if (res->name.EqualsIgnoreCase(name))
 				return *res;
 
 		FATAL__("Unable to locate resource '"+name+'"');
@@ -141,7 +141,7 @@ namespace Grid
 	}
 
 
-	///*static*/ void Resource::Create(const String&name, ConstName cname, const float3&color, const TVec3<>&seed,float rarity, float maxYield)
+	///*static*/ void Resource::Create(const String&name, ConstName cname, const float3&color, const M::TVec3<>&seed,float rarity, float maxYield)
 	//{
 	//	// low.cells[i].centerVertex.xyz,
 	//	Resource&rc = Resource::all.Append();
@@ -163,7 +163,7 @@ namespace Grid
 		#ifdef GRID_INDEPENDENT_RANDOM
 			static Random random;
 			float q = 1.f - p;
-			coverage_t rs (Round(sqr(sqr(sqr(std::max(0.f,(random.NextFloat()-q)/p)))) * (max-1)));
+			coverage_t rs (M::Round(M::Sqr(M::Sqr(M::Sqr(std::max(0.f,(random.NextFloat()-q)/p)))) * (max-1)));
 			if (rs)
 				rs++;
 			return rs;
@@ -190,7 +190,7 @@ namespace Grid
 //
 //			float t = std::max(t0,t1);
 //
-//			t *= smoothstep(0.2f,0.3f,t2);
+//			t *= M::SmoothStep(0.2f,0.3f,t2);
 //
 //
 //			//float t = t0 * (0.3f + 0.7f * t1);
@@ -201,7 +201,7 @@ namespace Grid
 //			float h = 0.15f + (1.f - t0)*0.85f;
 //			//p = 0.75f;
 //			//float q = 1.f - p;
-//			coverage_t rs (Round(/*sqr*/(/*sqr*/(/*sqr*/(clamp((t-q)/p *h,0,1)))) * (max-1)));
+//			coverage_t rs (M::Round(/*M::Sqr*/(/*M::Sqr*/(/*M::Sqr*/(M::Clamp((t-q)/p *h,0,1)))) * (max-1)));
 //			if (rs)
 //				rs++;
 //			return rs;
@@ -267,9 +267,9 @@ namespace Grid
 					{
 						float factor = want / float(std::max((count_t)1,familyTotal[k]));
 						float magnitude = log(factor);
-						factor = pow(4.f,float(M::sign(factor-1.f))/(retries*2 + 1));
+						factor = pow(4.f,float(M::Sign(factor-1.f))/(retries*2 + 1));
 						p *= factor;
-						p = M::clamp(p,0.0001f,10000.f);
+						p = M::Clamp(p,0.0001f,10000.f);
 						LogEvent(EventSignificance::Debug,nullptr," Family found out of range ("+String(want)+"<-"+String(float(std::max((count_t)1,familyTotal[k])))
 									+"), p adjusted by "+String(factor)+" to "+String(p)+". Randomizing...");
 					}
@@ -281,8 +281,8 @@ namespace Grid
 					//	p *= 1.1f;
 					//else
 					//	p *= 1.f / 1.1f;
-//					factor = 1.f + clamp(magnitude,-0.5f,2.f);
-					//clamp((factor-1.f)*0.4f + 1.f,0.25f,4.f);
+//					factor = 1.f + M::Clamp(magnitude,-0.5f,2.f);
+					//M::Clamp((factor-1.f)*0.4f + 1.f,0.25f,4.f);
 	//				p *= factor;
 					familyTotal[k] = 0;
 					for (index_t i = offset; i < offset + count; i++)
@@ -366,13 +366,13 @@ namespace Grid
 
 		stacks << center.stackID;
 
-		const TVec3<> worldCenter = Grid::ToWorld(center);
+		const M::TVec3<> worldCenter = Grid::ToWorld(center);
 
 		UINT32 stackID;
 		while (stacks >> stackID)
 		{
-			const TVec3<> world = Grid::ToWorld(Grid::LCellIdI(stackID,center.height));
-			if (Vec::quadraticDistance(world,worldCenter) > M::sqr(range))
+			const M::TVec3<> world = Grid::ToWorld(Grid::LCellIdI(stackID,center.height));
+			if (Vec::quadraticDistance(world,worldCenter) > M::Sqr(range))
 				continue;
 			if (!covered.IsSet(stackID))
 			{

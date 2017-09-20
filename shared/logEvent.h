@@ -68,6 +68,7 @@ struct EventClass
 							important,
 							debug,
 							factionDeath,
+							winningFaction,
 							commandRejected,
 							operationAborted,
 							configuration,
@@ -79,6 +80,7 @@ struct EventClass
 							remoteControlResponse,
 							remoteControlCommand,
 							remoteControlError,
+							gui,	//!< GUI-Components
 							common	//!< Internal normal process that should be logged but not displayed
 							;
 	};

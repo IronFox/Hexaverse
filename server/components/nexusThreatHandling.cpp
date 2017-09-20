@@ -27,7 +27,7 @@ namespace Nexus
 				if (!Objects::Faction::nexus || ports.IsEmpty())
 					return;
 
-				TVec3<> centers[12];
+				M::TVec3<> centers[12];
 				DBG_ASSERT_LESS_OR_EQUAL__(ports.Count(),12);
 				for (index_t i = 0; i < ports.Count(); i++)
 					centers[i] = Grid::low.cells[ports[i]->location.stackID].centerVertex.xyz;
@@ -70,7 +70,7 @@ namespace Nexus
 
 	void EstimatePresence(Objects::WorldEntity&e, const Grid::LCellIdI&location, const Ctr::ArrayRef<index_t>&cornerField, float*hostileNearNexus, float*constructorNearNexus, float*friendlyNearNexus)
 	{
-		const TVec3 < >&loc = Grid::low.cells[location.stackID].centerVertex.xyz;
+		const M::TVec3 < >&loc = Grid::low.cells[location.stackID].centerVertex.xyz;
 		float entityRange = e.GetScanningRange();
 		float impact = e.GetConstructionCost();
 		Objects::PTurretBase b = e.GetTurretBase();
@@ -80,7 +80,7 @@ namespace Nexus
 			entityRange = M::Max(entityRange,b->GetFlatAttackRange());
 		}
 		impact += entityRange;
-		const TVec3<> worldLoc = Grid::ToWorld(location);
+		const M::TVec3<> worldLoc = Grid::ToWorld(location);
 		const float avg = Grid::low.neighborCellDistances.GetAverage();
 		if (impact > 0)
 			foreach (cornerField, at)
@@ -300,9 +300,9 @@ namespace Nexus
 									//Objects::Component::Turret* turret = State::Config::Nexus::vehicleTurrets[choice];
 									//Objects::MobileEntityProducer::WorkItem item = vplant->EnqueueProductionOfVehicle(&Objects::Component::hoverbase,turret);
 									//Objects::PVehicle v = To<Objects::Vehicle>::Cast(item.producing);
-									ConstName	parameters[2] = {ConstName::VehicleBase_HoverBase, Game::Config::Nexus::vehicleTurrets[choice]->constName};
+									Objects::EntityType	t = {ConstName::VehicleBase_HoverBase, Game::Config::Nexus::vehicleTurrets[choice]->constName};
 									LogEvent(EventSignificance::Common,vplant.get(),"Enqueueing vehicle production job due to high threat level");
-									Journal::currentRound.RegisterProductionJobStart(true,vplant,plant,parameters,2);
+									Journal::currentRound.RegisterProductionJobStart(true,vplant,plant,t);
 									
 									if (vplant->queue.IsNotEmpty())	//shit happens
 									{
@@ -356,7 +356,7 @@ namespace Nexus
 						
 						Objects::Component::Turret* turret = Game::Config::Nexus::vehicleTurrets[p->entityRandom.NextIndex(Game::Config::Nexus::vehicleTurrets.Count())];
 						float t = 0;
-						Objects::PVehicle v = Objects::SpawnVehicle(Objects::Faction::nexus, location, &Objects::Component::hoverbase, turret, true, t);
+						Objects::PVehicle v = Objects::InsertNewVehicle(Objects::Faction::nexus, location, &Objects::Component::hoverbase, turret, true, t);
 						Journal::currentRound.LogEntityCreation(v);
 						EstimatePresence(*v,v->location,  portLocations,hostileNearNexus,constructorNearNexus, friendlyNearNexus);
 					//	Objects::VerifyVisibilityNetwork();

@@ -11,7 +11,6 @@
 
 namespace Engine
 {
-	using namespace DeltaWorks::Math;
 	static inline size_t Align32(size_t s)
 	{
 		if (s%4)
@@ -144,16 +143,18 @@ namespace Engine
 	/*static*/ DirectX11			*DirectX11::globalInstance = NULL;
 
 
-	void			DirectX11::ReportError(HRESULT rs, const TCodeLocation&location)
+	void			DirectX11::ReportError(HRESULT rs, const TCodeLocation&location, const String&extInfo)
 	{
 		errorCode = (int)rs;
 		_com_error err(rs);
 		errorString = err.ErrorMessage();
+		if (extInfo.IsNotEmpty())
+			errorString += " ("+extInfo+")";
 			//String(DXGetErrorString(rs)) + " ("+ DXGetErrorDescription(rs)+")";
 		 
 		//ErrMessage(errorString);
 		//this is actually a fatal exception. It just should not happen
-		Except::fatal(location,errorString);
+		Except::TriggerFatal(location,errorString);
 		//FATAL__(errorString);
 	}
 
@@ -237,6 +238,20 @@ namespace Engine
 	}
 
 
+	DXGI_SAMPLE_DESC			DirectX11::_CompileSampleDesc(const MSAAConfig&cfg)	const
+	{
+		DXGI_SAMPLE_DESC rs;
+		rs.Quality = 0;
+		if (cfg.sampleCount > 1)
+		{
+			rs.Quality = cfg.numQualityLevels - 1;
+		}
+		rs.Count = cfg.sampleCount;
+		return rs;
+	}
+
+
+
 	bool			DirectX11::CreateContext(HWND hWnd, TVisualConfig&config, const Resolution&res)
 	{
 		DXGI_SWAP_CHAIN_DESC scd;
@@ -251,15 +266,9 @@ namespace Engine
 		vsync = config.vertical_sync;
 
 		scd.SampleDesc.Quality = 0;
-		if (config.fsaa_samples > 1 && knownQualityLevels)
-		{
-			scd.SampleDesc.Quality = knownQualityLevels - 1;
-		}
-		//config.fsaa_samples > 1 ? D3D11_STANDARD_MULTISAMPLE_PATTERN : 0;
-		scd.SampleDesc.Count = std::max<BYTE>(1, (BYTE)(knownQualityLevels ? config.fsaa_samples : 1));             // how many multisamples
+		scd.SampleDesc.Count = 1;
 		scd.Windowed = TRUE;                                    // windowed/full-screen mode
 		
-		this->fsaa = scd.SampleDesc;
 
 
 		UINT flags = 0;
@@ -269,7 +278,7 @@ namespace Engine
 		// create a device, device context and swap chain using the information in the scd struct
 		
 
-		D3D_FEATURE_LEVEL inputFeatureLevel = D3D_FEATURE_LEVEL_10_0;
+		D3D_FEATURE_LEVEL inputFeatureLevel = D3D_FEATURE_LEVEL_10_1;
 
 		//D3D_FEATURE_LEVEL_11_0;
 
@@ -340,49 +349,55 @@ namespace Engine
 			}
 		}
 
+		_msaaConfigs.Clear();
 
-		if (!knownQualityLevels && config.fsaa_samples > 1)
+		for (UINT s = 1; s < D3D10_MAX_MULTISAMPLE_SAMPLE_COUNT; s++)
 		{
-			//UINT maxQuality;
-			rs = dev->CheckMultisampleQualityLevels(scd.BufferDesc.Format, config.fsaa_samples, &knownQualityLevels);
+			UINT numLevels = 0;
+			rs = dev->CheckMultisampleQualityLevels(scd.BufferDesc.Format, s, &numLevels);
 			if (rs != S_OK)
 			{
 				ReportError(rs, CLOCATION);
 				DestroyContext();
 				return false;
 			}
-
-			if (knownQualityLevels > 0)
+			if (numLevels != 0)
 			{
-				errorCode = ERR_RETRY;
-				errorString = "Determined sample quality levels at " + String(knownQualityLevels);
-				DestroyContext();
-				return false;
-			}	//else: no point retrying
+				auto&msaa = _msaaConfigs.Append();
+				msaa.numQualityLevels = numLevels;
+				msaa.sampleCount = s;
+			}
 		}
+
+		
+		_currentMSAAConfig = _FindMSAAConfig(config.fsaa_samples);
+
+
 
 
 	    //DX11::Handle<ID3D11Texture2D> pBackBuffer;
-	    rs = swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)backbufferTexture.Init());
+	    rs = swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)backbufferOut.Init());
 		if (rs != S_OK)
 		{
 			ReportError(rs, CLOCATION);
 			DestroyContext();
 			return false;
 		}
+
+
 	    // use the back buffer address to create the render target
-		rs = dev->CreateRenderTargetView(backbufferTexture, NULL, backbufferView.Init());
-		if (rs != S_OK)
-		{
-			ReportError(rs, CLOCATION);
-			DestroyContext();
-			return false;
-		}
+		//rs = dev->CreateRenderTargetView(backbufferTexture, NULL, backbufferView.Init());
+		//if (rs != S_OK)
+		//{
+		//	ReportError(rs, CLOCATION);
+		//	DestroyContext();
+		//	return false;
+		//}
 		//pBackBuffer.Release();
 
 
-		if (!_CreateDepthStencilTarget(res))
-			return false;
+		//if (!_CreateDepthStencilTarget(res))
+		//	return false;
 
 
 
@@ -397,7 +412,7 @@ namespace Engine
 			cameraBuffer.Create(data,DX11::BufferAccess::Dynamic,D3D11_BIND_CONSTANT_BUFFER);
 		}
 		{	//create object buffer
-			objectBuffer.Create(Matrix<>::eye4,DX11::BufferAccess::Dynamic,D3D11_BIND_CONSTANT_BUFFER);
+			objectBuffer.Create(M::Matrix<>::eye4,DX11::BufferAccess::Dynamic,D3D11_BIND_CONSTANT_BUFFER);
 		}
 		{	//create object position buffer
 			objectPositionBuffer.Create(float4(),DX11::BufferAccess::Dynamic,D3D11_BIND_CONSTANT_BUFFER);
@@ -451,7 +466,20 @@ namespace Engine
 
 
 		_currentResolution = res;
+
+		_backbuffer.CreateMSAA(res,DXGI_FORMAT_R8G8B8A8_UNORM,true,_CompileSampleDesc(_msaaConfigs[_currentMSAAConfig]));
+
 		return true;
+	}
+
+	index_t				DirectX11::_FindMSAAConfig(BYTE numSamples) const
+	{
+		foreach (_msaaConfigs,cfg)
+			if (cfg->sampleCount == numSamples)
+				return cfg - _msaaConfigs.pointer();
+
+		return 0;
+
 	}
 
 
@@ -553,7 +581,7 @@ namespace Engine
 	void	DirectX11::TargetBackbuffer()
 	{
 		UnbindShaderResources();
-		devcon->OMSetRenderTargets(1, backbufferView.Reference(),backbufferDepthView);
+		devcon->OMSetRenderTargets(1, _backbuffer.colorTarget[0].rtView.Reference(),_backbuffer.depthStencilTarget.dsView);
 	//	devcon->OMSetRenderTargets(1, backbufferView.Reference(),NULL);
 	}
 
@@ -587,9 +615,8 @@ namespace Engine
 		cameraBuffer.Clear();
 		objectBuffer.Clear();
 		objectPositionBuffer.Clear();
-		backbufferView.Clear();
-		backbufferTexture.Clear();
-		backbufferDepthView.Clear();
+		_backbuffer.Clear();
+		backbufferOut.Clear();
 		Release(swapchain);
 		Release(dev);
 		Release(devcon);
@@ -599,7 +626,7 @@ namespace Engine
 	}
 
 
-	DirectX11::DirectX11() :swapchain(NULL), dev(NULL), devcon(NULL), errorCode(0), knownQualityLevels(0)
+	DirectX11::DirectX11() :swapchain(NULL), dev(NULL), devcon(NULL), errorCode(0)
 	{}
 
 
@@ -638,9 +665,8 @@ namespace Engine
 		UnbindShaderResources();
 		devcon->OMSetRenderTargets(0, NULL, NULL);
 
-		backbufferView.Clear();
-		backbufferDepthView.Clear();
-		backbufferTexture.Clear();
+		backbufferOut.Clear();
+		_backbuffer.Clear();
 		HRESULT rs = swapchain->ResizeBuffers(1,res.width,res.height,DXGI_FORMAT_R8G8B8A8_UNORM,0);
 		if (rs != S_OK)
 		{
@@ -650,7 +676,7 @@ namespace Engine
 			return;
 		}
 	    //DX11::Handle<ID3D11Texture2D> pBackBuffer;
-	    rs = swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)backbufferTexture.Init());
+	    rs = swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)backbufferOut.Init());
 		if (rs != S_OK)
 		{
 			ReportError(rs, CLOCATION);
@@ -658,26 +684,23 @@ namespace Engine
 			application_shutting_down = true;
 			return;
 		}
-	    // use the back buffer address to create the render target
-		rs = dev->CreateRenderTargetView(backbufferTexture, NULL, backbufferView.Init());
-		if (rs != S_OK)
-		{
-			ReportError(rs, CLOCATION);
-			DestroyContext();
-			application_shutting_down = true;
-			return;
-		}
-		//backbufferTexture.Release();
+		_backbuffer.CreateMSAA(res,DXGI_FORMAT_R8G8B8A8_UNORM,true,_CompileSampleDesc(_msaaConfigs[_currentMSAAConfig]));
 
-		if (!_CreateDepthStencilTarget(res))
-		{
-			DestroyContext();
-			application_shutting_down = true;
-			return;
-		}
 
 		TargetBackbuffer();
 	}
+
+
+	void		DirectX11::SetMSAAMode(index_t mode)
+	{
+		if (mode == _currentMSAAConfig)
+			return;
+		if (mode >= _msaaConfigs.Count())
+			throw Except::Program::ParameterFault("Chosen MSAA mode is out of bounds");
+		_currentMSAAConfig = mode;
+		_nextBackbuffer.CreateMSAA(_currentResolution,DXGI_FORMAT_R8G8B8A8_UNORM,true,_CompileSampleDesc(_msaaConfigs[_currentMSAAConfig]));
+	}
+
 
 	void		DirectX11::SetViewport(const RECT&region, const Resolution&windowRes)
 	{
@@ -699,34 +722,39 @@ namespace Engine
 	void		DirectX11::NextFrameNoClr()
 	{
 		lazyPixelShaderHandle = nullptr;
+
+		devcon->ResolveSubresource(backbufferOut,D3D11CalcSubresource(0,0,1),_backbuffer.colorTarget[0].GetHandle2D(),D3D11CalcSubresource(0,0,1),DXGI_FORMAT_R8G8B8A8_UNORM);
+		if (_nextBackbuffer.IsNotEmpty())
+		{
+			_backbuffer = _nextBackbuffer;
+			_nextBackbuffer.Clear();
+		}
+//		GetDeviceContext()->CopyResource(backbufferOut,backbuffer.colorTarget[0].GetHandle2D());
 		swapchain->Present(vsync,0);
 		timeBuffer.Update(Engine::timing.now);
 	}
 
 	void		DirectX11::NextFrame()
 	{
-		lazyPixelShaderHandle = nullptr;
-		swapchain->Present(vsync,0);
-		 
-		devcon->ClearRenderTargetView(backbufferView, clearColor.v); // Next frame
+		NextFrameNoClr();
+		devcon->ClearRenderTargetView(_backbuffer.colorTarget[0].rtView, clearColor.v); // Next frame
 			//D3DXCOLOR(clearColor.r,clearColor.g,clearColor.b,clearColor.a)); // Next frame
-		devcon->ClearDepthStencilView(backbufferDepthView,  D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1, 0);
-		timeBuffer.Update(Engine::timing.now);
+		devcon->ClearDepthStencilView(_backbuffer.depthStencilTarget.dsView,  D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1, 0);
 	}
 
 	void		DirectX11::ClearDepth()
 	{
-		devcon->ClearDepthStencilView(backbufferDepthView,  D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1, 0);
+		devcon->ClearDepthStencilView(_backbuffer.depthStencilTarget.dsView,  D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1, 0);
 	
 	}
 
 	
-	void		DirectX11::ClearTarget(const FBO&fbo, const TVec4<>&color /*= Vector4<>::zero*/)
+	void		DirectX11::ClearTarget(const FBO&fbo, const M::TVec4<>&color /*= Vector4<>::zero*/)
 	{
 		ClearTargetColor(fbo,color);
 		ClearTargetDepth(fbo);
 	}
-	void		DirectX11::ClearTargetColor(const FBO&fbo, const TVec4<>&color /*= Vector4<>::zero*/)
+	void		DirectX11::ClearTargetColor(const FBO&fbo, const M::TVec4<>&color /*= Vector4<>::zero*/)
 	{
 		for (index_t i = 0; i < fbo.numTargets; i++)
 			devcon->ClearRenderTargetView(fbo.colorTarget[i].rtView, color.v);
@@ -809,13 +837,13 @@ namespace Engine
 		Array<D3D_SHADER_MACRO>macros;
 		if (macroDefinitions.IsNotEmpty())
 		{
-			macros.SetSize(macroDefinitions.count()+1);
-			for (index_t i = 0; i < macroDefinitions.count(); i++)
+			macros.SetSize(macroDefinitions.Count()+1);
+			for (index_t i = 0; i < macroDefinitions.Count(); i++)
 			{
 				macros[i].Definition = macroDefinitions[i].definition.c_str();
 				macros[i].Name = macroDefinitions[i].name.c_str();
 			}
-			macros[macroDefinitions.count()].Definition = macros[macroDefinitions.count()].Name = NULL;
+			macros[macroDefinitions.Count()].Definition = macros[macroDefinitions.Count()].Name = NULL;
 		}
 
 
@@ -824,17 +852,17 @@ namespace Engine
 			Load<ID3D11VertexShader>(vertexStage,filename,vertexShaderName,DirectX11::globalInstance->GetVertexShaderProfile(),[this](const void*data, SIZE_T size, ID3D11VertexShader**shader)->HRESULT
 			{
 				return DirectX11::globalInstance->GetDevice()->CreateVertexShader(data,size,NULL,shader);
-			},base.pointer(),base.count(),b,numBindings,macros.pointer());
+			},base.pointer(),base.Count(),b,numBindings,macros.pointer());
 		if (geometryShaderName.IsNotEmpty())
 			Load<ID3D11GeometryShader>(geometryStage,filename,geometryShaderName,DirectX11::globalInstance->GetGeometryShaderProfile(),[this](const void*data, SIZE_T size, ID3D11GeometryShader**shader)->HRESULT
 			{
 				return DirectX11::globalInstance->GetDevice()->CreateGeometryShader(data,size,NULL,shader);
-			},base.pointer(),base.count(),b,numBindings,macros.pointer());
+			},base.pointer(),base.Count(),b,numBindings,macros.pointer());
 		if (pixelShaderName.IsNotEmpty())
 			Load<ID3D11PixelShader>(pixelStage,filename,pixelShaderName,DirectX11::globalInstance->GetPixelShaderProfile(),[this](const void*data, SIZE_T size, ID3D11PixelShader**shader)->HRESULT
 			{
 				return DirectX11::globalInstance->GetDevice()->CreatePixelShader(data,size,NULL,shader);
-			},base.pointer(),base.count(),b,numBindings,macros.pointer());
+			},base.pointer(),base.Count(),b,numBindings,macros.pointer());
 	}
 
 	void			DX11::Shader::LoadGeometryStreamFromFile(const PathString&filename, const String&vertexShaderName, const String&geometryShaderName, const Array<StreamBinding>&outDefinition, const Binding*b/*=NULL*/, count_t numBindings/*=0*/)
@@ -844,13 +872,13 @@ namespace Engine
 		Array<D3D_SHADER_MACRO>macros;
 		if (macroDefinitions.IsNotEmpty())
 		{
-			macros.SetSize(macroDefinitions.count()+1);
-			for (index_t i = 0; i < macroDefinitions.count(); i++)
+			macros.SetSize(macroDefinitions.Count()+1);
+			for (index_t i = 0; i < macroDefinitions.Count(); i++)
 			{
 				macros[i].Definition = macroDefinitions[i].definition.c_str();
 				macros[i].Name = macroDefinitions[i].name.c_str();
 			}
-			macros[macroDefinitions.count()].Definition = macros[macroDefinitions.count()].Name = NULL;
+			macros[macroDefinitions.Count()].Definition = macros[macroDefinitions.Count()].Name = NULL;
 		}
 
 
@@ -858,7 +886,7 @@ namespace Engine
 		Load<ID3D11VertexShader>(vertexStage,filename,vertexShaderName,"vs_5_0",[this](const void*data, SIZE_T size, ID3D11VertexShader**shader)->HRESULT
 		{
 			return DirectX11::globalInstance->GetDevice()->CreateVertexShader(data,size,NULL,shader);
-		},base.pointer(),base.count(),b,numBindings,macros.pointer());
+		},base.pointer(),base.Count(),b,numBindings,macros.pointer());
 		if (geometryShaderName.IsNotEmpty())
 			Load<ID3D11GeometryShader>(geometryStage,filename,geometryShaderName,"gs_5_0",[this,outDefinition](const void*data, SIZE_T size, ID3D11GeometryShader**shader)->HRESULT
 			{
@@ -878,7 +906,7 @@ namespace Engine
 				}
 				//return DirectX11::globalInstance->GetDevice()->CreateGeometryShaderWithStreamOutput(data,size,entries,at,/*&stride*/NULL,/*1*/0,/*D3D11_SO_NO_RASTERIZED_STREAM*/0,NULL,shader);
 				return DirectX11::globalInstance->GetDevice()->CreateGeometryShaderWithStreamOutput(data,size,entries,at,&stride,1,D3D11_SO_NO_RASTERIZED_STREAM,NULL,shader);
-			},base.pointer(),base.count(),b,numBindings,macros.pointer());
+			},base.pointer(),base.Count(),b,numBindings,macros.pointer());
 
 	}
 
@@ -895,29 +923,29 @@ namespace Engine
 		Array<D3D_SHADER_MACRO>macros;
 		if (macroDefinitions.IsNotEmpty())
 		{
-			macros.SetSize(macroDefinitions.count()+1);
-			for (index_t i = 0; i < macroDefinitions.count(); i++)
+			macros.SetSize(macroDefinitions.Count()+1);
+			for (index_t i = 0; i < macroDefinitions.Count(); i++)
 			{
 				macros[i].Definition = macroDefinitions[i].definition.c_str();
 				macros[i].Name = macroDefinitions[i].name.c_str();
 			}
-			macros[macroDefinitions.count()].Definition = macros[macroDefinitions.count()].Name = NULL;
+			macros[macroDefinitions.Count()].Definition = macros[macroDefinitions.Count()].Name = NULL;
 		}
 
 		const BasicBuffer<Binding,Swap>&base = DirectX11::globalInstance->GetBaseBindings();
 		Load<ID3D11VertexShader>(vertexStage,baseFilename+".vs.hlsl",vertexShaderName,"vs_5_0",[this](const void*data, SIZE_T size, ID3D11VertexShader**shader)->HRESULT
 		{
 			return DirectX11::globalInstance->GetDevice()->CreateVertexShader(data,size,NULL,shader);
-		},base.pointer(),base.count(),b,numBindings,macros.pointer());
+		},base.pointer(),base.Count(),b,numBindings,macros.pointer());
 		if (geometryShaderName.IsNotEmpty())
 			Load<ID3D11GeometryShader>(geometryStage,baseFilename+".gs.hlsl",geometryShaderName,"gs_5_0",[this](const void*data, SIZE_T size, ID3D11GeometryShader**shader)->HRESULT
 			{
 				return DirectX11::globalInstance->GetDevice()->CreateGeometryShader(data,size,NULL,shader);
-			},base.pointer(),base.count(),b,numBindings,macros.pointer());
+			},base.pointer(),base.Count(),b,numBindings,macros.pointer());
 		Load<ID3D11PixelShader>(pixelStage,baseFilename+".ps.hlsl",pixelShaderName,"ps_5_0",[this](const void*data, SIZE_T size, ID3D11PixelShader**shader)->HRESULT
 		{
 			return DirectX11::globalInstance->GetDevice()->CreatePixelShader(data,size,NULL,shader);
-		},base.pointer(),base.count(),b,numBindings,macros.pointer());
+		},base.pointer(),base.Count(),b,numBindings,macros.pointer());
 	}
 
 	/*static*/ Buffer<DX11::Shader::Macro,0,Strategy::Swap>	DX11::Shader::macroDefinitions;
@@ -1060,16 +1088,24 @@ namespace Engine
 			DX11::Shader::IncludeHandler inc(filename);
 			
 			HRESULT hr = D3DCompile(code.pointer(),code.length(),String(FileSystem::ExtractFileNameExt(filename)).c_str(),macros, &inc , functionName.c_str(), profile,  0, 0, result.Init(), errors.Init());
+			
+			String errMessage,extInfo=String(filename);
 			if (errors)
 			{
-				String msg = String((const char*)errors->GetBufferPointer(),errors->GetBufferSize());
-				ErrMessage(msg);
+				errMessage = String((const char*)errors->GetBufferPointer(),errors->GetBufferSize()).TrimThis();
+				extInfo = String(filename)+": "+errMessage;
 			}
 			if (hr != S_OK)
 			{
-				DirectX11::globalInstance->ReportError(hr, CLOCATION);
+				DirectX11::globalInstance->ReportError(hr, CLOCATION,extInfo);
 				throw Except::Renderer::ShaderRejected();
 			}
+
+			#ifdef _DEBUG
+				if (errMessage.IsNotEmpty())
+					ErrMessage(errMessage);
+			#endif
+
 			f = FOPEN(compiledPath.c_str(),"wb");
 			fwrite(result->GetBufferPointer(),result->GetBufferSize(),1,f);
 			fclose(f);
@@ -1444,17 +1480,17 @@ namespace Engine
 	void	DX11::VertexDescription::SetTo(const VertexBinding&binding)
 	{
 		desc.clear();
-		if (binding.vertex.isSet())
+		if (binding.vertex.IsSet())
 			Translate(desc.append(), binding.vertex,"POSITION");
-		if (binding.color.isSet())
+		if (binding.color.IsSet())
 			Translate(desc.append(), binding.color,"COLOR");
-		if (binding.normal.isSet())
+		if (binding.normal.IsSet())
 			Translate(desc.append(), binding.normal,"NORMAL");
-		if (binding.tangent.isSet())
+		if (binding.tangent.IsSet())
 			Translate(desc.append(), binding.tangent,"TANGENT");
-		for (index_t i = 0; i < binding.texcoords.Count() && desc.count() < 64; i++)
+		for (index_t i = 0; i < binding.texcoords.Count() && desc.Count() < 64; i++)
 		{
-			if (binding.texcoords[i].isSet())
+			if (binding.texcoords[i].IsSet())
 				Translate(desc.append(), binding.texcoords[i],"TEXCOORD",(UINT)i);
 		}
 		stride[0] = binding.floats_per_vertex * 4;
@@ -1517,17 +1553,17 @@ namespace Engine
 	/*static*/ UINT	DX11::Shader::_CompileStreamLayout(const Engine::VertexBinding&binding,D3D11_SO_DECLARATION_ENTRY*desc, UINT descLen )
 	{
 		UINT current = 0;
-		if (binding.vertex.isSet())
+		if (binding.vertex.IsSet())
 			Translate(desc[current++], binding.vertex,"POSITION");
-		if (binding.color.isSet())
+		if (binding.color.IsSet())
 			Translate(desc[current++], binding.color,"COLOR");
-		if (binding.normal.isSet())
+		if (binding.normal.IsSet())
 			Translate(desc[current++], binding.normal,"NORMAL");
-		if (binding.tangent.isSet())
+		if (binding.tangent.IsSet())
 			Translate(desc[current++], binding.tangent,"TANGENT");
 		for (index_t i = 0; i < binding.texcoords.Count() && current < descLen; i++)
 		{
-			if (binding.texcoords[i].isSet())
+			if (binding.texcoords[i].IsSet())
 				Translate(desc[current++], binding.texcoords[i],"TEXCOORD",(UINT)i);
 		}
 		return current;
@@ -1774,6 +1810,65 @@ namespace Engine
 			devcon->SOSetTargets(0,NULL,NULL);
 	}
 
+
+	void					DX11::FBO::CreateMSAA(const Resolution&res,DXGI_FORMAT format, bool depthStencil, const DXGI_SAMPLE_DESC&desc)
+	{
+		CreateMSAA(res,&format,1,depthStencil,desc);
+	}
+
+
+	void					DX11::FBO::CreateMSAA(const Resolution&res,const DXGI_FORMAT*format, count_t numTargets, bool depthStencil, const DXGI_SAMPLE_DESC&sdesc)
+	{
+		Clear();
+
+		supportsMips = NoMips;
+
+		D3D11_TEXTURE2D_DESC	desc;
+		memset(&desc,0,sizeof(desc));
+		desc.Width = res.width;
+		desc.Height = res.height;
+		desc.MipLevels = 1;
+
+		desc.ArraySize = 1;
+		desc.Usage = D3D11_USAGE_DEFAULT;
+		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
+		desc.CPUAccessFlags = 0;
+		desc.SampleDesc = sdesc;
+
+		
+		for (index_t i = 0; i < numTargets && i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; i++)
+		{
+			this->numTargets++;
+			desc.Format = format[i];
+
+			HRESULT hr = DirectX11::globalInstance->GetDevice()->CreateTexture2D(&desc,NULL,colorTarget[i].handle2D.Init());
+			if (hr != S_OK)
+			{
+				Clear();
+				DirectX11::globalInstance->ReportError(hr, CLOCATION);
+				return;
+			}
+			D3D11_RENDER_TARGET_VIEW_DESC resDesc;
+			ZeroMemory(&resDesc,sizeof(resDesc));
+			resDesc.Format = desc.Format;
+			resDesc.ViewDimension = sdesc.Count == 1 ?  D3D11_RTV_DIMENSION_TEXTURE2D : D3D11_RTV_DIMENSION_TEXTURE2DMS;
+			resDesc.Texture2D.MipSlice = 0;
+			auto dev = DirectX11::globalInstance->GetDevice();
+			hr = dev->CreateRenderTargetView(colorTarget[i].handle2D,&resDesc,colorTarget[i].rtView.Init());
+			if (hr != S_OK)
+			{
+				Clear();
+				DirectX11::globalInstance->ReportError(hr, CLOCATION);
+				return;
+			}
+			colorTarget[i].resolution = Resolution3D(res,1);
+			colorTarget[i]._CreateView(desc);
+			colorTarget[i]._SetMipLevels(desc.MipLevels);
+		}
+
+		if (depthStencil)
+			depthStencilTarget.CreateMSAA(res,sdesc);
+	}
 
 
 	void					DX11::FBO::Create(Resolution res, DXGI_FORMAT format, bool depthStencil/*=false*/, mips_t mips /*=NoMips*/)
@@ -2070,7 +2165,7 @@ namespace Engine
 		{
 			typedef Scaler<T,SumT>	S;
 			typedef T	Type;
-			typedef TVec4<T>	CopyType;
+			typedef M::TVec4<T>	CopyType;
 			static const size_t Stride = sizeof(T)*4;
 
 			static void	Mix2(const T*a, const T*b, T*out)
@@ -2139,7 +2234,7 @@ namespace Engine
 		{
 			typedef Scaler<T,SumT>	S;
 			typedef T	Type;
-			typedef TVec3<T>	CopyType;
+			typedef M::TVec3<T>	CopyType;
 			static const size_t Stride = sizeof(T)*3;
 
 			static void	Mix2(const T*a, const T*b, T*out)
@@ -2168,7 +2263,7 @@ namespace Engine
 		{
 			typedef Scaler<T,SumT>	S;
 			typedef T	Type;
-			typedef TVec2<T>	CopyType;
+			typedef M::TVec2<T>	CopyType;
 			static const size_t Stride = sizeof(T)*2;
 
 			static void	Mix2(const T*a, const T*b, T*out)
@@ -2798,7 +2893,7 @@ namespace Engine
 		D3D11_SHADER_RESOURCE_VIEW_DESC resDesc;
 		ZeroMemory(&resDesc,sizeof(resDesc));
 		resDesc.Format = desc.Format;
-		resDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+		resDesc.ViewDimension = desc.SampleDesc.Count == 1 ? D3D11_SRV_DIMENSION_TEXTURE2D : D3D11_SRV_DIMENSION_TEXTURE2DMS;
 		resDesc.Texture2D.MipLevels = desc.MipLevels;
 		resDesc.Texture2D.MostDetailedMip = 0;
 
@@ -2858,6 +2953,15 @@ namespace Engine
 	void					DX11::DepthStencilTexture::Create(const Resolution&res)
 	{
 
+		DXGI_SAMPLE_DESC desc;
+		desc.Count = 1;
+		desc.Quality = 0;
+		CreateMSAA(res,desc);
+	}
+
+	void					DX11::DepthStencilTexture::CreateMSAA(const Resolution&res, const DXGI_SAMPLE_DESC&sdesc)
+	{
+
 	/*
 		You would create the Texture2D with DXGI_FORMAT_R24G8_TYPELESS, create the depth stencil view with DXGI_FORMAT_D24_UNORM_S8_UINT, and create the shader resource view with DXGI_FORMAT_R24_UNORM_X8_TYPELESS
 	*/
@@ -2873,9 +2977,11 @@ namespace Engine
 		desc.Format = DXGI_FORMAT_R24G8_TYPELESS;
 		//DXGI_FORMAT_D24_UNORM_S8_UINT;
 		desc.Usage = D3D11_USAGE_DEFAULT;
-		desc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
+		desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+		if (sdesc.Count == 1 || DirectX11::globalInstance->GetFeatureLevel() >= D3D_FEATURE_LEVEL_10_1)
+			desc.BindFlags |= D3D11_BIND_SHADER_RESOURCE;
 		desc.CPUAccessFlags = 0;
-		desc.SampleDesc.Count = 1;
+		desc.SampleDesc = sdesc;
 
 		//UINT layers = _CountMipLevels(res);
 
@@ -2897,7 +3003,7 @@ namespace Engine
 		D3D11_DEPTH_STENCIL_VIEW_DESC descDSV;
 		descDSV.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 		descDSV.Texture2D.MipSlice = 0;
-		descDSV.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+		descDSV.ViewDimension = sdesc.Count == 1 ? D3D11_DSV_DIMENSION_TEXTURE2D : D3D11_DSV_DIMENSION_TEXTURE2DMS;
 		descDSV.Flags = 0;
 
 		// Create the depth stencil view
@@ -2916,7 +3022,7 @@ namespace Engine
 			ZeroMemory(&resDesc,sizeof(resDesc));
 			resDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
 			//DXGI_FORMAT_R32_FLOAT;
-			resDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+			resDesc.ViewDimension = sdesc.Count == 1 ? D3D11_SRV_DIMENSION_TEXTURE2D : D3D11_SRV_DIMENSION_TEXTURE2DMS;
 			resDesc.Texture2D.MipLevels = desc.MipLevels;
 			resDesc.Texture2D.MostDetailedMip = 0;
 
@@ -2933,6 +3039,8 @@ namespace Engine
 		}
 		mipLevels = 1;
 	}
+
+	#if 0
 
 	bool	DirectX11::_CreateDepthStencilTarget(const Resolution&res)
 	{
@@ -2975,8 +3083,9 @@ namespace Engine
 		}
 		return true;
 	}
+	#endif /*0*/
 
-	void		DirectX11::SetCameraMatrices(const TMatrix4<>&view, const TMatrix4<>&projection, const TMatrix4<>&viewInvert)
+	void		DirectX11::SetCameraMatrices(const M::TMatrix4<>&view, const M::TMatrix4<>&projection, const M::TMatrix4<>&viewInvert)
 	{
 		CameraData data;
 		data.projectionMatrix = projection;
@@ -2987,11 +3096,11 @@ namespace Engine
 		cameraBuffer.Update(data);
 	}
 
-	void		DirectX11::SetObjectMatrix(const TMatrix4<>&matrix)
+	void		DirectX11::SetObjectMatrix(const M::TMatrix4<>&matrix)
 	{
 		objectBuffer.Update(matrix);
 	}
-	void		DirectX11::SetObjectPosition(const TVec4<>&pos)
+	void		DirectX11::SetObjectPosition(const M::TVec4<>&pos)
 	{
 		objectPositionBuffer.Update(pos);
 	}
@@ -3142,7 +3251,7 @@ namespace Engine
 
 	void						DirectX11::Capture(Image&target)
 	{
-		Copy(backbufferTexture,target);
+		Copy(_backbuffer.colorTarget[0].GetHandle2D(),target);
 	}
 
 

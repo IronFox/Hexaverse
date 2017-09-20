@@ -144,7 +144,7 @@ namespace VisualTerrain
 	{}
 
 
-	void	TLitColor::CompileFinalColor(TVec4<>&rs)	const
+	void	TLitColor::CompileFinalColor(M::TVec4<>&rs)	const
 	{
 		rs.a = capped ? 0.f : lightLevel;
 		rs.rgb = color;
@@ -180,7 +180,7 @@ namespace VisualTerrain
 		ApplyEMP(emp,rs.rgb);
 	}
 
-	/*static*/ void TLitColor::ApplyEMP(float intensity,TVec3<>&rs)
+	/*static*/ void TLitColor::ApplyEMP(float intensity,M::TVec3<>&rs)
 	{
 		if (intensity > 0.f)
 		{
@@ -189,7 +189,7 @@ namespace VisualTerrain
 			rs.b *= 1.2f;
 			//rs.b *= 1.5f;
 			//rs.b -= (2.f + rs.b)*intensity;
-			//TVec3<> rs2;
+			//M::TVec3<> rs2;
 			//if (rs.r < 0)
 			//	rs2 = rs * -0.4f + 0.6f;
 			//else
@@ -205,7 +205,7 @@ namespace VisualTerrain
 		}
 	}
 
-	void TLitColor::CapColor(TVec3<>&rs)	const
+	void TLitColor::CapColor(M::TVec3<>&rs)	const
 	{
 		if (rs.r >= 0.f)
 		{

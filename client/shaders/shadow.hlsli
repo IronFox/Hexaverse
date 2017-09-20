@@ -39,8 +39,6 @@ static const float Tolerance = 0.0007;
 
 float ShadeSample(float3 projCoords, float3 duvdist_dx, float3 duvdist_dy, Texture2D <float> shadowMap, float tolerance)
 {
-	if (Sun.w < 0.5)
-		return 1.0;
 //	return float(shadowMap.SampleLevel( ShadowSampler, (root + float2(x,y)) *m_fTexelSize,0.0) >= depthBase + ((ddist_duv.x * (float)x) + (ddist_duv.y * (float)y)) * m_fTexelSize) * impact;
 
 	//Invert texture Jacobian and use chain rule to compute ddist/du and ddist/dv
@@ -124,6 +122,8 @@ float Shade(float3 world)
 	#if SHADOW_FILTER_QUALITY == 0
 		return 1.0;
 	#else
+	if (Sun.w < 0.5)
+		return 1.0;
 
 	#ifdef CASCADING_SHADOW
 		float4 projected1 = mul(ShadowMatrix1,float4(world,1.0));

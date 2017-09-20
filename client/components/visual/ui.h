@@ -130,9 +130,20 @@ namespace UI
 	*/
 	namespace HexGrid
 	{
-		static const float CellSize = 0.075f;
-		static const float stepY = (0.5f + 1.f) * CellSize;
-		static const float stepX = 0.86602540378443864676372317075294f * CellSize;
+
+		struct TGridConfig
+		{
+			float	cellSize,
+					stepX,
+					stepY;
+		};
+
+		TGridConfig	GetGridConfig();
+
+		
+		//static const float CellSize = 0.075f;
+		//static const float stepY = (0.5f + 1.f) * CellSize;
+		//static const float stepX = 0.86602540378443864676372317075294f * CellSize;
 
 		extern count_t					currentContactListWidth;
 		//static const int2 ContactListOffset(5,2);
@@ -163,14 +174,14 @@ namespace UI
 			public:
 				/**/					TutorialCommand() : Super("Tutorial") {}
 
-				virtual void			Refresh(bool)
+				virtual void			Refresh(bool) override
 				{
 					state = Dialog::HasMoreTutorials() && !GUI::IsModal() ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
 				}
 
 				virtual void			Execute() override
 				{
-					Dialog::ShowNextTutorial();
+					Dialog::ShowNextTutorial(true);
 				}
 
 				virtual void			CompileLabel(Label&outResult) override
@@ -305,7 +316,7 @@ namespace UI
 			/**
 			Updates state and presence of all buttons of this panel
 			*/
-			void		Refresh();
+			void		Refresh(const TGridConfig&);
 		}
 
 
@@ -357,7 +368,7 @@ namespace UI
 			{
 			public:
 				typedef	Objects::Command::VisualCommand	Super;
-				TVec3<>				focusLocation;
+				M::TVec3<>				focusLocation;
 				float				atTime;
 
 				/**
@@ -373,7 +384,7 @@ namespace UI
 				Objects::Renderer::SmokeTrailIndex	smokeTrailIndex;
 				String				fallbackTargetName;
 			
-				/**/				AnimationEventFocusCommand(const String&name, const String&iconName, const TVec3<>&focusLocation, const TUniqueID&focusID, 
+				/**/				AnimationEventFocusCommand(const String&name, const String&iconName, const M::TVec3<>&focusLocation, const TUniqueID&focusID, 
 																float atTime, bool isFriendly, bool isHostileActivity);
 
 				Objects::PWorldEntity	GetTarget()	const;
@@ -452,9 +463,9 @@ namespace UI
 			Buffer0<Objects::Command::PVisualCommand>		lastVisible;
 			std::shared_ptr<Custom::ArrowCommand>	leftCommand,rightCommand;
 			index_t									offset=0;
-			TIntRange<index_t>						visibleRange;
+			M::TIntRange<index_t>						visibleRange;
 
-			void					RebuildCommands();
+			void					RebuildCommands(const TGridConfig&cfg);
 			void					RemoveCommandIcons();
 		public:
 
@@ -474,7 +485,7 @@ namespace UI
 			/**
 			Flushes and reallocates gui cells as necessary. Redetects horizontal scrolling constraints and shows arrow buttons as necessary
 			*/
-			void					Refresh();
+			void					Refresh(const TGridConfig&cfg);
 			/**
 			Allocates arrow commands. Must be called once at program start or row creation.
 			*/
@@ -565,7 +576,7 @@ namespace UI
 			Location of this button on the current viewport (for faster click lookup).
 			Updated by Update()
 			*/
-			Rect<>		projectedRect;
+			M::Rect<>		projectedRect;
 			/**
 			Configures button grid orientation.
 			Default orientation is left to right, and bottom to top.
@@ -579,19 +590,19 @@ namespace UI
 			/**
 			Updates projectedRect
 			*/
-			void		Update(const Engine::Aspect<>&aspect);
+			void		Update(const TGridConfig&cfg, const Engine::Aspect<>&aspect);
 
 			/**
 			Determines the center floating point coordinates of this cell in the range [-1..-1+pixelAspect*2],[-1,+1]
 			*/
-			float2		ToFloatCoords() const;
+			float2		ToFloatCoords(const TGridConfig&cfg) const;
 
-			static void Radial(float cellIndex, TVec2<>&rs);
+			static void Radial(float cellIndex, M::TVec2<>&rs);
 			/**
 			Determines whether the specified viewport coordinates lie inside the local cell button.
 			This calculation takes into account the hexagonal shape of the local button, accelerated by first querying @a projectedRect
 			*/
-			bool		Contains(const TVec2<>&p) const;
+			bool		Contains(const M::TVec2<>&p) const;
 		};
 
 
@@ -615,7 +626,7 @@ namespace UI
 
 
 		extern DX11::BaseInstructionBlock	instruction;
-		extern DX11::ObjectBuffer<float4>	center,color;
+		extern DX11::ObjectBuffer<float4>	center,visualCodeRGB_CellSize;
 		extern Engine::OrthographicAspect<> camera;
 
 
@@ -627,15 +638,15 @@ namespace UI
 		inline int2			GetFocusLocation()
 		{
 			return int2(1,1);
-			//float textWidth = 300.f / display.clientWidth();
-			//return int2(ceil(textWidth * display.pixelAspect() / stepX + 0.37f),1);
+			//float textWidth = 300.f / display.GetClientWidth();
+			//return int2(ceil(textWidth * display.GetPixelAspect() / stepX + 0.37f),1);
 
 		}
 
 		extern bool					hasFocusButton;
 
 
-		void						OnWindowResize();
+		void						OnScreenResize();
 
 		void						Destroy();
 
@@ -649,7 +660,7 @@ namespace UI
 		/*
 			Renders in viewport -1 to +1
 		*/
-		void						RenderCommands();
+		void						RenderCommands(const TGridConfig&);
 		void						RenderHint();
 
 		/**
@@ -675,8 +686,8 @@ namespace UI
 	namespace EventLog
 	{
 		void			Clear();
-		void			RegisterAttack(float time, bool isFriendly,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const Objects::Renderer::SmokeTrailIndex&smokeTrailIndex);
-		void			RegisterEntityDestruction(float time, bool isOwnedByMe,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const String&entityName);
+		void			RegisterAttack(float time, bool isFriendly,  const M::TVec3<>&focusLocation, const TUniqueID&focusEntityID, const Objects::Renderer::SmokeTrailIndex&smokeTrailIndex);
+		void			RegisterEntityDestruction(float time, bool isOwnedByMe,  const M::TVec3<>&focusLocation, const TUniqueID&focusEntityID, const String&entityName);
 		/**
 		Checks if any events have been registered in the log that signals hostile activity (attacks, units dying etc)
 		*/
@@ -685,9 +696,9 @@ namespace UI
 	}
 
 
-	inline void OnWindowResize()
+	inline void OnScreenResize()
 	{
-		HexGrid::OnWindowResize();
+		HexGrid::OnScreenResize();
 	}
 
 

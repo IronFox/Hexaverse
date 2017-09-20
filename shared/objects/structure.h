@@ -2,6 +2,7 @@
 #define objectStructureH
 
 #include "entity.h"
+#include "entityType.h"
 #ifdef HAS_WINDOW
 	#include "geometry.h"
 #endif
@@ -86,7 +87,7 @@ namespace Objects
 		*/
 		static placement_t			CommonCheckStructurePlacement(const Grid::LCellIdI&location, int broadHeight, int totalHeight);
 
-		static count_t				CountOccurrences(const OwnerParameter&o,ConstName type);
+		static count_t				CountOccurrences(const OwnerParameter&o,EntityType type);
 
 
 		#ifndef CLIENT
@@ -123,7 +124,7 @@ namespace Objects
 		/**
 		Currently not used. Supposed to hold the index section after the local mesh has been embedded into a larger vertex/index-buffer
 		*/
-		//TIntRange<UINT32>			compiledSection;
+		//M::TIntRange<UINT32>			compiledSection;
 	
 
 		/**
@@ -351,7 +352,7 @@ namespace Objects
 
 			virtual PWorldEntity		CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override { return PWorldEntity(new Derivative(table,owner, location,atTime)); }
 			#ifdef HAS_WINDOW
-				virtual bool			TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override {return Super::TestIntersection(geometry,b,d,distance);}
+				virtual bool			TestIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float & distance) const override {return Super::TestIntersection(geometry,b,d,distance);}
 				virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override {commands.VisitMembers(visitor,force);};
 
 			#endif
@@ -384,7 +385,7 @@ namespace Objects
 
 
 		virtual String				GetTypeName() const override { return "Connector"; };
-		virtual ConstName			GetCTypeName() const override {return ConstName::Type_Connector;}
+		virtual EntityType			GetType() const override {return ConstName::Type_Connector;}
 
 
 		//virtual int					GetConstructionCost() const override {return 5;}
@@ -597,7 +598,7 @@ namespace Objects
 
 			#ifdef CLIENT
 				#ifdef HAS_WINDOW
-					virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override {return Super::TestIntersection(geometry,b,d,distance);}
+					virtual bool		TestIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float & distance) const override {return Super::TestIntersection(geometry,b,d,distance);}
 					virtual void		VisitAllCommands(FCommandVisitor visitor, bool force) override {commands.VisitMembers(visitor,force);};
 				#endif
 			#endif
@@ -763,7 +764,7 @@ namespace Objects
 		//virtual int					GetMaxHealth() const override {return 1;}
 
 		virtual String				GetTypeName() const override { return "Nexus Port"; };
-		virtual ConstName			GetCTypeName() const override {return ConstName::Type_NexusPort;}
+		virtual EntityType			GetType() const override {return ConstName::Type_NexusPort;}
 
 		virtual bool				IsIndestructible() const	override {return true;};
 		virtual void				GetResourceVector(ResourceVector&v, ResourceVector&, ResourceVector&) const override
@@ -827,7 +828,7 @@ namespace Objects
 
 
 		virtual String				GetTypeName() const override { return "Generator"; };
-		virtual ConstName			GetCTypeName() const override {return ConstName::Type_Generator;}
+		virtual EntityType			GetType() const override {return ConstName::Type_Generator;}
 
 		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override	{v.level[Resource::Fuel] = -FuelCostPerRound; v.level[Resource::Energy] = GetEnergyProduction(); }
 
@@ -864,7 +865,7 @@ namespace Objects
 
 		virtual int					GetHeight() const override {return 2;}
 		virtual String				GetTypeName() const override { return "Reactor Core"; };
-		virtual ConstName			GetCTypeName() const override {return ConstName::Type_ReactorCore;}
+		virtual EntityType			GetType() const override {return ConstName::Type_ReactorCore;}
 		virtual Category			GetCategory() const override {return Category::Resources;}
 
 		#ifdef HAS_WINDOW

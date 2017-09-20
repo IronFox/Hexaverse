@@ -22,8 +22,8 @@ namespace LineRenderer
 		lines.vbo = geometry;
 		{
 			Engine::VertexBinding binding;
-			binding.normal.unset();
-			binding.color.set(3, 4);
+			binding.normal.Unset();
+			binding.color.Set(3, 4);
 			binding.floats_per_vertex = 7;
 			lines.binding = binding;
 		}
@@ -49,7 +49,7 @@ namespace LineRenderer
 		Rasterize(p0, _color, p1, _color);
 	}
 
-	void	Rasterize(const TFloatRect&r)
+	void	Rasterize(const M::TFloatRect&r)
 	{
 		float3	p0 = float3(r.x.min, r.y.min, 0 ),
 				p1 = float3(r.x.max, r.y.min, 0 ),
@@ -81,6 +81,20 @@ namespace LineRenderer
 		_at = _outBuffer;
 
 	}
+
+	void	Baked::Bake()
+	{
+		((DX11::BaseInstructionBlock&)instruction) = lines;
+		instruction.vbo.CreateFromStructs(vertices);
+		instruction.ibo.Create(indices);
+		Clear();
+	}
+
+	void	Baked::Rasterize() const
+	{
+		display.Render(instruction,true);
+	}
+
 }
 
 #endif

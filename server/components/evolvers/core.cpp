@@ -432,7 +432,6 @@ namespace Evolver
 	/*virtual override*/ void	Core::BeginRoundProcessing()
 	{
 		CoreDetails::BeginRoundProcessing();
-
 	}
 
 	/*virtual override*/ bool	Core::ContinueRoundProcessing()

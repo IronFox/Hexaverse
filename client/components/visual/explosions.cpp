@@ -15,13 +15,13 @@ extern Engine::Display<Engine::DirectX11>	display;
 
 namespace Explosions
 {
-
+	count_t				maxConcurrentParticles = 2000;
+	
 
 //	const float			Particle::MaxTTL=1.0f;
 	const float         Explosion::ParticleSpeed=1.4f,
 						Explosion::SmallerDelay=0.1f,
-						Explosion::ExplosionDelay=0.05f,
-						Explosion::ParticleTime=0.4f;
+						Explosion::RelativeExplosionDelay=0.05f;
 						//Explosion::ExecuteLength=1.3f;
 
 	/*static*/ DX11::InstructionBlock16		Explosion::ringInstruction;
@@ -98,9 +98,9 @@ namespace Explosions
 
 
 
-		TMatrix4<>	ringMatrix;
+		M::TMatrix4<>	ringMatrix;
 
-		ringColor.Update(float4(color,1.f - sqr(relative)));
+		ringColor.Update(float4(color,1.f - M::Sqr(relative)));
 
 		Mat::makeAxisSystem(location,up,2,ringMatrix);
 		ringMatrix.x.xyz *= size*relative;
@@ -122,7 +122,7 @@ namespace Explosions
 	}
 
 
-	bool Explosion::Update(Particles&particles, float delta)
+	bool Explosion::Update(Particles&particles, const float delta, const count_t maxParticleCount)
 	{
 		bool wasBeforeQuarter = progress < executionTime * 0.25f;
 		progress+=delta;
@@ -133,28 +133,56 @@ namespace Explosions
 
 		if (progress >= executionTime)
 			return false;
-
+	
 
 		float relative = progress/executionTime;
-		if (AudioInterface::isActive)
+		if (AudioInterface::isActive && timer.CheckIfOutdatedAndUpdate(lastAudioUpdate,0.2f))
 		{
-			source.SetVolume(1.f *(1.f-relative));
+			const float newVolume = 1.f *(1.f-relative);
+			source.SetVolume(newVolume);
 			for (index_t i = 0; i < ARRAYSIZE(auxiliarySources); i++)
-				auxiliarySources[i].SetVolume(1.f *(1.f-relative));
+				auxiliarySources[i].SetVolume(newVolume);
 		}
-		if (relative > ExplosionDelay && relative <= ExplosionDelay+ParticleTime)
+		//if (particles.Count() >= maxParticleCount)
+		//	return true;
+		if (relative > RelativeExplosionDelay && relative <= RelativeExplosionDelay+relativeParticleTime)
 		{
-			const count_t newParticles = ExplosionParticles*size*(1.0f-(relative-ExplosionDelay)/ParticleTime);
+			const count_t maxNewParticles = maxConcurrentParticles*delta;
+				//maxParticleCount - particles.Count();
+			const float fc = size;
+			//const float fc = 10;
+			count_t newParticles = 
+				std::min<count_t>(
+					ExplosionParticles*fc*(1.0f-(relative-RelativeExplosionDelay)/relativeParticleTime),
+					maxNewParticles
+				);
+			//
+			//const count_t newParticleCount = particles.Count() + newParticles;
+			//const count_t threshold = maxParticleCount / 2;
+			//if (newParticleCount > threshold)
+			//{
+			//	float fc = 1.f / (1.f + float(newParticleCount - threshold)*0.1f);
+			//		1.f - float(newParticleCount - threshold) / float(maxParticleCount - threshold)*0.9f;
+			//	newParticles *= fc;
+			//}
+		
+			Particle*field = particles.AppendRow(newParticles);
 			for (index_t i = 0; i < newParticles; i++)
 			{
 				float3 dir;
 				dir.x= (float)rand()/RAND_MAX*2-1;
 				dir.y = (float)rand()/RAND_MAX*2-1;
 				dir.z = (float)rand()/RAND_MAX*2-1;
+				field[i].origin = dir;
+			}
+			
+			Concurrency::parallel_for(index_t(0),newParticles,[this,field,relative](index_t i)
+			{
+				float3 dir = field[i].origin;
 				Vec::normalize0(dir);
 				Vec::mult(dir,static_cast<float>(ParticleSpeed)*sqrt(size)*(1.0f-relative));
 
-				Particle&particle = particles.Append();
+				Particle&particle = field[i];
 				Vec::copy(location,particle.world);
 				particle.origin = location;
 				particle.normalizedUp = particle.world.Normalized0();
@@ -162,16 +190,17 @@ namespace Explosions
 				particle.maxTTL = particle.ttl = executionTime / 1.3f;
 				particle.size = 0.08*size;
 				particle.color.alpha = 0.8;
-			}
+			});
 		}
 		return true;
 	}
 
-	void						Explosion::Create(const TVec3<>&position, float size_, float duration, bool isEMP)
+	void						Explosion::Create(const M::TVec3<>&position, float size_, float duration, bool isEMP)
 	{
 		location = position;
 		size = size_;
 		executionTime = duration;
+		relativeParticleTime = std::min(0.4f, 1.f / duration);
 		if (AudioInterface::isActive)
 		{
 			source.Create();
@@ -179,13 +208,15 @@ namespace Explosions
 			source.SetWaveBuffer(isEMP?empExplosionSound : explosionSound);
 			source.SetLooping(false);
 			source.SetReferenceDistance(10.f);
-			source.Play();
 			source.SetVolume(1.f);
-			source.SetPitch(1.f/executionTime);
+			//const float basePitch = 1.f/executionTime;
+			const float basePitch = M::Max(0.25f,1.f/executionTime);
+			source.SetPitch(basePitch);
+			source.Play();
 			for (int i = 0; i < ARRAYSIZE(auxiliarySources); i++)
 			{
 				float pitch = (float)(pow(1.5f,i));
-				if (executionTime / pitch < 1.4f)
+				if (1.f / (basePitch * pitch) < 1.4f)
 					break;
 				Engine::OpenAL::Source&source = auxiliarySources[i];
 				source.Create();
@@ -194,7 +225,7 @@ namespace Explosions
 				source.SetLooping(false);
 				source.Play();
 				source.SetVolume(1.f);
-				source.SetPitch((pitch)/executionTime);
+				source.SetPitch(basePitch * pitch);
 				source.SetReferenceDistance(20.f);
 				this->source.SetReferenceDistance(20.f);
 			}
@@ -217,9 +248,9 @@ namespace Explosions
 		particleTexture.Load(image);
 
 		Engine::VertexBinding	binding;
-		binding.vertex.set(0,2);
-		binding.normal.unset();
-		binding.color.unset();
+		binding.vertex.Set(0,2);
+		binding.normal.Unset();
+		binding.color.Unset();
 		binding.texcoords.Clear();
 		binding.floats_per_vertex = 2;
 
@@ -305,24 +336,98 @@ namespace Explosions
 		
 	}
 
-	void		Update()
+
+	void	Particles::Update(const float delta, Particles*shiftDustTo, const count_t maxParticleCount)
 	{
-		float delta = Engine::timing.delta;
-		glowParticles.Update(delta,&dustParticles);
-		dustParticles.Update(delta,nullptr);
-		empParticles.Update(delta,nullptr);
-		for (index_t i = 0; i < explosions.count(); i++)
+		#define SMOKE_BARRIER               0.5f
+		#define SMOKE_UPDRIFT               3.0f
+
+		static const float threshold = 0.8f;
+		float friction = pow(0.1f,delta);
+		bool any_died = false;
+
+		if (Count() > maxParticleCount)
 		{
-			if (!explosions[i].Update(glowParticles,delta))
+			const float p = 1.f - float(maxParticleCount) / float(Count());
+			static Random random;
+			foreach (*this,pa)
 			{
-				explosions.erase(i--);
+				if (random.NextFloat() <= p)
+					pa->ttl = 0;
 			}
 		}
-		for (index_t i = 0; i < empExplosions.count(); i++)
+
+		Concurrency::parallel_for(index_t(0),Count(),[this,&any_died,delta,shiftDustTo](index_t i)
 		{
-			if (!empExplosions[i].Update(empParticles,delta))
+			Particle&p = at(i);
+			p.ttl -= delta;
+			if (p.ttl <= 0 || (shiftDustTo && p.ttl < p.maxTTL * threshold))
+				any_died = true;
+		});
+
+		if (any_died)
+		{
+			static Buffer<Particle>	updated_particles;
+			updated_particles.reset();
+			for (index_t i = 0; i < Count(); i++)
+				if (at(i).ttl > 0 && (!shiftDustTo || at(i).ttl >= at(i).maxTTL * threshold))
+					updated_particles << at(i);
+				else
+					if (shiftDustTo)
+						(*shiftDustTo) << at(i);
+			this->swap(updated_particles);
+		}
+
+		Concurrency::parallel_for(index_t(0),Count(),[this,delta,friction](index_t i)
+		{
+			Particle&p = at(i);
+			float relative = p.ttl/p.maxTTL;
+									
+			M::Vec::mult(p.inertia,M::Clamp01(friction+relative));
+			M::Vec::mad(p.world,p.inertia,delta);//*M::Clamp(particle->ttl/(particle->max_ttl/2),0,1));
+										
+			using M::Sqr;
+
+			float3 pdelta = p.world - p.origin;
+			float d = M::Vec::dot(pdelta,p.normalizedUp);
+			float3 i2 = pdelta - p.normalizedUp * d;
+			p.inertia += p.normalizedUp * delta*SMOKE_UPDRIFT*5 * (1.f - relative);
+			p.inertia -= i2 * delta * SMOKE_UPDRIFT * 0.3f * relative;// * (1.f - relative);
+
+			p.color.alpha = M::Sqr(relative)*0.1;
+			float r = M::Sqr(M::Sqr(relative));
+			M::Vec::mult(particleColor,r,p.color.rgb);
+		});
+	}
+
+
+
+	void		Update()
+	{
+		
+		const count_t particles = CountParticles();
+		const count_t MaxParticles = maxConcurrentParticles;
+
+		const float delta = Engine::timing.delta;
+
+
+		glowParticles.Update(delta,&dustParticles,MaxParticles);
+		dustParticles.Update(delta,nullptr,MaxParticles);
+		empParticles.Update(delta,nullptr,MaxParticles);
+		
+		
+		for (index_t i = 0; i < explosions.Count(); i++)
+		{
+			if (!explosions[i].Update(glowParticles,delta,MaxParticles))
 			{
-				empExplosions.erase(i--);
+				explosions.Erase(i--);
+			}
+		}
+		for (index_t i = 0; i < empExplosions.Count(); i++)
+		{
+			if (!empExplosions[i].Update(empParticles,delta,MaxParticles))
+			{
+				empExplosions.Erase(i--);
 			}
 		}
 	}
@@ -391,9 +496,29 @@ namespace Explosions
 		display.SetRasterizer(true,true);
 
 	}
+	
+	count_t				CountEMPParticles()
+	{
+		return empExplosions.Count();
+	}
+
+	count_t				CountGlowParticles()
+	{
+		return glowParticles.Count();
+	}
+
+	count_t				CountDustParticles()
+	{
+		return dustParticles.Count();
+	}
+
+	count_t				CountParticles()
+	{
+		return CountEMPParticles() + CountGlowParticles() + CountDustParticles();
+	}
 
 
-	void		InitExplosion(const TVec3<>&coordinates, bool isEMP, float size/*=25.f*/, float duration /*= 1.3f*/)
+	void		InitExplosion(const M::TVec3<>&coordinates, bool isEMP, float size/*=25.f*/, float duration /*= 1.3f*/)
 	{
 		Explosion&explosion = isEMP?empExplosions.Append(): explosions.Append();
 		explosion.Create(coordinates,size,duration,isEMP);
@@ -401,7 +526,7 @@ namespace Explosions
 		//Physics::signalExplosion(coordinates,1000000.f);
 	}
 
-	void		InitExplosion(const TVec3<>&coordinates, bool isEMP, float size, float duration, const std::function<void()>&onQuarterDone)
+	void		InitExplosion(const M::TVec3<>&coordinates, bool isEMP, float size, float duration, const std::function<void()>&onQuarterDone)
 	{
 		Explosion&explosion = isEMP? empExplosions.Append() :  explosions.Append();
 		explosion.Create(coordinates,size,duration,isEMP);

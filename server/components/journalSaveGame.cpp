@@ -192,14 +192,7 @@ namespace Journal
 
 	Round::PureEntityDescriptor::PureEntityDescriptor(const Objects::PWorldEntity&we)
 	{
-		if (we->IsPureVehicle())
-		{
-			Objects::PVehicle v = To<Objects::Vehicle>::Cast(we);
-			this->baseType = v->base->typeName;
-			this->turretType = v->turret->typeName;
-		}
-		else
-			this->baseType = we->GetTypeName();
+		this->type = we->GetType();
 	}
 
 	Round::CreateEntity::CreateEntity(const Objects::PWorldEntity&we):desc(we),location(we->location),entityID(we->id)
@@ -467,21 +460,22 @@ namespace Journal
 
 	/*virtual override*/ void			Round::EntityStateCheck::Execute(const Objects::PWorldEntity&e)	const
 	{
+		using StringConversion::ToString;
 		#undef EVERIFY
-		#define EVERIFY(_VAR_)	if (_VAR_ != e->_VAR_) LogEvent(EventClass::Preset::configuration,e->GetName()+ ": Verification failed " #_VAR_ ": "+String(_VAR_)+" expected, but found "+String(e->_VAR_));
+		#define EVERIFY(_VAR_)	if (_VAR_ != e->_VAR_) LogEvent(EventClass::Preset::configuration,e->GetName()+ ": Verification failed " #_VAR_ ": "+ToString(_VAR_)+" expected, but found "+ToString(e->_VAR_));
 		//throw RoundException(CLOCATION,e->GetName()+ ": Verification failed " #_VAR_ ": "+String(_VAR_)+" expected, but found "+String(e->_VAR_));
 		EVERIFY(empDamageLevel);
 		EVERIFY(health);
-		EVERIFY(location.ToString());
+		EVERIFY(location);
 
 		#undef EVERIFY2
-		#define EVERIFY2(_VAR_,_OTHER_)	if (_VAR_ != _OTHER_) LogEvent(EventClass::Preset::configuration,e->GetName()+ ": Verification failed " #_VAR_ ": "+String(_VAR_)+" expected, but found "+String(_OTHER_));
+		#define EVERIFY2(_VAR_,_OTHER_)	if (_VAR_ != _OTHER_) LogEvent(EventClass::Preset::configuration,e->GetName()+ ": Verification failed " #_VAR_ ": "+ToString(_VAR_)+" expected, but found "+ToString(_OTHER_));
 		//throw RoundException(CLOCATION,e->GetName()+ ": Verification failed " #_VAR_ ": "+String(_VAR_)+" expected, but found "+String(_OTHER_));
 		EVERIFY2((int)nextTaskMode,(int)GetNextTaskMode(e));
 		EVERIFY2(storedMinerals,GetStoredMinerals(e));
 		EVERIFY2(jobMineralsLeft,GetJobMineralsLeft(e));
 		EVERIFY2(taskListLength,GetTaskListLength(e));
-		EVERIFY2(nextTaskFocus.ToString(),GetNextTaskFocus(e).ToString());
+		EVERIFY2(nextTaskFocus,GetNextTaskFocus(e));
 		EVERIFY2(isEnabled,IsEnabled(e));
 
 	}
@@ -580,7 +574,7 @@ namespace Journal
 
 	Objects::PWorldEntity Round::PureEntityDescriptor::Instantiate(const Objects::PFaction&f, const TUniqueID&id, const Grid::LCellIdI&loc) const
 	{
-		Objects::PWorldEntity proto = Objects::GetNonVehiclePrototypeByName(baseType);
+		Objects::PWorldEntity proto = Objects::Prototypes::Find(type);
 		Objects::PWorldEntity e;
 		if (proto)
 		{
@@ -589,7 +583,7 @@ namespace Journal
 		}
 		else
 		{
-			e = Objects::AssembleVehicle(f,id,loc,baseType,turretType);
+			e = Objects::AssembleVehicle(f,id,loc,type);
 		}
 		LogEvent(EventSignificance::Debug,e.get(),"PureEntityDescriptor::Instantiate("+ToString(id)+")");
 		return e;
@@ -597,26 +591,13 @@ namespace Journal
 
 	void	Round::PureEntityDescriptor::Compile(Entry&e) const
 	{
-		if (this->turretType.IsNotEmpty())
-		{
-			e.stringParameters.Set("VehicleTurret",this->turretType);
-			e.stringParameters.Set("VehicleBase",this->baseType);
-		}
-		else
-			e.stringParameters.Set("EntityType",this->baseType);
+		e.stringParameters.Set("EntityType",ToString(type));
 	}
 
 	void	Round::PureEntityDescriptor::Decode(const Entry&e)
 	{
-		if (e.stringParameters.TryGet("VehicleTurret",this->turretType))
-		{
-			baseType = e.stringParameters.Require(CLOCATION,"VehicleBase");
-		}
-		else
-		{
-			baseType = e.stringParameters.Require(CLOCATION,"EntityType");
-			turretType = "";
-		}
+		String t = e.stringParameters.Require(CLOCATION,"EntityType");
+		type = Objects::DecodeType(t);
 	}
 
 
@@ -700,7 +681,7 @@ namespace Journal
 		Objects::PMobileEntity md = deploy && deploy->IsMobile() ? To<Objects::MobileEntity>::Cast(deploy) : Objects::PMobileEntity();
 		if (!Objects::ProcessChoiceIntersection(e,target,mode,md))
 		{
-			throw RoundException(CLOCATION, "Unable to handle choice intersection of "+e->GetName()+" with "+target.ToString()+" in mode "+String(int(mode))+", while deploying "+(md?md->GetName():""));
+			throw RoundException(CLOCATION, "Unable to handle choice intersection of "+e->GetName()+" with "+ToString(target)+" in mode "+String(int(mode))+", while deploying "+(md?md->GetName():""));
 		}
 
 	}
@@ -739,7 +720,7 @@ namespace Journal
 				static StringBuffer buffer;
 				buffer.Clear();
 				foreach (targets,t)
-					buffer << ' '<<t->ToString();
+					buffer << ' '<<ToString(*t);
 				throw RoundException(CLOCATION, "Unable to direct "+e->GetName()+" to"+buffer.CopyToString()+" in mode "+String(int(mode)));
 			#else
 				throw RoundException(CLOCATION, "Unable to direct "+e->GetName()+" to destination");
@@ -1045,7 +1026,7 @@ namespace Journal
 					StringRef sHeight(dotAt+1, valLen  - (dotAt-value) -1);
 					if (target.stackID >= Grid::LowSetup::GridType::CellCount)
 					{
-						throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, "Decoded stack ID of "+String(paraRef)+"=" +target.ToString()+" is out of range, while decoding line "+String(line,lineLen));
+						throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, "Decoded stack ID of "+String(paraRef)+"=" +ToString(target)+" is out of range, while decoding line "+String(line,lineLen));
 					}
 
 					#ifndef NO_SATELLITES
@@ -1064,7 +1045,7 @@ namespace Journal
 							IF_SATELLITES(&& target.height != Objects::Satellite::BaseResidenceHeight && target.height != Objects::Satellite::DeclinedResidenceHeight)
 							)
 						{
-							throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, "Decoded height of "+String(paraRef)+"=" +target.ToString()+" is out of range, while decoding line "+String(line,lineLen));
+							throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, "Decoded height of "+String(paraRef)+"=" +ToString(target)+" is out of range, while decoding line "+String(line,lineLen));
 						}
 					}
 					locationParameters.Set(paraRef,target);
@@ -1322,8 +1303,6 @@ namespace Journal
 
 		Game::Config::Nexus::enableAI = ai;
 
-		Reflection::LoadOverrides();
-
 		if (Game::Config::Nexus::enableAI)
 			AIProcess::Begin(Objects::Faction::nexus->accessToken);
 
@@ -1344,7 +1323,7 @@ namespace Journal
 		catch (const Except::Exception&ex)
 		{
 			if (ex.hasLocation)
-				Except::fatal(ex.location,ex.what());
+				Except::TriggerFatal(ex.location,ex.what());
 			else
 				FATAL__(ex.what());
 		}
@@ -1594,7 +1573,7 @@ namespace Journal
 			throw RoundException(CLOCATION,e->GetName()+": Unable to destroy entity. Entity is indestructible");
 		}
 		float t = 0;
-		Objects::Remove(e,type,t,false);
+		Objects::Remove(e,type,t);
 		if (To<Objects::Structure>::DynamicCast(e))
 			Objects::RefreshCompoundCoverageIfNeeded(t);
 
@@ -1603,34 +1582,26 @@ namespace Journal
 	static bool ConvertReferenceEntity(const Protocol::MarkerReferenceEntity&source, Objects::Marker&dest )
 	{
 		dest.referenceEntity = source.id;
-		dest.referencedType[0] = source.type0;
-		dest.referencedType[1] = source.type1;
-		if (dest.referencedType[0] == ConstName::Empty && dest.referencedType[1] == ConstName::Empty)
-			return true;
-		if (dest.referencedType[1] == ConstName::Empty)
-		{
-			if (!Objects::GetNonVehiclePrototypeByName(dest.referencedType[0]))
-			{
-				LogEvent(EventClass::Preset::commandRejected, "Unknown structure type #" + String(int(dest.referencedType[0])));
-				return false;
-			}
-			return true;
-		}
-		if (dest.referencedType[0] == ConstName::Empty)
+		dest.referencedType = source.type;
+		if (dest.referencedType.IsInvalid())
 		{
 			LogEvent(EventClass::Preset::commandRejected, "Unknown marker format");
 			return false;
 		}
-
-		//String turretName = source.type.subStringRef((int)separatorAt);
-		if (!Objects::Component::GetTurretByName(dest.referencedType[1]))
+		if (dest.referencedType.IsEmpty())
+			return true;
+		if (Objects::Prototypes::Find(dest.referencedType))
+			return true;
+		if (!Objects::Component::baseComponents.Find(dest.referencedType.baseType))
 		{
-			LogEvent(EventClass::Preset::commandRejected, "Unknown turret type #" + String(int(dest.referencedType[1])));
+			LogEvent(EventClass::Preset::commandRejected, "Unknown base type #" + String(int(dest.referencedType.baseType)));
 			return false;
 		}
-		if (!Objects::Component::GetVehicleBaseByName(dest.referencedType[0]))
+
+		//String turretName = source.type.subStringRef((int)separatorAt);
+		if (!Objects::Component::vehicleTurretComponents.Find(dest.referencedType.turretType))
 		{
-			LogEvent(EventClass::Preset::commandRejected, "Unknown base type #" + String(int(dest.referencedType[0])));
+			LogEvent(EventClass::Preset::commandRejected, "Unknown turret type #" + String(int(dest.referencedType.turretType)));
 			return false;
 		}
 		return true;
@@ -1639,35 +1610,13 @@ namespace Journal
 	static void ExportReferenceEntity(const Protocol::MarkerReferenceEntity&source, Entry&result )
 	{
 		result.uuidParameters.Set("ReferenceID",source.id);
-		if (source.type0 == ConstName::Empty && source.type1 == ConstName::Empty)
-			return;
-		if (source.type1 == ConstName::Empty)
-		{
-			Objects::PWorldEntity proto = Objects::GetNonVehiclePrototypeByName(source.type0);
-			if (proto)
-				result.stringParameters.Set("ReferenceNonVehicle",proto->GetTypeName());
-			else
-				throw Round::RoundException(CLOCATION, "Unknown non-vehicle type #" + String(int(source.type0)));
-			return;
-		}
-		if (source.type0 == ConstName::Empty)
+		if (source.type.IsInvalid())
 		{
 			throw Round::RoundException(CLOCATION, "Unknown marker format");
 		}
-
-		//String turretName = source.type.subStringRef((int)separatorAt);
-		Objects::Component::Turret*t = Objects::Component::GetTurretByName(source.type1);
-		if (!t)
-		{
-			throw Round::RoundException(CLOCATION, "Unknown turret type #" + String(int(source.type1)));
-		}
-		Objects::Component::Base*b = Objects::Component::GetVehicleBaseByName(source.type0);
-		if (!b)
-		{
-			throw Round::RoundException(CLOCATION,"Unknown base type #" + String(int(source.type0)));
-		}
-		result.stringParameters.Set("ReferenceTurret",t->typeName);
-		result.stringParameters.Set("ReferenceBase",b->typeName);
+		if (source.type.IsEmpty())
+			return;
+		result.stringParameters.Set("ReferenceType",ToString(source.type));
 	}
 
 
@@ -1681,22 +1630,11 @@ namespace Journal
 	static void ImportReferenceEntity(Protocol::MarkerReferenceEntity&ref, const Entry&e )
 	{
 		e.uuidParameters.Require(CLOCATION,"ReferenceID",ref.id);
-		String base,turret;
-		if (e.stringParameters.TryGet("ReferenceBase",base))
-		{
-			e.stringParameters.Require(CLOCATION,"ReferenceTurret",turret);
-			ref.type0 = Require(Objects::Component::GetVehicleBaseByName(base))->constName;
-			ref.type1 = Require(Objects::Component::GetTurretByName(turret))->constName;
-			return;
-		}
-		if (e.stringParameters.TryGet("ReferenceNonVehicle",base))
-		{
-			ref.type0 = Require(Objects::GetNonVehiclePrototypeByName(base))->GetCTypeName();
-			ref.type1 = ConstName::Empty;
-			return;
-		}
-		ref.type0 = ConstName::Empty;
-		ref.type1 = ConstName::Empty;
+		String type;
+		if (e.stringParameters.TryGet("ReferenceType",type))
+			ref.type = Objects::DecodeType(type);
+		else
+			ref.type = Objects::EntityType();
 	}
 
 
@@ -1752,7 +1690,7 @@ namespace Journal
 		//ConvertMarker(marker, outMarker);
 		String ref;
 		if (marker.UtilizesReferenceEntity())
-			ref = ", referencing #"+String(int(marker.referencedType[0]))+"-#"+String(int(marker.referencedType[1]));
+			ref = ", referencing #"+String(int(marker.referencedType.baseType))+"-#"+String(int(marker.referencedType.turretType));
 		LogEvent(EventSignificance::Common, peer, marker.GetName()+" created"+ref);
 	}
 
@@ -1782,11 +1720,18 @@ namespace Journal
 				throw RoundException(CLOCATION, "Unable to drop '"+topic->GetFullName()+"' from research queue. Has this been queued?");
 		}
 		else
+		{
+			if (f->researchState.ResearchIsPlanned(topic))
+			{
+				LogEvent(EventSignificance::Uncommon, GetPeerOfFaction(f), "Faction research "+topic->GetFullName()+" is already in the queue");
+				return;
+			}
 			if (f->researchState.ResearchQueueIsFull())
 				throw RoundException(CLOCATION, "Unable to append '"+topic->GetFullName()+"' to research queue. Queue is full");
 			else
 				if (!f->researchState.AppendResearchTask(topic))
 					throw RoundException(CLOCATION, "Unable to append '"+topic->GetFullName()+"' to research queue. Is this a group?");
+		}
 		Network::PClient cl;
 		if (Network::playerMap.Query(f,cl))
 		{
@@ -2068,7 +2013,7 @@ namespace Journal
 		LogFactionOnline(f,false);
 	}
 
-	void	Round::RegisterProductionJobStart(bool apply, const Objects::PWorldEntity&e, const Objects::PMobileEntityProducer&asProducer, const ConstName*parameters, count_t parameterCount)
+	void	Round::RegisterProductionJobStart(bool apply, const Objects::PWorldEntity&e, const Objects::PMobileEntityProducer&asProducer, const Objects::EntityType&t)
 	{
 		if (apply && asProducer->queue.GetLength() >= Objects::MaxProductionTasks)
 		{
@@ -2079,58 +2024,46 @@ namespace Journal
 		std::shared_ptr<NewEntityProduction> cmd(new NewEntityProduction());
 		cmd->insertAt = InvalidIndex;	//last
 
-		switch (parameterCount)
+		Objects::PWorldEntity proto = Objects::Prototypes::Find(t);
+		if (proto)
 		{
-			case 2:
+			if (!proto->IsMobile())
 			{
-				Objects::Component::Turret*turret = Objects::Component::GetTurretByName(parameters[1]);
-				Objects::Component::Base*base = Objects::Component::GetVehicleBaseByName(parameters[0]);
-				if (!turret || !base)
-				{
-					LogEvent(EventClass::Preset::commandRejected,e.get(),"Cannot produce that");
-					return;
-				}
-				if (!turret->isUnlocked.GetValue(e->GetResearchState()))
-				{
-					LogEvent(EventClass::Preset::commandRejected,e.get(), "Cannot build "+turret->typeName+" since it has not been researched yet");
-					return;
-				}
-				if (!base->isUnlocked.GetValue(e->GetResearchState()))
-				{
-					LogEvent(EventClass::Preset::commandRejected,e.get(), "Cannot build "+base->typeName+" since it has not been researched yet");
-					return;
-				}
-				cmd->desc.turretType = turret->typeName;
-				cmd->desc.baseType = base->typeName;
-			}
-			break;
-			case 1:
-			{
-				Objects::PWorldEntity proto = Objects::GetNonVehiclePrototypeByName(parameters[0]);
-				if (!proto || !proto->IsMobile())
-				{
-					LogEvent(EventClass::Preset::commandRejected,e.get(),"Cannot produce that");
-					return;
-				}
-				if (!proto->IsUnlockedAtState(e->GetResearchState()))
-				{
-					LogEvent(EventClass::Preset::commandRejected,e.get(), "Cannot build "+proto->GetTypeName()+" since it has not been researched yet");
-					return;
-				}
-
-				cmd->desc.baseType = proto->GetTypeName();
-			}
-			break;
-			default:
 				LogEvent(EventClass::Preset::commandRejected,e.get(),"Cannot produce that");
 				return;
-			break;
+			}
+			if (!proto->IsUnlockedAtState(e->GetResearchState()))
+			{
+				LogEvent(EventClass::Preset::commandRejected,e.get(), "Cannot build "+proto->GetTypeName()+" since it has not been researched yet");
+				return;
+			}
+		}
+		else
+		{
+			Objects::Component::Turret*turret = Objects::Component::vehicleTurretComponents.Find(t.turretType);
+			Objects::Component::Base*base = Objects::Component::baseComponents.Find(t.baseType);
+			if (!turret || !base)
+			{
+				LogEvent(EventClass::Preset::commandRejected,e.get(),"Cannot produce that");
+				return;
+			}
+			if (!turret->isUnlocked.GetValue(e->GetResearchState()))
+			{
+				LogEvent(EventClass::Preset::commandRejected,e.get(), "Cannot build "+turret->typeName+" since it has not been researched yet");
+				return;
+			}
+			if (!base->isUnlocked.GetValue(e->GetResearchState()))
+			{
+				LogEvent(EventClass::Preset::commandRejected,e.get(), "Cannot build "+base->typeName+" since it has not been researched yet");
+				return;
+			}
 		}
 
 		EntityStrand&strand = factionStrands.Set(e->owner->id).entityStrands.Set(e->id);
 
 		cmd->taskID.Generate();
 		cmd->newEntityID.Generate();
+		cmd->desc.type = t;
 		strand.Append(cmd);
 		if (apply)
 			strand.last()->Execute(e);

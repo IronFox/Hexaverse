@@ -453,12 +453,15 @@ namespace Engine
 				void			CreateFromStructs(const ArrayData<T>&data, BufferAccess access = BufferAccess::Immutable) {CreateFromStructs(data.pointer(),data.length(),access);}
 			template <typename T>
 				void			CreateFromStructs(const BasicBuffer<T>&data, BufferAccess access = BufferAccess::Immutable) {CreateFromStructs(data.pointer(),data.length(),access);}
+			template <typename T>
+				void			CreateFromStructs(const std::initializer_list<T>&data, BufferAccess access = BufferAccess::Immutable)	{CreateFromStructs(&*data.begin(),data.size(),access);}
 			template <typename T0>
 				void			UpdateStructs(const T0*data, count_t numStructs) {Super::Update((const void*)data,numStructs * sizeof(T0));}
 			template <typename T0>
 				void			UpdateStructs(const ArrayData<T0>&data) {UpdateStructs(data.pointer(),data.length());}
 			template <typename T0>
 				void			UpdateStructs(const BasicBuffer<T0>&data) {UpdateStructs(data.pointer(),data.length());}
+
 
 			void				swap(VBO&other)	{Super::swap(other); std::swap(vertexCount,other.vertexCount);}
 
@@ -479,9 +482,10 @@ namespace Engine
 			{
 				typedef TypedBuffer<T>	Super;
 			public:
-				void				Create(const T*data, count_t numEntries, BufferAccess access = BufferAccess::Immutable)	{Super::Create(data,sizeof(T)*numEntries,numEntries,access,D3D11_BIND_INDEX_BUFFER);}
-				void				Create(const ArrayData<T>&data, BufferAccess access = BufferAccess::Immutable)	{Create(data.pointer(),data.length(),access);}
-				void				Create(const BasicBuffer<T>&data, BufferAccess access = BufferAccess::Immutable)	{Create(data.pointer(),data.length(),access);}
+				void			Create(const T*data, count_t numEntries, BufferAccess access = BufferAccess::Immutable)	{Super::Create(data,sizeof(T)*numEntries,numEntries,access,D3D11_BIND_INDEX_BUFFER);}
+				void			Create(const ArrayRef<T>&data, BufferAccess access = BufferAccess::Immutable)	{Create(data.pointer(),data.length(),access);}
+				void			Create(const BasicBuffer<T>&data, BufferAccess access = BufferAccess::Immutable)	{Create(data.pointer(),data.length(),access);}
+				void			Create(const std::initializer_list<T>&data, BufferAccess access = BufferAccess::Immutable)	{Create(&*data.begin(),data.size(),access);}
 			};
 
 		typedef IBO<UINT16>	IBO16;
@@ -624,6 +628,7 @@ namespace Engine
 
 
 			/**/					ShaderInstructionBlock():topology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST),stride(0)	{}
+			virtual					~ShaderInstructionBlock(){};
 
 			void					SetPoints()	{topology = D3D_PRIMITIVE_TOPOLOGY_POINTLIST;}
 			void					SetLines()	{topology = D3D_PRIMITIVE_TOPOLOGY_LINELIST;}
@@ -738,6 +743,7 @@ namespace Engine
 			Handle<ID3D11ShaderResourceView>	view;
 		public:
 			void					Create(const Resolution&);
+			void					CreateMSAA(const Resolution&,const DXGI_SAMPLE_DESC&);
 			void					Clear()
 			{
 				handle2D.Clear();
@@ -837,6 +843,8 @@ namespace Engine
 			void				Create(Resolution3D res, DXGI_FORMAT, mips_t mips = NoMips);	//!< Creates one target, clears rest
 			void				Create(Resolution res, const DXGI_FORMAT*, count_t numTargets, bool depthStencil=false, mips_t mips = NoMips);
 			void				Create(Resolution3D res, const DXGI_FORMAT*, count_t numTargets, mips_t mips = NoMips);
+			void				CreateMSAA(const Resolution&,DXGI_FORMAT, bool depthStencil, const DXGI_SAMPLE_DESC&);
+			void				CreateMSAA(const Resolution&,const DXGI_FORMAT*, count_t numTargets, bool depthStencil, const DXGI_SAMPLE_DESC&);
 
 			Resolution			GetResolution() const {return numTargets ? Resolution(colorTarget[0].GetResolution()) : Resolution(depthStencilTarget.GetResolution());}
 			const Resolution3D&	GetResolution3D() const {return numTargets ? colorTarget[0].GetResolution() : depthStencilTarget.GetResolution();}
@@ -881,11 +889,11 @@ namespace Engine
 			{
 				vfield.clear();
 				this->hasUV = hasUV;
-				binding.normal.unset();
+				binding.normal.Unset();
 				if (hasUV)
 				{
 					binding.texcoords.SetSize(1);
-					binding.texcoords.First().set(3,2);
+					binding.texcoords.First().Set(3,2);
 					binding.floats_per_vertex = 5;
 				}
 				else
@@ -935,9 +943,13 @@ namespace Engine
 		IDXGISwapChain		*swapchain;             // the pointer to the swap chain interface
 		ID3D11Device		*dev;                     // the pointer to our Direct3D device interface
 		ID3D11DeviceContext *devcon;           // the pointer to our Direct3D device context
-		DX11::Handle<ID3D11Texture2D>			backbufferTexture;
-		DX11::Handle<ID3D11RenderTargetView>	backbufferView;
-		DX11::Handle<ID3D11DepthStencilView>	backbufferDepthView;
+		//DX11::Handle<ID3D11Texture2D>			backbufferTexture;
+		//DX11::Handle<ID3D11RenderTargetView>	backbufferView;
+		//DX11::Handle<ID3D11DepthStencilView>	backbufferDepthView;
+
+		DX11::Handle<ID3D11Texture2D>			backbufferOut;
+
+
 		DX11::Handle<ID3D11DepthStencilState>	depthStencilState[2][2];
 		DX11::Handle<ID3D11RasterizerState>		rasterizerState[2][2];
 		DX11::Handle<ID3D11BlendState>			blendState[BlendMode::NumberOfPossibilities];
@@ -946,16 +958,20 @@ namespace Engine
 		DX11::ObjectBuffer<M::TVec4<> >			objectPositionBuffer;	//quicker version
 		DX11::ObjectBuffer<float>				timeBuffer;
 		Buffer<DX11::Shader::Binding,0,Swap>	baseBindings;
-		M::float4			clearColor;
+		float4				clearColor;
 
-		DXGI_SAMPLE_DESC	fsaa;
+		//DXGI_SAMPLE_DESC	fsaa;
 
 		int					errorCode;
 		String				errorString;
 		D3D_FEATURE_LEVEL	featureLevel;
 
-		UINT				vsync, 
-							knownQualityLevels;
+		UINT				vsync;
+
+
+
+
+
 
 		ID3D11PixelShader	*lazyPixelShaderHandle = nullptr;
 		int					shaderLockLevel = 0;
@@ -987,7 +1003,13 @@ namespace Engine
 
 
 	public:
-		void			ReportError(HRESULT, const TCodeLocation&);
+		struct MSAAConfig
+		{
+			UINT			sampleCount=1,
+							numQualityLevels=1;
+		};
+
+		void			ReportError(HRESULT, const TCodeLocation&, const String&extInfo="");
 		//static void					BuildMipMaps(const GL::FBO&, unsigned target, const GLShader::Instance&mipMapShader);
 		//static void					BuildMipMaps(const GL::Texture::Reference&, const GLShader::Instance&mipMapShader, GLenum format=GL_RGBA8);
 
@@ -1018,7 +1040,7 @@ namespace Engine
 		//static void						capture(Image&target);																			//!< Copies the current visible image to the specified image
 		//static			void						capture(FloatImage&target);																			//!< Copies the current visible image to the specified image
 		//static			void						capture(Texture&target, unsigned width, unsigned height);										//!< Captures the current back buffer content to the specified texture
-		//static			void						captureDepth(Texture&target, unsigned width, unsigned height);									//!< Captures the current back buffer depth content to the specified texture
+		//static			void						CaptureDepth(Texture&target, unsigned width, unsigned height);									//!< Captures the current back buffer depth content to the specified texture
 
 		/**/						DirectX11();
 
@@ -1105,13 +1127,26 @@ namespace Engine
 		void						ScanShaderHeader(const PathString&path);
 
 		const Resolution&			GetResolution()	const	{return _currentResolution;}
+		ArrayRef<const MSAAConfig>	GetMSAAModes() const {return _msaaConfigs.ToRef();}
+		index_t						GetCurrentMSAAMode() const {return _currentMSAAConfig;}
+		BYTE						GetCurrentMSAARate() const {return _msaaConfigs[_currentMSAAConfig].sampleCount;}
+		void						SetMSAAMode(index_t mode);
+		void						SelectMSAARate(BYTE numSamples) {SetMSAAMode(_FindMSAAConfig(numSamples));}
 
+		bool						IsVSyncActive() const {return vsync != 0;}
+		void						SetVSyncActive(bool a) {vsync = a ? 1 : 0;}
+
+		D3D_FEATURE_LEVEL			GetFeatureLevel() const {return featureLevel;}
 	private:
-		bool						_CreateDepthStencilTarget(const Resolution&res);
+//		bool						_CreateDepthStencilTarget(const Resolution&res);
 		void						_CreateBlendState(BlendMode mode,bool enable,D3D11_BLEND srcColor, D3D11_BLEND dstColor, D3D11_BLEND_OP colorOp,  D3D11_BLEND srcAlpha, D3D11_BLEND dstAlpha, D3D11_BLEND_OP alphaOp);
+		DXGI_SAMPLE_DESC			_CompileSampleDesc(const MSAAConfig&)	const;
+		index_t						_FindMSAAConfig(BYTE numSamples) const;
 
 		Resolution					_currentResolution;
-		
+		index_t						_currentMSAAConfig;
+		Buffer0<MSAAConfig>			_msaaConfigs;
+		DX11::FBO					_backbuffer,_nextBackbuffer;	//deferred output
 
 
 	};

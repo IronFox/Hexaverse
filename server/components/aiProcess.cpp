@@ -39,7 +39,12 @@ namespace AIProcess
 
 			try
 			{
-				process.Start(workingDirectory,path,parameterBuffer,false);
+				bool window = false;
+				#ifdef _DEBUG
+					window = true;
+				#endif
+
+				process.Start(workingDirectory,path,parameterBuffer,true);
 			}
 			catch (const std::exception&ex)
 			{

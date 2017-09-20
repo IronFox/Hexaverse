@@ -5,6 +5,12 @@
 
 namespace Objects
 {
+	namespace Prototypes
+	{
+		void	RegisterAll();
+	}
+
+
 	/**
 	Stationary defence building
 	All towers feature turrets on their top, which define their functionality. Towers and satellites are the only
@@ -17,7 +23,7 @@ namespace Objects
 		static bool					setup;
 		typedef WorkingStructure	Super;
 		friend class Super;
-		friend void Create();
+		friend void Prototypes::RegisterAll();
 		//friend class WorkingStructureT<Tower>;
 		/**/						Tower(Component::Turret*turret) : TurretBase(turret)
 		{
@@ -126,7 +132,7 @@ namespace Objects
 
 		//BaseEntity overrides:
 		virtual String				GetTypeName() const override { return turret->typeName+" Tower"; };
-		virtual ConstName			GetCTypeName() const override {return turret->constTowerName;}
+		virtual EntityType			GetType() const override {DBG_ASSERT__(turret && turret->constName != ConstName::Empty); return EntityType(ConstName::Type_Tower, turret->constName);}
 
 		//WorldEntity overrides:
 		#ifndef CLIENT
@@ -142,7 +148,7 @@ namespace Objects
 		virtual void				PrototypeSetup()	override;
 		#ifdef HAS_WINDOW
 			virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
-			virtual bool			TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override;
+			virtual bool			TestIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float & distance) const override;
 			virtual void			DescribeType(Description&, UINT32 descFlags) override;
 		#endif
 		#ifndef CLIENT

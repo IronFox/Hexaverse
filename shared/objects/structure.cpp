@@ -46,7 +46,7 @@ namespace Objects
 
 	#ifdef HAS_WINDOW
 		/*static*/ Grid::LCellIdI	GatheringPoint::selected;			//!< Gathering point of selected entity (if any, or invalid)
-		/*static*/ TMatrix4<>		GatheringPoint::selectedVisual;	//!< Point where the respective gathering point should be visualized at. (same cell; may be different height)
+		/*static*/ M::TMatrix4<>		GatheringPoint::selectedVisual;	//!< Point where the respective gathering point should be visualized at. (same cell; may be different height)
 
 		/*static*/ Geometry			Structure::standardConnector;
 
@@ -69,12 +69,12 @@ namespace Objects
 
 
 
-	/*static*/ count_t			Structure::CountOccurrences(const OwnerParameter&o,ConstName type)
+	/*static*/ count_t			Structure::CountOccurrences(const OwnerParameter&o,EntityType type)
 	{
 		count_t rs = 0;
 		structures.Foreach([&rs,o,type](const Objects::PStructure&s)
 		{
-			if (s->owner == o && s->GetCTypeName() == type)
+			if (s->owner == o && s->GetType() == type)
 				rs++;
 			else
 			{
@@ -346,7 +346,8 @@ namespace Objects
 
 	/*static*/ void Structure::ChangeStructCount(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, int changeDirection, float atTime)
 	{
-		LogEvent(EventSignificance::Debug,nullptr,"ChangeStructCount("+location.ToString()+", broadHeight="+String(broadHeight)+", height="+String(totalHeight)+", foundation="+String(hasFoundation)+", dir="+String(changeDirection)+")");
+		using StringConversion::ToString;
+		LogEvent(EventSignificance::Debug,nullptr,"ChangeStructCount("+ToString(location)+", broadHeight="+String(broadHeight)+", height="+String(totalHeight)+", foundation="+String(hasFoundation)+", dir="+String(changeDirection)+")");
 
 
 		{
@@ -479,19 +480,20 @@ namespace Objects
 				const UINT32 higher = location.stackID;
 			#endif
 			auto seq = World::actual.BeginChangeSequence(atTime);
+			using StringConversion::ToString;
 			#ifdef HYBRID_GRID
 				for (int j = 0; j < n.numNeighbors; j++)
 				{
 					seq.SelectStack(n.neighborID[j]);
 					for (int a = 0; a < broadHeight; a++)
 						if (seq.Change(location.height+a,Grid::Content::Clear))
-							LogEvent(EventSignificance::Common,e,"Clearing cell "+Grid::HCellIdI(n.neighborID[j],location.height+a).ToString());
+							LogEvent(EventSignificance::Common,e,"Clearing cell "+ToString(Grid::HCellIdI(n.neighborID[j],location.height+a)));
 				}
 			#endif
 			seq.SelectStack(higher);
 			for (int a = 0; a < totalHeight; a++)
 				if (seq.Change(location.height+a,Grid::Content::Clear))
-					LogEvent(EventSignificance::Common,e,"Clearing cell "+Grid::HCellIdI(higher,location.height+a).ToString());
+					LogEvent(EventSignificance::Common,e,"Clearing cell "+ToString(Grid::HCellIdI(higher,location.height+a)));
 		}
 
 
@@ -993,14 +995,9 @@ namespace Objects
 				});
 			#else
 //				compounds.SetSize(Faction::all...)
-				for (const auto&f0 : Faction::all)
+				for (const auto&f : Faction::all)
 				{
-					PFaction faction = f0.lock();
-					DBG_ASSERT__(faction);
-					if (faction)
-					{
-						faction->UpdateCompoundCoverage();
-					}
+					f->UpdateCompoundCoverage();
 				}
 
 				Faction::nexus->UpdateCompoundCoverage();

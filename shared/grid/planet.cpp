@@ -16,16 +16,16 @@ namespace Grid
 		if (abs(up0) <= mountains.dampening)
 			up0 = 0;
 		else
-			up0 -= mountains.dampening * M::sign(up0);
+			up0 -= mountains.dampening * M::Sign(up0);
 		int up1 = (int)M::Round(heights.x * extendedCore.heightScale / RawLayerHeight / UnitScale);
 		if (abs(up1) <= extendedCore.dampening)
 			up1 = 0;
 		else
-			up1 -= extendedCore.dampening * M::sign(up1);
-		const int h = M::clamp(mountains.baseHeight + up0, CellStack::BottomHeight, CellStack::TopHeight - 1);
-		const int coreH = M::clamp(extendedCore.baseHeight + up1, CellStack::BottomHeight, CellStack::TopHeight - 1);
+			up1 -= extendedCore.dampening * M::Sign(up1);
+		const int h = M::Clamp(mountains.baseHeight + up0, CellStack::BottomHeight, CellStack::TopHeight - 1);
+		const int coreH = M::Clamp(extendedCore.baseHeight + up1, CellStack::BottomHeight, CellStack::TopHeight - 1);
 		
-//			int coreH = clamp(Round(fabs(heights.x) * config.coreScale / RawLayerHeight)-HalfRange, -HalfRange, HalfRange - 1);
+//			int coreH = M::Clamp(M::Round(fabs(heights.x) * config.coreScale / RawLayerHeight)-HalfRange, -HalfRange, HalfRange - 1);
 
 		UINT uh = CellStack::ToLayer(h);
 		UINT coreLayer = CellStack::ToLayer(coreH);
@@ -122,7 +122,7 @@ namespace Grid
 	}
 
 
-	float2	RandomHeight(const TVec3<>&center0, const ExtendedPlanetConfig&config);
+	float2	RandomHeight(const M::TVec3<>&center0, const ExtendedPlanetConfig&config);
 
 	bool	ExtendedPlanetConfig::ApplySeed()
 	{
@@ -148,10 +148,10 @@ namespace Grid
 
 	
 
-	float	RandomHeight(const TVec3<>&center0, const ExtendedPlanetConfig::NoiseSet&config)
+	float	RandomHeight(const M::TVec3<>&center0, const ExtendedPlanetConfig::NoiseSet&config)
 	{
 		//center *= 3.f;
-		TVec3<> center = center0;
+		M::TVec3<> center = center0;
 		float rs = 0;
 
 		float strength = 1.f;
@@ -167,7 +167,7 @@ namespace Grid
 		//noise.Get(center0.x*2.f + config.productSeed.x, center0.y*2.f + config.productSeed.y, center0.z*2.f + config.productSeed.z) * 0.5 + 0.5f;
 
 		float rf = 1.5f;
-		float depress = M::smoothstep(0.1f, 0.2f, 
+		float depress = M::SmoothStep(0.1f, 0.2f, 
 						0.5f * Get(config.depression0, center0*6.f*rf)
 							+ Get(config.depression1, center0*3.f*rf));
 		float fc = 0.25f * Get(config.depression2, center0*4.f*rf) 
@@ -178,10 +178,10 @@ namespace Grid
 		rs -= depress*0.3f;
 
 		return rs;
-		//return (float)sign(rs)*pow(fabs(rs),1.3f) ;
+		//return (float)Sign(rs)*pow(fabs(rs),1.3f) ;
 	}
 
-	float2	RandomHeight(const TVec3<>&center0, const ExtendedPlanetConfig&config)
+	float2	RandomHeight(const M::TVec3<>&center0, const ExtendedPlanetConfig&config)
 	{
 		return float2(
 			RandomHeight(center0*config.extendedCore.frequency,config.extendedCore),

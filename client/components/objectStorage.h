@@ -10,9 +10,9 @@ namespace Objects
 	class Storage
 	{
 		Buffer0<PWorldEntity>	objects,markerObjects;
-		Buffer0<std::pair<PHangar, PMobileEntity> > storedObjects;
+		Buffer0<std::pair<PHangar, PMobileEntity> > storedMobiles;
 		Buffer0<Marker, Strategy::Adopt>	markers;
-		Array<std::pair<UINT16,UINT16> >	unitLimits;
+		Array<std::pair<EntityType,UINT16> >	unitLimits;
 		bool	loaded = false;
 	public:
 		void	Clear();

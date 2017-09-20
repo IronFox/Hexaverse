@@ -63,10 +63,55 @@ namespace Tutorial
 			if (shown)
 				return false;
 			shown = true;
-			Detail::memory << name << nl;
-			Detail::memory.Flush();
+			memory << name << nl;
+			memory.Flush();
 			return true;
 		}
+
+		PathString	GetMemoryFilename()
+		{
+			return RuntimeConfig::ConfigFile("tutorialMemory.txt");
+		}
+
+		void	InitMemoryFile()
+		{
+			const PathString filename = GetMemoryFilename();
+			try
+			{
+				memory.Open(filename);
+				String line;
+				while (memory >> line)
+				{
+					Message*msg = messages.QueryPointer(line);
+					if (msg)
+						msg->shown = true;
+					elif (line == "tutorialGame")
+						tutorialGameShown = true;
+				}
+		
+				memory.Close();
+				memory.Append(filename);
+			}
+			catch (...)
+			{
+				memory.Create(filename);
+			}
+
+		}
+
+		void	FlushMemoryFile()
+		{
+			messages.VisitAllValues([](Message&m)
+			{
+				m.shown = false;
+			});
+			memory.Close();
+			memory.Create(GetMemoryFilename());
+			if (tutorialGameShown)
+				memory << "tutorialGame" << nl;
+			memory.Flush();
+		}
+
 	}
 
 	namespace Interactive
@@ -128,8 +173,8 @@ namespace Tutorial
 			void ReplaceTags(String&msg)
 			{
 				for (index_t i = 0; i < Objects::Resource::N; i++)
-					msg.replace('%'+String(Objects::Resource::Reinterpret(i).ToString())+'%',Objects::ResourceTag(i));
-				msg.replace("%Time%",Objects::TimeResourceTag());
+					msg.FindAndReplace('%'+String(Objects::Resource::Reinterpret(i).ToString())+'%',Objects::ResourceTag(i));
+				msg.FindAndReplace("%Time%",Objects::TimeResourceTag());
 			}
 
 			void	DisplayMessage(String msg, const String&img)
@@ -167,19 +212,21 @@ namespace Tutorial
 				if (taskWindow)
 				{
 					To<GUI::Label>::Cast(taskWindow->GetComponents().First())->SetText(msg);
-					taskWindow->InvalidateSize();
 				}
 				else
 				{
-					taskWindow.reset(new GUI::Window());
+					taskWindow = GUI::Window::Create();
 					taskWindow->canBeImplicitlyClosed = false;
 
 					taskWindow->AddNewComponent(new GUI::Label(msg))->AnchorTop(0).FillHorizontally(0);
-					taskWindow->autoHeight = true;
-					taskWindow->autoCenter = false;
-					taskWindow->anchorConfig.Left().Unset();
-					taskWindow->anchorConfig.Right().Set(0.1f);
-					taskWindow->anchorConfig.Bottom().Set(0.1f);
+					taskWindow->SetAutomaticHeight(true);
+					taskWindow->SetAutoCenter(false);
+					{
+						auto mod = taskWindow->ModifyAnchorConfig();
+						mod.Left().Unset();
+						mod.Right().Set(0.1f);
+						mod.Bottom().Set(0.1f);
+					}
 					taskWindow->SetSize(float2(0.25));
 					taskWindow->isModal = false;
 				}
@@ -399,18 +446,18 @@ namespace Tutorial
 
 
 
-	void	ShowMessage(const String&name, bool forceOpenNow/*=false*/)
+	void	ShowMessage(const String&name, bool forceOpenNow/*=false*/, bool overrideMemory/*=false*/)
 	{
 		if (RuntimeConfig::aiMode)
 			return;
 		Detail::Message*msg = Detail::messages.QueryPointer(name);
 		if (!msg)
 			return;
-		if (!Detail::RegisterMemory(msg->shown,name))
+		if (!Detail::RegisterMemory(msg->shown,name) && !overrideMemory)
 			return;
-		Dialog::EnqueueTutorial(name,msg->lines,msg->image);
+		Dialog::EnqueueTutorial(name,msg->lines,msg->image,forceOpenNow);
 		if (forceOpenNow)
-			Dialog::ShowNextTutorial();
+			Dialog::ShowNextTutorial(!overrideMemory);
 	}
 
 	void	HideMessage(const String&name)
@@ -418,6 +465,10 @@ namespace Tutorial
 		Dialog::RemoveTutorial(name);
 	}
 
+	void	FlushMemory()
+	{
+		Detail::FlushMemoryFile();
+	}
 
 
 	void	Create()
@@ -435,12 +486,12 @@ namespace Tutorial
 				explode('\n',xmessage.inner_content,msg->lines);
 				for (auto&line : msg->lines)
 				{
-					line.trimThis();
-					line.replace("%PRODUCT_NAME%",PRODUCT_NAME);
-					line.replace("%FUEL%",Objects::ResourceTag(Objects::Resource::Fuel));
-					line.replace("%MINERALS%",Objects::ResourceTag(Objects::Resource::Minerals));
-					line.replace("%URANIUM%",Objects::ResourceTag(Objects::Resource::Uranium));
-					line.replace("%ENERGY%",Objects::ResourceTag(Objects::Resource::Energy));
+					line.TrimThis();
+					line.FindAndReplace("%PRODUCT_NAME%",PRODUCT_NAME);
+					line.FindAndReplace("%FUEL%",Objects::ResourceTag(Objects::Resource::Fuel));
+					line.FindAndReplace("%MINERALS%",Objects::ResourceTag(Objects::Resource::Minerals));
+					line.FindAndReplace("%URANIUM%",Objects::ResourceTag(Objects::Resource::Uranium));
+					line.FindAndReplace("%ENERGY%",Objects::ResourceTag(Objects::Resource::Energy));
 					
 				}
 			}
@@ -451,25 +502,7 @@ namespace Tutorial
 
 		FileSystem::CreateDirectory("config");
 
-//		#ifndef _DEBUG
-		if (Detail::memory.Open(RuntimeConfig::ConfigFile("tutorialMemory.txt")))
-		{
-			String line;
-			while (Detail::memory >> line)
-			{
-				Detail::Message*msg = Detail::messages.QueryPointer(line);
-				if (msg)
-					msg->shown = true;
-				elif (line == "tutorialGame")
-					Detail::tutorialGameShown = true;
-			}
-		
-			Detail::memory.Close();
-			Detail::memory.Append(RuntimeConfig::ConfigFile("tutorialMemory.txt"));
-		}
-		else
-	//	#endif
-			Detail::memory.Create(RuntimeConfig::ConfigFile("tutorialMemory.txt"));
+		Detail::InitMemoryFile();
 	
 
 		GlobalEvents::frameBegin << []()
@@ -491,17 +524,19 @@ namespace Tutorial
 			}
 		};
 
-
-
-		Interactive::Create();
-		if (Detail::RegisterMemory(Detail::tutorialGameShown,"tutorialGame"))
+		if (!RuntimeConfig::aiMode)
 		{
-			Dialog::Confirm("Welcome to Hexaverse. Would you like to start a tutorial game server to learn the game's basics?",[]()
+			Interactive::Create();
+			if (Detail::RegisterMemory(Detail::tutorialGameShown,"tutorialGame"))
 			{
-				ServerProcess::StartTutorialServer();
-			},
-			[](){return Dialog::CheckResult::OkayContinue;});
+				Dialog::Confirm("Welcome to Hexaverse. Would you like to start a tutorial game server to learn the game's basics?",[]()
+				{
+					ServerProcess::StartTutorialServer();
+				},
+				[](){return Dialog::CheckResult::OkayContinue;});
+			}
 		}
+
 	}
 
 	void	SignalStart()

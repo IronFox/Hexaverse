@@ -19,7 +19,10 @@ namespace FileIO
 	extern RuntimeConfig::RoundNumber	lastSaveRound /*= 0*/;
 	static const PathString	savFileExtension = "hsf";	//hexaverse save file
 
-
+	/**
+	Set true to automatically save the game once the next evolution is done, and animation mode is started
+	*/
+	extern bool		postEvolutionAutoSave;
 
 	void			Compare(Riff::File&a, Riff::File&b, Ctr::Buffer<Riff::TID>&idStack, const String&indent="");
 
@@ -33,7 +36,7 @@ namespace FileIO
 	*/
 	void			WriteToListChunk(World::Data&inData, Riff::Chunk&outChunk);
 	void			ReadFromListChunk(const Riff::Chunk&, World::Data&);
-	void			Save(const PathString&name);
+	void			Save(const PathString&name, RuntimeConfig::Phase savePhase);
 	void			Load(const PathString&name);
 	bool			CanSaveRightNow();
 	bool			IsValidSavePhase(RuntimeConfig::Phase p);

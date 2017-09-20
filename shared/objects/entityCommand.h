@@ -11,7 +11,6 @@ namespace Objects
 
 	namespace Command
 	{
-		using namespace DeltaWorks::Math;
 
 		class Base;
 		class Container;

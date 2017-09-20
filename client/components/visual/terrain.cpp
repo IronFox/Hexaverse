@@ -36,8 +36,12 @@ namespace VisualTerrain
 	namespace DX11 = Engine::DX11;
 	using namespace Grid;
 
-	Box<>		unitSphereFamilyBoundingBox[BaseGrid::NumFamilies];
-	Box<>		planetFamilyBoundingBox[BaseGrid::NumFamilies];
+
+	OrbitGrid	visibleSubOrbitGrid;
+
+
+	M::Box<>	unitSphereFamilyBoundingBox[BaseGrid::NumFamilies];
+	M::Box<>	planetFamilyBoundingBox[BaseGrid::NumFamilies];
 
 
 
@@ -74,7 +78,7 @@ namespace VisualTerrain
 	
 	void	UpdatePlanetRenderingParameters(float radius)	//more to come
 	{
-		TMatrix4<> matrix = Matrix<>::eye4;
+		M::TMatrix4<> matrix = M::Matrix<>::eye4;
 		matrix.x.xyz *= radius;
 		matrix.y.xyz *= radius;
 		matrix.z.xyz *= radius;
@@ -82,9 +86,9 @@ namespace VisualTerrain
 		display.SetObjectMatrix(matrix);
 	}
 
-	static void	SetOrientation(TMatrix4<>&m, const float3&axis, double t, const float3&seedAxis, double seedRot)
+	static void	SetOrientation(M::TMatrix4<>&m, const float3&axis, double t, const float3&seedAxis, double seedRot)
 	{
-		TMatrix3<> sys1,sys2,sys;
+		M::TMatrix3<> sys1,sys2,sys;
 		Mat::BuildRotationMatrix(t*1.5,axis,sys1);
 		Mat::BuildRotationMatrix(seedRot,seedAxis,sys2);
 		Mat::Mult(sys1,sys2,sys);
@@ -108,7 +112,7 @@ namespace VisualTerrain
 	}
 
 	
-	static BYTE GetHeightMapHeight(const SimplexNoise&n, TVec3<>&p)
+	static BYTE GetHeightMapHeight(const SimplexNoise&n, M::TVec3<>&p)
 	{
 		Vec::normalize(p);
 		Vec::mult(p,2.f);
@@ -126,7 +130,7 @@ namespace VisualTerrain
 		result.SetSize(128,128,1);
 		Concurrency::parallel_for(index_t(0),count_t(result.GetWidth()*result.GetHeight()),[&result,&n,origin,dx,dy](index_t i)
 		{
-			TVec3<> p;
+			M::TVec3<> p;
 			index_t x = i/result.GetHeight();
 			index_t y = i%result.GetHeight();
 			{
@@ -196,8 +200,8 @@ namespace VisualTerrain
 		Image img(64, 1, 4);
 		for (UINT32 x = 0; x < img.GetWidth(); x++)
 		{
-			float a = smoothstep(0.9, 0.95, float(x) / float(img.GetWidth() - 1));
-			float b = smoothstep(0.925, 0.95, float(x) / float(img.GetWidth() - 1));
+			float a = M::SmoothStep(0.9, 0.95, float(x) / float(img.GetWidth() - 1));
+			float b = M::SmoothStep(0.925, 0.95, float(x) / float(img.GetWidth() - 1));
 			BYTE*pixel = img.get(x, 0);
 			pixel[0] = (BYTE)(180 * b);
 			pixel[1] = (BYTE)(200 * b);
@@ -207,7 +211,7 @@ namespace VisualTerrain
 
 
 		Instruction::lineTex.Load(img, true);
-		//blockConfig.Create(TMatrix4<>());
+		//blockConfig.Create(M::TMatrix4<>());
 
 		{
 			DX11::Shader::Binding bindings[] =
@@ -235,13 +239,13 @@ namespace VisualTerrain
 
 
 		for (index_t i = 0; i < ARRAYSIZE(unitSphereFamilyBoundingBox); i++)
-			unitSphereFamilyBoundingBox[i] = planetFamilyBoundingBox[i] =  Box<>::Invalid();
+			unitSphereFamilyBoundingBox[i] = planetFamilyBoundingBox[i] =  M::Box<>::Invalid();
 
 		float r0 = ToRadius(-CellStack::HalfRange);
 		float r1 = ToRadius(CellStack::HalfRange);
 		foreach (Grid::high.cells,c)
 		{
-			Box<>&box = planetFamilyBoundingBox[Grid::high.grid.GetCell(c - Grid::high.cells.pointer()).family];
+			M::Box<>&box = planetFamilyBoundingBox[Grid::high.grid.GetCell(c - Grid::high.cells.pointer()).family];
 			box.Include(c->centerVertex.xyz * r0);
 			box.Include(c->centerVertex.xyz * r1);
 			for (int i = 0; i < c->numCorners; i++)
@@ -252,7 +256,7 @@ namespace VisualTerrain
 		}
 		foreach (Grid::high.cells,c)
 		{
-			Box<>&box = unitSphereFamilyBoundingBox[Grid::high.grid.GetCell(c - Grid::high.cells.pointer()).family];
+			M::Box<>&box = unitSphereFamilyBoundingBox[Grid::high.grid.GetCell(c - Grid::high.cells.pointer()).family];
 			box.Include(c->centerVertex.xyz);
 			for (int i = 0; i < c->numCorners; i++)
 			{
@@ -280,8 +284,8 @@ namespace VisualTerrain
 		Instruction::lowGridInstruction.shader = Instruction::gridShader;
 		{
 			Engine::VertexBinding	binding;
-			binding.vertex.set(0, 4);
-			binding.normal.unset();
+			binding.vertex.Set(0, 4);
+			binding.normal.Unset();
 			binding.floats_per_vertex = 4;
 			Instruction::lowGridInstruction.binding = binding;
 		}
@@ -332,9 +336,9 @@ namespace VisualTerrain
 
 		{
 			//Engine::VertexBinding binding;
-			//binding.vertex.set(0, 4);
-			//binding.normal.set(4, 4);
-			//binding.color.set(8, 4);
+			//binding.vertex.Set(0, 4);
+			//binding.normal.Set(4, 4);
+			//binding.color.Set(8, 4);
 			//binding.floats_per_vertex = 12;
 			Instruction::terrainBase.binding.Append("POSITION",0,DXGI_FORMAT_R32G32B32A32_FLOAT);
 			Instruction::terrainBase.binding.Append("NORMAL",0,DXGI_FORMAT_R8G8B8A8_SNORM);
@@ -357,9 +361,9 @@ namespace VisualTerrain
 
 		{
 			Engine::VertexBinding binding;
-			binding.vertex.set(0, 4);
-			binding.normal.set(4, 4);
-			binding.color.set(8,1);
+			binding.vertex.Set(0, 4);
+			binding.normal.Set(4, 4);
+			binding.color.Set(8,1);
 			binding.floats_per_vertex = 9;
 
 			Instruction::orbitGridBase.binding = binding;
@@ -379,9 +383,9 @@ namespace VisualTerrain
 			float		light;	//water derives color from shader variable
 				*/
 				Engine::VertexBinding binding;
-				binding.vertex.set(0, 4);
-				binding.normal.set(4, 3);
-				binding.color.set(7, 1);
+				binding.vertex.Set(0, 4);
+				binding.normal.Set(4, 3);
+				binding.color.Set(7, 1);
 				binding.floats_per_vertex = 8;
 				base.binding = binding;
 				base.UpdateLayout();
@@ -398,9 +402,9 @@ namespace VisualTerrain
 		}
 		{
 			Engine::VertexBinding binding;
-			binding.vertex.set(0, 3);
-			binding.normal.unset();
-			binding.color.set(3, 1);
+			binding.vertex.Set(0, 3);
+			binding.normal.Unset();
+			binding.color.Set(3, 1);
 			binding.floats_per_vertex = 4;
 			{
 				DX11::BaseInstructionBlock&base = Instruction::overlayBase;
@@ -423,9 +427,9 @@ namespace VisualTerrain
 			base.shader.LoadFromFile("shaders/gridResourceVisualization.hlsl", "vsMain", "psMain"/*, bindings, ARRAYSIZE(bindings)*/);
 			{
 				Engine::VertexBinding binding;
-				binding.vertex.set(0, 4);
-				binding.normal.set(4, 4);
-				binding.color.set(8, 4);
+				binding.vertex.Set(0, 4);
+				binding.normal.Set(4, 4);
+				binding.color.Set(8, 4);
 				binding.floats_per_vertex = 12;
 				base.binding = binding;
 				base.UpdateLayout();
@@ -505,8 +509,8 @@ namespace VisualTerrain
 	{
 		struct TBounds
 		{
-			Box<>						boundingBox;
-			Sphere<>					boundingSphere;
+			M::Box<>						boundingBox;
+			M::Sphere<>					boundingSphere;
 
 		};
 
@@ -520,7 +524,7 @@ namespace VisualTerrain
 				TTerrainHull			terrain;	//!< high-resolution solid terrain, no transparency, shaded
 				TOverlayHull			overlay;	//!< high-resolution overhanging terrain overlay, transparent
 				TWaterHull				water;		//!< high-resolution overhanging terrain water, transparent, shaded
-				TResourceHull			resources;	//!< low-resolution resource visualization. Similar to @a overlay, but uses different shader
+				TResourceHull			resources;	//!< low-resolution resource visualization. M::Similar to @a overlay, but uses different shader
 			#endif 
 			bool						outdated,resourceOutdated;
 
@@ -629,7 +633,7 @@ namespace VisualTerrain
 		CompileSolidTerrain(stacks, dat.terrain, dat.overlay, offset, members, clipHeight);
 		CompileWater(stacks, dat.water, offset, members, clipHeight);
 
-		Box<> box = Box<>::Invalid();
+		M::Box<> box = M::Box<>::Invalid();
 
 		foreach(dat.terrain.vertices, vtx)
 			box.Include(vtx->vertex.xyz);
@@ -703,7 +707,7 @@ namespace VisualTerrain
 		dat.resources.Clear();
 		CompileResources(dat.resources,  vis,grid.GetFamilyOffset(family), grid.CountFamilyMembers(family), clipHeight, resources, numResources);
 
-		Box<> box = Box<>::Invalid();
+		M::Box<> box = M::Box<>::Invalid();
 
 		foreach(dat.resources.vertices, vtx)
 			box.Include(vtx->vertex.xyz);
@@ -765,7 +769,7 @@ namespace VisualTerrain
 
 	//void RenderBlock(index_t cellID, float h0, float h1, const float4&color)
 	//{
-	//	TMatrix4<> config;
+	//	M::TMatrix4<> config;
 	//	memset(&config, 0, sizeof(config));
 	//	config.x.x = h0;
 	//	config.x.y = h1;
@@ -776,7 +780,7 @@ namespace VisualTerrain
 	//}
 
 	static const count_t HullTestBatch = 16;
-	bool	TestHullIntersection(const TVec3<>&b, const TVec3<>&d, float&distance, TVec3<>&outNormal, bool includeWater)
+	bool	TestHullIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float&distance, M::TVec3<>&outNormal, bool includeWater)
 	{
 		bool rs = false;
 		Sys::SpinLock lock;
@@ -796,12 +800,12 @@ namespace VisualTerrain
 					{
 						float dist = distance;
 						bool any = false;
-						TVec3<> normal;
+						M::TVec3<> normal;
 						for (index_t i = _i; i < _i + HullTestBatch*3 && i < dat.water.indices.Count(); i+=3)
 						{
 							if (Vec::dot(dat.water.vertices[indices[i]].normal,d) > 0.f)
 								continue;
-							if (Obj::detectOpticalIntersection(
+							if (M::Obj::detectOpticalIntersection(
 								dat.water.vertices[indices[i]].vertex.xyz,
 								dat.water.vertices[indices[i + 1]].vertex.xyz,
 								dat.water.vertices[indices[i + 2]].vertex.xyz,
@@ -834,12 +838,12 @@ namespace VisualTerrain
 					{
 						float dist = distance;
 						bool any = false;
-						TVec3<> normal;
+						M::TVec3<> normal;
 						for (index_t i = _i; i < _i + HullTestBatch*3 && i < dat.terrain.indices.Count(); i+=3)
 						{
 							if (Vec::dot(dat.terrain.vertices[indices[i]].normal_structure.xyz,d) > 0.f)
 								continue;
-							if (Obj::detectOpticalIntersection(
+							if (M::Obj::detectOpticalIntersection(
 								dat.terrain.vertices[indices[i]].vertex.xyz,
 								dat.terrain.vertices[indices[i + 1]].vertex.xyz,
 								dat.terrain.vertices[indices[i + 2]].vertex.xyz,
@@ -869,7 +873,7 @@ namespace VisualTerrain
 		return rs;
 	}
 
-	index_t	TestLowGridIntersection(TVec3<> b, TVec3<> d, float radius, float&distance)
+	index_t	TestLowGridIntersection(M::TVec3<> b, M::TVec3<> d, float radius, float&distance)
 	{
 		Vec::div(b,radius);
 		Vec::div(d,radius);
@@ -892,7 +896,7 @@ namespace VisualTerrain
 					const auto&c = low.cells[i];
 					for (int j = 0; j < c.numCorners; j++)
 					{
-						if (Obj::detectOpticalIntersection(c.centerVertex.xyz, c.cornerVertex[j].xyz,
+						if (M::Obj::detectOpticalIntersection(c.centerVertex.xyz, c.cornerVertex[j].xyz,
 							c.cornerVertex[(j + 1) % c.numCorners].xyz, b, d, distance))
 							rs = i;
 					}
@@ -906,7 +910,7 @@ namespace VisualTerrain
 			const auto&c = cells[i];
 			for (int j = 0; j < c.numCorners; j++)
 			{
-				if (Obj::detectOpticalIntersection(c.centerVertex.xyz, c.cornerVertex[j].xyz,
+				if (M::Obj::detectOpticalIntersection(c.centerVertex.xyz, c.cornerVertex[j].xyz,
 					c.cornerVertex[(j + 1) % c.numCorners].xyz, b, d, distance))
 					rs = i;
 			}
@@ -917,7 +921,7 @@ namespace VisualTerrain
 
 	void RenderLowGrid(float radius)
 	{
-		TMatrix4<> matrix = Matrix<>::eye4;
+		M::TMatrix4<> matrix = M::Matrix<>::eye4;
 		matrix.x.xyz *= radius;
 		matrix.y.xyz *= radius;
 		matrix.z.xyz *= radius;
@@ -1014,14 +1018,14 @@ namespace VisualTerrain
 
 	
 
-	void		SetSphereDisplay(const TVec3<>&center, float radius, const float4&color)
+	void		SetSphereDisplay(const M::TVec3<>&center, float radius, const float4&color)
 	{
 		Instruction::displayMode = Instruction::SphereColored;
 		Instruction::SphereDef.Update(float4(center,radius));
 		Instruction::SphereColor.Update(color);
 	}
 
-	void		SetParaboloidDisplay(const TVec3<>&direction, float height, float flatRadius, const float4&_color)
+	void		SetParaboloidDisplay(const M::TVec3<>&direction, float height, float flatRadius, const float4&_color)
 	{
 		Instruction::displayMode = Instruction::ParaboloidColored;
 		Instruction::ParaboloidDirection_Height.Update(float4(direction,height));
@@ -1089,37 +1093,94 @@ namespace VisualTerrain
 	}
 
 
+	void		OrbitGrid::ChangeSensory(const Grid::HCellIdI&center, float radius, signed char change)
+	{
+		UINT32 at = Grid::low.Locate(Grid::ToWorld(center));
+		ChangeSensory(Grid::LCellIdI(at,center.height),radius,change);
+	}
+
+	void		OrbitGrid::ChangeSensory(const M::TVec3<>&worldCenter, float radius, signed char change)
+	{
+		Timer::Time t0 = timer.Now();
+		LogEvent(EventSignificance::Debug,nullptr,"Processing orbital sensor change around center "+ToString(worldCenter)+", radius="+String(radius)+", change="+String(change));
+
+		static Grid::LowSetup::TVolumeDescriptor vol;
+		static Grid::LowSetup::TVolumeDescriptor::Operator op;
+		vol.Clear();
+		op.stacksLeft << Grid::low.Locate(worldCenter);
+		const float r2 = M::Sqr(radius);
+		UINT32	next;
+		while (op.stacksLeft >> next)
+		{
+			if (op.stackVisited[next])
+				continue;
+			const M::TVec3<> localCenter = low.cells[next].centerVertex.xyz * orbit;
+			float dist2 = Vec::quadraticDistance(localCenter,worldCenter);
+			if (dist2 > r2)
+				continue;
+
+			const auto&n = Grid::low.grid.GetCell(next).neighborhood;
+
+			for (BYTE k = 0; k < n.numNeighbors; k++)
+				op.stacksLeft << n.neighborID[k];
+
+			op.stackVisited[next] = true;
+			vol.coverage.Append().stackID = next;
+		}
+		op.ResetVisited(vol);
+
+
+		foreach (vol.coverage,v)
+		{
+			cells[v->stackID].visible += change;
+			DBG_ASSERT_GREATER_OR_EQUAL__(cells[v->stackID].visible,0);
+		}
+		if (vol.coverage.IsNotEmpty())
+			valid = false;
+		LogEvent(EventSignificance::PerformanceMeasurement,nullptr,"Orbital sensory change processed in "+String(timer.GetSecondsSince(t0))+". Used orbit was "+String(orbit));
+	}
+
+	index_t		OrbitGrid::TestIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float&distance)	const
+	{
+		if (!M::Obj::detectOpticalSphereIntersection(M::Vector3<>::zero,orbit,b,d,distance))
+			return InvalidIndex;
+		M::TVec3<> p;
+		Vec::mad(b,d,distance,p);
+		return Grid::low.Locate(p);
+	}
 
 	
 	void		OrbitGrid::ChangeSensory(const LCellIdI&center, float radius, signed char change)
 	{
-		Timer::Time t0 = timer.Now();
-		LogEvent(EventSignificance::Debug,nullptr,"Processing orbital sensor change around center "+center.ToString()+", radius="+String(radius)+", change="+String(change));
+		ChangeSensory(Grid::ToWorld(center),radius,change);
 
-		Math::Box<> test;
-		const TVec3<> worldCenter = ToWorld(center);
-		test.SetCenter(worldCenter,radius);
-		float r2 = radius*radius;
-		Concurrency::parallel_for(UINT32(0),LowSetup::GridType::CellCount,[this,worldCenter,r2,change](UINT32 i)
-		{
-			//bool anyChanged = false;
-			bool anyVisible = false;
+		//Timer::Time t0 = timer.Now();
+		//LogEvent(EventSignificance::Debug,nullptr,"Processing orbital sensor change around center "+ToString(center)+", radius="+String(radius)+", change="+String(change));
 
-			bool wasIn = false;
-			TVec3<> localCenter = low.cells[i].centerVertex.xyz * orbit;
-			float dist2 = Vec::quadraticDistance(localCenter,worldCenter);
-			if (dist2 <= r2)
-			{
-				cells[i].visible += change;
-				DBG_ASSERT_GREATER_OR_EQUAL__(cells[i].visible,0);
+		//M::Box<> test;
+		//const M::TVec3<> worldCenter = ToWorld(center);
+		//test.SetCenter(worldCenter,radius);
+		//float r2 = radius*radius;
+		//Concurrency::parallel_for(UINT32(0),LowSetup::GridType::CellCount,[this,worldCenter,r2,change](UINT32 i)
+		//{
+		//	//bool anyChanged = false;
+		//	bool anyVisible = false;
 
-				//DBG_ASSERT_LESS_OR_EQUAL__(cells[i].visible,1);	//enable to debug in scenarios where sensors do not overlap
-				valid = false;
-			}
-		});
+		//	bool wasIn = false;
+		//	M::TVec3<> localCenter = low.cells[i].centerVertex.xyz * orbit;
+		//	float dist2 = Vec::quadraticDistance(localCenter,worldCenter);
+		//	if (dist2 <= r2)
+		//	{
+		//		cells[i].visible += change;
+		//		DBG_ASSERT_GREATER_OR_EQUAL__(cells[i].visible,0);
 
-		LogEvent(EventSignificance::PerformanceMeasurement,nullptr,"Orbital sensory change processed in "+String(timer.GetSecondsSince(t0))+". Used orbit was "+String(orbit));
-		//ShowMessage(timer.GetSecondsSince(t0));
+		//		//DBG_ASSERT_LESS_OR_EQUAL__(cells[i].visible,1);	//enable to debug in scenarios where sensors do not overlap
+		//		valid = false;
+		//	}
+		//});
+
+		//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,"Orbital sensory change processed in "+String(timer.GetSecondsSince(t0))+". Used orbit was "+String(orbit));
+		////ShowMessage(timer.GetSecondsSince(t0));
 	}
 
 

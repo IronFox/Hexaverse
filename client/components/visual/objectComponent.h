@@ -18,15 +18,15 @@ namespace Objects
 	*/
 	class ParaboloidBuffer : public ClientAttachment
 	{
-		TVec3<> lastCenter;
+		M::TVec3<> lastCenter;
 		float lastRange = 0.f;
 		float lastExp = 0.f;
-		TMatrix4<> matrix;
+		M::TMatrix4<> matrix;
 		DX11::InstructionBlock32	attackInstruction,extendedInstruction;
 		static DX11::IBO32			attackIBO;
 		static DX11::BaseInstructionBlock	paraboloidShader;
 
-		static void			MakeHull(DX11::InstructionBlock32&target, const TMatrix4<>&matrix, float flatRange, float explosionRadius, const TVec3<>&center);
+		static void			MakeHull(DX11::InstructionBlock32&target, const M::TMatrix4<>&matrix, float flatRange, float explosionRadius, const M::TVec3<>&center);
 
 	public:
 		void						Render(const Grid::LCellIdI&cell, float zOffset, float flatRange, float explosionRadius, const float4&color, bool extended);
@@ -109,7 +109,7 @@ namespace Objects
 	class TowerAttackVisualization : public ClientAttachment
 	{
 	public:
-		TMatrix4<>					blastSystem;
+		M::TMatrix4<>					blastSystem;
 		DX11::InstructionBlock32	blastVisualization,
 									trajectoryVisualization;
 
@@ -127,7 +127,7 @@ namespace Objects
 		struct Shape
 		{
 			DX11::InstructionBlock32	instruction;
-			TMatrix4<>					system;
+			M::TMatrix4<>					system;
 			bool						depthTest,		//Indicates that the shape should depth-test against the terrain and other complex shapes
 										preRenderDepth = true,	//Effective only if @a depthTest is true. Indicates that this is a complex shape and should be depth-only pre-rendered
 										flareDisplay = false,	//Indicates that the shape is rendered using an add-blend function, and using a white color when not selected. Otherwise black is used, using regular alpha blending
@@ -137,7 +137,7 @@ namespace Objects
 		Buffer0<Shape>					localizableShapes;
 		bool							wasJob=false;
 
-		void							SetLocalizableShape(ConstName structureIdentifier, const Grid::LCellIdI&location, const OwnerParameter&);
+		void							SetLocalizableShape(EntityType structureIdentifier, const Grid::LCellIdI&location, const OwnerParameter&);
 		static void						Recompile(const MobileEntity&e, MobileEntity::Task&t,const Grid::LCellIdI&pointOfOrigin);
 		void							RecompilePath(const MobileEntity::Task&t, int stepsPerRound, float structureSize=vehicleScale);
 

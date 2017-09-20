@@ -1,4 +1,7 @@
-#include <global_root.h>
+#include <scriptCache.h>
+#include <grid/resources.h>
+#include <io/string_file.h>
+
 #include "network.h"
 #include "../version.h"
 #include "animation.h"
@@ -8,17 +11,16 @@
 #include "visual/ui.h"
 #include "visual/tutorial.h"
 #include "visual/dialog.h"
+#include "visual/menu.h"
+#include "visual/guiStatistics.h"
 #include "ai.h"
 #include "clientRuntimeConfig.h"
 #include "timelapse.h"
 #include "configurationMode.h"
-#include <scriptCache.h>
 #include "gridControl.h"
 #include "visual/objectChoices.h"
 #include "visual/terrain.h"
-#include <grid/resources.h>
 #include "clientEvents.h"
-#include <io/string_file.h>
 
 
 //#define DEBUG_SERVER_LIST	//enable to generate very long artificial server list
@@ -56,36 +58,87 @@ namespace Network
 
 
 	Protocol::GameProgress	gameProgress;
+	TUniqueID				winningFactionID = TUniqueID::Empty();
+
 
 	float			animationTimeFactor = 1,
 					roundTimer = 0;
 	Timer::Time		phaseStarted;
 	bool			newRoundRequested = false;
 
+	GenericHashSet<TUniqueID>	visitedWorldMap;
 
 
+	void RegisterVisited(const TUniqueID&worldID)
+	{
+		if (visitedWorldMap.SetNew(worldID))
+			SaveHosts();
+	}
+
+	bool DidVisit(const TUniqueID&worldID)
+	{
+		return visitedWorldMap.IsSet(worldID);
+	}
 	
 	void LoadHosts()
 	{
-		StringFile hosts;
-		if (hosts.Open(RuntimeConfig::ConfigFile("hosts.txt")))
+		try
 		{
+			StringFile visitedWorlds;
+			visitedWorlds.Open(RuntimeConfig::ConfigFile("visitedWorlds.txt"));
+			String visited;
+			while (visitedWorlds >> visited)
+			{
+				TUniqueID id;
+				if (id.Decode(visited))
+					visitedWorldMap.Set(id);
+			}
+		}
+		catch (...)
+		{}
+
+		try
+		{
+			StringFile hosts;
+			hosts.Open(RuntimeConfig::ConfigFile("hosts.txt"));
 			String host;
 			while (hosts >> host)
 				ServerDiscovery::RegisterNewHost(Network::ServerAddress(host),false, false);
 		}
+		catch (...)
+		{}
 	}
 
 	void	SaveHosts()
 	{
-		StringFile hosts;
-		if (hosts.Create(RuntimeConfig::ConfigFile("hosts.txt")))
+		try
 		{
+			StringFile visited;
+			visited.Create(RuntimeConfig::ConfigFile("visitedWorlds.txt"));
+			static Array<TUniqueID>	 worlds;
+			visitedWorldMap.ExportKeys(worlds);
+			foreach (worlds,world)
+				visited << world->ToFullString() << nl;
+			visited.Close();
+		}
+		catch (const std::exception&ex)
+		{
+			LogException(nullptr,ex);
+		}
+		try
+		{
+			StringFile hosts;
+			hosts.Create(RuntimeConfig::ConfigFile("hosts.txt"));
+		
 			static Buffer0<Network::ServerAddress>	 urls;
 			ServerDiscovery::ListNonAutoAttempts(urls);
 			foreach (urls,url)
 				hosts << url->host << ':' << url->basePort << nl;
 			hosts.Close();
+		}
+		catch (const std::exception&ex)
+		{
+			LogException(nullptr,ex);
 		}
 	}
 
@@ -198,7 +251,7 @@ namespace Network
 			}
 		}
 
-		LogEvent(EventClass::Preset::common,nullptr,"World access map imported. "+String(accessMap.count())+" entry/ies loaded.");
+		LogEvent(EventClass::Preset::common,nullptr,"World access map imported. "+String(accessMap.Count())+" entry/ies loaded.");
 		fclose(f);
 	}
 
@@ -416,6 +469,7 @@ namespace Network
 		roundTimer = -1;
 
 		GlobalEvents::FlushObjects();
+		Network::winningFactionID = TUniqueID::Empty();
 		Network::gameProgress.gameOver = false;
 		Network::gameProgress.gameWon = false;
 		Network::gameProgress.status = "";
@@ -474,17 +528,19 @@ namespace Network
 			if (response.success)
 			{
 				LogEvent(EventClass::Preset::common, nullptr, "Status confirmed ('"+response.errorMessage+"')");
+				const bool configurationMode = (response.gameFlags & Protocol::GameFlag::ConfigurationMode) != 0;
+				const bool gameEndSpectatorMode = (response.gameFlags & Protocol::GameFlag::GameHasEnded) != 0;
 				#ifdef HAS_WINDOW
-					ConfigurationMode::SetActive(response.configurationMode);
+					ConfigurationMode::SetActive(configurationMode);
 				#endif
-				if (response.configurationMode)
+				if (configurationMode || gameEndSpectatorMode)
 					AttemptFactionLogin(false,Protocol::FactionType::SpectatorFaction);
 				elif (RuntimeConfig::tutorialMode)
 					AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly);
 				else
 				{
 					#ifdef HAS_WINDOW
-						GUI::Show(Dialog::loginMenu);
+						GUI::Show(Menu::login);
 					#endif
 				}
 				#ifdef HAS_WINDOW
@@ -595,7 +651,7 @@ namespace Network
 			Objects::PMobileEntity v;
 			auto m = vc.state.myMobileEntity.Get0();
 			bool place = vc.state.entityState.timestamp.rightNow && (!m || m->storedIn.Get0() == 0);
-			v = Objects::SpawnMobileEntity(Network::ResolveFaction(vc.owner),  vc.state.entityState.id,vc.state.entityState.location,vc.baseName,vc.turretName,place,Network::haveID && Network::myID == vc.owner);
+			v = Objects::SpawnMobileEntity(Network::ResolveFaction(vc.owner),  vc.state.entityState.id,vc.state.entityState.location,vc.type,place,Network::haveID && Network::myID == vc.owner);
 			if (vc.state.entityState.timestamp.rightNow)
 				LogEvent(EventSignificance::Common,v.get(),  "Placed vehicle entity outside animation");
 			bool isOwnedByMe = v->isOwnedByMe;
@@ -638,7 +694,7 @@ namespace Network
 			//		World::actual.UpdateLighting();
 			//#endif
 
-			Objects::PStructure s = Objects::SpawnStructure(Network::ResolveFaction(sc.owner),  sc.state.entityState.id,sc.state.entityState.location,sc.typeName, sc.state.entityState.timestamp.rightNow, Network::haveID && Network::myID == sc.owner);
+			Objects::PStructure s = Objects::SpawnStructure(Network::ResolveFaction(sc.owner),  sc.state.entityState.id,sc.state.entityState.location,sc.type, sc.state.entityState.timestamp.rightNow, Network::haveID && Network::myID == sc.owner);
 			ASSERT__(s);
 			if (sc.state.entityState.timestamp.rightNow)
 				LogEvent(EventSignificance::Common,s.get(),  "Placed structure entity outside animation");
@@ -710,7 +766,7 @@ namespace Network
 					{
 						float t = 0;
 						if (Objects::GetEntity(e->id))
-							Objects::Remove(e,type, t,Network::ControlEnabled());
+							Objects::Remove(e,type, t);
 						#ifdef HAS_WINDOW
 							GUI::SignalSituationChange();
 						#endif
@@ -719,7 +775,7 @@ namespace Network
 				else
 				{
 					float t = 0;
-					Objects::Remove(e,type, t,Network::ControlEnabled());
+					Objects::Remove(e,type, t);
 					#ifdef HAS_WINDOW
 						GUI::SignalSituationChange();
 					#endif
@@ -777,6 +833,7 @@ namespace Network
 			haveFaction = cr.startFactionTypes != 0;
 			if (haveFaction)
 			{
+				RegisterVisited(worldID);
 				amSpectator = cr.startFactionTypes == Protocol::FactionType::SpectatorFaction;
 				#ifdef HAS_WINDOW
 					Objects::resourceView = !amSpectator;
@@ -794,7 +851,7 @@ namespace Network
 				Network::Channels::changeMyName.SendTo(Network::client,Network::chosenNickname);
 
 				#ifdef HAS_WINDOW
-					GUI::Hide(Dialog::loginMenu);
+					GUI::Hide(Menu::login);
 					//if (ConfigurationMode::IsActive())
 					//	UI::HexGrid::Configure
 					//	GUI::Show(Dialog::configMenu);
@@ -806,7 +863,7 @@ namespace Network
 				LogEvent(EventClass::Preset::uncommon, nullptr, "Server response: Faction void.");
 				FlushFaction(true);
 				#ifdef HAS_WINDOW
-					GUI::Show(Dialog::loginMenu);
+					GUI::Show(Menu::login);
 				#endif
 			}
 
@@ -972,7 +1029,7 @@ namespace Network
 		void	CreateMarker(Protocol::Marker&marker)
 		{
 			TUniqueID	entityID = TUniqueID::Empty(), ownerID = TUniqueID::Empty();
-			ConstName	entityType[2];
+			Objects::EntityType	entityType;
 			Objects::Marker::Type type;
 
 			const Protocol::MarkerReferenceEntity*entity = marker.data.Get0();
@@ -981,8 +1038,7 @@ namespace Network
 				type = Objects::Marker::Type::Reinterpret(0);
 				entityID = entity->id;
 				ownerID = entity->owner;
-				entityType[0] = entity->type0;
-				entityType[1] = entity->type1;
+				entityType = entity->type;
 			}
 			else
 			{
@@ -992,8 +1048,7 @@ namespace Network
 					type = Objects::Marker::Type::Reinterpret(1);
 					entityID = entity->id;
 					ownerID = entity->owner;
-					entityType[0] = entity->type0;
-					entityType[1] = entity->type1;
+					entityType = entity->type;
 				}
 				else
 				{
@@ -1094,6 +1149,78 @@ namespace Network
 			
 		}
 
+
+		void	WinningFaction(TUniqueID&id)
+		{
+			winningFactionID = id;
+			#ifdef HAS_WINDOW
+				GUI::Statistics::Update();
+			#endif
+		}
+
+
+
+		namespace Statistics
+		{
+			static Objects::WFaction target;
+
+			void	BeginSequence(TUniqueID&id)
+			{
+				if (!target.expired())
+				{
+					LogEvent(EventClass::Preset::networkError,"Sequence violation. Statistics sequence on "+target.lock()->GetLogName()+" should have been ended");
+					DBG_FATAL__("Sequence violation");
+					EndSequence();
+				}
+
+				Objects::PFaction f = Objects::Faction::FindByID(id);
+
+				if (!f)
+					throw Except::Program::DataConsistencyFault(CLOCATION,"Unable to locate faction "+ToString(id));
+
+				LogEvent(EventClass::Preset::common,"Starting statistics sequence on "+f->GetLogName());
+				target = f;
+				
+				f->statistics.BeginLoading();
+			}
+
+			void	EndSequence()
+			{
+				auto f = target.lock();
+				target.reset();
+				if (f)
+				{
+					f->statistics.EndLoading(false);
+					#ifdef HAS_WINDOW
+						GUI::Statistics::Update();
+					#endif
+				}
+			}
+
+			void	Round(Objects::Statistics::Round&r)
+			{
+				auto f = target.lock();
+				if (!f)
+					throw Except::Program::DataConsistencyFault(CLOCATION,"Unable to load round statistics: Not in sequence or sequence faction has meanwhile expired");
+				f->statistics.Load(std::move(r));
+			}
+			void	FactionInteraction(Objects::Statistics::FactionInteraction&i)
+			{
+				auto f = target.lock();
+				if (!f)
+					throw Except::Program::DataConsistencyFault(CLOCATION,"Unable to load faction interaction statistics: Not in sequence or sequence faction has meanwhile expired");
+				f->statistics.Load(std::move(i));
+			}
+			void	EntityType(Objects::Statistics::EntityType&t)
+			{
+				auto f = target.lock();
+				if (!f)
+					throw Except::Program::DataConsistencyFault(CLOCATION,"Unable to load entity type statistics: Not in sequence or sequence faction has meanwhile expired");
+				f->statistics.Load(std::move(t));
+			}
+		}
+
+
 	}
 
 
@@ -1143,6 +1270,16 @@ namespace Network
 		TCP::Channel<NETA(Package::NetString<256>),0,Protocol::ChannelID::PlanetNames>				planetNames(Receiver::PlanetNames);
 
 		TCP::Channel<NET(INT32),0,Protocol::ChannelID::TutorialAt>									tutorialAt(Receiver::TutorialAt);
+		TCP::Channel<TUniqueID,0,Protocol::ChannelID::WinningFaction>								winningFaction(Receiver::WinningFaction);
+
+		namespace Statistics
+		{
+			TCP::Channel<TUniqueID, 0, Protocol::ChannelID::BeginStatisticsSequence>				beginSequence(Receiver::Statistics::BeginSequence);
+			TCP::Channel<Objects::Statistics::Round, 0, Protocol::ChannelID::RoundStatistics>		round(Receiver::Statistics::Round);
+			TCP::Channel<Objects::Statistics::EntityType, 0, Protocol::ChannelID::EntityTypeStatistics>	entityType(Receiver::Statistics::EntityType);
+			TCP::Channel<Objects::Statistics::FactionInteraction, 0, Protocol::ChannelID::FactionInteractionStatistics>	factionInteraction(Receiver::Statistics::FactionInteraction);
+		}
+
 
 		TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;
 		TCP::ObjectSender<Protocol::TouchedMarker,Protocol::ChannelID::TouchMarker>					touchMarker;
@@ -1193,7 +1330,7 @@ namespace Network
 			Channels::clientFactionRequest.SendTo(client,ready);
 
 			#ifdef HAS_WINDOW
-				GUI::Show(Dialog::loginMenu);
+				GUI::Show(Menu::login);
 			#endif
 		}
 	}
@@ -1306,7 +1443,7 @@ namespace Network
 
 				#ifdef HAS_WINDOW
 					ConfigurationMode::SetActive(false);
-					GUI::Hide(Dialog::loginMenu);
+					GUI::Hide(Menu::login);
 					Dialog::CheckServersAreShown(true);
 					GUI::SignalSituationChange();
 					Tutorial::SignalEnd();
@@ -1321,6 +1458,9 @@ namespace Network
 	{
 		switch (signal)
 		{
+			case Protocol::ChannelID::EndStatisticsSequence:
+				Receiver::Statistics::EndSequence();
+			break;
 			case Protocol::ChannelID::BeginGame:
 				#ifdef HAS_WINDOW
 					World::allowRecompilation = true;
@@ -1358,6 +1498,12 @@ namespace Network
 		DBG_FATAL__("Ignored Package");
 
 	}
+	void OnIgnoredException(const TCodeLocation&loc, const std::exception&ex)
+	{
+		LogEvent(EventClass::Preset::networkError,String(loc)+": Ignored(TCP): "+ex.what());
+		DBG_FATAL__("Ignored Exception");
+	}
+
 	void		Update();
 
 	void		Setup()
@@ -1407,17 +1553,25 @@ namespace Network
 		client.InstallChannel(Channels::planetNames);
 
 		client.InstallChannel(Channels::tutorialAt);
+		client.InstallChannel(Channels::winningFaction);
+
+		client.InstallChannel(Channels::Statistics::beginSequence);
+		client.InstallChannel(Channels::Statistics::entityType);
+		client.InstallChannel(Channels::Statistics::round);
+		client.InstallChannel(Channels::Statistics::factionInteraction);
 
 		client.OpenSignalChannel(Protocol::ChannelID::Pong,0);
 		client.OpenSignalChannel(Protocol::ChannelID::BeginGame,0);
 		client.OpenSignalChannel(Protocol::ChannelID::BeginEverything,0);
 		client.OpenSignalChannel(Protocol::ChannelID::EndEverything,0);
+		client.OpenSignalChannel(Protocol::ChannelID::EndStatisticsSequence,0);
 
 
 		client.SetAsync(false);
 		client.onEvent = OnEvent;
 		client.onSignal = OnSignal;
 		client.onIgnorePackage = OnIgnorePackage;
+		TCP::onIgnoredException = OnIgnoredException;
 
 		ASSERT__(Net::initNet());
 		if (RuntimeConfig::udpListen)
@@ -1473,11 +1627,11 @@ namespace Network
 
 	/*explicit*/			ServerAddress::ServerAddress(const String&url)
 	{
-		index_t portAt = url.find(':');
-		if (portAt)
+		index_t portAt = url.Find(':');
+		if (portAt != InvalidIndex)
 		{
-			host = url.subStringRef(0,portAt-1);
-			StringRef conv = url.subStringRef((int)portAt);
+			host = url.subStringRef(0,portAt);
+			StringRef conv = url.SubStringRef(portAt+1);
 			if (!convert(conv.pointer(),conv.length(),basePort))
 			{
 				throw Except::Program::ParameterFault(CLOCATION, "Unable to parse port component '" + String(conv) + "' of '"+url+"'");
@@ -1592,9 +1746,9 @@ namespace Network
 						s.info.gameInfo.gameConfig.gameFlags = Protocol::GameFlag::AllFactionSupport;
 						s.info.gameInfo.gameConfig.gameGoal = (BYTE)rng.get(RuntimeConfig::GameGoal::N -1);
 						s.info.gameInfo.gameConfig.worldDiscovery = (BYTE)rng.get(Grid::WorldDiscovery::N -1);
-						s.info.gameInfo.numFactionsCreated = sqr(rng.get(0,16));
+						s.info.gameInfo.numFactionsCreated = M::Sqr(rng.get(0,16));
 						s.info.gameInfo.numFactionsOnline = rng.get(s.info.gameInfo.numFactionsCreated);
-						s.info.gameInfo.roundNumber = sqr(sqr(rng.get(8)));
+						s.info.gameInfo.roundNumber = M::Sqr(M::Sqr(rng.get(8)));
 						s.info.gameInfo.worldID.Generate();
 						s.info.hostInfo.hostID = s.id;
 						s.info.hostInfo.serverBasePort = DEFAULT_SERVER_BASE_PORT;
@@ -1613,7 +1767,7 @@ namespace Network
 					if (a.hasContact && (a.hasInfo || a.protocolIncompatible))
 					{
 						index_t at;
-						if (!serverMap.query(a.lastInfo.hostInfo.hostID,at))
+						if (!serverMap.Query(a.lastInfo.hostInfo.hostID,at))
 						{
 							at = servers.Count();
 							servers.Append();
@@ -1631,7 +1785,7 @@ namespace Network
 						{
 							if (info.addresses.Last().serverInfo.gameInfo.worldID != a.lastInfo.gameInfo.worldID)
 							{
-								LogEvent(EventClass::Preset::error,"Received mismatching world IDs from host "+info.id.ToNiceString()+". Ignoring address "+a.address.ToString());
+								LogEvent(EventClass::Preset::error,"Received mismatching world IDs from host "+info.id.ToNiceString()+". Ignoring address "+ToString(a.address));
 								continue;
 							}
 						}
@@ -1760,6 +1914,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			f->roundChangeNotifications = 0;
 		};
 	if (RuntimeConfig::IsInAnyCommandPhase())
+	{
 		if (gameHasBegun)
 		{
 			if (Animation::AllDone())
@@ -1774,6 +1929,15 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 		}
 		else
 			LogEvent(EventSignificance::Debug,"Command phase. Game has NOT begun");
+	}
+	else
+		if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
+		{
+			#ifdef HAS_WINDOW
+				GUI::Statistics::Update();
+				GUI::Statistics::Show();
+			#endif
+		}
 
 	#ifdef HAS_WINDOW
 		GUI::SignalSituationChange();

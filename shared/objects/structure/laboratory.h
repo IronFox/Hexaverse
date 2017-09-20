@@ -48,7 +48,7 @@ namespace Objects
 
 		//BaseEntity overrides:
 		virtual String				GetTypeName() const override { return "Laboratory"; };
-		virtual ConstName			GetCTypeName() const override {return ConstName::Type_Laboratory;}
+		virtual EntityType			GetType() const override {return ConstName::Type_Laboratory;}
 
 
 		//WorkingStructure overrides:

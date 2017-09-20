@@ -4,6 +4,7 @@
 #include "mobileEntity.h"
 #include "turretBase.h"
 #include "../sharedContainer.h"
+#include "entityType.h"
 
 namespace Objects
 {
@@ -24,7 +25,7 @@ namespace Objects
 	{
 	private:
 		//void					RecompilePath(int stepsPerRound);
-		//bool					RecompileTrajectory(TVec3<>&impactAt, Grid::HCellIdI&impactCell);
+		//bool					RecompileTrajectory(M::TVec3<>&impactAt, Grid::HCellIdI&impactCell);
 		typedef MobileEntity	Super;
 	public:
 
@@ -127,7 +128,7 @@ namespace Objects
 
 
 		#ifdef HAS_WINDOW
-			virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override;
+			virtual bool		TestIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float & distance) const override;
 
 			virtual void		VisitAllCommands(FCommandVisitor visitor,bool force) override {Component::Turret* turret = this->turret; Component::VehicleBase* base = this->base;  base->VisitAllCommands(visitor,force); turret->VisitAllCommands(visitor,force);};
 		#endif
@@ -144,8 +145,7 @@ namespace Objects
 
 		//BaseEntity overrides:
 		virtual String			GetTypeName() const override {return GetTypeName(base,turret);}
-		virtual ConstName		GetCTypeName() const override {return ConstName::Type_Vehicle;}
-
+		virtual EntityType		GetType() const override {return EntityType(base->constName,turret->constName);}
 
 		//WorldEntity overrides:
 		virtual int				GetConstructionCost() const override {return cache.constructionCost.IsCurrent() ? cache.constructionCost.cached : cache.constructionCost.Update( GetPrice() );}

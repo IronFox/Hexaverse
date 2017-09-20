@@ -5,7 +5,6 @@
 #include <fractal/geometry.h>
 
 using namespace DeltaWorks;
-using namespace DeltaWorks::Math;
 
 #include "config.h"
 
@@ -256,7 +255,7 @@ public:
 		void	operator++(int)	{height ++ ;}
 		void	operator--(int) {height --;}
 
-		String	ToString() const {return String(stackID)+ "[h="+String(height)+"]";}
+		friend String	ToString(const CellIdI&id) {return String(id.stackID)+ "[h="+String(id.height)+"]";}
 
 		static const CellIdI	Invalid;
 
@@ -313,7 +312,7 @@ public:
 
 		static UINT32 LayerSum(UINT32 base, int delta)	{if (delta >= 0) return base + delta; ASSERT_GREATER_OR_EQUAL__(base,(UINT32)-delta); return base + delta;}
 
-		String	ToString() const {return String(stackID)+ "["+String(layer)+"]";}
+		friend String	ToString(const CellIdU&id) {return String(id.stackID)+ "["+String(id.layer)+"]";}
 
 		friend hash_t	Hash(const CellIdU&cell)
 		{
@@ -430,7 +429,7 @@ template <unsigned Exponent>
 			ASSERT_EQUAL1__(at[i], 5, i);
 
 			float3 axis = geometry.vertexField[i];
-			TMatrix3<> matrix, transpose;
+			M::TMatrix3<> matrix, transpose;
 			Mat::makeAxisSystem(axis, 2, matrix);
 			Mat::transpose(matrix, transpose);
 
@@ -937,7 +936,7 @@ template <unsigned Exponent>
 			for (BYTE j = 0; j < n.numNeighbors; j++)
 			{
 				TriangleKey key(i, n.neighborID[j], n.neighborID[(j + 1) % n.numNeighbors]);
-				if (vtxMap.query(key, id))
+				if (vtxMap.Query(key, id))
 				{
 					TCellVertex&v = vtx[id];
 					DBG_ASSERT_LESS__(v.ownerCount,3);
@@ -945,10 +944,10 @@ template <unsigned Exponent>
 				}
 				else
 				{
-					TVec3<> center;
+					M::TVec3<> center;
 					Vec::center(cellField[key.stackID[0]].center, cellField[key.stackID[1]].center, cellField[key.stackID[2]].center, center);
 					id = (UINT32)vtx.Count();
-					vtxMap.set(key, id);
+					vtxMap.Set(key, id);
 					TCellVertex&v = vtx.Append();
 					v.centerDirection = center;
 					v.ownerCount = 1;

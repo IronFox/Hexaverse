@@ -67,7 +67,7 @@ namespace ApplicationInterface
 
 	void	SignalChainReactionExplosion(const Objects::PWorldEntity&causedBy, const Grid::LCellIdI&center, float radius, int damageLevel, float atTime)
 	{
-		Game::evolver->HandleChainReactionExplosion(Evolver::TExplosion(causedBy, center, radius, damageLevel, atTime ));
+		Game::GetEvolver()->HandleChainReactionExplosion(Evolver::TExplosion(causedBy, center, radius, damageLevel, atTime ));
 	}
 
 
@@ -96,7 +96,7 @@ namespace ApplicationInterface
 			}
 		}
 
-		if (_v->IsGroundBoundVehicle() && To<Objects::Vehicle>::Cast(_v)->turret->detectsResources)
+		if (_v->IsGroundBoundVehicle() && (To<Objects::Vehicle>::Cast(_v)->turret->detectsResources))
 		{
 			Game::Network::UpdateResourceCoverage(_v->owner, _v->location,_v->GetScanningRange(),timestamp);
 		}
@@ -145,7 +145,7 @@ namespace ApplicationInterface
 			return;
 		}
 		Network::PClient client;
-		if (!Network::playerMap.query(target,client))
+		if (!Network::playerMap.Query(target,client))
 			return;
 		//if (!client->ShowNew(e))
 			//return;	//already knows this
@@ -247,7 +247,7 @@ namespace ApplicationInterface
 			return;
 		}
 		Network::PClient client;
-		if (!Network::playerMap.query(target,client))
+		if (!Network::playerMap.Query(target,client))
 			return;
 		Protocol::DestroyEntity de;
 		de.id = e->id;
@@ -297,7 +297,7 @@ namespace ApplicationInterface
 		}
 	}
 
-	void	SignalTurretRotation(const Objects::PWorldEntity&e, const TVec3<>&toWorld, float rotationTime)
+	void	SignalTurretRotation(const Objects::PWorldEntity&e, const M::TVec3<>&toWorld, float rotationTime)
 	{
 		if (!e)
 		{
@@ -320,7 +320,6 @@ namespace ApplicationInterface
 	}
 
 
-
 	void	SignalNexusControlChange(const Objects::PFaction&f)
 	{
 		if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
@@ -328,15 +327,7 @@ namespace ApplicationInterface
 		if (RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::ConquerNexus)
 		{
 			if (f->nexusControl >= Game::Config::GetTargetNexusCount())
-			{
-				Game::Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
-				Game::winner = f;
-
-				foreach (Network::activePlayersAndSpectators,p)
-				{
-					(*p)->SendProgressUpdate("");
-				}
-			}
+				Game::DeclareWinner(f);
 			else
 			{
 				Network::PClient client;
@@ -386,7 +377,7 @@ namespace ApplicationInterface
 	}
 
 
-	void	SignalExplosion(const TAttack&attack, const TVec3<>&center,float explosionRadius,bool isEMP, bool isDoomsday, float atTime)
+	void	SignalExplosion(const TAttack&attack, const M::TVec3<>&center,float explosionRadius,bool isEMP, bool isDoomsday, float atTime)
 	{
 		Protocol::Explosion explosion;
 		explosion.center = center;
@@ -406,13 +397,13 @@ namespace ApplicationInterface
 		{
 			//just set all. I'm lazy, and these are rare
 			foreach (Objects::Faction::all, f)
-				canSee.Append(f->lock());
+				canSee.Append(*f);
 			canSee.Append(Objects::Faction::nexus);
 		}
 		else
 		{
 			static Grid::HighSetup::TVolumeDescriptor volume;
-			Sphere<> explosionSphere(center,explosionRadius);
+			M::Sphere<> explosionSphere(center,explosionRadius);
 			Grid::high.GenerateVolume(explosionSphere,volume);
 
 			Objects::ForeachFaction([explosionSphere,&atTime](const Objects::PFaction&f)
@@ -458,7 +449,7 @@ namespace ApplicationInterface
 			roughAttack.turretRange = base->GetFlatAttackRange();
 			roughAttack.explosionRadius = base->turret->GetExplosionRadius(attack.attackFrom->owner);
 
-			const TVec3<>& traceToWorld = attack.traceTo;
+			const M::TVec3<>& traceToWorld = attack.traceTo;
 
 			roughAttack.sourcePosition = attack.attackFrom->GetWorldPosition() + Grid::low.cells[attack.attackFrom->location.stackID].centerVertex.xyz * zOffset;
 			//attack.timestamp.atTime = v->timeAt;
@@ -510,6 +501,19 @@ void MyFatal(const FatalDescriptor&descriptor)
 	DisplayMessage(PRODUCT_NAME" Server Error",message,false);
 	//ErrMessage("Hexaverse Server: "+message);
 	std::cerr << message << std::endl;
+
+	try
+	{
+		PathString out = RuntimeConfig::ConfigFile("saves/crash.hsf");
+		Logging::WriteEvent(EventClass::Preset::uncommon,"Trying to save game to "+String(out),nullptr,nullptr,Objects::OwnerParameter());
+		FileIO::Save(out,RuntimeConfig::phase);
+		Logging::WriteEvent(EventClass::Preset::uncommon,"Success",nullptr,nullptr,Objects::OwnerParameter());
+	}
+	catch (...)
+	{
+		Logging::WriteEvent(EventClass::Preset::error,"Failed to save to file",nullptr,nullptr,Objects::OwnerParameter());
+	}
+
 	#ifdef _DEBUG
 		__debugbreak();
 		std::abort();
@@ -529,7 +533,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 template <typename EnumerationType>
 EnumerationType	GetType(Config::Context*context, const String&path)
 {
-	String value = context->GetString(path).trim();
+	String value = context->GetString(path).Trim();
 	if (value.IsEmpty())
 	{
 		FATAL__("Trying to extract grid content type from '"+context->name+"/"+path+"' but item is not defined");
@@ -588,7 +592,7 @@ BOOL WINAPI MyHandlerRoutine(_In_  DWORD dwCtrlType)
 		case CTRL_C_EVENT:
 		case CTRL_CLOSE_EVENT:
 		case CTRL_SHUTDOWN_EVENT:
-			LogEvent(EventSignificance::Uncommon,"Received close event. Terminating");
+			LogEvent(EventSignificance::Uncommon,"Received close event #"+String(dwCtrlType)+". Terminating");
 			TerminateNow(false);
 		return TRUE;
 	
@@ -720,7 +724,7 @@ namespace ParameterConfig
 				else
 				{
 					PathString path = arg;
-					if (path.endsWithCaseIgnore(FileIO::savFileExtension) && FileSystem::IsFile(arg))
+					if (path.EndsWithIgnoreCase(FileIO::savFileExtension) && FileSystem::IsFile(arg))
 					{
 						mode = ExpectFilename;
 						Process(arg);
@@ -853,7 +857,7 @@ int main( int argc, const char* argv[])
 		Boot();
 
 		Evolver::Create();
-		Game::evolver = Evolver::GetDefault();
+		Game::SetDefaultEvolver();
 		Journal::Create();
 
 		World::worldID.Generate();
@@ -893,7 +897,7 @@ int main( int argc, const char* argv[])
 			Reflection::state.DefineCommand("autoSaveNow",FileIO::AutoSave,CLI::NoCompletion);
 			Reflection::state.DefineCommand("saveTo fileName",(CLI::Command::function1_t)[](const String&path)
 			{
-				FileIO::Save(PathString(path));
+				FileIO::Save(PathString(path),RuntimeConfig::phase);
 			},CLI::FileCompletion);
 
 			Reflection::state.DefineCommand("loadFrom fileName",(CLI::Command::function1_t)[](const String&path)
@@ -950,7 +954,7 @@ int main( int argc, const char* argv[])
 
 			if (planet.IsNotEmpty())
 			{
-				Reflection::Variable::planetType->Set(planet.trim());
+				Reflection::Variable::planetType->Set(planet.Trim());
 				Reflection::ReloadPlanet();
 			}
 			if (discovery.IsNotEmpty())
@@ -995,6 +999,7 @@ int main( int argc, const char* argv[])
 
 			std::cout << "Running tests..." << std::endl;
 			{
+				Test::Run(Test::StringMethods());
 				Test::Run(Test::Serialization());
 				Test::Run(Test::CharacterEncoding());
 				Test::Run(Test::ServerClient());
@@ -1033,9 +1038,9 @@ int main( int argc, const char* argv[])
 		{
 			Logging::WriteEvent(EventSignificance::Uncommon,"Testing server.",nullptr,nullptr,Objects::OwnerParameter());
 
-			FileIO::Save(PathString("test0."+FileIO::savFileExtension));
+			FileIO::Save(PathString("test0."+FileIO::savFileExtension),RuntimeConfig::phase);
 			FileIO::Load(PathString("test0."+FileIO::savFileExtension));
-			FileIO::Save(PathString("test1."+FileIO::savFileExtension));
+			FileIO::Save(PathString("test1."+FileIO::savFileExtension),RuntimeConfig::phase);
 
 			Riff::File a,b;
 			ASSERT__(a.Open(PathString("test0."+FileIO::savFileExtension).c_str()));
@@ -1100,7 +1105,7 @@ int main( int argc, const char* argv[])
 
 			if (RuntimeConfig::IsInAnyCommandPhase())
 			{
-				bool newRoundNow = false;
+				bool newRoundNow = Game::endRoundNow;
 
 				if (Game::Config::roundTimer > 0 && !Game::roundTimerPaused)
 				{
@@ -1147,6 +1152,7 @@ int main( int argc, const char* argv[])
 
 				if (newRoundNow)
 				{
+					Game::endRoundNow = false;
 					Objects::ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
 					{
 						e->ReSeedRandom();
@@ -1155,7 +1161,7 @@ int main( int argc, const char* argv[])
 					Nexus::ProcessCoverage();
 
 					Journal::currentRound.roundNumber = RuntimeConfig::roundNumber;
-					Journal::currentRound.evolver = Game::evolver;
+					Journal::currentRound.evolver = Game::GetEvolver();
 					Reflection::CheckAllSaveGameVariables();
 					Journal::currentRound.AppendEntityVerification();
 
@@ -1165,7 +1171,7 @@ int main( int argc, const char* argv[])
 					foreach (Network::activePlayersAndSpectators,p)
 						(*p)->wantNewRound = false;
 
-					Game::evolver->BeginRoundProcessing();
+					Game::BeginRoundProcessing();
 					Game::ProcessChanges(true);
 				}
 
@@ -1177,14 +1183,21 @@ int main( int argc, const char* argv[])
 				{
 					if (Network::AnyHumanPlayersActive())
 						Game::roundTimerPaused = false;
-					Game::evolver->FinishRoundProcessing();
+					Game::FinishRoundProcessing();
+					Objects::PFaction f = Game::postEvolutionWinner.lock();
+					if (f)
+						Game::DeclareWinner(f);
+					if (FileIO::postEvolutionAutoSave)
+						FileIO::AutoSave();
+					else
+						FileIO::CheckAutoSave(false);	//round number is formally incremented at the beginning of the command phase, but animation phase produces a delay anyways, so better save here
 				}
 			}
-			else if (!RuntimeConfig::IsInAnyCommandPhase())
+			else if (!RuntimeConfig::IsInAnyCommandPhase() && !RuntimeConfig::GameHasEnded())
 			{
-				if (!Game::evolver->ContinueRoundProcessing())
+				if (!Game::ContinueRoundProcessing())
 				{
-					float animationLength = Game::evolver->animationLength;
+					float animationLength = Game::GetEvolver()->animationLength;
 					Game::effectiveAnimationLength = std::min(10.f,animationLength);
 					Game::Network::ChangePhase(RuntimeConfig::Phase::AnimationPhase,std::max(1.f,animationLength / 10.f));
 				}

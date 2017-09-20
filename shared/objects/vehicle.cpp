@@ -248,7 +248,7 @@ namespace Objects
 				if (failIsFatal)
 				{
 					PStructure st = GetStructure(cell);
-					LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is obstructed by structure "+(st ? st->GetName(): "<>")+": "+World::actual.LowCellReport(cell));
+					LogEvent(EventClass::Preset::fatal,this,"Target cell ("+ToString(cell)+") is obstructed by structure "+(st ? st->GetName(): "<>")+": "+World::actual.LowCellReport(cell));
 					FATAL__("Critical abort");
 				}
 
@@ -268,14 +268,14 @@ namespace Objects
 
 					if (failIsFatal)
 					{
-						LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is obstructed by vehicle");
+						LogEvent(EventClass::Preset::fatal,this,"Target cell ("+ToString(cell)+") is obstructed by vehicle");
 						FATAL__("Critical abort");
 					}
 					if (!v->HasMotionTasks() || v->ConstructingHere(v->location))
 						return MobilePlacementResult::PlacementFailedPermanentlyObstructed;
 					else
 					{
-						LogEvent(EventClass::Preset::debug,this,"Obstruction detected: "+v->GetName()+" at "+v->location.ToString());
+						LogEvent(EventClass::Preset::debug,this,"Obstruction detected: "+v->GetName()+" at "+ToString(v->location));
 						return MobilePlacementResult::PlacementFailedTemporarilyObstructed;
 					}
 				}
@@ -304,7 +304,7 @@ namespace Objects
 						PlaceExactlyAt(location,0,minTimeOffset,signalEvent,isCreated);
 						if (failIsFatal)
 						{
-							LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is unsuitable for placement");
+							LogEvent(EventClass::Preset::fatal,this,"Target cell ("+ToString(cell)+") is unsuitable for placement");
 							FATAL__("Critical abort");
 						}
 
@@ -331,7 +331,7 @@ namespace Objects
 
 					if (failIsFatal)
 					{
-						LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is unsuitable for placement. Destruction event");
+						LogEvent(EventClass::Preset::fatal,this,"Target cell ("+ToString(cell)+") is unsuitable for placement. Destruction event");
 						FATAL__("Critical abort");
 					}
 
@@ -646,10 +646,10 @@ namespace Objects
 
 
 
-		/*virtual overrider*/ bool			Vehicle::TestIntersection(const TVec3<>&_b, const TVec3<>&_d, float & distance) const
+		/*virtual overrider*/ bool			Vehicle::TestIntersection(const M::TVec3<>&_b, const M::TVec3<>&_d, float & distance) const
 		{
-			TVec3<> b,d;//,test;
-			Mat::transform(inverse,_b,b);
+			M::TVec3<> b,d;//,test;
+			Mat::Transform(inverse,_b,b);
 			Mat::rotate(inverse,_d,d);
 			
 			return base->TestIntersection(0,0,0,b,d,distance) | turret->TestIntersection(this->base->height, turretAngleX,turretAngleY,b,d,distance);	//binary or - must evaluate both

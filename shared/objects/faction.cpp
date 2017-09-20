@@ -18,8 +18,64 @@ namespace Objects
 
 	#ifndef CLIENT
 
-		/*static*/ Ctr::Buffer0<WFaction>	Faction::all;
+		/*static*/ Ctr::Buffer0<PFaction>	Faction::all;
 		/*static*/ PFaction				Faction::nexus;
+
+
+
+		count_t	Faction::GetWinningScore() const
+		{
+			return 100000 * this->nexusControl + 10000ULL* this->acquiringNexusControl + GetOffensiveCapabilities()*100 + GetTotalEntityValue();
+		}
+
+		count_t Faction::GetOffensiveCapabilities() const
+		{
+			count_t rs = 0;
+			foreach (allMobiles,m0)
+			{
+				PMobileEntity m = m0->lock();
+				if (m)
+					rs += m->GetDamagePotentialPerRound();
+			}
+			foreach (storedMobiles,m0)
+			{
+				PMobileEntity m = m0->lock();
+				if (m)
+					rs += m->GetDamagePotentialPerRound();
+			}
+			foreach (towers,t0)
+			{
+				PTower t = t0->lock();
+				if (t)
+					rs += t->GetDamagePotentialPerRound();
+			}
+			return rs;
+		}
+
+		count_t		Faction::GetTotalEntityValue() const
+		{
+			count_t rs = 0;
+			foreach (allMobiles,m0)
+			{
+				PMobileEntity m = m0->lock();
+				if (m)
+					rs += m->GetConstructionCost();
+			}
+			foreach (storedMobiles,m0)
+			{
+				PMobileEntity m = m0->lock();
+				if (m)
+					rs += m->GetConstructionCost();
+			}
+			foreach (structures,s0)
+			{
+				PStructure s = s0->lock();
+				if (s)
+					rs += s->GetConstructionCost();
+			}
+			return rs;
+		}
+
 
 
 		/*static*/ PFaction				Faction::Create(const TUniqueID&id, const String&name/* = ""*/)
@@ -165,7 +221,7 @@ namespace Objects
 			newOwner->statistics.SignalUnitAcquired(e,oldOwner);
 
 
-			Remove(e,RemovalType::ChangingOwnership,atTime,true,false,true);
+			ForceRemove(e,RemovalType::ChangingOwnership,atTime);
 			e->owner = newOwner;
 			atTime += 0.025f;
 			
@@ -258,14 +314,14 @@ namespace Objects
 							foreach (this->satellites,sat)
 								if (sat->lock() == e)
 								{
-									this->satellites.erase(sat);
+									this->satellites.Erase(sat);
 									break;
 								}
 							if (To<Satellite>::Cast(e)->IsSkyHub())
 								foreach (this->skyHubs,sat)
 									if (sat->lock() == e)
 									{
-										this->skyHubs.erase(sat);
+										this->skyHubs.Erase(sat);
 										break;
 									}
 							}
@@ -530,7 +586,7 @@ namespace Objects
 				return true;
 			}
 			return false;
-			//ASSERT_EQUAL__(canSee.count(),gainedVisualAt.Count());
+			//ASSERT_EQUAL__(canSee.Count(),gainedVisualAt.Count());
 		}
 
 		void		Faction::SignalDisappearance(const PWorldEntity&e, float&t, bool force, bool signalConnectedClient/*=true*/)
@@ -577,7 +633,7 @@ namespace Objects
 
 				e->SyncTime(t,timeEpsilon);
 			}
-			//ASSERT_EQUAL__(canSee.count(),gainedVisualAt.Count());
+			//ASSERT_EQUAL__(canSee.Count(),gainedVisualAt.Count());
 
 		}
 
@@ -597,33 +653,33 @@ namespace Objects
 		//}
 
 		template <typename T>
-		count_t		CountRawSensorCoverage(const TVec3<>&center, const Ctr::BasicBuffer<T>&scope)
+		count_t		CountRawSensorCoverage(const M::TVec3<>&center, const Ctr::BasicBuffer<T>&scope)
 		{
 			count_t rs = 0;
 			foreach (scope,s)
 			{
 				auto sat = s->lock();
-				if (sat && Sphere<>(sat->GetWorldPosition(),sat->GetScanningRange()).Contains(center))
+				if (sat && M::Sphere<>(sat->GetWorldPosition(),sat->GetScanningRange()).Contains(center))
 					rs++;
 			}
 			return rs;
 		}
 
 		template <typename T>
-		count_t		CountRawSensorCoverage(const Sphere<>&sphere, const Ctr::BasicBuffer<T>&scope)
+		count_t		CountRawSensorCoverage(const M::Sphere<>&sphere, const Ctr::BasicBuffer<T>&scope)
 		{
 			count_t rs = 0;
 			foreach (scope,s)
 			{
 				auto sat = s->lock();
-				if (sat && Sphere<>(sat->GetWorldPosition(),sat->GetScanningRange()).Intersects(sphere))
+				if (sat && M::Sphere<>(sat->GetWorldPosition(),sat->GetScanningRange()).Intersects(sphere))
 					rs++;
 			}
 			return rs;
 		}
 
 		
-		count_t		Faction::CountOffGridCoverage(int channelHeight, const TVec3<>&p)	const
+		count_t		Faction::CountOffGridCoverage(int channelHeight, const M::TVec3<>&p)	const
 		{
 			#ifndef NO_SATELLITES
 				if (Satellite::IsSatelliteHeight(channelHeight))
@@ -635,7 +691,7 @@ namespace Objects
 			return 0;
 		}
 
-		count_t		Faction::CountOffGridCoverage(const Sphere<>&p)	const
+		count_t		Faction::CountOffGridCoverage(const M::Sphere<>&p)	const
 		{
 			count_t rs = 0;
 			#ifndef NO_SATELLITES
@@ -812,7 +868,7 @@ namespace Objects
 			}
 		}
 
-		//void		Faction::RegisterSensorMotion(const Sphere<>&from, const Sphere<>&to, float t);
+		//void		Faction::RegisterSensorMotion(const M::Sphere<>&from, const M::Sphere<>&to, float t);
 		void		Faction::RegisterSensorRemoval(const World::Sensor&sensor, int sensorHeight, float&t)
 		{
 			//if (sensorHeight <= Grid::CellStack::TopHeight)
@@ -821,7 +877,7 @@ namespace Objects
 			else
 				knownWorld.InvalidateSensory();
 			sensor.RemoveFrom(knownWorld,t);
-//			float escaped = sqr(sphere.radius+2);
+//			float escaped = M::Sqr(sphere.radius+2);
 			//if (isSatellite)
 			//	LogEvent(EventSignificance::Debug,"Unregistering orbital sensor sphere "+sphere.ToString());
 
@@ -994,9 +1050,9 @@ namespace Objects
 				ConstName type = turret->constName;
 				return researchState.CheckUnlocked(*turret,errorOut) && CheckLimit(CountMobileType(type), RuntimeConfig::UnitLimits::Get(type), errorOut);
 			}
-			ConstName type = e->GetCTypeName();
+			EntityType type = e->GetType();
 			if (e->IsStructure())
-				return researchState.CheckUnlocked(type,errorOut) && CheckLimit(CountStructureType(type), RuntimeConfig::UnitLimits::Get(type), errorOut);
+				return researchState.CheckUnlocked(type.baseType,errorOut) && CheckLimit(CountStructureType(type.baseType), RuntimeConfig::UnitLimits::Get(type.baseType), errorOut);
 			FATAL__("Unknown type: "+e->GetName());
 			return false;
 		}
@@ -1022,12 +1078,28 @@ namespace Objects
 			count_t rs = 0;
 			foreach (this->structures, s0)
 			{
-				if (s0->lock()->GetCTypeName() == structureType)
+				if (s0->lock()->GetType() == structureType)
 					rs ++;
 			}
 			return rs;
 		}
 
+
+		count_t		Faction::CountTurretType(ConstName turretType) const
+		{
+			count_t rs = 0;
+			foreach (this->towers, t0)
+			{
+				if (t0->lock()->turret->constName == turretType)
+					rs ++;
+			}
+			foreach (this->allMobiles, m0)
+			{
+				if (m0->lock()->turret->constName == turretType)
+					rs ++;
+			}
+			return rs;
+		}
 
 
 
@@ -1140,24 +1212,19 @@ namespace Objects
 	#endif
 
 
-	void			ForeachFaction(const std::function<void(const PFaction&)>&func)
+	void			ForeachFaction(const std::function<void(const PFaction&)>&func, bool includeDead/*=false*/)
 	{
 		#ifdef CLIENT
 			foreach (Faction::allKnown,a)
 				func(*a);
 		#else
 			
-			if (Faction::nexus)
+			if (Faction::nexus && (!Faction::nexus->isDead || includeDead))
 				func(Faction::nexus);
 			for (index_t i = 0; i < Faction::all.Count(); i++)
 			{
-				PFaction f = Faction::all[i].lock();
-				if (!f)
-				{
-					Faction::all.Erase(i);
-					i--;
-				}
-				else
+				PFaction f = Faction::all[i];
+				if (!f->isDead || includeDead)
 					func(f);
 			}
 		#endif
@@ -1238,7 +1305,7 @@ namespace Objects
 					break;
 					case Type::HostileContact:
 					{
-						//TVec3<> center = Grid::ToWorld(m->location);
+						//M::TVec3<> center = Grid::ToWorld(m->location);
 						//if ()
 						bool seen = m->age > 1 &&	//don't delete hostile markers in round <2. grid might be outdated
 									 m->visualization && World::actual.GridCanSee(m->location,m->visualization->GetHeight(),m->visualization->IsBroad());
@@ -1277,7 +1344,7 @@ namespace Objects
 		}
 
 
-		/*static*/ void				Marker::Create(const TUniqueID&id, Type type, const Grid::LCellIdI&location, const RoundNumber& createdInRound, const TUniqueID&referenceID, const TUniqueID&referenceOwnerID, ConstName referenceType[2], const RoundNumber& currentRound)
+		/*static*/ void				Marker::Create(const TUniqueID&id, Type type, const Grid::LCellIdI&location, const RoundNumber& createdInRound, const TUniqueID&referenceID, const TUniqueID&referenceOwnerID, EntityType referenceType, const RoundNumber& currentRound)
 		{
 			const index_t newIndex = all.Count();
 			Marker&m = all.Append();
@@ -1293,37 +1360,35 @@ namespace Objects
 			{
 				m.referenceEntity = referenceID;
 				referenceIDMap.Set(referenceID,newIndex);
-				m.referencedType[0] = referenceType[0];
-				m.referencedType[1] = referenceType[1];
-				if (referenceType[1] != ConstName::Empty)
+				m.referencedType = referenceType;
+
+				PWorldEntity prototype = Objects::Prototypes::all.Find(referenceType);
+				if (prototype)
 				{
-					//vehicle
-					Component::VehicleBase* base = Component::GetVehicleBaseByName(referenceType[0]);
-					Component::Turret* turret = Component::GetTurretByName(referenceType[1]);
-					ASSERT1__(base, referenceType);
-					ASSERT1__(turret, referenceType);
-					m.visualization.reset(new Vehicle(OwnerParameter(), location, base, turret));
-					mobileGhosts << To<MobileEntity>::Cast( m.visualization );
+					ASSERT1__(prototype, referenceType);
+					m.visualization = (prototype->CreateNewInstance(OwnerParameter(), location, 0));
+					if (prototype->IsStructure())
+						structureGhosts << To<Structure>::Cast(m.visualization);
+					else
+						if (prototype->IsMobile())
+							mobileGhosts << To<MobileEntity>::Cast( m.visualization);
+						else
+							LogEvent(EventSignificance::NonFatalError,"Unable to classify ghost for '"+prototype->GetTypeName()+"'");
 				}
 				else
 				{
-					//structure
-					PWorldEntity prototype = Objects::GetNonVehiclePrototypeByName(referenceType[0]);
-					if (prototype)
+					//vehicle
+					if (referenceType.HasTurret())
 					{
-						ASSERT1__(prototype, referenceType);
-						m.visualization = (prototype->CreateNewInstance(OwnerParameter(), location, 0));
-						if (prototype->IsStructure())
-							structureGhosts << To<Structure>::Cast(m.visualization);
-						else
-							if (prototype->IsMobile())
-								mobileGhosts << To<MobileEntity>::Cast( m.visualization);
-							else
-								LogEvent(EventSignificance::NonFatalError,"Unable to classify ghost for '"+prototype->GetTypeName()+"'");
+						Component::VehicleBase* base = Component::baseComponents.Find(referenceType.baseType);
+						Component::Turret* turret = Component::vehicleTurretComponents.Find(referenceType.turretType);
+						ASSERT1__(base, referenceType);
+						ASSERT1__(turret, referenceType);
+						m.visualization.reset(new Vehicle(OwnerParameter(), location, base, turret));
+						mobileGhosts << To<MobileEntity>::Cast( m.visualization );
 					}
 					else
-						LogEvent(EventSignificance::NonFatalError,"Unable to create ghost for type #"+String((int)referenceType[0]));
-
+						LogEvent(EventSignificance::NonFatalError,"Unable to create ghost for type #"+String((int)referenceType.baseType));
 				}
 
 				if (m.visualization)
@@ -1341,7 +1406,7 @@ namespace Objects
 			{
 				if (type == Type::Visited)//should be always true but regardless
 				{
-					TMatrix4<> system;
+					M::TMatrix4<> system;
 					Mat::makeAxisSystem(Grid::ToWorld(m.location),Grid::low.cells[m.location.stackID].centerVertex.xyz,2,system);
 					index_t systemID = visitedSystems.Count();
 					visitedSystems.Append().system = system;
@@ -1469,37 +1534,7 @@ namespace Objects
 	#else
 
 
-		String Convert(ConstName name)
-		{
-			if (name == ConstName::Empty)
-				return "";
-			PWorldEntity e = GetPrototypeByName(name);
-			if (e)
-				return e->GetTypeName();
-			Component::Turret* t = Component::GetTurretByName(name);
-			if (t)
-				return t->typeName;
-			Component::VehicleBase* b = Component::GetVehicleBaseByName(name);
-			if (b)
-				return b->typeName;
-			return "";
-		}
 
-		ConstName Convert(const String&name)
-		{
-			if (name == "")
-				return ConstName::Empty;
-			PWorldEntity e = GetPrototypeByName(name);
-			if (e)
-				return e->GetCTypeName();
-			Component::Turret* t = Component::GetTurretByName(name);
-			if (t)
-				return t->constName;
-			Component::VehicleBase* b = Component::GetVehicleBaseByName(name);
-			if (b)
-				return b->constName;
-			return ConstName::Empty;
-		}
 
 		/*virtual override*/	void		Marker::Serialize(IWriteStream&s) const
 		{
@@ -1511,8 +1546,7 @@ namespace Objects
 			{
 				s.WritePrimitive(this->referenceEntity);
 				s.WritePrimitive(this->referenceEntityOwner);
-				SerialSync(s,Convert(this->referencedType[0]));
-				SerialSync(s,Convert(this->referencedType[1]));
+				SerialSync(s,ToString(referencedType));
 			}
 		}
 		/*virtual override*/	void		Marker::Deserialize(IReadStream&inStream)
@@ -1525,7 +1559,7 @@ namespace Objects
 			type = Type::Reinterpret(typei);
 			if (UtilizesReferenceEntity())
 			{
-				String t0,t1;
+				String t0;
 				inStream.ReadPrimitive(this->referenceEntity);
 
 				if (ApplicationInterface::globalVersionOfCurrentFile >= ApplicationInterface::FileVersions::MarkersHaveOwner)
@@ -1535,15 +1569,13 @@ namespace Objects
 				else
 					this->referenceEntityOwner = TUniqueID::Empty();
 				SerialSync(inStream,t0);
-				SerialSync(inStream,t1);
-				this->referencedType[0] = Convert(t0);
-				this->referencedType[1] = Convert(t1);
+				this->referencedType = DecodeType(t0);
 				//this->referenceEntityType.Deserialize(inStream, fixedSize);
 			}
 			else
 			{
 				referenceEntity = TUniqueID::Empty();
-				referencedType[0] = referencedType[1] = ConstName::Empty;
+				referencedType = EntityType();
 			}
 		}
 
@@ -1673,7 +1705,7 @@ namespace Objects
 				float t=0;
 				foreach (toDelete,del)
 					if (*del)
-						Remove(*del,Objects::RemovalType::ControlledExplosion,t,false);
+						Remove(*del,Objects::RemovalType::ControlledExplosion,t);
 				toDelete.Clear();
 				ASSERT__(f->allMobiles.IsEmpty());	//should have cascaded
 				ASSERT__(f->structures.IsEmpty());
@@ -1682,19 +1714,21 @@ namespace Objects
 			f->isDead = true;
 			f->hasUnitClasses = UnitClass::None;
 
-			if (f != nexus)
-			{
-				for (index_t i = 0; i < all.Count(); i++)
-					if (all[i].lock() == f)
-					{
-						all.Erase(i);
-						break;
-					}
-				LogEvent(EventClass::Preset::factionDeath, "Faction terminated: " + f->GetLogName());
-				ApplicationInterface::SignalFactionsChanged();
-			}
-			else
-				LogEvent(EventClass::Preset::remoteControlError, "Destructible entities destroyed, but cannot terminate nexus faction itself");
+			LogEvent(EventClass::Preset::factionDeath, "Destructible entities destroyed");
+			ApplicationInterface::SignalFactionsChanged();
+
+			//if (f != nexus)
+			//{
+			//	for (index_t i = 0; i < all.Count(); i++)
+			//		if (all[i].lock() == f)
+			//		{
+			//			all.Erase(i);
+			//			break;
+			//		}
+			//	LogEvent(EventClass::Preset::factionDeath, "Faction terminated: " + f->GetLogName());
+			//}
+			//else
+			//	LogEvent(EventClass::Preset::remoteControlError, "Destructible entities destroyed, but cannot terminate nexus faction itself");
 		}
 
 		/*static*/ PFaction			Faction::FindByID(const TUniqueID&id)
@@ -1703,7 +1737,7 @@ namespace Objects
 				return nexus;
 			foreach (all,_f)
 			{
-				PFaction f = _f->lock();
+				const PFaction&f = *_f;
 				if (f && f->id == id)
 					return f;
 			}
@@ -1766,7 +1800,7 @@ namespace Objects
 	}
 
 #if 0
-	/*static*/ void Faction::IDToColor(TVec3<>&rs, const TUniqueID&id, int iteration/*=0*/)
+	/*static*/ void Faction::IDToColor(M::TVec3<>&rs, const TUniqueID&id, int iteration/*=0*/)
 	{
 		USHORT	v0 = *(const USHORT*)id.bytes,
 				v1 = *(((const USHORT*)id.bytes)+1),
@@ -1775,7 +1809,7 @@ namespace Objects
 		int secondary = (primary + (v1 % 2) + 1) % 3;
 		float secondaryLevel = (float(v2)/float(0xFFFF));
 		Vec::clear(rs);
-		rs.v[primary] = sqrt(1.f - sqr(secondaryLevel));
+		rs.v[primary] = sqrt(1.f - M::Sqr(secondaryLevel));
 		rs.v[secondary] = secondaryLevel;
 	}
 #endif /*0*/
@@ -1787,7 +1821,7 @@ namespace Objects
 		float bestDist = -1;
 		for (index_t i = 0; i < 20; i++)
 		{
-			TVec3<> candidate;
+			M::TVec3<> candidate;
 			Vec::HSL2RGB(float3(random.NextFloat(),0.5f + random.NextFloat(0.5f),0.5f),candidate);
 			count_t competition = 0;
 			float closest = std::numeric_limits<float>::max();
@@ -1797,7 +1831,7 @@ namespace Objects
 				{
 					competition++;
 					float dist = Vec::quadraticDistance(candidate,f->color);
-					closest = M::vmin(dist,closest);
+					closest = M::Min(dist,closest);
 				}
 			});
 			if (closest > bestDist)

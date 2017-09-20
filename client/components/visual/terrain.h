@@ -9,8 +9,8 @@
 namespace VisualTerrain
 {
 
-	index_t	TestLowGridIntersection(TVec3<> b, TVec3<> d, float radius, float&distance);
-	bool	TestHullIntersection(const TVec3<>&b, const TVec3<>&d, float&distance, TVec3<>&outNormal, bool includeWater);
+	index_t	TestLowGridIntersection(M::TVec3<> b, M::TVec3<> d, float radius, float&distance);
+	bool	TestHullIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float&distance, M::TVec3<>&outNormal, bool includeWater);
 
 
 
@@ -98,8 +98,8 @@ namespace VisualTerrain
 	}
 
 	
-	void		SetParaboloidDisplay(const TVec3<>&direction, float height, float flatRadius, const float4&color);
-	void		SetSphereDisplay(const TVec3<>&center, float radius, const float4&color);
+	void		SetParaboloidDisplay(const M::TVec3<>&direction, float height, float flatRadius, const float4&color);
+	void		SetSphereDisplay(const M::TVec3<>&center, float radius, const float4&color);
 	void		UnsetParaboloidAndSphereDisplay();
 
 
@@ -149,6 +149,8 @@ namespace VisualTerrain
 		}
 
 		void			ChangeSensory(const Grid::LCellIdI&center, float radius, signed char change);
+		void			ChangeSensory(const Grid::HCellIdI&center, float radius, signed char change);
+		void			ChangeSensory(const M::TVec3<>&center, float radius, signed char change);
 
 		void			Clear()
 		{
@@ -159,14 +161,14 @@ namespace VisualTerrain
 			//colorArea.active = false;
 		}
 
+		index_t	TestIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float&distance)	const;
 
 		//void	Color(const LCellIdI&center, int fuelRadius);
 		//void	StripColor();
 
 	};
 
-
-
+	extern OrbitGrid	visibleSubOrbitGrid;
 }
 
 #endif

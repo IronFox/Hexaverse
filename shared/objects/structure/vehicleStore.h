@@ -124,7 +124,7 @@ namespace Objects
 		//WorldEntity overrides:
 		virtual bool				IsHangar() const {return true;}
 		virtual String				GetTypeName() const override { return "Vehicle Store"; };
-		virtual ConstName			GetCTypeName() const override {return ConstName::Type_VehicleStore;}
+		virtual EntityType			GetType() const override {return ConstName::Type_VehicleStore;}
 		virtual int					GetHeight() const override {return 2;}
 		virtual void				PrototypeSetup() override;
 		//virtual int					GetConstructionCost() const override {return 40;}

@@ -30,8 +30,8 @@ namespace Objects
 
 		const String&iconSource = iconName.IsEmpty() ? name : iconName;
 
-		PWorldEntity proto = GetNonVehiclePrototypeByName(iconSource);
-		Component::Base*component = proto ? nullptr : Component::GetByName(iconSource);
+		PWorldEntity proto = Prototypes::all.FindByName(iconSource);
+		Component::Base*component = proto ? nullptr : Component::allComponents.FindByName(iconSource);
 		bool hasIcon = !proto && !component;
 
 
@@ -139,8 +139,8 @@ namespace Objects
 
 	static void InitTable(String baseName, BaseAttributeTable&t)
 	{
-		baseName.eraseCharacter(' ');
-		baseName.eraseCharacter('-');
+		baseName.EraseCharacter(' ');
+		baseName.EraseCharacter('-');
 		
 		static Lua::Table configTable;
 		if (configTable.IsEmpty())
@@ -165,8 +165,8 @@ namespace Objects
 	static Lua::Table InitComponent(const Lua::Table&parent, String&path, Component::Base&b)
 	{
 		String baseName = b.typeName;
-		baseName.eraseCharacter(' ');
-		baseName.eraseCharacter('-');
+		baseName.EraseCharacter(' ');
+		baseName.EraseCharacter('-');
 
 		path += '.'+baseName;
 
@@ -236,10 +236,10 @@ namespace Objects
 
 	/*static*/ void		ResearchState::StaticCreate()
 	{
-		structureTables.SetSize(structurePrototypes.Count());
-		for (index_t i = 0; i < structurePrototypes.Count(); i++)
+		structureTables.SetSize(Prototypes::structures.Count());
+		for (index_t i = 0; i < Prototypes::structures.Count(); i++)
 		{
-			const PStructure&s = structurePrototypes[i];
+			const PStructure&s = Prototypes::structures[i];
 			BaseAttributeTable&t = structureTables[i];
 			s->DefineAttributeTable(&t);
 		}
@@ -708,9 +708,9 @@ namespace Objects
 		}
 
 		
-		for (index_t i = 0; i < structurePrototypes.Count(); i++)
+		for (index_t i = 0; i < Prototypes::structures.Count(); i++)
 		{
-			const PStructure&s = structurePrototypes[i];
+			const PStructure&s = Prototypes::structures[i];
 			BaseAttributeTable&t = structureTables[i];
 			InitTable(s->GetTypeName(),t);
 		}
@@ -807,6 +807,11 @@ namespace Objects
 	/*static*/ PResearchTopic	ResearchState::GetTopic(index_t serialIndex)
 	{
 		return serialIndex < globalState.allTopics.Count() ? globalState.allTopics[serialIndex] : PResearchTopic();
+	}
+
+	bool	ResearchState::ResearchIsPlanned(const PResearchTopic&topic) const
+	{
+		return researchQueue.Contains(topic);
 	}
 
 	bool	ResearchState::ResearchQueueIsFull() const
@@ -940,6 +945,7 @@ namespace Objects
 			DBG_ASSERT_EQUAL__(next,res->getProgress(researchState));
 			break;
 		}
+		lastSpeed = totalContribution;
 		totalContribution = 0;
 		BaseAttributeCache::versionCounter++;
 	}

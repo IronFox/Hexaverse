@@ -18,14 +18,16 @@ namespace SurfaceRenderer
 	static float *const _end = _outBuffer + maxTriangles * 3 * fpv;
 	
 
+
+
 	void	Create()
 	{
 		geometry.Create(maxTriangles*3, sizeof(float) * fpv);
 		triangles.vbo = geometry;
 		{
 			Engine::VertexBinding binding;
-			binding.normal.unset();
-			binding.color.set(2, 4);
+			binding.normal.Unset();
+			binding.color.Set(2, 4);
 			binding.floats_per_vertex = (UINT16)fpv;
 			triangles.binding = binding;
 		}
@@ -47,25 +49,25 @@ namespace SurfaceRenderer
 		_color = color;
 	}
 
-	void	Rasterize(const TVec2<>&p0, const TVec2<>&p1, const TVec2<>&p2)
+	void	Rasterize(const M::TVec2<>&p0, const M::TVec2<>&p1, const M::TVec2<>&p2)
 	{
 		Rasterize(p0,_color,p1,_color,p2,_color);
 	}
 
-	void	Rasterize(const TVec2<>&p0, const TVec2<>&p1, const TVec2<>&p2, const TVec2<>&p3)
+	void	Rasterize(const M::TVec2<>&p0, const M::TVec2<>&p1, const M::TVec2<>&p2, const M::TVec2<>&p3)
 	{
 		Rasterize(p0,p1,p2);
 		Rasterize(p0,p2,p3);
 	}
 
-	void	Rasterize(const TVec2<>&p0, const TVec4<>&c0, const TVec2<>&p1, const TVec4<>&c1, const TVec2<>&p2, const TVec4<>&c2, const TVec2<>&p3, const TVec4<>&c3)
+	void	Rasterize(const M::TVec2<>&p0, const M::TVec4<>&c0, const M::TVec2<>&p1, const M::TVec4<>&c1, const M::TVec2<>&p2, const M::TVec4<>&c2, const M::TVec2<>&p3, const M::TVec4<>&c3)
 	{
 		Rasterize(p0,c0,p1,c1,p2,c2);
 		Rasterize(p0,c0,p2,c2,p3,c3);
 	}
 
 
-	void	Rasterize(const Rect<>&rect)
+	void	Rasterize(const M::Rect<>&rect)
 	{
 		Rasterize(	float2(rect.x.min,rect.y.min),
 					float2(rect.x.max,rect.y.min),
@@ -73,7 +75,7 @@ namespace SurfaceRenderer
 					float2(rect.x.min,rect.y.max));
 	}
 
-	void	RasterizeConvexPolygon(const TVec2<>*field, count_t numVertices)
+	void	RasterizeConvexPolygon(const M::TVec2<>*field, count_t numVertices)
 	{
 		for (index_t i = 1; i < numVertices; i++)
 		{
@@ -83,7 +85,7 @@ namespace SurfaceRenderer
 
 
 
-	void	Rasterize(const TVec2<>&p0, const TVec4<>&c0, const TVec2<>&p1, const TVec4<>&c1, const TVec2<>&p2, const TVec4<>&c2)
+	void	Rasterize(const M::TVec2<>&p0, const M::TVec4<>&c0, const M::TVec2<>&p1, const M::TVec4<>&c1, const M::TVec2<>&p2, const M::TVec4<>&c2)
 	{
 		Vec::ref2(_at) = p0;	_at += 2;
 		Vec::ref4(_at) = c0;	_at += 4;
@@ -106,6 +108,25 @@ namespace SurfaceRenderer
 		_at = _outBuffer;
 
 	}
+
+
+
+
+
+
+	void	Baked::Bake()
+	{
+		((DX11::BaseInstructionBlock&)instruction) = triangles;
+		instruction.vbo.CreateFromStructs(vertices);
+		instruction.ibo.Create(indices);
+		Clear();
+	}
+
+	void	Baked::Rasterize() const
+	{
+		display.Render(instruction,true);
+	}
+
 }
 
 #endif

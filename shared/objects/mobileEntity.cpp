@@ -86,10 +86,10 @@ namespace Objects
 	void MobileEntity::UpdateSystem()
 	{
 		ASSERT_LESS__(location.stackID, Grid::LowSetup::GridType::CellCount);
-		TVec3<> oldLocation = system.w.xyz;
-		const TVec3<>&up = Grid::low.cells[location.stackID].cornerCenter;
+		M::TVec3<> oldLocation = system.w.xyz;
+		const M::TVec3<>&up = Grid::low.cells[location.stackID].cornerCenter;
 		//centerVertex.xyz;
-		TVec3<> y, x,z;
+		M::TVec3<> y, x,z;
 		system.w.xyz = up * Grid::ToRadiusf(float(location.height) /*+ 0.025f*/);
 		z = oldLocation- system.w.xyz;
 
@@ -406,7 +406,7 @@ namespace Objects
 				ClearAllTasks(true, CLOCATION);
 				unstable = false;
 				if (isInserted)	//otherwise already killed by Finish() operation
-					Remove(shared_from_this(),RemovalType::UncontrolledExplosion,entityTime,false,false);
+					Remove(shared_from_this(),RemovalType::UncontrolledExplosion,entityTime);
 			}
 		}
 
@@ -424,7 +424,7 @@ namespace Objects
 				ClearAllTasks(true, CLOCATION);
 				unstable = false;
 				if (isInserted)	//otherwise already killed by Finish() operation
-					Remove(shared_from_this(),RemovalType::UncontrolledExplosion,entityTime,false,false);
+					Remove(shared_from_this(),RemovalType::UncontrolledExplosion,entityTime);
 				return false;
 			}
 			if (rs == VehicleJob::BaseJob::TerminalFailure)
@@ -483,7 +483,7 @@ namespace Objects
 								{
 									for (const auto&node : task.path)
 									{
-										//TVec3<> world = Grid::ToWorld(node.cell);
+										//M::TVec3<> world = Grid::ToWorld(node.cell);
 										//float zOffset;
 										//const auto&base = m->GetTurretBase(zOffset);
 										Grid::LCellIdI actual;
@@ -497,7 +497,7 @@ namespace Objects
 								}
 								if (badTask)
 								{
-									LogEvent(EventSignificance::Common,v2.get(),"Dangerous movement into range of "+(*c)->GetName()+" at "+(*c)->location.ToString()+" detected.");
+									LogEvent(EventSignificance::Common,v2.get(),"Dangerous movement into range of "+(*c)->GetName()+" at "+ToString((*c)->location)+" detected.");
 									LogEvent(EventSignificance::Uncommon,v2.get(),"Dangerous movement into range of "+(*c)->GetNiceName()+" detected.");
 									if (v2.get() == this)
 									{
@@ -594,7 +594,7 @@ namespace Objects
 							{
 								if (t->AttackNext(loc,true))
 								{
-									LogEvent(EventSignificance::Debug,t.get(),"Auto-targeting moving "+GetName()+" (located at "+location.ToString()+") via closest viable attack target "+loc.ToString()+" at t="+String(entityTime));
+									LogEvent(EventSignificance::Debug,t.get(),"Auto-targeting moving "+GetName()+" (located at "+ToString(location)+") via closest viable attack target "+ToString(loc)+" at t="+String(entityTime));
 									LogEvent(EventSignificance::Important,t.get(),"Auto-targeting moving "+GetNiceName());
 
 									t->Attack(entityTime);
@@ -796,7 +796,7 @@ namespace Objects
 								ClearAllTasks(true, CLOCATION);
 								unstable = false;
 								if (isInserted)	//otherwise already killed by Continue() operation
-									Remove(shared_from_this(),RemovalType::UncontrolledExplosion,entityTime,false,false);
+									Remove(shared_from_this(),RemovalType::UncontrolledExplosion,entityTime);
 							return TaskResult::AllDoneForThisRound;
 							case VehicleJob::BaseJob::TerminalFailure:
 								LogEvent(EventSignificance::Common,this,"Terminal failure. Remaining tasks dropped.");
@@ -1157,9 +1157,9 @@ namespace Objects
 			float3 dir = Grid::low.cells[target.stackID].centerVertex.xyz * Grid::ToRadius(target.height) - this->GetWorldPosition();
 			float3 innerDir;
 			Mat::rotate(this->inverse,dir,innerDir);
-			TVec3<> t0;
+			M::TVec3<> t0;
 			Grid::HCellIdI t1;
-			Ctr::Buffer0<TVec4<> > trajectory;
+			Ctr::Buffer0<M::TVec4<> > trajectory;
 
 			float angle;	
 			if (TraceTrajectory(TrajectoryEndPoint(target),trajectory,t0,t1,angle))
@@ -1187,7 +1187,7 @@ namespace Objects
 						ApplicationInterface::SignalTurretRotation(To<Vehicle>::Cast(shared_from_this()),(ToWorld(trajectory[1]) - ToWorld(trajectory.First())).Normalized0(),rotTime);
 						entityTime += rotTime;
 
-					//	TVec3<> t0;
+					//	M::TVec3<> t0;
 					//	Grid::HCellIdI t1;
 					//	if (RecompileTrajectory(t0,t1))
 					//	{
@@ -1243,7 +1243,7 @@ namespace Objects
 		{
 			if (toLocation == location)
 				return;
-			LogEvent(EventSignificance::Common,this,"Relocating to "+toLocation.ToString()+" ("+String(updateSystem)+")");
+			LogEvent(EventSignificance::Common,this,"Relocating to "+ToString(toLocation)+" ("+String(updateSystem)+")");
 			static Grid::HighSetup::TVolumeDescriptor desc;
 			float t = 0.f;
 			if (isOwnedByMe)
@@ -1559,7 +1559,7 @@ namespace Objects
 			if (t->IsJob() && (at == loc || at+1 == loc || at-1 == loc))
 			{
 				#ifdef CLIENT
-					if (t->name.beginsWithCaseIgnore("construct "))
+					if (t->name.BeginsWithIgnoreCase("construct "))
 				#else
 					if (To<VehicleJob::Construct>::DynamicCast(t->job))
 				#endif

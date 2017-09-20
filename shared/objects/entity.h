@@ -45,6 +45,7 @@ namespace Objects
 	#endif
 
 
+
 	/**
 	Root-class for all entity-like objects.
 	Every derivative of this class inherits a globally unique identifier, and a world-location (including matrix).
@@ -55,7 +56,7 @@ namespace Objects
 	{
 	protected:
 
-		/**/						BaseEntity(const Grid::LCellIdI&at) : location(at), system(Matrix<>::eye4), inverse(Matrix<>::eye4)
+		/**/						BaseEntity(const Grid::LCellIdI&at) : location(at), system(M::Matrix<>::eye4), inverse(M::Matrix<>::eye4)
 		{
 			#ifndef CLIENT
 			{
@@ -76,7 +77,7 @@ namespace Objects
 		#endif
 
 		struct TEmpty{};
-		/**/						BaseEntity(TEmpty) : location(Grid::LCellIdI::Invalid), system(Matrix<>::eye4), inverse(Matrix<>::eye4)
+		/**/						BaseEntity(TEmpty) : location(Grid::LCellIdI::Invalid), system(M::Matrix<>::eye4), inverse(M::Matrix<>::eye4)
 		{
 			id = TUniqueID::Empty();
 		}
@@ -94,12 +95,12 @@ namespace Objects
 		TUniqueID					id;
 
 
-		TMatrix4<>					system;		//!< system matrix. Structures: affecting @a localizableShape . If @a localizableShape is NULL then this matrix has no effect
-		TMatrix4<>					inverse;	//!< inverse of system
+		M::TMatrix4<>					system;		//!< system matrix. Structures: affecting @a localizableShape . If @a localizableShape is NULL then this matrix has no effect
+		M::TMatrix4<>					inverse;	//!< inverse of system
 
 
-		const TVec3<>&				GetWorldPosition() const {return system.w.xyz;}
-		static TVec3<>				GetWorldPosition(const Grid::LCellIdI&loc) {return Grid::ToWorld(loc);}	//might change in the future. Have to make sure that the various system build functions in systems.cpp match
+		const M::TVec3<>&				GetWorldPosition() const {return system.w.xyz;}
+		static M::TVec3<>				GetWorldPosition(const Grid::LCellIdI&loc) {return Grid::ToWorld(loc);}	//might change in the future. Have to make sure that the various system build functions in systems.cpp match
 
 		/**
 		Assembles a name composed of the parent management class name and the local instance id
@@ -111,7 +112,7 @@ namespace Objects
 
 			void					UpdateNiceName();
 			/**
-			Similar to GetName() but tries to avoid hash numbers by using word combinations (duplicates may occur)
+			M::Similar to GetName() but tries to avoid hash numbers by using word combinations (duplicates may occur)
 			*/
 			const String&			GetNiceName() const;
 		#else
@@ -122,14 +123,11 @@ namespace Objects
 		*/
 		virtual String				GetTypeName() const = 0;
 		/**
-		Same as GetTypeName() except, that a ConstName enumeration value is returned
+		Retrieves the ConstName-based type of the local instance
 		Remember that these name indices may change during version updates and can therefore
 		NOT be used for disk IO.
 		*/
-		virtual ConstName			GetCTypeName() const = 0;
-
-	
-	
+		virtual EntityType			GetType() const = 0;
 	};
 
 
@@ -203,7 +201,7 @@ namespace Objects
 		}
 
 		#ifdef HAS_WINDOW
-			bool					TestIntersection(const Geometry&geo, const TVec3<>&b, const TVec3<>&d, float & distance) const;
+			bool					TestIntersection(const Geometry&geo, const M::TVec3<>&b, const M::TVec3<>&d, float & distance) const;
 		#endif
 
 
@@ -220,7 +218,10 @@ namespace Objects
 			bool					IsSet() const {return location != Grid::LCellIdI::Invalid;}
 			bool					operator==(const TRegisteredSensor&other) const {return location == other.location && empDamageLevel == other.empDamageLevel;}
 			bool					operator!=(const TRegisteredSensor&other) const {return !operator==(other);}
-			String					ToString() const {return location.ToString()+"_e"+String(empDamageLevel);}
+			friend String			ToString(const TRegisteredSensor&sensor) 
+			{ 
+				return ToString(sensor.location)+"_e"+String(sensor.empDamageLevel);
+			}
 		};
 		#ifndef CLIENT
 			float					entityTime=0.f;		//!< Time (in seconds) into the animation phase to calculate event times
@@ -358,7 +359,7 @@ namespace Objects
 			}
 		#endif
 		//virtual bool				CanSee(const PWorldEntity&other)	const;
-		//virtual bool				CanSee(const TVec3<>&center, float radius)	const;
+		//virtual bool				CanSee(const M::TVec3<>&center, float radius)	const;
 
 
 		/**
@@ -425,7 +426,7 @@ namespace Objects
 		virtual void				PrototypeSetup()	{};
 
 
-		virtual TFloatRange<int>	GetRelativeScanningBand(const Grid::LCellIdI&loc) const {return FloatRange<int>(-3,+100);}	//Maximum vertical sensor radius up and down from the entity's central height. Currently not affected by EMP
+		virtual M::TFloatRange<int>	GetRelativeScanningBand(const Grid::LCellIdI&loc) const {return M::FloatRange<int>(-3,+100);}	//Maximum vertical sensor radius up and down from the entity's central height. Currently not affected by EMP
 		virtual int					GetMaxHealth() const;
 		virtual String				DescribeMaxHealth() const;
 		/**
@@ -447,10 +448,10 @@ namespace Objects
 		virtual PConstTurretBase	GetTurretBase(float &zOffset) const { return PConstTurretBase();}
 		inline PConstTurretBase		GetTurretBase() const { float dummy; return GetTurretBase(dummy);}
 
-		TurretTrajectory			TraceTrajectory(const TrajectoryEndPoint&dest, Ctr::Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const;
-		TurretTrajectory			TraceTrajectory(const TrajectoryEndPoint&dest, TVec3<>&impactAt) const;
-		TurretTrajectory			TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const;
-		TurretTrajectory			TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, TVec3<>&impactAt) const;
+		TurretTrajectory			TraceTrajectory(const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps, M::TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const;
+		TurretTrajectory			TraceTrajectory(const TrajectoryEndPoint&dest, M::TVec3<>&impactAt) const;
+		TurretTrajectory			TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps, M::TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const;
+		TurretTrajectory			TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, M::TVec3<>&impactAt) const;
 		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const TrajectoryEndPoint&dest, float&outAngle) const;
 		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const TrajectoryEndPoint&dest) const;
 		bool						CanHit(const TrajectoryEndPoint&dest, float&outAngle) const;
@@ -597,7 +598,7 @@ namespace Objects
 				@param force Set true to also visit commands that are currently hidden. False will visit only the currently selected command tree branch
 				*/
 				virtual void		VisitAllCommands(FCommandVisitor visitor, bool force) {};
-				virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const=0;
+				virtual bool		TestIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float & distance) const=0;
 			#endif
 	
 			/**

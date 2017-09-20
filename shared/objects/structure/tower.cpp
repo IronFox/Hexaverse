@@ -45,9 +45,9 @@ namespace Objects
 				return false;
 			}
 
-			static Ctr::Buffer0<TVec4<> > trajectory;
+			static Ctr::Buffer0<M::TVec4<> > trajectory;
 
-			TVec3<> iat;
+			M::TVec3<> iat;
 			Grid::HCellIdI ic;
 			float angle;
 
@@ -58,7 +58,7 @@ namespace Objects
 					&& entityTime <= entityTime 
 					&& CountPossibleAttacks() > 0 
 					&& ExtCanHit(owner,TrajectoryEndPoint( location,GetEffectiveFoundationHeight() ), endPoint,outTarget)
-					//&& d2 > sqr(turret->explosionRadius)
+					//&& d2 > M::Sqr(turret->explosionRadius)
 					&& TraceTrajectory(endPoint,trajectory,iat,ic,angle)==TurretTrajectory::ReachesTarget;
 		}
 
@@ -76,9 +76,9 @@ namespace Objects
 			float3 dir = Grid::low.cells[target.target.stackID].centerVertex.xyz * Grid::ToRadius(target.target.height) - this->GetWorldPosition();
 			float3 innerDir;
 			Mat::rotate(this->inverse,dir,innerDir);
-			TVec3<> t0;
+			M::TVec3<> t0;
 			Grid::HCellIdI t1;
-			static Ctr::Buffer0<TVec4<> > trajectory;
+			static Ctr::Buffer0<M::TVec4<> > trajectory;
 
 			bool abort = false;
 			float angle;
@@ -262,7 +262,8 @@ namespace Objects
 			{
 				if (!AttackNext(destination,false))
 					return false;
-				LogEvent(EventSignificance::Common,this,"Issued tower attack to "+destination.ToString());
+				using StringConversion::ToString;
+				LogEvent(EventSignificance::Common,this,"Issued tower attack to "+ToString(destination));
 			}
 			return true;
 		}
@@ -304,10 +305,10 @@ namespace Objects
 				},force);
 			}
 
-			/*virtual override*/ bool			Tower::TestIntersection(const TVec3<>&_b, const TVec3<>&_d, float & distance) const
+			/*virtual override*/ bool			Tower::TestIntersection(const M::TVec3<>&_b, const M::TVec3<>&_d, float & distance) const
 			{
-				TVec3<> b,d;//,test;
-				Mat::transform(inverse,_b,b);
+				M::TVec3<> b,d;//,test;
+				Mat::Transform(inverse,_b,b);
 				Mat::rotate(inverse,_d,d);
 				return geometry.TestIntersection(b,d,distance) | turret->TestIntersection(GetEffectiveFoundationHeight(), turretAngleX,turretAngleY,b,d,distance);	//binary or - must evaluate both
 			}

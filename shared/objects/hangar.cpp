@@ -52,7 +52,7 @@ namespace Objects
 			for(const auto&v:stored)
 			{
 				ASSERT1__(!v.entity.expired(),ToEntity().GetName());
-				Remove(v.entity.lock(),RemovalType::DestroyedInStorage,t,false,true);
+				Remove(v.entity.lock(),RemovalType::DestroyedInStorage,t);
 			}
 		#endif
 		stored.Clear();
@@ -92,14 +92,14 @@ namespace Objects
 		#endif
 		ASSERT3__(v->storedIn.lock().get() == this, v->GetName(),v->storedIn.lock()->ToEntity().GetName(),self.GetName());
 		ASSERT2__(RemoveStored(v),v->GetName(),self.GetName());
-		LogEvent(EventSignificance::Debug,&self,"Checking out "+v->GetName()+" to "+targetLocation.ToString());
+		LogEvent(EventSignificance::Debug,&self,"Checking out "+v->GetName()+" to "+ToString(targetLocation));
 		#ifndef CLIENT
 			MobilePlacementResult rs = v->PlaceExactlyAt(targetLocation,0.f,0.f,false,false,true);
 			if (rs != MobilePlacementResult::PlacementOkay && rs != MobilePlacementResult::PlacementOkayFellDown)
 			{
 				if (v->health <= 0)
 				{
-					LogEvent(EventSignificance::Debug,&self,v->GetName()+" did not survive checkout to "+targetLocation.ToString());
+					LogEvent(EventSignificance::Debug,&self,v->GetName()+" did not survive checkout to "+ToString(targetLocation));
 				}
 				else
 				{
@@ -110,7 +110,7 @@ namespace Objects
 			else
 			{
 				v->RegisterChange(WorldEntity::PositionChanged,atTime);
-				ASSERT3__(v->location.stackID == targetLocation.stackID,self.GetName(),v->GetName(),targetLocation.ToString());
+				ASSERT3__(v->location.stackID == targetLocation.stackID,self.GetName(),v->GetName(),targetLocation);
 			}
 		#else
 			v->preAnimationLocation = v->location = targetLocation;
@@ -143,7 +143,7 @@ namespace Objects
 
 		if (e->isInserted)
 		{
-			Remove(e,RemovalType::EnteredStorage,atTime,false,!e->isInsertedIntoGrid,true);
+			ForceRemove(e,RemovalType::EnteredStorage,atTime);
 			#ifndef NO_HIBERNATION
 				e->Hibernate(false,atTime);
 			#endif

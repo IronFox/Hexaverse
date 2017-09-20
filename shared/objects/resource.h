@@ -124,11 +124,11 @@ namespace Objects
 
 			bool	operator<(const Self&v) const
 			{
-				return VecUnroll<Resource::NumberOfPossibilities>::allLess(level,v.level);
+				return M::VecUnroll<Resource::NumberOfPossibilities>::allLess(level,v.level);
 			}
 			bool	operator<=(const Self&v) const
 			{
-				return !VecUnroll<Resource::NumberOfPossibilities>::oneGreater(level,v.level);
+				return !M::VecUnroll<Resource::NumberOfPossibilities>::oneGreater(level,v.level);
 			}
 
 			void	operator+=(const NaturalResourceVector&v)
@@ -139,23 +139,23 @@ namespace Objects
 			}
 			void	operator+=(const Self&v)
 			{
-				VecUnroll<Resource::NumberOfPossibilities>::add(level,v.level);
+				M::VecUnroll<Resource::NumberOfPossibilities>::add(level,v.level);
 			}
 			void	operator-=(const Self&v)
 			{
-				VecUnroll<Resource::NumberOfPossibilities>::sub(level,v.level);
+				M::VecUnroll<Resource::NumberOfPossibilities>::sub(level,v.level);
 			}
 			void	operator*=(int multiplier)
 			{	
-				VecUnroll<Resource::NumberOfPossibilities>::mul(level,multiplier);
+				M::VecUnroll<Resource::NumberOfPossibilities>::mul(level,multiplier);
 			}
 			bool	operator==(const Self&v) const
 			{
-				return VecUnroll<Resource::NumberOfPossibilities>::equal(level,v.level);
+				return M::VecUnroll<Resource::NumberOfPossibilities>::equal(level,v.level);
 			}
 			bool	operator!=(const Self&v) const
 			{
-				return !VecUnroll<Resource::NumberOfPossibilities>::equal(level,v.level);
+				return !M::VecUnroll<Resource::NumberOfPossibilities>::equal(level,v.level);
 			}
 			Self	operator-(const Self&v)	const
 			{
@@ -199,17 +199,17 @@ namespace Objects
 			void	SeparateBySign(Self&positive, Self&negative) const
 			{
 				static const Self zero;
-				VecUnroll<Resource::NumberOfPossibilities>::max(level,zero.level,positive.level);
-				VecUnroll<Resource::NumberOfPossibilities>::min(level,zero.level,negative.level);
+				M::VecUnroll<Resource::NumberOfPossibilities>::max(level,zero.level,positive.level);
+				M::VecUnroll<Resource::NumberOfPossibilities>::min(level,zero.level,negative.level);
 			}
 
 			void	Cap(const Self&cap)
 			{
-				VecUnroll<Resource::NumberOfPossibilities>::min(level,cap.level,level);
+				M::VecUnroll<Resource::NumberOfPossibilities>::min(level,cap.level,level);
 			}
 			void	Negate()
 			{
-				VecUnroll<Resource::NumberOfPossibilities>::mul(level,-1);
+				M::VecUnroll<Resource::NumberOfPossibilities>::mul(level,-1);
 			}
 			String	ToString() const
 			{
@@ -222,7 +222,7 @@ namespace Objects
 
 			bool	IsEmpty() const
 			{
-				return VecUnroll<Resource::NumberOfPossibilities>::zero(level);
+				return M::VecUnroll<Resource::NumberOfPossibilities>::zero(level);
 			}
 			bool	IsNotEmpty() const
 			{
@@ -231,7 +231,7 @@ namespace Objects
 			bool	IsStable() const
 			{
 				static const int compare0[Resource::NumberOfPossibilities] = {0};
-				return !VecUnroll<Resource::NumberOfPossibilities>::oneLess(level,compare0);
+				return !M::VecUnroll<Resource::NumberOfPossibilities>::oneLess(level,compare0);
 			}
 
 			bool	AnyIsSet(const ResourceFlagSet&set) const

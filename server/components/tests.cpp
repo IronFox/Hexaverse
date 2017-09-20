@@ -17,7 +17,7 @@ namespace Objects
 	Extracts all possible user choices for the current state of a given entity, and an active cursor mode.
 	Usually this function is not required to be called manually.
 	*/
-//	void			GetChoices(const PWorldEntity&entity, Vehicle::mode_t activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
+//	void			GetChoices(const PWorldEntity&entity, Vehicle::mode_t activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, M::TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
 
 
 }
@@ -81,7 +81,7 @@ namespace Test
 		const count_t length = random.Next(minLength,maxLength);
 		String rs = TStringLength(length);
 		for (index_t i = 0; i < length; i++)
-			rs.set(i,(char)(BYTE)random.Next(1,255));	//full spectrum, no zeroes
+			rs.Set(i,(char)(BYTE)random.Next(1,255));	//full spectrum, no zeroes
 		return rs;
 	}
 
@@ -248,6 +248,129 @@ namespace Test
 	}
 
 
+	/*virtual override*/ void	StringMethods::Run(Random&random)
+	{
+		String test0 = "hello WORLD helloWORLD HELLO world";
+
+		//contains:
+		if (!test0.Contains("hello"))
+			Fail(CLOCATION,"String lookup failure");
+		if (!test0.Contains("world"))
+			Fail(CLOCATION,"String lookup failure");
+		if (test0.Contains("World"))
+			Fail(CLOCATION,"String lookup failure");
+		if (!test0.ContainsIgnoreCase("World"))
+			Fail(CLOCATION,"String lookup failure");
+		
+
+		ASSERT_EQUAL__(test0.Find("WORLD"),6);
+		ASSERT_EQUAL__(test0.Find("WORLD",6),6);
+		ASSERT_EQUAL__(test0.Find("WORLD",7),17);
+		ASSERT_EQUAL__(test0.Find("WORLD",17),17);
+		ASSERT_EQUAL__(test0.Find("WORLD",18),InvalidIndex);
+		ASSERT_EQUAL__(test0.FindIgnoreCase("WORLD",18),29);
+
+		ASSERT_EQUAL__(test0.FindLast("WORLD"),17);
+		ASSERT_EQUAL__(test0.FindLast("WORLD",17),17);
+		ASSERT_EQUAL__(test0.FindLast("WORLD",16),6);
+
+		ASSERT_EQUAL__(test0.FindWord("hello"),0);
+		ASSERT_EQUAL__(test0.FindWord("hello",1),InvalidIndex);
+		ASSERT_EQUAL__(test0.FindWordIgnoreCase("hello",1),23);
+
+		ASSERT_EQUAL__(test0.FindLastWord("HELLO"),23);
+		ASSERT_EQUAL__(test0.FindLastWord("HELLO",23),23);
+		ASSERT_EQUAL__(test0.FindLastWord("HELLO",24),23);
+		ASSERT_EQUAL__(test0.FindLastWord("HELLO",22),InvalidIndex);
+		ASSERT_EQUAL__(test0.FindLastWordIgnoreCase("world",22),6);
+		ASSERT_EQUAL__(test0.FindLastWordIgnoreCase("world",6),6);
+		ASSERT_EQUAL__(test0.FindLastWordIgnoreCase("world",5),InvalidIndex);
+
+
+
+		{
+			count_t cnt = 0;
+			index_t at = 0;
+			while (at < test0.GetLength())
+			{
+				at = test0.Find("hello",at);
+				if (at == InvalidIndex)
+					break;
+				at++;
+				cnt++;
+			}
+			if (cnt != 2)
+				Fail(CLOCATION,"Expected 2 occurrences. Found "+String(cnt));
+		}
+		{
+			count_t cnt = 0;
+			index_t at = 0;
+			while (at < test0.GetLength())
+			{
+				at = test0.FindIgnoreCase("hello",at);
+				if (at == InvalidIndex)
+					break;
+				at++;
+				cnt++;
+			}
+			if (cnt != 3)
+				Fail(CLOCATION,"Expected 3 occurrences. Found "+String(cnt));
+		}
+		{
+			count_t cnt = 0;
+			index_t at = 0;
+			while (at < test0.GetLength())
+			{
+				at = test0.FindWord("hello",at);
+				if (at == InvalidIndex)
+					break;
+				at++;
+				cnt++;
+			}
+			if (cnt != 1)
+				Fail(CLOCATION,"Expected 1 occurrences. Found "+String(cnt));
+		}
+		{
+			count_t cnt = 0;
+			index_t at = 0;
+			while (at < test0.GetLength())
+			{
+				at = test0.FindWordIgnoreCase("hello",at);
+				if (at == InvalidIndex)
+					break;
+				at++;
+				cnt++;
+			}
+			if (cnt != 2)
+				Fail(CLOCATION,"Expected 2 occurrences. Found "+String(cnt));
+		}
+
+
+
+		{
+			count_t cnt = 0;
+			index_t at = InvalidIndex;
+			for (;;)
+			{
+				at = test0.FindLastWordIgnoreCase("world",at);
+				if (at == InvalidIndex)
+					break;
+				at--;
+				cnt++;
+			}
+			if (cnt != 2)
+				Fail(CLOCATION,"Expected 2 occurrences. Found "+String(cnt));
+		}
+
+
+
+
+
+	}
+
+
+
+
 
 	/*virtual override*/ void	Journal::Run(Random&random)
 	{
@@ -317,16 +440,7 @@ namespace Test
 		if (m.UtilizesReferenceEntity())
 		{
 			m.referenceEntity.Generate();
-			if (random.NextBool())
-			{
-				m.referencedType[0] = Objects::structurePrototypes[random.NextIndex(Objects::structurePrototypes.Count())]->GetCTypeName();
-				m.referencedType[1] = ConstName::Empty;
-			}
-			else
-			{
-				m.referencedType[0] = Objects::Component::baseComponents[random.NextIndex(Objects::Component::baseComponents.Count())]->constName;
-				m.referencedType[1] = Objects::Component::allTurretComponents[random.NextIndex(Objects::Component::allTurretComponents.Count())]->constName;
-			}
+			RandomFill(m.referencedType,random);
 		}
 	}
 
@@ -339,10 +453,23 @@ namespace Test
 			table.Set((Objects::Statistics::Metric)i,random.Next(0,1<<31));
 	}
 
-	/*static*/ void		Serialization::RandomFill(Objects::Statistics::UnitStatistics&stat,Random&random)
+	/*static*/ void		Serialization::RandomFill(Objects::Statistics::EntityType&stat,Random&random)
 	{
-		stat.typeName = RandomString(random,5,16);
+		RandomFill(stat.type,random);
 		RandomFill(stat.metrics,random);
+	}
+
+	/*static*/ void		Serialization::RandomFill(Objects::EntityType&t,Random&random)
+	{
+		if (random.NextBool())
+		{
+			//prototyped:
+			t = Objects::Prototypes::all[random.NextIndex(Objects::Prototypes::all.Count())]->GetType();
+			return;
+		}
+		//vehicle assembly:
+		t.baseType = Objects::Component::baseComponents[random.NextIndex(Objects::Component::baseComponents.Count())]->constName;
+		t.turretType = Objects::Component::vehicleTurretComponents[random.NextIndex(Objects::Component::vehicleTurretComponents.Count())]->constName;
 	}
 
 	/*static*/ void		Serialization::RandomFill(Objects::PositiveResourceVector&vec, Random&random)
@@ -353,7 +480,7 @@ namespace Test
 	}
 
 
-	/*static*/ void		Serialization::RandomFill(Objects::Statistics::RoundStatistics&stat,Random&random)
+	/*static*/ void		Serialization::RandomFill(Objects::Statistics::Round&stat,Random&random)
 	{
 		RandomFill(stat.consumption,random);
 		RandomFill(stat.production,random);
@@ -393,11 +520,11 @@ namespace Test
 			TestRange(begin,begin+16,false);
 		}
 		ByteStreamBuffer stream;
-		BeginSection("Statistics::UnitStatistics");
+		BeginSection("Statistics::EntityType");
 
 		for (index_t i = 0; i < 3000; i++)
 		{
-			Objects::Statistics::UnitStatistics stat;
+			Objects::Statistics::EntityType stat;
 			RandomFill(stat,random);
 
 			VerifySerialization(stream,stat);
@@ -484,8 +611,8 @@ namespace Test
 
 		//Objects::PTower prototype = To<Objects::Tower>::DynamicCast( Objects::GetPrototypeByName(ConstName::Type_ArtilleryTower));
 
-		Ctr::Buffer0<TVec4<> > trajectory;
-		TVec3<> impactAt;
+		Ctr::Buffer0<M::TVec4<> > trajectory;
+		M::TVec3<> impactAt;
 		Grid::HCellIdI impactCell;
 		auto turret = &Objects::Component::artillery;
 		int outOfScanning = 0;
@@ -518,11 +645,11 @@ namespace Test
 			#endif
 			Objects::RefreshCompoundCoverage(0);
 
-			Grid::LCellIdI	vehicleAt = RandomCellAtRange(random, generatorAt, FloatRange(0.f, turret->GetHorizontalAttackRange(faction0) + turret->GetExplosionRadius(faction0) * 2));	//allow out-of-range
+			Grid::LCellIdI	vehicleAt = RandomCellAtRange(random, generatorAt, M::FloatRange(0.f, turret->GetHorizontalAttackRange(faction0) + turret->GetExplosionRadius(faction0) * 2));	//allow out-of-range
 			vehicleAt.height = Objects::FindApplicableGround(vehicleAt,true);
 			while (vehicleAt.height == Objects::badHeight)
 			{
-				vehicleAt = RandomCellAtRange(random, generatorAt, FloatRange(0.f, turret->GetHorizontalAttackRange(faction0) + turret->GetExplosionRadius(faction0) * 2));	//allow out-of-range
+				vehicleAt = RandomCellAtRange(random, generatorAt, M::FloatRange(0.f, turret->GetHorizontalAttackRange(faction0) + turret->GetExplosionRadius(faction0) * 2));	//allow out-of-range
 				vehicleAt.height = Objects::FindApplicableGround(vehicleAt,true);
 			}
 
@@ -576,8 +703,8 @@ namespace Test
 
 			t++;
 			faction1->SignalDisappearance(generator,t);
-			Objects::Remove(v,Objects::RemovalType::Vanished,t,true);
-			Objects::Remove(generator,Objects::RemovalType::Vanished,t,true);
+			Objects::Remove(v,Objects::RemovalType::Vanished,t);
+			Objects::Remove(generator,Objects::RemovalType::Vanished,t);
 
 
 		}
@@ -594,7 +721,7 @@ namespace Test
 			random.Next(-Grid::CellStack::HalfRange+1,Grid::CellStack::HalfRange-2)
 		);
 	}
-	/*static*/ Grid::LCellIdI	AutoTargeting::RandomCellAtRange(Random&random,const Grid::LCellIdI&center, const TFloatRange<>&range)
+	/*static*/ Grid::LCellIdI	AutoTargeting::RandomCellAtRange(Random&random,const Grid::LCellIdI&center, const M::TFloatRange<>&range)
 	{
 		Grid::LCellIdI	candidate = RandomCell(random);
 		while (candidate == center || !range.Contains( Grid::GetGeometricDistance(center,candidate)))
@@ -772,7 +899,7 @@ namespace Test
 				net.TickEnd(0);
 				if (plant->AwaitsUserInteraction())
 				{
-					//void			GetChoices(const PWorldEntity&entity, Vehicle::mode_t activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
+					//void			GetChoices(const PWorldEntity&entity, Vehicle::mode_t activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, M::TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
 
 					Objects::GetChoices(plant, Objects::PVehicle(),Objects::CursorMode::Idle, choices, vis);
 					ASSERT__(choices.IsNotEmpty());
@@ -780,7 +907,7 @@ namespace Test
 					Grid::LCellIdI choice = choices[random.NextIndex(choices.Count())].location;
 					Objects::ProcessChoiceIntersection(plant, choice, Objects::CursorMode::Idle, Objects::PVehicle());
 					ASSERT_EQUAL__(v->health, v->GetMaxHealth());
-					ASSERT2__(v->location == choice, v->location.ToString(), choice.ToString());
+					ASSERT2__(v->location == choice, v->location, choice);
 					if (!v0)
 						v0 = v;
 					else
@@ -792,8 +919,8 @@ namespace Test
 			ASSERT__(v1);
 			ASSERT__(Objects::GetVehicle(v0->location) == v0);
 			ASSERT__(Objects::GetVehicle(v1->location) == v1);
-			Objects::Remove(v0,	Objects::RemovalType::ControlledExplosion,t,false);
-			Objects::Remove(v1, Objects::RemovalType::ControlledExplosion,t, false);
+			Objects::Remove(v0,	Objects::RemovalType::ControlledExplosion,t);
+			Objects::Remove(v1, Objects::RemovalType::ControlledExplosion,t);
 			ASSERT__(Objects::vehicles.IsEmpty());
 			ASSERT__(generator->IsEnabled());
 			ASSERT__(mine->IsEnabled());
@@ -874,7 +1001,7 @@ namespace Test
 
 			Buffer0<Objects::Choice> choices;
 			bool showArrow, hasArrowCellTarget;
-			TVec3<> arrowFrom;
+			M::TVec3<> arrowFrom;
 			Grid::LCellIdI arrowFromCell;
 
 			count_t twoCount = 0;
@@ -918,7 +1045,7 @@ namespace Test
 
 					if (plant->AwaitsUserInteraction())
 					{
-						//void			GetChoices(const PWorldEntity&entity, Vehicle::mode_t activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
+						//void			GetChoices(const PWorldEntity&entity, Vehicle::mode_t activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, M::TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
 
 						Objects::GetChoices(plant, Objects::PVehicle(),Objects::CursorMode::Idle, choices, showArrow, hasArrowCellTarget, arrowFrom, arrowFromCell);
 						if (choices.IsEmpty())

@@ -13,7 +13,7 @@ namespace Reflection
 {
 	CLI::Interpreter	state;
 
-	static CLI::PFolder factionFolder;
+	static CLI::PFolder factionFolder,gameFolder;
 
 
 	static const constexpr UINT32 DefaultFactionsPerEMPZone = 
@@ -75,6 +75,46 @@ namespace Reflection
 			lastValue = ConvertToString();
 		}
 
+
+
+		class GameHasEnded : public Base
+		{
+			typedef Base	Super;
+		public:
+			/**/		GameHasEnded(unsigned protection=CLI::EraseProtection) : Super("gameHasEnded","String",Persistence::Temporary, 1,protection)
+			{}
+
+			bool			GetState() const
+			{
+				return RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame;
+			}
+
+			virtual String	ConvertToString()		const	override	{return GetState();}
+			virtual	bool	Set(const String&value)	override
+			{
+				bool b;
+				if (!Convert(value,b))
+					return false;
+				if (GetState() == b)
+					return true;
+				if (b)
+				{
+					Game::Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
+					OnChanged();
+					return true;
+				}
+				else
+					LogEvent(EventClass::Preset::commandRejected,"Cannot undo game-end.");
+				return false;
+			}
+			virtual String	GetDefault() const override
+			{
+				return "false";
+			}
+
+			virtual void		SetCurrentToDefault() override
+			{}
+		};
 
 		/**
 		Container for regular string variables.
@@ -150,9 +190,9 @@ namespace Reflection
 			public:
 				T				*const reference;
 				T				defaultValue;
-				const TFloatRange<T>	range;
+				const M::TFloatRange<T>	range;
 				
-				/**/			TypedVariable(const String&name, Persistence p, T&reference, T min, T max, unsigned protection=CLI::EraseProtection):Super(name,TypeInfo<T>::name,p,1,protection),reference(&reference),range(FloatRange(min,max))
+				/**/			TypedVariable(const String&name, Persistence p, T&reference, T min, T max, unsigned protection=CLI::EraseProtection):Super(name,TypeInfo<T>::name,p,1,protection),reference(&reference),range(M::FloatRange(min,max))
 				{
 					defaultValue = reference;
 				}
@@ -196,7 +236,7 @@ namespace Reflection
 
 				static constexpr String	MakeTypeName()
 				{
-					return T::GetName();
+					return T::GetName() + String(" Enumeration");
 				}
 				
 				/**/			MappedEnumVariable(const String&name, Persistence p, RefT&reference, unsigned protection=CLI::EraseProtection):Super(name,MakeTypeName(),p,1,protection),reference(&reference),defaultValue((RefT)T())	{}
@@ -405,14 +445,14 @@ namespace Reflection
 				explode(',', value, vehicleTurretNames);
 				foreach (vehicleTurretNames,t)
 				{
-					t->trimThis();
-					Objects::Component::Turret*ct = Objects::Component::GetTurretByName(*t);
+					t->TrimThis();
+					Objects::Component::Turret*ct = Objects::Component::vehicleTurretComponents.FindByName(*t);
 					if (!ct || ct->mountType != Objects::Component::Turret::MountType::Vehicle)
 						return false;
 				}
 				Game::Config::Nexus::vehicleTurrets.SetSize(vehicleTurretNames.Count());
 				for (index_t i = 0; i < vehicleTurretNames.Count(); i++)
-					Game::Config::Nexus::vehicleTurrets[i] = Objects::Component::GetTurretByName(vehicleTurretNames[i]);
+					Game::Config::Nexus::vehicleTurrets[i] = Objects::Component::vehicleTurretComponents.FindByName(vehicleTurretNames[i]);
 				if (ConvertToString() != old)
 				{
 					OnChanged();
@@ -487,7 +527,7 @@ namespace Reflection
 		{
 			typedef Base	Super;
 		public:
-			const ConstName	key;
+			const Objects::EntityType	key;
 			UINT16			defaultValue;
 
 			UINT16			Get() const
@@ -495,7 +535,7 @@ namespace Reflection
 				return (UINT16)RuntimeConfig::UnitLimits::Get(key,true);
 			}
 
-			/**/			UnitLimit(const String&name, ConstName key, unsigned protection=CLI::EraseProtection):Super(name,"Count16",Persistence::RestoreFromSavegame,1,protection),key(key)
+			/**/			UnitLimit(const String&name, Objects::EntityType key, unsigned protection=CLI::EraseProtection):Super(name,"Count16",Persistence::RestoreFromSavegame,1,protection),key(key)
 			{}
 			virtual String	ConvertToString()		const	override	{return String(Get());}
 			virtual	bool	Set(const String&value)	override
@@ -615,6 +655,25 @@ namespace Reflection
 			}
 		};
 
+		/**
+		Variable that executes a std::function to retrieve the current string representation.
+		It does not allow modification or deletion
+		*/
+		class ReadOnlyCallbackVariable : public Base
+		{
+		public:
+			typedef Base	Super;
+			typedef std::function<String()>	FCallback;
+
+			const FCallback	callback;
+
+			/**/			ReadOnlyCallbackVariable(const String&name, const String&type,const FCallback&callback)
+							:Super(name, type,Persistence::Temporary,1,CLI::FullProtection),callback(callback)	{}
+
+			virtual String	ConvertToString()		const	override {return callback();}
+			virtual	bool	Set(const String&value)	override {return false;}
+		};
+
 
 		class FactionAttachment : public CLI::Folder::Attachable
 		{
@@ -667,9 +726,9 @@ namespace Reflection
 
 
 		template <typename T>
-		PBase	SetEnum(const String&name, T&enumReference, Persistence p)
+		PBase	SetEnum(const String&name, T&enumReference, Persistence p, bool readonly = false)
 		{
-			PBase rs (new EnumVariable<T>(name,p,enumReference,CLI::EraseProtection));
+			PBase rs (new EnumVariable<T>(name,p,enumReference,readonly ? CLI::FullProtection : CLI::EraseProtection));
 			state.SetVariable(rs);
 			return rs;
 		}
@@ -680,9 +739,30 @@ namespace Reflection
 			state.SetVariable(rs);
 			return rs;
 		}
+
+
+		PBase	SetReadOnlyCallbackVariable(const String&name, const String&type, const std::function<String()>&f)
+		{
+			PBase rs {new ReadOnlyCallbackVariable{name,type,f}};
+			state.SetVariable(rs);
+			return rs;
+		}
 	}
 
 
+	namespace RoundCommands
+	{
+		void		EndRound()
+		{
+			if (RuntimeConfig::GameHasEnded())
+			{
+				LogEvent(EventClass::Preset::remoteControlError, "Error: Game has ended");
+				return;
+			}
+			Game::endRoundNow = true;
+		}
+
+	}
 
 	namespace FactionCommands
 	{
@@ -699,7 +779,7 @@ namespace Reflection
 				LogEvent(EventClass::Preset::remoteControlError, "Error: This folder is not a faction folder");
 				return;
 			}
-			String r = reason.trimRef();
+			String r = reason.TrimRef();
 			if (r.IsEmpty())
 			{
 				LogEvent(EventClass::Preset::remoteControlError, "Error: No reason given");
@@ -733,7 +813,7 @@ namespace Reflection
 		{
 			Objects::ForeachFaction([name](const Objects::PFaction&f)
 			{
-				if (f->name.findIgnoreCase(name))
+				if (f->name.ContainsIgnoreCase(name))
 					CLI::println(f->name + " - " + f->id.ConvertToString());
 			});
 		}
@@ -747,8 +827,8 @@ namespace Reflection
 		void		Create()
 		{
 			terminate.reset(new CLI::Command(CLI::Command::Name("terminate reason"), &TerminateCommand, CLI::NoCompletion));
-			terminate->SetUniqueHelp("Terminates this faction and all of its destructible units. If the local faction is the Nexus faction, then it'll lose all its units but won't be deleted."
-							" Unless you have some backup savegame, this operation is irreversible. Don't use this on live ");
+			terminate->SetUniqueHelp("Terminates this faction and all of its destructible units."
+							" Unless you have some backup savegame, this operation is irreversible. Don't use this on live sessions, unless you have a very good reason to remove some player faction. Players will NOT like this.");
 
 		}
 
@@ -810,6 +890,35 @@ namespace Reflection
 		state.PopFocus();
 	}
 
+	static bool SetHelp(CLI::NamedItem&item, String help)
+	{
+		help.EraseCharacter('\r');
+		help.EraseCharacter('\t');
+		help.TrimThis();
+		if (help.IsNotEmpty())
+		{
+			static Ctr::Array<String>	lines;
+			static StringBuffer		fused;
+			fused.Clear();
+			explodeCallback(IsNewline<char>,help,lines);
+			//wrap(help,80,lines);
+			foreach (lines,line)
+			{
+				StringRef trimmed = line->TrimRef();
+				if (trimmed.length())
+				{
+					if (fused.IsNotEmpty())
+						fused << nl;
+					fused << trimmed;
+				}
+			}
+			Package::AssertValidity(fused.ToStringRef(),1024);
+			item.SetUniqueHelp(fused.ToStringRef());
+			return true;
+		}
+		return false;
+	}
+
 	static bool DeclareFolder(const XML::Node&node, const CLI::PFolder&context)
 	{
 		bool allGood = true;
@@ -831,32 +940,7 @@ namespace Reflection
 					allGood = false;
 					continue;
 				}
-				String help = child->inner_content.trim();
-				if (help.IsNotEmpty())
-				{
-					static Ctr::Array<String>	lines;
-					static StringBuffer		fused;
-					fused.Clear();
-					explodeCallback(IsNewline<char>,help,lines);
-					//wrap(help,80,lines);
-					foreach (lines,line)
-					{
-						StringRef trimmed = line->trimRef();
-						if (trimmed.length())
-						{
-							if (fused.IsNotEmpty())
-								fused << nl;
-							fused << trimmed;
-						}
-					}
-					//if (fused.ConvertToString().find("The higher, the thinner, sharper and"))
-					//{
-					//	bool brk = true;
-					//}
-					v->SetUniqueHelp(fused.ToStringRef());
-				}
-
-
+				SetHelp(*v,child->inner_content);
 				String value;
 				if (child->Query("default",value) && value.IsNotEmpty())
 				{
@@ -880,8 +964,7 @@ namespace Reflection
 					allGood = false;
 					continue;
 				}
-				if (child->inner_content.trim().IsNotEmpty())
-					v->SetUniqueHelp(child->inner_content.trim());
+				SetHelp(*v,child->inner_content);
 
 				continue;
 			}
@@ -895,8 +978,7 @@ namespace Reflection
 					allGood = false;
 					continue;
 				}
-				if (child->inner_content.trim().IsNotEmpty())
-					f->SetUniqueHelp(child->inner_content.trim());
+				SetHelp(*f,child->inner_content);
 				if (!DeclareFolder(*child,f))
 					allGood = false;
 				continue;
@@ -962,8 +1044,6 @@ namespace Reflection
 	}
 
 	
-
-	
 	void PrintLn(const String&line)
 	{
 		LogEvent(EventClass::Preset::remoteControlCommand,"Response: '"+line+"'");
@@ -981,11 +1061,25 @@ namespace Reflection
 
 		FactionCommands::Create();
 
-		factionFolder = state.EnterNewFolder("Factions");
-		state.DefineCommand("names", FactionCommands::ListNames);
-		state.DefineCommand("find name", FactionCommands::FindName);
-		state.ExitFolder();
+		gameFolder = state.EnterNewFolder("Game");
+		{
+			state.SetVariable(CLI::PVariable(new Variable::GameHasEnded()));
 
+			Variable::SetReadOnlyCallbackVariable("round","Round",[]()
+			{
+				return RuntimeConfig::roundNumber.ToString();
+			});
+
+			state.DefineCommand("endRound",RoundCommands::EndRound)->SetUniqueHelp("Ends the current round, regardless of timer state or player requests. Valid only if the server state is currently in any command phase");
+
+			Variable::SetEnum("phase",RuntimeConfig::phase,Variable::Persistence::Temporary,true);
+
+			factionFolder = state.EnterNewFolder("Factions");
+			state.DefineCommand("names", FactionCommands::ListNames);
+			state.DefineCommand("find name", FactionCommands::FindName);
+			state.ExitFolder();
+		}
+		state.ExitFolder();
 
 		CLI::PAttachment persistenceAttachment(new Variable::PersistenceAttachment());
 
@@ -1067,11 +1161,11 @@ namespace Reflection
 				state.SetVariable(CLI::PVariable(new Variable::UnitLimitEnabled("Enabled")));
 
 				state.EnterNewFolder("Structures")->attachment = persistenceAttachment;
-					for (const Objects::PStructure&p:Objects::structurePrototypes)
+					for (const Objects::PStructure&p:Objects::Prototypes::structures)
 					{
 						String key = p->GetTypeName();
-						key.replace(' ','_');
-						state.SetVariable(CLI::PVariable(new Variable::UnitLimit(key,p->GetCTypeName())));
+						key.FindAndReplace(' ','_');
+						state.SetVariable(CLI::PVariable(new Variable::UnitLimit(key,p->GetType())));
 					}
 				state.ExitFolder();
 
@@ -1079,7 +1173,7 @@ namespace Reflection
 					for (const auto&c:Objects::Component::allTurretComponents)
 					{
 						String key = c->typeName;
-						key.replace(' ','_');
+						key.FindAndReplace(' ','_');
 						state.SetVariable(CLI::PVariable(new Variable::UnitLimit(key,c->constName)));
 					}
 				state.ExitFolder();
@@ -1266,7 +1360,7 @@ namespace Reflection
 		wrap(outBuffer.CopyToString(),80,lines);
 		foreach (lines,line)
 		{
-			String trimmed = line->trim();
+			String trimmed = line->Trim();
 			if (trimmed.IsNotEmpty())
 			{
 				WriteIndent(outFile,indent);
@@ -1357,18 +1451,19 @@ namespace Reflection
 		if (mode != FeedMode::Original && ((ctx && !allGood) || rewrite))
 		{
 			//Feed(folder,subConfigName,testMode,filterFunction,true);
-			StringFile outFile;
-			if (!outFile.Create(configName))
+			try
 			{
-				LogEvent(EventClass::Preset::configurationError,"Unable to overwrite '"+String(configName)+"'");
-				allGood = false;
-			}
-			else
-			{
+				StringFile outFile;
+				outFile.Create(configName);
 				LogEvent(EventClass::Preset::configurationPrint,"Writing '"+String(configName)+"'...");
 				DefineConfig(outFile,folder, 0);
 				outFile.Close();
 				allGood = true;
+			}
+			catch (const std::exception&ex)
+			{
+				LogEvent(EventClass::Preset::configurationError,"Unable to overwrite '"+String(configName)+"'");
+				allGood = false;
 			}
 		}
 
@@ -1376,24 +1471,6 @@ namespace Reflection
 	}
 
 
-
-	void	LoadOverrides()
-	{
-		#ifdef _DEBUG
-			const char*localServerINI = "config/debug_server.ini";
-		#else
-			const char*localServerINI = "config/server.ini";
-		#endif
-
-		Feed(state.GetRoot(),localServerINI, false, [](const Variable::PBase&base)->bool
-		{
-			return false;//base->persistence == Variable::Persistence::ConfigOverridesSavegame;
-		},FeedMode::ConstructIfMissing);
-
-		Grid::currentPlanetConfig.GenerateAtmosphereColor();
-
-
-	}
 
 	static CLI::PFolder FindFolderWithAttachmentSource(const CLI::PVariable&v, const CLI::PFolder&current)
 	{

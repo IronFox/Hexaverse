@@ -113,6 +113,9 @@ namespace Objects
 		EnteredStructure
 	);
 
+
+	class EntityType;
+
 }
 
 

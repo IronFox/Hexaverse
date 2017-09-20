@@ -49,9 +49,9 @@ namespace Objects
 			auto item = MobileEntityProducer::EnqueueProductionOfVehicle(b,t);
 			return item ? To<Vehicle>::Cast(item->producing) : PVehicle();
 		}
-		PVehicle				VehiclePlant::Enqueue(ConstName baseName, ConstName turretName)
+		PVehicle				VehiclePlant::Enqueue(EntityType t)
 		{
-			auto item = MobileEntityProducer::EnqueueProductionOfVehicle(baseName,turretName);
+			auto item = MobileEntityProducer::EnqueueProductionOfVehicle(t);
 			return item ? To<Vehicle>::Cast(item->producing) : PVehicle();
 		}
 
@@ -131,7 +131,7 @@ namespace Objects
 	/*virtual override*/ void				VehiclePlant::PrototypeSetup()
 	{
 		Super::PrototypeSetup();
-		baseComponents = Objects::Component::baseComponents;
+		baseComponents = Objects::Component::baseComponents.GetStore().list;
 		for (const auto& turret:Objects::Component::vehicleTurretComponents)
 			if (turret->mountType == Component::Turret::MountType::Vehicle)
 				turretComponents << turret;

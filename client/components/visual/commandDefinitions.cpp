@@ -97,7 +97,7 @@ namespace Objects
 					Objects::GetProductionChoices(&plant,plant.selectedBase,choices);
 					static bool ignoreWarnings = false;
 					if (choices.IsNotEmpty() || ignoreWarnings)
-						ApplicationInterface::SignalConstructionBegin(plant.id, plant.selectedBase->constName, plant.selectedTurret->constName);
+						ApplicationInterface::SignalConstructionBegin(plant.id, {plant.selectedBase->constName, plant.selectedTurret->constName});
 					else
 					{
 
@@ -107,12 +107,11 @@ namespace Objects
 							if (!plant.selectedBase->moveOnWater)
 								waterNotice = " Note that this vehicle type cannot stand on water. ";
 							TUniqueID myID = plant.id;
-							ConstName baseName = plant.selectedBase->constName;
-							ConstName turretName = plant.selectedTurret->constName;
+							EntityType type = {plant.selectedBase->constName,plant.selectedTurret->constName};
 							Dialog::Confirm("Cannot find valid spawning locations around '"+plant.GetNiceName()+"' for '"+Vehicle::GetTypeName(plant.selectedBase,plant.selectedTurret)+"'. "+waterNotice+"Are you sure you wish to start this production?",
-									[baseName,turretName,myID]()
+									[type,myID]()
 									{
-										ApplicationInterface::SignalConstructionBegin(myID, baseName, turretName);
+										ApplicationInterface::SignalConstructionBegin(myID, type);
 										//ignoreWarnings = true;
 									}
 									,
@@ -297,7 +296,7 @@ namespace Objects
 			}, true);
 
 
-			foreach(Objects::SubOrbital::prototypes, proto)
+			foreach(Objects::Prototypes::planes, proto)
 			{
 				auto p = *proto;
 				Command::PEntityConstructionCommand cmd(new Command::EntityConstructionCommand("Construct " + p->GetTypeName(), nullptr, nullptr, p, [p]()
@@ -305,7 +304,7 @@ namespace Objects
 						PPlaneFactory factory = To<PlaneFactory>::DynamicCast(selectedEntity);
 						if (!factory)
 							return;
-						ApplicationInterface::SignalConstructionBegin(factory->id, p->GetCTypeName(), ConstName::Empty);
+						ApplicationInterface::SignalConstructionBegin(factory->id, p->GetType());
 					}
 					,
 					[p](bool controlEnabled)
@@ -651,7 +650,7 @@ namespace Objects
 
 				if (!Objects::ShouldQueueCommands())
 					ApplicationInterface::SignalDropSafeTasks(vehicle);
-				ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_DigDown, ConstName::Empty);
+				ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_DigDown, Objects::EntityType());
 			}
 
 			template <ConstName Command>
@@ -661,9 +660,19 @@ namespace Objects
 						return;
 					if (!Objects::ShouldQueueCommands())
 						ApplicationInterface::SignalDropSafeTasks(selectedMobileEntity);
-					ApplicationInterface::SignalNewJob(selectedMobileEntity, Command,ConstName::Empty);					
+					ApplicationInterface::SignalNewJob(selectedMobileEntity, Command,Objects::EntityType());
 				}
 
+			template <ConstName DetonationSize>
+				void	IssueDetonationCommand()
+				{
+					PMobileEntity vehicle = selectedMobileEntity;
+					if (!vehicle)
+						return;
+					if (!ShouldQueueCommands())
+						ApplicationInterface::SignalDropSafeTasks(vehicle);
+					ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_SelfDetonate,DetonationSize);					
+				}
 
 
 			void					TerraformerBuildRoad()
@@ -675,7 +684,7 @@ namespace Objects
 					return;
 				if (!Objects::ShouldQueueCommands())
 					ApplicationInterface::SignalDropSafeTasks(vehicle);
-				ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_BuildRoad,ConstName::Empty);
+				ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_BuildRoad,Objects::EntityType());
 			}
 
 
@@ -991,26 +1000,28 @@ namespace Objects
 
 			int at = 0;
 
-			foreach(Component::Terraformer::canBuild, b)
-			{
-				PStructure s = *b;
-				structureGroup[s->GetCategory()]->Add(new Command::EntityConstructionCommand(/*"Build " + */(*b)->GetTypeName(), nullptr,nullptr,*b,std::bind(&Detail::TerraformerConstruct, *b),
-				[s](bool controlsEnabled)
+			ASSERT__(Prototypes::structures.IsNotEmpty());
+			foreach(Prototypes::structures, b)
+				if (Component::Terraformer::CanBuild(*b))
 				{
-					bool constructingMe = (activeCursorMode == CursorMode::PlaceStructureMode
-							&& activeStructureToPlace == s);
-					bool unlocked = selectedEntity && s->GetTable()->isUnlocked.GetValue(selectedEntity->GetResearchState());
-					Objects::CommandFlags rs = controlsEnabled && 
-						(activeCursorMode == CursorMode::Idle
-						|| constructingMe
-						) && unlocked
-						? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
-					if (constructingMe)
-						rs |= Objects::CommandFlags::IsPermaActive;
-					return rs;
+					PStructure s = *b;
+					structureGroup[s->GetCategory()]->Add(new Command::EntityConstructionCommand(/*"Build " + */(*b)->GetTypeName(), nullptr,nullptr,*b,std::bind(&Detail::TerraformerConstruct, *b),
+					[s](bool controlsEnabled)
+					{
+						bool constructingMe = (activeCursorMode == CursorMode::PlaceStructureMode
+								&& activeStructureToPlace == s);
+						bool unlocked = selectedEntity && s->GetTable()->isUnlocked.GetValue(selectedEntity->GetResearchState());
+						Objects::CommandFlags rs = controlsEnabled && 
+							(activeCursorMode == CursorMode::Idle
+							|| constructingMe
+							) && unlocked
+							? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
+						if (constructingMe)
+							rs |= Objects::CommandFlags::IsPermaActive;
+						return rs;
+					}
+					));
 				}
-				));
-			}
 		}
 
 
@@ -1018,7 +1029,7 @@ namespace Objects
 		{
 			Detail::ConfigureStandardOffset(component);
 
-			component.commands.Add( new Command::IconCommand("Self Detonate", &Detail::IssueCommand<ConstName::DetonationSize_Regular>
+			component.commands.Add( new Command::IconCommand("Self Detonate", &Detail::IssueDetonationCommand<ConstName::DetonationSize_Regular>
 				, &CommonCmd::IdleCheck
 				,[](int&resourceCostOut, Resource&costTypeOut, int&timeCostOut)
 				{
@@ -1029,7 +1040,7 @@ namespace Objects
 				}
 				));
 
-			component.commands.Add( new Command::IconCommand("Obliterate", &Detail::IssueCommand<ConstName::DetonationSize_Doomsday>
+			component.commands.Add( new Command::IconCommand("Obliterate", &Detail::IssueDetonationCommand<ConstName::DetonationSize_Doomsday>
 				, &CommonCmd::IdleCheck
 				,[](int&resourceCostOut, Resource&costTypeOut, int&timeCostOut)
 				{
@@ -1344,6 +1355,7 @@ namespace Objects
 			DefineWorkingStructure(Objects::UraniumStorage::commands);
 			DefineWorkingStructure(Objects::Generator::commands);
 			DefineWorkingStructure(Objects::ReactorCore::commands);
+			DefineWorkingStructure(Objects::NexusPort::commands);
 			DefineLaboratory(Objects::Laboratory::commands);
 			DefineHangar();
 

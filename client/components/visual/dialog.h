@@ -12,7 +12,6 @@
 namespace Dialog
 {
 	using namespace DeltaWorks;
-	using namespace DeltaWorks::Math;
 
 	CONSTRUCT_ENUMERATION4(CheckResult,
 		OkayContinue,		//operation applicable. User can continue any time they wish to
@@ -35,6 +34,10 @@ namespace Dialog
 	class Dialog : public GUI::Window
 	{
 		typedef GUI::Window	Super;
+		friend class Super;
+
+	protected:
+		/**/			Dialog()	{}
 	public:
 		//CONSTRUCT_ENUMERATION5(Type, Confirmation, Message, TutorialMessage, StringQuery,FactionList);
 
@@ -56,9 +59,15 @@ namespace Dialog
 		FFetchInput			fetchInput;
 		FOnPassword			onPassword;
 		bool				isTutorial = false,
+							autoNextTutorial = true,
 							sendNullPasswordOnAbortByUser = false;
 
-		Rect<>				totalSize;
+		M::Rect<>				totalSize;
+
+		static std::shared_ptr<Dialog>	Create()
+		{
+			return Super::CreateDerivative<Dialog>();
+		}
 
 		//std::function<void(Dialog&)>	reLayout;
 
@@ -98,7 +107,7 @@ namespace Dialog
 
 		void		ReLayout()
 		{
-			Super::FullAutoLayout();
+			Super::FullAutoLayout(CLOCATION);
 		}
 
 		virtual	void	OnHide() override
@@ -139,6 +148,7 @@ namespace Dialog
 	Creates a new modal dialog on top of any other active modal dialogs
 	*/
 	WDialog	Confirm(const String&query, const FOnConfirm&onConfirm, const FCheckState&check);
+	WDialog	Confirm(const String&query, const FOnConfirm&onConfirm);
 
 	WDialog	AskYesNoHelp(const String&query, const String&help, const FOnConfirmBool&onAnswer, const FCheckState&check);
 
@@ -171,8 +181,8 @@ namespace Dialog
 	/**
 	Queues a tutorial message. Allows hiding all following tutorials
 	*/
-	WDialog	EnqueueTutorial(const String&key, const Array<String>&text, const String&imageName = "", const Rect<>&screenReference = Rect<>::Invalid);
-	PDialog	CreateTutorialMessage(const String&key, const ArrayRef<const String>&text, const String&imageName = "", const Rect<>&screenReference = Rect<>::Invalid);
+	WDialog	EnqueueTutorial(const String&key, const Array<String>&text, const String&imageName = "", bool prioritize=false);
+	PDialog	CreateTutorialMessage(const String&key, const ArrayRef<const String>&text, const String&imageName = "");
 
 	bool	RemoveTutorial(const String&key);
 	bool	RemoveTutorial(const PDialog&dialog);
@@ -187,7 +197,7 @@ namespace Dialog
 	bool	ShowingFactions();
 
 
-	void	ShowNextTutorial();
+	void	ShowNextTutorial(bool autoNext);
 
 	bool	HasMoreTutorials();
 
@@ -213,51 +223,38 @@ namespace Dialog
 	void	Destroy();
 
 
-
+	class Menu;
+	typedef std::shared_ptr<Menu>	PMenu;
 
 
 	class Menu : public GUI::Window
 	{
 		typedef GUI::Window	Super;
+
+		String		myTitle;
+
+		friend class Super;
+	protected:
+		/**/		Menu(){Super::logFullAutoLayout = true;}
 	public:
-		/**/				Menu(float initialAbsoulteWidth, const String&title)
-		{
-			Super::SetCenteredWidth(initialAbsoulteWidth,GUI::TAnchor::RelativeToScreen);
-			Super::fillBackground = false;
+		void		Setup(float initialAbsoluteWidth, const String&title);
 
-			if (title.IsNotEmpty())
-			{
-				GUI::PLabel label(new GUI::Label());
-				label->SetText(title);
-				label->extraSpacing = 0.1f;
-				Super::AnchorBelowPrevious(label,0.015f,0.f);
-			}
+		static PMenu		Create()
+		{
+			return Super::CreateDerivative<Menu>();;
 		}
 
 
-		GUI::PButton				AddCommand(const String&name, const std::function<void()>&execute, const std::function<bool()>&check = std::function<bool()>(), bool autoHide=true)
-		{
-			GUI::PButton button(new GUI::Button(name,
-				[execute,this,autoHide]()
-				{
-					execute();
-					if (autoHide)
-						GUI::Hide(To<GUI::Window>::Cast(this->shared_from_this()));
-				},
-				check
-			));
-			Super::AnchorBelowPrevious(button,0.f,Super::components.IsEmpty() ? 0.f : 0.015f);
-			return button;
-		}
+		virtual void				OnScreenSizeOrUIScaleChange() override;
+
+		GUI::PButton				AddCommand(const String&name, const std::function<void()>&execute, const std::function<bool()>&check = std::function<bool()>(), bool autoHide=true);
 
 
 	};
-	typedef std::shared_ptr<Menu>	PMenu;
 
 	
 
 
-	extern PMenu				loginMenu;
 	extern GUI::PWindow	serverChoice;
 
 
