@@ -54,68 +54,7 @@ namespace Explosions
 		/**/					Particles(const M::TVec3<>&particleColor):particleColor(particleColor)	{}
 		/**/					Particles(float particleColorR, float particleColorG, float particleColorB){M::Vec::def(particleColor,particleColorR,particleColorG,particleColorB);}
 
-		void					Update(float delta, Particles*shiftDustTo)
-								{
-									#define SMOKE_BARRIER               0.5f
-									#define SMOKE_UPDRIFT               3.0f
-
-									static const float threshold = 0.8f;
-									float friction = pow(0.1f,delta);
-									bool any_died = false;
-									for (index_t i = 0; i < Count(); i++)
-									{
-										Particle&p = at(i);
-										p.ttl -= delta;
-										if (p.ttl <= 0 || (shiftDustTo && p.ttl < p.maxTTL * threshold))
-											any_died = true;
-									}
-									if (any_died)
-									{
-										static Buffer<Particle>	updated_particles;
-										updated_particles.reset();
-										for (index_t i = 0; i < Count(); i++)
-											if (at(i).ttl > 0 && (!shiftDustTo || at(i).ttl >= at(i).maxTTL * threshold))
-												updated_particles << at(i);
-											else
-												if (shiftDustTo)
-													(*shiftDustTo) << at(i);
-										this->swap(updated_particles);
-									}
-
-									for (index_t i = 0; i < Count(); i++)
-									{
-										Particle&p = at(i);
-										float relative = p.ttl/p.maxTTL;
-									
-										M::Vec::mult(p.inertia,M::Clamp01(friction+relative));
-										M::Vec::mad(p.world,p.inertia,delta);//*M::Clamp(particle->ttl/(particle->max_ttl/2),0,1));
-										
-										using M::Sqr;
-
-										float3 pdelta = p.world - p.origin;
-										float d = M::Vec::dot(pdelta,p.normalizedUp);
-										float3 i2 = pdelta - p.normalizedUp * d;
-										p.inertia += p.normalizedUp * delta*SMOKE_UPDRIFT*5 * (1.f - relative);
-										p.inertia -= i2 * delta * SMOKE_UPDRIFT * 0.3f * relative;// * (1.f - relative);
-
-								//        particle->position[1] += particle->inertia[1]*eveTiming.delta;
-
-										p.color.alpha = M::Sqr(relative)*0.1;
-										float r = M::Sqr(M::Sqr(relative));
-										//if (shiftDustTo)
-										M::Vec::mult(particleColor,r,p.color.rgb);
-											//Vec::def(p.color.rgb,r*particleColor.r,r*particleColor.g,r*particleColor.b);
-										//else
-											//Vec::set(p.color.rgb,0);
-										//Vec::def(p.color.rgb,r,r,r);
-										/*_set(particle->color[0],sqrt(relative)*0.5+0.5);
-										_set(particle->color[1],sqrt(relative)*0.5+0.5);
-										_set(particle->color[2],sqrt(relative)*0.5+0.5);
-										_set(particle->color[3],sqrt(relative)*0.5+0.5);*/
-									}
-								}
-
-
+		void					Update(const float delta, Particles*shiftDustTo, const count_t maxParticleCount);
 	};
 
 	class ExplosionParticles : public Particles
@@ -141,18 +80,28 @@ namespace Explosions
 		float						progress,
 									size,	//=25
 									executionTime;
-		float3					location,
+		float3						location,
 									normal1,
 									color;
-		Engine::OpenAL::Source		source,auxiliarySources[6];
+		Engine::OpenAL::Source		source,auxiliarySources[4];
+
+		Timer::Time					lastAudioUpdate = 0;
 
 		static const float          ParticleSpeed,//=0.7f,
 									SmallerDelay,//=0.1f,
-									ExplosionDelay,//=0.05f,
-									ParticleTime;//=0.2f,
+									/**
+									Relative time (to executionTime) that must pass before any particles are spawned
+									*/
+									RelativeExplosionDelay;//=0.05f,
+
+		/**
+		Relative time (to executionTime) that the explosion keeps spewing new particles.
+		Actual particle numbers per second start high and linearly scale down to 0
+		*/
+		float						relativeParticleTime = 0.4f;
 									//NormalizedExecutionTime;//=1.3f,
 
-		static const count_t		ExplosionParticles = 2;
+		static constexpr const float		ExplosionParticles = 100;
 
 		std::function<void()>		onQuarterDone;
 
@@ -180,7 +129,7 @@ namespace Explosions
 										M::Vec::normalize0(normal1);
 									}
 		void						Create(const M::TVec3<>&position, float size_, float duration, bool isEMP);
-		bool						Update(Particles&particles, float delta);
+		bool						Update(Particles&particles, const float delta, const count_t maxParticleCount);
 		void						RenderRings(const float3&color);
 	};
 
@@ -195,11 +144,23 @@ namespace Explosions
 	extern DX11::StreamVBO				particleBuffer;
 	extern Engine::OpenAL::Wave			explosionSound,empExplosionSound;
 
+	/**
+	Controls the maximum number of concurrently active particles in any one particle container.
+	Also controls the maximum number of particles that can be newly created per second and explosion.
+	The default value is 2000.
+	Can be lowered to 500 on lower end systems, and increased to 100000 and more on higher end systems.
+	*/
+	extern count_t		maxConcurrentParticles;
+
 
 	void				Create();
 	void				Destroy();
 	void				FlushData();
 	
+	count_t				CountEMPParticles();
+	count_t				CountGlowParticles();
+	count_t				CountDustParticles();
+	count_t				CountParticles();
 
 	void				Render(const Engine::Aspect<>&);
 

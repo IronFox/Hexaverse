@@ -495,22 +495,6 @@ namespace Objects
 
 		namespace Bomb
 		{
-			#ifdef HAS_WINDOW
-			namespace Cmd
-			{
-				template <ConstName DetonationSize>
-					void	IssueCommand()
-					{
-						PMobileEntity vehicle = selectedMobileEntity;
-						if (!vehicle)
-							return;
-						if (!ShouldQueueCommands())
-							ApplicationInterface::SignalDropSafeTasks(vehicle);
-						ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_SelfDetonate,DetonationSize);					
-					}
-
-			};
-			#endif
 
 
 			void		Configure(Turret&);

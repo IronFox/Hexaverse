@@ -594,8 +594,9 @@ namespace Objects
 			v.entityTime += timeEpsilon;
 
 	
-
-			Explode(ApplicationInterface::TAttack(),Grid::HCellIdI(Grid::low.grid.GetCell(v.location.stackID).higherEquivalent,v.location.height),v.GetWorldPosition(),radius,damageLevel,doomsday,v.entityTime);
+			ApplicationInterface::TAttack at;
+			at.attackFrom = v.shared_from_this();
+			Explode(at,Grid::HCellIdI(Grid::low.grid.GetCell(v.location.stackID).higherEquivalent,v.location.height),v.GetWorldPosition(),radius,damageLevel,doomsday,v.entityTime);
 
 			return TerminalFailureVehicleDestroyed;
 		}

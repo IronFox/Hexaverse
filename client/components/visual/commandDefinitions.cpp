@@ -663,6 +663,16 @@ namespace Objects
 					ApplicationInterface::SignalNewJob(selectedMobileEntity, Command,Objects::EntityType());
 				}
 
+			template <ConstName DetonationSize>
+				void	IssueDetonationCommand()
+				{
+					PMobileEntity vehicle = selectedMobileEntity;
+					if (!vehicle)
+						return;
+					if (!ShouldQueueCommands())
+						ApplicationInterface::SignalDropSafeTasks(vehicle);
+					ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_SelfDetonate,DetonationSize);					
+				}
 
 
 			void					TerraformerBuildRoad()
@@ -1019,7 +1029,7 @@ namespace Objects
 		{
 			Detail::ConfigureStandardOffset(component);
 
-			component.commands.Add( new Command::IconCommand("Self Detonate", &Detail::IssueCommand<ConstName::DetonationSize_Regular>
+			component.commands.Add( new Command::IconCommand("Self Detonate", &Detail::IssueDetonationCommand<ConstName::DetonationSize_Regular>
 				, &CommonCmd::IdleCheck
 				,[](int&resourceCostOut, Resource&costTypeOut, int&timeCostOut)
 				{
@@ -1030,7 +1040,7 @@ namespace Objects
 				}
 				));
 
-			component.commands.Add( new Command::IconCommand("Obliterate", &Detail::IssueCommand<ConstName::DetonationSize_Doomsday>
+			component.commands.Add( new Command::IconCommand("Obliterate", &Detail::IssueDetonationCommand<ConstName::DetonationSize_Doomsday>
 				, &CommonCmd::IdleCheck
 				,[](int&resourceCostOut, Resource&costTypeOut, int&timeCostOut)
 				{

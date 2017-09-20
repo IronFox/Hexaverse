@@ -3678,6 +3678,9 @@ int main( int argc, const char* argv[])
 				
 				UI::SetScale(StartConfig::GetFloat("runtime/uiScale",1.f));
 
+				Explosions::maxConcurrentParticles = StartConfig::GetFloat("runtime/maxExplosionParticles",2000);
+
+
 				if (!RuntimeConfig::aiMode && StartConfig::GetBool("runtime/soundEnabled",true))
 				{
 					AudioInterface::Create();
@@ -3790,6 +3793,13 @@ int main( int argc, const char* argv[])
 						Engine::input.Bind(Key::Down,ZoomOut);
 					#endif
 
+						Engine::input.Bind(Key::X,[]()
+						{
+							const float baseRadius = 16;
+							const float3 center = Camera::scene.GetAbsoluteLocation() - Camera::scene.GetViewingDirection() * baseRadius*2;
+
+							Explosions::InitExplosion(center,false,baseRadius * 4, Objects::ExplosionTime(baseRadius));
+						});
 
 
 
