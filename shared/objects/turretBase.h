@@ -54,10 +54,11 @@ namespace Objects
 			}
 
 		};
+		static bool				IsHit(const OwnerParameter&myFaction, TrajectoryType t, float range, const World::Data&world,const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, float explosionRadius);
 
 
 	public:
-		static bool				CheckArea(const OwnerParameter&myFaction, const Grid::LCellIdI&, float explosionRadius);
+		static bool				CheckArea(const OwnerParameter&myFaction, const Grid::LCellIdI&, const M::TVec3<>&worldPos,float explosionRadius);
 
 		Component::Turret*		turret;
 		#ifdef CLIENT

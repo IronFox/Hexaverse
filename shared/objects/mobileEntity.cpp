@@ -1157,12 +1157,10 @@ namespace Objects
 			float3 dir = Grid::low.cells[target.stackID].centerVertex.xyz * Grid::ToRadius(target.height) - this->GetWorldPosition();
 			float3 innerDir;
 			Mat::rotate(this->inverse,dir,innerDir);
-			M::TVec3<> t0;
-			Grid::HCellIdI t1;
 			Ctr::Buffer0<M::TVec4<> > trajectory;
 
-			float angle;	
-			if (TraceTrajectory(TrajectoryEndPoint(target),trajectory,t0,t1,angle))
+			const auto rs = TraceTrajectory(TrajectoryEndPoint(target),trajectory);
+			if (rs != TraceResult::InvalidTrajectory)
 			{
 				float change = 1.f / float(GetAttacksPerRound());
 				attackActionLeft -= change;
@@ -1201,10 +1199,10 @@ namespace Objects
 
 				ApplicationInterface::TAttack at;
 				at.attackFrom = To<MobileEntity>::Cast(shared_from_this());
-				at.attackAngle = angle;
+				at.attackAngle = rs.artilleryAngle;
 				at.flightTime = flightTime;
 				at.isAutoAttack = false;
-				at.traceTo = t0;
+				at.traceTo = rs.impactAt;
 
 				ApplicationInterface::SignalAttack(at);
 				ChangeStorage(*this,entityTime,turret->ammoType,-turret->GetAmmoNeedPerShot(owner));
@@ -1213,11 +1211,9 @@ namespace Objects
 
 				const int damageLevel = (int)floor(turret->GetDamageLevel(owner));
 				if (turret->dealsEMPDamage)
-					ExplodeEMP(at,
-								t1, t0, turret->GetExplosionRadius(owner), damageLevel,entityTime);
+					ExplodeEMP(at,rs.impactCell,rs.impactAt,turret->GetExplosionRadius(owner), damageLevel,entityTime);
 				else
-					Explode(at,
-							t1, t0, turret->GetExplosionRadius(owner), damageLevel,turret->isDoomsday, entityTime);
+					Explode(at,rs.impactCell,rs.impactAt,turret->GetExplosionRadius(owner), damageLevel,turret->isDoomsday, entityTime);
 			}
 
 			if (task.foci.IsEmpty())

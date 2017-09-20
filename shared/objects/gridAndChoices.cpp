@@ -221,23 +221,21 @@ namespace Objects
 				//	return;
 				//if (d2 < M::Sqr(turret->explosionRadius))
 				//	return;
-				static Ctr::Buffer0<M::TVec4<> > trajectory;
-				Grid::HCellIdI ic;
-				M::TVec3<> iat;
-				float angle;
-				const auto rs = Component::Turret::TraceTrajectory(base.turret->trajectoryType,base.GetFlatAttackRange(),   
-							world, World::actual,sourceLocation,TrajectoryEndPoint( loc ),trajectory,
-							iat,ic,angle);
 				
-				if (rs == TurretTrajectory::InvalidTrajectory)
-					return;
-				if (rs == TurretTrajectory::MidFlightImpact)
-				{
-					float3 last = trajectory.Last().xyz * trajectory.Last().w;
-					float dist = Vec::quadraticDistance(last,Grid::ToWorld( e->location ));
-					if (dist > M::Sqr( base.turret->explosionRadius.GetValue(source.GetResearchState())))
-						return;
-				}
+				//
+				//static Ctr::Buffer0<M::TVec4<> > trajectory;
+				//const auto rs = Component::Turret::TraceTrajectory(base.turret->trajectoryType,base.GetFlatAttackRange(),   
+				//			world, world/*World::actual*/,sourceLocation,TrajectoryEndPoint( loc ),trajectory);
+				//
+				//if (rs == TraceResult::InvalidTrajectory)
+				//	return;
+				//if (rs == TraceResult::MidFlightImpact)
+				//{
+				//	float3 last = trajectory.Last().xyz * trajectory.Last().w;
+				//	float dist = Vec::quadraticDistance(last,Grid::ToWorld( e->location ));
+				//	if (dist > M::Sqr( base.turret->explosionRadius.GetValue(source.GetResearchState())))
+				//		return;
+				//}
 				float d2 = Grid::GetQuadraticGeometricDistance(sourceLocation.cellLocation,loc);
 				if (d2 < c2)
 				{
@@ -1366,12 +1364,6 @@ namespace Objects
 
 	static void					InternalRemove( const PWorldEntity&e, RemovalType t, float&timestamp, bool isRemovedFromGrid/*=false*/, bool ignoreIndestructible/*=false*/)
 	{
-		if (!e)
-		{
-			LogEvent(EventClass::Preset::internalError,"Trying to remove null-entity, t="+String(t.ToString())+", timestamp="+String(timestamp)+", isRemovedFromgrid="+String(isRemovedFromGrid));
-			DBG_FATAL__("Trying to remove null-entity");
-			return;
-		}
 		#ifndef CLIENT
 			if (e->IsIndestructible() && !ignoreIndestructible)
 				return;
@@ -1526,11 +1518,23 @@ namespace Objects
 
 	void			Remove( const PWorldEntity&e, RemovalType t, float&atTime)
 	{
+		if (!e)
+		{
+			LogEvent(EventClass::Preset::internalError,"Trying to remove null-entity, t="+String(t.ToString())+", timestamp="+String(atTime));
+			DBG_FATAL__("Trying to remove null-entity");
+			return;
+		}
 		InternalRemove(e,t,atTime,!e->isInsertedIntoGrid,false);
 	}
 
 	void			ForceRemove(const PWorldEntity&e, RemovalType t, float&atTime)
 	{
+		if (!e)
+		{
+			LogEvent(EventClass::Preset::internalError,"Trying to remove null-entity, t="+String(t.ToString())+", timestamp="+String(atTime));
+			DBG_FATAL__("Trying to remove null-entity");
+			return;
+		}
 		InternalRemove(e,t,atTime,!e->isInsertedIntoGrid,true);
 	}
 

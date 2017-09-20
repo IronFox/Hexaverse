@@ -2,6 +2,7 @@
 #include "turretBase.h"
 
 #include "gridAndChoices.h"
+#include "faction.h"
 
 
 #ifdef HAS_WINDOW
@@ -18,7 +19,7 @@ namespace Objects
 	
 
 
-	/*static*/ bool				TurretBase::CheckArea(const OwnerParameter&myFaction, const Grid::LCellIdI&origin, float explosionRadius)
+	/*static*/ bool				TurretBase::CheckArea(const OwnerParameter&myFaction, const Grid::LCellIdI&origin,const M::TVec3<>&source3, float explosionRadius)
 	{
 		AreaHelper	helper;
 		using M::Sqr;
@@ -33,7 +34,7 @@ namespace Objects
 				helper << origin - 1;
 		}
 		Grid::LCellIdI current;
-		const M::TVec3<> source3 = Grid::ToWorld(origin);
+		//const M::TVec3<> source3 = Grid::ToWorld(origin);
 		float range2 = M::Sqr(explosionRadius);
 
 		while (helper >> current)
@@ -67,6 +68,38 @@ namespace Objects
 
 
 
+	bool TurretBase::IsHit(const OwnerParameter&myFaction, TrajectoryType t, float range, const World::Data&world,const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, float explosionRadius)
+	{
+		Buffer0<M::TVec4<> > trajectory;
+		const auto rs = Component::Turret::TraceTrajectory(t,range,world,world,source,dest,trajectory);
+
+		if (rs == TraceResult::InvalidTrajectory)
+			return false;
+		if (rs == TraceResult::MidFlightImpact)
+		{
+			float3 last = trajectory.Last().xyz * trajectory.Last().w;
+			float dist = Vec::quadraticDistance(last,dest.worldLocation);
+			if (dist > M::Sqr(explosionRadius))
+				return false;
+		}
+
+		//Component::Turret::CanHit(turret->trajectoryType, range,source,destIn)
+
+		if (rs.distanceToTarget == 0)
+		{
+			if (!CheckArea(myFaction,dest.cellLocation,dest.worldLocation,  explosionRadius))
+				return false;
+		}
+		else
+		{
+			const Grid::LCellIdI impact = {Grid::low.Locate(rs.impactAt,dest.cellLocation.stackID),rs.impactCell.height };
+			if (!CheckArea(myFaction,impact,rs.impactAt, explosionRadius))
+				return false;
+		}
+
+		return true;
+	}
+
 	bool					TurretBase::ExtCanHit(const OwnerParameter&myFaction, const TrajectoryEndPoint&source, const TrajectoryEndPoint&destIn, Grid::LCellIdI&destOut)	const
 	{
 		using M::Sqr;
@@ -83,16 +116,23 @@ namespace Objects
 		//	return false;
 		const float explosionRadius = turret->GetExplosionRadius(myFaction);
 		const float explosionRadius2 = M::Sqr(explosionRadius);
-		if (Component::Turret::CanHit(turret->trajectoryType, range,source,destIn)
-			&& CheckArea(myFaction,destIn.cellLocation,explosionRadius))
+
+		if (!Component::Turret::CanHit(turret->trajectoryType, range+explosionRadius*2,source,destIn))
+			return false;
+	
+		const auto&world = 
+			#ifdef CLIENT
+				World::actual;
+			#else
+				myFaction->knownWorld;
+			#endif
+		if (IsHit(myFaction, turret->trajectoryType,range,world,source,destIn,explosionRadius))
 		{
 			destOut = destIn.cellLocation;
 			return true;
 		}
 
-		if (!Component::Turret::CanHit(turret->trajectoryType, range+explosionRadius*2,source,destIn))
-			return false;
-
+	
 		AreaHelper	helper;
 		//queue << destIn;
 		{
@@ -105,24 +145,25 @@ namespace Objects
 		Grid::LCellIdI current;
 		while (helper >> current)
 		{
-			M::TVec3<> world = Grid::ToWorld(current);
-			float fromDest2 = Vec::quadraticDistance(destIn.worldLocation,world);
+			M::TVec3<> w3 = Grid::ToWorld(current);
+			float fromDest2 = Vec::quadraticDistance(destIn.worldLocation,w3);
 			if (fromDest2 > explosionRadius2)
 				continue;
+			const auto target2 = TrajectoryEndPoint( current,0);
 			if (!World::actual.LowCellIsClear(current) || 
-				!Component::Turret::CanHit(turret->trajectoryType, range,source,TrajectoryEndPoint( current,0)))
+				!Component::Turret::CanHit(turret->trajectoryType, range,source,target2)
+				)
 				continue;
 			//float fromSource2 = Vec::quadraticDistance(source3,world);
 			//if (fromSource2 > extRange2)
 				//continue;
 
-
-
-			if (CheckArea(myFaction,current,explosionRadius))
+			if (IsHit(myFaction, turret->trajectoryType,range,world,source,target2,explosionRadius))
 			{
 				destOut = current;
 				return true;
 			}
+
 			{
 				const auto&n = Grid::low.grid.GetCell(current.stackID).neighborhood;
 				for (int i = 0; i < n.numNeighbors; i++)
