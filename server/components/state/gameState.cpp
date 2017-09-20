@@ -10,7 +10,7 @@
 
 void			ApplicationInterface::SignalFactionsChanged()
 {
-	Game::mostFactionsAlive = std::max(Game::mostFactionsAlive, Game::CountLivingPlayerFactions());
+	Game::mostFactionsAlive = std::max(Game::mostFactionsAlive, (UINT32)Game::CountLivingPlayerFactions());
 	Reflection::SignalFactionsChanged();
 }
 
