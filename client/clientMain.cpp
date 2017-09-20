@@ -3736,6 +3736,7 @@ int main( int argc, const char* argv[])
 						Engine::input.Bind(Key::Down,ZoomOut);
 					#endif
 
+					#ifdef _DEBUG
 						Engine::input.Bind(Key::X,[]()
 						{
 							const float baseRadius = 16;
@@ -3743,6 +3744,7 @@ int main( int argc, const char* argv[])
 
 							Explosions::InitExplosion(center,false,baseRadius * 4, Objects::ExplosionTime(baseRadius));
 						});
+					#endif
 
 
 
