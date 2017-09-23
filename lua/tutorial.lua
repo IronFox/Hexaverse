@@ -104,7 +104,7 @@ CreateTask(function() Game.DisplayMessage("Enabled mines collect natural resourc
 
 --build lab:
 CreateTask(function() Game.DescribeTask("Please find and select your Terraformer.") end, function() if Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Hoverformer' then TaskDone() end; end);
-CreateTask(function() Game.DisplayMessage("Terraformers are your primary working force. While not all terraformers are equally manuverable, resilient, or productive, they can all shape the terrain and build new structures. Let's build something!","terraformer.png") end);
+CreateTask(function() Game.DisplayMessage("Terraformers are your primary working force. While not all terraformers are equally manuverable, resilient, or productive, they can all shape the terrain and build new structures.\n Now, let's build something!","terraformer.png") end);
 CreateTask(function() Game.DescribeTask("Please instruct your Terraformer to build a laboratory. Using the unit commands in the bottom screen section, select Build->Miscellaneous->Laboratory, and click anywhere on the terrain.") end, 
 	function() 
 		local done = false;
@@ -132,7 +132,7 @@ CreateTask(function() Game.DescribeTask("Please instruct your Terraformer to bui
 
 CreateTask(function() Game.DisplayMessage("The Terraformer will keep constructing the laboratory until done, as long as enough %Minerals%resources are available. The bottom left resource table tells us that we have sufficient %Minerals%minerals available: "..Game.GetCompoundResourceChange('Minerals') .." per round, "..Game.GetCompoundResourceStorage('Minerals').." in storage. So let's press on.") end);
 
-CreateTask(function() Game.DescribeTask("Until the Laboratory is done, please request new rounds, by using the respective command in the bottom left section of the screen or by pressing the Return key."); end,
+CreateTask(function() Game.DescribeTask("Until the Laboratory is done please request new rounds by using the respective 'End Round' command in the bottom left section of the screen, or by pressing the Enter/Return key."); end,
 	function()
 		for i = 1, #Game.myUnits do
 			local u = Game.myUnits[i];
@@ -145,7 +145,7 @@ CreateTask(function() Game.DescribeTask("Until the Laboratory is done, please re
 );
 
 CreateTask(function() Game.DisplayMessage("Laboratories allow two types of research: Unlocking and Improving. The more Laboratories you have enabled, the faster the research will progress."); end);
-CreateTask(function() Game.DescribeTask("Task your laboratory to unlock the ReactorCore building type, by selecting it and using the commands in the bottom section of the screen."); end,
+CreateTask(function() Game.DescribeTask("Task your laboratory to unlock the ReactorCore building type by selecting it and using the commands in the bottom section of the screen."); end,
 	function()
 		local res = Game.myResearch['Unlock:ReactorCore'];
 		--FindResearch('Unlock:ReactorCore');
@@ -340,7 +340,10 @@ CreateTask(function() Game.DescribeTask("Now, please construct a Reactor Core ne
 
 CreateTask(function() Game.DisplayMessage("Reactor Cores are a great way to boost the energy output of your compound. They do tend to concentrate your power production, however, which may pose a rewarding target for hostile forces.","Reactor Core.jpg") end);
 
-CreateTask(function() Game.DisplayMessage("This concludes this tutorial.") end);
+CreateTask(function() Game.DisplayMessage("This concludes the interactive tutorial.\n"..
+"With the basics covered, you will undoubtedly quickly master all other features as well.\n"..
+"The best of luck for your future conquests!\n"..
+"You may leave and close the server any time.") end);
 
 
 
