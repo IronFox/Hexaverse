@@ -174,11 +174,7 @@ namespace UI
 			public:
 				/**/					TutorialCommand() : Super("Tutorial") {}
 
-				virtual void			Refresh(bool) override
-				{
-					state = Dialog::HasMoreTutorials() && !GUI::IsModal() ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
-				}
-
+				virtual void			Refresh(bool) override;
 				virtual void			Execute() override
 				{
 					Dialog::ShowNextTutorial(true);
@@ -256,25 +252,12 @@ namespace UI
 				/**/					DemolishCommand() : Super("Demolish") {}
 				/**/					DemolishCommand(const String&name) : Super(name) {}
 
-				virtual void			Refresh(bool controlsEnabled) override
-				{
-					state = Objects::CommandFlags::None;
-					if (GUI::IsModal() || !controlsEnabled || !Objects::selectedEntity || Objects::selectedEntity->IsIndestructible())
-						return;
-
-					state |= Objects::CommandFlags::IsEnabled;
-				}
-
+				virtual void			Refresh(bool controlsEnabled) override;
 				virtual void			Execute() override
 				{
 					Objects::CommonCmd::DemolishSelected();
 				}
-
-				virtual void			CompileLabel(Label&outResult) override
-				{
-					String name = Objects::selectedEntity ? Objects::selectedEntity->GetNiceName() : "selected unit";
-					outResult << "Permanently destroy "+name;
-				}
+				virtual void			CompileLabel(Label&outResult) override;
 			};
 
 			class SleepCommand : public Icon
