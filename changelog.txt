@@ -13,6 +13,7 @@ v0.6.5	[Sep 24 2017]
 	> Removed the 'Construct Selected' button on vehicle plants. Simply selecting a desired turret will enqueue the chosen vehicle composition.
 	> Surveyor turret is now much heavier, limiting the speed of the standard surveyor vehicle.
 	> Laboratories now maintain a short queue of research tasks to execute.
+	> Selected material buttons in interactive configuration mode now render as permanently down.
 	* Nexus bases can no longer end up submerged in lava.
 	* Fixed interactive configuration mode sometimes getting out of sync with the server.
 

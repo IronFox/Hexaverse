@@ -247,6 +247,7 @@ namespace ConfigurationMode
 						cfg.Top().Set(0.f);
 					button->SetAnchorConfig(cfg);
 				}
+				button->SetHorizontalPadding(0);
 				//if ((i%4)!=0)
 				//{
 				//	button->anchorConfig.Left().SetLastOf(window,0.01f);
@@ -286,13 +287,17 @@ namespace ConfigurationMode
 		{
 			foreach (materialButtons,b)
 			{
-				String name = Grid::Content::Reinterpret(b->first).ToString();
-				if (b->first == Grid::Content::Unknown)
-					name = "Natural";
+				//String name = Grid::Content::Reinterpret(b->first).ToString();
+				//if (b->first == Grid::Content::Unknown)
+					//name = "Natural";
 				if (b->first == type)
-					b->second->SetText("["+name+"]");
+				{
+					b->second->SetAlwaysDown(true);
+					//b->second->SetText("["+name+"]");
+				}
 				else
-					b->second->SetText(name);
+					b->second->SetAlwaysDown(false);
+					//b->second->SetText(name);
 			}
 		}
 
