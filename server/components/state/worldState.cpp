@@ -297,9 +297,14 @@ namespace World
 
 	}
 
-	void			BuildConfiguredWorld(TwisterRandom&random)
+	
+	static void _BuildConfiguredWorld(TwisterRandom&random)
 	{
-		Grid::currentPlanetConfig.RandomizeSeeds(random);
+		random.discard(20);
+
+
+
+
 		Grid::currentPlanetConfig.BuildWorld(World::actual);
 		World::actual.ExportDiscovered(World::initial, Config::worldDiscovery);
 		Grid::Resource::FillAll(random,Grid::currentCustomResourceDistribution);
@@ -325,9 +330,20 @@ namespace World
 
 	void			BuildConfiguredWorld(UINT32 seed)
 	{
+		//Important: Must NOT call RandomizeSeeds() here, or interactive configuration mode gets caught generating new seeds with each change!
+		Grid::currentPlanetConfig.SetSeed(seed);
 		TwisterRandom random(seed);
-		BuildConfiguredWorld(random);
+		_BuildConfiguredWorld(random);
 	}
+	
+	void			BuildConfiguredWorld(TwisterRandom&rnd)
+	{
+		Grid::currentPlanetConfig.RandomizeSeeds(rnd);
+		_BuildConfiguredWorld(rnd);
+	}
+
+
+
 
 
 
