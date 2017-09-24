@@ -448,7 +448,7 @@ namespace Tutorial
 
 	void	ShowMessage(const String&name, bool forceOpenNow/*=false*/, bool overrideMemory/*=false*/)
 	{
-		if (RuntimeConfig::aiMode)
+		if (RuntimeConfig::aiMode || RuntimeConfig::tutorialMode)
 			return;
 		Detail::Message*msg = Detail::messages.QueryPointer(name);
 		if (!msg)
