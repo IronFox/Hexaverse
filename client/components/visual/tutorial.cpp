@@ -17,6 +17,7 @@
 #include "ui.h"
 #include "../serverProcess.h"
 #include <lua.hpp>
+#include "../configurationMode.h"
 
 namespace Tutorial
 {
@@ -448,7 +449,7 @@ namespace Tutorial
 
 	void	ShowMessage(const String&name, bool forceOpenNow/*=false*/, bool overrideMemory/*=false*/)
 	{
-		if (RuntimeConfig::aiMode || RuntimeConfig::tutorialMode)
+		if (RuntimeConfig::aiMode || RuntimeConfig::tutorialMode || ConfigurationMode::IsActive())
 			return;
 		Detail::Message*msg = Detail::messages.QueryPointer(name);
 		if (!msg)
