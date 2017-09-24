@@ -3339,8 +3339,8 @@ void ParseKeyValue(const String&key, const String&value)
 
 bool ConfigureClient(const wchar_t*commandLine)
 {
+	Except::onFatal = MyFatal;
 	
-	//ShowMessage(String(commandLine));
 	try
 	{
 		String cmd = String(commandLine);
@@ -3405,8 +3405,6 @@ bool ConfigureClient(const wchar_t*commandLine)
 		Network::ServerDiscovery::RegisterNewHost(RuntimeConfig::serverAddress, false,true);
 	}
 
-
-	Except::onFatal = MyFatal;
 	RuntimeConfig::ClientInit();
 
 	ASSERT__(FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("logs")));
