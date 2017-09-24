@@ -16,6 +16,7 @@ v0.6.5	[Sep 24 2017]
 	> Selected material buttons in interactive configuration mode now render as permanently down.
 	* Nexus bases can no longer end up submerged in lava.
 	* Fixed interactive configuration mode sometimes getting out of sync with the server.
+	* Fixed an insane number of tiny bugs.
 	* Fixed server sometimes auto-saving while in interactive configuration mode.
 
 v0.6.4	[May 5 2017]
