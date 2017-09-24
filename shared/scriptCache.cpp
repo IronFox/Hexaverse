@@ -110,7 +110,10 @@ namespace ScriptCache
 
 	static FileSystem::Folder	GetCacheDirectory()
 	{
-		return FileSystem::Folder( RuntimeConfig::ConfigFile("cache/") );
+		FileSystem::File file;
+		RuntimeConfig::LocateInConfigDir("cache/",file);
+		FileSystem::ForceCreateDirectory(file);
+		return file;
 	}
 
 	static PathString	GetFileCachePath(const SHA256::HashContainer&id)
@@ -174,7 +177,6 @@ namespace ScriptCache
 		if (createFile)
 		{
 			PathString path = GetFileCachePath(id);
-			FileSystem::CreateDirectory(FileSystem::ExtractFileDir(path));
 			FILE*f = FOPEN(path.c_str(),"w+b");
 			if (f)
 			{
