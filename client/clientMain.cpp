@@ -3394,6 +3394,11 @@ bool ConfigureClient(const wchar_t*commandLine)
 		else
 			if (parameterName.IsNotEmpty())
 				throw Except::Program::ParameterFault(CLOCATION, "Configuration syntax violation: Missing '=' and parameter value for '" + parameterName + "'");
+	
+
+		RuntimeConfig::ClientInit();	//requires RuntimeConfig::aiMode, which is declared by parameter variables
+		FileSystem::ForceCreateDirectory(RuntimeConfig::ConfigFile("logs"));	//can't do this until 
+		Logging::Begin(RuntimeConfig::ConfigFile(PathString("logs/client "+Logging::TimeStamp(true)+".log")));
 	}
 	catch (const std::exception&e)
 	{
@@ -3404,11 +3409,6 @@ bool ConfigureClient(const wchar_t*commandLine)
 	{
 		Network::ServerDiscovery::RegisterNewHost(RuntimeConfig::serverAddress, false,true);
 	}
-
-	RuntimeConfig::ClientInit();
-
-	ASSERT__(FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("logs")));
-	Logging::Begin(RuntimeConfig::ConfigFile(PathString("logs/client "+Logging::TimeStamp(true)+".log")));
 
 	//(PRODUCT_NAME".log",true,true)
 	return true;
