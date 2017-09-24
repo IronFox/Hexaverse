@@ -181,9 +181,6 @@ namespace VisualEventLog
 		eventLock.lock();
 
 		if (type.significance > EventSignificance::Common
-			#ifdef DEBUG
-				 || type.significance == EventSignificance::Debug
-			#endif
 			)
 		{
 			events << VisualEvent(event,type);
