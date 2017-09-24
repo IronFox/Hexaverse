@@ -2023,6 +2023,9 @@ bool loop()
 					textout << "Seeing Server Version";
 				else
 					textout << "Seeing Local Version";
+				#ifdef _DEBUG
+					textout << nl << ConfigurationMode::GetServerSeed();
+				#endif
 				textout.PopState();
 			}
 

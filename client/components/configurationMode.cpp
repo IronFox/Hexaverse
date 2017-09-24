@@ -30,7 +30,7 @@ namespace ConfigurationMode
 		Timer::Time				lastLocalChange=timer.Now();
 
 		index_t					sentVersion = 0,
-								receivedVersion = 0,
+								lastServerVersion = 0,
 								localVersion = 0;
 		Buffer0<Objects::Command::PVisualCommand>	numberCommands;	//!< All commands rendering numbers
 
@@ -298,6 +298,7 @@ namespace ConfigurationMode
 
 		void UploadToServer()
 		{
+			config.versionCounter = (UINT32)sentVersion;
 			serverConfig = config;
 			serverSeed = seed;
 			RefreshButtonStates();
@@ -1078,15 +1079,24 @@ namespace ConfigurationMode
 		Update();
 	}
 
+	UINT32	GetServerSeed()
+	{
+		return Detail::seed;
+	}
+
+
 	void	Update(const Grid::ExtendedPlanetConfig&cfg)
 	{
 		using namespace Detail;
 
-		receivedVersion++;
-		if (receivedVersion >= sentVersion)
-		{
-			receivedVersion = sentVersion;
+		lastServerVersion = cfg.versionCounter;
+		if (localVersion < lastServerVersion)
+			localVersion = lastServerVersion;
+		if (sentVersion < lastServerVersion)
+			sentVersion = lastServerVersion;
 
+		if (lastServerVersion == sentVersion)
+		{
 			if (RestoreServerWorld())
 			{
 				seed = cfg.lastSeed;
@@ -1126,7 +1136,7 @@ namespace ConfigurationMode
 			showDiscovery = false;
 			serverObjects.Clear();
 		}
-		localVersion = sentVersion = receivedVersion = 0;
+		localVersion = sentVersion = lastServerVersion = 0;
 		Detail::Create();
 		UI::HexGrid::Configure(Objects::selectedEntity);
 
@@ -1175,7 +1185,7 @@ namespace ConfigurationMode
 	{
 		if (!Detail::isActive)
 			return true;
-		if (Detail::receivedVersion != Detail::localVersion)
+		if (Detail::lastServerVersion != Detail::localVersion)
 			return false;
 		Detail::LoadServerWorld(true);
 		//World::allowRecompilation = false;

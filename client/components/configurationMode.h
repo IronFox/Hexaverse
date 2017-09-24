@@ -15,6 +15,8 @@ namespace ConfigurationMode
 	bool	ViewingServerVersion();
 	void	RandomizeSeed();
 
+	UINT32	GetServerSeed();
+
 	/**
 	Clears all visual commands and rebuilds their configuration, depending on command group expansion,
 	and only if configuration mode is active.
