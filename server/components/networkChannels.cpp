@@ -46,7 +46,7 @@ namespace Channels
 	TCP::Channel<Grid::ExtendedPlanetConfig, Configurator, Protocol::ChannelID::PlanetConfig>				planetConfig(Receiver::PlanetConfig);
 	TCP::Channel<Protocol::GameConfig, Configurator, Protocol::ChannelID::GameConfig>						gameConfig(Receiver::GameConfig);
 	TCP::Channel<Protocol::ResourceID, PreFaction, Protocol::ChannelID::RequestResource>				requestResource(Receiver::RequestResource);
-	TCP::Channel<Package::NetString<256>, Configurator, Protocol::ChannelID::LoadPlanetByName>		loadPlanetByName(Receiver::LoadPlanetByName);
+	TCP::Channel<Protocol::LoadPlanetByName, Configurator, Protocol::ChannelID::LoadPlanetByName>		loadPlanetByName(Receiver::LoadPlanetByName);
 	
 	TCP::Channel<NET(INT32),FactionLevel,Protocol::ChannelID::TutorialAt>							tutorialAt(Receiver::TutorialAt);
 
@@ -929,30 +929,31 @@ namespace Receiver
 		Game::tutorialAt = at;
 	}
 
-	void	LoadPlanetByName(Package::NetString<256>&planet, TCP::Peer&peer)
+	void	LoadPlanetByName(Protocol::LoadPlanetByName&load, TCP::Peer&peer)
 	{
 		if (ConfigurationMode::IsActive())
 		{
-			LogEvent(EventClass::Preset::configurationPrint,peer,"Received request for planet preset '"+planet+"'...");
-			if (planet.Contains('/') || planet.Contains('\\'))
+			LogEvent(EventClass::Preset::configurationPrint,peer,"Received request for planet preset '"+load.name+"'...");
+			if (load.name.Contains('/') || load.name.Contains('\\'))
 			{
 				LogEvent(EventClass::Preset::commandRejected,peer,"Planet name contained path separators. Rejecting request.");
 				return;
 			}
 
-			if (planet.IsNotEmpty())
+			if (load.name.IsNotEmpty())
 			{
-				if (!World::IsPlanetIniFile(planet+".ini"))
+				if (!World::IsPlanetIniFile(load.name+".ini"))
 				{
-					LogEvent(EventClass::Preset::remoteControlError,"'"+planet+"' is not a valid planet type");
+					LogEvent(EventClass::Preset::remoteControlError,"'"+load.name+"' is not a valid planet type");
 					return;
 				}
 			}
 
-			if (planet.IsNotEmpty())
+			if (load.name.IsNotEmpty())
 			{
-				Reflection::Variable::planetType->Set(planet.Trim());
+				Reflection::Variable::planetType->Set(load.name.Trim());
 				Reflection::ReloadPlanet();
+				Grid::currentPlanetConfig.versionCounter = load.configVersion;
 			}
 			Network::BuildConfiguredWorld();
 		}

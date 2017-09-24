@@ -32,6 +32,11 @@ namespace ConfigurationMode
 		index_t					sentVersion = 0,
 								lastServerVersion = 0,
 								localVersion = 0;
+		/**
+		Disallows any planet modifications until the 
+		*/
+		index_t					lockedAwaitConfig=0;
+
 		Buffer0<Objects::Command::PVisualCommand>	numberCommands;	//!< All commands rendering numbers
 
 		GUI::PWindow			planetListWindow;
@@ -177,6 +182,9 @@ namespace ConfigurationMode
 
 		void Update(bool forceRebuild = true)
 		{
+			if (lockedAwaitConfig)
+				return;
+
 			lastLocalChange = timer.Now();
 			if (localVersion == sentVersion)
 				localVersion++;
@@ -390,9 +398,10 @@ namespace ConfigurationMode
 				index_t myIndex = p - planetList.pointer();
 				GUI::PButton button(new GUI::Button(*p,[myIndex]()
 				{
-					Network::Channels::loadPlanetByName.SendTo(Network::client, planetList[myIndex]);
+					Network::Channels::loadPlanetByName.SendTo(Network::client, Protocol::LoadPlanetByName( planetList[myIndex],(UINT32)++sentVersion));
 					GUI::Hide(planetListWindow);
 					LoadServerWorld(false);
+					lockedAwaitConfig = sentVersion;
 				}));
 				{
 					auto cfg = button->GetAnchorConfig();
@@ -1101,6 +1110,15 @@ namespace ConfigurationMode
 		if (sentVersion < lastServerVersion)
 			sentVersion = lastServerVersion;
 
+		bool mustLoad = false;
+		if (lockedAwaitConfig == cfg.versionCounter)
+		{
+			mustLoad = true;
+			ASSERT_EQUAL__(lastServerVersion,sentVersion);
+			lockedAwaitConfig = 0;
+			LogEvent(EventSignificance::Important,"Received updated world config. Unlocking");
+		}
+		
 		if (lastServerVersion == sentVersion)
 		{
 			if (RestoreServerWorld())
@@ -1113,12 +1131,16 @@ namespace ConfigurationMode
 						(*n)->RasterizeImage();
 				}
 				serverConfig = cfg;
+				if (mustLoad)
+					config = cfg;
 				//if (clientWorldLoaded)
 				//	Update();
 				//else
 				ClientGrid::Apply(cfg);
 				World::allowRecompilation = false;
 			}
+			else
+				ASSERT__(!mustLoad);
 		}
 	}
 
@@ -1142,7 +1164,7 @@ namespace ConfigurationMode
 			showDiscovery = false;
 			serverObjects.Clear();
 		}
-		localVersion = sentVersion = lastServerVersion = 0;
+		localVersion = sentVersion = lastServerVersion = lockedAwaitConfig = 0;
 		Detail::Create();
 		UI::HexGrid::Configure(Objects::selectedEntity);
 
@@ -1191,6 +1213,8 @@ namespace ConfigurationMode
 	{
 		if (!Detail::isActive)
 			return true;
+		if (Detail::lockedAwaitConfig)
+			return false;
 		if (Detail::lastServerVersion != Detail::localVersion)
 			return false;
 		Detail::LoadServerWorld(true);

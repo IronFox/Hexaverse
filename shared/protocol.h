@@ -1476,6 +1476,10 @@ namespace Protocol
 		, NET(BYTE), dropMode
 	)
 
+	NETSTRUCT2(LoadPlanetByName
+		, Package::NetString<256>, name
+		, UINT32, configVersion
+	)
 
 
 	namespace ChannelID
@@ -1569,7 +1573,7 @@ namespace Protocol
 			PlanetConfig,		// both: Grid::ExtendedPlanetConfig
 			GameConfig,			// both: GameConfig
 			PlanetNames,		// s2c: NetString<256>[]
-			LoadPlanetByName,	// c2s: NetString<256>
+			LoadPlanetByName,	// c2s: LoadPlanetByName
 			EndConfigurationMode,//c2s: <signal>
 
 			OperationLacksResources, //s2c: OperationLacksResources
