@@ -996,19 +996,19 @@ namespace Receiver
 
 	void	RequestResource(Protocol::ResourceID&id, TCP::Peer&peer)
 	{
-		LogEvent(EventClass::Preset::uncommon,peer,"Received resource request for resource "+Bin2Str::ConvertPOD(id));
+		LogEvent(EventClass::Preset::common,peer,"Received resource request for resource "+Bin2Str::ConvertPOD(id));
 
 		ScriptCache::PScript script = ScriptCache::Lookup(id);
 		if (script)
 		{
-			LogEvent(EventClass::Preset::uncommon,peer,"Resource "+Bin2Str::ConvertPOD(id)+" is script. Dispatching "+String(script->compressed.Count())+" bytes");
+			LogEvent(EventClass::Preset::common,peer,"Resource "+Bin2Str::ConvertPOD(id)+" is script. Dispatching "+String(script->compressed.Count())+" bytes");
 			Protocol::ResourceData data;
 			data.data = script->compressed;	//stupid copy...
 			data.id = id;
 			Channels::resourceData.SendTo(peer,data);
 			return;
 		}
-		LogEvent(EventClass::Preset::uncommon,peer,"Resource "+Bin2Str::ConvertPOD(id)+" is unknown");
+		LogEvent(EventClass::Preset::common,peer,"Resource "+Bin2Str::ConvertPOD(id)+" is unknown");
 	}
 
 	
