@@ -211,6 +211,11 @@ namespace GUI
 	{
 		return std::max(100U,Detail::lastClientSpace.height);
 	}
+	static float ViewPortAspect()
+	{
+		return float(ViewPortWidth()) / ViewPortHeight();
+	}
+	
 
 	static float2 ViewPortSizef()
 	{
@@ -2051,7 +2056,7 @@ namespace GUI
 
 	/*virtual override*/ float	Checkbox::GetIdealWidth() const
 	{
-		float checkBoxWidth = GetTotalFontScale() * textout.GetScaledHeight() / display.GetPixelAspect() * 1.5f;
+		float checkBoxWidth = GetTotalFontScale() * textout.GetScaledHeight() / ViewPortAspect() * 1.5f;
 		return Super::GetIdealWidth() + checkBoxWidth;
 	}
 
@@ -2072,7 +2077,7 @@ namespace GUI
 		Super::RenderText(lit);
 		SurfaceRenderer::SetColor(lit ? float4(0.7f):float4(0.5f));
 		float checkBoxHeight = GetTotalFontScale() * textout.GetScaledHeight();
-		float checkBoxWidth = checkBoxHeight / display.GetPixelAspect();
+		float checkBoxWidth = checkBoxHeight / ViewPortAspect();
 		float top = GetRect().y.center() + checkBoxHeight*0.7f;// Super::extraSpacing * checkBoxHeight;
 		M::TFloatRect box = M::TFloatRect(GetRect().x.min,top - checkBoxHeight,GetRect().x.min+checkBoxWidth,top);
 		SurfaceRenderer::Rasterize(box);
