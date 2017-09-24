@@ -1022,6 +1022,35 @@ namespace UI
 				foreach (commands,c)
 					Add(cfg,(*c)->gridCoords, *c);
 			}
+
+			/*virtual override*/ void			DemolishCommand::CompileLabel(Label&outResult)
+			{
+				String name = Objects::selectedEntity ? Objects::selectedEntity->GetNiceName() : "selected unit";
+				outResult << "Permanently destroy "+name;
+				if (Objects::selectedEntity)
+				{
+					if (Objects::selectedEntity->IsIndestructible())
+						outResult << "(Unit is indestructible)";
+					elif (RuntimeConfig::tutorialMode)
+						outResult << "(Destruction not allowed right now)";
+				}
+				else
+					outResult << "(none selected)";
+			}
+
+			/*virtual override*/ void			DemolishCommand::Refresh(bool controlsEnabled)
+			{
+				state = Objects::CommandFlags::None;
+				if (GUI::IsModal() || !controlsEnabled || !Objects::selectedEntity || Objects::selectedEntity->IsIndestructible() || RuntimeConfig::tutorialMode)
+					return;
+
+				state |= Objects::CommandFlags::IsEnabled;
+			}
+
+			/*virtual override*/ void			TutorialCommand::Refresh(bool)
+			{
+				state = Dialog::HasMoreTutorials() && !GUI::IsModal() && !RuntimeConfig::tutorialMode ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
+			}
 		}
 
 	}
