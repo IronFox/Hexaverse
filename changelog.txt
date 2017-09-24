@@ -13,6 +13,7 @@ v0.6.5	[Sep 24 2017]
 	> Removed the 'Construct Selected' button on vehicle plants. Simply selecting a desired turret will enqueue the chosen vehicle composition.
 	> Surveyor turret is now much heavier, limiting the speed of the standard surveyor vehicle.
 	> Laboratories now maintain a short queue of research tasks to execute.
+	* Nexus bases can no longer end up submerged in lava.
 
 v0.6.4	[May 5 2017]
 	+ Base planet types are no longer copied to the configuration directory (except Template.ini), but may be overridden manually.

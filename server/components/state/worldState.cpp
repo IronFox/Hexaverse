@@ -390,7 +390,7 @@ namespace World
 				}
 
 
-				const int h0 = Objects::FindApplicableGround(Grid::LCellIdI((UINT32)i,0),true);
+				const int h0 = Objects::FindApplicableGround(Grid::LCellIdI((UINT32)i,0),true, true);	//make sure we don't end up IN the lava
 				if (h0 == Objects::badHeight || h0 == -Grid::CellStack::HalfRange || !testBase->CanStandOn(World::actual,Grid::LCellIdI((UINT32)i,h0-1),false,false))
 					continue;
 				{
@@ -398,7 +398,7 @@ namespace World
 					bool broken = false;
 					for (int k = 0; k < n.numNeighbors && !broken; k++)
 					{
-						const int h1 = Objects::FindApplicableGround(Grid::LCellIdI(n.neighborID[k],0),true);
+						const int h1 = Objects::FindApplicableGround(Grid::LCellIdI(n.neighborID[k],0),true, true);
 						if (h1 == Objects::badHeight || h1 == -Grid::CellStack::HalfRange || !testBase->CanStandOn(World::actual,Grid::LCellIdI(n.neighborID[k],h1-1),false,false))
 							broken = true;
 					}

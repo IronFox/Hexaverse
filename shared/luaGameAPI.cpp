@@ -52,7 +52,7 @@ namespace Lua
 							{
 								if (r->coverage[i] > highest)
 								{
-									if (Objects::FindApplicableGround(Grid::LCellIdI(i,0),true) != Objects::badHeight)
+									if (Objects::FindApplicableGround(Grid::LCellIdI(i,0),true,true) != Objects::badHeight)
 									{
 										highest = r->coverage[i];
 										highestAt = (int)i;

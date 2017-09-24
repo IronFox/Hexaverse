@@ -325,22 +325,37 @@ namespace Grid
 		return rs;
 	}
 
-	int CellStack::FindMostApplicableGround(int h, bool canStandOnWater) const
+
+	static bool CanStandOn(BYTE cellContent, bool canStandOnWater, bool canStandOnLava)
+	{
+		if (Grid::CellStack::Cell::IsSolid(cellContent))
+			return true;
+		switch (cellContent)
+		{
+			case Grid::Content::Lava:
+				return canStandOnLava;
+			case Grid::Content::Water:
+				return canStandOnWater;
+		}
+		return false;
+	}
+
+	int CellStack::FindMostApplicableGround(int h, bool canStandOnWater, bool canStandOnLava) const
 	{
 		UINT uh = ToLayer(h);
 		//unsigned(h + HalfRange);
 		if (uh < Range)
 		{
-			if (volumeCell[uh].IsSolid() || (volumeCell[uh].IsWater() && canStandOnWater))
+			if (CanStandOn(volumeCell[uh].content, canStandOnWater, canStandOnLava))
 			{
 				for (UINT i = uh + 1; i < Range; i++)
-					if (/*!volumeCell[i].IsOccupied() && */!volumeCell[i].IsSolid() && (!canStandOnWater || !volumeCell[i].IsWater()))
+					if (!CanStandOn(volumeCell[i].content,canStandOnWater,canStandOnLava))
 						return int(i) - HalfRange;
-				return 0x1FFFFFFF;
+				return BadHeight;
 			}
 			for (UINT i = uh - 1; i < uh; --i)
 			{
-				if (volumeCell[i].IsSolid() || (volumeCell[i].IsWater() && canStandOnWater))
+				if (CanStandOn(volumeCell[i].content, canStandOnWater, canStandOnLava))
 					return (int(i + 1) - HalfRange);
 				//if (volumeCell[i].IsOccupied())
 					//return 0x1FFFFFFF;

@@ -1082,7 +1082,7 @@ namespace Game
 		LogEvent(EventSignificance::Common,"Spawning Nexus Port at pole "+String(pole));
 
 		Grid::LCellIdI location((UINT32)pole,0);	//first 12 are corner cells
-		int h = Objects::FindApplicableGround(location,true);
+		int h = Objects::FindApplicableGround(location,true,true); //do not submerge into lava
 		if (h == Objects::badHeight)
 			h = 0;	//just spawn it near median
 		static const int R = 5;
@@ -1462,7 +1462,7 @@ namespace Game
 		if (Config::startBases)
 		{
 			Grid::LCellIdI location(startLocation,0);	//first 12 are corner cells
-			int h = Objects::FindApplicableGround(location,true);
+			int h = Objects::FindApplicableGround(location,true,true);
 			location.height = h;
 			static const int want = 10;
 			static const int stackHeight = want / Objects::NaturalResourceVector::TranslationFactor + (want % Objects::NaturalResourceVector::TranslationFactor ? 1 : 0);

@@ -341,7 +341,7 @@ namespace Nexus
 					{
 						Grid::LCellIdI candidate(*n, p->location.height);
 						Grid::AssertIsValid(candidate);
-						candidate.height = Objects::FindApplicableGround(candidate, true);
+						candidate.height = Objects::FindApplicableGround(candidate, true, false);
 
 						if (candidate.height != Objects::badHeight && !Objects::GetVehicle(candidate))
 						{

@@ -634,11 +634,11 @@ namespace Test
 			turret->explosionRadius.SetConst(random.NextFloat(1,4));
 
 			Grid::LCellIdI	generatorAt = RandomCell(random);
-			generatorAt.height = Objects::FindApplicableGround(generatorAt,true);
+			generatorAt.height = Objects::FindApplicableGround(generatorAt,true,true);
 			while (generatorAt.height == Objects::badHeight)
 			{
 				generatorAt = RandomCell(random);
-				generatorAt.height = Objects::FindApplicableGround(generatorAt,true);
+				generatorAt.height = Objects::FindApplicableGround(generatorAt,true,true);
 			}
 			Objects::PGenerator generator(CreateStructure<Objects::Generator>(faction0, generatorAt));
 
@@ -647,13 +647,17 @@ namespace Test
 				Objects::PWorldEntity storage;
 				if (turret->ammoNeedPerShot(faction1) != 0)
 				{
-					Grid::LCellIdI	munitionStoreAt = RandomCell(random);
-					munitionStoreAt.height = Objects::FindApplicableGround(munitionStoreAt,true);
-					while (munitionStoreAt.height == Objects::badHeight)
+					Grid::LCellIdI	munitionStoreAt;
+					int tries = 0;
+					do
 					{
 						munitionStoreAt = RandomCell(random);
-						munitionStoreAt.height = Objects::FindApplicableGround(munitionStoreAt,true);
+						munitionStoreAt.height = Objects::FindApplicableGround(munitionStoreAt,true,true);
+						if (++tries > 100)
+							Fail(CLOCATION,"Unable to find suitable store location");
 					}
+					while (munitionStoreAt.height == Objects::badHeight);
+
 					switch (turret->ammoType)
 					{
 						#ifndef NO_MUNITION
@@ -675,16 +679,20 @@ namespace Test
 			#endif
 			Objects::RefreshCompoundCoverage(0);
 
-			Grid::LCellIdI	vehicleAt = RandomCellAtRange(random, generatorAt, M::FloatRange(0.f, turret->GetHorizontalAttackRange(faction0) + turret->GetExplosionRadius(faction0) * 2));	//allow out-of-range
-			vehicleAt.height = Objects::FindApplicableGround(vehicleAt,true);
-			while (vehicleAt.height == Objects::badHeight)
+			const auto myBase = &Objects::Component::hoverbase;
+			Grid::LCellIdI	vehicleAt;
+			int tries = 0;
+			do
 			{
 				vehicleAt = RandomCellAtRange(random, generatorAt, M::FloatRange(0.f, turret->GetHorizontalAttackRange(faction0) + turret->GetExplosionRadius(faction0) * 2));	//allow out-of-range
-				vehicleAt.height = Objects::FindApplicableGround(vehicleAt,true);
+				vehicleAt.height = Objects::FindApplicableGround(vehicleAt,true,true);
+
+				if (++tries > 100)
+					Fail(CLOCATION,"Unable to find suitable vehicle location");
 			}
+			while (vehicleAt.height == Objects::badHeight || !myBase->CanStandOn(World::actual,vehicleAt-1,false,false));
 
-
-			Objects::PVehicle v(new Objects::Vehicle(faction1,vehicleAt,&Objects::Component::hoverbase,turret));
+			Objects::PVehicle v(new Objects::Vehicle(faction1,vehicleAt,myBase,turret));
 			float t = 0;
 			Objects::InsertConstructed(v,t);
 			#ifndef ONE_COMPOUND_PER_FACTION

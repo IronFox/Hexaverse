@@ -215,7 +215,7 @@ namespace Objects
 	#else
 		void Vehicle::PositionOnTop(const Grid::LCellIdI&cell, bool signalEvent)
 		{
-			int h = FindApplicableGround(cell,base->moveOnWater);
+			int h = FindApplicableGround(cell,base->moveOnWater,false);
 			ASSERT__(h != badHeight);
 			MobilePlacementResult rs = PlaceExactlyAt(Grid::LCellIdI(cell.stackID, h),0,0,signalEvent,false);
 			ASSERT_EQUAL__(rs, MobilePlacementResult::PlacementOkay);

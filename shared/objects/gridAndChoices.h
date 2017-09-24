@@ -130,7 +130,7 @@ namespace Objects
 	Attempts to find the lowest possible low-resolution grid cell to put a vehicle in.
 	Search starts from the specified reference cell height. If the cell is already empty, search continues down, otherwise up.
 	*/
-	int				FindApplicableGround(const Grid::LCellIdI&cell, bool canStandOnWater);
+	int				FindApplicableGround(const Grid::LCellIdI&cell, bool canStandOnWater, bool canStandOnLava);
 
 
 	/**

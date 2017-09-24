@@ -470,7 +470,7 @@ namespace Grid
 		A ground location is a cell that is not occupied but above an occupied cell.
 		If the specified cell is occupied, any applicable ground must be ab
 		*/
-		int				FindMostApplicableGround(int h, bool canStandOnWater) const;
+		int				FindMostApplicableGround(int h, bool canStandOnWater, bool canStandOnLava) const;
 	};
 
 	typedef CellStack::Cell::Content Content;

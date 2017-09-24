@@ -1012,7 +1012,7 @@ namespace Objects
 	}
 
 	
-	int FindApplicableGround(const Grid::LCellIdI&cell, bool canStandOnWater)
+	int FindApplicableGround(const Grid::LCellIdI&cell, bool canStandOnWater, bool canStandOnLava)
 	{
 		#ifdef HYBRID_GRID
 			UINT32 finer = Grid::low.grid.GetCell(cell.stackID).higherEquivalent;
@@ -1028,15 +1028,15 @@ namespace Objects
 			int _h = h;
 			//incremented = false;
 			if (set)
-				_h = std::max(_h, World::actual.GetStack(finer).FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater));
+				_h = std::max(_h, World::actual.GetStack(finer).FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater,canStandOnLava));
 			else
 			{
-				_h = World::actual.GetStack(finer).FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater);
+				_h = World::actual.GetStack(finer).FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater,canStandOnLava);
 				set = true;
 			}
 			#ifdef HYBRID_GRID
 				for (int j = 0; j < c.neighborhood.numNeighbors; j++)
-					_h = std::max(_h, World::actual.GetStack(c.neighborhood.neighborID[j]).FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater));
+					_h = std::max(_h, World::actual.GetStack(c.neighborhood.neighborID[j]).FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater,canStandOnLava));
 			#endif
 			incremented = _h != h;
 			h = _h;
