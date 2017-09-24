@@ -1644,7 +1644,7 @@ namespace FileIO
 
 	bool			CanSaveRightNow()
 	{
-		return IsValidSavePhase(RuntimeConfig::phase);
+		return IsValidSavePhase(RuntimeConfig::phase) && !ConfigurationMode::IsActive();
 	}
 
 

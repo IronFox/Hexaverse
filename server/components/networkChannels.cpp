@@ -1703,7 +1703,7 @@ namespace Receiver
 				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::ServerPrivate ),peer,"Client disconnected ("+peer.GetError(true)+")");
 
 
-				if (!Network::AnyHumanPlayersActive())
+				if (!Network::AnyHumanPlayersActive() && !ConfigurationMode::IsActive())
 				{
 					LogEvent(EventClass::Preset::uncommon,"Last active player has disconnected. Pausing round timer");
 					Game::roundTimerPaused = true;
