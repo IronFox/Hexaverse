@@ -524,7 +524,7 @@ namespace World
 		Ctr::Buffer0<TPlanetIniFile,Swap> files;
 		
 		AppendAvailablePlanetInitFilesFrom(false, RuntimeConfig::ConfigFile("config/myPlanets"),files);
-		AppendAvailablePlanetInitFilesFrom(true,FileSystem::Folder().FindFolder("config/myPlanets"),files);
+		AppendAvailablePlanetInitFilesFrom(true,FileSystem::Directory().FindDirectory("config/myPlanets"),files);
 
 		Ctr::GenericHashTable<String,TPlanetIniFile,Ctr::StdHash,Swap,Swap>	merged;
 		foreach (files,f)

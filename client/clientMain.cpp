@@ -1136,7 +1136,7 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 					if (!TimeLapse::enabled)
 					{
 						PathString screenshotsAt = RuntimeConfig::ConfigFile("screenshots");
-						FileSystem::CreateFolder(screenshotsAt);
+						FileSystem::CreateDirectory(screenshotsAt);
 						index_t counter = 0;
 						PathString filename = screenshotsAt + FOLDER_SLASH_STR + PathString("screenshot"+String(counter)+".png");
 						while (FileSystem::IsFile(filename))
@@ -3322,7 +3322,7 @@ void ParseKeyValue(const String&key, const String&value)
 		}
 		elif(key == "documentHere")
 		{
-			FileSystem::Folder().FindFolder(PathString(value),RuntimeConfig::documentationRootFolder,false);
+			FileSystem::Folder().FindDirectory(PathString(value),RuntimeConfig::documentationRootFolder,false);
 			if (!RuntimeConfig::documentationRootFolder.DoesExist())
 				FileSystem::CreateDirectory(RuntimeConfig::documentationRootFolder);
 		}
@@ -3832,7 +3832,7 @@ int main( int argc, const char* argv[])
 			if (RuntimeConfig::documentationRootFolder.DoesExist())
 			{
 				{
-					FileSystem::Folder imageTarget = FileSystem::Folder(RuntimeConfig::documentationRootFolder).FindFolder("images/units",false);
+					FileSystem::Folder imageTarget = FileSystem::Folder(RuntimeConfig::documentationRootFolder).FindDirectory("images/units",false);
 					if (imageTarget.IsValidLocation())
 					{
 						LogEvent(EventSignificance::Uncommon, "Rendering type images to "+String(imageTarget.GetLocation())+ "...");
@@ -3863,13 +3863,13 @@ int main( int argc, const char* argv[])
 					}
 				}
 				{
-					FileSystem::Folder documentationTarget = FileSystem::Folder(RuntimeConfig::documentationRootFolder).FindFolder("documentation",false);
+					FileSystem::Folder documentationTarget = FileSystem::Folder(RuntimeConfig::documentationRootFolder).FindDirectory("documentation",false);
 					if (documentationTarget.IsValidLocation())
 					{
-						FileSystem::Folder rootFolder(documentationTarget.FindFolder("units",false));
-						FileSystem::Folder structureFolder(rootFolder.FindFolder("structures",false));
-						FileSystem::Folder turretFolder(rootFolder.FindFolder("turrets",false));
-						FileSystem::Folder vbaseFolder(rootFolder.FindFolder("vbases",false));
+						FileSystem::Folder rootFolder(documentationTarget.FindDirectory("units",false));
+						FileSystem::Folder structureFolder(rootFolder.FindDirectory("structures",false));
+						FileSystem::Folder turretFolder(rootFolder.FindDirectory("turrets",false));
+						FileSystem::Folder vbaseFolder(rootFolder.FindDirectory("vbases",false));
 
 						StringFile unitList;
 						unitList.Create(rootFolder.FindFile("list.prefix",false)->GetLocation());

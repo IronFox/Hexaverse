@@ -1048,7 +1048,7 @@ namespace Engine
 	{
 		PathString compiledPath = FileSystem::ExtractFileDir(filename) + "/compiled/";
 		if (!FileSystem::IsDirectory(compiledPath))
-			FileSystem::CreateFolder(compiledPath);
+			FileSystem::CreateDirectory(compiledPath);
 
 		String name = String(FileSystem::ExtractFileName(filename))+"."+functionName;
 		//compiledPath += FileSystem::ExtractFileName(filename)+"."+functionName;
