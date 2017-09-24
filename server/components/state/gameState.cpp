@@ -196,7 +196,7 @@ namespace Game
 				rs |= Protocol::GameFlag::StartBases;
 			if (Config::Nexus::enableAI)
 				rs |= Protocol::GameFlag::NexusAI;
-			if (ConfigurationMode::IsActive() && allowSpectatorFactions)
+			if (ConfigurationMode::IsActive()/* && allowSpectatorFactions*/)
 				rs |= Protocol::GameFlag::ConfigurationMode;
 			if (RuntimeConfig::tutorialMode)
 				rs |= Protocol::GameFlag::TutorialMode;
