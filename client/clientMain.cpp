@@ -1136,7 +1136,7 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 					if (!TimeLapse::enabled)
 					{
 						PathString screenshotsAt = RuntimeConfig::ConfigFile("screenshots");
-						FileSystem::CreateFolder(screenshotsAt);
+						FileSystem::CreateDirectory(screenshotsAt);
 						index_t counter = 0;
 						PathString filename = screenshotsAt + FOLDER_SLASH_STR + PathString("screenshot"+String(counter)+".png");
 						while (FileSystem::IsFile(filename))
