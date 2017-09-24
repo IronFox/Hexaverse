@@ -203,6 +203,9 @@ namespace World
 			#endif
 		}
 
+		void					CopyGridContent(const Data&);
+
+
 		bool					FamilyIsOutdated(index_t i) const {return families[i].structureOrSensory.didChange;}
 		//void					UnsetFamilyOutdated(index_t i) {families[i].Reset();}
 

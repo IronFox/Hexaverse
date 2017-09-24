@@ -90,7 +90,8 @@ namespace ConfigurationMode
 				ASSERT__(!isLoaded);
 				ASSERT__(!current || current == this);
 				isLoaded = true;
-				copy.swap(World::actual);
+				copy.CopyGridContent(World::actual);
+				//copy.swap(World::actual);
 				current = nullptr;
 				VisualTerrain::Invalidate(); //force rebuild
 			};
@@ -101,7 +102,7 @@ namespace ConfigurationMode
 				ASSERT_IS_NULL__(current);
 				//ASSERT__(copy.cellStack.First().volumeCell[0].content != Grid::Content::Clear);
 				isLoaded = false;
-				copy.swap(World::actual);
+				World::actual.CopyGridContent(copy);
 				current = this;
 				VisualTerrain::Invalidate(); //force rebuild
 			}

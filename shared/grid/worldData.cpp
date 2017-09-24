@@ -40,6 +40,32 @@ namespace World
 		}
 	}
 
+	void					Data::CopyGridContent(const Data&other)
+	{
+		for (UINT32 stack = 0; stack < Grid::HighSetup::GridType::CellCount; stack++)
+		{
+			const auto& fromStack = other.cellStack[stack];
+			auto& toStack = cellStack[stack];
+			for (unsigned layer = 0; layer < Grid::CellStack::Range; layer++)
+			{
+				const auto&from = fromStack.volumeCell[layer];
+				auto&to = toStack.volumeCell[layer];
+				to.content = from.content;
+				to.intLightLevel = from.intLightLevel;
+				to.submergence = from.submergence;
+			}
+			toStack.highestOpaqueCell = fromStack.highestOpaqueCell;
+			toStack.lightingChangedTo = fromStack.lightingChangedTo;
+			toStack.lowestOpenCell = fromStack.lowestOpenCell;
+			toStack.waterRange = fromStack.waterRange;
+		}
+
+		BaseGrid::FamiliesChanged changed;
+		changed.SetAll();
+		SignalChange(changed,0,true);
+	}
+
+
 
 	void	Create()
 	{

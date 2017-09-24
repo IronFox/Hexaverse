@@ -119,7 +119,7 @@ public:
 		void		Set(family_t f)	{DBG_ASSERT_LESS__(f,NumFamilies);  changed[f] = true; anyChanged = true;}
 		bool		IsSet(family_t f) const {DBG_ASSERT_LESS__(f,NumFamilies); return changed[f];}
 		bool		AnyChanged() const {return anyChanged;}
-
+		void		SetAll() {for (family_t f = 0; f < NumFamilies; f++) changed[f] = true; anyChanged = true;}
 	private:
 		bool		changed[NumFamilies] = {false};
 		bool		anyChanged = false;
