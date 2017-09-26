@@ -51,13 +51,17 @@ namespace World
 				const auto&from = fromStack.volumeCell[layer];
 				auto&to = toStack.volumeCell[layer];
 				to.content = from.content;
-				to.intLightLevel = from.intLightLevel;
-				to.submergence = from.submergence;
+				#ifdef HAS_WINDOW
+					to.intLightLevel = from.intLightLevel;
+					to.submergence = from.submergence;
+				#endif
 			}
-			toStack.highestOpaqueCell = fromStack.highestOpaqueCell;
-			toStack.lightingChangedTo = fromStack.lightingChangedTo;
-			toStack.lowestOpenCell = fromStack.lowestOpenCell;
-			toStack.waterRange = fromStack.waterRange;
+			#ifdef HAS_WINDOW
+				toStack.highestOpaqueCell = fromStack.highestOpaqueCell;
+				toStack.lightingChangedTo = fromStack.lightingChangedTo;
+				toStack.lowestOpenCell = fromStack.lowestOpenCell;
+				toStack.waterRange = fromStack.waterRange;
+			#endif
 		}
 
 		BaseGrid::FamiliesChanged changed;
