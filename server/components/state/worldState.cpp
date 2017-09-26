@@ -480,6 +480,8 @@ namespace World
 				}
 				unlocked++;
 			}
+			if (numZones == 0)
+				unlocked = 1;
 				
 			SetUnlockedEMPZones(unlocked);
 		}
