@@ -858,10 +858,13 @@ namespace Objects
 	#ifndef CLIENT
 		void					NexusPort::OnLoad()
 		{
-			if (resistence > 0)
-				owner->acquiringNexusControl++;
-			else
-				owner->nexusControl++;
+			if (owner != Faction::nexus)
+			{
+				if (resistence > 0)
+					owner->acquiringNexusControl++;
+				else
+					owner->nexusControl++;
+			}
 		}
 
 		/*virtual override*/ bool			NexusPort::ConnectsToDifferentOwnership() const
