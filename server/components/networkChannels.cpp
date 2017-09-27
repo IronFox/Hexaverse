@@ -1022,16 +1022,20 @@ namespace Receiver
 			return;
 		}
 		Network::PClient cl = To<Network::Client>::Cast(peer.attachment);
-		cl->name = name;
+		if (cl->faction != Objects::Faction::nexus)
+			cl->name = name;
+		else
+			cl->name = "<Nexus>";
+
 		if (cl->faction)
 		{
 			Protocol::IdentifyFaction factionID;
 			factionID.id = cl->faction->id;
-			factionID.name = name;
+			factionID.name = cl->name;
 			factionID.color = cl->faction->color;
-			cl->faction->name = name;
+			cl->faction->name = cl->name;
 			Channels::identifyFaction.SendTo(Network::server,factionID,2);
-			LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ), peer, "User renamed to '"+name+"'");
+			LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ), peer, "User renamed to '"+cl->name+"'");
 		}
 	}
 
