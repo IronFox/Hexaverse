@@ -2479,8 +2479,10 @@ namespace GUI
 	{
 		Super::OnRectChange();
 
+		
 		static const float labelPadding = 0.01f;
-		const float yMax = isStack ? stackedYRange.max : rawYRange.max;
+		const auto effectiveRange = isStack ? stackedYRange : rawYRange;
+		const float yMax = effectiveRange.max;
 		BeginLabelPrint();
 			rightSpace = std::max(0.025f,textout.GetScaledWidth(String(yMax)) + labelPadding * 2.f);
 		EndLabelPrint();
@@ -2544,6 +2546,7 @@ namespace GUI
 				}
 			}
 
+			if (effectiveRange.IsValid())
 			{
 				const M::TFloatRange<float> fy = M::FloatRange<float>(0,yMax);
 				float xLineStep = GetAxisStep(fy);
