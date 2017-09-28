@@ -21,44 +21,38 @@ namespace Objects
 
 	//typedef PFaction		OwnerParameter;
 
+	
 
-
-	#ifdef HAS_WINDOW
-
-	#endif
 
 	class TurretBase 
 	{
-		class AreaHelper
-		{
-		public:
-			Ctr::Queue<Grid::LCellIdI>	queue;
-			Ctr::GenericHashSet<Grid::LCellIdI>	visited;
-
-			bool				operator>>(Grid::LCellIdI&next)
-			{
-				return queue >> next;
-			}
-
-			void				operator<<(const Grid::LCellIdI&next)
-			{
-				if (!visited.SetNew(next))
-					return;
-				queue << next;
-			}
-
-			void				Clear()
-			{
-				queue.Clear();
-				visited.Clear();
-			}
-
-		};
-		static bool				IsHit(const OwnerParameter&myFaction, TrajectoryType t, float range, const World::Data&world,const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, float explosionRadius);
 
 
 	public:
-		static bool				CheckArea(const OwnerParameter&myFaction, const Grid::LCellIdI&, const M::TVec3<>&worldPos,float explosionRadius);
+
+		class TargetChoice
+		{
+		public:
+			Grid::LCellIdI		cellTarget;
+			ImpactDetails		impact;
+			Buffer0<M::TVec4<> > trajectory;
+
+			#ifdef _DEBUG
+				struct TField
+				{
+					Grid::LCellIdI cell;
+					bool	outOfRange=false;
+					bool	friendlyFound=false;
+				};
+
+				Buffer0<TField>	fieldsChecked;
+				M::TVec3<>		explosionCenter;
+				float			explosionRadius;
+			#endif
+		};
+
+
+		static bool				CheckArea(const OwnerParameter&myFaction, const Grid::LCellIdI&, const M::TVec3<>&worldPos,float explosionRadius,TargetChoice&);
 
 		Component::Turret*		turret;
 		#ifdef CLIENT
@@ -104,6 +98,8 @@ namespace Objects
 		virtual bool			HasAmmoForShot() = 0;
 		virtual OwnerParameter	GetOwner() const = 0;
 		
+
+
 		/**
 		Determines whether or not the local turret base can hit a given location.
 		Provides the precise aiming target if hitting is possible only through explosion radius extension.
@@ -113,15 +109,53 @@ namespace Objects
 			Otherwise a close approximation will be given that is still in range but will hit the target through the explosion radius
 		@return true if an applicable destination was found, false otherwise
 		*/
-		bool					ExtCanHit(const OwnerParameter&myFaction, const TrajectoryEndPoint&source, const TrajectoryEndPoint&destIn, Grid::LCellIdI&destOut)	const;
+		bool					ExtCanHit(const OwnerParameter&myFaction, const TrajectoryEndPoint&source, const TrajectoryEndPoint&destIn, TargetChoice&outExtResult)	const;
 
 
 
 
 		#ifndef CLIENT
 			virtual void		Attack(float&currentTime) = 0;
-			virtual bool		FrontQueuePossibleAttacks() = 0;
+
+			/**
+			Queues a single auto-target to the front of the local task queue.
+			If the number of possible attacks per round are exhausted, insufficient ammunition is available,
+			or the local entity state/type otherwise prohibits auto-targeting, then the method returns false.
+			Internally typically uses GetSentryTarget()
+			@param[out] outChoice Container for data related to the chosen target
+			@return true if a target has been queued, false otherwise. For multi-targeting, the method may be called until it returns false
+			*/
+			virtual bool		FrontQueueAutoAttack(TurretBase::TargetChoice&outChoice) = 0;
 		#endif
+
+	private:
+		class AreaHelper
+		{
+		public:
+			Ctr::Queue<Grid::LCellIdI>	queue;
+			Ctr::GenericHashSet<Grid::LCellIdI>	visited;
+
+			bool				operator>>(Grid::LCellIdI&next)
+			{
+				return queue >> next;
+			}
+
+			void				operator<<(const Grid::LCellIdI&next)
+			{
+				if (!visited.SetNew(next))
+					return;
+				queue << next;
+			}
+
+			void				Clear()
+			{
+				queue.Clear();
+				visited.Clear();
+			}
+
+		};
+		static bool				IsSafeHit(const OwnerParameter&myFaction, TrajectoryType t, float range,const World::Data&visibleWorld, const World::Data&actualWorld,const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, float explosionRadius, TargetChoice&);
+
 	};
 
 	typedef std::shared_ptr<TurretBase>	PTurretBase;

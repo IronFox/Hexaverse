@@ -254,7 +254,10 @@ namespace Evolver
 				//if (v->IsSentry())
 				{
 					if (v->myTasks.IsEmpty() || (b->turret->ignoresVehicleMotion && !v->NextTaskIsAttack()))
-						v->FrontQueuePossibleAttacks();
+					{
+						Objects::TurretBase::TargetChoice choice;
+						while (v->FrontQueueAutoAttack(choice));
+					}
 				}
 
 				if (v->NextTaskIsAttack())
@@ -288,8 +291,17 @@ namespace Evolver
 
 					if (t->turret->CanAttack())
 					{
-						if (t->attackQueue.IsEmpty() && !t->FrontQueuePossibleAttacks())
-							continue;
+						if (t->attackQueue.IsEmpty())
+						{
+							bool any = false;
+
+							Objects::TurretBase::TargetChoice choice;
+							while (t->FrontQueueAutoAttack(choice))
+								any = true;
+
+							if (!any)
+								continue;
+						}
 						if (!t->HasAmmoForShot())
 						{
 							LogEvent(EventClass::Preset::commandRejected,t.get(),"Insufficient ammunition. Attacks cancelled");

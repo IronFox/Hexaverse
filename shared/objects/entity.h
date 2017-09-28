@@ -95,12 +95,12 @@ namespace Objects
 		TUniqueID					id;
 
 
-		M::TMatrix4<>					system;		//!< system matrix. Structures: affecting @a localizableShape . If @a localizableShape is NULL then this matrix has no effect
-		M::TMatrix4<>					inverse;	//!< inverse of system
+		M::TMatrix4<>				system;		//!< system matrix. Structures: affecting @a localizableShape . If @a localizableShape is NULL then this matrix has no effect
+		M::TMatrix4<>				inverse;	//!< inverse of system
 
 
-		const M::TVec3<>&				GetWorldPosition() const {return system.w.xyz;}
-		static M::TVec3<>				GetWorldPosition(const Grid::LCellIdI&loc) {return Grid::ToWorld(loc);}	//might change in the future. Have to make sure that the various system build functions in systems.cpp match
+		const M::TVec3<>&			GetWorldPosition() const {return system.w.xyz;}
+		static M::TVec3<>			GetWorldPosition(const Grid::LCellIdI&loc) {return Grid::ToWorld(loc);}	//might change in the future. Have to make sure that the various system build functions in systems.cpp match
 
 		/**
 		Assembles a name composed of the parent management class name and the local instance id
@@ -434,6 +434,7 @@ namespace Objects
 		*/
 		virtual float				GetScanningRange() const;
 		virtual float3				GetScanningCenter(const Grid::LCellIdI&loc) const;
+		float3						GetScanningCenter() const {return GetScanningCenter(location);}
 		/**
 		Explicitly describes how the scanning range is computed (only has to explicitly name research, not EMP, but has to include EMP in the resulting numbers)
 		*/
@@ -447,10 +448,10 @@ namespace Objects
 		virtual PConstTurretBase	GetTurretBase(float &zOffset) const { return PConstTurretBase();}
 		inline PConstTurretBase		GetTurretBase() const { float dummy; return GetTurretBase(dummy);}
 
-		ImpactDetails				TraceTrajectory(const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps) const;
-		ImpactDetails				TraceTrajectory(const TrajectoryEndPoint&dest) const;
-		ImpactDetails				TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps) const;
-		ImpactDetails				TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest) const;
+		ImpactDetails				TraceTrajectory(const TrajectoryEndPoint&dest, bool traceInActualWorld, Ctr::Buffer0<M::TVec4<> >&outSteps) const;
+		ImpactDetails				TraceTrajectory(const TrajectoryEndPoint&dest, bool traceInActualWorld) const;
+		ImpactDetails				TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, bool traceInActualWorld, Ctr::Buffer0<M::TVec4<> >&outSteps) const;
+		ImpactDetails				TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, bool traceInActualWorld) const;
 		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const TrajectoryEndPoint&dest, float&outAngle) const;
 		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const TrajectoryEndPoint&dest) const;
 		bool						CanHit(const TrajectoryEndPoint&dest, float&outAngle) const;

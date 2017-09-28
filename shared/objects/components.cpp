@@ -337,10 +337,10 @@ namespace Objects
 
 
 
-		/*static*/ int				Turret::GetGroundHeight(const Grid::LCellIdI&location)
+		/*static*/ int				Turret::GetGroundHeight(const World::Data&world, const Grid::LCellIdI&location)
 		{
 			UINT32 fine = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
-			return World::actual.GetStack(fine).FindTopClearOverNonClear(false);
+			return world.GetStack(fine).FindTopClearOverNonClear(false);
 		}
 
 
@@ -351,7 +351,7 @@ namespace Objects
 			outAngle = 0;
 			if (t == TrajectoryType::VerticalBeam)
 			{
-				return GetGroundHeight(origin.cellLocation) != badHeight;
+				return GetGroundHeight(World::actual, origin.cellLocation) != badHeight;
 			}
 
 			switch (t)
@@ -371,7 +371,7 @@ namespace Objects
 		{
 			if (t == TrajectoryType::VerticalBeam)
 			{
-				return GetGroundHeight(origin.cellLocation) != badHeight;
+				return GetGroundHeight(World::actual, origin.cellLocation) != badHeight;
 			}
 
 			switch (t)
@@ -435,7 +435,7 @@ namespace Objects
 				case TrajectoryType::VerticalBeam:
 				{
 					UINT32 stackIndex = from.cellLocation.stackID;
-					int h = GetGroundHeight(Grid::LCellIdI(stackIndex,0));
+					int h = GetGroundHeight(World::actual, Grid::LCellIdI(stackIndex,0));
 					if (h == badHeight)
 						return;
 					float4 p(Grid::low.cells[stackIndex].cornerCenter,Grid::ToRadius(h));
@@ -516,21 +516,24 @@ namespace Objects
 		}
 
 
-		/*static*/ ImpactDetails			Turret::TraceTrajectory(TrajectoryType t, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps)
+		/*static*/ ImpactDetails			Turret::TraceTrajectory(TrajectoryType t, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, bool traceInActualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps)
 		{
 			outSteps.Clear();
+			if (!Turret::CanHit(t,flatRange,source,dest))
+				return ImpactDetails{};
+
 			switch (t)
 			{
 				case TrajectoryType::Artillery:
-					return Detail::TraceArtilleryTrajectory(Turret::MaxRangeToVelocity(flatRange),visibleWorld,actualWorld,source, dest, outSteps);
+					return Detail::TraceArtilleryTrajectory(Turret::MaxRangeToVelocity(flatRange),visibleWorld,actualWorld, !traceInActualWorld,source, dest, outSteps);
 				break;
 				case TrajectoryType::Missile:
-					return Detail::TraceMissileTrajectory(flatRange,actualWorld,source, dest, outSteps);
+					return Detail::TraceMissileTrajectory(flatRange,traceInActualWorld ? actualWorld : visibleWorld,source, dest, outSteps);
 				break;
 				case TrajectoryType::VerticalBeam:
 				{
 					ImpactDetails rs;
-					int h = GetGroundHeight(source.cellLocation);
+					int h = GetGroundHeight(traceInActualWorld ? actualWorld : visibleWorld,source.cellLocation);
 					if (h == badHeight)
 						return rs;
 					outSteps.Clear();
@@ -595,7 +598,7 @@ namespace Objects
 			return 0;
 		}
 
-		/*static*/ ImpactDetails			Turret::Detail::TraceArtilleryTrajectory(float velocity, const World::Data&decisionWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps)
+		/*static*/ ImpactDetails			Turret::Detail::TraceArtilleryTrajectory(float velocity, const World::Data&decisionWorld, const World::Data&actualWorld, bool traceInDecisionWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps)
 		{
 			Turret::TAngles angles = Turret::GetAngleForDistance(velocity,source,dest);
 			if (angles.numAngles == 0)
@@ -604,7 +607,7 @@ namespace Objects
 				{
 					//LogEvent(EventClass::Preset::internalError,"Unable to determine feasible angles for artillery trajectory at v="+String(velocity)+", source="+ToString(source)+", dest="+ToString(dest)+". Increasing velocity and retrying.");
 					velocity = velocity > 0 ? velocity * 1.1f : 1.f;	//should not be zero, but it's better to handle this case here anyway. Otherwise we're causing a stack overflow in no-time
-					return TraceArtilleryTrajectory(velocity,decisionWorld,actualWorld,source, dest,outSteps);
+					return TraceArtilleryTrajectory(velocity,decisionWorld,actualWorld,traceInDecisionWorld,source, dest,outSteps);
 				}
 
 				return ImpactDetails{};
@@ -685,7 +688,25 @@ namespace Objects
 
 					cellAt = Grid::high.Locate(b,cellAt);
 					int h = (Grid::HeightFloorFromRadius(fy));
-					if (actualWorld.GetStack(cellAt).GetCellI(h).IsOccupied())
+
+					const auto&actualCell = actualWorld.GetStack(cellAt).GetCellI(h);
+					bool impact = false;
+					if (traceInDecisionWorld)
+					{
+						const auto&decisionCell = decisionWorld.GetStack(cellAt).GetCellI(h);
+						if (decisionCell.content != Grid::Content::Clear)
+							impact = true;
+						elif (decisionCell.TerrainIsVisible())
+						{
+							if (actualCell.structureCounter > 1)
+								impact = true;
+						}
+					}
+					else
+						impact = actualCell.IsOccupied();
+
+
+					if (impact)
 					{
 						rs.impactAt = b * (fy);
 						rs.impactCell = Grid::HCellIdI(cellAt,h);

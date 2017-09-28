@@ -178,7 +178,7 @@ namespace Objects
 		}
 
 
-		bool		GetSentryTarget(const WorldEntity&source, int munitionStorage, const TrajectoryEndPoint&sourceLocation, const TurretBase&base, Grid::LCellIdI&outTarget)
+		bool		GetSentryTarget(WorldEntity&source, int munitionStorage, const TrajectoryEndPoint&sourceLocation, const TurretBase&base, TurretBase::TargetChoice& outTarget)
 		{
 			float c2 = std::numeric_limits<float>::max();
 			Grid::LCellIdI closest = Grid::LCellIdI::Invalid;
@@ -186,51 +186,33 @@ namespace Objects
 			if (base.turret->GetAmmoNeedPerShot(source.owner) > munitionStorage || base.turret->dealsEMPDamage || base.turret->isDoomsday)
 				return false;
 			const World::Data&world = source.owner->knownWorld;
-			source.owner->seeing.VisitAllKeys([&world, &source,sourceLocation,&base,&c2,&closest,&closestEntity](const PWorldEntity&e)
+
+			Buffer0<PWorldEntity>	candidates;
+
+			source.owner->seeing.VisitAllKeys([&candidates](const PWorldEntity&e)
 			{
 				if (e->IsIndestructible())
 					return;
-				Grid::LCellIdI loc;
-				if (!base.ExtCanHit(source.owner,sourceLocation,TrajectoryEndPoint( e->location ),loc))
-					return;
-
-				
-				//if (d2 > M::Sqr(maxRange))
-				//	return;
-				//if (d2 < M::Sqr(turret->explosionRadius))
-				//	return;
-				
-				//
-				//static Ctr::Buffer0<M::TVec4<> > trajectory;
-				//const auto rs = Component::Turret::TraceTrajectory(base.turret->trajectoryType,base.GetFlatAttackRange(),   
-				//			world, world/*World::actual*/,sourceLocation,TrajectoryEndPoint( loc ),trajectory);
-				//
-				//if (rs == TraceResult::InvalidTrajectory)
-				//	return;
-				//if (rs == TraceResult::MidFlightImpact)
-				//{
-				//	float3 last = trajectory.Last().xyz * trajectory.Last().w;
-				//	float dist = Vec::quadraticDistance(last,Grid::ToWorld( e->location ));
-				//	if (dist > M::Sqr( base.turret->explosionRadius.GetValue(source.GetResearchState())))
-				//		return;
-				//}
-				float d2 = Grid::GetQuadraticGeometricDistance(sourceLocation.cellLocation,loc);
-				if (d2 < c2)
-				{
-					c2 = d2;
-					closest = loc;
-					closestEntity = e;
-				}
+				candidates << e;
 			});
-			if (closest != Grid::LCellIdI::Invalid)
-			{
-				ASSERT__(closestEntity->isInserted);
-				LogEvent(EventSignificance::Debug,&source,"Auto-targeting "+closestEntity->GetName()+" (located at "+ToString(closestEntity->location)+") via closest viable trajectory target "+ToString(closest));
-				LogEvent(EventClass( EventSignificance::Important, EventFlavor::Neutral),&source,"Auto-targeting "+closestEntity->GetNiceName());
 
-				outTarget = closest;
-				return true;
-			}
+			std::random_shuffle(candidates.begin(),candidates.end(),[&source](count_t range)->index_t
+			{
+				return source.entityRandom.NextIndex(range);
+			});
+
+			foreach (candidates,c)
+			{
+				auto e = *c;
+				ASSERT__(e->isInserted);
+				Grid::LCellIdI loc;
+				if (base.ExtCanHit(source.owner,sourceLocation,TrajectoryEndPoint( e->location ),outTarget))
+				{
+					LogEvent(EventSignificance::Debug,&source,"Auto-targeting "+e->GetName()+" (located at "+ToString(e->location)+") via closest viable trajectory target "+ToString(outTarget.cellTarget));
+					LogEvent(EventClass( EventSignificance::Important, EventFlavor::Neutral),&source,"Auto-targeting "+e->GetNiceName());
+					return true;
+				}
+			};
 			return false;
 		}
 

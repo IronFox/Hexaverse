@@ -119,7 +119,7 @@ namespace Objects
 			}
 		}
 
-		/*virtual override*/ bool Vehicle::FrontQueuePossibleAttacks()
+		/*virtual override*/ bool Vehicle::FrontQueueAutoAttack(TurretBase::TargetChoice&outChoice)
 		{
 			if (!turret->CanAttack() || !HasAmmoForShot() || turret->dealsEMPDamage || turret->isDoomsday)
 			{
@@ -139,14 +139,15 @@ namespace Objects
 					#endif
 				;
 
-				bool result = false;
-				while (		(!NextTaskIsAttack() || (int)myTasks.GetOldest().foci.Count() < CountPossibleAttacks())   
-					&& GetSentryTarget(*this, storage.level[turret->ammoType], TrajectoryEndPoint( location,base->height ),*this, target))
+				if (		
+					(!NextTaskIsAttack() || (int)myTasks.GetOldest().foci.Count() < CountPossibleAttacks())   
+					&& 
+					GetSentryTarget(*this, storage.level[turret->ammoType], TrajectoryEndPoint( location,base->height ),*this, outChoice)
+					)
 				{
-					FrontEnqueueAttack(target);
-					result = true;
+					FrontEnqueueAttack(outChoice.cellTarget);
+					return true;
 				}
-				return result;
 			}
 			//else
 				//return false;

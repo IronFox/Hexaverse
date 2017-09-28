@@ -97,7 +97,7 @@ namespace Objects
 			bool					ClearTasks();
 			bool					DropLastTask();
 
-			bool					WouldAttack(const PWorldEntity&e, Grid::LCellIdI&outTarget, float entityTime);
+			bool					WouldAttack(const PWorldEntity&e, TurretBase::TargetChoice&outTarget, float entityTime);
 			bool					IsIdleButCouldAttack(float atTime) {return attackQueue.IsEmpty() && HasAmmoForShot();}
 
 		#endif
@@ -177,7 +177,7 @@ namespace Objects
 		virtual bool				HasAmmoForShot() override;
 		#ifndef CLIENT
 			virtual void			Attack(float&)	override;
-			virtual bool			FrontQueuePossibleAttacks() override;
+			virtual bool			FrontQueueAutoAttack(TurretBase::TargetChoice&lastChoice) override;
 		#endif
 	};
 

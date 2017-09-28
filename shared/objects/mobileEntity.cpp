@@ -486,8 +486,8 @@ namespace Objects
 										//M::TVec3<> world = Grid::ToWorld(node.cell);
 										//float zOffset;
 										//const auto&base = m->GetTurretBase(zOffset);
-										Grid::LCellIdI actual;
-										if (b->ExtCanHit((*c)->owner, TrajectoryEndPoint( (*c)->location,zOffset), TrajectoryEndPoint(node.cell), actual))
+										TurretBase::TargetChoice choice;
+										if (b->ExtCanHit((*c)->owner, TrajectoryEndPoint( (*c)->location,zOffset), TrajectoryEndPoint(node.cell), choice))
 										{
 											badTask = true;
 											break;
@@ -558,16 +558,17 @@ namespace Objects
 						return;
 					if (!f->CanSee(_this,entityTime))
 						return;
-					Grid::LCellIdI loc;
+
+					TurretBase::TargetChoice choice;
 					if (IsAboveGrid())
 					{
 						#ifndef NO_SATELLITES
 							foreach (f->satellites, _s)
 							{
 								PSatellite s = _s->lock();
-								if (s && s->WouldAttack(_this,loc,entityTime))
+								if (s && s->WouldAttack(_this,choice,entityTime))
 								{
-									if (s->AttackNext(loc,true))
+									if (s->AttackNext(choice.cellTarget,true))
 									{
 										LogEvent(EventSignificance::Debug,s.get(),"Auto-targeting moving "+GetName()+" (located at "+location.ToString()+") via closest viable attack target "+loc.ToString()+" at t="+String(entityTime));
 										LogEvent(EventSignificance::Important,s.get(),"Auto-targeting moving "+GetNiceName());
@@ -590,11 +591,11 @@ namespace Objects
 						foreach (f->towers, _t)
 						{
 							PTower t = _t->lock();
-							if (t && t->WouldAttack(_this,loc,entityTime))
+							if (t && t->WouldAttack(_this,choice,entityTime))
 							{
-								if (t->AttackNext(loc,true))
+								if (t->AttackNext(choice.cellTarget,true))
 								{
-									LogEvent(EventSignificance::Debug,t.get(),"Auto-targeting moving "+GetName()+" (located at "+ToString(location)+") via closest viable attack target "+ToString(loc)+" at t="+String(entityTime));
+									LogEvent(EventSignificance::Debug,t.get(),"Auto-targeting moving "+GetName()+" (located at "+ToString(location)+") via closest viable attack target "+ToString(choice.cellTarget)+" at t="+String(entityTime));
 									LogEvent(EventSignificance::Important,t.get(),"Auto-targeting moving "+GetNiceName());
 
 									t->Attack(entityTime);
@@ -1159,7 +1160,7 @@ namespace Objects
 			Mat::rotate(this->inverse,dir,innerDir);
 			Ctr::Buffer0<M::TVec4<> > trajectory;
 
-			const auto rs = TraceTrajectory(TrajectoryEndPoint(target),trajectory);
+			const auto rs = TraceTrajectory(TrajectoryEndPoint(target),true,trajectory);
 			if (rs != TraceResult::InvalidTrajectory)
 			{
 				float change = 1.f / float(GetAttacksPerRound());
