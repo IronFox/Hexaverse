@@ -121,7 +121,7 @@ namespace Objects
 
 		/*virtual override*/ bool Vehicle::FrontQueuePossibleAttacks()
 		{
-			if (!turret->CanAttack() || !HasAmmoForShot())
+			if (!turret->CanAttack() || !HasAmmoForShot() || turret->dealsEMPDamage || turret->isDoomsday)
 			{
 				//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
 				return false;
