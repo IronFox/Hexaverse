@@ -908,6 +908,7 @@ namespace Objects
 			int next = current + totalContribution;
 			res->setProgress(researchState,next);
 			DBG_ASSERT_EQUAL__(next,res->getProgress(researchState));
+			changed = true;
 			break;
 		}
 		lastSpeed = totalContribution;
