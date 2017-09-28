@@ -1728,7 +1728,7 @@ namespace Receiver
 	void OnDeserializationFailed(UINT32 channel, TCP::Peer&origin, const String&exception)
 	{
 		LogEvent(EventClass::Preset::networkError,nullptr,"Network error: "+origin.ToString()+": Deserialization failed on channel "+String(channel)+" ("+exception+")");
-		DBG_FATAL__("Network error: "+origin.ToString()+": Deserialization failed on channel "+String(channel));
+		//DBG_FATAL__("Network error: "+origin.ToString()+": Deserialization failed on channel "+String(channel));
 	}
 
 
