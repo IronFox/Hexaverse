@@ -840,7 +840,21 @@ namespace Grid
 	float	GetQuadraticGeometricDistance(const LCellIdI&a, const LCellIdI&b);
 
 
+	/**
+	Checks whether or not a given location is affected by residual emp fields, given the specified zone flag set
+	*/
+	bool	AffectedByEMP(const HCellIdI&, UINT16 empZonesUnlocked);
+	/**
+	Checks whether or not a given location is affected by residual emp fields, given the specified zone flag set
+	*/
+	bool	AffectedByEMP(const LCellIdI&, UINT16 empZonesUnlocked);
+	/**
+	Checks whether or not a given location is affected by residual emp fields, using the global zone flag set
+	*/
 	bool	AffectedByEMP(const HCellIdI&);
+	/**
+	Checks whether or not a given location is affected by residual emp fields, using the global zone flag set
+	*/
 	bool	AffectedByEMP(const LCellIdI&);
 
 

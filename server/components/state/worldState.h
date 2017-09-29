@@ -81,6 +81,11 @@ namespace World
 
 	void			UpdateEMPZones(count_t temporaryFactionCountBonus=0);
 
+	/**
+	Removes or applies zone EMP damage as defined by the old and new zones
+	*/
+	void			CorrectResidualEMPDamage(float&atTime, UINT16 oldEmpZonesUnlocked, UINT16 newEmpZonesUnlocked);
+
 
 	extern World::Data	spectatorWorldState;
 	extern bool			terrainChanged;//!< Indicates that the terrain changed at any given time during the last processing round. Reset when entering command mode

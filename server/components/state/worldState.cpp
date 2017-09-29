@@ -492,17 +492,32 @@ namespace World
 	}
 
 
+	void			CorrectResidualEMPDamage(float&atTime, UINT16 oldEmpZonesUnlocked, UINT16 newEmpZonesUnlocked)
+	{
+		Objects::ForeachWorldEntity([&atTime,oldEmpZonesUnlocked,newEmpZonesUnlocked](const Objects::PWorldEntity&e)
+		{
+			if (Grid::AffectedByEMP(e->location,oldEmpZonesUnlocked) && !Grid::AffectedByEMP(e->location,newEmpZonesUnlocked))
+			{
+				e->HealAllEMPDamage(atTime);
+				LogEvent(EventSignificance::Common,e.get(),"EMP-Zone has liften. All EMP damage removed");
+			}
+			else
+				if (!Grid::AffectedByEMP(e->location,oldEmpZonesUnlocked) && Grid::AffectedByEMP(e->location,newEmpZonesUnlocked))
+					Game::ApplyEMPZoneDamage(e,atTime);
+		},false);
+	}
+
 	void		SetUnlockedEMPZones(int unlocked)
 	{
 		const UINT16 newUnlocked = ((1<<unlocked) - 1);
 		if (unlockedEMPZones == newUnlocked)
 			return;
+		float t = 0;
+		CorrectResidualEMPDamage(t,unlockedEMPZones,newUnlocked);
 		Grid::empZonesUnlocked = unlockedEMPZones = newUnlocked;
 		Grid::empZonesLocked = empZonesLocked = AllZones  & ~unlockedEMPZones;
 		Channels::lockEmpZones.SendTo(::Network::server,empZonesLocked,Channels::FactionLevel);
 
-		float t = 0;
-		Game::UpdateResidualEMPDamage(t);
 
 	}
 

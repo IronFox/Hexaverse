@@ -737,13 +737,22 @@ namespace Grid
 	}
 
 
-	bool	AffectedByEMP(const HCellIdI&id)
+	bool	AffectedByEMP(const HCellIdI&id, UINT16 empZonesUnlocked)
 	{
 		return !(Grid::high.cells[id.stackID].cornerFlags & empZonesUnlocked);
 	}
-	bool	AffectedByEMP(const LCellIdI&id)
+	bool	AffectedByEMP(const LCellIdI&id, UINT16 empZonesUnlocked)
 	{
 		return !(Grid::low.cells[id.stackID].cornerFlags & empZonesUnlocked);
+	}
+
+	bool	AffectedByEMP(const HCellIdI&id)
+	{
+		return AffectedByEMP(id,empZonesUnlocked);
+	}
+	bool	AffectedByEMP(const LCellIdI&id)
+	{
+		return AffectedByEMP(id,empZonesUnlocked);
 	}
 
 

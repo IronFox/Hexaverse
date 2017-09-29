@@ -380,6 +380,7 @@ namespace Objects
 		void ExplodeEMP(const ApplicationInterface::TAttack& attack, 
 						const Grid::HCellIdI&targetCell, const M::TVec3<>&center, int explosionRadius, int damageLevel, float&atTime)
 		{
+			LogEvent(EventSignificance::Common, attack.attackFrom.get(),"Handling EMP explosion at "+ToString(center)+", radius="+String(explosionRadius));
 			ApplicationInterface::SignalExplosion(
 							attack, 
 							center,explosionRadius,true,false,atTime);

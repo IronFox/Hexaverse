@@ -20,6 +20,7 @@ v0.6.5	[Sep 24 2017]
 	* Fixed server sometimes auto-saving while in interactive configuration mode.
 	* Fixed EMP zones not being initially visualized when entering interactive configuration mode.
 	* Fixed endless research not triggering client updates.
+	* Fixed Nexus units not received/keeping EMP damage.
 	* Fixed an insane number of tiny bugs.
 
 v0.6.4	[May 5 2017]

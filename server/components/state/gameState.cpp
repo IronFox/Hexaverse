@@ -1055,6 +1055,12 @@ namespace Game
 	}
 
 
+	void			ApplyEMPZoneDamage(const Objects::PWorldEntity&e,float&atTime)
+	{
+		if (e->HandleEMPDamage(100,atTime))
+			LogEvent(EventSignificance::Common,e.get(),"Entering EMP-Zone");
+	}
+
 	void			UpdateResidualEMPDamage(float&atTime)
 	{
 		Objects::ForeachWorldEntity([&atTime](const Objects::PWorldEntity&e)
@@ -1063,12 +1069,8 @@ namespace Game
 				return;	//i know this is a hack, but i gotta do something to prevent nexus satellites from crashing.
 			if (Grid::AffectedByEMP(e->location))
 			{
-				if (e->empDamageLevel < 10)
-					LogEvent(EventSignificance::Common,e.get(),"Entering EMP-Zone");
-				e->HandleEMPDamage(10,atTime);
+				ApplyEMPZoneDamage(e,atTime);
 			}
-			elif (e->owner == Objects::Faction::nexus)
-				e->HealAllEMPDamage(atTime);	//immediately heal when a new area gets unlocked
 		},false);
 	}
 

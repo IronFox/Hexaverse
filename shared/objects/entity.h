@@ -595,15 +595,16 @@ namespace Objects
 			void					UpdateEMPDamage(int damageLevel, bool isCreated=true);
 		#else
 
-			void					HandleEMPDamage(int damageLevel, float&atTime)
+			bool					HandleEMPDamage(const int newDamage, float&atTime)
 			{
-				int newDamage = std::max(empDamageLevel,damageLevel);
-				if (newDamage == empDamageLevel)
-					return;
+				if (newDamage <= empDamageLevel)
+					return false;
 				UnregisterSensory(atTime);
+				LogEvent(EventSignificance::Common,this,"Altering EMP damage level "+String(empDamageLevel)+"->"+String(newDamage));
 				empDamageLevel = newDamage;
 				RegisterChange(EMPDamageChanged,atTime);
 				RegisterSensory(atTime);
+				return true;
 			}
 			/**
 			Removes all present emp damage. Should generally only be done for nexus entities
@@ -612,6 +613,7 @@ namespace Objects
 			{
 				if (empDamageLevel > 0)
 				{
+					LogEvent(EventSignificance::Common,this,"Healing all EMP damage");
 					UnregisterSensory(atTime);
 					empDamageLevel = 0;
 					RegisterChange(EMPDamageChanged,atTime);
@@ -626,6 +628,7 @@ namespace Objects
 					empDamageLevel--;
 					RegisterChange(EMPDamageChanged,atTime);
 					RegisterSensory(atTime);
+					LogEvent(EventSignificance::Common,this,"Healing EMP damage level ->"+String(empDamageLevel));
 				}
 			}
 
