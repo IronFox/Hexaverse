@@ -152,6 +152,7 @@ namespace Objects
 		#ifndef NO_HIBERNATION
 			virtual int			GetUplinkTraffic() const override;
 		#endif
+		virtual bool			IsUnlockedAtState(const Lua::Reference&researchState) const	override {return base->isUnlocked.GetValue(researchState) && turret->isUnlocked.GetValue(researchState);}
 		virtual int				GetMaxHealth() const override;
 		virtual String			DescribeMaxHealth() const override;
 		virtual PWorldEntity	CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override {return PWorldEntity(new Vehicle(owner,location,base,turret));};
