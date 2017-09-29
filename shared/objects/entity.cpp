@@ -60,12 +60,12 @@ namespace Objects
 			return;
 		float t=0.f;
 
-		if (isOwnedByMe && isCreated)
+		if (isCreated)
 			UnregisterSensory(t);
 
 		empDamageLevel = damageLevel;
 
-		if (isOwnedByMe && isCreated)
+		if (isCreated)
 			RegisterSensory(t);
 
 	}

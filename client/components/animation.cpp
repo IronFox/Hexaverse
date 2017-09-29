@@ -891,7 +891,7 @@ namespace Animation
 
 
 		s->health = vs.entityState.health;
-		s->empDamageLevel = vs.entityState.empDamageLevel;
+		s->UpdateEMPDamage(vs.entityState.empDamageLevel);
 
 		if (vs.entityState.location != Grid::LCellIdI::Invalid && vs.entityState.location != s->location)
 		{
