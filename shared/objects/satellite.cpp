@@ -928,7 +928,7 @@ namespace Objects
 
 	
 	#ifndef CLIENT
-		/*virtual override*/ bool					Satellite::FrontQueuePossibleAttacks()
+		/*virtual override*/ bool					Satellite::FrontQueueAutoAttack(TurretBase::TargetChoice&lastChoice)
 		{
 			if (!turret->CanAttack() || !HasAmmoForShot())
 			{
@@ -948,9 +948,9 @@ namespace Objects
 					#endif
 				;
 
-				if (GetSentryTarget(*this, storage.level[turret->ammoType], location,0.f,*this, target))
+				if (GetSentryTarget(*this, storage.level[turret->ammoType], location,0.f,*this, lastChoice))
 				{
-					AttackNext(target,true);
+					AttackNext(lastChoice.cellTarget,true);
 					return true;
 				}
 			}

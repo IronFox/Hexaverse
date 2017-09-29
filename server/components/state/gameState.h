@@ -237,6 +237,8 @@ namespace Game
 	Updates EMP damage caused by residual EMP fields. This is called automatically at the end of round processing
 	*/
 	void			UpdateResidualEMPDamage(float&atTime);
+	void			ApplyEMPZoneDamage(const Objects::PWorldEntity&e,float&atTime);
+
 
 
 	void			SpawnNexusBaseAtPoleWithPort(int pole);

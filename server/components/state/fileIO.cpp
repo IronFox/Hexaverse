@@ -1461,6 +1461,9 @@ namespace FileIO
 										}
 									}
 
+									if (isNexus)
+										faction->name = "<Nexus>";
+									else
 									{
 										Riff::Chunk*nameChunk = list->FindFirst(RID::factionName);
 										if (nameChunk)
@@ -1469,7 +1472,7 @@ namespace FileIO
 											nameChunk->Get(faction->name.mutablePointer());
 										}
 										else
-											faction->name = isNexus ? "<Nexus>" : ToString(faction->id);
+											faction->name = ToString(faction->id);
 									}
 									{
 										Riff::Chunk*colorChunk = list->FindFirst(RID::factionColor);
@@ -1644,7 +1647,7 @@ namespace FileIO
 
 	bool			CanSaveRightNow()
 	{
-		return IsValidSavePhase(RuntimeConfig::phase);
+		return IsValidSavePhase(RuntimeConfig::phase) && !ConfigurationMode::IsActive();
 	}
 
 

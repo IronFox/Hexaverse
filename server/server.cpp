@@ -999,12 +999,12 @@ int main( int argc, const char* argv[])
 
 			std::cout << "Running tests..." << std::endl;
 			{
+				Test::Run(Test::AutoTargeting());
 				Test::Run(Test::StringMethods());
 				Test::Run(Test::Serialization());
 				Test::Run(Test::CharacterEncoding());
 				Test::Run(Test::ServerClient());
 				Test::Run(Test::TerrainUpdates());
-				Test::Run(Test::AutoTargeting());
 				Test::Run(Test::SharedContainer());
 				Test::Run(Test::HighGridFamilies());
 				Test::Run(Test::Bin2Str());

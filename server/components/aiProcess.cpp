@@ -44,7 +44,7 @@ namespace AIProcess
 					window = true;
 				#endif
 
-				process.Start(workingDirectory,path,parameterBuffer,true);
+				process.Start(workingDirectory,path,parameterBuffer,window);
 			}
 			catch (const std::exception&ex)
 			{

@@ -196,7 +196,7 @@ namespace Game
 				rs |= Protocol::GameFlag::StartBases;
 			if (Config::Nexus::enableAI)
 				rs |= Protocol::GameFlag::NexusAI;
-			if (ConfigurationMode::IsActive() && allowSpectatorFactions)
+			if (ConfigurationMode::IsActive()/* && allowSpectatorFactions*/)
 				rs |= Protocol::GameFlag::ConfigurationMode;
 			if (RuntimeConfig::tutorialMode)
 				rs |= Protocol::GameFlag::TutorialMode;
@@ -1055,6 +1055,12 @@ namespace Game
 	}
 
 
+	void			ApplyEMPZoneDamage(const Objects::PWorldEntity&e,float&atTime)
+	{
+		if (e->HandleEMPDamage(100,atTime))
+			LogEvent(EventSignificance::Common,e.get(),"Entering EMP-Zone");
+	}
+
 	void			UpdateResidualEMPDamage(float&atTime)
 	{
 		Objects::ForeachWorldEntity([&atTime](const Objects::PWorldEntity&e)
@@ -1063,12 +1069,8 @@ namespace Game
 				return;	//i know this is a hack, but i gotta do something to prevent nexus satellites from crashing.
 			if (Grid::AffectedByEMP(e->location))
 			{
-				if (e->empDamageLevel < 10)
-					LogEvent(EventSignificance::Common,e.get(),"Entering EMP-Zone");
-				e->HandleEMPDamage(10,atTime);
+				ApplyEMPZoneDamage(e,atTime);
 			}
-			elif (e->owner == Objects::Faction::nexus)
-				e->HealAllEMPDamage(atTime);	//immediately heal when a new area gets unlocked
 		},false);
 	}
 
@@ -1082,7 +1084,7 @@ namespace Game
 		LogEvent(EventSignificance::Common,"Spawning Nexus Port at pole "+String(pole));
 
 		Grid::LCellIdI location((UINT32)pole,0);	//first 12 are corner cells
-		int h = Objects::FindApplicableGround(location,true);
+		int h = Objects::FindApplicableGround(location,true,true); //do not submerge into lava
 		if (h == Objects::badHeight)
 			h = 0;	//just spawn it near median
 		static const int R = 5;
@@ -1462,7 +1464,7 @@ namespace Game
 		if (Config::startBases)
 		{
 			Grid::LCellIdI location(startLocation,0);	//first 12 are corner cells
-			int h = Objects::FindApplicableGround(location,true);
+			int h = Objects::FindApplicableGround(location,true,true);
 			location.height = h;
 			static const int want = 10;
 			static const int stackHeight = want / Objects::NaturalResourceVector::TranslationFactor + (want % Objects::NaturalResourceVector::TranslationFactor ? 1 : 0);

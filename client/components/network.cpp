@@ -847,8 +847,8 @@ namespace Network
 					LogEvent(EventClass::Preset::common,nullptr,"Updating access token of world "+ToString(worldID)+" to "+activeToken.ToString());
 					accessMap.Set(worldID,activeToken);
 					SaveWorldAccessTokens();
+					Network::Channels::changeMyName.SendTo(Network::client,Network::chosenNickname);
 				}
-				Network::Channels::changeMyName.SendTo(Network::client,Network::chosenNickname);
 
 				#ifdef HAS_WINDOW
 					GUI::Hide(Menu::login);
@@ -1299,7 +1299,7 @@ namespace Network
 		TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>					changeMyName;
 		TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>					chatMessage;
 		TCP::ObjectSender<Protocol::ResourceID, Protocol::ChannelID::RequestResource>				requestResource;
-		TCP::ObjectSender<Package::NetString<256>, Protocol::ChannelID::LoadPlanetByName>			loadPlanetByName;
+		TCP::ObjectSender<Protocol::LoadPlanetByName, Protocol::ChannelID::LoadPlanetByName>		loadPlanetByName;
 		TCP::ObjectSender<Protocol::QueueResearch, Protocol::ChannelID::QueueResearch>				queueResearch;
 
 			//	,			//c2s: NET(bool) -> NET(bool)
@@ -1390,7 +1390,7 @@ namespace Network
 				LogEvent(EventClass::Preset::uncommon, nullptr, "Connection established to "+client.ToString());
 				
 				Protocol::Hello hello;
-				hello = RuntimeConfig::aiMode ? "<NexusAI>" : chosenNickname;
+				hello = RuntimeConfig::aiMode ? "<Nexus>" : chosenNickname;
 				if (RuntimeConfig::aiMode)
 					chosenNickname = hello;
 				//state.state = 0U;

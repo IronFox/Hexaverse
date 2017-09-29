@@ -61,12 +61,12 @@ namespace Objects
 			return;
 		float t=0.f;
 
-		if (isOwnedByMe && isCreated)
+		if (isCreated)
 			UnregisterSensory(t);
 
 		empDamageLevel = damageLevel;
 
-		if (isOwnedByMe && isCreated)
+		if (isCreated)
 			RegisterSensory(t);
 
 	}
@@ -149,7 +149,7 @@ namespace Objects
 		#endif
 	}
 
-	ImpactDetails		WorldEntity::TraceTrajectory(const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps) const
+	ImpactDetails		WorldEntity::TraceTrajectory(const TrajectoryEndPoint&dest, bool traceInActualWorld, Ctr::Buffer0<M::TVec4<> >&outSteps) const
 	{
 		float zOffset;
 		PConstTurretBase b = GetTurretBase(zOffset);
@@ -167,10 +167,10 @@ namespace Objects
 		#endif
 		;
 
-		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, World::actual,TrajectoryEndPoint( location,zOffset ),dest,outSteps);
+		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, World::actual,traceInActualWorld, TrajectoryEndPoint( location,zOffset ),dest,outSteps);
 	}
 
-	ImpactDetails		WorldEntity::TraceTrajectory(const TrajectoryEndPoint&dest) const
+	ImpactDetails		WorldEntity::TraceTrajectory(const TrajectoryEndPoint&dest, bool traceInActualWorld) const
 	{
 		float zOffset;
 		PConstTurretBase b = GetTurretBase(zOffset);
@@ -186,13 +186,13 @@ namespace Objects
 		#endif
 		;
 
-		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, World::actual,TrajectoryEndPoint(location,zOffset),dest);
+		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, World::actual,traceInActualWorld, TrajectoryEndPoint(location,zOffset),dest);
 	}
 
 
 	
 
-	ImpactDetails		WorldEntity::TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps) const
+	ImpactDetails		WorldEntity::TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, bool traceInActualWorld, Ctr::Buffer0<M::TVec4<> >&outSteps) const
 	{
 		float zOffset;
 		PConstTurretBase b = GetTurretBase(zOffset);
@@ -208,10 +208,10 @@ namespace Objects
 			World::actual
 		#endif
 		;
-		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, World::actual,TrajectoryEndPoint(source,zOffset),dest,outSteps);
+		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, World::actual, traceInActualWorld,TrajectoryEndPoint(source,zOffset),dest,outSteps);
 	}
 
-	ImpactDetails		WorldEntity::TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest) const
+	ImpactDetails		WorldEntity::TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, bool traceInActualWorld) const
 	{
 		float zOffset;
 		PConstTurretBase b = GetTurretBase(zOffset);
@@ -226,7 +226,7 @@ namespace Objects
 			World::actual
 		#endif
 		;
-		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, World::actual,TrajectoryEndPoint(source,zOffset),dest);
+		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, World::actual,traceInActualWorld, TrajectoryEndPoint(source,zOffset),dest);
 	}
 
 	bool						WorldEntity::CanHitFrom(const Grid::LCellIdI&origin, const TrajectoryEndPoint&dest, float&outAngle) const
@@ -283,7 +283,7 @@ namespace Objects
 
 	/*virtual*/ float3		WorldEntity::GetScanningCenter(const Grid::LCellIdI&loc) const
 	{
-		return Grid::low.cells[loc.stackID].centerVertex.xyz * Grid::ToRadiusf(0.5f + loc.height);
+		return Grid::low.cells[loc.stackID].cornerCenter * Grid::ToRadiusf(0.5f + loc.height);
 	}
 
 	/*virtual*/ int			WorldEntity::GetConstructionCost() const

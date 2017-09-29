@@ -59,7 +59,7 @@ namespace Objects
 
 			//new overridables:
 			#ifndef CLIENT
-				virtual bool		ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget,Grid::LCellIdI&actual) const {return false;}
+				virtual bool		ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget, TargetChoice&outExtResult) const {return false;}
 				virtual bool		ProcessRound(float&atTime);
 			#endif
 			float					GetMaxAirSpeed() const {return 100.f / turret->weight.GetValue(GetResearchState());};
@@ -68,7 +68,7 @@ namespace Objects
 			virtual float			GetFlatAttackRange() const override;
 			virtual String			DescribeFlatAttackRange() const override;
 			#ifndef CLIENT
-				virtual bool		FrontQueuePossibleAttacks()override;
+				virtual bool		FrontQueueAutoAttack(TurretBase::TargetChoice&outChoice) override;
 			#endif
 
 			//WorldEntity overrides:
@@ -215,7 +215,7 @@ namespace Objects
 
 			#ifndef CLIENT
 				//Satellite overrides:
-				virtual bool		ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget,Grid::LCellIdI&actual) const override;
+				virtual bool		ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget, TargetChoice&outExtResult) const override;
 			#endif
 
 

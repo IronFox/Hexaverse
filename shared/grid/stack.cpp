@@ -325,22 +325,37 @@ namespace Grid
 		return rs;
 	}
 
-	int CellStack::FindMostApplicableGround(int h, bool canStandOnWater) const
+
+	static bool CanStandOn(BYTE cellContent, bool canStandOnWater, bool canStandOnLava)
+	{
+		if (Grid::CellStack::Cell::IsSolid(cellContent))
+			return true;
+		switch (cellContent)
+		{
+			case Grid::Content::Lava:
+				return canStandOnLava;
+			case Grid::Content::Water:
+				return canStandOnWater;
+		}
+		return false;
+	}
+
+	int CellStack::FindMostApplicableGround(int h, bool canStandOnWater, bool canStandOnLava) const
 	{
 		UINT uh = ToLayer(h);
 		//unsigned(h + HalfRange);
 		if (uh < Range)
 		{
-			if (volumeCell[uh].IsSolid() || (volumeCell[uh].IsWater() && canStandOnWater))
+			if (CanStandOn(volumeCell[uh].content, canStandOnWater, canStandOnLava))
 			{
 				for (UINT i = uh + 1; i < Range; i++)
-					if (/*!volumeCell[i].IsOccupied() && */!volumeCell[i].IsSolid() && (!canStandOnWater || !volumeCell[i].IsWater()))
+					if (!CanStandOn(volumeCell[i].content,canStandOnWater,canStandOnLava))
 						return int(i) - HalfRange;
-				return 0x1FFFFFFF;
+				return BadHeight;
 			}
 			for (UINT i = uh - 1; i < uh; --i)
 			{
-				if (volumeCell[i].IsSolid() || (volumeCell[i].IsWater() && canStandOnWater))
+				if (CanStandOn(volumeCell[i].content, canStandOnWater, canStandOnLava))
 					return (int(i + 1) - HalfRange);
 				//if (volumeCell[i].IsOccupied())
 					//return 0x1FFFFFFF;
@@ -722,13 +737,22 @@ namespace Grid
 	}
 
 
-	bool	AffectedByEMP(const HCellIdI&id)
+	bool	AffectedByEMP(const HCellIdI&id, UINT16 empZonesUnlocked)
 	{
 		return !(Grid::high.cells[id.stackID].cornerFlags & empZonesUnlocked);
 	}
-	bool	AffectedByEMP(const LCellIdI&id)
+	bool	AffectedByEMP(const LCellIdI&id, UINT16 empZonesUnlocked)
 	{
 		return !(Grid::low.cells[id.stackID].cornerFlags & empZonesUnlocked);
+	}
+
+	bool	AffectedByEMP(const HCellIdI&id)
+	{
+		return AffectedByEMP(id,empZonesUnlocked);
+	}
+	bool	AffectedByEMP(const LCellIdI&id)
+	{
+		return AffectedByEMP(id,empZonesUnlocked);
 	}
 
 

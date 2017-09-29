@@ -1511,9 +1511,9 @@ namespace Reflection
 
 	void Load(bool testMode)
 	{
-		FileSystem::Folder	root;
+		FileSystem::Directory	root;
 		ASSERT__(root.IsValidLocation());
-		FileSystem::Folder planetPrototypes = root.FindFolder("config/myPlanets");
+		FileSystem::Directory planetPrototypes = root.FindDirectory("config/myPlanets");
 		
 
 		if (planetPrototypes.IsValidLocation())

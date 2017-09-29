@@ -179,7 +179,7 @@ namespace Objects
 		static Buffer0<M::TVec4<> > trajectory;
 		trajectory.Clear();
 		//if (Turret::TraceTrajectory(Turret::MaxRangeToVelocity(GetFlatAttackRange()),World::actual, location,foundationHeight,attackTarget,trajectory,impactAt,dummy1))
-		if (t.TraceTrajectory(TrajectoryEndPoint( attackTarget,0),trajectory) != TraceResult::InvalidTrajectory)
+		if (t.TraceTrajectory(TrajectoryEndPoint( attackTarget,0),true,trajectory) != TraceResult::InvalidTrajectory)
 		{
 
 			static Geometry geo;
@@ -618,7 +618,7 @@ namespace Objects
 						foreach (t.foci,f)
 						{
 							trajectory.Clear();
-							if (e.TraceTrajectoryFrom(pointOfOrigin,TrajectoryEndPoint( f->target,0), trajectory) != TraceResult::InvalidTrajectory)
+							if (e.TraceTrajectoryFrom(pointOfOrigin,TrajectoryEndPoint( f->target,0), true,trajectory) != TraceResult::InvalidTrajectory)
 							{
 								Component::Turret::CompileTrajectory(trajectory,Component::Turret::Schematic,geo,0.25f);
 

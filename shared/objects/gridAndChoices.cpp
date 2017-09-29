@@ -200,59 +200,41 @@ namespace Objects
 		}
 
 
-		bool		GetSentryTarget(const WorldEntity&source, int munitionStorage, const TrajectoryEndPoint&sourceLocation, const TurretBase&base, Grid::LCellIdI&outTarget)
+		bool		GetSentryTarget(WorldEntity&source, int munitionStorage, const TrajectoryEndPoint&sourceLocation, const TurretBase&base, TurretBase::TargetChoice& outTarget)
 		{
 			float c2 = std::numeric_limits<float>::max();
 			Grid::LCellIdI closest = Grid::LCellIdI::Invalid;
 			PWorldEntity closestEntity;
-			if (base.turret->GetAmmoNeedPerShot(source.owner) > munitionStorage)
+			if (base.turret->GetAmmoNeedPerShot(source.owner) > munitionStorage || base.turret->dealsEMPDamage || base.turret->isDoomsday)
 				return false;
 			const World::Data&world = source.owner->knownWorld;
-			source.owner->seeing.VisitAllKeys([&world, &source,sourceLocation,&base,&c2,&closest,&closestEntity](const PWorldEntity&e)
+
+			Buffer0<PWorldEntity>	candidates;
+
+			source.owner->seeing.VisitAllKeys([&candidates](const PWorldEntity&e)
 			{
 				if (e->IsIndestructible())
 					return;
-				Grid::LCellIdI loc;
-				if (!base.ExtCanHit(source.owner,sourceLocation,TrajectoryEndPoint( e->location ),loc))
-					return;
-
-				
-				//if (d2 > M::Sqr(maxRange))
-				//	return;
-				//if (d2 < M::Sqr(turret->explosionRadius))
-				//	return;
-				
-				//
-				//static Ctr::Buffer0<M::TVec4<> > trajectory;
-				//const auto rs = Component::Turret::TraceTrajectory(base.turret->trajectoryType,base.GetFlatAttackRange(),   
-				//			world, world/*World::actual*/,sourceLocation,TrajectoryEndPoint( loc ),trajectory);
-				//
-				//if (rs == TraceResult::InvalidTrajectory)
-				//	return;
-				//if (rs == TraceResult::MidFlightImpact)
-				//{
-				//	float3 last = trajectory.Last().xyz * trajectory.Last().w;
-				//	float dist = Vec::quadraticDistance(last,Grid::ToWorld( e->location ));
-				//	if (dist > M::Sqr( base.turret->explosionRadius.GetValue(source.GetResearchState())))
-				//		return;
-				//}
-				float d2 = Grid::GetQuadraticGeometricDistance(sourceLocation.cellLocation,loc);
-				if (d2 < c2)
-				{
-					c2 = d2;
-					closest = loc;
-					closestEntity = e;
-				}
+				candidates << e;
 			});
-			if (closest != Grid::LCellIdI::Invalid)
-			{
-				ASSERT__(closestEntity->isInserted);
-				LogEvent(EventSignificance::Debug,&source,"Auto-targeting "+closestEntity->GetName()+" (located at "+ToString(closestEntity->location)+") via closest viable trajectory target "+ToString(closest));
-				LogEvent(EventClass( EventSignificance::Important, EventFlavor::Neutral),&source,"Auto-targeting "+closestEntity->GetNiceName());
 
-				outTarget = closest;
-				return true;
-			}
+			std::random_shuffle(candidates.begin(),candidates.end(),[&source](count_t range)->index_t
+			{
+				return source.entityRandom.NextIndex(range);
+			});
+
+			foreach (candidates,c)
+			{
+				auto e = *c;
+				ASSERT__(e->isInserted);
+				Grid::LCellIdI loc;
+				if (base.ExtCanHit(source.owner,sourceLocation,TrajectoryEndPoint( e->location ),outTarget))
+				{
+					LogEvent(EventSignificance::Debug,&source,"Auto-targeting "+e->GetName()+" (located at "+ToString(e->location)+") via closest viable trajectory target "+ToString(outTarget.cellTarget));
+					LogEvent(EventClass( EventSignificance::Important, EventFlavor::Neutral),&source,"Auto-targeting "+e->GetNiceName());
+					return true;
+				}
+			};
 			return false;
 		}
 
@@ -420,6 +402,7 @@ namespace Objects
 		void ExplodeEMP(const ApplicationInterface::TAttack& attack, 
 						const Grid::HCellIdI&targetCell, const M::TVec3<>&center, int explosionRadius, int damageLevel, float&atTime)
 		{
+			LogEvent(EventSignificance::Common, attack.attackFrom.get(),"Handling EMP explosion at "+ToString(center)+", radius="+String(explosionRadius));
 			ApplicationInterface::SignalExplosion(
 							attack, 
 							center,explosionRadius,true,false,atTime);
@@ -1079,7 +1062,7 @@ namespace Objects
 	}
 
 	
-	int FindApplicableGround(const Grid::LCellIdI&cell, bool canStandOnWater)
+	int FindApplicableGround(const Grid::LCellIdI&cell, bool canStandOnWater, bool canStandOnLava)
 	{
 		#ifdef HYBRID_GRID
 			UINT32 finer = Grid::low.grid.GetCell(cell.stackID).higherEquivalent;
@@ -1095,15 +1078,15 @@ namespace Objects
 			int _h = h;
 			//incremented = false;
 			if (set)
-				_h = std::max(_h, World::actual.GetStack(finer).FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater));
+				_h = std::max(_h, World::actual.GetStack(finer).FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater,canStandOnLava));
 			else
 			{
-				_h = World::actual.GetStack(finer).FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater);
+				_h = World::actual.GetStack(finer).FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater,canStandOnLava);
 				set = true;
 			}
 			#ifdef HYBRID_GRID
 				for (int j = 0; j < c.neighborhood.numNeighbors; j++)
-					_h = std::max(_h, World::actual.GetStack(c.neighborhood.neighborID[j]).FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater));
+					_h = std::max(_h, World::actual.GetStack(c.neighborhood.neighborID[j]).FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater,canStandOnLava));
 			#endif
 			incremented = _h != h;
 			h = _h;

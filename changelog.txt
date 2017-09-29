@@ -4,8 +4,6 @@ v0.6.5	[Sep 24 2017]
 	+ Added remote control command to immediately end round.
 	+ Added statistics recording and end-game display.
 	+ Added options dialog.
-	+ Added option to change UI scale.
-	+ Added option to limit explosion particle count.
 	+ Implemented loading splash screen.
 	+ Added help sub-menu with some new options.
 	> Automatic target choice (e.g. by a tower) now traces candidate trajectories to improve precision.
@@ -13,6 +11,17 @@ v0.6.5	[Sep 24 2017]
 	> Removed the 'Construct Selected' button on vehicle plants. Simply selecting a desired turret will enqueue the chosen vehicle composition.
 	> Surveyor turret is now much heavier, limiting the speed of the standard surveyor vehicle.
 	> Laboratories now maintain a short queue of research tasks to execute.
+	> Selected material buttons in interactive configuration mode now render as permanently down.
+	> EMP and doomsday weapon vehicles will no longer auto-fire at possible targets.
+	> Auto-targeting now chooses target by random if several are possible.
+	* Auto-targeting of towers and vehicles no longer causes friendly fire, assuming terrain is fully known.
+	* Nexus bases can no longer end up submerged in oceanic lava.
+	* Fixed interactive configuration mode sometimes getting out of sync with the server.
+	* Fixed server sometimes auto-saving while in interactive configuration mode.
+	* Fixed EMP zones not being initially visualized when entering interactive configuration mode.
+	* Fixed endless research not triggering client updates.
+	* Fixed Nexus units not received/keeping EMP damage.
+	* Fixed an insane number of tiny bugs.
 
 v0.6.4	[May 5 2017]
 	+ Base planet types are no longer copied to the configuration directory (except Template.ini), but may be overridden manually.

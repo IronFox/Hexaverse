@@ -470,7 +470,7 @@ namespace Grid
 		A ground location is a cell that is not occupied but above an occupied cell.
 		If the specified cell is occupied, any applicable ground must be ab
 		*/
-		int				FindMostApplicableGround(int h, bool canStandOnWater) const;
+		int				FindMostApplicableGround(int h, bool canStandOnWater, bool canStandOnLava) const;
 	};
 
 	typedef CellStack::Cell::Content Content;
@@ -840,7 +840,21 @@ namespace Grid
 	float	GetQuadraticGeometricDistance(const LCellIdI&a, const LCellIdI&b);
 
 
+	/**
+	Checks whether or not a given location is affected by residual emp fields, given the specified zone flag set
+	*/
+	bool	AffectedByEMP(const HCellIdI&, UINT16 empZonesUnlocked);
+	/**
+	Checks whether or not a given location is affected by residual emp fields, given the specified zone flag set
+	*/
+	bool	AffectedByEMP(const LCellIdI&, UINT16 empZonesUnlocked);
+	/**
+	Checks whether or not a given location is affected by residual emp fields, using the global zone flag set
+	*/
 	bool	AffectedByEMP(const HCellIdI&);
+	/**
+	Checks whether or not a given location is affected by residual emp fields, using the global zone flag set
+	*/
 	bool	AffectedByEMP(const LCellIdI&);
 
 
