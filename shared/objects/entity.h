@@ -595,6 +595,8 @@ namespace Objects
 			void					UpdateEMPDamage(int damageLevel, bool isCreated=true);
 		#else
 
+			void					ClearOccupiedTerrain(float atTime) const;
+
 			bool					HandleEMPDamage(const int newDamage, float&atTime)
 			{
 				if (newDamage <= empDamageLevel)

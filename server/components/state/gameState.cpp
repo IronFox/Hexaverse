@@ -1093,7 +1093,7 @@ namespace Game
 		location.height = h;
 		std::shared_ptr<Objects::NexusPort> port = To<Objects::NexusPort>::Cast(
 		Objects::NexusPort::globalPrototype->CreateNewInstance(Objects::Faction::nexus,location,0));
-		port->CorrectTerrain(false,0);
+		port->ClearOccupiedTerrain(0);
 		float t = 0;
 		Objects::InsertConstructed(port,t);
 //		if (enableNexus)
@@ -1260,7 +1260,7 @@ namespace Game
 									launcherPrototype->CreateNewInstance(Objects::Faction::nexus,
 									Grid::LCellIdI(i,h),
 									0));
-								tower->CorrectTerrain(false,0);
+								tower->ClearOccupiedTerrain(false,0);
 								Objects::InsertConstructed(tower,t);
 							#endif
 						}
@@ -1270,7 +1270,7 @@ namespace Game
 								radarPrototype->CreateNewInstance(Objects::Faction::nexus,
 								Grid::LCellIdI(i,h),
 								0));
-							tower->CorrectTerrain(false,0);
+							tower->ClearOccupiedTerrain(0);
 							Objects::InsertConstructed(tower,t);
 						}
 
@@ -1283,7 +1283,7 @@ namespace Game
 										Objects::Generator::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
 										Grid::LCellIdI(i,h),
 										0));
-									generator->CorrectTerrain(false,0);
+									generator->ClearOccupiedTerrain(0);
 									Objects::InsertConstructed(generator,t);
 									generatorCount++;
 									alwaysOn << generator;	//only need three generators switched on
@@ -1292,7 +1292,7 @@ namespace Game
 										Objects::MunitionFactory::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
 										Grid::LCellIdI(i,h),
 										0));
-									factory->CorrectTerrain(false,0);
+									factory->ClearOccupiedTerrain(false,0);
 									Objects::InsertConstructed(factory,t);
 									alwaysOn << factory;
 								#endif
@@ -1303,7 +1303,7 @@ namespace Game
 									Objects::VehiclePlant::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
 									Grid::LCellIdI(i,h),
 									0));
-								plant->CorrectTerrain(false,0);
+								plant->ClearOccupiedTerrain(0);
 								Objects::InsertConstructed(plant,t);
 								factoryCount++;
 							}
@@ -1318,7 +1318,7 @@ namespace Game
 										Objects::MunitionStorage::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
 										Grid::LCellIdI(i,h),
 										0));
-									storage->CorrectTerrain(false,0);
+									storage->ClearOccupiedTerrain(false,0);
 									storage->storage = storage->maxStorage;
 									Objects::InsertConstructed(storage,t);
 									alwaysOn << storage;
@@ -1329,7 +1329,7 @@ namespace Game
 										Objects::Generator::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
 										Grid::LCellIdI(i,h),
 										0));
-									generator->CorrectTerrain(false,0);
+									generator->ClearOccupiedTerrain(false,0);
 									Objects::InsertConstructed(generator,t);
 									generatorCount++;
 									if (generatorCount < 4)
@@ -1345,7 +1345,7 @@ namespace Game
 									Objects::Connector::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
 									Grid::LCellIdI(i,h),
 									0));
-								connector->CorrectTerrain(false,0);
+								connector->ClearOccupiedTerrain(0);
 								Objects::InsertConstructed(connector,t);
 								connectorCount++;
 							}
@@ -1359,7 +1359,7 @@ namespace Game
 						//		Objects::Connector::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
 						//		Grid::LCellIdI(i,Objects::FindApplicableGround(Grid::LCellIdI(i,h),true)),
 						//		0));
-						//	connector->CorrectTerrain(false,0,true);
+						//	connector->ClearOccupiedTerrain(false,0,true);
 						//	Objects::InsertConstructed(connector,0);
 						//}
 
@@ -1435,7 +1435,7 @@ namespace Game
 		location.height = h;
 		//std::shared_ptr<Objects::NexusPort> port = To<Objects::NexusPort>::Cast(
 		//Objects::NexusPort::globalPrototype->CreateNewInstance(Objects::Faction::nexus,location,0));
-		//port->CorrectTerrain(false,0,true);
+		//port->ClearOccupiedTerrain(false,0,true);
 		//Objects::InsertConstructed(port,0);
 		//if (enableNexus)
 		//{
@@ -1484,20 +1484,20 @@ namespace Game
 			float t = 0;
 			Objects::PMine mine = To<Objects::Mine>::Cast(
 				Objects::Mine::globalPrototype->CreateNewInstance(f,location,0));
-			mine->CorrectTerrain(false,0);
+			mine->ClearOccupiedTerrain(0);
 			Objects::InsertConstructed(mine,t);
 			mine->SetEnabledOverride(true);
 				
 			Objects::PGenerator generator = To<Objects::Generator>::Cast(
 				Objects::Generator::globalPrototype->CreateNewInstance(f,at1,0));
-			generator->CorrectTerrain(false,0);
+			generator->ClearOccupiedTerrain(0);
 			Objects::InsertConstructed(generator,t);
 			generator->SetEnabledOverride(true);
 				
 			std::shared_ptr<Objects::MineralContainer> container = To<Objects::MineralContainer>::Cast(
 				Objects::MineralContainer::globalPrototype->CreateNewInstance(f,at2,0));
 			container->storage = container->maxStorage;
-			container->CorrectTerrain(false,0);
+			container->ClearOccupiedTerrain(0);
 			Objects::InsertConstructed(container,t);
 			Objects::RefreshCompoundCoverage(t);
 

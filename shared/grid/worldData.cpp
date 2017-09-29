@@ -738,8 +738,12 @@ namespace World
 			if (acceptChange)
 				InvalidateSensory();	//for the global world this is irrelevant and never checked by the server, but the client will issue sensory updates as a result.
 			//the server, on the other hand, will apply this to client-worlds when onTerrainChange() is trigger by World::actual, resulting in the same effect for its clients.
-
-			onTerrainChange(*this,changed,atTime);
+			if (!terrainChangeCascade)
+			{
+				terrainChangeCascade = true;
+				onTerrainChange(*this,changed,atTime);
+				terrainChangeCascade = false;
+			}
 		}
 	}
 

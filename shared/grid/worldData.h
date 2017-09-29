@@ -403,6 +403,7 @@ namespace World
 		};
 
 
+		bool					terrainChangeCascade = false;
 		int						lockLevel=0;
 		bool					sensoryValid=true;
 		Ctr::FixedArray<FamilyState,BaseGrid::NumFamilies>		families;

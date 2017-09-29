@@ -162,18 +162,18 @@ namespace Nexus
 
 			//			Objects::PMine mine = To<Objects::Mine>::Cast(
 			//			Objects::Mine::globalPrototype->CreateNewInstance(client->faction,location,0));
-			//		mine->CorrectTerrain(false,0,true);
+			//		mine->ClearOccupiedTerrain(false,0,true);
 			//		Objects::InsertConstructed(mine,0);
 			//		
 			//		Objects::PGenerator generator = To<Objects::Generator>::Cast(
 			//			Objects::Generator::globalPrototype->CreateNewInstance(client->faction,at1,0));
-			//		generator->CorrectTerrain(false,0,true);
+			//		generator->ClearOccupiedTerrain(false,0,true);
 			//		generator->SetEnabledOverride(true);
 			//		Objects::InsertConstructed(generator,0);
 			//		
 			//		std::shared_ptr<Objects::MineralContainer> container = To<Objects::MineralContainer>::Cast(
 			//			Objects::MineralContainer::globalPrototype->CreateNewInstance(client->faction,at2,0));
-			//		container->CorrectTerrain(false,0,true);
+			//		container->ClearOccupiedTerrain(false,0,true);
 			//		Objects::InsertConstructed(container,0);
 
 
