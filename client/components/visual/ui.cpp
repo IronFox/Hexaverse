@@ -716,7 +716,7 @@ namespace UI
 					outResult << "Owner: me";
 					target->AppendDeploymentCount(outResult, target->owner);
 				}
-				else
+				elif (target->owner)
 					outResult << "Owner: "+target->owner->GetName();
 				if (target->health > 0)
 				{
@@ -798,7 +798,7 @@ namespace UI
 						proto->AppendDeploymentCount(outResult, instance->owner);
 					}
 				}
-				else
+				elif (instance->owner)
 					outResult << "Owner: "+instance->owner->GetName();
 				if (instance->health > 0)
 				{
@@ -809,12 +809,12 @@ namespace UI
 				}
 				else
 				{
-					outResult << " Ghost";
+					outResult << "Ghost";
 				}
 
 				#ifndef NO_HIBERNATION
 					if (instance->ToHibernating()->IsHibernating())
-						outResult << " Hibernating";
+						outResult << "Hibernating";
 				#endif
 
 
@@ -825,7 +825,7 @@ namespace UI
 //					if (target->empDamageLevel)
 //					outResult << "EMP-Damage detected ("+String(target->empDamageLevel)+")";
 
-				outResult.MarkBriefEnd();
+				outResult.MarkBriefEnd(true);
 				Objects::OwnerParameter old = proto->owner;
 				proto->owner = instance->owner;	//crude, but either it's set already, or this is a global prototype in which case ownership don't matter
 				proto->DescribeType(outResult,Objects::WorldEntity::DescIncludePrice /*| Objects::WorldEntity::DescIncludeUnitCount*/);
