@@ -93,6 +93,27 @@ namespace Objects
 			#endif
 		#else
 
+			World::actual.onTerrainChange << [](const World::Data&d, const BaseGrid::FamiliesChanged&changed, float t){
+				Objects::ForeachWorldEntity([changed,t](const Objects::PWorldEntity&e)
+				{
+					if (e->IsAboveGrid())
+						return;
+					if (changed.IsSet( Grid::low.grid.GetCell(e->location.stackID).family ))
+					{
+						if (!e->ClearOccupiedTerrain(t))
+						{
+							float t2 = t;
+							Remove(e,Objects::RemovalType::UncontrolledExplosion,t2);
+						}
+						else
+						{
+							if (e->IsMobile())
+								To<MobileEntity>::Cast(e)->PlaceExactlyAt(e->location,0,0);//check if mobile entity should fall
+						}
+					}
+				},false);
+			};
+
 			//#ifdef _DEBUG
 			//	Faction::nexus->accessToken = CryptographicID();
 			//	LogEvent(EventClass::Preset::uncommon, nullptr, "Debug: Set nexus access token to " + Faction::nexus->accessToken.ToString() + "...");

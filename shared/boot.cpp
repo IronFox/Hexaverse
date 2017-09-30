@@ -16,19 +16,5 @@ void Boot()
 	World::Create();
 	Objects::Create();
 
-	#ifndef CLIENT
-		World::actual.onTerrainChange << [](const World::Data&d, const BaseGrid::FamiliesChanged&changed, float t){
-			Objects::ForeachWorldEntity([changed,t](const Objects::PWorldEntity&e)
-			{
-				if (e->IsAboveGrid())
-					return;
-				if (changed.IsSet( Grid::low.grid.GetCell(e->location.stackID).family ))
-				{
-					e->ClearOccupiedTerrain(t);
-				}
-			},false);
-		};
-	#endif
-
 }
 

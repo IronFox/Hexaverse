@@ -14,6 +14,8 @@ v0.6.5	[Sep 24 2017]
 	> Selected material buttons in interactive configuration mode now render as permanently down.
 	> EMP and doomsday weapon vehicles will no longer auto-fire at possible targets.
 	> Auto-targeting now chooses target by random if several are possible.
+	> Construction cordon is now placed only on discrete locations instead of smoothly following mobile entity motions.
+	> Build state of vehicles is now sent to hostile factions, so a cordon appears if a visible hostile unit is building something.
 	* Auto-targeting of towers and vehicles no longer causes friendly fire, assuming terrain is fully known.
 	* Nexus bases can no longer end up submerged in oceanic lava.
 	* Fixed interactive configuration mode sometimes getting out of sync with the server.
@@ -23,6 +25,7 @@ v0.6.5	[Sep 24 2017]
 	* Fixed Nexus units not received/keeping EMP damage.
 	* Fixed terrain modifications sometimes reaching into space occupied by units.
 	* Fixed EMP zones sometimes disappearing.
+	* Client no longer refuses to contact manually specified hosts when UDP listening fails.
 	* Fixed an insane number of tiny bugs.
 
 v0.6.4	[May 5 2017]

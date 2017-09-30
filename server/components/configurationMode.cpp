@@ -44,7 +44,6 @@ void ConfigurationMode::End()
 	using namespace Details;
 	if (!isActive)
 		return;
-	isActive = false;
 	//Network::CloseSession(false);
 	Game::Config::factionSupportFlags = originalFlags;
 	LogEvent(EventSignificance::Important,"Ending configuration mode");
@@ -59,6 +58,7 @@ void ConfigurationMode::End()
 	Network::RestartSession(true);
 	FileIO::RefreshWindowTitle();
 
+	isActive = false;
 }
 
 bool ConfigurationMode::IsActive()

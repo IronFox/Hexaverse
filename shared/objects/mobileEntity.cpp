@@ -13,9 +13,27 @@ namespace Objects
 {
 	SharedContainer<MobileEntity>			storedMobileEntities;
 
+	#ifndef CLIENT
+		class BuildChecker
+		{
+		public:
+			/**/	BuildChecker(MobileEntity*e):entity(e),wasBuilding(e->IsBuilding())
+			{}
 
+			/**/	~BuildChecker()
+			{
+				const bool isBuilding = entity->IsBuilding();
+				if (!wasBuilding && isBuilding)
+					entity->RegisterChange(WorldEntity::StartedBuilding,entity->entityTime);
+				elif (wasBuilding && !isBuilding)
+					entity->RegisterChange(WorldEntity::StoppedBuilding,entity->entityTime);
+			}
 
-
+		private:
+			MobileEntity*const	entity;
+			const bool			wasBuilding;
+		};
+	#endif
 
 
 	void						CheckMobileEntitySanity()
@@ -83,23 +101,15 @@ namespace Objects
 	}
 
 
-	void MobileEntity::UpdateSystem()
+	/*static*/ void MobileEntity::UpdateSystem(M::TMatrix4<>&inOutSys,const Grid::LCellIdI&location)
 	{
 		ASSERT_LESS__(location.stackID, Grid::LowSetup::GridType::CellCount);
-		M::TVec3<> oldLocation = system.w.xyz;
+		M::TVec3<> oldLocation = inOutSys.w.xyz;
 		const M::TVec3<>&up = Grid::low.cells[location.stackID].cornerCenter;
 		//centerVertex.xyz;
 		M::TVec3<> y, x,z;
-		system.w.xyz = up * Grid::ToRadiusf(float(location.height) /*+ 0.025f*/);
-		z = oldLocation- system.w.xyz;
-
-		#ifdef HAS_WINDOW
-			ambientSound.SetPosition(system.w.xyz);
-			ambientSound.SetVelocity(float3());
-			activitySound.SetPosition(system.w.xyz);
-			activitySound.SetVelocity(float3());
-		#endif
-
+		inOutSys.w.xyz = up * Grid::ToRadiusf(float(location.height) /*+ 0.025f*/);
+		z = oldLocation- inOutSys.w.xyz;
 
 		if (Vec::zero(z))
 		{
@@ -111,10 +121,22 @@ namespace Objects
 		Vec::normalize0(x);
 		Vec::cross(x, up, y);
 		Vec::normalize0(y);
-		system.y.xyz = y;
-		system.z.xyz = up;
-		Vec::cross(system.y.xyz, system.z.xyz, system.x.xyz);
-		Mat::resetBottomRow(system);
+		inOutSys.y.xyz = y;
+		inOutSys.z.xyz = up;
+		Vec::cross(inOutSys.y.xyz, inOutSys.z.xyz, inOutSys.x.xyz);
+		Mat::resetBottomRow(inOutSys);
+	}
+	
+	void MobileEntity::UpdateSystem()
+	{
+		UpdateSystem(system,location);
+
+		#ifdef HAS_WINDOW
+			ambientSound.SetPosition(system.w.xyz);
+			ambientSound.SetVelocity(float3());
+			activitySound.SetPosition(system.w.xyz);
+			activitySound.SetVelocity(float3());
+		#endif
 
 		Mat::invertSystem(system, inverse);
 	}
@@ -306,11 +328,6 @@ namespace Objects
 											this->UnlockTasks();
 											return TaskResult::AllDoneForThisRound;
 										}
-										//if (completeOnMove)
-										//{
-										//	unstable = true;
-										//	RegisterChange(TasksChanged,motionTime);
-										//}
 
 										stop = true;
 									}
@@ -334,6 +351,7 @@ namespace Objects
 							if (task.path.IsEmpty() || dropRemaining)
 							{
 								this->UnlockTasks();
+								BuildChecker checker(this);
 								if (dropRemaining)
 								{
 									this->ClearAllTasks(true,CLOCATION);
@@ -499,6 +517,7 @@ namespace Objects
 								{
 									LogEvent(EventSignificance::Common,v2.get(),"Dangerous movement into range of "+(*c)->GetName()+" at "+ToString((*c)->location)+" detected.");
 									LogEvent(EventSignificance::Uncommon,v2.get(),"Dangerous movement into range of "+(*c)->GetNiceName()+" detected.");
+									BuildChecker checker(this);
 									if (v2.get() == this)
 									{
 										ClearAllTasks(true,CLOCATION);
@@ -669,6 +688,8 @@ namespace Objects
 
 		MobileEntity::TaskResult			MobileEntity::PerformNonAttack()
 		{
+			BuildChecker checker(this);
+
 			if (!HasTasks())
 			{
 				if (completeOnMove)
@@ -833,7 +854,7 @@ namespace Objects
 			}*/
 
 			ASSERT__(!TasksAreLocked());
-
+			BuildChecker checker(this);
 			Grid::LCellIdI origin = this->GetLastPointOfOrigin();
 		
 			RegisterChange(TasksChanged,entityTime);
@@ -867,6 +888,8 @@ namespace Objects
 		void					MobileEntity::RegisterNewFrontJob(const String&localizableShapeIdentifier, const PVehicleJob&job, const PVehicleJob&parent, const Grid::LCellIdI*destination)
 		{
 			ASSERT__(!TasksAreLocked());
+
+			BuildChecker checker(this);
 
 			if (IsSleeping() && job->DelayedBySleep())
 			{
@@ -947,6 +970,7 @@ namespace Objects
 		void			MobileEntity::EraseFirstTask()
 		{
 			ASSERT__(!TasksAreLocked());
+			BuildChecker checker(this);
 			myTasks.EraseFront();
 		}
 
@@ -1077,6 +1101,7 @@ namespace Objects
 			}
 
 			{
+				BuildChecker checker(this);
 				ASSERT__(!TasksAreLocked());
 
 				myTasks.PushFront(Task("Move To",destination,detailedPath,Task::MoveTo));
@@ -1095,6 +1120,7 @@ namespace Objects
 			if (!HasTasks())
 				return false;
 			ASSERT__(!TasksAreLocked());
+			BuildChecker checker(this);
 			if (myTasks.GetNewest().type == Task::MoveTo)
 			{
 				myTasks.GetNewest().foci.EraseBack();
@@ -1124,8 +1150,40 @@ namespace Objects
 		}
 
 
+		bool		MobileEntity::ClearAllTasks(bool isReaction, const TCodeLocation&caller)
+		{
+			LogEvent(EventSignificance::Debug,this,"ClearAllTasks("+String(isReaction)+", "+String(caller)+")");
+			if (TasksAreLocked())
+			{
+				if (flushTasksOnUnlock)
+					return false;
+				entityTime += timeEpsilon;
+				flushTasksOnUnlock = true;
+				LogEvent(EventSignificance::Debug,this," ...set to clear on unlock");
+				return true;
+			}
+				
+			if (myTasks.IsNotEmpty() || completeOnMove)
+			{
+				BuildChecker checker(this);
+				entityTime += timeEpsilon;
+				jobStarted = false;
+				if (!isReaction)
+					completeOnMove.reset();
+				RegisterChange(TasksChanged,entityTime);
+				//tasksChanged = true;
+				myTasks.Clear();
+				LogEvent(EventSignificance::Debug,this," ...cleared");
+				return true;
+			}
+			return false;
+		}
+
+
+
 		/*virtual override*/ void			MobileEntity::ClearSafeTasks()
 		{
+			BuildChecker checker(this);
 			if (HasUnsafeTask())
 			{
 				if (myTasks.Count() == 1)

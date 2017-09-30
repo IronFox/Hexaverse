@@ -1598,11 +1598,13 @@ namespace Network
 					LogEvent(EventClass::Preset::operationAborted,nullptr,"Unable to initiate UDP listening for servers on the local area network: "+error+" (maybe another instance of " PRODUCT_NAME " is running already?). Listening will be disabled." );
 					RuntimeConfig::udpListen = false;
 					closesocket(broadcastListenSocket);
-					return;
 				}
-				u_long dontBlock = 1;
-				rc = ioctlsocket(broadcastListenSocket, FIONBIO, &dontBlock);	//set socket to non-blocking
-				ASSERT_EQUAL__(rc, 0);
+				else
+				{
+					u_long dontBlock = 1;
+					rc = ioctlsocket(broadcastListenSocket, FIONBIO, &dontBlock);	//set socket to non-blocking
+					ASSERT_EQUAL__(rc, 0);
+				}
 			}
 		}
 

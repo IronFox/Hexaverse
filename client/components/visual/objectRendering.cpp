@@ -1243,7 +1243,14 @@ namespace Objects
 			bool isBuilding = v->IsBuilding();
 			if (isBuilding)
 			{
-				display.SetObjectMatrix(v->system);
+				if (v->isInsertedIntoGrid)
+					display.SetObjectMatrix(v->system);
+				else
+				{
+					M::TMatrix4<> m = M::Matrix<>::eye4;
+					Objects::Vehicle::UpdateSystem(m,v->location);
+					display.SetObjectMatrix(m);
+				}
 				keyColor.Update(float4(v->owner->activeEntityColor,light));
 				display.Render(cordon,true);
 			}

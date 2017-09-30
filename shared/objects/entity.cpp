@@ -441,7 +441,7 @@ namespace Objects
 	#ifndef CLIENT
 
 	
-		void			WorldEntity::ClearOccupiedTerrain(float atTime) const
+		bool			WorldEntity::ClearOccupiedTerrain(float atTime) const
 		{
 			#ifdef HYBRID_GRID
 				const UINT32 higher = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
@@ -452,19 +452,35 @@ namespace Objects
 			auto seq = World::actual.BeginChangeSequence(atTime);
 			using StringConversion::ToString;
 			const int height = GetHeight();
+			const bool forceRemoveAll = this->IsIndestructible();
 			#ifdef HYBRID_GRID
 				for (int j = 0; j < n.numNeighbors; j++)
 				{
 					seq.SelectStack(n.neighborID[j]);
 					for (int a = 0; a < height; a++)
+					{
+						if (!forceRemoveAll && seq.GetCellI(location.height+a).content == Grid::Content::Lava)
+						{
+							LogEvent(EventSignificance::Common,this,"Lava encountered in cell "+ToString(Grid::HCellIdI(n.neighborID[j],location.height+a)));
+							return false;
+						}
 						if (seq.Clear(location.height+a))
 							LogEvent(EventSignificance::Common,this,"Clearing cell "+ToString(Grid::HCellIdI(n.neighborID[j],location.height+a)));
+					}
 				}
 			#endif
 			seq.SelectStack(higher);
 			for (int a = 0; a < height; a++)
+			{
+				if (!forceRemoveAll && seq.GetCellI(location.height+a).content == Grid::Content::Lava)
+				{
+					LogEvent(EventSignificance::Common,this,"Lava encountered in cell "+ToString(Grid::HCellIdI(higher,location.height+a)));
+					return false;
+				}
 				if (seq.Clear(location.height+a))
 					LogEvent(EventSignificance::Common,this,"Clearing cell "+ToString(Grid::HCellIdI(higher,location.height+a)));
+			}
+			return true;
 		}
 
 

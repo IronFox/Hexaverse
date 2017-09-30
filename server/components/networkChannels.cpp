@@ -1712,10 +1712,14 @@ namespace Receiver
 					LogEvent(EventClass::Preset::uncommon,"Last active player has disconnected. Pausing round timer");
 					Game::roundTimerPaused = true;
 
-					if (FileIO::Config::saveWhenAllQuit && (RuntimeConfig::IsInAnyCommandPhase() || RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase))
-						FileIO::AutoSave();
-					else
-						FileIO::postEvolutionAutoSave = true;
+
+					if (FileIO::Config::saveWhenAllQuit && Objects::Faction::all.IsNotEmpty())	//if factions are empty the system most likely just returned from interactive config mode and this is localhost disconnecting
+					{
+						if (RuntimeConfig::IsInAnyCommandPhase() || RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
+							FileIO::AutoSave();
+						else
+							FileIO::postEvolutionAutoSave = true;
+					}
 				}
 			}
 			break;

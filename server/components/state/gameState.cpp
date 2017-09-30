@@ -473,6 +473,8 @@ namespace Game
 			}
 			if (v.IsHibernating())
 				state.flags |= Protocol::VehicleFlags::Hibernating;
+			if (!owned && v.IsBuilding())
+				state.flags |= Protocol::VehicleFlags::Building;
 
 			Describe(state.entityState,v,owned,timestamp,changeFlags);
 			if (owned)

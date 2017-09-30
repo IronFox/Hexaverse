@@ -1,5 +1,4 @@
 ﻿
-explosion optimization or options
 
 aerial radar and turret
 bomber
@@ -90,8 +89,6 @@ better mine output (refinery)
 
 
 
-transfer build-state of terraformer to hostile factions
-	/see what hostile former is building currently
 
 
 
@@ -158,6 +155,9 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+transfer build-state of terraformer to hostile factions (yes)
+	/see what hostile former is building currently (no)
+explosion optimization or options
 music
 end-game score recording and reporting
 Loading screen

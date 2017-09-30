@@ -268,7 +268,7 @@ namespace Objects
 		{}
 
 		bool					IsBusy() const {return myTasks.IsNotEmpty();}
-		bool					IsBuilding() const {return myTasks.IsNotEmpty() && myTasks.Peek().job && myTasks.Peek().job->roundsToJobCompletion >= 0;}
+		bool					IsBuilding() const {return myTasks.IsNotEmpty() && myTasks.Peek().IsJob();}
 		bool					IsFinishedBuilding() const {return myTasks.IsNotEmpty() && myTasks.Peek().job && myTasks.Peek().job->roundsToJobCompletion == 0;}
 		std::pair<int,int>		GetBuildingProgress() const;
 
@@ -371,33 +371,7 @@ namespace Objects
 					
 
 			*/
-			bool				ClearAllTasks(bool isReaction, const TCodeLocation&caller)
-			{
-				LogEvent(EventSignificance::Debug,this,"ClearAllTasks("+String(isReaction)+", "+String(caller)+")");
-				if (TasksAreLocked())
-				{
-					if (flushTasksOnUnlock)
-						return false;
-					entityTime += timeEpsilon;
-					flushTasksOnUnlock = true;
-					LogEvent(EventSignificance::Debug,this," ...set to clear on unlock");
-					return true;
-				}
-				
-				if (myTasks.IsNotEmpty() || completeOnMove)
-				{
-					entityTime += timeEpsilon;
-					jobStarted = false;
-					if (!isReaction)
-						completeOnMove.reset();
-					RegisterChange(TasksChanged,entityTime);
-					//tasksChanged = true;
-					myTasks.Clear();
-					LogEvent(EventSignificance::Debug,this," ...cleared");
-					return true;
-				}
-				return false;
-			}
+			bool				ClearAllTasks(bool isReaction, const TCodeLocation&caller);
 
 			bool				HasTasks() const
 			{
@@ -480,6 +454,16 @@ namespace Objects
 		Called automatically where needed.
 		*/
 		void					UpdateSystem();
+
+		/**
+		Constructs a mobile entity system.
+		The old location stored in the specified system is used to define the direction of the final system,
+		so don't pass an uninitialized system.
+		@param[in,out] inOutSys System to use for direction calculation, and to put the new vehicle system matrix into. Must be initialized
+		@param location New vehicle location
+		*/
+		static void				UpdateSystem(M::TMatrix4<>&inOutSys,const Grid::LCellIdI&location);
+
 
 		/**
 		Retrieves the amount of minerals that can be converted into structure by the local entity

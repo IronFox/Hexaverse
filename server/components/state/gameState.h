@@ -134,6 +134,8 @@ namespace Game
 	{
 	
 		static const UINT32 NotifyOthers = Objects::WorldEntity::PositionChanged 
+											| Objects::WorldEntity::StartedBuilding 
+											| Objects::WorldEntity::StoppedBuilding 
 											| Objects::WorldEntity::HealthChanged 
 											| Objects::WorldEntity::EnableChanged 
 											| Objects::WorldEntity::EMPDamageChanged
