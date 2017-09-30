@@ -1125,6 +1125,7 @@ namespace World
 			rs.lightingChangedTo = (BYTE)CellStack::Range;
 		#endif
 		SignalChange(stackID);
+		terrainChanged = true; //can't know, assume worst
 		return Data::StackAccess(&rs);
 	}
 

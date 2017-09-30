@@ -228,21 +228,23 @@ namespace World
 						changed.Set(Grid::high.grid.GetCell(neighborhood.neighborID[i]).family);
 				}
 			});
-			auto seq = World::actual.BeginChangeSequence(0);
-			foreach (changed,ch)
 			{
-				UINT32 offset = Grid::high.grid.GetFamilyOffset(*ch);
-				count_t cnt = Grid::high.grid.CountFamilyMembers(*ch);
-				for (UINT32 k = offset; k < offset+cnt; k++)
+				auto seq = World::actual.BeginChangeSequence(0);
+				foreach (changed,ch)
 				{
-					auto access = seq.AccessStack(k);
-					Grid::CellStack&target = access.GetStack();
-					const TStack&source = tempStacks[k];
-					for (index_t layer = 0; layer < Grid::CellStack::Range; layer++)
-						target.volumeCell[layer].content = source.volumeCell[layer];
+					UINT32 offset = Grid::high.grid.GetFamilyOffset(*ch);
+					count_t cnt = Grid::high.grid.CountFamilyMembers(*ch);
+					for (UINT32 k = offset; k < offset+cnt; k++)
+					{
+						auto access = seq.AccessStack(k);
+						Grid::CellStack&target = access.GetStack();
+						const TStack&source = tempStacks[k];
+						for (index_t layer = 0; layer < Grid::CellStack::Range; layer++)
+							target.volumeCell[layer].content = source.volumeCell[layer];
+					}
 				}
 			}
-
+			#if 0
 			Objects::ForeachWorldEntity([changed,&seq](const Objects::PWorldEntity&entity)
 			{
 				if (!changed.IsSet(Grid::low.grid.GetCell(entity->location.stackID).family))
@@ -291,6 +293,7 @@ namespace World
 					}
 				}
 			},false);
+			#endif /*0*/
 			float t = timer.GetSecondsSince(t0);
 			LogEvent(EventSignificance::PerformanceMeasurement,"Time needed to process liquids: "+String(t));
 		}

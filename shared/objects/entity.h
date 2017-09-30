@@ -595,7 +595,15 @@ namespace Objects
 			void					UpdateEMPDamage(int damageLevel, bool isCreated=true);
 		#else
 
-			void					ClearOccupiedTerrain(float atTime) const;
+			/**
+			Removes all removable matter in the occupied area of the local entity.
+			Currently only lava is considered unremovable.
+			If the local entity is indestructible, then all detected matter is removed.
+			@param atTime Time to trigger any terrain change at
+			@return True if all found matter could be removed, false otherwise. If the method returns false, the local entity should be destroyed by the caller.
+			The method never returns false for indestructible entities
+			*/
+			bool					ClearOccupiedTerrain(float atTime) const;
 
 			bool					HandleEMPDamage(const int newDamage, float&atTime)
 			{
