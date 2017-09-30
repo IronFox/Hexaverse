@@ -1,5 +1,4 @@
 ﻿
-explosion optimization or options
 
 aerial radar and turret
 bomber
@@ -158,6 +157,7 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 transfer build-state of terraformer to hostile factions (yes)
 	/see what hostile former is building currently (no)
+explosion optimization or options
 music
 end-game score recording and reporting
 Loading screen
