@@ -909,6 +909,17 @@ namespace Objects
 			res->setProgress(researchState,next);
 			DBG_ASSERT_EQUAL__(next,res->getProgress(researchState));
 			changed = true;
+
+			if (researchQueue.Count() > 1)
+			{
+				LogEvent(EventClass::Preset::common,owner->shared_from_this(),"Multiple research topics defined after "+res->name+". Cycling");
+				auto topic = res;
+				researchQueue.Erase(0);
+				researchQueue.Append(topic);
+				queueChanged = true;
+				globalState.onQueueChange(owner);
+			}
+
 			break;
 		}
 		lastSpeed = totalContribution;
