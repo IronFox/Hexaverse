@@ -1101,6 +1101,7 @@ namespace Protocol
 			Automated = 0x1,
 			Hibernating = 0x2,
 			ConnectedToGround = 0x4,
+			Building = 0x8,
 		};
 	}
 	namespace StructureFlags

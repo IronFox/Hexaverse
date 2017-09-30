@@ -15,6 +15,7 @@ v0.6.5	[Sep 24 2017]
 	> EMP and doomsday weapon vehicles will no longer auto-fire at possible targets.
 	> Auto-targeting now chooses target by random if several are possible.
 	> Construction cordon is now placed only on discrete locations instead of smoothly following mobile entity motions.
+	> Build state of vehicles is now sent to hostile factions, so a cordon appears if a visible hostile unit is building something.
 	* Auto-targeting of towers and vehicles no longer causes friendly fire, assuming terrain is fully known.
 	* Nexus bases can no longer end up submerged in oceanic lava.
 	* Fixed interactive configuration mode sometimes getting out of sync with the server.

@@ -310,6 +310,8 @@ namespace Objects
 				HibernationChanged = 0x400,
 				OrbitalConnectionChanged = 0x800,
 				SleepChange = 0x1000,
+				StartedBuilding = 0x2000,
+				StoppedBuilding = 0x4000,
 			};
 			float					changeTimer;	//Earliest change time. Reduced if an earlier even occurs
 			UINT32					changeFlags;	//Everything that has changed since the last reset (usually once per server-frame)
