@@ -978,11 +978,8 @@ namespace Receiver
 			if (RuntimeConfig::empZones)
 				World::SetUnlockedEMPZones(1);
 			else
-			{
-				Grid::empZonesUnlocked = 0xffff;
-				Grid::empZonesLocked = 0x0;
-				Channels::lockEmpZones.SendTo(::Network::server,Grid::empZonesLocked,2);
-			}
+				World::SetUnlockedEMPZones(World::NumZones);
+
 			if (RuntimeConfig::gameGoal != cfg.gameGoal || RuntimeConfig::empZones != eOld)
 			{
 				RuntimeConfig::gameGoal.Load(cfg.gameGoal);

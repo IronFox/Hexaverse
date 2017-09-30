@@ -473,11 +473,11 @@ namespace Grid
 
 
 
-		GlobalEvents::terrainFlush << []()
-		{
-			empZonesLocked = 0;
-			empZonesUnlocked = ~empZonesLocked;
-		};
+		//GlobalEvents::terrainFlush << []()
+		//{
+		//	empZonesLocked = 0;
+		//	empZonesUnlocked = ~empZonesLocked;
+		//};
 
 	}
 

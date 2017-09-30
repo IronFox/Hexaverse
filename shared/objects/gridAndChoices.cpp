@@ -81,37 +81,6 @@ namespace Objects
 		#endif
 		
 
-		void SignalClusterChange(const Grid::LCellIdI&location, int verticalTolerance,float atTime,const WorldEntity*except)
-		{
-
-			for (int h = location.height-verticalTolerance; h <= location.height+verticalTolerance; h++)
-			{
-				if (h >= -Grid::CellStack::HalfRange && h < Grid::CellStack::HalfRange)
-				{
-					PStructure s = GetStructure(Grid::LCellIdI(location.stackID,h));
-					if (s && s.get() != except)
-					{
-						TStructureNeighborhood env;
-						Objects::GetNeighborhood(s->owner,s->ConnectsToDifferentOwnership(),s->location, env);
-						s->SignalEnvironmentChange(env,atTime);
-					}
-				}
-			}
-
-
-			//foreach(structures, s)
-			//	if ((*s)->location.stackID == location.stackID && abs((*s)->location.height - location.height) <= verticalTolerance)
-			//	{
-			//		Objects::GetNeighborhood((*s)->owner,(*s)->ConnectsToDifferentOwnership(),(*s)->location, env);
-			//		(*s)->SignalEnvironmentChange(env,atTime);
-			//	}
-
-
-
-			#ifdef CLIENT
-				Grid::SignalLightingChange(location+1);
-			#endif
-		}
 
 		void		VerifyGrid()
 		{
@@ -181,23 +150,7 @@ namespace Objects
 
 		}
 
-		void SignalClusterAndNeighborsChange(const Grid::LCellIdI&location, float atTime, const WorldEntity*except/* = nullptr*/)
-		{
-			const BaseGrid::TCellNeighborhood&n = Grid::low.grid.GetCell(location.stackID).neighborhood;
-			SignalClusterChange(location, 1,atTime,except);
-			for (int j = 0; j < n.numNeighbors; j++)
-				SignalClusterChange(Grid::LCellIdI(n.neighborID[j], location.height), 1,atTime,except);
 
-			SignalVehicleClusterChange(location, 1,atTime,except);
-			for (int j = 0; j < n.numNeighbors; j++)
-				SignalVehicleClusterChange(Grid::LCellIdI(n.neighborID[j], location.height), 1,atTime,except);
-
-
-			#ifdef CLIENT
-				Grid::SignalLightingChange(location);
-			#endif
-
-		}
 
 
 		bool		GetSentryTarget(WorldEntity&source, int munitionStorage, const TrajectoryEndPoint&sourceLocation, const TurretBase&base, TurretBase::TargetChoice& outTarget)

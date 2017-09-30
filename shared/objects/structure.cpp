@@ -468,36 +468,7 @@ namespace Objects
 
 	
 
-	#ifndef CLIENT
 
-	
-		/*static*/	void Structure::CommonFixTerrain(const WorldEntity*e, const Grid::LCellIdI&location,  int broadHeight, int totalHeight, bool signalChange, float atTime)
-		{
-			#ifdef HYBRID_GRID
-				const UINT32 higher = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
-				const auto&n = Grid::high.grid.GetCell(higher).neighborhood;
-			#else
-				const UINT32 higher = location.stackID;
-			#endif
-			auto seq = World::actual.BeginChangeSequence(atTime);
-			using StringConversion::ToString;
-			#ifdef HYBRID_GRID
-				for (int j = 0; j < n.numNeighbors; j++)
-				{
-					seq.SelectStack(n.neighborID[j]);
-					for (int a = 0; a < broadHeight; a++)
-						if (seq.Change(location.height+a,Grid::Content::Clear))
-							LogEvent(EventSignificance::Common,e,"Clearing cell "+ToString(Grid::HCellIdI(n.neighborID[j],location.height+a)));
-				}
-			#endif
-			seq.SelectStack(higher);
-			for (int a = 0; a < totalHeight; a++)
-				if (seq.Change(location.height+a,Grid::Content::Clear))
-					LogEvent(EventSignificance::Common,e,"Clearing cell "+ToString(Grid::HCellIdI(higher,location.height+a)));
-		}
-
-
-	#endif
 
 	
 	/*virtual*/ void				Structure::SignalLostNeighbor(const PStructure&other, float&atTime)
@@ -530,9 +501,6 @@ namespace Objects
 
 	/*virtual*/ bool				Structure::SignalEnvironmentChange(const TStructureNeighborhood&neighborhood, float atTime)
 	{
-		#ifndef CLIENT
-			CorrectTerrain(false,atTime);
-		#endif
 		#ifdef HYBRID_GRID
 			const UINT32 high = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
 			const auto&n = Grid::high.grid.GetCell(high).neighborhood;

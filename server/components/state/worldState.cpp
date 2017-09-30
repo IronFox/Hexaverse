@@ -483,10 +483,12 @@ namespace World
 			if (numZones == 0)
 				unlocked = 1;
 				
+			LogEvent(EventSignificance::Common,"Re-counted necessary EMP Zones (bonus="+String(temporaryFactionCountBonus)+"): raw="+String(numZones)+", final="+String(unlocked));
 			SetUnlockedEMPZones(unlocked);
 		}
 		else
 		{
+			LogEvent(EventSignificance::Common,"Clearing all EMP Zones");
 			SetUnlockedEMPZones(NumZones);
 		}
 	}
@@ -512,6 +514,7 @@ namespace World
 		const UINT16 newUnlocked = ((1<<unlocked) - 1);
 		if (unlockedEMPZones == newUnlocked)
 			return;
+		LogEvent(EventSignificance::Common,"Updating unlocked EMP Zones (unlocked="+String(unlocked)+"): "+Bin2Str::Convert(&unlockedEMPZones,sizeof(unlockedEMPZones))+"->"+Bin2Str::Convert(&newUnlocked,sizeof(newUnlocked)));
 		float t = 0;
 		CorrectResidualEMPDamage(t,unlockedEMPZones,newUnlocked);
 		Grid::empZonesUnlocked = unlockedEMPZones = newUnlocked;

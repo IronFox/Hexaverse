@@ -572,7 +572,7 @@ namespace Test
 	Objects::PWorldEntity CreateStructure(const Objects::OwnerParameter&owner, const Objects::PStructure&prototype, const Grid::LCellIdI&location)
 	{
 		Objects::PStructure result(To<Objects::Structure>::Cast( prototype->CreateNewInstance(owner, location, 0)));
-		result->CorrectTerrain(true, 0);
+		result->ClearOccupiedTerrain(0);
 		float t = 0;
 		Objects::InsertConstructed(result, t);
 		return result;
@@ -583,7 +583,7 @@ namespace Test
 	{
 		return To<T>::Cast(CreateStructure(owner,T::globalPrototype,location));
 		//T::globalPrototype->CreateNewInstance(owner, location, 0)));
-		//result->CorrectTerrain(true, 0, true);
+		//result->ClearOccupiedTerrain(true, 0, true);
 		//Objects::InsertConstructed(result, 0);
 		//return result;
 	}
