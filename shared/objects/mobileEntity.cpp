@@ -83,23 +83,15 @@ namespace Objects
 	}
 
 
-	void MobileEntity::UpdateSystem()
+	/*static*/ void MobileEntity::UpdateSystem(M::TMatrix4<>&inOutSys,const Grid::LCellIdI&location)
 	{
 		ASSERT_LESS__(location.stackID, Grid::LowSetup::GridType::CellCount);
-		M::TVec3<> oldLocation = system.w.xyz;
+		M::TVec3<> oldLocation = inOutSys.w.xyz;
 		const M::TVec3<>&up = Grid::low.cells[location.stackID].cornerCenter;
 		//centerVertex.xyz;
 		M::TVec3<> y, x,z;
-		system.w.xyz = up * Grid::ToRadiusf(float(location.height) /*+ 0.025f*/);
-		z = oldLocation- system.w.xyz;
-
-		#ifdef HAS_WINDOW
-			ambientSound.SetPosition(system.w.xyz);
-			ambientSound.SetVelocity(float3());
-			activitySound.SetPosition(system.w.xyz);
-			activitySound.SetVelocity(float3());
-		#endif
-
+		inOutSys.w.xyz = up * Grid::ToRadiusf(float(location.height) /*+ 0.025f*/);
+		z = oldLocation- inOutSys.w.xyz;
 
 		if (Vec::zero(z))
 		{
@@ -111,10 +103,22 @@ namespace Objects
 		Vec::normalize0(x);
 		Vec::cross(x, up, y);
 		Vec::normalize0(y);
-		system.y.xyz = y;
-		system.z.xyz = up;
-		Vec::cross(system.y.xyz, system.z.xyz, system.x.xyz);
-		Mat::resetBottomRow(system);
+		inOutSys.y.xyz = y;
+		inOutSys.z.xyz = up;
+		Vec::cross(inOutSys.y.xyz, inOutSys.z.xyz, inOutSys.x.xyz);
+		Mat::resetBottomRow(inOutSys);
+	}
+	
+	void MobileEntity::UpdateSystem()
+	{
+		UpdateSystem(system,location);
+
+		#ifdef HAS_WINDOW
+			ambientSound.SetPosition(system.w.xyz);
+			ambientSound.SetVelocity(float3());
+			activitySound.SetPosition(system.w.xyz);
+			activitySound.SetVelocity(float3());
+		#endif
 
 		Mat::invertSystem(system, inverse);
 	}

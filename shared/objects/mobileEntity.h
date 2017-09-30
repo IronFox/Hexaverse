@@ -482,6 +482,16 @@ namespace Objects
 		void					UpdateSystem();
 
 		/**
+		Constructs a mobile entity system.
+		The old location stored in the specified system is used to define the direction of the final system,
+		so don't pass an uninitialized system.
+		@param[in,out] inOutSys System to use for direction calculation, and to put the new vehicle system matrix into. Must be initialized
+		@param location New vehicle location
+		*/
+		static void				UpdateSystem(M::TMatrix4<>&inOutSys,const Grid::LCellIdI&location);
+
+
+		/**
 		Retrieves the amount of minerals that can be converted into structure by the local entity
 		@return Amount of minerals that can be converted per round by the local entity. 0 for entities that cannot construct
 		*/
