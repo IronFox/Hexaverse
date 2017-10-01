@@ -461,15 +461,18 @@ namespace ApplicationInterface
 
 
 			const float range = roughAttack.turretRange;//base->GetFlatAttackRange();
-			float radius = range * 0.2f;
-			float3 mod = float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)) * radius;
-			count_t numIt = 0;
-			while (!attack.attackFrom->CanHit(mod + roughAttack.sourcePosition,roughAttack.attackAngle)
-					//Vec::quadraticDistance(mod + roughAttack.sourcePosition.value, traceToWorld) > sqr(range) 
-				&& ++numIt < 1000)
-				mod = float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)) * radius;
-			ASSERT__(numIt < 1000);
-			roughAttack.sourcePosition += mod;
+			if (range > 0)
+			{
+				float radius = range * 0.2f;
+				float3 mod = float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)) * radius;
+				count_t numIt = 0;
+				while (!attack.attackFrom->CanHit(mod + roughAttack.sourcePosition,roughAttack.attackAngle)
+						//Vec::quadraticDistance(mod + roughAttack.sourcePosition.value, traceToWorld) > sqr(range) 
+					&& ++numIt < 1000)
+					mod = float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)) * radius;
+				ASSERT1__(numIt < 1000,range);
+				roughAttack.sourcePosition += mod;
+			}
 		}
 
 		for (const Network::PClient&client : clientsCanSee)
