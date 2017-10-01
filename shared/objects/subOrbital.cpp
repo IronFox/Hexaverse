@@ -170,7 +170,7 @@ namespace Objects
 			/*virtual override*/ MobilePlacementResult	Plane::PlaceExactlyAt(const Grid::LCellIdI&cell, float timeCost, float minTimeOffset, bool signalEvent/*=true*/, bool isCreated/*=true*/, bool failIsFatal/*=false*/)
 			{
 			//	UINT32 cell = _cell.stackID;
-				if (health <= 0)
+				if (IsDeadOrGhost())
 				{
 					if (failIsFatal)
 					{
