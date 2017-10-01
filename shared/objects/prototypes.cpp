@@ -123,6 +123,7 @@ namespace Objects
 			//Tower::globalPrototypes.Append().reset(new Tower(artillery));
 			Tower::globalPrototypes.Append().reset(new Tower(&Component::radar));
 			Tower::globalPrototypes.Append().reset(new Tower(&Component::armored));
+			Tower::globalPrototypes.Append().reset(new Tower(&Component::resourceScanner));
 			structures.IncludeList(Tower::globalPrototypes);
 
 

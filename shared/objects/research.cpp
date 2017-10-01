@@ -515,6 +515,7 @@ namespace Objects
 			"	MissileLauncherTower = Tower(TurretConfig.MissileLauncher),\n"
 			"	RadarTower = Tower(TurretConfig.Radar),\n"
 			"	CannonTower = Tower(TurretConfig.Cannon),\n"
+			"	SurveyorTower = Tower(TurretConfig.Surveyor),\n"
 			"}\n"
 		);
 

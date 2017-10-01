@@ -6,6 +6,7 @@ v0.6.5	[Sep 24 2017]
 	+ Added options dialog.
 	+ Implemented loading splash screen.
 	+ Added help sub-menu with some new options.
+	+ Added surveyor tower that can detect tunnel-based attacks in a wider range than mobile surveyors can.
 	> Automatic target choice (e.g. by a tower) now traces candidate trajectories to improve precision.
 	> Idle vehicles will no longer constantly attack indestructible units.
 	> Removed the 'Construct Selected' button on vehicle plants. Simply selecting a desired turret will enqueue the chosen vehicle composition.

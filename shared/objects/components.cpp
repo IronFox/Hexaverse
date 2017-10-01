@@ -1561,7 +1561,7 @@ namespace Objects
 				if (CanRepair())
 					outResult <<"Can repair other vehicles/structures";
 				if (detectsResources)
-					outResult <<"Detects natural resources";
+					outResult <<"Scans into the ground, and detects natural resources";
 				#ifndef ONE_COMPOUND_PER_FACTION
 					if (!compound && baseStorageCapacity.IsNotEmpty())
 					{
@@ -1581,7 +1581,7 @@ namespace Objects
 				if (CanRepair())
 					outResult << ("This "+lowerName+" type can repair other structures and vehicles. It requires "+String(ResourceTag(Resource::Minerals))+" to initiate repair.");
 				if (detectsResources)
-					outResult << ("This "+lowerName+" type detects all naturally occuring resources within its scanning range. It can be automated.");
+					outResult << ("This "+lowerName+" type scans deep into the ground, and detects all naturally occuring resources within its scanning range. It can be automated if mobile.");
 				if (CanAttack())
 				{
 					outResult << ("This "+lowerName+" type can attack objects in range.");

@@ -140,6 +140,7 @@ namespace Objects
 		#endif
 		virtual bool				IsTower() const override {return true;}
 		virtual float3				GetScanningCenter(const Grid::LCellIdI&loc) const override;
+		virtual void				VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance = false) const override;
 
 		//virtual float				GetScanningRange() const override;
 		//virtual String				DescribeScanningRange() const override;

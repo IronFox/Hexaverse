@@ -320,6 +320,19 @@ namespace Objects
 	#endif
 
 
+	/*virtual override*/ void				Tower::VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance /*= false*/) const
+	{
+		if (turret->detectsResources)
+		{
+			const auto center = GetScanningCenter(loc);
+			float range = GetScanningRange();
+
+			visitor(World::Sensor(center, range, World::Sensor::UpperHalfSolidSphere));
+			visitor(World::Sensor(center, range, World::Sensor::ShadedCylinder,20));
+		}
+		else
+			Super::VisitSensors(loc, visitor, appearance);
+	}
 
 
 	/*virtual override*/ float3				Tower::GetScanningCenter(const Grid::LCellIdI&loc) const
