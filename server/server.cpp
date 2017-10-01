@@ -116,6 +116,10 @@ namespace ApplicationInterface
 		Game::Network::Describe(w,*s,true,timestamp);
 		Network::SendToOwner(Channels::createStructure,v,w);
 
+		if (s->IsTower() && To<Objects::Tower>::Cast(s)->turret->detectsResources)
+		{
+			Game::Network::UpdateResourceCoverage(s->owner, s->location,s->GetScanningRange(),timestamp);
+		}
 	}
 
 
@@ -999,12 +1003,12 @@ int main( int argc, const char* argv[])
 
 			std::cout << "Running tests..." << std::endl;
 			{
+				Test::Run(Test::AutoTargeting());
 				Test::Run(Test::StringMethods());
 				Test::Run(Test::Serialization());
 				Test::Run(Test::CharacterEncoding());
 				Test::Run(Test::ServerClient());
 				Test::Run(Test::TerrainUpdates());
-				Test::Run(Test::AutoTargeting());
 				Test::Run(Test::SharedContainer());
 				Test::Run(Test::HighGridFamilies());
 				Test::Run(Test::Bin2Str());

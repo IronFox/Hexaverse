@@ -196,7 +196,7 @@ namespace Game
 				rs |= Protocol::GameFlag::StartBases;
 			if (Config::Nexus::enableAI)
 				rs |= Protocol::GameFlag::NexusAI;
-			if (ConfigurationMode::IsActive() && allowSpectatorFactions)
+			if (ConfigurationMode::IsActive()/* && allowSpectatorFactions*/)
 				rs |= Protocol::GameFlag::ConfigurationMode;
 			if (RuntimeConfig::tutorialMode)
 				rs |= Protocol::GameFlag::TutorialMode;
@@ -473,6 +473,8 @@ namespace Game
 			}
 			if (v.IsHibernating())
 				state.flags |= Protocol::VehicleFlags::Hibernating;
+			if (!owned && v.IsBuilding())
+				state.flags |= Protocol::VehicleFlags::Building;
 
 			Describe(state.entityState,v,owned,timestamp,changeFlags);
 			if (owned)
@@ -670,7 +672,7 @@ namespace Game
 						if (::Network::CanSeeAsOwner(*cl,v))
 							Channels::setMobileState.SendTo((*cl)->peer.lock(),w1);
 						else
-							if (::Network::CanSee(*cl,_v,0))
+							if (::Network::CanSee(*cl,_v,v.entityTime))
 								Channels::setMobileState.SendTo((*cl)->peer.lock(),w0);
 					}			
 				v.ResetAllChange();
@@ -1055,6 +1057,12 @@ namespace Game
 	}
 
 
+	void			ApplyEMPZoneDamage(const Objects::PWorldEntity&e,float&atTime)
+	{
+		if (e->HandleEMPDamage(100,atTime))
+			LogEvent(EventSignificance::Common,e.get(),"Entering EMP-Zone");
+	}
+
 	void			UpdateResidualEMPDamage(float&atTime)
 	{
 		Objects::ForeachWorldEntity([&atTime](const Objects::PWorldEntity&e)
@@ -1063,12 +1071,8 @@ namespace Game
 				return;	//i know this is a hack, but i gotta do something to prevent nexus satellites from crashing.
 			if (Grid::AffectedByEMP(e->location))
 			{
-				if (e->empDamageLevel < 10)
-					LogEvent(EventSignificance::Common,e.get(),"Entering EMP-Zone");
-				e->HandleEMPDamage(10,atTime);
+				ApplyEMPZoneDamage(e,atTime);
 			}
-			elif (e->owner == Objects::Faction::nexus)
-				e->HealAllEMPDamage(atTime);	//immediately heal when a new area gets unlocked
 		},false);
 	}
 
@@ -1082,7 +1086,7 @@ namespace Game
 		LogEvent(EventSignificance::Common,"Spawning Nexus Port at pole "+String(pole));
 
 		Grid::LCellIdI location((UINT32)pole,0);	//first 12 are corner cells
-		int h = Objects::FindApplicableGround(location,true);
+		int h = Objects::FindApplicableGround(location,true,true); //do not submerge into lava
 		if (h == Objects::badHeight)
 			h = 0;	//just spawn it near median
 		static const int R = 5;
@@ -1091,7 +1095,7 @@ namespace Game
 		location.height = h;
 		std::shared_ptr<Objects::NexusPort> port = To<Objects::NexusPort>::Cast(
 		Objects::NexusPort::globalPrototype->CreateNewInstance(Objects::Faction::nexus,location,0));
-		port->CorrectTerrain(false,0);
+		port->ClearOccupiedTerrain(0);
 		float t = 0;
 		Objects::InsertConstructed(port,t);
 //		if (enableNexus)
@@ -1258,7 +1262,7 @@ namespace Game
 									launcherPrototype->CreateNewInstance(Objects::Faction::nexus,
 									Grid::LCellIdI(i,h),
 									0));
-								tower->CorrectTerrain(false,0);
+								tower->ClearOccupiedTerrain(false,0);
 								Objects::InsertConstructed(tower,t);
 							#endif
 						}
@@ -1268,7 +1272,7 @@ namespace Game
 								radarPrototype->CreateNewInstance(Objects::Faction::nexus,
 								Grid::LCellIdI(i,h),
 								0));
-							tower->CorrectTerrain(false,0);
+							tower->ClearOccupiedTerrain(0);
 							Objects::InsertConstructed(tower,t);
 						}
 
@@ -1281,7 +1285,7 @@ namespace Game
 										Objects::Generator::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
 										Grid::LCellIdI(i,h),
 										0));
-									generator->CorrectTerrain(false,0);
+									generator->ClearOccupiedTerrain(0);
 									Objects::InsertConstructed(generator,t);
 									generatorCount++;
 									alwaysOn << generator;	//only need three generators switched on
@@ -1290,7 +1294,7 @@ namespace Game
 										Objects::MunitionFactory::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
 										Grid::LCellIdI(i,h),
 										0));
-									factory->CorrectTerrain(false,0);
+									factory->ClearOccupiedTerrain(false,0);
 									Objects::InsertConstructed(factory,t);
 									alwaysOn << factory;
 								#endif
@@ -1301,7 +1305,7 @@ namespace Game
 									Objects::VehiclePlant::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
 									Grid::LCellIdI(i,h),
 									0));
-								plant->CorrectTerrain(false,0);
+								plant->ClearOccupiedTerrain(0);
 								Objects::InsertConstructed(plant,t);
 								factoryCount++;
 							}
@@ -1316,7 +1320,7 @@ namespace Game
 										Objects::MunitionStorage::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
 										Grid::LCellIdI(i,h),
 										0));
-									storage->CorrectTerrain(false,0);
+									storage->ClearOccupiedTerrain(false,0);
 									storage->storage = storage->maxStorage;
 									Objects::InsertConstructed(storage,t);
 									alwaysOn << storage;
@@ -1327,7 +1331,7 @@ namespace Game
 										Objects::Generator::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
 										Grid::LCellIdI(i,h),
 										0));
-									generator->CorrectTerrain(false,0);
+									generator->ClearOccupiedTerrain(false,0);
 									Objects::InsertConstructed(generator,t);
 									generatorCount++;
 									if (generatorCount < 4)
@@ -1343,7 +1347,7 @@ namespace Game
 									Objects::Connector::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
 									Grid::LCellIdI(i,h),
 									0));
-								connector->CorrectTerrain(false,0);
+								connector->ClearOccupiedTerrain(0);
 								Objects::InsertConstructed(connector,t);
 								connectorCount++;
 							}
@@ -1357,7 +1361,7 @@ namespace Game
 						//		Objects::Connector::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
 						//		Grid::LCellIdI(i,Objects::FindApplicableGround(Grid::LCellIdI(i,h),true)),
 						//		0));
-						//	connector->CorrectTerrain(false,0,true);
+						//	connector->ClearOccupiedTerrain(false,0,true);
 						//	Objects::InsertConstructed(connector,0);
 						//}
 
@@ -1433,7 +1437,7 @@ namespace Game
 		location.height = h;
 		//std::shared_ptr<Objects::NexusPort> port = To<Objects::NexusPort>::Cast(
 		//Objects::NexusPort::globalPrototype->CreateNewInstance(Objects::Faction::nexus,location,0));
-		//port->CorrectTerrain(false,0,true);
+		//port->ClearOccupiedTerrain(false,0,true);
 		//Objects::InsertConstructed(port,0);
 		//if (enableNexus)
 		//{
@@ -1462,7 +1466,7 @@ namespace Game
 		if (Config::startBases)
 		{
 			Grid::LCellIdI location(startLocation,0);	//first 12 are corner cells
-			int h = Objects::FindApplicableGround(location,true);
+			int h = Objects::FindApplicableGround(location,true,true);
 			location.height = h;
 			static const int want = 10;
 			static const int stackHeight = want / Objects::NaturalResourceVector::TranslationFactor + (want % Objects::NaturalResourceVector::TranslationFactor ? 1 : 0);
@@ -1482,20 +1486,20 @@ namespace Game
 			float t = 0;
 			Objects::PMine mine = To<Objects::Mine>::Cast(
 				Objects::Mine::globalPrototype->CreateNewInstance(f,location,0));
-			mine->CorrectTerrain(false,0);
+			mine->ClearOccupiedTerrain(0);
 			Objects::InsertConstructed(mine,t);
 			mine->SetEnabledOverride(true);
 				
 			Objects::PGenerator generator = To<Objects::Generator>::Cast(
 				Objects::Generator::globalPrototype->CreateNewInstance(f,at1,0));
-			generator->CorrectTerrain(false,0);
+			generator->ClearOccupiedTerrain(0);
 			Objects::InsertConstructed(generator,t);
 			generator->SetEnabledOverride(true);
 				
 			std::shared_ptr<Objects::MineralContainer> container = To<Objects::MineralContainer>::Cast(
 				Objects::MineralContainer::globalPrototype->CreateNewInstance(f,at2,0));
 			container->storage = container->maxStorage;
-			container->CorrectTerrain(false,0);
+			container->ClearOccupiedTerrain(0);
 			Objects::InsertConstructed(container,t);
 			Objects::RefreshCompoundCoverage(t);
 

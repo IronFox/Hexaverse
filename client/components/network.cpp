@@ -847,8 +847,8 @@ namespace Network
 					LogEvent(EventClass::Preset::common,nullptr,"Updating access token of world "+ToString(worldID)+" to "+activeToken.ToString());
 					accessMap.Set(worldID,activeToken);
 					SaveWorldAccessTokens();
+					Network::Channels::changeMyName.SendTo(Network::client,Network::chosenNickname);
 				}
-				Network::Channels::changeMyName.SendTo(Network::client,Network::chosenNickname);
 
 				#ifdef HAS_WINDOW
 					GUI::Hide(Menu::login);
@@ -1299,7 +1299,7 @@ namespace Network
 		TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>					changeMyName;
 		TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>					chatMessage;
 		TCP::ObjectSender<Protocol::ResourceID, Protocol::ChannelID::RequestResource>				requestResource;
-		TCP::ObjectSender<Package::NetString<256>, Protocol::ChannelID::LoadPlanetByName>			loadPlanetByName;
+		TCP::ObjectSender<Protocol::LoadPlanetByName, Protocol::ChannelID::LoadPlanetByName>		loadPlanetByName;
 		TCP::ObjectSender<Protocol::QueueResearch, Protocol::ChannelID::QueueResearch>				queueResearch;
 
 			//	,			//c2s: NET(bool) -> NET(bool)
@@ -1390,7 +1390,7 @@ namespace Network
 				LogEvent(EventClass::Preset::uncommon, nullptr, "Connection established to "+client.ToString());
 				
 				Protocol::Hello hello;
-				hello = RuntimeConfig::aiMode ? "<NexusAI>" : chosenNickname;
+				hello = RuntimeConfig::aiMode ? "<Nexus>" : chosenNickname;
 				if (RuntimeConfig::aiMode)
 					chosenNickname = hello;
 				//state.state = 0U;
@@ -1598,11 +1598,13 @@ namespace Network
 					LogEvent(EventClass::Preset::operationAborted,nullptr,"Unable to initiate UDP listening for servers on the local area network: "+error+" (maybe another instance of " PRODUCT_NAME " is running already?). Listening will be disabled." );
 					RuntimeConfig::udpListen = false;
 					closesocket(broadcastListenSocket);
-					return;
 				}
-				u_long dontBlock = 1;
-				rc = ioctlsocket(broadcastListenSocket, FIONBIO, &dontBlock);	//set socket to non-blocking
-				ASSERT_EQUAL__(rc, 0);
+				else
+				{
+					u_long dontBlock = 1;
+					rc = ioctlsocket(broadcastListenSocket, FIONBIO, &dontBlock);	//set socket to non-blocking
+					ASSERT_EQUAL__(rc, 0);
+				}
 			}
 		}
 

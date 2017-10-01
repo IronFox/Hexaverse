@@ -589,6 +589,7 @@ StructureConfig =
 	MissileLauncherTower = Tower(TurretConfig.MissileLauncher),
 	RadarTower = Tower(TurretConfig.Radar),
 	CannonTower = Tower(TurretConfig.Cannon),
+	SurveyorTower = Tower(TurretConfig.Surveyor),
 }
 
 

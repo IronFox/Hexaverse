@@ -15,5 +15,6 @@ void Boot()
 	Grid::CreateResources();
 	World::Create();
 	Objects::Create();
+
 }
 

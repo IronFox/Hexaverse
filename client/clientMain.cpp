@@ -61,6 +61,7 @@
 #include "components/visual/menu.h"
 #include "components/visual/uiScale.h"
 #include "components/visual/music.h"
+#include "components/visual/eventLog.h"
 #include "components/serverProcess.h"
 #include "components/audioInterface.h"
 #include "components/configurationMode.h"
@@ -97,103 +98,6 @@ extern "C"
 
 Timer::Time applicationStart;
 
-
-//static Mutex mutex;
-Sys::SpinLock	eventLock;
-#ifdef HAS_WINDOW
-
-	struct VisualEvent
-	{
-		String		message;
-		float3		color = float3(1);
-		float		age=0.f,scale=1.f;
-		static const float MaxAge;
-
-		/**/		VisualEvent():color(1.f),age(0)
-		{}
-
-		static float3 ToAverage(const float3&source, float level)
-		{
-			float3 avg = (float3)1.f;
-			//float3((source.r + source.g + source.b)/3.f);
-			Vec::interpolate(source,avg,level,avg);
-			return avg;
-		}
-
-		/**/		VisualEvent(const String&message, EventClass type):message(message)
-		{
-			color = float3(1.f);
-			switch (type.flavor)
-			{
-				case EventFlavor::Gain:
-					color = float3(0,1,0);
-				break;
-				case EventFlavor::Loss:
-					color = float3(1,0.35,0.3);
-				break;
-				case EventFlavor::SystemError:
-				case EventFlavor::UserError:
-					color = float3(1,0.3,0.4);
-				break;
-				case EventFlavor::Neutral:
-					if (type.significance == EventSignificance::Important)
-						color = float3(0.5,0.5,1);
-				break;
-				case EventFlavor::ChatMessage:
-					scale = 2.f;
-				break;
-			}
-
-
-			switch (type.significance)
-			{
-				case EventSignificance::ClientFatal:
-				case EventSignificance::FactionFatal:
-				case EventSignificance::SystemFatal:
-				case EventSignificance::Important:
-				case EventSignificance::NonFatalError:
-					age = -MaxAge;
-				break;
-				case EventSignificance::Uncommon:
-					color = ToAverage(color,0.65f);
-					color *= 0.85f;
-					age = -MaxAge/2.f;
-				break;
-				default:
-					color = ToAverage(color,0.75f);
-					color *= 0.7f;
-					age = -MaxAge/4.f;
-				break;
-			}
-		}
-
-		void		adoptData(VisualEvent&other)
-		{
-			message.adoptData(other.message);
-			color = other.color;
-			age = other.age;
-			scale = other.scale;
-		}
-
-
-	};
-
-	/*static */const float VisualEvent::MaxAge = 30.f;
-
-
-	Buffer<VisualEvent,0,Adopt>	events;
-	float		historyHeight=1;
-	static const float eventFontScale = 0.9f;
-	void		UpdateHistoryHeight()
-	{
-		float h0 = textout.GetScaledHeight() * eventFontScale;
-		historyHeight = 0;
-		foreach (events,ev)
-			historyHeight += h0 * ev->scale;
-	}
-#endif
-
-//LogFile	eventLog;
 
 #ifdef _DEBUG
 namespace Debug
@@ -634,26 +538,6 @@ namespace ApplicationInterface
 
 #ifdef HAS_WINDOW
 
-	void VisualLogEvent( EventClass type,  const Objects::WorldEntity*e, const String&_event)
-	{
-		String event = _event, outEvent = _event;
-		if (e)
-		{
-			event = e->owner->GetName()+","+ e->GetNiceName()+": "+event;
-			outEvent = e->owner->GetLogName()+","+ e->GetName()+": "+event;
-		}
-		eventLock.lock();
-		if (type.significance > EventSignificance::Common)
-		{
-			#ifdef HAS_WINDOW
-				events << VisualEvent(event,type);
-				UpdateHistoryHeight();
-			#else
-				std::cout << event << std::endl;
-			#endif
-		}
-		eventLock.unlock();
-	}
 
 
 	bool	IsFullScreen()
@@ -1156,7 +1040,7 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 					if (!TimeLapse::enabled)
 					{
 						PathString screenshotsAt = RuntimeConfig::ConfigFile("screenshots");
-						FileSystem::CreateFolder(screenshotsAt);
+						FileSystem::CreateDirectory(screenshotsAt);
 						index_t counter = 0;
 						PathString filename = screenshotsAt + FOLDER_SLASH_STR + PathString("screenshot"+String(counter)+".png");
 						while (FileSystem::IsFile(filename))
@@ -1452,7 +1336,7 @@ namespace ApplicationInterface
 		}
 		else if (Objects::selectedEntity && Objects::selectedEntity->IsStructure())
 		{
-			if (Objects::selectedEntity->health > 0)	//ghosts have no health and no network
+			if (Objects::selectedEntity->IsAlive())	//ghosts have no health and no network
 			{
 				const Objects::Compound&n = Objects::compounds[To<Objects::Structure>::Cast(Objects::selectedEntity)->compoundID];
 				Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::DynamicCast(Objects::selectedEntity);
@@ -1584,7 +1468,7 @@ namespace ApplicationInterface
 			}
 			else
 				Tutorial::ShowMessage(Objects::selectedEntity->GetTypeName());
-			if (Objects::selectedEntity->health <= 0)
+			if (Objects::selectedEntity->IsDeadOrGhost())
 			{
 				if (Objects::selectedEntity->isOwnedByMe)
 					Tutorial::ShowMessage("Friendly Ghosts");
@@ -2075,42 +1959,8 @@ bool loop()
 
 			if (UI::showControlsAndContacts)
 			{
-				eventLock.lock();
-				bool anyChanged = false;
-				for (index_t i = 0; i < events.Count(); i++)
-				{
-					events[i].age += Engine::timing.delta;
-					if (events[i].age > VisualEvent::MaxAge)
-					{
-						events.Erase(i);
-						i--;
-						anyChanged = true;
-					}
-				}
-				if (anyChanged)
-					UpdateHistoryHeight();
-				count_t rows = events.Count();
-					//std::min(events.Count(), (count_t)floor(0.7f / textout.GetScaledHeight()));
-
-
-				textout.PushState();
-				textout.Scale(eventFontScale,eventFontScale);
-				textout.MoveTo(0.0f, 280.f/display.GetClientHeight() + historyHeight);
-				for (index_t i = events.Count() - rows; i < events.Count(); i++)
-					//if (events[i].stackID < 10)
-					{
-						const auto&ev = events[i];
-						//if (ev.age < 30.f)
-						{
-							textout.Scale(ev.scale,ev.scale);
-							textout.SetColor(ev.color, (VisualEvent::MaxAge - ev.age)/VisualEvent::MaxAge);
-							textout << ev.message;
-							textout <<  nl;
-							textout.Scale(1.f/ev.scale,1.f/ev.scale);
-						}
-					}
-				textout.PopState();
-				eventLock.unlock();
+				
+				VisualEventLog::Render();
 
 				textout.SetColor(1,1,1);
 				textout.MoveTo(0,1);
@@ -2214,6 +2064,9 @@ bool loop()
 					textout << "Seeing Server Version";
 				else
 					textout << "Seeing Local Version";
+				#ifdef _DEBUG
+					textout << nl << ConfigurationMode::GetServerSeed();
+				#endif
 				textout.PopState();
 			}
 
@@ -2265,7 +2118,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 			UI::OnScreenResize();
 			GUI::SignalScreenResize();
-			UpdateHistoryHeight();
+			VisualEventLog::SignalWindowResize();
 		}
 	}
 
@@ -2981,7 +2834,7 @@ bool	IsIdle(const Objects::PMobileEntity&v)
 {
 	//okay, clarification:
 	//0: if dead: NOT IDLE (duh)
-	if (v->health <= 0)
+	if (v->IsDeadOrGhost())
 		return false;	//yes, this can happen if badly called
 	//1: if hibernating: NOT IDLE, EVER
 	if (v->IsHibernating())
@@ -3001,6 +2854,7 @@ bool	IsIdle(const Objects::PMobileEntity&v)
 	//4: if it's SLEEPING then it's not idle, UNLESS the local entity can attack, and has something to attack:
 	if (v->IsSleeping())
 	{
+		#if 0
 		if (v->CanAttack() && v->HasAmmoForShot() && v->CountPossibleAttacks())	//check that its turret can attack, there's ammo for the shot, and it has any shots left this round
 		{
 			bool emp = v->turret->dealsEMPDamage;
@@ -3031,6 +2885,7 @@ bool	IsIdle(const Objects::PMobileEntity&v)
 					FATAL__("Unknown mobile entity type "+v->GetTypeName());
 				}
 		}
+		#endif
 		return false;	//cannot attack or has nothing to attack: NOT IDLE since it is SLEEPING
 	}
 
@@ -3041,7 +2896,7 @@ bool	IsIdle(const Objects::PMobileEntity&v)
 
 bool	IsIdle(const Objects::PStructure&s)
 {
-	if (s->health <= 0)
+	if (s->IsDeadOrGhost())
 		return false;
 	#ifndef NO_HIBERNATION
 		if (s->ToHibernating()->IsHibernating())
@@ -3379,7 +3234,7 @@ void ParseKeyValue(const String&key, const String&value)
 		}
 		elif(key == "documentHere")
 		{
-			FileSystem::Folder().FindFolder(PathString(value),RuntimeConfig::documentationRootFolder,false);
+			FileSystem::Folder().FindDirectory(PathString(value),RuntimeConfig::documentationRootFolder,false);
 			if (!RuntimeConfig::documentationRootFolder.DoesExist())
 				FileSystem::CreateDirectory(RuntimeConfig::documentationRootFolder);
 		}
@@ -3396,8 +3251,8 @@ void ParseKeyValue(const String&key, const String&value)
 
 bool ConfigureClient(const wchar_t*commandLine)
 {
+	Except::onFatal = MyFatal;
 	
-	//ShowMessage(String(commandLine));
 	try
 	{
 		String cmd = String(commandLine);
@@ -3451,6 +3306,11 @@ bool ConfigureClient(const wchar_t*commandLine)
 		else
 			if (parameterName.IsNotEmpty())
 				throw Except::Program::ParameterFault(CLOCATION, "Configuration syntax violation: Missing '=' and parameter value for '" + parameterName + "'");
+	
+
+		RuntimeConfig::ClientInit();	//requires RuntimeConfig::aiMode, which is declared by parameter variables
+		FileSystem::ForceCreateDirectory(RuntimeConfig::ConfigFile("logs"));	//can't do this until 
+		Logging::Begin(RuntimeConfig::ConfigFile(PathString("logs/client "+Logging::TimeStamp(true)+".log")));
 	}
 	catch (const std::exception&e)
 	{
@@ -3461,13 +3321,6 @@ bool ConfigureClient(const wchar_t*commandLine)
 	{
 		Network::ServerDiscovery::RegisterNewHost(RuntimeConfig::serverAddress, false,true);
 	}
-
-
-	Except::onFatal = MyFatal;
-	RuntimeConfig::ClientInit();
-
-	ASSERT__(FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("logs")));
-	Logging::Begin(RuntimeConfig::ConfigFile(PathString("logs/client "+Logging::TimeStamp(true)+".log")));
 
 	//(PRODUCT_NAME".log",true,true)
 	return true;
@@ -3889,7 +3742,7 @@ int main( int argc, const char* argv[])
 			if (RuntimeConfig::documentationRootFolder.DoesExist())
 			{
 				{
-					FileSystem::Folder imageTarget = FileSystem::Folder(RuntimeConfig::documentationRootFolder).FindFolder("images/units",false);
+					FileSystem::Folder imageTarget = FileSystem::Folder(RuntimeConfig::documentationRootFolder).FindDirectory("images/units",false);
 					if (imageTarget.IsValidLocation())
 					{
 						LogEvent(EventSignificance::Uncommon, "Rendering type images to "+String(imageTarget.GetLocation())+ "...");
@@ -3922,14 +3775,14 @@ int main( int argc, const char* argv[])
 					}
 				}
 				{
-					FileSystem::Folder documentationTarget = FileSystem::Folder(RuntimeConfig::documentationRootFolder).FindFolder("documentation",false);
+					FileSystem::Folder documentationTarget = FileSystem::Folder(RuntimeConfig::documentationRootFolder).FindDirectory("documentation",false);
 					if (documentationTarget.IsValidLocation())
 					{
-						FileSystem::Folder rootFolder(documentationTarget.FindFolder("units",false));
-						FileSystem::Folder structureFolder(rootFolder.FindFolder("structures",false));
-						FileSystem::Folder planeFolder(rootFolder.FindFolder("planes",false));
-						FileSystem::Folder turretFolder(rootFolder.FindFolder("turrets",false));
-						FileSystem::Folder vbaseFolder(rootFolder.FindFolder("vbases",false));
+						FileSystem::Folder rootFolder(documentationTarget.FindDirectory("units",false));
+						FileSystem::Folder structureFolder(rootFolder.FindDirectory("structures",false));
+						FileSystem::Folder planeFolder(rootFolder.FindDirectory("planes",false));
+						FileSystem::Folder turretFolder(rootFolder.FindDirectory("turrets",false));
+						FileSystem::Folder vbaseFolder(rootFolder.FindDirectory("vbases",false));
 
 						StringFile unitList;
 						unitList.Create(rootFolder.FindFile("list.prefix",false)->GetLocation());

@@ -195,13 +195,21 @@ namespace World
 			cellStack.swap(other.cellStack);
 			families.swap(other.families);
 			swp(sensoryValid,other.sensoryValid);
-			swp(lockLevel,other.lockLevel);
+			swp(onChangeLock,other.onChangeLock);
 			swp(observerKey,other.observerKey);
 			onTerrainChange.swap(other.onTerrainChange);
 			#ifdef HAS_WINDOW
 				swp(lightingOutdated,other.lightingOutdated);
 			#endif
 		}
+
+		void					CopyGridContent(const Data&);
+
+		/**
+		Executes DbgCheckWaterRange() on all stacks.
+		Does nothing if not in debug mode or on server
+		*/
+		void					DbgCheckWaterRanges() const;
 
 		bool					FamilyIsOutdated(index_t i) const {return families[i].structureOrSensory.didChange;}
 		//void					UnsetFamilyOutdated(index_t i) {families[i].Reset();}
@@ -351,6 +359,16 @@ namespace World
 
 		count_t					CountVisibleCells() const;
 
+		/**
+		Delays any calls to onTerrainChanged and general change handling.
+		Changes are recorded.
+		*/
+		void					LockOnChange();
+		/**
+		Unlocks calls to onTerrainChanged.
+		If any changes were recorded between LockOnChange() and UnlockOnChange(), they are triggered immediately
+		*/
+		void					UnlockOnChange();
 
 		bool					SensoryIsInvalid()const	{return !sensoryValid;}
 
@@ -400,7 +418,19 @@ namespace World
 		};
 
 
-		int						lockLevel=0;
+		bool					terrainChangeCascade = false;
+		
+		
+		struct TOnChangeLock
+		{
+			bool						isActive = false;
+			BaseGrid::FamiliesChanged	changed;
+			float						lastChangeTime = 0;
+			bool						terrainChanged = false;
+		};
+		
+		TOnChangeLock			onChangeLock;
+		
 		bool					sensoryValid=true;
 		Ctr::FixedArray<FamilyState,BaseGrid::NumFamilies>		families;
 		Ctr::Array<Grid::CellStack>	cellStack;

@@ -78,7 +78,7 @@ namespace Objects
 
 		float4 BackgroundColor(const PWorldEntity&e)
 		{
-			return float4(e->health > 0 && e->owner ? e->owner->activeEntityColor*0.4f : float3(),0.5f);
+			return float4(e->IsAlive() && e->owner ? e->owner->activeEntityColor*0.4f : float3(),0.5f);
 
 		}
 
@@ -286,10 +286,10 @@ namespace Objects
 				SetPrototypeKeyColor();
 				return;
 			}
-			if (v->health <= 0)
+			if (v->IsDeadOrGhost())
 				overallTint.Update(float4(0.25f));
 
-			if (v->health <= 0)
+			if (v->IsDeadOrGhost())
 				keyColor.Update(float4(0,0,0,1));
 			else
 				keyColor.Update(float4(v->owner->activeEntityColor,1));

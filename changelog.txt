@@ -1,18 +1,36 @@
-v0.6.5	[Sep 24 2017]
+v0.6.5	[Oct 1 2017]
 	+ Added background music to server selection screen.
 	+ Added remote control commands to end game at any time.
 	+ Added remote control command to immediately end round.
 	+ Added statistics recording and end-game display.
 	+ Added options dialog.
-	+ Added option to change UI scale.
-	+ Added option to limit explosion particle count.
 	+ Implemented loading splash screen.
 	+ Added help sub-menu with some new options.
+	+ Added surveyor tower that can detect tunnel-based attacks in a wider range than mobile surveyors can.
 	> Automatic target choice (e.g. by a tower) now traces candidate trajectories to improve precision.
 	> Idle vehicles will no longer constantly attack indestructible units.
 	> Removed the 'Construct Selected' button on vehicle plants. Simply selecting a desired turret will enqueue the chosen vehicle composition.
 	> Surveyor turret is now much heavier, limiting the speed of the standard surveyor vehicle.
 	> Laboratories now maintain a short queue of research tasks to execute.
+	> Selected material buttons in interactive configuration mode now render as permanently down.
+	> EMP and doomsday weapon vehicles will no longer auto-fire at possible targets.
+	> Auto-targeting now chooses target by random if several are possible.
+	> Construction cordon is now placed only on discrete locations instead of smoothly following mobile entity motions.
+	> Build state of vehicles is now sent to hostile factions, so a cordon appears if a visible hostile unit is building something.
+	> When queueing up multiple endless research topics, the currently first topic will advance and then move to the end of the queue.
+	> Since vehicles shoot automatically at hostile units in range, they will no longer be considered idle if sleeping with targets in range.
+	* Auto-targeting of towers and vehicles no longer causes friendly fire, assuming terrain is fully known.
+	* Nexus bases can no longer end up submerged in oceanic lava.
+	* Fixed interactive configuration mode sometimes getting out of sync with the server.
+	* Fixed server sometimes auto-saving while in interactive configuration mode.
+	* Fixed EMP zones not being initially visualized when entering interactive configuration mode.
+	* Fixed endless research not triggering client updates.
+	* Fixed Nexus units not received/keeping EMP damage.
+	* Fixed terrain modifications sometimes reaching into space occupied by units.
+	* Fixed EMP zones sometimes disappearing.
+	* Client no longer refuses to contact manually specified hosts when UDP listening fails.
+	* Fixed health display not updating if a hostile unit enters vision and is immediately fired upon.
+	* Fixed an insane number of tiny bugs.
 
 v0.6.4	[May 5 2017]
 	+ Base planet types are no longer copied to the configuration directory (except Template.ini), but may be overridden manually.

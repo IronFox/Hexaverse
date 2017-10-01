@@ -66,11 +66,12 @@ namespace PortOffset
 
 
 #define SERVER_NAME		PRODUCT_NAME " v" PRODUCT_VERSION\
+							"["\
 							NAME_APPEND0\
 							NAME_APPEND1\
 							NAME_APPEND_S\
 							NAME_APPEND_L\
-							""
+							"]"
 
 #include "objects/resource.h"
 
@@ -1100,6 +1101,7 @@ namespace Protocol
 			Automated = 0x1,
 			Hibernating = 0x2,
 			ConnectedToGround = 0x4,
+			Building = 0x8,
 		};
 	}
 	namespace StructureFlags
@@ -1475,6 +1477,10 @@ namespace Protocol
 		, NET(BYTE), dropMode
 	)
 
+	NETSTRUCT2(LoadPlanetByName
+		, Package::NetString<256>, name
+		, UINT32, configVersion
+	)
 
 
 	namespace ChannelID
@@ -1568,7 +1574,7 @@ namespace Protocol
 			PlanetConfig,		// both: Grid::ExtendedPlanetConfig
 			GameConfig,			// both: GameConfig
 			PlanetNames,		// s2c: NetString<256>[]
-			LoadPlanetByName,	// c2s: NetString<256>
+			LoadPlanetByName,	// c2s: LoadPlanetByName
 			EndConfigurationMode,//c2s: <signal>
 
 			OperationLacksResources, //s2c: OperationLacksResources

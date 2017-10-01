@@ -16,10 +16,8 @@
 #ifndef CLIENT
 	#include "../server/components/state.h"
 	#include "../server/components/serverLogEvent.h"
-#endif
-
-#ifdef HAS_WINDOW
-	void VisualLogEvent( EventClass type,  const Objects::WorldEntity*e, const String&_event);
+#else
+	#include "../client/components/visual/eventLog.h"
 #endif
 
 bool		inTestMode = false;
@@ -280,7 +278,7 @@ namespace Logging
 		if (printToConsole)
 		{
 			#ifdef HAS_WINDOW
-				VisualLogEvent(evClass,e,message);
+				VisualEventLog::LogEvent(evClass,e,message);
 			#else
 				consoleThread.pipe << String(console.buffer.ToStringRef());
 			#endif

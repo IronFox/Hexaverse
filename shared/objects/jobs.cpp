@@ -104,6 +104,7 @@ namespace Objects
 					#endif
 					)
 				{
+					World::actual.LockOnChange();
 					continue_t rs = Finish(v,focus);
 					if (rs == TerminalFailure || rs == TerminalFailureVehicleDestroyed)
 						return rs;
@@ -115,6 +116,7 @@ namespace Objects
 							return BaseJob::TerminalFailureVehicleDestroyed;
 						v.entityTime += timeEpsilon;
 					}
+					World::actual.UnlockOnChange();
 			
 				}
 				else
@@ -1374,11 +1376,7 @@ namespace Objects
 						{
 							Grid::LCellIdI focus = v.location;
 							focus++;
-							//auto next = path.begin();
 							v.myTasks.PushFront(MobileEntity::Task("Move To",next,true,MobileEntity::Task::MoveTo));
-							//v.RegisterChange(TasksChanged,-1);
-							//v.myTasks.GetNewest().Recompile(pointOfOrigin, this);
-
 							v.RegisterNewFrontJob("", PVehicleJob(new BuildHorizontalWall(v)),shared_from_this(), nullptr);
 							v.RegisterNewFrontJob("", PVehicleJob(new BuildWallUp(v)),shared_from_this(), &focus);
 

@@ -30,8 +30,13 @@ namespace ConfigurationMode
 		Timer::Time				lastLocalChange=timer.Now();
 
 		index_t					sentVersion = 0,
-								receivedVersion = 0,
+								lastServerVersion = 0,
 								localVersion = 0;
+		/**
+		Disallows any planet modifications until the 
+		*/
+		index_t					lockedAwaitConfig=0;
+
 		Buffer0<Objects::Command::PVisualCommand>	numberCommands;	//!< All commands rendering numbers
 
 		GUI::PWindow			planetListWindow;
@@ -90,7 +95,8 @@ namespace ConfigurationMode
 				ASSERT__(!isLoaded);
 				ASSERT__(!current || current == this);
 				isLoaded = true;
-				copy.swap(World::actual);
+				copy.CopyGridContent(World::actual);
+				//copy.swap(World::actual);
 				current = nullptr;
 				VisualTerrain::Invalidate(); //force rebuild
 			};
@@ -101,7 +107,7 @@ namespace ConfigurationMode
 				ASSERT_IS_NULL__(current);
 				//ASSERT__(copy.cellStack.First().volumeCell[0].content != Grid::Content::Clear);
 				isLoaded = false;
-				copy.swap(World::actual);
+				World::actual.CopyGridContent(copy);
 				current = this;
 				VisualTerrain::Invalidate(); //force rebuild
 			}
@@ -176,6 +182,9 @@ namespace ConfigurationMode
 
 		void Update(bool forceRebuild = true)
 		{
+			if (lockedAwaitConfig)
+				return;
+
 			lastLocalChange = timer.Now();
 			if (localVersion == sentVersion)
 				localVersion++;
@@ -247,6 +256,7 @@ namespace ConfigurationMode
 						cfg.Top().Set(0.f);
 					button->SetAnchorConfig(cfg);
 				}
+				button->SetHorizontalPadding(0);
 				//if ((i%4)!=0)
 				//{
 				//	button->anchorConfig.Left().SetLastOf(window,0.01f);
@@ -286,18 +296,23 @@ namespace ConfigurationMode
 		{
 			foreach (materialButtons,b)
 			{
-				String name = Grid::Content::Reinterpret(b->first).ToString();
-				if (b->first == Grid::Content::Unknown)
-					name = "Natural";
+				//String name = Grid::Content::Reinterpret(b->first).ToString();
+				//if (b->first == Grid::Content::Unknown)
+					//name = "Natural";
 				if (b->first == type)
-					b->second->SetText("["+name+"]");
+				{
+					b->second->SetAlwaysDown(true);
+					//b->second->SetText("["+name+"]");
+				}
 				else
-					b->second->SetText(name);
+					b->second->SetAlwaysDown(false);
+					//b->second->SetText(name);
 			}
 		}
 
 		void UploadToServer()
 		{
+			config.versionCounter = (UINT32)sentVersion;
 			serverConfig = config;
 			serverSeed = seed;
 			RefreshButtonStates();
@@ -383,9 +398,10 @@ namespace ConfigurationMode
 				index_t myIndex = p - planetList.pointer();
 				GUI::PButton button(new GUI::Button(*p,[myIndex]()
 				{
-					Network::Channels::loadPlanetByName.SendTo(Network::client, planetList[myIndex]);
+					Network::Channels::loadPlanetByName.SendTo(Network::client, Protocol::LoadPlanetByName( planetList[myIndex],(UINT32)++sentVersion));
 					GUI::Hide(planetListWindow);
 					LoadServerWorld(false);
+					lockedAwaitConfig = sentVersion;
 				}));
 				{
 					auto cfg = button->GetAnchorConfig();
@@ -1078,15 +1094,33 @@ namespace ConfigurationMode
 		Update();
 	}
 
+	UINT32	GetServerSeed()
+	{
+		return Detail::seed;
+	}
+
+
 	void	Update(const Grid::ExtendedPlanetConfig&cfg)
 	{
 		using namespace Detail;
 
-		receivedVersion++;
-		if (receivedVersion >= sentVersion)
-		{
-			receivedVersion = sentVersion;
+		lastServerVersion = cfg.versionCounter;
+		if (localVersion < lastServerVersion)
+			localVersion = lastServerVersion;
+		if (sentVersion < lastServerVersion)
+			sentVersion = lastServerVersion;
 
+		bool mustLoad = false;
+		if (lockedAwaitConfig == cfg.versionCounter)
+		{
+			mustLoad = true;
+			ASSERT_EQUAL__(lastServerVersion,sentVersion);
+			lockedAwaitConfig = 0;
+			LogEvent(EventSignificance::Important,"Received updated world config. Unlocking");
+		}
+		
+		if (lastServerVersion == sentVersion)
+		{
 			if (RestoreServerWorld())
 			{
 				seed = cfg.lastSeed;
@@ -1097,12 +1131,16 @@ namespace ConfigurationMode
 						(*n)->RasterizeImage();
 				}
 				serverConfig = cfg;
+				if (mustLoad)
+					config = cfg;
 				//if (clientWorldLoaded)
 				//	Update();
 				//else
 				ClientGrid::Apply(cfg);
 				World::allowRecompilation = false;
 			}
+			else
+				ASSERT__(!mustLoad);
 		}
 	}
 
@@ -1126,7 +1164,7 @@ namespace ConfigurationMode
 			showDiscovery = false;
 			serverObjects.Clear();
 		}
-		localVersion = sentVersion = receivedVersion = 0;
+		localVersion = sentVersion = lastServerVersion = lockedAwaitConfig = 0;
 		Detail::Create();
 		UI::HexGrid::Configure(Objects::selectedEntity);
 
@@ -1175,7 +1213,9 @@ namespace ConfigurationMode
 	{
 		if (!Detail::isActive)
 			return true;
-		if (Detail::receivedVersion != Detail::localVersion)
+		if (Detail::lockedAwaitConfig)
+			return false;
+		if (Detail::lastServerVersion != Detail::localVersion)
 			return false;
 		Detail::LoadServerWorld(true);
 		//World::allowRecompilation = false;

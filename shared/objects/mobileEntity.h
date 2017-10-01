@@ -268,12 +268,12 @@ namespace Objects
 		{}
 
 		bool					IsBusy() const {return myTasks.IsNotEmpty();}
-		bool					IsBuilding() const {return myTasks.IsNotEmpty() && myTasks.Peek().job && myTasks.Peek().job->roundsToJobCompletion >= 0;}
+		bool					IsBuilding() const {return myTasks.IsNotEmpty() && myTasks.Peek().IsJob();}
 		bool					IsFinishedBuilding() const {return myTasks.IsNotEmpty() && myTasks.Peek().job && myTasks.Peek().job->roundsToJobCompletion == 0;}
 		std::pair<int,int>		GetBuildingProgress() const;
 
 		#ifndef CLIENT
-			bool				NextTaskIsMotion() const {return health > 0 && ((!HasTasks() && completeOnMove) || (HasTasks() && myTasks.Peek().type == Task::MoveTo));}
+			bool				NextTaskIsMotion() const {return IsAlive() && ((!HasTasks() && completeOnMove) || (HasTasks() && myTasks.Peek().type == Task::MoveTo));}
 		#endif
 
 		#ifndef NO_HIBERNATION
@@ -371,33 +371,7 @@ namespace Objects
 					
 
 			*/
-			bool				ClearAllTasks(bool isReaction, const TCodeLocation&caller)
-			{
-				LogEvent(EventSignificance::Debug,this,"ClearAllTasks("+String(isReaction)+", "+String(caller)+")");
-				if (TasksAreLocked())
-				{
-					if (flushTasksOnUnlock)
-						return false;
-					entityTime += timeEpsilon;
-					flushTasksOnUnlock = true;
-					LogEvent(EventSignificance::Debug,this," ...set to clear on unlock");
-					return true;
-				}
-				
-				if (myTasks.IsNotEmpty() || completeOnMove)
-				{
-					entityTime += timeEpsilon;
-					jobStarted = false;
-					if (!isReaction)
-						completeOnMove.reset();
-					RegisterChange(TasksChanged,entityTime);
-					//tasksChanged = true;
-					myTasks.Clear();
-					LogEvent(EventSignificance::Debug,this," ...cleared");
-					return true;
-				}
-				return false;
-			}
+			bool				ClearAllTasks(bool isReaction, const TCodeLocation&caller);
 
 			bool				HasTasks() const
 			{
@@ -421,6 +395,16 @@ namespace Objects
 			*/
 			virtual MobilePlacementResult	PlaceExactlyAt(const Grid::LCellIdI&, float timeCost, float minTimeOffset, bool signalEvent=true, bool isCreated=true, bool failIsFatal=false) = 0;
 		
+			/**
+			Attempts to place the entity exactly whered it already is.
+			If its ground beneath has erroded, the entity will fall.
+			If the new ground is unsuitable, or the fall is too far, the entity will be destroyed (Remove() is called automatically).
+			Check IsAlive() or IsDeadOrGhost() to see if the operation has resulted in entity destruction.
+
+			Currently if effectively invokes 
+					HandleNow(PlaceExactlyAt(location,0, atTime));
+			*/
+			void				CheckGround(float atTime);
 
 			/**
 			Handles destructive results of PlaceExactlyAt(), since PlaceExactlyAt() is not allowed to immediately destroy the local entity
@@ -482,6 +466,16 @@ namespace Objects
 		void					UpdateSystem();
 
 		/**
+		Constructs a mobile entity system.
+		The old location stored in the specified system is used to define the direction of the final system,
+		so don't pass an uninitialized system.
+		@param[in,out] inOutSys System to use for direction calculation, and to put the new vehicle system matrix into. Must be initialized
+		@param location New vehicle location
+		*/
+		static void				UpdateSystem(M::TMatrix4<>&inOutSys,const Grid::LCellIdI&location);
+
+
+		/**
 		Retrieves the amount of minerals that can be converted into structure by the local entity
 		@return Amount of minerals that can be converted per round by the local entity. 0 for entities that cannot construct
 		*/
@@ -513,7 +507,7 @@ namespace Objects
 		//TurretBase overrides:
 		virtual OwnerParameter	GetOwner() const override {return owner;};
 		virtual float			GetAttackActionLeft() const override {return attackActionLeft;};
-		virtual bool			NextTaskIsAttack() const override {return health > 0 && HasTasks() && myTasks.Peek().IsMode(CursorMode::AttackMode);}
+		virtual bool			NextTaskIsAttack() const override {return IsAlive() && HasTasks() && myTasks.Peek().IsMode(CursorMode::AttackMode);}
 		#ifndef CLIENT
 			virtual void		Attack(float&currentTime)	override;
 		#endif

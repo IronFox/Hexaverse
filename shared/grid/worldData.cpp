@@ -40,6 +40,36 @@ namespace World
 		}
 	}
 
+	void					Data::CopyGridContent(const Data&other)
+	{
+		for (UINT32 stack = 0; stack < Grid::HighSetup::GridType::CellCount; stack++)
+		{
+			const auto& fromStack = other.cellStack[stack];
+			auto& toStack = cellStack[stack];
+			for (unsigned layer = 0; layer < Grid::CellStack::Range; layer++)
+			{
+				const auto&from = fromStack.volumeCell[layer];
+				auto&to = toStack.volumeCell[layer];
+				to.content = from.content;
+				#ifdef HAS_WINDOW
+					to.intLightLevel = from.intLightLevel;
+					to.submergence = from.submergence;
+				#endif
+			}
+			#ifdef HAS_WINDOW
+				toStack.highestOpaqueCell = fromStack.highestOpaqueCell;
+				toStack.lightingChangedTo = fromStack.lightingChangedTo;
+				toStack.lowestOpenCell = fromStack.lowestOpenCell;
+				toStack.waterRange = fromStack.waterRange;
+			#endif
+		}
+
+		BaseGrid::FamiliesChanged changed;
+		changed.SetAll();
+		SignalChange(changed,0,true);
+	}
+
+
 
 	void	Create()
 	{
@@ -684,10 +714,33 @@ namespace World
 	}
 
 
+	void			Data::LockOnChange()
+	{
+		ASSERT__(!onChangeLock.isActive);
+		onChangeLock.isActive = true;
+	}
+
+	void			Data::UnlockOnChange()
+	{
+		ASSERT__(onChangeLock.isActive);
+		onChangeLock.isActive = false;
+		SignalChange(onChangeLock.changed,onChangeLock.lastChangeTime,onChangeLock.terrainChanged);
+		onChangeLock = TOnChangeLock();
+	}
+
 	void			Data::SignalChange(const BaseGrid::FamiliesChanged&changed, float atTime, bool terrainChanged)
 	{
 		if (!changed.AnyChanged())
 			return;
+		if (onChangeLock.isActive)
+		{
+			onChangeLock.changed.Set(changed);
+			onChangeLock.lastChangeTime = std::max(onChangeLock.lastChangeTime,atTime);
+			if (terrainChanged)
+				onChangeLock.terrainChanged = true;
+			return;
+		}
+
 		bool acceptChange = false;
 		#ifdef CLIENT
 			acceptChange = true;
@@ -708,8 +761,12 @@ namespace World
 			if (acceptChange)
 				InvalidateSensory();	//for the global world this is irrelevant and never checked by the server, but the client will issue sensory updates as a result.
 			//the server, on the other hand, will apply this to client-worlds when onTerrainChange() is trigger by World::actual, resulting in the same effect for its clients.
-
-			onTerrainChange(*this,changed,atTime);
+			if (!terrainChangeCascade)
+			{
+				terrainChangeCascade = true;
+				onTerrainChange(*this,changed,atTime);
+				terrainChangeCascade = false;
+			}
 		}
 	}
 
@@ -1091,6 +1148,7 @@ namespace World
 			rs.lightingChangedTo = (BYTE)CellStack::Range;
 		#endif
 		SignalChange(stackID);
+		terrainChanged = true; //can't know, assume worst
 		return Data::StackAccess(&rs);
 	}
 
@@ -1284,6 +1342,14 @@ namespace World
 					}
 				}
 			}
+		#endif
+	}
+
+	void				Data::DbgCheckWaterRanges() const
+	{
+		#if defined _DEBUG && defined HAS_WINDOW
+			foreach (this->cellStack,s)
+				s->DbgCheckWaterRange();
 		#endif
 	}
 
@@ -1733,8 +1799,8 @@ namespace World
 
 				auto&cell = v.coverage.Append();
 				cell.stackID = current;
-				cell.range.end = topLayer+1;
 				cell.range.start = traceFunction(current);
+				cell.range.end = M::Min(Grid::CellStack::Range, topLayer+1);
 				const auto&n = setup.grid.GetCell(current).neighborhood;
 				for (int k = 0; k < n.numNeighbors; k++)
 					op.stacksLeft << n.neighborID[k];
@@ -1806,7 +1872,7 @@ namespace World
 			#ifdef _DEBUG
 				ASSERT_LESS__(c->stackID,Grid::HighSetup::GridType::CellCount);
 				ASSERT_LESS_OR_EQUAL__(c->range.start,c->range.end);
-				ASSERT_LESS__(c->range.start,Grid::CellStack::Range);
+				ASSERT_LESS_OR_EQUAL__(c->range.end,Grid::CellStack::Range);
 			#endif
 			if (c->range.IsEmpty())
 				continue;

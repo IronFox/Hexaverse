@@ -118,7 +118,7 @@ namespace Objects
 									[myID]()->Dialog::CheckResult
 									{
 										PVehiclePlant plant = To<VehiclePlant>::DynamicCast(GetEntity(myID));
-										if (!plant || plant->health <= 0)
+										if (!plant || plant->IsDeadOrGhost())
 											return Dialog::CheckResult::Abort;
 										if (!Objects::controlIsEnabled)
 											return Dialog::CheckResult::OkayNotRightNow;
@@ -1177,7 +1177,7 @@ namespace Objects
 						Objects::CommandFlags rs = CommonCmd::CommonButtonCheck(controlEnabled);
 						if (selectedEntity->IsHangar())
 						{
-							if (deployingMobileEntity && deployingMobileEntity == w.lock() && deployingMobileEntity->health > 0)
+							if (deployingMobileEntity && deployingMobileEntity == w.lock() && deployingMobileEntity->IsAlive())
 								rs |= Objects::CommandFlags::IsPermaActive;
 						}
 						return rs;
@@ -1212,7 +1212,7 @@ namespace Objects
 						[e,p,id]()->Dialog::CheckResult
 						{
 							PWorldEntity e1 = e.lock();
-							if (!e1 || e1->health <= 0)
+							if (!e1 || e1->IsDeadOrGhost())
 								return Dialog::CheckResult::Abort;
 							if (p->queue.IsEmpty() || p->queue.First().id != id)
 								return Dialog::CheckResult::Abort;

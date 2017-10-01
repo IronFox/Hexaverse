@@ -110,7 +110,10 @@ namespace ScriptCache
 
 	static FileSystem::Folder	GetCacheDirectory()
 	{
-		return FileSystem::Folder( RuntimeConfig::ConfigFile("cache/") );
+		FileSystem::File file;
+		RuntimeConfig::LocateInConfigDir("cache/",file);
+		FileSystem::ForceCreateDirectory(file);
+		return file;
 	}
 
 	static PathString	GetFileCachePath(const SHA256::HashContainer&id)
@@ -167,14 +170,13 @@ namespace ScriptCache
 
 		if (hashMap.Query(id,script))
 		{
-			LogEvent(EventClass::Preset::error,"Attempting to redefine script cache entry for "+Bin2Str::ConvertPOD(id)+". Ignoring...");
+			LogEvent(EventClass::Preset::common,"Attempting to redefine script cache entry for "+Bin2Str::ConvertPOD(id)+". Ignoring...");
 			return script;
 		}
 
 		if (createFile)
 		{
 			PathString path = GetFileCachePath(id);
-			FileSystem::CreateDirectory(FileSystem::ExtractFileDir(path));
 			FILE*f = FOPEN(path.c_str(),"w+b");
 			if (f)
 			{

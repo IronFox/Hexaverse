@@ -13,9 +13,27 @@ namespace Objects
 {
 	SharedContainer<MobileEntity>			storedMobileEntities;
 
+	#ifndef CLIENT
+		class BuildChecker
+		{
+		public:
+			/**/	BuildChecker(MobileEntity*e):entity(e),wasBuilding(e->IsBuilding())
+			{}
 
+			/**/	~BuildChecker()
+			{
+				const bool isBuilding = entity->IsBuilding();
+				if (!wasBuilding && isBuilding)
+					entity->RegisterChange(WorldEntity::StartedBuilding,entity->entityTime);
+				elif (wasBuilding && !isBuilding)
+					entity->RegisterChange(WorldEntity::StoppedBuilding,entity->entityTime);
+			}
 
-
+		private:
+			MobileEntity*const	entity;
+			const bool			wasBuilding;
+		};
+	#endif
 
 
 	void						CheckMobileEntitySanity()
@@ -23,7 +41,7 @@ namespace Objects
 		ForeachMobileWorldEntity([](const Objects::PMobileEntity&m)
 		{
 			ASSERT1__(m->isInserted,m->GetName());
-			ASSERT1__(m->health > 0,m->GetName());
+			ASSERT1__(m->IsAlive(),m->GetName());
 			ASSERT1__(GetEntity(m->id) == m, m->GetName());
 			ASSERT1__(!storedMobileEntities.Contains(m), m->GetName());
 			ASSERT1__(m->storedIn.expired(), m->GetName());
@@ -37,7 +55,7 @@ namespace Objects
 		{
 			ASSERT1__(!m->isInserted,m->GetName());
 			ASSERT1__(!m->isInsertedIntoGrid,m->GetName());
-			ASSERT1__(m->health > 0,m->GetName());
+			ASSERT1__(m->IsAlive(),m->GetName());
 			ASSERT1__(GetEntity(m->id) == m, m->GetName());
 			if (m->IsVehicle())
 				ASSERT1__(!vehicles.Contains(To<Vehicle>::Cast(m)),m->GetName());
@@ -83,23 +101,15 @@ namespace Objects
 	}
 
 
-	void MobileEntity::UpdateSystem()
+	/*static*/ void MobileEntity::UpdateSystem(M::TMatrix4<>&inOutSys,const Grid::LCellIdI&location)
 	{
 		ASSERT_LESS__(location.stackID, Grid::LowSetup::GridType::CellCount);
-		M::TVec3<> oldLocation = system.w.xyz;
+		M::TVec3<> oldLocation = inOutSys.w.xyz;
 		const M::TVec3<>&up = Grid::low.cells[location.stackID].cornerCenter;
 		//centerVertex.xyz;
 		M::TVec3<> y, x,z;
-		system.w.xyz = up * Grid::ToRadiusf(float(location.height) /*+ 0.025f*/);
-		z = oldLocation- system.w.xyz;
-
-		#ifdef HAS_WINDOW
-			ambientSound.SetPosition(system.w.xyz);
-			ambientSound.SetVelocity(float3());
-			activitySound.SetPosition(system.w.xyz);
-			activitySound.SetVelocity(float3());
-		#endif
-
+		inOutSys.w.xyz = up * Grid::ToRadiusf(float(location.height) /*+ 0.025f*/);
+		z = oldLocation- inOutSys.w.xyz;
 
 		if (Vec::zero(z))
 		{
@@ -111,10 +121,22 @@ namespace Objects
 		Vec::normalize0(x);
 		Vec::cross(x, up, y);
 		Vec::normalize0(y);
-		system.y.xyz = y;
-		system.z.xyz = up;
-		Vec::cross(system.y.xyz, system.z.xyz, system.x.xyz);
-		Mat::resetBottomRow(system);
+		inOutSys.y.xyz = y;
+		inOutSys.z.xyz = up;
+		Vec::cross(inOutSys.y.xyz, inOutSys.z.xyz, inOutSys.x.xyz);
+		Mat::resetBottomRow(inOutSys);
+	}
+	
+	void MobileEntity::UpdateSystem()
+	{
+		UpdateSystem(system,location);
+
+		#ifdef HAS_WINDOW
+			ambientSound.SetPosition(system.w.xyz);
+			ambientSound.SetVelocity(float3());
+			activitySound.SetPosition(system.w.xyz);
+			activitySound.SetVelocity(float3());
+		#endif
 
 		Mat::invertSystem(system, inverse);
 	}
@@ -296,7 +318,7 @@ namespace Objects
 									{
 										isObstructed = true;
 										LogEvent( this->isAutomated ? EventClass::Preset::common :  EventClass::Preset::operationAborted,this,"Temporary obstruction detected: Unable to complete movement.");
-										if (health <= 0)
+										if (IsDeadOrGhost())
 										{
 											LogEvent(EventSignificance::Common,this,"Is dead.");
 											if (completeOnMove)
@@ -306,11 +328,6 @@ namespace Objects
 											this->UnlockTasks();
 											return TaskResult::AllDoneForThisRound;
 										}
-										//if (completeOnMove)
-										//{
-										//	unstable = true;
-										//	RegisterChange(TasksChanged,motionTime);
-										//}
 
 										stop = true;
 									}
@@ -334,6 +351,7 @@ namespace Objects
 							if (task.path.IsEmpty() || dropRemaining)
 							{
 								this->UnlockTasks();
+								BuildChecker checker(this);
 								if (dropRemaining)
 								{
 									this->ClearAllTasks(true,CLOCATION);
@@ -394,6 +412,12 @@ namespace Objects
 			}	
 			this->UnlockTasks();
 			return TaskResult::AllDoneForThisRound;
+		}
+
+
+		void			MobileEntity::CheckGround(float atTime)
+		{
+			HandleNow(PlaceExactlyAt(location,0, atTime));
 		}
 
 
@@ -486,8 +510,8 @@ namespace Objects
 										//M::TVec3<> world = Grid::ToWorld(node.cell);
 										//float zOffset;
 										//const auto&base = m->GetTurretBase(zOffset);
-										Grid::LCellIdI actual;
-										if (b->ExtCanHit((*c)->owner, TrajectoryEndPoint( (*c)->location,zOffset), TrajectoryEndPoint(node.cell), actual))
+										TurretBase::TargetChoice choice;
+										if (b->ExtCanHit((*c)->owner, TrajectoryEndPoint( (*c)->location,zOffset), TrajectoryEndPoint(node.cell), choice))
 										{
 											badTask = true;
 											break;
@@ -499,6 +523,7 @@ namespace Objects
 								{
 									LogEvent(EventSignificance::Common,v2.get(),"Dangerous movement into range of "+(*c)->GetName()+" at "+ToString((*c)->location)+" detected.");
 									LogEvent(EventSignificance::Uncommon,v2.get(),"Dangerous movement into range of "+(*c)->GetNiceName()+" detected.");
+									BuildChecker checker(this);
 									if (v2.get() == this)
 									{
 										ClearAllTasks(true,CLOCATION);
@@ -558,22 +583,23 @@ namespace Objects
 						return;
 					if (!f->CanSee(_this,entityTime))
 						return;
-					Grid::LCellIdI loc;
+
+					TurretBase::TargetChoice choice;
 					if (IsAboveGrid())
 					{
 						#ifndef NO_SATELLITES
 							foreach (f->satellites, _s)
 							{
 								PSatellite s = _s->lock();
-								if (s && s->WouldAttack(_this,loc,entityTime))
+								if (s && s->WouldAttack(_this,choice,entityTime))
 								{
-									if (s->AttackNext(loc,true))
+									if (s->AttackNext(choice.cellTarget,true))
 									{
 										LogEvent(EventSignificance::Debug,s.get(),"Auto-targeting moving "+GetName()+" (located at "+location.ToString()+") via closest viable attack target "+loc.ToString()+" at t="+String(entityTime));
 										LogEvent(EventSignificance::Important,s.get(),"Auto-targeting moving "+GetNiceName());
 
 										s->Attack(entityTime);
-										if (health <= 0)
+										if (IsDeadOrGhost())
 										{
 											doBreak = true;
 											return;
@@ -590,16 +616,16 @@ namespace Objects
 						foreach (f->towers, _t)
 						{
 							PTower t = _t->lock();
-							if (t && t->WouldAttack(_this,loc,entityTime))
+							if (t && t->WouldAttack(_this,choice,entityTime))
 							{
-								if (t->AttackNext(loc,true))
+								if (t->AttackNext(choice.cellTarget,true))
 								{
-									LogEvent(EventSignificance::Debug,t.get(),"Auto-targeting moving "+GetName()+" (located at "+ToString(location)+") via closest viable attack target "+ToString(loc)+" at t="+String(entityTime));
+									LogEvent(EventSignificance::Debug,t.get(),"Auto-targeting moving "+GetName()+" (located at "+ToString(location)+", =>"+ToString(Grid::ToWorld(location))+",sys="+ToString(system.w.xyz)+") via closest viable attack target "+ToString(choice.cellTarget)+" at t="+String(entityTime));
 									LogEvent(EventSignificance::Important,t.get(),"Auto-targeting moving "+GetNiceName());
 
 									t->Attack(entityTime);
 									LogEvent(EventSignificance::Debug,t.get(),"t is now "+String(entityTime));
-									if (health <= 0)
+									if (IsDeadOrGhost())
 									{
 										doBreak = true;
 										return;
@@ -668,6 +694,8 @@ namespace Objects
 
 		MobileEntity::TaskResult			MobileEntity::PerformNonAttack()
 		{
+			BuildChecker checker(this);
+
 			if (!HasTasks())
 			{
 				if (completeOnMove)
@@ -832,7 +860,7 @@ namespace Objects
 			}*/
 
 			ASSERT__(!TasksAreLocked());
-
+			BuildChecker checker(this);
 			Grid::LCellIdI origin = this->GetLastPointOfOrigin();
 		
 			RegisterChange(TasksChanged,entityTime);
@@ -866,6 +894,8 @@ namespace Objects
 		void					MobileEntity::RegisterNewFrontJob(const String&localizableShapeIdentifier, const PVehicleJob&job, const PVehicleJob&parent, const Grid::LCellIdI*destination)
 		{
 			ASSERT__(!TasksAreLocked());
+
+			BuildChecker checker(this);
 
 			if (IsSleeping() && job->DelayedBySleep())
 			{
@@ -946,6 +976,7 @@ namespace Objects
 		void			MobileEntity::EraseFirstTask()
 		{
 			ASSERT__(!TasksAreLocked());
+			BuildChecker checker(this);
 			myTasks.EraseFront();
 		}
 
@@ -1076,6 +1107,7 @@ namespace Objects
 			}
 
 			{
+				BuildChecker checker(this);
 				ASSERT__(!TasksAreLocked());
 
 				myTasks.PushFront(Task("Move To",destination,detailedPath,Task::MoveTo));
@@ -1094,6 +1126,7 @@ namespace Objects
 			if (!HasTasks())
 				return false;
 			ASSERT__(!TasksAreLocked());
+			BuildChecker checker(this);
 			if (myTasks.GetNewest().type == Task::MoveTo)
 			{
 				myTasks.GetNewest().foci.EraseBack();
@@ -1123,8 +1156,40 @@ namespace Objects
 		}
 
 
+		bool		MobileEntity::ClearAllTasks(bool isReaction, const TCodeLocation&caller)
+		{
+			LogEvent(EventSignificance::Debug,this,"ClearAllTasks("+String(isReaction)+", "+String(caller)+")");
+			if (TasksAreLocked())
+			{
+				if (flushTasksOnUnlock)
+					return false;
+				entityTime += timeEpsilon;
+				flushTasksOnUnlock = true;
+				LogEvent(EventSignificance::Debug,this," ...set to clear on unlock");
+				return true;
+			}
+				
+			if (myTasks.IsNotEmpty() || completeOnMove)
+			{
+				BuildChecker checker(this);
+				entityTime += timeEpsilon;
+				jobStarted = false;
+				if (!isReaction)
+					completeOnMove.reset();
+				RegisterChange(TasksChanged,entityTime);
+				//tasksChanged = true;
+				myTasks.Clear();
+				LogEvent(EventSignificance::Debug,this," ...cleared");
+				return true;
+			}
+			return false;
+		}
+
+
+
 		/*virtual override*/ void			MobileEntity::ClearSafeTasks()
 		{
+			BuildChecker checker(this);
 			if (HasUnsafeTask())
 			{
 				if (myTasks.Count() == 1)
@@ -1159,7 +1224,7 @@ namespace Objects
 			Mat::rotate(this->inverse,dir,innerDir);
 			Ctr::Buffer0<M::TVec4<> > trajectory;
 
-			const auto rs = TraceTrajectory(TrajectoryEndPoint(target),trajectory);
+			const auto rs = TraceTrajectory(TrajectoryEndPoint(target),true,trajectory);
 			if (rs != TraceResult::InvalidTrajectory)
 			{
 				float change = 1.f / float(GetAttacksPerRound());

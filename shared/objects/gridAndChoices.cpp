@@ -81,37 +81,6 @@ namespace Objects
 		#endif
 		
 
-		void SignalClusterChange(const Grid::LCellIdI&location, int verticalTolerance,float atTime,const WorldEntity*except)
-		{
-
-			for (int h = location.height-verticalTolerance; h <= location.height+verticalTolerance; h++)
-			{
-				if (h >= -Grid::CellStack::HalfRange && h < Grid::CellStack::HalfRange)
-				{
-					PStructure s = GetStructure(Grid::LCellIdI(location.stackID,h));
-					if (s && s.get() != except)
-					{
-						TStructureNeighborhood env;
-						Objects::GetNeighborhood(s->owner,s->ConnectsToDifferentOwnership(),s->location, env);
-						s->SignalEnvironmentChange(env,atTime);
-					}
-				}
-			}
-
-
-			//foreach(structures, s)
-			//	if ((*s)->location.stackID == location.stackID && abs((*s)->location.height - location.height) <= verticalTolerance)
-			//	{
-			//		Objects::GetNeighborhood((*s)->owner,(*s)->ConnectsToDifferentOwnership(),(*s)->location, env);
-			//		(*s)->SignalEnvironmentChange(env,atTime);
-			//	}
-
-
-
-			#ifdef CLIENT
-				Grid::SignalLightingChange(location+1);
-			#endif
-		}
 
 		void		VerifyGrid()
 		{
@@ -145,114 +114,43 @@ namespace Objects
 
 
 
-		void SignalVehicleClusterChange(const Grid::LCellIdI&location, int verticalTolerance, float atTime, const WorldEntity*except)
-		{
-			for (int h = location.height-verticalTolerance; h <= location.height+verticalTolerance; h++)
-			{
-				if (h >= -Grid::CellStack::HalfRange && h < Grid::CellStack::HalfRange)
-				{
-					PVehicle v = GetVehicle(Grid::LCellIdI(location.stackID,h));
-					if (v && v.get() != except)
-					{
-					
-						if (World::actual.Clear(v->location,atTime))
-						{
-							LogEvent(EventSignificance::Common,v.get(),"Cleared terrain to make space for vehicle");
-						}
-
-						if (v->base->requirements == Component::VehicleBase::Requirement::Water)
-						{
-							if (World::actual.Overwrite(v->location-1,Grid::Content::Water, atTime))
-							{
-								LogEvent(EventSignificance::Common,v.get(),"Cleared terrain to make water for naval vehicle");
-							}
-						}
-
-						v->HandleNow(v->PlaceExactlyAt(v->location,0,atTime));	//should do the trick
-					}
-				}
-			}
-			//foreach(vehicles, s)
-			//	if ((*s)->location.stackID == location.stackID && abs((*s)->location.height - location.height) <= verticalTolerance)
-			//	{
-			//		Grid::Clear((*s)->location,atTime);
-			//		(*s)->PlaceExactlyAt((*s)->location,0,atTime);	//should do the trick
-			//	}
-
-		}
-
-		void SignalClusterAndNeighborsChange(const Grid::LCellIdI&location, float atTime, const WorldEntity*except/* = nullptr*/)
-		{
-			const BaseGrid::TCellNeighborhood&n = Grid::low.grid.GetCell(location.stackID).neighborhood;
-			SignalClusterChange(location, 1,atTime,except);
-			for (int j = 0; j < n.numNeighbors; j++)
-				SignalClusterChange(Grid::LCellIdI(n.neighborID[j], location.height), 1,atTime,except);
-
-			SignalVehicleClusterChange(location, 1,atTime,except);
-			for (int j = 0; j < n.numNeighbors; j++)
-				SignalVehicleClusterChange(Grid::LCellIdI(n.neighborID[j], location.height), 1,atTime,except);
 
 
-			#ifdef CLIENT
-				Grid::SignalLightingChange(location);
-			#endif
-
-		}
-
-
-		bool		GetSentryTarget(const WorldEntity&source, int munitionStorage, const TrajectoryEndPoint&sourceLocation, const TurretBase&base, Grid::LCellIdI&outTarget)
+		bool		GetSentryTarget(WorldEntity&source, int munitionStorage, const TrajectoryEndPoint&sourceLocation, const TurretBase&base, TurretBase::TargetChoice& outTarget)
 		{
 			float c2 = std::numeric_limits<float>::max();
 			Grid::LCellIdI closest = Grid::LCellIdI::Invalid;
 			PWorldEntity closestEntity;
-			if (base.turret->GetAmmoNeedPerShot(source.owner) > munitionStorage)
+			if (base.turret->GetAmmoNeedPerShot(source.owner) > munitionStorage || base.turret->dealsEMPDamage || base.turret->isDoomsday)
 				return false;
 			const World::Data&world = source.owner->knownWorld;
-			source.owner->seeing.VisitAllKeys([&world, &source,sourceLocation,&base,&c2,&closest,&closestEntity](const PWorldEntity&e)
+
+			Buffer0<PWorldEntity>	candidates;
+
+			source.owner->seeing.VisitAllKeys([&candidates](const PWorldEntity&e)
 			{
 				if (e->IsIndestructible())
 					return;
-				Grid::LCellIdI loc;
-				if (!base.ExtCanHit(source.owner,sourceLocation,TrajectoryEndPoint( e->location ),loc))
-					return;
-
-				
-				//if (d2 > M::Sqr(maxRange))
-				//	return;
-				//if (d2 < M::Sqr(turret->explosionRadius))
-				//	return;
-				
-				//
-				//static Ctr::Buffer0<M::TVec4<> > trajectory;
-				//const auto rs = Component::Turret::TraceTrajectory(base.turret->trajectoryType,base.GetFlatAttackRange(),   
-				//			world, world/*World::actual*/,sourceLocation,TrajectoryEndPoint( loc ),trajectory);
-				//
-				//if (rs == TraceResult::InvalidTrajectory)
-				//	return;
-				//if (rs == TraceResult::MidFlightImpact)
-				//{
-				//	float3 last = trajectory.Last().xyz * trajectory.Last().w;
-				//	float dist = Vec::quadraticDistance(last,Grid::ToWorld( e->location ));
-				//	if (dist > M::Sqr( base.turret->explosionRadius.GetValue(source.GetResearchState())))
-				//		return;
-				//}
-				float d2 = Grid::GetQuadraticGeometricDistance(sourceLocation.cellLocation,loc);
-				if (d2 < c2)
-				{
-					c2 = d2;
-					closest = loc;
-					closestEntity = e;
-				}
+				candidates << e;
 			});
-			if (closest != Grid::LCellIdI::Invalid)
-			{
-				ASSERT__(closestEntity->isInserted);
-				LogEvent(EventSignificance::Debug,&source,"Auto-targeting "+closestEntity->GetName()+" (located at "+ToString(closestEntity->location)+") via closest viable trajectory target "+ToString(closest));
-				LogEvent(EventClass( EventSignificance::Important, EventFlavor::Neutral),&source,"Auto-targeting "+closestEntity->GetNiceName());
 
-				outTarget = closest;
-				return true;
-			}
+			std::random_shuffle(candidates.begin(),candidates.end(),[&source](count_t range)->index_t
+			{
+				return source.entityRandom.NextIndex(range);
+			});
+
+			foreach (candidates,c)
+			{
+				auto e = *c;
+				ASSERT__(e->isInserted);
+				Grid::LCellIdI loc;
+				if (base.ExtCanHit(source.owner,sourceLocation,TrajectoryEndPoint( e->location ),outTarget))
+				{
+					LogEvent(EventSignificance::Debug,&source,"Auto-targeting "+e->GetName()+" (located at "+ToString(e->location)+") via closest viable trajectory target "+ToString(outTarget.cellTarget));
+					LogEvent(EventClass( EventSignificance::Important, EventFlavor::Neutral),&source,"Auto-targeting "+e->GetNiceName());
+					return true;
+				}
+			};
 			return false;
 		}
 
@@ -262,6 +160,8 @@ namespace Objects
 					 const Grid::HCellIdI&targetCell, const M::TVec3<>&center, int explosionRadius, int damageLevel, bool doomsday,
 					 float&atTime)
 		{
+			LogEvent(EventSignificance::Common, attack.attackFrom.get(),"Handling regular explosion at "+ToString(center)+", radius="+String(explosionRadius));
+
 			if (doomsday && RuntimeConfig::doomsdayWeapons == RuntimeConfig::DoomsdayWeapons::Disallow)
 			{
 				LogEvent(EventClass::Preset::commandRejected,nullptr,"Unable to process doomsday explosion: disallowed");
@@ -328,7 +228,6 @@ namespace Objects
 
 				if (dist2IncludingBase > outerRadius)
 					return;
-				//LogEvent(EventSignificance::Debug,e->get(),Vec::toString((*e)->system.w.xyz)+" <> "+Vec::toString(center)+ " = "+ String(sqrt(d2)));
 				//if (d2 < coreRadius)
 				//{
 				//	toDestroy << *e;
@@ -336,6 +235,8 @@ namespace Objects
 				//else
 				if (dist2 <= outerRadius)
 				{
+					LogEvent(EventSignificance::Debug,e.get(),"Caught in explosion radius with dist="+String(sqrt(dist2))+", health change "+String(e->health)+"->"+String(e->health-damageLevel));
+
 					if (attack.attackFrom)
 					{
 						int d = M::Min(damageLevel,e->health);
@@ -346,7 +247,7 @@ namespace Objects
 
 					atTime = std::max(atTime,e->entityTime);
 					e->health -= damageLevel;
-					if (e->health <= 0)
+					if (e->IsDeadOrGhost())
 					{
 						if (attack.attackFrom)
 						{
@@ -401,8 +302,8 @@ namespace Objects
 				//copy = vehicles;	//in case they get whooped by falling
 				for (const auto&v : affectedVehicles)
 				{
-					v->HandleNow(v->PlaceExactlyAt(v->location,0, atTime));	//in case they fall due to explosions
-					if (v->health <= 0)
+					v->CheckGround(atTime);	//in case they fall due to explosions
+					if (v->IsDeadOrGhost())
 					{
 						DBG_ASSERT__(!vehicles.Contains(v));
 					}
@@ -420,6 +321,7 @@ namespace Objects
 		void ExplodeEMP(const ApplicationInterface::TAttack& attack, 
 						const Grid::HCellIdI&targetCell, const M::TVec3<>&center, int explosionRadius, int damageLevel, float&atTime)
 		{
+			LogEvent(EventSignificance::Common, attack.attackFrom.get(),"Handling EMP explosion at "+ToString(center)+", radius="+String(explosionRadius));
 			ApplicationInterface::SignalExplosion(
 							attack, 
 							center,explosionRadius,true,false,atTime);
@@ -620,38 +522,44 @@ namespace Objects
 		void				RemoveFromGrid(Ctr::Array<T>&grid, const Grid::LCellIdI&location, const T&object)
 		{
 			ASSERT__(object->isInsertedIntoGrid);
-			index_t at = CellToGridIndex(location);
-			if (grid[at] != object)
+
+			const int h = object->GetHeight();
+
+			for (int z = 0; z < h; z++)
 			{
-				index_t foundAt = InvalidIndex;
-				index_t cloneAt = InvalidIndex;
-				T	cloneIs;
-				for (index_t i = 0; i < grid.length(); i++)
+				index_t at = CellToGridIndex(location+z);
+				if (grid[at] != object)
 				{
-					if (grid[i] == object)
+					index_t foundAt = InvalidIndex;
+					index_t cloneAt = InvalidIndex;
+					T	cloneIs;
+					for (index_t i = 0; i < grid.length(); i++)
 					{
-						ASSERT__(foundAt == InvalidIndex);
-						foundAt = i;
+						if (grid[i] == object)
+						{
+							ASSERT__(foundAt == InvalidIndex);
+							foundAt = i;
+						}
+						else if (grid[i] && grid[i]->id == object->id)
+						{
+							cloneAt = i;
+							cloneIs = grid[i];
+						}
 					}
-					else if (grid[i] && grid[i]->id == object->id)
+					if (grid[at])
+						LogEvent(EventClass::Preset::error,grid[at].get(),"Found instead of "+object->GetName());
+					String clone = cloneAt != InvalidIndex ? " {found clone ("+cloneIs->GetName()+") at "+ToString(Grid::LCellIdI(cloneAt%Grid::LowSetup::GridType::CellCount,Grid::CellStack::ToHeight((UINT32)( cloneAt/Grid::LowSetup::GridType::CellCount))))+"}" : "";
+					if (foundAt != InvalidIndex)
 					{
-						cloneAt = i;
-						cloneIs = grid[i];
+						Grid::LCellIdI actualLocation(foundAt%Grid::LowSetup::GridType::CellCount,Grid::CellStack::ToHeight((UINT32)( foundAt/Grid::LowSetup::GridType::CellCount)));
+						FATAL__("Trying to remove "+object->GetName()+" from location "+String(at)+"/"+ToString(location)+", but object resides in "+String(foundAt)+"/"+ToString(actualLocation)+clone);
 					}
+					else
+						FATAL__("Trying to remove "+object->GetName()+" from location "+String(at)+"/"+ToString(location)+", but object is not mapped in the grid"+clone);
 				}
-				if (grid[at])
-					LogEvent(EventClass::Preset::error,grid[at].get(),"Found instead of "+object->GetName());
-				String clone = cloneAt != InvalidIndex ? " {found clone ("+cloneIs->GetName()+") at "+ToString(Grid::LCellIdI(cloneAt%Grid::LowSetup::GridType::CellCount,Grid::CellStack::ToHeight((UINT32)( cloneAt/Grid::LowSetup::GridType::CellCount))))+"}" : "";
-				if (foundAt != InvalidIndex)
-				{
-					Grid::LCellIdI actualLocation(foundAt%Grid::LowSetup::GridType::CellCount,Grid::CellStack::ToHeight((UINT32)( foundAt/Grid::LowSetup::GridType::CellCount)));
-					FATAL__("Trying to remove "+object->GetName()+" from location "+String(at)+"/"+ToString(location)+", but object resides in "+String(foundAt)+"/"+ToString(actualLocation)+clone);
-				}
-				else
-					FATAL__("Trying to remove "+object->GetName()+" from location "+String(at)+"/"+ToString(location)+", but object is not mapped in the grid"+clone);
+				LogEvent(EventSignificance::Common,object.get(),"Removed from grid location "+String(at)+"/"+ToString(location));
+				grid[at].reset();
 			}
-			LogEvent(EventSignificance::Common,object.get(),"Removed from grid location "+String(at)+"/"+ToString(location));
-			grid[at].reset();
 			object->isInsertedIntoGrid = false;
 		}
 	template <typename T>
@@ -659,14 +567,21 @@ namespace Objects
 		{
 			ASSERT__(!object->isInsertedIntoGrid);
 			Grid::AssertIsValid(location);
-			index_t at = CellToGridIndex(location);
-			if (grid[at])
+
+			const int h = object->GetHeight();
+			if (h > 1)
+				Grid::AssertIsValid(location+h-1);
+			for (int z = 0; z < h; z++)
 			{
-				FATAL__("Trying to register "+object->GetName()+"(@"+ToString(object->location)+") at "+ToString(location)+": Cell occupied by "+grid[at]->GetName()+"(@"+ToString(grid[at]->location)+")");
+				index_t at = CellToGridIndex(location+z);
+				if (grid[at])
+				{
+					FATAL__("Trying to register "+object->GetName()+"(@"+ToString(object->location)+",z="+String(z)+") at "+ToString(location)+": Cell occupied by "+grid[at]->GetName()+"(@"+ToString(grid[at]->location)+")");
+				}
+				ASSERT3__(!grid[at],grid[at]->GetName(),location,object->GetName());
+				LogEvent(EventSignificance::Common,object.get(),"Inserted into grid location "+String(at)+"/"+ToString(location));
+				grid[at] = object;
 			}
-			ASSERT3__(!grid[at],grid[at]->GetName(),location,object->GetName());
-			LogEvent(EventSignificance::Common,object.get(),"Inserted into grid location "+String(at)+"/"+ToString(location));
-			grid[at] = object;
 			object->isInsertedIntoGrid = true;
 		}
 	template <typename T>
@@ -1079,7 +994,7 @@ namespace Objects
 	}
 
 	
-	int FindApplicableGround(const Grid::LCellIdI&cell, bool canStandOnWater)
+	int FindApplicableGround(const Grid::LCellIdI&cell, bool canStandOnWater, bool canStandOnLava)
 	{
 		#ifdef HYBRID_GRID
 			UINT32 finer = Grid::low.grid.GetCell(cell.stackID).higherEquivalent;
@@ -1095,15 +1010,15 @@ namespace Objects
 			int _h = h;
 			//incremented = false;
 			if (set)
-				_h = std::max(_h, World::actual.GetStack(finer).FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater));
+				_h = std::max(_h, World::actual.GetStack(finer).FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater,canStandOnLava));
 			else
 			{
-				_h = World::actual.GetStack(finer).FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater);
+				_h = World::actual.GetStack(finer).FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater,canStandOnLava);
 				set = true;
 			}
 			#ifdef HYBRID_GRID
 				for (int j = 0; j < c.neighborhood.numNeighbors; j++)
-					_h = std::max(_h, World::actual.GetStack(c.neighborhood.neighborID[j]).FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater));
+					_h = std::max(_h, World::actual.GetStack(c.neighborhood.neighborID[j]).FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater,canStandOnLava));
 			#endif
 			incremented = _h != h;
 			h = _h;
@@ -1612,26 +1527,45 @@ namespace Objects
 		}
 	}
 
-	bool IsClear(const World::Data&world, const Grid::LCellIdI&location)
+	bool IsClear(const World::Data&world, const Grid::LCellIdI&location, const PFaction&faction, float t)
 	{
-		return world.LowCellIsClearIgnoreStructure(location) &&
-			(
-				(&world != &World::actual && !world.GridCanSee(location,1,false))	//can't see = not there
-				||
-				World::actual.GetMaxStructureCount(location)<2//use actual world for struct-count (for now)
-			);	
+		if (!world.LowCellIsClearIgnoreStructure(location))
+			return false;	//terrain there
+
+		if (World::actual.GetMaxStructureCount(location)<2)
+			return true;	//nothing there, visible or otherwise, or at least it does not block
+
+		#ifdef CLIENT
+			return false;
+		#else
+			if (&world == &World::actual)
+				return false; //blocking building there, no point pretending
+			const auto s = Objects::GetStructure(location);
+			if (!s)
+				return true;
+			return !faction->CanSee(s,t);//can't see = not there
+		#endif
+				//!world.GridCanSee(location,1,false);//can't see = not there
+	}
+
+	static float GetEntityTime(const Objects::WorldEntity&e)
+	{
+		#ifdef CLIENT
+			return 0;
+		#else
+			return e.entityTime;
+		#endif
 	}
 
 	template <bool IgnoreStructuresAtDestination>
 	bool ValidDestinationOf(const World::Data&world,const Vehicle&v, const Grid::LCellIdI&location, bool isDestination, bool ignoreWater, bool doFloat)
 	{
 		return 
-			(IsClear(world,location) || (isDestination && (IgnoreStructuresAtDestination || MobileDestinationStructureHere(location,v))))
+			(IsClear(world,location,v.owner, GetEntityTime(v)) || (isDestination && (IgnoreStructuresAtDestination || MobileDestinationStructureHere(location,v))))
 			&&
 			(v.CanStandOn(world,location-1,ignoreWater,doFloat))
 			&&
 			!Grid::AffectedByEMP(location);
-
 	}
 
 

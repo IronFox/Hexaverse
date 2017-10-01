@@ -59,7 +59,7 @@ namespace Objects
 		#ifndef CLIENT
 			virtual bool		DirectTo(mode_t mode, Ctr::ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 
-			virtual bool		FrontQueuePossibleAttacks()override;
+			virtual bool		FrontQueueAutoAttack(TurretBase::TargetChoice&lastChoice)override;
 			void				EnqueueAttack(Grid::LCellIdI destination);
 			void				FrontEnqueueAttack(Grid::LCellIdI destination);
 
@@ -152,6 +152,7 @@ namespace Objects
 		#ifndef NO_HIBERNATION
 			virtual int			GetUplinkTraffic() const override;
 		#endif
+		virtual bool			IsUnlockedAtState(const Lua::Reference&researchState) const	override {return base->isUnlocked.GetValue(researchState) && turret->isUnlocked.GetValue(researchState);}
 		virtual int				GetMaxHealth() const override;
 		virtual String			DescribeMaxHealth() const override;
 		virtual PWorldEntity	CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override {return PWorldEntity(new Vehicle(owner,location,base,turret));};

@@ -46,7 +46,7 @@ namespace Channels
 	TCP::Channel<Grid::ExtendedPlanetConfig, Configurator, Protocol::ChannelID::PlanetConfig>				planetConfig(Receiver::PlanetConfig);
 	TCP::Channel<Protocol::GameConfig, Configurator, Protocol::ChannelID::GameConfig>						gameConfig(Receiver::GameConfig);
 	TCP::Channel<Protocol::ResourceID, PreFaction, Protocol::ChannelID::RequestResource>				requestResource(Receiver::RequestResource);
-	TCP::Channel<Package::NetString<256>, Configurator, Protocol::ChannelID::LoadPlanetByName>		loadPlanetByName(Receiver::LoadPlanetByName);
+	TCP::Channel<Protocol::LoadPlanetByName, Configurator, Protocol::ChannelID::LoadPlanetByName>		loadPlanetByName(Receiver::LoadPlanetByName);
 	
 	TCP::Channel<NET(INT32),FactionLevel,Protocol::ChannelID::TutorialAt>							tutorialAt(Receiver::TutorialAt);
 
@@ -643,7 +643,7 @@ namespace Receiver
 			client->faction->seeing.VisitAllKeys([&peer,client,timestamp](const Objects::PWorldEntity&e)
 			{
 				LogEvent(EventSignificance::Debug,e.get(),"Sending contact (@"+String(e.get())+")");
-				if (e->health <= 0)
+				if (e->IsDeadOrGhost())
 				{
 					//weird...? weirder...
 					LogEvent(EventSignificance::Debug,e.get(),"Unit has bad health");
@@ -929,30 +929,31 @@ namespace Receiver
 		Game::tutorialAt = at;
 	}
 
-	void	LoadPlanetByName(Package::NetString<256>&planet, TCP::Peer&peer)
+	void	LoadPlanetByName(Protocol::LoadPlanetByName&load, TCP::Peer&peer)
 	{
 		if (ConfigurationMode::IsActive())
 		{
-			LogEvent(EventClass::Preset::configurationPrint,peer,"Received request for planet preset '"+planet+"'...");
-			if (planet.Contains('/') || planet.Contains('\\'))
+			LogEvent(EventClass::Preset::configurationPrint,peer,"Received request for planet preset '"+load.name+"'...");
+			if (load.name.Contains('/') || load.name.Contains('\\'))
 			{
 				LogEvent(EventClass::Preset::commandRejected,peer,"Planet name contained path separators. Rejecting request.");
 				return;
 			}
 
-			if (planet.IsNotEmpty())
+			if (load.name.IsNotEmpty())
 			{
-				if (!World::IsPlanetIniFile(planet+".ini"))
+				if (!World::IsPlanetIniFile(load.name+".ini"))
 				{
-					LogEvent(EventClass::Preset::remoteControlError,"'"+planet+"' is not a valid planet type");
+					LogEvent(EventClass::Preset::remoteControlError,"'"+load.name+"' is not a valid planet type");
 					return;
 				}
 			}
 
-			if (planet.IsNotEmpty())
+			if (load.name.IsNotEmpty())
 			{
-				Reflection::Variable::planetType->Set(planet.Trim());
+				Reflection::Variable::planetType->Set(load.name.Trim());
 				Reflection::ReloadPlanet();
+				Grid::currentPlanetConfig.versionCounter = load.configVersion;
 			}
 			Network::BuildConfiguredWorld();
 		}
@@ -977,11 +978,8 @@ namespace Receiver
 			if (RuntimeConfig::empZones)
 				World::SetUnlockedEMPZones(1);
 			else
-			{
-				Grid::empZonesUnlocked = 0xffff;
-				Grid::empZonesLocked = 0x0;
-				Channels::lockEmpZones.SendTo(::Network::server,Grid::empZonesLocked,2);
-			}
+				World::SetUnlockedEMPZones(World::NumZones);
+
 			if (RuntimeConfig::gameGoal != cfg.gameGoal || RuntimeConfig::empZones != eOld)
 			{
 				RuntimeConfig::gameGoal.Load(cfg.gameGoal);
@@ -996,19 +994,19 @@ namespace Receiver
 
 	void	RequestResource(Protocol::ResourceID&id, TCP::Peer&peer)
 	{
-		LogEvent(EventClass::Preset::uncommon,peer,"Received resource request for resource "+Bin2Str::ConvertPOD(id));
+		LogEvent(EventClass::Preset::common,peer,"Received resource request for resource "+Bin2Str::ConvertPOD(id));
 
 		ScriptCache::PScript script = ScriptCache::Lookup(id);
 		if (script)
 		{
-			LogEvent(EventClass::Preset::uncommon,peer,"Resource "+Bin2Str::ConvertPOD(id)+" is script. Dispatching "+String(script->compressed.Count())+" bytes");
+			LogEvent(EventClass::Preset::common,peer,"Resource "+Bin2Str::ConvertPOD(id)+" is script. Dispatching "+String(script->compressed.Count())+" bytes");
 			Protocol::ResourceData data;
 			data.data = script->compressed;	//stupid copy...
 			data.id = id;
 			Channels::resourceData.SendTo(peer,data);
 			return;
 		}
-		LogEvent(EventClass::Preset::uncommon,peer,"Resource "+Bin2Str::ConvertPOD(id)+" is unknown");
+		LogEvent(EventClass::Preset::common,peer,"Resource "+Bin2Str::ConvertPOD(id)+" is unknown");
 	}
 
 	
@@ -1021,16 +1019,20 @@ namespace Receiver
 			return;
 		}
 		Network::PClient cl = To<Network::Client>::Cast(peer.attachment);
-		cl->name = name;
+		if (cl->faction != Objects::Faction::nexus)
+			cl->name = name;
+		else
+			cl->name = "<Nexus>";
+
 		if (cl->faction)
 		{
 			Protocol::IdentifyFaction factionID;
 			factionID.id = cl->faction->id;
-			factionID.name = name;
+			factionID.name = cl->name;
 			factionID.color = cl->faction->color;
-			cl->faction->name = name;
+			cl->faction->name = cl->name;
 			Channels::identifyFaction.SendTo(Network::server,factionID,2);
-			LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ), peer, "User renamed to '"+name+"'");
+			LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ), peer, "User renamed to '"+cl->name+"'");
 		}
 	}
 
@@ -1705,15 +1707,19 @@ namespace Receiver
 				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::ServerPrivate ),peer,"Client disconnected ("+peer.GetError(true)+")");
 
 
-				if (!Network::AnyHumanPlayersActive())
+				if (!Network::AnyHumanPlayersActive() && !ConfigurationMode::IsActive())
 				{
 					LogEvent(EventClass::Preset::uncommon,"Last active player has disconnected. Pausing round timer");
 					Game::roundTimerPaused = true;
 
-					if (FileIO::Config::saveWhenAllQuit && (RuntimeConfig::IsInAnyCommandPhase() || RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase))
-						FileIO::AutoSave();
-					else
-						FileIO::postEvolutionAutoSave = true;
+
+					if (FileIO::Config::saveWhenAllQuit && Objects::Faction::all.IsNotEmpty())	//if factions are empty the system most likely just returned from interactive config mode and this is localhost disconnecting
+					{
+						if (RuntimeConfig::IsInAnyCommandPhase() || RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
+							FileIO::AutoSave();
+						else
+							FileIO::postEvolutionAutoSave = true;
+					}
 				}
 			}
 			break;
@@ -1725,7 +1731,7 @@ namespace Receiver
 	void OnDeserializationFailed(UINT32 channel, TCP::Peer&origin, const String&exception)
 	{
 		LogEvent(EventClass::Preset::networkError,nullptr,"Network error: "+origin.ToString()+": Deserialization failed on channel "+String(channel)+" ("+exception+")");
-		DBG_FATAL__("Network error: "+origin.ToString()+": Deserialization failed on channel "+String(channel));
+		//DBG_FATAL__("Network error: "+origin.ToString()+": Deserialization failed on channel "+String(channel));
 	}
 
 

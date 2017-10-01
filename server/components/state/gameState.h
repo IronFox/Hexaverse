@@ -134,6 +134,8 @@ namespace Game
 	{
 	
 		static const UINT32 NotifyOthers = Objects::WorldEntity::PositionChanged 
+											| Objects::WorldEntity::StartedBuilding 
+											| Objects::WorldEntity::StoppedBuilding 
 											| Objects::WorldEntity::HealthChanged 
 											| Objects::WorldEntity::EnableChanged 
 											| Objects::WorldEntity::EMPDamageChanged
@@ -237,6 +239,8 @@ namespace Game
 	Updates EMP damage caused by residual EMP fields. This is called automatically at the end of round processing
 	*/
 	void			UpdateResidualEMPDamage(float&atTime);
+	void			ApplyEMPZoneDamage(const Objects::PWorldEntity&e,float&atTime);
+
 
 
 	void			SpawnNexusBaseAtPoleWithPort(int pole);

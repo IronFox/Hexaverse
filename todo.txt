@@ -1,5 +1,4 @@
 ﻿
-explosion optimization or options
 
 aerial radar and turret
 bomber
@@ -66,7 +65,6 @@ bug: auto relocation fails if some other non-move task immediately follows (e.g.
 potentially undo last (movement) task if build job is rejected
 
 
-bug: still have loss of initial AI world state. easy to reproduce: new planet with ai (all seems good) -> save anywhere -> immediately load -> bamm
 
 bug: water has no bottom cap
 
@@ -90,14 +88,11 @@ better mine output (refinery)
 
 
 
-transfer build-state of terraformer to hostile factions
-	/see what hostile former is building currently
 
 
 
 
 
-Better handling of crashes in release (should not cause windows popup). Should probably self-terminate as a result.
 
 
 Satellite beam animation seed.
@@ -107,7 +102,6 @@ Satellite beam animation seed.
 
 better customization for goal specification. currently ConquerNexus and EMPConquerNexus have implied, rather specific characteristics that should be exposed as settings
 
-better scoring
 general resource transporter vehicles
 
 let foundation blocks (and granite) explode into stone first // maybe later
@@ -144,7 +138,6 @@ water simulation
 vehicle upgrade facilities
 multi-planet
 
-vertical sensors (vertical sensor corridor structures, postponed)
 
 
 
@@ -158,6 +151,13 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+Better handling of crashes in release (should not cause windows popup). Should probably self-terminate as a result.
+better scoring
+vertical sensors (vertical sensor corridor structures) (surveyors do this)
+bug: still have loss of initial AI world state. easy to reproduce: new planet with ai (all seems good) -> save anywhere -> immediately load -> bamm (doesn't appear to happen anymore)
+transfer build-state of terraformer to hostile factions (yes)
+	/see what hostile former is building currently (no)
+explosion optimization or options
 music
 end-game score recording and reporting
 Loading screen

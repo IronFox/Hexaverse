@@ -228,21 +228,23 @@ namespace World
 						changed.Set(Grid::high.grid.GetCell(neighborhood.neighborID[i]).family);
 				}
 			});
-			auto seq = World::actual.BeginChangeSequence(0);
-			foreach (changed,ch)
 			{
-				UINT32 offset = Grid::high.grid.GetFamilyOffset(*ch);
-				count_t cnt = Grid::high.grid.CountFamilyMembers(*ch);
-				for (UINT32 k = offset; k < offset+cnt; k++)
+				auto seq = World::actual.BeginChangeSequence(0);
+				foreach (changed,ch)
 				{
-					auto access = seq.AccessStack(k);
-					Grid::CellStack&target = access.GetStack();
-					const TStack&source = tempStacks[k];
-					for (index_t layer = 0; layer < Grid::CellStack::Range; layer++)
-						target.volumeCell[layer].content = source.volumeCell[layer];
+					UINT32 offset = Grid::high.grid.GetFamilyOffset(*ch);
+					count_t cnt = Grid::high.grid.CountFamilyMembers(*ch);
+					for (UINT32 k = offset; k < offset+cnt; k++)
+					{
+						auto access = seq.AccessStack(k);
+						Grid::CellStack&target = access.GetStack();
+						const TStack&source = tempStacks[k];
+						for (index_t layer = 0; layer < Grid::CellStack::Range; layer++)
+							target.volumeCell[layer].content = source.volumeCell[layer];
+					}
 				}
 			}
-
+			#if 0
 			Objects::ForeachWorldEntity([changed,&seq](const Objects::PWorldEntity&entity)
 			{
 				if (!changed.IsSet(Grid::low.grid.GetCell(entity->location.stackID).family))
@@ -291,15 +293,21 @@ namespace World
 					}
 				}
 			},false);
+			#endif /*0*/
 			float t = timer.GetSecondsSince(t0);
 			LogEvent(EventSignificance::PerformanceMeasurement,"Time needed to process liquids: "+String(t));
 		}
 
 	}
 
-	void			BuildConfiguredWorld(TwisterRandom&random)
+	
+	static void _BuildConfiguredWorld(TwisterRandom&random)
 	{
-		Grid::currentPlanetConfig.RandomizeSeeds(random);
+		random.discard(20);
+
+
+
+
 		Grid::currentPlanetConfig.BuildWorld(World::actual);
 		World::actual.ExportDiscovered(World::initial, Config::worldDiscovery);
 		Grid::Resource::FillAll(random,Grid::currentCustomResourceDistribution);
@@ -325,9 +333,20 @@ namespace World
 
 	void			BuildConfiguredWorld(UINT32 seed)
 	{
+		//Important: Must NOT call RandomizeSeeds() here, or interactive configuration mode gets caught generating new seeds with each change!
+		Grid::currentPlanetConfig.SetSeed(seed);
 		TwisterRandom random(seed);
-		BuildConfiguredWorld(random);
+		_BuildConfiguredWorld(random);
 	}
+	
+	void			BuildConfiguredWorld(TwisterRandom&rnd)
+	{
+		Grid::currentPlanetConfig.RandomizeSeeds(rnd);
+		_BuildConfiguredWorld(rnd);
+	}
+
+
+
 
 
 
@@ -374,7 +393,7 @@ namespace World
 				}
 
 
-				const int h0 = Objects::FindApplicableGround(Grid::LCellIdI((UINT32)i,0),true);
+				const int h0 = Objects::FindApplicableGround(Grid::LCellIdI((UINT32)i,0),true, true);	//make sure we don't end up IN the lava
 				if (h0 == Objects::badHeight || h0 == -Grid::CellStack::HalfRange || !testBase->CanStandOn(World::actual,Grid::LCellIdI((UINT32)i,h0-1),false,false))
 					continue;
 				{
@@ -382,7 +401,7 @@ namespace World
 					bool broken = false;
 					for (int k = 0; k < n.numNeighbors && !broken; k++)
 					{
-						const int h1 = Objects::FindApplicableGround(Grid::LCellIdI(n.neighborID[k],0),true);
+						const int h1 = Objects::FindApplicableGround(Grid::LCellIdI(n.neighborID[k],0),true, true);
 						if (h1 == Objects::badHeight || h1 == -Grid::CellStack::HalfRange || !testBase->CanStandOn(World::actual,Grid::LCellIdI(n.neighborID[k],h1-1),false,false))
 							broken = true;
 					}
@@ -464,27 +483,47 @@ namespace World
 				}
 				unlocked++;
 			}
+			if (numZones == 0)
+				unlocked = 1;
 				
+			LogEvent(EventSignificance::Common,"Re-counted necessary EMP Zones (bonus="+String(temporaryFactionCountBonus)+"): raw="+String(numZones)+", final="+String(unlocked));
 			SetUnlockedEMPZones(unlocked);
 		}
 		else
 		{
+			LogEvent(EventSignificance::Common,"Clearing all EMP Zones");
 			SetUnlockedEMPZones(NumZones);
 		}
 	}
 
+
+	void			CorrectResidualEMPDamage(float&atTime, UINT16 oldEmpZonesUnlocked, UINT16 newEmpZonesUnlocked)
+	{
+		Objects::ForeachWorldEntity([&atTime,oldEmpZonesUnlocked,newEmpZonesUnlocked](const Objects::PWorldEntity&e)
+		{
+			if (Grid::AffectedByEMP(e->location,oldEmpZonesUnlocked) && !Grid::AffectedByEMP(e->location,newEmpZonesUnlocked))
+			{
+				e->HealAllEMPDamage(atTime);
+				LogEvent(EventSignificance::Common,e.get(),"EMP-Zone has liften. All EMP damage removed");
+			}
+			else
+				if (!Grid::AffectedByEMP(e->location,oldEmpZonesUnlocked) && Grid::AffectedByEMP(e->location,newEmpZonesUnlocked))
+					Game::ApplyEMPZoneDamage(e,atTime);
+		},false);
+	}
 
 	void		SetUnlockedEMPZones(int unlocked)
 	{
 		const UINT16 newUnlocked = ((1<<unlocked) - 1);
 		if (unlockedEMPZones == newUnlocked)
 			return;
+		LogEvent(EventSignificance::Common,"Updating unlocked EMP Zones (unlocked="+String(unlocked)+"): "+Bin2Str::Convert(&unlockedEMPZones,sizeof(unlockedEMPZones))+"->"+Bin2Str::Convert(&newUnlocked,sizeof(newUnlocked)));
+		float t = 0;
+		CorrectResidualEMPDamage(t,unlockedEMPZones,newUnlocked);
 		Grid::empZonesUnlocked = unlockedEMPZones = newUnlocked;
 		Grid::empZonesLocked = empZonesLocked = AllZones  & ~unlockedEMPZones;
 		Channels::lockEmpZones.SendTo(::Network::server,empZonesLocked,Channels::FactionLevel);
 
-		float t = 0;
-		Game::UpdateResidualEMPDamage(t);
 
 	}
 
@@ -524,7 +563,7 @@ namespace World
 		Ctr::Buffer0<TPlanetIniFile,Swap> files;
 		
 		AppendAvailablePlanetInitFilesFrom(false, RuntimeConfig::ConfigFile("config/myPlanets"),files);
-		AppendAvailablePlanetInitFilesFrom(true,FileSystem::Folder().FindFolder("config/myPlanets"),files);
+		AppendAvailablePlanetInitFilesFrom(true,FileSystem::Directory().FindDirectory("config/myPlanets"),files);
 
 		Ctr::GenericHashTable<String,TPlanetIniFile,Ctr::StdHash,Swap,Swap>	merged;
 		foreach (files,f)

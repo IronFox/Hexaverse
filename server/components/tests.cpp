@@ -572,7 +572,7 @@ namespace Test
 	Objects::PWorldEntity CreateStructure(const Objects::OwnerParameter&owner, const Objects::PStructure&prototype, const Grid::LCellIdI&location)
 	{
 		Objects::PStructure result(To<Objects::Structure>::Cast( prototype->CreateNewInstance(owner, location, 0)));
-		result->CorrectTerrain(true, 0);
+		result->ClearOccupiedTerrain(0);
 		float t = 0;
 		Objects::InsertConstructed(result, t);
 		return result;
@@ -583,7 +583,7 @@ namespace Test
 	{
 		return To<T>::Cast(CreateStructure(owner,T::globalPrototype,location));
 		//T::globalPrototype->CreateNewInstance(owner, location, 0)));
-		//result->CorrectTerrain(true, 0, true);
+		//result->ClearOccupiedTerrain(true, 0, true);
 		//Objects::InsertConstructed(result, 0);
 		//return result;
 	}
@@ -627,18 +627,20 @@ namespace Test
 
 		Ctr::Buffer0<M::TVec4<> > trajectory;
 		auto turret = &Objects::Component::artillery;
-		int outOfScanning = 0;
+		count_t outOfScanning = 0;
+		count_t outOfRange = 0;
+		count_t friendlyTest = 0;
 		auto original = turret->explosionRadius.constOverride;
-		for (int i = 0; i < 100 || outOfScanning < 10; i++)
+		for (int i = 0; i < 100 || outOfScanning < 10 || outOfRange < 10 || friendlyTest < 10; i++)
 		{
 			turret->explosionRadius.SetConst(random.NextFloat(1,4));
 
 			Grid::LCellIdI	generatorAt = RandomCell(random);
-			generatorAt.height = Objects::FindApplicableGround(generatorAt,true);
+			generatorAt.height = Objects::FindApplicableGround(generatorAt,true,true);
 			while (generatorAt.height == Objects::badHeight)
 			{
 				generatorAt = RandomCell(random);
-				generatorAt.height = Objects::FindApplicableGround(generatorAt,true);
+				generatorAt.height = Objects::FindApplicableGround(generatorAt,true,true);
 			}
 			Objects::PGenerator generator(CreateStructure<Objects::Generator>(faction0, generatorAt));
 
@@ -647,13 +649,17 @@ namespace Test
 				Objects::PWorldEntity storage;
 				if (turret->ammoNeedPerShot(faction1) != 0)
 				{
-					Grid::LCellIdI	munitionStoreAt = RandomCell(random);
-					munitionStoreAt.height = Objects::FindApplicableGround(munitionStoreAt,true);
-					while (munitionStoreAt.height == Objects::badHeight)
+					Grid::LCellIdI	munitionStoreAt;
+					int tries = 0;
+					do
 					{
 						munitionStoreAt = RandomCell(random);
-						munitionStoreAt.height = Objects::FindApplicableGround(munitionStoreAt,true);
+						munitionStoreAt.height = Objects::FindApplicableGround(munitionStoreAt,true,true);
+						if (++tries > 100)
+							Fail(CLOCATION,"Unable to find suitable store location");
 					}
+					while (munitionStoreAt.height == Objects::badHeight);
+
 					switch (turret->ammoType)
 					{
 						#ifndef NO_MUNITION
@@ -675,28 +681,67 @@ namespace Test
 			#endif
 			Objects::RefreshCompoundCoverage(0);
 
-			Grid::LCellIdI	vehicleAt = RandomCellAtRange(random, generatorAt, M::FloatRange(0.f, turret->GetHorizontalAttackRange(faction0) + turret->GetExplosionRadius(faction0) * 2));	//allow out-of-range
-			vehicleAt.height = Objects::FindApplicableGround(vehicleAt,true);
-			while (vehicleAt.height == Objects::badHeight)
+			const auto myBase = &Objects::Component::hoverbase;
+			Grid::LCellIdI	vehicleAt;
+			int tries = 0;
+			do
 			{
 				vehicleAt = RandomCellAtRange(random, generatorAt, M::FloatRange(0.f, turret->GetHorizontalAttackRange(faction0) + turret->GetExplosionRadius(faction0) * 2));	//allow out-of-range
-				vehicleAt.height = Objects::FindApplicableGround(vehicleAt,true);
+				vehicleAt.height = Objects::FindApplicableGround(vehicleAt,true,true);
+
+				if (++tries > 100)
+					Fail(CLOCATION,"Unable to find suitable vehicle location");
 			}
+			while (vehicleAt.height == Objects::badHeight || !myBase->CanStandOn(World::actual,vehicleAt-1,false,false));
 
-
-			Objects::PVehicle v(new Objects::Vehicle(faction1,vehicleAt,&Objects::Component::hoverbase,turret));
+			Objects::PVehicle v(new Objects::Vehicle(faction1,vehicleAt,myBase,turret));
 			float t = 0;
 			Objects::InsertConstructed(v,t);
 			#ifndef ONE_COMPOUND_PER_FACTION
 				v->currentStorage.level[v->turret->ammoType] = v->GetMaxStorageCapacity().level[v->turret->ammoType];
 			#endif
+
+			const bool beyondSensorRange = (Vec::distance(v->GetScanningCenter(),generator->GetWorldPosition()) > v->GetScanningRange());
+
+			Objects::PVehicle friendly;
+			if (!beyondSensorRange && random.NextBool())	//if target is beyond sensor range, then actual terrain may vary and trajectory may terminate in friendly range
+			{
+				Grid::LCellIdI nearTarget;
+				const auto&n = Grid::low.grid.GetCell(generatorAt.stackID).neighborhood;
+				for (BYTE k = 0; k < n.numNeighbors; k++)
+				{
+					nearTarget.stackID = n.neighborID[k];
+					nearTarget.height = generatorAt.height;
+					nearTarget.height = Objects::FindApplicableGround(nearTarget,true,true);
+					if (nearTarget.height == Objects::badHeight)
+						continue;
+					if (Objects::GetEntity(nearTarget))
+						continue;
+					break;
+				}
+				if (nearTarget.height != Objects::badHeight && !Objects::GetEntity(nearTarget))
+				{
+					friendly.reset(new Objects::Vehicle(faction1,nearTarget,myBase,turret));
+					Objects::InsertConstructed(friendly,t);
+					friendlyTest++;
+				}
+
+			}
+
+
+
+
 			faction1->SignalAppearance(generator,t);	//make sure vehicle can see generator
 			//faction1->knownWorld = World::actual;
 			faction1->CheckSensory();
-			bool wouldFire = v->FrontQueuePossibleAttacks();
+			Objects::TurretBase::TargetChoice choice;
+			bool wouldFire = v->FrontQueueAutoAttack(choice);
 			ASSERT__(!faction1->knownWorld.SensoryIsInvalid());
 			if (wouldFire)
 			{
+				//check if it fires at things it can't see itself:
+
+
 				//check target
 				for (const auto&task : v->myTasks)
 				{
@@ -706,13 +751,31 @@ namespace Test
 
 						
 						const Objects::TrajectoryEndPoint	point{ target.target };
-						const auto rs = v->TraceTrajectory(point,trajectory);
+						const auto rs = v->TraceTrajectory(point,true,trajectory);
 						if (rs == Objects::TraceResult::InvalidTrajectory)
 							Fail(CLOCATION,"Invalid trajectory generated. Target out of range?");
 						
 						const float explosionRadius = v->GetAttackExplosionRadius();
-						const bool beyondSensorRange = (Grid::GetGeometricDistance(vehicleAt,generatorAt) > v->GetScanningRange());
 
+						const bool choiceBeyondSensorRange = (Vec::distance(v->GetScanningCenter(),point.worldLocation) > v->GetScanningRange());
+
+						if (!choiceBeyondSensorRange)
+						{
+							if (rs != choice.impact)
+							{
+								const auto hitContent = World::actual.GetCell(rs.impactCell);
+								const bool visible = faction1->knownWorld.GetCell(rs.impactCell).TerrainIsVisible();
+
+								ASSERT__(!visible);
+
+								rs.AssertEquality(choice.impact);
+							}
+							ASSERT_EQUAL__(trajectory.Count(),choice.trajectory.Count());
+							for (index_t i = 0; i < trajectory.Count(); i++)
+							{
+								ASSERT2__(Vec::equal (trajectory[i], choice.trajectory[i]), trajectory[i],choice.trajectory[i]);
+							}
+						}
 
 						if (rs != Objects::TraceResult::ReachesTarget)
 						{
@@ -724,24 +787,71 @@ namespace Test
 							const bool hit = rs.distanceToTarget < explosionRadius;
 							if (!hit && visible)
 							{
-								Fail(CLOCATION,"Trajectory fails to reach target, depiste knowing of obstactle. Error="+String(rs.distanceToTarget)+"/exp="+String(explosionRadius));
+								Fail(CLOCATION,"Trajectory fails to reach target, depiste known obstacle. Error="+String(rs.distanceToTarget)+"/exp="+String(explosionRadius));
 							}
 /*
 							const float error = Vec::distance(rs.impactAt,point.worldLocation);
 							Fail(CLOCATION,"Trajectory fails to reach target, with error="+String(error)+"/exp="+String(explosionRadius));*/
 						}
+						if (friendly)
+						{
+							/**
+							this still triggers as a result of bad trajectories. must match predicted trajectory (by FrontQueueAutoAttack()) with local trajectory!
+							*/
+							float distanceToFriendly = Vec::distance(rs.impactAt,friendly->system.w.xyz);
+							if (distanceToFriendly < explosionRadius)
+							{
+								#ifdef _DEBUG
+									bool wasChecked = false;
+									bool wasDiscardedAsOutOfRange = false;
+									bool wasFound = false;
+									count_t rescans = 0;
+									foreach (choice.fieldsChecked,f)
+									{
+										if (f->cell == friendly->location)
+										{
+											rescans ++;
+											wasChecked = true;
+											wasDiscardedAsOutOfRange = f->outOfRange;
+											wasFound = f->friendlyFound;
+										}
+									}
+								#endif
+								Fail(CLOCATION,"Trajectory fails to avoid friendly target. Distance="+String(distanceToFriendly)+"/exp="+String(explosionRadius));
+							}
+						}
 						
 						if (beyondSensorRange)
 							outOfScanning++;
 
-						const float distanceToSelf = Vec::distance(rs.impactAt,Grid::ToWorld(v->location));
+						const float distanceToSelf = Vec::distance(rs.impactAt,v->GetWorldPosition());
 						if (distanceToSelf <= explosionRadius)
 						{
 							//baaaaad (hits itself)
 							if (rs.distanceToTarget == 0)//can only count on CheckArea() if we did not deviate
 							{
-					   			bool chk = Objects::TurretBase::CheckArea(faction1, target.target, rs.impactAt, explosionRadius);
-								ASSERT__(!chk);
+								Objects::TurretBase::TargetChoice choice2;
+					   			bool chk = Objects::TurretBase::CheckArea(faction1, target.target, rs.impactAt, explosionRadius,choice2);
+								if (chk)
+								{
+									#ifdef _DEBUG
+										bool wasChecked = false;
+										bool wasDiscardedAsOutOfRange = false;
+										bool wasFound = false;
+										count_t rescans = 0;
+										foreach (choice2.fieldsChecked,f)
+										{
+											if (f->cell == v->location)
+											{
+												rescans ++;
+												wasChecked = true;
+												wasDiscardedAsOutOfRange = f->outOfRange;
+												wasFound = f->friendlyFound;
+											}
+										}
+									#endif
+									FATAL__("Predictable self-hit detected. CheckArea() failed");
+								}
 								Fail(CLOCATION,"Predictable self-hit detected.");
 							}
 						}
@@ -754,7 +864,7 @@ namespace Test
 			else
 			{
 				//check if there would be a target. less important, if imprecise. might remove it
-			
+				outOfRange++;
 			
 			}
 
@@ -763,6 +873,8 @@ namespace Test
 			t++;
 			faction1->SignalDisappearance(generator,t);
 			Objects::Remove(v,Objects::RemovalType::Vanished,t);
+			if (friendly)
+				Objects::Remove(friendly,Objects::RemovalType::Vanished,t);
 			Objects::Remove(generator,Objects::RemovalType::Vanished,t);
 			#ifdef ONE_COMPOUND_PER_FACTION
 				if (storage)

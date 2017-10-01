@@ -30,20 +30,25 @@ namespace RuntimeConfig
 
 	FileSystem::Folder base,actual;
 
-	PathString	ConfigFile(PathString base)
+	void		LocateInConfigDir(PathString base, FileSystem::File&outFile)
 	{
 		#if SYSTEM==WINDOWS
 			base.FindAndReplace(L'/',L'\\');
 		#else
 			base.FindAndReplace(L'\\',L'/');
 		#endif
-		FileSystem::File f;
-		if (!actual.Find(base,f,false))
+		if (!actual.Find(base,outFile,false))
 		{
 			FATAL__("Unable to reference file '"+String(base)+"' relative to '"+String(actual.GetLocation())+"'");
 		}
+	}
+
+
+	PathString	ConfigFile(const PathString&base)
+	{
+		FileSystem::File f;
+		LocateInConfigDir(base,f);
 		return f.GetLocation();
-		//GetLocation() + FOLDER_SLASH + base;
 	}
 
 	//PathString ConfigFile(const String&base)
@@ -60,7 +65,11 @@ namespace RuntimeConfig
 		HRESULT hr = SHGetFolderPathW(0, CSIDL_MYDOCUMENTS, 0, 0, folder);
 		base = folder;
 		ASSERT1__(base.IsValidLocation(),base.GetLocation());
-		actual = base.CreateFolder(L"./My Games/Hexaverse/"+PathString(subDir));
+
+		FileSystem::File file;
+		base.Find(L"./My Games/Hexaverse/"+PathString(subDir),file,false);
+		FileSystem::ForceCreateDirectory(file,file);	//returns if directory exists
+		actual = file;
 	}
 
 

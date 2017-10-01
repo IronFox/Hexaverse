@@ -71,7 +71,7 @@ namespace AI
 	{
 		if (e.isOwnedByMe)
 		{
-			if (e.health <= 0)	//ghost
+			if (e.IsDeadOrGhost())	//ghost
 			{
 				float distance = Vec::quadraticDistance(e.system.w.xyz,reference);
 
@@ -178,13 +178,13 @@ namespace AI
 			return;
 		//float distance = Vec::quadraticDistance(source.system.w.xyz,candidate.system.w.xyz);
 		//const float range = source.GetAttackRange();
-		Grid::LCellIdI target;
-		if (source.ExtCanHit(source.owner, Objects::TrajectoryEndPoint( source.location,source.base->height),Objects::TrajectoryEndPoint( candidate.location,0 ),target))
+		Objects::TurretBase::TargetChoice choice;
+		if (source.ExtCanHit(source.owner, Objects::TrajectoryEndPoint( source.location,source.base->height),Objects::TrajectoryEndPoint( candidate.location,0 ),choice))
 		{
 			const float explosionRadius = source.turret->GetExplosionRadius(source.owner);
 
-			const auto rs = source.TraceTrajectory(Objects::TrajectoryEndPoint( target));
-			LogEvent(EventSignificance::Debug,&source,"Checking possible attack trajectory to "+candidate.GetName()+", attacking "+ToString(target)+", detonating at "+ToString(rs));
+			const auto rs = source.TraceTrajectory(Objects::TrajectoryEndPoint( choice.cellTarget),true);
+			LogEvent(EventSignificance::Debug,&source,"Checking possible attack trajectory to "+candidate.GetName()+", attacking "+ToString(choice.cellTarget)+", detonating at "+ToString(rs));
 
 			if (rs == Objects::TraceResult::InvalidTrajectory)
 			{
@@ -222,7 +222,7 @@ namespace AI
 					TAttackTarget&t = attackTarget.Append();
 					t.explosionAt = rs.impactAt;
 					t.priority = priority / (1.f + float(i)*0.1f);
-					t.target = target;
+					t.target = choice.cellTarget;
 					t.midflightExplosion = (rs == Objects::TraceResult::MidFlightImpact);
 				}
 			}
@@ -505,7 +505,7 @@ namespace AI
 			{
 				float potentialLeft = damagePotentialPerRound * (participants -1) / float(participants);
 				int health = e.health;
-				if (health <= 0)
+				if (e.IsDeadOrGhost())	//ghost
 					health = e.GetMaxHealth();
 				if (potentialLeft > health * 2)
 				{

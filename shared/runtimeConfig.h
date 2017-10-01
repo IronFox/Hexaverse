@@ -6,6 +6,7 @@
 #include <global_string.h>
 #include "roundNumber.h"
 #include "objects/entityType.h"
+#include <io/file_system.h>
 
 namespace RuntimeConfig
 {
@@ -49,10 +50,36 @@ namespace RuntimeConfig
 	#endif
 
 
-//	PathString	ConfigFile(const String&base);
-	PathString	ConfigFile(PathString base);
-	void		InitConfigDir(const String&subDir);
+	/**
+	Converts a relative path to an absolute one, in accordance with LocateInConfigDir()
+	@param base Relative path to lookup. Existence of the specified file or folder is not required
+	@return Absolute path
+	*/
+	PathString	ConfigFile(const PathString&base);
+
+	/**
+	Determines the full path of a configuration (or cache) subfolder/file
+	@param base Relative path to the file or folder in the configuration/cache directory. It need not exist
+	@param[out] outFile File container for the resulting full path
+	*/
+	void		LocateInConfigDir(PathString base, FileSystem::File&outFile);
+
+	/**
+	Retrieves the absolute path to the configuration/cache root folder.
+	See InitConfigDir() for details
+	*/
 	PathString	ConfigDir();
+
+	/**
+	Initializes the config user root directory. Must be called once at startup, before any calls to
+	LocateInConfigDir(), ConfigFile(), or ConfigDir() are attempted.
+	The final absolute root directory will be [My Documents]/My Games/Hexaverse/[subDir]/
+	This directory is created if not found.
+	The function triggers fatal exceptions if [My Documents] is not found, or the final directory could neither be found nor created.
+	@param subDir Directory to lookup config/cache files and folders in
+	*/
+	void		InitConfigDir(const String&subDir);
+
 
 	inline bool	IsACommandPhase(Phase p)	{return p == Phase::CommandPhase;}
 	inline bool IsInAnyCommandPhase()	{return IsACommandPhase(phase);}

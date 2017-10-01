@@ -81,7 +81,7 @@ namespace Animation
 			}
 
 
-			if (e->IsMobile() && e->health > 0)
+			if (e->IsMobile() && e->IsAlive())
 			{
 				Objects::PMobileEntity o = To<Objects::MobileEntity>::Cast(e);
 				bool surveyor = o->IsGroundBoundVehicle() && To<Objects::Vehicle>::Cast(o)->IsAutomatedResourceDetector();
@@ -104,7 +104,7 @@ namespace Animation
 				return;
 			}
 
-			if (e->health <= 0)
+			if (e->IsDeadOrGhost())
 			{
 				float d = Vec::quadraticDistance(e->system.w.xyz,world);
 				if (d < closestGhost)
@@ -573,7 +573,7 @@ namespace Animation
 		//v->roundsDisabled = vs.entityState.disabledRounds;
 
 		#ifndef NO_HIBERNATION
-			bool hibernating = (vs.flags.value & Protocol::VehicleFlags::Hibernating) != 0;
+			bool hibernating = (vs.flags & Protocol::VehicleFlags::Hibernating) != 0;
 			v->Hibernate(hibernating,0);
 		#endif
 
@@ -701,6 +701,29 @@ namespace Animation
 		}
 		else
 		{
+			const bool building = (vs.flags & Protocol::VehicleFlags::Building) != 0;
+			if (building)
+			{
+				if (v->myTasks.IsEmpty())
+				{
+
+					auto&t = v->myTasks.Push();
+					t.IsJob();
+					
+					Objects::PVehicleJob job(new Objects::VehicleJob::DummyJob(*v));
+					job->roundsToJobCompletion = 1;
+					job->movesToFocusWhenDone = false;
+					job->resourceCostLeft = 1;
+					t.name = "Unknown construction task";
+					t.job = job;
+					t.type = Objects::MobileEntity::Task::Job;
+					#ifdef HAS_WINDOW
+						Objects::TaskAttachment::Allocate(t);//.SetLocalizableShape(sourceTask.visualizationName,loc,e.owner);
+					#endif
+				}
+			}
+			else
+				v->myTasks.Clear();
 			//v->currentStorage
 		}
 		Objects::PHangar currentlyStoredIn = v->storedIn.lock();
@@ -891,7 +914,7 @@ namespace Animation
 
 
 		s->health = vs.entityState.health;
-		s->empDamageLevel = vs.entityState.empDamageLevel;
+		s->UpdateEMPDamage(vs.entityState.empDamageLevel);
 
 		if (vs.entityState.location != Grid::LCellIdI::Invalid && vs.entityState.location != s->location)
 		{

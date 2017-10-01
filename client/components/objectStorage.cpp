@@ -30,7 +30,7 @@ namespace Objects
 			e->isInsertedIntoGrid = false;
 			float t = 0;
 			e->UnregisterSensory(t);
-			if (e->health <= 0)
+			if (e->IsDeadOrGhost())
 				markerObjects << e;
 			else
 			{

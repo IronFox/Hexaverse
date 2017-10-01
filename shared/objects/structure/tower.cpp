@@ -37,7 +37,7 @@ namespace Objects
 
 		
 
-		bool Tower::WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)
+		bool Tower::WouldAttack(const PWorldEntity&target, TurretBase::TargetChoice&outTarget, float entityTime)
 		{
 			if (!HasAmmoForShot() || empDamageLevel != 0 || IsHibernating())
 			{
@@ -45,18 +45,17 @@ namespace Objects
 				return false;
 			}
 
-			static Ctr::Buffer0<M::TVec4<> > trajectory;
 
 
 			//float d2 = Grid::GetQuadraticGeometricDistance(location+1,target->location);
 			TrajectoryEndPoint endPoint(target->location); 
+			 
+
 			return		//owner->canSee.IsSet(target)
 					/*&&	*/turret->CanAttack() 
 					&& entityTime <= entityTime 
 					&& CountPossibleAttacks() > 0 
-					&& ExtCanHit(owner,TrajectoryEndPoint( location,GetEffectiveFoundationHeight() ), endPoint,outTarget)
-					//&& d2 > M::Sqr(turret->explosionRadius)
-					&& TraceTrajectory(endPoint,trajectory)==TraceResult::ReachesTarget;
+					&& ExtCanHit(owner,TrajectoryEndPoint( location,GetEffectiveFoundationHeight() ), endPoint,outTarget);
 		}
 
 
@@ -76,7 +75,7 @@ namespace Objects
 			static Ctr::Buffer0<M::TVec4<> > trajectory;
 
 			bool abort = false;
-			auto rs = TraceTrajectory(TrajectoryEndPoint( target.target ),trajectory);
+			auto rs = TraceTrajectory(TrajectoryEndPoint( target.target ),true,trajectory);
 			if (rs != TraceResult::ReachesTarget && target.autoTarget)
 			{
 				rs = ImpactDetails{};
@@ -154,23 +153,20 @@ namespace Objects
 
 		}
 
-		/*virtual override*/ bool Tower::FrontQueuePossibleAttacks()
+		/*virtual override*/ bool Tower::FrontQueueAutoAttack(TurretBase::TargetChoice&lastChoice)
 		{
 			if (!HasAmmoForShot())
 				return false;
 			//index_t freeSlots = attackQueue.Count() < t->GetAttacksPerRound() <  t->GetAttacksPerRound() - t->attackQueue.Count() : 0;
-			bool rs = false;
-			while ((int)attackQueue.Count() < CountPossibleAttacks())
+			if ((int)attackQueue.Count() < CountPossibleAttacks())
 			{
-				Grid::LCellIdI target;
-				if (!GetSentryTarget(*this,this->storage.level[turret->ammoType], TrajectoryEndPoint( location,GetEffectiveFoundationHeight()),*this,target) || !AttackNext(target,true))
-					return rs;
-				rs = true;
+				return  GetSentryTarget(*this,this->storage.level[turret->ammoType], TrajectoryEndPoint( location,GetEffectiveFoundationHeight()),*this,lastChoice) 
+						&& AttackNext(lastChoice.cellTarget,true);
 			}
-			return rs;
-
+			return false;
 		}
-/*virtual override*/ void			Tower::ProcessLeftovers(ResourceVector&v, index_t iteration, float atTime)
+
+		/*virtual override*/ void			Tower::ProcessLeftovers(ResourceVector&v, index_t iteration, float atTime)
 		{
 			ResourceVector maxStorage = GetMaxStorageCapacity();
 			index_t targetIteration = 1;
@@ -324,6 +320,19 @@ namespace Objects
 	#endif
 
 
+	/*virtual override*/ void				Tower::VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance /*= false*/) const
+	{
+		if (turret->detectsResources)
+		{
+			const auto center = GetScanningCenter(loc);
+			float range = GetScanningRange();
+
+			visitor(World::Sensor(center, range, World::Sensor::UpperHalfSolidSphere));
+			visitor(World::Sensor(center, range, World::Sensor::ShadedCylinder,20));
+		}
+		else
+			Super::VisitSensors(loc, visitor, appearance);
+	}
 
 
 	/*virtual override*/ float3				Tower::GetScanningCenter(const Grid::LCellIdI&loc) const

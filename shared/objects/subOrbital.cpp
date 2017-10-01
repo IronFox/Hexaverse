@@ -170,7 +170,7 @@ namespace Objects
 			/*virtual override*/ MobilePlacementResult	Plane::PlaceExactlyAt(const Grid::LCellIdI&cell, float timeCost, float minTimeOffset, bool signalEvent/*=true*/, bool isCreated/*=true*/, bool failIsFatal/*=false*/)
 			{
 			//	UINT32 cell = _cell.stackID;
-				if (health <= 0)
+				if (IsDeadOrGhost())
 				{
 					if (failIsFatal)
 					{
@@ -401,17 +401,15 @@ namespace Objects
 
 		#ifndef CLIENT
 
-			/*virtual override*/ bool					Plane::FrontQueuePossibleAttacks()
+			/*virtual override*/ bool					Plane::FrontQueueAutoAttack(TurretBase::TargetChoice&outChoice)
 			{
-				if (!turret->CanAttack() || !HasAmmoForShot())
+				if (!turret->CanAttack() || !HasAmmoForShot() || turret->dealsEMPDamage || turret->isDoomsday)
 				{
 					//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
 					return false;
 				}
 
 				{
-					Grid::LCellIdI target;
-
 					const ResourceVector&storage = 
 						#ifndef ONE_COMPOUND_PER_FACTION
 							this->currentStorage
@@ -420,33 +418,17 @@ namespace Objects
 						#endif
 					;
 
-					bool result = false;
-					while (		(!NextTaskIsAttack() || (int)myTasks.GetOldest().foci.Count() < CountPossibleAttacks())   
-						&& GetSentryTarget(*this, storage.level[turret->ammoType], TrajectoryEndPoint( location),*this, target))
-					{
-						AttackFirst(target,true);
-						result = true;
-					}
-					return result;
-
-
-					//if (GetSentryTarget(*this, storage.level[turret->ammoType], TrajectoryEndPoint( location ),*this, target))
-					//{
-					//	AttackNext(target,true);
-					//	return true;
-					//}
+					return (!NextTaskIsAttack() || (int)myTasks.GetOldest().foci.Count() < CountPossibleAttacks())   
+						&& GetSentryTarget(*this, storage.level[turret->ammoType], TrajectoryEndPoint( location),*this, outChoice)
+						&& AttackFirst(outChoice.cellTarget,true);
 				}
-				//else
-					//return false;
-				return false;
-
 			}
 
 
 
-			/*virtual override*/ bool			Raptor::ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget,Grid::LCellIdI&actual) const
+			/*virtual override*/ bool			Raptor::ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget, TargetChoice&outExtResult) const
 			{
-				return TurretBase::ExtCanHit(owner,TrajectoryEndPoint( attackFrom ),TrajectoryEndPoint( attackTarget ),actual);
+				return TurretBase::ExtCanHit(owner,TrajectoryEndPoint( attackFrom ),TrajectoryEndPoint( attackTarget ),outExtResult);
 			}
 
 

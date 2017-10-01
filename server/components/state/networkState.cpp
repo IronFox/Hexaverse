@@ -173,6 +173,7 @@ namespace Network
 		if (started)
 			World::worldID.Generate();
 
+		World::UpdateEMPZones(0);
 
 		if (ConfigurationMode::IsActive())
 			World::BuildConfiguredWorld(ConfigurationMode::GetPlanetSeed());

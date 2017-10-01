@@ -589,6 +589,8 @@ namespace GUI
 		*/
 		void			SetVerticalPadding(float topAndBottom)	{SetVerticalPadding(topAndBottom,topAndBottom);}
 		void			SetVerticalPadding(float top, float bottom)	{padding.top = top; padding.bottom = bottom; ReWrapSetHeight();}
+		void			SetHorizontalPadding(float leftAndRight)	{SetHorizontalPadding(leftAndRight,leftAndRight);}
+		void			SetHorizontalPadding(float left, float right)	{padding.left = left; padding.right = right; ReWrapSetHeight();}
 		void			ScaleVerticalPadding(float factor)			{padding.bottom *= factor; padding.top *= factor; ReWrapSetHeight();}
 		void			SetPadding(const M::Quad<float>&padding)		{this->padding = padding; if (this->widthLockedToIdeal) SetToIdealWidth(); ReWrapSetHeight();}
 		const M::Quad<float>&GetPadding() const {return padding;}

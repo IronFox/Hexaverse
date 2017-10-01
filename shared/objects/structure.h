@@ -91,16 +91,7 @@ namespace Objects
 
 
 		#ifndef CLIENT
-
-
-			static void				CommonFixTerrain(const WorldEntity*e, const Grid::LCellIdI&location,  int broadHeight, int totalHeight, bool signalChange, float atTime);
-			virtual void			CorrectTerrain(bool signalChange, float atTime)
-			{
-				CommonFixTerrain(this,location,GetBroadHeight(),GetHeight(),signalChange,atTime);
-			}
-
 			virtual bool			DirectTo(CursorMode mode, Ctr::ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override	{return false;}
-
 		#endif
 
 

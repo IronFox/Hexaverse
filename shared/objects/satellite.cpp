@@ -472,7 +472,7 @@ namespace Objects
 		PSkyLinkStructure port = connectedTo.lock();
 		WorkingStructure*ws = port ? port->CastToStructure() : nullptr;
 
-		if (port && ws->health <= 0)
+		if (port && ws->IsDeadOrGhost())
 		{
 			connectedTo.reset();
 			port.reset();
@@ -715,7 +715,7 @@ namespace Objects
 		/*virtual override*/ MobilePlacementResult	Satellite::PlaceExactlyAt(const Grid::LCellIdI&_cell, float timeCost, float minTimeOffset, bool signalEvent/*=true*/, bool isCreated/*=true*/, bool failIsFatal/*=false*/)
 		{
 			UINT32 cell = _cell.stackID;
-			if (health <= 0)
+			if (IsDeadOrGhost())
 			{
 				if (failIsFatal)
 				{
@@ -928,7 +928,7 @@ namespace Objects
 
 	
 	#ifndef CLIENT
-		/*virtual override*/ bool					Satellite::FrontQueuePossibleAttacks()
+		/*virtual override*/ bool					Satellite::FrontQueueAutoAttack(TurretBase::TargetChoice&lastChoice)
 		{
 			if (!turret->CanAttack() || !HasAmmoForShot())
 			{
@@ -948,9 +948,9 @@ namespace Objects
 					#endif
 				;
 
-				if (GetSentryTarget(*this, storage.level[turret->ammoType], location,0.f,*this, target))
+				if (GetSentryTarget(*this, storage.level[turret->ammoType], location,0.f,*this, lastChoice))
 				{
-					AttackNext(target,true);
+					AttackNext(lastChoice.cellTarget,true);
 					return true;
 				}
 			}

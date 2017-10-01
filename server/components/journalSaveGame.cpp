@@ -95,7 +95,7 @@ namespace Journal
 						//		if (e->IsStructure())
 						//		{
 						//			Objects::PStructure s = To<Objects::Structure>::Cast(e);
-						//			s->CorrectTerrain(false,0,true);
+						//			s->ClearOccupiedTerrain(false,0,true);
 						//		}
 						//		Objects::InsertConstructed(To<Objects::Structure>::Cast(e),0);
 
@@ -620,7 +620,7 @@ namespace Journal
 			if (e->IsStructure())
 			{
 				Objects::PStructure s = To<Objects::Structure>::Cast(e);
-				s->CorrectTerrain(false,0);
+				s->ClearOccupiedTerrain(0);
 			}
 			Objects::InsertConstructed(To<Objects::Structure>::Cast(e),t);
 
@@ -1564,7 +1564,7 @@ namespace Journal
 
 	/*virtual override*/ void	Round::DestroyEntity::Execute(const Objects::PWorldEntity&e) const
 	{
-		if (e->health <= 0)
+		if (e->IsDeadOrGhost())
 		{
 			throw RoundException(CLOCATION,e->GetName()+": Unable to destroy entity. Entity already dead");
 		}

@@ -144,7 +144,8 @@ namespace Grid
 					liquidOutline = Content::Sand;
 		INT32		snowHeight = 5,	//height past which blocks will be covered in snow. Set to >=HalfRange(16) to disable
 					liquidHeight = 0;
-		UINT32		lastSeed = 0;
+		UINT32		lastSeed = 0,
+					versionCounter = 0;
 
 
 
@@ -160,6 +161,7 @@ namespace Grid
 			outStream.WritePrimitive(v.snowHeight);
 			outStream.WritePrimitive(v.liquidHeight);
 			outStream.WritePrimitive(v.lastSeed);
+			outStream.WritePrimitive(v.versionCounter);
 		}
 
 		friend	void	SerialSync(IReadStream&inStream, Self&v)
@@ -174,6 +176,7 @@ namespace Grid
 			inStream.ReadPrimitive(v.snowHeight);
 			inStream.ReadPrimitive(v.liquidHeight);
 			inStream.ReadPrimitive(v.lastSeed);
+			inStream.ReadPrimitive(v.versionCounter);
 			v.ApplySeed();
 		}
 		

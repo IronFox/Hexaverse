@@ -58,6 +58,23 @@ namespace Objects
 		operator TraceResult() const {return result;}
 		bool				operator==(const TraceResult&rs) const {return result == rs;}
 		bool				operator!=(const TraceResult&rs) const {return result != rs;}
+
+		bool				operator!=(const ImpactDetails&other) const	{return !operator==(other);}
+		bool				operator==(const ImpactDetails&other) const
+		{
+			return result == other.result
+					&& Vec::equal(impactAt,other.impactAt)
+					&& artilleryAngle == other.artilleryAngle
+					&& distanceToTarget == other.distanceToTarget;
+		}
+
+		void				AssertEquality(const ImpactDetails&other) const
+		{
+			ASSERT2__(result == other.result,result.ToString(),other.result.ToString());
+			ASSERT2__(Vec::equal(impactAt,other.impactAt),impactAt,other.impactAt);
+			ASSERT_EQUAL__(artilleryAngle,other.artilleryAngle);
+			ASSERT_EQUAL__(distanceToTarget,other.distanceToTarget);
+		}
 	};
 
 
@@ -151,7 +168,7 @@ namespace Objects
 			{
 				static void					TraceAnimationArtilleryTrajectory(float velocity,  float attackAngle, const TrajectoryEndPoint&attackerPosition, const TrajectoryEndPoint&explosionCenter,Ctr::Buffer0<M::TVec4<> >&outSteps);
 				static void					TraceAnimationMissileTrajectory(float range, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps);
-				static ImpactDetails		TraceArtilleryTrajectory(float velocity, const World::Data&decisionWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source,  const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps);
+				static ImpactDetails		TraceArtilleryTrajectory(float velocity, const World::Data&decisionWorld, const World::Data&actualWorld, bool traceInDecisionWorld, const TrajectoryEndPoint&source,  const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps);
 				static ImpactDetails		TraceMissileTrajectory(float range, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps);
 				static bool					ArtilleryCanHit(float flatRange, float horizontalDistance, float verticalDistance, float&outAngle);
 				static bool					ArtilleryCanHit(float flatRange, float horizontalDistance, float verticalDistance);
@@ -270,13 +287,13 @@ namespace Objects
 													//baseOperationSpeed.Fill(0);
 												}
 
-			static int						GetGroundHeight(const Grid::LCellIdI&location);
+			static int						GetGroundHeight(const World::Data&world, const Grid::LCellIdI&location);
 			//static void						TraceTrajectory(TrajectoryType, float flatRange, const M::TVec3<>&source, const M::TVec3<>&dest, Buffer0<M::TVec4<> >&outSteps);
-			static ImpactDetails			TraceTrajectory(TrajectoryType, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps);
-			static ImpactDetails			TraceTrajectory(TrajectoryType type, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest)
+			static ImpactDetails			TraceTrajectory(TrajectoryType, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, bool traceInActualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps);
+			static ImpactDetails			TraceTrajectory(TrajectoryType type, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, bool traceInActualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest)
 			{
 				Ctr::Buffer0<M::TVec4<> > outSteps;
-				return TraceTrajectory(type, flatRange,visibleWorld, actualWorld,source,dest,outSteps);
+				return TraceTrajectory(type, flatRange,visibleWorld, actualWorld,traceInActualWorld,source,dest,outSteps);
 			}
 			virtual bool					IsTurret() const override {return true;}
 			static void						TraceAnimationTrajectory(TrajectoryType, float flatRange, float attackAngle, const TrajectoryEndPoint&attackerPosition, const TrajectoryEndPoint&explosionCenter,Ctr::Buffer0<M::TVec4<> >&outTrajectory);
