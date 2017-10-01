@@ -28,6 +28,7 @@ v0.6.5	[Sep 24 2017]
 	* Fixed terrain modifications sometimes reaching into space occupied by units.
 	* Fixed EMP zones sometimes disappearing.
 	* Client no longer refuses to contact manually specified hosts when UDP listening fails.
+	* Fixed health display not updating if a hostile unit enters vision and is immediately fired upon.
 	* Fixed an insane number of tiny bugs.
 
 v0.6.4	[May 5 2017]

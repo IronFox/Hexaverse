@@ -672,7 +672,7 @@ namespace Game
 						if (::Network::CanSeeAsOwner(*cl,v))
 							Channels::setMobileState.SendTo((*cl)->peer.lock(),w1);
 						else
-							if (::Network::CanSee(*cl,_v,0))
+							if (::Network::CanSee(*cl,_v,v.entityTime))
 								Channels::setMobileState.SendTo((*cl)->peer.lock(),w0);
 					}			
 				v.ResetAllChange();
