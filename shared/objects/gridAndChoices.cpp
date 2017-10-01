@@ -383,7 +383,7 @@ namespace Objects
 				for (int j = 0; j < n.numNeighbors; j++)
 				{
 					PStructure s = GetStructure(Grid::LCellIdI(n.neighborID[j],h));
-					if (!s)
+					if (!s || s->location.height != h)//since buildings can be any height, and are now registered multiple times, they can be encountered several times here 
 						continue;
 					if (
 							#ifndef CLIENT
