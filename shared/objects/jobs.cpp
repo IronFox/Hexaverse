@@ -104,6 +104,7 @@ namespace Objects
 					#endif
 					)
 				{
+					World::actual.LockOnChange();
 					continue_t rs = Finish(v,focus);
 					if (rs == TerminalFailure || rs == TerminalFailureVehicleDestroyed)
 						return rs;
@@ -115,6 +116,7 @@ namespace Objects
 							return BaseJob::TerminalFailureVehicleDestroyed;
 						v.entityTime += timeEpsilon;
 					}
+					World::actual.UnlockOnChange();
 			
 				}
 				else
