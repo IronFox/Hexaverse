@@ -1262,7 +1262,7 @@ namespace Game
 									launcherPrototype->CreateNewInstance(Objects::Faction::nexus,
 									Grid::LCellIdI(i,h),
 									0));
-								tower->ClearOccupiedTerrain(false,0);
+								tower->ClearOccupiedTerrain(0);
 								Objects::InsertConstructed(tower,t);
 							#endif
 						}

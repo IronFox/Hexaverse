@@ -515,8 +515,10 @@ namespace Receiver
 			faction = client->faction;
 			Objects::Faction::all << client->faction;
 			ApplicationInterface::SignalFactionsChanged();
-			client->faction->name = client->name;
-
+			if (client->faction != Objects::Faction::nexus)
+				client->faction->name = client->name;
+			else
+				client->faction->name = Objects::Faction::nexusName;
 
 			LogEvent(EventClass( EventSignificance::Important, EventFlavor::Gain ),peer,"Created new faction.");
 
@@ -525,7 +527,10 @@ namespace Receiver
 		}
 		else
 		{
-			faction->name = client->name;
+			if (faction != Objects::Faction::nexus)
+				faction->name = client->name;
+			else
+				faction->name = Objects::Faction::nexusName;
 		}
 		Network::ChangeUserLevel(peer,Network::UserLevel::CommonFaction);
 
@@ -1022,7 +1027,7 @@ namespace Receiver
 		if (cl->faction != Objects::Faction::nexus)
 			cl->name = name;
 		else
-			cl->name = "<Nexus>";
+			cl->name = Objects::Faction::nexusName;
 
 		if (cl->faction)
 		{

@@ -300,7 +300,7 @@ namespace Objects
 				static Component::operation_t	GetOperationAffinity(CursorMode mode) {return mode == CursorMode::BuildBlockMode ? Component::TerrainAdd : Component::TerrainRemove;}
 				virtual Component::operation_t	GetOperationAffinity() const override {return GetOperationAffinity(mode);}
 
-				virtual String			GetName() const override {return mode == CursorMode::BuildBlockMode ? "deposit earth" : "remove terrain";}
+				virtual String			GetName() const override {return mode == CursorMode::BuildBlockMode ? "build concrete" : "remove terrain";}
 
 
 				virtual continue_t		Finish(MobileEntity&v, const Grid::LCellIdI&focus)	override;

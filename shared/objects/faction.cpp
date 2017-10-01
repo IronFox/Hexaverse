@@ -16,6 +16,8 @@
 namespace Objects
 {
 
+	/*static*/ const String			Faction::nexusName = "<Nexus>";
+	
 	#ifndef CLIENT
 
 		/*static*/ Ctr::Buffer0<PFaction>	Faction::all;
@@ -87,7 +89,7 @@ namespace Objects
 
 		void	Faction::RecreateNexus(const TUniqueID&id)
 		{
-			nexus.reset(new Faction(id, "<Nexus>",true));
+			nexus.reset(new Faction(id, Faction::nexusName,true));
 			ApplicationInterface::SignalFactionsChanged();
 		}
 

@@ -707,18 +707,17 @@ namespace Animation
 				if (v->myTasks.IsEmpty())
 				{
 
-					auto&t = v->myTasks.Push();
-					t.IsJob();
-					
 					Objects::PVehicleJob job(new Objects::VehicleJob::DummyJob(*v));
 					job->roundsToJobCompletion = 1;
 					job->movesToFocusWhenDone = false;
 					job->resourceCostLeft = 1;
+
+					auto&t = v->myTasks.Push();
 					t.name = "Unknown construction task";
 					t.job = job;
 					t.type = Objects::MobileEntity::Task::Job;
 					#ifdef HAS_WINDOW
-						Objects::TaskAttachment::Allocate(t);//.SetLocalizableShape(sourceTask.visualizationName,loc,e.owner);
+						Objects::TaskAttachment::Allocate(t);
 					#endif
 				}
 			}
