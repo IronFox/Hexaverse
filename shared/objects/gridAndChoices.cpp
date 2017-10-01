@@ -1456,26 +1456,45 @@ namespace Objects
 	
 	}
 
-	bool IsClear(const World::Data&world, const Grid::LCellIdI&location)
+	bool IsClear(const World::Data&world, const Grid::LCellIdI&location, const PFaction&faction, float t)
 	{
-		return world.LowCellIsClearIgnoreStructure(location) &&
-			(
-				(&world != &World::actual && !world.GridCanSee(location,1,false))	//can't see = not there
-				||
-				World::actual.GetMaxStructureCount(location)<2//use actual world for struct-count (for now)
-			);	
+		if (!world.LowCellIsClearIgnoreStructure(location))
+			return false;	//terrain there
+
+		if (World::actual.GetMaxStructureCount(location)<2)
+			return true;	//nothing there, visible or otherwise, or at least it does not block
+
+		#ifdef CLIENT
+			return false;
+		#else
+			if (&world == &World::actual)
+				return false; //blocking building there, no point pretending
+			const auto s = Objects::GetStructure(location);
+			if (!s)
+				return true;
+			return !faction->CanSee(s,t);//can't see = not there
+		#endif
+				//!world.GridCanSee(location,1,false);//can't see = not there
+	}
+
+	static float GetEntityTime(const Objects::WorldEntity&e)
+	{
+		#ifdef CLIENT
+			return 0;
+		#else
+			return e.entityTime;
+		#endif
 	}
 
 	template <bool IgnoreStructuresAtDestination>
 	bool ValidDestinationOf(const World::Data&world,const Vehicle&v, const Grid::LCellIdI&location, bool isDestination, bool ignoreWater, bool doFloat)
 	{
 		return 
-			(IsClear(world,location) || (isDestination && (IgnoreStructuresAtDestination || MobileDestinationStructureHere(location,v))))
+			(IsClear(world,location,v.owner, GetEntityTime(v)) || (isDestination && (IgnoreStructuresAtDestination || MobileDestinationStructureHere(location,v))))
 			&&
 			(v.CanStandOn(world,location-1,ignoreWater,doFloat))
 			&&
 			!Grid::AffectedByEMP(location);
-
 	}
 
 
