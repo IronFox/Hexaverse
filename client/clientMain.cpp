@@ -2799,7 +2799,7 @@ bool	IsIdle(const Objects::PMobileEntity&v)
 	//4: if it's SLEEPING then it's not idle, UNLESS the local entity can attack, and has something to attack:
 	if (v->IsSleeping())
 	{
-
+		#if 0
 		if (v->CanAttack() && v->HasAmmoForShot() && v->CountPossibleAttacks())	//check that its turret can attack, there's ammo for the shot, and it has any shots left this round
 		{
 			bool emp = v->turret->dealsEMPDamage;
@@ -2830,6 +2830,7 @@ bool	IsIdle(const Objects::PMobileEntity&v)
 					FATAL__("Unknown mobile entity type "+v->GetTypeName());
 				}
 		}
+		#endif
 		return false;	//cannot attack or has nothing to attack: NOT IDLE since it is SLEEPING
 	}
 
