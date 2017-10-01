@@ -97,7 +97,7 @@ namespace Objects
 			MobilePlacementResult rs = v->PlaceExactlyAt(targetLocation,0.f,0.f,false,false,true);
 			if (rs != MobilePlacementResult::PlacementOkay && rs != MobilePlacementResult::PlacementOkayFellDown)
 			{
-				if (v->health <= 0)
+				if (v->IsDeadOrGhost())
 				{
 					LogEvent(EventSignificance::Debug,&self,v->GetName()+" did not survive checkout to "+ToString(targetLocation));
 				}
@@ -115,7 +115,7 @@ namespace Objects
 		#else
 			v->preAnimationLocation = v->location = targetLocation;
 		#endif
-		if (v->health > 0)
+		if (v->IsAlive())
 		{
 			InsertConstructed(v,atTime);
 			#ifndef CLIENT

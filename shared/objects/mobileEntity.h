@@ -273,7 +273,7 @@ namespace Objects
 		std::pair<int,int>		GetBuildingProgress() const;
 
 		#ifndef CLIENT
-			bool				NextTaskIsMotion() const {return health > 0 && ((!HasTasks() && completeOnMove) || (HasTasks() && myTasks.Peek().type == Task::MoveTo));}
+			bool				NextTaskIsMotion() const {return IsAlive() && ((!HasTasks() && completeOnMove) || (HasTasks() && myTasks.Peek().type == Task::MoveTo));}
 		#endif
 
 		#ifndef NO_HIBERNATION
@@ -497,7 +497,7 @@ namespace Objects
 		//TurretBase overrides:
 		virtual OwnerParameter	GetOwner() const override {return owner;};
 		virtual float			GetAttackActionLeft() const override {return attackActionLeft;};
-		virtual bool			NextTaskIsAttack() const override {return health > 0 && HasTasks() && myTasks.Peek().IsMode(CursorMode::AttackMode);}
+		virtual bool			NextTaskIsAttack() const override {return IsAlive() && HasTasks() && myTasks.Peek().IsMode(CursorMode::AttackMode);}
 		#ifndef CLIENT
 			virtual void		Attack(float&currentTime)	override;
 		#endif

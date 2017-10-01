@@ -643,7 +643,7 @@ namespace Receiver
 			client->faction->seeing.VisitAllKeys([&peer,client,timestamp](const Objects::PWorldEntity&e)
 			{
 				LogEvent(EventSignificance::Debug,e.get(),"Sending contact (@"+String(e.get())+")");
-				if (e->health <= 0)
+				if (e->IsDeadOrGhost())
 				{
 					//weird...? weirder...
 					LogEvent(EventSignificance::Debug,e.get(),"Unit has bad health");

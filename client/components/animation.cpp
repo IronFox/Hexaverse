@@ -81,7 +81,7 @@ namespace Animation
 			}
 
 
-			if (e->IsMobile() && e->health > 0)
+			if (e->IsMobile() && e->IsAlive())
 			{
 				Objects::PMobileEntity o = To<Objects::MobileEntity>::Cast(e);
 				bool surveyor = o->IsVehicle() && To<Objects::Vehicle>::Cast(o)->IsAutomatedResourceDetector();
@@ -104,7 +104,7 @@ namespace Animation
 				return;
 			}
 
-			if (e->health <= 0)
+			if (e->IsDeadOrGhost())
 			{
 				float d = Vec::quadraticDistance(e->system.w.xyz,world);
 				if (d < closestGhost)

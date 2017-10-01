@@ -460,6 +460,9 @@ namespace Objects
 		bool						CanHit(const TrajectoryEndPoint&dest) const;
 		bool						IsSleeping() const {return sleeping;}
 
+		bool						IsAlive() const {return health > 0;}
+		bool						IsDeadOrGhost() const {return health <= 0;}
+
 		virtual bool				AwaitsUserInteraction() const {return false;}
 
 

@@ -170,7 +170,7 @@ namespace Objects
 
 		//TurretBase overrides:
 		virtual OwnerParameter		GetOwner() const override {return owner;};
-		virtual bool				NextTaskIsAttack() const override {return health > 0 && attackQueue.IsNotEmpty();}
+		virtual bool				NextTaskIsAttack() const override {return IsAlive() && attackQueue.IsNotEmpty();}
 		virtual float				GetAttackActionLeft() const override {return attackActionLeft;};
 		virtual float				GetFlatAttackRange() const override;
 		virtual String				DescribeFlatAttackRange() const override;

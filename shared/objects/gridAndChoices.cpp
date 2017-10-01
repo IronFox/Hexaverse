@@ -259,7 +259,7 @@ namespace Objects
 
 					atTime = std::max(atTime,e->entityTime);
 					e->health -= damageLevel;
-					if (e->health <= 0)
+					if (e->IsDeadOrGhost())
 					{
 						if (attack.attackFrom)
 						{
@@ -315,7 +315,7 @@ namespace Objects
 				for (const auto&v : affectedVehicles)
 				{
 					v->HandleNow(v->PlaceExactlyAt(v->location,0, atTime));	//in case they fall due to explosions
-					if (v->health <= 0)
+					if (v->IsDeadOrGhost())
 					{
 						DBG_ASSERT__(!vehicles.Contains(v));
 					}
