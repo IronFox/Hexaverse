@@ -717,7 +717,9 @@ namespace Animation
 					t.name = "Unknown construction task";
 					t.job = job;
 					t.type = Objects::MobileEntity::Task::Job;
-					Objects::TaskAttachment::Allocate(t);//.SetLocalizableShape(sourceTask.visualizationName,loc,e.owner);
+					#ifdef HAS_WINDOW
+						Objects::TaskAttachment::Allocate(t);//.SetLocalizableShape(sourceTask.visualizationName,loc,e.owner);
+					#endif
 				}
 			}
 			else
