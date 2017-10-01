@@ -41,7 +41,7 @@ namespace Objects
 		ForeachMobileWorldEntity([](const Objects::PMobileEntity&m)
 		{
 			ASSERT1__(m->isInserted,m->GetName());
-			ASSERT1__(m->health > 0,m->GetName());
+			ASSERT1__(m->IsAlive(),m->GetName());
 			ASSERT1__(GetEntity(m->id) == m, m->GetName());
 			ASSERT1__(!storedMobileEntities.Contains(m), m->GetName());
 			ASSERT1__(m->storedIn.expired(), m->GetName());
@@ -55,7 +55,7 @@ namespace Objects
 		{
 			ASSERT1__(!m->isInserted,m->GetName());
 			ASSERT1__(!m->isInsertedIntoGrid,m->GetName());
-			ASSERT1__(m->health > 0,m->GetName());
+			ASSERT1__(m->IsAlive(),m->GetName());
 			ASSERT1__(GetEntity(m->id) == m, m->GetName());
 			if (m->IsVehicle())
 				ASSERT1__(!vehicles.Contains(To<Vehicle>::Cast(m)),m->GetName());
@@ -318,7 +318,7 @@ namespace Objects
 									{
 										isObstructed = true;
 										LogEvent( this->isAutomated ? EventClass::Preset::common :  EventClass::Preset::operationAborted,this,"Temporary obstruction detected: Unable to complete movement.");
-										if (health <= 0)
+										if (IsDeadOrGhost())
 										{
 											LogEvent(EventSignificance::Common,this,"Is dead.");
 											if (completeOnMove)
@@ -412,6 +412,12 @@ namespace Objects
 			}	
 			this->UnlockTasks();
 			return TaskResult::AllDoneForThisRound;
+		}
+
+
+		void			MobileEntity::CheckGround(float atTime)
+		{
+			HandleNow(PlaceExactlyAt(location,0, atTime));
 		}
 
 
@@ -593,7 +599,7 @@ namespace Objects
 										LogEvent(EventSignificance::Important,s.get(),"Auto-targeting moving "+GetNiceName());
 
 										s->Attack(entityTime);
-										if (health <= 0)
+										if (IsDeadOrGhost())
 										{
 											doBreak = true;
 											return;
@@ -614,12 +620,12 @@ namespace Objects
 							{
 								if (t->AttackNext(choice.cellTarget,true))
 								{
-									LogEvent(EventSignificance::Debug,t.get(),"Auto-targeting moving "+GetName()+" (located at "+ToString(location)+") via closest viable attack target "+ToString(choice.cellTarget)+" at t="+String(entityTime));
+									LogEvent(EventSignificance::Debug,t.get(),"Auto-targeting moving "+GetName()+" (located at "+ToString(location)+", =>"+ToString(Grid::ToWorld(location))+",sys="+ToString(system.w.xyz)+") via closest viable attack target "+ToString(choice.cellTarget)+" at t="+String(entityTime));
 									LogEvent(EventSignificance::Important,t.get(),"Auto-targeting moving "+GetNiceName());
 
 									t->Attack(entityTime);
 									LogEvent(EventSignificance::Debug,t.get(),"t is now "+String(entityTime));
-									if (health <= 0)
+									if (IsDeadOrGhost())
 									{
 										doBreak = true;
 										return;

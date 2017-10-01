@@ -472,7 +472,7 @@ namespace Objects
 		PSkyLinkStructure port = connectedTo.lock();
 		WorkingStructure*ws = port ? port->CastToStructure() : nullptr;
 
-		if (port && ws->health <= 0)
+		if (port && ws->IsDeadOrGhost())
 		{
 			connectedTo.reset();
 			port.reset();
@@ -715,7 +715,7 @@ namespace Objects
 		/*virtual override*/ MobilePlacementResult	Satellite::PlaceExactlyAt(const Grid::LCellIdI&_cell, float timeCost, float minTimeOffset, bool signalEvent/*=true*/, bool isCreated/*=true*/, bool failIsFatal/*=false*/)
 		{
 			UINT32 cell = _cell.stackID;
-			if (health <= 0)
+			if (IsDeadOrGhost())
 			{
 				if (failIsFatal)
 				{

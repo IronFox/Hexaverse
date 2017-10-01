@@ -71,7 +71,7 @@ namespace AI
 	{
 		if (e.isOwnedByMe)
 		{
-			if (e.health <= 0)	//ghost
+			if (e.IsDeadOrGhost())	//ghost
 			{
 				float distance = Vec::quadraticDistance(e.system.w.xyz,reference);
 
@@ -505,7 +505,7 @@ namespace AI
 			{
 				float potentialLeft = damagePotentialPerRound * (participants -1) / float(participants);
 				int health = e.health;
-				if (health <= 0)
+				if (e.IsDeadOrGhost())	//ghost
 					health = e.GetMaxHealth();
 				if (potentialLeft > health * 2)
 				{

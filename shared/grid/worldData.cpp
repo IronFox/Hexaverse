@@ -1345,6 +1345,14 @@ namespace World
 		#endif
 	}
 
+	void				Data::DbgCheckWaterRanges() const
+	{
+		#if defined _DEBUG && defined HAS_WINDOW
+			foreach (this->cellStack,s)
+				s->DbgCheckWaterRange();
+		#endif
+	}
+
 	bool				Data::IsGlobalInstance()	const
 	{
 		if (this == &actual)
@@ -1791,8 +1799,8 @@ namespace World
 
 				auto&cell = v.coverage.Append();
 				cell.stackID = current;
-				cell.range.end = topLayer+1;
 				cell.range.start = traceFunction(current);
+				cell.range.end = M::Min(Grid::CellStack::Range, topLayer+1);
 				const auto&n = setup.grid.GetCell(current).neighborhood;
 				for (int k = 0; k < n.numNeighbors; k++)
 					op.stacksLeft << n.neighborID[k];
@@ -1864,7 +1872,7 @@ namespace World
 			#ifdef _DEBUG
 				ASSERT_LESS__(c->stackID,Grid::HighSetup::GridType::CellCount);
 				ASSERT_LESS_OR_EQUAL__(c->range.start,c->range.end);
-				ASSERT_LESS__(c->range.start,Grid::CellStack::Range);
+				ASSERT_LESS_OR_EQUAL__(c->range.end,Grid::CellStack::Range);
 			#endif
 			if (c->range.IsEmpty())
 				continue;

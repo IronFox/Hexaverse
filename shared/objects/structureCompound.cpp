@@ -29,7 +29,7 @@ namespace Objects
 	/*static*/ PWorkingStructure	Compound::Reference(const WWorkingStructure&_s)
 	{
 		PWorkingStructure s = _s.lock();
-		if (!s || s->health <= 0)
+		if (!s || s->IsDeadOrGhost())
 			return PWorkingStructure();
 		return s;
 	}

@@ -1564,7 +1564,7 @@ namespace Journal
 
 	/*virtual override*/ void	Round::DestroyEntity::Execute(const Objects::PWorldEntity&e) const
 	{
-		if (e->health <= 0)
+		if (e->IsDeadOrGhost())
 		{
 			throw RoundException(CLOCATION,e->GetName()+": Unable to destroy entity. Entity already dead");
 		}

@@ -227,7 +227,7 @@ namespace Objects
 
 		/*virtual override*/ MobilePlacementResult Vehicle::PlaceExactlyAt(const Grid::LCellIdI&cell, float timeCost, float minTimeOffset, bool signalEvent/*=true*/, bool isCreated/*=true*/, bool failIsFatal/*=false*/)
 		{
-			if (health <= 0)
+			if (IsDeadOrGhost())
 			{
 				if (failIsFatal)
 				{

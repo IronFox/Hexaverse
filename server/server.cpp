@@ -116,6 +116,10 @@ namespace ApplicationInterface
 		Game::Network::Describe(w,*s,true,timestamp);
 		Network::SendToOwner(Channels::createStructure,v,w);
 
+		if (s->IsTower() && To<Objects::Tower>::Cast(s)->turret->detectsResources)
+		{
+			Game::Network::UpdateResourceCoverage(s->owner, s->location,s->GetScanningRange(),timestamp);
+		}
 	}
 
 

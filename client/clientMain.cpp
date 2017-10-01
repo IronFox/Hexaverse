@@ -1336,7 +1336,7 @@ namespace ApplicationInterface
 		}
 		else if (Objects::selectedEntity && Objects::selectedEntity->IsStructure())
 		{
-			if (Objects::selectedEntity->health > 0)	//ghosts have no health and no network
+			if (Objects::selectedEntity->IsAlive())	//ghosts have no health and no network
 			{
 				const Objects::Compound&n = Objects::compounds[To<Objects::Structure>::Cast(Objects::selectedEntity)->compoundID];
 				Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::DynamicCast(Objects::selectedEntity);
@@ -1468,7 +1468,7 @@ namespace ApplicationInterface
 			}
 			else
 				Tutorial::ShowMessage(Objects::selectedEntity->GetTypeName());
-			if (Objects::selectedEntity->health <= 0)
+			if (Objects::selectedEntity->IsDeadOrGhost())
 			{
 				if (Objects::selectedEntity->isOwnedByMe)
 					Tutorial::ShowMessage("Friendly Ghosts");
@@ -2834,7 +2834,7 @@ bool	IsIdle(const Objects::PMobileEntity&v)
 {
 	//okay, clarification:
 	//0: if dead: NOT IDLE (duh)
-	if (v->health <= 0)
+	if (v->IsDeadOrGhost())
 		return false;	//yes, this can happen if badly called
 	//1: if hibernating: NOT IDLE, EVER
 	if (v->IsHibernating())
@@ -2854,6 +2854,7 @@ bool	IsIdle(const Objects::PMobileEntity&v)
 	//4: if it's SLEEPING then it's not idle, UNLESS the local entity can attack, and has something to attack:
 	if (v->IsSleeping())
 	{
+		#if 0
 		if (v->CanAttack() && v->HasAmmoForShot() && v->CountPossibleAttacks())	//check that its turret can attack, there's ammo for the shot, and it has any shots left this round
 		{
 			bool emp = v->turret->dealsEMPDamage;
@@ -2884,6 +2885,7 @@ bool	IsIdle(const Objects::PMobileEntity&v)
 					FATAL__("Unknown mobile entity type "+v->GetTypeName());
 				}
 		}
+		#endif
 		return false;	//cannot attack or has nothing to attack: NOT IDLE since it is SLEEPING
 	}
 
@@ -2894,7 +2896,7 @@ bool	IsIdle(const Objects::PMobileEntity&v)
 
 bool	IsIdle(const Objects::PStructure&s)
 {
-	if (s->health <= 0)
+	if (s->IsDeadOrGhost())
 		return false;
 	#ifndef NO_HIBERNATION
 		if (s->ToHibernating()->IsHibernating())

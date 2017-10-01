@@ -490,7 +490,7 @@ namespace Objects
 		//{
 		//	if (e == other || e->owner == other->owner)
 		//		return;
-		//	if (e->health <= 0)
+		//	if (e->IsDeadOrGhost())
 		//	{
 		//		LogEvent(EventClass::Preset::error,e.get(),"Trying to call MapVisibilityBetween() on a dead entity.");
 		//		//this happens due to some rare cascading events where the destruction of some structure leads to the ownership change of a nexus port, which in turn redetects visibility,

@@ -1078,7 +1078,7 @@ namespace Objects
 	
 	bool						WorkingStructure::CouldEnable(bool ignoreCanEnable/*=false*/)
 	{
-		if (health <= 0)
+		if (IsDeadOrGhost())
 			return false;
 		if (IsEnabled())
 			return true;

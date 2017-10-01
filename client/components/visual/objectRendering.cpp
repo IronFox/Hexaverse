@@ -1353,7 +1353,7 @@ namespace Objects
 			}
 		});
 
-		if (selectedEntity && selectedEntity->health > 0)
+		if (selectedEntity && selectedEntity->IsAlive())
 		{
 			static const float3 red(1,0.25,0.25);
 			float4 tint = selectedEntity->unstable ? float4(red,flip ? 0 : 0.8f) : float4(red,(float)sin(now*4.0)*0.2f + 0.6f);
@@ -1581,7 +1581,7 @@ namespace Objects
 				{
 					if (e != selectedEntity)
 					{
-						if ((e->isOwnedByMe && showFriendlyRanges && e->health > 0) || (!e->isOwnedByMe && showHostileRanges))
+						if ((e->isOwnedByMe && showFriendlyRanges && e->IsAlive()) || (!e->isOwnedByMe && showHostileRanges))
 						{
 							RenderAttackRangeOf(e,color,extendedShadow,false);
 						}

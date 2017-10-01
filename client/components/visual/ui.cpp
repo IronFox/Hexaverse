@@ -598,7 +598,7 @@ namespace UI
 			}
 			if (e->IsGroundBoundVehicle())
 				significance *= 10.f;
-			if (e->health <= 0)
+			if (e->IsDeadOrGhost())
 			{
 				if (e->isOwnedByMe)
 					significance *= 15.f / (1.f + M::Sqr(e->health));
@@ -718,7 +718,7 @@ namespace UI
 				}
 				elif (target->owner)
 					outResult << "Owner: "+target->owner->GetName();
-				if (target->health > 0)
+				if (target->IsAlive())
 				{
 					if (target->IsIndestructible())
 						outResult << " Indestructible";
@@ -793,14 +793,14 @@ namespace UI
 				if (instance->isOwnedByMe)
 				{
 //					outResult << "Owner: me";
-					if (instance->health > 0)
+					if (instance->IsAlive())
 					{
 						proto->AppendDeploymentCount(outResult, instance->owner);
 					}
 				}
 				elif (instance->owner)
 					outResult << "Owner: "+instance->owner->GetName();
-				if (instance->health > 0)
+				if (instance->IsAlive())
 				{
 					//if (e->IsIndestructible())
 					//	outResult << " Indestructible";
@@ -1582,7 +1582,7 @@ namespace UI
 					String key = e->GetTypeName() + "|";
 					if (e->owner)
 						key += e->owner->id.ToFullString();
-					if (e->health <= 0)
+					if (e->IsDeadOrGhost())
 						key += "|ghost";
 					#ifndef NO_HIBERNATION
 						if (e->ToHibernating()->IsHibernating())
@@ -1630,7 +1630,7 @@ namespace UI
 
 			bool showControls = showControlsAndContacts && e
 					#ifndef DEBUG_ACCESS_RESTRICTIONS
-						&& e->isOwnedByMe && e->health > 0
+						&& e->isOwnedByMe && e->IsAlive()
 					#endif
 					;
 
@@ -2121,7 +2121,7 @@ namespace StatePanel
 		cachedLines << " Owner: "+e.owner->GetName()+(e.isOwnedByMe ? " (me)":"");
 		if (e.isOwnedByMe)
 		{
-			if (e.health > 0)
+			if (e.IsAlive())
 			{
 				static const Objects::WorldEntity *last=nullptr;
 				static String lastDeployed;
@@ -2149,7 +2149,7 @@ namespace StatePanel
 				cachedLines << " "<<Objects::TrafficResourceTag()  << "Priority: "<<h->GetUplinkPriority()<<nl;
 		#endif
 		PushCurrentColor();
-		if (e.health > 0)
+		if (e.IsAlive())
 		{
 			if (e.IsIndestructible())
 				cachedLines << " Indestructible";
@@ -2401,7 +2401,7 @@ namespace StatePanel
 				cachedLines << " Compound ID: "+String(s->compoundID);
 			#endif
 			const Objects::Compound*net = nullptr;
-			if (s->health > 0)
+			if (s->IsAlive())
 			{
 				const Objects::Compound&network = s->GetCompound();
 				net = &network;

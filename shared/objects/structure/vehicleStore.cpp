@@ -138,7 +138,7 @@ namespace Objects
 	#if 0
 	bool	VehicleStore::StoreLocally(const PVehicle&v, float&atTime, bool setHealthToFullIfNew/*=true*/)
 	{
-		if (LocalIsFull() || !v || v->owner != owner || v->health <= 0)
+		if (LocalIsFull() || !v || v->owner != owner || v->IsDeadOrGhost())
 			return false;
 		#ifndef CLIENT
 			v->SyncTime(atTime,timeEpsilon);
@@ -180,7 +180,7 @@ namespace Objects
 				{
 					Objects::CommandFlags rs = CommonCmd::CommonButtonCheck(controlEnabled);
 					PVehicleStore s = To<VehicleStore>::DynamicCast(selectedEntity);
-					if (deployingMobileEntity && s == selectedEntity && deployingMobileEntity == w.lock() && deployingMobileEntity->health > 0)
+					if (deployingMobileEntity && s == selectedEntity && deployingMobileEntity == w.lock() && deployingMobileEntity->IsAlive())
 						rs |= Objects::CommandFlags::IsPermaActive;
 					return rs;
 				}

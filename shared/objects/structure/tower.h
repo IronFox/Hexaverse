@@ -140,6 +140,7 @@ namespace Objects
 		#endif
 		virtual bool				IsTower() const override {return true;}
 		virtual float3				GetScanningCenter(const Grid::LCellIdI&loc) const override;
+		virtual void				VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance = false) const override;
 
 		//virtual float				GetScanningRange() const override;
 		//virtual String				DescribeScanningRange() const override;
@@ -170,7 +171,7 @@ namespace Objects
 
 		//TurretBase overrides:
 		virtual OwnerParameter		GetOwner() const override {return owner;};
-		virtual bool				NextTaskIsAttack() const override {return health > 0 && attackQueue.IsNotEmpty();}
+		virtual bool				NextTaskIsAttack() const override {return IsAlive() && attackQueue.IsNotEmpty();}
 		virtual float				GetAttackActionLeft() const override {return attackActionLeft;};
 		virtual float				GetFlatAttackRange() const override;
 		virtual String				DescribeFlatAttackRange() const override;
