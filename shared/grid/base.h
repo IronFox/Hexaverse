@@ -113,6 +113,14 @@ public:
 		const_iterator		begin() const {return anyChanged? const_iterator(this) : end();}
 		constexpr const_iterator	end() const {return const_iterator(nullptr,NumFamilies);}
 
+		void		Set(const FamiliesChanged&other)
+		{
+			if (!other.anyChanged)
+				return;
+			for (family_t f = 0; f < NumFamilies; f++)
+				changed[f] |= other.changed[f];
+			anyChanged = true;
+		}
 		/**
 		Sets the specified family as changed. Thread-safe.
 		*/
