@@ -461,15 +461,18 @@ namespace ApplicationInterface
 
 
 			const float range = roughAttack.turretRange;//base->GetFlatAttackRange();
-			float radius = range * 0.2f;
-			float3 mod = float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)) * radius;
-			count_t numIt = 0;
-			while (!attack.attackFrom->CanHit(mod + roughAttack.sourcePosition,roughAttack.attackAngle)
-					//Vec::quadraticDistance(mod + roughAttack.sourcePosition.value, traceToWorld) > sqr(range) 
-				&& ++numIt < 1000)
-				mod = float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)) * radius;
-			ASSERT__(numIt < 1000);
-			roughAttack.sourcePosition += mod;
+			if (range > 0)
+			{
+				float radius = range * 0.2f;
+				float3 mod = float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)) * radius;
+				count_t numIt = 0;
+				while (!attack.attackFrom->CanHit(mod + roughAttack.sourcePosition,roughAttack.attackAngle)
+						//Vec::quadraticDistance(mod + roughAttack.sourcePosition.value, traceToWorld) > sqr(range) 
+					&& ++numIt < 1000)
+					mod = float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)) * radius;
+				ASSERT1__(numIt < 1000,range);
+				roughAttack.sourcePosition += mod;
+			}
 		}
 
 		for (const Network::PClient&client : clientsCanSee)
@@ -899,9 +902,21 @@ int main( int argc, const char* argv[])
 		Reflection::state.PushFocus();
 			Reflection::state.EnterNewFolder("/IO");
 			Reflection::state.DefineCommand("autoSaveNow",FileIO::AutoSave,CLI::NoCompletion);
-			Reflection::state.DefineCommand("saveTo fileName",(CLI::Command::function1_t)[](const String&path)
+			Reflection::state.DefineCommand("saveTo fileName",(CLI::Command::function1_t)[](const String&path0)
 			{
-				FileIO::Save(PathString(path),RuntimeConfig::phase);
+				PathString saveDirPath = RuntimeConfig::ConfigFile("saves");
+				FileSystem::ForceCreateDirectory( saveDirPath );
+				FileSystem::Directory saveDir = saveDirPath;
+				FileSystem::File file;
+				PathString path = PathString(path0);
+				if (!path.EndsWithIgnoreCase('.'+FileIO::savFileExtension))
+					path += '.' + FileIO::savFileExtension;
+				if (!saveDir.FindFile(path,file,false))
+				{
+					LogEvent(EventClass::Preset::remoteControlError,"Unable to save to '"+String(path)+"'. Invalid path");
+					return;
+				}
+				FileIO::Save(file.GetLocation(),RuntimeConfig::phase);
 			},CLI::FileCompletion);
 
 			Reflection::state.DefineCommand("loadFrom fileName",(CLI::Command::function1_t)[](const String&path)

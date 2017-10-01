@@ -221,6 +221,8 @@ namespace Objects
 			//index_t		compoundIndex = InvalidIndex;
 		#endif
 
+		static const String				nexusName;
+
 		#ifdef CLIENT
 			static Buffer0<PFaction>	allKnown;
 			static GenericHashTable<TUniqueID,PFaction>	idMap;

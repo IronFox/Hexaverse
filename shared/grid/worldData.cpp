@@ -714,18 +714,38 @@ namespace World
 	}
 
 
-	void			Data::LockOnChange()
+
+	Data::ChangeLock::ChangeLock(const ChangeLock&other):parent(other.parent)
 	{
-		ASSERT__(!onChangeLock.isActive);
-		onChangeLock.isActive = true;
+		parent->BeginChangeLock();
+	}
+	Data::ChangeLock::~ChangeLock()
+	{
+		parent->EndChangeLock();
 	}
 
-	void			Data::UnlockOnChange()
+	
+	Data::ChangeLock::ChangeLock(Data*dat):parent(dat)
 	{
-		ASSERT__(onChangeLock.isActive);
-		onChangeLock.isActive = false;
-		SignalChange(onChangeLock.changed,onChangeLock.lastChangeTime,onChangeLock.terrainChanged);
-		onChangeLock = TOnChangeLock();
+		parent->BeginChangeLock();
+	}
+
+
+	void			Data::BeginChangeLock()
+	{
+		ASSERT__(!onChangeLock.isActive);
+		onChangeLock.isActive ++;
+	}
+
+	void			Data::EndChangeLock()
+	{
+		ASSERT__(onChangeLock.isActive != 0);
+		onChangeLock.isActive --;
+		if (onChangeLock.isActive == 0)
+		{
+			SignalChange(onChangeLock.changed,onChangeLock.lastChangeTime,onChangeLock.terrainChanged);
+			onChangeLock = TOnChangeLock();
+		}
 	}
 
 	void			Data::SignalChange(const BaseGrid::FamiliesChanged&changed, float atTime, bool terrainChanged)
