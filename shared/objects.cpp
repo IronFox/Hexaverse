@@ -106,7 +106,7 @@ namespace Objects
 						else
 						{
 							if (e->IsMobile())
-								To<MobileEntity>::Cast(e)->PlaceExactlyAt(e->location,0,0);//check if mobile entity should fall
+								To<MobileEntity>::Cast(e)->CheckGround(t);	//check if mobile entity should fall
 						}
 					}
 				},false);

@@ -92,43 +92,6 @@ namespace Objects
 
 
 
-		void SignalVehicleClusterChange(const Grid::LCellIdI&location, int verticalTolerance, float atTime, const WorldEntity*except)
-		{
-			for (int h = location.height-verticalTolerance; h <= location.height+verticalTolerance; h++)
-			{
-				if (h >= -Grid::CellStack::HalfRange && h < Grid::CellStack::HalfRange)
-				{
-					PVehicle v = GetVehicle(Grid::LCellIdI(location.stackID,h));
-					if (v && v.get() != except)
-					{
-					
-						if (World::actual.Clear(v->location,atTime))
-						{
-							LogEvent(EventSignificance::Common,v.get(),"Cleared terrain to make space for vehicle");
-						}
-
-						if (v->base->requirements == Component::VehicleBase::Requirement::Water)
-						{
-							if (World::actual.Overwrite(v->location-1,Grid::Content::Water, atTime))
-							{
-								LogEvent(EventSignificance::Common,v.get(),"Cleared terrain to make water for naval vehicle");
-							}
-						}
-
-						v->HandleNow(v->PlaceExactlyAt(v->location,0,atTime));	//should do the trick
-					}
-				}
-			}
-			//foreach(vehicles, s)
-			//	if ((*s)->location.stackID == location.stackID && abs((*s)->location.height - location.height) <= verticalTolerance)
-			//	{
-			//		Grid::Clear((*s)->location,atTime);
-			//		(*s)->PlaceExactlyAt((*s)->location,0,atTime);	//should do the trick
-			//	}
-
-		}
-
-
 
 
 		bool		GetSentryTarget(WorldEntity&source, int munitionStorage, const TrajectoryEndPoint&sourceLocation, const TurretBase&base, TurretBase::TargetChoice& outTarget)
@@ -314,7 +277,7 @@ namespace Objects
 				//copy = vehicles;	//in case they get whooped by falling
 				for (const auto&v : affectedVehicles)
 				{
-					v->HandleNow(v->PlaceExactlyAt(v->location,0, atTime));	//in case they fall due to explosions
+					v->CheckGround(atTime);	//in case they fall due to explosions
 					if (v->IsDeadOrGhost())
 					{
 						DBG_ASSERT__(!vehicles.Contains(v));

@@ -395,6 +395,16 @@ namespace Objects
 			*/
 			virtual MobilePlacementResult	PlaceExactlyAt(const Grid::LCellIdI&, float timeCost, float minTimeOffset, bool signalEvent=true, bool isCreated=true, bool failIsFatal=false) = 0;
 		
+			/**
+			Attempts to place the entity exactly whered it already is.
+			If its ground beneath has erroded, the entity will fall.
+			If the new ground is unsuitable, or the fall is too far, the entity will be destroyed (Remove() is called automatically).
+			Check IsAlive() or IsDeadOrGhost() to see if the operation has resulted in entity destruction.
+
+			Currently if effectively invokes 
+					HandleNow(PlaceExactlyAt(location,0, atTime));
+			*/
+			void				CheckGround(float atTime);
 
 			/**
 			Handles destructive results of PlaceExactlyAt(), since PlaceExactlyAt() is not allowed to immediately destroy the local entity

@@ -415,6 +415,12 @@ namespace Objects
 		}
 
 
+		void			MobileEntity::CheckGround(float atTime)
+		{
+			HandleNow(PlaceExactlyAt(location,0, atTime));
+		}
+
+
 		void			MobileEntity::HandleNow(MobilePlacementResult rs)
 		{
 			if (rs == MobilePlacementResult::PlacementFailedMobileDestroyed)
