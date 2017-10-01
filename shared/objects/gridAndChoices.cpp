@@ -138,6 +138,8 @@ namespace Objects
 					 const Grid::HCellIdI&targetCell, const M::TVec3<>&center, int explosionRadius, int damageLevel, bool doomsday,
 					 float&atTime)
 		{
+			LogEvent(EventSignificance::Common, attack.attackFrom.get(),"Handling regular explosion at "+ToString(center)+", radius="+String(explosionRadius));
+
 			if (doomsday && RuntimeConfig::doomsdayWeapons == RuntimeConfig::DoomsdayWeapons::Disallow)
 			{
 				LogEvent(EventClass::Preset::commandRejected,nullptr,"Unable to process doomsday explosion: disallowed");
@@ -204,7 +206,6 @@ namespace Objects
 
 				if (dist2IncludingBase > outerRadius)
 					return;
-				//LogEvent(EventSignificance::Debug,e->get(),Vec::toString((*e)->system.w.xyz)+" <> "+Vec::toString(center)+ " = "+ String(sqrt(d2)));
 				//if (d2 < coreRadius)
 				//{
 				//	toDestroy << *e;
@@ -212,6 +213,8 @@ namespace Objects
 				//else
 				if (dist2 <= outerRadius)
 				{
+					LogEvent(EventSignificance::Debug,e.get(),"Caught in explosion radius with dist="+String(sqrt(dist2))+", health change "+String(e->health)+"->"+String(e->health-damageLevel));
+
 					if (attack.attackFrom)
 					{
 						int d = M::Min(damageLevel,e->health);

@@ -620,7 +620,7 @@ namespace Objects
 							{
 								if (t->AttackNext(choice.cellTarget,true))
 								{
-									LogEvent(EventSignificance::Debug,t.get(),"Auto-targeting moving "+GetName()+" (located at "+ToString(location)+") via closest viable attack target "+ToString(choice.cellTarget)+" at t="+String(entityTime));
+									LogEvent(EventSignificance::Debug,t.get(),"Auto-targeting moving "+GetName()+" (located at "+ToString(location)+", =>"+ToString(Grid::ToWorld(location))+",sys="+ToString(system.w.xyz)+") via closest viable attack target "+ToString(choice.cellTarget)+" at t="+String(entityTime));
 									LogEvent(EventSignificance::Important,t.get(),"Auto-targeting moving "+GetNiceName());
 
 									t->Attack(entityTime);
