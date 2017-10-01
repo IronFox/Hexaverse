@@ -1390,7 +1390,7 @@ namespace Network
 				LogEvent(EventClass::Preset::uncommon, nullptr, "Connection established to "+client.ToString());
 				
 				Protocol::Hello hello;
-				hello = RuntimeConfig::aiMode ? "<Nexus>" : chosenNickname;
+				hello = RuntimeConfig::aiMode ? Objects::Faction::nexusName : chosenNickname;
 				if (RuntimeConfig::aiMode)
 					chosenNickname = hello;
 				//state.state = 0U;

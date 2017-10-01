@@ -1473,7 +1473,7 @@ namespace FileIO
 										}
 
 										if (isNexus)
-											faction->name = "<Nexus>";
+											faction->name = Faction::nexusName;
 										else
 										{
 											Riff::Chunk*nameChunk = list->FindFirst(RID::factionName);

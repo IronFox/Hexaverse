@@ -344,7 +344,7 @@ namespace GUI
 					const bool excludeNexus = excludeNexusFromOverview->IsChecked();
 					Objects::ForeachFaction([excludeNexus](const Objects::PFaction&f)
 					{
-						if (!excludeNexus || f->name != "<Nexus>")
+						if (!excludeNexus || f->name != Objects::Faction::nexusName)
 							AddPlot(f);
 					},true);
 				}
