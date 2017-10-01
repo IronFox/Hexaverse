@@ -409,6 +409,24 @@ namespace Grid
 			//	ASSERT__(!volumeCell[i].IsSolid());
 		}
 
+		void			DbgCheckWaterRange() const
+		{
+			#ifdef _DEBUG
+				if (waterRange.IsNotEmpty())
+				{
+					ASSERT_LESS_OR_EQUAL__(waterRange.end, Range);
+				}
+				else
+				{
+					ASSERT2__(
+						(waterRange.start == 0xFF && waterRange.end==0x0)
+						||
+						(waterRange.start == 0x0 && waterRange.end==0x0)
+						,waterRange.start,waterRange.end
+					);
+				}
+			#endif
+		}
 
 		void			UpdateRange()
 		{

@@ -205,6 +205,11 @@ namespace World
 
 		void					CopyGridContent(const Data&);
 
+		/**
+		Executes DbgCheckWaterRange() on all stacks.
+		Does nothing if not in debug mode or on server
+		*/
+		void					DbgCheckWaterRanges() const;
 
 		bool					FamilyIsOutdated(index_t i) const {return families[i].structureOrSensory.didChange;}
 		//void					UnsetFamilyOutdated(index_t i) {families[i].Reset();}

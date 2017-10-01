@@ -1345,6 +1345,14 @@ namespace World
 		#endif
 	}
 
+	void				Data::DbgCheckWaterRanges() const
+	{
+		#if defined _DEBUG && defined HAS_WINDOW
+			foreach (this->cellStack,s)
+				s->DbgCheckWaterRange();
+		#endif
+	}
+
 	bool				Data::IsGlobalInstance()	const
 	{
 		if (this == &actual)
