@@ -19,6 +19,7 @@ v0.6.5	[Oct 1 2017]
 	> Build state of vehicles is now sent to hostile factions, so a cordon appears if a visible hostile unit is building something.
 	> When queueing up multiple endless research topics, the currently first topic will advance and then move to the end of the queue.
 	> Since vehicles shoot automatically at hostile units in range, they will no longer be considered idle if sleeping with targets in range.
+	> Saving the game via control console will now lookup the desired path relative to the server configuration save directory.
 	* Auto-targeting of towers and vehicles no longer causes friendly fire, assuming terrain is fully known.
 	* Nexus bases can no longer end up submerged in oceanic lava.
 	* Fixed interactive configuration mode sometimes getting out of sync with the server.
