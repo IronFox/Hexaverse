@@ -714,10 +714,33 @@ namespace World
 	}
 
 
+	void			Data::LockOnChange()
+	{
+		ASSERT__(!onChangeLock.isActive);
+		onChangeLock.isActive = true;
+	}
+
+	void			Data::UnlockOnChange()
+	{
+		ASSERT__(onChangeLock.isActive);
+		onChangeLock.isActive = false;
+		SignalChange(onChangeLock.changed,onChangeLock.lastChangeTime,onChangeLock.terrainChanged);
+		onChangeLock = TOnChangeLock();
+	}
+
 	void			Data::SignalChange(const BaseGrid::FamiliesChanged&changed, float atTime, bool terrainChanged)
 	{
 		if (!changed.AnyChanged())
 			return;
+		if (onChangeLock.isActive)
+		{
+			onChangeLock.changed.Set(changed);
+			onChangeLock.lastChangeTime = std::max(onChangeLock.lastChangeTime,atTime);
+			if (terrainChanged)
+				onChangeLock.terrainChanged = true;
+			return;
+		}
+
 		bool acceptChange = false;
 		#ifdef CLIENT
 			acceptChange = true;

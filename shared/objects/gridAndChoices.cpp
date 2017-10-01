@@ -556,38 +556,44 @@ namespace Objects
 		void				RemoveFromGrid(Ctr::Array<T>&grid, const Grid::LCellIdI&location, const T&object)
 		{
 			ASSERT__(object->isInsertedIntoGrid);
-			index_t at = CellToGridIndex(location);
-			if (grid[at] != object)
+
+			const int h = object->GetHeight();
+
+			for (int z = 0; z < h; z++)
 			{
-				index_t foundAt = InvalidIndex;
-				index_t cloneAt = InvalidIndex;
-				T	cloneIs;
-				for (index_t i = 0; i < grid.length(); i++)
+				index_t at = CellToGridIndex(location+z);
+				if (grid[at] != object)
 				{
-					if (grid[i] == object)
+					index_t foundAt = InvalidIndex;
+					index_t cloneAt = InvalidIndex;
+					T	cloneIs;
+					for (index_t i = 0; i < grid.length(); i++)
 					{
-						ASSERT__(foundAt == InvalidIndex);
-						foundAt = i;
+						if (grid[i] == object)
+						{
+							ASSERT__(foundAt == InvalidIndex);
+							foundAt = i;
+						}
+						else if (grid[i] && grid[i]->id == object->id)
+						{
+							cloneAt = i;
+							cloneIs = grid[i];
+						}
 					}
-					else if (grid[i] && grid[i]->id == object->id)
+					if (grid[at])
+						LogEvent(EventClass::Preset::error,grid[at].get(),"Found instead of "+object->GetName());
+					String clone = cloneAt != InvalidIndex ? " {found clone ("+cloneIs->GetName()+") at "+ToString(Grid::LCellIdI(cloneAt%Grid::LowSetup::GridType::CellCount,Grid::CellStack::ToHeight((UINT32)( cloneAt/Grid::LowSetup::GridType::CellCount))))+"}" : "";
+					if (foundAt != InvalidIndex)
 					{
-						cloneAt = i;
-						cloneIs = grid[i];
+						Grid::LCellIdI actualLocation(foundAt%Grid::LowSetup::GridType::CellCount,Grid::CellStack::ToHeight((UINT32)( foundAt/Grid::LowSetup::GridType::CellCount)));
+						FATAL__("Trying to remove "+object->GetName()+" from location "+String(at)+"/"+ToString(location)+", but object resides in "+String(foundAt)+"/"+ToString(actualLocation)+clone);
 					}
+					else
+						FATAL__("Trying to remove "+object->GetName()+" from location "+String(at)+"/"+ToString(location)+", but object is not mapped in the grid"+clone);
 				}
-				if (grid[at])
-					LogEvent(EventClass::Preset::error,grid[at].get(),"Found instead of "+object->GetName());
-				String clone = cloneAt != InvalidIndex ? " {found clone ("+cloneIs->GetName()+") at "+ToString(Grid::LCellIdI(cloneAt%Grid::LowSetup::GridType::CellCount,Grid::CellStack::ToHeight((UINT32)( cloneAt/Grid::LowSetup::GridType::CellCount))))+"}" : "";
-				if (foundAt != InvalidIndex)
-				{
-					Grid::LCellIdI actualLocation(foundAt%Grid::LowSetup::GridType::CellCount,Grid::CellStack::ToHeight((UINT32)( foundAt/Grid::LowSetup::GridType::CellCount)));
-					FATAL__("Trying to remove "+object->GetName()+" from location "+String(at)+"/"+ToString(location)+", but object resides in "+String(foundAt)+"/"+ToString(actualLocation)+clone);
-				}
-				else
-					FATAL__("Trying to remove "+object->GetName()+" from location "+String(at)+"/"+ToString(location)+", but object is not mapped in the grid"+clone);
+				LogEvent(EventSignificance::Common,object.get(),"Removed from grid location "+String(at)+"/"+ToString(location));
+				grid[at].reset();
 			}
-			LogEvent(EventSignificance::Common,object.get(),"Removed from grid location "+String(at)+"/"+ToString(location));
-			grid[at].reset();
 			object->isInsertedIntoGrid = false;
 		}
 	template <typename T>
@@ -595,14 +601,21 @@ namespace Objects
 		{
 			ASSERT__(!object->isInsertedIntoGrid);
 			Grid::AssertIsValid(location);
-			index_t at = CellToGridIndex(location);
-			if (grid[at])
+
+			const int h = object->GetHeight();
+			if (h > 1)
+				Grid::AssertIsValid(location+h-1);
+			for (int z = 0; z < h; z++)
 			{
-				FATAL__("Trying to register "+object->GetName()+"(@"+ToString(object->location)+") at "+ToString(location)+": Cell occupied by "+grid[at]->GetName()+"(@"+ToString(grid[at]->location)+")");
+				index_t at = CellToGridIndex(location+z);
+				if (grid[at])
+				{
+					FATAL__("Trying to register "+object->GetName()+"(@"+ToString(object->location)+",z="+String(z)+") at "+ToString(location)+": Cell occupied by "+grid[at]->GetName()+"(@"+ToString(grid[at]->location)+")");
+				}
+				ASSERT3__(!grid[at],grid[at]->GetName(),location,object->GetName());
+				LogEvent(EventSignificance::Common,object.get(),"Inserted into grid location "+String(at)+"/"+ToString(location));
+				grid[at] = object;
 			}
-			ASSERT3__(!grid[at],grid[at]->GetName(),location,object->GetName());
-			LogEvent(EventSignificance::Common,object.get(),"Inserted into grid location "+String(at)+"/"+ToString(location));
-			grid[at] = object;
 			object->isInsertedIntoGrid = true;
 		}
 	template <typename T>
@@ -1548,26 +1561,45 @@ namespace Objects
 		}
 	}
 
-	bool IsClear(const World::Data&world, const Grid::LCellIdI&location)
+	bool IsClear(const World::Data&world, const Grid::LCellIdI&location, const PFaction&faction, float t)
 	{
-		return world.LowCellIsClearIgnoreStructure(location) &&
-			(
-				(&world != &World::actual && !world.GridCanSee(location,1,false))	//can't see = not there
-				||
-				World::actual.GetMaxStructureCount(location)<2//use actual world for struct-count (for now)
-			);	
+		if (!world.LowCellIsClearIgnoreStructure(location))
+			return false;	//terrain there
+
+		if (World::actual.GetMaxStructureCount(location)<2)
+			return true;	//nothing there, visible or otherwise, or at least it does not block
+
+		#ifdef CLIENT
+			return false;
+		#else
+			if (&world == &World::actual)
+				return false; //blocking building there, no point pretending
+			const auto s = Objects::GetStructure(location);
+			if (!s)
+				return true;
+			return !faction->CanSee(s,t);//can't see = not there
+		#endif
+				//!world.GridCanSee(location,1,false);//can't see = not there
+	}
+
+	static float GetEntityTime(const Objects::WorldEntity&e)
+	{
+		#ifdef CLIENT
+			return 0;
+		#else
+			return e.entityTime;
+		#endif
 	}
 
 	template <bool IgnoreStructuresAtDestination>
 	bool ValidDestinationOf(const World::Data&world,const Vehicle&v, const Grid::LCellIdI&location, bool isDestination, bool ignoreWater, bool doFloat)
 	{
 		return 
-			(IsClear(world,location) || (isDestination && (IgnoreStructuresAtDestination || MobileDestinationStructureHere(location,v))))
+			(IsClear(world,location,v.owner, GetEntityTime(v)) || (isDestination && (IgnoreStructuresAtDestination || MobileDestinationStructureHere(location,v))))
 			&&
 			(v.CanStandOn(world,location-1,ignoreWater,doFloat))
 			&&
 			!Grid::AffectedByEMP(location);
-
 	}
 
 
