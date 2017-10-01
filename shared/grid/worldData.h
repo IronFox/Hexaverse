@@ -359,21 +359,31 @@ namespace World
 
 		count_t					CountVisibleCells() const;
 
+
+		class ChangeLock
+		{
+		public:
+			/**/				ChangeLock(const ChangeLock&other);
+			/**/				~ChangeLock();
+		private:
+			/**/				ChangeLock(Data*);
+
+			Data*				parent;
+			friend class Data;
+		};
+
 		/**
 		Delays any calls to onTerrainChanged and general change handling.
 		Changes are recorded.
+		If any changes were recorded between LockOnChange() and the destruction of the returned object, then they are triggered upon destruction.
+		The returned lock maintains a pointer to the parent Data, and must not live longer than its parent Data object.
 		*/
-		void					LockOnChange();
-		/**
-		Unlocks calls to onTerrainChanged.
-		If any changes were recorded between LockOnChange() and UnlockOnChange(), they are triggered immediately
-		*/
-		void					UnlockOnChange();
+		ChangeLock				LockOnChange() {return this;}
 
 		bool					SensoryIsInvalid()const	{return !sensoryValid;}
 
 	private:
-
+		friend class ChangeLock;
 
 		struct TChange
 		{
@@ -423,7 +433,7 @@ namespace World
 		
 		struct TOnChangeLock
 		{
-			bool						isActive = false;
+			count_t						isActive = 0;
 			BaseGrid::FamiliesChanged	changed;
 			float						lastChangeTime = 0;
 			bool						terrainChanged = false;
@@ -439,6 +449,9 @@ namespace World
 		#endif
 
 		index_t					observerKey = InvalidIndex;
+
+		void					BeginChangeLock();
+		void					EndChangeLock();
 
 		void					SignalChange(const BaseGrid::FamiliesChanged&ch, float atTime, bool terrainChanged);
 
