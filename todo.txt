@@ -1,4 +1,9 @@
-﻿bug: in configuration mode nexus bases sometimes do not update, despite server version visible
+﻿remote console load command should behave as save command
+option to not fade out music in game
+button for main menu in server selection
+
+
+bug: in configuration mode nexus bases sometimes do not update, despite server version visible
 
 aerial radar and turret
 bomber
