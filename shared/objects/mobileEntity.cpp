@@ -313,11 +313,13 @@ namespace Objects
 									case MobilePlacementResult::PlacementFailedPermanentlyObstructed:
 										if (task.path.GetLength() <= 1 || (task.foci.IsNotEmpty() && task.foci.Peek().isDetailed))
 											dropRemaining = true;
+										LogEvent( this->isAutomated ? EventClass::Preset::common :  EventClass::Preset::operationAborted,this,"Permanent or harmful obstruction detected: Unable to complete movement.");
 										//bleed into next case:
 									case MobilePlacementResult::PlacementFailedTemporarilyObstructed:
 									{
 										isObstructed = true;
-										LogEvent( this->isAutomated ? EventClass::Preset::common :  EventClass::Preset::operationAborted,this,"Temporary obstruction detected: Unable to complete movement.");
+										if (rs == MobilePlacementResult::PlacementFailedTemporarilyObstructed)
+											LogEvent( this->isAutomated ? EventClass::Preset::common :  EventClass::Preset::operationAborted,this,"Temporary obstruction detected: Unable to complete movement.");
 										if (IsDeadOrGhost())
 										{
 											LogEvent(EventSignificance::Common,this,"Is dead.");
