@@ -37,7 +37,7 @@ namespace RuntimeConfig
 		#else
 			base.FindAndReplace(L'\\',L'/');
 		#endif
-		if (!actual.Find(base,outFile,false))
+		if (!actual.Find(base,outFile,FileSystem::FindFlags::None))
 		{
 			FATAL__("Unable to reference file '"+String(base)+"' relative to '"+String(actual.GetLocation())+"'");
 		}
@@ -67,7 +67,7 @@ namespace RuntimeConfig
 		ASSERT1__(base.IsValidLocation(),base.GetLocation());
 
 		FileSystem::File file;
-		base.Find(L"./My Games/Hexaverse/"+PathString(subDir),file,false);
+		base.Find(L"./My Games/Hexaverse/"+PathString(subDir),file,FileSystem::FindFlags::None);
 		FileSystem::ForceCreateDirectory(file,file);	//returns if directory exists
 		actual = file;
 	}
