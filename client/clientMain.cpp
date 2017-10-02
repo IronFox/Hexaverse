@@ -3481,6 +3481,7 @@ int main( int argc, const char* argv[])
 					AudioInterface::Create();
 					AudioInterface::SetMasterVolume(StartConfig::GetFloat("runtime/soundVolume",1.f));
 					Music::SetVolume(StartConfig::GetFloat("runtime/musicVolume",0.5f));
+					Music::SetPlayMusicDuringGameplay(StartConfig::GetBool("runtime/musicDuringGameplay"));
 				}
 
 			#endif

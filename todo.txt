@@ -1,4 +1,3 @@
-option to not fade out music in game
 button for main menu in server selection
 
 
@@ -155,6 +154,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+option to not fade out music in game
 remote console load command should behave as save command
 Better handling of crashes in release (should not cause windows popup). Should probably self-terminate as a result.
 better scoring

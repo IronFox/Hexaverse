@@ -8,6 +8,8 @@ namespace Music
 	float	GetVolume();
 	void	SetVolume(float v);
 
+	bool	PlayMusicDuringGameplay();
+	void	SetPlayMusicDuringGameplay(bool);
 }
 
 

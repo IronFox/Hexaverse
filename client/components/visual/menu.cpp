@@ -253,6 +253,18 @@ namespace Menu
 				return String(M::Round(Music::GetVolume() * 100))+"%";
 			}
 			)->SetupMarkers(0.25f,false);
+			
+			AddCheckBox("Mute music during gameplay",!Music::PlayMusicDuringGameplay(),[](bool enabled)
+			{
+				bool old = !Music::PlayMusicDuringGameplay();
+				if (old != enabled)
+				{
+					Music::SetPlayMusicDuringGameplay(!enabled);
+					Configuration::Update("runtime/musicDuringGameplay",!enabled);
+				}
+			});
+
+
 		}
 
 		AddCheckBox("Auto-Queue Unit Commands",!Objects::ShiftMeansQueue(),[](bool enabled)
