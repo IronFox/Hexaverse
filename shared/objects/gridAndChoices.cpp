@@ -1427,7 +1427,8 @@ namespace Objects
 		if (!world.LowCellIsClearIgnoreStructure(location))
 			return false;	//terrain there
 
-		if (World::actual.GetMaxStructureCount(location)<2)
+		const auto structCount = World::actual.GetMaxStructureCount(location);
+		if (structCount<2)
 			return true;	//nothing there, visible or otherwise, or at least it does not block
 
 		#ifdef CLIENT
@@ -1435,9 +1436,14 @@ namespace Objects
 		#else
 			if (&world == &World::actual)
 				return false; //blocking building there, no point pretending
-			const auto s = Objects::GetStructure(location);
+			auto s = Objects::GetStructure(location);
+			if (!s)	//might be in foundation, so look one above
+				s = Objects::GetStructure(location+1);
 			if (!s)
-				return true;
+			{
+				LogEvent(EventClass::Preset::internalError,faction,"IsClear(): Grid reports structure count "+String(structCount)+" in "+ToString(location)+", but can't find any structure here, or one above");
+				return false;	//better to just avoid it, even if we can't check visibility
+			}
 			return !faction->CanSee(s,t);//can't see = not there
 		#endif
 				//!world.GridCanSee(location,1,false);//can't see = not there
