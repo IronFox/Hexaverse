@@ -1457,8 +1457,6 @@ namespace FileIO
 										}
 										locks.Append(faction.get());
 									
-										GetPOD(list,RID::factionAccessToken,faction->accessToken);
-
 										Riff::Chunk*researchStateChunk = list->FindFirst(RID::researchState);
 										if (researchStateChunk)
 										{
@@ -1515,6 +1513,15 @@ namespace FileIO
 										}
 
 										factionMap.Set(faction->id,faction);
+
+										
+										if (!GetOptionalPOD(list,RID::factionAccessToken,faction->accessToken,CryptographicID()))
+										{
+											LogEvent(EventSignificance::NonFatalError,faction,"Unable to find access token in file. Generating new token.");
+											CryptographicID token;
+											token.Generate();
+											faction->accessToken = token;
+										}
 										if (!isNexus)
 											::Network::tokenMap.Set(faction->accessToken,faction);	//dont even allow access if nexus
 
