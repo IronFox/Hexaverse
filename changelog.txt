@@ -1,3 +1,5 @@
+v0.7.0
+
 v0.6.5	[Oct 1 2017]
 	+ Added background music to server selection screen.
 	+ Added remote control commands to end game at any time.
