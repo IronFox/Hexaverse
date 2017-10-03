@@ -12,6 +12,7 @@
 #include "objectSelection.h"
 #include "guiStatistics.h"
 #include "explosions.h"
+#include "ui.h"
 
 bool	IsFullScreen();
 void	SetFullScreen(bool isFull);
@@ -253,6 +254,18 @@ namespace Menu
 				return String(M::Round(Music::GetVolume() * 100))+"%";
 			}
 			)->SetupMarkers(0.25f,false);
+			
+			AddCheckBox("Mute music during gameplay",!Music::PlayMusicDuringGameplay(),[](bool enabled)
+			{
+				bool old = !Music::PlayMusicDuringGameplay();
+				if (old != enabled)
+				{
+					Music::SetPlayMusicDuringGameplay(!enabled);
+					Configuration::Update("runtime/musicDuringGameplay",!enabled);
+				}
+			});
+
+
 		}
 
 		AddCheckBox("Auto-Queue Unit Commands",!Objects::ShiftMeansQueue(),[](bool enabled)
@@ -281,10 +294,11 @@ namespace Menu
 	static void CreateGameMenu()
 	{
 		game = Dialog::Menu::Create();
-		game->Setup(0.3f,"Game");
+		game->Setup(0.3f,"Game",true);
 
 		game->AddCommand("Change Nickname",LocalApplicationInterface::QueryNickname);
 		game->AddCommand("Abandon faction",Network::AbandonCurrentFaction,[](){return Network::amOnline && Network::haveFaction && RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame;});
+		game->AddCommand("Show factions (Tab)", UI::ShowSession,[](){return Network::amOnline;});
 		game->AddCommand("Show statistics", GUI::Statistics::Show,[](){return Network::amOnline && RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame;});
 
 		//game->FullAutoLayout();
@@ -293,7 +307,7 @@ namespace Menu
 	static void	CreateHelpMenu()
 	{
 		help = Dialog::Menu::Create();
-		help->Setup(0.3f,"Help");
+		help->Setup(0.3f,"Help",true);
 		help->AddCommand("Show Basic Controls",
 			[]()
 			{
@@ -328,7 +342,7 @@ namespace Menu
 	static void CreateMainMenu()
 	{
 		main = Dialog::Menu::Create();
-		main->Setup(0.25f,"Main");
+		main->Setup(0.25f,"Main",true);
 
 		main->AddCommand("Disconnect",
 		[]()
@@ -394,8 +408,7 @@ namespace Menu
 	static void CreateLoginMenu()
 	{
 		login = Dialog::Menu::Create();
-		login->Setup(0.25f,"Login");
-		login->canBeImplicitlyClosed = false;	//once visible, must explicitly close
+		login->Setup(0.25f,"Login",false); 	//once visible, must explicitly close
 
 		login->AddCommand("Continue existing faction",[](){Network::AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly);},
 		[]()

@@ -919,9 +919,21 @@ int main( int argc, const char* argv[])
 				FileIO::Save(file.GetLocation(),RuntimeConfig::phase);
 			},CLI::FileCompletion);
 
-			Reflection::state.DefineCommand("loadFrom fileName",(CLI::Command::function1_t)[](const String&path)
+			Reflection::state.DefineCommand("loadFrom fileName",(CLI::Command::function1_t)[](const String&path0)
 			{
-				FileIO::Load(PathString(path));
+				PathString saveDirPath = RuntimeConfig::ConfigFile("saves");
+				FileSystem::Directory saveDir = saveDirPath;
+				
+				FileSystem::File file;
+				PathString path = PathString(path0);
+				if (!path.EndsWithIgnoreCase('.'+FileIO::savFileExtension))
+					path += '.' + FileIO::savFileExtension;
+				if (!saveDir.FindFile(path,file,true))
+				{
+					LogEvent(EventClass::Preset::remoteControlError,"Unable to load '"+String(path)+"'. File does not exist");
+					return;
+				}
+				FileIO::Load(file.GetLocation());
 			},CLI::FileCompletion);
 
 			Reflection::state.DefineCommand("loadAutoSave [index]",(CLI::Command::function1_t)[](const String&sindex)
