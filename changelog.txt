@@ -1,4 +1,5 @@
 v0.6.6
+	+ Added Game menu button to show active factions.
 	+ Added option to keep music playing during regular game. Not recommended since there currently is only one track.
 	> Loading a save game via control console will now lookup the desired path relative to the server configuration save directory.
 	* Fixed routing when encountering floating structure foundations.

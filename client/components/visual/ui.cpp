@@ -32,8 +32,11 @@ namespace UI
 		if (GUI::IsModal())
 		{
 			if (Dialog::ShowingFactions())
-				GUI::CloseAllModal();
-			return;
+			{
+				Dialog::HideFactions();
+				return;
+			}
+			GUI::CloseAllModal();
 		}
 
 		Buffer0<Dialog::Faction>	factions;
