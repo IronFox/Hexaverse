@@ -1,6 +1,6 @@
 {{ img:units/Hoverbase.png|Hoverbase}}
 =Hoverbase=
-*  Cost: %Minerals%40
+*  Cost: %Minerals%30
 *  [[concepts/initiative|Initiative]]: 100
 *  Can climb 1 height level up
 *  Can safely fall down 5 height levels
