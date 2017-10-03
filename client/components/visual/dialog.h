@@ -195,7 +195,7 @@ namespace Dialog
 	WDialog	ShowFactions(const Buffer0<Faction>&factions);
 
 	bool	ShowingFactions();
-
+	void	HideFactions();
 
 	void	ShowNextTutorial(bool autoNext);
 
@@ -232,12 +232,13 @@ namespace Dialog
 		typedef GUI::Window	Super;
 
 		String		myTitle;
+		GUI::PLabel	hintLabel;
 
 		friend class Super;
 	protected:
 		/**/		Menu(){Super::logFullAutoLayout = true;}
 	public:
-		void		Setup(float initialAbsoluteWidth, const String&title);
+		void		Setup(float initialAbsoluteWidth, const String&title, bool escapeCloses);
 
 		static PMenu		Create()
 		{

@@ -72,7 +72,7 @@ namespace ScriptCache
 	PScript		Load(const PathString&path)
 	{
 		FileSystem::File rs;
-		ASSERT1__(FileSystem::Folder().Find(path,rs,true),path);
+		ASSERT1__(FileSystem::Folder().FindFile(path,rs),path);
 		auto*cached = map.QueryPointer(rs.GetLocation());
 		if (cached && FileSystem::GetModificationTime(path) == cached->second)
 			return cached->first;
@@ -119,7 +119,7 @@ namespace ScriptCache
 	static PathString	GetFileCachePath(const SHA256::HashContainer&id)
 	{
 		FileSystem::File f;
-		if (!GetCacheDirectory().Find(PathString(Bin2Str::ConvertPOD(id,InvalidIndex))+cacheFileExtension,f,false))
+		if (!GetCacheDirectory().FindFile(PathString(Bin2Str::ConvertPOD(id,InvalidIndex))+cacheFileExtension,f,false))
 			return "";
 		return f.GetLocation();
 	}

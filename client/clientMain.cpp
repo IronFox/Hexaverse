@@ -2028,11 +2028,11 @@ bool loop()
 
 				textout.MoveTo(0.0f,0.05f);
 				textout.SetColor(1,1,1);
-				textout << "FPS: "<<1.f / Engine::timing.delta << nl;
+				textout << "FPS: "<<M::RoundToInt(1.f / Engine::timing.delta) << nl;
 				if (Camera::locked && !TimeLapse::enabled)
 					textout << "Camera locked. Press F4 to unlock" << nl;
 				#ifdef _DEBUG
-					textout << "last remote message: "<<timer.GetSecondsSince(Network::client.GetLastPackageTime());
+					textout << "Server sec: "<<M::RoundToInt(timer.GetSecondsSince(Network::client.GetLastPackageTime()));
 				#endif
 
 			}
@@ -3539,6 +3539,7 @@ int main( int argc, const char* argv[])
 					AudioInterface::Create();
 					AudioInterface::SetMasterVolume(StartConfig::GetFloat("runtime/soundVolume",1.f));
 					Music::SetVolume(StartConfig::GetFloat("runtime/musicVolume",0.5f));
+					Music::SetPlayMusicDuringGameplay(StartConfig::GetBool("runtime/musicDuringGameplay"));
 				}
 
 			#endif

@@ -6,6 +6,8 @@ namespace Music
 {
 
 	static bool	lastShown = false;
+	static bool musicDuringGameplay = false;
+	static const DeltaWorks::PathString file = "resources/audio/Hexaverse Title M4.mp3";
 
 	Engine::OpenAL::MusicPlayer	player;
 
@@ -22,6 +24,42 @@ namespace Music
 		player.SetVolume(v);
 	}
 
+	bool	PlayMusicDuringGameplay()
+	{
+		return musicDuringGameplay;
+	}
+
+	static void UpdatePlayback()
+	{
+		bool doPlay = lastShown || musicDuringGameplay;
+
+		if (doPlay == player.IsPlaying())
+			return;
+
+		if (doPlay)
+		{
+			player.SetVolume(musicVolume);
+			player.Begin(file,true);
+		}
+		else
+			player.FadeOut(5.f);
+	}
+
+
+	void	SetPlayMusicDuringGameplay(bool play)
+	{
+		if (musicDuringGameplay == play)
+			return;
+		musicDuringGameplay = play;
+
+		if (lastShown)
+			return;	//nothing necessary
+
+		UpdatePlayback();
+
+	}
+
+
 
 	void	SignalServerListShown(bool doShow)
 	{
@@ -30,13 +68,7 @@ namespace Music
 
 		lastShown = doShow;
 
-		if (doShow)
-		{
-			player.SetVolume(musicVolume);
-			player.Begin("resources/audio/Hexaverse Title M4.mp3",true);
-		}
-		else
-			player.FadeOut(5.f);
+		UpdatePlayback();
 
 	}
 

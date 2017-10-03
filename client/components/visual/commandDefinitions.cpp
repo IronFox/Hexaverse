@@ -20,7 +20,7 @@
 #include "terrain.h"
 #include "objectRendering.h"
 #include "../cameraControl.h"
-
+#include "menu.h"
 
 
 namespace Objects
@@ -1256,7 +1256,7 @@ namespace Objects
 			using namespace Command;
 
 			globalCommands.baseCoords = Command::Base::coordOffset;
-			globalCommands.Add(int2(-1, 0),false,new GlobalCommand("End Round",
+			globalCommands.Add(int2(-2, 0),false,new GlobalCommand("End Round",
 			[]()
 			{
 				if (ApplicationInterface::HasSignalledRoundEnd())
@@ -1276,7 +1276,8 @@ namespace Objects
 						rs |= Objects::CommandFlags::IsFlashing;
 				return rs;
 			}));
-			globalCommands.Add(int2(0, 0),false,new GlobalCommand("Auto End Round",
+
+			globalCommands.Add(int2(-1, 0),false,new GlobalCommand("Auto End Round",
 			[]()
 			{
 				if (!RuntimeConfig::autoNewRound && ApplicationInterface::ShouldSignalRoundEnd())
@@ -1290,6 +1291,12 @@ namespace Objects
 				if (RuntimeConfig::autoNewRound)
 					rs |= Objects::CommandFlags::IsPermaActive;
 				return rs;
+			}));
+
+			globalCommands.Add(int2(0, 0),false,new GlobalCommand("Open Menu",
+			[]()
+			{
+				GUI::Show(Menu::main);
 			}));
 
 			viewCommands = AddChild(globalCommands,int2(1,0),false,"View");

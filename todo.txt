@@ -1,4 +1,6 @@
-﻿bug: in configuration mode nexus bases sometimes do not update, despite server version visible
+alliances
+
+bug: in configuration mode nexus bases sometimes do not update, despite server version visible
 
 aerial radar and turret
 bomber
@@ -151,6 +153,9 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+button for main menu in server selection
+option to not fade out music in game
+remote console load command should behave as save command
 Better handling of crashes in release (should not cause windows popup). Should probably self-terminate as a result.
 better scoring
 vertical sensors (vertical sensor corridor structures) (surveyors do this)

@@ -44,15 +44,20 @@ namespace Dialog
 			},
 			check
 		));
+		Super::RemoveComponent(hintLabel);
 		Super::AnchorBelowPrevious(button,0.f,Super::components.IsEmpty() ? 0.f : 0.015f);
+		if (hintLabel)
+			Super::AnchorBelowPrevious(hintLabel,0.015f,0.015f);
 
 		LogEvent(EventClass::Preset::gui,"Menu["+String(this)+"/"+myTitle+"]::AddCommand("+name+", ...)");
-
 		return button;
 	}
 
-	void		Menu::Setup(float initialAbsoluteWidth, const String&title)
+	void		Menu::Setup(float initialAbsoluteWidth, const String&title, bool escapeCloses)
 	{
+		canBeImplicitlyClosed = escapeCloses;
+		Super::ClearComponents();
+		hintLabel.reset();
 		myTitle = title;
 		if (Super::DoesAutoCenter())
 			SetWidth(initialAbsoluteWidth);
@@ -66,6 +71,15 @@ namespace Dialog
 			label->SetText(title);
 			label->SetVerticalPadding( 0.1f );
 			Super::AnchorBelowPrevious(label,0.015f,0.f);
+		}
+
+		if (escapeCloses)
+		{
+			hintLabel.reset(new GUI::Label());
+			hintLabel->SetLocalFontScale(0.75f);
+			hintLabel->SetText("Press Escape to close");
+			hintLabel->SetVerticalPadding( 0.1f );
+			Super::AnchorBelowPrevious(hintLabel,0.015f,0.f);
 		}
 		LogEvent(EventClass::Preset::gui,"Menu["+String(this)+"]::Setup("+String(initialAbsoluteWidth)+","+myTitle+")");
 	}
@@ -636,15 +650,15 @@ namespace Dialog
 	{
 		static String words[] = {
 			"Thinking",
+			"Pretending to think",
 			"Looking really closely at ... not the 'End Round' button",
 			"Trying hard and long to be smarter than you. Mostly long",
 			"Despairing",
 			"Twiddling thumbs. Not pressing buttons you want them to",
-			"Totally not hitting return right now",
+			"Totally not hitting the 'End Round' button right now",
 			"Trolling you",
 			"One with the game. Not one with the 'End Round' button",
-			"It's a bird, it's a plane. It's not the 'End Round' button",
-			"Looking at the beautiful textures. Wait, what?",
+			"Gazing at the beautiful textures. Wait, what?",
 			"Beyond the flow of time",
 			"Please hold the line...",
 		};
@@ -990,6 +1004,12 @@ namespace Dialog
 		Detail::pendingTutorials.Clear();
 		GUI::Destroy();
 	}
+
+	void	HideFactions()
+	{
+		GUI::Hide(Detail::factionDialog);
+	}
+
 
 	bool	ShowingFactions()
 	{

@@ -108,6 +108,7 @@ namespace GUI
 				return;
 			type = Fixed;
 			distanceFromReference = distance;
+			references.Clear();
 			references.Append(c);
 			distanceType = dtype;
 		}
