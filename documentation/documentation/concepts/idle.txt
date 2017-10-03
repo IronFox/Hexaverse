@@ -4,8 +4,9 @@ Different requirements apply for a unit to be considered //idle//:
 * A mobile unit has run out of tasks and is awake.
 * A factory has run out of production tasks, is awake, and can be [[concepts/compound|enabled]].
 * A mine is currently disabled, is awake, and can be [[concepts/compound|enabled]].
-* An offensive mobile unit has no tasks and detected hostile units within attack range (this point ignores a potential sleep-state).
 
-With the exception of the last point, units can be [[controls|put to sleep]] to avoid them appearing in the idle queue. If no unit is left in it, the [[controls|end round button]] will flash.
+Units can be [[controls|put to sleep]] to avoid them appearing in the idle queue. 
 
 During [[concepts/round|command phase]] the //**space key**// can be used to go through the list of idle units. This feature is very useful to not miss units without jobs.
+If no unit is left in the idle queue, the [[controls|end round button]] will flash.
+If [[controls|Auto End Round]] is active, and no disrupting actions have happened during the last round, the player round will be ended automatically.

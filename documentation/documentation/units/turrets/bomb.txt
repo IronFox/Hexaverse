@@ -1,0 +1,8 @@
+----
+Bombs are technically Kamikaze units.
+Care should be taken to not place them too closely to each other unless a chain-reaction is explicitly desired.
+It would not be the first war ended by an unintentional chain reaction of explosions, going back all the way into your own base.
+
+Doomsday bomb explosions can be devastating to the [[terrain]], entire hostile [[concepts/faction|factions]], and possibly yourself, if you are not careful.
+They can end a war with a single detonation, e.g. by placing one beneath your enemy's base.
+Doomsday explosions do not trigger on destruction.

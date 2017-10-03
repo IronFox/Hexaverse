@@ -5,12 +5,11 @@ Factories (e.g. [[units/structures/vehicle plant|vehicle plants]]), towers, [[un
 Most structures and mobile units allow queueing up to 16 commands each.
 
 Commands are typically issued via their hexagonal [[controls|control buttons]].
-More immediate are movement and attack commands issued by right-clicking anywhere.
+Movement and attack commands may be issued by right-clicking at hostile units or terrain locations.
 This feature is available to mobile units and towers.
 Use the **shift key** to queue up commands.
 With the exception of very few commands (e.g. placing a unit that has been completed by a [[units/structures/vehicle plant]]), all commands are queued rather than executed immediately.
 
 Units with empty command queues may end up doing nothing at all.
-Where appropriate these units will be considered [[concepts/idle]].
-Only towers are able to fill their command queue on the fly if hostile targets are within safe attacking range.
-
+Where appropriate, these units will be considered [[concepts/idle]].
+Offensive units (including towers) can fill their command queue on the fly if hostile targets are within safe attacking range.

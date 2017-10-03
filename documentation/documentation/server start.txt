@@ -5,7 +5,7 @@ Upon start up, it will load the current [[config/server|server configuration]] a
 
 
 
-Alternatively, the client UI allows to start a dedicated server from the server listing.
+Alternatively, the client UI allows to start a dedicated server from the server selection screen.
 Note that any server started this way will not display a console window, and shut down automatically when the client closes.
 Should the client (for whatever reason) not close regularly, then the server will continue running until the client is restarted and the server is closed manually via the client UI.
 
@@ -13,6 +13,7 @@ Should the client (for whatever reason) not close regularly, then the server wil
 ==Save Games==
 The server manages all save games.
 See [[config/save games]] for details.
+If you are not hosting the server, then you cannot create or load save games.
 
 ==Logs==
 
@@ -28,7 +29,7 @@ If you are located behind a NAT router, then these ports must be forwarded to yo
 For custom ports (see Runtime Parameters), you must always forward the **first two** ports.
 The first is used as a high-frequency info port which determines connection latency and sends game information to clients before they actually join a game.
 The second is the game port that handles all game-related communication.
-The third (UDP) and fourth ports are nonfunctional beyond the local LAN, and may be ignored.
+The third (UDP) and fourth ports are nonfunctional beyond your local area network, and may be ignored.
 
 
 ==Runtime Parameters==

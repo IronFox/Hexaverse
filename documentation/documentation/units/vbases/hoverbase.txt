@@ -1,0 +1,4 @@
+Hoverbases are nimble, can stand virtually everywhere (except on pure air or lava), and climb mountains quickly.
+They have low base health and turret carrying capacity, however, rendering them unsuitable for heavy turret bases, or extensive warfare.
+It is generally recommended to replace this base with either [[units/vbases/catamaran base|cat bases]], or [[units/vbases/heavy base|heavy bases]], depending on terrain properties.
+If the terrain is exceptionally mountainous, consider building roads and tunnels for your vehicles, using [[units/turrets/terraformer]] vehicles.

@@ -14,7 +14,7 @@ Multiple natural resources may be found on the same cell, causing their bars to 
 
 ===Discovery===
 
-Natural resource coverage is initially unknown, and uncovered automatically within the [[concepts/scanning range]] of vehicles featuring a [[units/turrets/surveyor]] turret.
+Natural resource coverage is initially unknown, and uncovered automatically within the [[concepts/scanning range]] of vehicles or towers featuring a [[units/turrets/surveyor]] turret.
 
 ==Other Resources==
 Currently only %Energy% Energy is produced artificially by [[units/structures/generator|generators]] and [[units/structures/reactor core|reactor cores]], by converting %Fuel% Fuel or %Uranium% Uranium.

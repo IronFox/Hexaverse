@@ -34,4 +34,4 @@ Terrain clipping allows to view caves beneath the ground. It visually removes te
 It can be configured via the respective [[controls|view buttons]], but may also be toggled using the ''control key''.
 ''Page up/down'' can be used to quickly alter the clipping height.
 
-Liquids (water/lava) are shown in their respective colors but all other types are shown as solid black to contrast this viewing mode against regular non-clipped terrain.
+Liquids (water/lava) are shown in their respective colors but all other types are shown as solid dark gray, or black to contrast this viewing mode against regular non-clipped terrain.

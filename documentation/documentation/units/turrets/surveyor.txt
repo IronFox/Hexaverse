@@ -1,0 +1,8 @@
+----
+Surveyor vehicles and towers serve two purposes:
+Their most immediate purpose lies in detecting previously unknown natural [[concepts/resources]].
+Their second, arguably more important purpose lies in detecting changes in underground terrain.
+Regular [[units/turrets/radar|radars]] have very limited capacity to penetrate the ground. Surveyors, on the other hand, can scan deep into the ground to detect new caves and hostile units.
+
+Surveyor vehicles may be automated to search for new resources on their own, prioritizing the vicinity of [[units/turrets/terraformer]] vehicles.
+This should not be done, however, in the proximity of known hostile entities that are not currently present in the form of actual contacts or ghosts (the surveyor can only avoid what is visible in the client game state).

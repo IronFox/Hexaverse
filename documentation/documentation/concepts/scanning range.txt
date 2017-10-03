@@ -13,5 +13,12 @@ The terrain is shown in three shades:
 # Currently observed
 # Observed at some point but not anymore.
 
-Obviously, it is benefitial to observe as much of the terrain as possible, but it may be of higher priority to first get an idea of enemy locations.
+Obviously, it is benefitial to observe as much of the terrain surrounding your locations as possible, but it may be of higher priority to focus on first finding your enemies.
 
+==Terrain Penetration==
+Regular sensory has very limited capacity to scan through terrain.
+Above surface, this forces [[units/turrets/radar]] units to be positioned in exposed locations.
+
+Beneath the planetary surface, on the other hand, this circumstance renders your units practically blind.
+The only unit types capable of scanning for subsurface activity are those equiped with a [[units/turret/surveyor]] turret.
+If you expect your enemies might attempt a subsurface attack, then early placement of [[units/structures/surveyor tower|surveyor towers]] can avert catastrophy.
