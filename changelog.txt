@@ -4,7 +4,8 @@ v0.6.6	[Oct 3 2017]
 	+ Added option to keep music playing during regular game. Not recommended since there currently is only one track.
 	> Loading a save game via control console will now lookup the desired path relative to the server configuration save directory.
 	* Fixed routing when encountering floating structure foundations.
-
+	* Fixed server crash when reporting invalid strings.
+	
 v0.6.5	[Oct 1 2017]
 	+ Added background music to server selection screen.
 	+ Added remote control commands to end game at any time.

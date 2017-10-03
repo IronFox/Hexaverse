@@ -912,8 +912,9 @@ namespace Reflection
 					fused << trimmed;
 				}
 			}
-			Package::AssertValidity(fused.ToStringRef(),1024);
-			item.SetUniqueHelp(fused.ToStringRef());
+			String final = fused.ToStringRef();
+			Package::AssertValidity(final,1024);
+			item.SetUniqueHelp(final);
 			return true;
 		}
 		return false;
