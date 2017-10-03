@@ -95,7 +95,7 @@ namespace Objects
 			/**/			CallbackCommand(const String&name, const FOnExecute&exec, const FCheck&check):Super(name), execute(exec),check(check)	{}
 
 			virtual void	Execute() override												{execute();}
-			virtual	void	Refresh(bool controlEnabled) override							{state = check(controlEnabled);}
+			virtual	void	Refresh(bool controlEnabled) override							{if (check) state = check(controlEnabled);}
 			virtual void	GetCosts(int&costOut, Resource&costTypeOut, int&timeCostOut) override	{if (getCosts) getCosts(costOut,costTypeOut,timeCostOut); else Super::GetCosts(costOut,costTypeOut,timeCostOut);}
 		};
 
@@ -116,7 +116,7 @@ namespace Objects
 				this->check = check;
 				this->getCosts = getCosts;
 			}
-			/**/			IconCommand(const String&name, const FOnExecute&exec, const FCheck&check):Super(name)
+			/**/			IconCommand(const String&name, const FOnExecute&exec, const FCheck&check = FCheck()):Super(name)
 			{
 				LoadIcon();
 				this->execute = exec;
