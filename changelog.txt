@@ -1,4 +1,4 @@
-v0.6.6
+v0.6.6	[Oct 3 2017]
 	+ Added Game menu button to show active factions.
 	+ Added button to open main menu.
 	+ Added option to keep music playing during regular game. Not recommended since there currently is only one track.
