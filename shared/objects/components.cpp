@@ -1459,7 +1459,6 @@ namespace Objects
 						if (moveOnWater)
 							outResult.GetLastLine() += " (moves over water)";
 					outResult<<"Base health: "+health.Describe(researchState);
-					outResult<<"Turret carrying capacity: "+carryingCapacity.Describe(researchState);
 					float rangeMod = turretRangeModifier.GetValue(researchState);
 					if (rangeMod != 0)
 						outResult<<"Turret range modifier: "+turretRangeModifier.Describe(researchState);
