@@ -636,15 +636,15 @@ namespace Dialog
 	{
 		static String words[] = {
 			"Thinking",
+			"Pretending to think",
 			"Looking really closely at ... not the 'End Round' button",
 			"Trying hard and long to be smarter than you. Mostly long",
 			"Despairing",
 			"Twiddling thumbs. Not pressing buttons you want them to",
-			"Totally not hitting return right now",
+			"Totally not hitting the 'End Round' button right now",
 			"Trolling you",
 			"One with the game. Not one with the 'End Round' button",
-			"It's a bird, it's a plane. It's not the 'End Round' button",
-			"Looking at the beautiful textures. Wait, what?",
+			"Gazing at the beautiful textures. Wait, what?",
 			"Beyond the flow of time",
 			"Please hold the line...",
 		};
