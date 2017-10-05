@@ -31,7 +31,6 @@ namespace PortOffset
 	{
 		Info,
 		Session,
-		BroadcastFrom,
 		Control
 	};
 }
