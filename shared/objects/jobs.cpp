@@ -1029,6 +1029,23 @@ namespace Objects
 			return JobDone;
 		}
 
+		/*virtual override*/ String			Sequence::GetName() const
+		{
+			switch (mode)
+			{
+				case CursorMode::BuildRoadChainMode:
+					return "Build Road to...";
+				case CursorMode::BuildConnectorChainMode:
+					return "Build Connectors to...";
+				case CursorMode::BuildHighWallChainMode:
+					return "Build High Wall to...";
+				case CursorMode::BuildLowWallChainMode:
+					return "Build Low Wall to...";
+				case CursorMode::BuildBridgeMode:
+					return "Build Bridge to...";
+			}
+			return "???...";
+		}
 
 		/*virtual override*/	void			Sequence::Deserialize(IReadStream&inStream)
 		{
@@ -1082,12 +1099,18 @@ namespace Objects
 				}
 				case CursorMode::BuildConnectorChainMode:
 					return !!GetStructure(cell);
-				case CursorMode::BuildWallChainMode:
+				case CursorMode::BuildHighWallChainMode:
 				{
 					const auto&stack = world.GetStack(Grid::low.grid.GetCell(cell.stackID).higherEquivalent);
 					Grid::Content c0 = Grid::Content::Reinterpret(stack.GetCellI(cell.height-1).content),
 									c1 = Grid::Content::Reinterpret(stack.GetCellI(cell.height-2).content);
 					return c0 == Grid::Content::Foundation && c1 == Grid::Content::Foundation;
+				}
+				case CursorMode::BuildLowWallChainMode:
+				{
+					const auto&stack = world.GetStack(Grid::low.grid.GetCell(cell.stackID).higherEquivalent);
+					Grid::Content c0 = Grid::Content::Reinterpret(stack.GetCellI(cell.height-1).content);
+					return c0 == Grid::Content::Foundation;
 				}
 			}
 			return true;
@@ -1157,7 +1180,7 @@ namespace Objects
 							roundsToJobCompletion += cost / speed + (cost % speed ? 1 : 0);
 						}
 						break;
-						case CursorMode::BuildWallChainMode:
+						case CursorMode::BuildHighWallChainMode:
 						{
 							int found = 0;
 							for (index_t i = 0; i < myJobIndex; i++)
@@ -1168,20 +1191,38 @@ namespace Objects
 									found ++;
 								}
 								else
-								if (To<BuildWallUp>::DynamicCast(task.job) 
-								&& 
-								(
-								(task.foci.Count() == 1 && task.foci.Peek().target.stackID == origin.stackID)
-								||
-								((task.foci.Count() == 0 && at.stackID == origin.stackID))
-								))
+									if (
+										To<BuildWallUp>::DynamicCast(task.job) 
+										&& 
+										(
+											(task.foci.Count() == 1 && task.foci.Peek().target.stackID == origin.stackID)
+											||
+											(task.foci.Count() == 0 && at.stackID == origin.stackID)
+										)
+									)
+									{
+										found ++;
+									}
+							}
+							cost = BuildWallMineralCosts;
+							resourceCostLeft += cost * (2 - found);
+							roundsToJobCompletion += (cost / speed + (cost % speed ? 1 : 0))  * (2 - found);
+						}
+						break;
+						case CursorMode::BuildLowWallChainMode:
+						{
+							int found = 0;
+							for (index_t i = 0; i < myJobIndex; i++)
+							{
+								const auto&task = v.myTasks[i];
+								if (To<BuildHorizontalWall>::DynamicCast(task.job) && task.foci.Count() == 1 && task.foci.Peek().target.stackID == origin.stackID)
 								{
 									found ++;
 								}
 							}
 							cost = BuildWallMineralCosts;
-							resourceCostLeft += cost * (2 - found);
-							roundsToJobCompletion += (cost / speed + (cost % speed ? 1 : 0))  * (2 - found);
+							resourceCostLeft += cost * (1 - found);
+							roundsToJobCompletion += ((cost + speed-1) / speed)  * (1 - found);
 						}
 						break;
 					}
@@ -1217,10 +1258,15 @@ namespace Objects
 								roundsToJobCompletion += cost / speed + (cost % speed ? 1 : 0);
 							}
 							break;
-							case CursorMode::BuildWallChainMode:
+							case CursorMode::BuildHighWallChainMode:
 								cost = BuildWallMineralCosts;
 								resourceCostLeft += 2 * cost;
 								roundsToJobCompletion += 2*(cost / speed + (cost % speed ? 1 : 0));
+							break;
+							case CursorMode::BuildLowWallChainMode:
+								cost = BuildWallMineralCosts;
+								resourceCostLeft += cost;
+								roundsToJobCompletion += (cost+speed-1) / speed ;
 							break;
 						}
 					}
@@ -1370,14 +1416,21 @@ namespace Objects
 								shared_from_this(),
 								&v.location);
 						break;
-						case CursorMode::BuildWallChainMode:
+						case CursorMode::BuildHighWallChainMode:
 						{
 							Grid::LCellIdI focus = v.location;
 							focus++;
 							v.myTasks.PushFront(MobileEntity::Task("Move To",next,true,MobileEntity::Task::MoveTo));
 							v.RegisterNewFrontJob("", PVehicleJob(new BuildHorizontalWall(v)),shared_from_this(), nullptr);
 							v.RegisterNewFrontJob("", PVehicleJob(new BuildWallUp(v)),shared_from_this(), &focus);
-
+						}
+						break;
+						case CursorMode::BuildLowWallChainMode:
+						{
+							Grid::LCellIdI focus = v.location;
+							focus++;
+							v.myTasks.PushFront(MobileEntity::Task("Move To",next,true,MobileEntity::Task::MoveTo));
+							v.RegisterNewFrontJob("", PVehicleJob(new BuildHorizontalWall(v)),shared_from_this(), nullptr);
 						}
 						break;
 						case CursorMode::BuildBridgeMode:

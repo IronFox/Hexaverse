@@ -579,7 +579,8 @@ namespace Objects
 
 				case CursorMode::BuildConnectorChainMode:
 				case CursorMode::BuildRoadChainMode:
-				case CursorMode::BuildWallChainMode:
+				case CursorMode::BuildHighWallChainMode:
+				case CursorMode::BuildLowWallChainMode:
 				case CursorMode::BuildBridgeMode:
 					if (!turret->CanDo(mode == CursorMode::BuildConnectorChainMode ? Component::Construct : Component::TerrainAdd  ) )
 						return false;

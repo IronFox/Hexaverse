@@ -85,15 +85,19 @@ namespace Objects
 
 	inline bool					CursorModeExpectsLeftClick(CursorMode activeCursorMode)
 	{
-		return (
-		activeCursorMode == CursorMode::BuildConnectorChainMode 
-		|| activeCursorMode == CursorMode::BuildRoadChainMode
-		|| activeCursorMode == CursorMode::BuildBridgeMode
-		|| activeCursorMode == CursorMode::BuildWallChainMode
-		|| activeCursorMode == CursorMode::AttackMode 
-		|| activeCursorMode == CursorMode::DigTunnelMode
-		|| activeCursorMode == CursorMode::PlaceStructureMode
-		);
+		switch (activeCursorMode)
+		{
+			case CursorMode::BuildConnectorChainMode:
+			case CursorMode::BuildRoadChainMode:
+			case CursorMode::BuildBridgeMode:
+			case CursorMode::BuildHighWallChainMode:
+			case CursorMode::BuildLowWallChainMode:
+			case CursorMode::AttackMode:
+			case CursorMode::DigTunnelMode:
+			case CursorMode::PlaceStructureMode:
+				return true;
+		}
+		return false;
 	}
 
 	#ifdef HAS_WINDOW

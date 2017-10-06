@@ -1,4 +1,6 @@
 v0.6.7
+	+ Added terraforming command "Build Low Wall to"
+	> Renamed terraforming command "Build Wall to" to "Build High Wall to"
 	* Fixed rare crash when trying to render tasks without visualization
  
 v0.6.6	[Oct 3 2017]

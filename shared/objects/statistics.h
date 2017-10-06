@@ -87,7 +87,7 @@ namespace Objects
 			friend void				SerialSync(IReadStream&inStream, MetricTable&);
 
 		private:
-			UINT64&					Fetch(Metric metric);
+			UINT64&					FetchOptional(Metric metric);
 
 			GenericHashTable<K,UINT64>	map;
 		};
