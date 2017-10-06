@@ -1,8 +1,10 @@
+faction-colored user messages
+colored faction list
+
 alliances
 
 hotkeys
 
-build high/low wall (currently only high exists, which is misleading)
 
 bug: in configuration mode nexus bases sometimes do not update, despite server version visible
 
@@ -158,6 +160,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+build high/low wall (currently only high exists, which is misleading)
 button for main menu in server selection
 option to not fade out music in game
 remote console load command should behave as save command
