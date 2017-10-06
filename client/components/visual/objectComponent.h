@@ -138,6 +138,7 @@ namespace Objects
 		static void						Recompile(const MobileEntity&e, MobileEntity::Task&t,const Grid::LCellIdI&pointOfOrigin);
 		void							RecompilePath(const MobileEntity::Task&t, int stepsPerRound, float structureSize=vehicleScale);
 
+		static TaskAttachment*			FetchOptional(const Objects::MobileEntity::Task&);
 		static TaskAttachment&			Of(const Objects::MobileEntity::Task&);
 		static TaskAttachment&			Allocate(Objects::MobileEntity::Task&);
 	};

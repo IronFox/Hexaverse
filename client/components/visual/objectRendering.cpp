@@ -1876,8 +1876,9 @@ namespace Objects
 			{
 				foreach (v->myTasks,t)
 				{
-					const auto&visual = Objects::TaskAttachment::Of(*t);
-					display.Render(visual.instruction);
+					const auto*visual = Objects::TaskAttachment::FetchOptional(*t);
+					if (visual)
+						display.Render(visual->instruction);
 				}
 			}
 

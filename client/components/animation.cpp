@@ -716,9 +716,6 @@ namespace Animation
 					t.name = "Unknown construction task";
 					t.job = job;
 					t.type = Objects::MobileEntity::Task::Job;
-					#ifdef HAS_WINDOW
-						Objects::TaskAttachment::Allocate(t);
-					#endif
 				}
 			}
 			else

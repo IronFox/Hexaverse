@@ -1,4 +1,5 @@
 v0.6.7
+	* Fixed rare crash when trying to render tasks without visualization
  
 v0.6.6	[Oct 3 2017]
 	+ Added Game menu button to show active factions.
