@@ -13,7 +13,7 @@ The terrain is shown in three shades:
 # Currently observed
 # Observed at some point but not anymore.
 
-Obviously, it is benefitial to observe as much of the terrain surrounding your locations as possible, but it may be of higher priority to focus on first finding your enemies.
+Obviously, it is benefitial to observe as much of the terrain surrounding your locations as possible, but it may be of higher priority to first focus on finding your enemies.
 
 ==Terrain Penetration==
 Regular sensory has very limited capacity to scan through terrain.

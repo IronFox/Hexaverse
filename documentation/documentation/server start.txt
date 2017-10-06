@@ -6,8 +6,8 @@ Upon start up, it will load the current [[config/server|server configuration]] a
 
 
 Alternatively, the client UI allows to start a dedicated server from the server selection screen.
-Note that any server started this way will not display a console window, and shut down automatically when the client closes.
-Should the client (for whatever reason) not close regularly, then the server will continue running until the client is restarted and the server is closed manually via the client UI.
+Note that any server started this way will not display a console window, and **shut down automatically when the client closes**.
+Should the client (for whatever reason) not close regularly, then the server will continue running until the client is restarted and/or the server is closed manually via the client UI.
 
 
 ==Save Games==
@@ -18,7 +18,7 @@ If you are not hosting the server, then you cannot create or load save games.
 ==Logs==
 
 Regardless of how they are started, all servers create a log file in ''[[config/game folder]]\server\logs\''.
-
+In case of crashes, check these logs.
 
 ==NAT==
 
@@ -26,11 +26,11 @@ The server requires effectively two TCP ports to operate.
 By default these are ''10247'' and ''10248''.
 If you are located behind a NAT router, then these ports must be forwarded to your physical server.
 
-For custom ports (see Runtime Parameters), you must always forward the **first two** ports.
+For custom ports (see Runtime Parameters), you must always forward the **first two** of three ports.
 The first is used as a high-frequency info port which determines connection latency and sends game information to clients before they actually join a game.
 The second is the game port that handles all game-related communication.
-The third (UDP) and fourth ports are nonfunctional beyond your local area network, and may be ignored.
 
+The third is used by the control console connection (if active) and may be ignored here.
 
 ==Runtime Parameters==
 
@@ -38,9 +38,9 @@ For the more proficient users, a number of runtime parameters allow customizatio
 Execute //''server --help''// for a list of all switches.
 
 If you wish to run multiple servers on the same system, then an adjustment of base ports is required.
-The current game base port is 10247. Starting from there, three more ports are used (effectively: ''10247 (TCP), 10248 (TCP), 10249 (UDP), 10250 (TCP)'').
-Consecutive servers should thus allocate base ports (via the ''-p [base port]'' parameter) in steps of 4.
+The current game base port is 10247. Starting from there, two more TCP ports are used (effectively: ''10247, 10248, and 10249'').
+Consecutive servers should thus allocate base ports (via the ''-p [base port]'' parameter) in steps of 3.
 
-External clients trying to connect must specify the base port as additional address parameter (''yourhost:baseport'').
+External clients trying to connect must specify non-default base ports as additional address parameter (''yourhost:baseport''), e.g. ''localhost:20000'', if 20000 is your new base port.
 
 Use the ''-p [base port]'' runtime parameter of a [[config/control console]] to connect to these servers.

@@ -4,6 +4,7 @@ During the [[concepts/round|command phase]] players can change the active comman
 Factories (e.g. [[units/structures/vehicle plant|vehicle plants]]), towers, [[units/structures/laboratory|laboratories]] and mobile units accept commands to execute during the following phases.
 Most structures and mobile units allow queueing up to 16 commands each.
 
+{{img:terraformerCommands.png |Terraformer commands}}
 Commands are typically issued via their hexagonal [[controls|control buttons]].
 Movement and attack commands may be issued by right-clicking at hostile units or terrain locations.
 This feature is available to mobile units and towers.
