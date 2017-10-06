@@ -252,6 +252,7 @@ namespace Objects
 			bool							ignoresVehicleMotion = false,	//indicates that the vehicle can fire and move at 100% each in the same round
 											dealsEMPDamage = false,
 											detectsResources = false,
+											isScanner = false,	//indicates a turret explicitly designed to scan for hostile units or terrain changes
 											continuousRotation = false,	//indicates that the turret should rotate continuously, regardless of server turret rotation commands
 											requiresStationaryVehicle = false,	//cannot fire if vehicle moved last round
 											isDoomsday = false;	//server may reject their deployment
