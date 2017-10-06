@@ -1873,7 +1873,7 @@ namespace UI
 				SurfaceRenderer::SetColor(float4(0,0,0,0.6f));
 				float w = 0.2f / display.GetPixelAspect();
 				//textout.locate(-1.f + 0.01f,-1.f + textout.GetScaledHeight()*1.2f*(y+6));
-				M::Rect<> t(-1,lineHeight*4.f-1.f,w*2.f - 1.f,lineHeight*11.5f - 1.f);
+				M::Rect<> t(-1,lineHeight*5.f-1.f,w*2.f - 1.f,lineHeight*11.5f - 1.f);
 				SurfaceRenderer::Rasterize(
 					float2(t.x.min,t.y.min),float4(0,0,0,0.8f),
 					float2(t.x.max,t.y.min),float4(0,0,0,0.2f),
