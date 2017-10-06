@@ -1,5 +1,9 @@
 alliances
 
+hotkeys
+
+build high/low wall (currently only high exists, which is misleading)
+
 bug: in configuration mode nexus bases sometimes do not update, despite server version visible
 
 aerial radar and turret
@@ -136,7 +140,8 @@ round delay visualization on attack vectors
 
 vertical turret rotation
 
-water simulation
+liquid simulation
+	water as a resource?
 vehicle upgrade facilities
 multi-planet
 
