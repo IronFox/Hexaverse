@@ -82,9 +82,34 @@ struct TUniqueID
 	static const count_t NumBytes = 16;
 	BYTE		bytes[NumBytes];
 
+	typedef const BYTE* const_iterator;
+	typedef BYTE* iterator;
+
+	constexpr size_t	size() const {return NumBytes;}
+
 	friend hash_t	Hash(const TUniqueID&id)
 	{
 		return StdMemHash(id.bytes,sizeof(id.bytes));
+	}
+
+	const_iterator	begin() const {return bytes;}
+	const_iterator	end() const {return bytes+NumBytes;}
+	iterator	begin() {return bytes;}
+	iterator	end() {return bytes+NumBytes;}
+
+	bool		IsEmpty() const
+	{
+		auto it = begin();
+		const auto end = this->end();
+		for (;it != end; ++it)
+			if (*it != 0)
+				return false;
+		return true;
+	}
+
+	bool		IsNotEmpty() const
+	{
+		return !IsEmpty();
 	}
 
 	String		ToFullString() const
