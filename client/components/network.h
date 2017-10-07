@@ -392,7 +392,10 @@ namespace Network
 
 	extern Timer::Time		lastPing,lastServerTableUpdate;
 
-	
+	extern const String		allowedChatCharacters;
+
+
+	void		SendChatMessage(const String&msg);
 
 	void		Shutdown();
 

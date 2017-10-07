@@ -142,6 +142,15 @@ namespace Network
 		}
 	}
 
+	void SendChatMessage(const String & msg)
+	{
+		if (msg.TrimRef().length() > 0)
+		{
+			if (client.IsConnected())
+				Channels::chatMessage.SendTo(client,msg);
+		}
+	}
+
 	void			LoadScript(const SHA256::HashContainer&id)
 	{
 		ScriptCache::PScript script = ScriptCache::Lookup(id);
@@ -2082,6 +2091,8 @@ bool		Network::ConnectToConfiguredServerIfAvailable()
 	return false;
 }
 
+
+const String Network::allowedChatCharacters = "abcdefghijklmnopqrstuvwxyz���ABCDEFGHIJKLMNOPQRSTUVWXYZ���0123456789_-:; <>!'\"'$%^&*()=+.,/\\#@?";
 
 void	Network::SignalProtocolDisruption(const String&message)
 {
