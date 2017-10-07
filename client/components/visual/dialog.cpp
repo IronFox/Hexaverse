@@ -89,7 +89,6 @@ namespace Dialog
 	{
 
 		Queue<PDialog,Swap>		pendingTutorials;
-		PDialog					factionDialog;
 		bool		showTutorials = true;
 
 		struct ComponentFlags
@@ -646,65 +645,12 @@ namespace Dialog
 		return d;
 	}
 
-	String	WordForThinking(const RuntimeConfig::RoundNumber&roundNumber, const void*factionPointer)
-	{
-		static String words[] = {
-			"Thinking",
-			"Pretending to think",
-			"Looking really closely at ... not the 'End Round' button",
-			"Trying hard and long to be smarter than you. Mostly long",
-			"Despairing",
-			"Twiddling thumbs. Not pressing buttons you want them to",
-			"Totally not hitting the 'End Round' button right now",
-			"Trolling you",
-			"One with the game. Not one with the 'End Round' button",
-			"Gazing at the beautiful textures. Wait, what?",
-			"Beyond the flow of time",
-			"Please hold the line...",
-		};
-		CRC32::Sequence s;
-		s.AppendPOD(roundNumber);
-		s.AppendPOD(factionPointer);
-		
-		UINT32 random = s.Finish();
-
-		return words[random % ARRAYSIZE(words)];
-	}
 
 
 	
 
 
 
-	WDialog	ShowFactions(const Buffer0<Faction>&factions)
-	{
-		GUI::VerifyIntegrity(CLOCATION);
-		if (Detail::factionDialog)
-		{
-			RemoveDialog(Detail::factionDialog);
-			GUI::VerifyIntegrity(CLOCATION);
-		}
-
-
-		PDialog d = Detail::NewModalDialog(Detail::ComponentFlags::ConfirmButton, "Close", false);
-
-		Detail::factionDialog = d;
-
-		Array<String> list(factions.Count()+1);
-		list.First() = "Known factions:";
-		for (index_t i = 0; i < factions.Count(); i++)
-			list[i+1] = "* "+factions[i].name+(factions[i].online?
-			(factions[i].requestedNewRound ? "" : " ("+WordForThinking(RuntimeConfig::roundNumber,factions[i].factionReference )+")")
-			:"   -    offline");
-
-		d->textField->SetText( list );
-		d->textField->alignCenter = false;
-		d->textField->SetLocalFontScale(0.9f);
-		d->ReLayout();
-
-		GUI::VerifyIntegrity(CLOCATION);
-		return d;
-	}
 
 	bool	RemoveTutorial(const PDialog&dialog)
 	{
@@ -1003,17 +949,6 @@ namespace Dialog
 	{
 		Detail::pendingTutorials.Clear();
 		GUI::Destroy();
-	}
-
-	void	HideFactions()
-	{
-		GUI::Hide(Detail::factionDialog);
-	}
-
-
-	bool	ShowingFactions()
-	{
-		return IsVisible( Detail::factionDialog ) ;
 	}
 
 

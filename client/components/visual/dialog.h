@@ -136,12 +136,6 @@ namespace Dialog
 	typedef std::weak_ptr<Dialog>	WDialog;
 
 
-	struct Faction
-	{
-		String	name;
-		bool	online, requestedNewRound;
-		void*	factionReference;
-	};
 
 
 	/**
@@ -191,11 +185,6 @@ namespace Dialog
 	
 
 
-
-	WDialog	ShowFactions(const Buffer0<Faction>&factions);
-
-	bool	ShowingFactions();
-	void	HideFactions();
 
 	void	ShowNextTutorial(bool autoNext);
 

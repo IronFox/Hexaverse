@@ -20,6 +20,7 @@
 #include "gridControl.h"
 #include "visual/objectChoices.h"
 #include "visual/terrain.h"
+#include "visual/factionTable.h"
 #include "clientEvents.h"
 
 
@@ -824,10 +825,17 @@ namespace Network
 
 			Logging::Origin origin = msg.isPrivate ? Logging::Origin::ServerPrivate : Logging::Origin::ServerPublic;
 
+			auto cls = EventClass( EventSignificance::Reinterpret(msg.significance),  EventFlavor::Reinterpret(msg.flavor));
 			if (f)
-				LogEvent(EventClass( EventSignificance::Reinterpret(msg.significance),  EventFlavor::Reinterpret(msg.flavor)) ,f,msg.message,origin);
+				LogEvent(cls ,f,msg.message,origin);
 			else
-				LogEvent(EventClass( EventSignificance::Reinterpret(msg.significance),  EventFlavor::Reinterpret(msg.flavor)) ,e.get(),msg.message,origin);
+				LogEvent(cls ,e.get(),msg.message,origin);
+
+			#ifdef HAS_WINDOW
+				if (cls.flavor == EventFlavor::ChatMessage)
+					GUI::FactionTable::SignalChatMessage(f,msg.message);
+			#endif
+
 		}
 
 
@@ -2092,7 +2100,7 @@ bool		Network::ConnectToConfiguredServerIfAvailable()
 }
 
 
-const String Network::allowedChatCharacters = "abcdefghijklmnopqrstuvwxyzï¿½ï¿½ï¿½ABCDEFGHIJKLMNOPQRSTUVWXYZï¿½ï¿½ï¿½0123456789_-:; <>!'\"'$%^&*()=+.,/\\#@?";
+const String Network::allowedChatCharacters = "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_-:; <>!'\"'$%^&*()=+.,/\\#@?";
 
 void	Network::SignalProtocolDisruption(const String&message)
 {

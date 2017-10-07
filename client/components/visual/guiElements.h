@@ -243,6 +243,10 @@ namespace GUI
 
 
 	public:
+		#ifdef _DEBUG
+			bool		dbgMarked = false;
+		#endif
+
 
 		/**/			Component();
 		virtual			~Component();
@@ -1092,16 +1096,7 @@ namespace GUI
 			return components.Count();
 		}
 
-		virtual bool		AddComponent(const PComponent&c)
-		{
-			if (!c)
-				return false;
-			if (components.Contains(c))
-				return false;
-			components << c;
-			c->SetParent( GetWindow(), shared_from_this());
-			return true;
-		}
+		virtual bool		AddComponent(const PComponent&c);
 		virtual PComponent	AddNewComponent(Component*c)
 		{
 			ASSERT_NOT_NULL__(c);

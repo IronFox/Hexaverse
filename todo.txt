@@ -1,4 +1,3 @@
-colored faction list + chat history + chat message input
 
 alliances
 
@@ -159,6 +158,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+colored faction list + chat history + chat message input
 send entity id with server messages so user can click on the message to focus on them (ids are sent, user can't click yet)
 faction-colored user messages
 build high/low wall (currently only high exists, which is misleading)

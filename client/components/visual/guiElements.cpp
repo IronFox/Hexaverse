@@ -606,6 +606,31 @@ namespace GUI
 
 	}
 
+	/*virtual*/ bool		Panel::AddComponent(const PComponent&c)
+	{
+		if (!c)
+			return false;
+		if (components.Contains(c))
+			return false;
+		auto cfg = c->GetAnchorConfig();
+		bool set = false;
+		if (cfg.Bottom().IsInactive() && cfg.Top().IsInactive())
+		{
+			cfg.Top().Set(0);
+			set = true;
+		}
+		if (cfg.Left().IsInactive() && cfg.Right().IsInactive())
+		{
+			cfg.Left().Set(0);
+			set = true;
+		}
+		if (set)
+			c->SetAnchorConfig(cfg);
+
+		components << c;
+		c->SetParent( GetWindow(), shared_from_this());
+		return true;
+	}
 
 	/*virtual override*/ bool	Panel::ResolveAnchorAxis(int axis, const M::Rect<>&context)
 	{

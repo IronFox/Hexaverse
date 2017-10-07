@@ -11,6 +11,7 @@
 #include "objectRendering.h"
 #include "objectChoices.h"
 #include "display.h"
+#include "factionTable.h"
 
 #include <objects/structure/storageStructures.h>
 #include <objects/structure/vehicleStore.h>
@@ -31,33 +32,20 @@ namespace UI
 	{
 		if (GUI::IsModal())
 		{
-			if (Dialog::ShowingFactions())
+			if (GUI::FactionTable::IsVisible())
 			{
-				Dialog::HideFactions();
+				GUI::FactionTable::Hide();
 				return;
 			}
 			GUI::CloseAllModal();
 		}
-
-		Buffer0<Dialog::Faction>	factions;
-		for (const auto&factionIn : Objects::Faction::allKnown)
-		//Network::factionMap.VisitAllValues([&factions](const Objects::OwnerParameter&factionIn)
-		{
-			Dialog::Faction&factionOut = factions.Append();
-			factionOut.name = factionIn->GetName();
-			factionOut.online = factionIn->online;
-			factionOut.requestedNewRound = factionIn->requestedNewRound;
-			factionOut.factionReference = factionIn.get();
-		};
-		//);
-
-		Dialog::ShowFactions(factions);
+		GUI::FactionTable::Show();
 	}
 
 
 	void	RefreshSessionView()
 	{
-		if (Dialog::ShowingFactions())
+		if (GUI::FactionTable::IsVisible())
 		{
 			GUI::CloseAllModal();
 			ShowSession();
