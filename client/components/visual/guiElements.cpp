@@ -1315,7 +1315,7 @@ namespace GUI
 
 
 
-	void			Input::SetCurrent(const String&current)
+	void			Input::SetText(const String&current)
 	{
 		if (IsActive())
 			Engine::keyboard.FillInput(current);
@@ -1325,7 +1325,7 @@ namespace GUI
 
 	static Engine::InputProfile	profile;
 
-	void			Input::SetAllowed(const String&allowed)
+	void			Input::SetAllowedAlphabet(const String&allowed)
 	{
 		this->allowed = allowed;
 		if (Super::IsActive())
@@ -1387,14 +1387,14 @@ namespace GUI
 
 
 
-	String			Input::GetInput()
+	String			Input::GetText()
 	{
 		if (IsActive())
 			return String(Engine::keyboard.GetInput(),Engine::keyboard.GetInputLen());
 		return String(backup.GetCharacters(),backup.GetLength());
 	}
 
-	const char*		PasswordInput::GetInput()
+	const char*		PasswordInput::GetText()
 	{
 		if (IsActive())
 			return Engine::keyboard.GetInput();
@@ -1412,7 +1412,7 @@ namespace GUI
 
 
 
-	/*virtual*/ StringRef BaseInput::GetText()
+	/*virtual*/ StringRef BaseInput::GetTextRef()
 	{
 		const char*input;
 		size_t len;
@@ -1425,7 +1425,7 @@ namespace GUI
 
 	/*static*/ StringBuffer	PasswordInput::placeholder;
 
-	/*virtual override*/ StringRef PasswordInput::GetText()
+	/*virtual override*/ StringRef PasswordInput::GetTextRef()
 	{
 		size_t len;
 		bool active = IsActive();
@@ -1454,7 +1454,7 @@ namespace GUI
 			RenderOutline(core,backgroundTone,true);
 		}
 
-		StringRef text = GetText();
+		StringRef text = GetTextRef();
 
 
 		static const char cursorChar = '<';

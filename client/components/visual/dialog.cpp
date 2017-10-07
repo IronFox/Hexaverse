@@ -373,7 +373,7 @@ namespace Dialog
 					bool canConfirmNow = !d->check || d->check() == CheckResult::OkayContinue;
 					if (d->checkInput && inputField)
 					{
-						if (!d->checkInput(inputField->GetInput()))
+						if (!d->checkInput(inputField->GetText()))
 							canConfirmNow = false;
 					}
 					return canConfirmNow;
@@ -502,10 +502,10 @@ namespace Dialog
 			if (bySpace)
 				return;
 			if (fetchInput)
-				fetchInput(userInput->GetInput());
+				fetchInput(userInput->GetText());
 			if (onPassword)
 			{
-				onPassword(passwordInput->GetInput());
+				onPassword(passwordInput->GetText());
 				//passwordInput->WipeInput();	//redundant, possibly dangerous. Once callback has been called, this might be dead
 			}
 			DumpMe();
@@ -611,8 +611,8 @@ namespace Dialog
 		d->fetchInput = fetch;
 		d->checkInput = check;
 
-		d->userInput->SetCurrent(initial);
-		d->userInput->SetAllowed(allowChars);
+		d->userInput->SetText(initial);
+		d->userInput->SetAllowedAlphabet(allowChars);
 
 		d->confirmButton->DetectEnabledState();
 
@@ -635,8 +635,8 @@ namespace Dialog
 		d->fetchInput = fetch;
 		d->check = check;
 
-		d->userInput->SetCurrent(initial);
-		d->userInput->SetAllowed(allowChars);
+		d->userInput->SetText(initial);
+		d->userInput->SetAllowedAlphabet(allowChars);
 
 		d->confirmButton->DetectEnabledState();
 

@@ -491,12 +491,12 @@ namespace GUI
 
 		Engine::Keyboard::CharacterBuffer	backup;
 
-		static void		OnCharHandled(char);
+		static void			OnCharHandled(char);
 
-		virtual void	SetInputActive(bool isActive);
+		virtual void		SetInputActive(bool isActive);
 		virtual const char*	GetAllowed() const {return nullptr;}
-		virtual StringRef GetText();
-		virtual float	GetContentHeight() const override;
+		virtual StringRef	GetTextRef();
+		virtual float		GetContentHeight() const override;
 	public:
 
 		/**
@@ -518,9 +518,9 @@ namespace GUI
 		virtual const char*	GetAllowed() const override {return allowed.c_str();}
 	public:
 
-		String			GetInput();
-		void			SetCurrent(const String&);
-		void			SetAllowed(const String&);
+		String				GetText();
+		void				SetText(const String&);
+		void				SetAllowedAlphabet(const String&);
 	};
 
 	class PasswordInput : public BaseInput
@@ -528,10 +528,10 @@ namespace GUI
 		typedef BaseInput	Super;
 		static StringBuffer	placeholder;
 	protected:
-		virtual StringRef GetText() override;
+		virtual StringRef	GetTextRef() override;
 	public:
-		const char*		GetInput();
-		void			WipeInput();
+		const char*			GetText();
+		void				WipeInput();
 	};
 
 	class TextField : public Box
