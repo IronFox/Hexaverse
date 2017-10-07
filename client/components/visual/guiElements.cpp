@@ -824,6 +824,16 @@ namespace GUI
 	}
 
 
+	void	Panel::TScrollbar::ScrollToBottom()
+	{
+		targetViewTop = scrollMax - viewSize;
+	}
+
+	void	Panel::TScrollbar::ScrollToTop()
+	{
+		targetViewTop = 0;
+	}
+
 	WheelRs	Panel::TScrollbar::OnMouseWheel(short delta)
 	{
 		if (!visible)

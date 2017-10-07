@@ -973,7 +973,7 @@ namespace GUI
 			float		viewTop=0.f,	//!< counting top (=0) down (>=0)
 						targetViewTop=0.f;
 			float		viewSize = 0.2f;
-			M::Rect<>		outline,	//!< Shadow behind scrollbar. Does not contain buttons, but does contain bar
+			M::Rect<>	outline,	//!< Shadow behind scrollbar. Does not contain buttons, but does contain bar
 						bar;		//!< Actual grabbable bar
 			PScrollButton		up,down;
 			Panel		*owner=nullptr;
@@ -981,6 +981,8 @@ namespace GUI
 			bool		mouseDown = false,scrollDownOnClick =false;
 			float		dragRelative = 0;
 
+			void		ScrollToTop();
+			void		ScrollToBottom();
 			PComponent	OnMouseDown();
 			WheelRs		OnMouseWheel(short);
 			void		OnMouseUp();
@@ -1057,6 +1059,9 @@ namespace GUI
 		void			SetAutoHeightSpacing(float s) {if (s == autoHeightSpacing) return; autoHeightSpacing = s; this->InvalidateAutoLayout();}
 		float			GetMaxAutoHeight() const {return maxHeight;}
 		void			SetMaxAutoHeight(float h) {if (h == maxHeight) return; maxHeight = h; InvalidateAutoLayout();}
+
+		void			ScrollToBottom()	{vscroll.ScrollToBottom();}
+		void			ScrollToTop()	{vscroll.ScrollToTop();}
 
 		virtual bool	DetectEnabledState() override;
 		
