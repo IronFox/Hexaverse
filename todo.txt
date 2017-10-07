@@ -1,4 +1,4 @@
-colored faction list
+colored faction list + chat history + chat message input
 
 alliances
 
