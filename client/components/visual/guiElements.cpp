@@ -1008,8 +1008,8 @@ namespace GUI
 				case TAnchor::Fixed:
 					if (bottom.references.IsEmpty() && top.type == TAnchor::Disabled)
 					{
-						float dist = bottom.distanceFromReference;
-						if (bottom.distanceType != TAnchor::RelativeToParentComponent)
+						//float dist = bottom.distanceFromReference;
+						//if (bottom.distanceType != TAnchor::RelativeToParentComponent)
 							lowest = std::min(lowest,GetRect().y.max - (*c)->GetRect().y.GetExtent() - bottom.ToScreenDistance(0.f,false));
 					}
 				break;
