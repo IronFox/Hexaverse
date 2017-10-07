@@ -25,12 +25,30 @@ namespace VisualEventLog
 	
 	struct VisualEvent
 	{
-		String		message;
-		float3		color = float3(1);
+		struct TSegment
+		{
+			String		message;
+			float3		color = float3(1);
+
+			friend void swap(TSegment&a,TSegment&b)
+			{
+				a.message.swap(b.message);
+				swp(a.color,b.color);
+			}
+		};
+
+		Buffer0<TSegment>	segments;
 		float		age=0.f,scale=1.f;
 		static const float MaxAge;
 
-		/**/		VisualEvent():color(1.f),age(0)
+		void		adoptData(VisualEvent&other)
+		{
+			segments.swap(other.segments);
+			age = other.age;
+			scale = other.scale;
+		}
+
+		/**/		VisualEvent():age(0)
 		{}
 
 		static float3 ToAverage(const float3&source, float level)
@@ -41,9 +59,18 @@ namespace VisualEventLog
 			return avg;
 		}
 
-		/**/		VisualEvent(const String&message, EventClass type):message(message)
+		static float3 ToWhite(const float3&source, float level)
 		{
-			color = float3(1.f);
+			float3 avg = (float3)1.f;
+			Vec::interpolate(source,avg,level,avg);
+			return avg;
+		}
+
+
+		/**/		VisualEvent(const String&id, const String &msg, EventClass type, const Objects::OwnerParameter&owner, Logging::Origin origin)
+		{
+
+			float3 color = float3(1.f);
 			switch (type.flavor)
 			{
 				case EventFlavor::Gain:
@@ -62,10 +89,23 @@ namespace VisualEventLog
 				break;
 				case EventFlavor::ChatMessage:
 					scale = 2.f;
+					if (owner)
+					{
+						color = owner->color;
+					}
 				break;
 			}
-
-
+			if (origin == Logging::Origin::ServerPrivate)
+				segments.Append({"[private]",float3(0.5f) });
+			if (origin != Logging::Origin::Local && type.flavor != EventFlavor::ChatMessage)
+				segments.Append({">",ToWhite(color,0.5f) });
+			if (id.IsNotEmpty())
+			{
+				segments.Append({id+": ",color});
+				segments.Append({msg, ToWhite(color,0.5f) });
+			}
+			else
+				segments.Append({msg,color});
 			switch (type.significance)
 			{
 				case EventSignificance::ClientFatal:
@@ -88,13 +128,7 @@ namespace VisualEventLog
 			}
 		}
 
-		void		adoptData(VisualEvent&other)
-		{
-			message.adoptData(other.message);
-			color = other.color;
-			age = other.age;
-			scale = other.scale;
-		}
+
 
 
 	};
@@ -158,8 +192,12 @@ namespace VisualEventLog
 						//if (ev.age < 30.f)
 						{
 							textout.Scale(ev.scale);
-							textout.SetColor(ev.color, (VisualEvent::MaxAge - ev.age)/VisualEvent::MaxAge);
-							textout << ev.message << nl;
+							foreach (ev.segments,seg)
+							{
+								textout.SetColor(seg->color, (VisualEvent::MaxAge - ev.age)/VisualEvent::MaxAge);
+								textout << seg->message;
+							}
+							textout << nl;
 							textout.SetScale(old.scale_x,old.scale_y);
 						}
 					}
@@ -170,20 +208,27 @@ namespace VisualEventLog
 	}
 
 
-	void LogEvent( EventClass type,  const Objects::WorldEntity*e, const String&_event)
+	void DisplayEvent( EventClass type,  const Objects::WorldEntity*e, const Objects::OwnerParameter&owner, const String&_event, Logging::Origin origin )
 	{
-		String event = _event, outEvent = _event;
+		String event = _event;
+		String id;
 		if (e)
 		{
-			event = e->owner->GetName()+","+ e->GetNiceName()+": "+event;
-			outEvent = e->owner->GetLogName()+","+ e->GetName()+": "+event;
+			if (owner)
+			{
+				id = owner->GetName()+","+ e->GetNiceName();
+			}
 		}
+		elif (owner)
+		{
+			id = owner->GetName();
+		}
+
 		eventLock.lock();
 
-		if (type.significance > EventSignificance::Common
-			)
+		if (type.significance > EventSignificance::Common)
 		{
-			events << VisualEvent(event,type);
+			events << VisualEvent(id,event,type,owner,origin);
 			UpdateHistoryHeight();
 		}
 		eventLock.unlock();

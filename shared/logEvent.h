@@ -100,19 +100,34 @@ extern bool		inTestMode /*= false*/;
 
 namespace Logging
 {
+	enum class Origin
+	{
+		ServerPublic,
+		ServerPrivate,
+		Local
+	};
+
+	enum class Privacy
+	{
+		Auto,	//determine privacy from faction handle and event class
+		ServerPrivate,	//log only, send to nobody (except control console maybe)
+		ClientPrivate,	//log and send to specified faction. If no faction is specified, send to nobody
+		Public			//log and send to all
+	};
+
 	void	End();
 	void	Begin(const PathString&path);
 
 	String	TimeStamp(bool filename=false);
 }
 
-void		LogEvent(const EventClass&evClass, const Objects::WorldEntity*, const String&);
-void		LogEvent(const EventClass&evClass, const Objects::OwnerParameter&, const String&);
+void		LogEvent(const EventClass&evClass, const Objects::WorldEntity*, const String&, Logging::Origin origin = Logging::Origin::Local, Logging::Privacy privacy=Logging::Privacy::Auto);
+void		LogEvent(const EventClass&evClass, const Objects::OwnerParameter&, const String&, Logging::Origin origin = Logging::Origin::Local, Logging::Privacy privacy=Logging::Privacy::Auto);
 void		LogException(const Objects::WorldEntity*, const std::exception&ex);
 
-inline void LogEvent(const EventClass&evClass, const String&msg)
+inline void LogEvent(const EventClass&evClass, const String&msg, Logging::Origin origin = Logging::Origin::Local, Logging::Privacy privacy=Logging::Privacy::Auto)
 {
-	::LogEvent(evClass,nullptr,msg);
+	::LogEvent(evClass,nullptr,msg,origin,privacy);
 }
 
 

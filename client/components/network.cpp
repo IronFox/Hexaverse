@@ -801,7 +801,24 @@ namespace Network
 
 		void ControlMessage(Protocol::ControlMessage&msg)
 		{
-			LogEvent(EventClass( EventSignificance::Reinterpret(msg.significance),  EventFlavor::Reinterpret(msg.flavor)) ,nullptr,">"+msg.message);
+
+			Objects::OwnerParameter f;
+			Objects::PWorldEntity	e;
+			if (msg.focus.IsNotEmpty())
+			{
+				f = Objects::Faction::FindByID(msg.focus);
+				if (!f)
+				{
+					e = Objects::GetEntity(msg.focus);
+				}
+			}
+
+			Logging::Origin origin = msg.isPrivate ? Logging::Origin::ServerPrivate : Logging::Origin::ServerPublic;
+
+			if (f)
+				LogEvent(EventClass( EventSignificance::Reinterpret(msg.significance),  EventFlavor::Reinterpret(msg.flavor)) ,f,msg.message,origin);
+			else
+				LogEvent(EventClass( EventSignificance::Reinterpret(msg.significance),  EventFlavor::Reinterpret(msg.flavor)) ,e.get(),msg.message,origin);
 		}
 
 

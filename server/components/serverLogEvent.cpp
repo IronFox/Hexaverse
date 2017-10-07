@@ -6,46 +6,54 @@
 
 namespace Logging
 {
-	void SendEntityEvent( TCP::Peer*toPeer,const EventClass&type, const Objects::WorldEntity*e, const Objects::OwnerParameter&owner, const String&msg)
+	void SendEntityEvent( TCP::Peer*toPeer,const EventClass&type, const Objects::WorldEntity*e, const Objects::OwnerParameter&owner, const String&msg, Logging::Privacy privacy/*=Logging::Privacy::Auto*/)
 	{
-		if (!toPeer && !e && !owner && type.significance >= EventSignificance::Uncommon)
-			RemoteControl::RelayEvent(msg);
 
-		if (type.flavor == EventFlavor::ServerPrivate || type.significance < EventSignificance::Uncommon)
-			return;
+		if (type.flavor == EventFlavor::ServerPrivate && privacy == Logging::Privacy::Auto)
+			privacy = Logging::Privacy::ServerPrivate;
 
-
-		if (!Network::server.IsOnline())
-			return;
-		if (!toPeer && (e || owner))
+		if (privacy == Logging::Privacy::Auto || privacy == Logging::Privacy::ClientPrivate)
 		{
-			Network::PClient*cl = e ? Network::playerMap.QueryPointer(e->owner) : Network::playerMap.QueryPointer(owner);
-			if (cl)
-				toPeer = (*cl)->peer.lock().get();
-			else
-				return;	//still private
+			if (!toPeer && (e || owner))
+			{
+				Network::PClient*cl = e ? Network::playerMap.QueryPointer(e->owner) : Network::playerMap.QueryPointer(owner);
+				if (cl)
+					toPeer = (*cl)->peer.lock().get();
+				else
+					return;	//no point: entity or owner is set. either is auto and implicitly private, or explicitly. either way: stop
+			}
+			elif (!toPeer)
+				return;	//should not happen, but just in case
 		}
+		else
+			toPeer = nullptr;
+
+		//from here on: toPeer != null => private
+
+		if (!toPeer && type.significance >= EventSignificance::Uncommon)
+			RemoteControl::RelayEvent(msg);
+		
+		if (privacy == Logging::Privacy::ServerPrivate || !Network::server.IsOnline())
+			return;
 
 
 		Protocol::ControlMessage out;
 
-		if (e)
-			out.message = e->GetNiceName()+": "+msg;
-		else
-			out.message = msg;
+		out.message = msg;
 		out.significance = (BYTE)type.significance;
 		out.flavor = (BYTE)type.flavor;
-
+		out.focus = e ? e->id : (owner ? owner->id : TUniqueID::Empty());
 		if (toPeer)
 		{
-			out.message = "[private] "+out.message;
+			out.isPrivate = true;
 			out.message.Truncate(out.message.MaxSize);
 			Channels::controlMessage.SendTo(*toPeer,out);
 		}
 		else
 		{
+			out.isPrivate = false;
 			out.message.Truncate(out.message.MaxSize);
-			Channels::controlMessage.SendTo(Network::server,out,2);
+			Channels::controlMessage.SendTo(Network::server,out,Channels::FactionLevel);
 		}
 	}
 }
@@ -54,13 +62,13 @@ void LogEvent(const EventClass&t, TCP::Peer&peer, const String&msg)
 {
 	Logging::SendEntityEvent(&peer,t,nullptr, Objects::OwnerParameter(),msg);
 
-	Logging::WriteEvent(t,msg,&peer,nullptr,Objects::OwnerParameter());
+	Logging::WriteEvent(t,msg,&peer,nullptr,Objects::OwnerParameter(),Logging::Origin::Local);
 }
 
 void LogEvent(const EventClass&t, TCP::Peer&peer, const Objects::PWorldEntity&e, const String&msg)
 {
 	Logging::SendEntityEvent(&peer,t,e.get(),Objects::OwnerParameter(),msg);
-	Logging::WriteEvent(t,msg,&peer,e.get(),Objects::OwnerParameter());
+	Logging::WriteEvent(t,msg,&peer,e.get(),Objects::OwnerParameter(),Logging::Origin::Local);
 }
 
 

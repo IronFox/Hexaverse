@@ -1,4 +1,3 @@
-faction-colored user messages
 colored faction list
 
 alliances
@@ -90,7 +89,7 @@ make generators switch off if not needed
 
 lava ship
 
-send entity id with server messages so user can click on the message to focus on them
+make visual events clickable
 better mine output (refinery)
 
 
@@ -160,6 +159,8 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+send entity id with server messages so user can click on the message to focus on them (ids are sent, user can't click yet)
+faction-colored user messages
 build high/low wall (currently only high exists, which is misleading)
 button for main menu in server selection
 option to not fade out music in game
