@@ -3,7 +3,8 @@ v0.6.7
 	> Renamed terraforming command "Build Wall to" to "Build High Wall to"
 	> Chat messages now carry the respective origin faction ID and are colored accordingly.
 	> Cleaned up faction list and included non-fading chat log with timestamps.
-	* Fixed rare crash when trying to render tasks without visualization
+	* Fixed rare crash when trying to render tasks without visualization.
+	* Hexagonal command icons of left and right screen sides can no longer overlap.
  
 v0.6.6	[Oct 3 2017]
 	+ Added Game menu button to show active factions.
