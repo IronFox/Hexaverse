@@ -305,8 +305,10 @@ namespace GUI
 
 
 
-	void	ShowBottom(const PWindow&window)
+	bool	ShowBottom(const PWindow&window)
 	{
+		if (!window)
+			return false;
 		VerifyIntegrity(CLOCATION);
 		if (Detail::visibleWindows.IsNotEmpty() && Detail::visibleWindows.First() == window)
 		{
@@ -316,11 +318,11 @@ namespace GUI
 				if (!window->IsActive())
 					window->SetActive(true);
 			}
-			return;
+			return false;
 		}
 		//if (Detail::visibleWindows.Count() == 1 && Detail::visibleWindows.First() == window)
 		//	return;
-
+		bool rs = true;
 		index_t at = Detail::visibleWindows.GetIndexOf(window);
 		if (at != InvalidIndex)
 		{
@@ -330,6 +332,7 @@ namespace GUI
 				Detail::visibleWindows.GetFromEnd(1)->SetActive(true);
 			}
 			Detail::visibleWindows.Erase(at);
+			rs = false;
 		} 
 		Detail::visibleWindows.Insert(0,window);
 		if (Detail::visibleWindows.Count() == 1)
@@ -337,6 +340,7 @@ namespace GUI
 
 		SignalSituationChange();
 		OverrideSignalMouseMotion();
+		return rs;
 	}
 
 
@@ -1035,25 +1039,24 @@ namespace GUI
 		{
 			const auto&bottom = (*c)->GetAnchorConfig().Bottom();
 			const auto&top = (*c)->GetAnchorConfig().Top();
+			float newLowest = std::numeric_limits<float>::max();
 			switch (bottom.type)
 			{
 				case TAnchor::Disabled:
-					lowest = std::min(lowest, (*c)->GetRect().y.min);
+					newLowest = (*c)->GetRect().y.min;
 				break;
 				case TAnchor::Fixed:
 					if (bottom.references.IsEmpty() && top.type == TAnchor::Disabled)
-					{
-						//float dist = bottom.distanceFromReference;
-						//if (bottom.distanceType != TAnchor::RelativeToParentComponent)
-							lowest = std::min(lowest,GetRect().y.max - (*c)->GetRect().y.GetExtent() - bottom.ToScreenDistance(0.f,false));
-					}
+						newLowest = GetRect().y.max - (*c)->GetRect().y.GetExtent() - bottom.ToScreenDistance(0.f,false);
 				break;
 				case TAnchor::Auto:
 					if (top.type == TAnchor::Auto)
-					{
-						lowest = std::min(lowest,GetRect().y.max - (*c)->GetRect().y.GetExtent());
-					}
+						newLowest = GetRect().y.max - (*c)->GetRect().y.GetExtent();
 				break;
+			}
+			if (newLowest < lowest)
+			{
+				lowest = newLowest;
 			}
 		}
 		if (lowest == std::numeric_limits<float>::max())

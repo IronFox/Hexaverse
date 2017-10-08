@@ -161,6 +161,10 @@ namespace GUI
 	class ComponentLocation
 	{
 	public:
+		#ifdef _DEBUG
+			index_t		dbgMarked = 0;
+		#endif
+
 		const M::Rect<>&	GetRect() const {return rect;}
 		bool			SetWidth(float w);
 		bool			SetHeight(float h);
@@ -243,9 +247,6 @@ namespace GUI
 
 
 	public:
-		#ifdef _DEBUG
-			bool		dbgMarked = false;
-		#endif
 
 
 		/**/			Component();
@@ -1631,8 +1632,9 @@ namespace GUI
 	void				Show(const GUI::PWindow&window);
 	/**
 	Makes sure the specified window is visible. Lowers it to the bottom of the window stack if it's not there already
+	@return true if the window has been added, false if it's empty or already visible (though order changes may still be applied)
 	*/
-	void				ShowBottom(const GUI::PWindow&window);
+	bool				ShowBottom(const GUI::PWindow&window);
 	bool				Hide(const PWindow&window);
 	bool				Hide(Window*window);
 	bool				IsVisible(const GUI::PWindow&window);
