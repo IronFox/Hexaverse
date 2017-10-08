@@ -909,7 +909,6 @@ namespace Dialog
 
 
 
-	GUI::PWindow	serverChoice;
 
 
 	void	Create()
@@ -919,30 +918,11 @@ namespace Dialog
 
 
 
-		serverChoice = GUI::Window::Create();
-		serverChoice->SetAutoCenter(false);
-		serverChoice->SetCenteredWidth(0.9f,GUI::TAnchor::RelativeToScreen);
-		serverChoice->canBeImplicitlyClosed = false;
 
 
 		GlobalEvents::applicationTerminate << Destroy;
 	}
 
-
-	void	CheckServersAreShown(bool doShow)
-	{
-		GUI::VerifyIntegrity(CLOCATION);
-
-		Music::SignalServerListShown(doShow);
-
-		if (doShow)
-		{
-			ShowBottom(serverChoice);
-		}
-		else
-			Hide(serverChoice);
-		GUI::VerifyIntegrity(CLOCATION);
-	}
 
 
 	void	Destroy()

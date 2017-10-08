@@ -1851,14 +1851,6 @@ bool loop()
 			textout.SetColor(1,1,1);
 
 
-			if (!Network::client.IsConnected() /*&& false*/)
-			{
-				static Timer::Time	lastCheck = timer.Now();
-				if (!Dialog::serverChoice || timer.CheckIfOutdatedAndUpdate(lastCheck,1.f))
-					if (!display.IsMinimized())
-						UpdateServerChoice();
-			}
-
 
 			if (UI::showControlsAndContacts && !saveScreenshot)
 			{
@@ -3599,6 +3591,7 @@ int main( int argc, const char* argv[])
 
 			Loading::Stage("Progress Bars",ProgressBar::Create);
 			Loading::Stage("Dialogs",Dialog::Create);
+			Loading::Stage("HostList",GUI::HostList::Create);
 
 		#endif
 

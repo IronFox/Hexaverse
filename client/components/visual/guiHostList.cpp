@@ -8,23 +8,87 @@
 #include <runtimeConfig.h>
 #include "../clientRuntimeConfig.h"
 #include "../serverProcess.h"
-
-
+#include "music.h"
+#include "../clientEvents.h"
 
 
 #ifdef HAS_WINDOW
 
+namespace GUI{namespace HostList{
 
 	const float4 incompatibleColor(1,0.6,0.55,1);
 
-	static const float VisualTabWidth = 0.2f;
+	static const float VisualTabWidth[] = {0.3f,0.15f,0.1f,0.25f};
 
-	GUI::PLabel	MakeHeaderLabel(const String&text, float zoom)
+	PWindow		serverChoice;
+	PPanel		headerRow;
+
+
+	bool	IsVisible()
+	{
+		return GUI::IsVisible(serverChoice);
+	}
+
+	void	TickRefresh()
+	{
+		static Timer::Time	lastCheck = timer.Now() - timer.ToTicks(10);
+		if (timer.CheckIfOutdatedAndUpdate(lastCheck,1.f))
+		{
+			if (display.IsMinimized() || !IsVisible())
+				return;
+			Update();
+		}
+	}
+
+	void	Create()
+	{
+		GlobalEvents::frameBegin << TickRefresh;
+			
+
+
+		serverChoice = GUI::Window::Create();
+		serverChoice->SetAutoCenter(false);
+		serverChoice->SetCenteredWidth(0.9f,GUI::TAnchor::RelativeToScreen);
+		serverChoice->canBeImplicitlyClosed = false;
+
+		headerRow.reset(new Panel());
+		headerRow->FillHorizontally(0);
+		headerRow->ModifyAnchorConfig().Top().Set(0);
+		headerRow->fillBackground = false;
+		headerRow->SetAutomaticHeight(true);
+		
+		Update();
+	}
+
+	bool	SetVisibility(bool doShow)
+	{
+
+		Music::SignalServerListShown(doShow);
+
+		if (doShow)
+		{
+			if (ShowBottom(serverChoice))
+				return true;
+		}
+		else
+			Hide(serverChoice);
+		return false;
+	}
+
+	void	CheckVisibility(bool doShow)
+	{
+		if (SetVisibility(doShow))
+			Update();
+	}
+
+
+
+	GUI::PLabel	MakeHeaderLabel(const String&text, float zoom, index_t tabIndex)
 	{
 		using namespace GUI;
 		PLabel label (new GUI::Label());
 		label->alignCenter = false;
-		label->SetLocation(M::Rect<>(0,0,VisualTabWidth,0.f));
+		label->SetWidth(VisualTabWidth[std::min(tabIndex,ARRAYSIZE(VisualTabWidth))]);
 		{
 			auto cfg = label->GetAnchorConfig();
 			cfg.Top().Set(0.01f);
@@ -38,30 +102,26 @@
 	};
 
 
-	GUI::PLabel	AddHeader(const GUI::PPanel&context, const String&name, bool incompatible, float verticalSpacing = 0.f, GUI::TAnchor::distanceType_t verticalSpacingIsRelative = GUI::TAnchor::RelativeToScreen)
+	GUI::PLabel	AddHeader(const GUI::PPanel&context, const String&name, const float4&color, float verticalSpacing = 0.f, GUI::TAnchor::distanceType_t verticalSpacingIsRelative = GUI::TAnchor::RelativeToScreen)
 	{
 		using namespace GUI;
-		PLabel label=MakeHeaderLabel(name,1.1f);
+		const index_t tabIndex = context->CountComponents();
+		PLabel label=MakeHeaderLabel(name/*+"["+String(tabIndex)+"]"*/,1.1f,tabIndex);
 		{
 			auto cfg = label->GetAnchorConfig();
 			cfg.Top().Set(verticalSpacing,verticalSpacingIsRelative);
-			if (context->HasComponents())
-				cfg.Left().Set(context->GetComponents().last(),0.f);
-			else
-			{
-				cfg.Left().Set(0.f);
-			}
+			cfg.Left().SetLastOf(context,0.f);
 			label->SetAnchorConfig(cfg);
 		}
 		context->AddComponent(label);
-		if (incompatible)
-			label->SetColor(incompatibleColor);
+		label->SetColor(color);
+		//label->fillBackground = true;
 		return label;
 	}
 
-	GUI::PLabel	AddHeader(const String&name, bool incompatible)
+	GUI::PLabel	AddMainHeader(const String&name, const float4&color=float4(1))
 	{
-		return AddHeader(Dialog::serverChoice,name,incompatible);
+		return AddHeader(headerRow,name,color);
 	}
 
 	static String CompileRules(const Protocol::ServerInfo&info)
@@ -144,6 +204,12 @@
 		const Network::Host&host = GetTargetHost(info);
 
 
+
+		float4 color(1);
+		if (!info.rightVersion || info.protocolIncompatible)
+			color = incompatibleColor;
+
+
 		if (info.buttonPanel)
 		{
 			info.buttonPanel->ClearComponents();
@@ -218,7 +284,7 @@
 		if (!info.headLine)
 		{
 			String text;
-			float4 color(1,1,1,1);
+			//float4 color(1,1,1,1);
 			if (info.rightVersion)
 			{
 				text = " "+info.id.ToNiceString()+" / "+host.serverInfo.gameInfo.worldID.ToNiceString();
@@ -227,7 +293,7 @@
 			}
 			else
 			{
-				color = incompatibleColor * 1.3f;
+				//color = incompatibleColor * 1.3f;
 				if (info.protocolIncompatible)
 				{
 					text = " <Unknown> (Protocol Incompatible)";
@@ -238,7 +304,7 @@
 					text += "\n (Version Mismatch)";
 				}
 			}
-			PLabel headLine = MakeHeaderLabel(text,1.1f);
+			PLabel headLine = MakeHeaderLabel(text,1.1f,0);
 			headLine->SetColor(color);
 			SetTop(headLine,0.01f);
 			info.headLine = headLine;
@@ -249,9 +315,9 @@
 
 		bool incompatible = !info.rightVersion || info.protocolIncompatible;
 		{
-			AddHeader(p,String(host.serverInfo.gameInfo.numFactionsOnline) + "/" + String(host.serverInfo.gameInfo.numFactionsCreated),incompatible,0.01f,GUI::TAnchor::RelativeToScreen);
-			AddHeader(p,host.serverInfo.gameInfo.roundNumber.ToString(),incompatible,0.01f,GUI::TAnchor::RelativeToScreen);
-			PLabel l = AddHeader(p,CompileRules(host.serverInfo),incompatible,0.01f,GUI::TAnchor::RelativeToScreen);
+			AddHeader(p,String(host.serverInfo.gameInfo.numFactionsOnline) + "/" + String(host.serverInfo.gameInfo.numFactionsCreated),color,0.01f,GUI::TAnchor::RelativeToScreen);
+			AddHeader(p,host.serverInfo.gameInfo.roundNumber.ToString(),color,0.01f,GUI::TAnchor::RelativeToScreen);
+			PLabel l = AddHeader(p,CompileRules(host.serverInfo),color,0.01f,GUI::TAnchor::RelativeToScreen);
 			l->SetLocalFontScale(l->GetLocalFontScale() * 0.9f);
 
 		}
@@ -262,7 +328,7 @@
 		bool first = true;
 		foreach (info.addresses,addr)
 		{
-			PLabel label = MakeHeaderLabel(ToString(addr->address)+ " (ping "+String((int)ceil(addr->ping*1000))+')',0.7f);
+			PLabel label = MakeHeaderLabel(ToString(addr->address)+ " (ping "+String((int)ceil(addr->ping*1000))+')',0.7f,0);
 			if (info.rightVersion && !info.protocolIncompatible)
 				label->SetColor(float4(1,1,1,0.7f));
 			else
@@ -284,22 +350,20 @@
 
 		if (!info.rightVersion && !info.protocolIncompatible)
 		{
-			PLabel label = MakeHeaderLabel("Server identifies as '"+String(host.serverInfo.hostInfo.version)+'\'',0.7f);
+			PLabel label = MakeHeaderLabel("Server identifies as '"+String(host.serverInfo.hostInfo.version)+'\'',0.7f,0);
 			label->SetColor(incompatibleColor);
 			label->ModifyAnchorConfig().Top().SetLastOf(p,0.005f,GUI::TAnchor::RelativeToScreen);
 			p->AddComponent( label );
 					
-			label = MakeHeaderLabel("Client expected '" SERVER_NAME "\'",0.7f);
+			label = MakeHeaderLabel("Client expected '" SERVER_NAME "\'",0.7f,0);
 			label->SetColor(incompatibleColor);
 			label->ModifyAnchorConfig().Top().SetLastOf(p,0.005f,GUI::TAnchor::RelativeToScreen);
 			p->AddComponent( label );
 		}
 
 		p->SetAutoHeightSpacing(0.01f);
-		if (!info.rightVersion || info.protocolIncompatible)
-			p->backgroundTone = incompatibleColor.rgb * 0.75f;
-		else
-			p->backgroundTone = float3(1);
+		p->backgroundTone = color.rgb * 0.75f;
+
 		return p;
 	}
 
@@ -319,30 +383,36 @@
 
 	GUI::PPanel	serverListPanel;
 
-	void	UpdateServerChoice()
+	void	Update()
 	{
-		using namespace GUI;
-		
-		if (Dialog::serverChoice->HasComponent(mousePressedComponent))
+
+		if (serverChoice->HasComponent(mousePressedComponent))
 			return;	//can't activate right now
 		GUI::VerifyIntegrity(CLOCATION);
 
-		const bool isActive = Dialog::serverChoice->IsActive();
+		const bool isActive = serverChoice->IsActive();
 		if (isActive)
-			Dialog::serverChoice->SetActive(false);
-		Dialog::serverChoice->ClearComponents();
+			serverChoice->SetActive(false);
 
-		Dialog::serverChoice->fillBackground = false;
-		Dialog::serverChoice->isModal = false;
-		Dialog::serverChoice->SetAutoCenter(false);
-		SetTop(Dialog::serverChoice,0.1f);
-		Dialog::serverChoice->SetMaxAutoHeight(0.8f);
 
-		AddHeader("HostID/WorldID",false);
-		AddHeader("Factions online",false);
-		AddHeader("Round Number",false);
-		AddHeader("Rules",false);
 
+
+		serverChoice->ClearComponents();
+
+		serverChoice->fillBackground = false;
+		serverChoice->isModal = false;
+		serverChoice->SetAutoCenter(false);
+		SetTop(serverChoice,0.1f);
+		serverChoice->SetMaxAutoHeight(0.8f);
+
+		serverChoice->AddComponent(headerRow);
+		if (!headerRow->HasComponents())
+		{
+			AddMainHeader("HostID/WorldID");
+			AddMainHeader("Online");
+			AddMainHeader("Round");
+			AddMainHeader("Rules");
+		}
 		bool attemptingConnection = Network::client.IsAttemptingToConnect();
 
 		//bool first =true;
@@ -356,8 +426,8 @@
 			serverListPanel->fillBackground = false;
 		}
 		serverListPanel->ClearComponents();
-		serverListPanel->ModifyAnchorConfig().Top().SetAllOf(Dialog::serverChoice,0);
-		Dialog::serverChoice->AddComponent( serverListPanel );
+		serverListPanel->ModifyAnchorConfig().Top().SetAllOf(serverChoice,0);
+		serverChoice->AddComponent( serverListPanel );
 
 
 		static Buffer0<Network::ServerAddress>	list;
@@ -388,7 +458,7 @@
 			
 			
 
-			PLabel label = MakeHeaderLabel("Still trying to query '"+ToString(*failed)+"'...",0.7f);
+			PLabel label = MakeHeaderLabel("Still trying to query '"+ToString(*failed)+"'...",0.7f,0);
 //			label->anchorConfig.Left().Set(0.1f,false);
 			label->SetColor(1,0.75f,0.75f,0.9f);
 			{
@@ -407,7 +477,7 @@
 				{
 					if (Network::ServerDiscovery::TryRemoveHost(url))
 					{
-						UpdateServerChoice();
+						Update();
 						Network::SaveHosts();
 					}
 				},
@@ -456,16 +526,16 @@
 		if (Network::servers.IsEmpty())
 		{
 			PButtonPanel p(new ButtonPanel());
-			p->ModifyAnchorConfig().Top().SetAllOf(Dialog::serverChoice,0.025f,GUI::TAnchor::RelativeToScreen);
+			p->ModifyAnchorConfig().Top().SetAllOf(serverChoice,0.025f,GUI::TAnchor::RelativeToScreen);
 
-			PLabel label = MakeHeaderLabel(" No Servers Found",0.7f);
+			PLabel label = MakeHeaderLabel(" No Servers Found",0.7f,0);
 			label->ModifyAnchorConfig().Left().Set(0.1f,GUI::TAnchor::RelativeToScreen);
 			label->SetColor(1,1,1,0.7f);
 			p->AddComponent( label );
 			p->SetAutomaticHeight(true);
 			p->SetAutoHeightSpacing(p->GetAutoHeightSpacing() * 4.f);
 
-			Dialog::serverChoice->AddComponent( p );
+			serverChoice->AddComponent( p );
 		};
 
 
@@ -492,12 +562,12 @@
 			));
 			{
 				auto mod = b->ModifyAnchorConfig();
-				mod.Top().SetLastOf(Dialog::serverChoice,0.025f,GUI::TAnchor::RelativeToScreen);
+				mod.Top().SetLastOf(serverChoice,0.025f,GUI::TAnchor::RelativeToScreen);
 				mod.Left().Set(0.f);
 			}
 			b->LockToIdealWidth();
 
-			Dialog::serverChoice->AddComponent( b );
+			serverChoice->AddComponent( b );
 			
 			addHostButton = b;
 		}
@@ -548,19 +618,19 @@
 				mod.Left().Set(start,0.02f);
 			}
 
-			Dialog::serverChoice->AddComponent(start);
-			Dialog::serverChoice->AddComponent(stop);
+			serverChoice->AddComponent(start);
+			serverChoice->AddComponent(stop);
 		}
 		
 
-		Dialog::serverChoice->FullAutoLayout(CLOCATION);
+		serverChoice->FullAutoLayout(CLOCATION);
 		if (isActive)
 		{
-			Dialog::serverChoice->SetActive(isActive);
+			serverChoice->SetActive(isActive);
 			GUI::OverrideSignalMouseMotion();
 		}
 		
-		Dialog::CheckServersAreShown(!Network::client.IsConnected());
+		GUI::HostList::SetVisibility(!Network::client.IsConnected());
 	}
-
+}}
 #endif

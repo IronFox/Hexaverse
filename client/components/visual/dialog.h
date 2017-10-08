@@ -199,15 +199,6 @@ namespace Dialog
 	*/
 	bool	ConfirmCurrent(bool bySpace);
 
-	
-
-
-
-
-
-	void	CheckServersAreShown(bool doShow);
-
-
 	void	Create();
 	void	Destroy();
 
@@ -245,7 +236,6 @@ namespace Dialog
 	
 
 
-	extern GUI::PWindow	serverChoice;
 
 
 }

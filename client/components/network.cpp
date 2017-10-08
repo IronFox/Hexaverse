@@ -22,6 +22,7 @@
 #include "visual/terrain.h"
 #include "visual/factionTable.h"
 #include "clientEvents.h"
+#include "visual/guiHostList.h"
 
 
 //#define DEBUG_SERVER_LIST	//enable to generate very long artificial server list
@@ -554,7 +555,7 @@ namespace Network
 					#endif
 				}
 				#ifdef HAS_WINDOW
-					Dialog::CheckServersAreShown(false);
+					GUI::HostList::CheckVisibility(false);
 				#endif
 
 				LoadScript(Network::requestedResearchScript);
@@ -1478,7 +1479,7 @@ namespace Network
 				#ifdef HAS_WINDOW
 					ConfigurationMode::SetActive(false);
 					GUI::Hide(Menu::login);
-					Dialog::CheckServersAreShown(true);
+					GUI::HostList::CheckVisibility(true);
 					GUI::SignalSituationChange();
 					Tutorial::SignalEnd();
 				#endif
