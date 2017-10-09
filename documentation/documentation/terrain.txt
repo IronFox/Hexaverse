@@ -1,5 +1,5 @@
 = Terrain =
-{{lava.png?300 |Lava Planet}}
+{{lava.png?280 |Lava Planet}}
 
 Hexaverse is played on (or something beneath) the surface of planets.
 
@@ -11,6 +11,7 @@ Each unit cell completely contains one terrain cell, and shares a number of terr
 A unit requires its central and all edge terrain cells to be clear.
 Conversely, it can stand on central terrain blocks as well as mere ledges (shared terrain blocks) one layer beneath the unit.
 
+{{ img:empZones.png?300|Active EMP Zones}}
 [[concepts/vehicle|Vehicles]] will fall (and be destroyed in some cases) if these conditions are not met.
 Structures hover after construction but remain stationary.
 
@@ -18,6 +19,15 @@ With the exception of lava, units will automatically remove any terrain moving i
 Lava will mercilessly destroy any unit it touches.
 Structures can 'stand' atop lava; [[concepts/vehicle|vehicles]] can not (if nothing else keeps them up).
 
+== EMP Zones ==
+If the server is configured such, the planet may feature EMP zones, that force new factions closer to one another and quicken the game.
+Zones are unlocked as new factions are created.
+
+Each new faction unlocks at least one previously locked zone until all 12 zones are unlocked.
+New factions are spawned within the unlocked areas of the planet.
+
+Mobile units cannot enter these zones, and will route around them.
+Nexus units already located within the EMP zones suffer high levels of [[concepts/EMP damage]] until the respective zone is removed.
 
 == Planet Types ==
 
@@ -25,11 +35,9 @@ The system distinguishes a number of terrain blocks such as sand, grass, rock, g
 
 Different planet types may be constructed by [[config/server|configuring]] the server accordingly.
 
-
-
 == Terrain Clipping ==
 
-{{ img:ClipTerrain.png}}
+{{ img:ClipTerrain.png?300|Clipped Terrain}}
 Terrain clipping allows to view caves beneath the ground. It visually removes terrain within a certain radius around the current focus point down to the current clipping height.
 It can be configured via the respective [[controls|view buttons]], but may also be toggled using the ''control key''.
 ''Page up/down'' can be used to quickly alter the clipping height.

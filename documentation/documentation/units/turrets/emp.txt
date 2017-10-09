@@ -1,6 +1,3 @@
 ----
-Extremely long range artillery turret, designed to cause EMP damage in clusters of (hopefully) hostile units.
-Units affected by EMP damage are considerably slowed down (if mobile), have extremely reduced attack and scanning ranges, and cannot perform operations (e.g. [[units/turrets/terraformer|terraforming]]).
-EMP damage does not stack, and heals by one each [[concepts/round]].
-
+Extremely long range artillery turret, designed to cause [[concepts/EMP damage]] in clusters of (hopefully) hostile units.
 Doesn't cause permanent damage, and never fires on its own.
