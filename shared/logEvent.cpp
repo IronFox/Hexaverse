@@ -192,7 +192,7 @@ namespace Logging
 
 
 
-	void WriteEvent( const EventClass&evClass, const String&message, TCP::Peer*peer, const Objects::WorldEntity*e, const Objects::OwnerParameter&owner)
+	void	WriteEvent(const EventClass&evClass, String message, TCP::Peer*peer, const Objects::WorldEntity*e, const Objects::OwnerParameter&owner, Origin origin /*= Logging::Origin::Local*/)
 	{
 		bool printToConsole = evClass.significance >= EventSignificance::Uncommon;
 		//type != EventSignificance::Debug
@@ -260,25 +260,38 @@ namespace Logging
 				else
 					logFile << tab << tab<<tab<<tab;
 
+
+
 		if (message.Contains('\n') || message.Contains('\r'))
 		{
 			String copy = message;
-			copy.FindAndReplace('\n',' ');
-			copy.FindAndReplace('\r',"");
-			if (!inTestMode)
-				logFile << tab << copy << nl;
+			message.FindAndReplace('\n',' ');
+			message.FindAndReplace('\r',"");
 		}
-		else
-			if (!inTestMode)
-				logFile << tab << message << nl;
+		String logConsoleMsg = message;
+		switch (origin)
+		{
+			case Logging::Origin::Local:
+			break;
+			case Logging::Origin::ServerPublic:
+				logConsoleMsg = ">" +logConsoleMsg;
+			break;
+			case Logging::Origin::ServerPrivate:
+				logConsoleMsg = ">[private]" +logConsoleMsg;
+			break;
+		}
+
+
+		if (!inTestMode)
+			logFile << tab << logConsoleMsg << nl;
 		if (printToConsole)
-			console << message << nl;
+			console << logConsoleMsg << nl;
 		if (!inTestMode)
 			Flush(logFile,printToConsole);
 		if (printToConsole)
 		{
 			#ifdef HAS_WINDOW
-				VisualEventLog::LogEvent(evClass,e,message);
+				VisualEventLog::DisplayEvent(evClass,e,owner, message,origin);
 			#else
 				consoleThread.pipe << String(console.buffer.ToStringRef());
 			#endif
@@ -297,20 +310,20 @@ void		LogException(const Objects::WorldEntity*e, const std::exception&ex)
 
 
 
-void LogEvent( const EventClass&type, const Objects::WorldEntity*e, const String&msg)
+void LogEvent( const EventClass&type, const Objects::WorldEntity*e, const String&msg, Logging::Origin origin, Logging::Privacy privacy/*=Logging::Privacy::Auto*/)
 {
 	#ifndef CLIENT
-		Logging::SendEntityEvent(nullptr,type,e,Objects::OwnerParameter(),msg);
+		Logging::SendEntityEvent(nullptr,type,e,Objects::OwnerParameter(),msg,privacy);
 	#endif
-	Logging::WriteEvent(type,msg,nullptr,e,Objects::OwnerParameter());
+	Logging::WriteEvent(type,msg,nullptr,e,Objects::OwnerParameter(),origin);
 }
 
-void		LogEvent(const EventClass&type, const Objects::OwnerParameter&owner, const String&msg)
+void		LogEvent(const EventClass&type, const Objects::OwnerParameter&owner, const String&msg, Logging::Origin origin, Logging::Privacy privacy/*=Logging::Privacy::Auto*/)
 {
 	#ifndef CLIENT
-		Logging::SendEntityEvent(nullptr,type,nullptr,owner,msg);
+		Logging::SendEntityEvent(nullptr,type,nullptr,owner,msg,privacy);
 	#endif
-	Logging::WriteEvent(type,msg,nullptr,nullptr,owner);
+	Logging::WriteEvent(type,msg,nullptr,nullptr,owner, origin);
 }
 
 

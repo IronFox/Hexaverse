@@ -305,8 +305,10 @@ namespace GUI
 
 
 
-	void	ShowBottom(const PWindow&window)
+	bool	ShowBottom(const PWindow&window)
 	{
+		if (!window)
+			return false;
 		VerifyIntegrity(CLOCATION);
 		if (Detail::visibleWindows.IsNotEmpty() && Detail::visibleWindows.First() == window)
 		{
@@ -316,11 +318,11 @@ namespace GUI
 				if (!window->IsActive())
 					window->SetActive(true);
 			}
-			return;
+			return false;
 		}
 		//if (Detail::visibleWindows.Count() == 1 && Detail::visibleWindows.First() == window)
 		//	return;
-
+		bool rs = true;
 		index_t at = Detail::visibleWindows.GetIndexOf(window);
 		if (at != InvalidIndex)
 		{
@@ -330,6 +332,7 @@ namespace GUI
 				Detail::visibleWindows.GetFromEnd(1)->SetActive(true);
 			}
 			Detail::visibleWindows.Erase(at);
+			rs = false;
 		} 
 		Detail::visibleWindows.Insert(0,window);
 		if (Detail::visibleWindows.Count() == 1)
@@ -337,6 +340,7 @@ namespace GUI
 
 		SignalSituationChange();
 		OverrideSignalMouseMotion();
+		return rs;
 	}
 
 
@@ -606,6 +610,31 @@ namespace GUI
 
 	}
 
+	/*virtual*/ bool		Panel::AddComponent(const PComponent&c)
+	{
+		if (!c)
+			return false;
+		if (components.Contains(c))
+			return false;
+		auto cfg = c->GetAnchorConfig();
+		bool set = false;
+		if (cfg.Bottom().IsInactive() && cfg.Top().IsInactive())
+		{
+			cfg.Top().Set(0);
+			set = true;
+		}
+		if (cfg.Left().IsInactive() && cfg.Right().IsInactive())
+		{
+			cfg.Left().Set(0);
+			set = true;
+		}
+		if (set)
+			c->SetAnchorConfig(cfg);
+
+		components << c;
+		c->SetParent( GetWindow(), shared_from_this());
+		return true;
+	}
 
 	/*virtual override*/ bool	Panel::ResolveAnchorAxis(int axis, const M::Rect<>&context)
 	{
@@ -824,6 +853,16 @@ namespace GUI
 	}
 
 
+	void	Panel::TScrollbar::ScrollToBottom()
+	{
+		targetViewTop = scrollMax - viewSize;
+	}
+
+	void	Panel::TScrollbar::ScrollToTop()
+	{
+		targetViewTop = 0;
+	}
+
 	WheelRs	Panel::TScrollbar::OnMouseWheel(short delta)
 	{
 		if (!visible)
@@ -1000,25 +1039,24 @@ namespace GUI
 		{
 			const auto&bottom = (*c)->GetAnchorConfig().Bottom();
 			const auto&top = (*c)->GetAnchorConfig().Top();
+			float newLowest = std::numeric_limits<float>::max();
 			switch (bottom.type)
 			{
 				case TAnchor::Disabled:
-					lowest = std::min(lowest, (*c)->GetRect().y.min);
+					newLowest = (*c)->GetRect().y.min;
 				break;
 				case TAnchor::Fixed:
 					if (bottom.references.IsEmpty() && top.type == TAnchor::Disabled)
-					{
-						float dist = bottom.distanceFromReference;
-						if (bottom.distanceType != TAnchor::RelativeToParentComponent)
-							lowest = std::min(lowest,GetRect().y.max - (*c)->GetRect().y.GetExtent() - bottom.ToScreenDistance(0.f,false));
-					}
+						newLowest = GetRect().y.max - (*c)->GetRect().y.GetExtent() - bottom.ToScreenDistance(0.f,false);
 				break;
 				case TAnchor::Auto:
 					if (top.type == TAnchor::Auto)
-					{
-						lowest = std::min(lowest,GetRect().y.max - (*c)->GetRect().y.GetExtent());
-					}
+						newLowest = GetRect().y.max - (*c)->GetRect().y.GetExtent();
 				break;
+			}
+			if (newLowest < lowest)
+			{
+				lowest = newLowest;
 			}
 		}
 		if (lowest == std::numeric_limits<float>::max())
@@ -1315,7 +1353,7 @@ namespace GUI
 
 
 
-	void			Input::SetCurrent(const String&current)
+	void			Input::SetText(const String&current)
 	{
 		if (IsActive())
 			Engine::keyboard.FillInput(current);
@@ -1325,7 +1363,7 @@ namespace GUI
 
 	static Engine::InputProfile	profile;
 
-	void			Input::SetAllowed(const String&allowed)
+	void			Input::SetAllowedAlphabet(const String&allowed)
 	{
 		this->allowed = allowed;
 		if (Super::IsActive())
@@ -1387,14 +1425,14 @@ namespace GUI
 
 
 
-	String			Input::GetInput()
+	String			Input::GetText()
 	{
 		if (IsActive())
 			return String(Engine::keyboard.GetInput(),Engine::keyboard.GetInputLen());
 		return String(backup.GetCharacters(),backup.GetLength());
 	}
 
-	const char*		PasswordInput::GetInput()
+	const char*		PasswordInput::GetText()
 	{
 		if (IsActive())
 			return Engine::keyboard.GetInput();
@@ -1412,7 +1450,7 @@ namespace GUI
 
 
 
-	/*virtual*/ StringRef BaseInput::GetText()
+	/*virtual*/ StringRef BaseInput::GetTextRef()
 	{
 		const char*input;
 		size_t len;
@@ -1425,7 +1463,7 @@ namespace GUI
 
 	/*static*/ StringBuffer	PasswordInput::placeholder;
 
-	/*virtual override*/ StringRef PasswordInput::GetText()
+	/*virtual override*/ StringRef PasswordInput::GetTextRef()
 	{
 		size_t len;
 		bool active = IsActive();
@@ -1454,7 +1492,7 @@ namespace GUI
 			RenderOutline(core,backgroundTone,true);
 		}
 
-		StringRef text = GetText();
+		StringRef text = GetTextRef();
 
 
 		static const char cursorChar = '<';

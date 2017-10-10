@@ -38,19 +38,20 @@ Some buttons may be disabled (semi-transparent), or perma-active (blue).
 There are four button areas, with different functionality.
 
 ===Main Commands===
-{{ img:globalCommands.png}}
+{{ img:globalCommands.png?500}}
 The bottom left row of commands shows unit-independent commands.
 Left to right, the commands are:
 * **End Round** (shortcut: return): Requests the current round to end. You should press this button when you are done issuing commands to your units. Press the button again to undo the request (possible as long as at least one connected player has no yet requested a new round).
 * **Auto End Round**: Toggles automatic round ending if the game finds no [[concepts/idle]] units, no new hostile contacts, and no hostile activity during the last [[concepts/round|animation phase]]. Processed only if this state was detected at the beginning of the round.
+* **Open Menu**: Open the main game menu (also opens with the Escape key)
 * **View**: Group of commands that affect the visual game representation.
 ** **ClipTerrain** (shortcut: ctrl): Toggles visual terrain clipping (see [[terrain]] for details).
 ** **Clip-View Down** (shortcut: page down): Increases clipping depth.
 ** **Clip-View Up** (shortcut: page up): Decreases clipping depth.
 ** **Hide Objects**: Hides/shows all units on screen. Shadows are still rendered.
 ** **Show Resources**: Toggles display of [[concepts/resources]] on screen.
-** **Show Ranges**: Displays all friendly unit ranges.
-** **Show Hostile Ranges**: Displays all hostile unit ranges.
+** **Show Ranges**: Displays all friendly attack ranges.
+** **Show Hostile Ranges**: Displays all hostile attack ranges.
 
 ===Contact and Event Lists===
 Friendly and hostile contacts are grouped by type and displayed at the top edge of the screen.
@@ -66,7 +67,7 @@ Left to right, the commands are:
 * **Abort**: Drops all tasks of the selected unit.
 * **Sleep**: Toggles sleep-state of the selected unit. Sleeping units are omitted in the Idle Queue.
 * **Self Destruct**: Destroys the selected unit.
-* **Messages**: Displays any waiting tutorial messages.
+* **Messages**: Displays any waiting info messages.
 
 
 ===Specific Unit Commands===

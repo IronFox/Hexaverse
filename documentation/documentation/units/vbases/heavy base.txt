@@ -1,0 +1,7 @@
+Vehicles equipped with a heavy base will excel at land-based activities.
+Compared to a [[units/vbases/hoverbase]], heavy turrets will barely slow them down, operations (e.g. [[units/turrets/terraformer|terraforming]]) will be finished twice as fast, and they can take considerably more beating until they expire.
+Heavy base vehicles cannot stand on water alone, however, and are hindered by mountainous terrain.
+
+Unless the terrain is extremely mountainous it is generally a good idea to use this base type (or [[units/vbases/catamaran base]]) for offensive vehicles.
+Other turret types may benefit from either, depending on the scenario.
+On flat planets with little water, heavy bases are the ideal choice for all turret types, assuming [[concepts/resources]] and [[concepts/research|research state]] allow it.

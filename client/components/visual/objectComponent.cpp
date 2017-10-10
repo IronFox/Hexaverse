@@ -648,6 +648,11 @@ namespace Objects
 		return StandardOf<TaskAttachment>(t.visualization);
 	}
 
+	/*static*/ TaskAttachment*	TaskAttachment::FetchOptional(const Objects::MobileEntity::Task&t)
+	{
+		return (TaskAttachment*)t.visualization.get();
+	}
+
 	/*static*/ TaskAttachment&	TaskAttachment::Allocate(Objects::MobileEntity::Task&t)
 	{
 		return StandardAllocate<TaskAttachment>(t.visualization);

@@ -898,8 +898,8 @@ namespace Grid
 	inline HCellIdU	ToLayered(const HCellIdI&cellID)	{return HCellIdU(cellID.stackID,CellStack::ToLayer(cellID.height));}
 	inline LCellIdU	ToLayered(const LCellIdI&cellID)	{return LCellIdU(cellID.stackID,CellStack::ToLayer(cellID.height));}
 
-	#pragma pack(push)
-	#pragma pack(1)
+	//#pragma pack(push)
+	//#pragma pack(1)
 	struct TCellResourceCoverage
 	{
 		typedef TCellResourceCoverage Self;
@@ -919,9 +919,13 @@ namespace Grid
 			s.WriteSize(v.cellIndex);
 			SerialSync(s,v.coverage);
 		}
-
+		bool operator!=(const Self&other) const {return !operator==(other);}
+		bool operator==(const Self&other) const
+		{
+			return cellIndex == other.cellIndex && coverage == other.coverage;
+		}
 	};
-	#pragma pack(pop)
+	//#pragma pack(pop)
 
 	void			FlushStackFamily(Ctr::Array<CellStack>&cellStack,  BYTE family);
 	void			FlushAllStackData();

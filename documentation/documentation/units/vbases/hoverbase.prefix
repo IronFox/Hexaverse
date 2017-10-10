@@ -1,10 +1,9 @@
 {{ img:units/Hoverbase.png|Hoverbase}}
 =Hoverbase=
-*  Cost: %Minerals%40
+*  Cost: %Minerals%30
 *  [[concepts/initiative|Initiative]]: 100
 *  Can climb 1 height level up
 *  Can safely fall down 5 height levels
 *  [[concepts/vehicle|Carrying capacity]]: 1
 *  Base speed: 20 (supported by water)
 *  Base health: 4
-*  Turret carrying capacity: 1

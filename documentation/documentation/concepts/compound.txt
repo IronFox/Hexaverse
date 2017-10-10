@@ -6,8 +6,8 @@ Within a compound, working structures auto-balance [[concepts/resources|resource
 Select any structure of a compound to see its resource balance in the bottom left screen corner.
 Its detailed resource supply and demand is listed on the unit panel in the right screen section.
 
-In most game variances, all structures of one [[concepts/faction]] form an implicit compound, regardless of physical connection.
-In some, however, [[units/structures/connector|connectors]] are required to connect distant structures.
+In all current variances of Hexaverse all structures of one [[concepts/faction]] form an implicit compound regardless of physical connection.
+In older versions or custom builds [[units/structures/connector|connectors]] are required to connect distant structures.
 
 ==Enabling Structures==
 

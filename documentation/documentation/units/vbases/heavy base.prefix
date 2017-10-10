@@ -1,6 +1,6 @@
 {{ img:units/Heavy Base.png|Heavy Base}}
 =Heavy Base=
-*  Cost: %Minerals%80
+*  Cost: %Minerals%45
 *  [[concepts/initiative|Initiative]]: 100
 *  Can climb 1 height level up
 *  Can safely fall down 2 height levels
@@ -8,4 +8,3 @@
 *  [[concepts/vehicle|Carrying capacity]]: 10
 *  Base speed: 15
 *  Base health: 12
-*  Turret carrying capacity: 10

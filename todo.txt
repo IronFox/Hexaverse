@@ -1,4 +1,8 @@
+
 alliances
+
+hotkeys
+
 
 bug: in configuration mode nexus bases sometimes do not update, despite server version visible
 
@@ -84,7 +88,7 @@ make generators switch off if not needed
 
 lava ship
 
-send entity id with server messages so user can click on the message to focus on them
+make visual events clickable
 better mine output (refinery)
 
 
@@ -136,7 +140,8 @@ round delay visualization on attack vectors
 
 vertical turret rotation
 
-water simulation
+liquid simulation
+	water as a resource?
 vehicle upgrade facilities
 multi-planet
 
@@ -153,6 +158,10 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+colored faction list + chat history + chat message input
+send entity id with server messages so user can click on the message to focus on them (ids are sent, user can't click yet)
+faction-colored user messages
+build high/low wall (currently only high exists, which is misleading)
 button for main menu in server selection
 option to not fade out music in game
 remote console load command should behave as save command

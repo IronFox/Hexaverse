@@ -1892,14 +1892,6 @@ bool loop()
 			textout.SetColor(1,1,1);
 
 
-			if (!Network::client.IsConnected() /*&& false*/)
-			{
-				static Timer::Time	lastCheck = timer.Now();
-				if (!Dialog::serverChoice || timer.CheckIfOutdatedAndUpdate(lastCheck,1.f))
-					if (!display.IsMinimized())
-						UpdateServerChoice();
-			}
-
 
 			if (UI::showControlsAndContacts && !saveScreenshot)
 			{
@@ -2687,19 +2679,12 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 	{
 		if (GUI::IsModal())
 			return ;
-		static const String allowed = "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_-:; <>!'\"'$%^&*()=+.,/\\#@?";
-		Dialog::Query("Please enter message","",allowed,[](const String&candidate)->bool
+		
+		Dialog::Query("Please enter message","",Network::allowedChatCharacters,[](const String&candidate)->bool
 			{
 				return candidate.length() <= 256;
 			},
-			[](const String&msg)
-			{
-				if (msg.TrimRef().length() > 0)
-				{
-					if (Network::client.IsConnected())
-						Network::Channels::chatMessage.SendTo(Network::client,msg);
-				}
-			}
+			Network::SendChatMessage
 		);
 
 
@@ -3664,6 +3649,7 @@ int main( int argc, const char* argv[])
 
 			Loading::Stage("Progress Bars",ProgressBar::Create);
 			Loading::Stage("Dialogs",Dialog::Create);
+			Loading::Stage("HostList",GUI::HostList::Create);
 
 		#endif
 

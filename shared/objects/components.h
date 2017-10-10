@@ -85,15 +85,19 @@ namespace Objects
 
 	inline bool					CursorModeExpectsLeftClick(CursorMode activeCursorMode)
 	{
-		return (
-		activeCursorMode == CursorMode::BuildConnectorChainMode 
-		|| activeCursorMode == CursorMode::BuildRoadChainMode
-		|| activeCursorMode == CursorMode::BuildBridgeMode
-		|| activeCursorMode == CursorMode::BuildWallChainMode
-		|| activeCursorMode == CursorMode::AttackMode 
-		|| activeCursorMode == CursorMode::DigTunnelMode
-		|| activeCursorMode == CursorMode::PlaceStructureMode
-		);
+		switch (activeCursorMode)
+		{
+			case CursorMode::BuildConnectorChainMode:
+			case CursorMode::BuildRoadChainMode:
+			case CursorMode::BuildBridgeMode:
+			case CursorMode::BuildHighWallChainMode:
+			case CursorMode::BuildLowWallChainMode:
+			case CursorMode::AttackMode:
+			case CursorMode::DigTunnelMode:
+			case CursorMode::PlaceStructureMode:
+				return true;
+		}
+		return false;
 	}
 
 	#ifdef HAS_WINDOW
@@ -249,6 +253,7 @@ namespace Objects
 			bool							ignoresVehicleMotion = false,	//indicates that the vehicle can fire and move at 100% each in the same round
 											dealsEMPDamage = false,
 											detectsResources = false,
+											isScanner = false,	//indicates a turret explicitly designed to scan for hostile units or terrain changes
 											continuousRotation = false,	//indicates that the turret should rotate continuously, regardless of server turret rotation commands
 											requiresStationaryVehicle = false,	//cannot fire if vehicle moved last round
 											isDoomsday = false;	//server may reject their deployment

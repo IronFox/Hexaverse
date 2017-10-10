@@ -161,6 +161,10 @@ namespace GUI
 	class ComponentLocation
 	{
 	public:
+		#ifdef _DEBUG
+			index_t		dbgMarked = 0;
+		#endif
+
 		const M::Rect<>&	GetRect() const {return rect;}
 		bool			SetWidth(float w);
 		bool			SetHeight(float h);
@@ -243,6 +247,7 @@ namespace GUI
 
 
 	public:
+
 
 		/**/			Component();
 		virtual			~Component();
@@ -491,12 +496,12 @@ namespace GUI
 
 		Engine::Keyboard::CharacterBuffer	backup;
 
-		static void		OnCharHandled(char);
+		static void			OnCharHandled(char);
 
-		virtual void	SetInputActive(bool isActive);
+		virtual void		SetInputActive(bool isActive);
 		virtual const char*	GetAllowed() const {return nullptr;}
-		virtual StringRef GetText();
-		virtual float	GetContentHeight() const override;
+		virtual StringRef	GetTextRef();
+		virtual float		GetContentHeight() const override;
 	public:
 
 		/**
@@ -518,9 +523,9 @@ namespace GUI
 		virtual const char*	GetAllowed() const override {return allowed.c_str();}
 	public:
 
-		String			GetInput();
-		void			SetCurrent(const String&);
-		void			SetAllowed(const String&);
+		String				GetText();
+		void				SetText(const String&);
+		void				SetAllowedAlphabet(const String&);
 	};
 
 	class PasswordInput : public BaseInput
@@ -528,10 +533,10 @@ namespace GUI
 		typedef BaseInput	Super;
 		static StringBuffer	placeholder;
 	protected:
-		virtual StringRef GetText() override;
+		virtual StringRef	GetTextRef() override;
 	public:
-		const char*		GetInput();
-		void			WipeInput();
+		const char*			GetText();
+		void				WipeInput();
 	};
 
 	class TextField : public Box
@@ -973,7 +978,7 @@ namespace GUI
 			float		viewTop=0.f,	//!< counting top (=0) down (>=0)
 						targetViewTop=0.f;
 			float		viewSize = 0.2f;
-			M::Rect<>		outline,	//!< Shadow behind scrollbar. Does not contain buttons, but does contain bar
+			M::Rect<>	outline,	//!< Shadow behind scrollbar. Does not contain buttons, but does contain bar
 						bar;		//!< Actual grabbable bar
 			PScrollButton		up,down;
 			Panel		*owner=nullptr;
@@ -981,6 +986,8 @@ namespace GUI
 			bool		mouseDown = false,scrollDownOnClick =false;
 			float		dragRelative = 0;
 
+			void		ScrollToTop();
+			void		ScrollToBottom();
 			PComponent	OnMouseDown();
 			WheelRs		OnMouseWheel(short);
 			void		OnMouseUp();
@@ -1058,6 +1065,9 @@ namespace GUI
 		float			GetMaxAutoHeight() const {return maxHeight;}
 		void			SetMaxAutoHeight(float h) {if (h == maxHeight) return; maxHeight = h; InvalidateAutoLayout();}
 
+		void			ScrollToBottom()	{vscroll.ScrollToBottom();}
+		void			ScrollToTop()	{vscroll.ScrollToTop();}
+
 		virtual bool	DetectEnabledState() override;
 		
 		virtual void	SetActive(bool isActive) override;
@@ -1087,16 +1097,7 @@ namespace GUI
 			return components.Count();
 		}
 
-		virtual bool		AddComponent(const PComponent&c)
-		{
-			if (!c)
-				return false;
-			if (components.Contains(c))
-				return false;
-			components << c;
-			c->SetParent( GetWindow(), shared_from_this());
-			return true;
-		}
+		virtual bool		AddComponent(const PComponent&c);
 		virtual PComponent	AddNewComponent(Component*c)
 		{
 			ASSERT_NOT_NULL__(c);
@@ -1631,8 +1632,9 @@ namespace GUI
 	void				Show(const GUI::PWindow&window);
 	/**
 	Makes sure the specified window is visible. Lowers it to the bottom of the window stack if it's not there already
+	@return true if the window has been added, false if it's empty or already visible (though order changes may still be applied)
 	*/
-	void				ShowBottom(const GUI::PWindow&window);
+	bool				ShowBottom(const GUI::PWindow&window);
 	bool				Hide(const PWindow&window);
 	bool				Hide(Window*window);
 	bool				IsVisible(const GUI::PWindow&window);

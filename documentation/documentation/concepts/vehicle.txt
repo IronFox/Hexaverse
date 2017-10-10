@@ -18,14 +18,12 @@ Vehicles built on a [[units/vbases/catamaran base]] are much faster on, but also
 Naval [[units/turrets/terraformer]]s can dig canals through non-water terrain, but can never leave the water surface.
 
 ==Heavy Vehicles==
-If a [[units/vbases/heavy base]] is used, then the vehicle cannot savely stand on water alone, and has reduced falling tolerance. However, similar to catamaran bases, it has increased capacities on solid terrain. Heavy vehicles benefit from flat non-liquid terrain.
+If a [[units/vbases/heavy base]] is used, then the vehicle cannot savely stand on water alone, and has reduced falling tolerance. However, analogously  to catamaran bases on water, it has increased capacities on solid terrain. Heavy vehicles benefit from flat non-liquid terrain.
 Similarly to naval vehicles, [[units/turrets/terraformer]]s can make any terrain suitable for heavy vehicles.
 
 ==Sub Orbital Planes==
-Planes are unusual vehicles.
-While they follow the same principles, the player is not given a choice regarding the component composition.
-Instead, all planes share the same base.
-Their health is determined from the 'turret' health multiplier alone, and their speed equals 100 divided by their weight.
+Planes are technically vehicles but lack their composition flexibility, as they share the same base.
+A plane's health is determined from the 'turret' health multiplier alone, and their speed equals 100 divided by their weight.
 
 Planes can land and take off vertically, as long as no terrain is in the way.
 While landed, they are immobile and visible to regular [[concepts/scanning range|sensory]].
