@@ -962,7 +962,8 @@ namespace Objects
 			}
 
 			terraformRemoveGround->Add( new Command::IconCommand("Dig Tunnel to", &CommonCmd::ToggleMode<CursorMode::DigTunnelMode>, &CommonCmd::ModeCheck<CursorMode::DigTunnelMode>,NoCosts));
-			terraformAddGround->Add( new Command::IconCommand("Build Wall to", &CommonCmd::ToggleMode<CursorMode::BuildWallChainMode>, &CommonCmd::ModeCheck<CursorMode::BuildWallChainMode>,NoCosts));
+			terraformAddGround->Add( new Command::IconCommand("Build Low Wall to", &CommonCmd::ToggleMode<CursorMode::BuildLowWallChainMode>, &CommonCmd::ModeCheck<CursorMode::BuildLowWallChainMode>,NoCosts));
+			terraformAddGround->Add( new Command::IconCommand("Build High Wall to", &CommonCmd::ToggleMode<CursorMode::BuildHighWallChainMode>, &CommonCmd::ModeCheck<CursorMode::BuildHighWallChainMode>,NoCosts));
 
 
 			terraformAddGround->Add( new Command::IconCommand("Build Blocks", &Detail::TerraformerBuildBlock, &CommonCmd::ModeCheck<CursorMode::BuildBlockMode>,NoCosts));

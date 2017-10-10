@@ -20,7 +20,9 @@
 #include "gridControl.h"
 #include "visual/objectChoices.h"
 #include "visual/terrain.h"
+#include "visual/factionTable.h"
 #include "clientEvents.h"
+#include "visual/guiHostList.h"
 
 
 //#define DEBUG_SERVER_LIST	//enable to generate very long artificial server list
@@ -139,6 +141,15 @@ namespace Network
 		catch (const std::exception&ex)
 		{
 			LogException(nullptr,ex);
+		}
+	}
+
+	void SendChatMessage(const String & msg)
+	{
+		if (msg.TrimRef().length() > 0)
+		{
+			if (client.IsConnected())
+				Channels::chatMessage.SendTo(client,msg);
 		}
 	}
 
@@ -544,7 +555,7 @@ namespace Network
 					#endif
 				}
 				#ifdef HAS_WINDOW
-					Dialog::CheckServersAreShown(false);
+					GUI::HostList::CheckVisibility(false);
 				#endif
 
 				LoadScript(Network::requestedResearchScript);
@@ -801,7 +812,31 @@ namespace Network
 
 		void ControlMessage(Protocol::ControlMessage&msg)
 		{
-			LogEvent(EventClass( EventSignificance::Reinterpret(msg.significance),  EventFlavor::Reinterpret(msg.flavor)) ,nullptr,">"+msg.message);
+
+			Objects::OwnerParameter f;
+			Objects::PWorldEntity	e;
+			if (msg.focus.IsNotEmpty())
+			{
+				f = Objects::Faction::FindByID(msg.focus);
+				if (!f)
+				{
+					e = Objects::GetEntity(msg.focus);
+				}
+			}
+
+			Logging::Origin origin = msg.isPrivate ? Logging::Origin::ServerPrivate : Logging::Origin::ServerPublic;
+
+			auto cls = EventClass( EventSignificance::Reinterpret(msg.significance),  EventFlavor::Reinterpret(msg.flavor));
+			if (f)
+				LogEvent(cls ,f,msg.message,origin);
+			else
+				LogEvent(cls ,e.get(),msg.message,origin);
+
+			#ifdef HAS_WINDOW
+				if (cls.flavor == EventFlavor::ChatMessage)
+					GUI::FactionTable::SignalChatMessage(f,msg.message);
+			#endif
+
 		}
 
 
@@ -1444,7 +1479,7 @@ namespace Network
 				#ifdef HAS_WINDOW
 					ConfigurationMode::SetActive(false);
 					GUI::Hide(Menu::login);
-					Dialog::CheckServersAreShown(true);
+					GUI::HostList::CheckVisibility(true);
 					GUI::SignalSituationChange();
 					Tutorial::SignalEnd();
 				#endif
@@ -2065,6 +2100,8 @@ bool		Network::ConnectToConfiguredServerIfAvailable()
 	return false;
 }
 
+
+const String Network::allowedChatCharacters = "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_-:; <>!'\"'$%^&*()=+.,/\\#@?";
 
 void	Network::SignalProtocolDisruption(const String&message)
 {

@@ -22,7 +22,7 @@ namespace Objects
 	}
 
 
-	UINT64&					Statistics::MetricTable::Fetch(Metric metric)
+	UINT64&					Statistics::MetricTable::FetchOptional(Metric metric)
 	{
 		auto ptr = map.QueryPointer((K)metric);
 		if (ptr)
@@ -41,7 +41,7 @@ namespace Objects
 
 	void					Statistics::MetricTable::Inc(Metric m)
 	{
-		Fetch(m)++;
+		FetchOptional(m)++;
 	}
 	void					Statistics::MetricTable::Add(Metric m, int delta)
 	{
@@ -50,7 +50,7 @@ namespace Objects
 			DBG_ASSERT_EQUAL__(delta,0);
 			return;
 		}
-		Fetch(m) += delta;
+		FetchOptional(m) += delta;
 	}
 	void					Statistics::MetricTable::Set(Metric m, count_t value)
 	{

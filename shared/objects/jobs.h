@@ -493,7 +493,7 @@ namespace Objects
 			public:
 				typedef PathJob	Super;
 
-				CursorMode		mode;
+				CursorMode				mode;
 				Grid::LCellIdI			lastLocation = Grid::LCellIdI::Invalid;
 				bool					first;
 				/**/					Sequence():Super(Autocomplete::Always,true)	{};
@@ -502,21 +502,7 @@ namespace Objects
 				virtual void			Restart(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(1,v,Component::TerrainRemove);}
 				virtual Component::operation_t	GetOperationAffinity() const override {return Component::TerrainRemove;}	//we don't want this job itself to cost any kind of resources, hence TerrainRemove. This job actually does TerrainAdd or Construct, but those are child-jobs
 
-				virtual String			GetName() const override
-				{
-					switch (mode)
-					{
-						case CursorMode::BuildRoadChainMode:
-							return "Build Road to...";
-						case CursorMode::BuildConnectorChainMode:
-							return "Build Connectors to...";
-						case CursorMode::BuildWallChainMode:
-							return "Build Wall to...";
-						case CursorMode::BuildBridgeMode:
-							return "Build Bridge to...";
-					}
-					return "???...";
-				}
+				virtual String			GetName() const override;
 
 				virtual bool			CanContinue(MobileEntity&v, const Grid::LCellIdI&, String&outError) override
 				{

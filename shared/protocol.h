@@ -31,7 +31,6 @@ namespace PortOffset
 	{
 		Info,
 		Session,
-		BroadcastFrom,
 		Control
 	};
 }
@@ -1327,10 +1326,12 @@ namespace Protocol
 		)
 
 
-	NETSTRUCT3(ControlMessage
+	NETSTRUCT5(ControlMessage
 		, Package::NetString<256>, message
-		, NET(BYTE), significance
-		, NET(BYTE), flavor
+		, BYTE, significance
+		, BYTE, flavor
+		, bool, isPrivate
+		, TUniqueID, focus	//may be faction or entity
 	)
 
 

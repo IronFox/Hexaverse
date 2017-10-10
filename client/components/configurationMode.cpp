@@ -130,7 +130,7 @@ namespace ConfigurationMode
 			Buffer0<std::pair<index_t, GUI::PButton> >	materialButtons;
 			
 			void				Create(bool allowUnknown, bool allowLiquids);
-			void				SetCurrent(BYTE type);
+			void				SetText(BYTE type);
 		};
 
 		MaterialDialog		fullScope, noUnknown, noLiquids;
@@ -292,7 +292,7 @@ namespace ConfigurationMode
 		}
 
 
-		void				MaterialDialog::SetCurrent(BYTE type)
+		void				MaterialDialog::SetText(BYTE type)
 		{
 			foreach (materialButtons,b)
 			{
@@ -669,7 +669,7 @@ namespace ConfigurationMode
 			*/
 			Objects::Command::PBase choose(new Objects::Command::IconCommand("Choose Material",[&value,&dialog]()
 			{
-				dialog.SetCurrent(value);
+				dialog.SetText(value);
 				dialog.onSelect = [&value](BYTE v)
 				{
 					value = v;

@@ -1,0 +1,5 @@
+----
+Surveyor towers can be used to detect natural [[concepts/resources]], but their usefulness is very limited here.
+Their actual purpose lies in detecting changes in underground terrain.
+Regular [[units/structures/radar tower|radars]] have very limited capacity to penetrate the ground. Surveyors, on the other hand, can scan deep into the ground to detect subsurface hostile activities.
+Being unaffected by matter, they are also useful to scan through constructed walls.

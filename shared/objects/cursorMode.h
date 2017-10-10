@@ -17,10 +17,11 @@ namespace Objects
 		AttackMode,
 		BuildConnectorChainMode,
 		BuildRoadChainMode,
-		BuildWallChainMode,
+		BuildHighWallChainMode,
 		DigTunnelMode,
 		BuildBridgeMode,
 		PlaceStructureMode,
+		BuildLowWallChainMode,
 	};
 
 	#ifdef HAS_WINDOW

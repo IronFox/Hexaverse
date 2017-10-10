@@ -11,6 +11,7 @@
 #include "objectRendering.h"
 #include "objectChoices.h"
 #include "display.h"
+#include "factionTable.h"
 
 #include <objects/structure/storageStructures.h>
 #include <objects/structure/vehicleStore.h>
@@ -31,33 +32,20 @@ namespace UI
 	{
 		if (GUI::IsModal())
 		{
-			if (Dialog::ShowingFactions())
+			if (GUI::FactionTable::IsVisible())
 			{
-				Dialog::HideFactions();
+				GUI::FactionTable::Hide();
 				return;
 			}
 			GUI::CloseAllModal();
 		}
-
-		Buffer0<Dialog::Faction>	factions;
-		for (const auto&factionIn : Objects::Faction::allKnown)
-		//Network::factionMap.VisitAllValues([&factions](const Objects::OwnerParameter&factionIn)
-		{
-			Dialog::Faction&factionOut = factions.Append();
-			factionOut.name = factionIn->GetName();
-			factionOut.online = factionIn->online;
-			factionOut.requestedNewRound = factionIn->requestedNewRound;
-			factionOut.factionReference = factionIn.get();
-		};
-		//);
-
-		Dialog::ShowFactions(factions);
+		GUI::FactionTable::Show();
 	}
 
 
 	void	RefreshSessionView()
 	{
-		if (Dialog::ShowingFactions())
+		if (GUI::FactionTable::IsVisible())
 		{
 			GUI::CloseAllModal();
 			ShowSession();
@@ -1063,6 +1051,24 @@ namespace UI
 	namespace HexGrid
 	{
 
+		static float GetLeftCellOffset(const TGridConfig&cfg, int cellY);
+		static float GetRightCellOffset(const TGridConfig&cfg, int cellY, bool snapX)
+		{
+			if (snapX)
+			{
+				float left = GetLeftCellOffset(cfg,cellY);
+				float space = GetRightCellOffset(cfg,cellY,false) - left;
+				int intSpace = space / (cfg.stepX*2);
+				return left + intSpace * (cfg.stepX*2);
+			}
+
+			return (-1+2.f * display.GetPixelAspect()) - float(1 - (cellY % 2)) * cfg.stepX;
+		}
+
+		static float GetLeftCellOffset(const TGridConfig&cfg, int cellY)
+		{
+			return -1.f + float(1 - (cellY % 2)) * cfg.stepX;
+		}
 
 		void		GridCell::Update(const TGridConfig&cfg, const Engine::Aspect<>&aspect)
 		{
@@ -1080,15 +1086,12 @@ namespace UI
 		}
 		float2		GridCell::ToFloatCoords(const TGridConfig&cfg) const
 		{
-			int2 cellCoords = gridCoords;
-			if (!flipX && !flipY)
-				cellCoords += int2(3,1);
 			float x;
 			if (flipX)
-				x = (-1+2.f * display.GetPixelAspect()) - cfg.stepX *2 * cellCoords.x - float(1 - (cellCoords.y % 2)) * cfg.stepX;
+				x = GetRightCellOffset(cfg,gridCoords.y,!flipY) - cfg.stepX *2 * gridCoords.x;
 			else
-				x = -1.f + cfg.stepX *2 * cellCoords.x + float(1 - (cellCoords.y % 2)) * cfg.stepX;
-			float2	rs(x, -1.f + cfg.stepY * cellCoords.y);
+				x = GetLeftCellOffset(cfg,gridCoords.y) + cfg.stepX *2 * gridCoords.x;
+			float2	rs(x, -1.f + cfg.stepY * gridCoords.y);
 			if (flipY)
 				rs.y = -rs.y;
 			return rs;
@@ -1100,6 +1103,14 @@ namespace UI
 			rs.x = -sin(a);
 			rs.y = cos(a);
 		}
+
+		void		GridCell::IncludeX(const TGridConfig&cfg, M::TFloatRange<>&r)const
+		{
+			float2 c = ToFloatCoords(cfg);
+			r.Include(c.x-cfg.stepX);
+			r.Include(c.x+cfg.stepX);
+		}
+
 
 		bool		GridCell::Contains(const M::TVec2<>&p) const
 		{
@@ -1129,7 +1140,123 @@ namespace UI
 			return true;
 		}
 
+		/**
+		Linear list of all hex-grid cells
+		*/
 		Buffer<GridCell>			allGuiCells;
+		float						hexGridScale = 1;
+		/**
+		True if any changes have been detected in hex-grid cell composition, but area min-max have not been updated yet
+		*/
+		bool						cellCompositionChanged = true;
+		M::Rect<>					unscaledCellRegion[2][2];
+
+		template <typename T>
+		static T&		Set(IndexTable<T>&table, index_t row, const T&def)
+		{
+			T*ptr = table.QueryPointer(row);
+			if (ptr)
+				return *ptr;
+			return table.Set(row,def);
+		}
+
+		IndexTable<M::TFloatRange<> >	rowRanges[2][2];
+		M::TIntRange<int> yRanges[2][2];
+
+
+		void			RecomputeCellBoundsIfNecessary()
+		{
+			if (!cellCompositionChanged)
+				return;
+			cellCompositionChanged = false;
+
+			const auto cfg = GetGridConfig(1);
+			const auto empty = M::MaxInvalidRange<float>();
+			const auto emptyI = M::TIntRange<int>::Invalid;
+
+
+			for (int x = 0; x < 2; x++)
+				for (int y = 0; y < 2; y++)
+				{
+					rowRanges[x][y].Clear();
+					yRanges[x][y] = emptyI;
+				}
+
+			foreach (allGuiCells,c)
+			{
+				M::TFloatRange<>&range = Set(rowRanges[c->flipX][c->flipY], c->gridCoords.y, empty);
+				c->IncludeX(cfg,range);
+				yRanges[c->flipX][c->flipY].Include(c->gridCoords.y);
+			}
+		}
+
+		TGridConfig	GetGridConfig(float extraScale)
+		{
+			static const float CellSize = 0.075f;
+			static const float stepY = (0.5f + 1.f) * CellSize;
+			static const float stepX = 0.86602540378443864676372317075294f * CellSize;
+
+			const float scale = UI::GetScale()*extraScale;
+			TGridConfig rs;
+			rs.cellSize = CellSize * scale;
+			rs.stepX = stepX * scale;
+			rs.stepY = stepY * scale;
+			return rs;
+		}
+
+		TGridConfig	GetGridConfig()
+		{
+			return GetGridConfig(hexGridScale);
+		}
+
+
+
+		void			ReScaleComposition()
+		{
+			RecomputeCellBoundsIfNecessary();
+			auto cfg = GetGridConfig(1);
+			float newFc = 1;
+			for (int y = 0; y < 2; y++)
+			{
+				const M::TIntRange<> range = yRanges[0][y].Intersect(yRanges[1][y]);
+				for (int i = range.start; i < range.end; i++)
+				{
+					auto*r0 = rowRanges[0][y].QueryPointer(i);
+					auto*r1 = rowRanges[1][y].QueryPointer(i);
+				
+					if (!r0 || !r1)
+						continue;
+
+					const float overlap = r0->max - r1->min;
+					if (overlap <= 0)
+						continue;
+
+
+					const float scaleOrigin0 = GetLeftCellOffset(cfg,i);
+					const float scaleOrigin1 = GetRightCellOffset(cfg,i,!y);
+					const float ext0 = r0->max - scaleOrigin0;
+					const float ext1 = scaleOrigin1 - r1->min;
+					if (ext0 < 0 || ext1 < 0 || ext0 + ext1 == 0)
+						continue;
+					const float space = scaleOrigin1 - scaleOrigin0;
+
+					//scaleOrigin0 + ext0*fc = scaleOrigin1 - ext1 * fc
+					//fc * (ext0 + ext1) = scaleOrigin1 - scaleOrigin0 = space
+					//fc = space / (ext0 + ext1)
+
+					const float fc = space / (ext0 + ext1);
+					newFc = M::Min(newFc,fc);
+				}
+			}
+			if (newFc == hexGridScale)
+				return;
+			hexGridScale = newFc;
+			auto cfg2 = GetGridConfig();
+
+			foreach (allGuiCells,c)
+				c->Update(cfg2,camera);
+		}
+
 
 		GridCell&		AllocateCell(const Objects::Command::PVisualCommand&cmd)
 		{
@@ -1150,6 +1277,7 @@ namespace UI
 			GridCell&c = allGuiCells.Append();
 			c.command = cmd;
 			isNew = true;
+			cellCompositionChanged = true;
 			return c;
 		}
 
@@ -1161,6 +1289,7 @@ namespace UI
 				if (c->command == cmd)
 				{
 					allGuiCells.erase(c);
+					cellCompositionChanged = true;
 					return;
 				}
 
@@ -1234,6 +1363,8 @@ namespace UI
 			foreach (allGuiCells,cell)
 				cell->Update(cfg,camera);
 			RefreshContacts();
+			cellCompositionChanged = true; 
+			ReScaleComposition();
 		}
 
 
@@ -1497,7 +1628,7 @@ namespace UI
 			bool isNew;
 			GridCell&cell = AllocateCell(vcmd,isNew);
 			cmd->Refresh(Network::ControlEnabled());
-			cell.gridCoords = coords;
+			cell.gridCoords = coords + int2(3,1);
 			cell.Update(visitCfg,camera);
 			if (isNew)
 				allocatedEntityCommands<<vcmd;
@@ -1533,23 +1664,7 @@ namespace UI
 			context.Refresh(cfg);
 		}
 
-		TGridConfig	GetGridConfig()
-		{
-			static const float CellSize = 0.075f;
-			static const float stepY = (0.5f + 1.f) * CellSize;
-			static const float stepX = 0.86602540378443864676372317075294f * CellSize;
-
-			const float scale = UI::GetScale();
-			TGridConfig rs;
-			rs.cellSize = CellSize * scale;
-			rs.stepX = stepX * scale;
-			rs.stepY = stepY * scale;
-			return rs;
-		}
-
-		
-
-
+	
 		void					RefreshContacts()
 		{
 			if (!showControlsAndContacts)
@@ -1675,7 +1790,7 @@ namespace UI
 				hostileGroups.RemoveIcons();
 				animationTimeLine.RemoveIcons();
 			}
-
+			ReScaleComposition();
 		}
 	}
 
@@ -1873,7 +1988,7 @@ namespace UI
 				SurfaceRenderer::SetColor(float4(0,0,0,0.6f));
 				float w = 0.2f / display.GetPixelAspect();
 				//textout.locate(-1.f + 0.01f,-1.f + textout.GetScaledHeight()*1.2f*(y+6));
-				M::Rect<> t(-1,lineHeight*4.f-1.f,w*2.f - 1.f,lineHeight*11.5f - 1.f);
+				M::Rect<> t(-1,lineHeight*5.f-1.f,w*2.f - 1.f,lineHeight*11.5f - 1.f);
 				SurfaceRenderer::Rasterize(
 					float2(t.x.min,t.y.min),float4(0,0,0,0.8f),
 					float2(t.x.max,t.y.min),float4(0,0,0,0.2f),

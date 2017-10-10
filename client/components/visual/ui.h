@@ -139,6 +139,7 @@ namespace UI
 		};
 
 		TGridConfig	GetGridConfig();
+		TGridConfig	GetGridConfig(float);
 
 		
 		//static const float CellSize = 0.075f;
@@ -579,6 +580,7 @@ namespace UI
 			Determines the center floating point coordinates of this cell in the range [-1..-1+pixelAspect*2],[-1,+1]
 			*/
 			float2		ToFloatCoords(const TGridConfig&cfg) const;
+			void		IncludeX(const TGridConfig&cfg, M::TFloatRange<>&r)const;
 
 			static void Radial(float cellIndex, M::TVec2<>&rs);
 			/**

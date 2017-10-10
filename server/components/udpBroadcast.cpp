@@ -149,8 +149,7 @@ namespace UDPBroadCast
 		SOCKADDR_IN me;
 		memset(&me,0,sizeof(me));
 		me.sin_family=AF_INET;
-		UINT16 port = packet.serverBasePort + PortOffset::BroadcastFrom;
-		me.sin_port=htons(packet.serverBasePort);
+		me.sin_port=0;
 		me.sin_addr.s_addr=ADDR_ANY;
 		int rc=::bind(broadcastSocket,(SOCKADDR*)&me,sizeof(SOCKADDR_IN));
 		if (rc != 0)
@@ -160,7 +159,17 @@ namespace UDPBroadCast
 			LogEvent(EventClass::Preset::networkError,"Warning: Unable to bind UDP broadcast socket. Chances are, a server is already running.");
 			return false;
 		}
-		LogEvent(EventClass::Preset::network,"UDP broadcast online, broadcasting from port "+String(port));
+		{
+			struct sockaddr_in bound;
+			int addrlen = sizeof(bound);
+			if(getsockname(broadcastSocket, (struct sockaddr *)&bound, &addrlen) == 0 && addrlen == sizeof(bound))
+			{
+				auto p = ntohs(bound.sin_port);
+				LogEvent(EventClass::Preset::network,"UDP broadcast online, broadcasting from port "+String(p));
+			}
+			else
+				LogEvent(EventClass::Preset::network,"UDP broadcast online, broadcasting from unknown port");
+		}
 		int so_broadcast = TRUE;
 		rc = setsockopt(broadcastSocket,SOL_SOCKET,SO_BROADCAST,(const char*)&so_broadcast,sizeof so_broadcast);
 		ASSERT_EQUAL__(rc,0);

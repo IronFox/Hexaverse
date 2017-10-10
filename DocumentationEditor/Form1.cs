@@ -511,10 +511,17 @@ namespace DocumentationEditor
                 myProcess.StartInfo.WorkingDirectory = builderScript.DirectoryName;
                 try
                 {
-                    //Log("Invoking PHP ("+ myProcess.StartInfo.Arguments+")");
-                    if (!myProcess.Start())
-                        throw new Exception("Failed to start process");
-                    string output = myProcess.StandardOutput.ReadToEnd();
+					//Log("Invoking PHP ("+ myProcess.StartInfo.Arguments+")");
+					try
+					{
+						if (!myProcess.Start())
+							throw new Exception("Failed to start PHP process. Make sure PHP is installed and correctly configured in the path variable");
+					}
+					catch (Exception ex)
+					{
+						throw new Exception("Failed to start PHP process. Make sure PHP is installed and correctly configured in the path variable", ex);
+					}
+					string output = myProcess.StandardOutput.ReadToEnd();
                     string error = myProcess.StandardError.ReadToEnd();
 
                     string head = "<head>";

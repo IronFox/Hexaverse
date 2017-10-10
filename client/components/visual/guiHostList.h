@@ -1,11 +1,22 @@
 #pragma once
 #ifdef HAS_WINDOW
 
-/**
-Completely rebuilds the entire GUI related to server connection choices.
+namespace GUI
+{
 
-*/
-void	UpdateServerChoice();
+	namespace HostList
+	{
 
+		/**
+		Completely rebuilds the entire GUI related to server connection choices.
+
+		*/
+		void	Update();
+
+		void	Create();
+		void	CheckVisibility(bool);
+		bool	IsVisible();
+	}
+}
 	
 #endif

@@ -1,0 +1,9 @@
+{{ img:units/Surveyor Tower.png|Surveyor Tower}}
+=Surveyor Tower=
+*Based on [[units/turrets/Surveyor|Surveyor]] turret
+*  Health: 10
+*  Price: %Minerals% 50
+*  [[concepts/scanning range|Scanning range]]: 6 [=4+2 (tower modifier)]
+*  Scans into the ground, and detects natural [[concepts/resources]]
+This tower-turret type scans deep into the ground, and detects all naturally occuring [[concepts/resources]] within its [[concepts/scanning range]]. It can be automated if mobile.
+The Surveyor tower-turret is especially suited for detecting hostile entities. Such turret types are manadatory in order to see hostile forces approaching, as well as their attacks. Offensive turrets usually lack the necessary [[concepts/scanning range]] to see where they are shooting and depend on this turret type to reside in the vicinity.

@@ -15,7 +15,7 @@ This may allow the unit to execute more operations during the same round.
 
 The remaining attack action defines how many attack operations a unit can execute during the next attack phase.
 This value is reset to 100% at the beginning of each motion phase (which is //**after**// the attack phase).
-Vehicle turret types exhibit different sensibility to vehicle motion, which is declared in turret help text:
+Vehicle turret types exhibit different sensibility to vehicle motion, which is declared in the turret help text:
 * //Can attack independently of movement action//: The vehicle's attack action is not affected by motion. The vehicle may move as fast as it can, and still attack with full capacity during the next attack phase. 
 * //Vehicle must remain stationary to fire//: This turret type reacts very sensible to motion. Even the slightest motion will disallow any attack during the next attack phase.
 * //default//: The vehicle will lose attack action depending on how much it moved during the previous motion phase. Moving half of the movement range will cause the subsequent attack action to drop by 50%. A turret that can usually attack twice may be able to attack once under these circumstances.

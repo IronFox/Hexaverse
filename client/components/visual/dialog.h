@@ -136,12 +136,6 @@ namespace Dialog
 	typedef std::weak_ptr<Dialog>	WDialog;
 
 
-	struct Faction
-	{
-		String	name;
-		bool	online, requestedNewRound;
-		void*	factionReference;
-	};
 
 
 	/**
@@ -192,11 +186,6 @@ namespace Dialog
 
 
 
-	WDialog	ShowFactions(const Buffer0<Faction>&factions);
-
-	bool	ShowingFactions();
-	void	HideFactions();
-
 	void	ShowNextTutorial(bool autoNext);
 
 	bool	HasMoreTutorials();
@@ -209,15 +198,6 @@ namespace Dialog
 	@return true if a dialog is top-most, and it can be confirmed, false otherwise. Response does not reveal whether or not the dialog was closed, but whether or not the event should be propagated somewhere else
 	*/
 	bool	ConfirmCurrent(bool bySpace);
-
-	
-
-
-
-
-
-	void	CheckServersAreShown(bool doShow);
-
 
 	void	Create();
 	void	Destroy();
@@ -256,7 +236,6 @@ namespace Dialog
 	
 
 
-	extern GUI::PWindow	serverChoice;
 
 
 }

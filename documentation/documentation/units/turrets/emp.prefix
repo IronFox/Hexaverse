@@ -5,7 +5,7 @@
 *  [[concepts/vehicle|Weight]]: 5
 *  Base [[concepts/scanning range]]: 3
 *  Offensive turret
-*  [[concepts/attack range|Base horizontal attack range]]: 17 (Artillery)
+*  [[concepts/attack range|Base horizontal attack range]]: 15 (Artillery)
 *  Consumes %Uranium%50 per shot
 *  1 attack per round
 *  Explosion radius: 3
