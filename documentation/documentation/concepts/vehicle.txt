@@ -22,10 +22,8 @@ If a [[units/vbases/heavy base]] is used, then the vehicle cannot savely stand o
 Similarly to naval vehicles, [[units/turrets/terraformer]]s can make any terrain suitable for heavy vehicles.
 
 ==Sub Orbital Planes==
-Planes are unusual vehicles.
-While they follow the same principles, the player is not given a choice regarding the component composition.
-Instead, all planes share the same base.
-Their health is determined from the 'turret' health multiplier alone, and their speed equals 100 divided by their weight.
+Planes are technically vehicles but lack their composition flexibility, as they share the same base.
+A plane's health is determined from the 'turret' health multiplier alone, and their speed equals 100 divided by their weight.
 
 Planes can land and take off vertically, as long as no terrain is in the way.
 While landed, they are immobile and visible to regular [[concepts/scanning range|sensory]].
