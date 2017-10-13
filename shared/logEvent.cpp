@@ -216,7 +216,10 @@ namespace Logging
 		{
 			headerWritten = true;
 			if (!inTestMode)
+			{
+				//if you change this, make sure to update bug reporter
 				logFile << "Sig."<< tab << "Time" << tab << "Round"<<tab<< "Phase"<<tab<<  "ClientName"<<tab<<"IP"<<tab<<"EntityType"<<tab<<"EntityID"<<tab<<"OwnerID"<<tab<<"Location"<<tab<<"Message"<<nl;
+			}
 		}
 		if (printToConsole)
 			console << '[' << RuntimeConfig::roundNumber.ToString()<<"] ";
