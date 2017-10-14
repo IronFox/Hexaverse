@@ -31,7 +31,7 @@
 			this.label1 = new System.Windows.Forms.Label();
 			this.bugDescription = new System.Windows.Forms.TextBox();
 			this.label2 = new System.Windows.Forms.Label();
-			this.textBox1 = new System.Windows.Forms.TextBox();
+			this.reproductionDesc = new System.Windows.Forms.TextBox();
 			this.label3 = new System.Windows.Forms.Label();
 			this.logGroup = new System.Windows.Forms.ComboBox();
 			this.logFile = new System.Windows.Forms.ComboBox();
@@ -39,12 +39,15 @@
 			this.logFileList = new System.Windows.Forms.CheckedListBox();
 			this.sendButton = new System.Windows.Forms.Button();
 			this.abortButton = new System.Windows.Forms.Button();
+			this.logInfoLink = new System.Windows.Forms.LinkLabel();
+			this.label5 = new System.Windows.Forms.Label();
+			this.gameVersion = new System.Windows.Forms.TextBox();
 			this.SuspendLayout();
 			// 
 			// label1
 			// 
 			this.label1.AutoSize = true;
-			this.label1.Location = new System.Drawing.Point(9, 9);
+			this.label1.Location = new System.Drawing.Point(9, 11);
 			this.label1.Name = "label1";
 			this.label1.Size = new System.Drawing.Size(84, 13);
 			this.label1.TabIndex = 0;
@@ -54,39 +57,39 @@
 			// 
 			this.bugDescription.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.bugDescription.Location = new System.Drawing.Point(12, 25);
+			this.bugDescription.Location = new System.Drawing.Point(12, 27);
 			this.bugDescription.Multiline = true;
 			this.bugDescription.Name = "bugDescription";
-			this.bugDescription.Size = new System.Drawing.Size(474, 169);
+			this.bugDescription.Size = new System.Drawing.Size(477, 123);
 			this.bugDescription.TabIndex = 1;
 			// 
 			// label2
 			// 
 			this.label2.AutoSize = true;
-			this.label2.Location = new System.Drawing.Point(9, 209);
+			this.label2.Location = new System.Drawing.Point(9, 167);
 			this.label2.Name = "label2";
 			this.label2.Size = new System.Drawing.Size(215, 13);
 			this.label2.TabIndex = 2;
 			this.label2.Text = "How can we reproduce the issue? (optional)";
 			// 
-			// textBox1
+			// reproductionDesc
 			// 
-			this.textBox1.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+			this.reproductionDesc.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.textBox1.Location = new System.Drawing.Point(12, 225);
-			this.textBox1.Multiline = true;
-			this.textBox1.Name = "textBox1";
-			this.textBox1.Size = new System.Drawing.Size(474, 136);
-			this.textBox1.TabIndex = 3;
+			this.reproductionDesc.Location = new System.Drawing.Point(12, 183);
+			this.reproductionDesc.Multiline = true;
+			this.reproductionDesc.Name = "reproductionDesc";
+			this.reproductionDesc.Size = new System.Drawing.Size(477, 136);
+			this.reproductionDesc.TabIndex = 3;
 			// 
 			// label3
 			// 
 			this.label3.AutoSize = true;
-			this.label3.Location = new System.Drawing.Point(9, 379);
+			this.label3.Location = new System.Drawing.Point(9, 373);
 			this.label3.Name = "label3";
-			this.label3.Size = new System.Drawing.Size(111, 13);
+			this.label3.Size = new System.Drawing.Size(238, 13);
 			this.label3.TabIndex = 4;
-			this.label3.Text = "Log file of the incident";
+			this.label3.Text = "Log file of the incident (optional but VERY useful)";
 			// 
 			// logGroup
 			// 
@@ -96,7 +99,7 @@
             "None",
             "Client",
             "Server"});
-			this.logGroup.Location = new System.Drawing.Point(126, 376);
+			this.logGroup.Location = new System.Drawing.Point(12, 389);
 			this.logGroup.Name = "logGroup";
 			this.logGroup.Size = new System.Drawing.Size(120, 21);
 			this.logGroup.TabIndex = 5;
@@ -108,20 +111,20 @@
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.logFile.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
 			this.logFile.FormattingEnabled = true;
-			this.logFile.Location = new System.Drawing.Point(252, 376);
+			this.logFile.Location = new System.Drawing.Point(138, 389);
 			this.logFile.Name = "logFile";
-			this.logFile.Size = new System.Drawing.Size(234, 21);
+			this.logFile.Size = new System.Drawing.Size(351, 21);
 			this.logFile.TabIndex = 6;
 			this.logFile.SelectedIndexChanged += new System.EventHandler(this.logFile_SelectedIndexChanged);
 			// 
 			// label4
 			// 
 			this.label4.AutoSize = true;
-			this.label4.Location = new System.Drawing.Point(9, 412);
+			this.label4.Location = new System.Drawing.Point(9, 425);
 			this.label4.Name = "label4";
-			this.label4.Size = new System.Drawing.Size(82, 13);
+			this.label4.Size = new System.Drawing.Size(170, 13);
 			this.label4.TabIndex = 7;
-			this.label4.Text = "Related log files";
+			this.label4.Text = "Related log files (check to include)";
 			// 
 			// logFileList
 			// 
@@ -129,15 +132,15 @@
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.logFileList.FormattingEnabled = true;
-			this.logFileList.Location = new System.Drawing.Point(12, 428);
+			this.logFileList.Location = new System.Drawing.Point(12, 443);
 			this.logFileList.Name = "logFileList";
-			this.logFileList.Size = new System.Drawing.Size(474, 124);
+			this.logFileList.Size = new System.Drawing.Size(477, 109);
 			this.logFileList.TabIndex = 8;
 			// 
 			// sendButton
 			// 
 			this.sendButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.sendButton.Location = new System.Drawing.Point(12, 570);
+			this.sendButton.Location = new System.Drawing.Point(12, 558);
 			this.sendButton.Name = "sendButton";
 			this.sendButton.Size = new System.Drawing.Size(236, 31);
 			this.sendButton.TabIndex = 9;
@@ -147,30 +150,63 @@
 			// abortButton
 			// 
 			this.abortButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.abortButton.Location = new System.Drawing.Point(250, 570);
+			this.abortButton.Location = new System.Drawing.Point(253, 558);
 			this.abortButton.Name = "abortButton";
 			this.abortButton.Size = new System.Drawing.Size(236, 31);
 			this.abortButton.TabIndex = 10;
 			this.abortButton.Text = "Cancel";
 			this.abortButton.UseVisualStyleBackColor = true;
 			// 
+			// logInfoLink
+			// 
+			this.logInfoLink.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.logInfoLink.AutoSize = true;
+			this.logInfoLink.Location = new System.Drawing.Point(12, 592);
+			this.logInfoLink.Name = "logInfoLink";
+			this.logInfoLink.Size = new System.Drawing.Size(73, 13);
+			this.logInfoLink.TabIndex = 11;
+			this.logInfoLink.TabStop = true;
+			this.logInfoLink.Text = "Privacy Policy";
+			this.logInfoLink.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.logInfoLink_LinkClicked);
+			// 
+			// label5
+			// 
+			this.label5.AutoSize = true;
+			this.label5.Location = new System.Drawing.Point(9, 335);
+			this.label5.Name = "label5";
+			this.label5.Size = new System.Drawing.Size(72, 13);
+			this.label5.TabIndex = 12;
+			this.label5.Text = "Game version";
+			// 
+			// gameVersion
+			// 
+			this.gameVersion.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+			this.gameVersion.Location = new System.Drawing.Point(87, 332);
+			this.gameVersion.Name = "gameVersion";
+			this.gameVersion.Size = new System.Drawing.Size(402, 20);
+			this.gameVersion.TabIndex = 13;
+			// 
 			// MainForm
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-			this.ClientSize = new System.Drawing.Size(498, 615);
-			this.Controls.Add(this.abortButton);
-			this.Controls.Add(this.sendButton);
-			this.Controls.Add(this.logFileList);
-			this.Controls.Add(this.label4);
-			this.Controls.Add(this.logFile);
-			this.Controls.Add(this.logGroup);
-			this.Controls.Add(this.label3);
-			this.Controls.Add(this.textBox1);
+			this.ClientSize = new System.Drawing.Size(501, 615);
+			this.Controls.Add(this.gameVersion);
+			this.Controls.Add(this.label5);
+			this.Controls.Add(this.label1);
 			this.Controls.Add(this.label2);
 			this.Controls.Add(this.bugDescription);
-			this.Controls.Add(this.label1);
-			this.MinimumSize = new System.Drawing.Size(514, 568);
+			this.Controls.Add(this.label3);
+			this.Controls.Add(this.reproductionDesc);
+			this.Controls.Add(this.label4);
+			this.Controls.Add(this.logGroup);
+			this.Controls.Add(this.logFile);
+			this.Controls.Add(this.logFileList);
+			this.Controls.Add(this.logInfoLink);
+			this.Controls.Add(this.abortButton);
+			this.Controls.Add(this.sendButton);
+			this.MinimumSize = new System.Drawing.Size(514, 654);
 			this.Name = "MainForm";
 			this.Text = "Hexaverse Bug Reporter";
 			this.Load += new System.EventHandler(this.MainForm_Load);
@@ -184,7 +220,7 @@
 		private System.Windows.Forms.Label label1;
 		private System.Windows.Forms.TextBox bugDescription;
 		private System.Windows.Forms.Label label2;
-		private System.Windows.Forms.TextBox textBox1;
+		private System.Windows.Forms.TextBox reproductionDesc;
 		private System.Windows.Forms.Label label3;
 		private System.Windows.Forms.ComboBox logGroup;
 		private System.Windows.Forms.ComboBox logFile;
@@ -192,6 +228,9 @@
 		private System.Windows.Forms.CheckedListBox logFileList;
 		private System.Windows.Forms.Button sendButton;
 		private System.Windows.Forms.Button abortButton;
+		private System.Windows.Forms.LinkLabel logInfoLink;
+		private System.Windows.Forms.Label label5;
+		private System.Windows.Forms.TextBox gameVersion;
 	}
 }
 
