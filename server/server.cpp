@@ -651,13 +651,14 @@ namespace ParameterConfig
 
 	void	PrintHelp()
 	{
-		std::cout << std::endl << "usage: "<<programName<<" ..."<<std::endl;
-		std::cout << "  --load/-l [filename]\tLoad savegame"<<std::endl;
-		std::cout << "  --loadAuto/-a [number]\tLoad auto-savegame. number=0 => most recent"<<std::endl;
+		std::cout << std::endl << "Usage: "<<programName<<" [options]"<<std::endl;
+		std::cout << "Supported options:"<<std::endl;
+		std::cout << "  --load/-l <filename>\tLoad savegame"<<std::endl;
+		std::cout << "  --loadAuto/-a <0-9>\tLoad auto-savegame. number=0 => most recent"<<std::endl;
 		std::cout << "  --offline/-o \tStart offline"<<std::endl;
 		std::cout << "  --config/-c \tStart in configuration mode"<<std::endl;
 		std::cout << "  --tutorial/-t \tStart in tutorial mode"<<std::endl;
-		std::cout << "  --port/-p [basePort]\tUse a non-default base port ("<<DEFAULT_SERVER_BASE_PORT<<" is default)"<<std::endl;
+		std::cout << "  --port/-p <1025-65533>\tUse a non-default base port ("<<DEFAULT_SERVER_BASE_PORT<<" is default). Three successive ports are used"<<std::endl;
 		std::cout << "  --noRemote/-r \tDisable remote control service"<<std::endl;
 		std::cout << "  --rv4\tStart remote control service using IPv4"<<std::endl;
 		std::cout << "  --test \tRun self-tests, then quit"<<std::endl;
@@ -667,7 +668,7 @@ namespace ParameterConfig
 
 
 
-	void	Process(const char*arg)
+	void	Process( const char*arg )
 	{
 		LogEvent(EventSignificance::Debug,"ParameterConfig::Process: '"+String(arg)+"'");
 		switch (mode)
@@ -831,8 +832,6 @@ int main( int argc, const char* argv[])
 
 		RuntimeConfig::InitConfigDir("server");
 		ASSERT__(FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("logs")));
-		Logging::Begin(RuntimeConfig::ConfigFile(PathString("logs/server "+Logging::TimeStamp(true)+".log")));
-		LogEvent(EventSignificance::Uncommon,nullptr,"Starting server v" PRODUCT_VERSION);
 
 
 		TCP::onIgnoredException = [](const TCodeLocation&loc, const std::exception&ex)
@@ -861,6 +860,14 @@ int main( int argc, const char* argv[])
 				FATAL__("Something is wrong. Unable to locate server executable, or config/declaration.xml is missing.");
 		}
 
+		ParameterConfig::SetProgramName(argc > 0 ? argv[0] : "program");
+		for (int i = 1; i < argc; i++)
+			ParameterConfig::Process(argv[i]);
+
+		Logging::Begin(RuntimeConfig::ConfigFile(PathString("logs/server "+Logging::TimeStamp(true)+".log")));
+		LogEvent(EventSignificance::Uncommon,nullptr,"Starting server v" PRODUCT_VERSION);
+
+
 		Boot();
 
 		Evolver::Create();
@@ -868,9 +875,7 @@ int main( int argc, const char* argv[])
 		Journal::Create();
 
 		World::worldID.Generate();
-		ParameterConfig::SetProgramName(argc > 0 ? argv[0] : "program");
-		for (int i = 1; i < argc; i++)
-			ParameterConfig::Process(argv[i]);
+
 
 		Network::serverID.Generate();
 		UDPBroadCast::Create(ParameterConfig::basePort,Network::serverID);
