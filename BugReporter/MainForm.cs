@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -24,6 +25,8 @@ namespace BugReporter
 			private string fatal;
 			private string[][] lines;
 			public string Version { get; private set; }
+			public string Combined { get; private set; }
+
 
 			public string Fatal
 			{
@@ -43,11 +46,17 @@ namespace BugReporter
 			{
 				if (lines == null)
 				{
+					StringBuilder combined = new StringBuilder();
 					string[] lines0 = File.ReadAllLines(Path);
 					lines = new string[lines0.Length][];
 					for (int i = 0; i < lines0.Length; i++)
+					{
 						lines[i] = lines0[i].Split('\t');
+						combined.AppendLine(lines0[i]);
+					}
+					Combined = combined.ToString();
 				}
+
 			}
 
 			public string[] ScanLines(Func<string[], bool> f)
@@ -166,6 +175,51 @@ namespace BugReporter
 			InitializeComponent();
 		}
 
+		static void PutParam(StringBuilder builder, string name, string value)
+		{
+			if (builder.Length > 0)
+				builder.Append('&');
+			builder.Append(Uri.EscapeDataString(name));
+			builder.Append('=');
+			builder.Append(Uri.EscapeDataString(value));
+		}
+
+		static async Task<string> ContactServer(IEnumerable<Tuple<string,string>> parameters)
+		{
+			string url = "https://www.hexaverse.net/bugReport/store.php";
+
+			HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+
+			StringBuilder postString = new StringBuilder();
+			PutParam(postString, "token", "REMOVED_TOKEN");
+			foreach (var p in parameters)
+				PutParam(postString, p.Item1, p.Item2);
+
+			const string contentType = "application/x-www-form-urlencoded";
+			ServicePointManager.Expect100Continue = false;
+
+			CookieContainer cookies = new CookieContainer();
+			request.Method = "POST";
+			request.ContentType = contentType;
+			request.CookieContainer = cookies;
+			request.ContentLength = postString.Length;
+			request.UserAgent = "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.9.0.1) Gecko/2008070208 Firefox/3.0.1";
+			request.Accept = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
+
+			StreamWriter requestWriter = new StreamWriter(request.GetRequestStream());
+			await requestWriter.WriteAsync(postString.ToString());
+			requestWriter.Close();
+
+			HttpWebResponse response = (HttpWebResponse)await request.GetResponseAsync();
+			Stream resStream = response.GetResponseStream();
+
+			StreamReader responseReader = new StreamReader(resStream);
+
+			return await responseReader.ReadToEndAsync();
+		}
+
+		Task<string> helloTask,uploadTask;
+
 		private void MainForm_Load(object sender, EventArgs e)
 		{
 			logGroup.SelectedIndex = 0;
@@ -183,10 +237,22 @@ namespace BugReporter
 					version = version.Substring(10);
 				gameVersion.Text = version;
 			}
-			catch (Exception ex)
+			catch
 			{
 				//gameVersion.Text = ex.ToString();
 			}
+
+
+			try
+			{
+				helloTask = ContactServer(new Tuple<string,string>[]{ new Tuple<string, string>("action", "respond")});
+			}
+			catch (Exception ex)
+			{
+				reproductionDesc.Text = ex.ToString();
+			}
+
+
 		}
 
 		private void logGroup_SelectedIndexChanged(object sender, EventArgs e)
@@ -277,7 +343,92 @@ namespace BugReporter
 
 		private void logInfoLink_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
 		{
-			new Privacy_Policy().ShowDialog();
+
+
+		}
+
+		private void connectionTimer_Tick(object sender, EventArgs e)
+		{
+			if (uploadTask != null)
+			{
+				if (uploadTask.IsFaulted)
+				{
+					toolStripStatusLabel.Text = "Unable to upload to server: " + uploadTask.Exception.InnerException.Message.Replace("\n", "").Replace("\r", "");
+					uploadTask = null;
+					ActivateInput(true);
+				}
+				else if (uploadTask.IsCompleted)
+				{
+					if (uploadTask.Result == "ok")
+					{
+						uploadTask = null;
+						MessageBox.Show("Upload succeeded. Thank you!");
+						Application.Exit();
+						return;
+					}
+					toolStripStatusLabel.Text = "Server said something unexpected: '" + uploadTask.Result + "'";
+					uploadTask = null;
+					ActivateInput(true);
+				}
+			}
+
+			if (helloTask != null)
+			{
+				if (helloTask.IsFaulted)
+				{
+					toolStripStatusLabel.Text = "Unable to ping server: " + helloTask.Exception.InnerException.Message.Replace("\n", "").Replace("\r", "");
+					helloTask = null;
+				}
+				else if (helloTask.IsCompleted)
+				{
+					toolStripStatusLabel.Text = helloTask.Result == "ok" ? "Server says hello" : "Server said something unexpected: '" + helloTask.Result + "'";
+					helloTask = null;
+				}
+			}
+			
+		}
+
+		private void abortButton_Click(object sender, EventArgs e)
+		{
+			Application.Exit();
+		}
+
+
+		private void ActivateInput(bool enable)
+		{
+			bugDescription.Enabled = enable;
+			reproductionDesc.Enabled = enable;
+			gameVersion.Enabled = enable;
+			logGroup.Enabled = enable;
+			logFile.Enabled = enable;
+			logFileList.Enabled = enable;
+			sendButton.Enabled = enable;
+		}
+
+		private void sendButton_Click(object sender, EventArgs e)
+		{
+			if (bugDescription.Text.Trim().Length == 0)
+			{
+				MessageBox.Show("Please describe the problem in the top-most text field. Thank you");
+				return;
+			}
+			ActivateInput(false);
+			List<Tuple<string, string>> parameters = new List<Tuple<string, string>>();
+			parameters.Add(new Tuple<string, string>("action", "store"));
+			parameters.Add(new Tuple<string, string>("description", bugDescription.Text));
+			parameters.Add(new Tuple<string, string>("reproduction", reproductionDesc.Text));
+			parameters.Add(new Tuple<string, string>("gameVersion", gameVersion.Text));
+			if (logFile.SelectedItem != null)
+			{
+				parameters.Add(new Tuple<string, string>("logFile[]", ((LogFile)logFile.SelectedItem).Combined));
+
+				foreach (var item in logFileList.SelectedItems)
+				{
+					LogFile f = (LogFile)item;
+					parameters.Add(new Tuple<string, string>("logFile[]", f.Combined));
+				}
+			}
+			uploadTask = ContactServer(parameters);
 		}
 	}
 }

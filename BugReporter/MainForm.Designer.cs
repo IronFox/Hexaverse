@@ -28,6 +28,7 @@
 		/// </summary>
 		private void InitializeComponent()
 		{
+			this.components = new System.ComponentModel.Container();
 			this.label1 = new System.Windows.Forms.Label();
 			this.bugDescription = new System.Windows.Forms.TextBox();
 			this.label2 = new System.Windows.Forms.Label();
@@ -42,6 +43,10 @@
 			this.logInfoLink = new System.Windows.Forms.LinkLabel();
 			this.label5 = new System.Windows.Forms.Label();
 			this.gameVersion = new System.Windows.Forms.TextBox();
+			this.statusStrip = new System.Windows.Forms.StatusStrip();
+			this.connectionTimer = new System.Windows.Forms.Timer(this.components);
+			this.toolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+			this.statusStrip.SuspendLayout();
 			this.SuspendLayout();
 			// 
 			// label1
@@ -134,34 +139,36 @@
 			this.logFileList.FormattingEnabled = true;
 			this.logFileList.Location = new System.Drawing.Point(12, 443);
 			this.logFileList.Name = "logFileList";
-			this.logFileList.Size = new System.Drawing.Size(477, 109);
+			this.logFileList.Size = new System.Drawing.Size(477, 124);
 			this.logFileList.TabIndex = 8;
 			// 
 			// sendButton
 			// 
 			this.sendButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.sendButton.Location = new System.Drawing.Point(12, 558);
+			this.sendButton.Location = new System.Drawing.Point(11, 571);
 			this.sendButton.Name = "sendButton";
 			this.sendButton.Size = new System.Drawing.Size(236, 31);
 			this.sendButton.TabIndex = 9;
 			this.sendButton.Text = "Send";
 			this.sendButton.UseVisualStyleBackColor = true;
+			this.sendButton.Click += new System.EventHandler(this.sendButton_Click);
 			// 
 			// abortButton
 			// 
 			this.abortButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.abortButton.Location = new System.Drawing.Point(253, 558);
+			this.abortButton.Location = new System.Drawing.Point(253, 571);
 			this.abortButton.Name = "abortButton";
 			this.abortButton.Size = new System.Drawing.Size(236, 31);
 			this.abortButton.TabIndex = 10;
 			this.abortButton.Text = "Cancel";
 			this.abortButton.UseVisualStyleBackColor = true;
+			this.abortButton.Click += new System.EventHandler(this.abortButton_Click);
 			// 
 			// logInfoLink
 			// 
 			this.logInfoLink.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
 			this.logInfoLink.AutoSize = true;
-			this.logInfoLink.Location = new System.Drawing.Point(12, 592);
+			this.logInfoLink.Location = new System.Drawing.Point(12, 605);
 			this.logInfoLink.Name = "logInfoLink";
 			this.logInfoLink.Size = new System.Drawing.Size(73, 13);
 			this.logInfoLink.TabIndex = 11;
@@ -187,11 +194,34 @@
 			this.gameVersion.Size = new System.Drawing.Size(402, 20);
 			this.gameVersion.TabIndex = 13;
 			// 
+			// statusStrip
+			// 
+			this.statusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.toolStripStatusLabel});
+			this.statusStrip.Location = new System.Drawing.Point(0, 627);
+			this.statusStrip.Name = "statusStrip";
+			this.statusStrip.Size = new System.Drawing.Size(501, 22);
+			this.statusStrip.TabIndex = 14;
+			this.statusStrip.Text = "statusStrip1";
+			// 
+			// connectionTimer
+			// 
+			this.connectionTimer.Enabled = true;
+			this.connectionTimer.Tick += new System.EventHandler(this.connectionTimer_Tick);
+			// 
+			// toolStripStatusLabel
+			// 
+			this.toolStripStatusLabel.Name = "toolStripStatusLabel";
+			this.toolStripStatusLabel.Size = new System.Drawing.Size(455, 17);
+			this.toolStripStatusLabel.Spring = true;
+			this.toolStripStatusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			// 
 			// MainForm
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-			this.ClientSize = new System.Drawing.Size(501, 615);
+			this.ClientSize = new System.Drawing.Size(501, 649);
+			this.Controls.Add(this.statusStrip);
 			this.Controls.Add(this.gameVersion);
 			this.Controls.Add(this.label5);
 			this.Controls.Add(this.label1);
@@ -210,6 +240,8 @@
 			this.Name = "MainForm";
 			this.Text = "Hexaverse Bug Reporter";
 			this.Load += new System.EventHandler(this.MainForm_Load);
+			this.statusStrip.ResumeLayout(false);
+			this.statusStrip.PerformLayout();
 			this.ResumeLayout(false);
 			this.PerformLayout();
 
@@ -231,6 +263,9 @@
 		private System.Windows.Forms.LinkLabel logInfoLink;
 		private System.Windows.Forms.Label label5;
 		private System.Windows.Forms.TextBox gameVersion;
+		private System.Windows.Forms.StatusStrip statusStrip;
+		private System.Windows.Forms.Timer connectionTimer;
+		private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel;
 	}
 }
 
