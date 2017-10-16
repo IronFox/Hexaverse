@@ -34,7 +34,6 @@
 			this.label2 = new System.Windows.Forms.Label();
 			this.reproductionDesc = new System.Windows.Forms.TextBox();
 			this.label3 = new System.Windows.Forms.Label();
-			this.logGroup = new System.Windows.Forms.ComboBox();
 			this.logFile = new System.Windows.Forms.ComboBox();
 			this.label4 = new System.Windows.Forms.Label();
 			this.logFileList = new System.Windows.Forms.CheckedListBox();
@@ -44,8 +43,8 @@
 			this.label5 = new System.Windows.Forms.Label();
 			this.gameVersion = new System.Windows.Forms.TextBox();
 			this.statusStrip = new System.Windows.Forms.StatusStrip();
-			this.connectionTimer = new System.Windows.Forms.Timer(this.components);
 			this.toolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+			this.connectionTimer = new System.Windows.Forms.Timer(this.components);
 			this.statusStrip.SuspendLayout();
 			this.SuspendLayout();
 			// 
@@ -96,29 +95,15 @@
 			this.label3.TabIndex = 4;
 			this.label3.Text = "Log file of the incident (optional but VERY useful)";
 			// 
-			// logGroup
-			// 
-			this.logGroup.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-			this.logGroup.FormattingEnabled = true;
-			this.logGroup.Items.AddRange(new object[] {
-            "None",
-            "Client",
-            "Server"});
-			this.logGroup.Location = new System.Drawing.Point(12, 389);
-			this.logGroup.Name = "logGroup";
-			this.logGroup.Size = new System.Drawing.Size(120, 21);
-			this.logGroup.TabIndex = 5;
-			this.logGroup.SelectedIndexChanged += new System.EventHandler(this.logGroup_SelectedIndexChanged);
-			// 
 			// logFile
 			// 
 			this.logFile.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.logFile.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
 			this.logFile.FormattingEnabled = true;
-			this.logFile.Location = new System.Drawing.Point(138, 389);
+			this.logFile.Location = new System.Drawing.Point(12, 389);
 			this.logFile.Name = "logFile";
-			this.logFile.Size = new System.Drawing.Size(351, 21);
+			this.logFile.Size = new System.Drawing.Size(477, 21);
 			this.logFile.TabIndex = 6;
 			this.logFile.SelectedIndexChanged += new System.EventHandler(this.logFile_SelectedIndexChanged);
 			// 
@@ -204,17 +189,17 @@
 			this.statusStrip.TabIndex = 14;
 			this.statusStrip.Text = "statusStrip1";
 			// 
+			// toolStripStatusLabel
+			// 
+			this.toolStripStatusLabel.Name = "toolStripStatusLabel";
+			this.toolStripStatusLabel.Size = new System.Drawing.Size(486, 17);
+			this.toolStripStatusLabel.Spring = true;
+			this.toolStripStatusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			// 
 			// connectionTimer
 			// 
 			this.connectionTimer.Enabled = true;
 			this.connectionTimer.Tick += new System.EventHandler(this.connectionTimer_Tick);
-			// 
-			// toolStripStatusLabel
-			// 
-			this.toolStripStatusLabel.Name = "toolStripStatusLabel";
-			this.toolStripStatusLabel.Size = new System.Drawing.Size(455, 17);
-			this.toolStripStatusLabel.Spring = true;
-			this.toolStripStatusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 			// 
 			// MainForm
 			// 
@@ -230,7 +215,6 @@
 			this.Controls.Add(this.label3);
 			this.Controls.Add(this.reproductionDesc);
 			this.Controls.Add(this.label4);
-			this.Controls.Add(this.logGroup);
 			this.Controls.Add(this.logFile);
 			this.Controls.Add(this.logFileList);
 			this.Controls.Add(this.logInfoLink);
@@ -254,7 +238,6 @@
 		private System.Windows.Forms.Label label2;
 		private System.Windows.Forms.TextBox reproductionDesc;
 		private System.Windows.Forms.Label label3;
-		private System.Windows.Forms.ComboBox logGroup;
 		private System.Windows.Forms.ComboBox logFile;
 		private System.Windows.Forms.Label label4;
 		private System.Windows.Forms.CheckedListBox logFileList;

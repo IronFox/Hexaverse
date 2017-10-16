@@ -12,6 +12,7 @@
 #include "runtimeConfig.h"
 #include "./objects/faction.h"
 #include <io/file_system.h>
+#include <general/monitoredProcess.h>
 
 #ifndef CLIENT
 	#include "../server/components/state.h"
@@ -114,8 +115,19 @@ namespace Logging
 	}
 
 
+	PathString activePath;
+
+	void	CallBugReporter()
+	{
+		MonitoredProcess	process;
+		//process.Start("","../BugReporter/BugReporter.exe","");//"\""+activePath+"\"");
+		process.Start("../BugReporter/","BugReporter.exe","\""+activePath+"\"");
+	}
+
+
 	void	Begin(const PathString&path)
 	{
+		activePath = path;
 		FileSystem::Folder folder(FileSystem::ExtractFileDir(path));
 		folder.Rewind();
 		FileSystem::File file;

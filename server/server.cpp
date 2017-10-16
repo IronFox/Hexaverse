@@ -505,7 +505,9 @@ void MyFatal(const FatalDescriptor&descriptor)
 	Logging::WriteEvent(EventClass::Preset::fatal,message,nullptr,nullptr, Objects::OwnerParameter());
 
 	application_shutting_down = true;	//prevent certain operations in Close()
-	DisplayMessage(PRODUCT_NAME" Server Error",message,false);
+	Logging::CallBugReporter();
+										
+	//DisplayMessage(PRODUCT_NAME" Server Error",message,false);
 	//ErrMessage("Hexaverse Server: "+message);
 	std::cerr << message << std::endl;
 

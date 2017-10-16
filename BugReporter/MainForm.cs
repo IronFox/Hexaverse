@@ -42,19 +42,40 @@ namespace BugReporter
 				return entityIDs.Contains(id);
 			}
 
+			//https://stackoverflow.com/questions/12744725/how-do-i-perform-file-readalllines-on-a-file-that-is-also-open-in-excel
+			private static string[] WriteSafeReadAllLines(String path)
+			{
+				using (var csv = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+				using (var sr = new StreamReader(csv))
+				{
+					List<string> file = new List<string>();
+					while (!sr.EndOfStream)
+					{
+						file.Add(sr.ReadLine());
+					}
+
+					return file.ToArray();
+				}
+			}
+
 			public void LoadLines()
 			{
 				if (lines == null)
 				{
-					StringBuilder combined = new StringBuilder();
-					string[] lines0 = File.ReadAllLines(Path);
-					lines = new string[lines0.Length][];
-					for (int i = 0; i < lines0.Length; i++)
+					try
 					{
-						lines[i] = lines0[i].Split('\t');
-						combined.AppendLine(lines0[i]);
+						StringBuilder combined = new StringBuilder();
+						string[] lines0 = WriteSafeReadAllLines(Path);
+						lines = new string[lines0.Length][];
+						for (int i = 0; i < lines0.Length; i++)
+						{
+							lines[i] = lines0[i].Split('\t');
+							combined.AppendLine(lines0[i]);
+						}
+						Combined = combined.ToString();
 					}
-					Combined = combined.ToString();
+					catch { }
+
 				}
 
 			}
@@ -92,7 +113,7 @@ namespace BugReporter
 				return null;
 			}
 
-			public void Load()
+			private void Load()
 			{
 				if (entityIDs != null)
 					return;
@@ -220,25 +241,48 @@ namespace BugReporter
 
 		Task<string> helloTask,uploadTask;
 
-		private void MainForm_Load(object sender, EventArgs e)
-		{
-			logGroup.SelectedIndex = 0;
 
+		public void UpdateLogFileList()
+		{
+			var items = logFile.Items;
+			items.Clear();
+			items.Add("None");
 			try
 			{
-				ProcessStartInfo startInfo = new ProcessStartInfo(new FileInfo(Path.Combine(Directory.GetCurrentDirectory(), "..", "server", "server.exe")).FullName);
+				List<LogFile> fileList = GetFilesIn(new string[] { "client", "server", "client/ai" }, gameVersion.Text);
+
+				foreach (LogFile f in fileList)
+				{
+					items.Add(f);
+				}
+			}
+			catch (Exception)
+			{
+
+			}
+			if (logFile.SelectedItem == null)
+				logFile.SelectedIndex = 0;
+		}
+
+		private void MainForm_Load(object sender, EventArgs e)
+		{
+			try
+			{
+				ProcessStartInfo startInfo = new ProcessStartInfo(Path.Combine("..", "server", "server.exe"));
 				startInfo.CreateNoWindow = true;
 				startInfo.UseShellExecute = false;
 				startInfo.Arguments = "--version";
 				startInfo.RedirectStandardOutput = true;
+				startInfo.WorkingDirectory = Path.Combine("..", "server");
 				Process server = Process.Start(startInfo);
 				string version = server.StandardOutput.ReadToEnd();
 				if (version.StartsWith("Hexaverse "))
 					version = version.Substring(10);
 				gameVersion.Text = version;
 			}
-			catch
+			catch (Exception ex)
 			{
+				MessageBox.Show(ex.ToString());
 				//gameVersion.Text = ex.ToString();
 			}
 
@@ -249,55 +293,78 @@ namespace BugReporter
 			}
 			catch (Exception ex)
 			{
-				reproductionDesc.Text = ex.ToString();
+				MessageBox.Show(ex.ToString());
 			}
 
+			UpdateLogFileList();
+
+
+			{
+				string[] args = Environment.GetCommandLineArgs();
+				if (args.Length > 1)
+				{
+					try
+					{
+						string filename = args[1];
+						if (filename.StartsWith("\\\\?\\"))
+							filename = filename.Substring(4);
+						//FileInfo f = new FileInfo(filename);
+						//if (f.Exists)
+						{
+							LogFile file = null;
+							foreach (var obj in logFile.Items)
+							{
+								LogFile candidate = obj as LogFile;
+								if (candidate != null && candidate.Path == filename)
+								{
+									file = candidate;
+									logFile.SelectedItem = candidate;
+									break;
+								}
+							}
+							if (file != null && file.Fatal != null)
+							{
+								bugDescription.Text += file.Fatal;
+							}
+						}
+					}
+					catch
+					{ }
+				}
+			}
 
 		}
 
 		private void logGroup_SelectedIndexChanged(object sender, EventArgs e)
 		{
-			var items = logFile.Items;
-			items.Clear();
 
-			if (logGroup.SelectedIndex <= 0)
-			{
-				logFileList.Items.Clear();
-				return;
-			}
-			try
-			{
-				List<LogFile> fileList = GetFilesIn(logGroup.SelectedItem.ToString().ToLower(),gameVersion.Text);
-
-
-				foreach (LogFile f in fileList)
-				{
-					items.Add(f);
-				}
-				if (items.Count > 0)
-					logFile.SelectedItem = fileList[0];
-			}
-			catch (Exception)
-			{ }
 
 
 		}
 
-		private static List<LogFile> GetFilesIn(string group, string gameVersion)
+		private List<LogFile> GetFilesIn(string[] groups, string gameVersion)
 		{
-			string path = System.Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-			string logsAt = Path.Combine(path, "My Games", "Hexaverse", group, "logs");
-			string[] files = Directory.GetFiles(logsAt);
-
+			string path = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
 			List<LogFile> fileList = new List<LogFile>();
-			foreach (string f in files)
+			foreach (var group in groups)
 			{
-				LogFile file = new LogFile(f);
-				if (file.Version == null || !gameVersion.StartsWith(file.Version))
-					continue;
-				fileList.Add(file);
-			}
+				try
+				{
+					string logsAt = Path.Combine(path, "My Games", "Hexaverse", group, "logs");
+					string[] files = Directory.GetFiles(logsAt);
 
+					foreach (string f in files)
+					{
+						LogFile file = new LogFile(f);
+						if (file.Version == null || !gameVersion.StartsWith(file.Version))
+							continue;
+						fileList.Add(file);
+					}
+				}
+				catch (Exception)
+				{
+				}
+			}
 			fileList.Sort();
 			fileList.Reverse();
 			return fileList;
@@ -312,22 +379,24 @@ namespace BugReporter
 			items.Clear();
 			try
 			{
-				if (logFile.SelectedItem == null)
+				if (logFile.SelectedItem == null || !(logFile.SelectedItem is LogFile))
 					return;
 				LogFile f = (LogFile)logFile.SelectedItem;
 
 
 
 
-				string opposite = logGroup.SelectedItem.ToString().ToLower() == "server" ? "client" : "server";
-				List<LogFile> others = GetFilesIn(opposite, gameVersion.Text);
 				List<LogFile> matches = new List<LogFile>();
 
-				foreach (var candidate in others)
+				foreach (var obj in logFile.Items)
 				{
-					string found = candidate.ScanIDs(id => { if (f.ContainsEntityID(id)) return true; return false; });
-					if (found != null)
-						matches.Add(candidate);
+					LogFile candidate = obj as LogFile;
+					if (candidate != null && candidate != f)
+					{
+						string found = candidate.ScanIDs(id => { if (f.ContainsEntityID(id)) return true; return false; });
+						if (found != null)
+							matches.Add(candidate);
+					}
 				}
 				matches.Sort();
 				matches.Reverse();
@@ -399,7 +468,6 @@ namespace BugReporter
 			bugDescription.Enabled = enable;
 			reproductionDesc.Enabled = enable;
 			gameVersion.Enabled = enable;
-			logGroup.Enabled = enable;
 			logFile.Enabled = enable;
 			logFileList.Enabled = enable;
 			sendButton.Enabled = enable;
