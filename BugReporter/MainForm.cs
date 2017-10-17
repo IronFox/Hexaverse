@@ -484,7 +484,7 @@ namespace BugReporter
 			parameters.Add(new Tuple<string, string>("gameVersion", gameVersion.Text));
 			if (logFile.SelectedItem != null && logFile.SelectedItem is LogFile)
 			{
-				parameters.Add(new Tuple<string, string>("logFile[]", ((LogFile)logFile.SelectedItem).Combined));
+				parameters.Add(new Tuple<string, string>("primaryLogFile", ((LogFile)logFile.SelectedItem).Combined));
 
 				foreach (var item in logFileList.SelectedItems)
 				{
