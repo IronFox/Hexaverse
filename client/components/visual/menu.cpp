@@ -324,11 +324,11 @@ namespace Menu
 					});
 			});
 		help->AddCommand("Start Interactive Tutorial",
-			[]()
-			{
-				ServerProcess::StartTutorialServer();
-			},
+			ServerProcess::StartTutorialServer,
 			[](){return !Network::client.IsConnected() && !Network::client.IsAttemptingToConnect();});
+		
+		help->AddCommand("Report Bug",
+			Logging::CallBugReporter);
 
 		/*{
 			float2 margin = help->GetOutlineMargin();
