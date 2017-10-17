@@ -410,11 +410,7 @@ namespace BugReporter
 			}
 		}
 
-		private void logInfoLink_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
-		{
 
-
-		}
 
 		private void connectionTimer_Tick(object sender, EventArgs e)
 		{
@@ -486,7 +482,7 @@ namespace BugReporter
 			parameters.Add(new Tuple<string, string>("description", bugDescription.Text));
 			parameters.Add(new Tuple<string, string>("reproduction", reproductionDesc.Text));
 			parameters.Add(new Tuple<string, string>("gameVersion", gameVersion.Text));
-			if (logFile.SelectedItem != null)
+			if (logFile.SelectedItem != null && logFile.SelectedItem is LogFile)
 			{
 				parameters.Add(new Tuple<string, string>("logFile[]", ((LogFile)logFile.SelectedItem).Combined));
 
