@@ -39,7 +39,6 @@
 			this.logFileList = new System.Windows.Forms.CheckedListBox();
 			this.sendButton = new System.Windows.Forms.Button();
 			this.abortButton = new System.Windows.Forms.Button();
-			this.logInfoLink = new System.Windows.Forms.LinkLabel();
 			this.label5 = new System.Windows.Forms.Label();
 			this.gameVersion = new System.Windows.Forms.TextBox();
 			this.statusStrip = new System.Windows.Forms.StatusStrip();
@@ -124,13 +123,13 @@
 			this.logFileList.FormattingEnabled = true;
 			this.logFileList.Location = new System.Drawing.Point(12, 443);
 			this.logFileList.Name = "logFileList";
-			this.logFileList.Size = new System.Drawing.Size(477, 124);
+			this.logFileList.Size = new System.Drawing.Size(477, 139);
 			this.logFileList.TabIndex = 8;
 			// 
 			// sendButton
 			// 
 			this.sendButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.sendButton.Location = new System.Drawing.Point(11, 571);
+			this.sendButton.Location = new System.Drawing.Point(11, 593);
 			this.sendButton.Name = "sendButton";
 			this.sendButton.Size = new System.Drawing.Size(236, 31);
 			this.sendButton.TabIndex = 9;
@@ -141,25 +140,13 @@
 			// abortButton
 			// 
 			this.abortButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.abortButton.Location = new System.Drawing.Point(253, 571);
+			this.abortButton.Location = new System.Drawing.Point(253, 593);
 			this.abortButton.Name = "abortButton";
 			this.abortButton.Size = new System.Drawing.Size(236, 31);
 			this.abortButton.TabIndex = 10;
 			this.abortButton.Text = "Cancel";
 			this.abortButton.UseVisualStyleBackColor = true;
 			this.abortButton.Click += new System.EventHandler(this.abortButton_Click);
-			// 
-			// logInfoLink
-			// 
-			this.logInfoLink.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.logInfoLink.AutoSize = true;
-			this.logInfoLink.Location = new System.Drawing.Point(12, 605);
-			this.logInfoLink.Name = "logInfoLink";
-			this.logInfoLink.Size = new System.Drawing.Size(73, 13);
-			this.logInfoLink.TabIndex = 11;
-			this.logInfoLink.TabStop = true;
-			this.logInfoLink.Text = "Privacy Policy";
-			this.logInfoLink.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.logInfoLink_LinkClicked);
 			// 
 			// label5
 			// 
@@ -217,7 +204,6 @@
 			this.Controls.Add(this.label4);
 			this.Controls.Add(this.logFile);
 			this.Controls.Add(this.logFileList);
-			this.Controls.Add(this.logInfoLink);
 			this.Controls.Add(this.abortButton);
 			this.Controls.Add(this.sendButton);
 			this.MinimumSize = new System.Drawing.Size(514, 654);
@@ -243,7 +229,6 @@
 		private System.Windows.Forms.CheckedListBox logFileList;
 		private System.Windows.Forms.Button sendButton;
 		private System.Windows.Forms.Button abortButton;
-		private System.Windows.Forms.LinkLabel logInfoLink;
 		private System.Windows.Forms.Label label5;
 		private System.Windows.Forms.TextBox gameVersion;
 		private System.Windows.Forms.StatusStrip statusStrip;
