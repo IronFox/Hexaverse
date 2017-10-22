@@ -328,7 +328,12 @@ namespace Menu
 			[](){return !Network::client.IsConnected() && !Network::client.IsAttemptingToConnect();});
 		
 		help->AddCommand("Report Bug",
-			Logging::CallBugReporter);
+			[]()
+			{
+				SetFullScreen(false);
+				Logging::CallBugReporter();
+			}	
+		);
 
 		/*{
 			float2 margin = help->GetOutlineMargin();
