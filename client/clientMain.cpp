@@ -3584,6 +3584,16 @@ int main( int argc, const char* argv[])
 
 							Explosions::InitExplosion(center,false,baseRadius * 4, Objects::ExplosionTime(baseRadius));
 						});
+
+						Engine::input.Bind(Key::F,[]()
+						{
+							Dialog::Query("Enter fatal message", "", GUI::Input::GetStandardAlphabet(), [](const String&input){return input.IsNotEmpty();}, [](const String&input)
+							{
+								if (input.IsNotEmpty())
+									FATAL__(input);
+							});
+						});
+
 					#endif
 
 
