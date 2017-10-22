@@ -1,4 +1,5 @@
 v0.6.8
+	+ Added .NET bug reporter.
 
 v0.6.7	[Oct 10 2017]
 	+ Added terraforming command "Build Low Wall to"
