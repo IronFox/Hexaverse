@@ -2044,9 +2044,9 @@ void MyFatal(const FatalDescriptor&descriptor)
 	
 	file.Log(message+"\n",true);
 	file.Close();
-	application_shutting_down = true;	//prevent certain operations in Close()
 	LogEvent(EventClass( EventSignificance::SystemFatal, EventFlavor::SystemError ), nullptr, message);
 	Logging::CallBugReporter();
+	application_shutting_down = true;	//prevent certain operations in Close()
 	
 	//ErrMessage(message);
 	//NetworkConnection::Close();

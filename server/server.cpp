@@ -504,8 +504,8 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 	Logging::WriteEvent(EventClass::Preset::fatal,message,nullptr,nullptr, Objects::OwnerParameter());
 
+	Logging::CallBugReporter();			//must call before application_shutting_down, since is threaded ATM
 	application_shutting_down = true;	//prevent certain operations in Close()
-	Logging::CallBugReporter();
 										
 	//DisplayMessage(PRODUCT_NAME" Server Error",message,false);
 	//ErrMessage("Hexaverse Server: "+message);
@@ -1135,8 +1135,6 @@ int main( int argc, const char* argv[])
 				Sleep(1);
 			Network::server.Resolve();
 			RemoteControl::Resolve();
-			if (Game::Config::Nexus::enableAI)
-				AIProcess::Check();
 
 
 			RuntimeConfig::Phase p0 = RuntimeConfig::phase;

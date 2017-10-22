@@ -12,7 +12,7 @@
 #include "runtimeConfig.h"
 #include "./objects/faction.h"
 #include <io/file_system.h>
-#include <general/monitoredProcess.h>
+#include <io/monitoredProcess.h>
 
 #ifndef CLIENT
 	#include "../server/components/state.h"
@@ -119,9 +119,8 @@ namespace Logging
 
 	void	CallBugReporter()
 	{
-		MonitoredProcess	process;
-		//process.Start("","../BugReporter/BugReporter.exe","");//"\""+activePath+"\"");
-		process.Start("../BugReporter/","BugReporter.exe","\""+activePath+"\"");
+		MonitoredProcess	process(false);
+		process.Start("../BugReporter/","BugReporter.exe","\""+activePath+"\"");	//start and abandon
 	}
 
 

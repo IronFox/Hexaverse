@@ -5,7 +5,6 @@
 
 namespace AIProcess
 {
-	void			Check();
 	void			Begin(const CryptographicID&accessToken);
 	void			End();
 }

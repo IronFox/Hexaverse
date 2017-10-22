@@ -3,7 +3,7 @@
 #include <global_string.h>
 //#include "../../shared/uniqueID.h"
 #include <general/timer.h>
-#include <general/monitoredProcess.h>
+#include <io/monitoredProcess.h>
 #include <logEvent.h>
 #include "visual/dialog.h"
 #include "clientEvents.h"
@@ -17,7 +17,7 @@ namespace ServerProcess
 	{
 		//CryptographicID	accessToken;
 
-		MonitoredProcess	process;
+		MonitoredProcess	process(false);
 		bool				remoteControl = false, configurationMode=false,tutorialMode=false;
 		#ifdef HAS_WINDOW
 			Dialog::WDialog	holdOn;
