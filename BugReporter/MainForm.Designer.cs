@@ -29,6 +29,7 @@
 		private void InitializeComponent()
 		{
 			this.components = new System.ComponentModel.Container();
+			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
 			this.label1 = new System.Windows.Forms.Label();
 			this.bugDescription = new System.Windows.Forms.TextBox();
 			this.label2 = new System.Windows.Forms.Label();
@@ -44,13 +45,15 @@
 			this.statusStrip = new System.Windows.Forms.StatusStrip();
 			this.toolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
 			this.connectionTimer = new System.Windows.Forms.Timer(this.components);
+			this.mainBody = new System.Windows.Forms.Panel();
 			this.statusStrip.SuspendLayout();
+			this.mainBody.SuspendLayout();
 			this.SuspendLayout();
 			// 
 			// label1
 			// 
 			this.label1.AutoSize = true;
-			this.label1.Location = new System.Drawing.Point(9, 11);
+			this.label1.Location = new System.Drawing.Point(12, 13);
 			this.label1.Name = "label1";
 			this.label1.Size = new System.Drawing.Size(84, 13);
 			this.label1.TabIndex = 0;
@@ -60,16 +63,16 @@
 			// 
 			this.bugDescription.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.bugDescription.Location = new System.Drawing.Point(12, 27);
+			this.bugDescription.Location = new System.Drawing.Point(15, 29);
 			this.bugDescription.Multiline = true;
 			this.bugDescription.Name = "bugDescription";
-			this.bugDescription.Size = new System.Drawing.Size(477, 123);
+			this.bugDescription.Size = new System.Drawing.Size(474, 136);
 			this.bugDescription.TabIndex = 1;
 			// 
 			// label2
 			// 
 			this.label2.AutoSize = true;
-			this.label2.Location = new System.Drawing.Point(9, 167);
+			this.label2.Location = new System.Drawing.Point(12, 181);
 			this.label2.Name = "label2";
 			this.label2.Size = new System.Drawing.Size(215, 13);
 			this.label2.TabIndex = 2;
@@ -79,16 +82,16 @@
 			// 
 			this.reproductionDesc.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.reproductionDesc.Location = new System.Drawing.Point(12, 183);
+			this.reproductionDesc.Location = new System.Drawing.Point(15, 197);
 			this.reproductionDesc.Multiline = true;
 			this.reproductionDesc.Name = "reproductionDesc";
-			this.reproductionDesc.Size = new System.Drawing.Size(477, 136);
+			this.reproductionDesc.Size = new System.Drawing.Size(474, 136);
 			this.reproductionDesc.TabIndex = 3;
 			// 
 			// label3
 			// 
 			this.label3.AutoSize = true;
-			this.label3.Location = new System.Drawing.Point(9, 373);
+			this.label3.Location = new System.Drawing.Point(12, 379);
 			this.label3.Name = "label3";
 			this.label3.Size = new System.Drawing.Size(238, 13);
 			this.label3.TabIndex = 4;
@@ -100,16 +103,16 @@
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.logFile.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
 			this.logFile.FormattingEnabled = true;
-			this.logFile.Location = new System.Drawing.Point(12, 389);
+			this.logFile.Location = new System.Drawing.Point(15, 395);
 			this.logFile.Name = "logFile";
-			this.logFile.Size = new System.Drawing.Size(477, 21);
+			this.logFile.Size = new System.Drawing.Size(474, 21);
 			this.logFile.TabIndex = 6;
 			this.logFile.SelectedIndexChanged += new System.EventHandler(this.logFile_SelectedIndexChanged);
 			// 
 			// label4
 			// 
 			this.label4.AutoSize = true;
-			this.label4.Location = new System.Drawing.Point(9, 425);
+			this.label4.Location = new System.Drawing.Point(12, 434);
 			this.label4.Name = "label4";
 			this.label4.Size = new System.Drawing.Size(170, 13);
 			this.label4.TabIndex = 7;
@@ -121,17 +124,18 @@
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.logFileList.FormattingEnabled = true;
-			this.logFileList.Location = new System.Drawing.Point(12, 443);
+			this.logFileList.Location = new System.Drawing.Point(15, 450);
 			this.logFileList.Name = "logFileList";
-			this.logFileList.Size = new System.Drawing.Size(477, 139);
+			this.logFileList.Size = new System.Drawing.Size(474, 124);
 			this.logFileList.TabIndex = 8;
 			// 
 			// sendButton
 			// 
 			this.sendButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.sendButton.Location = new System.Drawing.Point(11, 593);
+			this.sendButton.Enabled = false;
+			this.sendButton.Location = new System.Drawing.Point(15, 583);
 			this.sendButton.Name = "sendButton";
-			this.sendButton.Size = new System.Drawing.Size(236, 31);
+			this.sendButton.Size = new System.Drawing.Size(235, 31);
 			this.sendButton.TabIndex = 9;
 			this.sendButton.Text = "Send";
 			this.sendButton.UseVisualStyleBackColor = true;
@@ -140,9 +144,9 @@
 			// abortButton
 			// 
 			this.abortButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.abortButton.Location = new System.Drawing.Point(253, 593);
+			this.abortButton.Location = new System.Drawing.Point(256, 583);
 			this.abortButton.Name = "abortButton";
-			this.abortButton.Size = new System.Drawing.Size(236, 31);
+			this.abortButton.Size = new System.Drawing.Size(233, 31);
 			this.abortButton.TabIndex = 10;
 			this.abortButton.Text = "Cancel";
 			this.abortButton.UseVisualStyleBackColor = true;
@@ -151,7 +155,7 @@
 			// label5
 			// 
 			this.label5.AutoSize = true;
-			this.label5.Location = new System.Drawing.Point(9, 335);
+			this.label5.Location = new System.Drawing.Point(12, 347);
 			this.label5.Name = "label5";
 			this.label5.Size = new System.Drawing.Size(72, 13);
 			this.label5.TabIndex = 12;
@@ -161,9 +165,9 @@
 			// 
 			this.gameVersion.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.gameVersion.Location = new System.Drawing.Point(87, 332);
+			this.gameVersion.Location = new System.Drawing.Point(90, 344);
 			this.gameVersion.Name = "gameVersion";
-			this.gameVersion.Size = new System.Drawing.Size(402, 20);
+			this.gameVersion.Size = new System.Drawing.Size(399, 20);
 			this.gameVersion.TabIndex = 13;
 			// 
 			// statusStrip
@@ -188,30 +192,42 @@
 			this.connectionTimer.Enabled = true;
 			this.connectionTimer.Tick += new System.EventHandler(this.connectionTimer_Tick);
 			// 
+			// mainBody
+			// 
+			this.mainBody.Controls.Add(this.gameVersion);
+			this.mainBody.Controls.Add(this.label5);
+			this.mainBody.Controls.Add(this.label1);
+			this.mainBody.Controls.Add(this.label2);
+			this.mainBody.Controls.Add(this.bugDescription);
+			this.mainBody.Controls.Add(this.label3);
+			this.mainBody.Controls.Add(this.reproductionDesc);
+			this.mainBody.Controls.Add(this.label4);
+			this.mainBody.Controls.Add(this.logFile);
+			this.mainBody.Controls.Add(this.logFileList);
+			this.mainBody.Controls.Add(this.abortButton);
+			this.mainBody.Controls.Add(this.sendButton);
+			this.mainBody.Dock = System.Windows.Forms.DockStyle.Fill;
+			this.mainBody.Location = new System.Drawing.Point(0, 0);
+			this.mainBody.Name = "mainBody";
+			this.mainBody.Size = new System.Drawing.Size(501, 627);
+			this.mainBody.TabIndex = 15;
+			// 
 			// MainForm
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
 			this.ClientSize = new System.Drawing.Size(501, 649);
+			this.Controls.Add(this.mainBody);
 			this.Controls.Add(this.statusStrip);
-			this.Controls.Add(this.gameVersion);
-			this.Controls.Add(this.label5);
-			this.Controls.Add(this.label1);
-			this.Controls.Add(this.label2);
-			this.Controls.Add(this.bugDescription);
-			this.Controls.Add(this.label3);
-			this.Controls.Add(this.reproductionDesc);
-			this.Controls.Add(this.label4);
-			this.Controls.Add(this.logFile);
-			this.Controls.Add(this.logFileList);
-			this.Controls.Add(this.abortButton);
-			this.Controls.Add(this.sendButton);
+			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MinimumSize = new System.Drawing.Size(514, 654);
 			this.Name = "MainForm";
 			this.Text = "Hexaverse Bug Reporter";
 			this.Load += new System.EventHandler(this.MainForm_Load);
 			this.statusStrip.ResumeLayout(false);
 			this.statusStrip.PerformLayout();
+			this.mainBody.ResumeLayout(false);
+			this.mainBody.PerformLayout();
 			this.ResumeLayout(false);
 			this.PerformLayout();
 
@@ -234,6 +250,7 @@
 		private System.Windows.Forms.StatusStrip statusStrip;
 		private System.Windows.Forms.Timer connectionTimer;
 		private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel;
+		private System.Windows.Forms.Panel mainBody;
 	}
 }
 

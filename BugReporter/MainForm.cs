@@ -7,6 +7,10 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Security;
+using System.Net.Sockets;
+using System.Security.Authentication;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -204,12 +208,21 @@ namespace BugReporter
 			builder.Append('=');
 			builder.Append(Uri.EscapeDataString(value));
 		}
-
-		static async Task<string> ContactServer(IEnumerable<Tuple<string,string>> parameters)
+		
+		
+		static async Task<string> ContactServerAsync(IEnumerable<Tuple<string,string>> parameters, int delayMS, bool validateCertificate)
 		{
-			string url = "https://www.hexaverse.net/bugReport/store.php";
+			//https://stackoverflow.com/questions/26389899/how-do-i-disable-ssl-fallback-and-use-only-tls-for-outbound-connections-in-net/26392698#26392698
+			System.Net.ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
 
-			HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+			if (delayMS > 0)
+			{
+				await Task.Delay(delayMS);
+			}
+
+			Uri uri = new Uri("https://www.hexaverse.net/bugReport/store.php");
+
+			HttpWebRequest request = (HttpWebRequest)WebRequest.Create(uri);
 
 			StringBuilder postString = new StringBuilder();
 			PutParam(postString, "token", "REMOVED_TOKEN");
@@ -236,7 +249,48 @@ namespace BugReporter
 
 			StreamReader responseReader = new StreamReader(resStream);
 
-			return await responseReader.ReadToEndAsync();
+			string rs = await responseReader.ReadToEndAsync();
+
+			X509Certificate cert1 = request.ServicePoint.Certificate;
+			X509Certificate2 serverCertificate = new X509Certificate2(cert1);
+			if (serverCertificate.Subject != "CN="+uri.Host)
+				throw new Exception("Server certificate mismatch");
+			if (validateCertificate)
+				await ValidateSslCertificateAsync(serverCertificate);
+
+			return rs;
+		}
+
+
+		//https://stackoverflow.com/questions/6497040/how-do-i-validate-that-a-certificate-was-created-by-a-particular-certification-a
+		async static Task ValidateSslCertificateAsync(X509Certificate2 certificateToValidate)
+		{
+			X509Chain chain = new X509Chain();
+			chain.ChainPolicy.RevocationMode = X509RevocationMode.Online;
+			chain.ChainPolicy.RevocationFlag = X509RevocationFlag.EntireChain;
+			chain.ChainPolicy.VerificationFlags = X509VerificationFlags.NoFlag;
+			chain.ChainPolicy.VerificationTime = DateTime.Now;
+			chain.ChainPolicy.UrlRetrievalTimeout = new TimeSpan(0, 1, 0);
+
+			bool isChainValid = await Task.Run<bool>(() => chain.Build(certificateToValidate));
+
+			if (!isChainValid)
+			{
+				string[] errors = chain.ChainStatus
+					.Select(x => String.Format("{0} ({1})", x.StatusInformation.Trim(), x.Status))
+					.ToArray();
+				string certificateErrorsString = "Unknown errors.";
+
+				if (errors != null && errors.Length > 0)
+				{
+					certificateErrorsString = String.Join(", ", errors);
+				}
+
+				throw new Exception("Trust chain did not complete to the known authority anchor. Errors: " + certificateErrorsString);
+			}
+
+			if (chain.ChainElements.Count > 1)
+				await ValidateSslCertificateAsync(chain.ChainElements[1].Certificate);
 		}
 
 		Task<string> helloTask,uploadTask;
@@ -264,6 +318,19 @@ namespace BugReporter
 				logFile.SelectedIndex = 0;
 		}
 
+		private void RestartHelloTask(int delayMS = 0)
+		{
+			try
+			{
+				helloTask = ContactServerAsync(new Tuple <string, string>[] { new Tuple<string, string>("action", "respond") }, delayMS,true);
+			}
+			catch (Exception ex)
+			{
+				MessageBox.Show(ex.ToString());
+				Application.Exit();
+			}
+		}
+
 		private void MainForm_Load(object sender, EventArgs e)
 		{
 			try
@@ -286,15 +353,8 @@ namespace BugReporter
 				//gameVersion.Text = ex.ToString();
 			}
 
-
-			try
-			{
-				helloTask = ContactServer(new Tuple<string,string>[]{ new Tuple<string, string>("action", "respond")});
-			}
-			catch (Exception ex)
-			{
-				MessageBox.Show(ex.ToString());
-			}
+			RestartHelloTask();
+			//toolStripStatusLabel.Text = "multi\nline\ntest";
 
 			UpdateLogFileList();
 
@@ -335,12 +395,6 @@ namespace BugReporter
 
 		}
 
-		private void logGroup_SelectedIndexChanged(object sender, EventArgs e)
-		{
-
-
-
-		}
 
 		private List<LogFile> GetFilesIn(string[] groups, string gameVersion)
 		{
@@ -414,7 +468,7 @@ namespace BugReporter
 
 		private void connectionTimer_Tick(object sender, EventArgs e)
 		{
-			if (uploadTask != null)
+			if (uploadTask != null && helloTask == null)
 			{
 				if (uploadTask.IsFaulted)
 				{
@@ -442,12 +496,13 @@ namespace BugReporter
 				if (helloTask.IsFaulted)
 				{
 					toolStripStatusLabel.Text = "Unable to ping server: " + helloTask.Exception.InnerException.Message.Replace("\n", "").Replace("\r", "");
-					helloTask = null;
+					RestartHelloTask(1000);
 				}
 				else if (helloTask.IsCompleted)
 				{
 					toolStripStatusLabel.Text = helloTask.Result == "ok" ? "Server says hello" : "Server said something unexpected: '" + helloTask.Result + "'";
 					helloTask = null;
+					sendButton.Enabled = true;
 				}
 			}
 			
@@ -484,7 +539,11 @@ namespace BugReporter
 			parameters.Add(new Tuple<string, string>("gameVersion", gameVersion.Text));
 			if (logFile.SelectedItem != null && logFile.SelectedItem is LogFile)
 			{
-				parameters.Add(new Tuple<string, string>("primaryLogFile", ((LogFile)logFile.SelectedItem).Combined));
+				var log = ((LogFile)logFile.SelectedItem);
+				if (log.Fatal!=null)
+					parameters.Add(new Tuple<string, string>("fatalMessage", log.Fatal));
+
+				parameters.Add(new Tuple<string, string>("primaryLogFile", log.Combined));
 
 				foreach (var item in logFileList.SelectedItems)
 				{
@@ -492,7 +551,7 @@ namespace BugReporter
 					parameters.Add(new Tuple<string, string>("logFile[]", f.Combined));
 				}
 			}
-			uploadTask = ContactServer(parameters);
+			uploadTask = ContactServerAsync(parameters,0,false);
 		}
 	}
 }
