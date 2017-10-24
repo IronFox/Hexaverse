@@ -65,7 +65,7 @@
 			this.bugDescription.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.bugDescription.Location = new System.Drawing.Point(20, 36);
-			this.bugDescription.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+			this.bugDescription.Margin = new System.Windows.Forms.Padding(4);
 			this.bugDescription.Multiline = true;
 			this.bugDescription.Name = "bugDescription";
 			this.bugDescription.Size = new System.Drawing.Size(631, 166);
@@ -74,19 +74,19 @@
 			// label2
 			// 
 			this.label2.AutoSize = true;
-			this.label2.Location = new System.Drawing.Point(16, 223);
+			this.label2.Location = new System.Drawing.Point(17, 221);
 			this.label2.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
 			this.label2.Name = "label2";
-			this.label2.Size = new System.Drawing.Size(285, 17);
+			this.label2.Size = new System.Drawing.Size(254, 17);
 			this.label2.TabIndex = 2;
-			this.label2.Text = "How can we reproduce the issue? (optional)";
+			this.label2.Text = "Steps to reproduce the issue (optional)";
 			// 
 			// reproductionDesc
 			// 
 			this.reproductionDesc.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.reproductionDesc.Location = new System.Drawing.Point(20, 242);
-			this.reproductionDesc.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+			this.reproductionDesc.Margin = new System.Windows.Forms.Padding(4);
 			this.reproductionDesc.Multiline = true;
 			this.reproductionDesc.Name = "reproductionDesc";
 			this.reproductionDesc.Size = new System.Drawing.Size(631, 166);
@@ -109,7 +109,7 @@
 			this.logFile.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
 			this.logFile.FormattingEnabled = true;
 			this.logFile.Location = new System.Drawing.Point(20, 486);
-			this.logFile.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+			this.logFile.Margin = new System.Windows.Forms.Padding(4);
 			this.logFile.Name = "logFile";
 			this.logFile.Size = new System.Drawing.Size(631, 24);
 			this.logFile.TabIndex = 6;
@@ -132,7 +132,7 @@
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.logFileList.FormattingEnabled = true;
 			this.logFileList.Location = new System.Drawing.Point(20, 554);
-			this.logFileList.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+			this.logFileList.Margin = new System.Windows.Forms.Padding(4);
 			this.logFileList.Name = "logFileList";
 			this.logFileList.Size = new System.Drawing.Size(631, 140);
 			this.logFileList.TabIndex = 8;
@@ -142,7 +142,7 @@
 			this.sendButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
 			this.sendButton.Enabled = false;
 			this.sendButton.Location = new System.Drawing.Point(20, 723);
-			this.sendButton.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+			this.sendButton.Margin = new System.Windows.Forms.Padding(4);
 			this.sendButton.Name = "sendButton";
 			this.sendButton.Size = new System.Drawing.Size(313, 38);
 			this.sendButton.TabIndex = 9;
@@ -154,7 +154,7 @@
 			// 
 			this.abortButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
 			this.abortButton.Location = new System.Drawing.Point(341, 723);
-			this.abortButton.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+			this.abortButton.Margin = new System.Windows.Forms.Padding(4);
 			this.abortButton.Name = "abortButton";
 			this.abortButton.Size = new System.Drawing.Size(311, 38);
 			this.abortButton.TabIndex = 10;
@@ -176,10 +176,10 @@
 			// 
 			this.gameVersion.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.gameVersion.Location = new System.Drawing.Point(120, 423);
-			this.gameVersion.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+			this.gameVersion.Location = new System.Drawing.Point(152, 424);
+			this.gameVersion.Margin = new System.Windows.Forms.Padding(4);
 			this.gameVersion.Name = "gameVersion";
-			this.gameVersion.Size = new System.Drawing.Size(531, 22);
+			this.gameVersion.Size = new System.Drawing.Size(499, 22);
 			this.gameVersion.TabIndex = 13;
 			// 
 			// statusStrip
@@ -222,7 +222,7 @@
 			this.mainBody.Controls.Add(this.sendButton);
 			this.mainBody.Dock = System.Windows.Forms.DockStyle.Fill;
 			this.mainBody.Location = new System.Drawing.Point(0, 0);
-			this.mainBody.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+			this.mainBody.Margin = new System.Windows.Forms.Padding(4);
 			this.mainBody.Name = "mainBody";
 			this.mainBody.Size = new System.Drawing.Size(668, 777);
 			this.mainBody.TabIndex = 15;
@@ -235,7 +235,7 @@
 			this.Controls.Add(this.mainBody);
 			this.Controls.Add(this.statusStrip);
 			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
-			this.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+			this.Margin = new System.Windows.Forms.Padding(4);
 			this.MinimumSize = new System.Drawing.Size(679, 794);
 			this.Name = "MainForm";
 			this.Text = "Hexaverse Bug Reporter";

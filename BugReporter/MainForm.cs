@@ -320,12 +320,15 @@ namespace BugReporter
 			if (logFile.SelectedItem == null)
 				logFile.SelectedIndex = 0;
 		}
-
-		static Whoops whoops = new Whoops();
-
-		public void Abort(string problem)
+		public float FontScaleFactor
 		{
-			whoops.Raise(problem);
+			get
+			{
+				Graphics graphics = this.CreateGraphics();
+				float dpiX = graphics.DpiX;
+				return dpiX / 96.0f;
+			}
+
 		}
 
 
@@ -336,20 +339,35 @@ namespace BugReporter
 			{
 				if (++helloStarted == 3)
 				{
-					Abort(issue);
+					Program.Abort(issue);
 				}
 
 				helloTask = ContactServerAsync(new Tuple <string, string>[] { new Tuple<string, string>("action", "respond") }, delayMS,true);
 			}
 			catch (Exception ex)
 			{
-				MessageBox.Show(ex.ToString());
-				Application.Exit();
+				Program.Abort(ex.Message);
 			}
 		}
 
+		private void ResizeFont(Control.ControlCollection coll, float scaleFactor)
+		{
+			foreach (Control c in coll)
+			{
+				if (c.HasChildren)
+				{
+					ResizeFont(c.Controls, scaleFactor);
+				}
+				c.Font = new Font(c.Font.FontFamily.Name, c.Font.Size * scaleFactor);
+			}
+		}
+
+
 		private void MainForm_Load(object sender, EventArgs e)
 		{
+			ResizeFont(this.Controls, FontScaleFactor);
+
+
 			try
 			{
 				ProcessStartInfo startInfo = new ProcessStartInfo(Path.Combine("..", "server", "server.exe"));
@@ -366,7 +384,7 @@ namespace BugReporter
 			}
 			catch (Exception ex)
 			{
-				MessageBox.Show(ex.ToString());
+				MessageBox.Show("Error trying to launch 'server --version' to figure out the current game version. You will have to specify the game version by yourself: "+ex.Message);
 				//gameVersion.Text = ex.ToString();
 			}
 
@@ -491,7 +509,7 @@ namespace BugReporter
 				{
 					toolStripStatusLabel.Text = "Unable to upload to server: " + uploadTask.Exception.InnerException.Message.Replace("\n", "").Replace("\r", "");
 					uploadTask = null;
-					Abort(uploadTask.Exception.InnerException.Message);
+					Program.Abort(uploadTask.Exception.InnerException.Message);
 					//ActivateInput(true);
 				}
 				else if (uploadTask.IsCompleted)
