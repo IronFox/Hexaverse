@@ -19,6 +19,10 @@ namespace BugReporter
 {
 	public partial class MainForm : Form
 	{
+		public static readonly Uri ServerUri = new Uri("https://www.hexaverse.net/bugReport/store.php");
+		//public static readonly Uri ServerUri = new Uri("https://www.hexaverse_nope.net/bugReport/store.php");
+
+
 		class LogFile : IComparable
 		{
 			public readonly string Path;
@@ -168,7 +172,7 @@ namespace BugReporter
 				Prefix = filename.Split(' ')[0];
 				if (Created.Date == Modified.Date)
 				{
-					TimeLine = "[" +Created.Date.ToShortDateString() + " " + Created.ToShortTimeString() + "-" + Modified.ToShortTimeString() + "]";
+					TimeLine = "[" + Created.Date.ToShortDateString() + " " + Created.ToShortTimeString() + "-" + Modified.ToShortTimeString() + "]";
 				}
 				else
 					TimeLine = "[" + Created + "-" + Modified + "]";
@@ -187,7 +191,7 @@ namespace BugReporter
 				string rs = Prefix;
 				if (Version != null)
 					rs += ' ' + Version;
-				rs += ' '+TimeLine;
+				rs += ' ' + TimeLine;
 				if (fatal != null)
 					rs += " (reports fatal exception)";
 				return rs;
@@ -208,9 +212,9 @@ namespace BugReporter
 			builder.Append('=');
 			builder.Append(Uri.EscapeDataString(value));
 		}
-		
-		
-		static async Task<string> ContactServerAsync(IEnumerable<Tuple<string,string>> parameters, int delayMS, bool validateCertificate)
+
+
+		static async Task<string> ContactServerAsync(IEnumerable<Tuple<string, string>> parameters, int delayMS, bool validateCertificate)
 		{
 			//https://stackoverflow.com/questions/26389899/how-do-i-disable-ssl-fallback-and-use-only-tls-for-outbound-connections-in-net/26392698#26392698
 			System.Net.ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
@@ -220,9 +224,8 @@ namespace BugReporter
 				await Task.Delay(delayMS);
 			}
 
-			Uri uri = new Uri("https://www.hexaverse.net/bugReport/store.php");
 
-			HttpWebRequest request = (HttpWebRequest)WebRequest.Create(uri);
+			HttpWebRequest request = (HttpWebRequest)WebRequest.Create(ServerUri);
 
 			StringBuilder postString = new StringBuilder();
 			PutParam(postString, "token", "REMOVED_TOKEN");
@@ -253,7 +256,7 @@ namespace BugReporter
 
 			X509Certificate cert1 = request.ServicePoint.Certificate;
 			X509Certificate2 serverCertificate = new X509Certificate2(cert1);
-			if (serverCertificate.Subject != "CN="+uri.Host)
+			if (serverCertificate.Subject != "CN=" + ServerUri.Host)
 				throw new Exception("Server certificate mismatch");
 			if (validateCertificate)
 				await ValidateSslCertificateAsync(serverCertificate);
@@ -293,7 +296,7 @@ namespace BugReporter
 				await ValidateSslCertificateAsync(chain.ChainElements[1].Certificate);
 		}
 
-		Task<string> helloTask,uploadTask;
+		Task<string> helloTask, uploadTask;
 
 
 		public void UpdateLogFileList()
@@ -318,10 +321,24 @@ namespace BugReporter
 				logFile.SelectedIndex = 0;
 		}
 
-		private void RestartHelloTask(int delayMS = 0)
+		static Whoops whoops = new Whoops();
+
+		public void Abort(string problem)
+		{
+			whoops.Raise(problem);
+		}
+
+
+		private int helloStarted = 0;
+		private void RestartHelloTask(int delayMS = 0, string issue="")
 		{
 			try
 			{
+				if (++helloStarted == 3)
+				{
+					Abort(issue);
+				}
+
 				helloTask = ContactServerAsync(new Tuple <string, string>[] { new Tuple<string, string>("action", "respond") }, delayMS,true);
 			}
 			catch (Exception ex)
@@ -474,7 +491,8 @@ namespace BugReporter
 				{
 					toolStripStatusLabel.Text = "Unable to upload to server: " + uploadTask.Exception.InnerException.Message.Replace("\n", "").Replace("\r", "");
 					uploadTask = null;
-					ActivateInput(true);
+					Abort(uploadTask.Exception.InnerException.Message);
+					//ActivateInput(true);
 				}
 				else if (uploadTask.IsCompleted)
 				{
@@ -496,7 +514,7 @@ namespace BugReporter
 				if (helloTask.IsFaulted)
 				{
 					toolStripStatusLabel.Text = "Unable to ping server: " + helloTask.Exception.InnerException.Message.Replace("\n", "").Replace("\r", "");
-					RestartHelloTask(1000);
+					RestartHelloTask(1000,helloTask.Exception.InnerException.Message);
 				}
 				else if (helloTask.IsCompleted)
 				{
