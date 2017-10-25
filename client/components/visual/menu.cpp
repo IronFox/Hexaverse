@@ -100,7 +100,9 @@ namespace Menu
 		s->SetOnChange([onChange,toString,w,name,min](float&f0)
 		{
 			float f1 = f0 + min;
+			LogEvent(EventSignificance::Common,"Slider change '"+name+"' -> "+String(f1));
 			onChange(f1);
+			LogEvent(EventSignificance::Common,"Slider change '"+name+"' done -> "+String(f1));
 			f0 = f1 - min;
 			const auto s = w.lock();
 			if (s)
@@ -112,7 +114,12 @@ namespace Menu
 
 	static GUI::PCheckbox AddCheckBox(const String&name,bool initial, const std::function<void(bool)>&onChange)
 	{	
-		GUI::PCheckbox c(new GUI::Checkbox("",initial,onChange));
+		GUI::PCheckbox c(new GUI::Checkbox("",initial,[onChange,name](bool b)
+		{
+			LogEvent(EventSignificance::Common,"Checkbox change '"+name+"' -> "+String(b));
+			onChange(b);	
+			LogEvent(EventSignificance::Common,"Checkbox change '"+name+"' done");
+		}));
 		AddOption(name,c);
 		return c;
 	}
@@ -162,10 +169,14 @@ namespace Menu
 			AddOptionSlider("Anti-Aliasing", 0, modes.Count()-1, 1,display.GetCurrentMSAAMode(), [](float&q)
 			{
 				auto old = display.GetCurrentMSAAMode();
-				display.SetMSAAMode(Math::Max(0.f,M::Round(q)));
-				q = display.GetCurrentMSAAMode();
-				if (old != display.GetCurrentMSAAMode())
+				const index_t mode = Math::Max(0.f,M::Round(q));
+				if (old != mode)
+				{
+					LogEvent(EventSignificance::Common,"MSAA change to mode "+String(mode)+" (x"+String(display.GetMSAARate(mode))+ ")");
+					display.SetMSAAMode(mode);
 					Configuration::Update("runtime/fsaa",display.GetCurrentMSAARate());
+				}
+				q = display.GetCurrentMSAAMode();
 			},
 			[]()->String
 			{
