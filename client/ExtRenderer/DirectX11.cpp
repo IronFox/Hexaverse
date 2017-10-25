@@ -691,6 +691,13 @@ namespace Engine
 	}
 
 
+	BYTE		DirectX11::GetMSAARate(index_t mode) const
+	{
+		if (mode >= _msaaConfigs.Count())
+			throw Except::Program::ParameterFault("Chosen MSAA mode is out of bounds");
+		return _msaaConfigs[mode].sampleCount;
+	}
+
 	void		DirectX11::SetMSAAMode(index_t mode)
 	{
 		if (mode == _currentMSAAConfig)
