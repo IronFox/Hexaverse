@@ -728,8 +728,8 @@ namespace Engine
 		{
 			_backbuffer = _nextBackbuffer;
 			_nextBackbuffer.Clear();
+			TargetBackbuffer();
 		}
-//		GetDeviceContext()->CopyResource(backbufferOut,backbuffer.colorTarget[0].GetHandle2D());
 		swapchain->Present(vsync,0);
 		timeBuffer.Update(Engine::timing.now);
 	}

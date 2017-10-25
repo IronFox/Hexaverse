@@ -1,5 +1,6 @@
 v0.6.8
 	+ Added .NET bug reporter.
+	* Fixed screen going black when changing FSAA settings with shadows disabled.
 
 v0.6.7	[Oct 10 2017]
 	+ Added terraforming command "Build Low Wall to"
