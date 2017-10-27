@@ -1144,11 +1144,116 @@ namespace UI
 		}
 
 
+		/**
+		True if any changes have been detected in hex-grid cell composition, but area min-max have not been updated yet
+		*/
 		bool						cellCompositionChanged = true;
+		class Region;
+
+		void		AddCommandGroup(const int2&root, const int2&childOffset, const Objects::Command::Container&container);
+		void		AddCommand(const int2&root, const int2&location,const Objects::Command::PBase&cmd);
+
+
+		class ScrollArea
+		{
+			void		AllocateButtons();
+			void		ClampOffset()
+			{
+				if (lastDemand-lastOffset < GetStep())
+				{
+					lastOffset = lastDemand - GetStep();
+				}
+			}
+		public:
+			count_t		lastSpace=0,lastDemand=0;
+			index_t		lastOffset=0;
+			int2		origin;
+			Region		*parentRegion;
+			Objects::Command::PIconCommand	leftCommand,rightCommand;
+
+			count_t		GetStep() const
+			{
+				return lastSpace-2;
+			}
+
+
+			bool		CanScrollLeft() const
+			{
+				return lastOffset > 0;
+			}
+
+			void		ScrollLeft()
+			{
+				if (CanScrollLeft())
+				{
+					if (lastOffset < GetStep())
+						lastOffset = 0;
+					else
+						lastOffset -=GetStep();
+					Configure(Objects::selectedEntity);
+				}
+			}
+
+			bool		CanScrollRight() const
+			{
+				return (lastOffset + GetStep() < lastDemand);
+			}
+
+			void		ScrollRight()
+			{
+				if (CanScrollRight())
+				{
+					lastOffset+=GetStep();
+					ClampOffset();
+					Configure(Objects::selectedEntity);
+				}
+			}
+
+			void		AddCommands(const int2&root, const Objects::Command::CommandGroup::Row&row)
+			{
+				count_t window = lastSpace-2;
+				int2 offset = origin;
+				offset.x++;
+				AddCommand(root,origin,leftCommand);
+				AddCommand(root ,origin+ int2(lastSpace-1,0),rightCommand);
+				for (index_t i = 0; i < window; i++)
+				{
+					AddCommand(root,offset + int2(i ,0),row[i+ lastOffset]);
+				}
+			}
+
+			void		Update(count_t space, count_t demand)
+			{
+				ASSERT_LESS__(space,demand);
+				ASSERT_GREATER__(space,2);
+				lastSpace = space;
+				lastDemand = demand;
+				ClampOffset();
+			}
+
+			ScrollArea&	Setup(Region*r, const int2&origin, count_t space, count_t demand)
+			{
+				ASSERT_LESS__(space,demand);
+				ASSERT_GREATER__(space,2);
+				this->origin = origin;
+				lastSpace = space;
+				lastDemand = demand;
+				parentRegion = r;
+				AllocateButtons();
+
+				return *this;
+			}
+
+
+
+		};
+
+
 
 		class Region
 		{
 		public:
+			GenericHashTable<int2,ScrollArea>	scrollAreas;
 			IndexTable<M::TFloatRange<> >	rowRanges;
 			M::TIntRange<int>				yRanges;
 			/**
@@ -1156,6 +1261,32 @@ namespace UI
 			*/
 			Buffer<GridCell>			allGuiCells;
 			M::Rect<>					unscaledCellRegion;
+
+
+			ScrollArea&		GetScrollArea(const int2&origin, count_t space, count_t demand)
+			{
+				auto ptr = scrollAreas.QueryPointer(origin);
+				if (ptr)
+				{
+					ptr->Update(space,demand);
+					return *ptr;
+				}
+				return scrollAreas.Set(origin).Setup(this,origin,space,demand);
+			}
+			ScrollArea&		GetScrollArea(const int2&origin)
+			{
+				auto ptr = scrollAreas.QueryPointer(origin);
+				ASSERT_NOT_NULL__(ptr);
+				return *ptr;
+			}
+
+			bool			HasCell(const int2&coords)
+			{
+				foreach (allGuiCells,c)
+					if (c->gridCoords == coords)
+						return true;
+				return false;
+			}
 
 			GridCell*		AllocateCell(const Objects::Command::PVisualCommand&cmd, const int2&coordinates, CellAnchor myAnchor, bool&isNew)
 			{
@@ -1181,9 +1312,41 @@ namespace UI
 
 		Region						region[Anchor::Count];
 		float						hexGridScale = 1;
-		/**
-		True if any changes have been detected in hex-grid cell composition, but area min-max have not been updated yet
-		*/
+		
+		void		ScrollArea::AllocateButtons()
+		{
+			int2 coords = this->origin;
+			Region*r = this->parentRegion;
+			
+
+			leftCommand.reset(new Objects::Command::IconCommand("Left",[coords,r]()
+			{
+				r->GetScrollArea(coords).ScrollLeft();
+			},
+			[coords,r](bool)->Objects::Command::Base::Flags
+			{
+				auto rs = Objects::Command::Base::Flags::None;
+				if (r->GetScrollArea(coords).CanScrollLeft())
+					rs |= Objects::Command::Base::Flags::IsEnabled;
+				return rs;
+			}
+			));
+			rightCommand.reset(new Objects::Command::IconCommand("Right",[coords,r]()
+			{
+				r->GetScrollArea(coords).ScrollRight();
+			},
+			[coords,r](bool)->Objects::Command::Base::Flags
+			{
+				auto rs = Objects::Command::Base::Flags::None;
+				if (r->GetScrollArea(coords).CanScrollRight())
+					rs |= Objects::Command::Base::Flags::IsEnabled;
+				return rs;
+			}
+	
+			));
+
+		}
+
 
 		void						VisitAllCells(const std::function<void(GridCell&, CellAnchor)>&f)
 		{
@@ -1677,7 +1840,6 @@ namespace UI
 		//Buffer0<Objects::Command::PVisualCommand>	allocatedEntityCommands;
 			
 
-		void		AddCommandGroup(const int2&root, const int2&childOffset, const Objects::Command::Container&container);
 
 		void		AddCommand(const int2&root, const int2&location,const Objects::Command::PBase&cmd)
 		{
@@ -1716,12 +1878,26 @@ namespace UI
 			for (index_t r = 0; r < container.CountRows(); r++)
 			{
 				const auto&row = container.GetRow(r);
-				for (index_t i = 0; i < row.Count(); i++)
+				const int2 myOffset = childOffset+int2(r/2,r);
+
+				count_t space = 4;
+				for (; space < row.Count() && !region[Anchor::BottomLeft].HasCell(myOffset+int2(space+1,0)) && space + childOffset.x < 15; space++)
+				{}
+
+				if (space >= row.Count())
 				{
-					auto cmd = row[i];
-					if (!cmd)
-						continue;
-					AddCommand(root,childOffset+int2(i+r/2,r),cmd);
+					for (index_t i = 0; i < row.Count(); i++)
+					{
+						auto cmd = row[i];
+						if (!cmd)
+							continue;
+						AddCommand(root,myOffset+int2(i,0),cmd);
+					}
+				}
+				else
+				{
+					ScrollArea&s = region[Anchor::BottomLeft].GetScrollArea(myOffset,space, row.Count());
+					s.AddCommands(root,row);
 				}
 			}
 		}
