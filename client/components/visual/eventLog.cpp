@@ -217,10 +217,13 @@ namespace VisualEventLog
 		String id;
 		if (e)
 		{
-			if (owner)
-			{
-				id = owner->GetName()+","+ e->GetNiceName();
-			}
+			auto o = owner;
+			if (!o)
+				o = e->owner;
+			if (!o->isOwnedByMe)
+				id = o->GetName()+","+ e->GetNiceName();
+			else
+				id = e->GetNiceName();
 		}
 		elif (owner)
 		{
