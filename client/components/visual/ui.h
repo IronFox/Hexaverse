@@ -169,7 +169,7 @@ namespace UI
 		//static const int2 ContactListOffset(5,2);
 		static const int2 DynamicRowOffset(5,1);
 		static const int2 GlobalCommandOffset(3,1);
-		static const int2 UnitCommandOffset(8,1);
+		static const int2 EntityCommandOffset(8,1);
 
 		/**
 		Everything related to the universal buttons located in the bottom right panel

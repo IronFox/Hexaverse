@@ -1677,22 +1677,9 @@ namespace UI
 		//Buffer0<Objects::Command::PVisualCommand>	allocatedEntityCommands;
 			
 
-		void		AddCommandGroup(const int2&childOffset, const Objects::Command::Container&container)
-		{
-			for (index_t r = 0; r < container.CountRows(); r++)
-			{
-				const auto&row = container.GetRow(r);
-				for (index_t i = 0; i < row.Count(); i++)
-				{
-					auto cmd = row[i];
-					if (!cmd)
-						continue;
-					AddCommand(childOffset+int2(i+r/2,r),cmd);
-				}
-			}
-		}
+		void		AddCommandGroup(const int2&root, const int2&childOffset, const Objects::Command::Container&container);
 
-		void		AddCommand(const int2&location,const Objects::Command::PBase&cmd)
+		void		AddCommand(const int2&root, const int2&location,const Objects::Command::PBase&cmd)
 		{
 			auto vcmd = To<Objects::Command::VisualCommand>::DynamicCast( cmd);
 			if (!vcmd)
@@ -1710,14 +1697,43 @@ namespace UI
 			{
 				int2 childOffset = loc;
 				childOffset.y ++;
-				if (childOffset.y %2)
-					childOffset.x++;
+				#if 0
+					childOffset.x+=childOffset.y %2;
+				#else
+					childOffset.x = root.x + (childOffset.y-root.y)/2;// + childOffset.y %2;
+				#endif
 
 				auto group = To<Objects::Command::CommandGroup>::Cast(cmd);
 				if (group->IsExpanded())
-					AddCommandGroup(childOffset,*group);
+					AddCommandGroup(root, childOffset,*group);
 			}
 			cmd->Refresh(Network::ControlEnabled());
+
+		}
+
+		void		AddCommandGroup(const int2&root, const int2&childOffset, const Objects::Command::Container&container)
+		{
+			for (index_t r = 0; r < container.CountRows(); r++)
+			{
+				const auto&row = container.GetRow(r);
+				for (index_t i = 0; i < row.Count(); i++)
+				{
+					auto cmd = row[i];
+					if (!cmd)
+						continue;
+					AddCommand(root,childOffset+int2(i+r/2,r),cmd);
+				}
+			}
+		}
+
+		void		AddCommandGroup(const int2&childOffset, const Objects::Command::Container&container)
+		{
+			AddCommandGroup(childOffset, childOffset,container);
+		}
+
+		void		AddCommand(const int2&location,const Objects::Command::PBase&cmd)
+		{
+			AddCommand(location,location,cmd);
 		}
 
 		void RefreshButtonState()
@@ -1850,7 +1866,7 @@ namespace UI
 					Objects::Command::Container temp;
 					auto cmds = e->GetCommands(temp);
 					if (cmds)
-						AddCommandGroup(UnitCommandOffset,*cmds);
+						AddCommandGroup(EntityCommandOffset,*cmds);
 				}
 
 				FindAndDeleteCell(selectedFocus);
