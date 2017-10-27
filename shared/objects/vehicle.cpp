@@ -374,6 +374,16 @@ namespace Objects
 	
 	#ifdef HAS_WINDOW
 
+		/*virtual override*/ const CC*	Vehicle::GetCommands(CC&dynamicStorage) const
+		{
+			return &dynamicStorage
+					.Append(Super::GetCommands(dynamicStorage))
+					.Append(base->commands)
+					.Append(turret->commands)
+					;
+		}
+
+
 		void Vehicle::DescribeType(Command::Base::Label&outResult, UINT32 descFlags)
 		{
 			outResult.BeginBrief();

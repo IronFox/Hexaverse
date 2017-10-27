@@ -129,8 +129,7 @@ namespace Objects
 
 		#ifdef HAS_WINDOW
 			virtual bool		TestIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float & distance) const override;
-
-			virtual void		VisitAllCommands(FCommandVisitor visitor,bool force) override {Component::Turret* turret = this->turret; Component::VehicleBase* base = this->base;  base->VisitAllCommands(visitor,force); turret->VisitAllCommands(visitor,force);};
+			virtual const CC*	GetCommands(CC&dynamicStorage) const override;
 		#endif
 
 		int						GetPrice() const	{return GetPrice(base,turret, owner);}

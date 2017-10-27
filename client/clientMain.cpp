@@ -153,7 +153,7 @@ namespace LocalApplicationInterface
 
 		#ifdef HAS_WINDOW
 			GlobalEvents::invalidateObjectCache();
-			UI::RefreshButtonState();
+			UI::HexGrid::RefreshButtonState();
 		#endif
 		#ifndef NO_SATELLITES
 			Objects::RefreshSkyHubConnections();
@@ -176,7 +176,7 @@ namespace LocalApplicationInterface
 
 	void	OnTutorialsChanged()
 	{
-		UI::HexGrid::BottomRightPanel::Refresh(UI::HexGrid::GetGridConfig());
+		UI::HexGrid::BottomRightPanel::Refresh();
 	}
 
 #endif
@@ -3027,7 +3027,7 @@ namespace ApplicationInterface
 		}
 		while (to != from);
 
-		UI::RefreshButtonState();	//just in case
+		UI::HexGrid::RefreshButtonState(); //just in case
 	}
 
 
@@ -3114,7 +3114,7 @@ namespace ApplicationInterface
 			Objects::choiceVis.showArrow = true;
 			Objects::activeCursorMode = Objects::CursorMode::PlaceStructureMode;
 			if (newly)
-				UI::RefreshButtonState();
+				UI::HexGrid::RefreshButtonState();
 		}
 
 	}
@@ -3125,7 +3125,7 @@ namespace ApplicationInterface
 		{
 			Objects::activeCursorMode = Objects::CursorMode::Idle;
 			Objects::choiceVis.showArrow = false;
-			UI::RefreshButtonState();
+			UI::HexGrid::RefreshButtonState();
 		}
 	}
 
@@ -3618,7 +3618,7 @@ int main( int argc, const char* argv[])
 				[]()
 				{
 					ConfigurationMode::Create();
-					Objects::Command::RefreshCommands(false);
+					UI::HexGrid::RefreshButtonState();
 				});
 
 			Loading::Stage("Object Components", Objects::CreateComponents);

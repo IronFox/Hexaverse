@@ -70,6 +70,8 @@ namespace Objects
 
 
 			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override {return To<VehicleStore>::DynamicCast(connected) && connected->location.height == location.height ? &interConnector : &standardConnector;}
+			void					VisitParkMembers(const std::function<void(VehicleStore*)>&);
+			void					VisitParkMembers(const std::function<void(const VehicleStore*)>&) const;
 
 		#endif
 		/**
@@ -82,7 +84,6 @@ namespace Objects
 
 		virtual count_t				GetLoad() const override {return park? park->vehiclesStored : stored.Count();}
 		count_t						GetParkVehicleCapacity() const {return park ? park->members.Count() * MaxVehiclesPerStore : MaxVehiclesPerStore;}
-
 
 
 		#ifndef CLIENT
@@ -132,7 +133,7 @@ namespace Objects
 			virtual int				GetUplinkTraffic() const override {return 2;}
 		#endif
 		#ifdef HAS_WINDOW
-			virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
+			virtual const CC*		GetCommands(CC&dynamicStorage) const override;
 			virtual void			DescribeType(Description&label, UINT32 descFlags) override
 			{
 				label.BeginBrief();

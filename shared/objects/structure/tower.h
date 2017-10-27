@@ -19,33 +19,27 @@ namespace Objects
 	*/
 	class Tower : public WorkingStructure, public TurretBase
 	{
-	private:
-		static bool					setup;
-		typedef WorkingStructure	Super;
-		friend class Super;
-		friend void Prototypes::RegisterAll();
-		//friend class WorkingStructureT<Tower>;
-		/**/						Tower(Component::Turret*turret) : TurretBase(turret)
-		{
-			#ifdef HAS_WINDOW
-				Super::shape = staticShape;
-			#endif
-		}
-		/**/						Tower(BaseAttributeTable*table, Component::Turret*turret, const OwnerParameter&owner, const Grid::LCellIdI&location, float time) 
-									: Super(table,owner,location,true,time),TurretBase(turret)
-		{
-			#ifdef HAS_WINDOW
-				Super::shape = staticShape;
-			#endif
-		}
-
-		//WorkingEntity overrides (private):
-		virtual bool				WouldLikeToEnable() const override {return true;}
-
-
+		friend class Prototype;
 	public:
+		class Prototype
+		{
+		public:
+			Component::Turret		*const turret;
+			PTower					instance;
+			#ifdef HAS_WINDOW
+				CommandContainer	commands;
+			#endif
 
-		static Ctr::Buffer0<PTower>	globalPrototypes;
+				/**/					Prototype(Component::Turret*t):turret(t)
+				{
+					instance.reset(new Tower(this));
+				}
+		};
+		typedef std::shared_ptr<Prototype> PProto;
+
+		static Ctr::Buffer0<PProto>	globalPrototypes;
+		
+		const Prototype*const		prototype;
 
 		ResourceVector				storage;
 
@@ -75,7 +69,6 @@ namespace Objects
 			Buffer0<AttackTask>			attackQueue;
 
 			#ifdef HAS_WINDOW
-				static CommandContainer	commands;
 				/**
 				Render-ready, object-space instruction to be used for all instances of this structure type
 				*/
@@ -148,7 +141,7 @@ namespace Objects
 		//virtual String				DescribeMaxHealth() const override;
 		virtual void				PrototypeSetup()	override;
 		#ifdef HAS_WINDOW
-			virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
+			virtual const CC*		GetCommands(CC&dynamicStorage) const override {return &prototype->commands;}
 			virtual bool			TestIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float & distance) const override;
 			virtual void			DescribeType(Description&, UINT32 descFlags) override;
 		#endif
@@ -161,7 +154,7 @@ namespace Objects
 			virtual int				GetUplinkTraffic() const override {return turret->uplinkTraffic;}
 			virtual int				GetUplinkPriority() const override {return 1000;}
 		#endif
-		virtual PWorldEntity		CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override {return PWorldEntity(new Tower(table,turret,owner,location,atTime));};
+		virtual PWorldEntity		CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override {return PWorldEntity(new Tower(table,prototype,owner,location,atTime));};
 		virtual PTurretBase			GetTurretBase(float&zOffset) override { zOffset = GetEffectiveFoundationHeight(); return To<Tower>::Cast(shared_from_this());}
 		virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = GetEffectiveFoundationHeight(); return To<const Tower>::Cast(shared_from_this());}
 
@@ -180,6 +173,30 @@ namespace Objects
 			virtual void			Attack(float&)	override;
 			virtual bool			FrontQueueAutoAttack(TurretBase::TargetChoice&lastChoice) override;
 		#endif
+
+	private:
+		static bool					setup;
+		typedef WorkingStructure	Super;
+		friend class Super;
+		friend void Prototypes::RegisterAll();
+		//friend class WorkingStructureT<Tower>;
+		/**/						Tower(const Prototype*proto) : TurretBase(proto->turret),prototype(proto)
+		{
+			#ifdef HAS_WINDOW
+				Super::shape = staticShape;
+			#endif
+		}
+		/**/						Tower(BaseAttributeTable*table, const Prototype*proto, const OwnerParameter&owner, const Grid::LCellIdI&location, float time) 
+									: Super(table,owner,location,true,time),TurretBase(proto->turret),prototype(proto)
+		{
+			#ifdef HAS_WINDOW
+				Super::shape = staticShape;
+			#endif
+		}
+
+		//WorkingEntity overrides (private):
+		virtual bool				WouldLikeToEnable() const override {return true;}
+
 	};
 
 

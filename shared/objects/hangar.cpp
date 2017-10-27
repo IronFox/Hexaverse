@@ -8,14 +8,6 @@ namespace Objects
 {
 	/*static*/ Observable<Hangar&,Hangar::TStored&>	Hangar::onStored;
 
-	#ifdef HAS_WINDOW
-		/*static*/ index_t			Hangar::storeOffset;
-		/*static*/ Command::PBase		Hangar::cmdLeft,
-									Hangar::cmdRight;
-		/*static*/ int2				Hangar::cmdLeftCoords,
-									Hangar::cmdRightCoords;
-
-	#endif
 
 	/*static*/ void		Hangar::StaticSetup()
 	{

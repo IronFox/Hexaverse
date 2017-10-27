@@ -140,10 +140,10 @@ namespace Objects
 				selected = Grid::LCellIdI::Invalid;
 		}
 
-		void				MobileEntityProducer::VisitAllCommands(FCommandVisitor visitor,bool force)
+		void					MobileEntityProducer::GetCommands(CommandContainer&result) const
 		{
 			for (index_t i = 0; i < queue.Count(); i++)
-				queue[i].commandToTerminate.second->VisitMembers(visitor,force,queue[i].commandToTerminate.first);
+				result.Add(queue[i].commandToTerminate.second);
 		}
 
 		

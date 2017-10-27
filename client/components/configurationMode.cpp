@@ -640,7 +640,7 @@ namespace ConfigurationMode
 		{
 			namespace Command = Objects::Command;
 			Objects::Command::PCommandGroup group(new Command::CommandGroup(name));
-			group->baseCoords = int2(1);
+			//group->baseCoords = int2(1);
 			SetHint(*MakeIntButtons(Command::AddChild(*group,"Base Height"),layer.baseHeight,refLayer.baseHeight, Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight-1),
 			"Defines the central height of this attribute. The effective altitude stretches symmetrically up and down from this value.")
 			;
@@ -888,15 +888,15 @@ namespace ConfigurationMode
 
 			namespace Command = Objects::Command;
 			coreGroup.reset(new Objects::Command::CommandGroup("Core"));
-			coreGroup->baseCoords = int2(1);
+			//coreGroup->baseCoords = int2(1);
 			SetHint(*coreGroup,"The inner planetary core represents the center-most sphere content");
 			ruleGroup.reset(new Objects::Command::CommandGroup("Rules"));
-			ruleGroup->baseCoords = int2(1);
+			//ruleGroup->baseCoords = int2(1);
 			SetHint(*ruleGroup,"All common game rules");
 
 
 			copyPasteGroup.reset(new Objects::Command::CommandGroup("Copy/Paste"));
-			copyPasteGroup->baseCoords = int2(1);
+			//copyPasteGroup->baseCoords = int2(1);
 			SetHint(*copyPasteGroup,"Copy/paste current configuration to/from clipboard");
 
 			{
@@ -973,7 +973,7 @@ namespace ConfigurationMode
 
 			{
 				liquidGroup.reset(new Objects::Command::CommandGroup("Oceans"));
-				liquidGroup->baseCoords = int2(1);
+				//liquidGroup->baseCoords = int2(1);
 				MakeMaterialChoice(AddChild(*liquidGroup,"Ocean Content","Ocean Type"),config.liquidCoverage,serverConfig.liquidCoverage,noUnknown);
 				MakeIntButtons(AddChild(*liquidGroup,"Level","Base Height"),config.liquidHeight,serverConfig.liquidHeight,Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight-1);
 				MakeMaterialChoice(AddChild(*liquidGroup,"Ocean Outline"),config.liquidOutline,serverConfig.liquidOutline,noLiquids);
@@ -1189,7 +1189,7 @@ namespace ConfigurationMode
 			return false;
 		UI::HexGrid::ClearCommands();
 		foreach (buttons,b)
-			b->second->VisitMembers(UI::HexGrid::VisitAddCommand,false,b->first);
+			UI::HexGrid::AddCommand(b->first,b->second);
 		return true;
 	}
 
