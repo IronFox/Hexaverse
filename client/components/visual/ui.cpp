@@ -1880,8 +1880,9 @@ namespace UI
 				const auto&row = container.GetRow(r);
 				const int2 myOffset = childOffset+int2(r/2,r);
 
+				const count_t rightLimit = myOffset.y <= 1 ? 16 : 20;
 				count_t space = 4;
-				for (; space < row.Count() && !region[Anchor::BottomLeft].HasCell(myOffset+int2(space+1,0)) && space + childOffset.x < 15; space++)
+				for (; space < row.Count() && !region[Anchor::BottomLeft].HasCell(myOffset+int2(space+1,0)) && space + childOffset.x < rightLimit; space++)
 				{}
 
 				if (space >= row.Count())
