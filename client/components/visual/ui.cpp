@@ -2473,6 +2473,9 @@ namespace StatePanel
 		cachedNumber = RuntimeConfig::roundNumber;
 		cachedEntity = &e;
 		cachedLines.Clear();
+		if (ConfigurationMode::IsActive())
+			return;
+
 		Lua::Reference researchState = e.GetResearchState();
 
 		currentColor = float4(1);
