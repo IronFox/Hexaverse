@@ -25,9 +25,11 @@ namespace UI
 	{
 		#ifdef HAS_WINDOW
 			void		RefreshContacts();
+			void		RefreshButtonState();
 			//void		RefreshTutorials();
 		#else
 			inline void	RefreshContacts()	{}
+			inline void	RefreshButtonState()	{}
 			//inline void	RefreshTutorials()	{}
 		#endif
 	}
@@ -130,6 +132,23 @@ namespace UI
 	*/
 	namespace HexGrid
 	{
+		typedef BYTE CellAnchor;
+		namespace Anchor
+		{
+			enum anchor_t
+			{
+				Right = 1,
+				Top = 2,
+
+				TopLeft = Top,
+				TopRight = Top | Right,
+				BottomLeft = 0,
+				BottomRight = Right,
+
+				Count = 4,
+			};
+		};
+
 
 		struct TGridConfig
 		{
@@ -149,7 +168,8 @@ namespace UI
 		extern count_t					currentContactListWidth;
 		//static const int2 ContactListOffset(5,2);
 		static const int2 DynamicRowOffset(5,1);
-
+		static const int2 GlobalCommandOffset(3,1);
+		static const int2 EntityCommandOffset(8,1);
 
 		/**
 		Everything related to the universal buttons located in the bottom right panel
@@ -300,7 +320,7 @@ namespace UI
 			/**
 			Updates state and presence of all buttons of this panel
 			*/
-			void		Refresh(const TGridConfig&);
+			void		Refresh();
 		}
 
 
@@ -449,7 +469,7 @@ namespace UI
 			index_t									offset=0;
 			M::TIntRange<index_t>						visibleRange;
 
-			void					RebuildCommands(const TGridConfig&cfg);
+			void					RebuildCommands();
 			void					RemoveCommandIcons();
 		public:
 
@@ -469,7 +489,7 @@ namespace UI
 			/**
 			Flushes and reallocates gui cells as necessary. Redetects horizontal scrolling constraints and shows arrow buttons as necessary
 			*/
-			void					Refresh(const TGridConfig&cfg);
+			void					Refresh();
 			/**
 			Allocates arrow commands. Must be called once at program start or row creation.
 			*/
@@ -561,26 +581,26 @@ namespace UI
 			Updated by Update()
 			*/
 			M::Rect<>		projectedRect;
-			/**
-			Configures button grid orientation.
-			Default orientation is left to right, and bottom to top.
-			Set flipX and flipY to alter this grid orientation, thus changing how command->coords are interpreted
-			*/
-			bool		flipY,flipX;
+			///**
+			//Configures button grid orientation.
+			//Default orientation is left to right, and bottom to top.
+			//Set flipX and flipY to alter this grid orientation, thus changing how command->coords are interpreted
+			//*/
+			//bool		flipY,flipX;
 			int2		gridCoords;
 
-			/**/		GridCell():command(nullptr),flipY(false),flipX(false)	{}
+			/**/		GridCell():command(nullptr)/*,flipY(false),flipX(false)*/	{}
 
 			/**
 			Updates projectedRect
 			*/
-			void		Update(const TGridConfig&cfg, const Engine::Aspect<>&aspect);
+			void		Update(const TGridConfig&cfg, const Engine::Aspect<>&aspect, CellAnchor);
 
 			/**
 			Determines the center floating point coordinates of this cell in the range [-1..-1+pixelAspect*2],[-1,+1]
 			*/
-			float2		ToFloatCoords(const TGridConfig&cfg) const;
-			void		IncludeX(const TGridConfig&cfg, M::TFloatRange<>&r)const;
+			float2		ToFloatCoords(const TGridConfig&cfg, CellAnchor) const;
+			void		IncludeX(const TGridConfig&cfg, M::TFloatRange<>&r, CellAnchor)const;
 
 			static void Radial(float cellIndex, M::TVec2<>&rs);
 			/**
@@ -594,19 +614,23 @@ namespace UI
 		/**
 		Allocates a new or existing cell based on the specified command.
 		Only one cell may be allocated per command. A second call with the same parameter yields the cell returned by the first call.
-		@return Reference to the newly allocated or existing cell. Valid only until the next call to AllocateCell() or FindAndDeleteCell(). Do not persistently store pointers or references to the returned cell
+		Attempting to allocate an occupied location will cause failure
+		@return Reference to the newly allocated or existing cell, or null if the specified cell is occupied.
+		Valid only until the next call to AllocateCell() or FindAndDeleteCell().
+		Do not persistently store pointers or references to the returned cell
 		*/
-		GridCell&		AllocateCell(const Objects::Command::PVisualCommand&cmd);
+		GridCell*		AllocateCell(const Objects::Command::PVisualCommand&cmd, const int2&coordinates, CellAnchor);
 		/**
 		@copydoc AllocateCell()
-		@param[out] isNew Set to true if the specified command was not previously allocated
+		@param[out] isNew Contains to true if the specified command was not previously allocated. Undefined if the function returns null
 		*/
-		GridCell&		AllocateCell(const Objects::Command::PVisualCommand&, bool&isNew);
+		GridCell*		AllocateCell(const Objects::Command::PVisualCommand&, const int2&coordinates, CellAnchor, bool&isNew);
 		/**
 		Attempts to locate and delete the first cell using the specified command.
 		Fails silently if no such cell exists.
 		*/
 		void			FindAndDeleteCell(const Objects::Command::PVisualCommand&);
+		void			FindAndDeleteCell(const int2&, CellAnchor);
 
 
 
@@ -628,34 +652,33 @@ namespace UI
 
 		}
 
-		extern bool					hasFocusButton;
-
-
-		void						OnScreenResize();
-
-		void						Destroy();
-
-		bool	HandleClick();
+		extern bool				hasFocusButton;
+		void					OnScreenResize();
+		void					Destroy();
+		bool					HandleClick();
 
 		extern GridCell*		hoveringOver;
+		extern CellAnchor		hoveringAnchor;
 		extern Objects::WrappedDescription	hoveringText;
 		extern float			hoveringWidth;
-		extern bool			hoveringBrief;
+		extern bool				hoveringBrief;
 
 		/*
-			Renders in viewport -1 to +1
+		Renders in viewport -1 to +1
 		*/
-		void						RenderCommands(const TGridConfig&);
-		void						RenderHint();
+		void					RenderCommands(const TGridConfig&);
+		void					RenderHint();
 
 		/**
-		Command visitor function that adds a given command to the grid.
+		Adds a visual command at the given location (base bottom left).
+		If the command is a group, then its members will be layed out recursively, as space is available.
+		If space is unavailable, or commands attempt to explicitly be located on occupied slots, then some commands may be rejected.
 		The command shared_ptr is stored for easier removal (via ClearCommands()).
 		Adding the same command multiple times will not produce multiple buttons, but move any existing one.
 		@param location Grid location to place the button at. The coordinates are relative to the bottom left grid edge, and progress to the right/up
 		@param cmd Command to place/memorize. Must not be empty/null
 		*/
-		void		VisitAddCommand(const int2&location,const Objects::Command::PBase&cmd);
+		void		AddCommand(const int2&location,const Objects::Command::PBase&cmd);
 
 		/**
 		Removes all visual command buttons, and clears out all local command references
@@ -747,7 +770,6 @@ namespace UI
 
 
 
-	void	RefreshButtonState();
 
 	void	ShowSession();
 	void	RefreshSessionView();

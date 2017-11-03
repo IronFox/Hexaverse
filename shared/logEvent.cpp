@@ -12,6 +12,7 @@
 #include "runtimeConfig.h"
 #include "./objects/faction.h"
 #include <io/file_system.h>
+#include <io/monitoredProcess.h>
 
 #ifndef CLIENT
 	#include "../server/components/state.h"
@@ -114,8 +115,18 @@ namespace Logging
 	}
 
 
+	PathString activePath;
+
+	void	CallBugReporter()
+	{
+		MonitoredProcess	process(false);
+		process.Start("../BugReporter/","BugReporter.exe","\""+activePath+"\"");	//start and abandon
+	}
+
+
 	void	Begin(const PathString&path)
 	{
+		activePath = path;
 		FileSystem::Folder folder(FileSystem::ExtractFileDir(path));
 		folder.Rewind();
 		FileSystem::File file;
@@ -216,7 +227,10 @@ namespace Logging
 		{
 			headerWritten = true;
 			if (!inTestMode)
+			{
+				//if you change this, make sure to update bug reporter
 				logFile << "Sig."<< tab << "Time" << tab << "Round"<<tab<< "Phase"<<tab<<  "ClientName"<<tab<<"IP"<<tab<<"EntityType"<<tab<<"EntityID"<<tab<<"OwnerID"<<tab<<"Location"<<tab<<"Message"<<nl;
+			}
 		}
 		if (printToConsole)
 			console << '[' << RuntimeConfig::roundNumber.ToString()<<"] ";

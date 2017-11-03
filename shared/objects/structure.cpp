@@ -1125,7 +1125,7 @@ namespace Objects
 					Ctr::Array<Resource> missingResources;
 					if (!network.CanEnable(this,&outWhy,&missingResources))
 					{
-						LogEvent(EventClass::Preset::operationAborted,this,"Cannot enable: Insufficient resource supply in compound ("+outWhy+")");
+						LogEvent(EventClass::Preset::operationAborted,this,"Cannot enable"+GetTypeName()+": Insufficient resource supply in compound ("+outWhy+")");
 						if (missingResources.IsNotEmpty())
 						{
 							atTime += timeEpsilon;

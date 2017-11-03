@@ -15,9 +15,7 @@ namespace Objects
 		class Base;
 		class Container;
 
-		typedef std::function<void(const int2&,const PBase&cmd)>	FVisitor;
-
-
+		typedef std::function<void(const PBase&cmd)>				FVisitor;
 
 
 		/**
@@ -60,11 +58,10 @@ namespace Objects
 			virtual	void	Refresh(bool controlEnabled) = 0;
 
 
-			virtual bool	IsGroup() const {return false;}
-			virtual void	VisitMembers(const FVisitor&visitor, bool force, const int2&parentGridCoords) {visitor(parentGridCoords,shared_from_this());}
-			void			VisitMembers(const FVisitor&visitor, bool force) {VisitMembers(visitor,force,coordOffset);}
+			virtual const Container*	ToContainer() const {return nullptr;}
+			virtual Container*	ToContainer() {return nullptr;}
+//			virtual void	VisitMembers(const FVisitor&visitor, bool force) {visitor(shared_from_this());}
 
-			virtual void	SignalBaseChange(Container*newParent, const int2&newBase) {};
 
 
 			typedef Objects::Description	Label;
@@ -106,48 +103,65 @@ namespace Objects
 		class Container
 		{
 		public:
-			typedef std::pair<int2,PBase>	Member;
+			typedef Ctr::Buffer0<PBase>	Row;
 		protected:
-			Ctr::Buffer0<Member>		members;
-			const Container				*parent = nullptr;	//!< Must not access members
-
+			Ctr::Buffer0<Row>		rows;
+			const Container			*parent = nullptr;	//!< Must not access members
 		public:
-			int2						baseCoords;
-
-			//PCommandGroup	AddChild(const String&name);
-			//PCommandGroup	AddChild(const int2&coords, bool relativeCoords, const String&name);
-			//PCommandGroup	AddChild(const String&name, const String&iconName);
-			//PCommandGroup	AddChild(const int2&coords, bool relativeCoords, const String&name, const String&iconName);
-
-			void			VisitMembers(const FVisitor&visitor, bool force)	const
-			{
-				foreach (members,m)
-					if (m->second)
-						m->second->VisitMembers(visitor,force,Base::coordOffset + baseCoords + m->first);
-			}
+			/**
+			Visits all locally known member commands, without recursively calling VisitMembers() on each.
+			Instead any contained commands are directly fed to the visitor;
+			*/
+			void			VisitLocalMembers(const FVisitor&visitor)	const;
 
 			void			Refresh(bool controlEnabled)
 			{
-				foreach (members,m)
-					if (m->second)
-						m->second->Refresh(controlEnabled);
+				VisitLocalMembers([controlEnabled](const PBase&cmd)
+				{
+					cmd->Refresh(controlEnabled);
+				});
 			}
+
+			bool			Contains(const PBase&) const;
 
 			PBase			Add(Base*newCommand)	{ return Add(PBase(newCommand));}
 			PBase			Add(const PBase&newCommand);
+			PBase			Add(index_t row, Base*newCommand)	{ return Add(row,PBase(newCommand));}
+			PBase			Add(index_t row, const PBase&newCommand);
 			void			AddSpace();
-			PBase			Add(const int2&coords, bool relativeCoords, Base*newCommand)	{ return Add(coords, relativeCoords, PBase(newCommand));}
-			PBase			Add(const int2&coords, bool relativeCoords, const PBase&newCommand);
-			const Member&	GetLast() const {return members.last();}
-			void			Truncate(count_t numMembers)	{members.Truncate(numMembers);}
-			count_t			Count() const {return members.Count();}
-		
-			index_t			Find(const PBase&) const;
+			const PBase&	GetLast() const {return rows.Last().Last();}
+			void			TruncateRow(index_t row, count_t numMembers)	{if (row < rows.Count()) rows[row].Truncate(numMembers);}
+			count_t			CountCommands() const;
+			count_t			CountRows() const {return rows.Count();}
+			const Row&		GetRow(index_t row) const {return rows[row];}
+			void			Clear()
+			{
+				rows.clear();
+			}
+			/**
+			Appends a single new row.
+			Note that the local container starts with zero rows, but a row is appended automatically
+			when the first command is added.
+			If AppendRow() is called on an empty container, nothing will immediately change as that row
+			would have been added anyway.
+			*/
+			Container&		AppendRow()
+			{
+				rows.Append();
+				return *this;
+			}
+
+			Container&		Append(const Container&other)	{return Append(&other);}
+			/**
+			Includes the contents of another container into the local container.
+			Does nothing if this is null
+			@param other Container to include. May be empty or point to this, causing the method to do nothing
+			*/
+			Container&		Append(const Container*other);
 		};
 	}
 
-	typedef Command::FVisitor	FCommandVisitor;
-	typedef Command::Container	CommandContainer;
+	typedef Command::Container	CommandContainer,CC;
 	typedef Command::Base::Flags CommandFlags;
 
 }

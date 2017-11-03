@@ -26,7 +26,6 @@ namespace Objects
 
 
 
-		void				RefreshCommands(bool controlEnabled);
 
 
 
@@ -200,17 +199,13 @@ namespace Objects
 		
 
 			virtual void	Execute() override;
-			virtual void	VisitMembers(const FCommandVisitor&visitor, bool force, const int2&parentCoords)	override
-			{
-				Super::VisitMembers(visitor,force,parentCoords);
-				if (force || state & Flags::IsPermaActive)
-				{
-					CommandContainer::VisitMembers(visitor,force);
-				}
-			}
+			
 
 			virtual	void	Refresh(bool controlEnabled) override {/*CommandContainer::Refresh(controlEnabled);*/}
-			virtual bool	IsGroup() const override {return true;}
+			virtual const Container*	ToContainer() const override {return this;}
+			virtual Container*	ToContainer() override {return this;}
+
+			bool			IsExpanded() const {return state & Flags::IsPermaActive;}
 
 			void			CollapseChildren()
 			{
@@ -233,10 +228,6 @@ namespace Objects
 					(*p)->Collapse();
 				activeGroupPath.Clear();
 			}
-
-
-			virtual void	SignalBaseChange(CommandContainer*newParent, const int2&newBase) override;
-
 		};
 
 
@@ -392,9 +383,7 @@ namespace Objects
 
 	
 		PCommandGroup	AddChild(CommandContainer&container, const String&name);
-		PCommandGroup	AddChild(CommandContainer&container, const int2&coords, bool relativeCoords, const String&name);
 		PCommandGroup	AddChild(CommandContainer&container, const String&name, const String&iconName);
-		PCommandGroup	AddChild(CommandContainer&container, const int2&coords, bool relativeCoords, const String&name, const String&iconName);
 
 
 	}

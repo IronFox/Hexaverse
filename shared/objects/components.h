@@ -212,7 +212,6 @@ namespace Objects
 			bool							TestIntersection(float zOffset, float x, float y, const M::TVec3<>&b, const M::TVec3<>&d, float & distance);
 
 			void							DescribeType(Description&,bool compound, const OwnerParameter&);
-			void							VisitAllCommands(FCommandVisitor visitor, bool force);
 		};
 
 

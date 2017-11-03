@@ -3,7 +3,7 @@
 #include <global_string.h>
 #include "../../shared/uniqueID.h"
 #include <general/timer.h>
-#include <general/monitoredProcess.h>
+#include <io/monitoredProcess.h>
 #include <globalEvents.h>
 #include <logEvent.h>
 
@@ -13,7 +13,7 @@ namespace AIProcess
 	{
 		CryptographicID	accessToken;
 
-		MonitoredProcess	process;
+		MonitoredProcess	process(true);
 		index_t	eventKey = InvalidIndex;
 
 		void	Start()
@@ -78,14 +78,6 @@ namespace AIProcess
 	void End()
 	{
 		detail::EventEnd();
-	}
-
-
-
-
-	void Check()
-	{
-		detail::process.Check();
 	}
 
 

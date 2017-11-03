@@ -6,7 +6,6 @@
 namespace Objects
 {
 	#ifdef HAS_WINDOW
-		/*static*/ CommandContainer		Tower::commands;
 		/*static*/ PClientAttachment	Tower::staticShape;
 		/*static*/ Geometry				Tower::geometry;
 	#endif
@@ -15,7 +14,7 @@ namespace Objects
 	List of all known tower types (one for each tower turret type).
 	Tower types that are not contained in this list can not be constructed cleanly
 	*/
-	Ctr::Buffer0<PTower>				Tower::globalPrototypes;
+	Ctr::Buffer0<Tower::PProto>			Tower::globalPrototypes;
 
 	#ifndef CLIENT
 		Ctr::Buffer0<PTower>			towers;	//only used by server ... so far
@@ -285,15 +284,6 @@ namespace Objects
 		}
 
 		#ifdef HAS_WINDOW
-			/*virtual override*/ void				Tower::VisitAllCommands(FCommandVisitor visitor, bool force)
-			{
-				commands.VisitMembers([visitor,this](const int2&coords, const Command::PBase&cmd)
-				{
-					if (turret->CanAttack() || cmd->name!="Attack")
-						visitor(coords,cmd);
-				},force);
-			}
-
 			/*virtual override*/ bool			Tower::TestIntersection(const M::TVec3<>&_b, const M::TVec3<>&_d, float & distance) const
 			{
 				M::TVec3<> b,d;//,test;

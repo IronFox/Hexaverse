@@ -541,7 +541,7 @@ namespace Objects
 					{
 						if (bestEnable[i])
 						{
-							LogEvent(forceEnable,bestEnable[i].get(), "Auto-balance: Structure enabled");
+							LogEvent(forceEnable,bestEnable[i].get(), "Auto-balance: "+bestEnable[i]->GetTypeName()+" enabled");
 							bestEnable[i]->SetEnabled(true,atTime,false);
 						}
 					}
@@ -625,7 +625,7 @@ namespace Objects
 					break;
 
 				{
-					LogEvent(forceDisable, toDisable.get(),"Auto-balance: Structure disabled ");
+					LogEvent(forceDisable, toDisable.get(),"Auto-balance: "+toDisable->GetTypeName()+" disabled ");
 					toDisable->SetEnabled(false,atTime,false);
 					total = GetVector();
 					stable = total.balance.IsStable();

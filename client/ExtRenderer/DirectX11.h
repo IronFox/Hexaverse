@@ -1130,6 +1130,7 @@ namespace Engine
 		ArrayRef<const MSAAConfig>	GetMSAAModes() const {return _msaaConfigs.ToRef();}
 		index_t						GetCurrentMSAAMode() const {return _currentMSAAConfig;}
 		BYTE						GetCurrentMSAARate() const {return _msaaConfigs[_currentMSAAConfig].sampleCount;}
+		BYTE						GetMSAARate(index_t mode) const;
 		void						SetMSAAMode(index_t mode);
 		void						SelectMSAARate(BYTE numSamples) {SetMSAAMode(_FindMSAAConfig(numSamples));}
 

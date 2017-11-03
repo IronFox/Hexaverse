@@ -37,7 +37,7 @@ namespace Objects
 		bool n = !shiftPressed;
 		shiftPressed = true;
 		if (shiftMeansQueue && n)
-			UI::RefreshButtonState();
+			UI::HexGrid::RefreshButtonState();
 	}
 
 	void					SignalShiftReleased()
@@ -45,7 +45,7 @@ namespace Objects
 		bool n = shiftPressed;
 		shiftPressed = false;
 		if (shiftMeansQueue && n)
-			UI::RefreshButtonState();
+			UI::HexGrid::RefreshButtonState();
 	}
 
 	bool					ShouldQueueCommands()
@@ -94,7 +94,7 @@ namespace Objects
 
 		if (e)
 			e->OnDeselect();
-		Command::RefreshCommands(controlEnabled);
+		UI::HexGrid::RefreshButtonState();
 		if (e)
 			onSelectionChanged();
 		GlobalEvents::invalidateObjectCache();
@@ -130,7 +130,7 @@ namespace Objects
 		}
 		#ifdef HAS_WINDOW
 			else
-				Command::RefreshCommands(controlEnabled);	//in UpdateChoices() otherwise
+				UI::HexGrid::RefreshButtonState();	//in UpdateChoices() otherwise
 		#endif
 		return !!newSel;
 	}

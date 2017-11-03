@@ -30,6 +30,9 @@ namespace VisualEventLog
 			String		message;
 			float3		color = float3(1);
 
+			/**/		TSegment()	{}
+			/**/		TSegment(const String&message, const float3&color):message(message),color(color)	{}
+
 			friend void swap(TSegment&a,TSegment&b)
 			{
 				a.message.swap(b.message);
@@ -96,9 +99,9 @@ namespace VisualEventLog
 				break;
 			}
 			if (origin == Logging::Origin::ServerPrivate)
-				segments.Append({"[private]",float3(0.5f) });
+				segments.Append(TSegment("[private]",float3(0.5f) ));
 			if (origin != Logging::Origin::Local && type.flavor != EventFlavor::ChatMessage)
-				segments.Append({">",ToWhite(color,0.5f) });
+				segments.Append(TSegment(">",ToWhite(color,0.5f) ));
 			if (id.IsNotEmpty())
 			{
 				segments.Append({id+": ",color});
@@ -214,10 +217,13 @@ namespace VisualEventLog
 		String id;
 		if (e)
 		{
-			if (owner)
-			{
-				id = owner->GetName()+","+ e->GetNiceName();
-			}
+			auto o = owner;
+			if (!o)
+				o = e->owner;
+			if (!o->isOwnedByMe)
+				id = o->GetName()+","+ e->GetNiceName();
+			else
+				id = e->GetNiceName();
 		}
 		elif (owner)
 		{

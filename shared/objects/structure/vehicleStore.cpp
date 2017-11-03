@@ -210,59 +210,48 @@ namespace Objects
 
 	#ifdef HAS_WINDOW
 	
-		/*virtual override*/ void		VehicleStore::VisitAllCommands(FCommandVisitor visitor, bool force)
+		/*virtual override*/ const CC*	VehicleStore::GetCommands(CC&dynamicStorage) const
 		{
-			Super::VisitAllCommands(visitor,force);
-			if (storeOffset > 0 || force)
-				cmdLeft->VisitMembers(visitor,force);
-			index_t at = 0;
+			VisitParkMembers([&dynamicStorage](const VehicleStore*s)
+			{
+				foreach (s->stored,s2)
+					dynamicStorage.Add(s2->deployCommand);
+			});
+
+			return &dynamicStorage;
+		}
+
+
+		void						VehicleStore::VisitParkMembers(const std::function<void(VehicleStore*)>&f)
+		{
 			if (!park)
 			{
-				foreach (stored,s2)
-				{
-					if (at >= storeOffset || force)
-					{
-						int2 coords;
-						if (at >= storeOffset)
-							coords = cmdLeftCoords + int2(at - storeOffset+1 ,0);
-						s2->deployCommand->VisitMembers(visitor,force,coords);
-					}
-
-					at++;
-					if (at >= storeOffset + MaxVisibleStoreItems && !force)
-						break;
-				}
-				if (stored.Count() - storeOffset > MaxVisibleStoreItems || force)
-					cmdRight->VisitMembers(visitor,force);
+				f(this);
 				return;
 			}
 			foreach (park->members,m)
 			{
 				PVehicleStore s = m->lock();
 				DBG_ASSERT__(s);
-				if (s)
-				{
-					foreach (s->stored,s2)
-					{
-						if (at >= storeOffset || force)
-						{
-							int2 coords;
-							if (at >= storeOffset)
-								coords = cmdLeftCoords + int2(at - storeOffset+1 ,0);
-							s2->deployCommand->VisitMembers(visitor,force,coords);
-						}
-
-						at++;
-						if (at >= storeOffset + MaxVisibleStoreItems && !force)
-							break;
-					}
-				}
-				if (at >= storeOffset + MaxVisibleStoreItems)
-					break;
+				f(s.get());
 			}
-			if (this->park->vehiclesStored - storeOffset > MaxVisibleStoreItems || force)
-				cmdRight->VisitMembers(visitor,force);
 		}
+
+		void						VehicleStore::VisitParkMembers(const std::function<void(const VehicleStore*)>&f) const
+		{
+			if (!park)
+			{
+				f(this);
+				return;
+			}
+			foreach (park->members,m)
+			{
+				PVehicleStore s = m->lock();
+				DBG_ASSERT__(s);
+				f(s.get());
+			}
+		}
+
 
 	#endif
 

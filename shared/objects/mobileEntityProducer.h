@@ -111,7 +111,10 @@ namespace Objects
 
 		#ifdef HAS_WINDOW
 			const int2&				GetCommandOffset() const {return commandOffset;}
-			void					VisitAllCommands(FCommandVisitor visitor,bool force);
+			/**
+			Puts all active visual commands into the specified list.
+			*/
+			void					GetCommands(CommandContainer&) const;
 			void					SetCommandOffset(const int2&);
 		#else
 			void					SetCommandOffset(const int2&)	{};

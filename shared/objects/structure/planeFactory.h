@@ -56,7 +56,7 @@ namespace Objects
 				label.MarkBriefEnd();
 				label  << "Plane factories produce planes";
 			}
-			virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
+			virtual const CC*		GetCommands(CC&dynamicStorage) const override;
 		#endif
 		virtual const MobileEntityProducer*CastToProducer() const override {return this;}
 

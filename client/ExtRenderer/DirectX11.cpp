@@ -691,6 +691,13 @@ namespace Engine
 	}
 
 
+	BYTE		DirectX11::GetMSAARate(index_t mode) const
+	{
+		if (mode >= _msaaConfigs.Count())
+			throw Except::Program::ParameterFault("Chosen MSAA mode is out of bounds");
+		return _msaaConfigs[mode].sampleCount;
+	}
+
 	void		DirectX11::SetMSAAMode(index_t mode)
 	{
 		if (mode == _currentMSAAConfig)
@@ -728,8 +735,8 @@ namespace Engine
 		{
 			_backbuffer = _nextBackbuffer;
 			_nextBackbuffer.Clear();
+			TargetBackbuffer();
 		}
-//		GetDeviceContext()->CopyResource(backbufferOut,backbuffer.colorTarget[0].GetHandle2D());
 		swapchain->Present(vsync,0);
 		timeBuffer.Update(Engine::timing.now);
 	}

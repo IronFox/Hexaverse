@@ -517,11 +517,12 @@ namespace GUI
 	class Input : public BaseInput
 	{
 		typedef BaseInput	Super;
-		String			allowed = "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_- ";
+		String				allowed = GetStandardAlphabet();
 
 	protected:
 		virtual const char*	GetAllowed() const override {return allowed.c_str();}
 	public:
+		static const char*	GetStandardAlphabet()  {return "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_- ";};
 
 		String				GetText();
 		void				SetText(const String&);

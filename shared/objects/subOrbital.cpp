@@ -373,28 +373,12 @@ namespace Objects
 		#endif
 
 		#ifdef HAS_WINDOW
-			/*virtual override*/ void		CargoPlane::VisitAllCommands(FCommandVisitor visitor, bool force)
+			/*virtual override*/ const CC*	CargoPlane::GetCommands(CC&dynamicStorage) const
 			{
-				Super::VisitAllCommands(visitor,force);
-				if (storeOffset > 0 || force)
-					cmdLeft->VisitMembers(visitor,force);
-				index_t at = 0;
+				dynamicStorage.Append(Super::GetCommands(dynamicStorage));
 				foreach (stored,s2)
-				{
-					if (at >= storeOffset || force)
-					{
-						int2 coords;
-						if (at >= storeOffset)
-							coords = cmdLeftCoords + int2(at - storeOffset+1 ,0);
-						s2->deployCommand->VisitMembers(visitor,force,coords);
-					}
-
-					at++;
-					if (at >= storeOffset + MaxVisibleStoreItems && !force)
-						break;
-				}
-				if (stored.Count() - storeOffset > MaxVisibleStoreItems || force)
-					cmdRight->VisitMembers(visitor,force);
+					dynamicStorage.Add(s2->deployCommand);
+				return &dynamicStorage;
 			}
 
 		#endif

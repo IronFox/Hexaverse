@@ -61,10 +61,11 @@ namespace Objects
 		}
 	#else
 		#ifdef HAS_WINDOW
-			/*virtual override*/ void				PlaneFactory::VisitAllCommands(FCommandVisitor visitor, bool force)
+			/*virtual override*/ const CC*		PlaneFactory::GetCommands(CC&dynamicStorage) const
 			{
-				MobileEntityProducer::VisitAllCommands(visitor,force);
-				Super::VisitAllCommands(visitor,force);
+				dynamicStorage.Append(Super::GetCommands(dynamicStorage));
+				MobileEntityProducer::GetCommands(dynamicStorage);
+				return &dynamicStorage;
 			}
 		#endif
 		

@@ -13,16 +13,7 @@ namespace Objects
 	protected:
 		bool				RemoveStored(const PMobileEntity&v);
 	public:
-		#ifdef HAS_WINDOW
-			static index_t			storeOffset;				//!< Button offset (kinda like a scrollbar position)
-			static const count_t	MaxVisibleStoreItems = 8;	//!< Maximum number of vehicle buttons that can be shown before arrow buttons are added to scroll
-
-			static int2				cmdLeftCoords,
-									cmdRightCoords;
-			static Command::PBase	cmdLeft,		//!< Arrow button to scroll left
-									cmdRight;		//!< Arrow button to scroll right
-		#endif
-
+		
 		struct TStored
 		{
 			WMobileEntity	entity;

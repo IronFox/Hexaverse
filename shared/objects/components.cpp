@@ -1818,10 +1818,6 @@ namespace Objects
 		}
 
 
-		void							Base::VisitAllCommands(FCommandVisitor visitor, bool force)
-		{	
-			commands.VisitMembers(visitor,force);
-		}
 
 
 	}

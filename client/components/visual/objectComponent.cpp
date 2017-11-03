@@ -222,7 +222,7 @@ namespace Objects
 		LoadFor<Objects::NexusPort>();
 		LoadFor("tower",Objects::Tower::geometry,Objects::Tower::staticShape);	//special case, since there is one variant per applicable turret, but all have the same base
 		foreach (Objects::Tower::globalPrototypes,p)
-			(*p)->shape = Objects::Tower::staticShape;
+			(*p)->instance->shape = Objects::Tower::staticShape;
 
 		LoadFor<Objects::SubOrbital::Raptor>();
 		LoadFor<Objects::SubOrbital::CargoPlane>();
