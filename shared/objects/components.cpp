@@ -1538,14 +1538,14 @@ namespace Objects
 					int count = attacksPerRound.GetValue(researchState);
 					outResult <<""+attacksPerRound.Describe(researchState)+" attack"+(count == 1 ? "" : "s")+" per round";
 				}
-				if (explosionRadius.IsSet())
+				if (explosionRadius.IsFunctionOrConstNonZero())
 				{
 					outResult <<"Explosion radius: "+explosionRadius.Describe(researchState);
 					if (this == &bomb)
 						outResult.GetLastLine() +=" ("+String(ResourceTag(Resource::Uranium))+": *2)";
 						//bomb.GetExplosionRadius(owner) : artillery.GetExplosionRadius(owner)*2;
 				}
-				if (damageLevel.IsSet())
+				if (damageLevel.IsFunctionOrConstNonZero())
 				{
 					if (dealsEMPDamage)
 						outResult <<"EMP damage: "+damageLevel.Describe(researchState);
