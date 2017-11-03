@@ -25,6 +25,10 @@ namespace Objects
 {
 	namespace Commands
 	{
+		void DefineResourceTransfer(Component::Turret&component, Resource res);
+		void DefineOffensive(Command::Container&commands);
+		void DefineOffensive(Component::Turret&component);
+
 
 		Grid::LCellIdI	GetPointOfOrigin(const Objects::MobileEntity&e)
 		{
@@ -257,6 +261,14 @@ namespace Objects
 			commands.Add( new Command::IconCommand("Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
 		}
 
+		void DefineOffensive(Component::Turret&component)
+		{
+			#ifndef NO_MUNITION
+				if (component.ammoNeedPerShot.IsFunctionOrConstNonZero())
+					DefineResourceTransfer(component,component.ammoType);
+			#endif
+			DefineOffensive(component.commands);
+		}
 
 		void DefineTower(Objects::Tower::Prototype&proto)
 		{
@@ -924,14 +936,6 @@ namespace Objects
 				component.commands.Add( new IconCommand("Deposit "+resource,&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
 			#endif
 
-		}
-
-		void DefineOffensive(Component::Turret&component)
-		{
-			#ifndef NO_MUNITION
-				DefineResourceTransfer(component,component.ammoType);
-			#endif
-			DefineOffensive(component.commands);
 		}
 
 		void DefineMechanic(Component::Turret&component)
