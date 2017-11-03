@@ -1189,7 +1189,7 @@ namespace ConfigurationMode
 			return false;
 		UI::HexGrid::ClearCommands();
 		foreach (buttons,b)
-			UI::HexGrid::AddCommand(b->first,b->second);
+			UI::HexGrid::AddCommand(b->first+int2(2,1),b->second);
 		return true;
 	}
 
