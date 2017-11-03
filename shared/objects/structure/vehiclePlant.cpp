@@ -83,10 +83,13 @@ namespace Objects
 				gatheringPoint.selected = Grid::LCellIdI::Invalid;
 			}
 
-			/*virtual override*/ void				VehiclePlant::VisitAllCommands(FCommandVisitor visitor, bool force)
+
+			/*virtual override*/ const CC*		VehiclePlant::GetCommands(CC&dynamicStorage) const
 			{
-				MobileEntityProducer::VisitAllCommands(visitor,force);
-				Super::VisitAllCommands(visitor,force);
+				dynamicStorage.Append(Super::GetCommands(dynamicStorage));
+				dynamicStorage.AppendRow();
+				MobileEntityProducer::GetCommands(dynamicStorage);
+				return &dynamicStorage;
 			}
 
 			/*virtual override*/ void			VehiclePlant::DescribeType(Command::Base::Label&label, UINT32 descFlags)

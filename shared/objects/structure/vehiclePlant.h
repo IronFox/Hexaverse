@@ -97,7 +97,7 @@ class VehiclePlant : public WorkingStructureT<VehiclePlant>, public MobileEntity
 
 
 		#ifdef HAS_WINDOW
-			virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
+			virtual const CC*		GetCommands(CC&dynamicStorage) const override;
 			virtual void			OnSelect()	override;
 			virtual void			OnDeselect() override;
 		#endif

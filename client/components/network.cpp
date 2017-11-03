@@ -872,7 +872,7 @@ namespace Network
 				amSpectator = cr.startFactionTypes == Protocol::FactionType::SpectatorFaction;
 				#ifdef HAS_WINDOW
 					Objects::resourceView = !amSpectator;
-					UI::RefreshButtonState();
+					UI::HexGrid::RefreshButtonState();
 				#endif
 
 				activeToken = cr.factionToken;
@@ -1162,7 +1162,7 @@ namespace Network
 				#ifdef HAS_WINDOW
 					if (Objects::selectedEntity && Objects::selectedEntity->IsWorkingStructure() && To<Objects::WorkingStructure>::Cast(Objects::selectedEntity)->IsLaboratory())
 						UI::HexGrid::Configure(Objects::selectedEntity);
-					UI::RefreshButtonState();
+					UI::HexGrid::RefreshButtonState();
 					if (RuntimeConfig::tutorialMode)
 						Tutorial::SignalResearchChange();
 				#endif
@@ -2020,7 +2020,7 @@ void	Network::Receiver::FactionRequestedNewRound(NET(TUniqueID)&id)
 	LogEvent(faction->roundChangeNotifications < 3 ? EventSignificance::Uncommon : EventSignificance::Common,nullptr,faction->GetName()+" is done thinking");
 	#ifdef HAS_WINDOW
 		UI::RefreshSessionView();
-		UI::RefreshButtonState();
+		UI::HexGrid::RefreshButtonState();
 	#endif
 }
 
@@ -2032,7 +2032,7 @@ void	Network::Receiver::FactionContinuedRound(NET(TUniqueID)&id)
 	LogEvent(faction->roundChangeNotifications < 3 ? EventSignificance::Uncommon : EventSignificance::Common,nullptr,faction->GetName()+" is thinking some more");
 	#ifdef HAS_WINDOW
 		UI::RefreshSessionView();
-		UI::RefreshButtonState();
+		UI::HexGrid::RefreshButtonState();
 	#endif
 }
 

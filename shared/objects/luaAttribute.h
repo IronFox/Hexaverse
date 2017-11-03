@@ -40,6 +40,7 @@ namespace Objects
 				SetConst(constOverride);
 			}
 
+			bool		IsFunctionOrConstNonZero() const {return constOverride.isSet ? constOverride.constValue != 0 : luaGetValue.IsSet();}
 			bool		IsSet() const {return constOverride.isSet || luaGetValue.IsSet();}
 			bool		IsEmpty() const {return !constOverride.isSet && luaGetValue.IsEmpty();}
 

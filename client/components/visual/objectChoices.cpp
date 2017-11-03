@@ -9,6 +9,7 @@
 #include <objects/interface.h>
 #include "objectCommands.h"
 #include "terrain.h"
+#include "ui.h"
 
 namespace Objects
 {
@@ -55,8 +56,8 @@ namespace Objects
 	void					UpdateChoices(bool controlEnabled) 
 	{
 		//activeCursorMode = 
-
-		Command::RefreshCommands(controlEnabled);
+		UI::HexGrid::RefreshButtonState();
+		//Command::RefreshCommands(controlEnabled);
 
 		if (controlEnabled)
 			GetChoices(selectedEntity,

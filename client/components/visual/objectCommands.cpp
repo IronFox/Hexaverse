@@ -49,22 +49,24 @@ namespace Objects
 
 
 		template <bool ControlEnabled>
-			void RefreshCommand(const int2&, const Command::PBase&cmd)
+			void RefreshCommand(const Command::PBase&cmd)
 			{
 				cmd->Refresh(ControlEnabled);
 			}
 
 
-		void		RefreshCommands(bool controlEnabled)
-		{
-			controlIsEnabled = controlEnabled;
-			globalCommands.Refresh(controlEnabled);
+		//void		RefreshCommands(bool controlEnabled)
+		//{
+		//	controlIsEnabled = controlEnabled;
+		//	globalCommands.Refresh(controlEnabled);
 	
-			if (selectedEntity)
-			{
-				selectedEntity->VisitAllCommands(controlEnabled ? RefreshCommand<true> : RefreshCommand<false>,false);
-			}
-		}
+		//	if (selectedEntity)
+		//	{
+		//		CC*cmds = selectedEntity->GetCommands();
+
+		//		selectedEntity->VisitAllCommands(controlEnabled ? RefreshCommand<true> : RefreshCommand<false>,false);
+		//	}
+		//}
 
 
 		/*static*/ Buffer0<CommandGroup*>		CommandGroup::activeGroupPath;
@@ -564,22 +566,22 @@ namespace Objects
 		}
 
 
-		void	CommandGroup::SignalBaseChange(CommandContainer*newParent, const int2&newBase)
-		{
-			ASSERT_IS_NULL__(parent);
-			baseCoords = newBase;
-			baseCoords.x += baseCoords.y/2;
-			parent = newParent;
+		//void	CommandGroup::SignalBaseChange(CommandContainer*newParent, const int2&newBase)
+		//{
+		//	ASSERT_IS_NULL__(parent);
+		//	baseCoords = newBase;
+		//	baseCoords.x += baseCoords.y/2;
+		//	parent = newParent;
 
-			foreach (members,m)
-			{
-				if (m->second->IsGroup())
-				{
-					To<CommandGroup>::Cast(m->second)->SignalBaseChange(this,baseCoords + int2(0, m->first.y+1));
-				}
+		//	foreach (members,m)
+		//	{
+		//		if (m->second->IsGroup())
+		//		{
+		//			To<CommandGroup>::Cast(m->second)->SignalBaseChange(this,baseCoords + int2(0, m->first.y+1));
+		//		}
 
-			}
-		}
+		//	}
+		//}
 
 		PCommandGroup	AddChild(CommandContainer&container, const String&name)
 		{
@@ -588,22 +590,10 @@ namespace Objects
 			container.Add(rs );
 			return rs;
 		}
-		PCommandGroup	AddChild(CommandContainer&container, const int2&coords, bool relativeCoords, const String&name)
-		{
-			PCommandGroup rs (new CommandGroup(name));
-			container.Add(coords, relativeCoords, rs );
-			return rs;
-		}
 		PCommandGroup	AddChild(CommandContainer&container, const String&name, const String&iconName)
 		{
 			PCommandGroup rs (new CustomIcon<CommandGroup>(name,iconName));
 			container.Add(rs );
-			return rs;
-		}
-		PCommandGroup	AddChild(CommandContainer&container, const int2&coords, bool relativeCoords, const String&name, const String&iconName)
-		{
-			PCommandGroup rs (new CustomIcon<CommandGroup>(name,iconName));
-			container.Add(coords, relativeCoords, rs );
 			return rs;
 		}
 

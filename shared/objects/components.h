@@ -212,7 +212,6 @@ namespace Objects
 			bool							TestIntersection(float zOffset, float x, float y, const M::TVec3<>&b, const M::TVec3<>&d, float & distance);
 
 			void							DescribeType(Description&,bool compound, const OwnerParameter&);
-			void							VisitAllCommands(FCommandVisitor visitor, bool force);
 		};
 
 
@@ -400,9 +399,9 @@ namespace Objects
 			void							BuildBlastSystem(const Grid::LCellIdI&location, float radius, M::TMatrix4<>&system) const;
 			void							BuildBlastSystem(const M::TVec3<>&location, float radius, M::TMatrix4<>&system) const;
 
-			bool							CanAttack() const {return attacksPerRound.IsSet();}
-			bool							CanDealDamage() const {return damageLevel.IsSet();}
-			bool							CanDo(operation_t op) const {return operationSpeed[op].IsSet();}
+			bool							CanAttack() const {return attacksPerRound.IsFunctionOrConstNonZero();}
+			bool							CanDealDamage() const {return damageLevel.IsFunctionOrConstNonZero();}
+			bool							CanDo(operation_t op) const {return operationSpeed[op].IsFunctionOrConstNonZero();}
 			bool							CanRepair() const {return CanDo(Repair);}
 			bool							CanConstruct() const {return CanDo(Construct);}
 			//bool							IsStandardOffensive() const

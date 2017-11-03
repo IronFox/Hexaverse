@@ -344,8 +344,7 @@ namespace Objects
 			virtual PWorldEntity		CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override { return PWorldEntity(new Derivative(table,owner, location,atTime)); }
 			#ifdef HAS_WINDOW
 				virtual bool			TestIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float & distance) const override {return Super::TestIntersection(geometry,b,d,distance);}
-				virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override {commands.VisitMembers(visitor,force);};
-
+				virtual const CC*		GetCommands(CC&dynamicStorage) const override {return &commands;}
 			#endif
 			virtual bool				ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)	override	{return true;}
 
@@ -587,11 +586,9 @@ namespace Objects
 			virtual placement_t			CheckPlacement(const Grid::LCellIdI&location) override;
 			virtual PWorldEntity		CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override;
 
-			#ifdef CLIENT
-				#ifdef HAS_WINDOW
-					virtual bool		TestIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float & distance) const override {return Super::TestIntersection(geometry,b,d,distance);}
-					virtual void		VisitAllCommands(FCommandVisitor visitor, bool force) override {commands.VisitMembers(visitor,force);};
-				#endif
+			#ifdef HAS_WINDOW
+				virtual bool			TestIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float & distance) const override {return Super::TestIntersection(geometry,b,d,distance);}
+				virtual const CC*		GetCommands(CC&dynamicStorage) const override {return &commands;}
 			#endif
 		};
 
@@ -953,9 +950,9 @@ namespace Objects
 		/*virtual override*/	void			OtherStructure<Derivative>::PrototypeSetup()
 		{
 			Super::PrototypeSetup();
-			#ifdef HAS_WINDOW
-				commands.baseCoords = int2(3,0);
-			#endif
+			//#ifdef HAS_WINDOW
+			//	commands.baseCoords = int2(3,0);
+			//#endif
 
 		}
 	

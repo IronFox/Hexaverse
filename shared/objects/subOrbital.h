@@ -84,7 +84,6 @@ namespace Objects
 
 			#ifdef HAS_WINDOW
 				virtual void		DescribeType(Description&outResult, UINT32 descFlags) override;
-				virtual void		VisitAllCommands(FCommandVisitor visitor,bool force) override {turret->VisitAllCommands(visitor,force);};
 				virtual float		GetSoundLevel() const {return IsGroundBoundVehicle() ? 0.f : GetActivityLevel()*0.25f;}	//save 75% for motion
 			#endif
 
@@ -158,7 +157,12 @@ namespace Objects
 				virtual PWorldEntity	CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override {return PWorldEntity(new Derivative(owner, location)); }
 				#ifdef HAS_WINDOW
 					virtual bool		TestIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float & distance) const override;
-					virtual void		VisitAllCommands(FCommandVisitor visitor,bool force) override {Super::VisitAllCommands(visitor,force); commands.VisitMembers(visitor,force);};
+					virtual const CC*	GetCommands(CC&dynamicStorage) const override
+					{
+						dynamicStorage.Append(Super::GetCommands(dynamicStorage));
+						dynamicStorage.Append(commands);
+						return &dynamicStorage;
+					}
 				#endif
 
 			};
@@ -264,7 +268,7 @@ namespace Objects
 			virtual PHangar			CastToDestinationForType(const MobileEntity&e) override;
 			virtual void			OnDestroy(RemovalType, float&) override;
 			#ifdef HAS_WINDOW
-				virtual void		VisitAllCommands(FCommandVisitor visitor, bool force) override;
+				virtual const CC*	GetCommands(CC&dynamicStorage) const override;
 			#endif
 			#ifndef NO_HIBERNATION
 				virtual int			GetUplinkTraffic() const override {return 4;}

@@ -129,12 +129,13 @@ namespace Objects
 					;
 
 
-			Tower::globalPrototypes.Append().reset(new Tower(&Component::launcher));
-			//Tower::globalPrototypes.Append().reset(new Tower(artillery));
-			Tower::globalPrototypes.Append().reset(new Tower(&Component::radar));
-			Tower::globalPrototypes.Append().reset(new Tower(&Component::armored));
-			Tower::globalPrototypes.Append().reset(new Tower(&Component::resourceScanner));
-			structures.IncludeList(Tower::globalPrototypes);
+			Tower::globalPrototypes.Append().reset(new Tower::Prototype(&Component::launcher));
+			//Tower::globalPrototypes.Append().reset(new Tower::Prototype(artillery));
+			Tower::globalPrototypes.Append().reset(new Tower::Prototype(&Component::radar));
+			Tower::globalPrototypes.Append().reset(new Tower::Prototype(&Component::armored));
+			Tower::globalPrototypes.Append().reset(new Tower::Prototype(&Component::resourceScanner));
+			foreach (Tower::globalPrototypes,p)
+				structures.Add(p->get()->instance);
 
 
 

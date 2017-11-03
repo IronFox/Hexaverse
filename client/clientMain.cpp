@@ -153,7 +153,7 @@ namespace LocalApplicationInterface
 
 		#ifdef HAS_WINDOW
 			GlobalEvents::invalidateObjectCache();
-			UI::RefreshButtonState();
+			UI::HexGrid::RefreshButtonState();
 		#endif
 		#ifndef NO_SATELLITES
 			Objects::RefreshSkyHubConnections();
@@ -176,7 +176,7 @@ namespace LocalApplicationInterface
 
 	void	OnTutorialsChanged()
 	{
-		UI::HexGrid::BottomRightPanel::Refresh(UI::HexGrid::GetGridConfig());
+		UI::HexGrid::BottomRightPanel::Refresh();
 	}
 
 #endif
@@ -2085,9 +2085,11 @@ void MyFatal(const FatalDescriptor&descriptor)
 	
 	file.Log(message+"\n",true);
 	file.Close();
-	application_shutting_down = true;	//prevent certain operations in Close()
 	LogEvent(EventClass( EventSignificance::SystemFatal, EventFlavor::SystemError ), nullptr, message);
-	ErrMessage(message);
+	Logging::CallBugReporter();
+	application_shutting_down = true;	//prevent certain operations in Close()
+	
+	//ErrMessage(message);
 	//NetworkConnection::Close();
 }
 
@@ -3083,7 +3085,7 @@ namespace ApplicationInterface
 		}
 		while (to != from);
 
-		UI::RefreshButtonState();	//just in case
+		UI::HexGrid::RefreshButtonState(); //just in case
 	}
 
 
@@ -3170,7 +3172,7 @@ namespace ApplicationInterface
 			Objects::choiceVis.showArrow = true;
 			Objects::activeCursorMode = Objects::CursorMode::PlaceStructureMode;
 			if (newly)
-				UI::RefreshButtonState();
+				UI::HexGrid::RefreshButtonState();
 		}
 
 	}
@@ -3181,7 +3183,7 @@ namespace ApplicationInterface
 		{
 			Objects::activeCursorMode = Objects::CursorMode::Idle;
 			Objects::choiceVis.showArrow = false;
-			UI::RefreshButtonState();
+			UI::HexGrid::RefreshButtonState();
 		}
 	}
 
@@ -3640,6 +3642,16 @@ int main( int argc, const char* argv[])
 
 							Explosions::InitExplosion(center,false,baseRadius * 4, Objects::ExplosionTime(baseRadius));
 						});
+
+						Engine::input.Bind(Key::F,[]()
+						{
+							Dialog::Query("Enter fatal message", "", GUI::Input::GetStandardAlphabet(), [](const String&input){return input.IsNotEmpty();}, [](const String&input)
+							{
+								if (input.IsNotEmpty())
+									FATAL__(input);
+							});
+						});
+
 					#endif
 
 
@@ -3664,7 +3676,7 @@ int main( int argc, const char* argv[])
 				[]()
 				{
 					ConfigurationMode::Create();
-					Objects::Command::RefreshCommands(false);
+					UI::HexGrid::RefreshButtonState();
 				});
 
 			Loading::Stage("Object Components", Objects::CreateComponents);

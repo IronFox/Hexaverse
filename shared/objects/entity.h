@@ -599,11 +599,17 @@ namespace Objects
 				String				CompileDeploymentCount(const OwnerParameter&overrideOwner)	const;
 
 				/**
-				Visits each visual command the local entity provides
-				@param visitor Callback function to call for every command
-				@param force Set true to also visit commands that are currently hidden. False will visit only the currently selected command tree branch
+				Gets or constructs a global list of all commands associated with the local entity.
+				The return value must not be permanently stored or deleted.
+				Should not be called with a high frequency.
+				@param dynamicStorage Optional storage to put dynamically allocated or otherwise maintained commands into.
+						If used, the method MUST also return @b &dynamicStorage, because it will not be read otherwise.
+						This storage must be empty when passed to GetCommands(), as the method is expected to simply append to it.
+				@return Pointer to a container of all local commands, or NULL, if no commands exist.
+						May point to @b &dynamicStorage if the result needs to be constructed on the fly.
+						Must NOT be deleted.
 				*/
-				virtual void		VisitAllCommands(FCommandVisitor visitor, bool force) {};
+				virtual const CC*	GetCommands(CC&dynamicStorage) const {return nullptr;}
 				virtual bool		TestIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float & distance) const=0;
 			#endif
 	

@@ -1,4 +1,5 @@
 <project type="StaticLibrary">
 	<source path="src" include="true">
+		<exclude file="lua.c" />
 	</source>
 </project>

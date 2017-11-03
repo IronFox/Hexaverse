@@ -13,6 +13,7 @@
 #include <objects/faction.h>
 #include <objects/structure/planeFactory.h>
 #include <objects/subOrbital.h>
+#include <objects/structure/tower.h>
 #include "../clientRuntimeConfig.h"
 #include "../network.h"
 #include "dialog.h"
@@ -27,6 +28,10 @@ namespace Objects
 {
 	namespace Commands
 	{
+		void DefineResourceTransfer(Component::Turret&component, Resource res);
+		void DefineOffensive(Command::Container&commands);
+		void DefineOffensive(Component::Turret&component);
+
 
 		Grid::LCellIdI	GetPointOfOrigin(const Objects::MobileEntity&e)
 		{
@@ -139,7 +144,7 @@ namespace Objects
 		void DefineVehiclePlant(CommandContainer&commands)
 		{
 			DefineWorkingStructure(commands);
-			commands.VisitMembers([](const int2&coords,const Command::PBase&cmd)
+			commands.VisitLocalMembers([](const Command::PBase&cmd)
 			{
 				if (cmd->name == "Enable")
 				{
@@ -171,16 +176,14 @@ namespace Objects
 						,NoCosts
 					);
 				}
-			},true);
+			});
 
 
-
-			int at = 0;
-			//vehicleConstructionCommands << VehicleConstructionCommand("Base:",[](const PWorldEntity&){},AlwaysFalse<PWorldEntity const&>,AlwaysFalse<PWorldEntity const&>);
+			//commands.AppendRow();
 			foreach (VehiclePlant::baseComponents,comp)
 			{
 				Component::VehicleBase* c = *comp;
-				commands.Add(int2(5+at,0),false,new Command::EntityConstructionCommand(c->typeName,c,nullptr,PWorldEntity(),[c]()
+				commands.Add(new Command::EntityConstructionCommand(c->typeName,c,nullptr,PWorldEntity(),[c]()
 				{
 					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
 					if (plant)
@@ -196,15 +199,14 @@ namespace Objects
 						rs = Objects::CommandFlags::None;
 					return rs;
 				}));
-				To<Objects::Command::VisualCommand>::Cast(commands.GetLast().second)->RasterizeImage();
-				at++;
+				To<Objects::Command::VisualCommand>::Cast(commands.GetLast())->RasterizeImage();
 			}
-			at = 0;
-			//commands << Command("Turret:",[](const PWorldEntity&){},AlwaysFalse<PWorldEntity const&>,AlwaysFalse<PWorldEntity const&>);
+
+			commands.AppendRow();
 			foreach (VehiclePlant::turretComponents,comp)
 			{
 				Component::Turret* c = *comp;
-				commands.Add(int2(3+at,1),false,new Command::EntityConstructionCommand(c->typeName,nullptr,c,PWorldEntity(),[c]()
+				commands.Add(new Command::EntityConstructionCommand(c->typeName,nullptr,c,PWorldEntity(),[c]()
 				{
 					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
 					if (plant)
@@ -251,8 +253,7 @@ namespace Objects
 					mineralCostOut = Vehicle::GetPrice(p->selectedBase,c,p->owner);
 					timeCostOut = p->ProductionRounds(mineralCostOut,false);
 				}));
-				To<Objects::Command::VisualCommand>::Cast(commands.GetLast().second)->RasterizeImage();
-				at++;
+				To<Objects::Command::VisualCommand>::Cast(commands.GetLast())->RasterizeImage();
 			}
 		
 		}
@@ -261,7 +262,7 @@ namespace Objects
 		void DefinePlaneFactory(CommandContainer&commands)
 		{
 			DefineWorkingStructure(commands);
-			commands.VisitMembers([](const int2&coords, const Command::PBase&cmd)
+			commands.VisitLocalMembers([](const Command::PBase&cmd)
 			{
 				if (cmd->name == "Enable")
 				{
@@ -293,7 +294,7 @@ namespace Objects
 						, NoCosts
 						);
 				}
-			}, true);
+			});
 
 
 			foreach(Objects::Prototypes::planes, proto)
@@ -326,6 +327,27 @@ namespace Objects
 			}
 		}
 
+
+		void DefineOffensive(Command::Container&commands)
+		{
+			commands.Add( new Command::IconCommand("Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
+		}
+
+		void DefineOffensive(Component::Turret&component)
+		{
+			#ifndef NO_MUNITION
+				if (component.ammoNeedPerShot.IsFunctionOrConstNonZero())
+					DefineResourceTransfer(component,component.ammoType);
+			#endif
+			DefineOffensive(component.commands);
+		}
+
+		void DefineTower(Objects::Tower::Prototype&proto)
+		{
+			if (proto.turret->CanAttack())
+				DefineOffensive(proto.commands);
+		}
+
 		void DefineMine(CommandContainer&commands)
 		{
 			DefineWorkingStructure(commands);
@@ -350,7 +372,7 @@ namespace Objects
 
 		void DefineWorkingStructure(CommandContainer & commands)
 		{
-			commands.baseCoords = int2(3,0);
+			//commands.baseCoords = int2(3,0);
 
 			commands.Add(new Command::IconCommand("Enable",&Detail::EnableWorkingStructure,
 			[](bool controlEnabled)->Objects::CommandFlags
@@ -389,7 +411,7 @@ namespace Objects
 
 		static	void	ConfigureResearchQueueButtons(CommandContainer&commands)
 		{
-			commands.Truncate(researchQueueOffset);
+			commands.TruncateRow(0,researchQueueOffset);
 			if (Faction::mine && !Faction::mine->researchState.IsIdle())
 			{
 				foreach (Faction::mine->researchState.GetResearchQueue(),r)
@@ -407,15 +429,15 @@ namespace Objects
 		static	void	ConfigureResearchButtons(CommandContainer&commands)
 		{
 			if (researchCommandOffset == InvalidIndex)
-				researchCommandOffset = commands.Count();
+				researchCommandOffset = commands.CountCommands();
 			else
-				commands.Truncate(researchCommandOffset);
+				commands.TruncateRow(0,researchCommandOffset);
 			foreach (ResearchState::globalState.rootResearch,res)
 			{
 				BuildCommand(commands,*res);
 			}
 			commands.AddSpace();
-			researchQueueOffset = commands.Count();
+			researchQueueOffset = commands.CountCommands();
 			ConfigureResearchQueueButtons(commands);
 		}
 
@@ -518,12 +540,6 @@ namespace Objects
 			//	}
 
 			//};
-
-
-			void ConfigureStandardOffset(Objects::Component::Turret&component)
-			{
-				component.commands.baseCoords = int2(3,0);
-			}
 
 
 			bool	NotModifyBlockMode(const Vehicle&v)
@@ -818,8 +834,6 @@ namespace Objects
 
 		void	DefinePlane(Objects::Component::Turret&component)
 		{
-			Detail::ConfigureStandardOffset(component);
-
 			component.commands.Add(new Command::IconCommand("Take Off", &Detail::SubOrbitalCmd::TakeOff, &Detail::SubOrbitalCmd::TakeOffCheck, NoCosts));
 			component.commands.Add(new Command::IconCommand("Land", &Detail::SubOrbitalCmd::Land, &Detail::SubOrbitalCmd::LandCheck, NoCosts));
 		}
@@ -832,8 +846,7 @@ namespace Objects
 		void	DefineRaptor(Objects::Component::Turret&component)
 		{
 			DefinePlane(component);
-
-			component.commands.Add(new Command::IconCommand("Attack", &CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>, NoCosts));
+			DefineOffensive(component);
 		}
 
 		void	DefineCargoPlane(Objects::Component::Turret&component)
@@ -843,9 +856,6 @@ namespace Objects
 
 		void	DefineTerraformer(Objects::Component::Turret&component)
 		{
-			Detail::ConfigureStandardOffset(component);
-
-
 			Command::PCommandGroup	buildGroup = Command::AddChild(component.commands,"Build"),
 							terraformGroup = Command::AddChild(component.commands,"Terraform"),
 							terraformRemoveGround = Command::AddChild(*terraformGroup,"Remove Ground"),
@@ -1006,7 +1016,7 @@ namespace Objects
 				if (Component::Terraformer::CanBuild(*b))
 				{
 					PStructure s = *b;
-					structureGroup[s->GetCategory()]->Add(new Command::EntityConstructionCommand(/*"Build " + */(*b)->GetTypeName(), nullptr,nullptr,*b,std::bind(&Detail::TerraformerConstruct, *b),
+					auto cmd = new Command::EntityConstructionCommand(/*"Build " + */(*b)->GetTypeName(), nullptr,nullptr,*b,std::bind(&Detail::TerraformerConstruct, *b),
 					[s](bool controlsEnabled)
 					{
 						bool constructingMe = (activeCursorMode == CursorMode::PlaceStructureMode
@@ -1021,14 +1031,15 @@ namespace Objects
 							rs |= Objects::CommandFlags::IsPermaActive;
 						return rs;
 					}
-					));
+					);
+					structureGroup[s->GetCategory()]->Add(cmd);
+					cmd->RasterizeImage();
 				}
 		}
 
 
 		void	DefineBomb(Component::Turret&component)
 		{
-			Detail::ConfigureStandardOffset(component);
 
 			component.commands.Add( new Command::IconCommand("Self Detonate", &Detail::IssueDetonationCommand<ConstName::DetonationSize_Regular>
 				, &CommonCmd::IdleCheck
@@ -1061,23 +1072,12 @@ namespace Objects
 
 		void DefineResourceTransfer(Component::Turret&component, Resource res)
 		{
-			Detail::ConfigureStandardOffset(component);
 			#ifndef ONE_COMPOUND_PER_FACTION
 				String resource = component.ammoType.ToString();
 				component.commands.Add( new IconCommand("Withdraw "+resource,&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
 				component.commands.Add( new IconCommand("Deposit "+resource,&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
 			#endif
 
-		}
-
-		void DefineOffensive(Component::Turret&component)
-		{
-			Detail::ConfigureStandardOffset(component);
-			#ifndef NO_MUNITION
-				DefineResourceTransfer(component,component.ammoType);
-			#endif
-	
-			component.commands.Add( new Command::IconCommand("Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
 		}
 
 		void DefineMechanic(Component::Turret&component)
@@ -1088,73 +1088,71 @@ namespace Objects
 
 		void DefineAutomatable(Component::Turret&component)
 		{
-			Detail::ConfigureStandardOffset(component);
-
 			component.commands.Add( new Command::IconCommand("Automate", &VehicleCmd::Automate, &VehicleCmd::AutomatedCheck,NoCosts));
 		}
 
 		void DefineHangar()
 		{
 	
-			Hangar::cmdLeftCoords = int2(4,1) + Command::Base::coordOffset;
-			Hangar::cmdRightCoords = Hangar::cmdLeftCoords + int2(Hangar::MaxVisibleStoreItems+1,0);
+			//Hangar::cmdLeftCoords = int2(4,1) + Command::Base::coordOffset;
+			//Hangar::cmdRightCoords = Hangar::cmdLeftCoords + int2(Hangar::MaxVisibleStoreItems+1,0);
 
-			Hangar::cmdLeft.reset(new Command::IconCommand("Left",
-				[]()
-				{
-					if (selectedEntity && selectedEntity->IsHangar())
-					{
-						PHangar h = To<Hangar>::DynamicCast(selectedEntity);
-						if (h && Hangar::storeOffset > 0)
-						{
-							if (Hangar::storeOffset > Hangar::MaxVisibleStoreItems)
-								Hangar::storeOffset -= Hangar::MaxVisibleStoreItems;
-							else
-								Hangar::storeOffset = 0;
-							Command::RefreshCommands(true);
-						}
-					}
-				},
-				[](bool controlEnabled)
-				{
-					return Hangar::storeOffset > 0 && controlEnabled
-						 ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
-				},
-				NoCosts));
+			//Hangar::cmdLeft.reset(new Command::IconCommand("Left",
+			//	[]()
+			//	{
+			//		if (selectedEntity && selectedEntity->IsHangar())
+			//		{
+			//			PHangar h = To<Hangar>::DynamicCast(selectedEntity);
+			//			if (h && Hangar::storeOffset > 0)
+			//			{
+			//				if (Hangar::storeOffset > Hangar::MaxVisibleStoreItems)
+			//					Hangar::storeOffset -= Hangar::MaxVisibleStoreItems;
+			//				else
+			//					Hangar::storeOffset = 0;
+			//				Command::RefreshCommands(true);
+			//			}
+			//		}
+			//	},
+			//	[](bool controlEnabled)
+			//	{
+			//		return Hangar::storeOffset > 0 && controlEnabled
+			//			 ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
+			//	},
+			//	NoCosts));
 
-			Hangar::cmdRight.reset( new Command::IconCommand("Right",
-				[]()
-				{
-					if (selectedEntity && selectedEntity->IsHangar())
-					{
-						PHangar h = To<Hangar>::DynamicCast(selectedEntity);
-						if (!h)
-							return;
-						if (h->GetLoad() <= Hangar::storeOffset)
-							Hangar::storeOffset = 0;
-						else
-						{
-							count_t remaining = h->GetLoad() - (Hangar::storeOffset);
-							if (remaining > Hangar::MaxVisibleStoreItems)
-								Hangar::storeOffset += Hangar::MaxVisibleStoreItems;
-							//else
-								//storeOffset = s->CountVehiclesInPark() - MaxVehiclesPerStore;
-						}
-						Command::RefreshCommands(true);
-					}
-				},
-				[](bool controlEnabled)
-				{
-					if (selectedEntity && selectedEntity->IsHangar())
-					{
-						PHangar h = To<Hangar>::DynamicCast(selectedEntity);
-						return h && h->GetLoad() > Hangar::storeOffset + Hangar::MaxVisibleStoreItems
-						  && controlEnabled
-						   ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
-					}
-					return Objects::CommandFlags::None;
-				},
-				NoCosts));
+			//Hangar::cmdRight.reset( new Command::IconCommand("Right",
+			//	[]()
+			//	{
+			//		if (selectedEntity && selectedEntity->IsHangar())
+			//		{
+			//			PHangar h = To<Hangar>::DynamicCast(selectedEntity);
+			//			if (!h)
+			//				return;
+			//			if (h->GetLoad() <= Hangar::storeOffset)
+			//				Hangar::storeOffset = 0;
+			//			else
+			//			{
+			//				count_t remaining = h->GetLoad() - (Hangar::storeOffset);
+			//				if (remaining > Hangar::MaxVisibleStoreItems)
+			//					Hangar::storeOffset += Hangar::MaxVisibleStoreItems;
+			//				//else
+			//					//storeOffset = s->CountVehiclesInPark() - MaxVehiclesPerStore;
+			//			}
+			//			Command::RefreshCommands(true);
+			//		}
+			//	},
+			//	[](bool controlEnabled)
+			//	{
+			//		if (selectedEntity && selectedEntity->IsHangar())
+			//		{
+			//			PHangar h = To<Hangar>::DynamicCast(selectedEntity);
+			//			return h && h->GetLoad() > Hangar::storeOffset + Hangar::MaxVisibleStoreItems
+			//			  && controlEnabled
+			//			   ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
+			//		}
+			//		return Objects::CommandFlags::None;
+			//	},
+			//	NoCosts));
 		}
 
 					
@@ -1256,8 +1254,7 @@ namespace Objects
 		{
 			using namespace Command;
 
-			globalCommands.baseCoords = Command::Base::coordOffset;
-			globalCommands.Add(int2(-2, 0),false,new GlobalCommand("End Round",
+			globalCommands.Add(new GlobalCommand("End Round",
 			[]()
 			{
 				if (ApplicationInterface::HasSignalledRoundEnd())
@@ -1278,7 +1275,7 @@ namespace Objects
 				return rs;
 			}));
 
-			globalCommands.Add(int2(-1, 0),false,new GlobalCommand("Auto End Round",
+			globalCommands.Add(new GlobalCommand("Auto End Round",
 			[]()
 			{
 				if (!RuntimeConfig::autoNewRound && ApplicationInterface::ShouldSignalRoundEnd())
@@ -1294,14 +1291,13 @@ namespace Objects
 				return rs;
 			}));
 
-			globalCommands.Add(int2(0, 0),false,new GlobalCommand("Open Menu",
+			globalCommands.Add(new GlobalCommand("Open Menu",
 			[]()
 			{
 				GUI::Show(Menu::main);
 			}));
 
-			viewCommands = AddChild(globalCommands,int2(1,0),false,"View");
-
+			viewCommands = AddChild(globalCommands,"View");
 
 			viewCommands->Add( new GlobalCommand("Clip Terrain", &GlobalCmd::ToggleSeeThrough
 					,Detail::GlobalPermaSwitch(VisualTerrain::SeeThrough::IsEnabled)
@@ -1386,9 +1382,15 @@ namespace Objects
 
 
 			foreach (Objects::Component::vehicleTurretComponents,tc)
-				(*tc)->VisitAllCommands([](const int2&,const Command::PBase&cmd){ To<Command::VisualCommand>::Cast(cmd)->RasterizeImage();},true);
+				(*tc)->commands.VisitLocalMembers([](const Command::PBase&cmd){ To<Command::VisualCommand>::Cast(cmd)->RasterizeImage();});
 			foreach (Objects::Component::baseComponents,bc)
-				(*bc)->VisitAllCommands([](const int2&,const Command::PBase&cmd){To<Command::VisualCommand>::Cast(cmd)->RasterizeImage();},true);
+				(*bc)->commands.VisitLocalMembers([](const Command::PBase&cmd){To<Command::VisualCommand>::Cast(cmd)->RasterizeImage();});
+
+
+			foreach (Objects::Tower::globalPrototypes,p)
+			{
+				DefineTower(**p);
+			}
 
 			DefineGlobalCommands();
 
