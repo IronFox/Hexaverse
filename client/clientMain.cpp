@@ -3797,17 +3797,15 @@ int main( int argc, const char* argv[])
 		ClientGrid::Destroy();
 		Animation::Destroy();
 
-		application_shutting_down = true;
 
 		GlobalEvents::applicationTerminate();
+		application_shutting_down = true;
 
 
 		#ifdef HAS_WINDOW
 			storageThread.Terminate();
 			display.Destroy();
 		#endif
-
-		ServerProcess::Destroy();
 		Logging::End();
 
 		TerminateProcess(GetCurrentProcess(),0);	//self-terminate

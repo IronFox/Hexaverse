@@ -18,7 +18,8 @@ namespace ServerProcess
 		//CryptographicID	accessToken;
 
 		MonitoredProcess	process(false);
-		bool				remoteControl = false, configurationMode=false,tutorialMode=false;
+		bool				remoteControl = false, configurationMode=false,tutorialMode=false,resumed=false;
+		index_t				shutdownRegistration=InvalidIndex;
 		#ifdef HAS_WINDOW
 			Dialog::WDialog	holdOn;
 			index_t			holdOnID;
@@ -43,16 +44,25 @@ namespace ServerProcess
 		{
 			if (Detail::process.TryResume(Detail::GetWorkingDirectory(),Detail::GetExecutablePath()))
 			{
+				resumed = true;
 				LogEvent(EventSignificance::Debug,"Resumed running server process at '"+String(Detail::GetExecutablePath())+"'");
 				return true;
 			}
 			return false;
+		}
 
-
+		void	TerminateIfNotResumed()
+		{
+			if (!resumed)
+				process.Terminate();
 		}
 
 		void	Start()
 		{
+			if (shutdownRegistration == InvalidIndex)
+				shutdownRegistration = GlobalEvents::applicationTerminate.Register(TerminateIfNotResumed);
+
+
 			PathString	path = GetExecutablePath(),
 						workingDirectory = GetWorkingDirectory();
 
@@ -63,13 +73,13 @@ namespace ServerProcess
 				parameters += " -c";
 			if (tutorialMode)
 				parameters += " -t";
-
 			bool showWindow = false;
 			#ifdef _DEBUG
 				showWindow = true;
 			#endif
 			if (TryResume())
 				return;
+			resumed = false;
 			LogEvent(EventSignificance::Debug,"Starting server process (workingDirectory='"+String(workingDirectory)+"', path='"+String(path)+"', parameters='"+String(parameters)+"', showWindow="+String(showWindow)+")");
 			try
 			{
