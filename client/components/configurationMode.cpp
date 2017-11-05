@@ -4,10 +4,11 @@
 #include <string/cli.h>
 #include <grid/resources.h>
 #include "configurationMode.h"
-#include "visual/world.h"
-#include "visual/terrain.h"
-#include "visual/ui.h"
-#include "visual/objectCommands.h"
+#include "visual/scene/world.h"
+#include "visual/scene/terrain.h"
+#include "visual/hud/windowStack.h"
+#include "visual/hud/hexGrid.h"
+#include "visual/hud/objectCommands.h"
 
 #include "network.h"
 #include "objectStorage.h"
@@ -39,7 +40,8 @@ namespace ConfigurationMode
 
 		Buffer0<Objects::Command::PVisualCommand>	numberCommands;	//!< All commands rendering numbers
 
-		GUI::PWindow			planetListWindow;
+		using namespace HUD::Component;
+		PWindow			planetListWindow;
 
 		const String& FindDeclaration(const String& path)
 		{
@@ -125,9 +127,9 @@ namespace ConfigurationMode
 		class MaterialDialog
 		{
 		public:
-			GUI::PWindow	window;
+			PWindow	window;
 			std::function<void(BYTE)>	onSelect;
-			Buffer0<std::pair<index_t, GUI::PButton> >	materialButtons;
+			Buffer0<std::pair<index_t, PButton> >	materialButtons;
 			
 			void				Create(bool allowUnknown, bool allowLiquids);
 			void				SetText(BYTE type);
@@ -196,7 +198,7 @@ namespace ConfigurationMode
 				if (serverObjects.IsEmpty())
 				{
 					serverObjects.Import(true);
-					UI::HexGrid::RefreshContacts();
+					HUD::HexGrid::RefreshContacts();
 				}
 				forceRebuild |= !clientWorldBuilt;
 				clientWorldBuilt = true;
@@ -220,7 +222,7 @@ namespace ConfigurationMode
 		void				MaterialDialog::Create(bool allowUnknown, bool allowLiquids)
 		{
 			materialButtons.Clear();
-			window = GUI::Window::Create();
+			window = Window::Create();
 			//window->autoHeight = false;
 			for (index_t i  = 0; i < Grid::Content::NumberOfPossibilities; i++)
 			{
@@ -234,7 +236,7 @@ namespace ConfigurationMode
 				String name = Grid::Content::Reinterpret(i).ToString();
 				if (i == Grid::Content::Unknown)
 					name = "Natural";
-				GUI::PButton button(new GUI::Button(name));
+				PButton button(new Button(name));
 				button->backgroundTone = Grid::CellStack::Cell::typeColor[i];
 				Vec::abs(button->backgroundTone);
 				float max = Vec::max(button->backgroundTone);
@@ -263,7 +265,7 @@ namespace ConfigurationMode
 				//}
 				button->SetTriggerFunction([this,i]()
 				{
-					GUI::Hide(window);
+					HUD::WindowStack::Hide(window);
 					this->onSelect((BYTE)i);
 				});
 				window->AddComponent(button);
@@ -271,7 +273,7 @@ namespace ConfigurationMode
 			}
 
 			{
-				GUI::PButton button(new GUI::Button("Abort"));
+				PButton button(new Button("Abort"));
 				float b = 0.2f * ((window->CountComponents()/4)+1);
 				button->SetLocation(M::TFloatRect(float2(),float2(1.f,0.2f)));
 //				button->anchorConfig.Top().Set(b);
@@ -285,7 +287,7 @@ namespace ConfigurationMode
 			
 				button->SetTriggerFunction([this]()
 				{
-					GUI::Hide(window);
+					HUD::WindowStack::Hide(window);
 				});
 				window->AddComponent( button );
 			}
@@ -386,7 +388,7 @@ namespace ConfigurationMode
 			planetListWindow->SetAutomaticHeight(true);
 			planetListWindow->SetMaxAutoHeight(0.7f);
 			planetListWindow->fillBackground = false;
-			GUI::PComponent label = planetListWindow->AddNewComponent(new GUI::Label("Planets",1.2f));
+			PComponent label = planetListWindow->AddNewComponent(new Label("Planets",1.2f));
 			{
 				auto cfg = label->GetAnchorConfig();
 				cfg.Top().Set(0);
@@ -396,10 +398,10 @@ namespace ConfigurationMode
 			foreach (planetList,p)
 			{
 				index_t myIndex = p - planetList.pointer();
-				GUI::PButton button(new GUI::Button(*p,[myIndex]()
+				PButton button(new Button(*p,[myIndex]()
 				{
 					Network::Channels::loadPlanetByName.SendTo(Network::client, Protocol::LoadPlanetByName( planetList[myIndex],(UINT32)++sentVersion));
-					GUI::Hide(planetListWindow);
+					HUD::WindowStack::Hide(planetListWindow);
 					LoadServerWorld(false);
 					lockedAwaitConfig = sentVersion;
 				}));
@@ -516,7 +518,7 @@ namespace ConfigurationMode
 
 		Objects::Command::PCommandGroup MakeIntButtons(const Objects::Command::PCommandGroup&group, int&value, const int&defValue, int min, int max)
 		{
-			Objects::Command::PVisualCommand number(new UI::HexGrid::Custom::ValueReferenceCommand<int>(group->name+" ["+String(min)+".."+String(max)+"]",value));
+			Objects::Command::PVisualCommand number(new HUD::HexGrid::Custom::ValueReferenceCommand<int>(group->name+" ["+String(min)+".."+String(max)+"]",value));
 			numberCommands << number;
 			Objects::Command::PIconCommand decrease(new Objects::Command::IconCommand("Decrease",[&value,min,number]()
 			{
@@ -599,7 +601,7 @@ namespace ConfigurationMode
 		{
 			float min = value / 10.f;
 			float max = value * 10.f;
-			Objects::Command::PVisualCommand number(new UI::HexGrid::Custom::ValueReferenceCommand<float>(group->name+" ["+String(min)+" - "+String(max)+"]",value));
+			Objects::Command::PVisualCommand number(new HUD::HexGrid::Custom::ValueReferenceCommand<float>(group->name+" ["+String(min)+" - "+String(max)+"]",value));
 			numberCommands << number;
 			//Objects::Command::PIconCommand reset(new Objects::Command::CustomIconCommand("Reset","Undo",[&value,&defValue]()
 			//{
@@ -675,7 +677,7 @@ namespace ConfigurationMode
 					value = v;
 					Update();
 				};
-				GUI::Show(dialog.window); 
+				HUD::WindowStack::Show(dialog.window); 
 			},
 			[](bool){return Objects::CommandFlags::IsEnabled;}
 			));
@@ -853,15 +855,15 @@ namespace ConfigurationMode
 
 						if (warnings.IsNotEmpty())
 						{
-							Dialog::ShowMessage("Importing encountered warnings:\n"+implode('\n',warnings.pointer(),warnings.Count()));
+							HUD::Dialog::ShowMessage("Importing encountered warnings:\n"+implode('\n',warnings.pointer(),warnings.Count()));
 						}
 						LoadClientWorld(true);
 					}
 					else
-						Dialog::ShowMessage("Planet configuration could not be parsed from clipboard:\n"+cfg.GetError());
+						HUD::Dialog::ShowMessage("Planet configuration could not be parsed from clipboard:\n"+cfg.GetError());
 				}
 				else
-					Dialog::ShowMessage("Planet configuration could not be loaded from clipboard. Chances are, you did not copy it to clipboard first");
+					HUD::Dialog::ShowMessage("Planet configuration could not be loaded from clipboard. Chances are, you did not copy it to clipboard first");
 
 			}
 		}
@@ -874,7 +876,7 @@ namespace ConfigurationMode
 			created = true;
 
 
-			planetListWindow = GUI::Window::Create();
+			planetListWindow = Window::Create();
 			RebuildPlanetList();
 
 			XML::Container declarations;
@@ -987,19 +989,19 @@ namespace ConfigurationMode
 							
 							if (clientWorldLoaded)
 							{
-								Dialog::Confirm("Upload changes and begin game?",[]()
+								HUD::Dialog::Confirm("Upload changes and begin game?",[]()
 								{
 									UploadToServer();
 									Network::client.SendSignal(Protocol::ChannelID::EndConfigurationMode);
 								},
-								[](){return Detail::isActive ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;});
+								[](){return Detail::isActive ? HUD::Dialog::CheckResult::OkayContinue : HUD::Dialog::CheckResult::Abort;});
 							}
 							else
-								Dialog::Confirm("Accept current state and begin game?",[]()
+								HUD::Dialog::Confirm("Accept current state and begin game?",[]()
 								{
 									Network::client.SendSignal(Protocol::ChannelID::EndConfigurationMode);
 								},
-								[](){return Detail::isActive ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;});
+								[](){return Detail::isActive ? HUD::Dialog::CheckResult::OkayContinue : HUD::Dialog::CheckResult::Abort;});
 							//Update();
 						},
 						[](bool){return Objects::CommandFlags::IsEnabled;}
@@ -1056,15 +1058,15 @@ namespace ConfigurationMode
 			buttons	<< std::make_pair(int2(at++,0),
 						Objects::Command::PBase(new Objects::Command::CustomIconCommand("Load Planet Preset","Planet Presets",[]()
 						{
-							if (!GUI::IsVisible(planetListWindow))
-								GUI::Show(planetListWindow);
+							if (!HUD::WindowStack::IsVisible(planetListWindow))
+								HUD::WindowStack::Show(planetListWindow);
 							else
-								GUI::Hide(planetListWindow);
+								HUD::WindowStack::Hide(planetListWindow);
 						},
 						[](bool)
 						{
 							Objects::CommandFlags rs = Objects::CommandFlags::IsEnabled;
-							//if (GUI::IsVisible(planetListWindow))
+							//if (IsVisible(planetListWindow))
 							//	rs |= Objects::CommandFlags::IsPermaActive;
 							return rs;
 						}
@@ -1166,7 +1168,7 @@ namespace ConfigurationMode
 		}
 		localVersion = sentVersion = lastServerVersion = lockedAwaitConfig = 0;
 		Detail::Create();
-		UI::HexGrid::Configure(Objects::selectedEntity);
+		HUD::HexGrid::Configure(Objects::selectedEntity);
 
 	}
 
@@ -1187,9 +1189,9 @@ namespace ConfigurationMode
 		using namespace Detail;
 		if (!isActive)
 			return false;
-		UI::HexGrid::ClearCommands();
+		HUD::HexGrid::ClearCommands();
 		foreach (buttons,b)
-			UI::HexGrid::AddCommand(b->first+int2(2,1),b->second);
+			HUD::HexGrid::AddCommand(b->first+int2(2,1),b->second);
 		return true;
 	}
 
@@ -1230,7 +1232,7 @@ namespace ConfigurationMode
 			serverObjects.Export();
 			World::actual.FlushAndValidateSensory(1);
 		}
-		UI::HexGrid::RefreshContacts();
+		HUD::HexGrid::RefreshContacts();
 	}
 
 

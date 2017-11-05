@@ -1,14 +1,15 @@
 #include <global_root.h>
 #include "animation.h"
 #include "network.h"
-#include "visual/world.h"
+#include "visual/scene/world.h"
 #include "clientRuntimeConfig.h"
 #include "ai.h"
 #include <grid/resources.h>
-#include "visual/ui.h"
-#include "visual/explosions.h"
+#include "visual/hud/hexGrid.h"
+#include "visual/hud/resourceGauges.h"
+#include "visual/scene/explosions.h"
 #include "visual/objectSelection.h"
-#include "visual/objectComponent.h"
+#include "visual/scene/objectComponent.h"
 #include "visual/objectChoices.h"
 #include "configurationMode.h"
 #include <objects/structure/mine.h>
@@ -745,7 +746,7 @@ namespace Animation
 
 				#ifdef HAS_WINDOW
 					if (!currentlyStoredIn)
-						UI::UpdateTraffic();
+						HUD::ResourceGauges::UpdateTraffic();
 				#endif
 
 			}
@@ -760,11 +761,11 @@ namespace Animation
 				ASSERT1__(Objects::vehicles.Contains(v),v->GetName());
 				v->UpdateSystem();
 				#ifdef HAS_WINDOW
-					UI::UpdateTraffic();
+					HUD::ResourceGauges::UpdateTraffic();
 				#endif
 			}
 			#ifdef HAS_WINDOW
-				UI::HexGrid::RefreshContacts();
+				HUD::HexGrid::RefreshContacts();
 			#endif
 		}
 		//else
@@ -792,7 +793,7 @@ namespace Animation
 			if (storeInHangar != currentlyStoredIn)
 			{
 				Objects::deployingMobileEntity.reset();
-				UI::HexGrid::Configure(Objects::selectedEntity);
+				HUD::HexGrid::Configure(Objects::selectedEntity);
 			}
 
 
@@ -946,7 +947,7 @@ namespace Animation
 			{
 				Objects::UpdateChoices(Network::ControlEnabled());
 			}
-			//UI::HexGrid::Configure(Objects::selectedEntity);
+			//HUD::HexGrid::Configure(Objects::selectedEntity);
 		#endif
 
 	}
@@ -1133,7 +1134,7 @@ namespace Animation
 				Objects::Place(To<Objects::Structure>::DynamicCast(allocatedTarget));
 				#ifdef HAS_WINDOW
 					if (!allocatedTarget->isOwnedByMe)
-						UI::HexGrid::RefreshContacts();
+						HUD::HexGrid::RefreshContacts();
 				#endif
 			}
 			break;
@@ -1150,7 +1151,7 @@ namespace Animation
 						insertIntoGridLater.Set(v->id);
 					#ifdef HAS_WINDOW
 						if (!allocatedTarget->isOwnedByMe)
-							UI::HexGrid::RefreshContacts();
+							HUD::HexGrid::RefreshContacts();
 					#endif
 				}
 			}
@@ -1182,10 +1183,10 @@ namespace Animation
 				Objects::Remove(allocatedTarget,Objects::RemovalType::Reinterpret(removalType),t);
 				#ifdef HAS_WINDOW
 					if (!allocatedTarget->isOwnedByMe)
-						UI::HexGrid::RefreshContacts();
-					GUI::SignalSituationChange();
+						HUD::HexGrid::RefreshContacts();
+					HUD::WindowStack::SignalSituationChange();
 					if (removalType == Objects::RemovalType::UncontrolledExplosion)
-						UI::EventLog::RegisterEntityDestruction(this->time.min, allocatedTarget->isOwnedByMe,allocatedTarget->GetWorldPosition(), allocatedTarget->id, allocatedTarget->GetNiceName());
+						HUD::HexGrid::EventLog::RegisterEntityDestruction(this->time.min, allocatedTarget->isOwnedByMe,allocatedTarget->GetWorldPosition(), allocatedTarget->id, allocatedTarget->GetNiceName());
 
 				#endif
 			}
@@ -1319,7 +1320,7 @@ namespace Animation
 						auto smokeTrailIndex = Objects::Renderer::RegisterSmokeTrail(activeTrajectory,Vec::dot(attackerPosition) > M::Sqr(Grid::ToRadius(Grid::CellStack::TopHeight+1)));
 						if (doRegister)
 						{
-							UI::EventLog::RegisterAttack(this->time.min, isFriendly,attackerPosition, attackerID, smokeTrailIndex);
+							HUD::HexGrid::EventLog::RegisterAttack(this->time.min, isFriendly,attackerPosition, attackerID, smokeTrailIndex);
 						}
 
 						switch (attackerTurret->trajectoryType)

@@ -2,14 +2,13 @@
 #include <global_root.h>
 #include "objectSelection.h"
 #include "objectChoices.h"
-#include "objectCommands.h"
 #include <objects/interface.h>
 #include <objects/gridAndChoices.h>
 #include <objects/vehicle.h>
 #include <objects/faction.h>
 #include <globalEvents.h>
 
-#include "ui.h"
+#include "hud/hexGrid.h"
 
 namespace Objects
 {
@@ -37,7 +36,7 @@ namespace Objects
 		bool n = !shiftPressed;
 		shiftPressed = true;
 		if (shiftMeansQueue && n)
-			UI::HexGrid::RefreshButtonState();
+			HUD::HexGrid::RefreshButtonState();
 	}
 
 	void					SignalShiftReleased()
@@ -45,7 +44,7 @@ namespace Objects
 		bool n = shiftPressed;
 		shiftPressed = false;
 		if (shiftMeansQueue && n)
-			UI::HexGrid::RefreshButtonState();
+			HUD::HexGrid::RefreshButtonState();
 	}
 
 	bool					ShouldQueueCommands()
@@ -94,7 +93,7 @@ namespace Objects
 
 		if (e)
 			e->OnDeselect();
-		UI::HexGrid::RefreshButtonState();
+		HUD::HexGrid::RefreshButtonState();
 		if (e)
 			onSelectionChanged();
 		GlobalEvents::invalidateObjectCache();
@@ -130,7 +129,7 @@ namespace Objects
 		}
 		#ifdef HAS_WINDOW
 			else
-				UI::HexGrid::RefreshButtonState();	//in UpdateChoices() otherwise
+				HUD::HexGrid::RefreshButtonState();	//in UpdateChoices() otherwise
 		#endif
 		return !!newSel;
 	}

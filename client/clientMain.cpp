@@ -38,32 +38,36 @@
 #include <objects/structure/laboratory.h>
 #include <boot.h>
 
-#include "components/visual/explosions.h"
-#include "components/visual/objectRendering.h"
+#include "components/visual/scene/explosions.h"
+#include "components/visual/scene/objectRendering.h"
 #include "components/visual/objectSelection.h"
 #include "components/visual/objectChoices.h"
-#include "components/visual/terrain.h"
-#include "components/visual/objectCommands.h"
-#include "components/visual/ui.h"
-#include "components/visual/objectComponent.h"
-#include "components/visual/progressBar.h"
-#include "components/visual/dialog.h"
+#include "components/visual/scene/terrain.h"
+#include "components/visual/hud/objectCommands.h"
+#include "components/visual/hud/resourceGauges.h"
+#include "components/visual/hud/hexGrid.h"
+#include "components/visual/hud/statePanel.h"
+#include "components/visual/hud/factionTable.h"
+#include "components/visual/scene/objectComponent.h"
+#include "components/visual/scene/progressBar.h"
+#include "components/visual/hud/dialog.h"
 #include "components/visual/tutorial.h"
 #include "components/visual/lineRenderer.h"
-#include "components/visual/surfaceRenderer.h"
+#include "components/visual/hud/surfaceRenderer.h"
+#include "components/visual/hud/windowStack.h"
 #include "components/ai.h"
 #include "components/clientRuntimeConfig.h"
-#include "components/visual/world.h"
-#include "components/visual/lighting.h"
-#include "components/visual/atmosphere.h"
-#include "components/visual/guiHostList.h"
+#include "components/visual/scene/world.h"
+#include "components/visual/scene/lighting.h"
+#include "components/visual/scene/atmosphere.h"
+#include "components/visual/hud/guiHostList.h"
 #include "components/visual/commandDefinitions.h"
-#include "components/visual/menu.h"
-#include "components/visual/uiScale.h"
-#include "components/visual/music.h"
-#include "components/visual/eventLog.h"
+#include "components/visual/hud/menu.h"
+#include "components/visual/hud/uiScale.h"
+#include "components/audio/music.h"
+#include "components/visual/hud/eventLog.h"
 #include "components/serverProcess.h"
-#include "components/audioInterface.h"
+#include "components/audio/audioInterface.h"
 #include "components/configurationMode.h"
 #include "components/gridControl.h"
 #include "components/network.h"
@@ -137,7 +141,7 @@ namespace LocalApplicationInterface
 	bool			SeeingHostileActivity()
 	{
 		#ifdef HAS_WINDOW
-			return UI::EventLog::HasRegisteredHostileActivity();
+			return HUD::HexGrid::EventLog::HasRegisteredHostileActivity();
 		#else
 			return false;
 		#endif
@@ -153,7 +157,7 @@ namespace LocalApplicationInterface
 
 		#ifdef HAS_WINDOW
 			GlobalEvents::invalidateObjectCache();
-			UI::HexGrid::RefreshButtonState();
+			HUD::HexGrid::RefreshButtonState();
 		#endif
 		#ifndef NO_SATELLITES
 			Objects::RefreshSkyHubConnections();
@@ -176,7 +180,7 @@ namespace LocalApplicationInterface
 
 	void	OnTutorialsChanged()
 	{
-		UI::HexGrid::BottomRightPanel::Refresh();
+		HUD::HexGrid::BottomRightPanel::Refresh();
 	}
 
 #endif
@@ -295,21 +299,21 @@ namespace LocalApplicationInterface
 							Array<Grid::LCellIdI> pathCopy = targets;
 							Grid::LCellIdI sourceLoc = me->GetLastPointOfOrigin();
 							Grid::LCellIdI originLoc = me->location;
-							Dialog::Confirm(me->GetNiceName()+" is currently tethered to "+hub->connectedTo.lock()->CastToStructure()->GetNiceName()+". The link keeps it afloat for free, and supplies fuel to distribute to other nearby satellites."
+							HUD::Dialog::Confirm(me->GetNiceName()+" is currently tethered to "+hub->connectedTo.lock()->CastToStructure()->GetNiceName()+". The link keeps it afloat for free, and supplies fuel to distribute to other nearby satellites."
 											" Moving the satellite will sever this link, and require it to be supplied by another hub satellite. Please confirm.",[vid,pathCopy,detailedPath,leftClick,mode]()
 											{
 												DirectTo(Objects::GetEntity(vid),pathCopy,detailedPath,leftClick,mode,false);
-											},[vid,sourceLoc,originLoc]()->Dialog::CheckResult
+											},[vid,sourceLoc,originLoc]()->HUD::Dialog::CheckResult
 											{
 												Objects::PWorldEntity e = Objects::GetEntity(vid);
 												if (!e || !e->IsMobile())
-													return Dialog::CheckResult::Abort;
+													return HUD::Dialog::CheckResult::Abort;
 												Objects::PMobileEntity me = To<Objects::MobileEntity>::Cast(e);
 												if (e->location != originLoc || me->GetLastPointOfOrigin() != sourceLoc)
-													return Dialog::CheckResult::Abort;
+													return HUD::Dialog::CheckResult::Abort;
 												if (!RuntimeConfig::IsInAnyCommandPhase() || Objects::Faction::mine->requestedNewRound)
-													return Dialog::CheckResult::OkayNotRightNow;
-												return Dialog::CheckResult::OkayContinue;
+													return HUD::Dialog::CheckResult::OkayNotRightNow;
+												return HUD::Dialog::CheckResult::OkayContinue;
 											});
 							return false;
 						}
@@ -407,7 +411,7 @@ namespace ApplicationInterface
 
 		#ifdef HAS_WINDOW
 		
-			UI::HexGrid::Configure(Objects::selectedEntity);
+			HUD::HexGrid::Configure(Objects::selectedEntity);
 		#endif
 	}
 
@@ -449,21 +453,21 @@ namespace ApplicationInterface
 	{
 		TUniqueID id = entity->id;
 		#ifdef HAS_WINDOW
-			Dialog::Confirm("Confirm destruction of "+entity->GetNiceName()+". This operation cannot be undone.",[id]()
+			HUD::Dialog::Confirm("Confirm destruction of "+entity->GetNiceName()+". This operation cannot be undone.",[id]()
 			{
 				Network::Channels::removeEntity.SendTo(Network::client,id);
 	
 			},
-			[id]()->Dialog::CheckResult
+			[id]()->HUD::Dialog::CheckResult
 			{
 				if (!Network::client.IsConnected())
-					return Dialog::CheckResult::Abort;
+					return HUD::Dialog::CheckResult::Abort;
 				Objects::PWorldEntity e = Objects::GetEntity(id);
 				if (!e || !e->isOwnedByMe)
-					return Dialog::CheckResult::Abort;
+					return HUD::Dialog::CheckResult::Abort;
 				if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase)
-					return Dialog::CheckResult::OkayNotRightNow;
-				return Dialog::CheckResult::OkayContinue;
+					return HUD::Dialog::CheckResult::OkayNotRightNow;
+				return HUD::Dialog::CheckResult::OkayContinue;
 			}
 			);
 		#else
@@ -607,7 +611,7 @@ void	SignalRoundEndOrMaximize()
 			return;
 		}
 
-		if (Dialog::ConfirmCurrent(false))
+		if (HUD::Dialog::ConfirmCurrent(false))
 			return;
 	#endif
 	ApplicationInterface::SignalRoundEnd();
@@ -644,7 +648,7 @@ namespace ApplicationInterface
 		#ifdef HAS_WINDOW
 			if (RuntimeConfig::tutorialMode && IsTerraformingOperation(jobName))
 			{
-				Dialog::ShowMessage("Terraforming is not permitted in this tutorial. You may do so freely on a regular server.");
+				HUD::Dialog::ShowMessage("Terraforming is not permitted in this tutorial. You may do so freely on a regular server.");
 				return;
 			}
 
@@ -660,7 +664,7 @@ namespace ApplicationInterface
 					TUniqueID id = v->id;
 					if (parameterName != ConstName::Type_Mine && res.IsNotEmpty())
 					{
-						Dialog::Confirm(v->GetNiceName()+" will construct a "+name+" on a location with known natural resources, which could be harvested by a Mine. Do you wish to continue building the "+name+"?",
+						HUD::Dialog::Confirm(v->GetNiceName()+" will construct a "+name+" on a location with known natural resources, which could be harvested by a Mine. Do you wish to continue building the "+name+"?",
 							[id,jobName,parameterName,targetLocation]()
 							{
 								Protocol::StandardJob	job;
@@ -669,20 +673,20 @@ namespace ApplicationInterface
 								job.parameterName = parameterName;	
 								Network::Channels::signalNewJob.SendTo(Network::client,job);
 							},
-							[id,jobName,parameterName]()->Dialog::CheckResult
+							[id,jobName,parameterName]()->HUD::Dialog::CheckResult
 							{
 								if (!Objects::GetEntity(id) || !Network::client.IsConnected())
-									return Dialog::CheckResult::Abort;
+									return HUD::Dialog::CheckResult::Abort;
 								if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase)
-									return Dialog::CheckResult::OkayNotRightNow;
-								return Dialog::CheckResult::OkayContinue;
+									return HUD::Dialog::CheckResult::OkayNotRightNow;
+								return HUD::Dialog::CheckResult::OkayContinue;
 							}
 						);
 						return;
 					}
 					if (parameterName == ConstName::Type_Mine && res.IsEmpty())
 					{
-						Dialog::Confirm(v->GetNiceName()+" will construct a Mine on a location that has no natural resources. Building a mine here seems like a waste of resources. Do you wish to continue building the Mine?",
+						HUD::Dialog::Confirm(v->GetNiceName()+" will construct a Mine on a location that has no natural resources. Building a mine here seems like a waste of resources. Do you wish to continue building the Mine?",
 							[id,jobName,parameterName,targetLocation]()
 							{
 								Protocol::StandardJob	job;
@@ -691,13 +695,13 @@ namespace ApplicationInterface
 								job.parameterName = parameterName;
 								Network::Channels::signalNewJob.SendTo(Network::client,job);
 							},
-							[id,jobName,parameterName]()->Dialog::CheckResult
+							[id,jobName,parameterName]()->HUD::Dialog::CheckResult
 							{
 								if (!Objects::GetEntity(id) || !Network::client.IsConnected())
-									return Dialog::CheckResult::Abort;
+									return HUD::Dialog::CheckResult::Abort;
 								if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase)
-									return Dialog::CheckResult::OkayNotRightNow;
-								return Dialog::CheckResult::OkayContinue;
+									return HUD::Dialog::CheckResult::OkayNotRightNow;
+								return HUD::Dialog::CheckResult::OkayContinue;
 							}
 						);
 						return;
@@ -755,17 +759,17 @@ namespace ApplicationInterface
 				&& v->myTasks.Peek().job->resourceCostLeft > 0)
 				{
 					TUniqueID id = e->id;
-					Dialog::Confirm("Are you sure you wish to clear all tasks? The resources invested in the leading production job will be lost.",[id]()
+					HUD::Dialog::Confirm("Are you sure you wish to clear all tasks? The resources invested in the leading production job will be lost.",[id]()
 					{
 						Network::Channels::dropTasks.SendTo(Network::client, Protocol::DropTasks( id, Protocol::DropMode::AllTasks));
 					},
-					[id]()->Dialog::CheckResult
+					[id]()->HUD::Dialog::CheckResult
 					{
 						if (!Network::client.IsConnected() || !Objects::GetEntity(id))
-							return Dialog::CheckResult::Abort;
+							return HUD::Dialog::CheckResult::Abort;
 						if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase || Network::newRoundRequested)
-							return Dialog::CheckResult::OkayNotRightNow;
-						return Dialog::CheckResult::OkayContinue;
+							return HUD::Dialog::CheckResult::OkayNotRightNow;
+						return HUD::Dialog::CheckResult::OkayContinue;
 					});
 					return;
 				}
@@ -1270,7 +1274,7 @@ namespace ApplicationInterface
 
 	void	SignalUserMessage(const String&message)
 	{
-		Dialog::ShowMessage(message);
+		HUD::Dialog::ShowMessage(message);
 
 	}
 
@@ -1297,14 +1301,14 @@ namespace ApplicationInterface
 			if (sum)
 			{
 				change.level[Objects::Resource::Minerals] -= sum;//-Objects::selectedVehicle->tasks.Peek().job->mineralCostLeft;
-				UI::Update(
+				HUD::ResourceGauges::Update(
 				#ifndef NO_HIBERNATION
 					Objects::selectedVehicle->GetUplinkTraffic(),
 				#endif
 					current, max, change);
 			}
 			else
-				UI::Update(
+				HUD::ResourceGauges::Update(
 				#ifndef NO_HIBERNATION
 					Objects::selectedVehicle->GetUplinkTraffic(),
 				#endif
@@ -1324,14 +1328,14 @@ namespace ApplicationInterface
 				{
 					Objects::ResourceVector change, storage, max;
 					ws->GetResourceVector(change, storage, max);
-					UI::Update(
+					HUD::ResourceGauges::Update(
 					#ifndef NO_HIBERNATION
 						Objects::selectedEntity->GetUplinkTraffic(),
 					#endif
 						n.total.storage, n.total.storageMax, n.total.supply - n.total.demand, storage/*,change, ws->IsEnabled()*/);
 				}
 				else
-					UI::Update(
+					HUD::ResourceGauges::Update(
 					#ifndef NO_HIBERNATION
 						Objects::selectedEntity->GetUplinkTraffic(),
 					#endif
@@ -1400,14 +1404,14 @@ namespace ApplicationInterface
 			{
 				Objects::ResourceVector _change, storage, _max, zero;
 				ws->GetResourceVector(_change, storage, _max);
-				UI::Update(
+				HUD::ResourceGauges::Update(
 				#ifndef NO_HIBERNATION
 					Objects::selectedEntity->GetUplinkTraffic(),
 				#endif
 					current, max, change, storage);
 			}
 			else
-				UI::Update(
+				HUD::ResourceGauges::Update(
 				#ifndef NO_HIBERNATION
 					Objects::selectedEntity ? Objects::selectedEntity->GetUplinkTraffic() : 0,
 				#endif
@@ -1416,15 +1420,15 @@ namespace ApplicationInterface
 
 		}
 		else
-			UI::HideExtraGauges();
+			HUD::ResourceGauges::HideExtraGauges();
 
 
 	#endif
 
 
 
-		UI::HexGrid::Configure(Objects::selectedEntity);
-		StatePanel::SignalChange();
+		HUD::HexGrid::Configure(Objects::selectedEntity);
+		HUD::StatePanel::SignalChange();
 
 	}
 
@@ -1564,7 +1568,7 @@ bool loop()
 
 	#ifdef HAS_WINDOW
 
-		if (!GUI::IsModal() && !Camera::locked)
+		if (!HUD::WindowStack::IsModal() && !Camera::locked)
 		{
 			{
 				if (Engine::mouse.buttons.right_down || Engine::mouse.buttons.middle_down)
@@ -1762,7 +1766,7 @@ bool loop()
 
 			Objects::Renderer::RenderProgressBars();
 
-			if (Objects::choiceVis.showArrow && !GUI::IsModal())
+			if (Objects::choiceVis.showArrow && !HUD::WindowStack::IsModal())
 			{
 	//			display.SetDepthTest(false, false);
 				bool includeWater = false;
@@ -1852,7 +1856,7 @@ bool loop()
 
 
 
-			if (UI::showControlsAndContacts && !saveScreenshot)
+			if (HUD::showControlsAndContacts && !saveScreenshot)
 			{
 				static const String line = "(C) Stefan Elsen; v" PRODUCT_VERSION "; Compiled "+String(__TIMESTAMP__);
 				//textout.locate(0.f,1.f - textout.GetScaledHeight());
@@ -1900,7 +1904,7 @@ bool loop()
 	//			CommandPanel::Print();;
 
 				if (Objects::selectedEntity)
-					StatePanel::Render(*Objects::selectedEntity);
+					HUD::StatePanel::Render(*Objects::selectedEntity);
 
 				//if (Objects::Network::Transfer::isActive)
 				//	TransferPanel::Render(Objects::Network::Transfer::fromVehicle, Objects::Network::Transfer::toNetwork);
@@ -1908,10 +1912,10 @@ bool loop()
 				//	TransferPanel::Invalidate();
 			}
 
-			if (UI::showControlsAndContacts)
+			if (HUD::showControlsAndContacts)
 			{
 				
-				VisualEventLog::Render();
+				HUD::VisualEventLog::Render();
 
 				textout.SetColor(1,1,1);
 				textout.MoveTo(0,1);
@@ -1992,14 +1996,14 @@ bool loop()
 
 			DebugCheckVector(scene.location,-1000,1000);
 		
-		
-			UI::RenderCommands();
+			HUD::ResourceGauges::Render();
+			HUD::HexGrid::RenderCommands(HUD::HexGrid::GetGridConfig());
 			display.Pick(Camera::hud);
-			GUI::RenderNonModal();
+			HUD::WindowStack::RenderNonModal();
 
-			UI::RenderHint();
+			HUD::HexGrid::RenderHint();
 			display.Pick(Camera::hud);
-			GUI::RenderModal();
+			HUD::WindowStack::RenderModal();
 
 
 			if (ConfigurationMode::IsActive())
@@ -2069,9 +2073,9 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 			UpdateFontScale();
 
-			UI::OnScreenResize();
-			GUI::SignalScreenResize();
-			VisualEventLog::SignalWindowResize();
+			HUD::HexGrid::OnScreenResize();
+			HUD::WindowStack::SignalScreenResize();
+			HUD::VisualEventLog::SignalWindowResize();
 		}
 	}
 
@@ -2151,7 +2155,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 	{
 		Tutorial::lastDelayingEvent = timer.Now();
 
-		if (GUI::OnMouseDown() || UI::HandleClick())
+		if (HUD::WindowStack::OnMouseDown() || HUD::HexGrid::HandleClick())
 			return;
 		if (M::Rect<>(0.f,0.97f,0.1f,1.f).Contains(Engine::mouse.location.windowRelative))
 		{
@@ -2352,9 +2356,9 @@ void MyFatal(const FatalDescriptor&descriptor)
 		}
 		if (!Camera::locked)
 		{
-			Dialog::Confirm("Enabling camera lock will disallow all changes to the active perspective until unlocked."
+			HUD::Dialog::Confirm("Enabling camera lock will disallow all changes to the active perspective until unlocked."
 							"Press F4 again to unlock. Commence camera lock?",[](){Camera::locked=true;},
-							[]()->Dialog::CheckResult {if (!Network::client.IsConnected()) return Dialog::CheckResult::Abort; return Dialog::CheckResult::OkayContinue;});
+							[]()->HUD::Dialog::CheckResult {if (!Network::client.IsConnected()) return HUD::Dialog::CheckResult::Abort; return HUD::Dialog::CheckResult::OkayContinue;});
 		}
 		else
 			Camera::locked = false;
@@ -2367,7 +2371,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 		{
 			TimeLapse::enabled = false;
 			Camera::locked = false;
-			GUI::SignalSituationChange();
+			HUD::WindowStack::SignalSituationChange();
 			LogEvent(EventClass::Preset::uncommon,"Time lapse disabled");
 		}
 		else
@@ -2394,7 +2398,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 					outDirName = RuntimeConfig::ConfigFile("timelapses/"+outDirName);
 
 				int framesPerSecond = (int)ceil(1.f / std::max(0.001f,TimeLapse::frameDelaySeconds));
-				Dialog::Confirm("Timelapse mode will capture roughly "+String(framesPerSecond)+" frame(s) per second during animation phase, but remain inactive during all other phases. The camera will be locked in place.\nProceed?",
+				HUD::Dialog::Confirm("Timelapse mode will capture roughly "+String(framesPerSecond)+" frame(s) per second during animation phase, but remain inactive during all other phases. The camera will be locked in place.\nProceed?",
 				[outDirName]()
 				{
 					TimeLapse::runningNumber = 0;
@@ -2403,7 +2407,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 					TimeLapse::basePath = outDirName;
 					FileSystem::CreateDirectory(outDirName);
 					LogEvent(EventClass::Preset::uncommon,"Time lapse enabled. Writing to "+String(outDirName));
-					Dialog::PermanentMessage("Time lapse recording is enabled. Camera is locked. Press F2 to end time lapse recording",[](){return TimeLapse::enabled ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;});
+					HUD::Dialog::PermanentMessage("Time lapse recording is enabled. Camera is locked. Press F2 to end time lapse recording",[](){return TimeLapse::enabled ? HUD::Dialog::CheckResult::OkayContinue : HUD::Dialog::CheckResult::Abort;});
 				});
 			}
 		}
@@ -2471,17 +2475,17 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 					&& v->myTasks.GetNewest().job->resourceCostLeft > 0)
 				{
 					TUniqueID id = v->id;
-					Dialog::Confirm("Are you sure you wish to clear the current production task? The invested resources will be lost.",[id]()
+					HUD::Dialog::Confirm("Are you sure you wish to clear the current production task? The invested resources will be lost.",[id]()
 					{
 						InnerUndoTask(Objects::GetEntity(id),true);
 					},
-					[id]()->Dialog::CheckResult
+					[id]()->HUD::Dialog::CheckResult
 					{
 						if (!Network::client.IsConnected() || !Objects::GetEntity(id))
-							return Dialog::CheckResult::Abort;
+							return HUD::Dialog::CheckResult::Abort;
 						if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase || Network::newRoundRequested)
-							return Dialog::CheckResult::OkayNotRightNow;
-						return Dialog::CheckResult::OkayContinue;
+							return HUD::Dialog::CheckResult::OkayNotRightNow;
+						return HUD::Dialog::CheckResult::OkayContinue;
 					});
 					return;
 				}
@@ -2513,8 +2517,8 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 
 	void ToggleControlGUI()
 	{
-		UI::showControlsAndContacts = !UI::showControlsAndContacts;
-		UI::HexGrid::Configure(Objects::selectedEntity);
+		HUD::showControlsAndContacts = !HUD::showControlsAndContacts;
+		HUD::HexGrid::Configure(Objects::selectedEntity);
 		OnTutorialsChanged();
 	}
 
@@ -2624,10 +2628,10 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 
 	void	QueryAndSendChatMessage()
 	{
-		if (GUI::IsModal())
+		if (HUD::WindowStack::IsModal())
 			return ;
 		
-		Dialog::Query("Please enter message","",Network::allowedChatCharacters,[](const String&candidate)->bool
+		HUD::Dialog::Query("Please enter message","",Network::allowedChatCharacters,[](const String&candidate)->bool
 			{
 				return candidate.length() <= 256;
 			},
@@ -2656,7 +2660,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 			{
 				static const String allowed = "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_-";
 
-				Dialog::Query("Please enter a nickname to continue (length 4-16)",Network::chosenNickname,
+				HUD::Dialog::Query("Please enter a nickname to continue (length 4-16)",Network::chosenNickname,
 				allowed,
 					[](const String&candidate)->bool
 					{
@@ -2702,7 +2706,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 	void	AbortMode()
 	{
 		Camera::StopAutoRotation();
-		if (GUI::CloseTopModal())
+		if (HUD::WindowStack::CloseTopModal())
 		{
 			LocalApplicationInterface::QueryNicknameIfEmpty();
 			return;
@@ -2712,14 +2716,14 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 
 
 
-		if (!GUI::IsVisible(Menu::main))
+		if (!HUD::WindowStack::IsVisible(HUD::Menu::main))
 		{
-			if (!UI::showControlsAndContacts)
+			if (!HUD::showControlsAndContacts)
 				ToggleControlGUI();	
-			GUI::Show(Menu::main);
+			HUD::WindowStack::Show(HUD::Menu::main);
 		}
 	
-		GUI::SignalSituationChange();
+		HUD::WindowStack::SignalSituationChange();
 	}
 
 	#ifdef HAS_WINDOW
@@ -2736,9 +2740,9 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 		{
 			if (Network::haveFaction)
 			{
-				Dialog::Confirm("You already are in control of a faction. If you start a new faction, your previous one will be abandoned. This process cannot be reversed. Continue?",
+				HUD::Dialog::Confirm("You already are in control of a faction. If you start a new faction, your previous one will be abandoned. This process cannot be reversed. Continue?",
 							ReallyStartNewFaction,
-							[](){return Network::client.IsConnected() && Network::haveFaction ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;});
+							[](){return Network::client.IsConnected() && Network::haveFaction ? HUD::Dialog::CheckResult::OkayContinue : HUD::Dialog::CheckResult::Abort;});
 			}
 			else
 				ReallyStartNewFaction();
@@ -2748,7 +2752,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 
 	void ToggleResourceView()
 	{
-		UI::resourcesAsList = !UI::resourcesAsList;
+		HUD::ResourceGauges::resourcesAsList = !HUD::ResourceGauges::resourcesAsList;
 	}
 
 #endif
@@ -3000,7 +3004,7 @@ namespace ApplicationInterface
 
 	void	SelectAndFocusNextIdle()
 	{
-		if (Dialog::ConfirmCurrent(true))
+		if (HUD::Dialog::ConfirmCurrent(true))
 			return;
 
 		const count_t total = CountIterateableEntities();
@@ -3027,7 +3031,7 @@ namespace ApplicationInterface
 		}
 		while (to != from);
 
-		UI::HexGrid::RefreshButtonState(); //just in case
+		HUD::HexGrid::RefreshButtonState(); //just in case
 	}
 
 
@@ -3114,7 +3118,7 @@ namespace ApplicationInterface
 			Objects::choiceVis.showArrow = true;
 			Objects::activeCursorMode = Objects::CursorMode::PlaceStructureMode;
 			if (newly)
-				UI::HexGrid::RefreshButtonState();
+				HUD::HexGrid::RefreshButtonState();
 		}
 
 	}
@@ -3125,13 +3129,13 @@ namespace ApplicationInterface
 		{
 			Objects::activeCursorMode = Objects::CursorMode::Idle;
 			Objects::choiceVis.showArrow = false;
-			UI::HexGrid::RefreshButtonState();
+			HUD::HexGrid::RefreshButtonState();
 		}
 	}
 
 	void	OnWheel(short delta)
 	{
-		if (GUI::OnMouseWheel(delta) == GUI::WheelRs::NotContained)
+		if (HUD::WindowStack::OnMouseWheel(delta) == HUD::Component::WheelRs::NotContained)
 			Camera::Event::WheelAction(delta);
 	}
 
@@ -3434,7 +3438,7 @@ int main( int argc, const char* argv[])
 
 			#ifdef HAS_WINDOW
 
-				Menu::Configuration::Assign(StartConfig::destConfig, userConfigPath);
+				HUD::Menu::Configuration::Assign(StartConfig::destConfig, userConfigPath);
 
 				String val = StartConfig::GetString("runtime/capFPS","-1");
 				if (!val.EqualsIgnoreCase("off"))
@@ -3452,7 +3456,7 @@ int main( int argc, const char* argv[])
 
 				Objects::SetShiftMeansQueue(!StartConfig::GetBool("runtime/alwaysQueueUnitCommands"));
 
-				UI::resourcesAsList = StartConfig::GetBool("runtime/resourcesAsList",false);
+				HUD::ResourceGauges::resourcesAsList = StartConfig::GetBool("runtime/resourcesAsList",false);
 
 				TimeLapse::customBasePath = PathString(StartConfig::GetString("timelapse/outDirectory",""));
 				TimeLapse::frameDelaySeconds = StartConfig::GetFloat("timelapse/frameDelaySeconds",0.2f);
@@ -3515,7 +3519,7 @@ int main( int argc, const char* argv[])
 			display.ScanShaderHeader("shaders");
 			textout.GetActiveFont()->LoadFromFile("Font/font.xml");
 			UpdateFontScale();
-			textout.GetActiveFont()->BeginTagMode(StatePanel::OnTag,StatePanel::TagWidth,
+			textout.GetActiveFont()->BeginTagMode(HUD::StatePanel::OnTag,HUD::StatePanel::TagWidth,
 					Objects::TextoutResourceTagOffset,(char)(Objects::TextoutResourceTagOffset+(char)Objects::Resource::NumberOfPossibilities + 2));
 			GlobalEvents::uiScaleChanged += UpdateFontScale;
 
@@ -3551,7 +3555,7 @@ int main( int argc, const char* argv[])
 					Engine::input.Bind(Key::Escape, AbortMode);
 					Engine::input.Bind(Key::Enter, SignalRoundEndOrMaximize);
 					Engine::input.Bind(Key::Return, SignalRoundEndOrMaximize);
-					Engine::input.Bind(Key::Tab, UI::ShowSession);
+					Engine::input.Bind(Key::Tab, HUD::FactionTable::Show);
 					Engine::input.Bind(Key::T,[](){}, QueryAndSendChatMessage);
 					Engine::input.Bind(Key::R,Camera::ToggleAutoRotation);
 		//			Engine::input.Bind(Key::R,ToggleResourceView);
@@ -3562,7 +3566,7 @@ int main( int argc, const char* argv[])
 					Engine::input.BindCtrl(Key::C,ConfigurationMode::OnCopy);
 					Engine::input.BindCtrl(Key::V,ConfigurationMode::OnPaste);
 
-					Engine::input.Bind(Key::MouseButton0, Select, GUI::HandleMouseUp);
+					Engine::input.Bind(Key::MouseButton0, Select, HUD::WindowStack::HandleMouseUp);
 					Engine::input.BindCtrl(Key::MouseButton0, Select);
 					Engine::input.Bind(Key::RightMouseButton, BeginCameraDrag,EndCameraDrag<true>);
 					Engine::input.Bind(Key::MiddleMouseButton, BeginCameraDrag,EndCameraDrag<false>);
@@ -3587,7 +3591,7 @@ int main( int argc, const char* argv[])
 
 						Engine::input.Bind(Key::F,[]()
 						{
-							Dialog::Query("Enter fatal message", "", GUI::Input::GetStandardAlphabet(), [](const String&input){return input.IsNotEmpty();}, [](const String&input)
+							HUD::Dialog::Query("Enter fatal message", "", HUD::Component::Input::GetStandardAlphabet(), [](const String&input){return input.IsNotEmpty();}, [](const String&input)
 							{
 								if (input.IsNotEmpty())
 									FATAL__(input);
@@ -3602,9 +3606,9 @@ int main( int argc, const char* argv[])
 				});
 
 			Loading::Stage("Progress Bars",ProgressBar::Create);
-			Loading::Stage("Dialogs",Dialog::Create);
-			Loading::Stage("HostList",GUI::HostList::Create);
-
+			Loading::Stage("Window Stack",HUD::WindowStack::Create);
+			Loading::Stage("Dialogs",HUD::Dialog::Create);
+			Loading::Stage("HostList",HUD::HostList::Create);
 		#endif
 
 		Loading::Stage("Client Grid",ClientGrid::Create);
@@ -3618,7 +3622,7 @@ int main( int argc, const char* argv[])
 				[]()
 				{
 					ConfigurationMode::Create();
-					UI::HexGrid::RefreshButtonState();
+					HUD::HexGrid::RefreshButtonState();
 				});
 
 			Loading::Stage("Object Components", Objects::CreateComponents);
@@ -3628,7 +3632,8 @@ int main( int argc, const char* argv[])
 
 			Loading::Stage("Explosions", Explosions::Create);
 			Loading::Stage("Object Commands", Objects::Commands::DefineAll);
-			Loading::Stage("UI", UI::Create);
+			Loading::Stage("Resource Gauge", HUD::ResourceGauges::Create);
+			Loading::Stage("HexGrid", HUD::HexGrid::Create);
 		#endif
 		Loading::Stage("Animation", Animation::Create);
 		Loading::Stage("Network", Network::Setup);
@@ -3636,7 +3641,7 @@ int main( int argc, const char* argv[])
 
 		#ifdef HAS_WINDOW
 
-			Loading::Stage("Main Menu",Menu::Create);
+			Loading::Stage("Main Menu",HUD::Menu::Create);
 
 
 			Loading::Stage("Atmosphere",
@@ -3783,9 +3788,7 @@ int main( int argc, const char* argv[])
 
 		#ifdef HAS_WINDOW
 			ProgressBar::Destroy();
-			Dialog::Destroy();
 			Atmosphere::Destroy();
-			UI::Destroy();
 			Explosions::Destroy();
 			LineRenderer::Destroy();
 			SurfaceRenderer::Destroy();
