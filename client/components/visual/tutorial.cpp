@@ -1,7 +1,7 @@
 
 #include <global_root.h>
 #include "tutorial.h"
-#include "dialog.h"
+#include "hud/dialog.h"
 #include <io/xml.h>
 #include <container/hashtable.h>
 #include "../../version.h"
@@ -14,10 +14,11 @@
 #include "../network.h"
 #include "objectSelection.h"
 #include "../network.h"
-#include "ui.h"
+#include "hud/hexGrid.h"
 #include "../serverProcess.h"
 #include <lua.hpp>
 #include "../configurationMode.h"
+#include "../cameraControl.h"
 
 namespace Tutorial
 {
@@ -28,6 +29,8 @@ namespace Tutorial
 
 	namespace Detail
 	{
+		using namespace HUD::Component;
+
 		class Message
 		{
 		public:
@@ -48,15 +51,15 @@ namespace Tutorial
 		StringFile			memory;
 
 		StringTable<Message,Strategy::Swap>	messages;
-		GUI::PWindow		taskWindow;
+		PWindow		taskWindow;
 		bool				tutorialGameShown=false;
 
 
 		void				HideGUI()
 		{
-			GUI::CloseAllModal();
+			HUD::WindowStack::CloseAllModal();
 			if (taskWindow)
-				GUI::Hide(taskWindow);
+				HUD::WindowStack::Hide(taskWindow);
 		}
 
 		bool				RegisterMemory(bool&shown, const String&name)
@@ -168,7 +171,7 @@ namespace Tutorial
 			//void	NextTask()
 			//{
 			//	if (taskWindow)
-			//		To<GUI::Label>::Cast(taskWindow->GetComponents().First())->SetText("Well done!");
+			//		To<Label>::Cast(taskWindow->GetComponents().First())->SetText("Well done!");
 			//}
 
 			void ReplaceTags(String&msg)
@@ -184,8 +187,8 @@ namespace Tutorial
 				
 				ReplaceTags(msg);
 				using namespace Detail;
-				auto messageWindow = Dialog::CreateTutorialMessage("", msg,img);
-				messageWindow->check = []()->Dialog::CheckResult{ return Network::client.IsConnected() ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort; };
+				auto messageWindow = HUD::Dialog::CreateTutorialMessage("", msg,img);
+				messageWindow->check = []()->HUD::Dialog::CheckResult{ return Network::client.IsConnected() ? HUD::Dialog::CheckResult::OkayContinue : HUD::Dialog::CheckResult::Abort; };
 				messageWindow->onConfirm = 
 				[]()
 				{
@@ -193,7 +196,7 @@ namespace Tutorial
 				};
 				messageWindow->canBeImplicitlyClosed = false;
 				messageWindow->isTutorial = false;	//prevent tutorial message from opening the next message automatically
-				GUI::Show(messageWindow);
+				HUD::WindowStack::Show(messageWindow);
 			}
 
 			void	SignalTaskStart(int taskAt)
@@ -212,14 +215,14 @@ namespace Tutorial
 				ReplaceTags(msg);
 				if (taskWindow)
 				{
-					To<GUI::Label>::Cast(taskWindow->GetComponents().First())->SetText(msg);
+					To<Label>::Cast(taskWindow->GetComponents().First())->SetText(msg);
 				}
 				else
 				{
-					taskWindow = GUI::Window::Create();
+					taskWindow = Window::Create();
 					taskWindow->canBeImplicitlyClosed = false;
 
-					taskWindow->AddNewComponent(new GUI::Label(msg))->AnchorTop(0).FillHorizontally(0);
+					taskWindow->AddNewComponent(new Label(msg))->AnchorTop(0).FillHorizontally(0);
 					taskWindow->SetAutomaticHeight(true);
 					taskWindow->SetAutoCenter(false);
 					{
@@ -231,7 +234,7 @@ namespace Tutorial
 					taskWindow->SetSize(float2(0.25));
 					taskWindow->isModal = false;
 				}
-				GUI::Show(taskWindow);
+				HUD::WindowStack::Show(taskWindow);
 				Trigger::checkTaskConditions();
 			}
 
@@ -456,14 +459,14 @@ namespace Tutorial
 			return;
 		if (!Detail::RegisterMemory(msg->shown,name) && !overrideMemory)
 			return;
-		Dialog::EnqueueTutorial(name,msg->lines,msg->image,forceOpenNow);
+		HUD::Dialog::EnqueueTutorial(name,msg->lines,msg->image,forceOpenNow);
 		if (forceOpenNow)
-			Dialog::ShowNextTutorial(!overrideMemory);
+			HUD::Dialog::ShowNextTutorial(!overrideMemory);
 	}
 
 	void	HideMessage(const String&name)
 	{
-		Dialog::RemoveTutorial(name);
+		HUD::Dialog::RemoveTutorial(name);
 	}
 
 	void	FlushMemory()
@@ -530,11 +533,11 @@ namespace Tutorial
 			Interactive::Create();
 			if (Detail::RegisterMemory(Detail::tutorialGameShown,"tutorialGame"))
 			{
-				Dialog::Confirm("Welcome to Hexaverse. Would you like to start a tutorial game server to learn the game's basics?",[]()
+				HUD::Dialog::Confirm("Welcome to Hexaverse. Would you like to start a tutorial game server to learn the game's basics?",[]()
 				{
 					ServerProcess::StartTutorialServer();
 				},
-				[](){return Dialog::CheckResult::OkayContinue;});
+				[](){return HUD::Dialog::CheckResult::OkayContinue;});
 			}
 		}
 

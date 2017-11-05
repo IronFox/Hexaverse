@@ -43,6 +43,11 @@ template <typename...T>
 			return *this;
 		}
 
+		bool		IsRegistered(index_t key) const
+		{
+			return keyMap.IsSet(key);
+		}
+
 		index_t		Register(const F&f)
 		{
 			index_t at = functions.Count();

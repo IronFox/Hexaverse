@@ -2,7 +2,7 @@
 #define networkComponentH
 
 #include "../../shared/protocol.h"
-#include "visual/guiElements.h"
+//#include "visual/guiElements.h"
 
 /**
 All network-related aspects. Multiple additions to this namespace exist.
@@ -325,6 +325,12 @@ namespace Network
 	class ServerInfo
 	{
 	public:
+		class VisualAttachment
+		{
+		public:
+			virtual ~VisualAttachment() {};
+		};
+
 		TUniqueID				id;
 		bool					rightVersion = false,
 								protocolIncompatible = false;
@@ -338,10 +344,8 @@ namespace Network
 		//float					top, bottom;
 		bool					selected, haveToken;
 
-		#ifdef HAS_WINDOW
-			GUI::PLabel			headLine;	//game/server ids, optionally (continue)
-			GUI::PButtonPanel	buttonPanel;
-		#endif
+		std::shared_ptr<VisualAttachment>	visualAttachment;
+
 
 
 		/**/					ServerInfo() :/*top(0), bottom(0),*/ selected(false), haveToken(false)	{}
@@ -379,10 +383,7 @@ namespace Network
 			addresses.swap(other.addresses);
 			swp(haveToken,other.haveToken);
 			swp(rightVersion,other.rightVersion);
-			#ifdef HAS_WINDOW
-				buttonPanel.swap(other.buttonPanel);
-				headLine.swap(other.headLine);
-			#endif
+			visualAttachment.swap(other.visualAttachment);
 
 		}
 	};

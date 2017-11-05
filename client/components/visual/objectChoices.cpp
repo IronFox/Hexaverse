@@ -7,9 +7,9 @@
 #include <math/object.h>
 #include "objectSelection.h"
 #include <objects/interface.h>
-#include "objectCommands.h"
-#include "terrain.h"
-#include "ui.h"
+#include "hud/objectCommands.h"
+#include "scene/terrain.h"
+#include "hud/hexGrid.h"
 
 namespace Objects
 {
@@ -56,7 +56,7 @@ namespace Objects
 	void					UpdateChoices(bool controlEnabled) 
 	{
 		//activeCursorMode = 
-		UI::HexGrid::RefreshButtonState();
+		HUD::HexGrid::RefreshButtonState();
 		//Command::RefreshCommands(controlEnabled);
 
 		if (controlEnabled)

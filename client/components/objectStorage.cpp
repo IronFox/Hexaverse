@@ -4,7 +4,7 @@
 #include <objects/vehicle.h>
 #include <objects.h>
 #include <runtimeConfig.h>
-#include "visual/terrain.h"
+#include "visual/scene/terrain.h"
 #include "clientEvents.h"
 
 namespace Objects

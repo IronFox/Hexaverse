@@ -6,23 +6,24 @@
 #include "../version.h"
 #include "animation.h"
 #include "clientRuntimeConfig.h"
-#include "visual/world.h"
+#include "visual/scene/world.h"
 #include "cameraControl.h"
-#include "visual/ui.h"
+#include "visual/hud/hexGrid.h"
 #include "visual/tutorial.h"
-#include "visual/dialog.h"
-#include "visual/menu.h"
-#include "visual/guiStatistics.h"
+#include "visual/hud/dialog.h"
+#include "visual/hud/menu.h"
+#include "visual/hud/guiStatistics.h"
 #include "ai.h"
 #include "clientRuntimeConfig.h"
 #include "timelapse.h"
 #include "configurationMode.h"
 #include "gridControl.h"
 #include "visual/objectChoices.h"
-#include "visual/terrain.h"
-#include "visual/factionTable.h"
+#include "visual/scene/terrain.h"
+#include "visual/hud/factionTable.h"
 #include "clientEvents.h"
-#include "visual/guiHostList.h"
+#include "visual/hud/guiHostList.h"
+#include "visual/hud/eventLog.h"
 
 
 //#define DEBUG_SERVER_LIST	//enable to generate very long artificial server list
@@ -200,7 +201,7 @@ namespace Network
 
 		client.ConnectAsync(host.address.host + ":"+String(host.address.basePort + PortOffset::Session));
 		#ifdef HAS_WINDOW
-			GUI::SignalSituationChange();
+			HUD::WindowStack::SignalSituationChange();
 		#endif
 
 		serverID = host.serverInfo.hostInfo.hostID;
@@ -379,7 +380,7 @@ namespace Network
 					waste << *a;
 					attempts.erase(a);
 					#ifdef HAS_WINDOW
-						GUI::SignalSituationChange();
+						HUD::WindowStack::SignalSituationChange();
 					#endif
 					return true;
 				}
@@ -503,7 +504,8 @@ namespace Network
 		}
 
 		#ifdef HAS_WINDOW
-			UI::EventLog::Clear();
+			HUD::HexGrid::EventLog::Clear();
+			HUD::HexGrid::RefreshContacts();
 
 			amLocated = false;
 			if (alsoFlushWorld)
@@ -551,11 +553,11 @@ namespace Network
 				else
 				{
 					#ifdef HAS_WINDOW
-						GUI::Show(Menu::login);
+						HUD::WindowStack::Show(HUD::Menu::login);
 					#endif
 				}
 				#ifdef HAS_WINDOW
-					GUI::HostList::CheckVisibility(false);
+					HUD::HostList::CheckVisibility(false);
 				#endif
 
 				LoadScript(Network::requestedResearchScript);
@@ -680,7 +682,7 @@ namespace Network
 			{
 				#ifdef HAS_WINDOW
 					if (!isOwnedByMe)
-						UI::HexGrid::RefreshContacts();
+						HUD::HexGrid::RefreshContacts();
 				#endif
 			}
 			else
@@ -720,7 +722,7 @@ namespace Network
 			{
 				#ifdef HAS_WINDOW
 					if (!s->isOwnedByMe)
-						UI::HexGrid::RefreshContacts();
+						HUD::HexGrid::RefreshContacts();
 				#endif
 			}
 		}
@@ -779,7 +781,7 @@ namespace Network
 						if (Objects::GetEntity(e->id))
 							Objects::Remove(e,type, t);
 						#ifdef HAS_WINDOW
-							GUI::SignalSituationChange();
+							HUD::WindowStack::SignalSituationChange();
 						#endif
 					});
 				}
@@ -788,13 +790,13 @@ namespace Network
 					float t = 0;
 					Objects::Remove(e,type, t);
 					#ifdef HAS_WINDOW
-						GUI::SignalSituationChange();
+						HUD::WindowStack::SignalSituationChange();
 					#endif
 				}
 
 				#ifdef HAS_WINDOW
 					if (!e->isOwnedByMe)
-						UI::HexGrid::RefreshContacts();
+						HUD::HexGrid::RefreshContacts();
 				#endif
 			}
 			else
@@ -834,7 +836,7 @@ namespace Network
 
 			#ifdef HAS_WINDOW
 				if (cls.flavor == EventFlavor::ChatMessage)
-					GUI::FactionTable::SignalChatMessage(f,msg.message);
+					HUD::FactionTable::SignalChatMessage(f,msg.message);
 			#endif
 
 		}
@@ -872,7 +874,7 @@ namespace Network
 				amSpectator = cr.startFactionTypes == Protocol::FactionType::SpectatorFaction;
 				#ifdef HAS_WINDOW
 					Objects::resourceView = !amSpectator;
-					UI::HexGrid::RefreshButtonState();
+					HUD::HexGrid::RefreshButtonState();
 				#endif
 
 				activeToken = cr.factionToken;
@@ -886,10 +888,10 @@ namespace Network
 				}
 
 				#ifdef HAS_WINDOW
-					GUI::Hide(Menu::login);
+					HUD::WindowStack::Hide(HUD::Menu::login);
 					//if (ConfigurationMode::IsActive())
-					//	UI::HexGrid::Configure
-					//	GUI::Show(Dialog::configMenu);
+					//	HUD::HexGrid::Configure
+					//	HUD::WindowStack::Show(HUD::Dialog::configMenu);
 				#endif
 			}
 			else
@@ -898,7 +900,7 @@ namespace Network
 				LogEvent(EventClass::Preset::uncommon, nullptr, "Server response: Faction void.");
 				FlushFaction(true);
 				#ifdef HAS_WINDOW
-					GUI::Show(Menu::login);
+					HUD::WindowStack::Show(HUD::Menu::login);
 				#endif
 			}
 
@@ -1158,11 +1160,11 @@ namespace Network
 			if (Objects::Faction::mine)
 			{
 				Objects::Faction::mine->researchState.RestoreResearchQueue(research);
-				//Dialog::SignalSituationChange();
+				//HUD::Dialog::SignalSituationChange();
 				#ifdef HAS_WINDOW
 					if (Objects::selectedEntity && Objects::selectedEntity->IsWorkingStructure() && To<Objects::WorkingStructure>::Cast(Objects::selectedEntity)->IsLaboratory())
-						UI::HexGrid::Configure(Objects::selectedEntity);
-					UI::HexGrid::RefreshButtonState();
+						HUD::HexGrid::Configure(Objects::selectedEntity);
+					HUD::HexGrid::RefreshButtonState();
 					if (RuntimeConfig::tutorialMode)
 						Tutorial::SignalResearchChange();
 				#endif
@@ -1189,7 +1191,7 @@ namespace Network
 		{
 			winningFactionID = id;
 			#ifdef HAS_WINDOW
-				GUI::Statistics::Update();
+				HUD::Statistics::Update();
 			#endif
 		}
 
@@ -1227,7 +1229,7 @@ namespace Network
 				{
 					f->statistics.EndLoading(false);
 					#ifdef HAS_WINDOW
-						GUI::Statistics::Update();
+						HUD::Statistics::Update();
 					#endif
 				}
 			}
@@ -1365,7 +1367,7 @@ namespace Network
 			Channels::clientFactionRequest.SendTo(client,ready);
 
 			#ifdef HAS_WINDOW
-				GUI::Show(Menu::login);
+				HUD::WindowStack::Show(HUD::Menu::login);
 			#endif
 		}
 	}
@@ -1445,7 +1447,7 @@ namespace Network
 				LogEvent(EventClass::Preset::networkError, nullptr, "Connection attempt failed");
 				#ifdef HAS_WINDOW
 					World::allowRecompilation = true;
-					GUI::SignalSituationChange();
+					HUD::WindowStack::SignalSituationChange();
 				#endif
 			}
 			break;
@@ -1462,7 +1464,7 @@ namespace Network
 				FlushFaction(true);
 				#ifdef HAS_WINDOW
 					World::allowRecompilation = true;
-					GUI::CloseAllModal();
+					HUD::WindowStack::CloseAllModal();
 				#endif
 
 
@@ -1478,9 +1480,9 @@ namespace Network
 
 				#ifdef HAS_WINDOW
 					ConfigurationMode::SetActive(false);
-					GUI::Hide(Menu::login);
-					GUI::HostList::CheckVisibility(true);
-					GUI::SignalSituationChange();
+					HUD::WindowStack::Hide(HUD::Menu::login);
+					HUD::HostList::CheckVisibility(true);
+					HUD::WindowStack::SignalSituationChange();
 					Tutorial::SignalEnd();
 				#endif
 
@@ -1518,7 +1520,7 @@ namespace Network
 			case Protocol::ChannelID::Pong:
 				//lastPong = timer.Now();
 				#ifdef HAS_WINDOW
-					GUI::SignalSituationChange();
+					HUD::WindowStack::SignalSituationChange();
 				#endif
 				#ifdef _DEBUG
 					//LogEvent(EventSignificance::Debug,nullptr,"Got pong from server");
@@ -1867,7 +1869,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 		case RuntimeConfig::Phase::AnimationPhase:
 			#ifdef HAS_WINDOW
 				Objects::Renderer::ClearSmokeTrails();
-				UI::EventLog::Clear();
+				HUD::HexGrid::EventLog::Clear();
 				if (TimeLapse::enabled)
 					saveScreenshot = true;
 			#endif
@@ -1921,7 +1923,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 	phaseStarted = timer.Now();
 	#ifdef HAS_WINDOW
 		Objects::UpdateChoices(ControlEnabled());
-		UI::HexGrid::RefreshContacts();
+		HUD::HexGrid::RefreshContacts();
 	#endif
 
 	//while (Objects::Network::records.IsNotEmpty() && timer.GetSecondsSince(Objects::Network::records.Peek().recorded) > 10)
@@ -1971,13 +1973,13 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 		if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
 		{
 			#ifdef HAS_WINDOW
-				GUI::Statistics::Update();
-				GUI::Statistics::Show();
+				HUD::Statistics::Update();
+				HUD::Statistics::Show();
 			#endif
 		}
 
 	#ifdef HAS_WINDOW
-		GUI::SignalSituationChange();
+		HUD::WindowStack::SignalSituationChange();
 	#endif
 }
 
@@ -2001,7 +2003,7 @@ void	Network::Receiver::FactionOnline(NET(TUniqueID)&id)
 	Objects::OwnerParameter faction = Network::ResolveFaction(id);
 	faction->online = true;
 	#ifdef HAS_WINDOW
-		UI::RefreshSessionView();
+		HUD::FactionTable::Update();
 	#endif
 }
 void	Network::Receiver::FactionOffline(NET(TUniqueID)&id)
@@ -2009,7 +2011,7 @@ void	Network::Receiver::FactionOffline(NET(TUniqueID)&id)
 	Objects::OwnerParameter faction = Network::ResolveFaction(id);
 	faction->online = false;
 	#ifdef HAS_WINDOW
-		UI::RefreshSessionView();
+		HUD::FactionTable::Update();
 	#endif
 }
 void	Network::Receiver::FactionRequestedNewRound(NET(TUniqueID)&id)
@@ -2019,8 +2021,8 @@ void	Network::Receiver::FactionRequestedNewRound(NET(TUniqueID)&id)
 	faction->roundChangeNotifications++;
 	LogEvent(faction->roundChangeNotifications < 3 ? EventSignificance::Uncommon : EventSignificance::Common,nullptr,faction->GetName()+" is done thinking");
 	#ifdef HAS_WINDOW
-		UI::RefreshSessionView();
-		UI::HexGrid::RefreshButtonState();
+		HUD::FactionTable::Update();
+		HUD::HexGrid::RefreshButtonState();
 	#endif
 }
 
@@ -2031,8 +2033,8 @@ void	Network::Receiver::FactionContinuedRound(NET(TUniqueID)&id)
 	faction->roundChangeNotifications++;
 	LogEvent(faction->roundChangeNotifications < 3 ? EventSignificance::Uncommon : EventSignificance::Common,nullptr,faction->GetName()+" is thinking some more");
 	#ifdef HAS_WINDOW
-		UI::RefreshSessionView();
-		UI::HexGrid::RefreshButtonState();
+		HUD::FactionTable::Update();
+		HUD::HexGrid::RefreshButtonState();
 	#endif
 }
 
@@ -2044,7 +2046,7 @@ void	Network::Receiver::IdentifyFaction(Protocol::IdentifyFaction&id)
 	faction->name = id.name;
 	faction->color = id.color;
 	#ifdef HAS_WINDOW
-		UI::RefreshSessionView();
+		HUD::FactionTable::Update();
 	#endif
 }
 
@@ -2109,7 +2111,7 @@ void	Network::SignalProtocolDisruption(const String&message)
 	if (client.IsConnected())
 	{
 		#ifdef HAS_WINDOW
-			Dialog::ShowMessage("Protocol disruption detected. Disconnecting from server.");
+			HUD::Dialog::ShowMessage("Protocol disruption detected. Disconnecting from server.");
 		#endif
 		client.Disconnect();
 	}

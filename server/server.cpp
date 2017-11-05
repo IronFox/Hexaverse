@@ -32,7 +32,7 @@
 
 UINT32 ApplicationInterface::globalVersionOfCurrentFile = 0;	//file version being loaded right now
 
-
+volatile bool quitMainLoop = false;
 
 TwisterRandom		random;
 
@@ -574,8 +574,8 @@ void TerminateNow(bool isMain)
 		terminated = true;
 		if (!isMain)
 		{
-			application_shutting_down = true;
-			mainThreadDone.enter();
+			quitMainLoop = true;
+			mainThreadDone.enter();	//wait for main loop to end
 		}
 
 
@@ -585,6 +585,8 @@ void TerminateNow(bool isMain)
 
 		Logging::WriteEvent(EventSignificance::Uncommon,"Terminating process",nullptr,nullptr,Objects::OwnerParameter());
 		Logging::End();
+
+		application_shutting_down = true;
 
 	mutex.release();
 	TerminateProcess(GetCurrentProcess(),0);
@@ -901,7 +903,7 @@ int main( int argc, const char* argv[])
 
 		Reflection::state.DefineCommand("/Server/shutdown",(CLI::Command::function0_t)[]()
 		{
-			application_shutting_down = true;
+			quitMainLoop = true;
 		})->SetUniqueHelp("Shuts down the service and terminates the application");
 
 
@@ -1129,7 +1131,7 @@ int main( int argc, const char* argv[])
 		Game::ResetFactionStartMineralValue();
 
 
-		while (!application_shutting_down)
+		while (!application_shutting_down && !quitMainLoop)
 		{
 			if (RuntimeConfig::IsInAnyCommandPhase() || RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
 				Sleep(1);

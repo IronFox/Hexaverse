@@ -1,0 +1,2367 @@
+#ifdef HAS_WINDOW
+
+#include <global_root.h>
+#include "guiComponents.h"
+#include <engine/display.h>
+#include "../../../DX11/texture_font.h"
+#include <container/buffer.h>
+#include <engine/aspect.h>
+#include <objects.h>
+#include "../../clientEvents.h"
+#include "componentDetails.h"
+
+namespace DX11 = Engine::DX11; 
+
+extern Engine::Textout<DX11::TextureFont>	textout;
+extern Engine::Display<Engine::DirectX11>	display;
+
+
+namespace HUD 
+{
+
+namespace Component
+{
+	
+
+
+	bool			ComponentLocation::SetWidth(float w)
+	{
+		if (M::Similar(this->rect.x.GetExtent(),w))
+			return false;
+		ASSERT__(!isnan(w));
+		rect.x.max = rect.x.min + w;
+
+		DBG_ASSERT_IS_CONSTRAINED__(rect.x.max,Lower,Upper);
+
+
+		OnHorizontalRectChange();
+		OnWidthChange();
+		OnRectChange();
+		return true;
+	}
+	bool			ComponentLocation::SetHeight(float h)
+	{
+		if (M::Similar(this->rect.y.GetExtent(), h))
+			return false;
+		ASSERT__(!isnan(h));
+		rect.y.max = rect.y.min + h;
+
+		DBG_ASSERT_IS_CONSTRAINED__(rect.y.max,Lower,Upper);
+
+
+		OnVerticalRectChange();
+		OnHeightChange();
+		OnRectChange();
+		return true;
+	}
+	void			ComponentLocation::SetSize(const M::TVec2<>&size)
+	{
+		auto r = rect;
+		r.x.max = r.x.min + size.x;
+		r.y.max = r.y.min + size.y;
+		SetRect(r);
+	}
+	void			ComponentLocation::SetRect(const M::Rect<>&rect)
+	{
+		const bool hChange = rect.x != this->rect.x;
+		const bool vChange = rect.y != this->rect.y;
+		if (!hChange && !vChange)
+			return;
+
+		rect.AssertIsNotNaN();
+
+		const bool widthChange = !M::Similar(rect.x.GetExtent(),this->rect.x.GetExtent());
+		const bool heightChange = !M::Similar(rect.y.GetExtent(),this->rect.y.GetExtent());
+		this->rect = rect;
+
+		DBG_ASSERT_IS_CONSTRAINED__(rect.x.min,Lower,Upper);
+		DBG_ASSERT_IS_CONSTRAINED__(rect.x.max,Lower,Upper);
+		DBG_ASSERT_IS_CONSTRAINED__(rect.y.min,Lower,Upper);
+		DBG_ASSERT_IS_CONSTRAINED__(rect.y.max,Lower,Upper);
+
+		if (hChange)
+			OnHorizontalRectChange();
+		if (vChange)
+			OnVerticalRectChange();
+		if (widthChange)
+			OnWidthChange();
+		if (heightChange)
+			OnHeightChange();
+		OnRectChange();
+	}
+
+
+	AnchorModifier::AnchorModifier(Component*cmp):parent(cmp)
+	{
+		(*(AnchorConfig*)this) = parent->GetAnchorConfig();
+	}
+
+	AnchorModifier::~AnchorModifier()
+	{
+		if (parent)
+			parent->SetAnchorConfig(*this);
+	}
+
+	AnchorModifier::AnchorModifier(AnchorModifier&&other)
+	{
+		(*(AnchorConfig*)this) = std::move(other);
+		parent = other.parent;
+		other.parent = nullptr;
+	}
+
+
+	/*virtual*/ void	Component::Render()
+	{}
+
+
+	Component::Component()
+	{
+		Detail::allComponents << this;
+	}
+
+	/*virtual*/			Component::~Component()
+	{
+		if (!application_shutting_down)
+			Detail::allComponents.FindAndErase(this);
+	}
+
+	void Component::InvalidateAutoLayout()
+	{
+		PWindow w = GetWindow();
+		if (w)
+			w->SignalLayoutChange();
+	}
+
+
+
+
+	PComponent	mousePressedComponent;
+
+	/*static*/ DX11::BaseInstructionBlock	Image::texturedQuad;
+
+	static UINT ViewPortWidth()
+	{
+		return std::max(100U,Detail::lastClientSpace.width);
+	}
+	static UINT ViewPortHeight()
+	{
+		return std::max(100U,Detail::lastClientSpace.height);
+	}
+	static float ViewPortAspect()
+	{
+		return float(ViewPortWidth()) / ViewPortHeight();
+	}
+	
+
+	static float2 ViewPortSizef()
+	{
+		return float2(ViewPortWidth(),ViewPortHeight());
+	}
+
+
+
+
+	void			TAnchor::SetSomeOf(const PPanel&p, float distance, const std::function<bool(const PComponent&)>&callback, distanceType_t dtype/*=RelativeToParentComponent*/)
+	{
+		if (!p || !p->HasComponents())
+			return;
+		type = Fixed;
+		distanceFromReference = distance;
+		foreach (p->GetComponents(),c)
+			if (callback(*c))
+				references.Append(*c);
+		distanceType = dtype;
+
+	}
+
+
+	void			TAnchor::SetAllOf(const PPanel&p, float distance, distanceType_t dtype/*=RelativeToParentComponent*/)
+	{
+		if (!p || !p->HasComponents())
+			return;
+		type = Fixed;
+		distanceFromReference = distance;
+		references.Clear();
+		foreach (p->GetComponents(),c)
+			references.Append(*c);
+		distanceType = dtype;
+	}
+
+	void			TAnchor::SetLastOf(const PPanel&p, float distance, distanceType_t dtype/*=RelativeToParentComponent*/)
+	{
+		if (!p)
+			return;
+		type = Fixed;
+		distanceFromReference = distance;
+		references.Clear();
+		if (p->HasComponents())
+			references.Append(p->GetComponents().last());
+		distanceType = dtype;
+	}
+
+
+	float			TAnchor::ToScreenDistance(float parentSize, bool isHorizontal) const
+	{
+		switch (distanceType)
+		{
+			case RelativeToParentComponent:
+				return distanceFromReference * parentSize;
+
+			case RelativeToScreen:
+				return distanceFromReference;
+			case AbsolutePixels:
+				return distanceFromReference / float(isHorizontal ? ViewPortWidth() : ViewPortHeight());
+		}
+		FATAL__("Unexpected distance type");
+		return 0.f;
+
+	}
+
+	/*virtual*/ bool		Panel::AddComponent(const PComponent&c)
+	{
+		if (!c)
+			return false;
+		if (components.Contains(c))
+			return false;
+		auto cfg = c->GetAnchorConfig();
+		bool set = false;
+		if (cfg.Bottom().IsInactive() && cfg.Top().IsInactive())
+		{
+			cfg.Top().Set(0);
+			set = true;
+		}
+		if (cfg.Left().IsInactive() && cfg.Right().IsInactive())
+		{
+			cfg.Left().Set(0);
+			set = true;
+		}
+		if (set)
+			c->SetAnchorConfig(cfg);
+
+		components << c;
+		c->SetParent( GetWindow(), shared_from_this());
+		return true;
+	}
+
+	/*virtual override*/ bool	Panel::ResolveAnchorAxis(int axis, const M::Rect<>&context)
+	{
+		bool rs = Super::ResolveAnchorAxis(axis,context); 
+		M::Rect<> childSpace = GetRect();
+		if (vscroll.visible)
+			childSpace.x.max = M::Max(childSpace.x.min, childSpace.x.max - GetVisibleScrollbarContentExpansion());
+		foreach (components,c) 
+			rs |= (*c)->ResolveAnchorAxis(axis,childSpace);
+		return rs;
+	}
+
+
+	/*virtual override*/ void		Slider::OnScreenSizeOrUIScaleChange() 
+	{
+		Super::OnScreenSizeOrUIScaleChange();
+		relativeHeight = GetPixelHeight() / ViewPortHeight();
+		relativeThumbWidth = GetThumbPixelWidth() / ViewPortWidth();
+		UpdateDynamicSize();
+	}
+
+
+	/*static*/ float		Panel::TScrollbar::GetPixelWidth()
+	{
+		return Detail::textZoom * 15 * UI::GetScale();
+	}
+	
+	/*static*/ float		Panel::TScrollbar::GetScreenWidth()
+	{
+		return float(GetPixelWidth()) / ViewPortWidth();
+	}
+
+	/*static*/ float		Panel::TScrollbar::GetButtonScreenHeight()
+	{
+		return float(GetPixelWidth()) / ViewPortHeight();
+	}
+
+
+	/*static*/ float		Slider::GetThumbPixelWidth()
+	{
+		return Detail::textZoom * 25 * UI::GetScale();
+	}
+
+	/*static*/ float		Slider::GetPixelHeight()
+	{
+		return Detail::textZoom * 15 * UI::GetScale();
+	}
+
+	Slider::Slider()
+	{}
+
+
+
+	/*virtual override*/ void	Slider::Render()
+	{
+		const auto&rect = GetRect();
+		const float top = rect.y.max;
+		const float bottom = rect.y.min;
+
+		const float left = rect.x.min;
+		const float right = rect.x.max;
+
+		barBack = M::Rect<>(left,bottom,right,top);
+		SurfaceRenderer::SetColor(float4(0,0,0,0.9));
+		SurfaceRenderer::Rasterize(barBack);
+
+
+		dragRange = M::FloatRange(left + relativeThumbWidth/2.f,right-relativeThumbWidth/2.f);
+		const float barCenter = dragRange.Derelativate(current/max);
+		bar = M::Rect<>(barCenter-relativeThumbWidth/2.f,barBack.y.min,barCenter+relativeThumbWidth/2.f,barBack.y.max);
+
+		if (showMarkers)
+		{
+			float4 markerColor(1,1,1,0.5f);
+			float y0 = rect.y.Derelativate(0.2f);
+			float y1 = rect.y.Derelativate(0.8f);
+			M::Rect<> marker;
+			marker.y.Set(y0,y1);
+			SurfaceRenderer::SetColor(markerColor);
+			for (index_t i = 0; i < numMarkers; i++)
+			{
+				float fi = dragRange.Derelativate((float(i) * markersEvery) / max);
+				if (!bar.x.Contains(fi))
+				{
+					marker.x.SetCenter(fi,2.f/ViewPortWidth());
+					SurfaceRenderer::Rasterize(marker);
+					//LineRenderer::Rasterize(float3(fi,rect.y.min,0.f), markerColor, float3(fi,y0,0.f),markerColor);
+					//LineRenderer::Rasterize(float3(fi,rect.y.max,0.f), markerColor, float3(fi,y1,0.f),markerColor);
+				}
+			}
+		}
+
+		RenderArea(bar,barContainsMouse,dragging,float3(1));
+		RenderOutline(bar,float3(1),true);
+	}
+
+
+	/*virtual override*/ WheelRs	Slider::OnMouseWheel(short delta)
+	{
+		if (this->ContainsMouse())
+		{
+			if (!dragging)
+			{
+				//constexpr float speed = -1.f / 5.f;
+				current = M::Clamp(current + slideStep * delta,0,max);
+				if (onChange)
+					onChange(current);
+				return WheelRs::Processed;
+			}
+			return WheelRs::Ignored;
+		}
+		else
+			return WheelRs::NotContained;
+		//return up->HandleMouseWheel(delta) || down->HandleMouseWheel(delta);
+	}
+
+	/*virtual override*/ void		Slider::OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse)
+	{
+		Super::OnMouseMove(mouseAt,clipAreaContainsMouse);
+		outlineContainsMouse = barBack.Contains(mouseAt) && !bar.Contains(mouseAt) && clipAreaContainsMouse;
+		lastMouseX = mouseAt.x;
+		//slideLeftOnClick = mouseAt.x < bar.x.min;
+		if (dragging)
+		{
+			current = M::Clamp((dragRange.Relativate(mouseAt.x - dragRelative)) * max,0, max);
+			changed = true;
+		}
+		else
+		{
+			barContainsMouse = bar.Contains(mouseAt);
+			dragRelative = mouseAt.x - bar.x.center();
+		}
+	}
+
+
+	/*virtual override*/ void Slider::OnMouseUp()
+	{
+		if (mouseDown)
+		{
+			bool slideLeftOnClick = lastMouseX < bar.x.min;
+			if (slideLeftOnClick)
+			{
+				current -= slideStep;
+				current = std::max(0.f,current);
+			}
+			else
+			{
+				current += slideStep;
+				current = std::min(max,current);
+			}
+			changed = true;
+		}
+		if (changed && onChange)
+			onChange(current);
+		dragging = false;
+		mouseDown = false;
+		changed = false;
+	}
+
+	/*virtual override*/ PComponent	Slider::OnMouseDown()
+	{
+		if (!ContainsMouse())
+			return PComponent();
+
+		if (outlineContainsMouse)
+		{
+			mouseDown = true;
+		}
+		elif (barContainsMouse)
+		{
+			dragging = true;
+		}
+
+		return shared_from_this();
+	}
+
+
+
+
+	void	Panel::TScrollbar::Render(const M::Rect<>&rect)
+	{
+		
+		targetViewTop = M::Min(targetViewTop,scrollMax - viewSize);
+		float speed = M::Max(1.f,fabs(targetViewTop - viewTop))*2.f;
+		if (targetViewTop > viewTop)
+		{
+			viewTop = M::Min(targetViewTop, viewTop + Engine::timing.delta*speed);
+		}
+		elif (targetViewTop < viewTop)
+		{
+			viewTop = M::Max(targetViewTop, viewTop - Engine::timing.delta*speed);
+		}
+
+
+		const float left = rect.x.max - TScrollbar::GetScreenWidth() - ContentSpacing * 0.5f;
+		const float right = rect.x.max - ContentSpacing * 0.5f;
+		const float top = rect.y.max - ContentSpacing * 0.5f;
+		const float bottom = rect.y.min + ContentSpacing * 0.5f;
+		//const float aspect = display.GetPixelAspect();
+		const float buttonHeight = TScrollbar::GetButtonScreenHeight();
+		M::Rect<> topButton(left,top - buttonHeight,right,top);
+		M::Rect<> bottomButton(left,bottom,right,bottom + buttonHeight);
+
+		outline = M::Rect<>(left,bottomButton.y.max + TScrollbar::ContentSpacing,right,topButton.y.min - TScrollbar::ContentSpacing);
+		SurfaceRenderer::SetColor(float4(0,0,0,0.9));
+		SurfaceRenderer::Rasterize(outline);
+
+		bar = M::Rect<>(outline.x.min,outline.y.Derelativate(1.f - (viewTop + viewSize) / scrollMax),outline.x.max,outline.y.Derelativate(1.f - (viewTop) / scrollMax));
+		RenderArea(bar,barContainsMouse,dragging,float3(1));
+		RenderOutline(bar,float3(1),true);
+
+		up->SetLocation(topButton);
+		up->Render();
+		down->SetLocation(bottomButton);
+		down->Render();
+	}
+
+
+	void	Panel::TScrollbar::ScrollToBottom()
+	{
+		targetViewTop = scrollMax - viewSize;
+	}
+
+	void	Panel::TScrollbar::ScrollToTop()
+	{
+		targetViewTop = 0;
+	}
+
+	WheelRs	Panel::TScrollbar::OnMouseWheel(short delta)
+	{
+		if (!visible)
+			return WheelRs::NotContained;
+		//if (outlineContainsMouse || barContainsMouse)	//always scroll
+		{
+			if (!dragging)
+			{
+				constexpr float speed = -1.f / 5.f;
+				viewTop = M::Clamp(viewTop + speed * viewSize* delta,0,scrollMax - viewSize);
+				targetViewTop = M::Clamp(targetViewTop + speed * viewSize* delta,0,scrollMax - viewSize);
+				return WheelRs::Processed;
+			}
+			return WheelRs::Ignored;
+		}
+		//return up->HandleMouseWheel(delta) || down->HandleMouseWheel(delta);
+	}
+
+	void		Panel::TScrollbar::OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse)
+	{
+		if (visible)
+		{
+			outlineContainsMouse = outline.Contains(mouseAt) && !bar.Contains(mouseAt) && clipAreaContainsMouse;
+			scrollDownOnClick = mouseAt.y < bar.y.min;
+			if (dragging)
+			{
+				viewTop = targetViewTop = M::Clamp((1.f-outline.y.Relativate(mouseAt.y - dragRelative)) * scrollMax,0, scrollMax-viewSize);
+			}
+			else
+			{
+				barContainsMouse = bar.Contains(mouseAt);
+				dragRelative = mouseAt.y - bar.y.max;
+			}
+			up->OnMouseMove(mouseAt,clipAreaContainsMouse);
+			down->OnMouseMove(mouseAt,clipAreaContainsMouse);
+		}
+		else
+			outlineContainsMouse = false;
+	}
+
+
+	void Panel::TScrollbar::OnMouseUp()
+	{
+		if (mouseDown)
+		{
+			if (scrollDownOnClick)
+			{
+				targetViewTop += M::Max(viewSize, scrollMax /10.f);
+				targetViewTop = M::Min(targetViewTop,scrollMax - viewSize);	
+			}
+			else
+			{
+				targetViewTop -= M::Max(viewSize, scrollMax /10.f);
+				targetViewTop = M::Max(targetViewTop,0);	
+			}
+		}
+		dragging = false;
+		mouseDown = false;
+
+	}
+
+	PComponent	Panel::TScrollbar::OnMouseDown()
+	{
+		if (visible)
+		{
+			PComponent c;
+			c = up->OnMouseDown();
+			if (c)
+				return c;
+			c = down->OnMouseDown();
+			if (c)
+				return c;
+			if (outlineContainsMouse)
+			{
+				mouseDown = true;
+				return owner->shared_from_this();
+			}
+			if (barContainsMouse)
+			{
+				dragging = true;
+				return owner->shared_from_this();
+			}
+		}
+		return PComponent();
+	}
+
+	void	Panel::TScrollbar::Enable(Panel*p,const M::Rect<>&rect)
+	{
+		owner = p;
+		if (!up)
+		{
+			up.reset(new ScrollButton(ScrollButton::Up,[this,p]()
+			{
+				targetViewTop -= viewSize;
+				targetViewTop = M::Max(targetViewTop,0);	
+			}));
+
+			down.reset(new ScrollButton(ScrollButton::Down,[this,p]()
+			{
+				targetViewTop += viewSize;
+				targetViewTop = M::Min(targetViewTop,scrollMax - viewSize);
+			}));
+			up->SetActive(p->IsActive());
+			down->SetActive(p->IsActive());
+		}
+		visible = true;
+	}
+
+	/*virtual override*/ void	Panel::SetActive(bool isActive)
+	{
+		foreach (components,c)
+			(*c)->SetActive(isActive); 
+		Super::SetActive(isActive);
+		if (vscroll.up)
+		{
+			vscroll.up->SetActive(isActive);
+			vscroll.down->SetActive(isActive);
+		}
+	}
+
+	/*virtual override*/ void Button::Render()
+	{
+		bool lit = IsLit();
+		bool flipped = mousePressedComponent.get() == this;
+		Super::BaseRender((lit && !flipped)  || alwaysDown,(lit && flipped) || (alwaysDown && flipWhenAlwaysDown));
+		Super::RenderText(lit || alwaysDown);
+	}
+
+
+	/*static*/ void		ScrollButton::RenderArrow(const M::Rect<>&r, direction_t dir, bool lit)
+	{
+		SurfaceRenderer::SetColor(float4(1,1,1,lit?0.75f:0.5f));
+
+		switch (dir)
+		{
+			case Up:
+				SurfaceRenderer::Rasterize(float2(r.x.center(),r.y.Derelativate(0.75f)),float2(r.x.Derelativate(0.25f),r.y.Derelativate(0.25f)),float2(r.x.Derelativate(0.75f),r.y.Derelativate(0.25f)));
+			break;
+			case Down:
+				SurfaceRenderer::Rasterize(float2(r.x.center(),r.y.Derelativate(0.25f)),float2(r.x.Derelativate(0.75f),r.y.Derelativate(0.75f)),float2(r.x.Derelativate(0.25f),r.y.Derelativate(0.75f)));
+			break;
+
+			default:
+				FATAL__("Unexpected direction parameter");
+		}
+
+	}
+
+
+	/*virtual override*/ void	Panel::Render()
+	{
+		Super::Render(); 
+		const auto&rect = GetRect();
+		if (vscroll.visible)
+		{
+			vscroll.Render(rect);
+			Detail::PushLoadView(rect,float2(0,-vscroll.viewTop));
+		}
+		else
+			Detail::PushLoadView(rect);
+		RenderChildren();
+		Detail::PopLoadView();
+	}
+
+
+	/*virtual override*/ bool	Panel::UpdateDynamicSize()
+	{
+		bool rs = Super::UpdateDynamicSize();
+		foreach (components,c)
+			rs |= (*c)->UpdateDynamicSize();
+
+		float lowest = std::numeric_limits<float>::max();
+		foreach (components,c)
+		{
+			const auto&bottom = (*c)->GetAnchorConfig().Bottom();
+			const auto&top = (*c)->GetAnchorConfig().Top();
+			float newLowest = std::numeric_limits<float>::max();
+			switch (bottom.type)
+			{
+				case TAnchor::Disabled:
+					newLowest = (*c)->GetRect().y.min;
+				break;
+				case TAnchor::Fixed:
+					if (bottom.references.IsEmpty() && top.type == TAnchor::Disabled)
+						newLowest = GetRect().y.max - (*c)->GetRect().y.GetExtent() - bottom.ToScreenDistance(0.f,false);
+				break;
+				case TAnchor::Auto:
+					if (top.type == TAnchor::Auto)
+						newLowest = GetRect().y.max - (*c)->GetRect().y.GetExtent();
+				break;
+			}
+			if (newLowest < lowest)
+			{
+				lowest = newLowest;
+			}
+		}
+		if (lowest == std::numeric_limits<float>::max())
+			lowest = GetRect().y.max;
+		float newY = lowest - autoHeightSpacing;
+		const float currentHeight = GetRect().y.max - newY;
+
+		const float maxHeight = autoHeight ? this->maxHeight : GetRect().y.GetExtent();
+
+		bool newVScroll = currentHeight > maxHeight;
+		bool changed = vscroll.visible != newVScroll;
+		rs |= changed;
+		if (newVScroll)
+		{
+			vscroll.scrollMax = currentHeight;
+			vscroll.viewSize = maxHeight;
+			float barSize = M::Max(maxHeight,0.2f * GetHeight()*currentHeight);
+			float overSize = barSize - maxHeight;
+			vscroll.scrollMax += overSize;
+			vscroll.viewSize += overSize;
+
+			newY = GetRect().y.max - maxHeight;
+
+			if (autoHeight)
+			{
+				auto rect = GetRect();
+				rs |= Set(rect.y.min,newY);
+				SetRect(rect);
+			}
+			vscroll.Enable(this,GetRect());
+		}
+		else
+		{
+			vscroll.visible = false;
+
+			if (autoHeight)
+			{
+				auto rect = GetRect();
+				rs |= Set(rect.y.min,newY);
+				SetRect(rect);
+			}
+		}
+		
+
+
+		return rs;
+	}
+
+	bool			Component::SetEnabled(bool newEnabled)
+	{
+		if (newEnabled == localState.isEnabled) 
+			return false;
+
+		localState.isEnabled = newEnabled; 
+		OnEnableChange();
+		if (parentState.isEnabled)
+		{
+			PropagateToChildren(CreatePropagating());
+			return true;
+		}
+		return false;
+	}
+
+
+	void			Component::AcceptParentWindow(const PWindow&w)
+	{
+		if (window.lock() != w)
+		{
+			window = w;
+			PropagateToChildren(w);
+			if (w && w->IsVisible())
+				OnScreenSizeOrUIScaleChange();
+		}
+
+	}
+
+	void			Component::SetParent(const PWindow&w, const PComponent&c)
+	{
+		ASSERT__(!c || parent.expired());
+		parent = c;
+		AcceptParentWindow(w);
+		if (c)
+		{
+			active = c->active;
+			AcceptStateFromParent(c->CreatePropagating());
+			InvalidateAutoLayout();
+			if (w && w->IsVisible())
+				OnScreenSizeOrUIScaleChange();
+		}
+		else
+			active = false;
+	}
+
+
+	/*static*/ void				Component::RenderArea(const M::Rect<>&rect, bool lit, bool flip, const float3&backgroundTone, float lowOpacity/*=1*/, float highOpacity/*=1*/)
+	{
+		float low = 0.1f;  //0.3;
+		float high = lit ? 0.89f : 0.77f;   //0.8f : 0.6;
+		high *= high;
+		if (flip)
+			std::swap(low,high);
+
+		//low = sqrt(low);
+		float4 lowColor(low,low,low,lowOpacity);
+		Vec::stretch(lowColor.rgb,backgroundTone,lowColor.rgb);
+		//high = sqrt(high);
+		float4 highColor(high,high,high,highOpacity);
+		Vec::stretch(highColor.rgb,backgroundTone,highColor.rgb);
+
+		SurfaceRenderer::Rasterize(float2(rect.x.min,rect.y.min), lowColor, float2(rect.x.max,rect.y.min),lowColor, float2(rect.x.max,rect.y.max), highColor, float2(rect.x.min,rect.y.max),highColor);
+		SurfaceRenderer::Flush();
+	}
+
+	/*static*/ void				Component::RenderOutline(const M::Rect<>&rect, const float3&backgroundTone, const M::Quad<bool>&edges, float lowOpacity/*=1*/, float highOpacity/*=1*/)
+	{
+		float4 lineLowColor(backgroundTone*0.5f,lowOpacity*0.5f);
+		float4 lineHighColor(backgroundTone*0.5f,highOpacity*0.5f);
+	
+		if (edges.bottom)
+			LineRenderer::Rasterize(float3(rect.x.min,rect.y.min,0.f), lineLowColor, float3(rect.x.max,rect.y.min,0.f),lineLowColor);
+		if (edges.top)
+			LineRenderer::Rasterize(float3(rect.x.max,rect.y.max,0.f), lineHighColor, float3(rect.x.min,rect.y.max,0.f),lineHighColor);
+		if (edges.right)
+			LineRenderer::Rasterize(float3(rect.x.max,rect.y.min,0.f),lineLowColor, float3(rect.x.max,rect.y.max,0.f), lineHighColor);
+		if (edges.left)
+			LineRenderer::Rasterize(float3(rect.x.min,rect.y.max,0.f),lineHighColor, float3(rect.x.min,rect.y.min,0.f), lineLowColor);
+		LineRenderer::Flush();
+	}
+	
+
+	static float CharWidth(char c)
+	{
+		if ((index_t)c >= Objects::TextoutResourceTagOffset && (index_t)c <= (index_t)Objects::TextoutResourceTagOffset + Objects::Resource::NumberOfPossibilities)
+		{
+			return textout.GetFont().GetHeight() * textout.state.scale_x;
+		}
+		return textout.GetFont().GetWidth(c) * textout.state.scale_x;
+	}
+
+
+
+
+
+
+	/*virtual override*/ void	Panel::OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse)
+	{
+		Super::OnMouseMove(mouseAt,clipAreaContainsMouse);
+
+	
+		vscroll.OnMouseMove(mouseAt,clipAreaContainsMouse);
+		
+		M::TVec2<> moved = mouseAt;
+		moved.y += vscroll.GetOffset();
+
+		for (const auto&c : components)
+		{
+			c->OnMouseMove(moved,ContainsMouse());
+		}
+	}
+
+
+	/*virtual override*/ WheelRs	Panel::OnMouseWheel(short delta)
+	{
+		if (!ContainsMouse())
+			return WheelRs::NotContained;
+
+		for (index_t i = components.Count()-1; i < components.Count(); --i)
+		{
+			WheelRs rs = components[i]->OnMouseWheel(delta);
+			if (rs == WheelRs::Processed)
+				return rs;
+			if (rs == WheelRs::Ignored)
+				break;
+		}
+
+		if (vscroll.OnMouseWheel(delta) == WheelRs::Processed)
+			return WheelRs::Processed;
+
+		return WheelRs::Ignored;
+		//Super::HandleMouseWheel(delta);
+	}
+
+
+	/*virtual override*/ PComponent	Panel::OnMouseDown()
+	{
+		PComponent c = vscroll.OnMouseDown();
+		if (c)
+			return c;
+
+
+
+		if (!ContainsMouse())
+			return PComponent();
+
+		for (index_t i = components.Count()-1; i < components.Count(); --i)
+		{
+			PComponent c = components[i]->OnMouseDown();
+			if (c)
+				return c;
+		}
+		return Super::OnMouseDown();
+	}
+
+
+	void			Panel::AnchorBelowPrevious(const PComponent&newComponent, float distanceFromSides /*= 0.015f*/,  float distanceToPrevious/* = 0.015f*/, TAnchor::distanceType_t distanceType/*=TAnchor::RelativeToScreen*/)
+	{
+		auto cfg = newComponent->GetAnchorConfig();
+
+		if (components.IsNotEmpty())
+			cfg.Top().Set(components.last(), distanceToPrevious,distanceType);
+		else
+			cfg.Top().Set(distanceToPrevious,distanceType);
+		
+		cfg.Left().Set(distanceFromSides,distanceType);
+		cfg.Right().Set(distanceFromSides,distanceType);
+		newComponent->SetAnchorConfig(cfg);
+		components.Append(newComponent);
+		newComponent->SetParent(GetWindow(),shared_from_this());
+	}
+
+
+	void				Box::BaseRender(bool lit, bool flipped)
+	{
+		const M::Rect<>&r = GetRect();
+		RenderArea(r,lit,flipped,backgroundTone,bottomOpacity,topOpacity);
+		RenderOutline(r,backgroundTone,true,bottomOpacity,topOpacity);
+	}
+
+	static const float CellSize = 0.01f;
+
+
+	/*virtual*/ bool	Component::UpdateDynamicSize()
+	{
+		const float h = GetContentHeight();
+		if (h < 0)
+			return false;
+
+		if (anchorConfig.Top().IsFixed() && anchorConfig.Bottom().IsFixed())
+			return false;
+
+		return SetHeight(h);
+	}
+
+
+
+	/*virtual override*/ bool			Panel::DetectEnabledState()
+	{
+		bool change = Super::DetectEnabledState();
+		foreach (components,c)
+			change |= (*c)->DetectEnabledState();
+		return change;
+	};
+
+	//DX11::BaseInstructionBlock	Area::shader;
+
+
+	//void		Area::Render(bool lit)
+	//{
+	//	display.RenderVertices(instruction);
+	//
+	//}
+
+
+	//void		Area::StaticCreate()
+	//{
+	//	shader.shader.LoadFromFile("shaders/hexBackground.hlsl","vsMain","gsMain", "psMain");
+	//	shader.binding.Append("POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT);
+	//	shader.UpdateLayout();
+	//	shader.SetPoints();
+	//}
+
+	//void		Area::StaticDestroy()
+	//{
+	//	shader.Clear();
+	//
+	//}
+
+
+
+	/*virtual override*/ float			BaseInput::GetContentHeight() const
+	{
+		textout.PushState();
+			textout.Scale(Detail::textZoom);
+			const float rs = textout.GetScaledHeight() * 2.5f;
+		textout.PopState();
+		return rs;
+	}
+
+
+
+	void			Input::SetText(const String&current)
+	{
+		if (IsActive())
+			Engine::keyboard.FillInput(current);
+		else
+			backup.SetTo(current);
+	}
+
+	static Engine::InputProfile	profile;
+
+	void			Input::SetAllowedAlphabet(const String&allowed)
+	{
+		this->allowed = allowed;
+		if (Super::IsActive())
+			Engine::keyboard.Filter(allowed.c_str());
+	}
+
+	/*static*/ void BaseInput::OnCharHandled(char)
+	{
+		Detail::OnInput();
+	}
+
+	void			BaseInput::SetInputActive(bool isActive)
+	{
+		if (isActive)
+		{
+			Engine::input.pushProfile();
+			//profile = *Engine::input.currentProfile();//this copies over a shitload of commands we don't want
+			//let's copy some over, however...
+			profile.key[Key::Escape] = Engine::input.currentProfile()->key[Key::Escape];
+			profile.key[Key::Enter] = Engine::input.currentProfile()->key[Key::Enter];
+			profile.key[Key::Return] = Engine::input.currentProfile()->key[Key::Return];
+			profile.key[Key::MouseButton0] = Engine::input.currentProfile()->key[Key::MouseButton0];
+			profile.key[Key::MouseButton1] = Engine::input.currentProfile()->key[Key::MouseButton1];
+			profile.key[Key::MouseButton2] = Engine::input.currentProfile()->key[Key::MouseButton2];
+			profile.key[Key::MouseButton3] = Engine::input.currentProfile()->key[Key::MouseButton3];
+			profile.key[Key::MouseButton4] = Engine::input.currentProfile()->key[Key::MouseButton4];
+			Engine::input.bindProfile(profile);
+		
+			//Engine::input.resetKeys();
+			Engine::input.bind(Key::Backspace,[](){Engine::keyboard.DropLastCharacter(); Detail::OnInput();});
+			Engine::input.bind(Key::Return,onEnter);
+			Engine::input.bind(Key::Enter,onEnter);
+			Engine::input.bindCtrl(Key::V,[](){
+				char buffer[0x100];
+				memset(buffer,0,sizeof(buffer));
+				if (System::getFromClipboardIfText(Engine::context.getWindow(),buffer,sizeof(buffer)-1))
+				{
+					Engine::keyboard.FilterAppend(buffer);	
+				}
+			});
+
+			const char*filter = GetAllowed();
+			if (filter)
+				Engine::keyboard.Filter(filter);
+			else
+				Engine::keyboard.ResetTranslation();
+			Engine::keyboard.onCharHandled = BaseInput::OnCharHandled;
+			Engine::keyboard.read = true;
+			Engine::keyboard.ImportBuffer(backup);
+		}
+		else
+		{
+			Engine::keyboard.ExportBuffer(backup);
+			Engine::input.popProfile();
+			Engine::keyboard.read = false;
+			Engine::keyboard.onCharHandled =  NULL;
+		}
+	}
+
+
+
+	String			Input::GetText()
+	{
+		if (IsActive())
+			return String(Engine::keyboard.GetInput(),Engine::keyboard.GetInputLen());
+		return String(backup.GetCharacters(),backup.GetLength());
+	}
+
+	const char*		PasswordInput::GetText()
+	{
+		if (IsActive())
+			return Engine::keyboard.GetInput();
+		return backup.GetCharacters();
+	}
+
+	void			PasswordInput::WipeInput()
+	{
+		if (IsActive())
+			Engine::keyboard.FlushInput();
+		backup.Wipe();
+	}
+
+
+
+
+
+	/*virtual*/ StringRef BaseInput::GetTextRef()
+	{
+		const char*input;
+		size_t len;
+		bool active = IsActive();
+		input = active ? Engine::keyboard.GetInput() : backup.GetCharacters();
+		len = active ? Engine::keyboard.GetInputLen() : backup.GetLength();
+		return StringRef(input,len);
+	}
+
+
+	/*static*/ StringBuffer	PasswordInput::placeholder;
+
+	/*virtual override*/ StringRef PasswordInput::GetTextRef()
+	{
+		size_t len;
+		bool active = IsActive();
+		len = active ? Engine::keyboard.GetInputLen() : backup.GetLength();
+
+		while (placeholder.length() < len)
+		{
+//			placeholder << "********";
+			placeholder << "........";
+		}
+		return StringRef(placeholder.pointer(),len);
+	}
+
+
+	/*virtual override*/ void			BaseInput::Render()
+	{
+		core = GetRect();
+		textout.PushState();
+		textout.Scale(Detail::textZoom);
+		core.Expand(-textout.GetScaledHeight()*0.4f);
+		//core.Scale(0.97f);
+
+		if (fillBackground)
+		{
+			RenderArea(core,false,true,backgroundTone);
+			RenderOutline(core,backgroundTone,true);
+		}
+
+		StringRef text = GetTextRef();
+
+
+		static const char cursorChar = '<';
+		float cursorLen = textout.GetScaledWidth(StringRef(&cursorChar,1));
+		float visualLen = textout.GetScaledWidth(text) + cursorLen;
+
+
+		SurfaceRenderer::Flush();
+
+
+		textout.MoveTo(core.x.min,core.y.max - textout.GetScaledHeight() * 0.4f);
+
+
+		if (visualLen < core.x.GetExtent())
+		{
+		//	textout.write(input,len);
+			textout << text;
+		}
+		else
+		{
+			while (text.DropFirstChar())
+			{
+				visualLen = textout.QueryScaledWidth(text) + cursorLen;
+				if (visualLen < core.x.GetExtent())
+				{
+					textout << text;
+					//textout.write(input,len);
+					break;
+				}
+			}
+		}
+		if (((UINT64)(Engine::timing.now*2.0))%2)
+			textout << cursorChar;
+
+
+		textout.PopState();
+
+
+	}
+
+
+
+
+
+	/*static*/ void Image::StaticDestroy()
+	{
+		texturedQuad.Clear();
+	}
+
+	/*static*/ void Image::StaticCreate()
+	{
+		if (texturedQuad.quickSlots.IsEmpty())
+		{
+			texturedQuad.quickSlots.SetSize(1);
+			Engine::VertexBinding vtx;
+			vtx.vertex.Set(0,2);
+			vtx.normal.Unset();
+			vtx.floats_per_vertex = 2;
+			texturedQuad.binding = vtx;
+
+			DX11::Shader::Binding bindings[] = {
+				DX11::Shader::Binding(0,"Texture"),
+				DX11::Shader::SamplerBinding(true,Engine::VisualEnum::TextureFilter::Trilinear,1,"Sampler"),
+			};
+
+
+			texturedQuad.shader.LoadFromFile("shaders/guiImageField.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
+			texturedQuad.UpdateLayout();
+			texturedQuad.SetTriangles();
+
+
+			float2 vertices[6] = 
+			{
+				float2(0,0),
+				float2(1,0),
+				float2(1,1),
+				float2(0,0),
+				float2(1,1),
+				float2(0,1)
+			};
+
+			texturedQuad.vbo.CreateFromStructs(vertices,6);
+
+
+			GlobalEvents::applicationTerminate << StaticDestroy;
+		}
+
+
+	//	Area::StaticCreate();
+	
+	}
+
+
+	float			TextField::GetTotalFontScale() const
+	{
+		return zoom * Detail::textZoom;
+	}
+
+	/*virtual*/ float			TextField::GetIdealWidth() const
+	{
+		textout.PushState();
+		textout.Scale(Detail::textZoom*zoom);
+		float w = 0.f;
+
+		foreach (rawText,t)
+		{
+			float w1 = 0.f;
+			foreach (*t,c)
+				w1 += CharWidth(*c);
+			w = std::max(w,w1);
+		}
+		w *= 1.01f;
+		w += textout.GetScaledWidth('X') * (padding.left + padding.right);
+		textout.PopState();
+		return w;
+	}
+
+	bool			TextField::UpdateIdealWidth()
+	{
+		float w = GetIdealWidth();
+
+		bool changed = SetWidth(w);
+
+		return changed;
+	}
+
+	void			TextField::SetToIdealWidth()
+	{
+		if (UpdateIdealWidth())
+			InvalidateAutoLayout();
+	}
+
+
+
+
+	/*virtual override*/ float		TextField::GetContentHeight() const
+	{
+		return heightLockedToIdeal ? textHeight : -1;
+	}
+
+	/*virtual override*/ bool	TextField::UpdateDynamicSize()
+	{
+		bool changed = false;
+		if (widthLockedToIdeal)
+		{
+			changed = UpdateIdealWidth();
+		}
+		return Super::UpdateDynamicSize() || changed;	//queries TextField::ContentHeight()
+	}
+
+	void		TextField::ReWrap()
+	{
+		textout.PushState();
+		textout.Scale(Detail::textZoom*zoom);
+		
+		const float leftPadding = textout.GetScaledWidth('X') * padding.left;
+		const float rightPadding = textout.GetScaledWidth('X') * padding.right;
+		const float width = GetWidth() - leftPadding - rightPadding;
+		const float center = width/2 + leftPadding;
+		#ifdef _DEBUG
+			wrappedAtWidth = width;
+		#endif
+
+	
+
+		wrappedText.Clear();
+		Array<String>	wrapped;
+		for (const String&raw : rawText)
+		{
+			wrapf(raw,width,CharWidth,wrapped);
+			wrappedText.MoveAppend(wrapped);
+		}
+		if (wrappedText.IsEmpty())
+			wrappedText.Append();	//at least one empty line
+		lineAt.SetSize(wrappedText.Count());
+		const float lineHeight = textout.GetScaledHeight();
+		const float y = -lineHeight*(padding.top);
+		for (index_t i = 0; i < lineAt.Count(); i++)
+		{
+			lineAt[i] =
+				float2(
+					
+					(	alignCenter ? 
+						center - textout.QueryScaledWidth(wrappedText[i])*0.5f
+						:
+						leftPadding),
+				y - lineHeight * (i));
+		}
+		textHeight = textout.GetScaledHeight() * (float(wrappedText.Count()) + padding.top + padding.bottom);
+		textout.PopState();
+	}
+
+
+
+
+	/*virtual override*/ void			TextField::Render()
+	{
+		bool lit = IsLit();
+
+		if (fillBackground)
+		{
+			Super::BaseRender(lit,false);
+		}
+		RenderText(lit);
+	}
+
+	void TextField::RenderText(bool lit)
+	{
+		textout.PushState();
+		textout.Scale(Detail::textZoom*zoom);
+
+		//bool hovering = !Super::sensitiveToMouse || (enabled && ContainsMouse());
+
+		SurfaceRenderer::Flush();
+
+		//textout.locate(rect.x.min + rect.x.GetExtent()*0.05f,rect.y.max - textout.GetScaledHeight()*1.5f);
+		//float lineHeight = textout.GetScaledHeight();
+		const float top = GetRect().y.max;
+		const float left = GetRect().x.min;
+
+		float4 baseColor;
+		if (IsEnabled())
+			baseColor = (lit ? float4(1) : float4(0.75,0.75,0.75,1));
+		else
+			baseColor = float4(0.5,0.5,0.5,1);
+
+		textout.SetColor(baseColor & this->color);
+		for (index_t i = 0; i < wrappedText.Count(); i++)
+		{
+			textout.MoveTo(lineAt[i].x+left,lineAt[i].y+top);
+			textout << wrappedText[i];
+		}
+		textout.PopState();
+	}
+
+	/*virtual override*/ float	Image::GetContentHeight() const
+	{
+		if (texture.IsEmpty())
+			return -1;	//no change
+		const Resolution3D imageResolution = texture.GetResolution();
+		const float2 relativeComponentSize = float2(GetWidth(),GetHeight());
+		const float2 viewportSize = ViewPortSizef();
+		const float2 pixelComponentSize = relativeComponentSize & viewportSize;
+		const float2 pixelImageSize = float2(imageResolution.width,imageResolution.height);
+
+		const float horizontalStretch = pixelImageSize.x / pixelComponentSize.x;
+
+
+
+		const float wantPixelImageHeight = pixelComponentSize.x / imageResolution.GetFlatAspect();
+		const float wantRelativeHeight = wantPixelImageHeight / float(ViewPortHeight());
+
+		if (isnan(wantRelativeHeight))
+		{
+			DBG_FATAL__("Relative height is nan");
+			return -1;	//no change
+		}
+
+		return wantRelativeHeight;
+	}
+
+
+	/*virtual override*/ void			Image::Render()
+	{
+		if (texture.IsEmpty())
+			return;
+
+		bool lit = IsLit();
+	
+		M::TMatrix4<> matrix = M::Matrix<>::eye4;
+		
+		Resolution3D res = texture.GetResolution();
+		float2 resf = float2(res.width,res.height);
+
+		float2 size = float2(GetWidth(),GetHeight());
+		float2 pixelDim = size & ViewPortSizef();
+		float aspect = pixelDim.x / pixelDim.y;
+		float wantAspect = resf.x / resf.y;
+		if (aspect < wantAspect)
+		{
+			//image too broad
+			size.y *= (aspect/wantAspect);
+		}
+		else
+		{
+			//image too heigh
+			size.x *= (wantAspect / aspect);
+		}
+
+		matrix.x.x = size.x;
+		matrix.y.y = size.y;
+
+		matrix.w.xy = float2(GetRect().x.center() - size.x*0.5f,GetRect().y.center() - size.y*0.5f);
+
+		display.SetObjectMatrix(matrix);
+		texturedQuad.quickSlots.First() = texture;
+
+		display.RenderVertices(texturedQuad);
+	}
+
+	/*virtual*/ void	Component::OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse)
+	{
+		containsMouse = clipAreaContainsMouse && GetRect().Contains(mouseAt);
+	}
+
+
+	void			Component::MoveTopTo(float h)
+	{
+		float delta = h - GetRect().y.max;
+		TranslateRect(float2(0,delta));
+	}
+
+	bool			Component::FullAutoLayout(const M::Rect<>&context)
+	{
+		count_t numRounds = 0;
+		bool rs = UpdateDynamicSize();
+		for (;;)
+		{
+			const bool changed0 = ResolveAnchorAxis(0,context);
+			const bool changed1 = ResolveAnchorAxis(1,context);
+			const bool sizeChanged = UpdateDynamicSize();
+
+			if (!changed0 && !changed1 && !sizeChanged)
+				return rs;
+			rs = true;
+			numRounds++;
+
+			#ifdef _DEBUG
+				if (numRounds > 900)
+				{
+					if (IsDebuggerPresent())
+						DebugBreak();
+					else
+						ShowMessage(__func__ ": Debug: GUI will abort auto-layout shortly. Attach now and debug.");
+				}
+
+			#endif
+
+			if (numRounds > 1000)	//might be linear to the number of contained components, depending on order
+				return false;
+		}
+
+	}
+
+
+	bool			Component::ResolveAnchorAxis(int axis, const M::Rect<>&context)
+	{
+		const Axial<TAnchor>&anchor = anchorConfig.axis[axis];
+
+		if (anchor.min.IsInactive() && anchor.max.IsInactive())
+			return false;
+		
+		auto rect = GetRect();
+		M::TFloatRange<>&a = rect.axis[axis];
+		bool rs = false;
+
+		if (anchor.min.IsAuto() && anchor.max.IsAuto())
+		{
+			{
+				const TAnchor&anc = anchor.min;
+
+				if (anc.references.IsNotEmpty())
+				{
+					FATAL__("Auto not applicable on set references");
+					return false;
+					//float highest = -std::numeric_limits<float>::max();
+					//foreach (anc.references,ref0)
+					//{
+					//	PComponent ref = ref0->lock();
+					//	highest = std::max(highest,ref->GetLocation().axis[axis].max);
+					//}
+					//if (highest == -std::numeric_limits<float>::max())
+					//	return false;
+					//bottom = highest;
+				}
+			}
+			{
+				const TAnchor&anc = anchor.max;
+
+				if (anc.references.IsNotEmpty())
+				{
+					FATAL__("Auto not applicable on set references");
+					return false;
+				}
+			}
+			const M::TFloatRange<>&ctx = context.axis[axis];
+			float ext = a.GetExtent();
+			float center = ctx.GetCenter();
+			float top = std::min(ctx.max,center + ext*0.5f);
+			bool changed = Set(a.max,top);
+			a.min = a.max - ext;
+
+			SetRect(rect);
+			return changed;
+		}
+
+		if (anchor.min.IsAuto() || anchor.max.IsAuto())
+		{
+			FATAL__("Both top and bottom anchors must be set to auto");
+			return false;
+		}
+
+
+		float extent = a.GetExtent();
+
+		if (anchor.min.IsFixed())
+		{
+			const TAnchor&anc = anchor.min;
+
+			const float dist = anc.ToScreenDistance(context.axis[axis].GetExtent(),axis==0);
+
+			if (anc.references.IsNotEmpty())
+			{
+				float highest = -std::numeric_limits<float>::max();
+				foreach (anc.references,ref0)
+				{
+					PComponent ref = ref0->lock();
+					highest = std::max(highest,ref->GetRect().axis[axis].max);
+				}
+				if (highest > -std::numeric_limits<float>::max())
+					rs |= Set(a.min, highest + dist);
+			}
+			else
+				rs |= Set(a.min, context.axis[axis].min + dist);
+		}
+		if (anchor.max.IsFixed())
+		{
+			const TAnchor&anc = anchor.max;
+
+			const float dist = anc.ToScreenDistance(context.axis[axis].GetExtent(),axis==0);
+//			const float dist = anc.distanceIsRelative ? anc.distanceFromReference * context.axis[axis].GetExtent() : anc.distanceFromReference;
+
+			if (anc.references.IsNotEmpty())
+			{
+				float lowest = std::numeric_limits<float>::max();
+				foreach (anc.references,ref0)
+				{
+					PComponent ref = ref0->lock();
+					lowest = std::min(lowest,ref->GetRect().axis[axis].min);
+				}
+				if (lowest < std::numeric_limits<float>::max())
+					rs |= Set(a.max, lowest - dist);
+			}
+			else
+				rs |= Set(a.max, context.axis[axis].max - dist);
+		}
+		else
+			rs |= Set(a.max,a.min + extent);
+
+		if (!anchor.min.IsFixed())
+			rs |= Set(a.min,a.max - extent);
+
+		SetRect(rect);
+
+		return rs;
+	}
+
+	Component&			Component::FillHorizontally(float spacing, TAnchor::distanceType_t type /*= TAnchor::RelativeToParentComponent*/)
+	{
+		auto cfg = anchorConfig;
+		cfg.Left().Set(spacing,type);
+		cfg.Right().Set(spacing,type);
+		SetAnchorConfig(cfg);
+		return *this;
+	}
+
+	Component&			Component::FillVertically(float spacing, TAnchor::distanceType_t type /*= TAnchor::RelativeToParentComponent*/)
+	{
+		auto cfg = anchorConfig;
+		cfg.Top().Set(spacing,type);
+		cfg.Bottom().Set(spacing,type);
+		SetAnchorConfig(cfg);
+		return *this;
+	}
+
+	Component&			Component::AnchorTop(float spacing, TAnchor::distanceType_t type/* = TAnchor::RelativeToParentComponent*/)
+	{
+		auto cfg = anchorConfig;
+		cfg.Top().Set(spacing,type);
+		SetAnchorConfig(cfg);
+		return *this;
+	}
+
+
+	Component&			Component::SetCenteredWidth(float w, TAnchor::distanceType_t type)
+	{
+		float extra = 1.f - w;
+		if (type == TAnchor::AbsolutePixels)
+			extra = float(ViewPortWidth()) - w;
+		auto cfg = anchorConfig;
+		cfg.Left().Set(extra*0.5f,type);
+		cfg.Right().Set(extra*0.5f,type);
+		SetAnchorConfig(cfg);
+		return *this;
+	}
+
+
+
+	/*static*/ bool		Component::Set(float&ref, float to)
+	{
+		ASSERT__(!isnan(to));
+		bool changed = !M::Similar(ref,to);
+		ref = to;
+		return changed;
+	}
+
+	/*static*/ bool		Component::SetCenter(M::TFloatRange<>&ref, float to)
+	{
+		float current = ref.center();
+
+		bool changed = !M::Similar(current,to);
+		ref.SetCenter(to);
+		return changed;
+	}
+
+	#if 0
+	/*virtual*/ bool	Component::ResolveAnchors(const M::Rect<>&context)
+	{
+		//if (!resolveAnchors)
+		//	return false;
+		bool rs = false;
+		rs |= ResolveAnchorAxis(0,context);
+		rs |= ResolveAnchorAxis(1,context);
+		return rs;
+	}
+	#endif /*0*/
+
+	static bool CheckHovering(const M::Rect<>&area)
+	{
+		return area.Contains(Engine::mouse.location.windowRelative);
+	}
+
+
+	/*static*/ void	Component::Darken(const M::Rect<>&rect, float alpha/*=0.9f*/, bool flush/*=false*/)
+	{
+		SurfaceRenderer::SetColor(float4(0,0,0,alpha));
+		SurfaceRenderer::Rasterize(rect);
+		if (flush)
+			SurfaceRenderer::Flush();
+	
+	}
+
+	/*virtual override*/ float	Checkbox::GetIdealWidth() const
+	{
+		float checkBoxWidth = GetTotalFontScale() * textout.GetScaledHeight() / ViewPortAspect() * 1.5f;
+		return Super::GetIdealWidth() + checkBoxWidth;
+	}
+
+
+	/*virtual override*/ float	Checkbox::GetContentHeight() const
+	{
+		const float textHeight = Super::GetContentHeight();
+		
+		const float checkBoxHeight = GetTotalFontScale() * textout.GetScaledHeight() * 1.4f;	//compensate vertical translation (see Render())
+
+		return Math::Max(textHeight,checkBoxHeight);
+	}
+
+	/*virtual override*/ void Checkbox::Render()
+	{
+		bool lit = IsLit();
+		//Super::BaseRender(lit,false);
+		Super::RenderText(lit);
+		SurfaceRenderer::SetColor(lit ? float4(0.7f):float4(0.5f));
+		float checkBoxHeight = GetTotalFontScale() * textout.GetScaledHeight();
+		float checkBoxWidth = checkBoxHeight / ViewPortAspect();
+		float top = GetRect().y.center() + checkBoxHeight*0.7f;// Super::extraSpacing * checkBoxHeight;
+		M::TFloatRect box = M::TFloatRect(GetRect().x.min,top - checkBoxHeight,GetRect().x.min+checkBoxWidth,top);
+		SurfaceRenderer::Rasterize(box);
+		if (isChecked)
+		{
+			//SurfaceRenderer::SetColor(lit ? float4(0.7f):float4(0.4f));
+			M::TFloatRect inner = box;
+			inner.Scale(0.8f);
+			SurfaceRenderer::SetColor(lit ? float4(1.f):float4(0.7f));
+			SurfaceRenderer::Rasterize(inner);
+		}
+		SurfaceRenderer::Flush();
+		LineRenderer::SetColor(lit ? float4(1) : float4(0.7f));
+		LineRenderer::Rasterize(box);
+		LineRenderer::Flush();
+	}
+
+
+	/*virtual override*/ PWindow	Window::GetWindow()
+	{
+		return To<Window>::Cast(shared_from_this());
+	}
+
+	/*virtual*/ void	Window::OnShow()
+	{
+		if (logFullAutoLayout)
+			LogEvent(EventClass::Preset::gui,"Window["+String(this)+"]::OnShow()");
+
+		visible = true; 
+		SetActive(true); 
+		OnScreenSizeOrUIScaleChange();
+	}
+
+	bool			Window::FullAutoLayout(const TCodeLocation&caller)
+	{
+		if (nestedCall)
+			return false;
+		nestedCall = true;
+		if (logFullAutoLayout)
+			LogEvent(EventClass::Preset::gui,"Window["+String(this)+"]::FullAutoLayout("+String(caller)+")");
+
+		AcceptStateFromParent(TPropagating());
+		bool rs = Super::FullAutoLayout(context);
+		relayoutRequired = false;
+
+		if (autoCenter)
+		{
+			float2 delta = context.center() - GetRect().center();
+			if (!Vec::similar(delta,M::Vector2<>::zero))
+				Super::Translate(delta);
+		}
+		UpdateOuterRect();
+		nestedCall = false;
+
+		return rs;
+	}
+
+
+
+
+	/**/			TabBar::TabBar()
+	{
+		SetAutomaticHeight(true);
+		fillBackground = false;
+		SetAutoHeightSpacing(0.02f);
+
+	}
+
+	
+	PButton			TabBar::AddTab(const String&caption)
+	{
+		//auto&tab = tabs.Append();
+		PButton tab(new Button(caption));
+		WButton b = tab;
+		tab->SetTriggerFunction([this,b]()
+		{
+			SetActiveTab(b.lock());
+		});
+
+		{
+			auto mod = tab->ModifyAnchorConfig();
+			if (Super::HasComponents())
+				mod.Left().Set(Super::GetComponents().Last(),0.01f);
+			else
+				mod.Left().Set(0);
+			mod.Top().Set(0);
+		}
+		tab->SetVerticalPadding(0.25f);
+		tab->LockToIdealWidth();
+
+		ConfigureInactive(tab);
+
+		Super::AddComponent(tab);
+
+		if (Super::CountComponents() == 1)
+			SetActiveTab(0,true);
+		return tab;
+	}
+
+	index_t			TabBar::GetTabIndex(const PButton&tabButton)	const
+	{
+		if (!tabButton)
+			return InvalidIndex;
+		return Super::GetComponents().GetIndexOf(tabButton);
+	}
+
+	/*virtual*/ void	TabBar::OnTabChange()
+	{
+		if (onTabChange)
+			onTabChange();
+	}
+
+	/*static*/ void		TabBar::ConfigureInactive(const PButton&active)
+	{
+		active->SetAlwaysDown(false);
+		active->edges = M::Quad<bool>(true);
+		active->bottomOpacity = 1;
+		active->ModifyAnchorConfig().Bottom().Unset();
+		active->topOpacity = 0.85f;
+		active->bottomOpacity = 0.85f;
+		active->SetColor(float4(1,1,1,0.85f));
+
+	}
+	/*static*/ void		TabBar::ConfigureActive(const PButton&active)
+	{
+		active->SetAlwaysDown(true);
+		active->ModifyAnchorConfig().Bottom().Set(0);
+		active->topOpacity = 1.f;
+		active->bottomOpacity = 0;
+		active->edges = M::Quad<bool>(true,false,true,true);
+		active->SetColor(float4(1));
+	}
+
+
+	void			TabBar::SetActiveTab(index_t tabIndex, bool triggerCallback)
+	{
+		if (tabIndex == activeIndex)
+			return;
+		ASSERT__(tabIndex < CountComponents());
+		if (active)
+		{
+			ConfigureInactive(active);
+		}
+
+		activeIndex = tabIndex;
+		active = To<Button>::Cast( GetComponents()[tabIndex] );
+		{
+			ConfigureActive(active);
+		}
+		if (triggerCallback)
+			OnTabChange();
+	}
+
+
+
+	void			TabCollection::Setup()
+	{
+		if (tabBar)
+			return;
+		this->fillBackground = false;
+		tabBar.reset(new TabBar());
+		{
+			auto mod = tabBar->ModifyAnchorConfig();
+			mod.Left().Set(0);
+			mod.Right().Set(0);
+			mod.Top().Set(0);
+		}
+		tabBar->SetOnTabChange([this]()
+		{
+			if (tabBar->GetActiveTabIndex() != InvalidIndex)
+				this->SetActiveTab(tabBar->GetActiveTabIndex(),true);
+		});
+
+		Super::AddComponent(tabBar);
+	}
+
+
+	PPanel			TabCollection::AddTab(const String&caption)
+	{
+		Setup();
+
+		auto&tab = tabs.Append();
+		tab.panel.reset(new Panel());
+		tab.panel->edges.top = false;
+		{
+			auto mod = tab.panel->ModifyAnchorConfig();
+			mod.Left().Set(0);
+			mod.Right().Set(0);
+			mod.Top().Set(tabBar,0);
+			mod.Bottom().Set(0);
+		}
+		tab.button = tabBar->AddTab(caption);
+		return tab.panel;
+	}
+
+	index_t			TabCollection::GetTabIndex(const PPanel&tabPanel)	const
+	{
+		if (!tabPanel)
+			return InvalidIndex;
+		for (index_t i = 0; i < tabs.Count(); i++)
+			if (tabs[i].panel == tabPanel)
+				return i;
+		return InvalidIndex;
+	}
+
+	void			TabCollection::SetCaptionOf(const PPanel&tabPanel, const String&caption)
+	{
+		if (!tabPanel)
+			return;
+		index_t at = GetTabIndex(tabPanel);
+		ASSERT__(at != InvalidIndex);
+		tabs[at].button->SetText(caption);
+	}
+
+	const String&	TabCollection::GetCaptionOf(const PPanel&tabPanel)	const
+	{
+		index_t at = GetTabIndex(tabPanel);
+		ASSERT__(at != InvalidIndex);
+		return tabs[at].button->GetText().First();
+	}
+
+	PPanel			TabCollection::GetActiveTab() const
+	{
+		return active.panel;
+	}
+
+	const String&	TabCollection::GetActiveCaption() const
+	{
+		static const String empty;
+		if (active.button)
+			return active.button->GetText().First();
+		return empty;
+	}
+
+	void			TabCollection::SetOnTabChange(const FOnTabChange&onChange)
+	{
+		onTabChange = onChange;
+	}
+
+	bool			TabCollection::ClearTabs()
+	{
+		if (tabs.IsEmpty())
+			return false;
+		Super::RemoveComponent(active.panel);
+		tabBar->ClearTabs();
+		tabs.Clear();
+		activeIndex = InvalidIndex;
+		active = TTab();
+		OnTabChange();
+		return true;
+	}
+
+	/*virtual*/ void	TabCollection::OnTabChange()
+	{
+		if (onTabChange)
+			onTabChange();
+	}
+
+
+	void			TabCollection::SetActiveTab(index_t tabIndex, bool triggerCallback)
+	{
+		if (tabIndex == activeIndex)
+			return;
+		ASSERT__(tabIndex < tabs.Count());
+
+		if (tabBar)
+			tabBar->SetActiveTab(tabs[tabIndex].button,false);
+		Super::RemoveComponent(active.panel);
+		activeIndex = tabIndex;
+		active = tabs[tabIndex];
+		Super::AddComponent(active.panel);
+		if (triggerCallback)
+			OnTabChange();
+	}
+
+
+
+	void	MultiPlot::Plot::AddNode(MultiPlot*s, const index_t x, const float y)
+	{
+
+		if (start == InvalidIndex)
+			start = x;
+		else
+		{
+			ASSERT_GREATER_OR_EQUAL__(x,start + data.Count());
+			float yOff = data.Last().yRaw;
+
+			const count_t intermediate = x - start - data.Count();
+
+			const index_t from = data.Count();
+			for (index_t xi = 0; xi < intermediate; xi++)
+			{
+				float fi = float(xi + 1) / float(intermediate + 1);
+				const float y0 = yOff * (1.f - fi) + y * (fi);
+				const float sampled = s->SampleStackedHeight(xi + from);
+				if (s->CountPlots() == 1 && sampled != 0)
+				{
+					const float sampled = s->SampleStackedHeight(xi + from);
+					FATAL__("Got "+String(sampled));
+				}
+				data << TPoint{y0,sampled,sampled+y0};
+			}
+		}
+
+		const float sampled = s->SampleStackedHeight(x);
+		const float yTop = y + sampled;
+		data << TPoint{y,sampled,yTop};
+
+		s->xRange.Include(x);
+		s->stackedYRange.Include(yTop);
+		s->rawYRange.Include(y);
+		s->SignalAxesChanged();
+
+		changed = true;
+	}
+
+
+	void	MultiPlot::Plot::RenderSurfaces() const
+	{
+		surface.Rasterize();
+	}
+
+	void	MultiPlot::Plot::RenderLines() const
+	{
+		lines.Rasterize();
+	}
+
+	/*virtual override*/ void	MultiPlot::Render()
+	{
+		Super::Render();
+		bool anyChanged = axesChanged;
+		foreach (plots,g)
+			if (g->changed)
+			{
+				anyChanged = true;
+				break;
+			}
+		if (anyChanged)
+			Replot();
+
+		display.StoreRendererState();
+		display.SetRasterizer(true,true);
+		foreach (plots,g)
+			g->RenderSurfaces();
+
+		display.RestoreRendererState();
+
+		foreach (plots,g)
+			g->RenderLines();
+
+
+		axes.Rasterize();
+
+		{
+			BeginLabelPrint();
+			foreach (labels,label)
+			{
+				textout.MoveTo(label->coords);
+				textout << label->caption;
+			}
+
+			EndLabelPrint();
+		}
+
+
+		Box::RenderOutline(GetRect(),float3(1),true);
+	}
+
+	void MultiPlot::BeginLabelPrint()
+	{
+		textout.PushState();
+
+		textout.Scale(Detail::textZoom*0.8f);
+		float g = 0.6f;
+		textout.SetColor(g,g,g);
+	}
+
+	void MultiPlot::EndLabelPrint()
+	{
+		textout.PopState();
+	}
+
+
+	float	MultiPlot::GetAxisStep(const M::TFloatRange<>&valueRange) const
+	{
+		const float range = valueRange.GetExtent();
+		const float lg = log(range) / log(10.f);
+		const int digits = int(floor(lg));
+		const float base = pow(10.f,digits);
+		const float relative = range / base;
+		if (relative < 2.f)
+			return base*0.5f;
+		if (relative < 5.f)
+			return base;
+		return base * 2.f;
+	}
+
+	void	MultiPlot::Replot()
+	{
+		Super::OnRectChange();
+
+		
+		static const float labelPadding = 0.01f;
+		const auto effectiveRange = isStack ? stackedYRange : rawYRange;
+		const float yMax = effectiveRange.max;
+		BeginLabelPrint();
+			rightSpace = std::max(0.025f,textout.GetScaledWidth(String(yMax)) + labelPadding * 2.f);
+		EndLabelPrint();
+
+		const M::Rect<> plotScope = GetPlotScope();
+		const M::Rect<> plotRect = GetPlotRect();
+		foreach (plots,g)
+			g->Replot(plotRect,plotScope, g == plots.begin() && isStack, isStack);
+
+
+		const M::Rect<>&cRect = GetRect();
+		{
+			axesChanged = false;
+
+			axes.Clear();
+
+			//const M::Rect<> plotRect = GetPlotRect();
+
+
+
+			const float yRange = plotRect.y.min - cRect.y.min;
+			const float xRange = cRect.x.max - plotRect.x.max;
+
+			const float4 color{float3{0.5f},1.f};
+
+			axes.SetIndexOffsetToVertexCount();
+			axes.AddVertex(float2(plotRect.x.min,cRect.y.min + yRange*0.1f),color);
+			axes.AddVertex(float2(plotRect.x.min,cRect.y.min + yRange*0.9f),color);
+			axes.AddLine(0,1);
+
+			axes.AddVertex(float2(plotRect.x.max,cRect.y.min + yRange*0.1f),color);
+			axes.AddVertex(float2(plotRect.x.max,cRect.y.min + yRange*0.9f),color);
+			axes.AddLine(2,3);
+			axes.AddLine(1,3);
+
+			axes.SetIndexOffsetToVertexCount();
+			axes.AddVertex(float2(plotRect.x.max + xRange*0.1f,plotRect.y.min),color);
+			axes.AddVertex(float2(plotRect.x.max + xRange*0.9f,plotRect.y.min),color);
+			axes.AddLine(0,1);
+
+			axes.AddVertex(float2(plotRect.x.max + xRange*0.1f,plotRect.y.max),color);
+			axes.AddVertex(float2(plotRect.x.max + xRange*0.9f,plotRect.y.max),color);
+			axes.AddLine(2,3);
+			axes.AddLine(0,2);
+
+			{
+				const M::TFloatRange<float> fx = M::FloatRange<float>(this->xRange.start,this->xRange.end-1);
+				float xLineStep = GetAxisStep(fx);
+
+				const index_t start = ceil(float(this->xRange.start+1) / xLineStep);
+				const count_t count = floor(float(this->xRange.GetExtent()) / xLineStep);
+
+				for (index_t i = start; i < start + count; i++)
+				{
+					const float rel = fx.Relativate(xLineStep * i);
+					const float x = plotRect.x.Derelativate(rel);
+					axes.SetIndexOffsetToVertexCount();
+					axes.AddVertex(float2(x,cRect.y.min + yRange*0.3f),color);
+					axes.AddVertex(float2(x,cRect.y.min + yRange*0.7f),color);
+					axes.AddLine(0,1);
+				}
+			}
+
+			if (effectiveRange.IsValid())
+			{
+				const M::TFloatRange<float> fy = M::FloatRange<float>(0,yMax);
+				float xLineStep = GetAxisStep(fy);
+
+				const index_t start = 1;
+				const count_t count = floor(float(fy.GetExtent()) / xLineStep);
+
+				for (index_t i = start; i < start + count; i++)
+				{
+					const float rel = fy.Relativate(xLineStep * i);
+					const float y = plotRect.y.Derelativate(rel);
+					axes.SetIndexOffsetToVertexCount();
+					axes.AddVertex(float2(plotRect.x.max + xRange*0.3f,y),color);
+					axes.AddVertex(float2(plotRect.x.max + xRange*0.7f,y),color);
+					axes.AddLine(0,1);
+				}
+			}
+
+			axes.Bake();
+
+
+			BeginLabelPrint();
+			labels.Clear();
+			{
+				labels.Append().caption = String(this->xRange.start);
+				labels.Last().coords = float2(plotRect.x.min + 0.005f,cRect.y.min + yRange * 0.5f + textout.GetScaledHeight()*0.5f);
+			}
+			{
+				labels.Append().caption = String(this->xRange.end-1);
+				labels.Last().coords = float2(plotRect.x.max - 0.005f - textout.GetScaledWidth(labels.Last().caption),cRect.y.min + yRange * 0.5f + textout.GetScaledHeight()*0.5f);
+			}
+			{
+				labels.Append().caption = "0";
+				labels.Last().coords = float2(plotRect.x.max + labelPadding,plotRect.y.min + textout.GetScaledHeight());
+			}
+			{
+				labels.Append().caption = String(yMax);
+				labels.Last().coords = float2(plotRect.x.max + labelPadding,plotRect.y.max);
+			}
+
+			EndLabelPrint();
+		}
+
+	}
+
+	M::Rect<>			MultiPlot::GetPlotScope() const
+	{
+		return M::Rect<>(xRange.start,0.f,xRange.end-1,isStack ? stackedYRange.max : rawYRange.max);
+	}
+
+	M::Rect<>			MultiPlot::GetPlotRect() const
+	{
+		M::Rect<> rs = GetRect();
+		rs.x.min += 0.025f;
+		rs.x.max -= rightSpace;
+		rs.y.min += 0.05f;
+		rs.y.max -= 0.05f;
+		return rs;
+	}
+
+
+
+	float	MultiPlot::SampleStackedHeight(index_t x) const
+	{
+		if (!xRange.Contains(x))
+			return 0;
+
+		float rs = 0;
+		foreach (plots,g)
+			rs += g->Sample(x);
+
+		return rs;
+	}
+
+
+	float	MultiPlot::Plot::Sample(index_t x) const
+	{
+		if (x < start)
+			return 0;
+		x -= start;
+
+		if (x >= data.Count())
+			return 0;
+		return data[x].yRaw;
+	}
+
+
+	void	MultiPlot::Plot::MakeVertex(const float x, const float y)
+	{
+		const float2	p{x,y};
+		lines.AddVertex(p,float4(color,1.f));
+		surface.AddVertex(p,float4(color,0.5f));
+	}
+
+
+	void	MultiPlot::Plot::Replot(const M::Rect<>&componentRect, const M::Rect<>&dataRect, bool addBottomLine, bool stacked)
+	{
+		changed = false;
+
+
+		surface.Clear();
+		lines.Clear();
+
+		if (data.Count() > 1)
+		{
+			//if (stacked)
+			{
+				for (index_t i = 0; i < data.Count(); i++)
+				{
+					const float rX = dataRect.x.Relativate(i + start);
+					const float y0 = stacked ? data[i].yMin : 0;
+					const float y1 = stacked ? data[i].yMax : data[i].yRaw;
+					ASSERT_IS_CONSTRAINED__(rX,0,1);
+					MakeVertex( 
+						componentRect.x.Derelativate( rX ),
+						componentRect.y.Derelativate( dataRect.y.Relativate(y0) )
+						);
+
+					MakeVertex( 
+						componentRect.x.Derelativate( rX ),
+						componentRect.y.Derelativate( dataRect.y.Relativate(y1) )
+						);
+				}
+
+				for (index_t i = 1; i < data.Count(); i++)
+				{
+
+					surface.AddQuad(
+						((i-1)*2+1),
+						((i-1)*2),
+						((i)*2),
+						((i)*2+1));
+					lines.AddLine(
+						((i-1)*2+1),
+						((i)*2+1));
+
+					if (addBottomLine)
+						lines.AddLine(
+							((i-1)*2),
+							((i)*2));
+				}
+				lines.AddLine(0,1);
+				lines.AddLine(data.Count()*2-1,data.Count()*2-2);
+			}
+			#if 0
+			else
+			{
+				const float w = ViewPortWidth();
+				const float h = ViewPortHeight();
+
+				struct TPoint
+				{
+					float2	raw,dir,normal,base,final;
+				};
+
+				Array<TPoint> points(data.Count());
+				for (index_t i = 0; i < data.Count(); i++)
+				{
+					const float rX = dataRect.x.Relativate(i + start);
+					ASSERT_IS_CONSTRAINED__(rX,0,1);
+					const float x = componentRect.x.Derelativate( rX );
+					const float y = componentRect.y.Derelativate( dataRect.y.Relativate(data[i].yRaw) );
+					points[i].raw.x = x * w;
+					points[i].raw.y = y * h;
+
+					MakeVertex(x,y);
+				}
+
+				for (index_t i = 0; i+1 < points.Count(); i++)
+				{
+					auto&p = points[i];
+					p.dir = points[i+1].raw - points[i].raw;
+					p.normal = float2{p.dir.y,-p.dir.x}.Normalize0();
+					p.base = p.raw + p.normal * 20 * UI::GetScale();
+				}
+
+				for (index_t i = 1; i+1 < points.Count(); i++)
+				{
+					const float2&n1 = points[i].normal;
+					const float2&b0 = points[i-1].base,
+								&b1 = points[i].base,
+								&d0 = points[i-1].dir;
+					const float2 bd = b1 - b0;
+					const float div = Vec::dot(d0,n1);
+					if (fabs(div) > TypeInfo<float>::error)
+					{
+						const float alpha = Vec::dot(n1, b1 - b0) / div;
+						points[i].final = b0 + alpha * d0;
+					}
+					else
+						points[i].final = points[i].base;
+				}
+
+				{
+					points.First().final = points.First().base;
+					points.Last().final = points.GetFromEnd(1).base + points.GetFromEnd(1).dir;
+				}
+				foreach (points,p)
+				{
+					MakeVertex(p->final.x / w, p->final.y / h);
+				}
+
+
+
+				for (index_t i = 1; i < data.Count(); i++)
+				{
+					surface.AddQuadInv(i-1,i,i+data.Count(),i+data.Count()-1);
+					lines.AddLine(
+						i-1,
+						i);
+				}
+
+			}
+			#endif
+		}
+
+		lines.Bake();
+		surface.Bake();
+	}
+
+
+	void SignalScreenResize()
+	{
+		Detail::lastClientSpace = display.GetClientSize();
+	}
+
+}
+
+
+
+
+
+
+}
+
+#endif

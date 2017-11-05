@@ -18,7 +18,7 @@
 	#include "../server/components/state.h"
 	#include "../server/components/serverLogEvent.h"
 #else
-	#include "../client/components/visual/eventLog.h"
+	#include "../client/components/visual/hud/eventLog.h"
 #endif
 
 bool		inTestMode = false;
@@ -305,7 +305,7 @@ namespace Logging
 		if (printToConsole)
 		{
 			#ifdef HAS_WINDOW
-				VisualEventLog::DisplayEvent(evClass,e,owner, message,origin);
+				HUD::VisualEventLog::DisplayEvent(evClass,e,owner, message,origin);
 			#else
 				consoleThread.pipe << String(console.buffer.ToStringRef());
 			#endif
