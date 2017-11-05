@@ -70,6 +70,7 @@ namespace PortOffset
 							NAME_APPEND1\
 							NAME_APPEND_S\
 							NAME_APPEND_L\
+							"a"	/*aerial branch*/\
 							"]"
 
 #include "objects/resource.h"
