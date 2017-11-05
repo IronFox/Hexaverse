@@ -188,6 +188,7 @@ namespace VisualEventLog
 
 			const auto old = textout.state;
 				textout.Scale(eventFontScale,eventFontScale);
+			const auto common = textout.state;
 				textout.MoveTo(0.0f, 280.f/display.GetClientHeight() + historyHeight);
 				for (index_t i = events.Count() - rows; i < events.Count(); i++)
 					//if (events[i].stackID < 10)
@@ -202,7 +203,7 @@ namespace VisualEventLog
 								textout << seg->message;
 							}
 							textout << nl;
-							textout.SetScale(old.scale_x,old.scale_y);
+							textout.SetScale(common.scale_x,common.scale_y);
 						}
 					}
 
