@@ -5,7 +5,7 @@
 #include <general/timer.h>
 #include <io/monitoredProcess.h>
 #include <logEvent.h>
-#include "visual/dialog.h"
+#include "visual/hud/dialog.h"
 #include "clientEvents.h"
 
 #include "clientRuntimeConfig.h"
@@ -18,9 +18,10 @@ namespace ServerProcess
 		//CryptographicID	accessToken;
 
 		MonitoredProcess	process(false);
-		bool				remoteControl = false, configurationMode=false,tutorialMode=false;
+		bool				remoteControl = false, configurationMode=false,tutorialMode=false,resumed=false;
+		index_t				shutdownRegistration=InvalidIndex;
 		#ifdef HAS_WINDOW
-			Dialog::WDialog	holdOn;
+			HUD::Dialog::WDialog	holdOn;
 			index_t			holdOnID;
 			Timer::Time		holdOnCreated;
 		#endif
@@ -43,16 +44,25 @@ namespace ServerProcess
 		{
 			if (Detail::process.TryResume(Detail::GetWorkingDirectory(),Detail::GetExecutablePath()))
 			{
+				resumed = true;
 				LogEvent(EventSignificance::Debug,"Resumed running server process at '"+String(Detail::GetExecutablePath())+"'");
 				return true;
 			}
 			return false;
+		}
 
-
+		void	TerminateIfNotResumed()
+		{
+			if (!resumed)
+				process.Terminate();
 		}
 
 		void	Start()
 		{
+			if (shutdownRegistration == InvalidIndex)
+				shutdownRegistration = GlobalEvents::applicationTerminate.Register(TerminateIfNotResumed);
+
+
 			PathString	path = GetExecutablePath(),
 						workingDirectory = GetWorkingDirectory();
 
@@ -63,13 +73,13 @@ namespace ServerProcess
 				parameters += " -c";
 			if (tutorialMode)
 				parameters += " -t";
-
 			bool showWindow = false;
 			#ifdef _DEBUG
 				showWindow = true;
 			#endif
 			if (TryResume())
 				return;
+			resumed = false;
 			LogEvent(EventSignificance::Debug,"Starting server process (workingDirectory='"+String(workingDirectory)+"', path='"+String(path)+"', parameters='"+String(parameters)+"', showWindow="+String(showWindow)+")");
 			try
 			{
@@ -89,21 +99,21 @@ namespace ServerProcess
 			LogEvent(EventClass::Preset::uncommon,"Starting tutorial server...");
 			RuntimeConfig::serverAddress = Network::ServerAddress("localhost");
 			#ifdef HAS_WINDOW
-				holdOn = Dialog::PermanentMessage("Hold on. Getting tutorial server ready.",[]()->Dialog::CheckResult
+				holdOn = HUD::Dialog::PermanentMessage("Hold on. Getting tutorial server ready.",[]()->HUD::Dialog::CheckResult
 				{
 					if (Network::haveFaction)
 					{
-						//Dialog::ShowMessage("Welcome to the Hexaverse Tutorial");
-						return Dialog::CheckResult::Abort;
+						//HUD::Dialog::ShowMessage("Welcome to the Hexaverse Tutorial");
+						return HUD::Dialog::CheckResult::Abort;
 					}
-					return Dialog::CheckResult::OkayContinue;
+					return HUD::Dialog::CheckResult::OkayContinue;
 				});
 				holdOnCreated = timer.Now();
 
 				holdOnID = GlobalEvents::frameBegin.Register([]()
 				{
-					Dialog::PDialog d = holdOn.lock();
-					if (!d || !GUI::IsVisible(d))
+					HUD::Dialog::PDialog d = holdOn.lock();
+					if (!d || !HUD::WindowStack::IsVisible(d))
 					{
 						GlobalEvents::frameBegin.Unregister(holdOnID);
 						holdOnID = InvalidIndex;
@@ -112,11 +122,11 @@ namespace ServerProcess
 					if (timer.GetSecondsSince(holdOnCreated) > 30)
 					{
 						End();
-						GUI::Hide(d);
+						HUD::WindowStack::Hide(d);
 						GlobalEvents::frameBegin.Unregister(holdOnID);
 						holdOnID = InvalidIndex;
 						RuntimeConfig::serverAddress = Network::ServerAddress();
-						Dialog::ShowMessage("Tutorial server took too long to start. Something went wrong. Please check any available logs in\n"
+						HUD::Dialog::ShowMessage("Tutorial server took too long to start. Something went wrong. Please check any available logs in\n"
 								+String(FileSystem::Folder( RuntimeConfig::ConfigDir()).ParentLocation()->GetLocation())
 							+"\nSorry about this :S");
 					}
@@ -174,17 +184,17 @@ namespace ServerProcess
 		#ifdef HAS_WINDOW
 		if (ServerProcess::IsRunning())
 		{
-			Dialog::Confirm("In order to start a tutorial server, the local server must be shut down. Continue?",
+			HUD::Dialog::Confirm("In order to start a tutorial server, the local server must be shut down. Continue?",
 			[]()
 			{
 				ServerProcess::End();
 				Detail::StartTutorial();
 			},
-			[]()->Dialog::CheckResult
+			[]()->HUD::Dialog::CheckResult
 			{
 				if (!ServerProcess::IsRunning())
-					return Dialog::CheckResult::Confirm;
-				return Dialog::CheckResult::OkayContinue;
+					return HUD::Dialog::CheckResult::Confirm;
+				return HUD::Dialog::CheckResult::OkayContinue;
 			});
 		}
 		else

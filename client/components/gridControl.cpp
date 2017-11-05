@@ -4,9 +4,9 @@
 #include <grid/planet.h>
 #include <grid/resources.h>
 #include <grid/worldData.h>
-#include "visual/terrain.h"
-#include "visual/world.h"
-#include "visual/lighting.h"
+#include "visual/scene/terrain.h"
+#include "visual/scene/world.h"
+#include "visual/scene/lighting.h"
 #include "clientEvents.h"
 #include <objects/faction.h>
 #include "network.h"

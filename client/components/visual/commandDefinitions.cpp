@@ -1,6 +1,6 @@
 #include <global_root.h>
 #include "commandDefinitions.h"
-#include "objectCommands.h"
+#include "hud/objectCommands.h"
 #include <objects/structure.h>
 #include "objectSelection.h"
 #include <objects/research.h>
@@ -16,12 +16,12 @@
 #include <objects/structure/tower.h>
 #include "../clientRuntimeConfig.h"
 #include "../network.h"
-#include "dialog.h"
+#include "hud/dialog.h"
 #include "objectChoices.h"
-#include "terrain.h"
-#include "objectRendering.h"
+#include "scene/terrain.h"
+#include "scene/objectRendering.h"
 #include "../cameraControl.h"
-#include "menu.h"
+#include "hud/menu.h"
 
 
 namespace Objects
@@ -113,21 +113,21 @@ namespace Objects
 								waterNotice = " Note that this vehicle type cannot stand on water. ";
 							TUniqueID myID = plant.id;
 							EntityType type = {plant.selectedBase->constName,plant.selectedTurret->constName};
-							Dialog::Confirm("Cannot find valid spawning locations around '"+plant.GetNiceName()+"' for '"+Vehicle::GetTypeName(plant.selectedBase,plant.selectedTurret)+"'. "+waterNotice+"Are you sure you wish to start this production?",
+							HUD::Dialog::Confirm("Cannot find valid spawning locations around '"+plant.GetNiceName()+"' for '"+Vehicle::GetTypeName(plant.selectedBase,plant.selectedTurret)+"'. "+waterNotice+"Are you sure you wish to start this production?",
 									[type,myID]()
 									{
 										ApplicationInterface::SignalConstructionBegin(myID, type);
 										//ignoreWarnings = true;
 									}
 									,
-									[myID]()->Dialog::CheckResult
+									[myID]()->HUD::Dialog::CheckResult
 									{
 										PVehiclePlant plant = To<VehiclePlant>::DynamicCast(GetEntity(myID));
 										if (!plant || plant->IsDeadOrGhost())
-											return Dialog::CheckResult::Abort;
+											return HUD::Dialog::CheckResult::Abort;
 										if (!Objects::controlIsEnabled)
-											return Dialog::CheckResult::OkayNotRightNow;
-										return Dialog::CheckResult::OkayContinue;
+											return HUD::Dialog::CheckResult::OkayNotRightNow;
+										return HUD::Dialog::CheckResult::OkayContinue;
 									}
 								);
 						#else
@@ -1200,7 +1200,7 @@ namespace Objects
 					if (!index && p->productionDone)
 					{
 						WWorldEntity e = selectedEntity;
-						Dialog::Confirm("Confirm cancellation of production job "+p->queue.First().name+". Material has been invested into this production, which will be lost.",
+						HUD::Dialog::Confirm("Confirm cancellation of production job "+p->queue.First().name+". Material has been invested into this production, which will be lost.",
 						[e,id]()
 						{
 							PWorldEntity e1 = e.lock();
@@ -1208,16 +1208,16 @@ namespace Objects
 								ApplicationInterface::SignalConstructionAbort(e1->id,id);
 						}
 						,
-						[e,p,id]()->Dialog::CheckResult
+						[e,p,id]()->HUD::Dialog::CheckResult
 						{
 							PWorldEntity e1 = e.lock();
 							if (!e1 || e1->IsDeadOrGhost())
-								return Dialog::CheckResult::Abort;
+								return HUD::Dialog::CheckResult::Abort;
 							if (p->queue.IsEmpty() || p->queue.First().id != id)
-								return Dialog::CheckResult::Abort;
+								return HUD::Dialog::CheckResult::Abort;
 							if (!controlIsEnabled)
-								return Dialog::CheckResult::OkayNotRightNow;
-							return Dialog::CheckResult::OkayContinue;
+								return HUD::Dialog::CheckResult::OkayNotRightNow;
+							return HUD::Dialog::CheckResult::OkayContinue;
 						}
 						);
 
@@ -1294,7 +1294,7 @@ namespace Objects
 			globalCommands.Add(new GlobalCommand("Open Menu",
 			[]()
 			{
-				GUI::Show(Menu::main);
+				HUD::WindowStack::Show(HUD::Menu::main);
 			}));
 
 			viewCommands = AddChild(globalCommands,"View");

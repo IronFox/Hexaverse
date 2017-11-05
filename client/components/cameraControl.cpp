@@ -9,12 +9,12 @@
 #include <grid/stack.h>
 #include "clientRuntimeConfig.h"
 #include <objects/satellite.h>
-#include "visual/objectCommands.h"
-#include "visual/terrain.h"
+#include "visual/hud/objectCommands.h"
+#include "visual/scene/terrain.h"
 
 #include "timelapse.h"
 #include "clientEvents.h"
-#include "visual/lighting.h"
+#include "visual/scene/lighting.h"
 
 
 float3							sunDirection;
