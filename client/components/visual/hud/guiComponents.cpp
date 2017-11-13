@@ -621,8 +621,10 @@ namespace Component
 
 	/*virtual override*/ void	Panel::Render()
 	{
-		Super::Render(); 
 		const auto&rect = GetRect();
+		if (!rect.IsValid())
+			return;
+		Super::Render(); 
 		if (vscroll.visible)
 		{
 			vscroll.Render(rect);
