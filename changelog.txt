@@ -1,3 +1,5 @@
+v0.6.9
+
 v0.6.8	[Nov 5 2017]
 	+ Added .NET bug reporter.
 	* Fixed screen going black when changing FSAA settings with shadows disabled.
