@@ -4,6 +4,7 @@
 		<exclude file="visual.rc2" />
 		<exclude find="consensusLink" />
 		<exclude dir="visual" />
+		<exclude dir="audio" />
 	</source>
 	<macro name="CLIENT"/>
 	<macro name="_SCL_SECURE_NO_WARNINGS" />
