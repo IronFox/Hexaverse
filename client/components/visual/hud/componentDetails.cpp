@@ -17,6 +17,8 @@ namespace Detail
 
 		void	LoadView(const M::Rect<>&view, const float2&offset)
 		{
+			if (!view.IsValid())
+				FATAL__("HUD: Trying to load invalid view: "+ToString(view));
 			LineRenderer::Flush();
 			SurfaceRenderer::Flush();
 			M::Rect<> view2 = view;

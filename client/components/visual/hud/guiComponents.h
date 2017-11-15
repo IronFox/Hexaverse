@@ -203,6 +203,7 @@ namespace Component
 
 	class Component : public std::enable_shared_from_this<Component>, public ComponentLocation
 	{
+		typedef ComponentLocation Super;
 	protected:
 		struct TPropagating
 		{
@@ -261,6 +262,24 @@ namespace Component
 		bool			IsEnabled() const {return localState.isEnabled && parentState.isEnabled;}
 		bool			IsLit() const {return ClientIsLit() && parentState.isLit;}
 		bool			IsActive() const {return active;}
+
+			
+	
+
+		#ifdef _DEBUG
+		bool			SetWidth(float w)
+		{
+			ASSERT__(!anchorConfig.Left().IsFixed() || !anchorConfig.Right().IsFixed()); 
+			return Super::SetWidth(w);
+		}
+		bool			SetHeight(float h)
+		{
+			ASSERT__(!anchorConfig.Top().IsFixed() || !anchorConfig.Bottom().IsFixed()); 
+			return Super::SetHeight(h);
+		}
+		#endif
+
+
 
 		/**
 		Updates the enabled-state of the local component
