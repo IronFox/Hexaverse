@@ -1,4 +1,4 @@
-v0.6.9
+v0.6.9	[Nov 15 2017]
 	* Fixed crash when displaying statistics.
 
 v0.6.8	[Nov 5 2017]
