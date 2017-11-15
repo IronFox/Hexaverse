@@ -451,6 +451,7 @@ namespace HUD
 				{
 					auto anchors = metricPanel->ModifyAnchorConfig();
 					anchors.Left().Set(0);
+					anchors.Right().Unset();
 					anchors.Top().Set(0);
 					anchors.Bottom().Set(0);
 				}
@@ -459,6 +460,7 @@ namespace HUD
 
 				{
 					auto anchors = factionPanel->ModifyAnchorConfig();
+					anchors.Left().Unset();
 					anchors.Right().Set(0);
 					anchors.Top().Set(0);
 					anchors.Bottom().Set(0);
@@ -469,6 +471,7 @@ namespace HUD
 					auto anchors = statsPanel->ModifyAnchorConfig();
 					anchors.Left().Set(metricPanel,0);
 					anchors.Right().Set(factionPanel,0);
+					anchors.Top().Unset();
 					anchors.Bottom().Set(0);
 				}
 				statsPanel->SetAutomaticHeight(false);
