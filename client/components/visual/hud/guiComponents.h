@@ -485,6 +485,16 @@ namespace Component
 
 		bool			IsStacked() const {return isStack;}
 		void			SetStacked(bool stacked) {if (stacked == isStack) return; isStack = stacked;  Replot();}
+
+		static float	GetAxisStep(float rangeExtent);
+		static bool		GetAxisStepWidthAndCount(float rangeExtent ,float&outStep, count_t&outCount);
+
+		/**
+		For arithmetic testing purposes. Runs GetAxisStepWidthAndCount() on a 0-range but without the checks.
+		The resulting failure highlights the differences between processor and target architecture as a NaN->count_t
+		cast produces unpredictable/different results.
+		*/
+		static void		DoAxisCalculationAndCrash();
 	protected:
 		virtual void	OnRectChange() override	{Replot();}
 		virtual void	OnScreenSizeOrUIScaleChange() override	{Replot();}
@@ -492,7 +502,6 @@ namespace Component
 		void			Replot();
 	private:
 
-		float			GetAxisStep(const M::TFloatRange<>&valueRange) const;
 		void			BeginLabelPrint();
 		void			EndLabelPrint();
 

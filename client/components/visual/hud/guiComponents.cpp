@@ -2047,18 +2047,36 @@ namespace Component
 	}
 
 
-	float	MultiPlot::GetAxisStep(const M::TFloatRange<>&valueRange) const
+	/*static*/ float	MultiPlot::GetAxisStep(float rangeExtent)
 	{
-		const float range = valueRange.GetExtent();
-		const float lg = log(range) / log(10.f);
+		const float lg = log(rangeExtent) / log(10.f);
 		const int digits = int(floor(lg));
 		const float base = pow(10.f,digits);
-		const float relative = range / base;
+		const float relative = rangeExtent / base;
 		if (relative < 2.f)
 			return base*0.5f;
 		if (relative < 5.f)
 			return base;
 		return base * 2.f;
+	}
+
+	/*static*/ bool	MultiPlot::GetAxisStepWidthAndCount(float rangeExtent, float&outStep, count_t&outCount)
+	{
+		if (rangeExtent <= 0)
+			return false;
+		outStep = GetAxisStep(rangeExtent);
+		if (outStep == 0 || isnan(outStep))
+			return false;
+		outCount = M::Min((count_t)floor(rangeExtent / outStep),1000);
+		return true;
+	}
+
+	/*static*/ void		MultiPlot::DoAxisCalculationAndCrash()
+	{
+		float s = GetAxisStep(0);
+		float fcnt = floor(0 / s);
+		count_t cnt = (count_t)fcnt;
+		FATAL__("GetAxisStep(0) = "+ String(s)+" => fcnt="+String(fcnt)+", cnt="+String(cnt));
 	}
 
 	void	MultiPlot::Replot()
@@ -2116,38 +2134,41 @@ namespace Component
 
 			{
 				const M::TFloatRange<float> fx = M::FloatRange<float>(this->xRange.start,this->xRange.end-1);
-				float xLineStep = GetAxisStep(fx);
+				count_t count;
+				float xLineStep;
 
-				const index_t start = ceil(float(this->xRange.start+1) / xLineStep);
-				const count_t count = floor(float(this->xRange.GetExtent()) / xLineStep);
-
-				for (index_t i = start; i < start + count; i++)
+				if (GetAxisStepWidthAndCount(fx.GetExtent(),xLineStep,count))
 				{
-					const float rel = fx.Relativate(xLineStep * i);
-					const float x = plotRect.x.Derelativate(rel);
-					axes.SetIndexOffsetToVertexCount();
-					axes.AddVertex(float2(x,cRect.y.min + yRange*0.3f),color);
-					axes.AddVertex(float2(x,cRect.y.min + yRange*0.7f),color);
-					axes.AddLine(0,1);
+					const index_t start = ceil(float(this->xRange.start+1) / xLineStep);
+					for (index_t i = start; i < start + count; i++)
+					{
+						const float rel = fx.Relativate(xLineStep * i);
+						const float x = plotRect.x.Derelativate(rel);
+						axes.SetIndexOffsetToVertexCount();
+						axes.AddVertex(float2(x,cRect.y.min + yRange*0.3f),color);
+						axes.AddVertex(float2(x,cRect.y.min + yRange*0.7f),color);
+						axes.AddLine(0,1);
+					}
 				}
 			}
 
 			if (effectiveRange.IsValid())
 			{
 				const M::TFloatRange<float> fy = M::FloatRange<float>(0,yMax);
-				float xLineStep = GetAxisStep(fy);
-
-				const index_t start = 1;
-				const count_t count = floor(float(fy.GetExtent()) / xLineStep);
-
-				for (index_t i = start; i < start + count; i++)
+				count_t count;
+				float yLineStep;
+				if (GetAxisStepWidthAndCount(fy.GetExtent(),yLineStep,count))
 				{
-					const float rel = fy.Relativate(xLineStep * i);
-					const float y = plotRect.y.Derelativate(rel);
-					axes.SetIndexOffsetToVertexCount();
-					axes.AddVertex(float2(plotRect.x.max + xRange*0.3f,y),color);
-					axes.AddVertex(float2(plotRect.x.max + xRange*0.7f,y),color);
-					axes.AddLine(0,1);
+					const index_t start = 1;
+					for (index_t i = start; i < start + count; i++)
+					{
+						const float rel = fy.Relativate(yLineStep * i);
+						const float y = plotRect.y.Derelativate(rel);
+						axes.SetIndexOffsetToVertexCount();
+						axes.AddVertex(float2(plotRect.x.max + xRange*0.3f,y),color);
+						axes.AddVertex(float2(plotRect.x.max + xRange*0.7f,y),color);
+						axes.AddLine(0,1);
+					}
 				}
 			}
 
