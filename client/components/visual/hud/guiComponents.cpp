@@ -1780,6 +1780,7 @@ namespace Component
 		active->edges = M::Quad<bool>(true);
 		active->bottomOpacity = 1;
 		active->ModifyAnchorConfig().Bottom().Unset();
+		active->LockToIdealHeight(true);
 		active->topOpacity = 0.85f;
 		active->bottomOpacity = 0.85f;
 		active->SetColor(float4(1,1,1,0.85f));
@@ -1788,6 +1789,7 @@ namespace Component
 	/*static*/ void		TabBar::ConfigureActive(const PButton&active)
 	{
 		active->SetAlwaysDown(true);
+		active->LockToIdealHeight(false);
 		active->ModifyAnchorConfig().Bottom().Set(0);
 		active->topOpacity = 1.f;
 		active->bottomOpacity = 0;

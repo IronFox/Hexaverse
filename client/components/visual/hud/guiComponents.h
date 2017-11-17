@@ -143,6 +143,10 @@ namespace Component
 
 	typedef Axial2<TAnchor>	AnchorConfig;
 
+	inline bool	BothAnchorsFixed(const Axial<TAnchor>&axis)
+	{
+		return axis.min.IsFixed() && axis.max.IsFixed();
+	}
 
 
 	class AnchorModifier : private AnchorConfig
@@ -264,7 +268,7 @@ namespace Component
 		bool			IsActive() const {return active;}
 
 			
-	
+		bool			BothAnchorsAreFixed(int axis) const {return BothAnchorsFixed(anchorConfig.axis[axis]) ;}
 
 		#ifdef _DEBUG
 		bool			SetWidth(float w)
@@ -661,10 +665,20 @@ namespace Component
 
 		float			GetTextHeight() const {return textHeight;}
 
-		void			LockToIdealWidth(bool doLock=true)	{widthLockedToIdeal = doLock; if (doLock) SetToIdealWidth();}
+		void			LockToIdealWidth(bool doLock=true)	{DBG_ASSERT__(!BothAnchorsAreFixed(0)); widthLockedToIdeal = doLock; if (doLock) SetToIdealWidth();}
 		bool			IsLockedToIdealWidth() const {return widthLockedToIdeal;}
-		void			LockToIdealHeight(bool doLock=true)	{heightLockedToIdeal = doLock; if (doLock) SetHeight(textHeight);}
+		void			LockToIdealHeight(bool doLock=true)	{DBG_ASSERT__(!BothAnchorsAreFixed(1)); heightLockedToIdeal = doLock; if (doLock) SetHeight(textHeight);}
 		bool			IsLockedToIdealHeight() const {return heightLockedToIdeal;}
+
+		virtual void		SetAnchorConfig(const Axial2<TAnchor>&cfg)	override 
+		{
+			if (BothAnchorsFixed(cfg.axis[0]))
+				ASSERT__(!widthLockedToIdeal);
+			if (cfg.axis[1].min.IsFixed() && cfg.axis[1].max.IsFixed())
+				ASSERT__(!heightLockedToIdeal);
+			Super::SetAnchorConfig(cfg);
+		}
+
 
 		virtual bool	UpdateDynamicSize() override;
 		virtual void	Render() override;
@@ -1532,7 +1546,7 @@ namespace Component
 		}
 
 	public:
-		M::Rect<>				context = M::Rect<>(0,0,1,1);
+		M::Rect<>			context = M::Rect<>(0,0,1,1);
 		bool				canBeImplicitlyClosed = true;	//!< Indicates that this window can be closed by events such as the Escape being pressed
 		bool				isModal = true;
 
@@ -1554,7 +1568,7 @@ namespace Component
 		virtual void		SetAnchorConfig(const Axial2<TAnchor>&cfg)	override 
 		{
 			ASSERT__(!autoCenter);
-			anchorConfig = cfg; InvalidateAutoLayout();
+			Super::SetAnchorConfig(cfg);
 		}
 
 		bool				DoesAutoCenter() const {return autoCenter;}
