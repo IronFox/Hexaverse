@@ -64,8 +64,8 @@ namespace HUD
 					rs->AddComponent(label);
 					{
 						auto mod = label->ModifyAnchorConfig();
-						mod.Left().Set(0);
-						mod.Top().Set(0);
+						mod.GetHAxis().AnchorLowerUnknown();
+						mod.GetVAxis().AnchorUpperUnknown();
 					}
 					label->LockToIdealWidth();
 					label->LockToIdealHeight();
@@ -97,7 +97,7 @@ namespace HUD
 				PLabel nameLabel{new Label{faction->name}},statusLabel{new Label{faction->online ? (faction->requestedNewRound ? "" : WordForThinking(RuntimeConfig::roundNumber,faction.get())) : "<offline>" ,0.8f}};
 
 				nameLabel->SetWidth(0.15f);
-				nameLabel->ModifyAnchorConfig().Left().Set(0);
+				nameLabel->ModifyAnchorConfig().GetHAxis().AnchorLowerUnknown();
 				nameLabel->alignCenter = false;
 				nameLabel->SetPadding(0.2f);
 				nameLabel->SetHorizontalPadding(1,1);
@@ -111,9 +111,12 @@ namespace HUD
 					statusLabel->SetColor(faction->color); 
 					nameLabel->SetColor(faction->color);
 				}
-				statusLabel->ModifyAnchorConfig().Left().Set(nameLabel,0);
-				statusLabel->ModifyAnchorConfig().Right().Set(0);
-				statusLabel->ModifyAnchorConfig().Bottom().Set(0);
+				{
+					auto cfg = statusLabel->ModifyAnchorConfig();
+					cfg.GetHAxis().lower.Set(nameLabel,0);
+					cfg.GetHAxis().upper.Set(0);
+					cfg.GetVAxis().AnchorLowerUnknown();
+				}
 			
 				statusLabel->SetPadding(0.2f);
 				//textLabel->ModifyAnchorConfig().Top().Set(0);
@@ -166,7 +169,7 @@ namespace HUD
 						close->SetVerticalPadding(0.5f);
 						close->FillHorizontally(0);
 						buttons->AddComponent(close);
-						close->ModifyAnchorConfig().Top().Set(0);
+						close->ModifyAnchorConfig().GetVAxis().AnchorUpperUnknown();
 					}
 
 					{
@@ -179,17 +182,16 @@ namespace HUD
 						send->SetVerticalPadding(0.5f);
 						{
 							auto cfg = send->ModifyAnchorConfig();
-							cfg.Top().SetAuto();
-							cfg.Bottom().SetAuto();
-							cfg.Right().Set(0);
+							cfg.GetVAxis().SetAutoCenter();
+							cfg.GetHAxis().AnchorUpperUnknown();
 						}
 						send->LockToIdealWidth();
 						send->LockToIdealHeight();
 						{
 							auto cfg = chatMessage->ModifyAnchorConfig();
-							cfg.Top().Set(0);
-							cfg.Right().Set(send,0);
-							cfg.Left().Set(0);
+							cfg.GetVAxis().AnchorUpperUnknown();
+							cfg.GetHAxis().upper.Set(send,0);
+							cfg.GetHAxis().lower.Set(0);
 						}
 						chatInput->AddComponent(chatMessage);
 						chatInput->AddComponent(send);
@@ -275,14 +277,14 @@ namespace HUD
 			timeLabel->SetPadding(M::Quad<float>{0.5f,0,0.5f,0});
 			timeLabel->LockToIdealWidth();
 			//timeLabel->alignCenter = false;
-			timeLabel->ModifyAnchorConfig().Bottom().Set(0);
-			timeLabel->ModifyAnchorConfig().Right().Set(0);
+			timeLabel->ModifyAnchorConfig().GetVAxis().AnchorLowerUnknown();
+			timeLabel->ModifyAnchorConfig().GetHAxis().AnchorUpperUnknown();
 			if (owner)
 			{
 				senderLabel.reset(new Label{owner->name+": "});
 				senderLabel->SetColor(owner->color);
 				senderLabel->LockToIdealWidth();
-				senderLabel->ModifyAnchorConfig().Left().Set(0);
+				senderLabel->ModifyAnchorConfig().GetHAxis().AnchorLowerUnknown();
 				//senderLabel->ModifyAnchorConfig().Top().Set(0);
 				senderLabel->alignCenter = false;
 				senderLabel->LockToIdealHeight();
@@ -290,16 +292,24 @@ namespace HUD
 				senderLabel->SetVerticalPadding(0.25f);
 				senderLabel->SetHorizontalPadding(1,0);
 				textLabel->SetColor(owner->color * 0.5f + 0.5f); 
-				textLabel->ModifyAnchorConfig().Left().Set(senderLabel,0);
+				{
+					auto cfg = textLabel->ModifyAnchorConfig();
+					cfg.GetHAxis().lower.Set(senderLabel,0);
+					cfg.GetHAxis().upper.Disable();
+				}
 			}
 			else
 			{
 				textLabel->SetColor(owner->color);
-				textLabel->ModifyAnchorConfig().Left().Set(0);
+				textLabel->ModifyAnchorConfig().GetHAxis().AnchorLowerUnknown();
 			}
 			textLabel->SetPadding(0);
 			textLabel->SetVerticalPadding(0.25f);
-			textLabel->ModifyAnchorConfig().Right().Set(timeLabel,0);
+			{
+				auto cfg = textLabel->ModifyAnchorConfig();
+				cfg.GetHAxis().upper.Set(timeLabel,0);
+				cfg.GetHAxis().lower.Disable();
+			}
 			//textLabel->ModifyAnchorConfig().Top().Set(0);
 			textLabel->alignCenter = false;
 			textLabel->LockToIdealHeight();

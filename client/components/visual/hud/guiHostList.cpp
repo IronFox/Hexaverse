@@ -57,7 +57,7 @@ namespace HUD{namespace HostList{
 
 		serverChoice = Window::Create();
 		serverChoice->SetAutoCenter(false);
-		serverChoice->SetCenteredWidth(0.9f,TAnchor::RelativeToScreen);
+		serverChoice->SetCenteredWidth(Distance::GameWindow( 0.9f ));
 		serverChoice->canBeImplicitlyClosed = false;
 
 		headerRow.reset(new Panel());
@@ -347,7 +347,7 @@ namespace HUD{namespace HostList{
 			if (first)
 			{
 				first = false;
-				cfg.Top().SetSomeOf(p,0.f,[p](const PComponent&c)->bool{return c != p->GetComponents().last();});
+				cfg.Top().SetSomeOf(p,0.f,[p](const PComponent&c)->bool{return c != p->GetReferences().last();});
 			}
 			else
 			{

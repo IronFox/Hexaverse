@@ -250,12 +250,11 @@ namespace ConfigurationMode
 				button->SetLocation(M::TFloatRect(float2(),float2(0.15f,0.15f)));
 				{
 					auto cfg = button->GetAnchorConfig();
-					cfg.Left().Set(x);
-					cfg.Right().Set(x2);
+					cfg.GetHAxis().Fill(x,x2);
 					if (window->CountComponents()>=4)
-						cfg.Top().Set(window->GetComponents()[4*(window->CountComponents()/4-1)], 0.01f);
+						cfg.GetVAxis().AnchorUpper(HUD::Component::Distance::Unknown(), window->GetReferences()[4*(window->CountComponents()/4-1)], 0.01f);
 					else
-						cfg.Top().Set(0.f);
+						cfg.GetVAxis().AnchorUpper(HUD::Component::Distance::Unknown());
 					button->SetAnchorConfig(cfg);
 				}
 				button->SetHorizontalPadding(0);
@@ -279,9 +278,9 @@ namespace ConfigurationMode
 //				button->anchorConfig.Top().Set(b);
 				{
 					auto cfg = button->GetAnchorConfig();
-					cfg.Left().Set(0);
-					cfg.Right().Set(0);
-					cfg.Top().SetLastOf(window, 0.01f);
+					cfg.GetHAxis().Fill();
+					cfg.GetVAxis().lower.Disable();
+					cfg.GetVAxis().upper.SetLastOf(window, 0.01f);
 					button->SetAnchorConfig(cfg);
 				}
 			
@@ -391,8 +390,8 @@ namespace ConfigurationMode
 			PComponent label = planetListWindow->AddNewComponent(new Label("Planets",1.2f));
 			{
 				auto cfg = label->GetAnchorConfig();
-				cfg.Top().Set(0);
-				cfg.Left().Set(0);
+				cfg.GetHAxis().AnchorLower(HUD::Component::Distance::Unknown());
+				cfg.GetVAxis().AnchorUpper(HUD::Component::Distance::Unknown());
 				label->SetAnchorConfig(cfg);
 			}
 			foreach (planetList,p)
@@ -407,9 +406,9 @@ namespace ConfigurationMode
 				}));
 				{
 					auto cfg = button->GetAnchorConfig();
-					cfg.Top().SetLastOf(planetListWindow,0.02f);
-					cfg.axis[0].min.Set(0);
-					cfg.axis[0].max.Set(0);
+					cfg.GetHAxis().Fill();
+					cfg.GetVAxis().lower.Disable();
+					cfg.GetVAxis().upper.SetLastOf(planetListWindow, 0.02f);
 					button->SetAnchorConfig(cfg);
 				}
 				planetListWindow->AddComponent(button);

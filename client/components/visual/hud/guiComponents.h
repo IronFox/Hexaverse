@@ -53,103 +53,152 @@ namespace Component
 		Processed
 		);
 
-
-
-	template <typename T>
-		class Axial
-		{
-		public:
-			T			min = T(),
-					//	center = T(),
-						max = T();
-		};
-
-	template <typename T>
-		class Axial2
-		{
-		public:
-			Axial<T>	axis[2];
-
-			T&			Top() {return axis[1].max;}
-			T&			Bottom() {return axis[1].min;}
-			T&			Left() {return axis[0].min;}
-			T&			Right() {return axis[0].max;}
-			const T&	Top() const {return axis[1].max;}
-			const T&	Bottom() const {return axis[1].min;}
-			const T&	Left() const {return axis[0].min;}
-			const T&	Right() const {return axis[0].max;}
-		};
+	CONSTRUCT_ENUMERATION2(AnchorAxis,Horizontal,Vertical);
 
 
 
-	struct TAnchor
+	struct Distance
 	{
-		enum type_t
+		CONSTRUCT_ENUMERATION4(Type,RelativeToParentComponent,RelativeToGameWindow,AbsolutePixels,Placeholder);
+
+
+		float	value = 0;
+		Type	type;
+
+		/**/	Distance()	{}
+		/**/	Distance(float d, Type t = Type::RelativeToParentComponent) : value(d),type(t)	{}
+
+		static Distance GameWindow(float d) {return Distance(d,Type::RelativeToGameWindow);}
+		static Distance Unknown() {return Distance(-1,Type::Placeholder);}
+
+		bool	IsValid() const {return !isnan(value) && !isinf(value) && value >= 0 && type != Type::Placeholder;}
+		bool	IsValidNonZero() const {return !isnan(value) && !isinf(value) && value > 0 && type != Type::Placeholder;}
+		bool	IsPlaceholder() const {return type == Type::Placeholder;}
+		bool	IsZero() const {return value ==0;}
+		bool	IsNonZero() const {return value != 0;}
+		bool	IsPositiveNonZero() const {return value > 0;}
+		bool	IsPositiveNonZeroOrPlaceholder() const {return value > 0 || type == Type::Placeholder;}
+
+		void	operator=(const Distance&other)
 		{
-			Disabled,
-			Fixed,
-			Auto
-		};
-
-		enum distanceType_t
-		{
-			RelativeToParentComponent,
-			RelativeToScreen,
-			AbsolutePixels,
-		};
-		type_t			type;
-
-		float			distanceFromReference = 0.f;	//!< Distance to position extreme from closest reference. If no references are set, uses context edge instead.
-		distanceType_t		distanceType = RelativeToParentComponent;	
-		Buffer0<WComponent>	references;			//!< Zero or more reference components. If none are set, the respective context extreme is used. If more than one are set, the closest is used
-
-
-		void			Unset()
-		{
-			type = Disabled;
+			if (other.IsPlaceholder() && !IsPlaceholder())
+				return;
+			DBG_ASSERT__(other.IsValid() || other.IsPlaceholder());
+			type = other.type;
+			value = other.value;
 		}
-		void			Set(const PComponent&c, float distance, distanceType_t dtype=RelativeToParentComponent)
+
+		float	ToScreenDistance(float parentSize, AnchorAxis myAxis) const;
+		bool	operator==(const Distance&other) const
+		{
+			return value == other.value && type == other.type;
+		}
+
+		bool	operator!=(const Distance&other) const
+		{
+			return !operator==(other);
+		}
+
+		friend String ToString(const Distance&dist)
+		{
+			return String(dist.value)+"["+String(dist.type.ToString())+"]";
+		}
+	};
+
+
+	typedef std::function<void(const PComponent&)> FComponentVerification;
+
+	struct Anchor
+	{
+		typedef Buffer0<WComponent>	Components;
+
+		void			Disable()
+		{
+			enabled = false;
+			references.Clear();
+		}
+		void			Set(const PComponent&c, const Distance&dist)
 		{
 			if (!c)
 				return;
-			type = Fixed;
-			distanceFromReference = distance;
+			enabled = true;
+			distanceFromReference = dist;
 			references.Clear();
 			references.Append(c);
-			distanceType = dtype;
 		}
-		void			Set(float distance, distanceType_t dtype=RelativeToParentComponent)
+		void			Set(const Distance&dist)
 		{
-			type = Fixed;
-			distanceFromReference = distance;
-			distanceType = dtype;
-		}
-		void			SetAuto()
-		{
-			type = Auto;
+			enabled = true;
+			distanceFromReference = dist;
 		}
 
-		void			SetAllOf(const PPanel&, float distance, distanceType_t dtype=RelativeToParentComponent);
-		void			SetSomeOf(const PPanel&, float distance, const std::function<bool(const PComponent&)>&, distanceType_t dtype=RelativeToParentComponent);
-		void			SetLastOf(const PPanel&, float distance, distanceType_t dtype=RelativeToParentComponent);
+		void			VerifyIntegrity(const FComponentVerification&, const AnchorAxis&, bool isUpper) const;
 
-		bool			IsFixed() const {return type == Fixed;}
-		bool			IsAuto() const {return type == Auto;}
-		bool			IsInactive() const {return type == Disabled;}
+		void			SetAllOf(const PPanel&, const Distance&distance);
+		void			SetSomeOf(const PPanel&, const Distance&distance, const std::function<bool(const PComponent&)>&);
+		void			SetLastOf(const PPanel&, const Distance&distance);
 
-
-		float			ToScreenDistance(float parentSize, bool isHorizontal) const;
+		bool			IsEnabled() const {return enabled;}
+		bool			IsInactive() const {return !enabled;}
+		const Distance&	GetOffset() const {return distanceFromReference;}
+		const Components&GetReferences() const {return references;}
+	private:
+		bool			enabled = true;
+		Distance		distanceFromReference;	//!< Distance to position extreme from closest reference. If no references are set, uses context (parent) edge instead. If no references or parent are available, gamewindow edge is used.
+		Components		references;			//!< Zero or more reference components. If none are set, the respective context extreme is used. If more than one are set, the closest is used
 	};
 
-	typedef Axial2<TAnchor>	AnchorConfig;
-
-	inline bool	BothAnchorsFixed(const Axial<TAnchor>&axis)
+	class AnchorConfig
 	{
-		return axis.min.IsFixed() && axis.max.IsFixed();
-	}
+	public:
+
+		class Axis
+		{
+		public:
+			Anchor		lower, upper;
+			/**
+			Configured spacing between lower and upper.
+			Effective onlye of either lower or upper is not fixed
+			*/
+			Distance	extent;
+			AnchorAxis	myAxis;
+			bool		isAutoCentering=false;
+
+			bool		Stretches() const {return BothAnchorsAreOn() && !isAutoCentering;}
+			bool		SetExtent(const Distance&);
+			void		AnchorLower(const Distance&extent, const Distance&lowerOffset = Distance());
+			void		AnchorLower(const Distance&extent, const PComponent&lowerReference, const Distance& lowerOffset = Distance());
+			void		AnchorUpper(const Distance&extent, const Distance&upperOffset = Distance());
+			void		AnchorUpper(const Distance&extent, const PComponent&upperReference, const Distance& upperOffset = Distance());
+			void		AnchorUpperUnknown(const Distance&upperOffset = Distance());
+			void		AnchorLowerUnknown(const Distance&lowerOffset = Distance());
+			void		Fill(const Distance&lowerOffset = Distance(), const Distance&upperOffset = Distance());
+			void		SetAutoCenter(const Distance&extent = Distance::Unknown()) {isAutoCentering = true; this->extent = extent; lower.Disable(); upper.Disable();}
+			void		VerifyIntegrity(const FComponentVerification&) const;
+			bool		BothAnchorsAreOff() const {return lower.IsInactive() && upper.IsInactive();}
+			bool		BothAnchorsAreOn() const {return lower.IsEnabled() && upper.IsEnabled();}
+			bool		IsFreeFloating() const {return BothAnchorsAreOff() && !isAutoCentering;}
+			bool		HasExtentPlaceholder() const {return !Stretches() && extent.IsPlaceholder();}
+
+			float		GetMinimum(float parentUpperEdge, const M::TFloatRange<>&rectRange) const;
+		};
 
 
-	class AnchorModifier : private AnchorConfig
+
+		Axis			axis[2];
+
+		/**/			AnchorConfig()	{axis[AnchorAxis::Horizontal].myAxis = AnchorAxis::Horizontal; axis[AnchorAxis::Vertical].myAxis = AnchorAxis::Vertical;}
+		void			VerifyIntegrity(const FComponentVerification&check) const {axis[0].VerifyIntegrity(check); axis[1].VerifyIntegrity(check);}
+		Axis&			GetHAxis() {return axis[AnchorAxis::Horizontal];}
+		const Axis&		GetHAxis() const {return axis[AnchorAxis::Horizontal];}
+		Axis&			GetVAxis() {return axis[AnchorAxis::Vertical];}
+		const Axis&		GetVAxis() const {return axis[AnchorAxis::Vertical];}
+		bool			HasExtentPlaceholders() const {return axis[0].HasExtentPlaceholder() || axis[1].HasExtentPlaceholder();}
+	};
+
+
+
+	class AnchorModifier : public AnchorConfig
 	{
 	public:
 		/**/			AnchorModifier(const AnchorModifier&)=delete;
@@ -158,10 +207,6 @@ namespace Component
 		/**/			AnchorModifier(AnchorModifier&&);
 		/**/			AnchorModifier(Component*cmp);
 		/**/			~AnchorModifier();
-		auto&			Top() {return axis[1].max;}
-		auto&			Bottom() {return axis[1].min;}
-		auto&			Left() {return axis[0].min;}
-		auto&			Right() {return axis[0].max;}
 	private:
 		Component		*parent;
 	};
@@ -175,10 +220,7 @@ namespace Component
 			index_t		dbgMarked = 0;
 		#endif
 
-		const M::Rect<>&	GetRect() const {return rect;}
-		bool			SetWidth(float w);
-		bool			SetHeight(float h);
-		void			SetSize(const M::TVec2<>&size);
+		const M::Rect<>&GetRect() const {return rect;}
 		float			GetWidth() const {return rect.x.GetExtent();}
 		float			GetHeight() const {return rect.y.GetExtent();}
 
@@ -251,7 +293,7 @@ namespace Component
 		static bool		SetCenter(M::TFloatRange<>&ref, float to);
 		
 
-		Axial2<TAnchor>	anchorConfig;
+		AnchorConfig	anchorConfig;
 	public:	//do not call outside container classes:
 
 		virtual void	OnScreenSizeOrUIScaleChange()	{}
@@ -268,21 +310,31 @@ namespace Component
 		bool			IsActive() const {return active;}
 
 			
-		bool			BothAnchorsAreFixed(int axis) const {return BothAnchorsFixed(anchorConfig.axis[axis]) ;}
+		bool			SizeChangesDynamically(int axis) const {return anchorConfig.axis[axis].Stretches();}
+		bool			WidthChangesDynamically() const {return anchorConfig.GetHAxis().Stretches();}
+		bool			HeightChangesDynamically() const {return anchorConfig.GetVAxis().Stretches();}
 
-		#ifdef _DEBUG
-		bool			SetWidth(float w)
+		
+		bool			SetWidth(const Distance&w)
 		{
-			ASSERT__(!anchorConfig.Left().IsFixed() || !anchorConfig.Right().IsFixed()); 
-			return Super::SetWidth(w);
+			if (anchorConfig.GetHAxis().SetExtent(w))
+			{
+				InvalidateAutoLayout();
+				return true;
+			}
+			return false;
 		}
-		bool			SetHeight(float h)
-		{
-			ASSERT__(!anchorConfig.Top().IsFixed() || !anchorConfig.Bottom().IsFixed()); 
-			return Super::SetHeight(h);
-		}
-		#endif
 
+		bool			SetHeight(const Distance&h)
+		{
+			if (anchorConfig.GetVAxis().SetExtent(h))
+			{
+				InvalidateAutoLayout();
+				return true;
+			}
+			return false;
+		}
+		
 
 
 		/**
@@ -307,7 +359,7 @@ namespace Component
 
 		virtual void	Render();
 
-		virtual bool	ResolveAnchorAxis(int axis, const M::Rect<>&context);
+		virtual bool	ResolveAnchorAxis(AnchorAxis axis, const M::Rect<>&context);
 
 		virtual void	Translate(const float2&delta)	{TranslateRect(delta); /*InvalidateAnchorResolution();*/}
 		virtual void	SetLocation(const M::Rect<>&loc) {SetRect(loc);}
@@ -317,6 +369,7 @@ namespace Component
 		void			SetParent(const PWindow&w, const PComponent&c);
 		PComponent		GetParent() const {return parent.lock();}
 		virtual PWindow	GetWindow() {return window.lock();}
+		virtual PConstWindow	GetWindow() const {return window.lock();}
 
 		bool			FullAutoLayout(const M::Rect<>&context);
 
@@ -325,16 +378,18 @@ namespace Component
 
 		AnchorModifier	ModifyAnchorConfig() {return this;}
 		const AnchorConfig&GetAnchorConfig() const {return anchorConfig;}
-		virtual void	SetAnchorConfig(const Axial2<TAnchor>&cfg)	{anchorConfig = cfg; InvalidateAutoLayout();}
+
+		virtual void	VerifyAnchorIntegrity() const;
+		virtual void	SetAnchorConfig(const AnchorConfig&cfg);
 
 		/**
 		Updates the left and right anchors such that the local component maintains the given width
 		@param w Target component width. If @a type is AbsolutePixels, then w must be specified in pixels, otherwise any value in [0,1]
 		*/
-		Component&		SetCenteredWidth(float w, TAnchor::distanceType_t type);
-		Component&		FillHorizontally(float spacing, TAnchor::distanceType_t type = TAnchor::RelativeToParentComponent);
-		Component&		FillVertically(float spacing, TAnchor::distanceType_t type = TAnchor::RelativeToParentComponent);
-		Component&		AnchorTop(float spacing, TAnchor::distanceType_t type = TAnchor::RelativeToParentComponent);
+		Component&		SetCenteredWidth(const Distance&width);
+		Component&		FillHorizontally(const Distance&sideSpacing);
+		Component&		FillVertically(const Distance&verticalSpacing);
+		Component&		AnchorTop(const Distance& topSpacing);
 
 		void			AcceptStateFromParent(const TPropagating&p)	{parentState = p; PropagateToChildren(CreatePropagating());}
 		void			AcceptParentWindow(const PWindow&w);
@@ -353,7 +408,7 @@ namespace Component
 	public:
 		static void		StaticCreate();
 
-		void			SetAutoHeight(bool b)	{if (autoSetHeight == b) return; autoSetHeight = b; InvalidateAutoLayout();}
+		void			SetAutoHeight(bool b)	{if (autoSetHeight == b) return; ASSERT__(!b || !anchorConfig.GetVAxis().Stretches()); autoSetHeight = b; InvalidateAutoLayout();}
 		void			SetTexture(const DX11::Texture&tex) {texture = tex;InvalidateAutoLayout();}
 
 		virtual void	Render() override;
@@ -674,18 +729,18 @@ namespace Component
 
 		float			GetTextHeight() const {return textHeight;}
 
-		void			LockToIdealWidth(bool doLock=true)	{DBG_ASSERT__(!BothAnchorsAreFixed(0)); widthLockedToIdeal = doLock; if (doLock) SetToIdealWidth();}
+		void			LockToIdealWidth(bool doLock=true)	{DBG_ASSERT__(!WidthChangesDynamically()); widthLockedToIdeal = doLock; if (doLock) SetToIdealWidth();}
 		bool			IsLockedToIdealWidth() const {return widthLockedToIdeal;}
-		void			LockToIdealHeight(bool doLock=true)	{DBG_ASSERT__(!BothAnchorsAreFixed(1)); heightLockedToIdeal = doLock; if (doLock) SetHeight(textHeight);}
+		void			LockToIdealHeight(bool doLock=true)	{DBG_ASSERT__(!HeightChangesDynamically()); heightLockedToIdeal = doLock; if (doLock) SetHeight(textHeight);}
 		bool			IsLockedToIdealHeight() const {return heightLockedToIdeal;}
 
-		virtual void		SetAnchorConfig(const Axial2<TAnchor>&cfg)	override 
+		virtual void		SetAnchorConfig(const AnchorConfig&cfg)	override 
 		{
-			if (BothAnchorsFixed(cfg.axis[0]))
-				ASSERT__(!widthLockedToIdeal);
-			if (cfg.axis[1].min.IsFixed() && cfg.axis[1].max.IsFixed())
-				ASSERT__(!heightLockedToIdeal);
 			Super::SetAnchorConfig(cfg);
+			if (WidthChangesDynamically())
+				ASSERT__(!widthLockedToIdeal);
+			if (HeightChangesDynamically())
+				ASSERT__(!heightLockedToIdeal);
 		}
 
 
@@ -1123,7 +1178,7 @@ namespace Component
 		virtual void	SetActive(bool isActive) override;
 		virtual bool	UpdateDynamicSize() override;
 		virtual void	Render() override;
-		virtual bool	ResolveAnchorAxis(int axis, const M::Rect<>&context) override;
+		virtual bool	ResolveAnchorAxis(AnchorAxis axis, const M::Rect<>&context) override;
 		virtual void	Translate(const float2&delta)	{Super::Translate(delta); foreach (components,c) (*c)->Translate(delta);}
 
 		virtual bool	HasComponent(const PComponent&c) const override {if (c.get() == this) return true; foreach (components, c2) if ((*c2)->HasComponent(c)) return true; return false;}
@@ -1133,9 +1188,10 @@ namespace Component
 		virtual void	OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse) override;
 
 
+		virtual void		VerifyAnchorIntegrity() const override;
 
 
-		virtual const Buffer0<PComponent>&		GetComponents() const { return components; }
+		virtual const Buffer0<PComponent>&		GetReferences() const { return components; }
 
 		virtual bool		HasComponents() const
 		{
@@ -1147,6 +1203,13 @@ namespace Component
 			return components.Count();
 		}
 
+		/**
+		Adds a new component to the local panel.
+		The component must not be child of some other panel.
+		The component must also not reference any components in its anchor references that are not already child of the same window (not necessarily of the local panel).
+		These constraints are checked and lead to program termination if found in violation
+		@return true if the component was added, false if it is null, or already a member
+		*/
 		virtual bool		AddComponent(const PComponent&c);
 		virtual PComponent	AddNewComponent(Component*c)
 		{
@@ -1178,13 +1241,13 @@ namespace Component
 			return false;
 		}
 		template <typename Component>
-		std::shared_ptr<Component>		AnchorBelowPrevious(Component*newComponent, float distanceFromSides = 0.015f, float distanceToPrevious = 0.015f, TAnchor::distanceType_t distanceType=TAnchor::RelativeToScreen)
+		std::shared_ptr<Component>		AnchorBelowPrevious(Component*newComponent, const Distance& distanceFromSides = Distance::GameWindow( 0.015f ), const Distance& distanceToPrevious = Distance::GameWindow(0.015f))
 		{
 			std::shared_ptr<Component> c(newComponent);
-			AnchorBelowPrevious(c,distanceFromSides,distanceToPrevious,distanceType);
+			AnchorBelowPrevious(c,distanceFromSides,distanceToPrevious);
 			return c;
 		}
-		void			AnchorBelowPrevious(const PComponent&newComponent, float distanceFromSides = 0.015f,  float distanceToPrevious = 0.015f, TAnchor::distanceType_t distanceType=TAnchor::RelativeToScreen);
+		void			AnchorBelowPrevious(const PComponent&newComponent, const Distance& distanceFromSides = Distance::GameWindow( 0.015f ), const Distance& distanceToPrevious = Distance::GameWindow(0.015f));
 
 	};
 
@@ -1573,8 +1636,9 @@ namespace Component
 		bool				IsVisible() const {return visible;}
 
 		virtual PWindow		GetWindow() override;
+		virtual PConstWindow	GetWindow() const override;
 
-		virtual void		SetAnchorConfig(const Axial2<TAnchor>&cfg)	override 
+		virtual void		SetAnchorConfig(const AnchorConfig&cfg)	override 
 		{
 			ASSERT__(!autoCenter);
 			Super::SetAnchorConfig(cfg);
@@ -1586,10 +1650,8 @@ namespace Component
 		{
 			if (center)
 			{
-				ASSERT__(anchorConfig.Left().IsInactive());
-				ASSERT__(anchorConfig.Right().IsInactive());
-				ASSERT__(anchorConfig.Top().IsInactive());
-				ASSERT__(anchorConfig.Bottom().IsInactive());
+				ASSERT__(anchorConfig.GetHAxis().IsFreeFloating());
+				ASSERT__(anchorConfig.GetVAxis().IsFreeFloating());
 			}
 			autoCenter = center;
 			InvalidateAutoLayout();
@@ -1601,7 +1663,6 @@ namespace Component
 			UpdateOuterRect();
 		}
 		const float2&		GetOutlineMargin() const {return outlineMargin;}
-
 
 
 		virtual void		Render() override

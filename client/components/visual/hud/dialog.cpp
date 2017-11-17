@@ -63,13 +63,13 @@ namespace Dialog
 		static void SetLeft(const HUD::Component::PComponent&c, float v)
 		{
 			auto cfg = c->GetAnchorConfig();
-			cfg.Left().Set(v);
+			cfg.GetHAxis().lower.Set(v);
 			c->SetAnchorConfig(cfg);
 		}
 		static void SetRight(const HUD::Component::PComponent&c, float v)
 		{
 			auto cfg = c->GetAnchorConfig();
-			cfg.Right().Set(v);
+			cfg.GetHAxis().upper.Set(v);
 			c->SetAnchorConfig(cfg);
 		}
 
@@ -84,8 +84,7 @@ namespace Dialog
 			else
 			{
 				auto cfg = dialog->GetAnchorConfig();
-				cfg.Left().Set(0.25f);
-				cfg.Right().Set(0.25f);
+				cfg.GetHAxis().Fill(0.25f,0.25f);
 				dialog->SetAnchorConfig(cfg);
 			}
 			
@@ -97,9 +96,8 @@ namespace Dialog
 			textPanel->AddComponent(textField);
 			{
 				auto cfg = textField->GetAnchorConfig();
-				cfg.Left().Set(0.f);
-				cfg.Right().Set(0.f);
-				cfg.Top().Set(0.f);
+				cfg.GetHAxis().Fill();
+				cfg.GetVAxis().AnchorUpper(HUD::Component::Distance::Unknown());
 				textField->SetAnchorConfig(cfg);
 				textPanel->SetAnchorConfig(cfg);
 			}
@@ -121,9 +119,8 @@ namespace Dialog
 				inputField.reset(new HUD::Component::Input());
 				{
 					auto cfg = inputField->GetAnchorConfig();
-					cfg.Left().Set(0.f);
-					cfg.Right().Set(0.f);
-					cfg.Top().Set(textField,0.f);//0.025f);
+					cfg.GetHAxis().Fill();
+					cfg.GetVAxis().AnchorUpper(HUD::Component::Distance::Unknown(),textField);
 					inputField->SetAnchorConfig(cfg);
 				}
 				WDialog wd = dialog;
@@ -140,9 +137,8 @@ namespace Dialog
 				passwordInputField.reset(new HUD::Component::PasswordInput());
 				{
 					HUD::Component::AnchorConfig cfg;
-					cfg.Left().Set(0.f);
-					cfg.Right().Set(0.f);
-					cfg.Top().Set(textField,0.f);//0.025f);
+					cfg.GetHAxis().Fill();
+					cfg.GetVAxis().AnchorUpper(HUD::Component::Distance::Unknown(),textField);
 					passwordInputField->SetAnchorConfig(cfg);
 				}
 				textPanel->AddComponent (passwordInputField);
@@ -153,9 +149,8 @@ namespace Dialog
 				confirmButton.reset(new HUD::Component::Button(confirmWord));
 				{
 					HUD::Component::AnchorConfig cfg;
-					cfg.Left().Set(0.f);
-					cfg.Right().Set(0.f);
-					cfg.Top().Set(textPanel,0.015f,HUD::Component::TAnchor::RelativeToScreen);
+					cfg.GetHAxis().Fill();
+					cfg.GetVAxis().AnchorUpper(HUD::Component::Distance::Unknown(),textPanel,HUD::Component::Distance::GameWindow(0.015f));
 					confirmButton->SetAnchorConfig(cfg);
 				}
 				dialog->AddComponent( confirmButton);
@@ -166,7 +161,7 @@ namespace Dialog
 				helpButton.reset(new HUD::Component::Button("?"));
 				{
 					HUD::Component::AnchorConfig cfg;
-					cfg.Top().Set(textPanel,0.015f,HUD::Component::TAnchor::RelativeToScreen);
+					cfg.GetVAxis().AnchorUpper(HUD::Component::Distance::Unknown(),textPanel,HUD::Component::Distance::GameWindow(0.015f));
 					helpButton->SetAnchorConfig(cfg);
 				}
 				dialog->AddComponent(helpButton);
@@ -177,7 +172,7 @@ namespace Dialog
 				noButton.reset(new HUD::Component::Button("No"));
 				{
 					HUD::Component::AnchorConfig cfg;
-					cfg.Top().Set(textPanel,0.015f,HUD::Component::TAnchor::RelativeToScreen);
+					cfg.GetVAxis().AnchorUpper(HUD::Component::Distance::Unknown(),textPanel,HUD::Component::Distance::GameWindow(0.015f));
 					noButton->SetAnchorConfig(cfg);
 				}
 				dialog->AddComponent( noButton);
@@ -191,9 +186,8 @@ namespace Dialog
 				//	confirmButton->anchorConfig.Right().Set(0.505f);
 				{
 					HUD::Component::AnchorConfig cfg;
-					cfg.Left().Set(0.505f);
-					cfg.Right().Set(0.f);
-					cfg.Top().Set(textPanel,0.015f,HUD::Component::TAnchor::RelativeToScreen);
+					cfg.GetHAxis().Fill(0.505f,0);
+					cfg.GetVAxis().AnchorUpper(HUD::Component::Distance::Unknown(),textPanel,HUD::Component::Distance::GameWindow(0.015f));
 					cancelButton->SetAnchorConfig(cfg);
 				}
 				dialog->AddComponent(cancelButton);
@@ -228,24 +222,21 @@ namespace Dialog
 
 				{
 					auto cfg = imageField->GetAnchorConfig();
-					cfg.Left().Set(0.f);
-					cfg.Right().Set(0.6f);
-					cfg.Top().Set(0.05f);
+					cfg.GetHAxis().Fill(0,0.6f);
+					cfg.GetVAxis().AnchorUpper(HUD::Component::Distance::Unknown(),0.05f);
 					if (confirmButton)
 					{
 						//imageField->autoSetHeight = false;
 						//imageField->anchorConfig.Bottom().Set(confirmButton,0.03f,false);
 						imageField->SetAutoHeight(true);
-						cfg.Top().SetAuto();
-						cfg.Bottom().SetAuto();
+						cfg.GetVAxis().SetAutoCenter();
 					}
 					imageField->SetAnchorConfig(cfg);
 				}
 				{
 					auto cfg = textField->GetAnchorConfig();
-					cfg.Left().Set(0.405f);
-					cfg.Bottom().SetAuto();
-					cfg.Top().SetAuto();
+					cfg.GetHAxis().AnchorLower(0.405f);
+					cfg.GetVAxis().SetAutoCenter();
 					textField->SetAnchorConfig(cfg);
 				}
 				//textField->anchorConfig.axis[1].center.Set(imageField,0.f);
