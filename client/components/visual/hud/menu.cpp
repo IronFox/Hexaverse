@@ -60,7 +60,7 @@ namespace Menu
 		if (Super::DoesAutoCenter())
 			SetWidth(initialAbsoluteWidth);
 		else
-			Super::SetCenteredWidth(initialAbsoluteWidth,HUD::Component::TAnchor::RelativeToScreen);
+			Super::SetCenteredWidth(HUD::Component::Distance::GameWindow( initialAbsoluteWidth ));
 		Super::fillBackground = false;
 
 		if (title.IsNotEmpty())
@@ -133,19 +133,14 @@ namespace Menu
 		{
 			auto mod = l->ModifyAnchorConfig();
 			//mod.Top().Set(0);
-			mod.Top().SetAuto();
-			mod.Bottom().SetAuto();
-			mod.Left().Set(0);
-
+			mod.AutoV().Left(0,MinTextWidth);
 		}
-		l->SetSize(float2(MinTextWidth,0));
 		c->AnchorTop(0);
 		{
 			auto mod = c->ModifyAnchorConfig();
-			mod.Left().Set(MinTextWidth,Component::TAnchor::RelativeToScreen);
-			mod.Right().Set(0.01f);
-			mod.Top().SetAuto();
-			mod.Bottom().SetAuto();
+			mod.Left(HUD::Component::Distance::GameWindow( MinTextWidth ));
+			mod.Right(0.01f);
+			mod.AutoV();
 		}
 
 		p->SetAutomaticHeight(true);
@@ -357,7 +352,7 @@ namespace Menu
 			Component::PButton button(new Component::Button("OK",[](){WindowStack::Hide(options);}));
 			//button->LockIdealWidth();
 			options->AnchorBelowPrevious(button);
-			button->SetCenteredWidth(0.5f,Component::TAnchor::RelativeToScreen);
+			button->SetCenteredWidth(HUD::Component::Distance::GameWindow( 0.5f ));
 		}
 
 		options->SetAutoHeightSpacing(0.02f);

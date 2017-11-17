@@ -22,7 +22,13 @@ namespace HUD
 namespace Component
 {
 
-	void		Anchor::VerifyIntegrity(const FComponentVerification&check, const AnchorAxis&axis, bool isUpper) const
+	void		Anchor::AddReference(const PComponent&c)
+	{
+		ASSERT__(enabled);
+		references << c;
+	}
+
+	void		Anchor::VerifyIntegrity(const FVerification&check, const AnchorAxis&axis, bool isUpper) const
 	{
 		ASSERT2__(distanceFromReference.IsValid(),axis.ToString(),isUpper);
 		ASSERT2__(enabled || references.IsEmpty(),axis.ToString(),isUpper);
@@ -38,7 +44,7 @@ namespace Component
 	}
 
 
-	void		AnchorConfig::Axis::VerifyIntegrity(const FComponentVerification&v) const
+	void		AnchorConfig::Axis::VerifyIntegrity(const FVerification&v) const
 	{
 		lower.VerifyIntegrity(v,myAxis,false);
 		upper.VerifyIntegrity(v,myAxis,true);
@@ -103,7 +109,7 @@ namespace Component
 		lower.Disable();
 		isAutoCentering = false;
 		this->extent = extent;
-		ASSERT__(this->extent.IsPositiveNonZeroOrPlaceholder());
+//		ASSERT__(this->extent.IsPositiveNonZeroOrPlaceholder());
 	}
 	
 	void		AnchorConfig::Axis::AnchorUpperUnknown(const Distance&upperOffset /*= Distance()*/)
@@ -168,6 +174,217 @@ namespace Component
 		parent = other.parent;
 		other.parent = nullptr;
 	}
+
+	AnchorModifier&	AnchorModifier::Up(const Distance&upperOffset /*= Distance()*/, const Distance&height /*= Distance::Unknown()*/)
+	{
+		GetVAxis().AnchorUpper(height,upperOffset);
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::Down(const Distance&lowerOffset /*= Distance()*/, const Distance&height /*= Distance::Unknown()*/)
+	{
+		GetVAxis().AnchorLower(height,lowerOffset);
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::Left(const Distance&leftOffset /*= Distance()*/, const Distance&width /*= Distance::Unknown()*/)
+	{
+		GetHAxis().AnchorLower(width,leftOffset);
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::Right(const Distance&rightOffset /*= Distance()*/, const Distance&width /*= Distance::Unknown()*/)
+	{
+		GetHAxis().AnchorUpper(width,rightOffset);
+		return *this;
+	}
+
+
+	AnchorModifier&	AnchorModifier::UpTo(const PComponent&p, const Distance&upperOffset /*= Distance()*/)
+	{
+		GetVAxis().lower.Disable();
+		GetVAxis().upper.Set(p,upperOffset);
+		GetVAxis().isAutoCentering = false;
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::DownTo(const PComponent&p, const Distance&lowerOffset /*= Distance()*/)
+	{
+		GetVAxis().upper.Disable();
+		GetVAxis().lower.Set(p,lowerOffset);
+		GetVAxis().isAutoCentering = false;
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::LeftTo(const PComponent&p, const Distance&leftOffset /*= Distance()*/)
+	{
+		GetHAxis().upper.Disable();
+		GetHAxis().lower.Set(p,leftOffset);
+		GetHAxis().isAutoCentering = false;
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::RightTo(const PComponent&p, const Distance&rightOffset /*= Distance()*/)
+	{
+		GetHAxis().lower.Disable();
+		GetHAxis().upper.Set(p,rightOffset);
+		GetHAxis().isAutoCentering = false;
+		return *this;
+	}
+
+
+	AnchorModifier&	AnchorModifier::LeftToLastOf(const PPanel&p, const Distance&leftOffset /*= Distance()*/)
+	{
+		GetHAxis().lower.SetLastOf(p,leftOffset);
+		GetHAxis().upper.Disable();
+		GetHAxis().isAutoCentering = false;
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::RightToLastOf(const PPanel&p, const Distance&rightOffset /*= Distance()*/)
+	{
+		GetHAxis().upper.SetLastOf(p,rightOffset);
+		GetHAxis().lower.Disable();
+		GetHAxis().isAutoCentering = false;
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::UpToLastOf(const PPanel&p, const Distance&upperOffset /*= Distance()*/)
+	{
+		GetVAxis().upper.SetLastOf(p,upperOffset);
+		GetVAxis().lower.Disable();
+		GetVAxis().isAutoCentering = false;
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::DownToLastOf(const PPanel&p, const Distance&lowerOffset /*= Distance()*/)
+	{
+		GetVAxis().lower.SetLastOf(p,lowerOffset);
+		GetVAxis().upper.Disable();
+		GetVAxis().isAutoCentering = false;
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::LeftToAllOf(const PPanel&p, const Distance&leftOffset /*= Distance()*/)
+	{
+		GetHAxis().lower.SetAllOf(p,leftOffset);
+		GetHAxis().upper.Disable();
+		GetHAxis().isAutoCentering = false;
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::RightToAllOf(const PPanel&p, const Distance&rightOffset /*= Distance()*/)
+	{
+		GetHAxis().upper.SetAllOf(p,rightOffset);
+		GetHAxis().lower.Disable();
+		GetHAxis().isAutoCentering = false;
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::UpToAllOf(const PPanel&p, const Distance&upperOffset /*= Distance()*/)
+	{
+		GetVAxis().upper.SetAllOf(p,upperOffset);
+		GetVAxis().lower.Disable();
+		GetVAxis().isAutoCentering = false;
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::DownToAllOf(const PPanel&p, const Distance&lowerOffset /*= Distance()*/)
+	{
+		GetVAxis().lower.SetAllOf(p,lowerOffset);
+		GetVAxis().upper.Disable();
+		GetVAxis().isAutoCentering = false;
+		return *this;
+	}
+
+
+	AnchorModifier&	AnchorModifier::LeftToSomeOf(const PPanel&p, const FSelector&sel, const Distance&leftOffset /*= Distance()*/)
+	{
+		GetHAxis().lower.SetSomeOf(p,leftOffset,sel);
+		GetHAxis().upper.Disable();
+		GetHAxis().isAutoCentering = false;
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::RightToSomeOf(const PPanel&p, const FSelector&sel, const Distance&rightOffset /*= Distance()*/)
+	{
+		GetHAxis().upper.SetSomeOf(p,rightOffset,sel);
+		GetHAxis().lower.Disable();
+		GetHAxis().isAutoCentering = false;
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::UpToSomeOf(const PPanel&p, const FSelector&sel, const Distance&upperOffset /*= Distance()*/)
+	{
+		GetVAxis().upper.SetSomeOf(p,upperOffset,sel);
+		GetVAxis().lower.Disable();
+		GetVAxis().isAutoCentering = false;
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::DownToSomeOf(const PPanel&p, const FSelector&sel, const Distance&lowerOffset /*= Distance()*/)
+	{
+		GetVAxis().lower.SetSomeOf(p,lowerOffset,sel);
+		GetVAxis().upper.Disable();
+		GetVAxis().isAutoCentering = false;
+		return *this;
+	}
+
+
+
+	AnchorModifier&	AnchorModifier::FillH()
+	{
+		GetHAxis().Fill();
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::FillH(const Distance&leftOffset, const Distance&rightOffset)
+	{
+		GetHAxis().Fill(leftOffset, rightOffset);
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::FillHBetween(const PComponent&leftEdge, const PComponent&rightEdge)
+	{
+		GetHAxis().FillBetween(leftEdge,rightEdge);
+		return *this;
+	}
+
+	void AnchorModifier::Axis::FillBetween(const PComponent&lowerC, const PComponent&upperC)
+	{
+		lower.Set(lowerC,0);
+		upper.Set(upperC,0);
+		isAutoCentering = false;
+		extent = Distance();
+	}
+
+	AnchorModifier&	AnchorModifier::AutoV(const Distance&height /*= Distance::Unknown()*/)
+	{
+		GetVAxis().SetAutoCenter(height);
+		return *this;
+	}
+
+
+	AnchorModifier&	AnchorModifier::AutoH(const Distance&width /*= Distance::Unknown()*/)
+	{
+		GetHAxis().SetAutoCenter(width);
+		return *this;
+	}
+
+
+	AnchorModifier&	AnchorModifier::FillV()
+	{
+		GetVAxis().Fill();
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::FillV(const Distance&lowerOffset, const Distance&upperOffset)
+	{
+		GetVAxis().Fill(lowerOffset, upperOffset);
+		return *this;
+	}
+
+
 
 
 	/*virtual*/ void	Component::Render()
@@ -1613,8 +1830,7 @@ namespace Component
 	{
 		auto cfg = anchorConfig;
 		auto&axis = cfg.GetHAxis();
-		axis.isAutoCentering = true;
-		axis.extent = width;
+		axis.SetAutoCenter(width);
 		SetAnchorConfig(cfg);
 		return *this;
 	}

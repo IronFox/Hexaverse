@@ -85,30 +85,29 @@ namespace HUD
 
 			static void AddRow(const PComponent&c)
 			{
-				auto mod = c->ModifyAnchorConfig();
-				if (left)
 				{
-					mod.Left().Set(0);
-					if (statsPanel->GetReferences().IsNotEmpty())
-						mod.Top().Set(statsPanel->GetReferences().Last(),0);
+					auto mod = c->ModifyAnchorConfig();
+					if (left)
+					{
+						mod.FillH(0,0.5f);
+						if (statsPanel->GetReferences().IsNotEmpty())
+							mod.UpTo(statsPanel->GetReferences().Last(),0);
+						else
+							mod.Up(0.03f);
+						if (statsPanel->CountComponents() > 1)
+							mod.GetVAxis().upper.AddReference( statsPanel->GetReferences().GetFromEnd(1) );
+					}
 					else
-						mod.Top().Set(0.03f);
-					if (statsPanel->CountComponents() > 1)
-						mod.Top().references << statsPanel->GetReferences().GetFromEnd(1);
-					mod.Right().Set(0.5f);
+					{
+						mod.FillH(0.5f,0);
+						if (statsPanel->CountComponents() > 1)
+							mod.UpTo(statsPanel->GetReferences().GetFromEnd(1),0);
+						else
+							mod.Up(0.03f);
+						if (statsPanel->CountComponents() > 2)
+							mod.GetVAxis().upper.AddReference(statsPanel->GetReferences().GetFromEnd(2) );
+					}
 				}
-				else
-				{
-					mod.Left().Set(0.5f);
-					if (statsPanel->CountComponents() > 1)
-						mod.Top().Set(statsPanel->GetReferences().GetFromEnd(1),0);
-					else
-						mod.Top().Set(0.03f);
-					if (statsPanel->CountComponents() > 2)
-						mod.Top().references << statsPanel->GetReferences().GetFromEnd(2);
-					mod.Right().Set(0);
-				}
-
 				statsPanel->AddComponent(c);
 				left = !left;
 			}
@@ -130,10 +129,9 @@ namespace HUD
 
 				PLabel prefixLabel{new Label{prefix+' '}};
 				prefixLabel->alignCenter = false;
+				prefixLabel->ModifyAnchorConfig().Up().Left();
 				prefixLabel->LockToIdealHeight();
 				prefixLabel->LockToIdealWidth();
-				prefixLabel->ModifyAnchorConfig().Top().Set(0);
-				prefixLabel->ModifyAnchorConfig().Left().Set(0);
 				//prefixLabel->SetVerticalPadding(linePadding);
 				prefixLabel->SetPadding(0.f);
 				prefixLabel->LockToIdealWidth();
@@ -142,8 +140,7 @@ namespace HUD
 				PLabel factionLabel{new Label{f->GetName()}};
 				factionLabel->alignCenter = false;
 				factionLabel->SetColor(f->color);
-				factionLabel->ModifyAnchorConfig().Top().Set(0);
-				factionLabel->ModifyAnchorConfig().Left().Set(prefixLabel,0);
+				factionLabel->ModifyAnchorConfig().Up().LeftTo(prefixLabel);
 				//factionLabel->SetVerticalPadding(linePadding);
 				factionLabel->SetPadding(0.f);
 				factionLabel->LockToIdealWidth();
@@ -152,8 +149,7 @@ namespace HUD
 				if (postFix.IsNotEmpty())
 				{
 					PLabel postFixLabel{new Label{' '+postFix}};
-					postFixLabel->ModifyAnchorConfig().Top().Set(0);
-					postFixLabel->ModifyAnchorConfig().Left().Set(factionLabel,0);
+					postFixLabel->ModifyAnchorConfig().Up().LeftTo(factionLabel);
 					postFixLabel->alignCenter = false;
 					//postFixLabel->SetVerticalPadding(linePadding);
 					postFixLabel->SetPadding(0.f);
@@ -450,39 +446,31 @@ namespace HUD
 
 				{
 					auto anchors = metricPanel->ModifyAnchorConfig();
-					anchors.Left().Set(0);
-					anchors.Right().Unset();
-					anchors.Top().Set(0);
-					anchors.Bottom().Set(0);
+					anchors.Left().FillV();
 				}
 				metricPanel->SetWidth(0.15f);
 				metricPanel->SetAutomaticHeight(false);
 
 				{
 					auto anchors = factionPanel->ModifyAnchorConfig();
-					anchors.Left().Unset();
-					anchors.Right().Set(0);
-					anchors.Top().Set(0);
-					anchors.Bottom().Set(0);
+					anchors.Right().FillV();
 				}
 				factionPanel->SetWidth(0.15f);
 				factionPanel->SetAutomaticHeight(false);
 				{
 					auto anchors = statsPanel->ModifyAnchorConfig();
-					anchors.Left().Set(metricPanel,0);
-					anchors.Right().Set(factionPanel,0);
-					anchors.Top().Unset();
-					anchors.Bottom().Set(0);
+					anchors.FillHBetween(metricPanel,factionPanel);
+					anchors.Down();
 				}
 				statsPanel->SetAutomaticHeight(false);
 				statsPanel->SetHeight(0.25f);
 
 				{
 					auto anchors = overviewGraph->ModifyAnchorConfig();
-					anchors.Right().Set(factionPanel,0);
-					anchors.Left().Set(metricPanel,0);
-					anchors.Top().Set(0);
-					anchors.Bottom().Set(statsPanel,0);
+					anchors.FillHBetween(metricPanel,factionPanel);
+					anchors.GetVAxis().upper.Set(0);
+					anchors.GetVAxis().lower.Set(statsPanel, 0);
+					anchors.GetVAxis().isAutoCentering = false;
 				}
 
 

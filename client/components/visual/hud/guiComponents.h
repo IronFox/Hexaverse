@@ -106,7 +106,8 @@ namespace Component
 	};
 
 
-	typedef std::function<void(const PComponent&)> FComponentVerification;
+	typedef std::function<void(const PComponent&)> FVerification;
+	typedef std::function<bool(const PComponent&)> FSelector;
 
 	struct Anchor
 	{
@@ -132,16 +133,17 @@ namespace Component
 			distanceFromReference = dist;
 		}
 
-		void			VerifyIntegrity(const FComponentVerification&, const AnchorAxis&, bool isUpper) const;
+		void			VerifyIntegrity(const FVerification&, const AnchorAxis&, bool isUpper) const;
 
 		void			SetAllOf(const PPanel&, const Distance&distance);
-		void			SetSomeOf(const PPanel&, const Distance&distance, const std::function<bool(const PComponent&)>&);
+		void			SetSomeOf(const PPanel&, const Distance&distance, const FSelector&);
 		void			SetLastOf(const PPanel&, const Distance&distance);
 
 		bool			IsEnabled() const {return enabled;}
 		bool			IsInactive() const {return !enabled;}
 		const Distance&	GetOffset() const {return distanceFromReference;}
 		const Components&GetReferences() const {return references;}
+		void			AddReference(const PComponent&c);
 	private:
 		bool			enabled = true;
 		Distance		distanceFromReference;	//!< Distance to position extreme from closest reference. If no references are set, uses context (parent) edge instead. If no references or parent are available, gamewindow edge is used.
@@ -174,12 +176,12 @@ namespace Component
 			void		AnchorLowerUnknown(const Distance&lowerOffset = Distance());
 			void		Fill(const Distance&lowerOffset = Distance(), const Distance&upperOffset = Distance());
 			void		SetAutoCenter(const Distance&extent = Distance::Unknown()) {isAutoCentering = true; this->extent = extent; lower.Disable(); upper.Disable();}
-			void		VerifyIntegrity(const FComponentVerification&) const;
+			void		VerifyIntegrity(const FVerification&) const;
 			bool		BothAnchorsAreOff() const {return lower.IsInactive() && upper.IsInactive();}
 			bool		BothAnchorsAreOn() const {return lower.IsEnabled() && upper.IsEnabled();}
 			bool		IsFreeFloating() const {return BothAnchorsAreOff() && !isAutoCentering;}
 			bool		HasExtentPlaceholder() const {return !Stretches() && extent.IsPlaceholder();}
-
+			void		FillBetween(const PComponent&lowerC, const PComponent&upperC);
 			float		GetMinimum(float parentUpperEdge, const M::TFloatRange<>&rectRange) const;
 		};
 
@@ -188,7 +190,7 @@ namespace Component
 		Axis			axis[2];
 
 		/**/			AnchorConfig()	{axis[AnchorAxis::Horizontal].myAxis = AnchorAxis::Horizontal; axis[AnchorAxis::Vertical].myAxis = AnchorAxis::Vertical;}
-		void			VerifyIntegrity(const FComponentVerification&check) const {axis[0].VerifyIntegrity(check); axis[1].VerifyIntegrity(check);}
+		void			VerifyIntegrity(const FVerification&check) const {axis[0].VerifyIntegrity(check); axis[1].VerifyIntegrity(check);}
 		Axis&			GetHAxis() {return axis[AnchorAxis::Horizontal];}
 		const Axis&		GetHAxis() const {return axis[AnchorAxis::Horizontal];}
 		Axis&			GetVAxis() {return axis[AnchorAxis::Vertical];}
@@ -207,6 +209,37 @@ namespace Component
 		/**/			AnchorModifier(AnchorModifier&&);
 		/**/			AnchorModifier(Component*cmp);
 		/**/			~AnchorModifier();
+
+
+
+		AnchorModifier&	Up(const Distance&upperOffset = Distance(), const Distance&height = Distance::Unknown());
+		AnchorModifier&	Down(const Distance&lowerOffset = Distance(), const Distance&height = Distance::Unknown());
+		AnchorModifier&	Left(const Distance&leftOffset = Distance(), const Distance&width = Distance::Unknown());
+		AnchorModifier&	Right(const Distance&rightOffset = Distance(), const Distance&width = Distance::Unknown());
+		AnchorModifier&	UpTo(const PComponent&, const Distance&upperOffset = Distance());
+		AnchorModifier&	DownTo(const PComponent&, const Distance&lowerOffset = Distance());
+		AnchorModifier&	LeftTo(const PComponent&, const Distance&leftOffset = Distance());
+		AnchorModifier&	RightTo(const PComponent&, const Distance&rightOffset = Distance());
+		AnchorModifier&	LeftToLastOf(const PPanel&, const Distance&leftOffset = Distance());
+		AnchorModifier&	RightToLastOf(const PPanel&, const Distance&rightOffset = Distance());
+		AnchorModifier&	UpToLastOf(const PPanel&, const Distance&upperOffset = Distance());
+		AnchorModifier&	DownToLastOf(const PPanel&, const Distance&lowerOffset = Distance());
+		AnchorModifier&	LeftToSomeOf(const PPanel&, const FSelector&, const Distance&leftOffset = Distance());
+		AnchorModifier&	RightToSomeOf(const PPanel&, const FSelector&, const Distance&rightOffset = Distance());
+		AnchorModifier&	UpToSomeOf(const PPanel&, const FSelector&, const Distance&upperOffset = Distance());
+		AnchorModifier&	DownToSomeOf(const PPanel&, const FSelector&, const Distance&lowerOffset = Distance());
+		AnchorModifier&	LeftToAllOf(const PPanel&, const Distance&leftOffset = Distance());
+		AnchorModifier&	RightToAllOf(const PPanel&, const Distance&rightOffset = Distance());
+		AnchorModifier&	UpToAllOf(const PPanel&, const Distance&upperOffset = Distance());
+		AnchorModifier&	DownToAllOf(const PPanel&, const Distance&lowerOffset = Distance());
+		AnchorModifier&	FillH();
+		AnchorModifier&	FillH(const Distance&leftOffset, const Distance&rightOffset);
+		AnchorModifier&	FillHBetween(const PComponent&leftEdge, const PComponent&rightEdge);
+		AnchorModifier&	FillV();
+		AnchorModifier&	FillV(const Distance&lowerOffset, const Distance&upperOffset);
+		AnchorModifier&	AutoV(const Distance&height = Distance::Unknown());
+		AnchorModifier&	AutoH(const Distance&width = Distance::Unknown());
+
 	private:
 		Component		*parent;
 	};
