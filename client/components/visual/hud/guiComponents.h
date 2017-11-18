@@ -59,31 +59,35 @@ namespace Component
 
 	struct Distance
 	{
-		CONSTRUCT_ENUMERATION4(Type,RelativeToParentComponent,RelativeToGameWindow,AbsolutePixels,Placeholder);
+		CONSTRUCT_ENUMERATION5(Type,RelativeToParentComponent,RelativeToGameWindow,AbsolutePixels,Placeholder,Disabled);
 
 
 		float	value = 0;
 		Type	type;
 
 		/**/	Distance()	{}
-		/**/	Distance(float d, Type t = Type::RelativeToParentComponent) : value(d),type(t)	{}
+		/**/	Distance(float d, Type t = Type::RelativeToGameWindow) : value(d),type(t)	{}
 
 		static Distance GameWindow(float d) {return Distance(d,Type::RelativeToGameWindow);}
-		static Distance Unknown() {return Distance(-1,Type::Placeholder);}
+		static Distance OfParentSize(float d) {return Distance(d,Type::RelativeToParentComponent);}
+		static const Distance Unknown, Disabled;
 
-		bool	IsValid() const {return !isnan(value) && !isinf(value) && value >= 0 && type != Type::Placeholder;}
-		bool	IsValidNonZero() const {return !isnan(value) && !isinf(value) && value > 0 && type != Type::Placeholder;}
+		void	VerifyIntegrity() const;
+		bool	IsWellDefined() const;
+		bool	IsWellDefinedNonZero() const;
 		bool	IsPlaceholder() const {return type == Type::Placeholder;}
-		bool	IsZero() const {return value ==0;}
-		bool	IsNonZero() const {return value != 0;}
-		bool	IsPositiveNonZero() const {return value > 0;}
-		bool	IsPositiveNonZeroOrPlaceholder() const {return value > 0 || type == Type::Placeholder;}
+		bool	IsDisabled() const {return type == Type::Disabled;}
+		bool	IsZero() const {return IsDefined() && value ==0;}
+		bool	IsNonZero() const {return IsDefined() && value != 0;}
+		bool	IsPositiveNonZero() const {return IsDefined() && value > 0;}
+		bool	IsPositiveNonZeroOrPlaceholder() const {return !IsDisabled() && ( value > 0 || type == Type::Placeholder);}
+		bool	IsDefined() const {return type != Type::Placeholder && type != Type::Disabled;}
+		bool	RequiresFixedParentSize() const {return type == Type::RelativeToParentComponent && value != 0;}
 
 		void	operator=(const Distance&other)
 		{
-			if (other.IsPlaceholder() && !IsPlaceholder())
+			if (other.IsPlaceholder() && IsDefined())
 				return;
-			DBG_ASSERT__(other.IsValid() || other.IsPlaceholder());
 			type = other.type;
 			value = other.value;
 		}
@@ -91,7 +95,7 @@ namespace Component
 		float	ToScreenDistance(float parentSize, AnchorAxis myAxis) const;
 		bool	operator==(const Distance&other) const
 		{
-			return value == other.value && type == other.type;
+			return ((isnan(value) && isnan(other.value)) || value == other.value) && type == other.type;
 		}
 
 		bool	operator!=(const Distance&other) const
@@ -135,15 +139,16 @@ namespace Component
 
 		void			VerifyIntegrity(const FVerification&, const AnchorAxis&, bool isUpper) const;
 
-		void			SetAllOf(const PPanel&, const Distance&distance);
-		void			SetSomeOf(const PPanel&, const Distance&distance, const FSelector&);
-		void			SetLastOf(const PPanel&, const Distance&distance);
+		void			SetAllOf(const PPanel&, const Distance&distance, const Component*mustNotInclude);
+		void			SetSomeOf(const PPanel&, const Distance&distance, const FSelector&, const Component*mustNotInclude);
+		void			SetLastOf(const PPanel&, const Distance&distance, const Component*mustNotInclude);
 
 		bool			IsEnabled() const {return enabled;}
 		bool			IsInactive() const {return !enabled;}
 		const Distance&	GetOffset() const {return distanceFromReference;}
 		const Components&GetReferences() const {return references;}
 		void			AddReference(const PComponent&c);
+		bool			RequiresFixedParentSize() const {return IsEnabled() && distanceFromReference.RequiresFixedParentSize();}
 	private:
 		bool			enabled = true;
 		Distance		distanceFromReference;	//!< Distance to position extreme from closest reference. If no references are set, uses context (parent) edge instead. If no references or parent are available, gamewindow edge is used.
@@ -162,11 +167,12 @@ namespace Component
 			Configured spacing between lower and upper.
 			Effective onlye of either lower or upper is not fixed
 			*/
-			Distance	extent;
+			Distance	extent=Distance::Disabled;
 			AnchorAxis	myAxis;
 			bool		isAutoCentering=false;
 
 			bool		Stretches() const {return BothAnchorsAreOn() && !isAutoCentering;}
+			bool		RequiresFixedParentSize() const {return lower.RequiresFixedParentSize() || upper.RequiresFixedParentSize() || extent.RequiresFixedParentSize() /*|| Stretches()*/;}	//stretching is valid
 			bool		SetExtent(const Distance&);
 			void		AnchorLower(const Distance&extent, const Distance&lowerOffset = Distance());
 			void		AnchorLower(const Distance&extent, const PComponent&lowerReference, const Distance& lowerOffset = Distance());
@@ -175,14 +181,16 @@ namespace Component
 			void		AnchorUpperUnknown(const Distance&upperOffset = Distance());
 			void		AnchorLowerUnknown(const Distance&lowerOffset = Distance());
 			void		Fill(const Distance&lowerOffset = Distance(), const Distance&upperOffset = Distance());
-			void		SetAutoCenter(const Distance&extent = Distance::Unknown()) {isAutoCentering = true; this->extent = extent; lower.Disable(); upper.Disable();}
-			void		VerifyIntegrity(const FVerification&) const;
+			void		SetAutoCenter(const Distance&extent = Distance::Unknown) {isAutoCentering = true; this->extent = extent; lower.Disable(); upper.Disable();}
+			void		VerifyIntegrity(const FVerification&, bool allowUnknownExtent) const;
 			bool		BothAnchorsAreOff() const {return lower.IsInactive() && upper.IsInactive();}
 			bool		BothAnchorsAreOn() const {return lower.IsEnabled() && upper.IsEnabled();}
 			bool		IsFreeFloating() const {return BothAnchorsAreOff() && !isAutoCentering;}
+			void		SetFreeFloating(const Distance&extent = Distance::Unknown);
 			bool		HasExtentPlaceholder() const {return !Stretches() && extent.IsPlaceholder();}
 			void		FillBetween(const PComponent&lowerC, const PComponent&upperC);
-			float		GetMinimum(float parentUpperEdge, const M::TFloatRange<>&rectRange) const;
+			float		GetMinimumEdge(float parentUpperEdge, const M::TFloatRange<>&rectRange) const;
+			void		UpdateExtentIfEnabled(const Distance&d) {if (!extent.IsDisabled()) extent = d;}
 		};
 
 
@@ -190,12 +198,13 @@ namespace Component
 		Axis			axis[2];
 
 		/**/			AnchorConfig()	{axis[AnchorAxis::Horizontal].myAxis = AnchorAxis::Horizontal; axis[AnchorAxis::Vertical].myAxis = AnchorAxis::Vertical;}
-		void			VerifyIntegrity(const FVerification&check) const {axis[0].VerifyIntegrity(check); axis[1].VerifyIntegrity(check);}
+		void			VerifyIntegrity(const FVerification&check, bool allowUnknownExtent) const {axis[0].VerifyIntegrity(check,allowUnknownExtent); axis[1].VerifyIntegrity(check,allowUnknownExtent);}
 		Axis&			GetHAxis() {return axis[AnchorAxis::Horizontal];}
 		const Axis&		GetHAxis() const {return axis[AnchorAxis::Horizontal];}
 		Axis&			GetVAxis() {return axis[AnchorAxis::Vertical];}
 		const Axis&		GetVAxis() const {return axis[AnchorAxis::Vertical];}
 		bool			HasExtentPlaceholders() const {return axis[0].HasExtentPlaceholder() || axis[1].HasExtentPlaceholder();}
+		void			SetFreeFloating(const Distance&width = Distance::Unknown,const Distance&height = Distance::Unknown);
 	};
 
 
@@ -212,33 +221,33 @@ namespace Component
 
 
 
-		AnchorModifier&	Up(const Distance&upperOffset = Distance(), const Distance&height = Distance::Unknown());
-		AnchorModifier&	Down(const Distance&lowerOffset = Distance(), const Distance&height = Distance::Unknown());
-		AnchorModifier&	Left(const Distance&leftOffset = Distance(), const Distance&width = Distance::Unknown());
-		AnchorModifier&	Right(const Distance&rightOffset = Distance(), const Distance&width = Distance::Unknown());
-		AnchorModifier&	UpTo(const PComponent&, const Distance&upperOffset = Distance());
-		AnchorModifier&	DownTo(const PComponent&, const Distance&lowerOffset = Distance());
-		AnchorModifier&	LeftTo(const PComponent&, const Distance&leftOffset = Distance());
-		AnchorModifier&	RightTo(const PComponent&, const Distance&rightOffset = Distance());
-		AnchorModifier&	LeftToLastOf(const PPanel&, const Distance&leftOffset = Distance());
-		AnchorModifier&	RightToLastOf(const PPanel&, const Distance&rightOffset = Distance());
-		AnchorModifier&	UpToLastOf(const PPanel&, const Distance&upperOffset = Distance());
-		AnchorModifier&	DownToLastOf(const PPanel&, const Distance&lowerOffset = Distance());
-		AnchorModifier&	LeftToSomeOf(const PPanel&, const FSelector&, const Distance&leftOffset = Distance());
-		AnchorModifier&	RightToSomeOf(const PPanel&, const FSelector&, const Distance&rightOffset = Distance());
-		AnchorModifier&	UpToSomeOf(const PPanel&, const FSelector&, const Distance&upperOffset = Distance());
-		AnchorModifier&	DownToSomeOf(const PPanel&, const FSelector&, const Distance&lowerOffset = Distance());
-		AnchorModifier&	LeftToAllOf(const PPanel&, const Distance&leftOffset = Distance());
-		AnchorModifier&	RightToAllOf(const PPanel&, const Distance&rightOffset = Distance());
-		AnchorModifier&	UpToAllOf(const PPanel&, const Distance&upperOffset = Distance());
-		AnchorModifier&	DownToAllOf(const PPanel&, const Distance&lowerOffset = Distance());
-		AnchorModifier&	FillH();
-		AnchorModifier&	FillH(const Distance&leftOffset, const Distance&rightOffset);
+		AnchorModifier&	Top(const Distance&upperOffset = Distance(), const Distance&height = Distance::Unknown);
+		AnchorModifier&	Bottom(const Distance&lowerOffset = Distance(), const Distance&height = Distance::Unknown);
+		AnchorModifier&	Left(const Distance&leftOffset = Distance(), const Distance&width = Distance::Unknown);
+		AnchorModifier&	Right(const Distance&rightOffset = Distance(), const Distance&width = Distance::Unknown);
+		AnchorModifier&	Beneath(const PComponent&, const Distance&upperOffset = Distance(), const Distance&height = Distance::Unknown);
+		AnchorModifier&	Above(const PComponent&, const Distance&lowerOffset = Distance(), const Distance&height = Distance::Unknown);
+		AnchorModifier&	RightOf(const PComponent&, const Distance&leftOffset = Distance(), const Distance&width = Distance::Unknown);
+		AnchorModifier&	LeftOf(const PComponent&, const Distance&rightOffset = Distance(), const Distance&width = Distance::Unknown);
+		AnchorModifier&	RightOfLastOf(const PPanel&, const Distance&leftOffset = Distance(), const Distance&width = Distance::Unknown);
+		AnchorModifier&	LeftOfLastOf(const PPanel&, const Distance&rightOffset = Distance(), const Distance&width = Distance::Unknown);
+		AnchorModifier&	BeneathLastOf(const PPanel&, const Distance&upperOffset = Distance(), const Distance&height = Distance::Unknown);
+		AnchorModifier&	AboveLastOf(const PPanel&, const Distance&lowerOffset = Distance(), const Distance&height = Distance::Unknown);
+		AnchorModifier&	RightOfSomeOf(const PPanel&, const FSelector&, const Distance&leftOffset = Distance(), const Distance&width = Distance::Unknown);
+		AnchorModifier&	LeftOfSomeOf(const PPanel&, const FSelector&, const Distance&rightOffset = Distance(), const Distance&width = Distance::Unknown);
+		AnchorModifier&	BeneathSomeOf(const PPanel&, const FSelector&, const Distance&upperOffset = Distance(), const Distance&height = Distance::Unknown);
+		AnchorModifier&	AboveSomeOf(const PPanel&, const FSelector&, const Distance&lowerOffset = Distance(), const Distance&height = Distance::Unknown);
+		AnchorModifier&	RightOfAllOf(const PPanel&, const Distance&leftOffset = Distance(), const Distance&width = Distance::Unknown);
+		AnchorModifier&	LeftOfAllOf(const PPanel&, const Distance&rightOffset = Distance(), const Distance&width = Distance::Unknown);
+		AnchorModifier&	BeneathAllOf(const PPanel&, const Distance&upperOffset = Distance(), const Distance&height = Distance::Unknown);
+		AnchorModifier&	AboveAllOf(const PPanel&, const Distance&lowerOffset = Distance(), const Distance&height = Distance::Unknown);
+		AnchorModifier&	FillHorizontally();
+		AnchorModifier&	FillHorizontally(const Distance&leftOffset, const Distance&rightOffset);
 		AnchorModifier&	FillHBetween(const PComponent&leftEdge, const PComponent&rightEdge);
-		AnchorModifier&	FillV();
-		AnchorModifier&	FillV(const Distance&lowerOffset, const Distance&upperOffset);
-		AnchorModifier&	AutoV(const Distance&height = Distance::Unknown());
-		AnchorModifier&	AutoH(const Distance&width = Distance::Unknown());
+		AnchorModifier&	FillVertically();
+		AnchorModifier&	FillVertically(const Distance&lowerOffset, const Distance&upperOffset);
+		AnchorModifier&	CenterVertically(const Distance&height = Distance::Unknown);
+		AnchorModifier&	CenterHorizontally(const Distance&width = Distance::Unknown);
 
 	private:
 		Component		*parent;
@@ -319,12 +328,13 @@ namespace Component
 		virtual float	GetContentHeight() const {return -1;}
 		virtual void	PropagateToChildren(const TPropagating&p) {}
 		TPropagating	CreatePropagating() const {return TPropagating(IsEnabled(),IsLit());}
-		virtual void	OnRectChange() override		{InvalidateAutoLayout();};
+		virtual void	OnRectChange() override;
 		virtual void	PropagateToChildren(const PWindow&)	{}
 
 		static bool		Set(float&ref, float to);
 		static bool		SetCenter(M::TFloatRange<>&ref, float to);
 		
+		virtual void	SetLocation(const M::Rect<>&loc);
 
 		AnchorConfig	anchorConfig;
 	public:	//do not call outside container classes:
@@ -395,7 +405,6 @@ namespace Component
 		virtual bool	ResolveAnchorAxis(AnchorAxis axis, const M::Rect<>&context);
 
 		virtual void	Translate(const float2&delta)	{TranslateRect(delta); /*InvalidateAnchorResolution();*/}
-		virtual void	SetLocation(const M::Rect<>&loc) {SetRect(loc);}
 		virtual bool	HasComponent(const PComponent&c) const {return c.get() == this;}
 
 
@@ -409,7 +418,7 @@ namespace Component
 
 		void			InvalidateAutoLayout();
 
-		AnchorModifier	ModifyAnchorConfig() {return this;}
+		AnchorModifier	Anchor() {return this;}
 		const AnchorConfig&GetAnchorConfig() const {return anchorConfig;}
 
 		virtual void	VerifyAnchorIntegrity() const;
@@ -441,7 +450,7 @@ namespace Component
 	public:
 		static void		StaticCreate();
 
-		void			SetAutoHeight(bool b)	{if (autoSetHeight == b) return; ASSERT__(!b || !anchorConfig.GetVAxis().Stretches()); autoSetHeight = b; InvalidateAutoLayout();}
+		void			SetAutoHeight(bool b)	{if (autoSetHeight == b) return; ASSERT__(!b || !anchorConfig.GetVAxis().RequiresFixedParentSize()); autoSetHeight = b; InvalidateAutoLayout();}
 		void			SetTexture(const DX11::Texture&tex) {texture = tex;InvalidateAutoLayout();}
 
 		virtual void	Render() override;
@@ -716,6 +725,7 @@ namespace Component
 		{
 			padding.bottom = padding.top = 0.75f;
 			padding.left = padding.right = 1;
+			anchorConfig.GetVAxis().AnchorUpperUnknown();	//since heightLockedToIdeal is set by default
 		}
 
 		/**
@@ -776,6 +786,12 @@ namespace Component
 				ASSERT__(!heightLockedToIdeal);
 		}
 
+		virtual void	VerifyAnchorIntegrity() const override 
+		{
+			ASSERT__(!WidthChangesDynamically() || !widthLockedToIdeal);
+			ASSERT__(!HeightChangesDynamically() || !heightLockedToIdeal);
+			Super::VerifyAnchorIntegrity();
+		}
 
 		virtual bool	UpdateDynamicSize() override;
 		virtual void	Render() override;
@@ -796,6 +812,7 @@ namespace Component
 			Super::fillBackground = false;
 			Super::SetLocalFontScale(scale);
 			SetText(text);
+			anchorConfig.GetHAxis().AnchorLowerUnknown();
 			SetToIdealWidth();
 		}
 	};
@@ -827,6 +844,7 @@ namespace Component
 			this->onPress = onPress;
 			this->check = check;
 			SetText(text);
+			anchorConfig.GetHAxis().AnchorLowerUnknown();
 			SetToIdealWidth();
 		}
 
@@ -929,6 +947,7 @@ namespace Component
 			auto padding = Super::GetPadding();
 			padding.left = 2;
 			Super::SetPadding(padding);
+			anchorConfig.GetHAxis().AnchorLowerUnknown();
 		}
 
 	protected:
@@ -1029,7 +1048,7 @@ namespace Component
 		enum direction_t
 		{
 			Up,
-			Down
+			Bottom
 		};
 		const direction_t	direction;
 
@@ -1047,6 +1066,8 @@ namespace Component
 		}
 
 		static void		RenderArrow(const M::Rect<>&, direction_t, bool lit);
+
+		virtual void	SetLocation(const M::Rect<>&loc) override {Super::SetLocation(loc);}
 
 	};
 
@@ -1187,7 +1208,6 @@ namespace Component
 				(*c)->OnScreenSizeOrUIScaleChange();
 		}
 
-		bool			autoHeight = false;
 		float			autoHeightSpacing = 0.f;//0.015f;
 		/**
 		Maximum height allocatable by client components.
@@ -1197,7 +1217,7 @@ namespace Component
 	public:
 		/**/			Panel()	{topOpacity = 0.75f; bottomOpacity = 0.75f;}
 		bool			DeterminesHeightAutomatically() const {return autoHeight;}
-		void			SetAutomaticHeight(bool b) {if (autoHeight == b) return; autoHeight = b; this->InvalidateAutoLayout();}
+		void			SetAutomaticHeight(bool b) {if (autoHeight == b) return; autoHeight = b; this->InvalidateAutoLayout(); VerifyAnchorIntegrity();}
 		float			GetAutoHeightSpacing() const {return autoHeightSpacing;}
 		void			SetAutoHeightSpacing(float s) {if (s == autoHeightSpacing) return; autoHeightSpacing = s; this->InvalidateAutoLayout();}
 		float			GetMaxAutoHeight() const {return maxHeight;}
@@ -1274,13 +1294,18 @@ namespace Component
 			return false;
 		}
 		template <typename Component>
-		std::shared_ptr<Component>		AnchorBelowPrevious(Component*newComponent, const Distance& distanceFromSides = Distance::GameWindow( 0.015f ), const Distance& distanceToPrevious = Distance::GameWindow(0.015f))
+		std::shared_ptr<Component>		AnchorBelowPrevious(Component*newComponent, const Distance& distanceFromSides =  0.015f, const Distance& distanceToPrevious = 0.015f)
 		{
 			std::shared_ptr<Component> c(newComponent);
 			AnchorBelowPrevious(c,distanceFromSides,distanceToPrevious);
 			return c;
 		}
-		void			AnchorBelowPrevious(const PComponent&newComponent, const Distance& distanceFromSides = Distance::GameWindow( 0.015f ), const Distance& distanceToPrevious = Distance::GameWindow(0.015f));
+		void			AnchorBelowPrevious(const PComponent&newComponent, const Distance& distanceFromSides = 0.015f, const Distance& distanceToPrevious = 0.015f);
+
+
+	private:
+		bool			autoHeight = false;
+
 
 	};
 
@@ -1618,7 +1643,7 @@ namespace Component
 			outerRect.x.Expand(outlineMargin.x);
 			outerRect.y.Expand(outlineMargin.y);
 		}
-		M::Rect<>				outerRect = M::Rect<>(0,0,1,1);
+		M::Rect<>			outerRect = M::Rect<>(0,0,1,1);
 		bool				nestedCall = false;
 		float2				outlineMargin = float2(0.015f);
 		bool				autoCenter = true,
@@ -1628,15 +1653,20 @@ namespace Component
 
 	protected:
 
-		/**/				Window()	{}
+		/**/				Window()
+		{
+			anchorConfig.SetFreeFloating();
+		
+		}
 
 		template <typename T>	
 			static std::shared_ptr<T>	CreateDerivative()
 			{
 				std::shared_ptr<T> rs(new T());
-				rs->autoHeight = true;
-				//Super::SetCenteredWidth(0.75f,GUI::TAnchor::RelativeToScreen);
 				rs->SetLocation(M::TFloatRect(float2(0.25f),float2(0.5f)));
+				rs->SetAutomaticHeight(true);
+				//Super::SetCenteredWidth(0.75f,GUI::TAnchor::RelativeToScreen);
+				rs->VerifyAnchorIntegrity();
 				return rs;
 			}
 

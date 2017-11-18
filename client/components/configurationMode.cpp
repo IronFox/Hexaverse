@@ -247,15 +247,14 @@ namespace ConfigurationMode
 				float b = 0.2f * (window->CountComponents()/4);
 				float x = 0.25f * (window->CountComponents()%4);
 				float x2 = 0.25f * (3-(window->CountComponents()%4));
-				button->SetLocation(M::TFloatRect(float2(),float2(0.15f,0.15f)));
 				{
-					auto cfg = button->GetAnchorConfig();
-					cfg.GetHAxis().Fill(x,x2);
+					auto m = button->Anchor();
+					m.FillHorizontally(x,x2);
+
 					if (window->CountComponents()>=4)
-						cfg.GetVAxis().AnchorUpper(HUD::Component::Distance::Unknown(), window->GetReferences()[4*(window->CountComponents()/4-1)], 0.01f);
+						m.Beneath(window->GetReferences()[4*(window->CountComponents()/4-1)], Distance::GameWindow( 0.01f ));
 					else
-						cfg.GetVAxis().AnchorUpper(HUD::Component::Distance::Unknown());
-					button->SetAnchorConfig(cfg);
+						m.Top();
 				}
 				button->SetHorizontalPadding(0);
 				//if ((i%4)!=0)
@@ -274,15 +273,7 @@ namespace ConfigurationMode
 			{
 				PButton button(new Button("Abort"));
 				float b = 0.2f * ((window->CountComponents()/4)+1);
-				button->SetLocation(M::TFloatRect(float2(),float2(1.f,0.2f)));
-//				button->anchorConfig.Top().Set(b);
-				{
-					auto cfg = button->GetAnchorConfig();
-					cfg.GetHAxis().Fill();
-					cfg.GetVAxis().lower.Disable();
-					cfg.GetVAxis().upper.SetLastOf(window, 0.01f);
-					button->SetAnchorConfig(cfg);
-				}
+				button->Anchor().FillHorizontally().BeneathLastOf(window,Distance::GameWindow(0.01f),Distance::GameWindow(0.2f));
 			
 				button->SetTriggerFunction([this]()
 				{
@@ -390,8 +381,8 @@ namespace ConfigurationMode
 			PComponent label = planetListWindow->AddNewComponent(new Label("Planets",1.2f));
 			{
 				auto cfg = label->GetAnchorConfig();
-				cfg.GetHAxis().AnchorLower(HUD::Component::Distance::Unknown());
-				cfg.GetVAxis().AnchorUpper(HUD::Component::Distance::Unknown());
+				cfg.GetHAxis().AnchorLower(HUD::Component::Distance::Unknown);
+				cfg.GetVAxis().AnchorUpper(HUD::Component::Distance::Unknown);
 				label->SetAnchorConfig(cfg);
 			}
 			foreach (planetList,p)
@@ -404,13 +395,7 @@ namespace ConfigurationMode
 					LoadServerWorld(false);
 					lockedAwaitConfig = sentVersion;
 				}));
-				{
-					auto cfg = button->GetAnchorConfig();
-					cfg.GetHAxis().Fill();
-					cfg.GetVAxis().lower.Disable();
-					cfg.GetVAxis().upper.SetLastOf(planetListWindow, 0.02f);
-					button->SetAnchorConfig(cfg);
-				}
+				button->Anchor().FillHorizontally().BeneathLastOf(planetListWindow, 0.02f);
 				planetListWindow->AddComponent(button);
 			}
 

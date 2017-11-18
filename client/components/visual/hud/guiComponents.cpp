@@ -22,6 +22,32 @@ namespace HUD
 namespace Component
 {
 
+	/*static*/ const Distance Distance::Unknown = Distance(NAN,Type::Placeholder);
+	/*static*/ const Distance Distance::Disabled = Distance(NAN,Type::Disabled);
+
+
+	void	Distance::VerifyIntegrity() const
+	{
+		if (IsDefined())
+		{
+			ASSERT__(!isnan(value) && !isinf(value));
+		}
+		else
+			ASSERT__(isnan(value));
+	}
+
+
+	bool	Distance::IsWellDefined() const
+	{
+		return !isnan(value) && !isinf(value) && value >= 0;
+	}
+
+	bool	Distance::IsWellDefinedNonZero() const
+	{
+		return !isnan(value) && !isinf(value) && value > 0;
+	}
+
+
 	void		Anchor::AddReference(const PComponent&c)
 	{
 		ASSERT__(enabled);
@@ -30,7 +56,8 @@ namespace Component
 
 	void		Anchor::VerifyIntegrity(const FVerification&check, const AnchorAxis&axis, bool isUpper) const
 	{
-		ASSERT2__(distanceFromReference.IsValid(),axis.ToString(),isUpper);
+		distanceFromReference.VerifyIntegrity();
+		ASSERT2__(distanceFromReference.IsWellDefined(),axis.ToString(),isUpper);
 		ASSERT2__(enabled || references.IsEmpty(),axis.ToString(),isUpper);
 		if (check)
 		{
@@ -44,21 +71,33 @@ namespace Component
 	}
 
 
-	void		AnchorConfig::Axis::VerifyIntegrity(const FVerification&v) const
+	void		AnchorConfig::Axis::VerifyIntegrity(const FVerification&v, bool allowUnknownExtent) const
 	{
 		lower.VerifyIntegrity(v,myAxis,false);
 		upper.VerifyIntegrity(v,myAxis,true);
+		extent.VerifyIntegrity();
 		if (isAutoCentering || lower.IsInactive() || upper.IsInactive())
-			ASSERT__(extent.value > 0);
+		{
+			ASSERT__(extent.IsDefined() || (allowUnknownExtent && extent.IsPlaceholder()));
+		}
 		//ASSERT1__(lower.IsFixed() || upper.IsFixed(),myAxis.ToString());
 		
 		if (isAutoCentering)
 			ASSERT__(BothAnchorsAreOff());
 		
 		if (lower.IsEnabled() && upper.IsEnabled())
-			ASSERT_EQUAL1__(extent, Distance(),myAxis.ToString());
+			ASSERT_EQUAL1__(extent, Distance::Disabled,myAxis.ToString());
 	}
-	
+
+	void		AnchorConfig::Axis::SetFreeFloating(const Distance&extent /*= Distance::Unknown*/)
+	{
+		this->extent = extent;
+		lower.Disable();
+		upper.Disable();
+		isAutoCentering = false;
+		VerifyIntegrity(FVerification(),true);
+	}
+
 	bool		AnchorConfig::Axis::SetExtent(const Distance&d)
 	{
 		ASSERT__(!Stretches());
@@ -66,6 +105,7 @@ namespace Component
 		if (extent == d)
 			return false;
 		extent = d;
+		VerifyIntegrity(FVerification(),true);
 		return false;
 	}
 	void		AnchorConfig::Axis::AnchorLower(const Distance&extent, const Distance&offset/* = Distance()*/)
@@ -74,7 +114,7 @@ namespace Component
 		upper.Disable();
 		isAutoCentering = false;
 		this->extent = extent;
-		ASSERT__(this->extent.IsPositiveNonZeroOrPlaceholder());
+		VerifyIntegrity(FVerification(),true);
 	}
 
 	void		AnchorConfig::Axis::AnchorLower(const Distance&extent, const PComponent&reference, const Distance&lowerOffset/* = Distance()*/)
@@ -83,12 +123,12 @@ namespace Component
 		upper.Disable();
 		isAutoCentering = false;
 		this->extent = extent;
-		ASSERT__(this->extent.IsPositiveNonZeroOrPlaceholder());
+		VerifyIntegrity(FVerification(),true);
 	}
 	
 	void		AnchorConfig::Axis::AnchorLowerUnknown(const Distance&lowerOffset/* = Distance()*/)
 	{
-		AnchorLower(Distance::Unknown(),lowerOffset);
+		AnchorLower(Distance::Unknown,lowerOffset);
 	}
 
 
@@ -99,7 +139,7 @@ namespace Component
 		lower.Disable();
 		isAutoCentering = false;
 		this->extent = extent;
-		ASSERT__(this->extent.IsPositiveNonZeroOrPlaceholder());
+		VerifyIntegrity(FVerification(),true);
 	}
 
 
@@ -109,12 +149,12 @@ namespace Component
 		lower.Disable();
 		isAutoCentering = false;
 		this->extent = extent;
-//		ASSERT__(this->extent.IsPositiveNonZeroOrPlaceholder());
+		VerifyIntegrity(FVerification(),true);
 	}
 	
 	void		AnchorConfig::Axis::AnchorUpperUnknown(const Distance&upperOffset /*= Distance()*/)
 	{
-		AnchorUpper(Distance::Unknown(),upperOffset);
+		AnchorUpper(Distance::Unknown,upperOffset);
 	}
 
 	void		AnchorConfig::Axis::Fill(const Distance&lowerOffset/* = Distance()*/, const Distance&upperOffset/* = Distance()*/)
@@ -122,9 +162,15 @@ namespace Component
 		upper.Set(upperOffset);
 		lower.Set(lowerOffset);
 		isAutoCentering = false;
-		extent = Distance();
+		extent = Distance::Disabled;
+		VerifyIntegrity(FVerification(),true);
 	}
 
+	void			AnchorConfig::SetFreeFloating(const Distance&width /*= Distance::Unknown*/,const Distance&height /*= Distance::Unknown*/)
+	{
+		GetHAxis().SetFreeFloating(width);
+		GetVAxis().SetFreeFloating(height);
+	}
 
 
 	void			ComponentLocation::SetRect(const M::Rect<>&rect)
@@ -175,170 +221,190 @@ namespace Component
 		other.parent = nullptr;
 	}
 
-	AnchorModifier&	AnchorModifier::Up(const Distance&upperOffset /*= Distance()*/, const Distance&height /*= Distance::Unknown()*/)
+	AnchorModifier&	AnchorModifier::Top(const Distance&upperOffset /*= Distance()*/, const Distance&height /*= Distance::Unknown*/)
 	{
 		GetVAxis().AnchorUpper(height,upperOffset);
 		return *this;
 	}
 
-	AnchorModifier&	AnchorModifier::Down(const Distance&lowerOffset /*= Distance()*/, const Distance&height /*= Distance::Unknown()*/)
+	AnchorModifier&	AnchorModifier::Bottom(const Distance&lowerOffset /*= Distance()*/, const Distance&height /*= Distance::Unknown*/)
 	{
 		GetVAxis().AnchorLower(height,lowerOffset);
 		return *this;
 	}
 
-	AnchorModifier&	AnchorModifier::Left(const Distance&leftOffset /*= Distance()*/, const Distance&width /*= Distance::Unknown()*/)
+	AnchorModifier&	AnchorModifier::Left(const Distance&leftOffset /*= Distance()*/, const Distance&width /*= Distance::Unknown*/)
 	{
 		GetHAxis().AnchorLower(width,leftOffset);
 		return *this;
 	}
 
-	AnchorModifier&	AnchorModifier::Right(const Distance&rightOffset /*= Distance()*/, const Distance&width /*= Distance::Unknown()*/)
+	AnchorModifier&	AnchorModifier::Right(const Distance&rightOffset /*= Distance()*/, const Distance&width /*= Distance::Unknown*/)
 	{
 		GetHAxis().AnchorUpper(width,rightOffset);
 		return *this;
 	}
 
 
-	AnchorModifier&	AnchorModifier::UpTo(const PComponent&p, const Distance&upperOffset /*= Distance()*/)
+	AnchorModifier&	AnchorModifier::Beneath(const PComponent&p, const Distance&upperOffset /*= Distance()*/, const Distance&height /*= Distance::Unknown*/)
 	{
+		ASSERT__(p.get() != this->parent);
 		GetVAxis().lower.Disable();
 		GetVAxis().upper.Set(p,upperOffset);
+		GetVAxis().extent = height;
 		GetVAxis().isAutoCentering = false;
 		return *this;
 	}
 
-	AnchorModifier&	AnchorModifier::DownTo(const PComponent&p, const Distance&lowerOffset /*= Distance()*/)
+	AnchorModifier&	AnchorModifier::Above(const PComponent&p, const Distance&lowerOffset /*= Distance()*/, const Distance&height /*= Distance::Unknown*/)
 	{
+		ASSERT__(p.get() != this->parent);
 		GetVAxis().upper.Disable();
 		GetVAxis().lower.Set(p,lowerOffset);
+		GetVAxis().extent = height;
 		GetVAxis().isAutoCentering = false;
 		return *this;
 	}
 
-	AnchorModifier&	AnchorModifier::LeftTo(const PComponent&p, const Distance&leftOffset /*= Distance()*/)
+	AnchorModifier&	AnchorModifier::RightOf(const PComponent&p, const Distance&leftOffset /*= Distance()*/, const Distance&width /*= Distance::Unknown*/)
 	{
+		ASSERT__(p.get() != this->parent);
 		GetHAxis().upper.Disable();
 		GetHAxis().lower.Set(p,leftOffset);
+		GetHAxis().extent = width;
 		GetHAxis().isAutoCentering = false;
 		return *this;
 	}
 
-	AnchorModifier&	AnchorModifier::RightTo(const PComponent&p, const Distance&rightOffset /*= Distance()*/)
+	AnchorModifier&	AnchorModifier::LeftOf(const PComponent&p, const Distance&rightOffset /*= Distance()*/, const Distance&width /*= Distance::Unknown*/)
 	{
+		ASSERT__(p.get() != this->parent);
 		GetHAxis().lower.Disable();
 		GetHAxis().upper.Set(p,rightOffset);
+		GetHAxis().extent = width;
 		GetHAxis().isAutoCentering = false;
 		return *this;
 	}
 
 
-	AnchorModifier&	AnchorModifier::LeftToLastOf(const PPanel&p, const Distance&leftOffset /*= Distance()*/)
+	AnchorModifier&	AnchorModifier::RightOfLastOf(const PPanel&p, const Distance&leftOffset /*= Distance()*/, const Distance&width /*= Distance::Unknown*/)
 	{
-		GetHAxis().lower.SetLastOf(p,leftOffset);
+		GetHAxis().lower.SetLastOf(p,leftOffset,parent);
 		GetHAxis().upper.Disable();
+		GetHAxis().extent = width;
 		GetHAxis().isAutoCentering = false;
 		return *this;
 	}
 
-	AnchorModifier&	AnchorModifier::RightToLastOf(const PPanel&p, const Distance&rightOffset /*= Distance()*/)
+	AnchorModifier&	AnchorModifier::LeftOfLastOf(const PPanel&p, const Distance&rightOffset /*= Distance()*/, const Distance&width /*= Distance::Unknown*/)
 	{
-		GetHAxis().upper.SetLastOf(p,rightOffset);
+		GetHAxis().upper.SetLastOf(p,rightOffset,parent);
 		GetHAxis().lower.Disable();
+		GetHAxis().extent = width;
 		GetHAxis().isAutoCentering = false;
 		return *this;
 	}
 
-	AnchorModifier&	AnchorModifier::UpToLastOf(const PPanel&p, const Distance&upperOffset /*= Distance()*/)
+	AnchorModifier&	AnchorModifier::BeneathLastOf(const PPanel&p, const Distance&upperOffset /*= Distance()*/, const Distance&height /*= Distance::Unknown*/)
 	{
-		GetVAxis().upper.SetLastOf(p,upperOffset);
+		GetVAxis().upper.SetLastOf(p,upperOffset,parent);
 		GetVAxis().lower.Disable();
+		GetVAxis().extent = height;
 		GetVAxis().isAutoCentering = false;
 		return *this;
 	}
 
-	AnchorModifier&	AnchorModifier::DownToLastOf(const PPanel&p, const Distance&lowerOffset /*= Distance()*/)
+	AnchorModifier&	AnchorModifier::AboveLastOf(const PPanel&p, const Distance&lowerOffset /*= Distance()*/, const Distance&height /*= Distance::Unknown*/)
 	{
-		GetVAxis().lower.SetLastOf(p,lowerOffset);
+		GetVAxis().lower.SetLastOf(p,lowerOffset,parent);
 		GetVAxis().upper.Disable();
+		GetVAxis().extent = height;
 		GetVAxis().isAutoCentering = false;
 		return *this;
 	}
 
-	AnchorModifier&	AnchorModifier::LeftToAllOf(const PPanel&p, const Distance&leftOffset /*= Distance()*/)
+	AnchorModifier&	AnchorModifier::RightOfAllOf(const PPanel&p, const Distance&leftOffset /*= Distance()*/, const Distance&width /*= Distance::Unknown*/)
 	{
-		GetHAxis().lower.SetAllOf(p,leftOffset);
+		GetHAxis().lower.SetAllOf(p,leftOffset,parent);
 		GetHAxis().upper.Disable();
+		GetHAxis().extent = width;
 		GetHAxis().isAutoCentering = false;
 		return *this;
 	}
 
-	AnchorModifier&	AnchorModifier::RightToAllOf(const PPanel&p, const Distance&rightOffset /*= Distance()*/)
+	AnchorModifier&	AnchorModifier::LeftOfAllOf(const PPanel&p, const Distance&rightOffset /*= Distance()*/, const Distance&width /*= Distance::Unknown*/)
 	{
-		GetHAxis().upper.SetAllOf(p,rightOffset);
+		GetHAxis().upper.SetAllOf(p,rightOffset,parent);
 		GetHAxis().lower.Disable();
+		GetHAxis().extent = width;
 		GetHAxis().isAutoCentering = false;
 		return *this;
 	}
 
-	AnchorModifier&	AnchorModifier::UpToAllOf(const PPanel&p, const Distance&upperOffset /*= Distance()*/)
+	AnchorModifier&	AnchorModifier::BeneathAllOf(const PPanel&p, const Distance&upperOffset /*= Distance()*/, const Distance&height /*= Distance::Unknown*/)
 	{
-		GetVAxis().upper.SetAllOf(p,upperOffset);
+		GetVAxis().upper.SetAllOf(p,upperOffset,parent);
 		GetVAxis().lower.Disable();
+		GetVAxis().extent = height;
 		GetVAxis().isAutoCentering = false;
 		return *this;
 	}
 
-	AnchorModifier&	AnchorModifier::DownToAllOf(const PPanel&p, const Distance&lowerOffset /*= Distance()*/)
+	AnchorModifier&	AnchorModifier::AboveAllOf(const PPanel&p, const Distance&lowerOffset /*= Distance()*/, const Distance&height /*= Distance::Unknown*/)
 	{
-		GetVAxis().lower.SetAllOf(p,lowerOffset);
+		GetVAxis().lower.SetAllOf(p,lowerOffset,parent);
 		GetVAxis().upper.Disable();
+		GetVAxis().extent = height;
 		GetVAxis().isAutoCentering = false;
 		return *this;
 	}
 
 
-	AnchorModifier&	AnchorModifier::LeftToSomeOf(const PPanel&p, const FSelector&sel, const Distance&leftOffset /*= Distance()*/)
+	AnchorModifier&	AnchorModifier::RightOfSomeOf(const PPanel&p, const FSelector&sel, const Distance&leftOffset /*= Distance()*/, const Distance&width /*= Distance::Unknown*/)
 	{
-		GetHAxis().lower.SetSomeOf(p,leftOffset,sel);
+		GetHAxis().lower.SetSomeOf(p,leftOffset,sel,parent);
 		GetHAxis().upper.Disable();
+		GetHAxis().extent = width;
 		GetHAxis().isAutoCentering = false;
 		return *this;
 	}
 
-	AnchorModifier&	AnchorModifier::RightToSomeOf(const PPanel&p, const FSelector&sel, const Distance&rightOffset /*= Distance()*/)
+	AnchorModifier&	AnchorModifier::LeftOfSomeOf(const PPanel&p, const FSelector&sel, const Distance&rightOffset /*= Distance()*/, const Distance&width /*= Distance::Unknown*/)
 	{
-		GetHAxis().upper.SetSomeOf(p,rightOffset,sel);
+		GetHAxis().upper.SetSomeOf(p,rightOffset,sel,parent);
 		GetHAxis().lower.Disable();
+		GetHAxis().extent = width;
 		GetHAxis().isAutoCentering = false;
 		return *this;
 	}
 
-	AnchorModifier&	AnchorModifier::UpToSomeOf(const PPanel&p, const FSelector&sel, const Distance&upperOffset /*= Distance()*/)
+	AnchorModifier&	AnchorModifier::BeneathSomeOf(const PPanel&p, const FSelector&sel, const Distance&upperOffset /*= Distance()*/, const Distance&height /*= Distance::Unknown*/)
 	{
-		GetVAxis().upper.SetSomeOf(p,upperOffset,sel);
+		GetVAxis().upper.SetSomeOf(p,upperOffset,sel,parent);
 		GetVAxis().lower.Disable();
+		GetVAxis().extent = height;
 		GetVAxis().isAutoCentering = false;
 		return *this;
 	}
 
-	AnchorModifier&	AnchorModifier::DownToSomeOf(const PPanel&p, const FSelector&sel, const Distance&lowerOffset /*= Distance()*/)
+	AnchorModifier&	AnchorModifier::AboveSomeOf(const PPanel&p, const FSelector&sel, const Distance&lowerOffset /*= Distance()*/, const Distance&height /*= Distance::Unknown*/)
 	{
-		GetVAxis().lower.SetSomeOf(p,lowerOffset,sel);
+		GetVAxis().lower.SetSomeOf(p,lowerOffset,sel,parent);
 		GetVAxis().upper.Disable();
+		GetVAxis().extent = height;
 		GetVAxis().isAutoCentering = false;
 		return *this;
 	}
 
 
 
-	AnchorModifier&	AnchorModifier::FillH()
+	AnchorModifier&	AnchorModifier::FillHorizontally()
 	{
 		GetHAxis().Fill();
 		return *this;
 	}
 
-	AnchorModifier&	AnchorModifier::FillH(const Distance&leftOffset, const Distance&rightOffset)
+	AnchorModifier&	AnchorModifier::FillHorizontally(const Distance&leftOffset, const Distance&rightOffset)
 	{
 		GetHAxis().Fill(leftOffset, rightOffset);
 		return *this;
@@ -358,27 +424,27 @@ namespace Component
 		extent = Distance();
 	}
 
-	AnchorModifier&	AnchorModifier::AutoV(const Distance&height /*= Distance::Unknown()*/)
+	AnchorModifier&	AnchorModifier::CenterVertically(const Distance&height /*= Distance::Unknown*/)
 	{
 		GetVAxis().SetAutoCenter(height);
 		return *this;
 	}
 
 
-	AnchorModifier&	AnchorModifier::AutoH(const Distance&width /*= Distance::Unknown()*/)
+	AnchorModifier&	AnchorModifier::CenterHorizontally(const Distance&width /*= Distance::Unknown*/)
 	{
 		GetHAxis().SetAutoCenter(width);
 		return *this;
 	}
 
 
-	AnchorModifier&	AnchorModifier::FillV()
+	AnchorModifier&	AnchorModifier::FillVertically()
 	{
 		GetVAxis().Fill();
 		return *this;
 	}
 
-	AnchorModifier&	AnchorModifier::FillV(const Distance&lowerOffset, const Distance&upperOffset)
+	AnchorModifier&	AnchorModifier::FillVertically(const Distance&lowerOffset, const Distance&upperOffset)
 	{
 		GetVAxis().Fill(lowerOffset, upperOffset);
 		return *this;
@@ -390,6 +456,21 @@ namespace Component
 	/*virtual*/ void	Component::Render()
 	{}
 
+
+	/*virtual*/ void	Component::SetLocation(const M::Rect<>&loc)
+	{
+		SetRect(loc);
+		anchorConfig.GetHAxis().UpdateExtentIfEnabled( Distance::GameWindow( GetWidth() ));
+		anchorConfig.GetVAxis().UpdateExtentIfEnabled( Distance::GameWindow( GetHeight() ));
+	}
+
+	/*virtual override*/ void Component::OnRectChange()
+	{
+		//anchorConfig.GetHAxis().UpdateExtentIfEnabled( Distance::GameWindow( GetWidth() ));
+		//anchorConfig.GetVAxis().UpdateExtentIfEnabled( Distance::GameWindow( GetHeight() ));
+		anchorConfig.VerifyIntegrity(FVerification(),GetWindow() != nullptr);
+		InvalidateAutoLayout();
+	}
 
 	Component::Component()
 	{
@@ -415,15 +496,24 @@ namespace Component
 		[this](const PComponent&c)
 		{
 			ASSERT__(c->GetWindow() == this->GetWindow());
-		});
+		},GetWindow() == nullptr);
 	}
 
 	/*virtual*/ void	Component::SetAnchorConfig(const AnchorConfig&cfg)
 	{
 		anchorConfig = cfg;
 		if (anchorConfig.HasExtentPlaceholders())
+		{
 			UpdateDynamicSize();
-		VerifyAnchorIntegrity(); 
+			if (anchorConfig.HasExtentPlaceholders())
+			{
+				anchorConfig.GetHAxis().UpdateExtentIfEnabled(Distance::GameWindow( GetWidth() ));
+				anchorConfig.GetVAxis().UpdateExtentIfEnabled(Distance::GameWindow( GetHeight() ));
+
+			}
+			ASSERT__(!anchorConfig.HasExtentPlaceholders());
+		}
+//		VerifyAnchorIntegrity(); 
 		InvalidateAutoLayout();
 	}
 
@@ -455,7 +545,7 @@ namespace Component
 
 
 
-	void			Anchor::SetSomeOf(const PPanel&p, const Distance& distance, const std::function<bool(const PComponent&)>&callback)
+	void			Anchor::SetSomeOf(const PPanel&p, const Distance& distance, const std::function<bool(const PComponent&)>&callback, const Component*mustNotInclude)
 	{
 		if (!p || !p->HasComponents())
 			return;
@@ -463,12 +553,15 @@ namespace Component
 		distanceFromReference = distance;
 		references.Clear();
 		foreach (p->GetReferences(),c)
+		{
+			ASSERT__(c->get() != mustNotInclude);
 			if (callback(*c))
 				references.Append(*c);
+		}
 	}
 
 
-	void			Anchor::SetAllOf(const PPanel&p, const Distance& distance)
+	void			Anchor::SetAllOf(const PPanel&p, const Distance& distance, const Component*mustNotInclude)
 	{
 		if (!p || !p->HasComponents())
 			return;
@@ -476,10 +569,13 @@ namespace Component
 		distanceFromReference = distance;
 		references.Clear();
 		foreach (p->GetReferences(),c)
+		{
+			ASSERT__(c->get() != mustNotInclude);
 			references.Append(*c);
+		}
 	}
 
-	void			Anchor::SetLastOf(const PPanel&p, const Distance& distance)
+	void			Anchor::SetLastOf(const PPanel&p, const Distance& distance, const Component*mustNotInclude)
 	{
 		if (!p)
 			return;
@@ -487,7 +583,10 @@ namespace Component
 		distanceFromReference = distance;
 		references.Clear();
 		if (p->HasComponents())
-			references.Append(p->GetReferences().last());
+		{
+			ASSERT__(p->GetReferences().Last().get() != mustNotInclude);
+			references.Append(p->GetReferences().Last());
+		}
 	}
 
 
@@ -501,13 +600,15 @@ namespace Component
 				return value;
 			case Type::AbsolutePixels:
 				return value / float(myAxis == AnchorAxis::Horizontal ? ViewPortWidth() : ViewPortHeight());
+			case Type::Disabled:
+				return NAN;
 		}
 		FATAL__("Unexpected distance type");
 		return 0.f;
 
 	}
 
-	float		AnchorConfig::Axis::GetMinimum(float parentUpperEdge, const M::TFloatRange<>&rectRange) const
+	float		AnchorConfig::Axis::GetMinimumEdge(float parentUpperEdge, const M::TFloatRange<>&rectRange) const
 	{
 		if (isAutoCentering)
 			return parentUpperEdge - rectRange.GetExtent();
@@ -515,19 +616,12 @@ namespace Component
 		if (lower.IsInactive())
 			return rectRange.min;
 
-		if (lower.GetReferences().IsEmpty() && upper.IsInactive())
+		if (lower.GetReferences().IsEmpty() && upper.IsInactive() && !lower.GetOffset().RequiresFixedParentSize())
 			return parentUpperEdge - rectRange.GetExtent() - lower.GetOffset().ToScreenDistance(0.f,myAxis);
 
 		return std::numeric_limits<float>::max();
 	}
 
-
-	/*virtual override*/ void	Panel::VerifyAnchorIntegrity() const
-	{
-		Super::VerifyAnchorIntegrity();
-		foreach (components,c)
-			(*c)->VerifyAnchorIntegrity();
-	}
 
 
 	/*virtual*/ bool		Panel::AddComponent(const PComponent&c)
@@ -540,7 +634,7 @@ namespace Component
 		components << c;
 		c->SetParent( GetWindow(), shared_from_this());
 		c->VerifyAnchorIntegrity();
-
+		VerifyAnchorIntegrity();
 		return true;
 	}
 
@@ -868,7 +962,7 @@ namespace Component
 				targetViewTop = M::Max(targetViewTop,0);	
 			}));
 
-			down.reset(new ScrollButton(ScrollButton::Down,[this,p]()
+			down.reset(new ScrollButton(ScrollButton::Bottom,[this,p]()
 			{
 				targetViewTop += viewSize;
 				targetViewTop = M::Min(targetViewTop,scrollMax - viewSize);
@@ -909,7 +1003,7 @@ namespace Component
 			case Up:
 				SurfaceRenderer::Rasterize(float2(r.x.center(),r.y.Derelativate(0.75f)),float2(r.x.Derelativate(0.25f),r.y.Derelativate(0.25f)),float2(r.x.Derelativate(0.75f),r.y.Derelativate(0.25f)));
 			break;
-			case Down:
+			case Bottom:
 				SurfaceRenderer::Rasterize(float2(r.x.center(),r.y.Derelativate(0.25f)),float2(r.x.Derelativate(0.75f),r.y.Derelativate(0.75f)),float2(r.x.Derelativate(0.25f),r.y.Derelativate(0.75f)));
 			break;
 
@@ -947,7 +1041,7 @@ namespace Component
 		float lowest = std::numeric_limits<float>::max();
 		foreach (components,c)
 		{
-			float newLowest = (*c)->GetAnchorConfig().GetVAxis().GetMinimum(GetRect().y.max, (*c)->GetRect().y);
+			float newLowest = (*c)->GetAnchorConfig().GetVAxis().GetMinimumEdge(GetRect().y.max, (*c)->GetRect().y);
 			if (newLowest < lowest)
 			{
 				lowest = newLowest;
@@ -993,9 +1087,8 @@ namespace Component
 				SetRect(rect);
 			}
 		}
-		
-
-
+		if (autoHeight)
+			anchorConfig.GetVAxis().UpdateExtentIfEnabled( Distance::GameWindow( GetRect().y.GetExtent() ));
 		return rs;
 	}
 
@@ -1157,14 +1250,14 @@ namespace Component
 
 	void			Panel::AnchorBelowPrevious(const PComponent&newComponent, const Distance& distanceFromSides /*= 0.015f*/,  const Distance&  distanceToPrevious/* = 0.015f*/)
 	{
-		auto cfg = newComponent->GetAnchorConfig();
-
-		if (components.IsNotEmpty())
-			cfg.GetVAxis().upper.Set(components.Last(), distanceToPrevious);
-		else
-			cfg.GetVAxis().upper.Set(distanceToPrevious);
-		cfg.GetHAxis().Fill(distanceFromSides,distanceFromSides);
-		newComponent->SetAnchorConfig(cfg);
+		{
+			auto&mod = newComponent->Anchor();
+			if (components.IsNotEmpty())
+				mod.Beneath(components.Last(), distanceToPrevious);
+			else
+				mod.Top(distanceToPrevious);
+			mod.FillHorizontally(distanceFromSides,distanceFromSides);
+		}
 		AddComponent(newComponent);
 	}
 
@@ -1181,14 +1274,17 @@ namespace Component
 
 	/*virtual*/ bool	Component::UpdateDynamicSize()
 	{
+		bool rs = false;
 		const float h = GetContentHeight();
-		if (h < 0)
-			return false;
-
-		auto&axis = anchorConfig.GetVAxis();
-		if (axis.Stretches())
-			return false;
-		return SetHeight(h);
+		if (h >= 0)
+		{
+			auto&axis = anchorConfig.GetVAxis();
+			if (!axis.Stretches())
+			{
+				rs = SetHeight(Distance::GameWindow( h ));
+			}
+		}
+		return rs;
 	}
 
 
@@ -1708,6 +1804,7 @@ namespace Component
 			#ifdef _DEBUG
 				if (numRounds > 900)
 				{
+					VerifyAnchorIntegrity();
 					if (IsDebuggerPresent())
 						DebugBreak();
 					else
@@ -1734,19 +1831,19 @@ namespace Component
 		bool rs = false;
 		const M::TFloatRange<>&ctx = context.axis[a];
 
+		const float extent = axis.extent.ToScreenDistance(ctx.GetExtent(),a);
+	
 		if (axis.isAutoCentering)
 		{
-			float ext = range.GetExtent();
 			float center = ctx.GetCenter();
-			float top = std::min(ctx.max,center + ext*0.5f);
+			float top = std::min(ctx.max,center + extent*0.5f);
 			bool changed = Set(range.max,top);
-			changed |= Set(range.min,range.max - ext);
+			changed |= Set(range.min,range.max - extent);
 
 			SetRect(rect);
 			return changed;
 		}
 
-		const float extent = axis.extent.ToScreenDistance(ctx.GetExtent(),a);
 
 		if (axis.lower.IsEnabled())
 		{
@@ -1820,7 +1917,7 @@ namespace Component
 	Component&			Component::AnchorTop(const Distance&spacing)
 	{
 		auto cfg = anchorConfig;
-		cfg.GetVAxis().AnchorUpper(Distance::Unknown(), spacing);
+		cfg.GetVAxis().AnchorUpper(Distance::Unknown, spacing);
 		SetAnchorConfig(cfg);
 		return *this;
 	}
@@ -1922,6 +2019,21 @@ namespace Component
 		LineRenderer::Flush();
 	}
 
+	/*virtual override*/ void		Panel::VerifyAnchorIntegrity() const
+	{
+		Super::VerifyAnchorIntegrity();
+		if (autoHeight && (anchorConfig.GetVAxis().Stretches()))
+			__debugbreak();
+		ASSERT__(!autoHeight || (!anchorConfig.GetVAxis().Stretches()));
+		if (autoHeight)
+		{
+			foreach (components,c)
+				ASSERT__(!(*c)->GetAnchorConfig().GetVAxis().RequiresFixedParentSize());
+		}
+		foreach (components,c)
+			(*c)->VerifyAnchorIntegrity();
+	}
+
 
 	/*virtual override*/ PWindow	Window::GetWindow()
 	{
@@ -1941,6 +2053,7 @@ namespace Component
 		visible = true; 
 		SetActive(true); 
 		OnScreenSizeOrUIScaleChange();
+		VerifyAnchorIntegrity();
 	}
 
 	bool			Window::FullAutoLayout(const TCodeLocation&caller)
@@ -1990,11 +2103,11 @@ namespace Component
 		});
 
 		{
-			auto mod = tab->ModifyAnchorConfig();
-			mod.GetHAxis().AnchorLower(Distance::Unknown());	//trigger exception when not updated later
+			auto mod = tab->Anchor();
+			mod.GetHAxis().AnchorLower(Distance::Unknown);	//trigger exception when not updated later
 			if (Super::HasComponents())
 				mod.GetHAxis().lower.Set(Super::GetReferences().Last(),0.01f);
-			mod.GetVAxis().AnchorUpper(Distance::Unknown());	//trigger exception when not updated later
+			mod.GetVAxis().AnchorUpper(Distance::Unknown);	//trigger exception when not updated later
 		}
 		tab->SetVerticalPadding(0.25f);
 		tab->LockToIdealWidth();
@@ -2026,7 +2139,7 @@ namespace Component
 		active->SetAlwaysDown(false);
 		active->edges = M::Quad<bool>(true);
 		active->bottomOpacity = 1;
-		active->ModifyAnchorConfig().GetVAxis().lower.Disable();
+		active->Anchor().GetVAxis().lower.Disable();
 		active->LockToIdealHeight(true);
 		active->topOpacity = 0.85f;
 		active->bottomOpacity = 0.85f;
@@ -2037,7 +2150,7 @@ namespace Component
 	{
 		active->SetAlwaysDown(true);
 		active->LockToIdealHeight(false);
-		active->ModifyAnchorConfig().GetVAxis().lower.Set(0);
+		active->Anchor().GetVAxis().lower.Set(0);
 		active->topOpacity = 1.f;
 		active->bottomOpacity = 0;
 		active->edges = M::Quad<bool>(true,false,true,true);
@@ -2073,9 +2186,9 @@ namespace Component
 		this->fillBackground = false;
 		tabBar.reset(new TabBar());
 		{
-			auto mod = tabBar->ModifyAnchorConfig();
+			auto mod = tabBar->Anchor();
 			mod.GetHAxis().Fill();
-			mod.GetVAxis().AnchorUpper(Distance::Unknown());
+			mod.GetVAxis().AnchorUpper(Distance::Unknown);
 		}
 		tabBar->SetOnTabChange([this]()
 		{
@@ -2095,7 +2208,7 @@ namespace Component
 		tab.panel.reset(new Panel());
 		tab.panel->edges.top = false;
 		{
-			auto mod = tab.panel->ModifyAnchorConfig();
+			auto mod = tab.panel->Anchor();
 			mod.GetHAxis().Fill();
 			mod.GetVAxis().Fill();
 			mod.GetVAxis().upper.Set(tabBar,Distance());

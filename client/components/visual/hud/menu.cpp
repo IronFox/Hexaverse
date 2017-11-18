@@ -43,7 +43,7 @@ namespace Menu
 			check
 		));
 		Super::RemoveComponent(hintLabel);
-		Super::AnchorBelowPrevious(button,0.f,Super::components.IsEmpty() ? 0.f : 0.015f);
+		Super::AnchorBelowPrevious(button,0.f,HUD::Component::Distance::GameWindow( Super::components.IsEmpty() ? 0.f : 0.015f ));
 		if (hintLabel)
 			Super::AnchorBelowPrevious(hintLabel,0.015f,0.015f);
 
@@ -120,6 +120,7 @@ namespace Menu
 		LogEvent(EventClass::Preset::gui,"CreateOptionsMenu()["+String(options.get())+"].AddOption("+name+", ...)");
 
 		Component::PPanel p(new Component::Panel());
+		p->Anchor().Top();
 		Component::PLabel l(new Component::Label(name));
 		p->AddComponent(l);
 		p->AddComponent(c);
@@ -131,16 +132,16 @@ namespace Menu
 		l->fillBackground = false;
 		l->alignCenter = false;
 		{
-			auto mod = l->ModifyAnchorConfig();
+			auto mod = l->Anchor();
 			//mod.Top().Set(0);
-			mod.AutoV().Left(0,MinTextWidth);
+			mod.CenterVertically().Left(0,MinTextWidth);
 		}
 		c->AnchorTop(0);
 		{
-			auto mod = c->ModifyAnchorConfig();
+			auto mod = c->Anchor();
 			mod.Left(HUD::Component::Distance::GameWindow( MinTextWidth ));
 			mod.Right(0.01f);
-			mod.AutoV();
+			mod.CenterVertically();
 		}
 
 		p->SetAutomaticHeight(true);

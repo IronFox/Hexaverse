@@ -226,7 +226,7 @@ namespace Tutorial
 					taskWindow->SetAutomaticHeight(true);
 					taskWindow->SetAutoCenter(false);
 					{
-						auto mod = taskWindow->ModifyAnchorConfig();
+						auto mod = taskWindow->Anchor();
 						mod.GetHAxis().AnchorUpper(0.25f,0.1f);
 						mod.GetVAxis().AnchorLower(0.25f,0.1f);
 					}

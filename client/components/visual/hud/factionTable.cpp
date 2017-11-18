@@ -63,7 +63,7 @@ namespace HUD
 					PLabel label{new Label{labelText,0.75f}};
 					rs->AddComponent(label);
 					{
-						auto mod = label->ModifyAnchorConfig();
+						auto mod = label->Anchor();
 						mod.GetHAxis().AnchorLowerUnknown();
 						mod.GetVAxis().AnchorUpperUnknown();
 					}
@@ -97,7 +97,7 @@ namespace HUD
 				PLabel nameLabel{new Label{faction->name}},statusLabel{new Label{faction->online ? (faction->requestedNewRound ? "" : WordForThinking(RuntimeConfig::roundNumber,faction.get())) : "<offline>" ,0.8f}};
 
 				nameLabel->SetWidth(0.15f);
-				nameLabel->ModifyAnchorConfig().GetHAxis().AnchorLowerUnknown();
+				nameLabel->Anchor().GetHAxis().AnchorLowerUnknown();
 				nameLabel->alignCenter = false;
 				nameLabel->SetPadding(0.2f);
 				nameLabel->SetHorizontalPadding(1,1);
@@ -112,14 +112,14 @@ namespace HUD
 					nameLabel->SetColor(faction->color);
 				}
 				{
-					auto cfg = statusLabel->ModifyAnchorConfig();
+					auto cfg = statusLabel->Anchor();
 					cfg.GetHAxis().lower.Set(nameLabel,0);
 					cfg.GetHAxis().upper.Set(0);
 					cfg.GetVAxis().AnchorLowerUnknown();
 				}
 			
 				statusLabel->SetPadding(0.2f);
-				//textLabel->ModifyAnchorConfig().Top().Set(0);
+				//textLabel->Anchor().Top().Set(0);
 				statusLabel->alignCenter = false;
 
 				//timeLabel->fillBackground = true;
@@ -169,7 +169,7 @@ namespace HUD
 						close->SetVerticalPadding(0.5f);
 						close->FillHorizontally(0);
 						buttons->AddComponent(close);
-						close->ModifyAnchorConfig().GetVAxis().AnchorUpperUnknown();
+						close->Anchor().GetVAxis().AnchorUpperUnknown();
 					}
 
 					{
@@ -181,14 +181,14 @@ namespace HUD
 						}}};
 						send->SetVerticalPadding(0.5f);
 						{
-							auto cfg = send->ModifyAnchorConfig();
+							auto cfg = send->Anchor();
 							cfg.GetVAxis().SetAutoCenter();
 							cfg.GetHAxis().AnchorUpperUnknown();
 						}
 						send->LockToIdealWidth();
 						send->LockToIdealHeight();
 						{
-							auto cfg = chatMessage->ModifyAnchorConfig();
+							auto cfg = chatMessage->Anchor();
 							cfg.GetVAxis().AnchorUpperUnknown();
 							cfg.GetHAxis().upper.Set(send,0);
 							cfg.GetHAxis().lower.Set(0);
@@ -277,15 +277,15 @@ namespace HUD
 			timeLabel->SetPadding(M::Quad<float>{0.5f,0,0.5f,0});
 			timeLabel->LockToIdealWidth();
 			//timeLabel->alignCenter = false;
-			timeLabel->ModifyAnchorConfig().GetVAxis().AnchorLowerUnknown();
-			timeLabel->ModifyAnchorConfig().GetHAxis().AnchorUpperUnknown();
+			timeLabel->Anchor().GetVAxis().AnchorLowerUnknown();
+			timeLabel->Anchor().GetHAxis().AnchorUpperUnknown();
 			if (owner)
 			{
 				senderLabel.reset(new Label{owner->name+": "});
 				senderLabel->SetColor(owner->color);
 				senderLabel->LockToIdealWidth();
-				senderLabel->ModifyAnchorConfig().GetHAxis().AnchorLowerUnknown();
-				//senderLabel->ModifyAnchorConfig().Top().Set(0);
+				senderLabel->Anchor().GetHAxis().AnchorLowerUnknown();
+				//senderLabel->Anchor().Top().Set(0);
 				senderLabel->alignCenter = false;
 				senderLabel->LockToIdealHeight();
 				senderLabel->SetPadding(0);
@@ -293,7 +293,7 @@ namespace HUD
 				senderLabel->SetHorizontalPadding(1,0);
 				textLabel->SetColor(owner->color * 0.5f + 0.5f); 
 				{
-					auto cfg = textLabel->ModifyAnchorConfig();
+					auto cfg = textLabel->Anchor();
 					cfg.GetHAxis().lower.Set(senderLabel,0);
 					cfg.GetHAxis().upper.Disable();
 				}
@@ -301,16 +301,16 @@ namespace HUD
 			else
 			{
 				textLabel->SetColor(owner->color);
-				textLabel->ModifyAnchorConfig().GetHAxis().AnchorLowerUnknown();
+				textLabel->Anchor().GetHAxis().AnchorLowerUnknown();
 			}
 			textLabel->SetPadding(0);
 			textLabel->SetVerticalPadding(0.25f);
 			{
-				auto cfg = textLabel->ModifyAnchorConfig();
+				auto cfg = textLabel->Anchor();
 				cfg.GetHAxis().upper.Set(timeLabel,0);
 				cfg.GetHAxis().lower.Disable();
 			}
-			//textLabel->ModifyAnchorConfig().Top().Set(0);
+			//textLabel->Anchor().Top().Set(0);
 			textLabel->alignCenter = false;
 			textLabel->LockToIdealHeight();
 

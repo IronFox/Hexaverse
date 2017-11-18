@@ -62,8 +62,8 @@ namespace HUD{namespace HostList{
 
 		headerRow.reset(new Panel());
 		headerRow->FillHorizontally(0);
+		headerRow->Anchor().Top();
 		headerRow->SetAutomaticHeight(true);
-		headerRow->ModifyAnchorConfig().Up();
 		headerRow->fillBackground = false;
 		
 		Update();
@@ -96,8 +96,8 @@ namespace HUD{namespace HostList{
 	{
 		PLabel label (new Label());
 		label->alignCenter = false;
+		label->Anchor().Top(Distance::GameWindow( 0.01f )).Left( Distance::GameWindow(0.01f) );
 		label->SetWidth(VisualTabWidth[std::min(tabIndex,ARRAYSIZE(VisualTabWidth))]);
-		label->ModifyAnchorConfig().Up(0.01f).Left(0.01f);
 		label->SetText(text);
 		label->SetLocalFontScale(zoom);
 		label->SetVerticalPadding( 0);
@@ -109,9 +109,7 @@ namespace HUD{namespace HostList{
 	{
 		const index_t tabIndex = context->CountComponents();
 		PLabel label=MakeHeaderLabel(name/*+"["+String(tabIndex)+"]"*/,1.1f,tabIndex);
-		{
-			label->ModifyAnchorConfig().Up(verticalSpacing).LeftToLastOf(context,0.f);
-		}
+		label->Anchor().Top(verticalSpacing).RightOfLastOf(context,0.f);
 		context->AddComponent(label);
 		label->SetColor(color);
 		//label->fillBackground = true;
@@ -191,7 +189,7 @@ namespace HUD{namespace HostList{
 
 	static void SetTop(const PComponent&c, float dist)
 	{
-		c->ModifyAnchorConfig().Up(Distance::GameWindow(dist));
+		c->Anchor().Top(Distance::GameWindow(dist));
 	}
 
 	PButtonPanel ConstructPanel(Network::ServerInfo&info)
@@ -217,7 +215,7 @@ namespace HUD{namespace HostList{
 
 			attach->buttonPanel.reset(new ButtonPanel());
 			auto p = attach->buttonPanel;
-			p->FillHorizontally(0);
+			p->Anchor().FillHorizontally().Top();
 			p->SetAutomaticHeight(true);
 			bool versionMatch = info.rightVersion;
 
@@ -333,16 +331,16 @@ namespace HUD{namespace HostList{
 			else
 				label->SetColor(incompatibleColor);
 			{
-				auto cfg = label->ModifyAnchorConfig();
+				auto cfg = label->Anchor();
 				cfg.Left(0.05f);
 				if (first)
 				{
 					first = false;
-					cfg.UpToSomeOf(p,[p](const PComponent&c)->bool{return c != p->GetReferences().last();});
+					cfg.BeneathSomeOf(p,[p](const PComponent&c)->bool{return c != p->GetReferences().last();});
 				}
 				else
 				{
-					cfg.UpToLastOf(p);
+					cfg.BeneathLastOf(p);
 				}
 			}
 			p->AddComponent( label );
@@ -352,12 +350,12 @@ namespace HUD{namespace HostList{
 		{
 			PLabel label = MakeHeaderLabel("Server identifies as '"+String(host.serverInfo.hostInfo.version)+'\'',0.7f,0);
 			label->SetColor(incompatibleColor);
-			label->ModifyAnchorConfig().UpToLastOf(p,Distance::GameWindow( 0.005f ));
+			label->Anchor().BeneathLastOf(p,Distance::GameWindow( 0.005f ));
 			p->AddComponent( label );
 					
 			label = MakeHeaderLabel("Client expected '" SERVER_NAME "\'",0.7f,0);
 			label->SetColor(incompatibleColor);
-			label->ModifyAnchorConfig().UpToLastOf(p,Distance::GameWindow( 0.005f ));
+			label->Anchor().BeneathLastOf(p,Distance::GameWindow( 0.005f ));
 			p->AddComponent( label );
 		}
 
@@ -420,13 +418,13 @@ namespace HUD{namespace HostList{
 		if (!serverListPanel)
 		{
 			serverListPanel.reset(new Panel());
-			serverListPanel->FillHorizontally(0);
+			serverListPanel->Anchor().FillHorizontally().Top();
 			serverListPanel->SetAutomaticHeight(true);
 			serverListPanel->SetMaxAutoHeight(0.5f);
 			serverListPanel->fillBackground = false;
 		}
 		serverListPanel->ClearComponents();
-		serverListPanel->ModifyAnchorConfig().UpToAllOf(serverChoice);
+		serverListPanel->Anchor().BeneathAllOf(serverChoice);
 		serverChoice->AddComponent( serverListPanel );
 
 
@@ -435,23 +433,23 @@ namespace HUD{namespace HostList{
 		foreach (list,failed)
 		{
 			PPanel p(new Panel());
-			p->ModifyAnchorConfig()
-				.UpToLastOf(serverListPanel,Distance::GameWindow( 0.015f ))
-				.FillH();
+			p->Anchor()
+				.BeneathLastOf(serverListPanel,Distance::GameWindow( 0.015f ))
+				.FillHorizontally();
 			p->SetAutomaticHeight(true);
 			p->fillBackground = false;
 
 			PPanel pb(new Panel());
 			//pb->autoHeight = true;
 			p->AddComponent( pb );
-			pb->ModifyAnchorConfig().FillV().Left();
+			pb->Anchor().FillVertically().Left();
 			
 			
 
 			PLabel label = MakeHeaderLabel("Still trying to query '"+ToString(*failed)+"'...",0.7f,0);
 //			label->anchorConfig.Left().Set(0.1f,false);
 			label->SetColor(1,0.75f,0.75f,0.9f);
-			label->ModifyAnchorConfig().Up(Distance::GameWindow( 0.01f )).Right(Distance::GameWindow( 0.01f ));
+			label->Anchor().Top(Distance::GameWindow( 0.01f )).Right(Distance::GameWindow( 0.01f ));
 			pb->AddComponent( label );
 			Network::ServerAddress url = *failed;
 			PButton forget(new Button("Forget this host",
@@ -476,10 +474,10 @@ namespace HUD{namespace HostList{
 			forget->SetLocalFontScale(forget->GetLocalFontScale() * 0.9f);
 			forget->ScaleVerticalPadding(0.5f);
 			forget->LockToIdealWidth();
-			forget->ModifyAnchorConfig().Up().Right();
+			forget->Anchor().Top().Right();
 		
 			p->AddComponent( forget );
-			pb->ModifyAnchorConfig().RightTo(forget,Distance(10,Distance::Type::AbsolutePixels));
+			pb->Anchor().LeftOf(forget,Distance(10,Distance::Type::AbsolutePixels));
 
 			serverListPanel->AddComponent( p );
 		}
@@ -490,7 +488,7 @@ namespace HUD{namespace HostList{
 
 			PButtonPanel p = ConstructPanel(info);
 
-			p->ModifyAnchorConfig().UpToLastOf(serverListPanel,Distance::GameWindow( 0.015f ));
+			p->Anchor().BeneathLastOf(serverListPanel,Distance::GameWindow( 0.015f ));
 			serverListPanel->AddComponent( p );
 		}
 
@@ -503,16 +501,16 @@ namespace HUD{namespace HostList{
 		if (Network::servers.IsEmpty())
 		{
 			PButtonPanel p(new ButtonPanel());
-			p->ModifyAnchorConfig().UpToAllOf(serverChoice, Distance::GameWindow(0.025f ));
+			p->Anchor().BeneathAllOf(serverChoice, Distance::GameWindow(0.025f ));
+			serverChoice->AddComponent( p );
 
 			PLabel label = MakeHeaderLabel(" No Servers Found",0.7f,0);
-			label->ModifyAnchorConfig().Left(Distance::GameWindow( 0.1f ));
+			label->Anchor().Left(Distance::GameWindow( 0.1f ));
 			label->SetColor(1,1,1,0.7f);
 			p->AddComponent( label );
 			p->SetAutomaticHeight(true);
 			p->SetAutoHeightSpacing(p->GetAutoHeightSpacing() * 4.f);
 
-			serverChoice->AddComponent( p );
 		};
 
 
@@ -538,8 +536,8 @@ namespace HUD{namespace HostList{
 			[]()->bool {return !Network::client.IsAttemptingToConnect() && !Network::client.IsConnected();}
 			));
 			{
-				auto mod = b->ModifyAnchorConfig();
-				mod.UpToLastOf(serverChoice, Distance::GameWindow( 0.025f )).Left();
+				auto mod = b->Anchor();
+				mod.BeneathLastOf(serverChoice, Distance::GameWindow( 0.025f )).Left();
 			}
 			b->LockToIdealWidth();
 
@@ -584,15 +582,15 @@ namespace HUD{namespace HostList{
 			[]()->bool {return !Network::client.IsAttemptingToConnect() && !Network::client.IsConnected() && ServerProcess::IsRunning();}
 			);
 			{
-				auto mod = start->ModifyAnchorConfig();
+				auto mod = start->Anchor();
 
 				mod.GetVAxis() = addHostButton->GetAnchorConfig().GetVAxis();
-				mod.LeftTo(addHostButton,0.02f);
+				mod.RightOf(addHostButton,0.02f);
 			}
 			{
-				auto mod = stop->ModifyAnchorConfig();
+				auto mod = stop->Anchor();
 				mod.GetVAxis() = addHostButton->GetAnchorConfig().GetVAxis();
-				mod.LeftTo(start,0.02f);
+				mod.RightOf(start,0.02f);
 			}
 
 			serverChoice->AddComponent(start);

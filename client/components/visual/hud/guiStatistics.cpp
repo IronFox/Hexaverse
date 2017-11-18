@@ -86,24 +86,24 @@ namespace HUD
 			static void AddRow(const PComponent&c)
 			{
 				{
-					auto mod = c->ModifyAnchorConfig();
+					auto mod = c->Anchor();
 					if (left)
 					{
-						mod.FillH(0,0.5f);
+						mod.FillHorizontally(0,0.5f);
 						if (statsPanel->GetReferences().IsNotEmpty())
-							mod.UpTo(statsPanel->GetReferences().Last(),0);
+							mod.Beneath(statsPanel->GetReferences().Last(),0);
 						else
-							mod.Up(0.03f);
+							mod.Top(0.03f);
 						if (statsPanel->CountComponents() > 1)
 							mod.GetVAxis().upper.AddReference( statsPanel->GetReferences().GetFromEnd(1) );
 					}
 					else
 					{
-						mod.FillH(0.5f,0);
+						mod.FillHorizontally(0.5f,0);
 						if (statsPanel->CountComponents() > 1)
-							mod.UpTo(statsPanel->GetReferences().GetFromEnd(1),0);
+							mod.Beneath(statsPanel->GetReferences().GetFromEnd(1),0);
 						else
-							mod.Up(0.03f);
+							mod.Top(0.03f);
 						if (statsPanel->CountComponents() > 2)
 							mod.GetVAxis().upper.AddReference(statsPanel->GetReferences().GetFromEnd(2) );
 					}
@@ -129,7 +129,7 @@ namespace HUD
 
 				PLabel prefixLabel{new Label{prefix+' '}};
 				prefixLabel->alignCenter = false;
-				prefixLabel->ModifyAnchorConfig().Up().Left();
+				prefixLabel->Anchor().Top().Left();
 				prefixLabel->LockToIdealHeight();
 				prefixLabel->LockToIdealWidth();
 				//prefixLabel->SetVerticalPadding(linePadding);
@@ -140,7 +140,7 @@ namespace HUD
 				PLabel factionLabel{new Label{f->GetName()}};
 				factionLabel->alignCenter = false;
 				factionLabel->SetColor(f->color);
-				factionLabel->ModifyAnchorConfig().Up().LeftTo(prefixLabel);
+				factionLabel->Anchor().Top().RightOf(prefixLabel);
 				//factionLabel->SetVerticalPadding(linePadding);
 				factionLabel->SetPadding(0.f);
 				factionLabel->LockToIdealWidth();
@@ -149,7 +149,7 @@ namespace HUD
 				if (postFix.IsNotEmpty())
 				{
 					PLabel postFixLabel{new Label{' '+postFix}};
-					postFixLabel->ModifyAnchorConfig().Up().LeftTo(factionLabel);
+					postFixLabel->Anchor().Top().RightOf(factionLabel);
 					postFixLabel->alignCenter = false;
 					//postFixLabel->SetVerticalPadding(linePadding);
 					postFixLabel->SetPadding(0.f);
@@ -445,28 +445,28 @@ namespace HUD
 				window->AddComponent(statsPanel);
 
 				{
-					auto anchors = metricPanel->ModifyAnchorConfig();
-					anchors.Left().FillV();
+					auto anchors = metricPanel->Anchor();
+					anchors.Left().FillVertically();
 				}
 				metricPanel->SetWidth(0.15f);
 				metricPanel->SetAutomaticHeight(false);
 
 				{
-					auto anchors = factionPanel->ModifyAnchorConfig();
-					anchors.Right().FillV();
+					auto anchors = factionPanel->Anchor();
+					anchors.Right().FillVertically();
 				}
 				factionPanel->SetWidth(0.15f);
 				factionPanel->SetAutomaticHeight(false);
 				{
-					auto anchors = statsPanel->ModifyAnchorConfig();
+					auto anchors = statsPanel->Anchor();
 					anchors.FillHBetween(metricPanel,factionPanel);
-					anchors.Down();
+					anchors.Bottom();
 				}
 				statsPanel->SetAutomaticHeight(false);
 				statsPanel->SetHeight(0.25f);
 
 				{
-					auto anchors = overviewGraph->ModifyAnchorConfig();
+					auto anchors = overviewGraph->Anchor();
 					anchors.FillHBetween(metricPanel,factionPanel);
 					anchors.GetVAxis().upper.Set(0);
 					anchors.GetVAxis().lower.Set(statsPanel, 0);
