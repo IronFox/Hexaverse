@@ -54,7 +54,6 @@ namespace HUD
 			PPanel	AddPanel(const String&labelText)
 			{
 				PPanel rs{new Panel{}};
-
 				rs->SetAutomaticHeight(true);
 				rs->SetMaxAutoHeight(0.4f);
 				
@@ -111,12 +110,7 @@ namespace HUD
 					statusLabel->SetColor(faction->color); 
 					nameLabel->SetColor(faction->color);
 				}
-				{
-					auto cfg = statusLabel->Anchor();
-					cfg.GetHAxis().lower.Set(nameLabel,0);
-					cfg.GetHAxis().upper.Set(0);
-					cfg.GetVAxis().AnchorLowerUnknown();
-				}
+				statusLabel->Anchor().FillHBetween(nameLabel,nullptr).Bottom();
 			
 				statusLabel->SetPadding(0.2f);
 				//textLabel->Anchor().Top().Set(0);
@@ -180,21 +174,12 @@ namespace HUD
 							chatMessage->SetText("");
 						}}};
 						send->SetVerticalPadding(0.5f);
-						{
-							auto cfg = send->Anchor();
-							cfg.GetVAxis().SetAutoCenter();
-							cfg.GetHAxis().AnchorUpperUnknown();
-						}
+						send->Anchor().CenterVertically().Right();
 						send->LockToIdealWidth();
 						send->LockToIdealHeight();
-						{
-							auto cfg = chatMessage->Anchor();
-							cfg.GetVAxis().AnchorUpperUnknown();
-							cfg.GetHAxis().upper.Set(send,0);
-							cfg.GetHAxis().lower.Set(0);
-						}
-						chatInput->AddComponent(chatMessage);
+						chatMessage->Anchor().Top().FillHBetween(nullptr,send);
 						chatInput->AddComponent(send);
+						chatInput->AddComponent(chatMessage);
 						chatMessage->onEnter = [send](){send->Trigger();};
 					}
 				}

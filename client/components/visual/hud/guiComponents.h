@@ -124,17 +124,17 @@ namespace Component
 		}
 		void			Set(const PComponent&c, const Distance&dist)
 		{
-			if (!c)
-				return;
 			enabled = true;
 			distanceFromReference = dist;
 			references.Clear();
-			references.Append(c);
+			if (c)
+				references.Append(c);
 		}
 		void			Set(const Distance&dist)
 		{
 			enabled = true;
 			distanceFromReference = dist;
+			references.Clear();
 		}
 
 		void			VerifyIntegrity(const FVerification&, const AnchorAxis&, bool isUpper) const;
@@ -1217,7 +1217,7 @@ namespace Component
 	public:
 		/**/			Panel()	{topOpacity = 0.75f; bottomOpacity = 0.75f;}
 		bool			DeterminesHeightAutomatically() const {return autoHeight;}
-		void			SetAutomaticHeight(bool b) {if (autoHeight == b) return; autoHeight = b; this->InvalidateAutoLayout(); VerifyAnchorIntegrity();}
+		void			SetAutomaticHeight(bool b);
 		float			GetAutoHeightSpacing() const {return autoHeightSpacing;}
 		void			SetAutoHeightSpacing(float s) {if (s == autoHeightSpacing) return; autoHeightSpacing = s; this->InvalidateAutoLayout();}
 		float			GetMaxAutoHeight() const {return maxHeight;}

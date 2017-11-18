@@ -500,9 +500,10 @@ namespace HUD{namespace HostList{
 
 		if (Network::servers.IsEmpty())
 		{
-			PButtonPanel p(new ButtonPanel());
+			PPanel p(new Panel());
 			p->Anchor().BeneathAllOf(serverChoice, Distance::GameWindow(0.025f ));
 			serverChoice->AddComponent( p );
+			p->fillBackground = false;
 
 			PLabel label = MakeHeaderLabel(" No Servers Found",0.7f,0);
 			label->Anchor().Left(Distance::GameWindow( 0.1f ));

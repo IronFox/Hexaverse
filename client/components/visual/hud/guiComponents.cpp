@@ -421,7 +421,7 @@ namespace Component
 		lower.Set(lowerC,0);
 		upper.Set(upperC,0);
 		isAutoCentering = false;
-		extent = Distance();
+		extent = Distance::Disabled;
 	}
 
 	AnchorModifier&	AnchorModifier::CenterVertically(const Distance&height /*= Distance::Unknown*/)
@@ -2018,6 +2018,18 @@ namespace Component
 		LineRenderer::Rasterize(box);
 		LineRenderer::Flush();
 	}
+
+	void		Panel::SetAutomaticHeight(bool b)
+	{
+		if (autoHeight == b)
+			return;
+		autoHeight = b;
+		this->InvalidateAutoLayout();
+		if (b && anchorConfig.GetVAxis().Stretches())
+			AnchorTop(0);
+		VerifyAnchorIntegrity();
+	}
+
 
 	/*virtual override*/ void		Panel::VerifyAnchorIntegrity() const
 	{

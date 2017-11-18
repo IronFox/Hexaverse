@@ -136,13 +136,7 @@ namespace Menu
 			//mod.Top().Set(0);
 			mod.CenterVertically().Left(0,MinTextWidth);
 		}
-		c->AnchorTop(0);
-		{
-			auto mod = c->Anchor();
-			mod.Left(HUD::Component::Distance::GameWindow( MinTextWidth ));
-			mod.Right(0.01f);
-			mod.CenterVertically();
-		}
+		c->Anchor().FillHorizontally(MinTextWidth,0.01f).CenterVertically();
 
 		p->SetAutomaticHeight(true);
 		p->fillBackground = false;
