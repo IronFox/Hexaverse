@@ -244,19 +244,18 @@ namespace ConfigurationMode
 					button->backgroundTone /= max;
 				button->SetColor(float4(button->backgroundTone,1.f));
 				button->fillBackground = true;
+				button->renderBorder = true;
 				float b = 0.2f * (window->CountComponents()/4);
 				float x = 0.25f * (window->CountComponents()%4);
 				float x2 = 0.25f * (3-(window->CountComponents()%4));
-				button->SetLocation(M::TFloatRect(float2(),float2(0.15f,0.15f)));
 				{
-					auto cfg = button->GetAnchorConfig();
-					cfg.Left().Set(x);
-					cfg.Right().Set(x2);
+					auto m = button->Anchor();
+					m.FillHorizontally(x,x2);
+
 					if (window->CountComponents()>=4)
-						cfg.Top().Set(window->GetComponents()[4*(window->CountComponents()/4-1)], 0.01f);
+						m.Beneath(window->GetReferences()[4*(window->CountComponents()/4-1)], Distance::GameWindow( 0.01f ));
 					else
-						cfg.Top().Set(0.f);
-					button->SetAnchorConfig(cfg);
+						m.Top();
 				}
 				button->SetHorizontalPadding(0);
 				//if ((i%4)!=0)
@@ -275,15 +274,7 @@ namespace ConfigurationMode
 			{
 				PButton button(new Button("Abort"));
 				float b = 0.2f * ((window->CountComponents()/4)+1);
-				button->SetLocation(M::TFloatRect(float2(),float2(1.f,0.2f)));
-//				button->anchorConfig.Top().Set(b);
-				{
-					auto cfg = button->GetAnchorConfig();
-					cfg.Left().Set(0);
-					cfg.Right().Set(0);
-					cfg.Top().SetLastOf(window, 0.01f);
-					button->SetAnchorConfig(cfg);
-				}
+				button->Anchor().FillHorizontally().BeneathLastOf(window,Distance::GameWindow(0.01f),Distance::GameWindow(0.2f));
 			
 				button->SetTriggerFunction([this]()
 				{
@@ -387,12 +378,12 @@ namespace ConfigurationMode
 			planetListWindow->SetWidth(0.7f);
 			planetListWindow->SetAutomaticHeight(true);
 			planetListWindow->SetMaxAutoHeight(0.7f);
-			planetListWindow->fillBackground = false;
+			planetListWindow->SetBackgroundTransparent();
 			PComponent label = planetListWindow->AddNewComponent(new Label("Planets",1.2f));
 			{
 				auto cfg = label->GetAnchorConfig();
-				cfg.Top().Set(0);
-				cfg.Left().Set(0);
+				cfg.GetHAxis().AnchorLower(HUD::Component::Distance::Unknown);
+				cfg.GetVAxis().AnchorUpper(HUD::Component::Distance::Unknown);
 				label->SetAnchorConfig(cfg);
 			}
 			foreach (planetList,p)
@@ -405,13 +396,7 @@ namespace ConfigurationMode
 					LoadServerWorld(false);
 					lockedAwaitConfig = sentVersion;
 				}));
-				{
-					auto cfg = button->GetAnchorConfig();
-					cfg.Top().SetLastOf(planetListWindow,0.02f);
-					cfg.axis[0].min.Set(0);
-					cfg.axis[0].max.Set(0);
-					button->SetAnchorConfig(cfg);
-				}
+				button->Anchor().FillHorizontally().BeneathLastOf(planetListWindow, 0.02f);
 				planetListWindow->AddComponent(button);
 			}
 

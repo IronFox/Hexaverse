@@ -63,13 +63,13 @@ namespace Dialog
 		static void SetLeft(const HUD::Component::PComponent&c, float v)
 		{
 			auto cfg = c->GetAnchorConfig();
-			cfg.Left().Set(v);
+			cfg.GetHAxis().lower.Set(HUD::Component::Distance::OfParentSize( v));
 			c->SetAnchorConfig(cfg);
 		}
 		static void SetRight(const HUD::Component::PComponent&c, float v)
 		{
 			auto cfg = c->GetAnchorConfig();
-			cfg.Right().Set(v);
+			cfg.GetHAxis().upper.Set(HUD::Component::Distance::OfParentSize( v));
 			c->SetAnchorConfig(cfg);
 		}
 
@@ -77,19 +77,12 @@ namespace Dialog
 		{
 			dialog->isTutorial = isTutorial;
 
-			if (dialog->DoesAutoCenter())
-			{
-				dialog->SetWidth(0.5f);
-			}
+			if (dialog->GetAnchorConfig().GetHAxis().Stretches())
+				dialog->Anchor().FillHorizontally(0.25f,0.25f);
 			else
-			{
-				auto cfg = dialog->GetAnchorConfig();
-				cfg.Left().Set(0.25f);
-				cfg.Right().Set(0.25f);
-				dialog->SetAnchorConfig(cfg);
-			}
+				dialog->SetWidth(0.5f);
 			
-			dialog->fillBackground = false;
+			dialog->SetBackgroundTransparent();
 			//HUD::Component::PComponent	common(new HUD::Component::Area());
 
 			HUD::Component::PPanel	textPanel(new HUD::Component::Panel());
@@ -97,9 +90,8 @@ namespace Dialog
 			textPanel->AddComponent(textField);
 			{
 				auto cfg = textField->GetAnchorConfig();
-				cfg.Left().Set(0.f);
-				cfg.Right().Set(0.f);
-				cfg.Top().Set(0.f);
+				cfg.GetHAxis().Fill();
+				cfg.GetVAxis().AnchorUpper(HUD::Component::Distance::Unknown);
 				textField->SetAnchorConfig(cfg);
 				textPanel->SetAnchorConfig(cfg);
 			}
@@ -121,9 +113,8 @@ namespace Dialog
 				inputField.reset(new HUD::Component::Input());
 				{
 					auto cfg = inputField->GetAnchorConfig();
-					cfg.Left().Set(0.f);
-					cfg.Right().Set(0.f);
-					cfg.Top().Set(textField,0.f);//0.025f);
+					cfg.GetHAxis().Fill();
+					cfg.GetVAxis().AnchorUpper(HUD::Component::Distance::Unknown,textField);
 					inputField->SetAnchorConfig(cfg);
 				}
 				WDialog wd = dialog;
@@ -140,9 +131,8 @@ namespace Dialog
 				passwordInputField.reset(new HUD::Component::PasswordInput());
 				{
 					HUD::Component::AnchorConfig cfg;
-					cfg.Left().Set(0.f);
-					cfg.Right().Set(0.f);
-					cfg.Top().Set(textField,0.f);//0.025f);
+					cfg.GetHAxis().Fill();
+					cfg.GetVAxis().AnchorUpper(HUD::Component::Distance::Unknown,textField);
 					passwordInputField->SetAnchorConfig(cfg);
 				}
 				textPanel->AddComponent (passwordInputField);
@@ -151,13 +141,7 @@ namespace Dialog
 			if (componentFlags & ComponentFlags::ConfirmButton)
 			{
 				confirmButton.reset(new HUD::Component::Button(confirmWord));
-				{
-					HUD::Component::AnchorConfig cfg;
-					cfg.Left().Set(0.f);
-					cfg.Right().Set(0.f);
-					cfg.Top().Set(textPanel,0.015f,HUD::Component::TAnchor::RelativeToScreen);
-					confirmButton->SetAnchorConfig(cfg);
-				}
+				confirmButton->Anchor().FillHorizontally().Beneath(textPanel,0.015f);
 				dialog->AddComponent( confirmButton);
 				buttons << std::make_pair(1, confirmButton);
 			}
@@ -166,7 +150,7 @@ namespace Dialog
 				helpButton.reset(new HUD::Component::Button("?"));
 				{
 					HUD::Component::AnchorConfig cfg;
-					cfg.Top().Set(textPanel,0.015f,HUD::Component::TAnchor::RelativeToScreen);
+					cfg.GetVAxis().AnchorUpper(HUD::Component::Distance::Unknown,textPanel,HUD::Component::Distance::GameWindow(0.015f));
 					helpButton->SetAnchorConfig(cfg);
 				}
 				dialog->AddComponent(helpButton);
@@ -177,7 +161,7 @@ namespace Dialog
 				noButton.reset(new HUD::Component::Button("No"));
 				{
 					HUD::Component::AnchorConfig cfg;
-					cfg.Top().Set(textPanel,0.015f,HUD::Component::TAnchor::RelativeToScreen);
+					cfg.GetVAxis().AnchorUpper(HUD::Component::Distance::Unknown,textPanel,HUD::Component::Distance::GameWindow(0.015f));
 					noButton->SetAnchorConfig(cfg);
 				}
 				dialog->AddComponent( noButton);
@@ -186,16 +170,7 @@ namespace Dialog
 			if (componentFlags & ComponentFlags::CancelButton)
 			{
 				cancelButton.reset(new HUD::Component::Button("Cancel"));
-
-				//if (confirmButton)
-				//	confirmButton->anchorConfig.Right().Set(0.505f);
-				{
-					HUD::Component::AnchorConfig cfg;
-					cfg.Left().Set(0.505f);
-					cfg.Right().Set(0.f);
-					cfg.Top().Set(textPanel,0.015f,HUD::Component::TAnchor::RelativeToScreen);
-					cancelButton->SetAnchorConfig(cfg);
-				}
+				cancelButton->Anchor().FillHorizontally(HUD::Component::Distance::OfParentSize(0.505f),0).Beneath(textPanel,0.015f);
 				dialog->AddComponent(cancelButton);
 				buttons << std::make_pair(1, cancelButton);
 			}
@@ -228,62 +203,22 @@ namespace Dialog
 
 				{
 					auto cfg = imageField->GetAnchorConfig();
-					cfg.Left().Set(0.f);
-					cfg.Right().Set(0.6f);
-					cfg.Top().Set(0.05f);
+					cfg.GetHAxis().Fill(0,HUD::Component::Distance::OfParentSize( 0.6f));
+					cfg.GetVAxis().AnchorUpper(HUD::Component::Distance::Unknown,0.05f);
 					if (confirmButton)
 					{
-						//imageField->autoSetHeight = false;
-						//imageField->anchorConfig.Bottom().Set(confirmButton,0.03f,false);
+
 						imageField->SetAutoHeight(true);
-						cfg.Top().SetAuto();
-						cfg.Bottom().SetAuto();
+						cfg.GetVAxis().SetAutoCenter();
 					}
 					imageField->SetAnchorConfig(cfg);
 				}
-				{
-					auto cfg = textField->GetAnchorConfig();
-					cfg.Left().Set(0.405f);
-					cfg.Bottom().SetAuto();
-					cfg.Top().SetAuto();
-					textField->SetAnchorConfig(cfg);
-				}
-				//textField->anchorConfig.axis[1].center.Set(imageField,0.f);
-	//			imageField->SetLocation(M::Rect<>(0,1,0.25,0.75f));
-				//textField->rect.Set(0.405f,0.25f,0.75f,0.75f);
-				//imageField->rect.Set(0.25f,0.25f,0.4f,0.75f);
+				textField->Anchor().FillHorizontally(HUD::Component::Distance::OfParentSize(0.405f),0).CenterVertically();
 				textField->alignCenter = false;
 				textPanel->AddComponent(imageField);
 			}
 
 
-			
-			//{
-			//	case ModalDialogType::Confirmation:
-			//	{
-			//		//confirm, cancel
-			//	}
-			//	break;
-			//	case ModalDialogType::FactionList:
-			//	case ModalDialogType::Message:
-			//	{
-			//		confirmButton.reset(new HUD::Component::Button());
-			//	}
-			//	break;
-			//	case ModalDialogType::StringQuery:
-			//	{
-			//		confirmButton.reset(new HUD::Component::Button());
-			//		cancelButton.reset(new HUD::Component::Button());
-			//		inputField.reset(new HUD::Component::Input());
-			//	}
-			//	break;
-			//	case ModalDialogType::TutorialMessage:
-			//	{
-			//		confirmButton.reset(new HUD::Component::Button());
-			//		imageField.reset(new HUD::Component::Image());
-			//	}
-			//	break;
-			//}
 			dialog->cancelButton = cancelButton;
 			dialog->confirmButton = confirmButton;
 			dialog->helpButton = helpButton;
@@ -293,17 +228,6 @@ namespace Dialog
 			dialog->image = imageField;
 			dialog->passwordInput = passwordInputField;
 
-			
-		/*	dialog->components << textField;
-			if (confirmButton)
-				dialog->components << confirmButton;
-			if (cancelButton)
-				dialog->components  << cancelButton;
-			if (imageField)
-				dialog->components  << imageField;
-			if (inputField)
-				dialog->components  << inputField;
-*/
 			if (confirmButton)
 			{
 
@@ -327,69 +251,9 @@ namespace Dialog
 				cancelButton->SetTriggerFunction(std::bind(&Dialog::DumpMe,dialog.get()));
 			}
 
-					//confirmButton->SetTriggerFunction
-
-			//dialog->reLayout = [textField,confirmButton,cancelButton,inputField,imageField](Dialog&dialog)
-			//{
-			//	//chicken-egg-dance
-			//	if (confirmButton)
-			//		confirmButton->MoveTopTo(textField->rect.y.min - 0.025f);
-			//	if (cancelButton)
-			//		cancelButton->MoveTopTo(textField->rect.y.min - 0.025f);
-
-
-			//	dialog.totalSize = textField->rect;
-			//	for (const auto&c : dialog.components)
-			//		if (c != textField && c != imageField)
-			//			dialog.totalSize.Include(c->rect);
-
-			//	//float center = totalSize.y.center();
-			//	float top = 0.5f + dialog.totalSize.y.GetExtent()/2.f;
-			//	textField->MoveTopTo(top);
-
-			//	if (inputField)
-			//	{
-			//		inputField->MoveTopTo(textField->rect.y.min - 0.025f);
-
-			//		if (confirmButton)
-			//			confirmButton->MoveTopTo(inputField->rect.y.min - 0.025f);
-			//		if (cancelButton)
-			//			cancelButton->MoveTopTo(inputField->rect.y.min - 0.025f);
-			//	}
-			//	else
-			//	{
-			//		if (confirmButton)
-			//			confirmButton->MoveTopTo(textField->rect.y.min - 0.025f);
-			//		if (cancelButton)
-			//			cancelButton->MoveTopTo(textField->rect.y.min - 0.025f);
-			//	}
-
-			//	dialog.totalSize = textField->rect;
-			//	for (const auto&c : dialog.components)
-			//		if (c != textField && c != imageField)
-			//			dialog.totalSize.Include(c->rect);
-
-			//	dialog.totalSize.Expand(0.015f);
-
-			//	if (imageField)
-			//		imageField->rect.y = textField->rect.y;
-
-			//	M::Rect<> r = textField->rect;
-			//	if (imageField)
-			//		r.Include(imageField->rect);
-			//	if (inputField)
-			//		r.Include(inputField->rect);
-			//	dialog->Set
-			//	common->rect = r;
-
-			//	dialog.UpdateHeight();
-			//	//foreach (dialog.components,c)
-			//	//	(*c)->UpdateHeight();
-			//};
 
 			dialog->ReLayout();
 
-			//rs.type = type;
 		}
 
 	}

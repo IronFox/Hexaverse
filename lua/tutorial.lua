@@ -83,7 +83,7 @@ CreateTask(function() Game.DisplayMessage(
 		"1: Undiscovered terrain.\n"..
 		"2: Discovered and currently visible terrain.\n"..
 		"3: Discovered but currently out of range.\n"..
-		"Everything you are not currently observing (everything not in 2) may change without you knowing. Half the trick of winning Hexaverse is knowing what you don't know..\n"
+		"Everything you are not currently observing (everything not in 2) may change without you knowing. Half the trick of winning Hexaverse is knowing what you don't know.\n"
 		,'areas.png') end);
 
 

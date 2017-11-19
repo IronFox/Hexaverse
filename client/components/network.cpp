@@ -1532,7 +1532,7 @@ namespace Network
 	void OnIgnorePackage(UINT32 channel,UINT32 size,TCP::Peer&origin)
 	{
 		LogEvent(EventClass::Preset::networkError,origin.ToString()+": Ignored package on channel #"+String(channel)+" of size "+String(size));
-		DBG_FATAL__("Ignored Package");
+		//DBG_FATAL__("Ignored Package");
 
 	}
 	void OnIgnoredException(const TCodeLocation&loc, const std::exception&ex)

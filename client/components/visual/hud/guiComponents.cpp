@@ -21,46 +21,158 @@ namespace HUD
 
 namespace Component
 {
+
+	/*static*/ const Distance Distance::Unknown = Distance(NAN,Type::Placeholder);
+	/*static*/ const Distance Distance::Disabled = Distance(NAN,Type::Disabled);
+
+
+	void	Distance::VerifyIntegrity() const
+	{
+		if (IsDefined())
+		{
+			ASSERT__(!isnan(value) && !isinf(value));
+		}
+		else
+			ASSERT__(isnan(value));
+	}
+
+
+	bool	Distance::IsWellDefined() const
+	{
+		return !isnan(value) && !isinf(value) && value >= 0;
+	}
+
+	bool	Distance::IsWellDefinedNonZero() const
+	{
+		return !isnan(value) && !isinf(value) && value > 0;
+	}
+
+
+	void		Anchor::AddReference(const PComponent&c)
+	{
+		ASSERT__(enabled);
+		references << c;
+	}
+
+	void		Anchor::VerifyIntegrity(const FVerification&check, const AnchorAxis&axis, bool isUpper) const
+	{
+		distanceFromReference.VerifyIntegrity();
+		ASSERT2__(distanceFromReference.IsWellDefined(),axis.ToString(),isUpper);
+		ASSERT2__(enabled || references.IsEmpty(),axis.ToString(),isUpper);
+		if (check)
+		{
+			foreach (references,ref)
+			{
+				auto locked = ref->lock();
+				ASSERT2__(locked,axis.ToString(),isUpper);
+				check(locked);
+			}
+		}
+	}
+
+
+	void		AnchorConfig::Axis::VerifyIntegrity(const FVerification&v, bool allowUnknownExtent) const
+	{
+		lower.VerifyIntegrity(v,myAxis,false);
+		upper.VerifyIntegrity(v,myAxis,true);
+		extent.VerifyIntegrity();
+		if (isAutoCentering || lower.IsInactive() || upper.IsInactive())
+		{
+			ASSERT__(extent.IsDefined() || (allowUnknownExtent && extent.IsPlaceholder()));
+		}
+		//ASSERT1__(lower.IsFixed() || upper.IsFixed(),myAxis.ToString());
+		
+		if (isAutoCentering)
+			ASSERT__(BothAnchorsAreOff());
+		
+		if (lower.IsEnabled() && upper.IsEnabled())
+			ASSERT_EQUAL1__(extent, Distance::Disabled,myAxis.ToString());
+	}
+
+	void		AnchorConfig::Axis::SetFreeFloating(const Distance&extent /*= Distance::Unknown*/)
+	{
+		this->extent = extent;
+		lower.Disable();
+		upper.Disable();
+		isAutoCentering = false;
+		VerifyIntegrity(FVerification(),true);
+	}
+
+	bool		AnchorConfig::Axis::SetExtent(const Distance&d)
+	{
+		ASSERT__(!Stretches());
+		//ASSERT__(lower.IsFixed() || upper.IsFixed());
+		if (extent == d)
+			return false;
+		extent = d;
+		VerifyIntegrity(FVerification(),true);
+		return false;
+	}
+	void		AnchorConfig::Axis::AnchorLower(const Distance&extent, const Distance&offset/* = Distance()*/)
+	{
+		lower.Set(offset);
+		upper.Disable();
+		isAutoCentering = false;
+		this->extent = extent;
+		VerifyIntegrity(FVerification(),true);
+	}
+
+	void		AnchorConfig::Axis::AnchorLower(const Distance&extent, const PComponent&reference, const Distance&lowerOffset/* = Distance()*/)
+	{
+		lower.Set(reference,lowerOffset);
+		upper.Disable();
+		isAutoCentering = false;
+		this->extent = extent;
+		VerifyIntegrity(FVerification(),true);
+	}
 	
-
-
-	bool			ComponentLocation::SetWidth(float w)
+	void		AnchorConfig::Axis::AnchorLowerUnknown(const Distance&lowerOffset/* = Distance()*/)
 	{
-		if (M::Similar(this->rect.x.GetExtent(),w))
-			return false;
-		ASSERT__(!isnan(w));
-		rect.x.max = rect.x.min + w;
-
-		DBG_ASSERT_IS_CONSTRAINED__(rect.x.max,Lower,Upper);
-
-
-		OnHorizontalRectChange();
-		OnWidthChange();
-		OnRectChange();
-		return true;
+		AnchorLower(Distance::Unknown,lowerOffset);
 	}
-	bool			ComponentLocation::SetHeight(float h)
+
+
+
+	void		AnchorConfig::Axis::AnchorUpper(const Distance&extent, const PComponent&reference, const Distance&upperOffset/* = Distance()*/)
 	{
-		if (M::Similar(this->rect.y.GetExtent(), h))
-			return false;
-		ASSERT__(!isnan(h));
-		rect.y.max = rect.y.min + h;
-
-		DBG_ASSERT_IS_CONSTRAINED__(rect.y.max,Lower,Upper);
-
-
-		OnVerticalRectChange();
-		OnHeightChange();
-		OnRectChange();
-		return true;
+		upper.Set(reference, upperOffset);
+		lower.Disable();
+		isAutoCentering = false;
+		this->extent = extent;
+		VerifyIntegrity(FVerification(),true);
 	}
-	void			ComponentLocation::SetSize(const M::TVec2<>&size)
+
+
+	void		AnchorConfig::Axis::AnchorUpper(const Distance&extent, const Distance&offset /*= Distance()*/)
 	{
-		auto r = rect;
-		r.x.max = r.x.min + size.x;
-		r.y.max = r.y.min + size.y;
-		SetRect(r);
+		upper.Set(offset);
+		lower.Disable();
+		isAutoCentering = false;
+		this->extent = extent;
+		VerifyIntegrity(FVerification(),true);
 	}
+	
+	void		AnchorConfig::Axis::AnchorUpperUnknown(const Distance&upperOffset /*= Distance()*/)
+	{
+		AnchorUpper(Distance::Unknown,upperOffset);
+	}
+
+	void		AnchorConfig::Axis::Fill(const Distance&lowerOffset/* = Distance()*/, const Distance&upperOffset/* = Distance()*/)
+	{
+		upper.Set(upperOffset);
+		lower.Set(lowerOffset);
+		isAutoCentering = false;
+		extent = Distance::Disabled;
+		VerifyIntegrity(FVerification(),true);
+	}
+
+	void			AnchorConfig::SetFreeFloating(const Distance&width /*= Distance::Unknown*/,const Distance&height /*= Distance::Unknown*/)
+	{
+		GetHAxis().SetFreeFloating(width);
+		GetVAxis().SetFreeFloating(height);
+	}
+
+
 	void			ComponentLocation::SetRect(const M::Rect<>&rect)
 	{
 		const bool hChange = rect.x != this->rect.x;
@@ -109,10 +221,256 @@ namespace Component
 		other.parent = nullptr;
 	}
 
+	AnchorModifier&	AnchorModifier::Top(const Distance&upperOffset /*= Distance()*/, const Distance&height /*= Distance::Unknown*/)
+	{
+		GetVAxis().AnchorUpper(height,upperOffset);
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::Bottom(const Distance&lowerOffset /*= Distance()*/, const Distance&height /*= Distance::Unknown*/)
+	{
+		GetVAxis().AnchorLower(height,lowerOffset);
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::Left(const Distance&leftOffset /*= Distance()*/, const Distance&width /*= Distance::Unknown*/)
+	{
+		GetHAxis().AnchorLower(width,leftOffset);
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::Right(const Distance&rightOffset /*= Distance()*/, const Distance&width /*= Distance::Unknown*/)
+	{
+		GetHAxis().AnchorUpper(width,rightOffset);
+		return *this;
+	}
+
+
+	AnchorModifier&	AnchorModifier::Beneath(const PComponent&p, const Distance&upperOffset /*= Distance()*/, const Distance&height /*= Distance::Unknown*/)
+	{
+		ASSERT__(p.get() != this->parent);
+		GetVAxis().lower.Disable();
+		GetVAxis().upper.Set(p,upperOffset);
+		GetVAxis().extent = height;
+		GetVAxis().isAutoCentering = false;
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::Above(const PComponent&p, const Distance&lowerOffset /*= Distance()*/, const Distance&height /*= Distance::Unknown*/)
+	{
+		ASSERT__(p.get() != this->parent);
+		GetVAxis().upper.Disable();
+		GetVAxis().lower.Set(p,lowerOffset);
+		GetVAxis().extent = height;
+		GetVAxis().isAutoCentering = false;
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::RightOf(const PComponent&p, const Distance&leftOffset /*= Distance()*/, const Distance&width /*= Distance::Unknown*/)
+	{
+		ASSERT__(p.get() != this->parent);
+		GetHAxis().upper.Disable();
+		GetHAxis().lower.Set(p,leftOffset);
+		GetHAxis().extent = width;
+		GetHAxis().isAutoCentering = false;
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::LeftOf(const PComponent&p, const Distance&rightOffset /*= Distance()*/, const Distance&width /*= Distance::Unknown*/)
+	{
+		ASSERT__(p.get() != this->parent);
+		GetHAxis().lower.Disable();
+		GetHAxis().upper.Set(p,rightOffset);
+		GetHAxis().extent = width;
+		GetHAxis().isAutoCentering = false;
+		return *this;
+	}
+
+
+	AnchorModifier&	AnchorModifier::RightOfLastOf(const PPanel&p, const Distance&leftOffset /*= Distance()*/, const Distance&width /*= Distance::Unknown*/)
+	{
+		GetHAxis().lower.SetLastOf(p,leftOffset,parent);
+		GetHAxis().upper.Disable();
+		GetHAxis().extent = width;
+		GetHAxis().isAutoCentering = false;
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::LeftOfLastOf(const PPanel&p, const Distance&rightOffset /*= Distance()*/, const Distance&width /*= Distance::Unknown*/)
+	{
+		GetHAxis().upper.SetLastOf(p,rightOffset,parent);
+		GetHAxis().lower.Disable();
+		GetHAxis().extent = width;
+		GetHAxis().isAutoCentering = false;
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::BeneathLastOf(const PPanel&p, const Distance&upperOffset /*= Distance()*/, const Distance&height /*= Distance::Unknown*/)
+	{
+		GetVAxis().upper.SetLastOf(p,upperOffset,parent);
+		GetVAxis().lower.Disable();
+		GetVAxis().extent = height;
+		GetVAxis().isAutoCentering = false;
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::AboveLastOf(const PPanel&p, const Distance&lowerOffset /*= Distance()*/, const Distance&height /*= Distance::Unknown*/)
+	{
+		GetVAxis().lower.SetLastOf(p,lowerOffset,parent);
+		GetVAxis().upper.Disable();
+		GetVAxis().extent = height;
+		GetVAxis().isAutoCentering = false;
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::RightOfAllOf(const PPanel&p, const Distance&leftOffset /*= Distance()*/, const Distance&width /*= Distance::Unknown*/)
+	{
+		GetHAxis().lower.SetAllOf(p,leftOffset,parent);
+		GetHAxis().upper.Disable();
+		GetHAxis().extent = width;
+		GetHAxis().isAutoCentering = false;
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::LeftOfAllOf(const PPanel&p, const Distance&rightOffset /*= Distance()*/, const Distance&width /*= Distance::Unknown*/)
+	{
+		GetHAxis().upper.SetAllOf(p,rightOffset,parent);
+		GetHAxis().lower.Disable();
+		GetHAxis().extent = width;
+		GetHAxis().isAutoCentering = false;
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::BeneathAllOf(const PPanel&p, const Distance&upperOffset /*= Distance()*/, const Distance&height /*= Distance::Unknown*/)
+	{
+		GetVAxis().upper.SetAllOf(p,upperOffset,parent);
+		GetVAxis().lower.Disable();
+		GetVAxis().extent = height;
+		GetVAxis().isAutoCentering = false;
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::AboveAllOf(const PPanel&p, const Distance&lowerOffset /*= Distance()*/, const Distance&height /*= Distance::Unknown*/)
+	{
+		GetVAxis().lower.SetAllOf(p,lowerOffset,parent);
+		GetVAxis().upper.Disable();
+		GetVAxis().extent = height;
+		GetVAxis().isAutoCentering = false;
+		return *this;
+	}
+
+
+	AnchorModifier&	AnchorModifier::RightOfSomeOf(const PPanel&p, const FSelector&sel, const Distance&leftOffset /*= Distance()*/, const Distance&width /*= Distance::Unknown*/)
+	{
+		GetHAxis().lower.SetSomeOf(p,leftOffset,sel,parent);
+		GetHAxis().upper.Disable();
+		GetHAxis().extent = width;
+		GetHAxis().isAutoCentering = false;
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::LeftOfSomeOf(const PPanel&p, const FSelector&sel, const Distance&rightOffset /*= Distance()*/, const Distance&width /*= Distance::Unknown*/)
+	{
+		GetHAxis().upper.SetSomeOf(p,rightOffset,sel,parent);
+		GetHAxis().lower.Disable();
+		GetHAxis().extent = width;
+		GetHAxis().isAutoCentering = false;
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::BeneathSomeOf(const PPanel&p, const FSelector&sel, const Distance&upperOffset /*= Distance()*/, const Distance&height /*= Distance::Unknown*/)
+	{
+		GetVAxis().upper.SetSomeOf(p,upperOffset,sel,parent);
+		GetVAxis().lower.Disable();
+		GetVAxis().extent = height;
+		GetVAxis().isAutoCentering = false;
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::AboveSomeOf(const PPanel&p, const FSelector&sel, const Distance&lowerOffset /*= Distance()*/, const Distance&height /*= Distance::Unknown*/)
+	{
+		GetVAxis().lower.SetSomeOf(p,lowerOffset,sel,parent);
+		GetVAxis().upper.Disable();
+		GetVAxis().extent = height;
+		GetVAxis().isAutoCentering = false;
+		return *this;
+	}
+
+
+
+	AnchorModifier&	AnchorModifier::FillHorizontally()
+	{
+		GetHAxis().Fill();
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::FillHorizontally(const Distance&leftOffset, const Distance&rightOffset)
+	{
+		GetHAxis().Fill(leftOffset, rightOffset);
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::FillHBetween(const PComponent&leftEdge, const PComponent&rightEdge)
+	{
+		GetHAxis().FillBetween(leftEdge,rightEdge);
+		return *this;
+	}
+
+	void AnchorModifier::Axis::FillBetween(const PComponent&lowerC, const PComponent&upperC)
+	{
+		lower.Set(lowerC,0);
+		upper.Set(upperC,0);
+		isAutoCentering = false;
+		extent = Distance::Disabled;
+	}
+
+	AnchorModifier&	AnchorModifier::CenterVertically(const Distance&height /*= Distance::Unknown*/)
+	{
+		GetVAxis().SetAutoCenter(height);
+		return *this;
+	}
+
+
+	AnchorModifier&	AnchorModifier::CenterHorizontally(const Distance&width /*= Distance::Unknown*/)
+	{
+		GetHAxis().SetAutoCenter(width);
+		return *this;
+	}
+
+
+	AnchorModifier&	AnchorModifier::FillVertically()
+	{
+		GetVAxis().Fill();
+		return *this;
+	}
+
+	AnchorModifier&	AnchorModifier::FillVertically(const Distance&lowerOffset, const Distance&upperOffset)
+	{
+		GetVAxis().Fill(lowerOffset, upperOffset);
+		return *this;
+	}
+
+
+
 
 	/*virtual*/ void	Component::Render()
 	{}
 
+
+	/*virtual*/ void	Component::SetLocation(const M::Rect<>&loc)
+	{
+		SetRect(loc);
+		anchorConfig.GetHAxis().UpdateExtentIfEnabled( Distance::GameWindow( GetWidth() ));
+		anchorConfig.GetVAxis().UpdateExtentIfEnabled( Distance::GameWindow( GetHeight() ));
+	}
+
+	/*virtual override*/ void Component::OnRectChange()
+	{
+		//anchorConfig.GetHAxis().UpdateExtentIfEnabled( Distance::GameWindow( GetWidth() ));
+		//anchorConfig.GetVAxis().UpdateExtentIfEnabled( Distance::GameWindow( GetHeight() ));
+		anchorConfig.VerifyIntegrity(FVerification(),GetWindow() != nullptr);
+		InvalidateAutoLayout();
+	}
 
 	Component::Component()
 	{
@@ -132,6 +490,32 @@ namespace Component
 			w->SignalLayoutChange();
 	}
 
+	/*virtual*/ void	Component::VerifyAnchorIntegrity() const
+	{
+		anchorConfig.VerifyIntegrity(
+		[this](const PComponent&c)
+		{
+			ASSERT__(c->GetWindow() == this->GetWindow());
+		},GetWindow() == nullptr);
+	}
+
+	/*virtual*/ void	Component::SetAnchorConfig(const AnchorConfig&cfg)
+	{
+		anchorConfig = cfg;
+		if (anchorConfig.HasExtentPlaceholders())
+		{
+			UpdateDynamicSize();
+			if (anchorConfig.HasExtentPlaceholders())
+			{
+				anchorConfig.GetHAxis().UpdateExtentIfEnabled(Distance::GameWindow( GetWidth() ));
+				anchorConfig.GetVAxis().UpdateExtentIfEnabled(Distance::GameWindow( GetHeight() ));
+
+			}
+			ASSERT__(!anchorConfig.HasExtentPlaceholders());
+		}
+//		VerifyAnchorIntegrity(); 
+		InvalidateAutoLayout();
+	}
 
 
 
@@ -161,61 +545,84 @@ namespace Component
 
 
 
-	void			TAnchor::SetSomeOf(const PPanel&p, float distance, const std::function<bool(const PComponent&)>&callback, distanceType_t dtype/*=RelativeToParentComponent*/)
+	void			Anchor::SetSomeOf(const PPanel&p, const Distance& distance, const std::function<bool(const PComponent&)>&callback, const Component*mustNotInclude)
 	{
 		if (!p || !p->HasComponents())
 			return;
-		type = Fixed;
-		distanceFromReference = distance;
-		foreach (p->GetComponents(),c)
-			if (callback(*c))
-				references.Append(*c);
-		distanceType = dtype;
-
-	}
-
-
-	void			TAnchor::SetAllOf(const PPanel&p, float distance, distanceType_t dtype/*=RelativeToParentComponent*/)
-	{
-		if (!p || !p->HasComponents())
-			return;
-		type = Fixed;
+		enabled = true;
 		distanceFromReference = distance;
 		references.Clear();
-		foreach (p->GetComponents(),c)
-			references.Append(*c);
-		distanceType = dtype;
+		foreach (p->GetReferences(),c)
+		{
+			ASSERT__(c->get() != mustNotInclude);
+			if (callback(*c))
+				references.Append(*c);
+		}
 	}
 
-	void			TAnchor::SetLastOf(const PPanel&p, float distance, distanceType_t dtype/*=RelativeToParentComponent*/)
+
+	void			Anchor::SetAllOf(const PPanel&p, const Distance& distance, const Component*mustNotInclude)
+	{
+		if (!p || !p->HasComponents())
+			return;
+		enabled = true;
+		distanceFromReference = distance;
+		references.Clear();
+		foreach (p->GetReferences(),c)
+		{
+			ASSERT__(c->get() != mustNotInclude);
+			references.Append(*c);
+		}
+	}
+
+	void			Anchor::SetLastOf(const PPanel&p, const Distance& distance, const Component*mustNotInclude)
 	{
 		if (!p)
 			return;
-		type = Fixed;
+		enabled = true;
 		distanceFromReference = distance;
 		references.Clear();
 		if (p->HasComponents())
-			references.Append(p->GetComponents().last());
-		distanceType = dtype;
+		{
+			ASSERT__(p->GetReferences().Last().get() != mustNotInclude);
+			references.Append(p->GetReferences().Last());
+		}
 	}
 
 
-	float			TAnchor::ToScreenDistance(float parentSize, bool isHorizontal) const
+	float			Distance::ToScreenDistance(float parentSize, AnchorAxis myAxis) const
 	{
-		switch (distanceType)
+		switch (type)
 		{
-			case RelativeToParentComponent:
-				return distanceFromReference * parentSize;
-
-			case RelativeToScreen:
-				return distanceFromReference;
-			case AbsolutePixels:
-				return distanceFromReference / float(isHorizontal ? ViewPortWidth() : ViewPortHeight());
+			case Type::RelativeToParentComponent:
+				return value * parentSize;
+			case Type::RelativeToGameWindow:
+				return value;
+			case Type::AbsolutePixels:
+				return value / float(myAxis == AnchorAxis::Horizontal ? ViewPortWidth() : ViewPortHeight());
+			case Type::Disabled:
+				return NAN;
 		}
 		FATAL__("Unexpected distance type");
 		return 0.f;
 
 	}
+
+	float		AnchorConfig::Axis::GetMinimumEdge(float parentUpperEdge, const M::TFloatRange<>&rectRange) const
+	{
+		if (isAutoCentering)
+			return parentUpperEdge - rectRange.GetExtent();
+
+		if (lower.IsInactive())
+			return rectRange.min;
+
+		if (lower.GetReferences().IsEmpty() && upper.IsInactive() && !lower.GetOffset().RequiresFixedParentSize())
+			return parentUpperEdge - rectRange.GetExtent() - lower.GetOffset().ToScreenDistance(0.f,myAxis);
+
+		return std::numeric_limits<float>::max();
+	}
+
+
 
 	/*virtual*/ bool		Panel::AddComponent(const PComponent&c)
 	{
@@ -223,27 +630,15 @@ namespace Component
 			return false;
 		if (components.Contains(c))
 			return false;
-		auto cfg = c->GetAnchorConfig();
-		bool set = false;
-		if (cfg.Bottom().IsInactive() && cfg.Top().IsInactive())
-		{
-			cfg.Top().Set(0);
-			set = true;
-		}
-		if (cfg.Left().IsInactive() && cfg.Right().IsInactive())
-		{
-			cfg.Left().Set(0);
-			set = true;
-		}
-		if (set)
-			c->SetAnchorConfig(cfg);
 
 		components << c;
 		c->SetParent( GetWindow(), shared_from_this());
+		c->VerifyAnchorIntegrity();
+		VerifyAnchorIntegrity();
 		return true;
 	}
 
-	/*virtual override*/ bool	Panel::ResolveAnchorAxis(int axis, const M::Rect<>&context)
+	/*virtual override*/ bool	Panel::ResolveAnchorAxis(AnchorAxis axis, const M::Rect<>&context)
 	{
 		bool rs = Super::ResolveAnchorAxis(axis,context); 
 		M::Rect<> childSpace = GetRect();
@@ -335,7 +730,7 @@ namespace Component
 		}
 
 		RenderArea(bar,barContainsMouse,dragging,float3(1));
-		RenderOutline(bar,float3(1),true);
+		RenderBorder(bar,float3(1),true);
 	}
 
 
@@ -451,7 +846,7 @@ namespace Component
 
 		bar = M::Rect<>(outline.x.min,outline.y.Derelativate(1.f - (viewTop + viewSize) / scrollMax),outline.x.max,outline.y.Derelativate(1.f - (viewTop) / scrollMax));
 		RenderArea(bar,barContainsMouse,dragging,float3(1));
-		RenderOutline(bar,float3(1),true);
+		RenderBorder(bar,float3(1),true);
 
 		up->SetLocation(topButton);
 		up->Render();
@@ -567,7 +962,7 @@ namespace Component
 				targetViewTop = M::Max(targetViewTop,0);	
 			}));
 
-			down.reset(new ScrollButton(ScrollButton::Down,[this,p]()
+			down.reset(new ScrollButton(ScrollButton::Bottom,[this,p]()
 			{
 				targetViewTop += viewSize;
 				targetViewTop = M::Min(targetViewTop,scrollMax - viewSize);
@@ -608,7 +1003,7 @@ namespace Component
 			case Up:
 				SurfaceRenderer::Rasterize(float2(r.x.center(),r.y.Derelativate(0.75f)),float2(r.x.Derelativate(0.25f),r.y.Derelativate(0.25f)),float2(r.x.Derelativate(0.75f),r.y.Derelativate(0.25f)));
 			break;
-			case Down:
+			case Bottom:
 				SurfaceRenderer::Rasterize(float2(r.x.center(),r.y.Derelativate(0.25f)),float2(r.x.Derelativate(0.75f),r.y.Derelativate(0.75f)),float2(r.x.Derelativate(0.25f),r.y.Derelativate(0.75f)));
 			break;
 
@@ -646,23 +1041,7 @@ namespace Component
 		float lowest = std::numeric_limits<float>::max();
 		foreach (components,c)
 		{
-			const auto&bottom = (*c)->GetAnchorConfig().Bottom();
-			const auto&top = (*c)->GetAnchorConfig().Top();
-			float newLowest = std::numeric_limits<float>::max();
-			switch (bottom.type)
-			{
-				case TAnchor::Disabled:
-					newLowest = (*c)->GetRect().y.min;
-				break;
-				case TAnchor::Fixed:
-					if (bottom.references.IsEmpty() && top.type == TAnchor::Disabled)
-						newLowest = GetRect().y.max - (*c)->GetRect().y.GetExtent() - bottom.ToScreenDistance(0.f,false);
-				break;
-				case TAnchor::Auto:
-					if (top.type == TAnchor::Auto)
-						newLowest = GetRect().y.max - (*c)->GetRect().y.GetExtent();
-				break;
-			}
+			float newLowest = (*c)->GetAnchorConfig().GetVAxis().GetMinimumEdge(GetRect().y.max, (*c)->GetRect().y);
 			if (newLowest < lowest)
 			{
 				lowest = newLowest;
@@ -708,9 +1087,8 @@ namespace Component
 				SetRect(rect);
 			}
 		}
-		
-
-
+		if (autoHeight)
+			anchorConfig.GetVAxis().UpdateExtentIfEnabled( Distance::GameWindow( GetRect().y.GetExtent() ));
 		return rs;
 	}
 
@@ -779,7 +1157,7 @@ namespace Component
 		SurfaceRenderer::Flush();
 	}
 
-	/*static*/ void				Component::RenderOutline(const M::Rect<>&rect, const float3&backgroundTone, const M::Quad<bool>&edges, float lowOpacity/*=1*/, float highOpacity/*=1*/)
+	/*static*/ void				Component::RenderBorder(const M::Rect<>&rect, const float3&backgroundTone, const M::Quad<bool>&edges, float lowOpacity/*=1*/, float highOpacity/*=1*/)
 	{
 		float4 lineLowColor(backgroundTone*0.5f,lowOpacity*0.5f);
 		float4 lineHighColor(backgroundTone*0.5f,highOpacity*0.5f);
@@ -870,28 +1248,27 @@ namespace Component
 	}
 
 
-	void			Panel::AnchorBelowPrevious(const PComponent&newComponent, float distanceFromSides /*= 0.015f*/,  float distanceToPrevious/* = 0.015f*/, TAnchor::distanceType_t distanceType/*=TAnchor::RelativeToScreen*/)
+	void			Panel::AnchorBelowPrevious(const PComponent&newComponent, const Distance& distanceFromSides /*= 0.015f*/,  const Distance&  distanceToPrevious/* = 0.015f*/)
 	{
-		auto cfg = newComponent->GetAnchorConfig();
-
-		if (components.IsNotEmpty())
-			cfg.Top().Set(components.last(), distanceToPrevious,distanceType);
-		else
-			cfg.Top().Set(distanceToPrevious,distanceType);
-		
-		cfg.Left().Set(distanceFromSides,distanceType);
-		cfg.Right().Set(distanceFromSides,distanceType);
-		newComponent->SetAnchorConfig(cfg);
-		components.Append(newComponent);
-		newComponent->SetParent(GetWindow(),shared_from_this());
+		{
+			auto&mod = newComponent->Anchor();
+			if (components.IsNotEmpty())
+				mod.Beneath(components.Last(), distanceToPrevious);
+			else
+				mod.Top(distanceToPrevious);
+			mod.FillHorizontally(distanceFromSides,distanceFromSides);
+		}
+		AddComponent(newComponent);
 	}
 
 
-	void				Box::BaseRender(bool lit, bool flipped)
+	void				Box::BaseRender(bool lit, bool flipped, bool fill, bool outline)
 	{
 		const M::Rect<>&r = GetRect();
-		RenderArea(r,lit,flipped,backgroundTone,bottomOpacity,topOpacity);
-		RenderOutline(r,backgroundTone,true,bottomOpacity,topOpacity);
+		if (fill)
+			RenderArea(r,lit,flipped,backgroundTone,bottomOpacity,topOpacity);
+		if (outline)
+			RenderBorder(r,backgroundTone,true,bottomOpacity,topOpacity);
 	}
 
 	static const float CellSize = 0.01f;
@@ -899,14 +1276,17 @@ namespace Component
 
 	/*virtual*/ bool	Component::UpdateDynamicSize()
 	{
+		bool rs = false;
 		const float h = GetContentHeight();
-		if (h < 0)
-			return false;
-
-		if (anchorConfig.Top().IsFixed() && anchorConfig.Bottom().IsFixed())
-			return false;
-
-		return SetHeight(h);
+		if (h >= 0)
+		{
+			auto&axis = anchorConfig.GetVAxis();
+			if (!axis.Stretches())
+			{
+				rs = SetHeight(Distance::GameWindow( h ));
+			}
+		}
+		return rs;
 	}
 
 
@@ -1090,10 +1470,9 @@ namespace Component
 		//core.Scale(0.97f);
 
 		if (fillBackground)
-		{
 			RenderArea(core,false,true,backgroundTone);
-			RenderOutline(core,backgroundTone,true);
-		}
+		if (renderBorder)
+			RenderBorder(core,backgroundTone,true);
 
 		StringRef text = GetTextRef();
 
@@ -1295,10 +1674,7 @@ namespace Component
 	{
 		bool lit = IsLit();
 
-		if (fillBackground)
-		{
-			Super::BaseRender(lit,false);
-		}
+		Super::BaseRender(lit,false,fillBackground,renderBorder);
 		RenderText(lit);
 	}
 
@@ -1414,8 +1790,8 @@ namespace Component
 		bool rs = UpdateDynamicSize();
 		for (;;)
 		{
-			const bool changed0 = ResolveAnchorAxis(0,context);
-			const bool changed1 = ResolveAnchorAxis(1,context);
+			const bool changed0 = ResolveAnchorAxis(AnchorAxis::Horizontal,context);
+			const bool changed1 = ResolveAnchorAxis(AnchorAxis::Vertical,context);
 			const bool sizeChanged = UpdateDynamicSize();
 
 			if (!changed0 && !changed1 && !sizeChanged)
@@ -1426,6 +1802,7 @@ namespace Component
 			#ifdef _DEBUG
 				if (numRounds > 900)
 				{
+					VerifyAnchorIntegrity();
 					if (IsDebuggerPresent())
 						DebugBreak();
 					else
@@ -1441,153 +1818,114 @@ namespace Component
 	}
 
 
-	bool			Component::ResolveAnchorAxis(int axis, const M::Rect<>&context)
+	bool			Component::ResolveAnchorAxis(AnchorAxis a, const M::Rect<>&context)
 	{
-		const Axial<TAnchor>&anchor = anchorConfig.axis[axis];
-
-		if (anchor.min.IsInactive() && anchor.max.IsInactive())
+		const auto&axis = anchorConfig.axis[a];
+		if (axis.IsFreeFloating())
 			return false;
 		
 		auto rect = GetRect();
-		M::TFloatRange<>&a = rect.axis[axis];
+		M::TFloatRange<>&range = rect.axis[a];
 		bool rs = false;
+		const M::TFloatRange<>&ctx = context.axis[a];
 
-		if (anchor.min.IsAuto() && anchor.max.IsAuto())
+		const float extent = axis.extent.ToScreenDistance(ctx.GetExtent(),a);
+	
+		if (axis.isAutoCentering)
 		{
-			{
-				const TAnchor&anc = anchor.min;
-
-				if (anc.references.IsNotEmpty())
-				{
-					FATAL__("Auto not applicable on set references");
-					return false;
-					//float highest = -std::numeric_limits<float>::max();
-					//foreach (anc.references,ref0)
-					//{
-					//	PComponent ref = ref0->lock();
-					//	highest = std::max(highest,ref->GetLocation().axis[axis].max);
-					//}
-					//if (highest == -std::numeric_limits<float>::max())
-					//	return false;
-					//bottom = highest;
-				}
-			}
-			{
-				const TAnchor&anc = anchor.max;
-
-				if (anc.references.IsNotEmpty())
-				{
-					FATAL__("Auto not applicable on set references");
-					return false;
-				}
-			}
-			const M::TFloatRange<>&ctx = context.axis[axis];
-			float ext = a.GetExtent();
 			float center = ctx.GetCenter();
-			float top = std::min(ctx.max,center + ext*0.5f);
-			bool changed = Set(a.max,top);
-			a.min = a.max - ext;
+			float top = std::min(ctx.max,center + extent*0.5f);
+			bool changed = Set(range.max,top);
+			changed |= Set(range.min,range.max - extent);
 
 			SetRect(rect);
 			return changed;
 		}
 
-		if (anchor.min.IsAuto() || anchor.max.IsAuto())
+
+		if (axis.lower.IsEnabled())
 		{
-			FATAL__("Both top and bottom anchors must be set to auto");
-			return false;
-		}
+			const auto&anc = axis.lower;
 
+			const float dist = anc.GetOffset().ToScreenDistance(ctx.GetExtent(),a);
 
-		float extent = a.GetExtent();
-
-		if (anchor.min.IsFixed())
-		{
-			const TAnchor&anc = anchor.min;
-
-			const float dist = anc.ToScreenDistance(context.axis[axis].GetExtent(),axis==0);
-
-			if (anc.references.IsNotEmpty())
+			const auto&ref = anc.GetReferences();
+			if (ref.IsNotEmpty())
 			{
 				float highest = -std::numeric_limits<float>::max();
-				foreach (anc.references,ref0)
+				foreach (ref,ref0)
 				{
 					PComponent ref = ref0->lock();
-					highest = std::max(highest,ref->GetRect().axis[axis].max);
+					highest = std::max(highest,ref->GetRect().axis[a].max);
 				}
 				if (highest > -std::numeric_limits<float>::max())
-					rs |= Set(a.min, highest + dist);
+					rs |= Set(range.min, highest + dist);
 			}
 			else
-				rs |= Set(a.min, context.axis[axis].min + dist);
+				rs |= Set(range.min, ctx.min + dist);
 		}
-		if (anchor.max.IsFixed())
+		if (axis.upper.IsEnabled())
 		{
-			const TAnchor&anc = anchor.max;
+			const auto&anc = axis.upper;
 
-			const float dist = anc.ToScreenDistance(context.axis[axis].GetExtent(),axis==0);
-//			const float dist = anc.distanceIsRelative ? anc.distanceFromReference * context.axis[axis].GetExtent() : anc.distanceFromReference;
+			const float dist = anc.GetOffset().ToScreenDistance(ctx.GetExtent(),a);
+			const auto&ref = anc.GetReferences();
 
-			if (anc.references.IsNotEmpty())
+			if (ref.IsNotEmpty())
 			{
 				float lowest = std::numeric_limits<float>::max();
-				foreach (anc.references,ref0)
+				foreach (ref,ref0)
 				{
 					PComponent ref = ref0->lock();
-					lowest = std::min(lowest,ref->GetRect().axis[axis].min);
+					lowest = std::min(lowest,ref->GetRect().axis[a].min);
 				}
 				if (lowest < std::numeric_limits<float>::max())
-					rs |= Set(a.max, lowest - dist);
+					rs |= Set(range.max, lowest - dist);
 			}
 			else
-				rs |= Set(a.max, context.axis[axis].max - dist);
+				rs |= Set(range.max, ctx.max - dist);
 		}
 		else
-			rs |= Set(a.max,a.min + extent);
+			rs |= Set(range.max,range.min + extent);
 
-		if (!anchor.min.IsFixed())
-			rs |= Set(a.min,a.max - extent);
+		if (axis.lower.IsInactive())
+			rs |= Set(range.min,range.max - extent);
 
 		SetRect(rect);
 
 		return rs;
 	}
 
-	Component&			Component::FillHorizontally(float spacing, TAnchor::distanceType_t type /*= TAnchor::RelativeToParentComponent*/)
+	Component&			Component::FillHorizontally(const Distance& spacing)
 	{
 		auto cfg = anchorConfig;
-		cfg.Left().Set(spacing,type);
-		cfg.Right().Set(spacing,type);
+		cfg.GetHAxis().Fill(spacing,spacing);
 		SetAnchorConfig(cfg);
 		return *this;
 	}
 
-	Component&			Component::FillVertically(float spacing, TAnchor::distanceType_t type /*= TAnchor::RelativeToParentComponent*/)
+	Component&			Component::FillVertically(const Distance& spacing)
 	{
 		auto cfg = anchorConfig;
-		cfg.Top().Set(spacing,type);
-		cfg.Bottom().Set(spacing,type);
+		cfg.GetVAxis().Fill(spacing,spacing);
 		SetAnchorConfig(cfg);
 		return *this;
 	}
 
-	Component&			Component::AnchorTop(float spacing, TAnchor::distanceType_t type/* = TAnchor::RelativeToParentComponent*/)
+	Component&			Component::AnchorTop(const Distance&spacing)
 	{
 		auto cfg = anchorConfig;
-		cfg.Top().Set(spacing,type);
+		cfg.GetVAxis().AnchorUpper(Distance::Unknown, spacing);
 		SetAnchorConfig(cfg);
 		return *this;
 	}
 
 
-	Component&			Component::SetCenteredWidth(float w, TAnchor::distanceType_t type)
+	Component&			Component::SetCenteredWidth(const Distance&width)
 	{
-		float extra = 1.f - w;
-		if (type == TAnchor::AbsolutePixels)
-			extra = float(ViewPortWidth()) - w;
 		auto cfg = anchorConfig;
-		cfg.Left().Set(extra*0.5f,type);
-		cfg.Right().Set(extra*0.5f,type);
+		auto&axis = cfg.GetHAxis();
+		axis.SetAutoCenter(width);
 		SetAnchorConfig(cfg);
 		return *this;
 	}
@@ -1679,10 +2017,42 @@ namespace Component
 		LineRenderer::Flush();
 	}
 
+	void		Panel::SetAutomaticHeight(bool b)
+	{
+		if (autoHeight == b)
+			return;
+		autoHeight = b;
+		this->InvalidateAutoLayout();
+		if (b && anchorConfig.GetVAxis().Stretches())
+			AnchorTop(0);
+		VerifyAnchorIntegrity();
+	}
+
+
+	/*virtual override*/ void		Panel::VerifyAnchorIntegrity() const
+	{
+		Super::VerifyAnchorIntegrity();
+		if (autoHeight && (anchorConfig.GetVAxis().Stretches()))
+			__debugbreak();
+		ASSERT__(!autoHeight || (!anchorConfig.GetVAxis().Stretches()));
+		if (autoHeight)
+		{
+			foreach (components,c)
+				ASSERT__(!(*c)->GetAnchorConfig().GetVAxis().RequiresFixedParentSize());
+		}
+		foreach (components,c)
+			(*c)->VerifyAnchorIntegrity();
+	}
+
 
 	/*virtual override*/ PWindow	Window::GetWindow()
 	{
 		return To<Window>::Cast(shared_from_this());
+	}
+
+	/*virtual override*/ PConstWindow	Window::GetWindow() const
+	{
+		return To<const Window>::Cast(shared_from_this());
 	}
 
 	/*virtual*/ void	Window::OnShow()
@@ -1693,6 +2063,7 @@ namespace Component
 		visible = true; 
 		SetActive(true); 
 		OnScreenSizeOrUIScaleChange();
+		VerifyAnchorIntegrity();
 	}
 
 	bool			Window::FullAutoLayout(const TCodeLocation&caller)
@@ -1707,12 +2078,6 @@ namespace Component
 		bool rs = Super::FullAutoLayout(context);
 		relayoutRequired = false;
 
-		if (autoCenter)
-		{
-			float2 delta = context.center() - GetRect().center();
-			if (!Vec::similar(delta,M::Vector2<>::zero))
-				Super::Translate(delta);
-		}
 		UpdateOuterRect();
 		nestedCall = false;
 
@@ -1725,7 +2090,7 @@ namespace Component
 	/**/			TabBar::TabBar()
 	{
 		SetAutomaticHeight(true);
-		fillBackground = false;
+		SetBackgroundTransparent();
 		SetAutoHeightSpacing(0.02f);
 
 	}
@@ -1742,12 +2107,11 @@ namespace Component
 		});
 
 		{
-			auto mod = tab->ModifyAnchorConfig();
+			auto mod = tab->Anchor();
+			mod.GetHAxis().AnchorLower(Distance::Unknown);	//trigger exception when not updated later
 			if (Super::HasComponents())
-				mod.Left().Set(Super::GetComponents().Last(),0.01f);
-			else
-				mod.Left().Set(0);
-			mod.Top().Set(0);
+				mod.GetHAxis().lower.Set(Super::GetReferences().Last(),0.01f);
+			mod.GetVAxis().AnchorUpper(Distance::Unknown);	//trigger exception when not updated later
 		}
 		tab->SetVerticalPadding(0.25f);
 		tab->LockToIdealWidth();
@@ -1765,7 +2129,7 @@ namespace Component
 	{
 		if (!tabButton)
 			return InvalidIndex;
-		return Super::GetComponents().GetIndexOf(tabButton);
+		return Super::GetReferences().GetIndexOf(tabButton);
 	}
 
 	/*virtual*/ void	TabBar::OnTabChange()
@@ -1779,7 +2143,8 @@ namespace Component
 		active->SetAlwaysDown(false);
 		active->edges = M::Quad<bool>(true);
 		active->bottomOpacity = 1;
-		active->ModifyAnchorConfig().Bottom().Unset();
+		active->Anchor().GetVAxis().lower.Disable();
+		active->LockToIdealHeight(true);
 		active->topOpacity = 0.85f;
 		active->bottomOpacity = 0.85f;
 		active->SetColor(float4(1,1,1,0.85f));
@@ -1788,7 +2153,8 @@ namespace Component
 	/*static*/ void		TabBar::ConfigureActive(const PButton&active)
 	{
 		active->SetAlwaysDown(true);
-		active->ModifyAnchorConfig().Bottom().Set(0);
+		active->LockToIdealHeight(false);
+		active->Anchor().GetVAxis().lower.Set(0);
 		active->topOpacity = 1.f;
 		active->bottomOpacity = 0;
 		active->edges = M::Quad<bool>(true,false,true,true);
@@ -1807,7 +2173,7 @@ namespace Component
 		}
 
 		activeIndex = tabIndex;
-		active = To<Button>::Cast( GetComponents()[tabIndex] );
+		active = To<Button>::Cast( GetReferences()[tabIndex] );
 		{
 			ConfigureActive(active);
 		}
@@ -1821,13 +2187,12 @@ namespace Component
 	{
 		if (tabBar)
 			return;
-		this->fillBackground = false;
+		this->SetBackgroundTransparent();
 		tabBar.reset(new TabBar());
 		{
-			auto mod = tabBar->ModifyAnchorConfig();
-			mod.Left().Set(0);
-			mod.Right().Set(0);
-			mod.Top().Set(0);
+			auto mod = tabBar->Anchor();
+			mod.GetHAxis().Fill();
+			mod.GetVAxis().AnchorUpper(Distance::Unknown);
 		}
 		tabBar->SetOnTabChange([this]()
 		{
@@ -1847,11 +2212,10 @@ namespace Component
 		tab.panel.reset(new Panel());
 		tab.panel->edges.top = false;
 		{
-			auto mod = tab.panel->ModifyAnchorConfig();
-			mod.Left().Set(0);
-			mod.Right().Set(0);
-			mod.Top().Set(tabBar,0);
-			mod.Bottom().Set(0);
+			auto mod = tab.panel->Anchor();
+			mod.GetHAxis().Fill();
+			mod.GetVAxis().Fill();
+			mod.GetVAxis().upper.Set(tabBar,Distance());
 		}
 		tab.button = tabBar->AddTab(caption);
 		return tab.panel;
@@ -2027,7 +2391,7 @@ namespace Component
 		}
 
 
-		Box::RenderOutline(GetRect(),float3(1),true);
+		Box::RenderBorder(GetRect(),float3(1),true);
 	}
 
 	void MultiPlot::BeginLabelPrint()
@@ -2045,18 +2409,36 @@ namespace Component
 	}
 
 
-	float	MultiPlot::GetAxisStep(const M::TFloatRange<>&valueRange) const
+	/*static*/ float	MultiPlot::GetAxisStep(float rangeExtent)
 	{
-		const float range = valueRange.GetExtent();
-		const float lg = log(range) / log(10.f);
+		const float lg = log(rangeExtent) / log(10.f);
 		const int digits = int(floor(lg));
 		const float base = pow(10.f,digits);
-		const float relative = range / base;
+		const float relative = rangeExtent / base;
 		if (relative < 2.f)
 			return base*0.5f;
 		if (relative < 5.f)
 			return base;
 		return base * 2.f;
+	}
+
+	/*static*/ bool	MultiPlot::GetAxisStepWidthAndCount(float rangeExtent, float&outStep, count_t&outCount)
+	{
+		if (rangeExtent <= 0)
+			return false;
+		outStep = GetAxisStep(rangeExtent);
+		if (outStep == 0 || isnan(outStep))
+			return false;
+		outCount = M::Min((count_t)floor(rangeExtent / outStep),1000);
+		return true;
+	}
+
+	/*static*/ void		MultiPlot::DoAxisCalculationAndCrash()
+	{
+		float s = GetAxisStep(0);
+		float fcnt = floor(0 / s);
+		count_t cnt = (count_t)fcnt;
+		FATAL__("GetAxisStep(0) = "+ String(s)+" => fcnt="+String(fcnt)+", cnt="+String(cnt));
 	}
 
 	void	MultiPlot::Replot()
@@ -2114,38 +2496,41 @@ namespace Component
 
 			{
 				const M::TFloatRange<float> fx = M::FloatRange<float>(this->xRange.start,this->xRange.end-1);
-				float xLineStep = GetAxisStep(fx);
+				count_t count;
+				float xLineStep;
 
-				const index_t start = ceil(float(this->xRange.start+1) / xLineStep);
-				const count_t count = floor(float(this->xRange.GetExtent()) / xLineStep);
-
-				for (index_t i = start; i < start + count; i++)
+				if (GetAxisStepWidthAndCount(fx.GetExtent(),xLineStep,count))
 				{
-					const float rel = fx.Relativate(xLineStep * i);
-					const float x = plotRect.x.Derelativate(rel);
-					axes.SetIndexOffsetToVertexCount();
-					axes.AddVertex(float2(x,cRect.y.min + yRange*0.3f),color);
-					axes.AddVertex(float2(x,cRect.y.min + yRange*0.7f),color);
-					axes.AddLine(0,1);
+					const index_t start = ceil(float(this->xRange.start+1) / xLineStep);
+					for (index_t i = start; i < start + count; i++)
+					{
+						const float rel = fx.Relativate(xLineStep * i);
+						const float x = plotRect.x.Derelativate(rel);
+						axes.SetIndexOffsetToVertexCount();
+						axes.AddVertex(float2(x,cRect.y.min + yRange*0.3f),color);
+						axes.AddVertex(float2(x,cRect.y.min + yRange*0.7f),color);
+						axes.AddLine(0,1);
+					}
 				}
 			}
 
 			if (effectiveRange.IsValid())
 			{
 				const M::TFloatRange<float> fy = M::FloatRange<float>(0,yMax);
-				float xLineStep = GetAxisStep(fy);
-
-				const index_t start = 1;
-				const count_t count = floor(float(fy.GetExtent()) / xLineStep);
-
-				for (index_t i = start; i < start + count; i++)
+				count_t count;
+				float yLineStep;
+				if (GetAxisStepWidthAndCount(fy.GetExtent(),yLineStep,count))
 				{
-					const float rel = fy.Relativate(xLineStep * i);
-					const float y = plotRect.y.Derelativate(rel);
-					axes.SetIndexOffsetToVertexCount();
-					axes.AddVertex(float2(plotRect.x.max + xRange*0.3f,y),color);
-					axes.AddVertex(float2(plotRect.x.max + xRange*0.7f,y),color);
-					axes.AddLine(0,1);
+					const index_t start = 1;
+					for (index_t i = start; i < start + count; i++)
+					{
+						const float rel = fy.Relativate(yLineStep * i);
+						const float y = plotRect.y.Derelativate(rel);
+						axes.SetIndexOffsetToVertexCount();
+						axes.AddVertex(float2(plotRect.x.max + xRange*0.3f,y),color);
+						axes.AddVertex(float2(plotRect.x.max + xRange*0.7f,y),color);
+						axes.AddLine(0,1);
+					}
 				}
 			}
 

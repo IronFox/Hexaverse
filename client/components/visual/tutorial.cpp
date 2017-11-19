@@ -171,7 +171,7 @@ namespace Tutorial
 			//void	NextTask()
 			//{
 			//	if (taskWindow)
-			//		To<Label>::Cast(taskWindow->GetComponents().First())->SetText("Well done!");
+			//		To<Label>::Cast(taskWindow->GetReferences().First())->SetText("Well done!");
 			//}
 
 			void ReplaceTags(String&msg)
@@ -215,7 +215,7 @@ namespace Tutorial
 				ReplaceTags(msg);
 				if (taskWindow)
 				{
-					To<Label>::Cast(taskWindow->GetComponents().First())->SetText(msg);
+					To<Label>::Cast(taskWindow->GetReferences().First())->SetText(msg);
 				}
 				else
 				{
@@ -224,14 +224,8 @@ namespace Tutorial
 
 					taskWindow->AddNewComponent(new Label(msg))->AnchorTop(0).FillHorizontally(0);
 					taskWindow->SetAutomaticHeight(true);
-					taskWindow->SetAutoCenter(false);
-					{
-						auto mod = taskWindow->ModifyAnchorConfig();
-						mod.Left().Unset();
-						mod.Right().Set(0.1f);
-						mod.Bottom().Set(0.1f);
-					}
-					taskWindow->SetSize(float2(0.25));
+					taskWindow->Anchor().Bottom(0.1f,0.25f).Right(0.1f,0.25f);
+
 					taskWindow->isModal = false;
 				}
 				HUD::WindowStack::Show(taskWindow);

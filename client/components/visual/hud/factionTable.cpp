@@ -54,26 +54,27 @@ namespace HUD
 			PPanel	AddPanel(const String&labelText)
 			{
 				PPanel rs{new Panel{}};
-
 				rs->SetAutomaticHeight(true);
 				rs->SetMaxAutoHeight(0.4f);
-				
+				rs->SetBorderBackground();
+
 				if (labelText.IsNotEmpty())
 				{
 					PLabel label{new Label{labelText,0.75f}};
 					rs->AddComponent(label);
 					{
-						auto mod = label->ModifyAnchorConfig();
-						mod.Left().Set(0);
-						mod.Top().Set(0);
+						auto mod = label->Anchor();
+						mod.GetHAxis().AnchorLowerUnknown();
+						mod.GetVAxis().AnchorUpperUnknown();
 					}
 					label->LockToIdealWidth();
 					label->LockToIdealHeight();
 				}
 				else
-					rs->fillBackground = false;
+					rs->SetBackgroundTransparent();
 
 				window->AnchorBelowPrevious(rs,0,0.01f);
+				rs->Anchor().FillHorizontally(0.01f,0.01f);
 
 				return rs;
 			}
@@ -97,7 +98,7 @@ namespace HUD
 				PLabel nameLabel{new Label{faction->name}},statusLabel{new Label{faction->online ? (faction->requestedNewRound ? "" : WordForThinking(RuntimeConfig::roundNumber,faction.get())) : "<offline>" ,0.8f}};
 
 				nameLabel->SetWidth(0.15f);
-				nameLabel->ModifyAnchorConfig().Left().Set(0);
+				nameLabel->Anchor().GetHAxis().AnchorLowerUnknown();
 				nameLabel->alignCenter = false;
 				nameLabel->SetPadding(0.2f);
 				nameLabel->SetHorizontalPadding(1,1);
@@ -111,12 +112,10 @@ namespace HUD
 					statusLabel->SetColor(faction->color); 
 					nameLabel->SetColor(faction->color);
 				}
-				statusLabel->ModifyAnchorConfig().Left().Set(nameLabel,0);
-				statusLabel->ModifyAnchorConfig().Right().Set(0);
-				statusLabel->ModifyAnchorConfig().Bottom().Set(0);
+				statusLabel->Anchor().FillHBetween(nameLabel,nullptr).Bottom();
 			
 				statusLabel->SetPadding(0.2f);
-				//textLabel->ModifyAnchorConfig().Top().Set(0);
+				//textLabel->Anchor().Top().Set(0);
 				statusLabel->alignCenter = false;
 
 				//timeLabel->fillBackground = true;
@@ -126,7 +125,7 @@ namespace HUD
 				panel->AddComponent(nameLabel);
 				//statusLabel->dbgMarked = true;
 				panel->AddComponent(statusLabel);
-				panel->fillBackground = false;
+				panel->SetBackgroundTransparent();
 
 				factionTable->AnchorBelowPrevious(panel,0,0);
 			}
@@ -139,7 +138,7 @@ namespace HUD
 				if (!window)
 				{
 					window = Window::Create();
-					window->SetWidth(0.5f);
+					window->SetWidth(0.75f);
 					
 					PPanel factionBack = AddPanel("Factions");
 					PPanel chatBack = AddPanel("Chat History");
@@ -152,21 +151,21 @@ namespace HUD
 						chatBack->AnchorBelowPrevious(chatHistory,0,0);
 						chatHistory->SetMaxAutoHeight(0.3f);
 						chatHistory->SetAutomaticHeight(true);
-						chatHistory->fillBackground = false;
+						chatHistory->SetBackgroundTransparent();
 					}
 					{
 						factionTable.reset(new Panel{});
 						factionBack->AnchorBelowPrevious(factionTable,0,0);
 						factionTable->SetMaxAutoHeight(0.3f);
 						factionTable->SetAutomaticHeight(true);
-						factionTable->fillBackground = false;
+						factionTable->SetBackgroundTransparent();
 					}
 					{
 						PButton close{new Button{"Close",Hide}};
 						close->SetVerticalPadding(0.5f);
 						close->FillHorizontally(0);
 						buttons->AddComponent(close);
-						close->ModifyAnchorConfig().Top().Set(0);
+						close->Anchor().GetVAxis().AnchorUpperUnknown();
 					}
 
 					{
@@ -177,22 +176,12 @@ namespace HUD
 							chatMessage->SetText("");
 						}}};
 						send->SetVerticalPadding(0.5f);
-						{
-							auto cfg = send->ModifyAnchorConfig();
-							cfg.Top().SetAuto();
-							cfg.Bottom().SetAuto();
-							cfg.Right().Set(0);
-						}
+						send->Anchor().CenterVertically().Right(0.01f);
 						send->LockToIdealWidth();
 						send->LockToIdealHeight();
-						{
-							auto cfg = chatMessage->ModifyAnchorConfig();
-							cfg.Top().Set(0);
-							cfg.Right().Set(send,0);
-							cfg.Left().Set(0);
-						}
-						chatInput->AddComponent(chatMessage);
+						chatMessage->Anchor().Top().FillHBetween(nullptr,send);
 						chatInput->AddComponent(send);
+						chatInput->AddComponent(chatMessage);
 						chatMessage->onEnter = [send](){send->Trigger();};
 					}
 				}
@@ -275,32 +264,36 @@ namespace HUD
 			timeLabel->SetPadding(M::Quad<float>{0.5f,0,0.5f,0});
 			timeLabel->LockToIdealWidth();
 			//timeLabel->alignCenter = false;
-			timeLabel->ModifyAnchorConfig().Bottom().Set(0);
-			timeLabel->ModifyAnchorConfig().Right().Set(0);
+			timeLabel->Anchor().GetVAxis().AnchorLowerUnknown();
+			timeLabel->Anchor().GetHAxis().AnchorUpperUnknown();
 			if (owner)
 			{
 				senderLabel.reset(new Label{owner->name+": "});
 				senderLabel->SetColor(owner->color);
 				senderLabel->LockToIdealWidth();
-				senderLabel->ModifyAnchorConfig().Left().Set(0);
-				//senderLabel->ModifyAnchorConfig().Top().Set(0);
+				senderLabel->Anchor().GetHAxis().AnchorLowerUnknown();
+				//senderLabel->Anchor().Top().Set(0);
 				senderLabel->alignCenter = false;
 				senderLabel->LockToIdealHeight();
 				senderLabel->SetPadding(0);
 				senderLabel->SetVerticalPadding(0.25f);
 				senderLabel->SetHorizontalPadding(1,0);
 				textLabel->SetColor(owner->color * 0.5f + 0.5f); 
-				textLabel->ModifyAnchorConfig().Left().Set(senderLabel,0);
+				{
+					auto cfg = textLabel->Anchor();
+					cfg.GetHAxis().lower.Set(senderLabel,0);
+					cfg.GetHAxis().upper.Disable();
+				}
 			}
 			else
 			{
 				textLabel->SetColor(owner->color);
-				textLabel->ModifyAnchorConfig().Left().Set(0);
+				textLabel->Anchor().GetHAxis().AnchorLowerUnknown();
 			}
 			textLabel->SetPadding(0);
 			textLabel->SetVerticalPadding(0.25f);
-			textLabel->ModifyAnchorConfig().Right().Set(timeLabel,0);
-			//textLabel->ModifyAnchorConfig().Top().Set(0);
+			textLabel->Anchor().FillHBetween(senderLabel,timeLabel);
+			//textLabel->Anchor().Top().Set(0);
 			textLabel->alignCenter = false;
 			textLabel->LockToIdealHeight();
 
@@ -311,7 +304,7 @@ namespace HUD
 			chatEntry->AddComponent(timeLabel);
 			chatEntry->AddComponent(senderLabel);
 			chatEntry->AddComponent(textLabel);
-			chatEntry->fillBackground = false;
+			chatEntry->SetBackgroundTransparent();
 
 			chatHistory->AnchorBelowPrevious(chatEntry,0,0);
 
