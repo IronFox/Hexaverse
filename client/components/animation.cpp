@@ -1172,11 +1172,12 @@ namespace Animation
 							Objects::RemoveVehicleFromGrid(v,v->preAnimationLocation);
 					}
 				}
-				if (allocatedTarget->IsMobile())
+				if (allocatedTarget->IsMobile() && allocatedTarget->isOwnedByMe)
 				{
 					Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(allocatedTarget);
 					float t = 0.f;
-					v->MoveSensoryToCurrentLocation(t);
+					if (removalType != Objects::RemovalType::DestroyedInStorage)
+						v->MoveSensoryToCurrentLocation(t);
 				}
 
 				float t = 0;
