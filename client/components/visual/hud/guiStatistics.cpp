@@ -124,7 +124,7 @@ namespace HUD
 			static void AddUserLine(const String&prefix,const Objects::PFaction&f,const String&postFix="")
 			{
 				PPanel panel{new Panel{}};
-				panel->fillBackground = false;
+				panel->SetBackgroundTransparent();
 				panel->SetAutomaticHeight(true);
 
 				PLabel prefixLabel{new Label{prefix+' '}};
@@ -435,9 +435,9 @@ namespace HUD
 				factionPanel.reset(new Panel{});
 				statsPanel.reset(new Panel{});
 
-				statsPanel->fillBackground = false;
-				factionPanel->fillBackground = false;
-				metricPanel->fillBackground = false;
+				statsPanel->SetBackgroundTransparent();
+				factionPanel->SetBackgroundTransparent();
+				metricPanel->SetBackgroundTransparent();
 
 				window->AddComponent(factionPanel);
 				window->AddComponent(metricPanel);

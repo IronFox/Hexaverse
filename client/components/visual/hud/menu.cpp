@@ -57,11 +57,8 @@ namespace Menu
 		Super::ClearComponents();
 		hintLabel.reset();
 		myTitle = title;
-		if (Super::DoesAutoCenter())
-			SetWidth(initialAbsoluteWidth);
-		else
-			Super::SetCenteredWidth(HUD::Component::Distance::GameWindow( initialAbsoluteWidth ));
-		Super::fillBackground = false;
+		Super::Anchor().CenterHorizontally(initialAbsoluteWidth);
+		Super::SetBackgroundTransparent();
 
 		if (title.IsNotEmpty())
 		{
@@ -129,7 +126,7 @@ namespace Menu
 
 
 
-		l->fillBackground = false;
+		l->SetBackgroundTransparent();
 		l->alignCenter = false;
 		{
 			auto mod = l->Anchor();
@@ -139,7 +136,7 @@ namespace Menu
 		c->Anchor().FillHorizontally(MinTextWidth,0.01f).CenterVertically();
 
 		p->SetAutomaticHeight(true);
-		p->fillBackground = false;
+		p->SetBackgroundTransparent();
 
 		options->AnchorBelowPrevious(p);
 		return l;
@@ -183,9 +180,7 @@ namespace Menu
 		options = Component::Window::Create();
 		LogEvent(EventClass::Preset::gui,"CreateOptionsMenu(): "+String(options.get()));
 		options->logFullAutoLayout = true;
-		options->SetAutoCenter(false);
-		options->FillHorizontally(0.1f);
-		options->AnchorTop(0.1f);
+		options->Anchor().FillHorizontally(0.1f,0.1f).Top(0.1f);
 		options->AnchorBelowPrevious(new Component::Label("Options",2.f));
 		
 		AddOptionSlider("UI Scale", 0.5f, 2.f, 0.125f,UI::GetScale(), [](float&q)

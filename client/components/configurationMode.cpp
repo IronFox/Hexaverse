@@ -244,6 +244,7 @@ namespace ConfigurationMode
 					button->backgroundTone /= max;
 				button->SetColor(float4(button->backgroundTone,1.f));
 				button->fillBackground = true;
+				button->renderBorder = true;
 				float b = 0.2f * (window->CountComponents()/4);
 				float x = 0.25f * (window->CountComponents()%4);
 				float x2 = 0.25f * (3-(window->CountComponents()%4));
@@ -377,7 +378,7 @@ namespace ConfigurationMode
 			planetListWindow->SetWidth(0.7f);
 			planetListWindow->SetAutomaticHeight(true);
 			planetListWindow->SetMaxAutoHeight(0.7f);
-			planetListWindow->fillBackground = false;
+			planetListWindow->SetBackgroundTransparent();
 			PComponent label = planetListWindow->AddNewComponent(new Label("Planets",1.2f));
 			{
 				auto cfg = label->GetAnchorConfig();

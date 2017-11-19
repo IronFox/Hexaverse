@@ -56,7 +56,8 @@ namespace HUD
 				PPanel rs{new Panel{}};
 				rs->SetAutomaticHeight(true);
 				rs->SetMaxAutoHeight(0.4f);
-				
+				rs->SetBorderBackground();
+
 				if (labelText.IsNotEmpty())
 				{
 					PLabel label{new Label{labelText,0.75f}};
@@ -70,9 +71,10 @@ namespace HUD
 					label->LockToIdealHeight();
 				}
 				else
-					rs->fillBackground = false;
+					rs->SetBackgroundTransparent();
 
 				window->AnchorBelowPrevious(rs,0,0.01f);
+				rs->Anchor().FillHorizontally(0.01f,0.01f);
 
 				return rs;
 			}
@@ -123,7 +125,7 @@ namespace HUD
 				panel->AddComponent(nameLabel);
 				//statusLabel->dbgMarked = true;
 				panel->AddComponent(statusLabel);
-				panel->fillBackground = false;
+				panel->SetBackgroundTransparent();
 
 				factionTable->AnchorBelowPrevious(panel,0,0);
 			}
@@ -136,7 +138,7 @@ namespace HUD
 				if (!window)
 				{
 					window = Window::Create();
-					window->SetWidth(0.5f);
+					window->SetWidth(0.75f);
 					
 					PPanel factionBack = AddPanel("Factions");
 					PPanel chatBack = AddPanel("Chat History");
@@ -149,14 +151,14 @@ namespace HUD
 						chatBack->AnchorBelowPrevious(chatHistory,0,0);
 						chatHistory->SetMaxAutoHeight(0.3f);
 						chatHistory->SetAutomaticHeight(true);
-						chatHistory->fillBackground = false;
+						chatHistory->SetBackgroundTransparent();
 					}
 					{
 						factionTable.reset(new Panel{});
 						factionBack->AnchorBelowPrevious(factionTable,0,0);
 						factionTable->SetMaxAutoHeight(0.3f);
 						factionTable->SetAutomaticHeight(true);
-						factionTable->fillBackground = false;
+						factionTable->SetBackgroundTransparent();
 					}
 					{
 						PButton close{new Button{"Close",Hide}};
@@ -174,7 +176,7 @@ namespace HUD
 							chatMessage->SetText("");
 						}}};
 						send->SetVerticalPadding(0.5f);
-						send->Anchor().CenterVertically().Right();
+						send->Anchor().CenterVertically().Right(0.01f);
 						send->LockToIdealWidth();
 						send->LockToIdealHeight();
 						chatMessage->Anchor().Top().FillHBetween(nullptr,send);
@@ -290,11 +292,7 @@ namespace HUD
 			}
 			textLabel->SetPadding(0);
 			textLabel->SetVerticalPadding(0.25f);
-			{
-				auto cfg = textLabel->Anchor();
-				cfg.GetHAxis().upper.Set(timeLabel,0);
-				cfg.GetHAxis().lower.Disable();
-			}
+			textLabel->Anchor().FillHBetween(senderLabel,timeLabel);
 			//textLabel->Anchor().Top().Set(0);
 			textLabel->alignCenter = false;
 			textLabel->LockToIdealHeight();
@@ -306,7 +304,7 @@ namespace HUD
 			chatEntry->AddComponent(timeLabel);
 			chatEntry->AddComponent(senderLabel);
 			chatEntry->AddComponent(textLabel);
-			chatEntry->fillBackground = false;
+			chatEntry->SetBackgroundTransparent();
 
 			chatHistory->AnchorBelowPrevious(chatEntry,0,0);
 

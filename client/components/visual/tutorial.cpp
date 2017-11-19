@@ -224,12 +224,8 @@ namespace Tutorial
 
 					taskWindow->AddNewComponent(new Label(msg))->AnchorTop(0).FillHorizontally(0);
 					taskWindow->SetAutomaticHeight(true);
-					taskWindow->SetAutoCenter(false);
-					{
-						auto mod = taskWindow->Anchor();
-						mod.GetHAxis().AnchorUpper(0.25f,0.1f);
-						mod.GetVAxis().AnchorLower(0.25f,0.1f);
-					}
+					taskWindow->Anchor().Bottom(0.1f,0.25f).Right(0.1f,0.25f);
+
 					taskWindow->isModal = false;
 				}
 				HUD::WindowStack::Show(taskWindow);

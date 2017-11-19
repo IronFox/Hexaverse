@@ -313,7 +313,7 @@ namespace Component
 	protected:
 		static void		Darken(const M::Rect<>&rect, float alpha=0.9f, bool flush=false);
 		static void		RenderArea(const M::Rect<>&rect, bool lit, bool flip, const float3&backgroundTone, float lowOpacity=1, float highOpacity=1);
-		static void		RenderOutline(const M::Rect<>&rect, const float3&backgroundTone, const M::Quad<bool>&edges, float lowOpacity=1, float highOpacity=1);
+		static void		RenderBorder(const M::Rect<>&rect, const float3&backgroundTone, const M::Quad<bool>&edges, float lowOpacity=1, float highOpacity=1);
 
 		virtual bool	ClientIsLit() const {return true;}
 
@@ -465,17 +465,30 @@ namespace Component
 	class Box : public Component
 	{
 	protected:
-		void			BaseRender(bool lit, bool flipped);
+		void			BaseRender(bool lit, bool flipped, bool fill=true, bool border=true);
 	public:
 		typedef Component	Super;
 
-		M::Quad<bool>		edges = M::Quad<bool>(true);
-		bool			fillBackground = true;
+		M::Quad<bool>	edges = M::Quad<bool>(true);
+		bool			fillBackground = true,
+						renderBorder = true;
+		
 		float			bottomOpacity = 1.f,
 						topOpacity = 1.f;
 		float3			backgroundTone = float3(1);
 
-		virtual void	Render() override	{Super::Render(); if (fillBackground) BaseRender(false,false);}
+		void			SetBackgroundTransparent()
+		{
+			fillBackground = false;
+			renderBorder = false;
+		}
+
+		void			SetBorderBackground()
+		{
+			fillBackground = false;
+			renderBorder = true;
+		}
+		virtual void	Render() override	{Super::Render(); BaseRender(false,false,fillBackground,renderBorder);}
 	};
 
 	/**
@@ -805,11 +818,11 @@ namespace Component
 	public:
 		/**/			Label()
 		{
-			Super::fillBackground = false;
+			Super::SetBackgroundTransparent();
 		}
 		/**/			Label(const String&text, float scale=1.f)
 		{
-			Super::fillBackground = false;
+			Super::SetBackgroundTransparent();
 			Super::SetLocalFontScale(scale);
 			SetText(text);
 			anchorConfig.GetHAxis().AnchorLowerUnknown();
@@ -943,7 +956,7 @@ namespace Component
 		{
 			Super::alignCenter = false;
 			Super::ScaleVerticalPadding(0.5f);
-			Super::fillBackground = false;
+			Super::SetBackgroundTransparent();
 			auto padding = Super::GetPadding();
 			padding.left = 2;
 			Super::SetPadding(padding);
@@ -1646,8 +1659,7 @@ namespace Component
 		M::Rect<>			outerRect = M::Rect<>(0,0,1,1);
 		bool				nestedCall = false;
 		float2				outlineMargin = float2(0.015f);
-		bool				autoCenter = true,
-							relayoutRequired = true,
+		bool				relayoutRequired = true,
 							visible = false;
 
 
@@ -1655,8 +1667,8 @@ namespace Component
 
 		/**/				Window()
 		{
-			anchorConfig.SetFreeFloating();
-		
+			anchorConfig.GetHAxis().SetAutoCenter();
+			anchorConfig.GetVAxis().SetAutoCenter();
 		}
 
 		template <typename T>	
@@ -1700,25 +1712,6 @@ namespace Component
 
 		virtual PWindow		GetWindow() override;
 		virtual PConstWindow	GetWindow() const override;
-
-		virtual void		SetAnchorConfig(const AnchorConfig&cfg)	override 
-		{
-			ASSERT__(!autoCenter);
-			Super::SetAnchorConfig(cfg);
-		}
-
-		bool				DoesAutoCenter() const {return autoCenter;}
-
-		void				SetAutoCenter(bool center)
-		{
-			if (center)
-			{
-				ASSERT__(anchorConfig.GetHAxis().IsFreeFloating());
-				ASSERT__(anchorConfig.GetVAxis().IsFreeFloating());
-			}
-			autoCenter = center;
-			InvalidateAutoLayout();
-		}
 
 		void				SetOutlineMargin(const float2&v)
 		{
@@ -1765,13 +1758,6 @@ namespace Component
 					FullAutoLayout(CLOCATION);	
 					nestedCall = false;
 				}
-				if (autoCenter)
-				{
-					float2 delta = context.center() - GetRect().center();
-					if (!Vec::similar(delta,M::Vector2<>::zero))
-						Super::Translate(delta);
-				}
-				UpdateOuterRect();
 				return true;
 			}
 			return false;

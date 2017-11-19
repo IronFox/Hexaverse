@@ -77,18 +77,12 @@ namespace Dialog
 		{
 			dialog->isTutorial = isTutorial;
 
-			if (dialog->DoesAutoCenter())
-			{
-				dialog->SetWidth(0.5f);
-			}
+			if (dialog->GetAnchorConfig().GetHAxis().Stretches())
+				dialog->Anchor().FillHorizontally(0.25f,0.25f);
 			else
-			{
-				auto cfg = dialog->GetAnchorConfig();
-				cfg.GetHAxis().Fill(0.25f,0.25f);
-				dialog->SetAnchorConfig(cfg);
-			}
+				dialog->SetWidth(0.5f);
 			
-			dialog->fillBackground = false;
+			dialog->SetBackgroundTransparent();
 			//HUD::Component::PComponent	common(new HUD::Component::Area());
 
 			HUD::Component::PPanel	textPanel(new HUD::Component::Panel());
@@ -219,7 +213,7 @@ namespace Dialog
 					}
 					imageField->SetAnchorConfig(cfg);
 				}
-				textField->Anchor().Left(HUD::Component::Distance::OfParentSize(0.405f)).CenterVertically();
+				textField->Anchor().FillHorizontally(HUD::Component::Distance::OfParentSize(0.405f),0).CenterVertically();
 				textField->alignCenter = false;
 				textPanel->AddComponent(imageField);
 			}

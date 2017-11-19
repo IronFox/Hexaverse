@@ -56,15 +56,14 @@ namespace HUD{namespace HostList{
 
 
 		serverChoice = Window::Create();
-		serverChoice->SetAutoCenter(false);
-		serverChoice->SetCenteredWidth(Distance::GameWindow( 0.9f ));
+		serverChoice->Anchor().Top().CenterHorizontally(0.9f);
 		serverChoice->canBeImplicitlyClosed = false;
 
 		headerRow.reset(new Panel());
 		headerRow->FillHorizontally(0);
 		headerRow->Anchor().Top();
 		headerRow->SetAutomaticHeight(true);
-		headerRow->fillBackground = false;
+		headerRow->SetBackgroundTransparent();
 		
 		Update();
 	}
@@ -397,9 +396,8 @@ namespace HUD{namespace HostList{
 
 		serverChoice->ClearComponents();
 
-		serverChoice->fillBackground = false;
+		serverChoice->SetBackgroundTransparent();
 		serverChoice->isModal = false;
-		serverChoice->SetAutoCenter(false);
 		SetTop(serverChoice,0.1f);
 		serverChoice->SetMaxAutoHeight(0.8f);
 
@@ -421,7 +419,7 @@ namespace HUD{namespace HostList{
 			serverListPanel->Anchor().FillHorizontally().Top();
 			serverListPanel->SetAutomaticHeight(true);
 			serverListPanel->SetMaxAutoHeight(0.5f);
-			serverListPanel->fillBackground = false;
+			serverListPanel->SetBackgroundTransparent();
 		}
 		serverListPanel->ClearComponents();
 		serverListPanel->Anchor().BeneathAllOf(serverChoice);
@@ -437,7 +435,7 @@ namespace HUD{namespace HostList{
 				.BeneathLastOf(serverListPanel,Distance::GameWindow( 0.015f ))
 				.FillHorizontally();
 			p->SetAutomaticHeight(true);
-			p->fillBackground = false;
+			p->SetBackgroundTransparent();
 
 			PPanel pb(new Panel());
 			//pb->autoHeight = true;
@@ -503,7 +501,7 @@ namespace HUD{namespace HostList{
 			PPanel p(new Panel());
 			p->Anchor().BeneathAllOf(serverChoice, Distance::GameWindow(0.025f ));
 			serverChoice->AddComponent( p );
-			p->fillBackground = false;
+			p->SetBackgroundTransparent();
 
 			PLabel label = MakeHeaderLabel(" No Servers Found",0.7f,0);
 			label->Anchor().Left(Distance::GameWindow( 0.1f ));

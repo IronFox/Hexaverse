@@ -730,7 +730,7 @@ namespace Component
 		}
 
 		RenderArea(bar,barContainsMouse,dragging,float3(1));
-		RenderOutline(bar,float3(1),true);
+		RenderBorder(bar,float3(1),true);
 	}
 
 
@@ -846,7 +846,7 @@ namespace Component
 
 		bar = M::Rect<>(outline.x.min,outline.y.Derelativate(1.f - (viewTop + viewSize) / scrollMax),outline.x.max,outline.y.Derelativate(1.f - (viewTop) / scrollMax));
 		RenderArea(bar,barContainsMouse,dragging,float3(1));
-		RenderOutline(bar,float3(1),true);
+		RenderBorder(bar,float3(1),true);
 
 		up->SetLocation(topButton);
 		up->Render();
@@ -1157,7 +1157,7 @@ namespace Component
 		SurfaceRenderer::Flush();
 	}
 
-	/*static*/ void				Component::RenderOutline(const M::Rect<>&rect, const float3&backgroundTone, const M::Quad<bool>&edges, float lowOpacity/*=1*/, float highOpacity/*=1*/)
+	/*static*/ void				Component::RenderBorder(const M::Rect<>&rect, const float3&backgroundTone, const M::Quad<bool>&edges, float lowOpacity/*=1*/, float highOpacity/*=1*/)
 	{
 		float4 lineLowColor(backgroundTone*0.5f,lowOpacity*0.5f);
 		float4 lineHighColor(backgroundTone*0.5f,highOpacity*0.5f);
@@ -1262,11 +1262,13 @@ namespace Component
 	}
 
 
-	void				Box::BaseRender(bool lit, bool flipped)
+	void				Box::BaseRender(bool lit, bool flipped, bool fill, bool outline)
 	{
 		const M::Rect<>&r = GetRect();
-		RenderArea(r,lit,flipped,backgroundTone,bottomOpacity,topOpacity);
-		RenderOutline(r,backgroundTone,true,bottomOpacity,topOpacity);
+		if (fill)
+			RenderArea(r,lit,flipped,backgroundTone,bottomOpacity,topOpacity);
+		if (outline)
+			RenderBorder(r,backgroundTone,true,bottomOpacity,topOpacity);
 	}
 
 	static const float CellSize = 0.01f;
@@ -1468,10 +1470,9 @@ namespace Component
 		//core.Scale(0.97f);
 
 		if (fillBackground)
-		{
 			RenderArea(core,false,true,backgroundTone);
-			RenderOutline(core,backgroundTone,true);
-		}
+		if (renderBorder)
+			RenderBorder(core,backgroundTone,true);
 
 		StringRef text = GetTextRef();
 
@@ -1673,10 +1674,7 @@ namespace Component
 	{
 		bool lit = IsLit();
 
-		if (fillBackground)
-		{
-			Super::BaseRender(lit,false);
-		}
+		Super::BaseRender(lit,false,fillBackground,renderBorder);
 		RenderText(lit);
 	}
 
@@ -2080,12 +2078,6 @@ namespace Component
 		bool rs = Super::FullAutoLayout(context);
 		relayoutRequired = false;
 
-		if (autoCenter)
-		{
-			float2 delta = context.center() - GetRect().center();
-			if (!Vec::similar(delta,M::Vector2<>::zero))
-				Super::Translate(delta);
-		}
 		UpdateOuterRect();
 		nestedCall = false;
 
@@ -2098,7 +2090,7 @@ namespace Component
 	/**/			TabBar::TabBar()
 	{
 		SetAutomaticHeight(true);
-		fillBackground = false;
+		SetBackgroundTransparent();
 		SetAutoHeightSpacing(0.02f);
 
 	}
@@ -2195,7 +2187,7 @@ namespace Component
 	{
 		if (tabBar)
 			return;
-		this->fillBackground = false;
+		this->SetBackgroundTransparent();
 		tabBar.reset(new TabBar());
 		{
 			auto mod = tabBar->Anchor();
@@ -2399,7 +2391,7 @@ namespace Component
 		}
 
 
-		Box::RenderOutline(GetRect(),float3(1),true);
+		Box::RenderBorder(GetRect(),float3(1),true);
 	}
 
 	void MultiPlot::BeginLabelPrint()
