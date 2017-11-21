@@ -57,7 +57,8 @@ namespace Receiver
 namespace Channels
 {
 
-
+	#undef DECLARE_FACTION_CHANNEL
+	#define	DECLARE_FACTION_CHANNEL(NAME)	extern TCP::Channel<Protocol::NAME,FactionLevel,Protocol::ChannelID::NAME>	NAME;
 
 	
 	//TCP::ObjectSender<Protocol::ServerState,Protocol::ChannelID::GetInfo>		infoSender;

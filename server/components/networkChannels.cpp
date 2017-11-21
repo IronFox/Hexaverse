@@ -15,9 +15,12 @@ namespace Channels
 
 
 
-	
-	//TCP::ObjectSender<Protocol::ServerState,Protocol::ChannelID::GetInfo>		infoSender;
-	//TCP::ObjectSender<Protocol::Result,Protocol::ChannelID::
+	#undef DECLARE_FACTION_CHANNEL
+	#define	DECLARE_FACTION_CHANNEL(NAME)	TCP::Channel<Protocol::NAME,FactionLevel,Protocol::ChannelID::NAME>	NAME(Receiver::NAME);
+
+
+	DECLARE_FACTION_CHANNEL(FactionAllianceChange);
+
 
 
 	TCP::Channel<Protocol::Hello, 0,Protocol::ChannelID::Hello>												hello(Receiver::Hello);
