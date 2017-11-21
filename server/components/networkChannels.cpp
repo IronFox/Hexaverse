@@ -9,6 +9,43 @@
 extern TwisterRandom		random;
 
 
+namespace Receiver
+{
+	void	FactionAllianceChange(Protocol::FactionAllianceChange&change, TCP::Peer&peer)
+	{
+		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
+		if (!client)
+		{
+			LogEvent(EventClass::Preset::internalError,peer,"FactionAllianceChange: client is nullptr");
+			return;
+		}
+		if (!client->faction)
+		{
+			LogEvent(EventClass::Preset::internalError,peer,"FactionAllianceChange: client->faction is nullptr");
+			return;
+		}
+		if (client->faction->id != change.fromFactionID)
+		{
+			LogEvent(EventClass::Preset::commandRejected, peer, "Faction alliance change origin mismatch. Access denied");
+			return;
+		}
+
+		Objects::PFaction f2 = Objects::Faction::FindByID(change.toFactionID);
+		if (!f2)
+		{
+			LogEvent(EventClass::Preset::commandRejected, peer, "Faction alliance change destination does not exist");
+			return;
+		}
+
+		Objects::AllianceLevel level;
+		if (!level.Load(change.newAllianceLevel))
+		{
+			LogEvent(EventClass::Preset::commandRejected, peer, "Faction alliance change level is invalid");
+			return;
+		}
+		client->faction->SetAllianceLevel(f2,level);
+	}
+}
 
 namespace Channels
 {

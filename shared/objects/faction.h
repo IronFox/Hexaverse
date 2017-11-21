@@ -157,10 +157,10 @@ namespace Objects
 		void			InitID(const TUniqueID&toID, bool nexusFaction);
 
 	public:
-		TUniqueID	id;
-		String		name;
-		bool		online = false;
-		float3		color;
+		TUniqueID		id;
+		String			name;
+		bool			online = false;
+		float3			color;
 		Statistics		statistics;
 		ResearchState	researchState;
 		#ifdef CLIENT
@@ -174,6 +174,27 @@ namespace Objects
 		#ifdef ONE_COMPOUND_PER_FACTION
 			Compound	compound;
 		#endif
+
+
+		virtual			~Faction();
+		void			ForeachAlly(AllianceLevel minimumLevel, const std::function<void(const PFaction&)>&visitor);
+
+		void			SetAllianceLevel(const PFaction&other, AllianceLevel level);
+		AllianceLevel	GetMyAllianceLevel(const PFaction&other) const;
+		AllianceLevel	GetSharedAllianceLevel(const PFaction&other) const;
+		void			AddEntitySensory(World::Data&worldData, float&t) const;
+		
+		/**
+		Checks whether or not units of the other faction are considered friendly (invalid auto-targets).
+		This check is symmetric
+		*/
+		bool			IsFriendly(const PFaction&other) const {return other.get() == this || GetSharedAllianceLevel(other) >= AllianceLevel::Friendly;}
+		/**
+		Checks whether or not units of the other faction receive detailed entity state information such as build queues.
+		This check is symmetric
+		*/
+		bool			ExposesEntityDetailsTo(const PFaction&other) const {return other.get() == this || GetSharedAllianceLevel(other) >= AllianceLevel::NonResourceControl;}
+
 
 		String		GetName() const
 		{
@@ -404,6 +425,21 @@ namespace Objects
 
 			static void	Kill(const PFaction&);
 		#endif
+
+
+	private:
+
+		void			SetOpposingAllianceLevel(const PFaction&other, AllianceLevel level);
+
+		struct TAllianceEntry
+		{
+			AllianceLevel	myLevel,
+							opposingLevel,
+							sharedLevel;
+			WFaction		otherFaction;
+		};
+
+		PointerTable<TAllianceEntry>	allies;
 	};
 
 		//extern Buffer0<POwner>	owners;

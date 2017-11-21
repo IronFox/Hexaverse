@@ -16,6 +16,18 @@ namespace Objects
 {
 
 	/*static*/ const String			Faction::nexusName = "<Nexus>";
+
+
+
+	Faction::~Faction()
+	{
+		allies.VisitAllValues([this](const TAllianceEntry&e)
+		{
+			PFaction f = e.otherFaction.lock();
+			DBG_ASSERT__(f);
+			f->SetOpposingAllianceLevel(shared_from_this(),AllianceLevel::None);
+		});
+	}
 	
 	#ifndef CLIENT
 
@@ -1184,6 +1196,99 @@ namespace Objects
 
 	#endif
 
+	void			Faction::ForeachAlly(AllianceLevel minimumLevel, const std::function<void(const PFaction&)>&visitor)
+	{
+		allies.VisitAllValues([visitor,minimumLevel](const TAllianceEntry&e)
+		{
+			if (e.sharedLevel < minimumLevel)
+				return;
+			PFaction f = e.otherFaction.lock();
+			DBG_ASSERT__(f);
+			visitor(f);
+		});
+	}
+
+	void			OnFactionAllianceChange(const PFaction&a, const PFaction&b, AllianceLevel old, const AllianceLevel now)
+	{
+		LogEvent(EventClass(EventSignificance::Important,now > old ? EventFlavor::Gain : EventFlavor::Loss),"Faction cooperation level between "+a->GetName()+" and "+b->GetName()+" changed to "+String(now.ToString()));
+	}
+
+
+	void			Faction::SetAllianceLevel(const PFaction&other, AllianceLevel level)
+	{
+		if (!other || other.get() == this)
+			return;
+		auto*existing = allies.QueryPointer(other.get());
+		if (existing && existing->myLevel == level)
+			return;
+		#ifndef CLIENT
+			ApplicationInterface::SignalFactionAllianceChange(shared_from_this(),other,level);
+		#endif
+		other->SetOpposingAllianceLevel(shared_from_this(),level);
+		if (level == AllianceLevel::None)
+		{
+			if (!existing)
+				return;
+			OnFactionAllianceChange(shared_from_this(),other,existing->sharedLevel,level);
+			if (existing->opposingLevel == level)
+			{
+				allies.Unset(other.get());
+				return;
+			}
+			existing->myLevel = level;
+			existing->sharedLevel = level;
+			return;
+		}
+
+		if (!existing)
+			existing = allies.SetNew(other.get());
+		
+		existing->myLevel = level;
+		AllianceLevel newLevel = AllianceLevel::Reinterpret(std::min(existing->myLevel,existing->opposingLevel));
+		if (newLevel != existing->sharedLevel)
+			OnFactionAllianceChange(shared_from_this(),other,existing->sharedLevel,newLevel);
+		existing->sharedLevel = newLevel;	
+	}
+
+	void		Faction::SetOpposingAllianceLevel(const PFaction&other, AllianceLevel otherLevel)
+	{
+		auto*existing = allies.QueryPointer(other.get());
+		if (existing && existing->opposingLevel == otherLevel)
+			return;
+		if (otherLevel == AllianceLevel::None)
+		{
+			if (!existing)
+				return;
+			if (existing->myLevel == otherLevel)
+			{
+				allies.Unset(other.get());
+				return;
+			}
+			existing->opposingLevel = otherLevel;
+			existing->sharedLevel = otherLevel;
+			return;
+		}
+
+		if (!existing)
+			existing = allies.SetNew(other.get());
+		
+		existing->opposingLevel = otherLevel;
+		AllianceLevel newLevel = AllianceLevel::Reinterpret(std::min(existing->myLevel,existing->opposingLevel));
+		existing->sharedLevel = newLevel;
+	}
+
+
+	AllianceLevel	Faction::GetMyAllianceLevel(const PFaction&other) const
+	{
+		 const auto*existing = allies.QueryPointer(other.get());
+		 return existing ? existing->myLevel : AllianceLevel::None;
+	}
+
+	AllianceLevel	Faction::GetSharedAllianceLevel(const PFaction&other) const
+	{
+		 const auto*existing = allies.QueryPointer(other.get());
+		 return existing ? existing->sharedLevel : AllianceLevel::None;
+	}
 
 	void			ForeachFaction(const std::function<void(const PFaction&)>&func, bool includeDead/*=false*/)
 	{

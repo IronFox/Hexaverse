@@ -86,6 +86,11 @@ namespace ApplicationInterface
 	Also replacement as happens when the nexus faction is recreated.
 	*/
 	void	SignalFactionsChanged();
+	/**
+	Signals that an alliance state change has been detected from 
+	*/
+	void	SignalFactionAllianceChange(const Objects::OwnerParameter&origin,const Objects::OwnerParameter&dest, Objects::AllianceLevel newLevel);
+
 
 #endif
 }

@@ -20,6 +20,15 @@
 extern TwisterRandom random;
 
 
+namespace ApplicationInterface
+{
+	void	SignalFactionAllianceChange(const Objects::OwnerParameter&origin,const Objects::OwnerParameter&dest, Objects::AllianceLevel newLevel)
+	{
+		Channels::FactionAllianceChange.SendTo(Network::server,Protocol::FactionAllianceChange(origin->id,dest->id,(BYTE)newLevel));
+	}
+}
+
+
 namespace Network
 {
 	Ctr::Buffer<PClient>	activePlayersAndSpectators,spectators;

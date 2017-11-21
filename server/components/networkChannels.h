@@ -68,6 +68,9 @@ namespace Channels
 	static const UINT32 Spectator = (UINT32)Network::UserLevel::Spectator;
 	static const UINT32 Configurator = (UINT32)Network::UserLevel::PlanetConfigurator;
 
+
+	DECLARE_FACTION_CHANNEL(FactionAllianceChange);
+
 	extern TCP::Channel<Protocol::Hello, 0,Protocol::ChannelID::Hello>											hello;
 	extern TCP::Channel<Protocol::EntityDirectCommand, FactionLevel, Protocol::ChannelID::EntityDirectCommand>	entityDirectCommand;
 	extern TCP::Channel<Protocol::ChoiceIntersection, FactionLevel, Protocol::ChannelID::ChoiceIntersection>	choiceIntersection;

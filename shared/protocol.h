@@ -1079,7 +1079,11 @@ namespace Protocol
 		SelectiveStructureState;
 
 
-
+	NETSTRUCT3(FactionAllianceChange
+		, TUniqueID, fromFactionID
+		, TUniqueID, toFactionID
+		, BYTE, newAllianceLevel
+	)
 
 	NETSTRUCT4(StructureState
 		, EntityState, entityState
@@ -1410,6 +1414,7 @@ namespace Protocol
 			UnitLimits,			// s2c : UnitLimits
 
 			ChatMessage,		// c2s: NetString<256>
+			FactionAllianceChange,	//both: FactionAllianceChange
 
 			PlanetConfig,		// both: Grid::ExtendedPlanetConfig
 			GameConfig,			// both: GameConfig

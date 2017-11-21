@@ -75,6 +75,15 @@ namespace Objects
 		ChangingOwnership
 	);
 
+	CONSTRUCT_ENUMERATION4(AllianceLevel,
+		None,
+		Friendly,
+		SharedSensors,
+		NonResourceControl	//allows control of allied units as long as they do not trigger resource consumption
+//			SharedCompounds,
+//			FullControl
+	);
+
 	class Compound;
 	class Marker;
 	struct TrajectoryEndPoint;
