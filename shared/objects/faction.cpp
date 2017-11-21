@@ -425,6 +425,22 @@ namespace Objects
 
 		//}
 
+		void	Faction::AddEntitySensory(World::Data&worldData, float&t) const
+		{
+			foreach (this->structures,_s)
+			{
+				Objects::PStructure s = _s->lock();
+				if (s)
+					s->InsertSensoryInto(worldData,t);
+			}
+			foreach (this->allMobiles,_m)
+			{
+				Objects::PWorldEntity e = _m->lock();
+				if (e)
+					e->InsertSensoryInto(worldData,t);
+			}
+		}
+
 
 		void Faction::CheckSensory(float&t)
 		{
@@ -432,42 +448,73 @@ namespace Objects
 			{
 				knownWorld.FlushAndValidateSensory();
 
-				foreach (this->structures,_s)
+				AddEntitySensory(knownWorld,t);
+				ForeachAlly(AllianceLevel::SharedSensors,[this,&t](const PFaction&f)
 				{
-					Objects::PStructure s = _s->lock();
-					if (s)
-						s->ReapplySensory(t);
-				}
-				foreach (this->allMobiles,_m)
+					f->AddEntitySensory(knownWorld,t);
+				});
+
+				LogEvent(EventSignificance::Common,shared_from_this(),"Recomputing sensory");
+				Timer::Time started = timer.Now();
+				LogEvent(EventSignificance::PerformanceMeasurement,shared_from_this(),"Computed sensory grid coverage in "+String(timer.GetSecondsSince(started)));
+				started = timer.Now();
+				ForeachWorldEntity([this,&t](const PWorldEntity&e)
 				{
-					Objects::PWorldEntity e = _m->lock();
-					if (e)
-						e->ReapplySensory(t);
-				}
+					if (e->owner.get() == this)
+						return;
+					bool appear = GetSharedAllianceLevel(e->owner) >= AllianceLevel::SharedSensors;
+
+					if (!appear)
+					{
+						if (e->IsAboveGrid())
+						{
+							count_t cover = CountOffGridCoverage(e->location.height, e->GetWorldPosition());
+							if (cover > 0)
+								appear = true;
+						}
+						else
+							if (GridCanSee(e,t))
+								appear = true;
+					}
+					if (appear)
+						SignalAppearance(e,t,true,false);
+
+				},false);
+
+				LogEvent(EventSignificance::PerformanceMeasurement,shared_from_this(),"Computed appearances in "+String(timer.GetSecondsSince(started)));
+				started = timer.Now();
+
+				static Ctr::Buffer<PWorldEntity>	disappear;
+
+				seeing.VisitAllKeys([this,&t](const PWorldEntity&e)
+				{
+					bool stillVisible = GetSharedAllianceLevel(e->owner) >= AllianceLevel::SharedSensors;
+
+					if (!stillVisible)
+					{
+						if (e->IsAboveGrid())
+						{
+							count_t cover = CountOffGridCoverage(e->location.height, e->GetWorldPosition());
+							stillVisible = cover > 0;
+						}
+						else
+							stillVisible = GridCanSee(e,t);
+					}
+					if (!stillVisible)
+						disappear << e;
+				});
+				foreach (disappear,s)
+					SignalDisappearance(*s,t);
+				disappear.Clear();
+				LogEvent(EventSignificance::PerformanceMeasurement,shared_from_this(),"Computed disappearances in "+String(timer.GetSecondsSince(started)));
 			}
 		}
 		
 
 		void Faction::CheckSensory()
 		{
-			if (knownWorld.SensoryIsInvalid())
-			{
-				float t = knownWorld.GetMaxChangeTime();
-				knownWorld.FlushAndValidateSensory();
-
-				foreach (this->structures,_s)
-				{
-					Objects::PStructure s = _s->lock();
-					if (s)
-						s->ReapplySensory(t);
-				}
-				foreach (this->allMobiles,_m)
-				{
-					Objects::PWorldEntity e = _m->lock();
-					if (e)
-						e->ReapplySensory(t);
-				}
-			}
+			float t = 0;
+			CheckSensory(t);
 		}
 
 
@@ -797,61 +844,11 @@ namespace Objects
 		Faction::TSensorLock::~TSensorLock()
 		{
 			owner->sensorLockLevel--;
-			if (owner->sensorLockLevel == 0 && owner->knownWorld.SensoryIsInvalid())
-			{
-				LogEvent(EventSignificance::Common,owner->shared_from_this(),"Recomputing sensory");
-				Timer::Time started = timer.Now();
-				float t = 0;
+			if (owner->sensorLockLevel == 0)
 				owner->CheckSensory();
-				LogEvent(EventSignificance::PerformanceMeasurement,owner->shared_from_this(),"Computed sensory grid coverage in "+String(timer.GetSecondsSince(started)));
-				started = timer.Now();
-				ForeachWorldEntity([this,&t](const PWorldEntity&e)
-				{
-					if (e->owner.get() == owner)
-						return;
-					if (e->IsAboveGrid())
-					{
-						count_t cover = owner->CountOffGridCoverage(e->location.height, e->GetWorldPosition());
-						if (cover > 0)
-						{
-							owner->SignalAppearance(e, t, true, false);
-						}
-					}
-					else
-						if (owner->GridCanSee(e,t))
-						{
-							owner->SignalAppearance(e,t,true,false);
-						}
-
-				},false);
-
-				LogEvent(EventSignificance::PerformanceMeasurement,owner->shared_from_this(),"Computed appearances in "+String(timer.GetSecondsSince(started)));
-				started = timer.Now();
-
-				static Ctr::Buffer<PWorldEntity>	disappear;
-
-				owner->seeing.VisitAllKeys([this,&t](const PWorldEntity&e)
-				{
-					if (e->IsAboveGrid())
-					{
-						count_t cover = owner->CountOffGridCoverage(e->location.height, e->GetWorldPosition());
-						if (cover == 0)
-						{
-							disappear << e;
-						}
-					}
-					else
-						if (!owner->GridCanSee(e,t))
-						{
-							disappear << e;
-						}
-				});
-				foreach (disappear,s)
-					owner->SignalDisappearance(*s,t);
-				disappear.Clear();
-				LogEvent(EventSignificance::PerformanceMeasurement,owner->shared_from_this(),"Computed disappearances in "+String(timer.GetSecondsSince(started)));
-			}
 		}
+
+
 
 		//void		Faction::RegisterSensorMotion(const M::Sphere<>&from, const M::Sphere<>&to, float t);
 		void		Faction::RegisterSensorRemoval(const World::Sensor&sensor, int sensorHeight, float&t)
@@ -1211,6 +1208,18 @@ namespace Objects
 	void			OnFactionAllianceChange(const PFaction&a, const PFaction&b, AllianceLevel old, const AllianceLevel now)
 	{
 		LogEvent(EventClass(EventSignificance::Important,now > old ? EventFlavor::Gain : EventFlavor::Loss),"Faction cooperation level between "+a->GetName()+" and "+b->GetName()+" changed to "+String(now.ToString()));
+		if (old < AllianceLevel::SharedSensors != now >= AllianceLevel::SharedSensors)
+		{
+			#ifndef CLIENT
+				a->knownWorld.InvalidateSensory();
+				b->knownWorld.InvalidateSensory();
+				a->CheckSensory();
+				b->CheckSensory();
+			#elif HAS_WINDOW
+				if (a->isOwnedByMe || b->isOwnedByMe)
+					World::actual.InvalidateSensory();
+			#endif
+		}
 	}
 
 

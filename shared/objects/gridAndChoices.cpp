@@ -30,20 +30,20 @@ namespace Objects
 		bool NoHostileVehicleHere(const Grid::LCellIdI&cellID, const OwnerParameter&v)
 		{
 			PVehicle vh = GetVehicle(cellID);
-			return !vh || vh->owner == v;
+			return !vh || vh->owner->IsFriendly(v);
 		}
 		#ifndef NO_SATELLITES
 			bool NoHostileSatelliteHere(UINT32 cellID, const OwnerParameter&v)
 			{
 				PSatellite vh = GetSatellite(cellID);
-				return !vh || vh->owner == v;
+				return !vh || vh->owner->IsFriendly(v);
 			}
 		#endif
 	#else
 		bool NoHostileVehicleHere(const Grid::LCellIdI&cellID, const OwnerParameter&v, float t)
 		{
 			PVehicle vh = GetVehicle(cellID);
-			return !vh || vh->owner == v 
+			return !vh || vh->owner->IsFriendly(v) 
 					|| !v->CanSee(vh,t)
 			;
 		}
@@ -52,7 +52,7 @@ namespace Objects
 			bool NoHostileSatelliteHere(UINT32 cellID, const OwnerParameter&v, float t)
 			{
 				PSatellite vh = GetSatellite(cellID);
-				return !vh || vh->owner == v 
+				return !vh || vh->owner->IsFriendly(v) 
 						|| !v->CanSee(vh,t)
 				;
 			}
@@ -1884,7 +1884,7 @@ namespace Objects
 	PHangar		MobileDestinationStructureHere(const Grid::LCellIdI&location, const MobileEntity&m)
 	{
 		PStructure s = GetStructure(location);
-		return s && s->owner == m.owner ? s->CastToDestinationForType(m) : PHangar();
+		return s && s->owner->IsFriendly(m.owner) ? s->CastToDestinationForType(m) : PHangar();
 	}
 
 

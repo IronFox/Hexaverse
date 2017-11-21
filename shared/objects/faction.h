@@ -194,7 +194,7 @@ namespace Objects
 		This check is symmetric
 		*/
 		bool			ExposesEntityDetailsTo(const PFaction&other) const {return other.get() == this || GetSharedAllianceLevel(other) >= AllianceLevel::NonResourceControl;}
-
+		bool			SharingSensorWith(const PFaction&other) const{return other.get() == this || GetSharedAllianceLevel(other) >= AllianceLevel::SharedSensors;}
 
 		String		GetName() const
 		{
@@ -211,19 +211,7 @@ namespace Objects
 			return ToString(id)+":'"+name+"'";
 		}
 
-		
-		struct TSensorLock
-		{
-			Faction*const owner;
 
-			TSensorLock(Faction*f):owner(f)	{f->sensorLockLevel++;}
-			~TSensorLock();
-			TSensorLock(const TSensorLock&other):owner(other.owner) {owner->sensorLockLevel++;}
-			void operator=(const TSensorLock&) = delete;
-		};
-		friend struct TSensorLock;
-
-		TSensorLock LockSensorUpdates() {return this;}
 
 #if 0
 		/**
@@ -318,9 +306,23 @@ namespace Objects
 
 
 
-			static void			RecreateNexus(const TUniqueID&id=TUniqueID::Empty());	//!< Creates a fresh nexus faction and assigns it to @a nexus
+
+					
+			struct TSensorLock
+			{
+				Faction*const owner;
+
+				TSensorLock(Faction*f):owner(f)	{f->sensorLockLevel++;}
+				~TSensorLock();
+				TSensorLock(const TSensorLock&other):owner(other.owner) {owner->sensorLockLevel++;}
+				void operator=(const TSensorLock&) = delete;
+			};
+			friend struct TSensorLock;
 
 
+
+			static void	RecreateNexus(const TUniqueID&id=TUniqueID::Empty());	//!< Creates a fresh nexus faction and assigns it to @a nexus
+			TSensorLock LockSensorUpdates() {return this;}
 
 			/**/		Faction(const TUniqueID&toID, const String&name="", bool isNexus=false):researchState(this,isNexus), statistics(this), name(name)
 			{

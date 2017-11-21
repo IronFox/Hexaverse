@@ -568,6 +568,18 @@ namespace Objects
 	}
 
 
+	void					WorldEntity::InsertSensoryInto(World::Data&target, float&atTime)
+	{
+		this->SyncTime(atTime);
+		VisitSensors(location, [&target, &atTime,this](const World::Sensor&sensor)
+		{
+			#ifdef CLIENT
+				if (isOwnedByMe)
+			#endif
+				sensor.InsertInto(target, atTime);
+		});
+	}
+
 	void					WorldEntity::ReapplySensory(float&atTime)
 	{
 		if (!registeredSensor.IsSet())
@@ -622,7 +634,7 @@ namespace Objects
 		VisitSensors(loc, [&atTime, newContacts,this](const World::Sensor&sensor)
 		{
 			#ifdef CLIENT
-				if (isOwnedByMe)
+				if (isOwnedByMe || owner->SharingSensorWith(Faction::mine))
 				{
 					sensor.InsertInto(World::actual, atTime);
 				}

@@ -302,6 +302,43 @@ namespace Receiver
 		peer.SendSignal(Protocol::ChannelID::EndEverything);
 	}
 
+	void	SendEntitiesTo(const Objects::PFaction&f, TCP::Peer&peer, bool detailed, const Protocol::Timestamp&timestamp)
+	{
+		foreach (f->structures,_s)
+		{
+			Objects::PStructure s= _s->lock();
+			ASSERT__(s);
+			if (s)
+			{
+				Protocol::StructureConstruction st;
+				Game::Network::Describe(st,*s,detailed,timestamp);
+				Channels::createStructure.SendTo(peer,st);
+			}
+		}
+		foreach (f->allMobiles,_v)
+		{
+			Objects::PMobileEntity v= _v->lock();
+			ASSERT__(v);
+			if (v)
+			{
+				Protocol::NewMobileEntity st;
+				Game::Network::Describe(st,*v,detailed,timestamp,0xFFFFFFFF);
+				Channels::newMobileEntity.SendTo(peer,st);
+			}
+		}
+		foreach (f->storedMobiles,_v)
+		{
+			Objects::PMobileEntity v= _v->lock();
+			ASSERT__(v);
+			if (v)
+			{
+				Protocol::NewMobileEntity st;
+				Game::Network::Describe(st,*v,detailed,timestamp,0xFFFFFFFF);
+				Channels::newMobileEntity.SendTo(peer,st);
+			}
+		}
+	}
+
 	void	ClientFaction(Protocol::ClientFactionRequest&_p, TCP::Peer&peer)
 	{
 		if (!peer.attachment)
@@ -684,7 +721,7 @@ namespace Receiver
 			Protocol::Timestamp	timestamp;
 			timestamp.rightNow = true;
 
-			LogEvent(EventSignificance::Debug,"Sending known hostile contacts to "+ peer.ToString());
+			LogEvent(EventSignificance::Debug,"Sending known foreign contacts to "+ peer.ToString());
 			client->faction->seeing.VisitAllKeys([&peer,client,timestamp](const Objects::PWorldEntity&e)
 			{
 				LogEvent(EventSignificance::Debug,e.get(),"Sending contact (@"+String(e.get())+")");
@@ -699,7 +736,7 @@ namespace Receiver
 				if (s)
 				{
 					Protocol::StructureConstruction st;
-					Game::Network::Describe(st,*s,(s)->owner == client->faction,timestamp);
+					Game::Network::Describe(st,*s,(s)->owner->ExposesEntityDetailsTo(client->faction),timestamp);
 					Channels::createStructure.SendTo(peer,st);
 				}
 				else
@@ -708,7 +745,7 @@ namespace Receiver
 					if (v)
 					{
 						Protocol::NewMobileEntity st;
-						Game::Network::Describe(st,*v,(v)->owner == client->faction,timestamp,0xFFFFFFFF);
+						Game::Network::Describe(st,*v,(v)->owner->ExposesEntityDetailsTo(client->faction),timestamp,0xFFFFFFFF);
 						Channels::newMobileEntity.SendTo(peer,st);
 					}
 					else
@@ -717,42 +754,13 @@ namespace Receiver
 				}
 			});
 
-			foreach (client->faction->structures,_s)
+			client->faction->ForeachAlly(Objects::AllianceLevel::SharedSensors,[client,&peer,timestamp](const Objects::PFaction&other)
 			{
-				Objects::PStructure s= _s->lock();
-				ASSERT__(s);
-				if (s)
-				{
-					Protocol::StructureConstruction st;
-					Game::Network::Describe(st,*s,(s)->owner == client->faction,timestamp);
-					Channels::createStructure.SendTo(peer,st);
-				}
-			}
-			foreach (client->faction->allMobiles,_v)
-			{
-				Objects::PMobileEntity v= _v->lock();
-				ASSERT__(v);
-				if (v)
-				{
-					Protocol::NewMobileEntity st;
-					Game::Network::Describe(st,*v,true,timestamp,0xFFFFFFFF);
-					Channels::newMobileEntity.SendTo(peer,st);
-				}
-			}
-			foreach (client->faction->storedMobiles,_v)
-			{
-				Objects::PMobileEntity v= _v->lock();
-				ASSERT__(v);
-				if (v)
-				{
-					Protocol::NewMobileEntity st;
-					Game::Network::Describe(st,*v,true,timestamp,0xFFFFFFFF);
-					Channels::newMobileEntity.SendTo(peer,st);
-				}
-			}
-
+				const bool exposeDetails = other->ExposesEntityDetailsTo(client->faction);
+				SendEntitiesTo(other, peer,exposeDetails,timestamp);
+			});
+			SendEntitiesTo(client->faction,peer,true,timestamp);
 		}
-
 
 
 		

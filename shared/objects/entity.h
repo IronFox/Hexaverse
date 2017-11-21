@@ -551,6 +551,10 @@ namespace Objects
 		Assumes that grid sensory has been previously flushed
 		*/
 		void					ReapplySensory(float&atTime);
+		/**
+		Inserts the all local sensors into the specified target world around the local entity location
+		*/
+		void					InsertSensoryInto(World::Data&target, float&atTime);
 		TRegisteredSensor		RegisterSensory(const Grid::LCellIdI&loc, float&atTime, Ctr::Buffer0<PWorldEntity>*newContacts = nullptr);
 		void					UnregisterSensory(TRegisteredSensor&, float&atTime);
 		void					MoveSensoryToCurrentLocation(float&atTime, Ctr::Buffer0<PWorldEntity>*newContacts = nullptr);
