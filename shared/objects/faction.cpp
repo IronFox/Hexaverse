@@ -397,6 +397,17 @@ namespace Objects
 
 		}
 
+		void		Faction::VisitMyEntities(const std::function<void(const PWorldEntity&)>&f) const
+		{
+			foreach (structures,s)
+				f(s->lock());
+			foreach (allMobiles,m)
+				f(m->lock());
+			foreach (storedMobiles,m)
+				f(m->lock());
+		}
+
+
 		//void		Faction::SignalLossOfTemporarySensory()
 		//{
 		//	static Buffer0<PWorldEntity>	toDump;
