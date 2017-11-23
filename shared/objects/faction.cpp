@@ -1231,6 +1231,12 @@ namespace Objects
 					World::actual.InvalidateSensory();
 			#endif
 		}
+		if (Faction::ExposesEntityDetailsAt(old) != Faction::ExposesEntityDetailsAt(now))
+		{
+			//register change, forcing their resending (to all who see them, but, eh, w/e):
+			a->VisitMyEntities([](const PWorldEntity&e) {e->SignalChange(Objects::WorldEntity::All,0);});
+			b->VisitMyEntities([](const PWorldEntity&e) {e->SignalChange(Objects::WorldEntity::All,0);});
+		}
 	}
 
 

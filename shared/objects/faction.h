@@ -193,7 +193,8 @@ namespace Objects
 		Checks whether or not units of the other faction receive detailed entity state information such as build queues.
 		This check is symmetric
 		*/
-		bool			ExposesEntityDetailsTo(const PFaction&other) const {return other.get() == this || GetSharedAllianceLevel(other) >= AllianceLevel::NonResourceControl;}
+		bool			ExposesEntityDetailsTo(const PFaction&other) const {return other.get() == this || ExposesEntityDetailsAt(GetSharedAllianceLevel(other));}
+		static bool		ExposesEntityDetailsAt(AllianceLevel level) {return level >= AllianceLevel::NonResourceControl;}
 		bool			SharingSensorWith(const PFaction&other) const{return other.get() == this || GetSharedAllianceLevel(other) >= AllianceLevel::SharedSensors;}
 
 		String		GetName() const
