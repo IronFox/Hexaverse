@@ -1257,12 +1257,38 @@ namespace Network
 			}
 		}
 
+		void	FactionAllianceChange(Protocol::FactionAllianceChange&change)
+		{
+			Objects::PFaction f1 = Objects::Faction::FindByID(change.fromFactionID);
+			Objects::PFaction f2 = Objects::Faction::FindByID(change.toFactionID);
+			if (!f1)
+			{
+				LogEvent(EventClass::Preset::error, "Faction alliance change destination does not exist: "+change.fromFactionID.ConvertToString());
+				return;
+			}
+			if (!f2)
+			{
+				LogEvent(EventClass::Preset::error, "Faction alliance change destination does not exist: "+change.toFactionID.ConvertToString());
+				return;
+			}
+
+			Objects::AllianceLevel level;
+			if (!level.Load(change.newAllianceLevel))
+			{
+				LogEvent(EventClass::Preset::error, "Faction alliance change level is invalid");
+				return;
+			}
+			f1->SetAllianceLevel(f2,level);
+		}
 
 	}
 
 
 	namespace Channels
 	{
+		#undef DECLARE_CHANNEL
+		#define	DECLARE_CHANNEL(NAME)	TCP::Channel<Protocol::NAME,0,Protocol::ChannelID::NAME>	NAME(Receiver::NAME);
+
 		TCP::Channel<Protocol::ControlMessage,0,Protocol::ChannelID::ControlMessage>				controlMessage(Receiver::ControlMessage);
 
 		TCP::Channel<Protocol::ClientFactionResponse,0,Protocol::ChannelID::ClientFaction>			clientFactionResponse(Receiver::ClientFactionResponse);
@@ -1341,6 +1367,7 @@ namespace Network
 
 			//	,			//c2s: NET(bool) -> NET(bool)
 			//SetFactionId,		//s2c: NET(TUniqueID)
+		DECLARE_CHANNEL(FactionAllianceChange);
 
 		
 	}
@@ -1596,6 +1623,8 @@ namespace Network
 		client.InstallChannel(Channels::Statistics::entityType);
 		client.InstallChannel(Channels::Statistics::round);
 		client.InstallChannel(Channels::Statistics::factionInteraction);
+
+		client.InstallChannel(Channels::FactionAllianceChange);
 
 		client.OpenSignalChannel(Protocol::ChannelID::Pong,0);
 		client.OpenSignalChannel(Protocol::ChannelID::BeginGame,0);

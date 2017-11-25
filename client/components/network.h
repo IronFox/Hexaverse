@@ -207,6 +207,10 @@ namespace Network
 	}
 
 
+	
+	#undef DECLARE_CHANNEL
+	#define	DECLARE_CHANNEL(NAME)	extern TCP::Channel<Protocol::NAME,0,Protocol::ChannelID::NAME>	NAME;
+
 	namespace Channels
 	{
 		extern TCP::Channel<Protocol::ControlMessage,0,Protocol::ChannelID::ControlMessage>				controlMessage;
@@ -281,6 +285,8 @@ namespace Network
 		extern TCP::ObjectSender<Protocol::LoadPlanetByName, Protocol::ChannelID::LoadPlanetByName>		loadPlanetByName;
 		extern TCP::ObjectSender<Protocol::QueueResearch, Protocol::ChannelID::QueueResearch>			queueResearch;
 		
+
+		DECLARE_CHANNEL(FactionAllianceChange);
 	}
 
 
