@@ -250,7 +250,7 @@ bool	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Gr
 			static Buffer0<Grid::LCellIdI>	waypoints;
 			waypoints.Clear();
 			bool open = true;
-			for (index_t i = 0; i < path.length(); i++)
+			for (index_t i = 0; i < path.GetLength(); i++)
 			{
 				if (!((i+1)%5))
 				{
@@ -263,8 +263,8 @@ bool	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Gr
 			}
 
 			if (open)
-				waypoints << path.last().cell;
-				//SendDirectTo(v,path.last().cell,false,Objects::CursorMode::Idle);
+				waypoints << path.Last().cell;
+				//SendDirectTo(v,path.Last().cell,false,Objects::CursorMode::Idle);
 			SendDirectTo(v,waypoints.ToRef(),flags,Objects::CursorMode::Idle);
 		}
 	}
@@ -856,7 +856,7 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 
 		foreach(label, line)
 		{
-			if (line->first.length() == 0)
+			if (line->first.GetLength() == 0)
 				continue;
 			if (line->second)
 				file << "*";
@@ -1038,7 +1038,7 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 					else
 					{
 						String runningNumber = String(TimeLapse::runningNumber++);
-						while (runningNumber.length() < 4)
+						while (runningNumber.GetLength() < 4)
 							runningNumber = '0'+runningNumber;
 						String core = "capture"+runningNumber+".png";
 						PathString filename = TimeLapse::basePath + FOLDER_SLASH + core;
@@ -2239,7 +2239,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 							if (Objects::selectedVehicle)
 							{
 								float3 p = b + d * distance;
-								float r = p.length();
+								float r = p.GetLength();
 								float3 d = p / r;
 								UINT32 stackID;
 								int h;
@@ -2633,7 +2633,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 		
 		HUD::Dialog::Query("Please enter message","",Network::allowedChatCharacters,[](const String&candidate)->bool
 			{
-				return candidate.length() <= 256;
+				return candidate.GetLength() <= 256;
 			},
 			Network::SendChatMessage
 		);
@@ -2645,7 +2645,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 	{
 		bool	IsValidNickname(const String&candidate)
 		{
-			if (candidate.length() < 4)
+			if (candidate.GetLength() < 4)
 				return false;
 			bool rs = Package::IsValid(candidate,32);
 			return rs;
@@ -3416,7 +3416,7 @@ int main( int argc, const char* argv[])
 			wchar_t path[MAX_PATH];
 			ASSERT__(GetModuleFileNameW(NULL,path,MAX_PATH));
 			StringW dir = FileSystem::ExtractFileDir(StringW(path));
-			while (dir.length() > 1 && !IsTargetWorkingDirectory(dir))
+			while (dir.GetLength() > 1 && !IsTargetWorkingDirectory(dir))
 			{
 				dir = FileSystem::ExtractFileDir(dir);
 				LogEvent(EventSignificance::Debug,"Walking up to "+String(dir.c_str()));

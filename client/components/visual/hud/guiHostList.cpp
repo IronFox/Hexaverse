@@ -335,7 +335,7 @@ namespace HUD{namespace HostList{
 				if (first)
 				{
 					first = false;
-					cfg.BeneathSomeOf(p,[p](const PComponent&c)->bool{return c != p->GetReferences().last();});
+					cfg.BeneathSomeOf(p,[p](const PComponent&c)->bool{return c != p->GetReferences().Last();});
 				}
 				else
 				{

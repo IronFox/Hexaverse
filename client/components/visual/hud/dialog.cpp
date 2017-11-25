@@ -585,7 +585,7 @@ namespace Dialog
 	//{
 	//	if (Detail::visibleWindows.IsNotEmpty())
 	//	{
-	//		Detail::visibleWindows.last()->HandleClick();
+	//		Detail::visibleWindows.Last()->HandleClick();
 	//		return true;
 	//	}
 	//	return false;

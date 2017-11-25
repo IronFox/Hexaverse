@@ -501,7 +501,7 @@ namespace Animation
 			if (sourceTask.buildPath.IsNotEmpty())
 			{
 				std::shared_ptr<Objects::VehicleJob::DummyPathJob>	job(new Objects::VehicleJob::DummyPathJob(e));
-				job->path.Clear(sourceTask.buildPath.length());
+				job->path.Clear(sourceTask.buildPath.GetLength());
 				foreach (sourceTask.buildPath,p)
 					job->path << *p;
 				t1.job = job;
@@ -1036,7 +1036,7 @@ namespace Animation
 	void				Primitive::Append(Protocol::MobileEntityMotion&motion)
 	{
 		ASSERT__(path);
-		ASSERT__(path->rawPath.last().first == motion.fromLocation);
+		ASSERT__(path->rawPath.Last().first == motion.fromLocation);
 		ASSERT2__(targetEntityID == motion.id,targetEntityID,motion.id);
 		path->rawPath.Append(std::make_pair(motion.toLocation,motion.timestamp.atTime + motion.timeNeeded));
 		path->changed = true;
@@ -1311,7 +1311,7 @@ namespace Animation
 					#ifdef HAS_WINDOW
 						trajectoryGeometry.Clear();
 						#ifdef _DEBUG
-							LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Compiling trajectory with "+String(activeTrajectory.Count())+" steps, starting from "+Vec::toString(activeTrajectory.First())+", ending "+Vec::toString(activeTrajectory.last()));
+							LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Compiling trajectory with "+String(activeTrajectory.Count())+" steps, starting from "+Vec::toString(activeTrajectory.First())+", ending "+Vec::toString(activeTrajectory.Last()));
 						#endif
 						maxProjectileProjection = Objects::Component::Turret::CompileTrajectory(activeTrajectory,Objects::Component::Turret::Animation,trajectoryGeometry,0.5f);
 						trajectoryVisualization.vbo.CreateFromStructs(trajectoryGeometry.GetLOD(0).vertices);
@@ -1374,9 +1374,9 @@ namespace Animation
 
 				Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(allocatedTarget);
 				ASSERT__(v);
-				path->ApplyTo(v,path->rawPath.last().second);
-				//v->Relocate(path->rawPath.last().first,false);
-				v->location = path->rawPath.last().first;
+				path->ApplyTo(v,path->rawPath.Last().second);
+				//v->Relocate(path->rawPath.Last().first,false);
+				v->location = path->rawPath.Last().first;
 				//Objects::InsertVehicleIntoGrid(v,v->location);	will be done later
 				if (v->isOwnedByMe)
 				{
@@ -1594,7 +1594,7 @@ namespace Animation
 		ASSERT__(nodes.IsNotEmpty());	//this shouldn't be possible
 		{
 			//Vec::makeNormalTo(nodes.First().dir,nodes.First().position);
-			Vec::makeNormalTo(nodes.last().dir,nodes.last().position);
+			Vec::makeNormalTo(nodes.Last().dir,nodes.Last().position);
 		}
 		if (target->IsVehicle())
 			nodes.First().dir = -target->system.y.xyz;
@@ -1683,7 +1683,7 @@ namespace Animation
 			#ifdef HAS_WINDOW
 				target->ambientSound.SetPosition(sys.w.xyz);
 				target->ambientSound.SetVelocity((sys.w.xyz - prev) / Engine::timing.delta);
-				float x = t / rawPath.last().second;
+				float x = t / rawPath.Last().second;
 				float activity = 1.f - (M::Sqr(((x - 0.5f)*2.f)));
 				target->ambientSound.SetPitch(1.f + activity * 0.5f);
 				target->ambientSound.SetGain(std::min(target->GetSoundLevel() + activity,1.f));
@@ -1749,7 +1749,7 @@ namespace Animation
 					if (Animation::atTime >= Animation::primitives[i].time.min)
 					{
 						items.Append().elementIndex = i;
-						items.last().atTime = Animation::primitives[i].time.min;
+						items.Last().atTime = Animation::primitives[i].time.min;
 					}
 				}
 
@@ -1759,10 +1759,10 @@ namespace Animation
 				foreach (items,it)
 				{
 					Animation::actives << Animation::primitives[it->elementIndex];
-					Animation::actives.last().Begin();
-					if (Animation::actives.last().Update(Animation::atTime) == Animation::Primitive::Done)
+					Animation::actives.Last().Begin();
+					if (Animation::actives.Last().Update(Animation::atTime) == Animation::Primitive::Done)
 					{
-						Animation::actives.last().End();
+						Animation::actives.Last().End();
 						Animation::actives.EraseLast();
 					}
 					Animation::primitives.Erase(it->elementIndex);

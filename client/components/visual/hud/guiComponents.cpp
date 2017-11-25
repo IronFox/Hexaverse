@@ -1452,7 +1452,7 @@ namespace Component
 		bool active = IsActive();
 		len = active ? Engine::keyboard.GetInputLen() : backup.GetLength();
 
-		while (placeholder.length() < len)
+		while (placeholder.GetLength() < len)
 		{
 //			placeholder << "********";
 			placeholder << "........";
