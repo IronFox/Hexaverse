@@ -71,7 +71,7 @@ namespace Bin2Str
 
 	inline void Convert(void*outData, size_t outDataSize, const String&source)
 	{
-		Convert(outData,outDataSize,source.c_str(),source.length());
+		Convert(outData,outDataSize,source.c_str(),source.GetLength());
 	}
 
 }
@@ -206,7 +206,7 @@ struct TUniqueID
 	}
 	bool		Decode(const String&str)
 	{
-		return Decode(str.c_str(),str.length());
+		return Decode(str.c_str(),str.GetLength());
 	}
 
 };

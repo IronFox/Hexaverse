@@ -21,7 +21,7 @@ namespace ScriptCache
 
 	bool	Script::Recompress()
 	{
-		size_t len = content.length();
+		size_t len = content.GetLength();
 		compressed.SetSize(4/*decompressed size*/  + len /*worst expected size=uncompressed*/ +50 /*overhead*/);
 		size_t compressed = BZ2::compress(content.c_str(),len,this->compressed.pointer()+4,len+50);
 		if (!compressed)	//this should not happen
@@ -200,7 +200,7 @@ namespace ScriptCache
 
 		UINT32 uncompressedSize = *(const UINT32*)data.pointer();
 		String decompressed = TStringLength( uncompressedSize );
-		size_t rsSize = BZ2::decompress(data.pointer()+4,data.GetLength()-4,decompressed.mutablePointer(),decompressed.length());
+		size_t rsSize = BZ2::decompress(data.pointer()+4,data.GetLength()-4,decompressed.mutablePointer(),decompressed.GetLength());
 		if (uncompressedSize != rsSize)
 		{
 			LogEvent(EventClass::Preset::error,"Decompression of script '"+Bin2Str::ConvertPOD(id)+"' failed. Expected "+String(uncompressedSize)+" bytes in uncompressed data, but found "+ String(rsSize));

@@ -1214,7 +1214,7 @@ namespace Test
 						//satellites are spawned automatically during Tick...()
 						ASSERT_LESS_OR_EQUAL__(satelliteOffset,1);
 
-						Objects::PSatellite v = Objects::satellites.last();
+						Objects::PSatellite v = Objects::satellites.Last();
 						ASSERT_EQUAL__(v->health, v->GetMaxHealth());
 						ASSERT2__(v->location.stackID == plant->location.stackID, v->location.ToString(), plant->location.ToString());
 						if (!v0)
@@ -1236,7 +1236,7 @@ namespace Test
 						{
 							Objects::PMobileEntity producing = plant->GetActiveProduction();
 							ASSERT1__(producing->IsSatellite(),producing->GetName());	//only satellites should be able to block each other
-							plant->AbortConstruction(plant->queue.first().id);
+							plant->AbortConstruction(plant->queue.First().id);
 							ASSERT__(v0);	//this should not happen with the first one
 							continue;
 						}

@@ -533,7 +533,7 @@ namespace FileIO
 
 	static void Export(Riff::Chunk*parent, const Riff::TID&id, const String&outString)
 	{
-		parent->AppendBlock(id,outString.c_str(),outString.length());
+		parent->AppendBlock(id,outString.c_str(),outString.GetLength());
 	}
 
 	static void Import(Riff::Chunk*parent, const Riff::TID&id, String&outString)
@@ -1744,7 +1744,7 @@ namespace FileIO
 		
 		{
 			String phase = savePhase.ToString();
-			general->AppendBlock(RID::gamePhase, phase.c_str(),phase.length());
+			general->AppendBlock(RID::gamePhase, phase.c_str(),phase.GetLength());
 		}
 
 		{
@@ -1798,7 +1798,7 @@ namespace FileIO
 		foreach (Grid::Resource::all,res)
 		{
 			Riff::Chunk*resSec = CreateNamedList(container,ChunkName::ResourceSection);
-			resSec->AppendBlock(RID::resourceName)->SetData(res->GetName().c_str(),res->GetName().length());
+			resSec->AppendBlock(RID::resourceName)->SetData(res->GetName().c_str(),res->GetName().GetLength());
 			resSec->AppendBlock(RID::resourceCoverage)->SetData(res->coverage,sizeof(res->coverage));
 		}
 
@@ -1822,7 +1822,7 @@ namespace FileIO
 				}
 
 				factionSection->AppendBlock(RID::factionID)->SetPODData(faction->id);	//faction id
-				factionSection->AppendBlock(RID::factionName)->SetData(faction->name.c_str(),faction->name.length());
+				factionSection->AppendBlock(RID::factionName)->SetData(faction->name.c_str(),faction->name.GetLength());
 				factionSection->AppendBlock(RID::factionColor)->SetData(faction->color.v,sizeof(float)*3);
 
 				factionSection->AppendBlock(RID::factionAccessToken)->SetPODData(faction->accessToken);	//faction access token
@@ -1837,7 +1837,7 @@ namespace FileIO
 					auto res = faction->researchState.ExportResearchQueue();
 					if (res.IsNotEmpty())
 					{
-						factionSection->AppendBlock(RID::activeResearchTopic)->SetData(res.c_str(),res.length());
+						factionSection->AppendBlock(RID::activeResearchTopic)->SetData(res.c_str(),res.GetLength());
 					}
 				}
 

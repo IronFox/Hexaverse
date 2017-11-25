@@ -300,7 +300,7 @@ namespace Journal
 			else
 			{
 				ASSERT__(children.IsNotEmpty());
-				children.last().MoveAppend(child,indention-1);
+				children.Last().MoveAppend(child,indention-1);
 			}
 
 		}

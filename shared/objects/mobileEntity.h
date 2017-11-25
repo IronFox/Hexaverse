@@ -131,7 +131,7 @@ namespace Objects
 			/**/					Task(const String&name, const Ctr::ArrayRef<Grid::LCellIdI>&destination, bool isDetailed, type_t type, mode_t mode=CursorMode::Idle) : TaskData(type,mode), name(name)
 			{
 				ASSERT__(destination.IsNotEmpty());
-				for (index_t i = 0; i+1 < destination.length(); i++)
+				for (index_t i = 0; i+1 < destination.GetLength(); i++)
 				{
 					Focus&f = this->foci.Push();
 					#ifndef CLIENT

@@ -1554,10 +1554,10 @@ namespace Receiver
 			Objects::PMobileEntityProducer p = To<Objects::MobileEntityProducer>::DynamicCast(e);
 			if (p && cmd.path.Count() == 1)
 			{
-				if (p->gatheringPoint.current != cmd.path.first())
+				if (p->gatheringPoint.current != cmd.path.First())
 				{
 					LogEvent(EventSignificance::Common, peer, e, "Set gathering point");
-					p->gatheringPoint.current = cmd.path.first();
+					p->gatheringPoint.current = cmd.path.First();
 				}
 				else
 				{

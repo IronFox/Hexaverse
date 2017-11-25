@@ -528,7 +528,7 @@ namespace World
 		/**/			Sensor()	{}
 		/**/			Sensor(const float3&center, float radius, type_t t, int terrainPenetration=0)
 							:worldCenter(center),
-							gridCenter(Grid::high.Locate(center),Grid::CellStack::ToLayer(Grid::HeightFloorFromRadius(center.length()))),
+							gridCenter(Grid::high.Locate(center),Grid::CellStack::ToLayer(Grid::HeightFloorFromRadius(center.GetLength()))),
 							radius(radius),type(t), terrainPenetration(terrainPenetration){}
 
 		/**/			Sensor(const Grid::LCellIdI&center, float fLayerOffset, float radius, type_t t)

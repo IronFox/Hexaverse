@@ -1562,14 +1562,14 @@ namespace World
 			blocks.Clear();
 			foreach(dts,dt)
 			{
-				if (blocks.IsEmpty() || blocks.last().value != *dt)
+				if (blocks.IsEmpty() || blocks.Last().value != *dt)
 				{
 					auto&b = blocks.Append();
 					b.value = *dt;
 					b.repitition = 1;
 				}
 				else
-					blocks.last().repitition++;
+					blocks.Last().repitition++;
 			}
 			blocks.CopyToArray(dest);
 		}
@@ -1584,14 +1584,14 @@ namespace World
 					if (assertNotNull)
 						ASSERT__(dt->IsSet());
 				#endif
-				if (blocks.IsEmpty() || blocks.last().value != *dt)
+				if (blocks.IsEmpty() || blocks.Last().value != *dt)
 				{
 					auto&b = blocks.Append();
 					b.value = *dt;
 					b.repitition = 1;
 				}
 				else
-					blocks.last().repitition++;
+					blocks.Last().repitition++;
 			}
 			blocks.CopyToArray(dest);
 		}

@@ -420,7 +420,7 @@ namespace Objects
 
 				const Hibernating*h = ToHibernating();
 				if (h && h->GetUplinkPriority())
-					outResult.lines.last() += ", Priority: "+String(h->GetUplinkPriority());
+					outResult.lines.Last() += ", Priority: "+String(h->GetUplinkPriority());
 			#endif
 
 			PTurretBase b = this->GetTurretBase();
