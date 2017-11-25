@@ -123,8 +123,8 @@ namespace Objects
 			virtual bool				UpdatePath(const MobileEntity&v, const Grid::LCellIdI&origin, Grid::LCellIdI&destination) =0;
 			virtual	void				Serialize(IWriteStream&outStream) const override
 			{
-				outStream.WriteSize(path.length());
-				outStream.WritePrimitives(path.pointer(),path.length());
+				outStream.WriteSize(path.GetLength());
+				outStream.WritePrimitives(path.pointer(),path.GetLength());
 			}
 			virtual	void				Deserialize(IReadStream&inStream) override
 			{

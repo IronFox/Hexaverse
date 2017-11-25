@@ -99,7 +99,7 @@ namespace HexGrid
 			else
 				significance *= 0.8f;
 		}
-		UINT32 crc = CRC32::Sequence().Append(e->GetTypeName().c_str(),e->GetTypeName().length()).Finish();
+		UINT32 crc = CRC32::Sequence().Append(e->GetTypeName().c_str(),e->GetTypeName().GetLength()).Finish();
 		Random random(crc);
 		significance *= random.NextFloat(0.95f,1.07f);
 	}

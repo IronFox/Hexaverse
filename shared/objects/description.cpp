@@ -55,7 +55,7 @@ namespace Objects
 		wrappedLines.Clear();
 		foreach (desc.rawLines,l)
 		{
-			if (l->first.length() <= 60)
+			if (l->first.GetLength() <= 60)
 			{
 				wrappedLines << *l;
 				continue;

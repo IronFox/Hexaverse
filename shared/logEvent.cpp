@@ -174,7 +174,7 @@ namespace Logging
 		}
 		LogBuffer&	operator<<(const String&line)
 		{
-			buffer.Write(line.c_str(),line.length());
+			buffer.Write(line.c_str(),line.GetLength());
 			return *this;
 		}
 		LogBuffer&	operator<<(char c)

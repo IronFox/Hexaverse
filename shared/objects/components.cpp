@@ -208,7 +208,7 @@ namespace Objects
 				{
 					M::TVec3<> n;
 					float3 front = v.First().xyz * v.First().w;
-					float3 back = v.last().xyz * v.last().w;
+					float3 back = v.Last().xyz * v.Last().w;
 					Vec::cross(front,back-front,n);
 					Vec::normalize(n);
 					n*= 0.5f * widthScale;
@@ -726,7 +726,7 @@ namespace Objects
 
 					#endif
 				,dest.cellLocation.height);
-				float3 last = outSteps.last().xyz * outSteps.last().w;
+				float3 last = outSteps.Last().xyz * outSteps.Last().w;
 				rs.impactAt = dest.worldLocation;//last;//Grid::ToWorld(rs.impactCell);
 				//rs.distanceToTarget = Vec::distance(rs.impactAt,dest.worldLocation);
 				rs.result = TraceResult::ReachesTarget;
@@ -794,7 +794,7 @@ namespace Objects
 				#endif
 			,dest.cellLocation.height);
 
-			float3 last = outSteps.last().xyz * outSteps.last().w;
+			float3 last = outSteps.Last().xyz * outSteps.Last().w;
 			rs.impactAt = dest.worldLocation;//Grid::ToWorld(rs.impactCell);
 			//rs.distanceToTarget = Vec::distance(rs.impactAt,dest.worldLocation);
 			rs.result = TraceResult::ReachesTarget;

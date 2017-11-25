@@ -147,7 +147,7 @@ namespace Network
 
 	void SendChatMessage(const String & msg)
 	{
-		if (msg.TrimRef().length() > 0)
+		if (msg.TrimRef().GetLength() > 0)
 		{
 			if (client.IsConnected())
 				Channels::chatMessage.SendTo(client,msg);
@@ -528,8 +528,8 @@ namespace Network
 		void	PlanetNames(NETA(Package::NetString<256>)&list)
 		{
 			#ifdef HAS_WINDOW
-				Array<String> copy(list.length());
-				for (index_t i = 0; i < list.length(); i++)
+				Array<String> copy(list.GetLength());
+				for (index_t i = 0; i < list.GetLength(); i++)
 					copy[i].adoptData(list[i]);
 				ConfigurationMode::UpdatePlanetList(copy);
 			#endif
@@ -946,7 +946,7 @@ namespace Network
 			{
 				bool found = false;
 				foreach (Animation::primitives,p)
-					if (p->targetEntityID == m.id && p->type == Animation::Primitive::MovementStream && p->path->rawPath.last().first == m.fromLocation)
+					if (p->targetEntityID == m.id && p->type == Animation::Primitive::MovementStream && p->path->rawPath.Last().first == m.fromLocation)
 					{
 						p->Append(m);
 						found = true;
@@ -1671,7 +1671,7 @@ namespace Network
 		{
 			host = url.subStringRef(0,portAt);
 			StringRef conv = url.SubStringRef(portAt+1);
-			if (!convert(conv.pointer(),conv.length(),basePort))
+			if (!convert(conv.pointer(),conv.GetLength(),basePort))
 			{
 				throw Except::Program::ParameterFault(CLOCATION, "Unable to parse port component '" + String(conv) + "' of '"+url+"'");
 			}
@@ -1810,12 +1810,12 @@ namespace Network
 						{
 							at = servers.Count();
 							servers.Append();
-							servers.last().haveToken = 	a.protocolIncompatible ? false : accessMap.IsSet(a.lastInfo.gameInfo.worldID);
-							servers.last().protocolIncompatible = a.protocolIncompatible;
-							servers.last().id = a.protocolIncompatible ? TUniqueID::Empty() : a.lastInfo.hostInfo.hostID;
-							servers.last().rightVersion = a.rightVersion && !a.protocolIncompatible;
+							servers.Last().haveToken = 	a.protocolIncompatible ? false : accessMap.IsSet(a.lastInfo.gameInfo.worldID);
+							servers.Last().protocolIncompatible = a.protocolIncompatible;
+							servers.Last().id = a.protocolIncompatible ? TUniqueID::Empty() : a.lastInfo.hostInfo.hostID;
+							servers.Last().rightVersion = a.rightVersion && !a.protocolIncompatible;
 							//if (!a.protocolIncompatible)
-							serverMap.Set(servers.last().id,at);
+							serverMap.Set(servers.Last().id,at);
 						
 						}
 						ServerInfo&info = servers[at];

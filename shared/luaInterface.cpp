@@ -1440,7 +1440,7 @@ namespace Lua
 		if (!st)
 			throw Exception(CLOCATION,  "Program has not been created");
 
-		int rc = luaL_loadbuffer(st, code.c_str(), code.length(), context.c_str());
+		int rc = luaL_loadbuffer(st, code.c_str(), code.GetLength(), context.c_str());
 		if (rc == LUA_OK)
 			CallPushedFunction(st,0,0);
 		else
@@ -1703,16 +1703,16 @@ int LuaRun (int argc, const char *argv[]) {
 		prog->Execute(
 			" function DeepPrint (e, indent)"
 			" if e == nil then"
-			"  print('nil')"
+			"  Print('nil')"
 			"  return"
 			" end"
 			" if type(e) == \"table\" then"
 			"    for k,v in pairs(e) do"
-			"        print(indent .. k .. '=')"
+			"        Print(indent .. k .. '=')"
 			"        DeepPrint(v,indent .. \" \")"
 			"    end"
 			" else"
-			"    print(indent .. e)"
+			"    Print(indent .. e)"
 			" end"
 			" end"
 		);
@@ -1789,13 +1789,13 @@ int LuaRun (int argc, const char *argv[]) {
 
 			float rsf = f(1,1);
 
-			Lua::Function<void(String)>	print(prog,"print");
-			print(rsf);
+			Lua::Function<void(String)>	Print(prog,"print");
+			Print(rsf);
 		}
 		{
 			Lua::Function<Lua::Reference(float,float)>	f(prog,"norm");
-			Lua::Function<void(Lua::Reference)>	print(prog,"print");
-			print(f(1,1));
+			Lua::Function<void(Lua::Reference)>	Print(prog,"print");
+			Print(f(1,1));
 		}
 	  //lua_getglobal(L,"norm");
 	  //int r = luaL_ref(L, LUA_REGISTRYINDEX);
@@ -1812,8 +1812,8 @@ int LuaRun (int argc, const char *argv[]) {
 
 		prog->Execute("DeepPrint(field,'')");
 		
-		//rs = prog->Execute("print(Interface.Test(3.5))");
-		//rs = prog->Execute("print(Interface.Test2(3,5))");
+		//rs = prog->Execute("Print(Interface.Test(3.5))");
+		//rs = prog->Execute("Print(Interface.Test2(3,5))");
 	}
 	prog.reset();
 //  bool okay = CallFunction(L,pmain,result,argc,argv);

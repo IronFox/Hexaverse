@@ -211,9 +211,9 @@ namespace Objects
 			{
 				if (!activeGroupPath.Contains(this))
 					return;
-				while (activeGroupPath.last() != this)
+				while (activeGroupPath.Last() != this)
 				{
-					activeGroupPath.last()->Collapse();
+					activeGroupPath.Last()->Collapse();
 					activeGroupPath.EraseLast();
 				}
 				Collapse();

@@ -494,7 +494,7 @@ namespace Objects
 					index_t foundAt = InvalidIndex;
 					index_t cloneAt = InvalidIndex;
 					T	cloneIs;
-					for (index_t i = 0; i < grid.length(); i++)
+					for (index_t i = 0; i < grid.GetLength(); i++)
 					{
 						if (grid[i] == object)
 						{
@@ -1977,7 +1977,7 @@ namespace Objects
 					//GetCellMovementCosts(next, vehicle);
 					int hCosts = next < buffer.Count() ?  std::max(0, DESCOF(current).height - DESCOF(next).height ) : 0;
 					outPath << PathNode(DESCOF(current), std::max(nextCosts, buffer[current].nodeCosts) + hCosts);
-//					outPath.last().reachedInProcessingLimit = inRange;
+//					outPath.Last().reachedInProcessingLimit = inRange;
 					current = next;
 				}
 				outPath.EraseLast();	//dont need entry point

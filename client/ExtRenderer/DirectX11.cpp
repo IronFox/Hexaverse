@@ -1072,7 +1072,7 @@ namespace Engine
 		name += "."+String(profile);
 
 		SHA256::HashContainer	container;
-		SHA256::Hash(name.c_str(),name.length(),container);
+		SHA256::Hash(name.c_str(),name.GetLength(),container);
 		for (index_t i = 0; i < SHA256::HashContainer::NumBytes/2; i++)
 		{
 			compiledPath += _ToHex(container.bytes[i]>>4);
@@ -1094,7 +1094,7 @@ namespace Engine
 
 			DX11::Shader::IncludeHandler inc(filename);
 			
-			HRESULT hr = D3DCompile(code.pointer(),code.length(),String(FileSystem::ExtractFileNameExt(filename)).c_str(),macros, &inc , functionName.c_str(), profile,  0, 0, result.Init(), errors.Init());
+			HRESULT hr = D3DCompile(code.pointer(),code.GetLength(),String(FileSystem::ExtractFileNameExt(filename)).c_str(),macros, &inc , functionName.c_str(), profile,  0, 0, result.Init(), errors.Init());
 			
 			String errMessage,extInfo=String(filename);
 			if (errors)
@@ -1583,7 +1583,7 @@ namespace Engine
 			return rs;
 		if (!vertexStage.blob)
 			FATAL__("Trying to build vertex layout using empty shader");
-		HRESULT h = DirectX11::globalInstance->GetDevice()->CreateInputLayout(binding.desc.pointer(), (UINT)binding.desc.length(), vertexStage.blob->GetBufferPointer(), vertexStage.blob->GetBufferSize(), rs.Init());
+		HRESULT h = DirectX11::globalInstance->GetDevice()->CreateInputLayout(binding.desc.pointer(), (UINT)binding.desc.GetLength(), vertexStage.blob->GetBufferPointer(), vertexStage.blob->GetBufferSize(), rs.Init());
 		if (h != S_OK)
 		{
 			DirectX11::globalInstance->ReportError(h, CLOCATION);

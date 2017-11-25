@@ -785,8 +785,8 @@ namespace Game
 							{
 								Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::Cast(s);
 								entityList.Append().target = ws;
-								entityList.last().priority = ws->GetUplinkPriority();
-								entityList.last().wasHibernating = ws->IsHibernating();
+								entityList.Last().priority = ws->GetUplinkPriority();
+								entityList.Last().wasHibernating = ws->IsHibernating();
 							}
 						}
 					}
@@ -798,8 +798,8 @@ namespace Game
 						{
 							traffic += v->GetUplinkTraffic();
 							entityList.Append().target = v;
-							entityList.last().priority = v->GetUplinkPriority();
-							entityList.last().wasHibernating = v->IsHibernating();
+							entityList.Last().priority = v->GetUplinkPriority();
+							entityList.Last().wasHibernating = v->IsHibernating();
 						}
 					}
 					if (traffic > Config::uplinkBandwidth)
@@ -928,7 +928,7 @@ namespace Game
 					if (To<Objects::VehiclePlant>::DynamicCast(s))
 						uc |= Objects::Faction::UnitClass::VehiclePlant;
 				}
-				Objects::PFaction f = o;//c.workingStructures.first().lock()->owner;
+				Objects::PFaction f = o;//c.workingStructures.First().lock()->owner;
 				if (f)
 					f->hasUnitClasses |= uc;
 			});

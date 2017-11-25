@@ -1513,7 +1513,7 @@ namespace Objects
 					Mat::makeAxisSystem(Grid::ToWorld(m.location),Grid::low.cells[m.location.stackID].centerVertex.xyz,2,system);
 					index_t systemID = visitedSystems.Count();
 					visitedSystems.Append().system = system;
-					visitedSystems.last().age = m.age;
+					visitedSystems.Last().age = m.age;
 					visitedSystemIDMap.Set(id,systemID);
 				}
 				else
@@ -1618,7 +1618,7 @@ namespace Objects
 			for (index_t i = 0; /*i < MaxMarkersPerFaction / 10 && */i < all.Count(); i++)
 			{
 				candidates.Append().markerID = all[i].id;
-				candidates.last().priority = all[i].age;
+				candidates.Last().priority = all[i].age;
 			}
 			std::sort(candidates.begin(),candidates.end());
 			candidates.Truncate(MaxMarkersPerFaction / 10);
