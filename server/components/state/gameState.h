@@ -10,6 +10,73 @@
 
 namespace Game
 {
+	
+	DECLARE_POINTER_CLASS(Vote);
+
+
+	/**
+	Non-persistant voting storage.
+	Not written to or restored from savegames.
+	Cleared out on session reset.
+	*/
+	class Vote : public std::enable_shared_from_this<Vote>
+	{
+	public:
+		typedef Objects::PAlliance	PAlliance;
+		typedef std::function<void(const PVote&)> FCallback;
+
+		CONSTRUCT_ENUMERATION4(Quorum,All,TwoThirds, Majority, OneThird);
+		CONSTRUCT_ENUMERATION3(VotesToPass, SimpleMajority, TwoThirds, Unanimous);
+
+		//all const that is of relevance to clients, and may not be changed once sent
+		const TUniqueID		id;
+		const String		phrase;
+		const Timer::Time	created = timer.Now();
+		const float			closingAfterSeconds = 120;
+		float				clearedAfterSeconds = 720;
+
+		PAlliance		scope;	//if set: scope=alliance, else global
+		FCallback		onPass;
+		Quorum			quorum;
+		VotesToPass		votesToPass;
+		const Array<TUniqueID>	concerning;
+		bool			closed = false;
+		
+
+		/**/			Vote(const ConstArrayRef<TUniqueID>&concerning, const String&phrase, float closingAfterSeconds)
+						:id(TUniqueID::New()),phrase(phrase),closingAfterSeconds(closingAfterSeconds),concerning(concerning)	{Advertise();}
+		void			CastVote(const Objects::PFaction&f, bool inFavor);
+		bool			MayVote(const Objects::PFaction&f) const {return !scope || f->alliance == scope;}
+		count_t			GetQuorum() const	{return GetQuorum(quorum,CountEligibleVoters());}
+		count_t			CountEligibleVoters() const;
+		static count_t	GetVotesToPass(VotesToPass, count_t voters);
+		static count_t	GetQuorum(Quorum q, count_t eligibleVoters);
+
+
+		static void		CheckAllTimeouts();
+		static void		CastVote(const TUniqueID&voteID, const Objects::PFaction&f, bool inFavor);
+		static PVote	CreateOrGet(const ConstArrayRef<TUniqueID>&concerning, const String&phrase, float closingAfterSeconds, const PAlliance&scope, const FCallback&onPass);
+		static PVote	CreateNew(const ConstArrayRef<TUniqueID>&concerning, const String&phrase, float closingAfterSeconds, const PAlliance&scope, const FCallback&onPass);
+		static void		Flush();
+
+		static PVote	FindConcerning(const ConstArrayRef<TUniqueID>&concerning)	{PVote rs; map.Query(concerning,rs); return rs;}
+
+
+	private:
+		HashTable<TUniqueID,bool>	votes;
+		static HashTable<TUniqueID,PVote>	all;
+		static HashTable<Array<TUniqueID>,PVote>	map;
+
+		bool			CheckTimeouts();
+		void			Advertise()	const;
+		void			CheckVotes();
+		void			Close();
+		void			Close(const Protocol::VoteResult&);
+		void			CheckResults(Protocol::VoteResult&rs, bool timedOut)	const;
+
+	};
+
+
 
 	extern float	factionStartMineralValue;	//determined during loading
 

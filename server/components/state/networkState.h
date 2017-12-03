@@ -150,6 +150,9 @@ namespace Network
 	void		LogServerState();
 
 
+	Protocol::IdentifyFaction	Identify(const Objects::PFaction&f);
+
+
 	bool CanControl(const Client&c, const Objects::WorldEntity&e);
 	bool CanControl(const PClient&c, const Objects::PWorldEntity&e);
 	bool CanControl(const PClient&c, const Objects::WorldEntity&e);

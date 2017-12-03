@@ -12,6 +12,7 @@
 #include "prototypes.h"
 #include "structure/tower.h"
 
+
 namespace Objects
 {
 
@@ -19,14 +20,48 @@ namespace Objects
 
 
 
+	void		Alliance::ForeachMember(const std::function<void(const PFaction&)>&f)	const
+	{
+		foreach (members,m)
+			f(m->lock());
+	}
+
+
+	void		Alliance::Join(const PFaction&f)
+	{
+		ASSERT__(f);
+		ASSERT__(!IsMember(f));
+		LogEvent(EventSignificance::Common,f, "Joined alliance "+ToString(id));
+		members.Append(f);
+		LogEvent(EventSignificance::Common,"New member count in alliance "+ToString(id)+": "+String(members.Count()));
+		if (members.Count() == 1)
+			all.Set(id,shared_from_this());
+		ApplicationInterface::SignalAllianceMembershipChange(f);
+	}
+
+	void		Alliance::Leave(const PFaction&f)
+	{
+		LogEvent(EventSignificance::Common,f,"Leaving alliance "+ToString(id));
+		foreach (members,m)
+			if ( *m == f)
+			{
+				members.erase(m);
+				LogEvent(EventSignificance::Common,"New member count in alliance "+ToString(id)+": "+String(members.Count()));
+				if (members.IsEmpty())
+					all.Unset(id);
+				return;
+			} 
+		FATAL__("Faction not found");
+	}
+
+
+
+
+
 	Faction::~Faction()
 	{
-		allies.VisitAllValues([this](const TAllianceEntry&e)
-		{
-			PFaction f = e.otherFaction.lock();
-			DBG_ASSERT__(f);
-			f->SetOpposingAllianceLevel(shared_from_this(),AllianceLevel::None);
-		});
+		if (!application_shutting_down)
+			alliance->Leave(shared_from_this());
 	}
 	
 	#ifndef CLIENT
@@ -91,16 +126,24 @@ namespace Objects
 
 
 
-		/*static*/ PFaction				Faction::Create(const TUniqueID&id, const String&name/* = ""*/)
+		/*static*/ PFaction				Faction::Create(const TUniqueID&id, const TUniqueID&allianceID, const String&name/* = ""*/)
 		{
-			PFaction rs(new Faction(id, name));
+			PFaction rs(new Faction(id, allianceID, name));
 			all << rs;
+
+
+			rs->alliance = Alliance::FindByID(allianceID);
+			if (!rs->alliance)
+				rs->alliance.reset(new Alliance(allianceID));
+
+			rs->alliance->Join(rs);
+
 			return rs;
 		}
 
 		void	Faction::RecreateNexus(const TUniqueID&id)
 		{
-			nexus.reset(new Faction(id, Faction::nexusName,true));
+			nexus.reset(new Faction(id, TUniqueID::New(), Faction::nexusName,true));
 			ApplicationInterface::SignalFactionsChanged();
 		}
 
@@ -453,27 +496,44 @@ namespace Objects
 		}
 
 
+
+
+
+		void	Faction::ChangeAlliance(const PAlliance&a)
+		{
+			if (alliance == a)
+				return;
+			alliance->Leave(shared_from_this());
+			alliance = a;
+			alliance->Join(shared_from_this());
+		}
+
+
 		void Faction::CheckSensory(float&t)
 		{
 			if (knownWorld.SensoryIsInvalid())
 			{
 				knownWorld.FlushAndValidateSensory();
-
-				AddEntitySensory(knownWorld,t);
-				ForeachAlly(AllianceLevel::SharedSensors,[this,&t](const PFaction&f)
+				if (alliance->shareSensors)
 				{
-					f->AddEntitySensory(knownWorld,t);
-				});
+					alliance->ForeachMember([this,&t](const PFaction&f)	//includes this
+					{
+						f->AddEntitySensory(knownWorld,t);
+					});
+				}
+				else
+					this->AddEntitySensory(knownWorld,t);
 
 				LogEvent(EventSignificance::Common,shared_from_this(),"Recomputing sensory");
 				Timer::Time started = timer.Now();
 				LogEvent(EventSignificance::PerformanceMeasurement,shared_from_this(),"Computed sensory grid coverage in "+String(timer.GetSecondsSince(started)));
 				started = timer.Now();
-				ForeachWorldEntity([this,&t](const PWorldEntity&e)
+				const bool shareSensors = alliance->shareSensors;
+				ForeachWorldEntity([this,&t,shareSensors](const PWorldEntity&e)
 				{
 					if (e->owner.get() == this)
 						return;
-					bool appear = GetSharedAllianceLevel(e->owner) >= AllianceLevel::SharedSensors;
+					bool appear = shareSensors && alliance == e->owner->alliance;
 
 					if (!appear)
 					{
@@ -497,9 +557,9 @@ namespace Objects
 
 				static Ctr::Buffer<PWorldEntity>	disappear;
 
-				seeing.VisitAllKeys([this,&t](const PWorldEntity&e)
+				seeing.VisitAllKeys([this,&t,shareSensors](const PWorldEntity&e)
 				{
-					bool stillVisible = GetSharedAllianceLevel(e->owner) >= AllianceLevel::SharedSensors;
+					bool stillVisible = shareSensors && alliance == e->owner->alliance;
 
 					if (!stillVisible)
 					{
@@ -1204,120 +1264,6 @@ namespace Objects
 
 	#endif
 
-	void			Faction::ForeachAlly(AllianceLevel minimumLevel, const std::function<void(const PFaction&)>&visitor)
-	{
-		allies.VisitAllValues([visitor,minimumLevel](const TAllianceEntry&e)
-		{
-			if (e.sharedLevel < minimumLevel)
-				return;
-			PFaction f = e.otherFaction.lock();
-			DBG_ASSERT__(f);
-			visitor(f);
-		});
-	}
-
-	void			OnFactionAllianceChange(const PFaction&a, const PFaction&b, AllianceLevel old, const AllianceLevel now)
-	{
-		LogEvent(EventClass(EventSignificance::Important,now > old ? EventFlavor::Gain : EventFlavor::Loss),"Faction cooperation level between "+a->GetName()+" and "+b->GetName()+" changed to "+String(now.ToString()));
-		if (old < AllianceLevel::SharedSensors != now >= AllianceLevel::SharedSensors)
-		{
-			#ifndef CLIENT
-				a->knownWorld.InvalidateSensory();
-				b->knownWorld.InvalidateSensory();
-				a->CheckSensory();
-				b->CheckSensory();
-			#elif HAS_WINDOW
-				if (a->isOwnedByMe || b->isOwnedByMe)
-					World::actual.InvalidateSensory();
-			#endif
-		}
-		#ifndef CLIENT
-			if (Faction::ExposesEntityDetailsAt(old) != Faction::ExposesEntityDetailsAt(now))
-			{
-				//register change, forcing their resending (to all who see them, but, eh, w/e):
-				a->VisitMyEntities([](const PWorldEntity&e) {e->SignalChange(Objects::WorldEntity::All,0);});
-				b->VisitMyEntities([](const PWorldEntity&e) {e->SignalChange(Objects::WorldEntity::All,0);});
-			}
-		#endif
-	}
-
-
-	void			Faction::SetAllianceLevel(const PFaction&other, AllianceLevel level)
-	{
-		if (!other || other.get() == this)
-			return;
-		auto*existing = allies.QueryPointer(other.get());
-		if (existing && existing->myLevel == level)
-			return;
-		#ifndef CLIENT
-			ApplicationInterface::SignalFactionAllianceChange(shared_from_this(),other,level);
-		#endif
-		other->SetOpposingAllianceLevel(shared_from_this(),level);
-		if (level == AllianceLevel::None)
-		{
-			if (!existing)
-				return;
-			OnFactionAllianceChange(shared_from_this(),other,existing->sharedLevel,level);
-			if (existing->opposingLevel == level)
-			{
-				allies.Unset(other.get());
-				return;
-			}
-			existing->myLevel = level;
-			existing->sharedLevel = level;
-			return;
-		}
-
-		if (!existing)
-			existing = allies.SetNew(other.get());
-		
-		existing->myLevel = level;
-		AllianceLevel newLevel = AllianceLevel::Reinterpret(std::min(existing->myLevel,existing->opposingLevel));
-		if (newLevel != existing->sharedLevel)
-			OnFactionAllianceChange(shared_from_this(),other,existing->sharedLevel,newLevel);
-		existing->sharedLevel = newLevel;	
-	}
-
-	void		Faction::SetOpposingAllianceLevel(const PFaction&other, AllianceLevel otherLevel)
-	{
-		auto*existing = allies.QueryPointer(other.get());
-		if (existing && existing->opposingLevel == otherLevel)
-			return;
-		if (otherLevel == AllianceLevel::None)
-		{
-			if (!existing)
-				return;
-			if (existing->myLevel == otherLevel)
-			{
-				allies.Unset(other.get());
-				return;
-			}
-			existing->opposingLevel = otherLevel;
-			existing->sharedLevel = otherLevel;
-			return;
-		}
-
-		if (!existing)
-			existing = allies.SetNew(other.get());
-		
-		existing->opposingLevel = otherLevel;
-		AllianceLevel newLevel = AllianceLevel::Reinterpret(std::min(existing->myLevel,existing->opposingLevel));
-		existing->sharedLevel = newLevel;
-	}
-
-
-	AllianceLevel	Faction::GetMyAllianceLevel(const PFaction&other) const
-	{
-		 const auto*existing = allies.QueryPointer(other.get());
-		 return existing ? existing->myLevel : AllianceLevel::None;
-	}
-
-	AllianceLevel	Faction::GetSharedAllianceLevel(const PFaction&other) const
-	{
-		 const auto*existing = allies.QueryPointer(other.get());
-		 return existing ? existing->sharedLevel : AllianceLevel::None;
-	}
-
 	void			ForeachFaction(const std::function<void(const PFaction&)>&func, bool includeDead/*=false*/)
 	{
 		#ifdef CLIENT
@@ -1954,12 +1900,9 @@ namespace Objects
 	}
 #endif
 
-	void		Faction::InitID(const TUniqueID&toID,bool nexusFaction)
+	void		Faction::InitID(const TUniqueID&toID,const TUniqueID&allianceID,bool nexusFaction)
 	{
-		if (toID == TUniqueID::Empty())
-			id.Generate();
-		else
-			id = toID;
+		id = toID;
 		#ifndef CLIENT
 			if (nexusFaction)
 				color = float3 (1.f, 0.25f, 0.25f);

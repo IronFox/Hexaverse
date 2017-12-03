@@ -211,11 +211,13 @@ namespace Journal
 	{
 		this->accessToken = f.accessToken;
 		this->factionID = f.id;
+		this->allianceID = f.alliance->id;
 	}
-	Round::CreateFaction::CreateFaction(Round::CreateFaction::FactionType type, const TUniqueID&factionID, const CryptographicID&accessToken):factionType(type)
+	Round::CreateFaction::CreateFaction(Round::CreateFaction::FactionType type, const TUniqueID&factionID, const TUniqueID&allianceID, const CryptographicID&accessToken):factionType(type)
 	{
 		this->accessToken = accessToken;
 		this->factionID = factionID;
+		this->allianceID = allianceID;
 	}
 	
 	/*virtual override*/ void Round::CreateFaction::Execute() const
@@ -226,10 +228,7 @@ namespace Journal
 			if (factionType == CreateFaction::FactionType::Nexus)
 				f = Objects::Faction::nexus;
 			else
-			{
-				f.reset(new Objects::Faction(factionID));
-				Objects::Faction::all << f;
-			}
+				f = Objects::Faction::Create(factionID,allianceID);
 			f->knownWorld = World::initial;
 		}
 		else
@@ -652,6 +651,7 @@ namespace Journal
 		e.stringParameters.Set("FactionType",factionType.ToString());
 		e.stringParameters.Set("FactionSecret",accessToken.ToFullString());
 		e.uuidParameters.Set("ID",factionID);
+		e.uuidParameters.Set("AllianceID",allianceID);
 	}
 
 	/*virtual override*/ void	Round::CreateFaction::Decode(const Entry&e)
@@ -664,6 +664,7 @@ namespace Journal
 		}
 		accessToken.Decode(e.stringParameters.Require(CLOCATION,"FactionSecret"));
 		factionID = e.uuidParameters.Require(CLOCATION,"ID");
+		allianceID = e.uuidParameters.Require(CLOCATION,"AllianceID");
 	}
 
 

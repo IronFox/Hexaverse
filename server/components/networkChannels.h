@@ -60,6 +60,9 @@ namespace Channels
 	#undef DECLARE_FACTION_CHANNEL
 	#define	DECLARE_FACTION_CHANNEL(NAME)	extern TCP::Channel<Protocol::NAME,FactionLevel,Protocol::ChannelID::NAME>	NAME;
 
+	#undef DECLARE_OBJECT_SENDER
+	#define	DECLARE_OBJECT_SENDER(NAME)	extern TCP::ObjectSender<Protocol::NAME,Protocol::ChannelID::NAME>	NAME;
+
 	
 	//TCP::ObjectSender<Protocol::ServerState,Protocol::ChannelID::GetInfo>		infoSender;
 	//TCP::ObjectSender<Protocol::Result,Protocol::ChannelID::
@@ -68,8 +71,6 @@ namespace Channels
 	static const UINT32 Spectator = (UINT32)Network::UserLevel::Spectator;
 	static const UINT32 Configurator = (UINT32)Network::UserLevel::PlanetConfigurator;
 
-
-	DECLARE_FACTION_CHANNEL(FactionAllianceChange);
 
 	extern TCP::Channel<Protocol::Hello, 0,Protocol::ChannelID::Hello>											hello;
 	extern TCP::Channel<Protocol::EntityDirectCommand, FactionLevel, Protocol::ChannelID::EntityDirectCommand>	entityDirectCommand;
@@ -137,6 +138,14 @@ namespace Channels
 	extern TCP::ObjectSender<Protocol::ResearchQueue, Protocol::ChannelID::ResearchQueue>				researchQueue;
 
 	extern TCP::ObjectSender<TUniqueID, Protocol::ChannelID::WinningFaction>							winningFaction;
+
+	DECLARE_OBJECT_SENDER(VoteCreation);
+	DECLARE_OBJECT_SENDER(VoteResult);
+	DECLARE_FACTION_CHANNEL(ClientVote);
+	DECLARE_FACTION_CHANNEL(AllianceJoinRequest);
+	DECLARE_FACTION_CHANNEL(AllianceConfigChange);
+
+
 	namespace Statistics
 	{
 		extern TCP::ObjectSender<TUniqueID, Protocol::ChannelID::BeginStatisticsSequence>				beginSequence;

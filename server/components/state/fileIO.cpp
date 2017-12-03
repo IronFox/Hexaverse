@@ -142,6 +142,7 @@ namespace FileIO
 								empDamageLevel("EMPD"),
 								entity("ENTI"),
 								factionID("ID  "),
+								allianceID("ALID"),
 								fociFlags("FCIF"),
 								foci("FOCI"),
 								factionSupportFlags("FSFL"),
@@ -1433,8 +1434,10 @@ namespace FileIO
 									if (round == 0)
 									{
 										Objects::PFaction faction;
-										TUniqueID factionID;
+										TUniqueID factionID,allianceID;
 										GetPOD(list,RID::factionID,factionID);
+										if (!GetOptionalPOD(list,RID::allianceID,allianceID,TUniqueID::Empty()))
+											allianceID.Generate();
 							
 										bool isNexus = false;
 										if (list->FindFirst(RID::nexusTag))
@@ -1448,12 +1451,7 @@ namespace FileIO
 										}
 										else
 										{
-											faction.reset(new Objects::Faction(factionID));
-											Objects::Faction::all << faction;
-
-											//faction->knownWorld.FlushTerrain();	unnecessary
-											//foreach (faction->knownWorld,stat)
-											//	stat->ZeroInit();
+											faction = Objects::Faction::Create(factionID,allianceID);
 										}
 										locks.Append(faction.get());
 									

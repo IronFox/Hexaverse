@@ -14,11 +14,6 @@
 
 namespace Objects
 {
-	//class Faction;
-	//typedef std::shared_ptr<Faction>	PFaction;
-	//typedef std::weak_ptr<Faction>		WFaction;
-
-
 	
 	/**
 	Persistent scene markers added/removed by the client.
@@ -132,7 +127,26 @@ namespace Objects
 	};
 
 
+	class Alliance : public std::enable_shared_from_this<Alliance>
+	{
+	public:
+		const TUniqueID	id;
 
+		bool		exposeEntityDetails = false,
+					shareSensors = true;
+
+		/**/		Alliance(const TUniqueID&id) : id(id)	{}
+		virtual		~Alliance() {if (!application_shutting_down) all.Unset(id);}
+		void		ForeachMember(const std::function<void(const PFaction&)>&f)	const;
+		void		Leave(const PFaction&f);
+		void		Join(const PFaction&f);
+		bool		IsMember(const PFaction&f) const;
+		static PAlliance FindByID(const TUniqueID&id ){ WAlliance rs; all.Query(id,rs); return rs.lock();}
+
+	private:
+		Buffer0<WFaction>						members;
+		static HashTable<TUniqueID,WAlliance>	all;
+	};
 
 
 
@@ -154,7 +168,24 @@ namespace Objects
 
 		count_t			sensorLockLevel=0;
 
-		void			InitID(const TUniqueID&toID, bool nexusFaction);
+		/**
+		Inits ID, color, and alliance. Must be called by constructors. Must not be called by anything else
+		*/
+		void			InitID(const TUniqueID&toID, const TUniqueID&allianceID, bool nexusFaction);
+
+		#ifdef CLIENT
+			/**/		Faction(const TUniqueID&id):researchState(this,false),statistics(this) {InitID(id,false);}
+
+		#else
+			/**/		Faction(const TUniqueID&toID, const TUniqueID&allianceID, const String&name="", bool isNexus=false):researchState(this,isNexus), statistics(this), name(name)
+			{
+				nexusControl = acquiringNexusControl = 0;
+				deathInRounds = 0;
+
+				accessToken.Generate();
+				InitID(toID,allianceID,isNexus);
+			}
+		#endif
 
 	public:
 		TUniqueID		id;
@@ -163,6 +194,7 @@ namespace Objects
 		float3			color;
 		Statistics		statistics;
 		ResearchState	researchState;
+		PAlliance		alliance;
 		#ifdef CLIENT
 			float3	activeEntityColor,
 					inactiveEntityColor;
@@ -177,25 +209,20 @@ namespace Objects
 
 
 		virtual			~Faction();
-		void			ForeachAlly(AllianceLevel minimumLevel, const std::function<void(const PFaction&)>&visitor);
-
-		void			SetAllianceLevel(const PFaction&other, AllianceLevel level);
-		AllianceLevel	GetMyAllianceLevel(const PFaction&other) const;
-		AllianceLevel	GetSharedAllianceLevel(const PFaction&other) const;
+	
 		void			AddEntitySensory(World::Data&worldData, float&t) const;
 		
 		/**
 		Checks whether or not units of the other faction are considered friendly (invalid auto-targets).
 		This check is symmetric
 		*/
-		bool			IsFriendly(const PFaction&other) const {return other.get() == this || GetSharedAllianceLevel(other) >= AllianceLevel::Friendly;}
+		bool			IsFriendly(const PFaction&other) const {return other.get() == this || other->alliance == alliance;}
 		/**
 		Checks whether or not units of the other faction receive detailed entity state information such as build queues.
 		This check is symmetric
 		*/
-		bool			ExposesEntityDetailsTo(const PFaction&other) const {return other.get() == this || ExposesEntityDetailsAt(GetSharedAllianceLevel(other));}
-		static bool		ExposesEntityDetailsAt(AllianceLevel level) {return level >= AllianceLevel::NonResourceControl;}
-		bool			SharingSensorWith(const PFaction&other) const{return other.get() == this || GetSharedAllianceLevel(other) >= AllianceLevel::SharedSensors;}
+		bool			ExposesEntityDetailsTo(const PFaction&other) const {return other.get() == this || (other->alliance == alliance && alliance->exposeEntityDetails);}
+		bool			SharingSensorWith(const PFaction&other) const{return other.get() == this || (other->alliance == alliance && alliance->shareSensors);}
 
 		String		GetName() const
 		{
@@ -243,7 +270,6 @@ namespace Objects
 			static PFaction				FindByID(const TUniqueID&id);
 			static PFaction				GetOrCreate(const TUniqueID&id);
 
-			/**/						Faction(const TUniqueID&id):researchState(this,false),statistics(this) {InitID(id,false);}
 		#else
 
 			CryptographicID				accessToken;
@@ -261,7 +287,7 @@ namespace Objects
 			static PFaction				nexus;
 
 			static PFaction				FindByID(const TUniqueID&);
-			static PFaction				Create(const TUniqueID&, const String&name = "");
+			static PFaction				Create(const TUniqueID&, const TUniqueID&allianceID, const String&name = "");
 
 
 			World::Data				knownWorld;
@@ -325,15 +351,6 @@ namespace Objects
 			static void	RecreateNexus(const TUniqueID&id=TUniqueID::Empty());	//!< Creates a fresh nexus faction and assigns it to @a nexus
 			TSensorLock LockSensorUpdates() {return this;}
 
-			/**/		Faction(const TUniqueID&toID, const String&name="", bool isNexus=false):researchState(this,isNexus), statistics(this), name(name)
-			{
-				nexusControl = acquiringNexusControl = 0;
-				deathInRounds = 0;
-
-				accessToken.Generate();
-				InitID(toID,isNexus);
-			}
-
 
 			void DropPerRoundData()
 			{
@@ -346,6 +363,7 @@ namespace Objects
 			*/
 			void		CheckSensory();
 
+			void		ChangeAlliance(const PAlliance&);
 
 			/**
 			Checks if the local faction satisfies survival conditions
@@ -431,20 +449,6 @@ namespace Objects
 			static void	Kill(const PFaction&);
 		#endif
 
-
-	private:
-
-		void			SetOpposingAllianceLevel(const PFaction&other, AllianceLevel level);
-
-		struct TAllianceEntry
-		{
-			AllianceLevel	myLevel,
-							opposingLevel,
-							sharedLevel;
-			WFaction		otherFaction;
-		};
-
-		PointerTable<TAllianceEntry>	allies;
 	};
 
 		//extern Buffer0<POwner>	owners;

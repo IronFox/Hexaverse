@@ -30,6 +30,290 @@ namespace Game
 	INT32				tutorialAt=1;
 
 
+	/*static*/ HashTable<TUniqueID,PVote>	Vote::all;
+	/*static*/ HashTable<Array<TUniqueID>,PVote>	Vote::map;
+
+	/*static*/ void		Vote::Flush()
+	{
+		all.Clear();
+		map.Clear();
+	}
+
+
+	/*static*/ PVote	Vote::CreateOrGet(const ConstArrayRef<TUniqueID>&concerning, const String&phrase, float closingAfterSeconds, const PAlliance&scope, const FCallback&onPass)
+	{
+		PVote rs = FindConcerning(concerning);
+		if (!rs)
+		{
+			rs.reset(new Vote(concerning,phrase,closingAfterSeconds));
+			rs->scope = scope;
+			rs->onPass = onPass;
+			all.Set(rs->id,rs);
+			map.Set(concerning,rs);
+		}
+		return rs;
+	}
+
+
+
+	/*static*/ PVote	Vote::CreateNew(const ConstArrayRef<TUniqueID>&concerning, const String&phrase, float closingAfterSeconds, const PAlliance&scope, const FCallback&onPass)
+	{
+		PVote rs = FindConcerning(concerning);
+		if (rs)
+			return nullptr;
+		{
+			rs.reset(new Vote(concerning,phrase,closingAfterSeconds));
+			rs->scope = scope;
+			rs->onPass = onPass;
+			all.Set(rs->id,rs);
+			map.Set(concerning,rs);
+		}
+		return rs;
+	}
+
+	/*static*/ void		Vote::CheckAllTimeouts()
+	{
+		all.FilterEntries([](const TUniqueID&, const PVote&v) -> bool
+		{
+			if (!v->CheckTimeouts())
+			{
+				map.Unset(v->concerning);
+				return false;
+			}
+			return true;
+		});
+	}
+
+	/*static*/ void		Vote::CastVote(const TUniqueID&voteID, const Objects::PFaction&f, bool inFavor)
+	{
+		auto vote = all.QueryPointer(voteID);
+		if (!vote)
+		{
+			LogEvent(EventClass::Preset::commandRejected,f,"Vote "+ToString(voteID)+" does no longer exist");
+			return;
+		}
+		(*vote)->CastVote(f,inFavor);
+	}
+
+	void			Vote::CastVote(const Objects::PFaction&f, bool inFavor)
+	{
+		if (!MayVote(f))
+		{
+			LogEvent(EventClass::Preset::commandRejected,f,"Faction not allowed to vote on this issue");
+			return;
+		}
+
+		if (closed)
+		{
+			LogEvent(EventClass::Preset::commandRejected,f,"Vote is closed");
+			return;
+		}
+		
+		bool*vote = this->votes.QueryPointer(f->id);
+		if (vote)
+		{
+			if (*vote != inFavor)
+			{
+				*vote = inFavor;
+				LogEvent(EventSignificance::Common,f,"Vote: Changed oppinion on "+ToString(id)+": "+inFavor);
+			}
+			else
+			{
+				LogEvent(EventSignificance::Debug,f,"Vote: Voted but did not change oppinion on "+ToString(id)+": "+inFavor);
+				return;
+			}
+		}
+		else
+		{
+			votes.Set(f->id,inFavor);
+			LogEvent(EventSignificance::Common,f,"Vote: Voted on "+ToString(id)+": "+inFavor);
+		}
+
+		CheckVotes();
+	}
+
+	void			Vote::Advertise() const
+	{
+		Protocol::VoteCreation vote;
+		vote.phrase = phrase;
+		vote.remainingSeconds = closingAfterSeconds;
+		vote.voteID = id;
+
+		if (!scope)
+			Channels::VoteCreation.SendTo(::Network::server,vote,Channels::FactionLevel);
+		else
+			scope->ForeachMember([vote](const Objects::PFaction&f)
+			{
+				auto client = ::Network::playerMap.QueryPointer(f);
+				if (!client)
+					return;
+				auto peer = (*client)->peer.lock();
+				if (peer)
+					Channels::VoteCreation.SendTo(peer,vote);
+			});
+	}
+
+	bool			Vote::CheckTimeouts()
+	{
+		float seconds = timer.GetSecondsSince(created);
+		if (seconds > closingAfterSeconds)
+			Close();
+
+		if (seconds > clearedAfterSeconds)
+		{
+			LogEvent(EventSignificance::Common,"Clearing out vote "+ToString(id)+" after "+String(seconds)+" sec.");
+			return false;
+		}
+		return true;
+	}
+
+	count_t			Vote::CountEligibleVoters() const
+	{
+		count_t rs = 0;
+		if (scope)
+		{
+			scope->ForeachMember([&rs](const Objects::PFaction&f) {if (!f->isDead) rs++;});
+			return rs;
+		}
+		Objects::ForeachFaction([&rs](const Objects::PFaction&){rs++;},false);
+		return rs;
+	}
+
+	/*static*/ count_t	Vote::GetQuorum(Quorum q, count_t eligibleVoters)
+	{
+		switch (q)
+		{
+			case Quorum::All:
+				return eligibleVoters;
+			case Quorum::TwoThirds:
+				return Math::CeilDiv<count_t>(eligibleVoters*2,3);
+			case Quorum::Majority:
+				return eligibleVoters /2 + 1;
+			case Quorum::OneThird:
+				return Math::CeilDiv<count_t>(eligibleVoters,3);
+		}
+		FATAL__("Unexpected type for quorum: #"+String(index_t(q)));
+		return 1;
+	}
+
+	/*static*/ count_t	Vote::GetVotesToPass(VotesToPass v, count_t voters)
+	{
+		switch (v)
+		{
+			case VotesToPass::SimpleMajority:
+				return (voters / 2) +1;
+			case VotesToPass::TwoThirds:
+				return Math::CeilDiv<count_t>(voters*2,3);
+			case VotesToPass::Unanimous:
+				return voters;
+		}
+		FATAL__("Unexpected votes to pass type: #"+String(index_t(v)));
+		return 1;
+	}
+
+
+	void Vote::CheckResults(Protocol::VoteResult&rs, bool timedOut)	const
+	{
+
+		bool test = Array<int>() == Array<char>();
+
+		rs.eligibleToVote = (UINT32)CountEligibleVoters();
+		rs.quorum = GetQuorum(this->quorum, rs.eligibleToVote);
+		rs.votedAgainst = 0;
+		rs.votedInFavor = 0;
+		rs.voteID = id;
+
+		ASSERT_LESS_OR_EQUAL__(votes.Count(),rs.eligibleToVote);
+
+		votes.VisitAllValues([&rs](bool inFavor)
+		{
+			if (inFavor)
+				rs.votedInFavor ++;
+			else
+				rs.votedAgainst ++;
+		});
+
+		const bool quorumReached = votes.Count() >= rs.quorum && timedOut;
+		const count_t votesToPassTotal = GetVotesToPass(votesToPass,rs.eligibleToVote);
+		const count_t votesToPassQuorum = GetVotesToPass(votesToPass,votes.Count());
+		const bool passed = rs.votedInFavor >= votesToPassTotal || (quorumReached && rs.votedInFavor >= votesToPassQuorum);
+		const count_t abstainedVotes = rs.eligibleToVote - votes.Count();
+
+
+		if (passed)
+			rs.resultType = Protocol::VoteResultType::Passed;
+		else
+			if (quorumReached || rs.votedInFavor + abstainedVotes < votesToPassTotal)
+				rs.resultType = Protocol::VoteResultType::Rejected;
+			else
+				rs.resultType = Protocol::VoteResultType::TimedOut;
+	}
+
+
+
+	void			Vote::Close()
+	{
+		if (closed)
+			return;
+
+		Protocol::VoteResult rs;
+		CheckResults(rs,true);
+		Close(rs);
+	}
+
+
+	void			Vote::Close(const Protocol::VoteResult&rs)
+	{
+		if (closed)
+			return;
+		closed = true;
+
+		LogEvent(EventClass::Preset::common,"Closing vote "+ToString(id));
+		const count_t votesToPassTotal = GetVotesToPass(votesToPass,rs.eligibleToVote);
+		const count_t votesToPassQuorum = GetVotesToPass(votesToPass,votes.Count());
+		LogEvent(EventClass::Preset::common,"  voted: "+String(votes.Count())+"/"+String(rs.eligibleToVote)+", quorum="+String(rs.quorum)+", toPassTotal="+String(votesToPassTotal)+", toPassQ="+String(votesToPassQuorum));
+
+		switch (rs.resultType)
+		{
+			case Protocol::VoteResultType::Passed:
+				LogEvent(EventClass::Preset::common,"  passed");
+				onPass(shared_from_this());
+			break;
+			case Protocol::VoteResultType::Rejected:
+				LogEvent(EventClass::Preset::common,"  rejected");
+			break;
+			case Protocol::VoteResultType::TimedOut:
+				LogEvent(EventClass::Preset::common,"  undecided");
+			break;
+		}
+
+
+		if (!scope)
+			Channels::VoteResult.SendTo(::Network::server,rs,Channels::FactionLevel);
+		else
+			scope->ForeachMember([rs](const Objects::PFaction&f)
+			{
+				auto client = ::Network::playerMap.QueryPointer(f);
+				if (!client)
+					return;
+				auto peer = (*client)->peer.lock();
+				if (peer)
+					Channels::VoteResult.SendTo(peer,rs);
+			});
+	}
+
+	void			Vote::CheckVotes()
+	{
+		if (closed)
+			return;
+
+		Protocol::VoteResult rs;
+		CheckResults(rs, false);
+		if (rs.resultType != Protocol::VoteResultType::TimedOut)
+			Close(rs);
+	}
+
+
 
 	void				SetDefaultEvolver()
 	{

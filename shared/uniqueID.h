@@ -179,6 +179,13 @@ struct TUniqueID
 		memcpy(bytes,&uuid,sizeof(UUID));
 	}
 
+	static TUniqueID	New()
+	{
+		TUniqueID rs;
+		rs.Generate();
+		return rs;
+	}
+
 	static TUniqueID	Empty()
 	{
 		TUniqueID rs;

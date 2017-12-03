@@ -525,11 +525,11 @@ namespace Journal
 
 			/**/			CreateFaction() {}
 			/**/			CreateFaction(const Objects::Faction&, FactionType factionType);
-			/**/			CreateFaction(FactionType factionType, const TUniqueID&, const CryptographicID&);
+			/**/			CreateFaction(FactionType factionType, const TUniqueID&, const TUniqueID&, const CryptographicID&);
 
 			FactionType		factionType;
 			CryptographicID	accessToken;
-			TUniqueID		factionID;
+			TUniqueID		factionID,allianceID;
 //			Buffer0<PEntityConstructor>	newEntities;
 			virtual void	Decode(const Entry&e) override;
 			virtual Event*	Instantiate() const override {return new CreateFaction();};

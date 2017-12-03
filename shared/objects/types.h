@@ -60,6 +60,7 @@ namespace Objects
 	//typedef std::shared_ptr<Base>	PVehicleComponent;
 
 	DECLARE_POINTER_CLASS(Faction);
+	DECLARE_POINTER_CLASS(Alliance);
 
 	typedef PFaction		OwnerParameter;
 
@@ -75,15 +76,7 @@ namespace Objects
 		ChangingOwnership
 	);
 
-	CONSTRUCT_ENUMERATION4(AllianceLevel,
-		None,
-		Friendly,
-		SharedSensors,
-		NonResourceControl	//allows control of allied units as long as they do not trigger resource consumption
-//			SharedCompounds,
-//			FullControl
-	);
-
+	
 	class Compound;
 	class Marker;
 	struct TrajectoryEndPoint;

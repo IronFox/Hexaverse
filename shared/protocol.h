@@ -1079,11 +1079,62 @@ namespace Protocol
 		SelectiveStructureState;
 
 
-	NETSTRUCT3(FactionAllianceChange
-		, TUniqueID, fromFactionID
-		, TUniqueID, toFactionID
-		, BYTE, newAllianceLevel
+	namespace AllianceFlag
+	{
+		enum flag_t
+		{
+			ShareSensors = 0x1,
+			ExposeEntityDetails = 0x2,
+		};
+
+	}
+
+
+	NETSTRUCT2(AllianceConfigChange
+		, TUniqueID, allianceID
+		, UINT32, flags
 	)
+	
+	NETSTRUCT2(AllianceMemberChange
+		, TUniqueID, allianceID
+		, NETA(TUniqueID), memberFactions
+	)
+
+	NETSTRUCT2(AllianceJoinRequest
+		, TUniqueID, allianceID
+		, bool, abortJoining
+	)
+
+	namespace VoteResultType
+	{
+		enum change_t
+		{
+			Passed,
+			Rejected,
+			TimedOut,
+		};
+	}
+
+	NETSTRUCT3(VoteCreation
+		, TUniqueID, voteID
+		, Package::NetString<512>, phrase
+		, float, remainingSeconds
+	)
+	
+	NETSTRUCT6(VoteResult
+		, TUniqueID, voteID
+		, BYTE, resultType
+		, UINT32, votedInFavor
+		, UINT32, votedAgainst
+		, UINT32, eligibleToVote
+		, UINT32, quorum
+	)
+
+	NETSTRUCT2(ClientVote
+		, TUniqueID, voteID
+		, bool, inFavor
+	)
+
 
 	NETSTRUCT4(StructureState
 		, EntityState, entityState
@@ -1278,8 +1329,9 @@ namespace Protocol
 		, NET(RuntimeConfig::RoundNumber), newRoundNumber
 	)
 
-	NETSTRUCT3(IdentifyFaction
+	NETSTRUCT4(IdentifyFaction
 		, NET(TUniqueID), id
+		, TUniqueID, allianceID
 		, Package::NetString<32>, name
 		, NET(M::TVec3<>), color
 	)
@@ -1414,7 +1466,14 @@ namespace Protocol
 			UnitLimits,			// s2c : UnitLimits
 
 			ChatMessage,		// c2s: NetString<256>
-			FactionAllianceChange,	//both: FactionAllianceChange
+
+			AllianceConfigChange,	//s2c: AllianceConfigChange
+			AllianceMemberChange,	//s2c: AllianceMemberChange
+			AllianceJoinRequest,	//c2s: AllianceJoinRequest
+
+			VoteCreation,		//s2c: VoteCreation
+			VoteResult,			//s2c: VoteResult
+			ClientVote,			//c2s: ClientVote
 
 			PlanetConfig,		// both: Grid::ExtendedPlanetConfig
 			GameConfig,			// both: GameConfig

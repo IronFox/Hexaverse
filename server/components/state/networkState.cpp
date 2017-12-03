@@ -22,10 +22,11 @@ extern TwisterRandom random;
 
 namespace ApplicationInterface
 {
-	void	SignalFactionAllianceChange(const Objects::OwnerParameter&origin,const Objects::OwnerParameter&dest, Objects::AllianceLevel newLevel)
+	void	SignalAllianceMembershipChange(const Objects::OwnerParameter&owner)
 	{
-		Channels::FactionAllianceChange.SendTo(Network::server,Protocol::FactionAllianceChange(origin->id,dest->id,(BYTE)newLevel));
+
 	}
+
 }
 
 
@@ -197,6 +198,16 @@ namespace Network
 		}
 	}
 
+	Protocol::IdentifyFaction Identify(const Objects::PFaction & f)
+	{
+		Protocol::IdentifyFaction	id;
+		id.id = f->id;
+		id.allianceID = f->alliance->id;
+		id.name = f->name;
+		id.color = f->color;
+		return id;
+	}
+
 
 	String						Client::ConvertToString() const
 	{
@@ -309,7 +320,7 @@ namespace Network
 		server.InstallChannel(Channels::requestResource);
 		server.InstallChannel(Channels::loadPlanetByName);
 		server.InstallChannel(Channels::tutorialAt);
-		server.InstallChannel(Channels::FactionAllianceChange);
+		server.InstallChannel(Channels::AllianceJoinRequest);
 
 		server.OpenSignalChannel(Protocol::ChannelID::RequestRoundEnd,(UINT32)UserLevel::CommonFaction);
 		server.OpenSignalChannel(Protocol::ChannelID::RequestContinueRound,(UINT32)UserLevel::CommonFaction);

@@ -5,58 +5,114 @@
 #include "journalSaveGame.h"
 #include "configurationMode.h"
 #include <objects/structure/mine.h>
+#include "state/gameState.h"
 
 extern TwisterRandom		random;
 
 
 namespace Receiver
 {
-	void	FactionAllianceChange(Protocol::FactionAllianceChange&change, TCP::Peer&peer)
+	void	ClientVote(Protocol::ClientVote&vote, TCP::Peer&peer)
 	{
 		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 		if (!client)
 		{
-			LogEvent(EventClass::Preset::internalError,peer,"FactionAllianceChange: client is nullptr");
+			LogEvent(EventClass::Preset::internalError,peer,"ClientVote: client is nullptr");
 			return;
 		}
 		if (!client->faction)
 		{
-			LogEvent(EventClass::Preset::internalError,peer,"FactionAllianceChange: client->faction is nullptr");
+			LogEvent(EventClass::Preset::internalError,peer,"ClientVote: client->faction is nullptr");
 			return;
 		}
-		if (client->faction->id != change.fromFactionID)
+		Game::Vote::CastVote(vote.voteID,client->faction,vote.inFavor);
+	}
+
+	void	AllianceConfigChange(Protocol::AllianceConfigChange&ch, TCP::Peer&peer)
+	{
+		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
+		if (!client)
 		{
-			LogEvent(EventClass::Preset::commandRejected, peer, "Faction alliance change origin mismatch. Access denied");
+			LogEvent(EventClass::Preset::internalError,peer,"AllianceConfigChange: client is nullptr");
+			return;
+		}
+		if (!client->faction)
+		{
+			LogEvent(EventClass::Preset::internalError,peer,"AllianceConfigChange: client->faction is nullptr");
 			return;
 		}
 
-		Objects::PFaction f2 = Objects::Faction::FindByID(change.toFactionID);
-		if (!f2)
+		Objects::PAlliance target = Objects::Alliance::FindByID(ch.allianceID);
+		if (target != client->faction->alliance)
 		{
-			LogEvent(EventClass::Preset::commandRejected, peer, "Faction alliance change destination does not exist");
+			LogEvent(EventClass::Preset::commandRejected,peer,"Access denied. You are not a member of alliance "+ch.allianceID.ToNiceString());
 			return;
 		}
 
-		Objects::AllianceLevel level;
-		if (!level.Load(change.newAllianceLevel))
+
+
+
+	}
+
+	void	AllianceJoinRequest(Protocol::AllianceJoinRequest&req, TCP::Peer&peer)
+	{
+		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
+		if (!client)
 		{
-			LogEvent(EventClass::Preset::commandRejected, peer, "Faction alliance change level is invalid");
+			LogEvent(EventClass::Preset::internalError,peer,"AllianceJoinRequest: client is nullptr");
 			return;
 		}
-		client->faction->SetAllianceLevel(f2,level);
+		if (!client->faction)
+		{
+			LogEvent(EventClass::Preset::internalError,peer,"AllianceJoinRequest: client->faction is nullptr");
+			return;
+		}
+
+		Objects::PAlliance target = Objects::Alliance::FindByID(req.allianceID);
+		if (target == nullptr)
+		{
+			LogEvent(EventClass::Preset::commandRejected,peer,"Requested Join request rejected, alliance does not exist");
+			return;
+		}
+		if (client->faction->alliance == target)
+		{
+			LogEvent(EventClass::Preset::commandRejected,peer,"Already joined that alliance");
+			return;
+		}
+
+		TUniqueID ids[] = {client->faction->id, target->id };
+		Game::PVote v = Game::Vote::CreateNew(ConstArrayRef<TUniqueID>( ids,2),client->faction->name+ " would like to join your alliance. What do you say?", 120,target,[](const Game::PVote&v)
+			{
+				auto a = Objects::Alliance::FindByID(v->concerning[1]);
+				auto f = Objects::Faction::FindByID(v->concerning[0]);
+				if (a && f)
+				{
+					f->ChangeAlliance(a);
+				}
+			}
+		);
+		if (v)
+		{
+			LogEvent(EventSignificance::Debug,client->faction,"Started vote on joining alliance "+ToString(target->id));
+			LogEvent(EventClass( EventSignificance::Important, EventFlavor::Gain),client->faction,"Started vote on joining alliance "+target->id.ToNiceString());
+			v->quorum = Game::Vote::Quorum::TwoThirds;
+			v->votesToPass = Game::Vote::VotesToPass::SimpleMajority;
+		}
+		else
+			LogEvent(EventClass( EventSignificance::Important, EventFlavor::Loss),client->faction,"There already exists a vote on you joining alliance "+target->id.ToNiceString()+". Either it is still active or has been rejected");
 	}
 }
 
 namespace Channels
 {
 
-
-
 	#undef DECLARE_FACTION_CHANNEL
 	#define	DECLARE_FACTION_CHANNEL(NAME)	TCP::Channel<Protocol::NAME,FactionLevel,Protocol::ChannelID::NAME>	NAME(Receiver::NAME);
+	#undef DECLARE_OBJECT_SENDER
+	#define	DECLARE_OBJECT_SENDER(NAME)	TCP::ObjectSender<Protocol::NAME,Protocol::ChannelID::NAME>	NAME;
 
 
-	DECLARE_FACTION_CHANNEL(FactionAllianceChange);
+//	DECLARE_FACTION_CHANNEL(FactionAllianceChange);
 
 
 
@@ -130,6 +186,13 @@ namespace Channels
 
 	TCP::ObjectSender<TUniqueID, Protocol::ChannelID::WinningFaction>								winningFaction;
 
+	DECLARE_OBJECT_SENDER(VoteCreation);
+	DECLARE_OBJECT_SENDER(VoteResult);
+	DECLARE_FACTION_CHANNEL(ClientVote);
+	DECLARE_FACTION_CHANNEL(AllianceJoinRequest);
+	DECLARE_FACTION_CHANNEL(AllianceConfigChange);
+	
+
 	namespace Statistics
 	{
 		TCP::ObjectSender<TUniqueID, Protocol::ChannelID::BeginStatisticsSequence>					beginSequence;
@@ -192,7 +255,8 @@ namespace Receiver
 		{
 			if (f != exclude)
 			{
-				Channels::identifyFaction.SendTo(peer,Protocol::IdentifyFaction(f->id,f->name,f->color));
+
+				Channels::identifyFaction.SendTo(peer,Network::Identify(f));
 				if (f->online)
 				{
 					Channels::factionOnline.SendTo(peer,f->id);
@@ -588,9 +652,7 @@ namespace Receiver
 				return;
 			}
 			//p.factionToken.value.Generate();	let's keep it even if it's unknown
-			client->faction.reset(new Objects::Faction(TUniqueID::Empty()));
-			faction = client->faction;
-			Objects::Faction::all << client->faction;
+			faction = client->faction = Objects::Faction::Create(TUniqueID::New(),TUniqueID::New());
 			ApplicationInterface::SignalFactionsChanged();
 			if (client->faction != Objects::Faction::nexus)
 				client->faction->name = client->name;
@@ -754,10 +816,9 @@ namespace Receiver
 				}
 			});
 
-			client->faction->ForeachAlly(Objects::AllianceLevel::SharedSensors,[client,&peer,timestamp](const Objects::PFaction&other)
+			client->faction->alliance->ForeachMember([client,&peer,timestamp](const Objects::PFaction&other)
 			{
-				const bool exposeDetails = other->ExposesEntityDetailsTo(client->faction);
-				SendEntitiesTo(other, peer,exposeDetails,timestamp);
+				SendEntitiesTo(other, peer,client->faction->alliance->exposeEntityDetails,timestamp);
 			});
 			SendEntitiesTo(client->faction,peer,true,timestamp);
 		}
@@ -771,7 +832,8 @@ namespace Receiver
 		//probably optional later on
 		{
 			//broadcast name and state
-			Channels::identifyFaction.SendTo(Network::server,Protocol::IdentifyFaction(client->faction->id,client->name,client->faction->color),2);
+
+			Channels::identifyFaction.SendTo(Network::server,Network::Identify(client->faction),Channels::FactionLevel);
 			Channels::factionOnline.SendTo(Network::server,client->faction->id,2);
 
 		}
@@ -1079,12 +1141,7 @@ namespace Receiver
 
 		if (cl->faction)
 		{
-			Protocol::IdentifyFaction factionID;
-			factionID.id = cl->faction->id;
-			factionID.name = cl->name;
-			factionID.color = cl->faction->color;
-			cl->faction->name = cl->name;
-			Channels::identifyFaction.SendTo(Network::server,factionID,2);
+			Channels::identifyFaction.SendTo(Network::server,Network::Identify(cl->faction),Channels::FactionLevel);
 			LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ), peer, "User renamed to '"+cl->name+"'");
 		}
 	}
