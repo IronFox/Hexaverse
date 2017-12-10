@@ -1577,7 +1577,7 @@ namespace FileIO
 											if (raw)
 											{
 												ASSERT_EQUAL__(raw->size(),faction->knownResources.resourcesDiscovered.GetContentSize());
-												faction->knownResources.resourcesDiscovered = Ctr::ArrayRef<const bool>((const bool*)raw->pointer(),(size_t)raw->size());
+												faction->knownResources.resourcesDiscovered = ArrayRef<const bool>((const bool*)raw->pointer(),(size_t)raw->size());
 											}
 										}
 									}

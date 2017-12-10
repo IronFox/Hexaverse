@@ -277,7 +277,7 @@ public:
 
 	void		Export(Array<BYTE>&outArray) const
 	{
-		outArray.resizeAndCopy(bytes,ARRAYSIZE(bytes));
+		outArray.ResizeAndCopy(bytes,ARRAYSIZE(bytes));
 	}
 
 	void		Decode(const String&source)

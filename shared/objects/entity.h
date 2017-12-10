@@ -468,7 +468,7 @@ namespace Objects
 
 
 		#ifndef CLIENT
-			virtual bool			DirectTo(CursorMode, Ctr::ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) = 0;
+			virtual bool			DirectTo(CursorMode, MutableArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) = 0;
 
 			/**
 			Forces all tasks to be dropped that do not result in resource loss. Other tasks must remain

@@ -91,7 +91,7 @@ namespace Objects
 
 
 		#ifndef CLIENT
-			virtual bool			DirectTo(CursorMode mode, Ctr::ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override	{return false;}
+			virtual bool			DirectTo(CursorMode mode, MutableArrayRef<Grid::LCellIdI>  waypoints, bool detailedPath, bool leftClick = false) override	{return false;}
 		#endif
 
 

@@ -40,7 +40,7 @@ namespace Game
 	}
 
 
-	/*static*/ PVote	Vote::CreateOrGet(const ConstArrayRef<TUniqueID>&concerning, const String&phrase, float closingAfterSeconds, const PAlliance&scope, const FCallback&onPass)
+	/*static*/ PVote	Vote::CreateOrGet(const ArrayRef<TUniqueID>&concerning, const String&phrase, float closingAfterSeconds, const PAlliance&scope, const FCallback&onPass)
 	{
 		PVote rs = FindConcerning(concerning);
 		if (!rs)
@@ -56,7 +56,7 @@ namespace Game
 
 
 
-	/*static*/ PVote	Vote::CreateNew(const ConstArrayRef<TUniqueID>&concerning, const String&phrase, float closingAfterSeconds, const PAlliance&scope, const FCallback&onPass)
+	/*static*/ PVote	Vote::CreateNew(const ArrayRef<TUniqueID>&concerning, const String&phrase, float closingAfterSeconds, const PAlliance&scope, const FCallback&onPass)
 	{
 		PVote rs = FindConcerning(concerning);
 		if (rs)

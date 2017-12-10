@@ -982,7 +982,7 @@ namespace Objects
 			myTasks.EraseFront();
 		}
 
-		bool			MobileEntity::PlotCourse(Ctr::ArrayRef<Grid::LCellIdI> destination, bool detailedPath, bool virtualPlatformMode/*=false*/)
+		bool			MobileEntity::PlotCourse(MutableArrayRef<Grid::LCellIdI> destination, bool detailedPath, bool virtualPlatformMode/*=false*/)
 		{
 			const World::Data&world = owner->knownWorld;
 			if (IsVehicle())
@@ -1004,7 +1004,7 @@ namespace Objects
 
 			while (destination.IsNotEmpty() && destination.First() == pointOfOrigin)
 			{
-				destination = Ctr::ArrayRef<Grid::LCellIdI>(destination.GetPointer() +1 ,destination.GetLength()-1);
+				destination = destination.SubRef(1);
 			}
 			if (destination.IsEmpty())
 			{
@@ -1041,7 +1041,7 @@ namespace Objects
 					const auto&match = myTasks.GetNewest().foci.GetNewest();
 					while (destination.IsNotEmpty() && destination.First() == match.target)
 					{
-						destination = Ctr::ArrayRef<Grid::LCellIdI>(destination.GetPointer() +1 ,destination.GetLength()-1);
+						destination = destination.SubRef(1);
 					}
 				}
 				if (destination.IsEmpty())
@@ -1084,7 +1084,7 @@ namespace Objects
 			return true;
 		}
 
-		bool	MobileEntity::PlotFrontCourse(Ctr::ArrayRef<Grid::LCellIdI> destination, bool detailedPath)
+		bool	MobileEntity::PlotFrontCourse(MutableArrayRef<Grid::LCellIdI> destination, bool detailedPath)
 		{
 			const World::Data&world = owner->knownWorld;
 
@@ -1101,7 +1101,7 @@ namespace Objects
 
 			while (destination.IsNotEmpty() && destination.First() == location)
 			{
-				destination = Ctr::ArrayRef<Grid::LCellIdI>(destination.GetPointer() +1 ,destination.GetLength()-1);
+				destination = destination.SubRef(1);
 			}
 			if (destination.IsEmpty())
 			{
@@ -1433,9 +1433,7 @@ namespace Objects
 							else
 							{
 								index_t offset = it-path.begin();
-								Ctr::ArrayRef<PathNode> ref = path.ToRef();
-								ref = Ctr::ArrayRef<PathNode>(ref.GetPointer() + offset,ref.Count()-offset);
-								Ctr::Array<PathNode>	nodes = ref;
+								Array<PathNode>	nodes = path.SubRef(offset);
 								path.Clear();
 								path << PathNode(v->location,0);
 								if (!AppendPathSegment(v,v->location,nextFocus))

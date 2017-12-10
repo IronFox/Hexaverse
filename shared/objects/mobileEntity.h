@@ -318,8 +318,8 @@ namespace Objects
 			bool				HasTasks() const {return myTasks.IsNotEmpty();}
 		#else
 
-			bool				PlotCourse(Ctr::ArrayRef<Grid::LCellIdI> destination, bool detailedPath, bool virtualPlatformMode=false);
-			bool				PlotFrontCourse(Ctr::ArrayRef<Grid::LCellIdI> destination, bool detailedPath);
+			bool				PlotCourse(MutableArrayRef<Grid::LCellIdI> destination, bool detailedPath, bool virtualPlatformMode=false);
+			bool				PlotFrontCourse(MutableArrayRef<Grid::LCellIdI> destination, bool detailedPath);
 			virtual	void		SetupSystem() override {UpdateSystem();}
 			void				RegisterNewJob(
 										const String&localizableShapeIdentifier,

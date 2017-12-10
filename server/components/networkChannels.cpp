@@ -81,7 +81,7 @@ namespace Receiver
 		}
 
 		TUniqueID ids[] = {client->faction->id, target->id };
-		Game::PVote v = Game::Vote::CreateNew(ConstArrayRef<TUniqueID>( ids,2),client->faction->name+ " would like to join your alliance. What do you say?", 120,target,[](const Game::PVote&v)
+		Game::PVote v = Game::Vote::CreateNew(ArrayRef<TUniqueID>( ids,2),client->faction->name+ " would like to join your alliance. What do you say?", 120,target,[](const Game::PVote&v)
 			{
 				auto a = Objects::Alliance::FindByID(v->concerning[1]);
 				auto f = Objects::Faction::FindByID(v->concerning[0]);

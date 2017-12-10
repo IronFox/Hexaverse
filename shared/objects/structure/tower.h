@@ -147,7 +147,7 @@ namespace Objects
 		#endif
 		#ifndef CLIENT
 			virtual void			OnConstructionFinished(float&atTime) override;
-			virtual bool			DirectTo(CursorMode, Ctr::ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
+			virtual bool			DirectTo(CursorMode, MutableArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 		#endif
 		//virtual int					GetConstructionCost() const override {return this->GetTable()->constructionCost.getValue(GetResearchState()) + turret->productionCosts(owner);}
 		#ifndef NO_HIBERNATION

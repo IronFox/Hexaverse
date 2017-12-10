@@ -795,26 +795,26 @@ namespace Engine
 			{
 				if (bindings[i].bufferHandle)
 				{
-					ResolvedBufferBinding&b = bindPoints.append();
+					ResolvedBufferBinding&b = bindPoints.Append();
 					b.bufferHandle = bindings[i].bufferHandle;
 					b.bindPoint = d.BindPoint;
 				}
 				elif (bindings[i].samplerHandle)
 				{
-					ResolvedSamplerBinding&b = samplerBindPoints.append();
+					ResolvedSamplerBinding&b = samplerBindPoints.Append();
 					b.samplerHandle = bindings[i].samplerHandle;
 					b.bindPoint = d.BindPoint;
 				}
 				elif (bindings[i].resourceView)
 				{
-					ResolvedTextureBinding&b = texBindPoints.append();
+					ResolvedTextureBinding&b = texBindPoints.Append();
 					b.viewHandle = bindings[i].resourceView;
 					b.bindPoint = d.BindPoint;
 					b.quickSlot = InvalidIndex;
 				}
 				elif (bindings[i].textureQuickSlot != InvalidIndex)
 				{
-					ResolvedTextureBinding&b = texBindPoints.append();
+					ResolvedTextureBinding&b = texBindPoints.Append();
 					b.bindPoint = d.BindPoint;
 					b.quickSlot = bindings[i].textureQuickSlot;
 				}
@@ -1488,17 +1488,17 @@ namespace Engine
 	{
 		desc.clear();
 		if (binding.vertex.IsSet())
-			Translate(desc.append(), binding.vertex,"POSITION");
+			Translate(desc.Append(), binding.vertex,"POSITION");
 		if (binding.color.IsSet())
-			Translate(desc.append(), binding.color,"COLOR");
+			Translate(desc.Append(), binding.color,"COLOR");
 		if (binding.normal.IsSet())
-			Translate(desc.append(), binding.normal,"NORMAL");
+			Translate(desc.Append(), binding.normal,"NORMAL");
 		if (binding.tangent.IsSet())
-			Translate(desc.append(), binding.tangent,"TANGENT");
+			Translate(desc.Append(), binding.tangent,"TANGENT");
 		for (index_t i = 0; i < binding.texcoords.Count() && desc.Count() < 64; i++)
 		{
 			if (binding.texcoords[i].IsSet())
-				Translate(desc.append(), binding.texcoords[i],"TEXCOORD",(UINT)i);
+				Translate(desc.Append(), binding.texcoords[i],"TEXCOORD",(UINT)i);
 		}
 		stride[0] = binding.floats_per_vertex * 4;
 		atStream = 0;
@@ -1507,7 +1507,7 @@ namespace Engine
 
 	DX11::VertexDescription&	DX11::VertexDescription::Add(const char*semanticName, UINT semanticIndex, DXGI_FORMAT format, UINT byteOffset, UINT inputSlot/*=0*/, D3D11_INPUT_CLASSIFICATION inputSlotClass/*=D3D11_INPUT_PER_VERTEX_DATA*/, UINT instanceDataStepRate/*=0*/)
 	{
-		D3D11_INPUT_ELEMENT_DESC&desc = this->desc.append();
+		D3D11_INPUT_ELEMENT_DESC&desc = this->desc.Append();
 		desc.AlignedByteOffset = byteOffset;
 		desc.Format = format;
 		desc.InputSlot = inputSlot;
@@ -1520,7 +1520,7 @@ namespace Engine
 	}
 	DX11::VertexDescription&	DX11::VertexDescription::Append(const char*semanticName, UINT semanticIndex, DXGI_FORMAT format)
 	{
-		D3D11_INPUT_ELEMENT_DESC&desc = this->desc.append();
+		D3D11_INPUT_ELEMENT_DESC&desc = this->desc.Append();
 		desc.AlignedByteOffset = stride[atStream];
 		desc.Format = format;
 		desc.InputSlot = atStream;
@@ -1534,7 +1534,7 @@ namespace Engine
 
 	DX11::VertexDescription&	DX11::VertexDescription::AppendInstance(const char*semanticName, UINT semanticIndex, DXGI_FORMAT format)
 	{
-		D3D11_INPUT_ELEMENT_DESC&desc = this->desc.append();
+		D3D11_INPUT_ELEMENT_DESC&desc = this->desc.Append();
 		desc.AlignedByteOffset = stride[atStream];
 		desc.Format = format;
 		desc.InputSlot = atStream;

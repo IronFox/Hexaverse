@@ -82,7 +82,7 @@ class VehiclePlant : public WorkingStructureT<VehiclePlant>, public MobileEntity
 			virtual void			OnSleepChange(float&t) override;
 			virtual void			SignalLastProductionDone(float&t) override {LogEvent(EventSignificance::Common, this, "Queue is empty. Shutting off"); SetEnabled(false,t);}
 			virtual void			SignalNewProductionEnqueued() override {float t = 0; SetEnabled(true,t);}
-			virtual bool			DirectTo(CursorMode, Ctr::ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
+			virtual bool			DirectTo(CursorMode, MutableArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 		#endif
 		virtual bool				CanProduce(const PWorldEntity&e) const override;
 
