@@ -40,7 +40,7 @@ namespace Objects
 		*/
 		struct Park
 		{
-			Ctr::Buffer0<WVehicleStore>	members;	//!< All VehicleStore instances that share this Park
+			Ctr::Buffer0<WVehicleStore>	members;	//!< CompleteChange VehicleStore instances that share this Park
 			count_t					vehiclesStored = 0;	//!< Total number of vehicles stored in this park
 
 			//TUniqueID				id;

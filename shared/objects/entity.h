@@ -296,7 +296,7 @@ namespace Objects
 		#ifndef CLIENT
 			enum changeType_t
 			{
-				All = 0xFFFFFFFF,
+				CompleteChange = 0xFFFFFFFF,
 				Unchanged = 0x0,
 				HealthChanged = 0x1,
 				PositionChanged = 0x2,

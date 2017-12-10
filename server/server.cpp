@@ -1137,6 +1137,8 @@ int main( int argc, const char* argv[])
 				Sleep(1);
 			Network::server.Resolve();
 			RemoteControl::Resolve();
+			if (RuntimeConfig::IsInAnyCommandPhase())
+				Game::Vote::CheckAllTimeouts();
 
 
 			RuntimeConfig::Phase p0 = RuntimeConfig::phase;

@@ -40,7 +40,7 @@ namespace Game
 	}
 
 
-	/*static*/ PVote	Vote::CreateOrGet(const ArrayRef<TUniqueID>&concerning, const String&phrase, float closingAfterSeconds, const PAlliance&scope, const FCallback&onPass)
+	/*static*/ PVote	Vote::CreateOrGet(const ArrayRef<const TUniqueID>&concerning, const String&phrase, float closingAfterSeconds, const FScope&scope, const FCallback&onPass)
 	{
 		PVote rs = FindConcerning(concerning);
 		if (!rs)
@@ -56,7 +56,7 @@ namespace Game
 
 
 
-	/*static*/ PVote	Vote::CreateNew(const ArrayRef<TUniqueID>&concerning, const String&phrase, float closingAfterSeconds, const PAlliance&scope, const FCallback&onPass)
+	/*static*/ PVote	Vote::CreateNew(const ArrayRef<const TUniqueID>&concerning, const String&phrase, float closingAfterSeconds, const FScope&scope, const FCallback&onPass)
 	{
 		PVote rs = FindConcerning(concerning);
 		if (rs)
@@ -71,6 +71,7 @@ namespace Game
 		return rs;
 	}
 
+
 	/*static*/ void		Vote::CheckAllTimeouts()
 	{
 		all.FilterEntries([](const TUniqueID&, const PVote&v) -> bool
@@ -81,6 +82,14 @@ namespace Game
 				return false;
 			}
 			return true;
+		});
+	}
+
+	/*static*/ void		Vote::CheckAllVotes()
+	{
+		all.VisitAllValues([](const PVote&v) 
+		{
+			v->CheckVotes();
 		});
 	}
 
@@ -128,9 +137,25 @@ namespace Game
 			votes.Set(f->id,inFavor);
 			LogEvent(EventSignificance::Common,f,"Vote: Voted on "+ToString(id)+": "+inFavor);
 		}
-
-		CheckVotes();
+		if (RuntimeConfig::IsInAnyCommandPhase())
+			CheckVotes();
 	}
+
+	/*static*/ void		Vote::AdvertiseAllToNewlyConnectedPeer(const Objects::PFaction&f, TCP::Peer&peer)
+	{
+		all.VisitAllValues([&peer,f](const PVote&vote)
+		{
+			if (!vote->closed && vote->MayVote(f))
+			{
+				Protocol::VoteCreation out;
+				out.phrase = vote->phrase;
+				out.remainingSeconds = vote->closingAfterSeconds;
+				out.voteID = vote->id;
+				Channels::VoteCreation.SendTo(peer,out);
+			}
+		});
+	}
+
 
 	void			Vote::Advertise() const
 	{
@@ -140,25 +165,22 @@ namespace Game
 		vote.voteID = id;
 
 		if (!scope)
-			Channels::VoteCreation.SendTo(::Network::server,vote,Channels::FactionLevel);
+			Channels::VoteCreation.SendTo(::Network::server,vote,Channels::Level::Faction);
 		else
-			scope->ForeachMember([vote](const Objects::PFaction&f)
+			::Network::playerMap.VisitAllEntries([vote,this](const Objects::PFaction&f, const ::Network::PClient&client)
 			{
-				auto client = ::Network::playerMap.QueryPointer(f);
-				if (!client)
-					return;
-				auto peer = (*client)->peer.lock();
-				if (peer)
-					Channels::VoteCreation.SendTo(peer,vote);
+				if (scope(f))
+					Channels::VoteCreation.SendTo(client->peer.lock(),vote);
 			});
 	}
 
 	bool			Vote::CheckTimeouts()
 	{
 		float seconds = timer.GetSecondsSince(created);
-		if (seconds > closingAfterSeconds)
-			Close();
-
+		if (seconds < closingAfterSeconds && !closed)
+			return true;
+		Close();
+		
 		if (seconds > clearedAfterSeconds)
 		{
 			LogEvent(EventSignificance::Common,"Clearing out vote "+ToString(id)+" after "+String(seconds)+" sec.");
@@ -170,12 +192,7 @@ namespace Game
 	count_t			Vote::CountEligibleVoters() const
 	{
 		count_t rs = 0;
-		if (scope)
-		{
-			scope->ForeachMember([&rs](const Objects::PFaction&f) {if (!f->isDead) rs++;});
-			return rs;
-		}
-		Objects::ForeachFaction([&rs](const Objects::PFaction&){rs++;},false);
+		Objects::ForeachFaction([&rs,this](const Objects::PFaction&f){if (!scope || scope(f)) rs++;},false);
 		return rs;
 	}
 
@@ -289,17 +306,14 @@ namespace Game
 
 
 		if (!scope)
-			Channels::VoteResult.SendTo(::Network::server,rs,Channels::FactionLevel);
+			Channels::VoteResult.SendTo(::Network::server,rs,Channels::Level::Faction);
 		else
-			scope->ForeachMember([rs](const Objects::PFaction&f)
+			::Network::playerMap.VisitAllEntries([rs,this](const Objects::PFaction&f, const ::Network::PClient&client)
 			{
-				auto client = ::Network::playerMap.QueryPointer(f);
-				if (!client)
-					return;
-				auto peer = (*client)->peer.lock();
-				if (peer)
-					Channels::VoteResult.SendTo(peer,rs);
+				if (scope(f))
+					Channels::VoteResult.SendTo(client->peer.lock(),rs);
 			});
+
 	}
 
 	void			Vote::CheckVotes()
@@ -553,6 +567,7 @@ namespace Game
 						}
 					}
 				});
+				Vote::CheckAllVotes();
 			}
 
 			LogEvent(EventSignificance::Debug,"Changing RuntimeConfig::phase to "+String(to.ToString())+" with time window "+String(timeWindow));
@@ -1149,7 +1164,7 @@ namespace Game
 		LogEvent(EventClass{EventSignificance::Important,EventFlavor::ServerPrivate},"Declared winner: "+w->GetLogName());
 		LogEvent(EventClass::Preset::winningFaction,"Congratulations. "+w->GetName()+" wins this game!");
 		winner = w;
-		Channels::winningFaction.SendTo(::Network::server,Game::winner->id,Channels::FactionLevel);
+		Channels::winningFaction.SendTo(::Network::server,Game::winner->id,Channels::Level::Faction);
 		if (RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame)
 			Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
 	}

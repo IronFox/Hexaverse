@@ -12,5 +12,6 @@ namespace GlobalEvents
 
 	Observable<bool>	onFullscreenChange;
 
+	Observable<Objects::PFaction&>	onAllianceChange;
 }
 

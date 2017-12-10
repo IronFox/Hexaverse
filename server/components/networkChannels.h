@@ -58,7 +58,7 @@ namespace Channels
 {
 
 	#undef DECLARE_FACTION_CHANNEL
-	#define	DECLARE_FACTION_CHANNEL(NAME)	extern TCP::Channel<Protocol::NAME,FactionLevel,Protocol::ChannelID::NAME>	NAME;
+	#define	DECLARE_FACTION_CHANNEL(NAME)	extern TCP::Channel<Protocol::NAME,Level::Faction,Protocol::ChannelID::NAME>	NAME;
 
 	#undef DECLARE_OBJECT_SENDER
 	#define	DECLARE_OBJECT_SENDER(NAME)	extern TCP::ObjectSender<Protocol::NAME,Protocol::ChannelID::NAME>	NAME;
@@ -66,39 +66,42 @@ namespace Channels
 	
 	//TCP::ObjectSender<Protocol::ServerState,Protocol::ChannelID::GetInfo>		infoSender;
 	//TCP::ObjectSender<Protocol::Result,Protocol::ChannelID::
-	static const UINT32 FactionLevel = (UINT32)Network::UserLevel::CommonFaction;
-	static const UINT32 PreFaction = (UINT32)Network::UserLevel::PreFaction;
-	static const UINT32 Spectator = (UINT32)Network::UserLevel::Spectator;
-	static const UINT32 Configurator = (UINT32)Network::UserLevel::PlanetConfigurator;
+	namespace Level
+	{
+		static const UINT32 Faction = (UINT32)Network::UserLevel::CommonFaction;
+		static const UINT32 PreFaction = (UINT32)Network::UserLevel::PreFaction;
+		static const UINT32 Spectator = (UINT32)Network::UserLevel::Spectator;
+		static const UINT32 Configurator = (UINT32)Network::UserLevel::PlanetConfigurator;
+	}
 
 
-	extern TCP::Channel<Protocol::Hello, 0,Protocol::ChannelID::Hello>											hello;
-	extern TCP::Channel<Protocol::EntityDirectCommand, FactionLevel, Protocol::ChannelID::EntityDirectCommand>	entityDirectCommand;
-	extern TCP::Channel<Protocol::ChoiceIntersection, FactionLevel, Protocol::ChannelID::ChoiceIntersection>	choiceIntersection;
-	extern TCP::Channel<Protocol::DropTasks, FactionLevel, Protocol::ChannelID::DropTasks>						dropTasks;
-	extern TCP::Channel<Protocol::StandardJob, FactionLevel, Protocol::ChannelID::SignalNewJob>					signalNewJob;
-	extern TCP::Channel<Protocol::TerrainMod, FactionLevel, Protocol::ChannelID::SignalTerrainMod>				signalTerrainMod;
-	extern TCP::Channel<Protocol::ConstructionAbort, FactionLevel, Protocol::ChannelID::ConstructionAbort>		constructionAbort;
-	extern TCP::Channel<Protocol::ConstructionBegin, FactionLevel, Protocol::ChannelID::ConstructionBegin>		constructionBegin;
-	extern TCP::Channel<Protocol::EnableStructure, FactionLevel, Protocol::ChannelID::EnableStructure>			enableStructure;
-	extern TCP::Channel<Protocol::ClientFactionRequest, PreFaction, Protocol::ChannelID::ClientFaction>			clientFactionRequest;
+	extern TCP::Channel<Protocol::Hello, 0,Protocol::ChannelID::Hello>												hello;
+	extern TCP::Channel<Protocol::EntityDirectCommand, Level::Faction, Protocol::ChannelID::EntityDirectCommand>	entityDirectCommand;
+	extern TCP::Channel<Protocol::ChoiceIntersection, Level::Faction, Protocol::ChannelID::ChoiceIntersection>		choiceIntersection;
+	extern TCP::Channel<Protocol::DropTasks, Level::Faction, Protocol::ChannelID::DropTasks>						dropTasks;
+	extern TCP::Channel<Protocol::StandardJob, Level::Faction, Protocol::ChannelID::SignalNewJob>					signalNewJob;
+	extern TCP::Channel<Protocol::TerrainMod, Level::Faction, Protocol::ChannelID::SignalTerrainMod>				signalTerrainMod;
+	extern TCP::Channel<Protocol::ConstructionAbort, Level::Faction, Protocol::ChannelID::ConstructionAbort>		constructionAbort;
+	extern TCP::Channel<Protocol::ConstructionBegin, Level::Faction, Protocol::ChannelID::ConstructionBegin>		constructionBegin;
+	extern TCP::Channel<Protocol::EnableStructure, Level::Faction, Protocol::ChannelID::EnableStructure>			enableStructure;
+	extern TCP::Channel<Protocol::ClientFactionRequest, Level::PreFaction, Protocol::ChannelID::ClientFaction>		clientFactionRequest;
 	
-	extern TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::RestoreCoreLink>						restoreCoreLink;
-	extern TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::RemoveEntity>						removeEntity;
-	extern TCP::Channel<Protocol::EntityStateUpdate, FactionLevel, Protocol::ChannelID::Automate>				automate;
-	extern TCP::Channel<Protocol::EntityStateUpdate, FactionLevel, Protocol::ChannelID::Sleep>					sleep;
-	extern TCP::Channel<Protocol::Marker, FactionLevel, Protocol::ChannelID::CreateMarker>						createMarker;
-	extern TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::DestroyMarker>						destroyMarker;
-	extern TCP::Channel<Protocol::TouchedMarker, FactionLevel, Protocol::ChannelID::TouchMarker>				touchMarker;
-	extern TCP::Channel<Protocol::ClientName,FactionLevel,Protocol::ChannelID::ChangeMyName>					changeMyName;
-	extern TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::IdentifyFaction>						identifyFactionRecv;
-	extern TCP::Channel<Protocol::QueueResearch, FactionLevel, Protocol::ChannelID::QueueResearch>				queueResearch;
-	extern TCP::Channel<Package::NetString<256>, FactionLevel, Protocol::ChannelID::ChatMessage>				chatMessage;
-	extern TCP::Channel<Grid::ExtendedPlanetConfig, Configurator, Protocol::ChannelID::PlanetConfig>			planetConfig;
-	extern TCP::Channel<Protocol::GameConfig, Configurator, Protocol::ChannelID::GameConfig>					gameConfig;
-	extern TCP::Channel<Protocol::ResourceID, PreFaction, Protocol::ChannelID::RequestResource>					requestResource;
-	extern TCP::Channel<Protocol::LoadPlanetByName, Configurator, Protocol::ChannelID::LoadPlanetByName>			loadPlanetByName;
-	extern TCP::Channel<NET(INT32),FactionLevel,Protocol::ChannelID::TutorialAt>								tutorialAt;
+	extern TCP::Channel<NET(TUniqueID), Level::Faction, Protocol::ChannelID::RestoreCoreLink>					restoreCoreLink;
+	extern TCP::Channel<NET(TUniqueID), Level::Faction, Protocol::ChannelID::RemoveEntity>						removeEntity;
+	extern TCP::Channel<Protocol::EntityStateUpdate, Level::Faction, Protocol::ChannelID::Automate>				automate;
+	extern TCP::Channel<Protocol::EntityStateUpdate, Level::Faction, Protocol::ChannelID::Sleep>				sleep;
+	extern TCP::Channel<Protocol::Marker, Level::Faction, Protocol::ChannelID::CreateMarker>					createMarker;
+	extern TCP::Channel<NET(TUniqueID), Level::Faction, Protocol::ChannelID::DestroyMarker>						destroyMarker;
+	extern TCP::Channel<Protocol::TouchedMarker, Level::Faction, Protocol::ChannelID::TouchMarker>				touchMarker;
+	extern TCP::Channel<Protocol::ClientName,Level::Faction,Protocol::ChannelID::ChangeMyName>					changeMyName;
+	extern TCP::Channel<NET(TUniqueID), Level::Faction, Protocol::ChannelID::IdentifyFaction>					identifyFactionRecv;
+	extern TCP::Channel<Protocol::QueueResearch, Level::Faction, Protocol::ChannelID::QueueResearch>			queueResearch;
+	extern TCP::Channel<Package::NetString<256>, Level::Faction, Protocol::ChannelID::ChatMessage>				chatMessage;
+	extern TCP::Channel<Grid::ExtendedPlanetConfig, Level::Configurator, Protocol::ChannelID::PlanetConfig>		planetConfig;
+	extern TCP::Channel<Protocol::GameConfig, Level::Configurator, Protocol::ChannelID::GameConfig>				gameConfig;
+	extern TCP::Channel<Protocol::ResourceID, Level::PreFaction, Protocol::ChannelID::RequestResource>			requestResource;
+	extern TCP::Channel<Protocol::LoadPlanetByName, Level::Configurator, Protocol::ChannelID::LoadPlanetByName>	loadPlanetByName;
+	extern TCP::Channel<NET(INT32),Level::Faction,Protocol::ChannelID::TutorialAt>								tutorialAt;
 
 
 	extern TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>				clientFactionResponse;
@@ -115,7 +118,6 @@ namespace Channels
 	extern TCP::ObjectSender<Protocol::StructureState,Protocol::ChannelID::UpdateStructure>				setStructureState;
 	extern TCP::ObjectSender<Protocol::DestroyEntity,Protocol::ChannelID::DestroyEntity>				destroyEntity;
 	extern TCP::ObjectSender<Protocol::ControlMessage,Protocol::ChannelID::ControlMessage>				controlMessage;
-	extern TCP::ObjectSender<NET(TUniqueID),Protocol::ChannelID::SetFactionID>							setFactionID;
 	extern TCP::ObjectSender<Protocol::PhaseChange,Protocol::ChannelID::PhaseChange>					phaseChange;
 	extern TCP::ObjectSender<Protocol::ResourceUpdate,Protocol::ChannelID::ResourceUpdate>				resourceUpdate;
 	extern TCP::ObjectSender<Protocol::GameProgress,Protocol::ChannelID::GameProgress>					gameProgress;
@@ -144,6 +146,8 @@ namespace Channels
 	DECLARE_FACTION_CHANNEL(ClientVote);
 	DECLARE_FACTION_CHANNEL(AllianceJoinRequest);
 	DECLARE_FACTION_CHANNEL(AllianceConfigChange);
+
+	DECLARE_OBJECT_SENDER(MyFaction);
 
 
 	namespace Statistics

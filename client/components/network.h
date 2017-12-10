@@ -93,7 +93,9 @@ namespace Network
 {
 
 
+	Objects::OwnerParameter ResolveFaction(const TUniqueID&id, const TUniqueID&allianceID);
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id);
+
 	void					ConnectTo(const Host&);
 	bool DidVisit(const TUniqueID&worldID);
 	void SaveWorldAccessTokens();
@@ -223,7 +225,6 @@ namespace Network
 		extern TCP::Channel<Protocol::StructureState,0,Protocol::ChannelID::UpdateStructure>			structureStateUpdate;
 		extern TCP::Channel<Protocol::DestroyEntity,0,Protocol::ChannelID::DestroyEntity>				destroyEntity;
 		extern TCP::Channel<Protocol::ClientFactionResponse,0,Protocol::ChannelID::ClientFaction>		clientFactionResponse;
-		extern TCP::Channel<NET(TUniqueID),0,Protocol::ChannelID::SetFactionID>							setFactionID;
 
 		extern TCP::Channel<Protocol::PhaseChange,0,Protocol::ChannelID::PhaseChange>					phaseChange;
 		extern TCP::Channel<Protocol::MobileEntityMotion,0,Protocol::ChannelID::MobileEntityMotion>		mobileEntityMotion;
@@ -286,7 +287,8 @@ namespace Network
 		extern TCP::ObjectSender<Protocol::QueueResearch, Protocol::ChannelID::QueueResearch>			queueResearch;
 		
 
-		DECLARE_CHANNEL(FactionAllianceChange);
+		DECLARE_CHANNEL(MyFaction);
+		DECLARE_CHANNEL(AllianceConfigChange);
 	}
 
 

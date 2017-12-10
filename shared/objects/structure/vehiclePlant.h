@@ -21,13 +21,13 @@ class VehiclePlant : public WorkingStructureT<VehiclePlant>, public MobileEntity
 
 
 		/**
-		All base components known to VehiclePlant.
+		CompleteChange base components known to VehiclePlant.
 		Vehicle may use these as bases
 		*/
 		static Ctr::Buffer0<Component::VehicleBase*>
 									baseComponents;
 		/**
-		All turret components known to VehiclePlant.
+		CompleteChange turret components known to VehiclePlant.
 		Effectively a subset of all turret types available.
 		Vehicle may use these as turrets.
 		*/

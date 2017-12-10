@@ -132,15 +132,29 @@ namespace Objects
 	public:
 		const TUniqueID	id;
 
-		bool		exposeEntityDetails = false,
+		struct TConfig
+		{
+			bool	exposeEntityDetails = false,
 					shareSensors = true;
 
-		/**/		Alliance(const TUniqueID&id) : id(id)	{}
-		virtual		~Alliance() {if (!application_shutting_down) all.Unset(id);}
+			/**/	TConfig()	{}
+			/**/	TConfig(UINT32 flags);
+			UINT32	ToFlags() const;
+			bool	operator==(const TConfig&other) const {return exposeEntityDetails == other.exposeEntityDetails && shareSensors == other.shareSensors;}
+			bool	operator!=(const TConfig&other) const {return !operator==(other);}
+			friend String ToString(const TConfig&cfg)
+			{
+				return String(cfg.exposeEntityDetails ? "See Unit Details":"-")+" "+(cfg.shareSensors ? "Share Sensors":"-");
+			}
+		}			config;
+
+		/**/		Alliance(const TUniqueID&id);
+		virtual		~Alliance();
 		void		ForeachMember(const std::function<void(const PFaction&)>&f)	const;
 		void		Leave(const PFaction&f);
 		void		Join(const PFaction&f);
 		bool		IsMember(const PFaction&f) const;
+		void		UpdateConfiguration(const TConfig&);
 		static PAlliance FindByID(const TUniqueID&id ){ WAlliance rs; all.Query(id,rs); return rs.lock();}
 
 	private:
@@ -171,19 +185,19 @@ namespace Objects
 		/**
 		Inits ID, color, and alliance. Must be called by constructors. Must not be called by anything else
 		*/
-		void			InitID(const TUniqueID&toID, const TUniqueID&allianceID, bool nexusFaction);
+		void			InitID(const TUniqueID&toID, bool nexusFaction);
 
 		#ifdef CLIENT
 			/**/		Faction(const TUniqueID&id):researchState(this,false),statistics(this) {InitID(id,false);}
 
 		#else
-			/**/		Faction(const TUniqueID&toID, const TUniqueID&allianceID, const String&name="", bool isNexus=false):researchState(this,isNexus), statistics(this), name(name)
+			/**/		Faction(const TUniqueID&toID, const String&name="", bool isNexus=false):researchState(this,isNexus), statistics(this), name(name)
 			{
 				nexusControl = acquiringNexusControl = 0;
 				deathInRounds = 0;
 
 				accessToken.Generate();
-				InitID(toID,allianceID,isNexus);
+				InitID(toID,isNexus);
 			}
 		#endif
 
@@ -221,8 +235,8 @@ namespace Objects
 		Checks whether or not units of the other faction receive detailed entity state information such as build queues.
 		This check is symmetric
 		*/
-		bool			ExposesEntityDetailsTo(const PFaction&other) const {return other.get() == this || (other->alliance == alliance && alliance->exposeEntityDetails);}
-		bool			SharingSensorWith(const PFaction&other) const{return other.get() == this || (other->alliance == alliance && alliance->shareSensors);}
+		bool			ExposesEntityDetailsTo(const PFaction&other) const {return other.get() == this || (other->alliance == alliance && alliance->config.exposeEntityDetails);}
+		bool			SharingSensorWith(const PFaction&other) const{return other.get() == this || (other->alliance == alliance && alliance->config.shareSensors);}
 
 		String		GetName() const
 		{
@@ -269,12 +283,19 @@ namespace Objects
 
 			static PFaction				FindByID(const TUniqueID&id);
 			static PFaction				GetOrCreate(const TUniqueID&id);
+			/**
+			Retrieves (or creates) the specified faction.
+			@param id Faction ID
+			@param allianceID Alliance ID to lookup or create
+			@param[out] outAllianceChanged Set true if a new faction was created or an existing faction had a new alliance assigned as a result of the operation
+			*/
+			static PFaction				GetOrCreate(const TUniqueID&id, const TUniqueID&allianceID, bool&outAllianceChanged);
 
 		#else
 
 			CryptographicID				accessToken;
-			Ctr::Buffer0<WMobileEntity>	allMobiles,	//!< All mobiles registered in the world
-										storedMobiles;	//!< All mobile entities registered stored in some other entity. allMobiles and storedMobiles are exclusive of each other
+			Ctr::Buffer0<WMobileEntity>	allMobiles,	//!< CompleteChange mobiles registered in the world
+										storedMobiles;	//!< CompleteChange mobile entities registered stored in some other entity. allMobiles and storedMobiles are exclusive of each other
 			#ifndef NO_SATELLITES
 				Buffer0<WSatellite>		satellites;
 				Buffer0<WSkyHub>		skyHubs;	//overlaps with satellites
@@ -363,7 +384,6 @@ namespace Objects
 			*/
 			void		CheckSensory();
 
-			void		ChangeAlliance(const PAlliance&);
 
 			/**
 			Checks if the local faction satisfies survival conditions
@@ -448,6 +468,10 @@ namespace Objects
 
 			static void	Kill(const PFaction&);
 		#endif
+
+
+		void			ChangeAlliance(const PAlliance&);
+
 
 	};
 

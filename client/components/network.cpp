@@ -214,6 +214,15 @@ namespace Network
 
 
 
+	Objects::OwnerParameter ResolveFaction(const TUniqueID&id, const TUniqueID&allianceID)
+	{
+		bool allianceChanged = false;
+		auto rs = Objects::Faction::GetOrCreate(id,allianceID, allianceChanged);
+		if (allianceChanged)
+			GlobalEvents::onAllianceChange(rs);
+		return rs;
+	}
+
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id)
 	{
 		return Objects::Faction::GetOrCreate(id);
@@ -913,17 +922,6 @@ namespace Network
 			#endif
 		}
 
-		void	SetFactionID(NET(TUniqueID)&id)
-		{
-			ASSERT__(!eventsLocked);
-
-			haveID = true;
-			amSpectator = false;
-			myID = id;
-			Objects::Faction::mine = ResolveFaction(myID);
-			myIDString = ToString(myID);
-			Objects::Faction::mine->isOwnedByMe = true;
-		}
 
 		void	PhaseChange(Protocol::PhaseChange&c);
 		void	MobileEntityMotion(Protocol::MobileEntityMotion&m)
@@ -1257,29 +1255,32 @@ namespace Network
 			}
 		}
 
-		void	FactionAllianceChange(Protocol::FactionAllianceChange&change)
+		void MyFaction(Protocol::MyFaction&faction)
 		{
-			Objects::PFaction f1 = Objects::Faction::FindByID(change.fromFactionID);
-			Objects::PFaction f2 = Objects::Faction::FindByID(change.toFactionID);
-			if (!f1)
-			{
-				LogEvent(EventClass::Preset::error, "Faction alliance change destination does not exist: "+change.fromFactionID.ConvertToString());
-				return;
-			}
-			if (!f2)
-			{
-				LogEvent(EventClass::Preset::error, "Faction alliance change destination does not exist: "+change.toFactionID.ConvertToString());
-				return;
-			}
+			ASSERT__(!eventsLocked);
 
-			Objects::AllianceLevel level;
-			if (!level.Load(change.newAllianceLevel))
-			{
-				LogEvent(EventClass::Preset::error, "Faction alliance change level is invalid");
-				return;
-			}
-			f1->SetAllianceLevel(f2,level);
+			haveID = true;
+			amSpectator = false;
+			myID = faction.factionID;
+			Objects::Faction::mine = ResolveFaction(myID,faction.alliance.allianceID);
+			Objects::Faction::mine->alliance->UpdateConfiguration(faction.alliance.flags);
+			myIDString = ToString(myID);
+			Objects::Faction::mine->isOwnedByMe = true;
 		}
+
+		void AllianceConfigChange(Protocol::AllianceConfigChange&ch)
+		{
+			ASSERT__(!eventsLocked);
+			Objects::PAlliance alliance = Objects::Alliance::FindByID(ch.allianceID);
+			if (alliance)
+				alliance->config = ch.flags;
+			else
+				LogEvent(EventClass::Preset::internalError,"Can't find alliance "+ToString(ch.allianceID)+" for config update");
+
+		}
+
+
+
 
 	}
 
@@ -1300,7 +1301,6 @@ namespace Network
 		TCP::Channel<Protocol::StructureConstruction,0,Protocol::ChannelID::InstantiateStructure>	newStructure(Receiver::OnNewStructure);
 		TCP::Channel<Protocol::StructureState,0,Protocol::ChannelID::UpdateStructure>				structureStateUpdate(Receiver::OnStructureState);
 		TCP::Channel<Protocol::DestroyEntity,0,Protocol::ChannelID::DestroyEntity>					destroyEntity(Receiver::DestroyEntity);
-		TCP::Channel<NET(TUniqueID),0,Protocol::ChannelID::SetFactionID>							setFactionID(Receiver::SetFactionID);
 
 		TCP::Channel<Protocol::PhaseChange,0,Protocol::ChannelID::PhaseChange>						phaseChange(Receiver::PhaseChange);
 		TCP::Channel<Protocol::MobileEntityMotion,0,Protocol::ChannelID::MobileEntityMotion>		mobileEntityMotion(Receiver::MobileEntityMotion);
@@ -1365,11 +1365,9 @@ namespace Network
 		TCP::ObjectSender<Protocol::LoadPlanetByName, Protocol::ChannelID::LoadPlanetByName>		loadPlanetByName;
 		TCP::ObjectSender<Protocol::QueueResearch, Protocol::ChannelID::QueueResearch>				queueResearch;
 
-			//	,			//c2s: NET(bool) -> NET(bool)
-			//SetFactionId,		//s2c: NET(TUniqueID)
-		DECLARE_CHANNEL(FactionAllianceChange);
+		DECLARE_CHANNEL(MyFaction);
+		DECLARE_CHANNEL(AllianceConfigChange);
 
-		
 	}
 
 
@@ -1584,7 +1582,8 @@ namespace Network
 		client.InstallChannel(Channels::destroyEntity);
 		client.InstallChannel(Channels::controlMessage);
 		client.InstallChannel(Channels::clientFactionResponse);
-		client.InstallChannel(Channels::setFactionID);
+		client.InstallChannel(Channels::MyFaction);
+		client.InstallChannel(Channels::AllianceConfigChange);
 
 		client.InstallChannel(Channels::phaseChange);
 		client.InstallChannel(Channels::mobileEntityMotion);
@@ -1624,7 +1623,7 @@ namespace Network
 		client.InstallChannel(Channels::Statistics::round);
 		client.InstallChannel(Channels::Statistics::factionInteraction);
 
-		client.InstallChannel(Channels::FactionAllianceChange);
+		
 
 		client.OpenSignalChannel(Protocol::ChannelID::Pong,0);
 		client.OpenSignalChannel(Protocol::ChannelID::BeginGame,0);
@@ -2071,7 +2070,7 @@ void	Network::Receiver::FactionContinuedRound(NET(TUniqueID)&id)
 
 void	Network::Receiver::IdentifyFaction(Protocol::IdentifyFaction&id)
 {
-	Objects::OwnerParameter faction = Network::ResolveFaction(id.id);
+	Objects::OwnerParameter faction = Network::ResolveFaction(id.id, id.allianceID);
 	faction->name = id.name;
 	faction->color = id.color;
 	#ifdef HAS_WINDOW

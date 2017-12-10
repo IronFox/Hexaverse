@@ -11,19 +11,92 @@
 #include "../runtimeConfig.h"
 #include "prototypes.h"
 #include "structure/tower.h"
-
+#include "../protocol.h"
 
 namespace Objects
 {
 
 	/*static*/ const String			Faction::nexusName = "<Nexus>";
 
+	/*static*/ HashTable<TUniqueID,WAlliance>	Alliance::all;
 
+
+	/**/		Alliance::Alliance(const TUniqueID&id) : id(id)
+	{
+		LogEvent(EventSignificance::Debug,"Constructed Alliance "+ToString(id));
+	}
+	/*virtual	*/	Alliance::~Alliance()
+	{
+		if (!application_shutting_down) 
+		{
+			LogEvent(EventSignificance::Debug,"Destructed Alliance "+ToString(id));
+			all.Unset(id);
+		}
+	}
 
 	void		Alliance::ForeachMember(const std::function<void(const PFaction&)>&f)	const
 	{
 		foreach (members,m)
 			f(m->lock());
+	}
+
+	bool		Alliance::IsMember(const PFaction&f) const
+	{
+		foreach (members,m)
+			if (m->lock() == f)
+				return true;
+		return false;
+	}
+
+	void		Alliance::UpdateConfiguration(const TConfig&newCfg)
+	{
+		if (config == newCfg)
+			return;
+		const auto oldCfg = config;
+		config = newCfg;
+
+		if (oldCfg.shareSensors != newCfg.shareSensors)
+		{
+			#ifndef CLIENT
+				this->ForeachMember([](const PFaction&f)
+				{
+					f->knownWorld.InvalidateSensory();
+					f->CheckSensory();
+				});
+			#elif HAS_WINDOW
+				World::actual.InvalidateSensory();
+			#endif
+		}
+
+		#ifndef CLIENT
+			if (oldCfg.exposeEntityDetails != newCfg.exposeEntityDetails)
+				this->ForeachMember([](const PFaction&f)
+				{
+					f->VisitMyEntities([](const PWorldEntity&e)
+					{
+						e->SignalChange(Objects::WorldEntity::CompleteChange,0);
+					});
+				});
+			ApplicationInterface::SignalAllianceConfigChange(shared_from_this());
+		#endif
+
+	}
+
+
+	Alliance::TConfig::TConfig(UINT32 flags):
+								exposeEntityDetails((Protocol::AllianceFlag::ExposeEntityDetails&flags) != 0),
+								shareSensors((Protocol::AllianceFlag::ShareSensors&flags) != 0)
+	{}
+
+
+	UINT32	Alliance::TConfig::ToFlags() const
+	{
+		UINT32	rs = 0;
+		if (exposeEntityDetails)
+			rs |= Protocol::AllianceFlag::ExposeEntityDetails;
+		if (shareSensors)
+			rs |= Protocol::AllianceFlag::ShareSensors;
+		return rs;
 	}
 
 
@@ -36,7 +109,9 @@ namespace Objects
 		LogEvent(EventSignificance::Common,"New member count in alliance "+ToString(id)+": "+String(members.Count()));
 		if (members.Count() == 1)
 			all.Set(id,shared_from_this());
-		ApplicationInterface::SignalAllianceMembershipChange(f);
+		#ifndef CLIENT
+			ApplicationInterface::SignalAllianceMembershipChange(f);
+		#endif
 	}
 
 	void		Alliance::Leave(const PFaction&f)
@@ -128,7 +203,10 @@ namespace Objects
 
 		/*static*/ PFaction				Faction::Create(const TUniqueID&id, const TUniqueID&allianceID, const String&name/* = ""*/)
 		{
-			PFaction rs(new Faction(id, allianceID, name));
+			ASSERT__(id.IsNotEmpty());
+			ASSERT__(allianceID.IsNotEmpty());
+			ASSERT__(id != allianceID);
+			PFaction rs(new Faction(id, name));
 			all << rs;
 
 
@@ -143,7 +221,10 @@ namespace Objects
 
 		void	Faction::RecreateNexus(const TUniqueID&id)
 		{
-			nexus.reset(new Faction(id, TUniqueID::New(), Faction::nexusName,true));
+			nexus.reset(new Faction(id, Faction::nexusName,true));
+			auto alliance = new Alliance(TUniqueID::New());
+			alliance->Join(nexus);
+
 			ApplicationInterface::SignalFactionsChanged();
 		}
 
@@ -499,22 +580,13 @@ namespace Objects
 
 
 
-		void	Faction::ChangeAlliance(const PAlliance&a)
-		{
-			if (alliance == a)
-				return;
-			alliance->Leave(shared_from_this());
-			alliance = a;
-			alliance->Join(shared_from_this());
-		}
-
 
 		void Faction::CheckSensory(float&t)
 		{
 			if (knownWorld.SensoryIsInvalid())
 			{
 				knownWorld.FlushAndValidateSensory();
-				if (alliance->shareSensors)
+				if (alliance->config.shareSensors)
 				{
 					alliance->ForeachMember([this,&t](const PFaction&f)	//includes this
 					{
@@ -528,7 +600,7 @@ namespace Objects
 				Timer::Time started = timer.Now();
 				LogEvent(EventSignificance::PerformanceMeasurement,shared_from_this(),"Computed sensory grid coverage in "+String(timer.GetSecondsSince(started)));
 				started = timer.Now();
-				const bool shareSensors = alliance->shareSensors;
+				const bool shareSensors = alliance->config.shareSensors;
 				ForeachWorldEntity([this,&t,shareSensors](const PWorldEntity&e)
 				{
 					if (e->owner.get() == this)
@@ -1202,6 +1274,35 @@ namespace Objects
 		}
 
 
+		/*static*/ PFaction				Faction::GetOrCreate(const TUniqueID&id, const TUniqueID&allianceID, bool&outAllianceChanged)
+		{
+			{
+				PFaction rs = FindByID(id);
+				if (rs)
+				{
+					if (rs->alliance->id == allianceID)
+						outAllianceChanged = false;
+					else
+					{
+						outAllianceChanged = true;
+						PAlliance newAlliance = Alliance::FindByID(allianceID);
+						if (!newAlliance)
+							newAlliance.reset(new Alliance(allianceID));
+						rs->ChangeAlliance(newAlliance);
+					}
+					return rs;
+				}
+			}
+			outAllianceChanged = true;
+			PAlliance alliance (new Alliance(TUniqueID::New()));
+			PFaction rs(new Faction(id));
+			idMap.Set(id,rs);
+			allKnown << rs;
+			alliance->Join(rs);	//must init temporary unique alliance, since unknown at this point
+			return rs;
+		}
+
+
 		/*static*/ PFaction				Faction::GetOrCreate(const TUniqueID&id)
 		{
 			{
@@ -1209,9 +1310,11 @@ namespace Objects
 				if (rs)
 					return *rs;
 			}
+			PAlliance alliance (new Alliance(TUniqueID::New()));
 			PFaction rs(new Faction(id));
 			idMap.Set(id,rs);
 			allKnown << rs;
+			alliance->Join(rs);	//must init temporary unique alliance, since unknown at this point
 			return rs;
 		}
 
@@ -1263,6 +1366,17 @@ namespace Objects
 
 
 	#endif
+
+	void	Faction::ChangeAlliance(const PAlliance&a)
+	{
+		if (alliance == a)
+			return;
+		alliance->Leave(shared_from_this());
+		alliance = a;
+		alliance->Join(shared_from_this());
+	}
+
+
 
 	void			ForeachFaction(const std::function<void(const PFaction&)>&func, bool includeDead/*=false*/)
 	{
@@ -1900,7 +2014,7 @@ namespace Objects
 	}
 #endif
 
-	void		Faction::InitID(const TUniqueID&toID,const TUniqueID&allianceID,bool nexusFaction)
+	void		Faction::InitID(const TUniqueID&toID,bool nexusFaction)
 	{
 		id = toID;
 		#ifndef CLIENT

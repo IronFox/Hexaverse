@@ -1378,6 +1378,12 @@ namespace Protocol
 		, UINT32, configVersion
 	)
 
+	NETSTRUCT2(MyFaction
+		, TUniqueID, factionID
+		, AllianceConfigChange, alliance
+	)
+		
+
 
 	namespace ChannelID
 	{
@@ -1396,7 +1402,7 @@ namespace Protocol
 
 			Hello,				//c2s: Hello -> s2c: HelloResponse
 			ClientFaction,		//c2s: ClientFactionRequest -> s2c: ClientFactionResponse
-			SetFactionID,		//s2c: NET(TUniqueID)
+			MyFaction,			//s2c: MyFaction
 
 			RequestEverything,	//c2s: <signal> -> [everything] //(only if spectator) 
 			BeginEverything,	//s2c: <signal> //indicates that now everything will be (re)sent
@@ -1468,7 +1474,6 @@ namespace Protocol
 			ChatMessage,		// c2s: NetString<256>
 
 			AllianceConfigChange,	//s2c: AllianceConfigChange
-			AllianceMemberChange,	//s2c: AllianceMemberChange
 			AllianceJoinRequest,	//c2s: AllianceJoinRequest
 
 			VoteCreation,		//s2c: VoteCreation

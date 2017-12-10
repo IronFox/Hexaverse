@@ -24,8 +24,24 @@ namespace ApplicationInterface
 {
 	void	SignalAllianceMembershipChange(const Objects::OwnerParameter&owner)
 	{
-
+		Channels::identifyFaction.SendTo(::Network::server,Network::Identify(owner),Channels::Level::Faction);
 	}
+
+	void	SignalAllianceConfigChange(const Objects::PAlliance&alliance)
+	{
+		Protocol::AllianceConfigChange ch;
+		ch.allianceID = alliance->id;
+		ch.flags = alliance->config.ToFlags();
+		alliance->ForeachMember([ch](const Objects::PFaction&f)
+		{
+			Network::PClient client;
+			if (Network::playerMap.Query(f,client))
+			{
+				Channels::AllianceConfigChange.SendTo(client->peer.lock(),ch);
+			}
+		});
+	}
+
 
 }
 

@@ -615,10 +615,8 @@ namespace Test
 		ASSERT_EQUAL__(Objects::vehicles.Count(), 0);
 
 
-		Objects::PFaction faction0(new Objects::Faction(TUniqueID::Empty())),
-							faction1(new Objects::Faction(TUniqueID::Empty()));
-
-		Objects::Faction::all << faction0 << faction1;
+		Objects::PFaction	faction0 = Objects::Faction::Create(TUniqueID::New(),TUniqueID::New()),
+							faction1 = Objects::Faction::Create(TUniqueID::New(),TUniqueID::New());
 
 		//Objects::PTower prototype = To<Objects::Tower>::DynamicCast( Objects::GetPrototypeByName(ConstName::Type_ArtilleryTower));
 
@@ -919,8 +917,7 @@ namespace Test
 		Grid::TPlanetConfig	config;
 		GlobalEvents::FlushObjects();
 
-		Objects::PFaction faction(new Objects::Faction(TUniqueID::Empty()));
-		Objects::Faction::all << faction;
+		Objects::PFaction	faction = Objects::Faction::Create(TUniqueID::New(),TUniqueID::New());
 
 		Grid::LCellIdI	mineAt(0, 1);
 		const auto&n = Grid::low.grid.GetCell(mineAt.stackID).neighborhood;
@@ -1016,7 +1013,7 @@ namespace Test
 		Grid::TPlanetConfig	config;
 		GlobalEvents::FlushObjects();
 
-		Objects::PFaction faction  = Objects::Faction::Create(TUniqueID::Empty(),"Test:VehiclePlant");
+		Objects::PFaction	faction = Objects::Faction::Create(TUniqueID::New(),TUniqueID::New(),"Test:VehiclePlant");
 
 		Grid::LCellIdI	mineAt(0, 1);
 		const auto&n = Grid::low.grid.GetCell(mineAt.stackID).neighborhood;
@@ -1404,7 +1401,7 @@ namespace Test
 			World::actual.FlushAllChanges();
 			World::initial = World::actual;
 
-			Objects::PFaction faction = Objects::Faction::Create(TUniqueID::Empty(), "Test:Terrain");	//makes World::initial copy
+			Objects::PFaction	faction = Objects::Faction::Create(TUniqueID::New(),TUniqueID::New(),"Test:Terrain");	//makes World::initial copy
 			ASSERT__(!faction->knownWorld.SensoryIsInvalid());
 
 			const auto strucLoc = Grid::LCellIdI(random.Next(Grid::LowSetup::GridType::CellCount - 1), 0);

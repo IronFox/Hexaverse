@@ -28,6 +28,15 @@ namespace Receiver
 		Game::Vote::CastVote(vote.voteID,client->faction,vote.inFavor);
 	}
 
+	static Game::Vote::FScope AllianceScope(const Objects::PAlliance&a)
+	{
+		TUniqueID tID = a->id;
+		return [tID](const Objects::PFaction&f)
+		{
+			return f->alliance->id == tID;
+		};
+	}
+
 	void	AllianceConfigChange(Protocol::AllianceConfigChange&ch, TCP::Peer&peer)
 	{
 		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
@@ -48,9 +57,22 @@ namespace Receiver
 			LogEvent(EventClass::Preset::commandRejected,peer,"Access denied. You are not a member of alliance "+ch.allianceID.ToNiceString());
 			return;
 		}
+		if (ch.flags == target->config.ToFlags())
+			return;	//nothing to change
 
-
-
+		auto cfg = Objects::Alliance::TConfig(ch.flags);
+		Game::PVote v = Game::Vote::CreateNew(target->id,
+			"Change Alliance configuration to "+ToString(cfg)+"?",
+			120,
+			AllianceScope(target),
+			[cfg](const Game::PVote&v)
+			{
+				auto a = Objects::Alliance::FindByID(v->concerning[0]);
+				a->UpdateConfiguration(cfg);
+			}
+		);
+		if (v)
+			v->clearedAfterSeconds = v->closingAfterSeconds+10;	//make sure the vote does not remain more than 10 seconds
 
 	}
 
@@ -81,7 +103,11 @@ namespace Receiver
 		}
 
 		TUniqueID ids[] = {client->faction->id, target->id };
-		Game::PVote v = Game::Vote::CreateNew(ArrayRef<TUniqueID>( ids,2),client->faction->name+ " would like to join your alliance. What do you say?", 120,target,[](const Game::PVote&v)
+		Game::PVote v = Game::Vote::CreateNew(ArrayRef<TUniqueID>( ids,2),
+			"Allow "+client->faction->name+ " to join your alliance?", 
+			120,
+			AllianceScope(target),
+			[](const Game::PVote&v)
 			{
 				auto a = Objects::Alliance::FindByID(v->concerning[1]);
 				auto f = Objects::Faction::FindByID(v->concerning[0]);
@@ -107,7 +133,7 @@ namespace Channels
 {
 
 	#undef DECLARE_FACTION_CHANNEL
-	#define	DECLARE_FACTION_CHANNEL(NAME)	TCP::Channel<Protocol::NAME,FactionLevel,Protocol::ChannelID::NAME>	NAME(Receiver::NAME);
+	#define	DECLARE_FACTION_CHANNEL(NAME)	TCP::Channel<Protocol::NAME,Level::Faction,Protocol::ChannelID::NAME>	NAME(Receiver::NAME);
 	#undef DECLARE_OBJECT_SENDER
 	#define	DECLARE_OBJECT_SENDER(NAME)	TCP::ObjectSender<Protocol::NAME,Protocol::ChannelID::NAME>	NAME;
 
@@ -117,34 +143,34 @@ namespace Channels
 
 
 	TCP::Channel<Protocol::Hello, 0,Protocol::ChannelID::Hello>												hello(Receiver::Hello);
-	TCP::Channel<Protocol::EntityDirectCommand, FactionLevel, Protocol::ChannelID::EntityDirectCommand>		entityDirectCommand(Receiver::EntityDirectCommand);
-	TCP::Channel<Protocol::ChoiceIntersection, FactionLevel, Protocol::ChannelID::ChoiceIntersection>		choiceIntersection(Receiver::ChoiceIntersection);
-	TCP::Channel<Protocol::DropTasks, FactionLevel, Protocol::ChannelID::DropTasks>							dropTasks(Receiver::DropTasks);
+	TCP::Channel<Protocol::EntityDirectCommand, Level::Faction, Protocol::ChannelID::EntityDirectCommand>	entityDirectCommand(Receiver::EntityDirectCommand);
+	TCP::Channel<Protocol::ChoiceIntersection, Level::Faction, Protocol::ChannelID::ChoiceIntersection>		choiceIntersection(Receiver::ChoiceIntersection);
+	TCP::Channel<Protocol::DropTasks, Level::Faction, Protocol::ChannelID::DropTasks>						dropTasks(Receiver::DropTasks);
 
-	TCP::Channel<Protocol::StandardJob, FactionLevel, Protocol::ChannelID::SignalNewJob>					signalNewJob(Receiver::SignalNewJob);
-	TCP::Channel<Protocol::TerrainMod, FactionLevel, Protocol::ChannelID::SignalTerrainMod>					signalTerrainMod(Receiver::SignalTerrainMod);
-	TCP::Channel<Protocol::ConstructionAbort, FactionLevel, Protocol::ChannelID::ConstructionAbort>			constructionAbort(Receiver::ConstructionAbort);
-	TCP::Channel<Protocol::ConstructionBegin, FactionLevel, Protocol::ChannelID::ConstructionBegin>			constructionBegin(Receiver::ConstructionBegin);
-	TCP::Channel<Protocol::EnableStructure, FactionLevel, Protocol::ChannelID::EnableStructure>				enableStructure(Receiver::EnableStructure);
-	TCP::Channel<Protocol::ClientFactionRequest, PreFaction, Protocol::ChannelID::ClientFaction>			clientFactionRequest(Receiver::ClientFaction);
+	TCP::Channel<Protocol::StandardJob, Level::Faction, Protocol::ChannelID::SignalNewJob>					signalNewJob(Receiver::SignalNewJob);
+	TCP::Channel<Protocol::TerrainMod, Level::Faction, Protocol::ChannelID::SignalTerrainMod>				signalTerrainMod(Receiver::SignalTerrainMod);
+	TCP::Channel<Protocol::ConstructionAbort, Level::Faction, Protocol::ChannelID::ConstructionAbort>		constructionAbort(Receiver::ConstructionAbort);
+	TCP::Channel<Protocol::ConstructionBegin, Level::Faction, Protocol::ChannelID::ConstructionBegin>		constructionBegin(Receiver::ConstructionBegin);
+	TCP::Channel<Protocol::EnableStructure, Level::Faction, Protocol::ChannelID::EnableStructure>			enableStructure(Receiver::EnableStructure);
+	TCP::Channel<Protocol::ClientFactionRequest, Level::PreFaction, Protocol::ChannelID::ClientFaction>		clientFactionRequest(Receiver::ClientFaction);
 	
-	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::RestoreCoreLink>						restoreCoreLink(Receiver::RestoreCoreLink);
-	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::RemoveEntity>							removeEntity(Receiver::RemoveEntity);
-	TCP::Channel<Protocol::EntityStateUpdate, FactionLevel, Protocol::ChannelID::Automate>					automate(Receiver::Automate);
-	TCP::Channel<Protocol::EntityStateUpdate, FactionLevel, Protocol::ChannelID::Sleep>						sleep(Receiver::Sleep);
-	TCP::Channel<Protocol::Marker, FactionLevel, Protocol::ChannelID::CreateMarker>							createMarker(Receiver::CreateMarker);
-	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::DestroyMarker>							destroyMarker(Receiver::DestroyMarker);
-	TCP::Channel<Protocol::TouchedMarker, FactionLevel, Protocol::ChannelID::TouchMarker>					touchMarker(Receiver::TouchMarker);
-	TCP::Channel<Protocol::ClientName,FactionLevel,Protocol::ChannelID::ChangeMyName>						changeMyName(Receiver::ChangeMyName);
-	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::IdentifyFaction>						identifyFactionRecv(Receiver::IdentifyFaction);
-	TCP::Channel<Protocol::QueueResearch, FactionLevel, Protocol::ChannelID::QueueResearch>					queueResearch(Receiver::QueueResearch);
-	TCP::Channel<Package::NetString<256>, FactionLevel, Protocol::ChannelID::ChatMessage>					chatMessage(Receiver::ChatMessage);
-	TCP::Channel<Grid::ExtendedPlanetConfig, Configurator, Protocol::ChannelID::PlanetConfig>				planetConfig(Receiver::PlanetConfig);
-	TCP::Channel<Protocol::GameConfig, Configurator, Protocol::ChannelID::GameConfig>						gameConfig(Receiver::GameConfig);
-	TCP::Channel<Protocol::ResourceID, PreFaction, Protocol::ChannelID::RequestResource>				requestResource(Receiver::RequestResource);
-	TCP::Channel<Protocol::LoadPlanetByName, Configurator, Protocol::ChannelID::LoadPlanetByName>		loadPlanetByName(Receiver::LoadPlanetByName);
+	TCP::Channel<NET(TUniqueID), Level::Faction, Protocol::ChannelID::RestoreCoreLink>						restoreCoreLink(Receiver::RestoreCoreLink);
+	TCP::Channel<NET(TUniqueID), Level::Faction, Protocol::ChannelID::RemoveEntity>							removeEntity(Receiver::RemoveEntity);
+	TCP::Channel<Protocol::EntityStateUpdate, Level::Faction, Protocol::ChannelID::Automate>				automate(Receiver::Automate);
+	TCP::Channel<Protocol::EntityStateUpdate, Level::Faction, Protocol::ChannelID::Sleep>					sleep(Receiver::Sleep);
+	TCP::Channel<Protocol::Marker, Level::Faction, Protocol::ChannelID::CreateMarker>						createMarker(Receiver::CreateMarker);
+	TCP::Channel<NET(TUniqueID), Level::Faction, Protocol::ChannelID::DestroyMarker>						destroyMarker(Receiver::DestroyMarker);
+	TCP::Channel<Protocol::TouchedMarker, Level::Faction, Protocol::ChannelID::TouchMarker>					touchMarker(Receiver::TouchMarker);
+	TCP::Channel<Protocol::ClientName,Level::Faction,Protocol::ChannelID::ChangeMyName>						changeMyName(Receiver::ChangeMyName);
+	TCP::Channel<NET(TUniqueID), Level::Faction, Protocol::ChannelID::IdentifyFaction>						identifyFactionRecv(Receiver::IdentifyFaction);
+	TCP::Channel<Protocol::QueueResearch, Level::Faction, Protocol::ChannelID::QueueResearch>				queueResearch(Receiver::QueueResearch);
+	TCP::Channel<Package::NetString<256>, Level::Faction, Protocol::ChannelID::ChatMessage>					chatMessage(Receiver::ChatMessage);
+	TCP::Channel<Grid::ExtendedPlanetConfig, Level::Configurator, Protocol::ChannelID::PlanetConfig>		planetConfig(Receiver::PlanetConfig);
+	TCP::Channel<Protocol::GameConfig, Level::Configurator, Protocol::ChannelID::GameConfig>				gameConfig(Receiver::GameConfig);
+	TCP::Channel<Protocol::ResourceID, Level::PreFaction, Protocol::ChannelID::RequestResource>				requestResource(Receiver::RequestResource);
+	TCP::Channel<Protocol::LoadPlanetByName, Level::Configurator, Protocol::ChannelID::LoadPlanetByName>	loadPlanetByName(Receiver::LoadPlanetByName);
 	
-	TCP::Channel<NET(INT32),FactionLevel,Protocol::ChannelID::TutorialAt>							tutorialAt(Receiver::TutorialAt);
+	TCP::Channel<NET(INT32),Level::Faction,Protocol::ChannelID::TutorialAt>							tutorialAt(Receiver::TutorialAt);
 
 
 	TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>			clientFactionResponse;
@@ -161,7 +187,6 @@ namespace Channels
 	TCP::ObjectSender<Protocol::StructureState,Protocol::ChannelID::UpdateStructure>				setStructureState;
 	TCP::ObjectSender<Protocol::DestroyEntity,Protocol::ChannelID::DestroyEntity>					destroyEntity;
 	TCP::ObjectSender<Protocol::ControlMessage,Protocol::ChannelID::ControlMessage>					controlMessage;
-	TCP::ObjectSender<NET(TUniqueID),Protocol::ChannelID::SetFactionID>								setFactionID;
 	TCP::ObjectSender<Protocol::PhaseChange,Protocol::ChannelID::PhaseChange>						phaseChange;
 	TCP::ObjectSender<Protocol::ResourceUpdate,Protocol::ChannelID::ResourceUpdate>					resourceUpdate;
 	TCP::ObjectSender<Protocol::GameProgress,Protocol::ChannelID::GameProgress>						gameProgress;
@@ -192,6 +217,7 @@ namespace Channels
 	DECLARE_FACTION_CHANNEL(AllianceJoinRequest);
 	DECLARE_FACTION_CHANNEL(AllianceConfigChange);
 	
+	DECLARE_OBJECT_SENDER(MyFaction);
 
 	namespace Statistics
 	{
@@ -684,7 +710,13 @@ namespace Receiver
 			response.startFactionTypes |= Protocol::FactionType::NexusFaction;
 
 		Channels::clientFactionResponse.SendTo(client->peer.lock(),response);
-		Channels::setFactionID.SendTo(client->peer.lock(),client->faction->id);
+		{
+			Protocol::MyFaction faction;
+			faction.alliance.allianceID = client->faction->alliance->id;
+			faction.alliance.flags = client->faction->alliance->config.ToFlags();
+			faction.factionID = client->faction->id;
+			Channels::MyFaction.SendTo(client->peer.lock(),faction);
+		}
 		if (RuntimeConfig::tutorialMode)
 			Channels::tutorialAt.SendTo(client->peer.lock(),Game::tutorialAt);
 		//CHEAT_SHOW_ALL_RESOURCES
@@ -818,7 +850,7 @@ namespace Receiver
 
 			client->faction->alliance->ForeachMember([client,&peer,timestamp](const Objects::PFaction&other)
 			{
-				SendEntitiesTo(other, peer,client->faction->alliance->exposeEntityDetails,timestamp);
+				SendEntitiesTo(other, peer,client->faction->alliance->config.exposeEntityDetails,timestamp);
 			});
 			SendEntitiesTo(client->faction,peer,true,timestamp);
 		}
@@ -833,7 +865,7 @@ namespace Receiver
 		{
 			//broadcast name and state
 
-			Channels::identifyFaction.SendTo(Network::server,Network::Identify(client->faction),Channels::FactionLevel);
+			Channels::identifyFaction.SendTo(Network::server,Network::Identify(client->faction),Channels::Level::Faction);
 			Channels::factionOnline.SendTo(Network::server,client->faction->id,2);
 
 		}
@@ -844,6 +876,8 @@ namespace Receiver
 		LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ),faction->name+" connected");
 
 		SendSessionConfigTo(peer,client->faction);
+
+		Game::Vote::AdvertiseAllToNewlyConnectedPeer(client->faction,peer);
 		
 		peer.SendSignal(Protocol::ChannelID::BeginGame);
 	}
@@ -1141,7 +1175,7 @@ namespace Receiver
 
 		if (cl->faction)
 		{
-			Channels::identifyFaction.SendTo(Network::server,Network::Identify(cl->faction),Channels::FactionLevel);
+			Channels::identifyFaction.SendTo(Network::server,Network::Identify(cl->faction),Channels::Level::Faction);
 			LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ), peer, "User renamed to '"+cl->name+"'");
 		}
 	}

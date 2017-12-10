@@ -1,6 +1,6 @@
 #pragma once
 #include <globalEvents.h>
-
+#include <objects/types.h>
 
 namespace GlobalEvents
 {
@@ -11,6 +11,6 @@ namespace GlobalEvents
 
 	extern Observable<bool>	onFullscreenChange;
 
-
+	extern Observable<Objects::PFaction&>	onAllianceChange;
 }
 

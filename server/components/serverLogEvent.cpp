@@ -53,7 +53,7 @@ namespace Logging
 		{
 			out.isPrivate = false;
 			out.message.Truncate(out.message.MaxSize);
-			Channels::controlMessage.SendTo(Network::server,out,Channels::FactionLevel);
+			Channels::controlMessage.SendTo(Network::server,out,Channels::Level::Faction);
 		}
 	}
 }
