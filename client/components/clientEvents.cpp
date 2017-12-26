@@ -12,6 +12,7 @@ namespace GlobalEvents
 
 	Observable<bool>	onFullscreenChange;
 
-	Observable<Objects::PFaction&>	onAllianceChange;
+	Observable<const Objects::PFaction&>	onAllianceChange;
+	Observable<const PVote&> voteCreated, voteClosed,voteCast;
 }
 

@@ -2,6 +2,9 @@
 #include <globalEvents.h>
 #include <objects/types.h>
 
+DECLARE_POINTER_CLASS(Vote);
+
+
 namespace GlobalEvents
 {
 	extern Observable<>	frameBegin,
@@ -11,6 +14,7 @@ namespace GlobalEvents
 
 	extern Observable<bool>	onFullscreenChange;
 
-	extern Observable<Objects::PFaction&>	onAllianceChange;
+	extern Observable<const Objects::PFaction&>	onAllianceChange;
+	extern Observable<const PVote&> voteCreated, voteClosed, voteCast;
 }
 

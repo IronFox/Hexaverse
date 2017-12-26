@@ -24,6 +24,7 @@
 #include "clientEvents.h"
 #include "visual/hud/guiHostList.h"
 #include "visual/hud/eventLog.h"
+#include "voting.h"
 
 
 //#define DEBUG_SERVER_LIST	//enable to generate very long artificial server list
@@ -1279,7 +1280,28 @@ namespace Network
 
 		}
 
+		void	VoteCreation(Protocol::VoteCreation&vote)
+		{
+			Vote::Create(vote.voteID,vote.remainingSeconds,vote.phrase);
+		}
 
+		void	VoteResult(Protocol::VoteResult&result)
+		{
+			auto v = Vote::FindByID(result.voteID);
+			if (!v)
+			{
+				LogEvent(EventSignificance::NonFatalError,"Unable to find vote "+ToString(result.voteID));
+				return;
+			}
+			Vote::TOutcome outcome;
+			outcome.eligibleToVote = result.eligibleToVote;
+			outcome.quorum = result.quorum;
+			outcome.result = (Protocol::VoteResultType::T)result.resultType;
+			outcome.votedAgainst = result.votedAgainst;
+			outcome.votedInFavor = result.votedInFavor;
+
+			v->Close(outcome);
+		}
 
 
 	}
@@ -1289,6 +1311,8 @@ namespace Network
 	{
 		#undef DECLARE_CHANNEL
 		#define	DECLARE_CHANNEL(NAME)	TCP::Channel<Protocol::NAME,0,Protocol::ChannelID::NAME>	NAME(Receiver::NAME);
+		#undef DECLARE_OBJECT_SENDER
+		#define	DECLARE_OBJECT_SENDER(NAME)	TCP::ObjectSender<Protocol::NAME,Protocol::ChannelID::NAME>	NAME;
 
 		TCP::Channel<Protocol::ControlMessage,0,Protocol::ChannelID::ControlMessage>				controlMessage(Receiver::ControlMessage);
 
@@ -1367,6 +1391,9 @@ namespace Network
 
 		DECLARE_CHANNEL(MyFaction);
 		DECLARE_CHANNEL(AllianceConfigChange);
+		DECLARE_CHANNEL(VoteCreation);
+		DECLARE_CHANNEL(VoteResult);
+		DECLARE_OBJECT_SENDER(ClientVote);
 
 	}
 
@@ -1584,6 +1611,8 @@ namespace Network
 		client.InstallChannel(Channels::clientFactionResponse);
 		client.InstallChannel(Channels::MyFaction);
 		client.InstallChannel(Channels::AllianceConfigChange);
+		client.InstallChannel(Channels::VoteCreation);
+		client.InstallChannel(Channels::VoteResult);
 
 		client.InstallChannel(Channels::phaseChange);
 		client.InstallChannel(Channels::mobileEntityMotion);

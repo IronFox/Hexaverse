@@ -3609,6 +3609,8 @@ int main( int argc, const char* argv[])
 			Loading::Stage("Window Stack",HUD::WindowStack::Create);
 			Loading::Stage("Dialogs",HUD::Dialog::Create);
 			Loading::Stage("HostList",HUD::HostList::Create);
+			Loading::Stage("Voting",Vote::StaticCreate);
+			Loading::Stage("VoteList",HUD::VoteList::Create);
 		#endif
 
 		Loading::Stage("Client Grid",ClientGrid::Create);

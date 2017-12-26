@@ -1107,7 +1107,7 @@ namespace Protocol
 
 	namespace VoteResultType
 	{
-		enum change_t
+		enum T
 		{
 			Passed,
 			Rejected,
@@ -1473,7 +1473,7 @@ namespace Protocol
 
 			ChatMessage,		// c2s: NetString<256>
 
-			AllianceConfigChange,	//s2c: AllianceConfigChange
+			AllianceConfigChange,	//both: AllianceConfigChange
 			AllianceJoinRequest,	//c2s: AllianceJoinRequest
 
 			VoteCreation,		//s2c: VoteCreation

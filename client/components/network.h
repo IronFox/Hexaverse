@@ -212,6 +212,8 @@ namespace Network
 	
 	#undef DECLARE_CHANNEL
 	#define	DECLARE_CHANNEL(NAME)	extern TCP::Channel<Protocol::NAME,0,Protocol::ChannelID::NAME>	NAME;
+	#undef DECLARE_OBJECT_SENDER
+	#define	DECLARE_OBJECT_SENDER(NAME)	extern TCP::ObjectSender<Protocol::NAME,Protocol::ChannelID::NAME>	NAME;
 
 	namespace Channels
 	{
@@ -289,6 +291,9 @@ namespace Network
 
 		DECLARE_CHANNEL(MyFaction);
 		DECLARE_CHANNEL(AllianceConfigChange);
+		DECLARE_CHANNEL(VoteCreation);
+		DECLARE_CHANNEL(VoteResult);
+		DECLARE_OBJECT_SENDER(ClientVote);
 	}
 
 

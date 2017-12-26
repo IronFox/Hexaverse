@@ -468,14 +468,25 @@ namespace HexGrid
 									}
 
 
+		static void VoteRefresh(const PVote&)
+		{
+			RefreshButtonState();
+		}
+
 		void Create()
 		{
 			commands << PIcon( new TutorialCommand() );
+			commands << PIcon( new VoteCommand() );
 
 			commands << PIcon( new DemolishCommand() );
 			commands << PIcon( new SleepCommand() );
 			commands << PIcon( new AbortCommand() );
 			commands << PIcon( new UndoCommand() );
+
+
+			GlobalEvents::voteCast << VoteRefresh;
+			GlobalEvents::voteClosed << VoteRefresh;
+			GlobalEvents::voteCreated << VoteRefresh;
 
 		}
 
