@@ -87,15 +87,8 @@ namespace Dialog
 
 			HUD::Component::PPanel	textPanel(new HUD::Component::Panel());
 			HUD::Component::PLabel textField(new HUD::Component::Label());
+			textField->Anchor().FillHorizontally().Top();
 			textPanel->AddComponent(textField);
-			{
-				auto cfg = textField->GetAnchorConfig();
-				cfg.GetHAxis().Fill();
-				cfg.GetVAxis().AnchorUpper(HUD::Component::Distance::Unknown);
-				textField->SetAnchorConfig(cfg);
-				textPanel->SetAnchorConfig(cfg);
-			}
-			textPanel->SetAutomaticHeight(true);
 			dialog->AddComponent(textPanel);
 			
 			//height controlled by content

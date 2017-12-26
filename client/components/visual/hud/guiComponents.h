@@ -1228,7 +1228,7 @@ namespace Component
 		*/
 		float			maxHeight = 0.8f;
 	public:
-		/**/			Panel()	{topOpacity = 0.75f; bottomOpacity = 0.75f;}
+		/**/			Panel()	{topOpacity = 0.75f; bottomOpacity = 0.75f; Anchor().FillHorizontally().Top();}
 		bool			DeterminesHeightAutomatically() const {return autoHeight;}
 		void			SetAutomaticHeight(bool b);
 		float			GetAutoHeightSpacing() const {return autoHeightSpacing;}
@@ -1317,7 +1317,7 @@ namespace Component
 
 
 	private:
-		bool			autoHeight = false;
+		bool			autoHeight = true;
 
 
 	};
