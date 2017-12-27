@@ -780,7 +780,8 @@ namespace Objects
 		/*virtual override*/	void			Construct::Serialize(IWriteStream&outStream) const 
 		{
 			outStream.Write(useID.bytes,(serial_size_t)useID.NumBytes);
-			SerialSync(outStream,constructWhat->GetTypeName());
+			using Serialization::Serialize;
+			Serialize(outStream,constructWhat->GetTypeName());
 		}
 
 
@@ -794,7 +795,8 @@ namespace Objects
 			}
 			else
 				useID.Generate();
-			SerialSync(inStream,whatName);
+			using Serialization::Deserialize;
+			Deserialize(inStream,whatName);
 
 			constructWhat = Prototypes::structures.FindByName(whatName);
 			if (!constructWhat)
@@ -1067,7 +1069,8 @@ namespace Objects
 				String dummy;
 				inStream.ReadPrimitive(lastLocation);
 				inStream.ReadPrimitive(first);
-				SerialSync(inStream,dummy);
+				using Serialization::Deserialize;
+				Deserialize(inStream,dummy);
 				Super::Deserialize(inStream);
 				return;
 			}

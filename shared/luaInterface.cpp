@@ -1077,8 +1077,8 @@ namespace Lua
 			case LUA_TSTRING:  /* strings */
 			{
 				String str;
-				using Serialization::SerialSync;
-				SerialSync(stream,str);
+				using Serialization::Deserialize;
+				Deserialize(stream,str);
 				lua_pushstring(state,str.c_str());
 			}
 			break;

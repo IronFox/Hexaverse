@@ -1711,7 +1711,8 @@ namespace Objects
 			{
 				s.WritePrimitive(this->referenceEntity);
 				s.WritePrimitive(this->referenceEntityOwner);
-				SerialSync(s,ToString(referencedType));
+				using Serialization::Serialize;
+				Serialize(s,ToString(referencedType));
 			}
 		}
 		/*virtual override*/	void		Marker::Deserialize(IReadStream&inStream)
@@ -1733,7 +1734,8 @@ namespace Objects
 				}
 				else
 					this->referenceEntityOwner = TUniqueID::Empty();
-				SerialSync(inStream,t0);
+				using Serialization::Deserialize;
+				Deserialize(inStream,t0);
 				this->referencedType = DecodeType(t0);
 				//this->referenceEntityType.Deserialize(inStream, fixedSize);
 			}

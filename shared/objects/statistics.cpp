@@ -66,7 +66,7 @@ namespace Objects
 	}
 
 
-	void			SerialSync(IWriteStream&s, const Statistics::MetricTable&m)
+	void			Serialize(IWriteStream&s, const Statistics::MetricTable&m)
 	{
 		s.WriteSize(m.map.Count());
 		m.map.VisitAllEntries([&s](Statistics::MetricTable::K key, UINT64 value)
@@ -79,7 +79,7 @@ namespace Objects
 		});
 	}
 
-	void			SerialSync(IReadStream&s, Statistics::MetricTable&m)
+	void			Deserialize(IReadStream&s, Statistics::MetricTable&m)
 	{
 		count_t entries = 0;
 		s.ReadSize(entries);
@@ -170,59 +170,59 @@ namespace Objects
 
 	/*virtual override*/	void					Statistics::FactionInteraction::Serialize(IWriteStream&s) const
 	{
-		using Serialization::SerialSync;
+		using Serialization::Serialize;
 		s.Write(remoteID.bytes,remoteID.NumBytes);
-		SerialSync(s,metrics);
+		Serialize(s,metrics);
 	}
 
 	/*virtual override*/	void					Statistics::FactionInteraction::Deserialize(IReadStream&s)
 	{
-		using Serialization::SerialSync;
+		using Serialization::Deserialize;
 		s.Read(remoteID.bytes,remoteID.NumBytes);
-		SerialSync(s,metrics);
+		Deserialize(s,metrics);
 	}
 
 
 	/*virtual override*/	void					Statistics::EntityType::Serialize(IWriteStream&s) const
 	{
-		using Serialization::SerialSync;
+		using Serialization::Serialize;
 		if (statisticsInNetworkMode)
-			SerialSync(s,type);
+			Serialize(s,type);
 		else
-			SerialSync(s,ToString(type));
-		SerialSync(s,metrics);
+			Serialize(s,ToString(type));
+		Serialize(s,metrics);
 	}
 
 	/*virtual override*/	void					Statistics::EntityType::Deserialize(IReadStream&s)
 	{
-		using Serialization::SerialSync;
+		using Serialization::Deserialize;
 		if (statisticsInNetworkMode)
-			SerialSync(s,type);
+			Deserialize(s,type);
 		else
 		{
 			String str;
-			SerialSync(s,str);
+			Deserialize(s,str);
 			type = DecodeType(str);
 		}
-		SerialSync(s,metrics);
+		Deserialize(s,metrics);
 	}
 
 	/*virtual override*/	void					Statistics::Round::Serialize(IWriteStream&s) const
 	{
-		using Serialization::SerialSync;
-		SerialSync(s,production);
-		SerialSync(s,consumption);
-		SerialSync(s,metrics);
-		SerialSync(s,mainRound);
+		using Serialization::Serialize;
+		Serialize(s,production);
+		Serialize(s,consumption);
+		Serialize(s,metrics);
+		Serialize(s,mainRound);
 	}
 
 	/*virtual override*/	void					Statistics::Round::Deserialize(IReadStream&s)
 	{
-		using Serialization::SerialSync;
-		SerialSync(s,production);
-		SerialSync(s,consumption);
-		SerialSync(s,metrics);
-		SerialSync(s,mainRound);
+		using Serialization::Deserialize;
+		Deserialize(s,production);
+		Deserialize(s,consumption);
+		Deserialize(s,metrics);
+		Deserialize(s,mainRound);
 	}
 
 

@@ -452,9 +452,9 @@ namespace FileIO
 	template <typename T>
 	void SetSerialData(Riff::Chunk&chunk,const T&object)
 	{
-		using Serialization::SerialSync;
+		using Serialization::Serialize;
 		SerialSizeScanner scanner;
-		SerialSync(scanner,object);
+		Serialize(scanner,object);
 		if (scanner.GetTotalSize())
 			SerializeToCompactMemory(object,chunk.SetData(scanner.GetTotalSize()),scanner.GetTotalSize());
 	}
@@ -693,12 +693,12 @@ namespace FileIO
 	};
 
 
-	void	SerialSync(IReadStream&s, MobileEntityFlag&v)
+	void	Deserialize(IReadStream&s, MobileEntityFlag&v)
 	{
 		s.ReadPrimitive((UINT16&)v);
 	}
 
-	void	SerialSync(IWriteStream&s, MobileEntityFlag v)
+	void	Serialize(IWriteStream&s, MobileEntityFlag v)
 	{
 		s.WritePrimitive((UINT16)v);
 	}
@@ -1043,11 +1043,11 @@ namespace FileIO
 			const count_t elements = chunk.size() / 5;
 			typeArray.SetSize(elements);
 			MemReadStream stream(chunk.pointer(),chunk.size());
-			using Serialization::SerialSync;
+			using Serialization::Deserialize;
 			for (index_t i = 0; i < elements; i++)
 			{
-				SerialSync(stream,typeArray[i].repitition);
-				SerialSync(stream,typeArray[i].value);
+				Deserialize(stream,typeArray[i].repitition);
+				Deserialize(stream,typeArray[i].value);
 			}
 		}
 		else

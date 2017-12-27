@@ -162,11 +162,11 @@ struct TUniqueID
 		return CompareTo(other) >= 0;
 	}
 
-	friend void SerialSync(IWriteStream&s, const TUniqueID&v)
+	friend void Serialize(IWriteStream&s, const TUniqueID&v)
 	{
 		s.Write(v.bytes,v.NumBytes);
 	}
-	friend void SerialSync(IReadStream&s, TUniqueID&v)
+	friend void Deserialize(IReadStream&s, TUniqueID&v)
 	{
 		s.Read(v.bytes,v.NumBytes);
 	}
@@ -285,11 +285,11 @@ public:
 		Bin2Str::Convert(bytes, sizeof(bytes), source);
 	}
 
-	friend void SerialSync(IWriteStream&s, const Self&v)
+	friend void Serialize(IWriteStream&s, const Self&v)
 	{
 		s.Write(v.bytes,sizeof(v.bytes));
 	}
-	friend void SerialSync(IReadStream&s, Self&v)
+	friend void Deserialize(IReadStream&s, Self&v)
 	{
 		s.Read(v.bytes,sizeof(v.bytes));
 	}

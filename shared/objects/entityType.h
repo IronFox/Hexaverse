@@ -78,19 +78,21 @@ namespace Objects
 			return HasTurret() && IsVehicleBase(baseType);
 		}
 
-		friend void SerialSync(DeltaWorks::IReadStream&s, EntityType&v)
+		friend void Deserialize(DeltaWorks::IReadStream&s, EntityType&v)
 		{
-			SerialSync(s,v.baseType);
+			using Serialization::Deserialize;
+			Deserialize(s,v.baseType);
 			if (BaseRequiresTurret(v.baseType))
-				SerialSync(s,v.turretType);
+				Deserialize(s,v.turretType);
 			else
 				v.turretType = ConstName::Empty;
 		}
-		friend void SerialSync(DeltaWorks::IWriteStream&s, EntityType v)
+		friend void Serialize(DeltaWorks::IWriteStream&s, EntityType v)
 		{
-			SerialSync(s,v.baseType);
+			using Serialization::Serialize;
+			Serialize(s,v.baseType);
 			if (BaseRequiresTurret(v.baseType))
-				SerialSync(s,v.turretType);
+				Serialize(s,v.turretType);
 		}
 	};
 

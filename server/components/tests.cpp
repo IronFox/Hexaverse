@@ -64,14 +64,15 @@ namespace Test
 	{
 		testContainer.Clear();
 		
-		using DeltaWorks::Serialization::SerialSync;
-		SerialSync(testContainer,serializable);
+		using DeltaWorks::Serialization::Deserialize;
+		using DeltaWorks::Serialization::Serialize;
+		Serialize(testContainer,serializable);
 		
 
 		
 
 		Serializable copy;
-		SerialSync(ByteReadStream(testContainer.GetWrittenData()),copy);
+		Deserialize(ByteReadStream(testContainer.GetWrittenData()),copy);
 		if (serializable != copy)
 			throw Except::Memory::SerializationFault(CLOCATION,"Serialization/deserialization of type "+String(typeid(serializable).name())+" failed. Deserialized data does not match original data");
 	}
