@@ -336,7 +336,10 @@ namespace Network
 		server.InstallChannel(Channels::requestResource);
 		server.InstallChannel(Channels::loadPlanetByName);
 		server.InstallChannel(Channels::tutorialAt);
+
 		server.InstallChannel(Channels::AllianceJoinRequest);
+		server.InstallChannel(Channels::ClientVote);
+		server.InstallChannel(Channels::AllianceConfigChange);
 
 		server.OpenSignalChannel(Protocol::ChannelID::RequestRoundEnd,(UINT32)UserLevel::CommonFaction);
 		server.OpenSignalChannel(Protocol::ChannelID::RequestContinueRound,(UINT32)UserLevel::CommonFaction);

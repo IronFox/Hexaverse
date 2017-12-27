@@ -20,7 +20,7 @@
 #include "gridControl.h"
 #include "visual/objectChoices.h"
 #include "visual/scene/terrain.h"
-#include "visual/hud/factionTable.h"
+#include "visual/hud/guiFactionTable.h"
 #include "clientEvents.h"
 #include "visual/hud/guiHostList.h"
 #include "visual/hud/eventLog.h"
@@ -1394,6 +1394,7 @@ namespace Network
 		DECLARE_CHANNEL(VoteCreation);
 		DECLARE_CHANNEL(VoteResult);
 		DECLARE_OBJECT_SENDER(ClientVote);
+		DECLARE_OBJECT_SENDER(AllianceJoinRequest);
 
 	}
 

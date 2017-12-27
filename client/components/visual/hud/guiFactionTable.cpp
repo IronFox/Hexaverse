@@ -1,4 +1,4 @@
-#include "factionTable.h"
+#include "guiFactionTable.h"
 #include <runtimeConfig.h>
 #include <objects/faction.h>
 #include "../../network.h"
@@ -19,6 +19,8 @@ namespace HUD
 					buttons;
 			PInput	chatMessage;
 			bool	visible=false;
+			Objects::WAlliance	triedJoining;
+			WButton triedJoiningButton;
 
 
 			String	WordForThinking(const RuntimeConfig::RoundNumber&roundNumber, const void*factionPointer)
@@ -91,7 +93,7 @@ namespace HUD
 			}
 
 
-			void	AddFaction(const Objects::OwnerParameter&faction)
+			void	AddFaction(const PPanel&toPanel, const Objects::OwnerParameter&faction)
 			{
 				using namespace Details;
 				PPanel panel{new Panel{}};
@@ -127,7 +129,7 @@ namespace HUD
 				panel->AddComponent(statusLabel);
 				panel->SetBackgroundTransparent();
 
-				factionTable->AnchorBelowPrevious(panel,0,0);
+				toPanel->AnchorBelowPrevious(panel,0,0);
 			}
 
 			void	Update()
@@ -137,10 +139,14 @@ namespace HUD
 
 				if (!window)
 				{
+
+					GlobalEvents::objectFlush << [](){triedJoining.reset();triedJoiningButton.reset();};
+					GlobalEvents::onAllianceChange << [](const Objects::PFaction&){ Update();};
+
 					window = Window::Create();
 					window->SetWidth(0.75f);
 					
-					PPanel factionBack = AddPanel("Factions");
+					PPanel factionBack = AddPanel("Alliances");
 					PPanel chatBack = AddPanel("Chat History");
 					chatInput = AddPanel("");
 					buttons = AddPanel("");
@@ -186,9 +192,82 @@ namespace HUD
 					}
 				}
 				factionTable->ClearComponents();
-				Objects::ForeachFaction([](const Objects::PFaction&f)
+				Objects::Alliance::Foreach([](const Objects::PAlliance&a)
 				{
-					AddFaction(f);
+					PPanel wrapper{new Panel{}};
+					wrapper->Anchor().BeneathLastOf(factionTable);
+					wrapper->fillBackground = false;
+					factionTable->AddComponent(wrapper);
+
+					PLabel allianceLabel{new Label{a->id.ToNiceString(),1.f}};
+					allianceLabel->Anchor().Left().Top();
+					PPanel alliancePanel{new Panel{}};
+					alliancePanel->fillBackground = false;
+					alliancePanel->renderBorder = false;
+
+					Objects::WAlliance wa = a;
+
+					allianceLabel->SetVerticalPadding(0.3f,0.1f);
+
+	
+
+					wrapper->AddComponent(allianceLabel);
+
+
+					if (a != Objects::Faction::mine->alliance)
+					{
+						PButton joinButton{new Button{"Request to join "+a->id.ToNiceString()}};
+						WButton jb = joinButton;
+						joinButton->SetTriggerFunction(
+						[wa,jb]()
+						{
+							Objects::PAlliance now = wa.lock();
+							if (now == nullptr || now == Objects::Faction::mine->alliance)
+								return;
+							Objects::PAlliance last = triedJoining.lock();
+							if (last && last != Objects::Faction::mine->alliance)
+							{
+								Network::Channels::AllianceJoinRequest.SendTo(Network::client,Protocol::AllianceJoinRequest(last->id,true));
+								PButton b = triedJoiningButton.lock();
+								if (b)
+									b->SetText("Request to join "+last->id.ToNiceString());
+							}
+
+							if (last != now)
+							{
+								triedJoining = now;
+								triedJoiningButton = jb;
+								Network::Channels::AllianceJoinRequest.SendTo(Network::client,Protocol::AllianceJoinRequest(now->id,false));
+								jb.lock()->SetText("Cancel request to join "+now->id.ToNiceString());
+							}
+							else
+							{
+								triedJoining.reset();
+								triedJoiningButton.reset();
+							}
+
+						});
+
+						joinButton->LockToIdealWidth(true);
+						//joinButton->LockToIdealHeight(true);
+						joinButton->SetPadding(M::Quad<float>(0.1f));
+						joinButton->fillBackground = false;
+						joinButton->renderBorder = false;
+						joinButton->SetLocalFontScale(0.85f);
+
+						joinButton->Anchor().Right(0.01f).Top(0.01f);
+						wrapper->AddComponent(joinButton);
+					}
+
+					alliancePanel->Anchor().FillHorizontally(0.01f,0.001f).BeneathAllOf(wrapper);
+
+
+					wrapper->AddComponent(alliancePanel);
+
+					a->ForeachMember([alliancePanel](const Objects::PFaction&f)
+					{
+						AddFaction(alliancePanel,f);
+					});
 				});
 				//PDialog d = Detail::NewModalDialog(Detail::ComponentFlags::ConfirmButton, "Close", false);
 

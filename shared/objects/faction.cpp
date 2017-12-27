@@ -34,6 +34,15 @@ namespace Objects
 		}
 	}
 
+	/*static*/ void	Alliance::Foreach(const std::function<void(const PAlliance&)>&visitor)
+	{
+		all.VisitAllValues([visitor](const WAlliance&a)
+		{
+			visitor(a.lock());
+		});
+	}
+
+
 	void		Alliance::ForeachMember(const std::function<void(const PFaction&)>&f)	const
 	{
 		foreach (members,m)
@@ -109,6 +118,7 @@ namespace Objects
 		LogEvent(EventSignificance::Common,"New member count in alliance "+ToString(id)+": "+String(members.Count()));
 		if (members.Count() == 1)
 			all.Set(id,shared_from_this());
+		f->alliance = shared_from_this();
 		#ifndef CLIENT
 			ApplicationInterface::SignalAllianceMembershipChange(f);
 		#endif
@@ -122,6 +132,24 @@ namespace Objects
 			{
 				members.erase(m);
 				LogEvent(EventSignificance::Common,"New member count in alliance "+ToString(id)+": "+String(members.Count()));
+				f->alliance = nullptr;
+				if (members.IsEmpty())
+					all.Unset(id);
+				return;
+			} 
+		FATAL__("Faction not found");
+	}
+
+
+	void		Alliance::Leave(Faction*f)
+	{
+		LogEvent(EventSignificance::Common,f->GetLogName()+ ": Leaving alliance "+ToString(id));
+		foreach (members,m)
+			if ( m->lock().get() == f)
+			{
+				members.erase(m);
+				LogEvent(EventSignificance::Common,"New member count in alliance "+ToString(id)+": "+String(members.Count()));
+				f->alliance = nullptr;
 				if (members.IsEmpty())
 					all.Unset(id);
 				return;
@@ -131,12 +159,10 @@ namespace Objects
 
 
 
-
-
 	Faction::~Faction()
 	{
 		if (!application_shutting_down)
-			alliance->Leave(shared_from_this());
+			alliance->Leave(this);
 	}
 	
 	#ifndef CLIENT
@@ -222,7 +248,7 @@ namespace Objects
 		void	Faction::RecreateNexus(const TUniqueID&id)
 		{
 			nexus.reset(new Faction(id, Faction::nexusName,true));
-			auto alliance = new Alliance(TUniqueID::New());
+			PAlliance alliance { new Alliance(TUniqueID::New()) };
 			alliance->Join(nexus);
 
 			ApplicationInterface::SignalFactionsChanged();
@@ -1372,8 +1398,7 @@ namespace Objects
 		if (alliance == a)
 			return;
 		alliance->Leave(shared_from_this());
-		alliance = a;
-		alliance->Join(shared_from_this());
+		a->Join(shared_from_this());
 	}
 
 

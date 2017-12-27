@@ -35,6 +35,7 @@ namespace Component
 			DECLARE_POINTER_CLASS(TextField);
 				DECLARE_POINTER_CLASS(Checkbox);
 				DECLARE_POINTER_CLASS(Label);
+					DECLARE_POINTER_CLASS(LinkLabel);
 				DECLARE_POINTER_CLASS(Button);
 					DECLARE_POINTER_CLASS(ScrollButton);
 			DECLARE_POINTER_CLASS(BaseInput);
@@ -715,6 +716,8 @@ namespace Component
 				SetHeight(textHeight);
 		}
 
+		void			HandleTextChange();
+
 	protected:
 		void			RenderText(bool lit);
 
@@ -759,25 +762,8 @@ namespace Component
 		float			GetLocalFontScale() const {return zoom;}
 		float			GetTotalFontScale() const;
 
-		void			SetText(const String&string)
-		{
-			if (rawText.GetLength() == 1 && rawText.First() == string)
-				return;
-			rawText.SetSize(1);
-			rawText.First() = string;
-			ReWrap();
-			UpdateDynamicSize();
-			OnTextChange();
-		}
-		void			SetText(const Array<String>&string)
-		{
-			if (rawText == string)
-				return;
-			rawText = string;
-			ReWrap();
-			UpdateDynamicSize();
-			OnTextChange();
-		}
+		void			SetText(const String&string);
+		void			SetText(const Array<String>&string);
 
 		const Array<String>&GetText() const {return rawText;}
 
@@ -827,6 +813,28 @@ namespace Component
 			SetText(text);
 			anchorConfig.GetHAxis().AnchorLowerUnknown();
 			SetToIdealWidth();
+		}
+	};
+
+	class LinkLabel : public Label
+	{
+		typedef Label Super;
+	public:
+
+		typedef std::function<void()>	FOnPress;
+
+		FOnPress		onPress;
+			
+		/**/			LinkLabel()	{};
+		/**/			LinkLabel(const String&text, float scale=1.f, const FOnPress&onPress = FOnPress()):Super(text,scale),onPress(onPress){}
+
+		virtual void	OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse) override;
+		virtual PComponent	OnMouseDown() override {return ContainsMouse() ? shared_from_this() : nullptr;}
+
+		virtual void	OnMouseUp() override
+		{
+			if (onPress)
+				onPress();
 		}
 	};
 

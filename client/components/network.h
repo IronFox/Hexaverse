@@ -294,6 +294,7 @@ namespace Network
 		DECLARE_CHANNEL(VoteCreation);
 		DECLARE_CHANNEL(VoteResult);
 		DECLARE_OBJECT_SENDER(ClientVote);
+		DECLARE_OBJECT_SENDER(AllianceJoinRequest);
 	}
 
 

@@ -72,6 +72,9 @@ void			Vote::Close(const TOutcome&outcome)
 			case Protocol::VoteResultType::TimedOut:
 				LogEvent(EventClass(EventSignificance::Important,EventFlavor::Loss),"Vote '"+phrase+"' timed out with "+String(outcome.votedAgainst + outcome.votedInFavor)+" of "+String(outcome.quorum)+" vote(s)");
 			break;
+			case Protocol::VoteResultType::Canceled:
+				LogEvent(EventClass(EventSignificance::Important,EventFlavor::Neutral),"Vote '"+phrase+"' was canceled");
+			break;
 		}
 		voteQueue.FindAndErase(v);
 		this->outcome = outcome;

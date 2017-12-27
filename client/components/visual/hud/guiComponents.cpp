@@ -495,7 +495,7 @@ namespace Component
 		anchorConfig.VerifyIntegrity(
 		[this](const PComponent&c)
 		{
-			ASSERT__(c->GetWindow() == this->GetWindow());
+			ASSERT__(c->GetWindow() == nullptr || c->GetWindow() == this->GetWindow());
 		},GetWindow() == nullptr);
 	}
 
@@ -1573,6 +1573,32 @@ namespace Component
 		return zoom * Detail::textZoom;
 	}
 
+	void			TextField::SetText(const String&string)
+	{
+		if (rawText.GetLength() == 1 && rawText.First() == string)
+			return;
+		rawText.SetSize(1);
+		rawText.First() = string;
+		HandleTextChange();
+	}
+
+	void	TextField::HandleTextChange()
+	{
+		ReWrap();
+		UpdateDynamicSize();
+		OnTextChange();
+		if (this->widthLockedToIdeal || this->heightLockedToIdeal)
+			this->InvalidateAutoLayout();
+	}
+	void			TextField::SetText(const Array<String>&string)
+	{
+		if (rawText == string)
+			return;
+		rawText = string;
+		HandleTextChange();
+
+	}
+
 	/*virtual*/ float			TextField::GetIdealWidth() const
 	{
 		textout.PushState();
@@ -2299,6 +2325,15 @@ namespace Component
 		Super::AddComponent(active.panel);
 		if (triggerCallback)
 			OnTabChange();
+	}
+
+
+	/*virtual override*/ void	LinkLabel::OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse)
+	{
+		if (clipAreaContainsMouse)
+			Engine::mouse.SetCursor(Engine::Mouse::CursorType::Hand);
+		else
+			Engine::mouse.SetCursor(Engine::Mouse::CursorType::Default);
 	}
 
 

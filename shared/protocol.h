@@ -1112,6 +1112,7 @@ namespace Protocol
 			Passed,
 			Rejected,
 			TimedOut,
+			Canceled,
 		};
 	}
 

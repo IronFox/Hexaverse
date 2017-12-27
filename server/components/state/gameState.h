@@ -34,7 +34,7 @@ namespace Game
 	{
 	public:
 		typedef Objects::PAlliance	PAlliance;
-		typedef std::function<void(const PVote&)> FCallback;
+		typedef std::function<void(const PVote&, const Protocol::VoteResult&rs)> FCallback;
 
 		CONSTRUCT_ENUMERATION4(Quorum,All,TwoThirds, Majority, OneThird);
 		CONSTRUCT_ENUMERATION3(VotesToPass, SimpleMajority, TwoThirds, Unanimous);
@@ -51,7 +51,7 @@ namespace Game
 		*/
 		typedef std::function<bool(const Objects::PFaction&)>	FScope;
 		FScope			scope;	//defines eligible factions. If empty, concerns all
-		FCallback		onPass;
+		FCallback		onClose;
 		Quorum			quorum;
 		VotesToPass		votesToPass;
 		const Array<TUniqueID>	concerning;
@@ -62,7 +62,8 @@ namespace Game
 		count_t			GetQuorum() const	{return GetQuorum(quorum,CountEligibleVoters());}
 		count_t			CountEligibleVoters() const;
 		bool			IsClosed() const {return closed;}
-
+		void			Cancel();
+		float			GetAge() const {return timer.GetSecondsSince(created);}
 
 		static count_t	GetVotesToPass(VotesToPass, count_t voters);
 		static count_t	GetQuorum(Quorum q, count_t eligibleVoters);
@@ -78,8 +79,8 @@ namespace Game
 		*/
 		static void		CheckAllTimeouts();
 		static void		CastVote(const TUniqueID&voteID, const Objects::PFaction&f, bool inFavor);
-		static PVote	CreateOrGet(const ArrayRef<const TUniqueID>&concerning, const String&phrase, float closingAfterSeconds, const FScope&scope, const FCallback&onPass);
-		static PVote	CreateNew(const ArrayRef<const TUniqueID>&concerning, const String&phrase, float closingAfterSeconds, const FScope&scope, const FCallback&onPass);
+		static PVote	CreateOrGet(const ArrayRef<const TUniqueID>&concerning, const String&phrase, float closingAfterSeconds, const FScope&scope, const FCallback&onClose);
+		static PVote	CreateNew(const ArrayRef<const TUniqueID>&concerning, const String&phrase, float closingAfterSeconds, const FScope&scope, const FCallback&onClose);
 		static void		Flush();
 
 		static PVote	FindConcerning(const ArrayRef<const TUniqueID>&concerning)	{PVote rs; map.Query(concerning,rs); return rs;}
@@ -96,7 +97,7 @@ namespace Game
 		bool			closed = false;
 
 		/**/			Vote(const ArrayRef<const TUniqueID>&concerning, const String&phrase, float closingAfterSeconds)
-						:id(TUniqueID::New()),phrase(phrase),closingAfterSeconds(closingAfterSeconds),concerning(concerning)	{Advertise();}
+						:id(TUniqueID::New()),phrase(phrase),closingAfterSeconds(closingAfterSeconds),concerning(concerning)	{}
 
 		bool			CheckTimeouts();
 		void			Advertise()	const;

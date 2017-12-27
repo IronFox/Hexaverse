@@ -152,11 +152,12 @@ namespace Objects
 		virtual		~Alliance();
 		void		ForeachMember(const std::function<void(const PFaction&)>&f)	const;
 		void		Leave(const PFaction&f);
+		void		Leave(Faction*f);
 		void		Join(const PFaction&f);
 		bool		IsMember(const PFaction&f) const;
 		void		UpdateConfiguration(const TConfig&);
 		static PAlliance FindByID(const TUniqueID&id ){ WAlliance rs; all.Query(id,rs); return rs.lock();}
-
+		static void	Foreach(const std::function<void(const PAlliance&)>&visitor);
 	private:
 		Buffer0<WFaction>						members;
 		static HashTable<TUniqueID,WAlliance>	all;

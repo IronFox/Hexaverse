@@ -40,14 +40,14 @@ namespace Game
 	}
 
 
-	/*static*/ PVote	Vote::CreateOrGet(const ArrayRef<const TUniqueID>&concerning, const String&phrase, float closingAfterSeconds, const FScope&scope, const FCallback&onPass)
+	/*static*/ PVote	Vote::CreateOrGet(const ArrayRef<const TUniqueID>&concerning, const String&phrase, float closingAfterSeconds, const FScope&scope, const FCallback&onClose)
 	{
 		PVote rs = FindConcerning(concerning);
 		if (!rs)
 		{
 			rs.reset(new Vote(concerning,phrase,closingAfterSeconds));
 			rs->scope = scope;
-			rs->onPass = onPass;
+			rs->onClose = onClose;
 			all.Set(rs->id,rs);
 			map.Set(concerning,rs);
 		}
@@ -56,7 +56,7 @@ namespace Game
 
 
 
-	/*static*/ PVote	Vote::CreateNew(const ArrayRef<const TUniqueID>&concerning, const String&phrase, float closingAfterSeconds, const FScope&scope, const FCallback&onPass)
+	/*static*/ PVote	Vote::CreateNew(const ArrayRef<const TUniqueID>&concerning, const String&phrase, float closingAfterSeconds, const FScope&scope, const FCallback&onClose)
 	{
 		PVote rs = FindConcerning(concerning);
 		if (rs)
@@ -64,9 +64,10 @@ namespace Game
 		{
 			rs.reset(new Vote(concerning,phrase,closingAfterSeconds));
 			rs->scope = scope;
-			rs->onPass = onPass;
+			rs->onClose = onClose;
 			all.Set(rs->id,rs);
 			map.Set(concerning,rs);
+			rs->Advertise();
 		}
 		return rs;
 	}
@@ -176,7 +177,7 @@ namespace Game
 
 	bool			Vote::CheckTimeouts()
 	{
-		float seconds = timer.GetSecondsSince(created);
+		float seconds = GetAge();
 		if (seconds < closingAfterSeconds && !closed)
 			return true;
 		Close();
@@ -279,6 +280,16 @@ namespace Game
 	}
 
 
+	void			Vote::Cancel()
+	{
+		Protocol::VoteResult rs;
+		CheckResults(rs,true);
+		rs.resultType = Protocol::VoteResultType::Canceled;
+		this->clearedAfterSeconds = std::min(this->clearedAfterSeconds, this->GetAge() + 2.f);	//reduce to 2 seconds on cancel
+		Close(rs);
+	}
+
+
 	void			Vote::Close(const Protocol::VoteResult&rs)
 	{
 		if (closed)
@@ -288,21 +299,28 @@ namespace Game
 		LogEvent(EventClass::Preset::common,"Closing vote "+ToString(id));
 		const count_t votesToPassTotal = GetVotesToPass(votesToPass,rs.eligibleToVote);
 		const count_t votesToPassQuorum = GetVotesToPass(votesToPass,votes.Count());
-		LogEvent(EventClass::Preset::common,"  voted: "+String(votes.Count())+"/"+String(rs.eligibleToVote)+", quorum="+String(rs.quorum)+", toPassTotal="+String(votesToPassTotal)+", toPassQ="+String(votesToPassQuorum));
+
+		String state = "  voted: "+String(votes.Count())+"/"+String(rs.eligibleToVote)+", quorum="+String(rs.quorum)+", toPassTotal="+String(votesToPassTotal)+", toPassQ="+String(votesToPassQuorum);
 
 		switch (rs.resultType)
 		{
 			case Protocol::VoteResultType::Passed:
-				LogEvent(EventClass::Preset::common,"  passed");
-				onPass(shared_from_this());
+				state += "  passed";
 			break;
 			case Protocol::VoteResultType::Rejected:
-				LogEvent(EventClass::Preset::common,"  rejected");
+				state += "  rejected";
 			break;
 			case Protocol::VoteResultType::TimedOut:
-				LogEvent(EventClass::Preset::common,"  undecided");
+				state += "  timed out";
+			break;
+			case Protocol::VoteResultType::Canceled:
+				state += "  canceled";
+			break;
+			default:
+				state += "  unknown(#"+String(rs.resultType)+")";
 			break;
 		}
+		LogEvent(EventClass::Preset::common,state);
 
 
 		if (!scope)
@@ -314,6 +332,7 @@ namespace Game
 					Channels::VoteResult.SendTo(client->peer.lock(),rs);
 			});
 
+		onClose(shared_from_this(), rs);
 	}
 
 	void			Vote::CheckVotes()

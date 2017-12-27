@@ -47,7 +47,7 @@
 #include "components/visual/hud/resourceGauges.h"
 #include "components/visual/hud/hexGrid.h"
 #include "components/visual/hud/statePanel.h"
-#include "components/visual/hud/factionTable.h"
+#include "components/visual/hud/guiFactionTable.h"
 #include "components/visual/scene/objectComponent.h"
 #include "components/visual/scene/progressBar.h"
 #include "components/visual/hud/dialog.h"
