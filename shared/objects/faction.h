@@ -155,11 +155,20 @@ namespace Objects
 		void		Leave(Faction*f);
 		void		Join(const PFaction&f);
 		bool		IsMember(const PFaction&f) const;
+		count_t		CountMembers() const {return members.Count();}
+		PFaction	GetMember(index_t i ) const {return members[i].wFaction.lock();}
 		void		UpdateConfiguration(const TConfig&);
 		static PAlliance FindByID(const TUniqueID&id ){ WAlliance rs; all.Query(id,rs); return rs.lock();}
 		static void	Foreach(const std::function<void(const PAlliance&)>&visitor);
 	private:
-		Buffer0<WFaction>						members;
+
+		struct TMember
+		{
+			WFaction	wFaction;
+			Faction*	rawPointer;
+		};
+
+		Buffer0<TMember>						members;
 		static HashTable<TUniqueID,WAlliance>	all;
 	};
 

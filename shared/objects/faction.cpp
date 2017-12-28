@@ -46,13 +46,13 @@ namespace Objects
 	void		Alliance::ForeachMember(const std::function<void(const PFaction&)>&f)	const
 	{
 		foreach (members,m)
-			f(m->lock());
+			f(m->wFaction.lock());
 	}
 
 	bool		Alliance::IsMember(const PFaction&f) const
 	{
 		foreach (members,m)
-			if (m->lock() == f)
+			if (m->wFaction.lock() == f)
 				return true;
 		return false;
 	}
@@ -113,8 +113,9 @@ namespace Objects
 	{
 		ASSERT__(f);
 		ASSERT__(!IsMember(f));
-		LogEvent(EventSignificance::Common,f, "Joined alliance "+ToString(id));
-		members.Append(f);
+		LogEvent(EventSignificance::Common,f, "@"+String((const void*)f.get())+ " Joined alliance "+ToString(id));
+		members.Append().wFaction = f;
+		members.Last().rawPointer = f.get();
 		LogEvent(EventSignificance::Common,"New member count in alliance "+ToString(id)+": "+String(members.Count()));
 		if (members.Count() == 1)
 			all.Set(id,shared_from_this());
@@ -128,7 +129,7 @@ namespace Objects
 	{
 		LogEvent(EventSignificance::Common,f,"Leaving alliance "+ToString(id));
 		foreach (members,m)
-			if ( *m == f)
+			if ( m->wFaction == f)
 			{
 				members.erase(m);
 				LogEvent(EventSignificance::Common,"New member count in alliance "+ToString(id)+": "+String(members.Count()));
@@ -143,11 +144,13 @@ namespace Objects
 
 	void		Alliance::Leave(Faction*f)
 	{
-		LogEvent(EventSignificance::Common,f->GetLogName()+ ": Leaving alliance "+ToString(id));
+		LogEvent(EventSignificance::Common,f->GetLogName()+ "@"+String((const void*)f)+ ": Leaving alliance "+ToString(id));
+		const count_t cnt = members.Count();
 		foreach (members,m)
-			if ( m->lock().get() == f)
+			if ( m->rawPointer == f)
 			{
 				members.erase(m);
+				ASSERT_EQUAL__(members.Count()+1,cnt);
 				LogEvent(EventSignificance::Common,"New member count in alliance "+ToString(id)+": "+String(members.Count()));
 				f->alliance = nullptr;
 				if (members.IsEmpty())

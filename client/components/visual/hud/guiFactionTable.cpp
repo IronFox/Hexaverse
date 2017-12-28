@@ -3,6 +3,7 @@
 #include <objects/faction.h>
 #include "../../network.h"
 #include "windowStack.h"
+#include "dialog.h"
 
 namespace HUD
 {
@@ -132,6 +133,13 @@ namespace HUD
 				toPanel->AnchorBelowPrevious(panel,0,0);
 			}
 
+			static String JoinText(const Objects::PAlliance&a)
+			{
+				if (a->CountMembers() == 1)
+					return "Request to form alliance with "+a->GetMember(0)->GetName();
+				return "Request to join "+a->id.ToNiceString();
+			}
+
 			void	Update()
 			{
 
@@ -197,26 +205,37 @@ namespace HUD
 					PPanel wrapper{new Panel{}};
 					wrapper->Anchor().BeneathLastOf(factionTable);
 					wrapper->fillBackground = false;
+					wrapper->renderBorder = a->CountMembers()  > 1;
 					factionTable->AddComponent(wrapper);
 
-					PLabel allianceLabel{new Label{a->id.ToNiceString(),1.f}};
-					allianceLabel->Anchor().Left().Top();
 					PPanel alliancePanel{new Panel{}};
 					alliancePanel->fillBackground = false;
 					alliancePanel->renderBorder = false;
+					alliancePanel->Anchor().FillHorizontally(0.01f,0.001f).Top();
+					wrapper->AddComponent(alliancePanel);
+
+
+					if (a->CountMembers() > 1)
+					{
+						PLabel allianceLabel{new Label{a->id.ToNiceString(),1.f}};
+						allianceLabel->Anchor().Left().Top();
+						allianceLabel->SetVerticalPadding(0.3f,0.1f);
+						wrapper->AddComponent(allianceLabel);
+						alliancePanel->Anchor().Beneath(allianceLabel);
+					}
+
+
 
 					Objects::WAlliance wa = a;
 
-					allianceLabel->SetVerticalPadding(0.3f,0.1f);
 
 	
 
-					wrapper->AddComponent(allianceLabel);
 
 
 					if (a != Objects::Faction::mine->alliance)
 					{
-						PButton joinButton{new Button{"Request to join "+a->id.ToNiceString()}};
+						PButton joinButton{new Button{JoinText(a)}};
 						WButton jb = joinButton;
 						joinButton->SetTriggerFunction(
 						[wa,jb]()
@@ -230,7 +249,7 @@ namespace HUD
 								Network::Channels::AllianceJoinRequest.SendTo(Network::client,Protocol::AllianceJoinRequest(last->id,true));
 								PButton b = triedJoiningButton.lock();
 								if (b)
-									b->SetText("Request to join "+last->id.ToNiceString());
+									b->SetText(JoinText(last));
 							}
 
 							if (last != now)
@@ -238,7 +257,7 @@ namespace HUD
 								triedJoining = now;
 								triedJoiningButton = jb;
 								Network::Channels::AllianceJoinRequest.SendTo(Network::client,Protocol::AllianceJoinRequest(now->id,false));
-								jb.lock()->SetText("Cancel request to join "+now->id.ToNiceString());
+								jb.lock()->SetText("Cancel "+JoinText(now));
 							}
 							else
 							{
@@ -255,14 +274,34 @@ namespace HUD
 						joinButton->renderBorder = false;
 						joinButton->SetLocalFontScale(0.85f);
 
-						joinButton->Anchor().Right(0.01f).Top(0.01f);
+						joinButton->Anchor().Right(0.01f).Bottom(0.01f);
 						wrapper->AddComponent(joinButton);
 					}
+					else if (a->CountMembers() > 1)
+					{
+						PButton leaveButton{new Button{"Leave alliance "+a->id.ToNiceString()}};
+						leaveButton->SetTriggerFunction(
+						[]()
+						{
+							Dialog::Confirm("Really leave your current alliance?",[]()
+							{
+								Network::Channels::AllianceJoinRequest.SendTo(Network::client,Protocol::AllianceJoinRequest(TUniqueID::Empty(),false));
+							});
+						});
 
-					alliancePanel->Anchor().FillHorizontally(0.01f,0.001f).BeneathAllOf(wrapper);
+						leaveButton->LockToIdealWidth(true);
+						//joinButton->LockToIdealHeight(true);
+						leaveButton->SetPadding(M::Quad<float>(0.1f));
+						leaveButton->fillBackground = false;
+						leaveButton->renderBorder = false;
+						leaveButton->SetLocalFontScale(0.85f);
+
+						leaveButton->Anchor().Right(0.01f).Top(0.01f);
+						wrapper->AddComponent(leaveButton);
+					}
 
 
-					wrapper->AddComponent(alliancePanel);
+
 
 					a->ForeachMember([alliancePanel](const Objects::PFaction&f)
 					{

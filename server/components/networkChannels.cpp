@@ -103,6 +103,20 @@ namespace Receiver
 			return;
 		}
 
+
+		if (req.allianceID.IsEmpty())
+		{
+			LogEvent(EventClass::Preset::uncommon,peer,"Left alliance");
+			if (client->faction->alliance->CountMembers() == 1)
+				return;	//nothing to do
+
+			Objects::PAlliance a {new Objects::Alliance(TUniqueID::New())};
+			
+			client->faction->ChangeAlliance(a);
+
+			return;
+		}
+
 		Objects::PAlliance target = Objects::Alliance::FindByID(req.allianceID);
 		if (target == nullptr)
 		{
@@ -123,16 +137,18 @@ namespace Receiver
 			if (v != nullptr)
 			{
 				v->Cancel();
-				LogEvent(EventClass( EventSignificance::Important, EventFlavor::Neutral),client->faction,"Canceled vote about joining alliance "+target->id.ToNiceString());
+//				LogEvent(EventClass( EventSignificance::Important, EventFlavor::Neutral),client->faction,"Canceled vote about joining alliance "+target->id.ToNiceString());
 			}
 		}
 		else
 		{
+			const String niceTask = target->CountMembers() > 1 ? "joining alliance "+target->id.ToNiceString() : "creating an alliance with "+target->GetMember(0)->GetName();
+
 			Game::PVote v = Game::Vote::CreateNew(ArrayRef<TUniqueID>( ids,2),
 				"Allow "+client->faction->name+ " to join your alliance?", 
 				120,
 				AllianceScope(target),
-				[](const Game::PVote&v, const Protocol::VoteResult&rs)
+				[niceTask](const Game::PVote&v, const Protocol::VoteResult&rs)
 				{
 					auto a = Objects::Alliance::FindByID(v->concerning[1]);
 					auto f = Objects::Faction::FindByID(v->concerning[0]);
@@ -155,24 +171,26 @@ namespace Receiver
 								LogEvent(EventClass(EventSignificance::Important,EventFlavor::Loss), f,"Admission to alliance "+a->id.ToNiceString()+" has been rejected");
 							break;
 							case Protocol::VoteResultType::TimedOut:
-								LogEvent(EventClass(EventSignificance::Important,EventFlavor::Loss), f,"Vote for admission to alliance "+a->id.ToNiceString()+" has timed out");
+								LogEvent(EventClass(EventSignificance::Important,EventFlavor::Loss), f,"Vote for "+niceTask+" has timed out");
 							break;
 							case Protocol::VoteResultType::Canceled:
-								LogEvent(EventClass(EventSignificance::Important,EventFlavor::Neutral), f,"Vote for admission to alliance "+a->id.ToNiceString()+" was canceled");
+								LogEvent(EventClass(EventSignificance::Important,EventFlavor::Neutral), f,"Vote for "+niceTask+" was canceled");
 							break;
 						}
 					}
 				}
 			);
+
+
 			if (v)
 			{
 				LogEvent(EventSignificance::Debug,client->faction,"Started vote on joining alliance "+ToString(target->id));
-				LogEvent(EventClass( EventSignificance::Important, EventFlavor::Gain),client->faction,"Started vote on joining alliance "+target->id.ToNiceString());
+				LogEvent(EventClass( EventSignificance::Important, EventFlavor::Gain),client->faction,client->faction->GetName()+": Started vote on "+niceTask);
 				v->quorum = Game::Vote::Quorum::TwoThirds;
 				v->votesToPass = Game::Vote::VotesToPass::SimpleMajority;
 			}
 			else
-				LogEvent(EventClass( EventSignificance::Important, EventFlavor::Loss),client->faction,"There already exists a vote on you joining alliance "+target->id.ToNiceString()+". Either it is still active or has been rejected");
+				LogEvent(EventClass( EventSignificance::Important, EventFlavor::Loss),client->faction,"There already exists a vote on you "+niceTask+". Either it is still active or has been rejected");
 		}
 	}
 }
