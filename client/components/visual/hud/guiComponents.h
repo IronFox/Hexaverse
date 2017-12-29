@@ -658,6 +658,11 @@ namespace Component
 		Triggered when the user confirms the input (via enter/return)
 		*/
 		std::function<void()>	onEnter;
+		/**
+		Triggered when special keys are pressed while this input receives characters:
+		F1-F12, Backspace, Delete, Print, Home, End, Page up and down, Space, CapsLock, Control, Alt, Arrow keys
+		*/
+		std::function<void(Key::Name)> onSpecialKey;
 
 		virtual void	Render() override;
 		virtual void	SetActive(bool isActive) override {SetInputActive(isActive); Super::SetActive(isActive);}

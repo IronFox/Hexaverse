@@ -1367,8 +1367,8 @@ namespace Component
 			//let's copy some over, however...
 			const auto current = Engine::input.GetCurrentProfile();
 			profile.key[Key::Escape] = current->key[Key::Escape];
-			profile.key[Key::Enter] = current->key[Key::Enter];
-			profile.key[Key::Return] = current->key[Key::Return];
+			//profile.key[Key::Enter] = current->key[Key::Enter];
+			//profile.key[Key::Return] = current->key[Key::Return];
 			profile.key[Key::MouseButton0] = current->key[Key::MouseButton0];
 			profile.key[Key::MouseButton1] = current->key[Key::MouseButton1];
 			profile.key[Key::MouseButton2] = current->key[Key::MouseButton2];
@@ -1377,7 +1377,38 @@ namespace Component
 			Engine::input.BindProfile(profile);
 		
 			//Engine::input.ClearAllBindings();
-			Engine::input.Bind(Key::Backspace,[](){Engine::keyboard.DropLastCharacter(); Detail::OnInput();});
+			Engine::input.Bind(Key::Tab, onSpecialKey);
+			Engine::input.Bind(Key::CapsLock, onSpecialKey);
+			Engine::input.Bind(Key::Space, onSpecialKey);
+			Engine::input.Bind(Key::Control, onSpecialKey);
+			Engine::input.Bind(Key::Alt, onSpecialKey);
+			Engine::input.Bind(Key::F1, onSpecialKey);
+			Engine::input.Bind(Key::F2, onSpecialKey);
+			Engine::input.Bind(Key::F3, onSpecialKey);
+			Engine::input.Bind(Key::F4, onSpecialKey);
+			Engine::input.Bind(Key::F5, onSpecialKey);
+			Engine::input.Bind(Key::F6, onSpecialKey);
+			Engine::input.Bind(Key::F7, onSpecialKey);
+			Engine::input.Bind(Key::F8, onSpecialKey);
+			Engine::input.Bind(Key::F9, onSpecialKey);
+			Engine::input.Bind(Key::F10, onSpecialKey);
+			Engine::input.Bind(Key::F11, onSpecialKey);
+			Engine::input.Bind(Key::F12, onSpecialKey);
+			Engine::input.Bind(Key::ArrowLeft, onSpecialKey);
+			Engine::input.Bind(Key::ArrowDown, onSpecialKey);
+			Engine::input.Bind(Key::ArrowRight, onSpecialKey);
+			Engine::input.Bind(Key::ArrowUp, onSpecialKey);
+			Engine::input.Bind(Key::Delete, onSpecialKey);
+			Engine::input.Bind(Key::Print, onSpecialKey);
+			Engine::input.Bind(Key::Home, onSpecialKey);
+			Engine::input.Bind(Key::End, onSpecialKey);
+			Engine::input.Bind(Key::PageUp, onSpecialKey);
+			Engine::input.Bind(Key::PageDown, onSpecialKey);
+			
+
+
+
+			Engine::input.Bind(Key::Backspace,[this](){Engine::keyboard.DropLastCharacter(); Detail::OnInput(); if(onSpecialKey) onSpecialKey(Key::Backspace);});
 			Engine::input.Bind(Key::Return,onEnter);
 			Engine::input.Bind(Key::Enter,onEnter);
 			Engine::input.BindCtrl(Key::V,[](){
