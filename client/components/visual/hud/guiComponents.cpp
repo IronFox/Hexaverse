@@ -1362,24 +1362,25 @@ namespace Component
 	{
 		if (isActive)
 		{
-			Engine::input.pushProfile();
+			Engine::input.PushProfile();
 			//profile = *Engine::input.currentProfile();//this copies over a shitload of commands we don't want
 			//let's copy some over, however...
-			profile.key[Key::Escape] = Engine::input.currentProfile()->key[Key::Escape];
-			profile.key[Key::Enter] = Engine::input.currentProfile()->key[Key::Enter];
-			profile.key[Key::Return] = Engine::input.currentProfile()->key[Key::Return];
-			profile.key[Key::MouseButton0] = Engine::input.currentProfile()->key[Key::MouseButton0];
-			profile.key[Key::MouseButton1] = Engine::input.currentProfile()->key[Key::MouseButton1];
-			profile.key[Key::MouseButton2] = Engine::input.currentProfile()->key[Key::MouseButton2];
-			profile.key[Key::MouseButton3] = Engine::input.currentProfile()->key[Key::MouseButton3];
-			profile.key[Key::MouseButton4] = Engine::input.currentProfile()->key[Key::MouseButton4];
-			Engine::input.bindProfile(profile);
+			const auto current = Engine::input.GetCurrentProfile();
+			profile.key[Key::Escape] = current->key[Key::Escape];
+			profile.key[Key::Enter] = current->key[Key::Enter];
+			profile.key[Key::Return] = current->key[Key::Return];
+			profile.key[Key::MouseButton0] = current->key[Key::MouseButton0];
+			profile.key[Key::MouseButton1] = current->key[Key::MouseButton1];
+			profile.key[Key::MouseButton2] = current->key[Key::MouseButton2];
+			profile.key[Key::MouseButton3] = current->key[Key::MouseButton3];
+			profile.key[Key::MouseButton4] = current->key[Key::MouseButton4];
+			Engine::input.BindProfile(profile);
 		
-			//Engine::input.resetKeys();
-			Engine::input.bind(Key::Backspace,[](){Engine::keyboard.DropLastCharacter(); Detail::OnInput();});
-			Engine::input.bind(Key::Return,onEnter);
-			Engine::input.bind(Key::Enter,onEnter);
-			Engine::input.bindCtrl(Key::V,[](){
+			//Engine::input.ClearAllBindings();
+			Engine::input.Bind(Key::Backspace,[](){Engine::keyboard.DropLastCharacter(); Detail::OnInput();});
+			Engine::input.Bind(Key::Return,onEnter);
+			Engine::input.Bind(Key::Enter,onEnter);
+			Engine::input.BindCtrl(Key::V,[](){
 				char buffer[0x100];
 				memset(buffer,0,sizeof(buffer));
 				if (System::getFromClipboardIfText(Engine::context.getWindow(),buffer,sizeof(buffer)-1))
@@ -1400,7 +1401,7 @@ namespace Component
 		else
 		{
 			Engine::keyboard.ExportBuffer(backup);
-			Engine::input.popProfile();
+			Engine::input.PopProfile();
 			Engine::keyboard.read = false;
 			Engine::keyboard.onCharHandled =  NULL;
 		}
