@@ -185,7 +185,7 @@ namespace Receiver
 			if (v)
 			{
 				LogEvent(EventSignificance::Debug,client->faction,"Started vote on joining alliance "+ToString(target->id));
-				LogEvent(EventClass( EventSignificance::Important, EventFlavor::Gain),client->faction,client->faction->GetName()+": Started vote on "+niceTask);
+				LogEvent(EventClass( EventSignificance::Important, EventFlavor::Gain),client->faction,"Started vote on "+niceTask);
 				v->quorum = Game::Vote::Quorum::TwoThirds;
 				v->votesToPass = Game::Vote::VotesToPass::SimpleMajority;
 			}

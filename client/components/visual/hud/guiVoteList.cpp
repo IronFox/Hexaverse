@@ -71,6 +71,7 @@ namespace HUD
 
 				Component::PLabel timeLabel{new Component::Label{"",0.7f}};
 				timeLabel->Anchor().Left().Bottom();
+				timeLabel->LockToIdealWidth();
 				panel->AddComponent(timeLabel);
 
 
