@@ -189,6 +189,11 @@ namespace HUD
 							Network::SendChatMessage(chatMessage->GetText());
 							chatMessage->SetText("");
 						}}};
+						chatMessage->onSpecialKey = [](Key::Name k)
+						{
+							if (k == Key::Tab)
+								Hide();
+						};
 						send->SetVerticalPadding(0.5f);
 						send->Anchor().CenterVertically().Right(0.01f);
 						send->LockToIdealWidth();
