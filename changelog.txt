@@ -1,6 +1,7 @@
 v0.7.0
 	* Fixed messages not being relayed to control console.
-
+	* Fixed faction renaming.
+	
 v0.6.9	[Nov 15 2017]
 	* Fixed crash when displaying statistics.
 

@@ -1241,6 +1241,7 @@ namespace Receiver
 
 		if (cl->faction)
 		{
+			cl->faction->name = cl->name;
 			Channels::identifyFaction.SendTo(Network::server,Network::Identify(cl->faction),Channels::Level::Faction);
 			LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ), peer, "User renamed to '"+cl->name+"'");
 		}
