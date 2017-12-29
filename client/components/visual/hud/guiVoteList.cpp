@@ -16,27 +16,60 @@ namespace HUD
 				//				closedPanel;
 			Timer::Time last = timer.Now();
 
+			struct TEntry
+			{
+				PVote vote;
+				Component::PLabel	timerLabel,phraseLabel;
+				Component::PButton	yesButton,noButton;
+				Component::PPanel	panel;
+
+				void	Refresh() const
+				{
+					const float4 fontColor = vote->HaveVoted() ? float4(1,1,1,0.5) : float4(1);
+
+					phraseLabel->SetColor(fontColor);
+					timerLabel->SetColor(fontColor);
+					timerLabel->SetText(String{std::max(0,int(vote->GetRemainingSeconds()))}+" s. remaining");
+
+					if (vote->HaveVoted())
+					{
+						if (vote->HaveVotedInFavor())
+							yesButton->SetAlwaysDown(true);
+						else
+							noButton->SetAlwaysDown(true);
+						panel->fillBackground = false;
+					}
+					else
+						panel->fillBackground = true;
+				}
+			};
+
+			Buffer0<TEntry>	entries;
+
+			
+
 
 			void	Create(const PVote&v)
 			{
 
+				TEntry&entry = entries.Append();
+				entry.vote = v;
+
 				Component::PPanel panel (new Component::Panel());
+				entry.panel = panel;
 
 				panel->Anchor().FillHorizontally().BeneathLastOf(window);
 				window->AddComponent(panel);
 
-				float4 fontColor = v->HaveVoted() ? float4(1,1,1,0.5) : float4(1);
 
 				panel->SetAutoHeightSpacing(0.01f);
 				Component::PLabel label{new Component::Label{v->phrase}};
 				label->Anchor().FillHorizontally().Top();
 				panel->AddComponent(label);
-				label->SetColor(fontColor);
 
 				WVote w = v;
 
-				Component::PLabel timeLabel{new Component::Label{String{std::max(0,int(v->GetRemainingSeconds()))}+" s. remaining",0.7f}};
-				timeLabel->SetColor(fontColor);
+				Component::PLabel timeLabel{new Component::Label{"",0.7f}};
 				timeLabel->Anchor().Left().Bottom();
 				panel->AddComponent(timeLabel);
 
@@ -62,25 +95,18 @@ namespace HUD
 				yesButton->Anchor().LeftOf(noButton,0.01f).Beneath(label);
 				panel->AddComponent(yesButton);
 				
+				entry.yesButton = yesButton;
+				entry.noButton = noButton;
+				entry.timerLabel = timeLabel;
+				entry.phraseLabel = label;
 
-				if (v->HaveVoted())
-				{
-					if (v->HaveVotedInFavor())
-						yesButton->SetAlwaysDown(true);
-					else
-						noButton->SetAlwaysDown(true);
-					panel->fillBackground = false;
-				}
-				else
-					panel->fillBackground = true;
-
-
-
+				entry.Refresh();
 			}
 
 			void	Rebuild(const PVote&v)
 			{
 				window->ClearComponents();
+				entries.Clear();
 				Vote::VisitActiveVotes([](const PVote&v)
 				{
 					Create(v);
@@ -88,6 +114,11 @@ namespace HUD
 				last = timer.Now();
 			}
 
+			void	Refresh(const PVote&v)
+			{
+				foreach (entries,e)
+					e->Refresh();
+			}
 
 
 
@@ -95,7 +126,7 @@ namespace HUD
 			{
 				if (timer.GetSecondsSince(last) > 1)
 				{
-					Rebuild(nullptr);
+					Refresh(nullptr);
 				}
 				
 			}
@@ -111,7 +142,7 @@ namespace HUD
 			window->Anchor().CenterVertically().CenterHorizontally(0.75f);
 			
 
-			GlobalEvents::voteCast << Rebuild;
+			GlobalEvents::voteCast << Refresh;
 			GlobalEvents::voteClosed << Rebuild;
 			GlobalEvents::voteCreated << Rebuild;
 			GlobalEvents::frameBegin << Count;

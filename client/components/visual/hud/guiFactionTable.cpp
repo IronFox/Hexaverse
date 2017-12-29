@@ -274,7 +274,7 @@ namespace HUD
 
 						joinButton->LockToIdealWidth(true);
 						//joinButton->LockToIdealHeight(true);
-						joinButton->SetPadding(M::Quad<float>(0.1f));
+						joinButton->SetPadding(M::Quad<float>(0.2f));
 						joinButton->fillBackground = false;
 						joinButton->renderBorder = false;
 						joinButton->SetLocalFontScale(0.85f);
@@ -296,7 +296,7 @@ namespace HUD
 
 						leaveButton->LockToIdealWidth(true);
 						//joinButton->LockToIdealHeight(true);
-						leaveButton->SetPadding(M::Quad<float>(0.1f));
+						leaveButton->SetPadding(M::Quad<float>(0.2f));
 						leaveButton->fillBackground = false;
 						leaveButton->renderBorder = false;
 						leaveButton->SetLocalFontScale(0.85f);
