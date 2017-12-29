@@ -125,18 +125,18 @@ namespace Game
 			if (*vote != inFavor)
 			{
 				*vote = inFavor;
-				LogEvent(EventSignificance::Common,f,"Vote: Changed oppinion on "+ToString(id)+": "+inFavor);
+				LogEvent(EventSignificance::Common,f,"Vote: Changed oppinion on "+ToString(id)+": "+String(inFavor));
 			}
 			else
 			{
-				LogEvent(EventSignificance::Debug,f,"Vote: Voted but did not change oppinion on "+ToString(id)+": "+inFavor);
+				LogEvent(EventSignificance::Debug,f,"Vote: Voted but did not change oppinion on "+ToString(id)+": "+String(inFavor));
 				return;
 			}
 		}
 		else
 		{
 			votes.Set(f->id,inFavor);
-			LogEvent(EventSignificance::Common,f,"Vote: Voted on "+ToString(id)+": "+inFavor);
+			LogEvent(EventSignificance::Common,f,"Vote: Voted on "+ToString(id)+": "+String(inFavor));
 		}
 		if (RuntimeConfig::IsInAnyCommandPhase())
 			CheckVotes();
