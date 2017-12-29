@@ -420,7 +420,7 @@ namespace Game
 
 	namespace Network
 	{
-		void		UpdateResourceCoverage(const Objects::PFaction&f, const Grid::LCellIdI&center,float range, const Protocol::Timestamp&timestamp)
+		static void		_UpdateResourceCoverage(const Objects::PFaction&f, const Grid::LCellIdI&center,float range, const Protocol::Timestamp&timestamp)
 		{
 			static Ctr::Buffer0<UINT32>	changed;
 			if (!f)
@@ -452,6 +452,20 @@ namespace Game
 				Channels::resourceUpdate.SendTo(peer,package);
 			}
 		}
+
+		void		UpdateResourceCoverage(const Objects::PFaction&f, const Grid::LCellIdI&center,float range, const Protocol::Timestamp&timestamp)
+		{
+			if (!f)
+				return;
+			if (!f->alliance->config.shareSensors)
+				_UpdateResourceCoverage(f,center,range,timestamp);
+			else
+				f->alliance->ForeachMember([center,range,timestamp](const Objects::PFaction&f2)
+				{
+					_UpdateResourceCoverage(f2,center,range,timestamp);
+				});
+		}
+
 
 
 		void SendStatisticsTo(TCP::Peer & peer, const Objects::PFaction & faction)
