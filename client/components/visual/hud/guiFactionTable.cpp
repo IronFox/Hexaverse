@@ -217,7 +217,6 @@ namespace HUD
 					alliancePanel->fillBackground = false;
 					alliancePanel->renderBorder = false;
 					alliancePanel->Anchor().FillHorizontally(0.01f,0.001f).Top();
-					wrapper->AddComponent(alliancePanel);
 
 
 					if (a->CountMembers() > 1)
@@ -229,6 +228,7 @@ namespace HUD
 						alliancePanel->Anchor().Beneath(allianceLabel);
 					}
 
+					wrapper->AddComponent(alliancePanel);
 
 
 					Objects::WAlliance wa = a;
