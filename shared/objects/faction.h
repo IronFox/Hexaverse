@@ -170,6 +170,9 @@ namespace Objects
 
 		Buffer0<TMember>						members;
 		static HashTable<TUniqueID,WAlliance>	all;
+
+		void		RefreshSensors(bool force);
+
 	};
 
 

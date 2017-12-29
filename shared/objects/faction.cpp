@@ -109,6 +109,21 @@ namespace Objects
 	}
 
 
+	void		Alliance::RefreshSensors(bool force)
+	{
+		if (!config.shareSensors && !force)
+			return;
+		#ifndef CLIENT
+			foreach (members,m)
+			{
+				PFaction f = m->wFaction.lock();
+
+				f->knownWorld.InvalidateSensory();
+				f->CheckSensory();
+			}
+		#endif
+	}
+
 	void		Alliance::Join(const PFaction&f)
 	{
 		ASSERT__(f);
@@ -123,6 +138,10 @@ namespace Objects
 		#ifndef CLIENT
 			ApplicationInterface::SignalAllianceMembershipChange(f);
 		#endif
+
+		RefreshSensors(false);
+
+
 	}
 
 	void		Alliance::Leave(const PFaction&f)
@@ -136,6 +155,8 @@ namespace Objects
 				f->alliance = nullptr;
 				if (members.IsEmpty())
 					all.Unset(id);
+				else
+					RefreshSensors(false);
 				return;
 			} 
 		FATAL__("Faction not found");
@@ -155,6 +176,8 @@ namespace Objects
 				f->alliance = nullptr;
 				if (members.IsEmpty())
 					all.Unset(id);
+				else
+					RefreshSensors(false);
 				return;
 			} 
 		FATAL__("Faction not found");
