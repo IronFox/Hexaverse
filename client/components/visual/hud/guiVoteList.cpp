@@ -1,4 +1,4 @@
-#include "guiHostList.h"
+#include "guiVoteList.h"
 #include "guiComponents.h"
 #include "../../clientEvents.h"
 #include "../../voting.h"
@@ -144,7 +144,12 @@ namespace HUD
 			
 
 			GlobalEvents::voteCast << Refresh;
-			GlobalEvents::voteClosed << Rebuild;
+			GlobalEvents::voteClosed << [](const PVote&v)
+			{
+				Rebuild(v);
+				if (Vote::CountActiveVotes() == 0)
+					Show(false);
+			};
 			GlobalEvents::voteCreated << Rebuild;
 			GlobalEvents::frameBegin << Count;
 
