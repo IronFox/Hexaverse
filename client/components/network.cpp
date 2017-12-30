@@ -747,11 +747,22 @@ namespace Network
 			if (vs.entityState.timestamp.rightNow && Animation::AllDone())
 			{
 				Objects::PWorldEntity e =Objects::GetEntity(vs.entityState.id);
-				ASSERT1__(e,vs.entityState.id);
-				Objects::PStructure s = To<Objects::Structure>::DynamicCast(e);
-				ASSERT1__(s,vs.entityState.id);
-				Animation::UpdateState(s,vs);
-
+				if (!e)
+				{
+					LogEvent(EventClass::Preset::networkError,"Trying to update structure state of entity "+ToString(vs.entityState.id)+", which is currently not registered");
+					DBG_FATAL__("Invalid state detected");
+				}
+				else
+				{
+					Objects::PStructure s = To<Objects::Structure>::DynamicCast(e);
+					if (s)
+						Animation::UpdateState(s,vs);
+					else
+					{
+						LogEvent(EventClass::Preset::networkError,"Trying to update structure state of entity "+e->GetName()+", which is not a structure");
+						DBG_FATAL__("Invalid state detected");
+					}
+				}
 			}
 			else
 			{
