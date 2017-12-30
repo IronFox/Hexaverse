@@ -774,9 +774,12 @@ namespace Objects
 				return true;
 			if (!seeing.IsSet(e))
 			{
-				float t1;
-				if (lostVisualAt.Query(e,t1))
-					return t <= t1;
+				if (!RuntimeConfig::IsInAnyCommandPhase())	//if in command phase, times don't matter. only current state matters
+				{
+					float t1;
+					if (lostVisualAt.Query(e,t1))
+						return t <= t1;
+				}
 				return false;
 			}
 			float t0;
