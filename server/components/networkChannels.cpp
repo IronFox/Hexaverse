@@ -106,14 +106,20 @@ namespace Receiver
 
 		if (req.allianceID.IsEmpty())
 		{
-			LogEvent(EventClass::Preset::uncommon,peer,"Left alliance");
-			if (client->faction->alliance->CountMembers() == 1)
-				return;	//nothing to do
+			if (RuntimeConfig::IsInAnyCommandPhase())
+			{
+				LogEvent(EventClass::Preset::uncommon,peer,"Left alliance");
+				if (client->faction->alliance->CountMembers() == 1)
+					return;	//nothing to do
 
-			Objects::PAlliance a {new Objects::Alliance(TUniqueID::New())};
+				Objects::PAlliance a {new Objects::Alliance(TUniqueID::New())};
 			
-			client->faction->ChangeAlliance(a);
-
+				client->faction->ChangeAlliance(a);
+			}
+			else
+			{
+				LogEvent(EventClass::Preset::commandRejected,peer,"Cannot change alliances right now. Must be in a command phase");
+			}
 			return;
 		}
 
