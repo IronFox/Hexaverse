@@ -1260,8 +1260,15 @@ namespace ApplicationInterface
 				#else
 					true;
 				#endif
-			LogEvent(EventClass(isCommon ? EventSignificance::Common : EventSignificance::Important,EventFlavor::Loss),"Hostile contact: "+e->GetNiceName()+ (RuntimeConfig::autoNewRound && !LocalApplicationInterface::pauseAutomaticRoundProgression ? ". Pausing automatic round progression.":"."));
-			LocalApplicationInterface::pauseAutomaticRoundProgression = true;
+			if (e->owner->alliance != Objects::Faction::mine->alliance)
+			{
+				LogEvent(EventClass(isCommon ? EventSignificance::Common : EventSignificance::Important,EventFlavor::Loss),"Hostile contact: "+e->GetNiceName()+ (RuntimeConfig::autoNewRound && !LocalApplicationInterface::pauseAutomaticRoundProgression ? ". Pausing automatic round progression.":"."));
+				LocalApplicationInterface::pauseAutomaticRoundProgression = true;
+			}
+			else
+			{
+				LogEvent(EventClass(EventSignificance::Common,EventFlavor::Gain),"Friendly contact: "+e->GetNiceName()+ (RuntimeConfig::autoNewRound && !LocalApplicationInterface::pauseAutomaticRoundProgression ? ". Pausing automatic round progression.":"."));
+			}
 		}
 	}
 
