@@ -120,6 +120,13 @@ namespace Objects
 
 				f->knownWorld.InvalidateSensory();
 				f->CheckSensory();
+
+
+				f->VisitMyEntities([](const Objects::PWorldEntity&e)
+				{
+					e->RegisterChange(WorldEntity::CompleteChange,0);	//should trigger resubmission
+				});
+
 			}
 		#endif
 	}
