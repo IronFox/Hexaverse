@@ -639,7 +639,15 @@ namespace Objects
 					sensor.InsertInto(World::actual, atTime);
 				}
 			#else
-				owner->RegisterSensorCreation(sensor, location.height, atTime, newContacts);
+				if (owner->alliance->config.shareSensors)
+				{
+					owner->alliance->ForeachMember([&atTime,newContacts,this,sensor](const PFaction&f)
+					{
+						f->RegisterSensorCreation(sensor, location.height, atTime, f == owner ? newContacts : nullptr);
+					});
+				}
+				else
+					owner->RegisterSensorCreation(sensor, location.height, atTime, newContacts);
 			#endif
 		});
 		return rs;
@@ -682,7 +690,16 @@ namespace Objects
 				sensor.RemoveFrom(World::actual, atTime);
 			}
 		#else
-			owner->RegisterSensorRemoval(sensor, location.height, atTime);
+			if (owner->alliance->config.shareSensors)
+			{
+				owner->alliance->ForeachMember([&atTime,this,sensor](const PFaction&f)
+				{
+					f->RegisterSensorRemoval(sensor, location.height, atTime);
+				});
+			}
+			else
+				owner->RegisterSensorRemoval(sensor, location.height, atTime);
+	
 		#endif
 		});
 		sensor.empDamageLevel = 0;
