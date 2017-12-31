@@ -1438,6 +1438,7 @@ namespace Objects
 		if (alliance == a)
 			return;
 
+		#ifdef CLIENT
 		const bool rebuildSensory = this->isOwnedByMe || alliance == mine->alliance || a == mine->alliance;
 
 		if (rebuildSensory)
@@ -1446,17 +1447,19 @@ namespace Objects
 				float t = 0;
 				e->UnregisterSensory(t);
 			},false);
+		#endif
 
 		alliance->Leave(shared_from_this());
 		a->Join(shared_from_this());
 
+		#ifdef CLIENT
 		if (rebuildSensory)
 			ForeachWorldEntity([](const Objects::PWorldEntity&e)
 			{
 				float t = 0;
 				e->RegisterSensory(t);
 			},false);
-
+		#endif
 	}
 
 
