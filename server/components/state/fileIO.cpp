@@ -1850,7 +1850,9 @@ namespace FileIO
 					factionSection->AppendBlock(RID::nexusTag);
 				}
 
-				factionSection->AppendBlock(RID::factionID)->SetPODData(faction->id);	//faction id
+				factionSection->AppendBlock(RID::factionID)->SetPODData(faction->id);
+				factionSection->AppendBlock(RID::allianceID)->SetPODData(faction->alliance->id);
+
 				factionSection->AppendBlock(RID::factionName)->SetData(faction->name.c_str(),faction->name.GetLength());
 				factionSection->AppendBlock(RID::factionColor)->SetData(faction->color.v,sizeof(float)*3);
 
