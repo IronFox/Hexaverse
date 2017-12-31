@@ -646,6 +646,8 @@ namespace Objects
 
 		void Faction::CheckSensory(float&t)
 		{
+			if (this->sensorLockLevel > 0)
+				return;
 			if (knownWorld.SensoryIsInvalid())
 			{
 				knownWorld.FlushAndValidateSensory();
