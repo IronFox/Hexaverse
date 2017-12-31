@@ -242,6 +242,10 @@ namespace HUD
 						if (a != Objects::Faction::mine->alliance)
 						{
 							PButton joinButton{new Button{JoinText(a)}};
+							joinButton->fillBackground = false;
+							joinButton->renderBorder = false;
+							if (a->CountMembers() == 1)
+								joinButton->SetColor(a->GetMember(0)->color);
 							WButton jb = joinButton;
 							joinButton->SetTriggerFunction(
 							[wa,jb]()
