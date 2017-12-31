@@ -1124,12 +1124,18 @@ namespace Objects
 				break;
 			}
 			existing = QueryGrid(structureGrid,s->location+h);
-			ASSERT4__(!existing,s->GetName(),s->location,h,existing->GetName());
+			if (existing)
+				throw Except::Program::DataConsistencyFault(CLOCATION,
+					"Trying to insert "+s->GetNameAndOwner()+" into grid, but "+existing->GetNameAndOwner()
+					+" was found at height delta "+String(h)+", from location "+ToString(s->location));
 		}
 		if (s->HasFoundation())
 		{
 			existing = QueryGrid(structureGrid,s->location-1);
-			ASSERT3__(!existing,s->GetName(),s->location,existing->GetName());
+			if (existing)
+				throw Except::Program::DataConsistencyFault(CLOCATION,
+					"Trying to insert foundation of "+s->GetNameAndOwner()+" into grid, but "+existing->GetNameAndOwner()
+					+" was found at foundation height, from location "+ToString(s->location));
 		}
 
 		InsertConstructedEntity(s,atTime,setHealthToFull);

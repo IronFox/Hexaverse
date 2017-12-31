@@ -716,24 +716,31 @@ namespace Network
 			//	if (World::actual.lightingOutdated && World::allowRecompilation)
 			//		World::actual.UpdateLighting();
 			//#endif
-
-			Objects::PStructure s = Objects::SpawnStructure(Network::ResolveFaction(sc.owner),  sc.state.entityState.id,sc.state.entityState.location,sc.type, sc.state.entityState.timestamp.rightNow, Network::haveID && Network::myID == sc.owner);
-			ASSERT__(s);
-			if (sc.state.entityState.timestamp.rightNow)
-				LogEvent(EventSignificance::Common,s.get(),  "Placed structure entity outside animation");
-
-			Animation::UpdateState(s,sc.state);
-			if (!sc.state.entityState.timestamp.rightNow)
+			try
 			{
-				Animation::primitives.Append().Init(sc,s);
-				LogEvent(EventSignificance::Debug, "Appended 'new structure("+ToString(sc.state.entityState.id)+")' primitive to animation sequence at t="+String(sc.state.entityState.timestamp.atTime));
+				Objects::PStructure s = Objects::SpawnStructure(Network::ResolveFaction(sc.owner),  sc.state.entityState.id,sc.state.entityState.location,sc.type, sc.state.entityState.timestamp.rightNow, Network::haveID && Network::myID == sc.owner);
+				ASSERT__(s);
+				if (sc.state.entityState.timestamp.rightNow)
+					LogEvent(EventSignificance::Common,s.get(),  "Placed structure entity outside animation");
+
+				Animation::UpdateState(s,sc.state);
+				if (!sc.state.entityState.timestamp.rightNow)
+				{
+					Animation::primitives.Append().Init(sc,s);
+					LogEvent(EventSignificance::Debug, "Appended 'new structure("+ToString(sc.state.entityState.id)+")' primitive to animation sequence at t="+String(sc.state.entityState.timestamp.atTime));
+				}
+				else
+				{
+					#ifdef HAS_WINDOW
+						if (!s->isOwnedByMe)
+							HUD::HexGrid::RefreshContacts();
+					#endif
+				}
 			}
-			else
+			catch (const std::exception & ex)
 			{
-				#ifdef HAS_WINDOW
-					if (!s->isOwnedByMe)
-						HUD::HexGrid::RefreshContacts();
-				#endif
+				LogEvent(EventClass::Preset::protocolError,ex.what());
+				DBG_FATAL__(ex.what());
 			}
 		}
 
