@@ -1466,22 +1466,10 @@ namespace Journal
 		FactionStrand&strand = factionStrands.Set(f->id);
 		PGlobalEvent ev(new CreateFaction(*f,type));
 		globalEvents.Append(ev);
-
-
-		foreach (f->allMobiles,m)
+		f->VisitMyEntities([&strand](const Objects::PWorldEntity&w)
 		{
-			Objects::PWorldEntity w = m->lock();
-			if (w)
-				strand.factionEvents.Append().reset(new CreateEntity(w));
-		}
-		foreach (f->structures,s)
-		{
-			Objects::PWorldEntity w = s->lock();
-			if (w)
-				strand.factionEvents.Append().reset(new CreateEntity(w));
-//				this->newEntities.Append().reset(new CreateEntity(*w));
-		}
-
+			strand.factionEvents.Append().reset(new CreateEntity(w));
+		});
 	}
 
 	/*virtual override*/ void	Round::ClearEntityCommands::Execute(const Objects::PWorldEntity&e) const
