@@ -211,7 +211,11 @@ namespace HexGrid
 				target->AppendDeploymentCount(outResult, target->owner);
 			}
 			elif (target->owner)
+			{
 				outResult << "Owner: "+target->owner->GetName();
+				if (target->owner->alliance == Objects::Faction::mine->alliance)
+					outResult.GetLastLine()+= " (allied)";
+			}
 			if (target->IsAlive())
 			{
 				if (target->IsIndestructible())
@@ -293,7 +297,11 @@ namespace HexGrid
 				}
 			}
 			elif (instance->owner)
+			{
 				outResult << "Owner: "+instance->owner->GetName();
+				if (instance->owner->alliance == Objects::Faction::mine->alliance)
+					outResult.GetLastLine()+= " (allied)";
+			}
 			if (instance->IsAlive())
 			{
 				//if (e->IsIndestructible())
