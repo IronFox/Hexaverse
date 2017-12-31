@@ -882,6 +882,13 @@ namespace Receiver
 		client->SendProgressUpdate(why);
 
 
+		Objects::ForeachFaction([&peer](const Objects::PFaction&f)
+		{
+			Channels::identifyFaction.SendTo(peer,Network::Identify(f));
+
+		},false);
+
+
 		if (!newFaction)
 		{
 			Protocol::Timestamp	timestamp;
