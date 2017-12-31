@@ -571,12 +571,12 @@ namespace Objects
 	void					WorldEntity::InsertSensoryInto(World::Data&target, float&atTime)
 	{
 		this->SyncTime(atTime);
+		#ifdef CLIENT
+			if (isOwnedByMe || owner->SharingSensorWith(Faction::mine))
+		#endif
 		VisitSensors(location, [&target, &atTime,this](const World::Sensor&sensor)
 		{
-			#ifdef CLIENT
-				if (isOwnedByMe)
-			#endif
-				sensor.InsertInto(target, atTime);
+			sensor.InsertInto(target, atTime);
 		});
 	}
 
@@ -598,13 +598,16 @@ namespace Objects
 
 		this->SyncTime(atTime);
 		LogEvent(EventSignificance::Common,this,"Reapplying sensory ("+ToString(registeredSensor)+", "+String(GetScanningRange())+") at time "+String(atTime));
+
+		#ifdef CLIENT
+			if (!isOwnedByMe && !owner->SharingSensorWith(Faction::mine))
+				return;
+		#endif
+
 		VisitSensors(registeredSensor.location, [&atTime, this](const World::Sensor&sensor)
 		{
 			#ifdef CLIENT
-				if (isOwnedByMe)
-				{
-					sensor.InsertInto(World::actual, atTime);
-				}
+				sensor.InsertInto(World::actual, atTime);
 			#else
 				owner->RegisterSensorCreation(sensor, location.height, atTime, nullptr);
 			#endif
@@ -629,15 +632,17 @@ namespace Objects
 		rs.location = loc;
 		rs.empDamageLevel = empDamageLevel;
 
+		
 		this->SyncTime(atTime);
+		#ifdef CLIENT
+			if (isOwnedByMe || owner->SharingSensorWith(Faction::mine))
+			{
+		#endif
 		LogEvent(EventSignificance::Common,this,"Registering sensory ("+ToString(loc)+", "+String(GetScanningRange())+") at time "+String(atTime));
 		VisitSensors(loc, [&atTime, newContacts,this](const World::Sensor&sensor)
 		{
 			#ifdef CLIENT
-				if (isOwnedByMe || owner->SharingSensorWith(Faction::mine))
-				{
-					sensor.InsertInto(World::actual, atTime);
-				}
+				sensor.InsertInto(World::actual, atTime);
 			#else
 				if (owner->alliance->config.shareSensors)
 				{
@@ -650,6 +655,9 @@ namespace Objects
 					owner->RegisterSensorCreation(sensor, location.height, atTime, newContacts);
 			#endif
 		});
+		#ifdef CLIENT
+			}
+		#endif
 		return rs;
 	}
 
@@ -681,27 +689,32 @@ namespace Objects
 
 		
 		this->SyncTime(atTime);	
+
+		#ifdef CLIENT
+			if (isOwnedByMe || owner->SharingSensorWith(Faction::mine))
+			{
+		#endif
 		LogEvent(EventClass::Preset::common,this,"Unregistering sensory ("+ToString(sensor.location)+", "+String(GetScanningRange())+") at time "+String(atTime));
 		VisitSensors(sensor.location, [&atTime, this](const World::Sensor&sensor)
 		{
-		#ifdef CLIENT
-			if (isOwnedByMe)
-			{
+			#ifdef CLIENT
 				sensor.RemoveFrom(World::actual, atTime);
-			}
-		#else
-			if (owner->alliance->config.shareSensors)
-			{
-				owner->alliance->ForeachMember([&atTime,this,sensor](const PFaction&f)
+			#else
+				if (owner->alliance->config.shareSensors)
 				{
-					f->RegisterSensorRemoval(sensor, location.height, atTime);
-				});
-			}
-			else
-				owner->RegisterSensorRemoval(sensor, location.height, atTime);
+					owner->alliance->ForeachMember([&atTime,this,sensor](const PFaction&f)
+					{
+						f->RegisterSensorRemoval(sensor, location.height, atTime);
+					});
+				}
+				else
+					owner->RegisterSensorRemoval(sensor, location.height, atTime);
 	
-		#endif
+			#endif
 		});
+		#ifdef CLIENT
+			}
+		#endif
 		sensor.empDamageLevel = 0;
 		sensor.location = Grid::LCellIdI::Invalid;
 	}

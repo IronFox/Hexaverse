@@ -1387,7 +1387,7 @@ namespace Objects
 			LogEvent(EventSignificance::Debug, e.get(),"Changing ownership to "+newOwner->GetName());
 			PStructure s = To<Structure>::DynamicCast(e);
 			#ifdef CLIENT
-				if (e->isOwnedByMe)
+				//if (e->isOwnedByMe)
 				{
 					float t = 0.f;
 					e->UnregisterSensory(t);
@@ -1406,7 +1406,7 @@ namespace Objects
 			e->isOwnedByMe = isNowMine;
 
 			#ifdef CLIENT
-				if (e->isOwnedByMe)
+				//if (e->isOwnedByMe)
 				{
 					float t = 0.f;
 					if (!s && e->IsMobile())
@@ -1433,8 +1433,26 @@ namespace Objects
 	{
 		if (alliance == a)
 			return;
+
+		const bool rebuildSensory = this->isOwnedByMe || alliance == mine->alliance || a == mine->alliance;
+
+		if (rebuildSensory)
+			ForeachWorldEntity([](const Objects::PWorldEntity&e)
+			{
+				float t = 0;
+				e->UnregisterSensory(t);
+			},false);
+
 		alliance->Leave(shared_from_this());
 		a->Join(shared_from_this());
+
+		if (rebuildSensory)
+			ForeachWorldEntity([](const Objects::PWorldEntity&e)
+			{
+				float t = 0;
+				e->RegisterSensory(t);
+			},false);
+
 	}
 
 
