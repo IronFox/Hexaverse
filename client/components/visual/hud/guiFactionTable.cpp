@@ -27,7 +27,7 @@ namespace HUD
 			String	WordForThinking(const RuntimeConfig::RoundNumber&roundNumber, const void*factionPointer)
 			{
 				//return "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto";
-
+				return "Thinking, Sleeping, or AFK";
 
 				static String words[] = {
 					"Thinking",
