@@ -1091,7 +1091,7 @@ namespace Component
 	{
 		bool lit = IsLit();
 		bool flipped = mousePressedComponent.get() == this;
-		Super::BaseRender((lit && !flipped)  || alwaysDown,(lit && flipped) || (alwaysDown && flipWhenAlwaysDown));
+		Super::BaseRender((lit && !flipped)  || alwaysDown,(lit && flipped) || (alwaysDown && flipWhenAlwaysDown), fillBackground, renderBorder);
 		Super::RenderText(lit || alwaysDown);
 	}
 
