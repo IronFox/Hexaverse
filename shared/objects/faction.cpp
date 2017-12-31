@@ -260,22 +260,26 @@ namespace Objects
 
 
 
-		/*static*/ PFaction				Faction::Create(const TUniqueID&id, const TUniqueID&allianceID, const String&name/* = ""*/)
+		/*static*/ PFaction				Faction::Create(const TUniqueID&id, const PAlliance&alliance, const String&name /*= ""*/)
 		{
 			ASSERT__(id.IsNotEmpty());
-			ASSERT__(allianceID.IsNotEmpty());
-			ASSERT__(id != allianceID);
+			ASSERT__(alliance);
+			ASSERT__(id != alliance->id);
 			PFaction rs(new Faction(id, name));
 			all << rs;
 
-
-			rs->alliance = Alliance::FindByID(allianceID);
-			if (!rs->alliance)
-				rs->alliance.reset(new Alliance(allianceID));
-
-			rs->alliance->Join(rs);
-
+			alliance->Join(rs);
 			return rs;
+
+		}
+
+		/*static*/ PFaction				Faction::Create(const TUniqueID&id, const TUniqueID&allianceID, const String&name/* = ""*/)
+		{
+			ASSERT__(allianceID.IsNotEmpty());
+			auto alliance = Alliance::FindByID(allianceID);
+			if (!alliance)
+				alliance.reset(new Alliance(allianceID));
+			return Create(id,alliance,name);
 		}
 
 		void	Faction::RecreateNexus(const TUniqueID&id)

@@ -322,6 +322,7 @@ namespace Objects
 
 			static PFaction				FindByID(const TUniqueID&);
 			static PFaction				Create(const TUniqueID&, const TUniqueID&allianceID, const String&name = "");
+			static PFaction				Create(const TUniqueID&, const PAlliance&alliance, const String&name = "");
 
 
 			World::Data				knownWorld;

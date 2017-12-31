@@ -93,11 +93,12 @@ namespace FileIO
 
 		//FactionGroup = WorldGroup + 1024,
 		FactionSection = ResourceSection + 1024,
-		FactionStatisticsSection
+		FactionStatisticsSection,
 				//FactionID,
 				//FactionAccessToken,
 				//ResourcesDiscovered_Compressed,
 				//ResourcesDiscovered_Full,
+		AllianceSection = FactionSection + 1024,
 	};
 
 
@@ -143,6 +144,7 @@ namespace FileIO
 								entity("ENTI"),
 								factionID("ID  "),
 								allianceID("ALID"),
+								allianceFlags("ALFL"),
 								fociFlags("FCIF"),
 								foci("FOCI"),
 								factionSupportFlags("FSFL"),
@@ -1209,7 +1211,12 @@ namespace FileIO
 			*/
 			Buffer0<Objects::Faction::TSensorLock>	locks;
 
-			for (int round = 0; round < 2; round++)
+			HashTable<TUniqueID,Objects::Alliance::TConfig>	allianceConfigMap;
+
+			static const int ConfigureAllianceRound = 0;
+			static const int NewFactionRound = ConfigureAllianceRound+1;
+
+			for (int round = 0; round < 3; round++)
 			{
 				Riff::Chunk*name,*list;
 				if (file.FindFirstNamedList(name,list))
@@ -1330,7 +1337,7 @@ namespace FileIO
 									}
 								break;
 								case ChunkName::ObjectGroup:
-									if (round == 1)
+									if (round == NewFactionRound+1)
 									{
 						
 										Riff::Chunk*child;
@@ -1414,7 +1421,7 @@ namespace FileIO
 									}
 								break;
 								case ChunkName::FactionStatisticsSection:
-									if (round == 1)
+									if (round == NewFactionRound+1)
 									{
 										Objects::PFaction faction;
 										TUniqueID factionID;
@@ -1430,13 +1437,26 @@ namespace FileIO
 										}
 									}
 								break;
+								case ChunkName::AllianceSection:
+									if (round == ConfigureAllianceRound)
+									{
+										TUniqueID allianceID;
+										GetPOD(list,RID::allianceID,allianceID);
+
+										UINT32 allianceConfig=0;
+										GetPOD(list,RID::allianceFlags,allianceConfig);
+
+										allianceConfigMap.Set(allianceID,Objects::Alliance::TConfig(allianceConfig));
+									}
+								break;
 								case ChunkName::FactionSection:
-									if (round == 0)
+									if (round == NewFactionRound)
 									{
 										Objects::PFaction faction;
 										TUniqueID factionID,allianceID;
 										GetPOD(list,RID::factionID,factionID);
-										if (!GetOptionalPOD(list,RID::allianceID,allianceID,TUniqueID::Empty()))
+										const bool haveAllianceID = GetOptionalPOD(list,RID::allianceID,allianceID,TUniqueID::Empty());
+										if (!haveAllianceID)
 											allianceID.Generate();
 							
 										bool isNexus = false;
@@ -1451,6 +1471,16 @@ namespace FileIO
 										}
 										else
 										{
+											Objects::PAlliance alliance = Objects::Alliance::FindByID(allianceID);
+											if (!alliance)
+											{
+												alliance.reset(new Objects::Alliance(allianceID));
+												if (haveAllianceID && !allianceConfigMap.Query(allianceID,alliance->config))
+												{
+													LogEvent(EventClass::Preset::error,"Failed to load configuration of alliance '"+ToString(allianceID)+". Alliance will have default configuration");
+												}
+											}
+
 											faction = Objects::Faction::Create(factionID,allianceID);
 										}
 										locks.Append(faction.get());
@@ -1801,11 +1831,12 @@ namespace FileIO
 		}
 
 
-
-
-
-
-
+		Objects::Alliance::Foreach([&container](const Objects::PAlliance&alliance)
+		{
+			Riff::Chunk*allianceSection = CreateNamedList(container,ChunkName::AllianceSection);
+			allianceSection->AppendBlock(RID::allianceID)->SetPODData(alliance->id);
+			allianceSection->AppendBlock(RID::allianceFlags)->SetPODData(alliance->config.ToFlags());
+		});
 
 
 
