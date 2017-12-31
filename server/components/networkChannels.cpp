@@ -920,11 +920,12 @@ namespace Receiver
 				}
 			});
 
-			client->faction->alliance->ForeachMember([client,&peer,timestamp](const Objects::PFaction&other)
+			//friendly units will be registered as contacts, therefor they should not be send otherwise
+		/*	client->faction->alliance->ForeachMember([client,&peer,timestamp](const Objects::PFaction&other)
 			{
 				SendEntitiesTo(other, peer,client->faction->alliance->config.exposeEntityDetails,timestamp);
-			});
-			//SendEntitiesTo(client->faction,peer,true,timestamp);
+			});*/
+			SendEntitiesTo(client->faction,peer,true,timestamp);
 		}
 
 
