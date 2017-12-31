@@ -112,6 +112,13 @@ namespace Objects
 //		#endif
 	}
 
+	String						WorldEntity::GetNameAndOwner() const
+	{
+		if (!this)
+			return "<NULL>";
+		return GetName()+"["+(owner ? owner->GetName() : "<NULL>")+"]";
+	}
+
 
 	#ifdef CLIENT
 		void					BaseEntity::UpdateNiceName()

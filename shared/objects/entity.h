@@ -428,6 +428,7 @@ namespace Objects
 		*/
 		virtual void				PrototypeSetup()	{};
 
+		String						GetNameAndOwner() const;
 
 		virtual int					GetMaxHealth() const;
 		virtual String				DescribeMaxHealth() const;
