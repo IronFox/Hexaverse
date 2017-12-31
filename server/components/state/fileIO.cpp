@@ -1481,7 +1481,7 @@ namespace FileIO
 												}
 											}
 
-											faction = Objects::Faction::Create(factionID,allianceID);
+											faction = Objects::Faction::Create(factionID,alliance);
 										}
 										locks.Append(faction.get());
 									
