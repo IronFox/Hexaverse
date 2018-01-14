@@ -16,6 +16,7 @@
 #include "uiScale.h"
 #include "surfaceRenderer.h"
 #include "../lineRenderer.h"
+#include <math/graph.h>
 
 
 namespace HUD
@@ -345,7 +346,7 @@ namespace Component
 	};
 
 
-	class Component : public std::enable_shared_from_this<Component>, public ComponentLocation
+	class Component : public std::enable_shared_from_this<Component>, public ComponentLocation, public M::Graph::NodeAttachment
 	{
 		typedef ComponentLocation Super;
 	protected:
@@ -421,7 +422,7 @@ namespace Component
 		{
 			if (anchorConfig.GetHAxis().SetExtent(w))
 			{
-				InvalidateAutoLayout();
+				SignalLayoutChangeUp();
 				return true;
 			}
 			return false;
@@ -431,7 +432,7 @@ namespace Component
 		{
 			if (anchorConfig.GetVAxis().SetExtent(h))
 			{
-				InvalidateAutoLayout();
+				SignalLayoutChangeUp();
 				return true;
 			}
 			return false;
@@ -474,8 +475,16 @@ namespace Component
 
 		void			FullAutoLayout(const M::Rect<>&context);
 
-
-		void			InvalidateAutoLayout();
+		/**
+		Signals layout changes upwards, from children to parent, until the window is reached.
+		Call this if a change has been triggered by a component
+		*/
+		virtual void	SignalLayoutChangeUp();
+		/**
+		Signals layout change downwards, from the window to all children, recursively.
+		Call this on a/all window(s) if a change has been triggered by some global effect
+		*/
+		virtual void	SignalWindowLayoutChange()	{};
 
 		AnchorModifier	Anchor() {return this;}
 		const AnchorConfig&GetAnchorConfig() const {return anchorConfig;}
@@ -509,8 +518,8 @@ namespace Component
 	public:
 		static void		StaticCreate();
 
-		void			SetAutoHeight(bool b)	{if (autoSetHeight == b) return; ASSERT__(!b || !anchorConfig.GetVAxis().RequiresFixedParentSize()); autoSetHeight = b; InvalidateAutoLayout();}
-		void			SetTexture(const DX11::Texture&tex) {texture = tex;InvalidateAutoLayout();}
+		void			SetAutoHeight(bool b)	{if (autoSetHeight == b) return; ASSERT__(!b || !anchorConfig.GetVAxis().RequiresFixedParentSize()); autoSetHeight = b; SignalLayoutChangeUp();}
+		void			SetTexture(const DX11::Texture&tex) {texture = tex;SignalLayoutChangeUp();}
 
 		virtual void	Render() override;
 		//virtual bool	HandleClick() override {return ContainsMouse();}
@@ -1248,7 +1257,7 @@ namespace Component
 		};
 
 		TScrollbar		vscroll;
-		
+		bool			resolvingAxis = false;
 	protected:
 		virtual void	PropagateToChildren(const PWindow&w)	override
 		{
@@ -1268,6 +1277,7 @@ namespace Component
 		}
 
 		Buffer0<PComponent>	components;
+		Array<PComponent>	order[2];
 
 		/**
 		Queries whether or not the vertical scrollbar is currently visible.
@@ -1298,20 +1308,30 @@ namespace Component
 		A scrollbar will be rendered if maxHeight is exceeded
 		*/
 		float			maxHeight = 0.8f;
+
+		void			InvalidateOrder()
+		{
+			order[0].Clear();
+			order[1].Clear();
+		}
+		void			RecomputeOrder(AnchorAxis);
 	public:
 		/**/			Panel()	{topOpacity = 0.75f; bottomOpacity = 0.75f; Anchor().FillHorizontally().Top();}
 		bool			DeterminesHeightAutomatically() const {return autoHeight;}
 		void			SetAutomaticHeight(bool b);
 		float			GetAutoHeightSpacing() const {return autoHeightSpacing;}
-		void			SetAutoHeightSpacing(float s) {if (s == autoHeightSpacing) return; autoHeightSpacing = s; this->InvalidateAutoLayout();}
+		void			SetAutoHeightSpacing(float s) {if (s == autoHeightSpacing) return; autoHeightSpacing = s; this->SignalLayoutChangeUp();}
 		float			GetMaxAutoHeight() const {return maxHeight;}
-		void			SetMaxAutoHeight(float h) {if (h == maxHeight) return; maxHeight = h; InvalidateAutoLayout();}
+		void			SetMaxAutoHeight(float h) {if (h == maxHeight) return; maxHeight = h; SignalLayoutChangeUp();}
 
 		void			ScrollToBottom()	{vscroll.ScrollToBottom();}
 		void			ScrollToTop()	{vscroll.ScrollToTop();}
 
 		virtual count_t	CountChildren() const override {return components.Count();}
 		virtual PComponent GetChild(index_t i) const override {return components[i];}
+
+		virtual void	SignalLayoutChangeUp() override;
+		virtual void	SignalWindowLayoutChange() override;
 
 		virtual bool	DetectEnabledState() override;
 		
@@ -1804,10 +1824,17 @@ namespace Component
 			Super::Render();
 		}
 
-		void			SignalLayoutChange()
+		virtual void		SignalLayoutChangeUp()	override
 		{
 			relayoutRequired = true;
 		}
+
+		virtual void	SignalWindowLayoutChange() override
+		{
+			Super::SignalWindowLayoutChange();
+			relayoutRequired = true;
+		}
+
 
 		bool			RelayoutRequired() const {return relayoutRequired;}
 		void			FullAutoLayout(const TCodeLocation&caller);

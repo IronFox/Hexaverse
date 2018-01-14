@@ -9,6 +9,7 @@
 #include <objects.h>
 #include "../../clientEvents.h"
 #include "componentDetails.h"
+#include <math/graph.h>
 
 namespace DX11 = Engine::DX11; 
 
@@ -572,7 +573,7 @@ namespace Component
 		//anchorConfig.GetHAxis().UpdateExtentIfEnabled( Distance::GameWindow( GetWidth() ));
 		//anchorConfig.GetVAxis().UpdateExtentIfEnabled( Distance::GameWindow( GetHeight() ));
 		anchorConfig.VerifyIntegrity(FVerification(),GetWindow() != nullptr);
-		InvalidateAutoLayout();
+		SignalLayoutChangeUp();
 	}
 
 	Component::Component()
@@ -586,19 +587,38 @@ namespace Component
 			Detail::allComponents.FindAndErase(this);
 	}
 
-	void Component::InvalidateAutoLayout()
+	void Panel::SignalLayoutChangeUp()
 	{
-		PWindow w = GetWindow();
-		if (w)
-			w->SignalLayoutChange();
+		if (resolvingAxis)
+			return;
+		this->InvalidateOrder();
+		Super::SignalLayoutChangeUp();
+	}
+
+	void Panel::SignalWindowLayoutChange()
+	{
+		this->InvalidateOrder();
+		foreach (this->components,c)
+			(*c)->SignalWindowLayoutChange();
+	}
+
+
+	void Component::SignalLayoutChangeUp()
+	{
+		PComponent parent = this->GetParent();
+		if (parent)
+			parent->SignalLayoutChangeUp();
 	}
 
 	/*virtual*/ void	Component::VerifyAnchorIntegrity() const
 	{
+		auto p0 = this->GetParent();
 		anchorConfig.VerifyIntegrity(
-		[this](const PComponent&c)
+		[this,&p0](const PComponent&c)
 		{
-			ASSERT__(c->GetWindow() == nullptr || c->GetWindow() == this->GetWindow());
+			auto p1 = c->GetParent();
+			if (p0 && p1 && p0 != p1)
+				FATAL__("Component parents mismatch. Components referencing each other via anchors must have an immediate, common parent");
 		},GetWindow() == nullptr);
 	}
 
@@ -617,7 +637,7 @@ namespace Component
 			ASSERT__(!anchorConfig.HasExtentPlaceholders());
 		}
 //		VerifyAnchorIntegrity(); 
-		InvalidateAutoLayout();
+		SignalLayoutChangeUp();
 	}
 
 
@@ -738,17 +758,57 @@ namespace Component
 		c->SetParent( GetWindow(), shared_from_this());
 		c->VerifyAnchorIntegrity();
 		VerifyAnchorIntegrity();
+		InvalidateOrder();
 		return true;
 	}
 
+
+	void Panel::RecomputeOrder(AnchorAxis axis)
+	{
+		order[axis].SetSize(components.Count());
+
+		M::Graph g;
+
+
+		PointerTable<M::Graph::PNode>	nodeMap;
+
+		foreach (components,c)
+		{
+			auto newNode = g.AddNode();
+			nodeMap.Set(c->get(),newNode);
+			newNode->attachment = *c;
+		}
+
+		foreach (components,c0)
+		{
+			const auto&c = **c0;
+			const auto myNode = nodeMap.Require(c0->get());
+			const auto&a = c.GetAnchorConfig().axis[axis];
+			foreach (a.lower.GetReferences(),ref)
+				g.AddEdge(nodeMap.Require(ref->lock().get()),myNode);
+			foreach (a.upper.GetReferences(),ref)
+				g.AddEdge(nodeMap.Require(ref->lock().get()),myNode);
+		}
+		Buffer<M::Graph::PNode>	finalOrder(components.Count());
+		if (!g.CreateTopologicalOrder(finalOrder))
+			FATAL__("Failed to create topological order of component along axis "+String(axis.ToString()));
+		for (index_t i = 0; i < components.Count(); i++)
+			order[axis][i] = To<Component>::Cast( finalOrder[i]->attachment );
+	}
+
+
 	/*virtual override*/ void	Panel::ResolveAnchorAxis(AnchorAxis axis, const M::Rect<>&context, ChangeRecorder&rec)
 	{
+		resolvingAxis = true;
 		Super::ResolveAnchorAxis(axis,context,rec); 
 		M::Rect<> childSpace = GetRect();
 		if (vscroll.visible)
 			childSpace.x.max = M::Max(childSpace.x.min, childSpace.x.max - GetVisibleScrollbarContentExpansion());
-		foreach (components,c) 
+		if (order[axis].Count() != components.Count())
+			RecomputeOrder(axis);
+		foreach (order[axis],c) 
 			(*c)->ResolveAnchorAxis(axis,childSpace,rec);
+		resolvingAxis = false;
 	}
 
 
@@ -1232,7 +1292,7 @@ namespace Component
 		{
 			active = c->active;
 			AcceptStateFromParent(c->CreatePropagating());
-			InvalidateAutoLayout();
+			SignalLayoutChangeUp();
 			if (w && w->IsVisible())
 				OnScreenSizeOrUIScaleChange();
 		}
@@ -1722,7 +1782,7 @@ namespace Component
 		UpdateDynamicSize(ChangeRecorder());
 		OnTextChange();
 		if (this->widthLockedToIdeal || this->heightLockedToIdeal)
-			this->InvalidateAutoLayout();
+			this->SignalLayoutChangeUp();
 	}
 	void			TextField::SetText(const Array<String>&string)
 	{
@@ -1764,7 +1824,7 @@ namespace Component
 	void			TextField::SetToIdealWidth()
 	{
 		if (UpdateIdealWidth())
-			InvalidateAutoLayout();
+			SignalLayoutChangeUp();
 	}
 
 
@@ -1803,7 +1863,7 @@ namespace Component
 		for (const String&raw : rawText)
 		{
 			wrapf(raw,width,CharWidth,wrapped);
-			wrappedText.MoveAppend(wrapped);
+			wrappedText.MoveAppendAll(wrapped);
 		}
 		if (wrappedText.IsEmpty())
 			wrappedText.Append();	//at least one empty line
@@ -2212,7 +2272,7 @@ namespace Component
 		if (autoHeight == b)
 			return;
 		autoHeight = b;
-		this->InvalidateAutoLayout();
+		this->SignalLayoutChangeUp();
 		if (b && anchorConfig.GetVAxis().Stretches())
 			AnchorTop(0);
 		VerifyAnchorIntegrity();

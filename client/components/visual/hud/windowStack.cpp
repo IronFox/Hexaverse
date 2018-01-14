@@ -72,7 +72,7 @@ namespace HUD
 			GlobalEvents::uiScaleChanged += []()
 			{
 				foreach (Detail::visibleWindows,w)
-					(*w)->InvalidateAutoLayout();
+					(*w)->SignalWindowLayoutChange();
 				SignalScreenResize();
 			};
 
