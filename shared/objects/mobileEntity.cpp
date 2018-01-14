@@ -1442,7 +1442,7 @@ namespace Objects
 								}
 								else
 								{
-									path.Append(nodes);
+									path.AppendAll(nodes);
 								}
 							}
 

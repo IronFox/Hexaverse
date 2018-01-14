@@ -65,7 +65,7 @@ namespace Objects
 				typeTable.IncludeCast(other.typeTable);
 				stringToTypeTable.IncludeCast(other.stringToTypeTable);
 				typeToStringTable.IncludeCast(other.typeToStringTable);
-				list.Append(other.list);
+				list.AppendAll(other.list);
 
 				VerifyIntegrity();
 			}

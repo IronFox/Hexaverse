@@ -874,10 +874,10 @@ namespace Journal
 
 			void			Merge(const FactionStrand&other)
 			{
-				factionEvents.Append(other.factionEvents);
+				factionEvents.AppendAll(other.factionEvents);
 				other.entityStrands.VisitAllEntries([this](const TUniqueID&key, const EntityStrand&strand)
 				{
-					entityStrands.Set(key).Append(strand);
+					entityStrands.Set(key).AppendAll(strand);
 				});
 			}
 		};

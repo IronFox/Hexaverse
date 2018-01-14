@@ -427,7 +427,7 @@ namespace ApplicationInterface
 			if (Network::playerMap.Query(p,client))
 				clientsCanSee << client;
 		}
-		clientsCanSee.Append(Network::spectators);
+		clientsCanSee.AppendAll(Network::spectators);
 
 		if (clientsCanSee.IsEmpty())
 			return;

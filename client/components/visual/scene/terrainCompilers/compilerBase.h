@@ -99,7 +99,7 @@ namespace VisualTerrain
 
 			void		AppendTo(TPointSet<Vtx>&set) const
 			{
-				set.vertices.Append(vertices);
+				set.vertices.AppendAll(vertices);
 			}
 
 		};

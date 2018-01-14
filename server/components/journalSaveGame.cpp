@@ -36,7 +36,7 @@ namespace Journal
 		if (execute)
 			other.Apply(false,false);
 		
-		globalEvents.Append(other.globalEvents);
+		globalEvents.AppendAll(other.globalEvents);
 		other.factionStrands.VisitAllEntries([this](const TUniqueID&key, FactionStrand&strand)
 		{
 			factionStrands.Set(key).Merge(strand);
