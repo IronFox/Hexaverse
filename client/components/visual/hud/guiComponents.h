@@ -417,6 +417,8 @@ namespace Component
 
 		virtual count_t	CountChildren() const {return 0;}
 		virtual PComponent GetChild(index_t i) const {return nullptr;}
+		PComponent		GetLastChild() const {const count_t cnt = CountChildren(); if (cnt) return GetChild(cnt-1); return nullptr;}
+
 		
 		bool			SetWidth(const Distance&w)
 		{

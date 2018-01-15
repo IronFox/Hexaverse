@@ -636,7 +636,7 @@ namespace Component
 			}
 			ASSERT__(!anchorConfig.HasExtentPlaceholders());
 		}
-//		VerifyAnchorIntegrity(); 
+		VerifyAnchorIntegrity(); 
 		SignalLayoutChangeUp();
 	}
 
@@ -2391,7 +2391,7 @@ namespace Component
 		active->SetAlwaysDown(false);
 		active->edges = M::Quad<bool>(true);
 		active->bottomOpacity = 1;
-		active->Anchor().GetVAxis().lower.Disable();
+		active->Anchor().Top();
 		active->LockToIdealHeight(true);
 		active->topOpacity = 0.85f;
 		active->bottomOpacity = 0.85f;
@@ -2402,7 +2402,8 @@ namespace Component
 	{
 		active->SetAlwaysDown(true);
 		active->LockToIdealHeight(false);
-		active->Anchor().GetVAxis().lower.Set(0);
+		active->Anchor().FillVertically();
+//			GetVAxis().lower.Set(0);
 		active->topOpacity = 1.f;
 		active->bottomOpacity = 0;
 		active->edges = M::Quad<bool>(true,false,true,true);
