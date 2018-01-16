@@ -131,7 +131,7 @@ namespace Objects
 			/**/					Task(const String&name, const Ctr::ArrayRef<Grid::LCellIdI>&destination, bool isDetailed, type_t type, mode_t mode=CursorMode::Idle) : TaskData(type,mode), name(name)
 			{
 				ASSERT__(destination.IsNotEmpty());
-				for (index_t i = 0; i+1 < destination.length(); i++)
+				for (index_t i = 0; i+1 < destination.GetLength(); i++)
 				{
 					Focus&f = this->foci.Push();
 					#ifndef CLIENT
@@ -238,7 +238,7 @@ namespace Objects
 			*/
 			void				UnlockTasks();
 			/**
-			Checks whether or not tasks are currently locked. All modification operations (create new task, erase some task)
+			Checks whether or not tasks are currently locked. CompleteChange modification operations (create new task, erase some task)
 			MUST check this method in an ASSERT__ . Methods must be designed such that this event simply does not occur.
 			*/
 			bool				TasksAreLocked() const {return privateLockCounter > 0;}
@@ -318,8 +318,8 @@ namespace Objects
 			bool				HasTasks() const {return myTasks.IsNotEmpty();}
 		#else
 
-			bool				PlotCourse(Ctr::ArrayRef<Grid::LCellIdI> destination, bool detailedPath, bool virtualPlatformMode=false);
-			bool				PlotFrontCourse(Ctr::ArrayRef<Grid::LCellIdI> destination, bool detailedPath);
+			bool				PlotCourse(MutableArrayRef<Grid::LCellIdI> destination, bool detailedPath, bool virtualPlatformMode=false);
+			bool				PlotFrontCourse(MutableArrayRef<Grid::LCellIdI> destination, bool detailedPath);
 			virtual	void		SetupSystem() override {UpdateSystem();}
 			void				RegisterNewJob(
 										const String&localizableShapeIdentifier,

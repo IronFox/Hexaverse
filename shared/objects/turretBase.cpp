@@ -55,7 +55,7 @@ namespace Objects
 
 
 			PWorldEntity e = GetEntity(current);
-			if (e && e->owner == myFaction && !e->IsIndestructible())
+			if (e && myFaction->IsFriendly(e->owner) && !e->IsIndestructible())
 			{
 				#ifdef _DEBUG
 					f.friendlyFound = true;

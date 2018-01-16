@@ -522,7 +522,7 @@ namespace World
 		CorrectResidualEMPDamage(t,unlockedEMPZones,newUnlocked);
 		Grid::empZonesUnlocked = unlockedEMPZones = newUnlocked;
 		Grid::empZonesLocked = empZonesLocked = AllZones  & ~unlockedEMPZones;
-		Channels::lockEmpZones.SendTo(::Network::server,empZonesLocked,Channels::FactionLevel);
+		Channels::lockEmpZones.SendTo(::Network::server,empZonesLocked,Channels::Level::Faction);
 
 
 	}

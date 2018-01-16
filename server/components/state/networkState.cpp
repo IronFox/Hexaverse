@@ -20,6 +20,32 @@
 extern TwisterRandom random;
 
 
+namespace ApplicationInterface
+{
+	void	SignalAllianceMembershipChange(const Objects::OwnerParameter&owner)
+	{
+		Channels::identifyFaction.SendTo(::Network::server,Network::Identify(owner),Channels::Level::Faction);
+	}
+
+	void	SignalAllianceConfigChange(const Objects::PAlliance&alliance)
+	{
+		Protocol::AllianceConfigChange ch;
+		ch.allianceID = alliance->id;
+		ch.flags = alliance->config.ToFlags();
+		alliance->ForeachMember([ch](const Objects::PFaction&f)
+		{
+			Network::PClient client;
+			if (Network::playerMap.Query(f,client))
+			{
+				Channels::AllianceConfigChange.SendTo(client->peer.lock(),ch);
+			}
+		});
+	}
+
+
+}
+
+
 namespace Network
 {
 	Ctr::Buffer<PClient>	activePlayersAndSpectators,spectators;
@@ -188,6 +214,16 @@ namespace Network
 		}
 	}
 
+	Protocol::IdentifyFaction Identify(const Objects::PFaction & f)
+	{
+		Protocol::IdentifyFaction	id;
+		id.id = f->id;
+		id.allianceID = f->alliance->id;
+		id.name = f->name;
+		id.color = f->color;
+		return id;
+	}
+
 
 	String						Client::ConvertToString() const
 	{
@@ -300,6 +336,10 @@ namespace Network
 		server.InstallChannel(Channels::requestResource);
 		server.InstallChannel(Channels::loadPlanetByName);
 		server.InstallChannel(Channels::tutorialAt);
+
+		server.InstallChannel(Channels::AllianceJoinRequest);
+		server.InstallChannel(Channels::ClientVote);
+		server.InstallChannel(Channels::AllianceConfigChange);
 
 		server.OpenSignalChannel(Protocol::ChannelID::RequestRoundEnd,(UINT32)UserLevel::CommonFaction);
 		server.OpenSignalChannel(Protocol::ChannelID::RequestContinueRound,(UINT32)UserLevel::CommonFaction);

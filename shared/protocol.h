@@ -116,15 +116,15 @@ namespace Protocol
 				Super::operator=(other);
 			}
 
-			friend	void		SerialSync(IReadStream&s, Self&v)
+			friend	void		Deserialize(IReadStream&s, Self&v)
 			{
 				count_t size = s.ReadSize();
 				if (size > MaxSize)
 					throw Except::Memory::SerializationFault(CLOCATION,"Ctr::Array size "+String(size)+" exceeds maximum safe size "+String(MaxSize));
-				using Serialization::SerialSync;
+				using Serialization::Deserialize;
 				v.SetSize(size);
 				for (index_t i = 0; i < v.Count(); i++)
-					SerialSync(s,v[i]);
+					Deserialize(s,v[i]);
 			}
 
 		};
@@ -150,21 +150,21 @@ namespace Protocol
 			T3	var3;
 		public:
 			typedef MultiSerializable4<T0,T1,T2,T3>	Self;
-			friend void SerialSync(IReadStream&s, Self&v)
+			friend void Deserialize(IReadStream&s, Self&v)
 			{
-				using Serialization::SerialSync;
-				SerialSync(s,v.var0);
-				SerialSync(s,v.var1);
-				SerialSync(s,v.var2);
-				SerialSync(s,v.var3);
+				using Serialization::Deserialize;
+				Deserialize(s,v.var0);
+				Deserialize(s,v.var1);
+				Deserialize(s,v.var2);
+				Deserialize(s,v.var3);
 			}
-			friend void SerialSync(IWriteStream&s, const Self&v)
+			friend void Serialize(IWriteStream&s, const Self&v)
 			{
-				using Serialization::SerialSync;
-				SerialSync(s,v.var0);
-				SerialSync(s,v.var1);
-				SerialSync(s,v.var2);
-				SerialSync(s,v.var3);
+				using Serialization::Serialize;
+				Serialize(s,v.var0);
+				Serialize(s,v.var1);
+				Serialize(s,v.var2);
+				Serialize(s,v.var3);
 			}
 			void	swap(MultiSerializable4&other)
 			{
@@ -232,17 +232,17 @@ namespace Protocol
 			T1		NAME1;\
 			NAME()	{}\
 			NAME(const T0&a, const T1&b):NAME0(a),NAME1(b){}\
-			friend void SerialSync(IReadStream&s, NAME&v)\
+			friend void Deserialize(IReadStream&s, NAME&v)\
 			{\
-				using Serialization::SerialSync;\
-				SerialSync(s,v.NAME0);\
-				SerialSync(s,v.NAME1);\
+				using Serialization::Deserialize;\
+				Deserialize(s,v.NAME0);\
+				Deserialize(s,v.NAME1);\
 			}\
-			friend void SerialSync(IWriteStream&s, const NAME&v)\
+			friend void Serialize(IWriteStream&s, const NAME&v)\
 			{\
-				using Serialization::SerialSync;\
-				SerialSync(s,v.NAME0);\
-				SerialSync(s,v.NAME1);\
+				using Serialization::Serialize;\
+				Serialize(s,v.NAME0);\
+				Serialize(s,v.NAME1);\
 			}\
 			void		swap(NAME&other)	{using std::swap; swap(NAME0,other.NAME0);swap(NAME1,other.NAME1);}\
 			friend void swap(NAME&a, NAME&b) {a.swap(b);}\
@@ -258,19 +258,19 @@ namespace Protocol
 			T2		NAME2;\
 			NAME()	{}\
 			NAME(const T0&a, const T1&b, const T2&c):NAME0(a),NAME1(b),NAME2(c){}\
-			friend void SerialSync(IReadStream&s, NAME&v)\
+			friend void Deserialize(IReadStream&s, NAME&v)\
 			{\
-				using Serialization::SerialSync;\
-				SerialSync(s,v.NAME0);\
-				SerialSync(s,v.NAME1);\
-				SerialSync(s,v.NAME2);\
+				using Serialization::Deserialize;\
+				Deserialize(s,v.NAME0);\
+				Deserialize(s,v.NAME1);\
+				Deserialize(s,v.NAME2);\
 			}\
-			friend void SerialSync(IWriteStream&s, const NAME&v)\
+			friend void Serialize(IWriteStream&s, const NAME&v)\
 			{\
-				using Serialization::SerialSync;\
-				SerialSync(s,v.NAME0);\
-				SerialSync(s,v.NAME1);\
-				SerialSync(s,v.NAME2);\
+				using Serialization::Serialize;\
+				Serialize(s,v.NAME0);\
+				Serialize(s,v.NAME1);\
+				Serialize(s,v.NAME2);\
 			}\
 			void		swap(NAME&other)	{using std::swap; swap(NAME0,other.NAME0);swap(NAME1,other.NAME1);swap(NAME2,other.NAME2);}\
 			friend void swap(NAME&a, NAME&b) {a.swap(b);}\
@@ -288,21 +288,21 @@ namespace Protocol
 			T1		NAME1;\
 			T2		NAME2;\
 			T3		NAME3;\
-			friend void SerialSync(IReadStream&s, NAME&v)\
+			friend void Deserialize(IReadStream&s, NAME&v)\
 			{\
-				using Serialization::SerialSync;\
-				SerialSync(s,v.NAME0);\
-				SerialSync(s,v.NAME1);\
-				SerialSync(s,v.NAME2);\
-				SerialSync(s,v.NAME3);\
+				using Serialization::Deserialize;\
+				Deserialize(s,v.NAME0);\
+				Deserialize(s,v.NAME1);\
+				Deserialize(s,v.NAME2);\
+				Deserialize(s,v.NAME3);\
 			}\
-			friend void SerialSync(IWriteStream&s, const NAME&v)\
+			friend void Serialize(IWriteStream&s, const NAME&v)\
 			{\
-				using Serialization::SerialSync;\
-				SerialSync(s,v.NAME0);\
-				SerialSync(s,v.NAME1);\
-				SerialSync(s,v.NAME2);\
-				SerialSync(s,v.NAME3);\
+				using Serialization::Serialize;\
+				Serialize(s,v.NAME0);\
+				Serialize(s,v.NAME1);\
+				Serialize(s,v.NAME2);\
+				Serialize(s,v.NAME3);\
 			}\
 			void		swap(NAME&other)	{using std::swap; swap(NAME0,other.NAME0);swap(NAME1,other.NAME1);swap(NAME2,other.NAME2);swap(NAME3,other.NAME3);}\
 			friend void swap(NAME&a, NAME&b) {a.swap(b);}\
@@ -317,23 +317,23 @@ namespace Protocol
 			T2		NAME2;\
 			T3		NAME3;\
 			T4		NAME4;\
-			friend void SerialSync(IReadStream&s, NAME&v)\
+			friend void Deserialize(IReadStream&s, NAME&v)\
 			{\
-				using Serialization::SerialSync;\
-				SerialSync(s,v.NAME0);\
-				SerialSync(s,v.NAME1);\
-				SerialSync(s,v.NAME2);\
-				SerialSync(s,v.NAME3);\
-				SerialSync(s,v.NAME4);\
+				using Serialization::Deserialize;\
+				Deserialize(s,v.NAME0);\
+				Deserialize(s,v.NAME1);\
+				Deserialize(s,v.NAME2);\
+				Deserialize(s,v.NAME3);\
+				Deserialize(s,v.NAME4);\
 			}\
-			friend void SerialSync(IWriteStream&s, const NAME&v)\
+			friend void Serialize(IWriteStream&s, const NAME&v)\
 			{\
-				using Serialization::SerialSync;\
-				SerialSync(s,v.NAME0);\
-				SerialSync(s,v.NAME1);\
-				SerialSync(s,v.NAME2);\
-				SerialSync(s,v.NAME3);\
-				SerialSync(s,v.NAME4);\
+				using Serialization::Serialize;\
+				Serialize(s,v.NAME0);\
+				Serialize(s,v.NAME1);\
+				Serialize(s,v.NAME2);\
+				Serialize(s,v.NAME3);\
+				Serialize(s,v.NAME4);\
 			}\
 			void		swap(NAME&other)	{using std::swap; swap(NAME0,other.NAME0);swap(NAME1,other.NAME1);swap(NAME2,other.NAME2);swap(NAME3,other.NAME3);swap(NAME4,other.NAME4);}\
 			friend void swap(NAME&a, NAME&b) {a.swap(b);}\
@@ -349,25 +349,25 @@ namespace Protocol
 			T3		NAME3;\
 			T4		NAME4;\
 			T5		NAME5;\
-			friend void SerialSync(IReadStream&s, NAME&v)\
+			friend void Deserialize(IReadStream&s, NAME&v)\
 			{\
-				using Serialization::SerialSync;\
-				SerialSync(s,v.NAME0);\
-				SerialSync(s,v.NAME1);\
-				SerialSync(s,v.NAME2);\
-				SerialSync(s,v.NAME3);\
-				SerialSync(s,v.NAME4);\
-				SerialSync(s,v.NAME5);\
+				using Serialization::Deserialize;\
+				Deserialize(s,v.NAME0);\
+				Deserialize(s,v.NAME1);\
+				Deserialize(s,v.NAME2);\
+				Deserialize(s,v.NAME3);\
+				Deserialize(s,v.NAME4);\
+				Deserialize(s,v.NAME5);\
 			}\
-			friend void SerialSync(IWriteStream&s, const NAME&v)\
+			friend void Serialize(IWriteStream&s, const NAME&v)\
 			{\
-				using Serialization::SerialSync;\
-				SerialSync(s,v.NAME0);\
-				SerialSync(s,v.NAME1);\
-				SerialSync(s,v.NAME2);\
-				SerialSync(s,v.NAME3);\
-				SerialSync(s,v.NAME4);\
-				SerialSync(s,v.NAME5);\
+				using Serialization::Serialize;\
+				Serialize(s,v.NAME0);\
+				Serialize(s,v.NAME1);\
+				Serialize(s,v.NAME2);\
+				Serialize(s,v.NAME3);\
+				Serialize(s,v.NAME4);\
+				Serialize(s,v.NAME5);\
 			}\
 			void		swap(NAME&other)	{using std::swap; swap(NAME0,other.NAME0);swap(NAME1,other.NAME1);swap(NAME2,other.NAME2);swap(NAME3,other.NAME3);swap(NAME4,other.NAME4);swap(NAME5,other.NAME5);}\
 			friend void swap(NAME&a, NAME&b) {a.swap(b);}\
@@ -385,27 +385,27 @@ namespace Protocol
 			T4		NAME4;\
 			T5		NAME5;\
 			T6		NAME6;\
-			friend void SerialSync(IReadStream&s, NAME&v)\
+			friend void Deserialize(IReadStream&s, NAME&v)\
 			{\
-				using Serialization::SerialSync;\
-				SerialSync(s,v.NAME0);\
-				SerialSync(s,v.NAME1);\
-				SerialSync(s,v.NAME2);\
-				SerialSync(s,v.NAME3);\
-				SerialSync(s,v.NAME4);\
-				SerialSync(s,v.NAME5);\
-				SerialSync(s,v.NAME6);\
+				using Serialization::Deserialize;\
+				Deserialize(s,v.NAME0);\
+				Deserialize(s,v.NAME1);\
+				Deserialize(s,v.NAME2);\
+				Deserialize(s,v.NAME3);\
+				Deserialize(s,v.NAME4);\
+				Deserialize(s,v.NAME5);\
+				Deserialize(s,v.NAME6);\
 			}\
-			friend void SerialSync(IWriteStream&s, const NAME&v)\
+			friend void Serialize(IWriteStream&s, const NAME&v)\
 			{\
-				using Serialization::SerialSync;\
-				SerialSync(s,v.NAME0);\
-				SerialSync(s,v.NAME1);\
-				SerialSync(s,v.NAME2);\
-				SerialSync(s,v.NAME3);\
-				SerialSync(s,v.NAME4);\
-				SerialSync(s,v.NAME5);\
-				SerialSync(s,v.NAME6);\
+				using Serialization::Serialize;\
+				Serialize(s,v.NAME0);\
+				Serialize(s,v.NAME1);\
+				Serialize(s,v.NAME2);\
+				Serialize(s,v.NAME3);\
+				Serialize(s,v.NAME4);\
+				Serialize(s,v.NAME5);\
+				Serialize(s,v.NAME6);\
 			}\
 			void		swap(NAME&other)	{using std::swap; swap(NAME0,other.NAME0);swap(NAME1,other.NAME1);swap(NAME2,other.NAME2);swap(NAME3,other.NAME3);swap(NAME4,other.NAME4);swap(NAME5,other.NAME5);swap(NAME6,other.NAME6);}\
 			friend void swap(NAME&a, NAME&b) {a.swap(b);}\
@@ -589,31 +589,31 @@ namespace Protocol
 			}
 
 	
-			friend	void					SerialSync(IWriteStream&s, const Self&v)
+			friend	void					Serialize(IWriteStream&s, const Self&v)
 			{
-				using Serialization::SerialSync;
+				using Serialization::Serialize;
 				s.WritePrimitive(v.active);
 				switch (v.active)
 				{
 					case 0:
 						break;
 					case 1:
-						SerialSync(s,v.option0);
+						Serialize(s,v.option0);
 						break;
 					default:
 						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Optional<>: "+String(v.active));
 				}
 			}
-			friend	void					SerialSync(IReadStream&s, Self&v)
+			friend	void					Deserialize(IReadStream&s, Self&v)
 			{
-				using Serialization::SerialSync;
+				using Serialization::Deserialize;
 				s.ReadPrimitive(v.active);
 				switch (v.active)
 				{
 					case 0:
 						break;
 					case 1:
-						SerialSync(s,v.option0);
+						Deserialize(s,v.option0);
 						break;
 					default:
 						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Optional<>: "+String(v.active));
@@ -649,38 +649,38 @@ namespace Protocol
 			}
 
 			
-			friend	void					SerialSync(IWriteStream&s, const Self&v)
+			friend	void					Serialize(IWriteStream&s, const Self&v)
 			{
-				using Serialization::SerialSync;
+				using Serialization::Serialize;
 				s.WritePrimitive(v.active);
 				switch (v.active)
 				{
 					case 0:
 						break;
 					case 1:
-						SerialSync(s,option0);
+						Serialize(s,option0);
 						break;
 					case 2:
-						SerialSync(s,option1);
+						Serialize(s,option1);
 						break;
 					default:
 						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective2<>: "+String(active));
 				}
 			}
 
-			friend	void					SerialSync(IReadStream&s, Self&v)
+			friend	void					Deserialize(IReadStream&s, Self&v)
 			{
-				using Serialization::SerialSync;
+				using Serialization::Deserialize;
 				s.ReadPrimitive(v.active);
 				switch (v.active)
 				{
 					case 0:
 						break;
 					case 1:
-						SerialSync(s,option0);
+						Deserialize(s,option0);
 						break;
 					case 2:
-						SerialSync(s,option1);
+						Deserialize(s,option1);
 						break;
 					default:
 						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective2<>: "+String(active));
@@ -716,44 +716,44 @@ namespace Protocol
 				option2.swap(other.option2);
 			}
 				
-			friend	void					SerialSync(IWriteStream&s, const Self&v)
+			friend	void					Serialize(IWriteStream&s, const Self&v)
 			{
-				using Serialization::SerialSync;
+				using Serialization::Serialize;
 				s.WritePrimitive(v.active);
 				switch (v.active)
 				{
 					case 0:
 						break;
 					case 1:
-						SerialSync(s,v.option0);
+						Serialize(s,v.option0);
 						break;
 					case 2:
-						SerialSync(s,v.option1);
+						Serialize(s,v.option1);
 						break;
 					case 3:
-						SerialSync(s,v.option2);
+						Serialize(s,v.option2);
 						break;
 					default:
 						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective2<>: "+String(v.active));
 				}
 			}
 
-			friend	void					SerialSync(IReadStream&s, Self&v)
+			friend	void					Deserialize(IReadStream&s, Self&v)
 			{
-				using Serialization::SerialSync;
+				using Serialization::Deserialize;
 				s.ReadPrimitive(v.active);
 				switch (v.active)
 				{
 					case 0:
 						break;
 					case 1:
-						SerialSync(s,v.option0);
+						Deserialize(s,v.option0);
 						break;
 					case 2:
-						SerialSync(s,v.option1);
+						Deserialize(s,v.option1);
 						break;
 					case 3:
-						SerialSync(s,v.option2);
+						Deserialize(s,v.option2);
 						break;
 					default:
 						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective2<>: "+String(v.active));
@@ -788,50 +788,50 @@ namespace Protocol
 				Super::swap(other);
 				option3.swap(other.option3);
 			}
-			friend	void					SerialSync(IWriteStream&s, const Self&v)
+			friend	void					Serialize(IWriteStream&s, const Self&v)
 			{
-				using Serialization::SerialSync;
+				using Serialization::Serialize;
 				s.WritePrimitive(v.active);
 				switch (v.active)
 				{
 					case 0:
 						break;
 					case 1:
-						SerialSync(s,v.option0);
+						Serialize(s,v.option0);
 						break;
 					case 2:
-						SerialSync(s,v.option1);
+						Serialize(s,v.option1);
 						break;
 					case 3:
-						SerialSync(s,v.option2);
+						Serialize(s,v.option2);
 						break;
 					case 4:
-						SerialSync(s,v.option3);
+						Serialize(s,v.option3);
 						break;
 					default:
 						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective2<>: "+String(v.active));
 				}
 			}
 
-			friend	void					SerialSync(IReadStream&s, Self&v)
+			friend	void					Deserialize(IReadStream&s, Self&v)
 			{
-				using Serialization::SerialSync;
+				using Serialization::Deserialize;
 				s.ReadPrimitive(v.active);
 				switch (v.active)
 				{
 					case 0:
 						break;
 					case 1:
-						SerialSync(s,v.option0);
+						Deserialize(s,v.option0);
 						break;
 					case 2:
-						SerialSync(s,v.option1);
+						Deserialize(s,v.option1);
 						break;
 					case 3:
-						SerialSync(s,v.option2);
+						Deserialize(s,v.option2);
 						break;
 					case 4:
-						SerialSync(s,v.option3);
+						Deserialize(s,v.option3);
 						break;
 					default:
 						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective2<>: "+String(v.active));
@@ -870,12 +870,12 @@ namespace Protocol
 			std::swap(value,other.value);
 		}
 
-		friend void SerialSync(IWriteStream&s, const Self&v)
+		friend void Serialize(IWriteStream&s, const Self&v)
 		{
 			s.WriteSize(v.value);
 		}
 
-		friend	void	SerialSync(IReadStream&s, Self&v)
+		friend	void	Deserialize(IReadStream&s, Self&v)
 		{
 			s.ReadSize(v.value);
 		}
@@ -943,157 +943,6 @@ namespace Protocol
 		, Objects::EntityType, visualizationName	//can also be DetonationSize_Regular or DetonationSize_Doomsday
 	)
 
-	//class ResourceVector : public Objects::ResourceVector, public SerializableObject
-	//{
-	//public:
-	//	void	swap(ResourceVector&other)
-	//	{
-	//		ResourceVector tmp = *this;
-	//		((ResourceVector&)*this) = other;
-	//		other = tmp;
-	//	}
-	//	static	serial_size_t			GetSerialSize(const Objects::ResourceVector&vec)
-	//	{
-	//		serial_size_t rs = 1;	//flag byte
-	//		static_assert(ResourceVector::NumEntries <= 4, "Adjust protocol");
-	//		for (index_t i = 0; i < ResourceVector::NumEntries; i++)
-	//		{
-	//			if (vec.level[i] != 0)
-	//				rs += GetSerialSizeOfSize(abs(vec.level[i]));	//negative values are flagged accordingly
-	//		}
-	//		return rs;
-	//	}
-
-
-	//	virtual	serial_size_t			GetSerialSize(bool /*exportSize*/) const override
-	//	{
-	//		return GetSerialSize(*this);
-	//	}
-	//	static	bool					Serialize(IWriteStream&outStream, const Objects::ResourceVector&vec)
-	//	{
-	//		BYTE flag = 0;
-	//		for (index_t i = 0; i < ResourceVector::NumEntries; i++)
-	//		{
-	//			if (vec.level[i] != 0)
-	//			{
-	//				flag |= (1 << (i*2));
-	//				if (vec.level[i] < 0)
-	//					flag |= (1 << (i*2+1));
-	//			}
-	//		}
-	//		if (!outStream.Write(&flag,1))
-	//			return false;
-	//		for (index_t i = 0; i < ResourceVector::NumEntries; i++)
-	//		{
-	//			if (vec.level[i] != 0)
-	//			{
-	//				if (!outStream.WriteSize((serial_size_t)abs(vec.level[i])))
-	//					return false;
-	//			}
-	//		}
-	//		return true;
-	//	}
-	//	virtual	bool					Serialize(IWriteStream&outStream, bool /*exportSize*/) const override
-	//	{
-	//		return Serialize(outStream,*this);
-	//	}
-	//	static	bool					Deserialize(IReadStream&inStream, Objects::ResourceVector&vec)
-	//	{
-	//		BYTE flags;
-	//		if (!inStream.Read(&flags,1))
-	//			return false;
-
-	//		for (index_t i = 0; i < ResourceVector::NumEntries; i++)
-	//		{
-	//			bool exists = ((flags >> (i*2))&1) != 0;
-	//			if (!exists)
-	//			{
-	//				vec.level[i] = 0;
-	//				continue;
-	//			}
-	//			int val;
-	//			if (!inStream.ReadSize(val))
-	//				return false;
-	//			bool neg = ((flags >> (i*2+1))&1) != 0;
-	//			if (neg)
-	//				val = -val;
-	//			vec.level[i] = val;
-	//		}
-	//		return true;
-	//	}
-	//	virtual	bool					Deserialize(IReadStream&inStream, serial_size_t /*fixedSize*/) override
-	//	{
-	//		return Deserialize(inStream,*this);
-
-	//	}
-
-
-	//	bool		operator==(const Objects::ResourceVector&vec) const
-	//	{
-	//		return vec == *this;
-	//	}
-	//	bool		operator!=(const Objects::ResourceVector&vec) const
-	//	{
-	//		return vec != *this;
-	//	}
-
-	//	void		operator=(const Objects::ResourceVector&vec)
-	//	{
-	//		((Objects::ResourceVector&)*this) = vec;
-	//	}
-	//	void		operator=(const Objects::NaturalResourceVector&vec)
-	//	{
-	//		((Objects::ResourceVector&)*this) = vec;
-	//	}	
-	//};
-
-
-	//class FullResourceVector : public Objects::FullResourceVector, public SerializableObject
-	//{
-	//public:
-	//	void	swap(Objects::FullResourceVector&other)
-	//	{
-	//		std::swap(((Objects::FullResourceVector&)*this),other);
-	//	}	
-
-	//	//FullResourceVector(const Objects::FullResourceVector&vec):Objects::FullResourceVector(vec)
-	//	//{}
-
-	//	virtual	serial_size_t			GetSerialSize(bool /*exportSize*/) const override
-	//	{
-	//		return	ResourceVector::GetSerialSize(supply)
-	//			+	ResourceVector::GetSerialSize(demand)
-	//			+	ResourceVector::GetSerialSize(balance)
-	//			+	ResourceVector::GetSerialSize(storage)
-	//			+	ResourceVector::GetSerialSize(storageMax);
-	//	}
-
-	//	virtual	bool					Serialize(IWriteStream&outStream, bool /*exportSize*/) const override
-	//	{
-	//		return	ResourceVector::Serialize(outStream,supply)
-	//			&&	ResourceVector::Serialize(outStream,demand)
-	//			&&	ResourceVector::Serialize(outStream,balance)
-	//			&&	ResourceVector::Serialize(outStream,storage)
-	//			&&	ResourceVector::Serialize(outStream,storageMax);
-	//	}
-	//	
-	//	virtual	bool					Deserialize(IReadStream&inStream, serial_size_t /*fixedSize*/) override
-	//	{
-	//		return	ResourceVector::Deserialize(inStream,supply)
-	//			&&	ResourceVector::Deserialize(inStream,demand)
-	//			&&	ResourceVector::Deserialize(inStream,balance)
-	//			&&	ResourceVector::Deserialize(inStream,storage)
-	//			&&	ResourceVector::Deserialize(inStream,storageMax);
-	//	}
-	//
-	//	void		operator=(const Objects::FullResourceVector&vec)
-	//	{
-	//		((Objects::FullResourceVector&)*this) = vec;
-	//	}
-	//};
-
-
-
 	namespace VehicleFlags
 	{
 		enum flag_t
@@ -1148,8 +997,8 @@ namespace Protocol
 
 	struct NoData
 	{
-		friend void			SerialSync(IWriteStream&s, const NoData&v){}
-		friend void			SerialSync(IReadStream&s, NoData&v){}
+		friend void			Serialize(IWriteStream&s, const NoData&v){}
+		friend void			Deserialize(IReadStream&s, NoData&v){}
 
 		void swap(NoData&)	{}
 		friend void swap(NoData&, NoData&)	{}
@@ -1216,16 +1065,6 @@ namespace Protocol
 
 
 	typedef Grid::LCellIdI	AttackTask;
-	//NETSTRUCT2(AttackTask
-	//	, LCellIdI, target
-	//	, NET(TUniqueID), id
-	//)
-
-
-	//NETSTRUCT2(ProductionTask
-	//	, NETA(Package::NetString<64>), parameters
-	//	, NET(int), roundsToCompletion
-	//)
 
 	NETSTRUCT2(MineState
 		, Objects::PositiveResourceVector, naturalResources
@@ -1241,6 +1080,62 @@ namespace Protocol
 		SelectiveStructureState;
 
 
+	namespace AllianceFlag
+	{
+		enum flag_t
+		{
+			ShareSensors = 0x1,
+			ExposeEntityDetails = 0x2,
+		};
+
+	}
+
+
+	NETSTRUCT2(AllianceConfigChange
+		, TUniqueID, allianceID
+		, UINT32, flags
+	)
+	
+	NETSTRUCT2(AllianceMemberChange
+		, TUniqueID, allianceID
+		, NETA(TUniqueID), memberFactions
+	)
+
+	NETSTRUCT2(AllianceJoinRequest
+		, TUniqueID, allianceID
+		, bool, abortJoining
+	)
+
+	namespace VoteResultType
+	{
+		enum T
+		{
+			Passed,
+			Rejected,
+			TimedOut,
+			Canceled,
+		};
+	}
+
+	NETSTRUCT3(VoteCreation
+		, TUniqueID, voteID
+		, Package::NetString<512>, phrase
+		, float, remainingSeconds
+	)
+	
+	NETSTRUCT6(VoteResult
+		, TUniqueID, voteID
+		, BYTE, resultType
+		, UINT32, votedInFavor
+		, UINT32, votedAgainst
+		, UINT32, eligibleToVote
+		, UINT32, quorum
+	)
+
+	NETSTRUCT2(ClientVote
+		, TUniqueID, voteID
+		, bool, inFavor
+	)
 
 
 	NETSTRUCT4(StructureState
@@ -1436,8 +1331,9 @@ namespace Protocol
 		, NET(RuntimeConfig::RoundNumber), newRoundNumber
 	)
 
-	NETSTRUCT3(IdentifyFaction
+	NETSTRUCT4(IdentifyFaction
 		, NET(TUniqueID), id
+		, TUniqueID, allianceID
 		, Package::NetString<32>, name
 		, NET(M::TVec3<>), color
 	)
@@ -1484,6 +1380,12 @@ namespace Protocol
 		, UINT32, configVersion
 	)
 
+	NETSTRUCT2(MyFaction
+		, TUniqueID, factionID
+		, AllianceConfigChange, alliance
+	)
+		
+
 
 	namespace ChannelID
 	{
@@ -1502,7 +1404,7 @@ namespace Protocol
 
 			Hello,				//c2s: Hello -> s2c: HelloResponse
 			ClientFaction,		//c2s: ClientFactionRequest -> s2c: ClientFactionResponse
-			SetFactionID,		//s2c: NET(TUniqueID)
+			MyFaction,			//s2c: MyFaction
 
 			RequestEverything,	//c2s: <signal> -> [everything] //(only if spectator) 
 			BeginEverything,	//s2c: <signal> //indicates that now everything will be (re)sent
@@ -1573,6 +1475,13 @@ namespace Protocol
 
 			ChatMessage,		// c2s: NetString<256>
 
+			AllianceConfigChange,	//both: AllianceConfigChange
+			AllianceJoinRequest,	//c2s: AllianceJoinRequest
+
+			VoteCreation,		//s2c: VoteCreation
+			VoteResult,			//s2c: VoteResult
+			ClientVote,			//c2s: ClientVote
+
 			PlanetConfig,		// both: Grid::ExtendedPlanetConfig
 			GameConfig,			// both: GameConfig
 			PlanetNames,		// s2c: NetString<256>[]
@@ -1605,19 +1514,19 @@ namespace Protocol
 		UINT16		serverBasePort;
 
 
-		friend void SerialSync(IWriteStream&s, const Self&v)
+		friend void Serialize(IWriteStream&s, const Self&v)
 		{
-			using Serialization::SerialSync;
-			SerialSync(s,v.hostID);
+			using Serialization::Serialize;
+			Serialize(s,v.hostID);
 			s.Write(v.version,sizeof(v.version));
-			SerialSync(s,v.serverBasePort);
+			Serialize(s,v.serverBasePort);
 		}
-		friend void SerialSync(IReadStream&s, Self&v)
+		friend void Deserialize(IReadStream&s, Self&v)
 		{
-			using Serialization::SerialSync;
-			SerialSync(s,v.hostID);
+			using Serialization::Deserialize;
+			Deserialize(s,v.hostID);
 			s.Read(v.version,sizeof(v.version));
-			SerialSync(s,v.serverBasePort);
+			Deserialize(s,v.serverBasePort);
 		}
 	};
 

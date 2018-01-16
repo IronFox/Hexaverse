@@ -272,9 +272,8 @@ public:
 			return (hash_t)(cell.stackID*32+cell.height);
 		}
 
-		friend void		SerialSync(IWriteStream&s, const CellIdI&v)
+		friend void		Serialize(IWriteStream&s, const CellIdI&v)
 		{
-			using Serialization::SerialSync;
 			if (v == Invalid)
 			{
 				BYTE bLayer = 0xFF;
@@ -288,7 +287,7 @@ public:
 			s.WriteSize(v.stackID);
 		}
 
-		friend	void	SerialSync(IReadStream&s, CellIdI&v)
+		friend	void	Deserialize(IReadStream&s, CellIdI&v)
 		{
 			BYTE bLayer;
 			s.Read(&bLayer,1);

@@ -113,6 +113,13 @@ namespace Objects
 //		#endif
 	}
 
+	String						WorldEntity::GetNameAndOwner() const
+	{
+		if (!this)
+			return "<NULL>";
+		return GetName()+"["+(owner ? owner->GetName() : "<NULL>")+"]";
+	}
+
 
 	#ifdef CLIENT
 		void					BaseEntity::UpdateNiceName()
@@ -423,7 +430,7 @@ namespace Objects
 
 				const Hibernating*h = ToHibernating();
 				if (h && h->GetUplinkPriority())
-					outResult.lines.last() += ", Priority: "+String(h->GetUplinkPriority());
+					outResult.lines.Last() += ", Priority: "+String(h->GetUplinkPriority());
 			#endif
 
 			PTurretBase b = this->GetTurretBase();
@@ -571,6 +578,18 @@ namespace Objects
 	}
 
 
+	void					WorldEntity::InsertSensoryInto(World::Data&target, float&atTime)
+	{
+		this->SyncTime(atTime);
+		#ifdef CLIENT
+			if (isOwnedByMe || owner->SharingSensorWith(Faction::mine))
+		#endif
+		VisitSensors(location, [&target, &atTime,this](const World::Sensor&sensor)
+		{
+			sensor.InsertInto(target, atTime);
+		});
+	}
+
 	void					WorldEntity::ReapplySensory(float&atTime)
 	{
 		if (!registeredSensor.IsSet())
@@ -589,13 +608,16 @@ namespace Objects
 
 		this->SyncTime(atTime);
 		LogEvent(EventSignificance::Common,this,"Reapplying sensory ("+ToString(registeredSensor)+", "+String(GetScanningRange())+") at time "+String(atTime));
+
+		#ifdef CLIENT
+			if (!isOwnedByMe && !owner->SharingSensorWith(Faction::mine))
+				return;
+		#endif
+
 		VisitSensors(registeredSensor.location, [&atTime, this](const World::Sensor&sensor)
 		{
 			#ifdef CLIENT
-				if (isOwnedByMe)
-				{
-					sensor.InsertInto(World::actual, atTime);
-				}
+				sensor.InsertInto(World::actual, atTime);
 			#else
 				owner->RegisterSensorCreation(sensor, location.height, atTime, nullptr);
 			#endif
@@ -620,21 +642,32 @@ namespace Objects
 		rs.location = loc;
 		rs.empDamageLevel = empDamageLevel;
 
+		
 		this->SyncTime(atTime);
+		#ifdef CLIENT
+			if (isOwnedByMe || owner->SharingSensorWith(Faction::mine))
+			{
+		#endif
 		LogEvent(EventSignificance::Common,this,"Registering sensory ("+ToString(loc)+", "+String(GetScanningRange())+") at time "+String(atTime));
 		VisitSensors(loc, [&atTime, newContacts,this](const World::Sensor&sensor)
 		{
 			#ifdef CLIENT
-				if (isOwnedByMe)
-				{
-					if (IsAboveGrid())
-						ApplicationInterface::SignalExtraGridSensorCreation(sensor);
-					sensor.InsertInto(World::actual, atTime);
-				}
+				sensor.InsertInto(World::actual, atTime);
 			#else
-				owner->RegisterSensorCreation(sensor, location.height, atTime, newContacts);
+				if (owner->alliance->config.shareSensors)
+				{
+					owner->alliance->ForeachMember([&atTime,newContacts,this,sensor](const PFaction&f)
+					{
+						f->RegisterSensorCreation(sensor, location.height, atTime, f == owner ? newContacts : nullptr);
+					});
+				}
+				else
+					owner->RegisterSensorCreation(sensor, location.height, atTime, newContacts);
 			#endif
 		});
+		#ifdef CLIENT
+			}
+		#endif
 		return rs;
 	}
 
@@ -666,20 +699,32 @@ namespace Objects
 
 		
 		this->SyncTime(atTime);	
+
+		#ifdef CLIENT
+			if (isOwnedByMe || owner->SharingSensorWith(Faction::mine))
+			{
+		#endif
 		LogEvent(EventClass::Preset::common,this,"Unregistering sensory ("+ToString(sensor.location)+", "+String(GetScanningRange())+") at time "+String(atTime));
 		VisitSensors(sensor.location, [&atTime, this, sensor](const World::Sensor&sensor1)
 		{
-		#ifdef CLIENT
-			if (isOwnedByMe)
-			{
-				if (IsAboveGrid(sensor.location))
-					ApplicationInterface::SignalExtraGridSensorRemoval(sensor1);
-				sensor1.RemoveFrom(World::actual, atTime);
-			}
-		#else
-			owner->RegisterSensorRemoval(sensor1, location.height, atTime);
-		#endif
+			#ifdef CLIENT
+				sensor.RemoveFrom(World::actual, atTime);
+			#else
+				if (owner->alliance->config.shareSensors)
+				{
+					owner->alliance->ForeachMember([&atTime,this,sensor](const PFaction&f)
+					{
+						f->RegisterSensorRemoval(sensor, location.height, atTime);
+					});
+				}
+				else
+					owner->RegisterSensorRemoval(sensor, location.height, atTime);
+	
+			#endif
 		});
+		#ifdef CLIENT
+			}
+		#endif
 		sensor.empDamageLevel = 0;
 		sensor.location = Grid::LCellIdI::Invalid;
 	}

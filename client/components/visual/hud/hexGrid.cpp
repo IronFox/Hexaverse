@@ -99,7 +99,7 @@ namespace HexGrid
 			else
 				significance *= 0.8f;
 		}
-		UINT32 crc = CRC32::Sequence().Append(e->GetTypeName().c_str(),e->GetTypeName().length()).Finish();
+		UINT32 crc = CRC32::Sequence().Append(e->GetTypeName().c_str(),e->GetTypeName().GetLength()).Finish();
 		Random random(crc);
 		significance *= random.NextFloat(0.95f,1.07f);
 	}
@@ -211,7 +211,11 @@ namespace HexGrid
 				target->AppendDeploymentCount(outResult, target->owner);
 			}
 			elif (target->owner)
+			{
 				outResult << "Owner: "+target->owner->GetName();
+				if (target->owner->alliance == Objects::Faction::mine->alliance)
+					outResult.GetLastLine()+= " (allied)";
+			}
 			if (target->IsAlive())
 			{
 				if (target->IsIndestructible())
@@ -293,7 +297,11 @@ namespace HexGrid
 				}
 			}
 			elif (instance->owner)
+			{
 				outResult << "Owner: "+instance->owner->GetName();
+				if (instance->owner->alliance == Objects::Faction::mine->alliance)
+					outResult.GetLastLine()+= " (allied)";
+			}
 			if (instance->IsAlive())
 			{
 				//if (e->IsIndestructible())
@@ -468,14 +476,25 @@ namespace HexGrid
 									}
 
 
+		static void VoteRefresh(const PVote&)
+		{
+			RefreshButtonState();
+		}
+
 		void Create()
 		{
 			commands << PIcon( new TutorialCommand() );
+			commands << PIcon( new VoteCommand() );
 
 			commands << PIcon( new DemolishCommand() );
 			commands << PIcon( new SleepCommand() );
 			commands << PIcon( new AbortCommand() );
 			commands << PIcon( new UndoCommand() );
+
+
+			GlobalEvents::voteCast << VoteRefresh;
+			GlobalEvents::voteClosed << VoteRefresh;
+			GlobalEvents::voteCreated << VoteRefresh;
 
 		}
 

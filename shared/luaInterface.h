@@ -461,7 +461,7 @@ namespace Lua
 
 	/**
 	Lua program state.
-	All scripts executed on the same program share the same variable/function/w/e constellation.
+	CompleteChange scripts executed on the same program share the same variable/function/w/e constellation.
 	New instances of Program start empty and must be created via Program::Create()
 	*/
 	class Program : public std::enable_shared_from_this<Program>

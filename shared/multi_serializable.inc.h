@@ -7,17 +7,17 @@
 			typedef MultiSerializable##SUPER_DEPTH <M_T##SUPER_DEPTH>	Super;\
 			T##SUPER_DEPTH	var##SUPER_DEPTH;\
 		public:\
-			friend void SerialSync(IReadStream&s, Self&v)\
+			friend void Deserialize(IReadStream&s, Self&v)\
 			{\
-				using Serialization::SerialSync;\
-				SerialSync(s,(Super&)v);\
-				SerialSync(s,v.var##SUPER_DEPTH);\
+				using Serialization::Deserialize;\
+				Deserialize(s,(Super&)v);\
+				Deserialize(s,v.var##SUPER_DEPTH);\
 			}\
-			friend void SerialSync(IWriteStream&s, const Self&v)\
+			friend void Serialize(IWriteStream&s, const Self&v)\
 			{\
-				using Serialization::SerialSync;\
-				SerialSync(s,(Super&)v);\
-				SerialSync(s,v.var##SUPER_DEPTH);\
+				using Serialization::Serialize;\
+				Serialize(s,(Super&)v);\
+				Serialize(s,v.var##SUPER_DEPTH);\
 			}\
 			void	Copy(const Self&other)\
 			{\

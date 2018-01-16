@@ -16,6 +16,7 @@
 #include "uiScale.h"
 #include "surfaceRenderer.h"
 #include "../lineRenderer.h"
+#include <math/graph.h>
 
 
 namespace HUD
@@ -35,6 +36,7 @@ namespace Component
 			DECLARE_POINTER_CLASS(TextField);
 				DECLARE_POINTER_CLASS(Checkbox);
 				DECLARE_POINTER_CLASS(Label);
+					DECLARE_POINTER_CLASS(LinkLabel);
 				DECLARE_POINTER_CLASS(Button);
 					DECLARE_POINTER_CLASS(ScrollButton);
 			DECLARE_POINTER_CLASS(BaseInput);
@@ -55,6 +57,61 @@ namespace Component
 
 	CONSTRUCT_ENUMERATION2(AnchorAxis,Horizontal,Vertical);
 
+
+	class ChangeRecorder
+	{
+	public:
+		struct TChange
+		{
+			PComponent		component, cause;
+			TCodeLocation	loc;
+			M::TFloatRect	componentRect;
+
+
+			friend void swap(TChange&a,TChange&b)
+			{
+				using std::swap;
+				swap(a.component,b.component);
+				swap(a.cause,b.cause);
+				swap(a.loc,b.loc);
+				swap(a.componentRect,b.componentRect);
+			}
+
+
+			/**/		TChange(const PComponent&c, const PComponent&cause, const TCodeLocation&loc);
+		};
+
+		struct TGroup
+		{
+			const char*title = nullptr;
+			Buffer0<TChange>	changes;
+
+			friend void swap(TGroup&a, TGroup&b)
+			{
+				using std::swap;
+				swap(a.title,b.title);
+				a.changes.swap(b.changes);
+			}
+		};
+
+		void			NewGroup(const char*groupName)	{groups.Append().title = groupName;}
+		
+
+		void			Record(const PComponent&self, const TCodeLocation&loc) {Record(self,nullptr,loc);}
+		void			Record(const PComponent&self, const PComponent&cause, const TCodeLocation&loc);
+		void			Record(Component*self, const TCodeLocation&loc);
+		void			Record(Component*self, const PComponent&cause, const TCodeLocation&loc);
+
+		bool			HasChanged() const {return any;}
+		void			Clear() {groups.Clear(); any = false;}
+
+		void			Report(const PComponent&forComp, const ChangeRecorder&prev) const;
+
+	private:
+
+		Buffer0<TGroup>	groups;
+		bool			any = false;
+	};
 
 
 	struct Distance
@@ -289,7 +346,7 @@ namespace Component
 	};
 
 
-	class Component : public std::enable_shared_from_this<Component>, public ComponentLocation
+	class Component : public std::enable_shared_from_this<Component>, public ComponentLocation, public M::Graph::NodeAttachment
 	{
 		typedef ComponentLocation Super;
 	protected:
@@ -336,6 +393,7 @@ namespace Component
 		
 		virtual void	SetLocation(const M::Rect<>&loc);
 
+
 		AnchorConfig	anchorConfig;
 	public:	//do not call outside container classes:
 
@@ -357,12 +415,16 @@ namespace Component
 		bool			WidthChangesDynamically() const {return anchorConfig.GetHAxis().Stretches();}
 		bool			HeightChangesDynamically() const {return anchorConfig.GetVAxis().Stretches();}
 
+		virtual count_t	CountChildren() const {return 0;}
+		virtual PComponent GetChild(index_t i) const {return nullptr;}
+		PComponent		GetLastChild() const {const count_t cnt = CountChildren(); if (cnt) return GetChild(cnt-1); return nullptr;}
+
 		
 		bool			SetWidth(const Distance&w)
 		{
 			if (anchorConfig.GetHAxis().SetExtent(w))
 			{
-				InvalidateAutoLayout();
+				SignalLayoutChangeUp();
 				return true;
 			}
 			return false;
@@ -372,7 +434,7 @@ namespace Component
 		{
 			if (anchorConfig.GetVAxis().SetExtent(h))
 			{
-				InvalidateAutoLayout();
+				SignalLayoutChangeUp();
 				return true;
 			}
 			return false;
@@ -398,11 +460,11 @@ namespace Component
 		virtual void	OnMouseUp()	{}
 		virtual void	OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse);
 		
-		virtual bool	UpdateDynamicSize();
+		virtual void	UpdateDynamicSize(ChangeRecorder&);
 
 		virtual void	Render();
 
-		virtual bool	ResolveAnchorAxis(AnchorAxis axis, const M::Rect<>&context);
+		virtual void	ResolveAnchorAxis(AnchorAxis axis, const M::Rect<>&context, ChangeRecorder&);
 
 		virtual void	Translate(const float2&delta)	{TranslateRect(delta); /*InvalidateAnchorResolution();*/}
 		virtual bool	HasComponent(const PComponent&c) const {return c.get() == this;}
@@ -413,10 +475,18 @@ namespace Component
 		virtual PWindow	GetWindow() {return window.lock();}
 		virtual PConstWindow	GetWindow() const {return window.lock();}
 
-		bool			FullAutoLayout(const M::Rect<>&context);
+		void			FullAutoLayout(const M::Rect<>&context);
 
-
-		void			InvalidateAutoLayout();
+		/**
+		Signals layout changes upwards, from children to parent, until the window is reached.
+		Call this if a change has been triggered by a component
+		*/
+		virtual void	SignalLayoutChangeUp();
+		/**
+		Signals layout change downwards, from the window to all children, recursively.
+		Call this on a/all window(s) if a change has been triggered by some global effect
+		*/
+		virtual void	SignalWindowLayoutChange()	{};
 
 		AnchorModifier	Anchor() {return this;}
 		const AnchorConfig&GetAnchorConfig() const {return anchorConfig;}
@@ -450,8 +520,8 @@ namespace Component
 	public:
 		static void		StaticCreate();
 
-		void			SetAutoHeight(bool b)	{if (autoSetHeight == b) return; ASSERT__(!b || !anchorConfig.GetVAxis().RequiresFixedParentSize()); autoSetHeight = b; InvalidateAutoLayout();}
-		void			SetTexture(const DX11::Texture&tex) {texture = tex;InvalidateAutoLayout();}
+		void			SetAutoHeight(bool b)	{if (autoSetHeight == b) return; ASSERT__(!b || !anchorConfig.GetVAxis().RequiresFixedParentSize()); autoSetHeight = b; SignalLayoutChangeUp();}
+		void			SetTexture(const DX11::Texture&tex) {texture = tex;SignalLayoutChangeUp();}
 
 		virtual void	Render() override;
 		//virtual bool	HandleClick() override {return ContainsMouse();}
@@ -657,6 +727,11 @@ namespace Component
 		Triggered when the user confirms the input (via enter/return)
 		*/
 		std::function<void()>	onEnter;
+		/**
+		Triggered when special keys are pressed while this input receives characters:
+		F1-F12, Backspace, Delete, Print, Home, End, Page up and down, Space, CapsLock, Control, Alt, Arrow keys
+		*/
+		std::function<void(Key::Name)> onSpecialKey;
 
 		virtual void	Render() override;
 		virtual void	SetActive(bool isActive) override {SetInputActive(isActive); Super::SetActive(isActive);}
@@ -715,6 +790,8 @@ namespace Component
 				SetHeight(textHeight);
 		}
 
+		void			HandleTextChange();
+
 	protected:
 		void			RenderText(bool lit);
 
@@ -755,29 +832,12 @@ namespace Component
 		void			SetColor(const float4&color)	{this->color = color;}
 		void			SetColor(const float3&color, float alpha = 1.f)	{this->color.rgb = color; this->color.a = alpha;}
 		void			SetColor(float r, float g, float b, float a = 1.f)	{this->color = float4(r,g,b,a);}
-		void			SetLocalFontScale(float zoom)	{this->zoom = zoom; ReWrap(); UpdateDynamicSize();OnTextChange();}
+		void			SetLocalFontScale(float zoom)	{this->zoom = zoom; ReWrap(); UpdateDynamicSize(ChangeRecorder());OnTextChange();}
 		float			GetLocalFontScale() const {return zoom;}
 		float			GetTotalFontScale() const;
 
-		void			SetText(const String&string)
-		{
-			if (rawText.GetLength() == 1 && rawText.First() == string)
-				return;
-			rawText.SetSize(1);
-			rawText.First() = string;
-			ReWrap();
-			UpdateDynamicSize();
-			OnTextChange();
-		}
-		void			SetText(const Array<String>&string)
-		{
-			if (rawText == string)
-				return;
-			rawText = string;
-			ReWrap();
-			UpdateDynamicSize();
-			OnTextChange();
-		}
+		void			SetText(const String&string);
+		void			SetText(const Array<String>&string);
 
 		const Array<String>&GetText() const {return rawText;}
 
@@ -806,7 +866,7 @@ namespace Component
 			Super::VerifyAnchorIntegrity();
 		}
 
-		virtual bool	UpdateDynamicSize() override;
+		virtual void	UpdateDynamicSize(ChangeRecorder&) override;
 		virtual void	Render() override;
 	};
 
@@ -827,6 +887,28 @@ namespace Component
 			SetText(text);
 			anchorConfig.GetHAxis().AnchorLowerUnknown();
 			SetToIdealWidth();
+		}
+	};
+
+	class LinkLabel : public Label
+	{
+		typedef Label Super;
+	public:
+
+		typedef std::function<void()>	FOnPress;
+
+		FOnPress		onPress;
+			
+		/**/			LinkLabel()	{};
+		/**/			LinkLabel(const String&text, float scale=1.f, const FOnPress&onPress = FOnPress()):Super(text,scale),onPress(onPress){}
+
+		virtual void	OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse) override;
+		virtual PComponent	OnMouseDown() override {return ContainsMouse() ? shared_from_this() : nullptr;}
+
+		virtual void	OnMouseUp() override
+		{
+			if (onPress)
+				onPress();
 		}
 	};
 
@@ -1177,7 +1259,7 @@ namespace Component
 		};
 
 		TScrollbar		vscroll;
-		
+		bool			resolvingAxis = false;
 	protected:
 		virtual void	PropagateToChildren(const PWindow&w)	override
 		{
@@ -1197,6 +1279,7 @@ namespace Component
 		}
 
 		Buffer0<PComponent>	components;
+		Array<PComponent>	order[2];
 
 		/**
 		Queries whether or not the vertical scrollbar is currently visible.
@@ -1227,24 +1310,37 @@ namespace Component
 		A scrollbar will be rendered if maxHeight is exceeded
 		*/
 		float			maxHeight = 0.8f;
+
+		void			InvalidateOrder()
+		{
+			order[0].Clear();
+			order[1].Clear();
+		}
+		void			RecomputeOrder(AnchorAxis);
 	public:
-		/**/			Panel()	{topOpacity = 0.75f; bottomOpacity = 0.75f;}
+		/**/			Panel()	{topOpacity = 0.75f; bottomOpacity = 0.75f; Anchor().FillHorizontally().Top();}
 		bool			DeterminesHeightAutomatically() const {return autoHeight;}
 		void			SetAutomaticHeight(bool b);
 		float			GetAutoHeightSpacing() const {return autoHeightSpacing;}
-		void			SetAutoHeightSpacing(float s) {if (s == autoHeightSpacing) return; autoHeightSpacing = s; this->InvalidateAutoLayout();}
+		void			SetAutoHeightSpacing(float s) {if (s == autoHeightSpacing) return; autoHeightSpacing = s; this->SignalLayoutChangeUp();}
 		float			GetMaxAutoHeight() const {return maxHeight;}
-		void			SetMaxAutoHeight(float h) {if (h == maxHeight) return; maxHeight = h; InvalidateAutoLayout();}
+		void			SetMaxAutoHeight(float h) {if (h == maxHeight) return; maxHeight = h; SignalLayoutChangeUp();}
 
 		void			ScrollToBottom()	{vscroll.ScrollToBottom();}
 		void			ScrollToTop()	{vscroll.ScrollToTop();}
 
+		virtual count_t	CountChildren() const override {return components.Count();}
+		virtual PComponent GetChild(index_t i) const override {return components[i];}
+
+		virtual void	SignalLayoutChangeUp() override;
+		virtual void	SignalWindowLayoutChange() override;
+
 		virtual bool	DetectEnabledState() override;
 		
 		virtual void	SetActive(bool isActive) override;
-		virtual bool	UpdateDynamicSize() override;
+		virtual void	UpdateDynamicSize(ChangeRecorder&) override;
 		virtual void	Render() override;
-		virtual bool	ResolveAnchorAxis(AnchorAxis axis, const M::Rect<>&context) override;
+		virtual void	ResolveAnchorAxis(AnchorAxis axis, const M::Rect<>&context, ChangeRecorder&) override;
 		virtual void	Translate(const float2&delta)	{Super::Translate(delta); foreach (components,c) (*c)->Translate(delta);}
 
 		virtual bool	HasComponent(const PComponent&c) const override {if (c.get() == this) return true; foreach (components, c2) if ((*c2)->HasComponent(c)) return true; return false;}
@@ -1317,7 +1413,7 @@ namespace Component
 
 
 	private:
-		bool			autoHeight = false;
+		bool			autoHeight = true;
 
 
 	};
@@ -1730,13 +1826,20 @@ namespace Component
 			Super::Render();
 		}
 
-		void			SignalLayoutChange()
+		virtual void		SignalLayoutChangeUp()	override
 		{
 			relayoutRequired = true;
 		}
 
+		virtual void	SignalWindowLayoutChange() override
+		{
+			Super::SignalWindowLayoutChange();
+			relayoutRequired = true;
+		}
+
+
 		bool			RelayoutRequired() const {return relayoutRequired;}
-		bool			FullAutoLayout(const TCodeLocation&caller);
+		void			FullAutoLayout(const TCodeLocation&caller);
 
 		virtual bool	DetectEnabledState() override
 		{
@@ -1748,9 +1851,11 @@ namespace Component
 			return false;
 		}
 
-		virtual bool	UpdateDynamicSize() override
+		virtual void	UpdateDynamicSize(ChangeRecorder&rec) override
 		{
-			if (Super::UpdateDynamicSize())
+			Super::UpdateDynamicSize(rec);
+
+			if (rec.HasChanged())
 			{
 				if (!nestedCall)
 				{
@@ -1758,9 +1863,7 @@ namespace Component
 					FullAutoLayout(CLOCATION);	
 					nestedCall = false;
 				}
-				return true;
 			}
-			return false;
 		}
 
 		virtual void	OnHide() {visible = false;}

@@ -198,7 +198,7 @@ namespace Objects
 			blastVisualization.ibo = Renderer::sphere.ibo[0];
 			//shape.depthTest = true;
 
-			t.turret->BuildBlastSystem(trajectory.last().xyz * trajectory.last().w,t.turret->GetExplosionRadius(t.owner),blastSystem);
+			t.turret->BuildBlastSystem(trajectory.Last().xyz * trajectory.Last().w,t.turret->GetExplosionRadius(t.owner),blastSystem);
 		}
 			
 	}
@@ -400,7 +400,7 @@ namespace Objects
 			bool	stopHere;
 		};
 
-		Array<TNode>		nodes(t.path.length());
+		Array<TNode>		nodes(t.path.GetLength());
 		
 		int remaining = stepsPerRound;
 
@@ -508,7 +508,7 @@ namespace Objects
 		}
 		if (t.path.Count() > 1)
 		{
-			const Grid::LCellIdI&b = t.path.last().cell;
+			const Grid::LCellIdI&b = t.path.Last().cell;
 
 			float3 d1 = Grid::low.cells[b.stackID].centerVertex.xyz;
 			float3 p1 = d1 * Grid::ToRadiusf(float(b.height)+0.5f);
@@ -629,7 +629,7 @@ namespace Objects
 								shape.depthTest = true;
 								shape.flareDisplay = true;
 
-								BuildSystem(trajectory.last().xyz * trajectory.last().w,e.GetAttackExplosionRadius(),  e.GetAttackExplosionRadius(),shape.system);
+								BuildSystem(trajectory.Last().xyz * trajectory.Last().w,e.GetAttackExplosionRadius(),  e.GetAttackExplosionRadius(),shape.system);
 							}
 						}
 						if (attach.instruction.shader.IsEmpty())

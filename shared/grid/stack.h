@@ -140,15 +140,15 @@ namespace Grid
 			}
 			bool		IsSet() const {return newType != 0;}
 
-			friend void SerialSync(IWriteStream&s, const Self&v)
+			friend void Serialize(IWriteStream&s, const Self&v)
 			{
-				using Serialization::SerialSync;
-				SerialSync(s,v.newType);
+				using Serialization::Serialize;
+				Serialize(s,v.newType);
 			}
-			friend void SerialSync(IReadStream&s, Self&v)
+			friend void Deserialize(IReadStream&s, Self&v)
 			{
-				using Serialization::SerialSync;
-				SerialSync(s,v.newType);
+				using Serialization::Deserialize;
+				Deserialize(s,v.newType);
 			}
 		};
 
@@ -165,17 +165,17 @@ namespace Grid
 				return repitition != other.repitition || value != other.value;
 			}
 
-			friend void SerialSync(IWriteStream&s, const Self&v)
+			friend void Serialize(IWriteStream&s, const Self&v)
 			{
 				s.WriteSize(v.repitition);
-				using Serialization::SerialSync;
-				SerialSync(s,v.value);
+				using Serialization::Serialize;
+				Serialize(s,v.value);
 			}
-			friend void SerialSync(IReadStream&s, Self&v)
+			friend void Deserialize(IReadStream&s, Self&v)
 			{
 				s.ReadSize(v.repitition);
-				using Serialization::SerialSync;
-				SerialSync(s,v.value);
+				using Serialization::Deserialize;
+				Deserialize(s,v.value);
 			}
 		};
 
@@ -377,7 +377,7 @@ namespace Grid
 			#endif
 		};
 
-		Cell			volumeCell[Range];		//All contained cells
+		Cell			volumeCell[Range];		//CompleteChange contained cells
 		static Cell		bottom, top;	//extremes below the bottom most, and above the top most
 		#ifdef HAS_WINDOW
 			BYTE			lowestOpenCell=0,
@@ -907,17 +907,17 @@ namespace Grid
 		UINT32		cellIndex;
 		BYTE		coverage;
 
-		friend void		SerialSync(IReadStream&s, Self&v)
+		friend void		Deserialize(IReadStream&s, Self&v)
 		{
-			using Serialization::SerialSync;
+			using Serialization::Deserialize;
 			s.ReadSize(v.cellIndex);
-			SerialSync(s,v.coverage);
+			Deserialize(s,v.coverage);
 		}
-		friend void		SerialSync(IWriteStream&s, const Self&v)
+		friend void		Serialize(IWriteStream&s, const Self&v)
 		{
-			using Serialization::SerialSync;
+			using Serialization::Serialize;
 			s.WriteSize(v.cellIndex);
-			SerialSync(s,v.coverage);
+			Serialize(s,v.coverage);
 		}
 		bool operator!=(const Self&other) const {return !operator==(other);}
 		bool operator==(const Self&other) const

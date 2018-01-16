@@ -592,7 +592,7 @@ namespace Objects
 					if (hub && hub.get() != this)
 					{
 						hubs.Append().hub = hub;
-						hubs.last().distance = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
+						hubs.Last().distance = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
 					}
 				}
 			#else
@@ -602,7 +602,7 @@ namespace Objects
 					if (hub && hub.get() != this && !hub->connectedTo.expired())
 					{
 						hubs.Append().hub = hub;
-						hubs.last().distance = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
+						hubs.Last().distance = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
 					}
 				}
 			#endif

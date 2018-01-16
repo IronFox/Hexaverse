@@ -150,6 +150,9 @@ namespace Network
 	void		LogServerState();
 
 
+	Protocol::IdentifyFaction	Identify(const Objects::PFaction&f);
+
+
 	bool CanControl(const Client&c, const Objects::WorldEntity&e);
 	bool CanControl(const PClient&c, const Objects::PWorldEntity&e);
 	bool CanControl(const PClient&c, const Objects::WorldEntity&e);
@@ -169,10 +172,20 @@ namespace Network
 	template <index_t Channel, class Item>
 		inline void	SendToOwner(TCP::ObjectSender<Item,Channel>&channel,const Objects::WorldEntity&e,const Item&item)
 		{
-			PClient*cl = playerMap.QueryPointer(e.owner);
-			if (cl)
+			if (e.owner->alliance->config.exposeEntityDetails)
 			{
-				channel.SendTo((*cl)->peer.lock(),item);
+				e.owner->alliance->ForeachMember([&channel,&e,&item](const Objects::PFaction&f)
+				{
+					PClient*cl = playerMap.QueryPointer(f);
+					if (cl)
+						channel.SendTo((*cl)->peer.lock(),item);
+				});
+			}
+			else
+			{
+				PClient*cl = playerMap.QueryPointer(e.owner);
+				if (cl)
+					channel.SendTo((*cl)->peer.lock(),item);
 			}
 			foreach (spectators,s)
 				channel.SendTo((*s)->peer.lock(),item);
@@ -181,10 +194,20 @@ namespace Network
 	template <index_t Channel, class Item>
 		inline void	SendToOwner(TCP::ObjectSender<Item,Channel>&channel,const Objects::WorldEntity&e,TCP::Serial<Item>&item)
 		{
-			PClient*cl = playerMap.QueryPointer(e.owner);
-			if (cl)
+			if (e.owner->alliance->config.exposeEntityDetails)
 			{
-				channel.SendTo((*cl)->peer.lock(),item);
+				e.owner->alliance->ForeachMember([&channel,&e,&item](const Objects::PFaction&f)
+				{
+					PClient*cl = playerMap.QueryPointer(f);
+					if (cl)
+						channel.SendTo((*cl)->peer.lock(),item);
+				});
+			}
+			else
+			{
+				PClient*cl = playerMap.QueryPointer(e.owner);
+				if (cl)
+					channel.SendTo((*cl)->peer.lock(),item);
 			}
 			foreach (spectators,s)
 				channel.SendTo((*s)->peer.lock(),item);

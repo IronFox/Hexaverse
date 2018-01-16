@@ -93,7 +93,9 @@ namespace Network
 {
 
 
+	Objects::OwnerParameter ResolveFaction(const TUniqueID&id, const TUniqueID&allianceID);
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id);
+
 	void					ConnectTo(const Host&);
 	bool DidVisit(const TUniqueID&worldID);
 	void SaveWorldAccessTokens();
@@ -207,6 +209,12 @@ namespace Network
 	}
 
 
+	
+	#undef DECLARE_CHANNEL
+	#define	DECLARE_CHANNEL(NAME)	extern TCP::Channel<Protocol::NAME,0,Protocol::ChannelID::NAME>	NAME;
+	#undef DECLARE_OBJECT_SENDER
+	#define	DECLARE_OBJECT_SENDER(NAME)	extern TCP::ObjectSender<Protocol::NAME,Protocol::ChannelID::NAME>	NAME;
+
 	namespace Channels
 	{
 		extern TCP::Channel<Protocol::ControlMessage,0,Protocol::ChannelID::ControlMessage>				controlMessage;
@@ -219,7 +227,6 @@ namespace Network
 		extern TCP::Channel<Protocol::StructureState,0,Protocol::ChannelID::UpdateStructure>			structureStateUpdate;
 		extern TCP::Channel<Protocol::DestroyEntity,0,Protocol::ChannelID::DestroyEntity>				destroyEntity;
 		extern TCP::Channel<Protocol::ClientFactionResponse,0,Protocol::ChannelID::ClientFaction>		clientFactionResponse;
-		extern TCP::Channel<NET(TUniqueID),0,Protocol::ChannelID::SetFactionID>							setFactionID;
 
 		extern TCP::Channel<Protocol::PhaseChange,0,Protocol::ChannelID::PhaseChange>					phaseChange;
 		extern TCP::Channel<Protocol::MobileEntityMotion,0,Protocol::ChannelID::MobileEntityMotion>		mobileEntityMotion;
@@ -281,6 +288,13 @@ namespace Network
 		extern TCP::ObjectSender<Protocol::LoadPlanetByName, Protocol::ChannelID::LoadPlanetByName>		loadPlanetByName;
 		extern TCP::ObjectSender<Protocol::QueueResearch, Protocol::ChannelID::QueueResearch>			queueResearch;
 		
+
+		DECLARE_CHANNEL(MyFaction);
+		DECLARE_CHANNEL(AllianceConfigChange);
+		DECLARE_CHANNEL(VoteCreation);
+		DECLARE_CHANNEL(VoteResult);
+		DECLARE_OBJECT_SENDER(ClientVote);
+		DECLARE_OBJECT_SENDER(AllianceJoinRequest);
 	}
 
 

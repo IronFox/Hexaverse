@@ -64,14 +64,15 @@ namespace Test
 	{
 		testContainer.Clear();
 		
-		using DeltaWorks::Serialization::SerialSync;
-		SerialSync(testContainer,serializable);
+		using DeltaWorks::Serialization::Deserialize;
+		using DeltaWorks::Serialization::Serialize;
+		Serialize(testContainer,serializable);
 		
 
 		
 
 		Serializable copy;
-		SerialSync(ByteReadStream(testContainer.GetWrittenData()),copy);
+		Deserialize(ByteReadStream(testContainer.GetWrittenData()),copy);
 		if (serializable != copy)
 			throw Except::Memory::SerializationFault(CLOCATION,"Serialization/deserialization of type "+String(typeid(serializable).name())+" failed. Deserialized data does not match original data");
 	}
@@ -615,10 +616,8 @@ namespace Test
 		ASSERT_EQUAL__(Objects::vehicles.Count(), 0);
 
 
-		Objects::PFaction faction0(new Objects::Faction(TUniqueID::Empty())),
-							faction1(new Objects::Faction(TUniqueID::Empty()));
-
-		Objects::Faction::all << faction0 << faction1;
+		Objects::PFaction	faction0 = Objects::Faction::Create(TUniqueID::New(),TUniqueID::New()),
+							faction1 = Objects::Faction::Create(TUniqueID::New(),TUniqueID::New());
 
 		//Objects::PTower prototype = To<Objects::Tower>::DynamicCast( Objects::GetPrototypeByName(ConstName::Type_ArtilleryTower));
 
@@ -919,8 +918,7 @@ namespace Test
 		Grid::TPlanetConfig	config;
 		GlobalEvents::FlushObjects();
 
-		Objects::PFaction faction(new Objects::Faction(TUniqueID::Empty()));
-		Objects::Faction::all << faction;
+		Objects::PFaction	faction = Objects::Faction::Create(TUniqueID::New(),TUniqueID::New());
 
 		Grid::LCellIdI	mineAt(0, 1);
 		const auto&n = Grid::low.grid.GetCell(mineAt.stackID).neighborhood;
@@ -1016,7 +1014,7 @@ namespace Test
 		Grid::TPlanetConfig	config;
 		GlobalEvents::FlushObjects();
 
-		Objects::PFaction faction  = Objects::Faction::Create(TUniqueID::Empty(),"Test:VehiclePlant");
+		Objects::PFaction	faction = Objects::Faction::Create(TUniqueID::New(),TUniqueID::New(),"Test:VehiclePlant");
 
 		Grid::LCellIdI	mineAt(0, 1);
 		const auto&n = Grid::low.grid.GetCell(mineAt.stackID).neighborhood;
@@ -1214,7 +1212,7 @@ namespace Test
 						//satellites are spawned automatically during Tick...()
 						ASSERT_LESS_OR_EQUAL__(satelliteOffset,1);
 
-						Objects::PSatellite v = Objects::satellites.last();
+						Objects::PSatellite v = Objects::satellites.Last();
 						ASSERT_EQUAL__(v->health, v->GetMaxHealth());
 						ASSERT2__(v->location.stackID == plant->location.stackID, v->location.ToString(), plant->location.ToString());
 						if (!v0)
@@ -1236,7 +1234,7 @@ namespace Test
 						{
 							Objects::PMobileEntity producing = plant->GetActiveProduction();
 							ASSERT1__(producing->IsSatellite(),producing->GetName());	//only satellites should be able to block each other
-							plant->AbortConstruction(plant->queue.first().id);
+							plant->AbortConstruction(plant->queue.First().id);
 							ASSERT__(v0);	//this should not happen with the first one
 							continue;
 						}
@@ -1404,7 +1402,7 @@ namespace Test
 			World::actual.FlushAllChanges();
 			World::initial = World::actual;
 
-			Objects::PFaction faction = Objects::Faction::Create(TUniqueID::Empty(), "Test:Terrain");	//makes World::initial copy
+			Objects::PFaction	faction = Objects::Faction::Create(TUniqueID::New(),TUniqueID::New(),"Test:Terrain");	//makes World::initial copy
 			ASSERT__(!faction->knownWorld.SensoryIsInvalid());
 
 			const auto strucLoc = Grid::LCellIdI(random.Next(Grid::LowSetup::GridType::CellCount - 1), 0);

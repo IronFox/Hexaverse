@@ -77,6 +77,7 @@ struct EventClass
 							fileError,
 							network,
 							networkError,
+							protocolError,
 							remoteControlResponse,
 							remoteControlCommand,
 							remoteControlError,

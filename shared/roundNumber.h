@@ -35,15 +35,15 @@ struct RoundNumber
 	{
 		return main - other.main;
 	}
-	friend void	SerialSync(IWriteStream&s, const RoundNumber&v)
+	friend void	Serialize(IWriteStream&s, const RoundNumber&v)
 	{
-		using Serialization::SerialSync;
-		SerialSync(s,v.main);
+		using Serialization::Serialize;
+		Serialize(s,v.main);
 	}
-	friend void	SerialSync(IReadStream&s, RoundNumber&v)
+	friend void	Deserialize(IReadStream&s, RoundNumber&v)
 	{
-		using Serialization::SerialSync;
-		SerialSync(s,v.main);
+		using Serialization::Deserialize;
+		Deserialize(s,v.main);
 	}
 	bool		operator!=(const RoundNumber&other) const {return !operator==(other);}
 	bool		operator<(const RoundNumber&other) const {return !operator==(other) && !operator>(other);}

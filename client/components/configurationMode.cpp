@@ -740,7 +740,7 @@ namespace ConfigurationMode
 					warnings << "Unable to query '"+ctx.name+"/"+name+"'";
 					return;
 				}
-				if (!convert(rs.c_str(),rs.length(),var))
+				if (!convert(rs.c_str(),rs.GetLength(),var))
 				{
 					warnings << "Unable to convert '"+ctx.name+"/"+name+"' = '"+rs+"' to "+TypeInfo<T>::name;
 					return;

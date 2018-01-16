@@ -90,6 +90,16 @@ namespace ApplicationInterface
 	*/
 	void	SignalFactionsChanged();
 
+	/**
+	Signals that the specified alliance has experienced some configuration change, which should be re-advertised
+	*/
+	void	SignalAllianceConfigChange(const Objects::PAlliance&alliance);
+	/**
+	Signals that the specified alliance has gained or lost members
+	*/
+	void	SignalAllianceMembershipChange(const Objects::OwnerParameter&);
+
+
 #endif
 }
 

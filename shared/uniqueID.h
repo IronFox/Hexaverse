@@ -71,7 +71,7 @@ namespace Bin2Str
 
 	inline void Convert(void*outData, size_t outDataSize, const String&source)
 	{
-		Convert(outData,outDataSize,source.c_str(),source.length());
+		Convert(outData,outDataSize,source.c_str(),source.GetLength());
 	}
 
 }
@@ -162,11 +162,11 @@ struct TUniqueID
 		return CompareTo(other) >= 0;
 	}
 
-	friend void SerialSync(IWriteStream&s, const TUniqueID&v)
+	friend void Serialize(IWriteStream&s, const TUniqueID&v)
 	{
 		s.Write(v.bytes,v.NumBytes);
 	}
-	friend void SerialSync(IReadStream&s, TUniqueID&v)
+	friend void Deserialize(IReadStream&s, TUniqueID&v)
 	{
 		s.Read(v.bytes,v.NumBytes);
 	}
@@ -177,6 +177,13 @@ struct TUniqueID
 		UUID	uuid;
 		UuidCreate(&uuid);
 		memcpy(bytes,&uuid,sizeof(UUID));
+	}
+
+	static TUniqueID	New()
+	{
+		TUniqueID rs;
+		rs.Generate();
+		return rs;
 	}
 
 	static TUniqueID	Empty()
@@ -206,7 +213,7 @@ struct TUniqueID
 	}
 	bool		Decode(const String&str)
 	{
-		return Decode(str.c_str(),str.length());
+		return Decode(str.c_str(),str.GetLength());
 	}
 
 };
@@ -270,7 +277,7 @@ public:
 
 	void		Export(Array<BYTE>&outArray) const
 	{
-		outArray.resizeAndCopy(bytes,ARRAYSIZE(bytes));
+		outArray.ResizeAndCopy(bytes,ARRAYSIZE(bytes));
 	}
 
 	void		Decode(const String&source)
@@ -278,11 +285,11 @@ public:
 		Bin2Str::Convert(bytes, sizeof(bytes), source);
 	}
 
-	friend void SerialSync(IWriteStream&s, const Self&v)
+	friend void Serialize(IWriteStream&s, const Self&v)
 	{
 		s.Write(v.bytes,sizeof(v.bytes));
 	}
-	friend void SerialSync(IReadStream&s, Self&v)
+	friend void Deserialize(IReadStream&s, Self&v)
 	{
 		s.Read(v.bytes,sizeof(v.bytes));
 	}

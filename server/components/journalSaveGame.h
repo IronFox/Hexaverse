@@ -300,7 +300,7 @@ namespace Journal
 			else
 			{
 				ASSERT__(children.IsNotEmpty());
-				children.last().MoveAppend(child,indention-1);
+				children.Last().MoveAppend(child,indention-1);
 			}
 
 		}
@@ -525,11 +525,11 @@ namespace Journal
 
 			/**/			CreateFaction() {}
 			/**/			CreateFaction(const Objects::Faction&, FactionType factionType);
-			/**/			CreateFaction(FactionType factionType, const TUniqueID&, const CryptographicID&);
+			/**/			CreateFaction(FactionType factionType, const TUniqueID&, const TUniqueID&, const CryptographicID&);
 
 			FactionType		factionType;
 			CryptographicID	accessToken;
-			TUniqueID		factionID;
+			TUniqueID		factionID,allianceID;
 //			Buffer0<PEntityConstructor>	newEntities;
 			virtual void	Decode(const Entry&e) override;
 			virtual Event*	Instantiate() const override {return new CreateFaction();};
@@ -874,10 +874,10 @@ namespace Journal
 
 			void			Merge(const FactionStrand&other)
 			{
-				factionEvents.Append(other.factionEvents);
+				factionEvents.AppendAll(other.factionEvents);
 				other.entityStrands.VisitAllEntries([this](const TUniqueID&key, const EntityStrand&strand)
 				{
-					entityStrands.Set(key).Append(strand);
+					entityStrands.Set(key).AppendAll(strand);
 				});
 			}
 		};

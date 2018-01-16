@@ -9,6 +9,7 @@
 #include <objects.h>
 #include "../../clientEvents.h"
 #include "componentDetails.h"
+#include <math/graph.h>
 
 namespace DX11 = Engine::DX11; 
 
@@ -25,6 +26,109 @@ namespace Component
 	/*static*/ const Distance Distance::Unknown = Distance(NAN,Type::Placeholder);
 	/*static*/ const Distance Distance::Disabled = Distance(NAN,Type::Disabled);
 
+	ChangeRecorder::TChange::TChange(const PComponent&c, const PComponent&cause, const TCodeLocation&loc) : component(c), cause(cause), loc(loc),componentRect(c->GetRect())
+	{}
+
+	void			ChangeRecorder::Record(const PComponent&self, const PComponent&cause, const TCodeLocation&loc)
+	{
+		if (groups.IsEmpty())
+			groups.Append();
+		groups.Last().changes << TChange(self,cause,loc);
+		any = true;
+	}
+
+	void			ChangeRecorder::Record(Component*cause, const TCodeLocation&loc)
+	{
+		Record(cause->shared_from_this(),loc);
+	}
+
+	void			ChangeRecorder::Record(Component*self, const PComponent&cause, const TCodeLocation&loc)
+	{
+		Record(self->shared_from_this(),cause,loc);
+	}
+
+
+	static void		Print(const String&line)
+	{
+		OutputDebugStringA((line+"\n").c_str());
+		LogEvent(EventClass::Preset::internalError,line);
+	}
+
+
+	static String ToString(const PComponent&c)
+	{
+		PButton button = To<Button>::DynamicCast(c);
+		if (button)
+			return "Button["+button->GetText().First()+"]@"+String((const void*)c.get())+" "+ToString(c->GetRect());
+		PLabel label = To<Label>::DynamicCast(c);
+		if (label)
+			return "Label["+label->GetText().First()+"]@"+String((const void*)c.get())+" "+ToString(c->GetRect());
+		return String(typeid(*c.get()).name())+"@"+String((const void*)c.get())+" "+ToString(c->GetRect());
+	}
+
+
+	String	ToString(const ChangeRecorder::TChange&ch)
+	{
+		using StringConversion::ToString;
+		if (ch.cause)
+			return ToString(ch.cause)+" -> "+ToString(ch.component)+", "+ToString(ch.loc);
+		return ToString(ch.component)+", "+ToString(ch.loc);
+	}
+
+
+	static void ReportTree(const String&indent, const PComponent&comp)
+	{
+		Print(indent+ToString(comp));
+		for (index_t i = 0; i < comp->CountChildren(); i++)
+			ReportTree(indent+" ",comp->GetChild(i));
+	}
+	
+
+	void ChangeRecorder::Report(const PComponent&forComp, const ChangeRecorder&prev) const
+	{
+		Print("Component Tree:");
+		ReportTree(" ",forComp);
+
+		#undef grp1
+
+		Print("Change Trace:");
+		for (index_t i = 0; i < groups.Count(); i++)
+		{
+			const auto*grp0 = groups + i;
+			const auto*grp1 = prev.groups.Count() > i ? prev.groups + i : nullptr;
+			if (grp0->title == nullptr)
+			{
+				if (grp1 != nullptr && grp1->title != nullptr)
+					grp1 = nullptr;
+			}
+			elif (grp1 != nullptr)
+				if (grp1->title == nullptr)
+					grp1 = nullptr;
+				elif (strcmp(grp0->title,grp1->title))
+					grp1 = nullptr;
+			if (grp0->title != nullptr)
+				Print(" "+String(grp0->title));
+			for (index_t j = 0; j < grp0->changes.Count(); j++)
+			{
+				const auto*ch0 = grp0->changes+j;
+				const auto*ch1 = grp1 != nullptr && j < grp1->changes.Count() ? grp1->changes + j : nullptr;
+				if (ch1 != nullptr)
+					if (ch1->component != ch0->component || ch1->cause != ch1->cause)
+						ch1 = nullptr;
+
+				if (ch1 != nullptr)
+				{
+					if (ch1->componentRect.x == ch0->componentRect.x)
+						Print("  "+ToString(ch1->componentRect.y)+">>"+ToString(ch0->componentRect.y)+"  "+ToString(*ch0));
+					else
+						Print("  "+ToString(ch1->componentRect)+">>"+ToString(ch0->componentRect)+"  "+ToString(*ch0));
+				}
+				else
+					Print("  "+ToString(*ch0));
+			}
+		}
+
+	}
 
 	void	Distance::VerifyIntegrity() const
 	{
@@ -469,7 +573,7 @@ namespace Component
 		//anchorConfig.GetHAxis().UpdateExtentIfEnabled( Distance::GameWindow( GetWidth() ));
 		//anchorConfig.GetVAxis().UpdateExtentIfEnabled( Distance::GameWindow( GetHeight() ));
 		anchorConfig.VerifyIntegrity(FVerification(),GetWindow() != nullptr);
-		InvalidateAutoLayout();
+		SignalLayoutChangeUp();
 	}
 
 	Component::Component()
@@ -483,19 +587,38 @@ namespace Component
 			Detail::allComponents.FindAndErase(this);
 	}
 
-	void Component::InvalidateAutoLayout()
+	void Panel::SignalLayoutChangeUp()
 	{
-		PWindow w = GetWindow();
-		if (w)
-			w->SignalLayoutChange();
+		if (resolvingAxis)
+			return;
+		this->InvalidateOrder();
+		Super::SignalLayoutChangeUp();
+	}
+
+	void Panel::SignalWindowLayoutChange()
+	{
+		this->InvalidateOrder();
+		foreach (this->components,c)
+			(*c)->SignalWindowLayoutChange();
+	}
+
+
+	void Component::SignalLayoutChangeUp()
+	{
+		PComponent parent = this->GetParent();
+		if (parent)
+			parent->SignalLayoutChangeUp();
 	}
 
 	/*virtual*/ void	Component::VerifyAnchorIntegrity() const
 	{
+		auto p0 = this->GetParent();
 		anchorConfig.VerifyIntegrity(
-		[this](const PComponent&c)
+		[this,&p0](const PComponent&c)
 		{
-			ASSERT__(c->GetWindow() == this->GetWindow());
+			auto p1 = c->GetParent();
+			if (p0 && p1 && p0 != p1)
+				FATAL__("Component parents mismatch. Components referencing each other via anchors must have an immediate, common parent");
 		},GetWindow() == nullptr);
 	}
 
@@ -504,7 +627,7 @@ namespace Component
 		anchorConfig = cfg;
 		if (anchorConfig.HasExtentPlaceholders())
 		{
-			UpdateDynamicSize();
+			UpdateDynamicSize(ChangeRecorder());
 			if (anchorConfig.HasExtentPlaceholders())
 			{
 				anchorConfig.GetHAxis().UpdateExtentIfEnabled(Distance::GameWindow( GetWidth() ));
@@ -513,8 +636,8 @@ namespace Component
 			}
 			ASSERT__(!anchorConfig.HasExtentPlaceholders());
 		}
-//		VerifyAnchorIntegrity(); 
-		InvalidateAutoLayout();
+		VerifyAnchorIntegrity(); 
+		SignalLayoutChangeUp();
 	}
 
 
@@ -635,18 +758,57 @@ namespace Component
 		c->SetParent( GetWindow(), shared_from_this());
 		c->VerifyAnchorIntegrity();
 		VerifyAnchorIntegrity();
+		InvalidateOrder();
 		return true;
 	}
 
-	/*virtual override*/ bool	Panel::ResolveAnchorAxis(AnchorAxis axis, const M::Rect<>&context)
+
+	void Panel::RecomputeOrder(AnchorAxis axis)
 	{
-		bool rs = Super::ResolveAnchorAxis(axis,context); 
+		order[axis].SetSize(components.Count());
+
+		M::Graph g;
+
+
+		PointerTable<M::Graph::PNode>	nodeMap;
+
+		foreach (components,c)
+		{
+			auto newNode = g.AddNode();
+			nodeMap.Set(c->get(),newNode);
+			newNode->attachment = *c;
+		}
+
+		foreach (components,c0)
+		{
+			const auto&c = **c0;
+			const auto myNode = nodeMap.Require(c0->get());
+			const auto&a = c.GetAnchorConfig().axis[axis];
+			foreach (a.lower.GetReferences(),ref)
+				g.AddEdge(nodeMap.Require(ref->lock().get()),myNode);
+			foreach (a.upper.GetReferences(),ref)
+				g.AddEdge(nodeMap.Require(ref->lock().get()),myNode);
+		}
+		Buffer<M::Graph::PNode>	finalOrder(components.Count());
+		if (!g.CreateTopologicalOrder(finalOrder))
+			FATAL__("Failed to create topological order of component along axis "+String(axis.ToString()));
+		for (index_t i = 0; i < components.Count(); i++)
+			order[axis][i] = To<Component>::Cast( finalOrder[i]->attachment );
+	}
+
+
+	/*virtual override*/ void	Panel::ResolveAnchorAxis(AnchorAxis axis, const M::Rect<>&context, ChangeRecorder&rec)
+	{
+		resolvingAxis = true;
+		Super::ResolveAnchorAxis(axis,context,rec); 
 		M::Rect<> childSpace = GetRect();
 		if (vscroll.visible)
 			childSpace.x.max = M::Max(childSpace.x.min, childSpace.x.max - GetVisibleScrollbarContentExpansion());
-		foreach (components,c) 
-			rs |= (*c)->ResolveAnchorAxis(axis,childSpace);
-		return rs;
+		if (order[axis].Count() != components.Count())
+			RecomputeOrder(axis);
+		foreach (order[axis],c) 
+			(*c)->ResolveAnchorAxis(axis,childSpace,rec);
+		resolvingAxis = false;
 	}
 
 
@@ -655,7 +817,7 @@ namespace Component
 		Super::OnScreenSizeOrUIScaleChange();
 		relativeHeight = GetPixelHeight() / ViewPortHeight();
 		relativeThumbWidth = GetThumbPixelWidth() / ViewPortWidth();
-		UpdateDynamicSize();
+		UpdateDynamicSize(ChangeRecorder());
 	}
 
 
@@ -989,7 +1151,7 @@ namespace Component
 	{
 		bool lit = IsLit();
 		bool flipped = mousePressedComponent.get() == this;
-		Super::BaseRender((lit && !flipped)  || alwaysDown,(lit && flipped) || (alwaysDown && flipWhenAlwaysDown));
+		Super::BaseRender((lit && !flipped)  || alwaysDown,(lit && flipped) || (alwaysDown && flipWhenAlwaysDown), fillBackground, renderBorder);
 		Super::RenderText(lit || alwaysDown);
 	}
 
@@ -1032,11 +1194,11 @@ namespace Component
 	}
 
 
-	/*virtual override*/ bool	Panel::UpdateDynamicSize()
+	/*virtual override*/ void	Panel::UpdateDynamicSize(ChangeRecorder&rec)
 	{
-		bool rs = Super::UpdateDynamicSize();
+		Super::UpdateDynamicSize(rec);
 		foreach (components,c)
-			rs |= (*c)->UpdateDynamicSize();
+			(*c)->UpdateDynamicSize(rec);
 
 		float lowest = std::numeric_limits<float>::max();
 		foreach (components,c)
@@ -1055,8 +1217,8 @@ namespace Component
 		const float maxHeight = autoHeight ? this->maxHeight : GetRect().y.GetExtent();
 
 		bool newVScroll = currentHeight > maxHeight;
-		bool changed = vscroll.visible != newVScroll;
-		rs |= changed;
+		if (vscroll.visible != newVScroll)
+			rec.Record(this,CLOCATION);
 		if (newVScroll)
 		{
 			vscroll.scrollMax = currentHeight;
@@ -1071,7 +1233,8 @@ namespace Component
 			if (autoHeight)
 			{
 				auto rect = GetRect();
-				rs |= Set(rect.y.min,newY);
+				if (Set(rect.y.min,newY))
+					rec.Record(this,CLOCATION);
 				SetRect(rect);
 			}
 			vscroll.Enable(this,GetRect());
@@ -1083,13 +1246,13 @@ namespace Component
 			if (autoHeight)
 			{
 				auto rect = GetRect();
-				rs |= Set(rect.y.min,newY);
+				if (Set(rect.y.min,newY))
+					rec.Record(this,CLOCATION);
 				SetRect(rect);
 			}
 		}
 		if (autoHeight)
 			anchorConfig.GetVAxis().UpdateExtentIfEnabled( Distance::GameWindow( GetRect().y.GetExtent() ));
-		return rs;
 	}
 
 	bool			Component::SetEnabled(bool newEnabled)
@@ -1129,7 +1292,7 @@ namespace Component
 		{
 			active = c->active;
 			AcceptStateFromParent(c->CreatePropagating());
-			InvalidateAutoLayout();
+			SignalLayoutChangeUp();
 			if (w && w->IsVisible())
 				OnScreenSizeOrUIScaleChange();
 		}
@@ -1274,19 +1437,18 @@ namespace Component
 	static const float CellSize = 0.01f;
 
 
-	/*virtual*/ bool	Component::UpdateDynamicSize()
+	/*virtual*/ void	Component::UpdateDynamicSize(ChangeRecorder&rec)
 	{
-		bool rs = false;
 		const float h = GetContentHeight();
 		if (h >= 0)
 		{
 			auto&axis = anchorConfig.GetVAxis();
 			if (!axis.Stretches())
 			{
-				rs = SetHeight(Distance::GameWindow( h ));
+				if (SetHeight(Distance::GameWindow( h )))
+					rec.Record(this,CLOCATION);
 			}
 		}
-		return rs;
 	}
 
 
@@ -1362,24 +1524,56 @@ namespace Component
 	{
 		if (isActive)
 		{
-			Engine::input.pushProfile();
+			Engine::input.PushProfile();
 			//profile = *Engine::input.currentProfile();//this copies over a shitload of commands we don't want
 			//let's copy some over, however...
-			profile.key[Key::Escape] = Engine::input.currentProfile()->key[Key::Escape];
-			profile.key[Key::Enter] = Engine::input.currentProfile()->key[Key::Enter];
-			profile.key[Key::Return] = Engine::input.currentProfile()->key[Key::Return];
-			profile.key[Key::MouseButton0] = Engine::input.currentProfile()->key[Key::MouseButton0];
-			profile.key[Key::MouseButton1] = Engine::input.currentProfile()->key[Key::MouseButton1];
-			profile.key[Key::MouseButton2] = Engine::input.currentProfile()->key[Key::MouseButton2];
-			profile.key[Key::MouseButton3] = Engine::input.currentProfile()->key[Key::MouseButton3];
-			profile.key[Key::MouseButton4] = Engine::input.currentProfile()->key[Key::MouseButton4];
-			Engine::input.bindProfile(profile);
+			const auto current = Engine::input.GetCurrentProfile();
+			profile.key[Key::Escape] = current->key[Key::Escape];
+			//profile.key[Key::Enter] = current->key[Key::Enter];
+			//profile.key[Key::Return] = current->key[Key::Return];
+			profile.key[Key::MouseButton0] = current->key[Key::MouseButton0];
+			profile.key[Key::MouseButton1] = current->key[Key::MouseButton1];
+			profile.key[Key::MouseButton2] = current->key[Key::MouseButton2];
+			profile.key[Key::MouseButton3] = current->key[Key::MouseButton3];
+			profile.key[Key::MouseButton4] = current->key[Key::MouseButton4];
+			Engine::input.BindProfile(profile);
 		
-			//Engine::input.resetKeys();
-			Engine::input.bind(Key::Backspace,[](){Engine::keyboard.DropLastCharacter(); Detail::OnInput();});
-			Engine::input.bind(Key::Return,onEnter);
-			Engine::input.bind(Key::Enter,onEnter);
-			Engine::input.bindCtrl(Key::V,[](){
+			//Engine::input.ClearAllBindings();
+			Engine::input.Bind(Key::Tab, onSpecialKey);
+			Engine::input.Bind(Key::CapsLock, onSpecialKey);
+			Engine::input.Bind(Key::Space, onSpecialKey);
+			Engine::input.Bind(Key::Control, onSpecialKey);
+			Engine::input.Bind(Key::Alt, onSpecialKey);
+			Engine::input.Bind(Key::F1, onSpecialKey);
+			Engine::input.Bind(Key::F2, onSpecialKey);
+			Engine::input.Bind(Key::F3, onSpecialKey);
+			Engine::input.Bind(Key::F4, onSpecialKey);
+			Engine::input.Bind(Key::F5, onSpecialKey);
+			Engine::input.Bind(Key::F6, onSpecialKey);
+			Engine::input.Bind(Key::F7, onSpecialKey);
+			Engine::input.Bind(Key::F8, onSpecialKey);
+			Engine::input.Bind(Key::F9, onSpecialKey);
+			Engine::input.Bind(Key::F10, onSpecialKey);
+			Engine::input.Bind(Key::F11, onSpecialKey);
+			Engine::input.Bind(Key::F12, onSpecialKey);
+			Engine::input.Bind(Key::ArrowLeft, onSpecialKey);
+			Engine::input.Bind(Key::ArrowDown, onSpecialKey);
+			Engine::input.Bind(Key::ArrowRight, onSpecialKey);
+			Engine::input.Bind(Key::ArrowUp, onSpecialKey);
+			Engine::input.Bind(Key::Delete, onSpecialKey);
+			Engine::input.Bind(Key::Print, onSpecialKey);
+			Engine::input.Bind(Key::Home, onSpecialKey);
+			Engine::input.Bind(Key::End, onSpecialKey);
+			Engine::input.Bind(Key::PageUp, onSpecialKey);
+			Engine::input.Bind(Key::PageDown, onSpecialKey);
+			
+
+
+
+			Engine::input.Bind(Key::Backspace,[this](){Engine::keyboard.DropLastCharacter(); Detail::OnInput(); if(onSpecialKey) onSpecialKey(Key::Backspace);});
+			Engine::input.Bind(Key::Return,onEnter);
+			Engine::input.Bind(Key::Enter,onEnter);
+			Engine::input.BindCtrl(Key::V,[](){
 				char buffer[0x100];
 				memset(buffer,0,sizeof(buffer));
 				if (System::getFromClipboardIfText(Engine::context.getWindow(),buffer,sizeof(buffer)-1))
@@ -1400,7 +1594,7 @@ namespace Component
 		else
 		{
 			Engine::keyboard.ExportBuffer(backup);
-			Engine::input.popProfile();
+			Engine::input.PopProfile();
 			Engine::keyboard.read = false;
 			Engine::keyboard.onCharHandled =  NULL;
 		}
@@ -1452,7 +1646,7 @@ namespace Component
 		bool active = IsActive();
 		len = active ? Engine::keyboard.GetInputLen() : backup.GetLength();
 
-		while (placeholder.length() < len)
+		while (placeholder.GetLength() < len)
 		{
 //			placeholder << "********";
 			placeholder << "........";
@@ -1573,6 +1767,32 @@ namespace Component
 		return zoom * Detail::textZoom;
 	}
 
+	void			TextField::SetText(const String&string)
+	{
+		if (rawText.GetLength() == 1 && rawText.First() == string)
+			return;
+		rawText.SetSize(1);
+		rawText.First() = string;
+		HandleTextChange();
+	}
+
+	void	TextField::HandleTextChange()
+	{
+		ReWrap();
+		UpdateDynamicSize(ChangeRecorder());
+		OnTextChange();
+		if (this->widthLockedToIdeal || this->heightLockedToIdeal)
+			this->SignalLayoutChangeUp();
+	}
+	void			TextField::SetText(const Array<String>&string)
+	{
+		if (rawText == string)
+			return;
+		rawText = string;
+		HandleTextChange();
+
+	}
+
 	/*virtual*/ float			TextField::GetIdealWidth() const
 	{
 		textout.PushState();
@@ -1604,7 +1824,7 @@ namespace Component
 	void			TextField::SetToIdealWidth()
 	{
 		if (UpdateIdealWidth())
-			InvalidateAutoLayout();
+			SignalLayoutChangeUp();
 	}
 
 
@@ -1615,14 +1835,12 @@ namespace Component
 		return heightLockedToIdeal ? textHeight : -1;
 	}
 
-	/*virtual override*/ bool	TextField::UpdateDynamicSize()
+	/*virtual override*/ void	TextField::UpdateDynamicSize(ChangeRecorder&rec)
 	{
 		bool changed = false;
-		if (widthLockedToIdeal)
-		{
-			changed = UpdateIdealWidth();
-		}
-		return Super::UpdateDynamicSize() || changed;	//queries TextField::ContentHeight()
+		if (widthLockedToIdeal && UpdateIdealWidth())
+			rec.Record(this,CLOCATION);
+		Super::UpdateDynamicSize(rec);
 	}
 
 	void		TextField::ReWrap()
@@ -1645,7 +1863,7 @@ namespace Component
 		for (const String&raw : rawText)
 		{
 			wrapf(raw,width,CharWidth,wrapped);
-			wrappedText.MoveAppend(wrapped);
+			wrappedText.MoveAppendAll(wrapped);
 		}
 		if (wrappedText.IsEmpty())
 			wrappedText.Append();	//at least one empty line
@@ -1784,24 +2002,31 @@ namespace Component
 		TranslateRect(float2(0,delta));
 	}
 
-	bool			Component::FullAutoLayout(const M::Rect<>&context)
+	void			Component::FullAutoLayout(const M::Rect<>&context)
 	{
 		count_t numRounds = 0;
-		bool rs = UpdateDynamicSize();
+		ChangeRecorder rec;
+		UpdateDynamicSize(rec);
 		for (;;)
 		{
-			const bool changed0 = ResolveAnchorAxis(AnchorAxis::Horizontal,context);
-			const bool changed1 = ResolveAnchorAxis(AnchorAxis::Vertical,context);
-			const bool sizeChanged = UpdateDynamicSize();
+			ChangeRecorder prev = rec;
+			rec.Clear();
+			rec.NewGroup("Horizontal");
+			ResolveAnchorAxis(AnchorAxis::Horizontal,context, rec);
+			rec.NewGroup("Vertical");
+			ResolveAnchorAxis(AnchorAxis::Vertical,context, rec);
+			rec.NewGroup("Size");
+			UpdateDynamicSize(rec);
 
-			if (!changed0 && !changed1 && !sizeChanged)
-				return rs;
-			rs = true;
+			if (!rec.HasChanged())
+				return;
 			numRounds++;
 
 			#ifdef _DEBUG
 				if (numRounds > 900)
 				{
+					rec.Report(shared_from_this(),prev);
+
 					VerifyAnchorIntegrity();
 					if (IsDebuggerPresent())
 						DebugBreak();
@@ -1812,21 +2037,28 @@ namespace Component
 			#endif
 
 			if (numRounds > 1000)	//might be linear to the number of contained components, depending on order
-				return false;
+			{
+				static bool first = true;
+				if (first)
+				{
+					rec.Report(shared_from_this(),prev);
+					first = false;
+				}
+				return;
+			}
 		}
 
 	}
 
 
-	bool			Component::ResolveAnchorAxis(AnchorAxis a, const M::Rect<>&context)
+	void			Component::ResolveAnchorAxis(AnchorAxis a, const M::Rect<>&context, ChangeRecorder&rec)
 	{
 		const auto&axis = anchorConfig.axis[a];
 		if (axis.IsFreeFloating())
-			return false;
+			return;
 		
 		auto rect = GetRect();
 		M::TFloatRange<>&range = rect.axis[a];
-		bool rs = false;
 		const M::TFloatRange<>&ctx = context.axis[a];
 
 		const float extent = axis.extent.ToScreenDistance(ctx.GetExtent(),a);
@@ -1835,11 +2067,13 @@ namespace Component
 		{
 			float center = ctx.GetCenter();
 			float top = std::min(ctx.max,center + extent*0.5f);
-			bool changed = Set(range.max,top);
-			changed |= Set(range.min,range.max - extent);
+			if (Set(range.max,top))
+				rec.Record(this,CLOCATION);
+			if (Set(range.min,range.max - extent))
+				rec.Record(this,CLOCATION);
 
 			SetRect(rect);
-			return changed;
+			return;
 		}
 
 
@@ -1853,16 +2087,24 @@ namespace Component
 			if (ref.IsNotEmpty())
 			{
 				float highest = -std::numeric_limits<float>::max();
+				PComponent hComp;
 				foreach (ref,ref0)
 				{
 					PComponent ref = ref0->lock();
-					highest = std::max(highest,ref->GetRect().axis[a].max);
+					float candidate = ref->GetRect().axis[a].max;
+					if (candidate > highest)
+					{
+						hComp = ref;
+						highest = candidate;
+					}
 				}
 				if (highest > -std::numeric_limits<float>::max())
-					rs |= Set(range.min, highest + dist);
+					if (Set(range.min, highest + dist))
+						rec.Record(this,hComp,CLOCATION);
 			}
 			else
-				rs |= Set(range.min, ctx.min + dist);
+				if (Set(range.min, ctx.min + dist))
+					rec.Record(this,CLOCATION);
 		}
 		if (axis.upper.IsEnabled())
 		{
@@ -1873,27 +2115,35 @@ namespace Component
 
 			if (ref.IsNotEmpty())
 			{
+				PComponent lComp;
 				float lowest = std::numeric_limits<float>::max();
 				foreach (ref,ref0)
 				{
 					PComponent ref = ref0->lock();
-					lowest = std::min(lowest,ref->GetRect().axis[a].min);
+					float candidate = ref->GetRect().axis[a].min;
+					if (candidate < lowest)
+					{
+						lowest = candidate;
+						lComp = ref;
+					}
 				}
 				if (lowest < std::numeric_limits<float>::max())
-					rs |= Set(range.max, lowest - dist);
+					if (Set(range.max, lowest - dist))
+						rec.Record(this,lComp,CLOCATION);
 			}
 			else
-				rs |= Set(range.max, ctx.max - dist);
+				if (Set(range.max, ctx.max - dist))
+					rec.Record(this,CLOCATION);
 		}
 		else
-			rs |= Set(range.max,range.min + extent);
+			if (Set(range.max,range.min + extent))
+				rec.Record(this,CLOCATION);
 
 		if (axis.lower.IsInactive())
-			rs |= Set(range.min,range.max - extent);
+			if (Set(range.min,range.max - extent))
+				rec.Record(this,CLOCATION);
 
 		SetRect(rect);
-
-		return rs;
 	}
 
 	Component&			Component::FillHorizontally(const Distance& spacing)
@@ -2022,7 +2272,7 @@ namespace Component
 		if (autoHeight == b)
 			return;
 		autoHeight = b;
-		this->InvalidateAutoLayout();
+		this->SignalLayoutChangeUp();
 		if (b && anchorConfig.GetVAxis().Stretches())
 			AnchorTop(0);
 		VerifyAnchorIntegrity();
@@ -2066,22 +2316,20 @@ namespace Component
 		VerifyAnchorIntegrity();
 	}
 
-	bool			Window::FullAutoLayout(const TCodeLocation&caller)
+	void			Window::FullAutoLayout(const TCodeLocation&caller)
 	{
 		if (nestedCall)
-			return false;
+			return;
 		nestedCall = true;
 		if (logFullAutoLayout)
 			LogEvent(EventClass::Preset::gui,"Window["+String(this)+"]::FullAutoLayout("+String(caller)+")");
 
 		AcceptStateFromParent(TPropagating());
-		bool rs = Super::FullAutoLayout(context);
+		Super::FullAutoLayout(context);
 		relayoutRequired = false;
 
 		UpdateOuterRect();
 		nestedCall = false;
-
-		return rs;
 	}
 
 
@@ -2143,7 +2391,7 @@ namespace Component
 		active->SetAlwaysDown(false);
 		active->edges = M::Quad<bool>(true);
 		active->bottomOpacity = 1;
-		active->Anchor().GetVAxis().lower.Disable();
+		active->Anchor().Top();
 		active->LockToIdealHeight(true);
 		active->topOpacity = 0.85f;
 		active->bottomOpacity = 0.85f;
@@ -2154,7 +2402,8 @@ namespace Component
 	{
 		active->SetAlwaysDown(true);
 		active->LockToIdealHeight(false);
-		active->Anchor().GetVAxis().lower.Set(0);
+		active->Anchor().FillVertically();
+//			GetVAxis().lower.Set(0);
 		active->topOpacity = 1.f;
 		active->bottomOpacity = 0;
 		active->edges = M::Quad<bool>(true,false,true,true);
@@ -2299,6 +2548,15 @@ namespace Component
 		Super::AddComponent(active.panel);
 		if (triggerCallback)
 			OnTabChange();
+	}
+
+
+	/*virtual override*/ void	LinkLabel::OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse)
+	{
+		if (clipAreaContainsMouse)
+			Engine::mouse.SetCursor(Engine::Mouse::CursorType::Hand);
+		else
+			Engine::mouse.SetCursor(Engine::Mouse::CursorType::Default);
 	}
 
 

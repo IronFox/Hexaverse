@@ -427,7 +427,7 @@ namespace ApplicationInterface
 			if (Network::playerMap.Query(p,client))
 				clientsCanSee << client;
 		}
-		clientsCanSee.Append(Network::spectators);
+		clientsCanSee.AppendAll(Network::spectators);
 
 		if (clientsCanSee.IsEmpty())
 			return;
@@ -799,7 +799,7 @@ public:
 	bool					Set(const String&value) override
 	{
 		bool v;
-		if (!convert(value.c_str(),value.length(),v))
+		if (!convert(value.c_str(),value.GetLength(),v))
 			return false;
 		if (v == checkIsOnline())
 			return true;
@@ -853,7 +853,7 @@ int main( int argc, const char* argv[])
 			wchar_t path[MAX_PATH];
 			ASSERT__(GetModuleFileNameW(NULL,path,MAX_PATH));
 			StringW dir = FileSystem::ExtractFileDir(StringW(path));
-			while (dir.length() > 1 && !IsTargetWorkingDirectory(dir))
+			while (dir.GetLength() > 1 && !IsTargetWorkingDirectory(dir))
 			{
 				dir = FileSystem::ExtractFileDir(dir);
 				LogEvent(EventSignificance::Debug,"Walking up to "+String(dir.c_str()));
@@ -1137,6 +1137,8 @@ int main( int argc, const char* argv[])
 				Sleep(1);
 			Network::server.Resolve();
 			RemoteControl::Resolve();
+			if (RuntimeConfig::IsInAnyCommandPhase())
+				Game::Vote::CheckAllTimeouts();
 
 
 			RuntimeConfig::Phase p0 = RuntimeConfig::phase;

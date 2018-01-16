@@ -92,11 +92,11 @@ inline DeltaWorks::String ToString(ConstName v)
 }
 
 
-inline void SerialSync(DeltaWorks::IReadStream&s, ConstName&v)
+inline void Deserialize(DeltaWorks::IReadStream&s, ConstName&v)
 {
 	s.ReadPrimitive((ConstNameRootType&)v);
 }
-inline void SerialSync(DeltaWorks::IWriteStream&s, ConstName v)
+inline void Serialize(DeltaWorks::IWriteStream&s, ConstName v)
 {
 	s.WritePrimitive((ConstNameRootType)v);
 }

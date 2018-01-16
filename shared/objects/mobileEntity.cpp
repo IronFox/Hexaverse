@@ -265,7 +265,7 @@ namespace Objects
 							task.path.Revert();
 							task.path.EraseLast();	//current location
 							Grid::LCellIdI newLocation = location;
-							int cost = task.path.IsNotEmpty() ? task.path.last().movementCostsFromPrevNode : 0;
+							int cost = task.path.IsNotEmpty() ? task.path.Last().movementCostsFromPrevNode : 0;
 							ASSERT__(HasTasks());	//just to be sure...
 							while (task.path.IsNotEmpty() && (remaining >= cost || (!hasMoved && remaining > 0)))
 							{
@@ -273,16 +273,16 @@ namespace Objects
 								Grid::LCellIdI previousLocation = location;
 								float change = float(cost) / float(GetMovementStepsPerRound());
 								bool stop = false;
-								MobilePlacementResult rs = this->PlaceExactlyAt(task.path.last().cell,Times::Move * change,0);
+								MobilePlacementResult rs = this->PlaceExactlyAt(task.path.Last().cell,Times::Move * change,0);
 								switch (rs)
 								{
 									case MobilePlacementResult::PlacementOkay:
 									{
 										ASSERT__(HasTasks());
-										if (task.path.last().cell == task.foci.Peek().target)
+										if (task.path.Last().cell == task.foci.Peek().target)
 											task.foci.EraseFront();
 
-										remaining-=task.path.last().movementCostsFromPrevNode;
+										remaining-=task.path.Last().movementCostsFromPrevNode;
 										if (!AttackIgnoresMotion())
 											attackActionLeft -= change;
 										movementActionLeft -= change;
@@ -294,7 +294,7 @@ namespace Objects
 
 										RegisterChange(ActionChanged,entityTime);
 										task.path.EraseLast();
-										cost = task.path.IsNotEmpty() ? task.path.last().movementCostsFromPrevNode : 1;
+										cost = task.path.IsNotEmpty() ? task.path.Last().movementCostsFromPrevNode : 1;
 									}
 									break;
 									case MobilePlacementResult::EnteredStructure:
@@ -377,7 +377,7 @@ namespace Objects
 							{
 								if (HasTasks())
 								{
-									if (remaining < task.path.last().movementCostsFromPrevNode)
+									if (remaining < task.path.Last().movementCostsFromPrevNode)
 									{
 										remaining = 0;
 										if (!AttackIgnoresMotion())
@@ -982,12 +982,12 @@ namespace Objects
 			myTasks.EraseFront();
 		}
 
-		bool			MobileEntity::PlotCourse(Ctr::ArrayRef<Grid::LCellIdI> destination, bool detailedPath, bool virtualPlatformMode/*=false*/)
+		bool			MobileEntity::PlotCourse(MutableArrayRef<Grid::LCellIdI> destination, bool detailedPath, bool virtualPlatformMode/*=false*/)
 		{
 			const World::Data&world = owner->knownWorld;
 			if (IsPureVehicle()) 
 			{
-				for (index_t i = 0; i < destination.length(); i++)
+				for (index_t i = 0; i < destination.GetLength(); i++)
 				{
 					Grid::LCellIdI&dest = destination[i];
 
@@ -1004,7 +1004,7 @@ namespace Objects
 
 			while (destination.IsNotEmpty() && destination.First() == pointOfOrigin)
 			{
-				destination = Ctr::ArrayRef<Grid::LCellIdI>(destination.GetPointer() +1 ,destination.GetLength()-1);
+				destination = destination.SubRef(1);
 			}
 			if (destination.IsEmpty())
 			{
@@ -1041,7 +1041,7 @@ namespace Objects
 					const auto&match = myTasks.GetNewest().foci.GetNewest();
 					while (destination.IsNotEmpty() && destination.First() == match.target)
 					{
-						destination = Ctr::ArrayRef<Grid::LCellIdI>(destination.GetPointer() +1 ,destination.GetLength()-1);
+						destination = destination.SubRef(1);
 					}
 				}
 				if (destination.IsEmpty())
@@ -1084,7 +1084,7 @@ namespace Objects
 			return true;
 		}
 
-		bool	MobileEntity::PlotFrontCourse(Ctr::ArrayRef<Grid::LCellIdI> destination, bool detailedPath)
+		bool	MobileEntity::PlotFrontCourse(MutableArrayRef<Grid::LCellIdI> destination, bool detailedPath)
 		{
 			const World::Data&world = owner->knownWorld;
 
@@ -1101,7 +1101,7 @@ namespace Objects
 
 			while (destination.IsNotEmpty() && destination.First() == location)
 			{
-				destination = Ctr::ArrayRef<Grid::LCellIdI>(destination.GetPointer() +1 ,destination.GetLength()-1);
+				destination = destination.SubRef(1);
 			}
 			if (destination.IsEmpty())
 			{
@@ -1240,7 +1240,7 @@ namespace Objects
 				if (turret->trajectoryType != TrajectoryType::VerticalBeam)
 				{
 					float len = 0;
-					for (index_t i = 1; i < trajectory.length(); i++)
+					for (index_t i = 1; i < trajectory.GetLength(); i++)
 						len += Vec::distance(ToWorld(trajectory[i-1]),ToWorld(trajectory[i]));
 
 					flightTime =  Times::Attack * len;
@@ -1449,9 +1449,7 @@ namespace Objects
 							else
 							{
 								index_t offset = it-path.begin();
-								Ctr::ArrayRef<PathNode> ref = path.ToRef();
-								ref = Ctr::ArrayRef<PathNode>(ref.GetPointer() + offset,ref.Count()-offset);
-								Ctr::Array<PathNode>	nodes = ref;
+								Array<PathNode>	nodes = path.SubRef(offset);
 								path.Clear();
 								path << PathNode(v->location,0);
 								if (!AppendPathSegment(v,v->location,nextFocus))
@@ -1460,7 +1458,7 @@ namespace Objects
 								}
 								else
 								{
-									path.Append(nodes);
+									path.AppendAll(nodes);
 								}
 							}
 
@@ -1473,7 +1471,7 @@ namespace Objects
 					if (foci.IsNotEmpty())
 					{
 						Grid::LCellIdI lookFor = foci.GetNewest().target;
-						while (path.IsNotEmpty() && path.last().cell != lookFor)
+						while (path.IsNotEmpty() && path.Last().cell != lookFor)
 							path.EraseLast();
 					}
 					else
@@ -1484,7 +1482,7 @@ namespace Objects
 				break;
 				case FocusChangeType::FocusAppended:
 				{
-					const Grid::LCellIdI&prev = path.last().cell;
+					const Grid::LCellIdI&prev = path.Last().cell;
 					if (!AppendPathSegment(v,prev,foci.GetNewest()))
 						return false;
 				}

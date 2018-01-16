@@ -12,11 +12,192 @@
 #include "../runtimeConfig.h"
 #include "prototypes.h"
 #include "structure/tower.h"
+#include "../protocol.h"
 
 namespace Objects
 {
 
 	/*static*/ const String			Faction::nexusName = "<Nexus>";
+
+	/*static*/ HashTable<TUniqueID,WAlliance>	Alliance::all;
+
+
+	/**/		Alliance::Alliance(const TUniqueID&id) : id(id)
+	{
+		LogEvent(EventSignificance::Debug,"Constructed Alliance "+ToString(id));
+	}
+	/*virtual	*/	Alliance::~Alliance()
+	{
+		if (!application_shutting_down) 
+		{
+			LogEvent(EventSignificance::Debug,"Destructed Alliance "+ToString(id));
+			all.Unset(id);
+		}
+	}
+
+	/*static*/ void	Alliance::Foreach(const std::function<void(const PAlliance&)>&visitor)
+	{
+		all.VisitAllValues([visitor](const WAlliance&a)
+		{
+			visitor(a.lock());
+		});
+	}
+
+
+	void		Alliance::ForeachMember(const std::function<void(const PFaction&)>&f)	const
+	{
+		foreach (members,m)
+			f(m->wFaction.lock());
+	}
+
+	bool		Alliance::IsMember(const PFaction&f) const
+	{
+		foreach (members,m)
+			if (m->wFaction.lock() == f)
+				return true;
+		return false;
+	}
+
+	void		Alliance::UpdateConfiguration(const TConfig&newCfg)
+	{
+		if (config == newCfg)
+			return;
+		const auto oldCfg = config;
+		config = newCfg;
+
+		if (oldCfg.shareSensors != newCfg.shareSensors)
+		{
+			#ifndef CLIENT
+				this->ForeachMember([](const PFaction&f)
+				{
+					f->knownWorld.InvalidateSensory();
+					f->CheckSensory();
+				});
+			#elif HAS_WINDOW
+				World::actual.InvalidateSensory();
+			#endif
+		}
+
+		#ifndef CLIENT
+			if (oldCfg.exposeEntityDetails != newCfg.exposeEntityDetails)
+				this->ForeachMember([](const PFaction&f)
+				{
+					f->VisitMyEntities([](const PWorldEntity&e)
+					{
+						e->SignalChange(Objects::WorldEntity::CompleteChange,0);
+					});
+				});
+			ApplicationInterface::SignalAllianceConfigChange(shared_from_this());
+		#endif
+
+	}
+
+
+	Alliance::TConfig::TConfig(UINT32 flags):
+								exposeEntityDetails((Protocol::AllianceFlag::ExposeEntityDetails&flags) != 0),
+								shareSensors((Protocol::AllianceFlag::ShareSensors&flags) != 0)
+	{}
+
+
+	UINT32	Alliance::TConfig::ToFlags() const
+	{
+		UINT32	rs = 0;
+		if (exposeEntityDetails)
+			rs |= Protocol::AllianceFlag::ExposeEntityDetails;
+		if (shareSensors)
+			rs |= Protocol::AllianceFlag::ShareSensors;
+		return rs;
+	}
+
+
+	void		Alliance::RefreshSensors(bool force)
+	{
+		if (!config.shareSensors && !force)
+			return;
+		#ifndef CLIENT
+			foreach (members,m)
+			{
+				PFaction f = m->wFaction.lock();
+
+				f->knownWorld.InvalidateSensory();
+				f->CheckSensory();
+
+
+				f->VisitMyEntities([](const Objects::PWorldEntity&e)
+				{
+					e->RegisterChange(WorldEntity::CompleteChange,0);	//should trigger resubmission
+				});
+
+			}
+		#endif
+	}
+
+	void		Alliance::Join(const PFaction&f)
+	{
+		ASSERT__(f);
+		ASSERT__(!IsMember(f));
+		LogEvent(EventSignificance::Common,f, "@"+String((const void*)f.get())+ " Joined alliance "+ToString(id));
+		members.Append().wFaction = f;
+		members.Last().rawPointer = f.get();
+		LogEvent(EventSignificance::Common,"New member count in alliance "+ToString(id)+": "+String(members.Count()));
+		if (members.Count() == 1)
+			all.Set(id,shared_from_this());
+		f->alliance = shared_from_this();
+		#ifndef CLIENT
+			ApplicationInterface::SignalAllianceMembershipChange(f);
+		#endif
+
+		RefreshSensors(false);
+
+
+	}
+
+	void		Alliance::Leave(const PFaction&f)
+	{
+		LogEvent(EventSignificance::Common,f,"Leaving alliance "+ToString(id));
+		foreach (members,m)
+			if ( m->wFaction == f)
+			{
+				members.erase(m);
+				LogEvent(EventSignificance::Common,"New member count in alliance "+ToString(id)+": "+String(members.Count()));
+				f->alliance = nullptr;
+				if (members.IsEmpty())
+					all.Unset(id);
+				else
+					RefreshSensors(false);
+				return;
+			} 
+		FATAL__("Faction not found");
+	}
+
+
+	void		Alliance::Leave(Faction*f)
+	{
+		LogEvent(EventSignificance::Common,f->GetLogName()+ "@"+String((const void*)f)+ ": Leaving alliance "+ToString(id));
+		const count_t cnt = members.Count();
+		foreach (members,m)
+			if ( m->rawPointer == f)
+			{
+				members.erase(m);
+				ASSERT_EQUAL__(members.Count()+1,cnt);
+				LogEvent(EventSignificance::Common,"New member count in alliance "+ToString(id)+": "+String(members.Count()));
+				f->alliance = nullptr;
+				if (members.IsEmpty())
+					all.Unset(id);
+				else
+					RefreshSensors(false);
+				return;
+			} 
+		FATAL__("Faction not found");
+	}
+
+
+
+	Faction::~Faction()
+	{
+		if (!application_shutting_down)
+			alliance->Leave(this);
+	}
 	
 	#ifndef CLIENT
 
@@ -80,16 +261,34 @@ namespace Objects
 
 
 
-		/*static*/ PFaction				Faction::Create(const TUniqueID&id, const String&name/* = ""*/)
+		/*static*/ PFaction				Faction::Create(const TUniqueID&id, const PAlliance&alliance, const String&name /*= ""*/)
 		{
+			ASSERT__(id.IsNotEmpty());
+			ASSERT__(alliance);
+			ASSERT__(id != alliance->id);
 			PFaction rs(new Faction(id, name));
 			all << rs;
+
+			alliance->Join(rs);
 			return rs;
+
+		}
+
+		/*static*/ PFaction				Faction::Create(const TUniqueID&id, const TUniqueID&allianceID, const String&name/* = ""*/)
+		{
+			ASSERT__(allianceID.IsNotEmpty());
+			auto alliance = Alliance::FindByID(allianceID);
+			if (!alliance)
+				alliance.reset(new Alliance(allianceID));
+			return Create(id,alliance,name);
 		}
 
 		void	Faction::RecreateNexus(const TUniqueID&id)
 		{
 			nexus.reset(new Faction(id, Faction::nexusName,true));
+			PAlliance alliance { new Alliance(TUniqueID::New()) };
+			alliance->Join(nexus);
+
 			ApplicationInterface::SignalFactionsChanged();
 		}
 
@@ -398,6 +597,17 @@ namespace Objects
 
 		}
 
+		void		Faction::VisitMyEntities(const std::function<void(const PWorldEntity&)>&f) const
+		{
+			foreach (structures,s)
+				f(s->lock());
+			foreach (allMobiles,m)
+				f(m->lock());
+			foreach (storedMobiles,m)
+				f(m->lock());
+		}
+
+
 		//void		Faction::SignalLossOfTemporarySensory()
 		//{
 		//	static Buffer0<PWorldEntity>	toDump;
@@ -426,49 +636,106 @@ namespace Objects
 
 		//}
 
+		void	Faction::AddEntitySensory(World::Data&worldData, float&t) const
+		{
+			foreach (this->structures,_s)
+			{
+				Objects::PStructure s = _s->lock();
+				if (s)
+					s->InsertSensoryInto(worldData,t);
+			}
+			foreach (this->allMobiles,_m)
+			{
+				Objects::PWorldEntity e = _m->lock();
+				if (e)
+					e->InsertSensoryInto(worldData,t);
+			}
+		}
+
+
+
+
+
 
 		void Faction::CheckSensory(float&t)
 		{
+			if (this->sensorLockLevel > 0)
+				return;
 			if (knownWorld.SensoryIsInvalid())
 			{
 				knownWorld.FlushAndValidateSensory();
+				if (alliance->config.shareSensors)
+				{
+					alliance->ForeachMember([this,&t](const PFaction&f)	//includes this
+					{
+						f->AddEntitySensory(knownWorld,t);
+					});
+				}
+				else
+					this->AddEntitySensory(knownWorld,t);
 
-				foreach (this->structures,_s)
+				LogEvent(EventSignificance::Common,shared_from_this(),"Recomputing sensory");
+				Timer::Time started = timer.Now();
+				LogEvent(EventSignificance::PerformanceMeasurement,shared_from_this(),"Computed sensory grid coverage in "+String(timer.GetSecondsSince(started)));
+				started = timer.Now();
+				const bool shareSensors = alliance->config.shareSensors;
+				ForeachWorldEntity([this,&t,shareSensors](const PWorldEntity&e)
 				{
-					Objects::PStructure s = _s->lock();
-					if (s)
-						s->ReapplySensory(t);
-				}
-				foreach (this->allMobiles,_m)
+					if (e->owner.get() == this)
+						return;
+					bool appear = shareSensors && alliance == e->owner->alliance;
+
+					if (!appear)
+					{
+						if (e->IsAboveGrid())
+						{
+							count_t cover = CountOffGridCoverage(e->location.height, e->GetWorldPosition());
+							if (cover > 0)
+								appear = true;
+						}
+						else
+							if (GridCanSee(e,t))
+								appear = true;
+					}
+					if (appear)
+						SignalAppearance(e,t,true,false);
+
+				},false);
+
+				LogEvent(EventSignificance::PerformanceMeasurement,shared_from_this(),"Computed appearances in "+String(timer.GetSecondsSince(started)));
+				started = timer.Now();
+
+				static Ctr::Buffer<PWorldEntity>	disappear;
+
+				seeing.VisitAllKeys([this,&t,shareSensors](const PWorldEntity&e)
 				{
-					Objects::PWorldEntity e = _m->lock();
-					if (e)
-						e->ReapplySensory(t);
-				}
+					bool stillVisible = shareSensors && alliance == e->owner->alliance;
+
+					if (!stillVisible)
+					{
+						if (e->IsAboveGrid())
+						{
+							count_t cover = CountOffGridCoverage(e->location.height, e->GetWorldPosition());
+							stillVisible = cover > 0;
+						}
+						else
+							stillVisible = GridCanSee(e,t);
+					}
+					if (!stillVisible)
+						disappear << e;
+				});
+				foreach (disappear,s)
+					SignalDisappearance(*s,t);
+				disappear.Clear();
+				LogEvent(EventSignificance::PerformanceMeasurement,shared_from_this(),"Computed disappearances in "+String(timer.GetSecondsSince(started)));
 			}
 		}
 		
 
 		void Faction::CheckSensory()
 		{
-			if (knownWorld.SensoryIsInvalid())
-			{
-				float t = knownWorld.GetMaxChangeTime();
-				knownWorld.FlushAndValidateSensory();
-
-				foreach (this->structures,_s)
-				{
-					Objects::PStructure s = _s->lock();
-					if (s)
-						s->ReapplySensory(t);
-				}
-				foreach (this->allMobiles,_m)
-				{
-					Objects::PWorldEntity e = _m->lock();
-					if (e)
-						e->ReapplySensory(t);
-				}
-			}
+			float t = 0;
+			CheckSensory(t);
 		}
 
 
@@ -526,9 +793,12 @@ namespace Objects
 				return true;
 			if (!seeing.IsSet(e))
 			{
-				float t1;
-				if (lostVisualAt.Query(e,t1))
-					return t <= t1;
+				if (!RuntimeConfig::IsInAnyCommandPhase())	//if in command phase, times don't matter. only current state matters
+				{
+					float t1;
+					if (lostVisualAt.Query(e,t1))
+						return t <= t1;
+				}
 				return false;
 			}
 			float t0;
@@ -814,61 +1084,11 @@ namespace Objects
 		Faction::TSensorLock::~TSensorLock()
 		{
 			owner->sensorLockLevel--;
-			if (owner->sensorLockLevel == 0 && owner->knownWorld.SensoryIsInvalid())
-			{
-				LogEvent(EventSignificance::Common,owner->shared_from_this(),"Recomputing sensory");
-				Timer::Time started = timer.Now();
-				float t = 0;
+			if (owner->sensorLockLevel == 0)
 				owner->CheckSensory();
-				LogEvent(EventSignificance::PerformanceMeasurement,owner->shared_from_this(),"Computed sensory grid coverage in "+String(timer.GetSecondsSince(started)));
-				started = timer.Now();
-				ForeachWorldEntity([this,&t](const PWorldEntity&e)
-				{
-					if (e->owner.get() == owner)
-						return;
-					if (e->IsAboveGrid())
-					{
-						count_t cover = owner->CountOffGridCoverage(e->location.height, e->GetWorldPosition());
-						if (cover > 0)
-						{
-							owner->SignalAppearance(e, t, true, false);
-						}
-					}
-					else
-						if (owner->GridCanSee(e,t))
-						{
-							owner->SignalAppearance(e,t,true,false);
-						}
-
-				},false);
-
-				LogEvent(EventSignificance::PerformanceMeasurement,owner->shared_from_this(),"Computed appearances in "+String(timer.GetSecondsSince(started)));
-				started = timer.Now();
-
-				static Ctr::Buffer<PWorldEntity>	disappear;
-
-				owner->seeing.VisitAllKeys([this,&t](const PWorldEntity&e)
-				{
-					if (e->IsAboveGrid())
-					{
-						count_t cover = owner->CountOffGridCoverage(e->location.height, e->GetWorldPosition());
-						if (cover == 0)
-						{
-							disappear << e;
-						}
-					}
-					else
-						if (!owner->GridCanSee(e,t))
-						{
-							disappear << e;
-						}
-				});
-				foreach (disappear,s)
-					owner->SignalDisappearance(*s,t);
-				disappear.Clear();
-				LogEvent(EventSignificance::PerformanceMeasurement,owner->shared_from_this(),"Computed disappearances in "+String(timer.GetSecondsSince(started)));
-			}
 		}
+
+
 
 		//void		Faction::RegisterSensorMotion(const M::Sphere<>&from, const M::Sphere<>&to, float t);
 		void		Faction::RegisterSensorRemoval(const World::Sensor&sensor, int sensorHeight, float&t)
@@ -1151,6 +1371,35 @@ namespace Objects
 		}
 
 
+		/*static*/ PFaction				Faction::GetOrCreate(const TUniqueID&id, const TUniqueID&allianceID, bool&outAllianceChanged)
+		{
+			{
+				PFaction rs = FindByID(id);
+				if (rs)
+				{
+					if (rs->alliance->id == allianceID)
+						outAllianceChanged = false;
+					else
+					{
+						outAllianceChanged = true;
+						PAlliance newAlliance = Alliance::FindByID(allianceID);
+						if (!newAlliance)
+							newAlliance.reset(new Alliance(allianceID));
+						rs->ChangeAlliance(newAlliance);
+					}
+					return rs;
+				}
+			}
+			outAllianceChanged = true;
+			PAlliance alliance (new Alliance(TUniqueID::New()));
+			PFaction rs(new Faction(id));
+			idMap.Set(id,rs);
+			allKnown << rs;
+			alliance->Join(rs);	//must init temporary unique alliance, since unknown at this point
+			return rs;
+		}
+
+
 		/*static*/ PFaction				Faction::GetOrCreate(const TUniqueID&id)
 		{
 			{
@@ -1158,9 +1407,11 @@ namespace Objects
 				if (rs)
 					return *rs;
 			}
+			PAlliance alliance (new Alliance(TUniqueID::New()));
 			PFaction rs(new Faction(id));
 			idMap.Set(id,rs);
 			allKnown << rs;
+			alliance->Join(rs);	//must init temporary unique alliance, since unknown at this point
 			return rs;
 		}
 
@@ -1171,7 +1422,7 @@ namespace Objects
 			LogEvent(EventSignificance::Debug, e.get(),"Changing ownership to "+newOwner->GetName());
 			PStructure s = To<Structure>::DynamicCast(e);
 			#ifdef CLIENT
-				if (e->isOwnedByMe)
+				//if (e->isOwnedByMe)
 				{
 					float t = 0.f;
 					e->UnregisterSensory(t);
@@ -1190,7 +1441,7 @@ namespace Objects
 			e->isOwnedByMe = isNowMine;
 
 			#ifdef CLIENT
-				if (e->isOwnedByMe)
+				//if (e->isOwnedByMe)
 				{
 					float t = 0.f;
 					if (!s && e->IsMobile())
@@ -1212,6 +1463,36 @@ namespace Objects
 
 
 	#endif
+
+	void	Faction::ChangeAlliance(const PAlliance&a)
+	{
+		if (alliance == a)
+			return;
+
+		#ifdef CLIENT
+		const bool rebuildSensory = this->isOwnedByMe || alliance == mine->alliance || a == mine->alliance;
+
+		if (rebuildSensory)
+			ForeachWorldEntity([](const Objects::PWorldEntity&e)
+			{
+				float t = 0;
+				e->UnregisterSensory(t);
+			},false);
+		#endif
+
+		alliance->Leave(shared_from_this());
+		a->Join(shared_from_this());
+
+		#ifdef CLIENT
+		if (rebuildSensory)
+			ForeachWorldEntity([](const Objects::PWorldEntity&e)
+			{
+				float t = 0;
+				e->RegisterSensory(t);
+			},false);
+		#endif
+	}
+
 
 
 	void			ForeachFaction(const std::function<void(const PFaction&)>&func, bool includeDead/*=false*/)
@@ -1412,7 +1693,7 @@ namespace Objects
 					Mat::makeAxisSystem(Grid::ToWorld(m.location),Grid::low.cells[m.location.stackID].centerVertex.xyz,2,system);
 					index_t systemID = visitedSystems.Count();
 					visitedSystems.Append().system = system;
-					visitedSystems.last().age = m.age;
+					visitedSystems.Last().age = m.age;
 					visitedSystemIDMap.Set(id,systemID);
 				}
 				else
@@ -1517,7 +1798,7 @@ namespace Objects
 			for (index_t i = 0; /*i < MaxMarkersPerFaction / 10 && */i < all.Count(); i++)
 			{
 				candidates.Append().markerID = all[i].id;
-				candidates.last().priority = all[i].age;
+				candidates.Last().priority = all[i].age;
 			}
 			std::sort(candidates.begin(),candidates.end());
 			candidates.Truncate(MaxMarkersPerFaction / 10);
@@ -1548,7 +1829,8 @@ namespace Objects
 			{
 				s.WritePrimitive(this->referenceEntity);
 				s.WritePrimitive(this->referenceEntityOwner);
-				SerialSync(s,ToString(referencedType));
+				using Serialization::Serialize;
+				Serialize(s,ToString(referencedType));
 			}
 		}
 		/*virtual override*/	void		Marker::Deserialize(IReadStream&inStream)
@@ -1570,7 +1852,8 @@ namespace Objects
 				}
 				else
 					this->referenceEntityOwner = TUniqueID::Empty();
-				SerialSync(inStream,t0);
+				using Serialization::Deserialize;
+				Deserialize(inStream,t0);
 				this->referencedType = DecodeType(t0);
 				//this->referenceEntityType.Deserialize(inStream, fixedSize);
 			}
@@ -1853,10 +2136,7 @@ namespace Objects
 
 	void		Faction::InitID(const TUniqueID&toID,bool nexusFaction)
 	{
-		if (toID == TUniqueID::Empty())
-			id.Generate();
-		else
-			id = toID;
+		id = toID;
 		#ifndef CLIENT
 			if (nexusFaction)
 				color = float3 (1.f, 0.25f, 0.25f);

@@ -123,8 +123,8 @@ namespace Objects
 			virtual bool				UpdatePath(const MobileEntity&v, const Grid::LCellIdI&origin, Grid::LCellIdI&destination) =0;
 			virtual	void				Serialize(IWriteStream&outStream) const override
 			{
-				outStream.WriteSize(path.length());
-				outStream.WritePrimitives(path.pointer(),path.length());
+				outStream.WriteSize(path.GetLength());
+				outStream.WritePrimitives(path.pointer(),path.GetLength());
 			}
 			virtual	void				Deserialize(IReadStream&inStream) override
 			{
@@ -312,8 +312,8 @@ namespace Objects
 				{
 					outStream.WritePrimitive((UINT16)mode);
 					outStream.WritePrimitive(maxHeightDifference);
-					using Serialization::SerialSync;
-					SerialSync(outStream,selection);
+					using Serialization::Serialize;
+					Serialize(outStream,selection);
 				}
 				virtual	void			Deserialize(IReadStream&inStream) override
 				{
@@ -321,8 +321,8 @@ namespace Objects
 					inStream.ReadPrimitive(i16);
 					inStream.ReadPrimitive(maxHeightDifference);
 					mode = (CursorMode)i16;
-					using Serialization::SerialSync;
-					SerialSync(inStream,selection);
+					using Serialization::Deserialize;
+					Deserialize(inStream,selection);
 				}
 			};
 

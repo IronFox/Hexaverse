@@ -22,7 +22,7 @@ namespace Logging
 				else
 					return;	//no point: entity or owner is set. either is auto and implicitly private, or explicitly. either way: stop
 			}
-			elif (!toPeer)
+			elif (!toPeer && privacy == Logging::Privacy::ClientPrivate)
 				return;	//should not happen, but just in case
 		}
 		else
@@ -53,7 +53,7 @@ namespace Logging
 		{
 			out.isPrivate = false;
 			out.message.Truncate(out.message.MaxSize);
-			Channels::controlMessage.SendTo(Network::server,out,Channels::FactionLevel);
+			Channels::controlMessage.SendTo(Network::server,out,Channels::Level::Faction);
 		}
 	}
 }

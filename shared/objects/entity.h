@@ -296,6 +296,7 @@ namespace Objects
 		#ifndef CLIENT
 			enum changeType_t
 			{
+				CompleteChange = 0xFFFFFFFF,
 				Unchanged = 0x0,
 				HealthChanged = 0x1,
 				PositionChanged = 0x2,
@@ -427,6 +428,7 @@ namespace Objects
 		*/
 		virtual void				PrototypeSetup()	{};
 
+		String						GetNameAndOwner() const;
 
 		virtual M::TFloatRange<int>	GetRelativeScanningBand(const Grid::LCellIdI&loc) const {return M::FloatRange<int>(-3,+100);}	//Maximum vertical sensor radius up and down from the entity's central height. Currently not affected by EMP
 		virtual int					GetMaxHealth() const;
@@ -468,7 +470,7 @@ namespace Objects
 
 
 		#ifndef CLIENT
-			virtual bool			DirectTo(CursorMode, Ctr::ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) = 0;
+			virtual bool			DirectTo(CursorMode, MutableArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) = 0;
 
 			/**
 			Forces all tasks to be dropped that do not result in resource loss. Other tasks must remain
@@ -564,6 +566,10 @@ namespace Objects
 		Assumes that grid sensory has been previously flushed
 		*/
 		void					ReapplySensory(float&atTime);
+		/**
+		Inserts the all local sensors into the specified target world around the local entity location
+		*/
+		void					InsertSensoryInto(World::Data&target, float&atTime);
 		TRegisteredSensor		RegisterSensory(const Grid::LCellIdI&loc, float&atTime, Ctr::Buffer0<PWorldEntity>*newContacts = nullptr);
 		void					UnregisterSensory(TRegisteredSensor&, float&atTime);
 		void					MoveSensoryToCurrentLocation(float&atTime, Ctr::Buffer0<PWorldEntity>*newContacts = nullptr);

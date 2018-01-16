@@ -205,7 +205,7 @@ namespace Objects
 		bool					CheckUnlocked(const Component::Base&base, String&errorOut) const	{return true;}
 		bool					CheckUnlocked(ConstName, String&errorOut) const	{return true;}
 		bool					IsIdle() const {return researchQueue.IsEmpty();}
-		Ctr::ArrayRef<const PResearchTopic>GetResearchQueue() const	{return researchQueue.ToRef();}
+		ArrayRef<const PResearchTopic>GetResearchQueue() const	{return researchQueue.ToRef();}
 		PResearchTopic			GetActiveTopic() const {return researchQueue.IsNotEmpty() ? researchQueue.First() : PResearchTopic();}
 		String					ExportResearchQueue();
 		void					ExportResearchQueue(Ctr::Array<UINT32>&);

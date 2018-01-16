@@ -270,8 +270,8 @@ namespace Nexus
 							if (plant->queue.IsNotEmpty())
 							{
 								producing++;
-								ASSERT__(plant->queue.first().producing->owner == Objects::Faction::nexus);
-								EstimatePresence(*plant->queue.first().producing,ws->location,portLocations, hostileNearNexus,constructorNearNexus,friendlyNearNexus);
+								ASSERT__(plant->queue.First().producing->owner == Objects::Faction::nexus);
+								EstimatePresence(*plant->queue.First().producing,ws->location,portLocations, hostileNearNexus,constructorNearNexus,friendlyNearNexus);
 							}
 						}
 					}
@@ -306,7 +306,7 @@ namespace Nexus
 									
 									if (vplant->queue.IsNotEmpty())	//shit happens
 									{
-										EstimatePresence(*vplant->queue.last().producing,vplant->location,portLocations, hostileNearNexus,constructorNearNexus,friendlyNearNexus);
+										EstimatePresence(*vplant->queue.Last().producing,vplant->location,portLocations, hostileNearNexus,constructorNearNexus,friendlyNearNexus);
 										anyFound = true;
 										producing++;
 										break;

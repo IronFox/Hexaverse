@@ -12,7 +12,7 @@
 #include "../objectSelection.h"
 #include "guiStatistics.h"
 #include "../scene/explosions.h"
-#include "factionTable.h"
+#include "guiFactionTable.h"
 
 bool	IsFullScreen();
 void	SetFullScreen(bool isFull);

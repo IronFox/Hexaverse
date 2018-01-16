@@ -20,10 +20,11 @@
 #include "gridControl.h"
 #include "visual/objectChoices.h"
 #include "visual/scene/terrain.h"
-#include "visual/hud/factionTable.h"
+#include "visual/hud/guiFactionTable.h"
 #include "clientEvents.h"
 #include "visual/hud/guiHostList.h"
 #include "visual/hud/eventLog.h"
+#include "voting.h"
 
 
 //#define DEBUG_SERVER_LIST	//enable to generate very long artificial server list
@@ -147,7 +148,7 @@ namespace Network
 
 	void SendChatMessage(const String & msg)
 	{
-		if (msg.TrimRef().length() > 0)
+		if (msg.TrimRef().GetLength() > 0)
 		{
 			if (client.IsConnected())
 				Channels::chatMessage.SendTo(client,msg);
@@ -213,6 +214,15 @@ namespace Network
 
 
 
+
+	Objects::OwnerParameter ResolveFaction(const TUniqueID&id, const TUniqueID&allianceID)
+	{
+		bool allianceChanged = false;
+		auto rs = Objects::Faction::GetOrCreate(id,allianceID, allianceChanged);
+		if (allianceChanged)
+			GlobalEvents::onAllianceChange(rs);
+		return rs;
+	}
 
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id)
 	{
@@ -528,8 +538,8 @@ namespace Network
 		void	PlanetNames(NETA(Package::NetString<256>)&list)
 		{
 			#ifdef HAS_WINDOW
-				Array<String> copy(list.length());
-				for (index_t i = 0; i < list.length(); i++)
+				Array<String> copy(list.GetLength());
+				for (index_t i = 0; i < list.GetLength(); i++)
 					copy[i].adoptData(list[i]);
 				ConfigurationMode::UpdatePlanetList(copy);
 			#endif
@@ -706,24 +716,31 @@ namespace Network
 			//	if (World::actual.lightingOutdated && World::allowRecompilation)
 			//		World::actual.UpdateLighting();
 			//#endif
-
-			Objects::PStructure s = Objects::SpawnStructure(Network::ResolveFaction(sc.owner),  sc.state.entityState.id,sc.state.entityState.location,sc.type, sc.state.entityState.timestamp.rightNow, Network::haveID && Network::myID == sc.owner);
-			ASSERT__(s);
-			if (sc.state.entityState.timestamp.rightNow)
-				LogEvent(EventSignificance::Common,s.get(),  "Placed structure entity outside animation");
-
-			Animation::UpdateState(s,sc.state);
-			if (!sc.state.entityState.timestamp.rightNow)
+			try
 			{
-				Animation::primitives.Append().Init(sc,s);
-				LogEvent(EventSignificance::Debug, "Appended 'new structure("+ToString(sc.state.entityState.id)+")' primitive to animation sequence at t="+String(sc.state.entityState.timestamp.atTime));
+				Objects::PStructure s = Objects::SpawnStructure(Network::ResolveFaction(sc.owner),  sc.state.entityState.id,sc.state.entityState.location,sc.type, sc.state.entityState.timestamp.rightNow, Network::haveID && Network::myID == sc.owner);
+				ASSERT__(s);
+				if (sc.state.entityState.timestamp.rightNow)
+					LogEvent(EventSignificance::Common,s.get(),  "Placed structure entity outside animation");
+
+				Animation::UpdateState(s,sc.state);
+				if (!sc.state.entityState.timestamp.rightNow)
+				{
+					Animation::primitives.Append().Init(sc,s);
+					LogEvent(EventSignificance::Debug, "Appended 'new structure("+ToString(sc.state.entityState.id)+")' primitive to animation sequence at t="+String(sc.state.entityState.timestamp.atTime));
+				}
+				else
+				{
+					#ifdef HAS_WINDOW
+						if (!s->isOwnedByMe)
+							HUD::HexGrid::RefreshContacts();
+					#endif
+				}
 			}
-			else
+			catch (const std::exception & ex)
 			{
-				#ifdef HAS_WINDOW
-					if (!s->isOwnedByMe)
-						HUD::HexGrid::RefreshContacts();
-				#endif
+				LogEvent(EventClass::Preset::protocolError,ex.what());
+				DBG_FATAL__(ex.what());
 			}
 		}
 
@@ -737,11 +754,22 @@ namespace Network
 			if (vs.entityState.timestamp.rightNow && Animation::AllDone())
 			{
 				Objects::PWorldEntity e =Objects::GetEntity(vs.entityState.id);
-				ASSERT1__(e,vs.entityState.id);
-				Objects::PStructure s = To<Objects::Structure>::DynamicCast(e);
-				ASSERT1__(s,vs.entityState.id);
-				Animation::UpdateState(s,vs);
-
+				if (!e)
+				{
+					LogEvent(EventClass::Preset::networkError,"Trying to update structure state of entity "+ToString(vs.entityState.id)+", which is currently not registered");
+					DBG_FATAL__("Invalid state detected");
+				}
+				else
+				{
+					Objects::PStructure s = To<Objects::Structure>::DynamicCast(e);
+					if (s)
+						Animation::UpdateState(s,vs);
+					else
+					{
+						LogEvent(EventClass::Preset::networkError,"Trying to update structure state of entity "+e->GetName()+", which is not a structure");
+						DBG_FATAL__("Invalid state detected");
+					}
+				}
 			}
 			else
 			{
@@ -913,17 +941,6 @@ namespace Network
 			#endif
 		}
 
-		void	SetFactionID(NET(TUniqueID)&id)
-		{
-			ASSERT__(!eventsLocked);
-
-			haveID = true;
-			amSpectator = false;
-			myID = id;
-			Objects::Faction::mine = ResolveFaction(myID);
-			myIDString = ToString(myID);
-			Objects::Faction::mine->isOwnedByMe = true;
-		}
 
 		void	PhaseChange(Protocol::PhaseChange&c);
 		void	MobileEntityMotion(Protocol::MobileEntityMotion&m)
@@ -946,7 +963,7 @@ namespace Network
 			{
 				bool found = false;
 				foreach (Animation::primitives,p)
-					if (p->targetEntityID == m.id && p->type == Animation::Primitive::MovementStream && p->path->rawPath.last().first == m.fromLocation)
+					if (p->targetEntityID == m.id && p->type == Animation::Primitive::MovementStream && p->path->rawPath.Last().first == m.fromLocation)
 					{
 						p->Append(m);
 						found = true;
@@ -1257,12 +1274,64 @@ namespace Network
 			}
 		}
 
+		void MyFaction(Protocol::MyFaction&faction)
+		{
+			ASSERT__(!eventsLocked);
+
+			haveID = true;
+			amSpectator = false;
+			myID = faction.factionID;
+			Objects::Faction::mine = ResolveFaction(myID,faction.alliance.allianceID);
+			Objects::Faction::mine->alliance->UpdateConfiguration(faction.alliance.flags);
+			myIDString = ToString(myID);
+			Objects::Faction::mine->isOwnedByMe = true;
+		}
+
+		void AllianceConfigChange(Protocol::AllianceConfigChange&ch)
+		{
+			ASSERT__(!eventsLocked);
+			Objects::PAlliance alliance = Objects::Alliance::FindByID(ch.allianceID);
+			if (alliance)
+				alliance->config = ch.flags;
+			else
+				LogEvent(EventClass::Preset::internalError,"Can't find alliance "+ToString(ch.allianceID)+" for config update");
+
+		}
+
+		void	VoteCreation(Protocol::VoteCreation&vote)
+		{
+			Vote::Create(vote.voteID,vote.remainingSeconds,vote.phrase);
+		}
+
+		void	VoteResult(Protocol::VoteResult&result)
+		{
+			auto v = Vote::FindByID(result.voteID);
+			if (!v)
+			{
+				LogEvent(EventSignificance::NonFatalError,"Unable to find vote "+ToString(result.voteID));
+				return;
+			}
+			Vote::TOutcome outcome;
+			outcome.eligibleToVote = result.eligibleToVote;
+			outcome.quorum = result.quorum;
+			outcome.result = (Protocol::VoteResultType::T)result.resultType;
+			outcome.votedAgainst = result.votedAgainst;
+			outcome.votedInFavor = result.votedInFavor;
+
+			v->Close(outcome);
+		}
+
 
 	}
 
 
 	namespace Channels
 	{
+		#undef DECLARE_CHANNEL
+		#define	DECLARE_CHANNEL(NAME)	TCP::Channel<Protocol::NAME,0,Protocol::ChannelID::NAME>	NAME(Receiver::NAME);
+		#undef DECLARE_OBJECT_SENDER
+		#define	DECLARE_OBJECT_SENDER(NAME)	TCP::ObjectSender<Protocol::NAME,Protocol::ChannelID::NAME>	NAME;
+
 		TCP::Channel<Protocol::ControlMessage,0,Protocol::ChannelID::ControlMessage>				controlMessage(Receiver::ControlMessage);
 
 		TCP::Channel<Protocol::ClientFactionResponse,0,Protocol::ChannelID::ClientFaction>			clientFactionResponse(Receiver::ClientFactionResponse);
@@ -1274,7 +1343,6 @@ namespace Network
 		TCP::Channel<Protocol::StructureConstruction,0,Protocol::ChannelID::InstantiateStructure>	newStructure(Receiver::OnNewStructure);
 		TCP::Channel<Protocol::StructureState,0,Protocol::ChannelID::UpdateStructure>				structureStateUpdate(Receiver::OnStructureState);
 		TCP::Channel<Protocol::DestroyEntity,0,Protocol::ChannelID::DestroyEntity>					destroyEntity(Receiver::DestroyEntity);
-		TCP::Channel<NET(TUniqueID),0,Protocol::ChannelID::SetFactionID>							setFactionID(Receiver::SetFactionID);
 
 		TCP::Channel<Protocol::PhaseChange,0,Protocol::ChannelID::PhaseChange>						phaseChange(Receiver::PhaseChange);
 		TCP::Channel<Protocol::MobileEntityMotion,0,Protocol::ChannelID::MobileEntityMotion>		mobileEntityMotion(Receiver::MobileEntityMotion);
@@ -1339,10 +1407,13 @@ namespace Network
 		TCP::ObjectSender<Protocol::LoadPlanetByName, Protocol::ChannelID::LoadPlanetByName>		loadPlanetByName;
 		TCP::ObjectSender<Protocol::QueueResearch, Protocol::ChannelID::QueueResearch>				queueResearch;
 
-			//	,			//c2s: NET(bool) -> NET(bool)
-			//SetFactionId,		//s2c: NET(TUniqueID)
+		DECLARE_CHANNEL(MyFaction);
+		DECLARE_CHANNEL(AllianceConfigChange);
+		DECLARE_CHANNEL(VoteCreation);
+		DECLARE_CHANNEL(VoteResult);
+		DECLARE_OBJECT_SENDER(ClientVote);
+		DECLARE_OBJECT_SENDER(AllianceJoinRequest);
 
-		
 	}
 
 
@@ -1557,7 +1628,10 @@ namespace Network
 		client.InstallChannel(Channels::destroyEntity);
 		client.InstallChannel(Channels::controlMessage);
 		client.InstallChannel(Channels::clientFactionResponse);
-		client.InstallChannel(Channels::setFactionID);
+		client.InstallChannel(Channels::MyFaction);
+		client.InstallChannel(Channels::AllianceConfigChange);
+		client.InstallChannel(Channels::VoteCreation);
+		client.InstallChannel(Channels::VoteResult);
 
 		client.InstallChannel(Channels::phaseChange);
 		client.InstallChannel(Channels::mobileEntityMotion);
@@ -1596,6 +1670,8 @@ namespace Network
 		client.InstallChannel(Channels::Statistics::entityType);
 		client.InstallChannel(Channels::Statistics::round);
 		client.InstallChannel(Channels::Statistics::factionInteraction);
+
+		
 
 		client.OpenSignalChannel(Protocol::ChannelID::Pong,0);
 		client.OpenSignalChannel(Protocol::ChannelID::BeginGame,0);
@@ -1671,7 +1747,7 @@ namespace Network
 		{
 			host = url.subStringRef(0,portAt);
 			StringRef conv = url.SubStringRef(portAt+1);
-			if (!convert(conv.pointer(),conv.length(),basePort))
+			if (!convert(conv.pointer(),conv.GetLength(),basePort))
 			{
 				throw Except::Program::ParameterFault(CLOCATION, "Unable to parse port component '" + String(conv) + "' of '"+url+"'");
 			}
@@ -1810,12 +1886,12 @@ namespace Network
 						{
 							at = servers.Count();
 							servers.Append();
-							servers.last().haveToken = 	a.protocolIncompatible ? false : accessMap.IsSet(a.lastInfo.gameInfo.worldID);
-							servers.last().protocolIncompatible = a.protocolIncompatible;
-							servers.last().id = a.protocolIncompatible ? TUniqueID::Empty() : a.lastInfo.hostInfo.hostID;
-							servers.last().rightVersion = a.rightVersion && !a.protocolIncompatible;
+							servers.Last().haveToken = 	a.protocolIncompatible ? false : accessMap.IsSet(a.lastInfo.gameInfo.worldID);
+							servers.Last().protocolIncompatible = a.protocolIncompatible;
+							servers.Last().id = a.protocolIncompatible ? TUniqueID::Empty() : a.lastInfo.hostInfo.hostID;
+							servers.Last().rightVersion = a.rightVersion && !a.protocolIncompatible;
 							//if (!a.protocolIncompatible)
-							serverMap.Set(servers.last().id,at);
+							serverMap.Set(servers.Last().id,at);
 						
 						}
 						ServerInfo&info = servers[at];
@@ -2042,7 +2118,7 @@ void	Network::Receiver::FactionContinuedRound(NET(TUniqueID)&id)
 
 void	Network::Receiver::IdentifyFaction(Protocol::IdentifyFaction&id)
 {
-	Objects::OwnerParameter faction = Network::ResolveFaction(id.id);
+	Objects::OwnerParameter faction = Network::ResolveFaction(id.id, id.allianceID);
 	faction->name = id.name;
 	faction->color = id.color;
 	#ifdef HAS_WINDOW

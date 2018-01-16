@@ -94,7 +94,7 @@ namespace Console
 	{
 		lastLine = Truncate(context.ref(),30);
 		lastLine += '>';
-		lastLine += Truncate(input.ToStringRef(),Sys::getConsoleWidth() - lastLine.length());
+		lastLine += Truncate(input.ToStringRef(),Sys::getConsoleWidth() - lastLine.Length());
 	}
 
 	void	Refresh()
@@ -123,7 +123,7 @@ namespace Console
 			case '\b':
 				if (input.IsNotEmpty())
 				{
-					if (input.last() != '\t' && lastLine.length() +2 < (count_t)Sys::getConsoleWidth())
+					if (input.Last() != '\t' && lastLine.Length() +2 < (count_t)Sys::getConsoleWidth())
 					{
 						std::cout << "\b \b";
 						refresh = false;
@@ -146,7 +146,7 @@ namespace Console
 				if (Package::IsValidChar(c))
 				{
 					input << c;
-					if (lastLine.length()+1 < (count_t)Sys::getConsoleWidth())
+					if (lastLine.Length()+1 < (count_t)Sys::getConsoleWidth())
 					{
 						std::cout << c;
 						refresh = false;
