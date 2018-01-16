@@ -4,6 +4,15 @@
 
 #include "../globalEvents.h"
 
+
+namespace ApplicationInterface
+{
+#	ifdef CLIENT
+		void	SignalExtraGridSensorCreation(const World::Sensor&);
+		void	SignalExtraGridSensorRemoval(const World::Sensor&);
+	#endif
+}
+
 namespace World
 {
 	using namespace Grid;
@@ -2043,6 +2052,22 @@ namespace World
 	}
 
 
+	void			Sensor::InsertInto(World::Data&clientWorld, float t) const
+	{
+		ApplyTo(clientWorld,+1,t);
+		#ifdef CLIENT
+			if (this->gridCenter.layer >= Grid::CellStack::Range)
+				ApplicationInterface::SignalExtraGridSensorCreation(*this);
+		#endif
+	}
+	void			Sensor::RemoveFrom(World::Data&clientWorld, float t) const
+	{
+		ApplyTo(clientWorld,-1,t);
+		#ifdef CLIENT
+			if (this->gridCenter.layer >= Grid::CellStack::Range)
+				ApplicationInterface::SignalExtraGridSensorRemoval(*this);
+		#endif
+	}
 
 
 	void		Sensor::ApplyTo(World::Data&v, short change, float t)	const

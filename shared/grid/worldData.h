@@ -542,8 +542,8 @@ namespace World
 							radius(radius),type(t), terrainPenetration(terrainPenetration) {}
 
 		void			ApplyTo(World::Data&clientWorld, short change, float t)	const;
-		void			InsertInto(World::Data&clientWorld, float t) const {ApplyTo(clientWorld,+1,t);}
-		void			RemoveFrom(World::Data&clientWorld, float t) const {ApplyTo(clientWorld,-1,t);}
+		void			InsertInto(World::Data&clientWorld, float t) const;
+		void			RemoveFrom(World::Data&clientWorld, float t) const;
 
 
 		/**

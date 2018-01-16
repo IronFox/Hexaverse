@@ -705,7 +705,7 @@ namespace Objects
 			{
 		#endif
 		LogEvent(EventClass::Preset::common,this,"Unregistering sensory ("+ToString(sensor.location)+", "+String(GetScanningRange())+") at time "+String(atTime));
-		VisitSensors(sensor.location, [&atTime, this, sensor](const World::Sensor&sensor1)
+		VisitSensors(sensor.location, [&atTime, this](const World::Sensor&sensor)
 		{
 			#ifdef CLIENT
 				sensor.RemoveFrom(World::actual, atTime);

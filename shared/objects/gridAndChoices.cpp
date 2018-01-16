@@ -2074,7 +2074,7 @@ namespace Objects
 			//		ASSERT__(*r != Grid::LCellIdI::Invalid);
 			if (!has)
 			{
-				oPath.Append(routeI);
+				oPath.AppendAll(routeI);
 				return true;
 			}
 
@@ -2085,11 +2085,11 @@ namespace Objects
 				len += n->movementCostsFromPrevNode;
 			if (len < lenI * 4)	//less than 400% more
 			{
-				oPath.Append(route);
+				oPath.AppendAll(route);
 				return true;
 			}
 
-			oPath.Append(routeI);		//else: use the one that ignores friendly vehicles
+			oPath.AppendAll(routeI);		//else: use the one that ignores friendly vehicles
 			return true;
 
 		}
@@ -2342,7 +2342,7 @@ namespace Objects
 						return false;
 				}
 				oPath.Append().cell = to;
-				oPath.last().movementCostsFromPrevNode = 5;
+				oPath.Last().movementCostsFromPrevNode = 5;
 				return true;
 			}
 			else
@@ -2361,7 +2361,7 @@ namespace Objects
 							return false;
 					}
 					oPath.Append().cell = Grid::LCellIdI(from.stackID,Height);
-					oPath.last().movementCostsFromPrevNode = 5;
+					oPath.Last().movementCostsFromPrevNode = 5;
 				}
 			}
 
@@ -2421,7 +2421,7 @@ namespace Objects
 					}
 					outPath.EraseLast();	//dont need entry point
 					outPath.Revert();
-					oPath.Append(outPath);
+					oPath.AppendAll(outPath);
 					return true;
 				}
 				GetWays(sat,  current, possibilities, to.stackID, true, ignoreFriendlyVehiclesOnRoute);
@@ -2974,7 +2974,7 @@ namespace Objects
 					}
 					outPath.EraseLast();	//dont need entry point
 					outPath.Revert();
-					oPath.Append(outPath);
+					oPath.AppendAll(outPath);
 					//ShowMessage("found route with "+String(outPath.Count())+" steps, requiring "+String(iterations)+" iterations" );
 					//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 					return true;
