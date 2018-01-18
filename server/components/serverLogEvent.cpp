@@ -6,7 +6,7 @@
 
 namespace Logging
 {
-	void SendEntityEvent( TCP::Peer*toPeer,const EventClass&type, const Objects::WorldEntity*e, const Objects::OwnerParameter&owner, const String&msg, Logging::Privacy privacy/*=Logging::Privacy::Auto*/)
+	void SendEntityEvent( TCP::Peer*toPeer,const EventClass&type, const Objects::WorldEntity*e, const Objects::PFaction&owner, const String&msg, Logging::Privacy privacy/*=Logging::Privacy::Auto*/)
 	{
 
 		if (type.flavor == EventFlavor::ServerPrivate && privacy == Logging::Privacy::Auto)
@@ -60,15 +60,15 @@ namespace Logging
 
 void LogEvent(const EventClass&t, TCP::Peer&peer, const String&msg)
 {
-	Logging::SendEntityEvent(&peer,t,nullptr, Objects::OwnerParameter(),msg);
+	Logging::SendEntityEvent(&peer,t,nullptr, nullptr,msg);
 
-	Logging::WriteEvent(t,msg,&peer,nullptr,Objects::OwnerParameter(),Logging::Origin::Local);
+	Logging::WriteEvent(t,msg,&peer,nullptr,nullptr,Logging::Origin::Local);
 }
 
 void LogEvent(const EventClass&t, TCP::Peer&peer, const Objects::PWorldEntity&e, const String&msg)
 {
-	Logging::SendEntityEvent(&peer,t,e.get(),Objects::OwnerParameter(),msg);
-	Logging::WriteEvent(t,msg,&peer,e.get(),Objects::OwnerParameter(),Logging::Origin::Local);
+	Logging::SendEntityEvent(&peer,t,e.get(),nullptr,msg);
+	Logging::WriteEvent(t,msg,&peer,e.get(),nullptr,Logging::Origin::Local);
 }
 
 

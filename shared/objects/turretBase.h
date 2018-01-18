@@ -52,7 +52,7 @@ namespace Objects
 		};
 
 
-		static bool				CheckArea(const OwnerParameter&myFaction, const Grid::LCellIdI&, const M::TVec3<>&worldPos,float explosionRadius,TargetChoice&);
+		static bool				CheckArea(const PFaction&myFaction, const Grid::LCellIdI&, const M::TVec3<>&worldPos,float explosionRadius,TargetChoice&);
 
 		Component::Turret*		turret;
 		#ifdef CLIENT
@@ -83,7 +83,7 @@ namespace Objects
 		virtual float			GetAttackActionLeft() const=0;
 
 		int						GetAttacksPerRound() const	{return turret->GetAttacksPerRound(GetOwner());}
-		int						GetDamagePotentialPerRound() const {OwnerParameter owner = GetOwner(); return std::max(1,turret->GetAttacksPerRound(owner)) * turret->GetDamageLevel(owner);}
+		int						GetDamagePotentialPerRound() const {PFaction owner = GetOwner(); return std::max(1,turret->GetAttacksPerRound(owner)) * turret->GetDamageLevel(owner);}
 		float					GetAttackInitiative()const	{return turret->initiative * GetAttackActionLeft();}
 		int						CountPossibleAttacks() const {return GetAttacksPerRound() * GetAttackActionLeft();}
 		virtual bool			NextTaskIsAttack() const = 0;
@@ -109,7 +109,7 @@ namespace Objects
 			Otherwise a close approximation will be given that is still in range but will hit the target through the explosion radius
 		@return true if an applicable destination was found, false otherwise
 		*/
-		bool					ExtCanHit(const OwnerParameter&myFaction, const TrajectoryEndPoint&source, const TrajectoryEndPoint&destIn, TargetChoice&outExtResult)	const;
+		bool					ExtCanHit(const PFaction&myFaction, const TrajectoryEndPoint&source, const TrajectoryEndPoint&destIn, TargetChoice&outExtResult)	const;
 
 
 
@@ -154,7 +154,7 @@ namespace Objects
 			}
 
 		};
-		static bool				IsSafeHit(const OwnerParameter&myFaction, TrajectoryType t, float range,const World::Data&visibleWorld, const World::Data&actualWorld,const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, float explosionRadius, TargetChoice&);
+		static bool				IsSafeHit(const PFaction&myFaction, TrajectoryType t, float range,const World::Data&visibleWorld, const World::Data&actualWorld,const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, float explosionRadius, TargetChoice&);
 
 	};
 

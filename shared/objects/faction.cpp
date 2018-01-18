@@ -30,8 +30,9 @@ namespace Objects
 	{
 		if (!application_shutting_down) 
 		{
-			LogEvent(EventSignificance::Debug,"Destructed Alliance "+ToString(id));
 			all.Unset(id);
+			LogEvent(EventSignificance::Debug,"Destructed Alliance "+ToString(id)+". "+String(all.Count())+" remaining");
+
 		}
 	}
 
@@ -195,7 +196,9 @@ namespace Objects
 
 	Faction::~Faction()
 	{
-		if (!application_shutting_down)
+		LogEvent(EventSignificance::Debug,"Destruct faction "+ToString(id)+" "+name);
+
+		if (!application_shutting_down && alliance)
 			alliance->Leave(this);
 	}
 	
@@ -1417,7 +1420,7 @@ namespace Objects
 
 
 
-		void	ChangeOwnership( const PWorldEntity&e,const OwnerParameter&newOwner, bool isNowMine)
+		void	ChangeOwnership( const PWorldEntity&e,const PFaction&newOwner, bool isNowMine)
 		{
 			LogEvent(EventSignificance::Debug, e.get(),"Changing ownership to "+newOwner->GetName());
 			PStructure s = To<Structure>::DynamicCast(e);

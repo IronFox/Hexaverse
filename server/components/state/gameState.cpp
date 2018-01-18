@@ -20,7 +20,7 @@ namespace Game
 {
 	UINT32				mostFactionsAlive=0;
 	Evolver::Abstract	*evolver = nullptr;
-	Objects::PFaction	winner;	//if set indicates game is over
+	Objects::WFaction	winner;	//if set indicates game is over
 	Objects::WFaction	postEvolutionWinner;	//if winner is declared while evolver is active, this variable is set instead for later
 	Timer::Time			lastPhaseChange = timer.Now();
 	bool				roundTimerPaused = true,endRoundNow=false, evolverActive = false;
@@ -626,7 +626,7 @@ namespace Game
 
 			if (to == RuntimeConfig::Phase::EndOfGame)
 			{
-				if (!winner)
+				if (winner.expired())
 				{
 					UINT64 biggestScore = 0;
 					Objects::PFaction newWinner;
@@ -1187,7 +1187,7 @@ namespace Game
 	void	DeclareWinner(const Objects::PFaction&w)
 	{
 		DBG_ASSERT__(w);
-		DBG_ASSERT__(!winner);
+		DBG_ASSERT__(winner.expired());
 		if (evolverActive)
 		{
 			postEvolutionWinner = w;
@@ -1197,7 +1197,7 @@ namespace Game
 		LogEvent(EventClass{EventSignificance::Important,EventFlavor::ServerPrivate},"Declared winner: "+w->GetLogName());
 		LogEvent(EventClass::Preset::winningFaction,"Congratulations. "+w->GetName()+" wins this game!");
 		winner = w;
-		Channels::winningFaction.SendTo(::Network::server,Game::winner->id,Channels::Level::Faction);
+		Channels::winningFaction.SendTo(::Network::server,w->id,Channels::Level::Faction);
 		if (RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame)
 			Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
 	}

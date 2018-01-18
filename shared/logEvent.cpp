@@ -204,7 +204,7 @@ namespace Logging
 
 
 
-	void	WriteEvent(const EventClass&evClass, String message, TCP::Peer*peer, const Objects::WorldEntity*e, const Objects::OwnerParameter&owner, Origin origin /*= Logging::Origin::Local*/)
+	void	WriteEvent(const EventClass&evClass, String message, TCP::Peer*peer, const Objects::WorldEntity*e, const Objects::PFaction&owner, Origin origin /*= Logging::Origin::Local*/)
 	{
 		bool printToConsole = evClass.significance >= EventSignificance::Uncommon;
 		//type != EventSignificance::Debug
@@ -328,12 +328,12 @@ void		LogException(const Objects::WorldEntity*e, const std::exception&ex)
 void LogEvent( const EventClass&type, const Objects::WorldEntity*e, const String&msg, Logging::Origin origin, Logging::Privacy privacy/*=Logging::Privacy::Auto*/)
 {
 	#ifndef CLIENT
-		Logging::SendEntityEvent(nullptr,type,e,Objects::OwnerParameter(),msg,privacy);
+		Logging::SendEntityEvent(nullptr,type,e,nullptr,msg,privacy);
 	#endif
-	Logging::WriteEvent(type,msg,nullptr,e,Objects::OwnerParameter(),origin);
+	Logging::WriteEvent(type,msg,nullptr,e,nullptr,origin);
 }
 
-void		LogEvent(const EventClass&type, const Objects::OwnerParameter&owner, const String&msg, Logging::Origin origin, Logging::Privacy privacy/*=Logging::Privacy::Auto*/)
+void		LogEvent(const EventClass&type, const Objects::PFaction&owner, const String&msg, Logging::Origin origin, Logging::Privacy privacy/*=Logging::Privacy::Auto*/)
 {
 	#ifndef CLIENT
 		Logging::SendEntityEvent(nullptr,type,nullptr,owner,msg,privacy);

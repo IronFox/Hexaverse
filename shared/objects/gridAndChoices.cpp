@@ -51,7 +51,7 @@ namespace Objects
 			}
 		}
 	#else
-		bool NoHostileVehicleHere(const Grid::LCellIdI&cellID, const OwnerParameter&v, float t)
+		bool NoHostileVehicleHere(const Grid::LCellIdI&cellID, const PFaction&v, float t)
 		{
 			PVehicle vh = GetVehicle(cellID);
 			return !vh || vh->owner->IsFriendly(v) 
@@ -71,7 +71,7 @@ namespace Objects
 		}
 
 		#ifndef NO_SATELLITES
-			bool NoHostileSatelliteHere(UINT32 cellID, const OwnerParameter&v, float t)
+			bool NoHostileSatelliteHere(UINT32 cellID, const PFaction&v, float t)
 			{
 				PSatellite vh = GetSatellite(cellID);
 				return !vh || vh->owner->IsFriendly(v) 

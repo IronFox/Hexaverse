@@ -78,9 +78,9 @@ namespace ApplicationInterface
 	void	SignalAttack(const TAttack&);
 	void	SignalExplosion(const TAttack&, const M::TVec3<>&center,float explosionRadius,bool isEMP, bool isDoomsday,float atTime);
 	//void	SignalExplosion(const M::TVec3<>&center,float explosionRadius,bool isEMP, float atTime);
-	void	SignalDisappearanceToHostileFaction(const Objects::OwnerParameter&target, const Objects::PWorldEntity&e, float atTime);
-	void	SignalAppearanceToHostileFaction(const Objects::OwnerParameter&target, const Objects::PWorldEntity&e, float atTime);
-	void	SignalOwnershipChange(const Objects::PWorldEntity&e,const Objects::OwnerParameter&target, float t);
+	void	SignalDisappearanceToHostileFaction(const Objects::PFaction&target, const Objects::PWorldEntity&e, float atTime);
+	void	SignalAppearanceToHostileFaction(const Objects::PFaction&target, const Objects::PWorldEntity&e, float atTime);
+	void	SignalOwnershipChange(const Objects::PWorldEntity&e,const Objects::PFaction&target, float t);
 	void	SignalNexusControlChange(const Objects::PFaction&f);
 	void	SignalChainReactionExplosion(const Objects::PWorldEntity&causedBy, const Grid::LCellIdI&center, float radius, int damageLevel, float atTime);
 	void	SignalOperationLacksResources(const Objects::WorldEntity&, const Ctr::ArrayRef<Objects::Resource>&resources, float atTime);
@@ -97,7 +97,7 @@ namespace ApplicationInterface
 	/**
 	Signals that the specified alliance has gained or lost members
 	*/
-	void	SignalAllianceMembershipChange(const Objects::OwnerParameter&);
+	void	SignalAllianceMembershipChange(const Objects::PFaction&);
 
 
 #endif

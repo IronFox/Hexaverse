@@ -105,7 +105,7 @@ namespace Objects
 			return !p || p->ResearchCompleted(researchState) || workQueue.Contains(p);
 		}
 
-		bool					CanResearch(const OwnerParameter&) const;
+		bool					CanResearch(const PFaction&) const;
 
 	};
 
