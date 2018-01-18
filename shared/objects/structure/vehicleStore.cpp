@@ -167,7 +167,7 @@ namespace Objects
 
 		#ifdef HAS_WINDOW
 			WVehicle w = v;
-			this->localStore.last().deployCommand.reset(new DeployMobileCommand(v,
+			this->localStore.Last().deployCommand.reset(new DeployMobileCommand(v,
 				[w]()
 				{
 					//focus = To<VehicleStore>::DynamicCast(storeEntity).get();
@@ -185,7 +185,7 @@ namespace Objects
 					return rs;
 				}
 				));
-			this->localStore.last().deployCommand->RasterizeImage();
+			this->localStore.Last().deployCommand->RasterizeImage();
 		#endif
 
 		if (park)
@@ -325,7 +325,7 @@ namespace Objects
 				{
 					s->park.reset();
 					#ifndef CLIENT
-						while (stored.IsNotEmpty() && s->StoreLocally(stored.last().entity.lock(),atTime,false,s))
+						while (stored.IsNotEmpty() && s->StoreLocally(stored.Last().entity.lock(),atTime,false,s))
 						{
 							stored.EraseLast();
 						}

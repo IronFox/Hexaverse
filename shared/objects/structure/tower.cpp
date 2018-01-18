@@ -85,7 +85,7 @@ namespace Objects
 
 
 				float len = 0;
-				for (index_t i = 1; i < trajectory.length(); i++)
+				for (index_t i = 1; i < trajectory.GetLength(); i++)
 					len += Vec::distance(ToWorld(trajectory[i-1]),ToWorld(trajectory[i]));
 
 				const float flightTime =  Times::Attack * len;
@@ -241,7 +241,7 @@ namespace Objects
 		}
 
 
-		/*virtual override*/ bool			Tower::DirectTo(CursorMode mode, Ctr::ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
+		/*virtual override*/ bool			Tower::DirectTo(CursorMode mode, MutableArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
 		{
 		
 			if (mode != Objects::CursorMode::AttackMode || !leftClick)

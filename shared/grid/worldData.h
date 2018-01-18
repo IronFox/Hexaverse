@@ -352,7 +352,7 @@ namespace World
 		
 		/**
 		Validates the local sensory, and sets all sensory data to @a initialValue.
-		All families are set to changed at time=0
+		CompleteChange families are set to changed at time=0
 		@param initialValue Initial cell visibility. 0 indicates invisibility
 		*/
 		void					FlushAndValidateSensory(short initialValue=0);
@@ -528,7 +528,7 @@ namespace World
 		/**/			Sensor()	{}
 		/**/			Sensor(const float3&center, float radius, type_t t, int terrainPenetration=0)
 							:worldCenter(center),
-							gridCenter(Grid::high.Locate(center),Grid::CellStack::ToLayer(Grid::HeightFloorFromRadius(center.length()))),
+							gridCenter(Grid::high.Locate(center),Grid::CellStack::ToLayer(Grid::HeightFloorFromRadius(center.GetLength()))),
 							radius(radius),type(t), terrainPenetration(terrainPenetration){}
 
 		/**/			Sensor(const Grid::LCellIdI&center, float fLayerOffset, float radius, type_t t, int terrainPenetration = 0)
@@ -542,8 +542,8 @@ namespace World
 							radius(radius),type(t), terrainPenetration(terrainPenetration) {}
 
 		void			ApplyTo(World::Data&clientWorld, short change, float t)	const;
-		void			InsertInto(World::Data&clientWorld, float t) const {ApplyTo(clientWorld,+1,t);}
-		void			RemoveFrom(World::Data&clientWorld, float t) const {ApplyTo(clientWorld,-1,t);}
+		void			InsertInto(World::Data&clientWorld, float t) const;
+		void			RemoveFrom(World::Data&clientWorld, float t) const;
 
 
 		/**

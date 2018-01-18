@@ -13,7 +13,7 @@ namespace Objects
 
 	/**
 	Stationary defence building
-	All towers feature turrets on their top, which define their functionality. Towers and satellites are the only
+	CompleteChange towers feature turrets on their top, which define their functionality. Towers and satellites are the only
 	WorldEntity's that can fire automatically during movement phase. They are therefore particularly effective against approaching
 	vehicles, and must typically be disabled via EMP first.
 	*/
@@ -147,7 +147,7 @@ namespace Objects
 		#endif
 		#ifndef CLIENT
 			virtual void			OnConstructionFinished(float&atTime) override;
-			virtual bool			DirectTo(CursorMode, Ctr::ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
+			virtual bool			DirectTo(CursorMode, MutableArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 		#endif
 		//virtual int					GetConstructionCost() const override {return this->GetTable()->constructionCost.getValue(GetResearchState()) + turret->productionCosts(owner);}
 		#ifndef NO_HIBERNATION

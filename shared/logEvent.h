@@ -77,6 +77,7 @@ struct EventClass
 							fileError,
 							network,
 							networkError,
+							protocolError,
 							remoteControlResponse,
 							remoteControlCommand,
 							remoteControlError,
@@ -125,7 +126,7 @@ namespace Logging
 }
 
 void		LogEvent(const EventClass&evClass, const Objects::WorldEntity*, const String&, Logging::Origin origin = Logging::Origin::Local, Logging::Privacy privacy=Logging::Privacy::Auto);
-void		LogEvent(const EventClass&evClass, const Objects::OwnerParameter&, const String&, Logging::Origin origin = Logging::Origin::Local, Logging::Privacy privacy=Logging::Privacy::Auto);
+void		LogEvent(const EventClass&evClass, const Objects::PFaction&, const String&, Logging::Origin origin = Logging::Origin::Local, Logging::Privacy privacy=Logging::Privacy::Auto);
 void		LogException(const Objects::WorldEntity*, const std::exception&ex);
 
 inline void LogEvent(const EventClass&evClass, const String&msg, Logging::Origin origin = Logging::Origin::Local, Logging::Privacy privacy=Logging::Privacy::Auto)

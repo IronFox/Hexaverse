@@ -20,7 +20,7 @@ namespace Game
 {
 	UINT32				mostFactionsAlive=0;
 	Evolver::Abstract	*evolver = nullptr;
-	Objects::PFaction	winner;	//if set indicates game is over
+	Objects::WFaction	winner;	//if set indicates game is over
 	Objects::WFaction	postEvolutionWinner;	//if winner is declared while evolver is active, this variable is set instead for later
 	Timer::Time			lastPhaseChange = timer.Now();
 	bool				roundTimerPaused = true,endRoundNow=false, evolverActive = false;
@@ -28,6 +28,323 @@ namespace Game
 	float				effectiveAnimationLength = 1.f;
 
 	INT32				tutorialAt=1;
+
+
+	/*static*/ HashTable<TUniqueID,PVote>	Vote::all;
+	/*static*/ HashTable<Array<TUniqueID>,PVote>	Vote::map;
+
+	/*static*/ void		Vote::Flush()
+	{
+		all.Clear();
+		map.Clear();
+	}
+
+
+	/*static*/ PVote	Vote::CreateOrGet(const ArrayRef<const TUniqueID>&concerning, const String&phrase, float closingAfterSeconds, const FScope&scope, const FCallback&onClose)
+	{
+		PVote rs = FindConcerning(concerning);
+		if (!rs)
+		{
+			rs.reset(new Vote(concerning,phrase,closingAfterSeconds));
+			rs->scope = scope;
+			rs->onClose = onClose;
+			all.Set(rs->id,rs);
+			map.Set(concerning,rs);
+		}
+		return rs;
+	}
+
+
+
+	/*static*/ PVote	Vote::CreateNew(const ArrayRef<const TUniqueID>&concerning, const String&phrase, float closingAfterSeconds, const FScope&scope, const FCallback&onClose)
+	{
+		PVote rs = FindConcerning(concerning);
+		if (rs)
+			return nullptr;
+		{
+			rs.reset(new Vote(concerning,phrase,closingAfterSeconds));
+			rs->scope = scope;
+			rs->onClose = onClose;
+			all.Set(rs->id,rs);
+			map.Set(concerning,rs);
+			rs->Advertise();
+		}
+		return rs;
+	}
+
+
+	/*static*/ void		Vote::CheckAllTimeouts()
+	{
+		all.FilterEntries([](const TUniqueID&, const PVote&v) -> bool
+		{
+			if (!v->CheckTimeouts())
+			{
+				map.Unset(v->concerning);
+				return false;
+			}
+			return true;
+		});
+	}
+
+	/*static*/ void		Vote::CheckAllVotes()
+	{
+		all.VisitAllValues([](const PVote&v) 
+		{
+			v->CheckVotes();
+		});
+	}
+
+	/*static*/ void		Vote::CastVote(const TUniqueID&voteID, const Objects::PFaction&f, bool inFavor)
+	{
+		auto vote = all.QueryPointer(voteID);
+		if (!vote)
+		{
+			LogEvent(EventClass::Preset::commandRejected,f,"Vote "+ToString(voteID)+" does no longer exist");
+			return;
+		}
+		(*vote)->CastVote(f,inFavor);
+	}
+
+	void			Vote::CastVote(const Objects::PFaction&f, bool inFavor)
+	{
+		if (!MayVote(f))
+		{
+			LogEvent(EventClass::Preset::commandRejected,f,"Faction not allowed to vote on this issue");
+			return;
+		}
+
+		if (closed)
+		{
+			LogEvent(EventClass::Preset::commandRejected,f,"Vote is closed");
+			return;
+		}
+		
+		bool*vote = this->votes.QueryPointer(f->id);
+		if (vote)
+		{
+			if (*vote != inFavor)
+			{
+				*vote = inFavor;
+				LogEvent(EventSignificance::Common,f,"Vote: Changed oppinion on "+ToString(id)+": "+String(inFavor));
+			}
+			else
+			{
+				LogEvent(EventSignificance::Debug,f,"Vote: Voted but did not change oppinion on "+ToString(id)+": "+String(inFavor));
+				return;
+			}
+		}
+		else
+		{
+			votes.Set(f->id,inFavor);
+			LogEvent(EventSignificance::Common,f,"Vote: Voted on "+ToString(id)+": "+String(inFavor));
+		}
+		if (RuntimeConfig::IsInAnyCommandPhase())
+			CheckVotes();
+	}
+
+	/*static*/ void		Vote::AdvertiseAllToNewlyConnectedPeer(const Objects::PFaction&f, TCP::Peer&peer)
+	{
+		all.VisitAllValues([&peer,f](const PVote&vote)
+		{
+			if (!vote->closed && vote->MayVote(f))
+			{
+				Protocol::VoteCreation out;
+				out.phrase = vote->phrase;
+				out.remainingSeconds = vote->closingAfterSeconds;
+				out.voteID = vote->id;
+				Channels::VoteCreation.SendTo(peer,out);
+			}
+		});
+	}
+
+
+	void			Vote::Advertise() const
+	{
+		Protocol::VoteCreation vote;
+		vote.phrase = phrase;
+		vote.remainingSeconds = closingAfterSeconds;
+		vote.voteID = id;
+
+		if (!scope)
+			Channels::VoteCreation.SendTo(::Network::server,vote,Channels::Level::Faction);
+		else
+			::Network::playerMap.VisitAllEntries([vote,this](const Objects::PFaction&f, const ::Network::PClient&client)
+			{
+				if (scope(f))
+					Channels::VoteCreation.SendTo(client->peer.lock(),vote);
+			});
+	}
+
+	bool			Vote::CheckTimeouts()
+	{
+		float seconds = GetAge();
+		if (seconds < closingAfterSeconds && !closed)
+			return true;
+		Close();
+		
+		if (seconds > clearedAfterSeconds)
+		{
+			LogEvent(EventSignificance::Common,"Clearing out vote "+ToString(id)+" after "+String(seconds)+" sec.");
+			return false;
+		}
+		return true;
+	}
+
+	count_t			Vote::CountEligibleVoters() const
+	{
+		count_t rs = 0;
+		Objects::ForeachFaction([&rs,this](const Objects::PFaction&f){if (!scope || scope(f)) rs++;},false);
+		return rs;
+	}
+
+	/*static*/ count_t	Vote::GetQuorum(Quorum q, count_t eligibleVoters)
+	{
+		switch (q)
+		{
+			case Quorum::All:
+				return eligibleVoters;
+			case Quorum::TwoThirds:
+				return Math::CeilDiv<count_t>(eligibleVoters*2,3);
+			case Quorum::Majority:
+				return eligibleVoters /2 + 1;
+			case Quorum::OneThird:
+				return Math::CeilDiv<count_t>(eligibleVoters,3);
+		}
+		FATAL__("Unexpected type for quorum: #"+String(index_t(q)));
+		return 1;
+	}
+
+	/*static*/ count_t	Vote::GetVotesToPass(VotesToPass v, count_t voters)
+	{
+		switch (v)
+		{
+			case VotesToPass::SimpleMajority:
+				return (voters / 2) +1;
+			case VotesToPass::TwoThirds:
+				return Math::CeilDiv<count_t>(voters*2,3);
+			case VotesToPass::Unanimous:
+				return voters;
+		}
+		FATAL__("Unexpected votes to pass type: #"+String(index_t(v)));
+		return 1;
+	}
+
+
+	void Vote::CheckResults(Protocol::VoteResult&rs, bool timedOut)	const
+	{
+
+		bool test = Array<int>() == Array<char>();
+
+		rs.eligibleToVote = (UINT32)CountEligibleVoters();
+		rs.quorum = GetQuorum(this->quorum, rs.eligibleToVote);
+		rs.votedAgainst = 0;
+		rs.votedInFavor = 0;
+		rs.voteID = id;
+
+		ASSERT_LESS_OR_EQUAL__(votes.Count(),rs.eligibleToVote);
+
+		votes.VisitAllValues([&rs](bool inFavor)
+		{
+			if (inFavor)
+				rs.votedInFavor ++;
+			else
+				rs.votedAgainst ++;
+		});
+
+		const bool quorumReached = votes.Count() >= rs.quorum && timedOut;
+		const count_t votesToPassTotal = GetVotesToPass(votesToPass,rs.eligibleToVote);
+		const count_t votesToPassQuorum = GetVotesToPass(votesToPass,votes.Count());
+		const bool passed = rs.votedInFavor >= votesToPassTotal || (quorumReached && rs.votedInFavor >= votesToPassQuorum);
+		const count_t abstainedVotes = rs.eligibleToVote - votes.Count();
+
+
+		if (passed)
+			rs.resultType = Protocol::VoteResultType::Passed;
+		else
+			if (quorumReached || rs.votedInFavor + abstainedVotes < votesToPassTotal)
+				rs.resultType = Protocol::VoteResultType::Rejected;
+			else
+				rs.resultType = Protocol::VoteResultType::TimedOut;
+	}
+
+
+
+	void			Vote::Close()
+	{
+		if (closed)
+			return;
+
+		Protocol::VoteResult rs;
+		CheckResults(rs,true);
+		Close(rs);
+	}
+
+
+	void			Vote::Cancel()
+	{
+		Protocol::VoteResult rs;
+		CheckResults(rs,true);
+		rs.resultType = Protocol::VoteResultType::Canceled;
+		this->clearedAfterSeconds = std::min(this->clearedAfterSeconds, this->GetAge() + 2.f);	//reduce to 2 seconds on cancel
+		Close(rs);
+	}
+
+
+	void			Vote::Close(const Protocol::VoteResult&rs)
+	{
+		if (closed)
+			return;
+		closed = true;
+
+		LogEvent(EventClass::Preset::common,"Closing vote "+ToString(id));
+		const count_t votesToPassTotal = GetVotesToPass(votesToPass,rs.eligibleToVote);
+		const count_t votesToPassQuorum = GetVotesToPass(votesToPass,votes.Count());
+
+		String state = "  voted: "+String(votes.Count())+"/"+String(rs.eligibleToVote)+", quorum="+String(rs.quorum)+", toPassTotal="+String(votesToPassTotal)+", toPassQ="+String(votesToPassQuorum);
+
+		switch (rs.resultType)
+		{
+			case Protocol::VoteResultType::Passed:
+				state += "  passed";
+			break;
+			case Protocol::VoteResultType::Rejected:
+				state += "  rejected";
+			break;
+			case Protocol::VoteResultType::TimedOut:
+				state += "  timed out";
+			break;
+			case Protocol::VoteResultType::Canceled:
+				state += "  canceled";
+			break;
+			default:
+				state += "  unknown(#"+String(rs.resultType)+")";
+			break;
+		}
+		LogEvent(EventClass::Preset::common,state);
+
+
+		if (!scope)
+			Channels::VoteResult.SendTo(::Network::server,rs,Channels::Level::Faction);
+		else
+			::Network::playerMap.VisitAllEntries([rs,this](const Objects::PFaction&f, const ::Network::PClient&client)
+			{
+				if (scope(f))
+					Channels::VoteResult.SendTo(client->peer.lock(),rs);
+			});
+
+		onClose(shared_from_this(), rs);
+	}
+
+	void			Vote::CheckVotes()
+	{
+		if (closed)
+			return;
+
+		Protocol::VoteResult rs;
+		CheckResults(rs, false);
+		if (rs.resultType != Protocol::VoteResultType::TimedOut)
+			Close(rs);
+	}
 
 
 
@@ -103,7 +420,7 @@ namespace Game
 
 	namespace Network
 	{
-		void		UpdateResourceCoverage(const Objects::PFaction&f, const Grid::LCellIdI&center,float range, const Protocol::Timestamp&timestamp)
+		static void		_UpdateResourceCoverage(const Objects::PFaction&f, const Grid::LCellIdI&center,float range, const Protocol::Timestamp&timestamp)
 		{
 			static Ctr::Buffer0<UINT32>	changed;
 			if (!f)
@@ -135,6 +452,20 @@ namespace Game
 				Channels::resourceUpdate.SendTo(peer,package);
 			}
 		}
+
+		void		UpdateResourceCoverage(const Objects::PFaction&f, const Grid::LCellIdI&center,float range, const Protocol::Timestamp&timestamp)
+		{
+			if (!f)
+				return;
+			if (!f->alliance->config.shareSensors)
+				_UpdateResourceCoverage(f,center,range,timestamp);
+			else
+				f->alliance->ForeachMember([center,range,timestamp](const Objects::PFaction&f2)
+				{
+					_UpdateResourceCoverage(f2,center,range,timestamp);
+				});
+		}
+
 
 
 		void SendStatisticsTo(TCP::Peer & peer, const Objects::PFaction & faction)
@@ -269,6 +600,7 @@ namespace Game
 						}
 					}
 				});
+				Vote::CheckAllVotes();
 			}
 
 			LogEvent(EventSignificance::Debug,"Changing RuntimeConfig::phase to "+String(to.ToString())+" with time window "+String(timeWindow));
@@ -294,7 +626,7 @@ namespace Game
 
 			if (to == RuntimeConfig::Phase::EndOfGame)
 			{
-				if (!winner)
+				if (winner.expired())
 				{
 					UINT64 biggestScore = 0;
 					Objects::PFaction newWinner;
@@ -785,8 +1117,8 @@ namespace Game
 							{
 								Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::Cast(s);
 								entityList.Append().target = ws;
-								entityList.last().priority = ws->GetUplinkPriority();
-								entityList.last().wasHibernating = ws->IsHibernating();
+								entityList.Last().priority = ws->GetUplinkPriority();
+								entityList.Last().wasHibernating = ws->IsHibernating();
 							}
 						}
 					}
@@ -798,8 +1130,8 @@ namespace Game
 						{
 							traffic += v->GetUplinkTraffic();
 							entityList.Append().target = v;
-							entityList.last().priority = v->GetUplinkPriority();
-							entityList.last().wasHibernating = v->IsHibernating();
+							entityList.Last().priority = v->GetUplinkPriority();
+							entityList.Last().wasHibernating = v->IsHibernating();
 						}
 					}
 					if (traffic > Config::uplinkBandwidth)
@@ -855,7 +1187,7 @@ namespace Game
 	void	DeclareWinner(const Objects::PFaction&w)
 	{
 		DBG_ASSERT__(w);
-		DBG_ASSERT__(!winner);
+		DBG_ASSERT__(winner.expired());
 		if (evolverActive)
 		{
 			postEvolutionWinner = w;
@@ -865,7 +1197,7 @@ namespace Game
 		LogEvent(EventClass{EventSignificance::Important,EventFlavor::ServerPrivate},"Declared winner: "+w->GetLogName());
 		LogEvent(EventClass::Preset::winningFaction,"Congratulations. "+w->GetName()+" wins this game!");
 		winner = w;
-		Channels::winningFaction.SendTo(::Network::server,Game::winner->id,Channels::FactionLevel);
+		Channels::winningFaction.SendTo(::Network::server,w->id,Channels::Level::Faction);
 		if (RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame)
 			Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
 	}
@@ -928,7 +1260,7 @@ namespace Game
 					if (To<Objects::VehiclePlant>::DynamicCast(s))
 						uc |= Objects::Faction::UnitClass::VehiclePlant;
 				}
-				Objects::PFaction f = o;//c.workingStructures.first().lock()->owner;
+				Objects::PFaction f = o;//c.workingStructures.First().lock()->owner;
 				if (f)
 					f->hasUnitClasses |= uc;
 			});

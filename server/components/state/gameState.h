@@ -10,6 +10,105 @@
 
 namespace Game
 {
+	
+	DECLARE_POINTER_CLASS(Vote);
+
+
+	/**
+	Non-persistant voting storage.
+	Not written to or restored from savegames.
+	Cleared out on session reset.
+
+
+	New votes are created usng Vote::CreateNew() or Vote::CreateOfGet().
+	The are unique concerning a certain topic given by a sequence of unique IDs.
+	One one vote may be live (or cooling down) per concerning ID sequence.
+
+	New votes must specify a duration (in seconds) for which the vote is live.
+	Once over (regardless of having passed or not), the vote enters a cooldown phase, during which it is maintained, but cannot be voted on.
+	This prevents instanly recreating the vote. It may be set to @a closingAfterSeconds or less, which means it will be closed as soon as it passed.
+
+
+	*/
+	class Vote : public std::enable_shared_from_this<Vote>
+	{
+	public:
+		typedef Objects::PAlliance	PAlliance;
+		typedef std::function<void(const PVote&, const Protocol::VoteResult&rs)> FCallback;
+
+		CONSTRUCT_ENUMERATION4(Quorum,All,TwoThirds, Majority, OneThird);
+		CONSTRUCT_ENUMERATION3(VotesToPass, SimpleMajority, TwoThirds, Unanimous);
+
+		//all const that is of relevance to clients, and may not be changed once sent
+		const TUniqueID		id;
+		const String		phrase;
+		const Timer::Time	created = timer.Now();
+		const float			closingAfterSeconds = 120;	//!< Seconds after creation, when the local vote should time out. It may complete earlier, if sufficient votes have been collected
+		float				clearedAfterSeconds = 720;	//!< Seconds after creation, when the local vote should be removed (including closingAfterSeconds). Cannot effectively be less than closingAfterSeconds
+
+		/**
+		Defines the set of eligible voters. Effectively a filter function that includes voters. May be empty, including all
+		*/
+		typedef std::function<bool(const Objects::PFaction&)>	FScope;
+		FScope			scope;	//defines eligible factions. If empty, concerns all
+		FCallback		onClose;
+		Quorum			quorum;
+		VotesToPass		votesToPass;
+		const Array<TUniqueID>	concerning;
+		
+
+		void			CastVote(const Objects::PFaction&f, bool inFavor);
+		bool			MayVote(const Objects::PFaction&f) const {return !scope || scope(f);}
+		count_t			GetQuorum() const	{return GetQuorum(quorum,CountEligibleVoters());}
+		count_t			CountEligibleVoters() const;
+		bool			IsClosed() const {return closed;}
+		void			Cancel();
+		float			GetAge() const {return timer.GetSecondsSince(created);}
+
+		static count_t	GetVotesToPass(VotesToPass, count_t voters);
+		static count_t	GetQuorum(Quorum q, count_t eligibleVoters);
+
+		/**
+		Checks vote counts, and potentially closes votes.
+		Only necessary to check once at the beginning of each command phase.
+		*/
+		static void		CheckAllVotes();
+		/**
+		Checks votes for any reached timeouts, and performs notifications and cleanup where necessary.
+		Should be called regularly during command phases only.
+		*/
+		static void		CheckAllTimeouts();
+		static void		CastVote(const TUniqueID&voteID, const Objects::PFaction&f, bool inFavor);
+		static PVote	CreateOrGet(const ArrayRef<const TUniqueID>&concerning, const String&phrase, float closingAfterSeconds, const FScope&scope, const FCallback&onClose);
+		static PVote	CreateNew(const ArrayRef<const TUniqueID>&concerning, const String&phrase, float closingAfterSeconds, const FScope&scope, const FCallback&onClose);
+		static void		Flush();
+
+		static PVote	FindConcerning(const ArrayRef<const TUniqueID>&concerning)	{PVote rs; map.Query(concerning,rs); return rs;}
+
+		/**
+		Sends all open votes (on which the specified faction may vote) to the specifed peer
+		*/
+		static void		AdvertiseAllToNewlyConnectedPeer(const Objects::PFaction&f, TCP::Peer&peer);
+
+	private:
+		HashTable<TUniqueID,bool>	votes;
+		static HashTable<TUniqueID,PVote>	all;
+		static HashTable<Array<TUniqueID>,PVote>	map;
+		bool			closed = false;
+
+		/**/			Vote(const ArrayRef<const TUniqueID>&concerning, const String&phrase, float closingAfterSeconds)
+						:id(TUniqueID::New()),phrase(phrase),closingAfterSeconds(closingAfterSeconds),concerning(concerning)	{}
+
+		bool			CheckTimeouts();
+		void			Advertise()	const;
+		void			CheckVotes();
+		void			Close();
+		void			Close(const Protocol::VoteResult&);
+		void			CheckResults(Protocol::VoteResult&rs, bool timedOut)	const;
+
+	};
+
+
 
 	extern float	factionStartMineralValue;	//determined during loading
 
@@ -19,7 +118,7 @@ namespace Game
 	*/
 	extern UINT32			mostFactionsAlive	/*=0*/;
 
-	extern Objects::PFaction	winner;	//if set indicates game is over. Do not set manually. Use DeclareWinner()
+	extern Objects::WFaction	winner;	//if set indicates game is over. Do not set manually. Use DeclareWinner()
 	extern Objects::WFaction	postEvolutionWinner;	//if winner is declared while evolver is active, this variable is set instead for later
 
 	extern Timer::Time		lastPhaseChange /*= timer.Now()*/;

@@ -31,13 +31,13 @@ namespace Objects
 		bool NoHostileVehicleHere(const Grid::LCellIdI&cellID, const OwnerParameter&v)
 		{
 			PVehicle vh = GetVehicle(cellID);
-			return !vh || vh->owner == v;
+			return !vh || vh->owner->IsFriendly(v);
 		}
 		#ifndef NO_SATELLITES
 			bool NoHostileSatelliteHere(UINT32 cellID, const OwnerParameter&v)
 			{
 				PSatellite vh = GetSatellite(cellID);
-				return !vh || vh->owner == v;
+				return !vh || vh->owner->IsFriendly(v);
 			}
 		#endif
 
@@ -51,10 +51,10 @@ namespace Objects
 			}
 		}
 	#else
-		bool NoHostileVehicleHere(const Grid::LCellIdI&cellID, const OwnerParameter&v, float t)
+		bool NoHostileVehicleHere(const Grid::LCellIdI&cellID, const PFaction&v, float t)
 		{
 			PVehicle vh = GetVehicle(cellID);
-			return !vh || vh->owner == v 
+			return !vh || vh->owner->IsFriendly(v) 
 					|| !v->CanSee(vh,t)
 			;
 		}
@@ -71,10 +71,10 @@ namespace Objects
 		}
 
 		#ifndef NO_SATELLITES
-			bool NoHostileSatelliteHere(UINT32 cellID, const OwnerParameter&v, float t)
+			bool NoHostileSatelliteHere(UINT32 cellID, const PFaction&v, float t)
 			{
 				PSatellite vh = GetSatellite(cellID);
-				return !vh || vh->owner == v 
+				return !vh || vh->owner->IsFriendly(v) 
 						|| !v->CanSee(vh,t)
 				;
 			}
@@ -533,7 +533,7 @@ namespace Objects
 					index_t foundAt = InvalidIndex;
 					index_t cloneAt = InvalidIndex;
 					T	cloneIs;
-					for (index_t i = 0; i < grid.length(); i++)
+					for (index_t i = 0; i < grid.GetLength(); i++)
 					{
 						if (grid[i] == object)
 						{
@@ -1203,12 +1203,18 @@ namespace Objects
 				break;
 			}
 			existing = QueryGrid(structureGrid,s->location+h);
-			ASSERT4__(!existing,s->GetName(),s->location,h,existing->GetName());
+			if (existing)
+				throw Except::Program::DataConsistencyFault(CLOCATION,
+					"Trying to insert "+s->GetNameAndOwner()+" into grid, but "+existing->GetNameAndOwner()
+					+" was found at height delta "+String(h)+", from location "+ToString(s->location));
 		}
 		if (s->HasFoundation())
 		{
 			existing = QueryGrid(structureGrid,s->location-1);
-			ASSERT3__(!existing,s->GetName(),s->location,existing->GetName());
+			if (existing)
+				throw Except::Program::DataConsistencyFault(CLOCATION,
+					"Trying to insert foundation of "+s->GetNameAndOwner()+" into grid, but "+existing->GetNameAndOwner()
+					+" was found at foundation height, from location "+ToString(s->location));
 		}
 
 		InsertConstructedEntity(s,atTime,setHealthToFull);
@@ -1982,7 +1988,7 @@ namespace Objects
 		//		ASSERT__(*r != Grid::LCellIdI::Invalid);
 		if (!has)
 		{
-			oPath.Append(routeI);
+			oPath.AppendAll(routeI);
 			return true;
 		}
 
@@ -1993,11 +1999,11 @@ namespace Objects
 			len += n->movementCostsFromPrevNode;
 		if (len < lenI * 4)	//less than 400% more
 		{
-			oPath.Append(route);
+			oPath.AppendAll(route);
 			return true;
 		}
 
-		oPath.Append(routeI);		//else: use the one that ignores friendly vehicles
+		oPath.AppendAll(routeI);		//else: use the one that ignores friendly vehicles
 		return true;
 
 	}
@@ -2068,7 +2074,7 @@ namespace Objects
 			//		ASSERT__(*r != Grid::LCellIdI::Invalid);
 			if (!has)
 			{
-				oPath.Append(routeI);
+				oPath.AppendAll(routeI);
 				return true;
 			}
 
@@ -2079,11 +2085,11 @@ namespace Objects
 				len += n->movementCostsFromPrevNode;
 			if (len < lenI * 4)	//less than 400% more
 			{
-				oPath.Append(route);
+				oPath.AppendAll(route);
 				return true;
 			}
 
-			oPath.Append(routeI);		//else: use the one that ignores friendly vehicles
+			oPath.AppendAll(routeI);		//else: use the one that ignores friendly vehicles
 			return true;
 
 		}
@@ -2092,7 +2098,7 @@ namespace Objects
 	PHangar		MobileDestinationStructureHere(const Grid::LCellIdI&location, const MobileEntity&m)
 	{
 		PStructure s = GetStructure(location);
-		return s && s->owner == m.owner ? s->CastToDestinationForType(m) : PHangar();
+		return s && s->owner->IsFriendly(m.owner) ? s->CastToDestinationForType(m) : PHangar();
 	}
 
 
@@ -2185,12 +2191,12 @@ namespace Objects
 					//GetCellMovementCosts(next, vehicle);
 					int hCosts = next < buffer.Count() ?  std::max(0, DESCOF(current).height - DESCOF(next).height ) : 0;
 					outPath << PathNode(DESCOF(current), std::max(nextCosts, buffer[current].nodeCosts) + hCosts);
-//					outPath.last().reachedInProcessingLimit = inRange;
+//					outPath.Last().reachedInProcessingLimit = inRange;
 					current = next;
 				}
 				outPath.EraseLast();	//dont need entry point
 				outPath.Revert();
-				oPath.Append(outPath);
+				oPath.AppendAll(outPath);
 				//ShowMessage("found route with "+String(outPath.Count())+" steps, requiring "+String(iterations)+" iterations" );
 				//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 				return true;
@@ -2336,7 +2342,7 @@ namespace Objects
 						return false;
 				}
 				oPath.Append().cell = to;
-				oPath.last().movementCostsFromPrevNode = 5;
+				oPath.Last().movementCostsFromPrevNode = 5;
 				return true;
 			}
 			else
@@ -2355,7 +2361,7 @@ namespace Objects
 							return false;
 					}
 					oPath.Append().cell = Grid::LCellIdI(from.stackID,Height);
-					oPath.last().movementCostsFromPrevNode = 5;
+					oPath.Last().movementCostsFromPrevNode = 5;
 				}
 			}
 
@@ -2415,7 +2421,7 @@ namespace Objects
 					}
 					outPath.EraseLast();	//dont need entry point
 					outPath.Revert();
-					oPath.Append(outPath);
+					oPath.AppendAll(outPath);
 					return true;
 				}
 				GetWays(sat,  current, possibilities, to.stackID, true, ignoreFriendlyVehiclesOnRoute);
@@ -2677,7 +2683,7 @@ namespace Objects
 				}
 				outPath.EraseLast();	//dont need entry point
 				outPath.Revert();
-				oPath.Append(outPath);
+				oPath.AppendAll(outPath);
 				//ShowMessage("found route with "+String(outPath.Count())+" steps, requiring "+String(iterations)+" iterations" );
 				//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 				return true;
@@ -2785,7 +2791,7 @@ namespace Objects
 				}
 				outPath.EraseLast();	//dont need entry point
 				outPath.Revert();
-				oPath.Append(outPath);
+				oPath.AppendAll(outPath);
 				//ShowMessage("found route with "+String(outPath.Count())+" steps, requiring "+String(iterations)+" iterations" );
 				//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 				return true;
@@ -2882,7 +2888,7 @@ namespace Objects
 				}
 				outPath.EraseLast();	//dont need entry point
 				outPath.Revert();
-				oPath.Append(outPath);
+				oPath.AppendAll(outPath);
 				//ShowMessage("found route with "+String(outPath.Count())+" steps, requiring "+String(iterations)+" iterations" );
 				//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 				return true;
@@ -2968,7 +2974,7 @@ namespace Objects
 					}
 					outPath.EraseLast();	//dont need entry point
 					outPath.Revert();
-					oPath.Append(outPath);
+					oPath.AppendAll(outPath);
 					//ShowMessage("found route with "+String(outPath.Count())+" steps, requiring "+String(iterations)+" iterations" );
 					//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 					return true;

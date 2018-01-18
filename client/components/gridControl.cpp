@@ -44,6 +44,7 @@ namespace ClientGrid
 	{
 		if (World::actual.SensoryIsInvalid())
 		{
+			VisualTerrain::visibleSubOrbitGrid.Clear();
 			if (Network::amSpectator)
 				World::actual.FlushAndValidateSensory(1);
 			else
@@ -51,7 +52,7 @@ namespace ClientGrid
 				World::actual.FlushAndValidateSensory();
 				Objects::ForeachWorldEntity([](const Objects::PWorldEntity&e)
 				{
-					if (e->isOwnedByMe)
+					if (e->isOwnedByMe || e->owner->SharingSensorWith(Objects::Faction::mine))
 					{
 						float t= 0;
 						e->ReapplySensory(t);

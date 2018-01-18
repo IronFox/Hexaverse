@@ -106,7 +106,7 @@ namespace StatePanel
 
 
 		const String&name= e.GetNiceName();
-		if (name.length() < 20)
+		if (name.GetLength() < 20)
 			cachedLines << name;
 		else
 		{

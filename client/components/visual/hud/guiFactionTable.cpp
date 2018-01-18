@@ -1,8 +1,9 @@
-#include "factionTable.h"
+#include "guiFactionTable.h"
 #include <runtimeConfig.h>
 #include <objects/faction.h>
 #include "../../network.h"
 #include "windowStack.h"
+#include "dialog.h"
 
 namespace HUD
 {
@@ -19,12 +20,14 @@ namespace HUD
 					buttons;
 			PInput	chatMessage;
 			bool	visible=false;
+			Objects::WAlliance	triedJoining;
+			WButton triedJoiningButton;
 
 
 			String	WordForThinking(const RuntimeConfig::RoundNumber&roundNumber, const void*factionPointer)
 			{
 				//return "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto";
-
+				return "Thinking, Sleeping, or AFK";
 
 				static String words[] = {
 					"Thinking",
@@ -54,26 +57,27 @@ namespace HUD
 			PPanel	AddPanel(const String&labelText)
 			{
 				PPanel rs{new Panel{}};
-
 				rs->SetAutomaticHeight(true);
 				rs->SetMaxAutoHeight(0.4f);
-				
+				rs->SetBorderBackground();
+
 				if (labelText.IsNotEmpty())
 				{
 					PLabel label{new Label{labelText,0.75f}};
 					rs->AddComponent(label);
 					{
-						auto mod = label->ModifyAnchorConfig();
-						mod.Left().Set(0);
-						mod.Top().Set(0);
+						auto mod = label->Anchor();
+						mod.GetHAxis().AnchorLowerUnknown();
+						mod.GetVAxis().AnchorUpperUnknown();
 					}
 					label->LockToIdealWidth();
 					label->LockToIdealHeight();
 				}
 				else
-					rs->fillBackground = false;
+					rs->SetBackgroundTransparent();
 
 				window->AnchorBelowPrevious(rs,0,0.01f);
+				rs->Anchor().FillHorizontally(0.01f,0.01f);
 
 				return rs;
 			}
@@ -90,14 +94,14 @@ namespace HUD
 			}
 
 
-			void	AddFaction(const Objects::OwnerParameter&faction)
+			void	AddFaction(const PPanel&toPanel, const Objects::OwnerParameter&faction)
 			{
 				using namespace Details;
 				PPanel panel{new Panel{}};
 				PLabel nameLabel{new Label{faction->name}},statusLabel{new Label{faction->online ? (faction->requestedNewRound ? "" : WordForThinking(RuntimeConfig::roundNumber,faction.get())) : "<offline>" ,0.8f}};
 
 				nameLabel->SetWidth(0.15f);
-				nameLabel->ModifyAnchorConfig().Left().Set(0);
+				nameLabel->Anchor().GetHAxis().AnchorLowerUnknown();
 				nameLabel->alignCenter = false;
 				nameLabel->SetPadding(0.2f);
 				nameLabel->SetHorizontalPadding(1,1);
@@ -111,12 +115,10 @@ namespace HUD
 					statusLabel->SetColor(faction->color); 
 					nameLabel->SetColor(faction->color);
 				}
-				statusLabel->ModifyAnchorConfig().Left().Set(nameLabel,0);
-				statusLabel->ModifyAnchorConfig().Right().Set(0);
-				statusLabel->ModifyAnchorConfig().Bottom().Set(0);
+				statusLabel->Anchor().FillHBetween(nameLabel,nullptr).Bottom();
 			
 				statusLabel->SetPadding(0.2f);
-				//textLabel->ModifyAnchorConfig().Top().Set(0);
+				//textLabel->Anchor().Top().Set(0);
 				statusLabel->alignCenter = false;
 
 				//timeLabel->fillBackground = true;
@@ -126,9 +128,16 @@ namespace HUD
 				panel->AddComponent(nameLabel);
 				//statusLabel->dbgMarked = true;
 				panel->AddComponent(statusLabel);
-				panel->fillBackground = false;
+				panel->SetBackgroundTransparent();
 
-				factionTable->AnchorBelowPrevious(panel,0,0);
+				toPanel->AnchorBelowPrevious(panel,0,0);
+			}
+
+			static String JoinText(const Objects::PAlliance&a)
+			{
+				if (a->CountMembers() == 1)
+					return "Request to form alliance with "+a->GetMember(0)->GetName();
+				return "Request to join "+a->id.ToNiceString();
 			}
 
 			void	Update()
@@ -138,10 +147,14 @@ namespace HUD
 
 				if (!window)
 				{
+
+					GlobalEvents::objectFlush << [](){triedJoining.reset();triedJoiningButton.reset();};
+					GlobalEvents::onAllianceChange << [](const Objects::PFaction&){ Update();};
+
 					window = Window::Create();
-					window->SetWidth(0.5f);
+					window->SetWidth(0.75f);
 					
-					PPanel factionBack = AddPanel("Factions");
+					PPanel factionBack = AddPanel("Alliances");
 					PPanel chatBack = AddPanel("Chat History");
 					chatInput = AddPanel("");
 					buttons = AddPanel("");
@@ -152,21 +165,21 @@ namespace HUD
 						chatBack->AnchorBelowPrevious(chatHistory,0,0);
 						chatHistory->SetMaxAutoHeight(0.3f);
 						chatHistory->SetAutomaticHeight(true);
-						chatHistory->fillBackground = false;
+						chatHistory->SetBackgroundTransparent();
 					}
 					{
 						factionTable.reset(new Panel{});
 						factionBack->AnchorBelowPrevious(factionTable,0,0);
 						factionTable->SetMaxAutoHeight(0.3f);
 						factionTable->SetAutomaticHeight(true);
-						factionTable->fillBackground = false;
+						factionTable->SetBackgroundTransparent();
 					}
 					{
 						PButton close{new Button{"Close",Hide}};
 						close->SetVerticalPadding(0.5f);
 						close->FillHorizontally(0);
 						buttons->AddComponent(close);
-						close->ModifyAnchorConfig().Top().Set(0);
+						close->Anchor().GetVAxis().AnchorUpperUnknown();
 					}
 
 					{
@@ -176,30 +189,134 @@ namespace HUD
 							Network::SendChatMessage(chatMessage->GetText());
 							chatMessage->SetText("");
 						}}};
-						send->SetVerticalPadding(0.5f);
+						chatMessage->onSpecialKey = [](Key::Name k)
 						{
-							auto cfg = send->ModifyAnchorConfig();
-							cfg.Top().SetAuto();
-							cfg.Bottom().SetAuto();
-							cfg.Right().Set(0);
-						}
+							if (k == Key::Tab)
+								Hide();
+						};
+						send->SetVerticalPadding(0.5f);
+						send->Anchor().CenterVertically().Right(0.01f);
 						send->LockToIdealWidth();
 						send->LockToIdealHeight();
-						{
-							auto cfg = chatMessage->ModifyAnchorConfig();
-							cfg.Top().Set(0);
-							cfg.Right().Set(send,0);
-							cfg.Left().Set(0);
-						}
-						chatInput->AddComponent(chatMessage);
+						chatMessage->Anchor().Top().FillHBetween(nullptr,send);
 						chatInput->AddComponent(send);
+						chatInput->AddComponent(chatMessage);
 						chatMessage->onEnter = [send](){send->Trigger();};
 					}
 				}
 				factionTable->ClearComponents();
-				Objects::ForeachFaction([](const Objects::PFaction&f)
+				Objects::Alliance::Foreach([](const Objects::PAlliance&a)
 				{
-					AddFaction(f);
+					PPanel wrapper{new Panel{}};
+					wrapper->Anchor().BeneathLastOf(factionTable);
+					wrapper->fillBackground = false;
+					wrapper->renderBorder = a->CountMembers()  > 1;
+					factionTable->AddComponent(wrapper);
+
+					PPanel alliancePanel{new Panel{}};
+					alliancePanel->fillBackground = false;
+					alliancePanel->renderBorder = false;
+					alliancePanel->Anchor().FillHorizontally(0.01f,0.001f).Top();
+
+
+					if (a->CountMembers() > 1)
+					{
+						PLabel allianceLabel{new Label{a->id.ToNiceString(),1.f}};
+						allianceLabel->Anchor().Left().Top();
+						allianceLabel->SetVerticalPadding(0.3f,0.1f);
+						wrapper->AddComponent(allianceLabel);
+						alliancePanel->Anchor().Beneath(allianceLabel);
+					}
+
+					wrapper->AddComponent(alliancePanel);
+
+
+					Objects::WAlliance wa = a;
+
+
+	
+
+
+					if (Objects::Faction::mine)
+					{
+						if (a != Objects::Faction::mine->alliance)
+						{
+							PButton joinButton{new Button{JoinText(a)}};
+							joinButton->fillBackground = false;
+							joinButton->renderBorder = false;
+							if (a->CountMembers() == 1)
+								joinButton->SetColor(a->GetMember(0)->color);
+							WButton jb = joinButton;
+							joinButton->SetTriggerFunction(
+							[wa,jb]()
+							{
+								Objects::PAlliance now = wa.lock();
+								if (now == nullptr || now == Objects::Faction::mine->alliance)
+									return;
+								Objects::PAlliance last = triedJoining.lock();
+								if (last && last != Objects::Faction::mine->alliance)
+								{
+									Network::Channels::AllianceJoinRequest.SendTo(Network::client,Protocol::AllianceJoinRequest(last->id,true));
+									PButton b = triedJoiningButton.lock();
+									if (b)
+										b->SetText(JoinText(last));
+								}
+
+								if (last != now)
+								{
+									triedJoining = now;
+									triedJoiningButton = jb;
+									Network::Channels::AllianceJoinRequest.SendTo(Network::client,Protocol::AllianceJoinRequest(now->id,false));
+									jb.lock()->SetText("Cancel "+JoinText(now));
+								}
+								else
+								{
+									triedJoining.reset();
+									triedJoiningButton.reset();
+								}
+
+							});
+
+							joinButton->LockToIdealWidth(true);
+							//joinButton->LockToIdealHeight(true);
+							joinButton->SetPadding(M::Quad<float>(0.2f));
+							joinButton->fillBackground = false;
+							joinButton->renderBorder = false;
+							joinButton->SetLocalFontScale(0.85f);
+
+							joinButton->Anchor().Right(0.01f).Bottom(0.01f);
+							wrapper->AddComponent(joinButton);
+						}
+						else if (a->CountMembers() > 1)
+						{
+							PButton leaveButton{new Button{"Leave alliance "+a->id.ToNiceString()}};
+							leaveButton->SetTriggerFunction(
+							[]()
+							{
+								Dialog::Confirm("Really leave your current alliance?",[]()
+								{
+									Network::Channels::AllianceJoinRequest.SendTo(Network::client,Protocol::AllianceJoinRequest(TUniqueID::Empty(),false));
+								});
+							});
+
+							leaveButton->LockToIdealWidth(true);
+							//joinButton->LockToIdealHeight(true);
+							leaveButton->SetPadding(M::Quad<float>(0.2f));
+							leaveButton->fillBackground = false;
+							leaveButton->renderBorder = false;
+							leaveButton->SetLocalFontScale(0.85f);
+
+							leaveButton->Anchor().Right(0.01f).Top(0.01f);
+							wrapper->AddComponent(leaveButton);
+						}
+
+					}
+
+
+					a->ForeachMember([alliancePanel](const Objects::PFaction&f)
+					{
+						AddFaction(alliancePanel,f);
+					});
 				});
 				//PDialog d = Detail::NewModalDialog(Detail::ComponentFlags::ConfirmButton, "Close", false);
 
@@ -275,32 +392,36 @@ namespace HUD
 			timeLabel->SetPadding(M::Quad<float>{0.5f,0,0.5f,0});
 			timeLabel->LockToIdealWidth();
 			//timeLabel->alignCenter = false;
-			timeLabel->ModifyAnchorConfig().Bottom().Set(0);
-			timeLabel->ModifyAnchorConfig().Right().Set(0);
+			timeLabel->Anchor().GetVAxis().AnchorLowerUnknown();
+			timeLabel->Anchor().GetHAxis().AnchorUpperUnknown();
 			if (owner)
 			{
 				senderLabel.reset(new Label{owner->name+": "});
 				senderLabel->SetColor(owner->color);
 				senderLabel->LockToIdealWidth();
-				senderLabel->ModifyAnchorConfig().Left().Set(0);
-				//senderLabel->ModifyAnchorConfig().Top().Set(0);
+				senderLabel->Anchor().GetHAxis().AnchorLowerUnknown();
+				//senderLabel->Anchor().Top().Set(0);
 				senderLabel->alignCenter = false;
 				senderLabel->LockToIdealHeight();
 				senderLabel->SetPadding(0);
 				senderLabel->SetVerticalPadding(0.25f);
 				senderLabel->SetHorizontalPadding(1,0);
 				textLabel->SetColor(owner->color * 0.5f + 0.5f); 
-				textLabel->ModifyAnchorConfig().Left().Set(senderLabel,0);
+				{
+					auto cfg = textLabel->Anchor();
+					cfg.GetHAxis().lower.Set(senderLabel,0);
+					cfg.GetHAxis().upper.Disable();
+				}
 			}
 			else
 			{
 				textLabel->SetColor(owner->color);
-				textLabel->ModifyAnchorConfig().Left().Set(0);
+				textLabel->Anchor().GetHAxis().AnchorLowerUnknown();
 			}
 			textLabel->SetPadding(0);
 			textLabel->SetVerticalPadding(0.25f);
-			textLabel->ModifyAnchorConfig().Right().Set(timeLabel,0);
-			//textLabel->ModifyAnchorConfig().Top().Set(0);
+			textLabel->Anchor().FillHBetween(senderLabel,timeLabel);
+			//textLabel->Anchor().Top().Set(0);
 			textLabel->alignCenter = false;
 			textLabel->LockToIdealHeight();
 
@@ -311,7 +432,7 @@ namespace HUD
 			chatEntry->AddComponent(timeLabel);
 			chatEntry->AddComponent(senderLabel);
 			chatEntry->AddComponent(textLabel);
-			chatEntry->fillBackground = false;
+			chatEntry->SetBackgroundTransparent();
 
 			chatHistory->AnchorBelowPrevious(chatEntry,0,0);
 

@@ -9,7 +9,8 @@
 #include "../scene/objectRendering.h"
 #include <objects/mobileEntity.h>
 #include <objects/structure/tower.h>
-
+#include "../../voting.h"
+#include "guiVoteList.h"
 
 namespace HUD
 {
@@ -114,6 +115,35 @@ namespace HexGrid
 			virtual void			CompileLabel(Label&outResult) override
 			{
 				outResult << (HUD::Dialog::HasMoreTutorials() ? "New Tutorial Messages" : "No Messages");
+			}
+		};
+
+		class VoteCommand : public Icon
+		{
+			typedef Icon			Super;
+		public:
+			/**/					VoteCommand() : Super("Question Mark") {}
+
+			virtual void			Refresh(bool) override
+			{
+				state = Objects::CommandFlags::None;
+				if (Vote::CountActiveVotes() > 0)
+					state |= Objects::CommandFlags::IsEnabled;
+				if (Vote::CountNewVotes() > 0)
+					state |= Objects::CommandFlags::IsFlashing;
+			}
+			virtual void			Execute() override
+			{
+				HUD::VoteList::Show(true);
+			}
+
+			virtual void			CompileLabel(Label&outResult) override
+			{
+				count_t active = Vote::CountActiveVotes();
+				count_t nvotes = Vote::CountNewVotes();
+				outResult << String(active)+" vote(s) active";
+				if (nvotes)
+					outResult.GetLastLine() += ", "+String(nvotes)+" demand your attention";
 			}
 		};
 

@@ -68,6 +68,7 @@ namespace Objects
 	//typedef std::shared_ptr<Base>	PVehicleComponent;
 
 	DECLARE_POINTER_CLASS(Faction);
+	DECLARE_POINTER_CLASS(Alliance);
 
 	typedef PFaction		OwnerParameter;
 
@@ -83,6 +84,7 @@ namespace Objects
 		ChangingOwnership
 	);
 
+	
 	class Compound;
 	class Marker;
 	struct TrajectoryEndPoint;

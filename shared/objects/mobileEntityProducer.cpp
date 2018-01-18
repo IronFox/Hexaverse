@@ -552,7 +552,7 @@ namespace Objects
 				//productionRoundsLeft
 				UINT32 rounds = ProductionRounds(price,!index);
 				if (index)
-					rounds += queue.last().roundsToCompletion;
+					rounds += queue.Last().roundsToCompletion;
 				else
 					productionRoundsLeft = rounds;
 				WorkItem&item = queue.Append();

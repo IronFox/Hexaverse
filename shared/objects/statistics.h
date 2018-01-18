@@ -83,8 +83,8 @@ namespace Objects
 
 			void					Clear() {map.Clear();}
 
-			friend void				SerialSync(IWriteStream&outStream, const MetricTable&);
-			friend void				SerialSync(IReadStream&inStream, MetricTable&);
+			friend void				Serialize(IWriteStream&outStream, const MetricTable&);
+			friend void				Deserialize(IReadStream&inStream, MetricTable&);
 
 		private:
 			UINT64&					FetchOptional(Metric metric);

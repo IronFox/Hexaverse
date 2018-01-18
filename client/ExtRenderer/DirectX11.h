@@ -430,8 +430,8 @@ namespace Engine
 
 			public:
 				void			Update(const T*data, count_t numEntries)	{Buffer::Update(data,sizeof(T)*numEntries);}
-				void			Update(const ArrayData<T>&data)	{Update(data.pointer(),data.length());}
-				void			Update(const BasicBuffer<T>&data)	{Update(data.pointer(),data.length());}
+				void			Update(const ArrayData<T>&data)	{Update(data.pointer(),data.GetLength());}
+				void			Update(const BasicBuffer<T>&data)	{Update(data.pointer(),data.GetLength());}
 				String			ToString() const { return Super::ToString()+", esize=" + String(sizeof(T)); }
 			};
 
@@ -450,17 +450,17 @@ namespace Engine
 			template <typename T>
 				void			CreateFromStructs(const T*data, count_t numStructs, BufferAccess access = BufferAccess::Immutable) {Create((const void*)data,numStructs,sizeof(T),access);}
 			template <typename T>
-				void			CreateFromStructs(const ArrayData<T>&data, BufferAccess access = BufferAccess::Immutable) {CreateFromStructs(data.pointer(),data.length(),access);}
+				void			CreateFromStructs(const ArrayData<T>&data, BufferAccess access = BufferAccess::Immutable) {CreateFromStructs(data.pointer(),data.GetLength(),access);}
 			template <typename T>
-				void			CreateFromStructs(const BasicBuffer<T>&data, BufferAccess access = BufferAccess::Immutable) {CreateFromStructs(data.pointer(),data.length(),access);}
+				void			CreateFromStructs(const BasicBuffer<T>&data, BufferAccess access = BufferAccess::Immutable) {CreateFromStructs(data.pointer(),data.GetLength(),access);}
 			template <typename T>
 				void			CreateFromStructs(const std::initializer_list<T>&data, BufferAccess access = BufferAccess::Immutable)	{CreateFromStructs(&*data.begin(),data.size(),access);}
 			template <typename T0>
 				void			UpdateStructs(const T0*data, count_t numStructs) {Super::Update((const void*)data,numStructs * sizeof(T0));}
 			template <typename T0>
-				void			UpdateStructs(const ArrayData<T0>&data) {UpdateStructs(data.pointer(),data.length());}
+				void			UpdateStructs(const ArrayData<T0>&data) {UpdateStructs(data.pointer(),data.GetLength());}
 			template <typename T0>
-				void			UpdateStructs(const BasicBuffer<T0>&data) {UpdateStructs(data.pointer(),data.length());}
+				void			UpdateStructs(const BasicBuffer<T0>&data) {UpdateStructs(data.pointer(),data.GetLength());}
 
 
 			void				swap(VBO&other)	{Super::swap(other); std::swap(vertexCount,other.vertexCount);}
@@ -483,8 +483,8 @@ namespace Engine
 				typedef TypedBuffer<T>	Super;
 			public:
 				void			Create(const T*data, count_t numEntries, BufferAccess access = BufferAccess::Immutable)	{Super::Create(data,sizeof(T)*numEntries,numEntries,access,D3D11_BIND_INDEX_BUFFER);}
-				void			Create(const ArrayRef<T>&data, BufferAccess access = BufferAccess::Immutable)	{Create(data.pointer(),data.length(),access);}
-				void			Create(const BasicBuffer<T>&data, BufferAccess access = BufferAccess::Immutable)	{Create(data.pointer(),data.length(),access);}
+				void			Create(const ArrayRef<T>&data, BufferAccess access = BufferAccess::Immutable)	{Create(data.pointer(),data.GetLength(),access);}
+				void			Create(const BasicBuffer<T>&data, BufferAccess access = BufferAccess::Immutable)	{Create(data.pointer(),data.GetLength(),access);}
 				void			Create(const std::initializer_list<T>&data, BufferAccess access = BufferAccess::Immutable)	{Create(&*data.begin(),data.size(),access);}
 			};
 
@@ -909,7 +909,7 @@ namespace Engine
 			VBO			Upload()
 			{
 				VBO rs;
-				rs.Create(vfield.pointer(),vfield.length() / binding.floats_per_vertex,binding.floats_per_vertex*sizeof(float), BufferAccess::Default); 
+				rs.Create(vfield.pointer(),vfield.GetLength() / binding.floats_per_vertex,binding.floats_per_vertex*sizeof(float), BufferAccess::Default); 
 				return rs;
 			}
 		};

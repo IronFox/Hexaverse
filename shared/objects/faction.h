@@ -14,11 +14,6 @@
 
 namespace Objects
 {
-	//class Faction;
-	//typedef std::shared_ptr<Faction>	PFaction;
-	//typedef std::weak_ptr<Faction>		WFaction;
-
-
 	
 	/**
 	Persistent scene markers added/removed by the client.
@@ -132,7 +127,55 @@ namespace Objects
 	};
 
 
+	class Alliance : public std::enable_shared_from_this<Alliance>
+	{
+	public:
+		const TUniqueID	id;
 
+		struct TConfig
+		{
+			bool	exposeEntityDetails = false,
+					shareSensors = true;
+
+			/**/	TConfig()	{}
+			/**/	TConfig(UINT32 flags);
+			UINT32	ToFlags() const;
+			bool	operator==(const TConfig&other) const {return exposeEntityDetails == other.exposeEntityDetails && shareSensors == other.shareSensors;}
+			bool	operator!=(const TConfig&other) const {return !operator==(other);}
+			friend String ToString(const TConfig&cfg)
+			{
+				return String(cfg.exposeEntityDetails ? "See Unit Details":"-")+" "+(cfg.shareSensors ? "Share Sensors":"-");
+			}
+		}			config;
+
+		/**/		Alliance(const TUniqueID&id);
+		virtual		~Alliance();
+		void		ForeachMember(const std::function<void(const PFaction&)>&f)	const;
+		void		Leave(const PFaction&f);
+		void		Leave(Faction*f);
+		void		Join(const PFaction&f);
+		bool		IsMember(const PFaction&f) const;
+		count_t		CountMembers() const {return members.Count();}
+		PFaction	GetMember(index_t i ) const {return members[i].wFaction.lock();}
+		void				UpdateConfiguration(const TConfig&);
+		static PAlliance	FindByID(const TUniqueID&id ){ WAlliance rs; all.Query(id,rs); return rs.lock();}
+		static void			Foreach(const std::function<void(const PAlliance&)>&visitor);
+		static count_t		Count() {return all.Count();}
+		static void			FlushAll() {all.Clear();}
+	private:
+
+		struct TMember
+		{
+			WFaction	wFaction;
+			Faction*	rawPointer;
+		};
+
+		Buffer0<TMember>						members;
+		static HashTable<TUniqueID,WAlliance>	all;
+
+		void		RefreshSensors(bool force);
+
+	};
 
 
 
@@ -154,15 +197,33 @@ namespace Objects
 
 		count_t			sensorLockLevel=0;
 
+		/**
+		Inits ID, color, and alliance. Must be called by constructors. Must not be called by anything else
+		*/
 		void			InitID(const TUniqueID&toID, bool nexusFaction);
 
+		#ifdef CLIENT
+			/**/		Faction(const TUniqueID&id):researchState(this,false),statistics(this) {InitID(id,false);}
+
+		#else
+			/**/		Faction(const TUniqueID&toID, const String&name="", bool isNexus=false):researchState(this,isNexus), statistics(this), name(name)
+			{
+				nexusControl = acquiringNexusControl = 0;
+				deathInRounds = 0;
+
+				accessToken.Generate();
+				InitID(toID,isNexus);
+			}
+		#endif
+
 	public:
-		TUniqueID	id;
-		String		name;
-		bool		online = false;
-		float3		color;
+		TUniqueID		id;
+		String			name;
+		bool			online = false;
+		float3			color;
 		Statistics		statistics;
 		ResearchState	researchState;
+		PAlliance		alliance;
 		#ifdef CLIENT
 			float3	activeEntityColor,
 					inactiveEntityColor;
@@ -174,6 +235,23 @@ namespace Objects
 		#ifdef ONE_COMPOUND_PER_FACTION
 			Compound	compound;
 		#endif
+
+
+		virtual			~Faction();
+	
+		void			AddEntitySensory(World::Data&worldData, float&t) const;
+		
+		/**
+		Checks whether or not units of the other faction are considered friendly (invalid auto-targets).
+		This check is symmetric
+		*/
+		bool			IsFriendly(const PFaction&other) const {return other.get() == this || other->alliance == alliance;}
+		/**
+		Checks whether or not units of the other faction receive detailed entity state information such as build queues.
+		This check is symmetric
+		*/
+		bool			ExposesEntityDetailsTo(const PFaction&other) const {return other.get() == this || (other->alliance == alliance && alliance->config.exposeEntityDetails);}
+		bool			SharingSensorWith(const PFaction&other) const{return other.get() == this || (other->alliance == alliance && alliance->config.shareSensors);}
 
 		String		GetName() const
 		{
@@ -190,19 +268,7 @@ namespace Objects
 			return ToString(id)+":'"+name+"'";
 		}
 
-		
-		struct TSensorLock
-		{
-			Faction*const owner;
 
-			TSensorLock(Faction*f):owner(f)	{f->sensorLockLevel++;}
-			~TSensorLock();
-			TSensorLock(const TSensorLock&other):owner(other.owner) {owner->sensorLockLevel++;}
-			void operator=(const TSensorLock&) = delete;
-		};
-		friend struct TSensorLock;
-
-		TSensorLock LockSensorUpdates() {return this;}
 
 #if 0
 		/**
@@ -232,13 +298,19 @@ namespace Objects
 
 			static PFaction				FindByID(const TUniqueID&id);
 			static PFaction				GetOrCreate(const TUniqueID&id);
+			/**
+			Retrieves (or creates) the specified faction.
+			@param id Faction ID
+			@param allianceID Alliance ID to lookup or create
+			@param[out] outAllianceChanged Set true if a new faction was created or an existing faction had a new alliance assigned as a result of the operation
+			*/
+			static PFaction				GetOrCreate(const TUniqueID&id, const TUniqueID&allianceID, bool&outAllianceChanged);
 
-			/**/						Faction(const TUniqueID&id):researchState(this,false),statistics(this) {InitID(id,false);}
 		#else
 
 			CryptographicID				accessToken;
-			Ctr::Buffer0<WMobileEntity>	allMobiles,	//!< All mobiles registered in the world
-										storedMobiles;	//!< All mobile entities registered stored in some other entity. allMobiles and storedMobiles are exclusive of each other
+			Ctr::Buffer0<WMobileEntity>	allMobiles,	//!< CompleteChange mobiles registered in the world
+										storedMobiles;	//!< CompleteChange mobile entities registered stored in some other entity. allMobiles and storedMobiles are exclusive of each other
 			Buffer0<SubOrbital::WPlane>	planes;
 			#ifndef NO_SATELLITES
 				Buffer0<WSatellite>		satellites;
@@ -252,7 +324,8 @@ namespace Objects
 			static PFaction				nexus;
 
 			static PFaction				FindByID(const TUniqueID&);
-			static PFaction				Create(const TUniqueID&, const String&name = "");
+			static PFaction				Create(const TUniqueID&, const TUniqueID&allianceID, const String&name = "");
+			static PFaction				Create(const TUniqueID&, const PAlliance&alliance, const String&name = "");
 
 
 			World::Data				knownWorld;
@@ -298,18 +371,23 @@ namespace Objects
 
 
 
-			static void			RecreateNexus(const TUniqueID&id=TUniqueID::Empty());	//!< Creates a fresh nexus faction and assigns it to @a nexus
 
-
-
-			/**/		Faction(const TUniqueID&toID, const String&name="", bool isNexus=false):researchState(this,isNexus), statistics(this), name(name)
+					
+			struct TSensorLock
 			{
-				nexusControl = acquiringNexusControl = 0;
-				deathInRounds = 0;
+				Faction*const owner;
 
-				accessToken.Generate();
-				InitID(toID,isNexus);
-			}
+				TSensorLock(Faction*f):owner(f)	{f->sensorLockLevel++;}
+				~TSensorLock();
+				TSensorLock(const TSensorLock&other):owner(other.owner) {owner->sensorLockLevel++;}
+				void operator=(const TSensorLock&) = delete;
+			};
+			friend struct TSensorLock;
+
+
+
+			static void	RecreateNexus(const TUniqueID&id=TUniqueID::Empty());	//!< Creates a fresh nexus faction and assigns it to @a nexus
+			TSensorLock LockSensorUpdates() {return this;}
 
 
 			void DropPerRoundData()
@@ -355,6 +433,8 @@ namespace Objects
 			void		RegisterActiveMobileLoss(const PWorldEntity&);
 			void		RegisterStoredMobileLoss(const PWorldEntity&);
 			void		RegisterActiveMobileGain(const PWorldEntity&);
+
+			void		VisitMyEntities(const std::function<void(const PWorldEntity&)>&f) const;
 
 			bool		CanSee(const PWorldEntity&e, float t)	const;
 
@@ -405,6 +485,11 @@ namespace Objects
 
 			static void	Kill(const PFaction&);
 		#endif
+
+
+		void			ChangeAlliance(const PAlliance&);
+
+
 	};
 
 		//extern Buffer0<POwner>	owners;
@@ -418,7 +503,7 @@ namespace Objects
 		void	ChangeStorage(WorkingStructure&ws, float atTime, Resource res, int change);
 		void	ChangeStorage(MobileEntity&v, float atTime, Resource res, int change);
 		//void	MapVisibility2(const PWorldEntity&e, const PWorldEntity&other, const OwnerParameter&checkForOwner, float&atTime);
-		void	ChangeOwnership( const PWorldEntity&e, const OwnerParameter&newOwner, float&atTime);
+		void	ChangeOwnership( const PWorldEntity&e, const PFaction&newOwner, float&atTime);
 
 		/**
 		Thoroughly checks whether or not entities able to see each other are correctly referenced as such.
@@ -430,7 +515,7 @@ namespace Objects
 		bool	CanWithdrawFromStorage(const MobileEntity&v, Resource res, int demand);
 		int		GetStorage(const MobileEntity&v, Resource res);
 	#else
-		void	ChangeOwnership( const PWorldEntity&e,const OwnerParameter&newOwner, bool isNowMine);
+		void	ChangeOwnership( const PWorldEntity&e,const PFaction&newOwner, bool isNowMine);
 	#endif
 
 	/**

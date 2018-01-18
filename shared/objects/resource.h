@@ -285,11 +285,11 @@ namespace Objects
 		}
 
 
-		friend void	SerialSync(IReadStream&s, PositiveResourceVector&v)
+		friend void	Deserialize(IReadStream&s, PositiveResourceVector&v)
 		{
 			Deserialize(s,v);
 		}
-		friend void	SerialSync(IWriteStream&s, const PositiveResourceVector&v)
+		friend void	Serialize(IWriteStream&s, const PositiveResourceVector&v)
 		{
 			Serialize(s,v);
 		}

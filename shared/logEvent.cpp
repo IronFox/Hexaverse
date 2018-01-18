@@ -40,6 +40,7 @@ EventClass	EventClass::Preset::error = EventClass(EventSignificance::NonFatalErr
 			EventClass::Preset::fileError = EventClass(EventSignificance::NonFatalError,EventFlavor::SystemError),
 			EventClass::Preset::network = EventClass(EventSignificance::Uncommon,EventFlavor::ServerPrivate),
 			EventClass::Preset::networkError = EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),
+			EventClass::Preset::protocolError = EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),
 			EventClass::Preset::remoteControlResponse = EventClass(EventSignificance::Common,EventFlavor::ServerPrivate),
 			EventClass::Preset::remoteControlCommand = EventClass(EventSignificance::Uncommon,EventFlavor::ServerPrivate),
 			EventClass::Preset::remoteControlError = EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),
@@ -174,7 +175,7 @@ namespace Logging
 		}
 		LogBuffer&	operator<<(const String&line)
 		{
-			buffer.Write(line.c_str(),line.length());
+			buffer.Write(line.c_str(),line.GetLength());
 			return *this;
 		}
 		LogBuffer&	operator<<(char c)
@@ -203,7 +204,7 @@ namespace Logging
 
 
 
-	void	WriteEvent(const EventClass&evClass, String message, TCP::Peer*peer, const Objects::WorldEntity*e, const Objects::OwnerParameter&owner, Origin origin /*= Logging::Origin::Local*/)
+	void	WriteEvent(const EventClass&evClass, String message, TCP::Peer*peer, const Objects::WorldEntity*e, const Objects::PFaction&owner, Origin origin /*= Logging::Origin::Local*/)
 	{
 		bool printToConsole = evClass.significance >= EventSignificance::Uncommon;
 		//type != EventSignificance::Debug
@@ -327,12 +328,12 @@ void		LogException(const Objects::WorldEntity*e, const std::exception&ex)
 void LogEvent( const EventClass&type, const Objects::WorldEntity*e, const String&msg, Logging::Origin origin, Logging::Privacy privacy/*=Logging::Privacy::Auto*/)
 {
 	#ifndef CLIENT
-		Logging::SendEntityEvent(nullptr,type,e,Objects::OwnerParameter(),msg,privacy);
+		Logging::SendEntityEvent(nullptr,type,e,nullptr,msg,privacy);
 	#endif
-	Logging::WriteEvent(type,msg,nullptr,e,Objects::OwnerParameter(),origin);
+	Logging::WriteEvent(type,msg,nullptr,e,nullptr,origin);
 }
 
-void		LogEvent(const EventClass&type, const Objects::OwnerParameter&owner, const String&msg, Logging::Origin origin, Logging::Privacy privacy/*=Logging::Privacy::Auto*/)
+void		LogEvent(const EventClass&type, const Objects::PFaction&owner, const String&msg, Logging::Origin origin, Logging::Privacy privacy/*=Logging::Privacy::Auto*/)
 {
 	#ifndef CLIENT
 		Logging::SendEntityEvent(nullptr,type,nullptr,owner,msg,privacy);

@@ -36,7 +36,7 @@ namespace Journal
 		if (execute)
 			other.Apply(false,false);
 		
-		globalEvents.Append(other.globalEvents);
+		globalEvents.AppendAll(other.globalEvents);
 		other.factionStrands.VisitAllEntries([this](const TUniqueID&key, FactionStrand&strand)
 		{
 			factionStrands.Set(key).Merge(strand);
@@ -84,9 +84,9 @@ namespace Journal
 					if (!e)
 					{
 						return; //retry
-						//if (estrand.IsNotEmpty() && typeid(*estrand.first()) == typeid(Round::CreateEntity))
+						//if (estrand.IsNotEmpty() && typeid(*estrand.First()) == typeid(Round::CreateEntity))
 						//{
-						//	const CreateEntity*c = (const CreateEntity*)estrand.first().get();
+						//	const CreateEntity*c = (const CreateEntity*)estrand.First().get();
 						//	e = c->desc.Instantiate(f,entityID,c->location);
 						//	if (e->IsMobile())
 						//		Objects::InsertConstructed(To<Objects::MobileEntity>::Cast(e),0);
@@ -211,11 +211,13 @@ namespace Journal
 	{
 		this->accessToken = f.accessToken;
 		this->factionID = f.id;
+		this->allianceID = f.alliance->id;
 	}
-	Round::CreateFaction::CreateFaction(Round::CreateFaction::FactionType type, const TUniqueID&factionID, const CryptographicID&accessToken):factionType(type)
+	Round::CreateFaction::CreateFaction(Round::CreateFaction::FactionType type, const TUniqueID&factionID, const TUniqueID&allianceID, const CryptographicID&accessToken):factionType(type)
 	{
 		this->accessToken = accessToken;
 		this->factionID = factionID;
+		this->allianceID = allianceID;
 	}
 	
 	/*virtual override*/ void Round::CreateFaction::Execute() const
@@ -226,10 +228,7 @@ namespace Journal
 			if (factionType == CreateFaction::FactionType::Nexus)
 				f = Objects::Faction::nexus;
 			else
-			{
-				f.reset(new Objects::Faction(factionID));
-				Objects::Faction::all << f;
-			}
+				f = Objects::Faction::Create(factionID,allianceID);
 			f->knownWorld = World::initial;
 		}
 		else
@@ -652,6 +651,7 @@ namespace Journal
 		e.stringParameters.Set("FactionType",factionType.ToString());
 		e.stringParameters.Set("FactionSecret",accessToken.ToFullString());
 		e.uuidParameters.Set("ID",factionID);
+		e.uuidParameters.Set("AllianceID",allianceID);
 	}
 
 	/*virtual override*/ void	Round::CreateFaction::Decode(const Entry&e)
@@ -664,6 +664,7 @@ namespace Journal
 		}
 		accessToken.Decode(e.stringParameters.Require(CLOCATION,"FactionSecret"));
 		factionID = e.uuidParameters.Require(CLOCATION,"ID");
+		allianceID = e.uuidParameters.Require(CLOCATION,"AllianceID");
 	}
 
 
@@ -677,7 +678,7 @@ namespace Journal
 	}
 	/*virtual override*/ void	Round::ChoiceIntersection::Execute(const Objects::PWorldEntity&e) const
 	{
-		Objects::PWorldEntity deploy = deployingWhat!=TUniqueID::Empty() ? Objects::GetEntity(deployingWhat) : Objects::PWorldEntity();
+		Objects::PWorldEntity deploy = deployingWhat!=TUniqueID::Empty() ? Objects::GetEntity(deployingWhat) : nullptr;
 		Objects::PMobileEntity md = deploy && deploy->IsMobile() ? To<Objects::MobileEntity>::Cast(deploy) : Objects::PMobileEntity();
 		if (!Objects::ProcessChoiceIntersection(e,target,mode,md))
 		{
@@ -1037,7 +1038,7 @@ namespace Journal
 						else
 					#endif
 					{
-						if (!convert(sHeight.pointer(),sHeight.length(),target.height))
+						if (!convert(sHeight.pointer(),sHeight.GetLength(),target.height))
 						{
 							throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, "Expected valid height for parameter '"+String(paraRef)+"', but got '"+String(dotAt+1, valLen  - (dotAt-value)-1)+"' while decoding line "+String(line,lineLen));
 						}
@@ -1359,7 +1360,7 @@ namespace Journal
 			else
 			{
 				ASSERT__(entries.IsNotEmpty());
-				entries.last().MoveAppend(e,indention-1);
+				entries.Last().MoveAppend(e,indention-1);
 			}
 		}
 	}
@@ -1465,22 +1466,10 @@ namespace Journal
 		FactionStrand&strand = factionStrands.Set(f->id);
 		PGlobalEvent ev(new CreateFaction(*f,type));
 		globalEvents.Append(ev);
-
-
-		foreach (f->allMobiles,m)
+		f->VisitMyEntities([&strand](const Objects::PWorldEntity&w)
 		{
-			Objects::PWorldEntity w = m->lock();
-			if (w)
-				strand.factionEvents.Append().reset(new CreateEntity(w));
-		}
-		foreach (f->structures,s)
-		{
-			Objects::PWorldEntity w = s->lock();
-			if (w)
-				strand.factionEvents.Append().reset(new CreateEntity(w));
-//				this->newEntities.Append().reset(new CreateEntity(*w));
-		}
-
+			strand.factionEvents.Append().reset(new CreateEntity(w));
+		});
 	}
 
 	/*virtual override*/ void	Round::ClearEntityCommands::Execute(const Objects::PWorldEntity&e) const
@@ -1933,7 +1922,7 @@ namespace Journal
 		}
 		strand.Append().reset(new ClearEntityCommands(mode));
 		if (execute)
-			strand.last()->Execute(e);
+			strand.Last()->Execute(e);
 	}
 
 
@@ -2066,7 +2055,7 @@ namespace Journal
 		cmd->desc.type = t;
 		strand.Append(cmd);
 		if (apply)
-			strand.last()->Execute(e);
+			strand.Last()->Execute(e);
 	}
 
 

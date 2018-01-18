@@ -20,10 +20,36 @@
 extern TwisterRandom random;
 
 
+namespace ApplicationInterface
+{
+	void	SignalAllianceMembershipChange(const Objects::PFaction&owner)
+	{
+		Channels::identifyFaction.SendTo(::Network::server,Network::Identify(owner),Channels::Level::Faction);
+	}
+
+	void	SignalAllianceConfigChange(const Objects::PAlliance&alliance)
+	{
+		Protocol::AllianceConfigChange ch;
+		ch.allianceID = alliance->id;
+		ch.flags = alliance->config.ToFlags();
+		alliance->ForeachMember([ch](const Objects::PFaction&f)
+		{
+			Network::PClient client;
+			if (Network::playerMap.Query(f,client))
+			{
+				Channels::AllianceConfigChange.SendTo(client->peer.lock(),ch);
+			}
+		});
+	}
+
+
+}
+
+
 namespace Network
 {
 	Ctr::Buffer<PClient>	activePlayersAndSpectators,spectators;
-	Ctr::GenericHashTable<Objects::OwnerParameter,PClient,Objects::OwnerHash>	playerMap;
+	Ctr::GenericHashTable<Objects::PFaction,PClient,Objects::OwnerHash>	playerMap;
 	Ctr::GenericHashTable<CryptographicID,Objects::PFaction>		tokenMap;
 
 
@@ -188,6 +214,16 @@ namespace Network
 		}
 	}
 
+	Protocol::IdentifyFaction Identify(const Objects::PFaction & f)
+	{
+		Protocol::IdentifyFaction	id;
+		id.id = f->id;
+		id.allianceID = f->alliance->id;
+		id.name = f->name;
+		id.color = f->color;
+		return id;
+	}
+
 
 	String						Client::ConvertToString() const
 	{
@@ -223,7 +259,7 @@ namespace Network
 		Protocol::GameProgress progress;
 		const bool dead = !faction || faction->isDead;
 		progress.gameOver = dead || RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame;
-		progress.gameWon = Game::winner == faction && !!Game::winner;
+		progress.gameWon = Game::winner == faction && !Game::winner.expired();
 		progress.status = RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::None ? "" : FactionStatus(faction);
 		progress.warning = dead ? "Game Over" : FactionWarning(faction,warningReason);
 
@@ -300,6 +336,10 @@ namespace Network
 		server.InstallChannel(Channels::requestResource);
 		server.InstallChannel(Channels::loadPlanetByName);
 		server.InstallChannel(Channels::tutorialAt);
+
+		server.InstallChannel(Channels::AllianceJoinRequest);
+		server.InstallChannel(Channels::ClientVote);
+		server.InstallChannel(Channels::AllianceConfigChange);
 
 		server.OpenSignalChannel(Protocol::ChannelID::RequestRoundEnd,(UINT32)UserLevel::CommonFaction);
 		server.OpenSignalChannel(Protocol::ChannelID::RequestContinueRound,(UINT32)UserLevel::CommonFaction);
@@ -490,7 +530,7 @@ namespace Network
 
 	void LogConfig(const String&msg)
 	{
-		Logging::WriteEvent(EventClass::Preset::configurationPrint,msg,nullptr,nullptr,Objects::OwnerParameter());
+		Logging::WriteEvent(EventClass::Preset::configurationPrint,msg,nullptr,nullptr,nullptr);
 	}
 
 
@@ -499,9 +539,9 @@ namespace Network
 	{
 		
 		if (server.IsOnline())
-			Logging::WriteEvent(EventSignificance::Important,"Server "+ToString(Network::serverID)+"/"+UDPBroadCast::packet.version+" is online.",nullptr,nullptr,Objects::OwnerParameter());
+			Logging::WriteEvent(EventSignificance::Important,"Server "+ToString(Network::serverID)+"/"+UDPBroadCast::packet.version+" is online.",nullptr,nullptr,nullptr);
 		else
-			Logging::WriteEvent(EventSignificance::Important,"Server "+ToString(Network::serverID)+"/"+UDPBroadCast::packet.version+" is created but offline.",nullptr,nullptr,Objects::OwnerParameter());
+			Logging::WriteEvent(EventSignificance::Important,"Server "+ToString(Network::serverID)+"/"+UDPBroadCast::packet.version+" is created but offline.",nullptr,nullptr,nullptr);
 
 		FileIO::RefreshWindowTitle();
 
@@ -607,7 +647,7 @@ namespace Network
 	void InvalidOperation(TCP::Peer&peer)
 	{
 		PClient client = To<Client>::Cast(peer.attachment);
-		Logging::WriteEvent(EventClass::Preset::unexpectedBehavior, "Invalid operation performed",&peer,nullptr,client && client->faction ? client->faction : Objects::OwnerParameter());
+		Logging::WriteEvent(EventClass::Preset::unexpectedBehavior, "Invalid operation performed",&peer,nullptr,client && client->faction ? client->faction : nullptr);
 		if (client)
 		{
 			//clients.FindAndErase(client);

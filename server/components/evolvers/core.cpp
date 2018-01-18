@@ -123,21 +123,21 @@ namespace Evolver
 			}
 			std::sort(attackingEntities.begin(),attackingEntities.end());
 
-			while (attackingEntities.IsNotEmpty() &&!attackingEntities.last().IsAlive())
+			while (attackingEntities.IsNotEmpty() &&!attackingEntities.Last().IsAlive())
 				attackingEntities.EraseLast();
 			if (attackingEntities.IsEmpty())
 			{
 				SignalMotionPhase();
 				return false;
 			}
-			Objects::PWorldEntity e = attackingEntities.last().eref.lock();
-			Objects::PTurretBase b = attackingEntities.last().tref.lock();
+			Objects::PWorldEntity e = attackingEntities.Last().eref.lock();
+			Objects::PTurretBase b = attackingEntities.Last().tref.lock();
 			b->Attack(e->entityTime);
-			//PWorldEntity e = attackingEntities.last().eref.lock();
+			//PWorldEntity e = attackingEntities.Last().eref.lock();
 
 			while (attackingEntities.IsNotEmpty())
 			{
-				b = attackingEntities.last().tref.lock();
+				b = attackingEntities.Last().tref.lock();
 				if (!b || !b->NextTaskIsAttack() || b->CountPossibleAttacks() <= 0 || !b->HasAmmoForShot() || !e || e->empDamageLevel)
 					attackingEntities.EraseLast();	//happened
 				else
@@ -163,13 +163,13 @@ namespace Evolver
 			}
 			std::sort(movingVehicles.begin(),movingVehicles.end());
 
-			while (movingVehicles.IsNotEmpty() && !movingVehicles.last().IsAlive())
+			while (movingVehicles.IsNotEmpty() && !movingVehicles.Last().IsAlive())
 				movingVehicles.EraseLast();
 			if (movingVehicles.IsEmpty())
 			{
 				return false;
 			}
-			Objects::PMobileEntity v = movingVehicles.last().ref.lock();
+			Objects::PMobileEntity v = movingVehicles.Last().ref.lock();
 			//bool hadMoved = v->hasMoved;
 			auto rs = v->PerformNonAttack();
 			switch (rs)

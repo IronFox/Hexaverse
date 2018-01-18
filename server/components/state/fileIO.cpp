@@ -93,11 +93,12 @@ namespace FileIO
 
 		//FactionGroup = WorldGroup + 1024,
 		FactionSection = ResourceSection + 1024,
-		FactionStatisticsSection
+		FactionStatisticsSection,
 				//FactionID,
 				//FactionAccessToken,
 				//ResourcesDiscovered_Compressed,
 				//ResourcesDiscovered_Full,
+		AllianceSection = FactionSection + 1024,
 	};
 
 
@@ -142,6 +143,8 @@ namespace FileIO
 								empDamageLevel("EMPD"),
 								entity("ENTI"),
 								factionID("ID  "),
+								allianceID("ALID"),
+								allianceFlags("ALFL"),
 								fociFlags("FCIF"),
 								foci("FOCI"),
 								factionSupportFlags("FSFL"),
@@ -451,9 +454,9 @@ namespace FileIO
 	template <typename T>
 	void SetSerialData(Riff::Chunk&chunk,const T&object)
 	{
-		using Serialization::SerialSync;
+		using Serialization::Serialize;
 		SerialSizeScanner scanner;
-		SerialSync(scanner,object);
+		Serialize(scanner,object);
 		if (scanner.GetTotalSize())
 			SerializeToCompactMemory(object,chunk.SetData(scanner.GetTotalSize()),scanner.GetTotalSize());
 	}
@@ -533,7 +536,7 @@ namespace FileIO
 
 	static void Export(Riff::Chunk*parent, const Riff::TID&id, const String&outString)
 	{
-		parent->AppendBlock(id,outString.c_str(),outString.length());
+		parent->AppendBlock(id,outString.c_str(),outString.GetLength());
 	}
 
 	static void Import(Riff::Chunk*parent, const Riff::TID&id, String&outString)
@@ -692,12 +695,12 @@ namespace FileIO
 	};
 
 
-	void	SerialSync(IReadStream&s, MobileEntityFlag&v)
+	void	Deserialize(IReadStream&s, MobileEntityFlag&v)
 	{
 		s.ReadPrimitive((UINT16&)v);
 	}
 
-	void	SerialSync(IWriteStream&s, MobileEntityFlag v)
+	void	Serialize(IWriteStream&s, MobileEntityFlag v)
 	{
 		s.WritePrimitive((UINT16)v);
 	}
@@ -947,7 +950,7 @@ namespace FileIO
 //		ASSERT1__(proto,typeName);
 
 
-		Objects::PStructure rs = To<Objects::Structure>::Cast( proto->CreateNewInstance(Objects::PFaction(),location,0));
+		Objects::PStructure rs = To<Objects::Structure>::Cast( proto->CreateNewInstance(nullptr,location,0));
 
 
 
@@ -1042,11 +1045,11 @@ namespace FileIO
 			const count_t elements = chunk.size() / 5;
 			typeArray.SetSize(elements);
 			MemReadStream stream(chunk.pointer(),chunk.size());
-			using Serialization::SerialSync;
+			using Serialization::Deserialize;
 			for (index_t i = 0; i < elements; i++)
 			{
-				SerialSync(stream,typeArray[i].repitition);
-				SerialSync(stream,typeArray[i].value);
+				Deserialize(stream,typeArray[i].repitition);
+				Deserialize(stream,typeArray[i].value);
 			}
 		}
 		else
@@ -1208,7 +1211,12 @@ namespace FileIO
 			*/
 			Buffer0<Objects::Faction::TSensorLock>	locks;
 
-			for (int round = 0; round < 2; round++)
+			HashTable<TUniqueID,Objects::Alliance::TConfig>	allianceConfigMap;
+
+			static const int ConfigureAllianceRound = 0;
+			static const int NewFactionRound = ConfigureAllianceRound+1;
+
+			for (int round = 0; round < 3; round++)
 			{
 				Riff::Chunk*name,*list;
 				if (file.FindFirstNamedList(name,list))
@@ -1329,7 +1337,7 @@ namespace FileIO
 									}
 								break;
 								case ChunkName::ObjectGroup:
-									if (round == 1)
+									if (round == NewFactionRound+1)
 									{
 						
 										Riff::Chunk*child;
@@ -1413,7 +1421,7 @@ namespace FileIO
 									}
 								break;
 								case ChunkName::FactionStatisticsSection:
-									if (round == 1)
+									if (round == NewFactionRound+1)
 									{
 										Objects::PFaction faction;
 										TUniqueID factionID;
@@ -1429,12 +1437,27 @@ namespace FileIO
 										}
 									}
 								break;
+								case ChunkName::AllianceSection:
+									if (round == ConfigureAllianceRound)
+									{
+										TUniqueID allianceID;
+										GetPOD(list,RID::allianceID,allianceID);
+
+										UINT32 allianceConfig=0;
+										GetPOD(list,RID::allianceFlags,allianceConfig);
+
+										allianceConfigMap.Set(allianceID,Objects::Alliance::TConfig(allianceConfig));
+									}
+								break;
 								case ChunkName::FactionSection:
-									if (round == 0)
+									if (round == NewFactionRound)
 									{
 										Objects::PFaction faction;
-										TUniqueID factionID;
+										TUniqueID factionID,allianceID;
 										GetPOD(list,RID::factionID,factionID);
+										const bool haveAllianceID = GetOptionalPOD(list,RID::allianceID,allianceID,TUniqueID::Empty());
+										if (!haveAllianceID)
+											allianceID.Generate();
 							
 										bool isNexus = false;
 										if (list->FindFirst(RID::nexusTag))
@@ -1448,12 +1471,17 @@ namespace FileIO
 										}
 										else
 										{
-											faction.reset(new Objects::Faction(factionID));
-											Objects::Faction::all << faction;
+											Objects::PAlliance alliance = Objects::Alliance::FindByID(allianceID);
+											if (!alliance)
+											{
+												alliance.reset(new Objects::Alliance(allianceID));
+												if (haveAllianceID && !allianceConfigMap.Query(allianceID,alliance->config))
+												{
+													LogEvent(EventClass::Preset::error,"Failed to load configuration of alliance '"+ToString(allianceID)+". Alliance will have default configuration");
+												}
+											}
 
-											//faction->knownWorld.FlushTerrain();	unnecessary
-											//foreach (faction->knownWorld,stat)
-											//	stat->ZeroInit();
+											faction = Objects::Faction::Create(factionID,alliance);
 										}
 										locks.Append(faction.get());
 									
@@ -1579,7 +1607,7 @@ namespace FileIO
 											if (raw)
 											{
 												ASSERT_EQUAL__(raw->size(),faction->knownResources.resourcesDiscovered.GetContentSize());
-												faction->knownResources.resourcesDiscovered = Ctr::ArrayRef<const bool>((const bool*)raw->pointer(),(size_t)raw->size());
+												faction->knownResources.resourcesDiscovered = ArrayRef<const bool>((const bool*)raw->pointer(),(size_t)raw->size());
 											}
 										}
 									}
@@ -1744,7 +1772,7 @@ namespace FileIO
 		
 		{
 			String phase = savePhase.ToString();
-			general->AppendBlock(RID::gamePhase, phase.c_str(),phase.length());
+			general->AppendBlock(RID::gamePhase, phase.c_str(),phase.GetLength());
 		}
 
 		{
@@ -1798,16 +1826,17 @@ namespace FileIO
 		foreach (Grid::Resource::all,res)
 		{
 			Riff::Chunk*resSec = CreateNamedList(container,ChunkName::ResourceSection);
-			resSec->AppendBlock(RID::resourceName)->SetData(res->GetName().c_str(),res->GetName().length());
+			resSec->AppendBlock(RID::resourceName)->SetData(res->GetName().c_str(),res->GetName().GetLength());
 			resSec->AppendBlock(RID::resourceCoverage)->SetData(res->coverage,sizeof(res->coverage));
 		}
 
 
-
-
-
-
-
+		Objects::Alliance::Foreach([&container](const Objects::PAlliance&alliance)
+		{
+			Riff::Chunk*allianceSection = CreateNamedList(container,ChunkName::AllianceSection);
+			allianceSection->AppendBlock(RID::allianceID)->SetPODData(alliance->id);
+			allianceSection->AppendBlock(RID::allianceFlags)->SetPODData(alliance->config.ToFlags());
+		});
 
 
 
@@ -1821,8 +1850,10 @@ namespace FileIO
 					factionSection->AppendBlock(RID::nexusTag);
 				}
 
-				factionSection->AppendBlock(RID::factionID)->SetPODData(faction->id);	//faction id
-				factionSection->AppendBlock(RID::factionName)->SetData(faction->name.c_str(),faction->name.length());
+				factionSection->AppendBlock(RID::factionID)->SetPODData(faction->id);
+				factionSection->AppendBlock(RID::allianceID)->SetPODData(faction->alliance->id);
+
+				factionSection->AppendBlock(RID::factionName)->SetData(faction->name.c_str(),faction->name.GetLength());
 				factionSection->AppendBlock(RID::factionColor)->SetData(faction->color.v,sizeof(float)*3);
 
 				factionSection->AppendBlock(RID::factionAccessToken)->SetPODData(faction->accessToken);	//faction access token
@@ -1837,7 +1868,7 @@ namespace FileIO
 					auto res = faction->researchState.ExportResearchQueue();
 					if (res.IsNotEmpty())
 					{
-						factionSection->AppendBlock(RID::activeResearchTopic)->SetData(res.c_str(),res.length());
+						factionSection->AppendBlock(RID::activeResearchTopic)->SetData(res.c_str(),res.GetLength());
 					}
 				}
 

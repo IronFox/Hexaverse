@@ -32,24 +32,24 @@ namespace Detail
 		{
 
 			viewportStack.Append().view = view;
-			viewportStack.last().offset = offset+totalOffset;
-			viewportStack.last().relativeOffset = offset;
+			viewportStack.Last().offset = offset+totalOffset;
+			viewportStack.Last().relativeOffset = offset;
 			if (viewportStack.Count() > 1)
 			{
-				viewportStack.last().view.Translate(-totalOffset);
-				viewportStack.last().view.ConstrainBy(viewportStack.GetFromEnd(1).view);
-				//viewportStack.last().second += viewportStack.GetFromEnd(1).second;
+				viewportStack.Last().view.Translate(-totalOffset);
+				viewportStack.Last().view.ConstrainBy(viewportStack.GetFromEnd(1).view);
+				//viewportStack.Last().second += viewportStack.GetFromEnd(1).second;
 			}
 			totalOffset += offset;
-			LoadView(viewportStack.last().view,viewportStack.last().offset);
+			LoadView(viewportStack.Last().view,viewportStack.Last().offset);
 		}
 
 		void	PopLoadView()
 		{
-			totalOffset -= viewportStack.last().relativeOffset;
+			totalOffset -= viewportStack.Last().relativeOffset;
 			viewportStack.EraseLast();
 			if (viewportStack.IsNotEmpty())
-				LoadView(viewportStack.last().view,viewportStack.last().offset);
+				LoadView(viewportStack.Last().view,viewportStack.Last().offset);
 			else
 			{
 				LoadView(M::Rect<>(0,0,1,1),float2());

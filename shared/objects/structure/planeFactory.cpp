@@ -64,6 +64,7 @@ namespace Objects
 			/*virtual override*/ const CC*		PlaneFactory::GetCommands(CC&dynamicStorage) const
 			{
 				dynamicStorage.Append(Super::GetCommands(dynamicStorage));
+				dynamicStorage.AppendRow();
 				MobileEntityProducer::GetCommands(dynamicStorage);
 				return &dynamicStorage;
 			}

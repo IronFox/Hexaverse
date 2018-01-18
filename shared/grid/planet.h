@@ -25,21 +25,21 @@ namespace Grid
 		float4			sunColor = float4(1,1,1,1);	//fourth parameter is ignored
 
 
-		friend void		SerialSync(IReadStream&s, Self&v)
+		friend void		Deserialize(IReadStream&s, Self&v)
 		{
-			using Serialization::SerialSync;
+			using Serialization::Deserialize;
 			s.ReadSize(v.innerCoreType);
-			SerialSync(s,v.atmosphereColor);
-			SerialSync(s,v.sunPlaneNormal_Speed);
-			SerialSync(s,v.sunColor);
+			Deserialize(s,v.atmosphereColor);
+			Deserialize(s,v.sunPlaneNormal_Speed);
+			Deserialize(s,v.sunColor);
 		}
-		friend void		SerialSync(IWriteStream&s, const Self&v)
+		friend void		Serialize(IWriteStream&s, const Self&v)
 		{
-			using Serialization::SerialSync;
+			using Serialization::Serialize;
 			s.WriteSize(v.innerCoreType);
-			SerialSync(s,v.atmosphereColor);
-			SerialSync(s,v.sunPlaneNormal_Speed);
-			SerialSync(s,v.sunColor);
+			Serialize(s,v.atmosphereColor);
+			Serialize(s,v.sunPlaneNormal_Speed);
+			Serialize(s,v.sunColor);
 		}
 	};
 
@@ -149,7 +149,7 @@ namespace Grid
 
 
 
-		friend	void	SerialSync(IWriteStream&outStream, const Self&v)
+		friend	void	Serialize(IWriteStream&outStream, const Self&v)
 		{
 			outStream.WritePrimitive((const TSharedPlanetConfig&)v);
 			outStream.WritePrimitive((const TLayerConfig&)v.extendedCore);
@@ -164,7 +164,7 @@ namespace Grid
 			outStream.WritePrimitive(v.versionCounter);
 		}
 
-		friend	void	SerialSync(IReadStream&inStream, Self&v)
+		friend	void	Deserialize(IReadStream&inStream, Self&v)
 		{
 			inStream.ReadPrimitive((TSharedPlanetConfig&)v);
 			inStream.ReadPrimitive((TLayerConfig&)v.extendedCore);

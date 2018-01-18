@@ -107,7 +107,7 @@ namespace Objects
 			virtual bool			MotionIgnoresAttack() const override {return true;}
 			//virtual float			GetPathSize() const override {return 0.6f;}
 			#ifndef CLIENT
-				bool				DirectTo(mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
+				virtual bool		DirectTo(CursorMode, MutableArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 				MobilePlacementResult	PlaceExactlyAt(const Grid::LCellIdI&, float timeCost, float minTimeOffset, bool signalEvent=true, bool isCreated=true, bool failIsFatal=false) override;
 			#endif
 		};

@@ -25,7 +25,7 @@ namespace HUD
 			void OnInput()
 			{
 				if (visibleWindows.IsNotEmpty())
-					visibleWindows.last()->DetectEnabledState();
+					visibleWindows.Last()->DetectEnabledState();
 			}
 		}
 
@@ -41,7 +41,7 @@ namespace HUD
 		PWindow				GetTopMostWindow()
 		{
 			if (Detail::visibleWindows.IsNotEmpty())
-				return Detail::visibleWindows.last();
+				return Detail::visibleWindows.Last();
 			return PWindow();
 		}
 
@@ -72,7 +72,7 @@ namespace HUD
 			GlobalEvents::uiScaleChanged += []()
 			{
 				foreach (Detail::visibleWindows,w)
-					(*w)->InvalidateAutoLayout();
+					(*w)->SignalWindowLayoutChange();
 				SignalScreenResize();
 			};
 
@@ -124,7 +124,7 @@ namespace HUD
 		void	Show(const PWindow&window)
 		{
 			VerifyIntegrity(CLOCATION);
-			if (Detail::visibleWindows.IsNotEmpty() && Detail::visibleWindows.last() == window)
+			if (Detail::visibleWindows.IsNotEmpty() && Detail::visibleWindows.Last() == window)
 			{
 				DBG_ASSERT__(window->IsActive());
 				if (!window->IsActive())
@@ -135,7 +135,7 @@ namespace HUD
 			//	return;
 			Detail::visibleWindows.FindAndErase(window);
 			if (Detail::visibleWindows.IsNotEmpty())
-				Detail::visibleWindows.last()->SetActive(false);
+				Detail::visibleWindows.Last()->SetActive(false);
 			Detail::visibleWindows << window;
 			window->OnShow();
 			SignalSituationChange();
@@ -256,7 +256,7 @@ namespace HUD
 					PWindow d = *_d;
 					d->OnHide();
 				}
-				Detail::visibleWindows.last()->SetActive(false);
+				Detail::visibleWindows.Last()->SetActive(false);
 				Detail::visibleWindows.Clear();
 			}
 			VerifyIntegrity(CLOCATION);

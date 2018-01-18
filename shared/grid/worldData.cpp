@@ -4,6 +4,15 @@
 
 #include "../globalEvents.h"
 
+
+namespace ApplicationInterface
+{
+#	ifdef CLIENT
+		void	SignalExtraGridSensorCreation(const World::Sensor&);
+		void	SignalExtraGridSensorRemoval(const World::Sensor&);
+	#endif
+}
+
 namespace World
 {
 	using namespace Grid;
@@ -1562,14 +1571,14 @@ namespace World
 			blocks.Clear();
 			foreach(dts,dt)
 			{
-				if (blocks.IsEmpty() || blocks.last().value != *dt)
+				if (blocks.IsEmpty() || blocks.Last().value != *dt)
 				{
 					auto&b = blocks.Append();
 					b.value = *dt;
 					b.repitition = 1;
 				}
 				else
-					blocks.last().repitition++;
+					blocks.Last().repitition++;
 			}
 			blocks.CopyToArray(dest);
 		}
@@ -1584,14 +1593,14 @@ namespace World
 					if (assertNotNull)
 						ASSERT__(dt->IsSet());
 				#endif
-				if (blocks.IsEmpty() || blocks.last().value != *dt)
+				if (blocks.IsEmpty() || blocks.Last().value != *dt)
 				{
 					auto&b = blocks.Append();
 					b.value = *dt;
 					b.repitition = 1;
 				}
 				else
-					blocks.last().repitition++;
+					blocks.Last().repitition++;
 			}
 			blocks.CopyToArray(dest);
 		}
@@ -2043,6 +2052,22 @@ namespace World
 	}
 
 
+	void			Sensor::InsertInto(World::Data&clientWorld, float t) const
+	{
+		ApplyTo(clientWorld,+1,t);
+		#ifdef CLIENT
+			if (this->gridCenter.layer >= Grid::CellStack::Range)
+				ApplicationInterface::SignalExtraGridSensorCreation(*this);
+		#endif
+	}
+	void			Sensor::RemoveFrom(World::Data&clientWorld, float t) const
+	{
+		ApplyTo(clientWorld,-1,t);
+		#ifdef CLIENT
+			if (this->gridCenter.layer >= Grid::CellStack::Range)
+				ApplicationInterface::SignalExtraGridSensorRemoval(*this);
+		#endif
+	}
 
 
 	void		Sensor::ApplyTo(World::Data&v, short change, float t)	const

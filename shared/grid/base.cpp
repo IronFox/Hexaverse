@@ -63,7 +63,7 @@
 	//float3 v1 = axis1 * angle1 * yat;
 	//float3 v = v0 + v1;
 	//M::TMatrix3<> rot;
-	//Mat::BuildRotationMatrix(v.length(),v.Normalized0(),rot);
+	//Mat::BuildRotationMatrix(v.GetLength(),v.Normalized0(),rot);
 	//Mat::Mult(rot,base,out);
 
 	//ComplexMath::_q2Quaternion(angle0,axis0,q0);

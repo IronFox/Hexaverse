@@ -5,50 +5,244 @@
 #include "journalSaveGame.h"
 #include "configurationMode.h"
 #include <objects/structure/mine.h>
+#include "state/gameState.h"
 
 extern TwisterRandom		random;
 
 
+namespace Receiver
+{
+	void	ClientVote(Protocol::ClientVote&vote, TCP::Peer&peer)
+	{
+		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
+		if (!client)
+		{
+			LogEvent(EventClass::Preset::internalError,peer,"ClientVote: client is nullptr");
+			return;
+		}
+		if (!client->faction)
+		{
+			LogEvent(EventClass::Preset::internalError,peer,"ClientVote: client->faction is nullptr");
+			return;
+		}
+		Game::Vote::CastVote(vote.voteID,client->faction,vote.inFavor);
+	}
+
+	static Game::Vote::FScope AllianceScope(const Objects::PAlliance&a)
+	{
+		TUniqueID tID = a->id;
+		return [tID](const Objects::PFaction&f)
+		{
+			return f->alliance->id == tID;
+		};
+	}
+
+
+	static Game::Vote::FScope FactionScope(const Objects::PFaction&f)
+	{
+		TUniqueID tID = f->id;
+		return [tID](const Objects::PFaction&f)
+		{
+			return f->id == tID;
+		};
+	}
+
+	void	AllianceConfigChange(Protocol::AllianceConfigChange&ch, TCP::Peer&peer)
+	{
+		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
+		if (!client)
+		{
+			LogEvent(EventClass::Preset::internalError,peer,"AllianceConfigChange: client is nullptr");
+			return;
+		}
+		if (!client->faction)
+		{
+			LogEvent(EventClass::Preset::internalError,peer,"AllianceConfigChange: client->faction is nullptr");
+			return;
+		}
+
+		Objects::PAlliance target = Objects::Alliance::FindByID(ch.allianceID);
+		if (target != client->faction->alliance)
+		{
+			LogEvent(EventClass::Preset::commandRejected,peer,"Access denied. You are not a member of alliance "+ch.allianceID.ToNiceString());
+			return;
+		}
+		if (ch.flags == target->config.ToFlags())
+			return;	//nothing to change
+
+		auto cfg = Objects::Alliance::TConfig(ch.flags);
+		Game::PVote v = Game::Vote::CreateNew(target->id,
+			"Change Alliance configuration to "+ToString(cfg)+"?",
+			120,
+			AllianceScope(target),
+			[cfg](const Game::PVote&v, const Protocol::VoteResult&rs)
+			{
+				if (rs.resultType == Protocol::VoteResultType::Passed)
+				{
+					auto a = Objects::Alliance::FindByID(v->concerning[0]);
+					a->UpdateConfiguration(cfg);
+				}
+			}
+		);
+		if (v)
+			v->clearedAfterSeconds = v->closingAfterSeconds+10;	//make sure the vote does not remain more than 10 seconds
+
+	}
+
+	void	AllianceJoinRequest(Protocol::AllianceJoinRequest&req, TCP::Peer&peer)
+	{
+		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
+		if (!client)
+		{
+			LogEvent(EventClass::Preset::internalError,peer,"AllianceJoinRequest: client is nullptr");
+			return;
+		}
+		if (!client->faction)
+		{
+			LogEvent(EventClass::Preset::internalError,peer,"AllianceJoinRequest: client->faction is nullptr");
+			return;
+		}
+
+
+		if (req.allianceID.IsEmpty())
+		{
+			if (RuntimeConfig::IsInAnyCommandPhase())
+			{
+				LogEvent(EventClass::Preset::uncommon,peer,"Left alliance");
+				if (client->faction->alliance->CountMembers() == 1)
+					return;	//nothing to do
+
+				Objects::PAlliance a {new Objects::Alliance(TUniqueID::New())};
+			
+				client->faction->ChangeAlliance(a);
+			}
+			else
+			{
+				LogEvent(EventClass::Preset::commandRejected,peer,"Cannot change alliances right now. Must be in a command phase");
+			}
+			return;
+		}
+
+		Objects::PAlliance target = Objects::Alliance::FindByID(req.allianceID);
+		if (target == nullptr)
+		{
+			LogEvent(EventClass::Preset::commandRejected,peer,"Requested Join request rejected, alliance does not exist");
+			return;
+		}
+		if (client->faction->alliance == target)
+		{
+			LogEvent(EventClass::Preset::commandRejected,peer,"Already joined that alliance");
+			return;
+		}
+
+		TUniqueID ids[] = {client->faction->id, target->id };
+
+		if (req.abortJoining)
+		{
+			Game::PVote v = Game::Vote::FindConcerning(ArrayRef<TUniqueID>( ids,2));
+			if (v != nullptr)
+			{
+				v->Cancel();
+//				LogEvent(EventClass( EventSignificance::Important, EventFlavor::Neutral),client->faction,"Canceled vote about joining alliance "+target->id.ToNiceString());
+			}
+		}
+		else
+		{
+			const String niceTask = target->CountMembers() > 1 ? "joining alliance "+target->id.ToNiceString() : "creating an alliance with "+target->GetMember(0)->GetName();
+
+			Game::PVote v = Game::Vote::CreateNew(ArrayRef<TUniqueID>( ids,2),
+				"Allow "+client->faction->name+ " to join your alliance?", 
+				120,
+				AllianceScope(target),
+				[niceTask](const Game::PVote&v, const Protocol::VoteResult&rs)
+				{
+					auto a = Objects::Alliance::FindByID(v->concerning[1]);
+					auto f = Objects::Faction::FindByID(v->concerning[0]);
+					if (f)
+					{
+						switch (rs.resultType)
+						{
+							case Protocol::VoteResultType::Passed:
+								if (a)
+								{
+									LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain), f,"Vote passed. Admission to alliance "+a->id.ToNiceString()+" granted");
+									f->ChangeAlliance(a);
+								}
+								else
+								{
+									LogEvent(EventClass::Preset::internalError, f,"Vote passed but alliance "+ToString(v->concerning[1])+" no longer exists...");
+								}
+							break;
+							case Protocol::VoteResultType::Rejected:
+								LogEvent(EventClass(EventSignificance::Important,EventFlavor::Loss), f,"Admission to alliance "+a->id.ToNiceString()+" has been rejected");
+							break;
+							case Protocol::VoteResultType::TimedOut:
+								LogEvent(EventClass(EventSignificance::Important,EventFlavor::Loss), f,"Vote for "+niceTask+" has timed out");
+							break;
+							case Protocol::VoteResultType::Canceled:
+								LogEvent(EventClass(EventSignificance::Important,EventFlavor::Neutral), f,"Vote for "+niceTask+" was canceled");
+							break;
+						}
+					}
+				}
+			);
+
+
+			if (v)
+			{
+				LogEvent(EventSignificance::Debug,client->faction,"Started vote on joining alliance "+ToString(target->id));
+				LogEvent(EventClass( EventSignificance::Important, EventFlavor::Gain),client->faction,"Started vote on "+niceTask);
+				v->quorum = Game::Vote::Quorum::TwoThirds;
+				v->votesToPass = Game::Vote::VotesToPass::SimpleMajority;
+			}
+			else
+				LogEvent(EventClass( EventSignificance::Important, EventFlavor::Loss),client->faction,"There already exists a vote on you "+niceTask+". Either it is still active or has been rejected");
+		}
+	}
+}
 
 namespace Channels
 {
 
+	#undef DECLARE_FACTION_CHANNEL
+	#define	DECLARE_FACTION_CHANNEL(NAME)	TCP::Channel<Protocol::NAME,Level::Faction,Protocol::ChannelID::NAME>	NAME(Receiver::NAME);
+	#undef DECLARE_OBJECT_SENDER
+	#define	DECLARE_OBJECT_SENDER(NAME)	TCP::ObjectSender<Protocol::NAME,Protocol::ChannelID::NAME>	NAME;
 
 
-	
-	//TCP::ObjectSender<Protocol::ServerState,Protocol::ChannelID::GetInfo>		infoSender;
-	//TCP::ObjectSender<Protocol::Result,Protocol::ChannelID::
+//	DECLARE_FACTION_CHANNEL(FactionAllianceChange);
+
 
 
 	TCP::Channel<Protocol::Hello, 0,Protocol::ChannelID::Hello>												hello(Receiver::Hello);
-	TCP::Channel<Protocol::EntityDirectCommand, FactionLevel, Protocol::ChannelID::EntityDirectCommand>		entityDirectCommand(Receiver::EntityDirectCommand);
-	TCP::Channel<Protocol::ChoiceIntersection, FactionLevel, Protocol::ChannelID::ChoiceIntersection>		choiceIntersection(Receiver::ChoiceIntersection);
-	TCP::Channel<Protocol::DropTasks, FactionLevel, Protocol::ChannelID::DropTasks>							dropTasks(Receiver::DropTasks);
+	TCP::Channel<Protocol::EntityDirectCommand, Level::Faction, Protocol::ChannelID::EntityDirectCommand>	entityDirectCommand(Receiver::EntityDirectCommand);
+	TCP::Channel<Protocol::ChoiceIntersection, Level::Faction, Protocol::ChannelID::ChoiceIntersection>		choiceIntersection(Receiver::ChoiceIntersection);
+	TCP::Channel<Protocol::DropTasks, Level::Faction, Protocol::ChannelID::DropTasks>						dropTasks(Receiver::DropTasks);
 
-	TCP::Channel<Protocol::StandardJob, FactionLevel, Protocol::ChannelID::SignalNewJob>					signalNewJob(Receiver::SignalNewJob);
-	TCP::Channel<Protocol::TerrainMod, FactionLevel, Protocol::ChannelID::SignalTerrainMod>					signalTerrainMod(Receiver::SignalTerrainMod);
-	TCP::Channel<Protocol::ConstructionAbort, FactionLevel, Protocol::ChannelID::ConstructionAbort>			constructionAbort(Receiver::ConstructionAbort);
-	TCP::Channel<Protocol::ConstructionBegin, FactionLevel, Protocol::ChannelID::ConstructionBegin>			constructionBegin(Receiver::ConstructionBegin);
-	TCP::Channel<Protocol::EnableStructure, FactionLevel, Protocol::ChannelID::EnableStructure>				enableStructure(Receiver::EnableStructure);
-	TCP::Channel<Protocol::ClientFactionRequest, PreFaction, Protocol::ChannelID::ClientFaction>			clientFactionRequest(Receiver::ClientFaction);
+	TCP::Channel<Protocol::StandardJob, Level::Faction, Protocol::ChannelID::SignalNewJob>					signalNewJob(Receiver::SignalNewJob);
+	TCP::Channel<Protocol::TerrainMod, Level::Faction, Protocol::ChannelID::SignalTerrainMod>				signalTerrainMod(Receiver::SignalTerrainMod);
+	TCP::Channel<Protocol::ConstructionAbort, Level::Faction, Protocol::ChannelID::ConstructionAbort>		constructionAbort(Receiver::ConstructionAbort);
+	TCP::Channel<Protocol::ConstructionBegin, Level::Faction, Protocol::ChannelID::ConstructionBegin>		constructionBegin(Receiver::ConstructionBegin);
+	TCP::Channel<Protocol::EnableStructure, Level::Faction, Protocol::ChannelID::EnableStructure>			enableStructure(Receiver::EnableStructure);
+	TCP::Channel<Protocol::ClientFactionRequest, Level::PreFaction, Protocol::ChannelID::ClientFaction>		clientFactionRequest(Receiver::ClientFaction);
 	
-	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::RestoreCoreLink>						restoreCoreLink(Receiver::RestoreCoreLink);
-	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::RemoveEntity>							removeEntity(Receiver::RemoveEntity);
-	TCP::Channel<Protocol::EntityStateUpdate, FactionLevel, Protocol::ChannelID::Automate>					automate(Receiver::Automate);
-	TCP::Channel<Protocol::EntityStateUpdate, FactionLevel, Protocol::ChannelID::Sleep>						sleep(Receiver::Sleep);
-	TCP::Channel<Protocol::Marker, FactionLevel, Protocol::ChannelID::CreateMarker>							createMarker(Receiver::CreateMarker);
-	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::DestroyMarker>							destroyMarker(Receiver::DestroyMarker);
-	TCP::Channel<Protocol::TouchedMarker, FactionLevel, Protocol::ChannelID::TouchMarker>					touchMarker(Receiver::TouchMarker);
-	TCP::Channel<Protocol::ClientName,FactionLevel,Protocol::ChannelID::ChangeMyName>						changeMyName(Receiver::ChangeMyName);
-	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::IdentifyFaction>						identifyFactionRecv(Receiver::IdentifyFaction);
-	TCP::Channel<Protocol::QueueResearch, FactionLevel, Protocol::ChannelID::QueueResearch>					queueResearch(Receiver::QueueResearch);
-	TCP::Channel<Package::NetString<256>, FactionLevel, Protocol::ChannelID::ChatMessage>					chatMessage(Receiver::ChatMessage);
-	TCP::Channel<Grid::ExtendedPlanetConfig, Configurator, Protocol::ChannelID::PlanetConfig>				planetConfig(Receiver::PlanetConfig);
-	TCP::Channel<Protocol::GameConfig, Configurator, Protocol::ChannelID::GameConfig>						gameConfig(Receiver::GameConfig);
-	TCP::Channel<Protocol::ResourceID, PreFaction, Protocol::ChannelID::RequestResource>				requestResource(Receiver::RequestResource);
-	TCP::Channel<Protocol::LoadPlanetByName, Configurator, Protocol::ChannelID::LoadPlanetByName>		loadPlanetByName(Receiver::LoadPlanetByName);
+	TCP::Channel<NET(TUniqueID), Level::Faction, Protocol::ChannelID::RestoreCoreLink>						restoreCoreLink(Receiver::RestoreCoreLink);
+	TCP::Channel<NET(TUniqueID), Level::Faction, Protocol::ChannelID::RemoveEntity>							removeEntity(Receiver::RemoveEntity);
+	TCP::Channel<Protocol::EntityStateUpdate, Level::Faction, Protocol::ChannelID::Automate>				automate(Receiver::Automate);
+	TCP::Channel<Protocol::EntityStateUpdate, Level::Faction, Protocol::ChannelID::Sleep>					sleep(Receiver::Sleep);
+	TCP::Channel<Protocol::Marker, Level::Faction, Protocol::ChannelID::CreateMarker>						createMarker(Receiver::CreateMarker);
+	TCP::Channel<NET(TUniqueID), Level::Faction, Protocol::ChannelID::DestroyMarker>						destroyMarker(Receiver::DestroyMarker);
+	TCP::Channel<Protocol::TouchedMarker, Level::Faction, Protocol::ChannelID::TouchMarker>					touchMarker(Receiver::TouchMarker);
+	TCP::Channel<Protocol::ClientName,Level::Faction,Protocol::ChannelID::ChangeMyName>						changeMyName(Receiver::ChangeMyName);
+	TCP::Channel<NET(TUniqueID), Level::Faction, Protocol::ChannelID::IdentifyFaction>						identifyFactionRecv(Receiver::IdentifyFaction);
+	TCP::Channel<Protocol::QueueResearch, Level::Faction, Protocol::ChannelID::QueueResearch>				queueResearch(Receiver::QueueResearch);
+	TCP::Channel<Package::NetString<256>, Level::Faction, Protocol::ChannelID::ChatMessage>					chatMessage(Receiver::ChatMessage);
+	TCP::Channel<Grid::ExtendedPlanetConfig, Level::Configurator, Protocol::ChannelID::PlanetConfig>		planetConfig(Receiver::PlanetConfig);
+	TCP::Channel<Protocol::GameConfig, Level::Configurator, Protocol::ChannelID::GameConfig>				gameConfig(Receiver::GameConfig);
+	TCP::Channel<Protocol::ResourceID, Level::PreFaction, Protocol::ChannelID::RequestResource>				requestResource(Receiver::RequestResource);
+	TCP::Channel<Protocol::LoadPlanetByName, Level::Configurator, Protocol::ChannelID::LoadPlanetByName>	loadPlanetByName(Receiver::LoadPlanetByName);
 	
-	TCP::Channel<NET(INT32),FactionLevel,Protocol::ChannelID::TutorialAt>							tutorialAt(Receiver::TutorialAt);
+	TCP::Channel<NET(INT32),Level::Faction,Protocol::ChannelID::TutorialAt>							tutorialAt(Receiver::TutorialAt);
 
 
 	TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>			clientFactionResponse;
@@ -65,7 +259,6 @@ namespace Channels
 	TCP::ObjectSender<Protocol::StructureState,Protocol::ChannelID::UpdateStructure>				setStructureState;
 	TCP::ObjectSender<Protocol::DestroyEntity,Protocol::ChannelID::DestroyEntity>					destroyEntity;
 	TCP::ObjectSender<Protocol::ControlMessage,Protocol::ChannelID::ControlMessage>					controlMessage;
-	TCP::ObjectSender<NET(TUniqueID),Protocol::ChannelID::SetFactionID>								setFactionID;
 	TCP::ObjectSender<Protocol::PhaseChange,Protocol::ChannelID::PhaseChange>						phaseChange;
 	TCP::ObjectSender<Protocol::ResourceUpdate,Protocol::ChannelID::ResourceUpdate>					resourceUpdate;
 	TCP::ObjectSender<Protocol::GameProgress,Protocol::ChannelID::GameProgress>						gameProgress;
@@ -89,6 +282,14 @@ namespace Channels
 	TCP::ObjectSender<Protocol::ResearchQueue, Protocol::ChannelID::ResearchQueue>					researchQueue;
 
 	TCP::ObjectSender<TUniqueID, Protocol::ChannelID::WinningFaction>								winningFaction;
+
+	DECLARE_OBJECT_SENDER(VoteCreation);
+	DECLARE_OBJECT_SENDER(VoteResult);
+	DECLARE_FACTION_CHANNEL(ClientVote);
+	DECLARE_FACTION_CHANNEL(AllianceJoinRequest);
+	DECLARE_FACTION_CHANNEL(AllianceConfigChange);
+	
+	DECLARE_OBJECT_SENDER(MyFaction);
 
 	namespace Statistics
 	{
@@ -152,7 +353,8 @@ namespace Receiver
 		{
 			if (f != exclude)
 			{
-				Channels::identifyFaction.SendTo(peer,Protocol::IdentifyFaction(f->id,f->name,f->color));
+
+				Channels::identifyFaction.SendTo(peer,Network::Identify(f));
 				if (f->online)
 				{
 					Channels::factionOnline.SendTo(peer,f->id);
@@ -256,10 +458,47 @@ namespace Receiver
 			Game::Network::SendStatisticsTo(peer,f);
 		},true);
 
-		if (Game::winner)
-			Channels::winningFaction.SendTo(peer,Game::winner->id);
+		if (!Game::winner.expired())
+			Channels::winningFaction.SendTo(peer,Game::winner.lock()->id);
 
 		peer.SendSignal(Protocol::ChannelID::EndEverything);
+	}
+
+	void	SendEntitiesTo(const Objects::PFaction&f, TCP::Peer&peer, bool detailed, const Protocol::Timestamp&timestamp)
+	{
+		foreach (f->structures,_s)
+		{
+			Objects::PStructure s= _s->lock();
+			ASSERT__(s);
+			if (s)
+			{
+				Protocol::StructureConstruction st;
+				Game::Network::Describe(st,*s,detailed,timestamp);
+				Channels::createStructure.SendTo(peer,st);
+			}
+		}
+		foreach (f->allMobiles,_v)
+		{
+			Objects::PMobileEntity v= _v->lock();
+			ASSERT__(v);
+			if (v)
+			{
+				Protocol::NewMobileEntity st;
+				Game::Network::Describe(st,*v,detailed,timestamp,0xFFFFFFFF);
+				Channels::newMobileEntity.SendTo(peer,st);
+			}
+		}
+		foreach (f->storedMobiles,_v)
+		{
+			Objects::PMobileEntity v= _v->lock();
+			ASSERT__(v);
+			if (v)
+			{
+				Protocol::NewMobileEntity st;
+				Game::Network::Describe(st,*v,detailed,timestamp,0xFFFFFFFF);
+				Channels::newMobileEntity.SendTo(peer,st);
+			}
+		}
 	}
 
 	void	ClientFaction(Protocol::ClientFactionRequest&_p, TCP::Peer&peer)
@@ -511,9 +750,7 @@ namespace Receiver
 				return;
 			}
 			//p.factionToken.value.Generate();	let's keep it even if it's unknown
-			client->faction.reset(new Objects::Faction(TUniqueID::Empty()));
-			faction = client->faction;
-			Objects::Faction::all << client->faction;
+			faction = client->faction = Objects::Faction::Create(TUniqueID::New(),TUniqueID::New());
 			ApplicationInterface::SignalFactionsChanged();
 			if (client->faction != Objects::Faction::nexus)
 				client->faction->name = client->name;
@@ -545,7 +782,13 @@ namespace Receiver
 			response.startFactionTypes |= Protocol::FactionType::NexusFaction;
 
 		Channels::clientFactionResponse.SendTo(client->peer.lock(),response);
-		Channels::setFactionID.SendTo(client->peer.lock(),client->faction->id);
+		{
+			Protocol::MyFaction faction;
+			faction.alliance.allianceID = client->faction->alliance->id;
+			faction.alliance.flags = client->faction->alliance->config.ToFlags();
+			faction.factionID = client->faction->id;
+			Channels::MyFaction.SendTo(client->peer.lock(),faction);
+		}
 		if (RuntimeConfig::tutorialMode)
 			Channels::tutorialAt.SendTo(client->peer.lock(),Game::tutorialAt);
 		//CHEAT_SHOW_ALL_RESOURCES
@@ -639,12 +882,19 @@ namespace Receiver
 		client->SendProgressUpdate(why);
 
 
+		Objects::ForeachFaction([&peer](const Objects::PFaction&f)
+		{
+			Channels::identifyFaction.SendTo(peer,Network::Identify(f));
+
+		},false);
+
+
 		if (!newFaction)
 		{
 			Protocol::Timestamp	timestamp;
 			timestamp.rightNow = true;
 
-			LogEvent(EventSignificance::Debug,"Sending known hostile contacts to "+ peer.ToString());
+			LogEvent(EventSignificance::Debug,"Sending known foreign contacts to "+ peer.ToString());
 			client->faction->seeing.VisitAllKeys([&peer,client,timestamp](const Objects::PWorldEntity&e)
 			{
 				LogEvent(EventSignificance::Debug,e.get(),"Sending contact (@"+String(e.get())+")");
@@ -659,7 +909,7 @@ namespace Receiver
 				if (s)
 				{
 					Protocol::StructureConstruction st;
-					Game::Network::Describe(st,*s,(s)->owner == client->faction,timestamp);
+					Game::Network::Describe(st,*s,(s)->owner->ExposesEntityDetailsTo(client->faction),timestamp);
 					Channels::createStructure.SendTo(peer,st);
 				}
 				else
@@ -668,7 +918,7 @@ namespace Receiver
 					if (v)
 					{
 						Protocol::NewMobileEntity st;
-						Game::Network::Describe(st,*v,(v)->owner == client->faction,timestamp,0xFFFFFFFF);
+						Game::Network::Describe(st,*v,(v)->owner->ExposesEntityDetailsTo(client->faction),timestamp,0xFFFFFFFF);
 						Channels::newMobileEntity.SendTo(peer,st);
 					}
 					else
@@ -677,42 +927,13 @@ namespace Receiver
 				}
 			});
 
-			foreach (client->faction->structures,_s)
+			//friendly units will be registered as contacts, therefor they should not be send otherwise
+		/*	client->faction->alliance->ForeachMember([client,&peer,timestamp](const Objects::PFaction&other)
 			{
-				Objects::PStructure s= _s->lock();
-				ASSERT__(s);
-				if (s)
-				{
-					Protocol::StructureConstruction st;
-					Game::Network::Describe(st,*s,(s)->owner == client->faction,timestamp);
-					Channels::createStructure.SendTo(peer,st);
-				}
-			}
-			foreach (client->faction->allMobiles,_v)
-			{
-				Objects::PMobileEntity v= _v->lock();
-				ASSERT__(v);
-				if (v)
-				{
-					Protocol::NewMobileEntity st;
-					Game::Network::Describe(st,*v,true,timestamp,0xFFFFFFFF);
-					Channels::newMobileEntity.SendTo(peer,st);
-				}
-			}
-			foreach (client->faction->storedMobiles,_v)
-			{
-				Objects::PMobileEntity v= _v->lock();
-				ASSERT__(v);
-				if (v)
-				{
-					Protocol::NewMobileEntity st;
-					Game::Network::Describe(st,*v,true,timestamp,0xFFFFFFFF);
-					Channels::newMobileEntity.SendTo(peer,st);
-				}
-			}
-
+				SendEntitiesTo(other, peer,client->faction->alliance->config.exposeEntityDetails,timestamp);
+			});*/
+			SendEntitiesTo(client->faction,peer,true,timestamp);
 		}
-
 
 
 		
@@ -723,7 +944,8 @@ namespace Receiver
 		//probably optional later on
 		{
 			//broadcast name and state
-			Channels::identifyFaction.SendTo(Network::server,Protocol::IdentifyFaction(client->faction->id,client->name,client->faction->color),2);
+
+			Channels::identifyFaction.SendTo(Network::server,Network::Identify(client->faction),Channels::Level::Faction);
 			Channels::factionOnline.SendTo(Network::server,client->faction->id,2);
 
 		}
@@ -734,6 +956,8 @@ namespace Receiver
 		LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ),faction->name+" connected");
 
 		SendSessionConfigTo(peer,client->faction);
+
+		Game::Vote::AdvertiseAllToNewlyConnectedPeer(client->faction,peer);
 		
 		peer.SendSignal(Protocol::ChannelID::BeginGame);
 	}
@@ -762,7 +986,7 @@ namespace Receiver
 	Objects::PWorldEntity	CheckCommandModeGetAccessibleEntity(const TUniqueID&eid, TCP::Peer&peer)
 	{
 		if (!CheckCommandMode(peer))
-			return Objects::PWorldEntity();
+			return nullptr;
 
 		Objects::PWorldEntity e = Objects::GetEntity(eid);
 		if (!e)
@@ -774,27 +998,27 @@ namespace Receiver
 				{
 					LogEvent(EventClass::Preset::commandRejected, peer, "Access denied (this is a marker/ghost/contact)");
 					//LogEvent(EventSignificance::Debug, peer, "(because it doesn't exist)");
-					return Objects::PWorldEntity();
+					return nullptr;
 				}
 			}
 
 
 			LogEvent(EventClass::Preset::commandRejected, peer, "Access denied");
 			LogEvent(EventSignificance::Debug, peer, "(because it doesn't exist)");
-			return Objects::PWorldEntity();
+			return nullptr;
 		}
 
 		if (!Network::PeerCanControl(peer,e))
 		{
 			LogEvent(EventClass::Preset::commandRejected,peer,e,"Access denied");
-			return Objects::PWorldEntity();
+			return nullptr;
 		}
 
 		{
 			if (e->IsHibernating())
 			{
 				LogEvent(EventClass::Preset::commandRejected,peer,e,"No reaction. Entity is hibernating.");
-				return Objects::PWorldEntity();
+				return nullptr;
 			}
 		}
 
@@ -1031,12 +1255,8 @@ namespace Receiver
 
 		if (cl->faction)
 		{
-			Protocol::IdentifyFaction factionID;
-			factionID.id = cl->faction->id;
-			factionID.name = cl->name;
-			factionID.color = cl->faction->color;
 			cl->faction->name = cl->name;
-			Channels::identifyFaction.SendTo(Network::server,factionID,2);
+			Channels::identifyFaction.SendTo(Network::server,Network::Identify(cl->faction),Channels::Level::Faction);
 			LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ), peer, "User renamed to '"+cl->name+"'");
 		}
 	}
@@ -1556,10 +1776,10 @@ namespace Receiver
 			Objects::PMobileEntityProducer p = To<Objects::MobileEntityProducer>::DynamicCast(e);
 			if (p && cmd.path.Count() == 1)
 			{
-				if (p->gatheringPoint.current != cmd.path.first())
+				if (p->gatheringPoint.current != cmd.path.First())
 				{
 					LogEvent(EventSignificance::Common, peer, e, "Set gathering point");
-					p->gatheringPoint.current = cmd.path.first();
+					p->gatheringPoint.current = cmd.path.First();
 				}
 				else
 				{

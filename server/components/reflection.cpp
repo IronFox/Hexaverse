@@ -200,7 +200,7 @@ namespace Reflection
 				virtual	bool	Set(const String&value)	override
 				{
 					T old = *reference;
-					if (convert(value.c_str(),value.length(), *reference))
+					if (convert(value.c_str(),value.GetLength(), *reference))
 					{
 						*reference = range.Clamp(*reference);
 						if (old != *reference)
@@ -388,7 +388,7 @@ namespace Reflection
 			virtual	bool	Set(const String&value)	override
 			{
 				bool old = RuntimeConfig::empZones;
-				if (!convert(value.c_str(),value.length(),RuntimeConfig::empZones))
+				if (!convert(value.c_str(),value.GetLength(),RuntimeConfig::empZones))
 					return false;
 				if (!old && RuntimeConfig::empZones && Objects::Faction::all.Count() > 0)
 				{
@@ -620,7 +620,7 @@ namespace Reflection
 			virtual	bool	Set(const String&value)	override
 			{
 				UINT32 old = Game::Config::factionsPerZone;
-				if (!convert(value.c_str(),value.length(),Game::Config::factionsPerZone))
+				if (!convert(value.c_str(),value.GetLength(),Game::Config::factionsPerZone))
 					return false;
 				if (Game::Config::factionsPerZone < 1 || Game::Config::factionsPerZone > 5)
 				{
@@ -905,7 +905,7 @@ namespace Reflection
 			foreach (lines,line)
 			{
 				StringRef trimmed = line->TrimRef();
-				if (trimmed.length())
+				if (trimmed.GetLength())
 				{
 					if (fused.IsNotEmpty())
 						fused << nl;

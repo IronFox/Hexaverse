@@ -12,7 +12,7 @@
 #include "../objectSelection.h"
 #include "guiStatistics.h"
 #include "../scene/explosions.h"
-#include "factionTable.h"
+#include "guiFactionTable.h"
 
 bool	IsFullScreen();
 void	SetFullScreen(bool isFull);
@@ -43,7 +43,7 @@ namespace Menu
 			check
 		));
 		Super::RemoveComponent(hintLabel);
-		Super::AnchorBelowPrevious(button,0.f,Super::components.IsEmpty() ? 0.f : 0.015f);
+		Super::AnchorBelowPrevious(button,0.f,HUD::Component::Distance::GameWindow( Super::components.IsEmpty() ? 0.f : 0.015f ));
 		if (hintLabel)
 			Super::AnchorBelowPrevious(hintLabel,0.015f,0.015f);
 
@@ -57,11 +57,8 @@ namespace Menu
 		Super::ClearComponents();
 		hintLabel.reset();
 		myTitle = title;
-		if (Super::DoesAutoCenter())
-			SetWidth(initialAbsoluteWidth);
-		else
-			Super::SetCenteredWidth(initialAbsoluteWidth,HUD::Component::TAnchor::RelativeToScreen);
-		Super::fillBackground = false;
+		Super::Anchor().CenterHorizontally(initialAbsoluteWidth);
+		Super::SetBackgroundTransparent();
 
 		if (title.IsNotEmpty())
 		{
@@ -120,6 +117,7 @@ namespace Menu
 		LogEvent(EventClass::Preset::gui,"CreateOptionsMenu()["+String(options.get())+"].AddOption("+name+", ...)");
 
 		Component::PPanel p(new Component::Panel());
+		p->Anchor().Top();
 		Component::PLabel l(new Component::Label(name));
 		p->AddComponent(l);
 		p->AddComponent(c);
@@ -128,28 +126,17 @@ namespace Menu
 
 
 
-		l->fillBackground = false;
+		l->SetBackgroundTransparent();
 		l->alignCenter = false;
 		{
-			auto mod = l->ModifyAnchorConfig();
+			auto mod = l->Anchor();
 			//mod.Top().Set(0);
-			mod.Top().SetAuto();
-			mod.Bottom().SetAuto();
-			mod.Left().Set(0);
-
+			mod.CenterVertically().Left(0,MinTextWidth);
 		}
-		l->SetSize(float2(MinTextWidth,0));
-		c->AnchorTop(0);
-		{
-			auto mod = c->ModifyAnchorConfig();
-			mod.Left().Set(MinTextWidth,Component::TAnchor::RelativeToScreen);
-			mod.Right().Set(0.01f);
-			mod.Top().SetAuto();
-			mod.Bottom().SetAuto();
-		}
+		c->Anchor().FillHorizontally(MinTextWidth,0.01f).CenterVertically();
 
 		p->SetAutomaticHeight(true);
-		p->fillBackground = false;
+		p->SetBackgroundTransparent();
 
 		options->AnchorBelowPrevious(p);
 		return l;
@@ -193,9 +180,7 @@ namespace Menu
 		options = Component::Window::Create();
 		LogEvent(EventClass::Preset::gui,"CreateOptionsMenu(): "+String(options.get()));
 		options->logFullAutoLayout = true;
-		options->SetAutoCenter(false);
-		options->FillHorizontally(0.1f);
-		options->AnchorTop(0.1f);
+		options->Anchor().FillHorizontally(0.1f,0.1f).Top(0.1f);
 		options->AnchorBelowPrevious(new Component::Label("Options",2.f));
 		
 		AddOptionSlider("UI Scale", 0.5f, 2.f, 0.125f,UI::GetScale(), [](float&q)
@@ -357,7 +342,7 @@ namespace Menu
 			Component::PButton button(new Component::Button("OK",[](){WindowStack::Hide(options);}));
 			//button->LockIdealWidth();
 			options->AnchorBelowPrevious(button);
-			button->SetCenteredWidth(0.5f,Component::TAnchor::RelativeToScreen);
+			button->SetCenteredWidth(HUD::Component::Distance::GameWindow( 0.5f ));
 		}
 
 		options->SetAutoHeightSpacing(0.02f);

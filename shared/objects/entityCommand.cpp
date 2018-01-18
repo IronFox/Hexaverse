@@ -11,7 +11,7 @@ namespace Objects
 		{
 			if (!other || other == this || !this)
 				return *this;
-			rows.Append(other->rows);
+			rows.AppendAll(other->rows);
 			return *this;
 		}
 
