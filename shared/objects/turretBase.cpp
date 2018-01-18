@@ -18,7 +18,7 @@ namespace Objects
 	
 
 
-	/*static*/ bool				TurretBase::CheckArea(const OwnerParameter&myFaction, const Grid::LCellIdI&origin,const M::TVec3<>&source3, float explosionRadius, TargetChoice&outExtResult)
+	/*static*/ bool				TurretBase::CheckArea(const PFaction&myFaction, const Grid::LCellIdI&origin,const M::TVec3<>&source3, float explosionRadius, TargetChoice&outExtResult)
 	{
 		AreaHelper	helper;
 		using M::Sqr;
@@ -81,7 +81,7 @@ namespace Objects
 
 
 
-	bool TurretBase::IsSafeHit(const OwnerParameter&myFaction, TrajectoryType t, float range,const World::Data&visibleWorld, const World::Data&actualWorld,const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, float explosionRadius, TargetChoice&outExtResult)
+	bool TurretBase::IsSafeHit(const PFaction&myFaction, TrajectoryType t, float range,const World::Data&visibleWorld, const World::Data&actualWorld,const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, float explosionRadius, TargetChoice&outExtResult)
 	{
 		outExtResult.impact = Component::Turret::TraceTrajectory(t,range,visibleWorld, actualWorld,true,source,dest,outExtResult.trajectory);
 
@@ -112,7 +112,7 @@ namespace Objects
 		return true;
 	}
 
-	bool					TurretBase::ExtCanHit(const OwnerParameter&myFaction, const TrajectoryEndPoint&source, const TrajectoryEndPoint&destIn, TargetChoice&outExtResult)	const
+	bool					TurretBase::ExtCanHit(const PFaction&myFaction, const TrajectoryEndPoint&source, const TrajectoryEndPoint&destIn, TargetChoice&outExtResult)	const
 	{
 		using M::Sqr;
 		//const float velocity = Turret::MaxRangeToVelocity(GetFlatAttackRange());

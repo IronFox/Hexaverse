@@ -157,9 +157,11 @@ namespace Objects
 		bool		IsMember(const PFaction&f) const;
 		count_t		CountMembers() const {return members.Count();}
 		PFaction	GetMember(index_t i ) const {return members[i].wFaction.lock();}
-		void		UpdateConfiguration(const TConfig&);
-		static PAlliance FindByID(const TUniqueID&id ){ WAlliance rs; all.Query(id,rs); return rs.lock();}
-		static void	Foreach(const std::function<void(const PAlliance&)>&visitor);
+		void				UpdateConfiguration(const TConfig&);
+		static PAlliance	FindByID(const TUniqueID&id ){ WAlliance rs; all.Query(id,rs); return rs.lock();}
+		static void			Foreach(const std::function<void(const PAlliance&)>&visitor);
+		static count_t		Count() {return all.Count();}
+		static void			FlushAll() {all.Clear();}
 	private:
 
 		struct TMember
@@ -500,7 +502,7 @@ namespace Objects
 		void	ChangeStorage(WorkingStructure&ws, float atTime, Resource res, int change);
 		void	ChangeStorage(MobileEntity&v, float atTime, Resource res, int change);
 		//void	MapVisibility2(const PWorldEntity&e, const PWorldEntity&other, const OwnerParameter&checkForOwner, float&atTime);
-		void	ChangeOwnership( const PWorldEntity&e, const OwnerParameter&newOwner, float&atTime);
+		void	ChangeOwnership( const PWorldEntity&e, const PFaction&newOwner, float&atTime);
 
 		/**
 		Thoroughly checks whether or not entities able to see each other are correctly referenced as such.
@@ -512,7 +514,7 @@ namespace Objects
 		bool	CanWithdrawFromStorage(const MobileEntity&v, Resource res, int demand);
 		int		GetStorage(const MobileEntity&v, Resource res);
 	#else
-		void	ChangeOwnership( const PWorldEntity&e,const OwnerParameter&newOwner, bool isNowMine);
+		void	ChangeOwnership( const PWorldEntity&e,const PFaction&newOwner, bool isNowMine);
 	#endif
 
 	/**

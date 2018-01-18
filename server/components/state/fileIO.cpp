@@ -950,7 +950,7 @@ namespace FileIO
 //		ASSERT1__(proto,typeName);
 
 
-		Objects::PStructure rs = To<Objects::Structure>::Cast( proto->CreateNewInstance(Objects::PFaction(),location,0));
+		Objects::PStructure rs = To<Objects::Structure>::Cast( proto->CreateNewInstance(nullptr,location,0));
 
 
 

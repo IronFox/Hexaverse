@@ -31,6 +31,8 @@ namespace Objects
 		const String&iconSource = iconName.IsEmpty() ? name : iconName;
 
 		PWorldEntity proto = Prototypes::all.FindByName(iconSource);
+		if (proto)
+			ASSERT__(!proto->owner);	//this should never be true, but i'm growing paranoid
 		Component::Base*component = proto ? nullptr : Component::allComponents.FindByName(iconSource);
 		bool hasIcon = !proto && !component;
 
@@ -87,7 +89,7 @@ namespace Objects
 
 	}
 
-	bool			ResearchTopic::CanResearch(const OwnerParameter&owner) const
+	bool			ResearchTopic::CanResearch(const PFaction&owner) const
 	{
 		if (IsGroup())
 			return false;

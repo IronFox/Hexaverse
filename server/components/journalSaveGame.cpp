@@ -678,7 +678,7 @@ namespace Journal
 	}
 	/*virtual override*/ void	Round::ChoiceIntersection::Execute(const Objects::PWorldEntity&e) const
 	{
-		Objects::PWorldEntity deploy = deployingWhat!=TUniqueID::Empty() ? Objects::GetEntity(deployingWhat) : Objects::PWorldEntity();
+		Objects::PWorldEntity deploy = deployingWhat!=TUniqueID::Empty() ? Objects::GetEntity(deployingWhat) : nullptr;
 		Objects::PMobileEntity md = deploy && deploy->IsMobile() ? To<Objects::MobileEntity>::Cast(deploy) : Objects::PMobileEntity();
 		if (!Objects::ProcessChoiceIntersection(e,target,mode,md))
 		{

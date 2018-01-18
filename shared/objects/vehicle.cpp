@@ -27,7 +27,7 @@ namespace Objects
 */
 
 
-	/*static*/ count_t			Vehicle::CountTurretOccurrences(const OwnerParameter&o,Component::Turret*t)
+	/*static*/ count_t			Vehicle::CountTurretOccurrences(const PFaction&o,Component::Turret*t)
 	{
 		count_t rs = 0;
 		vehicles.Foreach([&rs,o,t](const PVehicle&v)
@@ -57,7 +57,7 @@ namespace Objects
 		}
 	#endif
 
-	/*static*/ int					Vehicle::GetPrice(Component::VehicleBase*base, Component::Turret*turret, const OwnerParameter&owner)
+	/*static*/ int					Vehicle::GetPrice(Component::VehicleBase*base, Component::Turret*turret, const PFaction&owner)
 	{
 		return (turret ? turret->productionCosts(owner) : 0) + (base ? base->productionCosts(owner) : 0);
 	}

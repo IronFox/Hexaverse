@@ -31,7 +31,7 @@ namespace Objects
 
 
 	
-		static count_t			CountTurretOccurrences(const OwnerParameter&,Component::Turret*);
+		static count_t			CountTurretOccurrences(const PFaction&,Component::Turret*);
 
 
 
@@ -133,8 +133,8 @@ namespace Objects
 		#endif
 
 		int						GetPrice() const	{return GetPrice(base,turret, owner);}
-		static int				GetPrice(Component::VehicleBase*, Component::Turret*, const OwnerParameter&);
-		static int				GetPrice(Component::VehicleBase&b, Component::Turret&t, const OwnerParameter&owner)	{return GetPrice(&b,&t,owner);}
+		static int				GetPrice(Component::VehicleBase*, Component::Turret*, const PFaction&);
+		static int				GetPrice(Component::VehicleBase&b, Component::Turret&t, const PFaction&owner)	{return GetPrice(&b,&t,owner);}
 		int						GetMaxClimbingHeight() const {return base->maxClimbUp;}
 		int						GetMaxFallingHeight() const {return -base->minClimbDown;}
 
@@ -154,7 +154,7 @@ namespace Objects
 		virtual bool			IsUnlockedAtState(const Lua::Reference&researchState) const	override {return base->isUnlocked.GetValue(researchState) && turret->isUnlocked.GetValue(researchState);}
 		virtual int				GetMaxHealth() const override;
 		virtual String			DescribeMaxHealth() const override;
-		virtual PWorldEntity	CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override {return PWorldEntity(new Vehicle(owner,location,base,turret));};
+		virtual PWorldEntity	CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override {return std::make_shared<Vehicle>(owner,location,base,turret);};
 		virtual float			GetScanningRange() const override;
 		virtual String			DescribeScanningRange() const override;
 		virtual PTurretBase		GetTurretBase(float&zOffset) override { zOffset = base->height; return To<Vehicle>::Cast(shared_from_this());}

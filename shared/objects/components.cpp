@@ -117,39 +117,39 @@ namespace Objects
 			return operationSpeed[op](owner);
 		}
 
-		int							Turret::GetDamageLevel(const OwnerParameter&owner) const
+		int							Turret::GetDamageLevel(const PFaction&owner) const
 		{
 			return damageLevel(owner);
 		}
 
-		float							Turret::GetExplosionRadius(const OwnerParameter&owner) const
+		float							Turret::GetExplosionRadius(const PFaction&owner) const
 		{
 			return  explosionRadius(owner);
 		}
 
-		int								Turret::GetAttacksPerRound(const OwnerParameter&owner) const
+		int								Turret::GetAttacksPerRound(const PFaction&owner) const
 		{
 			return  attacksPerRound(owner);
 		}		
 
-		int								Turret::GetAmmoNeedPerShot(const OwnerParameter&owner) const
+		int								Turret::GetAmmoNeedPerShot(const PFaction&owner) const
 		{
 			return ammoNeedPerShot(owner);
 		}
 
-		float							Turret::GetHorizontalAttackRange(const OwnerParameter&owner, const FFunc&bonus/*=FFunc()*/) const
+		float							Turret::GetHorizontalAttackRange(const PFaction&owner, const FFunc&bonus/*=FFunc()*/) const
 		{
 			if (horizontalAttackRange.IsEmpty())
 				return 0;
 			return (horizontalAttackRange(owner) + bonus(owner));
 		}
 
-		float							Turret::GetScanningRange(const OwnerParameter&owner, int bonus/*=0*/) const
+		float							Turret::GetScanningRange(const PFaction&owner, int bonus/*=0*/) const
 		{
 			return (scanningRange(owner) + bonus);
 		}
 
-		float							Turret::GetGroundScanningRange(const OwnerParameter&owner) const
+		float							Turret::GetGroundScanningRange(const PFaction&owner) const
 		{
 			return groundScanningRange(owner);
 		}
@@ -168,7 +168,7 @@ namespace Objects
 		}
 
 
-		bool							Turret::ConsumesResources(ResourceFlagSet&res, const OwnerParameter&owner) const
+		bool							Turret::ConsumesResources(ResourceFlagSet&res, const PFaction&owner) const
 		{
 			bool rs = false;
 			if (this->mountType == Component::Turret::MountType::Satellite)
@@ -857,13 +857,13 @@ namespace Objects
 
 
 
-		float		Bomb::GetRadius(bool doomsday, const OwnerParameter& owner)
+		float		Bomb::GetRadius(bool doomsday, const PFaction& owner)
 		{
 			//return doomsday ? 7*Grid::UnitScale : artillery.explosionRadius*2;
 			return bomb.GetExplosionRadius(owner) * (doomsday ? 2 : 1);
 		}
 
-		int			Bomb::GetDamageLevel(bool doomsday, const OwnerParameter& owner)
+		int			Bomb::GetDamageLevel(bool doomsday, const PFaction& owner)
 		{
 			//return doomsday ? 50 : artillery.damageLevel*2;
 			return bomb.GetDamageLevel(owner) * (doomsday ? 5 : 1);

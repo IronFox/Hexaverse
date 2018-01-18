@@ -458,8 +458,8 @@ namespace Receiver
 			Game::Network::SendStatisticsTo(peer,f);
 		},true);
 
-		if (Game::winner)
-			Channels::winningFaction.SendTo(peer,Game::winner->id);
+		if (!Game::winner.expired())
+			Channels::winningFaction.SendTo(peer,Game::winner.lock()->id);
 
 		peer.SendSignal(Protocol::ChannelID::EndEverything);
 	}
@@ -986,7 +986,7 @@ namespace Receiver
 	Objects::PWorldEntity	CheckCommandModeGetAccessibleEntity(const TUniqueID&eid, TCP::Peer&peer)
 	{
 		if (!CheckCommandMode(peer))
-			return Objects::PWorldEntity();
+			return nullptr;
 
 		Objects::PWorldEntity e = Objects::GetEntity(eid);
 		if (!e)
@@ -998,27 +998,27 @@ namespace Receiver
 				{
 					LogEvent(EventClass::Preset::commandRejected, peer, "Access denied (this is a marker/ghost/contact)");
 					//LogEvent(EventSignificance::Debug, peer, "(because it doesn't exist)");
-					return Objects::PWorldEntity();
+					return nullptr;
 				}
 			}
 
 
 			LogEvent(EventClass::Preset::commandRejected, peer, "Access denied");
 			LogEvent(EventSignificance::Debug, peer, "(because it doesn't exist)");
-			return Objects::PWorldEntity();
+			return nullptr;
 		}
 
 		if (!Network::PeerCanControl(peer,e))
 		{
 			LogEvent(EventClass::Preset::commandRejected,peer,e,"Access denied");
-			return Objects::PWorldEntity();
+			return nullptr;
 		}
 
 		{
 			if (e->IsHibernating())
 			{
 				LogEvent(EventClass::Preset::commandRejected,peer,e,"No reaction. Entity is hibernating.");
-				return Objects::PWorldEntity();
+				return nullptr;
 			}
 		}
 

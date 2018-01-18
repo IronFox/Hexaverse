@@ -147,6 +147,7 @@ namespace Objects
 
 
 		const char*			OperationToString(operation_t);
+		Lua::Reference		ResearchStateOf(const PFaction&);
 		Lua::Reference		ResearchStateOf(const OwnerParameter&);
 
 
@@ -303,13 +304,13 @@ namespace Objects
 
 
 			float							GetOperationSpeed(operation_t op, const OwnerParameter&owner) const;
-			int								GetDamageLevel(const OwnerParameter&owner) const;
-			float							GetExplosionRadius(const OwnerParameter&owner) const;
-			int								GetAttacksPerRound(const OwnerParameter&owner) const;
-			int								GetAmmoNeedPerShot(const OwnerParameter&owner) const;
-			float							GetHorizontalAttackRange(const OwnerParameter&owner, const FFunc&bonus=FFunc()) const;
-			float							GetScanningRange(const OwnerParameter&owner, int bonus=0) const;
-			float							GetGroundScanningRange(const OwnerParameter&owner) const;
+			int								GetDamageLevel(const PFaction&owner) const;
+			float							GetExplosionRadius(const PFaction&owner) const;
+			int								GetAttacksPerRound(const PFaction&owner) const;
+			int								GetAmmoNeedPerShot(const PFaction&owner) const;
+			float							GetHorizontalAttackRange(const PFaction&owner, const FFunc&bonus=FFunc()) const;
+			float							GetScanningRange(const PFaction&owner, int bonus=0) const;
+			float							GetGroundScanningRange(const PFaction&owner) const;
 
 			static float					MaxRangeToVelocity(float range)
 			{
@@ -431,7 +432,7 @@ namespace Objects
 			/**
 			Checks whether or not the local turret could ever possibly consume resources
 			*/
-			bool							ConsumesResources(ResourceFlagSet&res, const OwnerParameter&) const;
+			bool							ConsumesResources(ResourceFlagSet&res, const PFaction&) const;
 
 		};
 
@@ -547,8 +548,8 @@ namespace Objects
 			void		Configure(Turret&);
 
 
-			float		GetRadius(bool doomsday, const OwnerParameter&);
-			int			GetDamageLevel(bool doomsday, const OwnerParameter&);
+			float		GetRadius(bool doomsday, const PFaction&);
+			int			GetDamageLevel(bool doomsday, const PFaction&);
 		};
 
 	

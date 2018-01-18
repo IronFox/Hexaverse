@@ -123,7 +123,7 @@ namespace ApplicationInterface
 	}
 
 
-	void	SignalOwnershipChange(const Objects::PWorldEntity&e,const Objects::OwnerParameter&target, float t)
+	void	SignalOwnershipChange(const Objects::PWorldEntity&e,const Objects::PFaction&target, float t)
 	{
 		for (const auto&p : Network::activePlayersAndSpectators)
 		{
@@ -141,7 +141,7 @@ namespace ApplicationInterface
 	}
 
 
-	void	SignalAppearanceToHostileFaction(const Objects::OwnerParameter&target, const Objects::PWorldEntity&e, float atTime)
+	void	SignalAppearanceToHostileFaction(const Objects::PFaction&target, const Objects::PWorldEntity&e, float atTime)
 	{
 		if (!e)
 		{
@@ -243,7 +243,7 @@ namespace ApplicationInterface
 	
 	}
 
-	void	SignalDisappearanceToHostileFaction(const Objects::OwnerParameter&target, const Objects::PWorldEntity&e, float atTime)
+	void	SignalDisappearanceToHostileFaction(const Objects::PFaction&target, const Objects::PWorldEntity&e, float atTime)
 	{
 		if (!e)
 		{
@@ -421,7 +421,7 @@ namespace ApplicationInterface
 
 		clientsCanSee.Clear();
 
-		for (const Objects::OwnerParameter&p : canSee)
+		for (const Objects::PFaction&p : canSee)
 		{
 			Network::PClient client;
 			if (Network::playerMap.Query(p,client))
@@ -502,7 +502,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 	file.Log(message+"\n",true);
 	file.Close();
 
-	Logging::WriteEvent(EventClass::Preset::fatal,message,nullptr,nullptr, Objects::OwnerParameter());
+	Logging::WriteEvent(EventClass::Preset::fatal,message,nullptr,nullptr, nullptr);
 
 	Logging::CallBugReporter();			//must call before application_shutting_down, since is threaded ATM
 	application_shutting_down = true;	//prevent certain operations in Close()
@@ -514,13 +514,13 @@ void MyFatal(const FatalDescriptor&descriptor)
 	try
 	{
 		PathString out = RuntimeConfig::ConfigFile("saves/crash.hsf");
-		Logging::WriteEvent(EventClass::Preset::uncommon,"Trying to save game to "+String(out),nullptr,nullptr,Objects::OwnerParameter());
+		Logging::WriteEvent(EventClass::Preset::uncommon,"Trying to save game to "+String(out),nullptr,nullptr,nullptr);
 		FileIO::Save(out,RuntimeConfig::phase);
-		Logging::WriteEvent(EventClass::Preset::uncommon,"Success",nullptr,nullptr,Objects::OwnerParameter());
+		Logging::WriteEvent(EventClass::Preset::uncommon,"Success",nullptr,nullptr,nullptr);
 	}
 	catch (...)
 	{
-		Logging::WriteEvent(EventClass::Preset::error,"Failed to save to file",nullptr,nullptr,Objects::OwnerParameter());
+		Logging::WriteEvent(EventClass::Preset::error,"Failed to save to file",nullptr,nullptr,nullptr);
 	}
 
 	#ifdef _DEBUG
@@ -579,11 +579,11 @@ void TerminateNow(bool isMain)
 		}
 
 
-		Logging::WriteEvent(EventSignificance::Uncommon,"Closing down",nullptr,nullptr,Objects::OwnerParameter());
+		Logging::WriteEvent(EventSignificance::Uncommon,"Closing down",nullptr,nullptr,nullptr);
 
 		GlobalEvents::applicationTerminate();
 
-		Logging::WriteEvent(EventSignificance::Uncommon,"Terminating process",nullptr,nullptr,Objects::OwnerParameter());
+		Logging::WriteEvent(EventSignificance::Uncommon,"Terminating process",nullptr,nullptr,nullptr);
 		Logging::End();
 
 		application_shutting_down = true;
@@ -1076,7 +1076,7 @@ int main( int argc, const char* argv[])
 
 		if (false)
 		{
-			Logging::WriteEvent(EventSignificance::Uncommon,"Testing server.",nullptr,nullptr,Objects::OwnerParameter());
+			Logging::WriteEvent(EventSignificance::Uncommon,"Testing server.",nullptr,nullptr,nullptr);
 
 			FileIO::Save(PathString("test0."+FileIO::savFileExtension),RuntimeConfig::phase);
 			FileIO::Load(PathString("test0."+FileIO::savFileExtension));
@@ -1099,7 +1099,7 @@ int main( int argc, const char* argv[])
 				FileIO::Load(filename);
 			}
 			else
-				Logging::WriteEvent(EventClass::Preset::fileError,"Specified file ("+String(filename)+") does not exist. Skipping loading operation.",nullptr,nullptr,Objects::OwnerParameter());
+				Logging::WriteEvent(EventClass::Preset::fileError,"Specified file ("+String(filename)+") does not exist. Skipping loading operation.",nullptr,nullptr,nullptr);
 		}
 		RuntimeConfig::tutorialMode = ParameterConfig::startInTutorial;
 
@@ -1116,7 +1116,7 @@ int main( int argc, const char* argv[])
 		//Journal::globalWriter.InitNew(RuntimeConfig::ConfigFile("saves/log"));
 		//Journal::globalWriter.ContinueExisting(RuntimeConfig::ConfigFile("saves/log"));
 
-		Logging::WriteEvent(EventSignificance::Uncommon, "Preparation of world '"+World::worldID.ToNiceString()+"'/" + ToString(World::worldID) + " completed.", nullptr, nullptr,Objects::OwnerParameter());
+		Logging::WriteEvent(EventSignificance::Uncommon, "Preparation of world '"+World::worldID.ToNiceString()+"'/" + ToString(World::worldID) + " completed.", nullptr, nullptr,nullptr);
 		
 		Network::LogServerState();
 
