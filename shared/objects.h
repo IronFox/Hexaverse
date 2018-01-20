@@ -45,7 +45,12 @@ namespace Objects
 {
 
 
-
+	/**
+	Prevents links between entities, factions, and alliances from being severed upon object flush.
+	Under ideal circumstances, the end result is identical, however entities, factions, and alliances may have been referenced elsewhere thus preventing their final deletion.
+	The severing of links typically forces the deletion of at least factions and alliances
+	*/
+	extern bool				preserveReferencesOnFlush /*= false*/;
 
 
 
