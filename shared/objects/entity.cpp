@@ -656,7 +656,7 @@ namespace Objects
 					owner->alliance->ForeachMember([&atTime,newContacts,this,sensor](const PFaction&f)
 					{
 						f->RegisterSensorCreation(sensor, location.height, atTime, f == owner ? newContacts : nullptr);
-					});
+					},true);
 				}
 				else
 					owner->RegisterSensorCreation(sensor, location.height, atTime, newContacts);
@@ -712,7 +712,7 @@ namespace Objects
 					owner->alliance->ForeachMember([&atTime,this,sensor](const PFaction&f)
 					{
 						f->RegisterSensorRemoval(sensor, location.height, atTime);
-					});
+					},true);
 				}
 				else
 					owner->RegisterSensorRemoval(sensor, location.height, atTime);

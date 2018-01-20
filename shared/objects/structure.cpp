@@ -853,7 +853,7 @@ namespace Objects
 					DBG_ASSERT__(owner->acquiringNexusControl >= 0);
 					owner->nexusControl ++;
 					LogEvent( EventClass( EventSignificance::Important,EventFlavor::Gain ),this,"Control Acquired");
-					ApplicationInterface::SignalNexusControlChange(owner);
+					ApplicationInterface::SignalNexusControlChange(owner->alliance);
 				}
 			}
 
@@ -892,7 +892,7 @@ namespace Objects
 					}
 					resistence = ResistenceRounds;
 					RegisterChange(NexusControlChanged,0);
-					ApplicationInterface::SignalNexusControlChange(owner);
+					ApplicationInterface::SignalNexusControlChange(owner->alliance);
 				}
 			}
 		}

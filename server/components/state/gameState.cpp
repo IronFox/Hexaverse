@@ -11,6 +11,7 @@
 void			ApplicationInterface::SignalFactionsChanged()
 {
 	Game::mostFactionsAlive = std::max(Game::mostFactionsAlive, (UINT32)Game::CountLivingPlayerFactions());
+	Game::mostAlliancesAlive = std::max(Game::mostAlliancesAlive, (UINT32)Game::CountLivingPlayerAlliances());
 	Reflection::SignalFactionsChanged();
 }
 
@@ -18,10 +19,10 @@ void			ApplicationInterface::SignalFactionsChanged()
 
 namespace Game
 {
-	UINT32				mostFactionsAlive=0;
+	UINT32				mostFactionsAlive=0, mostAlliancesAlive=0;
 	Evolver::Abstract	*evolver = nullptr;
-	Objects::WFaction	winner;	//if set indicates game is over
-	Objects::WFaction	postEvolutionWinner;	//if winner is declared while evolver is active, this variable is set instead for later
+	Objects::WAlliance	winner;	//if set indicates game is over
+	Objects::WAlliance	postEvolutionWinner;	//if winner is declared while evolver is active, this variable is set instead for later
 	Timer::Time			lastPhaseChange = timer.Now();
 	bool				roundTimerPaused = true,endRoundNow=false, evolverActive = false;
 	float				factionStartMineralValue=1.f;	//determined during loading
@@ -499,6 +500,7 @@ namespace Game
 		{
 			roundTimerPaused = true;
 			mostFactionsAlive = 0;
+			mostAlliancesAlive = 0;
 			tutorialAt=1;
 			endRoundNow = false;
 			winner.reset();
@@ -629,17 +631,17 @@ namespace Game
 				if (winner.expired())
 				{
 					UINT64 biggestScore = 0;
-					Objects::PFaction newWinner;
+					Objects::PAlliance newWinner;
 
-					Objects::ForeachFaction([&](const Objects::PFaction&f)
+					Objects::Alliance::Foreach([&](const Objects::PAlliance&a)
 					{
-						if (f == Objects::Faction::nexus)
+						if (a == Objects::Faction::nexus->alliance)
 							return;
-						const UINT64 score = f->GetWinningScore();
+						const UINT64 score = a->GetWinningScore();
 						if (score > biggestScore)
 						{
 							biggestScore = score;
-							newWinner = f;
+							newWinner = a;
 						}
 					});
 					if (newWinner)
@@ -648,7 +650,9 @@ namespace Game
 
 				foreach (::Network::activePlayersAndSpectators,p)
 				{
-					(*p)->SendProgressUpdate("");
+					auto alliance = (*p)->faction ? (*p)->faction->alliance : nullptr;
+					Objects::Alliance::TNexusStats stats = alliance ? alliance->GetNexusStats() : Objects::Alliance::TNexusStats();
+					(*p)->SendProgressUpdate("",stats);
 				}
 			}
 
@@ -920,7 +924,7 @@ namespace Game
 					f->deathInRounds = 0;
 					::Network::PClient client;
 					if (::Network::playerMap.Query(f,client))
-						client->SendProgressUpdate(whyNot);
+						client->SendProgressUpdate(whyNot, f->alliance->GetNexusStats());
 				}
 			}
 			else
@@ -1183,8 +1187,23 @@ namespace Game
 		return livingPlayerFactions;
 	}
 
+	count_t CountLivingPlayerAlliances()
+	{
 
-	void	DeclareWinner(const Objects::PFaction&w)
+		count_t rs = 0;
+
+		Objects::Alliance::Foreach([&rs](const Objects::PAlliance&a)
+		{
+			if (a == Objects::Faction::nexus->alliance)
+				return;
+			if (a->CountLivingMembers() > 0)
+				rs++;
+		});
+		return rs;
+	}
+
+
+	void	DeclareWinner(const Objects::PAlliance&w)
 	{
 		DBG_ASSERT__(w);
 		DBG_ASSERT__(winner.expired());
@@ -1194,8 +1213,21 @@ namespace Game
 			return;
 		}
 		postEvolutionWinner.reset();
-		LogEvent(EventClass{EventSignificance::Important,EventFlavor::ServerPrivate},"Declared winner: "+w->GetLogName());
-		LogEvent(EventClass::Preset::winningFaction,"Congratulations. "+w->GetName()+" wins this game!");
+		LogEvent(EventClass{EventSignificance::Important,EventFlavor::ServerPrivate},"Declared winning alliance: "+w->id.ConvertToString());
+
+		Buffer0<String> winners;
+		w->ForeachMember([&winners](const Objects::PFaction&f)
+		{
+			winners << f->GetName();
+		});
+		if (winners.Count() == 1)
+			LogEvent(EventClass::Preset::winningFaction,"Congratulations. "+winners.First()+" wins this game!");
+		else
+		{
+			String str = implode(", ",winners.ToRef().SubRef(0,winners.Count()-1)) + " and "+winners.Last();
+			LogEvent(EventClass::Preset::winningFaction,"Congratulations. "+str+" win this game!");
+		}
+
 		winner = w;
 		Channels::winningFaction.SendTo(::Network::server,w->id,Channels::Level::Faction);
 		if (RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame)
@@ -1272,7 +1304,7 @@ namespace Game
 			},false);
 
 
-			count_t livingPlayerFactions = CountLivingPlayerFactions();
+			//const count_t livingPlayerFactions = CountLivingPlayerFactions();
 			for (index_t i = 0; i < Objects::Faction::all.Count(); i++)
 			{
 				Objects::PFaction faction = Objects::Faction::all[i];	//only player factions here: nexus is not included in ::all
@@ -1293,7 +1325,7 @@ namespace Game
 						{
 							faction->deathInRounds = 0;
 							if (client)
-								client->SendProgressUpdate(whyNot);
+								client->SendProgressUpdate(whyNot,faction->alliance->GetNexusStats());
 						}
 					}
 					else
@@ -1332,8 +1364,8 @@ namespace Game
 								*/
 
 								Objects::Faction::Kill(faction);
-								ASSERT__(livingPlayerFactions > 0)
-								livingPlayerFactions--;
+								//ASSERT__(livingPlayerFactions > 0)
+								//livingPlayerFactions--;
 								#if 0
 								if (client)
 									::Network::activePlayersAndSpectators.FindAndErase(client);
@@ -1347,38 +1379,31 @@ namespace Game
 							}
 						}
 						if (client)
-							client->SendProgressUpdate(whyNot);
+							client->SendProgressUpdate(whyNot,faction->alliance->GetNexusStats());
 					}
 				}
 			}
 
 			if (Config::closedGame && RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame)
 			{
-				if (livingPlayerFactions == 0)
+				const count_t livingPlayerAlliances = CountLivingPlayerAlliances();
+				if (livingPlayerAlliances == 0)
 				{
-					LogEvent(EventClass::Preset::factionDeath,"All factions destroyed. Application requires restart.");
+					LogEvent(EventClass::Preset::factionDeath,"All alliances destroyed. Server should be reset.");
 					Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
 				}
 				else
-				if (livingPlayerFactions == 1)
+				if (livingPlayerAlliances == 1)
 				{
 					LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain),"Only one faction left. Declaring winner.");
 
 					winner.reset();
-					for (index_t i = 0; i < Objects::Faction::all.Count(); i++)
+					Objects::Alliance::Foreach([](const Objects::PAlliance&a)
 					{
-						Objects::PFaction faction = Objects::Faction::all[i];
-						if (faction && !faction->isDead)
-						{
-							DeclareWinner(faction);
-						}
-					}
-
-					//::Network::PClient client;
-					//if (::Network::playerMap.Query(winner,client))
-					//{
-					//	client->SendProgressUpdate("");
-					//}
+						if (a != Objects::Faction::nexus->alliance)
+							winner = a;
+					});
+					DeclareWinner(winner.lock());
 				}
 			}
 

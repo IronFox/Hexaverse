@@ -794,11 +794,11 @@ namespace Reflection
 			}
 			LogEvent(EventClass::Preset::factionDeath, "Terminating "+faction->GetLogName()+" ("+r+")");
 			Objects::Faction::Kill(faction);
-			Network::PClient client;
-			if (Network::playerMap.Query(faction,client))
-			{
-				client->SendProgressUpdate("");
-			}
+			//Network::PClient client;	no longer necessary. triggered by Kill()
+			//if (Network::playerMap.Query(faction,client))
+			//{
+			//	client->SendProgressUpdate("");
+			//}
 		}
 
 		void		ListNames()

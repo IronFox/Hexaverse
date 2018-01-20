@@ -132,6 +132,15 @@ namespace Objects
 	public:
 		const TUniqueID	id;
 
+		#ifndef CLIENT
+			struct TNexusStats
+			{
+				count_t	acquiringNexusControl=0;
+				count_t	nexusControl=0;
+			};
+		#endif
+
+
 		struct TConfig
 		{
 			bool	exposeEntityDetails = false,
@@ -148,15 +157,20 @@ namespace Objects
 			}
 		}			config;
 
-		/**/		Alliance(const TUniqueID&id);
-		virtual		~Alliance();
-		void		ForeachMember(const std::function<void(const PFaction&)>&f)	const;
-		void		Leave(const PFaction&f);
-		void		Leave(Faction*f);
-		void		Join(const PFaction&f);
-		bool		IsMember(const PFaction&f) const;
-		count_t		CountMembers() const {return members.Count();}
-		PFaction	GetMember(index_t i ) const {return members[i].wFaction.lock();}
+		/**/				Alliance(const TUniqueID&id);
+		virtual				~Alliance();
+		void				ForeachMember(const std::function<void(const PFaction&)>&f,bool livingOnly=true)	const;
+		void				Leave(const PFaction&f);
+		void				Leave(Faction*f);
+		void				Join(const PFaction&f);
+		bool				IsMember(const PFaction&f) const;
+		count_t				CountAllMembers() const {return members.Count();}
+		count_t				CountLivingMembers() const;
+		PFaction			GetMember(index_t i ) const {return members[i].wFaction.lock();}
+		#ifndef CLIENT
+			TNexusStats		GetNexusStats() const;
+			UINT64			GetWinningScore() const;
+		#endif
 		void				UpdateConfiguration(const TConfig&);
 		static PAlliance	FindByID(const TUniqueID&id ){ WAlliance rs; all.Query(id,rs); return rs.lock();}
 		static void			Foreach(const std::function<void(const PAlliance&)>&visitor);

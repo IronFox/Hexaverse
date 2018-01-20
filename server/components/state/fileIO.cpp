@@ -133,6 +133,7 @@ namespace FileIO
 	{
 		static const Riff::TID	
 								mostFactionsAlive(" MFA"),
+								mostAlliancesAlive(" MAA"),
 								worldTypeChunk(" WTC"),
 								worldCounterChunk(" WCC"),
 								factionAccessToken("ACTK"),
@@ -1237,6 +1238,7 @@ namespace FileIO
 										GetPOD(list,RID::worldID,World::worldID);
 										GetPOD(list,RID::roundNumber,RuntimeConfig::roundNumber);
 										GetOptionalPOD(list,RID::mostFactionsAlive,Game::mostFactionsAlive,(UINT32)0);
+										GetOptionalPOD(list,RID::mostAlliancesAlive,Game::mostAlliancesAlive,(UINT32)0);
 
 										{
 											auto p = list->FindFirst(RID::gamePhase);
@@ -1769,6 +1771,7 @@ namespace FileIO
 		general->AppendBlock(RID::roundNumber)->SetPODData(RuntimeConfig::roundNumber);
 		general->AppendBlock(RID::worldConfig)->SetPODData((const Grid::TSharedPlanetConfig&)Grid::currentPlanetConfig);
 		general->AppendBlock(RID::mostFactionsAlive)->SetPODData(Game::mostFactionsAlive);
+		general->AppendBlock(RID::mostAlliancesAlive)->SetPODData(Game::mostAlliancesAlive);
 		
 		{
 			String phase = savePhase.ToString();
