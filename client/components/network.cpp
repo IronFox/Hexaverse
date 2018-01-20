@@ -146,14 +146,38 @@ namespace Network
 		}
 	}
 
-	void SendChatMessage(const String & msg)
+	void		SendChatMessage(const String&msg, const Objects::PFaction&receiver)
+	{
+		if (!receiver)
+			return;
+		if (msg.TrimRef().GetLength() > 0)
+		{
+			if (client.IsConnected())
+				Channels::ChatMessage.SendTo(client,Protocol::ChatMessage(msg,receiver->id));
+		}
+	}
+
+	void		SendChatMessage(const String&msg, const Objects::PAlliance&receiver)
+	{
+		if (!receiver)
+			return;
+		if (msg.TrimRef().GetLength() > 0)
+		{
+			if (client.IsConnected())
+				Channels::ChatMessage.SendTo(client,Protocol::ChatMessage(msg,receiver->id));
+		}
+	}
+
+	void		BroadcastChatMessage(const String&msg)
 	{
 		if (msg.TrimRef().GetLength() > 0)
 		{
 			if (client.IsConnected())
-				Channels::chatMessage.SendTo(client,msg);
+				Channels::ChatMessage.SendTo(client,Protocol::ChatMessage(msg,TUniqueID::Empty()));
 		}
 	}
+
+
 
 	void			LoadScript(const SHA256::HashContainer&id)
 	{
@@ -1402,7 +1426,6 @@ namespace Network
 		TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::RemoveEntity>						removeEntity;
 		TCP::ObjectSender<Protocol::EntityStateUpdate, Protocol::ChannelID::Sleep>					sleep;
 		TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>					changeMyName;
-		TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>					chatMessage;
 		TCP::ObjectSender<Protocol::ResourceID, Protocol::ChannelID::RequestResource>				requestResource;
 		TCP::ObjectSender<Protocol::LoadPlanetByName, Protocol::ChannelID::LoadPlanetByName>		loadPlanetByName;
 		TCP::ObjectSender<Protocol::QueueResearch, Protocol::ChannelID::QueueResearch>				queueResearch;
@@ -1413,6 +1436,7 @@ namespace Network
 		DECLARE_CHANNEL(VoteResult);
 		DECLARE_OBJECT_SENDER(ClientVote);
 		DECLARE_OBJECT_SENDER(AllianceJoinRequest);
+		DECLARE_OBJECT_SENDER(ChatMessage);
 
 	}
 

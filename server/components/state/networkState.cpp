@@ -332,7 +332,7 @@ namespace Network
 		server.InstallChannel(Channels::changeMyName);
 		server.InstallChannel(Channels::identifyFactionRecv);
 		server.InstallChannel(Channels::queueResearch);
-		server.InstallChannel(Channels::chatMessage);
+		server.InstallChannel(Channels::ChatMessage);
 		server.InstallChannel(Channels::planetConfig);
 		server.InstallChannel(Channels::gameConfig);
 		server.InstallChannel(Channels::requestResource);

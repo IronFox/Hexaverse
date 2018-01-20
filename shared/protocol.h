@@ -1383,6 +1383,11 @@ namespace Protocol
 		, TUniqueID, factionID
 		, AllianceConfigChange, alliance
 	)
+
+	NETSTRUCT2(ChatMessage
+		, Package::NetString<256>, message
+		, TUniqueID, recipient	//may be faction, alliance, or everybody (if empty)
+	)
 		
 
 
@@ -1472,7 +1477,7 @@ namespace Protocol
 			UplinkBandwidth,	// s2c : int, can be negative to indicate it's disabled
 			UnitLimits,			// s2c : UnitLimits
 
-			ChatMessage,		// c2s: NetString<256>
+			ChatMessage,		// c2s: ChatMessage
 
 			AllianceConfigChange,	//both: AllianceConfigChange
 			AllianceJoinRequest,	//c2s: AllianceJoinRequest

@@ -2642,7 +2642,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 			{
 				return candidate.GetLength() <= 256;
 			},
-			Network::SendChatMessage
+			Network::BroadcastChatMessage
 		);
 
 
@@ -3270,7 +3270,7 @@ bool	IsTargetWorkingDirectory(const PathString&dir)
 {
 	PathString test = dir + "/resources";
 	bool rs = FileSystem::IsDirectory(test);
-	LogEvent(EventSignificance::Debug,"Checking server target directory candidate '"+String(dir)+"'=>'"+String(test)+"'. Result="+String(rs));
+	LogEvent(EventSignificance::Debug,"Checking client target directory candidate '"+String(dir)+"'=>'"+String(test)+"'. Result="+String(rs));
 
 
 	return rs;

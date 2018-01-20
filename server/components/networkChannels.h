@@ -27,7 +27,7 @@ namespace Receiver
 	void	ChangeMyName(Protocol::ClientName&, TCP::Peer&peer);
 	void	IdentifyFaction(NET(TUniqueID)&, TCP::Peer&peer);
 	void	QueueResearch(Protocol::QueueResearch&, TCP::Peer&peer);
-	void	ChatMessage(Package::NetString<256>&, TCP::Peer&peer);
+	void	ChatMessage(Protocol::ChatMessage&, TCP::Peer&peer);
 	void	PlanetConfig(Grid::ExtendedPlanetConfig&, TCP::Peer&peer);
 	void	GameConfig(Protocol::GameConfig&, TCP::Peer&peer);
 	void	RequestResource(Protocol::ResourceID&, TCP::Peer&peer);
@@ -96,7 +96,6 @@ namespace Channels
 	extern TCP::Channel<Protocol::ClientName,Level::Faction,Protocol::ChannelID::ChangeMyName>					changeMyName;
 	extern TCP::Channel<NET(TUniqueID), Level::Faction, Protocol::ChannelID::IdentifyFaction>					identifyFactionRecv;
 	extern TCP::Channel<Protocol::QueueResearch, Level::Faction, Protocol::ChannelID::QueueResearch>			queueResearch;
-	extern TCP::Channel<Package::NetString<256>, Level::Faction, Protocol::ChannelID::ChatMessage>				chatMessage;
 	extern TCP::Channel<Grid::ExtendedPlanetConfig, Level::Configurator, Protocol::ChannelID::PlanetConfig>		planetConfig;
 	extern TCP::Channel<Protocol::GameConfig, Level::Configurator, Protocol::ChannelID::GameConfig>				gameConfig;
 	extern TCP::Channel<Protocol::ResourceID, Level::PreFaction, Protocol::ChannelID::RequestResource>			requestResource;
@@ -146,6 +145,7 @@ namespace Channels
 	DECLARE_FACTION_CHANNEL(ClientVote);
 	DECLARE_FACTION_CHANNEL(AllianceJoinRequest);
 	DECLARE_FACTION_CHANNEL(AllianceConfigChange);
+	DECLARE_FACTION_CHANNEL(ChatMessage);
 
 	DECLARE_OBJECT_SENDER(MyFaction);
 

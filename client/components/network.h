@@ -283,7 +283,6 @@ namespace Network
 		extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::RemoveEntity>						removeEntity;
 		extern TCP::ObjectSender<Protocol::EntityStateUpdate, Protocol::ChannelID::Sleep>				sleep;
 		extern TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>				changeMyName;
-		extern TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>				chatMessage;
 		extern TCP::ObjectSender<Protocol::ResourceID, Protocol::ChannelID::RequestResource>			requestResource;
 		extern TCP::ObjectSender<Protocol::LoadPlanetByName, Protocol::ChannelID::LoadPlanetByName>		loadPlanetByName;
 		extern TCP::ObjectSender<Protocol::QueueResearch, Protocol::ChannelID::QueueResearch>			queueResearch;
@@ -295,6 +294,7 @@ namespace Network
 		DECLARE_CHANNEL(VoteResult);
 		DECLARE_OBJECT_SENDER(ClientVote);
 		DECLARE_OBJECT_SENDER(AllianceJoinRequest);
+		DECLARE_OBJECT_SENDER(ChatMessage);
 	}
 
 
@@ -410,7 +410,9 @@ namespace Network
 	extern const String		allowedChatCharacters;
 
 
-	void		SendChatMessage(const String&msg);
+	void					SendChatMessage(const String&msg, const Objects::PFaction&receiver);
+	void					SendChatMessage(const String&msg, const Objects::PAlliance&receiver);
+	void					BroadcastChatMessage(const String&msg);
 
 	void		Shutdown();
 
