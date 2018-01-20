@@ -277,6 +277,63 @@ namespace Component
 	}
 
 
+
+	void			ComponentLocation::SetAxis(AnchorAxis a, const M::TFloatRange<>&range)
+	{
+		switch (a)
+		{
+			case AnchorAxis::Horizontal:
+				SetHorizontal(range);
+				break;
+			case AnchorAxis::Vertical:
+				SetVertical(range);
+				break;
+		}
+	}
+
+	void			ComponentLocation::SetHorizontal(const M::TFloatRange<>&range)
+	{
+		const bool hChange = range != this->rect.x;
+		if (!hChange)
+			return;
+
+		range.AssertIsNotNaN();
+
+		const bool widthChange = !M::Similar(range.GetExtent(),this->rect.x.GetExtent());
+		this->rect.x = range;
+
+		DBG_ASSERT_IS_CONSTRAINED__(range.min,Lower,Upper);
+		DBG_ASSERT_IS_CONSTRAINED__(range.max,Lower,Upper);
+
+		if (hChange)
+			OnHorizontalRectChange();
+		if (widthChange)
+			OnWidthChange();
+		OnRectChange();
+	}
+
+	void			ComponentLocation::SetVertical(const M::TFloatRange<>&range)
+	{
+		const bool vChange = range != this->rect.y;
+		if (!vChange)
+			return;
+
+		range.AssertIsNotNaN();
+
+		const bool heightChange = !M::Similar(range.GetExtent(),this->rect.y.GetExtent());
+		this->rect.y = range;
+
+		DBG_ASSERT_IS_CONSTRAINED__(range.min,Lower,Upper);
+		DBG_ASSERT_IS_CONSTRAINED__(range.max,Lower,Upper);
+
+		if (vChange)
+			OnVerticalRectChange();
+		if (heightChange)
+			OnHeightChange();
+		OnRectChange();
+	}
+
+
 	void			ComponentLocation::SetRect(const M::Rect<>&rect)
 	{
 		const bool hChange = rect.x != this->rect.x;
@@ -2143,7 +2200,7 @@ namespace Component
 			if (Set(range.min,range.max - extent))
 				rec.Record(this,CLOCATION);
 
-		SetRect(rect);
+		SetAxis(a,range);
 	}
 
 	Component&			Component::FillHorizontally(const Distance& spacing)
