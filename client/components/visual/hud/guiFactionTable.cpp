@@ -133,11 +133,21 @@ namespace HUD
 				toPanel->AnchorBelowPrevious(panel,0,0);
 			}
 
+			static Objects::WAlliance tryingToJoin;
+
+			static void DispatchJoinRequest(const Objects::PAlliance&a)
+			{
+				const bool cancel = tryingToJoin.lock() == a;
+				Network::Channels::AllianceJoinRequest.SendTo(Network::client,Protocol::AllianceJoinRequest(a->id,cancel));
+				tryingToJoin = cancel ? Objects::WAlliance() : a;
+			}
+
 			static String JoinText(const Objects::PAlliance&a)
 			{
+				const String req = tryingToJoin.lock() == a ? "Cancel request" : "Request";
 				if (a->CountLivingMembers() == 1)
-					return "Request to form alliance with "+a->GetMember(0)->GetName();
-				return "Request to join "+a->id.ToNiceString();
+					return req +" to form alliance with "+a->GetMember(0)->GetName();
+				return req +" to join "+a->id.ToNiceString();
 			}
 
 			void	Update()
@@ -253,27 +263,8 @@ namespace HUD
 								Objects::PAlliance now = wa.lock();
 								if (now == nullptr || now == Objects::Faction::mine->alliance)
 									return;
-								Objects::PAlliance last = triedJoining.lock();
-								if (last && last != Objects::Faction::mine->alliance)
-								{
-									Network::Channels::AllianceJoinRequest.SendTo(Network::client,Protocol::AllianceJoinRequest(last->id,true));
-									PButton b = triedJoiningButton.lock();
-									if (b)
-										b->SetText(JoinText(last));
-								}
-
-								if (last != now)
-								{
-									triedJoining = now;
-									triedJoiningButton = jb;
-									Network::Channels::AllianceJoinRequest.SendTo(Network::client,Protocol::AllianceJoinRequest(now->id,false));
-									jb.lock()->SetText("Cancel "+JoinText(now));
-								}
-								else
-								{
-									triedJoining.reset();
-									triedJoiningButton.reset();
-								}
+								DispatchJoinRequest(now);
+								jb.lock()->SetText(JoinText(now));
 
 							});
 
