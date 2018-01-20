@@ -324,25 +324,29 @@ namespace ApplicationInterface
 	}
 
 
-	void	SignalNexusControlChange(const Objects::PFaction&f)
+	void	SignalNexusControlChange(const Objects::PAlliance&a)
 	{
 		if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
 			return;
 		if (RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::ConquerNexus)
 		{
-			if (f->nexusControl >= Game::Config::GetTargetNexusCount())
-				Game::DeclareWinner(f);
+			auto stats  = a->GetNexusStats();
+
+			if (stats.nexusControl >= Game::Config::GetTargetNexusCount())
+				Game::DeclareWinner(a);
 			else
 			{
-				Network::PClient client;
-				if (Network::playerMap.Query(f,client))
+				a->ForeachMember([&stats](const Objects::PFaction&f)
 				{
-					String why;
-					if (Game::Config::basesRequired && f->deathInRounds > 0)
-						f->CanLive(why);
-					client->SendProgressUpdate(why);
-				}
-				return;
+					Network::PClient client;
+					if (Network::playerMap.Query(f,client))
+					{
+						String why;
+						if (Game::Config::basesRequired && f->deathInRounds > 0)
+							f->CanLive(why);
+						client->SendProgressUpdate(why,stats);
+					}
+				},false);
 			}
 		}
 	}
@@ -1224,9 +1228,9 @@ int main( int argc, const char* argv[])
 					if (Network::AnyHumanPlayersActive())
 						Game::roundTimerPaused = false;
 					Game::FinishRoundProcessing();
-					Objects::PFaction f = Game::postEvolutionWinner.lock();
-					if (f)
-						Game::DeclareWinner(f);
+					Objects::PAlliance a = Game::postEvolutionWinner.lock();
+					if (a)
+						Game::DeclareWinner(a);
 					if (FileIO::postEvolutionAutoSave)
 						FileIO::AutoSave();
 					else

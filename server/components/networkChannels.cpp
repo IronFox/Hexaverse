@@ -33,7 +33,7 @@ namespace Receiver
 		TUniqueID tID = a->id;
 		return [tID](const Objects::PFaction&f)
 		{
-			return f->alliance->id == tID;
+			return f->alliance->id == tID && !f->isDead;
 		};
 	}
 
@@ -102,6 +102,11 @@ namespace Receiver
 			LogEvent(EventClass::Preset::internalError,peer,"AllianceJoinRequest: client->faction is nullptr");
 			return;
 		}
+		if (client->faction->isDead)
+		{
+			LogEvent(EventClass::Preset::internalError,peer,"AllianceJoinRequest: client->faction is dead");
+			return;
+		}
 
 
 		if (req.allianceID.IsEmpty())
@@ -109,7 +114,7 @@ namespace Receiver
 			if (RuntimeConfig::IsInAnyCommandPhase())
 			{
 				LogEvent(EventClass::Preset::uncommon,peer,"Left alliance");
-				if (client->faction->alliance->CountMembers() == 1)
+				if (client->faction->alliance->CountLivingMembers() == 1)
 					return;	//nothing to do
 
 				Objects::PAlliance a {new Objects::Alliance(TUniqueID::New())};
@@ -148,7 +153,7 @@ namespace Receiver
 		}
 		else
 		{
-			const String niceTask = target->CountMembers() > 1 ? "joining alliance "+target->id.ToNiceString() : "creating an alliance with "+target->GetMember(0)->GetName();
+			const String niceTask = target->CountLivingMembers() > 1 ? "joining alliance "+target->id.ToNiceString() : "creating an alliance with "+target->GetMember(0)->GetName();
 
 			Game::PVote v = Game::Vote::CreateNew(ArrayRef<TUniqueID>( ids,2),
 				"Allow "+client->faction->name+ " to join your alliance?", 
@@ -879,7 +884,7 @@ namespace Receiver
 		String why;
 		if (Game::Config::basesRequired && faction->deathInRounds > 0)
 			faction->CanLive(why);
-		client->SendProgressUpdate(why);
+		client->SendProgressUpdate(why,faction->alliance->GetNexusStats());
 
 
 		Objects::ForeachFaction([&peer](const Objects::PFaction&f)

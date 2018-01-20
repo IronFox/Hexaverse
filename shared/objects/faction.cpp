@@ -22,6 +22,31 @@ namespace Objects
 	/*static*/ HashTable<TUniqueID,WAlliance>	Alliance::all;
 
 
+	#ifndef CLIENT
+		UINT64							Alliance::GetWinningScore() const
+		{
+			UINT64 rs = 0;
+			ForeachMember([&rs](const PFaction&f)
+			{
+				rs += f->GetWinningScore();
+			});
+			return rs;
+		}
+
+
+		Alliance::TNexusStats			Alliance::GetNexusStats() const
+		{
+			TNexusStats rs;
+			ForeachMember([&rs](const PFaction&f)
+			{
+				rs.acquiringNexusControl += f->acquiringNexusControl;
+				rs.nexusControl += f->nexusControl;
+			},true);
+			return rs;
+		}
+	#endif
+
+
 	/**/		Alliance::Alliance(const TUniqueID&id) : id(id)
 	{
 		LogEvent(EventSignificance::Debug,"Constructed Alliance "+ToString(id));
@@ -45,11 +70,32 @@ namespace Objects
 	}
 
 
-	void		Alliance::ForeachMember(const std::function<void(const PFaction&)>&f)	const
+	void		Alliance::ForeachMember(const std::function<void(const PFaction&)>&visitor, bool livingOnly)	const
 	{
 		foreach (members,m)
-			f(m->wFaction.lock());
+		{
+			PFaction f = m->wFaction.lock();
+			#ifndef CLIENT
+				if (f->isDead && livingOnly)
+					continue;
+			#endif
+			visitor(f);
+		}
 	}
+
+	count_t		Alliance::CountLivingMembers() const
+	{
+		#ifndef CLIENT
+			count_t cnt  = 0;
+			foreach (members,m)
+				if (!m->wFaction.lock()->isDead)
+					cnt++;
+			return cnt;
+		#else
+			return members.Count();
+		#endif
+	}
+
 
 	bool		Alliance::IsMember(const PFaction&f) const
 	{
@@ -73,7 +119,7 @@ namespace Objects
 				{
 					f->knownWorld.InvalidateSensory();
 					f->CheckSensory();
-				});
+				},true);
 			#elif HAS_WINDOW
 				World::actual.InvalidateSensory();
 			#endif
@@ -87,7 +133,7 @@ namespace Objects
 					{
 						e->SignalChange(Objects::WorldEntity::CompleteChange,0);
 					});
-				});
+				},true);
 			ApplicationInterface::SignalAllianceConfigChange(shared_from_this());
 		#endif
 
@@ -146,10 +192,10 @@ namespace Objects
 		f->alliance = shared_from_this();
 		#ifndef CLIENT
 			ApplicationInterface::SignalAllianceMembershipChange(f);
+			ApplicationInterface::SignalNexusControlChange(shared_from_this());
 		#endif
 
 		RefreshSensors(false);
-
 
 	}
 
@@ -165,7 +211,12 @@ namespace Objects
 				if (members.IsEmpty())
 					all.Unset(id);
 				else
+				{
 					RefreshSensors(false);
+					#ifndef CLIENT
+						ApplicationInterface::SignalNexusControlChange(shared_from_this());
+					#endif
+				}
 				return;
 			} 
 		FATAL__("Faction not found");
@@ -672,7 +723,7 @@ namespace Objects
 					alliance->ForeachMember([this,&t](const PFaction&f)	//includes this
 					{
 						f->AddEntitySensory(knownWorld,t);
-					});
+					},true);
 				}
 				else
 					this->AddEntitySensory(knownWorld,t);
@@ -1974,6 +2025,7 @@ namespace Objects
 				LogEvent(EventClass::Preset::commandRejected,nullptr, "Faction "+ToString(f->id)+" has already ended");
 				return;
 			}
+			
 			LogEvent(EventSignificance::Debug,nullptr, "Erasing faction "+ToString(f->id));
 
 			{
@@ -2004,6 +2056,7 @@ namespace Objects
 
 			LogEvent(EventClass::Preset::factionDeath, "Destructible entities destroyed");
 			ApplicationInterface::SignalFactionsChanged();
+			ApplicationInterface::SignalNexusControlChange(f->alliance);
 
 			//if (f != nexus)
 			//{

@@ -44,7 +44,9 @@ namespace ClientGrid
 	{
 		if (World::actual.SensoryIsInvalid())
 		{
-			VisualTerrain::visibleSubOrbitGrid.Clear();
+			#ifdef HAS_WINDOW
+				VisualTerrain::visibleSubOrbitGrid.Clear();
+			#endif
 			if (Network::amSpectator)
 				World::actual.FlushAndValidateSensory(1);
 			else

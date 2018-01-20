@@ -117,9 +117,10 @@ namespace Game
 	Not decremented when factions die. Restored from savegame.
 	*/
 	extern UINT32			mostFactionsAlive	/*=0*/;
+	extern UINT32			mostAlliancesAlive;
 
-	extern Objects::WFaction	winner;	//if set indicates game is over. Do not set manually. Use DeclareWinner()
-	extern Objects::WFaction	postEvolutionWinner;	//if winner is declared while evolver is active, this variable is set instead for later
+	extern Objects::WAlliance	winner;	//if set indicates game is over. Do not set manually. Use DeclareWinner()
+	extern Objects::WAlliance	postEvolutionWinner;	//if winner is declared while evolver is active, this variable is set instead for later
 
 	extern Timer::Time		lastPhaseChange /*= timer.Now()*/;
 	extern bool				roundTimerPaused /*= true*/;
@@ -207,7 +208,7 @@ namespace Game
 		inline count_t	GetTargetNexusCount()
 		{
 			return RuntimeConfig::empZones
-						? std::min<count_t>(std::max<count_t>(2,CountAccessibleZones()),3) 
+						? /*std::min<count_t>(*/std::max<count_t>(2,CountAccessibleZones())/*,3)*/ 
 						: 2;	//should be 2 here, because in normal ConquerNexus mode, only nexus bases are spawned, whereas in EMP ConsquerNexus mode ports are spawned on all of the 12 poles
 		}
 
@@ -293,6 +294,7 @@ namespace Game
 
 	void			RegisterClassGain(const Objects::PWorldEntity&e, Objects::Faction::UnitClass, const String&debugName);
 	count_t			CountLivingPlayerFactions();
+	count_t			CountLivingPlayerAlliances();
 
 	void			PerformNewRoundLogic(float &atTime);	//includes UpdateHibernation()
 
@@ -302,7 +304,7 @@ namespace Game
 	Updates game phase to EndOfGame, and notifies all clients.
 	Winner must have been empty before.
 	*/
-	void			DeclareWinner(const Objects::PFaction&);
+	void			DeclareWinner(const Objects::PAlliance&);
 
 	/**
 	Redetermines the mineral value offset used to calculate when to spawn AI units
