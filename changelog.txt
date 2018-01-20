@@ -1,5 +1,6 @@
-v0.7.0
-	+ Introduced ability to form sensor-sharing alliances.
+v0.7.0	[Jan 20 2018]
+	+ Introduced sensor-sharing alliances of multiple factions.
+	+ Implemented rudimentary voting system that controls alliance operations.
 	> Reduced verbosity of faction idle messages.
 	* Fixed messages not being relayed to control console.
 	* Fixed faction renaming.
