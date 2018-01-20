@@ -135,7 +135,7 @@ namespace HUD
 
 			static String JoinText(const Objects::PAlliance&a)
 			{
-				if (a->CountMembers() == 1)
+				if (a->CountLivingMembers() == 1)
 					return "Request to form alliance with "+a->GetMember(0)->GetName();
 				return "Request to join "+a->id.ToNiceString();
 			}
@@ -210,7 +210,7 @@ namespace HUD
 					PPanel wrapper{new Panel{}};
 					wrapper->Anchor().BeneathLastOf(factionTable);
 					wrapper->fillBackground = false;
-					wrapper->renderBorder = a->CountMembers()  > 1;
+					wrapper->renderBorder = a->CountLivingMembers()  > 1;
 					factionTable->AddComponent(wrapper);
 
 					PPanel alliancePanel{new Panel{}};
@@ -219,7 +219,7 @@ namespace HUD
 					alliancePanel->Anchor().FillHorizontally(0.01f,0.001f).Top();
 
 
-					if (a->CountMembers() > 1)
+					if (a->CountLivingMembers() > 1)
 					{
 						PLabel allianceLabel{new Label{a->id.ToNiceString(),1.f}};
 						allianceLabel->Anchor().Left().Top();
@@ -244,7 +244,7 @@ namespace HUD
 							PButton joinButton{new Button{JoinText(a)}};
 							joinButton->fillBackground = false;
 							joinButton->renderBorder = false;
-							if (a->CountMembers() == 1)
+							if (a->CountLivingMembers() == 1)
 								joinButton->SetColor(a->GetMember(0)->color);
 							WButton jb = joinButton;
 							joinButton->SetTriggerFunction(
@@ -287,7 +287,7 @@ namespace HUD
 							joinButton->Anchor().Right(0.01f).Bottom(0.01f);
 							wrapper->AddComponent(joinButton);
 						}
-						else if (a->CountMembers() > 1)
+						else if (a->CountLivingMembers() > 1)
 						{
 							PButton leaveButton{new Button{"Leave alliance "+a->id.ToNiceString()}};
 							leaveButton->SetTriggerFunction(

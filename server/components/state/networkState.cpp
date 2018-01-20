@@ -25,6 +25,7 @@ namespace ApplicationInterface
 	void	SignalAllianceMembershipChange(const Objects::PFaction&owner)
 	{
 		Channels::identifyFaction.SendTo(::Network::server,Network::Identify(owner),Channels::Level::Faction);
+		SignalFactionsChanged();	//for statistical purposes
 	}
 
 	void	SignalAllianceConfigChange(const Objects::PAlliance&alliance)
@@ -236,11 +237,11 @@ namespace Network
 	}
 
 
-	static String FactionStatus(const Objects::PFaction&f)
+	static String AllianceStatus(const Objects::PAlliance&a, const Objects::Alliance::TNexusStats&stats)
 	{
-		if (!f)
+		if (!a)
 			return "Game Over";
-		return "Nexus Ports enabled: "+String(f->acquiringNexusControl)+", conquered: "+String(f->nexusControl)+"/"
+		return "Nexus Ports enabled: "+String(stats.acquiringNexusControl)+", conquered: "+String(stats.nexusControl)+"/"
 			+ String(Game::Config::GetTargetNexusCount());
 	}
 
@@ -254,13 +255,14 @@ namespace Network
 	}
 
 
-	void Client::SendProgressUpdate(const String&warningReason)
+	void Client::SendProgressUpdate(const String&warningReason, const Objects::Alliance::TNexusStats&stats)
 	{
 		Protocol::GameProgress progress;
 		const bool dead = !faction || faction->isDead;
 		progress.gameOver = dead || RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame;
-		progress.gameWon = Game::winner == faction && !Game::winner.expired();
-		progress.status = RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::None ? "" : FactionStatus(faction);
+		auto winner = Game::winner.lock();
+		progress.gameWon = faction && faction->alliance == winner;
+		progress.status = RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::None ? "" : AllianceStatus(faction ? faction->alliance : nullptr,stats);
 		progress.warning = dead ? "Game Over" : FactionWarning(faction,warningReason);
 
 		if (progress.gameOver && faction && RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame)
