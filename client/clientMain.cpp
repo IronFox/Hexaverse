@@ -1252,7 +1252,7 @@ namespace ApplicationInterface
 				}
 			}
 		}
-		else
+		elif (Objects::Faction::mine)
 		{
 			bool isCommon = 
 				#ifdef HAS_WINDOW
