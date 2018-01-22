@@ -458,7 +458,7 @@ namespace Network
 	bool		CloseSession(bool preserveSpectators, bool sendGridChangesToPreservedSpectators/*=true*/)
 	{
 		bool isOnline = Session::isStarted;
-		LogEvent(EventSignificance::Important,isOnline ? "Closing session." : "Flushing session data.");
+		LogEvent(EventSignificance::Important,isOnline ? "Closing session." : "Not online: Flushing session data.");
 
 		if (isOnline)
 		{

@@ -1682,6 +1682,8 @@ namespace FileIO
 		//it is important that all faction sensor locks are released before this point as RestartSession() does not react well to locked sensor grids
 		if (wasOpen)
 			::Network::RestartSession(true);
+		else
+			LogEvent(EventSignificance::Uncommon,"Session was offline prior to loading. Not restarted");
 
 	}
 
