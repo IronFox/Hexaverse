@@ -714,9 +714,12 @@ namespace Animation
 					job->resourceCostLeft = 1;
 
 					auto&t = v->myTasks.Push();
-					t.name = "Unknown construction task";
+					t.name = "Building";
 					t.job = job;
 					t.type = Objects::MobileEntity::Task::Job;
+					#ifdef HAS_WINDOW
+						Objects::TaskAttachment::Allocate(t);
+					#endif
 				}
 			}
 			else
