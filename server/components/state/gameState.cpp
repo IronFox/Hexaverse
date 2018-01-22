@@ -237,7 +237,7 @@ namespace Game
 		bool test = Array<int>() == Array<char>();
 
 		rs.eligibleToVote = (UINT32)CountEligibleVoters();
-		rs.quorum = GetQuorum(this->quorum, rs.eligibleToVote);
+		rs.quorum = (UINT32)GetQuorum(this->quorum, rs.eligibleToVote);
 		rs.votedAgainst = 0;
 		rs.votedInFavor = 0;
 		rs.voteID = id;
