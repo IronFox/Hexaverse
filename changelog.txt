@@ -1,3 +1,8 @@
+v0.7.1	[Jan 22 2018]
+	> Moved remote control folder /Online to /Server/Online.
+	* Fixed remote control variable /Server/Online/session.
+	* Loading a save game will now correctly disable interactive configuration mode.
+
 v0.7.0	[Jan 20 2018]
 	+ Introduced sensor-sharing alliances of multiple factions.
 	+ Implemented rudimentary voting system that controls alliance operations.
