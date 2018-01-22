@@ -900,7 +900,18 @@ int main( int argc, const char* argv[])
 		Reflection::state.EnterNewFolder("/Server/Online");
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("udpBroadcast",UDPBroadCast::IsStarted,UDPBroadCast::Stop,[](){UDPBroadCast::Start();})));
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("info",[]()->bool{return Network::InformationProvider::IsOnline();},Network::InformationProvider::Stop,[](){Network::InformationProvider::Start(ParameterConfig::basePort);})));
-		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("session",[]()->bool{return Network::server.IsOnline();},[](){Network::SuspendSession();},[](){Network::RestartSession(false);})));
+		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("session",
+			[]()->bool{return Network::SessionIsStarted();},
+			[](){Network::SuspendSession();},
+			[](){
+				if (ConfigurationMode::IsActive())
+				{
+					LogEvent(EventClass::Preset::commandRejected,"Cannot restart session: Interactive Configuration Mode is active.");
+					return;
+				}
+				Network::RestartSession(false);
+			}))
+		);
 		Reflection::state.DefineCommand("closeSession",(CLI::Command::function0_t)[](){Network::CloseSession();},CLI::NoCompletion);	//why...?
 
 		Reflection::state.PopFocus();
