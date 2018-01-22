@@ -39,6 +39,18 @@ void ConfigurationMode::Begin()
 	//Network::RestartSession();
 }
 
+void ConfigurationMode::Abort()
+{
+	using namespace Details;
+	if (!isActive)
+		return;
+	Game::Config::factionSupportFlags = originalFlags;
+	LogEvent(EventSignificance::Important,"Aborting configuration mode");
+
+	FileIO::RefreshWindowTitle();
+	isActive = false;
+}
+
 void ConfigurationMode::End()
 {
 	using namespace Details;
