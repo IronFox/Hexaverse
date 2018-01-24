@@ -3,7 +3,6 @@ BUG REPORT FORM
 
 controller support
 
-alliances
 
 hotkeys
 
@@ -162,6 +161,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+alliances
 colored faction list + chat history + chat message input
 send entity id with server messages so user can click on the message to focus on them (ids are sent, user can't click yet)
 faction-colored user messages
