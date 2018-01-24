@@ -1414,7 +1414,7 @@ namespace Component
 		}
 		void			AnchorBelowPrevious(const PComponent&newComponent, const Distance& distanceFromSides = 0.015f, const Distance& distanceToPrevious = 0.015f);
 
-
+		virtual void	SetAnchorConfig(const AnchorConfig&cfg) override;
 	private:
 		bool			autoHeight = true;
 

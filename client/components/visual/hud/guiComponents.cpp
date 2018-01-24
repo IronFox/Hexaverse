@@ -644,6 +644,14 @@ namespace Component
 			Detail::allComponents.FindAndErase(this);
 	}
 
+	/*virtual override*/ void	Panel::SetAnchorConfig(const AnchorConfig&cfg)
+	{
+		if (anchorConfig.GetVAxis().Stretches())
+			SetAutomaticHeight(false);
+		Super::SetAnchorConfig(cfg);
+	}
+
+
 	void Panel::SignalLayoutChangeUp()
 	{
 		if (resolvingAxis)
