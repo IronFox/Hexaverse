@@ -1971,7 +1971,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 				Objects::Renderer::ClearSmokeTrails();
 				HUD::HexGrid::EventLog::Clear();
 				if (TimeLapse::enabled)
-					saveScreenshot = true;
+					InputControl::saveScreenshot = true;
 			#endif
 			if (RuntimeConfig::aiMode)
 				AI::vehicles.Clear();	//whichever is left, cannot be computed
@@ -2009,7 +2009,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 				});
 
 				if (TimeLapse::enabled)
-					saveScreenshot = true;
+					InputControl::saveScreenshot = true;
 			#endif
 		break;
 	}

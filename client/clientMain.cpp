@@ -104,18 +104,7 @@ extern "C"
 Timer::Time applicationStart;
 
 
-#ifdef _DEBUG
-namespace Debug
-{
-	float3			lastClickPoint;
-	Grid::LCellIdI	lastClickCell;
-}
-#endif
 
-
-Timer::Time rightMouseDragBegun;
-bool rightMouseDragged = false;
-int2 rightMouseDragFrom;
 
 
 
@@ -192,200 +181,6 @@ namespace LocalApplicationInterface
 //void LogEvent(const EventClass&type,  const Objects::WorldEntity*e, const String&_event);
 
 
-
-bool CanEnableAtAll()
-{
-	return Network::client.IsConnected();
-
-}
-
-static void SendDirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, UINT8 flags, Objects::Vehicle::mode_t mode)
-{
-	Protocol::EntityDirectCommand	cmd;
-	cmd.id = v->id;
-	cmd.mode = (UINT16)mode;
-	cmd.path = targets;
-	cmd.directFlags = flags;
-	Network::Channels::entityDirectCommand.SendTo(Network::client,cmd);
-}
-
-
-bool	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Grid::LCellIdI target, UINT8 flags)
-{
-	if (prev == target)
-		return true;
-	Buffer0<Objects::PathNode>		path;
-	{
-		bool tooLong;
-		bool foundPath;
-
-		if (v->IsVehicle())
-		{
-			foundPath = Objects::AppendShortestPathI((const Objects::Vehicle*)v.get(),prev,target,path,false,&tooLong);
-		}
-		else
-		{
-			#ifndef NO_SATELLITES
-				if (v->IsSatellite())
-					foundPath = Objects::AppendShortestPathI((const Objects::Satellite*)v.get(),prev,target.stackID,path,false,&tooLong);
-				else
-			#endif
-				FATAL__("Routing not implemented for "+v->GetTypeName());
-		}
-		if (!foundPath)
-		{
-			if (!World::actual.LowCellIsClearIgnoreStructure(target) && target.height+1 <= Grid::CellStack::TopHeight)
-			{
-				target++;
-				return MoveVehicleTo(v,prev,target,flags);
-			}
-			LogEvent(EventClass::Preset::commandRejected,v.get(),"Unable to find route to designated destination");
-			//SendDirectTo(v,target,false,false,Objects::CursorMode::Idle);	//maybe some error in the client
-			return false;
-		}
-		if (!tooLong)
-			SendDirectTo(v,target,flags,Objects::CursorMode::Idle);	//all good
-		else
-		{
-			LogEvent(EventSignificance::Common,v.get(),"Splitting long path into parts");
-			static Buffer0<Grid::LCellIdI>	waypoints;
-			waypoints.Clear();
-			bool open = true;
-			for (index_t i = 0; i < path.GetLength(); i++)
-			{
-				if (!((i+1)%5))
-				{
-					waypoints << path[i].cell;
-					//SendDirectTo(v,path[i].cell,false,Objects::CursorMode::Idle);
-					open = false;
-				}
-				else
-					open = true;
-			}
-
-			if (open)
-				waypoints << path.Last().cell;
-				//SendDirectTo(v,path.Last().cell,false,Objects::CursorMode::Idle);
-			SendDirectTo(v,waypoints.ToRef(),flags,Objects::CursorMode::Idle);
-		}
-	}
-	return true;
-}
-
-
-namespace LocalApplicationInterface
-{
-	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, UINT8 flags, Objects::Vehicle::mode_t mode, bool interactive)
-	{
-		if (!v)
-			return false;
-		DBG_ASSERT__(!RuntimeConfig::aiMode || !Network::newRoundRequested);
-		const bool moveTo = mode == Objects::CursorMode::Idle && !(flags & Protocol::DirectFlags::LeftClick);
-
-		if (v->IsMobile() && moveTo)
-		{
-			Objects::PMobileEntity me = To<Objects::MobileEntity>::Cast(v);
-
-			#ifdef HAS_WINDOW
-			#ifndef NO_SATELLITES
-				if (interactive && me->IsSatellite() && !me->HasMotionTasks())
-				{
-					Objects::PSatellite sat = To<Objects::Satellite>::Cast(me);
-					if (sat->IsSkyHub())
-					{
-						Objects::PSkyHub hub = To<Objects::SkyHub>::Cast(me);
-						if (!hub->connectedTo.expired())
-						{
-							TUniqueID vid = v->id;
-							Array<Grid::LCellIdI> pathCopy = targets;
-							Grid::LCellIdI sourceLoc = me->GetLastPointOfOrigin();
-							Grid::LCellIdI originLoc = me->location;
-							HUD::Dialog::Confirm(me->GetNiceName()+" is currently tethered to "+hub->connectedTo.lock()->CastToStructure()->GetNiceName()+". The link keeps it afloat for free, and supplies fuel to distribute to other nearby satellites."
-											" Moving the satellite will sever this link, and require it to be supplied by another hub satellite. Please confirm.",[vid,pathCopy,detailedPath,leftClick,mode]()
-											{
-												DirectTo(Objects::GetEntity(vid),pathCopy,detailedPath,leftClick,mode,false);
-											},[vid,sourceLoc,originLoc]()->HUD::Dialog::CheckResult
-											{
-												Objects::PWorldEntity e = Objects::GetEntity(vid);
-												if (!e || !e->IsMobile())
-													return HUD::Dialog::CheckResult::Abort;
-												Objects::PMobileEntity me = To<Objects::MobileEntity>::Cast(e);
-												if (e->location != originLoc || me->GetLastPointOfOrigin() != sourceLoc)
-													return HUD::Dialog::CheckResult::Abort;
-												if (!RuntimeConfig::IsInAnyCommandPhase() || Objects::Faction::mine->requestedNewRound)
-													return HUD::Dialog::CheckResult::OkayNotRightNow;
-												return HUD::Dialog::CheckResult::OkayContinue;
-											});
-							return false;
-						}
-					}
-				}
-			#endif
-			#endif
-
-			if (!(flags & Protocol::DirectFlags::Detailed))
-			{
-				#ifdef HAS_WINDOW
-					Grid::LCellIdI start = Objects::Commands::GetPointOfOrigin(*me);
-				#else
-					Grid::LCellIdI start = me->GetLastPointOfOrigin();
-				#endif
-				foreach (targets,t)
-				{
-					if (!MoveVehicleTo(me,start,*t,flags))
-						return false;
-					start = *t;
-				}
-			}
-			else
-				SendDirectTo(v,targets,flags,Objects::CursorMode::Idle);
-		}
-		else
-		{
-			SendDirectTo(v,targets,flags,mode);
-		}
-
-		#ifdef HAS_WINDOW
-			Objects::DisableModes(Network::ControlEnabled());
-			if (moveTo)
-				Tutorial::ShowMessage("Move To");
-		#endif
-		return true;
-	}
-
-
-	UINT8	AssembleMotionFlags(bool detailedPath, bool leftClick, bool clearSafeTasks)
-	{
-		UINT8 flags = 0;
-		if (detailedPath)
-			flags |= Protocol::DirectFlags::Detailed;
-		if (leftClick)
-			flags |= Protocol::DirectFlags::LeftClick;
-		if (clearSafeTasks)
-			flags |= Protocol::DirectFlags::ClearSafeTasks;
-		return flags;
-	}
-
-	
-	UINT8	AssembleMotionFlags(bool detailedPath, bool leftClick)
-	{
-		UINT8 flags = 0;
-		if (detailedPath)
-			flags |= Protocol::DirectFlags::Detailed;
-		if (leftClick)
-			flags |= Protocol::DirectFlags::LeftClick;
-		#ifdef HAS_WINDOW
-			if (!Objects::ShouldQueueCommands())
-				flags |= Protocol::DirectFlags::ClearSafeTasks;
-		#endif
-		return flags;
-	}
-
-	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, UINT8 flags, Objects::Vehicle::mode_t mode)
-	{
-		return DirectTo(v, targets, flags, mode, true);
-	}
-}
 
 namespace ApplicationInterface
 {
@@ -619,7 +414,6 @@ void	SignalRoundEndOrMaximize()
 
 }
 
-void	InnerUndoTask(const Objects::PWorldEntity&e, bool force);
 
 namespace ApplicationInterface
 {
@@ -745,7 +539,7 @@ namespace ApplicationInterface
 
 	void	SignalDropLastTask(const Objects::PWorldEntity&e)
 	{
-		InnerUndoTask(e,false);
+		InputControl::InnerUndoTask(e,false);
 	}
 
 	void	SignalDropAllTasks(const Objects::PWorldEntity&e)
@@ -819,10 +613,6 @@ namespace ApplicationInterface
 
 
 
-/**
-Retrieves the low resolution cell id of the cell under the current cursor location
-*/
-bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool includeEntities);
 
 
 
@@ -938,8 +728,6 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 	}
 
 
-	bool saveScreenshot = false;
-	bool saveTransparentScreenshot = false;
 
 	namespace TimeLapse
 	{
@@ -1582,18 +1370,18 @@ bool loop()
 				if (Engine::mouse.buttons.right_down || Engine::mouse.buttons.middle_down)
 				{
 					Camera::AbortTargetedTranslation();
-					if (!rightMouseDragged)
+					if (!InputControl::rightMouseDragged)
 					{
-						float2 delta = Engine::mouse.location.absolute - rightMouseDragFrom;
+						float2 delta = Engine::mouse.location.absolute - InputControl::rightMouseDragFrom;
 						if (delta.GetLength() > 20.f)
 						{
-							rightMouseDragged = true;
+							InputControl::rightMouseDragged = true;
 						}
 					}
-					if (rightMouseDragged)
+					if (InputControl::rightMouseDragged)
 					{
 						float2 delta = (Engine::mouse.location.windowRelative - Engine::mouse.previous_location.windowRelative);
-						rightMouseDragged = true;
+						InputControl::rightMouseDragged = true;
 						delta.x *= Engine::mouse.speed.x * -100.f;
 						delta.y *= Engine::mouse.speed.y * -100.f;
 						delta *= 0.5f;
@@ -1723,7 +1511,7 @@ bool loop()
 			}
 
 
-			Objects::Renderer::RefreshFactionColors(!saveScreenshot);
+			Objects::Renderer::RefreshFactionColors(!InputControl::saveScreenshot);
 			Objects::Renderer::RenderScene();
 
 
@@ -1784,7 +1572,7 @@ bool loop()
 					if (Objects::selectedVehicle /*&& Objects::selectedVehicle->base->moveOnWater*/)
 						includeWater = true;
 				Grid::LCellIdI loc;
-				Objects::choiceVis.hasArrowCellTarget = GetLowCellUnderCursor(loc,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode);
+				Objects::choiceVis.hasArrowCellTarget = InputControl::GetLowCellUnderCursor(loc,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode);
 				if (Objects::choiceVis.hasArrowCellTarget && loc != Objects::choiceVis.arrowCellTarget.cellLocation)
 					Objects::choiceVis.arrowCellTarget = Objects::TrajectoryEndPoint(loc);
 				if (Objects::choiceVis.hasArrowCellTarget)
@@ -1864,7 +1652,7 @@ bool loop()
 
 
 
-			if (HUD::showControlsAndContacts && !saveScreenshot)
+			if (HUD::showControlsAndContacts && !InputControl::saveScreenshot)
 			{
 				static const String line = "(C) Stefan Elsen; v" PRODUCT_VERSION "; Compiled "+String(__TIMESTAMP__);
 				//textout.locate(0.f,1.f - textout.GetScaledHeight());
@@ -1876,7 +1664,7 @@ bool loop()
 
 			}
 
-			if (saveScreenshot)
+			if (InputControl::saveScreenshot)
 			{
 				if (!TimeLapse::enabled 
 					|| 
@@ -1887,7 +1675,7 @@ bool loop()
 					)
 					)
 				{
-					saveScreenshot = false;
+					InputControl::saveScreenshot = false;
 				}
 				//display.SetBackbufferClearColor(0,0,0,0);
 
@@ -1900,7 +1688,7 @@ bool loop()
 					//	LogEvent(EventClass::Preset::uncommon,"screenshot "+String(RuntimeConfig::phase.ToString())+", "+String(Animation::AllDone())+", "+String(Explosions::NoneActive()));
 					std::shared_ptr<std::pair<Image,bool> > capture(new std::pair<Image,bool>());
 					display.Capture(capture->first);
-					capture->second = saveTransparentScreenshot;
+					capture->second = InputControl::saveTransparentScreenshot;
 
 					storageThread.Run(capture);
 				}
@@ -2088,74 +1876,6 @@ void MyFatal(const FatalDescriptor&descriptor)
 	}
 
 
-	bool GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool includeEntities)
-	{
-		float3 b,d;
-		Camera::scene.ScreenToVector(Engine::mouse.location.windowRelative * 2.f - 1.f,b,d);
-		if (!Vec::zero(d))
-		{
-			Vec::normalize(d);
-
-			float distance = std::numeric_limits<float>::max();
-
-
-			bool rs = false;
-
-			if (includeEntities)
-			{
-				Objects::ForeachWorldEntity([&result,&rs,b,d,&distance](const Objects::PWorldEntity&v)
-				{
-					if (v->TestIntersection(b,d,distance))
-					{
-						result = v->location;
-						rs = true;
-					}
-				},true);
-			}
-
-			#ifndef NO_SATELLITES
-			if (Camera::SkyGridIsVisible())
-			{
-				index_t stackID = Grid::low.TestGridIntersection(b, d, Grid::visibleOrbitGrid.orbit, distance);
-				if (stackID != InvalidIndex && Vec::dot(Grid::low.cells[stackID].centerVertex.xyz,d) < 0.f)
-				{
-					result = Grid::LCellIdI((UINT32)stackID,Grid::FromRadius(Grid::visibleOrbitGrid.orbit));
-					return true;
-				}
-			}
-			#endif
-
-			{
-				M::TVec3<> normal;
-				if (VisualTerrain::TestHullIntersection(b, d, distance, normal, includeWater))
-				{
-					#ifdef _DEBUG
-						Debug::lastClickPoint = b + d * distance;
-					#endif
-					//if (test)
-						//return false;
-					float3 p = b + d * distance;
-					float height = p.GetLength();
-					distance = std::numeric_limits<float>::max();
-					index_t stackID = VisualTerrain::TestLowGridIntersection(b, d, height, distance);
-					if (stackID != InvalidIndex)
-					{
-						result = Grid::LCellIdI((UINT32)stackID,Grid::HeightFromRadius(height));
-
-						#ifdef _DEBUG
-							Debug::lastClickCell = result;
-						#endif
-
-						return true;
-					}
-				}
-			}
-			return rs;
-		}
-		return false;
-	}
-
-
 	/**
 	Primary entry point used when clicking anywhere on the window
 	*/
@@ -2183,7 +1903,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 			Grid::LCellIdI	target;
 			bool includeWater = true;
 
-			if (GetLowCellUnderCursor(target,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode))
+			if (InputControl::GetLowCellUnderCursor(target,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode))
 			{
 				int h;
 				if (!Objects::selectedEntity->CanSpawnInGrid() && Objects::selectedEntity->CanSpawnAboveGrid(h))
@@ -2216,7 +1936,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 				if (base)
 				{
 					Grid::LCellIdI	target;
-					if (GetLowCellUnderCursor(target,true,true))
+					if (InputControl::GetLowCellUnderCursor(target,true,true))
 					{
 						ApplicationInterface::DirectTo(Objects::selectedEntity,target,false,true);
 						return;
@@ -2349,305 +2069,15 @@ void MyFatal(const FatalDescriptor&descriptor)
 		}
 	}
 
-	void SaveScreenshot()
-	{
-		saveScreenshot =true;
-		saveTransparentScreenshot = Engine::input.pressed[Key::Shift];
-	}
-
-	void ToggleCameraLock()
-	{
-		if (TimeLapse::enabled)
-		{
-			LogEvent(EventClass::Preset::error,"Cannot alter camera lock while time-lapse is active");
-			return;
-		}
-		if (!Camera::locked)
-		{
-			HUD::Dialog::Confirm("Enabling camera lock will disallow all changes to the active perspective until unlocked."
-							"Press F4 again to unlock. Commence camera lock?",[](){Camera::locked=true;},
-							[]()->HUD::Dialog::CheckResult {if (!Network::client.IsConnected()) return HUD::Dialog::CheckResult::Abort; return HUD::Dialog::CheckResult::OkayContinue;});
-		}
-		else
-			Camera::locked = false;
-	}
-
-
-	void ToggleTimeLapse()
-	{
-		if (TimeLapse::enabled)
-		{
-			TimeLapse::enabled = false;
-			Camera::locked = false;
-			HUD::WindowStack::SignalSituationChange();
-			LogEvent(EventClass::Preset::uncommon,"Time lapse disabled");
-		}
-		else
-		{
-			if (!Network::amSpectator || !Network::client.IsConnected())
-			{
-				LogEvent(EventClass(EventSignificance::Important,EventFlavor::UserError),"Time lapse recording cannot be enabled if the local client is not configured as spectator");
-			}
-			else
-			{
-				PathString outDirName = PathString(Logging::TimeStamp(true));
-				if (TimeLapse::customBasePath.IsNotEmpty())
-				{
-					FileSystem::Folder f = FileSystem::CreateDirectory(TimeLapse::customBasePath);
-					if (f.IsValidLocation())
-						outDirName = f.FindFile(outDirName,false)->GetLocation();
-					else
-					{
-						LogEvent( EventClass::Preset::commandRejected , "Unable to find folder '"+String(TimeLapse::customBasePath)+". Defaulting to default Documents folder");
-						outDirName = RuntimeConfig::ConfigFile("timelapses/"+outDirName);
-					}
-				}
-				else
-					outDirName = RuntimeConfig::ConfigFile("timelapses/"+outDirName);
-
-				int framesPerSecond = (int)ceil(1.f / std::max(0.001f,TimeLapse::frameDelaySeconds));
-				HUD::Dialog::Confirm("Timelapse mode will capture roughly "+String(framesPerSecond)+" frame(s) per second during animation phase, but remain inactive during all other phases. The camera will be locked in place.\nProceed?",
-				[outDirName]()
-				{
-					TimeLapse::runningNumber = 0;
-					TimeLapse::enabled = true;
-					Camera::locked = true;
-					TimeLapse::basePath = outDirName;
-					FileSystem::CreateDirectory(outDirName);
-					LogEvent(EventClass::Preset::uncommon,"Time lapse enabled. Writing to "+String(outDirName));
-					HUD::Dialog::PermanentMessage("Time lapse recording is enabled. Camera is locked. Press F2 to end time lapse recording",[](){return TimeLapse::enabled ? HUD::Dialog::CheckResult::OkayContinue : HUD::Dialog::CheckResult::Abort;});
-				});
-			}
-		}
-	}
-
-
-
-	void ToggleSeeThrough()
-	{
-		bool enable = !VisualTerrain::SeeThrough::IsEnabled();
-		VisualTerrain::SeeThrough::Update(enable, VisualTerrain::SeeThrough::LocateCamera());
-		if (enable)
-			Tutorial::ShowMessage("Clip Terrain");
-	}
-
-	void ViewDown()
-	{
-		if (VisualTerrain::SeeThrough::GetFocusPoint().height > -Grid::CellStack::HalfRange)
-		{
-			VisualTerrain::SeeThrough::Update(true, VisualTerrain::SeeThrough::LocateCamera()-1);
-			Objects::UpdateChoices(Network::ControlEnabled());
-			Tutorial::ShowMessage("Clip Terrain");
-		}
-	}
-
-	void ViewUp()
-	{
-		if (VisualTerrain::SeeThrough::GetFocusPoint().height < Grid::CellStack::HalfRange)
-		{
-			VisualTerrain::SeeThrough::Update(true, VisualTerrain::SeeThrough::LocateCamera() + 1);
-			Objects::UpdateChoices(Network::ControlEnabled());
-			Tutorial::ShowMessage("Clip Terrain");
-		}
-	}
-
 
 #endif
 
 
 
 
-void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
-{
-	if (!e)
-		return;
-	if (e->IsMobile())
-	{
-		#ifdef HAS_WINDOW
-			if (Objects::CommonCmd::IsModeActive(Objects::CursorMode::BuildBlockMode) || Objects::CommonCmd::IsModeActive(Objects::CursorMode::RemoveBlockMode))
-			{
-				Objects::cellSelection.EraseLast();
-				return;
-			}
-		#endif
-		Objects::PMobileEntity m = To<Objects::MobileEntity>::Cast(e);
-		if (m->HasTasks())
-		{
-			#ifdef HAS_WINDOW
-			if (!force)
-			{
-				Objects::PMobileEntity v = m;
-				if (v->constructionRoundCounter > 0 
-					&& v->myTasks.Count() == 1
-					&& v->myTasks.GetNewest().IsJob() 
-					&& v->myTasks.GetNewest().job->resourceCostLeft > 0)
-				{
-					TUniqueID id = v->id;
-					HUD::Dialog::Confirm("Are you sure you wish to clear the current production task? The invested resources will be lost.",[id]()
-					{
-						InnerUndoTask(Objects::GetEntity(id),true);
-					},
-					[id]()->HUD::Dialog::CheckResult
-					{
-						if (!Network::client.IsConnected() || !Objects::GetEntity(id))
-							return HUD::Dialog::CheckResult::Abort;
-						if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase || Network::newRoundRequested)
-							return HUD::Dialog::CheckResult::OkayNotRightNow;
-						return HUD::Dialog::CheckResult::OkayContinue;
-					});
-					return;
-				}
-				else
-				{
-			
-				}
-		
-			}
-			#endif
-
-			//SignalDropLastTask(v);
-			//v->DropLastTask();
-			bool isJob = m->myTasks.GetNewest().IsJob();
-			Network::Channels::dropTasks.SendTo(Network::client, Protocol::DropTasks( m->id, Protocol::DropMode::LastTask));
-			if (isJob && m->myTasks.Count() > 1 
-				&& m->myTasks[m->myTasks.Count() - 2].type == Objects::MobileEntity::Task::MoveTo)
-			{
-				Network::Channels::dropTasks.SendTo(Network::client, Protocol::DropTasks( e->id, Protocol::DropMode::LastTask));
-			}
-		}
-	}
-	else
-		Network::Channels::dropTasks.SendTo(Network::client, Protocol::DropTasks( e->id, Protocol::DropMode::LastTask));
-}
-
 
 #ifdef HAS_WINDOW
 
-	void ToggleControlGUI()
-	{
-		HUD::showControlsAndContacts = !HUD::showControlsAndContacts;
-		HUD::HexGrid::Configure(Objects::selectedEntity);
-		OnTutorialsChanged();
-	}
-
-	void BeginCameraDrag()
-	{
-		Tutorial::lastDelayingEvent = timer.Now();
-		rightMouseDragged = false;
-		rightMouseDragBegun = timer.Now();
-		rightMouseDragFrom = Engine::mouse.location.absolute;
-	}
-
-	template <bool AlsoControlsUnits>
-	void EndCameraDrag()
-	{
-		Tutorial::lastDelayingEvent = timer.Now();
-
-		if (!AlsoControlsUnits)
-			return;
-
-
-
-		if (timer.GetSecondsSince(rightMouseDragBegun) < 0.2f && !rightMouseDragged)
-		{
-			if (Objects::DisableModes(Network::ControlEnabled()))
-			{
-				OnTutorialsChanged();
-				return;
-			}
-
-			Grid::LCellIdI	target;
-			if (Objects::selectedEntity)
-			{
-				Objects::PTurretBase b = Objects::selectedEntity->GetTurretBase();
-				if (b && b->turret->CanAttack() && b->turret->trajectoryType != Objects::TrajectoryType::VerticalBeam)
-				{
-					float3 b, d;
-					Camera::scene.ScreenToVector(Engine::mouse.location.windowRelative * 2.f - 1.f, b, d);
-					if (!Vec::zero(d))
-					{
-						Vec::normalize(d);
-
-						float distance = std::numeric_limits<float>::max();
-
-						Objects::PWorldEntity possibleTarget = Objects::GetRayIntersection(b,d,distance);
-						if (possibleTarget && !possibleTarget->isOwnedByMe && Objects::selectedEntity->CanHit( Objects::TrajectoryEndPoint( possibleTarget->location )))
-						{
-							LocalApplicationInterface::DirectTo(Objects::selectedEntity,possibleTarget->location,
-								LocalApplicationInterface::AssembleMotionFlags(false,true),
-								Objects::CursorMode::AttackMode);
-							return;
-						}
-					}
-					if (Objects::selectedEntity->IsTower())
-					{
-						if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,true))
-						{
-							LocalApplicationInterface::DirectTo(Objects::selectedEntity,target,
-								LocalApplicationInterface::AssembleMotionFlags(false,true),
-								Objects::CursorMode::AttackMode);
-							return;
-						}
-					}
-				}
-				else
-				{
-					if (Objects::selectedEntity->CastToProducer() && !Objects::selectedMobileEntity)
-					{
-						if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,false))
-						{
-							ApplicationInterface::DirectTo(Objects::selectedEntity,target,false,false);
-							return;
-						}
-					}
-				}
-				
-		
-			}
-
-			if (Objects::selectedMobileEntity 
-				&& Objects::VehicleCanBeDirected()	//TODO: rename/relocate for mobile entities
-			)
-			{
-
-				if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,true))
-				{
-					//Grid::LCellIdI	target((UINT32)cellID,Grid::FromRadius(height));
-					int h;
-					if (!Objects::selectedMobileEntity->CanSpawnInGrid() && Objects::selectedMobileEntity->CanSpawnAboveGrid(h))
-						target.height = h;
-					LocalApplicationInterface::DirectTo(Objects::selectedMobileEntity,target, LocalApplicationInterface::AssembleMotionFlags(false,false),Objects::activeCursorMode);
-				}
-			}
-		}
-
-	}
-
-	void	UndoTask()
-	{
-		if (Objects::DisableModes(Network::ControlEnabled()))
-		{
-			OnTutorialsChanged();
-			return;
-		}
-
-		InnerUndoTask(Objects::selectedEntity,false);
-	}
-
-	void	QueryAndSendChatMessage()
-	{
-		if (HUD::WindowStack::IsModal())
-			return ;
-		
-		HUD::Dialog::Query("Please enter message","",Network::allowedChatCharacters,[](const String&candidate)->bool
-			{
-				return candidate.GetLength() <= 256;
-			},
-			Network::BroadcastChatMessage
-		);
-
-
-	}
 
 	namespace LocalApplicationInterface
 	{
@@ -2727,7 +2157,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 		if (!HUD::WindowStack::IsVisible(HUD::Menu::main))
 		{
 			if (!HUD::showControlsAndContacts)
-				ToggleControlGUI();	
+				InputControl::ToggleControlGUI();	
 			HUD::WindowStack::Show(HUD::Menu::main);
 		}
 	
@@ -3208,34 +2638,34 @@ int main( int argc, const char* argv[])
 
 					Engine::input.Bind(Key::G, Camera::ToggleOrbit);
 
-					Engine::input.Bind(Key::PageDown, ViewDown);
-					Engine::input.Bind(Key::PageUp, ViewUp);
+					Engine::input.Bind(Key::PageDown, InputControl::ViewDown);
+					Engine::input.Bind(Key::PageUp, InputControl::ViewUp);
 
 					Engine::input.Bind(Key::Alt, InputControl::ResumeBatchConstruction, InputControl::AbortBatchConstruction);
 
-					Engine::input.Bind(Key::Backspace, UndoTask);
+					Engine::input.Bind(Key::Backspace, InputControl::UndoTask);
 					Engine::input.Bind(Key::Escape, AbortMode);
 					Engine::input.Bind(Key::Enter, SignalRoundEndOrMaximize);
 					Engine::input.Bind(Key::Return, SignalRoundEndOrMaximize);
 					Engine::input.Bind(Key::Tab, HUD::FactionTable::Show);
-					Engine::input.Bind(Key::T,[](){}, QueryAndSendChatMessage);
+					Engine::input.Bind(Key::T,[](){}, InputControl::QueryAndSendChatMessage);
 					Engine::input.Bind(Key::R,Camera::ToggleAutoRotation);
 		//			Engine::input.Bind(Key::R,ToggleResourceView);
-					Engine::input.Bind(Key::Ctrl,ToggleSeeThrough);
+					Engine::input.Bind(Key::Ctrl,InputControl::ToggleSeeThrough);
 
-					Engine::input.Bind(Key::H,ToggleControlGUI);
+					Engine::input.Bind(Key::H,InputControl::ToggleControlGUI);
 
 					Engine::input.BindCtrl(Key::C,ConfigurationMode::OnCopy);
 					Engine::input.BindCtrl(Key::V,ConfigurationMode::OnPaste);
 
 					Engine::input.Bind(Key::MouseButton0, Select, HUD::WindowStack::HandleMouseUp);
 					Engine::input.BindCtrl(Key::MouseButton0, Select);
-					Engine::input.Bind(Key::RightMouseButton, BeginCameraDrag,EndCameraDrag<true>);
-					Engine::input.Bind(Key::MiddleMouseButton, BeginCameraDrag,EndCameraDrag<false>);
+					Engine::input.Bind(Key::RightMouseButton, InputControl::BeginCameraDrag,InputControl::EndCameraDrag<true>);
+					Engine::input.Bind(Key::MiddleMouseButton, InputControl::BeginCameraDrag,InputControl::EndCameraDrag<false>);
 
-					Engine::input.Bind(Key::F4, ToggleCameraLock);
-					Engine::input.Bind(Key::F3, SaveScreenshot);
-					Engine::input.Bind(Key::F2,ToggleTimeLapse);
+					Engine::input.Bind(Key::F4, InputControl::ToggleCameraLock);
+					Engine::input.Bind(Key::F3, InputControl::SaveScreenshot);
+					Engine::input.Bind(Key::F2, InputControl::ToggleTimeLapse);
 
 					#ifdef RAYTRACE
 						Engine::input.Bind(Key::Up,ZoomIn);
