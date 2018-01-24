@@ -4,6 +4,7 @@
 #ifdef HAS_WINDOW
 #include <math/vector.h>
 #include <observer.h>
+#include <sharedContainer.h>
 
 namespace Objects
 {
@@ -31,6 +32,46 @@ namespace Objects
 	void					SignalShiftPressed();
 	void					SignalShiftReleased();
 	bool					ShouldQueueCommands();
+
+
+
+	template <typename T>
+	inline void GetIterateableEntity(Objects::PWorldEntity&rs, index_t&i, const SharedContainer<T>&list)
+	{
+		if (rs)
+			return;
+		if (i < list.Count())
+		{
+			rs = list[i];
+			return;
+		}
+		i -= list.Count();
+	}
+
+	
+
+	template <typename T>
+	inline void FindIterateableEntity(index_t&offset,index_t&rs, const Objects::PWorldEntity&e, const SharedContainer<T>&list)
+	{
+		if (rs != InvalidIndex)
+			return;
+		rs = list.GetIndexOf(e);
+		if (rs == InvalidIndex)
+			offset += list.Count();
+		else
+			rs += offset;
+	}
+
+
+	count_t			CountIterateableEntities();
+	PWorldEntity	GetIterateableEntity(index_t i);
+	index_t			FindIterateableEntity(const PWorldEntity&e);
+	void			SelectAndFocusNextIdle(bool controlsEnabled);
+	void			SelectAndFocusPrev(bool controlsEnabled);
+	void			SelectAndFocusNext(bool controlsEnabled);
+	bool			IsIdle(const PWorldEntity&e);
+
+
 }
 
 

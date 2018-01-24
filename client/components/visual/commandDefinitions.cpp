@@ -122,7 +122,7 @@ namespace Objects
 										PVehiclePlant plant = To<VehiclePlant>::DynamicCast(GetEntity(myID));
 										if (!plant || plant->IsDeadOrGhost())
 											return HUD::Dialog::CheckResult::Abort;
-										if (!Objects::controlIsEnabled)
+										if (!Network::ControlEnabled())
 											return HUD::Dialog::CheckResult::OkayNotRightNow;
 										return HUD::Dialog::CheckResult::OkayContinue;
 									}
@@ -1073,7 +1073,7 @@ namespace Objects
 								return HUD::Dialog::CheckResult::Abort;
 							if (p->queue.IsEmpty() || p->queue.First().id != id)
 								return HUD::Dialog::CheckResult::Abort;
-							if (!controlIsEnabled)
+							if (!Network::ControlEnabled())
 								return HUD::Dialog::CheckResult::OkayNotRightNow;
 							return HUD::Dialog::CheckResult::OkayContinue;
 						}

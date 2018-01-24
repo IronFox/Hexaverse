@@ -14,7 +14,7 @@
 namespace Objects
 {
 
-	bool						controlIsEnabled = false;
+	//bool						controlIsEnabled = false;
 	Buffer0<Choice>				movementChoices;
 	TChoiceVisualization		choiceVis;
 	Buffer0<Grid::HCellIdU>		buildCandidates, 
