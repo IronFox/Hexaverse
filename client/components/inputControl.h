@@ -10,10 +10,24 @@
 
 namespace LocalApplicationInterface
 {
-	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, UINT8 flags, Objects::Vehicle::mode_t mode, bool interactive);
-	UINT8	AssembleMotionFlags(bool detailedPath, bool leftClick, bool clearSafeTasks);
-	UINT8	AssembleMotionFlags(bool detailedPath, bool leftClick);
-	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, UINT8 flags, Objects::Vehicle::mode_t mode);
+	bool		DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, UINT8 flags, Objects::Vehicle::mode_t mode, bool interactive);
+	UINT8		AssembleMotionFlags(bool detailedPath, bool leftClick, bool clearSafeTasks);
+	UINT8		AssembleMotionFlags(bool detailedPath, bool leftClick);
+	bool		DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, UINT8 flags, Objects::Vehicle::mode_t mode);
+
+	extern bool pauseAutomaticRoundProgression;
+
+	#ifdef HAS_WINDOW
+		void	QueryNickname();
+		bool	QueryNicknameIfEmpty();
+		void	RefreshSessionView();
+	#endif
+	void		SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird shit
+	bool		SeeingHostileActivity();																		
+	/**
+	Triggered when entering command mode and animations have finished (whichever of those events happens later)
+	*/
+	void		OnPlayerControlBegin();
 }
 
 
@@ -106,6 +120,11 @@ namespace InputControl
 		void	AbortBatchConstruction();
 		void	OnWheel(short delta);
 
+
+		void	AbortMode();
+		void	ReallyStartNewFaction();
+		void	StartNewFaction();
+		void	ToggleResourceView();
 
 	#endif
 

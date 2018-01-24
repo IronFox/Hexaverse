@@ -112,60 +112,6 @@ Timer::Time applicationStart;
 
 
 
-namespace LocalApplicationInterface
-{
-	bool pauseAutomaticRoundProgression=false;
-
-	#ifdef HAS_WINDOW
-		void						QueryNickname();
-		bool						QueryNicknameIfEmpty();
-		void						RefreshSessionView();
-		//void						OnSelectionChange(bool stateChangeOnly);
-	#else
-
-	#endif
-
-	void							SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird shit
-
-
-	bool			SeeingHostileActivity()
-	{
-		#ifdef HAS_WINDOW
-			return HUD::HexGrid::EventLog::HasRegisteredHostileActivity();
-		#else
-			return false;
-		#endif
-	}
-																				
-	/**
-	Triggered when entering command mode and animations have finished (whichever of those events happens later)
-	*/
-	void	OnPlayerControlBegin()
-	{
-	//	LogEvent(EventSignificance::Debug,"OnPlayerControlBegin("+String(RuntimeConfig::roundNumber)+","+String(RuntimeConfig::techniteSubRoundNumber)+")");
-		LogEvent(EventSignificance::Debug,"OnPlayerControlBegin("+RuntimeConfig::roundNumber.ToString()+")");
-
-		#ifdef HAS_WINDOW
-			GlobalEvents::invalidateObjectCache();
-			HUD::HexGrid::RefreshButtonState();
-		#endif
-		#ifndef NO_SATELLITES
-			Objects::RefreshSkyHubConnections();
-		#endif
-		Animation::UpdateAutomation(CLOCATION);
-		Objects::CheckMobileEntitySanity();
-		if (RuntimeConfig::autoNewRound && ApplicationInterface::ShouldSignalRoundEnd() && !pauseAutomaticRoundProgression && !SeeingHostileActivity())
-			ApplicationInterface::SignalRoundEnd();
-
-		pauseAutomaticRoundProgression = false;
-
-		#ifdef HAS_WINDOW
-			if (RuntimeConfig::tutorialMode)
-				Tutorial::SignalRoundStart();
-		#endif
-	}
-}
-
 #ifdef HAS_WINDOW
 
 	void	OnTutorialsChanged()
@@ -2141,57 +2087,6 @@ void MyFatal(const FatalDescriptor&descriptor)
 		}
 	}
 
-	void	AbortMode()
-	{
-		Camera::StopAutoRotation();
-		if (HUD::WindowStack::CloseTopModal())
-		{
-			LocalApplicationInterface::QueryNicknameIfEmpty();
-			return;
-		}
-		if (Objects::DisableModes(Network::ControlEnabled()))
-			return;
-
-
-
-		if (!HUD::WindowStack::IsVisible(HUD::Menu::main))
-		{
-			if (!HUD::showControlsAndContacts)
-				InputControl::ToggleControlGUI();	
-			HUD::WindowStack::Show(HUD::Menu::main);
-		}
-	
-		HUD::WindowStack::SignalSituationChange();
-	}
-
-	#ifdef HAS_WINDOW
-		void	ReallyStartNewFaction()
-		{
-			if (Network::haveFaction)
-				Network::AbandonCurrentFaction();
-
-			//technite menu goes here
-
-			//Network::StartNewFaction();
-		}
-		void	StartNewFaction()
-		{
-			if (Network::haveFaction)
-			{
-				HUD::Dialog::Confirm("You already are in control of a faction. If you start a new faction, your previous one will be abandoned. This process cannot be reversed. Continue?",
-							ReallyStartNewFaction,
-							[](){return Network::client.IsConnected() && Network::haveFaction ? HUD::Dialog::CheckResult::OkayContinue : HUD::Dialog::CheckResult::Abort;});
-			}
-			else
-				ReallyStartNewFaction();
-
-		}
-	#endif
-
-	void ToggleResourceView()
-	{
-		HUD::ResourceGauges::resourcesAsList = !HUD::ResourceGauges::resourcesAsList;
-	}
 
 #endif
 
@@ -2644,7 +2539,7 @@ int main( int argc, const char* argv[])
 					Engine::input.Bind(Key::Alt, InputControl::ResumeBatchConstruction, InputControl::AbortBatchConstruction);
 
 					Engine::input.Bind(Key::Backspace, InputControl::UndoTask);
-					Engine::input.Bind(Key::Escape, AbortMode);
+					Engine::input.Bind(Key::Escape, InputControl::AbortMode);
 					Engine::input.Bind(Key::Enter, SignalRoundEndOrMaximize);
 					Engine::input.Bind(Key::Return, SignalRoundEndOrMaximize);
 					Engine::input.Bind(Key::Tab, HUD::FactionTable::Show);

@@ -16,6 +16,9 @@
 #include "visual/tutorial.h"
 #include "clientRuntimeConfig.h"
 #include "visual/commandDefinitions.h"
+#include "visual/hud/resourceGauges.h"
+#include "animation.h"
+#include "visual/hud/menu.h"
 
 void	OnTutorialsChanged();
 
@@ -31,6 +34,58 @@ void	OnTutorialsChanged();
 
 namespace LocalApplicationInterface
 {
+		bool pauseAutomaticRoundProgression=false;
+
+	#ifdef HAS_WINDOW
+		void						QueryNickname();
+		bool						QueryNicknameIfEmpty();
+		void						RefreshSessionView();
+		//void						OnSelectionChange(bool stateChangeOnly);
+	#else
+
+	#endif
+
+	void							SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird shit
+
+
+	bool			SeeingHostileActivity()
+	{
+		#ifdef HAS_WINDOW
+			return HUD::HexGrid::EventLog::HasRegisteredHostileActivity();
+		#else
+			return false;
+		#endif
+	}
+																				
+	/**
+	Triggered when entering command mode and animations have finished (whichever of those events happens later)
+	*/
+	void	OnPlayerControlBegin()
+	{
+	//	LogEvent(EventSignificance::Debug,"OnPlayerControlBegin("+String(RuntimeConfig::roundNumber)+","+String(RuntimeConfig::techniteSubRoundNumber)+")");
+		LogEvent(EventSignificance::Debug,"OnPlayerControlBegin("+RuntimeConfig::roundNumber.ToString()+")");
+
+		#ifdef HAS_WINDOW
+			GlobalEvents::invalidateObjectCache();
+			HUD::HexGrid::RefreshButtonState();
+		#endif
+		#ifndef NO_SATELLITES
+			Objects::RefreshSkyHubConnections();
+		#endif
+		Animation::UpdateAutomation(CLOCATION);
+		Objects::CheckMobileEntitySanity();
+		if (RuntimeConfig::autoNewRound && ApplicationInterface::ShouldSignalRoundEnd() && !pauseAutomaticRoundProgression && !SeeingHostileActivity())
+			ApplicationInterface::SignalRoundEnd();
+
+		pauseAutomaticRoundProgression = false;
+
+		#ifdef HAS_WINDOW
+			if (RuntimeConfig::tutorialMode)
+				Tutorial::SignalRoundStart();
+		#endif
+	}
+
+
 	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, UINT8 flags, Objects::Vehicle::mode_t mode, bool interactive)
 	{
 		if (!v)
@@ -907,6 +962,55 @@ namespace InputControl
 				Camera::Event::WheelAction(delta);
 		}
 
+
+		void	AbortMode()
+		{
+			Camera::StopAutoRotation();
+			if (HUD::WindowStack::CloseTopModal())
+			{
+				LocalApplicationInterface::QueryNicknameIfEmpty();
+				return;
+			}
+			if (Objects::DisableModes(Network::ControlEnabled()))
+				return;
+
+
+
+			if (!HUD::WindowStack::IsVisible(HUD::Menu::main))
+			{
+				if (!HUD::showControlsAndContacts)
+					InputControl::ToggleControlGUI();	
+				HUD::WindowStack::Show(HUD::Menu::main);
+			}
+	
+			HUD::WindowStack::SignalSituationChange();
+		}
+
+		void	ReallyStartNewFaction()
+		{
+			if (Network::haveFaction)
+				Network::AbandonCurrentFaction();
+
+			//technite menu goes here
+
+			//Network::StartNewFaction();
+		}
+		void	StartNewFaction()
+		{
+			if (Network::haveFaction)
+			{
+				HUD::Dialog::Confirm("You already are in control of a faction. If you start a new faction, your previous one will be abandoned. This process cannot be reversed. Continue?",
+							ReallyStartNewFaction,
+							[](){return Network::client.IsConnected() && Network::haveFaction ? HUD::Dialog::CheckResult::OkayContinue : HUD::Dialog::CheckResult::Abort;});
+			}
+			else
+				ReallyStartNewFaction();
+
+		}
+		void ToggleResourceView()
+		{
+			HUD::ResourceGauges::resourcesAsList = !HUD::ResourceGauges::resourcesAsList;
+		}
 
 
 	#endif
