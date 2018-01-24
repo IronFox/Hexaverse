@@ -8,12 +8,9 @@
 
 #include <grid/stack.h>
 #include "clientRuntimeConfig.h"
+#include <objects/satellite.h>
 #include "visual/hud/objectCommands.h"
 #include "visual/scene/terrain.h"
-#include "visual/objectSelection.h"
-#include <objects/entity.h>
-#include <objects/satellite.h>
-
 
 #include "timelapse.h"
 #include "clientEvents.h"
@@ -469,9 +466,6 @@ namespace Camera
 
 	void						Create()
 	{
-		#ifdef HAS_WINDOW
-			Objects::onSelectionChanged << [](){Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);};
-		#endif
 	}
 
 }

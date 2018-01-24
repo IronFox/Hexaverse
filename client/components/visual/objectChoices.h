@@ -9,7 +9,7 @@ namespace Objects
 {
 	struct Choice;
 
-	//extern bool		controlIsEnabled /*= false*/;
+	extern bool		controlIsEnabled /*= false*/;
 	extern Buffer0<Choice>			movementChoices;
 	extern TChoiceVisualization		choiceVis;
 	extern Buffer0<Grid::HCellIdI>	cellSelection;	//actually selected cells in either build or remove block mode
