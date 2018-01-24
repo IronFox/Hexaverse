@@ -1335,24 +1335,25 @@ namespace Objects
 			{
 				int maxHealth = v->GetMaxHealth();
 				bool isBuilding = v->IsBuilding();
-				const MobileEntityProducer*p= v->CastToProducer();
-				std::pair<int,int> progress2;
-				bool isBuilding2 = (p && p->IsBuilding(progress2));
-				if (isBuilding || v->health < maxHealth || isBuilding2)
+				std::pair<int,int> progress;
+				if (isBuilding)
+					progress = v->GetBuildingProgress();
+				else
+				{
+					const MobileEntityProducer*p= v->CastToProducer();
+					isBuilding = (p && p->IsBuilding(progress));
+				}
+
+				if (isBuilding && progress.second <= 1)
+					isBuilding = false;
+
+				if (isBuilding || v->health < maxHealth)
 				{
 					ProgressBar::SetLocation(v->GetWorldPosition() IF_SATELLITES_P(, v->IsSatellite() ? 3.f : 1.f));
-					//ProgressBar::RenderNewBar(0,float3(0.1,0.1,0.1));
-					//ProgressBar::RenderNewBar(0.25f,float3(1,0.1,0.1));
-					//ProgressBar::RenderNewBar(0.75f,float3(0.1,1,0.1));
-					//ProgressBar::RenderNewBar(1,float3(0.1,0.1,1));
 					if (isBuilding)
 					{
 						std::pair<int,int>progress = v->GetBuildingProgress();
 						ProgressBar::RenderNewBar(progress.first,progress.second,float3(0.6,0.7,1));
-					}
-					if (isBuilding2)
-					{
-						ProgressBar::RenderNewBar(progress2.first,progress2.second,float3(0.6,0.7,1));
 					}
 					if (v->health < maxHealth)
 					{
