@@ -323,8 +323,8 @@ namespace Objects
 		#else
 
 			CryptographicID				accessToken;
-			Ctr::Buffer0<WMobileEntity>	allMobiles,	//!< CompleteChange mobiles registered in the world
-										storedMobiles;	//!< CompleteChange mobile entities registered stored in some other entity. allMobiles and storedMobiles are exclusive of each other
+			Ctr::Buffer0<WMobileEntity>	allMobiles,		//!< All mobiles registered in the world
+										storedMobiles;	//!< All mobile entities registered stored in some other entity. allMobiles and storedMobiles are exclusive of each other
 			Buffer0<SubOrbital::WPlane>	planes;
 			#ifndef NO_SATELLITES
 				Buffer0<WSatellite>		satellites;
