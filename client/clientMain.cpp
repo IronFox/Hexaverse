@@ -2152,7 +2152,7 @@ int main( int argc, const char* argv[])
 					Engine::input.Bind(Key::Right, InputControl::SelectAndFocusNext);
 					Engine::input.Bind(Key::Space, InputControl::SelectAndFocusNextIdle);
 
-					Engine::input.Bind(Key::G, Camera::ToggleOrbit);
+					//Engine::input.Bind(Key::G, Camera::ToggleOrbit);
 
 					Engine::input.Bind(Key::PageDown, InputControl::ViewDown);
 					Engine::input.Bind(Key::PageUp, InputControl::ViewUp);
@@ -2164,12 +2164,20 @@ int main( int argc, const char* argv[])
 					Engine::input.Bind(Key::Enter, SignalRoundEndOrMaximize);
 					Engine::input.Bind(Key::Return, SignalRoundEndOrMaximize);
 					Engine::input.Bind(Key::Tab, HUD::FactionTable::Show);
-					Engine::input.Bind(Key::T,[](){}, InputControl::QueryAndSendChatMessage);
-					Engine::input.Bind(Key::R,Camera::ToggleAutoRotation);
+					//Engine::input.Bind(Key::T,[](){}, InputControl::QueryAndSendChatMessage);
+					Engine::input.BindCtrl(Key::R,Camera::ToggleAutoRotation);
 		//			Engine::input.Bind(Key::R,ToggleResourceView);
 					Engine::input.Bind(Key::Ctrl,InputControl::ToggleSeeThrough);
 
 					Engine::input.Bind(Key::H,InputControl::ToggleControlGUI);
+
+					Engine::input.Bind(Key::M,[](){Objects::Commands::TerraformerConstruct(Objects::Prototypes::structures.Find(ConstName::Type_Mine));});
+					Engine::input.Bind(Key::G,[](){Objects::Commands::TerraformerConstruct(Objects::Prototypes::structures.Find(ConstName::Type_Generator));});
+					Engine::input.Bind(Key::F,[](){Objects::Commands::TerraformerConstruct(Objects::Prototypes::structures.Find(ConstName::Type_VehiclePlant));});
+					Engine::input.Bind(Key::V,[](){Objects::Commands::TerraformerConstruct(Objects::Prototypes::structures.Find(ConstName::Type_VehiclePlant));});
+					Engine::input.Bind(Key::R,[](){Objects::Commands::TerraformerConstruct(Objects::Prototypes::structures.Find(Objects::EntityType(ConstName::Type_Tower,ConstName::Turret_Radar)));});
+					Engine::input.Bind(Key::L,[](){Objects::Commands::TerraformerConstruct(Objects::Prototypes::structures.Find(ConstName::Type_Laboratory));});
+
 
 					Engine::input.BindCtrl(Key::C,ConfigurationMode::OnCopy);
 					Engine::input.BindCtrl(Key::V,ConfigurationMode::OnPaste);
