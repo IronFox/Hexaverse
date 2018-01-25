@@ -339,6 +339,9 @@ namespace Component
 			OnTranslate(delta);
 		}
 
+		void			SetHorizontal(const M::TFloatRange<>&range);
+		void			SetVertical(const M::TFloatRange<>&range);
+		void			SetAxis(AnchorAxis a, const M::TFloatRange<>&range);
 		void			SetRect(const M::Rect<>&rect);
 	private:
 		static const constexpr float Lower = -10000.f, Upper = 10000.f;
@@ -1411,7 +1414,7 @@ namespace Component
 		}
 		void			AnchorBelowPrevious(const PComponent&newComponent, const Distance& distanceFromSides = 0.015f, const Distance& distanceToPrevious = 0.015f);
 
-
+		virtual void	SetAnchorConfig(const AnchorConfig&cfg) override;
 	private:
 		bool			autoHeight = true;
 

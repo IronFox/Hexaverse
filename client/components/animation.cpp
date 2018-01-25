@@ -16,12 +16,8 @@
 #include "visual/commandDefinitions.h"
 #include "clientEvents.h"
 #include <objects/structure/tower.h>
-
-namespace LocalApplicationInterface
-{
-	void			SignalMarkerDeletion(TUniqueID markerID);
-	void			OnPlayerControlBegin();
-}
+#include "objectNetworkHelper.h"
+#include "playerControlBegin.h"
 
 namespace Animation
 {
@@ -714,9 +710,12 @@ namespace Animation
 					job->resourceCostLeft = 1;
 
 					auto&t = v->myTasks.Push();
-					t.name = "Unknown construction task";
+					t.name = "Building";
 					t.job = job;
 					t.type = Objects::MobileEntity::Task::Job;
+					#ifdef HAS_WINDOW
+						Objects::TaskAttachment::Allocate(t);
+					#endif
 				}
 			}
 			else
@@ -1407,7 +1406,7 @@ namespace Animation
 					if (Vec::quadraticDistance(Grid::ToWorld(m.location),explosionCenter) < M::Sqr(explosionRadius))
 					{
 						LogEvent(EventSignificance::Common,nullptr,m.GetName()+ " considered near occuring explosion. Dropping marker");
-						LocalApplicationInterface::SignalMarkerDeletion(m.id);
+						ObjectHelper::SignalMarkerDeletion(m.id);
 						i--;
 					}
 				}
@@ -1424,7 +1423,7 @@ namespace Animation
 					if (Vec::quadraticDistance(Grid::ToWorld(m.location),explosionCenter) < M::Sqr(explosionRadius))
 					{
 						LogEvent(EventSignificance::Common,nullptr,m.GetName()+ " considered near occuring explosion. Dropping marker");
-						LocalApplicationInterface::SignalMarkerDeletion(m.id);
+						ObjectHelper::SignalMarkerDeletion(m.id);
 						i--;
 					}
 				}
@@ -1852,7 +1851,7 @@ namespace Animation
 				{
 					LogEvent(EventSignificance::Debug,"Animation done. OnPlayerControlBegin");
 
-					LocalApplicationInterface::OnPlayerControlBegin();
+					PlayerControlBegin::OnPlayerControlBegin();
 				}
 			}
 

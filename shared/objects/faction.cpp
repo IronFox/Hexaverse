@@ -201,6 +201,8 @@ namespace Objects
 
 	void		Alliance::Leave(const PFaction&f)
 	{
+		if (!this)
+			return;
 		LogEvent(EventSignificance::Common,f,"Leaving alliance "+ToString(id));
 		foreach (members,m)
 			if ( m->wFaction == f)
@@ -1431,7 +1433,7 @@ namespace Objects
 				PFaction rs = FindByID(id);
 				if (rs)
 				{
-					if (rs->alliance->id == allianceID)
+					if (rs->alliance && rs->alliance->id == allianceID)
 						outAllianceChanged = false;
 					else
 					{
@@ -1524,7 +1526,7 @@ namespace Objects
 			return;
 
 		#ifdef CLIENT
-		const bool rebuildSensory = this->isOwnedByMe || alliance == mine->alliance || a == mine->alliance;
+		const bool rebuildSensory = mine && (this->isOwnedByMe || alliance == mine->alliance || a == mine->alliance);
 
 		if (rebuildSensory)
 			ForeachWorldEntity([](const Objects::PWorldEntity&e)

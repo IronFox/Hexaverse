@@ -1173,6 +1173,8 @@ namespace FileIO
 		LogEvent(EventSignificance::Uncommon,"Restoring saved world state from '"+String(filename)+"'.");
 		bool wasOpen = ::Network::CloseSession();
 
+		ConfigurationMode::Abort();
+
 		bool nexusFound = false, worldInfoFound = false;
 
 
@@ -1682,6 +1684,8 @@ namespace FileIO
 		//it is important that all faction sensor locks are released before this point as RestartSession() does not react well to locked sensor grids
 		if (wasOpen)
 			::Network::RestartSession(true);
+		else
+			LogEvent(EventSignificance::Uncommon,"Session was offline prior to loading. Not restarted");
 
 	}
 
@@ -1924,7 +1928,7 @@ namespace FileIO
 
 		if (container.SaveToFile(name.c_str()))
 		{
-			LogEvent(EventSignificance::Uncommon,"World snapshot, round "+RuntimeConfig::roundNumber.ToString()+", written to "+String(name)+" in "+String(timer.GetSecondsSince(t0))+" seconds");
+			LogEvent(EventClass(EventSignificance::Uncommon,EventFlavor::ServerPrivate),"World snapshot, round "+RuntimeConfig::roundNumber.ToString()+", written to "+String(name)+" in "+String(timer.GetSecondsSince(t0))+" seconds");
 			//LogEvent(EventSignificance::Uncommon,"World snapshot created in "+String(timer.GetSecondsSince(t0))+" seconds");
 		}
 		else

@@ -133,11 +133,21 @@ namespace HUD
 				toPanel->AnchorBelowPrevious(panel,0,0);
 			}
 
+			static Objects::WAlliance tryingToJoin;
+
+			static void DispatchJoinRequest(const Objects::PAlliance&a)
+			{
+				const bool cancel = tryingToJoin.lock() == a;
+				Network::Channels::AllianceJoinRequest.SendTo(Network::client,Protocol::AllianceJoinRequest(a->id,cancel));
+				tryingToJoin = cancel ? Objects::WAlliance() : a;
+			}
+
 			static String JoinText(const Objects::PAlliance&a)
 			{
+				const String req = tryingToJoin.lock() == a ? "Cancel request" : "Request";
 				if (a->CountLivingMembers() == 1)
-					return "Request to form alliance with "+a->GetMember(0)->GetName();
-				return "Request to join "+a->id.ToNiceString();
+					return req +" to form alliance with "+a->GetMember(0)->GetName();
+				return req +" to join "+a->id.ToNiceString();
 			}
 
 			void	Update()
@@ -183,10 +193,31 @@ namespace HUD
 					}
 
 					{
+						PButton filter = std::make_shared<Button>("All");
+						filter->LockToIdealHeight();
+						filter->LockToIdealWidth();
+						WButton wFilter = filter;
+						static bool sendToAlliance = false;
+
+						filter->SetTriggerFunction([wFilter](){
+							PButton b = wFilter.lock();
+							if (!b)
+								return;
+							sendToAlliance = !sendToAlliance;
+							if (sendToAlliance)
+								b->SetText("Alliance");
+							else
+								b->SetText("All");
+
+						});
+
 						chatMessage.reset(new Input{});
 						chatMessage->SetAllowedAlphabet(Network::allowedChatCharacters);
 						PButton send{new Button{"Send",[](){
-							Network::SendChatMessage(chatMessage->GetText());
+							if (sendToAlliance)
+								Network::SendChatMessage(chatMessage->GetText(),Objects::Faction::mine);
+							else
+								Network::BroadcastChatMessage(chatMessage->GetText());
 							chatMessage->SetText("");
 						}}};
 						chatMessage->onSpecialKey = [](Key::Name k)
@@ -198,7 +229,8 @@ namespace HUD
 						send->Anchor().CenterVertically().Right(0.01f);
 						send->LockToIdealWidth();
 						send->LockToIdealHeight();
-						chatMessage->Anchor().Top().FillHBetween(nullptr,send);
+						chatMessage->Anchor().Top().FillHBetween(filter,send);
+						chatInput->AddComponent(filter);
 						chatInput->AddComponent(send);
 						chatInput->AddComponent(chatMessage);
 						chatMessage->onEnter = [send](){send->Trigger();};
@@ -253,27 +285,8 @@ namespace HUD
 								Objects::PAlliance now = wa.lock();
 								if (now == nullptr || now == Objects::Faction::mine->alliance)
 									return;
-								Objects::PAlliance last = triedJoining.lock();
-								if (last && last != Objects::Faction::mine->alliance)
-								{
-									Network::Channels::AllianceJoinRequest.SendTo(Network::client,Protocol::AllianceJoinRequest(last->id,true));
-									PButton b = triedJoiningButton.lock();
-									if (b)
-										b->SetText(JoinText(last));
-								}
-
-								if (last != now)
-								{
-									triedJoining = now;
-									triedJoiningButton = jb;
-									Network::Channels::AllianceJoinRequest.SendTo(Network::client,Protocol::AllianceJoinRequest(now->id,false));
-									jb.lock()->SetText("Cancel "+JoinText(now));
-								}
-								else
-								{
-									triedJoining.reset();
-									triedJoiningButton.reset();
-								}
+								DispatchJoinRequest(now);
+								jb.lock()->SetText(JoinText(now));
 
 							});
 

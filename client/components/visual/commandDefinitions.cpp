@@ -457,6 +457,52 @@ namespace Objects
 			ConfigureResearchButtons(commands);
 		}
 
+		void TerraformerConstruct(const PStructure&p)
+		{
+			PMobileEntity vehicle = selectedMobileEntity;
+			if (!vehicle || !vehicle->turret->CanConstruct())
+				return;
+			if (activeCursorMode != CursorMode::PlaceStructureMode)
+			{
+				//bool directPlace = !Engine::input.pressed[Key::Ctrl] && vehicle->myTasks.IsNotEmpty() && vehicle->myTasks.GetNewest().type == MobileEntity::Task::MoveTo;
+				//if (directPlace)
+				//{
+				//	const Grid::LCellIdI last = vehicle->GetLastPointOfOrigin();
+				//	const Grid::LCellIdI prev = vehicle->GetPrevPointOfOrigin();
+				//	const auto&n = Grid::low.grid.GetCell(last.stackID).neighborhood;
+				//	
+				//	for (int k = 0; k < n.numNeighbors; k++)
+				//		if (n.neighborID[k] == prev.stackID)
+				//		{
+				//			directPlace = false;
+				//			break;
+				//		}
+				//}
+
+				//if (!directPlace)
+				{
+					activeCursorMode = CursorMode::PlaceStructureMode;
+					choiceVis.showArrow = true;
+					choiceVis.arrowFromCell = GetPointOfOrigin(*vehicle);
+					choiceVis.arrowFrom = Grid::low.cells[choiceVis.arrowFromCell.stackID].centerVertex.xyz * ( Grid::ToRadius(choiceVis.arrowFromCell.height));
+
+					if (!ShouldQueueCommands())
+						ApplicationInterface::SignalDropSafeTasks(vehicle);
+				}
+				//else
+					//ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_Construct, p->GetCTypeName());	
+						//this still works, but seemed unintuitive rather quickly
+				activeStructureToPlace = p;
+			}
+			else
+			{
+				activeCursorMode = CursorMode::Idle;
+				choiceVis.showArrow = false;
+			}
+
+
+			//SignalNewJob(vehicle, ConstName::Job_Construct, p->GetCTypeName());
+		}
 
 		namespace Detail
 		{
@@ -553,52 +599,6 @@ namespace Objects
 				return v && (!v->HasTasks() || !v->myTasks.Peek().IsJob());
 			}
 
-			/*static*/ void TerraformerConstruct(const PStructure&p)
-			{
-				PMobileEntity vehicle = selectedMobileEntity;
-				if (!vehicle)
-					return;
-				if (activeCursorMode != CursorMode::PlaceStructureMode)
-				{
-					//bool directPlace = !Engine::input.pressed[Key::Ctrl] && vehicle->myTasks.IsNotEmpty() && vehicle->myTasks.GetNewest().type == MobileEntity::Task::MoveTo;
-					//if (directPlace)
-					//{
-					//	const Grid::LCellIdI last = vehicle->GetLastPointOfOrigin();
-					//	const Grid::LCellIdI prev = vehicle->GetPrevPointOfOrigin();
-					//	const auto&n = Grid::low.grid.GetCell(last.stackID).neighborhood;
-					//	
-					//	for (int k = 0; k < n.numNeighbors; k++)
-					//		if (n.neighborID[k] == prev.stackID)
-					//		{
-					//			directPlace = false;
-					//			break;
-					//		}
-					//}
-
-					//if (!directPlace)
-					{
-						activeCursorMode = CursorMode::PlaceStructureMode;
-						choiceVis.showArrow = true;
-						choiceVis.arrowFromCell = GetPointOfOrigin(*vehicle);
-						choiceVis.arrowFrom = Grid::low.cells[choiceVis.arrowFromCell.stackID].centerVertex.xyz * ( Grid::ToRadius(choiceVis.arrowFromCell.height));
-
-						if (!ShouldQueueCommands())
-							ApplicationInterface::SignalDropSafeTasks(vehicle);
-					}
-					//else
-						//ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_Construct, p->GetCTypeName());	
-							//this still works, but seemed unintuitive rather quickly
-					activeStructureToPlace = p;
-				}
-				else
-				{
-					activeCursorMode = CursorMode::Idle;
-					choiceVis.showArrow = false;
-				}
-
-
-				//SignalNewJob(vehicle, ConstName::Job_Construct, p->GetCTypeName());
-			}
 
 /*
 
@@ -1016,7 +1016,7 @@ namespace Objects
 				if (Component::Terraformer::CanBuild(*b))
 				{
 					PStructure s = *b;
-					auto cmd = new Command::EntityConstructionCommand(/*"Build " + */(*b)->GetTypeName(), nullptr,nullptr,*b,std::bind(&Detail::TerraformerConstruct, *b),
+					auto cmd = new Command::EntityConstructionCommand(/*"Build " + */(*b)->GetTypeName(), nullptr,nullptr,*b,std::bind(&TerraformerConstruct, *b),
 					[s](bool controlsEnabled)
 					{
 						bool constructingMe = (activeCursorMode == CursorMode::PlaceStructureMode
@@ -1291,11 +1291,6 @@ namespace Objects
 				return rs;
 			}));
 
-			globalCommands.Add(new GlobalCommand("Open Menu",
-			[]()
-			{
-				HUD::WindowStack::Show(HUD::Menu::main);
-			}));
 
 			viewCommands = AddChild(globalCommands,"View");
 

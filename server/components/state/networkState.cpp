@@ -332,7 +332,7 @@ namespace Network
 		server.InstallChannel(Channels::changeMyName);
 		server.InstallChannel(Channels::identifyFactionRecv);
 		server.InstallChannel(Channels::queueResearch);
-		server.InstallChannel(Channels::chatMessage);
+		server.InstallChannel(Channels::ChatMessage);
 		server.InstallChannel(Channels::planetConfig);
 		server.InstallChannel(Channels::gameConfig);
 		server.InstallChannel(Channels::requestResource);
@@ -458,7 +458,7 @@ namespace Network
 	bool		CloseSession(bool preserveSpectators, bool sendGridChangesToPreservedSpectators/*=true*/)
 	{
 		bool isOnline = Session::isStarted;
-		LogEvent(EventSignificance::Important,isOnline ? "Closing session." : "Flushing session data.");
+		LogEvent(EventSignificance::Important,isOnline ? "Closing session." : "Not online: Flushing session data.");
 
 		if (isOnline)
 		{
