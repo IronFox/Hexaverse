@@ -1,15 +1,7 @@
 #include <global_root.h>
 #include "ai.h"
 #include <objects/interface.h>
-
-namespace LocalApplicationInterface
-{
-	UINT8	AssembleMotionFlags(bool detailedPath, bool leftClick, bool clearSafeTasks);
-	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, UINT8 flags, Objects::Vehicle::mode_t mode);
-	void	SignalMarkerCreation(Protocol::Marker&marker);
-	void	SignalMarkerDeletion(TUniqueID markerID);
-	void	SignalMarkerTouch(Objects::Marker&marker);
-}
+#include "objectNetworkHelper.h"
 
 
 namespace AI
@@ -142,7 +134,7 @@ namespace AI
 		static Buffer0<Grid::LCellIdI> path;
 		path.Clear();
 		AssemblePath(mapper, current,path);
-		LocalApplicationInterface::DirectTo(v,path.ToRef(),LocalApplicationInterface::AssembleMotionFlags(true,false,false),Objects::CursorMode::Idle);
+		ObjectHelper::DirectTo(v,path.ToRef(),ObjectHelper::AssembleMotionFlags(true,false,false),Objects::CursorMode::Idle);
 	}
 
 
@@ -274,7 +266,7 @@ namespace AI
 				float distance = Vec::quadraticDistance(Grid::ToWorld(_m->location),v->system.w.xyz);
 				if (distance < 25.f)
 				{
-					LocalApplicationInterface::SignalMarkerTouch(*_m);
+					ObjectHelper::SignalMarkerTouch(*_m);
 					haveMarker = true;
 //					break;
 				}
@@ -299,7 +291,7 @@ namespace AI
 			tempMarkers << v->system.w.xyz;
 			static_assert(Objects::Marker::Type::Visited == 2, "Please update marker logic");
 			marker.data.Set2();
-			LocalApplicationInterface::SignalMarkerCreation(marker);
+			ObjectHelper::SignalMarkerCreation(marker);
 		}
 
 
@@ -347,7 +339,7 @@ namespace AI
 			{
 				targets[t-attackTarget.pointer()] = t->target;
 			}
-			LocalApplicationInterface::DirectTo(v,targets,LocalApplicationInterface::AssembleMotionFlags( false,true, false),Objects::CursorMode::AttackMode);
+			ObjectHelper::DirectTo(v,targets,ObjectHelper::AssembleMotionFlags( false,true, false),Objects::CursorMode::AttackMode);
 
 			if (attackTarget.IsNotEmpty() && !v->base->ignoresVehicleAttacks)
 				return;
@@ -531,7 +523,7 @@ namespace AI
 					if (m.age >= 10 && m.visualization && m.visualization->IsMobile())	//after 10 rounds, assume vehicle has moved
 					{
 						LogEvent(EventSignificance::Debug,nullptr,"AI: Deleting marker "+m.GetName()+" since hostile vehicle markers are considered outdated after 10 rounds (age="+String(m.age)+")");
-						LocalApplicationInterface::SignalMarkerDeletion(m.id);
+						ObjectHelper::SignalMarkerDeletion(m.id);
 						i--;
 					}
 				break;
@@ -542,7 +534,7 @@ namespace AI
 					if (estimation.damageThreat > 0)	//knowing cause, dropping ghost
 					{
 						LogEvent(EventSignificance::Debug,nullptr,"AI: Deleting marker "+m.GetName()+" because cause of destruction is considered known");
-						LocalApplicationInterface::SignalMarkerDeletion(m.id);
+						ObjectHelper::SignalMarkerDeletion(m.id);
 						i--;
 					}
 				}
@@ -584,7 +576,7 @@ namespace AI
 				{
 					LogEvent(EventSignificance::Debug,nullptr,"AI: Deleting marker "+m.GetName()+". Reached end-of-life after 100 rounds");
 
-					LocalApplicationInterface::SignalMarkerDeletion(m.id);
+					ObjectHelper::SignalMarkerDeletion(m.id);
 					i--;
 				}
 			}

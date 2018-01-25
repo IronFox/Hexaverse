@@ -17,7 +17,7 @@ namespace Objects
 	PWorldEntity			selectedEntity;
 	PMobileEntity			selectedMobileEntity;
 	PMobileEntity			deployingMobileEntity;
-	Observable<>				onSelectionChanged;
+	Observable<>			onSelectionChanged;
 	bool					shiftPressed = false,shiftMeansQueue = true;
 
 

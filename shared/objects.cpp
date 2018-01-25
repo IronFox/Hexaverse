@@ -24,6 +24,7 @@
 
 namespace Objects
 {
+	bool preserveReferencesOnFlush = false;
 
 	#ifndef NO_SATELLITES
 		void RefreshSkyHubConnections()
@@ -165,21 +166,23 @@ namespace Objects
 		{
 			LogEvent(EventClass::Preset::uncommon,"Flushing scene data");
 
-			//These flushes should reduce the impact of stray entities. As it turns out, there are some entities that remain alive due to some reference somewhere.
-			//Either there is a global reference somewhere (most likely), or an actual memory leak. Happens during first loading, Does not seem to get worse during subsequent loadings.
-			//Global entities that are not erased remain the same, at the exact same address. They are not replaced, or cleared.
-			//Therefor:
-			//Remove references of factions to alliances (which should erase all alliances)
-			ForeachFaction([](const PFaction&f)
+			if (!preserveReferencesOnFlush)
 			{
-				f->alliance->Leave(f);
-			});
-			//Remove references of entities to factions (which, coupled with the deletion of all global faction references should erase all factions)
-			ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
-			{
-				e->owner.reset();
-			},true);
-
+				//These flushes should reduce the impact of stray entities. As it turns out, there are some entities that remain alive due to some reference somewhere.
+				//Either there is a global reference somewhere (most likely), or an actual memory leak. Happens during first loading, Does not seem to get worse during subsequent loadings.
+				//Global entities that are not erased remain the same, at the exact same address. They are not replaced, or cleared.
+				//Therefor:
+				//Remove references of factions to alliances (which should erase all alliances)
+				ForeachFaction([](const PFaction&f)
+				{
+					f->alliance->Leave(f);
+				});
+				//Remove references of entities to factions (which, coupled with the deletion of all global faction references should erase all factions)
+				ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
+				{
+					e->owner.reset();
+				},true);
+			}
 
 			storedMobileEntities.Clear();
 			#ifndef NO_SATELLITES

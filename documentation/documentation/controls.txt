@@ -3,9 +3,8 @@
 ==Global Hot Keys==
 * **Escape** opens the menu, or aborts any currently visible dialog.
 * **F3** creates a screenshot in ''[[config/game folder]]\client\screenshots\''. **Shift+F3** causes the capture to retain its background transparency.
-* **Alt+Enter** toggles (fake) fullscreen mode.
-* **Tab** shows all participating players, including whether they requested a [[concepts/round|new round]].
-* **T** opens an input dialog to send a message to all other players. Only connected players will receive this message.
+* **Alt+Enter** toggles borderless fullscreen window mode.
+* **Tab** shows all participating players, alliances, chat messages, and whether factions have requested a [[concepts/round|new round]].
 * **H** hides/restores all control buttons and the contact and event lists.
 ==Camera Control==
 
@@ -22,6 +21,14 @@ Right-clicking with the **shift-key** held down queues the command after any oth
 Otherwise the command queue is cleared first.
 
 Right clicking anywhere with a [[units/structures/vehicle plant]] selected moves or unsets its gathering point.
+
+Additionally, [[units/turrets/terraformer]]s support the following hotkeys to directly enqueue a particular construction command:
+* **R** Construct a new [[units/structures/radar tower]]
+* **M** Construct a new [[units/structures/mine]]
+* **G** Construct a new [[units/structures/generator]]
+* **F**/**V** Construct a new [[units/structures/vehicle plant]]
+* **L** Construct a new [[units/structures/laboratory]]
+
 
 Once any construction commands have been issued,
 [[units/turrets/terraformer|Terraformer]] construction commands can be batched quickly by **alt+clicking** at any desired construction location.

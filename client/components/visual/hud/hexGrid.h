@@ -80,7 +80,7 @@ namespace HexGrid
 	//static const int2 ContactListOffset(5,2);
 	static const int2 DynamicRowOffset(5,1);
 	static const int2 GlobalCommandOffset(3,1);
-	static const int2 EntityCommandOffset(8,1);
+	//static const int2 EntityCommandOffset(7,1);
 
 	/**
 	Everything related to the universal buttons located in the bottom right panel
@@ -254,6 +254,21 @@ namespace HexGrid
 					outResult << "Put "+name+" to sleep";
 			}
 		};
+
+		class MenuCommand : public Icon
+		{
+			typedef Icon			Super;
+		public:
+			/**/					MenuCommand() : Super("Open Menu") {}
+			/**/					MenuCommand(const String&name) : Super(name) {}
+			virtual void			Execute() override;
+			virtual void			CompileLabel(Label&outResult) override
+			{
+				outResult << "Open the main menu";
+			}
+			virtual void			Refresh(bool controlsEnabled) override	{state = Objects::CommandFlags::IsEnabled;};
+		};
+
 
 		#pragma endregion PanelButtonImplementations
 

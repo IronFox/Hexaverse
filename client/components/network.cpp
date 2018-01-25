@@ -25,18 +25,8 @@
 #include "visual/hud/guiHostList.h"
 #include "visual/hud/eventLog.h"
 #include "voting.h"
-
-
-//#define DEBUG_SERVER_LIST	//enable to generate very long artificial server list
-namespace LocalApplicationInterface
-{
-	void			SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird shit
-	void			OnPlayerControlBegin();
-
-	#ifdef HAS_WINDOW
-		bool		QueryNicknameIfEmpty();
-	#endif
-}
+#include "objectNetworkHelper.h"
+#include "playerControlBegin.h"
 
 
 namespace Network
@@ -71,6 +61,15 @@ namespace Network
 	bool			newRoundRequested = false;
 
 	GenericHashSet<TUniqueID>	visitedWorldMap;
+
+
+	bool	IsValidNickname(const String&candidate)
+	{
+		if (candidate.GetLength() < 4)
+			return false;
+		bool rs = Package::IsValid(candidate,32);
+		return rs;
+	}
 
 
 	void RegisterVisited(const TUniqueID&worldID)
@@ -146,14 +145,38 @@ namespace Network
 		}
 	}
 
-	void SendChatMessage(const String & msg)
+	void		SendChatMessage(const String&msg, const Objects::PFaction&receiver)
+	{
+		if (!receiver)
+			return;
+		if (msg.TrimRef().GetLength() > 0)
+		{
+			if (client.IsConnected())
+				Channels::ChatMessage.SendTo(client,Protocol::ChatMessage(msg,receiver->id));
+		}
+	}
+
+	void		SendChatMessage(const String&msg, const Objects::PAlliance&receiver)
+	{
+		if (!receiver)
+			return;
+		if (msg.TrimRef().GetLength() > 0)
+		{
+			if (client.IsConnected())
+				Channels::ChatMessage.SendTo(client,Protocol::ChatMessage(msg,receiver->id));
+		}
+	}
+
+	void		BroadcastChatMessage(const String&msg)
 	{
 		if (msg.TrimRef().GetLength() > 0)
 		{
 			if (client.IsConnected())
-				Channels::chatMessage.SendTo(client,msg);
+				Channels::ChatMessage.SendTo(client,Protocol::ChatMessage(msg,TUniqueID::Empty()));
 		}
 	}
+
+
 
 	void			LoadScript(const SHA256::HashContainer&id)
 	{
@@ -189,7 +212,7 @@ namespace Network
 		client.Disconnect();
 
 		#ifdef HAS_WINDOW
-			if (LocalApplicationInterface::QueryNicknameIfEmpty())
+			if (HUD::Dialog::QueryNicknameIfEmpty())
 				return;
 		#endif
 
@@ -1402,7 +1425,6 @@ namespace Network
 		TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::RemoveEntity>						removeEntity;
 		TCP::ObjectSender<Protocol::EntityStateUpdate, Protocol::ChannelID::Sleep>					sleep;
 		TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>					changeMyName;
-		TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>					chatMessage;
 		TCP::ObjectSender<Protocol::ResourceID, Protocol::ChannelID::RequestResource>				requestResource;
 		TCP::ObjectSender<Protocol::LoadPlanetByName, Protocol::ChannelID::LoadPlanetByName>		loadPlanetByName;
 		TCP::ObjectSender<Protocol::QueueResearch, Protocol::ChannelID::QueueResearch>				queueResearch;
@@ -1413,6 +1435,7 @@ namespace Network
 		DECLARE_CHANNEL(VoteResult);
 		DECLARE_OBJECT_SENDER(ClientVote);
 		DECLARE_OBJECT_SENDER(AllianceJoinRequest);
+		DECLARE_OBJECT_SENDER(ChatMessage);
 
 	}
 
@@ -1543,7 +1566,7 @@ namespace Network
 				if (RuntimeConfig::aiMode && RuntimeConfig::serverAddress.host.IsNotEmpty())
 					application_shutting_down = true;
 				#ifdef HAS_WINDOW
-					LocalApplicationInterface::QueryNicknameIfEmpty();
+					HUD::Dialog::QueryNicknameIfEmpty();
 				#endif
 
 				Receiver::eventsLocked = true;
@@ -1579,7 +1602,7 @@ namespace Network
 					if (Animation::AllDone())
 					{
 						LogEvent(EventSignificance::Debug,"Begin Game. Animation done. OnPlayerControlBegin");
-						LocalApplicationInterface::OnPlayerControlBegin();
+						PlayerControlBegin::OnPlayerControlBegin();
 					}
 					else
 						LogEvent(EventSignificance::Debug,"Begin Game. Animation NOT done");
@@ -1947,7 +1970,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 				Objects::Renderer::ClearSmokeTrails();
 				HUD::HexGrid::EventLog::Clear();
 				if (TimeLapse::enabled)
-					saveScreenshot = true;
+					InputControl::saveScreenshot = true;
 			#endif
 			if (RuntimeConfig::aiMode)
 				AI::vehicles.Clear();	//whichever is left, cannot be computed
@@ -1970,7 +1993,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 					return;
 				Objects::Marker *m = Objects::Marker::Find(e->location);
 				if (m)
-					LocalApplicationInterface::SignalMarkerDeletion(m->id);
+					ObjectHelper::SignalMarkerDeletion(m->id);
 			},false);
 
 			#ifdef HAS_WINDOW
@@ -1985,7 +2008,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 				});
 
 				if (TimeLapse::enabled)
-					saveScreenshot = true;
+					InputControl::saveScreenshot = true;
 			#endif
 		break;
 	}
@@ -2014,7 +2037,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 		{
 			
 			LogEvent(EventSignificance::Debug,nullptr,"Deleting marker "+o->GetName()+" since it's outdated (at age "+String(o->age)+")");
-			LocalApplicationInterface::SignalMarkerDeletion(o->id);
+			ObjectHelper::SignalMarkerDeletion(o->id);
 			//Network::Channels::destroyMarker.SendTo(Network::client, *o);
 		}
 
@@ -2035,7 +2058,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			if (Animation::AllDone())
 			{
 				LogEvent(EventSignificance::Debug,"Command phase. Game has begun. Animation done. OnPlayerControlBegin");
-				LocalApplicationInterface::OnPlayerControlBegin();
+				PlayerControlBegin::OnPlayerControlBegin();
 			}
 			else
 			{

@@ -241,7 +241,6 @@ namespace Channels
 	TCP::Channel<Protocol::ClientName,Level::Faction,Protocol::ChannelID::ChangeMyName>						changeMyName(Receiver::ChangeMyName);
 	TCP::Channel<NET(TUniqueID), Level::Faction, Protocol::ChannelID::IdentifyFaction>						identifyFactionRecv(Receiver::IdentifyFaction);
 	TCP::Channel<Protocol::QueueResearch, Level::Faction, Protocol::ChannelID::QueueResearch>				queueResearch(Receiver::QueueResearch);
-	TCP::Channel<Package::NetString<256>, Level::Faction, Protocol::ChannelID::ChatMessage>					chatMessage(Receiver::ChatMessage);
 	TCP::Channel<Grid::ExtendedPlanetConfig, Level::Configurator, Protocol::ChannelID::PlanetConfig>		planetConfig(Receiver::PlanetConfig);
 	TCP::Channel<Protocol::GameConfig, Level::Configurator, Protocol::ChannelID::GameConfig>				gameConfig(Receiver::GameConfig);
 	TCP::Channel<Protocol::ResourceID, Level::PreFaction, Protocol::ChannelID::RequestResource>				requestResource(Receiver::RequestResource);
@@ -293,6 +292,7 @@ namespace Channels
 	DECLARE_FACTION_CHANNEL(ClientVote);
 	DECLARE_FACTION_CHANNEL(AllianceJoinRequest);
 	DECLARE_FACTION_CHANNEL(AllianceConfigChange);
+	DECLARE_FACTION_CHANNEL(ChatMessage);
 	
 	DECLARE_OBJECT_SENDER(MyFaction);
 
@@ -1118,14 +1118,58 @@ namespace Receiver
 		Journal::currentRound.Register(true,f,new Journal::Round::DestroyMarker(id));
 	}
 
-	void	ChatMessage(Package::NetString<256>&message, TCP::Peer&peer)
+	void	ChatMessage(Protocol::ChatMessage&message, TCP::Peer&peer)
 	{
 		if (!peer.attachment)
 			return;
 		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 		if (!client->faction)
 			return;
-		LogEvent(EventClass( EventSignificance::Important, EventFlavor::ChatMessage ),client->faction,message,Logging::Origin::Local, Logging::Privacy::Public);
+		if (message.recipient.IsEmpty())
+			LogEvent(EventClass( EventSignificance::Important, EventFlavor::ChatMessage ),client->faction,message.message,Logging::Origin::Local, Logging::Privacy::Public);
+		else
+		{
+			LogEvent(EventClass( EventSignificance::Common, EventFlavor::ChatMessage ),client->faction,message.message,Logging::Origin::Local, Logging::Privacy::ServerPrivate);
+
+			auto a = Objects::Alliance::FindByID(message.recipient);
+			if (a)
+			{
+				a->ForeachMember([&message,client](const Objects::PFaction&f)
+				{
+					Network::PClient other;
+					if (Network::playerMap.Query(f,other))
+					{
+						auto p = other->peer.lock();
+						if (p)
+							Logging::SendEntityEvent( p.get(),
+								EventClass( EventSignificance::Important, EventFlavor::ChatMessage ), 
+								nullptr, 
+								client->faction, 
+								message.message, 
+								Logging::Privacy::ClientPrivate);
+					}
+				});
+				return;
+			}
+
+			auto f = Objects::Faction::FindByID(message.recipient);
+			if (f)
+			{
+				Network::PClient other;
+				if (Network::playerMap.Query(f,other))
+				{
+					auto p = other->peer.lock();
+					if (p)
+						Logging::SendEntityEvent( p.get(),
+							EventClass( EventSignificance::Important, EventFlavor::ChatMessage ), 
+							nullptr, 
+							client->faction, 
+							message.message, 
+							Logging::Privacy::ClientPrivate);
+				}
+			}
+
+		}
 
 	}
 

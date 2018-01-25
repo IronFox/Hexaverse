@@ -207,6 +207,14 @@ namespace Dialog
 
 
 	
+	void	QueryNickname();
+
+	/**
+	Checks loaded nickname and queries a new one if none or an invalid is currently set.
+	No check is performed if the client is configured to run in AI mode.
+	@return true if a new name was queried, false otherwise. False indicates the currently set name is good, or AI mode is enabled
+	*/
+	bool	QueryNicknameIfEmpty();
 
 
 

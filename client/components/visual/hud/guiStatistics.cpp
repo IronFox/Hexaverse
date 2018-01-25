@@ -444,25 +444,17 @@ namespace HUD
 				window->AddComponent(overviewGraph);
 				window->AddComponent(statsPanel);
 
-				{
-					auto anchors = metricPanel->Anchor();
-					anchors.Left().FillVertically();
-				}
-				metricPanel->SetWidth(0.15f);
-				metricPanel->SetAutomaticHeight(false);
 
-				{
-					auto anchors = factionPanel->Anchor();
-					anchors.Right().FillVertically();
-				}
-				factionPanel->SetWidth(0.15f);
+				metricPanel->SetAutomaticHeight(false);
+				metricPanel->Anchor().Left().FillVertically();
+				metricPanel->SetWidth(0.15f);
+
 				factionPanel->SetAutomaticHeight(false);
-				{
-					auto anchors = statsPanel->Anchor();
-					anchors.FillHBetween(metricPanel,factionPanel);
-					anchors.Bottom();
-				}
+				factionPanel->Anchor().Right().FillVertically();
+				factionPanel->SetWidth(0.15f);
+
 				statsPanel->SetAutomaticHeight(false);
+				statsPanel->Anchor().FillHBetween(metricPanel,factionPanel).Bottom();
 				statsPanel->SetHeight(0.25f);
 
 				{
