@@ -646,7 +646,7 @@ namespace Component
 
 	/*virtual override*/ void	Panel::SetAnchorConfig(const AnchorConfig&cfg)
 	{
-		if (anchorConfig.GetVAxis().Stretches())
+		if (cfg.GetVAxis().Stretches())
 			SetAutomaticHeight(false);
 		Super::SetAnchorConfig(cfg);
 	}
