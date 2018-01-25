@@ -1149,11 +1149,6 @@ namespace Objects
 				return rs;
 			}));
 
-			globalCommands.Add(new GlobalCommand("Open Menu",
-			[]()
-			{
-				HUD::WindowStack::Show(HUD::Menu::main);
-			}));
 
 			viewCommands = AddChild(globalCommands,"View");
 

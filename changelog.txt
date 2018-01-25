@@ -1,5 +1,6 @@
 v0.7.2
 	> Progress bars are rendered atop units only when the current operation will require more than one round to complete.
+	> Moved menu button to the far right of the command bar.
 	* Fixed confirmation dialog layout.
 	
 v0.7.1	[Jan 22 2018]

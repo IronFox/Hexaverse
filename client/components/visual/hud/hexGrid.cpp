@@ -8,6 +8,7 @@
 #include "../tutorial.h"
 #include "resourceGauges.h"
 #include "../../configurationMode.h"
+#include "menu.h"
 
 namespace HUD
 {
@@ -472,8 +473,13 @@ namespace HexGrid
 									{
 										LoadIcon();
 										indexCounter++;
-										gridCoords = int2(1+indexCounter,1);
+										gridCoords = int2(/*1+*/indexCounter,1);
 									}
+
+		/*virtual override*/ void			MenuCommand::Execute()
+		{
+			HUD::WindowStack::Show(HUD::Menu::main);
+		}
 
 
 		static void VoteRefresh(const PVote&)
@@ -483,6 +489,7 @@ namespace HexGrid
 
 		void Create()
 		{
+			commands << PIcon( new MenuCommand() );
 			commands << PIcon( new TutorialCommand() );
 			commands << PIcon( new VoteCommand() );
 
@@ -1545,7 +1552,7 @@ namespace HexGrid
 				Objects::Command::Container temp;
 				auto cmds = e->GetCommands(temp);
 				if (cmds)
-					AddCommandGroup(EntityCommandOffset,*cmds);
+					AddCommandGroup(GlobalCommandOffset + int2(Objects::globalCommands.GetRow(0).Count()+1 ,0)   /*EntityCommandOffset*/,*cmds);
 			}
 
 			FindAndDeleteCell(selectedFocus);
