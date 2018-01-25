@@ -16,12 +16,8 @@
 #include "visual/commandDefinitions.h"
 #include "clientEvents.h"
 #include <objects/structure/tower.h>
-
-namespace LocalApplicationInterface
-{
-	void			SignalMarkerDeletion(TUniqueID markerID);
-	void			OnPlayerControlBegin();
-}
+#include "objectNetworkHelper.h"
+#include "playerControlBegin.h"
 
 namespace Animation
 {
@@ -1412,7 +1408,7 @@ namespace Animation
 					if (Vec::quadraticDistance(Grid::ToWorld(m.location),explosionCenter) < M::Sqr(explosionRadius))
 					{
 						LogEvent(EventSignificance::Common,nullptr,m.GetName()+ " considered near occuring explosion. Dropping marker");
-						LocalApplicationInterface::SignalMarkerDeletion(m.id);
+						ObjectHelper::SignalMarkerDeletion(m.id);
 						i--;
 					}
 				}
@@ -1429,7 +1425,7 @@ namespace Animation
 					if (Vec::quadraticDistance(Grid::ToWorld(m.location),explosionCenter) < M::Sqr(explosionRadius))
 					{
 						LogEvent(EventSignificance::Common,nullptr,m.GetName()+ " considered near occuring explosion. Dropping marker");
-						LocalApplicationInterface::SignalMarkerDeletion(m.id);
+						ObjectHelper::SignalMarkerDeletion(m.id);
 						i--;
 					}
 				}
@@ -1851,7 +1847,7 @@ namespace Animation
 				{
 					LogEvent(EventSignificance::Debug,"Animation done. OnPlayerControlBegin");
 
-					LocalApplicationInterface::OnPlayerControlBegin();
+					PlayerControlBegin::OnPlayerControlBegin();
 				}
 			}
 

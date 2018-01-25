@@ -3,7 +3,6 @@
 #include "common.h"
 #include "../../serverProcess.h"
 #include "../../network.h"
-#include "../../localInterface.h"
 #include "../scene/shadedRenderInstruction.h"
 #include "../../clientRuntimeConfig.h"
 #include "../../../version.h"
@@ -356,7 +355,7 @@ namespace Menu
 		game = Menu::Create();
 		game->Setup(0.3f,"Game",true);
 
-		game->AddCommand("Change Nickname",LocalApplicationInterface::QueryNickname);
+		game->AddCommand("Change Nickname",HUD::Dialog::QueryNickname);
 		game->AddCommand("Abandon faction",Network::AbandonCurrentFaction,[](){return Network::amOnline && Network::haveFaction && RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame;});
 		game->AddCommand("Show factions (Tab)", FactionTable::Show,[](){return Network::amOnline;});
 		game->AddCommand("Show statistics", Statistics::Show,[](){return Network::amOnline && RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame;});

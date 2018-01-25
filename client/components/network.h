@@ -42,6 +42,8 @@ namespace Network
 	extern bool				newRoundRequested;
 
 
+	bool	IsValidNickname(const String&candidate);
+
 
 	class ServerAddress
 	{

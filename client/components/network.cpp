@@ -25,18 +25,8 @@
 #include "visual/hud/guiHostList.h"
 #include "visual/hud/eventLog.h"
 #include "voting.h"
-
-
-//#define DEBUG_SERVER_LIST	//enable to generate very long artificial server list
-namespace LocalApplicationInterface
-{
-	void			SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird shit
-	void			OnPlayerControlBegin();
-
-	#ifdef HAS_WINDOW
-		bool		QueryNicknameIfEmpty();
-	#endif
-}
+#include "objectNetworkHelper.h"
+#include "playerControlBegin.h"
 
 
 namespace Network
@@ -71,6 +61,15 @@ namespace Network
 	bool			newRoundRequested = false;
 
 	GenericHashSet<TUniqueID>	visitedWorldMap;
+
+
+	bool	IsValidNickname(const String&candidate)
+	{
+		if (candidate.GetLength() < 4)
+			return false;
+		bool rs = Package::IsValid(candidate,32);
+		return rs;
+	}
 
 
 	void RegisterVisited(const TUniqueID&worldID)
@@ -213,7 +212,7 @@ namespace Network
 		client.Disconnect();
 
 		#ifdef HAS_WINDOW
-			if (LocalApplicationInterface::QueryNicknameIfEmpty())
+			if (HUD::Dialog::QueryNicknameIfEmpty())
 				return;
 		#endif
 
@@ -1567,7 +1566,7 @@ namespace Network
 				if (RuntimeConfig::aiMode && RuntimeConfig::serverAddress.host.IsNotEmpty())
 					application_shutting_down = true;
 				#ifdef HAS_WINDOW
-					LocalApplicationInterface::QueryNicknameIfEmpty();
+					HUD::Dialog::QueryNicknameIfEmpty();
 				#endif
 
 				Receiver::eventsLocked = true;
@@ -1603,7 +1602,7 @@ namespace Network
 					if (Animation::AllDone())
 					{
 						LogEvent(EventSignificance::Debug,"Begin Game. Animation done. OnPlayerControlBegin");
-						LocalApplicationInterface::OnPlayerControlBegin();
+						PlayerControlBegin::OnPlayerControlBegin();
 					}
 					else
 						LogEvent(EventSignificance::Debug,"Begin Game. Animation NOT done");
@@ -1994,7 +1993,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 					return;
 				Objects::Marker *m = Objects::Marker::Find(e->location);
 				if (m)
-					LocalApplicationInterface::SignalMarkerDeletion(m->id);
+					ObjectHelper::SignalMarkerDeletion(m->id);
 			},false);
 
 			#ifdef HAS_WINDOW
@@ -2038,7 +2037,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 		{
 			
 			LogEvent(EventSignificance::Debug,nullptr,"Deleting marker "+o->GetName()+" since it's outdated (at age "+String(o->age)+")");
-			LocalApplicationInterface::SignalMarkerDeletion(o->id);
+			ObjectHelper::SignalMarkerDeletion(o->id);
 			//Network::Channels::destroyMarker.SendTo(Network::client, *o);
 		}
 
@@ -2059,7 +2058,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			if (Animation::AllDone())
 			{
 				LogEvent(EventSignificance::Debug,"Command phase. Game has begun. Animation done. OnPlayerControlBegin");
-				LocalApplicationInterface::OnPlayerControlBegin();
+				PlayerControlBegin::OnPlayerControlBegin();
 			}
 			else
 			{

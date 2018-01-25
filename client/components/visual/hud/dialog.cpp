@@ -11,6 +11,7 @@
 #include <logEvent.h>
 #include "../../clientRuntimeConfig.h"
 #include "../../audio/music.h"
+#include "../../network.h"
 
 namespace DX11 = Engine::DX11; 
 
@@ -721,6 +722,58 @@ namespace Dialog
 
 
 
+
+
+
+	void	QueryNickname()
+	{
+		if (RuntimeConfig::aiMode)
+			return;
+		//if (Network::chosenNickname.IsEmpty())
+		{
+			static const String allowed = "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_-";
+
+			HUD::Dialog::Query("Please enter a nickname to continue (length 4-16)",::Network::chosenNickname,
+			allowed,
+				[](const String&candidate)->bool
+				{
+					return Network::IsValidNickname(candidate);
+				},
+				[](const String&name)
+				{
+					StringFile userName;
+					FileSystem::CreateDirectory("config");
+					userName.Create(RuntimeConfig::ConfigFile("userName.txt"));
+					userName << name;
+					Network::chosenNickname = name;
+					if (Network::client.IsConnected())
+					{
+						Network::Channels::changeMyName.SendTo(Network::client,name);
+
+
+					}
+				}
+			);
+		}
+	}
+
+	/**
+	Checks loaded nickname and queries a new one if none or an invalid is currently set.
+	No check is performed if the client is configured to run in AI mode.
+	@return true if a new name was queried, false otherwise. False indicates the currently set name is good, or AI mode is enabled
+	*/
+	bool	QueryNicknameIfEmpty()
+	{
+		if (RuntimeConfig::aiMode)
+			return false;
+
+		if (!Network::IsValidNickname(Network::chosenNickname))
+		{
+			QueryNickname();
+			return true;
+		}
+		return false;
+	}
 
 
 

@@ -8,29 +8,10 @@
 
 
 
-namespace LocalApplicationInterface
-{
-	bool		DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, UINT8 flags, Objects::Vehicle::mode_t mode, bool interactive);
-	UINT8		AssembleMotionFlags(bool detailedPath, bool leftClick, bool clearSafeTasks);
-	UINT8		AssembleMotionFlags(bool detailedPath, bool leftClick);
-	bool		DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, UINT8 flags, Objects::Vehicle::mode_t mode);
 
-	extern bool pauseAutomaticRoundProgression;
-
-	#ifdef HAS_WINDOW
-		void	QueryNickname();
-		bool	QueryNicknameIfEmpty();
-		void	RefreshSessionView();
-	#endif
-	void		SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird shit
-	bool		SeeingHostileActivity();																		
-	/**
-	Triggered when entering command mode and animations have finished (whichever of those events happens later)
-	*/
-	void		OnPlayerControlBegin();
-}
-
-
+/**
+Handler functions reacting to user input
+*/
 namespace InputControl
 {
 	void	SaveScreenshot();
@@ -39,18 +20,12 @@ namespace InputControl
 	void	ToggleSeeThrough();
 	void	ViewDown();
 	void	ViewUp();
-	void	InnerUndoTask(const Objects::PWorldEntity&e, bool force);
-
-	void	SendDirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, UINT8 flags, Objects::Vehicle::mode_t mode);
-	bool	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Grid::LCellIdI target, UINT8 flags);
-	
-
-	bool	CanHit(const Objects::PMobileEntity&m, const Grid::LCellIdI&loc);
-	bool	IsIdle(const Objects::PMobileEntity&v);
-	bool	IsIdle(const Objects::PStructure&s);
-	bool	IsIdle(const Objects::PWorldEntity&e);
 	#ifdef HAS_WINDOW
 
+		/**
+		Primary entry point used when clicking anywhere on the window
+		*/
+		void Select();
 
 
 		/**
