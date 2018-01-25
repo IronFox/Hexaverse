@@ -4,7 +4,6 @@ BUG REPORT FORM
 controller support
 
 
-hotkeys
 
 
 bug: in configuration mode nexus bases sometimes do not update, despite server version visible
@@ -161,6 +160,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+hotkeys
 alliances
 colored faction list + chat history + chat message input
 send entity id with server messages so user can click on the message to focus on them (ids are sent, user can't click yet)
