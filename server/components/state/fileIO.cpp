@@ -1928,7 +1928,7 @@ namespace FileIO
 
 		if (container.SaveToFile(name.c_str()))
 		{
-			LogEvent(EventSignificance::Uncommon,"World snapshot, round "+RuntimeConfig::roundNumber.ToString()+", written to "+String(name)+" in "+String(timer.GetSecondsSince(t0))+" seconds");
+			LogEvent(EventClass(EventSignificance::Uncommon,EventFlavor::ServerPrivate),"World snapshot, round "+RuntimeConfig::roundNumber.ToString()+", written to "+String(name)+" in "+String(timer.GetSecondsSince(t0))+" seconds");
 			//LogEvent(EventSignificance::Uncommon,"World snapshot created in "+String(timer.GetSecondsSince(t0))+" seconds");
 		}
 		else
