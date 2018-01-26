@@ -811,14 +811,14 @@ namespace Lua
 	};
 
 
-	class BaseFunction : public Reference
+	class BaseFunction : public NamedReference
 	{
-		typedef Reference	Super;
+		typedef NamedReference	Super;
 	protected:
 		/**/			BaseFunction()	{};
 		virtual void	SignalChange(const String&) override;
 	public:
-		void			operator=(const Reference&other)	{Super::operator=(other);}
+		void			operator=(const NamedReference&other)	{Super::operator=(other);}
 	};
 
 
@@ -836,18 +836,25 @@ namespace Lua
 			{
 				ResetToGlobal(prog,functionName);
 			}
-			/**/		Function(const Reference&ref)	{Super::operator=(ref);}
-			void		operator=(const Reference&ref)	{Super::operator=(ref);}
+			/**/		Function(const NamedReference&ref)	{Super::operator=(ref);}
+			void		operator=(const NamedReference&ref)	{Super::operator=(ref);}
 
 			void		operator()(args_t...parameters)	const
 			{
 				if (IsEmpty())
 					return;	//allow return-less functions to just fail silently
 					//throw Except::Program::GeneralFault("Lua: Trying to call empty function");
-				lua_State*state = GetProgram()->GetState();
-				Super::Push();
-				int numParameters = Detail::PushParameters(state,parameters...);
-				CallPushedFunction(state,numParameters,0);
+				try
+				{
+					lua_State*state = GetProgram()->GetState();
+					Super::Push();
+					int numParameters = Detail::PushParameters(state,parameters...);
+					CallPushedFunction(state,numParameters,0);
+				}
+				catch (const std::exception&ex)
+				{
+					throw Exception(CLOCATION,"Failed to call void function '"+this->GetName()+"': '"+String(ex.what()));
+				}
 			}
 
 		};
@@ -864,29 +871,37 @@ namespace Lua
 			{
 				ResetToGlobal(prog,functionName);
 			}
-			/**/		Function(const Reference&ref)	{Super::operator=(ref);}
-			void		operator=(const Reference&ref)	{Super::operator=(ref);}
+			/**/		Function(const NamedReference&ref)	{Super::operator=(ref);}
+			void		operator=(const NamedReference&ref)	{Super::operator=(ref);}
 
 			return_t	operator()(args_t...parameters)	const
 			{
 				if (IsEmpty())
 					throw Except::Program::GeneralFault("Lua: Trying to call empty function");
-				lua_State*state = GetProgram()->GetState();
-				Super::Push();
-				int numParameters = Detail::PushParameters(state,parameters...);
-				CallPushedFunction(state,numParameters,1);
-				return_t rs;
 				try
 				{
-					Detail::StackedT<return_t,false>::Get(GetProgram(),-1,rs);
-				}
-				catch (...)
-				{
+					lua_State*state = GetProgram()->GetState();
+					Super::Push();
+					int numParameters = Detail::PushParameters(state,parameters...);
+					CallPushedFunction(state,numParameters,1);
+					return_t rs;
+					try
+					{
+						Detail::StackedT<return_t,false>::Get(GetProgram(),-1,rs);
+					}
+					catch (...)
+					{
+						Detail::PopStacked(state);
+						throw;
+					}
 					Detail::PopStacked(state);
-					throw;
+					return rs;
 				}
-				Detail::PopStacked(state);
-				return rs;
+				catch (const std::exception&ex)
+				{
+					throw Exception(CLOCATION,"Failed to call "+String(typeid(return_t).name())+" function '"+this->GetName()+"': '"+String(ex.what()));
+				}
+
 			}
 
 		};

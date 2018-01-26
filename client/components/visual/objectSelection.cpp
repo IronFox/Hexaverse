@@ -93,7 +93,6 @@ namespace Objects
 
 		if (e)
 			e->OnDeselect();
-		HUD::HexGrid::RefreshButtonState();
 		if (e)
 			onSelectionChanged();
 		GlobalEvents::invalidateObjectCache();
