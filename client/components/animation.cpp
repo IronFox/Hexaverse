@@ -1158,37 +1158,45 @@ namespace Animation
 			case DestroyEntity:
 			{
 				allocatedTarget = Objects::GetEntity(targetEntityID);
-				ASSERT1__(allocatedTarget,targetEntityID);
-				if (explode)
-					ExplodeEntity(allocatedTarget);
-				LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Removing entity during animation at time "+String(Animation::atTime)+"/"+ToString(this->time));
-				//if (RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
+				if (allocatedTarget)
 				{
-					Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(allocatedTarget);
-					if (v)
+					ASSERT1__(allocatedTarget,targetEntityID);
+					if (explode)
+						ExplodeEntity(allocatedTarget);
+					LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Removing entity during animation at time "+String(Animation::atTime)+"/"+ToString(this->time));
+					//if (RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
 					{
-						if (!insertIntoGridLater.IsSet(v->id) && removalType != Objects::RemovalType::DestroyedInStorage && !v->IsAboveGrid())
-							Objects::RemoveVehicleFromGrid(v,v->preAnimationLocation);
+						Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(allocatedTarget);
+						if (v)
+						{
+							if (!insertIntoGridLater.IsSet(v->id) && removalType != Objects::RemovalType::DestroyedInStorage && !v->IsAboveGrid())
+								Objects::RemoveVehicleFromGrid(v,v->preAnimationLocation);
+						}
 					}
+					if (allocatedTarget->IsMobile() && allocatedTarget->isOwnedByMe)
+					{
+						Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(allocatedTarget);
+						float t = 0.f;
+						if (removalType != Objects::RemovalType::DestroyedInStorage)
+							v->MoveSensoryToCurrentLocation(t);
+					}
+
+					float t = 0;
+					Objects::Remove(allocatedTarget,Objects::RemovalType::Reinterpret(removalType),t);
+					#ifdef HAS_WINDOW
+						if (!allocatedTarget->isOwnedByMe)
+							HUD::HexGrid::RefreshContacts();
+						HUD::WindowStack::SignalSituationChange();
+						if (removalType == Objects::RemovalType::UncontrolledExplosion)
+							HUD::HexGrid::EventLog::RegisterEntityDestruction(this->time.min, allocatedTarget->isOwnedByMe,allocatedTarget->GetWorldPosition(), allocatedTarget->id, allocatedTarget->GetNiceName());
+
+					#endif
 				}
-				if (allocatedTarget->IsMobile() && allocatedTarget->isOwnedByMe)
+				else
 				{
-					Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(allocatedTarget);
-					float t = 0.f;
-					if (removalType != Objects::RemovalType::DestroyedInStorage)
-						v->MoveSensoryToCurrentLocation(t);
+					LogEvent(EventClass::Preset::internalError,"Unable to allocate target for DestroyEntity "+ToString(targetEntityID));
+					DBG_FATAL__("Unable to allocate target for DestroyEntity "+ToString(targetEntityID));
 				}
-
-				float t = 0;
-				Objects::Remove(allocatedTarget,Objects::RemovalType::Reinterpret(removalType),t);
-				#ifdef HAS_WINDOW
-					if (!allocatedTarget->isOwnedByMe)
-						HUD::HexGrid::RefreshContacts();
-					HUD::WindowStack::SignalSituationChange();
-					if (removalType == Objects::RemovalType::UncontrolledExplosion)
-						HUD::HexGrid::EventLog::RegisterEntityDestruction(this->time.min, allocatedTarget->isOwnedByMe,allocatedTarget->GetWorldPosition(), allocatedTarget->id, allocatedTarget->GetNiceName());
-
-				#endif
 			}
 			break;
 			case MovementStream:
