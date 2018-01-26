@@ -1762,6 +1762,11 @@ void ParseKeyValue(const String&key, const String&value)
 			RuntimeConfig::aiAccessToken.Decode(value);
 			LogEvent(EventClass::Preset::configuration,nullptr,"Assuming AI-client role");
 		}
+		elif (key == "profile")
+		{
+			RuntimeConfig::profilePrefix = value+"_";
+			LogEvent(EventClass::Preset::configuration,nullptr,"Using profile prefix '"+RuntimeConfig::profilePrefix+"'");
+		}
 		elif (key == "udpListen")
 		{
 			if (!convert(value.c_str(), RuntimeConfig::udpListen))
@@ -2286,7 +2291,7 @@ int main( int argc, const char* argv[])
 				String name;
 				try
 				{
-					StringFile userName(RuntimeConfig::ConfigFile("userName.txt"));
+					StringFile userName(RuntimeConfig::ConfigFile(RuntimeConfig::profilePrefix+"userName.txt"));
 					userName >> name;
 				}
 				catch (...)

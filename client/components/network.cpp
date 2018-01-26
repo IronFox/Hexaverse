@@ -255,7 +255,7 @@ namespace Network
 
 	static PathString AccessFilename()
 	{
-		return RuntimeConfig::ConfigFile("worldAccess.m32");
+		return RuntimeConfig::ConfigFile(RuntimeConfig::profilePrefix+ "worldAccess.m32");
 	}
 
 	void SaveWorldAccessTokens()
