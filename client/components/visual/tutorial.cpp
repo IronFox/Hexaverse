@@ -222,7 +222,7 @@ namespace Tutorial
 					taskWindow = Window::Create();
 					taskWindow->canBeImplicitlyClosed = false;
 
-					taskWindow->AddNewComponent(new Label(msg))->AnchorTop(0).FillHorizontally(0);
+					taskWindow->AddNewComponent(new Label(msg),CLOCATION)->AnchorTop(0).FillHorizontally(0);
 					taskWindow->SetAutomaticHeight(true);
 					taskWindow->Anchor().Bottom(0.1f,0.25f).Right(0.1f,0.25f);
 

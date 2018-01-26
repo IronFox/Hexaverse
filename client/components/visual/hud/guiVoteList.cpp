@@ -59,20 +59,20 @@ namespace HUD
 				entry.panel = panel;
 
 				panel->Anchor().FillHorizontally().BeneathLastOf(window);
-				window->AddComponent(panel);
+				window->AddComponent(panel,CLOCATION);
 
 
 				panel->SetAutoHeightSpacing(0.01f);
 				Component::PLabel label{new Component::Label{v->phrase}};
 				label->Anchor().FillHorizontally().Top();
-				panel->AddComponent(label);
+				panel->AddComponent(label,CLOCATION);
 
 				WVote w = v;
 
 				Component::PLabel timeLabel{new Component::Label{"",0.7f}};
 				timeLabel->Anchor().Left().Bottom();
 				timeLabel->LockToIdealWidth();
-				panel->AddComponent(timeLabel);
+				panel->AddComponent(timeLabel,CLOCATION);
 
 
 				Component::PButton noButton{new Component::Button{"No",[w]()
@@ -82,7 +82,7 @@ namespace HUD
 						v2->CastVote(false);
 				}}};
 				noButton->Anchor().Right(0.01f).Beneath(label);
-				panel->AddComponent(noButton);
+				panel->AddComponent(noButton,CLOCATION);
 
 
 
@@ -94,7 +94,7 @@ namespace HUD
 				}}};
 
 				yesButton->Anchor().LeftOf(noButton,0.01f).Beneath(label);
-				panel->AddComponent(yesButton);
+				panel->AddComponent(yesButton,CLOCATION);
 				
 				entry.yesButton = yesButton;
 				entry.noButton = noButton;

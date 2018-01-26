@@ -194,7 +194,7 @@ namespace Component
 			references.Clear();
 		}
 
-		void			VerifyIntegrity(const FVerification&, const AnchorAxis&, bool isUpper) const;
+		void			VerifyIntegrity(const TCodeLocation&sender, const FVerification&, const AnchorAxis&, bool isUpper) const;
 
 		void			SetAllOf(const PPanel&, const Distance&distance, const Component*mustNotInclude);
 		void			SetSomeOf(const PPanel&, const Distance&distance, const FSelector&, const Component*mustNotInclude);
@@ -239,11 +239,11 @@ namespace Component
 			void		AnchorLowerUnknown(const Distance&lowerOffset = Distance());
 			void		Fill(const Distance&lowerOffset = Distance(), const Distance&upperOffset = Distance());
 			void		SetAutoCenter(const Distance&extent = Distance::Unknown) {isAutoCentering = true; this->extent = extent; lower.Disable(); upper.Disable();}
-			void		VerifyIntegrity(const FVerification&, bool allowUnknownExtent) const;
+			void		VerifyIntegrity(const TCodeLocation&sender, const FVerification&, bool allowUnknownExtent) const;
 			bool		BothAnchorsAreOff() const {return lower.IsInactive() && upper.IsInactive();}
 			bool		BothAnchorsAreOn() const {return lower.IsEnabled() && upper.IsEnabled();}
 			bool		IsFreeFloating() const {return BothAnchorsAreOff() && !isAutoCentering;}
-			void		SetFreeFloating(const Distance&extent = Distance::Unknown);
+			void		SetFreeFloating(const TCodeLocation&sender, const Distance&extent = Distance::Unknown);
 			bool		HasExtentPlaceholder() const {return !Stretches() && extent.IsPlaceholder();}
 			void		FillBetween(const PComponent&lowerC, const PComponent&upperC);
 			float		GetMinimumEdge(float parentUpperEdge, const M::TFloatRange<>&rectRange) const;
@@ -255,7 +255,7 @@ namespace Component
 		Axis			axis[2];
 
 		/**/			AnchorConfig()	{axis[AnchorAxis::Horizontal].myAxis = AnchorAxis::Horizontal; axis[AnchorAxis::Vertical].myAxis = AnchorAxis::Vertical;}
-		void			VerifyIntegrity(const FVerification&check, bool allowUnknownExtent) const {axis[0].VerifyIntegrity(check,allowUnknownExtent); axis[1].VerifyIntegrity(check,allowUnknownExtent);}
+		void			VerifyIntegrity(const TCodeLocation&sender, const FVerification&check, bool allowUnknownExtent) const {axis[0].VerifyIntegrity(sender,check,allowUnknownExtent); axis[1].VerifyIntegrity(sender,check,allowUnknownExtent);}
 		Axis&			GetHAxis() {return axis[AnchorAxis::Horizontal];}
 		const Axis&		GetHAxis() const {return axis[AnchorAxis::Horizontal];}
 		Axis&			GetVAxis() {return axis[AnchorAxis::Vertical];}
@@ -494,7 +494,7 @@ namespace Component
 		AnchorModifier	Anchor() {return this;}
 		const AnchorConfig&GetAnchorConfig() const {return anchorConfig;}
 
-		virtual void	VerifyAnchorIntegrity() const;
+		virtual void	VerifyAnchorIntegrity(const TCodeLocation&sender) const;
 		virtual void	SetAnchorConfig(const AnchorConfig&cfg);
 
 		/**
@@ -862,11 +862,11 @@ namespace Component
 				ASSERT__(!heightLockedToIdeal);
 		}
 
-		virtual void	VerifyAnchorIntegrity() const override 
+		virtual void	VerifyAnchorIntegrity(const TCodeLocation&sender) const override 
 		{
 			ASSERT__(!WidthChangesDynamically() || !widthLockedToIdeal);
 			ASSERT__(!HeightChangesDynamically() || !heightLockedToIdeal);
-			Super::VerifyAnchorIntegrity();
+			Super::VerifyAnchorIntegrity(sender);
 		}
 
 		virtual void	UpdateDynamicSize(ChangeRecorder&) override;
@@ -1353,7 +1353,7 @@ namespace Component
 		virtual void	OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse) override;
 
 
-		virtual void		VerifyAnchorIntegrity() const override;
+		virtual void		VerifyAnchorIntegrity(const TCodeLocation&sender) const override;
 
 
 		virtual const Buffer0<PComponent>&		GetReferences() const { return components; }
@@ -1375,12 +1375,12 @@ namespace Component
 		These constraints are checked and lead to program termination if found in violation
 		@return true if the component was added, false if it is null, or already a member
 		*/
-		virtual bool		AddComponent(const PComponent&c);
-		virtual PComponent	AddNewComponent(Component*c)
+		virtual bool		AddComponent(const PComponent&c, const TCodeLocation&caller);
+		virtual PComponent	AddNewComponent(Component*c, const TCodeLocation&caller)
 		{
 			ASSERT_NOT_NULL__(c);
 			PComponent comp(c);
-			ASSERT__(AddComponent(comp));
+			ASSERT__(AddComponent(comp,caller));
 			return comp;
 		}
 
@@ -1406,13 +1406,13 @@ namespace Component
 			return false;
 		}
 		template <typename Component>
-		std::shared_ptr<Component>		AnchorBelowPrevious(Component*newComponent, const Distance& distanceFromSides =  0.015f, const Distance& distanceToPrevious = 0.015f)
+		std::shared_ptr<Component>		AnchorBelowPrevious(const TCodeLocation&caller, Component*newComponent, const Distance& distanceFromSides =  0.015f, const Distance& distanceToPrevious = 0.015f)
 		{
 			std::shared_ptr<Component> c(newComponent);
-			AnchorBelowPrevious(c,distanceFromSides,distanceToPrevious);
+			AnchorBelowPrevious(caller, c,distanceFromSides,distanceToPrevious);
 			return c;
 		}
-		void			AnchorBelowPrevious(const PComponent&newComponent, const Distance& distanceFromSides = 0.015f, const Distance& distanceToPrevious = 0.015f);
+		void			AnchorBelowPrevious(const TCodeLocation&caller, const PComponent&newComponent, const Distance& distanceFromSides = 0.015f, const Distance& distanceToPrevious = 0.015f);
 
 		virtual void	SetAnchorConfig(const AnchorConfig&cfg) override;
 	private:
@@ -1444,9 +1444,9 @@ namespace Component
 			Super::SetActive(isActive);
 		}
 
-		virtual bool		AddComponent(const PComponent&c) override
+		virtual bool		AddComponent(const PComponent&c, const TCodeLocation&caller) override
 		{
-			return Super::AddComponent(c) && OnComponentsChanged();
+			return Super::AddComponent(c,caller) && OnComponentsChanged();
 		}
 		virtual bool		RemoveComponent(const PComponent&c) override
 		{
@@ -1600,7 +1600,7 @@ namespace Component
 	private:
 		static void		ConfigureInactive(const PButton&);
 		static void		ConfigureActive(const PButton&);
-		virtual bool	AddComponent(const PComponent&c) override	{return false;}
+		virtual bool	AddComponent(const PComponent&c, const TCodeLocation&caller) override	{return false;}
 		virtual bool	RemoveComponent(const PComponent&c) override {return false;}
 		virtual bool	ClearComponents() override {return false;}
 
@@ -1712,7 +1712,7 @@ namespace Component
 		virtual void	OnTabChange();
 
 	private:
-		virtual bool	AddComponent(const PComponent&c) override	{return false;}
+		virtual bool	AddComponent(const PComponent&c, const TCodeLocation&caller) override	{return false;}
 		virtual bool	RemoveComponent(const PComponent&c) override {return false;}
 		virtual bool	ClearComponents() override {return false;}
 
@@ -1777,7 +1777,7 @@ namespace Component
 				rs->SetLocation(M::TFloatRect(float2(0.25f),float2(0.5f)));
 				rs->SetAutomaticHeight(true);
 				//Super::SetCenteredWidth(0.75f,GUI::TAnchor::RelativeToScreen);
-				rs->VerifyAnchorIntegrity();
+				rs->VerifyAnchorIntegrity(CLOCATION);
 				return rs;
 			}
 
