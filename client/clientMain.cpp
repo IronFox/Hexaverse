@@ -1050,7 +1050,6 @@ namespace ApplicationInterface
 
 
 
-		HUD::HexGrid::Configure(Objects::selectedEntity);
 		HUD::StatePanel::SignalChange();
 
 	}
@@ -2093,6 +2092,8 @@ int main( int argc, const char* argv[])
 	#ifdef HAS_WINDOW
 		GlobalEvents::invalidateObjectCache << ApplicationInterface::HandleLocalEntityStatusChange;
 		Objects::onSelectionChanged << ApplicationInterface::HandleLocalSelectionChange;
+		Objects::onSelectionChanged << [](){HUD::HexGrid::Configure(Objects::selectedEntity);};
+
 
 		Engine::GlobalAspectConfiguration::worldZIsUp = true;
 	#endif
