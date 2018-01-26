@@ -1,3 +1,22 @@
+manually added server display wrong until contacted?
+
+alliance forming troubles
+prevent mushroom terrains (reduce height range?, increase average planet height?)
+hostile attack events from friendlies
+hide selected sensor range sphere?
+larger clip range?
+allied drone vanishes on move, causing client crashes
+
+rename enabled nexus ports to conquering or something
+
+votes should disappear after voting
+
+can dig into emp zone, get 100 emp damage
+
+client crashes, steam refuses to start client when server still running in the background, cannot end without ui
+middle panel statistics are wrongly wrapped
+
+
 BUG REPORT FORM
 
 
