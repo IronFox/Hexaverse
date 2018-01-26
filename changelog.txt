@@ -1,4 +1,6 @@
 v0.7.3
+	* Fixed crashes in bug reporter when trying to upload very long log files.
+	* Fixed handling of crashes in bug reporter.
 
 v0.7.2	[Jan 25 2018]
 	> Added various hot-keys to directly build certain structure types with a selected terraformer.

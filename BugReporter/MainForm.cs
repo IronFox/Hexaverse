@@ -80,6 +80,9 @@ namespace BugReporter
 							lines[i] = lines0[i].Split('\t');
 							combined.AppendLine(lines0[i]);
 						}
+
+						if (combined.Length > 65535)
+							combined.Remove(0, combined.Length - 65535);
 						Combined = combined.ToString();
 					}
 					catch { }
@@ -208,11 +211,25 @@ namespace BugReporter
 		{
 			if (builder.Length > 0)
 				builder.Append('&');
-			builder.Append(Uri.EscapeDataString(name));
+			EscapeDataString(builder,name);
 			builder.Append('=');
-			builder.Append(Uri.EscapeDataString(value));
+			EscapeDataString(builder,value);
 		}
 
+		private static void EscapeDataString(StringBuilder builder, string str)
+		{
+			int maxCharacters = 2000;
+
+			int numFullSteps = str.Length / maxCharacters;
+
+			int numTotalSteps = (str.Length + maxCharacters - 1) / maxCharacters;
+
+			for (int i = 0; i < numFullSteps; i++)
+				builder.Append(Uri.EscapeDataString(str.Substring(maxCharacters * i, maxCharacters)));
+			if (numTotalSteps > numFullSteps)
+				builder.Append(Uri.EscapeDataString(str.Substring(maxCharacters * numFullSteps)));
+
+		}
 
 		static async Task<string> ContactServerAsync(IEnumerable<Tuple<string, string>> parameters, int delayMS, bool validateCertificate)
 		{
@@ -507,9 +524,12 @@ namespace BugReporter
 			{
 				if (uploadTask.IsFaulted)
 				{
-					toolStripStatusLabel.Text = "Unable to upload to server: " + uploadTask.Exception.InnerException.Message.Replace("\n", "").Replace("\r", "");
+					Exception ex = uploadTask.Exception;
+					while (ex.InnerException != null)
+						ex = ex.InnerException;
+					toolStripStatusLabel.Text = "Unable to upload to server: " + ex.Message.Replace("\n", "").Replace("\r", "");
 					uploadTask = null;
-					Program.Abort(uploadTask.Exception.InnerException.Message);
+					Program.Abort(ex.Message);
 					//ActivateInput(true);
 				}
 				else if (uploadTask.IsCompleted)
@@ -562,32 +582,40 @@ namespace BugReporter
 
 		private void sendButton_Click(object sender, EventArgs e)
 		{
-			if (bugDescription.Text.Trim().Length == 0)
+			try
 			{
-				MessageBox.Show("Please describe the problem in the top-most text field. Thank you");
-				return;
-			}
-			ActivateInput(false);
-			List<Tuple<string, string>> parameters = new List<Tuple<string, string>>();
-			parameters.Add(new Tuple<string, string>("action", "store"));
-			parameters.Add(new Tuple<string, string>("description", bugDescription.Text));
-			parameters.Add(new Tuple<string, string>("reproduction", reproductionDesc.Text));
-			parameters.Add(new Tuple<string, string>("gameVersion", gameVersion.Text));
-			if (logFile.SelectedItem != null && logFile.SelectedItem is LogFile)
-			{
-				var log = ((LogFile)logFile.SelectedItem);
-				if (log.Fatal!=null)
-					parameters.Add(new Tuple<string, string>("fatalMessage", log.Fatal));
-
-				parameters.Add(new Tuple<string, string>("primaryLogFile", log.Combined));
-
-				foreach (var item in logFileList.SelectedItems)
+				if (bugDescription.Text.Trim().Length == 0)
 				{
-					LogFile f = (LogFile)item;
-					parameters.Add(new Tuple<string, string>("logFile[]", f.Combined));
+					MessageBox.Show("Please describe the problem in the top-most text field. Thank you");
+					return;
 				}
+				ActivateInput(false);
+				List<Tuple<string, string>> parameters = new List<Tuple<string, string>>();
+				parameters.Add(new Tuple<string, string>("action", "store"));
+				parameters.Add(new Tuple<string, string>("description", bugDescription.Text));
+				parameters.Add(new Tuple<string, string>("reproduction", reproductionDesc.Text));
+				parameters.Add(new Tuple<string, string>("gameVersion", gameVersion.Text));
+				if (logFile.SelectedItem != null && logFile.SelectedItem is LogFile)
+				{
+					var log = ((LogFile)logFile.SelectedItem);
+					if (log.Fatal != null)
+						parameters.Add(new Tuple<string, string>("fatalMessage", log.Fatal));
+
+					parameters.Add(new Tuple<string, string>("primaryLogFile", log.Combined));
+
+					foreach (var item in logFileList.SelectedItems)
+					{
+						LogFile f = (LogFile)item;
+						parameters.Add(new Tuple<string, string>("logFile[]", f.Combined));
+					}
+				}
+				uploadTask = ContactServerAsync(parameters, 0, false);
 			}
-			uploadTask = ContactServerAsync(parameters,0,false);
+			catch (Exception ex)
+			{
+				Program.Abort(ex.Message);
+			}
+
 		}
 	}
 }
