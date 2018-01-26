@@ -18,12 +18,12 @@ namespace HUD{namespace HostList{
 
 	using namespace Component;
 
-	class VisualAttachment: public Network::ServerInfo::VisualAttachment
-	{
-	public:
-		PLabel			headLine;	//game/server ids, optionally (continue)
-		PButtonPanel	buttonPanel;
-	};
+	//class VisualAttachment: public Network::ServerInfo::VisualAttachment
+	//{
+	//public:
+	//	PLabel			headLine;	//game/server ids, optionally (continue)
+	//	PButtonPanel	buttonPanel;
+	//};
 
 	const float4 incompatibleColor(1,0.6,0.55,1);
 
@@ -201,19 +201,21 @@ namespace HUD{namespace HostList{
 		float4 color(1);
 		if (!info.rightVersion || info.protocolIncompatible)
 			color = incompatibleColor;
+		PButtonPanel p;// = To<VisualAttachment>::Cast(info.visualAttachment)->buttonPanel;
 
-
-		if (info.visualAttachment)
+		//if (info.visualAttachment)
+		//{
+		//	To<VisualAttachment>::Cast(info.visualAttachment)->buttonPanel->ClearComponents();
+		//}
+		//else
 		{
-			To<VisualAttachment>::Cast(info.visualAttachment)->buttonPanel->ClearComponents();
-		}
-		else
-		{
-			auto attach = new VisualAttachment();
-			info.visualAttachment.reset(attach);
+			//auto attach = new VisualAttachment();
+			//info.visualAttachment.reset(attach);
 
-			attach->buttonPanel.reset(new ButtonPanel());
-			auto p = attach->buttonPanel;
+			//attach->buttonPanel.reset(new ButtonPanel());
+			//auto p = attach->buttonPanel;
+			p = PButtonPanel(new ButtonPanel());
+
 			p->Anchor().FillHorizontally().Top();
 			p->SetAutomaticHeight(true);
 			bool versionMatch = info.rightVersion;
@@ -300,13 +302,14 @@ namespace HUD{namespace HostList{
 				PLabel headLine = MakeHeaderLabel(text,1.1f,0);
 				headLine->SetColor(color);
 				SetTop(headLine,0.01f);
-				attach->headLine = headLine;
+				//attach->headLine = headLine;
+
+				p->AddComponent(headLine,CLOCATION);
+
 			}
 		}
 
 
-		PButtonPanel p = To<VisualAttachment>::Cast(info.visualAttachment)->buttonPanel;
-		p->AddComponent(To<VisualAttachment>::Cast(info.visualAttachment)->headLine);
 
 
 		bool incompatible = !info.rightVersion || info.protocolIncompatible;
