@@ -1505,7 +1505,9 @@ namespace Objects
 				{
 					if (e != selectedEntity)
 					{
-						if ((e->isOwnedByMe && showFriendlyRanges && e->IsAlive()) || (!e->isOwnedByMe && showHostileRanges))
+						const bool mine = e->isOwnedByMe || (e->owner && e->owner->IsAlliedWithMe());
+
+						if ((mine && showFriendlyRanges && e->IsAlive()) || (!mine && showHostileRanges))
 						{
 							RenderAttackRangeOf(e,color,extendedShadow,false);
 						}

@@ -501,6 +501,10 @@ namespace Objects
 
 
 		void			ChangeAlliance(const PAlliance&);
+		bool			IsAlliedWith(const PFaction&)const;
+		#ifdef CLIENT
+			bool		IsAlliedWithMe() const;
+		#endif
 
 
 	};
