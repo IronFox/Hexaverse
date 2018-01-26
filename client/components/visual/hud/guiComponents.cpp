@@ -2094,7 +2094,7 @@ namespace Component
 				{
 					rec.Report(shared_from_this(),prev);
 
-					VerifyAnchorIntegrity();
+					VerifyAnchorIntegrity(CLOCATION);
 					if (IsDebuggerPresent())
 						DebugBreak();
 					else
