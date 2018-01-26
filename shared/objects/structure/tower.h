@@ -120,7 +120,7 @@ namespace Objects
 
 		//Structure overrides:
 		virtual bool				ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)	override	{return true;}
-		virtual placement_t			CheckPlacement(const Grid::LCellIdI&location) override { return CommonCheckStructurePlacement(location,2,true); }
+		virtual placement_t			CheckPlacement(const Grid::LCellIdI&location) override { return CommonCheckStructurePlacement(location,2,2); }
 		virtual int					GetHeight() const override {return 2;}
 
 		//BaseEntity overrides:

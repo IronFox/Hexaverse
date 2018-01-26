@@ -5,6 +5,7 @@ v0.7.3
 	* Fixed material dialog in interactive configuration mode.
 	* Fixed rare crash when refreshing server list.
 	* Fixed crash when join-vote outlives the targeted alliance.
+	* Fixed server crash when trying to build multi-story building on top terrain level.
 
 v0.7.2	[Jan 25 2018]
 	> Added various hot-keys to directly build certain structure types with a selected terraformer.

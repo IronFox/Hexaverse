@@ -77,7 +77,8 @@ namespace Objects
 			//LacksFullFoundation,
 			BadHeight,
 			GroundLevelObstruction,	//!< One or more terrain volume cells block structure placement the base level
-			UpperLevelObstruction	//!< One or more volume cells block structure placement on levels height+1 and above. This applies only to buildings of height 2+ 
+			UpperLevelObstruction,	//!< One or more volume cells block structure placement on levels height+1 and above. This applies only to buildings of height 2+ 
+			MaxLevelExceeded,	//!< Structure exceeds top grid level
 		};
 
 		/**
