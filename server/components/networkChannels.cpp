@@ -165,29 +165,27 @@ namespace Receiver
 					auto f = Objects::Faction::FindByID(v->concerning[0]);
 					if (f)
 					{
-						switch (rs.resultType)
+						if (!a)
 						{
-							case Protocol::VoteResultType::Passed:
-								if (a)
-								{
+							LogEvent(EventClass(EventSignificance::Important,EventFlavor::Loss), f,"Vote for "+niceTask+" failed since targeted alliance no longer exists");
+						}
+						else
+							switch (rs.resultType)
+							{
+								case Protocol::VoteResultType::Passed:
 									LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain), f,"Vote passed. Admission to alliance "+a->id.ToNiceString()+" granted");
 									f->ChangeAlliance(a);
-								}
-								else
-								{
-									LogEvent(EventClass::Preset::internalError, f,"Vote passed but alliance "+ToString(v->concerning[1])+" no longer exists...");
-								}
-							break;
-							case Protocol::VoteResultType::Rejected:
-								LogEvent(EventClass(EventSignificance::Important,EventFlavor::Loss), f,"Admission to alliance "+a->id.ToNiceString()+" has been rejected");
-							break;
-							case Protocol::VoteResultType::TimedOut:
-								LogEvent(EventClass(EventSignificance::Important,EventFlavor::Loss), f,"Vote for "+niceTask+" has timed out");
-							break;
-							case Protocol::VoteResultType::Canceled:
-								LogEvent(EventClass(EventSignificance::Important,EventFlavor::Neutral), f,"Vote for "+niceTask+" was canceled");
-							break;
-						}
+								break;
+								case Protocol::VoteResultType::Rejected:
+									LogEvent(EventClass(EventSignificance::Important,EventFlavor::Loss), f,"Admission to alliance "+a->id.ToNiceString()+" has been rejected");
+								break;
+								case Protocol::VoteResultType::TimedOut:
+									LogEvent(EventClass(EventSignificance::Important,EventFlavor::Loss), f,"Vote for "+niceTask+" has timed out");
+								break;
+								case Protocol::VoteResultType::Canceled:
+									LogEvent(EventClass(EventSignificance::Important,EventFlavor::Neutral), f,"Vote for "+niceTask+" was canceled");
+								break;
+							}
 					}
 				}
 			);
