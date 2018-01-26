@@ -250,7 +250,7 @@ namespace ConfigurationMode
 				float x2 = 0.25f * (3-(window->CountComponents()%4));
 				{
 					auto m = button->Anchor();
-					m.FillHorizontally(x,x2);
+					m.FillHorizontally(Distance( x,Distance::Type::RelativeToParentComponent),Distance(x2,Distance::Type::RelativeToParentComponent));
 
 					if (window->CountComponents()>=4)
 						m.Beneath(window->GetReferences()[4*(window->CountComponents()/4-1)], Distance::GameWindow( 0.01f ));
