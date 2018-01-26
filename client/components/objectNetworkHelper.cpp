@@ -290,7 +290,7 @@ namespace ObjectHelper
 					target++;
 					return MoveVehicleTo(v,prev,target,flags);
 				}
-				LogEvent(EventClass::Preset::commandRejected,v.get(),"Unable to find route to designated destination");
+				LogEvent(EventClass::Preset::commandRejected,v.get(),"Unable to find route to destination");
 				//SendDirectTo(v,target,false,false,Objects::CursorMode::Idle);	//maybe some error in the client
 				return false;
 			}
