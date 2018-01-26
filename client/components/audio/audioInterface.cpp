@@ -42,7 +42,7 @@ namespace AudioInterface
 		if (!OpenAL::Init())	//test
 		//if (true)
 		{
-			static const PathString markerFileName = RuntimeConfig::ConfigFile(L"OpenALInstallationAttempted.txt");
+			static const PathString markerFileName = RuntimeConfig::ConfigFile("OpenALInstallationAttempted.txt");
 			if (!FileSystem::IsFile(markerFileName))
 			{
 				ErrMessage("Warning: Unable to initialize OpenAL.\nOpenAL might not be installed on your system. Attempting to install...");
