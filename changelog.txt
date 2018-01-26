@@ -1,3 +1,5 @@
+v0.7.3
+
 v0.7.2	[Jan 25 2018]
 	> Added various hot-keys to directly build certain structure types with a selected terraformer.
 	> Progress bars are rendered atop units only when the current operation will require more than one round to complete.
