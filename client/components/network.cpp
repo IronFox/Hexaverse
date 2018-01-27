@@ -470,6 +470,8 @@ namespace Network
 			{
 				case TCP::Event::ConnectionLost:
 					//me->Release();
+					if (me)
+						me->protocolIncompatible = false;	//can't know for next connection
 				break;
 			}
 
