@@ -4,6 +4,33 @@
 #include "network.h"
 
 
+/*static*/ count_t		Vote::CountActiveVotes()
+{
+	count_t rs = 0; 
+	foreach (voteQueue,v) 
+		if (!(*v)->hidden) 
+			rs++; 
+	return rs;
+}
+
+/*static*/ count_t		Vote::CountNewVotes()
+{
+	count_t rs = 0; 
+	foreach (voteQueue,v) 
+		if (!(*v)->HaveVoted()) 
+			rs++; 
+	return rs;
+}
+
+/*static*/ void			Vote::VisitActiveVotes(const std::function<void(const PVote&)>visitor)
+{
+	foreach (voteQueue,v) 
+		if (!(*v)->hidden) 
+			visitor(*v);
+}
+
+
+
 /*static*/ PVote	Vote::Create(const TUniqueID&id, float remainingSeconds, const String&phrase)
 {
 	LogEvent(EventSignificance::Common,"Creating vote "+ToString(id)+", timeout after "+String(remainingSeconds)+" seconds: '"+phrase+"'");
@@ -29,7 +56,7 @@
 	return rs;
 }
 
-void			Vote::CastVote(bool inFavor)
+void			Vote::CastVote(bool inFavor, bool hideVote)
 {
 	if (closed)
 	{
@@ -49,7 +76,9 @@ void			Vote::CastVote(bool inFavor)
 	haveVoted = true;
 	haveVotedInFavor = inFavor;
 
+	hidden = hideVote;
 	GlobalEvents::voteCast(shared_from_this());
+
 }
 
 void			Vote::Close(const TOutcome&outcome)

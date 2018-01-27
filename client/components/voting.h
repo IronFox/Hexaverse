@@ -46,8 +46,10 @@ public:
 	the vote may be changed subsequently by calling this method again.
 	If the local vote was the last necessary to reach completion,
 	then even an immediate re-vote may be rejected, however.
+	@param inFavor Local player vote
+	@param hideVote Visually remove local vote immediately
 	*/
-	void				CastVote(bool inFavor);
+	void				CastVote(bool inFavor, bool hideVote);
 
 	/**
 	Creates a new vote given the specified configuration.
@@ -73,18 +75,18 @@ public:
 	
 	static void			StaticCreate();
 	/**
-	Counts the number of registered votes. That is the number of concurrent votes that the local user may or already has voted on
+	Counts the number of registered votes. That is the number of concurrent visible votes that the local user may or already has voted on
 	*/
-	static count_t		CountActiveVotes() {return all.Count();}
+	static count_t		CountActiveVotes();
 	/**
 	Counts the number of registered votes that the local user has not voted on yet
 	*/
-	static count_t		CountNewVotes() {count_t rs = 0; foreach (voteQueue,v) if (!(*v)->HaveVoted()) rs++; return rs;}
+	static count_t		CountNewVotes();
 
 	/**
-	Iterates through all registered votes in order of creation
+	Iterates through all non-hidden registered votes in order of creation
 	*/
-	static void			VisitActiveVotes(const std::function<void(const PVote&)>visitor)	{foreach (voteQueue,v) visitor(*v);}
+	static void			VisitActiveVotes(const std::function<void(const PVote&)>visitor);
 
 private:
 	/**/				Vote(const TUniqueID&id, float remainingSeconds, const String&phrase):ttlSeconds(remainingSeconds), phrase(phrase),id(id){}
@@ -93,7 +95,8 @@ private:
 
 	bool				haveVoted = false,
 						haveVotedInFavor = false,
-						closed = false;
+						closed = false,
+						hidden = false;
 
 	static HashTable<TUniqueID,PVote>	all;
 	static Buffer0<PVote>	voteQueue;	//in order of creation

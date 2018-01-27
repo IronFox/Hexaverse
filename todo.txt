@@ -7,7 +7,6 @@ larger clip range?
 allied drone vanishes on move, causing client crashes
 
 
-votes should disappear after voting
 
 can dig into emp zone, get 100 emp damage
 
@@ -177,6 +176,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+votes should disappear after voting
 rename enabled nexus ports to conquering or something
 fixed: manually added server display wrong until contacted?
 hotkeys
