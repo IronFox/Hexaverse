@@ -1,7 +1,6 @@
 
 alliance forming troubles
 prevent mushroom terrains (reduce height range?, increase average planet height?)
-hostile attack events from friendlies
 hide selected sensor range sphere?
 larger clip range?
 allied drone vanishes on move, causing client crashes
@@ -174,6 +173,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+hostile attack events from friendlies
 fixed: can dig into emp zone, get 100 emp damage
 middle panel statistics are wrongly wrapped
 votes should disappear after voting

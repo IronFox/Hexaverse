@@ -3,6 +3,7 @@ v0.7.3
 	> Votes are now removed from display when the player clicked yes or no.
 	> Enable-buttons now change caption to 'Disable' if the local structure is currently enabled.
 	> Digging vehicles can no longer accidentally enter EMP zones.
+	> Improved handling of ghosts and critical events when part of an alliance.
 	* Fixed crashes in bug reporter when trying to upload very long log files.
 	* Fixed handling of crashes in bug reporter.
 	* Fixed confirmation dialogs sometimes not allowing to actually press the confirm button (game wrongly assumed to be between rounds).

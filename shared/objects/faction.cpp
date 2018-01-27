@@ -2183,7 +2183,7 @@ namespace Objects
 	#ifdef CLIENT
 		bool		Faction::IsAlliedWithMe() const
 		{
-			return this->isOwnedByMe || (mine && alliance == mine->alliance);
+			return this && (this->isOwnedByMe || (mine && alliance == mine->alliance));
 		}
 	#endif
 

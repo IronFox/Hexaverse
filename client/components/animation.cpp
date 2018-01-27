@@ -1188,7 +1188,7 @@ namespace Animation
 							HUD::HexGrid::RefreshContacts();
 						HUD::WindowStack::SignalSituationChange();
 						if (removalType == Objects::RemovalType::UncontrolledExplosion)
-							HUD::HexGrid::EventLog::RegisterEntityDestruction(this->time.min, allocatedTarget->isOwnedByMe,allocatedTarget->GetWorldPosition(), allocatedTarget->id, allocatedTarget->GetNiceName());
+							HUD::HexGrid::EventLog::RegisterEntityDestruction(this->time.min, allocatedTarget->owner->IsAlliedWithMe(),allocatedTarget->GetWorldPosition(), allocatedTarget->id, allocatedTarget->GetNiceName()+" ("+allocatedTarget->owner->GetName()+")");
 
 					#endif
 				}
@@ -1299,7 +1299,7 @@ namespace Animation
 						attackerID = attacker->id;
 					#endif
 					doRegister = !attacker->isOwnedByMe || isAutoTarget;
-					isFriendly = attacker->isOwnedByMe;
+					isFriendly = attacker->owner->IsAlliedWithMe();
 				}
 
 				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Starting attack ("+attackerTurret->typeName+",range="+String(attackRange)+",pos="+Vec::toString(attackerPosition)+",angle="+String(attackAngle)+") at "+String(Animation::atTime)+"/"+String(this->time.min));

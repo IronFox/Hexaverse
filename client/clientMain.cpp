@@ -771,7 +771,10 @@ namespace ApplicationInterface
 
 		if (Network::amSpectator)
 			return;
-		if (t == Objects::RemovalType::UncontrolledExplosion && e->isOwnedByMe)
+
+		const bool allied = e->owner->IsAlliedWithMe();
+
+		if (t == Objects::RemovalType::UncontrolledExplosion && allied)
 		{
 			Protocol::Marker marker;
 			static_assert(Objects::Marker::Type::EntityDeath == 0, "Please update marker logic");
@@ -781,7 +784,7 @@ namespace ApplicationInterface
 			LogEvent(EventSignificance::Debug,e.get(),"Created friendly loss marker for "+e->GetName());
 		}
 		else
-			if (t == Objects::RemovalType::Vanished && !e->isOwnedByMe)
+			if (t == Objects::RemovalType::Vanished && !allied)
 			{
 				//this event can be high-frequency, happen several times per round for the same entity,
 				//and happen, in fact, so rapidly, the creation event hasn't been confirmed yet
