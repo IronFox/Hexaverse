@@ -2,6 +2,7 @@ v0.7.3
 	> Enabled but non-conquered nexus ports are now shown as 'conquering' instead of 'enabled'
 	> Votes are now removed from display when the player clicked yes or no.
 	> Enable-buttons now change caption to 'Disable' if the local structure is currently enabled.
+	> Digging vehicles can no longer accidentally enter EMP zones.
 	* Fixed crashes in bug reporter when trying to upload very long log files.
 	* Fixed handling of crashes in bug reporter.
 	* Fixed confirmation dialogs sometimes not allowing to actually press the confirm button (game wrongly assumed to be between rounds).

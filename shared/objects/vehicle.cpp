@@ -236,6 +236,8 @@ namespace Objects
 				}
 				return MobilePlacementResult::PlacementFailedHarmfulOrBlocked;
 			}
+			if (Grid::AffectedByEMP(cell) && !failIsFatal)
+				return MobilePlacementResult::PlacementFailedHarmfulOrBlocked;
 			
 			//VerifyVisibilityNetwork();
 			SyncTime(minTimeOffset);
