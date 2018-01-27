@@ -1,3 +1,5 @@
+"Nen transporter mit nem Schweren Terraformer beladen und beim aufsteigen stürzt der client kommentarlos ab :/"
+
 
 alliance forming troubles
 prevent mushroom terrains (reduce height range?, increase average planet height?)
@@ -5,7 +7,11 @@ hide selected sensor range sphere?
 larger clip range?
 allied drone vanishes on move, causing client crashes
 
+produced planes can spawn through terrain to sub orbit
 
+
+
+can't navigate planes via ground click
 
 
 
