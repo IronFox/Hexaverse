@@ -641,7 +641,8 @@ namespace ParameterConfig
 	PathString	loadFile;
 	bool	startOffline = false,
 			startInConfig = false,
-			startInTutorial = false;
+			startInTutorial = false,
+			heartBeat = false;
 	bool	customWorldID = false;
 	bool	enableRemoteControl = true;
 	const char*	programName="";
@@ -665,6 +666,7 @@ namespace ParameterConfig
 		std::cout << "  --loadAuto/-a <0-9>\tLoad auto-savegame. number=0 => most recent"<<std::endl;
 		std::cout << "  --offline/-o \tStart offline"<<std::endl;
 		std::cout << "  --config/-c \tStart in configuration mode"<<std::endl;
+		std::cout << "  --heartbeat/-b \tRequire localhost client heartbeat every 3 seconds or quit"<<std::endl;
 		std::cout << "  --tutorial/-t \tStart in tutorial mode"<<std::endl;
 		std::cout << "  --port/-p <1025-65533>\tUse a non-default base port ("<<DEFAULT_SERVER_BASE_PORT<<" is default). Three successive ports are used"<<std::endl;
 		std::cout << "  --noRemote/-r \tDisable remote control service"<<std::endl;
@@ -719,6 +721,8 @@ namespace ParameterConfig
 					startOffline = true;
 				elif (!strcmp(arg,"--config") || !strcmp(arg,"-c"))
 					startInConfig = true;
+				elif (!strcmp(arg,"--heartbeat") || !strcmp(arg,"-b"))
+					heartBeat = true;
 				elif (!strcmp(arg,"--tutorial") || !strcmp(arg,"-t"))
 				{
 					loadFile = "config/tutorial.hsf";
@@ -1118,6 +1122,10 @@ int main( int argc, const char* argv[])
 		}
 		RuntimeConfig::tutorialMode = ParameterConfig::startInTutorial;
 
+
+		if (ParameterConfig::heartBeat)
+			Network::StartHeartbeat();
+
 		if (!ParameterConfig::startOffline)
 		{
 			if (ParameterConfig::startInConfig)
@@ -1150,7 +1158,7 @@ int main( int argc, const char* argv[])
 		{
 			if (RuntimeConfig::IsInAnyCommandPhase() || RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
 				Sleep(1);
-			Network::server.Resolve();
+			Network::Tick();
 			RemoteControl::Resolve();
 			if (RuntimeConfig::IsInAnyCommandPhase())
 				Game::Vote::CheckAllTimeouts();

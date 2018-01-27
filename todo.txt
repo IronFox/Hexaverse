@@ -8,7 +8,6 @@ allied drone vanishes on move, causing client crashes
 
 
 
-client crashes, steam refuses to start client when server still running in the background, cannot end without ui
 
 
 BUG REPORT FORM
@@ -173,6 +172,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: client crashes, steam refuses to start client when server still running in the background, cannot end without ui
 hostile attack events from friendlies
 fixed: can dig into emp zone, get 100 emp damage
 middle panel statistics are wrongly wrapped

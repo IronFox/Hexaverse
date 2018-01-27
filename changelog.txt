@@ -4,6 +4,7 @@ v0.7.3
 	> Enable-buttons now change caption to 'Disable' if the local structure is currently enabled.
 	> Digging vehicles can no longer accidentally enter EMP zones.
 	> Improved handling of ghosts and critical events when part of an alliance.
+	> Non-dedicated servers now require constant heartbeats from the client. If the client crashes, the server quits after 3 seconds.
 	* Fixed crashes in bug reporter when trying to upload very long log files.
 	* Fixed handling of crashes in bug reporter.
 	* Fixed confirmation dialogs sometimes not allowing to actually press the confirm button (game wrongly assumed to be between rounds).
