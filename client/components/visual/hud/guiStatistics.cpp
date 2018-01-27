@@ -89,7 +89,7 @@ namespace HUD
 					auto mod = c->Anchor();
 					if (left)
 					{
-						mod.FillHorizontally(0,0.5f);
+						mod.FillHorizontally(0,Distance(0.5f,Distance::Type::RelativeToParentComponent));
 						if (statsPanel->GetReferences().IsNotEmpty())
 							mod.Beneath(statsPanel->GetReferences().Last(),0);
 						else
@@ -99,7 +99,7 @@ namespace HUD
 					}
 					else
 					{
-						mod.FillHorizontally(0.5f,0);
+						mod.FillHorizontally(Distance(0.5f,Distance::Type::RelativeToParentComponent),0);
 						if (statsPanel->CountComponents() > 1)
 							mod.Beneath(statsPanel->GetReferences().GetFromEnd(1),0);
 						else

@@ -11,7 +11,6 @@ allied drone vanishes on move, causing client crashes
 can dig into emp zone, get 100 emp damage
 
 client crashes, steam refuses to start client when server still running in the background, cannot end without ui
-middle panel statistics are wrongly wrapped
 
 
 BUG REPORT FORM
@@ -176,6 +175,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+middle panel statistics are wrongly wrapped
 votes should disappear after voting
 rename enabled nexus ports to conquering or something
 fixed: manually added server display wrong until contacted?
