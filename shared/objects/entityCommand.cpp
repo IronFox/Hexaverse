@@ -15,6 +15,18 @@ namespace Objects
 			return *this;
 		}
 
+		bool			Container::ReplaceLocalMember(const FFilter&filter, const PBase&newCommand)
+		{
+			foreach (rows,r)
+				foreach (*r,cmd)
+					if (*cmd && filter(*cmd))
+					{
+						*cmd = newCommand;
+						return true;
+					}
+			return false;
+		}
+
 
 		void			Container::VisitLocalMembers(const FVisitor&visitor)	const
 		{

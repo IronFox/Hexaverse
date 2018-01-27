@@ -141,39 +141,45 @@ namespace Objects
 		void DefineVehiclePlant(CommandContainer&commands)
 		{
 			DefineWorkingStructure(commands);
-			commands.VisitLocalMembers([](const Command::PBase&cmd)
-			{
-				if (cmd->name == "Enable")
-				{
-					(*cmd) = Command::IconCommand("Enable",
-						[]()
-						{
 
-							VehiclePlant*s2 = dynamic_cast<VehiclePlant*>(selectedEntity.get());
-							if (s2)
-							{
-								if (!s2->IsEnabled() && !s2->CanEnable())
-								{
-									ApplicationInterface::SignalUserMessage(s2->GetNiceName()+" is switched off because its queue is empty. It will attempt to automatically enable once you enqueue at least one production job.");
-									return;
-								}
-								ApplicationInterface::SignalEnableStructure(*s2, !s2->IsEnabled());
-							}
-						}
-						,[](bool controlEnabled)
-						{
-							Objects::CommandFlags rs = Objects::CommandFlags::None;
-							VehiclePlant*div = dynamic_cast<VehiclePlant*>(selectedEntity.get());
-							if (controlEnabled && div != nullptr)
-								rs |= Objects::CommandFlags::IsEnabled;
-							if (Detail::WorkingStructureIsEnabled())
-								rs |= Objects::CommandFlags::IsPermaActive;
-							return rs;
-						}
-						,NoCosts
-					);
+			Command::PIconCommand newEnable {new Command::IconCommand("Enable",
+			[]()
+			{
+
+				VehiclePlant*s2 = dynamic_cast<VehiclePlant*>(selectedEntity.get());
+				if (s2)
+				{
+					if (!s2->IsEnabled() && !s2->CanEnable())
+					{
+						ApplicationInterface::SignalUserMessage(s2->GetNiceName()+" is switched off because its queue is empty. It will attempt to automatically enable once you enqueue at least one production job.");
+						return;
+					}
+					ApplicationInterface::SignalEnableStructure(*s2, !s2->IsEnabled());
 				}
-			});
+			}
+			,[](bool controlEnabled)
+			{
+				Objects::CommandFlags rs = Objects::CommandFlags::None;
+				VehiclePlant*div = dynamic_cast<VehiclePlant*>(selectedEntity.get());
+				if (controlEnabled && div != nullptr)
+					rs |= Objects::CommandFlags::IsEnabled;
+				if (Detail::WorkingStructureIsEnabled())
+					rs |= Objects::CommandFlags::IsPermaActive;
+				return rs;
+			}
+			,NoCosts
+			)};
+			newEnable->customLabelBuilder = [](Command::Base::Label&outLabel)
+			{
+				if (selectedEntity && selectedEntity->IsWorkingStructure() && To<WorkingStructure>::Cast(selectedEntity)->IsEnabled())
+					outLabel << "Disable";
+				else
+					outLabel << "Enable";
+			};
+
+
+			commands.ReplaceLocalMember([](const Command::PBase&cmd) {return cmd->name == "Enable";},newEnable);
+				
 
 
 			//commands.AppendRow();
@@ -302,7 +308,8 @@ namespace Objects
 		{
 			//commands.baseCoords = int2(3,0);
 
-			commands.Add(new Command::IconCommand("Enable",&Detail::EnableWorkingStructure,
+
+			Command::PIconCommand cmd (new Command::IconCommand("Enable",&Detail::EnableWorkingStructure,
 			[](bool controlEnabled)->Objects::CommandFlags
 			{
 				Objects::CommandFlags rs = Objects::CommandFlags::None;
@@ -320,6 +327,15 @@ namespace Objects
 			}
 			,NoCosts
 			));
+
+			cmd->customLabelBuilder = [](Command::Base::Label&outLabel)
+			{
+				if (selectedEntity && selectedEntity->IsWorkingStructure() && To<WorkingStructure>::Cast(selectedEntity)->IsEnabled())
+					outLabel << "Disable";
+				else
+					outLabel << "Enable";
+			};
+			commands.Add(cmd);
 		}
 
 		static void BuildCommand(CommandContainer&parent, const PResearchTopic&t)
