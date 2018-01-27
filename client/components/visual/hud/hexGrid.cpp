@@ -1130,6 +1130,8 @@ namespace HexGrid
 						Objects::UpdateChoices(Network::ControlEnabled());
 						Tutorial::ShowMessage(name);
 						Configure(Objects::selectedEntity);
+
+						hoveringOver = nullptr;
 					}
 					return true;
 				}
