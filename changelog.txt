@@ -7,6 +7,7 @@ v0.7.3
 	* Fixed crash when join-vote outlives the targeted alliance.
 	* Fixed server crash when trying to build multi-story building on top terrain level.
 	* Fixed friendly/hostile range visualization to work with alliances.
+	* Fixed server panel when manually adding server addresses that cannot be contacted right now.
 
 v0.7.2	[Jan 25 2018]
 	> Added various hot-keys to directly build certain structure types with a selected terraformer.

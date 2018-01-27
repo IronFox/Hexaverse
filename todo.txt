@@ -1,4 +1,3 @@
-manually added server display wrong until contacted?
 
 alliance forming troubles
 prevent mushroom terrains (reduce height range?, increase average planet height?)
@@ -179,6 +178,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: manually added server display wrong until contacted?
 hotkeys
 alliances
 colored faction list + chat history + chat message input
