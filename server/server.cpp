@@ -519,7 +519,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 	{
 		PathString out = RuntimeConfig::ConfigFile("saves/crash.hsf");
 		Logging::WriteEvent(EventClass::Preset::uncommon,"Trying to save game to "+String(out),nullptr,nullptr,nullptr);
-		FileIO::Save(out,RuntimeConfig::phase);
+		FileIO::Save(out,RuntimeConfig::Phase::CommandPhase);
 		Logging::WriteEvent(EventClass::Preset::uncommon,"Success",nullptr,nullptr,nullptr);
 	}
 	catch (...)

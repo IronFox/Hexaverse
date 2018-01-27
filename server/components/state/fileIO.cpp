@@ -1700,9 +1700,14 @@ namespace FileIO
 		return RuntimeConfig::IsACommandPhase(p) || p == RuntimeConfig::Phase::AnimationPhase || p == RuntimeConfig::Phase::EndOfGame;
 	}
 
+	bool			CanSaveRightNow(RuntimeConfig::Phase overridePhase)
+	{
+		return IsValidSavePhase(overridePhase) && !ConfigurationMode::IsActive();
+	}
+
 	bool			CanSaveRightNow()
 	{
-		return IsValidSavePhase(RuntimeConfig::phase) && !ConfigurationMode::IsActive();
+		return CanSaveRightNow(RuntimeConfig::phase);
 	}
 
 
@@ -1750,7 +1755,7 @@ namespace FileIO
 
 	void	Save( const PathString&name, RuntimeConfig::Phase savePhase)
 	{
-		if (!CanSaveRightNow())
+		if (!CanSaveRightNow(savePhase))
 		{
 			LogEvent(EventClass::Preset::commandRejected,"Unable to save game right now. Not in suitable phase");
 			return;
