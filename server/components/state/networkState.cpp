@@ -241,7 +241,7 @@ namespace Network
 	{
 		if (!a)
 			return "Game Over";
-		return "Nexus Ports enabled: "+String(stats.acquiringNexusControl)+", conquered: "+String(stats.nexusControl)+"/"
+		return "Conquering Nexus Ports: "+String(stats.acquiringNexusControl)+", conquered: "+String(stats.nexusControl)+"/"
 			+ String(Game::Config::GetTargetNexusCount());
 	}
 

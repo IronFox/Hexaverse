@@ -6,7 +6,6 @@ hide selected sensor range sphere?
 larger clip range?
 allied drone vanishes on move, causing client crashes
 
-rename enabled nexus ports to conquering or something
 
 votes should disappear after voting
 
@@ -178,6 +177,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+rename enabled nexus ports to conquering or something
 fixed: manually added server display wrong until contacted?
 hotkeys
 alliances
