@@ -356,6 +356,8 @@ void	SignalRoundEndOrMaximize()
 
 		if (HUD::Dialog::ConfirmCurrent(false))
 			return;
+		if (Objects::Commands::TerraformerCommitOperation())
+			return;
 	#endif
 	ApplicationInterface::SignalRoundEnd();
 

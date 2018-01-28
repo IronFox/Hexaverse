@@ -1125,6 +1125,17 @@ namespace Objects
 		}
 
 
+		bool					TerraformerCommitOperation()
+		{
+			if (Detail::TerraformerCommitIsPossibleC(Network::ControlEnabled()))
+			{
+				Detail::TerraformerCommitOperation();
+				return true;
+			}
+			return false;
+		}
+
+
 		void DefineGlobalCommands()
 		{
 			using namespace Command;

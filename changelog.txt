@@ -8,6 +8,7 @@ v0.7.3
 	> Constructing geometry high above the ground now costs more.
 	> Reduced road and bridge thickness to one height level (removed road foundations).
 	> Can now build blocks in water.
+	> The enter/return key now commits any pending terrain building/removal operations.
 	* Fixed crashes in bug reporter when trying to upload very long log files.
 	* Fixed handling of crashes in bug reporter.
 	* Fixed confirmation dialogs sometimes not allowing to actually press the confirm button (game wrongly assumed to be between rounds).
