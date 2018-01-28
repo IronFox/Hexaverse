@@ -620,16 +620,19 @@ namespace Dialog
 	}
 
 
-	WDialog	Confirm(const String&query, const FOnConfirm&onConfirm)
+	WDialog	Confirm(const String&query, const FOnConfirm&onConfirm, bool failIfModalWindowExists/*=false*/)
 	{
-		return Confirm(query,onConfirm,[](){return CheckResult::OkayContinue;});
+		return Confirm(query,onConfirm,[](){return CheckResult::OkayContinue;},failIfModalWindowExists);
 	}
 
 	/**
 	Creates a new modal dialog on top of any other active modal dialogs
 	*/
-	WDialog	Confirm(const String&query, const FOnConfirm&onConfirm, const FCheckState&check)
+	WDialog	Confirm(const String&query, const FOnConfirm&onConfirm, const FCheckState&check, bool failIfModalWindowExists/*=false*/)
 	{
+		if (failIfModalWindowExists && WindowStack::IsModal())
+			return WDialog();
+
 		WindowStack::VerifyIntegrity(CLOCATION);
 		CheckResult ck = check();
 		if (ck == CheckResult::Abort)

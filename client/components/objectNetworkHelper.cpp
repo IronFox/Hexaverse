@@ -497,7 +497,7 @@ namespace ObjectHelper
 							if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase || Network::newRoundRequested)
 								return HUD::Dialog::CheckResult::OkayNotRightNow;
 							return HUD::Dialog::CheckResult::OkayContinue;
-						});
+						},true);
 						return;
 					}
 					else
