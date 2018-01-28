@@ -414,7 +414,7 @@ namespace Objects
 		{
 			if (mode != CursorMode::BuildBlockMode)
 			{
-				return selection.Count() * MinBuildWallMineralCosts;
+				return int(selection.Count() * MinBuildWallMineralCosts);
 			}
 
 			int rs = 0;
