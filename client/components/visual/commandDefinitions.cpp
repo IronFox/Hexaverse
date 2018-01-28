@@ -689,7 +689,8 @@ namespace Objects
 							const auto&stack = World::actual.GetStack(i);
 							for (UINT32 j = at - 1; j <= at + 1; j++)
 							{
-								if (!stack.volumeCell[j].IsOccupied())
+								const auto&cell = stack.volumeCell[j];
+								if (!cell.IsOccupied() || cell.IsLiquid())
 								{
 									if (j != at || Objects::vehicleDistanceField.distance[i] > 1)
 									{

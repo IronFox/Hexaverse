@@ -36,7 +36,7 @@ namespace World
 	}
 
 
-	void		RenderBuildBlocks()
+	void		RenderBuildBlocks( )
 	{
 		if ( Objects::CommonCmd::IsModeActive(Objects::CursorMode::BuildBlockMode) )
 		{
