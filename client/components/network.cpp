@@ -43,6 +43,7 @@ namespace Network
 	TUniqueID		myID,serverID,worldID;
 	UINT32				gameFlags = 0;
 	SHA256::HashContainer	requestedResearchScript;
+	UINT16			connectionBasePort = DEFAULT_SERVER_BASE_PORT;
 
 	CryptographicID	activeToken;
 	String			myIDString,serverIDString,worldIDString,activeTokenString;
@@ -233,6 +234,8 @@ namespace Network
 
 		worldID = host.serverInfo.gameInfo.worldID;
 		worldIDString = worldID.ToNiceString();
+
+		connectionBasePort = host.address.basePort;
 	}
 
 

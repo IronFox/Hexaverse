@@ -29,6 +29,7 @@ namespace Network
 	extern UINT32				gameFlags;
 	extern CryptographicID		activeToken;
 	extern String				myIDString,serverIDString,worldIDString,activeTokenString;
+	extern UINT16				connectionBasePort;
 	
 	extern GenericHashTable<TUniqueID,CryptographicID>	accessMap;
 
