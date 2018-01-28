@@ -172,10 +172,11 @@ namespace Objects
 			public:
 				typedef BaseJob	Super;
 				bool					delayedBySleep = true;
+				Component::operation_t	affinity;
 
-				/**/					DummyJob(const MobileEntity&v);
+				/**/					DummyJob(const MobileEntity&v, Component::operation_t affinity);
 				virtual void			UpdateEstimations(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(1,v,GetOperationAffinity());}
-				virtual Component::operation_t	GetOperationAffinity() const override {return Component::TerrainRemove;}
+				virtual Component::operation_t	GetOperationAffinity() const override {return affinity;}
 				virtual bool			DelayedBySleep() const override {return delayedBySleep;}
 				//virtual Riff::TID		GetDataKey() const override {return "BLDF";};
 				//virtual PJob	Instantiate() const override {return PJob(new BuildFoundation());}

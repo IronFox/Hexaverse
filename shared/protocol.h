@@ -931,7 +931,7 @@ namespace Protocol
 		};
 	}
 
-	NETSTRUCT9(MobileTask
+	NETSTRUCT10(MobileTask
 		, NET(UINT8), type
 		, NET(UINT8), mode
 		, NET(UINT8), taskFlags
@@ -939,6 +939,7 @@ namespace Protocol
 		, Package::NetString<256>, name
 		, NET(USHORT), continuationsToJobCompletion
 		, NET(USHORT), resourceCostLeft
+		, BYTE, jobAffinity
 		, NETA(Grid::LCellIdI), buildPath
 		, Objects::EntityType, visualizationName	//can also be DetonationSize_Regular or DetonationSize_Doomsday
 	)

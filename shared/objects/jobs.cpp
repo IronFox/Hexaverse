@@ -75,7 +75,7 @@ namespace Objects
 
 
 		#ifdef CLIENT
-			/**/					DummyJob::DummyJob(const MobileEntity&v) : Super(1,v,v.location,GetOperationAffinity(),Autocomplete::Always,false) {}
+			/**/					DummyJob::DummyJob(const MobileEntity&v, Component::operation_t affinity) : Super(1,v,v.location,GetOperationAffinity(),Autocomplete::Always,false),affinity(affinity) {}
 
 		#else
 
