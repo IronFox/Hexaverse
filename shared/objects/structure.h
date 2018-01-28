@@ -778,8 +778,10 @@ namespace Objects
 		//Structure overrides:
 		virtual bool				IsSkyLinkStructure() const override {return true;}
 		virtual Category			GetCategory() const override {return Category::Resources;}	//not needed
+		#ifdef HAS_WINDOW
 		#ifdef ONE_COMPOUND_PER_FACTION
 			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override {return &standardConnector;}
+		#endif
 		#endif
 
 		//SkyLinkStructure overrides:
