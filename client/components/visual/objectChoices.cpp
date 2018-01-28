@@ -130,8 +130,9 @@ namespace Objects
 
 	bool			DisableModes(bool controlEnabled)
 	{
-		if (activeCursorMode == CursorMode::Idle)
+		if (activeCursorMode == CursorMode::Idle && movementChoices.IsEmpty() && !deployingMobileEntity)
 			return false;
+		deployingMobileEntity = nullptr;
 		buildCandidates.Clear();
 		removeCandidates.Clear();
 		activeCursorMode = CursorMode::Idle;
