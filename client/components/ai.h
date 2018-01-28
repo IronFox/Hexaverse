@@ -1,8 +1,9 @@
 #ifndef aiH
 #define aiH
 
-#include "../../shared/objects.h"
-#include "../../shared/protocol.h"
+#include <objects.h>
+#include <protocol.h>
+#include <objects/pathfinding.h>
 
 namespace AI
 {
@@ -18,8 +19,8 @@ namespace AI
 	*/
 	bool	BlockTest(const Grid::LCellIdI&location);
 
-	void	AssemblePath(const Objects::ReachabilityMapper&mapper, const Objects::ReachabilityMapper::MapNode*current, BasicBuffer<Grid::LCellIdI>&outResult);
-	void	IssuePath(const Objects::PVehicle&v, const Objects::ReachabilityMapper&mapper, const Objects::ReachabilityMapper::MapNode*current);
+	void	AssemblePath(const Objects::Pathfinding::ReachabilityMapper&mapper, const Objects::Pathfinding::ReachabilityMapper::MapNode*current, BasicBuffer<Grid::LCellIdI>&outResult);
+	void	IssuePath(const Objects::PVehicle&v, const Objects::Pathfinding::ReachabilityMapper&mapper, const Objects::Pathfinding::ReachabilityMapper::MapNode*current);
 
 }
 

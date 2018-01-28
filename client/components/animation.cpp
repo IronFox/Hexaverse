@@ -158,14 +158,14 @@ namespace Animation
 		int referenceSpeed = v->GetMovementStepsPerRound()-1;
 
 	//	static Buffer<Objects::MapNode>	nodes;
-		static Objects::ReachabilityMapper mapper(false);
+		static Objects::Pathfinding::ReachabilityMapper mapper(false);
 		Objects::Component::VehicleBase::canStandOnUnknown = false;
 		mapper.Map(v.get(),v->location,AI::BlockTest,referenceSpeed*5,true);
 		Objects::Component::VehicleBase::canStandOnUnknown = true;
 
 
 		float closestDistance = std::numeric_limits<float>::max();
-		const Objects::ReachabilityMapper::MapNode*closest = nullptr;
+		const Objects::Pathfinding::ReachabilityMapper::MapNode*closest = nullptr;
 		//Grid::LCellIdI closest = Grid::LCellIdI::Invalid;
 		//float closestCompetingDistance = 0;
 
@@ -197,7 +197,7 @@ namespace Animation
 					continue;
 				//const auto &n = Grid::low.grid.GetCell(node->cell.stackID).neighborhood;
 				int score = 0;
-				Objects::ReachabilityMapper::MapNode*at = node;
+				Objects::Pathfinding::ReachabilityMapper::MapNode*at = node;
 				for (;;)
 				{
 					if (at->customScore < 0)

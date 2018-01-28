@@ -17,6 +17,7 @@
 #include "objects/structure/tower.h"
 #include "objects/structure/vehiclePlant.h"
 #include "objects/structure/vehicleStore.h"
+#include "objects/pathfinding.h"
 #include "globalEvents.h"
 
 
@@ -155,7 +156,7 @@ namespace Objects
 
 		ResearchState::StaticCreate();	//all prototypes good. time to set the tables
 
-		InitGrid();
+		Pathfinding::Init();
 
 
 

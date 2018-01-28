@@ -9,6 +9,7 @@
 #endif
 #include "vehicle.h"
 #include "gridAndChoices.h"
+#include "pathfinding.h"
 #include "../runtimeConfig.h"
 
 
@@ -1411,7 +1412,7 @@ namespace Objects
 
 				if (v.IsVehicle())
 				{
-					if (!AppendShortestConstructionPath((const Vehicle*)&v,
+					if (!Pathfinding::AppendShortestConstructionPath((const Vehicle*)&v,
 														this->mode == CursorMode::BuildRoadChainMode || this->mode == CursorMode::BuildBridgeMode,
 														this->mode == CursorMode::BuildBridgeMode,
 														 origin,destination,path))

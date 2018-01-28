@@ -8,6 +8,8 @@
 #include "prototypes.h"
 #include "../runtimeConfig.h"
 #include "structure/tower.h"
+#include "pathfinding.h"
+
 
 namespace Objects
 {
@@ -701,7 +703,7 @@ namespace Objects
 		{
 			if (numTriedPlottingOnMoveAutoMotion < 5)
 			{
-				TWays	ways;
+				Pathfinding::TWays	ways;
 
 				GetMobileWays(owner->knownWorld, this,  location, ways, Grid::LCellIdI::Invalid, false,false);
 				//random first to maybe not make the same mistake twice
@@ -1415,7 +1417,7 @@ namespace Objects
 			//}
 			//else
 			{
-				if (!AppendShortestPathI((const Vehicle*)v,prev,target.target,path))
+				if (!Pathfinding::AppendShortestPathI((const Vehicle*)v,prev,target.target,path))
 					return false;
 			}
 		}
@@ -1546,7 +1548,7 @@ namespace Objects
 			path << PathNode(pointOfOrigin,0);
 			if (v->IsVehicle())
 			{
-				if (!AppendShortestDirectPath(pointOfOrigin,foci.Peek().target,path,false))
+				if (!Pathfinding::AppendShortestDirectPath(pointOfOrigin,foci.Peek().target,path,false))
 				{
 					return false;	//this would be weird, but happens
 				}

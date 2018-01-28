@@ -3,6 +3,7 @@
 #include <protocol.h>
 #include <objects/structure/mine.h>
 #include <objects/structure/laboratory.h>
+#include <objects/pathfinding.h>
 #include "visual/objectChoices.h"
 #include "visual/commandDefinitions.h"
 #include "visual/hud/objectCommands.h"
@@ -272,13 +273,13 @@ namespace ObjectHelper
 
 			if (v->IsVehicle())
 			{
-				foundPath = Objects::AppendShortestPathI((const Objects::Vehicle*)v.get(),prev,target,path,false,&tooLong);
+				foundPath = Objects::Pathfinding::AppendShortestPathI((const Objects::Vehicle*)v.get(),prev,target,path,false,&tooLong);
 			}
 			else
 			{
 				#ifndef NO_SATELLITES
 					if (v->IsSatellite())
-						foundPath = Objects::AppendShortestPathI((const Objects::Satellite*)v.get(),prev,target.stackID,path,false,&tooLong);
+						foundPath = Objects::Pathfinding::AppendShortestPathI((const Objects::Satellite*)v.get(),prev,target.stackID,path,false,&tooLong);
 					else
 				#endif
 					FATAL__("Routing not implemented for "+v->GetTypeName());

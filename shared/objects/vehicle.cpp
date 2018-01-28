@@ -5,6 +5,7 @@
 #include "systems.h"
 #include "gridAndChoices.h"
 #include "faction.h"
+#include "pathfinding.h"
 
 namespace Objects
 {
@@ -502,14 +503,14 @@ namespace Objects
 					{
 						const Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
 
-						Ctr::Buffer0<PathNode> path;
-						TWays	possibilities;
+						Buffer0<PathNode> path;
+						Pathfinding::TWays	possibilities;
 						if (detailedPath)
 						{
 							Grid::LCellIdI prev = pointOfOrigin;
 							for (const auto&dest : waypoints)
 							{
-								Objects::GetWays(owner->knownWorld,this,prev,possibilities,dest,true,true,false);
+								Pathfinding::GetWays(owner->knownWorld,this,prev,possibilities,dest,true,true,false);
 								bool found = false;
 								for (index_t j = 0; j < possibilities.numWays; j++)
 								{
@@ -536,7 +537,7 @@ namespace Objects
 									destination--;
 								if (destination != pointOfOrigin)
 								{
-									if (!AppendShortestDirectPath(pointOfOrigin,destination,path))
+									if (!Pathfinding::AppendShortestDirectPath(pointOfOrigin,destination,path))
 									{
 										LogEvent(EventClass::Preset::commandRejected,this,"Unable to plot path to destination");
 										return false;
