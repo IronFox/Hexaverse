@@ -9,6 +9,7 @@ allied drone vanishes on move, causing client crashes
 
 produced planes can spawn through terrain to sub orbit
 
+drop (bomb) vehicles from cargo planes in sub orbit
 
 
 can't navigate planes via ground click
