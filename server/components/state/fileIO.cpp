@@ -796,7 +796,8 @@ namespace FileIO
 			v->currentStorage.Cap(v->GetMaxStorageCapacity());
 		#endif
 		ImportJob(parent,v->completeOnMove);
-		v->completeOnMove->UpdateLocationAndEstimations(*v,v->location);
+		if (v->completeOnMove)
+			v->completeOnMove->UpdateLocationAndEstimations(*v,v->location);
 		Riff::Chunk *name,*data;
 		if (parent->FindFirstNamedList(name,data))
 			do
