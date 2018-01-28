@@ -60,12 +60,12 @@ namespace Objects
 			return;
 		float t=0.f;
 
-		if (isCreated)
+		if (isCreated && isInsertedIntoGrid)
 			UnregisterSensory(t);
 
 		empDamageLevel = damageLevel;
 
-		if (isCreated)
+		if (isCreated && isInsertedIntoGrid)
 			RegisterSensory(t);
 
 	}
