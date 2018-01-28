@@ -1,13 +1,7 @@
-structure construction round calculation is off by a factor of 2 (shows x rounds, needs 2*x) on light terraformers
-placing/canceling construction job in vehicle plant does not update commands
-
-remove regular connectors
-
 improve dig symbol
 
 road should not build bridges across liquids? switch mode automatically? reroute?
 
-increase health research rate
 
 "Nen transporter mit nem Schweren Terraformer beladen und beim aufsteigen stürzt der client kommentarlos ab :/" - can't reproduce
 
@@ -193,6 +187,10 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+increase health research rate
+remove regular connectors
+fixed: structure construction round calculation is off by a factor of 2 (shows x rounds, needs 2*x) on light terraformers
+fixed: placing/canceling construction job in vehicle plant does not update commands
 fixed: produced planes can spawn through terrain to sub orbit
 prevent mushroom terrains (reduce height range?, increase average planet height?) - made construction more expensive
 fixed: can't navigate planes via ground click
