@@ -28,6 +28,9 @@ namespace Objects
 
 
 		//Structure overrides:
+		#ifdef ONE_COMPOUND_PER_FACTION
+			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override {return To<Laboratory>::DynamicCast(connected) ? &standardConnector : Super::GetSourceForConnection(connected);}
+		#endif
 		virtual bool				IsBuilding(std::pair<int,int>&outProgress) const override;
 		virtual Category			GetCategory() const override {return Category::Miscellaneous;}
 		virtual void				OnNewConnection(const PStructure&, UINT32 acrossHighCell, float atTime) override;
