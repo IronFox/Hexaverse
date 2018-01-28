@@ -764,7 +764,21 @@ namespace Objects
 					else
 					{
 						Grid::LCellIdI	at(entity.location.stackID,h);
-						if (!GetEntity(at))
+
+
+						const auto&stack = World::actual.GetStack(Grid::ToHigh(entity.location).stackID);
+						const UINT32 begin = Grid::CellStack::ToLayer(entity.location.height+1);
+						const UINT32 end = std::min(Grid::CellStack::Range,Grid::CellStack::ToLayer(h));
+						bool clear = true;
+						for (UINT l = begin; l < end; l++)
+							if (stack.volumeCell[l].content != Grid::Content::Clear)
+							{
+								clear = false;
+								break;
+							}
+
+
+						if (clear && !GetEntity(at))
 							movementChoices << Choice(at,0);
 					}
 				}
