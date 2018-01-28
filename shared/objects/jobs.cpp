@@ -248,10 +248,10 @@ namespace Objects
 				seq.SelectStack(finer);
 				if (seq.Change(target.height - 1, Grid::Content::Road))
 				{
-					int h = target.height-2;
-					if (!Grid::CellStack::bottom.IsClearOrWaterIgnoreStructure())
-						while (h >= bottom && seq.ChangeConditionally(h,Grid::Content::Foundation,World::Condition::IsClearOrWater))
-							h--;
+					//int h = target.height-2;
+					//if (!Grid::CellStack::bottom.IsClearOrWaterIgnoreStructure())
+					//	while (h >= bottom && seq.ChangeConditionally(h,Grid::Content::Foundation,World::Condition::IsClearOrWater))
+					//		h--;
 				}
 			}
 			for (int j = 0; j < c.neighborhood.numNeighbors; j++)
@@ -263,10 +263,10 @@ namespace Objects
 						continue;
 				if (seq.Change(target.height - 1, Grid::Content::Road))
 				{
-					int h = target.height-2;
-					if (!Grid::CellStack::bottom.IsClearOrWaterIgnoreStructure())
-						while (h >= bottom && seq.ChangeConditionally(h,Grid::Content::Foundation,World::Condition::IsClearOrWater))
-							h--;
+					//int h = target.height-2;
+					//if (!Grid::CellStack::bottom.IsClearOrWaterIgnoreStructure())
+					//	while (h >= bottom && seq.ChangeConditionally(h,Grid::Content::Foundation,World::Condition::IsClearOrWater))
+					//		h--;
 				}
 
 
