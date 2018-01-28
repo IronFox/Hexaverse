@@ -488,7 +488,7 @@ namespace FileIO
 			Attach(taskChunk,job->GetDataKey(),*job);
 		}
 	}
-	static void Import(Riff::Chunk*taskChunk, Objects::PVehicleJob&job)
+	static void ImportJob(Riff::Chunk*taskChunk, Objects::PVehicleJob&job)
 	{
 		job.reset();
 		Riff::Chunk*source0 = taskChunk->FindFirst(RID::baseJob);
@@ -571,7 +571,7 @@ namespace FileIO
 		Export(taskChunk,t.job);
 	}
 
-	static void Import(Riff::Chunk*taskChunk, Objects::Vehicle::Task&t)
+	static void ImportTask(Riff::Chunk*taskChunk, Objects::Vehicle::Task&t)
 	{
 		Import(taskChunk,t.foci);
 		Import(taskChunk,t.path);
@@ -586,7 +586,7 @@ namespace FileIO
 		ASSERT__(tdata->Stream(i16));
 		t.type = (Objects::Vehicle::Task::type_t)i16;
 		ASSERT__(tdata->CloseStream());
-		Import(taskChunk,t.job);
+		ImportJob(taskChunk,t.job);
 	}
 
 
@@ -795,14 +795,18 @@ namespace FileIO
 			Import(parent,v->currentStorage);
 			v->currentStorage.Cap(v->GetMaxStorageCapacity());
 		#endif
-		Import(parent,v->completeOnMove);
+		ImportJob(parent,v->completeOnMove);
+		v->completeOnMove->UpdateLocationAndEstimations(*v,v->location);
 		Riff::Chunk *name,*data;
 		if (parent->FindFirstNamedList(name,data))
 			do
 			{
 				if (name->DataMatch(ChunkName::VehicleTaskSection))
 				{
-					Import(data,v->myTasks.Push());
+					ImportTask(data,v->myTasks.Push());
+					auto job = v->myTasks.GetNewest().job;
+					if (job)
+						job->UpdateLocationAndEstimations(*v,v->GetLastPointOfOrigin());
 				}
 				else
 				{
@@ -849,7 +853,7 @@ namespace FileIO
 			insertIntoHangar << v;
 		}
 
-		Import(parent,v->completeOnMove);
+		//ImportJob(parent,v->completeOnMove);
 
 		return !(flags & MobileEntityFlag::IsStored);
 	}
