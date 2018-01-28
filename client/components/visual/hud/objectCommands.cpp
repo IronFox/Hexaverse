@@ -370,7 +370,7 @@ namespace Objects
 				else
 				{
 					ASSERT__(selectedMobileEntity && selectedMobileEntity->turret->CanConstruct());
-					rawRounds = selectedMobileEntity->GetOperationRounds(rawPrice,Objects::Component::Construct);
+					rawRounds = selectedMobileEntity->GetOperationCompletionRounds(rawPrice,Objects::Component::Construct);
 				}
 				rounds = (int)std::min(roundsLeft, rawRounds);
 
