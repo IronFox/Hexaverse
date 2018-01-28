@@ -1,3 +1,22 @@
+"Nen transporter mit nem Schweren Terraformer beladen und beim aufsteigen stürzt der client kommentarlos ab :/"
+
+
+alliance forming troubles
+prevent mushroom terrains (reduce height range?, increase average planet height?)
+hide selected sensor range sphere?
+larger clip range?
+allied drone vanishes on move, causing client crashes
+
+produced planes can spawn through terrain to sub orbit
+
+drop (bomb) vehicles from cargo planes in sub orbit
+
+
+can't navigate planes via ground click
+
+
+
+
 BUG REPORT FORM
 
 
@@ -160,6 +179,13 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: client crashes, steam refuses to start client when server still running in the background, cannot end without ui
+hostile attack events from friendlies
+fixed: can dig into emp zone, get 100 emp damage
+middle panel statistics are wrongly wrapped
+votes should disappear after voting
+rename enabled nexus ports to conquering or something
+fixed: manually added server display wrong until contacted?
 hotkeys
 alliances
 colored faction list + chat history + chat message input

@@ -502,6 +502,15 @@ namespace Objects
 
 
 		void			ChangeAlliance(const PAlliance&);
+		bool			IsAlliedWith(const PFaction&)const;
+		#ifdef CLIENT
+			/**
+			Checks whether the local faction is allied with the local player's faction.
+			Null-pointer sensitive (may be called on a null-object)
+			@return true if the local faction exists, the player faction exists, and the two are allied. Also true if the local faction is the player faction
+			*/
+			bool		IsAlliedWithMe() const;
+		#endif
 
 
 	};

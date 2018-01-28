@@ -624,17 +624,29 @@ namespace InputControl
 
 					if (Objects::activeCursorMode == Objects::CursorMode::PlaceStructureMode)
 					{
-					
-						if (Objects::selectedMobileEntity->ConstructingHere(target))
+						if (Objects::activeStructureToPlace)
 						{
-							LogEvent(EventClass::Preset::commandRejected,Objects::selectedMobileEntity.get(),"Can't build here, already trying to build something here");
+							const auto placement = Objects::activeStructureToPlace->CheckPlacement(target);
+							if (placement != Objects::Structure::CanPlace)
+							{
+								LogEvent(EventClass::Preset::commandRejected,Objects::selectedMobileEntity.get(),"Cannot place "+Objects::activeStructureToPlace->GetTypeName()+" here ("+Objects::Structure::ToString(placement)+")");
+							}
+							elif (Objects::selectedMobileEntity->ConstructingHere(target))
+							{
+								LogEvent(EventClass::Preset::commandRejected,Objects::selectedMobileEntity.get(),"Can't build here, already trying to build something here");
+							}
+							else
+								if (ObjectHelper::DirectTo(Objects::selectedMobileEntity,target,0,Objects::CursorMode::Idle,false))
+								{
+									ObjectHelper::SignalNewJob(Objects::selectedMobileEntity,ConstName::Job_Construct,Objects::activeStructureToPlace->GetType(),target);
+									Objects::choiceVis.arrowFromCell = target;
+								}
 						}
 						else
-							if (ObjectHelper::DirectTo(Objects::selectedMobileEntity,target,0,Objects::CursorMode::Idle,false))
-							{
-								ObjectHelper::SignalNewJob(Objects::selectedMobileEntity,ConstName::Job_Construct,Objects::activeStructureToPlace->GetType(),target);
-								Objects::choiceVis.arrowFromCell = target;
-							}
+						{
+							LogEvent(EventClass::Preset::internalError,"Cursor is in structure placement mode, but Objects::activeStructureToPlace is null");
+							DBG_FATAL__("stop");
+						}
 					}
 					else
 						ApplicationInterface::DirectTo(Objects::selectedMobileEntity,target,false,true);

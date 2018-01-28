@@ -21,8 +21,9 @@ namespace Objects
 							ClearAboveMineralCosts = -15,//virtual costs for time calculation. not actually consumed
 							DigDownMineralCosts = -15,//virtual costs for time calculation. not actually consumed
 							BuildFoundationMineralCosts = 14,
-							BuildRoadMineralCosts = 7,
-							BuildWallMineralCosts = 2,
+							MinBuildRoadMineralCosts = 7,	//dynamic based on free space beneath road	(bridge)
+							MinBuildWallMineralCosts = 2,
+							HeightPeneltyMineralCosts = 5,
 							RegularSelfDetonationCosts = -100,
 							DoomsdaySelfDetonationCosts = 200;
 
@@ -35,8 +36,17 @@ namespace Objects
 		class BaseJob : public std::enable_shared_from_this<BaseJob>, public ISerializable
 		{
 		public:
-			int						roundsToJobCompletion,
-									resourceCostLeft;
+			/**
+			The number of times Continue() must be called on the local job to complete it
+			*/
+			int						continuationsToJobCompletion;
+			/**
+			The amount of resources that must be supplied to finish the job (not all jobs actually consume resources).
+			Base for calculating buildActionsToJobCompletion and serverRoundsToJobCompletion
+			*/
+			int						resourceCostLeft;
+
+			Grid::LCellIdI			location;	//!< Last known build location. Set by constructor and Update()
 
 			#ifndef CLIENT
 				UINT32				ioID,		//transitory. used during io operations
@@ -57,17 +67,19 @@ namespace Objects
 
 
 			/**/					BaseJob(Autocomplete jobAutoCompletion, bool movesToFocusWhenDone):jobAutoCompletion(jobAutoCompletion),movesToFocusWhenDone(movesToFocusWhenDone)	{}
-			/**/					BaseJob(int costs, const MobileEntity&v, Component::operation_t op, Autocomplete jobAutoCompletion, bool movesToFocusWhenDone);
+			/**/					BaseJob(int costs, const MobileEntity&v, const Grid::LCellIdI&loc, Component::operation_t op, Autocomplete jobAutoCompletion, bool movesToFocusWhenDone);
 			virtual					~BaseJob()	{}
 			
-			BYTE					GetConstructionActionCostPerRound(const MobileEntity&v) const;
+			BYTE					GetConstructionActionCostPerContinuation(const MobileEntity&v) const;
 			void					ResetResourceAndRoundsLeft(int costs, const MobileEntity&v, Component::operation_t op);
 
 			/**
-			Expected to reset resources and rounds left based on the local job composition for the given vehicle.
+			Expected to recompute resources and rounds left based on the local job composition and stored location for the given vehicle.
 			Should internally call ResetResourceAndRoundsLeft() with appropriate parameters.
 			*/
-			virtual void			Restart(const MobileEntity&v) = 0;
+			virtual void			UpdateEstimations(const MobileEntity&v) =0;
+			void					UpdateLocationAndEstimations(const MobileEntity&v, const Grid::LCellIdI&loc) {location = loc; UpdateEstimations(v);}
+
 			virtual Component::operation_t	GetOperationAffinity() const = 0;
 			virtual Resource		GetConsumedResourceType() const {return Resource::Minerals;}
 			virtual bool			DelayedBySleep() const {return true;}
@@ -102,7 +114,10 @@ namespace Objects
 
 				static Ctr::Buffer0<PJob>allJobPrototypes;
 
+
 			#endif
+		protected:
+		
 		};
 
 
@@ -117,7 +132,7 @@ namespace Objects
 
 			/**/						PathJob(Autocomplete jobAutoCompletion, bool movesToFocusWhenDone):Super(jobAutoCompletion, movesToFocusWhenDone)	{}
 			/**/						PathJob(int costs, const MobileEntity&v, Component::operation_t op, Autocomplete jobAutoCompletion, bool movesToFocusWhenDone):
-										Super(costs, v, op, jobAutoCompletion, movesToFocusWhenDone), pathChanged(false)	{}
+										Super(costs, v, Grid::LCellIdI::Invalid,op, jobAutoCompletion, movesToFocusWhenDone), pathChanged(false)	{}
 
 
 			virtual bool				UpdatePath(const MobileEntity&v, const Grid::LCellIdI&origin, Grid::LCellIdI&destination) =0;
@@ -142,7 +157,7 @@ namespace Objects
 				typedef PathJob	Super;
 
 				/**/					DummyPathJob(const MobileEntity&v) : Super(1,v,GetOperationAffinity(),Autocomplete::Always,false) {}
-				virtual void			Restart(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(1,v,GetOperationAffinity());}
+				virtual void			UpdateEstimations(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(1,v,GetOperationAffinity());}
 				virtual Component::operation_t	GetOperationAffinity() const override {return Component::TerrainRemove;}
 
 
@@ -158,8 +173,8 @@ namespace Objects
 				typedef BaseJob	Super;
 				bool					delayedBySleep = true;
 
-				/**/					DummyJob(const MobileEntity&v) : Super(1,v,GetOperationAffinity(),Autocomplete::Always,false) {}
-				virtual void			Restart(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(1,v,GetOperationAffinity());}
+				/**/					DummyJob(const MobileEntity&v);
+				virtual void			UpdateEstimations(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(1,v,GetOperationAffinity());}
 				virtual Component::operation_t	GetOperationAffinity() const override {return Component::TerrainRemove;}
 				virtual bool			DelayedBySleep() const override {return delayedBySleep;}
 				//virtual Riff::TID		GetDataKey() const override {return "BLDF";};
@@ -174,13 +189,15 @@ namespace Objects
 			{
 			public:
 				typedef BaseJob			Super;
-				UINT32					prevCell,nextCell;
+				//UINT32					prevCell,nextCell;
+				bool					bridgeMode=false;
 
+				static int				GetConstructionCostsAt(const Grid::LCellIdI&);
 
 				/**/					BuildRoad():Super(Autocomplete::Always,false)	{}
-				/**/					BuildRoad(MobileEntity&v) : BaseJob(BuildRoadMineralCosts,v,GetOperationAffinity(),Autocomplete::Always,false),prevCell(-1),nextCell(-1) {}
-				/**/					BuildRoad(MobileEntity&v, UINT32 from, UINT32 to) : BaseJob(BuildRoadMineralCosts,v,GetOperationAffinity(),Autocomplete::Always,false),prevCell(from),nextCell(to) {}
-				virtual void			Restart(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(BuildRoadMineralCosts,v,GetOperationAffinity());}
+				/**/					BuildRoad(const MobileEntity&v, const Grid::LCellIdI&loc) : BaseJob(GetConstructionCostsAt(loc),v,loc,GetOperationAffinity(),Autocomplete::Always,false) {}
+				/**/					BuildRoad(const MobileEntity&v, bool bridgeMode);
+				virtual void			UpdateEstimations(const MobileEntity&v) override;
 				virtual Component::operation_t	GetOperationAffinity() const override {return Component::TerrainAdd;}
 
 
@@ -190,8 +207,8 @@ namespace Objects
 				virtual Riff::TID		GetDataKey() const override {return "BLDR";};
 				virtual ConstName		GetCTypeName() const override {return ConstName::Job_BuildRoad;}
 				virtual PJob			Instantiate() const override {return PJob(new BuildRoad());}
-				virtual	void			Serialize(IWriteStream&outStream) const override {outStream.WritePrimitive(prevCell); outStream.WritePrimitive(nextCell);}
-				virtual	void			Deserialize(IReadStream&inStream) override {inStream.ReadPrimitive(prevCell); inStream.ReadPrimitive(nextCell);}
+				virtual	void			Serialize(IWriteStream&outStream) const override {outStream.WritePrimitive(bridgeMode);}
+				virtual	void			Deserialize(IReadStream&inStream) override;
 
 
 				virtual continue_t		Finish(MobileEntity&v, const Grid::LCellIdI&focus)	override;
@@ -201,9 +218,9 @@ namespace Objects
 			class BuildWallUp : public BaseJob
 			{
 			protected:
-			
+
 				/**/					BuildWallUp(Autocomplete jobAutoCompletion, bool movesToFocusWhenDone):Super(jobAutoCompletion, movesToFocusWhenDone)	{}
-				/**/					BuildWallUp(MobileEntity&v,Autocomplete jobAutoCompletion, bool movesToFocusWhenDone) : BaseJob(BuildWallMineralCosts,v,Component::TerrainAdd,jobAutoCompletion, movesToFocusWhenDone) {}
+				/**/					BuildWallUp(const MobileEntity&v, const Grid::LCellIdI&loc,Autocomplete jobAutoCompletion, bool movesToFocusWhenDone) : BaseJob(GetConstructionCostsAt(loc),v,loc,Component::TerrainAdd,jobAutoCompletion, movesToFocusWhenDone) {}
 
 				virtual Grid::LCellIdI	FocusToBuildLocation(const Grid::LCellIdI&focus) const {return focus-1;}
 
@@ -214,13 +231,19 @@ namespace Objects
 					//return Grid::CellStack::Cell::typeStrength[content] >= 4;	//grass strength
 				}
 
+				void					SetWall(World::Data::ChangeSequence&seq, const BaseGrid::TCellNeighborhood&n, const Grid::HCellIdI&center) const;
+
+
 			public:
 				typedef BaseJob			Super;
 				
+				static int				GetConstructionCostsAt(const Grid::HCellIdI&);
+				static int				GetConstructionCostsAt(const Grid::LCellIdI&);
+
 
 				/**/					BuildWallUp():Super(Autocomplete::Always,true)	{}
-				/**/					BuildWallUp(MobileEntity&v) : BaseJob(BuildWallMineralCosts,v,GetOperationAffinity(),Autocomplete::Always,true) {}
-				virtual void			Restart(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(BuildWallMineralCosts,v,GetOperationAffinity());}
+				/**/					BuildWallUp(const MobileEntity&v, const Grid::LCellIdI&loc) : BaseJob(GetConstructionCostsAt(loc),v,loc,GetOperationAffinity(),Autocomplete::Always,true) {}
+				virtual void			UpdateEstimations(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(GetConstructionCostsAt(location),v,GetOperationAffinity());}
 				virtual Component::operation_t	GetOperationAffinity() const override {return Component::TerrainAdd;}
 
 
@@ -249,7 +272,7 @@ namespace Objects
 				
 
 				/**/					BuildHorizontalWall():Super(Autocomplete::Never,false)	{}
-				/**/					BuildHorizontalWall(MobileEntity&v) : Super(v,Autocomplete::Never,false) {}
+				/**/					BuildHorizontalWall(const MobileEntity&v, const Grid::LCellIdI&loc) : Super(v,loc,Autocomplete::Never,false) {}
 
 				virtual bool			CanContinue(MobileEntity&v, const Grid::LCellIdI&focus, String&/*outError*/)	override	{return true;};
 				virtual begin_t			BeginHere(MobileEntity&v, const Grid::LCellIdI&, bool hasToMoveFirst) override	{return hasToMoveFirst ? CannotStartAbort : Started;}
@@ -294,9 +317,11 @@ namespace Objects
 				Array<Grid::HCellIdI>	selection;
 				BYTE					maxHeightDifference;
 
+				static int				GetConstructionCostsOf(const ArrayRef<Grid::HCellIdI>&, CursorMode mode);
+
 				/**/					AlterTerrain():Super(Autocomplete::Always,false),maxHeightDifference(1)	{}
-				/**/					AlterTerrain(MobileEntity&v, CursorMode mode, const Ctr::Array<Grid::HCellIdI>&selection) : BaseJob((int)selection.Count() * BuildWallMineralCosts,v,mode == CursorMode::BuildBlockMode ? Component::TerrainAdd : Component::TerrainRemove,Autocomplete::Always,false),mode(mode),selection(selection),maxHeightDifference(1) {}
-				virtual void			Restart(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft((int)selection.Count() * BuildWallMineralCosts,v,GetOperationAffinity());}
+				/**/					AlterTerrain(const MobileEntity&v, CursorMode mode, const Ctr::Array<Grid::HCellIdI>&selection);
+				virtual void			UpdateEstimations(const MobileEntity&v) override;
 				static Component::operation_t	GetOperationAffinity(CursorMode mode) {return mode == CursorMode::BuildBlockMode ? Component::TerrainAdd : Component::TerrainRemove;}
 				virtual Component::operation_t	GetOperationAffinity() const override {return GetOperationAffinity(mode);}
 
@@ -338,7 +363,7 @@ namespace Objects
 					CursorMode		mode;
 
 					/**/					TransferJob():Super(Autocomplete::Always,false)	{}
-					/**/					TransferJob(MobileEntity&v, CursorMode mode) : BaseJob(0,v,GetOperationAffinity(),Autocomplete::Always,false),mode(mode) {}
+					/**/					TransferJob(const MobileEntity&v, CursorMode mode) : BaseJob(0,v,GetOperationAffinity(),Autocomplete::Always,false),mode(mode) {}
 					virtual void			Restart(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(0,v,GetOperationAffinity());}
 					virtual Component::operation_t	GetOperationAffinity() const override {return Component::Construct;}
 
@@ -368,8 +393,8 @@ namespace Objects
 				typedef BaseJob			Super;
 
 				/**/					RepairJob():Super(Autocomplete::Always,false)	{}
-				/**/					RepairJob(MobileEntity&v) : BaseJob(0,v,GetOperationAffinity(),Autocomplete::Always,false) {}
-				virtual void			Restart(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(0,v,GetOperationAffinity());}
+				/**/					RepairJob(const MobileEntity&v, const Grid::LCellIdI&loc) : BaseJob(0,v,loc,GetOperationAffinity(),Autocomplete::Always,false) {}
+				virtual void			UpdateEstimations(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(0,v,GetOperationAffinity());}
 				virtual Component::operation_t	GetOperationAffinity() const override {return Component::Repair;}
 
 				virtual String			GetName() const override {return "Repair complex/vehicle";}
@@ -389,8 +414,8 @@ namespace Objects
 				typedef BaseJob			Super;
 
 				/**/					ClearAbove():Super(Autocomplete::Always,false)	{}
-				/**/					ClearAbove(MobileEntity&v) : BaseJob(ClearAboveMineralCosts,v,GetOperationAffinity(),Autocomplete::Always,false) {}
-				virtual void			Restart(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(ClearAboveMineralCosts,v,GetOperationAffinity());}
+				/**/					ClearAbove(const MobileEntity&v, const Grid::LCellIdI&loc) : BaseJob(ClearAboveMineralCosts,v,loc,GetOperationAffinity(),Autocomplete::Always,false) {}
+				virtual void			UpdateEstimations(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(ClearAboveMineralCosts,v,GetOperationAffinity());}
 				virtual Component::operation_t	GetOperationAffinity() const override {return Component::TerrainRemove;}
 
 				virtual bool			CanContinue(MobileEntity&v, const Grid::LCellIdI&focus, String&outError)	override;
@@ -412,8 +437,8 @@ namespace Objects
 				typedef BaseJob			Super;
 
 				/**/					DigHorizontal():Super(Autocomplete::Always,true)	{}
-				/**/					DigHorizontal(MobileEntity&v) : BaseJob(DigHorizontalMineralCosts,v,GetOperationAffinity(),Autocomplete::Always,true) {}
-				virtual void			Restart(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(DigHorizontalMineralCosts,v,GetOperationAffinity());}
+				/**/					DigHorizontal(const MobileEntity&v, const Grid::LCellIdI&loc) : BaseJob(DigHorizontalMineralCosts,v,loc,GetOperationAffinity(),Autocomplete::Always,true) {}
+				virtual void			UpdateEstimations(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(DigHorizontalMineralCosts,v,GetOperationAffinity());}
 				virtual Component::operation_t	GetOperationAffinity() const override {return Component::TerrainRemove;}
 
 				virtual bool			CanContinue(MobileEntity&v, const Grid::LCellIdI&focus, String&outError)	override;
@@ -435,8 +460,8 @@ namespace Objects
 				typedef BaseJob	Super;
 				/**/					DigDown():Super(Autocomplete::Always,true) {}
 
-				/**/					DigDown(MobileEntity&v) : BaseJob(DigDownMineralCosts,v,GetOperationAffinity(),Autocomplete::Always,true) {}
-				virtual void			Restart(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(DigDownMineralCosts,v,GetOperationAffinity());}
+				/**/					DigDown(const MobileEntity&v, const Grid::LCellIdI&loc) : BaseJob(DigDownMineralCosts,v,loc,GetOperationAffinity(),Autocomplete::Always,true) {}
+				virtual void			UpdateEstimations(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(DigDownMineralCosts,v,GetOperationAffinity());}
 				virtual Component::operation_t	GetOperationAffinity() const override {return Component::TerrainRemove;}
 
 				virtual String			GetName() const override {return "dig down";}
@@ -465,7 +490,7 @@ namespace Objects
 				TUniqueID				useID;
 
 				/**/					Construct():Super(Autocomplete::IfSatellite,false)	{useID.Generate();}
-				/**/					Construct(MobileEntity&v, const PStructure&c);
+				/**/					Construct(const MobileEntity&v, const Grid::LCellIdI&loc, const PStructure&c);
 
 				virtual String			GetName() const override;
 				virtual ConstName		GetCTypeName() const override {return ConstName::Job_Construct;}
@@ -477,7 +502,7 @@ namespace Objects
 				virtual Riff::TID		GetDataKey() const override {return "CONS";};
 				virtual PJob			Instantiate() const override {return PJob(new Construct());}
 
-				virtual void			Restart(const MobileEntity&v) override;
+				virtual void			UpdateEstimations(const MobileEntity&v) override;
 				virtual Component::operation_t	GetOperationAffinity() const override {return Component::Construct;}
 
 				virtual	void			Serialize(IWriteStream&outStream) const override;
@@ -498,8 +523,8 @@ namespace Objects
 				bool					first;
 				/**/					Sequence():Super(Autocomplete::Always,true)	{};
 
-				/**/					Sequence(MobileEntity&v, CursorMode mode) : Super(1,v,Component::TerrainRemove,Autocomplete::Always,/*false*/true),mode(mode),first(true) {}
-				virtual void			Restart(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(1,v,Component::TerrainRemove);}
+				/**/					Sequence(const MobileEntity&v, CursorMode mode) : Super(1,v,Component::TerrainRemove,Autocomplete::Always,/*false*/true),mode(mode),first(true) {}
+				virtual void			UpdateEstimations(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(1,v,Component::TerrainRemove);}
 				virtual Component::operation_t	GetOperationAffinity() const override {return Component::TerrainRemove;}	//we don't want this job itself to cost any kind of resources, hence TerrainRemove. This job actually does TerrainAdd or Construct, but those are child-jobs
 
 				virtual String			GetName() const override;
@@ -552,7 +577,7 @@ namespace Objects
 				bool					doomsday=false;
 
 				/**/					SelfDetonate():Super(Autocomplete::Always,false)	{}
-				/**/					SelfDetonate(MobileEntity&v, ConstName parameter);
+				/**/					SelfDetonate(const MobileEntity&v, const Grid::LCellIdI&loc, ConstName parameter);
 
 				virtual String			GetName() const override;
 				virtual ConstName		GetCTypeName() const override {return ConstName::Job_SelfDetonate;}
@@ -564,7 +589,7 @@ namespace Objects
 				virtual Riff::TID		GetDataKey() const override {return "SLFD";};
 				virtual PJob			Instantiate() const override {return PJob(new SelfDetonate());}
 
-				virtual void			Restart(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(doomsday ? DoomsdaySelfDetonationCosts  : RegularSelfDetonationCosts,v,GetOperationAffinity());}
+				virtual void			UpdateEstimations(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(doomsday ? DoomsdaySelfDetonationCosts  : RegularSelfDetonationCosts,v,GetOperationAffinity());}
 				virtual Component::operation_t	GetOperationAffinity() const override {return Component::Nuclear;}
 				virtual Resource		GetConsumedResourceType() const override {return Resource::Uranium;}
 			

@@ -89,7 +89,7 @@ namespace HUD
 					auto mod = c->Anchor();
 					if (left)
 					{
-						mod.FillHorizontally(0,0.5f);
+						mod.FillHorizontally(0,Distance(0.5f,Distance::Type::RelativeToParentComponent));
 						if (statsPanel->GetReferences().IsNotEmpty())
 							mod.Beneath(statsPanel->GetReferences().Last(),0);
 						else
@@ -99,7 +99,7 @@ namespace HUD
 					}
 					else
 					{
-						mod.FillHorizontally(0.5f,0);
+						mod.FillHorizontally(Distance(0.5f,Distance::Type::RelativeToParentComponent),0);
 						if (statsPanel->CountComponents() > 1)
 							mod.Beneath(statsPanel->GetReferences().GetFromEnd(1),0);
 						else
@@ -108,7 +108,7 @@ namespace HUD
 							mod.GetVAxis().upper.AddReference(statsPanel->GetReferences().GetFromEnd(2) );
 					}
 				}
-				statsPanel->AddComponent(c);
+				statsPanel->AddComponent(c,CLOCATION);
 				left = !left;
 			}
 
@@ -135,7 +135,7 @@ namespace HUD
 				//prefixLabel->SetVerticalPadding(linePadding);
 				prefixLabel->SetPadding(0.f);
 				prefixLabel->LockToIdealWidth();
-				panel->AddComponent(prefixLabel);
+				panel->AddComponent(prefixLabel,CLOCATION);
 			
 				PLabel factionLabel{new Label{f->GetName()}};
 				factionLabel->alignCenter = false;
@@ -144,7 +144,7 @@ namespace HUD
 				//factionLabel->SetVerticalPadding(linePadding);
 				factionLabel->SetPadding(0.f);
 				factionLabel->LockToIdealWidth();
-				panel->AddComponent(factionLabel);
+				panel->AddComponent(factionLabel,CLOCATION);
 			
 				if (postFix.IsNotEmpty())
 				{
@@ -154,7 +154,7 @@ namespace HUD
 					//postFixLabel->SetVerticalPadding(linePadding);
 					postFixLabel->SetPadding(0.f);
 					postFixLabel->LockToIdealWidth();
-					panel->AddComponent(postFixLabel);
+					panel->AddComponent(postFixLabel,CLOCATION);
 				}
 				AddRow(panel);
 			}
@@ -231,7 +231,7 @@ namespace HUD
 			{
 				String title = "Match Overview";
 				PLabel caption{new Label{title,1.2f}};
-				statsPanel->AnchorBelowPrevious(caption);
+				statsPanel->AnchorBelowPrevious(CLOCATION,caption);
 			}
 
 			Stats::AddLine("World: "+Network::worldIDString);
@@ -278,7 +278,7 @@ namespace HUD
 				PLabel caption{new Label{title,1.2f}};
 				caption->SetColor(f->color);
 				//caption->alignCenter = false;
-				statsPanel->AnchorBelowPrevious(caption);
+				statsPanel->AnchorBelowPrevious(CLOCATION,caption);
 			}
 
 			const auto fStats = GetFactionStats(f);
@@ -367,7 +367,7 @@ namespace HUD
 			filterButtons.Set(myID,button);
 
 			button->SetVerticalPadding(0.5f);
-			metricPanel->AnchorBelowPrevious(button,0.005f);
+			metricPanel->AnchorBelowPrevious(CLOCATION,button,0.005f);
 			WButton w = button;
 			button->SetTriggerFunction([filter,w,myID,integrate]()
 			{
@@ -439,10 +439,10 @@ namespace HUD
 				factionPanel->SetBackgroundTransparent();
 				metricPanel->SetBackgroundTransparent();
 
-				window->AddComponent(factionPanel);
-				window->AddComponent(metricPanel);
-				window->AddComponent(overviewGraph);
-				window->AddComponent(statsPanel);
+				window->AddComponent(factionPanel,CLOCATION);
+				window->AddComponent(metricPanel,CLOCATION);
+				window->AddComponent(overviewGraph,CLOCATION);
+				window->AddComponent(statsPanel,CLOCATION);
 
 
 				metricPanel->SetAutomaticHeight(false);
@@ -496,7 +496,7 @@ namespace HUD
 			}
 
 			factionPanel->ClearComponents();
-			factionPanel->AnchorBelowPrevious(excludeNexusFromOverview);
+			factionPanel->AnchorBelowPrevious(CLOCATION,excludeNexusFromOverview);
 			factionButtonMap.Clear();
 			Objects::ForeachFaction([](const Objects::PFaction&f)
 			{
@@ -525,7 +525,7 @@ namespace HUD
 					button->SetAlwaysDown(!button->IsAlwaysDown());
 					RebuildStackedGraphAndStats();
 				});
-				factionPanel->AnchorBelowPrevious(button,0.005f);
+				factionPanel->AnchorBelowPrevious(CLOCATION,button,0.005f);
 				if (f == chosenFaction.lock())
 					button->Trigger();
 			},true);

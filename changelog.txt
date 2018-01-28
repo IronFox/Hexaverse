@@ -1,3 +1,28 @@
+v0.7.3
+	+ Added menu entry 'Game->Launch Control Console' to directly open up a control console on the local server (if localhost).
+	> Enabled but non-conquered nexus ports are now shown as 'conquering' instead of 'enabled'
+	> Votes are now removed from display when the player clicked yes or no.
+	> Enable-buttons now change caption to 'Disable' if the local structure is currently enabled.
+	> Digging vehicles can no longer accidentally enter EMP zones.
+	> Improved handling of ghosts and critical events when part of an alliance.
+	> Non-dedicated servers now require constant heartbeats from the client. If the client crashes, the server quits after 3 seconds.
+	> Constructing geometry high above the ground now costs more.
+	> Reduced road and bridge thickness to one height level (removed road foundations).
+	> Can now build blocks in water.
+	> The enter/return key now commits any pending terrain building/removal operations.
+	> Clipped water is now rendered flat atop underlying solid, non-clipped terrain blocks
+	* Fixed crashes in bug reporter when trying to upload very long log files.
+	* Fixed handling of crashes in bug reporter.
+	* Fixed confirmation dialogs sometimes not allowing to actually press the confirm button (game wrongly assumed to be between rounds).
+	* Fixed material dialog in interactive configuration mode.
+	* Fixed rare crash when refreshing server list.
+	* Fixed crash when join-vote outlives the targeted alliance.
+	* Fixed server crash when trying to build multi-story building on top terrain level.
+	* Fixed friendly/hostile range visualization to work with alliances.
+	* Fixed server panel when manually adding server addresses that cannot be contacted right now.
+	* Fixed center panel of game end statistics.
+	* Fixed round estimation of terraforming operations.
+
 v0.7.2	[Jan 25 2018]
 	> Added various hot-keys to directly build certain structure types with a selected terraformer.
 	> Progress bars are rendered atop units only when the current operation will require more than one round to complete.

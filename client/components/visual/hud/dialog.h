@@ -144,8 +144,8 @@ namespace Dialog
 	/**
 	Creates a new modal dialog on top of any other active modal dialogs
 	*/
-	WDialog	Confirm(const String&query, const FOnConfirm&onConfirm, const FCheckState&check);
-	WDialog	Confirm(const String&query, const FOnConfirm&onConfirm);
+	WDialog	Confirm(const String&query, const FOnConfirm&onConfirm, const FCheckState&check, bool failIfModalWindowExists=false);
+	WDialog	Confirm(const String&query, const FOnConfirm&onConfirm, bool failIfModalWindowExists=false);
 
 	WDialog	AskYesNoHelp(const String&query, const String&help, const FOnConfirmBool&onAnswer, const FCheckState&check);
 

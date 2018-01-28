@@ -774,7 +774,7 @@ namespace Journal
 			{
 				auto job = p->get()->Instantiate();
 				DeserializeFromCompactMemory(*job,this->jobPayload.pointer(),(serial_size_t)jobPayload.size()), job->GetName(),jobPayload.size();
-				job->Restart(*m);
+				job->UpdateLocationAndEstimations(*m,m->GetLastPointOfOrigin());
 				m->RegisterNewJob("",job,focus != Grid::LCellIdI::Invalid ? &focus : nullptr);
 				return;
 			}

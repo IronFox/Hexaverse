@@ -158,7 +158,7 @@ namespace Component
 		references << c;
 	}
 
-	void		Anchor::VerifyIntegrity(const FVerification&check, const AnchorAxis&axis, bool isUpper) const
+	void		Anchor::VerifyIntegrity(const TCodeLocation&sender, const FVerification&check, const AnchorAxis&axis, bool isUpper) const
 	{
 		distanceFromReference.VerifyIntegrity();
 		ASSERT2__(distanceFromReference.IsWellDefined(),axis.ToString(),isUpper);
@@ -168,17 +168,19 @@ namespace Component
 			foreach (references,ref)
 			{
 				auto locked = ref->lock();
-				ASSERT2__(locked,axis.ToString(),isUpper);
+				if (!locked)
+					Except::TriggerFatal(sender,"Anchor::VerifyIntegrity. Found null reference "+String(ref-references.pointer())+"/"+String(references.Count())+" on axis "+String(axis.ToString())+" upper="+String(isUpper));
+				//ASSERT2__(locked,axis.ToString(),isUpper);
 				check(locked);
 			}
 		}
 	}
 
 
-	void		AnchorConfig::Axis::VerifyIntegrity(const FVerification&v, bool allowUnknownExtent) const
+	void		AnchorConfig::Axis::VerifyIntegrity(const TCodeLocation&sender, const FVerification&v, bool allowUnknownExtent) const
 	{
-		lower.VerifyIntegrity(v,myAxis,false);
-		upper.VerifyIntegrity(v,myAxis,true);
+		lower.VerifyIntegrity(sender,v,myAxis,false);
+		upper.VerifyIntegrity(sender,v,myAxis,true);
 		extent.VerifyIntegrity();
 		if (isAutoCentering || lower.IsInactive() || upper.IsInactive())
 		{
@@ -193,13 +195,13 @@ namespace Component
 			ASSERT_EQUAL1__(extent, Distance::Disabled,myAxis.ToString());
 	}
 
-	void		AnchorConfig::Axis::SetFreeFloating(const Distance&extent /*= Distance::Unknown*/)
+	void		AnchorConfig::Axis::SetFreeFloating(const TCodeLocation&sender, const Distance&extent /*= Distance::Unknown*/)
 	{
 		this->extent = extent;
 		lower.Disable();
 		upper.Disable();
 		isAutoCentering = false;
-		VerifyIntegrity(FVerification(),true);
+		VerifyIntegrity(sender,FVerification(),true);
 	}
 
 	bool		AnchorConfig::Axis::SetExtent(const Distance&d)
@@ -209,7 +211,7 @@ namespace Component
 		if (extent == d)
 			return false;
 		extent = d;
-		VerifyIntegrity(FVerification(),true);
+		VerifyIntegrity(CLOCATION,FVerification(),true);
 		return false;
 	}
 	void		AnchorConfig::Axis::AnchorLower(const Distance&extent, const Distance&offset/* = Distance()*/)
@@ -218,7 +220,7 @@ namespace Component
 		upper.Disable();
 		isAutoCentering = false;
 		this->extent = extent;
-		VerifyIntegrity(FVerification(),true);
+		VerifyIntegrity(CLOCATION,FVerification(),true);
 	}
 
 	void		AnchorConfig::Axis::AnchorLower(const Distance&extent, const PComponent&reference, const Distance&lowerOffset/* = Distance()*/)
@@ -227,7 +229,7 @@ namespace Component
 		upper.Disable();
 		isAutoCentering = false;
 		this->extent = extent;
-		VerifyIntegrity(FVerification(),true);
+		VerifyIntegrity(CLOCATION,FVerification(),true);
 	}
 	
 	void		AnchorConfig::Axis::AnchorLowerUnknown(const Distance&lowerOffset/* = Distance()*/)
@@ -243,7 +245,7 @@ namespace Component
 		lower.Disable();
 		isAutoCentering = false;
 		this->extent = extent;
-		VerifyIntegrity(FVerification(),true);
+		VerifyIntegrity(CLOCATION,FVerification(),true);
 	}
 
 
@@ -253,7 +255,7 @@ namespace Component
 		lower.Disable();
 		isAutoCentering = false;
 		this->extent = extent;
-		VerifyIntegrity(FVerification(),true);
+		VerifyIntegrity(CLOCATION,FVerification(),true);
 	}
 	
 	void		AnchorConfig::Axis::AnchorUpperUnknown(const Distance&upperOffset /*= Distance()*/)
@@ -267,13 +269,13 @@ namespace Component
 		lower.Set(lowerOffset);
 		isAutoCentering = false;
 		extent = Distance::Disabled;
-		VerifyIntegrity(FVerification(),true);
+		VerifyIntegrity(CLOCATION,FVerification(),true);
 	}
 
 	void			AnchorConfig::SetFreeFloating(const Distance&width /*= Distance::Unknown*/,const Distance&height /*= Distance::Unknown*/)
 	{
-		GetHAxis().SetFreeFloating(width);
-		GetVAxis().SetFreeFloating(height);
+		GetHAxis().SetFreeFloating(CLOCATION,width);
+		GetVAxis().SetFreeFloating(CLOCATION,height);
 	}
 
 
@@ -571,16 +573,16 @@ namespace Component
 		return *this;
 	}
 
-	AnchorModifier&	AnchorModifier::FillHBetween(const PComponent&leftEdge, const PComponent&rightEdge)
+	AnchorModifier&	AnchorModifier::FillHBetween(const PComponent&leftEdge, const PComponent&rightEdge, const Distance&leftOffset /*= Distance()*/, const Distance&rightOffset /*= Distance()*/)
 	{
-		GetHAxis().FillBetween(leftEdge,rightEdge);
+		GetHAxis().FillBetween(leftEdge,rightEdge,leftOffset,rightOffset);
 		return *this;
 	}
 
-	void AnchorModifier::Axis::FillBetween(const PComponent&lowerC, const PComponent&upperC)
+	void AnchorModifier::Axis::FillBetween(const PComponent&lowerC, const PComponent&upperC, const Distance&lowerOffset /*= Distance()*/, const Distance&upperOffset /*= Distance()*/)
 	{
-		lower.Set(lowerC,0);
-		upper.Set(upperC,0);
+		lower.Set(lowerC,lowerOffset);
+		upper.Set(upperC,upperOffset);
 		isAutoCentering = false;
 		extent = Distance::Disabled;
 	}
@@ -629,7 +631,7 @@ namespace Component
 	{
 		//anchorConfig.GetHAxis().UpdateExtentIfEnabled( Distance::GameWindow( GetWidth() ));
 		//anchorConfig.GetVAxis().UpdateExtentIfEnabled( Distance::GameWindow( GetHeight() ));
-		anchorConfig.VerifyIntegrity(FVerification(),GetWindow() != nullptr);
+		anchorConfig.VerifyIntegrity(CLOCATION,FVerification(),GetWindow() != nullptr);
 		SignalLayoutChangeUp();
 	}
 
@@ -675,10 +677,10 @@ namespace Component
 			parent->SignalLayoutChangeUp();
 	}
 
-	/*virtual*/ void	Component::VerifyAnchorIntegrity() const
+	/*virtual*/ void	Component::VerifyAnchorIntegrity(const TCodeLocation&sender) const
 	{
 		auto p0 = this->GetParent();
-		anchorConfig.VerifyIntegrity(
+		anchorConfig.VerifyIntegrity(sender,
 		[this,&p0](const PComponent&c)
 		{
 			auto p1 = c->GetParent();
@@ -701,7 +703,7 @@ namespace Component
 			}
 			ASSERT__(!anchorConfig.HasExtentPlaceholders());
 		}
-		VerifyAnchorIntegrity(); 
+		VerifyAnchorIntegrity(CLOCATION); 
 		SignalLayoutChangeUp();
 	}
 
@@ -812,7 +814,7 @@ namespace Component
 
 
 
-	/*virtual*/ bool		Panel::AddComponent(const PComponent&c)
+	/*virtual*/ bool		Panel::AddComponent(const PComponent&c, const TCodeLocation&caller)
 	{
 		if (!c)
 			return false;
@@ -821,8 +823,8 @@ namespace Component
 
 		components << c;
 		c->SetParent( GetWindow(), shared_from_this());
-		c->VerifyAnchorIntegrity();
-		VerifyAnchorIntegrity();
+		c->VerifyAnchorIntegrity(caller);
+		VerifyAnchorIntegrity(caller);
 		InvalidateOrder();
 		return true;
 	}
@@ -1476,7 +1478,7 @@ namespace Component
 	}
 
 
-	void			Panel::AnchorBelowPrevious(const PComponent&newComponent, const Distance& distanceFromSides /*= 0.015f*/,  const Distance&  distanceToPrevious/* = 0.015f*/)
+	void			Panel::AnchorBelowPrevious(const TCodeLocation&caller, const PComponent&newComponent, const Distance& distanceFromSides /*= 0.015f*/,  const Distance&  distanceToPrevious/* = 0.015f*/)
 	{
 		{
 			auto&mod = newComponent->Anchor();
@@ -1486,7 +1488,7 @@ namespace Component
 				mod.Top(distanceToPrevious);
 			mod.FillHorizontally(distanceFromSides,distanceFromSides);
 		}
-		AddComponent(newComponent);
+		AddComponent(newComponent,caller);
 	}
 
 
@@ -2092,7 +2094,7 @@ namespace Component
 				{
 					rec.Report(shared_from_this(),prev);
 
-					VerifyAnchorIntegrity();
+					VerifyAnchorIntegrity(CLOCATION);
 					if (IsDebuggerPresent())
 						DebugBreak();
 					else
@@ -2340,13 +2342,13 @@ namespace Component
 		this->SignalLayoutChangeUp();
 		if (b && anchorConfig.GetVAxis().Stretches())
 			AnchorTop(0);
-		VerifyAnchorIntegrity();
+		VerifyAnchorIntegrity(CLOCATION);
 	}
 
 
-	/*virtual override*/ void		Panel::VerifyAnchorIntegrity() const
+	/*virtual override*/ void		Panel::VerifyAnchorIntegrity(const TCodeLocation&sender) const
 	{
-		Super::VerifyAnchorIntegrity();
+		Super::VerifyAnchorIntegrity(sender);
 		if (autoHeight && (anchorConfig.GetVAxis().Stretches()))
 			__debugbreak();
 		ASSERT__(!autoHeight || (!anchorConfig.GetVAxis().Stretches()));
@@ -2356,7 +2358,7 @@ namespace Component
 				ASSERT__(!(*c)->GetAnchorConfig().GetVAxis().RequiresFixedParentSize());
 		}
 		foreach (components,c)
-			(*c)->VerifyAnchorIntegrity();
+			(*c)->VerifyAnchorIntegrity(sender);
 	}
 
 
@@ -2378,7 +2380,7 @@ namespace Component
 		visible = true; 
 		SetActive(true); 
 		OnScreenSizeOrUIScaleChange();
-		VerifyAnchorIntegrity();
+		VerifyAnchorIntegrity(CLOCATION);
 	}
 
 	void			Window::FullAutoLayout(const TCodeLocation&caller)
@@ -2431,7 +2433,7 @@ namespace Component
 
 		ConfigureInactive(tab);
 
-		Super::AddComponent(tab);
+		Super::AddComponent(tab,CLOCATION);
 
 		if (Super::CountComponents() == 1)
 			SetActiveTab(0,true);
@@ -2514,7 +2516,7 @@ namespace Component
 				this->SetActiveTab(tabBar->GetActiveTabIndex(),true);
 		});
 
-		Super::AddComponent(tabBar);
+		Super::AddComponent(tabBar,CLOCATION);
 	}
 
 
@@ -2610,7 +2612,7 @@ namespace Component
 		Super::RemoveComponent(active.panel);
 		activeIndex = tabIndex;
 		active = tabs[tabIndex];
-		Super::AddComponent(active.panel);
+		Super::AddComponent(active.panel,CLOCATION);
 		if (triggerCallback)
 			OnTabChange();
 	}

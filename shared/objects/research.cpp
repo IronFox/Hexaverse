@@ -110,7 +110,7 @@ namespace Objects
 	template <typename T, typename F>
 		static void InitAttrib(const Lua::Table&source, const String&path, const String&name, LuaAttribute<T,F>&a, bool allowEmpty = false)
 		{
-			Lua::Reference ref = source.GetField(name);
+			Lua::NamedReference ref = source.GetField(name);
 			a.Clear();
 			if (ref.IsEmpty())
 			{

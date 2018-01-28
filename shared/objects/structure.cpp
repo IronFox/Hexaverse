@@ -101,10 +101,11 @@ namespace Objects
 			//case LacksFullFoundation:
 			//	return "LacksFullFoundation";
 			case GroundLevelObstruction:
-				return "GroundLevelObstruction";
+				return "Ground level obstruction";
 			case UpperLevelObstruction:
-				return "UpperLevelObstruction";
-
+				return "Upper level obstruction";
+			case MaxLevelExceeded:
+				return "Maximum level exceeded";
 		}
 		return "Unknown";
 	}
@@ -392,6 +393,9 @@ namespace Objects
 	{
 		if (location.height == badHeight)
 			return BadHeight;
+		if (location.height + totalHeight-1 > Grid::CellStack::TopHeight)
+			return MaxLevelExceeded;
+
 		#ifdef HYBRID_GRID
 			const UINT32 higher = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
 			{

@@ -186,14 +186,18 @@ namespace HexGrid
 			outResult.BeginBrief();
 			Objects::PWorldEntity e = GetTarget();
 			String hostile = isFriendly? "" : "hostile ";
-			String t = " at t="+String(atTime)+" sec";
+			#ifdef _DEBUG
+				String t = " at t="+String(atTime)+" sec";
+			#else
+				String t = "";
+			#endif
 			if (e)
-				outResult << "Focus on "+hostile + name+" of "+e->GetNiceName()+t;
+				outResult << "Focus on "+hostile + name+" "+e->GetNiceName()+" ("+e->owner->GetName()+")"+t;
 			else
 				if (fallbackTargetName.IsNotEmpty())
-					outResult << "Focus on "+hostile + name+" of "+fallbackTargetName+t;
+					outResult << "Focus on "+hostile + name+" "+fallbackTargetName+t;
 				else
-					outResult << "Focus on "+hostile + name+t;
+					outResult << "Focus on "+hostile + name+" ?"+t;
 		}
 
 
@@ -1130,6 +1134,8 @@ namespace HexGrid
 						Objects::UpdateChoices(Network::ControlEnabled());
 						Tutorial::ShowMessage(name);
 						Configure(Objects::selectedEntity);
+
+						hoveringOver = nullptr;
 					}
 					return true;
 				}
@@ -1602,7 +1608,7 @@ namespace HexGrid
 
 		void			RegisterAttack(float time, bool isFriendly,  const M::TVec3<>&focusLocation, const TUniqueID&focusEntityID, const Objects::Renderer::SmokeTrailIndex&smokeTrailIndex)
 		{
-			Custom::AnimationEventFocusCommand*cmd = new Custom::AnimationEventFocusCommand("Attack","Attack",focusLocation,focusEntityID,time,isFriendly,!isFriendly);
+			Custom::AnimationEventFocusCommand*cmd = new Custom::AnimationEventFocusCommand("attack by","Attack",focusLocation,focusEntityID,time,isFriendly,!isFriendly);
 			cmd->smokeTrailIndex = smokeTrailIndex;
 			if (!isFriendly)
 				cmd->state |= Objects::CommandFlags::IsFlashing;
@@ -1612,7 +1618,7 @@ namespace HexGrid
 
 		void			RegisterEntityDestruction(float time, bool isOwnedByMe,  const M::TVec3<>&focusLocation, const TUniqueID&focusEntityID, const String&entityName)
 		{
-			Custom::AnimationEventFocusCommand*cmd = new Custom::AnimationEventFocusCommand("Entity Death","Entity Death",focusLocation,focusEntityID,time,isOwnedByMe,isOwnedByMe);
+			Custom::AnimationEventFocusCommand*cmd = new Custom::AnimationEventFocusCommand("death of","Entity Death",focusLocation,focusEntityID,time,isOwnedByMe,isOwnedByMe);
 			if (isOwnedByMe)	//flipped logic
 				cmd->state |= Objects::CommandFlags::IsFlashing;
 			cmd->fallbackTargetName = entityName;

@@ -64,7 +64,7 @@ namespace HUD
 				if (labelText.IsNotEmpty())
 				{
 					PLabel label{new Label{labelText,0.75f}};
-					rs->AddComponent(label);
+					rs->AddComponent(label,CLOCATION);
 					{
 						auto mod = label->Anchor();
 						mod.GetHAxis().AnchorLowerUnknown();
@@ -76,7 +76,7 @@ namespace HUD
 				else
 					rs->SetBackgroundTransparent();
 
-				window->AnchorBelowPrevious(rs,0,0.01f);
+				window->AnchorBelowPrevious(CLOCATION,rs,0,0.01f);
 				rs->Anchor().FillHorizontally(0.01f,0.01f);
 
 				return rs;
@@ -125,12 +125,12 @@ namespace HUD
 				//senderLabel->fillBackground = true;
 
 				panel->SetAutomaticHeight(true);
-				panel->AddComponent(nameLabel);
+				panel->AddComponent(nameLabel,CLOCATION);
 				//statusLabel->dbgMarked = true;
-				panel->AddComponent(statusLabel);
+				panel->AddComponent(statusLabel,CLOCATION);
 				panel->SetBackgroundTransparent();
 
-				toPanel->AnchorBelowPrevious(panel,0,0);
+				toPanel->AnchorBelowPrevious(CLOCATION,panel,0,0);
 			}
 
 			static Objects::WAlliance tryingToJoin;
@@ -172,14 +172,14 @@ namespace HUD
 					
 					{
 						chatHistory.reset(new Panel{});
-						chatBack->AnchorBelowPrevious(chatHistory,0,0);
+						chatBack->AnchorBelowPrevious(CLOCATION,chatHistory,0,0);
 						chatHistory->SetMaxAutoHeight(0.3f);
 						chatHistory->SetAutomaticHeight(true);
 						chatHistory->SetBackgroundTransparent();
 					}
 					{
 						factionTable.reset(new Panel{});
-						factionBack->AnchorBelowPrevious(factionTable,0,0);
+						factionBack->AnchorBelowPrevious(CLOCATION,factionTable,0,0);
 						factionTable->SetMaxAutoHeight(0.3f);
 						factionTable->SetAutomaticHeight(true);
 						factionTable->SetBackgroundTransparent();
@@ -188,7 +188,7 @@ namespace HUD
 						PButton close{new Button{"Close",Hide}};
 						close->SetVerticalPadding(0.5f);
 						close->FillHorizontally(0);
-						buttons->AddComponent(close);
+						buttons->AddComponent(close,CLOCATION);
 						close->Anchor().GetVAxis().AnchorUpperUnknown();
 					}
 
@@ -230,9 +230,9 @@ namespace HUD
 						send->LockToIdealWidth();
 						send->LockToIdealHeight();
 						chatMessage->Anchor().Top().FillHBetween(filter,send);
-						chatInput->AddComponent(filter);
-						chatInput->AddComponent(send);
-						chatInput->AddComponent(chatMessage);
+						chatInput->AddComponent(filter,CLOCATION);
+						chatInput->AddComponent(send,CLOCATION);
+						chatInput->AddComponent(chatMessage,CLOCATION);
 						chatMessage->onEnter = [send](){send->Trigger();};
 					}
 				}
@@ -243,7 +243,7 @@ namespace HUD
 					wrapper->Anchor().BeneathLastOf(factionTable);
 					wrapper->fillBackground = false;
 					wrapper->renderBorder = a->CountLivingMembers()  > 1;
-					factionTable->AddComponent(wrapper);
+					factionTable->AddComponent(wrapper,CLOCATION);
 
 					PPanel alliancePanel{new Panel{}};
 					alliancePanel->fillBackground = false;
@@ -256,11 +256,11 @@ namespace HUD
 						PLabel allianceLabel{new Label{a->id.ToNiceString(),1.f}};
 						allianceLabel->Anchor().Left().Top();
 						allianceLabel->SetVerticalPadding(0.3f,0.1f);
-						wrapper->AddComponent(allianceLabel);
+						wrapper->AddComponent(allianceLabel,CLOCATION);
 						alliancePanel->Anchor().Beneath(allianceLabel);
 					}
 
-					wrapper->AddComponent(alliancePanel);
+					wrapper->AddComponent(alliancePanel,CLOCATION);
 
 
 					Objects::WAlliance wa = a;
@@ -298,7 +298,7 @@ namespace HUD
 							joinButton->SetLocalFontScale(0.85f);
 
 							joinButton->Anchor().Right(0.01f).Bottom(0.01f);
-							wrapper->AddComponent(joinButton);
+							wrapper->AddComponent(joinButton,CLOCATION);
 						}
 						else if (a->CountLivingMembers() > 1)
 						{
@@ -320,7 +320,7 @@ namespace HUD
 							leaveButton->SetLocalFontScale(0.85f);
 
 							leaveButton->Anchor().Right(0.01f).Top(0.01f);
-							wrapper->AddComponent(leaveButton);
+							wrapper->AddComponent(leaveButton,CLOCATION);
 						}
 
 					}
@@ -442,12 +442,12 @@ namespace HUD
 			//senderLabel->fillBackground = true;
 
 			chatEntry->SetAutomaticHeight(true);
-			chatEntry->AddComponent(timeLabel);
-			chatEntry->AddComponent(senderLabel);
-			chatEntry->AddComponent(textLabel);
+			chatEntry->AddComponent(timeLabel,CLOCATION);
+			chatEntry->AddComponent(senderLabel,CLOCATION);
+			chatEntry->AddComponent(textLabel,CLOCATION);
 			chatEntry->SetBackgroundTransparent();
 
-			chatHistory->AnchorBelowPrevious(chatEntry,0,0);
+			chatHistory->AnchorBelowPrevious(CLOCATION,chatEntry,0,0);
 
 			window->FullAutoLayout(CLOCATION);
 

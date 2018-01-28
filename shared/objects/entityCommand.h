@@ -16,8 +16,8 @@ namespace Objects
 		class Container;
 
 		typedef std::function<void(const PBase&cmd)>				FVisitor;
-
-
+		typedef std::function<bool(const PBase&cmd)>				FFilter;
+		
 		/**
 		Base class for all visual commands.
 		Visual commands are currently rendered as hexagonal icons arranged in the four corners of the screen.
@@ -109,10 +109,14 @@ namespace Objects
 			const Container			*parent = nullptr;	//!< Must not access members
 		public:
 			/**
-			Visits all locally known member commands, without recursively calling VisitMembers() on each.
-			Instead any contained commands are directly fed to the visitor;
+			Visits all locally known member commands
 			*/
 			void			VisitLocalMembers(const FVisitor&visitor)	const;
+			/**
+			Replaces the first filter match with the new command
+			*/
+			bool			ReplaceLocalMember(const FFilter&filter, const PBase&newCommand);
+			void			ReplaceLocalMember(const FFilter&filter, Base*newCommand)	{ASSERT__(ReplaceLocalMember(filter,PBase(newCommand)));}
 
 			void			Refresh(bool controlEnabled)
 			{

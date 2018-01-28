@@ -3,6 +3,7 @@
 #include <protocol.h>
 #include <objects/structure/mine.h>
 #include <objects/structure/laboratory.h>
+#include <objects/pathfinding.h>
 #include "visual/objectChoices.h"
 #include "visual/commandDefinitions.h"
 #include "visual/hud/objectCommands.h"
@@ -273,7 +274,7 @@ namespace ObjectHelper
 			if (v->IsPlane())
 				foundPath = Objects::SubOrbital::AppendShortestPathI((const Objects::SubOrbital::Plane*)v.get(),prev,target,path,false,&tooLong);
 			else if (v->IsGroundBoundVehicle())
-				foundPath = Objects::AppendShortestPathI((const Objects::Vehicle*)v.get(),prev,target,path,false,&tooLong);
+				foundPath = Objects::Pathfinding::AppendShortestPathI((const Objects::Vehicle*)v.get(),prev,target,path,false,&tooLong);
 			#ifndef NO_SATELLITES
 				else if (v->IsSatellite())
 					foundPath = Objects::AppendShortestPathI((const Objects::Satellite*)v.get(),prev,target.stackID,path,false,&tooLong);
@@ -288,7 +289,7 @@ namespace ObjectHelper
 					target++;
 					return MoveVehicleTo(v,prev,target,flags);
 				}
-				LogEvent(EventClass::Preset::commandRejected,v.get(),"Unable to find route to designated destination");
+				LogEvent(EventClass::Preset::commandRejected,v.get(),"Unable to find route to destination");
 				//SendDirectTo(v,target,false,false,Objects::CursorMode::Idle);	//maybe some error in the client
 				return false;
 			}
@@ -479,7 +480,7 @@ namespace ObjectHelper
 				if (!force)
 				{
 					Objects::PMobileEntity v = m;
-					if (v->constructionRoundCounter > 0 
+					if (v->constructionActionCounter > 0 
 						&& v->myTasks.Count() == 1
 						&& v->myTasks.GetNewest().IsJob() 
 						&& v->myTasks.GetNewest().job->resourceCostLeft > 0)
@@ -496,7 +497,7 @@ namespace ObjectHelper
 							if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase || Network::newRoundRequested)
 								return HUD::Dialog::CheckResult::OkayNotRightNow;
 							return HUD::Dialog::CheckResult::OkayContinue;
-						});
+						},true);
 						return;
 					}
 					else

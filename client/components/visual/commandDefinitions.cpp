@@ -125,7 +125,7 @@ namespace Objects
 										PVehiclePlant plant = To<VehiclePlant>::DynamicCast(GetEntity(myID));
 										if (!plant || plant->IsDeadOrGhost())
 											return HUD::Dialog::CheckResult::Abort;
-										if (!Objects::controlIsEnabled)
+										if (!Network::ControlEnabled())
 											return HUD::Dialog::CheckResult::OkayNotRightNow;
 										return HUD::Dialog::CheckResult::OkayContinue;
 									}
@@ -144,39 +144,45 @@ namespace Objects
 		void DefineVehiclePlant(CommandContainer&commands)
 		{
 			DefineWorkingStructure(commands);
-			commands.VisitLocalMembers([](const Command::PBase&cmd)
-			{
-				if (cmd->name == "Enable")
-				{
-					(*cmd) = Command::IconCommand("Enable",
-						[]()
-						{
 
-							VehiclePlant*s2 = dynamic_cast<VehiclePlant*>(selectedEntity.get());
-							if (s2)
-							{
-								if (!s2->IsEnabled() && !s2->CanEnable())
-								{
-									ApplicationInterface::SignalUserMessage(s2->GetNiceName()+" is switched off because its queue is empty. It will attempt to automatically enable once you enqueue at least one production job.");
-									return;
-								}
-								ApplicationInterface::SignalEnableStructure(*s2, !s2->IsEnabled());
-							}
-						}
-						,[](bool controlEnabled)
-						{
-							Objects::CommandFlags rs = Objects::CommandFlags::None;
-							VehiclePlant*div = dynamic_cast<VehiclePlant*>(selectedEntity.get());
-							if (controlEnabled && div != nullptr)
-								rs |= Objects::CommandFlags::IsEnabled;
-							if (Detail::WorkingStructureIsEnabled())
-								rs |= Objects::CommandFlags::IsPermaActive;
-							return rs;
-						}
-						,NoCosts
-					);
+			Command::PIconCommand newEnable {new Command::IconCommand("Enable",
+			[]()
+			{
+
+				VehiclePlant*s2 = dynamic_cast<VehiclePlant*>(selectedEntity.get());
+				if (s2)
+				{
+					if (!s2->IsEnabled() && !s2->CanEnable())
+					{
+						ApplicationInterface::SignalUserMessage(s2->GetNiceName()+" is switched off because its queue is empty. It will attempt to automatically enable once you enqueue at least one production job.");
+						return;
+					}
+					ApplicationInterface::SignalEnableStructure(*s2, !s2->IsEnabled());
 				}
-			});
+			}
+			,[](bool controlEnabled)
+			{
+				Objects::CommandFlags rs = Objects::CommandFlags::None;
+				VehiclePlant*div = dynamic_cast<VehiclePlant*>(selectedEntity.get());
+				if (controlEnabled && div != nullptr)
+					rs |= Objects::CommandFlags::IsEnabled;
+				if (Detail::WorkingStructureIsEnabled())
+					rs |= Objects::CommandFlags::IsPermaActive;
+				return rs;
+			}
+			,NoCosts
+			)};
+			newEnable->customLabelBuilder = [](Command::Base::Label&outLabel)
+			{
+				if (selectedEntity && selectedEntity->IsWorkingStructure() && To<WorkingStructure>::Cast(selectedEntity)->IsEnabled())
+					outLabel << "Disable";
+				else
+					outLabel << "Enable";
+			};
+
+
+			commands.ReplaceLocalMember([](const Command::PBase&cmd) {return cmd->name == "Enable";},newEnable);
+				
 
 
 			//commands.AppendRow();
@@ -374,7 +380,8 @@ namespace Objects
 		{
 			//commands.baseCoords = int2(3,0);
 
-			commands.Add(new Command::IconCommand("Enable",&Detail::EnableWorkingStructure,
+
+			Command::PIconCommand cmd (new Command::IconCommand("Enable",&Detail::EnableWorkingStructure,
 			[](bool controlEnabled)->Objects::CommandFlags
 			{
 				Objects::CommandFlags rs = Objects::CommandFlags::None;
@@ -392,6 +399,15 @@ namespace Objects
 			}
 			,NoCosts
 			));
+
+			cmd->customLabelBuilder = [](Command::Base::Label&outLabel)
+			{
+				if (selectedEntity && selectedEntity->IsWorkingStructure() && To<WorkingStructure>::Cast(selectedEntity)->IsEnabled())
+					outLabel << "Disable";
+				else
+					outLabel << "Enable";
+			};
+			commands.Add(cmd);
 		}
 
 		static void BuildCommand(CommandContainer&parent, const PResearchTopic&t)
@@ -793,7 +809,8 @@ namespace Objects
 							const auto&stack = World::actual.GetStack(i);
 							for (UINT32 j = at - 1; j <= at + 1; j++)
 							{
-								if (!stack.volumeCell[j].IsOccupied())
+								const auto&cell = stack.volumeCell[j];
+								if (!cell.IsOccupied() || cell.IsLiquid())
 								{
 									if (j != at || Objects::vehicleDistanceField.distance[i] > 1)
 									{
@@ -886,7 +903,7 @@ namespace Objects
 					mineralCostOut = 0;
 					ASSERT__(selectedMobileEntity);
 					//PVehicle v = To<Vehicle>::Cast(e);
-					timeCostOut = selectedMobileEntity->GetOperationRounds(VehicleJob::DigHorizontalMineralCosts,Component::TerrainRemove);
+					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(VehicleJob::DigHorizontalMineralCosts,Component::TerrainRemove);
 				}
 				));
 			terraformRemoveGround->Add( new Command::IconCommand("Dig Down", &Detail::TerraformerDigDown, 
@@ -897,7 +914,7 @@ namespace Objects
 					mineralCostOut = 0;
 					ASSERT__(selectedMobileEntity);
 //						PVehicle v = To<Vehicle>::Cast(selectedMobileEntity);
-					timeCostOut = selectedMobileEntity->GetOperationRounds(VehicleJob::DigDownMineralCosts,Component::TerrainRemove);
+					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(VehicleJob::DigDownMineralCosts,Component::TerrainRemove);
 				}
 			));
 			terraformRemoveGround->Add( new Command::IconCommand("Clear Above", &CommonCmd::ToggleMode<CursorMode::ClearAboveMode>
@@ -908,7 +925,7 @@ namespace Objects
 					mineralCostOut = 0;
 					ASSERT__(selectedMobileEntity);
 //						PVehicle v = To<Vehicle>::Cast(e);
-					timeCostOut = selectedMobileEntity->GetOperationRounds(VehicleJob::ClearAboveMineralCosts,Component::TerrainRemove);
+					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(VehicleJob::ClearAboveMineralCosts,Component::TerrainRemove);
 				}
 			));
 
@@ -917,10 +934,10 @@ namespace Objects
 				,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 				{
 					costTypeOut = Resource::Minerals;
-					mineralCostOut = VehicleJob::BuildWallMineralCosts;
+					mineralCostOut = 0;//NoCosts;//VehicleJob::MinBuildWallMineralCosts;
 					ASSERT__(selectedMobileEntity);
 					//PVehicle v = To<Vehicle>::Cast(e);
-					timeCostOut = selectedMobileEntity->GetOperationRounds(mineralCostOut,Component::TerrainAdd);
+					timeCostOut = 0;//selectedMobileEntity->GetOperationRounds(mineralCostOut,Component::TerrainAdd);
 				}
 			));
 			terraformAddGround->Add( new Command::IconCommand("Build Horizontal Wall", &Detail::IssueCommand<ConstName::Job_BuildHorizontalWall>
@@ -928,10 +945,10 @@ namespace Objects
 				,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 				{
 					costTypeOut = Resource::Minerals;
-					mineralCostOut = VehicleJob::BuildWallMineralCosts;
+					mineralCostOut = VehicleJob::MinBuildWallMineralCosts;
 					ASSERT__(selectedMobileEntity);
 					//PVehicle v = To<Vehicle>::Cast(e);
-					timeCostOut = selectedMobileEntity->GetOperationRounds(mineralCostOut,Component::TerrainAdd);
+					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(mineralCostOut,Component::TerrainAdd);
 				}
 			));
 
@@ -940,10 +957,10 @@ namespace Objects
 				,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 				{
 					costTypeOut = Resource::Minerals;
-					mineralCostOut = VehicleJob::BuildRoadMineralCosts;
+					mineralCostOut = VehicleJob::MinBuildRoadMineralCosts;
 					ASSERT__(selectedMobileEntity);
 					//PVehicle v = To<Vehicle>::Cast(e);
-					timeCostOut = selectedMobileEntity->GetOperationRounds(mineralCostOut,Component::TerrainAdd);
+					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(mineralCostOut,Component::TerrainAdd);
 				}
 			));
 
@@ -984,7 +1001,7 @@ namespace Objects
 					mineralCostOut = (int)cellSelection.Count();
 					ASSERT__(selectedMobileEntity);
 					//PVehicle v = To<Vehicle>::Cast(e);
-					timeCostOut = selectedMobileEntity->GetOperationRounds(mineralCostOut,activeCursorMode != CursorMode::BuildBlockMode ? Component::TerrainRemove : Component::TerrainAdd);
+					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(mineralCostOut,activeCursorMode != CursorMode::BuildBlockMode ? Component::TerrainRemove : Component::TerrainAdd);
 					if (activeCursorMode != CursorMode::BuildBlockMode)
 						mineralCostOut = 0;
 				}
@@ -997,7 +1014,7 @@ namespace Objects
 					mineralCostOut = (int)cellSelection.Count();
 					ASSERT__(selectedMobileEntity);
 					//PVehicle v = To<Vehicle>::Cast(e);
-					timeCostOut = selectedMobileEntity->GetOperationRounds(mineralCostOut,activeCursorMode != CursorMode::BuildBlockMode ? Component::TerrainRemove : Component::TerrainAdd);
+					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(mineralCostOut,activeCursorMode != CursorMode::BuildBlockMode ? Component::TerrainRemove : Component::TerrainAdd);
 					if (activeCursorMode != CursorMode::BuildBlockMode)
 						mineralCostOut = 0;
 				}
@@ -1048,7 +1065,7 @@ namespace Objects
 					resourceCostOut = 0;
 					ASSERT__(selectedMobileEntity);
 					//PVehicle v = To<Vehicle>::Cast(e);
-					timeCostOut = selectedMobileEntity->GetOperationRounds(VehicleJob::RegularSelfDetonationCosts,Component::Nuclear);
+					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(VehicleJob::RegularSelfDetonationCosts,Component::Nuclear);
 				}
 				));
 
@@ -1060,7 +1077,7 @@ namespace Objects
 					costTypeOut = Resource::Uranium;
 					ASSERT__(selectedMobileEntity);
 					//PVehicle v = To<Vehicle>::Cast(e);
-					timeCostOut = selectedMobileEntity->GetOperationRounds(VehicleJob::DoomsdaySelfDetonationCosts,Component::Nuclear);
+					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(VehicleJob::DoomsdaySelfDetonationCosts,Component::Nuclear);
 				}
 				));
 
@@ -1215,7 +1232,7 @@ namespace Objects
 								return HUD::Dialog::CheckResult::Abort;
 							if (p->queue.IsEmpty() || p->queue.First().id != id)
 								return HUD::Dialog::CheckResult::Abort;
-							if (!controlIsEnabled)
+							if (!Network::ControlEnabled())
 								return HUD::Dialog::CheckResult::OkayNotRightNow;
 							return HUD::Dialog::CheckResult::OkayContinue;
 						}
@@ -1247,6 +1264,17 @@ namespace Objects
 
 			};
 
+		}
+
+
+		bool					TerraformerCommitOperation()
+		{
+			if (Detail::TerraformerCommitIsPossibleC(Network::ControlEnabled()))
+			{
+				Detail::TerraformerCommitOperation();
+				return true;
+			}
+			return false;
 		}
 
 

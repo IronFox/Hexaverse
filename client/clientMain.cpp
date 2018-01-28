@@ -378,6 +378,8 @@ void	SignalRoundEndOrMaximize()
 
 		if (HUD::Dialog::ConfirmCurrent(false))
 			return;
+		if (Objects::Commands::TerraformerCommitOperation())
+			return;
 	#endif
 	ApplicationInterface::SignalRoundEnd();
 
@@ -425,7 +427,7 @@ namespace ApplicationInterface
 			if (e->IsMobile())
 			{
 				Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(e);
-				if (v->constructionRoundCounter > 0 
+				if (v->constructionActionCounter > 0 
 				&& v->myTasks.IsNotEmpty() 
 				&& v->myTasks.Peek().IsJob() 
 				&& v->myTasks.Peek().job->resourceCostLeft > 0)
@@ -793,7 +795,10 @@ namespace ApplicationInterface
 
 		if (Network::amSpectator)
 			return;
-		if (t == Objects::RemovalType::UncontrolledExplosion && e->isOwnedByMe)
+
+		const bool allied = e->owner->IsAlliedWithMe();
+
+		if (t == Objects::RemovalType::UncontrolledExplosion && allied)
 		{
 			Protocol::Marker marker;
 			static_assert(Objects::Marker::Type::EntityDeath == 0, "Please update marker logic");
@@ -803,7 +808,7 @@ namespace ApplicationInterface
 			LogEvent(EventSignificance::Debug,e.get(),"Created friendly loss marker for "+e->GetName());
 		}
 		else
-			if (t == Objects::RemovalType::Vanished && !e->isOwnedByMe)
+			if (t == Objects::RemovalType::Vanished && !allied)
 			{
 				//this event can be high-frequency, happen several times per round for the same entity,
 				//and happen, in fact, so rapidly, the creation event hasn't been confirmed yet
@@ -1072,7 +1077,6 @@ namespace ApplicationInterface
 
 
 
-		HUD::HexGrid::Configure(Objects::selectedEntity);
 		HUD::StatePanel::SignalChange();
 
 	}
@@ -1806,6 +1810,11 @@ void ParseKeyValue(const String&key, const String&value)
 			RuntimeConfig::aiAccessToken.Decode(value);
 			LogEvent(EventClass::Preset::configuration,nullptr,"Assuming AI-client role");
 		}
+		elif (key == "profile")
+		{
+			RuntimeConfig::profilePrefix = value+"_";
+			LogEvent(EventClass::Preset::configuration,nullptr,"Using profile prefix '"+RuntimeConfig::profilePrefix+"'");
+		}
 		elif (key == "udpListen")
 		{
 			if (!convert(value.c_str(), RuntimeConfig::udpListen))
@@ -2136,6 +2145,8 @@ int main( int argc, const char* argv[])
 	#ifdef HAS_WINDOW
 		GlobalEvents::invalidateObjectCache << ApplicationInterface::HandleLocalEntityStatusChange;
 		Objects::onSelectionChanged << ApplicationInterface::HandleLocalSelectionChange;
+		Objects::onSelectionChanged << [](){HUD::HexGrid::Configure(Objects::selectedEntity);};
+
 
 		Engine::GlobalAspectConfiguration::worldZIsUp = true;
 	#endif
@@ -2328,7 +2339,7 @@ int main( int argc, const char* argv[])
 				String name;
 				try
 				{
-					StringFile userName(RuntimeConfig::ConfigFile("userName.txt"));
+					StringFile userName(RuntimeConfig::ConfigFile(RuntimeConfig::profilePrefix+"userName.txt"));
 					userName >> name;
 				}
 				catch (...)

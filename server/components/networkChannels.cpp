@@ -165,29 +165,27 @@ namespace Receiver
 					auto f = Objects::Faction::FindByID(v->concerning[0]);
 					if (f)
 					{
-						switch (rs.resultType)
+						if (!a)
 						{
-							case Protocol::VoteResultType::Passed:
-								if (a)
-								{
+							LogEvent(EventClass(EventSignificance::Important,EventFlavor::Loss), f,"Vote for "+niceTask+" failed since targeted alliance no longer exists");
+						}
+						else
+							switch (rs.resultType)
+							{
+								case Protocol::VoteResultType::Passed:
 									LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain), f,"Vote passed. Admission to alliance "+a->id.ToNiceString()+" granted");
 									f->ChangeAlliance(a);
-								}
-								else
-								{
-									LogEvent(EventClass::Preset::internalError, f,"Vote passed but alliance "+ToString(v->concerning[1])+" no longer exists...");
-								}
-							break;
-							case Protocol::VoteResultType::Rejected:
-								LogEvent(EventClass(EventSignificance::Important,EventFlavor::Loss), f,"Admission to alliance "+a->id.ToNiceString()+" has been rejected");
-							break;
-							case Protocol::VoteResultType::TimedOut:
-								LogEvent(EventClass(EventSignificance::Important,EventFlavor::Loss), f,"Vote for "+niceTask+" has timed out");
-							break;
-							case Protocol::VoteResultType::Canceled:
-								LogEvent(EventClass(EventSignificance::Important,EventFlavor::Neutral), f,"Vote for "+niceTask+" was canceled");
-							break;
-						}
+								break;
+								case Protocol::VoteResultType::Rejected:
+									LogEvent(EventClass(EventSignificance::Important,EventFlavor::Loss), f,"Admission to alliance "+a->id.ToNiceString()+" has been rejected");
+								break;
+								case Protocol::VoteResultType::TimedOut:
+									LogEvent(EventClass(EventSignificance::Important,EventFlavor::Loss), f,"Vote for "+niceTask+" has timed out");
+								break;
+								case Protocol::VoteResultType::Canceled:
+									LogEvent(EventClass(EventSignificance::Important,EventFlavor::Neutral), f,"Vote for "+niceTask+" was canceled");
+								break;
+							}
 					}
 				}
 			);
@@ -1535,17 +1533,18 @@ namespace Receiver
 		using namespace Objects;
 		PVehicleJob job;
 		Grid::LCellIdI target = Grid::LCellIdI::Invalid;
+		const Grid::LCellIdI jobLocation = v->GetLastPointOfOrigin();
 		switch (sjob.jobName)
 		{
 			case ConstName::Job_BuildRoad:
 			{
-				if (v->GetLastPointOfOrigin().height <= -Grid::CellStack::HalfRange)
+				if (jobLocation.height <= -Grid::CellStack::HalfRange)
 				{
 					LogEvent(EventClass::Preset::commandRejected,peer,e,"Cannot build road on bottom layer");
 					return;
 				}
 
-				job.reset(new VehicleJob::BuildRoad(*v));
+				job.reset(new VehicleJob::BuildRoad(*v,jobLocation));
 				v->RegisterNewJob("", job,nullptr);
 				LogEvent(EventSignificance::Common,peer,e,"Registered new job "+job->GetName());
 			}
@@ -1558,14 +1557,14 @@ namespace Receiver
 					LogEvent(EventClass::Preset::commandRejected,peer,e,"Cannot build wall on top layer");
 					return;
 				}
-				job.reset(new VehicleJob::BuildWallUp(*v));
+				job.reset(new VehicleJob::BuildWallUp(*v,jobLocation));
 				v->RegisterNewJob("", job,&target);
 				LogEvent(EventSignificance::Common,peer,e,"Registered new job "+job->GetName());
 			}
 			break;
 			case ConstName::Job_BuildHorizontalWall:
 			{
-				job.reset(new VehicleJob::BuildHorizontalWall(*v));
+				job.reset(new VehicleJob::BuildHorizontalWall(*v,jobLocation));
 				v->RegisterNewJob("", job,nullptr);
 				LogEvent(EventSignificance::Common,peer,e,"Registered new job "+job->GetName());
 			}
@@ -1580,7 +1579,7 @@ namespace Receiver
 				}
 				else
 				{
-					job.reset(new VehicleJob::DigDown(*v));
+					job.reset(new VehicleJob::DigDown(*v,jobLocation));
 					v->RegisterNewJob("",job,&target);		
 					LogEvent(EventSignificance::Common,peer,e,"Registered new job "+job->GetName());
 				}
@@ -1599,7 +1598,7 @@ namespace Receiver
 				Objects::PStructure p = Objects::Prototypes::structures.Find(sjob.parameterName);
 				if (p)
 				{	
-					job.reset(new VehicleJob::Construct(*v,p));
+					job.reset(new VehicleJob::Construct(*v,jobLocation,p));
 
 					v->RegisterNewJob(p->GetTypeName(),job,&target);
 					LogEvent(EventSignificance::Common,peer,e,"Registered new job "+job->GetName());
@@ -1613,7 +1612,7 @@ namespace Receiver
 			break;
 			case ConstName::Job_SelfDetonate:
 			{
-				job.reset(new VehicleJob::SelfDetonate(*v,sjob.parameterName.baseType));
+				job.reset(new VehicleJob::SelfDetonate(*v,jobLocation,sjob.parameterName.baseType));
 				target = v->GetLastPointOfOrigin();
 				v->RegisterNewJob("", job,&target);
 				LogEvent(EventSignificance::Common,peer,e,"Registered new job "+job->GetName());

@@ -250,7 +250,7 @@ namespace ConfigurationMode
 				float x2 = 0.25f * (3-(window->CountComponents()%4));
 				{
 					auto m = button->Anchor();
-					m.FillHorizontally(x,x2);
+					m.FillHorizontally(Distance( x,Distance::Type::RelativeToParentComponent),Distance(x2,Distance::Type::RelativeToParentComponent));
 
 					if (window->CountComponents()>=4)
 						m.Beneath(window->GetReferences()[4*(window->CountComponents()/4-1)], Distance::GameWindow( 0.01f ));
@@ -267,7 +267,7 @@ namespace ConfigurationMode
 					HUD::WindowStack::Hide(window);
 					this->onSelect((BYTE)i);
 				});
-				window->AddComponent(button);
+				window->AddComponent(button,CLOCATION);
 				materialButtons << std::make_pair(i,button);
 			}
 
@@ -280,7 +280,7 @@ namespace ConfigurationMode
 				{
 					HUD::WindowStack::Hide(window);
 				});
-				window->AddComponent( button );
+				window->AddComponent( button,CLOCATION );
 			}
 		}
 
@@ -379,7 +379,7 @@ namespace ConfigurationMode
 			planetListWindow->SetAutomaticHeight(true);
 			planetListWindow->SetMaxAutoHeight(0.7f);
 			planetListWindow->SetBackgroundTransparent();
-			PComponent label = planetListWindow->AddNewComponent(new Label("Planets",1.2f));
+			PComponent label = planetListWindow->AddNewComponent(new Label("Planets",1.2f),CLOCATION);
 			{
 				auto cfg = label->GetAnchorConfig();
 				cfg.GetHAxis().AnchorLower(HUD::Component::Distance::Unknown);
@@ -397,7 +397,7 @@ namespace ConfigurationMode
 					lockedAwaitConfig = sentVersion;
 				}));
 				button->Anchor().FillHorizontally().BeneathLastOf(planetListWindow, 0.02f);
-				planetListWindow->AddComponent(button);
+				planetListWindow->AddComponent(button,CLOCATION);
 			}
 
 			planetListWindow->FullAutoLayout(CLOCATION);

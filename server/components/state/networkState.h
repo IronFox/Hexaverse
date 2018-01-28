@@ -128,6 +128,18 @@ namespace Network
 	void		Start(UINT16 basePort);
 
 	/**
+	Creates a UDP socket that receives regular messages.
+	If messages are not received in 10 seconds, the server shuts down automatically.
+	Call only if the heartbeat system should be active. There is currently no setting to deactive it
+	*/
+	void		StartHeartbeat();
+
+	/**
+	Resolves network events
+	*/
+	void		Tick();
+
+	/**
 	Stops the local server and information provider
 	*/
 	void		Stop();

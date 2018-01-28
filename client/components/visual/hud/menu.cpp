@@ -12,6 +12,7 @@
 #include "guiStatistics.h"
 #include "../scene/explosions.h"
 #include "guiFactionTable.h"
+#include <io/monitoredProcess.h>
 
 bool	IsFullScreen();
 void	SetFullScreen(bool isFull);
@@ -42,9 +43,9 @@ namespace Menu
 			check
 		));
 		Super::RemoveComponent(hintLabel);
-		Super::AnchorBelowPrevious(button,0.f,HUD::Component::Distance::GameWindow( Super::components.IsEmpty() ? 0.f : 0.015f ));
+		Super::AnchorBelowPrevious(CLOCATION,button,0.f,HUD::Component::Distance::GameWindow( Super::components.IsEmpty() ? 0.f : 0.015f ));
 		if (hintLabel)
-			Super::AnchorBelowPrevious(hintLabel,0.015f,0.015f);
+			Super::AnchorBelowPrevious(CLOCATION, hintLabel,0.015f,0.015f);
 
 		LogEvent(EventClass::Preset::gui,"Menu["+String(this)+"/"+myTitle+"]::AddCommand("+name+", ...)");
 		return button;
@@ -64,7 +65,7 @@ namespace Menu
 			HUD::Component::PLabel label(new HUD::Component::Label());
 			label->SetText(title);
 			label->SetVerticalPadding( 0.1f );
-			Super::AnchorBelowPrevious(label,0.015f,0.f);
+			Super::AnchorBelowPrevious(CLOCATION,label,0.015f,0.f);
 		}
 
 		if (escapeCloses)
@@ -73,7 +74,7 @@ namespace Menu
 			hintLabel->SetLocalFontScale(0.75f);
 			hintLabel->SetText("Press Escape to close");
 			hintLabel->SetVerticalPadding( 0.1f );
-			Super::AnchorBelowPrevious(hintLabel,0.015f,0.f);
+			Super::AnchorBelowPrevious(CLOCATION,hintLabel,0.015f,0.f);
 		}
 		LogEvent(EventClass::Preset::gui,"Menu["+String(this)+"]::Setup("+String(initialAbsoluteWidth)+","+myTitle+")");
 	}
@@ -118,8 +119,8 @@ namespace Menu
 		Component::PPanel p(new Component::Panel());
 		p->Anchor().Top();
 		Component::PLabel l(new Component::Label(name));
-		p->AddComponent(l);
-		p->AddComponent(c);
+		p->AddComponent(l,CLOCATION);
+		p->AddComponent(c,CLOCATION);
 
 		l->SetPadding( 0 );
 
@@ -137,7 +138,7 @@ namespace Menu
 		p->SetAutomaticHeight(true);
 		p->SetBackgroundTransparent();
 
-		options->AnchorBelowPrevious(p);
+		options->AnchorBelowPrevious(CLOCATION,p);
 		return l;
 	}
 
@@ -180,7 +181,7 @@ namespace Menu
 		LogEvent(EventClass::Preset::gui,"CreateOptionsMenu(): "+String(options.get()));
 		options->logFullAutoLayout = true;
 		options->Anchor().FillHorizontally(0.1f,0.1f).Top(0.1f);
-		options->AnchorBelowPrevious(new Component::Label("Options",2.f));
+		options->AnchorBelowPrevious(CLOCATION,new Component::Label("Options",2.f));
 		
 		AddOptionSlider("UI Scale", 0.5f, 2.f, 0.125f,UI::GetScale(), [](float&q)
 		{
@@ -340,7 +341,7 @@ namespace Menu
 		{
 			Component::PButton button(new Component::Button("OK",[](){WindowStack::Hide(options);}));
 			//button->LockIdealWidth();
-			options->AnchorBelowPrevious(button);
+			options->AnchorBelowPrevious(CLOCATION,button);
 			button->SetCenteredWidth(HUD::Component::Distance::GameWindow( 0.5f ));
 		}
 
@@ -359,7 +360,11 @@ namespace Menu
 		game->AddCommand("Abandon faction",Network::AbandonCurrentFaction,[](){return Network::amOnline && Network::haveFaction && RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame;});
 		game->AddCommand("Show factions (Tab)", FactionTable::Show,[](){return Network::amOnline;});
 		game->AddCommand("Show statistics", Statistics::Show,[](){return Network::amOnline && RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame;});
-
+		game->AddCommand("Launch Control Console",[]()
+		{
+			MonitoredProcess	process(false);
+			process.Start("../ControlConsole/","ControlConsole.exe",PathString(" -p "+String(Network::connectionBasePort)));	//start and abandon
+		},[](){return Network::amOnline && Network::client.IsLocalhost();});
 		//game->FullAutoLayout();
 	}
 

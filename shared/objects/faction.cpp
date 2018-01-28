@@ -2205,4 +2205,16 @@ namespace Objects
 		#endif
 	}
 
+	bool			Faction::IsAlliedWith(const PFaction&f)const
+	{
+		return f && alliance==f->alliance;
+	}
+
+	#ifdef CLIENT
+		bool		Faction::IsAlliedWithMe() const
+		{
+			return this && (this->isOwnedByMe || (mine && alliance == mine->alliance));
+		}
+	#endif
+
 }

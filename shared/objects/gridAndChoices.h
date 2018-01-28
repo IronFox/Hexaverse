@@ -75,37 +75,6 @@ namespace Objects
 	PHangar			MobileDestinationStructureHere(const Grid::LCellIdI&location, const MobileEntity&);
 
 
-	namespace SubOrbital
-	{
-
-		bool AppendShortestPath(const Plane*sat, const Grid::LCellIdI&from,
-								const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath,
-								bool ignoreFriendlyVehiclesOnRoute, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
-
-		bool AppendShortestPathI(const Plane*sat, const Grid::LCellIdI&from,
-								const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
-		bool AppendShortestDirectPath(const Grid::LCellIdI&from, const UINT32 to, BasicBuffer<PathNode>&oPath);
-
-	}
-
-
-	bool			AppendShortestPathI(const Vehicle*vehicle, const Grid::LCellIdI&from, const Grid::LCellIdI&to, Ctr::BasicBuffer<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
-	#ifndef NO_SATELLITES
-		bool		AppendShortestPathI(const Satellite*vehicle, const Grid::LCellIdI&from, const UINT32 toCell, BasicBuffer<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
-	#endif
-	bool			AppendShortestConstructionPath(const Vehicle*vehicle, bool ignoreWater, bool flat, const Grid::LCellIdI&from, Grid::LCellIdI to, Ctr::BasicBuffer<Grid::LCellIdI>&oPath);
-	/**
-	Attempts to find the shortest direct path to a destination. Does not check if the path is blocked by terrain or entities.
-	@param from Source location
-	@param to Destination location
-	@param oPath Resulting path. The passed path is not cleared before appending new elements
-	@param penaltizeVerticalMotion Increases the cost of vertical motion considerably, such that they are chosen only as a last resourt
-	@param constrainVerticalMotion Only chooses path nodes whoes height lies in the height range defined by @a from.height and @a to.height. If @a from and @a to lie on the same height, then path finding is restricted to 2d
-	*/
-	bool			AppendShortestDirectPath(const Grid::LCellIdI&from, const Grid::LCellIdI&to, Ctr::BasicBuffer<PathNode>&oPath, bool penaltizeVerticalMotion=true, bool constrainVerticalMotion=true);
-	#ifndef NO_SATELLITES
-		bool		AppendShortestDirectSatellitePath(const Grid::LCellIdI&from, const UINT32 toCell, BasicBuffer<PathNode>&oPath);
-	#endif
 
 
 
@@ -135,7 +104,6 @@ namespace Objects
 	void			GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, Ctr::BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis);
 	void			GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, Ctr::BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis);
 
-	bool			NothingBlockingHere(const Grid::LCellIdI&cellID, bool checkVehiclesOnClient);
 
 
 	inline float	ExplosionTime(float size)
@@ -156,49 +124,9 @@ namespace Objects
 	@param production Base type of the vehicle that was produced
 	*/
 	void			GetProductionChoices(const WorldEntity*producer,Component::VehicleBase*production,
-							Ctr::BasicBuffer<Choice>&choices);
+							BasicBuffer<Choice>&choices);
 
 
-	template <typename T, count_t MaxLevels>
-		struct TWaysTemplate
-		{
-			static const count_t	MaxWays = 6 * MaxLevels;
-
-			T						way[MaxWays];
-			count_t					numWays = 0;
-
-			void					Clear()	{numWays = 0;}
-			void					Add(const T&way)
-			{
-				DBG_ASSERT_LESS__(numWays,MaxWays);
-				this->way[numWays] = way;
-				numWays++;
-			}
-		};
-
-	/*
-	Currently there is no way that, given a specific location, a vehicle can move to two locations above each other in one step.
-	So MaxLevels can stay at 1 for TWays, but must be increased to the max number of levels any vehicle can climb up, should that
-	be ever more than 1.
-	It must also be increased if vehicle types can ever float freely.
-	*/
-	typedef TWaysTemplate<Grid::LCellIdI,1>	TWays;	//TWays MaxLevels must always be >= 1
-	typedef TWaysTemplate<UINT32,1>			TOrbitalWays,TSubOrbitalWays;	//TOrbitalWays MaxLevels must always be == 1
-
-
-	void			GetWays(const World::Data&world,
-							const Vehicle*v,  const Grid::LCellIdI&location, 
-							TWays&outWays, const Grid::LCellIdI&destination, 
-							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute, bool forceRevertible);
-	#ifndef NO_SATELLITES
-		void		GetWays(const Satellite*v,  UINT32 location, 
-							TOrbitalWays&outWays, UINT32 destination, 
-							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute);
-	#endif
-	void			GetMobileWays(	const World::Data&world,
-							const MobileEntity*v,  const Grid::LCellIdI&location, 
-							TWays&outWays, const Grid::LCellIdI&destination, 
-							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute);
 
 	bool			NoVehicleHere(const Grid::LCellIdI&cellID);
 	bool			NoVehicleHereExcept(const Grid::LCellIdI&cellID, const Vehicle*);
@@ -218,6 +146,8 @@ namespace Objects
 							|| rs == MobilePlacementResult::PlacementFailedPermanentlyObstructed
 							;
 					}
+
+	bool			NothingBlockingHere(const Grid::LCellIdI&cellID, bool checkVehiclesOnClient);
 
 
 
@@ -370,64 +300,8 @@ namespace Objects
 	*/
 	void			ForceRemove(const PWorldEntity&e, RemovalType t, float&atTime);
 
-	/**
-	Must be called once during start up, after the base grids have been created.
-	Updates maxAngleBetweenNeighboringCells, which is required by AppendShortestConstructionPath()
-	*/
-	void			InitGrid();
-
-	//void			DbgCheckSatellites(const PMobileEntity&includeIfSatellite = PMobileEntity());
 
 
-
-	class ReachabilityMapper
-	{
-	public:
-
-		struct MapNode
-		{
-			Grid::LCellIdI	cell;
-			int				movementCostsFromRoot=0;
-			#ifdef CLIENT
-				int			customScore=-1;	//!< Custom variable usable by client
-			#endif
-			index_t			predecessor=InvalidIndex;
-
-			MapNode()	{}
-			MapNode(const Grid::LCellIdI&cell, int costs) : cell(cell),movementCostsFromRoot(costs)	{}
-
-		};
-		
-		Ctr::Buffer<MapNode>	result;
-
-		typedef bool (*FBlockTest)(const Grid::LCellIdI&);
-
-
-		/**/			ReachabilityMapper(bool logPerformance) :logPerformance(logPerformance)	{}
-		
-		/**
-		@brief Maps all server-reachable cells of the given vehicle from the specified location
-		@param vehicle Vehicle to use for reference. Must not be NULL
-		@param from Specifies the starting location
-		@param isBlocked Function callback to determine whether units can move to a given cell. Can be empty, considering all cells non-blocked
-		@param forceRevertible Forces that only steps are considered that are possible in both directions
-		*/
-		void			Map(const Vehicle*vehicle, const Grid::LCellIdI&from, FBlockTest isBlocked, UINT32 maxRange=0xFFFFFFFF, bool forceRevertible=false);
-
-
-
-	private:
-		struct TReachableNode
-		{
-			UINT32	backLink, minDistance;
-			int		nodeCosts;
-			bool	isBlocked;
-			index_t	mapped;
-		};
-		bool					logPerformance;
-		Ctr::Buffer<index_t>		touched;
-		Ctr::Array<TReachableNode>	buffer;
-	};
 }
 
 

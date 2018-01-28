@@ -18,6 +18,10 @@ namespace Objects
 		@param prototype Structure prototype to queue construction of
 		*/
 		void	TerraformerConstruct(const PStructure&prototype);
+		/**
+		Commits block building or removal operations, if found to be in that mode
+		*/
+		bool	TerraformerCommitOperation();
 
 		
 		/**
