@@ -215,8 +215,22 @@ namespace Objects
 			//v.motionTime += Times::Dig;
 		}
 
-		/**/					BuildRoad::BuildRoad(const MobileEntity&v, UINT32 from, UINT32 to) 
-			: BaseJob(GetConstructionCostsAt(v.location),v,v.location,GetOperationAffinity(),Autocomplete::Always,false),prevCell(from),nextCell(to) {}
+		/*virtual override*/	void			BuildRoad::Deserialize(IReadStream&inStream)
+		{
+			if (ApplicationInterface::globalVersionOfCurrentFile >= ApplicationInterface::FileVersions::HasUUIDInConstructionJobs)
+			{
+				inStream.ReadPrimitive(bridgeMode);
+			}
+			else
+			{
+				int dummyA, dummyB;
+				inStream.ReadPrimitive(dummyA); inStream.ReadPrimitive(dummyB);
+				bridgeMode = true;	//prolly false. ah, who cares
+			}
+		}
+
+		/**/					BuildRoad::BuildRoad(const MobileEntity&v, bool bridgeMode) 
+			: BaseJob(GetConstructionCostsAt(v.location),v,v.location,GetOperationAffinity(),Autocomplete::Always,false),bridgeMode(bridgeMode) {}
 
 		/*virtual override*/ void			BuildRoad::UpdateEstimations(const MobileEntity&v)
 		{
@@ -230,7 +244,7 @@ namespace Objects
 
 
 
-		/*virtual override*/ BaseJob::continue_t	BuildRoad::Finish(MobileEntity&v, const Grid::LCellIdI&focus)
+		/*virtual override*/ BaseJob::continue_t	BuildRoad::Finish( MobileEntity&v, const Grid::LCellIdI&focus)
 		{
 			//can't use this because it doesn't understand directions:
 			//	Structure::CommonFixTerrain(&v,focus,Grid::CellStack::Cell::Content::Road,0,true,v.motionTime,true,true,true);
@@ -246,30 +260,20 @@ namespace Objects
 
 			{
 				seq.SelectStack(finer);
-				if (seq.Change(target.height - 1, Grid::Content::Road))
-				{
-					//int h = target.height-2;
-					//if (!Grid::CellStack::bottom.IsClearOrWaterIgnoreStructure())
-					//	while (h >= bottom && seq.ChangeConditionally(h,Grid::Content::Foundation,World::Condition::IsClearOrWater))
-					//		h--;
-				}
+				if (bridgeMode)
+					seq.Change(target.height - 1, Grid::Content::Foundation);
+				else
+					seq.ChangeConditionally(target.height - 1, Grid::Content::Road, World::Condition::IsNotRoad);
 			}
 			for (int j = 0; j < c.neighborhood.numNeighbors; j++)
 			{
 				UINT32 n = c.neighborhood.neighborID[j];
 				seq.SelectStack(n);
-				if (prevCell != target.stackID &&
-					((Grid::IsHighPartOfLow(n, prevCell) || Grid::IsHighPartOfLow(n, nextCell)) && seq.GetCellI(target.height-1).content == Grid::Content::Clear))
-						continue;
-				if (seq.Change(target.height - 1, Grid::Content::Road))
-				{
-					//int h = target.height-2;
-					//if (!Grid::CellStack::bottom.IsClearOrWaterIgnoreStructure())
-					//	while (h >= bottom && seq.ChangeConditionally(h,Grid::Content::Foundation,World::Condition::IsClearOrWater))
-					//		h--;
-				}
 
-
+				if (bridgeMode)
+					seq.Change(target.height - 1, Grid::Content::Foundation);
+				else
+					seq.ChangeConditionally(target.height - 1, Grid::Content::Road, World::Condition::IsNotClear);
 			}
 			return JobDone;
 		}
@@ -1175,19 +1179,21 @@ namespace Objects
 				case CursorMode::BuildRoadChainMode:
 					return world.IsRoad(cell-1,true);
 				case CursorMode::BuildBridgeMode:
-				{
-					if (!world.IsRoad(cell-1,true))
-						return false;
-					if (nextCell == cell)
-						return true;
-					if (nextCell.height != cell.height)
-						return false;
+					return world.IsRoad(cell-1,false);
+				//case CursorMode::BuildBridgeMode:
+				//{
+				//	if (!world.IsRoad(cell-1,true))
+				//		return false;
+				//	if (nextCell == cell)
+				//		return true;
+				//	if (nextCell.height != cell.height)
+				//		return false;
 
-					UINT32 inter = BaseGrid::RequireIntersection(
-									Grid::high.grid.GetCell(Grid::low.grid.GetCell(cell.stackID).higherEquivalent).neighborhood,
-									Grid::high.grid.GetCell(Grid::low.grid.GetCell(nextCell.stackID).higherEquivalent).neighborhood);
-					return world.GetStack(inter).GetCellI(cell.height-1).content == Grid::Content::Road;
-				}
+				//	UINT32 inter = BaseGrid::RequireIntersection(
+				//					Grid::high.grid.GetCell(Grid::low.grid.GetCell(cell.stackID).higherEquivalent).neighborhood,
+				//					Grid::high.grid.GetCell(Grid::low.grid.GetCell(nextCell.stackID).higherEquivalent).neighborhood);
+				//	return world.GetStack(inter).GetCellI(cell.height-1).content == Grid::Content::Road;
+				//}
 				case CursorMode::BuildConnectorChainMode:
 					return !!GetStructure(cell);
 				case CursorMode::BuildHighWallChainMode:
@@ -1494,9 +1500,9 @@ namespace Objects
 							{
 								//RegisterNewJob(nullptr, PJob(new Objects::Job::DigDown(*this)),nullptr);
 								v.RegisterNewFrontJob("", PVehicleJob(
-								new BuildRoad(v,
-									lastLocation != Grid::LCellIdI::Invalid && lastLocation.height < v.location.height ? lastLocation.stackID : 0xFFFFFFFF,
-									!nextIsLast && next.height < v.location.height ?next.stackID : 0xFFFFFFFF)),
+								new BuildRoad(v,false)),
+									//lastLocation != Grid::LCellIdI::Invalid && lastLocation.height < v.location.height ? lastLocation.stackID : 0xFFFFFFFF,
+									//!nextIsLast && next.height < v.location.height ?next.stackID : 0xFFFFFFFF)),
 									shared_from_this(), 
 									nullptr);
 							}
@@ -1545,15 +1551,15 @@ namespace Objects
 							{
 								//RegisterNewJob(nullptr, PJob(new Objects::Job::DigDown(*this)),nullptr);
 								v.RegisterNewFrontJob("", PVehicleJob(
-									new BuildRoad(v,
-										lastLocation != Grid::LCellIdI::Invalid && lastLocation.height < v.location.height ? lastLocation.stackID : 0xFFFFFFFF,
-										/*next != path.end() && next->height < v.location.height ?next->stackID :*/ 
-										0xFFFFFFFF)),
+									new BuildRoad(v,true)),
+										//lastLocation != Grid::LCellIdI::Invalid && lastLocation.height < v.location.height ? lastLocation.stackID : 0xFFFFFFFF,
+										///*next != path.end() && next->height < v.location.height ?next->stackID :*/ 
+										//0xFFFFFFFF)),
 									shared_from_this(), 
 									nullptr);
 							}
 							else
-								v.RegisterNewFrontJob("", PVehicleJob(new BuildRoad(v,v.location)),shared_from_this(), nullptr);
+								v.RegisterNewFrontJob("", PVehicleJob(new BuildRoad(v,true)),shared_from_this(), nullptr);
 
 							if (
 								(hasNext && next.height < v.location.height && next.stackID == v.location.stackID)

@@ -189,14 +189,14 @@ namespace Objects
 			{
 			public:
 				typedef BaseJob			Super;
-				UINT32					prevCell,nextCell;
-
+				//UINT32					prevCell,nextCell;
+				bool					bridgeMode=false;
 
 				static int				GetConstructionCostsAt(const Grid::LCellIdI&);
 
 				/**/					BuildRoad():Super(Autocomplete::Always,false)	{}
-				/**/					BuildRoad(const MobileEntity&v, const Grid::LCellIdI&loc) : BaseJob(GetConstructionCostsAt(loc),v,loc,GetOperationAffinity(),Autocomplete::Always,false),prevCell(-1),nextCell(-1) {}
-				/**/					BuildRoad(const MobileEntity&v, UINT32 from, UINT32 to);
+				/**/					BuildRoad(const MobileEntity&v, const Grid::LCellIdI&loc) : BaseJob(GetConstructionCostsAt(loc),v,loc,GetOperationAffinity(),Autocomplete::Always,false) {}
+				/**/					BuildRoad(const MobileEntity&v, bool bridgeMode);
 				virtual void			UpdateEstimations(const MobileEntity&v) override;
 				virtual Component::operation_t	GetOperationAffinity() const override {return Component::TerrainAdd;}
 
@@ -207,8 +207,8 @@ namespace Objects
 				virtual Riff::TID		GetDataKey() const override {return "BLDR";};
 				virtual ConstName		GetCTypeName() const override {return ConstName::Job_BuildRoad;}
 				virtual PJob			Instantiate() const override {return PJob(new BuildRoad());}
-				virtual	void			Serialize(IWriteStream&outStream) const override {outStream.WritePrimitive(prevCell); outStream.WritePrimitive(nextCell);}
-				virtual	void			Deserialize(IReadStream&inStream) override {inStream.ReadPrimitive(prevCell); inStream.ReadPrimitive(nextCell);}
+				virtual	void			Serialize(IWriteStream&outStream) const override {outStream.WritePrimitive(bridgeMode);}
+				virtual	void			Deserialize(IReadStream&inStream) override;
 
 
 				virtual continue_t		Finish(MobileEntity&v, const Grid::LCellIdI&focus)	override;
