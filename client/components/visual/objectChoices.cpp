@@ -55,7 +55,9 @@ namespace Objects
 	void					UpdateChoices(bool controlEnabled) 
 	{
 		//activeCursorMode = 
-		HUD::HexGrid::RefreshButtonState();
+		HUD::HexGrid::Configure(Objects::selectedEntity);
+
+//		HUD::HexGrid::RefreshButtonState();
 		//Command::RefreshCommands(controlEnabled);
 
 		if (controlEnabled)
