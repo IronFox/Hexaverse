@@ -1,19 +1,33 @@
-"Nen transporter mit nem Schweren Terraformer beladen und beim aufsteigen stürzt der client kommentarlos ab :/"
+structure construction round calculation is off by a factor of 2 (shows x rounds, needs 2*x) on light terraformers
+placing/canceling construction job in vehicle plant does not update commands
+
+remove regular connectors
+
+improve dig symbol
+
+road should not build bridges across liquids? switch mode automatically? reroute?
+
+increase health research rate
+
+"Nen transporter mit nem Schweren Terraformer beladen und beim aufsteigen stürzt der client kommentarlos ab :/" - can't reproduce
 
 
 alliance forming troubles
-prevent mushroom terrains (reduce height range?, increase average planet height?)
 hide selected sensor range sphere?
 larger clip range?
 allied drone vanishes on move, causing client crashes
 
-produced planes can spawn through terrain to sub orbit
-
-drop (bomb) vehicles from cargo planes in sub orbit
 
 
-can't navigate planes via ground click
 
+drop (bomb) vehicles from cargo planes in sub orbit - not good, offloading happens during command phase, allowing a cargo plane to outright enter raptor firing range, drop bombs, and only then be destroyed
+
+raptors must fire during motion phase, otherwise other planes can use ground hopping to avoid ever being in the air during attack phase
+
+
+
+
+surveyor tower tremor
 
 
 
@@ -179,6 +193,9 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: produced planes can spawn through terrain to sub orbit
+prevent mushroom terrains (reduce height range?, increase average planet height?) - made construction more expensive
+fixed: can't navigate planes via ground click
 fixed: client crashes, steam refuses to start client when server still running in the background, cannot end without ui
 hostile attack events from friendlies
 fixed: can dig into emp zone, get 100 emp damage
