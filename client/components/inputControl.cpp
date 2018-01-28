@@ -213,6 +213,9 @@ namespace InputControl
 						int h;
 						if (!Objects::selectedMobileEntity->CanSpawnInGrid() && Objects::selectedMobileEntity->CanSpawnAboveGrid(h))
 							target.height = h;
+						else
+						if (Objects::selectedMobileEntity->IsPlane())
+							target.height = Objects::SubOrbital::Height;
 						ObjectHelper::DirectTo(Objects::selectedMobileEntity,target, ObjectHelper::AssembleMotionFlags(false,false),Objects::activeCursorMode);
 					}
 				}
