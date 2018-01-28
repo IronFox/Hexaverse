@@ -98,7 +98,7 @@ namespace Objects
 				int storage = GetStorage(v,this->GetConsumedResourceType());
 				if (storage < withdrawNow)
 				{
-					LogEvent(EventClass::Preset::operationAborted,&v,"Insufficient "+String(this->GetConsumedResourceType().ToString())+" available ("+String(storage)+"/"+String(withdrawNow)+"). Delaying operation.");
+					LogEvent(EventClass::Preset::operationAborted,&v,"No "+String(this->GetConsumedResourceType().ToString())+" ("+String(storage)+"/"+String(withdrawNow)+"). Delaying operation.");
 
 					v.entityTime += timeEpsilon;
 					ApplicationInterface::SignalOperationLacksResources(v,this->GetConsumedResourceType(),v.entityTime);
@@ -116,7 +116,7 @@ namespace Objects
 				#ifndef ONE_COMPOUND_PER_FACTION
 					if (!CanWithdrawFromStorage(v,this->GetConsumedResourceType(),resourceCostLeft))
 					{
-						LogEvent(EventClass::Preset::operationAborted,&v,"Insufficient "+String(this->GetConsumedResourceType().ToString())+" available (need "+String(withdrawNow)+"). Aborting operation.");
+						LogEvent(EventClass::Preset::operationAborted,&v,"No "+String(this->GetConsumedResourceType().ToString())+" (need "+String(withdrawNow)+"). Aborting operation.");
 
 						v.motionTime += timeEpsilon;
 						ApplicationInterface::SignalOperationLacksResources(v,this->GetConsumedResourceType(),v.motionTime);
