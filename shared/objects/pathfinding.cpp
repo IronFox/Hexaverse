@@ -267,7 +267,7 @@ namespace Objects{ namespace Pathfinding
 							TWays&outWays, const Grid::LCellIdI&destination, 
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute)
 	{
-		if (v->IsVehicle())
+		if (v->IsGroundBoundVehicle())
 		{
 			GetWays(world,(const Vehicle*)v, location, outWays, destination,ignoreVehiclesOnDestination,ignoreFriendlyVehiclesOnRoute,false);
 			return;
@@ -285,6 +285,16 @@ namespace Objects{ namespace Pathfinding
 				return;
 			}
 		#endif
+		if (v->IsPlane())
+		{
+			TSubOrbitalWays ways;
+			SubOrbital::GetWays((const SubOrbital::Plane*)v,location.stackID,ways,destination.stackID,ignoreVehiclesOnDestination,ignoreFriendlyVehiclesOnRoute);
+			for (index_t i = 0; i < ways.numWays; i++)
+			{
+				outWays.Add(Grid::LCellIdI(ways.way[i],SubOrbital::Height));
+			}
+			return;
+		}
 
 		DBG_FATAL__("Unexpected mobile type used to determine ways");
 	}
@@ -1248,6 +1258,336 @@ namespace Objects{ namespace Pathfinding
 		//ShowMessage("no route found after "+String(iterations)+" iterations");
 		//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 		return false;
+	}
+
+
+
+	namespace SubOrbital
+	{
+		bool NoPlaneHere(const UINT32 stackID)
+		{
+			return !GetPlane(stackID,true);
+		}
+		bool NoPlaneHereExcept(UINT32 stackID, const Plane*v)
+		{
+			PPlane vh = GetPlane(stackID,true);
+			return !vh || vh.get() == v
+				#ifndef CLIENT
+					|| !v->owner->CanSee(vh,v->entityTime)
+				#endif
+			;
+		}
+
+		bool NoForeignPlaneHere(UINT32 stackID, const OwnerParameter&v, float t)
+		{
+			PPlane vh = GetPlane(stackID,true);
+			return !vh || vh->owner == v
+				#ifndef CLIENT
+					|| !v->CanSee(vh,t)
+				#endif
+			;
+		}
+	
+		static count_t GetAllWays( const UINT32 location, UINT32*outChoices)
+		{
+			count_t rs = 0;
+			const auto&n = Grid::low.grid.GetCell(location).neighborhood;
+
+			{
+				for (int i = 0; i < n.numNeighbors; i++)
+				{
+					{
+						(*outChoices++) = n.neighborID[i];
+						rs++;
+					}
+				}	
+			}
+			return rs;
+		}
+
+
+
+		void GetWays(		const Plane*v,  UINT32 location, 
+								TSubOrbitalWays&outWays, UINT32 destination, 
+								bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute)
+		{
+			outWays.Clear();
+			const auto&n = Grid::low.grid.GetCell(location).neighborhood;
+
+			{
+				//if (!v->CanClimb(j))	//now redundant
+					//continue;
+				for (int i = 0; i < n.numNeighbors; i++)
+				{
+					UINT32	cell = n.neighborID[i];
+
+
+					if (cell==destination)
+					{
+						if (!ignoreVehiclesOnDestination && !NoPlaneHereExcept(cell,v))
+							continue;
+					}
+					else
+					{
+						if (!ignoreFriendlyVehiclesOnRoute)
+						{
+							if (!NoPlaneHereExcept(cell,v))
+								continue;
+						}
+						else
+							if (!NoForeignPlaneHere(cell,v->owner,GetEntityTime(*v)))
+								continue;
+					}
+
+					//DBG_ASSERT__(!GetStructure(cell));//should be implied by LowCellIsClear (except if it's a connector, then not, so don't check this)
+					outWays.Add(cell);
+				}	
+			}
+		}
+
+
+		bool AppendShortestPath(const Plane*sat, const Grid::LCellIdI&from,
+								const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath,
+								bool ignoreFriendlyVehiclesOnRoute, bool failIfLimitReached/*=true*/, bool*outWouldFailDueToLimitReached/*=nullptr*/);
+
+		bool AppendShortestPathI(const Plane*sat, const Grid::LCellIdI&from,
+								const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath, bool failIfLimitReached/*=true*/, bool*outWouldFailDueToLimitReached/*=nullptr*/)
+		{
+			static Buffer0<PathNode>	routeI, route;
+			routeI.Clear();
+			route.Clear();
+			bool hasI = AppendShortestPath(sat,from,to,routeI,true,failIfLimitReached,outWouldFailDueToLimitReached);
+			if (!hasI)
+				return false;
+			bool has = AppendShortestPath(sat,from,to,route,false,failIfLimitReached,outWouldFailDueToLimitReached);
+			//foreach (routeI,r)
+			//	ASSERT__(*r != Grid::LCellIdI::Invalid);
+			//if (has)
+			//	foreach (route,r)
+			//		ASSERT__(*r != Grid::LCellIdI::Invalid);
+			if (!has)
+			{
+				oPath.AppendAll(routeI);
+				return true;
+			}
+
+			count_t lenI = 0, len = 0;
+			foreach (routeI,n)
+				lenI += n->movementCostsFromPrevNode;
+			foreach (route,n)
+				len += n->movementCostsFromPrevNode;
+			if (len < lenI * 4)	//less than 400% more
+			{
+				oPath.AppendAll(route);
+				return true;
+			}
+
+			oPath.AppendAll(routeI);		//else: use the one that ignores friendly vehicles
+			return true;
+
+		}
+
+		bool AppendShortestPath(const Plane*sat, const Grid::LCellIdI&from,
+								const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath,
+								bool ignoreFriendlyVehiclesOnRoute
+								, bool failIfLimitReached/*=true*/, bool*outWouldFailDueToLimitReached/*=nullptr*/)
+		{
+			if (outWouldFailDueToLimitReached)
+				(*outWouldFailDueToLimitReached) = false;
+
+			if (to.stackID == from.stackID)
+			{
+				for (int h = std::min(to.height,from.height); h <= Grid::CellStack::TopHeight; h++)
+				{
+					#ifdef CLIENT
+						if (!World::actual.LowCellIsClear(Grid::LCellIdI(to.stackID,h)))
+					#else
+						if (!sat->owner->knownWorld.LowCellIsClear(Grid::LCellIdI(to.stackID,h)))
+					#endif
+						return false;
+				}
+				oPath.Append().cell = to;
+				oPath.Last().movementCostsFromPrevNode = 5;
+				return true;
+			}
+			else
+			{
+				if (to.height != Height)
+					return false;
+				if (from.height != Height)
+				{
+					for (int h = from.height; h <= Grid::CellStack::TopHeight; h++)
+					{
+						#ifdef CLIENT
+							if (!World::actual.LowCellIsClear(Grid::LCellIdI(from.stackID,h)))
+						#else
+							if (!sat->owner->knownWorld.LowCellIsClear(Grid::LCellIdI(from.stackID,h)))
+						#endif
+							return false;
+					}
+					oPath.Append().cell = Grid::LCellIdI(from.stackID,Height);
+					oPath.Last().movementCostsFromPrevNode = 5;
+				}
+			}
+
+
+
+
+			const int speed = sat->GetMovementStepsPerRound();
+			TOrbitalWays	possibilities;
+
+			static const count_t cellCount = Grid::LowSetup::GridType::CellCount;
+
+			struct TNode
+			{
+				UINT32	backLink, minDistance;
+			};
+
+			static Array<TNode>	buffer(cellCount);
+			TNode empty = {0xFFFFFFFF,0xFFFFFFFF};
+			buffer.Fill(empty);
+
+			PriorityQueue<UINT32,int>	queue;
+
+			buffer[from.stackID].minDistance = 0;
+
+			queue.Push( from.stackID,0);
+
+			count_t iterations = 0;
+			UINT32 current;
+			while (queue.PopLeast(current))
+			{
+				iterations ++;
+				if (iterations > 2000)
+				{
+					if (failIfLimitReached)
+					{
+						return false;//let's ignore long ranges
+					}
+					else
+						if (outWouldFailDueToLimitReached)
+							(*outWouldFailDueToLimitReached) = true;
+				}
+
+				TNode&tn = buffer[current];
+
+
+				if (current == to.stackID)
+				{
+					static Buffer<PathNode>	outPath;
+					outPath.Clear();
+
+					while (current < cellCount)
+					{
+						UINT32 next = buffer[current].backLink;
+						int nextCosts = next < buffer.Count() ? 1 : 0;
+						outPath << PathNode(Grid::LCellIdI(current,Height), 1);
+						current = next;
+					}
+					outPath.EraseLast();	//dont need entry point
+					outPath.Revert();
+					oPath.AppendAll(outPath);
+					return true;
+				}
+				GetWays(sat,  current, possibilities, to.stackID, true, ignoreFriendlyVehiclesOnRoute);
+
+				for (index_t i = 0; i < possibilities.numWays; i++)
+				{
+					UINT32 option = possibilities.way[i];
+					TNode&n = buffer[option];
+					if (tn.minDistance + 1 < n.minDistance)
+					{
+						n.minDistance = tn.minDistance + 1;
+						n.backLink = current;
+						queue.Push(option,n.minDistance);
+					}
+				}
+			}
+			return false;
+		}
+
+		bool AppendShortestDirectPath(const Grid::LCellIdI&from, const UINT32 to, BasicBuffer<PathNode>&oPath)
+		{
+			//Timer::Time t0 = timer.Now();
+
+			UINT32	possibilities[6];
+
+			static const count_t cellCount = Grid::LowSetup::GridType::CellCount;
+
+			struct TNode
+			{
+				UINT32	backLink, minDistance;
+			};
+
+			static Array<TNode>	buffer(cellCount);
+			TNode empty = {0xFFFFFFFF,0xFFFFFFFF};
+			buffer.Fill(empty);
+
+			PriorityQueue<UINT32,int>	queue;
+			//Queue<index_t>	queue;
+
+			buffer[from.stackID].minDistance = 0;
+
+			queue.Push(from.stackID,0);
+
+			count_t iterations = 0;
+			UINT32 current;
+			while (queue.PopLeast(current))
+			{
+				iterations ++;
+				if (iterations > 2000)
+				{
+					//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+					return false;//let's ignore long ranges
+				}
+
+				TNode&tn = buffer[current];
+
+
+				if (current == to)
+				{
+					static Buffer<PathNode>	outPath;
+					outPath.Clear();
+
+					while (current < cellCount)
+					{
+						UINT32 next = buffer[current].backLink;
+						//GetCellMovementCosts(next, vehicle);
+						outPath << PathNode(Grid::LCellIdI(current,Height),1);
+						current = next;
+					}
+					outPath.EraseLast();	//dont need entry point
+					outPath.Revert();
+					oPath.AppendAll(outPath);
+					//ShowMessage("found route with "+String(outPath.Count())+" steps, requiring "+String(iterations)+" iterations" );
+					//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+					return true;
+				}
+				count_t ways = GetAllWays(current, possibilities);
+				DBG_ASSERT_LESS_OR_EQUAL__(ways,ARRAYSIZE(possibilities));
+
+
+
+
+
+				for (index_t i = 0; i < ways; i++)
+				{
+					UINT32 option = possibilities[i];
+					TNode&n = buffer[option];
+					int cost = 1;
+					if (tn.minDistance + cost < n.minDistance)
+					{
+						n.minDistance = tn.minDistance + cost;
+						n.backLink = (UINT32)current;
+						queue.Push(option,n.minDistance);
+					}
+				}
+			}
+			//ShowMessage("no route found after "+String(iterations)+" iterations");
+			//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+			return false;
+		}
+
 	}
 
 

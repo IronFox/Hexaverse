@@ -2,6 +2,7 @@
 
 #include "../grid/stack.h"
 #include "mobileEntity.h"
+#include "subOrbital.h"
 
 namespace Objects
 {
@@ -34,7 +35,7 @@ namespace Objects
 		It must also be increased if vehicle types can ever float freely.
 		*/
 		typedef TWaysTemplate<Grid::LCellIdI,1>	TWays;	//TWays MaxLevels must always be >= 1
-		typedef TWaysTemplate<UINT32,1>			TOrbitalWays;	//TOrbitalWays MaxLevels must always be == 1
+		typedef TWaysTemplate<UINT32,1>			TOrbitalWays,TSubOrbitalWays;	//TOrbitalWays MaxLevels must always be == 1
 
 
 
@@ -72,6 +73,26 @@ namespace Objects
 		#ifndef NO_SATELLITES
 			bool		AppendShortestDirectSatellitePath(const Grid::LCellIdI&from, const UINT32 toCell, BasicBuffer<PathNode>&oPath);
 		#endif
+
+
+		namespace SubOrbital
+		{
+			using namespace ::Objects::SubOrbital;
+
+
+			void GetWays(		const Plane*v,  UINT32 location, 
+								TSubOrbitalWays&outWays, UINT32 destination, 
+								bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute);
+
+			bool AppendShortestPath(const Plane*sat, const Grid::LCellIdI&from,
+									const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath,
+									bool ignoreFriendlyVehiclesOnRoute, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
+
+			bool AppendShortestPathI(const Plane*sat, const Grid::LCellIdI&from,
+									const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
+			bool AppendShortestDirectPath(const Grid::LCellIdI&from, const UINT32 to, BasicBuffer<PathNode>&oPath);
+		}
+	
 
 
 		class ReachabilityMapper

@@ -272,7 +272,7 @@ namespace ObjectHelper
 			bool foundPath;
 
 			if (v->IsPlane())
-				foundPath = Objects::SubOrbital::AppendShortestPathI((const Objects::SubOrbital::Plane*)v.get(),prev,target,path,false,&tooLong);
+				foundPath = Objects::Pathfinding::SubOrbital::AppendShortestPathI((const Objects::SubOrbital::Plane*)v.get(),prev,target,path,false,&tooLong);
 			else if (v->IsGroundBoundVehicle())
 				foundPath = Objects::Pathfinding::AppendShortestPathI((const Objects::Vehicle*)v.get(),prev,target,path,false,&tooLong);
 			#ifndef NO_SATELLITES

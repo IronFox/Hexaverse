@@ -444,22 +444,6 @@ namespace Objects
 		;
 	}
 
-	namespace SubOrbital
-	{
-		bool NoPlaneHere(const UINT32 stackID)
-		{
-			return !GetPlane(stackID,true);
-		}
-		bool NoPlaneHereExcept(UINT32 stackID, const Plane*v)
-		{
-			PPlane vh = GetPlane(stackID,true);
-			return !vh || vh.get() == v
-				#ifndef CLIENT
-					|| !v->owner->CanSee(vh,v->entityTime)
-				#endif
-			;
-		}
-	}
 
 	#ifndef NO_SATELLITES
 		bool NoSatelliteHere(const UINT32 stackID)

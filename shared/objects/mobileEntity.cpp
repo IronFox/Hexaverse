@@ -1427,7 +1427,7 @@ namespace Objects
 			{
 				{
 					count_t offset = path.Count();
-					if (!SubOrbital::AppendShortestPathI((const SubOrbital::Plane*)v, prev, target.target, path))
+					if (!Pathfinding::SubOrbital::AppendShortestPathI((const SubOrbital::Plane*)v, prev, target.target, path))
 						return false;
 				#ifndef CLIENT
 					if (target.isDetailed && path.Count() - offset != 1)
@@ -1572,7 +1572,7 @@ namespace Objects
 			else
 				if (v->IsPlane())
 				{
-					if (!SubOrbital::AppendShortestDirectPath(pointOfOrigin, foci.Peek().target.stackID, path))
+					if (!Pathfinding::SubOrbital::AppendShortestDirectPath(pointOfOrigin, foci.Peek().target.stackID, path))
 					{
 						return false;	//this would be weird, but happens
 					}
