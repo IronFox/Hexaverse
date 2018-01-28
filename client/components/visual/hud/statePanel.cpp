@@ -289,9 +289,10 @@ namespace StatePanel
 					cachedLines << "  * "+t->name;
 					if (t->IsMode(Objects::CursorMode::AttackMode) && t->foci.Count() > 1)
 						cachedLines.Last().text+= " (x"+String(t->foci.Count())+')';
-					if (t->job && t->job->roundsToJobCompletion)
+					if (t->job && t->job->continuationsToJobCompletion)
 					{
-						cachedLines.Last().text+= " ("+String(t->job->roundsToJobCompletion)+" round"+(t->job->roundsToJobCompletion != 1 ? "s)" : ")");
+						int rounds = ceil(v->ContinuationsToRounds(t->job->continuationsToJobCompletion,t->job->GetOperationAffinity()));
+						cachedLines.Last().text+= " ("+String(rounds)+" round"+(rounds != 1 ? "s)" : ")");
 					}
 				}
 				PopCurrentColor();

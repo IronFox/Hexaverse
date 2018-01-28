@@ -389,6 +389,7 @@ namespace Animation
 
 		if (serverVersion.foci == localVersion.foci)
 		{
+			localVersion.job = serverVersion.job;
 			outMerged.swap(localVersion);
 			return;
 		}
@@ -509,7 +510,7 @@ namespace Animation
 				job->delayedBySleep = (sourceTask.taskFlags & Protocol::TaskFlags::DelayedBySleep) != 0;
 			}
 			t1.job->movesToFocusWhenDone = (sourceTask.taskFlags & Protocol::TaskFlags::VisualizePathToFocus) != 0;
-			t1.job->roundsToJobCompletion = sourceTask.roundsToJobCompletion;
+			t1.job->continuationsToJobCompletion = sourceTask.continuationsToJobCompletion;
 			t1.job->resourceCostLeft = sourceTask.resourceCostLeft;
 			
 			#ifdef HAS_WINDOW
@@ -591,7 +592,7 @@ namespace Animation
 			#ifndef ONE_COMPOUND_PER_FACTION
 				v->currentStorage = info->resourceVector;
 			#endif
-			v->constructionRoundCounter = info->constructionRoundCounter;
+			v->constructionActionCounter = info->constructionActionCounter;
 
 			Array<Objects::MobileEntity::Task>	currentTasks,newTasks(info->tasks.Count());
 			v->myTasks.MoveToArray(currentTasks);
@@ -705,7 +706,7 @@ namespace Animation
 				{
 
 					Objects::PVehicleJob job(new Objects::VehicleJob::DummyJob(*v));
-					job->roundsToJobCompletion = 1;
+					job->continuationsToJobCompletion = 1;
 					job->movesToFocusWhenDone = false;
 					job->resourceCostLeft = 1;
 

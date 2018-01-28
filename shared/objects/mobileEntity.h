@@ -172,7 +172,7 @@ namespace Objects
 
 			bool					IsJob() const
 			{
-				return type == Job && job && job->roundsToJobCompletion >= 0;
+				return type == Job && job && job->continuationsToJobCompletion >= 0;
 			
 			}
 			bool					IsMode(mode_t mode) const
@@ -259,7 +259,7 @@ namespace Objects
 														//Whether this boolean has any effect depends on the type of the local entity
 
 
-		UINT32					constructionRoundCounter=0;	//!< Number of rounds that the entity has been busy building at its current location
+		UINT32					constructionActionCounter=0;	//!< Number of round actions that the entity has been busy building at its current location
 
 		/**/					MobileEntity(const OwnerParameter&owner, Component::Turret*turret, const Grid::LCellIdI&location) : Super(owner,location), TurretBase(turret)
 								#ifdef CLIENT
@@ -269,7 +269,7 @@ namespace Objects
 
 		bool					IsBusy() const {return myTasks.IsNotEmpty();}
 		bool					IsBuilding() const {return myTasks.IsNotEmpty() && myTasks.Peek().IsJob();}
-		bool					IsFinishedBuilding() const {return myTasks.IsNotEmpty() && myTasks.Peek().job && myTasks.Peek().job->roundsToJobCompletion == 0;}
+		bool					IsFinishedBuilding() const {return myTasks.IsNotEmpty() && myTasks.Peek().job && myTasks.Peek().job->continuationsToJobCompletion == 0;}
 		std::pair<int,int>		GetBuildingProgress() const;
 
 		#ifndef CLIENT
@@ -302,6 +302,13 @@ namespace Objects
 
 		Grid::LCellIdI			GetLastPointOfOrigin() const;
 		Grid::LCellIdI			GetPrevPointOfOrigin() const;
+
+		/**
+		Calculates the number of rounds needed to complete the given number of job continuations
+		*/
+		float					ContinuationsToRounds(int continuationsToJobCompletion, Component::operation_t op) const;
+
+
 		/**
 		Checks whether or not the local entity has any constructing jobs queued for the specified location
 		*/
@@ -415,6 +422,7 @@ namespace Objects
 			bool				CompleteOnMove(const Grid::LCellIdI&referenceLocation);
 
 
+
 			enum class TaskResult
 			{
 				AllDoneForThisRound,
@@ -435,19 +443,18 @@ namespace Objects
 
 		#endif
 
-		UINT32					GetOperationRounds(int jobCosts, Component::operation_t op) const
-		{
-			if (!jobCosts)
-				return 0;
-			jobCosts = abs(jobCosts);
-			int speed = GetOperationSpeed(op);
-			if (!speed)
-				return 0xFFFFFFFF;
-			int rs = jobCosts / speed;
-			if (jobCosts % speed)
-				rs ++;
-			return rs;
-		}
+		/**
+		Calculates the number of continuations necessary to complete a job of the given costs and operation affinity.
+		@param jobCosts Material cost of the respective job (may be theoretical)
+		@param op Operation affinity to calculate speed from
+		@return Number of continuations necessary to complete the job (rounded up)
+		*/
+		UINT32					GetOperationContinuations(int jobCosts, Component::operation_t op) const;
+		/**
+		Estimates the number of actual rounds necessary to complete a job of the given costs and operation affinity.
+		*/
+		UINT32					GetOperationCompletionRounds(int jobCosts, Component::operation_t op) const;
+
 		Grid::LCellIdI			GetConstructionLocation() const {return GetConstructionLocation(location);}
 		float					GetMovementInitiative()const	{return GetBaseMovementInitiative() * movementActionLeft;}
 		bool					AttackIgnoresMotion() const {return turret->ignoresVehicleMotion;}

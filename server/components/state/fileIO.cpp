@@ -477,7 +477,7 @@ namespace FileIO
 			Riff::Chunk*baseChunk = taskChunk->AppendBlock(RID::baseJob);
 			static ByteStreamBuffer	stream;
 			stream.Clear();
-			stream << job->roundsToJobCompletion << job->resourceCostLeft;// << job->jobAutoCompletion << job->movesToFocusWhenDone;
+			stream << job->continuationsToJobCompletion << job->resourceCostLeft;// << job->jobAutoCompletion << job->movesToFocusWhenDone;
 			stream << job->ioID;
 			baseChunk->SetData(stream);
 
@@ -506,7 +506,7 @@ namespace FileIO
 
 
 				source0->OpenStream();
-				ASSERT__(source0->Stream(job->roundsToJobCompletion));
+				ASSERT__(source0->Stream(job->continuationsToJobCompletion));
 				ASSERT__(source0->Stream(job->resourceCostLeft));
 				if (source0->size() == 12)
 				{
@@ -753,7 +753,7 @@ namespace FileIO
 		stream.Clear();
 		stream.Append(v.attackActionLeft);
 		stream.Append(v.movementActionLeft);
-		stream.Append(v.constructionRoundCounter);
+		stream.Append(v.constructionActionCounter);
 
 		MobileEntityFlag flags = MobileEntityFlag::None;
 		if (v.isAutomated)
@@ -837,7 +837,7 @@ namespace FileIO
 		ASSERT__(vehicleChunk->Stream(v->movementActionLeft));
 		//ASSERT__(vehicleChunk->Stream(v.hasConstructedThisRound));
 		//ASSERT__(vehicleChunk->Stream(v.hasMoved));
-		ASSERT__(vehicleChunk->Stream(v->constructionRoundCounter));
+		ASSERT__(vehicleChunk->Stream(v->constructionActionCounter));
 
 		MobileEntityFlag flags;
 		ASSERT__(vehicleChunk->Stream(flags));

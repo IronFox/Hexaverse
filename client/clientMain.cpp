@@ -403,7 +403,7 @@ namespace ApplicationInterface
 			if (e->IsMobile())
 			{
 				Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(e);
-				if (v->constructionRoundCounter > 0 
+				if (v->constructionActionCounter > 0 
 				&& v->myTasks.IsNotEmpty() 
 				&& v->myTasks.Peek().IsJob() 
 				&& v->myTasks.Peek().job->resourceCostLeft > 0)

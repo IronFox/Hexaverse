@@ -2889,7 +2889,7 @@ namespace Objects
 							//if (target && target->health < target->GetMaxHealth() && target != v && v->CanRepair())
 							//for consistency reasons with journal-saves no check here. just put it in there, and have the job figure out if it's good to execute
 							{
-								PVehicleJob job(new VehicleJob::RepairJob(*v));
+								PVehicleJob job(new VehicleJob::RepairJob(*v,c));
 								v->RegisterNewJob("", job,&c);
 							}
 						}
@@ -2898,7 +2898,7 @@ namespace Objects
 						{
 							if (!v->GetOperationSpeed(Component::TerrainRemove))
 								return false;
-							PVehicleJob job(new VehicleJob::ClearAbove(*v));
+							PVehicleJob job(new VehicleJob::ClearAbove(*v,c));
 							v->RegisterNewJob("", job,&c);
 						}
 						break;
@@ -2908,7 +2908,7 @@ namespace Objects
 								return false;
 
 							auto copy = c;
-							PVehicleJob job(new VehicleJob::DigHorizontal(*v));
+							PVehicleJob job(new VehicleJob::DigHorizontal(*v,c));
 							//std::weak_ptr<Vehicle> v2 = v;
 							v->RegisterNewJob("", job, &c);
 							return true;

@@ -5,6 +5,7 @@ v0.7.3
 	> Digging vehicles can no longer accidentally enter EMP zones.
 	> Improved handling of ghosts and critical events when part of an alliance.
 	> Non-dedicated servers now require constant heartbeats from the client. If the client crashes, the server quits after 3 seconds.
+	> Constructing geometry high above the ground now costs more.
 	* Fixed crashes in bug reporter when trying to upload very long log files.
 	* Fixed handling of crashes in bug reporter.
 	* Fixed confirmation dialogs sometimes not allowing to actually press the confirm button (game wrongly assumed to be between rounds).
@@ -15,6 +16,7 @@ v0.7.3
 	* Fixed friendly/hostile range visualization to work with alliances.
 	* Fixed server panel when manually adding server addresses that cannot be contacted right now.
 	* Fixed center panel of game end statistics.
+	* Fixed round estimation of terraforming operations.
 
 v0.7.2	[Jan 25 2018]
 	> Added various hot-keys to directly build certain structure types with a selected terraformer.

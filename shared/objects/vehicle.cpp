@@ -354,9 +354,9 @@ namespace Objects
 					RemoveVehicleFromGrid(To<Vehicle>::Cast(shared_from_this()),old);
 					InsertVehicleIntoGrid(To<Vehicle>::Cast(shared_from_this()),location);
 
-					if (constructionRoundCounter)
+					if (constructionActionCounter)
 					{
-						constructionRoundCounter = 0;
+						constructionActionCounter = 0;
 						RegisterChange(WorldEntity::TasksChanged,entityTime);
 					}
 				}
@@ -555,19 +555,19 @@ namespace Objects
 								break;
 
 							if (node->cell.height == c.height)
-								RegisterNewJob("", PVehicleJob(new VehicleJob::DigHorizontal(*this)),&node->cell);
+								RegisterNewJob("", PVehicleJob(new VehicleJob::DigHorizontal(*this,node->cell)),&node->cell);
 							else
 							{
 								if (node->cell.height < c.height)
 								{
-									RegisterNewJob("", PVehicleJob(new VehicleJob::DigDown(*this)),&node->cell);
+									RegisterNewJob("", PVehicleJob(new VehicleJob::DigDown(*this,node->cell)),&node->cell);
 								}
 								else
 								{
-									RegisterNewJob("", PVehicleJob(new VehicleJob::ClearAbove(*this)),&node->cell);
+									RegisterNewJob("", PVehicleJob(new VehicleJob::ClearAbove(*this,node->cell)),&node->cell);
 									++node;
 									if (node != path.end())
-										RegisterNewJob("", PVehicleJob(new VehicleJob::ClearAbove(*this)),&node->cell);
+										RegisterNewJob("", PVehicleJob(new VehicleJob::ClearAbove(*this,node->cell)),&node->cell);
 									else
 										break;
 									ASSERT__(!TasksAreLocked());

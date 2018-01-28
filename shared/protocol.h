@@ -937,7 +937,7 @@ namespace Protocol
 		, NET(UINT8), taskFlags
 		, NETA(Grid::LCellIdI), foci
 		, Package::NetString<256>, name
-		, NET(USHORT), roundsToJobCompletion
+		, NET(USHORT), continuationsToJobCompletion
 		, NET(USHORT), resourceCostLeft
 		, NETA(Grid::LCellIdI), buildPath
 		, Objects::EntityType, visualizationName	//can also be DetonationSize_Regular or DetonationSize_Doomsday
@@ -987,7 +987,7 @@ namespace Protocol
 
 	#else
 		NETSTRUCT4(MyMobileEntity
-			, NET(UINT16), constructionRoundCounter
+			, NET(UINT16), constructionActionCounter
 			, NETA(MobileTask), tasks
 			, Optional<NET(TUniqueID)>, storedIn
 			, Optional<ProducerState>, producerState

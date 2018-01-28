@@ -685,12 +685,12 @@ namespace Game
 				if (!seq)
 				{
 					task.resourceCostLeft = t.job->resourceCostLeft > 0 ? t.job->resourceCostLeft : 0;
-					task.roundsToJobCompletion = t.job->roundsToJobCompletion;
+					task.continuationsToJobCompletion = t.job->continuationsToJobCompletion;
 				}
 				else
 				{
 				
-					seq->Guess(v, origin, taskIndex, task.roundsToJobCompletion,task.resourceCostLeft);
+					seq->Guess(v, origin, taskIndex, task.continuationsToJobCompletion,task.resourceCostLeft);
 				}
 				if (t.job->movesToFocusWhenDone)
 					task.taskFlags |= Protocol::TaskFlags::VisualizePathToFocus;
@@ -725,7 +725,7 @@ namespace Game
 			}
 			else
 			{
-				task.roundsToJobCompletion = -1;
+				task.continuationsToJobCompletion = -1;
 			}
 		}
 
@@ -775,7 +775,7 @@ namespace Game
 				#endif
 				if (v.isAutomated)
 					state.flags |= Protocol::VehicleFlags::Automated;
-				info.constructionRoundCounter = v.constructionRoundCounter;
+				info.constructionActionCounter = v.constructionActionCounter;
 				state.attackActionLeft = v.attackActionLeft;
 				state.movementActionLeft = v.movementActionLeft;
 

@@ -480,7 +480,7 @@ namespace ObjectHelper
 				if (!force)
 				{
 					Objects::PMobileEntity v = m;
-					if (v->constructionRoundCounter > 0 
+					if (v->constructionActionCounter > 0 
 						&& v->myTasks.Count() == 1
 						&& v->myTasks.GetNewest().IsJob() 
 						&& v->myTasks.GetNewest().job->resourceCostLeft > 0)

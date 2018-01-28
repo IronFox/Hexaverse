@@ -1533,17 +1533,18 @@ namespace Receiver
 		using namespace Objects;
 		PVehicleJob job;
 		Grid::LCellIdI target = Grid::LCellIdI::Invalid;
+		const Grid::LCellIdI jobLocation = v->GetLastPointOfOrigin();
 		switch (sjob.jobName)
 		{
 			case ConstName::Job_BuildRoad:
 			{
-				if (v->GetLastPointOfOrigin().height <= -Grid::CellStack::HalfRange)
+				if (jobLocation.height <= -Grid::CellStack::HalfRange)
 				{
 					LogEvent(EventClass::Preset::commandRejected,peer,e,"Cannot build road on bottom layer");
 					return;
 				}
 
-				job.reset(new VehicleJob::BuildRoad(*v));
+				job.reset(new VehicleJob::BuildRoad(*v,jobLocation));
 				v->RegisterNewJob("", job,nullptr);
 				LogEvent(EventSignificance::Common,peer,e,"Registered new job "+job->GetName());
 			}
@@ -1556,14 +1557,14 @@ namespace Receiver
 					LogEvent(EventClass::Preset::commandRejected,peer,e,"Cannot build wall on top layer");
 					return;
 				}
-				job.reset(new VehicleJob::BuildWallUp(*v));
+				job.reset(new VehicleJob::BuildWallUp(*v,jobLocation));
 				v->RegisterNewJob("", job,&target);
 				LogEvent(EventSignificance::Common,peer,e,"Registered new job "+job->GetName());
 			}
 			break;
 			case ConstName::Job_BuildHorizontalWall:
 			{
-				job.reset(new VehicleJob::BuildHorizontalWall(*v));
+				job.reset(new VehicleJob::BuildHorizontalWall(*v,jobLocation));
 				v->RegisterNewJob("", job,nullptr);
 				LogEvent(EventSignificance::Common,peer,e,"Registered new job "+job->GetName());
 			}
@@ -1578,7 +1579,7 @@ namespace Receiver
 				}
 				else
 				{
-					job.reset(new VehicleJob::DigDown(*v));
+					job.reset(new VehicleJob::DigDown(*v,jobLocation));
 					v->RegisterNewJob("",job,&target);		
 					LogEvent(EventSignificance::Common,peer,e,"Registered new job "+job->GetName());
 				}
@@ -1597,7 +1598,7 @@ namespace Receiver
 				Objects::PStructure p = Objects::Prototypes::structures.Find(sjob.parameterName);
 				if (p)
 				{	
-					job.reset(new VehicleJob::Construct(*v,p));
+					job.reset(new VehicleJob::Construct(*v,jobLocation,p));
 
 					v->RegisterNewJob(p->GetTypeName(),job,&target);
 					LogEvent(EventSignificance::Common,peer,e,"Registered new job "+job->GetName());
@@ -1611,7 +1612,7 @@ namespace Receiver
 			break;
 			case ConstName::Job_SelfDetonate:
 			{
-				job.reset(new VehicleJob::SelfDetonate(*v,sjob.parameterName.baseType));
+				job.reset(new VehicleJob::SelfDetonate(*v,jobLocation,sjob.parameterName.baseType));
 				target = v->GetLastPointOfOrigin();
 				v->RegisterNewJob("", job,&target);
 				LogEvent(EventSignificance::Common,peer,e,"Registered new job "+job->GetName());
