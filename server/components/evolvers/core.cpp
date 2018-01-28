@@ -462,9 +462,17 @@ namespace Evolver
 		Game::Network::ChangePhase(RuntimeConfig::Phase::CommandPhase,Game::Config::roundTimer > 0 && !Game::roundTimerPaused ? Game::Config::roundTimer : -1);
 	}
 
-	/*virtual override*/ void		Core::HandleChainReactionExplosion(const TExplosion&explosion)
+	/*virtual override*/ void		Core::HandleChainReactionExplosion(const TExplosion&exp)
 	{
-		CoreDetails::pendingExplosions << explosion;
+		if (RuntimeConfig::IsInAnyCommandPhase())
+		{
+			ApplicationInterface::TAttack at;
+			at.attackFrom = exp.causedBy;
+			float t = 0;
+			Objects::Explode(at,Grid::ToHigh(exp.center),Grid::ToWorld(exp.center),exp.radius,exp.damageLevel,false,t);
+			return;
+		}
+		CoreDetails::pendingExplosions << exp;
 
 	}
 
