@@ -697,7 +697,44 @@ namespace Objects
 
 
 
+		void Faction::HandlePotentialAppearance(const Objects::PWorldEntity&e, float&t, bool shareSensors)
+		{
+			bool appear = shareSensors && IsAlliedWith(e->owner);
 
+			if (!appear)
+			{
+				if (e->IsAboveGrid())
+				{
+					count_t cover = CountOffGridCoverage(e->location.height, e->GetWorldPosition());
+					if (cover > 0)
+						appear = true;
+				}
+				else
+					if (GridCanSee(e,t))
+						appear = true;
+			}
+			if (appear)
+				SignalAppearance(e,t,true,false);
+		}
+
+		bool Faction::CheckPotentialDisappearance(const Objects::PWorldEntity&e, float&t, bool shareSensors)
+		{
+			bool stillVisible = shareSensors && IsAlliedWith(e->owner);
+
+			if (!stillVisible)
+			{
+				if (e->IsAboveGrid())
+				{
+					count_t cover = CountOffGridCoverage(e->location.height, e->GetWorldPosition());
+					stillVisible = cover > 0;
+					if (stillVisible)
+						seeing[e].sightLevel = cover;
+				}
+				else
+					stillVisible = GridCanSee(e,t);
+			}
+			return !stillVisible;
+		}
 
 
 		void Faction::CheckSensory(float&t)
@@ -726,23 +763,7 @@ namespace Objects
 				{
 					if (e->owner.get() == this)
 						return;
-					bool appear = shareSensors && alliance == e->owner->alliance;
-
-					if (!appear)
-					{
-						if (e->IsAboveGrid())
-						{
-							count_t cover = CountOffGridCoverage(e->location.height, e->GetWorldPosition());
-							if (cover > 0)
-								appear = true;
-						}
-						else
-							if (GridCanSee(e,t))
-								appear = true;
-					}
-					if (appear)
-						SignalAppearance(e,t,true,false);
-
+					HandlePotentialAppearance(e,t,shareSensors);
 				},false);
 
 				LogEvent(EventSignificance::PerformanceMeasurement,shared_from_this(),"Computed appearances in "+String(timer.GetSecondsSince(started)));
@@ -752,19 +773,7 @@ namespace Objects
 
 				seeing.VisitAllKeys([this,&t,shareSensors](const PWorldEntity&e)
 				{
-					bool stillVisible = shareSensors && alliance == e->owner->alliance;
-
-					if (!stillVisible)
-					{
-						if (e->IsAboveGrid())
-						{
-							count_t cover = CountOffGridCoverage(e->location.height, e->GetWorldPosition());
-							stillVisible = cover > 0;
-						}
-						else
-							stillVisible = GridCanSee(e,t);
-					}
-					if (!stillVisible)
+					if (CheckPotentialDisappearance(e,t,shareSensors))
 						disappear << e;
 				});
 				foreach (disappear,s)
@@ -1023,34 +1032,12 @@ namespace Objects
 			LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+ ": CheckGridVisibility at time "+String(timeAt));
 			if (seeing.IsSet(e))
 			{
-				if (e->IsAboveGrid())
-				{
-					count_t cover = CountOffGridCoverage(e->location.height, e->GetWorldPosition());
-					if (cover == 0)
-						SignalDisappearance(e,timeAt,true);
-					else
-						seeing[e].sightLevel = cover;
-				}
-				else
-					if (!GridCanSee(e,timeAt))
-					{
-						SignalDisappearance(e,timeAt,true);
-					}
+				if (CheckPotentialDisappearance(e,timeAt,alliance->config.shareSensors))
+					SignalDisappearance(e,timeAt,true);
 			}
 			else
 			{
-				if (e->IsAboveGrid())
-				{
-					count_t cover = CountOffGridCoverage(e->location.height, e->GetWorldPosition());
-					if (cover > 0)
-						SignalAppearance(e,timeAt,true,false,cover);
-				}
-				else
-					if (GridCanSee(e,timeAt))
-					{
-						LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+ ": SignalAppearance at time "+String(timeAt));
-						SignalAppearance(e,timeAt,true,false);
-					}
+				HandlePotentialAppearance(e,timeAt,alliance->config.shareSensors);
 			}
 		}
 

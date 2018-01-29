@@ -206,6 +206,8 @@ namespace Objects
 			Checks and potentially rebuilds knownWorld sensor state
 			*/
 			void		CheckSensory(float&t);
+			void		HandlePotentialAppearance(const Objects::PWorldEntity&e, float&t, bool shareSensors);
+			bool		CheckPotentialDisappearance(const Objects::PWorldEntity&e, float&t, bool shareSensors);
 
 		#endif
 
