@@ -4,7 +4,10 @@ raptors must fire during motion phase, liotherwise other planes can use ground h
 
 make alliances invite-based
 
-
+put online manual link in main menu
+put change log link in main menu
+exit fullscreen mode before launching remote control console
+exit fullscreen mode on focus loss?
 
 improve dig symbol
 
