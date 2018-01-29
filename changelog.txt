@@ -26,6 +26,7 @@ v0.7.3
 	* Fixed center panel of game end statistics.
 	* Fixed routing of planes by right-clicking on the ground.
 	* Fixed plane factories spawning planes through blocking terrain into sub-orbit.
+	* Fixed allied plane sensor loss causing crashes.
 	* Fixed round estimation of terraforming operations.
 
 v0.7.2	[Jan 25 2018]
