@@ -630,7 +630,7 @@ namespace InputControl
 						if (Objects::activeStructureToPlace)
 						{
 							const auto placement = Objects::activeStructureToPlace->CheckPlacement(target);
-							if (placement != Objects::Structure::CanPlace)
+							if (placement != Objects::Structure::CanPlace && placement != Objects::Structure::UpperLevelObstruction)
 							{
 								LogEvent(EventClass::Preset::commandRejected,Objects::selectedMobileEntity.get(),"Cannot place "+Objects::activeStructureToPlace->GetTypeName()+" here ("+Objects::Structure::ToString(placement)+")");
 							}

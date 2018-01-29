@@ -681,6 +681,7 @@ namespace Game
 			task.taskFlags = 0;
 			if (t.job)
 			{
+				task.jobAffinity = t.job->GetOperationAffinity();
 				Objects::VehicleJob::PSequence seq = To<Objects::VehicleJob::Sequence>::DynamicCast(t.job);
 				if (!seq)
 				{

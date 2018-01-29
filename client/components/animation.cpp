@@ -505,7 +505,7 @@ namespace Animation
 			}
 			else
 			{
-				std::shared_ptr<Objects::VehicleJob::DummyJob>	job(new Objects::VehicleJob::DummyJob(e));
+				std::shared_ptr<Objects::VehicleJob::DummyJob>	job(new Objects::VehicleJob::DummyJob(e,(Objects::Component::operation_t)sourceTask.jobAffinity));
 				t1.job = job;
 				job->delayedBySleep = (sourceTask.taskFlags & Protocol::TaskFlags::DelayedBySleep) != 0;
 			}
@@ -705,7 +705,7 @@ namespace Animation
 				if (v->myTasks.IsEmpty())
 				{
 
-					Objects::PVehicleJob job(new Objects::VehicleJob::DummyJob(*v));
+					Objects::PVehicleJob job(new Objects::VehicleJob::DummyJob(*v,Objects::Component::Construct));
 					job->continuationsToJobCompletion = 1;
 					job->movesToFocusWhenDone = false;
 					job->resourceCostLeft = 1;
