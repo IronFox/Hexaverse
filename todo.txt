@@ -1,3 +1,11 @@
+allied drone vanishes on move, causing client crashes
+increase raptor firing range
+raptors must fire during motion phase, liotherwise other planes can use ground hopping to avoid ever being in the air during attack phase
+
+make alliances invite-based
+
+
+
 improve dig symbol
 
 road should not build bridges across liquids? switch mode automatically? reroute?
@@ -6,18 +14,8 @@ road should not build bridges across liquids? switch mode automatically? reroute
 "Nen transporter mit nem Schweren Terraformer beladen und beim aufsteigen stürzt der client kommentarlos ab :/" - can't reproduce
 
 
-alliance forming troubles
 hide selected sensor range sphere?
 larger clip range?
-allied drone vanishes on move, causing client crashes
-
-
-
-
-drop (bomb) vehicles from cargo planes in sub orbit - not good, offloading happens during command phase, allowing a cargo plane to outright enter raptor firing range, drop bombs, and only then be destroyed
-
-raptors must fire during motion phase, otherwise other planes can use ground hopping to avoid ever being in the air during attack phase
-
 
 
 
