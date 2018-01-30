@@ -21,6 +21,8 @@ namespace RuntimeConfig
 	extern Network::ServerAddress	serverAddress;
 	extern FileSystem::File			documentationRootFolder;
 
+	extern String					profilePrefix;
+
 	void					ClientInit();
 
 

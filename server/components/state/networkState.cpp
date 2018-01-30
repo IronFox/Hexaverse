@@ -20,6 +20,9 @@
 extern TwisterRandom random;
 
 
+void TerminateNow(bool isMain);
+
+
 namespace ApplicationInterface
 {
 	void	SignalAllianceMembershipChange(const Objects::PFaction&owner)
@@ -53,6 +56,103 @@ namespace Network
 	Ctr::GenericHashTable<Objects::PFaction,PClient,Objects::OwnerHash>	playerMap;
 	Ctr::GenericHashTable<CryptographicID,Objects::PFaction>		tokenMap;
 
+
+	namespace Heartbeat
+	{
+		SOCKET s = INVALID_SOCKET;
+		Timer::Time lastBeat = timer.Now();
+
+		class Loop : public Sys::ThreadObject
+		{
+		public:
+			virtual void ThreadMain()
+			{
+				BYTE buffer[1024];
+				while (s != INVALID_SOCKET)
+				{
+					sockaddr_in addr;
+					int size = (int)sizeof (addr);
+					int bytes = recvfrom(s,(char*)buffer, sizeof(buffer), 0, (SOCKADDR *) & addr, &size);
+					if (bytes <= 0)
+					{
+						if (s != INVALID_SOCKET)
+							FATAL__("Heardbeat receive failure. Socket lost");
+					}
+					lastBeat = timer.Now();
+				}
+			}
+		};
+		Loop	loopThread;
+
+		void	Stop()
+		{
+			if (s != INVALID_SOCKET)
+			{
+				SOCKET s1 = s;
+				s = INVALID_SOCKET;
+				closesocket(s1);
+			}
+		}
+
+		void	Start()
+		{
+			LogEvent(EventSignificance::Uncommon,"Starting heartbeat receiver");
+			GlobalEvents::applicationTerminate << Stop;
+			ASSERT__(Net::initNet());
+
+			s = socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP);
+			ASSERT_NOT_EQUAL__(s,INVALID_SOCKET);
+			
+
+			SOCKADDR_IN me;
+			memset(&me,0,sizeof(me));
+			me.sin_family=AF_INET;
+			me.sin_port=htons(HEARTBEAT_PORT);;
+			me.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+			int rc=::bind(s,(SOCKADDR*)&me,sizeof(SOCKADDR_IN));
+			if (rc != 0)
+			{
+				closesocket(s);
+				s = INVALID_SOCKET;
+				FATAL__("Unable to bind UDP heartbeat socket. Chances are, a server is already running.");
+				return;
+			}
+			loopThread.Start();
+
+		}
+
+
+
+
+
+		void	Check()
+		{
+			if (s == INVALID_SOCKET)
+				return;
+
+
+			if (timer.GetSecondsSince(lastBeat) > 3)
+			{
+				LogEvent(EventClass::Preset::fatal,"No heartbeat received in 10 seconds. Shutting down");
+
+				application_shutting_down = true;	//prevent certain operations in Close()
+				try
+				{
+					PathString out = RuntimeConfig::ConfigFile("saves/no-heartbeat-shutdown.hsf");
+					Logging::WriteEvent(EventClass::Preset::uncommon,"Trying to save game to "+String(out),nullptr,nullptr,nullptr);
+					FileIO::Save(out,RuntimeConfig::Phase::CommandPhase);
+					Logging::WriteEvent(EventClass::Preset::uncommon,"Success",nullptr,nullptr,nullptr);
+				}
+				catch (...)
+				{
+					Logging::WriteEvent(EventClass::Preset::error,"Failed to save to file",nullptr,nullptr,nullptr);
+				}
+
+				TerminateNow(true);
+			}
+		}
+
+	}
 
 	
 
@@ -184,6 +284,13 @@ namespace Network
 		});
 	}
 
+	void		Tick()
+	{
+		server.Resolve();
+		Heartbeat::Check();
+	}
+
+
 
 
 	void ChangeUserLevel(TCP::Peer&peer, UserLevel newLevel)
@@ -241,7 +348,7 @@ namespace Network
 	{
 		if (!a)
 			return "Game Over";
-		return "Nexus Ports enabled: "+String(stats.acquiringNexusControl)+", conquered: "+String(stats.nexusControl)+"/"
+		return "Conquering Nexus Ports: "+String(stats.acquiringNexusControl)+", conquered: "+String(stats.nexusControl)+"/"
 			+ String(Game::Config::GetTargetNexusCount());
 	}
 
@@ -287,6 +394,10 @@ namespace Network
 	}
 
 
+	void		StartHeartbeat()
+	{
+		Heartbeat::Start();
+	}
 
 
 	void		Start(UINT16 basePort)

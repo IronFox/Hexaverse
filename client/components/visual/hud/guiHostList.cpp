@@ -437,7 +437,7 @@ namespace HUD{namespace HostList{
 			p->Anchor()
 				.BeneathLastOf(serverListPanel,Distance::GameWindow( 0.015f ))
 				.FillHorizontally();
-			p->SetAutomaticHeight(true);
+			//p->SetAutomaticHeight(true);
 			p->SetBackgroundTransparent();
 
 			PPanel pb(new Panel());
@@ -447,10 +447,10 @@ namespace HUD{namespace HostList{
 			
 			
 
-			PLabel label = MakeHeaderLabel("Still trying to query '"+ToString(*failed)+"'...",0.7f,0);
+			PLabel label = MakeHeaderLabel("Still trying to reach '"+ToString(*failed)+"'...",0.7f,0);
 //			label->anchorConfig.Left().Set(0.1f,false);
 			label->SetColor(1,0.75f,0.75f,0.9f);
-			label->Anchor().Top(Distance::GameWindow( 0.01f )).Right(Distance::GameWindow( 0.01f ));
+			label->Anchor().Top(Distance::GameWindow( 0.01f )).FillHorizontally();//.Right(Distance::GameWindow( 0.01f ));
 			pb->AddComponent( label,CLOCATION );
 			Network::ServerAddress url = *failed;
 			PButton forget(new Button("Forget this host",
@@ -478,7 +478,7 @@ namespace HUD{namespace HostList{
 			forget->Anchor().Top().Right();
 		
 			p->AddComponent( forget ,CLOCATION);
-			pb->Anchor().LeftOf(forget,Distance(10,Distance::Type::AbsolutePixels));
+			pb->Anchor().FillHBetween(nullptr,forget,Distance(),Distance(10,Distance::Type::AbsolutePixels));
 
 			serverListPanel->AddComponent( p ,CLOCATION);
 		}

@@ -573,16 +573,16 @@ namespace Component
 		return *this;
 	}
 
-	AnchorModifier&	AnchorModifier::FillHBetween(const PComponent&leftEdge, const PComponent&rightEdge)
+	AnchorModifier&	AnchorModifier::FillHBetween(const PComponent&leftEdge, const PComponent&rightEdge, const Distance&leftOffset /*= Distance()*/, const Distance&rightOffset /*= Distance()*/)
 	{
-		GetHAxis().FillBetween(leftEdge,rightEdge);
+		GetHAxis().FillBetween(leftEdge,rightEdge,leftOffset,rightOffset);
 		return *this;
 	}
 
-	void AnchorModifier::Axis::FillBetween(const PComponent&lowerC, const PComponent&upperC)
+	void AnchorModifier::Axis::FillBetween(const PComponent&lowerC, const PComponent&upperC, const Distance&lowerOffset /*= Distance()*/, const Distance&upperOffset /*= Distance()*/)
 	{
-		lower.Set(lowerC,0);
-		upper.Set(upperC,0);
+		lower.Set(lowerC,lowerOffset);
+		upper.Set(upperC,upperOffset);
 		isAutoCentering = false;
 		extent = Distance::Disabled;
 	}
@@ -2094,7 +2094,7 @@ namespace Component
 				{
 					rec.Report(shared_from_this(),prev);
 
-					VerifyAnchorIntegrity();
+					VerifyAnchorIntegrity(CLOCATION);
 					if (IsDebuggerPresent())
 						DebugBreak();
 					else

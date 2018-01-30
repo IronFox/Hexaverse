@@ -43,6 +43,7 @@ namespace Network
 	TUniqueID		myID,serverID,worldID;
 	UINT32				gameFlags = 0;
 	SHA256::HashContainer	requestedResearchScript;
+	UINT16			connectionBasePort = DEFAULT_SERVER_BASE_PORT;
 
 	CryptographicID	activeToken;
 	String			myIDString,serverIDString,worldIDString,activeTokenString;
@@ -233,6 +234,8 @@ namespace Network
 
 		worldID = host.serverInfo.gameInfo.worldID;
 		worldIDString = worldID.ToNiceString();
+
+		connectionBasePort = host.address.basePort;
 	}
 
 
@@ -255,7 +258,7 @@ namespace Network
 
 	static PathString AccessFilename()
 	{
-		return RuntimeConfig::ConfigFile("worldAccess.m32");
+		return RuntimeConfig::ConfigFile(RuntimeConfig::profilePrefix+ "worldAccess.m32");
 	}
 
 	void SaveWorldAccessTokens()
@@ -470,6 +473,8 @@ namespace Network
 			{
 				case TCP::Event::ConnectionLost:
 					//me->Release();
+					if (me)
+						me->protocolIncompatible = false;	//can't know for next connection
 				break;
 			}
 
@@ -1715,7 +1720,7 @@ namespace Network
 			broadcastListenSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 			if (broadcastListenSocket == INVALID_SOCKET)
 			{
-				String error = String(Net::err2str(WSAGetLastError()));
+				String error = String(Net::GetLastError());
 				LogEvent(EventClass::Preset::operationAborted, nullptr, "Unable to initiate UDP listening for servers on the local area network: " + error + " (unable to create socket). Listening will be disabled.");
 			}
 			else
@@ -1730,7 +1735,7 @@ namespace Network
 				int rc = ::bind(broadcastListenSocket, (const sockaddr*)&me, (int)sizeof(me));
 				if (rc != 0)
 				{
-					String error = String(Net::err2str(WSAGetLastError()));
+					String error = String(Net::GetLastError());
 					LogEvent(EventClass::Preset::operationAborted,nullptr,"Unable to initiate UDP listening for servers on the local area network: "+error+" (maybe another instance of " PRODUCT_NAME " is running already?). Listening will be disabled." );
 					RuntimeConfig::udpListen = false;
 					closesocket(broadcastListenSocket);

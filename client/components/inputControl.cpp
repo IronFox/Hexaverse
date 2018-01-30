@@ -213,6 +213,9 @@ namespace InputControl
 						int h;
 						if (!Objects::selectedMobileEntity->CanSpawnInGrid() && Objects::selectedMobileEntity->CanSpawnAboveGrid(h))
 							target.height = h;
+						else
+						if (Objects::selectedMobileEntity->IsPlane())
+							target.height = Objects::SubOrbital::Height;
 						ObjectHelper::DirectTo(Objects::selectedMobileEntity,target, ObjectHelper::AssembleMotionFlags(false,false),Objects::activeCursorMode);
 					}
 				}
@@ -627,7 +630,7 @@ namespace InputControl
 						if (Objects::activeStructureToPlace)
 						{
 							const auto placement = Objects::activeStructureToPlace->CheckPlacement(target);
-							if (placement != Objects::Structure::CanPlace)
+							if (placement != Objects::Structure::CanPlace && placement != Objects::Structure::UpperLevelObstruction)
 							{
 								LogEvent(EventClass::Preset::commandRejected,Objects::selectedMobileEntity.get(),"Cannot place "+Objects::activeStructureToPlace->GetTypeName()+" here ("+Objects::Structure::ToString(placement)+")");
 							}

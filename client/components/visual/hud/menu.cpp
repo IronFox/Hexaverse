@@ -12,6 +12,7 @@
 #include "guiStatistics.h"
 #include "../scene/explosions.h"
 #include "guiFactionTable.h"
+#include <io/monitoredProcess.h>
 
 bool	IsFullScreen();
 void	SetFullScreen(bool isFull);
@@ -359,7 +360,11 @@ namespace Menu
 		game->AddCommand("Abandon faction",Network::AbandonCurrentFaction,[](){return Network::amOnline && Network::haveFaction && RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame;});
 		game->AddCommand("Show factions (Tab)", FactionTable::Show,[](){return Network::amOnline;});
 		game->AddCommand("Show statistics", Statistics::Show,[](){return Network::amOnline && RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame;});
-
+		game->AddCommand("Launch Control Console",[]()
+		{
+			MonitoredProcess	process(false);
+			process.Start("../ControlConsole/","ControlConsole.exe",PathString(" -p "+String(Network::connectionBasePort)));	//start and abandon
+		},[](){return Network::amOnline && Network::client.IsLocalhost();});
 		//game->FullAutoLayout();
 	}
 

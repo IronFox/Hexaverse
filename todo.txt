@@ -1,3 +1,31 @@
+allied drone vanishes on move, causing client crashes
+increase raptor firing range
+raptors must fire during motion phase, liotherwise other planes can use ground hopping to avoid ever being in the air during attack phase
+
+make alliances invite-based
+
+put online manual link in main menu
+put change log link in main menu
+exit fullscreen mode before launching remote control console
+exit fullscreen mode on focus loss?
+
+improve dig symbol
+
+road should not build bridges across liquids? switch mode automatically? reroute?
+
+
+"Nen transporter mit nem Schweren Terraformer beladen und beim aufsteigen stürzt der client kommentarlos ab :/" - can't reproduce
+
+
+hide selected sensor range sphere?
+larger clip range?
+
+
+
+surveyor tower tremor
+
+
+
 BUG REPORT FORM
 
 
@@ -160,6 +188,20 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+increase health research rate
+remove regular connectors
+fixed: structure construction round calculation is off by a factor of 2 (shows x rounds, needs 2*x) on light terraformers
+fixed: placing/canceling construction job in vehicle plant does not update commands
+fixed: produced planes can spawn through terrain to sub orbit
+prevent mushroom terrains (reduce height range?, increase average planet height?) - made construction more expensive
+fixed: can't navigate planes via ground click
+fixed: client crashes, steam refuses to start client when server still running in the background, cannot end without ui
+hostile attack events from friendlies
+fixed: can dig into emp zone, get 100 emp damage
+middle panel statistics are wrongly wrapped
+votes should disappear after voting
+rename enabled nexus ports to conquering or something
+fixed: manually added server display wrong until contacted?
 hotkeys
 alliances
 colored faction list + chat history + chat message input

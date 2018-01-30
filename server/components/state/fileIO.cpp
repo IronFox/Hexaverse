@@ -477,7 +477,7 @@ namespace FileIO
 			Riff::Chunk*baseChunk = taskChunk->AppendBlock(RID::baseJob);
 			static ByteStreamBuffer	stream;
 			stream.Clear();
-			stream << job->roundsToJobCompletion << job->resourceCostLeft;// << job->jobAutoCompletion << job->movesToFocusWhenDone;
+			stream << job->continuationsToJobCompletion << job->resourceCostLeft;// << job->jobAutoCompletion << job->movesToFocusWhenDone;
 			stream << job->ioID;
 			baseChunk->SetData(stream);
 
@@ -488,7 +488,7 @@ namespace FileIO
 			Attach(taskChunk,job->GetDataKey(),*job);
 		}
 	}
-	static void Import(Riff::Chunk*taskChunk, Objects::PVehicleJob&job)
+	static void ImportJob(Riff::Chunk*taskChunk, Objects::PVehicleJob&job)
 	{
 		job.reset();
 		Riff::Chunk*source0 = taskChunk->FindFirst(RID::baseJob);
@@ -506,7 +506,7 @@ namespace FileIO
 
 
 				source0->OpenStream();
-				ASSERT__(source0->Stream(job->roundsToJobCompletion));
+				ASSERT__(source0->Stream(job->continuationsToJobCompletion));
 				ASSERT__(source0->Stream(job->resourceCostLeft));
 				if (source0->size() == 12)
 				{
@@ -571,7 +571,7 @@ namespace FileIO
 		Export(taskChunk,t.job);
 	}
 
-	static void Import(Riff::Chunk*taskChunk, Objects::Vehicle::Task&t)
+	static void ImportTask(Riff::Chunk*taskChunk, Objects::Vehicle::Task&t)
 	{
 		Import(taskChunk,t.foci);
 		Import(taskChunk,t.path);
@@ -586,7 +586,7 @@ namespace FileIO
 		ASSERT__(tdata->Stream(i16));
 		t.type = (Objects::Vehicle::Task::type_t)i16;
 		ASSERT__(tdata->CloseStream());
-		Import(taskChunk,t.job);
+		ImportJob(taskChunk,t.job);
 	}
 
 
@@ -753,7 +753,7 @@ namespace FileIO
 		stream.Clear();
 		stream.Append(v.attackActionLeft);
 		stream.Append(v.movementActionLeft);
-		stream.Append(v.constructionRoundCounter);
+		stream.Append(v.constructionActionCounter);
 
 		MobileEntityFlag flags = MobileEntityFlag::None;
 		if (v.isAutomated)
@@ -795,14 +795,19 @@ namespace FileIO
 			Import(parent,v->currentStorage);
 			v->currentStorage.Cap(v->GetMaxStorageCapacity());
 		#endif
-		Import(parent,v->completeOnMove);
+		ImportJob(parent,v->completeOnMove);
+		if (v->completeOnMove)
+			v->completeOnMove->UpdateLocationAndEstimations(*v,v->location);
 		Riff::Chunk *name,*data;
 		if (parent->FindFirstNamedList(name,data))
 			do
 			{
 				if (name->DataMatch(ChunkName::VehicleTaskSection))
 				{
-					Import(data,v->myTasks.Push());
+					ImportTask(data,v->myTasks.Push());
+					auto job = v->myTasks.GetNewest().job;
+					if (job)
+						job->UpdateLocationAndEstimations(*v,v->GetLastPointOfOrigin());
 				}
 				else
 				{
@@ -837,7 +842,7 @@ namespace FileIO
 		ASSERT__(vehicleChunk->Stream(v->movementActionLeft));
 		//ASSERT__(vehicleChunk->Stream(v.hasConstructedThisRound));
 		//ASSERT__(vehicleChunk->Stream(v.hasMoved));
-		ASSERT__(vehicleChunk->Stream(v->constructionRoundCounter));
+		ASSERT__(vehicleChunk->Stream(v->constructionActionCounter));
 
 		MobileEntityFlag flags;
 		ASSERT__(vehicleChunk->Stream(flags));
@@ -849,7 +854,7 @@ namespace FileIO
 			insertIntoHangar << v;
 		}
 
-		Import(parent,v->completeOnMove);
+		//ImportJob(parent,v->completeOnMove);
 
 		return !(flags & MobileEntityFlag::IsStored);
 	}
@@ -1700,9 +1705,14 @@ namespace FileIO
 		return RuntimeConfig::IsACommandPhase(p) || p == RuntimeConfig::Phase::AnimationPhase || p == RuntimeConfig::Phase::EndOfGame;
 	}
 
+	bool			CanSaveRightNow(RuntimeConfig::Phase overridePhase)
+	{
+		return IsValidSavePhase(overridePhase) && !ConfigurationMode::IsActive();
+	}
+
 	bool			CanSaveRightNow()
 	{
-		return IsValidSavePhase(RuntimeConfig::phase) && !ConfigurationMode::IsActive();
+		return CanSaveRightNow(RuntimeConfig::phase);
 	}
 
 
@@ -1750,7 +1760,7 @@ namespace FileIO
 
 	void	Save( const PathString&name, RuntimeConfig::Phase savePhase)
 	{
-		if (!CanSaveRightNow())
+		if (!CanSaveRightNow(savePhase))
 		{
 			LogEvent(EventClass::Preset::commandRejected,"Unable to save game right now. Not in suitable phase");
 			return;

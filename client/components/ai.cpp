@@ -116,7 +116,7 @@ namespace AI
 	}
 
 
-	void AssemblePath(const Objects::ReachabilityMapper&mapper, const Objects::ReachabilityMapper::MapNode*current, BasicBuffer<Grid::LCellIdI>&outResult)
+	void AssemblePath(const Objects::Pathfinding::ReachabilityMapper&mapper, const Objects::Pathfinding::ReachabilityMapper::MapNode*current, BasicBuffer<Grid::LCellIdI>&outResult)
 	{
 		if (current->predecessor != InvalidIndex)	//if invalidindex, means this is a cell neighboring the point of origin
 			AssemblePath(mapper, mapper.result + current->predecessor,outResult);
@@ -129,7 +129,7 @@ namespace AI
 	}
 
 
-	void IssuePath(const Objects::PVehicle&v, const Objects::ReachabilityMapper&mapper, const Objects::ReachabilityMapper::MapNode*current)
+	void IssuePath(const Objects::PVehicle&v, const Objects::Pathfinding::ReachabilityMapper&mapper, const Objects::Pathfinding::ReachabilityMapper::MapNode*current)
 	{
 		static Buffer0<Grid::LCellIdI> path;
 		path.Clear();
@@ -235,7 +235,7 @@ namespace AI
 		int minMotion = v->GetMovementStepsPerRound();
 
 		//attacker logic
-		Objects::ReachabilityMapper::MapNode*best = nullptr;
+		Objects::Pathfinding::ReachabilityMapper::MapNode*best = nullptr;
 		float bestScore = 0.f;
 		const bool attacker = t->CanAttack();
 //		const float myRange = t->maxRange + t->GetExplosionRadius(e.owner) - 1;
@@ -372,7 +372,7 @@ namespace AI
 
 
 		currentIsOffensiveVehicle = attacker && v->turret->ignoresVehicleMotion;
-		static Objects::ReachabilityMapper mapper(false);
+		static Objects::Pathfinding::ReachabilityMapper mapper(false);
 //		currentThreat = TThreatEstimation();
 		currentCanIgnoreThreat = (attacker || random.NextFloat() < 0.5f) && !t->dealsEMPDamage;
 		//currentIsOverconfident = v->overconfident;

@@ -79,7 +79,7 @@ namespace HUD
 				{
 					PVote v2 = w.lock();
 					if (v2)
-						v2->CastVote(false);
+						v2->CastVote(false,true);
 				}}};
 				noButton->Anchor().Right(0.01f).Beneath(label);
 				panel->AddComponent(noButton,CLOCATION);
@@ -90,7 +90,7 @@ namespace HUD
 				{
 					PVote v2 = w.lock();
 					if (v2)
-						v2->CastVote(true);
+						v2->CastVote(true,true);
 				}}};
 
 				yesButton->Anchor().LeftOf(noButton,0.01f).Beneath(label);

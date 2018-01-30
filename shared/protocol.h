@@ -19,6 +19,7 @@
 #pragma comment(lib, "IPHLPAPI.lib")
 
 
+#define HEARTBEAT_PORT				10245	//no point making this variable
 #define BROADCAST_PORT				10246	//must be constant
 #define DEFAULT_SERVER_BASE_PORT	10247
 
@@ -931,14 +932,15 @@ namespace Protocol
 		};
 	}
 
-	NETSTRUCT9(MobileTask
+	NETSTRUCT10(MobileTask
 		, NET(UINT8), type
 		, NET(UINT8), mode
 		, NET(UINT8), taskFlags
 		, NETA(Grid::LCellIdI), foci
 		, Package::NetString<256>, name
-		, NET(USHORT), roundsToJobCompletion
+		, NET(USHORT), continuationsToJobCompletion
 		, NET(USHORT), resourceCostLeft
+		, BYTE, jobAffinity
 		, NETA(Grid::LCellIdI), buildPath
 		, Objects::EntityType, visualizationName	//can also be DetonationSize_Regular or DetonationSize_Doomsday
 	)
@@ -987,7 +989,7 @@ namespace Protocol
 
 	#else
 		NETSTRUCT4(MyMobileEntity
-			, NET(UINT16), constructionRoundCounter
+			, NET(UINT16), constructionActionCounter
 			, NETA(MobileTask), tasks
 			, Optional<NET(TUniqueID)>, storedIn
 			, Optional<ProducerState>, producerState

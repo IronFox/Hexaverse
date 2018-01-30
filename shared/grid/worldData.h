@@ -11,6 +11,8 @@ namespace World
 		static bool			IsSolid(const Grid::CellStack::Cell&c)	{return c.IsSolid();}
 		static bool			IsClearOrWater(const Grid::CellStack::Cell&c)	{return c.IsClearOrWater();}
 		static bool			IsNotLava(const Grid::CellStack::Cell&c)	{return c.content != Grid::Content::Lava;}
+		static bool			IsNotClear(const Grid::CellStack::Cell&c)	{return c.content != Grid::Content::Clear;}
+		static bool			IsNotRoad(const Grid::CellStack::Cell&c)	{return c.content != Grid::Content::Road && c.content != Grid::Content::Foundation;}
 	};
 
 

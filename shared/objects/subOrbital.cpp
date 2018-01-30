@@ -249,9 +249,9 @@ namespace Objects
 						if (location.height != Height)
 							InsertVehicleIntoGrid(To<Vehicle>::Cast(shared_from_this()),location);
 
-						if (constructionRoundCounter)
+						if (constructionActionCounter)
 						{
-							constructionRoundCounter = 0;
+							constructionActionCounter = 0;
 							RegisterChange(WorldEntity::TasksChanged,entityTime);
 						}
 					}

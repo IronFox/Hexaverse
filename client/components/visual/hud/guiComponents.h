@@ -245,7 +245,7 @@ namespace Component
 			bool		IsFreeFloating() const {return BothAnchorsAreOff() && !isAutoCentering;}
 			void		SetFreeFloating(const TCodeLocation&sender, const Distance&extent = Distance::Unknown);
 			bool		HasExtentPlaceholder() const {return !Stretches() && extent.IsPlaceholder();}
-			void		FillBetween(const PComponent&lowerC, const PComponent&upperC);
+			void		FillBetween(const PComponent&lowerC, const PComponent&upperC, const Distance&lowerOffset = Distance(), const Distance&upperOffset = Distance());
 			float		GetMinimumEdge(float parentUpperEdge, const M::TFloatRange<>&rectRange) const;
 			void		UpdateExtentIfEnabled(const Distance&d) {if (!extent.IsDisabled()) extent = d;}
 		};
@@ -300,7 +300,7 @@ namespace Component
 		AnchorModifier&	AboveAllOf(const PPanel&, const Distance&lowerOffset = Distance(), const Distance&height = Distance::Unknown);
 		AnchorModifier&	FillHorizontally();
 		AnchorModifier&	FillHorizontally(const Distance&leftOffset, const Distance&rightOffset);
-		AnchorModifier&	FillHBetween(const PComponent&leftEdge, const PComponent&rightEdge);
+		AnchorModifier&	FillHBetween(const PComponent&leftEdge, const PComponent&rightEdge, const Distance&leftOffset = Distance(), const Distance&rightOffset = Distance());
 		AnchorModifier&	FillVertically();
 		AnchorModifier&	FillVertically(const Distance&lowerOffset, const Distance&upperOffset);
 		AnchorModifier&	CenterVertically(const Distance&height = Distance::Unknown);

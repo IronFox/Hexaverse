@@ -158,14 +158,14 @@ namespace Animation
 		int referenceSpeed = v->GetMovementStepsPerRound()-1;
 
 	//	static Buffer<Objects::MapNode>	nodes;
-		static Objects::ReachabilityMapper mapper(false);
+		static Objects::Pathfinding::ReachabilityMapper mapper(false);
 		Objects::Component::VehicleBase::canStandOnUnknown = false;
 		mapper.Map(v.get(),v->location,AI::BlockTest,referenceSpeed*5,true);
 		Objects::Component::VehicleBase::canStandOnUnknown = true;
 
 
 		float closestDistance = std::numeric_limits<float>::max();
-		const Objects::ReachabilityMapper::MapNode*closest = nullptr;
+		const Objects::Pathfinding::ReachabilityMapper::MapNode*closest = nullptr;
 		//Grid::LCellIdI closest = Grid::LCellIdI::Invalid;
 		//float closestCompetingDistance = 0;
 
@@ -197,7 +197,7 @@ namespace Animation
 					continue;
 				//const auto &n = Grid::low.grid.GetCell(node->cell.stackID).neighborhood;
 				int score = 0;
-				Objects::ReachabilityMapper::MapNode*at = node;
+				Objects::Pathfinding::ReachabilityMapper::MapNode*at = node;
 				for (;;)
 				{
 					if (at->customScore < 0)
@@ -389,6 +389,7 @@ namespace Animation
 
 		if (serverVersion.foci == localVersion.foci)
 		{
+			localVersion.job = serverVersion.job;
 			outMerged.swap(localVersion);
 			return;
 		}
@@ -504,12 +505,12 @@ namespace Animation
 			}
 			else
 			{
-				std::shared_ptr<Objects::VehicleJob::DummyJob>	job(new Objects::VehicleJob::DummyJob(e));
+				std::shared_ptr<Objects::VehicleJob::DummyJob>	job(new Objects::VehicleJob::DummyJob(e,(Objects::Component::operation_t)sourceTask.jobAffinity));
 				t1.job = job;
 				job->delayedBySleep = (sourceTask.taskFlags & Protocol::TaskFlags::DelayedBySleep) != 0;
 			}
 			t1.job->movesToFocusWhenDone = (sourceTask.taskFlags & Protocol::TaskFlags::VisualizePathToFocus) != 0;
-			t1.job->roundsToJobCompletion = sourceTask.roundsToJobCompletion;
+			t1.job->continuationsToJobCompletion = sourceTask.continuationsToJobCompletion;
 			t1.job->resourceCostLeft = sourceTask.resourceCostLeft;
 			
 			#ifdef HAS_WINDOW
@@ -591,7 +592,7 @@ namespace Animation
 			#ifndef ONE_COMPOUND_PER_FACTION
 				v->currentStorage = info->resourceVector;
 			#endif
-			v->constructionRoundCounter = info->constructionRoundCounter;
+			v->constructionActionCounter = info->constructionActionCounter;
 
 			Array<Objects::MobileEntity::Task>	currentTasks,newTasks(info->tasks.Count());
 			v->myTasks.MoveToArray(currentTasks);
@@ -704,8 +705,8 @@ namespace Animation
 				if (v->myTasks.IsEmpty())
 				{
 
-					Objects::PVehicleJob job(new Objects::VehicleJob::DummyJob(*v));
-					job->roundsToJobCompletion = 1;
+					Objects::PVehicleJob job(new Objects::VehicleJob::DummyJob(*v,Objects::Component::Construct));
+					job->continuationsToJobCompletion = 1;
 					job->movesToFocusWhenDone = false;
 					job->resourceCostLeft = 1;
 
@@ -1188,7 +1189,7 @@ namespace Animation
 							HUD::HexGrid::RefreshContacts();
 						HUD::WindowStack::SignalSituationChange();
 						if (removalType == Objects::RemovalType::UncontrolledExplosion)
-							HUD::HexGrid::EventLog::RegisterEntityDestruction(this->time.min, allocatedTarget->isOwnedByMe,allocatedTarget->GetWorldPosition(), allocatedTarget->id, allocatedTarget->GetNiceName());
+							HUD::HexGrid::EventLog::RegisterEntityDestruction(this->time.min, allocatedTarget->owner->IsAlliedWithMe(),allocatedTarget->GetWorldPosition(), allocatedTarget->id, allocatedTarget->GetNiceName()+" ("+allocatedTarget->owner->GetName()+")");
 
 					#endif
 				}
@@ -1297,7 +1298,7 @@ namespace Animation
 						attackerID = attacker->id;
 					#endif
 					doRegister = !attacker->isOwnedByMe || isAutoTarget;
-					isFriendly = attacker->isOwnedByMe;
+					isFriendly = attacker->owner->IsAlliedWithMe();
 				}
 
 				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Starting attack ("+attackerTurret->typeName+",range="+String(attackRange)+",pos="+Vec::toString(attackerPosition)+",angle="+String(attackAngle)+") at "+String(Animation::atTime)+"/"+String(this->time.min));

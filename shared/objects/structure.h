@@ -279,17 +279,17 @@ namespace Objects
 
 		#ifdef HAS_WINDOW
 
-		//	#ifndef ONE_COMPOUND_PER_FACTION
+			#ifndef ONE_COMPOUND_PER_FACTION
 
 			/**
 			Retrieves the geometry to use for a specific connection during standard recompilation
 			*/
 			virtual const Geometry*		GetSourceForConnection(const PStructure&connected)	{return &standardConnector;}
 
-		//	#else
-		//	virtual const Geometry*		GetSourceForConnection(const PStructure&connected)	{return nullptr;}
+			#else
+			virtual const Geometry*		GetSourceForConnection(const PStructure&connected)	{return To<NexusPort>::DynamicCast(connected) ? &standardConnector : nullptr;}
 
-		//	#endif
+			#endif
 		#endif
 
 	};
@@ -778,6 +778,11 @@ namespace Objects
 		//Structure overrides:
 		virtual bool				IsSkyLinkStructure() const override {return true;}
 		virtual Category			GetCategory() const override {return Category::Resources;}	//not needed
+		#ifdef HAS_WINDOW
+		#ifdef ONE_COMPOUND_PER_FACTION
+			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override {return &standardConnector;}
+		#endif
+		#endif
 
 		//SkyLinkStructure overrides:
 		virtual WorkingStructure*	CastToStructure() override {return this;}
@@ -804,7 +809,7 @@ namespace Objects
 		#ifdef HAS_WINDOW
 			static Geometry			reactorConnector;
 				
-			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override {return connectedToReactor.lock() == connected ? &reactorConnector : &standardConnector;}
+			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override {return connectedToReactor.lock() == connected ? &reactorConnector :  Super::GetSourceForConnection(connected);}
 		#endif
 
 		//virtual int					GetConstructionCost() const override {return 40;}

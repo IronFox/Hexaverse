@@ -56,6 +56,10 @@ namespace RuntimeConfig
 	@return Absolute path
 	*/
 	PathString	ConfigFile(const PathString&base);
+	inline PathString	ConfigFile(const char*base)	{return ConfigFile(PathString(base));}
+	#ifdef _WIN32
+		inline PathString	ConfigFile(const String&base)	{return ConfigFile(PathString(base));}
+	#endif
 
 	/**
 	Determines the full path of a configuration (or cache) subfolder/file
