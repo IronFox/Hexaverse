@@ -87,9 +87,9 @@ namespace Objects
 
 			Buffer0<PWorldEntity>	candidates;
 
-			source.owner->seeing.VisitAllKeys([&candidates](const PWorldEntity&e)
+			source.owner->VisitVisibleForeignEntities([&source,&candidates](const PWorldEntity&e)
 			{
-				if (e->IsIndestructible())
+				if (e->IsIndestructible() || source.owner->IsAlliedWith(e->owner))
 					return;
 				candidates << e;
 			});

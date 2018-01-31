@@ -11,6 +11,7 @@
 #include "research.h"
 #include "../grid/resources.h"
 #include "statistics.h"
+#include <map>
 
 namespace Objects
 {
@@ -207,7 +208,7 @@ namespace Objects
 			*/
 			void		CheckSensory(float&t);
 			void		HandlePotentialAppearance(const Objects::PWorldEntity&e, float&t, bool shareSensors);
-			bool		CheckPotentialDisappearance(const Objects::PWorldEntity&e, float&t, bool shareSensors);
+			void		HandlePotentialDisappearance(const Objects::PWorldEntity&e, float&t, bool shareSensors);
 
 		#endif
 
@@ -266,8 +267,8 @@ namespace Objects
 		Checks whether or not units of the other faction receive detailed entity state information such as build queues.
 		This check is symmetric
 		*/
-		bool			ExposesEntityDetailsTo(const PFaction&other) const {return other && (other.get() == this || (other->alliance == alliance && alliance->config.exposeEntityDetails));}
-		bool			SharingSensorWith(const PFaction&other) const{return other && (other.get() == this || (other->alliance == alliance && alliance->config.shareSensors));}
+		bool			ExposesEntityDetailsTo(const PFaction&other) const {return other && this && (other.get() == this || (other->alliance == alliance && alliance->config.exposeEntityDetails));}
+		bool			SharingSensorWith(const PFaction&other) const{return other && this && (other.get() == this || (other->alliance == alliance && alliance->config.shareSensors));}
 
 		String		GetName() const
 		{
@@ -373,20 +374,57 @@ namespace Objects
 			Ctr::Buffer0<Marker,Strategy::Adopt>		markers;
 			Ctr::GenericHashTable<TUniqueID, index_t>	markerMap,referenceMap;
 
-			Ctr::GenericHashTable<PWorldEntity,float,SharedPtrHash>	lostVisualAt,//!< Used for entities that dropped out of contact during the same round
-															gainedVisualAt;
-
 			struct SeeingReference
 			{
-				count_t			sightLevel=0;
+				WWorldEntity			reference;
+				bool					wasVisibleAtBeginning = false;
+				std::map<float,bool>	reverseVisibilityChange;	//reverse mapped
 
+				void					swap(SeeingReference&other)
+				{
+					std::swap(wasVisibleAtBeginning,other.wasVisibleAtBeginning);
+					reference.swap(other.reference);
+					reverseVisibilityChange.swap(other.reverseVisibilityChange);
+				}
+
+				friend void				swap(SeeingReference&a,SeeingReference&b)
+				{
+					a.swap(b);
+				}
+
+				bool					VisibleAt(float t) const;
+				void					Appear(const PWorldEntity&e, float&t);
+				void					Disappear(const PWorldEntity&e, float&t);
+				bool					CurrentlyVisible() const {return reverseVisibilityChange.empty() ? wasVisibleAtBeginning : reverseVisibilityChange.begin()->second;}
 
 			};
-			Ctr::GenericHashTable<PWorldEntity, SeeingReference, SharedPtrHash>	seeing;
+			PointerTable<SeeingReference, Swap>	seeing;
 
 
+			void VisitVisibleForeignEntities(const std::function<void(const PWorldEntity&e)>&f)	const
+			{
+				seeing.VisitAllValues([&f](const Objects::Faction::SeeingReference&ref)
+				{
+					DBG_ASSERT__(ref.reverseVisibilityChange.empty());
+					auto e = ref.reference.lock();
+					if (e)
+						f(e);
+				});
+			};
 
 
+			void VisitVisibleForeignEntities(float t, const std::function<void(const PWorldEntity&e)>&f)	const
+			{
+				seeing.VisitAllValues([&f,t](const Objects::Faction::SeeingReference&ref)
+				{
+					if (ref.VisibleAt(t))
+					{
+						auto e = ref.reference.lock();
+						if (e)
+							f(e);
+					}
+				});
+			};
 
 					
 			struct TSensorLock
@@ -408,8 +446,14 @@ namespace Objects
 
 			void DropPerRoundData()
 			{
-				lostVisualAt.Clear();
-				gainedVisualAt.Clear();
+				seeing.FilterEntries([](const void*p, SeeingReference&seeing)->bool
+				{
+					if (!seeing.CurrentlyVisible())
+						return false;
+					seeing.reverseVisibilityChange.clear();
+					seeing.wasVisibleAtBeginning= true;
+					return true;
+				});
 			}
 
 			/**
@@ -464,7 +508,7 @@ namespace Objects
 
 			@return True, if the contact was, indeed, new, false otherwise
 			*/
-			bool		SignalAppearance(const PWorldEntity&, float&t, bool cascade=true, bool stack=true, index_t incStackBy=1);
+			bool		SignalAppearance(const PWorldEntity&, float&t, bool cascade=true);
 			void		SignalDisappearance(const PWorldEntity&, float&t, bool force = false, bool signalConnectedClient=true);
 
 			void		RegisterSensorCreation(const World::Sensor&, int sensorHeight, float&t, Ctr::Buffer0<PWorldEntity>*newContacts = nullptr);

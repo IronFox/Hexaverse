@@ -2,6 +2,7 @@
 #include "tower.h"
 #include "../structureCompound.h"
 #include "../gridAndChoices.h"
+#include "../faction.h"
 
 namespace Objects
 {
@@ -38,7 +39,7 @@ namespace Objects
 
 		bool Tower::WouldAttack(const PWorldEntity&target, TurretBase::TargetChoice&outTarget, float entityTime)
 		{
-			if (!HasAmmoForShot() || empDamageLevel != 0 || IsHibernating())
+			if (!HasAmmoForShot() || empDamageLevel != 0 || IsHibernating() || owner->IsAlliedWith(target->owner))
 			{
 				//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
 				return false;

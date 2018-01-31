@@ -506,6 +506,7 @@ namespace Game
 			winner.reset();
 			postEvolutionWinner.reset();
 			HandleSessionSuspension();
+			Vote::Flush();
 		}
 
 		void		HandleSessionRestart()

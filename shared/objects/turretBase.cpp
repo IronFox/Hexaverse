@@ -148,8 +148,10 @@ namespace Objects
 			const auto&n = Grid::low.grid.GetCell(destIn.cellLocation.stackID).neighborhood;
 			for (int i = 0; i < n.numNeighbors; i++)
 				helper << Grid::LCellIdI(n.neighborID[i],destIn.cellLocation.height);
-			helper << destIn.cellLocation + 1;
-			helper << destIn.cellLocation - 1;
+			if (destIn.cellLocation.height < Grid::CellStack::TopHeight)
+				helper << destIn.cellLocation + 1;
+			if (destIn.cellLocation.height <= Grid::CellStack::TopHeight)
+				helper << destIn.cellLocation - 1;
 		}
 		Grid::LCellIdI current;
 		while (helper >> current)
@@ -174,8 +176,10 @@ namespace Objects
 				const auto&n = Grid::low.grid.GetCell(current.stackID).neighborhood;
 				for (int i = 0; i < n.numNeighbors; i++)
 					helper << Grid::LCellIdI(n.neighborID[i],current.height);
-				helper << current + 1;
-				helper << current - 1;
+				if (current.height < Grid::CellStack::TopHeight)
+					helper << current + 1;
+				if (current.height <= Grid::CellStack::TopHeight)
+					helper << current - 1;
 			}
 		}
 		return false;

@@ -727,10 +727,10 @@ namespace Objects
 						appear = true;
 			}
 			if (appear)
-				SignalAppearance(e,t,true,false);
+				SignalAppearance(e,t,true);
 		}
 
-		bool Faction::CheckPotentialDisappearance(const Objects::PWorldEntity&e, float&t, bool shareSensors)
+		void Faction::HandlePotentialDisappearance(const Objects::PWorldEntity&e, float&t, bool shareSensors)
 		{
 			bool stillVisible = shareSensors && IsAlliedWith(e->owner);
 
@@ -740,13 +740,12 @@ namespace Objects
 				{
 					count_t cover = CountOffGridCoverage(e->location.height, e->GetWorldPosition());
 					stillVisible = cover > 0;
-					if (stillVisible)
-						seeing[e].sightLevel = cover;
 				}
 				else
 					stillVisible = GridCanSee(e,t);
 			}
-			return !stillVisible;
+			if (!stillVisible)
+				SignalDisappearance(e,t);
 		}
 
 
@@ -782,16 +781,11 @@ namespace Objects
 				LogEvent(EventSignificance::PerformanceMeasurement,shared_from_this(),"Computed appearances in "+String(timer.GetSecondsSince(started)));
 				started = timer.Now();
 
-				static Ctr::Buffer<PWorldEntity>	disappear;
 
-				seeing.VisitAllKeys([this,&t,shareSensors](const PWorldEntity&e)
+				VisitVisibleForeignEntities(t,[this,&t,shareSensors](const PWorldEntity&e)
 				{
-					if (CheckPotentialDisappearance(e,t,shareSensors))
-						disappear << e;
+					HandlePotentialDisappearance(e,t,shareSensors);
 				});
-				foreach (disappear,s)
-					SignalDisappearance(*s,t);
-				disappear.Clear();
 				LogEvent(EventSignificance::PerformanceMeasurement,shared_from_this(),"Computed disappearances in "+String(timer.GetSecondsSince(started)));
 			}
 		}
@@ -854,124 +848,88 @@ namespace Objects
 		{
 			if (!e)
 				return false;
-			if ( e->owner.get() == this )
+			if ( SharingSensorWith(e->owner) )
 				return true;
-			if (!seeing.IsSet(e))
-			{
-				if (!RuntimeConfig::IsInAnyCommandPhase())	//if in command phase, times don't matter. only current state matters
-				{
-					float t1;
-					if (lostVisualAt.Query(e,t1))
-						return t <= t1;
-				}
-				return false;
-			}
-			float t0;
-			if (gainedVisualAt.Query(e,t0))
-				return t >= t0;
-			return true;
+			auto p = seeing.QueryPointer(e.get());
+			return p && p->VisibleAt(t);
 		}
 
 
-		bool		Faction::SignalAppearance(const PWorldEntity&e, float&t, bool cascade/*=true*/, bool stack/*=true*/, index_t incStackBy/*=1*/)
+
+		bool					Faction::SeeingReference::VisibleAt(float t) const
 		{
-			SeeingReference&ref = seeing.Set(e);
+			auto it = reverseVisibilityChange.upper_bound(-t);
+			if (it == reverseVisibilityChange.end())
+				return wasVisibleAtBeginning;
+			return it->second;
+		}
 
-			if (ref.sightLevel == 0 || stack)
+		void					Faction::SeeingReference::Appear(const PWorldEntity&e, float&t)
+		{
+			ASSERT__(!CurrentlyVisible());
+			LogEvent(EventSignificance::Debug,e.get(),"["+String(e.get())+"] Registering as newly visible at "+String(t));
+			if (RuntimeConfig::IsInAnyCommandPhase())
 			{
-				ref.sightLevel +=incStackBy;
-				LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Sight level increased to "+String(ref.sightLevel));
-
+				reference = e;
+				wasVisibleAtBeginning = true;
+				ASSERT__(CurrentlyVisible());
+				return;
 			}
-			else
+			t += timeEpsilon;
+			reverseVisibilityChange[-t] = true;
+			ASSERT__(CurrentlyVisible());
+			e->SyncTime(t,timeEpsilon);
+			reference = e;
+		}
+
+		void					Faction::SeeingReference::Disappear(const PWorldEntity&e, float&t)
+		{
+			ASSERT__(CurrentlyVisible());
+			LogEvent(EventSignificance::Debug,e.get(),"["+String(e.get())+"] Registering as newly invisible at "+String(t));
+			if (RuntimeConfig::IsInAnyCommandPhase())
 			{
-				LogEvent(EventSignificance::Debug,e.get(),this->GetLogName()+": Sight level already set to "+String(ref.sightLevel));
+				wasVisibleAtBeginning = false;
+				ASSERT__(!CurrentlyVisible());
+				return;
+			}
+
+			t += timeEpsilon;
+			reverseVisibilityChange[-t] = false;
+			ASSERT__(!CurrentlyVisible());
+			e->SyncTime(t,timeEpsilon);
+		}
+
+		bool		Faction::SignalAppearance(const PWorldEntity&e, float&t, bool cascade/*=true*/)
+		{
+			SeeingReference&ref = seeing.Set(e.get());
+			if (ref.CurrentlyVisible())
 				return false;
-			}
+			ref.reference = e;	//just in case
+			
+			ref.Appear(e,t);
 
+			LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Gained visual at time="+String(t));
 
-			if (ref.sightLevel == incStackBy)
-			{
-				LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Gained visual at time="+String(t));
+			if (cascade)
+				ApplicationInterface::SignalAppearanceToHostileFaction(shared_from_this(),e,t);
 
-				if (e->IsStructure())
-				{
-					PStructure s = To<Structure>::Cast(e);
-					t += timeEpsilon;
-				}
+			e->SyncTime(t,timeEpsilon);
 
-				float t0;
-				if (lostVisualAt.QueryAndUnset(e,t0))
-				{
-					//ASSERT_LESS_OR_EQUAL__(t0,t)
-					//we probably have to accept this happens
-					t = std::max(t0,t) + timeEpsilon;
-				}
-
-				PMobileEntity v;
-				PTower tower;
-				e->SyncTime(t,timeEpsilon);
-				LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Gained visual of entity, time updated to "+String(t));
-
-				ASSERT1__(gainedVisualAt.SetNew(e,t),ToString(e->id));
-
-				if (cascade)
-					ApplicationInterface::SignalAppearanceToHostileFaction(shared_from_this(),e,t);
-
-				e->SyncTime(t,timeEpsilon);
-
-				return true;
-			}
-			return false;
-			//ASSERT_EQUAL__(canSee.Count(),gainedVisualAt.Count());
+			return true;
 		}
 
 		void		Faction::SignalDisappearance(const PWorldEntity&e, float&t, bool force, bool signalConnectedClient/*=true*/)
 		{
-			SeeingReference*ref = seeing.QueryPointer(e);
+			SeeingReference*ref = seeing.QueryPointer(e.get());
+			if (!ref || !ref->CurrentlyVisible())
+				return;
+			ref->Disappear(e,t);
 
-			if (ref)
-			{
-				ref->sightLevel --;
-				LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Sight level reduced to "+String(ref->sightLevel));
-			}
-			else
-				LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": ref not set");
+			LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Lost visual at time="+String(t));
+			if (signalConnectedClient)
+				ApplicationInterface::SignalDisappearanceToHostileFaction(shared_from_this(),e,t);
 
-
-			if (ref && (!ref->sightLevel || force))
-			{
-				LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Lost visual at time="+String(t));
-				if (ref->sightLevel)
-				{
-					LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": WARNING: Visual loss was forced");
-				}
-
-				if (e->IsStructure())
-				{
-					PStructure s = To<Structure>::Cast(e);
-					t += timeEpsilon;
-				}
-
-				float t0;
-				if (gainedVisualAt.QueryAndUnset(e,t0))
-				{
-					t = std::max(t0,t);	//permissive. whatever. seriously
-					LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Lost visual, time updated to "+String(t));
-				}
-				PMobileEntity v;
-				PTower tower;
-				e->SyncTime(t,timeEpsilon);
-
-				ASSERT1__(lostVisualAt.SetNew(e,t-timeEpsilon),ToString(e->id));
-				seeing.Unset(e);
-				if (signalConnectedClient)
-					ApplicationInterface::SignalDisappearanceToHostileFaction(shared_from_this(),e,t);
-
-				e->SyncTime(t,timeEpsilon);
-			}
-			//ASSERT_EQUAL__(canSee.Count(),gainedVisualAt.Count());
-
+			e->SyncTime(t,timeEpsilon);
 		}
 
 		//void		Faction::ChangeSensory(const Grid::HighSetup::TVolumeDescriptor&desc, float t, short changeBy)
@@ -1046,10 +1004,9 @@ namespace Objects
 			if (!e || e->owner.get() == this)
 				return;
 			LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+ ": CheckGridVisibility at time "+String(timeAt));
-			if (seeing.IsSet(e))
+			if (seeing.IsSet(e.get()))
 			{
-				if (CheckPotentialDisappearance(e,timeAt,alliance->config.shareSensors))
-					SignalDisappearance(e,timeAt,true);
+				HandlePotentialDisappearance(e,timeAt,alliance->config.shareSensors);
 			}
 			else
 			{
@@ -1084,7 +1041,7 @@ namespace Objects
 								continue;
 							if (GridCanSee(e,t))
 							{
-								if (SignalAppearance(e,t,true,false) && newContacts)
+								if (SignalAppearance(e,t,true) && newContacts)
 									newContacts->Append(e);
 							}
 						}
@@ -1148,30 +1105,14 @@ namespace Objects
 
 			if (!knownWorld.SensoryIsInvalid())
 			{
-				static Ctr::Buffer<PWorldEntity>	disappear;
-
 				bool offGrid = sensorHeight > Grid::CellStack::TopHeight;
 
-				this->seeing.VisitAllKeys([this,offGrid, sensor,&t](const PWorldEntity&s)
+				this->VisitVisibleForeignEntities(t,[this,offGrid, sensor,&t](const PWorldEntity&s)
 				{
 					if (s->IsAboveGrid() != offGrid)
 						return;
-					if (s->IsAboveGrid())
-					{
-						if (sensor.Contains(s->location))
-						{
-							disappear << s;
-						}
-					}
-					else
-						if (!GridCanSee(s,t))
-						{
-							disappear << s;
-						}
+					HandlePotentialDisappearance(s,t,SharingSensorWith(s->owner));
 				});
-				foreach (disappear,s)
-					SignalDisappearance(*s,t);
-				disappear.Clear();
 			}
 		}
 
