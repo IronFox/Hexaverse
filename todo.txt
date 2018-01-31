@@ -1,6 +1,3 @@
-increase raptor firing range
-raptors must fire during motion phase, liotherwise other planes can use ground hopping to avoid ever being in the air during attack phase
-
 make alliances invite-based
 
 put online manual link in main menu
@@ -187,6 +184,8 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+raptors must fire during motion phase, otherwise other planes can use ground hopping to avoid ever being in the air during attack phase
+increase raptor firing range
 fixed: allied drone vanishes on move, causing client crashes
 increase health research rate
 remove regular connectors
