@@ -898,7 +898,7 @@ namespace Receiver
 			timestamp.rightNow = true;
 
 			LogEvent(EventSignificance::Debug,"Sending known foreign contacts to "+ peer.ToString());
-			client->faction->seeing.VisitAllKeys([&peer,client,timestamp](const Objects::PWorldEntity&e)
+			client->faction->VisitVisibleForeignEntities([&peer,client,timestamp](const Objects::PWorldEntity&e)
 			{
 				LogEvent(EventSignificance::Debug,e.get(),"Sending contact (@"+String(e.get())+")");
 				if (e->IsDeadOrGhost())

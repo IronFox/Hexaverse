@@ -204,10 +204,6 @@ namespace Evolver
 		void	BeginRoundProcessing()
 		{
 			Objects::Compound::lastDisabled = nullptr;
-			Objects::ForeachFaction([](const Objects::PFaction&f)
-			{
-				f->DropPerRoundData();
-			});
 
 
 
@@ -455,6 +451,11 @@ namespace Evolver
 
 	/*virtual override*/ void Core::FinishRoundProcessing()
 	{
+		Objects::ForeachFaction([](const Objects::PFaction&f)
+		{
+			f->DropPerRoundData();
+		});
+
 		RuntimeConfig::roundNumber.main++;
 		
 		Objects::Statistics::SignalNewRoundBegin(true);
