@@ -13,6 +13,8 @@ v0.7.3
 	> Clipped water is now rendered flat atop underlying solid, non-clipped terrain blocks
 	> Backspace/escape now also clear out any movement option markers.
 	> Removed visual connections between neighboring buildings unless they have meaning.
+	> Increased attack range of raptor planes.
+	> Slightly increased sensor range of sensor drones.
 	> Increased the amount of health gained from research.
 	* Fixed crashes in bug reporter when trying to upload very long log files.
 	* Fixed handling of crashes in bug reporter.
