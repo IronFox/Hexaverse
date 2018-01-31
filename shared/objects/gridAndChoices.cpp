@@ -78,7 +78,7 @@ namespace Objects
 
 			source.owner->VisitVisibleForeignEntities([&source,&candidates](const PWorldEntity&e)
 			{
-				if (e->IsIndestructible())
+				if (e->IsIndestructible() || source.owner->IsAlliedWith(e->owner))
 					return;
 				candidates << e;
 			});
