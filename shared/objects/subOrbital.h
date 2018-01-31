@@ -55,6 +55,7 @@ namespace Objects
 				*/
 				bool				AttackNext(Grid::LCellIdI target, bool autoTarget);
 				bool				AttackFirst(Grid::LCellIdI target, bool autoTarget);
+				virtual bool		WouldAttack(const PWorldEntity&e, TurretBase::TargetChoice&outTarget, float entityTime) {return false;}
 			#endif
 
 			//new overridables:
@@ -220,6 +221,7 @@ namespace Objects
 			#ifndef CLIENT
 				//Satellite overrides:
 				virtual bool		ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget, TargetChoice&outExtResult) const override;
+				virtual bool		WouldAttack(const PWorldEntity&e, TurretBase::TargetChoice&outTarget, float entityTime) override;
 			#endif
 
 
@@ -235,6 +237,7 @@ namespace Objects
 			#ifndef NO_HIBERNATION
 				virtual int			GetUplinkTraffic() const override {return 4;}
 			#endif
+			virtual bool			IsSentry() const override {return true;}
 
 			//Hibernating overrides:
 			#ifndef NO_HIBERNATION

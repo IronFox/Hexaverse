@@ -648,6 +648,26 @@ namespace Objects
 								}
 							}
 						#endif
+						foreach (f->planes, _p)
+						{
+							auto p = _p->lock();
+							if (p && p->WouldAttack(_this,choice,entityTime))
+							{
+								if (p->AttackNext(choice.cellTarget,true))
+								{
+									LogEvent(EventSignificance::Debug,p.get(),"Auto-targeting moving "+GetName()+" (located at "+ToString(location)+", =>"+ToString(Grid::ToWorld(location))+",sys="+ToString(system.w.xyz)+") via closest viable attack target "+ToString(choice.cellTarget)+" at t="+String(entityTime));
+									LogEvent(EventSignificance::Important,p.get(),"Auto-targeting moving "+GetNiceName());
+
+									p->Attack(entityTime);
+									LogEvent(EventSignificance::Debug,p.get(),"t is now "+String(entityTime));
+									if (IsDeadOrGhost())
+									{
+										doBreak = true;
+										return;
+									}
+								}
+							}
+						}
 					}
 		
 					if (!doBreak)

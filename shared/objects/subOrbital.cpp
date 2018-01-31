@@ -415,6 +415,22 @@ namespace Objects
 				return TurretBase::ExtCanHit(owner,TrajectoryEndPoint( attackFrom ),TrajectoryEndPoint( attackTarget ),outExtResult);
 			}
 
+			/*virtual override*/ bool		Raptor::WouldAttack( const PWorldEntity&e, TurretBase::TargetChoice&outTarget, float entityTime)
+			{
+				if (!HasAmmoForShot() || empDamageLevel != 0 || IsHibernating())
+				{
+					//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
+					return false;
+				}
+
+				return		//owner->canSee.IsSet(target)
+						/*&&	*/turret->CanAttack() 
+						&& entityTime <= entityTime 
+						&& CountPossibleAttacks() > 0 
+						&& ExtCanHit(location,e->location,outTarget);
+			}
+
+
 
 
 			/*virtual override*/ bool	Plane::AttackNext(Grid::LCellIdI target, bool autoTarget)
