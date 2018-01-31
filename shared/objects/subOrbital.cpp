@@ -417,7 +417,7 @@ namespace Objects
 
 			/*virtual override*/ bool		Raptor::WouldAttack( const PWorldEntity&e, TurretBase::TargetChoice&outTarget, float entityTime)
 			{
-				if (!HasAmmoForShot() || empDamageLevel != 0 || IsHibernating())
+				if (!HasAmmoForShot() || empDamageLevel != 0 || IsHibernating() || owner->IsAlliedWith(e->owner))
 				{
 					//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
 					return false;
