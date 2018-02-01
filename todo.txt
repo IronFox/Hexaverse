@@ -1,8 +1,6 @@
 make alliances invite-based
 
-put online manual link in main menu
 put change log link in main menu
-exit fullscreen mode before launching remote control console
 exit fullscreen mode on focus loss?
 
 improve dig symbol
@@ -184,6 +182,8 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+put online manual link in main menu
+exit fullscreen mode before launching remote control console
 raptors must fire during motion phase, otherwise other planes can use ground hopping to avoid ever being in the air during attack phase
 increase raptor firing range
 fixed: allied drone vanishes on move, causing client crashes

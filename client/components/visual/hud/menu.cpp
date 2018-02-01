@@ -362,6 +362,7 @@ namespace Menu
 		game->AddCommand("Show statistics", Statistics::Show,[](){return Network::amOnline && RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame;});
 		game->AddCommand("Launch Control Console",[]()
 		{
+			SetFullScreen(false);
 			MonitoredProcess	process(false);
 			process.Start("../ControlConsole/","ControlConsole.exe",PathString(" -p "+String(Network::connectionBasePort)));	//start and abandon
 		},[](){return Network::amOnline && Network::client.IsLocalhost();});
@@ -372,6 +373,12 @@ namespace Menu
 	{
 		help = Menu::Create();
 		help->Setup(0.3f,"Help",true);
+		help->AddCommand("View Online Manual",[]()
+		{
+			SetFullScreen(false);
+			system("start https://www.hexaverse.net/html.php");
+		});
+
 		help->AddCommand("Show Basic Controls",
 			[]()
 			{
