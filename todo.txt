@@ -1,3 +1,10 @@
+check sensor appearance of sensor drone
+
+parallelize sensor repainting (multiple sensors in parallel)
+benchmark digging operation with many entities
+
+client should be able to handle double registering server entities (should cut connection though)
+
 make alliances invite-based
 
 put change log link in main menu
