@@ -89,7 +89,7 @@ namespace Receiver
 
 	}
 
-	void	AllianceJoinRequest(Protocol::AllianceJoinRequest&req, TCP::Peer&peer)
+	void	AllianceInvite(Protocol::AllianceInvite&invite, TCP::Peer&peer)
 	{
 		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 		if (!client)
@@ -108,98 +108,73 @@ namespace Receiver
 			return;
 		}
 
-
-		if (req.allianceID.IsEmpty())
+		auto alliance = Objects::Alliance::FindByID(invite.allianceID);
+		if (!alliance)
 		{
-			if (RuntimeConfig::IsInAnyCommandPhase())
-			{
-				LogEvent(EventClass::Preset::uncommon,peer,"Left alliance");
-				if (client->faction->alliance->CountLivingMembers() == 1)
-					return;	//nothing to do
-
-				Objects::PAlliance a {new Objects::Alliance(TUniqueID::New())};
-			
-				client->faction->ChangeAlliance(a);
-			}
-			else
-			{
-				LogEvent(EventClass::Preset::commandRejected,peer,"Cannot change alliances right now. Must be in a command phase");
-			}
+			LogEvent(EventClass::Preset::commandRejected,"Can't find alliance "+ToString(invite.allianceID)+" for invite");
 			return;
 		}
-
-		Objects::PAlliance target = Objects::Alliance::FindByID(req.allianceID);
-		if (target == nullptr)
+		auto faction = Objects::Faction::FindByID(invite.factionID);
+		if (!faction)
 		{
-			LogEvent(EventClass::Preset::commandRejected,peer,"Requested Join request rejected, alliance does not exist");
+			LogEvent(EventClass::Preset::commandRejected,"Can't find faction "+ToString(invite.factionID)+" for alliance invite");
 			return;
 		}
-		if (client->faction->alliance == target)
+		if (faction->alliance == alliance)
 		{
-			LogEvent(EventClass::Preset::commandRejected,peer,"Already joined that alliance");
+			LogEvent(EventClass::Preset::commandRejected,peer,"Unable to handle faction invitation of "+faction->GetLogName()+". Already a member of alliance "+ToString(alliance->id));
 			return;
 		}
-
-		TUniqueID ids[] = {client->faction->id, target->id };
-
-		if (req.abortJoining)
+		switch (invite.type)
 		{
-			Game::PVote v = Game::Vote::FindConcerning(ArrayRef<TUniqueID>( ids,2));
-			if (v != nullptr)
-			{
-				v->Cancel();
-//				LogEvent(EventClass( EventSignificance::Important, EventFlavor::Neutral),client->faction,"Canceled vote about joining alliance "+target->id.ToNiceString());
-			}
-		}
-		else
-		{
-			const String niceTask = target->CountLivingMembers() > 1 ? "joining alliance "+target->id.ToNiceString() : "creating an alliance with "+target->GetMember(0)->GetName();
-
-			Game::PVote v = Game::Vote::CreateNew(ArrayRef<TUniqueID>( ids,2),
-				"Allow "+client->faction->name+ " to join your alliance?", 
-				120,
-				AllianceScope(target),
-				[niceTask](const Game::PVote&v, const Protocol::VoteResult&rs)
+			case Protocol::AllianceInviteType::Cancel:
+				if (client->faction->alliance != alliance)
 				{
-					auto a = Objects::Alliance::FindByID(v->concerning[1]);
-					auto f = Objects::Faction::FindByID(v->concerning[0]);
-					if (f)
-					{
-						if (!a)
-						{
-							LogEvent(EventClass(EventSignificance::Important,EventFlavor::Loss), f,"Vote for "+niceTask+" failed since targeted alliance no longer exists");
-						}
-						else
-							switch (rs.resultType)
-							{
-								case Protocol::VoteResultType::Passed:
-									LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain), f,"Vote passed. Admission to alliance "+a->id.ToNiceString()+" granted");
-									f->ChangeAlliance(a);
-								break;
-								case Protocol::VoteResultType::Rejected:
-									LogEvent(EventClass(EventSignificance::Important,EventFlavor::Loss), f,"Admission to alliance "+a->id.ToNiceString()+" has been rejected");
-								break;
-								case Protocol::VoteResultType::TimedOut:
-									LogEvent(EventClass(EventSignificance::Important,EventFlavor::Loss), f,"Vote for "+niceTask+" has timed out");
-								break;
-								case Protocol::VoteResultType::Canceled:
-									LogEvent(EventClass(EventSignificance::Important,EventFlavor::Neutral), f,"Vote for "+niceTask+" was canceled");
-								break;
-							}
-					}
+					LogEvent(EventClass::Preset::commandRejected,peer,"Unable to invite faction. You are not member of alliance "+ToString(alliance->id));
+					return;
 				}
-			);
-
-
-			if (v)
-			{
-				LogEvent(EventSignificance::Debug,client->faction,"Started vote on joining alliance "+ToString(target->id));
-				LogEvent(EventClass( EventSignificance::Important, EventFlavor::Gain),client->faction,"Started vote on "+niceTask);
-				v->quorum = Game::Vote::Quorum::TwoThirds;
-				v->votesToPass = Game::Vote::VotesToPass::SimpleMajority;
-			}
-			else
-				LogEvent(EventClass( EventSignificance::Important, EventFlavor::Loss),client->faction,"There already exists a vote on you "+niceTask+". Either it is still active or has been rejected");
+				LogEvent(EventClass(EventSignificance::Important,EventFlavor::Loss),peer,"Canceled invitation of "+faction->GetName());
+				alliance->CancelInvite(faction);
+			break;
+			case Protocol::AllianceInviteType::Invite:
+				if (client->faction->alliance != alliance)
+				{
+					LogEvent(EventClass::Preset::commandRejected,peer,"Unable to cancel faction invitation. You are not member of alliance "+ToString(alliance->id));
+					return;
+				}
+				LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain),peer,"Invited "+faction->GetName());
+				alliance->Invite(faction);
+			break;
+			case Protocol::AllianceInviteType::Accept:
+				if (client->faction != faction)
+				{
+					LogEvent(EventClass::Preset::unexpectedBehavior,peer,"Unable to accept alliance invitation. You are not the specified faction");
+					return;
+				}
+				if (!alliance->HaveInvited(faction))
+				{
+					LogEvent(EventClass::Preset::commandRejected,peer,"Unable to accept alliance "+ToString(alliance->id)+" invitation. There is no invitation");
+					return;
+				}
+				LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain),peer,"Accepted invite to alliance "+alliance->id.ToNiceString());
+				faction->ChangeAlliance(alliance);
+			break;
+			case Protocol::AllianceInviteType::Reject:
+				if (client->faction != faction)
+				{
+					LogEvent(EventClass::Preset::unexpectedBehavior,peer,"Unable to reject alliance invitation. You are not the specified faction");
+					return;
+				}
+				if (!alliance->HaveInvited(faction))
+				{
+					LogEvent(EventClass::Preset::commandRejected,peer,"Unable to reject alliance "+ToString(alliance->id)+" invitation. There is no invitation");
+					return;
+				}
+				LogEvent(EventClass(EventSignificance::Important,EventFlavor::Loss),peer,"Rejected invite to alliance "+alliance->id.ToNiceString());
+				alliance->CancelInvite(faction);
+			break;
+			default:
+				LogEvent(EventClass::Preset::internalError,"Unexpected invite type for alliance "+ToString(alliance->id)+" and faction "+faction->GetLogName());
 		}
 	}
 }
@@ -288,7 +263,7 @@ namespace Channels
 	DECLARE_OBJECT_SENDER(VoteCreation);
 	DECLARE_OBJECT_SENDER(VoteResult);
 	DECLARE_FACTION_CHANNEL(ClientVote);
-	DECLARE_FACTION_CHANNEL(AllianceJoinRequest);
+	DECLARE_FACTION_CHANNEL(AllianceInvite);
 	DECLARE_FACTION_CHANNEL(AllianceConfigChange);
 	DECLARE_FACTION_CHANNEL(ChatMessage);
 	
@@ -460,6 +435,14 @@ namespace Receiver
 		{
 			Game::Network::SendStatisticsTo(peer,f);
 		},true);
+
+		Objects::Alliance::Foreach([&peer](const Objects::PAlliance&a)
+		{
+			a->VisitAllInvitedFactions([&peer,&a](const Objects::PFaction&f)
+			{
+				Channels::AllianceInvite.SendTo(peer,Protocol::AllianceInvite(a->id,f->id,Protocol::AllianceInviteType::Invite));
+			});
+		});
 
 		if (!Game::winner.expired())
 			Channels::winningFaction.SendTo(peer,Game::winner.lock()->id);
@@ -959,6 +942,15 @@ namespace Receiver
 		LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ),faction->name+" connected");
 
 		SendSessionConfigTo(peer,client->faction);
+
+
+		Objects::Alliance::Foreach([&peer](const Objects::PAlliance&a)
+		{
+			a->VisitAllInvitedFactions([&peer,&a](const Objects::PFaction&f)
+			{
+				Channels::AllianceInvite.SendTo(peer,Protocol::AllianceInvite(a->id,f->id,Protocol::AllianceInviteType::Invite));
+			});
+		});
 
 		Game::Vote::AdvertiseAllToNewlyConnectedPeer(client->faction,peer);
 		
@@ -2039,7 +2031,7 @@ namespace Receiver
 				
 				//Objects::Tick();
 				Network::PClient client = To<Network::Client>::Cast(peer.attachment);
-				if (client && client->faction && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && !client->wantNewRound)
+				if (client && client->faction && RuntimeConfig::IsInAnyCommandPhase() && !client->wantNewRound)
 				{
 					client->wantNewRound = true;
 					LogEvent(EventSignificance::Common,peer,"Requested new round");
@@ -2070,6 +2062,15 @@ namespace Receiver
 			break;
 			case Protocol::ChannelID::EndConfigurationMode:
 				ConfigurationMode::End();
+			break;
+			case Protocol::ChannelID::LeaveAlliance:
+				Network::PClient client = To<Network::Client>::Cast(peer.attachment);
+				if (client && client->faction && RuntimeConfig::IsInAnyCommandPhase() && client->faction->alliance->CountLivingMembers() > 1)
+				{
+	                LogEvent(EventClass::Preset::uncommon,peer,"Left alliance");
+					Objects::PAlliance a {new Objects::Alliance(TUniqueID::New())};
+					client->faction->ChangeAlliance(a);
+				}
 			break;
 		}
 	}

@@ -143,7 +143,7 @@ namespace Channels
 	DECLARE_OBJECT_SENDER(VoteCreation);
 	DECLARE_OBJECT_SENDER(VoteResult);
 	DECLARE_FACTION_CHANNEL(ClientVote);
-	DECLARE_FACTION_CHANNEL(AllianceJoinRequest);
+	DECLARE_FACTION_CHANNEL(AllianceInvite);
 	DECLARE_FACTION_CHANNEL(AllianceConfigChange);
 	DECLARE_FACTION_CHANNEL(ChatMessage);
 

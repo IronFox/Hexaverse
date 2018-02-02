@@ -1331,6 +1331,36 @@ namespace Network
 			Vote::Create(vote.voteID,vote.remainingSeconds,vote.phrase);
 		}
 
+		void	AllianceInvite(Protocol::AllianceInvite&invite)
+		{
+			auto alliance = Objects::Alliance::FindByID(invite.allianceID);
+			auto faction = Objects::Faction::FindByID(invite.factionID);
+			if (!alliance)
+			{
+				LogEvent(EventClass::Preset::internalError,"Can't find alliance "+ToString(invite.allianceID)+" for invite");
+				return;
+			}
+			if (!faction)
+			{
+				LogEvent(EventClass::Preset::internalError,"Can't find faction "+ToString(invite.factionID)+" for alliance invite");
+				return;
+			}
+			switch (invite.type)
+			{
+				case Protocol::AllianceInviteType::Invite:
+					alliance->Invite(faction);
+				break;
+				case Protocol::AllianceInviteType::Cancel:
+				case Protocol::AllianceInviteType::Accept:
+				case Protocol::AllianceInviteType::Reject:
+					alliance->CancelInvite(faction);
+				break;
+				default:
+					LogEvent(EventClass::Preset::internalError,"Unexpected invite type for alliance "+ToString(alliance->id)+" and faction "+faction->GetLogName());
+			}
+			HUD::FactionTable::Update();
+		}
+
 		void	VoteResult(Protocol::VoteResult&result)
 		{
 			auto v = Vote::FindByID(result.voteID);
@@ -1439,7 +1469,7 @@ namespace Network
 		DECLARE_CHANNEL(VoteCreation);
 		DECLARE_CHANNEL(VoteResult);
 		DECLARE_OBJECT_SENDER(ClientVote);
-		DECLARE_OBJECT_SENDER(AllianceJoinRequest);
+		DECLARE_CHANNEL(AllianceInvite);
 		DECLARE_OBJECT_SENDER(ChatMessage);
 
 	}
@@ -1658,6 +1688,7 @@ namespace Network
 		client.InstallChannel(Channels::clientFactionResponse);
 		client.InstallChannel(Channels::MyFaction);
 		client.InstallChannel(Channels::AllianceConfigChange);
+		client.InstallChannel(Channels::AllianceInvite);
 		client.InstallChannel(Channels::VoteCreation);
 		client.InstallChannel(Channels::VoteResult);
 

@@ -96,6 +96,12 @@ namespace ApplicationInterface
 	*/
 	void	SignalAllianceMembershipChange(const Objects::PFaction&);
 
+	/**
+	Signals a change in invite configuration of the specified faction to the specified alliance.
+	Triggers a transmission to clients.
+	*/
+	void	SignalAllianceInvite(const Objects::PAlliance&, const Objects::PFaction&,BYTE type);
+
 
 #endif
 }

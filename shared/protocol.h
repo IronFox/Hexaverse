@@ -257,7 +257,7 @@ namespace Protocol
 			T1		NAME1;\
 			T2		NAME2;\
 			NAME()	{}\
-			NAME(const T0&a, const T1&b, const T2&c):NAME0(a),NAME1(b),NAME2(c){}\
+			NAME(const T0&NAME0, const T1&NAME1, const T2&NAME2):NAME0(NAME0),NAME1(NAME1),NAME2(NAME2){}\
 			friend void Deserialize(IReadStream&s, NAME&v)\
 			{\
 				using Serialization::Deserialize;\
@@ -1102,9 +1102,22 @@ namespace Protocol
 		, NETA(TUniqueID), memberFactions
 	)
 
-	NETSTRUCT2(AllianceJoinRequest
+
+	namespace AllianceInviteType
+	{
+		enum T
+		{
+			Invite,
+			Cancel,
+			Accept,
+			Reject
+		};
+	}
+
+	NETSTRUCT3(AllianceInvite
 		, TUniqueID, allianceID
-		, bool, abortJoining
+		, TUniqueID, factionID
+		, BYTE, type
 	)
 
 	namespace VoteResultType
@@ -1482,7 +1495,9 @@ namespace Protocol
 			ChatMessage,		// c2s: ChatMessage
 
 			AllianceConfigChange,	//both: AllianceConfigChange
-			AllianceJoinRequest,	//c2s: AllianceJoinRequest
+			AllianceInvite,		//both: AllianceInvite
+			LeaveAlliance,		//c2s: <signal>
+
 
 			VoteCreation,		//s2c: VoteCreation
 			VoteResult,			//s2c: VoteResult

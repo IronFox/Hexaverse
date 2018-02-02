@@ -161,6 +161,7 @@ namespace Objects
 		/**/				Alliance(const TUniqueID&id);
 		virtual				~Alliance();
 		void				ForeachMember(const std::function<void(const PFaction&)>&f,bool livingOnly=true)	const;
+		void				VisitMembers(const std::function<void(const PFaction&)>&f,bool livingOnly=true)	const	{ForeachMember(f,livingOnly);}
 		void				Leave(const PFaction&f);
 		void				Leave(Faction*f);
 		void				Join(const PFaction&f);
@@ -172,6 +173,12 @@ namespace Objects
 			TNexusStats		GetNexusStats() const;
 			UINT64			GetWinningScore() const;
 		#endif
+
+		void				Invite(const PFaction&f);
+		void				CancelInvite(const PFaction&f);
+		bool				HaveInvited(const PFaction&f);
+		void				VisitAllInvitedFactions(const std::function<void(const PFaction&)>&f, bool livingOnly=true) const;
+
 		void				UpdateConfiguration(const TConfig&);
 		static PAlliance	FindByID(const TUniqueID&id ){ WAlliance rs; all.Query(id,rs); return rs.lock();}
 		static void			Foreach(const std::function<void(const PAlliance&)>&visitor);
@@ -185,11 +192,11 @@ namespace Objects
 			Faction*	rawPointer;
 		};
 
-		Buffer0<TMember>						members;
+		Buffer0<TMember>						members,invited;
 		static HashTable<TUniqueID,WAlliance>	all;
 
-		void		RefreshSensors(bool force);
-
+		void				RefreshSensors(bool force);
+		index_t				FindInviteOf(const Objects::PFaction&f) const;
 	};
 
 

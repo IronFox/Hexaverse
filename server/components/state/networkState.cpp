@@ -25,6 +25,11 @@ void TerminateNow(bool isMain);
 
 namespace ApplicationInterface
 {
+	void	SignalAllianceInvite(const Objects::PAlliance&a, const Objects::PFaction&f,BYTE type)
+	{
+		Channels::AllianceInvite.SendTo(Network::server,Protocol::AllianceInvite(a->id,f->id,type),Channels::Level::Faction);
+	}
+
 	void	SignalAllianceMembershipChange(const Objects::PFaction&owner)
 	{
 		Channels::identifyFaction.SendTo(::Network::server,Network::Identify(owner),Channels::Level::Faction);
@@ -450,7 +455,7 @@ namespace Network
 		server.InstallChannel(Channels::loadPlanetByName);
 		server.InstallChannel(Channels::tutorialAt);
 
-		server.InstallChannel(Channels::AllianceJoinRequest);
+		server.InstallChannel(Channels::AllianceInvite);
 		server.InstallChannel(Channels::ClientVote);
 		server.InstallChannel(Channels::AllianceConfigChange);
 
@@ -459,6 +464,7 @@ namespace Network
 		server.OpenSignalChannel(Protocol::ChannelID::Ping,0);
 		server.OpenSignalChannel(Protocol::ChannelID::RequestEverything,(UINT32)UserLevel::Spectator);
 		server.OpenSignalChannel(Protocol::ChannelID::EndConfigurationMode,(UINT32)UserLevel::PlanetConfigurator);
+		server.OpenSignalChannel(Protocol::ChannelID::LeaveAlliance,(UINT32)UserLevel::CommonFaction);
 		
 		server.onSignal = Receiver::OnSignal;
 		server.SetAsync(false);
