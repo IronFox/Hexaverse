@@ -1,4 +1,9 @@
+check faction death (conditional or explicit)
+
 check sensor appearance of sensor drone
+
+
+replace cannon towers with rocket towers of similar range
 
 parallelize sensor repainting (multiple sensors in parallel)
 benchmark digging operation with many entities
@@ -15,7 +20,6 @@ improve dig symbol
 road should not build bridges across liquids? switch mode automatically? reroute?
 
 
-"Nen transporter mit nem Schweren Terraformer beladen und beim aufsteigen stürzt der client kommentarlos ab :/" - can't reproduce
 
 
 hide selected sensor range sphere?
