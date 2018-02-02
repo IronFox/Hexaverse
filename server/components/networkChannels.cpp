@@ -143,6 +143,35 @@ namespace Receiver
 					return;
 				}
 				LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain),peer,"Invited "+faction->GetName());
+
+				{
+					Network::PClient cother;
+					if (Network::playerMap.Query(faction,cother))
+					{
+						String members;
+						if (alliance->CountLivingMembers() > 1)
+						{
+							Buffer0<String> names;
+							alliance->VisitMembers([&names](const Objects::PFaction&f){names << f->GetName();});
+							members = " ("+implode(',',names.ToRef())+")";
+						}
+						LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain),cother->peer.lock(), "You have been invited into alliance "+ToString(alliance->id)+" by "+client->faction->GetName()+members);
+					}
+					if (alliance->CountLivingMembers() > 1)
+					{
+						alliance->VisitMembers([&client,&faction](const Objects::PFaction&f)
+						{
+							if (f == client->faction)
+								return;
+							Network::PClient cother;
+							if (Network::playerMap.Query(f,cother))
+							{
+								LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain),cother->peer.lock(),client->faction->GetName()+ " invited "+faction->GetName()+" into your alliance");
+							}
+						});
+
+					}
+				}
 				alliance->Invite(faction);
 			break;
 			case Protocol::AllianceInviteType::Accept:

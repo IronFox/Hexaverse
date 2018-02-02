@@ -15,6 +15,7 @@ v0.7.3
 	> Removed visual connections between neighboring buildings unless they have meaning.
 	> Increased the amount of health gained from research.
 	> Added link to online manual to help menu.
+	> Replaced alliance join requests with an invite-based system.
 	* Fixed crashes in bug reporter when trying to upload very long log files.
 	* Fixed handling of crashes in bug reporter.
 	* Fixed confirmation dialogs sometimes not allowing to actually press the confirm button (game wrongly assumed to be between rounds).
