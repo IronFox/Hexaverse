@@ -1,11 +1,11 @@
 
 surveyor tower tremor
 check why nickname was exported in steam build
-check sensor appearance of sensor drone
 
 
 replace cannon towers with rocket towers of similar range
 
+dedicated server should start from control console, which is invisible and closed upon closing control console
 
 
 parallelize sensor repainting (multiple sensors in parallel)
@@ -196,6 +196,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+check sensor appearance of sensor drone
 larger clip range
 put change log link in main menu
 make alliances invite-based
