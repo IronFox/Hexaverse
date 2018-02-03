@@ -335,7 +335,7 @@ TurretConfig =
 		Weight = 11,	--defines movement speed: 100/Weight
 		HealthMultiplier = 4,	--directly equals health
 		ScanningRange = 11,
-		GroundScanningRange = 10,
+		GroundScanningRange = 11,
 		GroundScannerPenetration = 2,
 		IsUnlocked = true,
 	},}
