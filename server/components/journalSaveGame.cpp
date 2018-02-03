@@ -2004,7 +2004,7 @@ namespace Journal
 
 	void	Round::RegisterProductionJobStart(bool apply, const Objects::PWorldEntity&e, const Objects::PMobileEntityProducer&asProducer, const Objects::EntityType&t)
 	{
-		if (apply && asProducer->queue.GetLength() >= Objects::MaxProductionTasks)
+		if (apply && asProducer->queue.GetLength() >= Objects::MaxTasks)
 		{
 			LogEvent(EventClass::Preset::commandRejected,e.get(),"Job denied: Max production jobs reached");
 			return;

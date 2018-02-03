@@ -258,7 +258,7 @@ namespace Protocol
 			T1		NAME1;\
 			T2		NAME2;\
 			NAME()	{}\
-			NAME(const T0&a, const T1&b, const T2&c):NAME0(a),NAME1(b),NAME2(c){}\
+			NAME(const T0&NAME0, const T1&NAME1, const T2&NAME2):NAME0(NAME0),NAME1(NAME1),NAME2(NAME2){}\
 			friend void Deserialize(IReadStream&s, NAME&v)\
 			{\
 				using Serialization::Deserialize;\
@@ -970,7 +970,7 @@ namespace Protocol
 		, Objects::EntityType, type
 		, TUniqueID, id
 	)
-	typedef NetArray<ProductionTask,Objects::MaxProductionTasks> ProductionTasks;
+	typedef NetArray<ProductionTask,Objects::MaxTasks> ProductionTasks;
 	NETSTRUCT3(ProducerState
 		, ProductionTasks, productionTasks
 		, UINT32, productionDone
@@ -1103,9 +1103,22 @@ namespace Protocol
 		, NETA(TUniqueID), memberFactions
 	)
 
-	NETSTRUCT2(AllianceJoinRequest
+
+	namespace AllianceInviteType
+	{
+		enum T
+		{
+			Invite,
+			Cancel,
+			Accept,
+			Reject
+		};
+	}
+
+	NETSTRUCT3(AllianceInvite
 		, TUniqueID, allianceID
-		, bool, abortJoining
+		, TUniqueID, factionID
+		, BYTE, type
 	)
 
 	namespace VoteResultType
@@ -1179,7 +1192,7 @@ namespace Protocol
 	If the path is found to be inapplicable during computation phases, an automatically determined path to the last given node is computed and applied, then dropped.
 	Path must always be of at least length 1
 	*/
-	typedef NetArray<Grid::LCellIdI,Objects::MaxFocusCount>	DirectPath;
+	typedef NetArray<Grid::LCellIdI,Objects::MaxDirectPathLength>	DirectPath;
 	NETSTRUCT4(EntityDirectCommand
 		, NET(TUniqueID), id
 		, NET(UINT16),	mode
@@ -1483,7 +1496,9 @@ namespace Protocol
 			ChatMessage,		// c2s: ChatMessage
 
 			AllianceConfigChange,	//both: AllianceConfigChange
-			AllianceJoinRequest,	//c2s: AllianceJoinRequest
+			AllianceInvite,		//both: AllianceInvite
+			LeaveAlliance,		//c2s: <signal>
+
 
 			VoteCreation,		//s2c: VoteCreation
 			VoteResult,			//s2c: VoteResult

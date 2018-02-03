@@ -69,6 +69,61 @@ namespace Objects
 		});
 	}
 
+	void		Alliance::Invite(const PFaction&f)
+	{
+		if (HaveInvited(f))
+			return;
+		invited.Append().rawPointer = f.get();
+		invited.Last().wFaction = f;
+		LogEvent(EventSignificance::Common,"Alliance "+ToString(id)+" invited faction "+f->GetLogName());
+		
+		#ifndef CLIENT
+			ApplicationInterface::SignalAllianceInvite(shared_from_this(), f, Protocol::AllianceInviteType::Invite);
+		#endif
+	}
+
+	void		Alliance::CancelInvite(const PFaction&f)
+	{
+		const index_t at = FindInviteOf(f);
+		if (at == InvalidIndex)
+			return;
+		invited.Erase(at);
+		LogEvent(EventSignificance::Common,"Alliance "+ToString(id)+" invite for faction "+f->GetLogName()+" canceled");
+		
+		#ifndef CLIENT
+			ApplicationInterface::SignalAllianceInvite(shared_from_this(), f, Protocol::AllianceInviteType::Cancel);
+		#endif
+	}
+
+	bool		Alliance::HaveInvited(const PFaction&f)
+	{
+		return FindInviteOf(f) != InvalidIndex;
+	}
+
+	index_t		Alliance::FindInviteOf(const Objects::PFaction&f) const
+	{
+		foreach (invited,inv)
+		{
+			if (inv->rawPointer == f.get())
+				return inv - invited.pointer();
+		}
+		return InvalidIndex;
+	}
+
+	void		Alliance::VisitAllInvitedFactions(const std::function<void(const PFaction&)>&visitor, bool livingOnly/*=true*/) const
+	{
+		foreach (invited,m)
+		{
+			PFaction f = m->wFaction.lock();
+			#ifndef CLIENT
+				if (f->isDead && livingOnly)
+					continue;
+			#endif
+			visitor(f);
+		}
+	}
+
+
 
 	void		Alliance::ForeachMember(const std::function<void(const PFaction&)>&visitor, bool livingOnly)	const
 	{
@@ -85,6 +140,8 @@ namespace Objects
 
 	count_t		Alliance::CountLivingMembers() const
 	{
+		if (!this)
+			return 0;
 		#ifndef CLIENT
 			count_t cnt  = 0;
 			foreach (members,m)
@@ -183,13 +240,28 @@ namespace Objects
 	{
 		ASSERT__(f);
 		ASSERT__(!IsMember(f));
-		LogEvent(EventSignificance::Common,f, "@"+String((const void*)f.get())+ " Joined alliance "+ToString(id));
+		LogEvent(EventSignificance::Debug,f, "@"+String((const void*)f.get())+ " Joined alliance "+ToString(id));
 		members.Append().wFaction = f;
 		members.Last().rawPointer = f.get();
 		LogEvent(EventSignificance::Common,"New member count in alliance "+ToString(id)+": "+String(members.Count()));
 		if (members.Count() == 1)
 			all.Set(id,shared_from_this());
 		f->alliance = shared_from_this();
+
+		const index_t at = FindInviteOf(f);
+		if (at != InvalidIndex)
+		{
+			invited.Erase(at);
+			LogEvent(EventSignificance::Debug,"Erased existing invite");
+			
+			#ifndef CLIENT
+				ApplicationInterface::SignalAllianceInvite(shared_from_this(), f, Protocol::AllianceInviteType::Accept);
+			#endif
+
+		}
+
+
+
 		#ifndef CLIENT
 			ApplicationInterface::SignalAllianceMembershipChange(f);
 			ApplicationInterface::SignalNexusControlChange(shared_from_this());

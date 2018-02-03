@@ -1088,9 +1088,9 @@ namespace Objects
 
 			if (!HasTasks() || myTasks.GetNewest().type != Task::MoveTo)
 			{
-				if (myTasks.Count() >= Objects::MaxProductionTasks)
+				if (myTasks.Count() >= Objects::MaxTasks)
 				{
-					LogEvent(EventClass::Preset::commandRejected,this,"Max queue length ("+String(Objects::MaxProductionTasks)+") reached. Task rejected");
+					LogEvent(EventClass::Preset::commandRejected,this,"Max queue length ("+String(Objects::MaxTasks)+") reached. Task rejected");
 					return false;
 				}
 
@@ -1129,7 +1129,7 @@ namespace Objects
 					bool failed = false;
 					for (index_t i = 0; i < destination.GetLength(); i++)
 					{
-						if (myTasks.GetNewest().foci.Count() >= MaxFocusCount)
+						if (myTasks.GetNewest().foci.Count() >= MaxFocusPoints)
 						{
 							failed = true;
 							break;
@@ -1615,7 +1615,7 @@ namespace Objects
 			{
 				strPlottedCourse << ' ' << node->cell.stackID<<'.'<<node->cell.height;
 			}
-			LogEvent(EventSignificance::Common,v,strPlottedCourse.ToStringRef());
+			LogEvent(EventSignificance::Debug,v,strPlottedCourse.ToStringRef());
 		#endif
 		return true;
 	}

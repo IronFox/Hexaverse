@@ -1,8 +1,23 @@
-make alliances invite-based
 
-put online manual link in main menu
-put change log link in main menu
-exit fullscreen mode before launching remote control console
+surveyor tower tremor
+check why nickname was exported in steam build
+check sensor appearance of sensor drone
+
+
+replace cannon towers with rocket towers of similar range
+
+
+
+parallelize sensor repainting (multiple sensors in parallel)
+benchmark digging operation with many entities
+
+
+bug: clipped terrain sometimes does not rasterize correctly, 
+	with clip inconsistency between neighboring stacks.
+	disappears after terrain rebuild is enforced (without moving clip area)
+
+
+
 exit fullscreen mode on focus loss?
 
 improve dig symbol
@@ -10,15 +25,12 @@ improve dig symbol
 road should not build bridges across liquids? switch mode automatically? reroute?
 
 
-"Nen transporter mit nem Schweren Terraformer beladen und beim aufsteigen stürzt der client kommentarlos ab :/" - can't reproduce
 
 
 hide selected sensor range sphere?
-larger clip range?
 
 
 
-surveyor tower tremor
 
 
 
@@ -184,6 +196,12 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+larger clip range
+put change log link in main menu
+make alliances invite-based
+client should be able to handle double registering server entities (should cut connection though)
+put online manual link in main menu
+exit fullscreen mode before launching remote control console
 raptors must fire during motion phase, otherwise other planes can use ground hopping to avoid ever being in the air during attack phase
 increase raptor firing range
 fixed: allied drone vanishes on move, causing client crashes

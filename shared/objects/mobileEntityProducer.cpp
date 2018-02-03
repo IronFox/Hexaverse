@@ -413,9 +413,9 @@ namespace Objects
 		{
 			WorldEntity*parent = dynamic_cast<WorldEntity*>(this);
 			ASSERT_NOT_NULL__(parent);
-			if (queue.Count() >= MaxStructureTasks)
+			if (queue.Count() >= MaxTasks)
 			{
-				LogEvent(EventClass::Preset::commandRejected,parent,"Max queue length ("+String(MaxStructureTasks)+") reached");
+				LogEvent(EventClass::Preset::commandRejected,parent,"Max queue length ("+String(MaxTasks)+") reached");
 				return nullptr;
 			}
 			if (selectedBase && selectedTurret)

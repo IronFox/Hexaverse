@@ -115,7 +115,90 @@ namespace HUD
 					statusLabel->SetColor(faction->color); 
 					nameLabel->SetColor(faction->color);
 				}
-				statusLabel->Anchor().FillHBetween(nameLabel,nullptr).Bottom();
+
+
+				PButton inviteButton;
+
+				if (Objects::Faction::mine)
+				{
+					if (faction->alliance != Objects::Faction::mine->alliance)
+					{
+						if (faction->alliance->HaveInvited(Objects::Faction::mine))
+						{
+							inviteButton.reset(new Button{"Accept Invitation"});
+							Objects::WFaction wf = faction;
+							inviteButton->SetTriggerFunction(
+							[wf]()
+							{
+								Objects::PFaction now = wf.lock();
+								if (Objects::Faction::mine == nullptr || now == nullptr || now->alliance == Objects::Faction::mine->alliance)
+									return;
+								Network::Channels::AllianceInvite.SendTo(Network::client,Protocol::AllianceInvite(now->alliance->id,Objects::Faction::mine->id,Protocol::AllianceInviteType::Accept));
+							});
+
+							inviteButton->fillBackground = false;
+							inviteButton->renderBorder = false;
+							inviteButton->SetColor(faction->color);
+							inviteButton->LockToIdealWidth(true);
+							//joinButton->LockToIdealHeight(true);
+							inviteButton->SetPadding(M::Quad<float>(0.2f));
+							inviteButton->SetLocalFontScale(0.85f);
+
+							inviteButton->Anchor().Right(0.01f);
+							panel->AddComponent(inviteButton,CLOCATION);
+						}
+						else
+						{
+							inviteButton.reset(new Button{"Invite"});
+							Objects::WFaction wf = faction;
+							if (!Objects::Faction::mine->alliance->HaveInvited(faction))
+							{
+								inviteButton->SetTriggerFunction(
+								[wf]()
+								{
+									Objects::PFaction now = wf.lock();
+									if (Objects::Faction::mine == nullptr || now == nullptr || now->alliance == Objects::Faction::mine->alliance)
+										return;
+									Network::Channels::AllianceInvite.SendTo(Network::client,Protocol::AllianceInvite(Objects::Faction::mine->alliance->id,now->id,Protocol::AllianceInviteType::Invite));
+								});
+							}
+							else
+							{
+								if (Objects::Faction::mine->alliance->CountLivingMembers() <= 1)
+									inviteButton->SetText("Cancel Invitation");
+								inviteButton->SetTriggerFunction(
+								[wf]()
+								{
+									Objects::PFaction now = wf.lock();
+									if (Objects::Faction::mine == nullptr || now == nullptr || now->alliance == Objects::Faction::mine->alliance)
+										return;
+									Network::Channels::AllianceInvite.SendTo(Network::client,Protocol::AllianceInvite(Objects::Faction::mine->alliance->id,now->id,Protocol::AllianceInviteType::Cancel));
+								});
+							}
+
+							inviteButton->fillBackground = false;
+							inviteButton->renderBorder = false;
+							inviteButton->SetColor(faction->color);
+							inviteButton->LockToIdealWidth(true);
+							//joinButton->LockToIdealHeight(true);
+							inviteButton->SetPadding(M::Quad<float>(0.2f));
+							inviteButton->SetLocalFontScale(0.85f);
+
+							inviteButton->Anchor().Right(0.01f);
+							panel->AddComponent(inviteButton,CLOCATION);
+						}
+					}
+
+
+				}
+
+
+
+
+
+
+
+				statusLabel->Anchor().FillHBetween(nameLabel,inviteButton).Bottom();
 			
 				statusLabel->SetPadding(0.2f);
 				//textLabel->Anchor().Top().Set(0);
@@ -133,22 +216,9 @@ namespace HUD
 				toPanel->AnchorBelowPrevious(CLOCATION,panel,0,0);
 			}
 
-			static Objects::WAlliance tryingToJoin;
 
-			static void DispatchJoinRequest(const Objects::PAlliance&a)
-			{
-				const bool cancel = tryingToJoin.lock() == a;
-				Network::Channels::AllianceJoinRequest.SendTo(Network::client,Protocol::AllianceJoinRequest(a->id,cancel));
-				tryingToJoin = cancel ? Objects::WAlliance() : a;
-			}
 
-			static String JoinText(const Objects::PAlliance&a)
-			{
-				const String req = tryingToJoin.lock() == a ? "Cancel request" : "Request";
-				if (a->CountLivingMembers() == 1)
-					return req +" to form alliance with "+a->GetMember(0)->GetName();
-				return req +" to join "+a->id.ToNiceString();
-			}
+
 
 			void	Update()
 			{
@@ -267,63 +337,37 @@ namespace HUD
 
 
 	
-
-
-					if (Objects::Faction::mine)
+					if (a->CountLivingMembers() > 1)
 					{
-						if (a != Objects::Faction::mine->alliance)
+						PButton leaveButton{new Button{"Leave alliance "+a->id.ToNiceString()}};
+						leaveButton->SetTriggerFunction(
+						[]()
 						{
-							PButton joinButton{new Button{JoinText(a)}};
-							joinButton->fillBackground = false;
-							joinButton->renderBorder = false;
-							if (a->CountLivingMembers() == 1)
-								joinButton->SetColor(a->GetMember(0)->color);
-							WButton jb = joinButton;
-							joinButton->SetTriggerFunction(
-							[wa,jb]()
+							Dialog::Confirm("Really leave your current alliance?",[]()
 							{
-								Objects::PAlliance now = wa.lock();
-								if (now == nullptr || now == Objects::Faction::mine->alliance)
-									return;
-								DispatchJoinRequest(now);
-								jb.lock()->SetText(JoinText(now));
+								Network::client.SendSignal(Protocol::ChannelID::LeaveAlliance);
+							},[](){
+								if (!Objects::Faction::mine || !Objects::Faction::mine->alliance || Objects::Faction::mine->alliance->CountLivingMembers() <= 1 || RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
+									return Dialog::CheckResult::Abort;
+								if (!RuntimeConfig::IsInAnyCommandPhase())
+									return Dialog::CheckResult::OkayNotRightNow;
+								return Dialog::CheckResult::OkayContinue;
+							}
+							);
+						});
 
-							});
+						leaveButton->LockToIdealWidth(true);
+						//joinButton->LockToIdealHeight(true);
+						leaveButton->SetPadding(M::Quad<float>(0.2f));
+						leaveButton->fillBackground = false;
+						leaveButton->renderBorder = false;
+						leaveButton->SetLocalFontScale(0.85f);
 
-							joinButton->LockToIdealWidth(true);
-							//joinButton->LockToIdealHeight(true);
-							joinButton->SetPadding(M::Quad<float>(0.2f));
-							joinButton->fillBackground = false;
-							joinButton->renderBorder = false;
-							joinButton->SetLocalFontScale(0.85f);
-
-							joinButton->Anchor().Right(0.01f).Bottom(0.01f);
-							wrapper->AddComponent(joinButton,CLOCATION);
-						}
-						else if (a->CountLivingMembers() > 1)
-						{
-							PButton leaveButton{new Button{"Leave alliance "+a->id.ToNiceString()}};
-							leaveButton->SetTriggerFunction(
-							[]()
-							{
-								Dialog::Confirm("Really leave your current alliance?",[]()
-								{
-									Network::Channels::AllianceJoinRequest.SendTo(Network::client,Protocol::AllianceJoinRequest(TUniqueID::Empty(),false));
-								});
-							});
-
-							leaveButton->LockToIdealWidth(true);
-							//joinButton->LockToIdealHeight(true);
-							leaveButton->SetPadding(M::Quad<float>(0.2f));
-							leaveButton->fillBackground = false;
-							leaveButton->renderBorder = false;
-							leaveButton->SetLocalFontScale(0.85f);
-
-							leaveButton->Anchor().Right(0.01f).Top(0.01f);
-							wrapper->AddComponent(leaveButton,CLOCATION);
-						}
-
+						leaveButton->Anchor().Right(0.01f).Top(0.01f);
+						wrapper->AddComponent(leaveButton,CLOCATION);
 					}
+
+					
 
 
 					a->ForeachMember([alliancePanel](const Objects::PFaction&f)

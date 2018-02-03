@@ -814,13 +814,14 @@ namespace Component
 
 
 
-	/*virtual*/ bool		Panel::AddComponent(const PComponent&c, const TCodeLocation&caller)
+	/*virtual*/ bool		Panel::AddComponent( const PComponent&c, const TCodeLocation&caller)
 	{
 		if (!c)
 			return false;
 		if (components.Contains(c))
 			return false;
 
+		c->SetActive(IsActive());
 		components << c;
 		c->SetParent( GetWindow(), shared_from_this());
 		c->VerifyAnchorIntegrity(caller);

@@ -17,10 +17,9 @@ namespace Objects
 		static const float TurretRotation = 0.5f;
 	}
 
-	static const count_t MaxStructureTasks = 16;
-	static const count_t MaxProductionTasks = MaxStructureTasks,
-						MaxFocusPoints = 64;
-	static const count_t MaxFocusCount = 64;
+	static const count_t	MaxTasks = 16;
+	static const count_t	MaxFocusPoints = 16;
+	static const count_t	MaxDirectPathLength = 64;
 
 
 

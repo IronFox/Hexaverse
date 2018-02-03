@@ -408,7 +408,10 @@ namespace HUD
 			foreach (Detail::visibleWindows,d)
 			{
 				if ((*d)->RelayoutRequired())
+				{
 					(*d)->FullAutoLayout(CLOCATION);
+					(*d)->OnMouseMove(lastMouseLocation,true);
+				}
 				if ((*d)->isModal)
 					break;
 				(*d)->Render();
