@@ -691,6 +691,7 @@ namespace Network
 			}
 		}
 
+
 		void	OnNewMobileEntity(Protocol::NewMobileEntity&vc)
 		{
 			ASSERT__(!eventsLocked);
@@ -699,35 +700,53 @@ namespace Network
 				ConfigurationMode::RestoreServerObjects();
 			#endif
 
-			Objects::PMobileEntity v;
-			auto m = vc.state.myMobileEntity.Get0();
-			bool place = vc.state.entityState.timestamp.rightNow && (!m || m->storedIn.Get0() == 0);
-			v = Objects::SpawnMobileEntity(Network::ResolveFaction(vc.owner),  vc.state.entityState.id,vc.state.entityState.location,vc.type,place,Network::haveID && Network::myID == vc.owner);
-			if (vc.state.entityState.timestamp.rightNow)
-				LogEvent(EventSignificance::Common,v.get(),  "Placed vehicle entity outside animation");
-			bool isOwnedByMe = v->isOwnedByMe;
-
-			//v->id = vc.state.entityState.id;
-			Animation::ApplyState(v,vc.state,true, !vc.state.entityState.timestamp.rightNow);
-			#ifdef HAS_WINDOW
-				if (v->isOwnedByMe && !amLocated)
+			try
+			{
 				{
-					amLocated = true;
-					Camera::TranslateTo(v->system.w.xyz);
+					Objects::PWorldEntity existing = Objects::GetEntity(vc.state.entityState.id);
+					if (existing)
+					{
+						//could throw an exception here, but observed that if this happens, it happens A LOT in quick succession
+						LogEvent(EventClass::Preset::protocolError,existing.get(),"Trying to double-spawn as "+ToString(vc.type)+" (mobile)");
+						return;
+					}
 				}
-			#endif
-			if (vc.state.entityState.timestamp.rightNow)
-			{
-				#ifdef HAS_WINDOW
-					if (!isOwnedByMe)
-						HUD::HexGrid::RefreshContacts();
-				#endif
-			}
-			else
-			{
-				Animation::primitives.Append().Init(vc,v);
-				LogEvent(EventSignificance::Debug, "Appended 'new mobile entity("+ToString(vc.state.entityState.id)+")' primitive to animation sequence at t="+String(vc.state.entityState.timestamp.atTime));
 
+				Objects::PMobileEntity v;
+				auto m = vc.state.myMobileEntity.Get0();
+				bool place = vc.state.entityState.timestamp.rightNow && (!m || m->storedIn.Get0() == 0);
+				v = Objects::SpawnMobileEntity(Network::ResolveFaction(vc.owner),  vc.state.entityState.id,vc.state.entityState.location,vc.type,place,Network::haveID && Network::myID == vc.owner);
+				if (vc.state.entityState.timestamp.rightNow)
+					LogEvent(EventSignificance::Common,v.get(),  "Placed vehicle entity outside animation");
+				bool isOwnedByMe = v->isOwnedByMe;
+
+				//v->id = vc.state.entityState.id;
+				Animation::ApplyState(v,vc.state,true, !vc.state.entityState.timestamp.rightNow);
+				#ifdef HAS_WINDOW
+					if (v->isOwnedByMe && !amLocated)
+					{
+						amLocated = true;
+						Camera::TranslateTo(v->system.w.xyz);
+					}
+				#endif
+				if (vc.state.entityState.timestamp.rightNow)
+				{
+					#ifdef HAS_WINDOW
+						if (!isOwnedByMe)
+							HUD::HexGrid::RefreshContacts();
+					#endif
+				}
+				else
+				{
+					Animation::primitives.Append().Init(vc,v);
+					LogEvent(EventSignificance::Debug, "Appended 'new mobile entity("+ToString(vc.state.entityState.id)+")' primitive to animation sequence at t="+String(vc.state.entityState.timestamp.atTime));
+
+				}
+			}
+			catch (const std::exception & ex)
+			{
+				LogEvent(EventClass::Preset::protocolError,ex.what());
+				DBG_FATAL__(ex.what());
 			}
 		}
 
@@ -746,6 +765,13 @@ namespace Network
 			//#endif
 			try
 			{
+				Objects::PWorldEntity existing = Objects::GetEntity(sc.state.entityState.id);
+				if (existing)
+				{
+					//could throw an exception here, but observed that if this happens, it happens A LOT in quick succession
+					LogEvent(EventClass::Preset::protocolError,existing.get(),"Trying to double-spawn as "+ToString(sc.type)+" (structure)");
+					return;
+				}
 				Objects::PStructure s = Objects::SpawnStructure(Network::ResolveFaction(sc.owner),  sc.state.entityState.id,sc.state.entityState.location,sc.type, sc.state.entityState.timestamp.rightNow, Network::haveID && Network::myID == sc.owner);
 				ASSERT__(s);
 				if (sc.state.entityState.timestamp.rightNow)
