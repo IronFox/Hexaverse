@@ -41,13 +41,13 @@ namespace Grid
 		template <typename Stack>
 		void		ChangeSensory(const Grid::HighSetup::TVolumeDescriptor&desc, short changeBy, Stack*cellStack, bool*familyChanged)
 		{
-			#ifdef _DEBUG
-			{
-				UINT32 crc = CRC32::getChecksum(desc.coverage.pointer(),desc.coverage.GetContentSize());
-				LogEvent(EventSignificance::Debug,"Applying sensory change ("+String(changeBy)+"), using descriptor with "+String(desc.coverage.Count())+" stack(s), crc="+IntToHex((int)crc,8));	
-			}
+			//#ifdef _DEBUG
+			//{
+			//	UINT32 crc = CRC32::getChecksum(desc.coverage.pointer(),desc.coverage.GetContentSize());
+			//	LogEvent(EventSignificance::Debug,"Applying sensory change ("+String(changeBy)+"), using descriptor with "+String(desc.coverage.Count())+" stack(s), crc="+IntToHex((int)crc,8));	
+			//}
 
-			#endif
+			//#endif
 
 
 			foreach (desc.coverage,c)
@@ -244,7 +244,7 @@ namespace Grid
 			foreach (marked,m)
 				cellStack[m->stackID].volumeCell[m->layer].user = 0;
 
-			LogEvent(EventSignificance::PerformanceMeasurement,nullptr,"Sensory change processed in "+String(timer.GetSecondsSince(t0)));
+			//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,"Sensory change processed in "+String(timer.GetSecondsSince(t0)));
 		}
 
 
