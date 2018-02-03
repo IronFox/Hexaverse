@@ -99,6 +99,12 @@ namespace VisualEventLog
 					}
 				break;
 			}
+			switch (type.significance)
+			{
+				case EventSignificance::NonFatalError:
+					color = float3(1,0.3,0.4);
+				break;
+			}
 			if (origin == Logging::Origin::ServerPrivate)
 				segments.Append(TSegment("[private]",float3(0.5f) ));
 			if (origin != Logging::Origin::Local && type.flavor != EventFlavor::ChatMessage)
