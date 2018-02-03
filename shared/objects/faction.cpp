@@ -1136,11 +1136,6 @@ namespace Objects
 		//void		Faction::RegisterSensorMotion(const M::Sphere<>&from, const M::Sphere<>&to, float t);
 		void		Faction::RegisterSensorRemoval(const World::Sensor&sensor, int sensorHeight, float&t)
 		{
-			//if (sensorHeight <= Grid::CellStack::TopHeight)
-			if (!sensorLockLevel)
-				CheckSensory(t);
-			else
-				knownWorld.InvalidateSensory();
 			sensor.RemoveFrom(knownWorld,t);
 //			float escaped = M::Sqr(sphere.radius+2);
 			//if (isSatellite)
