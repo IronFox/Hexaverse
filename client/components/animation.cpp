@@ -1131,11 +1131,20 @@ namespace Animation
 			case Construction:
 			{
 				LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Placing structure entity during animation at time "+String(Animation::atTime)+"/"+ToString(this->time));
-				Objects::Place(To<Objects::Structure>::DynamicCast(allocatedTarget));
-				#ifdef HAS_WINDOW
-					if (!allocatedTarget->isOwnedByMe)
-						HUD::HexGrid::RefreshContacts();
-				#endif
+				Objects::PWorldEntity existing = Objects::GetEntity(allocatedTarget->id);
+				if (existing)
+				{
+					//could throw an exception here, but observed that if this happens, it happens A LOT in quick succession
+					LogEvent(EventClass::Preset::protocolError,existing.get(),"Trying to double-spawn as "+allocatedTarget->GetTypeName()+" (structure)");
+				}
+				else
+				{
+					Objects::Place(To<Objects::Structure>::DynamicCast(allocatedTarget));
+					#ifdef HAS_WINDOW
+						if (!allocatedTarget->isOwnedByMe)
+							HUD::HexGrid::RefreshContacts();
+					#endif
+				}
 			}
 			break;
 			case NewMobileEntity:
@@ -1144,15 +1153,24 @@ namespace Animation
 				if (v)
 				{
 					LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Placing mobile entity during animation at time "+String(Animation::atTime)+"/"+ToString(this->time));
-					//MoveSensor(v->preAnimationLocation,v->location,v->turret->scanningRange);
-					v->preAnimationLocation = v->location;
-					Objects::PlaceMobileEntity(v,false);
-					if (v->IsVehicle())	//only vehicles get to be inserted anyhow
-						insertIntoGridLater.Set(v->id);
-					#ifdef HAS_WINDOW
-						if (!allocatedTarget->isOwnedByMe)
-							HUD::HexGrid::RefreshContacts();
-					#endif
+					Objects::PWorldEntity existing = Objects::GetEntity(v->id);
+					if (existing)
+					{
+						//could throw an exception here, but observed that if this happens, it happens A LOT in quick succession
+						LogEvent(EventClass::Preset::protocolError,existing.get(),"Trying to double-spawn as "+v->GetTypeName()+" (mobile)");
+					}
+					else
+					{
+						//MoveSensor(v->preAnimationLocation,v->location,v->turret->scanningRange);
+						v->preAnimationLocation = v->location;
+						Objects::PlaceMobileEntity(v,false);
+						if (v->IsVehicle())	//only vehicles get to be inserted anyhow
+							insertIntoGridLater.Set(v->id);
+						#ifdef HAS_WINDOW
+							if (!allocatedTarget->isOwnedByMe)
+								HUD::HexGrid::RefreshContacts();
+						#endif
+					}
 				}
 			}
 			break;
