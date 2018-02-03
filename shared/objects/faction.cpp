@@ -944,13 +944,14 @@ namespace Objects
 		void					Faction::SeeingReference::Disappear(const PWorldEntity&e, float&t)
 		{
 			ASSERT__(CurrentlyVisible());
-			LogEvent(EventSignificance::Debug,e.get(),"["+String(e.get())+"] Registering as newly invisible at "+String(t));
 			if (RuntimeConfig::IsInAnyCommandPhase())
 			{
+				LogEvent(EventSignificance::Debug,e.get(),"["+String(e.get())+"] Registering as newly invisible now");
 				wasVisibleAtBeginning = false;
 				ASSERT__(!CurrentlyVisible());
 				return;
 			}
+			LogEvent(EventSignificance::Debug,e.get(),"["+String(e.get())+"] Registering as newly invisible at "+String(t));
 
 			t += timeEpsilon;
 			reverseVisibilityChange[-t] = false;
