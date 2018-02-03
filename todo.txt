@@ -1,18 +1,19 @@
-check faction death (conditional or explicit)
 
+larger clip range?
+surveyor tower tremor
+check why nickname was exported in steam build
 check sensor appearance of sensor drone
 
 
 replace cannon towers with rocket towers of similar range
 
+
+
 parallelize sensor repainting (multiple sensors in parallel)
 benchmark digging operation with many entities
 
-client should be able to handle double registering server entities (should cut connection though)
 
-make alliances invite-based
 
-put change log link in main menu
 exit fullscreen mode on focus loss?
 
 improve dig symbol
@@ -23,11 +24,9 @@ road should not build bridges across liquids? switch mode automatically? reroute
 
 
 hide selected sensor range sphere?
-larger clip range?
 
 
 
-surveyor tower tremor
 
 
 
@@ -193,6 +192,9 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+put change log link in main menu
+make alliances invite-based
+client should be able to handle double registering server entities (should cut connection though)
 put online manual link in main menu
 exit fullscreen mode before launching remote control console
 raptors must fire during motion phase, otherwise other planes can use ground hopping to avoid ever being in the air during attack phase
