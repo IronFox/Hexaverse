@@ -406,6 +406,13 @@ namespace Menu
 			}	
 		);
 
+		help->AddCommand("View Changelog",[]()
+		{
+			SetFullScreen(false);
+			system("start ..\\changelog.txt");
+		});
+
+
 		/*{
 			float2 margin = help->GetOutlineMargin();
 			margin.y *= 10.f;
