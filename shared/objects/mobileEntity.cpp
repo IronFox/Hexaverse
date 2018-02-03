@@ -1574,7 +1574,7 @@ namespace Objects
 			{
 				strPlottedCourse << ' ' << node->cell.stackID<<'.'<<node->cell.height;
 			}
-			LogEvent(EventSignificance::Common,v,strPlottedCourse.ToStringRef());
+			LogEvent(EventSignificance::Debug,v,strPlottedCourse.ToStringRef());
 		#endif
 		return true;
 	}
