@@ -645,7 +645,7 @@ namespace Objects
 			if (isOwnedByMe || owner->SharingSensorWith(Faction::mine))
 			{
 		#endif
-		LogEvent(EventSignificance::Common,this,"Registering sensory ("+ToString(loc)+", "+String(GetScanningRange())+") at time "+String(atTime));
+		LogEvent(EventSignificance::Debug,this,"Registering sensory ("+ToString(loc)+", "+String(GetScanningRange())+") at time "+String(atTime));
 		VisitSensors(loc, [&atTime, newContacts,this](const World::Sensor&sensor)
 		{
 			#ifdef CLIENT

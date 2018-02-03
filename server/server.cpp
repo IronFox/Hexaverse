@@ -110,7 +110,7 @@ namespace ApplicationInterface
 		const Objects::Structure&v = *s;
 
 
-		LogEvent(EventSignificance::Common,s.get(),"Signalling new structure to owner at t="+String(atTime));
+		LogEvent(EventSignificance::Debug,s.get(),"Signalling new structure to owner at t="+String(atTime));
 		Protocol::StructureConstruction	w;
 		Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),atTime);
 		Game::Network::Describe(w,*s,true,timestamp);
