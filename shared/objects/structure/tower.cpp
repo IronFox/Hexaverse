@@ -207,9 +207,10 @@ namespace Objects
 
 		bool					Tower::AttackNext(const Grid::LCellIdI&target, bool autoTarget)
 		{
-			if (attackQueue.Count() >= MaxStructureTasks)
+			const count_t cnt = attackQueue.Count();
+			if (cnt >= MaxFocusPoints)
 			{
-				LogEvent(EventClass::Preset::commandRejected,this,"Max queue length ("+String(MaxStructureTasks)+") reached");
+				LogEvent(EventClass::Preset::commandRejected,this,"Max queue length ("+String(MaxFocusPoints)+") reached");
 				return false;
 			}
 			if (!turret->CanAttack())

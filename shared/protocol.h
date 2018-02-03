@@ -969,7 +969,7 @@ namespace Protocol
 		, Objects::EntityType, type
 		, TUniqueID, id
 	)
-	typedef NetArray<ProductionTask,Objects::MaxProductionTasks> ProductionTasks;
+	typedef NetArray<ProductionTask,Objects::MaxTasks> ProductionTasks;
 	NETSTRUCT3(ProducerState
 		, ProductionTasks, productionTasks
 		, UINT32, productionDone
@@ -1191,7 +1191,7 @@ namespace Protocol
 	If the path is found to be inapplicable during computation phases, an automatically determined path to the last given node is computed and applied, then dropped.
 	Path must always be of at least length 1
 	*/
-	typedef NetArray<Grid::LCellIdI,Objects::MaxFocusCount>	DirectPath;
+	typedef NetArray<Grid::LCellIdI,Objects::MaxDirectPathLength>	DirectPath;
 	NETSTRUCT4(EntityDirectCommand
 		, NET(TUniqueID), id
 		, NET(UINT16),	mode

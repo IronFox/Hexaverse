@@ -1526,9 +1526,9 @@ namespace Receiver
 			LogEvent(EventClass::Preset::commandRejected,peer,e,"This mobile entity cannot perform the requested operation");
 			return;
 		}
-		if (v->myTasks.Count() >= Objects::MaxProductionTasks)
+		if (v->myTasks.Count() >= Objects::MaxTasks)
 		{
-			LogEvent(EventClass::Preset::commandRejected,peer,e,"Max queue length ("+String(Objects::MaxProductionTasks)+") reached. Task rejected");
+			LogEvent(EventClass::Preset::commandRejected,peer,e,"Max queue length ("+String(Objects::MaxTasks)+") reached. Task rejected");
 			return;
 		}
 
