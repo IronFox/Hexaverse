@@ -791,7 +791,7 @@ namespace Grid
 
 
 	
-	static const UINT32			CutoffRadius = 14;
+	static const UINT32			CutoffRadius = 20;
 
 	
 	
