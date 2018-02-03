@@ -12,6 +12,11 @@ parallelize sensor repainting (multiple sensors in parallel)
 benchmark digging operation with many entities
 
 
+bug: clipped terrain sometimes does not rasterize correctly, 
+	with clip inconsistency between neighboring stacks.
+	disappears after terrain rebuild is enforced (without moving clip area)
+
+
 
 exit fullscreen mode on focus loss?
 
