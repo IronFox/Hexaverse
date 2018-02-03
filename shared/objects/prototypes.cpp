@@ -120,6 +120,7 @@ namespace Objects
 
 
 			Tower::globalPrototypes.Append().reset(new Tower::Prototype(&Component::launcher));
+			Tower::globalPrototypes.Append().reset(new Tower::Prototype(&Component::rockets));
 			//Tower::globalPrototypes.Append().reset(new Tower::Prototype(artillery));
 			Tower::globalPrototypes.Append().reset(new Tower::Prototype(&Component::radar));
 			Tower::globalPrototypes.Append().reset(new Tower::Prototype(&Component::armored));
@@ -158,6 +159,7 @@ namespace Objects
 		{
 			Artillery::Configure(artillery);
 			Launcher::Configure(launcher);
+			Rockets::Configure(rockets);
 			EMP::Configure(emp);
 			#ifndef NO_SATELLITES
 				SkyGuardian::Configure(protonCannon);
@@ -189,7 +191,7 @@ namespace Objects
 								#ifndef NO_SATELLITES
 									<< &skyHubTurret << &protonCannon << &ragnarok << &starPort
 								#endif
-								<< &armored << &artillery << &launcher << &emp
+								<< &armored << &artillery << &launcher << &rockets << &emp
 								<< &bomb
 								<< &terraformer << &resourceScanner
 								#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
