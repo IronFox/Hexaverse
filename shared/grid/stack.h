@@ -269,6 +269,7 @@ namespace Grid
 			void	AlterVisibility(short change)
 			{
 				visibility += change;
+				DBG_ASSERT__(visibility >= 0);
 				if (change >= 0)	//==0 is a special case triggering temporary visibility but leaving actual visibility unchanged
 				{
 					temporarilyVisible = true;
