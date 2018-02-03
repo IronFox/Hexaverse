@@ -12,6 +12,10 @@ parallelize sensor repainting (multiple sensors in parallel)
 benchmark digging operation with many entities
 
 
+better clipping:
+	visually remove all solid terrain beneath clipping height,
+	in clipping range, that has no air/liquid above it, or next to it
+
 bug: clipped terrain sometimes does not rasterize correctly, 
 	with clip inconsistency between neighboring stacks.
 	disappears after terrain rebuild is enforced (without moving clip area)
