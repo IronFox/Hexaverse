@@ -227,7 +227,7 @@ TurretConfig =
 		AttacksPerRound = 2,
 		DamageLevel = 7,
 		ExplosionRadius = 1,
-		HorizontalAttackRange = 5,
+		HorizontalAttackRange = 4,
 		IsUnlocked = true,
 	},
 	Cannon = 
