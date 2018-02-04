@@ -490,14 +490,12 @@ Constructs a tower structure configuration from a given turret entry.
 Defines both Get and Describe functions
 ]]
 function Tower(turret--[[Table]]) --Table
+	local cost = function(state) return 40 + Get(turret.Cost,state) end;
 	local rs =
 	{
 		Cost =
 		{
-			Get = 
-				function(state) 
-					return 40 + Get(turret.Cost,state)
-				end,
+			Get = cost,
 			Describe = 
 				function(state) 
 					return '40+'.. Describe(turret.Cost,state)
@@ -507,12 +505,12 @@ function Tower(turret--[[Table]]) --Table
 		{
 			Get = 
 				function(state) 
-					return DefaultHealthAtCost(40 + Get(turret.Cost,state)) * Get(turret.HealthMultiplier,state) 
+					return DefaultHealthAtCost(cost()) * Get(turret.HealthMultiplier,state) 
 				end,
 			Describe = 
 				function(state) 
 					local multiplier = Describe(turret.HealthMultiplier,state);
-					local health = DefaultHealthAtCost(40 + Get(turret.Cost,state));
+					local health = DefaultHealthAtCost(cost());
 					if (multiplier == 1) then
 						return Round(health);
 					end
