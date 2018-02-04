@@ -117,7 +117,7 @@
 		A single shot can instantaneously vaporize dozens of hostile vehicles and/or structures (possibly including your own, if you are not careful), and blast huge holes into the ground.
 		Note that, depending on server settings, Ragnarök detonations may be made visible to all parties, even if they could not otherwise see the impact.
 	</message>
-	<message name='Mine' image='mine.png'>
+	<message name='Mine' image='mine.jpg'>
 		Mines serve a crucial role in providing your compound with resources. Mines require %ENERGY%(energy) to operate, and provide whatever resources are available at the respective location.
 		In connector-less mode, resources are magically transferred by invisible elves, so you need not worry about building connectors. But you will need Generators to provide the necessary %ENERGY%
 		<!--You should directly or indirectly connect them with a Generator.-->
