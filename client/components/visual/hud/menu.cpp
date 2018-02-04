@@ -364,8 +364,11 @@ namespace Menu
 		{
 			SetFullScreen(false);
 			MonitoredProcess	process(false);
-			process.Start("../ControlConsole/","ControlConsole.exe",PathString(" -p "+String(Network::connectionBasePort)));	//start and abandon
-		},[](){return Network::amOnline && Network::client.IsLocalhost();});
+			if (Network::amOnline && Network::client.IsLocalhost())
+				process.Start("../ControlConsole/","ControlConsole.exe",PathString(" -p "+String(Network::connectionBasePort)));	//start and abandon
+			else
+				process.Start("../ControlConsole/","ControlConsole.exe","");	//start and abandon, without port parameter since we don't know any
+		});
 		//game->FullAutoLayout();
 	}
 
