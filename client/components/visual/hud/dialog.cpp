@@ -533,7 +533,8 @@ namespace Dialog
 				}
 				catch (const std::exception&e)
 				{
-					FATAL__(e.what());
+					LogEvent(EventClass::Preset::internalError,e.what());
+					DBG_FATAL__(e.what());
 				}
 			}
 		}
