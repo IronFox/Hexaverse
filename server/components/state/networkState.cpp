@@ -78,10 +78,11 @@ namespace Network
 					sockaddr_in addr;
 					int size = (int)sizeof (addr);
 					int bytes = recvfrom(s,(char*)buffer, sizeof(buffer), 0, (SOCKADDR *) & addr, &size);
+					LogEvent(EventSignificance::Debug,"Received heartbeat from "+TCP::ToString((const sockaddr_storage&)addr,size));
 					if (bytes <= 0)
 					{
 						if (s != INVALID_SOCKET)
-							FATAL__("Heardbeat receive failure. Socket lost");
+							FATAL__("Heartbeat receive failure. Socket lost");
 					}
 					lastBeat = timer.Now();
 				}
@@ -101,7 +102,7 @@ namespace Network
 
 		void	Start()
 		{
-			LogEvent(EventSignificance::Uncommon,"Starting heartbeat receiver");
+			//LogEvent(EventSignificance::Uncommon,"Starting heartbeat receiver on port "+String(HEARTBEAT_PORT));
 			GlobalEvents::applicationTerminate << Stop;
 			ASSERT__(Net::initNet());
 
@@ -114,6 +115,7 @@ namespace Network
 			me.sin_family=AF_INET;
 			me.sin_port=htons(HEARTBEAT_PORT);;
 			me.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+			LogEvent(EventSignificance::Uncommon,"Binding heartbeat receiver to "+TCP::ToString((const sockaddr_storage&)me,sizeof(me)));
 			int rc=::bind(s,(SOCKADDR*)&me,sizeof(SOCKADDR_IN));
 			if (rc != 0)
 			{
@@ -123,7 +125,7 @@ namespace Network
 				return;
 			}
 			loopThread.Start();
-
+			lastBeat = timer.Now();
 		}
 
 
