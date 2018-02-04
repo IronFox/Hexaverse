@@ -218,7 +218,10 @@ namespace Objects
 						((Component::VehicleBase*)topic->componentReference)->DescribeType(outResult,false,true,selectedEntity ? selectedEntity->owner : OwnerParameter());
 					}			
 					elif (topic->componentReference->IsTurret())
-						((Component::Turret*)topic->componentReference)->DescribeType(outResult,false, true,"Vehicle",selectedEntity ? selectedEntity->owner : OwnerParameter());
+					{
+						auto turret = ((Component::Turret*)topic->componentReference);
+						turret->DescribeType(outResult,false, true,turret->mountType.ToString(),selectedEntity ? selectedEntity->owner : OwnerParameter());
+					}
 				}
 
 			}
