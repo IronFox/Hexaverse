@@ -3,6 +3,7 @@ check capsule in big picture mode
 load savegame dialog
 
 sleeping terraformers count towards per-round mineral demand
+artilery does not fire in parallel
 
 client menu: start server, interactive, with save game
 
