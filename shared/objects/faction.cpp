@@ -936,7 +936,7 @@ namespace Objects
 			}
 			t += timeEpsilon;
 			reverseVisibilityChange[-t] = true;
-			ASSERT__(CurrentlyVisible());
+//			ASSERT__(CurrentlyVisible());
 			e->SyncTime(t,timeEpsilon);
 			reference = e;
 		}
