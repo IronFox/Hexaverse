@@ -495,8 +495,8 @@ namespace HUD
 		}
 
 
-		static const float FadeInSpeed = 2;
-		static const float FadeOutSpeed = 2;
+		static const float FadeInSpeed = 4;
+		static const float FadeOutSpeed = 4;
 
 		void	RenderNonModal()
 		{
