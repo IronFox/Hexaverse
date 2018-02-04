@@ -616,7 +616,7 @@ namespace Component
 
 
 
-	/*virtual*/ void	Component::Render()
+	/*virtual*/ void	Component::Render( float opacity )
 	{}
 
 
@@ -712,6 +712,8 @@ namespace Component
 	PComponent	mousePressedComponent;
 
 	/*static*/ DX11::BaseInstructionBlock	Image::texturedQuad;
+	/*static*/ DX11::ObjectBuffer<float4>	Image::texturedQuadColor;
+
 
 	static UINT ViewPortWidth()
 	{
@@ -920,7 +922,7 @@ namespace Component
 
 
 
-	/*virtual override*/ void	Slider::Render()
+	/*virtual override*/ void	Slider::Render( float opacity )
 	{
 		const auto&rect = GetRect();
 		const float top = rect.y.max;
@@ -930,7 +932,7 @@ namespace Component
 		const float right = rect.x.max;
 
 		barBack = M::Rect<>(left,bottom,right,top);
-		SurfaceRenderer::SetColor(float4(0,0,0,0.9));
+		SurfaceRenderer::SetColor(float4(0,0,0,0.9*opacity));
 		SurfaceRenderer::Rasterize(barBack);
 
 
@@ -940,7 +942,7 @@ namespace Component
 
 		if (showMarkers)
 		{
-			float4 markerColor(1,1,1,0.5f);
+			float4 markerColor(1,1,1,0.5f*opacity);
 			float y0 = rect.y.Derelativate(0.2f);
 			float y1 = rect.y.Derelativate(0.8f);
 			M::Rect<> marker;
@@ -959,8 +961,8 @@ namespace Component
 			}
 		}
 
-		RenderArea(bar,barContainsMouse,dragging,float3(1));
-		RenderBorder(bar,float3(1),true);
+		RenderArea(bar,barContainsMouse,dragging,float3(1),opacity,opacity);
+		RenderBorder(bar,float3(1),true,opacity,opacity);
 	}
 
 
@@ -1046,7 +1048,7 @@ namespace Component
 
 
 
-	void	Panel::TScrollbar::Render(const M::Rect<>&rect)
+	void	Panel::TScrollbar::Render( float opacity, const M::Rect<>&rect )
 	{
 		
 		targetViewTop = M::Min(targetViewTop,scrollMax - viewSize);
@@ -1071,17 +1073,17 @@ namespace Component
 		M::Rect<> bottomButton(left,bottom,right,bottom + buttonHeight);
 
 		outline = M::Rect<>(left,bottomButton.y.max + TScrollbar::ContentSpacing,right,topButton.y.min - TScrollbar::ContentSpacing);
-		SurfaceRenderer::SetColor(float4(0,0,0,0.9));
+		SurfaceRenderer::SetColor(float4(0,0,0,0.9 * opacity));
 		SurfaceRenderer::Rasterize(outline);
 
 		bar = M::Rect<>(outline.x.min,outline.y.Derelativate(1.f - (viewTop + viewSize) / scrollMax),outline.x.max,outline.y.Derelativate(1.f - (viewTop) / scrollMax));
-		RenderArea(bar,barContainsMouse,dragging,float3(1));
-		RenderBorder(bar,float3(1),true);
+		RenderArea(bar,barContainsMouse,dragging,float3(1),opacity,opacity);
+		RenderBorder(bar,float3(1),true,opacity,opacity);
 
 		up->SetLocation(topButton);
-		up->Render();
+		up->Render(opacity);
 		down->SetLocation(bottomButton);
-		down->Render();
+		down->Render(opacity);
 	}
 
 
@@ -1215,18 +1217,18 @@ namespace Component
 		}
 	}
 
-	/*virtual override*/ void Button::Render()
+	/*virtual override*/ void Button::Render( float opacity )
 	{
 		bool lit = IsLit();
 		bool flipped = mousePressedComponent.get() == this;
-		Super::BaseRender((lit && !flipped)  || alwaysDown,(lit && flipped) || (alwaysDown && flipWhenAlwaysDown), fillBackground, renderBorder);
-		Super::RenderText(lit || alwaysDown);
+		Super::BaseRender(opacity, (lit && !flipped)  || alwaysDown,(lit && flipped) || (alwaysDown && flipWhenAlwaysDown), fillBackground, renderBorder);
+		Super::RenderText(opacity, lit || alwaysDown);
 	}
 
 
-	/*static*/ void		ScrollButton::RenderArrow(const M::Rect<>&r, direction_t dir, bool lit)
+	/*static*/ void		ScrollButton::RenderArrow( float opacity, const M::Rect<>&r, direction_t dir, bool lit )
 	{
-		SurfaceRenderer::SetColor(float4(1,1,1,lit?0.75f:0.5f));
+		SurfaceRenderer::SetColor(float4(1,1,1,(lit?0.75f:0.5f) * opacity));
 
 		switch (dir)
 		{
@@ -1244,20 +1246,20 @@ namespace Component
 	}
 
 
-	/*virtual override*/ void	Panel::Render()
+	/*virtual override*/ void	Panel::Render( float opacity )
 	{
 		const auto&rect = GetRect();
 		if (!rect.IsValid())
 			return;
-		Super::Render(); 
+		Super::Render(opacity); 
 		if (vscroll.visible)
 		{
-			vscroll.Render(rect);
+			vscroll.Render(opacity, rect);
 			Detail::PushLoadView(rect,float2(0,-vscroll.viewTop));
 		}
 		else
 			Detail::PushLoadView(rect);
-		RenderChildren();
+		RenderChildren(opacity);
 		Detail::PopLoadView();
 	}
 
@@ -1493,13 +1495,13 @@ namespace Component
 	}
 
 
-	void				Box::BaseRender(bool lit, bool flipped, bool fill, bool outline)
+	void				Box::BaseRender( float opacity, bool lit, bool flipped, bool fill, bool outline )
 	{
 		const M::Rect<>&r = GetRect();
 		if (fill)
-			RenderArea(r,lit,flipped,backgroundTone,bottomOpacity,topOpacity);
+			RenderArea(r,lit,flipped,backgroundTone,bottomOpacity*opacity,topOpacity*opacity);
 		if (outline)
-			RenderBorder(r,backgroundTone,true,bottomOpacity,topOpacity);
+			RenderBorder(r,backgroundTone,true,bottomOpacity*opacity,topOpacity*opacity);
 	}
 
 	static const float CellSize = 0.01f;
@@ -1723,7 +1725,7 @@ namespace Component
 	}
 
 
-	/*virtual override*/ void			BaseInput::Render()
+	/*virtual override*/ void			BaseInput::Render( float opacity )
 	{
 		core = GetRect();
 		textout.PushState();
@@ -1732,9 +1734,9 @@ namespace Component
 		//core.Scale(0.97f);
 
 		if (fillBackground)
-			RenderArea(core,false,true,backgroundTone);
+			RenderArea(core,false,true,backgroundTone,opacity,opacity);
 		if (renderBorder)
-			RenderBorder(core,backgroundTone,true);
+			RenderBorder(core,backgroundTone,true,opacity,opacity);
 
 		StringRef text = GetTextRef();
 
@@ -1746,6 +1748,13 @@ namespace Component
 
 		SurfaceRenderer::Flush();
 
+		float4 baseColor;
+		if (IsEnabled())
+			baseColor = (IsLit() ? float4(1,1,1,opacity) : float4(0.75,0.75,0.75,opacity));
+		else
+			baseColor = float4(0.5,0.5,0.5,opacity);
+
+		textout.SetColor(baseColor);
 
 		textout.MoveTo(core.x.min,core.y.max - textout.GetScaledHeight() * 0.4f);
 
@@ -1784,12 +1793,14 @@ namespace Component
 	/*static*/ void Image::StaticDestroy()
 	{
 		texturedQuad.Clear();
+		texturedQuadColor.Clear();
 	}
 
 	/*static*/ void Image::StaticCreate()
 	{
 		if (texturedQuad.quickSlots.IsEmpty())
 		{
+			texturedQuadColor.Create(float4(1));
 			texturedQuad.quickSlots.SetSize(1);
 			Engine::VertexBinding vtx;
 			vtx.vertex.Set(0,2);
@@ -1799,6 +1810,7 @@ namespace Component
 
 			DX11::Shader::Binding bindings[] = {
 				DX11::Shader::Binding(0,"Texture"),
+				DX11::Shader::Binding(texturedQuadColor,"Color"),
 				DX11::Shader::SamplerBinding(true,Engine::VisualEnum::TextureFilter::Trilinear,1,"Sampler"),
 			};
 
@@ -1956,15 +1968,15 @@ namespace Component
 
 
 
-	/*virtual override*/ void			TextField::Render()
+	/*virtual override*/ void			TextField::Render( float opacity )
 	{
 		bool lit = IsLit();
 
-		Super::BaseRender(lit,false,fillBackground,renderBorder);
-		RenderText(lit);
+		Super::BaseRender(opacity,lit,false,fillBackground,renderBorder);
+		RenderText(opacity,lit);
 	}
 
-	void TextField::RenderText(bool lit)
+	void TextField::RenderText( float opacity, bool lit )
 	{
 		textout.PushState();
 		textout.Scale(Detail::textZoom*zoom);
@@ -1980,9 +1992,9 @@ namespace Component
 
 		float4 baseColor;
 		if (IsEnabled())
-			baseColor = (lit ? float4(1) : float4(0.75,0.75,0.75,1));
+			baseColor = (lit ? float4(1,1,1,opacity) : float4(0.75,0.75,0.75,opacity));
 		else
-			baseColor = float4(0.5,0.5,0.5,1);
+			baseColor = float4(0.5,0.5,0.5,opacity);
 
 		textout.SetColor(baseColor & this->color);
 		for (index_t i = 0; i < wrappedText.Count(); i++)
@@ -2020,12 +2032,12 @@ namespace Component
 	}
 
 
-	/*virtual override*/ void			Image::Render()
+	/*virtual override*/ void			Image::Render( float opacity )
 	{
 		if (texture.IsEmpty())
 			return;
 
-		bool lit = IsLit();
+		const bool lit = IsLit();
 	
 		M::TMatrix4<> matrix = M::Matrix<>::eye4;
 		
@@ -2054,7 +2066,7 @@ namespace Component
 
 		display.SetObjectMatrix(matrix);
 		texturedQuad.quickSlots.First() = texture;
-
+		texturedQuadColor.Update(float4(1,1,1,opacity));
 		display.RenderVertices(texturedQuad);
 	}
 
@@ -2310,27 +2322,28 @@ namespace Component
 		return Math::Max(textHeight,checkBoxHeight);
 	}
 
-	/*virtual override*/ void Checkbox::Render()
+	/*virtual override*/ void Checkbox::Render( float opacity )
 	{
 		bool lit = IsLit();
 		//Super::BaseRender(lit,false);
-		Super::RenderText(lit);
-		SurfaceRenderer::SetColor(lit ? float4(0.7f):float4(0.5f));
+		Super::RenderText(opacity, lit);
+		SurfaceRenderer::SetColor((lit ? float4(0.7f):float4(0.5f)) & float4(1,1,1,opacity));
 		float checkBoxHeight = GetTotalFontScale() * textout.GetScaledHeight();
 		float checkBoxWidth = checkBoxHeight / ViewPortAspect();
 		float top = GetRect().y.center() + checkBoxHeight*0.7f;// Super::extraSpacing * checkBoxHeight;
 		M::TFloatRect box = M::TFloatRect(GetRect().x.min,top - checkBoxHeight,GetRect().x.min+checkBoxWidth,top);
 		SurfaceRenderer::Rasterize(box);
+		const float4 color = lit ? float4(1,1,1,opacity):float4(float3(0.7f), 0.7*opacity);
 		if (isChecked)
 		{
 			//SurfaceRenderer::SetColor(lit ? float4(0.7f):float4(0.4f));
 			M::TFloatRect inner = box;
 			inner.Scale(0.8f);
-			SurfaceRenderer::SetColor(lit ? float4(1.f):float4(0.7f));
+			SurfaceRenderer::SetColor(color);
 			SurfaceRenderer::Rasterize(inner);
 		}
 		SurfaceRenderer::Flush();
-		LineRenderer::SetColor(lit ? float4(1) : float4(0.7f));
+		LineRenderer::SetColor(color);
 		LineRenderer::Rasterize(box);
 		LineRenderer::Flush();
 	}
@@ -2669,19 +2682,19 @@ namespace Component
 	}
 
 
-	void	MultiPlot::Plot::RenderSurfaces() const
+	void	MultiPlot::Plot::RenderSurfaces( float opacity ) const
 	{
-		surface.Rasterize();
+		surface.Rasterize(float4(1,1,1,opacity));
 	}
 
-	void	MultiPlot::Plot::RenderLines() const
+	void	MultiPlot::Plot::RenderLines( float opacity) const
 	{
-		lines.Rasterize();
+		lines.Rasterize(float4(1,1,1,opacity));
 	}
 
-	/*virtual override*/ void	MultiPlot::Render()
+	/*virtual override*/ void	MultiPlot::Render( float opacity )
 	{
-		Super::Render();
+		Super::Render(opacity);
 		bool anyChanged = axesChanged;
 		foreach (plots,g)
 			if (g->changed)
@@ -2695,15 +2708,15 @@ namespace Component
 		display.StoreRendererState();
 		display.SetRasterizer(true,true);
 		foreach (plots,g)
-			g->RenderSurfaces();
+			g->RenderSurfaces(opacity);
 
 		display.RestoreRendererState();
 
 		foreach (plots,g)
-			g->RenderLines();
+			g->RenderLines(opacity);
 
 
-		axes.Rasterize();
+		axes.Rasterize(float4(1,1,1,opacity));
 
 		{
 			BeginLabelPrint();
@@ -2717,7 +2730,7 @@ namespace Component
 		}
 
 
-		Box::RenderBorder(GetRect(),float3(1),true);
+		Box::RenderBorder(GetRect(),float3(1),true,opacity,opacity);
 	}
 
 	void MultiPlot::BeginLabelPrint()

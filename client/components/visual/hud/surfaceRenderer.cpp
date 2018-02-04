@@ -9,6 +9,9 @@ namespace SurfaceRenderer
 {
 	static Engine::DX11::BaseInstructionBlock	triangles;
 	static Engine::DX11::StreamVBO	geometry;
+	static Engine::DX11::ObjectBuffer<float4> tint;
+	static float4 tintColor;
+
 
 	static const count_t maxTriangles = 1024;
 
@@ -17,7 +20,13 @@ namespace SurfaceRenderer
 	static float _outBuffer[maxTriangles * 3 * fpv], *_at = _outBuffer;
 	static float *const _end = _outBuffer + maxTriangles * 3 * fpv;
 	
-
+	static void SetTint(const float4&c)
+	{
+		if (tintColor == c)
+			return;
+		tintColor = c;
+		tint.Update(c);
+	}
 
 
 	void	Create()
@@ -32,7 +41,13 @@ namespace SurfaceRenderer
 			triangles.binding = binding;
 		}
 
-		triangles.shader.LoadFromFile("shaders/triangles.hlsl", "vsMain", "psMain", nullptr, 0);
+		tint.Create(tintColor);
+		{
+			const Engine::DX11::Shader::Binding bindings[] = {
+				Engine::DX11::Shader::Binding(tint,"Tint")
+			};
+			triangles.shader.LoadFromFile("shaders/triangles.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
+		}
 		triangles.UpdateLayout();
 		triangles.SetTriangles();
 	}
@@ -102,6 +117,8 @@ namespace SurfaceRenderer
 		if (_at == _outBuffer)
 			return;
 
+		SetTint(float4(1));
+
 		count_t vcnt = (_at - _outBuffer) / fpv;
 		geometry.PartialUpdate(_outBuffer, vcnt, fpv * sizeof(float));
 		display.RenderVertices(triangles, 0, (UINT32)vcnt);
@@ -122,8 +139,9 @@ namespace SurfaceRenderer
 		Clear();
 	}
 
-	void	Baked::Rasterize() const
+	void	Baked::Rasterize(const float4&tint) const
 	{
+		SetTint(tint);
 		display.Render(instruction,true);
 	}
 
