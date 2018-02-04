@@ -1,3 +1,9 @@
+check capsule in big picture mode
+
+make windows fade in and out
+
+remove construction option if structure is not unlocked and cannot be researched
+
 
 surveyor tower tremor
 check why nickname was exported in steam build
