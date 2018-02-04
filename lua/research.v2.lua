@@ -600,6 +600,7 @@ MakeUnlockResearchable(unlockGroup, nil, StructureConfig, 'ReactorCore',10);
 attackRangeGroup = Game.CreateResearch(improveGroup,'Attack Range','Research_AttackRange');
 	MakeImproveResearchable(attackRangeGroup, artilleryUnlock, TurretConfig, 'Artillery', 'HorizontalAttackRange',0.005);
 	MakeImproveResearchable(attackRangeGroup, launcherUnlock, TurretConfig, 'MissileLauncher', 'HorizontalAttackRange',0.005);
+	MakeImproveResearchable(attackRangeGroup, nil, TurretConfig, 'RocketLauncher', 'HorizontalAttackRange',0.005);
 	MakeImproveResearchable(attackRangeGroup, nil, TurretConfig, 'Cannon', 'HorizontalAttackRange',0.005);
 
 scanningRangeGroup = Game.CreateResearch(improveGroup,'Scanning Range','Research_ScanningRange');
