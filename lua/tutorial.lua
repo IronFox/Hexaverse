@@ -100,7 +100,7 @@ CreateTask(function() Game.DescribeTask("Please find and select your Generator b
 CreateTask(function() Game.DisplayMessage("Enabled generators supply active buildings with %Energy%energy while consuming %Fuel%fuel. This generator is enough to support your Mine and one more consumer. After that you will need more.","generator.jpg") end);
 
 CreateTask(function() Game.DescribeTask("Please find and select your Mine.") end, function() if Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Mine' then TaskDone() end; end);
-CreateTask(function() Game.DisplayMessage("Enabled mines collect natural resources from the planet core underneath. The colorful stack atop indicates how much they mine per round. This one collects %Minerals%minerals and %Fuel%fuel. The resources never run out but they are also rarely enough.","mine.png") end);
+CreateTask(function() Game.DisplayMessage("Enabled mines collect natural resources from the planet core underneath. The colorful stack atop indicates how much they mine per round. This one collects %Minerals%minerals and %Fuel%fuel. The resources never run out but they are also rarely enough.","mine.jpg") end);
 
 --build lab:
 CreateTask(function() Game.DescribeTask("Please find and select your Terraformer.") end, function() if Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Hoverformer' then TaskDone() end; end);
@@ -144,7 +144,7 @@ CreateTask(function() Game.DescribeTask("Until the Laboratory is done please req
 	end
 );
 
-CreateTask(function() Game.DisplayMessage("Laboratories allow two types of research: Unlocking and Improving. The more Laboratories you have enabled, the faster the research will progress."); end);
+CreateTask(function() Game.DisplayMessage("Laboratories allow two types of research: Unlocking and Improving. The more Laboratories you have enabled, the faster the research will progress.","laboratory.jpg"); end);
 CreateTask(function() Game.DescribeTask("Task your laboratory to unlock the ReactorCore building type by selecting it and using the commands in the bottom section of the screen."); end,
 	function()
 		local res = Game.myResearch['Unlock:ReactorCore'];
@@ -252,7 +252,7 @@ CreateTask(function() Game.DescribeTask("Please construct a Vehicle Plant using 
 	end
 );
 
-CreateTask(function() Game.DisplayMessage("Vehicle Plants can construct all sorts of vehicles. Let's start with another terraformer.") end);
+CreateTask(function() Game.DisplayMessage("Vehicle Plants can construct all sorts of vehicles. Let's start with another terraformer.","vehiclePlant.jpg") end);
 
 CreateTask(function() Game.DescribeTask("Please task your Vehicle Plant to construct another hoverformer by selecting the plant and then choosing the Terraformer turret in the top row of its unit commands.") end,
 	function()
