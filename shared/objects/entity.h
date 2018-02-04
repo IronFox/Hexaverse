@@ -485,6 +485,7 @@ namespace Objects
 
 		virtual bool				IsUnlockedAtState(const Lua::Reference&researchState) const	{return GetTable()->isUnlocked.GetValue(researchState);}
 		bool						IsUnlocked() const {return IsUnlockedAtState(GetResearchState());}
+		virtual bool				CanBeUnlocked() const {return GetTable()->isUnlocked.IsFunctionOrConstNonZero();}
 		virtual bool				IsVehicle() const {return false;}
 		#ifndef NO_SATELLITES
 			virtual bool			IsSatellite() const {return false;}

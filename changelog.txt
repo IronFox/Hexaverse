@@ -21,6 +21,7 @@ v0.7.3	[Feb 4 2018]
 	> Replaced alliance join requests with an invite-based system.
 	> Added graceful client-side handling of entity double-spawning (was fatal error before).
 	> Increased range of terrain clipping feature.
+	> Components or structure types can now be hidden from visible client options by setting the respective member IsUnlocked to false.
 	* Fixed crashes in bug reporter when trying to upload very long log files.
 	* Fixed handling of crashes in bug reporter.
 	* Fixed confirmation dialogs sometimes not allowing to actually press the confirm button (game wrongly assumed to be between rounds).

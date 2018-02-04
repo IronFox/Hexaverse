@@ -823,6 +823,10 @@ namespace Objects
 
 
 
+		bool Unlockable(const PStructure&proto)
+		{
+			return proto->IsUnlocked() || proto->CanBeUnlocked();
+		}
 
 		bool			Terraformer::CanBuild(const PStructure&proto)
 		{
@@ -833,6 +837,7 @@ namespace Objects
 					#ifdef NO_MUNITION
 						&& !To<MunitionFactory>::DynamicCast(proto) && !To<MunitionStorage>::DynamicCast(proto)
 					#endif
+				&& Unlockable(proto)
 			;
 		}
 

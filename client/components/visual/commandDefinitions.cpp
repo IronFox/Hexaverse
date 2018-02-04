@@ -19,6 +19,7 @@
 #include "scene/terrain.h"
 #include "scene/objectRendering.h"
 #include "hud/menu.h"
+#include "hud/hexGrid.h"
 
 
 namespace Objects
@@ -1221,12 +1222,19 @@ namespace Objects
 				));
 
 		}
-				
+		
+		void RebuildTerraformerButtons()
+		{
+			Component::terraformer.commands.Clear();
+			DefineTerraformer(Component::terraformer);
+			if (Objects::selectedEntity && Objects::selectedEntity->IsVehicle() && To<Vehicle>::Cast(Objects::selectedEntity)->turret == &Component::terraformer)
+				HUD::HexGrid::Configure(Objects::selectedEntity);
+		}
 
 		void	DefineAll()
 		{
 			DefineItemHandlers();
-			ResearchState::globalState.onScriptChange << ReconfigureResearchButtons;
+			ResearchState::globalState.onScriptChange << ReconfigureResearchButtons << RebuildTerraformerButtons;
 			ResearchState::globalState.onQueueChange << [](Faction*f){ if (f == Faction::mine.get()) ReconfigureResearchQueueButtons();};
 
 			DefineMine(Objects::Mine::commands);

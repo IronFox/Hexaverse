@@ -552,7 +552,7 @@ It is declared as locked
 ]]
 function DeprecatedTower(turret--[[Table]]) --Table
 	local rs = Tower(turret);
-	rs.IsUnlocked = function(state) return false end;
+	rs.IsUnlocked = false;	--make sure it's not a function. If it's a function, the game assumes it can be unlocked, and displays it as a construction choice
 	return rs;
 end
 
