@@ -1,6 +1,21 @@
 check capsule in big picture mode
 
+load savegame dialog
 
+sleeping terraformers count towards per-round mineral demand
+
+client menu: start server, interactive, with save game
+
+repair allied unit causes server crash?
+
+
+server: on heartbeat failure provide option to restart client or quit
+
+when loading while in interactive configuration mode, force-reenable session afterwards
+
+game goal counts two nexus ports necessary for two players, even through three are accessible!
+
+can a radar vehicle drive into the range of a newly discovered rocket tower?
 
 
 surveyor tower tremor
