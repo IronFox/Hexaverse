@@ -702,6 +702,11 @@ namespace Network
 
 			try
 			{
+
+				Objects::PMobileEntity v;
+				auto m = vc.state.myMobileEntity.Get0();
+				const bool place = vc.state.entityState.timestamp.rightNow && (!m || m->storedIn.Get0() == 0);
+				if (place)
 				{
 					Objects::PWorldEntity existing = Objects::GetEntity(vc.state.entityState.id);
 					if (existing)
@@ -711,10 +716,6 @@ namespace Network
 						return;
 					}
 				}
-
-				Objects::PMobileEntity v;
-				auto m = vc.state.myMobileEntity.Get0();
-				bool place = vc.state.entityState.timestamp.rightNow && (!m || m->storedIn.Get0() == 0);
 				v = Objects::SpawnMobileEntity(Network::ResolveFaction(vc.owner),  vc.state.entityState.id,vc.state.entityState.location,vc.type,place,Network::haveID && Network::myID == vc.owner);
 				if (vc.state.entityState.timestamp.rightNow)
 					LogEvent(EventSignificance::Common,v.get(),  "Placed vehicle entity outside animation");
@@ -765,14 +766,18 @@ namespace Network
 			//#endif
 			try
 			{
-				Objects::PWorldEntity existing = Objects::GetEntity(sc.state.entityState.id);
-				if (existing)
+				const bool place = sc.state.entityState.timestamp.rightNow;
+				if (place)
 				{
-					//could throw an exception here, but observed that if this happens, it happens A LOT in quick succession
-					LogEvent(EventClass::Preset::protocolError,existing.get(),"Trying to double-spawn as "+ToString(sc.type)+" (structure)");
-					return;
+					Objects::PWorldEntity existing = Objects::GetEntity(sc.state.entityState.id);
+					if (existing)
+					{
+						//could throw an exception here, but observed that if this happens, it happens A LOT in quick succession
+						LogEvent(EventClass::Preset::protocolError,existing.get(),"Trying to double-spawn as "+ToString(sc.type)+" (structure)");
+						return;
+					}
 				}
-				Objects::PStructure s = Objects::SpawnStructure(Network::ResolveFaction(sc.owner),  sc.state.entityState.id,sc.state.entityState.location,sc.type, sc.state.entityState.timestamp.rightNow, Network::haveID && Network::myID == sc.owner);
+				Objects::PStructure s = Objects::SpawnStructure(Network::ResolveFaction(sc.owner),  sc.state.entityState.id,sc.state.entityState.location,sc.type, place, Network::haveID && Network::myID == sc.owner);
 				ASSERT__(s);
 				if (sc.state.entityState.timestamp.rightNow)
 					LogEvent(EventSignificance::Common,s.get(),  "Placed structure entity outside animation");

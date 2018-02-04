@@ -957,13 +957,14 @@ namespace Objects
 		void					Faction::SeeingReference::Disappear(const PWorldEntity&e, float&t)
 		{
 			ASSERT__(CurrentlyVisible());
-			LogEvent(EventSignificance::Debug,e.get(),"["+String(e.get())+"] Registering as newly invisible at "+String(t));
 			if (RuntimeConfig::IsInAnyCommandPhase())
 			{
+				LogEvent(EventSignificance::Debug,e.get(),"["+String(e.get())+"] Registering as newly invisible now");
 				wasVisibleAtBeginning = false;
 				ASSERT__(!CurrentlyVisible());
 				return;
 			}
+			LogEvent(EventSignificance::Debug,e.get(),"["+String(e.get())+"] Registering as newly invisible at "+String(t));
 
 			t += timeEpsilon;
 			reverseVisibilityChange[-t] = false;
@@ -1075,7 +1076,7 @@ namespace Objects
 		{
 			if (!e || e->owner.get() == this)
 				return;
-			LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+ ": CheckGridVisibility at time "+String(timeAt));
+			LogEvent(EventSignificance::Debug,e.get(),this->GetLogName()+ ": CheckGridVisibility at time "+String(timeAt));
 			if (seeing.IsSet(e.get()))
 			{
 				HandlePotentialDisappearance(e,timeAt,alliance->config.shareSensors);
@@ -1165,11 +1166,6 @@ namespace Objects
 		//void		Faction::RegisterSensorMotion(const M::Sphere<>&from, const M::Sphere<>&to, float t);
 		void		Faction::RegisterSensorRemoval(const World::Sensor&sensor, int sensorHeight, float&t)
 		{
-			//if (sensorHeight <= Grid::CellStack::TopHeight)
-			if (!sensorLockLevel)
-				CheckSensory(t);
-			else
-				knownWorld.InvalidateSensory();
 			sensor.RemoveFrom(knownWorld,t);
 //			float escaped = M::Sqr(sphere.radius+2);
 			//if (isSatellite)

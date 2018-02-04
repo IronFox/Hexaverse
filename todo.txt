@@ -1,16 +1,19 @@
 
 surveyor tower tremor
 check why nickname was exported in steam build
-check sensor appearance of sensor drone
 
 
-replace cannon towers with rocket towers of similar range
 
+dedicated server should start from control console, which is invisible and closed upon closing control console
 
 
 parallelize sensor repainting (multiple sensors in parallel)
 benchmark digging operation with many entities
 
+
+better clipping:
+	visually remove all solid terrain beneath clipping height,
+	in clipping range, that has no air/liquid above it, or next to it
 
 bug: clipped terrain sometimes does not rasterize correctly, 
 	with clip inconsistency between neighboring stacks.
@@ -196,6 +199,8 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+replace cannon towers with rocket towers of similar range
+check sensor appearance of sensor drone
 larger clip range
 put change log link in main menu
 make alliances invite-based

@@ -1,7 +1,8 @@
-v0.7.3
+v0.7.3	[Feb 4 2018]
 	+ Added menu entry 'Game->Launch Control Console' to directly open up a control console on the local server (if localhost).
 	+ Added menu entry 'Game->Help->View Online Manual' to open browser to online manual.
 	+ Added menu entry 'Game->Help->View Changelog' to open local editor to changelog file.
+	+ Introduced rocket launcher tower type to replace cannon towers.
 	> Enabled but non-conquered nexus ports are now shown as 'conquering' instead of 'enabled'
 	> Votes are now removed from display when the player clicked yes or no.
 	> Enable-buttons now change caption to 'Disable' if the local structure is currently enabled.
@@ -40,6 +41,7 @@ v0.7.3
 	* Fixed round estimation of terraforming operations.
 	* Fixed client crash when handling exceptionally many sensor changes in one round.
 	* Fixed vehicles ignoring max task count.
+	* Fixed sensors sometimes ending up removed twice resulting in invalid contact losses.
 
 v0.7.2	[Jan 25 2018]
 	> Added various hot-keys to directly build certain structure types with a selected terraformer.

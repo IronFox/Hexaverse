@@ -1887,13 +1887,13 @@ namespace World
 	/*static*/ void	Sensor::ApplyVolume(World::Data&v, short changeBy,Data::ChangeSequence&seq)
 	{
 
-		#ifdef _DEBUG
-		{
-			UINT32 crc = CRC32::Sequence().Append(volume.coverage.pointer(),volume.coverage.GetContentSize()).Finish();
-			LogEvent(EventSignificance::Debug,"Applying sensory change ("+String(changeBy)+"), using descriptor with "+String(volume.coverage.Count())+" stack(s), crc="+IntToHex((int)crc,8));	
-		}
+		//#ifdef _DEBUG
+		//{
+		//	UINT32 crc = CRC32::Sequence().Append(volume.coverage.pointer(),volume.coverage.GetContentSize()).Finish();
+		//	LogEvent(EventSignificance::Debug,"Applying sensory change ("+String(changeBy)+"), using descriptor with "+String(volume.coverage.Count())+" stack(s), crc="+IntToHex((int)crc,8));	
+		//}
 
-		#endif
+		//#endif
 
 
 		foreach (volume.coverage,c)
@@ -2103,7 +2103,7 @@ namespace World
 				FATAL__("Unsupported sensor type");
 		};
 
-		LogEvent(EventSignificance::PerformanceMeasurement,nullptr,"Sensory change processed in "+String(timer.GetSecondsSince(t0)));
+		//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,"Sensory change processed in "+String(timer.GetSecondsSince(t0)));
 	}
 
 

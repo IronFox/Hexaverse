@@ -1108,7 +1108,7 @@ namespace Objects
 		{
 			if (isEnabled == b)
 			{
-				LogEvent(EventSignificance::Common,this,"Requested structure enable-state already set: "+String(b)+". Notifying client. Ignoring command.");
+				LogEvent(EventSignificance::Debug,this,"Requested structure enable-state already set: "+String(b)+". Notifying client. Ignoring command.");
 				RegisterChange(EnableChanged,atTime);	//some state error, must be corrected
 				return true;
 			}

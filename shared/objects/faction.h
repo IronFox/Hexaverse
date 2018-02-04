@@ -412,10 +412,13 @@ namespace Objects
 			{
 				seeing.VisitAllValues([&f](const Objects::Faction::SeeingReference&ref)
 				{
-					DBG_ASSERT__(ref.reverseVisibilityChange.empty());
-					auto e = ref.reference.lock();
-					if (e)
-						f(e);
+					if (ref.CurrentlyVisible())
+					{
+						DBG_ASSERT__(ref.reverseVisibilityChange.empty());
+						auto e = ref.reference.lock();
+						if (e)
+							f(e);
+					}
 				});
 			};
 

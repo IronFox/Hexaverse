@@ -218,6 +218,18 @@ TurretConfig =
 		HorizontalAttackRange = 8,
 		IsUnlocked = true,
 	},
+	RocketLauncher = 
+	{
+		Cost = 15,
+		Weight = 3,
+		HealthMultiplier = 2,
+		ScanningRange = 5,
+		AttacksPerRound = 2,
+		DamageLevel = 7,
+		ExplosionRadius = 1,
+		HorizontalAttackRange = 5,
+		IsUnlocked = true,
+	},
 	Cannon = 
 	{
 		Cost = 15,
@@ -513,7 +525,7 @@ Constructs a tower structure configuration from a given turret entry.
 Defines both Get and Describe functions
 ]]
 function Tower(turret--[[Table]]) --Table
-	rs =
+	local rs =
 	{
 		Cost =
 		{
@@ -530,12 +542,12 @@ function Tower(turret--[[Table]]) --Table
 		{
 			Get = 
 				function(state) 
-					return DefaultHealthAtCost(rs.Cost.Get(state)) * Get(turret.HealthMultiplier,state) 
+					return DefaultHealthAtCost(40 + Get(turret.Cost,state)) * Get(turret.HealthMultiplier,state) 
 				end,
 			Describe = 
 				function(state) 
 					local multiplier = Describe(turret.HealthMultiplier,state);
-					local health = DefaultHealthAtCost(rs.Cost.Get(state));
+					local health = DefaultHealthAtCost(40 + Get(turret.Cost,state));
 					if (multiplier == 1) then
 						return Round(health);
 					end
@@ -570,6 +582,18 @@ function Tower(turret--[[Table]]) --Table
 end
 
 
+--[[
+Constructs a tower structure configuration from a given turret entry.
+Defines both Get and Describe functions.
+It is declared as locked
+]]
+function DeprecatedTower(turret--[[Table]]) --Table
+	local rs = Tower(turret);
+	rs.IsUnlocked = function(state) return false end;
+	return rs;
+end
+
+
 StructureConfig =
 {
 	Mine = DefaultStructure(40),
@@ -587,8 +611,9 @@ StructureConfig =
 	MunitionStorage = DefaultStructure(10),
 	NexusPort = ExplicitStructure(0,1,2,false),
 	MissileLauncherTower = Tower(TurretConfig.MissileLauncher),
+	RocketLauncherTower = Tower(TurretConfig.RocketLauncher),
 	RadarTower = Tower(TurretConfig.Radar),
-	CannonTower = Tower(TurretConfig.Cannon),
+	CannonTower = DeprecatedTower(TurretConfig.Cannon),
 	SurveyorTower = Tower(TurretConfig.Surveyor),
 }
 

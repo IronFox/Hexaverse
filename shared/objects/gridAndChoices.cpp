@@ -523,7 +523,7 @@ namespace Objects
 					FATAL__("Trying to register "+object->GetName()+"(@"+ToString(object->location)+",z="+String(z)+") at "+ToString(location)+": Cell occupied by "+grid[at]->GetName()+"(@"+ToString(grid[at]->location)+")");
 				}
 				ASSERT3__(!grid[at],grid[at]->GetName(),location,object->GetName());
-				LogEvent(EventSignificance::Common,object.get(),"Inserted into grid location "+String(at)+"/"+ToString(location));
+				LogEvent(EventSignificance::Debug,object.get(),"Inserted into grid location "+String(at)+"/"+ToString(location));
 				grid[at] = object;
 			}
 			object->isInsertedIntoGrid = true;
@@ -1042,7 +1042,7 @@ namespace Objects
 			ASSERT1__(storedMobileEntities.FindAndErase(e),e->GetName());
 		if (!restored)
 			e->OnConstructionFinished(atTime);
-		LogEvent(EventSignificance::Common, e.get(),String(restored ? "Redeployed" : "Deployed")+" to "+ToString(e->location)+" at t="+String(atTime));
+		LogEvent(EventSignificance::Debug, e.get(),String(restored ? "Redeployed" : "Deployed")+" to "+ToString(e->location)+" at t="+String(atTime));
 		if (!restored)
 		{
 			if (setHealthToFull)
