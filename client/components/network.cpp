@@ -1389,7 +1389,9 @@ namespace Network
 				default:
 					LogEvent(EventClass::Preset::internalError,"Unexpected invite type for alliance "+ToString(alliance->id)+" and faction "+faction->GetLogName());
 			}
-			HUD::FactionTable::Update();
+			#ifdef HAS_WINDOW
+				HUD::FactionTable::Update();
+			#endif
 		}
 
 		void	VoteResult(Protocol::VoteResult&result)

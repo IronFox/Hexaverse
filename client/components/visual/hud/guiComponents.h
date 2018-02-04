@@ -465,7 +465,7 @@ namespace Component
 		
 		virtual void	UpdateDynamicSize(ChangeRecorder&);
 
-		virtual void	Render();
+		virtual void	Render(float opacity);
 
 		virtual void	ResolveAnchorAxis(AnchorAxis axis, const M::Rect<>&context, ChangeRecorder&);
 
@@ -516,6 +516,7 @@ namespace Component
 	{
 		typedef Component	Super;
 		static DX11::BaseInstructionBlock	texturedQuad;
+		static DX11::ObjectBuffer<float4>	texturedQuadColor;
 		bool			autoSetHeight = true;
 		DX11::Texture	texture;
 		
@@ -526,7 +527,7 @@ namespace Component
 		void			SetAutoHeight(bool b)	{if (autoSetHeight == b) return; ASSERT__(!b || !anchorConfig.GetVAxis().RequiresFixedParentSize()); autoSetHeight = b; SignalLayoutChangeUp();}
 		void			SetTexture(const DX11::Texture&tex) {texture = tex;SignalLayoutChangeUp();}
 
-		virtual void	Render() override;
+		virtual void	Render(float opacity) override;
 		//virtual bool	HandleClick() override {return ContainsMouse();}
 	protected:
 		virtual float	GetContentHeight() const override;
@@ -538,7 +539,7 @@ namespace Component
 	class Box : public Component
 	{
 	protected:
-		void			BaseRender(bool lit, bool flipped, bool fill=true, bool border=true);
+		void			BaseRender(float opacity,bool lit, bool flipped, bool fill=true, bool border=true);
 	public:
 		typedef Component	Super;
 
@@ -561,7 +562,7 @@ namespace Component
 			fillBackground = false;
 			renderBorder = true;
 		}
-		virtual void	Render() override	{Super::Render(); BaseRender(false,false,fillBackground,renderBorder);}
+		virtual void	Render( float opacity ) override	{Super::Render(opacity); BaseRender(opacity,false,false,fillBackground,renderBorder);}
 	};
 
 	/**
@@ -600,8 +601,8 @@ namespace Component
 			float	Sample(index_t x) const;
 
 		
-			void	RenderSurfaces()	const;
-			void	RenderLines()	const;
+			void	RenderSurfaces(float opacity)	const;
+			void	RenderLines(float opacity)	const;
 			void	Replot(const M::Rect<>&componentRect, const M::Rect<>&dataRect, bool addBottomLine, bool stack);
 
 
@@ -661,7 +662,7 @@ namespace Component
 		}
 
 
-		virtual void	Render() override;
+		virtual void	Render(float opacity) override;
 
 		void			SignalAxesChanged()	{axesChanged = true;}
 		float			SampleStackedHeight(index_t) const;
@@ -736,7 +737,7 @@ namespace Component
 		*/
 		std::function<void(Key::Name)> onSpecialKey;
 
-		virtual void	Render() override;
+		virtual void	Render(float opacity) override;
 		virtual void	SetActive(bool isActive) override {SetInputActive(isActive); Super::SetActive(isActive);}
 
 	};
@@ -796,7 +797,7 @@ namespace Component
 		void			HandleTextChange();
 
 	protected:
-		void			RenderText(bool lit);
+		void			RenderText(float opacity,bool lit);
 
 		virtual float	GetIdealWidth() const;
 		virtual void	OnTextChange() {};
@@ -870,7 +871,7 @@ namespace Component
 		}
 
 		virtual void	UpdateDynamicSize(ChangeRecorder&) override;
-		virtual void	Render() override;
+		virtual void	Render(float opacity) override;
 	};
 
 
@@ -1001,7 +1002,7 @@ namespace Component
 			return changed;
 		}
 
-		virtual void Render() override;
+		virtual void Render(float opacity) override;
 
 		virtual PComponent	OnMouseDown() override
 		{
@@ -1111,7 +1112,7 @@ namespace Component
 			return changed;
 		}
 
-		virtual void Render() override;
+		virtual void Render(float opacity) override;
 
 		virtual PComponent	OnMouseDown() override
 		{
@@ -1155,15 +1156,15 @@ namespace Component
 		/**/			ScrollButton(direction_t dir,std::function<void()> onPress = std::function<void()>()):Super("",onPress), direction(dir)
 		{}
 
-		virtual void	Render() override
+		virtual void	Render( float opacity ) override
 		{
 			bool lit = IsLit();
 			bool flipped = mousePressedComponent.get() == this;
-			Super::BaseRender(lit && !flipped,lit && flipped);
-			RenderArrow(GetRect(),direction,lit);
+			Super::BaseRender(opacity,lit && !flipped,lit && flipped);
+			RenderArrow(opacity,GetRect(),direction,lit);
 		}
 
-		static void		RenderArrow(const M::Rect<>&, direction_t, bool lit);
+		static void		RenderArrow(float opacity,const M::Rect<>&, direction_t, bool lit);
 
 		virtual void	SetLocation(const M::Rect<>&loc) override {Super::SetLocation(loc);}
 
@@ -1185,7 +1186,7 @@ namespace Component
 		virtual WheelRs		OnMouseWheel(short) override;
 		virtual void		OnMouseUp() override;
 		virtual void		OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse) override;
-		virtual void		Render() override;
+		virtual void		Render(float opacity) override;
 		void				Setup(float current, float max, float slideStep) {this->current = current; this->max = max; this->slideStep = slideStep;numMarkers = markersEvery ? 1+(max / markersEvery) : 0;}
 		void				SetupMarkers(float markerStep, bool show)	{this->markersEvery = markerStep; showMarkers = show; numMarkers = markersEvery ? 1+(max / markersEvery) : 0;}
 		float				GetMax() const {return max;}
@@ -1250,7 +1251,7 @@ namespace Component
 			void		OnMouseUp();
 			void		OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse);
 			void		Enable(Panel*,const M::Rect<>&rect);
-			void		Render(const M::Rect<>&rect);
+			void		Render(float opacity,const M::Rect<>&rect);
 			float		GetOffset() const {return visible ? -viewTop : 0;}
 
 			static float	GetPixelWidth();
@@ -1275,10 +1276,10 @@ namespace Component
 			foreach (components,c)
 				(*c)->AcceptStateFromParent(p);
 		}
-		void			RenderChildren()
+		void			RenderChildren( float opacity )
 		{
 			foreach (components,c) 
-				(*c)->Render();
+				(*c)->Render(opacity);
 		}
 
 		Buffer0<PComponent>	components;
@@ -1342,7 +1343,7 @@ namespace Component
 		
 		virtual void	SetActive(bool isActive) override;
 		virtual void	UpdateDynamicSize(ChangeRecorder&) override;
-		virtual void	Render() override;
+		virtual void	Render(float opacity) override;
 		virtual void	ResolveAnchorAxis(AnchorAxis axis, const M::Rect<>&context, ChangeRecorder&) override;
 		virtual void	Translate(const float2&delta)	{Super::Translate(delta); foreach (components,c) (*c)->Translate(delta);}
 
@@ -1498,12 +1499,12 @@ namespace Component
 
 
 
-		virtual void Render() override
+		virtual void Render( float opacity ) override
 		{
 			bool lit = IsLit();
 			bool flipped = mousePressedComponent.get() == this;
-			Super::BaseRender(lit && !flipped,lit && flipped);
-			Super::RenderChildren();
+			Super::BaseRender(opacity,lit && !flipped,lit && flipped);
+			Super::RenderChildren(opacity);
 		}
 
 		virtual PComponent	OnMouseDown() override
@@ -1703,9 +1704,9 @@ namespace Component
 		count_t			CountTabs() const {return tabs.Count();}
 
 	
-		virtual void Render() override
+		virtual void Render( float opacity ) override
 		{
-			Super::Render();
+			Super::Render(opacity);
 		}
 
 	protected:
@@ -1820,13 +1821,13 @@ namespace Component
 		const float2&		GetOutlineMargin() const {return outlineMargin;}
 
 
-		virtual void		Render() override
+		virtual void		Render( float opacity) override
 		{
 			if (isModal)
-				Darken(context,0.7f);
-			Darken(outerRect);
+				Darken(context,0.7f*opacity);
+			Darken(outerRect,0.9f*opacity);
 			//Darken(rect);
-			Super::Render();
+			Super::Render(opacity);
 		}
 
 		virtual void		SignalLayoutChangeUp()	override

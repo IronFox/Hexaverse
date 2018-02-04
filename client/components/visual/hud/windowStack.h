@@ -25,7 +25,6 @@ namespace HUD
 		void				Create();
 
 
-		index_t				FindWindowIndex(const Component::Window*window);
 
 		/**
 		Makes sure the specified window is visible. Raises the window if it's not top-most

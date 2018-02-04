@@ -67,7 +67,7 @@ namespace SurfaceRenderer
 		void	Destroy()	{Clear(); instruction.Clear();}
 
 		void	Bake();
-		void	Rasterize()	const;
+		void	Rasterize(const float4&tint)	const;
 
 		friend void	swap(Baked&a, Baked&b)
 		{

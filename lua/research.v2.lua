@@ -227,7 +227,7 @@ TurretConfig =
 		AttacksPerRound = 2,
 		DamageLevel = 7,
 		ExplosionRadius = 1,
-		HorizontalAttackRange = 5,
+		HorizontalAttackRange = 4,
 		IsUnlocked = true,
 	},
 	Cannon = 
@@ -525,14 +525,12 @@ Constructs a tower structure configuration from a given turret entry.
 Defines both Get and Describe functions
 ]]
 function Tower(turret--[[Table]]) --Table
+	local cost = function(state) return 40 + Get(turret.Cost,state) end;
 	local rs =
 	{
 		Cost =
 		{
-			Get = 
-				function(state) 
-					return 40 + Get(turret.Cost,state)
-				end,
+			Get = cost,
 			Describe = 
 				function(state) 
 					return '40+'.. Describe(turret.Cost,state)
@@ -542,12 +540,12 @@ function Tower(turret--[[Table]]) --Table
 		{
 			Get = 
 				function(state) 
-					return DefaultHealthAtCost(40 + Get(turret.Cost,state)) * Get(turret.HealthMultiplier,state) 
+					return DefaultHealthAtCost(cost()) * Get(turret.HealthMultiplier,state) 
 				end,
 			Describe = 
 				function(state) 
 					local multiplier = Describe(turret.HealthMultiplier,state);
-					local health = DefaultHealthAtCost(40 + Get(turret.Cost,state));
+					local health = DefaultHealthAtCost(cost());
 					if (multiplier == 1) then
 						return Round(health);
 					end
@@ -589,7 +587,7 @@ It is declared as locked
 ]]
 function DeprecatedTower(turret--[[Table]]) --Table
 	local rs = Tower(turret);
-	rs.IsUnlocked = function(state) return false end;
+	rs.IsUnlocked = false;	--make sure it's not a function. If it's a function, the game assumes it can be unlocked, and displays it as a construction choice
 	return rs;
 end
 
@@ -641,6 +639,7 @@ MakeUnlockResearchable(unlockGroup, planeFactoryUnlock, TurretConfig, 'Raptor',6
 attackRangeGroup = Game.CreateResearch(improveGroup,'Attack Range','Research_AttackRange');
 	MakeImproveResearchable(attackRangeGroup, artilleryUnlock, TurretConfig, 'Artillery', 'HorizontalAttackRange',0.005);
 	MakeImproveResearchable(attackRangeGroup, launcherUnlock, TurretConfig, 'MissileLauncher', 'HorizontalAttackRange',0.005);
+	MakeImproveResearchable(attackRangeGroup, nil, TurretConfig, 'RocketLauncher', 'HorizontalAttackRange',0.005);
 	MakeImproveResearchable(attackRangeGroup, nil, TurretConfig, 'Cannon', 'HorizontalAttackRange',0.005);
 
 scanningRangeGroup = Game.CreateResearch(improveGroup,'Scanning Range','Research_ScanningRange');

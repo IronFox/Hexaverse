@@ -1,3 +1,7 @@
+check capsule in big picture mode
+
+
+
 
 surveyor tower tremor
 check why nickname was exported in steam build
@@ -199,6 +203,8 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+make windows fade in and out
+remove construction option if structure is not unlocked and cannot be researched
 replace cannon towers with rocket towers of similar range
 check sensor appearance of sensor drone
 larger clip range

@@ -806,6 +806,41 @@ namespace Objects
 	}
 
 
+	static PResearchTopic FindTopicOfPrototypeIn(const PResearchTopic&topic, const PWorldEntity&proto)
+	{
+		foreach (topic->children,_c)
+		{
+			const auto&t = *_c;
+			if (t->IsGroup())
+			{
+				const auto&rs = FindTopicOfPrototypeIn(t,proto);
+				if (rs)
+					return rs;
+			}
+			if (t->prototypeReference == proto)
+				return t;
+		}
+		return nullptr;
+	}
+
+	/*static*/ PResearchTopic	ResearchState::FindTopicOfPrototype(const PWorldEntity&proto)
+	{
+		foreach (globalState.allTopics,_t)
+		{
+			const auto&t = *_t;
+			if (t->IsGroup())
+			{
+				const auto&rs = FindTopicOfPrototypeIn(t,proto);
+				if (rs)
+					return rs;
+			}
+			if (t->prototypeReference == proto)
+				return t;
+		}
+		return nullptr;
+	}
+
+
 	/*static*/ PResearchTopic	ResearchState::FindTopic(const StringRef&path)
 	{
 		Ctr::Array<StringRef>	components;

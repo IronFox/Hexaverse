@@ -230,13 +230,12 @@ namespace Objects
 		{
 			typedef Base					Super;
 		public:
-			enum class MountType
-			{
+			CONSTRUCT_ENUMERATION4(MountType,
 				Vehicle,
 				TowerOnly,
 				Satellite,
-				Plane,
-			};
+				Plane
+			);
 
 
 			IFunc							healthMultiplier;

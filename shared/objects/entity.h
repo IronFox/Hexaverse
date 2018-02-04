@@ -486,6 +486,7 @@ namespace Objects
 
 		virtual bool				IsUnlockedAtState(const Lua::Reference&researchState) const	{return GetTable()->isUnlocked.GetValue(researchState);}
 		bool						IsUnlocked() const {return IsUnlockedAtState(GetResearchState());}
+		virtual bool				CanBeUnlocked() const {return GetTable()->isUnlocked.IsFunctionOrConstNonZero();}
 		/**
 		Checks whether the local type is a derivative of the Vehicle class, and currently part of the regular world grid (a landed plane would be such, an airborne one not)
 		*/

@@ -1,6 +1,10 @@
 #include "common.inc.hlsl"
 
 
+cbuffer Tint
+{
+	float4 Tint;
+}
 
 struct A2V
 {
@@ -28,7 +32,7 @@ void vsMain(A2V input, out V2P output)
 
 float4 psMain(V2P input) : SV_TARGET
 {
-	return float4(input.color.rgb,input.color.a * input.color.a);
+	return float4(input.color.rgb,input.color.a * input.color.a) * Tint;
 }
 
 
