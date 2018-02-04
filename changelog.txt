@@ -1,3 +1,5 @@
+v0.7.4
+
 v0.7.3	[Feb 4 2018]
 	+ Added menu entry 'Game->Launch Control Console' to directly open up a control console on the local server (if localhost).
 	+ Added menu entry 'Game->Help->View Online Manual' to open browser to online manual.
