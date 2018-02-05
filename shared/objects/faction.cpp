@@ -935,8 +935,8 @@ namespace Objects
 				return;
 			}
 
-		//	if (!reverseVisibilityChange.empty())
-			//	t = std::max(t,-reverseVisibilityChange.begin()->first);
+			if (!reverseVisibilityChange.empty())
+				t = std::max(t,-reverseVisibilityChange.begin()->first);
 			LogEvent(EventSignificance::Debug,e.get(),"["+String(e.get())+"] Registering as newly visible at "+String(t));
 
 			t += timeEpsilon;
@@ -956,6 +956,8 @@ namespace Objects
 				ASSERT__(!CurrentlyVisible());
 				return;
 			}
+			if (!reverseVisibilityChange.empty())
+				t = std::max(t,-reverseVisibilityChange.begin()->first);
 			LogEvent(EventSignificance::Debug,e.get(),"["+String(e.get())+"] Registering as newly invisible at "+String(t));
 
 			t += timeEpsilon;
