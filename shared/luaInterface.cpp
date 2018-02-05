@@ -43,6 +43,33 @@ extern "C"
 	LUA_INIT_VAR "_" LUA_VERSION_MAJOR "_" LUA_VERSION_MINOR
 
 
+
+#define LUA_UNSET(FUNC)	\
+	"if ("#FUNC" == nil) then error(\"Unable to unset "#FUNC" - does not exist\") end;"\
+	#FUNC"=nil;"\
+	"if ("#FUNC" ~= nil) then error(\"Unable to unset "#FUNC" - should be gone\") end;"
+
+
+static const char* sandboxBegin = 
+//LUA_UNSET(load)
+//LUA_UNSET(loadfile)
+//LUA_UNSET(dofile)
+//LUA_UNSET(_G)
+//LUA_UNSET(getfenv)
+//LUA_UNSET(getmetatable)
+//LUA_UNSET(rawequal)
+//LUA_UNSET(rawget)
+//LUA_UNSET(rawset)
+//LUA_UNSET(setfenv)
+//LUA_UNSET(module)
+//LUA_UNSET(require)
+//LUA_UNSET(package)
+LUA_UNSET(string.dump)
+//LUA_UNSET(io)
+//LUA_UNSET(os)
+//LUA_UNSET(debug)
+;
+
 template class Lua::Function<int(int)>;
 
 /*
@@ -1169,7 +1196,6 @@ namespace Lua
 		lua_insert(st,-2);
 		lua_setfield(st,-2,name);
 		lua_pop(st,1);
-
 		ASSERT_EQUAL__(top-1,lua_gettop(st));
 	}
 
@@ -1360,10 +1386,143 @@ namespace Lua
 	{
 		NamedReference rs;
 		if (!FindGlobal(name,rs))
-			throw Exception("Unable to find required global identifier '"+name+"'");
+			throw Exception(CLOCATION,"Unable to find required global identifier '"+name+"'");
 		return rs;
 	}
 
+	static void RaiseError(const String&error)
+	{
+		throw Exception(CLOCATION,"Error: "+error);
+	}
+
+	namespace DefaultFunctions
+	{
+		//copy-paste since the library does not expose these:
+		/*
+		** Traversal function for 'ipairs'
+		*/
+		static int ipairsaux (lua_State *L) {
+		  lua_Integer i = luaL_checkinteger(L, 2) + 1;
+		  lua_pushinteger(L, i);
+		  return (lua_geti(L, 1, i) == LUA_TNIL) ? 1 : 2;
+		}
+
+
+		static int pairsmeta (lua_State *L, const char *method, int iszero,
+							lua_CFunction iter) {
+		luaL_checkany(L, 1);
+		if (luaL_getmetafield(L, 1, method) == LUA_TNIL) {  /* no metamethod? */
+		lua_pushcfunction(L, iter);  /* will return generator, */
+		lua_pushvalue(L, 1);  /* state, */
+		if (iszero) lua_pushinteger(L, 0);  /* and initial value */
+		else lua_pushnil(L);
+		}
+		else {
+		lua_pushvalue(L, 1);  /* argument 'self' to metamethod */
+		lua_call(L, 1, 3);  /* get 3 values from metamethod */
+		}
+		return 3;
+		}
+
+
+		static int luaB_next (lua_State *L) {
+		luaL_checktype(L, 1, LUA_TTABLE);
+		lua_settop(L, 2);  /* create a 2nd argument if there isn't one */
+		if (lua_next(L, 1))
+		return 2;
+		else {
+		lua_pushnil(L);
+		return 1;
+		}
+		}
+
+
+		static int luaB_pairs (lua_State *L) {
+		return pairsmeta(L, "__pairs", 0, luaB_next);
+		}
+
+		static int luaB_type (lua_State *L) {
+		int t = lua_type(L, 1);
+		luaL_argcheck(L, t != LUA_TNONE, 1, "value expected");
+		lua_pushstring(L, lua_typename(L, t));
+		return 1;
+		}
+
+
+		#define SPACECHARS	" \f\n\r\t\v"
+
+		static const char *b_str2int (const char *s, int base, lua_Integer *pn) {
+		lua_Unsigned n = 0;
+		int neg = 0;
+		s += strspn(s, SPACECHARS);  /* skip initial spaces */
+		if (*s == '-') { s++; neg = 1; }  /* handle signal */
+		else if (*s == '+') s++;
+		if (!isalnum((unsigned char)*s))  /* no digit? */
+		return NULL;
+		do {
+		int digit = (isdigit((unsigned char)*s)) ? *s - '0'
+						: (toupper((unsigned char)*s) - 'A') + 10;
+		if (digit >= base) return NULL;  /* invalid numeral */
+		n = n * base + digit;
+		s++;
+		} while (isalnum((unsigned char)*s));
+		s += strspn(s, SPACECHARS);  /* skip trailing spaces */
+		*pn = (lua_Integer)((neg) ? (0u - n) : n);
+		return s;
+		}
+
+		static int luaB_tonumber (lua_State *L) {
+		if (lua_isnoneornil(L, 2)) {  /* standard conversion? */
+		luaL_checkany(L, 1);
+		if (lua_type(L, 1) == LUA_TNUMBER) {  /* already a number? */
+			lua_settop(L, 1);  /* yes; return it */
+			return 1;
+		}
+		else {
+			size_t l;
+			const char *s = lua_tolstring(L, 1, &l);
+			if (s != NULL && lua_stringtonumber(L, s) == l + 1)
+			return 1;  /* successful conversion to number */
+			/* else not a number */
+		}
+		}
+		else {
+		size_t l;
+		const char *s;
+		lua_Integer n = 0;  /* to avoid warnings */
+		lua_Integer base = luaL_checkinteger(L, 2);
+		luaL_checktype(L, 1, LUA_TSTRING);  /* no numbers as strings */
+		s = lua_tolstring(L, 1, &l);
+		luaL_argcheck(L, 2 <= base && base <= 36, 2, "base out of range");
+		if (b_str2int(s, (int)base, &n) == s + l) {
+			lua_pushinteger(L, n);
+			return 1;
+		}  /* else not a number */
+		}  /* else not a number */
+		lua_pushnil(L);  /* not a number */
+		return 1;
+		}
+
+
+		static int luaB_error (lua_State *L) {
+		int level = (int)luaL_optinteger(L, 2, 1);
+		lua_settop(L, 1);
+		if (lua_type(L, 1) == LUA_TSTRING && level > 0) {
+		luaL_where(L, level);   /* add extra information */
+		lua_pushvalue(L, 1);
+		lua_concat(L, 2);
+		}
+		return lua_error(L);
+		}
+
+
+		static int luaB_tostring (lua_State *L) {
+		luaL_checkany(L, 1);
+		luaL_tolstring(L, 1, NULL);
+		return 1;
+		}
+
+	}
 
 	/*static*/ PProgram Program::Create(const String&name)
 	{
@@ -1394,6 +1553,26 @@ namespace Lua
 			luaL_requiref(st, lib->name, lib->func, 1);
 			lua_pop(st, 1);  /* remove lib */
 		}
+
+		{
+			Detail::StackChecker chk(st);
+
+
+			lua_pushcclosure(st,DefaultFunctions::luaB_pairs,0);
+			lua_setglobal(st,"pairs");
+			lua_pushcclosure(st,DefaultFunctions::luaB_type,0);
+			lua_setglobal(st,"type");
+			lua_pushcclosure(st,DefaultFunctions::luaB_tonumber,0);
+			lua_setglobal(st,"tonumber");
+			lua_pushcclosure(st,DefaultFunctions::luaB_tostring,0);
+			lua_setglobal(st,"tostring");
+			lua_pushcclosure(st,DefaultFunctions::luaB_error,0);
+			lua_setglobal(st,"error");
+
+		}
+
+		rs->Execute(sandboxBegin,"SandboxBegin");
+
 		return rs;
 	}
 

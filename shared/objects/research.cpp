@@ -248,16 +248,15 @@ namespace Objects
 
 		globalState.program0 = ScriptCache::LoadContent(
 			"ResearchState = {}\n"
-			"ResearchState.__index = ResearchState\n"
 			"function ResearchState.New()\n"
 				"local rs = {}\n"
 				"setmetatable(rs,ResearchState)\n"
 				"return rs\n"
 			"end\n"
-			"function ResearchState:Export()\n"
+			"function ResearchState.Export(self)\n"
 				"return 0\n"
 			"end\n"
-			"function ResearchState:Import(exported)\n"
+			"function ResearchState.Import(self, exported)\n"
 			"end\n"
 					"\n"
 		"function DefaultHealthAtCost(cost--[[float]]) --float\n"
