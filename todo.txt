@@ -1,3 +1,5 @@
+temporarily lost contact when nexus port changed ownership, was visible only by plane
+
 open changelog in internal window, manual in steam-internal browser
 
 fatals should raise error window to the top. bug reporter showing up at all when server was hidden?
