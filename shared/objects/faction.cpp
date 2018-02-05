@@ -926,17 +926,22 @@ namespace Objects
 		void					Faction::SeeingReference::Appear(const PWorldEntity&e, float&t)
 		{
 			ASSERT__(!CurrentlyVisible());
-			LogEvent(EventSignificance::Debug,e.get(),"["+String(e.get())+"] Registering as newly visible at "+String(t));
 			if (RuntimeConfig::IsInAnyCommandPhase())
 			{
+				LogEvent(EventSignificance::Debug,e.get(),"["+String(e.get())+"] Registering as newly visible now");
 				reference = e;
 				wasVisibleAtBeginning = true;
 				ASSERT__(CurrentlyVisible());
 				return;
 			}
+
+		//	if (!reverseVisibilityChange.empty())
+			//	t = std::max(t,-reverseVisibilityChange.begin()->first);
+			LogEvent(EventSignificance::Debug,e.get(),"["+String(e.get())+"] Registering as newly visible at "+String(t));
+
 			t += timeEpsilon;
 			reverseVisibilityChange[-t] = true;
-//			ASSERT__(CurrentlyVisible());
+			ASSERT__(CurrentlyVisible());
 			e->SyncTime(t,timeEpsilon);
 			reference = e;
 		}
