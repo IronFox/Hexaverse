@@ -1,15 +1,11 @@
-fatals should raise error window to the top
+open changelog in internal window, manual in steam-internal browser
 
-check capsule in big picture mode
-
-load savegame dialog
+fatals should raise error window to the top. bug reporter showing up at all when server was hidden?
+server: on heartbeat failure provide option to restart client or quit
 
 sleeping terraformers count towards per-round mineral demand
-artilery does not fire in parallel
 
-client menu: start server, interactive, with save game
-
-server: on heartbeat failure provide option to restart client or quit
+client menu: start server, interactive, with save game dialog
 
 when loading while in interactive configuration mode, force-reenable session afterwards
 
@@ -218,6 +214,8 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+check capsule in big picture mode (missing but uploaded, possibly due to non-published shop)
+artillery does not fire in parallel (due to terrain change time synchronization, inevitable if shooting at same location)
 make windows fade in and out
 remove construction option if structure is not unlocked and cannot be researched
 replace cannon towers with rocket towers of similar range
