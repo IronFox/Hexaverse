@@ -1,3 +1,5 @@
+fatals should raise error window to the top
+
 check capsule in big picture mode
 
 load savegame dialog
@@ -6,9 +8,6 @@ sleeping terraformers count towards per-round mineral demand
 artilery does not fire in parallel
 
 client menu: start server, interactive, with save game
-
-repair allied unit causes server crash?
-
 
 server: on heartbeat failure provide option to restart client or quit
 
