@@ -1,4 +1,6 @@
-temporarily lost contact when nexus port changed ownership, was visible only by plane
+make disabled nexus ports idle
+
+bug: temporarily lost contact when nexus port changed ownership, was visible only by plane
 
 open changelog in internal window, manual in steam-internal browser
 
@@ -16,10 +18,9 @@ game goal counts two nexus ports necessary for two players, even through three a
 can a radar vehicle drive into the range of a newly discovered rocket tower?
 
 
-surveyor tower tremor
-check why nickname was exported in steam build
+tremor generator building
 
-
+update documentation, and upload
 
 dedicated server should start from control console, which is invisible and closed upon closing control console
 
@@ -216,6 +217,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+can't reproduce: check why nickname was exported in steam build
 check capsule in big picture mode (missing but uploaded, possibly due to non-published shop)
 artillery does not fire in parallel (due to terrain change time synchronization, inevitable if shooting at same location)
 make windows fade in and out
