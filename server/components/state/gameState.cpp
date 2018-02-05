@@ -569,13 +569,17 @@ namespace Game
 		}
 
 
-		void	ChangePhase(RuntimeConfig::Phase to, float timeWindow/* = -1*/)
+		void	ChangePhase( RuntimeConfig::Phase to, float timeWindow/* = -1*/)
 		{
 			if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
 			{
 				DBG_FATAL__("Trying to change from end-of-game to "+String(to.ToString()));
 				return;
 			}
+
+			LogEvent(EventSignificance::Common,"Changing phase to "+String(to.ToString())+" with time window "+String(timeWindow)+" after "+String(timer.GetSecondsSince(lastPhaseChange))+" seconds");
+
+
 			if (RuntimeConfig::IsACommandPhase(to))
 			{
 				Objects::ForeachFaction([](const Objects::PFaction&f)
@@ -606,7 +610,6 @@ namespace Game
 				Vote::CheckAllVotes();
 			}
 
-			LogEvent(EventSignificance::Debug,"Changing RuntimeConfig::phase to "+String(to.ToString())+" with time window "+String(timeWindow));
 			Protocol::PhaseChange	ph;
 			ph.newPhase = to;
 			ph.roundNumber = RuntimeConfig::roundNumber;
@@ -659,7 +662,8 @@ namespace Game
 
 			//if (to == RuntimeConfig::Phase::CommandPhase)
 				//DebugCheckWorld();	//this assumes the world does not change. if it does, this will fail
-
+			if (RuntimeConfig::IsACommandPhase(to))
+				LogEvent(EventSignificance::Uncommon,"Begin round "+RuntimeConfig::roundNumber.ToString());
 		}
 
 
