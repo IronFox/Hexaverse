@@ -1435,6 +1435,9 @@ namespace Lua
 
 	void	Program::Execute(const String&code, const String&context/*=""*/)
 	{
+		if (code.FirstChar() == 27)	//should be rare enough as byte code has a bazillion zeroes which would break (de)serialization, but just in case
+			throw Exception(CLOCATION,"Execution of binary Lua bytecode is not allowed");
+
 		lua_State*st = state;
 		Detail::StackChecker chk(st);
 		if (!st)
