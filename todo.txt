@@ -6,7 +6,6 @@ open changelog in internal window, manual in steam-internal browser
 fatals should raise error window to the top. bug reporter showing up at all when server was hidden?
 server: on heartbeat failure provide option to restart client or quit
 
-sleeping terraformers count towards per-round mineral demand
 
 client menu: start server, interactive, with save game dialog
 
@@ -216,6 +215,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: sleeping terraformers count towards per-round mineral demand
 make disabled nexus ports idle
 can't reproduce: check why nickname was exported in steam build
 check capsule in big picture mode (missing but uploaded, possibly due to non-published shop)

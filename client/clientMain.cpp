@@ -1010,6 +1010,8 @@ namespace ApplicationInterface
 					return;
 				if (v->myTasks.IsEmpty() || !v->myTasks.Peek().job)
 					return;
+				if (v->IsSleeping())
+					return;
 				int opSpeed = v->GetOperationSpeed(v->myTasks.Peek().job->GetOperationAffinity());
 				if (!opSpeed)
 					return;
