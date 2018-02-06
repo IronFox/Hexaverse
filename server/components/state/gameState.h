@@ -145,8 +145,9 @@ namespace Game
 		
 		typedef RuntimeConfig::GameGoal	Goal;
 
+		count_t			CountActuallyAccessibleZones(count_t temporaryFactionCountBonus=0);
 
-		inline count_t	CountAccessibleZones(count_t temporaryFactionCountBonus=0)
+		inline count_t	CountTheoreticallyAccessibleZones(count_t temporaryFactionCountBonus=0)
 		{
 			count_t numZones = mostFactionsAlive+temporaryFactionCountBonus;	//not counting nexus faction
 			numZones = (numZones/factionsPerZone) + !!(numZones % factionsPerZone);
@@ -208,7 +209,7 @@ namespace Game
 		inline count_t	GetTargetNexusCount()
 		{
 			return RuntimeConfig::empZones
-						? /*std::min<count_t>(*/std::max<count_t>(2,CountAccessibleZones())/*,3)*/ 
+						? /*std::min<count_t>(*/std::max<count_t>(2,CountActuallyAccessibleZones())/*,3)*/ 
 						: 2;	//should be 2 here, because in normal ConquerNexus mode, only nexus bases are spawned, whereas in EMP ConsquerNexus mode ports are spawned on all of the 12 poles
 		}
 

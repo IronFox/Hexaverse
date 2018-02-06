@@ -30,6 +30,7 @@ namespace Game
 
 	INT32				tutorialAt=1;
 
+	#pragma region vote
 
 	/*static*/ HashTable<TUniqueID,PVote>	Vote::all;
 	/*static*/ HashTable<Array<TUniqueID>,PVote>	Vote::map;
@@ -347,6 +348,27 @@ namespace Game
 			Close(rs);
 	}
 
+	#pragma endregion
+
+
+
+	count_t				Config::CountActuallyAccessibleZones(count_t temporaryFactionCountBonus/*=0*/)
+	{
+		count_t numZones = CountTheoreticallyAccessibleZones(temporaryFactionCountBonus);
+		if (numZones == 0)
+			return 1;
+
+		count_t unlocked = 0;
+		for (index_t i = 0; i < numZones; i++)
+		{
+			if (Game::Config::Nexus::haveBases && BaseGrid::IsIsolatedCorner(unlocked) && RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::ConquerNexus)
+			{
+				unlocked++;
+			}
+			unlocked++;
+		}
+		return unlocked;
+	}
 
 
 	void				SetDefaultEvolver()

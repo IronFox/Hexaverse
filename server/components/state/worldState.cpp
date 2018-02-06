@@ -472,20 +472,8 @@ namespace World
 	{
 		if (RuntimeConfig::empZones)
 		{
-			count_t numZones = Game::Config::CountAccessibleZones(temporaryFactionCountBonus);
-
-			int unlocked = 0;
-			for (index_t i = 0; i < numZones; i++)
-			{
-				if (Game::Config::Nexus::haveBases && BaseGrid::IsIsolatedCorner(unlocked) && RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::ConquerNexus)
-				{
-					unlocked++;
-				}
-				unlocked++;
-			}
-			if (numZones == 0)
-				unlocked = 1;
-				
+			const count_t numZones = Game::Config::CountTheoreticallyAccessibleZones(temporaryFactionCountBonus);
+			const count_t unlocked = Game::Config::CountActuallyAccessibleZones(temporaryFactionCountBonus);
 			LogEvent(EventSignificance::Common,"Re-counted necessary EMP Zones (bonus="+String(temporaryFactionCountBonus)+"): raw="+String(numZones)+", final="+String(unlocked));
 			SetUnlockedEMPZones(unlocked);
 		}

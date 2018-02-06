@@ -1664,22 +1664,7 @@ namespace FileIO
 
 
 		if (RuntimeConfig::empZones)
-		{
-			count_t numZones = Game::Config::CountAccessibleZones();
-
-			int unlocked = 0;
-			for (index_t i = 0; i < numZones; i++)
-			{
-				if (Game::Config::Nexus::haveBases && BaseGrid::IsIsolatedCorner(unlocked))
-				{
-					unlocked++;
-				}
-				unlocked++;
-			}
-				
-
-			World::SetUnlockedEMPZones(unlocked);
-		}
+			World::SetUnlockedEMPZones(Game::Config::CountActuallyAccessibleZones());
 
 		LogEvent(EventSignificance::Uncommon,"Restored world '"+World::worldID.ToNiceString()+"'/"+ToString(World::worldID)+" in round "+RuntimeConfig::roundNumber.ToString());
 		RefreshWindowTitle();
