@@ -1156,12 +1156,15 @@ namespace Objects
 					//if (!ws->CanEnable())
 					//	ws->SetEnabled(false,atTime);
 				}
-				if (ws->WouldLikeToEnable())
+				if (setHealthToFull)
 				{
-					if (refreshNetworkNow)
-						ws->SetEnabled(true,atTime);
-					else
-						ws->SetEnabled(true,atTime,false,WorkingStructure::ForceEnable);
+					if (ws->WouldLikeToEnable())
+					{
+						if (refreshNetworkNow)
+							ws->SetEnabled(true,atTime);
+						else
+							ws->SetEnabled(true,atTime,false,WorkingStructure::ForceEnable);
+					}
 				}
 				//ws->RegisterChange(WorldEntity::EnableChanged,atTime);
 			}

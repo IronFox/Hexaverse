@@ -782,7 +782,7 @@ namespace FileIO
 		Export(parent,v.completeOnMove);
 	}
 
-	static bool Import(Riff::Chunk*parent, Riff::Chunk*vehicleChunk,const Objects::PMobileEntity&v, FactionMap&factions)
+	static bool Import( Riff::Chunk*parent, Riff::Chunk*vehicleChunk,const Objects::PMobileEntity&v, FactionMap&factions)
 	{
 		//Grid::LCellIdI location;
 		GetPOD(parent,RID::location,v->location);
@@ -873,7 +873,7 @@ namespace FileIO
 
 		Attach(parent,RID::towerItem,helper);
 	}
-	static void Import(Riff::Chunk*source, Objects::Tower::AttackTask&item)
+	static void Import( Riff::Chunk*source, Objects::Tower::AttackTask&item)
 	{
 		ASSERT1__(source->IsID(RID::towerItem),source->GetID().ToString());
 		AttackItemSerializable helper;
@@ -928,7 +928,7 @@ namespace FileIO
 	}
 
 	
-	static Objects::PStructure Import(Riff::Chunk*parent, FactionMap&factions)
+	static Objects::PStructure Import( Riff::Chunk*parent, FactionMap&factions)
 	{
 		using namespace ApplicationInterface;
 		String typeName;
