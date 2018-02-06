@@ -9,7 +9,6 @@ server: on heartbeat failure provide option to restart client or quit
 
 client menu: start server, interactive, with save game dialog
 
-when loading while in interactive configuration mode, force-reenable session afterwards
 
 game goal counts two nexus ports necessary for two players, even through three are accessible!
 
@@ -215,6 +214,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+when loading while in interactive configuration mode, force-reenable session afterwards
 fixed: sleeping terraformers count towards per-round mineral demand
 make disabled nexus ports idle
 can't reproduce: check why nickname was exported in steam build

@@ -26,7 +26,7 @@ namespace ConfigurationMode
 	Configuration mode becomes inactive.
 	This function is called when a new savegame is loaded.
 	*/
-	void	Abort();
+	bool	Abort();
 	bool	IsActive();
 	UINT	GetPlanetSeed();
 	void	SetPlanetSeed(UINT32 seed);

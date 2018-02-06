@@ -1178,7 +1178,8 @@ namespace FileIO
 		LogEvent(EventSignificance::Uncommon,"Restoring saved world state from '"+String(filename)+"'.");
 		bool wasOpen = ::Network::CloseSession();
 
-		ConfigurationMode::Abort();
+		if (ConfigurationMode::Abort())
+			wasOpen = true;
 
 		bool nexusFound = false, worldInfoFound = false;
 
