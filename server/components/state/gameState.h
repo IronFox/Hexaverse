@@ -232,12 +232,10 @@ namespace Game
 			*/
 			extern Placement	allPorts;
 
-			#ifndef NO_SATELLITES
-				/**
-				Spawns various satellites atop nexus bases
-				*/
-				extern Placement	satellitesAtopBases;
-			#endif
+			/**
+			Spawns various satellites atop nexus bases
+			*/
+			extern Placement	satellitesAtopBases;
 
 			extern bool		startBases/* = false*/,
 							enableAI/* = false*/;
@@ -366,8 +364,6 @@ namespace Game
 
 
 
-	void			SpawnNexusBaseAtPoleWithPort(int pole);
-	void			SpawnNexusPortAtPole(int pole);
 
 	/**
 	Spawns all units required by a new faction.

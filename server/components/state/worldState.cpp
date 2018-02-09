@@ -3,6 +3,7 @@
 #include <protocol.h>
 #include "networkState.h"
 #include "../networkChannels.h"
+#include <objects/nexusPresence.h>
 
 namespace World
 {
@@ -307,46 +308,17 @@ namespace World
 
 
 
-
 		Grid::currentPlanetConfig.BuildWorld(World::actual);
 		World::actual.ExportDiscovered(World::initial, Config::worldDiscovery);
 		Grid::Resource::FillAll(random,Grid::currentCustomResourceDistribution);
 		if (Objects::Faction::nexus)
 			Objects::Faction::nexus->knownWorld = World::initial;
 
+		Game::Config::Nexus::allPorts.havePlaced = Game::Config::Nexus::allPorts.doPlace;
+		Game::Config::Nexus::bases.havePlaced = Game::Config::Nexus::bases.doPlace;
+		Game::Config::Nexus::satellitesAtopBases.havePlaced = Game::Config::Nexus::satellitesAtopBases.doPlace;
+		NexusPresence::Create(RuntimeConfig::gameGoal,Game::Config::Nexus::bases.havePlaced,Game::Config::Nexus::allPorts.havePlaced,Game::Config::Nexus::satellitesAtopBases.havePlaced,Game::Config::Nexus::enableAI,RuntimeConfig::empZones);
 
-		Game::Config::Nexus::bases.havePlaced = Game::Config::Nexus::bases.doPlace && Game::Config::Nexus::enableAI;
-		//const bool corePorts = RuntimeConfig::gameGoal == Game::Config::Goal::ConquerNexus || Game::Config::Nexus::bases.doPlace;
-		Game::Config::Nexus::allPorts.havePlaced = Game::Config::Nexus::allPorts.doPlace ||		//all ports by config
-			(
-				RuntimeConfig::gameGoal == Game::Config::Goal::ConquerNexus && //game is conquer nexus, so we need some
-				(
-					RuntimeConfig::empZones					//emp zones are on, so we need all ports
-					|| 
-					!Game::Config::Nexus::bases.havePlaced	//nexus bases don't exist, so it makes sense to place all
-				)
-			);
-		#ifndef NO_SATELLITES
-			Game::Config::Nexus::satellitesAtopBases.havePlaced = Game::Config::Nexus::satellitesAtopBases.doPlace;
-		#endif
-
-		if (Game::Config::Nexus::bases.havePlaced || Game::Config::Nexus::allPorts.havePlaced)
-		{
-			LogEvent(EventSignificance::Common, "Spawning Nexus Ports (EMP fields="+String(RuntimeConfig::empZones)+")...");
-			for (int pole = 0; pole < 12; pole++)
-				if (Game::Config::Nexus::allPorts.havePlaced || BaseGrid::IsIsolatedCorner(pole))
-					Game::SpawnNexusPortAtPole(pole);
-
-			LogEvent(EventSignificance::Debug, "Spawning Nexus bases...");
-			if (Game::Config::Nexus::bases.havePlaced)
-			{
-				for (int pole = 0; pole < 12; pole++)
-					if (BaseGrid::IsIsolatedCorner(pole))
-					{
-						Game::SpawnNexusBaseAtPoleWithPort(pole);
-					}
-			}
-		}
 	}
 
 	void			BuildConfiguredWorld(UINT32 seed)
