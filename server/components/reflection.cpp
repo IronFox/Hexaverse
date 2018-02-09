@@ -1054,9 +1054,9 @@ namespace Reflection
 	void	Create()
 	{
 		#undef VAR
-		#define VAR(_NAME_,_CONTEXT_,_MIN_,_MAX_,_PERSISTENCE_)	Variable::Set(#_NAME_,_CONTEXT_::_NAME_,_MIN_,_MAX_,_PERSISTENCE_)
+		#define VAR( _NAME_,_CONTEXT_,_MIN_,_MAX_,_PERSISTENCE_)	Variable::Set(#_NAME_,_CONTEXT_::_NAME_,_MIN_,_MAX_,_PERSISTENCE_)
 		#undef ENUMVAR
-		#define ENUMVAR(_NAME_,_CONTEXT_,_PERSISTENCE_)	Variable::SetEnum(#_NAME_,_CONTEXT_::_NAME_,_PERSISTENCE_)
+		#define ENUMVAR( _NAME_,_CONTEXT_,_PERSISTENCE_)	Variable::SetEnum(#_NAME_,_CONTEXT_::_NAME_,_PERSISTENCE_)
 
 		CLI::InitDefaults(state,PrintLn);
 
@@ -1181,9 +1181,13 @@ namespace Reflection
 			state.ExitFolder();
 
 			state.EnterNewFolder("Nexus")->attachment = persistenceAttachment;
-				VAR(haveBases,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame);
+				Variable::Set("spawnBases",Game::Config::Nexus::bases.doPlace,false,true,Variable::Persistence::ConfigOnly);
+				Variable::Set("haveBases",Game::Config::Nexus::bases.havePlaced,false,true,Variable::Persistence::GameInvariantNonConfigurable);
+				Variable::Set("spawnAllPorts",Game::Config::Nexus::allPorts.doPlace,false,true,Variable::Persistence::ConfigOnly);
+				Variable::Set("haveAllPorts",Game::Config::Nexus::allPorts.havePlaced,false,true,Variable::Persistence::GameInvariantNonConfigurable);
 				#ifndef NO_SATELLITES
-					VAR(haveSatellitesAtopBases,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame);
+					Variable::Set("spawnSatellitesAtopBases",Game::Config::Nexus::satellitesAtopBases.doPlace,false,true,Variable::Persistence::ConfigOnly);
+					Variable::Set("haveSatellitesAtopBases",Game::Config::Nexus::satellitesAtopBases.havePlaced,false,true,Variable::Persistence::GameInvariant);
 				#endif
 				state.SetVariable(CLI::PVariable(new Variable::NexusAIEnabled("enableAI")));
 				//VAR(enableAI,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
@@ -1261,7 +1265,7 @@ namespace Reflection
 		for (const auto&var : folder->variables)
 		{
 			Variable::PBase b = To<Variable::Base>::DynamicCast(var);
-			if (!b || b->persistence == Reflection::Variable::Persistence::Temporary)
+			if (!b || b->persistence == Reflection::Variable::Persistence::Temporary || b->persistence == Reflection::Variable::Persistence::GameInvariantNonConfigurable)
 				continue;
 			if (filterFunction)
 			{
@@ -1331,6 +1335,9 @@ namespace Reflection
 				//case Variable::Persistence::ConfigOverridesSavegame:
 				//	outBuffer << "Written to savegames and applied during loading, but overridden by settings found in configuration files afterwards."<<nl;
 				//break;
+				case Variable::Persistence::GameInvariantNonConfigurable:
+					outBuffer << "Written to savegames and restored from there. Cannot be configured (state reflection)."<<nl;
+				break;
 				case Variable::Persistence::GameInvariant:
 				case Variable::Persistence::PlanetConfig :	//for now, write the same thing into the config
 					outBuffer << "Written to savegames and restored from there, but cannot be altered once a game has started."<<nl;
@@ -1375,7 +1382,7 @@ namespace Reflection
 		for (const auto&var : folder->variables)
 		{
 			Variable::PBase b = To<Variable::Base>::DynamicCast(var);
-			if (!b || b->persistence == Variable::Persistence::Temporary)
+			if (!b || b->persistence == Variable::Persistence::Temporary || b->persistence == Reflection::Variable::Persistence::GameInvariantNonConfigurable)
 				continue;
 			WriteHelp(outFile,var,indent,var->name+": ");
 			WriteIndent(outFile,indent);

@@ -133,6 +133,13 @@ namespace Game
 
 	namespace Config
 	{
+		struct Placement
+		{
+			bool		doPlace=false,
+						havePlaced=false;
+		};
+
+
 		extern int		roundTimer/* = -1*/;
 		extern UINT32	uplinkBandwidth/* = 500*/;
 		extern bool		closedGame/* = false*/,
@@ -215,9 +222,23 @@ namespace Game
 
 		namespace Nexus
 		{
-			extern bool		haveBases/* = false*/
-							IF_SATELLITES_P(,haveSatellitesAtopBases/* = true*/)
-							;
+			/**
+			Spawns Nexus bases and the nexus port in its center (regardless of other settings)
+			*/
+			extern Placement	bases;
+
+			/**
+			Spawns a nexus port on each pole. Ports placed due to spawnBases are not replaced
+			*/
+			extern Placement	allPorts;
+
+			#ifndef NO_SATELLITES
+				/**
+				Spawns various satellites atop nexus bases
+				*/
+				extern Placement	satellitesAtopBases;
+			#endif
+
 			extern bool		startBases/* = false*/,
 							enableAI/* = false*/;
 			extern float	threatEstimationFactor/* = 1.f*/;

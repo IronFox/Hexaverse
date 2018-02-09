@@ -1274,7 +1274,7 @@ namespace FileIO
 										if (ApplicationInterface::globalVersionOfCurrentFile < ApplicationInterface::FileVersions::FirstVersionWithVariables)
 										{
 											GetPOD(list,RID::closedGame,Game::Config::closedGame);
-											GetOptionalPOD(list,RID::nexusBases,Game::Config::Nexus::haveBases,false);
+											GetOptionalPOD(list,RID::nexusBases,Game::Config::Nexus::bases.havePlaced,false);
 											UINT16 goal;
 											GetPOD(list,RID::goal,goal);
 											if (!RuntimeConfig::gameGoal.Load(goal))

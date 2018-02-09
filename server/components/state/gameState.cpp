@@ -361,7 +361,7 @@ namespace Game
 		count_t unlocked = 0;
 		for (index_t i = 0; i < numZones; i++)
 		{
-			if (Game::Config::Nexus::haveBases && BaseGrid::IsIsolatedCorner(unlocked) && RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::ConquerNexus)
+			if (Nexus::bases.havePlaced && BaseGrid::IsIsolatedCorner(unlocked))
 			{
 				unlocked++;
 			}
@@ -428,8 +428,9 @@ namespace Game
 
 		namespace Nexus
 		{
-			bool		haveBases = false
-						IF_SATELLITES_P( ,haveSatellitesAtopBases = true )
+			Placement	bases,
+						allPorts
+						IF_SATELLITES_P( ,satellitesAtopBases )
 						;
 
 			bool		enableAI = false;
@@ -558,6 +559,10 @@ namespace Game
 				rs |= Protocol::GameFlag::TutorialMode;
 			if (World::Config::simulateLiquids)
 				rs |= Protocol::GameFlag::SimulateLiquids;
+			if (Config::Nexus::allPorts.havePlaced)
+				rs |= Protocol::GameFlag::NexusPortsOnAllPoles;
+			if (Config::Nexus::bases.havePlaced)
+				rs |= Protocol::GameFlag::NexusHasBases;
 
 			rs |= Config::factionSupportFlags;
 			if (!allowSpectatorFactions)
@@ -1505,7 +1510,7 @@ namespace Game
 
 		auto sensorLock = Objects::Faction::nexus->LockSensorUpdates();
 
-		ASSERT__(Config::Nexus::haveBases);
+		ASSERT__(Config::Nexus::bases.havePlaced);
 
 		Objects::PNexusPort port;
 		int h;
@@ -1794,7 +1799,7 @@ namespace Game
 
 
 				#ifndef NO_SATELLITES
-					if (Config::Nexus::haveSatellitesAtopBases)
+					if (Config::Nexus::spawnSatellitesAtopBases)
 					{
 						Objects::PSkyHub hub = To<Objects::SkyHub>::Cast( Objects::SkyHub::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(location.stackID,Objects::Satellite::BaseResidenceHeight),0) );
 						Objects::InsertConstructed(hub,t);

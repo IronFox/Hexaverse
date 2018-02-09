@@ -23,6 +23,8 @@ namespace RuntimeConfig
 
 	extern String					profilePrefix;
 
+	extern bool						nexusBases,	nexusPortsOnAllPoles;
+
 	void					ClientInit();
 
 

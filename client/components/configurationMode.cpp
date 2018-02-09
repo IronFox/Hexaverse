@@ -1098,10 +1098,10 @@ namespace ConfigurationMode
 			sentVersion = lastServerVersion;
 
 		bool mustLoad = false;
-		if (lockedAwaitConfig == cfg.versionCounter)
+		if (lockedAwaitConfig == cfg.versionCounter)		//0 == 0
 		{
 			mustLoad = true;
-			ASSERT_EQUAL__(lastServerVersion,sentVersion);
+			ASSERT_EQUAL__(lastServerVersion,sentVersion);	//0 != 1
 			lockedAwaitConfig = 0;
 			LogEvent(EventSignificance::Important,"Received updated world config. Unlocking");
 		}

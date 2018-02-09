@@ -26,12 +26,13 @@ namespace Reflection
 
 	namespace Variable
 	{
-		CONSTRUCT_ENUMERATION5(Persistence,
+		CONSTRUCT_ENUMERATION6(Persistence,
 			Temporary,
 			ConfigOnly,			//only read from configuration. not written to or extracted from savegames
 		//	ConfigOverridesSavegame,	//written to savegames but overridden by configuration after load (useful for debugging or statistical purposes, mostly)
 			RestoreFromSavegame,		//written to and restored from savegames. Configuration does not override these values, but they may be changed via the console
 			GameInvariant,		//written to savegames, but unchangeable until a new game is created. Common type: planet type
+			GameInvariantNonConfigurable,	//written to savegames, but unchangeable until a new game is created. Not changeable via console or config file. Common type: Nexus bases
 			PlanetConfig		//written to savegames, but changeable via console in order to reconfigure a new planet
 		)
 
@@ -49,7 +50,7 @@ namespace Reflection
 
 			
 			/**/				Base(const String&name, const String&type, Persistence persistence, count_t numElements,UINT32 protection):
-									Super(name,type,numElements,protection | (persistence == Persistence::GameInvariant ? CLI::ReadOnly : 0)),persistence(persistence),parent(state.GetFocus())	{}
+									Super(name,type,numElements,protection | (persistence == Persistence::GameInvariant || persistence == Persistence::GameInvariantNonConfigurable ? CLI::ReadOnly : 0)),persistence(persistence),parent(state.GetFocus())	{}
 
 
 			void				OnChanged();

@@ -1569,6 +1569,8 @@ namespace Protocol
 			ConfigurationMode = 0x40,
 			TutorialMode = 0x80,
 			GameHasEnded = 0x100,
+			NexusHasBases = 0x200,
+			NexusPortsOnAllPoles = 0x400,
 
 			SupportSpectatorFactions = 0x1000,
 			SupportRegularFactions = 0x2000,

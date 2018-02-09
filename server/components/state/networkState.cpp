@@ -708,10 +708,10 @@ namespace Network
 				LogConfig(" -Closed: Joining will be restricted to first round and access tokens. Game can be won.");
 			else
 				LogConfig(" -Open: Players can join any time. Game is endless.");
-			if (Game::Config::Nexus::haveBases)
-				LogConfig(" -Nexus-Bases: Nexus bases will be randomly created during world creation");
+			if (Game::Config::Nexus::bases.havePlaced)
+				LogConfig(" -Nexus-Bases: Nexus bases have been randomly created during world creation");
 			else
-				LogConfig(" -No Nexus-Bases: Nexus bases will not be created");
+				LogConfig(" -No Nexus-Bases: Nexus bases have not been created");
 
 			switch (RuntimeConfig::doomsdayWeapons)
 			{

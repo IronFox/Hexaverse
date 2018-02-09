@@ -231,7 +231,7 @@ namespace Nexus
 
 				float threatLevel = hostileNearNexus[j]*Game::Config::Nexus::threatEstimationFactor;
 				LogEvent(EventSignificance::Debug, "Threat level for " + ports[j]->GetName() + " considered " + String(threatLevel)+" (friendlies here: "+String(friendlyNearNexus[j])+", hostile constructor(s) at: "+String(constructorNearNexus[j])+")");
-				if (Game::Config::Nexus::haveBases)
+				if (Game::Config::Nexus::bases.havePlaced)
 				{
 					Objects::RefreshCompoundCoverageIfNeeded(0);
 

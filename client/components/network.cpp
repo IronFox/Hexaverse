@@ -943,6 +943,8 @@ namespace Network
 
 			Network::gameFlags = cr.info.gameConfig.gameFlags;
 
+			RuntimeConfig::nexusBases = (Network::gameFlags & Protocol::GameFlag::NexusHasBases) != 0;
+			RuntimeConfig::nexusPortsOnAllPoles = (Network::gameFlags & Protocol::GameFlag::NexusPortsOnAllPoles) != 0;
 			RuntimeConfig::empZones = (Network::gameFlags & Protocol::GameFlag::EMPZones) != 0;
 			RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(cr.info.gameConfig.gameGoal);
 			RuntimeConfig::phase = RuntimeConfig::Phase::Reinterpret(cr.info.activePhase);

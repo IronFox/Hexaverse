@@ -328,11 +328,10 @@ namespace ApplicationInterface
 	{
 		if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
 			return;
-		if (RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::ConquerNexus)
 		{
 			auto stats  = a->GetNexusStats();
 
-			if (stats.nexusControl >= Game::Config::GetTargetNexusCount())
+			if (RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::ConquerNexus && stats.nexusControl >= Game::Config::GetTargetNexusCount())
 				Game::DeclareWinner(a);
 			else
 			{

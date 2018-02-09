@@ -9,6 +9,7 @@ namespace RuntimeConfig
 	bool aiMode = false;
 	CryptographicID aiAccessToken;
 	bool udpListen = true;
+	bool nexusBases=false,	nexusPortsOnAllPoles=false;
 
 	Network::ServerAddress	serverAddress;
 	FileSystem::File		documentationRootFolder;
