@@ -9,6 +9,7 @@
 #include "visual/hud/windowStack.h"
 #include "visual/hud/hexGrid.h"
 #include "visual/hud/objectCommands.h"
+#include <objects/nexusPresence.h>
 
 #include "network.h"
 #include "objectStorage.h"
@@ -20,23 +21,15 @@ namespace ConfigurationMode
 {
 	namespace Detail
 	{
-		Objects::Storage serverObjects;
 		bool isActive = false;
-		Grid::ExtendedPlanetConfig	config, serverConfig;
-		UINT32 seed = 0,serverSeed=0;
+		Grid::ExtendedPlanetConfig	config;
+		UINT32					seed = 0;
 		Protocol::GameConfig	gameConfig;
-		Random rng;
+		Random					rng;
 		StringTable<String>		declarations;
 		Array<String>			planetList;
 		Timer::Time				lastLocalChange=timer.Now();
 
-		index_t					sentVersion = 0,
-								lastServerVersion = 0,
-								localVersion = 0;
-		/**
-		Disallows any planet modifications until the 
-		*/
-		index_t					lockedAwaitConfig=0;
 
 		Buffer0<Objects::Command::PVisualCommand>	numberCommands;	//!< All commands rendering numbers
 
@@ -117,10 +110,10 @@ namespace ConfigurationMode
 		};
 		/*static*/ GridState	*GridState::current = nullptr;
 
-		GridState serverWorld[Grid::WorldDiscovery::N], clientWorld[Grid::WorldDiscovery::N];
-		bool created = false,
+		GridState clientWorld[Grid::WorldDiscovery::N];
+		bool	created = false,
 				flashUploadButton = false;
-		bool clientWorldLoaded = false, clientWorldBuilt = false, anyWorldLoaded = false;
+		bool	anyWorldLoaded = false;
 		Objects::Command::PCommandGroup mountainGroup,extendedCoreGroup,liquidGroup,coreGroup,ruleGroup,copyPasteGroup;
 		Buffer0<std::pair<int2,Objects::Command::PBase> > buttons; 
 
@@ -171,46 +164,37 @@ namespace ConfigurationMode
 			VisualTerrain::Invalidate(); //force rebuild
 			World::allowRecompilation = true;
 
-			if (clientWorldLoaded)
-			{
-				config.GenerateAtmosphereColor();
-				ClientGrid::Apply(config);
-			}
-			else
-				ClientGrid::Apply(serverConfig);
+			config.GenerateAtmosphereColor();
+			ClientGrid::Apply(config);
 
 			RefreshButtonStates();
 		}
 
 		void Update(bool forceRebuild = true)
 		{
-			if (lockedAwaitConfig)
-				return;
 
 			lastLocalChange = timer.Now();
-			if (localVersion == sentVersion)
-				localVersion++;
 			config.SetSeed(seed);
 
 			if (isActive)
 			{
 				//World::actual.FlushAllData();
-				if (serverObjects.IsEmpty())
-				{
-					serverObjects.Import(true);
-					HUD::HexGrid::RefreshContacts();
-				}
-				forceRebuild |= !clientWorldBuilt;
-				clientWorldBuilt = true;
+				forceRebuild |= !anyWorldLoaded;
 				if (GridState::current)
 					GridState::current->Import();
-				clientWorldLoaded = true;
 				anyWorldLoaded = true;
 				GridState&st = clientWorld[Grid::WorldDiscovery::FullTerrain];
 				if (forceRebuild)
 				{
 					st.isLoaded = true;
 					config.BuildWorld(st.copy);
+
+					GlobalEvents::objectFlush();
+					bool bases = true;
+					bool allNodes = false;
+					bool sat = true;
+					NexusPresence::Create(RuntimeConfig::gameGoal,bases,allNodes,sat,(gameConfig.gameFlags & Protocol::GameFlag::NexusAI) != 0,RuntimeConfig::empZones);
+
 					st.copy.FlushAndValidateSensory(1);
 //					ASSERT__(st.copy.cellStack.First().volumeCell[0].content != Grid::Content::Clear);
 				}
