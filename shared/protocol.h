@@ -1503,12 +1503,7 @@ namespace Protocol
 			VoteResult,			//s2c: VoteResult
 			ClientVote,			//c2s: ClientVote
 
-			PlanetConfig,		// both: Grid::ExtendedPlanetConfig
 			GameConfig,			// both: GameConfig
-			PlanetNames,		// s2c: NetString<256>[]
-			LoadPlanetByName,	// c2s: LoadPlanetByName
-			EndConfigurationMode,//c2s: <signal>
-
 			OperationLacksResources, //s2c: OperationLacksResources
 
 			TutorialAt,			// both: int32
@@ -1566,11 +1561,10 @@ namespace Protocol
 			NexusAI = 0x8,
 			EMPZones = 0x10,
 			SimulateLiquids = 0x20,
-			ConfigurationMode = 0x40,
-			TutorialMode = 0x80,
-			GameHasEnded = 0x100,
-			NexusHasBases = 0x200,
-			NexusPortsOnAllPoles = 0x400,
+			TutorialMode = 0x40,
+			GameHasEnded = 0x80,
+			NexusHasBases = 0x100,
+			NexusPortsOnAllPoles = 0x200,
 
 			SupportSpectatorFactions = 0x1000,
 			SupportRegularFactions = 0x2000,

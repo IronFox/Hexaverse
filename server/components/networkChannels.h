@@ -28,10 +28,7 @@ namespace Receiver
 	void	IdentifyFaction(NET(TUniqueID)&, TCP::Peer&peer);
 	void	QueueResearch(Protocol::QueueResearch&, TCP::Peer&peer);
 	void	ChatMessage(Protocol::ChatMessage&, TCP::Peer&peer);
-	void	PlanetConfig(Grid::ExtendedPlanetConfig&, TCP::Peer&peer);
-	void	GameConfig(Protocol::GameConfig&, TCP::Peer&peer);
 	void	RequestResource(Protocol::ResourceID&, TCP::Peer&peer);
-	void	LoadPlanetByName(Protocol::LoadPlanetByName&, TCP::Peer&peer);
 	void	TutorialAt(NET(INT32)&at);
 
 	/**
@@ -71,7 +68,6 @@ namespace Channels
 		static const UINT32 Faction = (UINT32)Network::UserLevel::CommonFaction;
 		static const UINT32 PreFaction = (UINT32)Network::UserLevel::PreFaction;
 		static const UINT32 Spectator = (UINT32)Network::UserLevel::Spectator;
-		static const UINT32 Configurator = (UINT32)Network::UserLevel::PlanetConfigurator;
 	}
 
 
@@ -96,10 +92,7 @@ namespace Channels
 	extern TCP::Channel<Protocol::ClientName,Level::Faction,Protocol::ChannelID::ChangeMyName>					changeMyName;
 	extern TCP::Channel<NET(TUniqueID), Level::Faction, Protocol::ChannelID::IdentifyFaction>					identifyFactionRecv;
 	extern TCP::Channel<Protocol::QueueResearch, Level::Faction, Protocol::ChannelID::QueueResearch>			queueResearch;
-	extern TCP::Channel<Grid::ExtendedPlanetConfig, Level::Configurator, Protocol::ChannelID::PlanetConfig>		planetConfig;
-	extern TCP::Channel<Protocol::GameConfig, Level::Configurator, Protocol::ChannelID::GameConfig>				gameConfig;
 	extern TCP::Channel<Protocol::ResourceID, Level::PreFaction, Protocol::ChannelID::RequestResource>			requestResource;
-	extern TCP::Channel<Protocol::LoadPlanetByName, Level::Configurator, Protocol::ChannelID::LoadPlanetByName>	loadPlanetByName;
 	extern TCP::Channel<NET(INT32),Level::Faction,Protocol::ChannelID::TutorialAt>								tutorialAt;
 
 
@@ -128,7 +121,6 @@ namespace Channels
 	extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionRequestedNewRound>				factionRequestedNewRound;
 	extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionContinuedRound>				factionContinuedRound;
 	extern TCP::ObjectSender<Protocol::ResourceData,Protocol::ChannelID::ResourceData>					resourceData;
-	extern TCP::ObjectSender<NETA(Package::NetString<256>),Protocol::ChannelID::PlanetNames>			planetNames;
 	
 	extern TCP::ObjectSender<NET(UINT16), Protocol::ChannelID::LockEMPZones>							lockEmpZones;
 	#ifndef NO_HIBERNATION
@@ -148,7 +140,7 @@ namespace Channels
 	DECLARE_FACTION_CHANNEL(ChatMessage);
 
 	DECLARE_OBJECT_SENDER(MyFaction);
-
+	DECLARE_OBJECT_SENDER(GameConfig);
 
 	namespace Statistics
 	{

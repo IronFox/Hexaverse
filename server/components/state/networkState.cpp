@@ -8,7 +8,6 @@
 #include "../networkChannels.h"
 #include "../aiProcess.h"
 #include "../serverLogEvent.h"
-#include "../configurationMode.h"
 #include "../udpBroadcast.h"
 #include "worldState.h"
 #include <globalEvents.h>
@@ -315,18 +314,12 @@ namespace Network
 			World::worldID.Generate();
 
 		World::UpdateEMPZones(0);
+		World::BuildConfiguredWorld(random);
 
-		if (ConfigurationMode::IsActive())
-			World::BuildConfiguredWorld(ConfigurationMode::GetPlanetSeed());
-		else
-			World::BuildConfiguredWorld(random);
 		if (started)
 			Network::RestartSession(false);
 		else
-		{
-			Channels::planetConfig.SendTo(server,Grid::currentPlanetConfig,(UINT)UserLevel::PlanetConfigurator);
 			World::Network::CheckAllFactionCoverageAndSendAsNeeded();
-		}
 	}
 
 	Protocol::IdentifyFaction Identify(const Objects::PFaction & f)
@@ -411,7 +404,7 @@ namespace Network
 	{
 		SetupServer();
 		StartServer(false);
-		Session::isStarted = !ConfigurationMode::IsActive();
+		Session::isStarted = true;
 
 		InformationProvider::Start(basePort);
 	}
@@ -451,10 +444,7 @@ namespace Network
 		server.InstallChannel(Channels::identifyFactionRecv);
 		server.InstallChannel(Channels::queueResearch);
 		server.InstallChannel(Channels::ChatMessage);
-		server.InstallChannel(Channels::planetConfig);
-		server.InstallChannel(Channels::gameConfig);
 		server.InstallChannel(Channels::requestResource);
-		server.InstallChannel(Channels::loadPlanetByName);
 		server.InstallChannel(Channels::tutorialAt);
 
 		server.InstallChannel(Channels::AllianceInvite);
@@ -465,7 +455,6 @@ namespace Network
 		server.OpenSignalChannel(Protocol::ChannelID::RequestContinueRound,(UINT32)UserLevel::CommonFaction);
 		server.OpenSignalChannel(Protocol::ChannelID::Ping,0);
 		server.OpenSignalChannel(Protocol::ChannelID::RequestEverything,(UINT32)UserLevel::Spectator);
-		server.OpenSignalChannel(Protocol::ChannelID::EndConfigurationMode,(UINT32)UserLevel::PlanetConfigurator);
 		server.OpenSignalChannel(Protocol::ChannelID::LeaveAlliance,(UINT32)UserLevel::CommonFaction);
 		
 		server.onSignal = Receiver::OnSignal;
@@ -666,12 +655,6 @@ namespace Network
 
 		FileIO::RefreshWindowTitle();
 
-		if (ConfigurationMode::IsActive())
-		{
-			LogConfig("Server is running in interactive configuration mode.");
-			LogConfig("Log in from localhost to configure and activate.");
-		}
-		else
 		{
 			LogConfig("AI is configured as follows:");
 			if (Game::Config::Nexus::enableAI)

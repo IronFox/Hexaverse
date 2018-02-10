@@ -3,7 +3,6 @@
 #include "state.h"
 #include "serverLogEvent.h"
 #include "journalSaveGame.h"
-#include "configurationMode.h"
 #include <objects/structure/mine.h>
 #include "state/gameState.h"
 
@@ -243,10 +242,7 @@ namespace Channels
 	TCP::Channel<Protocol::ClientName,Level::Faction,Protocol::ChannelID::ChangeMyName>						changeMyName(Receiver::ChangeMyName);
 	TCP::Channel<NET(TUniqueID), Level::Faction, Protocol::ChannelID::IdentifyFaction>						identifyFactionRecv(Receiver::IdentifyFaction);
 	TCP::Channel<Protocol::QueueResearch, Level::Faction, Protocol::ChannelID::QueueResearch>				queueResearch(Receiver::QueueResearch);
-	TCP::Channel<Grid::ExtendedPlanetConfig, Level::Configurator, Protocol::ChannelID::PlanetConfig>		planetConfig(Receiver::PlanetConfig);
-	TCP::Channel<Protocol::GameConfig, Level::Configurator, Protocol::ChannelID::GameConfig>				gameConfig(Receiver::GameConfig);
 	TCP::Channel<Protocol::ResourceID, Level::PreFaction, Protocol::ChannelID::RequestResource>				requestResource(Receiver::RequestResource);
-	TCP::Channel<Protocol::LoadPlanetByName, Level::Configurator, Protocol::ChannelID::LoadPlanetByName>	loadPlanetByName(Receiver::LoadPlanetByName);
 	
 	TCP::Channel<NET(INT32),Level::Faction,Protocol::ChannelID::TutorialAt>							tutorialAt(Receiver::TutorialAt);
 
@@ -276,7 +272,6 @@ namespace Channels
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionRequestedNewRound>				factionRequestedNewRound;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionContinuedRound>					factionContinuedRound;
 	TCP::ObjectSender<Protocol::ResourceData,Protocol::ChannelID::ResourceData>						resourceData;
-	TCP::ObjectSender<NETA(Package::NetString<256>),Protocol::ChannelID::PlanetNames>				planetNames;
 
 	TCP::ObjectSender<NET(UINT16), Protocol::ChannelID::LockEMPZones>								lockEmpZones;
 	#ifndef NO_HIBERNATION
@@ -297,6 +292,7 @@ namespace Channels
 	DECLARE_FACTION_CHANNEL(ChatMessage);
 	
 	DECLARE_OBJECT_SENDER(MyFaction);
+	DECLARE_OBJECT_SENDER(GameConfig);
 
 	namespace Statistics
 	{
@@ -622,7 +618,7 @@ namespace Receiver
 		if (response.startFactionTypes == Protocol::FactionType::SpectatorFaction)
 		{
 			//authenticated and purged any previous faction. let's go
-			Network::ChangeUserLevel(peer,ConfigurationMode::IsActive()?Network::UserLevel::PlanetConfigurator :  Network::UserLevel::Spectator);
+			Network::ChangeUserLevel(peer,Network::UserLevel::Spectator);
 
 
 			bool firstSpectator = Network::spectators.IsEmpty();
@@ -639,20 +635,6 @@ namespace Receiver
 			//send world state:
 
 			SendAllToSpectator(peer, firstSpectator);
-
-			Channels::planetConfig.SendTo(peer,Grid::currentPlanetConfig);
-
-			if (ConfigurationMode::IsActive())
-			{
-				Ctr::Array<String>	planetNames;
-				World::GetAvailablePlanetNames(planetNames);
-				NETA(Package::NetString<256>) names;
-				names.SetSize(planetNames.Count());
-				for (index_t i = 0; i < planetNames.Count(); i++)
-					names[i] = planetNames[i];
-				Channels::planetNames.SendTo(peer,names);
-			}
-
 
 			peer.SendSignal(Protocol::ChannelID::BeginGame);
 			return;
@@ -1207,86 +1189,9 @@ namespace Receiver
 		//LATER
 	}
 
-	void	PlanetConfig(Grid::ExtendedPlanetConfig&cfg, TCP::Peer&peer)
-	{
-		if (ConfigurationMode::IsActive())
-		{
-			LogEvent(EventClass::Preset::configurationPrint,peer,"Received planet configuration (seed="+String(cfg.lastSeed)+"). Rebuilding...");
-			ConfigurationMode::SetPlanetSeed(cfg.lastSeed);
-			Grid::currentPlanetConfig = cfg;
-			Network::BuildConfiguredWorld();
-		}
-		else
-			LogEvent(EventClass::Preset::commandRejected,peer,"Configuration mode is not active. User should not have this level");
-
-	}
-
 	void	TutorialAt(NET(INT32)&at)
 	{
 		Game::tutorialAt = at;
-	}
-
-	void	LoadPlanetByName(Protocol::LoadPlanetByName&load, TCP::Peer&peer)
-	{
-		if (ConfigurationMode::IsActive())
-		{
-			LogEvent(EventClass::Preset::configurationPrint,peer,"Received request for planet preset '"+load.name+"'...");
-			if (load.name.Contains('/') || load.name.Contains('\\'))
-			{
-				LogEvent(EventClass::Preset::commandRejected,peer,"Planet name contained path separators. Rejecting request.");
-				return;
-			}
-
-			if (load.name.IsNotEmpty())
-			{
-				if (!World::IsPlanetIniFile(load.name+".ini"))
-				{
-					LogEvent(EventClass::Preset::remoteControlError,"'"+load.name+"' is not a valid planet type");
-					return;
-				}
-			}
-
-			if (load.name.IsNotEmpty())
-			{
-				Reflection::Variable::planetType->Set(load.name.Trim());
-				Reflection::ReloadPlanet();
-				Grid::currentPlanetConfig.versionCounter = load.configVersion;
-			}
-			Network::BuildConfiguredWorld();
-		}
-		else
-			LogEvent(EventClass::Preset::commandRejected,peer,"Configuration mode is not active. User should not have this level");
-	}
-
-
-	void	GameConfig(Protocol::GameConfig&cfg, TCP::Peer&peer)
-	{
-		if (ConfigurationMode::IsActive())
-		{
-			UINT32 flags = cfg.gameFlags;
-			LogEvent(EventClass::Preset::configurationPrint,peer,"Received game flags (="+String(flags)+"). Updating...");
-			Game::Config::basesRequired = !!(flags & Protocol::GameFlag::BasesRequired);
-			Game::Config::closedGame = !!(flags & Protocol::GameFlag::ClosedGame);
-			Game::Config::startBases = !!(flags & Protocol::GameFlag::StartBases);
-			World::Config::simulateLiquids = !!(flags & Protocol::GameFlag::SimulateLiquids);
-			Game::Config::Nexus::enableAI = !!(flags & Protocol::GameFlag::NexusAI);
-			bool eOld = RuntimeConfig::empZones;
-			RuntimeConfig::empZones = !!(flags & Protocol::GameFlag::EMPZones);
-			if (RuntimeConfig::empZones)
-				World::SetUnlockedEMPZones(1);
-			else
-				World::SetUnlockedEMPZones(World::NumZones);
-
-			if (RuntimeConfig::gameGoal != cfg.gameGoal || RuntimeConfig::empZones != eOld)
-			{
-				RuntimeConfig::gameGoal.Load(cfg.gameGoal);
-				Network::BuildConfiguredWorld();
-			}
-			World::Config::worldDiscovery.Load(cfg.worldDiscovery);
-		}
-		else
-			LogEvent(EventClass::Preset::commandRejected,peer,"Configuration mode is not active. User should not have this level");
-
 	}
 
 	void	RequestResource(Protocol::ResourceID&id, TCP::Peer&peer)
@@ -1999,7 +1904,7 @@ namespace Receiver
 				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::ServerPrivate ),peer,"Client disconnected ("+peer.GetError(true)+")");
 
 
-				if (!Network::AnyHumanPlayersActive() && !ConfigurationMode::IsActive())
+				if (!Network::AnyHumanPlayersActive())
 				{
 					LogEvent(EventClass::Preset::uncommon,"Last active player has disconnected. Pausing round timer");
 					Game::roundTimerPaused = true;
@@ -2088,9 +1993,6 @@ namespace Receiver
 				else
 					LogEvent(EventClass::Preset::error,peer,"Should not have received RequestEverything from non-spectator");
 			}
-			break;
-			case Protocol::ChannelID::EndConfigurationMode:
-				ConfigurationMode::End();
 			break;
 			case Protocol::ChannelID::LeaveAlliance:
 				Network::PClient client = To<Network::Client>::Cast(peer.attachment);

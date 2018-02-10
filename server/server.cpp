@@ -27,7 +27,6 @@
 #include "components/journalSaveGame.h"
 #include "components/reflection.h"
 #include <luaInterface.h>
-#include "components/configurationMode.h"
 #include "components/nexusThreatHandling.h"
 
 UINT32 ApplicationInterface::globalVersionOfCurrentFile = 0;	//file version being loaded right now
@@ -639,7 +638,6 @@ namespace ParameterConfig
 
 	PathString	loadFile;
 	bool	startOffline = false,
-			startInConfig = false,
 			startInTutorial = false,
 			heartBeat = false;
 	bool	customWorldID = false;
@@ -664,7 +662,6 @@ namespace ParameterConfig
 		std::cout << "  --load/-l <filename>\tLoad savegame"<<std::endl;
 		std::cout << "  --loadAuto/-a <0-9>\tLoad auto-savegame. number=0 => most recent"<<std::endl;
 		std::cout << "  --offline/-o \tStart offline"<<std::endl;
-		std::cout << "  --config/-c \tStart in configuration mode"<<std::endl;
 		std::cout << "  --heartbeat/-b \tRequire localhost client heartbeat every 3 seconds or quit"<<std::endl;
 		std::cout << "  --tutorial/-t \tStart in tutorial mode"<<std::endl;
 		std::cout << "  --port/-p <1025-65533>\tUse a non-default base port ("<<DEFAULT_SERVER_BASE_PORT<<" is default). Three successive ports are used"<<std::endl;
@@ -718,8 +715,6 @@ namespace ParameterConfig
 					mode = ExpectPort;
 				elif (!strcmp(arg,"--offline") || !strcmp(arg,"-o"))
 					startOffline = true;
-				elif (!strcmp(arg,"--config") || !strcmp(arg,"-c"))
-					startInConfig = true;
 				elif (!strcmp(arg,"--heartbeat") || !strcmp(arg,"-b"))
 					heartBeat = true;
 				elif (!strcmp(arg,"--tutorial") || !strcmp(arg,"-t"))
@@ -907,11 +902,6 @@ int main( int argc, const char* argv[])
 			[]()->bool{return Network::SessionIsStarted();},
 			[](){Network::SuspendSession();},
 			[](){
-				if (ConfigurationMode::IsActive())
-				{
-					LogEvent(EventClass::Preset::commandRejected,"Cannot restart session: Interactive Configuration Mode is active.");
-					return;
-				}
 				Network::RestartSession(false);
 			}))
 		);
@@ -988,9 +978,9 @@ int main( int argc, const char* argv[])
 				Network::server.VisitAllPeers([localhost,other](const TCP::PPeer&p)
 				{
 					if (p->IsLocalhost())
-						Channels::gameConfig.SendTo(p,localhost);
+						Channels::GameConfig.SendTo(p,localhost);
 					else
-						Channels::gameConfig.SendTo(p,other);
+						Channels::GameConfig.SendTo(p,other);
 				});
 
 
@@ -1126,13 +1116,7 @@ int main( int argc, const char* argv[])
 			Network::StartHeartbeat();
 
 		if (!ParameterConfig::startOffline)
-		{
-			if (ParameterConfig::startInConfig)
-			{
-				ConfigurationMode::Begin();
-			}
 			StartUp();
-		}
 
 
 		//Journal::globalWriter.InitNew(RuntimeConfig::ConfigFile("saves/log"));

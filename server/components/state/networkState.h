@@ -27,8 +27,7 @@ namespace Network
 		PreHello,
 		PreFaction,
 		CommonFaction,
-		Spectator,
-		PlanetConfigurator
+		Spectator
 	};
 
 

@@ -4,7 +4,6 @@
 #include "../networkChannels.h"
 #include "../aiProcess.h"
 #include "../journalSaveGame.h"
-#include "../configurationMode.h"
 #include <objects/structure/mine.h>
 #include <objects/structure/vehiclePlant.h>
 
@@ -553,8 +552,6 @@ namespace Game
 				rs |= Protocol::GameFlag::StartBases;
 			if (Config::Nexus::enableAI)
 				rs |= Protocol::GameFlag::NexusAI;
-			if (ConfigurationMode::IsActive()/* && allowSpectatorFactions*/)
-				rs |= Protocol::GameFlag::ConfigurationMode;
 			if (RuntimeConfig::tutorialMode)
 				rs |= Protocol::GameFlag::TutorialMode;
 			if (World::Config::simulateLiquids)

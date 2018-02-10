@@ -8,7 +8,6 @@
 #include "../reflection.h"
 #include "gameState.h"
 #include "worldState.h"
-#include "../configurationMode.h"
 #include "../../../client/version.h"
 #include <objects/structure/tower.h>
 #include <grid/resources.h>
@@ -51,8 +50,6 @@ namespace FileIO
 	void RefreshWindowTitle()
 	{
 		String title = String(PRODUCT_NAME)+" server "+ ::Network::serverID.ToNiceString()+" (world "+ World::worldID.ToNiceString()+")";
-		if (ConfigurationMode::IsActive())
-			title += " INTERACTIVE CONFIGURATION MODE";
 		#ifdef _DEBUG
 			title += " (DEBUG)";
 		#endif
@@ -1177,10 +1174,6 @@ namespace FileIO
 
 		LogEvent(EventSignificance::Uncommon,"Restoring saved world state from '"+String(filename)+"'.");
 		bool wasOpen = ::Network::CloseSession();
-
-		if (ConfigurationMode::Abort())
-			wasOpen = true;
-
 		bool nexusFound = false, worldInfoFound = false;
 
 
@@ -1693,7 +1686,7 @@ namespace FileIO
 
 	bool			CanSaveRightNow(RuntimeConfig::Phase overridePhase)
 	{
-		return IsValidSavePhase(overridePhase) && !ConfigurationMode::IsActive();
+		return IsValidSavePhase(overridePhase);
 	}
 
 	bool			CanSaveRightNow()
