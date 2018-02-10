@@ -317,7 +317,7 @@ namespace World
 		Game::Config::Nexus::allPorts.havePlaced = Game::Config::Nexus::allPorts.doPlace;
 		Game::Config::Nexus::bases.havePlaced = Game::Config::Nexus::bases.doPlace;
 		Game::Config::Nexus::satellitesAtopBases.havePlaced = Game::Config::Nexus::satellitesAtopBases.doPlace;
-		NexusPresence::Create(RuntimeConfig::gameGoal,Game::Config::Nexus::bases.havePlaced,Game::Config::Nexus::allPorts.havePlaced,Game::Config::Nexus::satellitesAtopBases.havePlaced,Game::Config::Nexus::enableAI,RuntimeConfig::empZones);
+		NexusPresence::Create(Game::Config::Nexus::bases.havePlaced,Game::Config::Nexus::allPorts.havePlaced,Game::Config::Nexus::satellitesAtopBases.havePlaced,Game::Config::Nexus::enableAI);
 
 	}
 

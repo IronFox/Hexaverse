@@ -7,6 +7,7 @@
 #include "prototypes.h"
 #include "structure/tower.h"
 #include "structure/vehiclePlant.h"
+#include "../grid/resources.h"
 
 namespace NexusPresence
 {
@@ -16,13 +17,12 @@ namespace NexusPresence
 	
 
 
-	//void			SpawnNexusBaseAtPoleWithPort(int pole);
-	void			SpawnNexusPortAtPole(int pole)
+	void			SpawnNexusPortAtPole(World::Data&world, const Objects::PFaction&nexusFaction, int pole)
 	{
 		LogEvent(EventSignificance::Common,"Spawning Nexus Port at pole "+String(pole));
 
 		Grid::LCellIdI location((UINT32)pole,0);	//first 12 are corner cells
-		int h = Objects::FindApplicableGround(location,true,true); //do not submerge into lava
+		int h = Objects::FindApplicableGround(world, location,true,true); //do not submerge into lava
 		if (h == Objects::badHeight)
 			h = 0;	//just spawn it near median
 		static const int R = 5;
@@ -30,17 +30,17 @@ namespace NexusPresence
 
 		location.height = h;
 		std::shared_ptr<Objects::NexusPort> port = To<Objects::NexusPort>::Cast(
-		Objects::NexusPort::globalPrototype->CreateNewInstance(Objects::Faction::nexus,location,0));
-		port->ClearOccupiedTerrain(0);
+		Objects::NexusPort::globalPrototype->CreateNewInstance(nexusFaction,location,0));
+		port->ClearOccupiedTerrain(world, 0);
 		float t = 0;
 		Objects::InsertConstructed(port,t);
-//		if (enableNexus)
+		#ifndef CLIENT
 		{
 			port->SetEnabled(true,t,false,Objects::WorkingStructure::ForceEnable);
 			Objects::RefreshCompoundCoverageIfNeeded(t);
-			//ASSERT__(port->IsEnabled());
 		}
-//			const auto&n = Grid::low.grid.GetCell(i).neighborhood;
+		#endif
+
 		Grid::Resource::Require(ConstName::Resource_Fuel).coverage[pole] = 0;
 		Grid::Resource::Require(ConstName::Resource_Minerals).coverage[pole] = 0;
 		Grid::Resource::Require(ConstName::Resource_Uranium).coverage[pole] = 0;
@@ -50,11 +50,13 @@ namespace NexusPresence
 
 
 
-	void SpawnNexusBaseAtPoleWithPort(int pole)
+	void SpawnNexusBaseAtPoleWithPort(World::Data&world, const Objects::PFaction&nexusFaction, int pole)
 	{
 		LogEvent(EventSignificance::Common,"Spawning Nexus base at pole "+String(pole));
 
-		auto sensorLock = Objects::Faction::nexus->LockSensorUpdates();
+		#ifndef CLIENT
+			auto sensorLock = nexusFaction->LockSensorUpdates();
+		#endif
 
 		Objects::PNexusPort port;
 		int h;
@@ -110,8 +112,8 @@ namespace NexusPresence
 						distances << i;
 					else
 					{
-						World::actual.Clear(Grid::LCellIdI(i,h),0);
-						World::actual.Clear(Grid::LCellIdI(i,h+1),0);
+						world.Clear(Grid::LCellIdI(i,h),0);
+						world.Clear(Grid::LCellIdI(i,h+1),0);
 					}
 				}
 
@@ -123,7 +125,7 @@ namespace NexusPresence
 					int h2 = h + d1;
 					for (int z = h; z <= h2 + 2 ; z++)
 					{
-						World::actual.Clear(Grid::LCellIdI(i,z),0);
+						world.Clear(Grid::LCellIdI(i,z),0);
 					//	Grid::TagLowCluster(rebuild,Grid::LCellIdI(i,z));
 					}
 				//	Grid::TagLowCluster(rebuild,Grid::LCellIdI(i,h2-1));
@@ -154,7 +156,7 @@ namespace NexusPresence
 					{
 						if (z < h || (z >=h2-1 && notCore/* && !deadly*/) || noEdge)
 						{
-							World::actual.Overwrite(Grid::LCellIdI(i,z),Grid::Content::Rock,0);
+							world.Overwrite(Grid::LCellIdI(i,z),Grid::Content::Rock,0);
 						}
 						else
 							if (!notDirectEdge)
@@ -168,7 +170,7 @@ namespace NexusPresence
 					if (notDirectEdge || field.distance[i] == 1)
 						for (int z = h-1; z < h; z++)
 						{
-							World::actual.Overwrite(Grid::LCellIdI(i,z),Grid::Content::Road,0);
+							world.Overwrite(Grid::LCellIdI(i,z),Grid::Content::Road,0);
 						}
 				}
 
@@ -193,20 +195,20 @@ namespace NexusPresence
 						{
 							#ifndef _DEBUG
 								std::shared_ptr<Objects::Tower> tower = To<Objects::Tower>::Cast(
-									launcherPrototype->CreateNewInstance(Objects::Faction::nexus,
+									launcherPrototype->CreateNewInstance(nexusFaction,
 									Grid::LCellIdI(i,h),
 									0));
-								tower->ClearOccupiedTerrain(0);
+								tower->ClearOccupiedTerrain(world,0);
 								Objects::InsertConstructed(tower,t);
 							#endif
 						}
 						if (field.distance[i] == RadarDistance)
 						{
 							std::shared_ptr<Objects::Tower> tower = To<Objects::Tower>::Cast(
-								radarPrototype->CreateNewInstance(Objects::Faction::nexus,
+								radarPrototype->CreateNewInstance(nexusFaction,
 								Grid::LCellIdI(i,h),
 								0));
-							tower->ClearOccupiedTerrain(0);
+							tower->ClearOccupiedTerrain(world,0);
 							Objects::InsertConstructed(tower,t);
 						}
 
@@ -216,19 +218,19 @@ namespace NexusPresence
 							{
 								#ifdef LOWER_RESOLUTION_PLANET
 									Objects::PGenerator generator = To<Objects::Generator>::Cast(
-										Objects::Generator::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
+										Objects::Generator::globalPrototype->CreateNewInstance(nexusFaction,
 										Grid::LCellIdI(i,h),
 										0));
-									generator->ClearOccupiedTerrain(0);
+									generator->ClearOccupiedTerrain(world,0);
 									Objects::InsertConstructed(generator,t);
 									generatorCount++;
 									alwaysOn << generator;	//only need three generators switched on
 								#else
 									Objects::PMunitionFactory factory = To<Objects::MunitionFactory>::Cast(
-										Objects::MunitionFactory::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
+										Objects::MunitionFactory::globalPrototype->CreateNewInstance(nexusFaction,
 										Grid::LCellIdI(i,h),
 										0));
-									factory->ClearOccupiedTerrain(false,0);
+									factory->ClearOccupiedTerrain(world,0);
 									Objects::InsertConstructed(factory,t);
 									alwaysOn << factory;
 								#endif
@@ -236,10 +238,10 @@ namespace NexusPresence
 							else
 							{
 								Objects::PVehiclePlant plant = To<Objects::VehiclePlant>::Cast(
-									Objects::VehiclePlant::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
+									Objects::VehiclePlant::globalPrototype->CreateNewInstance(nexusFaction,
 									Grid::LCellIdI(i,h),
 									0));
-								plant->ClearOccupiedTerrain(0);
+								plant->ClearOccupiedTerrain(world,0);
 								Objects::InsertConstructed(plant,t);
 								factoryCount++;
 							}
@@ -251,10 +253,10 @@ namespace NexusPresence
 								if (generatorCount == 4)
 								{
 									Objects::PMunitionStorage storage = To<Objects::MunitionStorage>::Cast(
-										Objects::MunitionStorage::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
+										Objects::MunitionStorage::globalPrototype->CreateNewInstance(nexusFaction,
 										Grid::LCellIdI(i,h),
 										0));
-									storage->ClearOccupiedTerrain(false,0);
+									storage->ClearOccupiedTerrain(world,0);
 									storage->storage = storage->maxStorage;
 									Objects::InsertConstructed(storage,t);
 									alwaysOn << storage;
@@ -262,10 +264,10 @@ namespace NexusPresence
 								else
 								{
 									Objects::PGenerator generator = To<Objects::Generator>::Cast(
-										Objects::Generator::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
+										Objects::Generator::globalPrototype->CreateNewInstance(nexusFaction,
 										Grid::LCellIdI(i,h),
 										0));
-									generator->ClearOccupiedTerrain(false,0);
+									generator->ClearOccupiedTerrain(world,0);
 									Objects::InsertConstructed(generator,t);
 									generatorCount++;
 									if (generatorCount < 4)
@@ -278,10 +280,10 @@ namespace NexusPresence
 						{
 							{
 								Objects::PConnector connector = To<Objects::Connector>::Cast(
-									Objects::Connector::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
+									Objects::Connector::globalPrototype->CreateNewInstance(nexusFaction,
 									Grid::LCellIdI(i,h),
 									0));
-								connector->ClearOccupiedTerrain(0);
+								connector->ClearOccupiedTerrain(world,0);
 								Objects::InsertConstructed(connector,t);
 								connectorCount++;
 							}
@@ -292,10 +294,10 @@ namespace NexusPresence
 						//if (/*field.distance[i] == 3 || */field.distance[i] == 5)
 						//{
 						//	Objects::PConnector connector = To<Objects::Connector>::Cast(
-						//		Objects::Connector::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
+						//		Objects::Connector::globalPrototype->CreateNewInstance(nexusFaction,
 						//		Grid::LCellIdI(i,Objects::FindApplicableGround(Grid::LCellIdI(i,h),true)),
 						//		0));
-						//	connector->ClearOccupiedTerrain(false,0,true);
+						//	connector->ClearOccupiedTerrain(world,0);
 						//	Objects::InsertConstructed(connector,0);
 						//}
 
@@ -322,24 +324,26 @@ namespace NexusPresence
 					//for (int z = h; z <= h2 + 2 ; z++)
 					{
 						if (!noEdge)
-							World::actual.Clear(Grid::LCellIdI(i,h),0);
+							world.Clear(Grid::LCellIdI(i,h),0);
 					//	Grid::TagLowCluster(rebuild,Grid::LCellIdI(i,z));
 					}
 				//	Grid::TagLowCluster(rebuild,Grid::LCellIdI(i,h2-1));
 				}
 
-				for (auto ws : alwaysOn)
-				{
-					ws->SetEnabled(true,t,false,Objects::WorkingStructure::ForceEnable);
-				}
-				enableNexus = alwaysOn.IsNotEmpty();
+				#ifndef CLIENT
+					for (auto ws : alwaysOn)
+					{
+						ws->SetEnabled(true,t,false,Objects::WorkingStructure::ForceEnable);
+					}
+					enableNexus = alwaysOn.IsNotEmpty();
 
 
-				if (enableNexus)
-				{
-					port->SetEnabled(true,t,false,Objects::WorkingStructure::ForceEnable);
+					if (enableNexus)
+					{
+						port->SetEnabled(true,t,false,Objects::WorkingStructure::ForceEnable);
 
-				}
+					}
+				#endif
 
 
 				#ifndef NO_SATELLITES
@@ -369,17 +373,7 @@ namespace NexusPresence
 		}
 
 		location.height = h;
-		//std::shared_ptr<Objects::NexusPort> port = To<Objects::NexusPort>::Cast(
-		//Objects::NexusPort::globalPrototype->CreateNewInstance(Objects::Faction::nexus,location,0));
-		//port->ClearOccupiedTerrain(false,0,true);
-		//Objects::InsertConstructed(port,0);
-		//if (enableNexus)
-		//{
-		//	port->SetEnabled(true,0,false,true);
-		//	Objects::RefreshCompoundCoverageIfNeeded(0);
-		//	ASSERT__(port->IsEnabled());
-		//}
-//			const auto&n = Grid::low.grid.GetCell(i).neighborhood;
+
 		Grid::Resource::Require(ConstName::Resource_Fuel).coverage[pole] = 0;
 		Grid::Resource::Require(ConstName::Resource_Minerals).coverage[pole] = 0;
 		Grid::Resource::Require(ConstName::Resource_Uranium).coverage[pole] = 0;
@@ -394,14 +388,14 @@ namespace NexusPresence
 
 
 
-	void Create(RuntimeConfig::GameGoal goal, bool & placeBases, bool & placeAllPorts, bool &placeSatellites, bool aiEnabled, bool empZones)
+	void Create(World::Data&world, const Objects::PFaction&nexusFaction, bool & placeBases, bool & placeAllPorts, bool &placeSatellites, bool aiEnabled)
 	{
 		placeBases = placeBases && aiEnabled;
 		placeAllPorts = placeAllPorts ||		//all ports by config
 			(
-				goal == RuntimeConfig::GameGoal::ConquerNexus && //game is conquer nexus, so we need some
+				RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::ConquerNexus && //game is conquer nexus, so we need some
 				(
-					empZones					//emp zones are on, so we need all ports
+					RuntimeConfig::empZones					//emp zones are on, so we need all ports
 					|| 
 					!placeBases	//nexus bases don't exist, so it makes sense to place all
 				)
@@ -409,10 +403,10 @@ namespace NexusPresence
 
 		if (placeBases || placeAllPorts)
 		{
-			LogEvent(EventSignificance::Common, "Spawning Nexus Ports (EMP fields="+String(empZones)+")...");
+			LogEvent(EventSignificance::Common, "Spawning Nexus Ports (EMP fields="+String(RuntimeConfig::empZones)+")...");
 			for (int pole = 0; pole < 12; pole++)
 				if (placeAllPorts || BaseGrid::IsIsolatedCorner(pole))
-					SpawnNexusPortAtPole(pole);
+					SpawnNexusPortAtPole(world,nexusFaction, pole);
 
 			LogEvent(EventSignificance::Debug, "Spawning Nexus bases...");
 			if (placeBases)
@@ -420,11 +414,18 @@ namespace NexusPresence
 				for (int pole = 0; pole < 12; pole++)
 					if (BaseGrid::IsIsolatedCorner(pole))
 					{
-						SpawnNexusBaseAtPoleWithPort(pole);
+						SpawnNexusBaseAtPoleWithPort(world,nexusFaction, pole);
 					}
 			}
 		}
 	}
+
+	#ifndef CLIENT
+		void Create(bool & placeBases, bool & placeAllPorts, bool &placeSatellites, bool aiEnabled)
+		{
+			Create(World::actual,Objects::Faction::nexus,placeBases,placeAllPorts,placeSatellites,aiEnabled);
+		}
+	#endif
 	
 }
 
