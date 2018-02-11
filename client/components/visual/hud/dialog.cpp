@@ -720,7 +720,7 @@ namespace Dialog
 	
 	void	Create()
 	{
-		Detail::showTutorials = !FileSystem::IsFile(RuntimeConfig::ConfigFile("tutorialsDisabled.mark"));
+		Detail::showTutorials = !FileSystem::IsFile(RuntimeConfig::myConfig.Lookup("tutorialsDisabled.mark"));
 		GlobalEvents::applicationTerminate << Destroy;
 	}
 
@@ -747,7 +747,7 @@ namespace Dialog
 				{
 					StringFile userName;
 					FileSystem::CreateDirectory("config");
-					userName.Create(RuntimeConfig::ConfigFile(RuntimeConfig::profilePrefix+ "userName.txt"));
+					userName.Create(RuntimeConfig::myConfig.Lookup(RuntimeConfig::profilePrefix+ "userName.txt"));
 					userName << name;
 					Network::chosenNickname = name;
 					if (Network::client.IsConnected())

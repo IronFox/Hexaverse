@@ -669,7 +669,7 @@ namespace ApplicationInterface
 
 					if (!TimeLapse::enabled)
 					{
-						PathString screenshotsAt = RuntimeConfig::ConfigFile("screenshots");
+						PathString screenshotsAt = RuntimeConfig::myConfig.Lookup("screenshots");
 						FileSystem::CreateDirectory(screenshotsAt);
 						index_t counter = 0;
 						PathString filename = screenshotsAt + FOLDER_SLASH_STR + PathString("screenshot"+String(counter)+".png");
@@ -1669,7 +1669,7 @@ bool loop()
 void MyFatal(const FatalDescriptor&descriptor)
 {
 	String message = descriptor.ToString();
-	LogFile file(RuntimeConfig::ConfigFile("fatal.log"),false);
+	LogFile file(RuntimeConfig::myConfig.Lookup("fatal.log"),false);
 	
 	file.Log(message+"\n",true);
 	file.Close();
@@ -1857,8 +1857,8 @@ bool ConfigureClient(const wchar_t*commandLine)
 	
 
 		RuntimeConfig::ClientInit();	//requires RuntimeConfig::aiMode, which is declared by parameter variables
-		FileSystem::ForceCreateDirectory(RuntimeConfig::ConfigFile("logs"));	//can't do this until 
-		Logging::Begin(RuntimeConfig::ConfigFile(PathString("logs/client "+Logging::TimeStamp(true)+".log")));
+		FileSystem::ForceCreateDirectory(RuntimeConfig::myConfig.Lookup("logs"));	//can't do this until 
+		Logging::Begin(RuntimeConfig::myConfig.Lookup(PathString("logs/client "+Logging::TimeStamp(true)+".log")));
 	}
 	catch (const std::exception&e)
 	{
@@ -2046,7 +2046,7 @@ int main( int argc, const char* argv[])
 
 		{
 
-			PathString userConfigPath = RuntimeConfig::ConfigFile("game.ini");
+			PathString userConfigPath = RuntimeConfig::myConfig.Lookup("game.ini");
 			if (!FileSystem::IsFile(userConfigPath))
 				FileSystem::CopyFile(PathString("./game.ini"),userConfigPath,false);
 			StartConfig::Load(userConfigPath);
@@ -2116,7 +2116,7 @@ int main( int argc, const char* argv[])
 			storageThread.start();
 
 			UINT32 loadedFlags = Engine::CreateDisplay(display,
-				RuntimeConfig::ConfigFile("window"),
+				RuntimeConfig::myConfig.Lookup("window"),
 				RuntimeConfig::aiMode ? "AI":
 				PRODUCT_NAME
 				#ifdef _DEBUG
@@ -2294,7 +2294,7 @@ int main( int argc, const char* argv[])
 				String name;
 				try
 				{
-					StringFile userName(RuntimeConfig::ConfigFile(RuntimeConfig::profilePrefix+"userName.txt"));
+					StringFile userName(RuntimeConfig::myConfig.Lookup(RuntimeConfig::profilePrefix+"userName.txt"));
 					userName >> name;
 				}
 				catch (...)

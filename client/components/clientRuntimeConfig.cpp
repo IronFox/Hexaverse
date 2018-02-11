@@ -19,7 +19,8 @@ namespace RuntimeConfig
 
 	void	ClientInit()
 	{
-		InitConfigDir(aiMode ? "client/ai" : "client");
+		myConfig.InitConfigDir(aiMode ? "client/ai" : "client");
+		sharedConfig.InitConfigDir("shared");
 
 
 		phase = Phase::Uninitialized;

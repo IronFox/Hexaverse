@@ -530,9 +530,9 @@ namespace World
 	{
 		if (!filename.EndsWith(".ini"))
 			return IsPlanetIniFile(filename+".ini");
-		return FileSystem::Folder(RuntimeConfig::ConfigFile("config/myPlanets")).FindFile(PathString(filename)) != nullptr
+		return FileSystem::Folder(RuntimeConfig::sharedConfig.Lookup("config/myPlanets")).FindFile(PathString(filename)) != nullptr
 				||
-			FileSystem::Folder().FindFile("config/myPlanets/"+PathString(filename)) != nullptr;
+			FileSystem::Folder().FindFile("../predefinedPlanets/"+PathString(filename)) != nullptr;
 	}
 
 
@@ -540,8 +540,8 @@ namespace World
 	{
 		Ctr::Buffer0<TPlanetIniFile,Swap> files;
 		
-		AppendAvailablePlanetInitFilesFrom(false, RuntimeConfig::ConfigFile("config/myPlanets"),files);
-		AppendAvailablePlanetInitFilesFrom(true,FileSystem::Directory().FindDirectory("config/myPlanets"),files);
+		AppendAvailablePlanetInitFilesFrom(false, RuntimeConfig::sharedConfig.Lookup("config/myPlanets"),files);
+		AppendAvailablePlanetInitFilesFrom(true,FileSystem::Directory().FindDirectory("../predefinedPlanets"),files);
 
 		Ctr::GenericHashTable<String,TPlanetIniFile,Ctr::StdHash,Swap,Swap>	merged;
 		foreach (files,f)

@@ -144,7 +144,7 @@ namespace Network
 				application_shutting_down = true;	//prevent certain operations in Close()
 				try
 				{
-					PathString out = RuntimeConfig::ConfigFile("saves/no-heartbeat-shutdown.hsf");
+					PathString out = RuntimeConfig::myConfig.Lookup("saves/no-heartbeat-shutdown.hsf");
 					Logging::WriteEvent(EventClass::Preset::uncommon,"Trying to save game to "+String(out),nullptr,nullptr,nullptr);
 					FileIO::Save(out,RuntimeConfig::Phase::CommandPhase);
 					Logging::WriteEvent(EventClass::Preset::uncommon,"Success",nullptr,nullptr,nullptr);

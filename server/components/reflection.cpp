@@ -650,10 +650,17 @@ namespace Reflection
 		{
 		public:
 			const CLI::PVariable	sourceVariable;
-			const String	base;
-			const FeedMode	mode;
+			const PathString	originalBase,myDocumentsBase;
+			const FeedMode		mode;
 
-			/**/			FileReferenceAttachment(const String&base, const CLI::PVariable&source, FeedMode mode):sourceVariable(source),base(base),mode(mode)	{}
+			/**/			FileReferenceAttachment( const PathString&originalBase, const PathString&myDocumentsBase, const CLI::PVariable&source, FeedMode mode):sourceVariable(source),originalBase(originalBase),myDocumentsBase(myDocumentsBase),mode(mode)	{}
+
+			PathString		Get(FeedMode mode) const
+			{
+				if (mode == FeedMode::Original)
+					return originalBase + FOLDER_SLASH + sourceVariable->ConvertToString() + ".ini";
+				return RuntimeConfig::ConfigLookup(myDocumentsBase + FOLDER_SLASH+ sourceVariable->ConvertToString() + ".ini",false);
+			}
 		};
 
 
@@ -1049,7 +1056,7 @@ namespace Reflection
 			state.EnterNewFolder("Planet")->attachment = persistenceAttachment;
 				Variable::planetType = Variable::SetString("Type","LushGreen",Variable::Persistence::PlanetConfig);
 
-				state.EnterNewFolder("Config")->attachment.reset(new Variable::FileReferenceAttachment("config/myPlanets",Variable::planetType,FeedMode::IgnoreIfMissing));
+				state.EnterNewFolder("Config")->attachment.reset(new Variable::FileReferenceAttachment("../predefinedPlanets", "config/myPlanets",Variable::planetType,FeedMode::IgnoreIfMissing));
 				{
 					/*
 					Important:
@@ -1171,11 +1178,12 @@ namespace Reflection
 
 	}
 
+	typedef std::function<PathString(FeedMode)>	FSubConfigName;
 
-	static bool Feed(const CLI::PFolder&folder, const PathString&subConfigName, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode mode);
+	static bool Feed(const CLI::PFolder&folder, const FSubConfigName&subConfigName, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode mode);
 	static bool InnerFeed(const CLI::PFolder&folder,const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode);
 
-	static bool FeedSubDirectory(const CLI::PFolder&dir, const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction,FeedMode mode)
+	static bool FeedSubDirectory( const CLI::PFolder&dir, const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction,FeedMode mode)
 	{
 		bool allGood = true;
 		std::shared_ptr<Variable::PersistenceAttachment> a = To<Variable::PersistenceAttachment>::DynamicCast(dir->attachment);
@@ -1191,8 +1199,8 @@ namespace Reflection
 			if (testMode)
 				Variable::planetType->Set("LushGreen");
 
-			//PathString str = RuntimeConfig::ConfigFile( PathString(ref->base + FOLDER_SLASH + ref->sourceVariable->ConvertToString() + ".ini"));
-			if (!Feed(dir,PathString(ref->base + FOLDER_SLASH + ref->sourceVariable->ConvertToString() + ".ini"),testMode,filterFunction,ref->mode))
+			//PathString str = RuntimeConfig::Lookup( PathString(ref->base + FOLDER_SLASH + ref->sourceVariable->ConvertToString() + ".ini"));
+			if (!Feed(dir,[ref](FeedMode mode) {return ref->Get(mode);},testMode,filterFunction,ref->mode))
 			{
 				LogEvent(EventSignificance::NonFatalError,"Warning: Failed to load referenced input configuration '"+ref->sourceVariable->ConvertToString()+".ini'");
 				return false;
@@ -1213,7 +1221,7 @@ namespace Reflection
 		return allGood;
 	}
 
-	static bool InnerFeed(const CLI::PFolder&folder,const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction,FeedMode mode)
+	static bool InnerFeed( const CLI::PFolder&folder,const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction,FeedMode mode)
 	{
 		bool allGood = true;
 		for (const auto&var : folder->variables)
@@ -1359,7 +1367,7 @@ namespace Reflection
 	}
 
 
-	static bool Feed(const CLI::PFolder&folder, const PathString&subConfigName, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode mode)
+	static bool Feed( const CLI::PFolder&folder, const FSubConfigName&subConfigName, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode mode)
 	{
 		bool needThis = true;
 		if (mode != FeedMode::Original)
@@ -1367,7 +1375,8 @@ namespace Reflection
 		Configuration	config;
 		Config::Context*	ctx = nullptr;
 		
-		const PathString configName = mode == FeedMode::Original ? "./"+subConfigName :  RuntimeConfig::ConfigFile(PathString(subConfigName));
+		const PathString configName = subConfigName(mode);
+//			mode == FeedMode::Original ? "./"+subConfigName :  RuntimeConfig::ConfigLookup(PathString(subConfigName),false);
 
 		bool rewrite = false;
 		if (FileSystem::IsFile(configName))
@@ -1473,42 +1482,13 @@ namespace Reflection
 
 	void Load(bool testMode)
 	{
-		FileSystem::Directory	root;
-		ASSERT__(root.IsValidLocation());
-		FileSystem::Directory planetPrototypes = root.FindDirectory("config/myPlanets");
-		
-
-		if (planetPrototypes.IsValidLocation())
-		{
-			FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("config/myPlanets"));
-			planetPrototypes.Rewind();
-			FileSystem::File file;
-			while (planetPrototypes.NextFile(".ini",file))
-			{
-				PathString dest = RuntimeConfig::ConfigFile("config/myPlanets/"+file.GetName());
-				if (file.GetName() == "Template.ini" && !FileSystem::IsFile(dest))
-				{
-					if (!FileSystem::Copy(file.GetLocation(),dest,true))
-					{
-						LogEvent(EventClass::Preset::configurationError,"Warning: Unable to restore default planet type '"+String(file.GetInnerName())+"'");
-					}
-					else
-						LogEvent(EventClass::Preset::configurationError,"Restored default planet type '"+String(file.GetInnerName())+"'");
-				}
-			}
-
-		}
-		else
-			LogEvent(EventClass::Preset::configurationError,"Warning: Unable to find base planet source folder from '"+String(root.GetLocation()));
-
-
 		#ifdef _DEBUG
-			const char*localServerINI = "config/debug_server.ini";
+			const PathString localServerINI = "config/debug_server.ini";
 		#else
-			const char*localServerINI = "config/server.ini";
+			const PathString localServerINI = "config/server.ini";
 		#endif
 
-		Feed(state.GetRoot(),localServerINI, testMode,std::function<bool(const Variable::PBase&)>(),FeedMode::ConstructIfMissing);
+		Feed(state.GetRoot(),[localServerINI](FeedMode mode) {return mode == FeedMode::Original ? localServerINI : RuntimeConfig::myConfig.Lookup(localServerINI);}, testMode,std::function<bool(const Variable::PBase&)>(),FeedMode::ConstructIfMissing);
 
 		Grid::currentPlanetConfig.GenerateAtmosphereColor();
 	}

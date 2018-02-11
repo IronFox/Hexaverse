@@ -515,7 +515,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 	try
 	{
-		PathString out = RuntimeConfig::ConfigFile("saves/crash.hsf");
+		PathString out = RuntimeConfig::myConfig.Lookup("saves/crash.hsf");
 		Logging::WriteEvent(EventClass::Preset::uncommon,"Trying to save game to "+String(out),nullptr,nullptr,nullptr);
 		FileIO::Save(out,RuntimeConfig::Phase::CommandPhase);
 		Logging::WriteEvent(EventClass::Preset::uncommon,"Success",nullptr,nullptr,nullptr);
@@ -836,8 +836,9 @@ int main( int argc, const char* argv[])
 	try
 	{
 
-		RuntimeConfig::InitConfigDir("server");
-		ASSERT__(FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("logs")));
+		RuntimeConfig::myConfig.InitConfigDir("server");
+		RuntimeConfig::sharedConfig.InitConfigDir("shared");
+		ASSERT__(FileSystem::CreateDirectory(RuntimeConfig::myConfig.Lookup("logs")));
 
 
 		TCP::onIgnoredException = [](const TCodeLocation&loc, const std::exception&ex)
@@ -870,7 +871,7 @@ int main( int argc, const char* argv[])
 		for (int i = 1; i < argc; i++)
 			ParameterConfig::Process(argv[i]);
 
-		Logging::Begin(RuntimeConfig::ConfigFile(PathString("logs/server "+Logging::TimeStamp(true)+".log")));
+		Logging::Begin(RuntimeConfig::myConfig.Lookup(PathString("logs/server "+Logging::TimeStamp(true)+".log")));
 		LogEvent(EventSignificance::Uncommon,nullptr,"Starting server v" PRODUCT_VERSION);
 
 
@@ -921,7 +922,7 @@ int main( int argc, const char* argv[])
 			Reflection::state.DefineCommand("autoSaveNow",FileIO::AutoSave,CLI::NoCompletion);
 			Reflection::state.DefineCommand("saveTo fileName",(CLI::Command::function1_t)[](const String&path0)
 			{
-				PathString saveDirPath = RuntimeConfig::ConfigFile("saves");
+				PathString saveDirPath = RuntimeConfig::myConfig.Lookup("saves");
 				FileSystem::ForceCreateDirectory( saveDirPath );
 				FileSystem::Directory saveDir = saveDirPath;
 				FileSystem::File file;
@@ -938,7 +939,7 @@ int main( int argc, const char* argv[])
 
 			Reflection::state.DefineCommand("loadFrom fileName",(CLI::Command::function1_t)[](const String&path0)
 			{
-				PathString saveDirPath = RuntimeConfig::ConfigFile("saves");
+				PathString saveDirPath = RuntimeConfig::myConfig.Lookup("saves");
 				FileSystem::Directory saveDir = saveDirPath;
 				
 				FileSystem::File file;
@@ -1119,8 +1120,8 @@ int main( int argc, const char* argv[])
 			StartUp();
 
 
-		//Journal::globalWriter.InitNew(RuntimeConfig::ConfigFile("saves/log"));
-		//Journal::globalWriter.ContinueExisting(RuntimeConfig::ConfigFile("saves/log"));
+		//Journal::globalWriter.InitNew(RuntimeConfig::Lookup("saves/log"));
+		//Journal::globalWriter.ContinueExisting(RuntimeConfig::Lookup("saves/log"));
 
 		Logging::WriteEvent(EventSignificance::Uncommon, "Preparation of world '"+World::worldID.ToNiceString()+"'/" + ToString(World::worldID) + " completed.", nullptr, nullptr,nullptr);
 		

@@ -552,8 +552,11 @@ namespace Objects
 		#if 0 && defined _DEBUG
 			PathString final = factoryDefault;
 		#else
-			FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("config/lua"));
-			PathString final = RuntimeConfig::ConfigFile("config/lua/research.v2.lua");
+			FileSystem::CreateDirectory(RuntimeConfig::myConfig.Lookup("config/lua"));
+			FileSystem::CreateDirectory(RuntimeConfig::sharedConfig.Lookup("config/lua"));
+			PathString final = RuntimeConfig::myConfig.Lookup("config/lua/research.v2.lua");
+			if (!FileSystem::IsFile(final))
+				final = RuntimeConfig::sharedConfig.Lookup("config/lua/research.v2.lua");
 			if (!FileSystem::IsFile(final))
 			{
 				final = factoryDefault;

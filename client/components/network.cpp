@@ -89,7 +89,7 @@ namespace Network
 		try
 		{
 			StringFile visitedWorlds;
-			visitedWorlds.Open(RuntimeConfig::ConfigFile("visitedWorlds.txt"));
+			visitedWorlds.Open(RuntimeConfig::myConfig.Lookup("visitedWorlds.txt"));
 			String visited;
 			while (visitedWorlds >> visited)
 			{
@@ -104,7 +104,7 @@ namespace Network
 		try
 		{
 			StringFile hosts;
-			hosts.Open(RuntimeConfig::ConfigFile("hosts.txt"));
+			hosts.Open(RuntimeConfig::myConfig.Lookup("hosts.txt"));
 			String host;
 			while (hosts >> host)
 				ServerDiscovery::RegisterNewHost(Network::ServerAddress(host),false, false);
@@ -118,7 +118,7 @@ namespace Network
 		try
 		{
 			StringFile visited;
-			visited.Create(RuntimeConfig::ConfigFile("visitedWorlds.txt"));
+			visited.Create(RuntimeConfig::myConfig.Lookup("visitedWorlds.txt"));
 			static Array<TUniqueID>	 worlds;
 			visitedWorldMap.ExportKeys(worlds);
 			foreach (worlds,world)
@@ -132,7 +132,7 @@ namespace Network
 		try
 		{
 			StringFile hosts;
-			hosts.Create(RuntimeConfig::ConfigFile("hosts.txt"));
+			hosts.Create(RuntimeConfig::myConfig.Lookup("hosts.txt"));
 		
 			static Buffer0<Network::ServerAddress>	 urls;
 			ServerDiscovery::ListNonAutoAttempts(urls);
@@ -258,7 +258,7 @@ namespace Network
 
 	static PathString AccessFilename()
 	{
-		return RuntimeConfig::ConfigFile(RuntimeConfig::profilePrefix+ "worldAccess.m32");
+		return RuntimeConfig::myConfig.Lookup(RuntimeConfig::profilePrefix+ "worldAccess.m32");
 	}
 
 	void SaveWorldAccessTokens()

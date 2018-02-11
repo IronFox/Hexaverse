@@ -74,7 +74,7 @@ namespace Tutorial
 
 		PathString	GetMemoryFilename()
 		{
-			return RuntimeConfig::ConfigFile("tutorialMemory.txt");
+			return RuntimeConfig::myConfig.Lookup("tutorialMemory.txt");
 		}
 
 		void	InitMemoryFile()
