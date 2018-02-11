@@ -1644,10 +1644,6 @@ bool loop()
 				textout.MoveTo(0.95f - textout.GetScaledWidth(line),0.95f);
 				textout << line<<nl;
 				textout.Scale(0.75f,0.75f);
-				if (ConfigurationMode::ViewingServerVersion())
-					textout << "Seeing Server Version";
-				else
-					textout << "Seeing Local Version";
 				#ifdef _DEBUG
 					textout << nl << ConfigurationMode::GetServerSeed();
 				#endif
@@ -2399,6 +2395,8 @@ int main( int argc, const char* argv[])
 			}
 			else
 			{
+
+				ConfigurationMode::SetActive(true);
 
 				display.Assign(loop);
 				display.Execute();

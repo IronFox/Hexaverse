@@ -563,16 +563,6 @@ namespace Network
 		}
 
 
-		void	PlanetNames(NETA(Package::NetString<256>)&list)
-		{
-			#ifdef HAS_WINDOW
-				Array<String> copy(list.GetLength());
-				for (index_t i = 0; i < list.GetLength(); i++)
-					copy[i].adoptData(list[i]);
-				ConfigurationMode::UpdatePlanetList(copy);
-			#endif
-		}
-
 		void	OnHelloResponse(Protocol::HelloResponse&response)
 		{
 			ASSERT__(response.success);
@@ -625,18 +615,14 @@ namespace Network
 			else
 			{
 				#ifdef HAS_WINDOW
-					if (ConfigurationMode::RestoreServerWorld())
-					{
+					DBG_ASSERT__(!ConfigurationMode::IsActive());
 				#endif
 				BYTE family = delta.familyAndLastFlag & 0x7F;
 				bool last = (delta.familyAndLastFlag & 0x80) != 0;
 				World::actual.BeginChangeSequence(0).ApplyFamilyDelta(family,delta.data0,false,true);
 
 				#ifdef HAS_WINDOW
-						World::allowRecompilation = last && gameHasBegun;
-						if (last)
-							ConfigurationMode::SignalServerWorldUpdateCompleted();
-					}
+					World::allowRecompilation = last && gameHasBegun;
 				#endif
 			}
 
@@ -649,7 +635,7 @@ namespace Network
 		{
 			ASSERT__(!eventsLocked);
 			#ifdef HAS_WINDOW
-				ConfigurationMode::RestoreServerObjects();
+				DBG_ASSERT__(!ConfigurationMode::IsActive());
 			#endif
 
 			if (vs.entityState.timestamp.rightNow && Animation::AllDone())
@@ -693,7 +679,7 @@ namespace Network
 			ASSERT__(!eventsLocked);
 			ASSERT__(Network::haveID || Network::amSpectator);
 			#ifdef HAS_WINDOW
-				ConfigurationMode::RestoreServerObjects();
+				DBG_ASSERT__(!ConfigurationMode::IsActive());
 			#endif
 
 			try
@@ -753,7 +739,7 @@ namespace Network
 		{
 			ASSERT__(!eventsLocked);
 			#ifdef HAS_WINDOW
-				ConfigurationMode::RestoreServerObjects();
+				DBG_ASSERT__(!ConfigurationMode::IsActive());
 			#endif
 
 			//#ifdef HAS_WINDOW
@@ -803,7 +789,7 @@ namespace Network
 		{
 			ASSERT__(!eventsLocked);
 			#ifdef HAS_WINDOW
-				ConfigurationMode::RestoreServerObjects();
+				DBG_ASSERT__(!ConfigurationMode::IsActive());
 			#endif
 
 			if (vs.entityState.timestamp.rightNow && Animation::AllDone())
@@ -843,7 +829,7 @@ namespace Network
 		{
 			ASSERT__(!eventsLocked);
 			#ifdef HAS_WINDOW
-				ConfigurationMode::RestoreServerObjects();
+				DBG_ASSERT__(!ConfigurationMode::IsActive());
 			#endif
 
 			if (de.timestamp.rightNow && Animation::AllDone())

@@ -123,9 +123,7 @@ namespace HUD{namespace HostList{
 	static String CompileRules(const Protocol::ServerInfo&info)
 	{
 		String result;
-		if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::ConfigurationMode)
-			result += "Interactive Configuration Mode";
-		else if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::TutorialMode)
+		if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::TutorialMode)
 			result += "Tutorial Mode";
 		else if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::GameHasEnded)
 			result += "Game Has Ended";
@@ -221,9 +219,8 @@ namespace HUD{namespace HostList{
 			bool versionMatch = info.rightVersion;
 
 			TUniqueID id = info.id;
-			const bool isConfigurationMode = (host.serverInfo.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::ConfigurationMode) != 0;
 			const bool isTutorialMode = (host.serverInfo.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::TutorialMode) != 0;
-			const bool requireLocalhost = isConfigurationMode || isTutorialMode;
+			const bool requireLocalhost = isTutorialMode;
 
 			p->SetCheck([versionMatch,id,requireLocalhost]()
 			{

@@ -11,9 +11,27 @@
 
 namespace NexusPresence
 {
+	template <typename T>
+		static std::shared_ptr<T> Create(const Objects::PFaction&nexusFaction, World::Data&world, const Grid::LCellIdI&location, const Objects::PStructure&prototype)
+		{
+			std::shared_ptr<T> structure = To<T>::Cast(
+				prototype->CreateNewInstance(nexusFaction,location,0));
+			#ifdef CLIENT
+				structure->id = TUniqueID::New();
+			#endif
+			structure->ClearOccupiedTerrain(world, 0);
+			float t = 0;
+			Objects::InsertConstructed(structure,t);
 
+			return structure;
+		}
+	
 
-
+	template <typename T>
+		static std::shared_ptr<T> Create(const Objects::PFaction&nexusFaction, World::Data&world, const Grid::LCellIdI&location)
+		{
+			return Create<T>(nexusFaction,world,location,T::globalPrototype);
+		}
 	
 
 
@@ -29,13 +47,10 @@ namespace NexusPresence
 		h = M::clamp(h,-Grid::CellStack::HalfRange + R + 1,Grid::CellStack::HalfRange - R - 2);
 
 		location.height = h;
-		std::shared_ptr<Objects::NexusPort> port = To<Objects::NexusPort>::Cast(
-		Objects::NexusPort::globalPrototype->CreateNewInstance(nexusFaction,location,0));
-		port->ClearOccupiedTerrain(world, 0);
-		float t = 0;
-		Objects::InsertConstructed(port,t);
+		auto port = Create<Objects::NexusPort>(nexusFaction,world, location);
 		#ifndef CLIENT
 		{
+			float t = 0;
 			port->SetEnabled(true,t,false,Objects::WorkingStructure::ForceEnable);
 			Objects::RefreshCompoundCoverageIfNeeded(t);
 		}
@@ -194,22 +209,12 @@ namespace NexusPresence
 						if (field.distance[i] == MissileDistance)
 						{
 							#ifndef _DEBUG
-								std::shared_ptr<Objects::Tower> tower = To<Objects::Tower>::Cast(
-									launcherPrototype->CreateNewInstance(nexusFaction,
-									Grid::LCellIdI(i,h),
-									0));
-								tower->ClearOccupiedTerrain(world,0);
-								Objects::InsertConstructed(tower,t);
+								Create<Objects::Tower>(nexusFaction,world,Grid::LCellIdI(i,h),launcherPrototype);
 							#endif
 						}
 						if (field.distance[i] == RadarDistance)
 						{
-							std::shared_ptr<Objects::Tower> tower = To<Objects::Tower>::Cast(
-								radarPrototype->CreateNewInstance(nexusFaction,
-								Grid::LCellIdI(i,h),
-								0));
-							tower->ClearOccupiedTerrain(world,0);
-							Objects::InsertConstructed(tower,t);
+							Create<Objects::Tower>(nexusFaction,world,Grid::LCellIdI(i,h),radarPrototype);
 						}
 
 						if (field.distance[i] == OuterFactoryDistance)
@@ -217,32 +222,17 @@ namespace NexusPresence
 							if (factoryCount == MaxFactories)
 							{
 								#ifdef LOWER_RESOLUTION_PLANET
-									Objects::PGenerator generator = To<Objects::Generator>::Cast(
-										Objects::Generator::globalPrototype->CreateNewInstance(nexusFaction,
-										Grid::LCellIdI(i,h),
-										0));
-									generator->ClearOccupiedTerrain(world,0);
-									Objects::InsertConstructed(generator,t);
+									auto generator = Create<Objects::Generator>(nexusFaction,world,Grid::LCellIdI(i,h));
 									generatorCount++;
 									alwaysOn << generator;	//only need three generators switched on
 								#else
-									Objects::PMunitionFactory factory = To<Objects::MunitionFactory>::Cast(
-										Objects::MunitionFactory::globalPrototype->CreateNewInstance(nexusFaction,
-										Grid::LCellIdI(i,h),
-										0));
-									factory->ClearOccupiedTerrain(world,0);
-									Objects::InsertConstructed(factory,t);
+									auto factory = Create<Objects::MunitionFactory>(nexusFaction,world,Grid::LCellIdI(i,h));
 									alwaysOn << factory;
 								#endif
 							}
 							else
 							{
-								Objects::PVehiclePlant plant = To<Objects::VehiclePlant>::Cast(
-									Objects::VehiclePlant::globalPrototype->CreateNewInstance(nexusFaction,
-									Grid::LCellIdI(i,h),
-									0));
-								plant->ClearOccupiedTerrain(world,0);
-								Objects::InsertConstructed(plant,t);
+								Create<Objects::VehiclePlant>(nexusFaction,world,Grid::LCellIdI(i,h));
 								factoryCount++;
 							}
 						}
@@ -252,23 +242,13 @@ namespace NexusPresence
 							{
 								if (generatorCount == 4)
 								{
-									Objects::PMunitionStorage storage = To<Objects::MunitionStorage>::Cast(
-										Objects::MunitionStorage::globalPrototype->CreateNewInstance(nexusFaction,
-										Grid::LCellIdI(i,h),
-										0));
-									storage->ClearOccupiedTerrain(world,0);
+									auto storage = Create<Objects::MunitionStorage>(nexusFaction,world,Grid::LCellIdI(i,h));
 									storage->storage = storage->maxStorage;
-									Objects::InsertConstructed(storage,t);
 									alwaysOn << storage;
 								}
 								else
 								{
-									Objects::PGenerator generator = To<Objects::Generator>::Cast(
-										Objects::Generator::globalPrototype->CreateNewInstance(nexusFaction,
-										Grid::LCellIdI(i,h),
-										0));
-									generator->ClearOccupiedTerrain(world,0);
-									Objects::InsertConstructed(generator,t);
+									auto generator = Create<Objects::Generator>(nexusFaction,world,Grid::LCellIdI(i,h));
 									generatorCount++;
 									if (generatorCount < 4)
 										alwaysOn << generator;	//only need three generators switched on
@@ -279,29 +259,13 @@ namespace NexusPresence
 						if (field.distance[i] == 1 /*|| field.distance[i] == 4*/)
 						{
 							{
-								Objects::PConnector connector = To<Objects::Connector>::Cast(
-									Objects::Connector::globalPrototype->CreateNewInstance(nexusFaction,
-									Grid::LCellIdI(i,h),
-									0));
-								connector->ClearOccupiedTerrain(world,0);
-								Objects::InsertConstructed(connector,t);
+								Create<Objects::Connector>(nexusFaction,world,Grid::LCellIdI(i,h));
 								connectorCount++;
 							}
 						}
 					}
 					else
 					{
-						//if (/*field.distance[i] == 3 || */field.distance[i] == 5)
-						//{
-						//	Objects::PConnector connector = To<Objects::Connector>::Cast(
-						//		Objects::Connector::globalPrototype->CreateNewInstance(nexusFaction,
-						//		Grid::LCellIdI(i,Objects::FindApplicableGround(Grid::LCellIdI(i,h),true)),
-						//		0));
-						//	connector->ClearOccupiedTerrain(world,0);
-						//	Objects::InsertConstructed(connector,0);
-						//}
-
-
 					}
 					#endif /*0*/
 				}
@@ -350,6 +314,9 @@ namespace NexusPresence
 					if (Config::Nexus::spawnSatellitesAtopBases)
 					{
 						Objects::PSkyHub hub = To<Objects::SkyHub>::Cast( Objects::SkyHub::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(location.stackID,Objects::Satellite::BaseResidenceHeight),0) );
+						#ifdef CLIENT
+							hub->id = TUniqueID::New();
+						#endif
 						Objects::InsertConstructed(hub,t);
 						ASSERT__(hub->connectedTo.lock() == port);
 
@@ -362,6 +329,9 @@ namespace NexusPresence
 							if (!noEdge && field.distance[i] == 2)
 							{
 								Objects::PSkyGuardian guard = To<Objects::SkyGuardian>::Cast( Objects::SkyGuardian::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(i,Objects::Satellite::BaseResidenceHeight),0));
+								#ifdef CLIENT
+									guard->id = TUniqueID::New();
+								#endif
 								Objects::InsertConstructed(guard,t);
 							}
 						}

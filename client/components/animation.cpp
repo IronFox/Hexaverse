@@ -1514,10 +1514,6 @@ namespace Animation
 			return Done;
 			case TerrainChange:
 			{
-				#ifdef HAS_WINDOW
-					ConfigurationMode::RestoreServerWorld();
-				#endif
-
 				foreach (*worldDelta,block)
 				{
 					BaseGrid::family_t family = block->familyAndLastFlag & 0x7F;
