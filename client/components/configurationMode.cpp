@@ -22,12 +22,21 @@ namespace ConfigurationMode
 {
 	namespace Detail
 	{
+		struct TPlanetFile
+		{
+			FileSystem::File	file;
+			String				displayName;
+			bool				isFactoryDefault;
+		};
+
+
+
 		bool isActive = false;
 		Grid::ExtendedPlanetConfig	config,initialConfig;
 		UINT32					seed = 0;
 		Random					rng;
 		StringTable<String>		declarations;
-		Array<String>			planetList;
+		Buffer0<TPlanetFile>	planetList;
 		Timer::Time				lastLocalChange=timer.Now();
 		Grid::WorldDiscovery	showingDiscovery;	//currently selected discovery (interpreted as FullWorld if showDiscovery is false)
 		bool					showDiscovery= false;
@@ -49,6 +58,7 @@ namespace ConfigurationMode
 								allNexusPorts = false;
 		}
 
+		void					LoadPlanetFrom(const Configuration&cfg);
 
 
 
@@ -325,6 +335,7 @@ namespace ConfigurationMode
 		}
 
 
+
 		
 		void		RebuildPlanetList()
 		{
@@ -343,9 +354,19 @@ namespace ConfigurationMode
 			foreach (planetList,p)
 			{
 				index_t myIndex = p - planetList.pointer();
-				PButton button(new Button(*p,[myIndex]()
+				PButton button(new Button(p->displayName,[myIndex]()
 				{
 					//load planetList[myIndex]
+
+					const auto&planet = planetList[myIndex];
+
+					Configuration cfg;
+					if (cfg.LoadFromFile(planet.file.GetLocation()))
+					{
+						LoadPlanetFrom(cfg);
+					}
+					else
+						LogEvent(EventClass::Preset::configurationError,cfg.Report());
 					HUD::WindowStack::Hide(planetListWindow);
 				}));
 				button->Anchor().FillHorizontally().BeneathLastOf(planetListWindow, 0.02f);
@@ -608,10 +629,107 @@ namespace ConfigurationMode
 			group->Add(choose);
 		}
 
+		template <typename T>
+		void	Query(const Config::Context&ctx, const char*name, T&var)
+		{
+			String rs;
+			if (!ctx.QueryString(name,rs))
+			{
+				LogEvent(EventClass::Preset::configurationError,"Unable to query '"+ctx.name+"/"+name+"'");
+				return;
+			}
+			if (!convert(rs.c_str(),rs.GetLength(),var))
+			{
+				LogEvent(EventClass::Preset::configurationError,"Unable to convert '"+ctx.name+"/"+name+"' = '"+rs+"' to "+TypeInfo<T>::name);
+				return;
+			}
+		}
+
+		template <typename T, typename T2>
+		void	QueryMappedEnum(const Config::Context&ctx, const char*name, T2&var)
+		{
+			String rs;
+			if (!ctx.QueryString(name,rs))
+			{
+				LogEvent(EventClass::Preset::configurationError,"Unable to query '"+ctx.name+"/"+name+"'");
+				return;
+			}
+			T e;
+
+			if (!e.Decode(rs.c_str()))
+			{
+				LogEvent(EventClass::Preset::configurationError,"Unable to convert '"+ctx.name+"/"+name+"' = '"+rs+"' to "+T::GetName());
+				return;
+			}
+			var = (T2)e;
+		}
+
+		void	ImportConfig(const Config::Context&sub, Grid::ExtendedPlanetConfig::TLayerConfig&layer)
+		{
+			Query(sub,"baseHeight",layer.baseHeight);
+			Query(sub,"noiseHeightScale",layer.heightScale);
+			Query(sub,"frequency",layer.frequency);
+			Query(sub,"dampening",layer.dampening);
+		}
+
+		void	LoadPlanetFrom(const Configuration&cfg)
+		{
+			Query(cfg,"atmosphereDensity",config.atmosphereColor.a);
+			QueryMappedEnum<Grid::Content>(cfg,"innerCoreType",config.innerCoreType);
+
+			if (const Config::Context*sub = cfg.GetContext("ExtendedCore"))
+			{
+				QueryMappedEnum<Grid::Content>(*sub,"type",config.extendedCoreType);
+				ImportConfig(*sub,config.extendedCore);
+			}
+			else
+				LogEvent(EventClass::Preset::configurationError,"Unable to fetch 'ExtendedCore'");
+					
+			if (const Config::Context*sub = cfg.GetContext("Mountains"))
+			{
+				QueryMappedEnum<Grid::Content>(*sub,"type",config.type);
+				Query(*sub,"snowHeight",config.snowHeight);
+				ImportConfig(*sub,config.mountains);
+			}
+			else
+				LogEvent(EventClass::Preset::configurationError,"Unable to fetch 'Mountains'");
+
+			if (const Config::Context*sub = cfg.GetContext("Liquid"))
+			{
+				QueryMappedEnum<Grid::Content>(*sub,"type",config.liquidCoverage);
+				Query(*sub,"level",config.liquidHeight);
+				QueryMappedEnum<Grid::Content>(*sub,"outline",config.liquidOutline);
+			}
+			else
+				LogEvent(EventClass::Preset::configurationError,"Unable to fetch 'Liquid'");
+				
+
+			if (const Config::Context*sub = cfg.GetContext("Resources"))
+			{
+				for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
+				{
+					Objects::Resource res = Objects::Resource::Reinterpret(i);
+					if (const Config::Context*sub2 = sub->GetContext(res.ToString()))
+					{
+						Query(*sub2,"density",Grid::Resource::density[i]);
+						Query(*sub2,"max",Grid::Resource::maximum[i]);
+					}
+					else
+						LogEvent(EventClass::Preset::configurationError,"Unable to fetch '"+sub->name+"/"+res.ToString()+"'");
+				}
+			}
+			else
+				LogEvent(EventClass::Preset::configurationError,"Unable to fetch 'Resources'");
+
+			//if (warnings.IsNotEmpty())
+			//{
+			//	HUD::Dialog::ShowMessage("Importing encountered warnings:\n"+implode('\n',warnings.pointer(),warnings.Count()));
+			//}
+			Update();
+		}
 
 		namespace Clipboard
 		{
-			Buffer0<String>	warnings;
 
 			void	ExportConfig(Config::Context&sub, const Grid::ExtendedPlanetConfig::TLayerConfig&layer)
 			{
@@ -668,49 +786,10 @@ namespace ConfigurationMode
 				System::copyToClipboard(Engine::context.getWindow(),buffer.pointer());
 			}
 
-			template <typename T>
-			void	Query(const Config::Context&ctx, const char*name, T&var)
-			{
-				String rs;
-				if (!ctx.QueryString(name,rs))
-				{
-					warnings << "Unable to query '"+ctx.name+"/"+name+"'";
-					return;
-				}
-				if (!convert(rs.c_str(),rs.GetLength(),var))
-				{
-					warnings << "Unable to convert '"+ctx.name+"/"+name+"' = '"+rs+"' to "+TypeInfo<T>::name;
-					return;
-				}
-			}
-
-			template <typename T, typename T2>
-			void	QueryMappedEnum(const Config::Context&ctx, const char*name, T2&var)
-			{
-				String rs;
-				if (!ctx.QueryString(name,rs))
-				{
-					warnings << "Unable to query '"+ctx.name+"/"+name+"'";
-					return;
-				}
-				T e;
-
-				if (!e.Decode(rs.c_str()))
-				{
-					warnings << "Unable to convert '"+ctx.name+"/"+name+"' = '"+rs+"' to "+T::GetName();
-					return;
-				}
-				var = (T2)e;
-			}
+		
 
 
-			void	ImportConfig(const Config::Context&sub, Grid::ExtendedPlanetConfig::TLayerConfig&layer)
-			{
-				Query(sub,"baseHeight",layer.baseHeight);
-				Query(sub,"noiseHeightScale",layer.heightScale);
-				Query(sub,"frequency",layer.frequency);
-				Query(sub,"dampening",layer.dampening);
-			}
+
 
 			void	ImportPlanet()
 			{
@@ -727,59 +806,8 @@ namespace ConfigurationMode
 					file.LinkSourceData(buffer,strlen(buffer));
 					if (cfg.LoadFromFile(file))
 					{
-						warnings.Clear();
-						Query(cfg,"atmosphereDensity",config.atmosphereColor.a);
-						QueryMappedEnum<Grid::Content>(cfg,"innerCoreType",config.innerCoreType);
+						LoadPlanetFrom(cfg);
 
-						if (Config::Context*sub = cfg.GetContext("ExtendedCore"))
-						{
-							QueryMappedEnum<Grid::Content>(*sub,"type",config.extendedCoreType);
-							ImportConfig(*sub,config.extendedCore);
-						}
-						else
-							warnings << "Unable to fetch 'ExtendedCore'";
-					
-						if (Config::Context*sub = cfg.GetContext("Mountains"))
-						{
-							QueryMappedEnum<Grid::Content>(*sub,"type",config.type);
-							Query(*sub,"snowHeight",config.snowHeight);
-							ImportConfig(*sub,config.mountains);
-						}
-						else
-							warnings << "Unable to fetch 'Mountains'";
-
-						if (Config::Context*sub = cfg.GetContext("Liquid"))
-						{
-							QueryMappedEnum<Grid::Content>(*sub,"type",config.liquidCoverage);
-							Query(*sub,"level",config.liquidHeight);
-							QueryMappedEnum<Grid::Content>(*sub,"outline",config.liquidOutline);
-						}
-						else
-							warnings << "Unable to fetch 'Liquid'";
-				
-
-						if (Config::Context*sub = cfg.GetContext("Resources"))
-						{
-							for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
-							{
-								Objects::Resource res = Objects::Resource::Reinterpret(i);
-								if (Config::Context*sub2 = sub->GetContext(res.ToString()))
-								{
-									Query(*sub2,"density",Grid::Resource::density[i]);
-									Query(*sub2,"max",Grid::Resource::maximum[i]);
-								}
-								else
-									warnings << "Unable to fetch '"+sub->name+"/"+res.ToString()+"'";
-							}
-						}
-						else
-							warnings << "Unable to fetch 'Resources'";
-
-						if (warnings.IsNotEmpty())
-						{
-							HUD::Dialog::ShowMessage("Importing encountered warnings:\n"+implode('\n',warnings.pointer(),warnings.Count()));
-						}
-						Update();
 					}
 					else
 						HUD::Dialog::ShowMessage("Planet configuration could not be parsed from clipboard:\n"+cfg.GetError());
@@ -790,6 +818,8 @@ namespace ConfigurationMode
 			}
 		}
 
+
+		void	ReScanPlanets();
 
 		void	Create()
 		{
@@ -802,6 +832,7 @@ namespace ConfigurationMode
 
 
 			planetListWindow = Window::Create();
+			ReScanPlanets();
 			RebuildPlanetList();
 
 			XML::Container declarations;
@@ -964,6 +995,56 @@ namespace ConfigurationMode
 		{
 
 		}
+
+
+
+
+
+
+
+
+
+
+		void		AppendAvailablePlanetInitFilesFrom(bool isFactoryDefault, FileSystem::Folder folder)
+		{
+			if (!folder.IsValidLocation())
+			{
+				FileSystem::CreateDirectory(folder.GetLocation());
+
+				//LogEvent(EventClass::Preset::configurationError,"Internal error: Unable to locate planets-directory '"+String(folder.GetLocation())+"'");
+				return;
+			}
+			FileSystem::File file;
+			folder.Rewind();
+			while (folder.NextFile("ini",file))
+			{
+				auto&p = planetList.Append();
+				p.displayName = String(file.GetInnerName());
+				if (!isFactoryDefault)
+					p.displayName = '*'+p.displayName;
+				p.file = file;
+				p.isFactoryDefault = isFactoryDefault;
+			}
+
+		}
+
+		bool			IsPlanetIniFile(const String&filename)
+		{
+			if (!filename.EndsWith(".ini"))
+				return IsPlanetIniFile(filename+".ini");
+			return FileSystem::Folder(RuntimeConfig::sharedConfig.Lookup("config/myPlanets")).FindFile(PathString(filename)) != nullptr
+					||
+				FileSystem::Folder().FindFile("../predefinedPlanets/"+PathString(filename)) != nullptr;
+		}
+
+
+		void		ReScanPlanets()
+		{
+			planetList.Clear();
+		
+			AppendAvailablePlanetInitFilesFrom(false, RuntimeConfig::sharedConfig.Lookup("config/myPlanets"));
+			AppendAvailablePlanetInitFilesFrom(true,FileSystem::Directory().FindDirectory("../predefinedPlanets"));
+		}
 	}
 
 	void	RandomizeSeed()
@@ -1067,15 +1148,6 @@ namespace ConfigurationMode
 
 
 
-
-	void	UpdatePlanetList(Array<String>&fleetingData)
-	{
-		if (Detail::isActive)
-		{
-			Detail::planetList.adoptData(fleetingData);
-			Detail::RebuildPlanetList();
-		}
-	}
 
 
 	void	Create()
