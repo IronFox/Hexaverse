@@ -25,10 +25,12 @@ namespace ConfigurationMode
 		struct TPlanetFile
 		{
 			FileSystem::File	file;
-			String				displayName;
+			String				displayName,upperCaseName;
 			bool				isFactoryDefault;
 		};
 
+		static const String		previousPlanetFileName = "Previous";
+		const PathString		sharedPlanetsSub = "config/myPlanets";
 
 
 		bool isActive = false;
@@ -59,6 +61,7 @@ namespace ConfigurationMode
 		}
 
 		void					LoadPlanetFrom(const Configuration&cfg);
+		void					ReScanPlanets();
 
 
 
@@ -727,17 +730,111 @@ namespace ConfigurationMode
 			//}
 			Update();
 		}
+		void	ExportConfig(Config::Context&sub, const Grid::ExtendedPlanetConfig::TLayerConfig&layer)
+		{
+			sub.Define("baseHeight",layer.baseHeight);
+			sub.Define("noiseHeightScale",layer.heightScale);
+			sub.Define("frequency",layer.frequency);
+			sub.Define("dampening",layer.dampening);
+		}
+
+		void	SavePlanetTo(Configuration&cfg)
+		{
+			cfg.Define("atmosphereDensity",config.atmosphereColor.a);
+			cfg.Define("innerCoreType",Grid::Content::Reinterpret(config.innerCoreType).ToString());
+			{
+				Config::Context&sub = cfg.DefineContext("ExtendedCore");
+				sub.Define("type",Grid::Content::Reinterpret(config.extendedCoreType).ToString());
+				ExportConfig(sub,config.extendedCore);
+			}
+					
+			{
+				Config::Context&sub = cfg.DefineContext("Mountains");
+				sub.Define("type",Grid::Content::Reinterpret(config.type).ToString());
+				sub.Define("snowHeight",config.snowHeight);
+				ExportConfig(sub,config.mountains);
+			}
+
+			{
+				Config::Context&sub = cfg.DefineContext("Liquid");
+				sub.Define("type",Grid::Content::Reinterpret(config.liquidCoverage).ToString());
+				sub.Define("level",config.liquidHeight);
+				sub.Define("outline",Grid::Content::Reinterpret(config.liquidOutline).ToString());
+			}
+				
+
+			{
+				Config::Context&sub = cfg.DefineContext("Resources");
+				for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
+				{
+					Objects::Resource res = Objects::Resource::Reinterpret(i);
+					Config::Context&sub2 = sub.DefineContext(res.ToString());
+						sub2.Define("density",Grid::Resource::density[i]);
+						sub2.Define("max",Grid::Resource::maximum[i]);
+				}
+			}
+		}
+
+		void CreatePlanet(const String&name)
+		{
+			if (!isActive)
+				return;
+			PathString file = RuntimeConfig::sharedConfig.Lookup(sharedPlanetsSub+FOLDER_SLASH+name+".ini");
+			Configuration cfg;
+			SavePlanetTo(cfg);
+			if (cfg.SaveToFile(file,PRODUCT_NAME))
+			{
+				LogEvent(EventClass::Preset::configurationPrint,"Generated new planet type '"+name+"'");
+				ReScanPlanets();
+				RebuildPlanetList();
+			}
+			else
+			{
+				LogEvent(EventClass::Preset::fileError,"New planet '"+name+"': "+cfg.GetError());
+			}
+
+		}
+
+		void AddPlanet()
+		{
+			static const String planetAlpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ";
+
+			HUD::Dialog::Query("Enter a name for the new planet type","My Planet",planetAlpha,
+				[](const String&candidate)->bool
+			{
+				auto trimmed = candidate.CopyToUpperCase().Trim();
+				if (trimmed == previousPlanetFileName)
+					return false;
+				if (trimmed.Length() < 2)
+					return false;
+
+				return true;
+			},
+				[](const String&candidate)
+			{
+				auto name = candidate.Trim();
+				auto upper = name.CopyToUpperCase();
+				foreach (planetList,p)
+				{
+					if (!p->isFactoryDefault && p->upperCaseName == upper)
+					{
+						HUD::Dialog::Confirm("Custom planet '"+name+"' already exists. Replace?",[name]()
+						{
+							CreatePlanet(name);
+							
+						},[]()->HUD::Dialog::CheckResult {return isActive ? HUD::Dialog::CheckResult::OkayContinue : HUD::Dialog::CheckResult::Abort;});
+						return;
+					}
+				}
+				CreatePlanet(name);
+			});
+
+		}
 
 		namespace Clipboard
 		{
 
-			void	ExportConfig(Config::Context&sub, const Grid::ExtendedPlanetConfig::TLayerConfig&layer)
-			{
-				sub.Define("baseHeight",layer.baseHeight);
-				sub.Define("noiseHeightScale",layer.heightScale);
-				sub.Define("frequency",layer.frequency);
-				sub.Define("dampening",layer.dampening);
-			}
+
 
 			void	ExportPlanet()
 			{
@@ -746,39 +843,8 @@ namespace ConfigurationMode
 				Keep this in sync with server/components/reflection.cpp
 				*/
 				Configuration cfg;
-				cfg.Define("atmosphereDensity",config.atmosphereColor.a);
-				cfg.Define("innerCoreType",Grid::Content::Reinterpret(config.innerCoreType).ToString());
-				{
-					Config::Context&sub = cfg.DefineContext("ExtendedCore");
-					sub.Define("type",Grid::Content::Reinterpret(config.extendedCoreType).ToString());
-					ExportConfig(sub,config.extendedCore);
-				}
-					
-				{
-					Config::Context&sub = cfg.DefineContext("Mountains");
-					sub.Define("type",Grid::Content::Reinterpret(config.type).ToString());
-					sub.Define("snowHeight",config.snowHeight);
-					ExportConfig(sub,config.mountains);
-				}
+				SavePlanetTo(cfg);
 
-				{
-					Config::Context&sub = cfg.DefineContext("Liquid");
-					sub.Define("type",Grid::Content::Reinterpret(config.liquidCoverage).ToString());
-					sub.Define("level",config.liquidHeight);
-					sub.Define("outline",Grid::Content::Reinterpret(config.liquidOutline).ToString());
-				}
-				
-
-				{
-					Config::Context&sub = cfg.DefineContext("Resources");
-					for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
-					{
-						Objects::Resource res = Objects::Resource::Reinterpret(i);
-						Config::Context&sub2 = sub.DefineContext(res.ToString());
-							sub2.Define("density",Grid::Resource::density[i]);
-							sub2.Define("max",Grid::Resource::maximum[i]);
-					}
-				}
 
 				StringBuffer buffer;
 				cfg.SaveToStringBuffer(buffer,PRODUCT_NAME);
@@ -819,7 +885,6 @@ namespace ConfigurationMode
 		}
 
 
-		void	ReScanPlanets();
 
 		void	Create()
 		{
@@ -859,6 +924,7 @@ namespace ConfigurationMode
 
 			{
 				Objects::Command::PIconCommand cmd;
+
 
 				cmd.reset(new Objects::Command::CustomIconCommand("Copy planet to clipboard (CTRL+C)","Copy/Paste",Clipboard::ExportPlanet,
 				[](bool)->Objects::CommandFlags { return Objects::CommandFlags::IsEnabled;}));
@@ -988,6 +1054,16 @@ namespace ConfigurationMode
 			buttons	<< std::make_pair(int2(at++,0),liquidGroup);
 			buttons	<< std::make_pair(int2(at++,0),ruleGroup);
 			buttons	<< std::make_pair(int2(at++,0),copyPasteGroup);
+
+			{
+				Objects::Command::PIconCommand cmd(new Objects::Command::CustomIconCommand("Save Planet as...","Add Planet",AddPlanet,
+				[](bool)->Objects::CommandFlags { return Objects::CommandFlags::IsEnabled;}));
+				buttons << std::make_pair(int2(at++,0),cmd);
+
+				SetHint(*cmd,"Save your current planet configuration as a new planet type (accessible by both client and local servers)");
+			}
+
+
 			;
 		}
 
@@ -1022,6 +1098,7 @@ namespace ConfigurationMode
 				p.displayName = String(file.GetInnerName());
 				if (!isFactoryDefault)
 					p.displayName = '*'+p.displayName;
+				p.upperCaseName = String(file.GetInnerName()).CopyToUpperCase();
 				p.file = file;
 				p.isFactoryDefault = isFactoryDefault;
 			}
@@ -1032,7 +1109,7 @@ namespace ConfigurationMode
 		{
 			if (!filename.EndsWith(".ini"))
 				return IsPlanetIniFile(filename+".ini");
-			return FileSystem::Folder(RuntimeConfig::sharedConfig.Lookup("config/myPlanets")).FindFile(PathString(filename)) != nullptr
+			return FileSystem::Folder(RuntimeConfig::sharedConfig.Lookup(sharedPlanetsSub)).FindFile(PathString(filename)) != nullptr
 					||
 				FileSystem::Folder().FindFile("../predefinedPlanets/"+PathString(filename)) != nullptr;
 		}
