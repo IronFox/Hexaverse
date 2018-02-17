@@ -12,6 +12,7 @@
 #include "visual/hud/guiHostList.h"
 #include <objects/nexusPresence.h>
 
+#include "serverProcess.h"
 #include "network.h"
 #include "objectStorage.h"
 #include "gridControl.h"
@@ -775,7 +776,7 @@ namespace ConfigurationMode
 			}
 		}
 
-		void CreatePlanet(const String&name)
+		void SaveUserPlanet(const String&name)
 		{
 			if (!isActive)
 				return;
@@ -820,13 +821,13 @@ namespace ConfigurationMode
 					{
 						HUD::Dialog::Confirm("Custom planet '"+name+"' already exists. Replace?",[name]()
 						{
-							CreatePlanet(name);
+							SaveUserPlanet(name);
 							
 						},[]()->HUD::Dialog::CheckResult {return isActive ? HUD::Dialog::CheckResult::OkayContinue : HUD::Dialog::CheckResult::Abort;});
 						return;
 					}
 				}
-				CreatePlanet(name);
+				SaveUserPlanet(name);
 			});
 
 		}
@@ -1012,7 +1013,9 @@ namespace ConfigurationMode
 							
 							HUD::Dialog::Confirm("Start server with your current configuration and begin game?",[]()
 							{
-
+								SaveUserPlanet(previousPlanetFileName);
+								ServerProcess::Begin('*'+previousPlanetFileName,true,false);
+								SetActive(false);
 							},
 							[](){return Detail::isActive ? HUD::Dialog::CheckResult::OkayContinue : HUD::Dialog::CheckResult::Abort;});
 							

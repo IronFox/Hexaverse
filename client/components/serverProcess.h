@@ -2,7 +2,11 @@
 
 namespace ServerProcess
 {
-	void			Begin(bool remoteControl=true, bool configurationMode=true, bool tutorialMode=false);
+	/**
+	Starts server process.
+	If a process is already running, the function returns.
+	*/
+	void			Begin(const String&planetName, bool remoteControl, bool tutorialMode);
 	void			End();
 	bool			IsRunning();
 	void			Destroy();

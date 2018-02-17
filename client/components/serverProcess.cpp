@@ -18,7 +18,8 @@ namespace ServerProcess
 		//CryptographicID	accessToken;
 
 		MonitoredProcess	process(false);
-		bool				remoteControl = false, configurationMode=false,tutorialMode=false,resumed=false;
+		String				planetName;
+		bool				remoteControl = false, tutorialMode=false,resumed=false;
 		index_t				shutdownRegistration=InvalidIndex;
 		#ifdef HAS_WINDOW
 			HUD::Dialog::WDialog	holdOn;
@@ -164,10 +165,10 @@ namespace ServerProcess
 			PathString parameters = " -b";	//heartbeat
 			if (!remoteControl)
 				parameters += " -r";
-			if (configurationMode)
-				parameters += " -c";
 			if (tutorialMode)
 				parameters += " -t";
+			if (planetName.IsNotEmpty())
+				parameters += PathString(" -w "+planetName);
 			bool showWindow = false;
 			#ifdef _DEBUG
 				showWindow = true;
@@ -236,7 +237,7 @@ namespace ServerProcess
 	}
 
 
-	void Begin(bool remoteControl/*=true*/, bool configurationMode/*=true*/, bool tutorialMode/*=false*/)
+	void Begin(const String&planetName, bool remoteControl, bool tutorialMode)
 	{
 		if (Detail::process.IsRunning())
 		{
@@ -244,7 +245,7 @@ namespace ServerProcess
 			return;
 		}
 		Detail::remoteControl = remoteControl;
-		Detail::configurationMode = configurationMode;
+		Detail::planetName = planetName;
 		Detail::tutorialMode = tutorialMode;
 		Detail::Start();
 	}

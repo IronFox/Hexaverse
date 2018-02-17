@@ -109,8 +109,9 @@ namespace Reflection
 	Loads configuration files to fill the appropriate variables.
 	Also restores any missing prototype planet declarations in the user configuration folder (my documents...), before attempting to load them.
 	If a planet type is targeted that is not a prototype planet, then a new planet type file will be generated and filled with default values.
+	@param customConfigPath If not empty, then non-original configuration will be loaded from the specified path, rather than the my documents server configuration
 	*/
-	void	Load(bool inTestMode);
+	void	Load(const PathString&customConfigPath);
 
 	/**
 	Reloads all config settings from the respective ini file(s)

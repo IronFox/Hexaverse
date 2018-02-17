@@ -625,18 +625,12 @@ namespace ParameterConfig
 {
 	UINT16 basePort = DEFAULT_SERVER_BASE_PORT;
 	
-	enum mode_t
-	{
-		Idle,
-		ExpectPort,
-		ExpectWorldID,
-		ExpectFilename,
-		ExpectAutoSaveNumber,
 
-	};
-	mode_t mode = Idle;
+	typedef std::function<void(const char*)> FOnParam;
 
-	PathString	loadFile;
+	FOnParam	onParam;
+
+	PathString	loadFile,customConfigPath;
 	bool	startOffline = false,
 			startInTutorial = false,
 			heartBeat = false;
@@ -668,6 +662,7 @@ namespace ParameterConfig
 		std::cout << "  --noRemote/-r \tDisable remote control service"<<std::endl;
 		std::cout << "  --rv4\tStart remote control service using IPv4"<<std::endl;
 		std::cout << "  --test \tRun self-tests, then quit"<<std::endl;
+		std::cout << "  --config/-c <config path>\tLoad specified path instead of user configuration"<<std::endl;
 		std::cout << "  --version/-v \tShow version, then quit"<<std::endl;
 		//std::cout << "  --world/-w [worldID] \tuse custom world ID, and start empty"<<std::endl;
 	}
@@ -677,78 +672,24 @@ namespace ParameterConfig
 	void	Process( const char*arg )
 	{
 		LogEvent(EventSignificance::Debug,"ParameterConfig::Process: '"+String(arg)+"'");
-		switch (mode)
+		if (onParam)
 		{
-			case ExpectWorldID:
-				Bin2Str::Convert(World::worldID.bytes,World::worldID.NumBytes,arg,strlen(arg));
-				LogEvent(EventClass::Preset::configuration,"World ID set to "+World::worldID.ToFullString());
-				mode = Idle;
-				customWorldID = true;
+			onParam(arg);
+			onParam = nullptr;
 			return;
-			case ExpectFilename:
-				loadFile = arg;
-				mode = Idle;
-			break;
-			case ExpectAutoSaveNumber:
+		}
+		if (!strcmp(arg,"--test"))
+			inTestMode = true;
+		elif (!strcmp(arg,"--rv4"))
+			controlProtocol = TCP::Server::Protocol::IPv4;
+		elif (!strcmp(arg,"--version") || !strcmp(arg,"-v"))
+		{
+			std::cout << SERVER_NAME<<std::endl;
+			exit(0);
+		}
+		elif (!strcmp(arg,"--port") || !strcmp(arg,"-p"))
+			onParam = [](const char*arg)
 			{
-				mode = Idle;
-				index_t index;
-				if (!convert(arg,index))
-				{
-					LogEvent(EventClass::Preset::configurationError,"Unable to convert '"+String(arg)+"' to a valid index");
-					return;
-				}
-				loadFile = FileIO::GetAutoSavePath(index);
-			}
-			break;
-			case Idle:
-				if (!strcmp(arg,"--test"))
-					inTestMode = true;
-				elif (!strcmp(arg,"--rv4"))
-					controlProtocol = TCP::Server::Protocol::IPv4;
-				elif (!strcmp(arg,"--version") || !strcmp(arg,"-v"))
-				{
-					std::cout << SERVER_NAME<<std::endl;
-					exit(0);
-				}
-				elif (!strcmp(arg,"--port") || !strcmp(arg,"-p"))
-					mode = ExpectPort;
-				elif (!strcmp(arg,"--offline") || !strcmp(arg,"-o"))
-					startOffline = true;
-				elif (!strcmp(arg,"--heartbeat") || !strcmp(arg,"-b"))
-					heartBeat = true;
-				elif (!strcmp(arg,"--tutorial") || !strcmp(arg,"-t"))
-				{
-					loadFile = "config/tutorial.hsf";
-					startInTutorial = true;
-				}
-				elif (!strcmp(arg,"--loadAuto") || !strcmp(arg,"-a"))
-					mode = ExpectAutoSaveNumber;
-				elif (!strcmp(arg,"--help") || !strcmp(arg,"-h"))
-				{
-					PrintHelp();
-					exit(0);
-				}
-				elif (!strcmp(arg,"--world") || !strcmp(arg,"-w"))
-					mode = ExpectWorldID;
-				elif (!strcmp(arg,"-r") || !strcmp(arg,"--noRemote"))
-					enableRemoteControl = false;
-				elif (!strcmp(arg,"--load") || !strcmp(arg,"-l"))
-					mode = ExpectFilename;
-				else
-				{
-					PathString path = arg;
-					if (path.EndsWithIgnoreCase(FileIO::savFileExtension) && FileSystem::IsFile(arg))
-					{
-						mode = ExpectFilename;
-						Process(arg);
-						return;
-					}
-					LogEvent(EventClass::Preset::configurationError, "Unsupported runtime parameter '"+String(arg)+"'");
-					PrintHelp();
-				}
-			return;
-			case ExpectPort:
 				if (!convert(arg,basePort))
 				{
 					LogEvent(EventClass::Preset::configurationError,"Unable to convert '"+String(arg)+"' to a valid port number");
@@ -758,12 +699,61 @@ namespace ParameterConfig
 					Network::Config::sessionPort = basePort + PortOffset::Session;
 					LogEvent(EventClass::Preset::configuration,"Base port redefined as "+String(basePort)+", session port set to "+String(Network::Config::sessionPort));
 				}
-				mode = Idle;
-			return;
+
+			};
+		elif (!strcmp(arg,"--offline") || !strcmp(arg,"-o"))
+			startOffline = true;
+		elif (!strcmp(arg,"--heartbeat") || !strcmp(arg,"-b"))
+			heartBeat = true;
+		elif (!strcmp(arg,"--tutorial") || !strcmp(arg,"-t"))
+		{
+			loadFile = "config/tutorial.hsf";
+			startInTutorial = true;
+		}
+		elif (!strcmp(arg,"--loadAuto") || !strcmp(arg,"-a"))
+			onParam = [](const char*arg)
+			{
+				index_t index;
+				if (!convert(arg,index))
+				{
+					LogEvent(EventClass::Preset::configurationError,"Unable to convert '"+String(arg)+"' to a valid index");
+					return;
+				}
+				loadFile = FileIO::GetAutoSavePath(index);
+			};
+		elif (!strcmp(arg,"--help") || !strcmp(arg,"-h"))
+		{
+			PrintHelp();
+			exit(0);
+		}
+		elif (!strcmp(arg,"--world") || !strcmp(arg,"-w"))
+			onParam = [](const char*arg)
+			{
+				Bin2Str::Convert(World::worldID.bytes,World::worldID.NumBytes,arg,strlen(arg));
+				LogEvent(EventClass::Preset::configuration,"World ID set to "+World::worldID.ToFullString());
+				customWorldID = true;
+			};
+		elif (!strcmp(arg,"-r") || !strcmp(arg,"--noRemote"))
+			enableRemoteControl = false;
+		elif (!strcmp(arg,"-c") || !strcmp(arg,"--config"))
+			onParam = [](const char*arg){ customConfigPath = arg;};
+		elif (!strcmp(arg,"--load") || !strcmp(arg,"-l"))
+			onParam = [](const char*arg)
+			{
+				loadFile = arg;
+			};
+		else
+		{
+			PathString path = arg;
+			if (path.EndsWithIgnoreCase(FileIO::savFileExtension) && FileSystem::IsFile(arg))
+			{
+				loadFile = arg;
+				return;
+			}
+			LogEvent(EventClass::Preset::configurationError, "Unsupported runtime parameter '"+String(arg)+"'");
+			PrintHelp();
 		}
 	}
-
-
 }
 
 
@@ -1034,7 +1024,7 @@ int main( int argc, const char* argv[])
 		#endif
 
 		if (!inTestMode)
-			Reflection::Load(false);
+			Reflection::Load(ParameterConfig::customConfigPath, false);
 
 		Objects::Faction::RecreateNexus();
 

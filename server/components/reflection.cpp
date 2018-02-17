@@ -1480,7 +1480,7 @@ namespace Reflection
 	}
 
 
-	void Load(bool testMode)
+	void Load( const PathString&customConfigPath)
 	{
 		#ifdef _DEBUG
 			const PathString localServerINI = "config/debug_server.ini";
@@ -1488,7 +1488,7 @@ namespace Reflection
 			const PathString localServerINI = "config/server.ini";
 		#endif
 
-		Feed(state.GetRoot(),[localServerINI](FeedMode mode) {return mode == FeedMode::Original ? localServerINI : RuntimeConfig::myConfig.Lookup(localServerINI);}, testMode,std::function<bool(const Variable::PBase&)>(),FeedMode::ConstructIfMissing);
+		Feed(state.GetRoot(),[localServerINI,customConfigPath](FeedMode mode) {return mode == FeedMode::Original ? localServerINI : (customConfigPath.IsEmpty() ? RuntimeConfig::myConfig.Lookup(localServerINI) : customConfigPath);}, false,std::function<bool(const Variable::PBase&)>(),FeedMode::ConstructIfMissing);
 
 		Grid::currentPlanetConfig.GenerateAtmosphereColor();
 	}
