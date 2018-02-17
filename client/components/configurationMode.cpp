@@ -1198,6 +1198,7 @@ namespace ConfigurationMode
 
 	void	SetGameConfig(UINT32 gameFlags, RuntimeConfig::GameGoal goal, Grid::WorldDiscovery disc)
 	{
+		return;
 		Detail::Rules::basesRequired = (gameFlags & Protocol::GameFlag::BasesRequired) != 0;
 		Detail::Rules::closedGame = (gameFlags & Protocol::GameFlag::ClosedGame) != 0;
 		RuntimeConfig::empZones = (gameFlags & Protocol::GameFlag::EMPZones) != 0;
