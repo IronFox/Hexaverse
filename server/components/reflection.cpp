@@ -1493,13 +1493,19 @@ namespace Reflection
 			static const PathString localServerINI = "config/server.ini";
 		#endif
 
+		if (customConfigPath.IsEmpty())
+			return [](FeedMode mode)
+			{
+				if (mode == FeedMode::Original)
+					return PathString();	//restore from internal state
+				return RuntimeConfig::myConfig.Lookup(localServerINI);
+			};
+
 		return [customConfigPath](FeedMode mode)
 		{
 			if (mode == FeedMode::Original)
 				return PathString();	//restore from internal state
-			if (customConfigPath.IsNotEmpty())
-				return customConfigPath;
-			return RuntimeConfig::myConfig.Lookup(localServerINI);
+			return customConfigPath;
 		};
 	}
 
