@@ -754,7 +754,7 @@ namespace ParameterConfig
 		else
 		{
 			PathString path = arg;
-			if (path.EndsWithIgnoreCase(FileIO::savFileExtension) && FileSystem::IsFile(arg))
+			if (path.EndsWithIgnoreCase(RuntimeConfig::savFileExtension) && FileSystem::IsFile(arg))
 			{
 				loadFile = arg;
 				return;
@@ -926,8 +926,8 @@ int main( int argc, const char* argv[])
 				FileSystem::Directory saveDir = saveDirPath;
 				FileSystem::File file;
 				PathString path = PathString(path0);
-				if (!path.EndsWithIgnoreCase('.'+FileIO::savFileExtension))
-					path += '.' + FileIO::savFileExtension;
+				if (!path.EndsWithIgnoreCase(RuntimeConfig::savFileExtension))
+					path += RuntimeConfig::savFileExtension;
 				if (!saveDir.FindFile(path,file,false))
 				{
 					LogEvent(EventClass::Preset::remoteControlError,"Unable to save to '"+String(path)+"'. Invalid path");
@@ -943,8 +943,8 @@ int main( int argc, const char* argv[])
 				
 				FileSystem::File file;
 				PathString path = PathString(path0);
-				if (!path.EndsWithIgnoreCase('.'+FileIO::savFileExtension))
-					path += '.' + FileIO::savFileExtension;
+				if (!path.EndsWithIgnoreCase(RuntimeConfig::savFileExtension))
+					path += RuntimeConfig::savFileExtension;
 				if (!saveDir.FindFile(path,file,true))
 				{
 					LogEvent(EventClass::Preset::remoteControlError,"Unable to load '"+String(path)+"'. File does not exist");
@@ -1096,13 +1096,13 @@ int main( int argc, const char* argv[])
 		{
 			Logging::WriteEvent(EventSignificance::Uncommon,"Testing server.",nullptr,nullptr,nullptr);
 
-			FileIO::Save(PathString("test0."+FileIO::savFileExtension),RuntimeConfig::phase);
-			FileIO::Load(PathString("test0."+FileIO::savFileExtension));
-			FileIO::Save(PathString("test1."+FileIO::savFileExtension),RuntimeConfig::phase);
+			FileIO::Save(PathString("test0"+RuntimeConfig::savFileExtension),RuntimeConfig::phase);
+			FileIO::Load(PathString("test0"+RuntimeConfig::savFileExtension));
+			FileIO::Save(PathString("test1"+RuntimeConfig::savFileExtension),RuntimeConfig::phase);
 
 			Riff::File a,b;
-			ASSERT__(a.Open(PathString("test0."+FileIO::savFileExtension).c_str()));
-			ASSERT__(b.Open(PathString("test1."+FileIO::savFileExtension).c_str()));
+			ASSERT__(a.Open(PathString("test0"+RuntimeConfig::savFileExtension).c_str()));
+			ASSERT__(b.Open(PathString("test1"+RuntimeConfig::savFileExtension).c_str()));
 			Ctr::Buffer<Riff::TID>	stack;
 			FileIO::Compare(a,b,stack);
 

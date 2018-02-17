@@ -1676,7 +1676,7 @@ namespace FileIO
 
 	PathString GetAutoSavePath(index_t index)
 	{
-		return RuntimeConfig::sharedConfig.Lookup("saves/auto/snapshot") + PathString(index)+"."+savFileExtension;
+		return RuntimeConfig::sharedConfig.Lookup("saves/auto/snapshot") + PathString(index)+RuntimeConfig::savFileExtension;
 	}
 
 	bool			IsValidSavePhase(RuntimeConfig::Phase p)
@@ -1705,13 +1705,13 @@ namespace FileIO
 		}
 		PathString base = RuntimeConfig::sharedConfig.Lookup("saves/auto/snapshot");
 		FileSystem::CreateDirectory(FileSystem::ExtractFileDir(base));
-		if (FileSystem::IsFile(base+"0."+savFileExtension))
+		if (FileSystem::IsFile(base+"0"+RuntimeConfig::savFileExtension))
 		{
-			FileSystem::UnlinkFile(base+"9."+savFileExtension);
+			FileSystem::UnlinkFile(base+"9"+RuntimeConfig::savFileExtension);
 			for (int i = 8; i >= 0; i--)
-				FileSystem::MoveFile(base+PathString(i)+'.'+savFileExtension,base+PathString(i+1)+'.'+savFileExtension);
+				FileSystem::MoveFile(base+PathString(i)+RuntimeConfig::savFileExtension,base+PathString(i+1)+RuntimeConfig::savFileExtension);
 		}
-		Save(base+"0."+savFileExtension, RuntimeConfig::Phase::CommandPhase);
+		Save(base+"0"+RuntimeConfig::savFileExtension, RuntimeConfig::Phase::CommandPhase);
 
 		#ifdef SAVE_FILE_TEST
 			State::Load(base+"0."+savFileExtension);
