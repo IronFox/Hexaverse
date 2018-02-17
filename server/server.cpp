@@ -737,7 +737,13 @@ namespace ParameterConfig
 		elif (!strcmp(arg,"-r") || !strcmp(arg,"--noRemote"))
 			enableRemoteControl = false;
 		elif (!strcmp(arg,"-c") || !strcmp(arg,"--config"))
-			onParam = [](const char*arg){ customConfigPath = arg;};
+		{
+			onParam = [](const char*arg)
+			{
+				customConfigPath = arg;
+				LogEvent(EventClass::Preset::configuration,"Loading configuration from custom path "+String(arg));
+			};
+		}
 		elif (!strcmp(arg,"-g") || !strcmp(arg,"--generate"))
 			onParam = [](const char*arg){ outConfigPath = arg;};
 		elif (!strcmp(arg,"--load") || !strcmp(arg,"-l"))
