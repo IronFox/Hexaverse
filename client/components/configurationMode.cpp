@@ -1020,7 +1020,7 @@ namespace ConfigurationMode
 
 								
 
-									if (!ServerProcess::RunNow(" -g "+Detail::outConfigPath.GetLocation()))
+									if (!ServerProcess::RunNow(" -g \""+Detail::outConfigPath.GetLocation()+"\""))
 									{
 										LogEvent(EventClass::Preset::fileError,"Unable to generate server configuration file at "+String(Detail::outConfigPath.GetLocation()));
 										return;
@@ -1049,7 +1049,7 @@ namespace ConfigurationMode
 										return;
 									}
 
-									ServerProcess::Begin(true,false,"-c "+outConfigPath.GetLocation());
+									ServerProcess::Begin(true,false,"-c \""+Detail::outConfigPath.GetLocation()+"\"");
 									SetActive(false);
 								}
 								catch (const std::exception&ex)
