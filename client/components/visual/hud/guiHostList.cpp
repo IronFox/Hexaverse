@@ -10,7 +10,7 @@
 #include "../../serverProcess.h"
 #include "../../audio/music.h"
 #include "../../clientEvents.h"
-
+#include "menu.h"
 
 #ifdef HAS_WINDOW
 
@@ -547,7 +547,7 @@ namespace HUD{namespace HostList{
 		
 
 		{
-			PButton start(new Button("Start local server"));
+			PButton start(new Button("Start local server..."));
 			PButton stop(new Button("Stop local server"));
 			bool running = ServerProcess::IsRunning();
 			stop->SetEnabled(running);
@@ -556,13 +556,15 @@ namespace HUD{namespace HostList{
 			WButton wstop = stop;
 			start->SetTriggerFunction([wstart,wstop]()
 			{
+				HUD::WindowStack::Show(HUD::Menu::startServer);
+/*
 				ServerProcess::Begin(true,false);
 				PButton b = wstart.lock();
 				if (b)
 					b->SetEnabled(false);
 				b = wstop.lock();
 				if (b)
-					b->SetEnabled(true);
+					b->SetEnabled(true);*/
 			});
 			stop->SetTriggerFunction([wstart,wstop]()
 			{

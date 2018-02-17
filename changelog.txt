@@ -1,4 +1,5 @@
 v0.7.4
+	+ Added menu to start server with interactive or current configuration, or load a previously saved file.
 	+ Server now supports generating and loading configuration files at custom locations.
 	> Disabled Nexus Ports are now considered idle.
 	> Hardened sandboxing of Lua scripts.
