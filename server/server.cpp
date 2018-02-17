@@ -750,6 +750,7 @@ namespace ParameterConfig
 			onParam = [](const char*arg)
 			{
 				loadFile = arg;
+				LogEvent(EventClass::Preset::configuration,"Loading save game from "+String(arg));
 			};
 		else
 		{
