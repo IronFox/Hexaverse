@@ -556,7 +556,7 @@ namespace HUD{namespace HostList{
 			WButton wstop = stop;
 			start->SetTriggerFunction([wstart,wstop]()
 			{
-				ServerProcess::Begin(true);
+				ServerProcess::Begin(true,false);
 				PButton b = wstart.lock();
 				if (b)
 					b->SetEnabled(false);

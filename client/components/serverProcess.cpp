@@ -18,8 +18,8 @@ namespace ServerProcess
 		//CryptographicID	accessToken;
 
 		MonitoredProcess	process(false);
-		String				planetName;
-		bool				remoteControl = false, tutorialMode=false,resumed=false;
+		PathString			parameters = " -b";
+		bool				resumed=false;
 		index_t				shutdownRegistration=InvalidIndex;
 		#ifdef HAS_WINDOW
 			HUD::Dialog::WDialog	holdOn;
@@ -162,13 +162,6 @@ namespace ServerProcess
 			PathString	path = GetExecutablePath(),
 						workingDirectory = GetWorkingDirectory();
 
-			PathString parameters = " -b";	//heartbeat
-			if (!remoteControl)
-				parameters += " -r";
-			if (tutorialMode)
-				parameters += " -t";
-			if (planetName.IsNotEmpty())
-				parameters += PathString(" -w "+planetName);
 			bool showWindow = false;
 			#ifdef _DEBUG
 				showWindow = true;
@@ -231,22 +224,35 @@ namespace ServerProcess
 
 				});
 			#endif
-			ServerProcess::Begin(true,false,true);
+			ServerProcess::Begin(true,true,"");
 		}
 
 	}
 
 
-	void Begin(const String&planetName, bool remoteControl, bool tutorialMode)
+	bool RunNow(const PathString&parameters)
+	{
+		Detail::process.Terminate();
+		Detail::parameters = parameters;
+		Detail::Start();
+		Detail::process.AwaitCompletion();
+		return Detail::process.GetLastExitCode() == 0;
+	}
+
+
+	void Begin(bool remoteControl, bool tutorialMode, const PathString&customFlags)
 	{
 		if (Detail::process.IsRunning())
-		{
-			ASSERT__(remoteControl == Detail::remoteControl);
 			return;
-		}
-		Detail::remoteControl = remoteControl;
-		Detail::planetName = planetName;
-		Detail::tutorialMode = tutorialMode;
+
+		Detail::parameters = " -b";	//heartbeat
+		if (!remoteControl)
+			Detail::parameters += " -r";
+		if (tutorialMode)
+			Detail::parameters += " -t";
+		if (customFlags.IsNotEmpty())
+			Detail::parameters += " "+customFlags;
+
 		Detail::Start();
 	}
 
