@@ -630,7 +630,7 @@ namespace ParameterConfig
 
 	FOnParam	onParam;
 
-	PathString	loadFile,customConfigPath;
+	PathString	loadFile,customConfigPath,outConfigPath;
 	bool	startOffline = false,
 			startInTutorial = false,
 			heartBeat = false;
@@ -663,6 +663,7 @@ namespace ParameterConfig
 		std::cout << "  --rv4\tStart remote control service using IPv4"<<std::endl;
 		std::cout << "  --test \tRun self-tests, then quit"<<std::endl;
 		std::cout << "  --config/-c <config path>\tLoad specified path instead of user configuration"<<std::endl;
+		std::cout << "  --generate/-g <config path>\tGenerate specified configuration file, then quit. Executed once config is loaded"<<std::endl;
 		std::cout << "  --version/-v \tShow version, then quit"<<std::endl;
 		//std::cout << "  --world/-w [worldID] \tuse custom world ID, and start empty"<<std::endl;
 	}
@@ -737,6 +738,8 @@ namespace ParameterConfig
 			enableRemoteControl = false;
 		elif (!strcmp(arg,"-c") || !strcmp(arg,"--config"))
 			onParam = [](const char*arg){ customConfigPath = arg;};
+		elif (!strcmp(arg,"-g") || !strcmp(arg,"--generate"))
+			onParam = [](const char*arg){ outConfigPath = arg;};
 		elif (!strcmp(arg,"--load") || !strcmp(arg,"-l"))
 			onParam = [](const char*arg)
 			{
@@ -1024,7 +1027,17 @@ int main( int argc, const char* argv[])
 		#endif
 
 		if (!inTestMode)
-			Reflection::Load(ParameterConfig::customConfigPath, false);
+		{
+			Reflection::Load(ParameterConfig::customConfigPath);
+			if (ParameterConfig::outConfigPath.IsNotEmpty())
+			{
+				Reflection::SaveRootConfigTo(ParameterConfig::outConfigPath);
+				mainThreadDone.release();
+				Journal::Destroy();
+				TerminateNow(true);
+				return 0;
+			}
+		}
 
 		Objects::Faction::RecreateNexus();
 

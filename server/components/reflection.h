@@ -114,6 +114,11 @@ namespace Reflection
 	void	Load(const PathString&customConfigPath);
 
 	/**
+	Writes the root configuration to the specified path (excluding referenced external configuration files)
+	*/
+	void	SaveRootConfigTo(const PathString&);
+
+	/**
 	Reloads all config settings from the respective ini file(s)
 	*/
 	void	ReloadPlanet();

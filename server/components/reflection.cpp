@@ -1178,9 +1178,9 @@ namespace Reflection
 
 	}
 
-	typedef std::function<PathString(FeedMode)>	FSubConfigName;
+	typedef std::function<PathString(FeedMode)>	FSourcePath;
 
-	static bool Feed(const CLI::PFolder&folder, const FSubConfigName&subConfigName, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode mode);
+	static bool Feed(const CLI::PFolder&folder, const FSourcePath&, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode mode);
 	static bool InnerFeed(const CLI::PFolder&folder,const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode);
 
 	static bool FeedSubDirectory( const CLI::PFolder&dir, const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction,FeedMode mode)
@@ -1367,24 +1367,24 @@ namespace Reflection
 	}
 
 
-	static bool Feed( const CLI::PFolder&folder, const FSubConfigName&subConfigName, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode mode)
+	static bool Feed( const CLI::PFolder&folder, const FSourcePath&sourcePath, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode mode)
 	{
 		bool needThis = true;
 		if (mode != FeedMode::Original)
-			needThis = !Feed(folder,subConfigName,testMode,filterFunction,FeedMode::Original);	//read original first
+			needThis = !Feed(folder,sourcePath,testMode,filterFunction,FeedMode::Original);	//read original first
 		Configuration	config;
 		Config::Context*	ctx = nullptr;
 		
-		const PathString configName = subConfigName(mode);
-//			mode == FeedMode::Original ? "./"+subConfigName :  RuntimeConfig::ConfigLookup(PathString(subConfigName),false);
+		const PathString configPath = sourcePath(mode);
+//			mode == FeedMode::Original ? "./"+sourcePath :  RuntimeConfig::ConfigLookup(PathString(sourcePath),false);
 
 		bool rewrite = false;
-		if (FileSystem::IsFile(configName))
+		if (FileSystem::IsFile(configPath))
 		{
-			if (!config.LoadFromFile(configName))
+			if (!config.LoadFromFile(configPath))
 			{
 				rewrite = true;
-				LogEvent(EventClass::Preset::configurationError,"Unable to parse "+String(configName)+":\n"+config.Report());
+				LogEvent(EventClass::Preset::configurationError,"Unable to parse "+String(configPath)+":\n"+config.Report());
 			}
 			else
 			{
@@ -1421,19 +1421,19 @@ namespace Reflection
 		bool allGood = (ctx || needThis) && InnerFeed(folder,ctx,testMode,filterFunction,mode);	//will load defaults if executed with ctx=nullptr
 		if (mode != FeedMode::Original && ((ctx && !allGood) || rewrite))
 		{
-			//Feed(folder,subConfigName,testMode,filterFunction,true);
+			//Feed(folder,sourcePath,testMode,filterFunction,true);
 			try
 			{
 				StringFile outFile;
-				outFile.Create(configName);
-				LogEvent(EventClass::Preset::configurationPrint,"Writing '"+String(configName)+"'...");
+				outFile.Create(configPath);
+				LogEvent(EventClass::Preset::configurationPrint,"Writing '"+String(configPath)+"'...");
 				DefineConfig(outFile,folder, 0);
 				outFile.Close();
 				allGood = true;
 			}
 			catch (const std::exception&ex)
 			{
-				LogEvent(EventClass::Preset::configurationError,"Unable to overwrite '"+String(configName)+"'");
+				LogEvent(EventClass::Preset::configurationError,"Unable to overwrite '"+String(configPath)+"'");
 				allGood = false;
 			}
 		}
@@ -1480,18 +1480,43 @@ namespace Reflection
 	}
 
 
-	void Load( const PathString&customConfigPath)
+	static FSourcePath ConstructRootFeedFunction( const PathString&customConfigPath )
 	{
 		#ifdef _DEBUG
-			const PathString localServerINI = "config/debug_server.ini";
+			static const PathString localServerINI = "config/debug_server.ini";
 		#else
-			const PathString localServerINI = "config/server.ini";
+			static const PathString localServerINI = "config/server.ini";
 		#endif
 
-		Feed(state.GetRoot(),[localServerINI,customConfigPath](FeedMode mode) {return mode == FeedMode::Original ? localServerINI : (customConfigPath.IsEmpty() ? RuntimeConfig::myConfig.Lookup(localServerINI) : customConfigPath);}, false,std::function<bool(const Variable::PBase&)>(),FeedMode::ConstructIfMissing);
+		return [customConfigPath](FeedMode mode)
+		{
+			if (mode == FeedMode::Original)
+				return PathString();	//restore from internal state
+			if (customConfigPath.IsNotEmpty())
+				return customConfigPath;
+			return RuntimeConfig::myConfig.Lookup(localServerINI);
+		};
+	}
+
+
+
+	void Load( const PathString&customConfigPath)
+	{
+
+		Feed(state.GetRoot(),ConstructRootFeedFunction(customConfigPath), false,std::function<bool(const Variable::PBase&)>(),FeedMode::ConstructIfMissing);
 
 		Grid::currentPlanetConfig.GenerateAtmosphereColor();
 	}
+
+	void	SaveRootConfigTo(const PathString&outPath)
+	{
+		StringFile outFile;
+		outFile.Create(outPath);
+		LogEvent(EventClass::Preset::configurationPrint,"Writing '"+String(outPath)+"'...");
+		DefineConfig(outFile,state.GetRoot(), 0);
+		outFile.Close();
+	}
+
 
 
 	void	VisitAllVariables(const Variable::FCallback&callback)
