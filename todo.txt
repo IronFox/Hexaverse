@@ -1,4 +1,3 @@
-disallow definition of new variables in reflection
 
 bug: temporarily lost contact when nexus port changed ownership, was visible only by plane
 
@@ -213,6 +212,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+disallow definition of new variables in reflection
 client menu: start server, interactive, with save game dialog
 fixed: game goal counts two nexus ports necessary for two players, even through three are accessible!
 when loading while in interactive configuration mode, force-reenable session afterwards

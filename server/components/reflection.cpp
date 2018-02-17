@@ -792,7 +792,7 @@ namespace Reflection
 
 		}
 
-		void		Create()
+		void		Create( )
 		{
 			terminate.reset(new CLI::Command(CLI::Command::Name("terminate reason"), &TerminateCommand, CLI::NoCompletion));
 			terminate->SetUniqueHelp("Terminates this faction and all of its destructible units."
@@ -1019,13 +1019,14 @@ namespace Reflection
 	}
 
 
-	void	Create()
+	void	Create( )
 	{
 		#undef VAR
 		#define VAR( _NAME_,_CONTEXT_,_MIN_,_MAX_,_PERSISTENCE_)	Variable::Set(#_NAME_,_CONTEXT_::_NAME_,_MIN_,_MAX_,_PERSISTENCE_)
 		#undef ENUMVAR
 		#define ENUMVAR( _NAME_,_CONTEXT_,_PERSISTENCE_)	Variable::SetEnum(#_NAME_,_CONTEXT_::_NAME_,_PERSISTENCE_)
 
+		state.setMayCreateVariables = false;
 		CLI::InitDefaults(state,PrintLn);
 
 		FactionCommands::Create();
