@@ -526,13 +526,11 @@ namespace World
 
 	}
 
-	bool			IsPlanetIniFile(const String&filename)
+	bool			IsPlanet(const String&name)
 	{
-		if (!filename.EndsWith(".ini"))
-			return IsPlanetIniFile(filename+".ini");
-		return FileSystem::Folder(RuntimeConfig::sharedConfig.Lookup("config/myPlanets")).FindFile(PathString(filename)) != nullptr
-				||
-			FileSystem::Folder().FindFile("../predefinedPlanets/"+PathString(filename)) != nullptr;
+		if (name.BeginsWith('*'))
+			return FileSystem::IsFile(RuntimeConfig::sharedConfig.Lookup("config/myPlanets/"+name.SubString(1)+".ini"));
+		return FileSystem::Folder().FindFile("../predefinedPlanets/"+PathString(name)+".ini") != nullptr;
 	}
 
 

@@ -987,7 +987,7 @@ int main( int argc, const char* argv[])
 		{
 			if (planet.IsNotEmpty())
 			{
-				if (!World::IsPlanetIniFile(planet+".ini"))
+				if (!World::IsPlanet(planet))
 				{
 					LogEvent(EventClass::Preset::remoteControlError,"'"+planet+"' is not a valid planet type");
 					return;

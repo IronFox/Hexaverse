@@ -72,11 +72,11 @@ namespace World
 	*/
 	void			GetAvailablePlanetNames(Ctr::Array<String>&rsOut);
 	/**
-	Checks if the specified ini-filename is one of the available planet ini files
-	@param filename Name of the file (name[.ini]), without folders
+	Checks if the specified planet name is among the available planet ini files
+	@param name Name of the planet, with a leading * if residing in user directory (e.g. *myPlanet)
 	@return true if it exists, false otherwise
 	*/
-	bool			IsPlanetIniFile(const String&filename);
+	bool			IsPlanet(const String&name);
 
 
 	void			UpdateEMPZones(count_t temporaryFactionCountBonus=0);

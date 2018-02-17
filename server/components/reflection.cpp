@@ -657,9 +657,14 @@ namespace Reflection
 
 			PathString		Get(FeedMode mode) const
 			{
-				if (mode == FeedMode::Original)
-					return originalBase + FOLDER_SLASH + sourceVariable->ConvertToString() + ".ini";
-				return RuntimeConfig::ConfigLookup(myDocumentsBase + FOLDER_SLASH+ sourceVariable->ConvertToString() + ".ini",false);
+				String value = sourceVariable->ConvertToString();
+				const bool prefixed = value.BeginsWith('*');
+				if (prefixed)
+					value.EraseLeft(1);
+
+				if (mode == FeedMode::Original || !prefixed)
+					return originalBase + FOLDER_SLASH + value + ".ini";
+				return RuntimeConfig::ConfigLookup(myDocumentsBase + FOLDER_SLASH+ value + ".ini",false);
 			}
 		};
 

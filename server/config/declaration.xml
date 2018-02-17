@@ -42,7 +42,8 @@
 		<context name="Planet">
 			<variable name="Type" default="LushGreen">
 				The following defines which planet type to use.
-				For any given string X, a valid file /config/planets/[X].ini should exist.
+				For any given string *X, a valid file [my documents]/My Games/Hexaverse/server/config/myPlanets/[X].ini must exist.
+				For any given string X (without preceeding *), a valid file [install]/predefinedPlanets/[X].ini must exist.
 			</variable>
 			<context name="Config">
 				<variable name="atmosphereDensity" default="0.5">Floating point 0 (none visible) to 1 (very dense)</variable>
