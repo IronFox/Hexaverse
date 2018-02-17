@@ -2395,9 +2395,6 @@ int main( int argc, const char* argv[])
 			}
 			else
 			{
-
-				ConfigurationMode::SetActive(true);
-
 				display.Assign(loop);
 				display.Execute();
 
