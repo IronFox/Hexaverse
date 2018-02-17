@@ -44,6 +44,7 @@ namespace ConfigurationMode
 		Grid::WorldDiscovery	showingDiscovery;	//currently selected discovery (interpreted as FullWorld if showDiscovery is false)
 		bool					showDiscovery= false;
 		Objects::PFaction		myNexus;
+		FileSystem::TempFile	outConfigPath;
 
 		Buffer0<Objects::Command::PVisualCommand>	numberCommands;	//!< All commands rendering numbers
 
@@ -1013,9 +1014,48 @@ namespace ConfigurationMode
 							
 							HUD::Dialog::Confirm("Start server with your current configuration and begin game?",[]()
 							{
-								SaveUserPlanet(previousPlanetFileName);
-								ServerProcess::Begin('*'+previousPlanetFileName,true,false);
-								SetActive(false);
+								try
+								{
+									SaveUserPlanet(previousPlanetFileName);
+
+								
+
+									if (!ServerProcess::RunNow(" -g "+Detail::outConfigPath.GetLocation()))
+									{
+										LogEvent(EventClass::Preset::fileError,"Unable to generate server configuration file at "+String(Detail::outConfigPath.GetLocation()));
+										return;
+									}
+
+									Configuration cfg;
+									if (!cfg.LoadFromFile(Detail::outConfigPath.GetLocation()))
+									{
+										LogEvent(EventClass::Preset::fileError,"Unable to open generated server configuration file at "+String(Detail::outConfigPath.GetLocation()));
+										return;
+									}
+									cfg.Change("World/Planet/Type","*"+previousPlanetFileName);
+									cfg.Change("World/worldDiscovery",Detail::showingDiscovery.ToString());
+									cfg.Change("Rules/empZones",RuntimeConfig::empZones);
+									cfg.Change("World/simulateLiquids",Rules::simulateLiquids);
+									cfg.Change("Rules/closedGame",Rules::closedGame);
+									cfg.Change("Rules/startBases",Rules::startBases);
+									cfg.Change("Rules/basesRequired",Rules::basesRequired);
+									cfg.Change("Rules/gameGoal",RuntimeConfig::gameGoal.ToString());
+									cfg.Change("Rules/Nexus/enableAI",Rules::enableAI);
+									cfg.Change("Rules/Nexus/spawnBases",Rules::basesRequired);
+									cfg.Change("Rules/Nexus/spawnAllPorts",Rules::allNexusPorts);
+									if (!cfg.SaveToFile(Detail::outConfigPath.GetLocation(), PRODUCT_NAME))
+									{
+										LogEvent(EventClass::Preset::fileError,"Unable to save generated server configuration file at "+String(Detail::outConfigPath.GetLocation()));
+										return;
+									}
+
+									ServerProcess::Begin(true,false,"-c "+outConfigPath.GetLocation());
+									SetActive(false);
+								}
+								catch (const std::exception&ex)
+								{
+									LogEvent(EventClass::Preset::error,ex.what());
+								}
 							},
 							[](){return Detail::isActive ? HUD::Dialog::CheckResult::OkayContinue : HUD::Dialog::CheckResult::Abort;});
 							
