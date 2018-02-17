@@ -558,7 +558,7 @@ namespace Menu
 	{
 		auto menu = startServer = Menu::Create();
 		menu->Setup(0.25f,"Start Server",true);
-		menu->AddCommand("Configure interactively...",[](){ConfigurationMode::SetActive(true);},[](){return !Network::amOnline;});
+		menu->AddCommand("Configure visually...",[](){ConfigurationMode::SetActive(true);},[](){return !Network::amOnline;});
 		menu->AddCommand("Start using current configuration",
 			[]()
 		{
