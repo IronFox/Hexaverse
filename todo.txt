@@ -1,3 +1,4 @@
+disallow definition of new variables in reflection
 
 bug: temporarily lost contact when nexus port changed ownership, was visible only by plane
 
