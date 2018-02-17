@@ -515,7 +515,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 	try
 	{
-		PathString out = RuntimeConfig::myConfig.Lookup("saves/crash.hsf");
+		PathString out = RuntimeConfig::sharedConfig.Lookup("saves/crash.hsf");
 		Logging::WriteEvent(EventClass::Preset::uncommon,"Trying to save game to "+String(out),nullptr,nullptr,nullptr);
 		FileIO::Save(out,RuntimeConfig::Phase::CommandPhase);
 		Logging::WriteEvent(EventClass::Preset::uncommon,"Success",nullptr,nullptr,nullptr);
@@ -921,7 +921,7 @@ int main( int argc, const char* argv[])
 			Reflection::state.DefineCommand("autoSaveNow",FileIO::AutoSave,CLI::NoCompletion);
 			Reflection::state.DefineCommand("saveTo fileName",(CLI::Command::function1_t)[](const String&path0)
 			{
-				PathString saveDirPath = RuntimeConfig::myConfig.Lookup("saves");
+				PathString saveDirPath = RuntimeConfig::sharedConfig.Lookup("saves");
 				FileSystem::ForceCreateDirectory( saveDirPath );
 				FileSystem::Directory saveDir = saveDirPath;
 				FileSystem::File file;
@@ -938,7 +938,7 @@ int main( int argc, const char* argv[])
 
 			Reflection::state.DefineCommand("loadFrom fileName",(CLI::Command::function1_t)[](const String&path0)
 			{
-				PathString saveDirPath = RuntimeConfig::myConfig.Lookup("saves");
+				PathString saveDirPath = RuntimeConfig::sharedConfig.Lookup("saves");
 				FileSystem::Directory saveDir = saveDirPath;
 				
 				FileSystem::File file;
