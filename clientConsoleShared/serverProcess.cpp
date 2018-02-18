@@ -23,6 +23,7 @@ namespace ServerProcess
 		PathString			parameters = " -b";
 		bool				resumed=false;
 		index_t				shutdownRegistration=InvalidIndex;
+		std::function<void()> onEndAsync;
 
 		Observable<>		*onApplicationTerminate;
 
@@ -171,12 +172,16 @@ namespace ServerProcess
 			if (TryResume())
 				return;
 			resumed = false;
-			logMinor("Starting server process (workingDirectory='"+String(workingDirectory)+"', path='"+String(path)+"', parameters='"+String(parameters)+"', showWindow="+String(showWindow)+")");
+			logNormal("Starting server process (workingDirectory='"+String(workingDirectory)+"', path='"+String(path)+"', parameters='"+String(parameters)+"', showWindow="+String(showWindow)+")");
 			try
 			{
+				process.onEndAsync = [](){
+					Heartbeat::Stop();
+					if (onEndAsync)
+						onEndAsync();
+				};
 				process.Start(workingDirectory,path,parameters,showWindow);
 				Heartbeat::Start(basePort);
-				process.onEndAsync = Heartbeat::Stop;
 			}
 			catch (const std::exception&ex)
 			{
@@ -188,6 +193,10 @@ namespace ServerProcess
 
 	}
 
+	void	SetOnEndAsync(const std::function<void()>&f)
+	{
+		Detail::onEndAsync = f;
+	}
 
 	void	Setup(Observable<>&onProgramTerminate, const FLogger&minor, const FLogger&common, const FLogger&important, const FLogger&error)
 	{

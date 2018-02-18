@@ -13,6 +13,7 @@ namespace ServerProcess
 	typedef std::function<void(const String&)> FLogger;
 
 	void			Setup(Observable<>&onProgramTerminate, const FLogger&minor, const FLogger&common, const FLogger&important, const FLogger&error);
+	void			SetOnEndAsync(const std::function<void()>&);
 	/**
 	Starts server process.
 	If a process is already running, the function returns.
