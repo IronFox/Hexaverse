@@ -747,7 +747,7 @@ namespace Dialog
 				{
 					StringFile userName;
 					FileSystem::CreateDirectory("config");
-					userName.Create(RuntimeConfig::myConfig.Lookup(RuntimeConfig::profilePrefix+ "userName.txt"));
+					userName.Create(RuntimeConfig::GetUserNameFile());
 					userName << name;
 					Network::chosenNickname = name;
 					if (Network::client.IsConnected())

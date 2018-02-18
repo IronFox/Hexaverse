@@ -2313,7 +2313,7 @@ int main( int argc, const char* argv[])
 				String name;
 				try
 				{
-					StringFile userName(RuntimeConfig::myConfig.Lookup(RuntimeConfig::profilePrefix+"userName.txt"));
+					StringFile userName(RuntimeConfig::GetUserNameFile());
 					userName >> name;
 				}
 				catch (...)
