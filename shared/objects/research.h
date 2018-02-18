@@ -10,7 +10,7 @@
 #include "../stringTable.h"
 #include "../luaInterface.h"
 #include "../scriptCache.h"
-#include "../observer.h"
+#include <structure/observable.h>
 
 namespace Objects
 {

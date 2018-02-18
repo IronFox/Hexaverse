@@ -8,7 +8,7 @@
 	#include "resource.h"
 #endif
 #include "entityCommand.h"
-#include "../observer.h"
+#include <structure/observable.h>
 
 namespace Objects
 {
