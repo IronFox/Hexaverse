@@ -3,7 +3,6 @@ bug: temporarily lost contact when nexus port changed ownership, was visible onl
 
 open changelog in internal window, manual in steam-internal browser
 
-fatals should raise error window to the top. bug reporter showing up at all when server was hidden?
 server: on heartbeat failure provide option to restart client or quit
 
 
@@ -212,6 +211,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fatals should raise error window to the top. bug reporter showing up at all when server was hidden? it does.
 disallow definition of new variables in reflection
 client menu: start server, interactive, with save game dialog
 fixed: game goal counts two nexus ports necessary for two players, even through three are accessible!
