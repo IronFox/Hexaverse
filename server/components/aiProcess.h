@@ -1,7 +1,7 @@
 #ifndef aiProcessH
 #define aiProcessH
 
-#include "../../shared/uniqueID.h"
+#include <uniqueID.h>
 
 namespace AIProcess
 {

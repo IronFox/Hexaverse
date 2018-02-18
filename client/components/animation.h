@@ -3,8 +3,8 @@
 
 #include <container/buffer.h>
 #include <math/vclasses.h>
-#include "../../shared/objects.h"
-#include "../../shared/protocol.h"
+#include <objects.h>
+#include <protocol.h>
 #include "../ExtRenderer/DirectX11.h"
 
 /**

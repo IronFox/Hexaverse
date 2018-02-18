@@ -1,7 +1,7 @@
 #ifndef networkComponentH
 #define networkComponentH
 
-#include "../../shared/protocol.h"
+#include <protocol.h>
 //#include "visual/guiElements.h"
 
 /**

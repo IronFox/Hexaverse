@@ -1,7 +1,7 @@
 #include "menu.h"
 #include "../tutorial.h"
 #include "common.h"
-#include "../../serverProcess.h"
+#include <serverProcess.h>
 #include "../../network.h"
 #include "../scene/shadedRenderInstruction.h"
 #include "../../clientRuntimeConfig.h"
