@@ -147,7 +147,10 @@ namespace Grid
 		UINT32		lastSeed = 0,
 					versionCounter = 0;
 
-
+		/**/		ExtendedPlanetConfig()
+		{
+			extendedCore.baseHeight = Grid::CellStack::BottomHeight;	//give some semblance of a workable planet
+		}
 
 		friend	void	Serialize(IWriteStream&outStream, const Self&v)
 		{

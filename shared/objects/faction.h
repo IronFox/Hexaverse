@@ -553,9 +553,15 @@ namespace Objects
 			#endif
 			static void FindFreeColor(float3&outColor);
 
-			static void	Kill(const PFaction&);
 		#endif
 
+		/**
+		Terminates a faction and all units it posesses.
+		Irreversible.
+		WARNING: It is highly unusual for the client to call this method, and it is basically ONLY NECESSARY WHEN IN CONFIGURATION MODE.
+		Currently does not remove markers
+		*/
+		static void		Kill(PFaction);
 
 		void			ChangeAlliance(const PAlliance&);
 		bool			IsAlliedWith(const PFaction&)const;

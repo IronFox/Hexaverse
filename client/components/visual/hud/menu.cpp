@@ -1,7 +1,7 @@
 #include "menu.h"
 #include "../tutorial.h"
 #include "common.h"
-#include "../../serverProcess.h"
+#include <serverProcess.h>
 #include "../../network.h"
 #include "../scene/shadedRenderInstruction.h"
 #include "../../clientRuntimeConfig.h"
@@ -13,6 +13,7 @@
 #include "../scene/explosions.h"
 #include "guiFactionTable.h"
 #include <io/monitoredProcess.h>
+#include "../../configurationMode.h"
 
 bool	IsFullScreen();
 void	SetFullScreen(bool isFull);
@@ -82,7 +83,7 @@ namespace Menu
 
 
 
-	PMenu	main,help,login,game;
+	PMenu	main,help,login,game,startServer,saveGames;
 	Component::PWindow	options;
 
 
@@ -398,7 +399,7 @@ namespace Menu
 					});
 			});
 		help->AddCommand("Start Interactive Tutorial",
-			ServerProcess::StartTutorialServer,
+			Tutorial::StartTutorialServer,
 			[](){return !Network::client.IsConnected() && !Network::client.IsAttemptingToConnect();});
 		
 		help->AddCommand("Report Bug",
@@ -511,6 +512,69 @@ namespace Menu
 	}
 
 
+	static void LookupSaveGames(Buffer0<std::pair<String,PathString> >&saves,FileSystem::Folder folder, const String&path)
+	{
+		folder.Rewind();
+		FileSystem::File f;
+		while (folder.NextFile(RuntimeConfig::savFileExtension,f))
+		{
+			String path2 = path.IsNotEmpty() ? path +"/" : "";
+			auto&e = saves.Append();
+			e.first = path2 + String(f.GetInnerName());
+			e.second = f.GetLocation();
+		}
+
+		folder.Rewind();
+		while (folder.NextFolder(f))
+		{
+			String path2 = path.IsNotEmpty() ? path +"/" : "";
+			LookupSaveGames(saves,f,path2 + String(f.GetInnerName()));
+		}
+	}
+
+
+	static void RefreshSaveGames()
+	{
+		if (!saveGames)
+			saveGames = Menu::Create();
+		auto menu = saveGames;
+		menu->Setup(0.25f,"Start Server with Saved Game",true);
+
+		Buffer0<std::pair<String,PathString> > saves;
+		LookupSaveGames(saves, RuntimeConfig::sharedConfig.Lookup("saves"), "");
+		foreach (saves,s)
+		{
+			PathString p = s->second;
+			menu->AddCommand(s->first,[p]()
+			{
+				ServerProcess::Begin(true,false,"-l \""+p+"\"");
+				HUD::WindowStack::SignalSituationChange();
+			},[](){return !Network::amOnline;});
+		}
+	}
+
+
+	static void CreateStartServerMenu()
+	{
+		auto menu = startServer = Menu::Create();
+		menu->Setup(0.25f,"Start Server",true);
+		menu->AddCommand("Configure visually...",[](){ConfigurationMode::SetActive(true);},[](){return !Network::amOnline;});
+		menu->AddCommand("Start using current configuration",
+			[]()
+		{
+			ServerProcess::Begin(true,false);
+			HUD::WindowStack::SignalSituationChange();
+		},[](){return !Network::amOnline;});
+		menu->AddCommand("Load saved game...",
+			[]()
+		{
+			RefreshSaveGames();
+			WindowStack::Show(saveGames);
+		});
+
+
+	}
+
 	void Create()
 	{
 		CreateOptionsMenu();
@@ -518,6 +582,7 @@ namespace Menu
 		CreateMainMenu();
 		CreateLoginMenu();
 		CreateGameMenu();
+		CreateStartServerMenu();
 
 		GlobalEvents::applicationTerminate << []()
 		{
@@ -525,6 +590,7 @@ namespace Menu
 			help.reset();
 			login.reset();
 			options.reset();
+			startServer.reset();
 		};
 	}
 

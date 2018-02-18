@@ -34,3 +34,9 @@ Keyboard and Mouse, I guess.
 The game makes use of left, middle (optional), and right mouse buttons, as well as the mouse wheel (also optional).
 The right click is particularly important.
 A keyboard (at least an emulated one) is necessary to enter your name, possibly a server address, and insults for your opponents when they raid your base.
+
+
+== Error Reporting ==
+Surprisingly, Hexaverse has bugs.
+If you do encounter some, ideally the respective application automatically starts the [[config/bug reporter]], allowing you to kindly submit a bug report.
+Alternatively, you may manually start the bug reporter from the visual client menu (Main->Help->Report Bug).

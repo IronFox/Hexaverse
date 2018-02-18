@@ -21,6 +21,7 @@
 #include "../display.h"
 #include "../../clientEvents.h"
 #include "lighting.h"
+#include "../../clientRuntimeConfig.h"
 
 namespace Camera
 {
@@ -2225,30 +2226,29 @@ namespace Objects
 			#endif
 		}
 
-		switch (RuntimeConfig::gameGoal)
+		
+		
+		if (RuntimeConfig::nexusBases || RuntimeConfig::nexusPortsOnAllPoles)
 		{
-			case RuntimeConfig::GameGoal::ConquerNexus:
-				for (int i = 0; i < 12; i++)
-				{
-					if (nexusSet[i])
-						continue;
-					M::TVec3<> color;
-					if (BaseGrid::IsIsolatedCorner(i))
-					{
-						color= float3(1.0,0.6,0.5);
-					}
-					else
-						if (RuntimeConfig::empZones)
-							color= float3(0.5,0.6,1.0);
-						else
-							continue;
-					SetBeamColor(float4(color,0.75),
-								float4(color,0.75));
-					RenderPoleBeam(i,0.2f);
-				}
-			break;
-		}
+			for (int i = 0; i < 12; i++)
+			{
+				if (nexusSet[i])
+					continue;
+				M::TVec3<> color;
+				const bool isolated = BaseGrid::IsIsolatedCorner(i);
+				if (!RuntimeConfig::nexusPortsOnAllPoles && !isolated)
+					continue;
 
+				if (isolated && RuntimeConfig::nexusBases)
+					color= float3(1.0,0.6,0.5);
+				else
+					color= float3(0.5,0.6,1.0);
+				SetBeamColor(float4(color,0.75),
+							float4(color,0.75));
+				RenderPoleBeam(i,0.2f);
+			}
+		}
+		
 
 		display.SetDepthTest(true,true);
 		display.SetBlendMode(Engine::BlendMode::AlphaBlend);

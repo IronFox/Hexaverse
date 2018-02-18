@@ -17,7 +17,6 @@ namespace FileIO
 	}
 
 	extern RuntimeConfig::RoundNumber	lastSaveRound /*= 0*/;
-	static const PathString	savFileExtension = "hsf";	//hexaverse save file
 
 	/**
 	Set true to automatically save the game once the next evolution is done, and animation mode is started

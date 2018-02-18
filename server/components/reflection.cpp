@@ -7,7 +7,6 @@
 #include <io/config.h>
 #include <io/file_system.h>
 #include "aiProcess.h"
-#include "configurationMode.h"
 
 namespace Reflection
 {
@@ -53,8 +52,6 @@ namespace Reflection
 
 		/*virtual override*/ bool		Base::IsWriteProtected() const
 		{
-			if (persistence == Persistence::PlanetConfig)
-				return !ConfigurationMode::IsActive() || Super::IsWriteProtected();
 			return Super::IsWriteProtected();
 		}
 		
@@ -482,47 +479,6 @@ namespace Reflection
 			}
 		};
 
-		class ConfigMode : public Base
-		{
-			typedef Base	Super;
-		public:
-			bool defaultValue = false;
-
-			/**/			ConfigMode(unsigned protection=CLI::EraseProtection):Super("configMode","bool",Persistence::Temporary,1,protection)	{}
-			virtual String	ConvertToString()		const	override
-			{
-				return ConfigurationMode::IsActive();
-			}
-			virtual	bool	Set(const String&value)	override
-			{
-				bool n;
-				if (!convert(value.c_str(),n))
-					return false;
-				if (n != ConfigurationMode::IsActive())
-				{
-					if (n)
-						ConfigurationMode::Begin();
-					else
-						ConfigurationMode::End();
-					OnChanged();
-				}
-				return true;
-
-			}
-			virtual String		GetSupportedValues() const override 
-			{
-				return "true,false";
-			}
-			virtual String	GetDefault() const override
-			{
-				return defaultValue;
-			}
-			virtual void		SetCurrentToDefault() override
-			{
-				defaultValue = ConfigurationMode::IsActive();
-			}
-		};
-
 		class UnitLimit : public Base
 		{
 			typedef Base	Super;
@@ -694,10 +650,22 @@ namespace Reflection
 		{
 		public:
 			const CLI::PVariable	sourceVariable;
-			const String	base;
-			const FeedMode	mode;
+			const PathString	originalBase,myDocumentsBase;
+			const FeedMode		mode;
 
-			/**/			FileReferenceAttachment(const String&base, const CLI::PVariable&source, FeedMode mode):sourceVariable(source),base(base),mode(mode)	{}
+			/**/			FileReferenceAttachment( const PathString&originalBase, const PathString&myDocumentsBase, const CLI::PVariable&source, FeedMode mode):sourceVariable(source),originalBase(originalBase),myDocumentsBase(myDocumentsBase),mode(mode)	{}
+
+			PathString		Get(FeedMode mode) const
+			{
+				String value = sourceVariable->ConvertToString();
+				const bool prefixed = value.BeginsWith('*');
+				if (prefixed)
+					value.EraseLeft(1);
+
+				if (mode == FeedMode::Original || !prefixed)
+					return originalBase + FOLDER_SLASH + value + ".ini";
+				return RuntimeConfig::ConfigLookup(myDocumentsBase + FOLDER_SLASH+ value + ".ini",false);
+			}
 		};
 
 
@@ -824,7 +792,7 @@ namespace Reflection
 
 		}
 
-		void		Create()
+		void		Create( )
 		{
 			terminate.reset(new CLI::Command(CLI::Command::Name("terminate reason"), &TerminateCommand, CLI::NoCompletion));
 			terminate->SetUniqueHelp("Terminates this faction and all of its destructible units."
@@ -1051,13 +1019,14 @@ namespace Reflection
 	}
 
 
-	void	Create()
+	void	Create( )
 	{
 		#undef VAR
-		#define VAR(_NAME_,_CONTEXT_,_MIN_,_MAX_,_PERSISTENCE_)	Variable::Set(#_NAME_,_CONTEXT_::_NAME_,_MIN_,_MAX_,_PERSISTENCE_)
+		#define VAR( _NAME_,_CONTEXT_,_MIN_,_MAX_,_PERSISTENCE_)	Variable::Set(#_NAME_,_CONTEXT_::_NAME_,_MIN_,_MAX_,_PERSISTENCE_)
 		#undef ENUMVAR
-		#define ENUMVAR(_NAME_,_CONTEXT_,_PERSISTENCE_)	Variable::SetEnum(#_NAME_,_CONTEXT_::_NAME_,_PERSISTENCE_)
+		#define ENUMVAR( _NAME_,_CONTEXT_,_PERSISTENCE_)	Variable::SetEnum(#_NAME_,_CONTEXT_::_NAME_,_PERSISTENCE_)
 
+		state.setMayCreateVariables = false;
 		CLI::InitDefaults(state,PrintLn);
 
 		FactionCommands::Create();
@@ -1093,7 +1062,7 @@ namespace Reflection
 			state.EnterNewFolder("Planet")->attachment = persistenceAttachment;
 				Variable::planetType = Variable::SetString("Type","LushGreen",Variable::Persistence::PlanetConfig);
 
-				state.EnterNewFolder("Config")->attachment.reset(new Variable::FileReferenceAttachment("config/myPlanets",Variable::planetType,FeedMode::IgnoreIfMissing));
+				state.EnterNewFolder("Config")->attachment.reset(new Variable::FileReferenceAttachment("../predefinedPlanets", "config/myPlanets",Variable::planetType,FeedMode::IgnoreIfMissing));
 				{
 					/*
 					Important:
@@ -1181,9 +1150,13 @@ namespace Reflection
 			state.ExitFolder();
 
 			state.EnterNewFolder("Nexus")->attachment = persistenceAttachment;
-				VAR(haveBases,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame);
+				Variable::Set("spawnBases",Game::Config::Nexus::bases.doPlace,false,true,Variable::Persistence::ConfigOnly);
+				Variable::Set("haveBases",Game::Config::Nexus::bases.havePlaced,false,true,Variable::Persistence::GameInvariantNonConfigurable);
+				Variable::Set("spawnAllPorts",Game::Config::Nexus::allPorts.doPlace,false,true,Variable::Persistence::ConfigOnly);
+				Variable::Set("haveAllPorts",Game::Config::Nexus::allPorts.havePlaced,false,true,Variable::Persistence::GameInvariantNonConfigurable);
 				#ifndef NO_SATELLITES
-					VAR(haveSatellitesAtopBases,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame);
+					Variable::Set("spawnSatellitesAtopBases",Game::Config::Nexus::satellitesAtopBases.doPlace,false,true,Variable::Persistence::ConfigOnly);
+					Variable::Set("haveSatellitesAtopBases",Game::Config::Nexus::satellitesAtopBases.havePlaced,false,true,Variable::Persistence::GameInvariant);
 				#endif
 				state.SetVariable(CLI::PVariable(new Variable::NexusAIEnabled("enableAI")));
 				//VAR(enableAI,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
@@ -1196,8 +1169,6 @@ namespace Reflection
 		state.EnterNewFolder("Server")->attachment = persistenceAttachment;
 			VAR(saveEveryNRounds,FileIO::Config,-1,100,Variable::Persistence::ConfigOnly);
 			VAR(saveWhenAllQuit,FileIO::Config,false,true,Variable::Persistence::ConfigOnly);
-			
-			state.SetVariable(CLI::PVariable(new Variable::ConfigMode()));
 		state.ExitFolder();
 
 		SetupBase(state.GetRoot());
@@ -1213,11 +1184,12 @@ namespace Reflection
 
 	}
 
+	typedef std::function<PathString(FeedMode)>	FSourcePath;
 
-	static bool Feed(const CLI::PFolder&folder, const PathString&subConfigName, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode mode);
+	static bool Feed(const CLI::PFolder&folder, const FSourcePath&, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode mode);
 	static bool InnerFeed(const CLI::PFolder&folder,const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode);
 
-	static bool FeedSubDirectory(const CLI::PFolder&dir, const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction,FeedMode mode)
+	static bool FeedSubDirectory( const CLI::PFolder&dir, const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction,FeedMode mode)
 	{
 		bool allGood = true;
 		std::shared_ptr<Variable::PersistenceAttachment> a = To<Variable::PersistenceAttachment>::DynamicCast(dir->attachment);
@@ -1233,8 +1205,8 @@ namespace Reflection
 			if (testMode)
 				Variable::planetType->Set("LushGreen");
 
-			//PathString str = RuntimeConfig::ConfigFile( PathString(ref->base + FOLDER_SLASH + ref->sourceVariable->ConvertToString() + ".ini"));
-			if (!Feed(dir,PathString(ref->base + FOLDER_SLASH + ref->sourceVariable->ConvertToString() + ".ini"),testMode,filterFunction,ref->mode))
+			//PathString str = RuntimeConfig::Lookup( PathString(ref->base + FOLDER_SLASH + ref->sourceVariable->ConvertToString() + ".ini"));
+			if (!Feed(dir,[ref](FeedMode mode) {return ref->Get(mode);},testMode,filterFunction,ref->mode))
 			{
 				LogEvent(EventSignificance::NonFatalError,"Warning: Failed to load referenced input configuration '"+ref->sourceVariable->ConvertToString()+".ini'");
 				return false;
@@ -1255,13 +1227,13 @@ namespace Reflection
 		return allGood;
 	}
 
-	static bool InnerFeed(const CLI::PFolder&folder,const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction,FeedMode mode)
+	static bool InnerFeed( const CLI::PFolder&folder,const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction,FeedMode mode)
 	{
 		bool allGood = true;
 		for (const auto&var : folder->variables)
 		{
 			Variable::PBase b = To<Variable::Base>::DynamicCast(var);
-			if (!b || b->persistence == Reflection::Variable::Persistence::Temporary)
+			if (!b || b->persistence == Reflection::Variable::Persistence::Temporary || b->persistence == Reflection::Variable::Persistence::GameInvariantNonConfigurable)
 				continue;
 			if (filterFunction)
 			{
@@ -1331,6 +1303,9 @@ namespace Reflection
 				//case Variable::Persistence::ConfigOverridesSavegame:
 				//	outBuffer << "Written to savegames and applied during loading, but overridden by settings found in configuration files afterwards."<<nl;
 				//break;
+				case Variable::Persistence::GameInvariantNonConfigurable:
+					outBuffer << "Written to savegames and restored from there. Cannot be configured (state reflection)."<<nl;
+				break;
 				case Variable::Persistence::GameInvariant:
 				case Variable::Persistence::PlanetConfig :	//for now, write the same thing into the config
 					outBuffer << "Written to savegames and restored from there, but cannot be altered once a game has started."<<nl;
@@ -1375,7 +1350,7 @@ namespace Reflection
 		for (const auto&var : folder->variables)
 		{
 			Variable::PBase b = To<Variable::Base>::DynamicCast(var);
-			if (!b || b->persistence == Variable::Persistence::Temporary)
+			if (!b || b->persistence == Variable::Persistence::Temporary || b->persistence == Reflection::Variable::Persistence::GameInvariantNonConfigurable)
 				continue;
 			WriteHelp(outFile,var,indent,var->name+": ");
 			WriteIndent(outFile,indent);
@@ -1398,23 +1373,24 @@ namespace Reflection
 	}
 
 
-	static bool Feed(const CLI::PFolder&folder, const PathString&subConfigName, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode mode)
+	static bool Feed( const CLI::PFolder&folder, const FSourcePath&sourcePath, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode mode)
 	{
 		bool needThis = true;
 		if (mode != FeedMode::Original)
-			needThis = !Feed(folder,subConfigName,testMode,filterFunction,FeedMode::Original);	//read original first
+			needThis = !Feed(folder,sourcePath,testMode,filterFunction,FeedMode::Original);	//read original first
 		Configuration	config;
 		Config::Context*	ctx = nullptr;
 		
-		const PathString configName = mode == FeedMode::Original ? "./"+subConfigName :  RuntimeConfig::ConfigFile(PathString(subConfigName));
+		const PathString configPath = sourcePath(mode);
+//			mode == FeedMode::Original ? "./"+sourcePath :  RuntimeConfig::ConfigLookup(PathString(sourcePath),false);
 
 		bool rewrite = false;
-		if (FileSystem::IsFile(configName))
+		if (FileSystem::IsFile(configPath))
 		{
-			if (!config.LoadFromFile(configName))
+			if (!config.LoadFromFile(configPath))
 			{
 				rewrite = true;
-				LogEvent(EventClass::Preset::configurationError,"Unable to parse "+String(configName)+":\n"+config.Report());
+				LogEvent(EventClass::Preset::configurationError,"Unable to parse "+String(configPath)+":\n"+config.Report());
 			}
 			else
 			{
@@ -1451,19 +1427,19 @@ namespace Reflection
 		bool allGood = (ctx || needThis) && InnerFeed(folder,ctx,testMode,filterFunction,mode);	//will load defaults if executed with ctx=nullptr
 		if (mode != FeedMode::Original && ((ctx && !allGood) || rewrite))
 		{
-			//Feed(folder,subConfigName,testMode,filterFunction,true);
+			//Feed(folder,sourcePath,testMode,filterFunction,true);
 			try
 			{
 				StringFile outFile;
-				outFile.Create(configName);
-				LogEvent(EventClass::Preset::configurationPrint,"Writing '"+String(configName)+"'...");
+				outFile.Create(configPath);
+				LogEvent(EventClass::Preset::configurationPrint,"Writing '"+String(configPath)+"'...");
 				DefineConfig(outFile,folder, 0);
 				outFile.Close();
 				allGood = true;
 			}
 			catch (const std::exception&ex)
 			{
-				LogEvent(EventClass::Preset::configurationError,"Unable to overwrite '"+String(configName)+"'");
+				LogEvent(EventClass::Preset::configurationError,"Unable to overwrite '"+String(configPath)+"'");
 				allGood = false;
 			}
 		}
@@ -1510,47 +1486,49 @@ namespace Reflection
 	}
 
 
-	void Load(bool testMode)
+	static FSourcePath ConstructRootFeedFunction( const PathString&customConfigPath )
 	{
-		FileSystem::Directory	root;
-		ASSERT__(root.IsValidLocation());
-		FileSystem::Directory planetPrototypes = root.FindDirectory("config/myPlanets");
-		
-
-		if (planetPrototypes.IsValidLocation())
-		{
-			FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("config/myPlanets"));
-			planetPrototypes.Rewind();
-			FileSystem::File file;
-			while (planetPrototypes.NextFile(".ini",file))
-			{
-				PathString dest = RuntimeConfig::ConfigFile("config/myPlanets/"+file.GetName());
-				if (file.GetName() == "Template.ini" && !FileSystem::IsFile(dest))
-				{
-					if (!FileSystem::Copy(file.GetLocation(),dest,true))
-					{
-						LogEvent(EventClass::Preset::configurationError,"Warning: Unable to restore default planet type '"+String(file.GetInnerName())+"'");
-					}
-					else
-						LogEvent(EventClass::Preset::configurationError,"Restored default planet type '"+String(file.GetInnerName())+"'");
-				}
-			}
-
-		}
-		else
-			LogEvent(EventClass::Preset::configurationError,"Warning: Unable to find base planet source folder from '"+String(root.GetLocation()));
-
-
 		#ifdef _DEBUG
-			const char*localServerINI = "config/debug_server.ini";
+			static const PathString localServerINI = "config/debug_server.ini";
 		#else
-			const char*localServerINI = "config/server.ini";
+			static const PathString localServerINI = "config/server.ini";
 		#endif
 
-		Feed(state.GetRoot(),localServerINI, testMode,std::function<bool(const Variable::PBase&)>(),FeedMode::ConstructIfMissing);
+		if (customConfigPath.IsEmpty())
+			return [](FeedMode mode)
+			{
+				if (mode == FeedMode::Original)
+					return PathString();	//restore from internal state
+				return RuntimeConfig::myConfig.Lookup(localServerINI);
+			};
+
+		return [customConfigPath](FeedMode mode)
+		{
+			if (mode == FeedMode::Original)
+				return PathString();	//restore from internal state
+			return customConfigPath;
+		};
+	}
+
+
+
+	void Load( const PathString&customConfigPath)
+	{
+
+		Feed(state.GetRoot(),ConstructRootFeedFunction(customConfigPath), false,std::function<bool(const Variable::PBase&)>(),FeedMode::ConstructIfMissing);
 
 		Grid::currentPlanetConfig.GenerateAtmosphereColor();
 	}
+
+	void	SaveRootConfigTo(const PathString&outPath)
+	{
+		StringFile outFile;
+		outFile.Create(outPath);
+		LogEvent(EventClass::Preset::configurationPrint,"Writing '"+String(outPath)+"'...");
+		DefineConfig(outFile,state.GetRoot(), 0);
+		outFile.Close();
+	}
+
 
 
 	void	VisitAllVariables(const Variable::FCallback&callback)

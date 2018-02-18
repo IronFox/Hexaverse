@@ -15,7 +15,7 @@
 #include "objectSelection.h"
 #include "../network.h"
 #include "hud/hexGrid.h"
-#include "../serverProcess.h"
+#include <serverProcess.h>
 #include <lua.hpp>
 #include "../configurationMode.h"
 #include "../cameraControl.h"
@@ -51,8 +51,12 @@ namespace Tutorial
 		StringFile			memory;
 
 		StringTable<Message,Strategy::Swap>	messages;
-		PWindow		taskWindow;
+		PWindow				taskWindow;
 		bool				tutorialGameShown=false;
+
+		HUD::Dialog::WDialog	holdOn;
+		index_t				holdOnID;
+		Timer::Time			holdOnCreated;
 
 
 		void				HideGUI()
@@ -74,7 +78,7 @@ namespace Tutorial
 
 		PathString	GetMemoryFilename()
 		{
-			return RuntimeConfig::ConfigFile("tutorialMemory.txt");
+			return RuntimeConfig::myConfig.Lookup("tutorialMemory.txt");
 		}
 
 		void	InitMemoryFile()
@@ -529,7 +533,7 @@ namespace Tutorial
 			{
 				HUD::Dialog::Confirm("Welcome to Hexaverse. Would you like to start a tutorial game server to learn the game's basics?",[]()
 				{
-					ServerProcess::StartTutorialServer();
+					Tutorial::StartTutorialServer();
 				},
 				[](){return HUD::Dialog::CheckResult::OkayContinue;});
 			}
@@ -611,6 +615,67 @@ namespace Tutorial
 		{
 			LogEvent(EventClass::Preset::configurationError,ex.what());
 		}
+	}
+
+
+	void	StartTutorialServer()
+	{
+		using namespace Detail;
+
+		if (ServerProcess::IsRunning())
+		{
+			HUD::Dialog::Confirm("In order to start a tutorial server, the local server must be shut down. Continue?",
+			[]()
+			{
+				ServerProcess::End();
+				StartTutorialServer();
+			},
+			[]()->HUD::Dialog::CheckResult
+			{
+				if (!ServerProcess::IsRunning())
+					return HUD::Dialog::CheckResult::Confirm;
+				return HUD::Dialog::CheckResult::OkayContinue;
+			});
+		}
+
+
+		LogEvent(EventClass::Preset::uncommon,"Starting tutorial server...");
+		RuntimeConfig::serverAddress = Network::ServerAddress("localhost");
+		holdOn = HUD::Dialog::PermanentMessage("Hold on. Getting tutorial server ready.",[]()->HUD::Dialog::CheckResult
+		{
+			if (Network::haveFaction)
+			{
+				//HUD::Dialog::ShowMessage("Welcome to the Hexaverse Tutorial");
+				return HUD::Dialog::CheckResult::Abort;
+			}
+			return HUD::Dialog::CheckResult::OkayContinue;
+		});
+		holdOnCreated = timer.Now();
+
+		holdOnID = GlobalEvents::frameBegin.Register([]()
+		{
+			HUD::Dialog::PDialog d = holdOn.lock();
+			if (!d || !HUD::WindowStack::IsVisible(d))
+			{
+				GlobalEvents::frameBegin.Unregister(holdOnID);
+				holdOnID = InvalidIndex;
+				return;
+			}
+			if (timer.GetSecondsSince(holdOnCreated) > 30)
+			{
+				ServerProcess::End();
+				HUD::WindowStack::Hide(d);
+				GlobalEvents::frameBegin.Unregister(holdOnID);
+				holdOnID = InvalidIndex;
+				RuntimeConfig::serverAddress = Network::ServerAddress();
+				HUD::Dialog::ShowMessage("Tutorial server took too long to start. Something went wrong. Please check any available logs in\n"
+						+String(FileSystem::Folder( RuntimeConfig::myConfig.GetRoot()).ParentLocation()->GetLocation())
+					+"\nSorry about this :S");
+			}
+
+		});
+			
+		ServerProcess::Begin(true,true,"");
 	}
 
 }

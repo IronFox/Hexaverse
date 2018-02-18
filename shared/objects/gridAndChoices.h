@@ -115,7 +115,7 @@ namespace Objects
 	Search starts from the specified reference cell height. If the cell is already empty, search continues down, otherwise up.
 	*/
 	int				FindApplicableGround(const Grid::LCellIdI&cell, bool canStandOnWater, bool canStandOnLava);
-
+	int				FindApplicableGround(const World::Data&world, const Grid::LCellIdI&cell, bool canStandOnWater, bool canStandOnLava);
 
 	/**
 	Determines all spawning choices for a completed vehicle construction

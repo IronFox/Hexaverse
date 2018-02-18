@@ -133,6 +133,13 @@ namespace Game
 
 	namespace Config
 	{
+		struct Placement
+		{
+			bool		doPlace=false,
+						havePlaced=false;
+		};
+
+
 		extern int		roundTimer/* = -1*/;
 		extern UINT32	uplinkBandwidth/* = 500*/;
 		extern bool		closedGame/* = false*/,
@@ -145,8 +152,9 @@ namespace Game
 		
 		typedef RuntimeConfig::GameGoal	Goal;
 
+		count_t			CountActuallyAccessibleZones(count_t temporaryFactionCountBonus=0);
 
-		inline count_t	CountAccessibleZones(count_t temporaryFactionCountBonus=0)
+		inline count_t	CountTheoreticallyAccessibleZones(count_t temporaryFactionCountBonus=0)
 		{
 			count_t numZones = mostFactionsAlive+temporaryFactionCountBonus;	//not counting nexus faction
 			numZones = (numZones/factionsPerZone) + !!(numZones % factionsPerZone);
@@ -208,15 +216,27 @@ namespace Game
 		inline count_t	GetTargetNexusCount()
 		{
 			return RuntimeConfig::empZones
-						? /*std::min<count_t>(*/std::max<count_t>(2,CountAccessibleZones())/*,3)*/ 
+						? CountActuallyAccessibleZones()
 						: 2;	//should be 2 here, because in normal ConquerNexus mode, only nexus bases are spawned, whereas in EMP ConsquerNexus mode ports are spawned on all of the 12 poles
 		}
 
 		namespace Nexus
 		{
-			extern bool		haveBases/* = false*/
-							IF_SATELLITES_P(,haveSatellitesAtopBases/* = true*/)
-							;
+			/**
+			Spawns Nexus bases and the nexus port in its center (regardless of other settings)
+			*/
+			extern Placement	bases;
+
+			/**
+			Spawns a nexus port on each pole. Ports placed due to spawnBases are not replaced
+			*/
+			extern Placement	allPorts;
+
+			/**
+			Spawns various satellites atop nexus bases
+			*/
+			extern Placement	satellitesAtopBases;
+
 			extern bool		startBases/* = false*/,
 							enableAI/* = false*/;
 			extern float	threatEstimationFactor/* = 1.f*/;
@@ -344,8 +364,6 @@ namespace Game
 
 
 
-	void			SpawnNexusBaseAtPoleWithPort(int pole);
-	void			SpawnNexusPortAtPole(int pole);
 
 	/**
 	Spawns all units required by a new faction.

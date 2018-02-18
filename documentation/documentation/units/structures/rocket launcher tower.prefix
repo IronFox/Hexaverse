@@ -1,0 +1,13 @@
+{{ img:units/Rocket Launcher Tower.png|Rocket Launcher Tower}}
+=Rocket Launcher Tower=
+*Based on [[units/turrets/Rocket Launcher|Rocket Launcher]] turret
+*  Health: 22 [=11*2 (turret health multiplier)]
+*  Price: %Minerals% 55
+*  [[concepts/scanning range|Scanning range]]: 3 [=5-2 (tower modifier)]
+*  [[concepts/attack range|Hrz. Attack range]]: 6 [=4+2 (bonus)] (Missile)
+*  Does not require ammunition
+*  2 attacks per round
+*  Explosion radius: 1
+*  Damage: 7
+This tower-turret type can attack objects in range.
+The unit automatically attacks hostile units in range (possibly extended by its impact explosion radius). Towers are the only units that can intercept hostile units during their movement [[concepts/phase]]. A hostile mobile unit that enters their attack range is immediately attacked as long as sufficient [[concepts/action pool|attack action]] is left. This tower will never automatically fire at locations that endanger friendly units.

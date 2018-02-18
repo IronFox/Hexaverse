@@ -8,7 +8,6 @@
 #include "../reflection.h"
 #include "gameState.h"
 #include "worldState.h"
-#include "../configurationMode.h"
 #include "../../../client/version.h"
 #include <objects/structure/tower.h>
 #include <grid/resources.h>
@@ -51,8 +50,6 @@ namespace FileIO
 	void RefreshWindowTitle()
 	{
 		String title = String(PRODUCT_NAME)+" server "+ ::Network::serverID.ToNiceString()+" (world "+ World::worldID.ToNiceString()+")";
-		if (ConfigurationMode::IsActive())
-			title += " INTERACTIVE CONFIGURATION MODE";
 		#ifdef _DEBUG
 			title += " (DEBUG)";
 		#endif
@@ -782,7 +779,7 @@ namespace FileIO
 		Export(parent,v.completeOnMove);
 	}
 
-	static bool Import(Riff::Chunk*parent, Riff::Chunk*vehicleChunk,const Objects::PMobileEntity&v, FactionMap&factions)
+	static bool Import( Riff::Chunk*parent, Riff::Chunk*vehicleChunk,const Objects::PMobileEntity&v, FactionMap&factions)
 	{
 		//Grid::LCellIdI location;
 		GetPOD(parent,RID::location,v->location);
@@ -873,7 +870,7 @@ namespace FileIO
 
 		Attach(parent,RID::towerItem,helper);
 	}
-	static void Import(Riff::Chunk*source, Objects::Tower::AttackTask&item)
+	static void Import( Riff::Chunk*source, Objects::Tower::AttackTask&item)
 	{
 		ASSERT1__(source->IsID(RID::towerItem),source->GetID().ToString());
 		AttackItemSerializable helper;
@@ -928,7 +925,7 @@ namespace FileIO
 	}
 
 	
-	static Objects::PStructure Import(Riff::Chunk*parent, FactionMap&factions)
+	static Objects::PStructure Import( Riff::Chunk*parent, FactionMap&factions)
 	{
 		using namespace ApplicationInterface;
 		String typeName;
@@ -1177,9 +1174,6 @@ namespace FileIO
 
 		LogEvent(EventSignificance::Uncommon,"Restoring saved world state from '"+String(filename)+"'.");
 		bool wasOpen = ::Network::CloseSession();
-
-		ConfigurationMode::Abort();
-
 		bool nexusFound = false, worldInfoFound = false;
 
 
@@ -1273,7 +1267,7 @@ namespace FileIO
 										if (ApplicationInterface::globalVersionOfCurrentFile < ApplicationInterface::FileVersions::FirstVersionWithVariables)
 										{
 											GetPOD(list,RID::closedGame,Game::Config::closedGame);
-											GetOptionalPOD(list,RID::nexusBases,Game::Config::Nexus::haveBases,false);
+											GetOptionalPOD(list,RID::nexusBases,Game::Config::Nexus::bases.havePlaced,false);
 											UINT16 goal;
 											GetPOD(list,RID::goal,goal);
 											if (!RuntimeConfig::gameGoal.Load(goal))
@@ -1663,22 +1657,7 @@ namespace FileIO
 
 
 		if (RuntimeConfig::empZones)
-		{
-			count_t numZones = Game::Config::CountAccessibleZones();
-
-			int unlocked = 0;
-			for (index_t i = 0; i < numZones; i++)
-			{
-				if (Game::Config::Nexus::haveBases && BaseGrid::IsIsolatedCorner(unlocked))
-				{
-					unlocked++;
-				}
-				unlocked++;
-			}
-				
-
-			World::SetUnlockedEMPZones(unlocked);
-		}
+			World::SetUnlockedEMPZones(Game::Config::CountActuallyAccessibleZones());
 
 		LogEvent(EventSignificance::Uncommon,"Restored world '"+World::worldID.ToNiceString()+"'/"+ToString(World::worldID)+" in round "+RuntimeConfig::roundNumber.ToString());
 		RefreshWindowTitle();
@@ -1697,7 +1676,7 @@ namespace FileIO
 
 	PathString GetAutoSavePath(index_t index)
 	{
-		return RuntimeConfig::ConfigFile("saves/auto/snapshot") + PathString(index)+"."+savFileExtension;
+		return RuntimeConfig::sharedConfig.Lookup("saves/auto/snapshot") + PathString(index)+RuntimeConfig::savFileExtension;
 	}
 
 	bool			IsValidSavePhase(RuntimeConfig::Phase p)
@@ -1707,7 +1686,7 @@ namespace FileIO
 
 	bool			CanSaveRightNow(RuntimeConfig::Phase overridePhase)
 	{
-		return IsValidSavePhase(overridePhase) && !ConfigurationMode::IsActive();
+		return IsValidSavePhase(overridePhase);
 	}
 
 	bool			CanSaveRightNow()
@@ -1724,15 +1703,15 @@ namespace FileIO
 			LogEvent(EventClass::Preset::commandRejected,"Unable to save game right now. Not in suitable phase");
 			return;
 		}
-		PathString base = RuntimeConfig::ConfigFile("saves/auto/snapshot");
+		PathString base = RuntimeConfig::sharedConfig.Lookup("saves/auto/snapshot");
 		FileSystem::CreateDirectory(FileSystem::ExtractFileDir(base));
-		if (FileSystem::IsFile(base+"0."+savFileExtension))
+		if (FileSystem::IsFile(base+"0"+RuntimeConfig::savFileExtension))
 		{
-			FileSystem::UnlinkFile(base+"9."+savFileExtension);
+			FileSystem::UnlinkFile(base+"9"+RuntimeConfig::savFileExtension);
 			for (int i = 8; i >= 0; i--)
-				FileSystem::MoveFile(base+PathString(i)+'.'+savFileExtension,base+PathString(i+1)+'.'+savFileExtension);
+				FileSystem::MoveFile(base+PathString(i)+RuntimeConfig::savFileExtension,base+PathString(i+1)+RuntimeConfig::savFileExtension);
 		}
-		Save(base+"0."+savFileExtension, RuntimeConfig::Phase::CommandPhase);
+		Save(base+"0"+RuntimeConfig::savFileExtension, RuntimeConfig::Phase::CommandPhase);
 
 		#ifdef SAVE_FILE_TEST
 			State::Load(base+"0."+savFileExtension);

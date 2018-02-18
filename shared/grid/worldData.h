@@ -1,7 +1,7 @@
 #pragma once
 
 #include "stack.h"
-#include "../observer.h"
+#include <structure/observable.h>
 
 namespace World
 {
@@ -47,7 +47,7 @@ namespace World
 
 		static const constexpr float MaxOutdated = std::numeric_limits<float>::max();
 
-		Observable<const Data&,const BaseGrid::FamiliesChanged&,float>		onTerrainChange;
+		DeltaWorks::Observable<const Data&,const BaseGrid::FamiliesChanged&,float>		onTerrainChange;
 
 		class ChangeSequence;
 		class StackAccess

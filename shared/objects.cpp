@@ -165,7 +165,7 @@ namespace Objects
 
 		GlobalEvents::objectFlush << []()
 		{
-			LogEvent(EventClass::Preset::uncommon,"Flushing scene data");
+			LogEvent(EventClass::Preset::debug,"Flushing scene data");
 
 			if (!preserveReferencesOnFlush)
 			{

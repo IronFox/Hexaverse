@@ -952,7 +952,7 @@ namespace Objects
 	}
 
 	
-	int FindApplicableGround(const Grid::LCellIdI&cell, bool canStandOnWater, bool canStandOnLava)
+	int		FindApplicableGround(const World::Data&world, const Grid::LCellIdI&cell, bool canStandOnWater, bool canStandOnLava)
 	{
 		#ifdef HYBRID_GRID
 			UINT32 finer = Grid::low.grid.GetCell(cell.stackID).higherEquivalent;
@@ -968,28 +968,33 @@ namespace Objects
 			int _h = h;
 			//incremented = false;
 			if (set)
-				_h = std::max(_h, World::actual.GetStack(finer).FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater,canStandOnLava));
+				_h = std::max(_h, world.GetStack(finer).FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater,canStandOnLava));
 			else
 			{
-				_h = World::actual.GetStack(finer).FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater,canStandOnLava);
+				_h = world.GetStack(finer).FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater,canStandOnLava);
 				set = true;
 			}
 			#ifdef HYBRID_GRID
 				for (int j = 0; j < c.neighborhood.numNeighbors; j++)
-					_h = std::max(_h, World::actual.GetStack(c.neighborhood.neighborID[j]).FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater,canStandOnLava));
+					_h = std::max(_h, world.GetStack(c.neighborhood.neighborID[j]).FindMostApplicableGround(std::max(_h, cell.height),canStandOnWater,canStandOnLava));
 			#endif
 			incremented = _h != h;
 			h = _h;
 		}
 
-		if (World::actual.GetStack(finer).GetCellI(h).IsOccupied())
+		if (world.GetStack(finer).GetCellI(h).IsOccupied())
 			return badHeight;
 		#ifdef HYBRID_GRID
 			for (int j = 0; j < c.neighborhood.numNeighbors; j++)
-				if (World::actual.GetStack(c.neighborhood.neighborID[j]).GetCellI(h).IsOccupied())
+				if (world.GetStack(c.neighborhood.neighborID[j]).GetCellI(h).IsOccupied())
 					return badHeight;
 		#endif
 		return h;
+	}
+
+	int FindApplicableGround(const Grid::LCellIdI&cell, bool canStandOnWater, bool canStandOnLava)
+	{
+		return FindApplicableGround(World::actual,cell,canStandOnWater,canStandOnLava);
 	}
 
 
@@ -1222,12 +1227,15 @@ namespace Objects
 					//if (!ws->CanEnable())
 					//	ws->SetEnabled(false,atTime);
 				}
-				if (ws->WouldLikeToEnable())
+				if (setHealthToFull)
 				{
-					if (refreshNetworkNow)
-						ws->SetEnabled(true,atTime);
-					else
-						ws->SetEnabled(true,atTime,false,WorkingStructure::ForceEnable);
+					if (ws->WouldLikeToEnable())
+					{
+						if (refreshNetworkNow)
+							ws->SetEnabled(true,atTime);
+						else
+							ws->SetEnabled(true,atTime,false,WorkingStructure::ForceEnable);
+					}
 				}
 				//ws->RegisterChange(WorldEntity::EnableChanged,atTime);
 			}

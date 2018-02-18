@@ -9,6 +9,7 @@ namespace RuntimeConfig
 	bool aiMode = false;
 	CryptographicID aiAccessToken;
 	bool udpListen = true;
+	bool nexusBases=false,	nexusPortsOnAllPoles=false;
 
 	Network::ServerAddress	serverAddress;
 	FileSystem::File		documentationRootFolder;
@@ -18,7 +19,8 @@ namespace RuntimeConfig
 
 	void	ClientInit()
 	{
-		InitConfigDir(aiMode ? "client/ai" : "client");
+		myConfig.InitConfigDir(aiMode ? "client/ai" : "client");
+		sharedConfig.InitConfigDir("shared");
 
 
 		phase = Phase::Uninitialized;

@@ -520,7 +520,7 @@ namespace HexGrid
 			cmd->Refresh(Network::ControlEnabled());
 		}
 
-		void			Refresh()
+		void			Refresh( )
 		{
 			if (!showControlsAndContacts)
 			{
@@ -1460,6 +1460,8 @@ namespace HexGrid
 
 	void					RefreshContacts()
 	{
+		if (ConfigurationMode::IsActive())	//configuration mode has its own buttons; should not be altered while active
+			return;
 		if (!showControlsAndContacts)
 			return;
 		auto cfg = GetGridConfig();

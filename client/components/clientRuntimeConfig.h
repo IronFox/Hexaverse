@@ -3,8 +3,8 @@
 
 #include <io/file_system.h>
 
-#include "../../shared/uniqueID.h"
-#include "../../shared/runtimeConfig.h"
+#include <uniqueID.h>
+#include <runtimeConfig.h>
 
 namespace Network
 {
@@ -22,6 +22,8 @@ namespace RuntimeConfig
 	extern FileSystem::File			documentationRootFolder;
 
 	extern String					profilePrefix;
+
+	extern bool						nexusBases,	nexusPortsOnAllPoles;
 
 	void					ClientInit();
 

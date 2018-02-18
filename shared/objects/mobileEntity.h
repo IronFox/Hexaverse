@@ -6,7 +6,7 @@
 #include "jobs.h"
 #include "hibernating.h"
 #include "../sharedContainer.h"
-#include "../observer.h"
+#include <structure/observable.h>
 
 namespace Objects
 {

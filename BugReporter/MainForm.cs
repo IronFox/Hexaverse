@@ -384,7 +384,6 @@ namespace BugReporter
 		{
 			ResizeFont(this.Controls, FontScaleFactor);
 
-
 			try
 			{
 				ProcessStartInfo startInfo = new ProcessStartInfo(Path.Combine("..", "server", "server.exe"));
@@ -578,6 +577,12 @@ namespace BugReporter
 			logFile.Enabled = enable;
 			logFileList.Enabled = enable;
 			sendButton.Enabled = enable;
+		}
+
+		private void MainForm_Shown(object sender, EventArgs e)
+		{
+			BringToFront();
+			TopMost = true;
 		}
 
 		private void sendButton_Click(object sender, EventArgs e)

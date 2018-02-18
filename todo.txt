@@ -1,23 +1,20 @@
+
+bug: temporarily lost contact when nexus port changed ownership, was visible only by plane
+
 open changelog in internal window, manual in steam-internal browser
 
-fatals should raise error window to the top. bug reporter showing up at all when server was hidden?
 server: on heartbeat failure provide option to restart client or quit
 
-sleeping terraformers count towards per-round mineral demand
 
-client menu: start server, interactive, with save game dialog
 
-when loading while in interactive configuration mode, force-reenable session afterwards
 
-game goal counts two nexus ports necessary for two players, even through three are accessible!
 
 can a radar vehicle drive into the range of a newly discovered rocket tower?
 
 
-surveyor tower tremor
-check why nickname was exported in steam build
+tremor generator building
 
-
+update documentation, and upload
 
 dedicated server should start from control console, which is invisible and closed upon closing control console
 
@@ -214,6 +211,14 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fatals should raise error window to the top. bug reporter showing up at all when server was hidden? it does.
+disallow definition of new variables in reflection
+client menu: start server, interactive, with save game dialog
+fixed: game goal counts two nexus ports necessary for two players, even through three are accessible!
+when loading while in interactive configuration mode, force-reenable session afterwards
+fixed: sleeping terraformers count towards per-round mineral demand
+make disabled nexus ports idle
+can't reproduce: check why nickname was exported in steam build
 check capsule in big picture mode (missing but uploaded, possibly due to non-published shop)
 artillery does not fire in parallel (due to terrain change time synchronization, inevitable if shooting at same location)
 make windows fade in and out

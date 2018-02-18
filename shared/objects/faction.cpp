@@ -948,8 +948,8 @@ namespace Objects
 				return;
 			}
 
-		//	if (!reverseVisibilityChange.empty())
-			//	t = std::max(t,-reverseVisibilityChange.begin()->first);
+			if (!reverseVisibilityChange.empty())
+				t = std::max(t,-reverseVisibilityChange.begin()->first);
 			LogEvent(EventSignificance::Debug,e.get(),"["+String(e.get())+"] Registering as newly visible at "+String(t));
 
 			t += timeEpsilon;
@@ -969,6 +969,8 @@ namespace Objects
 				ASSERT__(!CurrentlyVisible());
 				return;
 			}
+			if (!reverseVisibilityChange.empty())
+				t = std::max(t,-reverseVisibilityChange.begin()->first);
 			LogEvent(EventSignificance::Debug,e.get(),"["+String(e.get())+"] Registering as newly invisible at "+String(t));
 
 			t += timeEpsilon;
@@ -2015,65 +2017,7 @@ namespace Objects
 
 		}
 
-		/*static*/ void	Faction::Kill(const PFaction&f)
-		{
-			if (!f)
-			{
-				DBG_FATAL__("Trying to kill null-faction");
-				LogEvent(EventClass::Preset::internalError,nullptr, "Trying to kill null-faction");
-				return;
-			}
-			if (f->isDead)
-			{
-				LogEvent(EventClass::Preset::commandRejected,nullptr, "Faction "+ToString(f->id)+" has already ended");
-				return;
-			}
-			
-			LogEvent(EventSignificance::Debug,nullptr, "Erasing faction "+ToString(f->id));
 
-			{
-				auto lock = f->LockSensorUpdates();
-				static Ctr::Buffer0<PWorldEntity>	toDelete;
-				for (index_t i = 0; i < f->structures.Count(); i++)
-					if (!f->structures[i].lock()->IsIndestructible())
-					{
-						toDelete << f->structures[i].lock();
-					}
-
-				for (index_t i = 0; i < f->allMobiles.Count(); i++)
-					//if (vehicles[i]->owner == f)
-					{
-						toDelete << f->allMobiles[i].lock();
-					}
-				float t=0;
-				foreach (toDelete,del)
-					if (*del)
-						Remove(*del,Objects::RemovalType::ControlledExplosion,t);
-				toDelete.Clear();
-				ASSERT__(f->allMobiles.IsEmpty());	//should have cascaded
-				ASSERT__(f->structures.IsEmpty());
-			}	//exiting lock: recomputing sensory of f, which is now empty, so should be fast
-
-			f->isDead = true;
-			f->hasUnitClasses = UnitClass::None;
-
-			LogEvent(EventClass::Preset::factionDeath, "Destructible entities destroyed");
-			ApplicationInterface::SignalFactionsChanged();
-			ApplicationInterface::SignalNexusControlChange(f->alliance);
-
-			//if (f != nexus)
-			//{
-			//	for (index_t i = 0; i < all.Count(); i++)
-			//		if (all[i].lock() == f)
-			//		{
-			//			all.Erase(i);
-			//			break;
-			//		}
-			//	LogEvent(EventClass::Preset::factionDeath, "Faction terminated: " + f->GetLogName());
-			//}
-			//else
-			//	LogEvent(EventClass::Preset::remoteControlError, "Destructible entities destroyed, but cannot terminate nexus faction itself");
-		}
 
 		/*static*/ PFaction			Faction::FindByID(const TUniqueID&id)
 		{
@@ -2137,6 +2081,78 @@ namespace Objects
 
 
 	#endif
+
+
+	/*static*/ void	Faction::Kill(PFaction f)
+	{
+		if (!f)
+		{
+			DBG_FATAL__("Trying to kill null-faction");
+			LogEvent(EventClass::Preset::internalError,nullptr, "Trying to kill null-faction");
+			return;
+		}
+		#ifndef CLIENT
+		if (f->isDead)
+		{
+			LogEvent(EventClass::Preset::commandRejected,nullptr, "Faction "+ToString(f->id)+" has already ended");
+			return;
+		}
+		#endif
+			
+		LogEvent(EventSignificance::Debug,nullptr, "Erasing faction "+ToString(f->id));
+
+		#ifdef CLIENT
+			if (!allKnown.FindAndErase(f))
+			{
+				LogEvent(EventClass::Preset::internalError,nullptr, "Trying to kill non-registered faction");
+				return;
+			}
+			idMap.Unset(f->id);
+			if (mine == f)
+				mine = nullptr;
+
+			ForeachMobileEntityIncludingStored([&f](const PWorldEntity&e)
+			{
+				float t = 0;
+				if (e->owner == f)
+					Remove(e,e->isInserted ? Objects::RemovalType::Vanished : Objects::RemovalType::DestroyedInStorage,t);
+			},false);
+
+			
+			
+		#else
+
+			{
+				auto lock = f->LockSensorUpdates();
+				static Ctr::Buffer0<PWorldEntity>	toDelete;
+				for (index_t i = 0; i < f->structures.Count(); i++)
+					if (!f->structures[i].lock()->IsIndestructible())
+					{
+						toDelete << f->structures[i].lock();
+					}
+
+				for (index_t i = 0; i < f->allMobiles.Count(); i++)
+					//if (vehicles[i]->owner == f)
+					{
+						toDelete << f->allMobiles[i].lock();
+					}
+				float t=0;
+				foreach (toDelete,del)
+					if (*del)
+						Remove(*del,Objects::RemovalType::ControlledExplosion,t);
+				toDelete.Clear();
+				ASSERT__(f->allMobiles.IsEmpty());	//should have cascaded
+				ASSERT__(f->structures.IsEmpty());
+			}	//exiting lock: recomputing sensory of f, which is now empty, so should be fast
+
+			f->isDead = true;
+			f->hasUnitClasses = UnitClass::None;
+
+			LogEvent(EventClass::Preset::factionDeath, "Destructible entities destroyed");
+			ApplicationInterface::SignalFactionsChanged();
+			ApplicationInterface::SignalNexusControlChange(f->alliance);
+		#endif
+	}
 
 	float Next(std::mt19937&random)
 	{

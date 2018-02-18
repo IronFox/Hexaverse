@@ -1,0 +1,4 @@
+----
+Powerful long range defense tower. Usually exceeds the range of any regular mobile unit.
+Depending on the terrain, [[units/turrets/artillery]] vehicles may be placed on high enough ground so that they exceed the spherical range of this tower type.
+[[units/turrets/emp|EMP]] turrets almost always shoot farther but deal no permanent damage.

@@ -315,11 +315,11 @@ namespace InputControl
 						else
 						{
 							LogEvent( EventClass::Preset::commandRejected , "Unable to find folder '"+String(TimeLapse::customBasePath)+". Defaulting to default Documents folder");
-							outDirName = RuntimeConfig::ConfigFile("timelapses/"+outDirName);
+							outDirName = RuntimeConfig::myConfig.Lookup("timelapses/"+outDirName);
 						}
 					}
 					else
-						outDirName = RuntimeConfig::ConfigFile("timelapses/"+outDirName);
+						outDirName = RuntimeConfig::myConfig.Lookup("timelapses/"+outDirName);
 
 					int framesPerSecond = (int)ceil(1.f / std::max(0.001f,TimeLapse::frameDelaySeconds));
 					HUD::Dialog::Confirm("Timelapse mode will capture roughly "+String(framesPerSecond)+" frame(s) per second during animation phase, but remain inactive during all other phases. The camera will be locked in place.\nProceed?",

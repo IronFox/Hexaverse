@@ -27,7 +27,7 @@ BugReporter/BugReporter.exe
 
 server/Server*.exe
 server/config/tutorial.hsf
-server/config/myPlanets/*.ini
+predefinedPlanets/*.ini
 server/config/declaration.xml
 lua/*.lua
 lua/distributions/*.lua

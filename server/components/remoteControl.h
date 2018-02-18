@@ -1,7 +1,7 @@
 #ifndef remoteControlH
 #define remoteControlH
 
-#include "../../shared/protocol.h"
+#include <protocol.h>
 
 namespace RemoteControl
 {

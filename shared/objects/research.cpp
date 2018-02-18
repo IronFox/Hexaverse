@@ -248,16 +248,15 @@ namespace Objects
 
 		globalState.program0 = ScriptCache::LoadContent(
 			"ResearchState = {}\n"
-			"ResearchState.__index = ResearchState\n"
 			"function ResearchState.New()\n"
 				"local rs = {}\n"
 				"setmetatable(rs,ResearchState)\n"
 				"return rs\n"
 			"end\n"
-			"function ResearchState:Export()\n"
+			"function ResearchState.Export(self)\n"
 				"return 0\n"
 			"end\n"
-			"function ResearchState:Import(exported)\n"
+			"function ResearchState.Import(self, exported)\n"
 			"end\n"
 					"\n"
 		"function DefaultHealthAtCost(cost--[[float]]) --float\n"
@@ -588,8 +587,11 @@ namespace Objects
 		#if 0 && defined _DEBUG
 			PathString final = factoryDefault;
 		#else
-			FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("config/lua"));
-			PathString final = RuntimeConfig::ConfigFile("config/lua/research.v2.lua");
+			FileSystem::CreateDirectory(RuntimeConfig::myConfig.Lookup("config/lua"));
+			FileSystem::CreateDirectory(RuntimeConfig::sharedConfig.Lookup("config/lua"));
+			PathString final = RuntimeConfig::myConfig.Lookup("config/lua/research.v2.lua");
+			if (!FileSystem::IsFile(final))
+				final = RuntimeConfig::sharedConfig.Lookup("config/lua/research.v2.lua");
 			if (!FileSystem::IsFile(final))
 			{
 				final = factoryDefault;

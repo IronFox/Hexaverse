@@ -1,7 +1,7 @@
 {{ img:units/Missile Launcher Tower.png|Missile Launcher Tower}}
 =Missile Launcher Tower=
 *Based on [[units/turrets/Missile Launcher|Missile Launcher]] turret
-*  Health: 15 [=10*1.5 (turret health multiplier)]
+*  Health: 24 [=16*1.5 (turret health multiplier)]
 *  Price: %Minerals% 80
 *  [[concepts/scanning range|Scanning range]]: 2 [=4-2 (tower modifier)]
 *  [[concepts/attack range|Hrz. Attack range]]: 10 [=8+2 (bonus)] (Missile)

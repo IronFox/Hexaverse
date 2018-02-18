@@ -9,10 +9,12 @@
 #include <conio.h>
 #include <general/timer.h>
 #include "../shared/protocol.h"
+#include <serverProcess.h>
 
 using namespace DeltaWorks;
 
 HANDLE mainThreadHandle = nullptr;
+Observable<> onProgramEnd;
 
 BOOL WINAPI MyHandlerRoutine(_In_  DWORD dwCtrlType)
 {
@@ -21,13 +23,9 @@ BOOL WINAPI MyHandlerRoutine(_In_  DWORD dwCtrlType)
 		case CTRL_C_EVENT:
 		case CTRL_CLOSE_EVENT:
 		case CTRL_SHUTDOWN_EVENT:
-			//TerminateNow(false);
 			application_shutting_down = true;
-			if (Sys::cancelSynchronousIo)
-				Sys::cancelSynchronousIo(mainThreadHandle);
-			else
-				TerminateProcess(GetCurrentProcess(),0);
-			//exit(0);
+			onProgramEnd();
+			TerminateProcess(GetCurrentProcess(),0);
 		return TRUE;
 	
 	}
@@ -44,6 +42,7 @@ Timer::Time connectionAttemptStarted = timer.Now();
 std::thread connectionRetryThread;
 void ConnectionRetry();
 void CompleteInput();
+
 
 namespace Console
 {
@@ -309,7 +308,8 @@ namespace ParameterConfig
 
 	const char*program = "";
 	StringBuffer	command;
-	bool	interactive = true;
+	bool	interactive = true,
+				server = false;
 
 
 	void	Process(const char*arg)
@@ -329,12 +329,22 @@ namespace ParameterConfig
 					{
 						mode = ReadCommand;
 						Handler::interactive = interactive = false;
+						if (server)
+							std::cerr << "--command and --server are incompatible. Ignoring --server"<<std::endl;
+						server = false;
+					}
+					elif (!strcmp(arg,"--server") || !strcmp(arg,"-s"))
+					{
+						if (!interactive)
+							std::cerr << "--command and --server are incompatible. Ignoring --server"<<std::endl;
+						server = interactive;
 					}
 					elif (!strcmp(arg,"--help") || !strcmp(arg,"-h"))
 					{
 						std::cout << "usage: "<<program<<" [-p basePort] [[-c] command(s)]"<<std::endl;
 						std::cout << " -p/--port [port]\tUse a non-default base port"<<std::endl;
 						std::cout << " -c/--command [cmd]\tExecute command"<<std::endl;
+						std::cout << " -s/--server\tStart server and bind to the lifetime of this console"<<std::endl;
 						std::cout << " *\t\tExecute command"<<std::endl;
 						std::cout << " [no parameters]\tStart in interactive mode"<<std::endl;
 					}
@@ -347,6 +357,9 @@ namespace ParameterConfig
 					command << arg;
 					mode = ReadCommand;
 					Handler::interactive = interactive = false;
+					if (server)
+						std::cerr << "Direct commands and --server are incompatible. Ignoring --server"<<std::endl;
+					server = false;
 				}
 			return;
 			case ExpectPort:
@@ -481,6 +494,20 @@ int main(int argc, char* argv[])
 
 	if (!ParameterConfig::interactive && ParameterConfig::command.IsEmpty())
 		return 0;
+
+
+	if (ParameterConfig::server)
+	{
+		ServerProcess::Setup(onProgramEnd,nullptr,Console::WriteLine,Console::WriteLine,Console::WriteLine);
+		ServerProcess::SetOnEndAsync([]()
+		{
+			application_shutting_down = true;
+			onProgramEnd();
+			TerminateProcess(GetCurrentProcess(),0);
+		});
+		ServerProcess::Begin(true,false,"",ParameterConfig::basePort);
+	}
+
 	connectionAttemptStarted = timer.Now();
 	client.ConnectAsync(targetHost+":"+String(ParameterConfig::basePort+PortOffset::Control));
 	std::cout << std::endl;
@@ -530,7 +557,7 @@ int main(int argc, char* argv[])
 		client.Destroy();
 	}
 
-
+	onProgramEnd();
 	TerminateProcess(GetCurrentProcess(),0);
 	return 0;
 }

@@ -19,7 +19,6 @@
 #pragma comment(lib, "IPHLPAPI.lib")
 
 
-#define HEARTBEAT_PORT				10245	//no point making this variable
 #define BROADCAST_PORT				10246	//must be constant
 #define DEFAULT_SERVER_BASE_PORT	10247
 
@@ -32,7 +31,9 @@ namespace PortOffset
 	{
 		Info,
 		Session,
-		Control
+		Control,
+
+		Heartbeat = Info	//heartbeat is UDP. Can coexist with others
 	};
 }
 
@@ -1504,12 +1505,7 @@ namespace Protocol
 			VoteResult,			//s2c: VoteResult
 			ClientVote,			//c2s: ClientVote
 
-			PlanetConfig,		// both: Grid::ExtendedPlanetConfig
 			GameConfig,			// both: GameConfig
-			PlanetNames,		// s2c: NetString<256>[]
-			LoadPlanetByName,	// c2s: LoadPlanetByName
-			EndConfigurationMode,//c2s: <signal>
-
 			OperationLacksResources, //s2c: OperationLacksResources
 
 			TutorialAt,			// both: int32
@@ -1567,9 +1563,10 @@ namespace Protocol
 			NexusAI = 0x8,
 			EMPZones = 0x10,
 			SimulateLiquids = 0x20,
-			ConfigurationMode = 0x40,
-			TutorialMode = 0x80,
-			GameHasEnded = 0x100,
+			TutorialMode = 0x40,
+			GameHasEnded = 0x80,
+			NexusHasBases = 0x100,
+			NexusPortsOnAllPoles = 0x200,
 
 			SupportSpectatorFactions = 0x1000,
 			SupportRegularFactions = 0x2000,

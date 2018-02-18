@@ -4,6 +4,7 @@ Different requirements apply for a unit to be considered //idle//:
 * A mobile unit has run out of tasks and is awake.
 * A factory has run out of production tasks, is awake, and can be [[concepts/compound|enabled]].
 * A mine is currently disabled, is awake, and can be [[concepts/compound|enabled]].
+* A [[units/structures/nexus port]] is owned, disabled, awake, and can be [[concepts/compound|enabled]].
 
 Units can be [[controls|put to sleep]] to avoid them appearing in the idle queue. 
 

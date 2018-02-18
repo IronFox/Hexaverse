@@ -8,7 +8,6 @@
 #include "../networkChannels.h"
 #include "../aiProcess.h"
 #include "../serverLogEvent.h"
-#include "../configurationMode.h"
 #include "../udpBroadcast.h"
 #include "worldState.h"
 #include <globalEvents.h>
@@ -100,7 +99,7 @@ namespace Network
 			}
 		}
 
-		void	Start()
+		void	Start(UINT16 basePort)
 		{
 			//LogEvent(EventSignificance::Uncommon,"Starting heartbeat receiver on port "+String(HEARTBEAT_PORT));
 			GlobalEvents::applicationTerminate << Stop;
@@ -113,7 +112,7 @@ namespace Network
 			SOCKADDR_IN me;
 			memset(&me,0,sizeof(me));
 			me.sin_family=AF_INET;
-			me.sin_port=htons(HEARTBEAT_PORT);;
+			me.sin_port=htons(basePort + PortOffset::Heartbeat);;
 			me.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 			LogEvent(EventSignificance::Uncommon,"Binding heartbeat receiver to "+TCP::ToString((const sockaddr_storage&)me,sizeof(me)));
 			int rc=::bind(s,(SOCKADDR*)&me,sizeof(SOCKADDR_IN));
@@ -145,7 +144,7 @@ namespace Network
 				application_shutting_down = true;	//prevent certain operations in Close()
 				try
 				{
-					PathString out = RuntimeConfig::ConfigFile("saves/no-heartbeat-shutdown.hsf");
+					PathString out = RuntimeConfig::sharedConfig.Lookup("saves/no-heartbeat-shutdown.hsf");
 					Logging::WriteEvent(EventClass::Preset::uncommon,"Trying to save game to "+String(out),nullptr,nullptr,nullptr);
 					FileIO::Save(out,RuntimeConfig::Phase::CommandPhase);
 					Logging::WriteEvent(EventClass::Preset::uncommon,"Success",nullptr,nullptr,nullptr);
@@ -315,18 +314,12 @@ namespace Network
 			World::worldID.Generate();
 
 		World::UpdateEMPZones(0);
+		World::BuildConfiguredWorld(random);
 
-		if (ConfigurationMode::IsActive())
-			World::BuildConfiguredWorld(ConfigurationMode::GetPlanetSeed());
-		else
-			World::BuildConfiguredWorld(random);
 		if (started)
 			Network::RestartSession(false);
 		else
-		{
-			Channels::planetConfig.SendTo(server,Grid::currentPlanetConfig,(UINT)UserLevel::PlanetConfigurator);
 			World::Network::CheckAllFactionCoverageAndSendAsNeeded();
-		}
 	}
 
 	Protocol::IdentifyFaction Identify(const Objects::PFaction & f)
@@ -401,9 +394,9 @@ namespace Network
 	}
 
 
-	void		StartHeartbeat()
+	void		StartHeartbeat(UINT16 basePort)
 	{
-		Heartbeat::Start();
+		Heartbeat::Start(basePort);
 	}
 
 
@@ -411,7 +404,7 @@ namespace Network
 	{
 		SetupServer();
 		StartServer(false);
-		Session::isStarted = !ConfigurationMode::IsActive();
+		Session::isStarted = true;
 
 		InformationProvider::Start(basePort);
 	}
@@ -451,10 +444,7 @@ namespace Network
 		server.InstallChannel(Channels::identifyFactionRecv);
 		server.InstallChannel(Channels::queueResearch);
 		server.InstallChannel(Channels::ChatMessage);
-		server.InstallChannel(Channels::planetConfig);
-		server.InstallChannel(Channels::gameConfig);
 		server.InstallChannel(Channels::requestResource);
-		server.InstallChannel(Channels::loadPlanetByName);
 		server.InstallChannel(Channels::tutorialAt);
 
 		server.InstallChannel(Channels::AllianceInvite);
@@ -465,7 +455,6 @@ namespace Network
 		server.OpenSignalChannel(Protocol::ChannelID::RequestContinueRound,(UINT32)UserLevel::CommonFaction);
 		server.OpenSignalChannel(Protocol::ChannelID::Ping,0);
 		server.OpenSignalChannel(Protocol::ChannelID::RequestEverything,(UINT32)UserLevel::Spectator);
-		server.OpenSignalChannel(Protocol::ChannelID::EndConfigurationMode,(UINT32)UserLevel::PlanetConfigurator);
 		server.OpenSignalChannel(Protocol::ChannelID::LeaveAlliance,(UINT32)UserLevel::CommonFaction);
 		
 		server.onSignal = Receiver::OnSignal;
@@ -666,12 +655,6 @@ namespace Network
 
 		FileIO::RefreshWindowTitle();
 
-		if (ConfigurationMode::IsActive())
-		{
-			LogConfig("Server is running in interactive configuration mode.");
-			LogConfig("Log in from localhost to configure and activate.");
-		}
-		else
 		{
 			LogConfig("AI is configured as follows:");
 			if (Game::Config::Nexus::enableAI)
@@ -708,10 +691,10 @@ namespace Network
 				LogConfig(" -Closed: Joining will be restricted to first round and access tokens. Game can be won.");
 			else
 				LogConfig(" -Open: Players can join any time. Game is endless.");
-			if (Game::Config::Nexus::haveBases)
-				LogConfig(" -Nexus-Bases: Nexus bases will be randomly created during world creation");
+			if (Game::Config::Nexus::bases.havePlaced)
+				LogConfig(" -Nexus-Bases: Nexus bases have been randomly created during world creation");
 			else
-				LogConfig(" -No Nexus-Bases: Nexus bases will not be created");
+				LogConfig(" -No Nexus-Bases: Nexus bases have not been created");
 
 			switch (RuntimeConfig::doomsdayWeapons)
 			{

@@ -66,7 +66,7 @@
 #include "components/visual/hud/uiScale.h"
 #include "components/audio/music.h"
 #include "components/visual/hud/eventLog.h"
-#include "components/serverProcess.h"
+#include <serverProcess.h>
 #include "components/audio/audioInterface.h"
 #include "components/configurationMode.h"
 #include "components/gridControl.h"
@@ -691,7 +691,7 @@ namespace ApplicationInterface
 
 					if (!TimeLapse::enabled)
 					{
-						PathString screenshotsAt = RuntimeConfig::ConfigFile("screenshots");
+						PathString screenshotsAt = RuntimeConfig::myConfig.Lookup("screenshots");
 						FileSystem::CreateDirectory(screenshotsAt);
 						index_t counter = 0;
 						PathString filename = screenshotsAt + FOLDER_SLASH_STR + PathString("screenshot"+String(counter)+".png");
@@ -1031,6 +1031,8 @@ namespace ApplicationInterface
 				if (v->owner != f)
 					return;
 				if (v->myTasks.IsEmpty() || !v->myTasks.Peek().job)
+					return;
+				if (v->IsSleeping())
 					return;
 				int opSpeed = v->GetOperationSpeed(v->myTasks.Peek().job->GetOperationAffinity());
 				if (!opSpeed)
@@ -1685,10 +1687,6 @@ bool loop()
 				textout.MoveTo(0.95f - textout.GetScaledWidth(line),0.95f);
 				textout << line<<nl;
 				textout.Scale(0.75f,0.75f);
-				if (ConfigurationMode::ViewingServerVersion())
-					textout << "Seeing Server Version";
-				else
-					textout << "Seeing Local Version";
 				#ifdef _DEBUG
 					textout << nl << ConfigurationMode::GetServerSeed();
 				#endif
@@ -1714,7 +1712,7 @@ bool loop()
 void MyFatal(const FatalDescriptor&descriptor)
 {
 	String message = descriptor.ToString();
-	LogFile file(RuntimeConfig::ConfigFile("fatal.log"),false);
+	LogFile file(RuntimeConfig::myConfig.Lookup("fatal.log"),false);
 	
 	file.Log(message+"\n",true);
 	file.Close();
@@ -1902,8 +1900,8 @@ bool ConfigureClient(const wchar_t*commandLine)
 	
 
 		RuntimeConfig::ClientInit();	//requires RuntimeConfig::aiMode, which is declared by parameter variables
-		FileSystem::ForceCreateDirectory(RuntimeConfig::ConfigFile("logs"));	//can't do this until 
-		Logging::Begin(RuntimeConfig::ConfigFile(PathString("logs/client "+Logging::TimeStamp(true)+".log")));
+		FileSystem::ForceCreateDirectory(RuntimeConfig::myConfig.Lookup("logs"));	//can't do this until 
+		Logging::Begin(RuntimeConfig::myConfig.Lookup(PathString("logs/client "+Logging::TimeStamp(true)+".log")));
 	}
 	catch (const std::exception&e)
 	{
@@ -2091,7 +2089,7 @@ int main( int argc, const char* argv[])
 
 		{
 
-			PathString userConfigPath = RuntimeConfig::ConfigFile("game.ini");
+			PathString userConfigPath = RuntimeConfig::myConfig.Lookup("game.ini");
 			if (!FileSystem::IsFile(userConfigPath))
 				FileSystem::CopyFile(PathString("./game.ini"),userConfigPath,false);
 			StartConfig::Load(userConfigPath);
@@ -2161,7 +2159,7 @@ int main( int argc, const char* argv[])
 			storageThread.start();
 
 			UINT32 loadedFlags = Engine::CreateDisplay(display,
-				RuntimeConfig::ConfigFile("window"),
+				RuntimeConfig::myConfig.Lookup("window"),
 				RuntimeConfig::aiMode ? "AI":
 				PRODUCT_NAME
 				#ifdef _DEBUG
@@ -2274,7 +2272,6 @@ int main( int argc, const char* argv[])
 
 					Engine::mouse.BindWheel(InputControl::OnWheel);
 				});
-
 			Loading::Stage("Progress Bars",ProgressBar::Create);
 			Loading::Stage("Window Stack",HUD::WindowStack::Create);
 			Loading::Stage("Dialogs",HUD::Dialog::Create);
@@ -2284,6 +2281,26 @@ int main( int argc, const char* argv[])
 		#endif
 
 		Loading::Stage("Client Grid",ClientGrid::Create);
+		Loading::Stage("Server Process",[]()
+		{
+			ServerProcess::Setup(GlobalEvents::applicationTerminate,
+				[](const String&str) 
+			{
+				LogEvent(EventSignificance::Debug,str);
+			},
+				[](const String&str) 
+			{
+				LogEvent(EventSignificance::Common,str);
+			},
+				[](const String&str) 
+			{
+				LogEvent(EventSignificance::Uncommon,str);
+			},
+				[](const String&str) 
+			{
+				LogEvent(EventSignificance::NonFatalError,str);
+			});
+		});
 
 		#ifdef HAS_WINDOW
 			Loading::Stage("Lighting",Lighting::Create);
@@ -2339,7 +2356,7 @@ int main( int argc, const char* argv[])
 				String name;
 				try
 				{
-					StringFile userName(RuntimeConfig::ConfigFile(RuntimeConfig::profilePrefix+"userName.txt"));
+					StringFile userName(RuntimeConfig::myConfig.Lookup(RuntimeConfig::profilePrefix+"userName.txt"));
 					userName >> name;
 				}
 				catch (...)
@@ -2453,7 +2470,6 @@ int main( int argc, const char* argv[])
 			}
 			else
 			{
-
 				display.Assign(loop);
 				display.Execute();
 

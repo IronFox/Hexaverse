@@ -431,6 +431,9 @@ namespace ObjectHelper
 			return !lab->IsEnabled() && lab->CouldEnable();
 		}
 
+		if (To<Objects::NexusPort>::DynamicCast(s))
+			return !ws->IsEnabled() && ws->CouldEnable();
+
 		#ifndef NO_SATELLITES
 			if (s->IsSkyLinkStructure())
 			{

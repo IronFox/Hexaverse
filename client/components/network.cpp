@@ -89,7 +89,7 @@ namespace Network
 		try
 		{
 			StringFile visitedWorlds;
-			visitedWorlds.Open(RuntimeConfig::ConfigFile("visitedWorlds.txt"));
+			visitedWorlds.Open(RuntimeConfig::myConfig.Lookup("visitedWorlds.txt"));
 			String visited;
 			while (visitedWorlds >> visited)
 			{
@@ -104,7 +104,7 @@ namespace Network
 		try
 		{
 			StringFile hosts;
-			hosts.Open(RuntimeConfig::ConfigFile("hosts.txt"));
+			hosts.Open(RuntimeConfig::myConfig.Lookup("hosts.txt"));
 			String host;
 			while (hosts >> host)
 				ServerDiscovery::RegisterNewHost(Network::ServerAddress(host),false, false);
@@ -118,7 +118,7 @@ namespace Network
 		try
 		{
 			StringFile visited;
-			visited.Create(RuntimeConfig::ConfigFile("visitedWorlds.txt"));
+			visited.Create(RuntimeConfig::myConfig.Lookup("visitedWorlds.txt"));
 			static Array<TUniqueID>	 worlds;
 			visitedWorldMap.ExportKeys(worlds);
 			foreach (worlds,world)
@@ -132,7 +132,7 @@ namespace Network
 		try
 		{
 			StringFile hosts;
-			hosts.Create(RuntimeConfig::ConfigFile("hosts.txt"));
+			hosts.Create(RuntimeConfig::myConfig.Lookup("hosts.txt"));
 		
 			static Buffer0<Network::ServerAddress>	 urls;
 			ServerDiscovery::ListNonAutoAttempts(urls);
@@ -258,7 +258,7 @@ namespace Network
 
 	static PathString AccessFilename()
 	{
-		return RuntimeConfig::ConfigFile(RuntimeConfig::profilePrefix+ "worldAccess.m32");
+		return RuntimeConfig::myConfig.Lookup(RuntimeConfig::profilePrefix+ "worldAccess.m32");
 	}
 
 	void SaveWorldAccessTokens()
@@ -563,28 +563,14 @@ namespace Network
 		}
 
 
-		void	PlanetNames(NETA(Package::NetString<256>)&list)
-		{
-			#ifdef HAS_WINDOW
-				Array<String> copy(list.GetLength());
-				for (index_t i = 0; i < list.GetLength(); i++)
-					copy[i].adoptData(list[i]);
-				ConfigurationMode::UpdatePlanetList(copy);
-			#endif
-		}
-
 		void	OnHelloResponse(Protocol::HelloResponse&response)
 		{
 			ASSERT__(response.success);
 			if (response.success)
 			{
 				LogEvent(EventClass::Preset::common, nullptr, "Status confirmed ('"+response.errorMessage+"')");
-				const bool configurationMode = (response.gameFlags & Protocol::GameFlag::ConfigurationMode) != 0;
 				const bool gameEndSpectatorMode = (response.gameFlags & Protocol::GameFlag::GameHasEnded) != 0;
-				#ifdef HAS_WINDOW
-					ConfigurationMode::SetActive(configurationMode);
-				#endif
-				if (configurationMode || gameEndSpectatorMode)
+				if (gameEndSpectatorMode)
 					AttemptFactionLogin(false,Protocol::FactionType::SpectatorFaction);
 				elif (RuntimeConfig::tutorialMode)
 					AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly);
@@ -629,18 +615,14 @@ namespace Network
 			else
 			{
 				#ifdef HAS_WINDOW
-					if (ConfigurationMode::RestoreServerWorld())
-					{
+					DBG_ASSERT__(!ConfigurationMode::IsActive());
 				#endif
 				BYTE family = delta.familyAndLastFlag & 0x7F;
 				bool last = (delta.familyAndLastFlag & 0x80) != 0;
 				World::actual.BeginChangeSequence(0).ApplyFamilyDelta(family,delta.data0,false,true);
 
 				#ifdef HAS_WINDOW
-						World::allowRecompilation = last && gameHasBegun;
-						if (last)
-							ConfigurationMode::SignalServerWorldUpdateCompleted();
-					}
+					World::allowRecompilation = last && gameHasBegun;
 				#endif
 			}
 
@@ -653,7 +635,7 @@ namespace Network
 		{
 			ASSERT__(!eventsLocked);
 			#ifdef HAS_WINDOW
-				ConfigurationMode::RestoreServerObjects();
+				DBG_ASSERT__(!ConfigurationMode::IsActive());
 			#endif
 
 			if (vs.entityState.timestamp.rightNow && Animation::AllDone())
@@ -697,7 +679,7 @@ namespace Network
 			ASSERT__(!eventsLocked);
 			ASSERT__(Network::haveID || Network::amSpectator);
 			#ifdef HAS_WINDOW
-				ConfigurationMode::RestoreServerObjects();
+				DBG_ASSERT__(!ConfigurationMode::IsActive());
 			#endif
 
 			try
@@ -757,7 +739,7 @@ namespace Network
 		{
 			ASSERT__(!eventsLocked);
 			#ifdef HAS_WINDOW
-				ConfigurationMode::RestoreServerObjects();
+				DBG_ASSERT__(!ConfigurationMode::IsActive());
 			#endif
 
 			//#ifdef HAS_WINDOW
@@ -807,7 +789,7 @@ namespace Network
 		{
 			ASSERT__(!eventsLocked);
 			#ifdef HAS_WINDOW
-				ConfigurationMode::RestoreServerObjects();
+				DBG_ASSERT__(!ConfigurationMode::IsActive());
 			#endif
 
 			if (vs.entityState.timestamp.rightNow && Animation::AllDone())
@@ -847,7 +829,7 @@ namespace Network
 		{
 			ASSERT__(!eventsLocked);
 			#ifdef HAS_WINDOW
-				ConfigurationMode::RestoreServerObjects();
+				DBG_ASSERT__(!ConfigurationMode::IsActive());
 			#endif
 
 			if (de.timestamp.rightNow && Animation::AllDone())
@@ -943,6 +925,8 @@ namespace Network
 
 			Network::gameFlags = cr.info.gameConfig.gameFlags;
 
+			RuntimeConfig::nexusBases = (Network::gameFlags & Protocol::GameFlag::NexusHasBases) != 0;
+			RuntimeConfig::nexusPortsOnAllPoles = (Network::gameFlags & Protocol::GameFlag::NexusPortsOnAllPoles) != 0;
 			RuntimeConfig::empZones = (Network::gameFlags & Protocol::GameFlag::EMPZones) != 0;
 			RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(cr.info.gameConfig.gameGoal);
 			RuntimeConfig::phase = RuntimeConfig::Phase::Reinterpret(cr.info.activePhase);
@@ -950,7 +934,7 @@ namespace Network
 			#ifdef HAS_WINDOW
 				ConfigurationMode::SetGameConfig(Network::gameFlags, RuntimeConfig::gameGoal, Grid::WorldDiscovery::Reinterpret( cr.info.gameConfig.worldDiscovery ));
 				World::allowRecompilation = false;
-				ConfigurationMode::SetActive((Network::gameFlags & Protocol::GameFlag::ConfigurationMode)!= 0);
+				ConfigurationMode::SetActive(false);
 			#endif
 			gameHasBegun = false;
 
@@ -1457,13 +1441,11 @@ namespace Network
 		TCP::Channel<NET(UINT16), 0, Protocol::ChannelID::LockEMPZones>								lockEmpZones(Receiver::LockEmpZones);
 		TCP::Channel<NET(INT32), 0, Protocol::ChannelID::UplinkBandwidth>							uplinkBandwidth(Receiver::UplinkBandwidth);
 		TCP::Channel<Protocol::UnitLimits, 0, Protocol::ChannelID::UnitLimits>						unitLimits(Receiver::UnitLimits);
-		TCP::Channel<Grid::ExtendedPlanetConfig, 0, Protocol::ChannelID::PlanetConfig>				planetConfig(Receiver::PlanetConfig);
 		TCP::Channel<Protocol::OperationLacksResources, 0, Protocol::ChannelID::OperationLacksResources>			operationLacksResources(Receiver::OperationLacksResources);
 		TCP::Channel<Protocol::ResearchState, 0, Protocol::ChannelID::ResearchState>					researchState(Receiver::ResearchState);
 		TCP::Channel<Protocol::ResearchQueue, 0, Protocol::ChannelID::ResearchQueue>				researchQueue(Receiver::ResearchQueue);
 		TCP::Channel<Protocol::ResourceData,0,Protocol::ChannelID::ResourceData>					resourceData(Receiver::ResourceData);
 		TCP::Channel<Protocol::GameConfig,0,Protocol::ChannelID::GameConfig>						gameConfig(Receiver::GameConfig);
-		TCP::Channel<NETA(Package::NetString<256>),0,Protocol::ChannelID::PlanetNames>				planetNames(Receiver::PlanetNames);
 
 		TCP::Channel<NET(INT32),0,Protocol::ChannelID::TutorialAt>									tutorialAt(Receiver::TutorialAt);
 		TCP::Channel<TUniqueID,0,Protocol::ChannelID::WinningFaction>								winningFaction(Receiver::WinningFaction);
@@ -1494,7 +1476,6 @@ namespace Network
 		TCP::ObjectSender<Protocol::EntityStateUpdate, Protocol::ChannelID::Sleep>					sleep;
 		TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>					changeMyName;
 		TCP::ObjectSender<Protocol::ResourceID, Protocol::ChannelID::RequestResource>				requestResource;
-		TCP::ObjectSender<Protocol::LoadPlanetByName, Protocol::ChannelID::LoadPlanetByName>		loadPlanetByName;
 		TCP::ObjectSender<Protocol::QueueResearch, Protocol::ChannelID::QueueResearch>				queueResearch;
 
 		DECLARE_CHANNEL(MyFaction);
@@ -1749,11 +1730,9 @@ namespace Network
 		client.InstallChannel(Channels::lockEmpZones);
 		client.InstallChannel(Channels::uplinkBandwidth);
 		client.InstallChannel(Channels::unitLimits);
-		client.InstallChannel(Channels::planetConfig);
 		client.InstallChannel(Channels::operationLacksResources);
 		client.InstallChannel(Channels::resourceData);
 		client.InstallChannel(Channels::gameConfig);
-		client.InstallChannel(Channels::planetNames);
 
 		client.InstallChannel(Channels::tutorialAt);
 		client.InstallChannel(Channels::winningFaction);

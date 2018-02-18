@@ -43,7 +43,7 @@ namespace Menu
 
 
 
-	extern PMenu	main,help,login;
+	extern PMenu	main,help,login,startServer;
 
 	namespace Configuration
 	{
