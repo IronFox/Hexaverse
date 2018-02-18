@@ -525,14 +525,6 @@ void MyFatal(const FatalDescriptor&descriptor)
 		Logging::WriteEvent(EventClass::Preset::error,"Failed to save to file",nullptr,nullptr,nullptr);
 	}
 
-	#ifdef _DEBUG
-		__debugbreak();
-		std::abort();
-
-		char confirm[0x100];
-		std::cin.getline(confirm,sizeof(confirm));
-
-	#endif
 
 	TerminateNow(true);
 
@@ -827,12 +819,7 @@ bool	IsTargetWorkingDirectory(const PathString&dir)
 
 int main( int argc, const char* argv[])
 {
-	
-
 	Except::onFatal = MyFatal;
-//	return LuaRun(argc,argv);
-
-
 	try
 	{
 
