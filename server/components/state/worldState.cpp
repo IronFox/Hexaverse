@@ -490,9 +490,9 @@ namespace World
 		},false);
 	}
 
-	void		SetUnlockedEMPZones(int unlocked)
+	void		SetUnlockedEMPZones(count_t unlocked)
 	{
-		const UINT16 newUnlocked = ((1<<unlocked) - 1);
+		const UINT16 newUnlocked = (UINT16)(((1<<unlocked) - 1));
 		if (unlockedEMPZones == newUnlocked)
 			return;
 		LogEvent(EventSignificance::Common,"Updating unlocked EMP Zones (unlocked="+String(unlocked)+"): "+Bin2Str::Convert(&unlockedEMPZones,sizeof(unlockedEMPZones))+"->"+Bin2Str::Convert(&newUnlocked,sizeof(newUnlocked)));

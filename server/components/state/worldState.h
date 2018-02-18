@@ -111,7 +111,7 @@ namespace World
 
 
 
-	void			SetUnlockedEMPZones(int unlocked);
+	void			SetUnlockedEMPZones(count_t unlocked);
 
 
 
