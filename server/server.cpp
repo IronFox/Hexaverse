@@ -1124,7 +1124,7 @@ int main( int argc, const char* argv[])
 
 
 		if (ParameterConfig::heartBeat)
-			Network::StartHeartbeat();
+			Network::StartHeartbeat(ParameterConfig::basePort);
 
 		if (!ParameterConfig::startOffline)
 			StartUp();

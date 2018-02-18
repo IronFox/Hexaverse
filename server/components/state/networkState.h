@@ -129,9 +129,9 @@ namespace Network
 	/**
 	Creates a UDP socket that receives regular messages.
 	If messages are not received in 10 seconds, the server shuts down automatically.
-	Call only if the heartbeat system should be active. There is currently no setting to deactive it
+	Call only if the heartbeat system should be active. There is currently no method to again deactive it
 	*/
-	void		StartHeartbeat();
+	void		StartHeartbeat(UINT16 basePort);
 
 	/**
 	Resolves network events

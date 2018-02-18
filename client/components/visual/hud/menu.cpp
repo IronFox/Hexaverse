@@ -399,7 +399,7 @@ namespace Menu
 					});
 			});
 		help->AddCommand("Start Interactive Tutorial",
-			ServerProcess::StartTutorialServer,
+			Tutorial::StartTutorialServer,
 			[](){return !Network::client.IsConnected() && !Network::client.IsAttemptingToConnect();});
 		
 		help->AddCommand("Report Bug",

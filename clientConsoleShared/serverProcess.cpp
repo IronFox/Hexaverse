@@ -4,12 +4,14 @@
 //#include "../../shared/uniqueID.h"
 #include <general/timer.h>
 #include <io/monitoredProcess.h>
-#include <logEvent.h>
-#include "visual/hud/dialog.h"
-#include "clientEvents.h"
+#include <net/tcp.h>
 
-#include "clientRuntimeConfig.h"
-#include "network.h"
+//#include <logEvent.h>
+//#include "visual/hud/dialog.h"
+//#include "clientEvents.h"
+//
+//#include "clientRuntimeConfig.h"
+//#include "network.h"
 
 namespace ServerProcess
 {
@@ -21,13 +23,13 @@ namespace ServerProcess
 		PathString			parameters = " -b";
 		bool				resumed=false;
 		index_t				shutdownRegistration=InvalidIndex;
-		#ifdef HAS_WINDOW
-			HUD::Dialog::WDialog	holdOn;
-			index_t			holdOnID;
-			Timer::Time		holdOnCreated;
-		#endif
 
+		Observable<>		*onApplicationTerminate;
 
+		FLogger				logNormal = [](const String&){},
+							logMinor = [](const String&){},
+							logError = [](const String&){},
+							logImportant = [](const String&){};
 
 		namespace Heartbeat
 		{
@@ -77,10 +79,10 @@ namespace ServerProcess
 				lock.unlock();
 			}
 
-			void	Start()
+			void	Start(UINT16 basePort)
 			{
-				LogEvent(EventSignificance::Common,"Starting heartbeat sender");
-				GlobalEvents::applicationTerminate << Stop;
+				logNormal("Starting heartbeat sender");
+				*onApplicationTerminate << Stop;
 				ASSERT__(Net::initNet());
 
 				Stop();
@@ -92,14 +94,14 @@ namespace ServerProcess
 			
 				memset(&host,0,sizeof(host));
 				host.sin_family=AF_INET;
-				host.sin_port=htons(HEARTBEAT_PORT);
+				host.sin_port=htons(basePort + PortOffset::Heartbeat);
 				host.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 				hostLen = (int)sizeof(host);
 
 				SOCKADDR_IN me;
 				memset(&me,0,sizeof(me));
 				me.sin_family=AF_INET;
-				me.sin_port=0;//htons(HEARTBEAT_PORT);	//just get any free
+				me.sin_port=0; //just get any free
 				me.sin_addr.s_addr = htonl(INADDR_ANY);
 				int rc=::bind(s,(SOCKADDR*)&me,sizeof(SOCKADDR_IN));
 				if (rc != 0)
@@ -134,7 +136,7 @@ namespace ServerProcess
 			if (Detail::process.TryResume(Detail::GetWorkingDirectory(),Detail::GetExecutablePath()))
 			{
 				resumed = true;
-				LogEvent(EventSignificance::Debug,"Resumed running server process at '"+String(Detail::GetExecutablePath())+"'");
+				logMinor("Resumed running server process at '"+String(Detail::GetExecutablePath())+"'");
 				return true;
 			}
 			return false;
@@ -153,10 +155,10 @@ namespace ServerProcess
 				Terminate();
 		}
 
-		void	Start()
+		void	Start( UINT16 basePort)
 		{
 			if (shutdownRegistration == InvalidIndex)
-				shutdownRegistration = GlobalEvents::applicationTerminate.Register(TerminateIfNotResumed);
+				shutdownRegistration = onApplicationTerminate->Register(TerminateIfNotResumed);
 
 
 			PathString	path = GetExecutablePath(),
@@ -169,64 +171,31 @@ namespace ServerProcess
 			if (TryResume())
 				return;
 			resumed = false;
-			LogEvent(EventSignificance::Debug,"Starting server process (workingDirectory='"+String(workingDirectory)+"', path='"+String(path)+"', parameters='"+String(parameters)+"', showWindow="+String(showWindow)+")");
+			logMinor("Starting server process (workingDirectory='"+String(workingDirectory)+"', path='"+String(path)+"', parameters='"+String(parameters)+"', showWindow="+String(showWindow)+")");
 			try
 			{
 				process.Start(workingDirectory,path,parameters,showWindow);
-				Heartbeat::Start();
+				Heartbeat::Start(basePort);
 				process.onEndAsync = Heartbeat::Stop;
 			}
 			catch (const std::exception&ex)
 			{
-				LogEvent(EventClass::Preset::error, ex.what());
+				logError(ex.what());
 				if (IsDebuggerPresent())
 					DebugBreak();
 			}
 		}
 
-		
-		void	StartTutorial()
-		{
-			LogEvent(EventClass::Preset::uncommon,"Starting tutorial server...");
-			RuntimeConfig::serverAddress = Network::ServerAddress("localhost");
-			#ifdef HAS_WINDOW
-				holdOn = HUD::Dialog::PermanentMessage("Hold on. Getting tutorial server ready.",[]()->HUD::Dialog::CheckResult
-				{
-					if (Network::haveFaction)
-					{
-						//HUD::Dialog::ShowMessage("Welcome to the Hexaverse Tutorial");
-						return HUD::Dialog::CheckResult::Abort;
-					}
-					return HUD::Dialog::CheckResult::OkayContinue;
-				});
-				holdOnCreated = timer.Now();
+	}
 
-				holdOnID = GlobalEvents::frameBegin.Register([]()
-				{
-					HUD::Dialog::PDialog d = holdOn.lock();
-					if (!d || !HUD::WindowStack::IsVisible(d))
-					{
-						GlobalEvents::frameBegin.Unregister(holdOnID);
-						holdOnID = InvalidIndex;
-						return;
-					}
-					if (timer.GetSecondsSince(holdOnCreated) > 30)
-					{
-						End();
-						HUD::WindowStack::Hide(d);
-						GlobalEvents::frameBegin.Unregister(holdOnID);
-						holdOnID = InvalidIndex;
-						RuntimeConfig::serverAddress = Network::ServerAddress();
-						HUD::Dialog::ShowMessage("Tutorial server took too long to start. Something went wrong. Please check any available logs in\n"
-								+String(FileSystem::Folder( RuntimeConfig::myConfig.GetRoot()).ParentLocation()->GetLocation())
-							+"\nSorry about this :S");
-					}
 
-				});
-			#endif
-			ServerProcess::Begin(true,true,"");
-		}
-
+	void	Setup(Observable<>&onProgramTerminate, const FLogger&minor, const FLogger&common, const FLogger&important, const FLogger&error)
+	{
+		using namespace Detail;
+		logMinor = minor ? minor : [](const String&){};
+		logNormal = common ? common : [](const String&){};
+		logImportant = important ? important : [](const String&){};
+		onApplicationTerminate = &onProgramTerminate;
 	}
 
 
@@ -234,13 +203,13 @@ namespace ServerProcess
 	{
 		Detail::process.Terminate();
 		Detail::parameters = parameters;
-		Detail::Start();
+		Detail::Start(DEFAULT_SERVER_BASE_PORT);
 		Detail::process.AwaitCompletion();
 		return Detail::process.GetLastExitCode() == 0;
 	}
 
 
-	void Begin(bool remoteControl, bool tutorialMode, const PathString&customFlags)
+	void Begin(bool remoteControl, bool tutorialMode, const PathString&customFlags, USHORT basePort /*= DEFAULT_SERVER_BASE_PORT*/)
 	{
 		if (Detail::process.IsRunning())
 			return;
@@ -250,10 +219,12 @@ namespace ServerProcess
 			Detail::parameters += " -r";
 		if (tutorialMode)
 			Detail::parameters += " -t";
+		if (basePort != DEFAULT_SERVER_BASE_PORT)
+			Detail::parameters += " -p "+PathString(basePort);
 		if (customFlags.IsNotEmpty())
 			Detail::parameters += " "+customFlags;
 
-		Detail::Start();
+		Detail::Start(basePort);
 	}
 
 	void End()
@@ -276,36 +247,8 @@ namespace ServerProcess
 
 
 
-	//void Check()
-	//{
-	//	detail::process.Check();
-	//}
 
 
-
-	void StartTutorialServer()
-	{
-		#ifdef HAS_WINDOW
-		if (ServerProcess::IsRunning())
-		{
-			HUD::Dialog::Confirm("In order to start a tutorial server, the local server must be shut down. Continue?",
-			[]()
-			{
-				ServerProcess::End();
-				Detail::StartTutorial();
-			},
-			[]()->HUD::Dialog::CheckResult
-			{
-				if (!ServerProcess::IsRunning())
-					return HUD::Dialog::CheckResult::Confirm;
-				return HUD::Dialog::CheckResult::OkayContinue;
-			});
-		}
-		else
-		#endif
-			Detail::StartTutorial();
-
-	}
 }
 
 

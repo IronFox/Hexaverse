@@ -9,6 +9,7 @@
 #include <conio.h>
 #include <general/timer.h>
 #include "../shared/protocol.h"
+#include <serverProcess.h>
 
 using namespace DeltaWorks;
 

@@ -7,7 +7,7 @@
 #include <io/string_file.h>
 #include <runtimeConfig.h>
 #include "../../clientRuntimeConfig.h"
-#include "../../serverProcess.h"
+#include <serverProcess.h>
 #include "../../audio/music.h"
 #include "../../clientEvents.h"
 #include "menu.h"

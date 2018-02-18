@@ -66,7 +66,7 @@
 #include "components/visual/hud/uiScale.h"
 #include "components/audio/music.h"
 #include "components/visual/hud/eventLog.h"
-#include "components/serverProcess.h"
+#include <serverProcess.h>
 #include "components/audio/audioInterface.h"
 #include "components/configurationMode.h"
 #include "components/gridControl.h"
@@ -2229,7 +2229,6 @@ int main( int argc, const char* argv[])
 
 					Engine::mouse.BindWheel(InputControl::OnWheel);
 				});
-
 			Loading::Stage("Progress Bars",ProgressBar::Create);
 			Loading::Stage("Window Stack",HUD::WindowStack::Create);
 			Loading::Stage("Dialogs",HUD::Dialog::Create);
@@ -2239,6 +2238,26 @@ int main( int argc, const char* argv[])
 		#endif
 
 		Loading::Stage("Client Grid",ClientGrid::Create);
+		Loading::Stage("Server Process",[]()
+		{
+			ServerProcess::Setup(GlobalEvents::applicationTerminate,
+				[](const String&str) 
+			{
+				LogEvent(EventSignificance::Debug,str);
+			},
+				[](const String&str) 
+			{
+				LogEvent(EventSignificance::Common,str);
+			},
+				[](const String&str) 
+			{
+				LogEvent(EventSignificance::Uncommon,str);
+			},
+				[](const String&str) 
+			{
+				LogEvent(EventSignificance::NonFatalError,str);
+			});
+		});
 
 		#ifdef HAS_WINDOW
 			Loading::Stage("Lighting",Lighting::Create);

@@ -19,7 +19,6 @@
 #pragma comment(lib, "IPHLPAPI.lib")
 
 
-#define HEARTBEAT_PORT				10245	//no point making this variable
 #define BROADCAST_PORT				10246	//must be constant
 #define DEFAULT_SERVER_BASE_PORT	10247
 
@@ -32,7 +31,9 @@ namespace PortOffset
 	{
 		Info,
 		Session,
-		Control
+		Control,
+
+		Heartbeat = Info	//heartbeat is UDP. Can coexist with others
 	};
 }
 

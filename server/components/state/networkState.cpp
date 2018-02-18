@@ -99,7 +99,7 @@ namespace Network
 			}
 		}
 
-		void	Start()
+		void	Start(UINT16 basePort)
 		{
 			//LogEvent(EventSignificance::Uncommon,"Starting heartbeat receiver on port "+String(HEARTBEAT_PORT));
 			GlobalEvents::applicationTerminate << Stop;
@@ -112,7 +112,7 @@ namespace Network
 			SOCKADDR_IN me;
 			memset(&me,0,sizeof(me));
 			me.sin_family=AF_INET;
-			me.sin_port=htons(HEARTBEAT_PORT);;
+			me.sin_port=htons(basePort + PortOffset::Heartbeat);;
 			me.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 			LogEvent(EventSignificance::Uncommon,"Binding heartbeat receiver to "+TCP::ToString((const sockaddr_storage&)me,sizeof(me)));
 			int rc=::bind(s,(SOCKADDR*)&me,sizeof(SOCKADDR_IN));
@@ -394,9 +394,9 @@ namespace Network
 	}
 
 
-	void		StartHeartbeat()
+	void		StartHeartbeat(UINT16 basePort)
 	{
-		Heartbeat::Start();
+		Heartbeat::Start(basePort);
 	}
 
 

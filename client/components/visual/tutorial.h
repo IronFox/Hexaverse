@@ -34,6 +34,8 @@ namespace Tutorial
 	void	SignalEnd();
 	void	SignalResearchChange();
 	void	SetProgress(int);
+
+	void	StartTutorialServer();
 }
 
 #endif
