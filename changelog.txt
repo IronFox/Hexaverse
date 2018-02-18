@@ -11,6 +11,7 @@ v0.7.4
 	* Fixed structures being forcefully enabled after loading a savegame.
 	* When loading savegames while server is in interactive configuration mode, the session will now be started afterwards.
 	* Fixed counting of required nexus ports when game goal is conquer nexus.
+	* Fixed interactive configuration mode going out of sync (is completely offline now).
 
 v0.7.3	[Feb 4 2018]
 	+ Added menu entry 'Game->Launch Control Console' to directly open up a control console on the local server (if localhost).
