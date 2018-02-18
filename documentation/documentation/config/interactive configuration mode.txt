@@ -1,25 +1,27 @@
 = Interactive Configuration Mode =
 
-The Interactive Configuration Mode is a separate server modus that allows interactively [[config/server|configuring the server]].
-The server may be started in this mode via the command-line switch ''-c''.
-Any server started via the client UI will automatically do so.
-
-
-While the mode is active connection is only possible from ''localhost''.
+The Interactive Configuration Mode is a client runtime mode that allows interactively [[config/server|configuring the server]] before starting it.
 The client is presented with a custom user-interface which allows altering most server settings and planet configurations.
 
-{{ICM.png?500 |Interactive Configuration Mode on a lush green planet with Nexus bases and EMP zones}}
+{{ ICM.png?500|Interactive Configuration Mode on a lush green planet with Nexus bases and EMP zones}}
 From left to right, the main commands are:
-* **Commit**: Finishes editing, and restarts the server in regular mode. The chosen configuration is applied, but the fractal planet layout is re-randomized.
+* **Commit**: Finishes editing, and starts the server in regular mode. The chosen configuration is applied, but the fractal planet layout is re-randomized.
 * **Randomize**: Re-randomizes the fractal planet layout based on the current configuration. This has no impact on the final configuration, but allows to view alternate versions of the local configuration.
-* **Load Planet Preset**: Presents a list of all currently known planet types. Clicking on any of them will load that configuration, completely replacing the current plant composition. Non-planet settings are not be affected.
-* **Mountain Layer**: Configures the outermode planetary layer. This layer reaches from the core to the height-level as defined by the layer configuration.
-* **Extended Core Layer**: Configures the lower planetary layer that replaces the mountain layer, where the two intersect. Can be used to carve out caves, or place an extended magma core.
-* **Inner Core**: Configures the material of the inner planet core.
+* **Load Planet Preset**: Presents a list of all currently known planet types. Clicking on any of them will load that configuration, completely replacing the current planet composition. Non-planet settings are not affected. Planet names with a preceeding * are locally created. The special planet type ''*Previous'' denotes the planet type used when last completing configuration mode and starting a server (if any).
+* **Mountain Layer**: Configures the outermost planetary layer. This layer reaches from the core to the height-level as defined by the layer configuration.
+* **Extended Core Layer**: Configures the lower planetary layer that overwrites the mountain layer, where the two intersect. Can be used to carve out caves, or place an extended magma core.
+* **Inner Core**: Configures the material of the inner planet core. Under normal circumstances the inner planet core is not visible without digging.
+
 * **Oceans**: Defines the height and material to fill empty space with, as well as what terrain material to place near ocean liquids. May be disabled by choosing the Clear material type.
 * **Rules**: Defines non-planet server settings.
 * **Copy/Paste**: Allows copying planet configurations to and from clipboard. The copied content is text, and can be stored in text-files.
+* **Save Planet as...**: Allows to preserve your current planet configuration as a new planet type.
 
-The configuration mode frequenly switches between a locally generated version and the actual one produced by the server.
-Local generation is utilized when interactivity is favored over correctness, causing Nexus bases and units to briefly disappear.
-After a few seconds of non-interaction the display always switches back to the server version.
+Locally created planets are stored in ''[[config/game folder]]\shared\config\myPlanets\...''
+
+The configuration mode runs entirely on the client, emulating the behavior of the server.
+Upon completion, the planet configuration ''*Previous'' is updated, a temporary, updated configuration file is created from the current [[config/server|server configuration]], and finally the server is started.
+
+The client is dropped back to the server list, where a new server should show up momentarily.
+A connection to that server must be established manually.
+

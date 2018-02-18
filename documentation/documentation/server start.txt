@@ -5,19 +5,24 @@ Upon start up, it will load the current [[config/server|server configuration]] a
 
 
 
-Alternatively, the client UI allows to start a dedicated server from the server selection screen.
+Alternatively, the client UI allows to start a linked server from the server selection screen.
 Note that any server started this way will not display a console window, and **shut down automatically when the client closes**.
-Should the client (for whatever reason) not close regularly, then the server will continue running until the client is restarted and/or the server is closed manually via the client UI.
+The server requires periodic heartbeats from the client in this mode.
+Should the client (for whatever reason) terminate prematurely, then the server will create an automatic [[config/save games|save game]] at  ''[[config/game folder]]\shared\saves\no-heartbeat-shutdown.hsf'' and then shut down after 3 seconds.
 
+Starting the server via the visual client provides three options.
+You may [[config/interactive configuration mode|visually configure]] the server before starting, run it with the current [[config/server|server configuration]], or load a previously created [[config/save games|save game]].
 
 ==Save Games==
 The server manages all save games.
 See [[config/save games]] for details.
 If you are not hosting the server, then you cannot create or load save games.
 
+When starting the server using the client visual interface, then a menu option allows to start a new server directly with a previously created save game.
+
 ==Logs==
 
-Regardless of how they are started, all servers create a log file in ''[[config/game folder]]\server\logs\''.
+Regardless of how a server is started, it always creates a log file in ''[[config/game folder]]\server\logs\''.
 In case of crashes, check these logs.
 
 ==NAT (Network Address Translation, i.e. Routers)==
@@ -26,7 +31,6 @@ In case of crashes, check these logs.
 The server requires two TCP ports to operate which must be accessible to anyone attempting to connect via TCP.
 By default these are ''10247'' and ''10248''.
 If you are located behind a NAT router, and you wish others to connect to you via TCP, then these ports must be forwarded to your physical server.
-A third port (by default ''10249'') allows [[config/control console|console control access]] from localhost, but is of no relevance to hosting.
 
 ==Runtime Parameters==
 
@@ -38,5 +42,6 @@ The current game base port is 10247. Starting from there, two more TCP ports are
 Consecutive servers should thus allocate base ports (via the ''-p [base port]'' parameter) in steps of 3.
 
 External clients trying to connect must specify non-default base ports as additional address parameter (''yourhost:baseport''), e.g. ''localhost:20000'', if 20000 is your non-standard server base port.
+LAN computers will automatically receive these ports via the UDP discovery function.
 
 Use the ''-p [base port]'' runtime parameter of a [[config/control console]] to connect to these servers.

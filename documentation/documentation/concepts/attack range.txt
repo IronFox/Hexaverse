@@ -7,3 +7,4 @@ Hexaverse distinguishes between missile and artillery trajectories.
 
 To provide a unified representation of range, a single, strictly horizontal attack range is specified. For missile attack ranges, this value represents the maximum attack radius in any direction.
 Artillery attack ranges, on the other hand, vary depending on the height difference between attacker and target.
+Here, the horizontal attack range is accurate only if both attacker and target share the same height.

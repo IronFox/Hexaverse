@@ -1,7 +1,7 @@
 {{ img:units/Cannon Tower.png|Cannon Tower}}
 =Cannon Tower=
 *Based on [[units/turrets/Cannon|Cannon]] turret
-*  Health: 20 [=10*2 (turret health multiplier)]
+*  Health: 22 [=11*2 (turret health multiplier)]
 *  Price: %Minerals% 55
 *  [[concepts/scanning range|Scanning range]]: 3 [=5-2 (tower modifier)]
 *  [[concepts/attack range|Hrz. Attack range]]: 7 [=5+2 (bonus)] (Artillery)
