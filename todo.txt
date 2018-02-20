@@ -1,9 +1,19 @@
+bug: server: No heartbeat received in 10 seconds. Shutting down (should be 3)
+bug: control console: selecting a text in the console freezes it (which is bad in server mode)
+
+generally check kill faction: are factions correctly removed from alliances and lists on client?
+bug: killing nexus faction via control console should either be rejected, or not crash the server
+client: save as... (if localhost server)
+server: Remove udpBroadcast from /Server/Online on steam branch
+
+remote control console: have server report current server status to console
 
 bug: temporarily lost contact when nexus port changed ownership, was visible only by plane
 
 open changelog in internal window, manual in steam-internal browser
 
 server: on heartbeat failure provide option to restart client or quit
+
 
 
 
@@ -16,7 +26,6 @@ tremor generator building
 
 update documentation, and upload
 
-dedicated server should start from control console, which is invisible and closed upon closing control console
 
 
 parallelize sensor repainting (multiple sensors in parallel)
@@ -211,6 +220,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+dedicated server should start from control console, which is invisible and closed upon closing control console
 fatals should raise error window to the top. bug reporter showing up at all when server was hidden? it does.
 disallow definition of new variables in reflection
 client menu: start server, interactive, with save game dialog
