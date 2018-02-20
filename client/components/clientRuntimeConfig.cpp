@@ -27,6 +27,12 @@ namespace RuntimeConfig
 	}
 
 
+	PathString				GetUserNameFile()
+	{
+		return RuntimeConfig::myConfig.Lookup(RuntimeConfig::profilePrefix+ "userName.txt");
+	}
+
+
 
 
 	namespace FromFile

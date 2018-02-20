@@ -25,8 +25,9 @@ namespace RuntimeConfig
 
 	extern bool						nexusBases,	nexusPortsOnAllPoles;
 
-	void					ClientInit();
+	void							ClientInit();
 
+	PathString						GetUserNameFile();
 
 	namespace FromFile
 	{
