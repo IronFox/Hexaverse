@@ -14,6 +14,7 @@
 #include "guiFactionTable.h"
 #include <io/monitoredProcess.h>
 #include "../../configurationMode.h"
+#include "../../io.h"
 
 bool	IsFullScreen();
 void	SetFullScreen(bool isFull);
@@ -25,6 +26,7 @@ namespace HUD
 
 namespace Menu
 {
+
 
 	/*virtual override*/ void				Menu::OnScreenSizeOrUIScaleChange()
 	{
@@ -379,8 +381,7 @@ namespace Menu
 		help->Setup(0.3f,"Help",true);
 		help->AddCommand("View Online Manual",[]()
 		{
-			SetFullScreen(false);
-			system("start https://www.hexaverse.net/html.php");
+			OpenDocumentExternally("https://www.hexaverse.net/html.php");
 		});
 
 		help->AddCommand("Show Basic Controls",
@@ -412,8 +413,9 @@ namespace Menu
 
 		help->AddCommand("View Changelog",[]()
 		{
-			SetFullScreen(false);
-			system("start ..\\changelog.txt");
+			FileSystem::File f;
+			if (FileSystem::Folder().FindFile("..\\changelog.txt",f))
+				OpenDocumentExternally(f.GetLocation());
 		});
 
 
