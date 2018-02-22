@@ -1160,6 +1160,7 @@ bool loop()
 	#ifndef HAS_WINDOW
 		Sleep(50);
 		AI::Process(0.5f);
+		Sys::DisableConsoleQuickEdit();
 	#else
 		DebugCheckCamera();
 

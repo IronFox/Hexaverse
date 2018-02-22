@@ -1,5 +1,4 @@
 bug: server: No heartbeat received in 10 seconds. Shutting down (should be 3)
-bug: control console: selecting a text in the console freezes it (which is bad in server mode)
 
 generally check kill faction: are factions correctly removed from alliances and lists on client?
 bug: killing nexus faction via control console should either be rejected, or not crash the server
@@ -220,6 +219,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+bug: control console: selecting a text in the console freezes it (which is bad in server mode). Semi-fixed. QuickEdit is disabled, but marking text in the console the old way may still freeze it.
 dedicated server should start from control console, which is invisible and closed upon closing control console
 fatals should raise error window to the top. bug reporter showing up at all when server was hidden? it does.
 disallow definition of new variables in reflection

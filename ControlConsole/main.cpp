@@ -472,6 +472,7 @@ int main(int argc, char* argv[])
 {
 	
 	SetConsoleCtrlHandler(MyHandlerRoutine,TRUE);
+	Sys::DisableConsoleQuickEdit();
 
 	ASSERT__(DuplicateHandle(GetCurrentProcess(),GetCurrentThread(),GetCurrentProcess(),&mainThreadHandle,DUPLICATE_SAME_ACCESS,FALSE,0));
 

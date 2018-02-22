@@ -838,6 +838,8 @@ int main( int argc, const char* argv[])
 		};
 
 		SetConsoleCtrlHandler(MyHandlerRoutine,TRUE);
+		Sys::DisableConsoleQuickEdit();
+
 
 		{
 			wchar_t path[MAX_PATH];
