@@ -136,10 +136,10 @@ namespace Network
 			if (s == INVALID_SOCKET)
 				return;
 
-
-			if (timer.GetSecondsSince(lastBeat) > 3)
+			static const float timeOut = 3;
+			if (timer.GetSecondsSince(lastBeat) > timeOut)
 			{
-				LogEvent(EventClass::Preset::fatal,"No heartbeat received in 10 seconds. Shutting down");
+				LogEvent(EventClass::Preset::fatal,"No heartbeat received in "+String(timeOut)+" seconds. Shutting down");
 
 				application_shutting_down = true;	//prevent certain operations in Close()
 				try
