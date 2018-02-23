@@ -817,6 +817,26 @@ namespace Reflection
 			virtual	bool		Set(const String&value)	{return false;}
 		};
 
+		class Alliance : public CLI::Variable
+		{
+		public:
+			Objects::WFaction faction;
+
+			/**/				Alliance(const Objects::PFaction&f):CLI::Variable("alliance","String",1,CLI::FullProtection),faction(f)
+			{}
+
+			virtual	String		ConvertToString()			const override
+			{
+				Objects::PFaction f = faction.lock();
+				if (f) 
+				{
+					return f->alliance->id.ToNiceString()+" ["+ToString(f->alliance->id)+"] ("+String(f->alliance->CountLivingMembers())+" member(s))"; 
+				}
+				return "<null>";
+			}
+			virtual	bool		Set(const String&value)	{return false;}
+		};
+
 		class IsDead : public CLI::Variable
 		{
 		public:
@@ -1601,6 +1621,7 @@ namespace Reflection
 
 			f->variables.Insert("name",CLI::PVariable( new FactionCommands::Name(faction) ));
 			f->variables.Insert("isDead",CLI::PVariable( new FactionCommands::IsDead(faction) ));
+			f->variables.Insert("alliance",CLI::PVariable( new FactionCommands::Alliance(faction) ));
 			f->variables.Insert("client",CLI::PVariable( new FactionCommands::Client(faction) ));
 		});
 	}
