@@ -1,7 +1,6 @@
 
 generally check kill faction: are factions correctly removed from alliances and lists on client?
 bug: killing nexus faction via control console should either be rejected, or not crash the server
-client: save as... (if localhost server)
 server: Remove udpBroadcast from /Server/Online on steam branch
 
 
@@ -217,6 +216,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+client: save as... (if localhost server)
 remote control console: have server report current server status to console
 fixed: bug: server: No heartbeat received in 10 seconds. Shutting down (should be 3)
 bug: control console: selecting a text in the console freezes it (which is bad in server mode). Semi-fixed. QuickEdit is disabled, but marking text in the console the old way may still freeze it.

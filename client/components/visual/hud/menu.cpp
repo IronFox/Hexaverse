@@ -363,6 +363,32 @@ namespace Menu
 		game->AddCommand("Abandon faction",Network::AbandonCurrentFaction,[](){return Network::amOnline && Network::haveFaction && RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame;});
 		game->AddCommand("Show factions (Tab)", FactionTable::Show,[](){return Network::amOnline;});
 		game->AddCommand("Show statistics", Statistics::Show,[](){return Network::amOnline && RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame;});
+		game->AddCommand("Save game as...",[]()
+		{
+			Dialog::Query("Please specify a name","","ABCDEFGHIJKLMNOPQRSTUVWXZYabcdefghijklmnopqrstuvwxyz0123456789 ",[](const String&candidate)->bool{return candidate.Length() > 3 && candidate.Length() < 16 && !candidate.BeginsWith(' ') && !candidate.EndsWith(' ');},
+				[](const String&name)
+			{
+				PathString location = RuntimeConfig::sharedConfig.Lookup("saves/"+name+RuntimeConfig::savFileExtension);
+				if (FileSystem::IsFile(location))
+				{
+					Dialog::Confirm("Savegame '"+name+"' already exists. Replace?",[name]()
+					{
+						if (Network::client.IsConnected() && Network::client.IsLocalhost())
+						{
+							Network::Channels::SaveAs.SendTo(Network::client,name);
+						}
+					});
+				}
+				else
+					if (Network::client.IsConnected() && Network::client.IsLocalhost())
+					{
+						Network::Channels::SaveAs.SendTo(Network::client,name);
+					}
+
+
+			});
+
+		},[](){return Network::client.IsConnected() && Network::client.IsLocalhost();});
 		game->AddCommand("Launch Control Console",[]()
 		{
 			SetFullScreen(false);

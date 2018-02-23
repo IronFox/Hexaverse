@@ -451,6 +451,8 @@ namespace Network
 		server.InstallChannel(Channels::ClientVote);
 		server.InstallChannel(Channels::AllianceConfigChange);
 
+		server.InstallChannel(Channels::SaveAs);
+
 		server.OpenSignalChannel(Protocol::ChannelID::RequestRoundEnd,(UINT32)UserLevel::CommonFaction);
 		server.OpenSignalChannel(Protocol::ChannelID::RequestContinueRound,(UINT32)UserLevel::CommonFaction);
 		server.OpenSignalChannel(Protocol::ChannelID::Ping,0);

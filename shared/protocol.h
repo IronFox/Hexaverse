@@ -1405,7 +1405,7 @@ namespace Protocol
 		, TUniqueID, recipient	//may be faction, alliance, or everybody (if empty)
 	)
 		
-
+	typedef Package::NetString<32>	SaveAs;
 
 	namespace ChannelID
 	{
@@ -1516,6 +1516,8 @@ namespace Protocol
 			RoundStatistics,			//s2c: Statistics::Round
 			EntityTypeStatistics,		//s2c: Statistics::EntityType
 			FactionInteractionStatistics,	//s2c: Statistics::FactionInteraction
+
+			SaveAs,	//c2s: SaveAs
 		};
 	}
 

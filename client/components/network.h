@@ -295,6 +295,7 @@ namespace Network
 		DECLARE_OBJECT_SENDER(ClientVote);
 		DECLARE_CHANNEL(AllianceInvite);
 		DECLARE_OBJECT_SENDER(ChatMessage);
+		DECLARE_OBJECT_SENDER(SaveAs);
 	}
 
 
