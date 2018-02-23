@@ -11,6 +11,7 @@
 #include "../shared/protocol.h"
 #include <serverProcess.h>
 #include <container/production_pipe.h>
+#include "../client/version.h"
 
 using namespace DeltaWorks;
 
@@ -33,7 +34,7 @@ BOOL WINAPI MyHandlerRoutine(_In_  DWORD dwCtrlType)
 	return FALSE;
 }
 
-void	Dispatch(const StringRef&);
+bool	Dispatch(const StringRef&);
 
 String targetHost = "localhost";
 Buffer0<String>	history;
@@ -54,7 +55,8 @@ struct TUpdate
 		SetInput,
 		AppendToInput,
 		MoveHistoryUp,
-		MoveHistoryDown
+		MoveHistoryDown,
+		TitleUpdate
 	};
 
 	type_t		type = LogLine;
@@ -143,9 +145,9 @@ namespace Console
 	}
 
 	
-	void	AddChar(char c)
+	bool	AddChar(char c)
 	{
-		bool refresh = true;
+		bool result = true;
 		switch (c)
 		{
 			case '\b':
@@ -162,7 +164,7 @@ namespace Console
 			case '\n':
 			case '\r':
 				//std::cout << "\n" + lastLine;
-				Dispatch(input.ToStringRef());
+				result = Dispatch(input.ToStringRef());
 				input.Clear();
 			break;
 			default:
@@ -171,8 +173,9 @@ namespace Console
 					input << c;
 				}
 				else
-					return;
+					return result;
 		}
+		return result;
 	}
 }
 
@@ -283,12 +286,12 @@ static void LogLine(const String&line)
 	updates << update;
 }
 
-void	Dispatch(const StringRef&line)
+bool	Dispatch(const StringRef&line)
 {
 	if (line == "exit")
 	{
 		application_shutting_down = true;
-		return;
+		return true;
 	}
 	history.FindAndErase(line);
 	history << line;
@@ -303,7 +306,7 @@ void	Dispatch(const StringRef&line)
 	{
 		if (Handler::interactive)
 		{
-			LogLine("Unable to execute command. Not connected");
+			return false;
 		}
 		else
 		{
@@ -312,6 +315,7 @@ void	Dispatch(const StringRef&line)
 			bufferedCommandsMutex.unlock();
 		}
 	}
+	return true;
 }
 
 
@@ -416,11 +420,12 @@ void OnEvent(TCP::event_t event, TCP::Peer&peer)
 {
 	switch (event)
 	{
-		case TCP::Event::ConnectionFailed:
 		case TCP::Event::ConnectionLost:
+		case TCP::Event::ConnectionFailed:
 			if (Handler::interactive)
 			{
-				LogLine(peer.ToString()+": "+TCP::event2str(event));
+				if (event != TCP::Event::ConnectionFailed)
+					LogLine(peer.ToString()+": "+TCP::event2str(event));
 				if (!connectionRetryThread.joinable())
 				{
 					connectionRetryThread.swap(std::thread(ConnectionRetry));
@@ -457,7 +462,8 @@ void OnEvent(TCP::event_t event, TCP::Peer&peer)
 			bufferedCommandsMutex.unlock();
 		return;
 	}
-	LogLine(peer.ToString()+": "+TCP::event2str(event));
+	if (event != TCP::Event::ConnectionFailed)
+		LogLine(peer.ToString()+": "+TCP::event2str(event));
 }
 
 
@@ -548,6 +554,55 @@ public:
 InputReader	readThread;
 
 
+
+class WindowCHecker : public Sys::ThreadObject
+{
+public:
+	virtual void ThreadMain() override
+	{
+		while (!application_shutting_down)
+		{
+
+			String newTitle = PRODUCT_NAME " Console v" PRODUCT_VERSION ": ";
+			if (!client.IsConnected())
+			{
+				newTitle += "Trying to connect to "+targetHost+":"+String(ParameterConfig::basePort+PortOffset::Control);
+			}
+			else
+			{
+				if (
+					(ParameterConfig::server || ParameterConfig::basePort == DEFAULT_SERVER_BASE_PORT)	//let's assume default port means there's only one. 
+					&& ServerProcess::IsRunning())	//Otherwise this would prolly pick up the wrong window
+				{
+					Array<HWND> windows;
+					ServerProcess::GetWindows(windows);
+					if (windows.IsNotEmpty())
+					{
+						char titleBuffer[0x100];
+						GetWindowTextA(windows.First(),titleBuffer,sizeof(titleBuffer));
+						titleBuffer[ARRAYSIZE(titleBuffer)-1] = 0;
+						newTitle += " ";
+						newTitle += titleBuffer;
+					}
+				}
+				else
+					newTitle += client.ToString();
+			}
+
+
+			TUpdate update;
+			update.content = newTitle;
+			update.type = TUpdate::TitleUpdate;
+			updates << update;
+
+			Sleep(1000);
+
+		}
+	}
+
+}	windowChecker;
+
+
 int main(int argc, char* argv[])
 {
 	
@@ -597,21 +652,35 @@ int main(int argc, char* argv[])
 	if (ParameterConfig::interactive)
 	{
 		readThread.Start();
+		windowChecker.Start();
 		//Console::Refresh();
 		Console::_UpdateLastLine();
 		std::cout << Console::lastLine;
 		Console::ScanCursorPosition();
-
 		Buffer0<String>	newLines;
 		while (!application_shutting_down)
 		{
-			bool contextUpdated = false,inputChanged = false;
+			{
+
+
+				//#ifdef _DEBUG
+				//	newTitle += " (DEBUG)";
+				//#endif
+
+			}
+
+
+			bool contextUpdated = false,inputChanged = false, anyDispatchFailed = false;
+			String newTitle;
 			updates.WaitForContent();
 			updates.SignalRead();
 				foreach (updates,up)
 				{
 					switch (up->type)
 					{
+						case TUpdate::TitleUpdate:
+							newTitle = up->content;
+						break;
 						case TUpdate::LogLine:
 							newLines.MoveAppend(up->content);
 						break;
@@ -625,7 +694,7 @@ int main(int argc, char* argv[])
 						break;
 						case TUpdate::AppendToInput:
 							foreach (up->content,c)
-								Console::AddChar(*c);
+								anyDispatchFailed |= !Console::AddChar(*c);
 							inputChanged = true;
 						break;
 						case TUpdate::MoveHistoryDown:
@@ -649,6 +718,12 @@ int main(int argc, char* argv[])
 					}
 				}
 			updates.ExitRead();
+
+			if (newTitle.IsNotEmpty())
+				SetConsoleTitleA(newTitle.c_str());
+
+			if (anyDispatchFailed)
+				newLines << "Unable to execute command. Not connected";
 
 			if (newLines.IsNotEmpty())
 			{
