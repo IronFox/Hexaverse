@@ -27,4 +27,6 @@ namespace ServerProcess
 	Use this to query data from the server. Do not use to just run the server, as the method will never return in that case.
 	*/
 	bool			RunNow(const PathString&parameters);
+
+	void			GetWindows(Array<HWND>&outWindows);
 }
