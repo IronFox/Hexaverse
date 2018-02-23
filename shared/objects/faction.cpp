@@ -2117,7 +2117,7 @@ namespace Objects
 						Remove(*del,Objects::RemovalType::ControlledExplosion,t);
 				toDelete.Clear();
 				ASSERT__(f->allMobiles.IsEmpty());	//should have cascaded
-				ASSERT__(f->structures.IsEmpty());
+				ASSERT__(f->structures.IsEmpty());	//even if nexus buildings were owned: should have reverted to nexus faction
 			}	//exiting lock: recomputing sensory of f, which is now empty, so should be fast
 
 			f->isDead = true;
