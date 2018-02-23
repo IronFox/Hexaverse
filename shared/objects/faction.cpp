@@ -2062,6 +2062,11 @@ namespace Objects
 			return;
 		}
 		#ifndef CLIENT
+		if (f == nexus)
+		{
+			LogEvent(EventClass::Preset::commandRejected,nullptr, "Cannot kill Nexus faction");
+			return;
+		}
 		if (f->isDead)
 		{
 			LogEvent(EventClass::Preset::commandRejected,nullptr, "Faction "+ToString(f->id)+" has already ended");

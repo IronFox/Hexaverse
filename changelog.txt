@@ -4,6 +4,7 @@ v0.7.5
 	> Added file dates to load game menu.
 	> Control console now queries full server status upon connection via new server command /Server/describeStatus.
 	> Control console now shows status and connected server identity in window title.
+	> Nexus faction can no longer be terminated using the console (ended in crash).
 	* Fixed console output freezes of server, control console, and console client due to marking of text in the console window.
 	* Fixed heartbeat failure message.
 	
