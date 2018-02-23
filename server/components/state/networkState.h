@@ -155,10 +155,11 @@ namespace Network
 	*/
 	void		BuildConfiguredWorld();
 
-	/**
-	Prints the current server configuration and state to the console/log file.
-	*/
 	void		LogServerState();
+
+	String		DescribeStatus();
+	void		DescribeConfiguration(const std::function<void(const String&)>&logConfig);
+
 
 
 	Protocol::IdentifyFaction	Identify(const Objects::PFaction&f);

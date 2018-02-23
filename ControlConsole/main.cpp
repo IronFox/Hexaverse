@@ -438,6 +438,7 @@ void OnEvent(TCP::event_t event, TCP::Peer&peer)
 			if (Handler::interactive)
 			{
 				LogLine("Connection established to "+peer.ToString()+" after "+String(timer.GetSecondsSince(connectionAttemptStarted)));
+				Channels::command.SendTo(peer,"/Server/describeStatus");
 				if (Console::context.IsNotEmpty())
 					Channels::command.SendTo(peer,"cd /"+Console::context);
 			}

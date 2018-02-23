@@ -876,9 +876,6 @@ int main( int argc, const char* argv[])
 		Network::serverID.Generate();
 		UDPBroadCast::Create(ParameterConfig::basePort,Network::serverID);
 
-		if (ParameterConfig::enableRemoteControl)
-			RemoteControl::Start(ParameterConfig::basePort,ParameterConfig::controlProtocol);
-
 
 
 
@@ -895,9 +892,15 @@ int main( int argc, const char* argv[])
 				Network::RestartSession(false);
 			}))
 		);
-		Reflection::state.DefineCommand("closeSession",(CLI::Command::function0_t)[](){Network::CloseSession();},CLI::NoCompletion);	//why...?
+		//Reflection::state.DefineCommand("closeSession",(CLI::Command::function0_t)[](){Network::CloseSession();},CLI::NoCompletion);	//why...?
 
 		Reflection::state.PopFocus();
+
+		Reflection::state.DefineCommand("/Server/describeStatus",(CLI::Command::function0_t)[]()
+		{
+			RemoteControl::RelayEvent(Network::DescribeStatus());
+			Network::DescribeConfiguration([](const String&line){RemoteControl::RelayEvent(line);});
+		},CLI::NoCompletion);
 
 		Reflection::state.DefineCommand("/Server/shutdown",(CLI::Command::function0_t)[]()
 		{
@@ -1107,7 +1110,7 @@ int main( int argc, const char* argv[])
 				FileIO::Load(filename);
 			}
 			else
-				Logging::WriteEvent(EventClass::Preset::fileError,"Specified file ("+String(filename)+") does not exist. Skipping loading operation.",nullptr,nullptr,nullptr);
+				LogEvent(EventClass::Preset::fileError,"Specified file ("+String(filename)+") does not exist. Skipping loading operation.");
 		}
 		RuntimeConfig::tutorialMode = ParameterConfig::startInTutorial;
 
@@ -1122,7 +1125,7 @@ int main( int argc, const char* argv[])
 		//Journal::globalWriter.InitNew(RuntimeConfig::Lookup("saves/log"));
 		//Journal::globalWriter.ContinueExisting(RuntimeConfig::Lookup("saves/log"));
 
-		Logging::WriteEvent(EventSignificance::Uncommon, "Preparation of world '"+World::worldID.ToNiceString()+"'/" + ToString(World::worldID) + " completed.", nullptr, nullptr,nullptr);
+		LogEvent(EventSignificance::Uncommon, "Preparation of world '"+World::worldID.ToNiceString()+"'/" + ToString(World::worldID) + " completed.");
 		
 		Network::LogServerState();
 
@@ -1135,6 +1138,10 @@ int main( int argc, const char* argv[])
 		}
 
 		Game::ResetFactionStartMineralValue();
+
+
+		if (ParameterConfig::enableRemoteControl)
+			RemoteControl::Start(ParameterConfig::basePort,ParameterConfig::controlProtocol);
 
 
 		while (!application_shutting_down && !quitMainLoop)
