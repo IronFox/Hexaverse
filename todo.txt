@@ -1,6 +1,5 @@
 
 generally check kill faction: are factions correctly removed from alliances and lists on client?
-bug: killing nexus faction via control console should either be rejected, or not crash the server
 server: Remove udpBroadcast from /Server/Online on steam branch
 
 
@@ -216,6 +215,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+bug: killing nexus faction via control console should either be rejected, or not crash the server
 client: save as... (if localhost server)
 remote control console: have server report current server status to console
 fixed: bug: server: No heartbeat received in 10 seconds. Shutting down (should be 3)
