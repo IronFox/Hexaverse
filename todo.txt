@@ -4,7 +4,6 @@ bug: killing nexus faction via control console should either be rejected, or not
 client: save as... (if localhost server)
 server: Remove udpBroadcast from /Server/Online on steam branch
 
-remote control console: have server report current server status to console
 
 bug: temporarily lost contact when nexus port changed ownership, was visible only by plane
 
@@ -218,6 +217,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+remote control console: have server report current server status to console
 fixed: bug: server: No heartbeat received in 10 seconds. Shutting down (should be 3)
 bug: control console: selecting a text in the console freezes it (which is bad in server mode). Semi-fixed. QuickEdit is disabled, but marking text in the console the old way may still freeze it.
 dedicated server should start from control console, which is invisible and closed upon closing control console
