@@ -1,5 +1,6 @@
 v0.7.5
 	+ Localhost client can now trigger a game save without requiring a connected control console.
+	+ Added console faction attribute to see if a faction is dead (dead factions remain listed).
 	> Added file dates to load game menu.
 	> Control console now queries full server status upon connection via new server command /Server/describeStatus.
 	> Control console now shows status and connected server identity in window title.
