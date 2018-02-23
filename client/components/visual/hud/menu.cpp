@@ -514,7 +514,21 @@ namespace Menu
 	}
 
 
-	static void LookupSaveGames(Buffer0<std::pair<String,PathString> >&saves,FileSystem::Folder folder, const String&path)
+	struct TSaveGame
+	{
+		String title;
+		PathString path;
+		FileSystem::ftime_t time;
+
+		friend void swap(TSaveGame&a, TSaveGame&b)
+		{
+			a.title.swap(b.title);
+			a.path.swap(b.path);
+			std::swap(a.time,b.time);
+		}
+	};
+
+	static void LookupSaveGames(Buffer0<TSaveGame>&saves,FileSystem::Folder folder, const String&path)
 	{
 		folder.Rewind();
 		FileSystem::File f;
@@ -522,8 +536,9 @@ namespace Menu
 		{
 			String path2 = path.IsNotEmpty() ? path +"/" : "";
 			auto&e = saves.Append();
-			e.first = path2 + String(f.GetInnerName());
-			e.second = f.GetLocation();
+			e.title = path2 + String(f.GetInnerName());
+			e.path = f.GetLocation();
+			e.time = f.GetModificationTime();
 		}
 
 		folder.Rewind();
@@ -542,12 +557,17 @@ namespace Menu
 		auto menu = saveGames;
 		menu->Setup(0.25f,"Start Server with Saved Game",true);
 
-		Buffer0<std::pair<String,PathString> > saves;
+		Buffer0<TSaveGame> saves;
 		LookupSaveGames(saves, RuntimeConfig::sharedConfig.Lookup("saves"), "");
 		foreach (saves,s)
 		{
-			PathString p = s->second;
-			menu->AddCommand(s->first,[p]()
+			PathString p = s->path;
+			time_t t = s->time;
+			struct tm *tm = localtime(&t);
+			char date[64];
+			strftime(date, sizeof(date), "%Y-%m-%d %H:%M", tm);
+
+			menu->AddCommand(s->title+"\n"+date,[p]()
 			{
 				ServerProcess::Begin(true,false,"-l \""+p+"\"");
 				HUD::WindowStack::SignalSituationChange();
