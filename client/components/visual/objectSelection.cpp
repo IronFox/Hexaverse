@@ -73,7 +73,10 @@ namespace Objects
 		}
 		
 		if (e != entity)
+		{
+			LogEvent(EventSignificance::Debug,entity.get(),"Selected");
 			onSelectionChanged();
+		}
 		GlobalEvents::invalidateObjectCache();
 		UpdateChoices(controlEnabled);
 	}
@@ -94,7 +97,11 @@ namespace Objects
 		if (e)
 			e->OnDeselect();
 		if (e)
+		{
+			LogEvent(EventSignificance::Debug,"Deselected");
 			onSelectionChanged();
+		}
+
 		GlobalEvents::invalidateObjectCache();
 	}
 
