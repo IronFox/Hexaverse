@@ -58,7 +58,10 @@ namespace Network
 		Refreshes personal game progress information
 		*/
 		void				SendProgressUpdate(const String&warningReason, const Objects::Alliance::TNexusStats&stats);
-
+		bool				HasLivingFaction() const
+		{
+			return !isSpectator && faction && !faction->isDead;
+		}
 	};
 	
 

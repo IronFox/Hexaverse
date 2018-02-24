@@ -1199,7 +1199,7 @@ int main( int argc, const char* argv[])
 					bool hasNexus = false,nexusWantsNewRound = false;
 					foreach(Network::activePlayersAndSpectators, p)
 					{
-						if ((*p)->isSpectator)	//doesn't count towards new round
+						if (!(*p)->HasLivingFaction()) //don't count towards new round
 							continue;
 						if ((*p)->faction == Objects::Faction::nexus)
 						{
