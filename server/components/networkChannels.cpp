@@ -514,6 +514,15 @@ namespace Receiver
 		}
 	}
 
+
+	Objects::PFaction FindFirstLivingFaction()
+	{
+		foreach (Objects::Faction::all,f)
+			if (!(*f)->isDead)
+				return *f;
+		return nullptr;
+	}
+
 	void	ClientFaction(Protocol::ClientFactionRequest&_p, TCP::Peer&peer)
 	{
 		if (!peer.attachment)
@@ -657,8 +666,7 @@ namespace Receiver
 					#ifndef _DEBUG
 						&& RuntimeConfig::tutorialMode
 					#endif
-					&& Objects::Faction::all.IsNotEmpty()
-					&& (faction = Objects::Faction::all.First())	//in tutorial mode (or debug mode) take first known faction
+					&& (faction = FindFirstLivingFaction())	//in tutorial mode (or debug mode) take first known faction
 				)
 			)
 		{
@@ -885,7 +893,7 @@ namespace Receiver
 		{
 			Channels::identifyFaction.SendTo(peer,Network::Identify(f));
 
-		},false);
+		});
 
 
 		if (!newFaction)
