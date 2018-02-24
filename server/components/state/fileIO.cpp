@@ -8,7 +8,6 @@
 #include "../reflection.h"
 #include "gameState.h"
 #include "worldState.h"
-#include "../configurationMode.h"
 #include "../../../client/version.h"
 #include <objects/structure/tower.h>
 #include <grid/resources.h>
@@ -51,8 +50,6 @@ namespace FileIO
 	void RefreshWindowTitle()
 	{
 		String title = String(PRODUCT_NAME)+" server "+ ::Network::serverID.ToNiceString()+" (world "+ World::worldID.ToNiceString()+")";
-		if (ConfigurationMode::IsActive())
-			title += " INTERACTIVE CONFIGURATION MODE";
 		#ifdef _DEBUG
 			title += " (DEBUG)";
 		#endif
@@ -477,7 +474,7 @@ namespace FileIO
 			Riff::Chunk*baseChunk = taskChunk->AppendBlock(RID::baseJob);
 			static ByteStreamBuffer	stream;
 			stream.Clear();
-			stream << job->roundsToJobCompletion << job->resourceCostLeft;// << job->jobAutoCompletion << job->movesToFocusWhenDone;
+			stream << job->continuationsToJobCompletion << job->resourceCostLeft;// << job->jobAutoCompletion << job->movesToFocusWhenDone;
 			stream << job->ioID;
 			baseChunk->SetData(stream);
 
@@ -488,7 +485,7 @@ namespace FileIO
 			Attach(taskChunk,job->GetDataKey(),*job);
 		}
 	}
-	static void Import(Riff::Chunk*taskChunk, Objects::PVehicleJob&job)
+	static void ImportJob(Riff::Chunk*taskChunk, Objects::PVehicleJob&job)
 	{
 		job.reset();
 		Riff::Chunk*source0 = taskChunk->FindFirst(RID::baseJob);
@@ -506,7 +503,7 @@ namespace FileIO
 
 
 				source0->OpenStream();
-				ASSERT__(source0->Stream(job->roundsToJobCompletion));
+				ASSERT__(source0->Stream(job->continuationsToJobCompletion));
 				ASSERT__(source0->Stream(job->resourceCostLeft));
 				if (source0->size() == 12)
 				{
@@ -571,7 +568,7 @@ namespace FileIO
 		Export(taskChunk,t.job);
 	}
 
-	static void Import(Riff::Chunk*taskChunk, Objects::Vehicle::Task&t)
+	static void ImportTask(Riff::Chunk*taskChunk, Objects::Vehicle::Task&t)
 	{
 		Import(taskChunk,t.foci);
 		Import(taskChunk,t.path);
@@ -586,7 +583,7 @@ namespace FileIO
 		ASSERT__(tdata->Stream(i16));
 		t.type = (Objects::Vehicle::Task::type_t)i16;
 		ASSERT__(tdata->CloseStream());
-		Import(taskChunk,t.job);
+		ImportJob(taskChunk,t.job);
 	}
 
 
@@ -753,7 +750,7 @@ namespace FileIO
 		stream.Clear();
 		stream.Append(v.attackActionLeft);
 		stream.Append(v.movementActionLeft);
-		stream.Append(v.constructionRoundCounter);
+		stream.Append(v.constructionActionCounter);
 
 		MobileEntityFlag flags = MobileEntityFlag::None;
 		if (v.isAutomated)
@@ -782,7 +779,7 @@ namespace FileIO
 		Export(parent,v.completeOnMove);
 	}
 
-	static bool Import(Riff::Chunk*parent, Riff::Chunk*vehicleChunk,const Objects::PMobileEntity&v, FactionMap&factions)
+	static bool Import( Riff::Chunk*parent, Riff::Chunk*vehicleChunk,const Objects::PMobileEntity&v, FactionMap&factions)
 	{
 		//Grid::LCellIdI location;
 		GetPOD(parent,RID::location,v->location);
@@ -795,14 +792,19 @@ namespace FileIO
 			Import(parent,v->currentStorage);
 			v->currentStorage.Cap(v->GetMaxStorageCapacity());
 		#endif
-		Import(parent,v->completeOnMove);
+		ImportJob(parent,v->completeOnMove);
+		if (v->completeOnMove)
+			v->completeOnMove->UpdateLocationAndEstimations(*v,v->location);
 		Riff::Chunk *name,*data;
 		if (parent->FindFirstNamedList(name,data))
 			do
 			{
 				if (name->DataMatch(ChunkName::VehicleTaskSection))
 				{
-					Import(data,v->myTasks.Push());
+					ImportTask(data,v->myTasks.Push());
+					auto job = v->myTasks.GetNewest().job;
+					if (job)
+						job->UpdateLocationAndEstimations(*v,v->GetLastPointOfOrigin());
 				}
 				else
 				{
@@ -837,7 +839,7 @@ namespace FileIO
 		ASSERT__(vehicleChunk->Stream(v->movementActionLeft));
 		//ASSERT__(vehicleChunk->Stream(v.hasConstructedThisRound));
 		//ASSERT__(vehicleChunk->Stream(v.hasMoved));
-		ASSERT__(vehicleChunk->Stream(v->constructionRoundCounter));
+		ASSERT__(vehicleChunk->Stream(v->constructionActionCounter));
 
 		MobileEntityFlag flags;
 		ASSERT__(vehicleChunk->Stream(flags));
@@ -849,7 +851,7 @@ namespace FileIO
 			insertIntoHangar << v;
 		}
 
-		Import(parent,v->completeOnMove);
+		//ImportJob(parent,v->completeOnMove);
 
 		return !(flags & MobileEntityFlag::IsStored);
 	}
@@ -868,7 +870,7 @@ namespace FileIO
 
 		Attach(parent,RID::towerItem,helper);
 	}
-	static void Import(Riff::Chunk*source, Objects::Tower::AttackTask&item)
+	static void Import( Riff::Chunk*source, Objects::Tower::AttackTask&item)
 	{
 		ASSERT1__(source->IsID(RID::towerItem),source->GetID().ToString());
 		AttackItemSerializable helper;
@@ -923,7 +925,7 @@ namespace FileIO
 	}
 
 	
-	static Objects::PStructure Import(Riff::Chunk*parent, FactionMap&factions)
+	static Objects::PStructure Import( Riff::Chunk*parent, FactionMap&factions)
 	{
 		using namespace ApplicationInterface;
 		String typeName;
@@ -1172,7 +1174,6 @@ namespace FileIO
 
 		LogEvent(EventSignificance::Uncommon,"Restoring saved world state from '"+String(filename)+"'.");
 		bool wasOpen = ::Network::CloseSession();
-
 		bool nexusFound = false, worldInfoFound = false;
 
 
@@ -1266,7 +1267,7 @@ namespace FileIO
 										if (ApplicationInterface::globalVersionOfCurrentFile < ApplicationInterface::FileVersions::FirstVersionWithVariables)
 										{
 											GetPOD(list,RID::closedGame,Game::Config::closedGame);
-											GetOptionalPOD(list,RID::nexusBases,Game::Config::Nexus::haveBases,false);
+											GetOptionalPOD(list,RID::nexusBases,Game::Config::Nexus::bases.havePlaced,false);
 											UINT16 goal;
 											GetPOD(list,RID::goal,goal);
 											if (!RuntimeConfig::gameGoal.Load(goal))
@@ -1656,22 +1657,7 @@ namespace FileIO
 
 
 		if (RuntimeConfig::empZones)
-		{
-			count_t numZones = Game::Config::CountAccessibleZones();
-
-			int unlocked = 0;
-			for (index_t i = 0; i < numZones; i++)
-			{
-				if (Game::Config::Nexus::haveBases && BaseGrid::IsIsolatedCorner(unlocked))
-				{
-					unlocked++;
-				}
-				unlocked++;
-			}
-				
-
-			World::SetUnlockedEMPZones(unlocked);
-		}
+			World::SetUnlockedEMPZones(Game::Config::CountActuallyAccessibleZones());
 
 		LogEvent(EventSignificance::Uncommon,"Restored world '"+World::worldID.ToNiceString()+"'/"+ToString(World::worldID)+" in round "+RuntimeConfig::roundNumber.ToString());
 		RefreshWindowTitle();
@@ -1682,13 +1668,15 @@ namespace FileIO
 		//it is important that all faction sensor locks are released before this point as RestartSession() does not react well to locked sensor grids
 		if (wasOpen)
 			::Network::RestartSession(true);
+		else
+			LogEvent(EventSignificance::Uncommon,"Session was offline prior to loading. Not restarted");
 
 	}
 
 
 	PathString GetAutoSavePath(index_t index)
 	{
-		return RuntimeConfig::ConfigFile("saves/auto/snapshot") + PathString(index)+"."+savFileExtension;
+		return RuntimeConfig::sharedConfig.Lookup("saves/auto/snapshot") + PathString(index)+RuntimeConfig::savFileExtension;
 	}
 
 	bool			IsValidSavePhase(RuntimeConfig::Phase p)
@@ -1696,9 +1684,14 @@ namespace FileIO
 		return RuntimeConfig::IsACommandPhase(p) || p == RuntimeConfig::Phase::AnimationPhase || p == RuntimeConfig::Phase::EndOfGame;
 	}
 
+	bool			CanSaveRightNow(RuntimeConfig::Phase overridePhase)
+	{
+		return IsValidSavePhase(overridePhase);
+	}
+
 	bool			CanSaveRightNow()
 	{
-		return IsValidSavePhase(RuntimeConfig::phase) && !ConfigurationMode::IsActive();
+		return CanSaveRightNow(RuntimeConfig::phase);
 	}
 
 
@@ -1710,15 +1703,15 @@ namespace FileIO
 			LogEvent(EventClass::Preset::commandRejected,"Unable to save game right now. Not in suitable phase");
 			return;
 		}
-		PathString base = RuntimeConfig::ConfigFile("saves/auto/snapshot");
+		PathString base = RuntimeConfig::sharedConfig.Lookup("saves/auto/snapshot");
 		FileSystem::CreateDirectory(FileSystem::ExtractFileDir(base));
-		if (FileSystem::IsFile(base+"0."+savFileExtension))
+		if (FileSystem::IsFile(base+"0"+RuntimeConfig::savFileExtension))
 		{
-			FileSystem::UnlinkFile(base+"9."+savFileExtension);
+			FileSystem::UnlinkFile(base+"9"+RuntimeConfig::savFileExtension);
 			for (int i = 8; i >= 0; i--)
-				FileSystem::MoveFile(base+PathString(i)+'.'+savFileExtension,base+PathString(i+1)+'.'+savFileExtension);
+				FileSystem::MoveFile(base+PathString(i)+RuntimeConfig::savFileExtension,base+PathString(i+1)+RuntimeConfig::savFileExtension);
 		}
-		Save(base+"0."+savFileExtension, RuntimeConfig::Phase::CommandPhase);
+		Save(base+"0"+RuntimeConfig::savFileExtension, RuntimeConfig::Phase::CommandPhase);
 
 		#ifdef SAVE_FILE_TEST
 			State::Load(base+"0."+savFileExtension);
@@ -1746,7 +1739,7 @@ namespace FileIO
 
 	void	Save( const PathString&name, RuntimeConfig::Phase savePhase)
 	{
-		if (!CanSaveRightNow())
+		if (!CanSaveRightNow(savePhase))
 		{
 			LogEvent(EventClass::Preset::commandRejected,"Unable to save game right now. Not in suitable phase");
 			return;
@@ -1924,7 +1917,7 @@ namespace FileIO
 
 		if (container.SaveToFile(name.c_str()))
 		{
-			LogEvent(EventSignificance::Uncommon,"World snapshot, round "+RuntimeConfig::roundNumber.ToString()+", written to "+String(name)+" in "+String(timer.GetSecondsSince(t0))+" seconds");
+			LogEvent(EventClass(EventSignificance::Uncommon,EventFlavor::ServerPrivate),"World snapshot, round "+RuntimeConfig::roundNumber.ToString()+", written to "+String(name)+" in "+String(timer.GetSecondsSince(t0))+" seconds");
 			//LogEvent(EventSignificance::Uncommon,"World snapshot created in "+String(timer.GetSecondsSince(t0))+" seconds");
 		}
 		else

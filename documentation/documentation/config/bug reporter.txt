@@ -1,0 +1,13 @@
+=Bug Reporter=
+
+{{ BugReporter.png?400|Bug Reporter}}
+
+The bug reporter application helps you report bugs that you have encountered while running the game.
+If the bug results from an encountered fatal exception of either client or server, then the bug reporter is started automatically.
+Alternatively it may be started manually from the installation folder //''[install dir]\BugReporter\BugReporter.exe''// , or via the visual client menu (Main->Help->Report Bug).
+
+You must specify a rough description of the bug in order to send the report.
+Reproduction instructions and log files are optional, but please do provide at least the related log files (if any).
+Think of the logs as the black boxes of the game. They help immensely in tracking down the cause of a bug.
+
+If the server is currently unavailable, or the reporter has encountered some exception, then it should provide an option to send an email instead.

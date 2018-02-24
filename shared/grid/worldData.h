@@ -1,7 +1,8 @@
 #pragma once
 
 #include "stack.h"
-#include "../observer.h"
+#include <structure/observable.h>
+#include <container/array2d.h>
 
 namespace World
 {
@@ -11,6 +12,8 @@ namespace World
 		static bool			IsSolid(const Grid::CellStack::Cell&c)	{return c.IsSolid();}
 		static bool			IsClearOrWater(const Grid::CellStack::Cell&c)	{return c.IsClearOrWater();}
 		static bool			IsNotLava(const Grid::CellStack::Cell&c)	{return c.content != Grid::Content::Lava;}
+		static bool			IsNotClear(const Grid::CellStack::Cell&c)	{return c.content != Grid::Content::Clear;}
+		static bool			IsNotRoad(const Grid::CellStack::Cell&c)	{return c.content != Grid::Content::Road && c.content != Grid::Content::Foundation;}
 	};
 
 
@@ -45,7 +48,7 @@ namespace World
 
 		static const constexpr float MaxOutdated = std::numeric_limits<float>::max();
 
-		Observable<const Data&,const BaseGrid::FamiliesChanged&,float>		onTerrainChange;
+		DeltaWorks::Observable<const Data&,const BaseGrid::FamiliesChanged&,float>		onTerrainChange;
 
 		class ChangeSequence;
 		class StackAccess
@@ -433,6 +436,7 @@ namespace World
 		
 		struct TOnChangeLock
 		{
+			Sys::SpinLock				lock;
 			count_t						isActive = 0;
 			BaseGrid::FamiliesChanged	changed;
 			float						lastChangeTime = 0;
@@ -483,18 +487,25 @@ namespace World
 	class Sensor
 	{
 	private:
-		static Grid::HighSetup::TVolumeDescriptor::Operator op;
-		static Grid::LowSetup::TVolumeDescriptor::Operator lowOp;
-		static Grid::HighSetup::TVolumeDescriptor	volume;
 
-		static void		ApplyVolume(World::Data&v, short changeBy, Data::ChangeSequence&);
+		struct TPerProcessor
+		{
+			Grid::HighSetup::TVolumeDescriptor::Operator op;
+			Grid::LowSetup::TVolumeDescriptor::Operator lowOp;
+			Grid::HighSetup::TVolumeDescriptor	volume;
+			Array2D<BYTE>				shadedSphereHelper;
+			Buffer0<Grid::HCellIdU>		shadedSphereMarked;
+		};
+		static Array<TPerProcessor>	perProcessor;
 
-		void			ApplySolidSphereTo(World::Data&v, short change, Data::ChangeSequence&)	const;
-		void			ApplyHalfSolidSphereTo(World::Data&v, short changeBy, Data::ChangeSequence&seq)	const;
-		void			ApplyShadedSphereTo(World::Data&v, short change, Data::ChangeSequence&)	const;
-		void			MakeShaftVolume(Grid::HighSetup::TVolumeDescriptor&v, const std::function<UINT32(UINT32 stackID)>&traceFunction)	const;
-		void			MakeShaftVolume(Grid::LowSetup::TVolumeDescriptor&v, const std::function<UINT32(UINT32 stackID)>&traceFunction)	const;
-		void			ApplyShaftTo(World::Data&v, short change, const std::function<UINT32(UINT32 stackID)>&traceFunction, Data::ChangeSequence&)	const;
+		static void		ApplyVolume(World::Data&v, short changeBy, Data::ChangeSequence&, index_t processorIndex);
+
+		void			ApplySolidSphereTo(World::Data&v, short change, Data::ChangeSequence&, index_t processorIndex)	const;
+		void			ApplyHalfSolidSphereTo(World::Data&v, short changeBy, Data::ChangeSequence&seq, index_t processorIndex)	const;
+		void			ApplyShadedSphereTo(World::Data&v, short change, Data::ChangeSequence&, index_t processorIndex)	const;
+		void			MakeShaftVolume(Grid::HighSetup::TVolumeDescriptor&v, const std::function<UINT32(UINT32 stackID)>&traceFunction, index_t processorIndex)	const;
+		void			MakeShaftVolume(Grid::LowSetup::TVolumeDescriptor&v, const std::function<UINT32(UINT32 stackID)>&traceFunction, index_t processorIndex)	const;
+		void			ApplyShaftTo(World::Data&v, short change, const std::function<UINT32(UINT32 stackID)>&traceFunction, Data::ChangeSequence&, index_t processorIndex)	const;
 	public:
 		/**
 		3d location of the local sensor
@@ -541,9 +552,9 @@ namespace World
 							gridCenter(Grid::ToLayered(center)),
 							radius(radius),type(t), terrainPenetration(terrainPenetration) {}
 
-		void			ApplyTo(World::Data&clientWorld, short change, float t)	const;
-		void			InsertInto(World::Data&clientWorld, float t) const;
-		void			RemoveFrom(World::Data&clientWorld, float t) const;
+		void			ApplyTo(World::Data&clientWorld, short change, float t, index_t processorIndex=0)	const;
+		void			InsertInto(World::Data&clientWorld, float t, index_t processorIndex=0) const;
+		void			RemoveFrom(World::Data&clientWorld, float t, index_t processorIndex=0) const;
 
 
 		/**
@@ -559,13 +570,23 @@ namespace World
 		Computes the maximum sensor volume in low-resolution.
 		The actual volume may diverge considerably, but never exceed the result
 		@param[out] desc Resulting volume
+		@param processorIndex Index of the processor to use static structures of. Relevant only when using multithreading. Must be less than Sys::QueryLogicalProcessorsCount()
 		*/
-		void			GetMaxVolume(Grid::LowSetup::TVolumeDescriptor&desc) const;
+		void			GetMaxVolume(Grid::LowSetup::TVolumeDescriptor&desc, index_t processorIndex=0) const;
 
+		/**
+		Initializes static structures using the current number of logical processors registered to the system.
+		Called by World::Create()
+		*/
+		static void		StaticCreate();
 		
 	};
 
 
+	/**
+	Creates the world data setup.
+	Called by Boot()
+	*/
 	void	Create();
 
 	

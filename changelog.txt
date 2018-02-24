@@ -1,3 +1,94 @@
+v0.7.5
+	+ Localhost client can now trigger a game save without requiring a connected control console.
+	+ Added console faction attribute to see if a faction is dead (dead factions remain listed).
+	+ Added console faction attribute to see alliance of a faction.
+	> Added file dates to load game menu.
+	> Control console now queries full server status upon connection via new server command /Server/describeStatus.
+	> Control console now shows status and connected server identity in window title.
+	> Nexus faction can no longer be terminated using the console (ended in crash).
+	> Non-hunter mobiles will now always abort movements entering the regular attack range of any newly detected hostile entity.
+	> Improved performance of sensor updates. Heavy load updates should spread across all available CPU cores.
+	* Fixed console output freezes of server, control console, and console client due to marking of text in the console window.
+	* Fixed heartbeat failure message.
+	* Fixed dead factions lingering on.
+	* Fixed radar vehicles driving into the firing range of mid-motion detected towers.
+	
+v0.7.4	[Feb 20 2018]
+	+ Added runtime parameter to control console to start and monitor a server instance.
+	+ Added menu to start server with interactive or current configuration, or load a previously saved file.
+	+ Server now supports generating and loading configuration files at custom locations.
+	> Disabled Nexus Ports are now considered idle.
+	> Hardened sandboxing of Lua scripts.
+	> Custom planets now require a leading * when addressed via configuration or control console.
+	> Bug reporter now remains on top of other windows.
+	> Improved appearance of rocket launcher.
+	* Fixed rare crash when handling unusual chain of visibility changes.
+	* Fixed sleeping terraformers reducing resource balance prediction.
+	* Fixed structures being forcefully enabled after loading a savegame.
+	* When loading savegames while server is in interactive configuration mode, the session will now be started afterwards.
+	* Fixed counting of required nexus ports when game goal is conquer nexus.
+	* Fixed interactive configuration mode going out of sync (is completely offline now).
+
+v0.7.3	[Feb 4 2018]
+	+ Added menu entry 'Game->Launch Control Console' to directly open up a control console on the local server (if localhost).
+	+ Added menu entry 'Game->Help->View Online Manual' to open browser to online manual.
+	+ Added menu entry 'Game->Help->View Changelog' to open local editor to changelog file.
+	+ Introduced rocket launcher tower type to replace cannon towers.
+	> Enabled but non-conquered nexus ports are now shown as 'conquering' instead of 'enabled'
+	> Votes are now removed from display when the player clicked yes or no.
+	> Enable-buttons now change caption to 'Disable' if the local structure is currently enabled.
+	> Digging vehicles can no longer accidentally enter EMP zones.
+	> Improved handling of ghosts and critical events when part of an alliance.
+	> Non-dedicated servers now require constant heartbeats from the client. If the client crashes, the server quits after 3 seconds.
+	> Constructing geometry high above the ground now costs more.
+	> Reduced road and bridge thickness to one height level (removed road foundations).
+	> Can now build blocks in water.
+	> The enter/return key now commits any pending terrain building/removal operations.
+	> Clipped water is now rendered flat atop underlying solid, non-clipped terrain blocks
+	> Backspace/escape now also clear out any movement option markers.
+	> Removed visual connections between neighboring buildings unless they have meaning.
+	> Increased attack range of raptor planes.
+	> Slightly increased sensor range of sensor drones.
+	> Raptor planes now automatically fire at detected, moving, hostile planes during their motion phase.
+	> Planes now automatically stop before entering the firing range of a previously undetected offensive plane.
+	> Increased the amount of health gained from research.
+	> Added link to online manual to help menu.
+	> Replaced alliance join requests with an invite-based system.
+	> Added graceful client-side handling of entity double-spawning (was fatal error before).
+	> Increased range of terrain clipping feature.
+	> Components or structure types can now be hidden from visible client options by setting the respective member IsUnlocked to false.
+	> GUI components now fade in and out.
+	* Fixed crashes in bug reporter when trying to upload very long log files.
+	* Fixed handling of crashes in bug reporter.
+	* Fixed confirmation dialogs sometimes not allowing to actually press the confirm button (game wrongly assumed to be between rounds).
+	* Fixed material dialog in interactive configuration mode.
+	* Fixed rare crash when refreshing server list.
+	* Fixed crash when join-vote outlives the targeted alliance.
+	* Fixed server crash when trying to build multi-story building on top terrain level.
+	* Fixed friendly/hostile range visualization to work with alliances.
+	* Fixed server panel when manually adding server addresses that cannot be contacted right now.
+	* Fixed center panel of game end statistics.
+	* Fixed routing of planes by right-clicking on the ground.
+	* Fixed plane factories spawning planes through blocking terrain into sub-orbit.
+	* Fixed allied plane sensor loss causing crashes.
+	* Fixed round estimation of terraforming operations.
+	* Fixed client crash when handling exceptionally many sensor changes in one round.
+	* Fixed vehicles ignoring max task count.
+	* Fixed sensors sometimes ending up removed twice resulting in invalid contact losses.
+
+v0.7.2	[Jan 25 2018]
+	> Added various hot-keys to directly build certain structure types with a selected terraformer.
+	> Progress bars are rendered atop units only when the current operation will require more than one round to complete.
+	> Moved menu button to the far right of the command bar.
+	> Server no longer sends game-save log messages to clients (including full save game path).
+	* Fixed confirmation dialog layout.
+	
+v0.7.1	[Jan 22 2018]
+	> Moved remote control folder /Online to /Server/Online.
+	* Fixed remote control variable /Server/Online/session.
+	* Loading a save game will now correctly disable interactive configuration mode.
+	* Fixed crash when displaying unknown construction tasks on foreign units.
+
 v0.7.0	[Jan 20 2018]
 	+ Introduced sensor-sharing alliances of multiple factions.
 	+ Implemented rudimentary voting system that controls alliance operations.

@@ -60,8 +60,8 @@ namespace Objects
 			virtual bool		DirectTo(mode_t mode, MutableArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 
 			virtual bool		FrontQueueAutoAttack(TurretBase::TargetChoice&lastChoice)override;
-			void				EnqueueAttack(Grid::LCellIdI destination);
-			void				FrontEnqueueAttack(Grid::LCellIdI destination);
+			bool				EnqueueAttack(Grid::LCellIdI destination);
+			bool				FrontEnqueueAttack(Grid::LCellIdI destination);
 
 
 
@@ -152,6 +152,7 @@ namespace Objects
 			virtual int			GetUplinkTraffic() const override;
 		#endif
 		virtual bool			IsUnlockedAtState(const Lua::Reference&researchState) const	override {return base->isUnlocked.GetValue(researchState) && turret->isUnlocked.GetValue(researchState);}
+		virtual bool			CanBeUnlocked() const {return base->isUnlocked.IsFunctionOrConstNonZero() && turret->isUnlocked.IsFunctionOrConstNonZero();}
 		virtual int				GetMaxHealth() const override;
 		virtual String			DescribeMaxHealth() const override;
 		virtual PWorldEntity	CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override {return std::make_shared<Vehicle>(owner,location,base,turret);};

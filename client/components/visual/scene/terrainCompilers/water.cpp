@@ -43,7 +43,7 @@ namespace VisualTerrain
 									const CellStack::Cell&thisCell, const M::TFloatRange<>&range, bool localEMP);
 		void	CompileBottomLayer(const CellStack&stack, const int clipH,const BaseGrid::TNetCell&cell,
 									const BaseGrid::TCellNeighborhood&neighbors, bool empThis);
-		void	CompileCap(	const UINT ih,const BaseGrid::TNetCell&cell, const bool capped, const CellStack::Cell&thisCell, 
+		void	CompileCap(	const UINT ih,const BaseGrid::TNetCell&cell, const CellStack::Cell&thisCell, 
 							const M::TFloatRange<>&range, const BaseGrid::TCellNeighborhood&neighbors, 
 							const CellStack&stack, bool empThis);
 
@@ -89,7 +89,7 @@ namespace VisualTerrain
 				//)
 			{
 				//CompileCap(ih+1,cell,capped,thisCell,range,neighbors,stack);
-				CompileCap(0,cell,false,thisCell,range,neighbors,stack,empThis);
+				CompileCap(0,cell,thisCell,range,neighbors,stack,empThis);
 			}
 
 
@@ -229,7 +229,7 @@ namespace VisualTerrain
 
 
 
-	void	WaterCompiler::CompileCap(const UINT ih,const BaseGrid::TNetCell&cell, const bool capped, const CellStack::Cell&thisCell, const M::TFloatRange<>&range,const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack, bool empThis)
+	void	WaterCompiler::CompileCap(const UINT ih,const BaseGrid::TNetCell&cell, const CellStack::Cell&thisCell, const M::TFloatRange<>&range,const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack, bool empThis)
 	{
 		const UINT layer = M::Min(ih, CellStack::Range-1);
 		float light0 = GetWaterLightLevel(stack.volumeCell[layer]);
@@ -276,6 +276,38 @@ namespace VisualTerrain
 		if (thisCell.content != CellStack::Cell::Content::Water)
 		{
 			wasEmpty = true;
+
+			if (nextCell.content == CellStack::Cell::Content::Water && ir+1 >= clipH)
+			{
+				const auto range = M::FloatRange(
+					Grid::ToRadius(ir+1),
+					Grid::ToRadius(ir + 1));
+				CompileCap(ih+1,cell,thisCell,range,neighbors,stack, empThis);
+
+
+				//float newCornerLight[6];
+
+				//for (int j = 0; j < cell.numCorners; j++)
+				//{
+				//	const UINT32 n0 = neighbors.neighborID[j];
+				//	const UINT32 n1 = neighbors.neighborID[(j + 1) % cell.numCorners];
+				//	const CellStack&sn = stacks[n1];
+				//	{
+				//		float c1 = (GetWaterLightLevel(n1,ih) + GetWaterLightLevel(n1,ih+1))/2.f;
+				//		float color1 = (c1 * 2.f
+				//			+
+				//			((GetWaterLightLevel(n0,ih)) + (GetWaterLightLevel(n0,ih+1))) / 2.f);	//originally 'mild' levels
+
+				//		color1 /= 3.f;
+				//		newCornerLight[j] = color1;
+				//	}
+				//}
+				//for (int j = 0; j < cell.numCorners; j++)
+				//{
+				//	CompileFaceToNeighbor(j,ih,ir,cell,neighbors,newCornerLight,thisCell,range,empThis);
+				//}
+			}
+
 			return;
 		}
 
@@ -283,17 +315,16 @@ namespace VisualTerrain
 			Grid::ToRadius(ir),
 			Grid::ToRadius(ir + 1));
 		{
-			static const float delta = 0.1f;
-	
-			const bool capped = nextCell.content == CellStack::Cell::Content::Water;
-			if (!capped
+
+			const bool nextCellIsWater = nextCell.content == CellStack::Cell::Content::Water;
+			if (!nextCellIsWater
 				|| ir+1 >= clipH
 				)
 			{
 							
 				//color0.rgb = waterColor;
 				//CompileCap(const UINT ih,const BaseGrid::TNetCell&cell, const bool capped, const CellStack::Cell&thisCell, const M::TFloatRange<>&range,const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack)
-				CompileCap(ih+1,cell,capped,thisCell,range,neighbors,stack, empThis);
+				CompileCap(ih+1,cell,thisCell,range,neighbors,stack, empThis);
 			
 			}
 

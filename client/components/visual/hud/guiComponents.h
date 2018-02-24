@@ -194,7 +194,7 @@ namespace Component
 			references.Clear();
 		}
 
-		void			VerifyIntegrity(const FVerification&, const AnchorAxis&, bool isUpper) const;
+		void			VerifyIntegrity(const TCodeLocation&sender, const FVerification&, const AnchorAxis&, bool isUpper) const;
 
 		void			SetAllOf(const PPanel&, const Distance&distance, const Component*mustNotInclude);
 		void			SetSomeOf(const PPanel&, const Distance&distance, const FSelector&, const Component*mustNotInclude);
@@ -239,13 +239,13 @@ namespace Component
 			void		AnchorLowerUnknown(const Distance&lowerOffset = Distance());
 			void		Fill(const Distance&lowerOffset = Distance(), const Distance&upperOffset = Distance());
 			void		SetAutoCenter(const Distance&extent = Distance::Unknown) {isAutoCentering = true; this->extent = extent; lower.Disable(); upper.Disable();}
-			void		VerifyIntegrity(const FVerification&, bool allowUnknownExtent) const;
+			void		VerifyIntegrity(const TCodeLocation&sender, const FVerification&, bool allowUnknownExtent) const;
 			bool		BothAnchorsAreOff() const {return lower.IsInactive() && upper.IsInactive();}
 			bool		BothAnchorsAreOn() const {return lower.IsEnabled() && upper.IsEnabled();}
 			bool		IsFreeFloating() const {return BothAnchorsAreOff() && !isAutoCentering;}
-			void		SetFreeFloating(const Distance&extent = Distance::Unknown);
+			void		SetFreeFloating(const TCodeLocation&sender, const Distance&extent = Distance::Unknown);
 			bool		HasExtentPlaceholder() const {return !Stretches() && extent.IsPlaceholder();}
-			void		FillBetween(const PComponent&lowerC, const PComponent&upperC);
+			void		FillBetween(const PComponent&lowerC, const PComponent&upperC, const Distance&lowerOffset = Distance(), const Distance&upperOffset = Distance());
 			float		GetMinimumEdge(float parentUpperEdge, const M::TFloatRange<>&rectRange) const;
 			void		UpdateExtentIfEnabled(const Distance&d) {if (!extent.IsDisabled()) extent = d;}
 		};
@@ -255,7 +255,7 @@ namespace Component
 		Axis			axis[2];
 
 		/**/			AnchorConfig()	{axis[AnchorAxis::Horizontal].myAxis = AnchorAxis::Horizontal; axis[AnchorAxis::Vertical].myAxis = AnchorAxis::Vertical;}
-		void			VerifyIntegrity(const FVerification&check, bool allowUnknownExtent) const {axis[0].VerifyIntegrity(check,allowUnknownExtent); axis[1].VerifyIntegrity(check,allowUnknownExtent);}
+		void			VerifyIntegrity(const TCodeLocation&sender, const FVerification&check, bool allowUnknownExtent) const {axis[0].VerifyIntegrity(sender,check,allowUnknownExtent); axis[1].VerifyIntegrity(sender,check,allowUnknownExtent);}
 		Axis&			GetHAxis() {return axis[AnchorAxis::Horizontal];}
 		const Axis&		GetHAxis() const {return axis[AnchorAxis::Horizontal];}
 		Axis&			GetVAxis() {return axis[AnchorAxis::Vertical];}
@@ -300,7 +300,7 @@ namespace Component
 		AnchorModifier&	AboveAllOf(const PPanel&, const Distance&lowerOffset = Distance(), const Distance&height = Distance::Unknown);
 		AnchorModifier&	FillHorizontally();
 		AnchorModifier&	FillHorizontally(const Distance&leftOffset, const Distance&rightOffset);
-		AnchorModifier&	FillHBetween(const PComponent&leftEdge, const PComponent&rightEdge);
+		AnchorModifier&	FillHBetween(const PComponent&leftEdge, const PComponent&rightEdge, const Distance&leftOffset = Distance(), const Distance&rightOffset = Distance());
 		AnchorModifier&	FillVertically();
 		AnchorModifier&	FillVertically(const Distance&lowerOffset, const Distance&upperOffset);
 		AnchorModifier&	CenterVertically(const Distance&height = Distance::Unknown);
@@ -339,6 +339,9 @@ namespace Component
 			OnTranslate(delta);
 		}
 
+		void			SetHorizontal(const M::TFloatRange<>&range);
+		void			SetVertical(const M::TFloatRange<>&range);
+		void			SetAxis(AnchorAxis a, const M::TFloatRange<>&range);
 		void			SetRect(const M::Rect<>&rect);
 	private:
 		static const constexpr float Lower = -10000.f, Upper = 10000.f;
@@ -462,7 +465,7 @@ namespace Component
 		
 		virtual void	UpdateDynamicSize(ChangeRecorder&);
 
-		virtual void	Render();
+		virtual void	Render(float opacity);
 
 		virtual void	ResolveAnchorAxis(AnchorAxis axis, const M::Rect<>&context, ChangeRecorder&);
 
@@ -491,7 +494,7 @@ namespace Component
 		AnchorModifier	Anchor() {return this;}
 		const AnchorConfig&GetAnchorConfig() const {return anchorConfig;}
 
-		virtual void	VerifyAnchorIntegrity() const;
+		virtual void	VerifyAnchorIntegrity(const TCodeLocation&sender) const;
 		virtual void	SetAnchorConfig(const AnchorConfig&cfg);
 
 		/**
@@ -513,6 +516,7 @@ namespace Component
 	{
 		typedef Component	Super;
 		static DX11::BaseInstructionBlock	texturedQuad;
+		static DX11::ObjectBuffer<float4>	texturedQuadColor;
 		bool			autoSetHeight = true;
 		DX11::Texture	texture;
 		
@@ -523,7 +527,7 @@ namespace Component
 		void			SetAutoHeight(bool b)	{if (autoSetHeight == b) return; ASSERT__(!b || !anchorConfig.GetVAxis().RequiresFixedParentSize()); autoSetHeight = b; SignalLayoutChangeUp();}
 		void			SetTexture(const DX11::Texture&tex) {texture = tex;SignalLayoutChangeUp();}
 
-		virtual void	Render() override;
+		virtual void	Render(float opacity) override;
 		//virtual bool	HandleClick() override {return ContainsMouse();}
 	protected:
 		virtual float	GetContentHeight() const override;
@@ -535,7 +539,7 @@ namespace Component
 	class Box : public Component
 	{
 	protected:
-		void			BaseRender(bool lit, bool flipped, bool fill=true, bool border=true);
+		void			BaseRender(float opacity,bool lit, bool flipped, bool fill=true, bool border=true);
 	public:
 		typedef Component	Super;
 
@@ -558,7 +562,7 @@ namespace Component
 			fillBackground = false;
 			renderBorder = true;
 		}
-		virtual void	Render() override	{Super::Render(); BaseRender(false,false,fillBackground,renderBorder);}
+		virtual void	Render( float opacity ) override	{Super::Render(opacity); BaseRender(opacity,false,false,fillBackground,renderBorder);}
 	};
 
 	/**
@@ -597,8 +601,8 @@ namespace Component
 			float	Sample(index_t x) const;
 
 		
-			void	RenderSurfaces()	const;
-			void	RenderLines()	const;
+			void	RenderSurfaces(float opacity)	const;
+			void	RenderLines(float opacity)	const;
 			void	Replot(const M::Rect<>&componentRect, const M::Rect<>&dataRect, bool addBottomLine, bool stack);
 
 
@@ -658,7 +662,7 @@ namespace Component
 		}
 
 
-		virtual void	Render() override;
+		virtual void	Render(float opacity) override;
 
 		void			SignalAxesChanged()	{axesChanged = true;}
 		float			SampleStackedHeight(index_t) const;
@@ -733,7 +737,7 @@ namespace Component
 		*/
 		std::function<void(Key::Name)> onSpecialKey;
 
-		virtual void	Render() override;
+		virtual void	Render(float opacity) override;
 		virtual void	SetActive(bool isActive) override {SetInputActive(isActive); Super::SetActive(isActive);}
 
 	};
@@ -793,7 +797,7 @@ namespace Component
 		void			HandleTextChange();
 
 	protected:
-		void			RenderText(bool lit);
+		void			RenderText(float opacity,bool lit);
 
 		virtual float	GetIdealWidth() const;
 		virtual void	OnTextChange() {};
@@ -859,15 +863,15 @@ namespace Component
 				ASSERT__(!heightLockedToIdeal);
 		}
 
-		virtual void	VerifyAnchorIntegrity() const override 
+		virtual void	VerifyAnchorIntegrity(const TCodeLocation&sender) const override 
 		{
 			ASSERT__(!WidthChangesDynamically() || !widthLockedToIdeal);
 			ASSERT__(!HeightChangesDynamically() || !heightLockedToIdeal);
-			Super::VerifyAnchorIntegrity();
+			Super::VerifyAnchorIntegrity(sender);
 		}
 
 		virtual void	UpdateDynamicSize(ChangeRecorder&) override;
-		virtual void	Render() override;
+		virtual void	Render(float opacity) override;
 	};
 
 
@@ -998,7 +1002,7 @@ namespace Component
 			return changed;
 		}
 
-		virtual void Render() override;
+		virtual void Render(float opacity) override;
 
 		virtual PComponent	OnMouseDown() override
 		{
@@ -1108,7 +1112,7 @@ namespace Component
 			return changed;
 		}
 
-		virtual void Render() override;
+		virtual void Render(float opacity) override;
 
 		virtual PComponent	OnMouseDown() override
 		{
@@ -1152,15 +1156,15 @@ namespace Component
 		/**/			ScrollButton(direction_t dir,std::function<void()> onPress = std::function<void()>()):Super("",onPress), direction(dir)
 		{}
 
-		virtual void	Render() override
+		virtual void	Render( float opacity ) override
 		{
 			bool lit = IsLit();
 			bool flipped = mousePressedComponent.get() == this;
-			Super::BaseRender(lit && !flipped,lit && flipped);
-			RenderArrow(GetRect(),direction,lit);
+			Super::BaseRender(opacity,lit && !flipped,lit && flipped);
+			RenderArrow(opacity,GetRect(),direction,lit);
 		}
 
-		static void		RenderArrow(const M::Rect<>&, direction_t, bool lit);
+		static void		RenderArrow(float opacity,const M::Rect<>&, direction_t, bool lit);
 
 		virtual void	SetLocation(const M::Rect<>&loc) override {Super::SetLocation(loc);}
 
@@ -1182,7 +1186,7 @@ namespace Component
 		virtual WheelRs		OnMouseWheel(short) override;
 		virtual void		OnMouseUp() override;
 		virtual void		OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse) override;
-		virtual void		Render() override;
+		virtual void		Render(float opacity) override;
 		void				Setup(float current, float max, float slideStep) {this->current = current; this->max = max; this->slideStep = slideStep;numMarkers = markersEvery ? 1+(max / markersEvery) : 0;}
 		void				SetupMarkers(float markerStep, bool show)	{this->markersEvery = markerStep; showMarkers = show; numMarkers = markersEvery ? 1+(max / markersEvery) : 0;}
 		float				GetMax() const {return max;}
@@ -1247,7 +1251,7 @@ namespace Component
 			void		OnMouseUp();
 			void		OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse);
 			void		Enable(Panel*,const M::Rect<>&rect);
-			void		Render(const M::Rect<>&rect);
+			void		Render(float opacity,const M::Rect<>&rect);
 			float		GetOffset() const {return visible ? -viewTop : 0;}
 
 			static float	GetPixelWidth();
@@ -1272,10 +1276,10 @@ namespace Component
 			foreach (components,c)
 				(*c)->AcceptStateFromParent(p);
 		}
-		void			RenderChildren()
+		void			RenderChildren( float opacity )
 		{
 			foreach (components,c) 
-				(*c)->Render();
+				(*c)->Render(opacity);
 		}
 
 		Buffer0<PComponent>	components;
@@ -1339,7 +1343,7 @@ namespace Component
 		
 		virtual void	SetActive(bool isActive) override;
 		virtual void	UpdateDynamicSize(ChangeRecorder&) override;
-		virtual void	Render() override;
+		virtual void	Render(float opacity) override;
 		virtual void	ResolveAnchorAxis(AnchorAxis axis, const M::Rect<>&context, ChangeRecorder&) override;
 		virtual void	Translate(const float2&delta)	{Super::Translate(delta); foreach (components,c) (*c)->Translate(delta);}
 
@@ -1350,7 +1354,7 @@ namespace Component
 		virtual void	OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse) override;
 
 
-		virtual void		VerifyAnchorIntegrity() const override;
+		virtual void		VerifyAnchorIntegrity(const TCodeLocation&sender) const override;
 
 
 		virtual const Buffer0<PComponent>&		GetReferences() const { return components; }
@@ -1372,12 +1376,12 @@ namespace Component
 		These constraints are checked and lead to program termination if found in violation
 		@return true if the component was added, false if it is null, or already a member
 		*/
-		virtual bool		AddComponent(const PComponent&c);
-		virtual PComponent	AddNewComponent(Component*c)
+		virtual bool		AddComponent(const PComponent&c, const TCodeLocation&caller);
+		virtual PComponent	AddNewComponent(Component*c, const TCodeLocation&caller)
 		{
 			ASSERT_NOT_NULL__(c);
 			PComponent comp(c);
-			ASSERT__(AddComponent(comp));
+			ASSERT__(AddComponent(comp,caller));
 			return comp;
 		}
 
@@ -1403,15 +1407,15 @@ namespace Component
 			return false;
 		}
 		template <typename Component>
-		std::shared_ptr<Component>		AnchorBelowPrevious(Component*newComponent, const Distance& distanceFromSides =  0.015f, const Distance& distanceToPrevious = 0.015f)
+		std::shared_ptr<Component>		AnchorBelowPrevious(const TCodeLocation&caller, Component*newComponent, const Distance& distanceFromSides =  0.015f, const Distance& distanceToPrevious = 0.015f)
 		{
 			std::shared_ptr<Component> c(newComponent);
-			AnchorBelowPrevious(c,distanceFromSides,distanceToPrevious);
+			AnchorBelowPrevious(caller, c,distanceFromSides,distanceToPrevious);
 			return c;
 		}
-		void			AnchorBelowPrevious(const PComponent&newComponent, const Distance& distanceFromSides = 0.015f, const Distance& distanceToPrevious = 0.015f);
+		void			AnchorBelowPrevious(const TCodeLocation&caller, const PComponent&newComponent, const Distance& distanceFromSides = 0.015f, const Distance& distanceToPrevious = 0.015f);
 
-
+		virtual void	SetAnchorConfig(const AnchorConfig&cfg) override;
 	private:
 		bool			autoHeight = true;
 
@@ -1441,9 +1445,9 @@ namespace Component
 			Super::SetActive(isActive);
 		}
 
-		virtual bool		AddComponent(const PComponent&c) override
+		virtual bool		AddComponent(const PComponent&c, const TCodeLocation&caller) override
 		{
-			return Super::AddComponent(c) && OnComponentsChanged();
+			return Super::AddComponent(c,caller) && OnComponentsChanged();
 		}
 		virtual bool		RemoveComponent(const PComponent&c) override
 		{
@@ -1495,12 +1499,12 @@ namespace Component
 
 
 
-		virtual void Render() override
+		virtual void Render( float opacity ) override
 		{
 			bool lit = IsLit();
 			bool flipped = mousePressedComponent.get() == this;
-			Super::BaseRender(lit && !flipped,lit && flipped);
-			Super::RenderChildren();
+			Super::BaseRender(opacity,lit && !flipped,lit && flipped);
+			Super::RenderChildren(opacity);
 		}
 
 		virtual PComponent	OnMouseDown() override
@@ -1597,7 +1601,7 @@ namespace Component
 	private:
 		static void		ConfigureInactive(const PButton&);
 		static void		ConfigureActive(const PButton&);
-		virtual bool	AddComponent(const PComponent&c) override	{return false;}
+		virtual bool	AddComponent(const PComponent&c, const TCodeLocation&caller) override	{return false;}
 		virtual bool	RemoveComponent(const PComponent&c) override {return false;}
 		virtual bool	ClearComponents() override {return false;}
 
@@ -1700,16 +1704,16 @@ namespace Component
 		count_t			CountTabs() const {return tabs.Count();}
 
 	
-		virtual void Render() override
+		virtual void Render( float opacity ) override
 		{
-			Super::Render();
+			Super::Render(opacity);
 		}
 
 	protected:
 		virtual void	OnTabChange();
 
 	private:
-		virtual bool	AddComponent(const PComponent&c) override	{return false;}
+		virtual bool	AddComponent(const PComponent&c, const TCodeLocation&caller) override	{return false;}
 		virtual bool	RemoveComponent(const PComponent&c) override {return false;}
 		virtual bool	ClearComponents() override {return false;}
 
@@ -1774,7 +1778,7 @@ namespace Component
 				rs->SetLocation(M::TFloatRect(float2(0.25f),float2(0.5f)));
 				rs->SetAutomaticHeight(true);
 				//Super::SetCenteredWidth(0.75f,GUI::TAnchor::RelativeToScreen);
-				rs->VerifyAnchorIntegrity();
+				rs->VerifyAnchorIntegrity(CLOCATION);
 				return rs;
 			}
 
@@ -1817,13 +1821,13 @@ namespace Component
 		const float2&		GetOutlineMargin() const {return outlineMargin;}
 
 
-		virtual void		Render() override
+		virtual void		Render( float opacity) override
 		{
 			if (isModal)
-				Darken(context,0.7f);
-			Darken(outerRect);
+				Darken(context,0.7f*opacity);
+			Darken(outerRect,0.9f*opacity);
 			//Darken(rect);
-			Super::Render();
+			Super::Render(opacity);
 		}
 
 		virtual void		SignalLayoutChangeUp()	override

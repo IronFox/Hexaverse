@@ -2,6 +2,7 @@
 #include "tower.h"
 #include "../structureCompound.h"
 #include "../gridAndChoices.h"
+#include "../faction.h"
 
 namespace Objects
 {
@@ -38,7 +39,7 @@ namespace Objects
 
 		bool Tower::WouldAttack(const PWorldEntity&target, TurretBase::TargetChoice&outTarget, float entityTime)
 		{
-			if (!HasAmmoForShot() || empDamageLevel != 0 || IsHibernating())
+			if (!HasAmmoForShot() || empDamageLevel != 0 || IsHibernating() || owner->IsAlliedWith(target->owner))
 			{
 				//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
 				return false;
@@ -206,9 +207,10 @@ namespace Objects
 
 		bool					Tower::AttackNext(const Grid::LCellIdI&target, bool autoTarget)
 		{
-			if (attackQueue.Count() >= MaxStructureTasks)
+			const count_t cnt = attackQueue.Count();
+			if (cnt >= MaxFocusPoints)
 			{
-				LogEvent(EventClass::Preset::commandRejected,this,"Max queue length ("+String(MaxStructureTasks)+") reached");
+				LogEvent(EventClass::Preset::commandRejected,this,"Max queue length ("+String(MaxFocusPoints)+") reached");
 				return false;
 			}
 			if (!turret->CanAttack())

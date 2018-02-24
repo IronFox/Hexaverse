@@ -43,7 +43,11 @@ namespace Objects
 		},true);
 		markers.swap(Marker::all);
 		RuntimeConfig::UnitLimits::Export(unitLimits);
+
+		Objects::preserveReferencesOnFlush = true;
 		GlobalEvents::FlushObjects();
+		Objects::preserveReferencesOnFlush = false;
+
 		BaseGrid::FamiliesChanged	fam;
 		if (World::actual.ResetStructureCounters(!preserveGridVisibility,&fam))
 		{

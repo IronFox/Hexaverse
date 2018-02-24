@@ -4,7 +4,7 @@
 
 #include <math/vclasses.h>
 #include <engine/aspect.h>
-#include <observer.h>
+#include <structure/observable.h>
 
 #define DebugCheckVector(T, M, MX)
 #define DebugCheckCamera()
@@ -27,6 +27,8 @@
 //	DebugCheckVector(test,-1,1);
 //
 //}
+
+using namespace DeltaWorks;
 
 extern float3					sunDirection;
 static const float				SunOffAngle = 35.f;	//divergence between vertical axis and sun direction. 0 would be cenit

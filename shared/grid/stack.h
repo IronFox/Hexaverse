@@ -269,6 +269,7 @@ namespace Grid
 			void	AlterVisibility(short change)
 			{
 				visibility += change;
+				DBG_ASSERT__(visibility >= 0);
 				if (change >= 0)	//==0 is a special case triggering temporary visibility but leaving actual visibility unchanged
 				{
 					temporarilyVisible = true;
@@ -718,9 +719,8 @@ namespace Grid
 			return -1.f;
 		}
 
-		void	GenerateVolume(const M::Sphere<>&sphere,TVolumeDescriptor&volume) const
+		void	GenerateVolume(const M::Sphere<>&sphere,typename TVolumeDescriptor::Operator&op,TVolumeDescriptor&volume) const
 		{
-			static TVolumeDescriptor::Operator op;
 			volume.Clear();
 			UINT32 centerStack = Locate(sphere.center);
 			op.stacksLeft << centerStack;
@@ -791,7 +791,7 @@ namespace Grid
 
 
 	
-	static const UINT32			CutoffRadius = 14;
+	static const UINT32			CutoffRadius = 20;
 
 	
 	

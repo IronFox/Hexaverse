@@ -230,13 +230,12 @@ namespace Objects
 		{
 			typedef Base					Super;
 		public:
-			enum class MountType
-			{
+			CONSTRUCT_ENUMERATION4(MountType,
 				Vehicle,
 				TowerOnly,
 				Satellite,
-				Plane,
-			};
+				Plane
+			);
 
 
 			IFunc							healthMultiplier;
@@ -555,7 +554,7 @@ namespace Objects
 
 	
 		extern Turret	terraformer,mechanic,
-						artillery,launcher,emp,armored,
+						artillery,launcher,rockets,emp,armored,
 						bomb,
 						munitionTransporter,
 						radar,resourceScanner
@@ -577,6 +576,11 @@ namespace Objects
 		};
 
 		namespace Launcher
+		{
+			void		Configure(Turret&);
+		};
+
+		namespace Rockets
 		{
 			void		Configure(Turret&);
 		};

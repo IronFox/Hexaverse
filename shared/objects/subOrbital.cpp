@@ -249,9 +249,9 @@ namespace Objects
 						if (location.height != Height)
 							InsertVehicleIntoGrid(To<Vehicle>::Cast(shared_from_this()),location);
 
-						if (constructionRoundCounter)
+						if (constructionActionCounter)
 						{
-							constructionRoundCounter = 0;
+							constructionActionCounter = 0;
 							RegisterChange(WorldEntity::TasksChanged,entityTime);
 						}
 					}
@@ -284,7 +284,7 @@ namespace Objects
 							/*if (!Grid::LowCellIsClear(destination))
 								destination ++;*/
 							foreach (waypoints,way)
-								if (myTasks.Count() < MaxProductionTasks)
+								if (myTasks.Count() < MaxTasks)
 									RegisterNewJob("", PVehicleJob(new VehicleJob::Sequence(*this,mode)),way);
 								else
 									break;
@@ -415,6 +415,22 @@ namespace Objects
 				return TurretBase::ExtCanHit(owner,TrajectoryEndPoint( attackFrom ),TrajectoryEndPoint( attackTarget ),outExtResult);
 			}
 
+			/*virtual override*/ bool		Raptor::WouldAttack( const PWorldEntity&e, TurretBase::TargetChoice&outTarget, float entityTime)
+			{
+				if (!HasAmmoForShot() || empDamageLevel != 0 || IsHibernating() || owner->IsAlliedWith(e->owner))
+				{
+					//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
+					return false;
+				}
+
+				return		//owner->canSee.IsSet(target)
+						/*&&	*/turret->CanAttack() 
+						&& entityTime <= entityTime 
+						&& CountPossibleAttacks() > 0 
+						&& ExtCanHit(location,e->location,outTarget);
+			}
+
+
 
 
 			/*virtual override*/ bool	Plane::AttackNext(Grid::LCellIdI target, bool autoTarget)
@@ -422,11 +438,6 @@ namespace Objects
 				ASSERT__(!TasksAreLocked());
 				if (!CanAttack())
 					return false;
-				if (myTasks.Count() >= MaxStructureTasks)
-				{
-					LogEvent(EventClass::Preset::commandRejected,this,"Max queue length ("+String(MaxStructureTasks)+") reached");
-					return false;
-				}
 				Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
 				if (target == pointOfOrigin && turret->trajectoryType != TrajectoryType::VerticalBeam)
 				{
@@ -449,12 +460,24 @@ namespace Objects
 
 				if (!HasTasks() || !myTasks.GetNewest().IsMode(CursorMode::AttackMode))
 				{
+					if (myTasks.Count() >= MaxTasks)
+					{
+						LogEvent(EventClass::Preset::commandRejected,this,"Max queue length ("+String(MaxTasks)+") reached");
+						return false;
+					}
+
 					myTasks << Task("Attack Position",target,false,Task::Mode,CursorMode::AttackMode);
 					myTasks.GetNewest().Replot(pointOfOrigin,this,FocusChangeType::FullChange,true);
 					RegisterChange(TasksChanged,-1);
 				}
 				else
 				{
+					if (myTasks.GetNewest().foci.Count() >= MaxFocusPoints)
+					{
+						LogEvent(EventClass::Preset::commandRejected,this,"Max focus point count ("+String(MaxFocusPoints)+") reached");
+						return false;
+					}
+
 					//if (!tasks.GetNewest().foci.Contains(destination))	//irrelevant. attack same location as often as you want
 					{
 						myTasks.GetNewest().foci.Push().target = target;
@@ -471,11 +494,6 @@ namespace Objects
 				ASSERT__(!TasksAreLocked());
 				if (!CanAttack())
 					return false;
-				if (myTasks.Count() >= MaxStructureTasks)
-				{
-					LogEvent(EventClass::Preset::commandRejected,this,"Max queue length ("+String(MaxStructureTasks)+") reached");
-					return false;
-				}
 				Grid::LCellIdI pointOfOrigin = location;
 				if (target == pointOfOrigin && turret->trajectoryType != TrajectoryType::VerticalBeam)
 				{
@@ -498,12 +516,24 @@ namespace Objects
 
 				if (!HasTasks() || !myTasks.GetOldest().IsMode(CursorMode::AttackMode))
 				{
+					if (myTasks.Count() >= MaxTasks)
+					{
+						LogEvent(EventClass::Preset::commandRejected,this,"Max queue length ("+String(MaxTasks)+") reached");
+						return false;
+					}
+
 					myTasks.PushFront(Task("Attack Position",target,false,Task::Mode,CursorMode::AttackMode));
 					myTasks.GetOldest().Replot(pointOfOrigin,this,FocusChangeType::FullChange,true);
 					RegisterChange(TasksChanged,-1);
 				}
 				else
 				{
+					if (myTasks.GetOldest().foci.Count() >= MaxFocusPoints)
+					{
+						LogEvent(EventClass::Preset::commandRejected,this,"Max focus point count ("+String(MaxFocusPoints)+") reached");
+						return false;
+					}
+
 					//if (!tasks.GetNewest().foci.Contains(destination))	//irrelevant. attack same location as often as you want
 					{
 						myTasks.GetOldest().foci.PushFront().target = target;

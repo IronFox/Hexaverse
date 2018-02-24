@@ -81,6 +81,7 @@ namespace ApplicationInterface
 	void	SignalDisappearanceToHostileFaction(const Objects::PFaction&target, const Objects::PWorldEntity&e, float atTime);
 	void	SignalAppearanceToHostileFaction(const Objects::PFaction&target, const Objects::PWorldEntity&e, float atTime);
 	void	SignalOwnershipChange(const Objects::PWorldEntity&e,const Objects::PFaction&target, float t);
+	void	SignalFactionDied(const Objects::PFaction&);
 	void	SignalNexusControlChange(const Objects::PAlliance&);
 	void	SignalChainReactionExplosion(const Objects::PWorldEntity&causedBy, const Grid::LCellIdI&center, float radius, int damageLevel, float atTime);
 	void	SignalOperationLacksResources(const Objects::WorldEntity&, const Ctr::ArrayRef<Objects::Resource>&resources, float atTime);
@@ -98,6 +99,12 @@ namespace ApplicationInterface
 	Signals that the specified alliance has gained or lost members
 	*/
 	void	SignalAllianceMembershipChange(const Objects::PFaction&);
+
+	/**
+	Signals a change in invite configuration of the specified faction to the specified alliance.
+	Triggers a transmission to clients.
+	*/
+	void	SignalAllianceInvite(const Objects::PAlliance&, const Objects::PFaction&,BYTE type);
 
 
 #endif

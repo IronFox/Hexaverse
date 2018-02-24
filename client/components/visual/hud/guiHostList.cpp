@@ -7,10 +7,10 @@
 #include <io/string_file.h>
 #include <runtimeConfig.h>
 #include "../../clientRuntimeConfig.h"
-#include "../../serverProcess.h"
+#include <serverProcess.h>
 #include "../../audio/music.h"
 #include "../../clientEvents.h"
-
+#include "menu.h"
 
 #ifdef HAS_WINDOW
 
@@ -18,12 +18,12 @@ namespace HUD{namespace HostList{
 
 	using namespace Component;
 
-	class VisualAttachment: public Network::ServerInfo::VisualAttachment
-	{
-	public:
-		PLabel			headLine;	//game/server ids, optionally (continue)
-		PButtonPanel	buttonPanel;
-	};
+	//class VisualAttachment: public Network::ServerInfo::VisualAttachment
+	//{
+	//public:
+	//	PLabel			headLine;	//game/server ids, optionally (continue)
+	//	PButtonPanel	buttonPanel;
+	//};
 
 	const float4 incompatibleColor(1,0.6,0.55,1);
 
@@ -109,7 +109,7 @@ namespace HUD{namespace HostList{
 		const index_t tabIndex = context->CountComponents();
 		PLabel label=MakeHeaderLabel(name/*+"["+String(tabIndex)+"]"*/,1.1f,tabIndex);
 		label->Anchor().Top(verticalSpacing).RightOfLastOf(context,0.f);
-		context->AddComponent(label);
+		context->AddComponent(label,CLOCATION);
 		label->SetColor(color);
 		//label->fillBackground = true;
 		return label;
@@ -123,9 +123,7 @@ namespace HUD{namespace HostList{
 	static String CompileRules(const Protocol::ServerInfo&info)
 	{
 		String result;
-		if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::ConfigurationMode)
-			result += "Interactive Configuration Mode";
-		else if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::TutorialMode)
+		if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::TutorialMode)
 			result += "Tutorial Mode";
 		else if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::GameHasEnded)
 			result += "Game Has Ended";
@@ -201,27 +199,28 @@ namespace HUD{namespace HostList{
 		float4 color(1);
 		if (!info.rightVersion || info.protocolIncompatible)
 			color = incompatibleColor;
+		PButtonPanel p;// = To<VisualAttachment>::Cast(info.visualAttachment)->buttonPanel;
 
-
-		if (info.visualAttachment)
+		//if (info.visualAttachment)
+		//{
+		//	To<VisualAttachment>::Cast(info.visualAttachment)->buttonPanel->ClearComponents();
+		//}
+		//else
 		{
-			To<VisualAttachment>::Cast(info.visualAttachment)->buttonPanel->ClearComponents();
-		}
-		else
-		{
-			auto attach = new VisualAttachment();
-			info.visualAttachment.reset(attach);
+			//auto attach = new VisualAttachment();
+			//info.visualAttachment.reset(attach);
 
-			attach->buttonPanel.reset(new ButtonPanel());
-			auto p = attach->buttonPanel;
+			//attach->buttonPanel.reset(new ButtonPanel());
+			//auto p = attach->buttonPanel;
+			p = PButtonPanel(new ButtonPanel());
+
 			p->Anchor().FillHorizontally().Top();
 			p->SetAutomaticHeight(true);
 			bool versionMatch = info.rightVersion;
 
 			TUniqueID id = info.id;
-			const bool isConfigurationMode = (host.serverInfo.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::ConfigurationMode) != 0;
 			const bool isTutorialMode = (host.serverInfo.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::TutorialMode) != 0;
-			const bool requireLocalhost = isConfigurationMode || isTutorialMode;
+			const bool requireLocalhost = isTutorialMode;
 
 			p->SetCheck([versionMatch,id,requireLocalhost]()
 			{
@@ -300,13 +299,14 @@ namespace HUD{namespace HostList{
 				PLabel headLine = MakeHeaderLabel(text,1.1f,0);
 				headLine->SetColor(color);
 				SetTop(headLine,0.01f);
-				attach->headLine = headLine;
+				//attach->headLine = headLine;
+
+				p->AddComponent(headLine,CLOCATION);
+
 			}
 		}
 
 
-		PButtonPanel p = To<VisualAttachment>::Cast(info.visualAttachment)->buttonPanel;
-		p->AddComponent(To<VisualAttachment>::Cast(info.visualAttachment)->headLine);
 
 
 		bool incompatible = !info.rightVersion || info.protocolIncompatible;
@@ -342,7 +342,7 @@ namespace HUD{namespace HostList{
 					cfg.BeneathLastOf(p);
 				}
 			}
-			p->AddComponent( label );
+			p->AddComponent( label, CLOCATION );
 		}
 
 		if (!info.rightVersion && !info.protocolIncompatible)
@@ -350,12 +350,12 @@ namespace HUD{namespace HostList{
 			PLabel label = MakeHeaderLabel("Server identifies as '"+String(host.serverInfo.hostInfo.version)+'\'',0.7f,0);
 			label->SetColor(incompatibleColor);
 			label->Anchor().BeneathLastOf(p,Distance::GameWindow( 0.005f ));
-			p->AddComponent( label );
+			p->AddComponent( label ,CLOCATION);
 					
 			label = MakeHeaderLabel("Client expected '" SERVER_NAME "\'",0.7f,0);
 			label->SetColor(incompatibleColor);
 			label->Anchor().BeneathLastOf(p,Distance::GameWindow( 0.005f ));
-			p->AddComponent( label );
+			p->AddComponent( label ,CLOCATION);
 		}
 
 		p->SetAutoHeightSpacing(0.01f);
@@ -401,7 +401,7 @@ namespace HUD{namespace HostList{
 		SetTop(serverChoice,0.1f);
 		serverChoice->SetMaxAutoHeight(0.8f);
 
-		serverChoice->AddComponent(headerRow);
+		serverChoice->AddComponent(headerRow,CLOCATION);
 		if (!headerRow->HasComponents())
 		{
 			AddMainHeader("HostID/WorldID");
@@ -423,7 +423,7 @@ namespace HUD{namespace HostList{
 		}
 		serverListPanel->ClearComponents();
 		serverListPanel->Anchor().BeneathAllOf(serverChoice);
-		serverChoice->AddComponent( serverListPanel );
+		serverChoice->AddComponent( serverListPanel,CLOCATION );
 
 
 		static Buffer0<Network::ServerAddress>	list;
@@ -434,21 +434,21 @@ namespace HUD{namespace HostList{
 			p->Anchor()
 				.BeneathLastOf(serverListPanel,Distance::GameWindow( 0.015f ))
 				.FillHorizontally();
-			p->SetAutomaticHeight(true);
+			//p->SetAutomaticHeight(true);
 			p->SetBackgroundTransparent();
 
 			PPanel pb(new Panel());
 			//pb->autoHeight = true;
-			p->AddComponent( pb );
+			p->AddComponent( pb ,CLOCATION);
 			pb->Anchor().FillVertically().Left();
 			
 			
 
-			PLabel label = MakeHeaderLabel("Still trying to query '"+ToString(*failed)+"'...",0.7f,0);
+			PLabel label = MakeHeaderLabel("Still trying to reach '"+ToString(*failed)+"'...",0.7f,0);
 //			label->anchorConfig.Left().Set(0.1f,false);
 			label->SetColor(1,0.75f,0.75f,0.9f);
-			label->Anchor().Top(Distance::GameWindow( 0.01f )).Right(Distance::GameWindow( 0.01f ));
-			pb->AddComponent( label );
+			label->Anchor().Top(Distance::GameWindow( 0.01f )).FillHorizontally();//.Right(Distance::GameWindow( 0.01f ));
+			pb->AddComponent( label,CLOCATION );
 			Network::ServerAddress url = *failed;
 			PButton forget(new Button("Forget this host",
 			[url]()
@@ -474,10 +474,10 @@ namespace HUD{namespace HostList{
 			forget->LockToIdealWidth();
 			forget->Anchor().Top().Right();
 		
-			p->AddComponent( forget );
-			pb->Anchor().LeftOf(forget,Distance(10,Distance::Type::AbsolutePixels));
+			p->AddComponent( forget ,CLOCATION);
+			pb->Anchor().FillHBetween(nullptr,forget,Distance(),Distance(10,Distance::Type::AbsolutePixels));
 
-			serverListPanel->AddComponent( p );
+			serverListPanel->AddComponent( p ,CLOCATION);
 		}
 
 		for (index_t i = 0; i < Network::servers.Count(); i++)
@@ -487,7 +487,7 @@ namespace HUD{namespace HostList{
 			PButtonPanel p = ConstructPanel(info);
 
 			p->Anchor().BeneathLastOf(serverListPanel,Distance::GameWindow( 0.015f ));
-			serverListPanel->AddComponent( p );
+			serverListPanel->AddComponent( p ,CLOCATION);
 		}
 
 		//count_t openAttempts = 0;
@@ -500,13 +500,13 @@ namespace HUD{namespace HostList{
 		{
 			PPanel p(new Panel());
 			p->Anchor().BeneathAllOf(serverChoice, Distance::GameWindow(0.025f ));
-			serverChoice->AddComponent( p );
+			serverChoice->AddComponent( p ,CLOCATION);
 			p->SetBackgroundTransparent();
 
 			PLabel label = MakeHeaderLabel(" No Servers Found",0.7f,0);
 			label->Anchor().Left(Distance::GameWindow( 0.1f ));
 			label->SetColor(1,1,1,0.7f);
-			p->AddComponent( label );
+			p->AddComponent( label ,CLOCATION);
 			p->SetAutomaticHeight(true);
 			p->SetAutoHeightSpacing(p->GetAutoHeightSpacing() * 4.f);
 
@@ -540,14 +540,14 @@ namespace HUD{namespace HostList{
 			}
 			b->LockToIdealWidth();
 
-			serverChoice->AddComponent( b );
+			serverChoice->AddComponent( b ,CLOCATION);
 			
 			addHostButton = b;
 		}
 		
 
 		{
-			PButton start(new Button("Start local server"));
+			PButton start(new Button("Start local server..."));
 			PButton stop(new Button("Stop local server"));
 			bool running = ServerProcess::IsRunning();
 			stop->SetEnabled(running);
@@ -556,13 +556,15 @@ namespace HUD{namespace HostList{
 			WButton wstop = stop;
 			start->SetTriggerFunction([wstart,wstop]()
 			{
-				ServerProcess::Begin(true);
+				HUD::WindowStack::Show(HUD::Menu::startServer);
+/*
+				ServerProcess::Begin(true,false);
 				PButton b = wstart.lock();
 				if (b)
 					b->SetEnabled(false);
 				b = wstop.lock();
 				if (b)
-					b->SetEnabled(true);
+					b->SetEnabled(true);*/
 			});
 			stop->SetTriggerFunction([wstart,wstop]()
 			{
@@ -592,8 +594,8 @@ namespace HUD{namespace HostList{
 				mod.RightOf(start,0.02f);
 			}
 
-			serverChoice->AddComponent(start);
-			serverChoice->AddComponent(stop);
+			serverChoice->AddComponent(start,CLOCATION);
+			serverChoice->AddComponent(stop,CLOCATION);
 		}
 		
 

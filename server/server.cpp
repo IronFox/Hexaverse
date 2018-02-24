@@ -27,7 +27,6 @@
 #include "components/journalSaveGame.h"
 #include "components/reflection.h"
 #include <luaInterface.h>
-#include "components/configurationMode.h"
 #include "components/nexusThreatHandling.h"
 
 UINT32 ApplicationInterface::globalVersionOfCurrentFile = 0;	//file version being loaded right now
@@ -110,7 +109,7 @@ namespace ApplicationInterface
 		const Objects::Structure&v = *s;
 
 
-		LogEvent(EventSignificance::Common,s.get(),"Signalling new structure to owner at t="+String(atTime));
+		LogEvent(EventSignificance::Debug,s.get(),"Signalling new structure to owner at t="+String(atTime));
 		Protocol::StructureConstruction	w;
 		Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),atTime);
 		Game::Network::Describe(w,*s,true,timestamp);
@@ -324,15 +323,14 @@ namespace ApplicationInterface
 	}
 
 
-	void	SignalNexusControlChange(const Objects::PAlliance&a)
+	void	SignalNexusControlChange( const Objects::PAlliance&a )
 	{
 		if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
 			return;
-		if (RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::ConquerNexus)
 		{
 			auto stats  = a->GetNexusStats();
 
-			if (stats.nexusControl >= Game::Config::GetTargetNexusCount())
+			if (RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::ConquerNexus && stats.nexusControl >= Game::Config::GetTargetNexusCount())
 				Game::DeclareWinner(a);
 			else
 			{
@@ -351,6 +349,26 @@ namespace ApplicationInterface
 		}
 	}
 
+	void	SignalFactionDied(const Objects::PFaction&f)
+	{
+		Channels::KillFaction.SendTo(Network::server,f->id,Channels::Level::Faction);
+		Network::tokenMap.Unset(f->accessToken);
+		Network::PClient client;
+		if (Network::playerMap.Query(f,client))
+		{
+			auto peer = client->peer.lock();
+			if (peer)
+			{
+				/*
+				There are numerous issues with keeping dead factions alive, if member of an alliance:
+				* Allied terrain sensor updates are sent only if terraforming operations have been performed
+				* Allied units are still shown, and animated/updated, but dead client colors all terrain as fog of war
+				*/
+				LogEvent(EventSignificance::ClientFatal,peer,"Faction died. Disconnecting client");
+				peer->DisconnectPeer();
+			}
+		}
+	}
 
 
 	void	SignalAttack(const TAttack&attack)
@@ -411,8 +429,9 @@ namespace ApplicationInterface
 		else
 		{
 			static Grid::HighSetup::TVolumeDescriptor volume;
+			static Grid::HighSetup::TVolumeDescriptor::Operator op;
 			M::Sphere<> explosionSphere(center,explosionRadius);
-			Grid::high.GenerateVolume(explosionSphere,volume);
+			Grid::high.GenerateVolume(explosionSphere,op,volume);
 
 			Objects::ForeachFaction([explosionSphere,&atTime](const Objects::PFaction&f)
 			{
@@ -517,9 +536,9 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 	try
 	{
-		PathString out = RuntimeConfig::ConfigFile("saves/crash.hsf");
+		PathString out = RuntimeConfig::sharedConfig.Lookup("saves/crash.hsf");
 		Logging::WriteEvent(EventClass::Preset::uncommon,"Trying to save game to "+String(out),nullptr,nullptr,nullptr);
-		FileIO::Save(out,RuntimeConfig::phase);
+		FileIO::Save(out,RuntimeConfig::Phase::CommandPhase);
 		Logging::WriteEvent(EventClass::Preset::uncommon,"Success",nullptr,nullptr,nullptr);
 	}
 	catch (...)
@@ -527,14 +546,6 @@ void MyFatal(const FatalDescriptor&descriptor)
 		Logging::WriteEvent(EventClass::Preset::error,"Failed to save to file",nullptr,nullptr,nullptr);
 	}
 
-	#ifdef _DEBUG
-		__debugbreak();
-		std::abort();
-
-		char confirm[0x100];
-		std::cin.getline(confirm,sizeof(confirm));
-
-	#endif
 
 	TerminateNow(true);
 
@@ -627,21 +638,15 @@ namespace ParameterConfig
 {
 	UINT16 basePort = DEFAULT_SERVER_BASE_PORT;
 	
-	enum mode_t
-	{
-		Idle,
-		ExpectPort,
-		ExpectWorldID,
-		ExpectFilename,
-		ExpectAutoSaveNumber,
 
-	};
-	mode_t mode = Idle;
+	typedef std::function<void(const char*)> FOnParam;
 
-	PathString	loadFile;
+	FOnParam	onParam;
+
+	PathString	loadFile,customConfigPath,outConfigPath;
 	bool	startOffline = false,
-			startInConfig = false,
-			startInTutorial = false;
+			startInTutorial = false,
+			heartBeat = false;
 	bool	customWorldID = false;
 	bool	enableRemoteControl = true;
 	const char*	programName="";
@@ -664,12 +669,14 @@ namespace ParameterConfig
 		std::cout << "  --load/-l <filename>\tLoad savegame"<<std::endl;
 		std::cout << "  --loadAuto/-a <0-9>\tLoad auto-savegame. number=0 => most recent"<<std::endl;
 		std::cout << "  --offline/-o \tStart offline"<<std::endl;
-		std::cout << "  --config/-c \tStart in configuration mode"<<std::endl;
+		std::cout << "  --heartbeat/-b \tRequire localhost client heartbeat every 3 seconds or quit"<<std::endl;
 		std::cout << "  --tutorial/-t \tStart in tutorial mode"<<std::endl;
 		std::cout << "  --port/-p <1025-65533>\tUse a non-default base port ("<<DEFAULT_SERVER_BASE_PORT<<" is default). Three successive ports are used"<<std::endl;
 		std::cout << "  --noRemote/-r \tDisable remote control service"<<std::endl;
 		std::cout << "  --rv4\tStart remote control service using IPv4"<<std::endl;
 		std::cout << "  --test \tRun self-tests, then quit"<<std::endl;
+		std::cout << "  --config/-c <config path>\tLoad specified path instead of user configuration"<<std::endl;
+		std::cout << "  --generate/-g <config path>\tGenerate specified configuration file, then quit. Executed once config is loaded"<<std::endl;
 		std::cout << "  --version/-v \tShow version, then quit"<<std::endl;
 		//std::cout << "  --world/-w [worldID] \tuse custom world ID, and start empty"<<std::endl;
 	}
@@ -679,78 +686,24 @@ namespace ParameterConfig
 	void	Process( const char*arg )
 	{
 		LogEvent(EventSignificance::Debug,"ParameterConfig::Process: '"+String(arg)+"'");
-		switch (mode)
+		if (onParam)
 		{
-			case ExpectWorldID:
-				Bin2Str::Convert(World::worldID.bytes,World::worldID.NumBytes,arg,strlen(arg));
-				LogEvent(EventClass::Preset::configuration,"World ID set to "+World::worldID.ToFullString());
-				mode = Idle;
-				customWorldID = true;
+			onParam(arg);
+			onParam = nullptr;
 			return;
-			case ExpectFilename:
-				loadFile = arg;
-				mode = Idle;
-			break;
-			case ExpectAutoSaveNumber:
+		}
+		if (!strcmp(arg,"--test"))
+			inTestMode = true;
+		elif (!strcmp(arg,"--rv4"))
+			controlProtocol = TCP::Server::Protocol::IPv4;
+		elif (!strcmp(arg,"--version") || !strcmp(arg,"-v"))
+		{
+			std::cout << SERVER_NAME<<std::endl;
+			exit(0);
+		}
+		elif (!strcmp(arg,"--port") || !strcmp(arg,"-p"))
+			onParam = [](const char*arg)
 			{
-				mode = Idle;
-				index_t index;
-				if (!convert(arg,index))
-				{
-					LogEvent(EventClass::Preset::configurationError,"Unable to convert '"+String(arg)+"' to a valid index");
-					return;
-				}
-				loadFile = FileIO::GetAutoSavePath(index);
-			}
-			break;
-			case Idle:
-				if (!strcmp(arg,"--test"))
-					inTestMode = true;
-				elif (!strcmp(arg,"--rv4"))
-					controlProtocol = TCP::Server::Protocol::IPv4;
-				elif (!strcmp(arg,"--version") || !strcmp(arg,"-v"))
-				{
-					std::cout << SERVER_NAME<<std::endl;
-					exit(0);
-				}
-				elif (!strcmp(arg,"--port") || !strcmp(arg,"-p"))
-					mode = ExpectPort;
-				elif (!strcmp(arg,"--offline") || !strcmp(arg,"-o"))
-					startOffline = true;
-				elif (!strcmp(arg,"--config") || !strcmp(arg,"-c"))
-					startInConfig = true;
-				elif (!strcmp(arg,"--tutorial") || !strcmp(arg,"-t"))
-				{
-					loadFile = "config/tutorial.hsf";
-					startInTutorial = true;
-				}
-				elif (!strcmp(arg,"--loadAuto") || !strcmp(arg,"-a"))
-					mode = ExpectAutoSaveNumber;
-				elif (!strcmp(arg,"--help") || !strcmp(arg,"-h"))
-				{
-					PrintHelp();
-					exit(0);
-				}
-				elif (!strcmp(arg,"--world") || !strcmp(arg,"-w"))
-					mode = ExpectWorldID;
-				elif (!strcmp(arg,"-r") || !strcmp(arg,"--noRemote"))
-					enableRemoteControl = false;
-				elif (!strcmp(arg,"--load") || !strcmp(arg,"-l"))
-					mode = ExpectFilename;
-				else
-				{
-					PathString path = arg;
-					if (path.EndsWithIgnoreCase(FileIO::savFileExtension) && FileSystem::IsFile(arg))
-					{
-						mode = ExpectFilename;
-						Process(arg);
-						return;
-					}
-					LogEvent(EventClass::Preset::configurationError, "Unsupported runtime parameter '"+String(arg)+"'");
-					PrintHelp();
-				}
-			return;
-			case ExpectPort:
 				if (!convert(arg,basePort))
 				{
 					LogEvent(EventClass::Preset::configurationError,"Unable to convert '"+String(arg)+"' to a valid port number");
@@ -760,12 +713,70 @@ namespace ParameterConfig
 					Network::Config::sessionPort = basePort + PortOffset::Session;
 					LogEvent(EventClass::Preset::configuration,"Base port redefined as "+String(basePort)+", session port set to "+String(Network::Config::sessionPort));
 				}
-				mode = Idle;
-			return;
+
+			};
+		elif (!strcmp(arg,"--offline") || !strcmp(arg,"-o"))
+			startOffline = true;
+		elif (!strcmp(arg,"--heartbeat") || !strcmp(arg,"-b"))
+			heartBeat = true;
+		elif (!strcmp(arg,"--tutorial") || !strcmp(arg,"-t"))
+		{
+			loadFile = "config/tutorial.hsf";
+			startInTutorial = true;
+		}
+		elif (!strcmp(arg,"--loadAuto") || !strcmp(arg,"-a"))
+			onParam = [](const char*arg)
+			{
+				index_t index;
+				if (!convert(arg,index))
+				{
+					LogEvent(EventClass::Preset::configurationError,"Unable to convert '"+String(arg)+"' to a valid index");
+					return;
+				}
+				loadFile = FileIO::GetAutoSavePath(index);
+			};
+		elif (!strcmp(arg,"--help") || !strcmp(arg,"-h"))
+		{
+			PrintHelp();
+			exit(0);
+		}
+		elif (!strcmp(arg,"--world") || !strcmp(arg,"-w"))
+			onParam = [](const char*arg)
+			{
+				Bin2Str::Convert(World::worldID.bytes,World::worldID.NumBytes,arg,strlen(arg));
+				LogEvent(EventClass::Preset::configuration,"World ID set to "+World::worldID.ToFullString());
+				customWorldID = true;
+			};
+		elif (!strcmp(arg,"-r") || !strcmp(arg,"--noRemote"))
+			enableRemoteControl = false;
+		elif (!strcmp(arg,"-c") || !strcmp(arg,"--config"))
+		{
+			onParam = [](const char*arg)
+			{
+				customConfigPath = arg;
+				LogEvent(EventClass::Preset::configuration,"Loading configuration from custom path "+String(arg));
+			};
+		}
+		elif (!strcmp(arg,"-g") || !strcmp(arg,"--generate"))
+			onParam = [](const char*arg){ outConfigPath = arg;};
+		elif (!strcmp(arg,"--load") || !strcmp(arg,"-l"))
+			onParam = [](const char*arg)
+			{
+				loadFile = arg;
+				LogEvent(EventClass::Preset::configuration,"Loading save game from "+String(arg));
+			};
+		else
+		{
+			PathString path = arg;
+			if (path.EndsWithIgnoreCase(RuntimeConfig::savFileExtension) && FileSystem::IsFile(arg))
+			{
+				loadFile = arg;
+				return;
+			}
+			LogEvent(EventClass::Preset::configurationError, "Unsupported runtime parameter '"+String(arg)+"'");
+			PrintHelp();
 		}
 	}
-
-
 }
 
 
@@ -829,17 +840,13 @@ bool	IsTargetWorkingDirectory(const PathString&dir)
 
 int main( int argc, const char* argv[])
 {
-	
-
 	Except::onFatal = MyFatal;
-//	return LuaRun(argc,argv);
-
-
 	try
 	{
 
-		RuntimeConfig::InitConfigDir("server");
-		ASSERT__(FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("logs")));
+		RuntimeConfig::myConfig.InitConfigDir("server");
+		RuntimeConfig::sharedConfig.InitConfigDir("shared");
+		ASSERT__(FileSystem::CreateDirectory(RuntimeConfig::myConfig.Lookup("logs")));
 
 
 		TCP::onIgnoredException = [](const TCodeLocation&loc, const std::exception&ex)
@@ -852,6 +859,8 @@ int main( int argc, const char* argv[])
 		};
 
 		SetConsoleCtrlHandler(MyHandlerRoutine,TRUE);
+		Sys::DisableConsoleQuickEdit();
+
 
 		{
 			wchar_t path[MAX_PATH];
@@ -872,7 +881,7 @@ int main( int argc, const char* argv[])
 		for (int i = 1; i < argc; i++)
 			ParameterConfig::Process(argv[i]);
 
-		Logging::Begin(RuntimeConfig::ConfigFile(PathString("logs/server "+Logging::TimeStamp(true)+".log")));
+		Logging::Begin(RuntimeConfig::myConfig.Lookup(PathString("logs/server "+Logging::TimeStamp(true)+".log")));
 		LogEvent(EventSignificance::Uncommon,nullptr,"Starting server v" PRODUCT_VERSION);
 
 
@@ -888,22 +897,31 @@ int main( int argc, const char* argv[])
 		Network::serverID.Generate();
 		UDPBroadCast::Create(ParameterConfig::basePort,Network::serverID);
 
-		if (ParameterConfig::enableRemoteControl)
-			RemoteControl::Start(ParameterConfig::basePort,ParameterConfig::controlProtocol);
-
 
 
 
 
 		Reflection::Create();
 		Reflection::state.PushFocus();
-		Reflection::state.EnterNewFolder("/Online");
+		Reflection::state.EnterNewFolder("/Server/Online");
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("udpBroadcast",UDPBroadCast::IsStarted,UDPBroadCast::Stop,[](){UDPBroadCast::Start();})));
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("info",[]()->bool{return Network::InformationProvider::IsOnline();},Network::InformationProvider::Stop,[](){Network::InformationProvider::Start(ParameterConfig::basePort);})));
-		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("session",[]()->bool{return Network::server.IsOnline();},[](){Network::SuspendSession();},[](){Network::RestartSession(false);})));
-		Reflection::state.DefineCommand("closeSession",(CLI::Command::function0_t)[](){Network::CloseSession();},CLI::NoCompletion);	//why...?
+		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("session",
+			[]()->bool{return Network::SessionIsStarted();},
+			[](){Network::SuspendSession();},
+			[](){
+				Network::RestartSession(false);
+			}))
+		);
+		//Reflection::state.DefineCommand("closeSession",(CLI::Command::function0_t)[](){Network::CloseSession();},CLI::NoCompletion);	//why...?
 
 		Reflection::state.PopFocus();
+
+		Reflection::state.DefineCommand("/Server/describeStatus",(CLI::Command::function0_t)[]()
+		{
+			RemoteControl::RelayEvent(Network::DescribeStatus());
+			Network::DescribeConfiguration([](const String&line){RemoteControl::RelayEvent(line);});
+		},CLI::NoCompletion);
 
 		Reflection::state.DefineCommand("/Server/shutdown",(CLI::Command::function0_t)[]()
 		{
@@ -917,13 +935,13 @@ int main( int argc, const char* argv[])
 			Reflection::state.DefineCommand("autoSaveNow",FileIO::AutoSave,CLI::NoCompletion);
 			Reflection::state.DefineCommand("saveTo fileName",(CLI::Command::function1_t)[](const String&path0)
 			{
-				PathString saveDirPath = RuntimeConfig::ConfigFile("saves");
+				PathString saveDirPath = RuntimeConfig::sharedConfig.Lookup("saves");
 				FileSystem::ForceCreateDirectory( saveDirPath );
 				FileSystem::Directory saveDir = saveDirPath;
 				FileSystem::File file;
 				PathString path = PathString(path0);
-				if (!path.EndsWithIgnoreCase('.'+FileIO::savFileExtension))
-					path += '.' + FileIO::savFileExtension;
+				if (!path.EndsWithIgnoreCase(RuntimeConfig::savFileExtension))
+					path += RuntimeConfig::savFileExtension;
 				if (!saveDir.FindFile(path,file,false))
 				{
 					LogEvent(EventClass::Preset::remoteControlError,"Unable to save to '"+String(path)+"'. Invalid path");
@@ -934,13 +952,13 @@ int main( int argc, const char* argv[])
 
 			Reflection::state.DefineCommand("loadFrom fileName",(CLI::Command::function1_t)[](const String&path0)
 			{
-				PathString saveDirPath = RuntimeConfig::ConfigFile("saves");
+				PathString saveDirPath = RuntimeConfig::sharedConfig.Lookup("saves");
 				FileSystem::Directory saveDir = saveDirPath;
 				
 				FileSystem::File file;
 				PathString path = PathString(path0);
-				if (!path.EndsWithIgnoreCase('.'+FileIO::savFileExtension))
-					path += '.' + FileIO::savFileExtension;
+				if (!path.EndsWithIgnoreCase(RuntimeConfig::savFileExtension))
+					path += RuntimeConfig::savFileExtension;
 				if (!saveDir.FindFile(path,file,true))
 				{
 					LogEvent(EventClass::Preset::remoteControlError,"Unable to load '"+String(path)+"'. File does not exist");
@@ -974,9 +992,9 @@ int main( int argc, const char* argv[])
 				Network::server.VisitAllPeers([localhost,other](const TCP::PPeer&p)
 				{
 					if (p->IsLocalhost())
-						Channels::gameConfig.SendTo(p,localhost);
+						Channels::GameConfig.SendTo(p,localhost);
 					else
-						Channels::gameConfig.SendTo(p,other);
+						Channels::GameConfig.SendTo(p,other);
 				});
 
 
@@ -989,7 +1007,7 @@ int main( int argc, const char* argv[])
 		{
 			if (planet.IsNotEmpty())
 			{
-				if (!World::IsPlanetIniFile(planet+".ini"))
+				if (!World::IsPlanet(planet))
 				{
 					LogEvent(EventClass::Preset::remoteControlError,"'"+planet+"' is not a valid planet type");
 					return;
@@ -1029,7 +1047,17 @@ int main( int argc, const char* argv[])
 		#endif
 
 		if (!inTestMode)
-			Reflection::Load(false);
+		{
+			Reflection::Load(ParameterConfig::customConfigPath);
+			if (ParameterConfig::outConfigPath.IsNotEmpty())
+			{
+				Reflection::SaveRootConfigTo(ParameterConfig::outConfigPath);
+				mainThreadDone.release();
+				Journal::Destroy();
+				TerminateNow(true);
+				return 0;
+			}
+		}
 
 		Objects::Faction::RecreateNexus();
 
@@ -1082,13 +1110,13 @@ int main( int argc, const char* argv[])
 		{
 			Logging::WriteEvent(EventSignificance::Uncommon,"Testing server.",nullptr,nullptr,nullptr);
 
-			FileIO::Save(PathString("test0."+FileIO::savFileExtension),RuntimeConfig::phase);
-			FileIO::Load(PathString("test0."+FileIO::savFileExtension));
-			FileIO::Save(PathString("test1."+FileIO::savFileExtension),RuntimeConfig::phase);
+			FileIO::Save(PathString("test0"+RuntimeConfig::savFileExtension),RuntimeConfig::phase);
+			FileIO::Load(PathString("test0"+RuntimeConfig::savFileExtension));
+			FileIO::Save(PathString("test1"+RuntimeConfig::savFileExtension),RuntimeConfig::phase);
 
 			Riff::File a,b;
-			ASSERT__(a.Open(PathString("test0."+FileIO::savFileExtension).c_str()));
-			ASSERT__(b.Open(PathString("test1."+FileIO::savFileExtension).c_str()));
+			ASSERT__(a.Open(PathString("test0"+RuntimeConfig::savFileExtension).c_str()));
+			ASSERT__(b.Open(PathString("test1"+RuntimeConfig::savFileExtension).c_str()));
 			Ctr::Buffer<Riff::TID>	stack;
 			FileIO::Compare(a,b,stack);
 
@@ -1103,24 +1131,22 @@ int main( int argc, const char* argv[])
 				FileIO::Load(filename);
 			}
 			else
-				Logging::WriteEvent(EventClass::Preset::fileError,"Specified file ("+String(filename)+") does not exist. Skipping loading operation.",nullptr,nullptr,nullptr);
+				LogEvent(EventClass::Preset::fileError,"Specified file ("+String(filename)+") does not exist. Skipping loading operation.");
 		}
 		RuntimeConfig::tutorialMode = ParameterConfig::startInTutorial;
 
+
+		if (ParameterConfig::heartBeat)
+			Network::StartHeartbeat(ParameterConfig::basePort);
+
 		if (!ParameterConfig::startOffline)
-		{
-			if (ParameterConfig::startInConfig)
-			{
-				ConfigurationMode::Begin();
-			}
 			StartUp();
-		}
 
 
-		//Journal::globalWriter.InitNew(RuntimeConfig::ConfigFile("saves/log"));
-		//Journal::globalWriter.ContinueExisting(RuntimeConfig::ConfigFile("saves/log"));
+		//Journal::globalWriter.InitNew(RuntimeConfig::Lookup("saves/log"));
+		//Journal::globalWriter.ContinueExisting(RuntimeConfig::Lookup("saves/log"));
 
-		Logging::WriteEvent(EventSignificance::Uncommon, "Preparation of world '"+World::worldID.ToNiceString()+"'/" + ToString(World::worldID) + " completed.", nullptr, nullptr,nullptr);
+		LogEvent(EventSignificance::Uncommon, "Preparation of world '"+World::worldID.ToNiceString()+"'/" + ToString(World::worldID) + " completed.");
 		
 		Network::LogServerState();
 
@@ -1135,11 +1161,15 @@ int main( int argc, const char* argv[])
 		Game::ResetFactionStartMineralValue();
 
 
+		if (ParameterConfig::enableRemoteControl)
+			RemoteControl::Start(ParameterConfig::basePort,ParameterConfig::controlProtocol);
+
+
 		while (!application_shutting_down && !quitMainLoop)
 		{
 			if (RuntimeConfig::IsInAnyCommandPhase() || RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
 				Sleep(1);
-			Network::server.Resolve();
+			Network::Tick();
 			RemoteControl::Resolve();
 			if (RuntimeConfig::IsInAnyCommandPhase())
 				Game::Vote::CheckAllTimeouts();
@@ -1170,7 +1200,7 @@ int main( int argc, const char* argv[])
 					bool hasNexus = false,nexusWantsNewRound = false;
 					foreach(Network::activePlayersAndSpectators, p)
 					{
-						if ((*p)->isSpectator)	//doesn't count towards new round
+						if (!(*p)->HasLivingFaction()) //don't count towards new round
 							continue;
 						if ((*p)->faction == Objects::Faction::nexus)
 						{

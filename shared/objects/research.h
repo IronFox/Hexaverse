@@ -10,7 +10,7 @@
 #include "../stringTable.h"
 #include "../luaInterface.h"
 #include "../scriptCache.h"
-#include "../observer.h"
+#include <structure/observable.h>
 
 namespace Objects
 {
@@ -225,6 +225,7 @@ namespace Objects
 		static PResearchTopic	GetTopic(index_t);
 		static PResearchTopic	FindTopic(const String&path)	{return FindTopic(path.ref());}
 		static PResearchTopic	FindTopic(const StringRef&path);
+		static PResearchTopic	FindTopicOfPrototype(const PWorldEntity&proto);
 	};
 
 	

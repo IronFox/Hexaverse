@@ -10,6 +10,19 @@ namespace Objects
 		void	DefineWorkingStructure(CommandContainer&container);
 		void	DefineMine(CommandContainer&commands);
 		
+		/**
+		Enters structure placement mode on the selected terraformer.
+		Fails silently if the operation is not possible for any reason.
+		Otherwise activeCursorMode, choiceVis, and activeStructureToPlace are updated accordingly
+
+		@param prototype Structure prototype to queue construction of
+		*/
+		void	TerraformerConstruct(const PStructure&prototype);
+		/**
+		Commits block building or removal operations, if found to be in that mode
+		*/
+		bool	TerraformerCommitOperation();
+
 		
 		/**
 		Creates and defines all commands for all entity types, as well as all global commands.

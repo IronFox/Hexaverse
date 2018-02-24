@@ -110,7 +110,7 @@ namespace Objects
 	template <typename T, typename F>
 		static void InitAttrib(const Lua::Table&source, const String&path, const String&name, LuaAttribute<T,F>&a, bool allowEmpty = false)
 		{
-			Lua::Reference ref = source.GetField(name);
+			Lua::NamedReference ref = source.GetField(name);
 			a.Clear();
 			if (ref.IsEmpty())
 			{
@@ -248,16 +248,15 @@ namespace Objects
 
 		globalState.program0 = ScriptCache::LoadContent(
 			"ResearchState = {}\n"
-			"ResearchState.__index = ResearchState\n"
 			"function ResearchState.New()\n"
 				"local rs = {}\n"
 				"setmetatable(rs,ResearchState)\n"
 				"return rs\n"
 			"end\n"
-			"function ResearchState:Export()\n"
+			"function ResearchState.Export(self)\n"
 				"return 0\n"
 			"end\n"
-			"function ResearchState:Import(exported)\n"
+			"function ResearchState.Import(self, exported)\n"
 			"end\n"
 					"\n"
 		"function DefaultHealthAtCost(cost--[[float]]) --float\n"
@@ -321,6 +320,18 @@ namespace Objects
 			"	DamageLevel = 10,\n"
 			"	ExplosionRadius = 1,\n"
 			"	HorizontalAttackRange = 8,\n"
+			"	IsUnlocked = true,\n"
+			"	},\n"
+			"	RocketLauncher = "
+			"	{\n"
+			"	Cost = 15,\n"
+			"	Weight = 3,\n"
+			"	HealthMultiplier = 2,\n"
+			"	ScanningRange = 5,\n"
+			"	AttacksPerRound = 2,\n"
+			"	DamageLevel = 7,\n"
+			"	ExplosionRadius = 1,\n"
+			"	HorizontalAttackRange = 5,\n"
 			"	IsUnlocked = true,\n"
 			"	},\n"
 			"	Cannon = "
@@ -550,6 +561,7 @@ namespace Objects
 			"	MunitionStorage = DefaultStructure(10),\n"
 			"	NexusPort = ExplicitStructure(0,1,2,false),\n"
 			"	MissileLauncherTower = Tower(TurretConfig.MissileLauncher),\n"
+			"	RocketLauncherTower = Tower(TurretConfig.RocketLauncher),\n"
 			"	RadarTower = Tower(TurretConfig.Radar),\n"
 			"	CannonTower = Tower(TurretConfig.Cannon),\n"
 			"	SurveyorTower = Tower(TurretConfig.Surveyor),\n"
@@ -575,8 +587,11 @@ namespace Objects
 		#if 0 && defined _DEBUG
 			PathString final = factoryDefault;
 		#else
-			FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("config/lua"));
-			PathString final = RuntimeConfig::ConfigFile("config/lua/research.v2.lua");
+			FileSystem::CreateDirectory(RuntimeConfig::myConfig.Lookup("config/lua"));
+			FileSystem::CreateDirectory(RuntimeConfig::sharedConfig.Lookup("config/lua"));
+			PathString final = RuntimeConfig::myConfig.Lookup("config/lua/research.v2.lua");
+			if (!FileSystem::IsFile(final))
+				final = RuntimeConfig::sharedConfig.Lookup("config/lua/research.v2.lua");
 			if (!FileSystem::IsFile(final))
 			{
 				final = factoryDefault;
@@ -790,6 +805,41 @@ namespace Objects
 			if ((*c)->name == name)	//i suspect this is actually faster for slow numbers of topics per family, since it does not force a String copy
 				return *c;
 		return PResearchTopic();
+	}
+
+
+	static PResearchTopic FindTopicOfPrototypeIn(const PResearchTopic&topic, const PWorldEntity&proto)
+	{
+		foreach (topic->children,_c)
+		{
+			const auto&t = *_c;
+			if (t->IsGroup())
+			{
+				const auto&rs = FindTopicOfPrototypeIn(t,proto);
+				if (rs)
+					return rs;
+			}
+			if (t->prototypeReference == proto)
+				return t;
+		}
+		return nullptr;
+	}
+
+	/*static*/ PResearchTopic	ResearchState::FindTopicOfPrototype(const PWorldEntity&proto)
+	{
+		foreach (globalState.allTopics,_t)
+		{
+			const auto&t = *_t;
+			if (t->IsGroup())
+			{
+				const auto&rs = FindTopicOfPrototypeIn(t,proto);
+				if (rs)
+					return rs;
+			}
+			if (t->prototypeReference == proto)
+				return t;
+		}
+		return nullptr;
 	}
 
 

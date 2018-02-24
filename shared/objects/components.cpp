@@ -59,7 +59,7 @@ namespace Objects
 	namespace Component
 	{
 		Turret			terraformer,mechanic,
-						artillery,launcher,emp,armored,
+						artillery,launcher,rockets,emp,armored,
 						bomb,
 						munitionTransporter,
 						radar,resourceScanner
@@ -829,6 +829,10 @@ namespace Objects
 
 
 
+		bool Unlockable(const PStructure&proto)
+		{
+			return proto->IsUnlocked() || proto->CanBeUnlocked();
+		}
 
 		bool			Terraformer::CanBuild(const PStructure&proto)
 		{
@@ -839,6 +843,7 @@ namespace Objects
 					#ifdef NO_MUNITION
 						&& !To<MunitionFactory>::DynamicCast(proto) && !To<MunitionStorage>::DynamicCast(proto)
 					#endif
+				&& Unlockable(proto)
 			;
 		}
 
@@ -943,6 +948,25 @@ namespace Objects
 			component.trajectoryType = TrajectoryType::Missile;
 
 			component.initiative = 70;
+		}
+
+		void			Rockets::Configure(Turret&component)
+		{
+			#ifdef HAS_WINDOW		
+				component.parts.SetSize(1);
+				component.parts.First().LoadFromObj("objects/rockets.obj");
+			#endif
+
+			component.mountType = Turret::MountType::TowerOnly;
+			component.typeName = "Rocket Launcher";
+			component.shortName = " Rockets";
+			component.constName = ConstName::Turret_Rockets;
+
+			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
+				component.baseStorageCapacity.level[Resource::Munitions] = 20;
+			#endif
+
+			component.trajectoryType = TrajectoryType::Missile;
 		}
 
 

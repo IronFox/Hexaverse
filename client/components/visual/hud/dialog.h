@@ -144,8 +144,8 @@ namespace Dialog
 	/**
 	Creates a new modal dialog on top of any other active modal dialogs
 	*/
-	WDialog	Confirm(const String&query, const FOnConfirm&onConfirm, const FCheckState&check);
-	WDialog	Confirm(const String&query, const FOnConfirm&onConfirm);
+	WDialog	Confirm(const String&query, const FOnConfirm&onConfirm, const FCheckState&check, bool failIfModalWindowExists=false);
+	WDialog	Confirm(const String&query, const FOnConfirm&onConfirm, bool failIfModalWindowExists=false);
 
 	WDialog	AskYesNoHelp(const String&query, const String&help, const FOnConfirmBool&onAnswer, const FCheckState&check);
 
@@ -207,6 +207,14 @@ namespace Dialog
 
 
 	
+	void	QueryNickname();
+
+	/**
+	Checks loaded nickname and queries a new one if none or an invalid is currently set.
+	No check is performed if the client is configured to run in AI mode.
+	@return true if a new name was queried, false otherwise. False indicates the currently set name is good, or AI mode is enabled
+	*/
+	bool	QueryNicknameIfEmpty();
 
 
 

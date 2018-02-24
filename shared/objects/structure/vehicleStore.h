@@ -69,7 +69,7 @@ namespace Objects
 			static Geometry			interConnector;
 
 
-			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override {return To<VehicleStore>::DynamicCast(connected) && connected->location.height == location.height ? &interConnector : &standardConnector;}
+			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override {return To<VehicleStore>::DynamicCast(connected) && connected->location.height == location.height ? &interConnector : Super::GetSourceForConnection(connected);}
 			void					VisitParkMembers(const std::function<void(VehicleStore*)>&);
 			void					VisitParkMembers(const std::function<void(const VehicleStore*)>&) const;
 

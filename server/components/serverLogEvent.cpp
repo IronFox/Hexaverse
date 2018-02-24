@@ -38,8 +38,10 @@ namespace Logging
 
 
 		Protocol::ControlMessage out;
-
-		out.message = msg;
+		if (msg.Length() <= out.message.MaxLength)
+			out.message = msg;
+		else
+			out.message = msg.SubString(0,out.message.MaxLength-3)+"...";
 		out.significance = (BYTE)type.significance;
 		out.flavor = (BYTE)type.flavor;
 		out.focus = e ? e->id : (owner ? owner->id : TUniqueID::Empty());

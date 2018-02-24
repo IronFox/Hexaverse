@@ -101,10 +101,11 @@ namespace Objects
 			//case LacksFullFoundation:
 			//	return "LacksFullFoundation";
 			case GroundLevelObstruction:
-				return "GroundLevelObstruction";
+				return "Ground level obstruction";
 			case UpperLevelObstruction:
-				return "UpperLevelObstruction";
-
+				return "Upper level obstruction";
+			case MaxLevelExceeded:
+				return "Maximum level exceeded";
 		}
 		return "Unknown";
 	}
@@ -392,6 +393,9 @@ namespace Objects
 	{
 		if (location.height == badHeight)
 			return BadHeight;
+		if (location.height + totalHeight-1 > Grid::CellStack::TopHeight)
+			return MaxLevelExceeded;
+
 		#ifdef HYBRID_GRID
 			const UINT32 higher = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
 			{
@@ -1104,7 +1108,7 @@ namespace Objects
 		{
 			if (isEnabled == b)
 			{
-				LogEvent(EventSignificance::Common,this,"Requested structure enable-state already set: "+String(b)+". Notifying client. Ignoring command.");
+				LogEvent(EventSignificance::Debug,this,"Requested structure enable-state already set: "+String(b)+". Notifying client. Ignoring command.");
 				RegisterChange(EnableChanged,atTime);	//some state error, must be corrected
 				return true;
 			}
@@ -1125,7 +1129,7 @@ namespace Objects
 					Ctr::Array<Resource> missingResources;
 					if (!network.CanEnable(this,&outWhy,&missingResources))
 					{
-						LogEvent(EventClass::Preset::operationAborted,this,"Cannot enable"+GetTypeName()+": Insufficient resource supply in compound ("+outWhy+")");
+						LogEvent(EventClass::Preset::operationAborted,this,"Cannot enable "+GetTypeName()+": Insufficient resource supply in compound ("+outWhy+")");
 						if (missingResources.IsNotEmpty())
 						{
 							atTime += timeEpsilon;

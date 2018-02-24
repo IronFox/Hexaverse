@@ -1,6 +1,11 @@
 #include "common.inc.hlsl"
 
 
+cbuffer Color
+{
+	float4 Color;
+}
+
 Texture2D <float4> Texture;
 SamplerState Sampler;
 
@@ -28,7 +33,7 @@ void vsMain(in A2V input, out V2P output)
 float4 psMain(V2P input) : SV_TARGET
 {
 	float4 s = Texture.Sample(Sampler,input.uv);
-	return s;
+	return s * Color;
 }
 
 

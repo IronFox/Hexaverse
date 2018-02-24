@@ -73,6 +73,7 @@ namespace Logging
 
 		virtual void ThreadMain() override
 		{
+			Buffer0<String> lines;
 			while (!doEnd)
 			{
 				pipe.WaitForContent();
@@ -80,10 +81,11 @@ namespace Logging
 					return;
 				pipe.SignalRead();
 					foreach (pipe,line)
-					{
-						std::cout << *line;
-					}
+						lines.MoveAppend(*line);
 				pipe.ExitRead();
+				foreach (lines,line)
+					printf("%s",line->c_str());
+				lines.Clear();
 			}
 		}
 

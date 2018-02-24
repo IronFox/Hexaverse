@@ -111,7 +111,7 @@ namespace ScriptCache
 	static FileSystem::Folder	GetCacheDirectory()
 	{
 		FileSystem::File file;
-		RuntimeConfig::LocateInConfigDir("cache/",file);
+		RuntimeConfig::myConfig.Lookup("cache/",file);
 		FileSystem::ForceCreateDirectory(file);
 		return file;
 	}

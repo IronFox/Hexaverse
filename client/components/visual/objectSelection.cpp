@@ -17,7 +17,7 @@ namespace Objects
 	PWorldEntity			selectedEntity;
 	PMobileEntity			selectedMobileEntity;
 	PMobileEntity			deployingMobileEntity;
-	Observable<>				onSelectionChanged;
+	Observable<>			onSelectionChanged;
 	bool					shiftPressed = false,shiftMeansQueue = true;
 
 
@@ -93,7 +93,6 @@ namespace Objects
 
 		if (e)
 			e->OnDeselect();
-		HUD::HexGrid::RefreshButtonState();
 		if (e)
 			onSelectionChanged();
 		GlobalEvents::invalidateObjectCache();

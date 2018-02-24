@@ -138,7 +138,8 @@ namespace StatePanel
 			cachedLines << " Height: "+String(e.location.height);
 		#endif
 
-		cachedLines << " Owner: "+e.owner->GetName()+(e.isOwnedByMe ? " (me)":"");
+		const bool ownedByMe = e.owner == Objects::Faction::mine;	//ghosts set isOwnedByMe true if they are actually owned by the alliance, so it cannot be used here
+		cachedLines << " Owner: "+e.owner->GetName()+(ownedByMe ? " (me)":"");
 		if (e.isOwnedByMe)
 		{
 			if (e.IsAlive())
@@ -285,9 +286,10 @@ namespace StatePanel
 					cachedLines << "  * "+t->name;
 					if (t->IsMode(Objects::CursorMode::AttackMode) && t->foci.Count() > 1)
 						cachedLines.Last().text+= " (x"+String(t->foci.Count())+')';
-					if (t->job && t->job->roundsToJobCompletion)
+					if (t->job && t->job->continuationsToJobCompletion)
 					{
-						cachedLines.Last().text+= " ("+String(t->job->roundsToJobCompletion)+" round"+(t->job->roundsToJobCompletion != 1 ? "s)" : ")");
+						int rounds = ceil(v->ContinuationsToRounds(t->job->continuationsToJobCompletion,t->job->GetOperationAffinity()));
+						cachedLines.Last().text+= " ("+String(rounds)+" round"+(rounds != 1 ? "s)" : ")");
 					}
 				}
 				PopCurrentColor();
@@ -429,11 +431,11 @@ namespace StatePanel
 				if (!network.stable)
 				{
 					PushCurrentColor();
-					if (e.isOwnedByMe)
+					if (ownedByMe)
 						currentColor.rgb &= float3(1, 0.2, 0.2);
 	
 					cachedLines << "  UNSTABLE";
-					if (!e.isOwnedByMe)
+					if (!ownedByMe)
 						cachedLines.Last().text += " (?)";
 					PopCurrentColor();
 				}
@@ -442,7 +444,7 @@ namespace StatePanel
 				for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
 				{
 					PushCurrentColor();
-					if (e.isOwnedByMe && network.total.demand.level[i] > network.total.supply.level[i])
+					if (ownedByMe && network.total.demand.level[i] > network.total.supply.level[i])
 						currentColor.rgb &= float3(1, 0.2, 0.2);
 					cachedLines << "   " + String((char)(tagOffset+i))+ " " +String(network.total.demand.level[i])+  "/" +String( network.total.supply.level[i] );
 					PopCurrentColor();
@@ -513,10 +515,10 @@ namespace StatePanel
 						else
 						{
 							PushCurrentColor();
-							if (e.isOwnedByMe)
+							if (ownedByMe)
 								currentColor.rgb &= float3(1,0.5,0.4);
 							cachedLines << "  Disconnected from Core";
-							if (!e.isOwnedByMe)
+							if (!ownedByMe)
 								cachedLines.Last().text += " (?)";
 							PopCurrentColor();
 						}

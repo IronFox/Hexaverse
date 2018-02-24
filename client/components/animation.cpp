@@ -16,12 +16,8 @@
 #include "visual/commandDefinitions.h"
 #include "clientEvents.h"
 #include <objects/structure/tower.h>
-
-namespace LocalApplicationInterface
-{
-	void			SignalMarkerDeletion(TUniqueID markerID);
-	void			OnPlayerControlBegin();
-}
+#include "objectNetworkHelper.h"
+#include "playerControlBegin.h"
 
 namespace Animation
 {
@@ -162,14 +158,14 @@ namespace Animation
 		int referenceSpeed = v->GetMovementStepsPerRound()-1;
 
 	//	static Buffer<Objects::MapNode>	nodes;
-		static Objects::ReachabilityMapper mapper(false);
+		static Objects::Pathfinding::ReachabilityMapper mapper(false);
 		Objects::Component::VehicleBase::canStandOnUnknown = false;
 		mapper.Map(v.get(),v->location,AI::BlockTest,referenceSpeed*5,true);
 		Objects::Component::VehicleBase::canStandOnUnknown = true;
 
 
 		float closestDistance = std::numeric_limits<float>::max();
-		const Objects::ReachabilityMapper::MapNode*closest = nullptr;
+		const Objects::Pathfinding::ReachabilityMapper::MapNode*closest = nullptr;
 		//Grid::LCellIdI closest = Grid::LCellIdI::Invalid;
 		//float closestCompetingDistance = 0;
 
@@ -201,7 +197,7 @@ namespace Animation
 					continue;
 				//const auto &n = Grid::low.grid.GetCell(node->cell.stackID).neighborhood;
 				int score = 0;
-				Objects::ReachabilityMapper::MapNode*at = node;
+				Objects::Pathfinding::ReachabilityMapper::MapNode*at = node;
 				for (;;)
 				{
 					if (at->customScore < 0)
@@ -393,6 +389,7 @@ namespace Animation
 
 		if (serverVersion.foci == localVersion.foci)
 		{
+			localVersion.job = serverVersion.job;
 			outMerged.swap(localVersion);
 			return;
 		}
@@ -508,12 +505,12 @@ namespace Animation
 			}
 			else
 			{
-				std::shared_ptr<Objects::VehicleJob::DummyJob>	job(new Objects::VehicleJob::DummyJob(e));
+				std::shared_ptr<Objects::VehicleJob::DummyJob>	job(new Objects::VehicleJob::DummyJob(e,(Objects::Component::operation_t)sourceTask.jobAffinity));
 				t1.job = job;
 				job->delayedBySleep = (sourceTask.taskFlags & Protocol::TaskFlags::DelayedBySleep) != 0;
 			}
 			t1.job->movesToFocusWhenDone = (sourceTask.taskFlags & Protocol::TaskFlags::VisualizePathToFocus) != 0;
-			t1.job->roundsToJobCompletion = sourceTask.roundsToJobCompletion;
+			t1.job->continuationsToJobCompletion = sourceTask.continuationsToJobCompletion;
 			t1.job->resourceCostLeft = sourceTask.resourceCostLeft;
 			
 			#ifdef HAS_WINDOW
@@ -595,7 +592,7 @@ namespace Animation
 			#ifndef ONE_COMPOUND_PER_FACTION
 				v->currentStorage = info->resourceVector;
 			#endif
-			v->constructionRoundCounter = info->constructionRoundCounter;
+			v->constructionActionCounter = info->constructionActionCounter;
 
 			Array<Objects::MobileEntity::Task>	currentTasks,newTasks(info->tasks.Count());
 			v->myTasks.MoveToArray(currentTasks);
@@ -708,15 +705,18 @@ namespace Animation
 				if (v->myTasks.IsEmpty())
 				{
 
-					Objects::PVehicleJob job(new Objects::VehicleJob::DummyJob(*v));
-					job->roundsToJobCompletion = 1;
+					Objects::PVehicleJob job(new Objects::VehicleJob::DummyJob(*v,Objects::Component::Construct));
+					job->continuationsToJobCompletion = 1;
 					job->movesToFocusWhenDone = false;
 					job->resourceCostLeft = 1;
 
 					auto&t = v->myTasks.Push();
-					t.name = "Unknown construction task";
+					t.name = "Building";
 					t.job = job;
 					t.type = Objects::MobileEntity::Task::Job;
+					#ifdef HAS_WINDOW
+						Objects::TaskAttachment::Allocate(t);
+					#endif
 				}
 			}
 			else
@@ -1131,11 +1131,20 @@ namespace Animation
 			case Construction:
 			{
 				LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Placing structure entity during animation at time "+String(Animation::atTime)+"/"+ToString(this->time));
-				Objects::Place(To<Objects::Structure>::DynamicCast(allocatedTarget));
-				#ifdef HAS_WINDOW
-					if (!allocatedTarget->isOwnedByMe)
-						HUD::HexGrid::RefreshContacts();
-				#endif
+				Objects::PWorldEntity existing = Objects::GetEntity(allocatedTarget->id);
+				if (existing)
+				{
+					//could throw an exception here, but observed that if this happens, it happens A LOT in quick succession
+					LogEvent(EventClass::Preset::protocolError,existing.get(),"Trying to double-spawn as "+allocatedTarget->GetTypeName()+" (structure)");
+				}
+				else
+				{
+					Objects::Place(To<Objects::Structure>::DynamicCast(allocatedTarget));
+					#ifdef HAS_WINDOW
+						if (!allocatedTarget->isOwnedByMe)
+							HUD::HexGrid::RefreshContacts();
+					#endif
+				}
 			}
 			break;
 			case NewMobileEntity:
@@ -1144,52 +1153,69 @@ namespace Animation
 				if (v)
 				{
 					LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Placing mobile entity during animation at time "+String(Animation::atTime)+"/"+ToString(this->time));
-					//MoveSensor(v->preAnimationLocation,v->location,v->turret->scanningRange);
-					v->preAnimationLocation = v->location;
-					Objects::PlaceMobileEntity(v,false);
-					if (v->IsGroundBoundVehicle())	//only vehicles get to be inserted anyhow
-						insertIntoGridLater.Set(v->id);
-					#ifdef HAS_WINDOW
-						if (!allocatedTarget->isOwnedByMe)
-							HUD::HexGrid::RefreshContacts();
-					#endif
+					Objects::PWorldEntity existing = Objects::GetEntity(v->id);
+					if (existing)
+					{
+						//could throw an exception here, but observed that if this happens, it happens A LOT in quick succession
+						LogEvent(EventClass::Preset::protocolError,existing.get(),"Trying to double-spawn as "+v->GetTypeName()+" (mobile)");
+					}
+					else
+					{
+						//MoveSensor(v->preAnimationLocation,v->location,v->turret->scanningRange);
+						v->preAnimationLocation = v->location;
+						Objects::PlaceMobileEntity(v,false);
+						if (v->IsGroundBoundVehicle())	//only vehicles get to be inserted anyhow
+							insertIntoGridLater.Set(v->id);
+						#ifdef HAS_WINDOW
+							if (!allocatedTarget->isOwnedByMe)
+								HUD::HexGrid::RefreshContacts();
+						#endif
+					}
 				}
 			}
 			break;
 			case DestroyEntity:
 			{
 				allocatedTarget = Objects::GetEntity(targetEntityID);
-				ASSERT1__(allocatedTarget,targetEntityID);
-				if (explode)
-					ExplodeEntity(allocatedTarget);
-				LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Removing entity during animation at time "+String(Animation::atTime)+"/"+ToString(this->time));
-				//if (RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
+				if (allocatedTarget)
 				{
-					Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(allocatedTarget);
-					if (v)
+					ASSERT1__(allocatedTarget,targetEntityID);
+					if (explode)
+						ExplodeEntity(allocatedTarget);
+					LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Removing entity during animation at time "+String(Animation::atTime)+"/"+ToString(this->time));
+					//if (RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
 					{
-						if (!insertIntoGridLater.IsSet(v->id) && removalType != Objects::RemovalType::DestroyedInStorage && !v->IsAboveGrid())
-							Objects::RemoveVehicleFromGrid(v,v->preAnimationLocation);
+						Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(allocatedTarget);
+						if (v)
+						{
+							if (!insertIntoGridLater.IsSet(v->id) && removalType != Objects::RemovalType::DestroyedInStorage && !v->IsAboveGrid())
+								Objects::RemoveVehicleFromGrid(v,v->preAnimationLocation);
+						}
 					}
+					if (allocatedTarget->IsMobile() && allocatedTarget->isOwnedByMe)
+					{
+						Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(allocatedTarget);
+						float t = 0.f;
+						if (removalType != Objects::RemovalType::DestroyedInStorage)
+							v->MoveSensoryToCurrentLocation(t);
+					}
+
+					float t = 0;
+					Objects::Remove(allocatedTarget,Objects::RemovalType::Reinterpret(removalType),t);
+					#ifdef HAS_WINDOW
+						if (!allocatedTarget->isOwnedByMe)
+							HUD::HexGrid::RefreshContacts();
+						HUD::WindowStack::SignalSituationChange();
+						if (removalType == Objects::RemovalType::UncontrolledExplosion)
+							HUD::HexGrid::EventLog::RegisterEntityDestruction(this->time.min, allocatedTarget->owner->IsAlliedWithMe(),allocatedTarget->GetWorldPosition(), allocatedTarget->id, allocatedTarget->GetNiceName()+" ("+allocatedTarget->owner->GetName()+")");
+
+					#endif
 				}
-				if (allocatedTarget->IsMobile() && allocatedTarget->isOwnedByMe)
+				else
 				{
-					Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(allocatedTarget);
-					float t = 0.f;
-					if (removalType != Objects::RemovalType::DestroyedInStorage)
-						v->MoveSensoryToCurrentLocation(t);
+					LogEvent(EventClass::Preset::internalError,"Unable to allocate target for DestroyEntity "+ToString(targetEntityID));
+					DBG_FATAL__("Unable to allocate target for DestroyEntity "+ToString(targetEntityID));
 				}
-
-				float t = 0;
-				Objects::Remove(allocatedTarget,Objects::RemovalType::Reinterpret(removalType),t);
-				#ifdef HAS_WINDOW
-					if (!allocatedTarget->isOwnedByMe)
-						HUD::HexGrid::RefreshContacts();
-					HUD::WindowStack::SignalSituationChange();
-					if (removalType == Objects::RemovalType::UncontrolledExplosion)
-						HUD::HexGrid::EventLog::RegisterEntityDestruction(this->time.min, allocatedTarget->isOwnedByMe,allocatedTarget->GetWorldPosition(), allocatedTarget->id, allocatedTarget->GetNiceName());
-
-				#endif
 			}
 			break;
 			case MovementStream:
@@ -1290,7 +1316,7 @@ namespace Animation
 						attackerID = attacker->id;
 					#endif
 					doRegister = !attacker->isOwnedByMe || isAutoTarget;
-					isFriendly = attacker->isOwnedByMe;
+					isFriendly = attacker->owner->IsAlliedWithMe();
 				}
 
 				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Starting attack ("+attackerTurret->typeName+",range="+String(attackRange)+",pos="+Vec::toString(attackerPosition)+",angle="+String(attackAngle)+") at "+String(Animation::atTime)+"/"+String(this->time.min));
@@ -1407,7 +1433,7 @@ namespace Animation
 					if (Vec::quadraticDistance(Grid::ToWorld(m.location),explosionCenter) < M::Sqr(explosionRadius))
 					{
 						LogEvent(EventSignificance::Common,nullptr,m.GetName()+ " considered near occuring explosion. Dropping marker");
-						LocalApplicationInterface::SignalMarkerDeletion(m.id);
+						ObjectHelper::SignalMarkerDeletion(m.id);
 						i--;
 					}
 				}
@@ -1424,7 +1450,7 @@ namespace Animation
 					if (Vec::quadraticDistance(Grid::ToWorld(m.location),explosionCenter) < M::Sqr(explosionRadius))
 					{
 						LogEvent(EventSignificance::Common,nullptr,m.GetName()+ " considered near occuring explosion. Dropping marker");
-						LocalApplicationInterface::SignalMarkerDeletion(m.id);
+						ObjectHelper::SignalMarkerDeletion(m.id);
 						i--;
 					}
 				}
@@ -1486,10 +1512,6 @@ namespace Animation
 			return Done;
 			case TerrainChange:
 			{
-				#ifdef HAS_WINDOW
-					ConfigurationMode::RestoreServerWorld();
-				#endif
-
 				foreach (*worldDelta,block)
 				{
 					BaseGrid::family_t family = block->familyAndLastFlag & 0x7F;
@@ -1852,7 +1874,7 @@ namespace Animation
 				{
 					LogEvent(EventSignificance::Debug,"Animation done. OnPlayerControlBegin");
 
-					LocalApplicationInterface::OnPlayerControlBegin();
+					PlayerControlBegin::OnPlayerControlBegin();
 				}
 			}
 

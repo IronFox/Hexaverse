@@ -8,6 +8,7 @@
 #include "../tutorial.h"
 #include "resourceGauges.h"
 #include "../../configurationMode.h"
+#include "menu.h"
 
 namespace HUD
 {
@@ -185,14 +186,18 @@ namespace HexGrid
 			outResult.BeginBrief();
 			Objects::PWorldEntity e = GetTarget();
 			String hostile = isFriendly? "" : "hostile ";
-			String t = " at t="+String(atTime)+" sec";
+			#ifdef _DEBUG
+				String t = " at t="+String(atTime)+" sec";
+			#else
+				String t = "";
+			#endif
 			if (e)
-				outResult << "Focus on "+hostile + name+" of "+e->GetNiceName()+t;
+				outResult << "Focus on "+hostile + name+" "+e->GetNiceName()+" ("+e->owner->GetName()+")"+t;
 			else
 				if (fallbackTargetName.IsNotEmpty())
-					outResult << "Focus on "+hostile + name+" of "+fallbackTargetName+t;
+					outResult << "Focus on "+hostile + name+" "+fallbackTargetName+t;
 				else
-					outResult << "Focus on "+hostile + name+t;
+					outResult << "Focus on "+hostile + name+" ?"+t;
 		}
 
 
@@ -299,7 +304,7 @@ namespace HexGrid
 			elif (instance->owner)
 			{
 				outResult << "Owner: "+instance->owner->GetName();
-				if (instance->owner->alliance == Objects::Faction::mine->alliance)
+				if (instance->owner->IsAlliedWithMe())
 					outResult.GetLastLine()+= " (allied)";
 			}
 			if (instance->IsAlive())
@@ -472,8 +477,13 @@ namespace HexGrid
 									{
 										LoadIcon();
 										indexCounter++;
-										gridCoords = int2(1+indexCounter,1);
+										gridCoords = int2(/*1+*/indexCounter,1);
 									}
+
+		/*virtual override*/ void			MenuCommand::Execute()
+		{
+			HUD::WindowStack::Show(HUD::Menu::main);
+		}
 
 
 		static void VoteRefresh(const PVote&)
@@ -483,6 +493,7 @@ namespace HexGrid
 
 		void Create()
 		{
+			commands << PIcon( new MenuCommand() );
 			commands << PIcon( new TutorialCommand() );
 			commands << PIcon( new VoteCommand() );
 
@@ -509,7 +520,7 @@ namespace HexGrid
 			cmd->Refresh(Network::ControlEnabled());
 		}
 
-		void			Refresh()
+		void			Refresh( )
 		{
 			if (!showControlsAndContacts)
 			{
@@ -1123,6 +1134,8 @@ namespace HexGrid
 						Objects::UpdateChoices(Network::ControlEnabled());
 						Tutorial::ShowMessage(name);
 						Configure(Objects::selectedEntity);
+
+						hoveringOver = nullptr;
 					}
 					return true;
 				}
@@ -1447,6 +1460,8 @@ namespace HexGrid
 
 	void					RefreshContacts()
 	{
+		if (ConfigurationMode::IsActive())	//configuration mode has its own buttons; should not be altered while active
+			return;
 		if (!showControlsAndContacts)
 			return;
 		auto cfg = GetGridConfig();
@@ -1545,7 +1560,7 @@ namespace HexGrid
 				Objects::Command::Container temp;
 				auto cmds = e->GetCommands(temp);
 				if (cmds)
-					AddCommandGroup(EntityCommandOffset,*cmds);
+					AddCommandGroup(GlobalCommandOffset + int2(Objects::globalCommands.GetRow(0).Count()+1 ,0)   /*EntityCommandOffset*/,*cmds);
 			}
 
 			FindAndDeleteCell(selectedFocus);
@@ -1595,7 +1610,7 @@ namespace HexGrid
 
 		void			RegisterAttack(float time, bool isFriendly,  const M::TVec3<>&focusLocation, const TUniqueID&focusEntityID, const Objects::Renderer::SmokeTrailIndex&smokeTrailIndex)
 		{
-			Custom::AnimationEventFocusCommand*cmd = new Custom::AnimationEventFocusCommand("Attack","Attack",focusLocation,focusEntityID,time,isFriendly,!isFriendly);
+			Custom::AnimationEventFocusCommand*cmd = new Custom::AnimationEventFocusCommand("attack by","Attack",focusLocation,focusEntityID,time,isFriendly,!isFriendly);
 			cmd->smokeTrailIndex = smokeTrailIndex;
 			if (!isFriendly)
 				cmd->state |= Objects::CommandFlags::IsFlashing;
@@ -1605,7 +1620,7 @@ namespace HexGrid
 
 		void			RegisterEntityDestruction(float time, bool isOwnedByMe,  const M::TVec3<>&focusLocation, const TUniqueID&focusEntityID, const String&entityName)
 		{
-			Custom::AnimationEventFocusCommand*cmd = new Custom::AnimationEventFocusCommand("Entity Death","Entity Death",focusLocation,focusEntityID,time,isOwnedByMe,isOwnedByMe);
+			Custom::AnimationEventFocusCommand*cmd = new Custom::AnimationEventFocusCommand("death of","Entity Death",focusLocation,focusEntityID,time,isOwnedByMe,isOwnedByMe);
 			if (isOwnedByMe)	//flipped logic
 				cmd->state |= Objects::CommandFlags::IsFlashing;
 			cmd->fallbackTargetName = entityName;

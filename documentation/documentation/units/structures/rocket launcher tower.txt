@@ -1,0 +1,4 @@
+----
+Cheap, low range defense tower, capable of firing twice per round.
+Good enough against hostile units using [[units/turrets/canon]] turrets. Insufficient when facing [[units/turrets/artillery]].
+Fires in a straight line.

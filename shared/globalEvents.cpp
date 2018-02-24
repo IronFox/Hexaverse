@@ -3,5 +3,5 @@
 
 namespace GlobalEvents
 {
-	Observable<>	terrainFlush,objectFlush,applicationTerminate, invalidateObjectCache;
+	DeltaWorks::Observable<>	terrainFlush,objectFlush,applicationTerminate, invalidateObjectCache;
 }

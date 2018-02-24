@@ -3,7 +3,7 @@
 
 #ifdef HAS_WINDOW
 #include <math/vector.h>
-#include <observer.h>
+#include <structure/observable.h>
 
 namespace Objects
 {

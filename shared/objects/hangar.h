@@ -4,7 +4,7 @@
 
 #include "types.h"
 #include "../grid/stack.h"
-#include "../observer.h"
+#include <structure/observable.h>
 
 namespace Objects
 {

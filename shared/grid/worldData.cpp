@@ -84,6 +84,7 @@ namespace World
 	{
 		FlushAllWorldData();
 
+		Sensor::StaticCreate();
 
 		#ifdef HAS_WINDOW
 			actual.UpdateLighting();
@@ -763,10 +764,14 @@ namespace World
 			return;
 		if (onChangeLock.isActive)
 		{
-			onChangeLock.changed.Set(changed);
-			onChangeLock.lastChangeTime = std::max(onChangeLock.lastChangeTime,atTime);
-			if (terrainChanged)
-				onChangeLock.terrainChanged = true;
+			onChangeLock.lock.lock();
+			{
+				onChangeLock.changed.Set(changed);
+				onChangeLock.lastChangeTime = std::max(onChangeLock.lastChangeTime,atTime);
+				if (terrainChanged)
+					onChangeLock.terrainChanged = true;
+			}
+			onChangeLock.lock.unlock();
 			return;
 		}
 
@@ -1489,6 +1494,19 @@ namespace World
 	}
 
 
+	/*static*/ void		Sensor::StaticCreate()
+	{
+		const count_t numProcessors = Sys::QueryLogicalProcessorsCount();
+		perProcessor.SetSize(numProcessors);
+		foreach (perProcessor,v)
+		{
+			v->shadedSphereHelper.SetSize(Grid::HighSetup::GridType::CellCount,Grid::CellStack::Range);
+			v->shadedSphereHelper.Fill(0);
+		}
+
+	}
+
+
 	bool			Sensor::Contains(const Grid::LCellIdI&loc) const
 	{
 		switch (type)
@@ -1517,20 +1535,20 @@ namespace World
 	}
 
 
-	void			Sensor::GetMaxVolume(Grid::LowSetup::TVolumeDescriptor&desc) const
+	void			Sensor::GetMaxVolume(Grid::LowSetup::TVolumeDescriptor&desc, index_t processorIndex/*=0*/) const
 	{
 		switch (type)
 		{
 			case SolidSphere:
 			case ShadedSphere:
-				Grid::low.GenerateVolume(M::Sphere<>(worldCenter,radius+1.f),desc);
+				Grid::low.GenerateVolume(M::Sphere<>(worldCenter,radius+1.f),perProcessor[processorIndex].lowOp,desc);
 			break;
 			case SolidCylinder:
 			case ShadedCylinder:
-				MakeShaftVolume(desc,[](UINT32){return 0;});
+				MakeShaftVolume(desc,[](UINT32){return 0;},processorIndex);
 			break;
 			case UpperHalfSolidSphere:
-				Grid::low.GenerateVolume(M::Sphere<>(worldCenter, radius + 1.f), desc);
+				Grid::low.GenerateVolume(M::Sphere<>(worldCenter, radius + 1.f), perProcessor[processorIndex].lowOp,desc);
 				foreach(desc.coverage, st)
 					st->range.start = gridCenter.layer;
 			break;
@@ -1839,64 +1857,64 @@ namespace World
 
 		}
 
-	void			Sensor::MakeShaftVolume(Grid::HighSetup::TVolumeDescriptor&v, const std::function<UINT32(UINT32 stackID)>&traceFunction)	const
+	void			Sensor::MakeShaftVolume(Grid::HighSetup::TVolumeDescriptor&v, const std::function<UINT32(UINT32 stackID)>&traceFunction, index_t processorIndex)	const
 	{
-		MakeShaftVolumeT(Grid::high, v,op,gridCenter.stackID, radius,gridCenter.layer,traceFunction);
+		MakeShaftVolumeT(Grid::high, v,perProcessor[processorIndex].op,gridCenter.stackID, radius,gridCenter.layer,traceFunction);
 	}
 
 
-	void			Sensor::MakeShaftVolume(Grid::LowSetup::TVolumeDescriptor&v, const std::function<UINT32(UINT32 stackID)>&traceFunction)	const
+	void			Sensor::MakeShaftVolume(Grid::LowSetup::TVolumeDescriptor&v, const std::function<UINT32(UINT32 stackID)>&traceFunction, index_t processorIndex)	const
 	{
-		MakeShaftVolumeT(Grid::low, v,lowOp, Grid::low.Locate(worldCenter), radius,gridCenter.layer,traceFunction);
+		MakeShaftVolumeT(Grid::low, v,perProcessor[processorIndex].lowOp, Grid::low.Locate(worldCenter), radius,gridCenter.layer,traceFunction);
 	}
 
-	void			Sensor::ApplyShaftTo(World::Data&v, short change, const std::function<UINT32(UINT32 stackID)>&traceFunction,Data::ChangeSequence&seq)	const
+	void			Sensor::ApplyShaftTo(World::Data&v, short change, const std::function<UINT32(UINT32 stackID)>&traceFunction,Data::ChangeSequence&seq, index_t processorIndex)	const
 	{
-		MakeShaftVolume(volume,traceFunction);
-		ApplyVolume(v,change,seq);
-	}
-
-
-	/*static*/ Grid::HighSetup::TVolumeDescriptor::Operator Sensor::op;
-	/*static*/ Grid::LowSetup::TVolumeDescriptor::Operator Sensor::lowOp;
-	/*static*/ Grid::HighSetup::TVolumeDescriptor	Sensor::volume;
-
-	void		Sensor::ApplySolidSphereTo(World::Data&v, short changeBy,Data::ChangeSequence&seq)	const
-	{
-		Grid::high.GenerateVolume(M::Sphere<>(worldCenter, radius),volume);
-
-		ApplyVolume(v, changeBy,seq);
+		MakeShaftVolume(perProcessor[processorIndex].volume,traceFunction,processorIndex);
+		ApplyVolume(v,change,seq, processorIndex);
 	}
 
 
-	void		Sensor::ApplyHalfSolidSphereTo(World::Data&v, short changeBy, Data::ChangeSequence&seq)	const
+	/*static*/ Array<Sensor::TPerProcessor>	Sensor::perProcessor;
+
+	void		Sensor::ApplySolidSphereTo(World::Data&v, short changeBy,Data::ChangeSequence&seq, index_t processorIndex)	const
+	{
+		Grid::high.GenerateVolume(M::Sphere<>(worldCenter, radius),perProcessor[processorIndex].op, perProcessor[processorIndex].volume);
+
+		ApplyVolume(v, changeBy,seq,processorIndex);
+	}
+
+
+	void		Sensor::ApplyHalfSolidSphereTo(World::Data&v, short changeBy, Data::ChangeSequence&seq, index_t processorIndex)	const
 	{
 		if (gridCenter.layer < Grid::CellStack::Range)
 		{
-			Grid::high.GenerateVolume(M::Sphere<>(worldCenter, radius), volume);
-			foreach(volume.coverage, c)
+			Grid::high.GenerateVolume(M::Sphere<>(worldCenter, radius), perProcessor[processorIndex].op, perProcessor[processorIndex].volume);
+			auto&cov = perProcessor[processorIndex].volume.coverage;
+			foreach(cov, c)
 			{
 				c->range.start = M::Max(c->range.start, gridCenter.layer);
 				c->range.end = M::Max(c->range.end, gridCenter.layer);
 			}
-			ApplyVolume(v, changeBy, seq);
+			ApplyVolume(v, changeBy, seq, processorIndex);
 		}
 	}
 
 
-	/*static*/ void	Sensor::ApplyVolume(World::Data&v, short changeBy,Data::ChangeSequence&seq)
+	/*static*/ void	Sensor::ApplyVolume(World::Data&v, short changeBy,Data::ChangeSequence&seq, index_t processorIndex)
 	{
 
-		#ifdef _DEBUG
-		{
-			UINT32 crc = CRC32::Sequence().Append(volume.coverage.pointer(),volume.coverage.GetContentSize()).Finish();
-			LogEvent(EventSignificance::Debug,"Applying sensory change ("+String(changeBy)+"), using descriptor with "+String(volume.coverage.Count())+" stack(s), crc="+IntToHex((int)crc,8));	
-		}
+		//#ifdef _DEBUG
+		//{
+		//	UINT32 crc = CRC32::Sequence().Append(volume.coverage.pointer(),volume.coverage.GetContentSize()).Finish();
+		//	LogEvent(EventSignificance::Debug,"Applying sensory change ("+String(changeBy)+"), using descriptor with "+String(volume.coverage.Count())+" stack(s), crc="+IntToHex((int)crc,8));	
+		//}
 
-		#endif
+		//#endif
 
 
-		foreach (volume.coverage,c)
+		auto&cov = perProcessor[processorIndex].volume.coverage;
+		foreach (cov,c)
 		{
 			#ifdef _DEBUG
 				ASSERT_LESS__(c->stackID,Grid::HighSetup::GridType::CellCount);
@@ -1939,7 +1957,7 @@ namespace World
 	}
 
 
-	void		Sensor::ApplyShadedSphereTo(World::Data&v, short change,Data::ChangeSequence&seq)	const
+	void		Sensor::ApplyShadedSphereTo(World::Data&v, short change,Data::ChangeSequence&seq, index_t processorIndex)	const
 	{
 		enum
 		{
@@ -1950,9 +1968,11 @@ namespace World
 
 		const Grid::HCellIdU center(Grid::high.Locate(worldCenter),M::Min(Grid::CellStack::Range-1, Grid::CellStack::ToLayer( Grid::HeightFromRadius(Vec::length( worldCenter )) )));
 
-		static Ctr::Array2D<BYTE> user(Grid::HighSetup::GridType::CellCount,Grid::CellStack::Range,0);
+		//static Ctr::Array2D<BYTE> user(Grid::HighSetup::GridType::CellCount,Grid::CellStack::Range,0);
 
-		static Ctr::Buffer0<Grid::HCellIdU>	marked;
+		//static Ctr::Buffer0<Grid::HCellIdU>	marked;
+		auto&user = perProcessor[processorIndex].shadedSphereHelper;
+		auto&marked = perProcessor[processorIndex].shadedSphereMarked;
 		marked.Clear();
 
 		{
@@ -1989,7 +2009,7 @@ namespace World
 			bool translucent = s.IsClearOrWaterIgnoreStructure();
 
 			float visibleWeight=0, totalWeight=0;
-			Grid::high.VisitNeighborsOf(current,[&v,&visibleWeight,&totalWeight, &work,current,d03,c3,translucent](const Grid::HCellIdU&next)
+			Grid::high.VisitNeighborsOf(current,[&v,&user,&visibleWeight,&totalWeight, &work,current,d03,c3,translucent](const Grid::HCellIdU&next)
 			{
 				//auto&n = v.cellStack[next.stackID].volumeCell[next.layer];
 				auto&nu = user.Get(next.stackID,next.layer);
@@ -2035,7 +2055,7 @@ namespace World
 
 			if (!makeVisible)
 			{
-				Grid::high.VisitNeighborsOf(*m,[&v,&makeVisible](const Grid::HCellIdU&next)
+				Grid::high.VisitNeighborsOf(*m,[&v,&makeVisible,&user](const Grid::HCellIdU&next)
 				{
 					const auto nu = user.Get(next.stackID,next.layer);
 					if (nu & Visible)
@@ -2052,17 +2072,17 @@ namespace World
 	}
 
 
-	void			Sensor::InsertInto(World::Data&clientWorld, float t) const
+	void			Sensor::InsertInto(World::Data&clientWorld, float t, index_t processorIndex/*=0*/) const
 	{
-		ApplyTo(clientWorld,+1,t);
+		ApplyTo(clientWorld,+1,t,processorIndex);
 		#ifdef CLIENT
 			if (this->gridCenter.layer >= Grid::CellStack::Range)
 				ApplicationInterface::SignalExtraGridSensorCreation(*this);
 		#endif
 	}
-	void			Sensor::RemoveFrom(World::Data&clientWorld, float t) const
+	void			Sensor::RemoveFrom(World::Data&clientWorld, float t, index_t processorIndex/*=0*/) const
 	{
-		ApplyTo(clientWorld,-1,t);
+		ApplyTo(clientWorld,-1,t,processorIndex);
 		#ifdef CLIENT
 			if (this->gridCenter.layer >= Grid::CellStack::Range)
 				ApplicationInterface::SignalExtraGridSensorRemoval(*this);
@@ -2070,7 +2090,7 @@ namespace World
 	}
 
 
-	void		Sensor::ApplyTo(World::Data&v, short change, float t)	const
+	void		Sensor::ApplyTo(World::Data&v, short change, float t, index_t processorIndex)	const
 	{
 		if (v.SensoryIsInvalid())
 			return;
@@ -2079,16 +2099,16 @@ namespace World
 		switch (type)
 		{
 			case UpperHalfSolidSphere:
-				ApplyHalfSolidSphereTo(v, change, seq);
+				ApplyHalfSolidSphereTo(v, change, seq,processorIndex);
 			break;
 			case SolidSphere:
-				ApplySolidSphereTo(v,change,seq);
+				ApplySolidSphereTo(v,change,seq,processorIndex);
 			break;
 			case ShadedSphere:
-				ApplyShadedSphereTo(v,change,seq);
+				ApplyShadedSphereTo(v,change,seq,processorIndex);
 			break;
 			case SolidCylinder:
-				ApplyShaftTo(v,change,[](UINT32){return 0;},seq);
+				ApplyShaftTo(v,change,[](UINT32){return 0;},seq,processorIndex);
 			break;
 			case ShadedCylinder:
 				ApplyShaftTo(v,change,
@@ -2096,14 +2116,14 @@ namespace World
 					{
 						return actual.TraceSkySensorLayer(stackID,gridCenter.layer,this->terrainPenetration);
 					}
-					,seq
+					,seq,processorIndex
 				);
 			break;
 			default:
 				FATAL__("Unsupported sensor type");
 		};
 
-		LogEvent(EventSignificance::PerformanceMeasurement,nullptr,"Sensory change processed in "+String(timer.GetSecondsSince(t0)));
+		//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,"Sensory change processed in "+String(timer.GetSecondsSince(t0)));
 	}
 
 

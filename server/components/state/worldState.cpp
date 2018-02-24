@@ -3,6 +3,7 @@
 #include <protocol.h>
 #include "networkState.h"
 #include "../networkChannels.h"
+#include <objects/nexusPresence.h>
 
 namespace World
 {
@@ -307,28 +308,17 @@ namespace World
 
 
 
-
 		Grid::currentPlanetConfig.BuildWorld(World::actual);
 		World::actual.ExportDiscovered(World::initial, Config::worldDiscovery);
 		Grid::Resource::FillAll(random,Grid::currentCustomResourceDistribution);
 		if (Objects::Faction::nexus)
 			Objects::Faction::nexus->knownWorld = World::initial;
 
-		if (RuntimeConfig::gameGoal == Game::Config::Goal::ConquerNexus)
-		{
-			LogEvent(EventSignificance::Common, "Spawning Nexus Ports (EMP fields="+String(RuntimeConfig::empZones)+")...");
-			for (int pole = 0; pole < 12; pole++)
-				if (RuntimeConfig::empZones || BaseGrid::IsIsolatedCorner(pole))
-					Game::SpawnNexusPortAtPole(pole);
+		Game::Config::Nexus::allPorts.havePlaced = Game::Config::Nexus::allPorts.doPlace;
+		Game::Config::Nexus::bases.havePlaced = Game::Config::Nexus::bases.doPlace;
+		Game::Config::Nexus::satellitesAtopBases.havePlaced = Game::Config::Nexus::satellitesAtopBases.doPlace;
+		NexusPresence::Create(Game::Config::Nexus::bases.havePlaced,Game::Config::Nexus::allPorts.havePlaced,Game::Config::Nexus::satellitesAtopBases.havePlaced,Game::Config::Nexus::enableAI);
 
-			LogEvent(EventSignificance::Debug, "Spawning Nexus bases...");
-			if (Game::Config::Nexus::haveBases)
-				for (int pole = 0; pole < 12; pole++)
-					if (BaseGrid::IsIsolatedCorner(pole))
-					{
-						Game::SpawnNexusBaseAtPoleWithPort(pole);
-					}
-		}
 	}
 
 	void			BuildConfiguredWorld(UINT32 seed)
@@ -472,20 +462,8 @@ namespace World
 	{
 		if (RuntimeConfig::empZones)
 		{
-			count_t numZones = Game::Config::CountAccessibleZones(temporaryFactionCountBonus);
-
-			int unlocked = 0;
-			for (index_t i = 0; i < numZones; i++)
-			{
-				if (Game::Config::Nexus::haveBases && BaseGrid::IsIsolatedCorner(unlocked) && RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::ConquerNexus)
-				{
-					unlocked++;
-				}
-				unlocked++;
-			}
-			if (numZones == 0)
-				unlocked = 1;
-				
+			const count_t numZones = Game::Config::CountTheoreticallyAccessibleZones(temporaryFactionCountBonus);
+			const count_t unlocked = Game::Config::CountActuallyAccessibleZones(temporaryFactionCountBonus);
 			LogEvent(EventSignificance::Common,"Re-counted necessary EMP Zones (bonus="+String(temporaryFactionCountBonus)+"): raw="+String(numZones)+", final="+String(unlocked));
 			SetUnlockedEMPZones(unlocked);
 		}
@@ -512,9 +490,9 @@ namespace World
 		},false);
 	}
 
-	void		SetUnlockedEMPZones(int unlocked)
+	void		SetUnlockedEMPZones(count_t unlocked)
 	{
-		const UINT16 newUnlocked = ((1<<unlocked) - 1);
+		const UINT16 newUnlocked = (UINT16)(((1<<unlocked) - 1));
 		if (unlockedEMPZones == newUnlocked)
 			return;
 		LogEvent(EventSignificance::Common,"Updating unlocked EMP Zones (unlocked="+String(unlocked)+"): "+Bin2Str::Convert(&unlockedEMPZones,sizeof(unlockedEMPZones))+"->"+Bin2Str::Convert(&newUnlocked,sizeof(newUnlocked)));
@@ -548,13 +526,11 @@ namespace World
 
 	}
 
-	bool			IsPlanetIniFile(const String&filename)
+	bool			IsPlanet(const String&name)
 	{
-		if (!filename.EndsWith(".ini"))
-			return IsPlanetIniFile(filename+".ini");
-		return FileSystem::Folder(RuntimeConfig::ConfigFile("config/myPlanets")).FindFile(PathString(filename)) != nullptr
-				||
-			FileSystem::Folder().FindFile("config/myPlanets/"+PathString(filename)) != nullptr;
+		if (name.BeginsWith('*'))
+			return FileSystem::IsFile(RuntimeConfig::sharedConfig.Lookup("config/myPlanets/"+name.SubString(1)+".ini"));
+		return FileSystem::Folder().FindFile("../predefinedPlanets/"+PathString(name)+".ini") != nullptr;
 	}
 
 
@@ -562,8 +538,8 @@ namespace World
 	{
 		Ctr::Buffer0<TPlanetIniFile,Swap> files;
 		
-		AppendAvailablePlanetInitFilesFrom(false, RuntimeConfig::ConfigFile("config/myPlanets"),files);
-		AppendAvailablePlanetInitFilesFrom(true,FileSystem::Directory().FindDirectory("config/myPlanets"),files);
+		AppendAvailablePlanetInitFilesFrom(false, RuntimeConfig::sharedConfig.Lookup("config/myPlanets"),files);
+		AppendAvailablePlanetInitFilesFrom(true,FileSystem::Directory().FindDirectory("../predefinedPlanets"),files);
 
 		Ctr::GenericHashTable<String,TPlanetIniFile,Ctr::StdHash,Swap,Swap>	merged;
 		foreach (files,f)

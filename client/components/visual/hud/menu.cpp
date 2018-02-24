@@ -1,9 +1,8 @@
 #include "menu.h"
 #include "../tutorial.h"
 #include "common.h"
-#include "../../serverProcess.h"
+#include <serverProcess.h>
 #include "../../network.h"
-#include "../../localInterface.h"
 #include "../scene/shadedRenderInstruction.h"
 #include "../../clientRuntimeConfig.h"
 #include "../../../version.h"
@@ -13,6 +12,9 @@
 #include "guiStatistics.h"
 #include "../scene/explosions.h"
 #include "guiFactionTable.h"
+#include <io/monitoredProcess.h>
+#include "../../configurationMode.h"
+#include "../../io.h"
 
 bool	IsFullScreen();
 void	SetFullScreen(bool isFull);
@@ -24,6 +26,7 @@ namespace HUD
 
 namespace Menu
 {
+
 
 	/*virtual override*/ void				Menu::OnScreenSizeOrUIScaleChange()
 	{
@@ -43,9 +46,9 @@ namespace Menu
 			check
 		));
 		Super::RemoveComponent(hintLabel);
-		Super::AnchorBelowPrevious(button,0.f,HUD::Component::Distance::GameWindow( Super::components.IsEmpty() ? 0.f : 0.015f ));
+		Super::AnchorBelowPrevious(CLOCATION,button,0.f,HUD::Component::Distance::GameWindow( Super::components.IsEmpty() ? 0.f : 0.015f ));
 		if (hintLabel)
-			Super::AnchorBelowPrevious(hintLabel,0.015f,0.015f);
+			Super::AnchorBelowPrevious(CLOCATION, hintLabel,0.015f,0.015f);
 
 		LogEvent(EventClass::Preset::gui,"Menu["+String(this)+"/"+myTitle+"]::AddCommand("+name+", ...)");
 		return button;
@@ -65,7 +68,7 @@ namespace Menu
 			HUD::Component::PLabel label(new HUD::Component::Label());
 			label->SetText(title);
 			label->SetVerticalPadding( 0.1f );
-			Super::AnchorBelowPrevious(label,0.015f,0.f);
+			Super::AnchorBelowPrevious(CLOCATION,label,0.015f,0.f);
 		}
 
 		if (escapeCloses)
@@ -74,7 +77,7 @@ namespace Menu
 			hintLabel->SetLocalFontScale(0.75f);
 			hintLabel->SetText("Press Escape to close");
 			hintLabel->SetVerticalPadding( 0.1f );
-			Super::AnchorBelowPrevious(hintLabel,0.015f,0.f);
+			Super::AnchorBelowPrevious(CLOCATION,hintLabel,0.015f,0.f);
 		}
 		LogEvent(EventClass::Preset::gui,"Menu["+String(this)+"]::Setup("+String(initialAbsoluteWidth)+","+myTitle+")");
 	}
@@ -82,7 +85,7 @@ namespace Menu
 
 
 
-	PMenu	main,help,login,game;
+	PMenu	main,help,login,game,startServer,saveGames;
 	Component::PWindow	options;
 
 
@@ -119,8 +122,8 @@ namespace Menu
 		Component::PPanel p(new Component::Panel());
 		p->Anchor().Top();
 		Component::PLabel l(new Component::Label(name));
-		p->AddComponent(l);
-		p->AddComponent(c);
+		p->AddComponent(l,CLOCATION);
+		p->AddComponent(c,CLOCATION);
 
 		l->SetPadding( 0 );
 
@@ -138,7 +141,7 @@ namespace Menu
 		p->SetAutomaticHeight(true);
 		p->SetBackgroundTransparent();
 
-		options->AnchorBelowPrevious(p);
+		options->AnchorBelowPrevious(CLOCATION,p);
 		return l;
 	}
 
@@ -181,7 +184,7 @@ namespace Menu
 		LogEvent(EventClass::Preset::gui,"CreateOptionsMenu(): "+String(options.get()));
 		options->logFullAutoLayout = true;
 		options->Anchor().FillHorizontally(0.1f,0.1f).Top(0.1f);
-		options->AnchorBelowPrevious(new Component::Label("Options",2.f));
+		options->AnchorBelowPrevious(CLOCATION,new Component::Label("Options",2.f));
 		
 		AddOptionSlider("UI Scale", 0.5f, 2.f, 0.125f,UI::GetScale(), [](float&q)
 		{
@@ -341,7 +344,7 @@ namespace Menu
 		{
 			Component::PButton button(new Component::Button("OK",[](){WindowStack::Hide(options);}));
 			//button->LockIdealWidth();
-			options->AnchorBelowPrevious(button);
+			options->AnchorBelowPrevious(CLOCATION,button);
 			button->SetCenteredWidth(HUD::Component::Distance::GameWindow( 0.5f ));
 		}
 
@@ -356,11 +359,45 @@ namespace Menu
 		game = Menu::Create();
 		game->Setup(0.3f,"Game",true);
 
-		game->AddCommand("Change Nickname",LocalApplicationInterface::QueryNickname);
+		game->AddCommand("Change Nickname",HUD::Dialog::QueryNickname);
 		game->AddCommand("Abandon faction",Network::AbandonCurrentFaction,[](){return Network::amOnline && Network::haveFaction && RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame;});
 		game->AddCommand("Show factions (Tab)", FactionTable::Show,[](){return Network::amOnline;});
 		game->AddCommand("Show statistics", Statistics::Show,[](){return Network::amOnline && RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame;});
+		game->AddCommand("Save game as...",[]()
+		{
+			Dialog::Query("Please specify a name","","ABCDEFGHIJKLMNOPQRSTUVWXZYabcdefghijklmnopqrstuvwxyz0123456789 ",[](const String&candidate)->bool{return candidate.Length() > 3 && candidate.Length() < 16 && !candidate.BeginsWith(' ') && !candidate.EndsWith(' ');},
+				[](const String&name)
+			{
+				PathString location = RuntimeConfig::sharedConfig.Lookup("saves/"+name+RuntimeConfig::savFileExtension);
+				if (FileSystem::IsFile(location))
+				{
+					Dialog::Confirm("Savegame '"+name+"' already exists. Replace?",[name]()
+					{
+						if (Network::client.IsConnected() && Network::client.IsLocalhost())
+						{
+							Network::Channels::SaveAs.SendTo(Network::client,name);
+						}
+					});
+				}
+				else
+					if (Network::client.IsConnected() && Network::client.IsLocalhost())
+					{
+						Network::Channels::SaveAs.SendTo(Network::client,name);
+					}
 
+
+			});
+
+		},[](){return Network::client.IsConnected() && Network::client.IsLocalhost();});
+		game->AddCommand("Launch Control Console",[]()
+		{
+			SetFullScreen(false);
+			MonitoredProcess	process(false);
+			if (Network::amOnline && Network::client.IsLocalhost())
+				process.Start("../ControlConsole/","ControlConsole.exe",PathString(" -p "+String(Network::connectionBasePort)));	//start and abandon
+			else
+				process.Start("../ControlConsole/","ControlConsole.exe","");	//start and abandon, without port parameter since we don't know any
+		});
 		//game->FullAutoLayout();
 	}
 
@@ -368,6 +405,11 @@ namespace Menu
 	{
 		help = Menu::Create();
 		help->Setup(0.3f,"Help",true);
+		help->AddCommand("View Online Manual",[]()
+		{
+			OpenDocumentExternally("https://www.hexaverse.net/html.php");
+		});
+
 		help->AddCommand("Show Basic Controls",
 			[]()
 			{
@@ -384,7 +426,7 @@ namespace Menu
 					});
 			});
 		help->AddCommand("Start Interactive Tutorial",
-			ServerProcess::StartTutorialServer,
+			Tutorial::StartTutorialServer,
 			[](){return !Network::client.IsConnected() && !Network::client.IsAttemptingToConnect();});
 		
 		help->AddCommand("Report Bug",
@@ -394,6 +436,14 @@ namespace Menu
 				Logging::CallBugReporter();
 			}	
 		);
+
+		help->AddCommand("View Changelog",[]()
+		{
+			FileSystem::File f;
+			if (FileSystem::Folder().FindFile("..\\changelog.txt",f))
+				OpenDocumentExternally(f.GetLocation());
+		});
+
 
 		/*{
 			float2 margin = help->GetOutlineMargin();
@@ -490,6 +540,89 @@ namespace Menu
 	}
 
 
+	struct TSaveGame
+	{
+		String title;
+		PathString path;
+		FileSystem::ftime_t time;
+
+		friend void swap(TSaveGame&a, TSaveGame&b)
+		{
+			a.title.swap(b.title);
+			a.path.swap(b.path);
+			std::swap(a.time,b.time);
+		}
+	};
+
+	static void LookupSaveGames(Buffer0<TSaveGame>&saves,FileSystem::Folder folder, const String&path)
+	{
+		folder.Rewind();
+		FileSystem::File f;
+		while (folder.NextFile(RuntimeConfig::savFileExtension,f))
+		{
+			String path2 = path.IsNotEmpty() ? path +"/" : "";
+			auto&e = saves.Append();
+			e.title = path2 + String(f.GetInnerName());
+			e.path = f.GetLocation();
+			e.time = f.GetModificationTime();
+		}
+
+		folder.Rewind();
+		while (folder.NextFolder(f))
+		{
+			String path2 = path.IsNotEmpty() ? path +"/" : "";
+			LookupSaveGames(saves,f,path2 + String(f.GetInnerName()));
+		}
+	}
+
+
+	static void RefreshSaveGames()
+	{
+		if (!saveGames)
+			saveGames = Menu::Create();
+		auto menu = saveGames;
+		menu->Setup(0.25f,"Start Server with Saved Game",true);
+
+		Buffer0<TSaveGame> saves;
+		LookupSaveGames(saves, RuntimeConfig::sharedConfig.Lookup("saves"), "");
+		foreach (saves,s)
+		{
+			PathString p = s->path;
+			time_t t = s->time;
+			struct tm *tm = localtime(&t);
+			char date[64];
+			strftime(date, sizeof(date), "%Y-%m-%d %H:%M", tm);
+
+			menu->AddCommand(s->title+"\n"+date,[p]()
+			{
+				ServerProcess::Begin(true,false,"-l \""+p+"\"");
+				HUD::WindowStack::SignalSituationChange();
+			},[](){return !Network::amOnline;});
+		}
+	}
+
+
+	static void CreateStartServerMenu()
+	{
+		auto menu = startServer = Menu::Create();
+		menu->Setup(0.25f,"Start Server",true);
+		menu->AddCommand("Configure visually...",[](){ConfigurationMode::SetActive(true);},[](){return !Network::amOnline;});
+		menu->AddCommand("Start using current configuration",
+			[]()
+		{
+			ServerProcess::Begin(true,false);
+			HUD::WindowStack::SignalSituationChange();
+		},[](){return !Network::amOnline;});
+		menu->AddCommand("Load saved game...",
+			[]()
+		{
+			RefreshSaveGames();
+			WindowStack::Show(saveGames);
+		});
+
+
+	}
+
 	void Create()
 	{
 		CreateOptionsMenu();
@@ -497,6 +630,7 @@ namespace Menu
 		CreateMainMenu();
 		CreateLoginMenu();
 		CreateGameMenu();
+		CreateStartServerMenu();
 
 		GlobalEvents::applicationTerminate << []()
 		{
@@ -504,6 +638,7 @@ namespace Menu
 			help.reset();
 			login.reset();
 			options.reset();
+			startServer.reset();
 		};
 	}
 

@@ -27,8 +27,7 @@ namespace Network
 		PreHello,
 		PreFaction,
 		CommonFaction,
-		Spectator,
-		PlanetConfigurator
+		Spectator
 	};
 
 
@@ -59,7 +58,10 @@ namespace Network
 		Refreshes personal game progress information
 		*/
 		void				SendProgressUpdate(const String&warningReason, const Objects::Alliance::TNexusStats&stats);
-
+		bool				HasLivingFaction() const
+		{
+			return !isSpectator && faction && !faction->isDead;
+		}
 	};
 	
 
@@ -128,6 +130,18 @@ namespace Network
 	void		Start(UINT16 basePort);
 
 	/**
+	Creates a UDP socket that receives regular messages.
+	If messages are not received in 10 seconds, the server shuts down automatically.
+	Call only if the heartbeat system should be active. There is currently no method to again deactive it
+	*/
+	void		StartHeartbeat(UINT16 basePort);
+
+	/**
+	Resolves network events
+	*/
+	void		Tick();
+
+	/**
 	Stops the local server and information provider
 	*/
 	void		Stop();
@@ -144,10 +158,11 @@ namespace Network
 	*/
 	void		BuildConfiguredWorld();
 
-	/**
-	Prints the current server configuration and state to the console/log file.
-	*/
 	void		LogServerState();
+
+	String		DescribeStatus();
+	void		DescribeConfiguration(const std::function<void(const String&)>&logConfig);
+
 
 
 	Protocol::IdentifyFaction	Identify(const Objects::PFaction&f);

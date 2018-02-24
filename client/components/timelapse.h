@@ -3,7 +3,10 @@
 
 #ifdef HAS_WINDOW
 
-extern bool saveScreenshot;
+namespace InputControl
+{
+	extern bool saveScreenshot;
+}
 
 namespace TimeLapse
 {

@@ -21,6 +21,7 @@
 #include "../display.h"
 #include "../../clientEvents.h"
 #include "lighting.h"
+#include "../../clientRuntimeConfig.h"
 
 namespace Camera
 {
@@ -1412,24 +1413,25 @@ namespace Objects
 			{
 				int maxHealth = v->GetMaxHealth();
 				bool isBuilding = v->IsBuilding();
-				const MobileEntityProducer*p= v->CastToProducer();
-				std::pair<int,int> progress2;
-				bool isBuilding2 = (p && p->IsBuilding(progress2));
-				if (isBuilding || v->health < maxHealth || isBuilding2)
+				std::pair<int,int> progress;
+				if (isBuilding)
+					progress = v->GetBuildingProgress();
+				else
+				{
+					const MobileEntityProducer*p= v->CastToProducer();
+					isBuilding = (p && p->IsBuilding(progress));
+				}
+
+				if (isBuilding && progress.second <= 1)
+					isBuilding = false;
+
+				if (isBuilding || v->health < maxHealth)
 				{
 					ProgressBar::SetLocation(v->GetWorldPosition() IF_SATELLITES_P(, v->IsSatellite() ? 3.f : 1.f));
-					//ProgressBar::RenderNewBar(0,float3(0.1,0.1,0.1));
-					//ProgressBar::RenderNewBar(0.25f,float3(1,0.1,0.1));
-					//ProgressBar::RenderNewBar(0.75f,float3(0.1,1,0.1));
-					//ProgressBar::RenderNewBar(1,float3(0.1,0.1,1));
 					if (isBuilding)
 					{
 						std::pair<int,int>progress = v->GetBuildingProgress();
 						ProgressBar::RenderNewBar(progress.first,progress.second,float3(0.6,0.7,1));
-					}
-					if (isBuilding2)
-					{
-						ProgressBar::RenderNewBar(progress2.first,progress2.second,float3(0.6,0.7,1));
 					}
 					if (v->health < maxHealth)
 					{
@@ -1581,7 +1583,9 @@ namespace Objects
 				{
 					if (e != selectedEntity)
 					{
-						if ((e->isOwnedByMe && showFriendlyRanges && e->IsAlive()) || (!e->isOwnedByMe && showHostileRanges))
+						const bool mine = e->isOwnedByMe || (e->owner && e->owner->IsAlliedWithMe());
+
+						if ((mine && showFriendlyRanges && e->IsAlive()) || (!mine && showHostileRanges))
 						{
 							RenderAttackRangeOf(e,color,extendedShadow,false);
 						}
@@ -2222,30 +2226,29 @@ namespace Objects
 			#endif
 		}
 
-		switch (RuntimeConfig::gameGoal)
+		
+		
+		if (RuntimeConfig::nexusBases || RuntimeConfig::nexusPortsOnAllPoles)
 		{
-			case RuntimeConfig::GameGoal::ConquerNexus:
-				for (int i = 0; i < 12; i++)
-				{
-					if (nexusSet[i])
-						continue;
-					M::TVec3<> color;
-					if (BaseGrid::IsIsolatedCorner(i))
-					{
-						color= float3(1.0,0.6,0.5);
-					}
-					else
-						if (RuntimeConfig::empZones)
-							color= float3(0.5,0.6,1.0);
-						else
-							continue;
-					SetBeamColor(float4(color,0.75),
-								float4(color,0.75));
-					RenderPoleBeam(i,0.2f);
-				}
-			break;
-		}
+			for (int i = 0; i < 12; i++)
+			{
+				if (nexusSet[i])
+					continue;
+				M::TVec3<> color;
+				const bool isolated = BaseGrid::IsIsolatedCorner(i);
+				if (!RuntimeConfig::nexusPortsOnAllPoles && !isolated)
+					continue;
 
+				if (isolated && RuntimeConfig::nexusBases)
+					color= float3(1.0,0.6,0.5);
+				else
+					color= float3(0.5,0.6,1.0);
+				SetBeamColor(float4(color,0.75),
+							float4(color,0.75));
+				RenderPoleBeam(i,0.2f);
+			}
+		}
+		
 
 		display.SetDepthTest(true,true);
 		display.SetBlendMode(Engine::BlendMode::AlphaBlend);

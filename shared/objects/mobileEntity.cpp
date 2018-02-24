@@ -8,6 +8,8 @@
 #include "prototypes.h"
 #include "../runtimeConfig.h"
 #include "structure/tower.h"
+#include "pathfinding.h"
+
 
 namespace Objects
 {
@@ -141,27 +143,62 @@ namespace Objects
 		Mat::invertSystem(system, inverse);
 	}
 
+	float MobileEntity::ContinuationsToRounds(int continuationsToJobCompletion, Component::operation_t op) const
+	{
+		int sub = (1<<GetConstructionAcceleration(op));
+		return float(continuationsToJobCompletion) / sub;
+	}
+
+
+
+	UINT32					MobileEntity::GetOperationContinuations(int jobCosts, Component::operation_t op) const
+	{
+		if (!jobCosts)
+			return 0;
+		jobCosts = abs(jobCosts);
+		int speed = GetOperationSpeed(op);
+		if (!speed)
+			return 0xFFFFFFFF;
+		int rs = jobCosts / speed;
+		if (jobCosts % speed)
+			rs ++;
+		return rs;
+	}
+
+	UINT32					MobileEntity::GetOperationCompletionRounds(int jobCosts, Component::operation_t op) const
+	{
+		return M::CeilDiv<UINT32>(GetOperationContinuations(jobCosts,op),1 << GetConstructionAcceleration(op));
+	}
+
+
+
 	std::pair<int,int>					MobileEntity::GetBuildingProgress() const
 	{
 		if (!HasTasks())
 			return std::pair<int,int>(0,1);
-		int total = 0;
+		UINT32 total = 0;
 		for (index_t i = 0; i < myTasks.Count(); i++)
 		{
 			const auto&t = myTasks[i];
-			if (!t.job || t.job->roundsToJobCompletion < 0)
+			if (!t.job || t.job->continuationsToJobCompletion < 0)
 				break;
-			total += t.job->roundsToJobCompletion;
+			total += t.job->GetConstructionActionCostPerContinuation(*this) * t.job->continuationsToJobCompletion;
 			if (t.job->movesToFocusWhenDone)
 				break;
 		}
-		return constructionRoundCounter + total > 0 ? std::pair<int,int>(constructionRoundCounter,constructionRoundCounter + total) : std::pair<int,int>(0,1);
+		
+		if (constructionActionCounter + total == 0)
+			return std::pair<int,int>(0,1);
+
+		int begin = (int)constructionActionCounter;
+		int end = (int)(constructionActionCounter + total);
+		return std::pair<int,int>(M::CeilDiv<int>(begin,MaxConstructionActionLeft),M::CeilDiv<int>(end,MaxConstructionActionLeft));
 	}
 
 
 	bool MobileEntity::HasUnsafeTask() const
 	{
-		return constructionRoundCounter > 0 
+		return constructionActionCounter  > 0 
 				&& myTasks.IsNotEmpty() 
 				&& myTasks.Peek().IsJob() 
 				&& myTasks.Peek().job->resourceCostLeft > 0;
@@ -484,22 +521,24 @@ namespace Objects
 				static Ctr::Buffer0<PWorldEntity> newContacts;
 				newContacts.Clear();
 				this->MoveSensoryToCurrentLocation(entityTime,&newContacts);
+
+				//stop motion into attack range of new contacts:
 				foreach (newContacts,c)
 				{
 					float zOffset;
 					PTurretBase b = (*c)->GetTurretBase(zOffset);
 					if (!b)
 						continue;
-					if (!(*c)->IsSentry())
-						continue;
-					if (b->turret->CanAttack())
+					if (b->turret->CanAttack() && !b->turret->dealsEMPDamage)
 					{
-						LogEvent(EventClass::Preset::common,this,"Processing new hostile contact "+(*c)->GetName()+"...");
+						LogEvent(EventClass::Preset::common,this,"Processing new hostile regular-offensive contact "+(*c)->GetName()+"...");
 						for (WMobileEntity w : owner->allMobiles)
 						{
 							PMobileEntity v2 = w.lock();
 							if (!v2)
 								continue;
+							if (v2->turret->CanAttack() && v2->turret->ignoresVehicleMotion)
+								continue;	//otherwise this entity is a hunter, with low sensor range, plus probably able to tank the damage and/or counter-attack
 
 							for (index_t i = 0; i < v2->myTasks.Count(); i++)
 							{
@@ -611,6 +650,26 @@ namespace Objects
 								}
 							}
 						#endif
+						foreach (f->planes, _p)
+						{
+							auto p = _p->lock();
+							if (p && p->WouldAttack(_this,choice,entityTime))
+							{
+								if (p->AttackNext(choice.cellTarget,true))
+								{
+									LogEvent(EventSignificance::Debug,p.get(),"Auto-targeting moving "+GetName()+" (located at "+ToString(location)+", =>"+ToString(Grid::ToWorld(location))+",sys="+ToString(system.w.xyz)+") via closest viable attack target "+ToString(choice.cellTarget)+" at t="+String(entityTime));
+									LogEvent(EventSignificance::Important,p.get(),"Auto-targeting moving "+GetNiceName());
+
+									p->Attack(entityTime);
+									LogEvent(EventSignificance::Debug,p.get(),"t is now "+String(entityTime));
+									if (IsDeadOrGhost())
+									{
+										doBreak = true;
+										return;
+									}
+								}
+							}
+						}
 					}
 		
 					if (!doBreak)
@@ -666,7 +725,7 @@ namespace Objects
 		{
 			if (numTriedPlottingOnMoveAutoMotion < 5)
 			{
-				TWays	ways;
+				Pathfinding::TWays	ways;
 
 				GetMobileWays(owner->knownWorld, this,  location, ways, Grid::LCellIdI::Invalid, false,false);
 				//random first to maybe not make the same mistake twice
@@ -723,7 +782,9 @@ namespace Objects
 
 					while (HasTasks() && myTasks.Peek().job)
 					{
-						VehicleJob::BaseJob::begin_t b = myTasks.Peek().job->BeginHere(*this,myTasks.Peek().GetFocus(location),!!completeOnMove);
+						auto job = myTasks.Peek().job;
+						VehicleJob::BaseJob::begin_t b = job->BeginHere(*this,myTasks.Peek().GetFocus(location),!!completeOnMove);
+						job->UpdateEstimations(*this);	//accomodate situational changes
 						bool staticDeltaContainer = true;
 						switch (b)
 						{
@@ -779,63 +840,79 @@ namespace Objects
 						return HandleNormalTask();
 					}
 				}
-				if (HasTasks() && myTasks.Peek().job && myTasks.Peek().job->GetConstructionActionCostPerRound(*this) <= constructionActionLeft)
+				if (HasTasks())
 				{
-					ASSERT__(jobStarted);	//supposedly it can happen that this is false
 					PVehicleJob job = myTasks.Peek().job;
-					if (IsSleeping() && job->DelayedBySleep())
+					if (job)
 					{
-						LogEvent(EventSignificance::Common,this,"Job delayed: '"+job->GetName()+"'. Entity is sleeping");
-						return TaskResult::AllDoneForThisRound;
-					}
-					else
-					{
-						constructionActionLeft -= job->GetConstructionActionCostPerRound(*this);
-						constructionRoundCounter ++;
-						bool terminal = !job->movesToFocusWhenDone && job->parent.expired();
-						auto rs = job->Continue(*this,myTasks.Peek().GetFocus(location),true);
-						switch (rs)
+						const UINT32 cost = job->GetConstructionActionCostPerContinuation(*this);
+						if (cost <= constructionActionLeft)
 						{
-							case VehicleJob::BaseJob::ContinueJob:
-								LogEvent(EventSignificance::Common,this,"Job continued: '"+job->GetName()+"'");
-							break;
-							case VehicleJob::BaseJob::JobDelayed:
-								constructionRoundCounter --;
-							break;
-							case VehicleJob::BaseJob::JobDone:
-								LogEvent(EventSignificance::Common,this,"Job ended: '"+job->GetName()+"'");
+							ASSERT__(jobStarted);	//supposedly it can happen that this is false
+							if (IsSleeping() && job->DelayedBySleep())
+							{
+								LogEvent(EventSignificance::Common,this,"Job delayed: '"+job->GetName()+"'. Entity is sleeping");
+								return TaskResult::AllDoneForThisRound;
+							}
+							else
+							{
+								constructionActionLeft -= cost;
+								constructionActionCounter += cost;
+								/**
+								Unable to determine why terminal is ever set true.
+								Please note that the BuildRoad job should continue despite this condition evaluating to true
+								*/
+								//bool terminal = !job->movesToFocusWhenDone && job->parent.expired();
 
-								EraseFirstTask();
-								RegisterChange(TasksChanged,entityTime);
-								while (HasTasks() && myTasks.Peek().job && myTasks.Peek().job->IsImplicitlyDone(*this,myTasks.Peek().GetFocus(location)))
+								auto rs = job->Continue(*this,myTasks.Peek().GetFocus(location),true);
+								switch (rs)
 								{
-									LogEvent(EventSignificance::Common,this,"Job has implicitly ended: '"+myTasks.Peek().job->GetName()+"'");
+									case VehicleJob::BaseJob::ContinueJob:
+										LogEvent(EventSignificance::Common,this,"Job continued: '"+job->GetName()+"' now at "+String(constructionActionCounter)+", "+String(job->continuationsToJobCompletion)+" action left");
+									break;
+									case VehicleJob::BaseJob::JobDelayed:
+										constructionActionCounter -= cost;
+										//LogEvent(EventSignificance::Common,this,"Job delayed: '"+job->GetName()+"' now at "+String(constructionActionCounter)+", "+String(job->continuationsToJobCompletion)+" action left");
+									break;
+									case VehicleJob::BaseJob::JobDone:
+										LogEvent(EventSignificance::Common,this,"Job ended: '"+job->GetName()+"'");
 
-									EraseFirstTask();
-								}
-								if (HasTasks() && myTasks.Peek().job)
-								{
-									LogEvent(EventSignificance::Common,this,"Next front job: '"+myTasks.Peek().job->GetName()+"'");
-								}
-								jobStarted = false;
+										EraseFirstTask();
+										RegisterChange(TasksChanged,entityTime);
+										while (HasTasks() && myTasks.Peek().job && myTasks.Peek().job->IsImplicitlyDone(*this,myTasks.Peek().GetFocus(location)))
+										{
+											LogEvent(EventSignificance::Common,this,"Job has implicitly ended: '"+myTasks.Peek().job->GetName()+"'");
 
-							return TaskResult::FinishedCanDoMore;
-							case VehicleJob::BaseJob::TerminalFailureVehicleDestroyed:
-								LogEvent(EventSignificance::Common,this,"Terminal failure. Remaining tasks dropped. Vehicle destroyed.");
-								jobStarted = false;
-								ClearAllTasks(true, CLOCATION);
-								unstable = false;
-								if (isInserted)	//otherwise already killed by Continue() operation
-									Remove(shared_from_this(),RemovalType::UncontrolledExplosion,entityTime);
-							return TaskResult::AllDoneForThisRound;
-							case VehicleJob::BaseJob::TerminalFailure:
-								LogEvent(EventSignificance::Common,this,"Terminal failure. Remaining tasks dropped.");
-								jobStarted = false;
-								ClearAllTasks(true, CLOCATION);
-								unstable = false;
-							return TaskResult::AllDoneForThisRound;
+											EraseFirstTask();
+										}
+										if (HasTasks() && myTasks.Peek().job)
+										{
+											LogEvent(EventSignificance::Common,this,"Next front job: '"+myTasks.Peek().job->GetName()+"'");
+										}
+										foreach (myTasks,t)
+											if (t->job)
+												t->job->UpdateEstimations(*this);
+										jobStarted = false;
+
+									return TaskResult::FinishedCanDoMore;
+									case VehicleJob::BaseJob::TerminalFailureVehicleDestroyed:
+										LogEvent(EventSignificance::Common,this,"Terminal failure. Remaining tasks dropped. Vehicle destroyed.");
+										jobStarted = false;
+										ClearAllTasks(true, CLOCATION);
+										unstable = false;
+										if (isInserted)	//otherwise already killed by Continue() operation
+											Remove(shared_from_this(),RemovalType::UncontrolledExplosion,entityTime);
+									return TaskResult::AllDoneForThisRound;
+									case VehicleJob::BaseJob::TerminalFailure:
+										LogEvent(EventSignificance::Common,this,"Terminal failure. Remaining tasks dropped.");
+										jobStarted = false;
+										ClearAllTasks(true, CLOCATION);
+										unstable = false;
+									return TaskResult::AllDoneForThisRound;
+								}
+								return constructionActionLeft == 0 /*|| terminal*/ ? TaskResult::AllDoneForThisRound : TaskResult::FinishedCanDoMore;
+							}
 						}
-						return constructionActionLeft == 0 || terminal ? TaskResult::AllDoneForThisRound : TaskResult::FinishedCanDoMore;
 					}
 				}
 				return TaskResult::AllDoneForThisRound;
@@ -869,7 +946,7 @@ namespace Objects
 
 			if (myTasks.IsEmpty())
 			{
-				constructionRoundCounter = 0;
+				constructionActionCounter = 0;
 			}
 
 			if (IsSleeping() && job->DelayedBySleep())
@@ -1013,9 +1090,9 @@ namespace Objects
 
 			if (!HasTasks() || myTasks.GetNewest().type != Task::MoveTo)
 			{
-				if (myTasks.Count() >= Objects::MaxProductionTasks)
+				if (myTasks.Count() >= Objects::MaxTasks)
 				{
-					LogEvent(EventClass::Preset::commandRejected,this,"Max queue length ("+String(Objects::MaxProductionTasks)+") reached. Task rejected");
+					LogEvent(EventClass::Preset::commandRejected,this,"Max queue length ("+String(Objects::MaxTasks)+") reached. Task rejected");
 					return false;
 				}
 
@@ -1054,7 +1131,7 @@ namespace Objects
 					bool failed = false;
 					for (index_t i = 0; i < destination.GetLength(); i++)
 					{
-						if (myTasks.GetNewest().foci.Count() >= MaxFocusCount)
+						if (myTasks.GetNewest().foci.Count() >= MaxFocusPoints)
 						{
 							failed = true;
 							break;
@@ -1154,6 +1231,8 @@ namespace Objects
 					myTasks.EraseBack();
 			}
 			RegisterChange(TasksChanged,entityTime);
+			if (!HasTasks())
+				jobStarted = false;
 			return true;
 		}
 
@@ -1360,7 +1439,7 @@ namespace Objects
 			//}
 			//else
 			{
-				if (!AppendShortestPathI((const Vehicle*)v,prev,target.target,path))
+				if (!Pathfinding::AppendShortestPathI((const Vehicle*)v,prev,target.target,path))
 					return false;
 			}
 		}
@@ -1370,7 +1449,7 @@ namespace Objects
 			{
 				{
 					count_t offset = path.Count();
-					if (!SubOrbital::AppendShortestPathI((const SubOrbital::Plane*)v, prev, target.target, path))
+					if (!Pathfinding::SubOrbital::AppendShortestPathI((const SubOrbital::Plane*)v, prev, target.target, path))
 						return false;
 				#ifndef CLIENT
 					if (target.isDetailed && path.Count() - offset != 1)
@@ -1507,7 +1586,7 @@ namespace Objects
 			path << PathNode(pointOfOrigin,0);
 			if (v->IsGroundBoundVehicle())
 			{
-				if (!AppendShortestDirectPath(pointOfOrigin, foci.Peek().target, path, false))
+				if (!Pathfinding::AppendShortestDirectPath(pointOfOrigin,foci.Peek().target,path,false))
 				{
 					return false;	//this would be weird, but happens
 				}
@@ -1515,7 +1594,7 @@ namespace Objects
 			else
 				if (v->IsPlane())
 				{
-					if (!SubOrbital::AppendShortestDirectPath(pointOfOrigin, foci.Peek().target.stackID, path))
+					if (!Pathfinding::SubOrbital::AppendShortestDirectPath(pointOfOrigin, foci.Peek().target.stackID, path))
 					{
 						return false;	//this would be weird, but happens
 					}
@@ -1538,7 +1617,7 @@ namespace Objects
 			{
 				strPlottedCourse << ' ' << node->cell.stackID<<'.'<<node->cell.height;
 			}
-			LogEvent(EventSignificance::Common,v,strPlottedCourse.ToStringRef());
+			LogEvent(EventSignificance::Debug,v,strPlottedCourse.ToStringRef());
 		#endif
 		return true;
 	}

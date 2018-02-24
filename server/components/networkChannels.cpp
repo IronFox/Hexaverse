@@ -3,7 +3,6 @@
 #include "state.h"
 #include "serverLogEvent.h"
 #include "journalSaveGame.h"
-#include "configurationMode.h"
 #include <objects/structure/mine.h>
 #include "state/gameState.h"
 
@@ -89,7 +88,7 @@ namespace Receiver
 
 	}
 
-	void	AllianceJoinRequest(Protocol::AllianceJoinRequest&req, TCP::Peer&peer)
+	void	AllianceInvite(Protocol::AllianceInvite&invite, TCP::Peer&peer)
 	{
 		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 		if (!client)
@@ -108,100 +107,102 @@ namespace Receiver
 			return;
 		}
 
-
-		if (req.allianceID.IsEmpty())
+		auto alliance = Objects::Alliance::FindByID(invite.allianceID);
+		if (!alliance)
 		{
-			if (RuntimeConfig::IsInAnyCommandPhase())
-			{
-				LogEvent(EventClass::Preset::uncommon,peer,"Left alliance");
-				if (client->faction->alliance->CountLivingMembers() == 1)
-					return;	//nothing to do
-
-				Objects::PAlliance a {new Objects::Alliance(TUniqueID::New())};
-			
-				client->faction->ChangeAlliance(a);
-			}
-			else
-			{
-				LogEvent(EventClass::Preset::commandRejected,peer,"Cannot change alliances right now. Must be in a command phase");
-			}
+			LogEvent(EventClass::Preset::commandRejected,"Can't find alliance "+ToString(invite.allianceID)+" for invite");
 			return;
 		}
-
-		Objects::PAlliance target = Objects::Alliance::FindByID(req.allianceID);
-		if (target == nullptr)
+		auto faction = Objects::Faction::FindByID(invite.factionID);
+		if (!faction)
 		{
-			LogEvent(EventClass::Preset::commandRejected,peer,"Requested Join request rejected, alliance does not exist");
+			LogEvent(EventClass::Preset::commandRejected,"Can't find faction "+ToString(invite.factionID)+" for alliance invite");
 			return;
 		}
-		if (client->faction->alliance == target)
+		if (faction->alliance == alliance)
 		{
-			LogEvent(EventClass::Preset::commandRejected,peer,"Already joined that alliance");
+			LogEvent(EventClass::Preset::commandRejected,peer,"Unable to handle faction invitation of "+faction->GetLogName()+". Already a member of alliance "+ToString(alliance->id));
 			return;
 		}
-
-		TUniqueID ids[] = {client->faction->id, target->id };
-
-		if (req.abortJoining)
+		switch (invite.type)
 		{
-			Game::PVote v = Game::Vote::FindConcerning(ArrayRef<TUniqueID>( ids,2));
-			if (v != nullptr)
-			{
-				v->Cancel();
-//				LogEvent(EventClass( EventSignificance::Important, EventFlavor::Neutral),client->faction,"Canceled vote about joining alliance "+target->id.ToNiceString());
-			}
-		}
-		else
-		{
-			const String niceTask = target->CountLivingMembers() > 1 ? "joining alliance "+target->id.ToNiceString() : "creating an alliance with "+target->GetMember(0)->GetName();
-
-			Game::PVote v = Game::Vote::CreateNew(ArrayRef<TUniqueID>( ids,2),
-				"Allow "+client->faction->name+ " to join your alliance?", 
-				120,
-				AllianceScope(target),
-				[niceTask](const Game::PVote&v, const Protocol::VoteResult&rs)
+			case Protocol::AllianceInviteType::Cancel:
+				if (client->faction->alliance != alliance)
 				{
-					auto a = Objects::Alliance::FindByID(v->concerning[1]);
-					auto f = Objects::Faction::FindByID(v->concerning[0]);
-					if (f)
+					LogEvent(EventClass::Preset::commandRejected,peer,"Unable to invite faction. You are not member of alliance "+ToString(alliance->id));
+					return;
+				}
+				LogEvent(EventClass(EventSignificance::Important,EventFlavor::Loss),peer,"Canceled invitation of "+faction->GetName());
+				alliance->CancelInvite(faction);
+			break;
+			case Protocol::AllianceInviteType::Invite:
+				if (client->faction->alliance != alliance)
+				{
+					LogEvent(EventClass::Preset::commandRejected,peer,"Unable to cancel faction invitation. You are not member of alliance "+ToString(alliance->id));
+					return;
+				}
+				LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain),peer,"Invited "+faction->GetName());
+
+				{
+					Network::PClient cother;
+					if (Network::playerMap.Query(faction,cother))
 					{
-						switch (rs.resultType)
+						String members;
+						if (alliance->CountLivingMembers() > 1)
 						{
-							case Protocol::VoteResultType::Passed:
-								if (a)
-								{
-									LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain), f,"Vote passed. Admission to alliance "+a->id.ToNiceString()+" granted");
-									f->ChangeAlliance(a);
-								}
-								else
-								{
-									LogEvent(EventClass::Preset::internalError, f,"Vote passed but alliance "+ToString(v->concerning[1])+" no longer exists...");
-								}
-							break;
-							case Protocol::VoteResultType::Rejected:
-								LogEvent(EventClass(EventSignificance::Important,EventFlavor::Loss), f,"Admission to alliance "+a->id.ToNiceString()+" has been rejected");
-							break;
-							case Protocol::VoteResultType::TimedOut:
-								LogEvent(EventClass(EventSignificance::Important,EventFlavor::Loss), f,"Vote for "+niceTask+" has timed out");
-							break;
-							case Protocol::VoteResultType::Canceled:
-								LogEvent(EventClass(EventSignificance::Important,EventFlavor::Neutral), f,"Vote for "+niceTask+" was canceled");
-							break;
+							Buffer0<String> names;
+							alliance->VisitMembers([&names](const Objects::PFaction&f){names << f->GetName();});
+							members = " ("+implode(',',names.ToRef())+")";
 						}
+						LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain),cother->peer.lock(), "You have been invited into alliance "+ToString(alliance->id)+" by "+client->faction->GetName()+members);
+					}
+					if (alliance->CountLivingMembers() > 1)
+					{
+						alliance->VisitMembers([&client,&faction](const Objects::PFaction&f)
+						{
+							if (f == client->faction)
+								return;
+							Network::PClient cother;
+							if (Network::playerMap.Query(f,cother))
+							{
+								LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain),cother->peer.lock(),client->faction->GetName()+ " invited "+faction->GetName()+" into your alliance");
+							}
+						});
+
 					}
 				}
-			);
-
-
-			if (v)
-			{
-				LogEvent(EventSignificance::Debug,client->faction,"Started vote on joining alliance "+ToString(target->id));
-				LogEvent(EventClass( EventSignificance::Important, EventFlavor::Gain),client->faction,"Started vote on "+niceTask);
-				v->quorum = Game::Vote::Quorum::TwoThirds;
-				v->votesToPass = Game::Vote::VotesToPass::SimpleMajority;
-			}
-			else
-				LogEvent(EventClass( EventSignificance::Important, EventFlavor::Loss),client->faction,"There already exists a vote on you "+niceTask+". Either it is still active or has been rejected");
+				alliance->Invite(faction);
+			break;
+			case Protocol::AllianceInviteType::Accept:
+				if (client->faction != faction)
+				{
+					LogEvent(EventClass::Preset::unexpectedBehavior,peer,"Unable to accept alliance invitation. You are not the specified faction");
+					return;
+				}
+				if (!alliance->HaveInvited(faction))
+				{
+					LogEvent(EventClass::Preset::commandRejected,peer,"Unable to accept alliance "+ToString(alliance->id)+" invitation. There is no invitation");
+					return;
+				}
+				LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain),peer,"Accepted invite to alliance "+alliance->id.ToNiceString());
+				faction->ChangeAlliance(alliance);
+			break;
+			case Protocol::AllianceInviteType::Reject:
+				if (client->faction != faction)
+				{
+					LogEvent(EventClass::Preset::unexpectedBehavior,peer,"Unable to reject alliance invitation. You are not the specified faction");
+					return;
+				}
+				if (!alliance->HaveInvited(faction))
+				{
+					LogEvent(EventClass::Preset::commandRejected,peer,"Unable to reject alliance "+ToString(alliance->id)+" invitation. There is no invitation");
+					return;
+				}
+				LogEvent(EventClass(EventSignificance::Important,EventFlavor::Loss),peer,"Rejected invite to alliance "+alliance->id.ToNiceString());
+				alliance->CancelInvite(faction);
+			break;
+			default:
+				LogEvent(EventClass::Preset::internalError,"Unexpected invite type for alliance "+ToString(alliance->id)+" and faction "+faction->GetLogName());
 		}
 	}
 }
@@ -241,11 +242,7 @@ namespace Channels
 	TCP::Channel<Protocol::ClientName,Level::Faction,Protocol::ChannelID::ChangeMyName>						changeMyName(Receiver::ChangeMyName);
 	TCP::Channel<NET(TUniqueID), Level::Faction, Protocol::ChannelID::IdentifyFaction>						identifyFactionRecv(Receiver::IdentifyFaction);
 	TCP::Channel<Protocol::QueueResearch, Level::Faction, Protocol::ChannelID::QueueResearch>				queueResearch(Receiver::QueueResearch);
-	TCP::Channel<Package::NetString<256>, Level::Faction, Protocol::ChannelID::ChatMessage>					chatMessage(Receiver::ChatMessage);
-	TCP::Channel<Grid::ExtendedPlanetConfig, Level::Configurator, Protocol::ChannelID::PlanetConfig>		planetConfig(Receiver::PlanetConfig);
-	TCP::Channel<Protocol::GameConfig, Level::Configurator, Protocol::ChannelID::GameConfig>				gameConfig(Receiver::GameConfig);
 	TCP::Channel<Protocol::ResourceID, Level::PreFaction, Protocol::ChannelID::RequestResource>				requestResource(Receiver::RequestResource);
-	TCP::Channel<Protocol::LoadPlanetByName, Level::Configurator, Protocol::ChannelID::LoadPlanetByName>	loadPlanetByName(Receiver::LoadPlanetByName);
 	
 	TCP::Channel<NET(INT32),Level::Faction,Protocol::ChannelID::TutorialAt>							tutorialAt(Receiver::TutorialAt);
 
@@ -275,7 +272,6 @@ namespace Channels
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionRequestedNewRound>				factionRequestedNewRound;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionContinuedRound>					factionContinuedRound;
 	TCP::ObjectSender<Protocol::ResourceData,Protocol::ChannelID::ResourceData>						resourceData;
-	TCP::ObjectSender<NETA(Package::NetString<256>),Protocol::ChannelID::PlanetNames>				planetNames;
 
 	TCP::ObjectSender<NET(UINT16), Protocol::ChannelID::LockEMPZones>								lockEmpZones;
 	#ifndef NO_HIBERNATION
@@ -291,10 +287,14 @@ namespace Channels
 	DECLARE_OBJECT_SENDER(VoteCreation);
 	DECLARE_OBJECT_SENDER(VoteResult);
 	DECLARE_FACTION_CHANNEL(ClientVote);
-	DECLARE_FACTION_CHANNEL(AllianceJoinRequest);
+	DECLARE_FACTION_CHANNEL(AllianceInvite);
 	DECLARE_FACTION_CHANNEL(AllianceConfigChange);
+	DECLARE_FACTION_CHANNEL(ChatMessage);
+	DECLARE_FACTION_CHANNEL(SaveAs);
 	
 	DECLARE_OBJECT_SENDER(MyFaction);
+	DECLARE_OBJECT_SENDER(GameConfig);
+	DECLARE_OBJECT_SENDER(KillFaction);
 
 	namespace Statistics
 	{
@@ -463,6 +463,14 @@ namespace Receiver
 			Game::Network::SendStatisticsTo(peer,f);
 		},true);
 
+		Objects::Alliance::Foreach([&peer](const Objects::PAlliance&a)
+		{
+			a->VisitAllInvitedFactions([&peer,&a](const Objects::PFaction&f)
+			{
+				Channels::AllianceInvite.SendTo(peer,Protocol::AllianceInvite(a->id,f->id,Protocol::AllianceInviteType::Invite));
+			});
+		});
+
 		if (!Game::winner.expired())
 			Channels::winningFaction.SendTo(peer,Game::winner.lock()->id);
 
@@ -504,6 +512,15 @@ namespace Receiver
 				Channels::newMobileEntity.SendTo(peer,st);
 			}
 		}
+	}
+
+
+	Objects::PFaction FindFirstLivingFaction()
+	{
+		foreach (Objects::Faction::all,f)
+			if (!(*f)->isDead)
+				return *f;
+		return nullptr;
 	}
 
 	void	ClientFaction(Protocol::ClientFactionRequest&_p, TCP::Peer&peer)
@@ -612,7 +629,7 @@ namespace Receiver
 		if (response.startFactionTypes == Protocol::FactionType::SpectatorFaction)
 		{
 			//authenticated and purged any previous faction. let's go
-			Network::ChangeUserLevel(peer,ConfigurationMode::IsActive()?Network::UserLevel::PlanetConfigurator :  Network::UserLevel::Spectator);
+			Network::ChangeUserLevel(peer,Network::UserLevel::Spectator);
 
 
 			bool firstSpectator = Network::spectators.IsEmpty();
@@ -629,20 +646,6 @@ namespace Receiver
 			//send world state:
 
 			SendAllToSpectator(peer, firstSpectator);
-
-			Channels::planetConfig.SendTo(peer,Grid::currentPlanetConfig);
-
-			if (ConfigurationMode::IsActive())
-			{
-				Ctr::Array<String>	planetNames;
-				World::GetAvailablePlanetNames(planetNames);
-				NETA(Package::NetString<256>) names;
-				names.SetSize(planetNames.Count());
-				for (index_t i = 0; i < planetNames.Count(); i++)
-					names[i] = planetNames[i];
-				Channels::planetNames.SendTo(peer,names);
-			}
-
 
 			peer.SendSignal(Protocol::ChannelID::BeginGame);
 			return;
@@ -663,8 +666,7 @@ namespace Receiver
 					#ifndef _DEBUG
 						&& RuntimeConfig::tutorialMode
 					#endif
-					&& Objects::Faction::all.IsNotEmpty()
-					&& (faction = Objects::Faction::all.First())	//in tutorial mode (or debug mode) take first known faction
+					&& (faction = FindFirstLivingFaction())	//in tutorial mode (or debug mode) take first known faction
 				)
 			)
 		{
@@ -891,7 +893,7 @@ namespace Receiver
 		{
 			Channels::identifyFaction.SendTo(peer,Network::Identify(f));
 
-		},false);
+		});
 
 
 		if (!newFaction)
@@ -900,7 +902,7 @@ namespace Receiver
 			timestamp.rightNow = true;
 
 			LogEvent(EventSignificance::Debug,"Sending known foreign contacts to "+ peer.ToString());
-			client->faction->seeing.VisitAllKeys([&peer,client,timestamp](const Objects::PWorldEntity&e)
+			client->faction->VisitVisibleForeignEntities([&peer,client,timestamp](const Objects::PWorldEntity&e)
 			{
 				LogEvent(EventSignificance::Debug,e.get(),"Sending contact (@"+String(e.get())+")");
 				if (e->IsDeadOrGhost())
@@ -949,7 +951,7 @@ namespace Receiver
 		//probably optional later on
 		{
 			//broadcast name and state
-
+			ASSERT__(!client->faction->isDead);
 			Channels::identifyFaction.SendTo(Network::server,Network::Identify(client->faction),Channels::Level::Faction);
 			Channels::factionOnline.SendTo(Network::server,client->faction->id,2);
 
@@ -961,6 +963,15 @@ namespace Receiver
 		LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ),faction->name+" connected");
 
 		SendSessionConfigTo(peer,client->faction);
+
+
+		Objects::Alliance::Foreach([&peer](const Objects::PAlliance&a)
+		{
+			a->VisitAllInvitedFactions([&peer,&a](const Objects::PFaction&f)
+			{
+				Channels::AllianceInvite.SendTo(peer,Protocol::AllianceInvite(a->id,f->id,Protocol::AllianceInviteType::Invite));
+			});
+		});
 
 		Game::Vote::AdvertiseAllToNewlyConnectedPeer(client->faction,peer);
 		
@@ -1118,14 +1129,77 @@ namespace Receiver
 		Journal::currentRound.Register(true,f,new Journal::Round::DestroyMarker(id));
 	}
 
-	void	ChatMessage(Package::NetString<256>&message, TCP::Peer&peer)
+	void	SaveAs(Protocol::SaveAs&saveAs, TCP::Peer&peer)
+	{
+		if (!peer.IsLocalhost())
+		{
+			LogEvent(EventClass::Preset::unexpectedBehavior,peer,"Can only save when localhost");
+			peer.DisconnectPeer();
+			return;
+		}
+		saveAs.EraseCharacters([](char c){return CharFunctions::isalnum(c) || c == ' ';},false);
+		if (FileIO::CanSaveRightNow())
+		{
+			LogEvent(EventClass::Preset::important,"Saving game...");
+			FileIO::Save(RuntimeConfig::sharedConfig.Lookup("saves/"+saveAs+RuntimeConfig::savFileExtension),RuntimeConfig::phase);
+			LogEvent(EventClass::Preset::important,"Game saved");
+		}
+		else
+			LogEvent(EventClass::Preset::commandRejected,peer,"Cannot save right now. Phase inappropriate. Try again later");
+	}
+
+	void	ChatMessage(Protocol::ChatMessage&message, TCP::Peer&peer)
 	{
 		if (!peer.attachment)
 			return;
 		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 		if (!client->faction)
 			return;
-		LogEvent(EventClass( EventSignificance::Important, EventFlavor::ChatMessage ),client->faction,message,Logging::Origin::Local, Logging::Privacy::Public);
+		if (message.recipient.IsEmpty())
+			LogEvent(EventClass( EventSignificance::Important, EventFlavor::ChatMessage ),client->faction,message.message,Logging::Origin::Local, Logging::Privacy::Public);
+		else
+		{
+			LogEvent(EventClass( EventSignificance::Common, EventFlavor::ChatMessage ),client->faction,message.message,Logging::Origin::Local, Logging::Privacy::ServerPrivate);
+
+			auto a = Objects::Alliance::FindByID(message.recipient);
+			if (a)
+			{
+				a->ForeachMember([&message,client](const Objects::PFaction&f)
+				{
+					Network::PClient other;
+					if (Network::playerMap.Query(f,other))
+					{
+						auto p = other->peer.lock();
+						if (p)
+							Logging::SendEntityEvent( p.get(),
+								EventClass( EventSignificance::Important, EventFlavor::ChatMessage ), 
+								nullptr, 
+								client->faction, 
+								message.message, 
+								Logging::Privacy::ClientPrivate);
+					}
+				});
+				return;
+			}
+
+			auto f = Objects::Faction::FindByID(message.recipient);
+			if (f)
+			{
+				Network::PClient other;
+				if (Network::playerMap.Query(f,other))
+				{
+					auto p = other->peer.lock();
+					if (p)
+						Logging::SendEntityEvent( p.get(),
+							EventClass( EventSignificance::Important, EventFlavor::ChatMessage ), 
+							nullptr, 
+							client->faction, 
+							message.message, 
+							Logging::Privacy::ClientPrivate);
+				}
+			}
+
+		}
 
 	}
 
@@ -1144,86 +1218,9 @@ namespace Receiver
 		//LATER
 	}
 
-	void	PlanetConfig(Grid::ExtendedPlanetConfig&cfg, TCP::Peer&peer)
-	{
-		if (ConfigurationMode::IsActive())
-		{
-			LogEvent(EventClass::Preset::configurationPrint,peer,"Received planet configuration (seed="+String(cfg.lastSeed)+"). Rebuilding...");
-			ConfigurationMode::SetPlanetSeed(cfg.lastSeed);
-			Grid::currentPlanetConfig = cfg;
-			Network::BuildConfiguredWorld();
-		}
-		else
-			LogEvent(EventClass::Preset::commandRejected,peer,"Configuration mode is not active. User should not have this level");
-
-	}
-
 	void	TutorialAt(NET(INT32)&at)
 	{
 		Game::tutorialAt = at;
-	}
-
-	void	LoadPlanetByName(Protocol::LoadPlanetByName&load, TCP::Peer&peer)
-	{
-		if (ConfigurationMode::IsActive())
-		{
-			LogEvent(EventClass::Preset::configurationPrint,peer,"Received request for planet preset '"+load.name+"'...");
-			if (load.name.Contains('/') || load.name.Contains('\\'))
-			{
-				LogEvent(EventClass::Preset::commandRejected,peer,"Planet name contained path separators. Rejecting request.");
-				return;
-			}
-
-			if (load.name.IsNotEmpty())
-			{
-				if (!World::IsPlanetIniFile(load.name+".ini"))
-				{
-					LogEvent(EventClass::Preset::remoteControlError,"'"+load.name+"' is not a valid planet type");
-					return;
-				}
-			}
-
-			if (load.name.IsNotEmpty())
-			{
-				Reflection::Variable::planetType->Set(load.name.Trim());
-				Reflection::ReloadPlanet();
-				Grid::currentPlanetConfig.versionCounter = load.configVersion;
-			}
-			Network::BuildConfiguredWorld();
-		}
-		else
-			LogEvent(EventClass::Preset::commandRejected,peer,"Configuration mode is not active. User should not have this level");
-	}
-
-
-	void	GameConfig(Protocol::GameConfig&cfg, TCP::Peer&peer)
-	{
-		if (ConfigurationMode::IsActive())
-		{
-			UINT32 flags = cfg.gameFlags;
-			LogEvent(EventClass::Preset::configurationPrint,peer,"Received game flags (="+String(flags)+"). Updating...");
-			Game::Config::basesRequired = !!(flags & Protocol::GameFlag::BasesRequired);
-			Game::Config::closedGame = !!(flags & Protocol::GameFlag::ClosedGame);
-			Game::Config::startBases = !!(flags & Protocol::GameFlag::StartBases);
-			World::Config::simulateLiquids = !!(flags & Protocol::GameFlag::SimulateLiquids);
-			Game::Config::Nexus::enableAI = !!(flags & Protocol::GameFlag::NexusAI);
-			bool eOld = RuntimeConfig::empZones;
-			RuntimeConfig::empZones = !!(flags & Protocol::GameFlag::EMPZones);
-			if (RuntimeConfig::empZones)
-				World::SetUnlockedEMPZones(1);
-			else
-				World::SetUnlockedEMPZones(World::NumZones);
-
-			if (RuntimeConfig::gameGoal != cfg.gameGoal || RuntimeConfig::empZones != eOld)
-			{
-				RuntimeConfig::gameGoal.Load(cfg.gameGoal);
-				Network::BuildConfiguredWorld();
-			}
-			World::Config::worldDiscovery.Load(cfg.worldDiscovery);
-		}
-		else
-			LogEvent(EventClass::Preset::commandRejected,peer,"Configuration mode is not active. User should not have this level");
-
 	}
 
 	void	RequestResource(Protocol::ResourceID&id, TCP::Peer&peer)
@@ -1261,6 +1258,7 @@ namespace Receiver
 		if (cl->faction)
 		{
 			cl->faction->name = cl->name;
+			ASSERT__(!cl->faction->isDead);
 			Channels::identifyFaction.SendTo(Network::server,Network::Identify(cl->faction),Channels::Level::Faction);
 			LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ), peer, "User renamed to '"+cl->name+"'");
 		}
@@ -1463,9 +1461,9 @@ namespace Receiver
 			LogEvent(EventClass::Preset::commandRejected,peer,e,"This mobile entity cannot perform the requested operation");
 			return;
 		}
-		if (v->myTasks.Count() >= Objects::MaxProductionTasks)
+		if (v->myTasks.Count() >= Objects::MaxTasks)
 		{
-			LogEvent(EventClass::Preset::commandRejected,peer,e,"Max queue length ("+String(Objects::MaxProductionTasks)+") reached. Task rejected");
+			LogEvent(EventClass::Preset::commandRejected,peer,e,"Max queue length ("+String(Objects::MaxTasks)+") reached. Task rejected");
 			return;
 		}
 
@@ -1491,17 +1489,18 @@ namespace Receiver
 		using namespace Objects;
 		PVehicleJob job;
 		Grid::LCellIdI target = Grid::LCellIdI::Invalid;
+		const Grid::LCellIdI jobLocation = v->GetLastPointOfOrigin();
 		switch (sjob.jobName)
 		{
 			case ConstName::Job_BuildRoad:
 			{
-				if (v->GetLastPointOfOrigin().height <= -Grid::CellStack::HalfRange)
+				if (jobLocation.height <= -Grid::CellStack::HalfRange)
 				{
 					LogEvent(EventClass::Preset::commandRejected,peer,e,"Cannot build road on bottom layer");
 					return;
 				}
 
-				job.reset(new VehicleJob::BuildRoad(*v));
+				job.reset(new VehicleJob::BuildRoad(*v,jobLocation));
 				v->RegisterNewJob("", job,nullptr);
 				LogEvent(EventSignificance::Common,peer,e,"Registered new job "+job->GetName());
 			}
@@ -1514,14 +1513,14 @@ namespace Receiver
 					LogEvent(EventClass::Preset::commandRejected,peer,e,"Cannot build wall on top layer");
 					return;
 				}
-				job.reset(new VehicleJob::BuildWallUp(*v));
+				job.reset(new VehicleJob::BuildWallUp(*v,jobLocation));
 				v->RegisterNewJob("", job,&target);
 				LogEvent(EventSignificance::Common,peer,e,"Registered new job "+job->GetName());
 			}
 			break;
 			case ConstName::Job_BuildHorizontalWall:
 			{
-				job.reset(new VehicleJob::BuildHorizontalWall(*v));
+				job.reset(new VehicleJob::BuildHorizontalWall(*v,jobLocation));
 				v->RegisterNewJob("", job,nullptr);
 				LogEvent(EventSignificance::Common,peer,e,"Registered new job "+job->GetName());
 			}
@@ -1536,7 +1535,7 @@ namespace Receiver
 				}
 				else
 				{
-					job.reset(new VehicleJob::DigDown(*v));
+					job.reset(new VehicleJob::DigDown(*v,jobLocation));
 					v->RegisterNewJob("",job,&target);		
 					LogEvent(EventSignificance::Common,peer,e,"Registered new job "+job->GetName());
 				}
@@ -1555,7 +1554,7 @@ namespace Receiver
 				Objects::PStructure p = Objects::Prototypes::structures.Find(sjob.parameterName);
 				if (p)
 				{	
-					job.reset(new VehicleJob::Construct(*v,p));
+					job.reset(new VehicleJob::Construct(*v,jobLocation,p));
 
 					v->RegisterNewJob(p->GetTypeName(),job,&target);
 					LogEvent(EventSignificance::Common,peer,e,"Registered new job "+job->GetName());
@@ -1569,7 +1568,7 @@ namespace Receiver
 			break;
 			case ConstName::Job_SelfDetonate:
 			{
-				job.reset(new VehicleJob::SelfDetonate(*v,sjob.parameterName.baseType));
+				job.reset(new VehicleJob::SelfDetonate(*v,jobLocation,sjob.parameterName.baseType));
 				target = v->GetLastPointOfOrigin();
 				v->RegisterNewJob("", job,&target);
 				LogEvent(EventSignificance::Common,peer,e,"Registered new job "+job->GetName());
@@ -1937,7 +1936,7 @@ namespace Receiver
 				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::ServerPrivate ),peer,"Client disconnected ("+peer.GetError(true)+")");
 
 
-				if (!Network::AnyHumanPlayersActive() && !ConfigurationMode::IsActive())
+				if (!Network::AnyHumanPlayersActive())
 				{
 					LogEvent(EventClass::Preset::uncommon,"Last active player has disconnected. Pausing round timer");
 					Game::roundTimerPaused = true;
@@ -1998,7 +1997,7 @@ namespace Receiver
 				
 				//Objects::Tick();
 				Network::PClient client = To<Network::Client>::Cast(peer.attachment);
-				if (client && client->faction && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && !client->wantNewRound)
+				if (client && client->faction && RuntimeConfig::IsInAnyCommandPhase() && !client->wantNewRound)
 				{
 					client->wantNewRound = true;
 					LogEvent(EventSignificance::Common,peer,"Requested new round");
@@ -2027,8 +2026,14 @@ namespace Receiver
 					LogEvent(EventClass::Preset::error,peer,"Should not have received RequestEverything from non-spectator");
 			}
 			break;
-			case Protocol::ChannelID::EndConfigurationMode:
-				ConfigurationMode::End();
+			case Protocol::ChannelID::LeaveAlliance:
+				Network::PClient client = To<Network::Client>::Cast(peer.attachment);
+				if (client && client->faction && RuntimeConfig::IsInAnyCommandPhase() && client->faction->alliance->CountLivingMembers() > 1)
+				{
+	                LogEvent(EventClass::Preset::uncommon,peer,"Left alliance");
+					Objects::PAlliance a {new Objects::Alliance(TUniqueID::New())};
+					client->faction->ChangeAlliance(a);
+				}
 			break;
 		}
 	}

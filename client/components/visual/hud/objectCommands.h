@@ -58,12 +58,20 @@ namespace Objects
 			{
 				typedef	T	Super;
 			public:
+				std::function<void(Command::Base::Label&)>	customLabelBuilder;
 				Command::Base::Label		customLabel;
+
+
 
 				/**/			CustomLabel(const String&name):Super(name) {}
 				/**/			CustomLabel() {}
 				virtual void	CompileLabel(Command::Base::Label&outResult) override
 				{
+					if (customLabelBuilder)
+					{
+						customLabelBuilder(outResult);
+						return;
+					}
 					if (customLabel.IsEmpty())
 					{
 						Super::CompileLabel(outResult);

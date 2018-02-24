@@ -55,6 +55,7 @@ namespace Objects
 				*/
 				bool				AttackNext(Grid::LCellIdI target, bool autoTarget);
 				bool				AttackFirst(Grid::LCellIdI target, bool autoTarget);
+				virtual bool		WouldAttack(const PWorldEntity&e, TurretBase::TargetChoice&outTarget, float entityTime) {return false;}
 			#endif
 
 			//new overridables:
@@ -80,7 +81,8 @@ namespace Objects
 			virtual bool			IsPlane() const override {return true;}
 			virtual PTurretBase		GetTurretBase(float&zOffset) override { zOffset = 0.f; return To<MobileEntity>::Cast(shared_from_this());}
 			virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = 0.f; return To<const MobileEntity>::Cast(shared_from_this());}
-			virtual bool			IsUnlockedAtState(const Lua::Reference&researchState) const	{return turret->isUnlocked.GetValue(researchState);}
+			virtual bool			IsUnlockedAtState(const Lua::Reference&researchState) const	override {return turret->isUnlocked.GetValue(researchState);}
+			virtual bool			CanBeUnlocked() const override {return turret->isUnlocked.IsFunctionOrConstNonZero();}
 
 			#ifdef HAS_WINDOW
 				virtual void		DescribeType(Description&outResult, UINT32 descFlags) override;
@@ -220,6 +222,7 @@ namespace Objects
 			#ifndef CLIENT
 				//Satellite overrides:
 				virtual bool		ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget, TargetChoice&outExtResult) const override;
+				virtual bool		WouldAttack(const PWorldEntity&e, TurretBase::TargetChoice&outTarget, float entityTime) override;
 			#endif
 
 
@@ -235,6 +238,7 @@ namespace Objects
 			#ifndef NO_HIBERNATION
 				virtual int			GetUplinkTraffic() const override {return 4;}
 			#endif
+			virtual bool			IsSentry() const override {return true;}
 
 			//Hibernating overrides:
 			#ifndef NO_HIBERNATION

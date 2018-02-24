@@ -11,6 +11,7 @@
 #include "research.h"
 #include "../grid/resources.h"
 #include "statistics.h"
+#include <map>
 
 namespace Objects
 {
@@ -160,6 +161,7 @@ namespace Objects
 		/**/				Alliance(const TUniqueID&id);
 		virtual				~Alliance();
 		void				ForeachMember(const std::function<void(const PFaction&)>&f,bool livingOnly=true)	const;
+		void				VisitMembers(const std::function<void(const PFaction&)>&f,bool livingOnly=true)	const	{ForeachMember(f,livingOnly);}
 		void				Leave(const PFaction&f);
 		void				Leave(Faction*f);
 		void				Join(const PFaction&f);
@@ -171,6 +173,12 @@ namespace Objects
 			TNexusStats		GetNexusStats() const;
 			UINT64			GetWinningScore() const;
 		#endif
+
+		void				Invite(const PFaction&f);
+		void				CancelInvite(const PFaction&f);
+		bool				HaveInvited(const PFaction&f);
+		void				VisitAllInvitedFactions(const std::function<void(const PFaction&)>&f, bool livingOnly=true) const;
+
 		void				UpdateConfiguration(const TConfig&);
 		static PAlliance	FindByID(const TUniqueID&id ){ WAlliance rs; all.Query(id,rs); return rs.lock();}
 		static void			Foreach(const std::function<void(const PAlliance&)>&visitor);
@@ -184,11 +192,11 @@ namespace Objects
 			Faction*	rawPointer;
 		};
 
-		Buffer0<TMember>						members;
+		Buffer0<TMember>						members,invited;
 		static HashTable<TUniqueID,WAlliance>	all;
 
-		void		RefreshSensors(bool force);
-
+		void				RefreshSensors(bool force);
+		index_t				FindInviteOf(const Objects::PFaction&f) const;
 	};
 
 
@@ -206,6 +214,8 @@ namespace Objects
 			Checks and potentially rebuilds knownWorld sensor state
 			*/
 			void		CheckSensory(float&t);
+			void		HandlePotentialAppearance(const Objects::PWorldEntity&e, float&t, bool shareSensors);
+			void		HandlePotentialDisappearance(const Objects::PWorldEntity&e, float&t, bool shareSensors);
 
 		#endif
 
@@ -254,6 +264,7 @@ namespace Objects
 		virtual			~Faction();
 	
 		void			AddEntitySensory(World::Data&worldData, float&t) const;
+		void			CollectSensors(Buffer0<World::Sensor>&outSensors, float&t) const;
 		
 		/**
 		Checks whether or not units of the other faction are considered friendly (invalid auto-targets).
@@ -264,8 +275,8 @@ namespace Objects
 		Checks whether or not units of the other faction receive detailed entity state information such as build queues.
 		This check is symmetric
 		*/
-		bool			ExposesEntityDetailsTo(const PFaction&other) const {return other.get() == this || (other->alliance == alliance && alliance->config.exposeEntityDetails);}
-		bool			SharingSensorWith(const PFaction&other) const{return other.get() == this || (other->alliance == alliance && alliance->config.shareSensors);}
+		bool			ExposesEntityDetailsTo(const PFaction&other) const {return other && this && (other.get() == this || (other->alliance == alliance && alliance->config.exposeEntityDetails));}
+		bool			SharingSensorWith(const PFaction&other) const{return other && this && (other.get() == this || (other->alliance == alliance && alliance->config.shareSensors));}
 
 		String		GetName() const
 		{
@@ -306,6 +317,9 @@ namespace Objects
 		#ifdef CLIENT
 			static Buffer0<PFaction>	allKnown;
 			static GenericHashTable<TUniqueID,PFaction>	idMap;
+			#ifdef _DEBUG
+				static GenericHashSet<TUniqueID>	deadIDs;
+			#endif
 
 			static PFaction				mine;
 
@@ -323,8 +337,8 @@ namespace Objects
 		#else
 
 			CryptographicID				accessToken;
-			Ctr::Buffer0<WMobileEntity>	allMobiles,	//!< CompleteChange mobiles registered in the world
-										storedMobiles;	//!< CompleteChange mobile entities registered stored in some other entity. allMobiles and storedMobiles are exclusive of each other
+			Ctr::Buffer0<WMobileEntity>	allMobiles,		//!< All mobiles registered in the world
+										storedMobiles;	//!< All mobile entities registered stored in some other entity. allMobiles and storedMobiles are exclusive of each other
 			Buffer0<SubOrbital::WPlane>	planes;
 			#ifndef NO_SATELLITES
 				Buffer0<WSatellite>		satellites;
@@ -371,20 +385,60 @@ namespace Objects
 			Ctr::Buffer0<Marker,Strategy::Adopt>		markers;
 			Ctr::GenericHashTable<TUniqueID, index_t>	markerMap,referenceMap;
 
-			Ctr::GenericHashTable<PWorldEntity,float,SharedPtrHash>	lostVisualAt,//!< Used for entities that dropped out of contact during the same round
-															gainedVisualAt;
-
 			struct SeeingReference
 			{
-				count_t			sightLevel=0;
+				WWorldEntity			reference;
+				bool					wasVisibleAtBeginning = false;
+				std::map<float,bool>	reverseVisibilityChange;	//reverse mapped
 
+				void					swap(SeeingReference&other)
+				{
+					std::swap(wasVisibleAtBeginning,other.wasVisibleAtBeginning);
+					reference.swap(other.reference);
+					reverseVisibilityChange.swap(other.reverseVisibilityChange);
+				}
+
+				friend void				swap(SeeingReference&a,SeeingReference&b)
+				{
+					a.swap(b);
+				}
+
+				bool					VisibleAt(float t) const;
+				void					Appear(const PWorldEntity&e, float&t);
+				void					Disappear(const PWorldEntity&e, float&t);
+				bool					CurrentlyVisible() const {return reverseVisibilityChange.empty() ? wasVisibleAtBeginning : reverseVisibilityChange.begin()->second;}
 
 			};
-			Ctr::GenericHashTable<PWorldEntity, SeeingReference, SharedPtrHash>	seeing;
+			PointerTable<SeeingReference, Swap>	seeing;
 
 
+			void VisitVisibleForeignEntities(const std::function<void(const PWorldEntity&e)>&f)	const
+			{
+				seeing.VisitAllValues([&f](const Objects::Faction::SeeingReference&ref)
+				{
+					if (ref.CurrentlyVisible())
+					{
+						DBG_ASSERT__(ref.reverseVisibilityChange.empty());
+						auto e = ref.reference.lock();
+						if (e)
+							f(e);
+					}
+				});
+			};
 
 
+			void VisitVisibleForeignEntities(float t, const std::function<void(const PWorldEntity&e)>&f)	const
+			{
+				seeing.VisitAllValues([&f,t](const Objects::Faction::SeeingReference&ref)
+				{
+					if (ref.VisibleAt(t))
+					{
+						auto e = ref.reference.lock();
+						if (e)
+							f(e);
+					}
+				});
+			};
 
 					
 			struct TSensorLock
@@ -406,8 +460,14 @@ namespace Objects
 
 			void DropPerRoundData()
 			{
-				lostVisualAt.Clear();
-				gainedVisualAt.Clear();
+				seeing.FilterEntries([](const void*p, SeeingReference&seeing)->bool
+				{
+					if (!seeing.CurrentlyVisible())
+						return false;
+					seeing.reverseVisibilityChange.clear();
+					seeing.wasVisibleAtBeginning= true;
+					return true;
+				});
 			}
 
 			/**
@@ -462,7 +522,7 @@ namespace Objects
 
 			@return True, if the contact was, indeed, new, false otherwise
 			*/
-			bool		SignalAppearance(const PWorldEntity&, float&t, bool cascade=true, bool stack=true, index_t incStackBy=1);
+			bool		SignalAppearance(const PWorldEntity&, float&t, bool cascade=true);
 			void		SignalDisappearance(const PWorldEntity&, float&t, bool force = false, bool signalConnectedClient=true);
 
 			void		RegisterSensorCreation(const World::Sensor&, int sensorHeight, float&t, Ctr::Buffer0<PWorldEntity>*newContacts = nullptr);
@@ -497,11 +557,26 @@ namespace Objects
 			#endif
 			static void FindFreeColor(float3&outColor);
 
-			static void	Kill(const PFaction&);
 		#endif
 
+		/**
+		Terminates a faction and all units it posesses.
+		Irreversible.
+		WARNING: It is highly unusual for the client to call this method, and it is basically ONLY NECESSARY WHEN IN CONFIGURATION MODE.
+		Currently does not remove markers
+		*/
+		static void		Kill(PFaction);
 
 		void			ChangeAlliance(const PAlliance&);
+		bool			IsAlliedWith(const PFaction&)const;
+		#ifdef CLIENT
+			/**
+			Checks whether the local faction is allied with the local player's faction.
+			Null-pointer sensitive (may be called on a null-object)
+			@return true if the local faction exists, the player faction exists, and the two are allied. Also true if the local faction is the player faction
+			*/
+			bool		IsAlliedWithMe() const;
+		#endif
 
 
 	};

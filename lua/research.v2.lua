@@ -47,10 +47,9 @@ researchables = {}
 
 
 ResearchEntry = {}
-ResearchEntry.__index = ResearchEntry
+
 function ResearchEntry.New(limit)
 	local rs = {}
-	setmetatable(rs,ResearchEntry)
 	rs.limit = limit
 	return rs
 end
@@ -64,10 +63,8 @@ end
 
 
 ResearchState = {}
-ResearchState.__index = ResearchState
 function ResearchState.New()
 	local rs = {}
-	setmetatable(rs,ResearchState)
 	rs.researchProgress = {}
 	for k,v in pairs(researchables) do
 		rs.researchProgress[k] = 0;
@@ -75,7 +72,11 @@ function ResearchState.New()
 	return rs
 end
 
-function ResearchState:GetProgress(key--[[string]])
+function ResearchState.Export(self)
+	return self.researchProgress;
+end;
+
+function ResearchState.GetProgress(self, key--[[string]])
 	if type( self.researchProgress[key] ) == nil then
 		Game.Log("Research state lacks key '"..tostring(key).."'. Instantiating new");
 		self.researchProgress[key] = 0;
@@ -83,12 +84,12 @@ function ResearchState:GetProgress(key--[[string]])
 	return self.researchProgress[key];
 end;
 
-
-function ResearchState:SetProgress(key--[[string]], progress--[[int]])
+function ResearchState.SetProgress(self, key--[[string]], progress--[[int]])
 	self.researchProgress[key] = progress;
 end;
 
-function ResearchState:GetLimit(key--[[string]])
+
+function ResearchState.GetLimit(self, key--[[string]])
 	if type( researchables[key] ) == nil then
 		return 0;
 	end;
@@ -96,11 +97,8 @@ function ResearchState:GetLimit(key--[[string]])
 end;
 
 
-function ResearchState:Export()
-	return self.researchProgress;
-end
 
-function ResearchState:Import(exported)
+function ResearchState.Import(self, exported)
 	if type(exported) ~= 'table' then
 		return;
 	end;
@@ -129,11 +127,13 @@ end
 
 
 
+
+
+
+
 UnlockProgress = {}
-UnlockProgress.__index = UnlockProgress
 function UnlockProgress.New()
 	local rs = {}
-	setmetatable(rs,UnlockProgress)
 	rs.progress = 0;
 	return rs
 end
@@ -216,6 +216,18 @@ TurretConfig =
 		DamageLevel = 10,
 		ExplosionRadius = 1,
 		HorizontalAttackRange = 8,
+		IsUnlocked = true,
+	},
+	RocketLauncher = 
+	{
+		Cost = 15,
+		Weight = 3,
+		HealthMultiplier = 2,
+		ScanningRange = 5,
+		AttacksPerRound = 2,
+		DamageLevel = 7,
+		ExplosionRadius = 1,
+		HorizontalAttackRange = 4,
 		IsUnlocked = true,
 	},
 	Cannon = 
@@ -311,7 +323,7 @@ TurretConfig =
 		Weight = 10,	--defines movement speed: 100/Weight
 		HealthMultiplier = 5,	--directly equals health
 		ScanningRange = 7,
-		HorizontalAttackRange = 7,
+		HorizontalAttackRange = 9,
 		GroundScanningRange = 7,
 		GroundScannerPenetration = 0,
 		ExplosionRadius = 1,
@@ -334,8 +346,8 @@ TurretConfig =
 		Cost = 10,
 		Weight = 11,	--defines movement speed: 100/Weight
 		HealthMultiplier = 4,	--directly equals health
-		ScanningRange = 10,
-		GroundScanningRange = 10,
+		ScanningRange = 11,
+		GroundScanningRange = 11,
 		GroundScannerPenetration = 2,
 		IsUnlocked = true,
 	},}
@@ -401,20 +413,20 @@ function MakeUnlockResearchable(researchGroup, researchDependency, typeTable, ty
 				--Game.Log(key..": no state. false");
 				return false
 			end
-			--Game.Log(key..": "..state:GetProgress(key)..'/'..state:GetLimit(key));
-			return state:GetProgress(key) >= state:GetLimit(key);
+			--Game.Log(key..": "..ResearchState.GetProgress(state,key)..'/'..state:GetLimit(key));
+			return ResearchState.GetProgress(state,key) >= ResearchState.GetLimit(state, key);
 		end,
 		Describe = function(state)
 			if state == nil then
 				return false
 			end
-			return state:GetProgress(key) >= state:GetLimit(key)
+			return ResearchState.GetProgress(state,key) >= ResearchState.GetLimit(state, key)
 		end
 	}
 	
 	return Game.CreateResearch(researchGroup,typeName,nil,
-		function(state,progress) state:SetProgress(key, progress) end,
-		function(state) return state:GetProgress(key); end, 
+		function(state,progress) ResearchState.SetProgress(state, key, progress) end,
+		function(state) return ResearchState.GetProgress(state, key); end, 
 		researchables[key].limit, researchDependency
 		);
 	
@@ -469,7 +481,7 @@ function MakeImproveResearchable(researchGroup, researchDependency, typeTable, t
 			if state == nil then
 				return original;
 			end
-			local progress = state:GetProgress(key);
+			local progress = ResearchState.GetProgress(state, key);
 			local factor = GetResearchImprovementFactor(progress,speed);
 			local result = original * factor;
 			return result;
@@ -479,7 +491,7 @@ function MakeImproveResearchable(researchGroup, researchDependency, typeTable, t
 			if state == nil then
 				return original;
 			end
-			local progress = state:GetProgress(key);
+			local progress = ResearchState.GetProgress(state,key);
 			if (progress == 0) then
 				return original;
 			end
@@ -489,8 +501,8 @@ function MakeImproveResearchable(researchGroup, researchDependency, typeTable, t
 	}
 	
 	return Game.CreateResearch(researchGroup,typeName,nil,
-		function(state,progress) state:SetProgress(key, progress) end,
-		function(state) return state:GetProgress(key) end, -1, researchDependency
+		function(state,progress) ResearchState.SetProgress(state, key, progress) end,
+		function(state) return ResearchState.GetProgress(state,key) end, -1, researchDependency
 		);
 end
 
@@ -513,14 +525,12 @@ Constructs a tower structure configuration from a given turret entry.
 Defines both Get and Describe functions
 ]]
 function Tower(turret--[[Table]]) --Table
-	rs =
+	local cost = function(state) return 40 + Get(turret.Cost,state) end;
+	local rs =
 	{
 		Cost =
 		{
-			Get = 
-				function(state) 
-					return 40 + Get(turret.Cost,state)
-				end,
+			Get = cost,
 			Describe = 
 				function(state) 
 					return '40+'.. Describe(turret.Cost,state)
@@ -530,12 +540,12 @@ function Tower(turret--[[Table]]) --Table
 		{
 			Get = 
 				function(state) 
-					return DefaultHealthAtCost(rs.Cost.Get(state)) * Get(turret.HealthMultiplier,state) 
+					return DefaultHealthAtCost(cost()) * Get(turret.HealthMultiplier,state) 
 				end,
 			Describe = 
 				function(state) 
 					local multiplier = Describe(turret.HealthMultiplier,state);
-					local health = DefaultHealthAtCost(rs.Cost.Get(state));
+					local health = DefaultHealthAtCost(cost());
 					if (multiplier == 1) then
 						return Round(health);
 					end
@@ -570,6 +580,18 @@ function Tower(turret--[[Table]]) --Table
 end
 
 
+--[[
+Constructs a tower structure configuration from a given turret entry.
+Defines both Get and Describe functions.
+It is declared as locked
+]]
+function DeprecatedTower(turret--[[Table]]) --Table
+	local rs = Tower(turret);
+	rs.IsUnlocked = false;	--make sure it's not a function. If it's a function, the game assumes it can be unlocked, and displays it as a construction choice
+	return rs;
+end
+
+
 StructureConfig =
 {
 	Mine = DefaultStructure(40),
@@ -587,8 +609,9 @@ StructureConfig =
 	MunitionStorage = DefaultStructure(10),
 	NexusPort = ExplicitStructure(0,1,2,false),
 	MissileLauncherTower = Tower(TurretConfig.MissileLauncher),
+	RocketLauncherTower = Tower(TurretConfig.RocketLauncher),
 	RadarTower = Tower(TurretConfig.Radar),
-	CannonTower = Tower(TurretConfig.Cannon),
+	CannonTower = DeprecatedTower(TurretConfig.Cannon),
 	SurveyorTower = Tower(TurretConfig.Surveyor),
 }
 
@@ -616,14 +639,15 @@ MakeUnlockResearchable(unlockGroup, planeFactoryUnlock, TurretConfig, 'Raptor',6
 attackRangeGroup = Game.CreateResearch(improveGroup,'Attack Range','Research_AttackRange');
 	MakeImproveResearchable(attackRangeGroup, artilleryUnlock, TurretConfig, 'Artillery', 'HorizontalAttackRange',0.005);
 	MakeImproveResearchable(attackRangeGroup, launcherUnlock, TurretConfig, 'MissileLauncher', 'HorizontalAttackRange',0.005);
+	MakeImproveResearchable(attackRangeGroup, nil, TurretConfig, 'RocketLauncher', 'HorizontalAttackRange',0.005);
 	MakeImproveResearchable(attackRangeGroup, nil, TurretConfig, 'Cannon', 'HorizontalAttackRange',0.005);
 
 scanningRangeGroup = Game.CreateResearch(improveGroup,'Scanning Range','Research_ScanningRange');
 	MakeImproveResearchable(scanningRangeGroup, radarUnlock, TurretConfig, 'Radar', 'ScanningRange',0.005);
 
 healthGroup = Game.CreateResearch(improveGroup,'Health','Research_Health');
-	MakeImproveResearchable(healthGroup, nil, VehicleBaseConfig, 'Hoverbase', 'Health',0.005);
-	MakeImproveResearchable(healthGroup, heavyUnlock, VehicleBaseConfig, 'HeavyBase', 'Health',0.005);
-	MakeImproveResearchable(healthGroup, catUnlock, VehicleBaseConfig, 'CatamaranBase', 'Health',0.005);
+	MakeImproveResearchable(healthGroup, nil, VehicleBaseConfig, 'Hoverbase', 'Health',0.05);
+	MakeImproveResearchable(healthGroup, heavyUnlock, VehicleBaseConfig, 'HeavyBase', 'Health',0.05);
+	MakeImproveResearchable(healthGroup, catUnlock, VehicleBaseConfig, 'CatamaranBase', 'Health',0.05);
 
 

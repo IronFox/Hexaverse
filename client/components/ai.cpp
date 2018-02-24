@@ -1,15 +1,7 @@
 #include <global_root.h>
 #include "ai.h"
 #include <objects/interface.h>
-
-namespace LocalApplicationInterface
-{
-	UINT8	AssembleMotionFlags(bool detailedPath, bool leftClick, bool clearSafeTasks);
-	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, UINT8 flags, Objects::Vehicle::mode_t mode);
-	void	SignalMarkerCreation(Protocol::Marker&marker);
-	void	SignalMarkerDeletion(TUniqueID markerID);
-	void	SignalMarkerTouch(Objects::Marker&marker);
-}
+#include "objectNetworkHelper.h"
 
 
 namespace AI
@@ -124,7 +116,7 @@ namespace AI
 	}
 
 
-	void AssemblePath(const Objects::ReachabilityMapper&mapper, const Objects::ReachabilityMapper::MapNode*current, BasicBuffer<Grid::LCellIdI>&outResult)
+	void AssemblePath(const Objects::Pathfinding::ReachabilityMapper&mapper, const Objects::Pathfinding::ReachabilityMapper::MapNode*current, BasicBuffer<Grid::LCellIdI>&outResult)
 	{
 		if (current->predecessor != InvalidIndex)	//if invalidindex, means this is a cell neighboring the point of origin
 			AssemblePath(mapper, mapper.result + current->predecessor,outResult);
@@ -137,12 +129,12 @@ namespace AI
 	}
 
 
-	void IssuePath(const Objects::PVehicle&v, const Objects::ReachabilityMapper&mapper, const Objects::ReachabilityMapper::MapNode*current)
+	void IssuePath(const Objects::PVehicle&v, const Objects::Pathfinding::ReachabilityMapper&mapper, const Objects::Pathfinding::ReachabilityMapper::MapNode*current)
 	{
 		static Buffer0<Grid::LCellIdI> path;
 		path.Clear();
 		AssemblePath(mapper, current,path);
-		LocalApplicationInterface::DirectTo(v,path.ToRef(),LocalApplicationInterface::AssembleMotionFlags(true,false,false),Objects::CursorMode::Idle);
+		ObjectHelper::DirectTo(v,path.ToRef(),ObjectHelper::AssembleMotionFlags(true,false,false),Objects::CursorMode::Idle);
 	}
 
 
@@ -243,7 +235,7 @@ namespace AI
 		int minMotion = v->GetMovementStepsPerRound();
 
 		//attacker logic
-		Objects::ReachabilityMapper::MapNode*best = nullptr;
+		Objects::Pathfinding::ReachabilityMapper::MapNode*best = nullptr;
 		float bestScore = 0.f;
 		const bool attacker = t->CanAttack();
 //		const float myRange = t->maxRange + t->GetExplosionRadius(e.owner) - 1;
@@ -274,7 +266,7 @@ namespace AI
 				float distance = Vec::quadraticDistance(Grid::ToWorld(_m->location),v->system.w.xyz);
 				if (distance < 25.f)
 				{
-					LocalApplicationInterface::SignalMarkerTouch(*_m);
+					ObjectHelper::SignalMarkerTouch(*_m);
 					haveMarker = true;
 //					break;
 				}
@@ -299,7 +291,7 @@ namespace AI
 			tempMarkers << v->system.w.xyz;
 			static_assert(Objects::Marker::Type::Visited == 2, "Please update marker logic");
 			marker.data.Set2();
-			LocalApplicationInterface::SignalMarkerCreation(marker);
+			ObjectHelper::SignalMarkerCreation(marker);
 		}
 
 
@@ -347,7 +339,7 @@ namespace AI
 			{
 				targets[t-attackTarget.pointer()] = t->target;
 			}
-			LocalApplicationInterface::DirectTo(v,targets,LocalApplicationInterface::AssembleMotionFlags( false,true, false),Objects::CursorMode::AttackMode);
+			ObjectHelper::DirectTo(v,targets,ObjectHelper::AssembleMotionFlags( false,true, false),Objects::CursorMode::AttackMode);
 
 			if (attackTarget.IsNotEmpty() && !v->base->ignoresVehicleAttacks)
 				return;
@@ -380,7 +372,7 @@ namespace AI
 
 
 		currentIsOffensiveVehicle = attacker && v->turret->ignoresVehicleMotion;
-		static Objects::ReachabilityMapper mapper(false);
+		static Objects::Pathfinding::ReachabilityMapper mapper(false);
 //		currentThreat = TThreatEstimation();
 		currentCanIgnoreThreat = (attacker || random.NextFloat() < 0.5f) && !t->dealsEMPDamage;
 		//currentIsOverconfident = v->overconfident;
@@ -531,7 +523,7 @@ namespace AI
 					if (m.age >= 10 && m.visualization && m.visualization->IsMobile())	//after 10 rounds, assume vehicle has moved
 					{
 						LogEvent(EventSignificance::Debug,nullptr,"AI: Deleting marker "+m.GetName()+" since hostile vehicle markers are considered outdated after 10 rounds (age="+String(m.age)+")");
-						LocalApplicationInterface::SignalMarkerDeletion(m.id);
+						ObjectHelper::SignalMarkerDeletion(m.id);
 						i--;
 					}
 				break;
@@ -542,7 +534,7 @@ namespace AI
 					if (estimation.damageThreat > 0)	//knowing cause, dropping ghost
 					{
 						LogEvent(EventSignificance::Debug,nullptr,"AI: Deleting marker "+m.GetName()+" because cause of destruction is considered known");
-						LocalApplicationInterface::SignalMarkerDeletion(m.id);
+						ObjectHelper::SignalMarkerDeletion(m.id);
 						i--;
 					}
 				}
@@ -584,7 +576,7 @@ namespace AI
 				{
 					LogEvent(EventSignificance::Debug,nullptr,"AI: Deleting marker "+m.GetName()+". Reached end-of-life after 100 rounds");
 
-					LocalApplicationInterface::SignalMarkerDeletion(m.id);
+					ObjectHelper::SignalMarkerDeletion(m.id);
 					i--;
 				}
 			}

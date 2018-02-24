@@ -5,6 +5,7 @@
 #include "systems.h"
 #include "gridAndChoices.h"
 #include "faction.h"
+#include "pathfinding.h"
 
 namespace Objects
 {
@@ -145,8 +146,7 @@ namespace Objects
 					GetSentryTarget(*this, storage.level[turret->ammoType], TrajectoryEndPoint( location,base->height ),*this, outChoice)
 					)
 				{
-					FrontEnqueueAttack(outChoice.cellTarget);
-					return true;
+					return FrontEnqueueAttack(outChoice.cellTarget);
 				}
 			}
 			//else
@@ -236,6 +236,8 @@ namespace Objects
 				}
 				return MobilePlacementResult::PlacementFailedHarmfulOrBlocked;
 			}
+			if (Grid::AffectedByEMP(cell) && !failIsFatal)
+				return MobilePlacementResult::PlacementFailedHarmfulOrBlocked;
 			
 			//VerifyVisibilityNetwork();
 			SyncTime(minTimeOffset);
@@ -352,9 +354,9 @@ namespace Objects
 					RemoveVehicleFromGrid(To<Vehicle>::Cast(shared_from_this()),old);
 					InsertVehicleIntoGrid(To<Vehicle>::Cast(shared_from_this()),location);
 
-					if (constructionRoundCounter)
+					if (constructionActionCounter)
 					{
-						constructionRoundCounter = 0;
+						constructionActionCounter = 0;
 						RegisterChange(WorldEntity::TasksChanged,entityTime);
 					}
 				}
@@ -444,18 +446,30 @@ namespace Objects
 
 
 
-		void	Vehicle::EnqueueAttack(Grid::LCellIdI destination)
+		bool	Vehicle::EnqueueAttack(Grid::LCellIdI destination)
 		{
 			Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
 			ASSERT__(!TasksAreLocked());
 			if (!HasTasks() || !myTasks.GetNewest().IsMode(CursorMode::AttackMode))
 			{
+				if (myTasks.Count() >= MaxTasks)
+				{
+					LogEvent(EventClass::Preset::commandRejected,this,"Task denied: Max tasks reached");
+					return false;
+				}
+
 				myTasks << Task("Attack Position",destination,true,Task::Mode,CursorMode::AttackMode);
 				myTasks.GetNewest().Replot(pointOfOrigin,this,FocusChangeType::FullChange,true);
 				RegisterChange(TasksChanged,-1);
 			}
 			else
 			{
+				if (myTasks.GetNewest().foci.Count() >= MaxFocusPoints)
+				{
+					LogEvent(EventClass::Preset::commandRejected,this,"Task denied: Max focus points reached");
+					return false;
+				}
+
 				//if (!tasks.GetNewest().foci.Contains(destination))	//irrelevant. attack same location as often as you want
 				{
 					myTasks.GetNewest().foci.Push().target = destination;
@@ -463,20 +477,32 @@ namespace Objects
 					RegisterChange(TasksChanged,-1);
 				}
 			}
+			return true;
 		}
 
-		void	Vehicle::FrontEnqueueAttack(Grid::LCellIdI destination)
+		bool	Vehicle::FrontEnqueueAttack(Grid::LCellIdI destination)
 		{
 			Grid::LCellIdI pointOfOrigin = location;
 			ASSERT__(!TasksAreLocked());
 			if (!HasTasks() || !myTasks.GetOldest().IsMode(CursorMode::AttackMode))
 			{
+				if (myTasks.Count() >= MaxTasks)
+				{
+					LogEvent(EventClass::Preset::commandRejected,this,"Task denied: Max tasks reached");
+					return false;
+				}
+
 				myTasks.PushFront(Task("Attack Position",destination,true,Task::Mode,CursorMode::AttackMode));
 				myTasks.GetOldest().Replot(pointOfOrigin,this,FocusChangeType::FullChange,true);
 				RegisterChange(TasksChanged,-1);
 			}
 			else
 			{
+				if (myTasks.GetOldest().foci.Count() >= MaxFocusPoints)
+				{
+					LogEvent(EventClass::Preset::commandRejected,this,"Task denied: Max focus points reached");
+					return false;
+				}
 				//if (!tasks.GetNewest().foci.Contains(destination))	//irrelevant. attack same location as often as you want
 				{
 					myTasks.GetOldest().foci.PushFront().target = destination;
@@ -484,6 +510,7 @@ namespace Objects
 					RegisterChange(TasksChanged,-1);
 				}
 			}
+			return true;
 		}
 
 		bool	Vehicle::DirectTo(mode_t mode, MutableArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
@@ -500,14 +527,14 @@ namespace Objects
 					{
 						const Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
 
-						Ctr::Buffer0<PathNode> path;
-						TWays	possibilities;
+						Buffer0<PathNode> path;
+						Pathfinding::TWays	possibilities;
 						if (detailedPath)
 						{
 							Grid::LCellIdI prev = pointOfOrigin;
 							for (const auto&dest : waypoints)
 							{
-								Objects::GetWays(owner->knownWorld,this,prev,possibilities,dest,true,true,false);
+								Pathfinding::GetWays(owner->knownWorld,this,prev,possibilities,dest,true,true,false);
 								bool found = false;
 								for (index_t j = 0; j < possibilities.numWays; j++)
 								{
@@ -534,7 +561,7 @@ namespace Objects
 									destination--;
 								if (destination != pointOfOrigin)
 								{
-									if (!AppendShortestDirectPath(pointOfOrigin,destination,path))
+									if (!Pathfinding::AppendShortestDirectPath(pointOfOrigin,destination,path))
 									{
 										LogEvent(EventClass::Preset::commandRejected,this,"Unable to plot path to destination");
 										return false;
@@ -553,19 +580,19 @@ namespace Objects
 								break;
 
 							if (node->cell.height == c.height)
-								RegisterNewJob("", PVehicleJob(new VehicleJob::DigHorizontal(*this)),&node->cell);
+								RegisterNewJob("", PVehicleJob(new VehicleJob::DigHorizontal(*this,node->cell)),&node->cell);
 							else
 							{
 								if (node->cell.height < c.height)
 								{
-									RegisterNewJob("", PVehicleJob(new VehicleJob::DigDown(*this)),&node->cell);
+									RegisterNewJob("", PVehicleJob(new VehicleJob::DigDown(*this,node->cell)),&node->cell);
 								}
 								else
 								{
-									RegisterNewJob("", PVehicleJob(new VehicleJob::ClearAbove(*this)),&node->cell);
+									RegisterNewJob("", PVehicleJob(new VehicleJob::ClearAbove(*this,node->cell)),&node->cell);
 									++node;
 									if (node != path.end())
-										RegisterNewJob("", PVehicleJob(new VehicleJob::ClearAbove(*this)),&node->cell);
+										RegisterNewJob("", PVehicleJob(new VehicleJob::ClearAbove(*this,node->cell)),&node->cell);
 									else
 										break;
 									ASSERT__(!TasksAreLocked());
@@ -623,7 +650,8 @@ namespace Objects
 									return false;
 								}
 
-								EnqueueAttack(destination);
+								if (!EnqueueAttack(destination))
+									return false;
 							}
 						}
 					}

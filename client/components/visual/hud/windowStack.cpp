@@ -20,12 +20,86 @@ namespace HUD
 
 		namespace Detail
 		{
-			Buffer0<PWindow,Swap>		visibleWindows;
+			struct TWindowEntry
+			{
+				PWindow	window;
+				float	opacity = 0;
+				bool	fadingIn = true;
+
+				void	swap(TWindowEntry&other)
+				{
+					window.swap(other.window);
+					using std::swap;
+					swap(opacity,other.opacity);
+					swap(fadingIn,other.fadingIn);
+				}
+
+				void	SignalWindowLayoutChange()
+				{
+					window->SignalWindowLayoutChange();
+				}
+
+				bool	IsVisible() const
+				{
+					return fadingIn;
+				}
+
+
+			};
+
+
+			Buffer0<TWindowEntry,Swap>		visibleWindows;
+
+			//void	HideNow(index_t index)
+			//{
+			//	auto&e = visibleWindows[index];
+			//	Detail::visibleWindows.Erase(index);	//should be last. window is not guaranteed to be valid past this point
+
+			//	VerifyIntegrity(CLOCATION);
+
+
+			//}
+
+
+			index_t	FindWindowIndex(const Window*window)
+			{
+				foreach (Detail::visibleWindows,_w)
+					if (_w->window.get() == window)
+					{
+						return _w - Detail::visibleWindows.pointer();
+					}
+				return InvalidIndex;
+			}
+
+			bool UndoFadeOut(const PWindow&window)
+			{
+				bool changed = false;
+				const index_t at = FindWindowIndex(window.get());
+				if (at != InvalidIndex)	//first make visible again
+				{
+					auto&existing = Detail::visibleWindows[at];
+					if (!existing.fadingIn)
+					{
+						auto prevTop = GetTopMostWindow();
+						existing.fadingIn= true;
+						changed = true;
+						if (GetTopMostWindow() == window)
+						{
+							if (prevTop)
+								prevTop->SetActive(false);
+							window->OnShow();
+						}
+					}
+				}
+				return changed;
+			}
 
 			void OnInput()
 			{
-				if (visibleWindows.IsNotEmpty())
-					visibleWindows.Last()->DetectEnabledState();
+				auto w = GetTopMostWindow();
+
+				if (w)
+					w->DetectEnabledState();
 			}
 		}
 
@@ -34,27 +108,32 @@ namespace HUD
 		{
 			Component::SignalScreenResize();
 			foreach (Detail::visibleWindows,w)
-				(*w)->OnScreenSizeOrUIScaleChange();
+				w->window->OnScreenSizeOrUIScaleChange();
 		}
 
 
 		PWindow				GetTopMostWindow()
 		{
-			if (Detail::visibleWindows.IsNotEmpty())
-				return Detail::visibleWindows.Last();
-			return PWindow();
+			for (index_t i = Detail::visibleWindows.Count()-1; i < Detail::visibleWindows.Count(); i--)
+			{
+				const auto&e = Detail::visibleWindows[i];
+				if (e.IsVisible())
+					return e.window;
+			}
+			return nullptr;
 		}
 
-
-		index_t	FindWindowIndex(const Window*window)
+		PWindow				GetBottomMostWindow()
 		{
-			foreach (Detail::visibleWindows,_w)
-				if (_w->get() == window)
-				{
-					return _w - Detail::visibleWindows.pointer();
-				}
-			return InvalidIndex;
+			for (index_t i = 0; i < Detail::visibleWindows.Count(); i++)
+			{
+				const auto&e = Detail::visibleWindows[i];
+				if (e.IsVisible())
+					return e.window;
+			}
+			return nullptr;
 		}
+
 
 		
 
@@ -72,7 +151,7 @@ namespace HUD
 			GlobalEvents::uiScaleChanged += []()
 			{
 				foreach (Detail::visibleWindows,w)
-					(*w)->SignalWindowLayoutChange();
+					(*w).SignalWindowLayoutChange();
 				SignalScreenResize();
 			};
 
@@ -89,55 +168,94 @@ namespace HUD
 		bool	Hide(Window*window)
 		{
 			VerifyIntegrity(CLOCATION);
-			index_t index = FindWindowIndex(window);
+			index_t index = Detail::FindWindowIndex(window);
 			if (index == InvalidIndex)
 				return false;
-
+			auto&e = Detail::visibleWindows[index];
+			if (!e.fadingIn)
+				return false;
 			#ifdef _DEBUG
 				if (window->breakOnHide)
 					__debugbreak();
 			#endif
-
-			window->OnHide();
-			if (index+1 == Detail::visibleWindows.Count())
+			e.window->OnHide();
+			if (GetTopMostWindow().get() == window)
 			{
 				window->SetActive(false);
-				if (Detail::visibleWindows.Count() > 1)
-					Detail::visibleWindows.GetFromEnd(1)->SetActive(true);
 			}
-			Detail::visibleWindows.Erase(index);	//should be last. window is not guaranteed to be valid past this point
+			e.fadingIn= false;
+
+			auto top = GetTopMostWindow();
+			if (top)
+				top->SetActive(true);
+
 
 			VerifyIntegrity(CLOCATION);
 
 			SignalSituationChange();
 			OverrideSignalMouseMotion();
-			return true;
 
+
+			return true;
 		}
+
+
 
 	
 		bool	IsVisible(const PWindow&window)
 		{
-			return Detail::visibleWindows.Contains(window);
+			index_t at = Detail::FindWindowIndex(window.get());
+			return at != InvalidIndex && Detail::visibleWindows[at].IsVisible();
 		}
 
 		void	Show(const PWindow&window)
 		{
 			VerifyIntegrity(CLOCATION);
-			if (Detail::visibleWindows.IsNotEmpty() && Detail::visibleWindows.Last() == window)
+
+			auto top = GetTopMostWindow();
+			if (top == window)
 			{
 				DBG_ASSERT__(window->IsActive());
 				if (!window->IsActive())
 					window->SetActive(true);
 				return;
 			}
-			//if (Detail::visibleWindows.Count() == 1 && Detail::visibleWindows.First() == window)
-			//	return;
-			Detail::visibleWindows.FindAndErase(window);
-			if (Detail::visibleWindows.IsNotEmpty())
-				Detail::visibleWindows.Last()->SetActive(false);
-			Detail::visibleWindows << window;
-			window->OnShow();
+			{
+				if (top)
+					top->SetActive(false);
+			}
+
+			index_t at = Detail::FindWindowIndex(window.get());
+
+			if (at != InvalidIndex)
+			{
+				if (at+1 != Detail::visibleWindows.Count())
+				{
+					auto existing = Detail::visibleWindows[at];
+					Detail::visibleWindows.Erase(at);
+					Detail::visibleWindows.Append(existing);
+					at = Detail::visibleWindows.Count()-1;
+				}
+				auto&entry = Detail::visibleWindows[at];
+				if (!entry.fadingIn)
+				{
+					entry.fadingIn = true;
+					entry.window->OnShow();
+					VerifyIntegrity(CLOCATION);
+				}
+				else
+				{
+					entry.window->SetActive(true);
+					VerifyIntegrity(CLOCATION);
+				}
+
+			}
+			else
+			{
+				Detail::visibleWindows.Append().window = window;
+				window->OnShow();
+				VerifyIntegrity(CLOCATION);
+			}
 			SignalSituationChange();
 			OverrideSignalMouseMotion();
 		}
@@ -149,47 +267,61 @@ namespace HUD
 			if (!window)
 				return false;
 			VerifyIntegrity(CLOCATION);
-			if (Detail::visibleWindows.IsNotEmpty() && Detail::visibleWindows.First() == window)
+
+			bool changed = Detail::UndoFadeOut(window);
+
+			auto top = GetTopMostWindow();
+			if (GetBottomMostWindow() == window)
 			{
-				if (Detail::visibleWindows.Count() == 1)
+				if (top == window)
 				{
 					DBG_ASSERT__(window->IsActive());
 					if (!window->IsActive())
 						window->SetActive(true);
 				}
-				return false;
+				return changed;
 			}
-			//if (Detail::visibleWindows.Count() == 1 && Detail::visibleWindows.First() == window)
-			//	return;
-			bool rs = true;
-			index_t at = Detail::visibleWindows.GetIndexOf(window);
+
+			index_t at = Detail::FindWindowIndex(window.get());
 			if (at != InvalidIndex)
 			{
-				if (at+1 == Detail::visibleWindows.Count())	//ist last
 				{
-					window->SetActive(false);
-					Detail::visibleWindows.GetFromEnd(1)->SetActive(true);
+					auto existing = Detail::visibleWindows[at];
+					Detail::visibleWindows.Erase(at);
+					Detail::visibleWindows.Insert(0,existing);
 				}
-				Detail::visibleWindows.Erase(at);
-				rs = false;
-			} 
-			Detail::visibleWindows.Insert(0,window);
-			if (Detail::visibleWindows.Count() == 1)
-				window->SetActive(true);
 
+				if (top == window)	//was old top, must elevate other window
+				{
+					top = GetTopMostWindow();
+					if (top)
+					{
+						window->SetActive(false);
+						top->SetActive(true);
+						changed = true;
+					}
+				}
+			} 
+			else
+			{
+				auto&e = Detail::visibleWindows.Insert(0);
+				e.window = window;
+				if (GetTopMostWindow() == window)
+					window->SetActive(true);
+				changed = true;
+			}
+			VerifyIntegrity(CLOCATION);
 			SignalSituationChange();
 			OverrideSignalMouseMotion();
-			return rs;
+			return changed;
 		}
 
 
 		bool	CloseTopModal()
 		{
 			VerifyIntegrity(CLOCATION);
-			if (Detail::visibleWindows.IsEmpty())
-				return false;
-			PWindow w = Detail::visibleWindows.Last();
-			if (!w->canBeImplicitlyClosed)
+			PWindow w = GetTopMostWindow();
+			if (!w || !w->canBeImplicitlyClosed)
 				return false;
 			Hide(w);
 			return true;
@@ -198,21 +330,17 @@ namespace HUD
 		bool	CloseAllModalBeneath(const PWindow&w)
 		{
 			VerifyIntegrity(CLOCATION);
-			index_t at = Detail::visibleWindows.GetIndexOf(w);
+			index_t at = Detail::FindWindowIndex(w.get());
 			if (at == InvalidIndex)
 				return false;
 
 			for (index_t i = 0; i <= at; i++)
 			{
-				PWindow w = Detail::visibleWindows[i];
-				if (w->canBeImplicitlyClosed)
-				{
+				auto&entry = Detail::visibleWindows[i];
+				if (!entry.IsVisible())
+					continue;
+				if (entry.window->canBeImplicitlyClosed)
 					Hide(w);
-					i--;
-					if (at == 0)
-						return true;
-					at--;
-				}
 			}
 
 			return true;
@@ -225,49 +353,25 @@ namespace HUD
 			if (Detail::visibleWindows.IsEmpty())
 				return false;
 
-			bool anyNonClosable = false;
-			foreach (Detail::visibleWindows,w)
-				if (!(*w)->canBeImplicitlyClosed)
-				{
-					anyNonClosable = true;
-					break;
-				}
-
-			if (anyNonClosable)
+			bool rs = false;
+			for (index_t i = 0; i < Detail::visibleWindows.Count(); i++)
 			{
-				bool rs = false;
-				for (index_t i = 0; i < Detail::visibleWindows.Count(); i++)
+				auto&entry = Detail::visibleWindows[i];
+				if (entry.IsVisible() && entry.window->canBeImplicitlyClosed)
 				{
-					PWindow w = Detail::visibleWindows[i];
-					if (w->canBeImplicitlyClosed)
-					{
-						Hide(w);
-						i--;
-						rs = true;
-					}
+					Hide(entry.window);
+					rs = true;
 				}
-				VerifyIntegrity(CLOCATION);
-				return rs;
-			}
-			else
-			{
-				foreach (Detail::visibleWindows,_d)
-				{
-					PWindow d = *_d;
-					d->OnHide();
-				}
-				Detail::visibleWindows.Last()->SetActive(false);
-				Detail::visibleWindows.Clear();
 			}
 			VerifyIntegrity(CLOCATION);
-			return true;
+			return rs;
 		}
 
 
 		bool	IsModal()
 		{
 			foreach (Detail::visibleWindows,w)
-				if ((*w)->isModal)
+				if (w->IsVisible() && w->window->isModal)
 					return true;
 			return false;
 		}
@@ -281,8 +385,10 @@ namespace HUD
 			for (index_t i = Detail::visibleWindows.Count()-1; i< Detail::visibleWindows.Count(); i--)
 			{
 				const auto&wnd = Detail::visibleWindows[i];
-				wnd->OnMouseMove(lastMouseLocation,true);
-				if (wnd->isModal)
+				if (!wnd.IsVisible())
+					continue;
+				wnd.window->OnMouseMove(lastMouseLocation,true);
+				if (wnd.window->isModal)
 					break;
 			}
 		}
@@ -299,14 +405,16 @@ namespace HUD
 		{
 			for (index_t i = Detail::visibleWindows.Count()-1; i < Detail::visibleWindows.Count(); i--)
 			{
-				PWindow w = Detail::visibleWindows[i];
-				WheelRs rs = w->OnMouseWheel(delta);
-				if (w->isModal && rs == WheelRs::NotContained)
+				auto&w = Detail::visibleWindows[i];
+				if (!w.IsVisible())
+					continue;
+				WheelRs rs = w.window->OnMouseWheel(delta);
+				if (w.window->isModal && rs == WheelRs::NotContained)
 					rs = WheelRs::Ignored;
 				if (rs != WheelRs::NotContained)
 				{
 					if (rs == WheelRs::Processed)
-						w->OnMouseMove(Engine::mouse.location.windowRelative,true);
+						w.window->OnMouseMove(Engine::mouse.location.windowRelative,true);
 					
 					return rs;
 				}
@@ -318,9 +426,11 @@ namespace HUD
 		{
 			for (index_t i = Detail::visibleWindows.Count()-1; i < Detail::visibleWindows.Count(); i--)
 			{
-				PWindow w = Detail::visibleWindows[i];
-				Component::mousePressedComponent = w->OnMouseDown();
-				if (Component::mousePressedComponent || w->isModal)
+				auto&w = Detail::visibleWindows[i];
+				if (!w.IsVisible())
+					continue;
+				Component::mousePressedComponent = w.window->OnMouseDown();
+				if (Component::mousePressedComponent || w.window->isModal)
 					return true;
 			}
 			Component::mousePressedComponent.reset();
@@ -348,21 +458,13 @@ namespace HUD
 			VerifyIntegrity(CLOCATION);
 			for (index_t i = 0; i < Detail::visibleWindows.Count(); i++)
 			{
-				PWindow d = Detail::visibleWindows[i];	//make copy to allow SignalChange() to create new windows
-				if (!d->SignalChange())
-				{
-					d->OnHide();
-					if (i+1 == Detail::visibleWindows.Count())
-					{
-						d->SetActive(false);
-						if (Detail::visibleWindows.Count() > 1)
-							Detail::visibleWindows.GetFromEnd(1)->SetActive(true);
-					}
-					Detail::visibleWindows.Erase(i);
-					i--;
-				}
+				auto&d = Detail::visibleWindows[i];	//make copy to allow SignalChange() to create new windows
+				if (!d.IsVisible())
+					continue;
+				if (!d.window->SignalChange())
+					Hide(d.window);
 				else
-					d->DetectEnabledState();
+					d.window->DetectEnabledState();
 			}
 			VerifyIntegrity(CLOCATION);
 			checking = false;
@@ -374,26 +476,27 @@ namespace HUD
 			if (Detail::visibleWindows.IsEmpty())
 				return;
 
-
-			for (index_t i = 0; i < Detail::visibleWindows.Count(); i++)
+			bool isTop = true;
+			for (index_t i = Detail::visibleWindows.Count()-1; i < Detail::visibleWindows.Count(); i--)
 			{
-				bool shouldBeActive = (i+1 == Detail::visibleWindows.Count());
-				PWindow w = Detail::visibleWindows[i];
-				if (w->IsActive() != shouldBeActive)
+				auto&w = Detail::visibleWindows[i];
+				bool shouldBeActive = isTop && w.IsVisible();
+				if (w.window->IsActive() != shouldBeActive)
 				{
-					String msg = String(loc)+ ": Activity mismatch for window "+String(i+1)+"/"+String(Detail::visibleWindows.Count())+" (active="+String(w->IsActive())+", should be "+String(shouldBeActive)+")";
+					String msg = String(loc)+ ": Activity mismatch for window "+String(i+1)+"/"+String(Detail::visibleWindows.Count())+" (active="+String(w.window->IsActive())+", should be "+String(shouldBeActive)+")";
 					LogEvent(EventClass::Preset::error,msg);
 					DBG_FATAL__(msg);
-					if (shouldBeActive)
-						w->SetActive(true);
-					else
-						w->SetActive(false);
+					w.window->SetActive(shouldBeActive);
 				}
+
+				if (w.IsVisible())
+					isTop = false;
 			}
 		}
 
 
-
+		static const float FadeInSpeed = 4;
+		static const float FadeOutSpeed = 4;
 
 		void	RenderNonModal()
 		{
@@ -405,13 +508,22 @@ namespace HUD
 
 			Component::Detail::LoadView(M::Rect<>(0,0,1,1),float2());
 		
-			foreach (Detail::visibleWindows,d)
+			for (index_t i = 0; i < Detail::visibleWindows.Count(); i++)
 			{
-				if ((*d)->RelayoutRequired())
-					(*d)->FullAutoLayout(CLOCATION);
-				if ((*d)->isModal)
+				auto&d = Detail::visibleWindows[i];
+	
+				const auto&w = d.window;
+
+
+				if (w->RelayoutRequired())
+				{
+					w->FullAutoLayout(CLOCATION);
+					w->OnMouseMove(lastMouseLocation,true);
+				}
+				if (w->isModal && d.IsVisible())
 					break;
-				(*d)->Render();
+				if (d.opacity > 0)
+					w->Render(d.opacity * d.opacity);
 			}
 		}
 
@@ -426,12 +538,31 @@ namespace HUD
 			Component::Detail::LoadView(M::Rect<>(0,0,1,1),float2());
 		
 			bool nonModal = true;
-			foreach (Detail::visibleWindows,d)
+			for (index_t i = 0; i < Detail::visibleWindows.Count(); i++)
 			{
-				if ((*d)->isModal)
+				auto&d = Detail::visibleWindows[i];
+				if (d.fadingIn)
+				{
+					d.opacity += Engine::timing.delta * FadeInSpeed;
+					if (d.opacity > 1)
+						d.opacity = 1;
+				}
+				else
+				{
+					d.opacity -= Engine::timing.delta * FadeOutSpeed;
+					if (d.opacity <= 0)
+					{
+						d.opacity = 0;
+						Detail::visibleWindows.Erase(i--);
+						continue;
+					}
+				}
+
+				const auto&w = d.window;
+				if (w->isModal && d.IsVisible())
 					nonModal = false;
-				if (!nonModal)
-					(*d)->Render();
+				if (!nonModal && d.opacity > 0)
+					w->Render(d.opacity * d.opacity);
 			}
 		}
 	}

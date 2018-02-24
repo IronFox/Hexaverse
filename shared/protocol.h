@@ -31,7 +31,9 @@ namespace PortOffset
 	{
 		Info,
 		Session,
-		Control
+		Control,
+
+		Heartbeat = Info	//heartbeat is UDP. Can coexist with others
 	};
 }
 
@@ -257,7 +259,7 @@ namespace Protocol
 			T1		NAME1;\
 			T2		NAME2;\
 			NAME()	{}\
-			NAME(const T0&a, const T1&b, const T2&c):NAME0(a),NAME1(b),NAME2(c){}\
+			NAME(const T0&NAME0, const T1&NAME1, const T2&NAME2):NAME0(NAME0),NAME1(NAME1),NAME2(NAME2){}\
 			friend void Deserialize(IReadStream&s, NAME&v)\
 			{\
 				using Serialization::Deserialize;\
@@ -931,14 +933,15 @@ namespace Protocol
 		};
 	}
 
-	NETSTRUCT9(MobileTask
+	NETSTRUCT10(MobileTask
 		, NET(UINT8), type
 		, NET(UINT8), mode
 		, NET(UINT8), taskFlags
 		, NETA(Grid::LCellIdI), foci
 		, Package::NetString<256>, name
-		, NET(USHORT), roundsToJobCompletion
+		, NET(USHORT), continuationsToJobCompletion
 		, NET(USHORT), resourceCostLeft
+		, BYTE, jobAffinity
 		, NETA(Grid::LCellIdI), buildPath
 		, Objects::EntityType, visualizationName	//can also be DetonationSize_Regular or DetonationSize_Doomsday
 	)
@@ -968,7 +971,7 @@ namespace Protocol
 		, Objects::EntityType, type
 		, TUniqueID, id
 	)
-	typedef NetArray<ProductionTask,Objects::MaxProductionTasks> ProductionTasks;
+	typedef NetArray<ProductionTask,Objects::MaxTasks> ProductionTasks;
 	NETSTRUCT3(ProducerState
 		, ProductionTasks, productionTasks
 		, UINT32, productionDone
@@ -987,7 +990,7 @@ namespace Protocol
 
 	#else
 		NETSTRUCT4(MyMobileEntity
-			, NET(UINT16), constructionRoundCounter
+			, NET(UINT16), constructionActionCounter
 			, NETA(MobileTask), tasks
 			, Optional<NET(TUniqueID)>, storedIn
 			, Optional<ProducerState>, producerState
@@ -1101,9 +1104,22 @@ namespace Protocol
 		, NETA(TUniqueID), memberFactions
 	)
 
-	NETSTRUCT2(AllianceJoinRequest
+
+	namespace AllianceInviteType
+	{
+		enum T
+		{
+			Invite,
+			Cancel,
+			Accept,
+			Reject
+		};
+	}
+
+	NETSTRUCT3(AllianceInvite
 		, TUniqueID, allianceID
-		, bool, abortJoining
+		, TUniqueID, factionID
+		, BYTE, type
 	)
 
 	namespace VoteResultType
@@ -1177,7 +1193,7 @@ namespace Protocol
 	If the path is found to be inapplicable during computation phases, an automatically determined path to the last given node is computed and applied, then dropped.
 	Path must always be of at least length 1
 	*/
-	typedef NetArray<Grid::LCellIdI,Objects::MaxFocusCount>	DirectPath;
+	typedef NetArray<Grid::LCellIdI,Objects::MaxDirectPathLength>	DirectPath;
 	NETSTRUCT4(EntityDirectCommand
 		, NET(TUniqueID), id
 		, NET(UINT16),	mode
@@ -1384,8 +1400,14 @@ namespace Protocol
 		, TUniqueID, factionID
 		, AllianceConfigChange, alliance
 	)
-		
 
+	NETSTRUCT2(ChatMessage
+		, Package::NetString<256>, message
+		, TUniqueID, recipient	//may be faction, alliance, or everybody (if empty)
+	)
+		
+	typedef Package::NetString<32>	SaveAs;
+	typedef TUniqueID	KillFaction;
 
 	namespace ChannelID
 	{
@@ -1458,6 +1480,7 @@ namespace Protocol
 			TouchMarker,		//c2s: TouchedMarker
 
 			IdentifyFaction,	// [c2s: TUniqueID -> ] s2c: IdentifyFaction
+			KillFaction,		// s2c: KillFaction
 			ChangeMyName,		// c2s: ClientName
 			FactionOnline,		// s2c: TUniqueID
 			FactionOffline,		// s2c: TUniqueID
@@ -1473,21 +1496,18 @@ namespace Protocol
 			UplinkBandwidth,	// s2c : int, can be negative to indicate it's disabled
 			UnitLimits,			// s2c : UnitLimits
 
-			ChatMessage,		// c2s: NetString<256>
+			ChatMessage,		// c2s: ChatMessage
 
 			AllianceConfigChange,	//both: AllianceConfigChange
-			AllianceJoinRequest,	//c2s: AllianceJoinRequest
+			AllianceInvite,		//both: AllianceInvite
+			LeaveAlliance,		//c2s: <signal>
+
 
 			VoteCreation,		//s2c: VoteCreation
 			VoteResult,			//s2c: VoteResult
 			ClientVote,			//c2s: ClientVote
 
-			PlanetConfig,		// both: Grid::ExtendedPlanetConfig
 			GameConfig,			// both: GameConfig
-			PlanetNames,		// s2c: NetString<256>[]
-			LoadPlanetByName,	// c2s: LoadPlanetByName
-			EndConfigurationMode,//c2s: <signal>
-
 			OperationLacksResources, //s2c: OperationLacksResources
 
 			TutorialAt,			// both: int32
@@ -1499,6 +1519,8 @@ namespace Protocol
 			RoundStatistics,			//s2c: Statistics::Round
 			EntityTypeStatistics,		//s2c: Statistics::EntityType
 			FactionInteractionStatistics,	//s2c: Statistics::FactionInteraction
+
+			SaveAs,	//c2s: SaveAs
 		};
 	}
 
@@ -1545,9 +1567,10 @@ namespace Protocol
 			NexusAI = 0x8,
 			EMPZones = 0x10,
 			SimulateLiquids = 0x20,
-			ConfigurationMode = 0x40,
-			TutorialMode = 0x80,
-			GameHasEnded = 0x100,
+			TutorialMode = 0x40,
+			GameHasEnded = 0x80,
+			NexusHasBases = 0x100,
+			NexusPortsOnAllPoles = 0x200,
 
 			SupportSpectatorFactions = 0x1000,
 			SupportRegularFactions = 0x2000,

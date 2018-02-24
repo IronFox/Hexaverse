@@ -120,7 +120,7 @@ namespace Objects
 
 		//Structure overrides:
 		virtual bool				ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)	override	{return true;}
-		virtual placement_t			CheckPlacement(const Grid::LCellIdI&location) override { return CommonCheckStructurePlacement(location,2,true); }
+		virtual placement_t			CheckPlacement(const Grid::LCellIdI&location) override { return CommonCheckStructurePlacement(location,2,2); }
 		virtual int					GetHeight() const override {return 2;}
 
 		//BaseEntity overrides:
@@ -134,11 +134,7 @@ namespace Objects
 		virtual bool				IsTower() const override {return true;}
 		virtual float3				GetScanningCenter(const Grid::LCellIdI&loc) const override;
 		virtual void				VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance = false) const override;
-
-		//virtual float				GetScanningRange() const override;
-		//virtual String				DescribeScanningRange() const override;
-		//virtual int					GetMaxHealth() const override;
-		//virtual String				DescribeMaxHealth() const override;
+		virtual bool				IsSentry() const override {return true;}
 		virtual void				PrototypeSetup()	override;
 		#ifdef HAS_WINDOW
 			virtual const CC*		GetCommands(CC&dynamicStorage) const override {return &prototype->commands;}

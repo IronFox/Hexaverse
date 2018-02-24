@@ -1,4 +1,5 @@
 <project type="Application:Console">
 	<source path="./" />
+	<source path="../clientConsoleShared" include="true" />
 	<referenceProject name="DeltaWorksCore" includePath="true" />
 </project>

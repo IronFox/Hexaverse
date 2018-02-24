@@ -11,6 +11,7 @@
 #include <logEvent.h>
 #include "../../clientRuntimeConfig.h"
 #include "../../audio/music.h"
+#include "../../network.h"
 
 namespace DX11 = Engine::DX11; 
 
@@ -88,8 +89,8 @@ namespace Dialog
 			HUD::Component::PPanel	textPanel(new HUD::Component::Panel());
 			HUD::Component::PLabel textField(new HUD::Component::Label());
 			textField->Anchor().FillHorizontally().Top();
-			textPanel->AddComponent(textField);
-			dialog->AddComponent(textPanel);
+			textPanel->AddComponent(textField,CLOCATION);
+			dialog->AddComponent(textPanel,CLOCATION);
 			
 			//height controlled by content
 
@@ -117,7 +118,7 @@ namespace Dialog
 					if (d && d->CanBeConfirmed(false))
 						d->Confirm(false);
 				};
-				textPanel->AddComponent (inputField);
+				textPanel->AddComponent (inputField,CLOCATION);
 			}
 			if (componentFlags & ComponentFlags::PasswordInput)
 			{
@@ -128,14 +129,14 @@ namespace Dialog
 					cfg.GetVAxis().AnchorUpper(HUD::Component::Distance::Unknown,textField);
 					passwordInputField->SetAnchorConfig(cfg);
 				}
-				textPanel->AddComponent (passwordInputField);
+				textPanel->AddComponent (passwordInputField,CLOCATION);
 			}
 
 			if (componentFlags & ComponentFlags::ConfirmButton)
 			{
 				confirmButton.reset(new HUD::Component::Button(confirmWord));
 				confirmButton->Anchor().FillHorizontally().Beneath(textPanel,0.015f);
-				dialog->AddComponent( confirmButton);
+				dialog->AddComponent( confirmButton,CLOCATION);
 				buttons << std::make_pair(1, confirmButton);
 			}
 			if (componentFlags & ComponentFlags::HelpButton)
@@ -146,7 +147,7 @@ namespace Dialog
 					cfg.GetVAxis().AnchorUpper(HUD::Component::Distance::Unknown,textPanel,HUD::Component::Distance::GameWindow(0.015f));
 					helpButton->SetAnchorConfig(cfg);
 				}
-				dialog->AddComponent(helpButton);
+				dialog->AddComponent(helpButton,CLOCATION);
 				buttons << std::make_pair(0.25f, helpButton);
 			}
 			if (componentFlags & ComponentFlags::NoButton)
@@ -157,14 +158,14 @@ namespace Dialog
 					cfg.GetVAxis().AnchorUpper(HUD::Component::Distance::Unknown,textPanel,HUD::Component::Distance::GameWindow(0.015f));
 					noButton->SetAnchorConfig(cfg);
 				}
-				dialog->AddComponent( noButton);
+				dialog->AddComponent( noButton,CLOCATION);
 				buttons << std::make_pair(1, noButton);
 			}
 			if (componentFlags & ComponentFlags::CancelButton)
 			{
 				cancelButton.reset(new HUD::Component::Button("Cancel"));
 				cancelButton->Anchor().FillHorizontally(HUD::Component::Distance::OfParentSize(0.505f),0).Beneath(textPanel,0.015f);
-				dialog->AddComponent(cancelButton);
+				dialog->AddComponent(cancelButton,CLOCATION);
 				buttons << std::make_pair(1, cancelButton);
 			}
 
@@ -208,7 +209,7 @@ namespace Dialog
 				}
 				textField->Anchor().FillHorizontally(HUD::Component::Distance::OfParentSize(0.405f),0).CenterVertically();
 				textField->alignCenter = false;
-				textPanel->AddComponent(imageField);
+				textPanel->AddComponent(imageField,CLOCATION);
 			}
 
 
@@ -532,7 +533,8 @@ namespace Dialog
 				}
 				catch (const std::exception&e)
 				{
-					FATAL__(e.what());
+					LogEvent(EventClass::Preset::internalError,e.what());
+					DBG_FATAL__(e.what());
 				}
 			}
 		}
@@ -619,16 +621,19 @@ namespace Dialog
 	}
 
 
-	WDialog	Confirm(const String&query, const FOnConfirm&onConfirm)
+	WDialog	Confirm(const String&query, const FOnConfirm&onConfirm, bool failIfModalWindowExists/*=false*/)
 	{
-		return Confirm(query,onConfirm,[](){return CheckResult::OkayContinue;});
+		return Confirm(query,onConfirm,[](){return CheckResult::OkayContinue;},failIfModalWindowExists);
 	}
 
 	/**
 	Creates a new modal dialog on top of any other active modal dialogs
 	*/
-	WDialog	Confirm(const String&query, const FOnConfirm&onConfirm, const FCheckState&check)
+	WDialog	Confirm(const String&query, const FOnConfirm&onConfirm, const FCheckState&check, bool failIfModalWindowExists/*=false*/)
 	{
+		if (failIfModalWindowExists && WindowStack::IsModal())
+			return WDialog();
+
 		WindowStack::VerifyIntegrity(CLOCATION);
 		CheckResult ck = check();
 		if (ck == CheckResult::Abort)
@@ -715,12 +720,64 @@ namespace Dialog
 	
 	void	Create()
 	{
-		Detail::showTutorials = !FileSystem::IsFile(RuntimeConfig::ConfigFile("tutorialsDisabled.mark"));
+		Detail::showTutorials = !FileSystem::IsFile(RuntimeConfig::myConfig.Lookup("tutorialsDisabled.mark"));
 		GlobalEvents::applicationTerminate << Destroy;
 	}
 
 
 
+
+
+
+	void	QueryNickname()
+	{
+		if (RuntimeConfig::aiMode)
+			return;
+		//if (Network::chosenNickname.IsEmpty())
+		{
+			static const String allowed = "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_-";
+
+			HUD::Dialog::Query("Please enter a nickname to continue (length 4-16)",::Network::chosenNickname,
+			allowed,
+				[](const String&candidate)->bool
+				{
+					return Network::IsValidNickname(candidate);
+				},
+				[](const String&name)
+				{
+					StringFile userName;
+					FileSystem::CreateDirectory("config");
+					userName.Create(RuntimeConfig::GetUserNameFile());
+					userName << name;
+					Network::chosenNickname = name;
+					if (Network::client.IsConnected())
+					{
+						Network::Channels::changeMyName.SendTo(Network::client,name);
+
+
+					}
+				}
+			);
+		}
+	}
+
+	/**
+	Checks loaded nickname and queries a new one if none or an invalid is currently set.
+	No check is performed if the client is configured to run in AI mode.
+	@return true if a new name was queried, false otherwise. False indicates the currently set name is good, or AI mode is enabled
+	*/
+	bool	QueryNicknameIfEmpty()
+	{
+		if (RuntimeConfig::aiMode)
+			return false;
+
+		if (!Network::IsValidNickname(Network::chosenNickname))
+		{
+			QueryNickname();
+			return true;
+		}
+		return false;
+	}
 
 
 

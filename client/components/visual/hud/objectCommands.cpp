@@ -164,60 +164,73 @@ namespace Objects
 
 		/*virtual override*/ void		ResearchCommand::CompileLabel(Label&outResult)
 		{
-			outResult.BeginBrief();
-
-			if (topic->IsGroup())
+			try
 			{
-				outResult << topic->name;
-				return;
-			}
-			Lua::Reference state = selectedEntity ? selectedEntity->GetResearchState() : Lua::Reference();
+				outResult.BeginBrief();
 
-			int current = 0;
-			int max = topic->maxProgress;
-			if (state.IsSet())
-			{
-				current = topic->getProgress(state);
-			}
-	//		const ResearchState*rs = selectedEntity && selectedEntity->owner ? &selectedEntity->owner->researchState : nullptr;
-
-			//if (ref || (base && turret))
-			{
-				outResult << topic->GetFullName();
-				String dependentOn;
-				//else
+				if (topic->IsGroup())
 				{
-					if (max < 0)
-						outResult << "Research progress "+String(current);
-					elif (current < max)
-					{
-						outResult << "Research progress "+String(current) + "/"+String(max);
-					}
-					else
-						outResult << "Research completed";
+					outResult << topic->name;
+					return;
 				}
-				PResearchTopic dep = topic->dependency.lock();
-				if (dep && (state.IsEmpty() || dep->getProgress(state)<dep->maxProgress))
-					outResult << "Requires completion of "+dep->GetFullName()+" research";
-				outResult.MarkBriefEnd(true);
-			}
+				Lua::Reference state = selectedEntity ? selectedEntity->GetResearchState() : Lua::Reference();
 
-			PWorldEntity ref = topic->prototypeReference;
-			if (ref)
-			{
-				ref->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth);
-				return;
-			}
-
-			if (topic->componentReference)
-			{
-				if (topic->componentReference->IsVehicleBase())
+				int current = 0;
+				int max = topic->maxProgress;
+				if (state.IsSet())
 				{
-					((Component::VehicleBase*)topic->componentReference)->DescribeType(outResult,false,true,selectedEntity ? selectedEntity->owner : OwnerParameter());
-				}			
-				elif (topic->componentReference->IsTurret())
-					((Component::Turret*)topic->componentReference)->DescribeType(outResult,false, true,"Vehicle",selectedEntity ? selectedEntity->owner : OwnerParameter());
+					current = topic->getProgress(state);
+				}
+		//		const ResearchState*rs = selectedEntity && selectedEntity->owner ? &selectedEntity->owner->researchState : nullptr;
+
+				//if (ref || (base && turret))
+				{
+					outResult << topic->GetFullName();
+					String dependentOn;
+					//else
+					{
+						if (max < 0)
+							outResult << "Research progress "+String(current);
+						elif (current < max)
+						{
+							outResult << "Research progress "+String(current) + "/"+String(max);
+						}
+						else
+							outResult << "Research completed";
+					}
+					PResearchTopic dep = topic->dependency.lock();
+					if (dep && (state.IsEmpty() || dep->getProgress(state)<dep->maxProgress))
+						outResult << "Requires completion of "+dep->GetFullName()+" research";
+					outResult.MarkBriefEnd(true);
+				}
+
+				PWorldEntity ref = topic->prototypeReference;
+				if (ref)
+				{
+					ref->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth);
+					return;
+				}
+
+				if (topic->componentReference)
+				{
+					if (topic->componentReference->IsVehicleBase())
+					{
+						((Component::VehicleBase*)topic->componentReference)->DescribeType(outResult,false,true,selectedEntity ? selectedEntity->owner : OwnerParameter());
+					}			
+					elif (topic->componentReference->IsTurret())
+					{
+						auto turret = ((Component::Turret*)topic->componentReference);
+						turret->DescribeType(outResult,false, true,turret->mountType.ToString(),selectedEntity ? selectedEntity->owner : OwnerParameter());
+					}
+				}
+
 			}
+			catch (const Lua::Exception&ex)
+			{
+				LogEvent(EventClass::Preset::internalError,ex.what());
+				//leave current at 0
+			}
+
 		}
 
 
@@ -370,7 +383,7 @@ namespace Objects
 				else
 				{
 					ASSERT__(selectedMobileEntity && selectedMobileEntity->turret->CanConstruct());
-					rawRounds = selectedMobileEntity->GetOperationRounds(rawPrice,Objects::Component::Construct);
+					rawRounds = selectedMobileEntity->GetOperationCompletionRounds(rawPrice,Objects::Component::Construct);
 				}
 				rounds = (int)std::min(roundsLeft, rawRounds);
 

@@ -26,12 +26,13 @@ namespace Reflection
 
 	namespace Variable
 	{
-		CONSTRUCT_ENUMERATION5(Persistence,
+		CONSTRUCT_ENUMERATION6(Persistence,
 			Temporary,
 			ConfigOnly,			//only read from configuration. not written to or extracted from savegames
 		//	ConfigOverridesSavegame,	//written to savegames but overridden by configuration after load (useful for debugging or statistical purposes, mostly)
 			RestoreFromSavegame,		//written to and restored from savegames. Configuration does not override these values, but they may be changed via the console
 			GameInvariant,		//written to savegames, but unchangeable until a new game is created. Common type: planet type
+			GameInvariantNonConfigurable,	//written to savegames, but unchangeable until a new game is created. Not changeable via console or config file. Common type: Nexus bases
 			PlanetConfig		//written to savegames, but changeable via console in order to reconfigure a new planet
 		)
 
@@ -49,7 +50,7 @@ namespace Reflection
 
 			
 			/**/				Base(const String&name, const String&type, Persistence persistence, count_t numElements,UINT32 protection):
-									Super(name,type,numElements,protection | (persistence == Persistence::GameInvariant ? CLI::ReadOnly : 0)),persistence(persistence),parent(state.GetFocus())	{}
+									Super(name,type,numElements,protection | (persistence == Persistence::GameInvariant || persistence == Persistence::GameInvariantNonConfigurable ? CLI::ReadOnly : 0)),persistence(persistence),parent(state.GetFocus())	{}
 
 
 			void				OnChanged();
@@ -108,8 +109,14 @@ namespace Reflection
 	Loads configuration files to fill the appropriate variables.
 	Also restores any missing prototype planet declarations in the user configuration folder (my documents...), before attempting to load them.
 	If a planet type is targeted that is not a prototype planet, then a new planet type file will be generated and filled with default values.
+	@param customConfigPath If not empty, then non-original configuration will be loaded from the specified path, rather than the my documents server configuration
 	*/
-	void	Load(bool inTestMode);
+	void	Load(const PathString&customConfigPath);
+
+	/**
+	Writes the root configuration to the specified path (excluding referenced external configuration files)
+	*/
+	void	SaveRootConfigTo(const PathString&);
 
 	/**
 	Reloads all config settings from the respective ini file(s)

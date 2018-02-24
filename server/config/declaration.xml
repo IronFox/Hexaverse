@@ -10,13 +10,14 @@
 		<variable name="round" default="">Retrieves the current round number</variable>
 		<variable name="phase" default="CommandPhase">Retrieves the current game phase. Due to their short duration, phases other than command phases or EndOfGame are rarely returned</variable>
 		<context name="Factions">
-			Provides access to individual factions.
+			Provides access to individual factions, both living and dead.
 			Factions are primarily listed by unique ID.
 			Use the 'names' or 'find' commands to retrieve the ID of a faction
-			<command name="names">Lists the names along with the guid of all factions</command>
+			<command name="names">Lists the names along with the guid of all living factions. Dead factions are omitted</command>
 			<command name="find">
-				Finds and lists all factions that contain the specified name parameter.
-				Search is case-insensitive
+				Finds and lists all living factions that contain the specified name parameter.
+				Search is case-insensitive.
+				Dead factions are omitted.
 			</command>
 		</context>
 	</context>
@@ -42,7 +43,8 @@
 		<context name="Planet">
 			<variable name="Type" default="LushGreen">
 				The following defines which planet type to use.
-				For any given string X, a valid file /config/planets/[X].ini should exist.
+				For any given string *X, a valid file [my documents]/My Games/Hexaverse/server/config/myPlanets/[X].ini must exist.
+				For any given string X (without preceeding *), a valid file [install]/predefinedPlanets/[X].ini must exist.
 			</variable>
 			<context name="Config">
 				<variable name="atmosphereDensity" default="0.5">Floating point 0 (none visible) to 1 (very dense)</variable>
@@ -196,6 +198,7 @@
 				<variable name="Nexus_Port" default="0" />
 				<variable name="Vehicle_Store" default="8" />
 				<variable name="Missile_Launcher_Tower" default="6" />
+				<variable name="Rocket_Launcher_Tower" default="0" />
 				<variable name="Radar_Tower" default="8" />
 				<variable name="Cannon_Tower" default="16" />
 				<variable name="Surveyor_Tower" default="6" />
@@ -205,6 +208,7 @@
 				<variable name="Cannon" default="8" />
 				<variable name="Artillery" default="5" />
 				<variable name="Missile_Launcher" default="0" />
+				<variable name="Rocket_Launcher" default="0" />
 				<variable name="EMP" default="3" />
 				<variable name="Bomb" default="4" />
 				<variable name="Terraformer" default="4" />
@@ -213,7 +217,10 @@
 			</context>
 		</context>
 		<context name="Nexus">Nexus faction settings
-			<variable name="haveBases" default="true">If enabled then Nexus bases are constructed around 3 of the 12 planet poles. Only affects newly created worlds.</variable>
+			<variable name="spawnBases" default="true">If enabled, then Nexus bases are constructed around 3 of the 12 planet poles. Only affects newly created worlds.</variable>
+			<variable name="haveBases" default="true">True if the local world has spawned Nexus bases.</variable>
+			<variable name="spawnAllPorts" default="false">If enabled, then Nexus Ports are spawned at all 12 pole locations. This setting is forcefully applied if gameGoal is set to ConquerNexus and empZones are on.</variable>
+			<variable name="haveAllPorts" default="true">True if the local world has spawned Nexus Ports on all 12 poles.</variable>
 			<variable name="enableAI" default="true">
 				Enables the AI to process units of the Nexus faction.
 				Spawns nexus vehicles, and AI client to control nexus vehicles/structures (if any).
@@ -236,6 +243,5 @@
 	<context name="Server">
 		<variable name="saveEveryNRounds" default="10">Number of rounds between auto-saves. Set negative to disable.</variable>
 		<variable name="saveWhenAllQuit" default="true">Indicates that auto-saves should be performed when the last client disconnects. not saved to state files</variable>
-		<variable name="configMode" default="false" />
 	</context>
 </declaration>
