@@ -27,8 +27,8 @@ namespace BugReporter
 		{
 			public readonly string Path;
 			public readonly string TimeLine, Prefix;
-			public DateTime Created;
-			public DateTime Modified;
+			public DateTime MinTime;
+			public DateTime MaxTime;
 			private HashSet<string> entityIDs;
 			private string fatal;
 			private string[][] lines;
@@ -124,14 +124,57 @@ namespace BugReporter
 				return null;
 			}
 
+			private static string Get(string[] ar, int index)
+			{
+				if (index < ar.Length)
+					return ar[index];
+				return "";
+			}
+
+			private static DateTime Min(DateTime a, DateTime b)
+			{
+				return new DateTime(Math.Min( a.Ticks, b.Ticks));
+			}
+			private static DateTime Max(DateTime a, DateTime b)
+			{
+				return new DateTime(Math.Max(a.Ticks, b.Ticks));
+			}
+
 			private void Load()
 			{
 				if (entityIDs != null)
 					return;
 				entityIDs = new HashSet<string>();
 				const int idAt = 7;
+
+				MinTime = DateTime.MaxValue;
+				MaxTime = DateTime.MinValue;
+
+
 				VisitLines(line =>
 				{
+					if (line.Length > 1)
+					{
+						string dt = line[1];
+						int dotAt = dt.IndexOf('.');
+						if (dotAt >= 0)
+						{
+							string date = dt.Substring(0, dotAt);
+							string time = dt.Substring(dotAt + 1).Trim();
+							string[] dateParts = date.Split(' ');
+							int year = int.Parse(Get(dateParts, 0));
+							int month = int.Parse(Get(dateParts, 1));
+							int day = int.Parse(Get(dateParts, 2));
+							DateTime t = new DateTime(year, month, day);
+							string[] timeParts = time.Split(':');
+							int hour = int.Parse(Get(timeParts, 0));
+							int minute = int.Parse(Get(timeParts, 1));
+							int seconds = int.Parse(Get(timeParts, 2));
+							t += new TimeSpan(hour, minute, seconds);
+							MinTime = Min(MinTime, t);
+							MaxTime = Max(MinTime, t);
+						}
+					}
 					if (line.Length > idAt)
 					{
 						string id = line[idAt].Trim();
@@ -168,25 +211,24 @@ namespace BugReporter
 			public LogFile(string path)
 			{
 				Path = path;
-				Created = File.GetCreationTime(path);
-				Modified = File.GetLastWriteTime(path);
 
 				string filename = System.IO.Path.GetFileNameWithoutExtension(path);
 				Prefix = filename.Split(' ')[0];
-				if (Created.Date == Modified.Date)
+				Load();
+				if (MinTime.Date == MaxTime.Date)
 				{
-					TimeLine = "[" + Created.Date.ToShortDateString() + " " + Created.ToShortTimeString() + "-" + Modified.ToShortTimeString() + "]";
+					TimeLine = "[" + MinTime.Date.ToShortDateString() + " " + MinTime.ToShortTimeString() + "-" + MaxTime.ToShortTimeString() + "]";
 				}
 				else
-					TimeLine = "[" + Created + "-" + Modified + "]";
+					TimeLine = "[" + MinTime + "-" + MaxTime + "]";
 
-				Load();
+
 			}
 
 			public int CompareTo(object obj)
 			{
 				LogFile other = (LogFile)obj;
-				return Modified.CompareTo(other.Modified);
+				return MaxTime.CompareTo(other.MaxTime);
 			}
 
 			public override string ToString()
