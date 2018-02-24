@@ -527,9 +527,7 @@ namespace Objects
 					PTurretBase b = (*c)->GetTurretBase(zOffset);
 					if (!b)
 						continue;
-					if (!(*c)->IsSentry())
-						continue;
-					if (b->turret->CanAttack())
+					if (b->turret->CanAttack() && !b->turret->dealsEMPDamage)
 					{
 						LogEvent(EventClass::Preset::common,this,"Processing new hostile contact "+(*c)->GetName()+"...");
 						for (WMobileEntity w : owner->allMobiles)
