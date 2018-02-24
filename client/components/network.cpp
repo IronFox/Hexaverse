@@ -1328,6 +1328,9 @@ namespace Network
 			Objects::Faction::mine->alliance->UpdateConfiguration(faction.alliance.flags);
 			myIDString = ToString(myID);
 			Objects::Faction::mine->isOwnedByMe = true;
+			#ifdef HAS_WINDOW
+				HUD::FactionTable::Update();
+			#endif
 		}
 
 		void AllianceConfigChange(Protocol::AllianceConfigChange&ch)
@@ -1335,7 +1338,12 @@ namespace Network
 			ASSERT__(!eventsLocked);
 			Objects::PAlliance alliance = Objects::Alliance::FindByID(ch.allianceID);
 			if (alliance)
+			{
 				alliance->config = ch.flags;
+				#ifdef HAS_WINDOW
+					HUD::FactionTable::Update();
+				#endif
+			}
 			else
 				LogEvent(EventClass::Preset::internalError,"Can't find alliance "+ToString(ch.allianceID)+" for config update");
 
@@ -1396,6 +1404,35 @@ namespace Network
 			v->Close(outcome);
 		}
 
+		void	KillFaction(Protocol::KillFaction&kill)
+		{
+			Objects::PFaction f = Objects::Faction::FindByID(kill);
+			if (f)
+			{
+				const bool isMine = f == Objects::Faction::mine;
+				bool shouldBeGone = f->alliance->CountLivingMembers() == 1;
+				const TUniqueID aid = f->alliance->id;
+				const Objects::WAlliance wa = f->alliance;
+				Objects::Faction::Kill(f);
+				ASSERT__(!f->alliance);
+				if (shouldBeGone)
+				{
+					ASSERT1__(wa.expired(),wa.lock()->CountLivingMembers());
+					ASSERT__(!Objects::Alliance::FindByID(aid));
+				}
+				#ifdef HAS_WINDOW
+					HUD::FactionTable::Update();
+				#endif
+				if (isMine)
+				{
+					haveFaction = false;
+					haveID = false;
+					accessMap.Unset(worldID);
+					SaveWorldAccessTokens();
+					LogEvent(EventClass(EventSignificance::ClientFatal,EventFlavor::Loss),"Your faction has been annihilated");
+				}
+			}
+		}
 
 	}
 
@@ -1485,7 +1522,8 @@ namespace Network
 		DECLARE_OBJECT_SENDER(ClientVote);
 		DECLARE_CHANNEL(AllianceInvite);
 		DECLARE_OBJECT_SENDER(ChatMessage);
-
+		DECLARE_OBJECT_SENDER(SaveAs);
+		DECLARE_CHANNEL(KillFaction);
 	}
 
 
@@ -1701,6 +1739,7 @@ namespace Network
 		client.InstallChannel(Channels::controlMessage);
 		client.InstallChannel(Channels::clientFactionResponse);
 		client.InstallChannel(Channels::MyFaction);
+		client.InstallChannel(Channels::KillFaction);
 		client.InstallChannel(Channels::AllianceConfigChange);
 		client.InstallChannel(Channels::AllianceInvite);
 		client.InstallChannel(Channels::VoteCreation);
@@ -2155,8 +2194,9 @@ void	Network::Receiver::FactionOnline(NET(TUniqueID)&id)
 }
 void	Network::Receiver::FactionOffline(NET(TUniqueID)&id)
 {
-	Objects::OwnerParameter faction = Network::ResolveFaction(id);
-	faction->online = false;
+	Objects::OwnerParameter faction = Objects::Faction::FindByID(id);
+	if (faction)
+		faction->online = false;
 	#ifdef HAS_WINDOW
 		HUD::FactionTable::Update();
 	#endif

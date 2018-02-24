@@ -290,9 +290,11 @@ namespace Channels
 	DECLARE_FACTION_CHANNEL(AllianceInvite);
 	DECLARE_FACTION_CHANNEL(AllianceConfigChange);
 	DECLARE_FACTION_CHANNEL(ChatMessage);
+	DECLARE_FACTION_CHANNEL(SaveAs);
 	
 	DECLARE_OBJECT_SENDER(MyFaction);
 	DECLARE_OBJECT_SENDER(GameConfig);
+	DECLARE_OBJECT_SENDER(KillFaction);
 
 	namespace Statistics
 	{
@@ -512,6 +514,15 @@ namespace Receiver
 		}
 	}
 
+
+	Objects::PFaction FindFirstLivingFaction()
+	{
+		foreach (Objects::Faction::all,f)
+			if (!(*f)->isDead)
+				return *f;
+		return nullptr;
+	}
+
 	void	ClientFaction(Protocol::ClientFactionRequest&_p, TCP::Peer&peer)
 	{
 		if (!peer.attachment)
@@ -655,8 +666,7 @@ namespace Receiver
 					#ifndef _DEBUG
 						&& RuntimeConfig::tutorialMode
 					#endif
-					&& Objects::Faction::all.IsNotEmpty()
-					&& (faction = Objects::Faction::all.First())	//in tutorial mode (or debug mode) take first known faction
+					&& (faction = FindFirstLivingFaction())	//in tutorial mode (or debug mode) take first known faction
 				)
 			)
 		{
@@ -883,7 +893,7 @@ namespace Receiver
 		{
 			Channels::identifyFaction.SendTo(peer,Network::Identify(f));
 
-		},false);
+		});
 
 
 		if (!newFaction)
@@ -941,7 +951,7 @@ namespace Receiver
 		//probably optional later on
 		{
 			//broadcast name and state
-
+			ASSERT__(!client->faction->isDead);
 			Channels::identifyFaction.SendTo(Network::server,Network::Identify(client->faction),Channels::Level::Faction);
 			Channels::factionOnline.SendTo(Network::server,client->faction->id,2);
 
@@ -1119,6 +1129,25 @@ namespace Receiver
 		Journal::currentRound.Register(true,f,new Journal::Round::DestroyMarker(id));
 	}
 
+	void	SaveAs(Protocol::SaveAs&saveAs, TCP::Peer&peer)
+	{
+		if (!peer.IsLocalhost())
+		{
+			LogEvent(EventClass::Preset::unexpectedBehavior,peer,"Can only save when localhost");
+			peer.DisconnectPeer();
+			return;
+		}
+		saveAs.EraseCharacters([](char c){return CharFunctions::isalnum(c) || c == ' ';},false);
+		if (FileIO::CanSaveRightNow())
+		{
+			LogEvent(EventClass::Preset::important,"Saving game...");
+			FileIO::Save(RuntimeConfig::sharedConfig.Lookup("saves/"+saveAs+RuntimeConfig::savFileExtension),RuntimeConfig::phase);
+			LogEvent(EventClass::Preset::important,"Game saved");
+		}
+		else
+			LogEvent(EventClass::Preset::commandRejected,peer,"Cannot save right now. Phase inappropriate. Try again later");
+	}
+
 	void	ChatMessage(Protocol::ChatMessage&message, TCP::Peer&peer)
 	{
 		if (!peer.attachment)
@@ -1229,6 +1258,7 @@ namespace Receiver
 		if (cl->faction)
 		{
 			cl->faction->name = cl->name;
+			ASSERT__(!cl->faction->isDead);
 			Channels::identifyFaction.SendTo(Network::server,Network::Identify(cl->faction),Channels::Level::Faction);
 			LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ), peer, "User renamed to '"+cl->name+"'");
 		}

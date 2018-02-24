@@ -1,3 +1,18 @@
+v0.7.5
+	+ Localhost client can now trigger a game save without requiring a connected control console.
+	+ Added console faction attribute to see if a faction is dead (dead factions remain listed).
+	+ Added console faction attribute to see alliance of a faction.
+	> Added file dates to load game menu.
+	> Control console now queries full server status upon connection via new server command /Server/describeStatus.
+	> Control console now shows status and connected server identity in window title.
+	> Nexus faction can no longer be terminated using the console (ended in crash).
+	> Non-hunter mobiles will now always abort movements entering the regular attack range of any newly detected hostile entity.
+	> Improved performance of sensor updates. Heavy load updates should spread across all available CPU cores.
+	* Fixed console output freezes of server, control console, and console client due to marking of text in the console window.
+	* Fixed heartbeat failure message.
+	* Fixed dead factions lingering on.
+	* Fixed radar vehicles driving into the firing range of mid-motion detected towers.
+	
 v0.7.4	[Feb 20 2018]
 	+ Added runtime parameter to control console to start and monitor a server instance.
 	+ Added menu to start server with interactive or current configuration, or load a previously saved file.

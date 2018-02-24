@@ -28,6 +28,7 @@ namespace Receiver
 	void	IdentifyFaction(NET(TUniqueID)&, TCP::Peer&peer);
 	void	QueueResearch(Protocol::QueueResearch&, TCP::Peer&peer);
 	void	ChatMessage(Protocol::ChatMessage&, TCP::Peer&peer);
+	void	SaveAs(Protocol::SaveAs&, TCP::Peer&peer);
 	void	RequestResource(Protocol::ResourceID&, TCP::Peer&peer);
 	void	TutorialAt(NET(INT32)&at);
 
@@ -138,9 +139,11 @@ namespace Channels
 	DECLARE_FACTION_CHANNEL(AllianceInvite);
 	DECLARE_FACTION_CHANNEL(AllianceConfigChange);
 	DECLARE_FACTION_CHANNEL(ChatMessage);
+	DECLARE_FACTION_CHANNEL(SaveAs);
 
 	DECLARE_OBJECT_SENDER(MyFaction);
 	DECLARE_OBJECT_SENDER(GameConfig);
+	DECLARE_OBJECT_SENDER(KillFaction);
 
 	namespace Statistics
 	{

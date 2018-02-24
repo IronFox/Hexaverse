@@ -254,6 +254,10 @@ namespace ServerProcess
 		return Detail::process.IsRunning();
 	}
 
+	void			GetWindows(Array<HWND>&outWindows)
+	{
+		Detail::process.GetWindows(outWindows);
+	}
 
 
 

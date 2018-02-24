@@ -323,7 +323,7 @@ namespace ApplicationInterface
 	}
 
 
-	void	SignalNexusControlChange(const Objects::PAlliance&a)
+	void	SignalNexusControlChange( const Objects::PAlliance&a )
 	{
 		if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
 			return;
@@ -349,6 +349,26 @@ namespace ApplicationInterface
 		}
 	}
 
+	void	SignalFactionDied(const Objects::PFaction&f)
+	{
+		Channels::KillFaction.SendTo(Network::server,f->id,Channels::Level::Faction);
+		Network::tokenMap.Unset(f->accessToken);
+		Network::PClient client;
+		if (Network::playerMap.Query(f,client))
+		{
+			auto peer = client->peer.lock();
+			if (peer)
+			{
+				/*
+				There are numerous issues with keeping dead factions alive, if member of an alliance:
+				* Allied terrain sensor updates are sent only if terraforming operations have been performed
+				* Allied units are still shown, and animated/updated, but dead client colors all terrain as fog of war
+				*/
+				LogEvent(EventSignificance::ClientFatal,peer,"Faction died. Disconnecting client");
+				peer->DisconnectPeer();
+			}
+		}
+	}
 
 
 	void	SignalAttack(const TAttack&attack)
@@ -409,8 +429,9 @@ namespace ApplicationInterface
 		else
 		{
 			static Grid::HighSetup::TVolumeDescriptor volume;
+			static Grid::HighSetup::TVolumeDescriptor::Operator op;
 			M::Sphere<> explosionSphere(center,explosionRadius);
-			Grid::high.GenerateVolume(explosionSphere,volume);
+			Grid::high.GenerateVolume(explosionSphere,op,volume);
 
 			Objects::ForeachFaction([explosionSphere,&atTime](const Objects::PFaction&f)
 			{
@@ -838,6 +859,8 @@ int main( int argc, const char* argv[])
 		};
 
 		SetConsoleCtrlHandler(MyHandlerRoutine,TRUE);
+		Sys::DisableConsoleQuickEdit();
+
 
 		{
 			wchar_t path[MAX_PATH];
@@ -874,9 +897,6 @@ int main( int argc, const char* argv[])
 		Network::serverID.Generate();
 		UDPBroadCast::Create(ParameterConfig::basePort,Network::serverID);
 
-		if (ParameterConfig::enableRemoteControl)
-			RemoteControl::Start(ParameterConfig::basePort,ParameterConfig::controlProtocol);
-
 
 
 
@@ -893,9 +913,15 @@ int main( int argc, const char* argv[])
 				Network::RestartSession(false);
 			}))
 		);
-		Reflection::state.DefineCommand("closeSession",(CLI::Command::function0_t)[](){Network::CloseSession();},CLI::NoCompletion);	//why...?
+		//Reflection::state.DefineCommand("closeSession",(CLI::Command::function0_t)[](){Network::CloseSession();},CLI::NoCompletion);	//why...?
 
 		Reflection::state.PopFocus();
+
+		Reflection::state.DefineCommand("/Server/describeStatus",(CLI::Command::function0_t)[]()
+		{
+			RemoteControl::RelayEvent(Network::DescribeStatus());
+			Network::DescribeConfiguration([](const String&line){RemoteControl::RelayEvent(line);});
+		},CLI::NoCompletion);
 
 		Reflection::state.DefineCommand("/Server/shutdown",(CLI::Command::function0_t)[]()
 		{
@@ -1105,7 +1131,7 @@ int main( int argc, const char* argv[])
 				FileIO::Load(filename);
 			}
 			else
-				Logging::WriteEvent(EventClass::Preset::fileError,"Specified file ("+String(filename)+") does not exist. Skipping loading operation.",nullptr,nullptr,nullptr);
+				LogEvent(EventClass::Preset::fileError,"Specified file ("+String(filename)+") does not exist. Skipping loading operation.");
 		}
 		RuntimeConfig::tutorialMode = ParameterConfig::startInTutorial;
 
@@ -1120,7 +1146,7 @@ int main( int argc, const char* argv[])
 		//Journal::globalWriter.InitNew(RuntimeConfig::Lookup("saves/log"));
 		//Journal::globalWriter.ContinueExisting(RuntimeConfig::Lookup("saves/log"));
 
-		Logging::WriteEvent(EventSignificance::Uncommon, "Preparation of world '"+World::worldID.ToNiceString()+"'/" + ToString(World::worldID) + " completed.", nullptr, nullptr,nullptr);
+		LogEvent(EventSignificance::Uncommon, "Preparation of world '"+World::worldID.ToNiceString()+"'/" + ToString(World::worldID) + " completed.");
 		
 		Network::LogServerState();
 
@@ -1133,6 +1159,10 @@ int main( int argc, const char* argv[])
 		}
 
 		Game::ResetFactionStartMineralValue();
+
+
+		if (ParameterConfig::enableRemoteControl)
+			RemoteControl::Start(ParameterConfig::basePort,ParameterConfig::controlProtocol);
 
 
 		while (!application_shutting_down && !quitMainLoop)
@@ -1170,7 +1200,7 @@ int main( int argc, const char* argv[])
 					bool hasNexus = false,nexusWantsNewRound = false;
 					foreach(Network::activePlayersAndSpectators, p)
 					{
-						if ((*p)->isSpectator)	//doesn't count towards new round
+						if (!(*p)->HasLivingFaction()) //don't count towards new round
 							continue;
 						if ((*p)->faction == Objects::Faction::nexus)
 						{

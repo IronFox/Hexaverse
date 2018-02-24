@@ -1406,7 +1406,8 @@ namespace Protocol
 		, TUniqueID, recipient	//may be faction, alliance, or everybody (if empty)
 	)
 		
-
+	typedef Package::NetString<32>	SaveAs;
+	typedef TUniqueID	KillFaction;
 
 	namespace ChannelID
 	{
@@ -1479,6 +1480,7 @@ namespace Protocol
 			TouchMarker,		//c2s: TouchedMarker
 
 			IdentifyFaction,	// [c2s: TUniqueID -> ] s2c: IdentifyFaction
+			KillFaction,		// s2c: KillFaction
 			ChangeMyName,		// c2s: ClientName
 			FactionOnline,		// s2c: TUniqueID
 			FactionOffline,		// s2c: TUniqueID
@@ -1517,6 +1519,8 @@ namespace Protocol
 			RoundStatistics,			//s2c: Statistics::Round
 			EntityTypeStatistics,		//s2c: Statistics::EntityType
 			FactionInteractionStatistics,	//s2c: Statistics::FactionInteraction
+
+			SaveAs,	//c2s: SaveAs
 		};
 	}
 

@@ -31,7 +31,8 @@ namespace ApplicationInterface
 
 	void	SignalAllianceMembershipChange(const Objects::PFaction&owner)
 	{
-		Channels::identifyFaction.SendTo(::Network::server,Network::Identify(owner),Channels::Level::Faction);
+		if (!owner->isDead)
+			Channels::identifyFaction.SendTo(::Network::server,Network::Identify(owner),Channels::Level::Faction);
 		SignalFactionsChanged();	//for statistical purposes
 	}
 
@@ -136,10 +137,10 @@ namespace Network
 			if (s == INVALID_SOCKET)
 				return;
 
-
-			if (timer.GetSecondsSince(lastBeat) > 3)
+			static const float timeOut = 3;
+			if (timer.GetSecondsSince(lastBeat) > timeOut)
 			{
-				LogEvent(EventClass::Preset::fatal,"No heartbeat received in 10 seconds. Shutting down");
+				LogEvent(EventClass::Preset::fatal,"No heartbeat received in "+String(timeOut)+" seconds. Shutting down");
 
 				application_shutting_down = true;	//prevent certain operations in Close()
 				try
@@ -451,6 +452,8 @@ namespace Network
 		server.InstallChannel(Channels::ClientVote);
 		server.InstallChannel(Channels::AllianceConfigChange);
 
+		server.InstallChannel(Channels::SaveAs);
+
 		server.OpenSignalChannel(Protocol::ChannelID::RequestRoundEnd,(UINT32)UserLevel::CommonFaction);
 		server.OpenSignalChannel(Protocol::ChannelID::RequestContinueRound,(UINT32)UserLevel::CommonFaction);
 		server.OpenSignalChannel(Protocol::ChannelID::Ping,0);
@@ -497,7 +500,7 @@ namespace Network
 
 			playerMap.Unset(client->faction);
 			client->faction->online = false;
-			Channels::factionOffline.SendTo(server,client->faction->id,2);
+			Channels::factionOffline.SendTo(server,client->faction->id,Channels::Level::Faction);
 		}
 	}
 
@@ -643,104 +646,112 @@ namespace Network
 		Logging::WriteEvent(EventClass::Preset::configurationPrint,msg,nullptr,nullptr,nullptr);
 	}
 
-
-
-	void LogServerState()
+	void		LogServerState()
 	{
-		
-		if (server.IsOnline())
-			Logging::WriteEvent(EventSignificance::Important,"Server "+ToString(Network::serverID)+"/"+UDPBroadCast::packet.version+" is online.",nullptr,nullptr,nullptr);
-		else
-			Logging::WriteEvent(EventSignificance::Important,"Server "+ToString(Network::serverID)+"/"+UDPBroadCast::packet.version+" is created but offline.",nullptr,nullptr,nullptr);
-
+		LogEvent(EventSignificance::Important,Network::DescribeStatus());
+		Network::DescribeConfiguration([](const String&line){LogEvent(EventClass::Preset::configurationPrint, line);});
 		FileIO::RefreshWindowTitle();
+	}
+
+	String		DescribeStatus()
+	{
+		if (server.IsOnline())
+			return "Server "+ToString(Network::serverID)+"/"+UDPBroadCast::packet.version+" is online.";
+		return "Server "+ToString(Network::serverID)+"/"+UDPBroadCast::packet.version+" is created but offline.";
+	}
+
+
+	void		DescribeConfiguration(const std::function<void(const String&)>&logConfig)
+	{
+		//Logging::WriteEvent(EventSignificance::Important,
+		//FileIO::RefreshWindowTitle();
 
 		{
-			LogConfig("AI is configured as follows:");
+			logConfig("AI is configured as follows:");
 			if (Game::Config::Nexus::enableAI)
 			{
-				LogConfig(" -Nexus-AI enabled");
-				LogConfig(" -ThreatEstimationFactor=" + String(Game::Config::Nexus::threatEstimationFactor));
+				logConfig(" -Nexus-AI enabled");
+				logConfig(" -ThreatEstimationFactor=" + String(Game::Config::Nexus::threatEstimationFactor));
 				//LogConfig(" -NexusTurrets=" + implode(',', State::Config::Nexus::vehicleTurretNames));
 			}
 			else
-				LogConfig(" -Disabled");
+				logConfig(" -Disabled");
 
-			LogConfig("This game is configured as follows:");
+			logConfig("This game is configured as follows:");
 			#ifndef NO_HIBERNATION
-				LogConfig(" -Uplink traffic per faction is limited to "+String(State::Config::uplinkBandwidth));
+				logConfig(" -Uplink traffic per faction is limited to "+String(State::Config::uplinkBandwidth));
 			#endif
 
-			LogConfig(" -Factions: "+Game::Config::FactionSupportFlagString());
+			logConfig(" -Factions: "+Game::Config::FactionSupportFlagString());
 
 			if (World::Config::simulateLiquids)
-				LogConfig(" -Liquids: Expanding.");
+				logConfig(" -Liquids: Expanding.");
 			else
-				LogConfig(" -Liquids: Static.");
+				logConfig(" -Liquids: Static.");
 			switch (RuntimeConfig::gameGoal)
 			{
 				case RuntimeConfig::GameGoal::None:
-					LogConfig(" -Goal: None.");
+					logConfig(" -Goal: None.");
 				break;
 				case RuntimeConfig::GameGoal::ConquerNexus:
 					static_assert(BaseGrid::IsolatedCornerCount==3,"Unexpected count");
-					LogConfig(" -Goal: Connect and enable 2+ Nexus Ports.");
+					logConfig(" -Goal: Connect and enable 2+ Nexus Ports.");
 				break;
 			}
 			if (Game::Config::closedGame)
-				LogConfig(" -Closed: Joining will be restricted to first round and access tokens. Game can be won.");
+				logConfig(" -Closed: Joining will be restricted to first round and access tokens. Game can be won.");
 			else
-				LogConfig(" -Open: Players can join any time. Game is endless.");
+				logConfig(" -Open: Players can join any time. Game is endless.");
 			if (Game::Config::Nexus::bases.havePlaced)
-				LogConfig(" -Nexus-Bases: Nexus bases have been randomly created during world creation");
+				logConfig(" -Nexus-Bases: Nexus bases have been randomly created during world creation");
 			else
-				LogConfig(" -No Nexus-Bases: Nexus bases have not been created");
+				logConfig(" -No Nexus-Bases: Nexus bases have not been created");
 
 			switch (RuntimeConfig::doomsdayWeapons)
 			{
 				case RuntimeConfig::DoomsdayWeapons::Conceal:
-					LogConfig(" -Doomsday weapons: Treated like normal weapons (must be in sensor range to see)");
+					logConfig(" -Doomsday weapons: Treated like normal weapons (must be in sensor range to see)");
 				break;
 				case RuntimeConfig::DoomsdayWeapons::Disallow:
-					LogConfig(" -Doomsday weapons: Forbidden to fire (can still be built, however)");
+					logConfig(" -Doomsday weapons: Forbidden to fire (can still be built, however)");
 				break;
 				case RuntimeConfig::DoomsdayWeapons::Expose:
-					LogConfig(" -Doomsday weapons: Doomsday explosions are made visible to all factions");
+					logConfig(" -Doomsday weapons: Doomsday explosions are made visible to all factions");
 				break;
 				default:
-					LogConfig(" -Doomsday weapons: "+String(RuntimeConfig::doomsdayWeapons.ToString()));
+					logConfig(" -Doomsday weapons: "+String(RuntimeConfig::doomsdayWeapons.ToString()));
 				break;
 			}
 
 			if (Game::Config::roundTimer > 0)
-				LogConfig(" -Round Timer: Rounds beyond the first may last at most "+String(Game::Config::roundTimer)+" seconds.");
+				logConfig(" -Round Timer: Rounds beyond the first may last at most "+String(Game::Config::roundTimer)+" seconds.");
 			else
-				LogConfig(" -No Round Timer: Rounds end when all players requested so.");
+				logConfig(" -No Round Timer: Rounds end when all players requested so.");
 			if (Game::Config::basesRequired)
-				LogConfig(" -Bases Required: Factions that do not meet the station requirements die after five rounds.");
+				logConfig(" -Bases Required: Factions that do not meet the station requirements die after five rounds.");
 			else
-				LogConfig(" -No Survival Conditions: Factions live forever (although their vehicles/structures might not).");
+				logConfig(" -No Survival Conditions: Factions live forever (although their vehicles/structures might not).");
 			if (Game::Config::startBases)
-				LogConfig(" -Bases: New factions are given minimal bases.");
+				logConfig(" -Bases: New factions are given minimal bases.");
 			else
-				LogConfig(" -Flexibility: New factions are given vehicles, but no structures.");
+				logConfig(" -Flexibility: New factions are given vehicles, but no structures.");
 			if (Objects::newVehiclesHaveFullAmmo)
-				LogConfig(" -Ammo: New vehicles using standard ammo are given full ammo.");
+				logConfig(" -Ammo: New vehicles using standard ammo are given full ammo.");
 			else
-				LogConfig(" -No Ammo: New vehicles have zero ammo.");
+				logConfig(" -No Ammo: New vehicles have zero ammo.");
 			if (Game::Config::exposeActionLeftToHostileFactions)
-				LogConfig(" -Expose Vehicle Initiative: Vehicle initiative is exposed to hostile factions.");
+				logConfig(" -Expose Vehicle Initiative: Vehicle initiative is exposed to hostile factions.");
 			else
-				LogConfig(" -Private Vehicle Action: Vehicle movement is not exposed to hostile factions.");
+				logConfig(" -Private Vehicle Action: Vehicle movement is not exposed to hostile factions.");
 			if (RuntimeConfig::empZones)
-				LogConfig(" -EMP Zones: Vehicles entering residual EMP fields will suffer extensive EMP damage.");
+				logConfig(" -EMP Zones: Vehicles entering residual EMP fields will suffer extensive EMP damage.");
 			else
-				LogConfig(" -No EMP Zones: The entire planet is freely accessible.");
+				logConfig(" -No EMP Zones: The entire planet is freely accessible.");
 
 			if (FileIO::Config::saveEveryNRounds > 0)
-				LogConfig(" -Auto-saves will be created every "+String(FileIO::Config::saveEveryNRounds)+" round(s).");
+				logConfig(" -Auto-saves will be created every "+String(FileIO::Config::saveEveryNRounds)+" round(s).");
 			if (FileIO::Config::saveWhenAllQuit)
-				LogConfig(" -Auto-saves will be created when all quit.");
+				logConfig(" -Auto-saves will be created when all quit.");
 		}
 
 

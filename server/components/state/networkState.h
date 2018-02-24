@@ -58,7 +58,10 @@ namespace Network
 		Refreshes personal game progress information
 		*/
 		void				SendProgressUpdate(const String&warningReason, const Objects::Alliance::TNexusStats&stats);
-
+		bool				HasLivingFaction() const
+		{
+			return !isSpectator && faction && !faction->isDead;
+		}
 	};
 	
 
@@ -155,10 +158,11 @@ namespace Network
 	*/
 	void		BuildConfiguredWorld();
 
-	/**
-	Prints the current server configuration and state to the console/log file.
-	*/
 	void		LogServerState();
+
+	String		DescribeStatus();
+	void		DescribeConfiguration(const std::function<void(const String&)>&logConfig);
+
 
 
 	Protocol::IdentifyFaction	Identify(const Objects::PFaction&f);

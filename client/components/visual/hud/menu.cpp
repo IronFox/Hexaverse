@@ -14,6 +14,7 @@
 #include "guiFactionTable.h"
 #include <io/monitoredProcess.h>
 #include "../../configurationMode.h"
+#include "../../io.h"
 
 bool	IsFullScreen();
 void	SetFullScreen(bool isFull);
@@ -25,6 +26,7 @@ namespace HUD
 
 namespace Menu
 {
+
 
 	/*virtual override*/ void				Menu::OnScreenSizeOrUIScaleChange()
 	{
@@ -361,6 +363,32 @@ namespace Menu
 		game->AddCommand("Abandon faction",Network::AbandonCurrentFaction,[](){return Network::amOnline && Network::haveFaction && RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame;});
 		game->AddCommand("Show factions (Tab)", FactionTable::Show,[](){return Network::amOnline;});
 		game->AddCommand("Show statistics", Statistics::Show,[](){return Network::amOnline && RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame;});
+		game->AddCommand("Save game as...",[]()
+		{
+			Dialog::Query("Please specify a name","","ABCDEFGHIJKLMNOPQRSTUVWXZYabcdefghijklmnopqrstuvwxyz0123456789 ",[](const String&candidate)->bool{return candidate.Length() > 3 && candidate.Length() < 16 && !candidate.BeginsWith(' ') && !candidate.EndsWith(' ');},
+				[](const String&name)
+			{
+				PathString location = RuntimeConfig::sharedConfig.Lookup("saves/"+name+RuntimeConfig::savFileExtension);
+				if (FileSystem::IsFile(location))
+				{
+					Dialog::Confirm("Savegame '"+name+"' already exists. Replace?",[name]()
+					{
+						if (Network::client.IsConnected() && Network::client.IsLocalhost())
+						{
+							Network::Channels::SaveAs.SendTo(Network::client,name);
+						}
+					});
+				}
+				else
+					if (Network::client.IsConnected() && Network::client.IsLocalhost())
+					{
+						Network::Channels::SaveAs.SendTo(Network::client,name);
+					}
+
+
+			});
+
+		},[](){return Network::client.IsConnected() && Network::client.IsLocalhost();});
 		game->AddCommand("Launch Control Console",[]()
 		{
 			SetFullScreen(false);
@@ -379,8 +407,7 @@ namespace Menu
 		help->Setup(0.3f,"Help",true);
 		help->AddCommand("View Online Manual",[]()
 		{
-			SetFullScreen(false);
-			system("start https://www.hexaverse.net/html.php");
+			OpenDocumentExternally("https://www.hexaverse.net/html.php");
 		});
 
 		help->AddCommand("Show Basic Controls",
@@ -412,8 +439,9 @@ namespace Menu
 
 		help->AddCommand("View Changelog",[]()
 		{
-			SetFullScreen(false);
-			system("start ..\\changelog.txt");
+			FileSystem::File f;
+			if (FileSystem::Folder().FindFile("..\\changelog.txt",f))
+				OpenDocumentExternally(f.GetLocation());
 		});
 
 
@@ -512,7 +540,21 @@ namespace Menu
 	}
 
 
-	static void LookupSaveGames(Buffer0<std::pair<String,PathString> >&saves,FileSystem::Folder folder, const String&path)
+	struct TSaveGame
+	{
+		String title;
+		PathString path;
+		FileSystem::ftime_t time;
+
+		friend void swap(TSaveGame&a, TSaveGame&b)
+		{
+			a.title.swap(b.title);
+			a.path.swap(b.path);
+			std::swap(a.time,b.time);
+		}
+	};
+
+	static void LookupSaveGames(Buffer0<TSaveGame>&saves,FileSystem::Folder folder, const String&path)
 	{
 		folder.Rewind();
 		FileSystem::File f;
@@ -520,8 +562,9 @@ namespace Menu
 		{
 			String path2 = path.IsNotEmpty() ? path +"/" : "";
 			auto&e = saves.Append();
-			e.first = path2 + String(f.GetInnerName());
-			e.second = f.GetLocation();
+			e.title = path2 + String(f.GetInnerName());
+			e.path = f.GetLocation();
+			e.time = f.GetModificationTime();
 		}
 
 		folder.Rewind();
@@ -540,12 +583,17 @@ namespace Menu
 		auto menu = saveGames;
 		menu->Setup(0.25f,"Start Server with Saved Game",true);
 
-		Buffer0<std::pair<String,PathString> > saves;
+		Buffer0<TSaveGame> saves;
 		LookupSaveGames(saves, RuntimeConfig::sharedConfig.Lookup("saves"), "");
 		foreach (saves,s)
 		{
-			PathString p = s->second;
-			menu->AddCommand(s->first,[p]()
+			PathString p = s->path;
+			time_t t = s->time;
+			struct tm *tm = localtime(&t);
+			char date[64];
+			strftime(date, sizeof(date), "%Y-%m-%d %H:%M", tm);
+
+			menu->AddCommand(s->title+"\n"+date,[p]()
 			{
 				ServerProcess::Begin(true,false,"-l \""+p+"\"");
 				HUD::WindowStack::SignalSituationChange();

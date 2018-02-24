@@ -264,6 +264,7 @@ namespace Objects
 		virtual			~Faction();
 	
 		void			AddEntitySensory(World::Data&worldData, float&t) const;
+		void			CollectSensors(Buffer0<World::Sensor>&outSensors, float&t) const;
 		
 		/**
 		Checks whether or not units of the other faction are considered friendly (invalid auto-targets).
@@ -316,6 +317,9 @@ namespace Objects
 		#ifdef CLIENT
 			static Buffer0<PFaction>	allKnown;
 			static GenericHashTable<TUniqueID,PFaction>	idMap;
+			#ifdef _DEBUG
+				static GenericHashSet<TUniqueID>	deadIDs;
+			#endif
 
 			static PFaction				mine;
 

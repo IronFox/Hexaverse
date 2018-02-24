@@ -240,6 +240,9 @@ namespace Objects
 	{
 		ASSERT__(f);
 		ASSERT__(!IsMember(f));
+		#ifdef CLIENT
+			DBG_ASSERT__(!Faction::deadIDs.IsSet(f->id));
+		#endif
 		LogEvent(EventSignificance::Debug,f, "@"+String((const void*)f.get())+ " Joined alliance "+ToString(id));
 		members.Append().wFaction = f;
 		members.Last().rawPointer = f.get();
@@ -780,7 +783,27 @@ namespace Objects
 			}
 		}
 
-
+		void	Faction::CollectSensors(Buffer0<World::Sensor>&outSensors, float&t) const
+		{
+			foreach (this->structures,_s)
+			{
+				Objects::PStructure s = _s->lock();
+				if (s)
+					s->VisitSensors(s->location,[&outSensors](const World::Sensor&s)
+					{
+						outSensors.Append(s);
+					});
+			}
+			foreach (this->allMobiles,_m)
+			{
+				Objects::PWorldEntity e = _m->lock();
+				if (e)
+					e->VisitSensors(e->location,[&outSensors](const World::Sensor&s)
+					{
+						outSensors.Append(s);
+					});
+			}
+		}
 
 		void Faction::HandlePotentialAppearance(const Objects::PWorldEntity&e, float&t, bool shareSensors)
 		{
@@ -827,19 +850,36 @@ namespace Objects
 				return;
 			if (knownWorld.SensoryIsInvalid())
 			{
-				knownWorld.FlushAndValidateSensory();
+				LogEvent(EventSignificance::Common,shared_from_this(),"Recomputing sensory");
+				Timer::Time started = timer.Now();
+
+				static Buffer0<World::Sensor>	sensors;
+				sensors.Clear();
+
 				if (alliance->config.shareSensors)
 				{
 					alliance->ForeachMember([this,&t](const PFaction&f)	//includes this
 					{
-						f->AddEntitySensory(knownWorld,t);
+						f->CollectSensors(sensors, t);
 					},true);
 				}
 				else
-					this->AddEntitySensory(knownWorld,t);
+					this->CollectSensors(sensors,t);
 
-				LogEvent(EventSignificance::Common,shared_from_this(),"Recomputing sensory");
-				Timer::Time started = timer.Now();
+
+				knownWorld.FlushAndValidateSensory();
+
+				LogEvent(EventSignificance::PerformanceMeasurement,shared_from_this(),"Collected sensors and flushed known world in "+String(timer.GetSecondsSince(started)));
+				started = timer.Now();
+
+
+				{
+					auto lock = knownWorld.LockOnChange();
+					Sys::ParallelFor(sensors.Count(),4,[this,t](index_t index,index_t processorIndex)
+					{
+						sensors[index].InsertInto(knownWorld, t,processorIndex);
+					});
+				}
 				LogEvent(EventSignificance::PerformanceMeasurement,shared_from_this(),"Computed sensory grid coverage in "+String(timer.GetSecondsSince(started)));
 				started = timer.Now();
 				const bool shareSensors = alliance->config.shareSensors;
@@ -1412,6 +1452,11 @@ namespace Objects
 		/*static*/ Buffer0<PFaction>			Faction::allKnown;
 		/*static*/ GenericHashTable<TUniqueID,PFaction>	Faction::idMap;
 		/*static*/ PFaction						Faction::mine;
+
+		#ifdef _DEBUG
+			/*static*/ GenericHashSet<TUniqueID>	Faction::deadIDs;
+		#endif
+
 
 		/*static*/ Buffer0<Marker, Strategy::Adopt>	Marker::all; 
 		/*static*/ GenericHashTable<TUniqueID, index_t>	Marker::idMap,
@@ -2092,6 +2137,11 @@ namespace Objects
 			return;
 		}
 		#ifndef CLIENT
+		if (f == nexus)
+		{
+			LogEvent(EventClass::Preset::commandRejected,nullptr, "Cannot kill Nexus faction");
+			return;
+		}
 		if (f->isDead)
 		{
 			LogEvent(EventClass::Preset::commandRejected,nullptr, "Faction "+ToString(f->id)+" has already ended");
@@ -2108,6 +2158,9 @@ namespace Objects
 				return;
 			}
 			idMap.Unset(f->id);
+
+			DBG_ASSERT__(deadIDs.SetNew(f->id));
+
 			if (mine == f)
 				mine = nullptr;
 
@@ -2119,6 +2172,9 @@ namespace Objects
 			},false);
 
 			
+			f->alliance->Leave(f);
+			LogEvent(EventClass::Preset::debug, "Faction death: Destructible entities destroyed");
+
 			
 		#else
 
@@ -2142,15 +2198,16 @@ namespace Objects
 						Remove(*del,Objects::RemovalType::ControlledExplosion,t);
 				toDelete.Clear();
 				ASSERT__(f->allMobiles.IsEmpty());	//should have cascaded
-				ASSERT__(f->structures.IsEmpty());
+				ASSERT__(f->structures.IsEmpty());	//even if nexus buildings were owned: should have reverted to nexus faction
 			}	//exiting lock: recomputing sensory of f, which is now empty, so should be fast
 
 			f->isDead = true;
 			f->hasUnitClasses = UnitClass::None;
 
-			LogEvent(EventClass::Preset::factionDeath, "Destructible entities destroyed");
+			LogEvent(EventClass::Preset::debug, "Faction death: Destructible entities destroyed");
 			ApplicationInterface::SignalFactionsChanged();
 			ApplicationInterface::SignalNexusControlChange(f->alliance);
+			ApplicationInterface::SignalFactionDied(f);
 		#endif
 	}
 

@@ -10,13 +10,14 @@
 		<variable name="round" default="">Retrieves the current round number</variable>
 		<variable name="phase" default="CommandPhase">Retrieves the current game phase. Due to their short duration, phases other than command phases or EndOfGame are rarely returned</variable>
 		<context name="Factions">
-			Provides access to individual factions.
+			Provides access to individual factions, both living and dead.
 			Factions are primarily listed by unique ID.
 			Use the 'names' or 'find' commands to retrieve the ID of a faction
-			<command name="names">Lists the names along with the guid of all factions</command>
+			<command name="names">Lists the names along with the guid of all living factions. Dead factions are omitted</command>
 			<command name="find">
-				Finds and lists all factions that contain the specified name parameter.
-				Search is case-insensitive
+				Finds and lists all living factions that contain the specified name parameter.
+				Search is case-insensitive.
+				Dead factions are omitted.
 			</command>
 		</context>
 	</context>
