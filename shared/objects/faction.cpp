@@ -239,6 +239,9 @@ namespace Objects
 	{
 		ASSERT__(f);
 		ASSERT__(!IsMember(f));
+		#ifdef CLIENT
+			DBG_ASSERT__(!Faction::deadIDs.IsSet(f->id));
+		#endif
 		LogEvent(EventSignificance::Debug,f, "@"+String((const void*)f.get())+ " Joined alliance "+ToString(id));
 		members.Append().wFaction = f;
 		members.Last().rawPointer = f.get();
@@ -1384,6 +1387,11 @@ namespace Objects
 		/*static*/ GenericHashTable<TUniqueID,PFaction>	Faction::idMap;
 		/*static*/ PFaction						Faction::mine;
 
+		#ifdef _DEBUG
+			/*static*/ GenericHashSet<TUniqueID>	Faction::deadIDs;
+		#endif
+
+
 		/*static*/ Buffer0<Marker, Strategy::Adopt>	Marker::all; 
 		/*static*/ GenericHashTable<TUniqueID, index_t>	Marker::idMap,
 								Marker::referenceIDMap,
@@ -2083,6 +2091,9 @@ namespace Objects
 				return;
 			}
 			idMap.Unset(f->id);
+
+			DBG_ASSERT__(deadIDs.SetNew(f->id));
+
 			if (mine == f)
 				mine = nullptr;
 
@@ -2094,6 +2105,9 @@ namespace Objects
 			},false);
 
 			
+			f->alliance->Leave(f);
+			LogEvent(EventClass::Preset::debug, "Faction death: Destructible entities destroyed");
+
 			
 		#else
 
@@ -2123,9 +2137,10 @@ namespace Objects
 			f->isDead = true;
 			f->hasUnitClasses = UnitClass::None;
 
-			LogEvent(EventClass::Preset::factionDeath, "Destructible entities destroyed");
+			LogEvent(EventClass::Preset::debug, "Faction death: Destructible entities destroyed");
 			ApplicationInterface::SignalFactionsChanged();
 			ApplicationInterface::SignalNexusControlChange(f->alliance);
+			ApplicationInterface::SignalFactionDied(f);
 		#endif
 	}
 

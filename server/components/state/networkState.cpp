@@ -31,7 +31,8 @@ namespace ApplicationInterface
 
 	void	SignalAllianceMembershipChange(const Objects::PFaction&owner)
 	{
-		Channels::identifyFaction.SendTo(::Network::server,Network::Identify(owner),Channels::Level::Faction);
+		if (!owner->isDead)
+			Channels::identifyFaction.SendTo(::Network::server,Network::Identify(owner),Channels::Level::Faction);
 		SignalFactionsChanged();	//for statistical purposes
 	}
 
@@ -499,7 +500,7 @@ namespace Network
 
 			playerMap.Unset(client->faction);
 			client->faction->online = false;
-			Channels::factionOffline.SendTo(server,client->faction->id,2);
+			Channels::factionOffline.SendTo(server,client->faction->id,Channels::Level::Faction);
 		}
 	}
 

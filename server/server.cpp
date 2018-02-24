@@ -323,7 +323,7 @@ namespace ApplicationInterface
 	}
 
 
-	void	SignalNexusControlChange(const Objects::PAlliance&a)
+	void	SignalNexusControlChange( const Objects::PAlliance&a )
 	{
 		if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
 			return;
@@ -349,6 +349,26 @@ namespace ApplicationInterface
 		}
 	}
 
+	void	SignalFactionDied(const Objects::PFaction&f)
+	{
+		Channels::KillFaction.SendTo(Network::server,f->id,Channels::Level::Faction);
+		Network::tokenMap.Unset(f->accessToken);
+		Network::PClient client;
+		if (Network::playerMap.Query(f,client))
+		{
+			auto peer = client->peer.lock();
+			if (peer)
+			{
+				/*
+				There are numerous issues with keeping dead factions alive, if member of an alliance:
+				* Allied terrain sensor updates are sent only if terraforming operations have been performed
+				* Allied units are still shown, and animated/updated, but dead client colors all terrain as fog of war
+				*/
+				LogEvent(EventSignificance::ClientFatal,peer,"Faction died. Disconnecting client");
+				peer->DisconnectPeer();
+			}
+		}
+	}
 
 
 	void	SignalAttack(const TAttack&attack)

@@ -8,6 +8,7 @@ v0.7.5
 	> Nexus faction can no longer be terminated using the console (ended in crash).
 	* Fixed console output freezes of server, control console, and console client due to marking of text in the console window.
 	* Fixed heartbeat failure message.
+	* Fixed dead factions lingering on.
 	
 v0.7.4	[Feb 20 2018]
 	+ Added runtime parameter to control console to start and monitor a server instance.

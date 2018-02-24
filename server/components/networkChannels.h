@@ -143,6 +143,7 @@ namespace Channels
 
 	DECLARE_OBJECT_SENDER(MyFaction);
 	DECLARE_OBJECT_SENDER(GameConfig);
+	DECLARE_OBJECT_SENDER(KillFaction);
 
 	namespace Statistics
 	{

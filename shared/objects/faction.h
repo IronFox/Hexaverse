@@ -316,6 +316,9 @@ namespace Objects
 		#ifdef CLIENT
 			static Buffer0<PFaction>	allKnown;
 			static GenericHashTable<TUniqueID,PFaction>	idMap;
+			#ifdef _DEBUG
+				static GenericHashSet<TUniqueID>	deadIDs;
+			#endif
 
 			static PFaction				mine;
 

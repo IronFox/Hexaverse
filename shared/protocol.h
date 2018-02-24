@@ -1406,6 +1406,7 @@ namespace Protocol
 	)
 		
 	typedef Package::NetString<32>	SaveAs;
+	typedef TUniqueID	KillFaction;
 
 	namespace ChannelID
 	{
@@ -1478,6 +1479,7 @@ namespace Protocol
 			TouchMarker,		//c2s: TouchedMarker
 
 			IdentifyFaction,	// [c2s: TUniqueID -> ] s2c: IdentifyFaction
+			KillFaction,		// s2c: KillFaction
 			ChangeMyName,		// c2s: ClientName
 			FactionOnline,		// s2c: TUniqueID
 			FactionOffline,		// s2c: TUniqueID

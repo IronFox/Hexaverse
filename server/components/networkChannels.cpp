@@ -294,6 +294,7 @@ namespace Channels
 	
 	DECLARE_OBJECT_SENDER(MyFaction);
 	DECLARE_OBJECT_SENDER(GameConfig);
+	DECLARE_OBJECT_SENDER(KillFaction);
 
 	namespace Statistics
 	{
@@ -942,7 +943,7 @@ namespace Receiver
 		//probably optional later on
 		{
 			//broadcast name and state
-
+			ASSERT__(!client->faction->isDead);
 			Channels::identifyFaction.SendTo(Network::server,Network::Identify(client->faction),Channels::Level::Faction);
 			Channels::factionOnline.SendTo(Network::server,client->faction->id,2);
 
@@ -1249,6 +1250,7 @@ namespace Receiver
 		if (cl->faction)
 		{
 			cl->faction->name = cl->name;
+			ASSERT__(!cl->faction->isDead);
 			Channels::identifyFaction.SendTo(Network::server,Network::Identify(cl->faction),Channels::Level::Faction);
 			LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ), peer, "User renamed to '"+cl->name+"'");
 		}

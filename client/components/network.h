@@ -296,6 +296,7 @@ namespace Network
 		DECLARE_CHANNEL(AllianceInvite);
 		DECLARE_OBJECT_SENDER(ChatMessage);
 		DECLARE_OBJECT_SENDER(SaveAs);
+		DECLARE_CHANNEL(KillFaction);
 	}
 
 

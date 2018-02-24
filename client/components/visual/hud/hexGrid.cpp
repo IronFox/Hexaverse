@@ -304,7 +304,7 @@ namespace HexGrid
 			elif (instance->owner)
 			{
 				outResult << "Owner: "+instance->owner->GetName();
-				if (instance->owner->alliance == Objects::Faction::mine->alliance)
+				if (instance->owner->IsAlliedWithMe())
 					outResult.GetLastLine()+= " (allied)";
 			}
 			if (instance->IsAlive())
