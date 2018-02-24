@@ -1,4 +1,4 @@
-v0.7.5
+v0.7.5	[Feb 24 2018]
 	+ Localhost client can now trigger a game save without requiring a connected control console.
 	+ Added console faction attribute to see if a faction is dead (dead factions remain listed).
 	+ Added console faction attribute to see alliance of a faction.
