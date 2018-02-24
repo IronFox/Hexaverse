@@ -1,7 +1,3 @@
-hunting offensive vehicles should not be stopped by newly halted offensive hostile units
-
-
-
 bug: temporarily lost contact when nexus port changed ownership, was visible only by plane
 
 
@@ -201,6 +197,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+done: hunting offensive vehicles should not be stopped by newly halted offensive hostile units
 fixed: steam: check if updated research scripts are sent to the client
 done: steam: server: Remove udpBroadcast from /Server/Online on steam branch
 improved: better customization for goal specification. currently ConquerNexus and EMPConquerNexus have implied, rather specific characteristics that should be exposed as settings

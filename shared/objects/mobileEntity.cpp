@@ -521,6 +521,8 @@ namespace Objects
 				static Ctr::Buffer0<PWorldEntity> newContacts;
 				newContacts.Clear();
 				this->MoveSensoryToCurrentLocation(entityTime,&newContacts);
+
+				//stop motion into attack range of new contacts:
 				foreach (newContacts,c)
 				{
 					float zOffset;
@@ -529,12 +531,14 @@ namespace Objects
 						continue;
 					if (b->turret->CanAttack() && !b->turret->dealsEMPDamage)
 					{
-						LogEvent(EventClass::Preset::common,this,"Processing new hostile contact "+(*c)->GetName()+"...");
+						LogEvent(EventClass::Preset::common,this,"Processing new hostile regular-offensive contact "+(*c)->GetName()+"...");
 						for (WMobileEntity w : owner->allMobiles)
 						{
 							PMobileEntity v2 = w.lock();
 							if (!v2)
 								continue;
+							if (v2->turret->CanAttack() && v2->turret->ignoresVehicleMotion)
+								continue;	//otherwise this entity is a hunter, with low sensor range, plus probably able to tank the damage and/or counter-attack
 
 							for (index_t i = 0; i < v2->myTasks.Count(); i++)
 							{
