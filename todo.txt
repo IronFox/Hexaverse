@@ -1,16 +1,8 @@
-
 steam: server: Remove udpBroadcast from /Server/Online on steam branch
 steam: check if updated research scripts are sent to the client
 
 
 bug: temporarily lost contact when nexus port changed ownership, was visible only by plane
-
-open changelog in internal window, manual in steam-internal browser
-
-server: on heartbeat failure provide option to restart client or quit
-
-
-
 
 
 
@@ -60,7 +52,6 @@ controller support
 
 
 
-bug: in configuration mode nexus bases sometimes do not update, despite server version visible
 
 aerial radar and turret
 bomber
@@ -73,12 +64,10 @@ laboratories have better yield if grouped but pose risk of virus changing lab gr
 
 
 
-bug: hoverformer sometimes tries building roads through buildings
 
 
 
 
-save planet configuration upon commit in interactive configuration mode. present list of last saves to recover from
 
 
 
@@ -94,7 +83,6 @@ alloy? resource type that is required for some constructions, and requires a spe
 
 
 
-client-side started local server should survive client closure?
 
 
 terrain benchmark
@@ -162,7 +150,6 @@ Satellite beam animation seed.
 
 
 
-better customization for goal specification. currently ConquerNexus and EMPConquerNexus have implied, rather specific characteristics that should be exposed as settings
 
 general resource transporter vehicles
 
@@ -214,9 +201,14 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+improved: better customization for goal specification. currently ConquerNexus and EMPConquerNexus have implied, rather specific characteristics that should be exposed as settings
+rejected: client-side started local server should survive client closure? no
+cannot fix: bug: hoverformer sometimes tries building roads through buildings. can't reproduce
+done: save planet configuration upon commit in interactive configuration mode. present list of last saves to recover from
+fixed: bug: in configuration mode nexus bases sometimes do not update, despite server version visible
 fixed: can a radar vehicle drive into the range of a newly discovered rocket tower?
-generally check kill faction: are factions correctly removed from alliances and lists on client?
-bug: killing nexus faction via control console should either be rejected, or not crash the server
+done: generally check kill faction: are factions correctly removed from alliances and lists on client?
+fixed: bug: killing nexus faction via control console should either be rejected, or not crash the server
 client: save as... (if localhost server)
 remote control console: have server report current server status to console
 fixed: bug: server: No heartbeat received in 10 seconds. Shutting down (should be 3)
