@@ -1,5 +1,6 @@
 
-server: Remove udpBroadcast from /Server/Online on steam branch
+steam: server: Remove udpBroadcast from /Server/Online on steam branch
+steam: check if updated research scripts are sent to the client
 
 
 bug: temporarily lost contact when nexus port changed ownership, was visible only by plane
