@@ -234,7 +234,7 @@ namespace HUD
 					window = Window::Create();
 					window->SetWidth(0.75f);
 					
-					PPanel factionBack = AddPanel("Alliances");
+					PPanel factionBack = AddPanel("Factions/Alliances");
 					PPanel chatBack = AddPanel("Chat History");
 					chatInput = AddPanel("");
 					buttons = AddPanel("");
