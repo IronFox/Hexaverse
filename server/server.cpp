@@ -429,8 +429,9 @@ namespace ApplicationInterface
 		else
 		{
 			static Grid::HighSetup::TVolumeDescriptor volume;
+			static Grid::HighSetup::TVolumeDescriptor::Operator op;
 			M::Sphere<> explosionSphere(center,explosionRadius);
-			Grid::high.GenerateVolume(explosionSphere,volume);
+			Grid::high.GenerateVolume(explosionSphere,op,volume);
 
 			Objects::ForeachFaction([explosionSphere,&atTime](const Objects::PFaction&f)
 			{

@@ -770,7 +770,27 @@ namespace Objects
 			}
 		}
 
-
+		void	Faction::CollectSensors(Buffer0<World::Sensor>&outSensors, float&t) const
+		{
+			foreach (this->structures,_s)
+			{
+				Objects::PStructure s = _s->lock();
+				if (s)
+					s->VisitSensors(s->location,[&outSensors](const World::Sensor&s)
+					{
+						outSensors.Append(s);
+					});
+			}
+			foreach (this->allMobiles,_m)
+			{
+				Objects::PWorldEntity e = _m->lock();
+				if (e)
+					e->VisitSensors(e->location,[&outSensors](const World::Sensor&s)
+					{
+						outSensors.Append(s);
+					});
+			}
+		}
 
 		void Faction::HandlePotentialAppearance(const Objects::PWorldEntity&e, float&t, bool shareSensors)
 		{
@@ -817,19 +837,36 @@ namespace Objects
 				return;
 			if (knownWorld.SensoryIsInvalid())
 			{
-				knownWorld.FlushAndValidateSensory();
+				LogEvent(EventSignificance::Common,shared_from_this(),"Recomputing sensory");
+				Timer::Time started = timer.Now();
+
+				static Buffer0<World::Sensor>	sensors;
+				sensors.Clear();
+
 				if (alliance->config.shareSensors)
 				{
 					alliance->ForeachMember([this,&t](const PFaction&f)	//includes this
 					{
-						f->AddEntitySensory(knownWorld,t);
+						f->CollectSensors(sensors, t);
 					},true);
 				}
 				else
-					this->AddEntitySensory(knownWorld,t);
+					this->CollectSensors(sensors,t);
 
-				LogEvent(EventSignificance::Common,shared_from_this(),"Recomputing sensory");
-				Timer::Time started = timer.Now();
+
+				knownWorld.FlushAndValidateSensory();
+
+				LogEvent(EventSignificance::PerformanceMeasurement,shared_from_this(),"Collected sensors and flushed known world in "+String(timer.GetSecondsSince(started)));
+				started = timer.Now();
+
+
+				{
+					auto lock = knownWorld.LockOnChange();
+					Sys::ParallelFor(sensors.Count(),4,[this,t](index_t index,index_t processorIndex)
+					{
+						sensors[index].InsertInto(knownWorld, t,processorIndex);
+					});
+				}
 				LogEvent(EventSignificance::PerformanceMeasurement,shared_from_this(),"Computed sensory grid coverage in "+String(timer.GetSecondsSince(started)));
 				started = timer.Now();
 				const bool shareSensors = alliance->config.shareSensors;

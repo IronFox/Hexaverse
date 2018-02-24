@@ -719,9 +719,8 @@ namespace Grid
 			return -1.f;
 		}
 
-		void	GenerateVolume(const M::Sphere<>&sphere,TVolumeDescriptor&volume) const
+		void	GenerateVolume(const M::Sphere<>&sphere,typename TVolumeDescriptor::Operator&op,TVolumeDescriptor&volume) const
 		{
-			static TVolumeDescriptor::Operator op;
 			volume.Clear();
 			UINT32 centerStack = Locate(sphere.center);
 			op.stacksLeft << centerStack;
