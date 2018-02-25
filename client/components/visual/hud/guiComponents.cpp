@@ -23,6 +23,7 @@ namespace HUD
 namespace Component
 {
 
+	/*static*/ PBaseInput	BaseInput::focusedInput = nullptr;
 	/*static*/ const Distance Distance::Unknown = Distance(NAN,Type::Placeholder);
 	/*static*/ const Distance Distance::Disabled = Distance(NAN,Type::Disabled);
 
@@ -1205,7 +1206,7 @@ namespace Component
 		visible = true;
 	}
 
-	/*virtual override*/ void	Panel::SetActive(bool isActive)
+	/*virtual override*/ void	Panel::SetActive( bool isActive)
 	{
 		foreach (components,c)
 			(*c)->SetActive(isActive); 
@@ -1571,12 +1572,14 @@ namespace Component
 	void			Input::SetText(const String&current)
 	{
 		if (IsActive())
+		{
+			ASSERT__(Detail::InputIsActive());
 			Engine::keyboard.FillInput(current);
+		}
 		else
 			backup.SetTo(current);
 	}
 
-	static Engine::InputProfile	profile;
 
 	void			Input::SetAllowedAlphabet(const String&allowed)
 	{
@@ -1585,89 +1588,51 @@ namespace Component
 			Engine::keyboard.Filter(allowed.c_str());
 	}
 
-	/*static*/ void BaseInput::OnCharHandled(char)
+
+
+
+
+
+	bool			BaseInput::IsFocused() const
 	{
-		Detail::OnInput();
+		return focusedInput.get() == this;
 	}
+
 
 	void			BaseInput::SetInputActive(bool isActive)
 	{
-		if (isActive)
-		{
-			Engine::input.PushProfile();
-			//profile = *Engine::input.currentProfile();//this copies over a shitload of commands we don't want
-			//let's copy some over, however...
-			const auto current = Engine::input.GetCurrentProfile();
-			profile.key[Key::Escape] = current->key[Key::Escape];
-			//profile.key[Key::Enter] = current->key[Key::Enter];
-			//profile.key[Key::Return] = current->key[Key::Return];
-			profile.key[Key::MouseButton0] = current->key[Key::MouseButton0];
-			profile.key[Key::MouseButton1] = current->key[Key::MouseButton1];
-			profile.key[Key::MouseButton2] = current->key[Key::MouseButton2];
-			profile.key[Key::MouseButton3] = current->key[Key::MouseButton3];
-			profile.key[Key::MouseButton4] = current->key[Key::MouseButton4];
-			Engine::input.BindProfile(profile);
-		
-			//Engine::input.ClearAllBindings();
-			Engine::input.Bind(Key::Tab, onSpecialKey);
-			Engine::input.Bind(Key::CapsLock, onSpecialKey);
-			Engine::input.Bind(Key::Space, onSpecialKey);
-			Engine::input.Bind(Key::Control, onSpecialKey);
-			Engine::input.Bind(Key::Alt, onSpecialKey);
-			Engine::input.Bind(Key::F1, onSpecialKey);
-			Engine::input.Bind(Key::F2, onSpecialKey);
-			Engine::input.Bind(Key::F3, onSpecialKey);
-			Engine::input.Bind(Key::F4, onSpecialKey);
-			Engine::input.Bind(Key::F5, onSpecialKey);
-			Engine::input.Bind(Key::F6, onSpecialKey);
-			Engine::input.Bind(Key::F7, onSpecialKey);
-			Engine::input.Bind(Key::F8, onSpecialKey);
-			Engine::input.Bind(Key::F9, onSpecialKey);
-			Engine::input.Bind(Key::F10, onSpecialKey);
-			Engine::input.Bind(Key::F11, onSpecialKey);
-			Engine::input.Bind(Key::F12, onSpecialKey);
-			Engine::input.Bind(Key::ArrowLeft, onSpecialKey);
-			Engine::input.Bind(Key::ArrowDown, onSpecialKey);
-			Engine::input.Bind(Key::ArrowRight, onSpecialKey);
-			Engine::input.Bind(Key::ArrowUp, onSpecialKey);
-			Engine::input.Bind(Key::Delete, onSpecialKey);
-			Engine::input.Bind(Key::Print, onSpecialKey);
-			Engine::input.Bind(Key::Home, onSpecialKey);
-			Engine::input.Bind(Key::End, onSpecialKey);
-			Engine::input.Bind(Key::PageUp, onSpecialKey);
-			Engine::input.Bind(Key::PageDown, onSpecialKey);
-			
-
-
-
-			Engine::input.Bind(Key::Backspace,[this](){Engine::keyboard.DropLastCharacter(); Detail::OnInput(); if(onSpecialKey) onSpecialKey(Key::Backspace);});
-			Engine::input.Bind(Key::Return,onEnter);
-			Engine::input.Bind(Key::Enter,onEnter);
-			Engine::input.BindCtrl(Key::V,[](){
-				char buffer[0x100];
-				memset(buffer,0,sizeof(buffer));
-				if (System::getFromClipboardIfText(Engine::context.getWindow(),buffer,sizeof(buffer)-1))
-				{
-					Engine::keyboard.FilterAppend(buffer);	
-				}
-			});
-
-			const char*filter = GetAllowed();
-			if (filter)
-				Engine::keyboard.Filter(filter);
-			else
-				Engine::keyboard.ResetTranslation();
-			Engine::keyboard.onCharHandled = BaseInput::OnCharHandled;
-			Engine::keyboard.read = true;
-			Engine::keyboard.ImportBuffer(backup);
-		}
+		const bool myInputIsActive = IsFocused();
+		if (myInputIsActive == isActive)
+			return;
+		if (!isActive)
+			focusedInput = nullptr;
 		else
 		{
-			Engine::keyboard.ExportBuffer(backup);
-			Engine::input.PopProfile();
-			Engine::keyboard.read = false;
-			Engine::keyboard.onCharHandled =  NULL;
+			if (focusedInput)
+				focusedInput->SetInputActive(false);
+			focusedInput = To<BaseInput>::Cast(shared_from_this());
 		}
+
+		if (isActive)
+		{
+			WBaseInput w = To<BaseInput>::Cast(shared_from_this());
+			Detail::ActivateInput(GetAllowed(),[w](Key::Name k)
+			{
+				PBaseInput self = w.lock();
+				if (!self)
+					return;
+				if (k == Key::Enter || k == Key::Return)
+				{
+					if (self->onEnter)
+						self->onEnter();
+				}
+				else
+					if (self->onSpecialKey)
+						self->onSpecialKey(k);
+			},backup);
+		}
+		else
+			Detail::DeactivateInput(&backup);
 	}
 
 
@@ -2492,7 +2457,7 @@ namespace Component
 	}
 
 
-	void			TabBar::SetActiveTab(index_t tabIndex, bool triggerCallback)
+	void			TabBar::SetActiveTab( index_t tabIndex, bool triggerCallback)
 	{
 		if (tabIndex == activeIndex)
 			return;
@@ -2615,7 +2580,7 @@ namespace Component
 	}
 
 
-	void			TabCollection::SetActiveTab(index_t tabIndex, bool triggerCallback)
+	void			TabCollection::SetActiveTab( index_t tabIndex, bool triggerCallback)
 	{
 		if (tabIndex == activeIndex)
 			return;
