@@ -1,3 +1,4 @@
+bug: increasing window width while long contact list is present does not reposition scroll-right-button
 bug: temporarily lost contact when nexus port changed ownership, was visible only by plane
 
 
