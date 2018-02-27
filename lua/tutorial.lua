@@ -17,8 +17,64 @@ float	Game.UnitScale					Set to a global unit scale depending on [Game.LowerReso
 										applied to units (hence the name). 1 if the planet is not of lowered resolution, 2 otherwise.
 
 
+
 Table	Game.myUnits					Table of all player-owned units currently known to the client
 Table	Game.selectedUnit				Table of the currently selected unit. May be nil. Contained by Game.myUnits, if owned by the client faction
+
+Unit entry table:
+{
+	string	name;						Full entity name (for logging purposes). Includes type and unique ID
+	string 	niceName;					Full entity name (as presented to the player). Includes type and nice representation of unique ID
+	string	id;							Entity unique ID
+	string	typeName;					String representation of the type. May be a compound type if isMovile is true
+	bool	isMobile;					True if this is a mobile entity
+	bool	isStructure;				True if this is a building (isMobile and isStructure are mutually exclusive. one is always true)
+	bool	[isOwnedByMe];				Client only: true if the local player owns this entity
+	Table	location;					Entity location
+	bool	isSleeping;					True if the local entity is currently sleeping
+	int		health;						Current entity health. <= 0 for ghosts
+	int		maxHealth;					Maximum possible health of the local entity. May change over time
+	int		empDamageLevel;				Level of suffered EMP damage. 0 indicates no damage, higher levels prevent construction, reduce firing, scanning, and motion range
+	bool	isWorkingStructure;			True if this entity is a structure, and actively performing actions (e.g. building, mining, etc)
+	bool	(isEnabled);				If isStructure: True if the local structure is active
+	function (Enable(bool));			If isStructure: Change enable state of the local structure. Immediately applied if server, sent to server if client, no effect if not owned by the local player, or outside command phase
+	bool	isMobileEntityProducer;		True if this entity can produce mobile entities. Does not necessarily imply that this is a building
+	Table	(productionQueue);			If isMobileEntityProducer: String table of all production jobs currently enqueued by the local entity. Lists the respective entity type enqueued in order of production
+	Table	(turretBase);				If turret present: Table containing turret information. May be set for structures or mobile entities
+	bool	(isAutomated);				If mobile: True if the local entity has some behavior logic attached. Currently used by surveyor only
+	Table	(tasks);					If mobile: Task queue
+}
+
+location entry table:
+{
+	int		height;						Layer difference from mean planetary height. Usually in the range [-16,15], though some units may be located above the regular grid
+	int		stackID;					Index of the stack location (planar cell). Use Game.lowCells to navigate the stack graph
+}
+
+
+turretBase entry table:
+{
+	string	typeName;					Turret type name
+	int		weight;						Weight affecting mobile entity speed
+	bool	canAttack;					True if offensive, false otherwise
+	string	(trajectoryType);			If canAttack: String representation of the trajectory type. May be Artillery, Missile, VerticalBeam
+	string	(ammoType);					If canAttack: String representation of the used ammo. Currently supported: Fuel, Minerals, Energy, Uranium
+	int		(possibleAttacks);			If canAttack: Counts the number of attacks possible in the local unit's next attack phase
+	float	(attackActionLeft);			If canAttack: Percentage (0.0-1.0) of attack action left in the next attack phase
+	float	(attackInitiative);			If canAttack: Effective attack initiative applied during the next attack phase (if attacking). Automatically reduced by attackActionLeft. The higher, the better
+	int		(attacksPerRound);			If canAttack: Theoretical maximum number of attacks per round
+	float	(flatAttackRange);			If canAttack: Horizontal attack range. Increased by explosionRadius. Vertical range depends on trajectoryType
+	float	(explosionRadius);			If canAttack: Spherical explosion radius
+	bool	can[Operation];				True if the respective operation can be performed by this turret, where [Operation] may be: Construct, Nuclear (boom), Repair, TerrainAdd, TerrainRemove (e.g. canConstruct)
+	int		speedOf[Operation];			Speed of the local turret at performing the specified operation, where [Operation] may be: Construct, Nuclear (boom), Repair, TerrainAdd, TerrainRemove (e.g. speedOfConstruct)
+}
+
+task table entry
+{
+	string	name;						Task name
+	bool	isJob;						True if this is a construction job (e.g. by a terraformer), as opposed to motion or attack
+	Table	foci;						List of location tables, representing each one stage in the task (movement waypoints, construction destinations, and so forth, most tasks only have one focus point)
+}
 
 Table	Game.myResearch					Table of all researchable topics, both completed, and open, as well as endless
 Research entry table:
@@ -49,7 +105,21 @@ Vector
 };
 
 
+
+The following global functions must be defined:
+void	OnBegin(atTask--[[int, optional]])		Called once when the tutorial is started or resumed
+void	CheckTaskConditions()					Called when situations have changed such that completion of the current task should be reevaluated. Expect high, but not per-frame frequency
+void	OnMessageConfirm()						Called when the user has confirmed the last issued message (via Game.DisplayMessage())
+void	OnCameraDrag()							Called when the user has dragged the camera around the planet
+void	OnCameraRotate()						Called when the user has rotated the camera around the pivot point
+void	OnCameraZoom()							Called when the user has altered the camera zoom level
+
 ]]
+
+
+
+
+
 
 
 
