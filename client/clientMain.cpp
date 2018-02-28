@@ -369,17 +369,26 @@ namespace ApplicationInterface
 
 void	SignalRoundEndOrMaximize()
 {
+	LogEvent(EventSignificance::Debug,"SignalRoundEndOrMaximize()");
 	#ifdef HAS_WINDOW
 		if (Engine::input.pressed[Key::Alt])
 		{
 			SetFullScreen(!IsFullScreen());
+			LogEvent(EventSignificance::Debug,"SignalRoundEndOrMaximize(): Changed fullscreen");
 			return;
 		}
 
 		if (HUD::Dialog::ConfirmCurrent(false))
+		{
+			LogEvent(EventSignificance::Debug,"SignalRoundEndOrMaximize(): Confirmed dialog window");
 			return;
+		}
 		if (Objects::Commands::TerraformerCommitOperation())
+		{
+			LogEvent(EventSignificance::Debug,"SignalRoundEndOrMaximize(): Commited terraformer action");
 			return;
+		}
+		LogEvent(EventSignificance::Debug,"SignalRoundEndOrMaximize(): ApplicationInterface::SignalRoundEnd()...");
 	#endif
 	ApplicationInterface::SignalRoundEnd();
 

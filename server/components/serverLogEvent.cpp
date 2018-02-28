@@ -35,6 +35,8 @@ namespace Logging
 		
 		if (privacy == Logging::Privacy::ServerPrivate || !Network::server.IsOnline())
 			return;
+		if (/*!toPeer &&*/ type.significance < EventSignificance::Uncommon)
+			return;
 
 
 		Protocol::ControlMessage out;

@@ -1,4 +1,4 @@
-v0.7.5
+v0.7.5	[Feb 25 2018]
 	+ Localhost client can now trigger a game save without requiring a connected control console.
 	+ Added console faction attribute to see if a faction is dead (dead factions remain listed).
 	+ Added console faction attribute to see alliance of a faction.
@@ -12,6 +12,8 @@ v0.7.5
 	* Fixed heartbeat failure message.
 	* Fixed dead factions lingering on.
 	* Fixed radar vehicles driving into the firing range of mid-motion detected towers.
+	* Bug Reporter now retrieves timestamps from the observed log files.
+	* Fixed GUI bug resulting in keyboard handling errors and crashes when closing input dialogs.
 	
 v0.7.4	[Feb 20 2018]
 	+ Added runtime parameter to control console to start and monitor a server instance.

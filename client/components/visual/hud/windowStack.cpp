@@ -179,15 +179,20 @@ namespace HUD
 					__debugbreak();
 			#endif
 			e.window->OnHide();
+			bool activateTop = false;
 			if (GetTopMostWindow().get() == window)
 			{
 				window->SetActive(false);
+				activateTop = true;
 			}
 			e.fadingIn= false;
 
-			auto top = GetTopMostWindow();
-			if (top)
-				top->SetActive(true);
+			if (activateTop)
+			{
+				auto top = GetTopMostWindow();
+				if (top)
+					top->SetActive(true);
+			}
 
 
 			VerifyIntegrity(CLOCATION);
@@ -471,7 +476,7 @@ namespace HUD
 		}
 
 
-		void	VerifyIntegrity(const TCodeLocation&loc)
+		void	VerifyIntegrity( const TCodeLocation&loc)
 		{
 			if (Detail::visibleWindows.IsEmpty())
 				return;
@@ -492,6 +497,15 @@ namespace HUD
 				if (w.IsVisible())
 					isTop = false;
 			}
+
+			if (Detail::visibleWindows.IsEmpty() && HUD::Component::Detail::InputIsActive())
+			{
+				String msg = String(loc)+ ": Input should be inactive";
+				LogEvent(EventClass::Preset::error,msg);
+				DBG_FATAL__(msg);
+				HUD::Component::Detail::DeactivateInput(nullptr);
+			}
+				
 		}
 
 

@@ -465,6 +465,9 @@ namespace ObjectHelper
 
 	void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 	{
+		#ifdef HAS_WINDOW
+			LogEvent(EventSignificance::Debug,Objects::selectedEntity.get(),"InnerUndoTask()");
+		#endif
 		if (!e)
 			return;
 		if (e->IsMobile())

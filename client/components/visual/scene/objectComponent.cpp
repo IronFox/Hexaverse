@@ -271,7 +271,7 @@ namespace Objects
 	{
 		structure.changed = false;
 
-		LogEvent(EventClass::Preset::common, &structure, "Recompiling geometry");
+		//LogEvent(EventClass::Preset::common, &structure, "Recompiling geometry");
 		localMesh.ClearCompletely();
 
 		{
