@@ -1501,7 +1501,7 @@ namespace Animation
 					UpdateState(To<Objects::Structure>::DynamicCast(allocatedTarget),*structureState);
 				}
 				else
-					LogEvent(EventSignificance::NonFatalError,"Unable to structure "+ToString(targetEntityID)+" at t="+String(t));
+					LogEvent(EventSignificance::NonFatalError,"Unable to update structure "+ToString(targetEntityID)+" at t="+String(t));
 			return Done;
 			case Construction:
 			return Done;
