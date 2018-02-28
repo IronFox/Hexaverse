@@ -107,7 +107,7 @@ Vector
 
 
 The following global functions must be defined:
-void	OnBegin(atTask--[[int, optional]])		Called once when the tutorial is started or resumed
+void	OnBegin(optional int atTask)		Called once when the tutorial is started or resumed
 void	CheckTaskConditions()					Called when situations have changed such that completion of the current task should be reevaluated. Expect high, but not per-frame frequency
 void	OnMessageConfirm()						Called when the user has confirmed the last issued message (via Game.DisplayMessage())
 void	OnCameraDrag()							Called when the user has dragged the camera around the planet
