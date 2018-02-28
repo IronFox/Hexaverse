@@ -197,7 +197,7 @@ namespace BugReporter
 					if (msg.StartsWith("Starting "))
 					{
 						string[] words = msg.Split(' ');
-						if (words.Length == 3)
+						if (words.Length == 3 && words[2].StartsWith("v"))
 						{
 							Version = words[2];
 						}
@@ -208,12 +208,12 @@ namespace BugReporter
 			}
 
 
-			public LogFile(string path)
+			public LogFile(string prefix, string path)
 			{
 				Path = path;
 
 				string filename = System.IO.Path.GetFileNameWithoutExtension(path);
-				Prefix = filename.Split(' ')[0];
+				Prefix = prefix;// filename.Split(' ')[0];
 				Load();
 				if (MinTime.Date == MaxTime.Date)
 				{
@@ -502,8 +502,8 @@ namespace BugReporter
 
 					foreach (string f in files)
 					{
-						LogFile file = new LogFile(f);
-						if (file.Version == null || !gameVersion.StartsWith(file.Version))
+						LogFile file = new LogFile(group, f);
+						if (file.Version != null && !gameVersion.StartsWith(file.Version))
 							continue;
 						fileList.Add(file);
 					}
@@ -648,12 +648,12 @@ namespace BugReporter
 					if (log.Fatal != null)
 						parameters.Add(new Tuple<string, string>("fatalMessage", log.Fatal));
 
-					parameters.Add(new Tuple<string, string>("primaryLogFile", log.Combined));
+					parameters.Add(new Tuple<string, string>("primaryLogFile", log + "\r\n" + log.Combined));
 
 					foreach (var item in logFileList.SelectedItems)
 					{
 						LogFile f = (LogFile)item;
-						parameters.Add(new Tuple<string, string>("logFile[]", f.Combined));
+						parameters.Add(new Tuple<string, string>("logFile[]", f + "\r\n" + f.Combined));
 					}
 				}
 				uploadTask = ContactServerAsync(parameters, 0, false);
