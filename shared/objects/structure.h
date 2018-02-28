@@ -186,13 +186,13 @@ namespace Objects
 		*/
 		virtual void				SignalLostNeighbor(const PStructure&, float&atTime);
 		/**
-		Signalling method invoked by default implementations of SignalEnvironmentChange() and SignalNewNeighbor()
+		Signaling method invoked by default implementations of SignalEnvironmentChange() and SignalNewNeighbor()
 		Invoked whenever a new direct or wireless connection has been established. Called before the new connection is inserted into @a connectedTo
 		@param acrossHighCell CellId of the high-resolution cell between the local instance and the specified other instance. May be used to detect terrain state. 0 if the new connection is wireless
 		*/
 		virtual void				OnNewConnection(const PStructure&, UINT32 acrossHighCell, float atTime) {};
 		/**
-		Signalling method invoked by default implementations of SignalEnvironmentChange() and SignalLostNeighbor()
+		Signaling method invoked by default implementations of SignalEnvironmentChange() and SignalLostNeighbor()
 		Invoked whenever an existing connection has been lost.
 		@param acrossHighCell CellId of the high-resolution cell between the local instance and the specified other instance. May be used to detect terrain state.
 		*/

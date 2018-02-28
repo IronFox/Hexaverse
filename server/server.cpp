@@ -109,7 +109,7 @@ namespace ApplicationInterface
 		const Objects::Structure&v = *s;
 
 
-		LogEvent(EventSignificance::Debug,s.get(),"Signalling new structure to owner at t="+String(atTime));
+		LogEvent(EventSignificance::Debug,s.get(),"Signaling new structure to owner at t="+String(atTime));
 		Protocol::StructureConstruction	w;
 		Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),atTime);
 		Game::Network::Describe(w,*s,true,timestamp);
@@ -172,7 +172,7 @@ namespace ApplicationInterface
 			w.Seal();
 			Channels::createStructure.SendTo(client->peer.lock(),w);
 		}
-		LogEvent(EventSignificance::Common,*client->peer.lock(),e,"Signalling appearance "+(timestamp.rightNow ? "(now)" : " at time="+String(atTime)));
+		LogEvent(EventSignificance::Common,*client->peer.lock(),e,"Signaling appearance "+(timestamp.rightNow ? "(now)" : " at time="+String(atTime)));
 	
 	}
 
@@ -258,8 +258,8 @@ namespace ApplicationInterface
 		de.timestamp.atTime = atTime;
 		de.timestamp.rightNow = RuntimeConfig::IsInAnyCommandPhase();
 
-		//LogEvent(EventSignificance::Common,*client->peer.lock(),e,"Signalling disappearance");
-		LogEvent(EventSignificance::Common,*client->peer.lock(),e,"Signalling disappearance "+(de.timestamp.rightNow ? "(now)" : " at time="+String(atTime)));
+		//LogEvent(EventSignificance::Common,*client->peer.lock(),e,"Signaling disappearance");
+		LogEvent(EventSignificance::Common,*client->peer.lock(),e,"Signaling disappearance "+(de.timestamp.rightNow ? "(now)" : " at time="+String(atTime)));
 
 		Channels::destroyEntity.SendTo(client->peer.lock(),de);
 	}

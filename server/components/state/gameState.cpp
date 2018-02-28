@@ -437,6 +437,20 @@ namespace Game
 			float		threatEstimationFactor = 1.f;
 			Ctr::Array<Objects::Component::Turret*>	vehicleTurrets;
 		}
+
+		count_t	GetTargetNexusCount()
+		{
+			if (RuntimeConfig::empZones)
+				return CountActuallyAccessibleZones();
+			if (Game::Config::Nexus::allPorts.havePlaced)
+			{
+				return 10;
+			}
+			else
+				return 2; //should be 2 here, because in normal ConquerNexus mode, only nexus bases are spawned, whereas in EMP ConsquerNexus mode ports are spawned on all of the 12 poles
+		}
+
+
 	}
 	
 
