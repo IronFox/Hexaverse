@@ -641,9 +641,9 @@ namespace Network
 			if (vs.entityState.timestamp.rightNow && Animation::AllDone())
 			{
 				Objects::PWorldEntity e =Objects::GetEntity(vs.entityState.id);
-				ASSERT__(e);
+				ASSERT1__(e, vs.entityState.id);
 				Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(e);
-				ASSERT__(v);
+				ASSERT1__(v,e->GetName());
 				Animation::ApplyState(v,vs,false,false);
 			}
 			else
