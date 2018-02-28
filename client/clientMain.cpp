@@ -149,7 +149,7 @@ namespace ApplicationInterface
 		ch.target = c;
 		if (deployingWhat)
 			ch.deployingWhat.Set0() = deployingWhat->id;
-		LogEvent(EventSignificance::Common,"Signalling choice intersection with "+ToString(ch.target));
+		LogEvent(EventSignificance::Common,"Signaling choice intersection with "+ToString(ch.target));
 		Network::Channels::choiceIntersection.SendTo(Network::client,ch);
 
 		#ifdef HAS_WINDOW
