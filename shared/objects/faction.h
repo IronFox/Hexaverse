@@ -507,7 +507,7 @@ namespace Objects
 			void		RegisterStoredMobileLoss(const PWorldEntity&);
 			void		RegisterActiveMobileGain(const PWorldEntity&);
 
-			void		VisitMyEntities(const std::function<void(const PWorldEntity&)>&f) const;
+			void		VisitMyEntities(const std::function<void(const PWorldEntity&)>&f, bool includeStored) const;
 
 			bool		CanSee(const PWorldEntity&e, float t)	const;
 

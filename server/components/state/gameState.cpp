@@ -1034,7 +1034,7 @@ namespace Game
 				//anythingChanged = true;
 				LogEvent(EventSignificance::Common,&v,"State change detected ("+String(v.changeFlags)+")");
 
-				bool othersNeedToKnow = (v.changeFlags & Network::NotifyOthers) != 0;
+				bool othersNeedToKnow = (v.changeFlags & Network::NotifyOthers) != 0 && v.storedIn.expired();
 
 				TCP::Serial<Protocol::MobileState>	w0,w1;
 				Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),v.changeTimer);

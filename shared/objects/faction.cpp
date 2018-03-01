@@ -183,12 +183,12 @@ namespace Objects
 
 		#ifndef CLIENT
 			if (oldCfg.exposeEntityDetails != newCfg.exposeEntityDetails)
-				this->ForeachMember([](const PFaction&f)
+				this->ForeachMember([this](const PFaction&f)
 				{
 					f->VisitMyEntities([](const PWorldEntity&e)
 					{
 						e->SignalChange(Objects::WorldEntity::CompleteChange,0);
-					});
+					},config.exposeEntityDetails);
 				},true);
 			ApplicationInterface::SignalAllianceConfigChange(shared_from_this());
 		#endif
@@ -224,13 +224,6 @@ namespace Objects
 
 				f->knownWorld.InvalidateSensory();
 				f->CheckSensory();
-
-
-				f->VisitMyEntities([](const Objects::PWorldEntity&e)
-				{
-					e->RegisterChange(WorldEntity::CompleteChange,0);	//should trigger resubmission
-				});
-
 			}
 		#endif
 	}
@@ -715,14 +708,15 @@ namespace Objects
 
 		}
 
-		void		Faction::VisitMyEntities(const std::function<void(const PWorldEntity&)>&f) const
+		void		Faction::VisitMyEntities(const std::function<void(const PWorldEntity&)>&f, bool includeStored) const
 		{
 			foreach (structures,s)
 				f(s->lock());
 			foreach (allMobiles,m)
 				f(m->lock());
-			foreach (storedMobiles,m)
-				f(m->lock());
+			if (includeStored)
+				foreach (storedMobiles,m)
+					f(m->lock());
 		}
 
 
@@ -814,17 +808,25 @@ namespace Objects
 
 		void Faction::HandlePotentialDisappearance(const Objects::PWorldEntity&e, float&t, bool shareSensors)
 		{
-			bool stillVisible = shareSensors && IsAlliedWith(e->owner);
-
-			if (!stillVisible)
+			bool stillVisible = false;
+			if (e->IsMobile() && !To<MobileEntity>::Cast(e)->storedIn.expired())//stored in something
+				stillVisible = IsAlliedWith(e->owner) && alliance->config.exposeEntityDetails;
+			else
 			{
-				if (e->IsAboveGrid())
+				stillVisible = shareSensors && IsAlliedWith(e->owner);
+
+				if (!stillVisible)
 				{
-					count_t cover = CountOffGridCoverage(e->location.height, e->GetWorldPosition());
-					stillVisible = cover > 0;
+
+
+					if (e->IsAboveGrid())
+					{
+						count_t cover = CountOffGridCoverage(e->location.height, e->GetWorldPosition());
+						stillVisible = cover > 0;
+					}
+					else
+						stillVisible = GridCanSee(e,t);
 				}
-				else
-					stillVisible = GridCanSee(e,t);
 			}
 			if (!stillVisible)
 				SignalDisappearance(e,t);
@@ -876,6 +878,14 @@ namespace Objects
 						return;
 					HandlePotentialAppearance(e,t,shareSensors);
 				},false);
+
+				if (alliance->config.exposeEntityDetails)
+					storedMobileEntities.Foreach([this,&t,shareSensors](const PMobileEntity&m)
+					{
+						if (m->owner.get() == this)
+							return;
+						HandlePotentialAppearance(m,t,shareSensors);
+					});
 
 				LogEvent(EventSignificance::PerformanceMeasurement,shared_from_this(),"Computed appearances in "+String(timer.GetSecondsSince(started)));
 				started = timer.Now();
