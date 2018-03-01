@@ -149,7 +149,7 @@ namespace ApplicationInterface
 		ch.target = c;
 		if (deployingWhat)
 			ch.deployingWhat.Set0() = deployingWhat->id;
-		LogEvent(EventSignificance::Common,"Signalling choice intersection with "+ToString(ch.target));
+		LogEvent(EventSignificance::Common,"Signaling choice intersection with "+ToString(ch.target));
 		Network::Channels::choiceIntersection.SendTo(Network::client,ch);
 
 		#ifdef HAS_WINDOW
@@ -369,17 +369,26 @@ namespace ApplicationInterface
 
 void	SignalRoundEndOrMaximize()
 {
+	LogEvent(EventSignificance::Debug,"SignalRoundEndOrMaximize()");
 	#ifdef HAS_WINDOW
 		if (Engine::input.pressed[Key::Alt])
 		{
 			SetFullScreen(!IsFullScreen());
+			LogEvent(EventSignificance::Debug,"SignalRoundEndOrMaximize(): Changed fullscreen");
 			return;
 		}
 
 		if (HUD::Dialog::ConfirmCurrent(false))
+		{
+			LogEvent(EventSignificance::Debug,"SignalRoundEndOrMaximize(): Confirmed dialog window");
 			return;
+		}
 		if (Objects::Commands::TerraformerCommitOperation())
+		{
+			LogEvent(EventSignificance::Debug,"SignalRoundEndOrMaximize(): Commited terraformer action");
 			return;
+		}
+		LogEvent(EventSignificance::Debug,"SignalRoundEndOrMaximize(): ApplicationInterface::SignalRoundEnd()...");
 	#endif
 	ApplicationInterface::SignalRoundEnd();
 
@@ -1902,7 +1911,7 @@ bool ConfigureClient(const wchar_t*commandLine)
 
 		RuntimeConfig::ClientInit();	//requires RuntimeConfig::aiMode, which is declared by parameter variables
 		FileSystem::ForceCreateDirectory(RuntimeConfig::myConfig.Lookup("logs"));	//can't do this until 
-		Logging::Begin(RuntimeConfig::myConfig.Lookup(PathString("logs/client "+Logging::TimeStamp(true)+".log")));
+		Logging::Begin(RuntimeConfig::myConfig.Lookup(PathString("logs/client "+Logging::TimeStamp(true)+ ".v" PRODUCT_VERSION ".log")));
 	}
 	catch (const std::exception&e)
 	{

@@ -226,8 +226,10 @@ namespace InputControl
 
 		void	UndoTask()
 		{
+			LogEvent(EventSignificance::Debug,"UndoTask()");
 			if (Objects::DisableModes(Network::ControlEnabled()))
 			{
+				LogEvent(EventSignificance::Debug,"UndoTask(): Disabled Mode(s)");
 				OnTutorialsChanged();
 				return;
 			}

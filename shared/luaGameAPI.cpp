@@ -132,6 +132,7 @@ namespace Lua
 				t.SetField("attackInitiative",b.GetAttackInitiative());
 				t.SetField("attacksPerRound",b.GetAttacksPerRound());
 				t.SetField("flatAttackRange",b.GetFlatAttackRange());
+				t.SetField("explosionRadius",b.turret->explosionRadius(researchState));
 			}
 
 			for (index_t op = 0; op < Objects::Component::OperationCount; op++)

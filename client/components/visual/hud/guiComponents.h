@@ -455,7 +455,17 @@ namespace Component
 		void			MoveTopTo(float h);
 
 
-		virtual void	SetActive(bool isActive) {active = isActive;}
+		/**
+		Updates the active-state of the local component.
+		A component is considered active if it can potentially react to user input (clicks, etc).
+
+		For simplicity, the local component must tolerate multiple activation/deactivation, and track the state internally, 
+		if a strict on-change reaction is expected.
+
+		The window stack guarantees, that all components of the top-most window are set active at least once,
+		and deactivated if this condition changes.
+		*/
+		virtual void	SetActive( bool isActive ) {active = isActive;}
 		virtual bool	DetectEnabledState() {return false;}
 		
 		virtual PComponent	OnMouseDown() {return PComponent();}
@@ -714,18 +724,19 @@ namespace Component
 	{
 		typedef Box	Super;
 		M::Rect<>			core;
-
+		static PBaseInput	focusedInput;
 	protected:
 
 		Engine::Keyboard::CharacterBuffer	backup;
 
-		static void			OnCharHandled(char);
 
 		virtual void		SetInputActive(bool isActive);
 		virtual const char*	GetAllowed() const {return nullptr;}
 		virtual StringRef	GetTextRef();
 		virtual float		GetContentHeight() const override;
 	public:
+		void				Focus() {SetInputActive(IsActive());}
+		bool				IsFocused() const;
 
 		/**
 		Triggered when the user confirms the input (via enter/return)
@@ -738,7 +749,7 @@ namespace Component
 		std::function<void(Key::Name)> onSpecialKey;
 
 		virtual void	Render(float opacity) override;
-		virtual void	SetActive(bool isActive) override {SetInputActive(isActive); Super::SetActive(isActive);}
+		virtual void	SetActive( bool isActive ) override {SetInputActive(isActive); Super::SetActive(isActive);}
 
 	};
 

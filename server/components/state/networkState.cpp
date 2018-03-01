@@ -822,7 +822,7 @@ namespace Network
 
 	bool CanSeeAsOwner(const Client&c, const Objects::WorldEntity&e)
 	{
-		return c.faction == e.owner || c.isSpectator;
+		return c.faction == e.owner || c.isSpectator || (e.owner->IsAlliedWith(c.faction) && c.faction->alliance->config.exposeEntityDetails);
 	}
 	bool CanSeeAsOwner(const PClient&c, const Objects::PWorldEntity&e)
 	{
