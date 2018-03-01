@@ -417,11 +417,13 @@ namespace Objects
 		virtual void				OnDestroy(RemovalType, float&atTime)	{};	
 
 		/**
-		Signals that the local entity has been created.
-		Structures should handle compound disconnections and struct count decreases.
+		Signals that the local entity has been created, and placed in the world, or registered off-grid for the first time.
+		Structures should handle new compound connections and struct count increases.
+		Other types may load ammunition, depending on configuration.
 		@param atTime Processing time stamp of the event, or 0 if outside server processing phases
+		@param freshConstruction True if this entity has just been created, false if reconstructed from storage or savegames
 		*/
-		virtual void				OnConstructionFinished(float&atTime);
+		virtual void				OnInsert(float&atTime, bool freshConstruction);
 
 		/**
 		Called exactly once on the prototype instance only, once instantiation of all prototype objects is completed (other prototypes may be references, but might not be set up yet).

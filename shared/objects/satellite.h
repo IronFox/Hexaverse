@@ -447,7 +447,7 @@ namespace Objects
 			virtual int			GetUplinkTraffic() const override {return 10;}
 		#endif
 		virtual void			OnDestroy(RemovalType t, float&atTime) override {SyncTime(atTime); Super::OnDestroy(t,atTime); LoseGroundConnection();}
-		virtual void			OnConstructionFinished(float&atTime) override;
+		virtual void			OnInsert(float&atTime) override;
 		virtual bool			AwaitsUserInteraction() const override {return MobileEntityProducer::AwaitsUserInteraction();}
 		#ifdef HAS_WINDOW
 			virtual void		VisitAllCommands(FCommandVisitor visitor,bool force) override;

@@ -231,13 +231,13 @@ namespace Objects
 	Inserts a pre-constructed mobile entity into the scene.
 	This function is called automatically by InsertNewVehicle().
 	Otherwise only called when a vehicle is inserted into the scene from off-grid storage.
-	Invokes OnConstructionFinished() on the entity unless restored from storage, which is detected by checking if the entity ID has previously been registered.
+	Invokes OnInsert() on the entity, where freshConstruction is set to setHealthToFull.
 	If the entity has previously been registered as off-grid, it will be unregistered from the owner (if any) as such.
 	Any containing hangar entity is NOT notified of this operation.
 	Updates grid, global lists, and owner registers where necessary.
 	Various callback functions are invoked as a result to the insertion, potentially causing complex handling of sensor-appearances,
 	both to the owning and any hostile faction(s).
-	Client-side the operation will update scene rendering, server-side various network messages may be caused.
+	Client-side, the operation will update scene rendering, server-side various network messages may be caused.
 	@param v Mobile entity to insert. Must not be null. A critical failure (FATAL__) is triggered if the entity has previously been inserted
 	@param[in,out] atTime Time to register the insertion at. The given value will be incremented at least once by timeEpsilon
 	@param insertIntoGrid Set true to insert the vehicle into the respective grid. Currently effective only if the specified entity is a vehicle
@@ -246,7 +246,7 @@ namespace Objects
 	void			InsertConstructed(const PMobileEntity&v, float&atTime, bool insertIntoGrid= true, bool setHealthToFull=true);
 	/**
 	Inserts a newly constructed structure entity into the scene.
-	Invokes OnConstructionFinished() on the entity.
+	Invokes OnInsert() on the entity, where freshConstruction is set to setHealthToFull.
 	Updates grid, global lists, and owner registers where necessary.
 	Various callback functions are invoked as a result to the insertion, potentially causing complex handling of sensor-appearances,
 	both to the owning and any hostile faction(s).
@@ -261,7 +261,7 @@ namespace Objects
 	/**
 	Inserts a newly constructed mobile entity into off-grid storage, implying it has entered storage of some hangar entity.
 	Any containing hangar entity is NOT notified of this operation.
-	Invokes OnConstructionFinished() on the entity.
+	Invokes OnInsert() on the entity.
 	Updates global lists, and owner registers where necessary.
 	@param v Mobile entity to insert. Must not be null. A critical failure (FATAL__) is triggered if the entity has previously been inserted into the scene or registered
 	@param[in,out] atTime Time to register the insertion at. The given value will be incremented at least once by timeEpsilon

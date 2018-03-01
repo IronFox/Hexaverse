@@ -302,9 +302,9 @@ namespace Objects
 
 
 
-	void			SkyHub::OnConstructionFinished(float&atTime)
+	void			SkyHub::OnInsert(float&atTime)
 	{
-		Super::OnConstructionFinished(atTime);
+		Super::OnInsert(atTime);
 		SyncTime(atTime);
 		UpdateConnections();
 	}

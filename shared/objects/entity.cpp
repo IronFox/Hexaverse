@@ -334,7 +334,7 @@ namespace Objects
 
 
 
-	/*virtual*/ void	WorldEntity::OnConstructionFinished(float&atTime)
+	/*virtual*/ void	WorldEntity::OnInsert( float&atTime, bool freshConstruction )
 	{
 		atTime += timeEpsilon;
 	}

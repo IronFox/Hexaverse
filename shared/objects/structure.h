@@ -249,7 +249,7 @@ namespace Objects
 		should be called by overriding implementations at some point.
 		*/
 		virtual void				OnDestroy(RemovalType, float&atTime) override;
-		virtual void				OnConstructionFinished(float&atTime) override;
+		virtual void				OnInsert(float&atTime, bool freshConstruction) override;
 		virtual void				PrototypeSetup() override;
 		virtual BaseAttributeTable*	GetTable() const override
 		{
@@ -642,7 +642,7 @@ namespace Objects
 				virtual void			OnSleepChange(float&t) override;
 				virtual void			OnEnabledChange() override;
 
-				//virtual void			OnConstructionFinished(float atTime) override;	//has to register with owner	//some day
+				//virtual void			OnInsert(float atTime) override;	//has to register with owner	//some day
 				//virtual void			OnDestroy(float atTime) override;	//has to unregister with owner	//some day
 				virtual void			Tick(ResourceVector&) override;
 
@@ -732,7 +732,7 @@ namespace Objects
 			void					OnLoad();
 
 			virtual void			Tick(ResourceVector&) override;
-			virtual void			OnConstructionFinished(float&atTime)	{Super::OnConstructionFinished(atTime); SetEnabled(false,atTime,false);}
+			virtual void			OnInsert( float&atTime, bool freshConstruction )	{Super::OnInsert(atTime,freshConstruction); if (freshConstruction) SetEnabled(false,atTime,false);}
 		#else
 			#ifdef HAS_WINDOW
 				virtual void		DescribeType(Description&label, UINT32 descFlags) override;

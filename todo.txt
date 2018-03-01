@@ -2,7 +2,6 @@ add new view button to toggle sensor bubbles in general, and include bubbles (if
 depict shortcuts in build commands
 
 	
-bug: loaded nexus ports are switched off
 bug: Invite -> 'Cancel Invite'; button doesn't change caption if in alliance
 feature: animated round number when round is started
 feature: newly owned nexus ports are off if could be on
@@ -214,6 +213,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: loaded nexus ports are switched off
 fixed: clarify reltionship between alliances and hangars:
 fixed: cannot abort configuration mode
 done: bug reporter: timer-based, async, or threaded parsing of log files (it can be slow)
