@@ -1,4 +1,6 @@
 v0.7.6
+	+ Added new view button to hide sensor ranges.
+	> Showing all sensor ranges (hostile or friendly) now also renders sensor ranges unless switched off entirely.
 	> Menu->Disconnect now also aborts the interactive configuration mode (if active).
 	> Bug reporter now reads logs as needed, no longer in bulk before showing window.
 	> Lava planet has larger land masses now.

@@ -1220,6 +1220,12 @@ namespace Objects
 					}
 					,Detail::GlobalPermaSwitch(showHostileRanges)
 				));
+			viewCommands->Add( new GlobalCommand("Show Sensor Ranges", []()
+					{
+						showSensorRanges = !showSensorRanges;
+					}
+					, Detail::GlobalPermaSwitch(showSensorRanges)
+				));
 
 		}
 		

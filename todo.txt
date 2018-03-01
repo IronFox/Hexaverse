@@ -1,4 +1,3 @@
-add new view button to toggle sensor bubbles in general, and include bubbles (if ticked) in (hostile/friendly) range display
 depict shortcuts in build commands
 
 	
@@ -212,6 +211,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+add new view button to toggle sensor bubbles in general, and include bubbles (if ticked) in (hostile/friendly) range display
 cannot fix: bug: build road never finished when center block beneath former can't be built. can't reproduce
 fixed: loaded nexus ports are switched off
 fixed: clarify reltionship between alliances and hangars:

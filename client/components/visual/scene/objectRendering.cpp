@@ -39,6 +39,7 @@ namespace Objects
 	bool						resourceView = true,
 								showHostileRanges = false,
 								showFriendlyRanges = false,
+								showSensorRanges = true,
 								objectView = true;
 
 
@@ -1478,31 +1479,32 @@ namespace Objects
 
 	void Renderer::RenderRanges(bool extendedShadow)
 	{
+		const float4 sensorColor = extendedShadow ? float4(0,0,0,RangeShadowOpacity) : float4(1,1,0,0.8f);
 		{
-			float4 color = extendedShadow ? float4(0,0,0,RangeShadowOpacity) : float4(1,1,0,0.8f);
 
-			foreach(selectionPrimitives, prim)
-				prim->Render(extendedShadow);
+			if (showSensorRanges)
+				foreach(selectionPrimitives, prim)
+					prim->Render(extendedShadow);
 
-			if (choiceVis.showArrow && choiceVis.hasArrowCellTarget && activeCursorMode == CursorMode::PlaceStructureMode && activeStructureToPlace)
+			if (/*showSensorRanges && */choiceVis.showArrow && choiceVis.hasArrowCellTarget && activeCursorMode == CursorMode::PlaceStructureMode && activeStructureToPlace)
 			{
 				float scanningRange = activeStructureToPlace->GetScanningRange();
 				Renderer::RenderRangeSphere(structureToPlaceSystem.w.xyz,scanningRange,
-					color, extendedShadow
+					sensorColor, extendedShadow
 					);
 			}
 		}
-		float4 color = extendedShadow ? float4(0,0,0,RangeShadowOpacity) : float4(1,0,0,0.8f);
+		const float4 attackColor = extendedShadow ? float4(0,0,0,RangeShadowOpacity) : float4(1,0,0,0.8f);
 		if (selectedEntity)
-			RenderAttackRangeOf(selectedEntity,color,extendedShadow,true);
+			RenderAttackRangeOf(selectedEntity,attackColor,extendedShadow,true);
 		if (choiceVis.showArrow && choiceVis.hasArrowCellTarget && activeCursorMode == CursorMode::PlaceStructureMode && activeStructureToPlace)
-			RenderAttackRangeOf(activeStructureToPlace,choiceVis.arrowCellTarget.cellLocation,color,extendedShadow,true);
+			RenderAttackRangeOf(activeStructureToPlace,choiceVis.arrowCellTarget.cellLocation,attackColor,extendedShadow,true);
 		
 
 		if (showHostileRanges || showFriendlyRanges)
 		{
 			ForeachWorldEntity(
-				[color,extendedShadow](const PWorldEntity&e)
+				[attackColor,extendedShadow,sensorColor](const PWorldEntity&e)
 				{
 					if (e != selectedEntity)
 					{
@@ -1510,7 +1512,12 @@ namespace Objects
 
 						if ((mine && showFriendlyRanges && e->IsAlive()) || (!mine && showHostileRanges))
 						{
-							RenderAttackRangeOf(e,color,extendedShadow,false);
+							RenderAttackRangeOf(e,attackColor,extendedShadow,false);
+							if (showSensorRanges)
+								Renderer::RenderRangeSphere(e->system.w.xyz,e->GetScanningRange(),
+									sensorColor, extendedShadow
+									);
+
 						}
 					}
 				}
