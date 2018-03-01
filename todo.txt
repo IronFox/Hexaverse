@@ -1,23 +1,26 @@
+bug reporter: timer-based, async, or threaded parsing of log files (it can be slow)
 add new view button to toggle sensor bubbles in general, and include bubbles (if ticked) in (hostile/friendly) range display
 depict shortcuts in build commands
 
-clarify reltionship between alliances and hangars:
+important: clarify reltionship between alliances and hangars:
 	currently, alliances are not informed of stored vehicles, but they are informed about state updates causing client crashes
-	informing alliance members of stored vehicles causes update issues when loading entities as they are not properly removed from the grid
+	informing alliance members of stored vehicles causes update issues when loading entities into hangars as they are not properly removed from the grid
 
-loaded nexus ports are switched off
-cannot abort configuration mode
-Invite -> 'Cancel Invite'; button doesn't change caption if in alliance
-animated round number when round is started
-newly owned nexus ports are off if could be on
-build road never finished when center block beneath former is missing?
-vehicle stores should teleport units
+bug: loaded nexus ports are switched off
+important: cannot abort configuration mode
+bug: Invite -> 'Cancel Invite'; button doesn't change caption if in alliance
+feature: animated round number when round is started
+feature: newly owned nexus ports are off if could be on
+bug: build road never finished when center block beneath former is missing?
+feature: vehicle stores should teleport units
 
-build bridge to never ends when final field is partially blocked by building
+bug: build bridge to never ends when final field is partially blocked by building
 
 
 bug: increasing window width while long contact list is present does not reposition scroll-right-button
-bug: temporarily lost contact when nexus port changed ownership, was visible only by plane
+
+minor bug: temporarily lost contact when nexus port changed ownership, was visible only by plane
+bug: allied structure state updates arrive before appearance on new offensive building
 
 show text in configuration mode when emp fields are on
 mark emp zones in initial tutorial image (areas)
