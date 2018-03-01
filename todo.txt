@@ -6,7 +6,6 @@ important: clarify reltionship between alliances and hangars:
 	informing alliance members of stored vehicles causes update issues when loading entities into hangars as they are not properly removed from the grid
 
 bug: loaded nexus ports are switched off
-important: cannot abort configuration mode
 bug: Invite -> 'Cancel Invite'; button doesn't change caption if in alliance
 feature: animated round number when round is started
 feature: newly owned nexus ports are off if could be on
@@ -218,6 +217,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: cannot abort configuration mode
 done: bug reporter: timer-based, async, or threaded parsing of log files (it can be slow)
 done: parallelize sensor repainting (multiple sensors in parallel)
 done: hunting offensive vehicles should not be stopped by newly halted offensive hostile units

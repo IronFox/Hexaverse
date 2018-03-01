@@ -1,4 +1,5 @@
 v0.7.6
+	> Menu->Disconnect now also aborts the interactive configuration mode (if active).
 	> Bug reporter now reads logs as needed, no longer in bulk before showing window.
 	* Fixed various issues with finding and displaying log files in bug reporter.
 	* Fixed nexus goal counting when EMP zones are off, but Nexus Ports are located on each pole.
