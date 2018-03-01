@@ -1,10 +1,7 @@
 add new view button to toggle sensor bubbles in general, and include bubbles (if ticked) in (hostile/friendly) range display
 depict shortcuts in build commands
 
-important: clarify reltionship between alliances and hangars:
-	currently, alliances are not informed of stored vehicles, but they are informed about state updates causing client crashes
-	informing alliance members of stored vehicles causes update issues when loading entities into hangars as they are not properly removed from the grid
-
+	
 bug: loaded nexus ports are switched off
 bug: Invite -> 'Cancel Invite'; button doesn't change caption if in alliance
 feature: animated round number when round is started
@@ -217,6 +214,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: clarify reltionship between alliances and hangars:
 fixed: cannot abort configuration mode
 done: bug reporter: timer-based, async, or threaded parsing of log files (it can be slow)
 done: parallelize sensor repainting (multiple sensors in parallel)
