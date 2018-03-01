@@ -238,7 +238,7 @@ namespace Objects
 			*/
 			void				UnlockTasks();
 			/**
-			Checks whether or not tasks are currently locked. CompleteChange modification operations (create new task, erase some task)
+			Checks whether or not tasks are currently locked. All modification operations (create new task, erase some task)
 			MUST check this method in an ASSERT__ . Methods must be designed such that this event simply does not occur.
 			*/
 			bool				TasksAreLocked() const {return privateLockCounter > 0;}

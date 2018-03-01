@@ -27,7 +27,7 @@ namespace Objects
 
 
 	/**
-	CompleteChange existing structure (building) instances in the world.
+	All existing structure (building) instances in the world.
 	To the server these are all the buildings that exist, to the client these are all
 	it currently knows about.
 	*/

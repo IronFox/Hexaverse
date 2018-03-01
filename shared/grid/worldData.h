@@ -355,7 +355,7 @@ namespace World
 		
 		/**
 		Validates the local sensory, and sets all sensory data to @a initialValue.
-		CompleteChange families are set to changed at time=0
+		All families are set to changed at time=0
 		@param initialValue Initial cell visibility. 0 indicates invisibility
 		*/
 		void					FlushAndValidateSensory(short initialValue=0);

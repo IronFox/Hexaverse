@@ -13,7 +13,7 @@ namespace Objects
 
 	/**
 	Stationary defence building
-	CompleteChange towers feature turrets on their top, which define their functionality. Towers and satellites are the only
+	All towers feature turrets on their top, which define their functionality. Towers and satellites are the only
 	WorldEntity's that can fire automatically during movement phase. They are therefore particularly effective against approaching
 	vehicles, and must typically be disabled via EMP first.
 	*/

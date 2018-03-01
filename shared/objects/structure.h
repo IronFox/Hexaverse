@@ -72,7 +72,7 @@ namespace Objects
 		*/
 		enum placement_t
 		{
-			CanPlace,		//!< CompleteChange okay, nothing obstructing structure placement at the given location
+			CanPlace,		//!< All okay, nothing obstructing structure placement at the given location
 			//LacksCentralEarthFoundation,
 			//LacksFullFoundation,
 			BadHeight,
@@ -526,7 +526,7 @@ namespace Objects
 		Applies the given ResourceVector as storage state to the local instance.
 		Storage is not standardized. This method expects the overriding instance to completely flush its current storage and apply
 		the given vector. It may cap to its local maximum though.
-		@param vec Storage vector to apply. CompleteChange values must be non-negative
+		@param vec Storage vector to apply. All values must be non-negative
 		*/
 		virtual void				SetResourceStorage(const ResourceVector&vec)	{};
 		virtual bool				IsNexusPort() const {return false;}
