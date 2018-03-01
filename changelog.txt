@@ -4,6 +4,7 @@ v0.7.6
 	* Fixed various issues with finding and displaying log files in bug reporter.
 	* Fixed nexus goal counting when EMP zones are off, but Nexus Ports are located on each pole.
 	* Fixed client crash when joining alliances with vehicles stored in hangars.
+	* Fixed client crash when storing vehicles while in alliance.
 
 v0.7.5	[Feb 25 2018]
 	+ Localhost client can now trigger a game save without requiring a connected control console.
