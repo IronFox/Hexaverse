@@ -1,9 +1,15 @@
-loaded nexus ports are off
+add new view button to toggle sensor bubbles in general, and include bubbles (if ticked) in (hostile/friendly) range display
+depict shortcuts in build commands
+
+clarify reltionship between alliances and hangars:
+	currently, alliances are not informed of stored vehicles, but they are informed about state updates causing client crashes
+	informing alliance members of stored vehicles causes update issues when loading entities as they are not properly removed from the grid
+
+loaded nexus ports are switched off
 cannot abort configuration mode
-Invite -> 'Cancel Invite' if in alliance
+Invite -> 'Cancel Invite'; button doesn't change caption if in alliance
 animated round number when round is started
 newly owned nexus ports are off if could be on
-view all scan ranges
 build road never finished when center block beneath former is missing?
 vehicle stores should teleport units
 
@@ -24,7 +30,6 @@ update documentation, and upload
 
 
 
-parallelize sensor repainting (multiple sensors in parallel)
 benchmark digging operation with many entities
 
 
@@ -211,6 +216,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+done: parallelize sensor repainting (multiple sensors in parallel)
 done: hunting offensive vehicles should not be stopped by newly halted offensive hostile units
 fixed: steam: check if updated research scripts are sent to the client
 done: steam: server: Remove udpBroadcast from /Server/Online on steam branch
