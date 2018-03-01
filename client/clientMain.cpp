@@ -1868,7 +1868,7 @@ bool ConfigureClient(const wchar_t*commandLine)
 
 		RuntimeConfig::ClientInit();	//requires RuntimeConfig::aiMode, which is declared by parameter variables
 		FileSystem::ForceCreateDirectory(RuntimeConfig::myConfig.Lookup("logs"));	//can't do this until 
-		Logging::Begin(RuntimeConfig::myConfig.Lookup(PathString("logs/client "+Logging::TimeStamp(true)+".log")));
+		Logging::Begin(RuntimeConfig::myConfig.Lookup(PathString("logs/client "+Logging::TimeStamp(true)+ ".v" PRODUCT_VERSION ".log")));
 	}
 	catch (const std::exception&e)
 	{
