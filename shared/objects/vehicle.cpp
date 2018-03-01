@@ -102,21 +102,17 @@ namespace Objects
 	#ifndef CLIENT
 
 
-		/*virtual override*/ void		Vehicle::OnConstructionFinished(float&atTime)
+		/*virtual override*/ void		Vehicle::OnInsert( float&atTime, bool freshConstruction )
 		{
-			Super::OnConstructionFinished(atTime);
+			Super::OnInsert(atTime,freshConstruction);
 			entityTime = atTime;
-			if (turret->CanAttack())
+			if (freshConstruction && turret->CanAttack())
 			{
 				//leave munitions here. it seems fair that a new tank starts with full ammo, but an emp-tank should not start with full uranium...
 				#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 					if (newVehiclesHaveFullAmmo)
 						ChangeStorage(*this,atTime,Resource::Munitions,GetMaxStorageCapacity().level[Resource::Munitions] - currentStorage.level[Resource::Munitions]);
 				#endif
-
-				//
-				//currentStorage.level[Resource::Munitions] = GetMaxStorageCapacity().level[Resource::Munitions];
-				//LogEvent(EventSignificance::Common,this,"Munition storage changed to "+String(currentStorage.level[Resource::Munitions]));
 			}
 		}
 

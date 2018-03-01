@@ -1045,8 +1045,7 @@ namespace Objects
 		bool restored = idMap.IsSet(e->id);
 		if (restored)
 			ASSERT1__(storedMobileEntities.FindAndErase(e),e->GetName());
-		if (!restored)
-			e->OnConstructionFinished(atTime);
+		e->OnInsert(atTime,setHealthToFull);
 		LogEvent(EventSignificance::Debug, e.get(),String(restored ? "Redeployed" : "Deployed")+" to "+ToString(e->location)+" at t="+String(atTime));
 		if (!restored)
 		{
@@ -1137,7 +1136,7 @@ namespace Objects
 		ASSERT1__(!v->isInserted,v->GetName());
 		DBG_ASSERT__(!storedMobileEntities.Contains(v));
 		storedMobileEntities << v;
-		v->OnConstructionFinished(atTime);
+		v->OnInsert(atTime,setHealthToFull);
 		LogEvent(EventSignificance::Common, v.get(),"Deployed into storage");
 		if (setHealthToFull)
 			v->health = v->GetMaxHealth();

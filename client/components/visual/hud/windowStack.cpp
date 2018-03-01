@@ -576,7 +576,15 @@ namespace HUD
 				if (w->isModal && d.IsVisible())
 					nonModal = false;
 				if (!nonModal && d.opacity > 0)
+				{
+					if (w->RelayoutRequired())
+					{
+						w->FullAutoLayout(CLOCATION);
+						w->OnMouseMove(lastMouseLocation,true);
+					}
+
 					w->Render(d.opacity * d.opacity);
+				}
 			}
 		}
 	}

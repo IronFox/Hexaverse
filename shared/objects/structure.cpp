@@ -229,9 +229,9 @@ namespace Objects
 	}
 
 
-	void Structure::OnConstructionFinished(float&atTime)
+	void Structure::OnInsert( float&atTime, bool freshConstruction )
 	{
-		Super::OnConstructionFinished(atTime);
+		Super::OnInsert(atTime, freshConstruction);
 
 
 		CommonRegisterStructure(location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);

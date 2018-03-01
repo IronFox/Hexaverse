@@ -85,15 +85,7 @@ namespace Objects
 			*/
 			MobilePlacementResult	PlaceExactlyAt(const Grid::LCellIdI&, float timeCost, float minTimeOffset, bool signalEvent=true, bool isCreated=true, bool failIsFatal=false) override;
 		
-
-/*
-
-
-			CONSTRUCT_ENUMERATION7(RelocationResult, Relocated, Relocated_RouteLost,Relocated_CannotSafelyContinue_ClearTasks,Failed_Delayed,Failed_AlreadyDead,Failed_CannotSafelyMove_ClearTasks, Failed_Destroyed);
-			RelocationResult	RelocateTo(const Grid::LCellIdI&, float timeCost, float minTimeOffset, bool signalEvent=true, bool isCreated=true);
-*/
-
-			virtual void		OnConstructionFinished(float&atTime) override;
+			virtual void		OnInsert( float&atTime, bool freshConstruction ) override;
 
 		#else
 
