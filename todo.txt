@@ -1,6 +1,3 @@
-depict shortcuts in build commands
-
-	
 feature: animated round number when round is started
 feature: newly owned nexus ports are off if could be on
 
@@ -207,6 +204,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+done: depict shortcuts in build commands
 fixed: Invite -> 'Cancel Invite'; button doesn't change caption if in alliance
 fixed: build bridge to never ends when final field is partially blocked by building
 feature: vehicle stores should teleport units

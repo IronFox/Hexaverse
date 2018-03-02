@@ -2190,12 +2190,11 @@ int main( int argc, const char* argv[])
 
 					Engine::input.Bind(Key::H,InputControl::ToggleControlGUI);
 
-					Engine::input.Bind(Key::M,[](){Objects::Commands::TerraformerConstruct(Objects::Prototypes::structures.Find(ConstName::Type_Mine));});
-					Engine::input.Bind(Key::G,[](){Objects::Commands::TerraformerConstruct(Objects::Prototypes::structures.Find(ConstName::Type_Generator));});
-					Engine::input.Bind(Key::F,[](){Objects::Commands::TerraformerConstruct(Objects::Prototypes::structures.Find(ConstName::Type_VehiclePlant));});
-					Engine::input.Bind(Key::V,[](){Objects::Commands::TerraformerConstruct(Objects::Prototypes::structures.Find(ConstName::Type_VehiclePlant));});
-					Engine::input.Bind(Key::R,[](){Objects::Commands::TerraformerConstruct(Objects::Prototypes::structures.Find(Objects::EntityType(ConstName::Type_Tower,ConstName::Turret_Radar)));});
-					Engine::input.Bind(Key::L,[](){Objects::Commands::TerraformerConstruct(Objects::Prototypes::structures.Find(ConstName::Type_Laboratory));});
+					//for (index_t i = 0; i < Objects::Commands::terraformerShortcuts,
+					Objects::Commands::VisitTerraformerShortcuts([](Key::Name key, const Objects::PStructure&prototype)
+					{
+						Engine::input.Bind(key,[prototype](){Objects::Commands::TerraformerConstruct(prototype);});
+					});
 
 
 					Engine::input.BindCtrl(Key::C,ConfigurationMode::OnCopy);

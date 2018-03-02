@@ -892,7 +892,13 @@ namespace Objects
 				if (Component::Terraformer::CanBuild(*b))
 				{
 					PStructure s = *b;
-					auto cmd = new Command::EntityConstructionCommand(/*"Build " + */(*b)->GetTypeName(), nullptr,nullptr,*b,std::bind(&TerraformerConstruct, *b),
+					String caption = (*b)->GetTypeName();
+
+					Key::Name k = FindTerraformerShortcutKey(*b);
+					if (k != Key::Undefined)
+						caption += " ("+String(resolveKeyName(k))+")";
+
+					auto cmd = new Command::EntityConstructionCommand(caption, nullptr,nullptr,*b,std::bind(&TerraformerConstruct, *b),
 					[s](bool controlsEnabled)
 					{
 						bool constructingMe = (activeCursorMode == CursorMode::PlaceStructureMode
@@ -1236,6 +1242,30 @@ namespace Objects
 			if (Objects::selectedEntity && Objects::selectedEntity->IsVehicle() && To<Vehicle>::Cast(Objects::selectedEntity)->turret == &Component::terraformer)
 				HUD::HexGrid::Configure(Objects::selectedEntity);
 		}
+
+		
+		void	VisitTerraformerShortcuts(const std::function<void(Key::Name,const Objects::PStructure&)>&visitor)
+		{
+			visitor(Key::M,Objects::Prototypes::structures.Find(ConstName::Type_Mine));
+			visitor(Key::G,Objects::Prototypes::structures.Find(ConstName::Type_Generator));
+			visitor(Key::F,Objects::Prototypes::structures.Find(ConstName::Type_VehiclePlant));
+			visitor(Key::V,Objects::Prototypes::structures.Find(ConstName::Type_VehiclePlant));
+			visitor(Key::R,Objects::Prototypes::structures.Find(Objects::EntityType(ConstName::Type_Tower,ConstName::Turret_Radar)));
+			visitor(Key::L,Objects::Prototypes::structures.Find(ConstName::Type_Laboratory));
+		}
+
+		Key::Name	FindTerraformerShortcutKey(const Objects::PStructure&proto)
+		{
+			Key::Name rs = Key::Undefined;
+			VisitTerraformerShortcuts([&rs, proto](Key::Name k, const Objects::PStructure&s)
+			{
+				if (s == proto)
+					rs = k;
+			});
+			return rs;
+		}
+
+
 
 		void	DefineAll()
 		{
