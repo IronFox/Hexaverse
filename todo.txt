@@ -1,5 +1,4 @@
 feature: animated round number when round is started
-feature: newly owned nexus ports are off if could be on
 
 
 
@@ -203,6 +202,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+done: newly owned nexus ports are off if could be on
 done: show text in configuration mode when emp fields are on
 done: depict shortcuts in build commands
 fixed: Invite -> 'Cancel Invite'; button doesn't change caption if in alliance

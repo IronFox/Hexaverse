@@ -558,6 +558,12 @@ namespace Objects
 				else
 					LogEvent(EventClass::Preset::error,e.get(), "Unexpected entity type. Cannot change ownership");
 			//VerifyVisibilityNetwork();
+			if (e->IsWorkingStructure())
+			{
+				PWorkingStructure w = To<WorkingStructure>::Cast(e);
+				if (w->WouldLikeToEnable())
+					w->SetEnabled(true,atTime);
+			}
 
 			LogEvent( EventClass(EventSignificance::Important,EventFlavor::Gain) ,e.get(),"Changed ownership ('"+oldOwner->GetName()+"' -> '"+newOwner->GetName()+"')");
 		}
