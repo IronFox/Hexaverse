@@ -12,6 +12,7 @@ v0.7.6
 	* Fixed UI components sometimes not properly re-layouting.
 	* Fixed conquered Nexus Ports switching off after loading a save game, resetting their resistance.
 	* Fixed storage counting in vehicle stores.
+	* Fixed sensor loss as a result of Nexus Port ownership change.
 
 v0.7.5	[Feb 25 2018]
 	+ Localhost client can now trigger a game save without requiring a connected control console.

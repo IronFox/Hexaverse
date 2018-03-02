@@ -11,7 +11,6 @@ bug: build bridge to never ends when final field is partially blocked by buildin
 
 bug: increasing window width while long contact list is present does not reposition scroll-right-button
 
-minor bug: temporarily lost contact when nexus port changed ownership, was visible only by plane
 bug: allied structure state updates arrive before appearance on new offensive building
 
 show text in configuration mode when emp fields are on
@@ -211,6 +210,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: temporarily lost contact when nexus port changed ownership, was visible only by plane
 add new view button to toggle sensor bubbles in general, and include bubbles (if ticked) in (hostile/friendly) range display
 cannot fix: bug: build road never finished when center block beneath former can't be built. can't reproduce
 fixed: loaded nexus ports are switched off
