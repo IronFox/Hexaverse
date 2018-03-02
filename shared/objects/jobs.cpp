@@ -1485,8 +1485,9 @@ namespace Objects
 				bool nextIsLast = path.Count() <= 1;
 				bool hasNext = path.Count() > 0;
 
-				if (!DoneHere(World::actual,v.location,next) && !hasToMoveFirst)
+				if (v.location != doneIn && !DoneHere(World::actual,v.location,next) && !hasToMoveFirst)
 				{
+					doneIn = v.location;
 					switch (mode)
 					{
 

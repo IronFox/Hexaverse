@@ -5,7 +5,6 @@ bug: Invite -> 'Cancel Invite'; button doesn't change caption if in alliance
 feature: animated round number when round is started
 feature: newly owned nexus ports are off if could be on
 
-bug: build bridge to never ends when final field is partially blocked by building
 
 
 bug: increasing window width while long contact list is present does not reposition scroll-right-button
@@ -209,6 +208,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: build bridge to never ends when final field is partially blocked by building
 feature: vehicle stores should teleport units
 fixed: temporarily lost contact when nexus port changed ownership, was visible only by plane
 add new view button to toggle sensor bubbles in general, and include bubbles (if ticked) in (hostile/friendly) range display

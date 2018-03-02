@@ -520,7 +520,8 @@ namespace Objects
 				typedef PathJob	Super;
 
 				CursorMode				mode;
-				Grid::LCellIdI			lastLocation = Grid::LCellIdI::Invalid;
+				Grid::LCellIdI			lastLocation = Grid::LCellIdI::Invalid,
+										doneIn = Grid::LCellIdI::Invalid;
 				bool					first;
 				/**/					Sequence():Super(Autocomplete::Always,true)	{};
 
