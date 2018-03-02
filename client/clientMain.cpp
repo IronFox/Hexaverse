@@ -760,6 +760,7 @@ namespace ApplicationInterface
 	void	OnVanish(const Objects::PWorldEntity&e, Objects::RemovalType t, bool wasGhost)
 	{
 		#ifdef HAS_WINDOW
+			e->ambientSound.Destroy();
 			if (Objects::selectedEntity == e)
 			{
 				Objects::Deselect(Network::ControlEnabled());

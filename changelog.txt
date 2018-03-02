@@ -19,6 +19,7 @@ v0.7.6
 	* Fixed terraformers building bridges endlessly when getting too close to other units on height level lower.
 	* Fixed invite button not changing caption to 'Cancel Invitation' when inviting other faction from existing alliance.
 	* Fixed arrow buttons sometimes not dis/appearing in contacts row when resizing window.
+	* Fixed entity sounds sometimes not disappearing from the terrain after a scene flush.
 
 v0.7.5	[Feb 25 2018]
 	+ Localhost client can now trigger a game save without requiring a connected control console.
