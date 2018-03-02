@@ -149,11 +149,12 @@ CreateTask(function() Game.DisplayMessage("Welcome to Hexaverse, the planetary s
 		"Survive if you can.", 'game.png') end);
 CreateTask(function() Game.DisplayMessage(
 		"What you are seeing now is the planet you are trying to conquer.\n"..
-		"The planetary display attempts to distinguish three primary areas:.\n"..
-		"1: Undiscovered terrain.\n"..
-		"2: Discovered and currently visible terrain.\n"..
-		"3: Discovered but currently out of range.\n"..
-		"Everything you are not currently observing (everything not in 2) may change without you knowing. Half the trick of winning Hexaverse is knowing what you don't know.\n"
+		"The planetary display attempts to distinguish four primary areas:\n"..
+		"1: Undiscovered terrain\n"..
+		"2: Known terrain, but currently out of range\n"..
+		"3: Discovered and currently visible terrain\n"..
+		"4: EMP zones (currently inaccessible)\n"..
+		"Everything you are not currently observing (everything not in 3) may change without you knowing. Half the trick of winning Hexaverse is knowing what you don't know.\n"
 		,'areas.png') end);
 
 
