@@ -248,6 +248,12 @@ namespace Objects
 		Statistics		statistics;
 		ResearchState	researchState;
 		PAlliance		alliance;
+		/**
+		If set, shares one huge mobile park across all vehicle stores.
+		Allows instant teleportation from one vehicle store to another.
+		Doing so does not actually increase the store capacity (stores define how many mobiles can be stored there).
+		*/
+		PMobilePark		sharedPark;
 		#ifdef CLIENT
 			float3	activeEntityColor,
 					inactiveEntityColor;

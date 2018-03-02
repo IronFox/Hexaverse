@@ -12,6 +12,7 @@
 #include "prototypes.h"
 #include "structure/tower.h"
 #include "../protocol.h"
+#include "structure/vehicleStore.h"
 
 namespace Objects
 {
@@ -2248,6 +2249,7 @@ namespace Objects
 
 	void		Faction::Setup(const TUniqueID&toID,bool nexusFaction)
 	{
+		sharedPark.reset(new MobilePark());
 		id = toID;
 		#ifndef CLIENT
 			if (nexusFaction)
