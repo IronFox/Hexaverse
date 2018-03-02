@@ -164,8 +164,7 @@ namespace HUD
 							}
 							else
 							{
-								if (Objects::Faction::mine->alliance->CountLivingMembers() <= 1)
-									inviteButton->SetText("Cancel Invitation");
+								inviteButton->SetText("Cancel Invitation");
 								inviteButton->SetTriggerFunction(
 								[wf]()
 								{
