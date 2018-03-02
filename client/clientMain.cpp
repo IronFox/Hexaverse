@@ -1654,6 +1654,10 @@ bool loop()
 				textout.MoveTo(0.95f - textout.GetScaledWidth(line),0.95f);
 				textout << line<<nl;
 				textout.Scale(0.75f,0.75f);
+				if (RuntimeConfig::empZones)
+					textout << nl << "EMP Zones On";
+				else
+					textout << nl << "EMP Zones Off";
 				#ifdef _DEBUG
 					textout << nl << ConfigurationMode::GetServerSeed();
 				#endif

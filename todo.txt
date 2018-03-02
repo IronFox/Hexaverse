@@ -7,7 +7,6 @@ bug: increasing window width while long contact list is present does not reposit
 
 bug: allied structure state updates arrive before appearance on new offensive building
 
-show text in configuration mode when emp fields are on
 mark emp zones in initial tutorial image (areas)
 
 
@@ -204,6 +203,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+done: show text in configuration mode when emp fields are on
 done: depict shortcuts in build commands
 fixed: Invite -> 'Cancel Invite'; button doesn't change caption if in alliance
 fixed: build bridge to never ends when final field is partially blocked by building
