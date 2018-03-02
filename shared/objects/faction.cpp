@@ -2246,7 +2246,7 @@ namespace Objects
 	}
 #endif
 
-	void		Faction::InitID(const TUniqueID&toID,bool nexusFaction)
+	void		Faction::Setup(const TUniqueID&toID,bool nexusFaction)
 	{
 		id = toID;
 		#ifndef CLIENT

@@ -224,10 +224,10 @@ namespace Objects
 		/**
 		Inits ID, color, and alliance. Must be called by constructors. Must not be called by anything else
 		*/
-		void			InitID(const TUniqueID&toID, bool nexusFaction);
+		void			Setup(const TUniqueID&toID, bool nexusFaction);
 
 		#ifdef CLIENT
-			/**/		Faction(const TUniqueID&id):researchState(this,false),statistics(this) {InitID(id,false);}
+			/**/		Faction(const TUniqueID&id):researchState(this,false),statistics(this) {Setup(id,false);}
 
 		#else
 			/**/		Faction(const TUniqueID&toID, const String&name="", bool isNexus=false):researchState(this,isNexus), statistics(this), name(name)
@@ -236,7 +236,7 @@ namespace Objects
 				deathInRounds = 0;
 
 				accessToken.Generate();
-				InitID(toID,isNexus);
+				Setup(toID,isNexus);
 			}
 		#endif
 
