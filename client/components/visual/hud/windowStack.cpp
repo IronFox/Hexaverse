@@ -322,7 +322,7 @@ namespace HUD
 		}
 
 
-		bool	CloseTopModal()
+		bool	CloseTop()
 		{
 			VerifyIntegrity(CLOCATION);
 			PWindow w = GetTopMostWindow();
@@ -332,7 +332,7 @@ namespace HUD
 			return true;
 		}
 
-		bool	CloseAllModalBeneath(const PWindow&w)
+		bool	CloseAllBeneath(const PWindow&w)
 		{
 			VerifyIntegrity(CLOCATION);
 			index_t at = Detail::FindWindowIndex(w.get());
@@ -352,7 +352,7 @@ namespace HUD
 		}
 
 
-		bool	CloseAllModal()
+		bool	CloseAll()
 		{
 			VerifyIntegrity(CLOCATION);
 			if (Detail::visibleWindows.IsEmpty())

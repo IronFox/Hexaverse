@@ -61,7 +61,7 @@ namespace Tutorial
 
 		void				HideGUI()
 		{
-			HUD::WindowStack::CloseAllModal();
+			HUD::WindowStack::CloseAll();
 			if (taskWindow)
 				HUD::WindowStack::Hide(taskWindow);
 		}
