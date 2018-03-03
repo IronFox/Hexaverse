@@ -655,6 +655,7 @@ namespace Tutorial
 					return HUD::Dialog::CheckResult::Confirm;
 				return HUD::Dialog::CheckResult::OkayContinue;
 			});
+			return;
 		}
 
 
