@@ -52,6 +52,7 @@ namespace Tutorial
 
 		StringTable<Message,Strategy::Swap>	messages;
 		PWindow				taskWindow;
+		HUD::Dialog::PDialog	messageWindow;
 		bool				tutorialGameShown=false;
 
 		HUD::Dialog::WDialog	holdOn;
@@ -59,11 +60,24 @@ namespace Tutorial
 		Timer::Time			holdOnCreated;
 
 
+		bool				WaitingForUserOkay()
+		{
+			return messageWindow && HUD::WindowStack::IsVisible(messageWindow);
+		}
+
 		void				HideGUI()
 		{
 			HUD::WindowStack::CloseAll();
+			if (messageWindow)
+			{
+				HUD::WindowStack::Hide(messageWindow);
+				messageWindow= nullptr;
+			}
 			if (taskWindow)
+			{
 				HUD::WindowStack::Hide(taskWindow);
+				taskWindow= nullptr;
+			}
 		}
 
 		bool				RegisterMemory(bool&shown, const String&name)
@@ -188,15 +202,18 @@ namespace Tutorial
 			void	DisplayMessage(String msg, const String&img)
 			{
 				Detail::HideGUI();
-				
+				DBG_ASSERT_EQUAL__(HUD::WindowStack::CountVisibleWindows(),0);
 				ReplaceTags(msg);
 				using namespace Detail;
-				auto messageWindow = HUD::Dialog::CreateTutorialMessage("", msg,img);
+				messageWindow = HUD::Dialog::CreateTutorialMessage("", msg,img);
 				messageWindow->check = []()->HUD::Dialog::CheckResult{ return Network::client.IsConnected() ? HUD::Dialog::CheckResult::OkayContinue : HUD::Dialog::CheckResult::Abort; };
 				messageWindow->onConfirm = 
 				[]()
 				{
+					HUD::WindowStack::Hide(messageWindow);
 					Trigger::onMessageConfirm();
+					if (!Detail::WaitingForUserOkay())
+						Interactive::Trigger::checkTaskConditions();
 				};
 				messageWindow->canBeImplicitlyClosed = false;
 				messageWindow->isTutorial = false;	//prevent tutorial message from opening the next message automatically
@@ -391,8 +408,8 @@ namespace Tutorial
 			{
 				Interactive::RebuildFactionUnits();
 				Interactive::RebuildSelected();
-
-				Interactive::Trigger::checkTaskConditions();
+				if (!Detail::WaitingForUserOkay())
+					Interactive::Trigger::checkTaskConditions();
 			}
 			catch (const Lua::Exception&ex)
 			{
@@ -564,7 +581,8 @@ namespace Tutorial
 		try
 		{
 			Interactive::RebuildFactionUnits();
-			Interactive::Trigger::checkTaskConditions();
+			if (!Detail::WaitingForUserOkay())
+				Interactive::Trigger::checkTaskConditions();
 		}
 		catch (const Lua::Exception&ex)
 		{
@@ -583,7 +601,8 @@ namespace Tutorial
 		try
 		{
 			Interactive::RebuildResearchState();
-			Interactive::Trigger::checkTaskConditions();
+			if (!Detail::WaitingForUserOkay())
+				Interactive::Trigger::checkTaskConditions();
 		}
 		catch (const Lua::Exception&ex)
 		{
