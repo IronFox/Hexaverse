@@ -290,6 +290,8 @@ namespace HUD
 			index_t at = Detail::FindWindowIndex(window.get());
 			if (at != InvalidIndex)
 			{
+				if (at == 0)
+					return changed;
 				{
 					auto existing = Detail::visibleWindows[at];
 					Detail::visibleWindows.Erase(at);
