@@ -372,6 +372,15 @@ namespace HUD
 			return rs;
 		}
 
+		count_t				CountVisibleWindows()
+		{
+			count_t rs = 0;
+			foreach (Detail::visibleWindows,w)
+				if (w->IsVisible())
+					rs++;
+			return rs;
+		}
+
 
 		bool	IsModal()
 		{

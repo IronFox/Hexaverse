@@ -54,6 +54,11 @@ namespace HUD
 		Component::WheelRs	OnMouseWheel(short delta);
 		bool				OnMouseDown();
 		void				HandleMouseUp();
+
+		/**
+		Counts the number of visible windows that are not fading right now
+		*/
+		count_t				CountVisibleWindows();
 		/**
 		Checks if any modal dialogs are open at this time
 		*/
