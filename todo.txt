@@ -1,3 +1,6 @@
+https://wiki.winehq.org/Winelib_User%27s_Guide
+http://www.hexacorn.com/blog/2016/03/27/detecting-wine-via-internal-and-legacy-apis/
+feature: show changelog beneath server selection
 feature: animated round number when round is started
 
 
@@ -34,7 +37,6 @@ road should not build bridges across liquids? switch mode automatically? reroute
 
 
 
-hide selected sensor range sphere?
 
 
 
@@ -60,14 +62,6 @@ laboratory nexus risk, hacking vehicle turret
 laboratories have better yield if grouped but pose risk of virus changing lab group ownership to nexus
 
 
-
-
-
-
-
-
-
-
 resources 2.0:
 	+ Mines have diminishing yield (not to zero, but low)
 	+ New resource types from trees (natural compounds), and dendrites (vulcanic compounds)
@@ -78,23 +72,7 @@ three flexible planet sizes (current is probably middle)?
 alloy? resource type that is required for some constructions, and requires a special factory to make
 
 
-
-
-
-
-terrain benchmark
-compare with pre-80d6657fcd00f7d41fdc54c4cdef47b3d073ff48: 3972d667c90b1ef1ded85c3efceb6fe2516f7a0b
-
-
-
 alt+click should work on terraforming operations, too
-
-
-
-
-			
-		
-
 
 new mine system:
 	have mines multiply resource availability with number of solid natural blocks beneath mine. if >5/10, mine works at 100%
@@ -117,47 +95,19 @@ bug: water has no bottom cap
 
 
 working structure enable-replacement (replace one enable working structure with another that is better suited to stabilize the compound)
+make generators switch off if not needed
 
 
 repair vehicle idle if something damaged?
-compound inefficieny
-wireless power? ... dedicated compounds?
 		
-
-
-make generators switch off if not needed
-
 lava ship
 
 make visual events clickable
 better mine output (refinery)
 
 
-
-
-
-
-
-
-
-
-
-Satellite beam animation seed.
-
-
-
-
-
-general resource transporter vehicles
-
 let foundation blocks (and granite) explode into stone first // maybe later
 
-
-
-
-
-
-hover beam	//elevator
 
 
 granite-digging turret
@@ -198,6 +148,13 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+probably too much hassle: terrain benchmark, compare with pre-80d6657fcd00f7d41fdc54c4cdef47b3d073ff48: 3972d667c90b1ef1ded85c3efceb6fe2516f7a0b
+skipped: compound inefficieny (compounds do not exist right now)
+skipped: wireless power? ... dedicated compounds? (same as above)
+skipped: Satellite beam animation seed. (satellites are deprecated)
+skipped: general resource transporter vehicles. (resources teleport)
+skipped: hover beam	//elevator; with teleporting vehicle stores this is redundant
+done: hide selected sensor range sphere?
 done: mark emp zones in initial tutorial image (areas)
 fixed: increasing window width while long contact list is present does not reposition scroll-right-button
 done: newly owned nexus ports are off if could be on
