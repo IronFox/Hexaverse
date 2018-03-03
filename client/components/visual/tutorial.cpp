@@ -62,7 +62,7 @@ namespace Tutorial
 
 		bool				WaitingForUserOkay()
 		{
-			return messageWindow && HUD::WindowStack::IsVisible(messageWindow);
+			return !!messageWindow /*&& HUD::WindowStack::IsVisible(messageWindow)*/;
 		}
 
 		void				HideGUI()
@@ -201,6 +201,7 @@ namespace Tutorial
 
 			void	DisplayMessage(String msg, const String&img)
 			{
+				DBG_ASSERT__(Interactive::API::activeTriggers.IsEmpty());
 				Detail::HideGUI();
 				DBG_ASSERT_EQUAL__(HUD::WindowStack::CountVisibleWindows(),0);
 				ReplaceTags(msg);
@@ -211,6 +212,7 @@ namespace Tutorial
 				[]()
 				{
 					HUD::WindowStack::Hide(messageWindow);
+					messageWindow = nullptr;
 					Trigger::onMessageConfirm();
 					if (!Detail::WaitingForUserOkay())
 						Interactive::Trigger::checkTaskConditions();
@@ -230,6 +232,7 @@ namespace Tutorial
 
 			void	DescribeTask(String msg)
 			{
+				DBG_ASSERT__(!Detail::WaitingForUserOkay());
 				Detail::HideGUI();
 				using namespace Detail;
 
@@ -253,8 +256,14 @@ namespace Tutorial
 				Trigger::checkTaskConditions();
 			}
 
+			void	ClearDelayed()
+			{
+				activeTriggers.Clear();
+			}
+
 			void	CallDelayed(float delay, Lua::Function<void()> f)
 			{
+				DBG_ASSERT__(!Detail::WaitingForUserOkay());
 				activeTriggers.Append().remainingSeconds = delay;
 				activeTriggers.Last().trigger = f;
 			}
@@ -370,15 +379,19 @@ namespace Tutorial
 				t.remainingSeconds -= timeDelta;
 				if (t.remainingSeconds < 0)
 				{
-					t.trigger();
-					Interactive::API::activeTriggers.Erase(i);
+					auto copy = t;
+					Interactive::API::activeTriggers.Erase(i);	//change order to assure we don't trigger verification issues in debug mode
 					i--;
+					copy.trigger();
 				}
 			}
 
-			Interactive::rotate.Process();
-			Interactive::drag.Process();
-			Interactive::zoom.Process();
+			if (!Detail::WaitingForUserOkay())
+			{
+				Interactive::rotate.Process();
+				Interactive::drag.Process();
+				Interactive::zoom.Process();
+			}
 
 		}
 
@@ -434,6 +447,7 @@ namespace Tutorial
 				api.SetFunction("DisplayMessage",API::DisplayMessage);
 				api.SetFunction("DescribeTask",API::DescribeTask);
 				api.SetFunction("CallDelayed",API::CallDelayed);
+				api.SetFunction("ClearAllDelayed",API::ClearDelayed);
 				api.SetFunction("FocusCameraAt",API::FocusCameraAt);
 				api.SetFunction("SignalTaskStart",API::SignalTaskStart);
 
