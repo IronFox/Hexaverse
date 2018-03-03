@@ -100,28 +100,30 @@ namespace HUD{namespace HostList{
 		Update();
 	}
 
-	bool	SetVisibility(bool doShow)
+	void	CheckVisibility(bool doShow)
 	{
+		HUD::WindowStack::VerifyIntegrity(CLOCATION);
 
 		Music::SignalServerListShown(doShow);
 
 		if (doShow)
 		{
+			bool update = false;
 			if (!changelog)
 			{
-				if (WindowStack::ShowBottom(serverChoice))
-					return true;
+				update = WindowStack::ShowBottom(serverChoice);
 			}
 			else
 			{
-				bool change = WindowStack::ShowBottom(changelog);
-				if (change)
+				update = WindowStack::ShowBottom(changelog);
+				if (update)
 				{
 					WindowStack::ShowBottom(serverChoice);
 					WindowStack::ShowBottom(changelog);
-					return true;
 				}
 			}
+			if (update)
+				Update();
 		}
 		else
 		{
@@ -129,15 +131,8 @@ namespace HUD{namespace HostList{
 			if (changelog)
 				WindowStack::Hide(changelog);
 		}
-		return false;
+		HUD::WindowStack::VerifyIntegrity(CLOCATION);
 	}
-
-	void	CheckVisibility(bool doShow)
-	{
-		if (SetVisibility(doShow))
-			Update();
-	}
-
 
 
 	PLabel	MakeHeaderLabel(const String&text, float zoom, index_t tabIndex)
@@ -655,7 +650,7 @@ namespace HUD{namespace HostList{
 			WindowStack::OverrideSignalMouseMotion();
 		}
 		
-		HostList::SetVisibility(!Network::client.IsConnected());
+		HostList::CheckVisibility(!Network::client.IsConnected());
 	}
 }}
 #endif
