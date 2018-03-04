@@ -45,7 +45,7 @@ Some buttons may be disabled (semi-transparent), or perma-active (blue).
 There are four button areas, with different functionality.
 
 ===Main Commands===
-{{ img:globalCommands.png?500}}
+{{ img:globalCommands.png?400}}
 The bottom left row of commands shows unit-independent commands.
 Left to right, the commands are:
 * **End Round** (shortcut: return): Requests the current round to end. You should press this button when you are done issuing commands to your units. Press the button again to undo the request (possible as long as at least one connected player has no yet requested a new round).
@@ -65,7 +65,7 @@ Continuously clicking on the same group will go through all members of that grou
 Important events are listed beneath, such as unit losses and attacks that occurred during the last animation phase.
 
 ===General Commands===
-{{img:generalCommands.png |General Unit Commands}}
+{{img:generalCommands.png?400 |General Unit Commands}}
 [[concepts/commands|Commands]] that are always applicable, or applicable to most units, are located in the bottom right of the screen.
 
 Left to right, the commands are:
@@ -73,6 +73,7 @@ Left to right, the commands are:
 * **Abort**: Drops all tasks of the selected unit.
 * **Sleep**: Toggles sleep-state of the selected unit. Sleeping units are omitted in the Idle Queue.
 * **Self Destruct**: Destroys the selected unit.
+* **Votes**: Shows active votes
 * **Messages**: Displays any waiting info messages.
 * **Open Menu**: Open the main game menu (also opens with the Escape key)
 

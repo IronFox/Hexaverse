@@ -1,5 +1,3 @@
-Update manual images of common unit commands.
-
 https://wiki.winehq.org/Winelib_User%27s_Guide
 feature: animated round number when round is started
 
@@ -148,6 +146,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+done: Update manual images of common unit commands.
 done(untested): http://www.hexacorn.com/blog/2016/03/27/detecting-wine-via-internal-and-legacy-apis/
 done: show changelog beneath server selection
 probably too much hassle: terrain benchmark, compare with pre-80d6657fcd00f7d41fdc54c4cdef47b3d073ff48: 3972d667c90b1ef1ded85c3efceb6fe2516f7a0b
