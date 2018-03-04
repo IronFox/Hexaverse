@@ -4,6 +4,7 @@ void	Game.Log(msg)					Prints any message to Hexaverse log (client or server-pri
 void	Game.DisplayMessage(string msg[,string imageName])		Prints a persistent message on screen. Once the user has pressed 'Got it', OnMessageConfirm() is invoked
 
 void	Game.CallDelayed(float seconds, function func)					Waits the specified number of seconds, then calls the given function without parameters
+void	Game.ClearAllDelayed()											Drops all non-executed delayed function calls
 int		Game.FindHighestAvailableResourceLocation(string resourceName)	Searches among all known resource spots for the highest value where a mine could be constructed. Returns -1 if none are found
 int		Game.GetResourceCoverage(string resourceName, int stackID)		Fetches the resource level at the specified location. Returns -1 if the specified location has not been surveyed yet
 void	Game.FocusCameraAt(int stackID)									Smoothly focuses the camera on the specified stack index
@@ -149,11 +150,12 @@ CreateTask(function() Game.DisplayMessage("Welcome to Hexaverse, the planetary s
 		"Survive if you can.", 'game.png') end);
 CreateTask(function() Game.DisplayMessage(
 		"What you are seeing now is the planet you are trying to conquer.\n"..
-		"The planetary display attempts to distinguish three primary areas:.\n"..
-		"1: Undiscovered terrain.\n"..
-		"2: Discovered and currently visible terrain.\n"..
-		"3: Discovered but currently out of range.\n"..
-		"Everything you are not currently observing (everything not in 2) may change without you knowing. Half the trick of winning Hexaverse is knowing what you don't know.\n"
+		"The planetary display attempts to distinguish four primary areas:\n"..
+		"1: Undiscovered terrain\n"..
+		"2: Known terrain, but currently out of range\n"..
+		"3: Discovered and currently visible terrain\n"..
+		"4: EMP zones (currently inaccessible)\n"..
+		"Everything you are not currently observing (everything not in 3) may change without you knowing. Half the trick of winning Hexaverse is knowing what you don't know.\n"
 		,'areas.png') end);
 
 
@@ -461,6 +463,7 @@ function TaskDone()
 	end;
 	taskDone = true;
 	Game.DescribeTask("Well done!");
+	Game.ClearAllDelayed();
 	Game.CallDelayed(2,NextTask);
 end
 

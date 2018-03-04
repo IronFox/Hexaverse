@@ -19,11 +19,12 @@
 	</message>
 	<message name='Areas' image='areas.png'>
 		What you are seeing now is the planet you are trying to conquer.
-		The planetary display attempts to distinguish three primary areas:
+		The planetary display attempts to distinguish four primary areas:
 		1: Undiscovered terrain
-		2: Discovered and currently visible terrain
-		3: Discovered but currently out of range
-		Everything you are not currently observing (everything not in 2) may change without you knowing. Half the trick of winning %PRODUCT_NAME% is knowing what you don't know.
+		2: Previously discovered terrain, but currently out of range
+		3: Discovered and currently visible terrain
+		4: EMP zones (inaccessible until more factions are created)
+		Everything you are not currently observing (everything not in 3) may change without you knowing. Half the trick of winning %PRODUCT_NAME% is knowing what you don't know.
 	</message>
 	<message name='Controls'>
 		Basic controls:

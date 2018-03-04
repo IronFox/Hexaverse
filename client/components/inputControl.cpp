@@ -546,7 +546,7 @@ namespace InputControl
 		void	AbortMode()
 		{
 			Camera::StopAutoRotation();
-			if (HUD::WindowStack::CloseTopModal())
+			if (HUD::WindowStack::CloseTop())
 			{
 				HUD::Dialog::QueryNicknameIfEmpty();
 				return;

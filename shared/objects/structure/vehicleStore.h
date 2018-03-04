@@ -6,14 +6,46 @@ namespace Objects
 {
 
 	/**
-	Vehicle storage class.
+	Mobile entity storage shared among neighboring VehicleStore instances.
+	It tracks Park membership and the number of vehicles currently checked in.
+	May be shared across entire factions too
+	*/
+	class MobilePark
+	{
+	public:
+		Buffer0<WVehicleStore>	members;	//!< All VehicleStore instances that share this Park
+		count_t					vehiclesStored = 0;	//!< Total number of vehicles stored in this park
+
+		/**
+		Iteratively checks whether or not the local Park instance contains a particular VehicleStore instance
+		*/
+		bool					Contains(const PVehicleStore&s)	const
+		{
+			for (const auto&w : members)
+				if (w.lock() == s)
+					return true;
+			return false;
+		}
+
+		void					VisitMembers(const std::function<void(const PVehicleStore&)>&f)
+		{
+			for (const auto&w : members)
+				f(w.lock());
+		}
+
+		void					ReCountVehicles();
+		void					FindAndRemove(VehicleStore*s);
+	};
+
+	/**
+	Mobile entity storage class.
 	Instances of this class can permanently store vehicles
 	*/
 	class VehicleStore : public OtherStructure<VehicleStore>, public Hangar
 	{
 	public:
-		struct Park;
-		typedef std::shared_ptr<Park>	PPark;
+		typedef MobilePark	Park;
+		typedef PMobilePark PPark;
 	private:
 		typedef OtherStructure<VehicleStore>		Super;
 
@@ -35,33 +67,7 @@ namespace Objects
 	public:
 
 		/**
-		Shared storage state. Neighboring (also indirectly) VehicleStore instances
-		share one Park instance. It tracks Park membership and the number of vehicles currently checked in.
 		*/
-		struct Park
-		{
-			Ctr::Buffer0<WVehicleStore>	members;	//!< All VehicleStore instances that share this Park
-			count_t					vehiclesStored = 0;	//!< Total number of vehicles stored in this park
-
-			//TUniqueID				id;
-
-			/**/					Park()
-			{
-				//id.Generate();
-			}
-
-
-			/**
-			Iteratively checks whether or not the local Park instance contains a particular VehicleStore instance
-			*/
-			bool					Contains(const PVehicleStore&s)	const
-			{
-				for (const auto&w : members)
-					if (w.lock() == s)
-						return true;
-				return false;
-			}
-		};
 
 
 		PPark						park;	//!< Shared state. Should not be set if the local VehicleStore is not connected to any other VehicleStore instances
@@ -88,8 +94,6 @@ namespace Objects
 
 		#ifndef CLIENT
 			bool					StoreInPark(const PMobileEntity&v, float&atTime);
-		#else
-			void					Lose(const PVehicle&v);
 		#endif
 
 
@@ -105,11 +109,8 @@ namespace Objects
 		virtual void				StoreLocallyFromImport(const PMobileEntity&e) override;
 		#ifndef CLIENT
 			virtual bool			Store(const PMobileEntity&e, float&atTime) override {return e && CanStoreType(*e) && StoreInPark(e,atTime);}
-		#else
-			virtual void			Lose(const PMobileEntity&v)	override;
 		#endif
 		virtual bool				SharesStorageWith(const PHangar&other)	const override;
-		virtual void				LocalCheckout(const PMobileEntity&v, const Grid::LCellIdI&targetLocation, float&atTime) override;
 		virtual count_t				GetMaxStorage() const override {return MaxVehiclesPerStore;}
 		const WorldEntity&			ToEntity() const override {return *this;}
 		WorldEntity&				ToEntity() override {return *this;}
@@ -128,24 +129,16 @@ namespace Objects
 		virtual EntityType			GetType() const override {return ConstName::Type_VehicleStore;}
 		virtual int					GetHeight() const override {return 2;}
 		virtual void				PrototypeSetup() override;
-		//virtual int					GetConstructionCost() const override {return 40;}
+		virtual void				OnInsert(float&atTime, bool freshConstruction) override;
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 2;}
 		#endif
 		#ifdef HAS_WINDOW
 			virtual const CC*		GetCommands(CC&dynamicStorage) const override;
-			virtual void			DescribeType(Description&label, UINT32 descFlags) override
-			{
-				label.BeginBrief();
-				Super::DescribeType(label,descFlags);
-				label << " Max Vehicles per Store: "+String(MaxVehiclesPerStore);
-				label.MarkBriefEnd();
-				label << "Vehicle stores can be used to store vehicles which will then enter hibernation until deployed. This structure shares storage with nearby structures of the same type."
-									" A vehicle store can deploy any vehicle found within the vehicle store compound.";
-			}
+			virtual void			DescribeType(Description&label, UINT32 descFlags) override;
 		#endif
-
-
+	protected:
+		virtual void				OnStorageChanged() override;
 	};
 	
 }

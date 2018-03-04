@@ -13,6 +13,7 @@
 #include "prototypes.h"
 #include "structure/tower.h"
 #include "../protocol.h"
+#include "structure/vehicleStore.h"
 
 namespace Objects
 {
@@ -558,6 +559,12 @@ namespace Objects
 				else
 					LogEvent(EventClass::Preset::error,e.get(), "Unexpected entity type. Cannot change ownership");
 			//VerifyVisibilityNetwork();
+			if (e->IsWorkingStructure())
+			{
+				PWorkingStructure w = To<WorkingStructure>::Cast(e);
+				if (w->WouldLikeToEnable())
+					w->SetEnabled(true,atTime);
+			}
 
 			LogEvent( EventClass(EventSignificance::Important,EventFlavor::Gain) ,e.get(),"Changed ownership ('"+oldOwner->GetName()+"' -> '"+newOwner->GetName()+"')");
 		}
@@ -2276,8 +2283,9 @@ namespace Objects
 	}
 #endif
 
-	void		Faction::InitID(const TUniqueID&toID,bool nexusFaction)
+	void		Faction::Setup(const TUniqueID&toID,bool nexusFaction)
 	{
+		sharedPark.reset(new MobilePark());
 		id = toID;
 		#ifndef CLIENT
 			if (nexusFaction)

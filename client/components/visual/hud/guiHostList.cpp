@@ -29,7 +29,7 @@ namespace HUD{namespace HostList{
 
 	static const float VisualTabWidth[] = {0.3f,0.15f,0.1f,0.25f};
 
-	PWindow		serverChoice;
+	PWindow		serverChoice,changelog;
 	PPanel		headerRow;
 
 
@@ -59,6 +59,38 @@ namespace HUD{namespace HostList{
 		serverChoice->Anchor().Top().CenterHorizontally(0.9f);
 		serverChoice->canBeImplicitlyClosed = false;
 
+		try
+		{
+			StringFile source("../changelog.txt",CM_RETURN_EMPTY_LINES);
+			changelog = Window::Create();
+			changelog->Anchor().Right().Bottom(0.1f);
+			changelog->canBeImplicitlyClosed = false;
+			changelog->SetWidth(HUD::Component::Distance(0.4f));
+			//changelog->SetAutomaticHeight(false);
+			//changelog->SetHeight(0.6f);
+			changelog->fillBackground = false;
+			changelog->renderBorder = false;
+			changelog->darkenOutline = false;
+			changelog->SetMaxAutoHeight(0.5f);
+			count_t cnt = 0;
+			String line;
+			while (source >> line)
+			{
+				if (line.TrimRef().IsEmpty())
+					break;
+				PLabel label{new Label{line,0.7f}};
+				label->Anchor().FillHorizontally();
+				label->alignCenter = false;
+				label->SetColor(float4(1,1,1,0.6f));
+				label->SetVerticalPadding(0.01f);
+				changelog->AnchorBelowPrevious(CLOCATION,label,0,0);
+			}
+		}
+		catch (...)
+		{
+			changelog.reset();
+		}	//don't care, just don't show
+
 		headerRow.reset(new Panel());
 		headerRow->FillHorizontally(0);
 		headerRow->Anchor().Top();
@@ -68,27 +100,39 @@ namespace HUD{namespace HostList{
 		Update();
 	}
 
-	bool	SetVisibility(bool doShow)
+	void	CheckVisibility(bool doShow)
 	{
+		HUD::WindowStack::VerifyIntegrity(CLOCATION);
 
 		Music::SignalServerListShown(doShow);
 
 		if (doShow)
 		{
-			if (WindowStack::ShowBottom(serverChoice))
-				return true;
+			bool update = false;
+			if (!changelog)
+			{
+				update = WindowStack::ShowBottom(serverChoice);
+			}
+			else
+			{
+				update = WindowStack::ShowBottom(changelog);
+				if (update)
+				{
+					WindowStack::ShowBottom(serverChoice);
+					WindowStack::ShowBottom(changelog);
+				}
+			}
+			if (update)
+				Update();
 		}
 		else
+		{
 			WindowStack::Hide(serverChoice);
-		return false;
+			if (changelog)
+				WindowStack::Hide(changelog);
+		}
+		HUD::WindowStack::VerifyIntegrity(CLOCATION);
 	}
-
-	void	CheckVisibility(bool doShow)
-	{
-		if (SetVisibility(doShow))
-			Update();
-	}
-
 
 
 	PLabel	MakeHeaderLabel(const String&text, float zoom, index_t tabIndex)
@@ -380,7 +424,7 @@ namespace HUD{namespace HostList{
 
 	PPanel	serverListPanel;
 
-	void	Update()
+	void	Update( )
 	{
 
 		if (serverChoice->HasComponent(mousePressedComponent))
@@ -606,7 +650,7 @@ namespace HUD{namespace HostList{
 			WindowStack::OverrideSignalMouseMotion();
 		}
 		
-		HostList::SetVisibility(!Network::client.IsConnected());
+		HostList::CheckVisibility(!Network::client.IsConnected());
 	}
 }}
 #endif

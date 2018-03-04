@@ -224,10 +224,10 @@ namespace Objects
 		/**
 		Inits ID, color, and alliance. Must be called by constructors. Must not be called by anything else
 		*/
-		void			InitID(const TUniqueID&toID, bool nexusFaction);
+		void			Setup(const TUniqueID&toID, bool nexusFaction);
 
 		#ifdef CLIENT
-			/**/		Faction(const TUniqueID&id):researchState(this,false),statistics(this) {InitID(id,false);}
+			/**/		Faction(const TUniqueID&id):researchState(this,false),statistics(this) {Setup(id,false);}
 
 		#else
 			/**/		Faction(const TUniqueID&toID, const String&name="", bool isNexus=false):researchState(this,isNexus), statistics(this), name(name)
@@ -236,7 +236,7 @@ namespace Objects
 				deathInRounds = 0;
 
 				accessToken.Generate();
-				InitID(toID,isNexus);
+				Setup(toID,isNexus);
 			}
 		#endif
 
@@ -248,6 +248,12 @@ namespace Objects
 		Statistics		statistics;
 		ResearchState	researchState;
 		PAlliance		alliance;
+		/**
+		If set, shares one huge mobile park across all vehicle stores.
+		Allows instant teleportation from one vehicle store to another.
+		Doing so does not actually increase the store capacity (stores define how many mobiles can be stored there).
+		*/
+		PMobilePark		sharedPark;
 		#ifdef CLIENT
 			float3	activeEntityColor,
 					inactiveEntityColor;

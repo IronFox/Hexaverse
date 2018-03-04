@@ -1,6 +1,7 @@
 #include <global_root.h>
 #include "vehicleStore.h"
 #include "../mobileEntity.h"
+#include "../faction.h"
 
 namespace Objects
 {
@@ -9,6 +10,36 @@ namespace Objects
 	#endif
 
 
+	void MobilePark::ReCountVehicles()
+	{
+		vehiclesStored = 0;
+		for (const auto&w : members)
+		{
+			PVehicleStore s = w.lock();
+			if (s)
+				vehiclesStored += s->stored.Count();
+		}
+	}
+
+	void		MobilePark::FindAndRemove(VehicleStore*s)
+	{
+		foreach (members,m)
+			if (m->lock().get() == s)
+			{
+				members.erase(m);
+				ReCountVehicles();
+				return;
+			}
+	}
+
+
+	/*virtual override*/ void VehicleStore::OnStorageChanged()
+	{
+		if (park)
+		{
+			park->ReCountVehicles();
+		}
+	}
 
 
 	VehicleStore::VehicleStore(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(table,owner,location, true,atTime)
@@ -40,6 +71,12 @@ namespace Objects
 
 
 
+	/*virtual override*/ void			VehicleStore::OnInsert( float&atTime, bool freshConstruction )
+	{
+		Super::OnInsert(atTime,freshConstruction);
+
+		MergePark(owner->sharedPark);
+	}
 
 
 
@@ -135,77 +172,7 @@ namespace Objects
 			}
 		}
 	}
-	#if 0
-	bool	VehicleStore::StoreLocally(const PVehicle&v, float&atTime, bool setHealthToFullIfNew/*=true*/)
-	{
-		if (LocalIsFull() || !v || v->owner != owner || v->IsDeadOrGhost())
-			return false;
-		#ifndef CLIENT
-			v->SyncTime(atTime,timeEpsilon);
-		#endif
-		if (v->isInserted)
-		{
-			Remove(v,RemovalType::EnteredStorage,atTime,false,!v->isInsertedIntoGrid,true);
-			#ifndef NO_HIBERNATION
-				v->Hibernate(false,atTime);
-			#endif
-		}
-		else
-		{
-			if (!GetEntity(v->id))
-			{
-				RegisterNewOffGrid(v,atTime,setHealthToFullIfNew);
-			}
-		}
-		LogEvent(EventSignificance::Common,v.get()," Now stored in "+GetName());
-		v->storedIn = To<VehicleStore>::Cast(shared_from_this());
-		//v->location = location;
-		//#ifndef CLIENT
-		//	v->SignalChange(WorldEntity::PositionChanged,atTime);
-		//#endif
-		this->localStore.Append().vehicle = v;
-
-		#ifdef HAS_WINDOW
-			WVehicle w = v;
-			this->localStore.Last().deployCommand.reset(new DeployMobileCommand(v,
-				[w]()
-				{
-					//focus = To<VehicleStore>::DynamicCast(storeEntity).get();
-					if (deployingMobileEntity)
-						deployingMobileEntity.reset();
-					else
-						deployingMobileEntity = w.lock();
-				},
-				[w](bool controlEnabled)
-				{
-					Objects::CommandFlags rs = CommonCmd::CommonButtonCheck(controlEnabled);
-					PVehicleStore s = To<VehicleStore>::DynamicCast(selectedEntity);
-					if (deployingMobileEntity && s == selectedEntity && deployingMobileEntity == w.lock() && deployingMobileEntity->IsAlive())
-						rs |= Objects::CommandFlags::IsPermaActive;
-					return rs;
-				}
-				));
-			this->localStore.Last().deployCommand->RasterizeImage();
-		#endif
-
-		if (park)
-			park->vehiclesStored ++;
-		
-
-		#ifndef CLIENT
-			//RegisterChange(StorageChanged,atTime);	might be irrelevant. let's see
-			v->RegisterChange(StorageChanged,atTime);
-		#endif
-
-		ASSERT1__(!v->isInsertedIntoGrid,GetName(),v->GetName());
-
-		#ifdef _DEBUG
-			CheckMobileEntitySanity();
-		#endif
-
-		return true;
-	}
-	#endif /*0*/
+	
 
 
 	#ifdef HAS_WINDOW
@@ -274,24 +241,22 @@ namespace Objects
 		return store && /*store->owner == owner && */store->park == park;
 	}
 
-	/*virtual override*/ void	VehicleStore::LocalCheckout(const PMobileEntity&e, const Grid::LCellIdI&targetLocation, float&atTime)
-	{
-		Hangar::LocalCheckout(e,targetLocation,atTime);
-		if (park)
-			park->vehiclesStored --;
-	}
-
 
 	#ifdef CLIENT
-		/*virtual override*/ void	VehicleStore::Lose(const PMobileEntity&v)
-		{
-			Hangar::Lose(v);
-			if (park)
-				park->vehiclesStored--;
-		}
-
+		#ifdef HAS_WINDOW
+			/*virtual override*/ void			VehicleStore::DescribeType(Description&label, UINT32 descFlags)
+			{
+				label.BeginBrief();
+				Super::DescribeType(label,descFlags);
+				label << " Max Vehicles per Store: "+String(MaxVehiclesPerStore);
+				label.MarkBriefEnd();
+				label << "Vehicle stores can be used to store a number of mobile units."
+					" Storage capacity increases with each additional vehicle store."
+					" Stored mobile units may be deployed in the surrounding area of any vehicle store of the same faction,"
+					" allowing instant relocation across any distance.";
+			}
+		#endif
 	#else
-
 
 		bool						VehicleStore::StoreInPark(const PMobileEntity&v, float&atTime)
 		{
@@ -318,29 +283,46 @@ namespace Objects
 
 		if (park)
 		{
-			for (const auto&w : park->members)
+			if (park == owner->sharedPark)
 			{
-				PVehicleStore s = w.lock();
-				if (s && s.get() != this)
+				park->FindAndRemove(this);
+				#ifndef CLIENT
+					for (const auto&w : park->members)
+					{
+						PVehicleStore s = w.lock();
+						if (s)
+							while (stored.IsNotEmpty() && s->StoreLocally(stored.Last().entity.lock(),atTime,false,s))
+							{
+								stored.EraseLast();
+							}
+					}
+				#endif
+			}
+			else
+			{
+				for (const auto&w : park->members)
 				{
-					s->park.reset();
-					#ifndef CLIENT
-						while (stored.IsNotEmpty() && s->StoreLocally(stored.Last().entity.lock(),atTime,false,s))
-						{
-							stored.EraseLast();
-						}
-					#endif
+					PVehicleStore s = w.lock();
+					if (s && s.get() != this)
+					{
+						s->park.reset();
+						#ifndef CLIENT
+							while (stored.IsNotEmpty() && s->StoreLocally(stored.Last().entity.lock(),atTime,false,s))
+							{
+								stored.EraseLast();
+							}
+						#endif
+					}
+				}
+				for (const auto&w : park->members)
+				{
+					PVehicleStore s = w.lock();
+					if (s && s.get() != this && !s->park)
+					{
+						s->PropagatePark(PPark(new Park()));
+					}
 				}
 			}
-			for (const auto&w : park->members)
-			{
-				PVehicleStore s = w.lock();
-				if (s && s.get() != this && !s->park)
-				{
-					s->PropagatePark(PPark(new Park()));
-				}
-			}
-
 		}
 		Hangar::OnDestroy(atTime);
 	}

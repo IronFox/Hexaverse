@@ -185,6 +185,13 @@ namespace Objects
 				},true);
 			}
 
+			#ifdef HAS_WINDOW
+				ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
+				{
+					e->ambientSound.Destroy();
+				},false);
+			#endif
+
 			storedMobileEntities.Clear();
 			#ifndef NO_SATELLITES
 				satellites.Clear();

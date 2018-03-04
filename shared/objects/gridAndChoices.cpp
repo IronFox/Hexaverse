@@ -1253,7 +1253,17 @@ namespace Objects
 		#ifndef CLIENT
 			if (e->IsIndestructible() && !ignoreIndestructible)
 				return;
+
+			/*
+			This lock assures that we don't get issues with nested updates.
+			The call to OnDestroy() can do all sorts of nasty stuff, including remove other entities, or perform operations resulting in invalidated sensory.
+			If sensory is allowed to be rebuild (also during OnDestroy()), then UnregisterSensory() will cause havoc.
+			This has caused sensor loss after Nexus Port ownership changes.
+			The lock assures that any invalidation remains at least until the end of this function call, requiring UnregisterSensory() to be skipped.
+			*/
+			auto lock = e-> owner->LockSensorUpdates();
 		#endif
+
 		e->SyncTime(timestamp,timeEpsilon);
 		ASSERT1__(e->isInserted != ( t == RemovalType::DestroyedInStorage ),e->GetName());
 		#ifdef CLIENT

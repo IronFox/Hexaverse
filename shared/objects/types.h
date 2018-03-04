@@ -23,6 +23,7 @@ namespace Objects
 	DECLARE_POINTER_CLASS(SkyLinkStructure)
 
 	DECLARE_POINTER_CLASS(ResearchTopic)
+	DECLARE_POINTER_CLASS(MobilePark)
 
 	DECLARE_POINTER_CLASS(BaseEntity)
 		DECLARE_POINTER_CLASS(WorldEntity)

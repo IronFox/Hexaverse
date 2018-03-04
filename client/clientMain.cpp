@@ -782,6 +782,7 @@ namespace ApplicationInterface
 	void	OnVanish(const Objects::PWorldEntity&e, Objects::RemovalType t, bool wasGhost)
 	{
 		#ifdef HAS_WINDOW
+			e->ambientSound.Destroy();
 			if (Objects::selectedEntity == e)
 			{
 				Objects::Deselect(Network::ControlEnabled());
@@ -1697,6 +1698,10 @@ bool loop()
 				textout.MoveTo(0.95f - textout.GetScaledWidth(line),0.95f);
 				textout << line<<nl;
 				textout.Scale(0.75f,0.75f);
+				if (RuntimeConfig::empZones)
+					textout << nl << "EMP Zones On";
+				else
+					textout << nl << "EMP Zones Off";
 				#ifdef _DEBUG
 					textout << nl << ConfigurationMode::GetServerSeed();
 				#endif
@@ -2233,12 +2238,11 @@ int main( int argc, const char* argv[])
 
 					Engine::input.Bind(Key::H,InputControl::ToggleControlGUI);
 
-					Engine::input.Bind(Key::M,[](){Objects::Commands::TerraformerConstruct(Objects::Prototypes::structures.Find(ConstName::Type_Mine));});
-					Engine::input.Bind(Key::G,[](){Objects::Commands::TerraformerConstruct(Objects::Prototypes::structures.Find(ConstName::Type_Generator));});
-					Engine::input.Bind(Key::F,[](){Objects::Commands::TerraformerConstruct(Objects::Prototypes::structures.Find(ConstName::Type_VehiclePlant));});
-					Engine::input.Bind(Key::V,[](){Objects::Commands::TerraformerConstruct(Objects::Prototypes::structures.Find(ConstName::Type_VehiclePlant));});
-					Engine::input.Bind(Key::R,[](){Objects::Commands::TerraformerConstruct(Objects::Prototypes::structures.Find(Objects::EntityType(ConstName::Type_Tower,ConstName::Turret_Radar)));});
-					Engine::input.Bind(Key::L,[](){Objects::Commands::TerraformerConstruct(Objects::Prototypes::structures.Find(ConstName::Type_Laboratory));});
+					//for (index_t i = 0; i < Objects::Commands::terraformerShortcuts,
+					Objects::Commands::VisitTerraformerShortcuts([](Key::Name key, const Objects::PStructure&prototype)
+					{
+						Engine::input.Bind(key,[prototype](){Objects::Commands::TerraformerConstruct(prototype);});
+					});
 
 
 					Engine::input.BindCtrl(Key::C,ConfigurationMode::OnCopy);

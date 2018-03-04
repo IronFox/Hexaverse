@@ -20,6 +20,7 @@ namespace Objects
 	extern bool					resourceView, 
 								showFriendlyRanges,
 								showHostileRanges,
+								showSensorRanges,
 								objectView;
 
 

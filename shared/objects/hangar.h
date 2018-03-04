@@ -12,6 +12,12 @@ namespace Objects
 	{
 	protected:
 		bool				RemoveStored(const PMobileEntity&v);
+
+		/**
+		Signals that the number of stored entities has changed
+		*/
+		virtual void		OnStorageChanged()	{};
+
 	public:
 		
 		struct TStored
@@ -77,6 +83,7 @@ namespace Objects
 		#else
 		virtual void	Lose(const PMobileEntity&v);
 		#endif
+
 	};
 
 }
