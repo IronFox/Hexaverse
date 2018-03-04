@@ -1,4 +1,4 @@
-v0.7.6
+v0.7.6	[Mar 4 2018]
 	+ Added new view button to hide sensor ranges.
 	+ Now showing change log beneath server list (experimental).
 	> Showing all sensor ranges (hostile or friendly) now also renders sensor ranges unless switched off entirely.
