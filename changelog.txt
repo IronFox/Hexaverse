@@ -23,7 +23,8 @@ v0.7.6	[Mar 4 2018]
 	* Fixed arrow buttons sometimes not dis/appearing in contacts row when resizing window.
 	* Fixed entity sounds sometimes not disappearing from the terrain after a scene flush.
 	* Fixed interactive tutorial sometimes stacking messages and skipping ahead.
-	* Fixed tutorial start confirmation dialog when local server already running.
+	* Fixed tutorial start confirmation dialog when local server is already running.
+	* Fixed tutorial not detecting construction of reactor core.
 
 v0.7.5	[Feb 25 2018]
 	+ Localhost client can now trigger a game save without requiring a connected control console.
