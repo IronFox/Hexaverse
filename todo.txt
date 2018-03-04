@@ -7,6 +7,10 @@ Permanent checklist for new tutorial maps:
 	Only one terraformer (blow up the other)
 	
 
+steam: invites not working when already in game
+	
+research: transfer attribute vector rather than lua script and state (less data to transfer, more security)
+	
 https://wiki.winehq.org/Winelib_User%27s_Guide
 feature: animated round number when round is started
 
