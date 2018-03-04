@@ -6,7 +6,7 @@ void	Game.DisplayMessage(string msg[,string imageName])		Prints a persistent mes
 void	Game.CallDelayed(float seconds, function func)					Waits the specified number of seconds, then calls the given function without parameters
 void	Game.ClearAllDelayed()											Drops all non-executed delayed function calls
 int		Game.FindHighestAvailableResourceLocation(string resourceName)	Searches among all known resource spots for the highest value where a mine could be constructed. Returns -1 if none are found
-int		Game.GetResourceCoverage(string resourceName, int stackID)		Fetches the resource level at the specified location. Returns -1 if the specified location has not been surveyed yet
+int		Game.GetResourceCoverage(string resourceName, int stackID)		Fetches the resource level at the specified location. Returns -1 if the specified location has not been surveyed yet, of the specified index is not in [1,#Game.lowCells]
 void	Game.FocusCameraAt(int stackID)									Smoothly focuses the camera on the specified stack index
 int		Game.GetCompoundResourceChange(string resourceName)				Fetches the current balance of the specified resource type in the active player's compound. May be negative
 int		Game.GetCompoundResourceStorage(string resourceName)			Fetches the current storage level of the specified resource type in the active player's compound. May be 0 but not negative

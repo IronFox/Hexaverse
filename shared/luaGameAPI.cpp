@@ -64,10 +64,11 @@ namespace Lua
 				throw Lua::Exception("Resource '"+resourceName+"' does not exist.");
 			}
 
-			int GetResourceCoverage(const String&resourceName, int stackID)
+			int GetResourceCoverage(const String&resourceName, int luaStackID)
 			{
+				const int stackID = luaStackID -1;
 				if (stackID < 0 || stackID >= Grid::LowSetup::GridType::CellCount)
-					throw Lua::Exception("GetResourceCoverage(): Invalid location ("+String(stackID)+").");
+					throw Lua::Exception("GetResourceCoverage(): Invalid location ("+String(luaStackID)+" in [1,"+String(Grid::LowSetup::GridType::CellCount)+"]).");
 				foreach (Grid::Resource::all,r)
 					if (r->GetName() == resourceName)
 					{
@@ -95,7 +96,7 @@ namespace Lua
 			Lua::Table c = p->CreateTable();
 
 			c.SetField("height" ,cell.height);
-			c.SetField("stackID" ,cell.stackID);
+			c.SetField("stackID" ,cell.stackID+1);
 
 			return c;
 		}
@@ -152,12 +153,6 @@ namespace Lua
 	{
 		String name = api.GetProgram()->GetName();
 		api.SetFunction("Log", [name](const String&msg){Detail::LogLua(msg,name);});
-		#ifdef CLIENT
-			api.SetFunction("FindHighestAvailableResourceLocation",Detail::FindHighestAvailableResourceLocation);
-			api.SetFunction("GetResourceCoverage",Detail::GetResourceCoverage);
-			api.SetFunction("GetCompoundResourceChange",Detail::GetCompoundResourceChange);
-			api.SetFunction("GetCompoundResourceStorage",Detail::GetCompoundResourceStorage);
-		#endif
 		#ifdef CLIENT
 			api.SetFunction("FindHighestAvailableResourceLocation",Detail::FindHighestAvailableResourceLocation);
 			api.SetFunction("GetResourceCoverage",Detail::GetResourceCoverage);
