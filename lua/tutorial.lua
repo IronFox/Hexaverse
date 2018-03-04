@@ -268,7 +268,10 @@ CreateTask(function() Game.DescribeTask("Please construct a mine atop the newly 
 
 CreateTask(function() Game.DisplayMessage("The list in the bottom left section of the screen shows your current resource output. With two mines and one laboratory we now require more %Energy%energy than a single generator can supply.") end);
 
-CreateTask(function() Game.DescribeTask("Please construct a second generator using your terraformer. In the bottom screen section, select Build->Resources->Generator, and click anywhere on the terrain. Request new rounds until done.") end,
+CreateTask(function() Game.DescribeTask(
+	"Please construct a second generator using your terraformer. In the bottom screen section, select Build->Resources->Generator, and click anywhere on the terrain.\n"
+		.."Don't worry about proximity, resources are transferred across any distance without visible connection.\n"
+		.."Request new rounds until done.") end,
 	function()
 		local count = 0;
 		for i = 1, #Game.myUnits do
