@@ -718,6 +718,17 @@ namespace Objects
 	}
 
 	#ifdef HAS_WINDOW
+
+		/*virtual override*/ const Geometry*	ReactorCore::GetSourceForConnection(const PStructure&connected)	
+		{
+			PGenerator gen = To<Generator>::DynamicCast(connected); 
+			return gen && gen->connectedToReactor.lock().get() == this 
+				? &Generator::reactorConnector 
+				: Super::GetSourceForConnection(connected);
+		}
+
+
+
 		#ifndef NO_SATELLITES
 			/*virtual override*/ void				SkyPort::VisitAllCommands(FCommandVisitor visitor, bool force)
 			{

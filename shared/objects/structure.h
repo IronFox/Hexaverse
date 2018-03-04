@@ -860,8 +860,7 @@ namespace Objects
 		virtual Category			GetCategory() const override {return Category::Resources;}
 
 		#ifdef HAS_WINDOW
-			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override {PGenerator gen = To<Generator>::DynamicCast(connected); return gen && gen->connectedToReactor.lock().get() == this ? &Generator::reactorConnector : &standardConnector;}
-
+			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override;
 			virtual void			DescribeType(Description&label, UINT32 descFlags) override;
 		#endif
 

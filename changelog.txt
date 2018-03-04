@@ -25,6 +25,7 @@ v0.7.6	[Mar 4 2018]
 	* Fixed interactive tutorial sometimes stacking messages and skipping ahead.
 	* Fixed tutorial start confirmation dialog when local server is already running.
 	* Fixed tutorial not detecting construction of reactor core.
+	* Removed invalid visual connection between reactor core and non-generator buildings.
 
 v0.7.5	[Feb 25 2018]
 	+ Localhost client can now trigger a game save without requiring a connected control console.
