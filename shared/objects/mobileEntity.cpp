@@ -338,6 +338,8 @@ namespace Objects
 									{
 										dropRemaining = true;
 										stop = true;
+										if (completeOnMove)
+											CompleteOnMove(previousLocation);
 									}
 									break;
 									case MobilePlacementResult::PlacementOkayFellDown:
