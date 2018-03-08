@@ -23,6 +23,11 @@ namespace Objects
 		*/
 		bool	TerraformerCommitOperation();
 
+		/**
+		Visits all currently defined terraformer shortcuts
+		*/
+		void		VisitTerraformerShortcuts(const std::function<void(Key::Name,const Objects::PStructure&)>&visitor);
+		Key::Name	FindTerraformerShortcutKey(const Objects::PStructure&proto);
 		
 		/**
 		Creates and defines all commands for all entity types, as well as all global commands.

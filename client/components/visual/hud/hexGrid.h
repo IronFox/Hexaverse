@@ -184,7 +184,7 @@ namespace HexGrid
 			virtual void			CompileLabel(Label&outResult) override
 			{
 				String name = Objects::selectedEntity ? Objects::selectedEntity->GetNiceName() : "selected unit";
-				outResult << "Abort current operation or undo last operation of "+name;
+				outResult << "(Backspace) Abort current operation or undo last operation of "+name;
 			}
 		};
 

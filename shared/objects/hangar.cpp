@@ -23,6 +23,7 @@ namespace Objects
 			if (s->entity.lock() == v)
 			{
 				stored.erase(s);
+				OnStorageChanged();
 				return true;
 			}
 		return false;
@@ -57,6 +58,7 @@ namespace Objects
 			ASSERT3__(v->storedIn.lock().get() == this,v->GetName(),v->storedIn.lock()->ToEntity().GetName(),ToEntity().GetName());
 			v->storedIn.reset();
 			ASSERT2__(RemoveStored(v),v->GetName(),ToEntity().GetName());
+			OnStorageChanged();
 		}
 
 	#endif
@@ -120,6 +122,8 @@ namespace Objects
 		#ifdef _DEBUG
 			CheckMobileEntitySanity();
 		#endif
+
+		OnStorageChanged();
 	}
 
 
@@ -165,6 +169,7 @@ namespace Objects
 		#endif
 
 		onStored(*this,stored.Last());
+		OnStorageChanged();
 
 		return true;
 	}

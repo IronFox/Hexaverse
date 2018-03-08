@@ -416,6 +416,8 @@ namespace HexGrid
 				visibleRange.end = visibleRange.start + currentContactListWidth;
 			this->offset = newOffset;
 		}
+		RemoveCommandIcons();
+
 		if (offset > 0)
 		{
 			AllocateCell(leftCommand,leftCommand->gridCoords,Anchor::TopLeft);
@@ -1458,7 +1460,7 @@ namespace HexGrid
 	}
 
 
-	void					RefreshContacts()
+	void					RefreshContacts( )
 	{
 		if (ConfigurationMode::IsActive())	//configuration mode has its own buttons; should not be altered while active
 			return;

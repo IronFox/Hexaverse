@@ -1009,10 +1009,10 @@ namespace ConfigurationMode
 
 			int at = 0;
 			buttons << std::make_pair(int2(at++,0),
-						Objects::Command::PBase(new Objects::Command::CustomIconCommand("Accept current planet and config, and finish","Commit",[]()
+						Objects::Command::PBase(new Objects::Command::CustomIconCommand("Start server with current planet and config, and finish","Commit",[]()
 						{
 							
-							HUD::Dialog::Confirm("Start server with your current configuration and begin game?",[]()
+							HUD::Dialog::Confirm("Start server with your current configuration and begin game?\nYou will be returned to the server list where your server should show up momentarily.",[]()
 							{
 								try
 								{

@@ -41,7 +41,7 @@ namespace Menu
 			{
 				execute();
 				if (autoHide)
-					WindowStack::CloseAllModalBeneath(To<HUD::Component::Window>::Cast(this->shared_from_this()));
+					WindowStack::CloseAllBeneath(To<HUD::Component::Window>::Cast(this->shared_from_this()));
 			},
 			check
 		));

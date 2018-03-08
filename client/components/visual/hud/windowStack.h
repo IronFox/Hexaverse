@@ -54,26 +54,30 @@ namespace HUD
 		Component::WheelRs	OnMouseWheel(short delta);
 		bool				OnMouseDown();
 		void				HandleMouseUp();
+
+		/**
+		Counts the number of visible windows that are not fading right now
+		*/
+		count_t				CountVisibleWindows();
 		/**
 		Checks if any modal dialogs are open at this time
 		*/
 		bool				IsModal();
 		/**
-		Closes all modal dialogs.
-		Dialogs declared as non implicitly closable are unaffected
-		@return true, if any modal dialogs were closed
+		Closes all dialogs that can be implicitly closed.
+		@return true, if any dialogs were closed
 		*/
-		bool				CloseAllModal();
+		bool				CloseAll();
 		/**
-		Closes the top-most modal dialog.
+		Closes the top-most window.
 		If the top-most dialog is declared as non implicitly closable, then the function fails.
 		@return true, if any modal dialog was closed
 		*/
-		bool				CloseTopModal();
+		bool				CloseTop();
 		/**
 		If the specified window is shown open, it is closed, and all closable windows beneath it
 		*/
-		bool				CloseAllModalBeneath(const Component::PWindow&);
+		bool				CloseAllBeneath(const Component::PWindow&);
 		/**
 		Renders visible non-modal windows/dialogs up to the first modal window
 		*/

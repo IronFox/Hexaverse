@@ -1,23 +1,22 @@
-add new view button to toggle sensor bubbles in general, and include bubbles (if ticked) in (hostile/friendly) range display
-depict shortcuts in build commands
-
+Permanent checklist for new tutorial maps:
+	EMP zones are off
+	Goal is none
+	AI is off
+	Round timer is -1
+	No survival conditions
+	Only one terraformer (blow up the other)
 	
-bug: Invite -> 'Cancel Invite'; button doesn't change caption if in alliance
+
+steam: invites not working when already in game
+	
+research: transfer attribute vector rather than lua script and state (less data to transfer, more security)
+	
+https://wiki.winehq.org/Winelib_User%27s_Guide
 feature: animated round number when round is started
-feature: newly owned nexus ports are off if could be on
-bug: build road never finished when center block beneath former is missing?
-feature: vehicle stores should teleport units
-
-bug: build bridge to never ends when final field is partially blocked by building
 
 
-bug: increasing window width while long contact list is present does not reposition scroll-right-button
+minor bug: allied structure state updates arrive before appearance on new offensive building
 
-minor bug: temporarily lost contact when nexus port changed ownership, was visible only by plane
-bug: allied structure state updates arrive before appearance on new offensive building
-
-show text in configuration mode when emp fields are on
-mark emp zones in initial tutorial image (areas)
 
 
 
@@ -49,7 +48,6 @@ road should not build bridges across liquids? switch mode automatically? reroute
 
 
 
-hide selected sensor range sphere?
 
 
 
@@ -75,14 +73,6 @@ laboratory nexus risk, hacking vehicle turret
 laboratories have better yield if grouped but pose risk of virus changing lab group ownership to nexus
 
 
-
-
-
-
-
-
-
-
 resources 2.0:
 	+ Mines have diminishing yield (not to zero, but low)
 	+ New resource types from trees (natural compounds), and dendrites (vulcanic compounds)
@@ -93,23 +83,7 @@ three flexible planet sizes (current is probably middle)?
 alloy? resource type that is required for some constructions, and requires a special factory to make
 
 
-
-
-
-
-terrain benchmark
-compare with pre-80d6657fcd00f7d41fdc54c4cdef47b3d073ff48: 3972d667c90b1ef1ded85c3efceb6fe2516f7a0b
-
-
-
 alt+click should work on terraforming operations, too
-
-
-
-
-			
-		
-
 
 new mine system:
 	have mines multiply resource availability with number of solid natural blocks beneath mine. if >5/10, mine works at 100%
@@ -132,47 +106,19 @@ bug: water has no bottom cap
 
 
 working structure enable-replacement (replace one enable working structure with another that is better suited to stabilize the compound)
+make generators switch off if not needed
 
 
 repair vehicle idle if something damaged?
-compound inefficieny
-wireless power? ... dedicated compounds?
 		
-
-
-make generators switch off if not needed
-
 lava ship
 
 make visual events clickable
 better mine output (refinery)
 
 
-
-
-
-
-
-
-
-
-
-Satellite beam animation seed.
-
-
-
-
-
-general resource transporter vehicles
-
 let foundation blocks (and granite) explode into stone first // maybe later
 
-
-
-
-
-
-hover beam	//elevator
 
 
 granite-digging turret
@@ -213,6 +159,27 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+done: Update manual images of common unit commands.
+done(untested): http://www.hexacorn.com/blog/2016/03/27/detecting-wine-via-internal-and-legacy-apis/
+done: show changelog beneath server selection
+probably too much hassle: terrain benchmark, compare with pre-80d6657fcd00f7d41fdc54c4cdef47b3d073ff48: 3972d667c90b1ef1ded85c3efceb6fe2516f7a0b
+skipped: compound inefficieny (compounds do not exist right now)
+skipped: wireless power? ... dedicated compounds? (same as above)
+skipped: Satellite beam animation seed. (satellites are deprecated)
+skipped: general resource transporter vehicles. (resources teleport)
+skipped: hover beam	//elevator; with teleporting vehicle stores this is redundant
+done: hide selected sensor range sphere?
+done: mark emp zones in initial tutorial image (areas)
+fixed: increasing window width while long contact list is present does not reposition scroll-right-button
+done: newly owned nexus ports are off if could be on
+done: show text in configuration mode when emp fields are on
+done: depict shortcuts in build commands
+fixed: Invite -> 'Cancel Invite'; button doesn't change caption if in alliance
+fixed: build bridge to never ends when final field is partially blocked by building
+feature: vehicle stores should teleport units
+fixed: temporarily lost contact when nexus port changed ownership, was visible only by plane
+add new view button to toggle sensor bubbles in general, and include bubbles (if ticked) in (hostile/friendly) range display
+cannot fix: bug: build road never finished when center block beneath former can't be built. can't reproduce
 fixed: loaded nexus ports are switched off
 fixed: clarify reltionship between alliances and hangars:
 fixed: cannot abort configuration mode

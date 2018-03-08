@@ -290,6 +290,8 @@ namespace HUD
 			index_t at = Detail::FindWindowIndex(window.get());
 			if (at != InvalidIndex)
 			{
+				if (at == 0)
+					return changed;
 				{
 					auto existing = Detail::visibleWindows[at];
 					Detail::visibleWindows.Erase(at);
@@ -322,7 +324,7 @@ namespace HUD
 		}
 
 
-		bool	CloseTopModal()
+		bool	CloseTop()
 		{
 			VerifyIntegrity(CLOCATION);
 			PWindow w = GetTopMostWindow();
@@ -332,7 +334,7 @@ namespace HUD
 			return true;
 		}
 
-		bool	CloseAllModalBeneath(const PWindow&w)
+		bool	CloseAllBeneath(const PWindow&w)
 		{
 			VerifyIntegrity(CLOCATION);
 			index_t at = Detail::FindWindowIndex(w.get());
@@ -352,7 +354,7 @@ namespace HUD
 		}
 
 
-		bool	CloseAllModal()
+		bool	CloseAll()
 		{
 			VerifyIntegrity(CLOCATION);
 			if (Detail::visibleWindows.IsEmpty())
@@ -369,6 +371,15 @@ namespace HUD
 				}
 			}
 			VerifyIntegrity(CLOCATION);
+			return rs;
+		}
+
+		count_t				CountVisibleWindows()
+		{
+			count_t rs = 0;
+			foreach (Detail::visibleWindows,w)
+				if (w->IsVisible())
+					rs++;
 			return rs;
 		}
 

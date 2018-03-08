@@ -209,7 +209,10 @@ namespace BugReporter
 				string version = server.StandardOutput.ReadToEnd();
 				if (version.StartsWith("Hexaverse "))
 					version = version.Substring(10);
-				gameVersion.Text = version;
+				int at = version.IndexOf('[');
+				if (at >= 0)
+					version = version.Remove(at);
+				gameVersion.Text = version.Trim();
 			}
 			catch (Exception ex)
 			{
@@ -231,7 +234,7 @@ namespace BugReporter
 
 			foreach (var f in logFiles)
 			{
-				if (string.IsNullOrWhiteSpace(f.Version) || string.IsNullOrWhiteSpace(gameVersion.Text) || f.Version.StartsWith(gameVersion.Text))
+				if (string.IsNullOrWhiteSpace(f.Version) || string.IsNullOrWhiteSpace(gameVersion.Text) || f.Version.StartsWith(gameVersion.Text) || gameVersion.Text.StartsWith(f.Version))
 					yield return f;
 			}
 		}

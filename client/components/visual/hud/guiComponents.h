@@ -1807,6 +1807,7 @@ namespace Component
 		M::Rect<>			context = M::Rect<>(0,0,1,1);
 		bool				canBeImplicitlyClosed = true;	//!< Indicates that this window can be closed by events such as the Escape being pressed
 		bool				isModal = true;
+		bool				darkenOutline = true;
 
 		#ifdef _DEBUG
 			bool			breakOnHide = false;
@@ -1834,10 +1835,12 @@ namespace Component
 
 		virtual void		Render( float opacity) override
 		{
-			if (isModal)
-				Darken(context,0.7f*opacity);
-			Darken(outerRect,0.9f*opacity);
-			//Darken(rect);
+			if (darkenOutline)
+			{
+				if (isModal)
+					Darken(context,0.7f*opacity);
+				Darken(outerRect,0.9f*opacity);
+			}
 			Super::Render(opacity);
 		}
 

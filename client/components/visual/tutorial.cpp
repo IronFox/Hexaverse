@@ -52,6 +52,7 @@ namespace Tutorial
 
 		StringTable<Message,Strategy::Swap>	messages;
 		PWindow				taskWindow;
+		HUD::Dialog::PDialog	messageWindow;
 		bool				tutorialGameShown=false;
 
 		HUD::Dialog::WDialog	holdOn;
@@ -59,11 +60,24 @@ namespace Tutorial
 		Timer::Time			holdOnCreated;
 
 
+		bool				WaitingForUserOkay()
+		{
+			return !!messageWindow /*&& HUD::WindowStack::IsVisible(messageWindow)*/;
+		}
+
 		void				HideGUI()
 		{
-			HUD::WindowStack::CloseAllModal();
+			HUD::WindowStack::CloseAll();
+			if (messageWindow)
+			{
+				HUD::WindowStack::Hide(messageWindow);
+				messageWindow= nullptr;
+			}
 			if (taskWindow)
+			{
 				HUD::WindowStack::Hide(taskWindow);
+				taskWindow= nullptr;
+			}
 		}
 
 		bool				RegisterMemory(bool&shown, const String&name)
@@ -187,16 +201,21 @@ namespace Tutorial
 
 			void	DisplayMessage(String msg, const String&img)
 			{
+				DBG_ASSERT__(Interactive::API::activeTriggers.IsEmpty());
 				Detail::HideGUI();
-				
+				DBG_ASSERT_EQUAL__(HUD::WindowStack::CountVisibleWindows(),0);
 				ReplaceTags(msg);
 				using namespace Detail;
-				auto messageWindow = HUD::Dialog::CreateTutorialMessage("", msg,img);
+				messageWindow = HUD::Dialog::CreateTutorialMessage("", msg,img);
 				messageWindow->check = []()->HUD::Dialog::CheckResult{ return Network::client.IsConnected() ? HUD::Dialog::CheckResult::OkayContinue : HUD::Dialog::CheckResult::Abort; };
 				messageWindow->onConfirm = 
 				[]()
 				{
+					HUD::WindowStack::Hide(messageWindow);
+					messageWindow = nullptr;
 					Trigger::onMessageConfirm();
+					if (!Detail::WaitingForUserOkay())
+						Interactive::Trigger::checkTaskConditions();
 				};
 				messageWindow->canBeImplicitlyClosed = false;
 				messageWindow->isTutorial = false;	//prevent tutorial message from opening the next message automatically
@@ -213,6 +232,7 @@ namespace Tutorial
 
 			void	DescribeTask(String msg)
 			{
+				DBG_ASSERT__(!Detail::WaitingForUserOkay());
 				Detail::HideGUI();
 				using namespace Detail;
 
@@ -236,8 +256,14 @@ namespace Tutorial
 				Trigger::checkTaskConditions();
 			}
 
+			void	ClearDelayed()
+			{
+				activeTriggers.Clear();
+			}
+
 			void	CallDelayed(float delay, Lua::Function<void()> f)
 			{
+				DBG_ASSERT__(!Detail::WaitingForUserOkay());
 				activeTriggers.Append().remainingSeconds = delay;
 				activeTriggers.Last().trigger = f;
 			}
@@ -353,15 +379,19 @@ namespace Tutorial
 				t.remainingSeconds -= timeDelta;
 				if (t.remainingSeconds < 0)
 				{
-					t.trigger();
-					Interactive::API::activeTriggers.Erase(i);
+					auto copy = t;
+					Interactive::API::activeTriggers.Erase(i);	//change order to assure we don't trigger verification issues in debug mode
 					i--;
+					copy.trigger();
 				}
 			}
 
-			Interactive::rotate.Process();
-			Interactive::drag.Process();
-			Interactive::zoom.Process();
+			if (!Detail::WaitingForUserOkay())
+			{
+				Interactive::rotate.Process();
+				Interactive::drag.Process();
+				Interactive::zoom.Process();
+			}
 
 		}
 
@@ -391,8 +421,8 @@ namespace Tutorial
 			{
 				Interactive::RebuildFactionUnits();
 				Interactive::RebuildSelected();
-
-				Interactive::Trigger::checkTaskConditions();
+				if (!Detail::WaitingForUserOkay())
+					Interactive::Trigger::checkTaskConditions();
 			}
 			catch (const Lua::Exception&ex)
 			{
@@ -417,6 +447,7 @@ namespace Tutorial
 				api.SetFunction("DisplayMessage",API::DisplayMessage);
 				api.SetFunction("DescribeTask",API::DescribeTask);
 				api.SetFunction("CallDelayed",API::CallDelayed);
+				api.SetFunction("ClearAllDelayed",API::ClearDelayed);
 				api.SetFunction("FocusCameraAt",API::FocusCameraAt);
 				api.SetFunction("SignalTaskStart",API::SignalTaskStart);
 
@@ -564,7 +595,8 @@ namespace Tutorial
 		try
 		{
 			Interactive::RebuildFactionUnits();
-			Interactive::Trigger::checkTaskConditions();
+			if (!Detail::WaitingForUserOkay())
+				Interactive::Trigger::checkTaskConditions();
 		}
 		catch (const Lua::Exception&ex)
 		{
@@ -583,7 +615,8 @@ namespace Tutorial
 		try
 		{
 			Interactive::RebuildResearchState();
-			Interactive::Trigger::checkTaskConditions();
+			if (!Detail::WaitingForUserOkay())
+				Interactive::Trigger::checkTaskConditions();
 		}
 		catch (const Lua::Exception&ex)
 		{
@@ -636,6 +669,7 @@ namespace Tutorial
 					return HUD::Dialog::CheckResult::Confirm;
 				return HUD::Dialog::CheckResult::OkayContinue;
 			});
+			return;
 		}
 
 

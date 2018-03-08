@@ -1645,7 +1645,7 @@ namespace Network
 				FlushFaction(true);
 				#ifdef HAS_WINDOW
 					World::allowRecompilation = true;
-					HUD::WindowStack::CloseAllModal();
+					HUD::WindowStack::CloseAll();
 				#endif
 
 
