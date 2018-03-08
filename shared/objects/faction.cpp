@@ -980,12 +980,17 @@ namespace Objects
 			return it->second;
 		}
 
-		void					Faction::SeeingReference::Appear(const PWorldEntity&e, float&t)
+		void					Faction::SeeingReference::Appear( const Faction*parent, const PWorldEntity&e, float&t)
 		{
 			ASSERT__(!CurrentlyVisible());
 			if (RuntimeConfig::IsInAnyCommandPhase())
 			{
-				LogEvent(EventSignificance::Debug,e.get(),"["+String(e.get())+"] Registering as newly visible now");
+				LogEvent(EventSignificance::Debug,e.get(),parent->GetLogName()+ ": ["+String(e.get())+"] Registering as newly visible now");
+				if (!reverseVisibilityChange.empty())
+				{
+					LogEvent(EventClass::Preset::internalError,"reverseVisibilityChange still contains "+String(reverseVisibilityChange.size())+" element(s)");
+					reverseVisibilityChange.clear();	//this should be the case implicitly, but for some reason it's not
+				}
 				reference = e;
 				wasVisibleAtBeginning = true;
 				ASSERT__(CurrentlyVisible());
@@ -994,7 +999,7 @@ namespace Objects
 
 			if (!reverseVisibilityChange.empty())
 				t = std::max(t,-reverseVisibilityChange.begin()->first);
-			LogEvent(EventSignificance::Debug,e.get(),"["+String(e.get())+"] Registering as newly visible at "+String(t));
+			LogEvent(EventSignificance::Debug,e.get(),parent->GetLogName()+ ": ["+String(e.get())+"] Registering as newly visible at "+String(t));
 
 			t += timeEpsilon;
 			reverseVisibilityChange[-t] = true;
@@ -1003,19 +1008,24 @@ namespace Objects
 			reference = e;
 		}
 
-		void					Faction::SeeingReference::Disappear(const PWorldEntity&e, float&t)
+		void					Faction::SeeingReference::Disappear(const Faction*parent, const PWorldEntity&e, float&t)
 		{
 			ASSERT__(CurrentlyVisible());
 			if (RuntimeConfig::IsInAnyCommandPhase())
 			{
-				LogEvent(EventSignificance::Debug,e.get(),"["+String(e.get())+"] Registering as newly invisible now");
+				LogEvent(EventSignificance::Debug,e.get(),parent->GetLogName()+ ": ["+String(e.get())+"] Registering as newly INvisible now");
+				if (!reverseVisibilityChange.empty())
+				{
+					LogEvent(EventClass::Preset::internalError,"reverseVisibilityChange still contains "+String(reverseVisibilityChange.size())+" element(s)");
+					reverseVisibilityChange.clear();	//this should be the case implicitly, but for some reason it's not
+				}
 				wasVisibleAtBeginning = false;
 				ASSERT__(!CurrentlyVisible());
 				return;
 			}
 			if (!reverseVisibilityChange.empty())
 				t = std::max(t,-reverseVisibilityChange.begin()->first);
-			LogEvent(EventSignificance::Debug,e.get(),"["+String(e.get())+"] Registering as newly invisible at "+String(t));
+			LogEvent(EventSignificance::Debug,e.get(),parent->GetLogName()+ ": ["+String(e.get())+"] Registering as newly INvisible at "+String(t));
 
 			t += timeEpsilon;
 			reverseVisibilityChange[-t] = false;
@@ -1030,7 +1040,7 @@ namespace Objects
 				return false;
 			ref.reference = e;	//just in case
 			
-			ref.Appear(e,t);
+			ref.Appear(this,e,t);
 
 			LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Gained visual at time="+String(t));
 
@@ -1047,7 +1057,7 @@ namespace Objects
 			SeeingReference*ref = seeing.QueryPointer(e.get());
 			if (!ref || !ref->CurrentlyVisible())
 				return;
-			ref->Disappear(e,t);
+			ref->Disappear(this,e,t);
 
 			LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Lost visual at time="+String(t));
 			if (signalConnectedClient)
