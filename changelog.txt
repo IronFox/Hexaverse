@@ -1,3 +1,5 @@
+v0.7.7
+
 v0.7.6	[Mar 4 2018]
 	+ Added new view button to hide sensor ranges.
 	+ Now showing change log beneath server list (experimental).
