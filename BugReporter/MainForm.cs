@@ -317,7 +317,8 @@ namespace BugReporter
 				}
 				catch (Exception ex)
 				{
-					MessageBox.Show("Error accessing '"+ logsAt+"': "+ex.Message);
+					continue;
+					//MessageBox.Show("Error accessing '"+ logsAt+"': "+ex.Message);
 				}
 				if (files != null)
 					foreach (string f in files)
