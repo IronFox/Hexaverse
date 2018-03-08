@@ -5,6 +5,36 @@ Permanent checklist for new tutorial maps:
 	Round timer is -1
 	No survival conditions
 	Only one terraformer (blow up the other)
+
+
+connect via tcp if steam lobby system fails
+undo (abandoned) when resuming faction
+move camera out of terrain
+move horizontally to submerged vehicle store
+base fog on average terrain height
+bug reporter: scans in ai/logs even if doesn't exist, message box, continues, empty log uploaded
+bug reporter: does not find fatals not in last line (servers do this)
+ground level obstruction when building tower one level behind one wall build up where terraformer is
+find alternate server location service
+smarter placement of new mobile units out of vehicle plants (more in the intended direction)
+bug reporter: does not upload any files
+
+test: construct building with terraformer, finish by directly moving into neighboring transport plane
+
+
+dieing factions should not be disconnected, review current statistics?
+
+
+
+emergency transfer of resources to other storage when storage is destroyed
+
+highlight possible movement targets (distance heatmap)
+explode uranium storages
+
+
+
+
+
 	
 
 different tutorial types: fighting
