@@ -2,6 +2,7 @@ v0.7.7
 	* Fixed rare crash when leaving alliance.
 	* Fixed rare crash when trying to save game during fatal handling, but faction is not member of any alliance.
 	* Fixed crash when finishing terraformer construction by moving the vehicle into neighboring storage.
+	* Fixed rare crash when connection is lost before statistics can be sent to dead faction.
 
 v0.7.6	[Mar 4 2018]
 	+ Added new view button to hide sensor ranges.
