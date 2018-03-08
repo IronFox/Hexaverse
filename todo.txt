@@ -32,7 +32,7 @@ highlight possible movement targets (distance heatmap)
 explode uranium storages
 
 
-
+setting for fog density
 
 
 	
