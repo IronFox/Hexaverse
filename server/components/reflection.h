@@ -9,7 +9,7 @@ using namespace DeltaWorks;
 
 /**
 The reflection module handles all configurable variables, including loadable planets.
-CompleteChange variables are mapped to CLI (Command Line Interpretor) entries, that may execute arbitrary code on change.
+All variables are mapped to CLI (Command Line Interpretor) entries, that may execute arbitrary code on change.
 
 The primary purpose is to allow remote control of the server.
 Although local modules can theoretically execute these commands via the Reflection::state, this is currently not done.

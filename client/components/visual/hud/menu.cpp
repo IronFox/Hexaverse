@@ -462,9 +462,10 @@ namespace Menu
 		main->AddCommand("Disconnect",
 		[]()
 		{
+			ConfigurationMode::SetActive(false);
 			Network::client.Disconnect();
 		},
-		[](){return Network::client.IsConnected();});
+		[](){return Network::client.IsConnected() || ConfigurationMode::IsActive();});
 		main->AddCommand("Game",[](){WindowStack::Show(game);},std::function<bool()>(),false);
 		
 		main->AddCommand("Help",

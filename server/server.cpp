@@ -881,7 +881,8 @@ int main( int argc, const char* argv[])
 		for (int i = 1; i < argc; i++)
 			ParameterConfig::Process(argv[i]);
 
-		Logging::Begin(RuntimeConfig::myConfig.Lookup(PathString("logs/server "+Logging::TimeStamp(true)+".log")));
+		Logging::Begin(RuntimeConfig::myConfig.Lookup(PathString("logs/server "+Logging::TimeStamp(true)+ ".v" PRODUCT_VERSION ".log")));
+		//Logging::Begin(RuntimeConfig::myConfig.Lookup(PathString("logs/server "+Logging::TimeStamp(true)+".log")));
 		LogEvent(EventSignificance::Uncommon,nullptr,"Starting server v" PRODUCT_VERSION);
 
 

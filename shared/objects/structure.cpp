@@ -28,7 +28,7 @@ namespace Objects
 
 
 	/**
-	CompleteChange existing structure (building) instances in the world.
+	All existing structure (building) instances in the world.
 	To the server these are all the buildings that exist, to the client these are all
 	it currently knows about.
 	*/
@@ -229,9 +229,9 @@ namespace Objects
 	}
 
 
-	void Structure::OnConstructionFinished(float&atTime)
+	void Structure::OnInsert( float&atTime, bool freshConstruction )
 	{
-		Super::OnConstructionFinished(atTime);
+		Super::OnInsert(atTime, freshConstruction);
 
 
 		CommonRegisterStructure(location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);

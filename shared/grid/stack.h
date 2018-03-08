@@ -378,7 +378,7 @@ namespace Grid
 			#endif
 		};
 
-		Cell			volumeCell[Range];		//CompleteChange contained cells
+		Cell			volumeCell[Range];		//All contained cells
 		static Cell		bottom, top;	//extremes below the bottom most, and above the top most
 		#ifdef HAS_WINDOW
 			BYTE			lowestOpenCell=0,

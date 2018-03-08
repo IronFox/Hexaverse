@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -12,6 +13,7 @@ using System.Net.Sockets;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -23,226 +25,6 @@ namespace BugReporter
 		//public static readonly Uri ServerUri = new Uri("https://www.hexaverse_nope.net/bugReport/store.php");
 
 
-		class LogFile : IComparable
-		{
-			public readonly string Path;
-			public readonly string TimeLine, Prefix;
-			public DateTime MinTime;
-			public DateTime MaxTime;
-			private HashSet<string> entityIDs;
-			private string fatal;
-			private string[][] lines;
-			public string Version { get; private set; }
-			public string Combined { get; private set; }
-
-
-			public string Fatal
-			{
-				get
-				{
-					return fatal;
-				}
-			}
-
-			public bool ContainsEntityID(string id)
-			{
-				Load();
-				return entityIDs.Contains(id);
-			}
-
-			//https://stackoverflow.com/questions/12744725/how-do-i-perform-file-readalllines-on-a-file-that-is-also-open-in-excel
-			private static string[] WriteSafeReadAllLines(String path)
-			{
-				using (var csv = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-				using (var sr = new StreamReader(csv))
-				{
-					List<string> file = new List<string>();
-					while (!sr.EndOfStream)
-					{
-						file.Add(sr.ReadLine());
-					}
-
-					return file.ToArray();
-				}
-			}
-
-			public void LoadLines()
-			{
-				if (lines == null)
-				{
-					try
-					{
-						StringBuilder combined = new StringBuilder();
-						string[] lines0 = WriteSafeReadAllLines(Path);
-						lines = new string[lines0.Length][];
-						for (int i = 0; i < lines0.Length; i++)
-						{
-							lines[i] = lines0[i].Split('\t');
-							combined.AppendLine(lines0[i]);
-						}
-
-						if (combined.Length > 65535)
-							combined.Remove(0, combined.Length - 65535);
-						Combined = combined.ToString();
-					}
-					catch { }
-
-				}
-
-			}
-
-			public string[] ScanLines(Func<string[], bool> f)
-			{
-				LoadLines();
-				foreach (var line in lines)
-					if (f(line))
-						return line;
-				return null;
-			}
-
-			public void VisitLines(Action<string[]> f)
-			{
-				LoadLines();
-				foreach (var line in lines)
-					f(line);
-			}
-			private const int messageAt = 10;
-
-			public void VisitIDs(Action<string> f)
-			{
-				Load();
-				foreach (var e in entityIDs)
-					f(e);
-			}
-
-			public string ScanIDs(Func<string, bool> f)
-			{
-				Load();
-				foreach (var e in entityIDs)
-					if (f(e))
-						return e;
-				return null;
-			}
-
-			private static string Get(string[] ar, int index)
-			{
-				if (index < ar.Length)
-					return ar[index];
-				return "";
-			}
-
-			private static DateTime Min(DateTime a, DateTime b)
-			{
-				return new DateTime(Math.Min( a.Ticks, b.Ticks));
-			}
-			private static DateTime Max(DateTime a, DateTime b)
-			{
-				return new DateTime(Math.Max(a.Ticks, b.Ticks));
-			}
-
-			private void Load()
-			{
-				if (entityIDs != null)
-					return;
-				entityIDs = new HashSet<string>();
-				const int idAt = 7;
-
-				MinTime = DateTime.MaxValue;
-				MaxTime = DateTime.MinValue;
-
-
-				VisitLines(line =>
-				{
-					if (line.Length > 1)
-					{
-						string dt = line[1];
-						int dotAt = dt.IndexOf('.');
-						if (dotAt >= 0)
-						{
-							string date = dt.Substring(0, dotAt);
-							string time = dt.Substring(dotAt + 1).Trim();
-							string[] dateParts = date.Split(' ');
-							int year = int.Parse(Get(dateParts, 0));
-							int month = int.Parse(Get(dateParts, 1));
-							int day = int.Parse(Get(dateParts, 2));
-							DateTime t = new DateTime(year, month, day);
-							string[] timeParts = time.Split(':');
-							int hour = int.Parse(Get(timeParts, 0));
-							int minute = int.Parse(Get(timeParts, 1));
-							int seconds = int.Parse(Get(timeParts, 2));
-							t += new TimeSpan(hour, minute, seconds);
-							MinTime = Min(MinTime, t);
-							MaxTime = Max(MinTime, t);
-						}
-					}
-					if (line.Length > idAt)
-					{
-						string id = line[idAt].Trim();
-						if (id.Length == 0 || id == "EntityID")
-							return;
-						entityIDs.Add(id);
-					}
-				});
-				VisitLines(line =>
-				{
-					if (line.Length <= messageAt)
-						return;
-					string msg = line[messageAt];
-					if (line[0] == "SystemFatal" && msg.StartsWith("Fatal exception"))
-					{
-						fatal = line[messageAt];
-						return;
-					}
-
-					if (msg.StartsWith("Starting "))
-					{
-						string[] words = msg.Split(' ');
-						if (words.Length == 3 && words[2].StartsWith("v"))
-						{
-							Version = words[2];
-						}
-					}
-				});
-
-
-			}
-
-
-			public LogFile(string prefix, string path)
-			{
-				Path = path;
-
-				string filename = System.IO.Path.GetFileNameWithoutExtension(path);
-				Prefix = prefix;// filename.Split(' ')[0];
-				Load();
-				if (MinTime.Date == MaxTime.Date)
-				{
-					TimeLine = "[" + MinTime.Date.ToShortDateString() + " " + MinTime.ToShortTimeString() + "-" + MaxTime.ToShortTimeString() + "]";
-				}
-				else
-					TimeLine = "[" + MinTime + "-" + MaxTime + "]";
-
-
-			}
-
-			public int CompareTo(object obj)
-			{
-				LogFile other = (LogFile)obj;
-				return MaxTime.CompareTo(other.MaxTime);
-			}
-
-			public override string ToString()
-			{
-				string rs = Prefix;
-				if (Version != null)
-					rs += ' ' + Version;
-				rs += ' ' + TimeLine;
-				if (fatal != null)
-					rs += " (reports fatal exception)";
-				return rs;
-			}
-		}
-
 
 		public MainForm()
 		{
@@ -253,9 +35,9 @@ namespace BugReporter
 		{
 			if (builder.Length > 0)
 				builder.Append('&');
-			EscapeDataString(builder,name);
+			EscapeDataString(builder, name);
 			builder.Append('=');
-			EscapeDataString(builder,value);
+			EscapeDataString(builder, value);
 		}
 
 		private static void EscapeDataString(StringBuilder builder, string str)
@@ -358,26 +140,13 @@ namespace BugReporter
 		Task<string> helloTask, uploadTask;
 
 
-		public void UpdateLogFileList()
+		public IEnumerable<FileID> FetchLogFileList()
 		{
-			var items = logFile.Items;
-			items.Clear();
-			items.Add("None");
-			try
-			{
-				List<LogFile> fileList = GetFilesIn(new string[] { "client", "server", "client/ai" }, gameVersion.Text);
+			var fileList = GetFilesIn(new string[] { "client", "server", "client/ai" });
 
-				foreach (LogFile f in fileList)
-				{
-					items.Add(f);
-				}
-			}
-			catch (Exception)
-			{
+			foreach (var f in fileList)
+				yield return f;
 
-			}
-			if (logFile.SelectedItem == null)
-				logFile.SelectedIndex = 0;
 		}
 		public float FontScaleFactor
 		{
@@ -392,7 +161,7 @@ namespace BugReporter
 
 
 		private int helloStarted = 0;
-		private void RestartHelloTask(int delayMS = 0, string issue="")
+		private void RestartHelloTask(int delayMS = 0, string issue = "")
 		{
 			try
 			{
@@ -401,7 +170,7 @@ namespace BugReporter
 					Program.Abort(issue);
 				}
 
-				helloTask = ContactServerAsync(new Tuple <string, string>[] { new Tuple<string, string>("action", "respond") }, delayMS,true);
+				helloTask = ContactServerAsync(new Tuple<string, string>[] { new Tuple<string, string>("action", "respond") }, delayMS, true);
 			}
 			catch (Exception ex)
 			{
@@ -420,6 +189,8 @@ namespace BugReporter
 				c.Font = new Font(c.Font.FontFamily.Name, c.Font.Size * scaleFactor);
 			}
 		}
+
+		List<FileID> logFiles = new List<FileID>();
 
 
 		private void MainForm_Load(object sender, EventArgs e)
@@ -442,14 +213,51 @@ namespace BugReporter
 			}
 			catch (Exception ex)
 			{
-				MessageBox.Show("Error trying to launch 'server --version' to figure out the current game version. You will have to specify the game version by yourself: "+ex.Message);
+				MessageBox.Show("Error trying to launch 'server --version' to figure out the current game version. You will have to specify the game version by yourself: " + ex.Message);
 				//gameVersion.Text = ex.ToString();
 			}
 
 			RestartHelloTask();
-			//toolStripStatusLabel.Text = "multi\nline\ntest";
+			logFiles = FetchLogFileList().ToList();
+			logFiles.Sort();
 
-			UpdateLogFileList();
+			FinishLoading();
+		}
+
+		
+
+		IEnumerable<FileID> FilterLoadedFiles()
+		{
+
+			foreach (var f in logFiles)
+			{
+				if (string.IsNullOrWhiteSpace(f.Version) || string.IsNullOrWhiteSpace(gameVersion.Text) || f.Version.StartsWith(gameVersion.Text))
+					yield return f;
+			}
+		}
+
+
+
+		public void FinishLoading(List<LogFile> logFiles)
+		{
+			//loadedFiles = logFiles;
+			FinishLoading();
+		}
+
+		private void FinishLoading()
+		{
+			var fileList = FilterLoadedFiles().ToList();
+
+			var items = logFile.Items;
+			items.Clear();
+			items.Add("None");
+
+			foreach (var f in fileList)
+				items.Add(f);
+
+			if (logFile.SelectedItem == null)
+				logFile.SelectedIndex = 0;
+
 
 
 			{
@@ -461,23 +269,23 @@ namespace BugReporter
 						string filename = args[1];
 						if (filename.StartsWith("\\\\?\\"))
 							filename = filename.Substring(4);
-						//FileInfo f = new FileInfo(filename);
-						//if (f.Exists)
 						{
-							LogFile file = null;
+							FileID? file = null;
 							foreach (var obj in logFile.Items)
 							{
-								LogFile candidate = obj as LogFile;
-								if (candidate != null && candidate.Path == filename)
+								if (!(obj is FileID))
+									continue;
+								FileID candidate = (FileID)obj;
+								if (candidate.Path == filename)
 								{
 									file = candidate;
 									logFile.SelectedItem = candidate;
 									break;
 								}
 							}
-							if (file != null && file.Fatal != null)
+							if (file?.Fatal != null)
 							{
-								bugDescription.Text += file.Fatal;
+								bugDescription.Text += file.Value.Fatal;
 							}
 						}
 					}
@@ -485,71 +293,96 @@ namespace BugReporter
 					{ }
 				}
 			}
-
 		}
 
 
-		private List<LogFile> GetFilesIn(string[] groups, string gameVersion)
+
+
+
+
+		private IEnumerable<FileID> GetFilesIn(string[] groups)
 		{
 			string path = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
 			List<LogFile> fileList = new List<LogFile>();
 			foreach (var group in groups)
 			{
+				string logsAt = Path.Combine(path, "My Games", "Hexaverse", group, "logs");
+				string[] files = null;
 				try
 				{
-					string logsAt = Path.Combine(path, "My Games", "Hexaverse", group, "logs");
-					string[] files = Directory.GetFiles(logsAt);
-
+					files = Directory.GetFiles(logsAt);
+				}
+				catch (Exception ex)
+				{
+					MessageBox.Show("Error accessing '"+ logsAt+"': "+ex.Message);
+				}
+				if (files != null)
 					foreach (string f in files)
 					{
-						LogFile file = new LogFile(group, f);
-						if (file.Version != null && !gameVersion.StartsWith(file.Version))
-							continue;
-						fileList.Add(file);
+						yield return new FileID(group, f);
 					}
-				}
-				catch (Exception)
-				{
-				}
 			}
-			fileList.Sort();
-			fileList.Reverse();
-			return fileList;
 		}
 
+		Queue<FileID> timedLoadQueue = new Queue<FileID>();
 
-		
+		void QueueFront(FileID f)
+		{
+			var items = timedLoadQueue.ToArray();
+			timedLoadQueue.Clear();
+			timedLoadQueue.Enqueue(f);
+			foreach (var item in items)
+				timedLoadQueue.Enqueue(item);
+		}
 
 		private void logFile_SelectedIndexChanged(object sender, EventArgs e)
 		{
 			var items = logFileList.Items;
 			items.Clear();
+			timedLoadQueue.Clear();
+
+
 			try
 			{
-				if (logFile.SelectedItem == null || !(logFile.SelectedItem is LogFile))
+				if (logFile.SelectedItem == null || !(logFile.SelectedItem is FileID))
 					return;
-				LogFile f = (LogFile)logFile.SelectedItem;
-
-
-
-
-				List<LogFile> matches = new List<LogFile>();
-
-				foreach (var obj in logFile.Items)
+				FileID f = (FileID)logFile.SelectedItem;
+				LogFile root = f.CachedFile;
+				if (root == null)
 				{
-					LogFile candidate = obj as LogFile;
-					if (candidate != null && candidate != f)
-					{
-						string found = candidate.ScanIDs(id => { if (f.ContainsEntityID(id)) return true; return false; });
-						if (found != null)
-							matches.Add(candidate);
-					}
+					if (!timedLoadQueue.Contains(f))
+						QueueFront(f);
 				}
-				matches.Sort();
-				matches.Reverse();
+				else
+				{
+					List<LogFile> matches = new List<LogFile>();
 
-				foreach (var m in matches)
-					items.Add(m,true);
+					foreach (var obj in logFile.Items)
+					{
+						if (!(obj is FileID))
+							continue;
+						FileID candidate = (FileID)obj;
+						if (candidate.Path == f.Path)
+							continue;
+
+						LogFile check = candidate.CachedFile;
+						if (check == null)
+						{
+							if (!timedLoadQueue.Contains(candidate))
+								timedLoadQueue.Enqueue(candidate);
+							continue;
+						}
+
+						string found = check.ScanIDs(id => { if (root.ContainsEntityID(id)) return true; return false; });
+						if (found != null)
+							matches.Add(check);
+					}
+					matches.Sort();
+					matches.Reverse();
+
+					foreach (var m in matches)
+						items.Add(m, true);
+				}
 			}
 			catch (Exception ex)
 			{
@@ -625,6 +458,38 @@ namespace BugReporter
 		{
 			BringToFront();
 			TopMost = true;
+		}
+
+		Task<LogFile> loadTask = null;
+
+		private void loadTimer_Tick(object sender, EventArgs e)
+		{
+			if (loadTask != null)
+			{
+				if (loadTask.IsCanceled || loadTask.IsCompleted || loadTask.IsFaulted)
+				{
+					try
+					{
+						var t = loadTask.Result;    //dunno if necessary. let crash if crash
+					}
+					catch
+					{ }
+					loadTask = null;
+					logFile_SelectedIndexChanged(sender, e);	//trigger check
+				}
+				else
+					return;
+			}
+
+			if (timedLoadQueue.Count == 0)
+				return;
+			loadTask = timedLoadQueue.Dequeue().LoadFileAsync();
+		}
+
+		private void gameVersion_TextChanged(object sender, EventArgs e)
+		{
+		//	if (!loadTimer.Enabled)
+			FinishLoading();
 		}
 
 		private void sendButton_Click(object sender, EventArgs e)

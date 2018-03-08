@@ -46,6 +46,7 @@
 			this.toolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
 			this.connectionTimer = new System.Windows.Forms.Timer(this.components);
 			this.mainBody = new System.Windows.Forms.Panel();
+			this.loadTimer = new System.Windows.Forms.Timer(this.components);
 			this.statusStrip.SuspendLayout();
 			this.mainBody.SuspendLayout();
 			this.SuspendLayout();
@@ -169,6 +170,7 @@
 			this.gameVersion.Name = "gameVersion";
 			this.gameVersion.Size = new System.Drawing.Size(375, 20);
 			this.gameVersion.TabIndex = 13;
+			this.gameVersion.TextChanged += new System.EventHandler(this.gameVersion_TextChanged);
 			// 
 			// statusStrip
 			// 
@@ -184,7 +186,7 @@
 			// toolStripStatusLabel
 			// 
 			this.toolStripStatusLabel.Name = "toolStripStatusLabel";
-			this.toolStripStatusLabel.Size = new System.Drawing.Size(486, 17);
+			this.toolStripStatusLabel.Size = new System.Drawing.Size(455, 17);
 			this.toolStripStatusLabel.Spring = true;
 			this.toolStripStatusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 			// 
@@ -212,6 +214,11 @@
 			this.mainBody.Name = "mainBody";
 			this.mainBody.Size = new System.Drawing.Size(501, 627);
 			this.mainBody.TabIndex = 15;
+			// 
+			// loadTimer
+			// 
+			this.loadTimer.Enabled = true;
+			this.loadTimer.Tick += new System.EventHandler(this.loadTimer_Tick);
 			// 
 			// MainForm
 			// 
@@ -253,6 +260,7 @@
 		private System.Windows.Forms.Timer connectionTimer;
 		private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel;
 		private System.Windows.Forms.Panel mainBody;
+		private System.Windows.Forms.Timer loadTimer;
 	}
 }
 

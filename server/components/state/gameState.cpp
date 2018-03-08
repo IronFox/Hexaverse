@@ -707,13 +707,13 @@ namespace Game
 
 
 
-		void	Describe(Protocol::ProductionTask&task, const Objects::MobileEntityProducer::WorkItem&element)
+		void	Describe( Protocol::ProductionTask&task, const Objects::MobileEntityProducer::WorkItem&element)
 		{
 			task.type = element.producing->GetType();
 			task.id = element.id;
 		}
 
-		void	Describe(Protocol::MobileTask&task, const Objects::MobileEntity&v, const Grid::LCellIdI&origin, const Objects::MobileEntity::Task&t,index_t taskIndex)
+		void	Describe( Protocol::MobileTask&task, const Objects::MobileEntity&v, const Grid::LCellIdI&origin, const Objects::MobileEntity::Task&t,index_t taskIndex)
 		{
 			task.foci.SetSize(t.foci.Count());
 			for (index_t i = 0; i < task.foci.Count(); i++)
@@ -773,7 +773,7 @@ namespace Game
 			}
 		}
 
-		void	Describe(Protocol::EntityState&state, const Objects::WorldEntity&e, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags)
+		void	Describe( Protocol::EntityState&state, const Objects::WorldEntity&e, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags)
 		{
 			state.health = e.health;
 			state.id = e.id;
@@ -790,7 +790,7 @@ namespace Game
 			state.timestamp = timestamp;
 		}
 
-		void	Describe(Protocol::MobileState&state, const Objects::MobileEntity&v, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags)
+		void	Describe( Protocol::MobileState&state, const Objects::MobileEntity&v, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags)
 		{
 			if (v.IsAboveGrid())
 			{
@@ -865,7 +865,7 @@ namespace Game
 
 		}
 
-		void	Describe(Protocol::NewMobileEntity&cnst, const Objects::MobileEntity&v, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags)
+		void	Describe( Protocol::NewMobileEntity&cnst, const Objects::MobileEntity&v, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags)
 		{
 			cnst.type = v.GetType();
 			cnst.owner = v.owner->id;
@@ -874,14 +874,14 @@ namespace Game
 
 
 
-		void	Describe(Protocol::AttackTask&task, const Objects::Tower::AttackTask&element)
+		void	Describe( Protocol::AttackTask&task, const Objects::Tower::AttackTask&element)
 		{
 			//task.id = element.id;
 			//task.target = element.target;
 			task = element.target;
 		}
 
-		void	Describe(Protocol::StructureState&state, const Objects::Structure&s, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags)
+		void	Describe( Protocol::StructureState&state, const Objects::Structure&s, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags)
 		{
 			const Objects::WorkingStructure*w = dynamic_cast<const Objects::WorkingStructure*>(&s);
 			//state.productionDone = 0;
@@ -940,7 +940,7 @@ namespace Game
 			Describe(state.entityState,s,owned,timestamp,changeFlags);
 		}
 
-		void	Describe(Protocol::StructureConstruction&cnst, const Objects::Structure&s, bool owned, const Protocol::Timestamp&timestamp)
+		void	Describe( Protocol::StructureConstruction&cnst, const Objects::Structure&s, bool owned, const Protocol::Timestamp&timestamp)
 		{
 			cnst.type = s.GetType();
 			cnst.owner = s.owner->id;
@@ -1034,7 +1034,7 @@ namespace Game
 				//anythingChanged = true;
 				LogEvent(EventSignificance::Common,&v,"State change detected ("+String(v.changeFlags)+")");
 
-				bool othersNeedToKnow = (v.changeFlags & Network::NotifyOthers) != 0;
+				bool othersNeedToKnow = (v.changeFlags & Network::NotifyOthers) != 0 && v.storedIn.expired();
 
 				TCP::Serial<Protocol::MobileState>	w0,w1;
 				Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),v.changeTimer);

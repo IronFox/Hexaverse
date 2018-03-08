@@ -26,13 +26,11 @@ namespace Objects
 	#ifndef CLIENT
 		
 
-		/*virtual override*/ void			Tower::OnConstructionFinished(float&atTime)
+		/*virtual override*/ void			Tower::OnInsert( float&atTime, bool freshConstruction )
 		{
-			Super::OnConstructionFinished(atTime);
-			ChangeStorage(*this,atTime,turret->ammoType,GetMaxStorageCapacity().level[turret->ammoType] - storage.level[turret->ammoType]);
-			//storage.level[Resource::Munitions] = GetMaxStorageCapacity().level[Resource::Munitions];
-			//LogEvent(EventSignificance::Common,this,"Munition storage changed to "+String(storage.level[Resource::Munitions]));
-
+			Super::OnInsert(atTime,freshConstruction);
+			if (freshConstruction)
+				ChangeStorage(*this,atTime,turret->ammoType,GetMaxStorageCapacity().level[turret->ammoType] - storage.level[turret->ammoType]);
 		}
 
 		

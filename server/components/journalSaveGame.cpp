@@ -1469,7 +1469,7 @@ namespace Journal
 		f->VisitMyEntities([&strand](const Objects::PWorldEntity&w)
 		{
 			strand.factionEvents.Append().reset(new CreateEntity(w));
-		});
+		},true);
 	}
 
 	/*virtual override*/ void	Round::ClearEntityCommands::Execute(const Objects::PWorldEntity&e) const
