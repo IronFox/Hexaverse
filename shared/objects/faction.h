@@ -476,7 +476,9 @@ namespace Objects
 			}
 
 			/**
-			Checks and potentially rebuilds knownWorld sensor state
+			Checks and potentially rebuilds knownWorld sensor state.
+	
+			This is the server equivalent of client side ClientGrid::CheckSensory() (gridControl.h)
 			*/
 			void		CheckSensory();
 
