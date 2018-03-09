@@ -194,7 +194,7 @@ namespace Objects
 			}
 			LogEvent(EventSignificance::Debug,parent,"Successfully spawned finished production  "+production->GetNiceName()+" at "+ToString(c)+" with placement result "+String(rs.ToString()));
 
-			if (rs != MobilePlacementResult::EnteredStructure)
+			if (rs != MobilePlacementResult::EnteredHangar)
 				InsertConstructed(v,t);
 			Structure*s = dynamic_cast<Structure*>(this);
 			if (s)

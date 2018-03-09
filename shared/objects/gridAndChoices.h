@@ -65,9 +65,9 @@ namespace Objects
 	void			GetNeighborhood( const OwnerParameter&referenceOwner, bool ignoreOwnership, const Grid::LCellIdI&cellID, TStructureNeighborhood&outNeighborhood);
 
 	/**
-	Checks if there is a structure in the given location that can handle a given mobile entity moving in
+	Checks if there is a hangar in the given location that can handle a given mobile entity moving in
 	*/
-	PHangar			MobileDestinationStructureHere(const Grid::LCellIdI&location, const MobileEntity&);
+	PHangar			AccessibleHangarHere(const Grid::LCellIdI&location, const MobileEntity&);
 
 
 

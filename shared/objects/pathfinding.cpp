@@ -132,7 +132,7 @@ namespace Objects{ namespace Pathfinding
 	bool ValidDestinationOf(const World::Data&world,const Vehicle&v, const Grid::LCellIdI&location, bool isDestination, bool ignoreWater, bool doFloat)
 	{
 		return 
-			(IsClear(world,location,v.owner, GetEntityTime(v)) || (isDestination && (IgnoreStructuresAtDestination || MobileDestinationStructureHere(location,v))))
+			(IsClear(world,location,v.owner, GetEntityTime(v)) || (isDestination && (IgnoreStructuresAtDestination || AccessibleHangarHere(location,v))))
 			&&
 			(v.CanStandOn(world,location-1,ignoreWater,doFloat))
 			&&

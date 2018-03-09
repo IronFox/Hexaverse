@@ -240,9 +240,12 @@ namespace Objects
 
 			if (!World::actual.LowCellIsClear(cell))
 			{
-				PHangar s = MobileDestinationStructureHere(cell,*this);
+				PHangar s = AccessibleHangarHere(cell,*this);
 				if (s && s->Store(To<Vehicle>::Cast(shared_from_this()),entityTime))
-					return MobilePlacementResult::EnteredStructure;
+				{
+					location = s->ToEntity().location;
+					return MobilePlacementResult::EnteredHangar;
+				}
 
 				if (failIsFatal)
 				{
@@ -262,7 +265,7 @@ namespace Objects
 					{
 						PHangar s = v->CastToDestinationForType(*this);
 						if (s && s->Store(To<Vehicle>::Cast(shared_from_this()),entityTime))
-							return MobilePlacementResult::EnteredStructure;
+							return MobilePlacementResult::EnteredHangar;
 					}
 
 					if (failIsFatal)

@@ -1371,10 +1371,17 @@ namespace Objects
 
 
 
-	PHangar		MobileDestinationStructureHere(const Grid::LCellIdI&location, const MobileEntity&m)
+	PHangar		AccessibleHangarHere(const Grid::LCellIdI&location, const MobileEntity&m)
 	{
 		PStructure s = GetStructure(location);
-		return s && s->owner->IsFriendly(m.owner) ? s->CastToDestinationForType(m) : PHangar();
+		if (!s)
+			return nullptr;
+		if (s->owner != m.owner)
+		{
+			//may have to check alliances here eventually, but for now this messes things up
+			return nullptr;
+		}
+		return s->CastToDestinationForType(m);
 	}
 
 
