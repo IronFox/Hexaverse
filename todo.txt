@@ -12,12 +12,9 @@ steam: undo (abandoned) when resuming faction
 move camera out of terrain
 move horizontally to submerged vehicle store
 base fog on average terrain height
-bug reporter: scans in ai/logs even if doesn't exist, message box, continues, empty log uploaded
-bug reporter: does not find fatals not in last line (servers do this)
 ground level obstruction when building tower one level behind one wall build up where terraformer is
 find alternate server location service
 smarter placement of new mobile units out of vehicle plants (more in the intended direction)
-bug reporter: does not upload any files
 
 test: construct building with terraformer, finish by directly moving into neighboring transport plane
 test: spawn produced mobile unit into nearby hangar: vehicle plant->vehicle store
@@ -194,6 +191,9 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: bug reporter: does not upload any files
+fixed: bug reporter: scans in ai/logs even if doesn't exist, message box, continues, empty log uploaded
+fixed: bug reporter: does not find fatals not in last line (servers do this)
 done: Update manual images of common unit commands.
 done(untested): http://www.hexacorn.com/blog/2016/03/27/detecting-wine-via-internal-and-legacy-apis/
 done: show changelog beneath server selection
