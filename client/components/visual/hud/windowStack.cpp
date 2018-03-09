@@ -334,7 +334,7 @@ namespace HUD
 			return true;
 		}
 
-		bool	CloseAllBeneath(const PWindow&w)
+		bool	CloseAllUpTo(const PWindow&w)
 		{
 			VerifyIntegrity(CLOCATION);
 			index_t at = Detail::FindWindowIndex(w.get());
@@ -347,7 +347,7 @@ namespace HUD
 				if (!entry.IsVisible())
 					continue;
 				if (entry.window->canBeImplicitlyClosed)
-					Hide(w);
+					Hide(entry.window);
 			}
 
 			return true;
