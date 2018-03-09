@@ -214,11 +214,11 @@ namespace BugReporter
 					version = version.Remove(at);
 				gameVersion.Text = version.Trim();
 			}
-			catch (Exception ex)
+			catch
 			{
 				//MessageBox.Show("Error trying to launch 'server --version' to figure out the current game version. You will have to specify the game version by yourself: " + ex.Message);
 				//gameVersion.Text = ex.ToString();
-				//just empty
+				//don't care, server not there, just leave empty
 			}
 
 			RestartHelloTask();
@@ -340,6 +340,9 @@ namespace BugReporter
 				timedLoadQueue.Enqueue(item);
 		}
 
+
+		private string lastFatal = null;
+
 		private void logFile_SelectedIndexChanged(object sender, EventArgs e)
 		{
 			var items = logFileList.Items;
@@ -353,6 +356,36 @@ namespace BugReporter
 					return;
 				FileID f = (FileID)logFile.SelectedItem;
 				gameVersion.Text = f.Version;
+
+				if (lastFatal != f.Fatal)
+				{
+					int foundAt = -1;
+					if (lastFatal != null)
+					{
+						int at;
+						while ((at = bugDescription.Text.IndexOf(lastFatal)) != -1)
+						{
+							foundAt = at;
+							bugDescription.Text = bugDescription.Text.Remove(at, lastFatal.Length);
+						}
+						lastFatal = null;
+					}
+
+					if (f.Fatal != null)
+					{
+						if (foundAt >= 0)
+							bugDescription.Text = bugDescription.Text.Insert(foundAt, f.Fatal);
+						else
+						{
+							if (string.IsNullOrWhiteSpace(bugDescription.Text))
+								bugDescription.Text = f.Fatal;
+							else
+								bugDescription.Text = f.Fatal + "\r\n" + "\r\n" + bugDescription.Text.Trim(new char[] { '\r', '\n' });
+						}
+						lastFatal = f.Fatal;
+					}
+				}
+
 				LogFile root = f.CachedFile;
 				if (root == null)
 				{
