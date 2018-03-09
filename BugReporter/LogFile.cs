@@ -81,6 +81,15 @@ namespace BugReporter
 				{
 					LastLine = l;
 					NumLines++;
+
+					if (Fatal == null && l.StartsWith("SystemFatal"))
+					{
+						parts = l.Split('\t');
+						if (parts.Length > LogFile.MessageAt && parts[0] == "SystemFatal" && parts[LogFile.MessageAt].StartsWith("Fatal exception"))
+						{
+							Fatal = parts[LogFile.MessageAt];
+						}
+					}
 				}
 				parts = LastLine.Split('\t');
 
