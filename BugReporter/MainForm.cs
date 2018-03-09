@@ -216,8 +216,9 @@ namespace BugReporter
 			}
 			catch (Exception ex)
 			{
-				MessageBox.Show("Error trying to launch 'server --version' to figure out the current game version. You will have to specify the game version by yourself: " + ex.Message);
+				//MessageBox.Show("Error trying to launch 'server --version' to figure out the current game version. You will have to specify the game version by yourself: " + ex.Message);
 				//gameVersion.Text = ex.ToString();
+				//just empty
 			}
 
 			RestartHelloTask();
@@ -229,15 +230,15 @@ namespace BugReporter
 
 		
 
-		IEnumerable<FileID> FilterLoadedFiles()
-		{
+		//IEnumerable<FileID> FilterLoadedFiles()
+		//{
 
-			foreach (var f in logFiles)
-			{
-				if (string.IsNullOrWhiteSpace(f.Version) || string.IsNullOrWhiteSpace(gameVersion.Text) || f.Version.StartsWith(gameVersion.Text) || gameVersion.Text.StartsWith(f.Version))
-					yield return f;
-			}
-		}
+		//	foreach (var f in logFiles)
+		//	{
+		//		if (string.IsNullOrWhiteSpace(f.Version) || string.IsNullOrWhiteSpace(gameVersion.Text) || f.Version.StartsWith(gameVersion.Text) || gameVersion.Text.StartsWith(f.Version))
+		//			yield return f;
+		//	}
+		//}
 
 
 
@@ -249,7 +250,7 @@ namespace BugReporter
 
 		private void FinishLoading()
 		{
-			var fileList = FilterLoadedFiles().ToList();
+			var fileList = logFiles;
 
 			var items = logFile.Items;
 			items.Clear();
@@ -351,6 +352,7 @@ namespace BugReporter
 				if (logFile.SelectedItem == null || !(logFile.SelectedItem is FileID))
 					return;
 				FileID f = (FileID)logFile.SelectedItem;
+				gameVersion.Text = f.Version;
 				LogFile root = f.CachedFile;
 				if (root == null)
 				{
@@ -490,12 +492,7 @@ namespace BugReporter
 			loadTask = timedLoadQueue.Dequeue().LoadFileAsync();
 		}
 
-		private void gameVersion_TextChanged(object sender, EventArgs e)
-		{
-		//	if (!loadTimer.Enabled)
-			FinishLoading();
-		}
-
+		
 		private void sendButton_Click(object sender, EventArgs e)
 		{
 			try

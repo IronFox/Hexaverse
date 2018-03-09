@@ -1,4 +1,5 @@
 v0.7.7
+	> Bug Reporter now presents all found log files, and derives game version from selected log file.
 	* Fixed rare crash when leaving alliance.
 	* Fixed rare crash when trying to save game during fatal handling, but faction is not member of any alliance.
 	* Fixed crash when finishing terraformer construction by moving the vehicle into neighboring storage.

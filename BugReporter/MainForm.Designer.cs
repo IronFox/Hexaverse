@@ -170,7 +170,6 @@
 			this.gameVersion.Name = "gameVersion";
 			this.gameVersion.Size = new System.Drawing.Size(375, 20);
 			this.gameVersion.TabIndex = 13;
-			this.gameVersion.TextChanged += new System.EventHandler(this.gameVersion_TextChanged);
 			// 
 			// statusStrip
 			// 
@@ -186,7 +185,7 @@
 			// toolStripStatusLabel
 			// 
 			this.toolStripStatusLabel.Name = "toolStripStatusLabel";
-			this.toolStripStatusLabel.Size = new System.Drawing.Size(455, 17);
+			this.toolStripStatusLabel.Size = new System.Drawing.Size(486, 17);
 			this.toolStripStatusLabel.Spring = true;
 			this.toolStripStatusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 			// 
