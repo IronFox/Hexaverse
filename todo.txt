@@ -7,8 +7,8 @@ Permanent checklist for new tutorial maps:
 	Only one terraformer (blow up the other)
 
 
-connect via tcp if steam lobby system fails
-undo (abandoned) when resuming faction
+steam: connect via tcp if steam lobby system fails
+steam: undo (abandoned) when resuming faction
 move camera out of terrain
 move horizontally to submerged vehicle store
 base fog on average terrain height
@@ -31,7 +31,7 @@ dieing factions should not be disconnected, review current statistics?
 
 emergency transfer of resources to other storage when storage is destroyed
 
-highlight possible movement targets (distance heatmap)
+highlight possible movement targets (distance heatmap); ranged areas: build coarse geometry and highlight edges to cells that cannot be reached, that demand a drop, that take more rounds to reach
 explode uranium storages
 
 
