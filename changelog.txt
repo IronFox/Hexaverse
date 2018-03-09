@@ -1,5 +1,5 @@
 v0.7.7
-	> Bug Reporter now presents all found log files, and derives game version from selected log file.
+	> Bug reporter now presents all found log files, and derives game version from selected log file.
 	> Bug reporter now inserts fatal messages into bug description, and removes previous fatal message if found.
 	* Fixed rare crash when leaving alliance.
 	* Fixed rare crash when trying to save game during fatal handling, but faction is not member of any alliance.
