@@ -6,6 +6,7 @@ v0.7.7
 	* Fixed crash when finishing terraformer construction by moving the vehicle into neighboring storage.
 	* Fixed rare crash when connection is lost before statistics can be sent to dead faction.
 	* Fixed bug reporter not detecting server fatal messages.
+	* Fixed bug reporter log file upload.
 
 v0.7.6	[Mar 4 2018]
 	+ Added new view button to hide sensor ranges.

@@ -541,20 +541,34 @@ namespace BugReporter
 				parameters.Add(new Tuple<string, string>("description", bugDescription.Text));
 				parameters.Add(new Tuple<string, string>("reproduction", reproductionDesc.Text));
 				parameters.Add(new Tuple<string, string>("gameVersion", gameVersion.Text));
-				if (logFile.SelectedItem != null && logFile.SelectedItem is LogFile)
-				{
-					var log = ((LogFile)logFile.SelectedItem);
-					if (log.Fatal != null)
-						parameters.Add(new Tuple<string, string>("fatalMessage", log.Fatal));
 
-					parameters.Add(new Tuple<string, string>("primaryLogFile", log + "\r\n" + log.Combined));
+				List<Task<LogFile>> loadTasks = new List<Task<LogFile>>();
+
+				if (logFile.SelectedItem != null && logFile.SelectedItem is FileID)
+				{
+					var id = ((FileID)logFile.SelectedItem);
+					loadTasks.Add(id.LoadFileAsync());
 
 					foreach (var item in logFileList.SelectedItems)
 					{
-						LogFile f = (LogFile)item;
-						parameters.Add(new Tuple<string, string>("logFile[]", f + "\r\n" + f.Combined));
+						FileID f = (FileID)item;
+						loadTasks.Add(f.LoadFileAsync());
 					}
 				}
+
+				for (int i = 0; i < loadTasks.Count; i++)
+				{
+					LogFile log = loadTasks[i].Result;
+					if (i == 0)
+					{
+						if (log.Fatal != null)
+							parameters.Add(new Tuple<string, string>("fatalMessage", log.Fatal));
+						parameters.Add(new Tuple<string, string>("primaryLogFile", log + "\r\n" + log.Combined));
+					}
+					else
+						parameters.Add(new Tuple<string, string>("logFile[]", log + "\r\n" + log.Combined));
+				}
+
 				uploadTask = ContactServerAsync(parameters, 0, false);
 			}
 			catch (Exception ex)
