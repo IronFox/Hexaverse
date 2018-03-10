@@ -10,7 +10,6 @@ Permanent checklist for new tutorial maps:
 steam: connect via tcp if steam lobby system fails
 steam: undo (abandoned) when resuming faction
 base fog on average terrain height
-ground level obstruction when building tower one level behind one wall build up where terraformer is
 find alternate server location service
 smarter placement of new mobile units out of vehicle plants (more in the intended direction)
 
@@ -188,6 +187,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: ground level obstruction when building tower one level behind one wall build up where terraformer is
 tested: spawn mobile unit from one hangar to another: vehicle store->vehicle store. not allowed
 fixed: move horizontally to submerged vehicle store
 done: move camera out of terrain
