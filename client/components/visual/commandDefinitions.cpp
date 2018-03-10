@@ -97,7 +97,7 @@ namespace Objects
 				if (plant.selectedBase && plant.selectedTurret)
 				{
 					static Buffer0<Objects::Choice>	choices;
-					Objects::GetProductionChoices(&plant,plant.selectedBase,choices);
+					Objects::GetProductionChoices(&plant,plant.GetSelectionPrototype(),choices);
 					static bool ignoreWarnings = false;
 					if (choices.IsNotEmpty() || ignoreWarnings)
 						ApplicationInterface::SignalConstructionBegin(plant.id, {plant.selectedBase->constName, plant.selectedTurret->constName});

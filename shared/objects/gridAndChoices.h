@@ -67,7 +67,8 @@ namespace Objects
 	/**
 	Checks if there is a hangar in the given location that can handle a given mobile entity moving in
 	*/
-	PHangar			AccessibleHangarHere(const Grid::LCellIdI&location, const MobileEntity&);
+	PHangar			AccessibleHangarHere(const Grid::LCellIdI&location, const MobileEntity&m, const OwnerParameter&mOwner);
+	inline PHangar	AccessibleHangarHere( const Grid::LCellIdI&location, const MobileEntity&m)	{return AccessibleHangarHere(location,m,m.owner);}
 
 
 
@@ -118,7 +119,7 @@ namespace Objects
 	@param producer Entity that has completed the production
 	@param production Base type of the vehicle that was produced
 	*/
-	void			GetProductionChoices(const WorldEntity*producer,Component::VehicleBase*production,
+	void			GetProductionChoices(const WorldEntity*producer,const PVehicle&production,
 							BasicBuffer<Choice>&choices);
 
 

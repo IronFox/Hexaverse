@@ -459,8 +459,28 @@ namespace Objects
 			parent->RegisterChange(Objects::WorldEntity::AutomationChanged,0);
 		}
 
+		PMobileEntity			MobileEntityProducer::WorkItem::GetPrototype() const
+		{
+			return producing;
+		}
 
 	#else
+
+
+		PMobileEntity		MobileEntityProducer::WorkItem::GetPrototype() const
+		{
+			if (prototype)
+				return prototype;
+
+			if (!base || !turret)
+				return nullptr;
+			static PVehicle instance(new Vehicle(nullptr,Grid::LCellIdI::Invalid,&Component::catbase,&Component::armored));
+			instance->base = base;
+			instance->turret = turret;
+			return instance;
+		}
+
+
 		Component::VehicleBase*				MobileEntityProducer::GetActiveProductionBase() const
 		{
 			return queue.IsNotEmpty() ? queue.First().base : nullptr;

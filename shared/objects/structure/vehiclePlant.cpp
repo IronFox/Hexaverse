@@ -64,6 +64,25 @@ namespace Objects
 	#else
 	
 	
+		PVehicle				VehiclePlant::GetProductionPrototype() const
+		{
+			if (queue.IsEmpty())
+				return nullptr;
+			return To<Vehicle>::Cast( queue.First().GetPrototype() );
+		}
+
+		PVehicle				VehiclePlant::GetSelectionPrototype() const
+		{
+			if (!selectedBase || !selectedTurret)
+				return nullptr;
+			static PVehicle instance(new Vehicle(nullptr,Grid::LCellIdI::Invalid,&Component::catbase,&Component::armored));
+			instance->base = selectedBase;
+			instance->turret = selectedTurret;
+			instance->owner = owner;
+			return instance;
+		}
+
+
 		Component::VehicleBase*					VehiclePlant::GetProductionBase() const
 		{
 			return queue.IsNotEmpty() ? queue.First().base : nullptr;
