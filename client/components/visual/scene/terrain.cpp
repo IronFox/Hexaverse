@@ -503,12 +503,7 @@ namespace VisualTerrain
 	*/
 	struct TFamily
 	{
-		struct TBounds
-		{
-			M::Box<>						boundingBox;
-			M::Sphere<>					boundingSphere;
 
-		};
 
 		struct TData
 		{
@@ -775,21 +770,28 @@ namespace VisualTerrain
 	//	display.Render(blockInstruction, cells[stackID].voffset, cells[stackID].numCorners * 3);
 	//}
 
+	bool	BoxCheck(const TBounds&bounds, const M::TVec3<>&b, const M::TVec3<>&d, float dist)
+	{
+		return M::Obj::DetectOpticalBoxIntersection(bounds.boundingBox,b,d,dist);
+	}
+	bool	SphereCheck(const TBounds&bounds, const M::TVec3<>&b, const M::TVec3<>&d, float dist)
+	{
+		return M::Obj::DetectSphereEdgeIntersection(bounds.boundingSphere,b,d+d*dist);
+	}
+
 	static const count_t HullTestBatch = 16;
-	bool	TestHullIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float&distance, M::TVec3<>&outNormal, bool includeWater, bool ignoreBackFacing/*=true*/, bool ignoreBoundingBoxes/*=false*/)
+	bool	TestHullIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float&distance, M::TVec3<>&outNormal, bool includeWater, bool ignoreBackFacing/*=true*/, FBoundsCheck boundsCheck, count_t*outNumCheckedFamilies/*=nullptr*/)
 	{
 		bool rs = false;
 		Sys::SpinLock lock;
+		count_t numChecked = 0;
 		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 		{
 			const TFamily&fam = family[k];
-			float dst = distance;
 			const TFamily::TData&dat = fam.normal;
-			if (ignoreBoundingBoxes 
-				|| M::Obj::DetectSphereEdgeIntersection(dat.terrainBounds.boundingSphere,b,d+d*distance)
-				//|| M::Obj::DetectOpticalBoxIntersection(dat.terrainBounds.boundingBox,b,d,dst)
-				)
+			if (boundsCheck(dat.terrainBounds,b,d,distance))
 			{
+				numChecked++;
 				if (includeWater)
 				{
 					const auto*indices = dat.water.indices.pointer();
@@ -869,6 +871,8 @@ namespace VisualTerrain
 				}
 			}
 		}
+		if (outNumCheckedFamilies)
+			(*outNumCheckedFamilies) += numChecked;
 		return rs;
 	}
 

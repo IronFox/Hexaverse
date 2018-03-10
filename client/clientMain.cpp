@@ -1172,7 +1172,6 @@ bool loop()
 		AI::Process(0.5f);
 		Sys::DisableConsoleQuickEdit();
 	#else
-		DebugCheckCamera();
 
 
 		#if 1
@@ -1208,64 +1207,7 @@ bool loop()
 
 	#ifdef HAS_WINDOW
 
-		if (!HUD::WindowStack::IsModal() && !Camera::locked)
-		{
-			{
-				if (Engine::mouse.buttons.right_down || Engine::mouse.buttons.middle_down)
-				{
-					Camera::AbortTargetedTranslation();
-					if (!InputControl::rightMouseDragged)
-					{
-						float2 delta = Engine::mouse.location.absolute - InputControl::rightMouseDragFrom;
-						if (delta.GetLength() > 20.f)
-						{
-							InputControl::rightMouseDragged = true;
-						}
-					}
-					if (InputControl::rightMouseDragged)
-					{
-						float2 delta = (Engine::mouse.location.windowRelative - Engine::mouse.previous_location.windowRelative);
-						InputControl::rightMouseDragged = true;
-						delta.x *= Engine::mouse.speed.x * -100.f;
-						delta.y *= Engine::mouse.speed.y * -100.f;
-						delta *= 0.5f;
-						Camera::Translate(delta * -Camera::scene.retraction.z / Camera::GetCurrentOrbit());
-					}
-				}
-			}
-
-			float2 change;
-			if (Engine::input.pressed[Key::A] || Engine::input.pressed[Key::Q])
-			{
-				change.x --;
-			}
-			if (Engine::input.pressed[Key::D] || Engine::input.pressed[Key::E])
-			{
-				change.x++;
-			}
-			if (Engine::input.pressed[Key::W])
-			{
-				change.y--;
-			}
-			if (Engine::input.pressed[Key::S])
-			{
-				change.y++;
-			}
-			if (!Vec::zero(change))
-			{
-				//Vec::setLen(change, Engine::timing.delta*100.f);
-				Vec::mult(change,Engine::timing.delta*100.f);
-				Camera::Rotate(change);
-			}
-			if (Engine::input.pressed[Key::Up])
-			{
-				Camera::Event::Zoom(Engine::timing.delta);
-			}
-			if (Engine::input.pressed[Key::Down])
-			{
-				Camera::Event::Zoom(-Engine::timing.delta);
-			}
-		}
+		
 
 		GlobalEvents::frameAfterCamera();	//camera is in frameBegin()
 
@@ -1559,6 +1501,12 @@ bool loop()
 
 				textout.SetColor(1,1,1);
 				textout.MoveTo(0,1);
+
+
+				#ifdef _DEBUG
+					textout << Camera::Statistics::noCheckFamilies << ", s"<<Camera::Statistics::sphereCheckFamilies<<", b"<<Camera::Statistics::boxCheckFamilies<<nl;
+				#endif
+
 				textout << (Network::amOnline? "online" : "offline")<<", "<< (Network::haveFaction ? "logged in" : "not logged in")<< nl;
 				textout << "Hello "<<Network::chosenNickname<<nl;
 				if (Network::amOnline)
@@ -1634,7 +1582,6 @@ bool loop()
 	
 
 
-			DebugCheckVector(scene.location,-1000,1000);
 		
 			HUD::ResourceGauges::Render();
 			HUD::HexGrid::RenderCommands(HUD::HexGrid::GetGridConfig());
