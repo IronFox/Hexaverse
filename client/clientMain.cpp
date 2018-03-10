@@ -1119,7 +1119,7 @@ namespace ApplicationInterface
 
 	)
 	{
-		float3 center = Camera::scene.GetAbsoluteLocation() - Camera::scene.GetViewingDirection() * shadowRadius;
+		float3 center = Camera::scene.GetAbsoluteLocation() + Camera::scene.GetForwardDirection() * shadowRadius;
 		Vec::setLen(center,Grid::ToRadius(0));
 
 		const float3&up = Lighting::GetSunDirection();
@@ -2223,7 +2223,7 @@ int main( int argc, const char* argv[])
 						Engine::input.Bind(Key::X,[]()
 						{
 							const float baseRadius = 16;
-							const float3 center = Camera::scene.GetAbsoluteLocation() - Camera::scene.GetViewingDirection() * baseRadius*2;
+							const float3 center = Camera::scene.GetAbsoluteLocation() + Camera::scene.GetForwardDirection() * baseRadius*2;
 
 							Explosions::InitExplosion(center,false,baseRadius * 4, Objects::ExplosionTime(baseRadius));
 						});
