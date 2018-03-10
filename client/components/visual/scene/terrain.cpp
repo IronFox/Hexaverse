@@ -776,7 +776,7 @@ namespace VisualTerrain
 	}
 	bool	SphereCheck(const TBounds&bounds, const M::TVec3<>&b, const M::TVec3<>&d, float dist)
 	{
-		return M::Obj::DetectSphereEdgeIntersection(bounds.boundingSphere,b,d+d*dist);
+		return M::Obj::DetectOpticalSphereIntersection(bounds.boundingSphere,b,d,dist);
 	}
 
 	static const count_t HullTestBatch = 16;
