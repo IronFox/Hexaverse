@@ -360,7 +360,7 @@ namespace Objects
 			return false;
 
 		float d2 =distance;
-		if (!_oDetectOpticalBoxIntersection(boundingBox,b,d,d2))
+		if (!M::Obj::DetectOpticalBoxIntersection(boundingBox,b,d,d2))
 			return false;
 		//Mat::Transform(system,b,test);
 		bool rs = false;

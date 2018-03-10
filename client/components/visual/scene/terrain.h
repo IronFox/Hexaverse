@@ -10,7 +10,7 @@ namespace VisualTerrain
 {
 
 	index_t	TestLowGridIntersection(M::TVec3<> b, M::TVec3<> d, float radius, float&distance);
-	bool	TestHullIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float&distance, M::TVec3<>&outNormal, bool includeWater);
+	bool	TestHullIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float&distance, M::TVec3<>&outNormal, bool includeWater, bool ignoreBackFacing=true, bool ignoreBoundingBoxes=false);
 
 
 
