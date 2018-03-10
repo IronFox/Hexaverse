@@ -129,14 +129,18 @@ namespace Objects{ namespace Pathfinding
 	}
 
 	template <bool IgnoreStructuresAtDestination>
-	bool ValidDestinationOf(const World::Data&world,const Vehicle&v, const Grid::LCellIdI&location, bool isDestination, bool ignoreWater, bool doFloat)
+	bool ValidDestinationOf( const World::Data&world,const Vehicle&v, const Grid::LCellIdI&location, const Grid::LCellIdI&finalDestination, bool ignoreWater, bool doFloat)
 	{
-		return 
-			(IsClear(world,location,v.owner, GetEntityTime(v)) || (isDestination && (IgnoreStructuresAtDestination || AccessibleHangarHere(location,v))))
-			&&
-			(v.CanStandOn(world,location-1,ignoreWater,doFloat))
-			&&
-			!Grid::AffectedByEMP(location);
+		if (Grid::AffectedByEMP(location))
+			return false;
+		if (IsClear(world,location,v.owner, GetEntityTime(v)))
+			return v.CanStandOn(world,location-1,ignoreWater,doFloat);
+
+		auto hangar = AccessibleHangarHere(location,v);
+		if (hangar && (location == finalDestination || hangar == AccessibleHangarHere(finalDestination,v)))
+			return true;
+
+		return IgnoreStructuresAtDestination;
 	}
 
 
@@ -175,8 +179,7 @@ namespace Objects{ namespace Pathfinding
 					if (!okay)
 						continue;
 				}
-				bool isDest = cell == destination;
-				bool valid = ValidDestinationOf<false>(world,*v,cell, isDest, false, false);
+				bool valid = ValidDestinationOf<false>(world,*v,cell, destination, false, false);
 				if (!valid)
 				{
 					if (j <= 0 && !world.LowCellIsClear(cell))
@@ -318,7 +321,7 @@ namespace Objects{ namespace Pathfinding
 				if (!okay)
 					continue;
 
-				if ( ValidDestinationOf<true>(world,*v,cell, cell == destination, ignoreWater, true) )
+				if ( ValidDestinationOf<true>(world,*v,cell, destination, ignoreWater, true) )
 				{
 					(*outChoices++) = cell;
 					rs++;
@@ -359,7 +362,7 @@ namespace Objects{ namespace Pathfinding
 				if (!okay)
 					continue;
 
-				if ( ValidDestinationOf<true>(world,*v,cell, cell == destination, ignoreWater, false) )
+				if ( ValidDestinationOf<true>(world,*v,cell, destination, ignoreWater, false) )
 //				if ((cell == destination || world.LowCellIsClear(cell)) && (v->CanStandOn(world,cell-1,ignoreWater)))
 				{
 					(*outChoices++) = cell;
@@ -393,7 +396,7 @@ namespace Objects{ namespace Pathfinding
 							break;
 						}
 			}
-			if ( okay && ValidDestinationOf<true>(world,*v,cell, cell == destination, ignoreWater, false) )
+			if ( okay && ValidDestinationOf<true>(world,*v,cell, destination, ignoreWater, false) )
 //				if ((cell == destination || world.LowCellIsClear(cell)) && (v->CanStandOn(world,cell-1,ignoreWater)))
 			{
 				(*outChoices++) = cell;
@@ -573,7 +576,7 @@ namespace Objects{ namespace Pathfinding
 		#endif
 		
 
-		if (!ValidDestinationOf<false>(world,*vehicle,to,true,false, false))
+		if (!ValidDestinationOf<false>(world,*vehicle,to,to,false, false))
 			return false;
 
 		//if (!vehicle->CanStandOn(world,to -1,false) || 

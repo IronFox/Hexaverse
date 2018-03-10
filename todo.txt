@@ -9,7 +9,6 @@ Permanent checklist for new tutorial maps:
 
 steam: connect via tcp if steam lobby system fails
 steam: undo (abandoned) when resuming faction
-move horizontally to submerged vehicle store
 base fog on average terrain height
 ground level obstruction when building tower one level behind one wall build up where terraformer is
 find alternate server location service
@@ -190,6 +189,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: move horizontally to submerged vehicle store
 done: move camera out of terrain
 fixed: bug reporter: does not upload any files
 fixed: bug reporter: scans in ai/logs even if doesn't exist, message box, continues, empty log uploaded

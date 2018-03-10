@@ -33,7 +33,7 @@ namespace Objects
 		be ever more than 1.
 		It must also be increased if vehicle types can ever float freely.
 		*/
-		typedef TWaysTemplate<Grid::LCellIdI,1>	TWays;	//TWays MaxLevels must always be >= 1
+		typedef TWaysTemplate<Grid::LCellIdI,2>	TWays;	//TWays MaxLevels must always be >= 1
 		typedef TWaysTemplate<UINT32,1>			TOrbitalWays;	//TOrbitalWays MaxLevels must always be == 1
 
 
