@@ -554,14 +554,28 @@ namespace Animation
 		ASSERT__(v);
 		int oldHeight = v->location.height;
 
-		bool locationChanged = v->storedIn.expired() 
+		const bool locationChanged = v->storedIn.expired() 
 								&& v->location != vs.entityState.location 
 								&& vs.entityState.location != Grid::LCellIdI::Invalid;
-		if (locationChanged)
+		const auto info = vs.myMobileEntity.Get0();
+		const bool relocateToStorage = info && info->storedIn.Get0();
+
+		if (locationChanged && !relocateToStorage)
 		{
 			LogEvent(EventClass::Preset::debug,v.get(), "ApplyState(): Updating location: "+ToString(v->location)+"->"+ToString(vs.entityState.location));
-			ASSERT3__(v->preAnimationLocation == v->location, v->GetName(), v->preAnimationLocation, v->location);
-			v->Relocate(vs.entityState.location,false);	//this moves sensors. not good during animation phase. however, this is a rare and isolated process (not part of a sequence of updates)
+			/*
+			This moves sensors. May occur during animation phase (e.g. Move->*Store)
+			*/
+			if (!insertIntoGridLater.IsSet(v->id))
+			{
+				/*
+				No motion has happened during the local animation phase, or currently not in any phase
+				*/
+				ASSERT3__(v->preAnimationLocation == v->location, v->GetName(), v->preAnimationLocation, v->location);
+				v->Relocate(vs.entityState.location,false);
+			}
+			else
+				v->location = vs.entityState.location;	//Motioned happend before. Just update location
 		}
 		v->health = vs.entityState.health;
 		v->unstable = (vs.entityState.entityStateFlags & Protocol::EntityStateFlags::IsUnstable) != 0;
@@ -586,7 +600,6 @@ namespace Animation
 
 		Objects::PWorldEntity storeIn;
 		Objects::PHangar storeInHangar;
-		auto info = vs.myMobileEntity.Get0();
 		if (info)
 		{
 			#ifndef ONE_COMPOUND_PER_FACTION
@@ -740,7 +753,10 @@ namespace Animation
 				if (currentlyStoredIn)
 					currentlyStoredIn->Lose(veh);
 				else
+				{
 					insertIntoGridLater.Unset(v->id);
+					v->preAnimationLocation = v->location;
+				}
 				StoreLocally(storeInHangar,veh,f,false);
 				ASSERT1__(!v->isInsertedIntoGrid,v->GetName());	//should never happen. If failed, StoreLocally would have thrown an exception
 

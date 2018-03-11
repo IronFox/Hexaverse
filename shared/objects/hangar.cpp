@@ -153,13 +153,14 @@ namespace Objects
 		}
 		LogEvent(EventSignificance::Common,e.get()," Now stored in "+ToEntity().GetName());
 		e->storedIn = sharedSelf;
+		e->location = ToEntity().location;
 
 		stored.Append().entity = e;
 
 
 		#ifndef CLIENT
 			//RegisterChange(StorageChanged,atTime);	might be irrelevant. let's see
-			e->RegisterChange(WorldEntity::StorageChanged,atTime);
+			e->RegisterChange(WorldEntity::changeType_t(  WorldEntity::StorageChanged | WorldEntity::PositionChanged ),atTime);
 		#endif
 
 		ASSERT2__(!e->isInsertedIntoGrid,ToEntity().GetName(), e->GetName());

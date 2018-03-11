@@ -242,10 +242,7 @@ namespace Objects
 			{
 				PHangar s = AccessibleHangarHere(cell,*this);
 				if (s && s->Store(To<Vehicle>::Cast(shared_from_this()),entityTime))
-				{
-					location = s->ToEntity().location;
 					return MobilePlacementResult::EnteredHangar;
-				}
 
 				if (failIsFatal)
 				{

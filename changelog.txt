@@ -13,6 +13,7 @@ v0.7.7
 	* Fixed bug reporter log file upload.
 	* Fixed main menu not automatically closing when pressing buttons.
 	* Fixed entering partially submerged vehicle stores.
+	* Fixed client crash when finishing construction and entering vehicle store with a terraformer during the same round.
 
 v0.7.6	[Mar 4 2018]
 	+ Added new view button to hide sensor ranges.
