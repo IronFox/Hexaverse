@@ -8,6 +8,7 @@ Permanent checklist for new tutorial maps:
 
 	
 introduce two independent build versions: client and server, and don't match them via network
+change x32 back to x86
 
 steam: connect via tcp if steam lobby system fails. does not relate to lobbies. cannot reproduce. some explanations:
 	client manages to connect.
