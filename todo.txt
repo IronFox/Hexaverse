@@ -8,7 +8,6 @@ Permanent checklist for new tutorial maps:
 
 
 steam: connect via tcp if steam lobby system fails
-steam: undo (abandoned) when resuming faction
 base fog on average terrain height
 steam: find alternate server location service
 
@@ -184,6 +183,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: undo (abandoned) when resuming faction
 tested: spawn produced mobile unit into nearby hangar: vehicle plant->cargo plane, plane factory->vehicle store, plane factory->cargo plane. no issues
 tested: spawn mobile unit from one hangar to another: cargo plane->vehicle store, vehicle store->cargo plane. was disallowed before. now working
 tested: construct building with terraformer, finish by directly moving into neighboring transport plane. caused client crash. fixed

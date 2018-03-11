@@ -975,6 +975,9 @@ namespace Network
 				#endif
 			}
 
+			if (!amSpectator)
+				Network::Channels::changeMyName.SendTo(Network::client,chosenNickname);
+
 			#ifdef HAS_WINDOW
 				if (amSpectator)
 				{
