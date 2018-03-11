@@ -1352,7 +1352,7 @@ namespace Game
 			for (index_t i = 0; i < Objects::Faction::all.Count(); i++)
 			{
 				Objects::PFaction faction = Objects::Faction::all[i];	//only player factions here: nexus is not included in ::all
-				if (faction)
+				if (faction && !faction->isDead)
 				{
 					String whyNot;
 					bool canLive = faction->CanLive(whyNot);
