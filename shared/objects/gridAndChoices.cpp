@@ -635,6 +635,15 @@ namespace Objects
 			return h->GetLoad() < h->GetMaximumLoad();
 		if (!World::actual.LowCellIsClear(cell) || !NothingBlockingHere(cell,true))
 			return false;
+		if (cell.height > Grid::CellStack::TopHeight)
+		{
+			int rs = 0;
+			if (!entity->CanSpawnAboveGrid(rs) || rs != cell.height)
+				return false;
+		}
+		else
+			if (!entity->CanSpawnInGrid())
+				return false;
 		return !entity->IsVehicle() || To<Vehicle>::Cast(entity)->CanStandOn(World::actual,cell-1,false,false);
 	}
 
