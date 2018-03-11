@@ -10,9 +10,8 @@ Permanent checklist for new tutorial maps:
 steam: connect via tcp if steam lobby system fails
 steam: undo (abandoned) when resuming faction
 base fog on average terrain height
-find alternate server location service
+steam: find alternate server location service
 
-test: spawn produced mobile unit into nearby hangar: vehicle plant->vehicle store, alliance level
 test: plane factories and vehicle stores
 test: construct building with terraformer, finish by directly moving into neighboring transport plane
 test: spawn produced mobile unit into nearby hangar: vehicle plant->cargo plane, plane factory->vehicle store, plane factory->cargo plane
@@ -189,6 +188,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+tested: spawn produced mobile unit into nearby hangar: vehicle plant->vehicle store, alliance level. no issues
 done: smarter placement of new mobile units out of vehicle plants (more in the intended direction)
 fixed: ground level obstruction when building tower one level behind one wall build up where terraformer is
 tested: spawn mobile unit from one hangar to another: vehicle store->vehicle store. not allowed
