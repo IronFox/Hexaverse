@@ -182,9 +182,17 @@ namespace Objects
 				return PMobileEntity();
 			}
 
+			
+
+
 			PMobileEntity v = CompleteProduction(t);
 			//static Random random;
 			Grid::LCellIdI c = movementChoices[parent->entityRandom.NextIndex(movementChoices.Count())].location;
+			if (gatheringPoint.current != Grid::LCellIdI::Invalid)
+			{
+				if (movementChoices.Contains(gatheringPoint.current))
+					c = gatheringPoint.current;
+			}
 
 			MobilePlacementResult rs = v->PlaceExactlyAt(c,0,0,false,false);
 			if (Failed(rs))
