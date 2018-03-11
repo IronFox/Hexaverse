@@ -78,7 +78,7 @@ namespace Objects
 
 			source.owner->VisitVisibleForeignEntities([&source,&candidates](const PWorldEntity&e)
 			{
-				if (e->IsIndestructible() || source.owner->IsAlliedWith(e->owner))
+				if (e->IsIndestructible() || source.owner->IsAlliedWith(e->owner) || Grid::AffectedByEMP(e->location))
 					return;
 				candidates << e;
 			});
@@ -926,7 +926,7 @@ namespace Objects
 	}
 
 	
-	int		FindApplicableGround(const World::Data&world, const Grid::LCellIdI&cell, bool canStandOnWater, bool canStandOnLava)
+	int		FindApplicableGround( const World::Data&world, const Grid::LCellIdI&cell, bool canStandOnWater, bool canStandOnLava)
 	{
 		#ifdef HYBRID_GRID
 			UINT32 finer = Grid::low.grid.GetCell(cell.stackID).higherEquivalent;
