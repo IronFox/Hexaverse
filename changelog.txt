@@ -1,4 +1,4 @@
-v0.7.7
+v0.7.7	[Mar 11 2018]
 	> Bug reporter now presents all found log files, and derives game version from selected log file.
 	> Bug reporter now inserts fatal messages into bug description, and removes previous fatal message if found.
 	> Camera can no longer enter non-clipped terrain.
