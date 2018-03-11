@@ -638,8 +638,7 @@ namespace Objects
 		if (cell.height > Grid::CellStack::TopHeight)
 		{
 			int rs = 0;
-			if (!entity->CanSpawnAboveGrid(rs) || rs != cell.height)
-				return false;
+			return entity->CanSpawnAboveGrid(rs) && rs == cell.height;	//must NOT go into CanStandOn() when above grid. That makes no sense. So return here, whatever the result
 		}
 		else
 			if (!entity->CanSpawnInGrid())
