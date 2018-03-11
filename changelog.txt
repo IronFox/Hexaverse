@@ -3,7 +3,7 @@ v0.7.7
 	> Bug reporter now inserts fatal messages into bug description, and removes previous fatal message if found.
 	> Camera can no longer enter non-clipped terrain.
 	> Vehicle plants can now deploy directly into vehicle stores.
-	> Vehicle plants with a spawn point put on top of a neighboring vehicle store always directly deploy there.
+	> Vehicle plants with a gathering point try to be smarter about where they deploy new vehicles.
 	* Fixed rare crash when leaving alliance.
 	* Fixed rare crash when trying to save game during fatal handling, but faction is not member of any alliance.
 	* Fixed crash when finishing terraformer construction by moving the vehicle into neighboring storage.

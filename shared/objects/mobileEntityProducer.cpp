@@ -187,12 +187,28 @@ namespace Objects
 
 			PMobileEntity v = CompleteProduction(t);
 			//static Random random;
-			Grid::LCellIdI c = movementChoices[parent->entityRandom.NextIndex(movementChoices.Count())].location;
+			Grid::LCellIdI c;
 			if (gatheringPoint.current != Grid::LCellIdI::Invalid)
 			{
 				if (movementChoices.Contains(gatheringPoint.current))
 					c = gatheringPoint.current;
+				else
+				{
+					
+					float distance = std::numeric_limits<float>::max();
+					foreach (movementChoices,choice)
+					{
+						float d = Grid::GetQuadraticGeometricDistance(choice->location,gatheringPoint.current);
+						if (d < distance)
+						{
+							c = choice->location;
+							distance = d;
+						}
+					}
+				}
 			}
+			else
+				c = movementChoices[parent->entityRandom.NextIndex(movementChoices.Count())].location;	//any is good
 
 			MobilePlacementResult rs = v->PlaceExactlyAt(c,0,0,false,false);
 			if (Failed(rs))
