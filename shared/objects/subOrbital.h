@@ -28,7 +28,15 @@ namespace Objects
 
 			struct Detail
 			{
-				static int			WalkStack(const Grid::CellStack&stack, bool failOnStructureCount);
+				enum class Result
+				{
+					ReachedGround,
+					StoppedAtStructure,
+					NoFreeCellFound,
+					NoGroundFound,
+				};
+
+				static Result		WalkStack(const Grid::CellStack&stack, bool stopOnStructure, int&outHeight);
 
 			};
 
@@ -42,10 +50,8 @@ namespace Objects
 			static count_t			CountTurretOccurrences(const OwnerParameter&,Component::Turret*);
 
 
-			int						GetCentralGroundHeight() const;
-			static int				GetCentralGroundHeight(const Grid::LCellIdI&location);
-			int						GetLandingHeight() const	{return GetLandingHeight(location);}
-			static int				GetLandingHeight(const Grid::LCellIdI&location);
+			int						GetLandingHeight() const	{return GetLandingHeight(location,*this);}
+			static int				GetLandingHeight(const Grid::LCellIdI&location, const Plane&p);
 
 
 			#ifndef CLIENT
@@ -287,6 +293,7 @@ namespace Objects
 			virtual const WorldEntity&	ToEntity() const override {return *this;}
 			virtual WorldEntity&		ToEntity() override {return *this;}
 			virtual count_t				GetLoad() const override { return this->stored.Count(); }
+			virtual count_t				GetMaximumLoad() const override {return MaxStorage;}
 			virtual bool	CanStoreType(const MobileEntity&e) const override {return e.IsVehicle() && !e.IsHangar();}
 			virtual void	StoreLocallyFromImport(const PMobileEntity&e) override;
 			#ifndef CLIENT

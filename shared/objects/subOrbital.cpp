@@ -94,65 +94,96 @@ namespace Objects
 
 
 
-
-		/*static*/ int				Plane::GetCentralGroundHeight(const Grid::LCellIdI&location)
-		{
-			UINT32 fine = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
-			return Detail::WalkStack(World::actual.GetStack(fine),false);
-		}
-
-
-		int						Plane::GetCentralGroundHeight() const
-		{
-			return GetCentralGroundHeight(location);
-		}
-
-
-		/*static*/ int			Plane::Detail::WalkStack(const Grid::CellStack&stack, bool failOnStructureCount)
+		/*static*/ Plane::Detail::Result		Plane::Detail::WalkStack(const Grid::CellStack&stack, bool stopOnStructure, int&outHeight)
 		{
 			UINT32 h;
+			bool stoppedAtStructure = false;
 			for (h = Grid::CellStack::Range-1; h < Grid::CellStack::Range; h--)
 			{
 				const Grid::CellStack::Cell&c = stack.volumeCell[h];
 				if (c.content != Grid::Content::Clear)
 					break;
+				if (stopOnStructure && c.structureCounter > 1)
+				{
+					stoppedAtStructure = true;
+					break;
+				}
 			}
 			h++;
 			if (h >= Grid::CellStack::Range-1)
-				return badHeight;
-			if (failOnStructureCount)
+				return Result::NoFreeCellFound;
+			if (h == 0)
 			{
-				const Grid::CellStack::Cell&c = stack.volumeCell[h];
-				if (c.structureCounter > 1)
-					return badHeight;
+				if (Grid::CellStack::bottom.content == Grid::Content::Clear)
+					return Result::NoGroundFound;
 			}
 
-			return Grid::CellStack::ToHeight(h);
-		
+			outHeight = Grid::CellStack::ToHeight(h);
+			return stoppedAtStructure ? Result::StoppedAtStructure : Result::ReachedGround;
 		}
 
 
-		/*static*/ int				Plane::GetLandingHeight(const Grid::LCellIdI&satelliteLocation)
+		/*static*/ int				Plane::GetLandingHeight(const Grid::LCellIdI&location, const Plane&p)
 		{
 			#ifdef HYBRID_GRID
-				UINT32 finer = Grid::low.grid.GetCell(satelliteLocation.stackID).higherEquivalent;
+				UINT32 finer = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
 				const auto&c = Grid::high.grid.GetCell(finer);
 			#else
-				UINT32 finer = who->location.stackID;
+				UINT32 finer = location.stackID;
 			#endif
-			int h = Detail::WalkStack(World::actual.GetStack(finer),true);
-			if (h == badHeight)
-				return badHeight;
+
+			bool checkForStructures = false;
+			int h = 0;
+			auto rs = Detail::WalkStack(World::actual.GetStack(finer),true,h);
+			switch (rs)
+			{
+				case Detail::Result::NoFreeCellFound:
+					return badHeight;	//no point continuing
+				case Detail::Result::NoGroundFound:
+					h = badHeight;	//maybe we'll find it somewhere else
+					break;
+				case Detail::Result::StoppedAtStructure:
+					checkForStructures = true;
+					break;
+			}
 			#ifdef HYBRID_GRID
 				for (int j = 0; j < c.neighborhood.numNeighbors; j++)
 				{
-					int h2 = Detail::WalkStack(World::actual.GetStack(c.neighborhood.neighborID[j]),true);
-					if (h2 == badHeight)
-						return badHeight;
-					h = std::max(h2,h);
+					int h2;
+					rs = Detail::WalkStack(World::actual.GetStack(c.neighborhood.neighborID[j]),true,h2);
+					switch (rs)
+					{
+						case Detail::Result::NoFreeCellFound:
+							return badHeight;	//no point continuing
+						case Detail::Result::NoGroundFound:
+							continue; //maybe we'll find it somewhere else
+						case Detail::Result::StoppedAtStructure:
+							if (h == badHeight || h2 > h)
+							{
+								h = h2;
+								checkForStructures = true;
+							}
+							break;
+						case Detail::Result::ReachedGround:
+							if (h == badHeight || h2 >= h)
+							{
+								h = h2;
+								checkForStructures = false;
+							}
+					}
 				}
 			#endif
-			return h <= Grid::CellStack::TopHeight ? h : badHeight;
+			if (h == badHeight)
+				return h;
+
+			if (checkForStructures)
+			{
+				auto hangar = AccessibleHangarHere(Grid::LCellIdI(location.stackID,h-1),p);
+				if (hangar)
+					return hangar->ToEntity().location.height;
+				return badHeight;
+			}
+			return h;
 		}
 
 
@@ -185,9 +216,9 @@ namespace Objects
 				
 				if (cell.height <= Grid::CellStack::TopHeight && !World::actual.LowCellIsClear(cell))
 				{
-					PHangar s = MobileDestinationStructureHere(cell,*this);
+					PHangar s = AccessibleHangarHere(cell,*this);
 					if (s && s->Store(To<Vehicle>::Cast(shared_from_this()),entityTime))
-						return MobilePlacementResult::EnteredStructure;
+						return MobilePlacementResult::EnteredHangar;
 
 					if (failIsFatal)
 					{
@@ -212,7 +243,7 @@ namespace Objects
 							if (!s != !t)
 							{
 								if (s && s->Store(To<Vehicle>::Cast(shared_from_this()),entityTime))
-									return MobilePlacementResult::EnteredStructure;
+									return MobilePlacementResult::EnteredHangar;
 								else if (t && t->Store(v,entityTime))
 									isGood = true;
 							}

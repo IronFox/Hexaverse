@@ -1402,12 +1402,15 @@ namespace Objects{ namespace Pathfinding
 			{
 				for (int h = std::min(to.height,from.height); h <= Grid::CellStack::TopHeight; h++)
 				{
+					const auto wayNode = Grid::LCellIdI(to.stackID,h);
 					#ifdef CLIENT
-						if (!World::actual.LowCellIsClear(Grid::LCellIdI(to.stackID,h)))
+						if (World::actual.LowCellIsClear(wayNode))
 					#else
-						if (!sat->owner->knownWorld.LowCellIsClear(Grid::LCellIdI(to.stackID,h)))
+						if (sat->owner->knownWorld.LowCellIsClear(wayNode))
 					#endif
-						return false;
+						continue;
+					if (AccessibleHangarHere(wayNode,*sat))
+						continue;
 				}
 				oPath.Append().cell = to;
 				oPath.Last().movementCostsFromPrevNode = 5;

@@ -537,7 +537,7 @@ namespace Objects
 						return;
 					Objects::SubOrbital::PPlane plane = To<Objects::SubOrbital::Plane>::Cast(selectedMobileEntity);
 					auto loc = GetPointOfOrigin(*plane);
-					int h = plane->GetLandingHeight(loc);
+					int h = plane->GetLandingHeight(loc,*plane);
 					if (h != badHeight)
 						ApplicationInterface::DirectTo(selectedMobileEntity, Grid::LCellIdI(loc.stackID, h), false, false);
 				}
@@ -548,7 +548,7 @@ namespace Objects
 						return CommandFlags::None;
 					Objects::SubOrbital::PPlane plane = To<Objects::SubOrbital::Plane>::Cast(selectedMobileEntity);
 					auto loc = GetPointOfOrigin(*selectedMobileEntity);
-					int h = plane->GetLandingHeight(loc);
+					int h = plane->GetLandingHeight(loc,*plane);
 					if (h != badHeight)
 						return CommandFlags::IsEnabled;
 					return CommandFlags::None;

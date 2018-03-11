@@ -2,6 +2,7 @@ v0.7.7
 	> Bug reporter now presents all found log files, and derives game version from selected log file.
 	> Bug reporter now inserts fatal messages into bug description, and removes previous fatal message if found.
 	> Camera can no longer enter non-clipped terrain.
+	> Planes can now land in vehicle stores.
 	> Vehicle plants can now deploy directly into vehicle stores.
 	> Vehicle plants with a gathering point try to be smarter about where they deploy new vehicles.
 	* Fixed rare crash when leaving alliance.
