@@ -110,7 +110,12 @@ namespace Loading
 			bool	Loop()
 			{
 				if (Engine::input.pressed[Key::Escape])
-					FATAL__("User abort during loading stage");
+				{
+					LogEvent(EventSignificance::Important,"User abort during loading stage");
+					Logging::End();
+					TerminateProcess(GetCurrentProcess(),0);	//self-terminate
+					FATAL__("User abort during loading stage");	//should not get here
+				}
 
 				if (tasks.Pop(t))
 				{
