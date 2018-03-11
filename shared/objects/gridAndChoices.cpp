@@ -1656,6 +1656,12 @@ namespace Objects
 	#else
 		bool					ProcessChoiceIntersection(const PWorldEntity&e, const Grid::LCellIdI&choice,  Vehicle::mode_t mode, const PMobileEntity&deployWhat)
 		{
+			if (deployWhat->lastDeployment == RuntimeConfig::roundNumber)
+			{
+				LogEvent(EventClass::Preset::commandRejected,e.get(),"Cannot redeploy "+deployWhat->GetNiceName()+" twice during one round. Try again next round");
+				return false;
+			}
+
 			Ctr::Buffer0<Choice>	movementChoices;
 			TChoiceVisualization vis;
 			GetChoices(e,deployWhat,mode,movementChoices,vis);

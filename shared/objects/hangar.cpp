@@ -3,6 +3,7 @@
 #include "mobileEntity.h"
 #include "gridAndChoices.h"
 #include "faction.h"
+#include <runtimeConfig.h>
 
 namespace Objects
 {
@@ -77,6 +78,7 @@ namespace Objects
 				LogEvent(EventClass::Preset::commandRejected,&self,"Failed to check out "+v->GetNiceName()+": "+error);
 				return;
 			}
+			v->lastDeployment = RuntimeConfig::roundNumber;
 		}
 		#endif
 
