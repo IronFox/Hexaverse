@@ -682,7 +682,12 @@ namespace Journal
 		Objects::PMobileEntity md = deploy && deploy->IsMobile() ? To<Objects::MobileEntity>::Cast(deploy) : Objects::PMobileEntity();
 		if (!Objects::ProcessChoiceIntersection(e,target,mode,md))
 		{
-			throw RoundException(CLOCATION, "Unable to handle choice intersection of "+e->GetName()+" with "+ToString(target)+" in mode "+String(int(mode))+", while deploying "+(md?md->GetName():""));
+			#ifdef _DEBUG
+				throw RoundException(CLOCATION, "Unable to handle choice of "+e->GetName()+" with "+ToString(target)+" in mode "+String(int(mode))+", while deploying "+(md?md->GetName():""));
+			#else
+				throw RoundException(CLOCATION, "Unable to handle choice of "+e->GetName()+": "+ToString(target));
+			#endif
+
 		}
 
 	}
