@@ -505,7 +505,7 @@ namespace Game
 
 
 
-		void SendStatisticsTo(TCP::Peer & peer, const Objects::PFaction & faction)
+		void SendStatisticsTo( TCP::Peer & peer, const Objects::PFaction & faction)
 		{
 			Objects::Statistics::EnterNetworkMode();
 			Channels::Statistics::beginSequence.SendTo(peer,faction->id);

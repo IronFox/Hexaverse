@@ -15,6 +15,7 @@ v0.7.7	[Mar 11 2018]
 	* Fixed entering partially submerged vehicle stores.
 	* Fixed client crash when finishing construction and entering vehicle store with a terraformer during the same round.
 	* Fixed '(abandoned)' nickname postfix sometimes remaining when continuing abandoned faction.
+	* Fixed warnings when spectating games with dead factions.
 
 v0.7.6	[Mar 4 2018]
 	+ Added new view button to hide sensor ranges.
