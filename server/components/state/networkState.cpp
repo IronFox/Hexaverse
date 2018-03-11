@@ -78,7 +78,7 @@ namespace Network
 					sockaddr_in addr;
 					int size = (int)sizeof (addr);
 					int bytes = recvfrom(s,(char*)buffer, sizeof(buffer), 0, (SOCKADDR *) & addr, &size);
-					LogEvent(EventSignificance::Debug,"Received heartbeat from "+TCP::ToString((const sockaddr_storage&)addr,size));
+					//LogEvent(EventSignificance::Debug,"Received heartbeat from "+TCP::ToString((const sockaddr_storage&)addr,size));
 					if (bytes <= 0)
 					{
 						if (s != INVALID_SOCKET)

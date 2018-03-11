@@ -6,8 +6,11 @@ Permanent checklist for new tutorial maps:
 	No survival conditions
 	Only one terraformer (blow up the other)
 
+build road to pathfinding is broken when under ground (perhaps only when close to the core?)
 	
 introduce two independent build versions: client and server, and don't match them via network
+change x32 back to x86
+projector clean build
 
 steam: connect via tcp if steam lobby system fails. does not relate to lobbies. cannot reproduce. some explanations:
 	client manages to connect.

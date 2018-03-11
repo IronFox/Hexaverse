@@ -1273,10 +1273,7 @@ namespace Network
 					EndSequence();
 				}
 
-				Objects::PFaction f = Objects::Faction::FindByID(id);
-
-				if (!f)
-					throw Except::Program::DataConsistencyFault(CLOCATION,"Unable to locate faction "+ToString(id));
+				Objects::PFaction f = ResolveFaction(id);
 
 				LogEvent(EventClass::Preset::common,"Starting statistics sequence on "+f->GetLogName());
 				target = f;

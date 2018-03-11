@@ -15,7 +15,12 @@ namespace Objects
 		typedef WorkingStructureT<VehiclePlant>	Super;
 
 
-
+		/*
+		This file is younger than the change to EnergyConsumption, so blame does not work.
+		I suspect this was intentional based on balancing considerations.
+		The tutorial message reflects the fact that the vehicle plant does not need energy.
+		So until there is reason to change this, it will not need energy.
+		*/
 		static const int			EnergyConsumption = 0;
 		static const int			DefaultProductionPerRound = 10;
 

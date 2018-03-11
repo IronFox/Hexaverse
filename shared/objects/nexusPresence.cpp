@@ -44,7 +44,7 @@ namespace NexusPresence
 		if (h == Objects::badHeight)
 			h = 0;	//just spawn it near median
 		static const int R = 5;
-		h = M::clamp(h,-Grid::CellStack::HalfRange + R + 1,Grid::CellStack::HalfRange - R - 2);
+		h = M::clamp(h,Grid::CellStack::BottomHeight+1,Grid::CellStack::TopHeight -2);
 
 		location.height = h;
 		auto port = Create<Objects::NexusPort>(nexusFaction,world, location);

@@ -89,7 +89,7 @@ namespace Objects
 
 			source.owner->VisitVisibleForeignEntities([&source,&candidates](const PWorldEntity&e)
 			{
-				if (e->IsIndestructible() || source.owner->IsAlliedWith(e->owner))
+				if (e->IsIndestructible() || source.owner->IsAlliedWith(e->owner) || Grid::AffectedByEMP(e->location))
 					return;
 				candidates << e;
 			});
@@ -980,7 +980,7 @@ namespace Objects
 	}
 
 	
-	int		FindApplicableGround(const World::Data&world, const Grid::LCellIdI&cell, bool canStandOnWater, bool canStandOnLava)
+	int		FindApplicableGround( const World::Data&world, const Grid::LCellIdI&cell, bool canStandOnWater, bool canStandOnLava)
 	{
 		#ifdef HYBRID_GRID
 			UINT32 finer = Grid::low.grid.GetCell(cell.stackID).higherEquivalent;
@@ -1739,7 +1739,7 @@ namespace Objects
 	#else
 		bool					ProcessChoiceIntersection(const PWorldEntity&e, const Grid::LCellIdI&choice,  Vehicle::mode_t mode, const PMobileEntity&deployWhat)
 		{
-			if (deployWhat->lastDeployment == RuntimeConfig::roundNumber)
+			if (deployWhat && deployWhat->lastDeployment == RuntimeConfig::roundNumber)
 			{
 				LogEvent(EventClass::Preset::commandRejected,e.get(),"Cannot redeploy "+deployWhat->GetNiceName()+" twice during one round. Try again next round");
 				return false;
