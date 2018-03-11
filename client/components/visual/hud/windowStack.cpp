@@ -215,6 +215,8 @@ namespace HUD
 
 		void	Show(const PWindow&window)
 		{
+			if (!window)
+				return;
 			VerifyIntegrity(CLOCATION);
 
 			auto top = GetTopMostWindow();
