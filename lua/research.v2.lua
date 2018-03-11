@@ -319,7 +319,7 @@ TurretConfig =
 	--Planes:
 	Raptor =
 	{
-		Cost = 80,
+		Cost = 120,
 		Weight = 10,	--defines movement speed: 100/Weight
 		HealthMultiplier = 5,	--directly equals health
 		ScanningRange = 7,
@@ -333,7 +333,7 @@ TurretConfig =
 	},
 	CargoPlane = 
 	{
-		Cost = 40,
+		Cost = 120,
 		Weight = 12,	--defines movement speed: 100/Weight
 		HealthMultiplier = 15,	--directly equals health
 		ScanningRange = 5,
@@ -343,7 +343,7 @@ TurretConfig =
 	},
 	SensorDrone = 
 	{
-		Cost = 10,
+		Cost = 40,
 		Weight = 11,	--defines movement speed: 100/Weight
 		HealthMultiplier = 4,	--directly equals health
 		ScanningRange = 11,
