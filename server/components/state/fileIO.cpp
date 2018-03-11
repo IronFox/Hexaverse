@@ -1638,8 +1638,13 @@ namespace FileIO
 			for (const Objects::PMobileEntity&v : insertIntoHangar)
 			{
 				Objects::PHangar s = To<Objects::Hangar>::DynamicCast(Objects::GetEntity(v->location));
-				ASSERT2__(s,v->GetName(),v->location);
-				s->StoreLocallyFromImport(v);
+				if (s)
+					s->StoreLocallyFromImport(v);
+				else
+				{
+					ASSERT__(!Objects::idMap.IsSet(v->id));
+					LogEvent(EventClass::Preset::error,"Unable to deploy '"+v->GetName()+"' into storage. Entity at given location does not exist or is not a hangar");
+				}
 			}
 			insertIntoHangar.Clear();
 

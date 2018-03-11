@@ -5,6 +5,7 @@ v0.7.7
 	> Planes can now land in vehicle stores.
 	> Vehicle plants can now deploy directly into vehicle stores.
 	> Vehicle plants with a gathering point try to be smarter about where they deploy new vehicles.
+	> Unit redeployment is now restricted to once per round.
 	* Fixed rare crash when leaving alliance.
 	* Fixed rare crash when trying to save game during fatal handling, but faction is not member of any alliance.
 	* Fixed crash when finishing terraformer construction by moving the vehicle into neighboring storage.

@@ -666,6 +666,27 @@ namespace Objects
 	}
 
 
+	bool	CanDeployHere( const Grid::LCellIdI&cell, const PMobileEntity&entity, const OwnerParameter&owner )
+	{
+		if (Grid::AffectedByEMP(cell))
+			return false;
+		auto h = AccessibleHangarHere(cell,*entity, owner);
+		if (h && h->ToEntity().location == cell)
+			return h->GetLoad() < h->GetMaximumLoad();
+		if (!World::actual.LowCellIsClear(cell) || !NothingBlockingHere(cell,true))
+			return false;
+		if (cell.height > Grid::CellStack::TopHeight)
+		{
+			int rs = 0;
+			if (!entity->CanSpawnAboveGrid(rs) || rs != cell.height)
+				return false;
+		}
+		else
+			if (!entity->CanSpawnInGrid())
+				return false;
+		return !entity->IsVehicle() || To<Vehicle>::Cast(entity)->CanStandOn(World::actual,cell-1,false,false);
+	}
+
 	void	GetProductionChoices( const WorldEntity*producer,const PVehicle&production,
 									Ctr::BasicBuffer<Choice>&choices)
 	{
@@ -723,16 +744,7 @@ namespace Objects
 				if (!okay)
 					continue;
 
-				bool validChoice = false;
-				auto h = AccessibleHangarHere(cell,*production, producer->owner);
-				if (h && h->ToEntity().location == cell)
-					validChoice = h->GetLoad() < h->GetMaximumLoad();
-				elif (World::actual.LowCellIsClear(cell) && NothingBlockingHere(cell,true)
-						&& production->CanStandOn(World::actual,cell-1,false,false)
-						&& !Grid::AffectedByEMP(cell)
-				)
-					validChoice = true;
-				if (validChoice)
+				if (CanDeployHere(cell,production,producer->owner))
 				{
 					choices << Choice(cell,0);
 				}
@@ -826,11 +838,8 @@ namespace Objects
 							for (int j = 0; j < n.numNeighbors; j++)
 							{
 								const Grid::LCellIdI candidate(n.neighborID[j],h);
-								if (World::actual.LowCellIsClear(candidate) && NothingBlockingHere(candidate,true) && !Grid::AffectedByEMP(candidate))
-								{
-									if (!deploying->IsVehicle() || To<Vehicle>::Cast(deploying)->CanStandOn(World::actual,candidate-1,false,false))
-										movementChoices << Choice(candidate,0);
-								}
+								if (CanDeployHere(candidate,deploying,entity.owner))
+									movementChoices << Choice(candidate,0);
 							}
 						}
 					}
@@ -843,15 +852,13 @@ namespace Objects
 						for (int j = 0; j < n.numNeighbors; j++)
 						{
 							const Grid::LCellIdI candidate(n.neighborID[j],h);
-							if (NothingBlockingHere(candidate,true) && !Grid::AffectedByEMP(candidate))
-							{
+							if (CanDeployHere(candidate,deploying,entity.owner))
 								movementChoices << Choice(candidate,0);
-							}
 						}
 					else
 					{
 						const Grid::LCellIdI candidate(location.stackID,h);
-						if (NothingBlockingHere(candidate,true))
+						if (CanDeployHere(candidate,deploying,entity.owner))
 						{
 							movementChoices << Choice(candidate,0);
 						}
@@ -1468,15 +1475,15 @@ namespace Objects
 
 	PHangar		AccessibleHangarHere(const Grid::LCellIdI&location, const MobileEntity&m, const OwnerParameter&mOwner)
 	{
-		PStructure s = GetStructure(location);
-		if (!s)
+		PWorldEntity e = GetEntity(location);
+		if (!e)
 			return nullptr;
-		if (s->owner != mOwner)
+		if (e->owner != mOwner)
 		{
 			//may have to check alliances here eventually, but for now this messes things up
 			return nullptr;
 		}
-		return s->CastToDestinationForType(m);
+		return e->CastToDestinationForType(m);
 	}
 
 
@@ -1733,6 +1740,12 @@ namespace Objects
 	#else
 		bool					ProcessChoiceIntersection(const PWorldEntity&e, const Grid::LCellIdI&choice,  Vehicle::mode_t mode, const PMobileEntity&deployWhat)
 		{
+			if (deployWhat->lastDeployment == RuntimeConfig::roundNumber)
+			{
+				LogEvent(EventClass::Preset::commandRejected,e.get(),"Cannot redeploy "+deployWhat->GetNiceName()+" twice during one round. Try again next round");
+				return false;
+			}
+
 			Ctr::Buffer0<Choice>	movementChoices;
 			TChoiceVisualization vis;
 			GetChoices(e,deployWhat,mode,movementChoices,vis);

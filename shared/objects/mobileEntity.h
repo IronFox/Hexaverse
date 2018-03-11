@@ -7,6 +7,8 @@
 #include "hibernating.h"
 #include "../sharedContainer.h"
 #include <structure/observable.h>
+#include <roundNumber.h>
+
 
 namespace Objects
 {
@@ -85,7 +87,9 @@ namespace Objects
 
 		};
 
-
+		#ifndef CLIENT
+			RoundNumber				lastDeployment;
+		#endif
 
 
 		struct Task : public TaskData
