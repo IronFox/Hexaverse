@@ -89,6 +89,8 @@ namespace Objects
 
 
 		virtual count_t				GetLoad() const override {return park? park->vehiclesStored : stored.Count();}
+		virtual count_t				GetMaximumLoad() const override {return GetParkVehicleCapacity();}
+
 		count_t						GetParkVehicleCapacity() const {return park ? park->members.Count() * MaxVehiclesPerStore : MaxVehiclesPerStore;}
 
 

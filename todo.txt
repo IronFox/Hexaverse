@@ -5,8 +5,37 @@ Permanent checklist for new tutorial maps:
 	Round timer is -1
 	No survival conditions
 	Only one terraformer (blow up the other)
+
+
+steam: connect via tcp if steam lobby system fails
+steam: undo (abandoned) when resuming faction
+base fog on average terrain height
+steam: find alternate server location service
+
+test: plane factories and vehicle stores
+test: construct building with terraformer, finish by directly moving into neighboring transport plane
+test: spawn produced mobile unit into nearby hangar: vehicle plant->cargo plane, plane factory->vehicle store, plane factory->cargo plane
+test: spawn mobile unit from one hangar to another: cargo plane->vehicle store, vehicle store->cargo plane
+
+
+dieing factions should not be disconnected, review current statistics?
+
+
+routing through vehicle stores
+
+emergency transfer of resources to other storage when storage is destroyed
+
+highlight possible movement targets (distance heatmap); ranged areas: build coarse geometry and highlight edges to cells that cannot be reached, that demand a drop, that take more rounds to reach
+explode uranium storages
+
+
+setting for fog density
+
+
 	
 
+different tutorial types: fighting
+	
 steam: invites not working when already in game
 	
 research: transfer attribute vector rather than lua script and state (less data to transfer, more security)
@@ -159,6 +188,15 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+tested: spawn produced mobile unit into nearby hangar: vehicle plant->vehicle store, alliance level. no issues
+done: smarter placement of new mobile units out of vehicle plants (more in the intended direction)
+fixed: ground level obstruction when building tower one level behind one wall build up where terraformer is
+tested: spawn mobile unit from one hangar to another: vehicle store->vehicle store. not allowed
+fixed: move horizontally to submerged vehicle store
+done: move camera out of terrain
+fixed: bug reporter: does not upload any files
+fixed: bug reporter: scans in ai/logs even if doesn't exist, message box, continues, empty log uploaded
+fixed: bug reporter: does not find fatals not in last line (servers do this)
 done: Update manual images of common unit commands.
 done(untested): http://www.hexacorn.com/blog/2016/03/27/detecting-wine-via-internal-and-legacy-apis/
 done: show changelog beneath server selection

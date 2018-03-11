@@ -283,7 +283,7 @@ namespace World
 			M::TVec3<> lower = dir * ToRadius(-CellStack::HalfRange);
 			M::TVec3<> upper = dir * ToRadius(CellStack::HalfRange);
 			float dummy = Vec::distance(upper,lower);
-			if (b.Contains(lower) || b.Contains(upper) || _oDetectOpticalBoxIntersection(b,lower,(upper-lower)/dummy,dummy))
+			if (b.Contains(lower) || b.Contains(upper) || M::Obj::DetectOpticalBoxIntersection(b,lower,(upper-lower)/dummy,dummy))
 			{
 				bool anyChanged = false;
 				for (int h = -CellStack::HalfRange; h < CellStack::HalfRange; h++)

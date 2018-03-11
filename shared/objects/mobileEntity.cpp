@@ -334,10 +334,11 @@ namespace Objects
 										cost = task.path.IsNotEmpty() ? task.path.Last().movementCostsFromPrevNode : 1;
 									}
 									break;
-									case MobilePlacementResult::EnteredStructure:
+									case MobilePlacementResult::EnteredHangar:
 									{
 										dropRemaining = true;
 										stop = true;
+										//should have relocated, so completeOnMove should finish. If not, AutoMoveComplete() will be triggered later and fail
 									}
 									break;
 									case MobilePlacementResult::PlacementOkayFellDown:
@@ -723,6 +724,12 @@ namespace Objects
 
 		MobileEntity::TaskResult MobileEntity::AutoMoveComplete()
 		{
+			if (!this->storedIn.expired())
+			{
+				LogEvent(EventClass::Preset::operationAborted,this,"Unable to finish '"+completeOnMove->GetName()+"'. Now stored in "+storedIn.lock()->ToEntity().GetName()+". Aborting operation");
+				completeOnMove = nullptr;
+				return TaskResult::AllDoneForThisRound;
+			}
 			if (numTriedPlottingOnMoveAutoMotion < 5)
 			{
 				Pathfinding::TWays	ways;
@@ -1068,9 +1075,9 @@ namespace Objects
 				{
 					Grid::LCellIdI&dest = destination[i];
 
-					while (!world.LowCellIsClear(dest) && !MobileDestinationStructureHere(dest,*this))
+					while (!world.LowCellIsClear(dest) && !AccessibleHangarHere(dest,*this))
 						dest++;
-					while (world.LowCellIsClear(dest-1) || MobileDestinationStructureHere(dest-1,*this))
+					while (world.LowCellIsClear(dest-1) || AccessibleHangarHere(dest-1,*this))
 						dest--;
 					if (!virtualPlatformMode && !((Vehicle*)this)->CanStandOn(world,dest -1,false,false))
 						return false;

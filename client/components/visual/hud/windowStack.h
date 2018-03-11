@@ -77,7 +77,7 @@ namespace HUD
 		/**
 		If the specified window is shown open, it is closed, and all closable windows beneath it
 		*/
-		bool				CloseAllBeneath(const Component::PWindow&);
+		bool				CloseAllUpTo(const Component::PWindow&);
 		/**
 		Renders visible non-modal windows/dialogs up to the first modal window
 		*/

@@ -666,22 +666,24 @@ namespace Objects
 	}
 
 
-	void	GetProductionChoices(const WorldEntity*producer,Component::VehicleBase*production,
+	void	GetProductionChoices( const WorldEntity*producer,const PVehicle&production,
 									Ctr::BasicBuffer<Choice>&choices)
 	{
 		choices.Clear();	
+		if (!production)
+			return;
 		const auto&n = Grid::low.grid.GetCell(producer->location.stackID).neighborhood;
 
 		for (int j =  -1; j <= 1 + producer->GetHeight(); j++)
 		{
-			int h = producer->location.height + j;
+			const int h = producer->location.height + j;
 			if (h < Grid::CellStack::BottomHeight || h > Grid::CellStack::TopHeight)
 				continue;
 			if (!production->CanClimb(j))
 				continue;
 			for (int i = 0; i < n.numNeighbors; i++)
 			{
-				const Grid::LCellIdI	cell(n.neighborID[i], producer->location.height + j);
+				const Grid::LCellIdI	cell(n.neighborID[i], h);
 
 
 				bool okay = cell.height < Grid::CellStack::HalfRange;
@@ -690,27 +692,47 @@ namespace Objects
 					if (j < 0)
 					{
 						for (int j = cell.height + 1; j <= producer->location.height; j++)
-							if (!World::actual.LowCellIsClear(Grid::LCellIdI(n.neighborID[i], j)))
+						{
+							const auto candidate = Grid::LCellIdI(n.neighborID[i], j);
+							if (World::actual.LowCellIsClear(candidate))
+								continue;
+							auto hangar = AccessibleHangarHere(candidate,*production, producer->owner);
+							if (!hangar)
 							{
 								okay = false;
 								break;
 							}
+						}
 					}
 					else
 						for (int j = cell.height; j > producer->location.height; j--)
-							if (j >= producer->location.height + producer->GetHeight() &&  !World::actual.LowCellIsClear(Grid::LCellIdI(producer->location.stackID, j)))
+						{
+							if (j < producer->location.height + producer->GetHeight())
+								continue;
+							const auto candidate = Grid::LCellIdI(producer->location.stackID, j);
+							if (World::actual.LowCellIsClear(candidate))
+								continue;
+							auto hangar = AccessibleHangarHere(candidate,*production, producer->owner);
+							if (!hangar)
 							{
 								okay = false;
 								break;
 							}
+						}
 				}
 				if (!okay)
 					continue;
 
-				if (World::actual.LowCellIsClear(cell) && NothingBlockingHere(cell,true)
+				bool validChoice = false;
+				auto h = AccessibleHangarHere(cell,*production, producer->owner);
+				if (h && h->ToEntity().location == cell)
+					validChoice = h->GetLoad() < h->GetMaximumLoad();
+				elif (World::actual.LowCellIsClear(cell) && NothingBlockingHere(cell,true)
 						&& production->CanStandOn(World::actual,cell-1,false,false)
 						&& !Grid::AffectedByEMP(cell)
 				)
+					validChoice = true;
+				if (validChoice)
 				{
 					choices << Choice(cell,0);
 				}
@@ -742,7 +764,7 @@ namespace Objects
 				const auto&building = p->queue.First();
 
 				if (building.CanSpawnInGrid())
-					GetProductionChoices(&entity,building.GetVehicleBase(),movementChoices);
+					GetProductionChoices(&entity,To<Vehicle>::DynamicCast( building.GetPrototype() ),movementChoices);
 
 				int h;
 				if (building.CanSpawnAboveGrid(h))
@@ -1144,8 +1166,10 @@ namespace Objects
 
 
 		#ifndef CLIENT
+			float signalTime = atTime;
 			v->SyncTime(atTime);
 			v->owner->storedMobiles.Append(v);
+			ApplicationInterface::SignalNewMobileEntity(v,false,signalTime);
 		#endif
 	}
 
@@ -1442,10 +1466,17 @@ namespace Objects
 
 
 
-	PHangar		MobileDestinationStructureHere(const Grid::LCellIdI&location, const MobileEntity&m)
+	PHangar		AccessibleHangarHere(const Grid::LCellIdI&location, const MobileEntity&m, const OwnerParameter&mOwner)
 	{
 		PStructure s = GetStructure(location);
-		return s && s->owner->IsFriendly(m.owner) ? s->CastToDestinationForType(m) : PHangar();
+		if (!s)
+			return nullptr;
+		if (s->owner != mOwner)
+		{
+			//may have to check alliances here eventually, but for now this messes things up
+			return nullptr;
+		}
+		return s->CastToDestinationForType(m);
 	}
 
 
@@ -1724,7 +1755,8 @@ namespace Objects
 				MobilePlacementResult result = v->PlaceExactlyAt(c,0,0,false,false);
 				if (Failed(result))
 				{
-					FATAL__(v->GetName()+": Failed to position non-constructed at "+ToString(c));
+					LogEvent(EventClass::Preset::error,e.get(),v->GetName()+": Failed to position constructed at "+ToString(c)+" ("+String(result.ToString())+"). Production lost.");
+					return false;
 				}
 				if (result == MobilePlacementResult::PlacementOkay || result == MobilePlacementResult::PlacementOkayFellDown)
 				{

@@ -199,17 +199,42 @@ namespace Objects
 				return PMobileEntity();
 			}
 
+			
+
+
 			PMobileEntity v = CompleteProduction(t);
 			//static Random random;
+			Grid::LCellIdI c;
+			if (gatheringPoint.current != Grid::LCellIdI::Invalid)
+			{
+				if (movementChoices.Contains(gatheringPoint.current))
+					c = gatheringPoint.current;
+				else
+				{
+					
+					float distance = std::numeric_limits<float>::max();
+					foreach (movementChoices,choice)
+					{
+						float d = Grid::GetQuadraticGeometricDistance(choice->location,gatheringPoint.current);
+						if (d < distance)
+						{
+							c = choice->location;
+							distance = d;
+						}
+					}
+				}
+			}
+			else
+			{
+				Buffer0<Choice>	highChoices;
+				foreach (movementChoices,c)
+					if (WorldEntity::IsAboveGrid( c->location ))
+						highChoices << *c;
 
-			Buffer0<Choice>	highChoices;
-			foreach (movementChoices,c)
-				if (WorldEntity::IsAboveGrid( c->location ))
-					highChoices << *c;
-
-			Grid::LCellIdI c = highChoices.IsNotEmpty()
-						? highChoices[parent->entityRandom.NextIndex(highChoices.Count())].location
-						: movementChoices[parent->entityRandom.NextIndex(movementChoices.Count())].location;
+				c = highChoices.IsNotEmpty()
+							? highChoices[parent->entityRandom.NextIndex(highChoices.Count())].location
+							: movementChoices[parent->entityRandom.NextIndex(movementChoices.Count())].location;
+			}
 
 			MobilePlacementResult rs = v->PlaceExactlyAt(c,0,0,false,false);
 			if (Failed(rs))
@@ -219,7 +244,7 @@ namespace Objects
 			}
 			LogEvent(EventSignificance::Debug,parent,"Successfully spawned finished production  "+production->GetNiceName()+" at "+ToString(c)+" with placement result "+String(rs.ToString()));
 
-			if (rs != MobilePlacementResult::EnteredStructure)
+			if (rs != MobilePlacementResult::EnteredHangar)
 				InsertConstructed(v,t);
 			Structure*s = dynamic_cast<Structure*>(this);
 			if (s)
@@ -484,8 +509,28 @@ namespace Objects
 			parent->RegisterChange(Objects::WorldEntity::AutomationChanged,0);
 		}
 
+		PMobileEntity			MobileEntityProducer::WorkItem::GetPrototype() const
+		{
+			return producing;
+		}
 
 	#else
+
+
+		PMobileEntity		MobileEntityProducer::WorkItem::GetPrototype() const
+		{
+			if (prototype)
+				return prototype;
+
+			if (!base || !turret)
+				return nullptr;
+			static PVehicle instance(new Vehicle(nullptr,Grid::LCellIdI::Invalid,&Component::catbase,&Component::armored));
+			instance->base = base;
+			instance->turret = turret;
+			return instance;
+		}
+
+
 		Component::VehicleBase*				MobileEntityProducer::GetActiveProductionBase() const
 		{
 			return queue.IsNotEmpty() ? queue.First().base : nullptr;

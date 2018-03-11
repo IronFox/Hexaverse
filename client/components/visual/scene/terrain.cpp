@@ -507,12 +507,7 @@ namespace VisualTerrain
 	*/
 	struct TFamily
 	{
-		struct TBounds
-		{
-			M::Box<>						boundingBox;
-			M::Sphere<>					boundingSphere;
 
-		};
 
 		struct TData
 		{
@@ -779,23 +774,33 @@ namespace VisualTerrain
 	//	display.Render(blockInstruction, cells[stackID].voffset, cells[stackID].numCorners * 3);
 	//}
 
+	bool	BoxCheck(const TBounds&bounds, const M::TVec3<>&b, const M::TVec3<>&d, float dist)
+	{
+		return M::Obj::DetectOpticalBoxIntersection(bounds.boundingBox,b,d,dist);
+	}
+	bool	SphereCheck(const TBounds&bounds, const M::TVec3<>&b, const M::TVec3<>&d, float dist)
+	{
+		return M::Obj::DetectOpticalSphereIntersection(bounds.boundingSphere,b,d,dist);
+	}
+
 	static const count_t HullTestBatch = 16;
-	bool	TestHullIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float&distance, M::TVec3<>&outNormal, bool includeWater)
+	bool	TestHullIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float&distance, M::TVec3<>&outNormal, bool includeWater, bool ignoreBackFacing/*=true*/, FBoundsCheck boundsCheck, count_t*outNumCheckedFamilies/*=nullptr*/)
 	{
 		bool rs = false;
 		Sys::SpinLock lock;
+		count_t numChecked = 0;
 		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 		{
 			const TFamily&fam = family[k];
-			float dst = distance;
 			const TFamily::TData&dat = fam.normal;
-			if (_oDetectOpticalBoxIntersection(dat.terrainBounds.boundingBox, b, d, dst))
+			if (boundsCheck(dat.terrainBounds,b,d,distance))
 			{
+				numChecked++;
 				if (includeWater)
 				{
 					const auto*indices = dat.water.indices.pointer();
 
-					Concurrency::parallel_for(index_t(0), dat.water.indices.Count(), index_t(3) * HullTestBatch, [&lock, &distance, b, d, &rs, &dat, indices, &outNormal](index_t _i)
+					Concurrency::parallel_for(index_t(0), dat.water.indices.Count(), index_t(3) * HullTestBatch, [&lock, &distance, b, d, &rs, &dat, indices, &outNormal,ignoreBackFacing](index_t _i)
 						//for (index_t i = 0; i < hullIndices.Count(); i += 3)
 					{
 						float dist = distance;
@@ -803,7 +808,7 @@ namespace VisualTerrain
 						M::TVec3<> normal;
 						for (index_t i = _i; i < _i + HullTestBatch*3 && i < dat.water.indices.Count(); i+=3)
 						{
-							if (Vec::dot(dat.water.vertices[indices[i]].normal,d) > 0.f)
+							if (ignoreBackFacing && Vec::dot(dat.water.vertices[indices[i]].normal,d) > 0.f)
 								continue;
 							if (M::Obj::detectOpticalIntersection(
 								dat.water.vertices[indices[i]].vertex.xyz,
@@ -833,7 +838,7 @@ namespace VisualTerrain
 				{
 					const auto*indices = dat.terrain.indices.pointer();
 
-					Concurrency::parallel_for(index_t(0), dat.terrain.indices.Count(), index_t(3) * HullTestBatch, [&lock, &distance, b, d, &rs, &dat, indices, &outNormal](index_t _i)
+					Concurrency::parallel_for(index_t(0), dat.terrain.indices.Count(), index_t(3) * HullTestBatch, [&lock, &distance, b, d, &rs, &dat, indices, &outNormal,ignoreBackFacing](index_t _i)
 						//for (index_t i = 0; i < hullIndices.Count(); i += 3)
 					{
 						float dist = distance;
@@ -841,7 +846,7 @@ namespace VisualTerrain
 						M::TVec3<> normal;
 						for (index_t i = _i; i < _i + HullTestBatch*3 && i < dat.terrain.indices.Count(); i+=3)
 						{
-							if (Vec::dot(dat.terrain.vertices[indices[i]].normal_structure.xyz,d) > 0.f)
+							if (ignoreBackFacing && Vec::dot(dat.terrain.vertices[indices[i]].normal_structure.xyz,d) > 0.f)
 								continue;
 							if (M::Obj::detectOpticalIntersection(
 								dat.terrain.vertices[indices[i]].vertex.xyz,
@@ -870,6 +875,8 @@ namespace VisualTerrain
 				}
 			}
 		}
+		if (outNumCheckedFamilies)
+			(*outNumCheckedFamilies) += numChecked;
 		return rs;
 	}
 
@@ -885,7 +892,7 @@ namespace VisualTerrain
 		for (BYTE f = 0; f < BaseGrid::NumFamilies; f++)
 		{
 			float dist = distance;
-			if (unitSphereFamilyBoundingBox[f].Contains(b) || _oDetectOpticalBoxIntersection(unitSphereFamilyBoundingBox[f],b,d,dist))
+			if (unitSphereFamilyBoundingBox[f].Contains(b) || M::Obj::DetectOpticalBoxIntersection(unitSphereFamilyBoundingBox[f],b,d,dist))
 			{
 
 				const index_t begin = grid.GetFamilyOffset(f);

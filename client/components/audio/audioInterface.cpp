@@ -121,7 +121,9 @@ namespace AudioInterface
 			//OpenAL::Listener::SetVelocity((aspect.GetAbsoluteLocation() - last) / Engine::timing.delta);
 			//last = aspect.GetAbsoluteLocation();
 			Engine::OpenAL::Listener::SetPosition(aspect.GetAbsoluteLocation());
-			Engine::OpenAL::Listener::SetOrientation(aspect.GetViewingDirection(),aspect.viewInvert.y.xyz,true,false);
+			const float3 dir = aspect.GetForwardDirection();
+			const float3 up = -aspect.viewInvert.y.xyz;
+			Engine::OpenAL::Listener::SetOrientation(dir,up,true,false);
 		}
 	}
 

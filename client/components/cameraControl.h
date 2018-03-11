@@ -6,8 +6,8 @@
 #include <engine/aspect.h>
 #include <structure/observable.h>
 
-#define DebugCheckVector(T, M, MX)
-#define DebugCheckCamera()
+//#define DebugCheckVector(T, M, MX)
+//#define DebugCheckCamera()
 
 //inline void			DebugCheckVector(const M::TVec3<>&test, float min, float max)
 //{
@@ -128,6 +128,16 @@ namespace Camera
 		void					ZoomIn();
 		void					ZoomOut();
 		void					Zoom(float outSpeed);
+	}
+	
+	/**
+	Captures the number of terrain families checked during the last terrain intersection check.
+	Must be uncommented in the source code, or only sphereCheckFamilies will be updated
+	*/
+	namespace Statistics
+	{
+		extern count_t			noCheckFamilies, boxCheckFamilies, sphereCheckFamilies;
+
 	}
 
 }

@@ -214,10 +214,11 @@ namespace BugReporter
 					version = version.Remove(at);
 				gameVersion.Text = version.Trim();
 			}
-			catch (Exception ex)
+			catch
 			{
-				MessageBox.Show("Error trying to launch 'server --version' to figure out the current game version. You will have to specify the game version by yourself: " + ex.Message);
+				//MessageBox.Show("Error trying to launch 'server --version' to figure out the current game version. You will have to specify the game version by yourself: " + ex.Message);
 				//gameVersion.Text = ex.ToString();
+				//don't care, server not there, just leave empty
 			}
 
 			RestartHelloTask();
@@ -229,15 +230,15 @@ namespace BugReporter
 
 		
 
-		IEnumerable<FileID> FilterLoadedFiles()
-		{
+		//IEnumerable<FileID> FilterLoadedFiles()
+		//{
 
-			foreach (var f in logFiles)
-			{
-				if (string.IsNullOrWhiteSpace(f.Version) || string.IsNullOrWhiteSpace(gameVersion.Text) || f.Version.StartsWith(gameVersion.Text) || gameVersion.Text.StartsWith(f.Version))
-					yield return f;
-			}
-		}
+		//	foreach (var f in logFiles)
+		//	{
+		//		if (string.IsNullOrWhiteSpace(f.Version) || string.IsNullOrWhiteSpace(gameVersion.Text) || f.Version.StartsWith(gameVersion.Text) || gameVersion.Text.StartsWith(f.Version))
+		//			yield return f;
+		//	}
+		//}
 
 
 
@@ -249,7 +250,7 @@ namespace BugReporter
 
 		private void FinishLoading()
 		{
-			var fileList = FilterLoadedFiles().ToList();
+			var fileList = logFiles;
 
 			var items = logFile.Items;
 			items.Clear();
@@ -317,7 +318,8 @@ namespace BugReporter
 				}
 				catch (Exception ex)
 				{
-					MessageBox.Show("Error accessing '"+ logsAt+"': "+ex.Message);
+					continue;
+					//MessageBox.Show("Error accessing '"+ logsAt+"': "+ex.Message);
 				}
 				if (files != null)
 					foreach (string f in files)
@@ -338,6 +340,9 @@ namespace BugReporter
 				timedLoadQueue.Enqueue(item);
 		}
 
+
+		private string lastFatal = null;
+
 		private void logFile_SelectedIndexChanged(object sender, EventArgs e)
 		{
 			var items = logFileList.Items;
@@ -350,6 +355,37 @@ namespace BugReporter
 				if (logFile.SelectedItem == null || !(logFile.SelectedItem is FileID))
 					return;
 				FileID f = (FileID)logFile.SelectedItem;
+				gameVersion.Text = f.Version;
+
+				if (lastFatal != f.Fatal)
+				{
+					int foundAt = -1;
+					if (lastFatal != null)
+					{
+						int at;
+						while ((at = bugDescription.Text.IndexOf(lastFatal)) != -1)
+						{
+							foundAt = at;
+							bugDescription.Text = bugDescription.Text.Remove(at, lastFatal.Length);
+						}
+						lastFatal = null;
+					}
+
+					if (f.Fatal != null)
+					{
+						if (foundAt >= 0)
+							bugDescription.Text = bugDescription.Text.Insert(foundAt, f.Fatal);
+						else
+						{
+							if (string.IsNullOrWhiteSpace(bugDescription.Text))
+								bugDescription.Text = f.Fatal;
+							else
+								bugDescription.Text = f.Fatal + "\r\n" + "\r\n" + bugDescription.Text.Trim(new char[] { '\r', '\n' });
+						}
+						lastFatal = f.Fatal;
+					}
+				}
+
 				LogFile root = f.CachedFile;
 				if (root == null)
 				{
@@ -489,12 +525,7 @@ namespace BugReporter
 			loadTask = timedLoadQueue.Dequeue().LoadFileAsync();
 		}
 
-		private void gameVersion_TextChanged(object sender, EventArgs e)
-		{
-		//	if (!loadTimer.Enabled)
-			FinishLoading();
-		}
-
+		
 		private void sendButton_Click(object sender, EventArgs e)
 		{
 			try
@@ -510,15 +541,16 @@ namespace BugReporter
 				parameters.Add(new Tuple<string, string>("description", bugDescription.Text));
 				parameters.Add(new Tuple<string, string>("reproduction", reproductionDesc.Text));
 				parameters.Add(new Tuple<string, string>("gameVersion", gameVersion.Text));
-				if (logFile.SelectedItem != null && logFile.SelectedItem is LogFile)
+				if (logFile.SelectedItem != null && logFile.SelectedItem is FileID)
 				{
-					var log = ((LogFile)logFile.SelectedItem);
+					var id = ((FileID)logFile.SelectedItem);
+					var log = id.LoadFileAsync().Result;
 					if (log.Fatal != null)
 						parameters.Add(new Tuple<string, string>("fatalMessage", log.Fatal));
 
 					parameters.Add(new Tuple<string, string>("primaryLogFile", log + "\r\n" + log.Combined));
 
-					foreach (var item in logFileList.SelectedItems)
+					foreach (var item in logFileList.CheckedItems)
 					{
 						LogFile f = (LogFile)item;
 						parameters.Add(new Tuple<string, string>("logFile[]", f + "\r\n" + f.Combined));

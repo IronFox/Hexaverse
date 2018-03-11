@@ -410,8 +410,8 @@ namespace Objects
 				}
 
 				bool					VisibleAt(float t) const;
-				void					Appear(const PWorldEntity&e, float&t);
-				void					Disappear(const PWorldEntity&e, float&t);
+				void					Appear(const Faction*parent, const PWorldEntity&e, float&t);
+				void					Disappear(const Faction*parent, const PWorldEntity&e, float&t);
 				bool					CurrentlyVisible() const {return reverseVisibilityChange.empty() ? wasVisibleAtBeginning : reverseVisibilityChange.begin()->second;}
 
 			};
@@ -477,7 +477,9 @@ namespace Objects
 			}
 
 			/**
-			Checks and potentially rebuilds knownWorld sensor state
+			Checks and potentially rebuilds knownWorld sensor state.
+	
+			This is the server equivalent of client side ClientGrid::CheckSensory() (gridControl.h)
 			*/
 			void		CheckSensory();
 

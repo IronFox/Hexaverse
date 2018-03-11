@@ -40,6 +40,9 @@ namespace ClientGrid
 	}
 
 
+	/*
+	This is the client equivalent of server side Faction::CheckSensory()
+	*/
 	void CheckSensory()
 	{
 		if (World::actual.SensoryIsInvalid())

@@ -10,7 +10,7 @@ namespace VisualTerrain
 {
 
 	index_t	TestLowGridIntersection(M::TVec3<> b, M::TVec3<> d, float radius, float&distance);
-	bool	TestHullIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float&distance, M::TVec3<>&outNormal, bool includeWater);
+
 
 
 
@@ -168,7 +168,22 @@ namespace VisualTerrain
 
 	};
 
+	struct TBounds
+	{
+		M::Box<>						boundingBox;
+		M::Sphere<>					boundingSphere;
+
+	};
+
 	extern OrbitGrid	visibleSubOrbitGrid;
+	typedef std::function<bool(const TBounds&, const M::TVec3<>&, const M::TVec3<>&, float)> FBoundsCheck;
+
+	bool	BoxCheck(const TBounds&, const M::TVec3<>&, const M::TVec3<>&, float);
+	bool	SphereCheck(const TBounds&, const M::TVec3<>&, const M::TVec3<>&, float);
+	inline bool	NoCheck(const TBounds&, const M::TVec3<>&, const M::TVec3<>&, float) {return true;}
+
+	bool	TestHullIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float&distance, M::TVec3<>&outNormal, bool includeWater, bool ignoreBackFacing=true, FBoundsCheck boundsCheck = SphereCheck, count_t*outNumCheckedFamilies=nullptr);
+
 }
 
 #endif

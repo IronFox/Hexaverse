@@ -3,7 +3,7 @@
 
 namespace Objects
 {
-class VehiclePlant : public WorkingStructureT<VehiclePlant>, public MobileEntityProducer
+	class VehiclePlant : public WorkingStructureT<VehiclePlant>, public MobileEntityProducer
 	{
 		friend class WorkingStructureT<VehiclePlant>;
 
@@ -46,6 +46,24 @@ class VehiclePlant : public WorkingStructureT<VehiclePlant>, public MobileEntity
 			#ifdef HAS_WINDOW
 				virtual void		DescribeType(Description&label, UINT32 descFlags) override;
 			#endif
+
+			/**
+			Reconfigures a global production prototype vehicle to match the next queued production item, and returns it.
+			If none is queued, nullptr is returned.
+			Do not use from a threaded environment.
+			Do not use persistently, as its configuration will change during the next GetProductionPrototype() call.
+			See MobileEntityProducer::WorkItem::AssembleVehiclePrototypeFor() for details.
+			@return Prototype of the next queued production, or nullptr if no such exists
+			*/
+			PVehicle				GetProductionPrototype() const;
+			/**
+			Reconfigures a global production prototype vehicle to match the currently selected configuration, and returns it.
+			If the current selection is incomplete, nullptr is returned.
+			Do not use from a threaded environment.
+			Do not use persistently, as its configuration will change during the next GetProductionPrototype() call.
+			@return Prototype of the selected configuration
+			*/
+			PVehicle				GetSelectionPrototype() const;
 
 		#else
 			bool					AbortConstruction(const TUniqueID&);

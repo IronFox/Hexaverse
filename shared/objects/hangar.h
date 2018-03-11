@@ -59,6 +59,7 @@ namespace Objects
 		Queries the number of currently loaded mobile entities
 		*/
 		virtual count_t	GetLoad() const =0;
+		virtual count_t GetMaximumLoad() const=0;
 
 		/**
 		Must be called from the WorldEntity::OnDestroy() override.

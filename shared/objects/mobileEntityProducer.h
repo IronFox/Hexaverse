@@ -62,6 +62,7 @@ namespace Objects
 				Component::VehicleBase*		base=nullptr;	//set for vehicles only
 				Component::Turret*		turret=nullptr;	//set for vehicles only
 				PMobileEntity		prototype;	//set for non-vehicles only
+
 			#else
 				PMobileEntity		producing;
 
@@ -81,6 +82,15 @@ namespace Objects
 			bool					CanSpawnInGrid() const;
 			bool					CanSpawnAboveGrid(int&) const;
 			const String&			GetName() const;
+
+			/**
+			Gets a prototype of the local production item.
+			On client this method may assemble a global vehicle instance, depending on the local configuration.
+			Do not use from a threaded environment.
+			Do not use the result persistently, as its configuration will change during the next AssembleVehiclePrototype() call.
+			@return Prototype of the local production
+			*/
+			PMobileEntity			GetPrototype() const;
 		};
 		//typedef std::pair<PVehicle,Command>		WorkItem;
 		Ctr::Buffer0<WorkItem>		queue;	//must use buffer here, because elements can be erased and changes are rare

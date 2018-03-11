@@ -1,3 +1,18 @@
+v0.7.7
+	> Bug reporter now presents all found log files, and derives game version from selected log file.
+	> Bug reporter now inserts fatal messages into bug description, and removes previous fatal message if found.
+	> Camera can no longer enter non-clipped terrain.
+	> Vehicle plants can now deploy directly into vehicle stores.
+	> Vehicle plants with a gathering point try to be smarter about where they deploy new vehicles.
+	* Fixed rare crash when leaving alliance.
+	* Fixed rare crash when trying to save game during fatal handling, but faction is not member of any alliance.
+	* Fixed crash when finishing terraformer construction by moving the vehicle into neighboring storage.
+	* Fixed rare crash when connection is lost before statistics can be sent to dead faction.
+	* Fixed bug reporter not detecting server fatal messages.
+	* Fixed bug reporter log file upload.
+	* Fixed main menu not automatically closing when pressing buttons.
+	* Fixed entering partially submerged vehicle stores.
+
 v0.7.6	[Mar 4 2018]
 	+ Added new view button to hide sensor ranges.
 	+ Now showing change log beneath server list (experimental).

@@ -373,25 +373,30 @@ namespace Network
 		progress.status = RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::None ? "" : AllianceStatus(faction ? faction->alliance : nullptr,stats);
 		progress.warning = dead ? "Game Over" : FactionWarning(faction,warningReason);
 
-		if (progress.gameOver && faction && RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame)
-		{
-			//send only statistics of local faction
-			auto&peer = *this->peer.lock();
-			Game::Network::SendStatisticsTo(peer,faction);
-		}
 
-
-		if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
+		auto ppeer = peer.lock();
+		if (!ppeer)
+			return;
 		{
-			auto&peer = *this->peer.lock();
-			//game over: send statistics of all factions
-			Objects::ForeachFaction([&peer](const Objects::PFaction&f)
+			auto&peer = *ppeer;
+			if (progress.gameOver && faction && RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame)
 			{
-				Game::Network::SendStatisticsTo(peer,f);
-			});
-		}
+				//send only statistics of local faction
+				Game::Network::SendStatisticsTo(peer,faction);
+			}
 
-		Channels::gameProgress.SendTo(peer.lock(),progress);
+
+			if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
+			{
+				//game over: send statistics of all factions
+				Objects::ForeachFaction([&peer](const Objects::PFaction&f)
+				{
+					Game::Network::SendStatisticsTo(peer,f);
+				});
+			}
+
+			Channels::gameProgress.SendTo(ppeer,progress);
+		}
 	}
 
 
