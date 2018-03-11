@@ -7,7 +7,17 @@ Permanent checklist for new tutorial maps:
 	Only one terraformer (blow up the other)
 
 
-steam: connect via tcp if steam lobby system fails
+steam: connect via tcp if steam lobby system fails. does not relate to lobbies. cannot reproduce. some explanations:
+	client manages to connect.
+	possible causes:
+		client never sends hello as a response to server hello
+			client tries to generate cryptographic key but never completes (unlikely)
+		server never sends hello response as a result to server hello
+			GetSharedPointerOfClient() returns nullptr. Check for "Peer disconnected on its own before client state handling could commence. Ignoring event"
+			SteamInterface::Authenticate() never does anything
+				BeginAuthSession() returns success
+					OnTicketResponse never gets called
+
 base fog on average terrain height
 steam: find alternate server location service
 
