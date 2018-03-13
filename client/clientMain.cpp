@@ -1440,7 +1440,7 @@ bool loop()
 
 			if (HUD::showControlsAndContacts && !InputControl::saveScreenshot)
 			{
-				static const String line = "(C) Stefan Elsen; v" PRODUCT_VERSION "; Compiled "+String(__TIMESTAMP__);
+				static const String line = "(C) Stefan Elsen; v" PRODUCT_VERSION "; Compiled "+String(__DATE__)+" "+String(__TIME__);
 				//textout.locate(0.f,1.f - textout.GetScaledHeight());
 				textout.PushState();
 				textout.Scale(0.8f,0.8f);
