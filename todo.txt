@@ -9,7 +9,8 @@ Permanent checklist for new tutorial maps:
 build road to pathfinding is broken when under ground (perhaps only when close to the core?)
 missile turret sometimes (always?) schedules more attacks automatically than it can fire per round
 at bottom terrain level, emp-damaged, minimum allowed attack and scanning range is still high enough to see and attack neighboring cell
-
+statistics about number of terraformers seems to not count stored terraformers
+better visualization of attack/scanning ranges. use special terrain meshes with hard lines to visualize edges
 	
 introduce two independent build versions: client and server, and don't match them via network
 change x32 back to x86
