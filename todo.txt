@@ -12,8 +12,6 @@ at bottom terrain level, emp-damaged, minimum allowed attack and scanning range 
 better visualization of attack/scanning ranges. use special terrain meshes with hard lines to visualize edges
 	
 introduce two independent build versions: client and server, and don't match them via network
-change x32 back to x86
-projector clean build
 
 steam: connect via tcp if steam lobby system fails. does not relate to lobbies. cannot reproduce. some explanations:
 	client manages to connect.
@@ -201,6 +199,8 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+done: change x32 back to x86
+done: projector clean build
 fixed: statistics about number of terraformers seems to not count stored terraformers
 fixed: undo (abandoned) when resuming faction
 tested: spawn produced mobile unit into nearby hangar: vehicle plant->cargo plane, plane factory->vehicle store, plane factory->cargo plane. no issues
