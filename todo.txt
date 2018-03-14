@@ -9,7 +9,6 @@ Permanent checklist for new tutorial maps:
 build road to pathfinding is broken when under ground (perhaps only when close to the core?)
 missile turret sometimes (always?) schedules more attacks automatically than it can fire per round
 at bottom terrain level, emp-damaged, minimum allowed attack and scanning range is still high enough to see and attack neighboring cell
-statistics about number of terraformers seems to not count stored terraformers
 better visualization of attack/scanning ranges. use special terrain meshes with hard lines to visualize edges
 	
 introduce two independent build versions: client and server, and don't match them via network
@@ -202,6 +201,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: statistics about number of terraformers seems to not count stored terraformers
 fixed: undo (abandoned) when resuming faction
 tested: spawn produced mobile unit into nearby hangar: vehicle plant->cargo plane, plane factory->vehicle store, plane factory->cargo plane. no issues
 tested: spawn mobile unit from one hangar to another: cargo plane->vehicle store, vehicle store->cargo plane. was disallowed before. now working
