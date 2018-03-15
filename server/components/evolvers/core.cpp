@@ -16,6 +16,7 @@ namespace Evolver
 		/**
 		Like vehicles, towers have an attack action floation point value. Unlike vehicles, they are not part of the
 		movement phase. Therefore, once per round, this function must be called to reset their attack action.
+		Currently also drops any auto-attack targets, if found.
 		*/
 		void			ResetTowerAttackAction(float atTime);
 		/**
@@ -88,6 +89,12 @@ namespace Evolver
 					{
 						t->attackActionLeft = 1.f;
 						t->SignalChange(Objects::WorldEntity::ActionChanged,atTime);
+					}
+					if (t->attackQueue.IsNotEmpty() && t->attackQueue.Peek().autoTarget)
+					{
+						while (t->attackQueue.IsNotEmpty() && t->attackQueue.Peek().autoTarget)
+							t->attackQueue.EraseFront();
+						t->SignalChange(Objects::WorldEntity::TasksChanged,atTime);
 					}
 				}
 			});
