@@ -6,7 +6,6 @@ Permanent checklist for new tutorial maps:
 	No survival conditions
 	Only one terraformer (blow up the other)
 
-build road to pathfinding is broken when under ground (perhaps only when close to the core?)
 missile turret sometimes (always?) schedules more attacks automatically than it can fire per round
 at bottom terrain level, emp-damaged, minimum allowed attack and scanning range is still high enough to see and attack neighboring cell
 better visualization of attack/scanning ranges. use special terrain meshes with hard lines to visualize edges
@@ -199,6 +198,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: build road to pathfinding is broken when under ground (perhaps only when close to the core?)
 done: change x32 back to x86
 done: projector clean build
 fixed: statistics about number of terraformers seems to not count stored terraformers
