@@ -339,13 +339,13 @@ namespace Objects{ namespace Pathfinding
 			{
 				const Grid::LCellIdI	cell(n.neighborID[i], location.height + j);
 
-				bool okay = cell.height < Grid::CellStack::HalfRange && cell.height >= -Grid::CellStack::HalfRange;
+				bool okay = cell.height < Grid::CellStack::HalfRange && cell.height >= -Grid::CellStack::HalfRange && world.LowCellIsClear(cell);
 				if (okay)
 				{
 					if (j < 0)
 					{
-						for (int j = cell.height + 1; j <= location.height; j++)
-							if (!world.LowCellIsClear(Grid::LCellIdI(n.neighborID[i], j)))
+						for (int k = cell.height + 1; k <= location.height; k++)
+							if (!world.LowCellIsClear(Grid::LCellIdI(n.neighborID[i], k)))
 							{
 								okay = false;
 								break;
