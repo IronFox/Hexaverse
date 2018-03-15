@@ -1,26 +1,14 @@
 #include "inputControl.h"
-//#include <objects/vehicle.h>
-//#include <objects/mobileEntity.h>
-//#include <objects/mobileEntityProducer.h>
-//#include <objects/structure/laboratory.h>
-//#include <objects/structure/mine.h>
 #include <objects/faction.h>
-//#include "visual/hud/dialog.h"
 #include "network.h"
 #include "cameraControl.h"
-//#include "visual/objectSelection.h"
 #include "visual/objectChoices.h"
-//#include "visual/hud/hexGrid.h"
 #include "timelapse.h"
 #include "visual/scene/terrain.h"
 #include "visual/tutorial.h"
-//#include "clientRuntimeConfig.h"
-//#include "visual/commandDefinitions.h"
 #include "visual/hud/resourceGauges.h"
 #include "visual/hud/hexGrid.h"
-//#include "animation.h"
 #include "visual/hud/menu.h"
-//#include "localApplicationInterface.h"
 #include "objectNetworkHelper.h"
 
 void	OnTutorialsChanged();
