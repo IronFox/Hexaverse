@@ -938,12 +938,12 @@ namespace Objects{ namespace Pathfinding
 	}
 
 	
-	bool AppendShortestConstructionPath(const Vehicle*vehicle, bool ignoreWater, bool flat, const Grid::LCellIdI&from, Grid::LCellIdI to, Ctr::BasicBuffer<Grid::LCellIdI>&oPath)
+	Result AppendShortestConstructionPath(const Vehicle*vehicle, bool ignoreWater, bool flat, const Grid::LCellIdI&from, Grid::LCellIdI to, Ctr::BasicBuffer<Grid::LCellIdI>&oPath, const count_t maxIterations /*= 2000*/)
 	{
 		if (flat)
 			to.height = from.height;
 		if (from == to)
-			return true;
+			return Result::DestinationReached;
 		const World::Data&world = 
 		#ifdef CLIENT
 			World::actual;
@@ -956,7 +956,7 @@ namespace Objects{ namespace Pathfinding
 				if (flat)
 					to++;
 				if (!vehicle->CanStandOn(world,to -1,ignoreWater,false) /*|| !Grid::LowCellIsClear(to)*/)// || !NothingHere(destination))
-					return false;
+					return Result::NoPath;
 			}
 
 		//Timer::Time t0 = timer.Now();
@@ -991,10 +991,10 @@ namespace Objects{ namespace Pathfinding
 		while (queue.PopLeast(current))
 		{
 			iterations ++;
-			if (iterations > 2000)
+			if (iterations > maxIterations)
 			{
 				//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
-				return false;//let's ignore long ranges
+				return Result::InsufficientIterations;//let's ignore long ranges
 			}
 
 			Grid::LCellIdI cellID(DESCOF(current));
@@ -1021,7 +1021,7 @@ namespace Objects{ namespace Pathfinding
 				oPath.AppendAll(outPath);
 				//ShowMessage("found route with "+String(outPath.Count())+" steps, requiring "+String(iterations)+" iterations" );
 				//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
-				return true;
+				return Result::DestinationReached;
 			}
 			count_t ways = GetConstructionWays(world, ignoreWater, flat, cellID == from, vehicle, cellID, possibilities, to);
 			ASSERT_LESS_OR_EQUAL__(ways,ARRAYSIZE(possibilities));
@@ -1063,7 +1063,7 @@ namespace Objects{ namespace Pathfinding
 		}
 		//ShowMessage("no route found after "+String(iterations)+" iterations");
 		//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
-		return false;
+		return Result::NoPath;
 	}
 
 	
