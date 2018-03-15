@@ -10,6 +10,7 @@
 #include "visual/hud/hexGrid.h"
 #include "visual/hud/menu.h"
 #include "objectNetworkHelper.h"
+#include <objects/pathfinding.h>
 
 void	OnTutorialsChanged();
 
@@ -194,6 +195,7 @@ namespace InputControl
 						int h;
 						if (!Objects::selectedMobileEntity->CanSpawnInGrid() && Objects::selectedMobileEntity->CanSpawnAboveGrid(h))
 							target.height = h;
+
 						ObjectHelper::DirectTo(Objects::selectedMobileEntity,target, ObjectHelper::AssembleMotionFlags(false,false),Objects::activeCursorMode);
 					}
 				}
@@ -635,7 +637,31 @@ namespace InputControl
 						}
 					}
 					else
-						ApplicationInterface::DirectTo(Objects::selectedMobileEntity,target,false,true);
+					{
+						if (Objects::activeCursorMode == Objects::CursorMode::BuildRoadChainMode && Objects::selectedVehicle)
+						{
+							Buffer0<Grid::LCellIdI>	path;
+							auto rs = Objects::Pathfinding::AppendShortestConstructionPath(Objects::selectedVehicle.get(),true,false,Objects::selectedVehicle->GetLastPointOfOrigin(),target,path);
+							switch (rs)
+							{
+								case Objects::Pathfinding::Result::InsufficientIterations:
+								{
+									path.Clear();
+									auto rs2 = Objects::Pathfinding::AppendShortestConstructionPath(Objects::selectedVehicle.get(),true,false,Objects::selectedVehicle->GetLastPointOfOrigin(),target,path,10000);
+									ObjectHelper::DirectTo(Objects::selectedMobileEntity,path.ToRef(), ObjectHelper::AssembleMotionFlags(true,false),Objects::activeCursorMode);
+								}
+								break;
+								case Objects::Pathfinding::Result::NoPath:
+									LogEvent(EventClass::Preset::commandRejected,Objects::selectedMobileEntity.get(),"Unable to plot path to destination");
+									break;
+								case Objects::Pathfinding::Result::DestinationReached:
+									ObjectHelper::DirectTo(Objects::selectedMobileEntity,target, ObjectHelper::AssembleMotionFlags(false,false),Objects::activeCursorMode);
+									break;
+							}
+						}
+						else
+							ApplicationInterface::DirectTo(Objects::selectedMobileEntity,target,false,true);
+					}
 					return;
 				}
 			}
