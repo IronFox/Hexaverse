@@ -101,7 +101,7 @@ namespace Objects
 
 			};
 		
-			Ctr::Buffer<MapNode>	result;
+			Buffer<MapNode>	result;
 
 			typedef bool (*FBlockTest)(const Grid::LCellIdI&);
 

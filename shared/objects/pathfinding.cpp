@@ -431,7 +431,7 @@ namespace Objects{ namespace Pathfinding
 	}
 
 
-	int GetCellMovementCosts(const World::Data&world, const Grid::LCellIdI&cell, const THindranceVector&hindrance, int vehicleSpeed)
+	int GetCellMovementCosts( const World::Data&world, const Grid::LCellIdI&cell, const THindranceVector&hindrance )
 	{
 		#ifdef HYBRID_GRID
 			const UINT32 high = Grid::low.grid.GetCell(cell.stackID).higherEquivalent;
@@ -584,7 +584,7 @@ namespace Objects{ namespace Pathfinding
 		//		return false;
 	//	Timer::Time t0 = timer.Now();
 		const THindranceVector&hindrance = vehicle->base->hindrance;
-		const int speed = vehicle->GetMovementStepsPerRound();
+		//const int speed = vehicle->GetMovementStepsPerRound();
 		TWays	possibilities;
 
 		static const count_t cellCount = Grid::LowSetup::GridType::CellCount * Grid::CellStack::Range;
@@ -633,7 +633,7 @@ namespace Objects{ namespace Pathfinding
 			TNode&tn = buffer[current];
 			if (!tn.nodeCosts)
 			{
-				tn.nodeCosts = GetCellMovementCosts(world,cellID,hindrance,speed);
+				tn.nodeCosts = GetCellMovementCosts(world,cellID,hindrance);
 			}
 
 
@@ -667,7 +667,7 @@ namespace Objects{ namespace Pathfinding
 				UINT32 option = IDOF(possibilities.way[i]);
 				TNode&n = buffer[option];
 				if (!n.nodeCosts)
-					n.nodeCosts = GetCellMovementCosts(world,possibilities.way[i],hindrance,speed);
+					n.nodeCosts = GetCellMovementCosts(world,possibilities.way[i],hindrance);
 				int cost = std::max(tn.nodeCosts,n.nodeCosts);
 				int hCosts = std::max(0, possibilities.way[i].height - cellID.height );
 				cost += hCosts;
@@ -827,7 +827,7 @@ namespace Objects{ namespace Pathfinding
 			{
 				tn.isBlocked = isBlocked && isBlocked(cellID);
 				tn.nodeCosts = tn.isBlocked ? 1000000 :
-								GetCellMovementCosts(world,cellID,hindrance,speed);
+								GetCellMovementCosts(world,cellID,hindrance);
 			}
 			if (tn.isBlocked)
 				continue;
@@ -848,7 +848,7 @@ namespace Objects{ namespace Pathfinding
 				{
 					n.isBlocked = isBlocked && isBlocked(possibilities.way[i]);
 					n.nodeCosts = n.isBlocked ? 1000000 :
-									GetCellMovementCosts(world,possibilities.way[i],hindrance,speed);
+									GetCellMovementCosts(world,possibilities.way[i],hindrance);
 				}
 				if (n.isBlocked)
 					continue;
