@@ -79,6 +79,7 @@
 #include "components/inputControl.h"
 #include "components/objectNetworkHelper.h"
 #include "components/playerControlBegin.h"
+#include "components/visual/scene/vehicleAccessibilityMesh.h"
 
 #include "rc/Resource.h"
 
@@ -1320,6 +1321,8 @@ bool loop()
 
 			World::RenderWater(frustum);
 
+			VehicleAccessibilityMesh::Render(frustum);
+
 
 			Objects::Renderer::RenderTranslucent(false);
 
@@ -2196,6 +2199,7 @@ int main( int argc, const char* argv[])
 			Loading::Stage("HostList",HUD::HostList::Create);
 			Loading::Stage("Voting",Vote::StaticCreate);
 			Loading::Stage("VoteList",HUD::VoteList::Create);
+			Loading::Stage("Mobile Accessibility Mesh",VehicleAccessibilityMesh::Create);
 		#endif
 
 		Loading::Stage("Client Grid",ClientGrid::Create);
