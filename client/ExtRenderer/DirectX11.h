@@ -413,7 +413,7 @@ namespace Engine
 
 
 			void				Create(const void*data, size_t numBytes, count_t numEntries, BufferAccess, UINT bindFlags);
-			void				Update(const void*data, size_t numBytes);
+			//void				Update(const void*data, size_t numBytes);
 		public:
 			/**/				ArrayBuffer():numEntries(0)	{}
 			count_t				GetEntryCount() const {return numEntries;}
@@ -429,7 +429,7 @@ namespace Engine
 				typedef ArrayBuffer	Super;
 
 			public:
-				void			Update(const T*data, count_t numEntries)	{Buffer::Update(data,sizeof(T)*numEntries);}
+				void			Update(const T*data, count_t numEntries)	{Super::Update(data,sizeof(T)*numEntries);}
 				void			Update(const ArrayData<T>&data)	{Update(data.pointer(),data.GetLength());}
 				void			Update(const BasicBuffer<T>&data)	{Update(data.pointer(),data.GetLength());}
 				String			ToString() const { return Super::ToString()+", esize=" + String(sizeof(T)); }
