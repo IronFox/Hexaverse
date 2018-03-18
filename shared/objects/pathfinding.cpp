@@ -349,13 +349,13 @@ namespace Objects{ namespace Pathfinding
 			{
 				const Grid::LCellIdI	cell(n.neighborID[i], location.height + j);
 
-				bool okay = cell.height < Grid::CellStack::HalfRange && cell.height >= -Grid::CellStack::HalfRange;
+				bool okay = cell.height < Grid::CellStack::HalfRange && cell.height >= -Grid::CellStack::HalfRange && world.LowCellIsClear(cell);
 				if (okay)
 				{
 					if (j < 0)
 					{
-						for (int j = cell.height + 1; j <= location.height; j++)
-							if (!world.LowCellIsClear(Grid::LCellIdI(n.neighborID[i], j)))
+						for (int k = cell.height + 1; k <= location.height; k++)
+							if (!world.LowCellIsClear(Grid::LCellIdI(n.neighborID[i], k)))
 							{
 								okay = false;
 								break;
@@ -441,7 +441,7 @@ namespace Objects{ namespace Pathfinding
 	}
 
 
-	int GetCellMovementCosts(const World::Data&world, const Grid::LCellIdI&cell, const THindranceVector&hindrance, int vehicleSpeed)
+	int GetCellMovementCosts( const World::Data&world, const Grid::LCellIdI&cell, const THindranceVector&hindrance )
 	{
 		#ifdef HYBRID_GRID
 			const UINT32 high = Grid::low.grid.GetCell(cell.stackID).higherEquivalent;
@@ -594,7 +594,7 @@ namespace Objects{ namespace Pathfinding
 		//		return false;
 	//	Timer::Time t0 = timer.Now();
 		const THindranceVector&hindrance = vehicle->base->hindrance;
-		const int speed = vehicle->GetMovementStepsPerRound();
+		//const int speed = vehicle->GetMovementStepsPerRound();
 		TWays	possibilities;
 
 		static const count_t cellCount = Grid::LowSetup::GridType::CellCount * Grid::CellStack::Range;
@@ -643,7 +643,7 @@ namespace Objects{ namespace Pathfinding
 			TNode&tn = buffer[current];
 			if (!tn.nodeCosts)
 			{
-				tn.nodeCosts = GetCellMovementCosts(world,cellID,hindrance,speed);
+				tn.nodeCosts = GetCellMovementCosts(world,cellID,hindrance);
 			}
 
 
@@ -677,7 +677,7 @@ namespace Objects{ namespace Pathfinding
 				UINT32 option = IDOF(possibilities.way[i]);
 				TNode&n = buffer[option];
 				if (!n.nodeCosts)
-					n.nodeCosts = GetCellMovementCosts(world,possibilities.way[i],hindrance,speed);
+					n.nodeCosts = GetCellMovementCosts(world,possibilities.way[i],hindrance);
 				int cost = std::max(tn.nodeCosts,n.nodeCosts);
 				int hCosts = std::max(0, possibilities.way[i].height - cellID.height );
 				cost += hCosts;
@@ -837,7 +837,7 @@ namespace Objects{ namespace Pathfinding
 			{
 				tn.isBlocked = isBlocked && isBlocked(cellID);
 				tn.nodeCosts = tn.isBlocked ? 1000000 :
-								GetCellMovementCosts(world,cellID,hindrance,speed);
+								GetCellMovementCosts(world,cellID,hindrance);
 			}
 			if (tn.isBlocked)
 				continue;
@@ -858,7 +858,7 @@ namespace Objects{ namespace Pathfinding
 				{
 					n.isBlocked = isBlocked && isBlocked(possibilities.way[i]);
 					n.nodeCosts = n.isBlocked ? 1000000 :
-									GetCellMovementCosts(world,possibilities.way[i],hindrance,speed);
+									GetCellMovementCosts(world,possibilities.way[i],hindrance);
 				}
 				if (n.isBlocked)
 					continue;
@@ -948,12 +948,12 @@ namespace Objects{ namespace Pathfinding
 	}
 
 	
-	bool AppendShortestConstructionPath(const Vehicle*vehicle, bool ignoreWater, bool flat, const Grid::LCellIdI&from, Grid::LCellIdI to, Ctr::BasicBuffer<Grid::LCellIdI>&oPath)
+	Result AppendShortestConstructionPath(const Vehicle*vehicle, bool ignoreWater, bool flat, const Grid::LCellIdI&from, Grid::LCellIdI to, Ctr::BasicBuffer<Grid::LCellIdI>&oPath, const count_t maxIterations /*= 2000*/)
 	{
 		if (flat)
 			to.height = from.height;
 		if (from == to)
-			return true;
+			return Result::DestinationReached;
 		const World::Data&world = 
 		#ifdef CLIENT
 			World::actual;
@@ -966,7 +966,7 @@ namespace Objects{ namespace Pathfinding
 				if (flat)
 					to++;
 				if (!vehicle->CanStandOn(world,to -1,ignoreWater,false) /*|| !Grid::LowCellIsClear(to)*/)// || !NothingHere(destination))
-					return false;
+					return Result::NoPath;
 			}
 
 		//Timer::Time t0 = timer.Now();
@@ -1001,10 +1001,10 @@ namespace Objects{ namespace Pathfinding
 		while (queue.PopLeast(current))
 		{
 			iterations ++;
-			if (iterations > 2000)
+			if (iterations > maxIterations)
 			{
 				//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
-				return false;//let's ignore long ranges
+				return Result::InsufficientIterations;//let's ignore long ranges
 			}
 
 			Grid::LCellIdI cellID(DESCOF(current));
@@ -1031,7 +1031,7 @@ namespace Objects{ namespace Pathfinding
 				oPath.AppendAll(outPath);
 				//ShowMessage("found route with "+String(outPath.Count())+" steps, requiring "+String(iterations)+" iterations" );
 				//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
-				return true;
+				return Result::DestinationReached;
 			}
 			count_t ways = GetConstructionWays(world, ignoreWater, flat, cellID == from, vehicle, cellID, possibilities, to);
 			ASSERT_LESS_OR_EQUAL__(ways,ARRAYSIZE(possibilities));
@@ -1073,7 +1073,7 @@ namespace Objects{ namespace Pathfinding
 		}
 		//ShowMessage("no route found after "+String(iterations)+" iterations");
 		//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
-		return false;
+		return Result::NoPath;
 	}
 
 	

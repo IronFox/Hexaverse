@@ -7,6 +7,7 @@
 #include <objects/vehicle.h>
 #include <objects/faction.h>
 #include <globalEvents.h>
+#include "scene/vehicleAccessibilityMesh.h"
 
 #include "hud/hexGrid.h"
 
@@ -36,7 +37,11 @@ namespace Objects
 		bool n = !shiftPressed;
 		shiftPressed = true;
 		if (shiftMeansQueue && n)
+		{
 			HUD::HexGrid::RefreshButtonState();
+			VehicleAccessibilityMesh::Refresh();
+		}
+
 	}
 
 	void					SignalShiftReleased()
@@ -44,7 +49,10 @@ namespace Objects
 		bool n = shiftPressed;
 		shiftPressed = false;
 		if (shiftMeansQueue && n)
+		{
 			HUD::HexGrid::RefreshButtonState();
+			VehicleAccessibilityMesh::Refresh();
+		}
 	}
 
 	bool					ShouldQueueCommands()

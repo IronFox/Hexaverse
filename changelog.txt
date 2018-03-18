@@ -1,3 +1,10 @@
+v0.7.8
+	+ Added experimental visualization of selected vehicle reach.
+	> Client now extends server pathfinding limitation when building very long roads by processing explicit path for server.
+	* Fixed stored vehicles not counting towards terraformer statistics.
+	* Fixed path finding when building walls and roads in constrained environments.
+	* Fixed auto-scheduled tower attacks sometimes remaining active.
+
 v0.7.7	[Mar 11 2018]
 	> Bug reporter now presents all found log files, and derives game version from selected log file.
 	> Bug reporter now inserts fatal messages into bug description, and removes previous fatal message if found.

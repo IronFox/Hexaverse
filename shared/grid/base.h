@@ -50,8 +50,12 @@ public:
 
 	struct TNetCell
 	{
-		float4		centerVertex,
-					cornerVertex[6];
+		float4		centerVertex;
+		/**
+		Corner vertices in the same order as neighbor cells.
+		Note that cornerVertex[i] is located between neighbor[i] and neighbor[i+1]
+		*/
+		float4		cornerVertex[6];
 		UINT32		centerVertexId,
 					cornerVertexId[6];	//valid through numCorners-1
 		BYTE		numCorners;	//0 for invalid cells, 5 for corner cells, 6 for all other cells

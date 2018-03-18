@@ -79,6 +79,7 @@
 #include "components/inputControl.h"
 #include "components/objectNetworkHelper.h"
 #include "components/playerControlBegin.h"
+#include "components/visual/scene/vehicleAccessibilityMesh.h"
 
 #include "rc/Resource.h"
 
@@ -1355,6 +1356,8 @@ bool loop()
 
 			World::RenderWater(frustum);
 
+			VehicleAccessibilityMesh::Render(frustum);
+
 
 			Objects::Renderer::RenderTranslucent(false);
 
@@ -1483,7 +1486,7 @@ bool loop()
 
 			if (HUD::showControlsAndContacts && !InputControl::saveScreenshot)
 			{
-				static const String line = "(C) Stefan Elsen; v" PRODUCT_VERSION "; Compiled "+String(__TIMESTAMP__);
+				static const String line = "(C) Stefan Elsen; v" PRODUCT_VERSION "; Compiled "+String(__DATE__)+" "+String(__TIME__);
 				//textout.locate(0.f,1.f - textout.GetScaledHeight());
 				textout.PushState();
 				textout.Scale(0.8f,0.8f);
@@ -2265,6 +2268,7 @@ int main( int argc, const char* argv[])
 
 		#ifdef HAS_WINDOW
 			Loading::Stage("Lighting",Lighting::Create);
+			Loading::Stage("Mobile Accessibility Mesh",VehicleAccessibilityMesh::Create);
 			Loading::Stage("Visual Terrain",VisualTerrain::Create);		//egg-chicken
 			Loading::Stage("Object Rendering", Objects::Renderer::Create);	//chicken-egg
 

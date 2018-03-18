@@ -1412,10 +1412,10 @@ namespace Objects
 
 				if (v.IsGroundBoundVehicle())
 				{
-					if (!Pathfinding::AppendShortestConstructionPath((const Vehicle*)&v,
+					if (!Pathfinding::Okay( Pathfinding::AppendShortestConstructionPath((const Vehicle*)&v,
 														this->mode == CursorMode::BuildRoadChainMode || this->mode == CursorMode::BuildBridgeMode,
 														this->mode == CursorMode::BuildBridgeMode,
-														 origin,destination,path))
+														 origin,destination,path) ))
 					{
 
 						return false;

@@ -56,11 +56,20 @@ namespace Objects
 
 
 
+		enum class Result
+		{
+			DestinationReached,
+			InsufficientIterations,
+			NoPath
+		};
+
+		inline bool		Okay(Result r)	{return r == Result::DestinationReached;}
+
 		bool			AppendShortestPathI(const Vehicle*vehicle, const Grid::LCellIdI&from, const Grid::LCellIdI&to, Ctr::BasicBuffer<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
 		#ifndef NO_SATELLITES
 			bool		AppendShortestPathI(const Satellite*vehicle, const Grid::LCellIdI&from, const UINT32 toCell, BasicBuffer<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
 		#endif
-		bool			AppendShortestConstructionPath(const Vehicle*vehicle, bool ignoreWater, bool flat, const Grid::LCellIdI&from, Grid::LCellIdI to, Ctr::BasicBuffer<Grid::LCellIdI>&oPath);
+		Result			AppendShortestConstructionPath(const Vehicle*vehicle, bool ignoreWater, bool flat, const Grid::LCellIdI&from, Grid::LCellIdI to, Ctr::BasicBuffer<Grid::LCellIdI>&oPath, const count_t maxIterations = 2000);
 		/**
 		Attempts to find the shortest direct path to a destination. Does not check if the path is blocked by terrain or entities.
 		@param from Source location
@@ -113,7 +122,7 @@ namespace Objects
 
 			};
 		
-			Ctr::Buffer<MapNode>	result;
+			Buffer<MapNode>	result;
 
 			typedef bool (*FBlockTest)(const Grid::LCellIdI&);
 

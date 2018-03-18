@@ -1443,6 +1443,11 @@ namespace Objects
 				if (m0->lock()->turret->constName == turretType)
 					rs ++;
 			}
+			foreach (this->storedMobiles,m0)
+			{
+				if (m0->lock()->turret->constName == turretType)
+					rs ++;
+			}
 			return rs;
 		}
 
