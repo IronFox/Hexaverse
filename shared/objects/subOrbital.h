@@ -82,7 +82,7 @@ namespace Objects
 			virtual int				GetMaxHealth() const override {return turret->healthMultiplier.GetValue(GetResearchState());}
 			virtual String			DescribeMaxHealth() const override {return turret->healthMultiplier.Describe(GetResearchState());}
 			virtual int				GetConstructionCost() const override {return turret->productionCosts.GetValue(GetResearchState());}
-			virtual bool			IsGroundBoundVehicle() const {return location.height <= Grid::CellStack::TopHeight;}	//landed
+			virtual bool			IsGroundBoundVehicle() const {return !IsAboveGrid(location);}	//landed
 			virtual bool			IsPureVehicle() const override {return false;}
 			virtual bool			IsPlane() const override {return true;}
 			virtual PTurretBase		GetTurretBase(float&zOffset) override { zOffset = 0.f; return To<MobileEntity>::Cast(shared_from_this());}

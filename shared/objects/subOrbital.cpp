@@ -296,7 +296,7 @@ namespace Objects
 			}
 
 	
-			/*virtual override*/ bool	Plane::DirectTo(mode_t mode, MutableArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
+			/*virtual override*/ bool	Plane::DirectTo( mode_t mode, MutableArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/ )
 			{
 				switch (mode)
 				{
