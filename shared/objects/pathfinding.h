@@ -41,7 +41,7 @@ namespace Objects
 
 		void			GetWays(const World::Data&world,
 								const Vehicle*v,  const Grid::LCellIdI&location, 
-								TWays&outWays, const Grid::LCellIdI&destination, 
+								TWays&outWays, const Grid::LCellIdI&destination, const PHangar&destinationHangar,
 								bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute, bool forceRevertible);
 		#ifndef NO_SATELLITES
 			void		GetWays(const Satellite*v,  UINT32 location, 
@@ -49,7 +49,7 @@ namespace Objects
 								bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute);
 		#endif
 		void			GetMobileWays(	const World::Data&world,
-								const MobileEntity*v,  const Grid::LCellIdI&location, 
+								const MobileEntity*v,  const Grid::LCellIdI&location, const PHangar&destinationHangar,
 								TWays&outWays, const Grid::LCellIdI&destination, 
 								bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute);
 
@@ -115,7 +115,7 @@ namespace Objects
 			@param isBlocked Function callback to determine whether units can move to a given cell. Can be empty, considering all cells non-blocked
 			@param forceRevertible Forces that only steps are considered that are possible in both directions
 			*/
-			void			Map(const Vehicle*vehicle, const Grid::LCellIdI&from, FBlockTest isBlocked, UINT32 maxRange=0xFFFFFFFF, bool forceRevertible=false);
+			void			Map(const Vehicle*vehicle, const Grid::LCellIdI&from, FBlockTest isBlocked, UINT32 maxRange=0xFFFFFFFF, bool forceRevertible=false, bool allowAccessibleHangars=false);
 
 
 

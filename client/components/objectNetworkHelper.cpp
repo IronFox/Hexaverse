@@ -139,7 +139,7 @@ namespace ObjectHelper
 
 
 
-	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, UINT8 flags, Objects::Vehicle::mode_t mode, bool interactive)
+	bool	DirectTo( const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, UINT8 flags, Objects::Vehicle::mode_t mode, bool interactive )
 	{
 		if (!v)
 			return false;
@@ -262,7 +262,7 @@ namespace ObjectHelper
 	}
 
 
-	bool	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Grid::LCellIdI target, UINT8 flags)
+	bool	MoveVehicleTo( const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Grid::LCellIdI target, UINT8 flags )
 	{
 		if (prev == target)
 			return true;

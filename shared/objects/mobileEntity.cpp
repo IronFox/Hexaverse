@@ -1046,7 +1046,7 @@ namespace Objects
 			myTasks.EraseFront();
 		}
 
-		bool			MobileEntity::PlotCourse(MutableArrayRef<Grid::LCellIdI> destination, bool detailedPath, bool virtualPlatformMode/*=false*/)
+		bool			MobileEntity::PlotCourse( MutableArrayRef<Grid::LCellIdI> destination, bool detailedPath, bool virtualPlatformMode/*=false*/ )
 		{
 			const World::Data&world = owner->knownWorld;
 			if (IsVehicle())
@@ -1404,7 +1404,7 @@ namespace Objects
 	#endif
 
 
-	bool	MobileEntity::Task::AppendPathSegment(const MobileEntity*v, const Grid::LCellIdI&prev, const Task::Focus&target)
+	bool	MobileEntity::Task::AppendPathSegment( const MobileEntity*v, const Grid::LCellIdI&prev, const Task::Focus&target )
 	{
 		if (v->IsVehicle())
 		{
@@ -1454,7 +1454,7 @@ namespace Objects
 		return true;
 	}
 
-	bool MobileEntity::Task::UpdatePath(const MobileEntity*v, const Grid::LCellIdI&pointOfOrigin, FocusChangeType type)
+	bool MobileEntity::Task::UpdatePath( const MobileEntity*v, const Grid::LCellIdI&pointOfOrigin, FocusChangeType type )
 	{
 		if (type == FocusChangeType::NoChange)
 			return true;
@@ -1590,7 +1590,7 @@ namespace Objects
 	
 
 	
-	bool					MobileEntity::Task::Replot(const Grid::LCellIdI&pointOfOrigin, const MobileEntity*parent, FocusChangeType t, bool recompileVisualization)
+	bool					MobileEntity::Task::Replot( const Grid::LCellIdI&pointOfOrigin, const MobileEntity*parent, FocusChangeType t, bool recompileVisualization )
 	{
 		switch (type)
 		{
