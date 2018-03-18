@@ -7,6 +7,7 @@ Typically TexCoord0.y <= TexCoord0.x
 
 #include "common.inc.hlsl"
 //#include "shadow.hlsli"
+#include "light.hlsli"
 
 
 
@@ -46,6 +47,13 @@ float4 psMain(V2P input) : SV_TARGET
 	float whiteEdgeOpacity2 = smoothstep(0.8 - step2, 0.8 + step2, abs(input.edge.y));
 
 	float c= 1.0 - hardEdgeOpacity;
+	//clip(whiteEdgeOpacity2-0.0001);
 	
-	return float4(c,c,c, whiteEdgeOpacity2);
+	float diffuse = max(0.0, dot(input.normal, Sun.xyz))* 0.8 + 0.2;
+	
+	float3 rgb = float3(0.6,0.7,1.0);
+	float3 light = rgb * diffuse;
+	
+	
+	return float4(light, whiteEdgeOpacity2*0.8 + 0.2);
 }

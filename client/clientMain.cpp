@@ -2199,7 +2199,6 @@ int main( int argc, const char* argv[])
 			Loading::Stage("HostList",HUD::HostList::Create);
 			Loading::Stage("Voting",Vote::StaticCreate);
 			Loading::Stage("VoteList",HUD::VoteList::Create);
-			Loading::Stage("Mobile Accessibility Mesh",VehicleAccessibilityMesh::Create);
 		#endif
 
 		Loading::Stage("Client Grid",ClientGrid::Create);
@@ -2226,6 +2225,7 @@ int main( int argc, const char* argv[])
 
 		#ifdef HAS_WINDOW
 			Loading::Stage("Lighting",Lighting::Create);
+			Loading::Stage("Mobile Accessibility Mesh",VehicleAccessibilityMesh::Create);
 			Loading::Stage("Visual Terrain",VisualTerrain::Create);		//egg-chicken
 			Loading::Stage("Object Rendering", Objects::Renderer::Create);	//chicken-egg
 

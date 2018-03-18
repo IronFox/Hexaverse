@@ -7,7 +7,9 @@
 #include <geometry/cgs.h>
 #include "../display.h"
 #include "../../clientEvents.h"
+#include "lighting.h"
 
+namespace DX11 = Engine::DX11;
 
 namespace VehicleAccessibilityMesh
 {
@@ -36,6 +38,14 @@ namespace VehicleAccessibilityMesh
 			{
 				movementCostsFromRoot = source.movementCostsFromRoot;
 				loc = source.cell;
+			}
+
+			bool		HasNeighbor(const TNode*n) const
+			{
+				for (index_t i = 0; i < ARRAYSIZE(edgeNeighbor); i++)
+					if (edgeNeighbor[i] == n)
+						return true;
+				return false;
 			}
 
 			void		UpdateStepCount(const int speed)
@@ -78,9 +88,9 @@ namespace VehicleAccessibilityMesh
 
 		HashTable<Grid::LCellIdI,TNode>	TNode::nodeMap;
 
-		void MakeFlatVertex(CGS::Constructor<>::Object&obj, const M::TVec3<>&cornerCoords, int height, float t0, float t1)
+		void MakeVertex(CGS::Constructor<>::Object&obj, const M::TVec3<>&cornerCoords, int height, float t0, float t1)
 		{
-			obj.MakeVertex(cornerCoords * Grid::ToRadiusf(0.02f + height),cornerCoords,float2(t0,t1));
+			obj.MakeVertex(cornerCoords * Grid::ToRadiusf(0.1f + height),float2(t0,t1));
 		}
 
 
@@ -163,6 +173,7 @@ namespace VehicleAccessibilityMesh
 			return n.stepsToReach <= offsetSteps+2;
 		});
 
+		const int climb = e->GetMaxClimbingHeight();
 		foreach (mapper.result,n)
 		{
 			auto*n2 = TNode::nodeMap.QueryPointer(n->cell);
@@ -172,7 +183,7 @@ namespace VehicleAccessibilityMesh
 				n2->predecessor= &TNode::nodeMap.Require(mapper.result[n->predecessor].cell);
 			else
 				n2->predecessor = nullptr;
-			n2->CheckNeighborhood(e->GetMaxFallingHeight(),e->GetMaxClimbingHeight());
+			n2->CheckNeighborhood(e->GetMaxFallingHeight(),climb);
 		}
 
 				
@@ -182,26 +193,70 @@ namespace VehicleAccessibilityMesh
 		auto&obj = cnst.AppendObject();
 
 
-		TNode::nodeMap.VisitAllValues([&obj](const TNode&n)
+		TNode::nodeMap.VisitAllValues([&obj,climb](const TNode&n)
 		{
 			obj.SetVertexOffsetToCurrent();
 			const auto&cell = Grid::low.cells[n.loc.stackID];
-			MakeFlatVertex(obj,cell.cornerCenter,n.loc.height,0,0);
+			MakeVertex(obj,cell.cornerCenter,n.loc.height,0,0);
+			bool hardEdges[6] = {false};
+			float3 center[6];
 			for (int k = 0; k < cell.numCorners; k++)
 			{
-				const bool hardEdge0 = !n.edgeNeighbor[k] || n.edgeNeighbor[k]->stepsToReach > n.stepsToReach;
+				const bool hardEdge0 = !n.edgeNeighbor[k] || n.edgeNeighbor[k]->stepsToReach > n.stepsToReach || (n.edgeNeighbor[k]->loc.height < n.loc.height - climb);
 				const int kPrev = (k+cell.numCorners-1)%cell.numCorners;
 				const int kNext = (k+1)%cell.numCorners;
 				const int kNextNext = (kNext+1)%cell.numCorners;
-				const bool hardEdge1 = !n.edgeNeighbor[kPrev] || n.edgeNeighbor[kPrev]->stepsToReach > n.stepsToReach;
+				const bool hardEdge1 = !n.edgeNeighbor[kPrev] || n.edgeNeighbor[kPrev]->stepsToReach > n.stepsToReach || (n.edgeNeighbor[kPrev]->loc.height < n.loc.height - climb);
+				hardEdges[k] = hardEdge0;
 
-				MakeFlatVertex(obj,cell.cornerVertex[kPrev].xyz,n.loc.height,1,hardEdge0 || hardEdge1);
-				MakeFlatVertex(obj,(cell.cornerVertex[kPrev].xyz + cell.cornerVertex[k].xyz)/2,n.loc.height,1,0.5f + 0.5f * hardEdge0);
+				center[k] = (cell.cornerVertex[kPrev].xyz + cell.cornerVertex[k].xyz)/2;
+
+				MakeVertex(obj,cell.cornerVertex[kPrev].xyz,n.loc.height,1,hardEdge0 || hardEdge1);
+				MakeVertex(obj,center[k],n.loc.height,1,0.5f + 0.5f * hardEdge0);
 
 				obj.MakeTriangle(0,1+k*2,1+k*2+1);
 				obj.MakeTriangle(0,1+k*2+1,1+kNext*2);
 			}
+
+			for (int k = 0; k < cell.numCorners; k++)
+			{
+				//if (n.edgeNeighbor[k] && n.edgeNeighbor[k]->loc.height > n.loc.height)
+
+				if (n.edgeNeighbor[k] > &n || 
+					(n.edgeNeighbor[k] && !n.edgeNeighbor[k]->HasNeighbor(&n)))
+				{
+					const int nHeight = n.edgeNeighbor[k]->loc.height;
+					const int kPrev = (k+cell.numCorners-1)%cell.numCorners;
+					const int kNext = (k+1)%cell.numCorners;
+					const bool hardEdge = hardEdges[k];
+					const bool hardEdgePrev = hardEdges[kPrev];
+					const bool hardEdgeNext = hardEdges[kNext];
+
+					obj.SetVertexOffsetToCurrent();
+
+					const bool e0 = (hardEdge || hardEdgePrev);
+					const bool e1 = (hardEdge || hardEdgeNext);
+					const bool different = e0 != hardEdge || e1 != hardEdge;
+					MakeVertex(obj,cell.cornerVertex[kPrev].xyz,n.loc.height,1,e0 && different);
+					MakeVertex(obj,cell.cornerVertex[kPrev].xyz,nHeight,1,e0 && different);
+					MakeVertex(obj,center[k],n.loc.height,1,0.5f + 0.5f * (hardEdge && different));
+					MakeVertex(obj,center[k],nHeight,1,0.5f + 0.5f * (hardEdge && different));
+					MakeVertex(obj,cell.cornerVertex[k].xyz,n.loc.height,1,e1 && different);
+					MakeVertex(obj,cell.cornerVertex[k].xyz,nHeight,1,e1 && different);
+					
+
+					obj.MakeTriangle(0,1,2);
+					obj.MakeTriangle(1,3,2);
+
+					obj.MakeTriangle(2,3,4);
+					obj.MakeTriangle(3,5,4);
+				}
+
+			}
+
+
 		});
+		obj.ComputeNormals();
 		mesh.ibo.Create(obj.GetTriangleIndices(0),obj.CountTriangleIndices(0));
 		mesh.vbo.Create(obj.GetVertices(0),obj.CountVertices(0),obj.GetVertexSize()*sizeof(float));
 
@@ -210,7 +265,8 @@ namespace VehicleAccessibilityMesh
 	void		Render(const Engine::Frustum<>&)
 	{
 		display.StoreRendererState();
-			display.SetDepthTest(false,false);
+			//display.SetDepthTest(false,false);
+			display.SetRasterizer(true,false);
 			display.Render(Details::mesh);
 		display.RestoreRendererState();
 	}
@@ -237,8 +293,15 @@ namespace VehicleAccessibilityMesh
 			mesh.binding = bnd;
 		}
 
+		Buffer0<DX11::Shader::Binding> bindings;
+
+		//bindings;
+		
+		bindings <<	DX11::Shader::Binding(Lighting::GPUResources::sunDirection,"Sun");
+		bindings << DX11::Shader::Binding(Lighting::GPUResources::sunColor,"SunColor");
+
 		mesh.SetTriangles();
-		mesh.shader.LoadFromFile("shaders/vehicleAccessibilityMesh.hlsl","vsMain","psMain");
+		mesh.shader.LoadFromFile("shaders/vehicleAccessibilityMesh.hlsl","vsMain","psMain",bindings.GetPointer(),bindings.Count());
 		mesh.UpdateLayout();
 
 		GlobalEvents::applicationTerminate << [](){mesh.Clear();};
