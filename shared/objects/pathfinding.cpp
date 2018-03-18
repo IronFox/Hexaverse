@@ -129,7 +129,7 @@ namespace Objects{ namespace Pathfinding
 	}
 
 	template <bool IgnoreStructuresAtDestination>
-	bool ValidDestinationOf( const World::Data&world,const Vehicle&v, const Grid::LCellIdI&location, const Grid::LCellIdI&finalDestination, bool ignoreWater, bool doFloat)
+	bool ValidDestinationOf( const World::Data&world,const Vehicle&v, const Grid::LCellIdI&location, const Grid::LCellIdI&finalDestination, const PHangar&finalDestinationHangar, bool ignoreWater, bool doFloat)
 	{
 		if (Grid::AffectedByEMP(location))
 			return false;
@@ -137,8 +137,9 @@ namespace Objects{ namespace Pathfinding
 			return v.CanStandOn(world,location-1,ignoreWater,doFloat);
 
 		auto hangar = AccessibleHangarHere(location,v);
-		if (hangar && (location == finalDestination || hangar == AccessibleHangarHere(finalDestination,v)))
-			return true;
+		if (hangar)
+			if (location == finalDestination || hangar == finalDestinationHangar || finalDestination == Grid::LCellIdI::Invalid)
+				return true;
 
 		return IgnoreStructuresAtDestination;
 	}
@@ -147,7 +148,7 @@ namespace Objects{ namespace Pathfinding
 
 	void GetWays(	const World::Data&world,
 							const Vehicle*v,  const Grid::LCellIdI&location, 
-							TWays&outWays, const Grid::LCellIdI&destination, 
+							TWays&outWays, const Grid::LCellIdI&destination, const PHangar&destinationHangar,
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute, bool forceRevertible)
 	{
 		outWays.Clear();
@@ -179,7 +180,7 @@ namespace Objects{ namespace Pathfinding
 					if (!okay)
 						continue;
 				}
-				bool valid = ValidDestinationOf<false>(world,*v,cell, destination, false, false);
+				bool valid = ValidDestinationOf<false>(world,*v,cell, destination, destinationHangar, false, false);
 				if (!valid)
 				{
 					if (j <= 0 && !world.LowCellIsClear(cell))
@@ -267,12 +268,12 @@ namespace Objects{ namespace Pathfinding
 	
 	void			GetMobileWays(	const World::Data&world,
 							const MobileEntity*v,  const Grid::LCellIdI&location, 
-							TWays&outWays, const Grid::LCellIdI&destination, 
+							TWays&outWays, const Grid::LCellIdI&destination, const PHangar&destinationHangar,
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute)
 	{
 		if (v->IsGroundBoundVehicle())
 		{
-			GetWays(world,(const Vehicle*)v, location, outWays, destination,ignoreVehiclesOnDestination,ignoreFriendlyVehiclesOnRoute,false);
+			GetWays(world,(const Vehicle*)v, location, outWays, destination, destinationHangar, ignoreVehiclesOnDestination,ignoreFriendlyVehiclesOnRoute,false);
 			return;
 		}
 		outWays.Clear();
@@ -331,7 +332,7 @@ namespace Objects{ namespace Pathfinding
 				if (!okay)
 					continue;
 
-				if ( ValidDestinationOf<true>(world,*v,cell, destination, ignoreWater, true) )
+				if ( ValidDestinationOf<true>(world,*v,cell, destination, nullptr,ignoreWater, true) )
 				{
 					(*outChoices++) = cell;
 					rs++;
@@ -372,7 +373,7 @@ namespace Objects{ namespace Pathfinding
 				if (!okay)
 					continue;
 
-				if ( ValidDestinationOf<true>(world,*v,cell, destination, ignoreWater, false) )
+				if ( ValidDestinationOf<true>(world,*v,cell, destination, nullptr, ignoreWater, false) )
 //				if ((cell == destination || world.LowCellIsClear(cell)) && (v->CanStandOn(world,cell-1,ignoreWater)))
 				{
 					(*outChoices++) = cell;
@@ -406,7 +407,7 @@ namespace Objects{ namespace Pathfinding
 							break;
 						}
 			}
-			if ( okay && ValidDestinationOf<true>(world,*v,cell, destination, ignoreWater, false) )
+			if ( okay && ValidDestinationOf<true>(world,*v,cell, destination, nullptr, ignoreWater, false) )
 //				if ((cell == destination || world.LowCellIsClear(cell)) && (v->CanStandOn(world,cell-1,ignoreWater)))
 			{
 				(*outChoices++) = cell;
@@ -485,7 +486,7 @@ namespace Objects{ namespace Pathfinding
 							const Grid::LCellIdI&to, Ctr::BasicBuffer<PathNode>&oPath,
 							bool ignoreFriendlyVehiclesOnRoute, bool failIfLimitReached/*=true*/, bool*outWouldFailDueToLimitReached/*=nullptr*/);
 
-	bool AppendShortestPathI(const Vehicle*vehicle, const Grid::LCellIdI&from,
+	bool AppendShortestPathI( const Vehicle*vehicle, const Grid::LCellIdI&from,
 							const Grid::LCellIdI&to, Ctr::BasicBuffer<PathNode>&oPath, bool failIfLimitReached/*=true*/, bool*outWouldFailDueToLimitReached/*=nullptr*/)
 	{
 		static Ctr::Buffer0<PathNode>	routeI, route;
@@ -570,7 +571,7 @@ namespace Objects{ namespace Pathfinding
 
 
 		
-	bool AppendShortestPath(const Vehicle*vehicle, const Grid::LCellIdI&from,
+	bool AppendShortestPath( const Vehicle*vehicle, const Grid::LCellIdI&from,
 							const Grid::LCellIdI&to, Ctr::BasicBuffer<PathNode>&oPath,
 							bool ignoreFriendlyVehiclesOnRoute, bool failIfLimitReached/*=true*/, bool*outWouldFailDueToLimitReached/*=nullptr*/)
 	{
@@ -585,8 +586,9 @@ namespace Objects{ namespace Pathfinding
 			vehicle->owner->knownWorld;
 		#endif
 		
+		const auto destHangar = AccessibleHangarHere(to,*vehicle);
 
-		if (!ValidDestinationOf<false>(world,*vehicle,to,to,false, false))
+		if (!ValidDestinationOf<false>(world,*vehicle,to,to,destHangar,false, false))
 			return false;
 
 		//if (!vehicle->CanStandOn(world,to -1,false) || 
@@ -669,7 +671,7 @@ namespace Objects{ namespace Pathfinding
 				//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 				return true;
 			}
-			GetWays(world,vehicle,  cellID, possibilities, to, true, ignoreFriendlyVehiclesOnRoute,false);
+			GetWays(world,vehicle,  cellID, possibilities, to, destHangar, true, ignoreFriendlyVehiclesOnRoute,false);
 
 
 			for (index_t i = 0; i < possibilities.numWays; i++)
@@ -787,7 +789,7 @@ namespace Objects{ namespace Pathfinding
 		}
 	#endif
 
-	void ReachabilityMapper::Map(const Vehicle*vehicle, const Grid::LCellIdI&from, FBlockTest isBlocked, UINT32 maxRange/*=0xFFFFFFFF*/, bool forceRevertible/*=false*/)
+	void ReachabilityMapper::Map( const Vehicle*vehicle, const Grid::LCellIdI&from, FBlockTest isBlocked, UINT32 maxRange/*=0xFFFFFFFF*/, bool forceRevertible/*=false*/, bool allowAccessibleHangars/*=false*/ )
 	{
 		const World::Data&world = 
 		#ifdef CLIENT
@@ -801,6 +803,7 @@ namespace Objects{ namespace Pathfinding
 		TWays	possibilities;
 
 		static const count_t cellCount = Grid::LowSetup::GridType::CellCount * Grid::CellStack::Range;
+
 
 
 		buffer.SetSize(cellCount);
@@ -844,7 +847,7 @@ namespace Objects{ namespace Pathfinding
 
 			touched << current;
 
-			GetWays(world,vehicle,  cellID, possibilities, Grid::LCellIdI::Invalid, true, false,forceRevertible);
+			GetWays(world,vehicle,  cellID, possibilities, Grid::LCellIdI::Invalid, nullptr, true, true,forceRevertible);
 
 
 

@@ -1472,7 +1472,7 @@ namespace Objects
 
 
 
-	PHangar		AccessibleHangarHere(const Grid::LCellIdI&location, const MobileEntity&m, const OwnerParameter&mOwner)
+	PHangar		AccessibleHangarHere( const Grid::LCellIdI&location, const MobileEntity&m, const OwnerParameter&mOwner )
 	{
 		PWorldEntity e = GetEntity(location);
 		if (!e)
