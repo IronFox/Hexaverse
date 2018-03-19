@@ -124,6 +124,7 @@ namespace Objects
 			#endif
 
 			planes	<< SubOrbital::Raptor::globalPrototype
+					<< SubOrbital::Bomber::globalPrototype
 					<< SubOrbital::CargoPlane::globalPrototype
 					<< SubOrbital::SensorDrone::globalPrototype
 					;
@@ -194,6 +195,7 @@ namespace Objects
 
 
 			SubOrbital::Raptor::Configure(SubOrbital::raptor);
+			SubOrbital::Bomber::Configure(SubOrbital::bomber);
 			SubOrbital::CargoPlane::Configure(SubOrbital::cargoPlane);
 			SubOrbital::SensorDrone::Configure(SubOrbital::sensorDrone);
 
@@ -211,7 +213,7 @@ namespace Objects
 									<< &skyHubTurret << &protonCannon << &ragnarok << &starPort
 								#endif
 								<< &armored << &artillery << &launcher << &rockets << &emp
-                                << &SubOrbital::raptor << &SubOrbital::cargoPlane << &SubOrbital::sensorDrone
+                                << &SubOrbital::raptor << &SubOrbital::bomber << &SubOrbital::cargoPlane << &SubOrbital::sensorDrone
 								<< &bomb
 								<< &terraformer << &resourceScanner
 								#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION

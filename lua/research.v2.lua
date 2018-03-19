@@ -331,6 +331,20 @@ TurretConfig =
 		AttacksPerRound = 2,
 		IsUnlocked = true,
 	},
+	Bomber =
+	{
+		Cost = 160,
+		Weight = 20,	--defines movement speed: 100/Weight
+		HealthMultiplier = 5,	--directly equals health
+		ScanningRange = 4,
+		HorizontalAttackRange = 0,
+		GroundScanningRange = 4,
+		GroundScannerPenetration = 0,
+		ExplosionRadius = 2,
+		DamageLevel = 7,
+		AttacksPerRound = 1,
+		IsUnlocked = true,
+	},
 	CargoPlane = 
 	{
 		Cost = 120,

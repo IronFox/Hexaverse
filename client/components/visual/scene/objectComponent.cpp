@@ -225,6 +225,7 @@ namespace Objects
 			(*p)->instance->shape = Objects::Tower::staticShape;
 
 		LoadFor<Objects::SubOrbital::Raptor>();
+		LoadFor<Objects::SubOrbital::Bomber>();
 		LoadFor<Objects::SubOrbital::CargoPlane>();
 		LoadFor<Objects::SubOrbital::SensorDrone>();
 

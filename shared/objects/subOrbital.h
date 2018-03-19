@@ -252,6 +252,46 @@ namespace Objects
 			#endif
 		};
 
+
+		class Bomber : public Template<Bomber>
+		{
+		protected:
+			typedef Template<Bomber>	Super;
+			friend class Super;
+
+			/**/					Bomber(const OwnerParameter&owner, const Grid::LCellIdI&location):Super(owner,GetTurretType(),location)
+									{}
+			/**/					Bomber():Super(GetTurretType())
+									{}	//global prototype
+		public:
+			static const int		DoomsdayDetonationCosts = 300;
+
+			#ifndef CLIENT
+				//Satellite overrides:
+				virtual bool		ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget, TargetChoice&outExtResult) const override;
+			#endif
+
+
+			//BaseEntity overrides:
+			virtual String			GetTypeName() const override {return "Bomber";}
+			virtual EntityType		GetType() const override {return ConstName::Type_Bomber;}
+
+			//SatelliteTemplate overrides:
+			virtual Component::Turret*
+									GetTurretType() const override	{return &Component::SubOrbital::bomber;}
+
+			//WorldEntity overrides:
+			#ifndef NO_HIBERNATION
+				virtual int			GetUplinkTraffic() const override {return 4;}
+			#endif
+			virtual bool			IsSentry() const override {return true;}
+
+			//Hibernating overrides:
+			#ifndef NO_HIBERNATION
+				virtual int			GetUplinkPriority() const override {return 900;}
+			#endif
+		};
+
 		class CargoPlane : public Template<CargoPlane>, public Hangar
 		{
 		protected:

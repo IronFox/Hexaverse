@@ -76,7 +76,7 @@ namespace Objects
 
 		namespace SubOrbital
 		{
-			Turret		raptor,cargoPlane,sensorDrone;
+			Turret		raptor,bomber,cargoPlane,sensorDrone;
 			VehicleBase	planeBase;
 		}
 		const char*				OperationToString(operation_t op)
@@ -1357,6 +1357,25 @@ namespace Objects
 
 			}
 
+			void			Bomber::Configure(Turret&component)
+			{
+			
+
+				component.typeName = "Bomber";
+				component.shortName = " Bomber";
+				component.constName = ConstName::Type_Bomber;
+
+				component.mountType = Turret::MountType::Plane;
+
+		
+				component.dealsEMPDamage = false;
+				component.initiative = 90;
+				component.ammoType = Resource::Uranium;
+				component.requiresStationaryVehicle = false;
+				component.ignoresVehicleMotion = false;
+				component.trajectoryType = TrajectoryType::VerticalBeam;
+
+			}
 
 			void			SensorDrone::Configure(Turret&component)
 			{

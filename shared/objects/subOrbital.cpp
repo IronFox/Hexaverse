@@ -462,6 +462,24 @@ namespace Objects
 			}
 
 
+			/*virtual override*/ bool			Bomber::ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget, TargetChoice&outExtResult) const
+			{
+				if (!IsAboveGrid(attackFrom))
+					return false;
+				if (IsAboveGrid(attackTarget))
+					return false;
+				const int h = GetLandingHeight(attackFrom, *this);
+				if (h == badHeight)
+					return false;
+				
+
+				outExtResult.cellTarget = Grid::LCellIdI(attackFrom.stackID,h);
+				const float r = turret->GetExplosionRadius(owner);
+				if (Grid::GetQuadraticGeometricDistance(outExtResult.cellTarget,attackTarget) > M::Sqr(r))
+					return false;
+				outExtResult.impact.result = TraceResult::ReachesTarget;
+				return CheckArea(owner, outExtResult.cellTarget,Grid::ToWorld(outExtResult.cellTarget), r, outExtResult);
+			}
 
 
 			/*virtual override*/ bool	Plane::AttackNext(Grid::LCellIdI target, bool autoTarget)

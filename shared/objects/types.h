@@ -54,6 +54,7 @@ namespace Objects
 				{
 					DECLARE_POINTER_CLASS(Plane)
 						DECLARE_POINTER_CLASS(Raptor)
+						DECLARE_POINTER_CLASS(Bomber)
 						DECLARE_POINTER_CLASS(CargoPlane)
 						DECLARE_POINTER_CLASS(SensorDrone)
 				}

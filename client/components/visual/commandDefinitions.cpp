@@ -876,10 +876,27 @@ namespace Objects
 			DefinePlane(component);
 		}
 
-		void	DefineRaptor(Objects::Component::Turret&component)
+		void	DefineRaptor( Objects::Component::Turret&component )
 		{
 			DefinePlane(component);
 			DefineOffensive(component);
+		}
+
+		void	DefineBomber( Objects::Component::Turret&component)
+		{
+			DefinePlane(component);
+			DefineOffensive(component);
+			component.commands.Add( new Command::IconCommand("Obliterate", &Detail::IssueParameterizedCommand<ConstName::Job_DropBomb, ConstName::DetonationSize_Doomsday>
+				, &CommonCmd::IdleCheck
+				,[](int&resourceCostOut, Resource&costTypeOut, int&timeCostOut)
+				{
+					resourceCostOut = SubOrbital::Bomber::DoomsdayDetonationCosts;
+					costTypeOut = Resource::Uranium;
+					ASSERT__(selectedMobileEntity);
+					//PVehicle v = To<Vehicle>::Cast(e);
+					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(resourceCostOut,Component::Nuclear);
+				}
+				));
 		}
 
 		void	DefineCargoPlane(Objects::Component::Turret&component)
@@ -1459,6 +1476,7 @@ namespace Objects
 			DefineAutomatable(Component::resourceScanner);
 
 			DefineRaptor(Component::SubOrbital::raptor);
+			DefineBomber(Component::SubOrbital::bomber);
 			DefineSensorDrone(Component::SubOrbital::sensorDrone);
 			DefineCargoPlane(Component::SubOrbital::cargoPlane);
 
