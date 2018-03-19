@@ -23,6 +23,7 @@
 #include "../cameraControl.h"
 #include "hud/menu.h"
 #include "hud/hexGrid.h"
+#include "../objectNetworkHelper.h"
 
 
 namespace Objects
@@ -30,7 +31,7 @@ namespace Objects
 	namespace Commands
 	{
 		void DefineResourceTransfer(Component::Turret&component, Resource res);
-		void DefineOffensive(Command::Container&commands);
+		void DefineOffensive(Command::Container&commands,Objects::TrajectoryType t);
 		void DefineOffensive(Component::Turret&component);
 
 
@@ -335,9 +336,17 @@ namespace Objects
 		}
 
 
-		void DefineOffensive(Command::Container&commands)
+		void DefineOffensive(Command::Container&commands,Objects::TrajectoryType t)
 		{
-			commands.Add( new Command::IconCommand("Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
+			if (t == Objects::TrajectoryType::VerticalBeam)
+			{
+				commands.Add( new Command::IconCommand("Attack",[]()
+				{
+					ObjectHelper::DirectTo(Objects::selectedMobileEntity, Objects::selectedMobileEntity->location, ObjectHelper::AssembleMotionFlags(false,true,!ShouldQueueCommands()), Objects::CursorMode::AttackMode);
+				}, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
+			}
+			else
+				commands.Add( new Command::IconCommand("Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
 		}
 
 		void DefineOffensive(Component::Turret&component)
@@ -346,13 +355,13 @@ namespace Objects
 				if (component.ammoNeedPerShot.IsFunctionOrConstNonZero())
 					DefineResourceTransfer(component,component.ammoType);
 			#endif
-			DefineOffensive(component.commands);
+			DefineOffensive(component.commands,component.trajectoryType);
 		}
 
 		void DefineTower(Objects::Tower::Prototype&proto)
 		{
 			if (proto.turret->CanAttack())
-				DefineOffensive(proto.commands);
+				DefineOffensive(proto.commands,proto.turret->trajectoryType);
 		}
 
 		void DefineMine(CommandContainer&commands)
