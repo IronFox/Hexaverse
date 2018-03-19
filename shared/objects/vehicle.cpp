@@ -530,7 +530,7 @@ namespace Objects
 							Grid::LCellIdI prev = pointOfOrigin;
 							for (const auto&dest : waypoints)
 							{
-								Pathfinding::GetWays(owner->knownWorld,this,prev,possibilities,dest,true,true,false);
+								Pathfinding::GetWays(owner->knownWorld,this,prev,possibilities,dest,nullptr,true,true,false);
 								bool found = false;
 								for (index_t j = 0; j < possibilities.numWays; j++)
 								{

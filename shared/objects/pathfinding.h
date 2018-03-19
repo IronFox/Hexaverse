@@ -49,8 +49,8 @@ namespace Objects
 								bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute);
 		#endif
 		void			GetMobileWays(	const World::Data&world,
-								const MobileEntity*v,  const Grid::LCellIdI&location, const PHangar&destinationHangar,
-								TWays&outWays, const Grid::LCellIdI&destination, 
+								const MobileEntity*v,  const Grid::LCellIdI&location,
+								TWays&outWays, const Grid::LCellIdI&destination, const PHangar&destinationHangar, 
 								bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute);
 
 
