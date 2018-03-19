@@ -734,7 +734,7 @@ namespace Objects
 			{
 				Pathfinding::TWays	ways;
 
-				GetMobileWays(owner->knownWorld, this,  location, ways, Grid::LCellIdI::Invalid, false,false);
+				GetMobileWays(owner->knownWorld, this,  location,ways, Grid::LCellIdI::Invalid, nullptr,false,false);
 				//random first to maybe not make the same mistake twice
 				for (index_t i = 0; i < ways.numWays; i++)
 				{
