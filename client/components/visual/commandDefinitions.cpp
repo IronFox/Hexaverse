@@ -705,15 +705,21 @@ namespace Objects
 					ApplicationInterface::SignalNewJob(selectedMobileEntity, Command,Objects::EntityType());
 				}
 
-			template <ConstName DetonationSize>
-				void	IssueDetonationCommand()
+			template <ConstName Command, ConstName Parameter>
+				void	IssueParameterizedCommand()
 				{
 					PMobileEntity vehicle = selectedMobileEntity;
 					if (!vehicle)
 						return;
 					if (!ShouldQueueCommands())
 						ApplicationInterface::SignalDropSafeTasks(vehicle);
-					ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_SelfDetonate,DetonationSize);					
+					ApplicationInterface::SignalNewJob(vehicle, Command,Parameter);					
+				}
+
+			template <ConstName DetonationSize>
+				void	IssueDetonationCommand()
+				{
+					IssueParameterizedCommand<ConstName::Job_SelfDetonate,DetonationSize>();
 				}
 
 
