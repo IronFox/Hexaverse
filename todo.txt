@@ -6,6 +6,9 @@ Permanent checklist for new tutorial maps:
 	No survival conditions
 	Only one terraformer (blow up the other)
 
+pathfinding: make sure surveyor or ai cannot enter vehicle store on accident because new reachabilitymapper allows such (add parameter)
+check opacity of accessibility mesh
+	
 at bottom terrain level, emp-damaged, minimum allowed attack and scanning range is still high enough to see and attack neighboring cell
 better visualization of attack/scanning ranges. use special terrain meshes with hard lines to visualize edges
 	
