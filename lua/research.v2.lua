@@ -527,7 +527,7 @@ function CanAttack(turret--[[Table]])
 end
 
 function TowerScanningModifier(turret--[[Table]])
-	if CanAttack(turret) then
+	if CanAttack(turret) and turret.HorizontalAttackRange > 0 then
 		return -2.0	--penalty for offensive towers
 	end
 	return 2.0	--boost non-offensive towers
