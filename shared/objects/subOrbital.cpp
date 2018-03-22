@@ -28,9 +28,7 @@ namespace Objects
 		}
 
 
-
-
-		/*virtual override*/ void		Plane::VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance /*= false*/) const
+		/*virtual override*/ void		Plane::VisitSensors( const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance /*= false*/ ) const
 		{
 			float3 scanningCenter = GetScanningCenter(loc);
 			float range2 = GetScanningRange();
@@ -331,9 +329,9 @@ namespace Objects
 						{
 							for (const auto&destination : waypoints)
 							{
-								if (destination != location || turret->trajectoryType == TrajectoryType::VerticalBeam)
+								if (destination != location || IsBeam(turret->trajectoryType))
 								{
-									if (turret->trajectoryType != TrajectoryType::VerticalBeam)
+									if (!IsBeam(turret->trajectoryType))
 									{
 										Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
 										//attack logic here
@@ -474,7 +472,7 @@ namespace Objects
 				
 
 				outExtResult.cellTarget = Grid::LCellIdI(attackFrom.stackID,h);
-				const float r = turret->GetExplosionRadius(owner);
+				const float r = GetAttackExplosionRadius();
 				if (Grid::GetQuadraticGeometricDistance(outExtResult.cellTarget,attackTarget) > M::Sqr(r))
 					return false;
 				outExtResult.impact.result = TraceResult::ReachesTarget;
@@ -488,12 +486,12 @@ namespace Objects
 				if (!CanAttack())
 					return false;
 				Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
-				if (target == pointOfOrigin && turret->trajectoryType != TrajectoryType::VerticalBeam)
+				if (target == pointOfOrigin && !IsBeam(turret->trajectoryType))
 				{
 					LogEvent(EventClass::Preset::commandRejected,this,"Destination too close");
 					return false;
 				}
-				if (turret->trajectoryType != TrajectoryType::VerticalBeam)
+				if (!IsBeam(turret->trajectoryType))
 				{
 					//Grid::LCellIdI pointOfOrigin = location+1;
 
@@ -544,12 +542,12 @@ namespace Objects
 				if (!CanAttack())
 					return false;
 				Grid::LCellIdI pointOfOrigin = location;
-				if (target == pointOfOrigin && turret->trajectoryType != TrajectoryType::VerticalBeam)
+				if (target == pointOfOrigin && !IsBeam(turret->trajectoryType))
 				{
 					LogEvent(EventClass::Preset::commandRejected,this,"Destination too close");
 					return false;
 				}
-				if (turret->trajectoryType != TrajectoryType::VerticalBeam)
+				if (!IsBeam(turret->trajectoryType))
 				{
 					//Grid::LCellIdI pointOfOrigin = location+1;
 
