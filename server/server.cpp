@@ -474,7 +474,7 @@ namespace ApplicationInterface
 			roughAttack.flightTime = attack.flightTime;
 			roughAttack.attackAngle = attack.attackAngle;
 			roughAttack.turretRange = base->GetFlatAttackRange();
-			roughAttack.explosionRadius = base->turret->GetExplosionRadius(attack.attackFrom->owner);
+			roughAttack.explosionRadius = base->GetAttackExplosionRadius();
 
 			const M::TVec3<>& traceToWorld = attack.traceTo;
 

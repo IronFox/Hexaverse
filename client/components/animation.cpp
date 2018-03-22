@@ -1327,7 +1327,7 @@ namespace Animation
 					attackerTurret = base->turret;
 					ASSERT_NOT_NULL1__(attackerTurret,attacker->GetName());
 					attackRange = base->GetFlatAttackRange();
-					explosionRadius = base->turret->GetExplosionRadius(attacker->owner);
+					explosionRadius = base->GetAttackExplosionRadius();
 					attackerPosition = attacker->GetWorldPosition();
 					attackerPosition += Grid::low.cells[attacker->location.stackID].cornerCenter * zOffset;
 					#ifdef HAS_WINDOW

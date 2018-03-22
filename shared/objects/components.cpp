@@ -349,13 +349,11 @@ namespace Objects
 		/*static*/ bool						Turret::CanHit(TrajectoryType t, float flatRange, const TrajectoryEndPoint&origin, const TrajectoryEndPoint&dest, float&outAngle)
 		{
 			outAngle = 0;
-			if (t == TrajectoryType::VerticalBeam)
-			{
-				return GetGroundHeight(World::actual, origin.cellLocation) != badHeight;
-			}
 
 			switch (t)
 			{
+				case TrajectoryType::VerticalBeam:
+					return GetGroundHeight(World::actual, origin.cellLocation) != badHeight;
 				case TrajectoryType::Artillery:
 					return Detail::ArtilleryCanHit(flatRange,Vec::distance(origin.worldLocation,dest.worldLocation),dest.radius - origin.radius,outAngle);
 				case TrajectoryType::Missile:
@@ -369,13 +367,10 @@ namespace Objects
 
 		/*static*/ bool						Turret::CanHit(TrajectoryType t, float flatRange, const TrajectoryEndPoint&origin, const TrajectoryEndPoint&dest)
 		{
-			if (t == TrajectoryType::VerticalBeam)
-			{
-				return GetGroundHeight(World::actual, origin.cellLocation) != badHeight;
-			}
-
 			switch (t)
 			{
+				case TrajectoryType::VerticalBeam:
+					return GetGroundHeight(World::actual, origin.cellLocation) != badHeight;
 				case TrajectoryType::Artillery:
 					return Detail::ArtilleryCanHit(flatRange,Vec::distance(origin.worldLocation,dest.worldLocation),dest.radius - origin.radius);
 				case TrajectoryType::Missile:

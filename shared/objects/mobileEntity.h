@@ -463,7 +463,7 @@ namespace Objects
 		float					GetMovementInitiative()const	{return GetBaseMovementInitiative() * movementActionLeft;}
 		bool					AttackIgnoresMotion() const {return turret->ignoresVehicleMotion;}
 		bool					AttackIsStationary() const {return turret->requiresStationaryVehicle;}
-		float					GetAttackExplosionRadius() const {return turret->GetExplosionRadius(owner);}
+		float					GetAttackExplosionRadius() const override;
 		bool					CanRepair() const {return turret->CanRepair();}
 		bool					CanAttack() const {return turret->CanAttack();}
 		virtual BYTE			GetConstructionAcceleration(Component::operation_t op) const {return 0;}

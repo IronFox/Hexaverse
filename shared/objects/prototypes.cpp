@@ -155,7 +155,7 @@ namespace Objects
 
 	namespace Component
 	{
-		void ConfigureAll()
+		void ConfigureAll( )
 		{
 			Artillery::Configure(artillery);
 			Launcher::Configure(launcher);

@@ -159,7 +159,7 @@ namespace AI
 		Objects::PTurretBase b = e.GetTurretBase();
 		float rs = e.GetScanningRange();
 		if (b)
-			rs = std::max(rs, b->GetFlatAttackRange() + b->turret->GetExplosionRadius(e.owner));
+			rs = std::max(rs, b->GetFlatAttackRange() + b->GetAttackExplosionRadius());
 		int health = e.health >0 ? e.health : e.GetMaxHealth();
 		return rs / health;
 	}
@@ -173,7 +173,7 @@ namespace AI
 		Objects::TurretBase::TargetChoice choice;
 		if (source.ExtCanHit(source.owner, Objects::TrajectoryEndPoint( source.location,source.base->height),Objects::TrajectoryEndPoint( candidate.location,0 ),choice))
 		{
-			const float explosionRadius = source.turret->GetExplosionRadius(source.owner);
+			const float explosionRadius = source.GetAttackExplosionRadius();
 
 			const auto rs = source.TraceTrajectory(Objects::TrajectoryEndPoint( choice.cellTarget),true);
 			LogEvent(EventSignificance::Debug,&source,"Checking possible attack trajectory to "+candidate.GetName()+", attacking "+ToString(choice.cellTarget)+", detonating at "+ToString(rs));
@@ -294,13 +294,13 @@ namespace AI
 			ObjectHelper::SignalMarkerCreation(marker);
 		}
 
+		const float explosionRadius = v->GetAttackExplosionRadius();
 
 		if (attacker)
 		{
 			String id = ToString(v->id);
 			static Buffer0<TAttackTarget>	attackTarget;
 			attackTarget.Clear();
-			const float explosionRadius = v->turret->GetExplosionRadius(v->owner);
 
 			Objects::ForeachWorldEntity([v](const Objects::PWorldEntity&e)
 			{
@@ -398,7 +398,7 @@ namespace AI
 				const M::TVec3<> reference = Grid::ToWorld(n->cell);
 				float goodWeight = 0;
 				float badWeight = 0;
-				Objects::ForeachWorldEntity([&goodWeight,&badWeight,reference](const Objects::PWorldEntity&e)
+				Objects::ForeachWorldEntity([explosionRadius,&goodWeight,&badWeight,reference](const Objects::PWorldEntity&e)
 				{
 					if (e->isOwnedByMe IF_SATELLITES( || e->IsSatellite() ))
 					{
@@ -409,7 +409,7 @@ namespace AI
 					float distance = Vec::quadraticDistance(e->system.w.xyz,reference);
 					float fc = EstimateInterest(e->GetTurretBase(),e->location.height,
 								e->GetConstructionCost(),distance);
-					if (distance < Objects::Component::artillery.GetExplosionRadius(e->owner))
+					if (distance < explosionRadius)
 						badWeight += 20 / (1.f + distance);
 					else
 						goodWeight += fc / (1.f + distance);
@@ -474,7 +474,7 @@ namespace AI
 		const M::TVec3<>&ref = e.GetWorldPosition();
 		if (b && b->turret->CanDealDamage())
 		{
-			float r = b->GetFlatAttackRange() + b->turret->explosionRadius.GetValue(e.GetResearchState());
+			float r = b->GetFlatAttackRange() + b->GetAttackExplosionRadius();
 			float damagePotentialPerRound = 0.f;
 			count_t participants = 0;
 			Objects::ForeachMobileWorldEntity([ref,r,&damagePotentialPerRound,&participants](const Objects::PMobileEntity&e)

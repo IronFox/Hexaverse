@@ -130,7 +130,7 @@ namespace Objects
 				
 				entityTime += flightTime;
 				const int damageLevel = (int)floor(turret->GetDamageLevel(owner));
-				const float explosionRadius = turret->GetExplosionRadius(owner);
+				const float explosionRadius = GetAttackExplosionRadius();
 
 				if (turret->dealsEMPDamage)
 					ExplodeEMP(at,rs.impactCell,rs.impactAt, explosionRadius, damageLevel,entityTime);
@@ -310,7 +310,7 @@ namespace Objects
 	#endif
 
 
-	/*virtual override*/ void				Tower::VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance /*= false*/) const
+	/*virtual override*/ void				Tower::VisitSensors( const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance /*= false*/ ) const
 	{
 		if (turret->detectsResources)
 		{
@@ -347,6 +347,13 @@ namespace Objects
 		foundationHeight = staticHeight; //checked during visual client Objects::StructureShape::LoadAll(). Should match loaded geometry
 	}
 
+
+	/*virtual override*/ float			Tower::GetAttackExplosionRadius() const
+	{
+		if (!turret->CanAttack())
+			return 0.f;
+		return cache.explosionRadius.Get(GetResearchState(),turret->explosionRadius,nullptr,1);
+	}
 
 	
 	/*virtual override*/ float			Tower::GetFlatAttackRange() const

@@ -126,7 +126,7 @@ namespace Objects
 		//if (Turret::GetAngleForDistance(velocity,source,destIn))
 		//if (distance2 > extRange2)
 		//	return false;
-		const float explosionRadius = turret->GetExplosionRadius(myFaction);
+		const float explosionRadius = GetAttackExplosionRadius();
 		const float explosionRadius2 = M::Sqr(explosionRadius);
 
 		if (!Component::Turret::CanHit(turret->trajectoryType, range+explosionRadius*2,source,destIn))

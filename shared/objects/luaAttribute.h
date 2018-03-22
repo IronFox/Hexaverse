@@ -35,6 +35,7 @@ namespace Objects
 			ConstOverride<T>	constOverride;
 
 			/**/		LuaAttribute()	{}
+			/**/		LuaAttribute(nullptr_t)	{}
 			/**/		LuaAttribute(const T&constOverride)
 			{
 				SetConst(constOverride);

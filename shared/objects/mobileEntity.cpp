@@ -75,6 +75,12 @@ namespace Objects
 	}
 
 
+	/*virtual overrride*/ float					MobileEntity::GetAttackExplosionRadius() const
+	{
+		if (!turret->CanAttack())
+			return 0.f;
+		return cache.explosionRadius.Get(GetResearchState(),turret->explosionRadius,nullptr,1);
+	}
 
 
 	/*virtual override*/ void			MobileEntity::VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance /*= false*/) const
@@ -1344,9 +1350,9 @@ namespace Objects
 
 				const int damageLevel = (int)floor(turret->GetDamageLevel(owner));
 				if (turret->dealsEMPDamage)
-					ExplodeEMP(at,rs.impactCell,rs.impactAt,turret->GetExplosionRadius(owner), damageLevel,entityTime);
+					ExplodeEMP(at,rs.impactCell,rs.impactAt,GetAttackExplosionRadius(), damageLevel,entityTime);
 				else
-					Explode(at,rs.impactCell,rs.impactAt,turret->GetExplosionRadius(owner), damageLevel,turret->isDoomsday, entityTime);
+					Explode(at,rs.impactCell,rs.impactAt,GetAttackExplosionRadius(), damageLevel,turret->isDoomsday, entityTime);
 			}
 
 			if (task.foci.IsEmpty())

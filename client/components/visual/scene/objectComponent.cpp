@@ -196,7 +196,7 @@ namespace Objects
 			blastVisualization.ibo = Renderer::sphere.ibo[0];
 			//shape.depthTest = true;
 
-			t.turret->BuildBlastSystem(trajectory.Last().xyz * trajectory.Last().w,t.turret->GetExplosionRadius(t.owner),blastSystem);
+			t.turret->BuildBlastSystem(trajectory.Last().xyz * trajectory.Last().w,t.GetAttackExplosionRadius(),blastSystem);
 		}
 			
 	}
