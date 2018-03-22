@@ -21,6 +21,7 @@
 #include "hud/menu.h"
 #include "hud/hexGrid.h"
 #include "../objectNetworkHelper.h"
+#include "scene/vehicleAccessibilityMesh.h"
 
 
 namespace Objects
@@ -1246,6 +1247,12 @@ namespace Objects
 						showSensorRanges = !showSensorRanges;
 					}
 					, Detail::GlobalPermaSwitch(showSensorRanges)
+				));
+			viewCommands->Add( new GlobalCommand("Show Mobile Reach", []()
+					{
+						VehicleAccessibilityMesh::visible = !VehicleAccessibilityMesh::visible;
+					}
+					, Detail::GlobalPermaSwitch(VehicleAccessibilityMesh::visible)
 				));
 
 		}

@@ -13,6 +13,8 @@ namespace DX11 = Engine::DX11;
 
 namespace VehicleAccessibilityMesh
 {
+	bool	visible = true;
+
 	namespace Details
 	{
 		Objects::Pathfinding::ReachabilityMapper	mapper(false);
@@ -296,8 +298,10 @@ namespace VehicleAccessibilityMesh
 
 	}
 
-	void		Render(const Engine::Frustum<>&)
+	void		Render( const Engine::Frustum<>& )
 	{
+		if (!visible)
+			return;
 		display.StoreRendererState();
 			display.SetDepthTest(true,false);
 			display.SetRasterizer(true,false);

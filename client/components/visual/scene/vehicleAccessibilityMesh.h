@@ -9,7 +9,7 @@ Renders a partially transparent terrain overlay that details where the selected 
 */
 namespace VehicleAccessibilityMesh
 {
-
+	extern bool	visible;
 
 	void		Render(const Engine::Frustum<>&);
 
