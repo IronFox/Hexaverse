@@ -15,6 +15,7 @@ namespace Objects
 		static const float Move = 0.75f;	//movement phase in seconds
 		static const float Attack = 0.025f;
 		static const float TurretRotation = 0.5f;
+		static const float BeamAttack = 0.5f;
 	}
 
 	static const count_t	MaxTasks = 16;

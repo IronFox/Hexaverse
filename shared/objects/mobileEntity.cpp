@@ -1329,7 +1329,7 @@ namespace Objects
 
 				float flightTime;
 
-				if (turret->trajectoryType != TrajectoryType::VerticalBeam)
+				if (!IsBeam(turret->trajectoryType))
 				{
 					float len = 0;
 					for (index_t i = 1; i < trajectory.GetLength(); i++)
@@ -1354,7 +1354,7 @@ namespace Objects
 					}
 				}
 				else
-					flightTime =  timeEpsilon;// Times::Attack * 10;;
+					flightTime =  Times::BeamAttack + timeEpsilon;// Times::Attack * 10;;
 
 				ApplicationInterface::TAttack at;
 				at.attackFrom = To<MobileEntity>::Cast(shared_from_this());

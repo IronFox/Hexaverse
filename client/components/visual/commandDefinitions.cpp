@@ -338,9 +338,9 @@ namespace Objects
 
 		void DefineOffensive(Command::Container&commands,Objects::TrajectoryType t)
 		{
-			if (t == Objects::TrajectoryType::VerticalBeam)
+			if (IsBeam(t))
 			{
-				commands.Add( new Command::IconCommand("Attack",[]()
+				commands.Add( new Command::IconCommand("Beam Attack",[]()
 				{
 					ObjectHelper::DirectTo(Objects::selectedMobileEntity, Objects::selectedMobileEntity->location, ObjectHelper::AssembleMotionFlags(false,true,!ShouldQueueCommands()), Objects::CursorMode::AttackMode);
 				}, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));

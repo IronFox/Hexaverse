@@ -83,6 +83,13 @@ namespace Objects
 
 	CONSTRUCT_ENUMERATION3(TrajectoryType, Artillery, Missile, VerticalBeam);
 
+
+	/**
+	Determines whether the given trajectory is a vertical beam trajectory.
+	If true, it fires only up and down, and cannot affect neighboring stacks except via explosion radius
+	*/
+	inline bool IsBeam(TrajectoryType t)	{return t == TrajectoryType::VerticalBeam;}
+
 	inline bool					CursorModeExpectsLeftClick(CursorMode activeCursorMode)
 	{
 		switch (activeCursorMode)
