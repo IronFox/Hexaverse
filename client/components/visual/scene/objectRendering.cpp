@@ -364,6 +364,13 @@ namespace Objects
 				#endif
 			}
 			break;
+			case TrajectoryType::VerticalBeamUp:
+			{
+				int h = SubOrbital::Height;
+				const M::TVec3<>&d = Grid::low.cells[location.stackID].centerVertex.xyz;
+				RenderRangeSphere(d * (Grid::ToRadius(h)),base->GetAttackExplosionRadius(),color,extended);
+			}
+			break;
 			default:
 				FATAL__("Unsupported trajectory type "+String(base->turret->trajectoryType.ToString()));
 		}
