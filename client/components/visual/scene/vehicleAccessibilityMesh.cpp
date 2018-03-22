@@ -104,6 +104,8 @@ namespace VehicleAccessibilityMesh
 			color.rgb *= 1.f/(1.f + n.stepsToReach);
 			color.a = 0.5f /(1.f + 0.5f*n.stepsToReach);
 			color.a -= 0.1f;
+			if (n.stepsToReach > 1)
+				color.a = 0;
 
 			obj.MakeVertex(cornerCoords * Grid::ToRadiusf(0.05f + height),color,float2(t0,t1));
 		}
