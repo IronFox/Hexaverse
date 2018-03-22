@@ -165,7 +165,8 @@ namespace Objects
 	class CachedAttributes
 	{
 	public:
-		LuaAttributeCache<float>	groundScanningRange,
+		LuaAttributeCache<float>	subOrbitalScanningRange,
+									groundScanningRange,
 									maxScanningRange,
 									horizontalAttackRange,
 									explosionRadius;

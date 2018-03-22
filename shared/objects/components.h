@@ -285,6 +285,7 @@ namespace Objects
 			//}								trajectory;
 			FScaledFunc						horizontalAttackRange,	//geometric firing range
 											scanningRange /*= 10*/,	//geometric scanning range
+											subOrbitalScanningRange /*=-1*/,	//>0 indicates that this turret features an additional scanning bubble in sub orbit
 											groundScanningRange /*= -1.f*/;//>0 indicates that this turret can scan from orbit down to the ground (effective only if used by a satellite)
 			FFunc							groundScannerPenetration /*= 1*/;	//number of blocks the ground-scanner can penetrate into solid ground (effective only if used by a satellite)
 			float							continuousRotationSpeed = 1;	//angles per second rotation speed, effective only, if continuousRotation is set true
