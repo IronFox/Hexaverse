@@ -155,6 +155,8 @@ namespace Objects
 				String			DescribeEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source)	{return DescribeEMPModified(e,source,LuaAttribute<T,NoFilter>()); }
 			template <typename T2, typename F1, typename F2>
 				T				Get(const Lua::Reference&researchState, const LuaAttribute<T,F1>&source, const LuaAttribute<T2,F2>&multiplier, T minimum);
+			template <typename F1>
+				T				Get(const Lua::Reference&researchState, const LuaAttribute<T,F1>&source, nullptr_t, T minimum)	{return Get(researchState,source,LuaAttribute<T,NoFilter>(),minimum);}
 			bool				IsCurrent() const {return versionCounter == Super::versionCounter;}
 			T					Update(T newValue) {cached = newValue; versionCounter = Super::versionCounter; return cached;}
 			void				Invalidate() { versionCounter = InvalidIndex; }
@@ -165,7 +167,8 @@ namespace Objects
 	public:
 		LuaAttributeCache<float>	groundScanningRange,
 									maxScanningRange,
-									horizontalAttackRange;
+									horizontalAttackRange,
+									explosionRadius;
 		LuaAttributeCache<int>		maxHealth,constructionCost;
 	};
 

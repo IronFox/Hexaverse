@@ -165,6 +165,7 @@ namespace Objects
 		virtual float				GetFlatAttackRange() const override;
 		virtual String				DescribeFlatAttackRange() const override;
 		virtual bool				HasAmmoForShot() override;
+		virtual float				GetAttackExplosionRadius() const override;
 		#ifndef CLIENT
 			virtual void			Attack(float&)	override;
 			virtual bool			FrontQueueAutoAttack(TurretBase::TargetChoice&lastChoice) override;
