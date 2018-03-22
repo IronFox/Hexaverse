@@ -224,6 +224,7 @@ namespace Objects
 
 		InitAttrib(myTable,path,"GroundScannerPenetration",t.groundScannerPenetration,true);
 		InitAttrib(myTable,path,"GroundScanningRange",t.groundScanningRange,true);
+		InitAttrib(myTable,path,"SubOrbitalScanningRange",t.subOrbitalScanningRange,true);
 
 		InitAttrib(myTable,path,"AmmoConsumption",t.ammoNeedPerShot,true);
 		InitAttrib(myTable,path,"AttacksPerRound",t.attacksPerRound,true);
@@ -345,6 +346,19 @@ namespace Objects
 			"	ExplosionRadius = 1,\n"
 			"	HorizontalAttackRange = 5,\n"
 			"	IsUnlocked = true,\n"
+			"	},\n"
+			"	AntiAircraft = "
+			"	{\n"
+				"	Cost = 15,\n"
+				"	Weight = 3,\n"
+				"	HealthMultiplier = 1,\n"
+				"	ScanningRange = 2,\n"
+				"	SubOrbitalScanningRange = 7,\n"
+				"	AttacksPerRound = 1,\n"
+				"	DamageLevel = 10,\n"
+				"	ExplosionRadius = 7,\n"
+				"	HorizontalAttackRange = 0,\n"
+				"	IsUnlocked = true,\n"
 			"	},\n"
 			"	Radar =\n"
 			"	{\n"
@@ -579,6 +593,7 @@ namespace Objects
 			"	RadarTower = Tower(TurretConfig.Radar),\n"
 			"	CannonTower = Tower(TurretConfig.Cannon),\n"
 			"	SurveyorTower = Tower(TurretConfig.Surveyor),\n"
+			"	AntiAircraftTower = Tower(TurretConfig.AntiAircraft),\n"
 			"}\n"
 		);
 

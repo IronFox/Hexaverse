@@ -1467,6 +1467,7 @@ namespace Objects
 			DefineOffensive(Component::artillery);
 			DefineOffensive(Component::launcher);
 			DefineOffensive(Component::armored);
+			DefineOffensive(Component::antiAircraft);
 			DefineOffensive(Component::emp);
 
 			#ifndef NO_MUNITION

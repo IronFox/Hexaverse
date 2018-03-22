@@ -17,6 +17,7 @@ enum class ConstName : ConstNameRootType	//DO NOT WRITE TO PERSISTENT STORAGE!!!
 	Turret_Mechanic,
 	Turret_Artillery,
 	Turret_Cannon,
+	Turret_AntiAircraft,
 	Turret_Surveyor,
 	Turret_EMP,
 	Turret_Bomb,

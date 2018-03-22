@@ -258,6 +258,19 @@ TurretConfig =
 		ScanningRange = 4,
 		IsUnlocked = true,
 	},
+	AntiAircraft =
+	{
+		Cost = 10,
+		Weight = 3,
+		HealthMultiplier = 1,
+		ScanningRange = 3,
+		SubOrbitalScanningRange = 7,
+		HorizontalAttackRange = 0,
+		ExplosionRadius = 7,
+		AttacksPerRound = 1,
+		DamageLevel = 10,
+		IsUnlocked = true,
+	},
 	Bomb =
 	{
 		Op_Nuclear = 50,
@@ -627,6 +640,7 @@ StructureConfig =
 	RadarTower = Tower(TurretConfig.Radar),
 	CannonTower = DeprecatedTower(TurretConfig.Cannon),
 	SurveyorTower = Tower(TurretConfig.Surveyor),
+	AntiAircraftTower = Tower(TurretConfig.AntiAircraft),
 }
 
 

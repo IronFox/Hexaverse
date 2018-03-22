@@ -60,6 +60,7 @@ namespace Objects
 	{
 		Turret			terraformer,mechanic,
 						artillery,launcher,rockets,emp,armored,
+						antiAircraft,
 						bomb,
 						munitionTransporter,
 						radar,resourceScanner
@@ -360,6 +361,8 @@ namespace Objects
 			{
 				case TrajectoryType::VerticalBeam:
 					return GetGroundHeight(World::actual, origin.cellLocation) != badHeight;
+				case TrajectoryType::VerticalBeamUp:
+					return !WorldEntity::IsAboveGrid(origin.cellLocation);
 				case TrajectoryType::Artillery:
 					return Detail::ArtilleryCanHit(flatRange,Vec::distance(origin.worldLocation,dest.worldLocation),dest.radius - origin.radius,outAngle);
 				case TrajectoryType::Missile:
@@ -377,6 +380,8 @@ namespace Objects
 			{
 				case TrajectoryType::VerticalBeam:
 					return GetGroundHeight(World::actual, origin.cellLocation) != badHeight;
+				case TrajectoryType::VerticalBeamUp:
+					return !WorldEntity::IsAboveGrid(origin.cellLocation);
 				case TrajectoryType::Artillery:
 					return Detail::ArtilleryCanHit(flatRange,Vec::distance(origin.worldLocation,dest.worldLocation),dest.radius - origin.radius);
 				case TrajectoryType::Missile:
@@ -984,6 +989,29 @@ namespace Objects
 			component.ignoresVehicleMotion = true;
 		}
 
+		void			AntiAircraft::Configure(Turret&component)
+		{
+			#ifdef HAS_WINDOW		
+				component.parts.SetSize(1);
+				component.parts.First().LoadFromObj("objects/antiAircraft.obj");
+			#endif
+
+
+			component.typeName = "AntiAircraft";
+			component.shortName = " AA";
+			component.constName = ConstName::Turret_AntiAircraft;
+			component.continuousRotation = true;
+			component.continuousRotationSpeed = 1;
+			component.isScanner = true;
+			component.trajectoryType = TrajectoryType::VerticalBeamUp;
+
+			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
+				component.baseStorageCapacity.level[Resource::Munitions] = 20;
+			#endif
+
+			component.ignoresVehicleMotion = false;
+			component.requiresStationaryVehicle = true;
+		}
 
 	
 		void			EMP::Configure(Turret&component)

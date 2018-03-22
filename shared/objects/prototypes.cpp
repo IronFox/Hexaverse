@@ -135,6 +135,7 @@ namespace Objects
 			//Tower::globalPrototypes.Append().reset(new Tower::Prototype(artillery));
 			Tower::globalPrototypes.Append().reset(new Tower::Prototype(&Component::radar));
 			Tower::globalPrototypes.Append().reset(new Tower::Prototype(&Component::armored));
+			Tower::globalPrototypes.Append().reset(new Tower::Prototype(&Component::antiAircraft));
 			Tower::globalPrototypes.Append().reset(new Tower::Prototype(&Component::resourceScanner));
 			foreach (Tower::globalPrototypes,p)
 				structures.Add(p->get()->instance);
@@ -187,6 +188,7 @@ namespace Objects
 			Mechanic::Configure(mechanic);
 			Terraformer::Configure(terraformer);
 			ResourceScanner::Configure(resourceScanner);
+			AntiAircraft::Configure(antiAircraft);
 
 			Hoverbase::Configure(hoverbase);
 			Heavybase::Configure(heavybase);
@@ -213,6 +215,7 @@ namespace Objects
 									<< &skyHubTurret << &protonCannon << &ragnarok << &starPort
 								#endif
 								<< &armored << &artillery << &launcher << &rockets << &emp
+								<< &antiAircraft
                                 << &SubOrbital::raptor << &SubOrbital::bomber << &SubOrbital::cargoPlane << &SubOrbital::sensorDrone
 								<< &bomb
 								<< &terraformer << &resourceScanner
