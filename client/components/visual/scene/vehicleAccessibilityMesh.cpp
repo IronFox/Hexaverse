@@ -13,6 +13,8 @@ namespace DX11 = Engine::DX11;
 
 namespace VehicleAccessibilityMesh
 {
+	bool	visible = true;
+
 	namespace Details
 	{
 		Objects::Pathfinding::ReachabilityMapper	mapper(false);
@@ -95,13 +97,15 @@ namespace VehicleAccessibilityMesh
 
 		HashTable<Grid::LCellIdI,TNode>	TNode::nodeMap;
 
-		void MakeVertex(CGS::Constructor<>::Object&obj, const M::TVec3<>&cornerCoords, int height, float t0, float t1, const TNode&n)
+		void MakeVertex( CGS::Constructor<>::Object&obj, const M::TVec3<>&cornerCoords, int height, float t0, float t1, const TNode&n)
 		{
 			float neg = 0.f;//1.f - 1.f / (1.f + progression);
 			float4 color = float4(0.6,0.7,1.0,1.1f);
-			//color.rgb *= 0.8f + 0.2f * std::min<count_t>(3,n.stepsToReach);
-			color.a *= 1.f /(1.f + n.stepsToReach);
+			color.rgb *= 1.f/(1.f + n.stepsToReach);
+			color.a = 0.5f /(1.f + 0.5f*n.stepsToReach);
 			color.a -= 0.1f;
+			if (n.stepsToReach > 1)
+				color.a = 0;
 
 			obj.MakeVertex(cornerCoords * Grid::ToRadiusf(0.05f + height),color,float2(t0,t1));
 		}
@@ -296,8 +300,10 @@ namespace VehicleAccessibilityMesh
 
 	}
 
-	void		Render(const Engine::Frustum<>&)
+	void		Render( const Engine::Frustum<>& )
 	{
+		if (!visible)
+			return;
 		display.StoreRendererState();
 			display.SetDepthTest(true,false);
 			display.SetRasterizer(true,false);

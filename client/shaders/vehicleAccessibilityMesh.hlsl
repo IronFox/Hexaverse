@@ -58,13 +58,15 @@ float4 psMain(V2P input) : SV_TARGET
 	float3 light = rgb * diffuse;
 	
 	float a = input.color.a;// - whiteEdgeOpacity2;
-	a *= whiteEdgeOpacity2*2.0 + 0.5;
+	a *= whiteEdgeOpacity2*2.0 + 1.0;
 	//a = smoothstep(0.1,0.2,a);
 	clip(a-0.0001);
 	
 	light *= (1.0 - whiteEdgeOpacity2)*0.5 + 0.5;
 	light += hardEdgeOpacity*0.5;
 	
+	//light = (float3)whiteEdgeOpacity2;
+	//a = 1.0;
 
 	return float4(light, a);
 }
