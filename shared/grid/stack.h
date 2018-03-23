@@ -393,10 +393,17 @@ namespace Grid
 
 		/**
 		Finds the top-most clear block that is located above a non-clear cell.
-		@param failOnStructureCount If set will cause the method to fail if the located clear cell has a >1 struct-count
+		@param failOnStructureCount If set will cause the method to fail if the located clear cell has a >1 struct-count. Otherwise struct count is completely ignored
 		@return Height level that is within the valid range, clear, and above a non-clear block. Returns BadHeight on failure
 		*/
 		int				FindTopClearOverNonClear(bool failOnStructureCount)	const;
+		
+		/**
+		Finds the bottom-most clear block that is located beneath a non-clear cell, starting at the specified layer
+		@param failOnStructureCount If set will cause the method to fail if the located clear cell has a >1 struct-count. Otherwise struct count is completely ignored
+		@return Height level that is within the valid range, clear, and beneath a non-clear block. Returns BadHeight on failure
+		*/
+		int				FindNextClearBeneathNonClear(bool failOnStructureCount, UINT startLayer) const;
 
 		#ifdef HAS_WINDOW
 		bool			HasWater() const { return waterRange.IsNotEmpty(); }
