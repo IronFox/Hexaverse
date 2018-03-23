@@ -14,6 +14,7 @@
 #include "faction.h"
 #include "../grid/worldData.h"
 #include "structure/storageStructures.h"
+#include "subOrbital.h"
 
 namespace Objects
 {
@@ -350,6 +351,11 @@ namespace Objects
 			return world.GetStack(fine).FindTopClearOverNonClear(false);
 		}
 
+		/*static*/ int				Turret::GetCeilingHeight(const World::Data&world, const Grid::LCellIdI&location)
+		{
+			UINT32 fine = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
+			return world.GetStack(fine).FindNextClearBeneathNonClear(false,Grid::CellStack::ToLayer(location.height));
+		}
 
 
 
@@ -445,6 +451,17 @@ namespace Objects
 					if (h == badHeight)
 						return;
 					float4 p(Grid::low.cells[stackIndex].cornerCenter,Grid::ToRadius(h));
+					outSteps.Append(p);
+				}
+				break;
+				case TrajectoryType::VerticalBeamUp:
+				{
+					UINT32 stackIndex = from.cellLocation.stackID;
+					int h = GetCeilingHeight(World::actual, Grid::LCellIdI(stackIndex,0));
+					if (h == badHeight)
+						h = Objects::SubOrbital::Height;
+					float4 p(Grid::low.cells[stackIndex].cornerCenter,Grid::ToRadius(h));
+					outSteps.Append(float4(Grid::low.cells[from.cellLocation.stackID].cornerCenter,Grid::ToRadius(from.cellLocation.height)));
 					outSteps.Append(p);
 				}
 				break;
@@ -546,6 +563,26 @@ namespace Objects
 					float4 p(Grid::low.cells[source.cellLocation.stackID].cornerCenter,Grid::ToRadius(h));
 					outSteps.Append(p);
 					rs.result = TraceResult::ReachesTarget;
+					rs.impactAt = p.xyz * p.w;
+					rs.impactCell = Grid::HCellIdI(Grid::low.grid.GetCell(source.cellLocation.stackID).higherEquivalent,h);
+					return rs;
+				}
+				break;
+				case TrajectoryType::VerticalBeamUp:
+				{
+					ImpactDetails rs;
+					int h = GetCeilingHeight(traceInActualWorld ? actualWorld : visibleWorld,source.cellLocation);
+					if (h == badHeight)
+					{
+						rs.result = TraceResult::ReachesTarget;
+						h = Objects::SubOrbital::Height;
+					}
+					else
+						rs.result = TraceResult::MidFlightImpact;
+
+					outSteps.Clear();
+					float4 p(Grid::low.cells[source.cellLocation.stackID].cornerCenter,Grid::ToRadius(h));
+					outSteps.Append(p);
 					rs.impactAt = p.xyz * p.w;
 					rs.impactCell = Grid::HCellIdI(Grid::low.grid.GetCell(source.cellLocation.stackID).higherEquivalent,h);
 					return rs;
