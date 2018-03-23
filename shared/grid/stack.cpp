@@ -121,6 +121,28 @@ namespace Grid
 		}
 	}
 
+
+	int				CellStack::FindNextClearBeneathNonClear(bool failOnStructureCount, UINT startLayer) const
+	{
+		UINT32 h;
+		for (h = startLayer; h < Range; h++)
+		{
+			const Cell&c = volumeCell[h];
+			if (c.content != Grid::Content::Clear)
+				break;
+		}
+		h--;
+		if (h >= Range-1)
+			return BadHeight;
+		if (failOnStructureCount)
+		{
+			const Cell&c = volumeCell[h];
+			if (c.structureCounter > 1)
+				return BadHeight;
+		}
+		return ToHeight(h);
+	}
+
 	int				CellStack::FindTopClearOverNonClear(bool failOnStructureCount)	const
 	{
 		UINT32 h;
