@@ -100,6 +100,7 @@ namespace Objects
 				attackActionLeft -= change;
 				RegisterChange(ActionChanged,entityTime);
 
+				if (!IsBeam(turret->trajectoryType))
 				{
 					//float delta = std::max(fabs(angles.x - turretAngleX), fabs(angles.y - turretAngleY));
 					ApplicationInterface::SignalTurretRotation(shared_from_this(),(ToWorld(trajectory[1]) - ToWorld(trajectory.First())).Normalized0(),Times::TurretRotation);
@@ -203,7 +204,7 @@ namespace Objects
 			}
 		}
 
-		bool					Tower::AttackNext(const Grid::LCellIdI&target, bool autoTarget)
+		bool					Tower::AttackNext( const Grid::LCellIdI&target, bool autoTarget )
 		{
 			const count_t cnt = attackQueue.Count();
 			if (cnt >= MaxFocusPoints)
