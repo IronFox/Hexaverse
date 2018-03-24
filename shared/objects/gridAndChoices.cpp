@@ -1164,10 +1164,7 @@ namespace Objects
 		#ifdef CLIENT
 			RefreshCompoundCoverage(atTime);
 		#else
-			s->owner->structures << s;
-			PTower t = To<Tower>::DynamicCast(s);
-			if (t)
-				s->owner->towers << t;
+			s->owner->RegisterStructureGain(s);
 			if (!refreshNetworkNow)
 				compoundCoverageChanged = true;
 			else
@@ -1264,17 +1261,18 @@ namespace Objects
 		if (isStructure)
 		{
 			ASSERT1__(!move,e->GetName());	//make sure we don't store structures for now, they don't like that
+			auto s = To<Structure>::Cast(e);
+
 			#ifndef CLIENT
-				e->owner->RegisterStructureLoss(e);
+				e->owner->RegisterStructureLoss(s);
 
 			#endif
 
 			if (!isRemovedFromGrid)
-				RemoveFromGrid(structureGrid,e->location,To<Structure>::Cast(e));
+				RemoveFromGrid(structureGrid,e->location,s);
 
 			ASSERT1__(structures.FindAndErase(e),e->GetName());
 			#ifdef CLIENT
-				PStructure s = To<Structure>::Cast(e);
 				if (s->IsSkyLinkStructure())
 				{
 					foreach (skyLinks,link)
@@ -1301,12 +1299,12 @@ namespace Objects
 				#else
 					if (t != RemovalType::DestroyedInStorage)
 					{
-						e->owner->RegisterActiveMobileLoss(e);
+						e->owner->RegisterActiveMobileLoss(v);
 						if (move)
 							e->owner->storedMobiles << v;
 					}
 					else
-						e->owner->RegisterStoredMobileLoss(e);
+						e->owner->RegisterStoredMobileLoss(v);
 
 				#endif
 				if (v->IsVehicle() && !isRemovedFromGrid)

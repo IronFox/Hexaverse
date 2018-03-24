@@ -507,10 +507,11 @@ namespace Objects
 			bool		HasActiveMobile(const PMobileEntity&v) const;
 			bool		HasMobileInStorage(const PMobileEntity&v) const;
 			void		RegisterLoss(const PWorldEntity&);
-			void		RegisterStructureLoss(const PWorldEntity&);
-			void		RegisterActiveMobileLoss(const PWorldEntity&);
-			void		RegisterStoredMobileLoss(const PWorldEntity&);
-			void		RegisterActiveMobileGain(const PWorldEntity&);
+			void		RegisterStructureLoss(const PStructure&);
+			void		RegisterActiveMobileLoss(const PMobileEntity&);
+			void		RegisterStoredMobileLoss(const PMobileEntity&);
+			void		RegisterActiveMobileGain(const PMobileEntity&);
+			void		RegisterStructureGain(const PStructure&s);
 
 			void		VisitMyEntities(const std::function<void(const PWorldEntity&)>&f, bool includeStored) const;
 
