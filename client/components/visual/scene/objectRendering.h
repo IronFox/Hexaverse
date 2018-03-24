@@ -230,6 +230,7 @@ namespace Objects
 
 
 		void	RenderRangeSphere(const M::TVec3<>&center, float radius, const float4&color, bool outer);
+		void	RenderFlattenedRangeSphere(const M::TVec3<>&center, float radius, const M::TVec3<>&upAxis, float height, const float4&color, bool outer);
 		void	RenderRangeCylinder(const M::TVec3<>&center, float radius, const float4&color, bool outer);
 		void	RenderRange(const Grid::LCellIdI&location, float zOffset, const PTurretBase&base, const float4&color, bool extended);
 
