@@ -1379,6 +1379,7 @@ namespace Animation
 							}
 							break;
 							case Objects::TrajectoryType::Missile:
+							case Objects::TrajectoryType::AAMissile:
 							{
 								missileHissSource.SetPosition(attackerPosition);
 								missileHissSource.Play();
