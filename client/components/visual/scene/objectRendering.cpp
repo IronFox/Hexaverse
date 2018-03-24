@@ -390,11 +390,15 @@ namespace Objects
 				#endif
 			}
 			break;
-			case TrajectoryType::VerticalBeamUp:
+			case TrajectoryType::AAMissile:
 			{
-				int h = SubOrbital::Height;
+				const float h = Grid::ToRadius(SubOrbital::Height);	//orbital radius
+				const float r = base->GetFlatAttackRange();
+				//const float hC = sqrt(M::Sqr(h)+M::Sqr(r));
+				const float hC = sqrt(M::Sqr(h) - M::Sqr(r));
+
 				const M::TVec3<>&d = Grid::low.cells[location.stackID].centerVertex.xyz;
-				RenderRangeSphere(d * (Grid::ToRadius(h)),base->GetAttackExplosionRadius(),color,extended);
+				RenderFlattenedRangeSphere(d * hC, r + explosionRadius,d,1.f,color, extended);
 			}
 			break;
 			default:

@@ -375,8 +375,19 @@ namespace Objects
 			{
 				case TrajectoryType::VerticalBeam:
 					return GetGroundHeight(World::actual, origin.cellLocation) != badHeight;
-				case TrajectoryType::VerticalBeamUp:
-					return !WorldEntity::IsAboveGrid(origin.cellLocation);
+				case TrajectoryType::AAMissile:
+				{
+					//let's define this as a cone, so that mid-way explosions are valid
+					const float h = Grid::ToRadius(Objects::SubOrbital::Height);
+					const float r = flatRange;
+					const float h2 = sqrt(M::Sqr(h) - M::Sqr(r));
+					const auto&axis = Grid::low.cells[origin.cellLocation.stackID].cornerCenter;
+					const float h2d = Vec::dot(axis,dest.worldLocation - origin.worldLocation);
+					if (h2d < 0)
+						return false;
+					const float rd = h2d * r / (h2 - origin.radius);
+					return Vec::quadraticDistance(origin.worldLocation + axis * h2d,dest.worldLocation) <= M::Sqr(rd);
+				}
 				case TrajectoryType::Artillery:
 					return Detail::ArtilleryCanHit(flatRange,Vec::distance(origin.worldLocation,dest.worldLocation),dest.radius - origin.radius);
 				case TrajectoryType::Missile:
@@ -431,6 +442,7 @@ namespace Objects
 					Detail::TraceAnimationArtilleryTrajectory(Turret::MaxRangeToVelocity(flatRange),attackAngle, from, to, outSteps);
 				break;
 				case TrajectoryType::Missile:
+				case TrajectoryType::AAMissile:
 					Detail::TraceAnimationMissileTrajectory(flatRange,from, to, outSteps);
 				break;
 				case TrajectoryType::VerticalBeam:
@@ -443,17 +455,6 @@ namespace Objects
 					outSteps.Append(p);
 				}
 				break;
-				case TrajectoryType::VerticalBeamUp:
-				{
-					UINT32 stackIndex = from.cellLocation.stackID;
-					int h = GetCeilingHeight(World::actual, Grid::LCellIdI(stackIndex,0));
-					if (h == badHeight)
-						h = Objects::SubOrbital::Height;
-					float4 p(Grid::low.cells[stackIndex].cornerCenter,Grid::ToRadius(h));
-					outSteps.Append(float4(Grid::low.cells[from.cellLocation.stackID].cornerCenter,Grid::ToRadius(from.cellLocation.height)));
-					outSteps.Append(p);
-				}
-				break;
 				default:
 					FATAL__("Incompatible trajectory type "+String(t.ToString()));
 			}
@@ -462,13 +463,6 @@ namespace Objects
 		/*static*/ void							Turret::Detail::TraceAnimationMissileTrajectory(float range, const TrajectoryEndPoint&here, const TrajectoryEndPoint&there, Ctr::Buffer0<M::TVec4<> >&outSteps)
 		{
 			float d2 = Vec::quadraticDistance(here.worldLocation,there.worldLocation);
-			if (d2 > M::Sqr(range))
-			{
-				LogEvent(EventClass::Preset::error,"TraceMissileTrajectory(): Distance to target ("+String(sqrt(d2))+") exceeds maximum range ("+String(range)+") of missile turret. Ignoring for now.");
-				//DBG_FATAL__("Trajectory out of range: "+String(sqrt(d2))+">="+String(range));
-				//return;
-			}
-		
 			const float3 up = (here.worldLocation + there.worldLocation).Normalized0();
 			float distance = sqrt(d2);
 
@@ -540,6 +534,7 @@ namespace Objects
 					return Detail::TraceArtilleryTrajectory(Turret::MaxRangeToVelocity(flatRange),visibleWorld,actualWorld, !traceInActualWorld,source, dest, outSteps);
 				break;
 				case TrajectoryType::Missile:
+				case TrajectoryType::AAMissile:
 					return Detail::TraceMissileTrajectory(flatRange,traceInActualWorld ? actualWorld : visibleWorld,source, dest, outSteps);
 				break;
 				case TrajectoryType::VerticalBeam:
@@ -552,26 +547,6 @@ namespace Objects
 					float4 p(Grid::low.cells[source.cellLocation.stackID].cornerCenter,Grid::ToRadius(h));
 					outSteps.Append(p);
 					rs.result = TraceResult::ReachesTarget;
-					rs.impactAt = p.xyz * p.w;
-					rs.impactCell = Grid::HCellIdI(Grid::low.grid.GetCell(source.cellLocation.stackID).higherEquivalent,h);
-					return rs;
-				}
-				break;
-				case TrajectoryType::VerticalBeamUp:
-				{
-					ImpactDetails rs;
-					int h = GetCeilingHeight(traceInActualWorld ? actualWorld : visibleWorld,source.cellLocation);
-					if (h == badHeight)
-					{
-						rs.result = TraceResult::ReachesTarget;
-						h = Objects::SubOrbital::Height;
-					}
-					else
-						rs.result = TraceResult::MidFlightImpact;
-
-					outSteps.Clear();
-					float4 p(Grid::low.cells[source.cellLocation.stackID].cornerCenter,Grid::ToRadius(h));
-					outSteps.Append(p);
 					rs.impactAt = p.xyz * p.w;
 					rs.impactCell = Grid::HCellIdI(Grid::low.grid.GetCell(source.cellLocation.stackID).higherEquivalent,h);
 					return rs;
@@ -777,8 +752,6 @@ namespace Objects
 			const float3 here = Grid::low.cells[source.stackID].centerVertex.xyz * h0;
 		*/
 			float d2 = Vec::quadraticDistance(source.worldLocation,dest.worldLocation);
-			if (d2 > M::Sqr(range))
-				return ImpactDetails{};
 
 			Turret::traceCount++;
 			const Timer::Time t0 = timer.Now();
@@ -1026,10 +999,8 @@ namespace Objects
 			component.typeName = "AntiAircraft";
 			component.shortName = " AA";
 			component.constName = ConstName::Turret_AntiAircraft;
-			component.continuousRotation = true;
-			component.continuousRotationSpeed = 1;
 			component.isScanner = true;
-			component.trajectoryType = TrajectoryType::VerticalBeamUp;
+			component.trajectoryType = TrajectoryType::AAMissile;
 
 			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 20;
@@ -1421,7 +1392,7 @@ namespace Objects
 				component.initiative = 90;
 				component.ammoType = Resource::Uranium;
 				component.requiresStationaryVehicle = false;
-				component.ignoresVehicleMotion = false;
+				component.ignoresVehicleMotion = true;
 				component.trajectoryType = TrajectoryType::VerticalBeam;
 
 			}

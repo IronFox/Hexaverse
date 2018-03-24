@@ -81,13 +81,13 @@ namespace Objects
 
 	static const float g = 9.80665f;
 
-	CONSTRUCT_ENUMERATION4(TrajectoryType, Artillery, Missile, VerticalBeam,VerticalBeamUp);
+	CONSTRUCT_ENUMERATION4(TrajectoryType, Artillery, Missile, VerticalBeam,AAMissile);
 
 	/**
 	Determines whether the given trajectory is a vertical beam trajectory.
 	If true, it fires only up and down, and cannot affect neighboring stacks except via explosion radius
 	*/
-	inline bool IsBeam(TrajectoryType t)	{return t == TrajectoryType::VerticalBeam || t == TrajectoryType::VerticalBeamUp;}
+	inline bool IsBeam(TrajectoryType t)	{return t == TrajectoryType::VerticalBeam;}
 
 	inline bool					CursorModeExpectsLeftClick(CursorMode activeCursorMode)
 	{
