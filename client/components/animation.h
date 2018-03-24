@@ -24,10 +24,9 @@ namespace Animation
 		{
 			Trajectory					activeTrajectory;
 			Objects::Geometry			trajectoryGeometry;
-			DX11::InstructionBlock32	trajectoryVisualization;
-			DX11::ObjectBuffer<float4>	trajectoryProgression,trajectoryTint;
-			float						maxProjectileProjection,projectileAt=0;
-
+			DX11::InstructionBlock32	instruction;
+			float						maxProjectileProjection,projectileAt=0, beamHeight;
+			M::TVec3<>					beamBase;
 			OpenAL::Source				missileHissSource;
 		};
 	#endif

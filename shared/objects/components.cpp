@@ -337,10 +337,10 @@ namespace Objects
 
 
 
-		/*static*/ int				Turret::GetGroundHeight(const World::Data&world, const Grid::LCellIdI&location)
+		/*static*/ int				Turret::GetGroundHeight( const World::Data&world, const Grid::LCellIdI&location )
 		{
 			UINT32 fine = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
-			return world.GetStack(fine).FindTopClearOverNonClear(false);
+			return world.GetStack(fine).FindTopClearOverNonClear(true,false);
 		}
 
 

@@ -1301,10 +1301,13 @@ namespace Animation
 				#ifdef HAS_WINDOW
 					TUniqueID attackerID = TUniqueID::Empty();
 				#endif
+
+				Grid::LCellIdI attackerCell = Grid::LCellIdI::Invalid;
 				if (!attackerTurret)
 				{
 					Objects::PWorldEntity attacker = Objects::GetEntity(targetEntityID);
 					ASSERT2__(attacker,targetEntityID,this->time);
+					attackerCell = attacker->location;
 					float zOffset;
 					Objects::PTurretBase base= attacker->GetTurretBase(zOffset);
 					ASSERT2__(base,attacker->GetName(),this->time);
@@ -1326,7 +1329,7 @@ namespace Animation
 				{
 					#ifdef HAS_WINDOW
 						trajectoryAnimation.reset(new TTrajectoryAnimation());
-						((DX11::BaseInstructionBlock&) trajectoryAnimation->trajectoryVisualization) = trajectoryVisualizationBase;
+						((DX11::BaseInstructionBlock&) trajectoryAnimation->instruction) = trajectoryVisualizationBase;
 						Objects::Component::Turret::TraceAnimationTrajectory(
 							attackerTurret->trajectoryType, attackRange,attackAngle, attackerPosition,explosionCenter,
 							trajectoryAnimation->activeTrajectory);
@@ -1344,8 +1347,24 @@ namespace Animation
 							LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Compiling trajectory with "+String(trajectoryAnimation->activeTrajectory.Count())+" steps, starting from "+Vec::toString(trajectoryAnimation->activeTrajectory.First())+", ending "+Vec::toString(trajectoryAnimation->activeTrajectory.Last()));
 						#endif
 						trajectoryAnimation->maxProjectileProjection = Objects::Component::Turret::CompileTrajectory(trajectoryAnimation->activeTrajectory,Objects::Component::Turret::Animation,trajectoryAnimation->trajectoryGeometry,0.5f);
-						trajectoryAnimation->trajectoryVisualization.vbo.CreateFromStructs(trajectoryAnimation->trajectoryGeometry.GetLOD(0).vertices);
-						trajectoryAnimation->trajectoryVisualization.ibo.Create(trajectoryAnimation->trajectoryGeometry.GetLOD(0).indices);
+						trajectoryAnimation->instruction.vbo.CreateFromStructs(trajectoryAnimation->trajectoryGeometry.GetLOD(0).vertices);
+						trajectoryAnimation->instruction.ibo.Create(trajectoryAnimation->trajectoryGeometry.GetLOD(0).indices);
+
+						if (attackerTurret->trajectoryType == Objects::TrajectoryType::VerticalBeam)
+						{
+
+							UINT32 fine;
+							if (attackerCell != Grid::LCellIdI::Invalid)
+								fine = Grid::low.grid.GetCell(attackerCell.stackID).higherEquivalent;
+							else
+								fine = Grid::low.Locate(attackerPosition);
+							int h = World::actual.GetStack(fine).FindTopClearOverNonClear(true,false);
+							if (h == InvalidIndex)
+								h = Grid::CellStack::BottomHeight;
+							const float rh = Grid::ToRadius(h);
+							trajectoryAnimation->beamBase = Grid::high.cells[fine].cornerCenter * rh;
+							trajectoryAnimation->beamHeight = Vec::length(attackerPosition) - rh;
+						}
 
 
 						auto smokeTrailIndex = Objects::Renderer::RegisterSmokeTrail(trajectoryAnimation->activeTrajectory,Vec::dot(attackerPosition) > M::Sqr(Grid::ToRadius(Grid::CellStack::TopHeight+1)));
@@ -1491,8 +1510,19 @@ namespace Animation
 			{
 				case Attack:
 
-					trajectoryProgression.Update(float4(trajectoryAnimation->projectileAt * trajectoryAnimation->maxProjectileProjection,1.f,5.f,1.f));
-					display.Render(trajectoryAnimation->trajectoryVisualization);
+					if (attackerTurret->trajectoryType != Objects::TrajectoryType::VerticalBeam)
+					{
+						trajectoryProgression.Update(float4(trajectoryAnimation->projectileAt * trajectoryAnimation->maxProjectileProjection,1.f,5.f,1.f));
+						display.Render(trajectoryAnimation->instruction);
+					}
+					else
+					{
+						const float f = trajectoryAnimation->projectileAt;
+						static const float maxWidth = 0.25f;
+						float w = maxWidth * (1.f - M::Sqr(1.f - f));
+						float4 color = float4(1,f,f,f);
+						Objects::Renderer::RenderBeam(trajectoryAnimation->beamBase,trajectoryAnimation->beamHeight,w,color,color);
+					}
 
 				break;
 

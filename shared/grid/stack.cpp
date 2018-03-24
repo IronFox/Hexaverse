@@ -122,7 +122,7 @@ namespace Grid
 	}
 
 
-	int				CellStack::FindNextClearBeneathNonClear(bool failOnStructureCount, UINT startLayer) const
+	int				CellStack::FindNextClearBeneathNonClear( bool stopOnStructureCount, bool failOnBlockingStructureAtDestination, UINT startLayer ) const
 	{
 		UINT32 h;
 		for (h = startLayer; h < Range; h++)
@@ -130,11 +130,13 @@ namespace Grid
 			const Cell&c = volumeCell[h];
 			if (c.content != Grid::Content::Clear)
 				break;
+			if (stopOnStructureCount && c.structureCounter > 0)
+				break;
 		}
 		h--;
 		if (h >= Range-1)
 			return BadHeight;
-		if (failOnStructureCount)
+		if (failOnBlockingStructureAtDestination)
 		{
 			const Cell&c = volumeCell[h];
 			if (c.structureCounter > 1)
@@ -143,7 +145,7 @@ namespace Grid
 		return ToHeight(h);
 	}
 
-	int				CellStack::FindTopClearOverNonClear(bool failOnStructureCount)	const
+	int				CellStack::FindTopClearOverNonClear( bool stopOnStructureCount, bool failOnBlockingStructureAtDestination )	const
 	{
 		UINT32 h;
 		for (h = Range-1; h < Range; h--)
@@ -151,11 +153,13 @@ namespace Grid
 			const Cell&c = volumeCell[h];
 			if (c.content != Grid::Content::Clear)
 				break;
+			if (stopOnStructureCount && c.structureCounter > 0)
+				break;
 		}
 		h++;
 		if (h >= Range-1)
 			return BadHeight;
-		if (failOnStructureCount)
+		if (failOnBlockingStructureAtDestination)
 		{
 			const Cell&c = volumeCell[h];
 			if (c.structureCounter > 1)
