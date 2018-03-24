@@ -27,7 +27,7 @@ namespace Animation
 			DX11::InstructionBlock32	instruction;
 			float						maxProjectileProjection,projectileAt=0, beamHeight;
 			M::TVec3<>					beamBase;
-			OpenAL::Source				missileHissSource;
+			OpenAL::Source				localizedSoundSource;
 		};
 	#endif
 

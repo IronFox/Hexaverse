@@ -27,7 +27,7 @@ namespace Animation
 
 	#ifdef HAS_WINDOW
 		DX11::ObjectBuffer<float4>	trajectoryProgression,trajectoryTint;
-		OpenAL::Wave				artilleryShot,missileHiss,constructSound;
+		OpenAL::Wave				artilleryShot,missileHiss,constructSound,beamSound;
 
 		DX11::BaseInstructionBlock	trajectoryVisualizationBase;
 	#endif
@@ -298,6 +298,7 @@ namespace Animation
 
 			constructSound = OpenAL::Load("resources/objectSounds/construct.wav");
 			missileHiss = OpenAL::Load("resources/objectSounds/missileHiss.wav");
+			beamSound = OpenAL::Load("resources/objectSounds/beam.wav");
 
 		#endif
 
@@ -311,6 +312,7 @@ namespace Animation
 			trajectoryProgression.Clear();
 			trajectoryTint.Clear();
 			OpenAL::Discard(missileHiss);
+			OpenAL::Discard(beamSound);
 			OpenAL::Discard(constructSound);
 			OpenAL::Discard(artilleryShot);
 		#endif
@@ -1334,14 +1336,6 @@ namespace Animation
 							attackerTurret->trajectoryType, attackRange,attackAngle, attackerPosition,explosionCenter,
 							trajectoryAnimation->activeTrajectory);
 
-						trajectoryAnimation->missileHissSource.Create();
-						#ifdef _DEBUG
-							trajectoryAnimation->missileHissSource.name = "missileHiss";
-						#endif
-						trajectoryAnimation->missileHissSource.SetReferenceDistance(10.f,0.5f);
-						trajectoryAnimation->missileHissSource.SetWaveBuffer(missileHiss);
-						trajectoryAnimation->missileHissSource.SetLooping(true);
-
 						trajectoryAnimation->trajectoryGeometry.Clear();
 						#ifdef _DEBUG
 							LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Compiling trajectory with "+String(trajectoryAnimation->activeTrajectory.Count())+" steps, starting from "+Vec::toString(trajectoryAnimation->activeTrajectory.First())+", ending "+Vec::toString(trajectoryAnimation->activeTrajectory.Last()));
@@ -1389,9 +1383,20 @@ namespace Animation
 							break;
 							case Objects::TrajectoryType::Missile:
 							{
-								trajectoryAnimation->missileHissSource.SetPosition(attackerPosition);
-								trajectoryAnimation->missileHissSource.Play();
+								trajectoryAnimation->localizedSoundSource.Create();
+								#ifdef _DEBUG
+									trajectoryAnimation->localizedSoundSource.name = "localized attack sound";
+								#endif
+								trajectoryAnimation->localizedSoundSource.SetReferenceDistance(10.f,0.5f);
+								trajectoryAnimation->localizedSoundSource.SetWaveBuffer(missileHiss);
+								trajectoryAnimation->localizedSoundSource.SetLooping(true);
+								trajectoryAnimation->localizedSoundSource.SetPosition(attackerPosition);
+								trajectoryAnimation->localizedSoundSource.Play();
 							}
+							break;
+							case Objects::TrajectoryType::VerticalBeam:
+								OpenAL::PlayOnce(attackerPosition,beamSound,1.f,10.f);
+							break;
 						}
 
 						
@@ -1462,7 +1467,7 @@ namespace Animation
 					}
 				}
 				#ifdef HAS_WINDOW
-					trajectoryAnimation->missileHissSource.Stop();
+					trajectoryAnimation->localizedSoundSource.Stop();
 					trajectoryAnimation.reset();
 				#endif
 			break;
@@ -1598,10 +1603,10 @@ namespace Animation
 					trajectoryAnimation->projectileAt = x;
 					index_t at = std::min(index_t(x * trajectoryAnimation->activeTrajectory.GetLength()),trajectoryAnimation->activeTrajectory.GetLength()-1);
 					const M::TVec4<>&v = trajectoryAnimation->activeTrajectory[at];
-					trajectoryAnimation->missileHissSource.SetPosition(v.xyz * v.w);
+					trajectoryAnimation->localizedSoundSource.SetPosition(v.xyz * v.w);
 					float volume = M::Sqr(M::Sqr(1.f - x))*0.75f + 0.25f;
-					//missileHissSource.SetGain(volume);
-					trajectoryAnimation->missileHissSource.SetPitch(0.75f + x);
+					//localizedSoundSource.SetGain(volume);
+					trajectoryAnimation->localizedSoundSource.SetPitch(0.75f + x);
 				#endif
 			}
 			break;
