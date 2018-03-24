@@ -116,6 +116,23 @@ namespace Objects
 
 				CheckSystem();
 			}
+			void					SetSystems(const M::Sphere<>&s, const M::TVec3<>&upAxis, float height)
+			{
+				radius = s.radius;
+				cutOffConfig = float4(0, 0, Grid::BottomPlanetRadius, std::numeric_limits<float>::max());
+
+				Mat::makeAxisSystem(s.center,upAxis,2,innerSys);
+				outerSys = innerSys;
+				innerSys.x.xyz *= s.radius;
+				innerSys.y.xyz *= s.radius;
+				innerSys.z.xyz *= height;
+
+				outerSys.x.xyz *= s.radius + Renderer::RangeShadowExtension;
+				outerSys.y.xyz *= s.radius + Renderer::RangeShadowExtension;
+				outerSys.z.xyz *= height + Renderer::RangeShadowExtension;
+
+				CheckSystem();
+			}
 
 			void					SetCylinderSystems(const M::TVec3<>&topCenter, float radius)
 			{
@@ -306,6 +323,15 @@ namespace Objects
 		smokeTrails[1].Clear();
 	}
 
+
+	void	Renderer::RenderFlattenedRangeSphere(const M::TVec3<>&center, float radius, const M::TVec3<>&upAxis, float height, const float4&color, bool outer)
+	{
+		generalPurposePrimitive.geo = &sphere;
+		generalPurposePrimitive.SetSystems(M::Sphere<>(center, radius), upAxis,height);
+		generalPurposePrimitive.tint = color;
+
+		generalPurposePrimitive.Render(outer);
+	}
 
 	void Renderer::RenderRangeSphere(const M::TVec3<>&center, float radius, const float4&color, bool outer)
 	{
