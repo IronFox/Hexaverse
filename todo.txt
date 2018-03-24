@@ -7,6 +7,11 @@ Permanent checklist for new tutorial maps:
 	Only one terraformer (blow up the other)
 
 bug: when ownership of nexus port changes while only visible from plane, nexus port will disappear until plane moves
+bug: plane can land on lava
+bug: bomber auto-attacks targets that cannot be reached by a beam attack
+missing: beam attack button lacks icon
+missing: bomber obliteration job
+missing: AA attack planes during their motion
 
 pathfinding: make sure surveyor or ai cannot enter vehicle store on accident because new reachabilitymapper allows such (add parameter)
 check opacity of accessibility mesh
