@@ -359,28 +359,17 @@ namespace Objects
 
 
 
-		/*static*/ bool						Turret::CanHit(TrajectoryType t, float flatRange, const TrajectoryEndPoint&origin, const TrajectoryEndPoint&dest, float&outAngle)
+		/*static*/ bool						Turret::CanHit( TrajectoryType t, float flatRange, const TrajectoryEndPoint&origin, const TrajectoryEndPoint&dest, float&outAngle )
 		{
-			outAngle = 0;
+			if (t == TrajectoryType::Artillery)
+				return Detail::ArtilleryCanHit(flatRange,Vec::distance(origin.worldLocation,dest.worldLocation),dest.radius - origin.radius,outAngle);
 
-			switch (t)
-			{
-				case TrajectoryType::VerticalBeam:
-					return GetGroundHeight(World::actual, origin.cellLocation) != badHeight;
-				case TrajectoryType::VerticalBeamUp:
-					return !WorldEntity::IsAboveGrid(origin.cellLocation);
-				case TrajectoryType::Artillery:
-					return Detail::ArtilleryCanHit(flatRange,Vec::distance(origin.worldLocation,dest.worldLocation),dest.radius - origin.radius,outAngle);
-				case TrajectoryType::Missile:
-					return Detail::MissileCanHit(flatRange,origin,dest);
-				default:
-					FATAL__("Incompatible trajectory type "+String(t.ToString()));
-			}
-			return false;
+			outAngle = 0;
+			return CanHit(t,flatRange,origin,dest);
 		}
 	
 
-		/*static*/ bool						Turret::CanHit(TrajectoryType t, float flatRange, const TrajectoryEndPoint&origin, const TrajectoryEndPoint&dest)
+		/*static*/ bool						Turret::CanHit( TrajectoryType t, float flatRange, const TrajectoryEndPoint&origin, const TrajectoryEndPoint&dest )
 		{
 			switch (t)
 			{
@@ -778,7 +767,7 @@ namespace Objects
 			}
 		}
 
-		/*static*/ ImpactDetails			Turret::Detail::TraceMissileTrajectory(float range, const World::Data&world, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps)
+		/*static*/ ImpactDetails			Turret::Detail::TraceMissileTrajectory( float range, const World::Data&world, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps )
 		{
 		/*
 
