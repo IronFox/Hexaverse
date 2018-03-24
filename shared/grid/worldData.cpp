@@ -1957,6 +1957,20 @@ namespace World
 	}
 
 
+	bool		Sensor::DetectsSubOrbitalObjects() const
+	{
+		switch (type)
+		{
+			case SolidSphere:
+			case UpperHalfSolidSphere:
+			case ShadedSphere:
+				return gridCenter.layer >= Grid::CellStack::Range;
+			default:
+				return false;
+		}
+	}
+
+
 	void		Sensor::ApplyShadedSphereTo(World::Data&v, short change,Data::ChangeSequence&seq, index_t processorIndex)	const
 	{
 		enum

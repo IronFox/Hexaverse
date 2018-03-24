@@ -343,6 +343,8 @@ namespace Objects
 			Ctr::Buffer0<WMobileEntity>	allMobiles,		//!< All mobiles registered in the world
 										storedMobiles;	//!< All mobile entities registered stored in some other entity. allMobiles and storedMobiles are exclusive of each other
 			Buffer0<SubOrbital::WPlane>	planes;
+			Buffer0<std::pair<Component::Turret*,WWorldEntity> >	subOrbitalSensors;	//!< Lists all entities that have sub orbital scanning capability
+
 			#ifndef NO_SATELLITES
 				Buffer0<WSatellite>		satellites;
 				Buffer0<WSkyHub>		skyHubs;	//overlaps with satellites
@@ -537,6 +539,8 @@ namespace Objects
 
 			count_t		CountOffGridCoverage(int channelHeight, const M::TVec3<>&)	const;
 			count_t		CountOffGridCoverage(const M::Sphere<>&)	const;
+			count_t		CountOrbitalSensorCoverage(const M::TVec3<>&) const;
+			count_t		CountOrbitalSensorCoverage(const M::Sphere<>&) const;
 
 			count_t		GetWinningScore() const;
 			count_t		GetOffensiveCapabilities() const;

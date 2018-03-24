@@ -587,6 +587,12 @@ namespace Objects
 
 		void		Faction::RegisterLoss(const PWorldEntity&e)
 		{
+			foreach (subOrbitalSensors,s)
+				if (s->second.lock() == e)
+				{
+					subOrbitalSensors.erase(s);
+					break;
+				}
 			if (e->IsMobile())
 			{
 				auto m = To<MobileEntity>::Cast(e);
@@ -697,6 +703,8 @@ namespace Objects
 			if (t)
 			{
 				towers << t;
+				if (t->turret->subOrbitalScanningRange.IsFunctionOrConstNonZero())
+					subOrbitalSensors.Append(std::make_pair(t->turret,s));
 			}
 		}
 
@@ -1131,6 +1139,45 @@ namespace Objects
 			return rs;
 		}
 
+		count_t		Faction::CountOrbitalSensorCoverage(const M::Sphere<>&sphere) const
+		{
+			count_t rs = 0;
+			foreach (subOrbitalSensors,s0)
+			{
+				auto s = s0->second.lock();
+				if (!s)
+				{
+					LogEvent(EventClass::Preset::internalError,"Found abandoned sub orbital sensor");
+					continue;
+				}
+				const float r = s0->first->subOrbitalScanningRange(researchState.researchState) + sphere.radius;
+				const float dist = Vec::quadraticDistance(Grid::ToWorld(Grid::LCellIdI(s->location.stackID,SubOrbital::Height)),sphere.center);
+				if (dist <= r*r)
+					rs++;
+			}
+			return rs;
+		}
+
+
+		count_t		Faction::CountOrbitalSensorCoverage(const M::TVec3<>&p) const
+		{
+			count_t rs = 0;
+			foreach (subOrbitalSensors,s0)
+			{
+				auto s = s0->second.lock();
+				if (!s)
+				{
+					LogEvent(EventClass::Preset::internalError,"Found abandoned sub orbital sensor");
+					continue;
+				}
+				const float r = s0->first->subOrbitalScanningRange(researchState.researchState);
+				const float dist = Vec::quadraticDistance(Grid::ToWorld(Grid::LCellIdI(s->location.stackID,SubOrbital::Height)),p);
+				if (dist <= r*r)
+					rs++;
+			}
+			return rs;
+		}
+
 		
 		count_t		Faction::CountOffGridCoverage(int channelHeight, const M::TVec3<>&p)	const
 		{
@@ -1139,7 +1186,11 @@ namespace Objects
 					return CountRawSensorCoverage(p,satellites);
 			#endif
 			if (channelHeight == SubOrbital::Height)
-				return CountRawSensorCoverage(p,planes);
+				return 
+					CountRawSensorCoverage(p,planes)
+					+
+					CountOrbitalSensorCoverage(p);
+				;
 
 			return 0;
 		}
@@ -1151,6 +1202,7 @@ namespace Objects
 				rs += CountRawSensorCoverage(p,satellites);
 			#endif
 			rs += CountRawSensorCoverage(p,planes);
+			rs += CountOrbitalSensorCoverage(p);
 
 			return rs;
 		}
@@ -1224,7 +1276,7 @@ namespace Objects
 					}
 				}
 			#endif
-			if (SubOrbital::Height == sensorHeight)
+			if (sensor.DetectsSubOrbitalObjects())
 			{
 				Objects::SubOrbital::planes.Foreach([&sensor,this,newContacts,&t](const SubOrbital::PPlane&plane)
 				{
@@ -1258,7 +1310,8 @@ namespace Objects
 
 			if (!knownWorld.SensoryIsInvalid())
 			{
-				bool offGrid = sensorHeight > Grid::CellStack::TopHeight;
+				const bool offGrid = sensor.DetectsSubOrbitalObjects();
+					//sensorHeight > Grid::CellStack::TopHeight || sensor.gridCenter.layer >= Grid::CellStack::Range;
 
 				this->VisitVisibleForeignEntities(t,[this,offGrid, sensor,&t](const PWorldEntity&s)
 				{

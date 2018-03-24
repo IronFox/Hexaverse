@@ -555,7 +555,7 @@ namespace World
 		void			ApplyTo(World::Data&clientWorld, short change, float t, index_t processorIndex=0)	const;
 		void			InsertInto(World::Data&clientWorld, float t, index_t processorIndex=0) const;
 		void			RemoveFrom(World::Data&clientWorld, float t, index_t processorIndex=0) const;
-
+		bool			DetectsSubOrbitalObjects() const;
 
 		/**
 		Determines whether the local sensor contains the specified location.
