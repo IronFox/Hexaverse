@@ -339,6 +339,8 @@ namespace Objects
 
 		void DefineOffensive(Command::Container&commands,Objects::TrajectoryType t)
 		{
+			if (t == Objects::TrajectoryType::AAMissile)
+				return;	//no manual attack for now
 			if (IsBeam(t))
 			{
 				commands.Add( new Command::IconCommand("Beam Attack",[]()
