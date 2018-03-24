@@ -694,9 +694,6 @@ namespace Objects
 			ASSERT1__(v,v->GetName());
 			ASSERT1__(v->storedIn.expired(),v->GetName());
 
-			if (v->turret->subOrbitalScanningRange.IsFunctionOrConstNonZero())
-				subOrbitalSensors.Append(std::make_pair(v->turret,v));
-
 			allMobiles << v;
 			#ifndef NO_SATELLITES
 				if (v->IsSatellite())
