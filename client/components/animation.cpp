@@ -22,20 +22,14 @@
 namespace Animation
 {
 	typedef Buffer0<M::TVec4<> >	Trajectory;
-	Trajectory					activeTrajectory;
-	float						projectileAt;	//[0,1], specifies where, along @a activeTrajectory, the projectile currently is
-	bool						projectileActive=false;
 
 
 
 	#ifdef HAS_WINDOW
-		namespace OpenAL = Engine::OpenAL;
-		Objects::Geometry			trajectoryGeometry;
-		DX11::InstructionBlock32	trajectoryVisualization;
 		DX11::ObjectBuffer<float4>	trajectoryProgression,trajectoryTint;
-		OpenAL::Source				/*trajectoryFireSource[1],*/missileHissSource;
-		float						maxProjectileProjection;
 		OpenAL::Wave				artilleryShot,missileHiss,constructSound;
+
+		DX11::BaseInstructionBlock	trajectoryVisualizationBase;
 	#endif
 
 	float						atTime = 0.f;
@@ -289,10 +283,10 @@ namespace Animation
 				DX11::Shader::Binding(trajectoryTint, "Tint"),
 				DX11::Shader::Binding(trajectoryProgression, "Progression"),
 			};
-			trajectoryVisualization.binding = Objects::stdVehicleShader.binding;
-			trajectoryVisualization.shader.LoadFromFile("shaders/projectilePath.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
-			trajectoryVisualization.UpdateLayout();
-			trajectoryVisualization.SetTriangles();
+			trajectoryVisualizationBase.binding = Objects::stdVehicleShader.binding;
+			trajectoryVisualizationBase.shader.LoadFromFile("shaders/projectilePath.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
+			trajectoryVisualizationBase.UpdateLayout();
+			trajectoryVisualizationBase.SetTriangles();
 
 			artilleryShot = OpenAL::Load("resources/objectSounds/artilleryShot.wav");
 			//for (index_t i = 0; i < ARRAYSIZE(trajectoryFireSource); i++)
@@ -304,13 +298,6 @@ namespace Animation
 
 			constructSound = OpenAL::Load("resources/objectSounds/construct.wav");
 			missileHiss = OpenAL::Load("resources/objectSounds/missileHiss.wav");
-			missileHissSource.Create();
-			#ifdef _DEBUG
-				missileHissSource.name = "missileHiss";
-			#endif
-			missileHissSource.SetReferenceDistance(10.f,0.5f);
-			missileHissSource.SetWaveBuffer(missileHiss);
-			missileHissSource.SetLooping(true);
 
 		#endif
 
@@ -320,12 +307,9 @@ namespace Animation
 	void						Destroy()
 	{
 		#ifdef HAS_WINDOW
-			trajectoryVisualization = DX11::InstructionBlock32();
+			trajectoryVisualizationBase = DX11::InstructionBlock32();
 			trajectoryProgression.Clear();
 			trajectoryTint.Clear();
-			//for (index_t i = 0; i < ARRAYSIZE(trajectoryFireSource); i++)
-			//	trajectoryFireSource[i].Destroy();
-			missileHissSource.Destroy();
 			OpenAL::Discard(missileHiss);
 			OpenAL::Discard(constructSound);
 			OpenAL::Discard(artilleryShot);
@@ -1338,27 +1322,31 @@ namespace Animation
 				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Starting attack ("+attackerTurret->typeName+",range="+String(attackRange)+",pos="+Vec::toString(attackerPosition)+",angle="+String(attackAngle)+") at "+String(Animation::atTime)+"/"+String(this->time.min));
 				
 				{
-					//Grid::HCellIdI impactCell;
-					//M::TVec3<> impactAt;
-					Objects::Component::Turret::TraceAnimationTrajectory(
-						attackerTurret->trajectoryType, attackRange,attackAngle, attackerPosition,explosionCenter,
-						activeTrajectory);
-
-					//explosionRadius = attackerTurret->GetExplosionRadius;
-					projectileAt = 0.f;
-					projectileActive = true;
-
 					#ifdef HAS_WINDOW
-						trajectoryGeometry.Clear();
+						trajectoryAnimation.reset(new TTrajectoryAnimation());
+						((DX11::BaseInstructionBlock&) trajectoryAnimation->trajectoryVisualization) = trajectoryVisualizationBase;
+						Objects::Component::Turret::TraceAnimationTrajectory(
+							attackerTurret->trajectoryType, attackRange,attackAngle, attackerPosition,explosionCenter,
+							trajectoryAnimation->activeTrajectory);
+
+						trajectoryAnimation->missileHissSource.Create();
 						#ifdef _DEBUG
-							LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Compiling trajectory with "+String(activeTrajectory.Count())+" steps, starting from "+Vec::toString(activeTrajectory.First())+", ending "+Vec::toString(activeTrajectory.Last()));
+							trajectoryAnimation->missileHissSource.name = "missileHiss";
 						#endif
-						maxProjectileProjection = Objects::Component::Turret::CompileTrajectory(activeTrajectory,Objects::Component::Turret::Animation,trajectoryGeometry,0.5f);
-						trajectoryVisualization.vbo.CreateFromStructs(trajectoryGeometry.GetLOD(0).vertices);
-						trajectoryVisualization.ibo.Create(trajectoryGeometry.GetLOD(0).indices);
+						trajectoryAnimation->missileHissSource.SetReferenceDistance(10.f,0.5f);
+						trajectoryAnimation->missileHissSource.SetWaveBuffer(missileHiss);
+						trajectoryAnimation->missileHissSource.SetLooping(true);
+
+						trajectoryAnimation->trajectoryGeometry.Clear();
+						#ifdef _DEBUG
+							LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Compiling trajectory with "+String(trajectoryAnimation->activeTrajectory.Count())+" steps, starting from "+Vec::toString(trajectoryAnimation->activeTrajectory.First())+", ending "+Vec::toString(trajectoryAnimation->activeTrajectory.Last()));
+						#endif
+						trajectoryAnimation->maxProjectileProjection = Objects::Component::Turret::CompileTrajectory(trajectoryAnimation->activeTrajectory,Objects::Component::Turret::Animation,trajectoryAnimation->trajectoryGeometry,0.5f);
+						trajectoryAnimation->trajectoryVisualization.vbo.CreateFromStructs(trajectoryAnimation->trajectoryGeometry.GetLOD(0).vertices);
+						trajectoryAnimation->trajectoryVisualization.ibo.Create(trajectoryAnimation->trajectoryGeometry.GetLOD(0).indices);
 
 
-						auto smokeTrailIndex = Objects::Renderer::RegisterSmokeTrail(activeTrajectory,Vec::dot(attackerPosition) > M::Sqr(Grid::ToRadius(Grid::CellStack::TopHeight+1)));
+						auto smokeTrailIndex = Objects::Renderer::RegisterSmokeTrail(trajectoryAnimation->activeTrajectory,Vec::dot(attackerPosition) > M::Sqr(Grid::ToRadius(Grid::CellStack::TopHeight+1)));
 						if (doRegister)
 						{
 							HUD::HexGrid::EventLog::RegisterAttack(this->time.min, isFriendly,attackerPosition, attackerID, smokeTrailIndex);
@@ -1381,8 +1369,8 @@ namespace Animation
 							case Objects::TrajectoryType::Missile:
 							case Objects::TrajectoryType::AAMissile:
 							{
-								missileHissSource.SetPosition(attackerPosition);
-								missileHissSource.Play();
+								trajectoryAnimation->missileHissSource.SetPosition(attackerPosition);
+								trajectoryAnimation->missileHissSource.Play();
 							}
 						}
 
@@ -1441,7 +1429,6 @@ namespace Animation
 			break;
 			case Attack:
 				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Ending attack at "+String(Animation::atTime)+"/"+String(this->time.max));
-				projectileActive = false;
 				for (index_t i = 0; i < Objects::Marker::all.Count(); i++)
 				{
 					const Objects::Marker&m = Objects::Marker::all[i];
@@ -1455,7 +1442,8 @@ namespace Animation
 					}
 				}
 				#ifdef HAS_WINDOW
-					missileHissSource.Stop();
+					trajectoryAnimation->missileHissSource.Stop();
+					trajectoryAnimation.reset();
 				#endif
 			break;
 			case Explosion:
@@ -1493,6 +1481,23 @@ namespace Animation
 		}
 		path.reset();
 	}
+
+
+	#ifdef HAS_WINDOW
+		void						Primitive::Render()	const
+		{
+			switch (type)
+			{
+				case Attack:
+
+					trajectoryProgression.Update(float4(trajectoryAnimation->projectileAt * trajectoryAnimation->maxProjectileProjection,1.f,5.f,1.f));
+					display.Render(trajectoryAnimation->trajectoryVisualization);
+
+				break;
+
+			}
+		}
+	#endif
 
 	Primitive::result_t			Primitive::Update(float t)
 	{
@@ -1558,18 +1563,14 @@ namespace Animation
 			break;
 			case Attack:
 			{
-				float y = x;//M::Sqr((x - 0.5f) * 2.f) * sign(x-0.5f) * 0.5f + 0.5f;
-				projectileAt = y;
 				#ifdef HAS_WINDOW
-					trajectoryProgression.Update(float4(y * maxProjectileProjection,1.f,5.f,1.f));
-
-					index_t at = std::min(index_t(x * activeTrajectory.GetLength()),activeTrajectory.GetLength()-1);
-					const M::TVec4<>&v = activeTrajectory[at];
-					missileHissSource.SetPosition(v.xyz * v.w);
+					trajectoryAnimation->projectileAt = x;
+					index_t at = std::min(index_t(x * trajectoryAnimation->activeTrajectory.GetLength()),trajectoryAnimation->activeTrajectory.GetLength()-1);
+					const M::TVec4<>&v = trajectoryAnimation->activeTrajectory[at];
+					trajectoryAnimation->missileHissSource.SetPosition(v.xyz * v.w);
 					float volume = M::Sqr(M::Sqr(1.f - x))*0.75f + 0.25f;
 					//missileHissSource.SetGain(volume);
-					missileHissSource.SetPitch(0.75f + x);
-
+					trajectoryAnimation->missileHissSource.SetPitch(0.75f + x);
 				#endif
 			}
 			break;
