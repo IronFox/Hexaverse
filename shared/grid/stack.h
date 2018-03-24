@@ -393,17 +393,19 @@ namespace Grid
 
 		/**
 		Finds the top-most clear block that is located above a non-clear cell.
-		@param failOnStructureCount If set will cause the method to fail if the located clear cell has a >1 struct-count. Otherwise struct count is completely ignored
+		@param stopOnStructureCount If set search will stop on the first occurrence of a structure count >0
+		@param failOnBlockingStructureAtDestination If set, will cause the method to fail if the located clear cell has a >1 struct-count. Only checks any matching cell
 		@return Height level that is within the valid range, clear, and above a non-clear block. Returns BadHeight on failure
 		*/
-		int				FindTopClearOverNonClear(bool failOnStructureCount)	const;
+		int				FindTopClearOverNonClear(bool stopOnStructureCount, bool failOnBlockingStructureAtDestination)	const;
 		
 		/**
 		Finds the bottom-most clear block that is located beneath a non-clear cell, starting at the specified layer
-		@param failOnStructureCount If set will cause the method to fail if the located clear cell has a >1 struct-count. Otherwise struct count is completely ignored
+		@param stopOnStructureCount If set search will stop on the first occurrence of a structure count >0
+		@param failOnBlockingStructureAtDestination If set, will cause the method to fail if the located clear cell has a >1 struct-count. Only checks any matching cell
 		@return Height level that is within the valid range, clear, and beneath a non-clear block. Returns BadHeight on failure
 		*/
-		int				FindNextClearBeneathNonClear(bool failOnStructureCount, UINT startLayer) const;
+		int				FindNextClearBeneathNonClear(bool stopOnStructureCount, bool failOnBlockingStructureAtDestination, UINT startLayer) const;
 
 		#ifdef HAS_WINDOW
 		bool			HasWater() const { return waterRange.IsNotEmpty(); }
