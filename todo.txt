@@ -6,6 +6,8 @@ Permanent checklist for new tutorial maps:
 	No survival conditions
 	Only one terraformer (blow up the other)
 
+bug: when ownership of nexus port changes while only visible from plane, nexus port will disappear until plane moves
+
 pathfinding: make sure surveyor or ai cannot enter vehicle store on accident because new reachabilitymapper allows such (add parameter)
 check opacity of accessibility mesh
 	
@@ -236,7 +238,6 @@ done: depict shortcuts in build commands
 fixed: Invite -> 'Cancel Invite'; button doesn't change caption if in alliance
 fixed: build bridge to never ends when final field is partially blocked by building
 feature: vehicle stores should teleport units
-fixed: temporarily lost contact when nexus port changed ownership, was visible only by plane
 add new view button to toggle sensor bubbles in general, and include bubbles (if ticked) in (hostile/friendly) range display
 cannot fix: bug: build road never finished when center block beneath former can't be built. can't reproduce
 fixed: loaded nexus ports are switched off
