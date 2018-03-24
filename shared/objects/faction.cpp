@@ -589,19 +589,20 @@ namespace Objects
 		{
 			if (e->IsMobile())
 			{
-				if (To<MobileEntity>::Cast(e)->storedIn.expired())
-					RegisterActiveMobileLoss(e);
+				auto m = To<MobileEntity>::Cast(e);
+				if (m->storedIn.expired())
+					RegisterActiveMobileLoss(m);
 				else
-					RegisterStoredMobileLoss(e);
+					RegisterStoredMobileLoss(m);
 			}
 			else
 				if (e->IsStructure())
-					RegisterStructureLoss(e);
+					RegisterStructureLoss(To<Structure>::Cast(e));
 				else
 					FATAL__("WTF is this: "+e->GetName());
 		}
 
-		void		Faction::RegisterStructureLoss(const PWorldEntity&e)
+		void		Faction::RegisterStructureLoss( const PStructure&e )
 		{
 			bool found0 = false;
 			foreach (structures,_s)
@@ -629,7 +630,7 @@ namespace Objects
 					}
 			}
 		}
-		void		Faction::RegisterActiveMobileLoss(const PWorldEntity&e)
+		void		Faction::RegisterActiveMobileLoss( const PMobileEntity&e )
 		{
 			foreach (allMobiles,_v)
 			{
@@ -674,7 +675,7 @@ namespace Objects
 			FATAL__(e->GetName()+": Unable to register loss for faction "+GetLogName());
 		}
 
-		void		Faction::RegisterStoredMobileLoss(const PWorldEntity&e)
+		void		Faction::RegisterStoredMobileLoss( const PMobileEntity&e )
 		{
 			foreach (storedMobiles,_v)
 			{
@@ -689,11 +690,24 @@ namespace Objects
 			FATAL__(e->GetName()+": Unable to register loss for faction "+GetLogName());
 		}
 
-		void		Faction::RegisterActiveMobileGain(const PWorldEntity&e)
+		void		Faction::RegisterStructureGain( const PStructure&s )
 		{
-			PMobileEntity v = To<MobileEntity>::DynamicCast(e);
-			ASSERT1__(v,e->GetName());
-			ASSERT1__(v->storedIn.expired(),e->GetName());
+			structures << s;
+			PTower t = To<Tower>::DynamicCast(s);
+			if (t)
+			{
+				towers << t;
+			}
+		}
+
+		void		Faction::RegisterActiveMobileGain( const PMobileEntity&v )
+		{
+			ASSERT1__(v,v->GetName());
+			ASSERT1__(v->storedIn.expired(),v->GetName());
+
+			if (v->turret->subOrbitalScanningRange.IsFunctionOrConstNonZero())
+				subOrbitalSensors.Append(std::make_pair(v->turret,v));
+
 			allMobiles << v;
 			#ifndef NO_SATELLITES
 				if (v->IsSatellite())
