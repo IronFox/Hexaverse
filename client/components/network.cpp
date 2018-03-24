@@ -531,7 +531,6 @@ namespace Network
 
 		Animation::primitives.Clear();
 		Animation::actives.Clear();
-		Animation::activeTrajectory.Clear();
 		Animation::atTime = 0;
 
 		if (alsoFlushWorld)

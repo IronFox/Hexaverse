@@ -1302,16 +1302,11 @@ bool loop()
 			Objects::Renderer::RenderScene();
 
 
-
-			if (Animation::projectileActive)
-			{
-				display.SetDepthTest(false,false);
-				display.SetRasterizer(true,false);
-				display.SetBlendMode(Engine::BlendMode::FlareBlend);
-				display.Render(Animation::trajectoryVisualization);
-				display.SetBlendMode(Engine::BlendMode::AlphaBlend);
-			}
-
+			display.SetDepthTest(false,false);
+			display.SetRasterizer(true,false);
+			display.SetBlendMode(Engine::BlendMode::FlareBlend);
+				foreach (Animation::actives,a)
+					a->Render();
 
 			display.SetDepthTest(true, true);
 			display.SetBlendMode(Engine::BlendMode::AlphaBlend);

@@ -16,16 +16,20 @@ namespace Animation
 
 
 	typedef Buffer0<M::TVec4<> >	Trajectory;
-	extern Trajectory				activeTrajectory;
-	extern float					projectileAt;	//[0,1], specifies where, along @a activeTrajectory, the projectile currently is
-	extern bool						projectileActive/*=false*/;
 
 	#ifdef HAS_WINDOW
 		namespace DX11 = Engine::DX11;
-		extern Objects::Geometry			trajectoryGeometry;
-		extern DX11::InstructionBlock32		trajectoryVisualization;
-		extern DX11::ObjectBuffer<float4>	trajectoryProgression,trajectoryTint;
-		extern float						maxProjectileProjection;
+		namespace OpenAL = Engine::OpenAL;
+		struct TTrajectoryAnimation
+		{
+			Trajectory					activeTrajectory;
+			Objects::Geometry			trajectoryGeometry;
+			DX11::InstructionBlock32	trajectoryVisualization;
+			DX11::ObjectBuffer<float4>	trajectoryProgression,trajectoryTint;
+			float						maxProjectileProjection,projectileAt=0;
+
+			OpenAL::Source				missileHissSource;
+		};
 	#endif
 
 	extern float						atTime /*= 0.f*/;
@@ -80,6 +84,9 @@ namespace Animation
 		std::shared_ptr<Protocol::MobileState>		vehicleState;
 		std::shared_ptr<Protocol::StructureState>	structureState;
 		std::shared_ptr<Protocol::ResourceUpdate>	resourceUpdate;
+		#ifdef HAS_WINDOW
+			std::shared_ptr<TTrajectoryAnimation>	trajectoryAnimation;
+		#endif
 		M::TVec2<>					rotateTo,rotateFrom;
 		M::TVec3<>					rotateToWorld;
 		union
@@ -149,6 +156,9 @@ namespace Animation
 		void					End();
 
 		result_t				Update(float t);
+		#ifdef HAS_WINDOW
+			void				Render() const;
+		#endif
 	};
 
 
