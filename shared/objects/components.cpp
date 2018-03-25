@@ -377,9 +377,7 @@ namespace Objects
 				{
 					if (dest.cellLocation.stackID != origin.cellLocation.stackID)
 						return false;
-					if (origin.cellLocation.height == dest.cellLocation.height)	//unspecified height
-						return true;
-					return abs(GetGroundHeight(World::actual, origin.cellLocation) - dest.cellLocation.height) <= 1;
+					return dest.cellLocation.height >= GetGroundHeight(World::actual, origin.cellLocation)-1;
 				}
 				case TrajectoryType::AAMissile:
 				{
