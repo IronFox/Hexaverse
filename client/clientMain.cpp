@@ -1122,12 +1122,21 @@ namespace ApplicationInterface
 					Tutorial::ShowMessage("Hostile Ghosts");
 			}
 
-			if (Objects::selectedMobileEntity && Objects::selectedMobileEntity->IsAboveGrid())
+			bool anyOrbit = false;
+			if (Objects::selectedMobileEntity && Objects::selectedMobileEntity->turret->subOrbitalScanningRange.IsFunctionOrConstNonZero())
+				anyOrbit = true;
+			elif (Objects::selectedEntity->IsTower() && To<Objects::Tower>::Cast(Objects::selectedEntity)->turret->subOrbitalScanningRange.IsFunctionOrConstNonZero())
+				anyOrbit = true;
+
+			if (!anyOrbit)
 			{
-				Camera::TargetSkyOrbit();
+				if (Objects::selectedMobileEntity && Objects::selectedMobileEntity->IsAboveGrid())
+				{
+					Camera::TargetSkyOrbit();
+				}
+				else
+					Camera::TargetGroundOrbit();
 			}
-			else
-				Camera::TargetGroundOrbit();
 		}
 	}
 	#endif
