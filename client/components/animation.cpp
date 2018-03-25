@@ -1767,7 +1767,17 @@ namespace Animation
 
 			target->system.w.xyz = p;
 			Mat::resetBottomRow(target->system);
+
+			const float scale = Objects::WorldEntity::GetScaleAtRadius(Vec::length(target->system.w.xyz));
+
 			Mat::invertSystem(target->system, target->inverse);
+			target->system.x.xyz *= scale;
+			target->system.y.xyz *= scale;
+			target->system.z.xyz *= scale;
+			target->inverse.x.xyz /= scale;
+			target->inverse.y.xyz /= scale;
+			target->inverse.z.xyz /= scale;
+			target->inverse.w.xyz /= scale;
 			return;
 		}
 	}
