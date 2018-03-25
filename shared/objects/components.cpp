@@ -1351,6 +1351,7 @@ namespace Objects
 					component.requirements = VehicleBase::Requirement::AnyBlock;
 					component.moveOnWater = true;
 					component.minClimbDown = -1;	//-int(Grid::CellStack::Range);
+					component.operationSpeedMultiplier.SetConst(1);
 					#ifndef ONE_COMPOUND_PER_FACTION
 						component.storageMultiplier = 1;
 					#endif
