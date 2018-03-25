@@ -93,6 +93,10 @@ namespace StatePanel
 	{
 		if (cachedNumber == RuntimeConfig::roundNumber && cachedEntity == &e)
 			return;
+
+		const Objects::MobileEntity *const m = e.IsMobile() ? (const Objects::MobileEntity*)(&e) : nullptr;
+
+
 		cachedNumber = RuntimeConfig::roundNumber;
 		cachedEntity = &e;
 		cachedLines.Clear();
@@ -107,7 +111,7 @@ namespace StatePanel
 		#endif
 			
 
-
+		auto base = e.GetTurretBase();
 		const String&name= e.GetNiceName();
 		if (name.GetLength() < 20)
 			cachedLines << name;
@@ -167,6 +171,8 @@ namespace StatePanel
 		}
 		cachedLines << "";
 		cachedLines << " Scanning-Range: "+e.DescribeScanningRange();
+		if (base && base->turret->subOrbitalScanningRange.IsFunctionOrConstNonZero())
+			cachedLines << " Sub-Orbital Scanning-Range: "+base->turret->subOrbitalScanningRange.Describe(researchState);
 		#ifndef NO_HIBERNATION
 			cachedLines << " "<<Objects::TrafficResourceTag()  <<e.GetUplinkTraffic() << nl;
 			if (h)
@@ -214,18 +220,17 @@ namespace StatePanel
 		}
 	
 	
-		if (e.IsMobile())
+		if (m)
 		{
-			const Objects::MobileEntity*v = (const Objects::MobileEntity*)(&e);
 	
 			//if (!v->storedIn.expired())
 				//cachedLines << " Stored in: "<<v->storedIn.lock()->GetName()<<nl;	//probably never happens
 			if (e.IsVehicle())
 			{
-				const Objects::Vehicle*veh = (const Objects::Vehicle*)(&e);
+				const Objects::Vehicle*veh = (const Objects::Vehicle*)(m);
 				cachedLines << " Turret-Overweight: "+String((int)M::Max(0,veh->turret->weight(e.owner) - floor(veh->base->GetCarryingCapacity(e.owner))));
 			}
-			cachedLines << " Movement Initiative: "+String((int)v->GetMovementInitiative())+"/"+String((int)v->GetBaseMovementInitiative());
+			cachedLines << " Movement Initiative: "+String((int)m->GetMovementInitiative())+"/"+String((int)m->GetBaseMovementInitiative());
 			#ifndef NO_SATELLITES
 				elif (e.IsSatellite())
 				{
@@ -240,45 +245,45 @@ namespace StatePanel
 					cachedLines<<nl;
 				}
 			#endif
-			if (v->CanAttack())
-				cachedLines << " Attack Initiative: "+String((int)v->GetAttackInitiative())+"/"+String((int)v->turret->initiative);
-			cachedLines << " Speed: " + v->DescribeMovementStepsPerRound();
-			if (v->turret->CanAttack())
+			if (m->CanAttack())
+				cachedLines << " Attack Initiative: "+String((int)m->GetAttackInitiative())+"/"+String((int)m->turret->initiative);
+			cachedLines << " Speed: " + m->DescribeMovementStepsPerRound();
+			if (m->turret->CanAttack())
 			{
-				if (v->turret->independentAttackAndMotion)
+				if (m->turret->independentAttackAndMotion)
 					cachedLines << "  (ignores attacks)";
-				//cachedLines << " Range: "<<v->GetAttackRange() << nl;
-				//cachedLines << " Damage: "<<v->turret->damageLevel << nl;
-				//cachedLines << " Ammo-Usage: "<<v->turret->ammoNeedPerShot<<nl;
-				cachedLines << " Hrz. Range: "+v->turret->horizontalAttackRange.Describe(researchState)
-								+'+'+v->turret->explosionRadius.Describe(researchState);
-				cachedLines << " Damage: "+String(v->turret->GetDamageLevel(e.owner));
-				int ammoNeed = v->turret->GetAmmoNeedPerShot(e.owner);
+				//cachedLines << " Range: "<<m->GetAttackRange() << nl;
+				//cachedLines << " Damage: "<<m->turret->damageLevel << nl;
+				//cachedLines << " Ammo-Usage: "<<m->turret->ammoNeedPerShot<<nl;
+				cachedLines << " Hrz. Range: "+m->turret->horizontalAttackRange.Describe(researchState)
+								+'+'+m->turret->explosionRadius.Describe(researchState);
+				cachedLines << " Damage: "+String(m->turret->GetDamageLevel(e.owner));
+				int ammoNeed = m->turret->GetAmmoNeedPerShot(e.owner);
 				if (ammoNeed > 0)
-					cachedLines << " "+String((char)(tagOffset+v->turret->ammoType))+"Ammo-Usage: "+String(ammoNeed);
+					cachedLines << " "+String((char)(tagOffset+m->turret->ammoType))+"Ammo-Usage: "+String(ammoNeed);
 	
 			}
-			if (v->turret->CanAttack())
+			if (m->turret->CanAttack())
 			{
-				cachedLines << " Attacks left: "+String(int(v->CountPossibleAttacks()))+"/"+String(v->GetAttacksPerRound());
-				if (v->turret->independentAttackAndMotion)
+				cachedLines << " Attacks left: "+String(int(m->CountPossibleAttacks()))+"/"+String(m->GetAttacksPerRound());
+				if (m->turret->independentAttackAndMotion)
 					cachedLines << "  (ignores movement)";
 			}
-			if (v->turret->CanDo(Objects::Component::Construct))
+			if (m->turret->CanDo(Objects::Component::Construct))
 			{
-				String opSpeed = v->turret->operationSpeed[Objects::Component::Construct].Describe(v->GetResearchState());
+				String opSpeed = m->turret->operationSpeed[Objects::Component::Construct].Describe(m->GetResearchState());
 				cachedLines << " Converts "+String(Objects::ResourceTag(Objects::Resource::Minerals))+opSpeed+" per round";
 			}
-			if (v->turret->CanDo(Objects::Component::Repair))
+			if (m->turret->CanDo(Objects::Component::Repair))
 			{
-				String opSpeed = v->turret->operationSpeed[Objects::Component::Repair].Describe(v->GetResearchState());
+				String opSpeed = m->turret->operationSpeed[Objects::Component::Repair].Describe(m->GetResearchState());
 				cachedLines << " Repairs "+String(Objects::ResourceTag(Objects::Resource::Minerals))+opSpeed+" per round";
 			}
 	
 			cachedLines << " Tasks:";
-			if (v->myTasks.IsEmpty())
+			if (m->myTasks.IsEmpty())
 			{
-				if (v->unstable)
+				if (m->unstable)
 					cachedLines << "  Operation done. Relocate to complete";
 				else
 					cachedLines << "  idle";
@@ -287,21 +292,21 @@ namespace StatePanel
 			{
 				PushCurrentColor();
 				currentColor.rgb &= float3(0.75,0.8,1);
-				foreach (v->myTasks,t)
+				foreach (m->myTasks,t)
 				{
 					cachedLines << "  * "+t->name;
 					if (t->IsMode(Objects::CursorMode::AttackMode) && t->foci.Count() > 1)
 						cachedLines.Last().text+= " (x"+String(t->foci.Count())+')';
 					if (t->job && t->job->continuationsToJobCompletion)
 					{
-						int rounds = ceil(v->ContinuationsToRounds(t->job->continuationsToJobCompletion,t->job->GetOperationAffinity()));
+						int rounds = ceil(m->ContinuationsToRounds(t->job->continuationsToJobCompletion,t->job->GetOperationAffinity()));
 						cachedLines.Last().text+= " ("+String(rounds)+" round"+(rounds != 1 ? "s)" : ")");
 					}
 				}
 				PopCurrentColor();
 			}
 			#ifndef ONE_COMPOUND_PER_FACTION
-				const Objects::ResourceVector max = v->GetMaxStorageCapacity();
+				const Objects::ResourceVector max = m->GetMaxStorageCapacity();
 				bool any = false;
 				for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
 					if (max.level[i] > 0)
@@ -314,9 +319,9 @@ namespace StatePanel
 						if (max.level[i] > 0)
 						{
 	
-	//						cachedLines << "  "<<Objects::Resource::Reinterpret(i).ToString()<<": "<<v->currentStorage.level[i]<<"/"<<max.level[i]<<nl;
-							cachedLines << "  "+String((char)(tagOffset+i))+" "+String(v->currentStorage.level[i])+"/"+String(max.level[i]);
-							//cachedLines << "        : "<<v->currentStorage.level[i]<<"/"<<max.level[i]<<nl;
+	//						cachedLines << "  "<<Objects::Resource::Reinterpret(i).ToString()<<": "<<m->currentStorage.level[i]<<"/"<<max.level[i]<<nl;
+							cachedLines << "  "+String((char)(tagOffset+i))+" "+String(m->currentStorage.level[i])+"/"+String(max.level[i]);
+							//cachedLines << "        : "<<m->currentStorage.level[i]<<"/"<<max.level[i]<<nl;
 						}
 				}
 			#endif
