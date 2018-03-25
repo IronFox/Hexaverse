@@ -374,7 +374,13 @@ namespace Objects
 			switch (t)
 			{
 				case TrajectoryType::VerticalBeam:
-					return dest.cellLocation.stackID == origin.cellLocation.stackID && abs(GetGroundHeight(World::actual, origin.cellLocation) - dest.cellLocation.height) <= 1;
+				{
+					if (dest.cellLocation.stackID != origin.cellLocation.stackID)
+						return false;
+					if (origin.cellLocation.height == dest.cellLocation.height)	//unspecified height
+						return true;
+					return abs(GetGroundHeight(World::actual, origin.cellLocation) - dest.cellLocation.height) <= 1;
+				}
 				case TrajectoryType::AAMissile:
 				{
 					//let's define this as a cone, so that mid-way explosions are valid
