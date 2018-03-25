@@ -302,7 +302,7 @@ namespace Objects
 	/*virtual override*/ void				Tower::VisitSensors( const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance /*= false*/ ) const
 	{
 		const float sub = turret->subOrbitalScanningRange(GetResearchState());
-		if (sub > 0)
+		if (sub > 0 && empDamageLevel == 0)
 		{
 			visitor(World::Sensor(Grid::ToWorld(Grid::LCellIdI(loc.stackID,SubOrbital::Height)),sub,World::Sensor::UpperHalfSolidSphere));
 		}
