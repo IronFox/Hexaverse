@@ -660,14 +660,14 @@ namespace InputControl
 								{
 									path.Clear();
 									auto rs2 = Objects::Pathfinding::AppendShortestConstructionPath(Objects::selectedVehicle.get(),true,false,Objects::selectedVehicle->GetLastPointOfOrigin(),target,path,10000);
-									ObjectHelper::DirectTo(Objects::selectedMobileEntity,path.ToRef(), ObjectHelper::AssembleMotionFlags(true,false),Objects::activeCursorMode);
+									ObjectHelper::DirectTo(Objects::selectedMobileEntity,path.ToRef(), ObjectHelper::AssembleMotionFlags(true,true),Objects::activeCursorMode);
 								}
 								break;
 								case Objects::Pathfinding::Result::NoPath:
 									LogEvent(EventClass::Preset::commandRejected,Objects::selectedMobileEntity.get(),"Unable to plot path to destination");
 									break;
 								case Objects::Pathfinding::Result::DestinationReached:
-									ObjectHelper::DirectTo(Objects::selectedMobileEntity,target, ObjectHelper::AssembleMotionFlags(false,false),Objects::activeCursorMode);
+									ObjectHelper::DirectTo(Objects::selectedMobileEntity,target, ObjectHelper::AssembleMotionFlags(false,true),Objects::activeCursorMode);
 									break;
 							}
 						}

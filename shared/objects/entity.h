@@ -706,7 +706,7 @@ namespace Objects
 				{
 					versionCounter = Super::versionCounter;
 					T val = source.GetValue(e.GetResearchState());
-					if (bonus.IsSet())
+					if (val > 0 && bonus.IsSet())
 						val += bonus.GetValue(e.GetResearchState());
 					cached = val;
 				}
@@ -716,15 +716,16 @@ namespace Objects
 		template <typename F1, typename F2>
 			String	LuaAttributeCache<T>::DescribeEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source,const LuaAttribute<T,F2>&bonus)
 			{
-				if (bonus.IsSet())
+				const auto res = e.GetResearchState();
+				if (bonus.IsSet() && source.GetValue(res) > 0)
 				{
-					String bonusStr = bonus.Describe(e.GetResearchState());
+					String bonusStr = bonus.Describe(res);
 					if (bonusStr != "0")
 					{
-						T val = source.GetUnfilteredValue(e.GetResearchState())
-							+ bonus.GetUnfilteredValue(e.GetResearchState());
+						T val = source.GetUnfilteredValue(res)
+							+ bonus.GetUnfilteredValue(res);
 
-						return String(val)+" [="+source.Describe(e.GetResearchState()) + "+"+bonusStr+" (bonus)]";
+						return String(val)+" [="+source.Describe(res) + "+"+bonusStr+" (bonus)]";
 					}
 				}
 			
