@@ -191,12 +191,12 @@ namespace Objects
 		#ifndef CLIENT
 
 
-			/*virtual override*/ bool		Plane::ProcessRound(float&atTime)
+			/*virtual override*/ bool		Plane::ProcessRound( float&atTime )
 			{
 				return true;
 			}
 
-			/*virtual override*/ MobilePlacementResult	Plane::PlaceExactlyAt(const Grid::LCellIdI&cell, float timeCost, float minTimeOffset, bool signalEvent/*=true*/, bool isCreated/*=true*/, bool failIsFatal/*=false*/)
+			/*virtual override*/ MobilePlacementResult	Plane::PlaceExactlyAt( const Grid::LCellIdI&cell, float timeCost, float minTimeOffset, bool signalEvent/*=true*/, bool isCreated/*=true*/, bool failIsFatal/*=false*/ )
 			{
 			//	UINT32 cell = _cell.stackID;
 				if (IsDeadOrGhost())
@@ -444,20 +444,6 @@ namespace Objects
 				return TurretBase::ExtCanHit(owner,TrajectoryEndPoint( attackFrom ),TrajectoryEndPoint( attackTarget ),outExtResult);
 			}
 
-			/*virtual override*/ bool		Raptor::WouldAttack( const PWorldEntity&e, TurretBase::TargetChoice&outTarget, float entityTime)
-			{
-				if (!HasAmmoForShot() || empDamageLevel != 0 || IsHibernating() || owner->IsAlliedWith(e->owner))
-				{
-					//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
-					return false;
-				}
-
-				return		//owner->canSee.IsSet(target)
-						/*&&	*/turret->CanAttack() 
-						&& entityTime <= entityTime 
-						&& CountPossibleAttacks() > 0 
-						&& ExtCanHit(location,e->location,outTarget);
-			}
 
 
 			/*virtual override*/ bool			Bomber::ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget, TargetChoice&outExtResult) const
@@ -480,61 +466,6 @@ namespace Objects
 			}
 
 
-			/*virtual override*/ bool	Plane::AttackNext(Grid::LCellIdI target, bool autoTarget)
-			{
-				ASSERT__(!TasksAreLocked());
-				if (!CanAttack())
-					return false;
-				Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
-				if (target == pointOfOrigin && !IsBeam(turret->trajectoryType))
-				{
-					LogEvent(EventClass::Preset::commandRejected,this,"Destination too close");
-					return false;
-				}
-				if (!IsBeam(turret->trajectoryType))
-				{
-					//Grid::LCellIdI pointOfOrigin = location+1;
-
-
-					//float targetDistance = Grid::GetGeometricDistance(pointOfOrigin,target);
-
-					if (!CanHitFrom(pointOfOrigin,TrajectoryEndPoint( target )))
-					{
-						LogEvent(EventClass::Preset::commandRejected,this,"Destination out of range");
-						return false;
-					}
-				}
-
-				if (!HasTasks() || !myTasks.GetNewest().IsMode(CursorMode::AttackMode))
-				{
-					if (myTasks.Count() >= MaxTasks)
-					{
-						LogEvent(EventClass::Preset::commandRejected,this,"Max queue length ("+String(MaxTasks)+") reached");
-						return false;
-					}
-
-					myTasks << Task("Attack Position",target,false,Task::Mode,CursorMode::AttackMode);
-					myTasks.GetNewest().Replot(pointOfOrigin,this,FocusChangeType::FullChange,true);
-					RegisterChange(TasksChanged,-1);
-				}
-				else
-				{
-					if (myTasks.GetNewest().foci.Count() >= MaxFocusPoints)
-					{
-						LogEvent(EventClass::Preset::commandRejected,this,"Max focus point count ("+String(MaxFocusPoints)+") reached");
-						return false;
-					}
-
-					//if (!tasks.GetNewest().foci.Contains(destination))	//irrelevant. attack same location as often as you want
-					{
-						myTasks.GetNewest().foci.Push().target = target;
-						myTasks.GetNewest().Replot(pointOfOrigin,this,FocusChangeType::FocusAppended,true);
-						RegisterChange(TasksChanged,-1);
-					}
-				}
-				return true;
-
-			}
 
 			/*virtual override*/ bool	Plane::AttackFirst(Grid::LCellIdI target, bool autoTarget)
 			{

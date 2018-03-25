@@ -55,13 +55,7 @@ namespace Objects
 
 
 			#ifndef CLIENT
-				/**
-				Adjust to ground changes. Should be called once per round to account for 
-				@return true, if changes were detected and applied, false otherwise
-				*/
-				bool				AttackNext(Grid::LCellIdI target, bool autoTarget);
 				bool				AttackFirst(Grid::LCellIdI target, bool autoTarget);
-				virtual bool		WouldAttack(const PWorldEntity&e, TurretBase::TargetChoice&outTarget, float entityTime) {return false;}
 			#endif
 
 			//new overridables:
@@ -228,7 +222,6 @@ namespace Objects
 			#ifndef CLIENT
 				//Satellite overrides:
 				virtual bool		ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget, TargetChoice&outExtResult) const override;
-				virtual bool		WouldAttack(const PWorldEntity&e, TurretBase::TargetChoice&outTarget, float entityTime) override;
 			#endif
 
 
