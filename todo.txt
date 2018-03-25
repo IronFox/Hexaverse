@@ -9,7 +9,6 @@ Permanent checklist for new tutorial maps:
 bug: when ownership of nexus port changes while only visible from plane, nexus port will disappear until plane moves
 bug: plane can land on lava
 bug: bomber auto-attacks targets that cannot be reached by a beam attack
-missing: AA attack planes during their motion
 
 pathfinding: make sure surveyor or ai cannot enter vehicle store on accident because new reachabilitymapper allows such (add parameter)
 check opacity of accessibility mesh
@@ -201,6 +200,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+done: AA attack planes during their motion
 done: bomber obliteration job
 fixed: beam attack button lacks icon
 skipped: emergency transfer of resources to other storage when storage is destroyed. makes attacking storages less rewarding as victim will move resources away as possible. also counter-productive when introducing exploding resource tanks
