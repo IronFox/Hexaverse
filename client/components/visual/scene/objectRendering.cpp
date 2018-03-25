@@ -398,7 +398,7 @@ namespace Objects
 				const float hC = sqrt(M::Sqr(h) - M::Sqr(r));
 
 				const M::TVec3<>&d = Grid::low.cells[location.stackID].centerVertex.xyz;
-				RenderFlattenedRangeSphere(d * hC, r + explosionRadius,d,1.f,color, extended);
+				RenderFlattenedRangeSphere(d * (hC+Grid::SingleLayerHeight * 0.5f), r + explosionRadius,d,3.f,color, extended);
 			}
 			break;
 			default:
@@ -1579,7 +1579,10 @@ namespace Objects
 			float zOffset;
 			PTurretBase base = e->GetTurretBase(zOffset);		
 			if (base && base->turret->CanAttack() && (!e->isOwnedByMe || !base->turret->dealsEMPDamage || includeEMPIfOwnedByMe))
-				RenderRange(e->location,zOffset,base,color,extendedShadow);
+			{
+				if (base->turret->trajectoryType != TrajectoryType::AAMissile || !e->empDamageLevel)
+					RenderRange(e->location,zOffset,base,color,extendedShadow);
+			}
 		}
 
 		void RenderAttackRangeOf(const PWorldEntity&e, const Grid::LCellIdI&at,const float4&color, bool extendedShadow, bool includeEMPIfOwnedByMe)
@@ -1587,7 +1590,10 @@ namespace Objects
 			float zOffset;
 			PTurretBase base = e->GetTurretBase(zOffset);		
 			if (base && base->turret->CanAttack() && (!e->isOwnedByMe || !base->turret->dealsEMPDamage || includeEMPIfOwnedByMe))
-				RenderRange(at,zOffset,base,color,extendedShadow);
+			{
+				if (base->turret->trajectoryType != TrajectoryType::AAMissile || !e->empDamageLevel)
+					RenderRange(at,zOffset,base,color,extendedShadow);
+			}
 		}
 	}
 
