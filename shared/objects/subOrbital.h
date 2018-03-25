@@ -95,6 +95,7 @@ namespace Objects
 			
 
 			//MobileEntity overrides:
+			virtual float			GetBaseMovementInitiative() const override {return turret->initiative;}	//reuse turret initiative for motion
 			virtual int				GetMovementStepsPerRound() const override
 			{
 				return (int)ceil(EMPModify(GetMaxAirSpeed(),1.f));
