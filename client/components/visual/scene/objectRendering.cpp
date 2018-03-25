@@ -1578,10 +1578,9 @@ namespace Objects
 		{
 			float zOffset;
 			PTurretBase base = e->GetTurretBase(zOffset);		
-			if (base && base->turret->CanAttack() && (!e->isOwnedByMe || !base->turret->dealsEMPDamage || includeEMPIfOwnedByMe))
+			if (base && base->CanAttackIgnoreAmmo() && (!e->isOwnedByMe || !base->turret->dealsEMPDamage || includeEMPIfOwnedByMe))
 			{
-				if (base->turret->trajectoryType != TrajectoryType::AAMissile || !e->empDamageLevel)
-					RenderRange(e->location,zOffset,base,color,extendedShadow);
+				RenderRange(e->location,zOffset,base,color,extendedShadow);
 			}
 		}
 
@@ -1589,10 +1588,9 @@ namespace Objects
 		{
 			float zOffset;
 			PTurretBase base = e->GetTurretBase(zOffset);		
-			if (base && base->turret->CanAttack() && (!e->isOwnedByMe || !base->turret->dealsEMPDamage || includeEMPIfOwnedByMe))
+			if (base && base->CanAttackIgnoreAmmo() && (!e->isOwnedByMe || !base->turret->dealsEMPDamage || includeEMPIfOwnedByMe))
 			{
-				if (base->turret->trajectoryType != TrajectoryType::AAMissile || !e->empDamageLevel)
-					RenderRange(at,zOffset,base,color,extendedShadow);
+				RenderRange(at,zOffset,base,color,extendedShadow);
 			}
 		}
 	}

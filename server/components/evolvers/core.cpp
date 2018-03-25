@@ -146,7 +146,7 @@ namespace Evolver
 			while (attackingEntities.IsNotEmpty())
 			{
 				b = attackingEntities.Last().tref.lock();
-				if (!b || !b->NextTaskIsAttack() || b->CountPossibleAttacks() <= 0 || !b->HasAmmoForShot() || !e || e->empDamageLevel)
+				if (!b || !b->NextTaskIsAttack() || b->CountPossibleAttacks() <= 0 || !b->CanAttack() || !e || e->empDamageLevel)
 					attackingEntities.EraseLast();	//happened
 				else
 					break;
@@ -270,7 +270,7 @@ namespace Evolver
 
 				if (v->NextTaskIsAttack())
 				{
-					if (b->HasAmmoForShot())
+					if (b->CanAttack())
 					{
 						TAttackReference&ref = attackingEntities.Append(TAttackReference(v));
 	//					ref.eref = v;
@@ -278,7 +278,7 @@ namespace Evolver
 					}
 					else
 					{
-						LogEvent(EventClass::Preset::commandRejected,v.get(),"Insufficient ammunition. Attacks canceled");
+						LogEvent(EventClass::Preset::commandRejected,v.get(),"Unable to attack right now. Attacks canceled");
 						v->EraseFirstTask();
 						v->RegisterChange(Objects::WorldEntity::TasksChanged,v->entityTime);
 					}
@@ -310,9 +310,9 @@ namespace Evolver
 						if (!any)
 							return;
 					}
-					if (!t->HasAmmoForShot())
+					if (!t->CanAttack())
 					{
-						LogEvent(EventClass::Preset::commandRejected,t.get(),"Insufficient ammunition. Attacks canceled");
+						LogEvent(EventClass::Preset::commandRejected,t.get(),"Unable to attack right now. Attacks canceled");
 						t->attackQueue.Clear();
 						t->RegisterChange(Objects::WorldEntity::TasksChanged,t->entityTime);
 						return;

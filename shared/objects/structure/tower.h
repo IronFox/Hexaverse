@@ -89,7 +89,7 @@ namespace Objects
 			bool					ClearTasks();
 			bool					DropLastTask();
 
-			bool					IsIdleButCouldAttack(float atTime) {return attackQueue.IsEmpty() && HasAmmoForShot();}
+			bool					IsIdleButCouldAttack(float atTime) {return attackQueue.IsEmpty() && CanAttack();}
 
 		#endif
 
@@ -165,6 +165,7 @@ namespace Objects
 		virtual bool				HasAmmoForShot() override;
 		virtual float				GetAttackExplosionRadius() const override;
 		virtual WorldEntity&		ToEntity() override {return *this;}
+		virtual const WorldEntity&	ToEntity() const override {return *this;}
 		virtual float				GetZOffset() const override {return GetEffectiveFoundationHeight();}
 		#ifndef CLIENT
 			virtual void			FlushAutoAttacks() override;

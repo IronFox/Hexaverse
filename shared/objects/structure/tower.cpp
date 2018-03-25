@@ -142,7 +142,7 @@ namespace Objects
 
 		/*virtual override*/ bool Tower::FrontQueueAutoAttack(TurretBase::TargetChoice&lastChoice)
 		{
-			if (!HasAmmoForShot())
+			if (!CanAttack())
 				return false;
 			//index_t freeSlots = attackQueue.Count() < t->GetAttacksPerRound() <  t->GetAttacksPerRound() - t->attackQueue.Count() : 0;
 			if ((int)attackQueue.Count() < CountPossibleAttacks())
