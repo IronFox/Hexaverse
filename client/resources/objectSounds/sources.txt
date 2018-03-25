@@ -1,3 +1,3 @@
 construct.wav: Cutout from https://www.freesound.org/people/aesqe/sounds/138214/
 catbase.wav: Cutout from https://www.freesound.org/people/jazbavac/sounds/198519/
-beam.wav: Acceleration of https://freesound.org/people/steshystesh/sounds/336741/
+beam.wav: Mix of https://freesound.org/people/jobro/sounds/245153/

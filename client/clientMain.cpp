@@ -1337,7 +1337,7 @@ bool loop()
 			Objects::Renderer::RenderScene();
 
 
-			display.SetDepthTest(false,false);
+			display.SetDepthTest(true,false);
 			display.SetRasterizer(true,false);
 			display.SetBlendMode(Engine::BlendMode::FlareBlend);
 				foreach (Animation::actives,a)
