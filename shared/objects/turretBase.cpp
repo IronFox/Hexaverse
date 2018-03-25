@@ -16,7 +16,29 @@ namespace Objects
 
 
 	
+	#ifndef CLIENT
+		bool TurretBase::WouldAutoAttack(const PWorldEntity&target, TurretBase::TargetChoice&outTarget, float entityTime)
+		{
+			auto&e = ToEntity();
+			if (!HasAmmoForShot() || e.empDamageLevel != 0 || e.IsHibernating() || e.owner->IsAlliedWith(target->owner))
+			{
+				//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
+				return false;
+			}
 
+
+
+			//float d2 = Grid::GetQuadraticGeometricDistance(location+1,target->location);
+			TrajectoryEndPoint endPoint(target->location); 
+			 
+
+			return		//owner->canSee.IsSet(target)
+					/*&&	*/turret->CanAttack() 
+					&& entityTime <= entityTime 
+					&& CountPossibleAttacks() > 0 
+					&& ExtCanHit(e.owner,TrajectoryEndPoint( e.location,GetZOffset() ), endPoint,outTarget);
+		}
+	#endif
 
 	/*static*/ bool				TurretBase::CheckArea(const PFaction&myFaction, const Grid::LCellIdI&origin,const M::TVec3<>&source3, float explosionRadius, TargetChoice&outExtResult)
 	{

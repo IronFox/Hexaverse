@@ -966,7 +966,7 @@ namespace Objects
 				component.baseStorageCapacity.level[Resource::Munitions] = 20;
 			#endif
 
-			component.ignoresVehicleMotion = true;
+			component.independentAttackAndMotion = true;
 		}
 
 
@@ -1532,7 +1532,7 @@ namespace Objects
 						outResult <<"Offensive "+lowerName;
 					if (parentType != "Tower")
 					{
-						if (ignoresVehicleMotion)
+						if (independentAttackAndMotion)
 							outResult <<"Can attack independently of movement action";
 						elif (requiresStationaryVehicle)
 							outResult <<"Vehicle must remain stationary to fire";

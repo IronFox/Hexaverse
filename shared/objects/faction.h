@@ -340,17 +340,19 @@ namespace Objects
 		#else
 
 			CryptographicID				accessToken;
-			Ctr::Buffer0<WMobileEntity>	allMobiles,		//!< All mobiles registered in the world
-										storedMobiles;	//!< All mobile entities registered stored in some other entity. allMobiles and storedMobiles are exclusive of each other
+			Buffer0<WMobileEntity>		activeMobiles,		//!< All active mobiles registered in the world
+										storedMobiles;		//!< All mobile entities registered stored in some other entity. activeMobiles and storedMobiles are exclusive of each other
+			typedef std::pair<Component::Turret*,WWorldEntity>	TSubOrbitalSensor;
+
 			#ifndef NO_SATELLITES
 				Buffer0<WSatellite>		satellites;
 				Buffer0<WSkyHub>		skyHubs;	//overlaps with satellites
 			#endif
-			Ctr::Buffer0<WStructure>			structures;
+			Buffer0<WStructure>			structures;
+			Buffer0<WTurretBase>		allTurretBases;		//!< All (stored or otherwise) entities (structures or mobiles) that have a turret
+			Buffer0<WTurretBase>		autoFiringTurrets;	//!< All active entities (structures or mobiles) that are towers, or feature a turret with attacksMovingHostilesDuringMotionPhase set true
 
-			Ctr::Buffer0<WTower>				towers;
-
-			static Ctr::Buffer0<PFaction>	all;
+			static Buffer0<PFaction>	all;
 			static PFaction				nexus;
 
 			static PFaction				FindByID(const TUniqueID&);
@@ -487,8 +489,8 @@ namespace Objects
 			bool		CanSpawnType(const PWorldEntity&e, String&errorOut)	const;
 			bool		CanSpawnFromStorage(const PWorldEntity&e, String&errorOut)	const;
 			/**
-			Counts the number of mobile entities owned by the local faction that share the specified turret type.
-			Operates in O(n), n = number of mobile entities owned by the local faction
+			Counts the number of mobile entities (stored or active) owned by the local faction that share the specified turret type.
+			Operates in O(n), n = number of active mobile entities owned by the local faction
 			*/
 			count_t		CountMobileType(ConstName turretType) const;
 			/**
@@ -497,8 +499,9 @@ namespace Objects
 			*/
 			count_t		CountStructureType(ConstName structureType) const;
 			/**
-			Counts the number of mobiles/structures owned by the local faction that provide the specified turret type
-			Operates in O(n), n = number of units owned by the local faction
+			Counts the number of mobiles/structures owned by the local faction that provide the specified turret type.
+			Includes stored mobile entities
+			Operates in O(n), n = number of units with turrets owned by the local faction
 			*/
 			count_t		CountTurretType(ConstName turretType) const;
 
@@ -511,6 +514,7 @@ namespace Objects
 			void		RegisterActiveMobileLoss(const PMobileEntity&);
 			void		RegisterStoredMobileLoss(const PMobileEntity&);
 			void		RegisterActiveMobileGain(const PMobileEntity&);
+			void		RegisterStoredMobileGain(const PMobileEntity&);
 			void		RegisterStructureGain(const PStructure&s);
 
 			void		VisitMyEntities(const std::function<void(const PWorldEntity&)>&f, bool includeStored) const;

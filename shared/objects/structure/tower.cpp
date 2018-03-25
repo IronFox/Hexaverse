@@ -35,26 +35,13 @@ namespace Objects
 
 		
 
-		bool Tower::WouldAttack(const PWorldEntity&target, TurretBase::TargetChoice&outTarget, float entityTime)
+
+		/*virtual override*/ void		Tower::FlushAutoAttacks()
 		{
-			if (!HasAmmoForShot() || empDamageLevel != 0 || IsHibernating() || owner->IsAlliedWith(target->owner))
-			{
-				//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
-				return false;
-			}
-
-
-
-			//float d2 = Grid::GetQuadraticGeometricDistance(location+1,target->location);
-			TrajectoryEndPoint endPoint(target->location); 
-			 
-
-			return		//owner->canSee.IsSet(target)
-					/*&&	*/turret->CanAttack() 
-					&& entityTime <= entityTime 
-					&& CountPossibleAttacks() > 0 
-					&& ExtCanHit(owner,TrajectoryEndPoint( location,GetEffectiveFoundationHeight() ), endPoint,outTarget);
+			while (attackQueue.IsNotEmpty() && attackQueue.Peek().autoTarget)
+				attackQueue.EraseFront();
 		}
+
 
 
 
@@ -204,7 +191,7 @@ namespace Objects
 			}
 		}
 
-		bool					Tower::AttackNext( const Grid::LCellIdI&target, bool autoTarget )
+		/*virtual override*/ bool					Tower::AttackNext( const Grid::LCellIdI&target, bool autoTarget )
 		{
 			const count_t cnt = attackQueue.Count();
 			if (cnt >= MaxFocusPoints)

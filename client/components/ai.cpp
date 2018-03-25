@@ -371,7 +371,7 @@ namespace AI
 
 
 
-		currentIsOffensiveVehicle = attacker && v->turret->ignoresVehicleMotion;
+		currentIsOffensiveVehicle = attacker && v->turret->independentAttackAndMotion;
 		static Objects::Pathfinding::ReachabilityMapper mapper(false);
 //		currentThreat = TThreatEstimation();
 		currentCanIgnoreThreat = (attacker || random.NextFloat() < 0.5f) && !t->dealsEMPDamage;
@@ -485,7 +485,7 @@ namespace AI
 					if (d2 < M::Sqr(r*1.2f))	//might be okay anyway
 					{
 						float p = e->GetDamagePotentialPerRound();
-						if (!e->turret->ignoresVehicleMotion)
+						if (!e->turret->independentAttackAndMotion)
 							p *= 0.5f;
 						damagePotentialPerRound += p;
 						participants++;

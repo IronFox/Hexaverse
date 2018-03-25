@@ -335,23 +335,11 @@ namespace Objects
 		count_t Faction::GetOffensiveCapabilities() const
 		{
 			count_t rs = 0;
-			foreach (allMobiles,m0)
+			foreach (allTurretBases,b0)
 			{
-				PMobileEntity m = m0->lock();
-				if (m)
-					rs += m->GetDamagePotentialPerRound();
-			}
-			foreach (storedMobiles,m0)
-			{
-				PMobileEntity m = m0->lock();
-				if (m)
-					rs += m->GetDamagePotentialPerRound();
-			}
-			foreach (towers,t0)
-			{
-				PTower t = t0->lock();
-				if (t)
-					rs += t->GetDamagePotentialPerRound();
+				PTurretBase b = b0->lock();
+				if (b)
+					rs += b->GetDamagePotentialPerRound();
 			}
 			return rs;
 		}
@@ -359,7 +347,7 @@ namespace Objects
 		count_t		Faction::GetTotalEntityValue() const
 		{
 			count_t rs = 0;
-			foreach (allMobiles,m0)
+			foreach (activeMobiles,m0)
 			{
 				PMobileEntity m = m0->lock();
 				if (m)
@@ -584,6 +572,30 @@ namespace Objects
 
 
 
+		template <typename T, typename S, typename F>
+			static bool	FindAndEraseF(BasicBuffer<T,S>&container, const F&f)
+			{
+				foreach (container,item)
+					if (f(*item))
+					{
+						container.erase(item);
+						return true;
+					}
+				return false;
+			}
+		template <typename T>
+			static bool FindAndErase(BasicBuffer<std::weak_ptr<T> >&container, const std::shared_ptr<T>&match)
+			{
+				foreach (container,item)
+					if (item->lock() == match)
+					{
+						container.erase(item);
+						return true;
+					}
+				return false;
+			}
+
+
 		void		Faction::RegisterLoss(const PWorldEntity&e)
 		{
 			if (e->IsMobile())
@@ -601,100 +613,42 @@ namespace Objects
 					FATAL__("WTF is this: "+e->GetName());
 		}
 
-		void		Faction::RegisterStructureLoss( const PStructure&e )
-		{
-			bool found0 = false;
-			foreach (structures,_s)
-			{
-				if (_s->lock() == e)
-				{
-					structures.erase(_s);
-					found0 = true;
-					break;
-				}
-			}
-			if (!found0)
-			{
-				ASSERT1__(e->IsStructure(),e->GetName());
-				FATAL__(e->GetName()+": Unable to register loss for faction "+GetLogName());
-				return;
-			}
-			if (To<Tower>::DynamicCast(e))
-			{
-				foreach (towers,_t)
-					if (_t->lock() == e)
-					{
-						towers.erase(_t);
-						break;
-					}
-			}
-		}
-		void		Faction::RegisterActiveMobileLoss( const PMobileEntity&e )
-		{
-			foreach (allMobiles,_v)
-			{
-				if (_v->lock() == e)
-				{
-					allMobiles.erase(_v);
-
-					#ifndef NO_SATELLITES
-						if (e->IsSatellite())
-						{
-							foreach (this->satellites,sat)
-								if (sat->lock() == e)
-								{
-									this->satellites.Erase(sat);
-									break;
-								}
-							if (To<Satellite>::Cast(e)->IsSkyHub())
-								foreach (this->skyHubs,sat)
-									if (sat->lock() == e)
-									{
-										this->skyHubs.Erase(sat);
-										break;
-									}
-							}
-					#endif
-					return;
-				}
-			}
-			ASSERT1__(e->IsMobile(),e->GetName());
-			ASSERT1__(To<MobileEntity>::Cast(e)->storedIn.expired(),e->GetName());
-
-			FATAL__(e->GetName()+": Unable to register loss for faction "+GetLogName());
-		}
-
-		void		Faction::RegisterStoredMobileLoss( const PMobileEntity&e )
-		{
-			foreach (storedMobiles,_v)
-			{
-				if (_v->lock() == e)
-				{
-					storedMobiles.erase(_v);
-					return;
-				}
-			}
-			ASSERT1__(e->IsMobile(),e->GetName());
-			ASSERT1__(!To<MobileEntity>::Cast(e)->storedIn.expired(),e->GetName());
-			FATAL__(e->GetName()+": Unable to register loss for faction "+GetLogName());
-		}
 
 		void		Faction::RegisterStructureGain( const PStructure&s )
 		{
 			structures << s;
-			PTower t = To<Tower>::DynamicCast(s);
-			if (t)
+			if (s->IsTower())
 			{
-				towers << t;
+				const PTower t = To<Tower>::Cast(s);
+				if (t->turret->CanAttack())
+					autoFiringTurrets << t;
+				allTurretBases << t;
 			}
 		}
+
+		void		Faction::RegisterStructureLoss( const PStructure&s )
+		{
+			DBG_VERIFY2__(FindAndErase(structures,s),s->GetName(),this->GetLogName());
+			if (s->IsTower())
+			{
+				const PTower t = To<Tower>::Cast(s);
+				if (t->turret->CanAttack())
+					DBG_VERIFY2__(FindAndErase(autoFiringTurrets,To<TurretBase>::Cast(t)),s->GetName(),GetLogName());
+				DBG_VERIFY2__(FindAndErase(allTurretBases,To<TurretBase>::Cast(t)),s->GetName(),this->GetLogName());
+			}
+		}
+
+
 
 		void		Faction::RegisterActiveMobileGain( const PMobileEntity&v )
 		{
 			ASSERT1__(v,v->GetName());
 			ASSERT1__(v->storedIn.expired(),v->GetName());
 
-			allMobiles << v;
+			if (v->turret->attacksMovingHostilesDuringMotionPhase)
+				autoFiringTurrets << v;
+			allTurretBases << v;
+			activeMobiles << v;
 			#ifndef NO_SATELLITES
 				if (v->IsSatellite())
 				{
@@ -706,10 +660,48 @@ namespace Objects
 			#endif
 		}
 
+		void		Faction::RegisterActiveMobileLoss( const PMobileEntity&e )
+		{
+			ASSERT1__(e,e->GetName());
+			DBG_ASSERT1__(e->storedIn.expired(),e->GetName());
+
+			if (e->turret->attacksMovingHostilesDuringMotionPhase)
+				DBG_VERIFY2__(FindAndErase(autoFiringTurrets,To<TurretBase>::Cast(e)),e->GetName(),this->GetLogName());
+			DBG_VERIFY2__(FindAndErase(activeMobiles,e),e->GetName(),this->GetLogName());
+			DBG_VERIFY2__(FindAndErase(allTurretBases,To<TurretBase>::Cast(e)),e->GetName(),this->GetLogName());
+			#ifndef NO_SATELLITES
+				if (e->IsSatellite())
+				{
+					const auto sat = To<Satellite>::Cast(e);
+					DBG_VERIFY2__(FindAndErase(satellites,sat),sat->GetName(),GetLogName());
+					if (sat->IsSkyHub())
+						DBG_VERIFY2__(FindAndErase(skyHubs,sat),sat->GetName(),GetLogName());
+				}
+			#endif
+		}
+
+
+		void		Faction::RegisterStoredMobileGain( const PMobileEntity&m )
+		{
+			ASSERT1__(m,m->GetName());
+			ASSERT1__(!m->storedIn.expired(),m->GetName());\
+
+			storedMobiles << m;
+			allTurretBases << m;
+		}
+
+		void		Faction::RegisterStoredMobileLoss( const PMobileEntity&e )
+		{
+			DBG_VERIFY2__(FindAndErase(allTurretBases,To<TurretBase>::Cast(e)),e->GetName(),this->GetLogName());
+			DBG_VERIFY2__(FindAndErase(storedMobiles,e),e->GetName(),this->GetLogName());
+		}
+
+
+
+
 		bool		Faction::HasActiveMobile(const PMobileEntity&v) const
 		{
-
-			foreach (allMobiles,_v)
+			foreach (activeMobiles,_v)
 				if (_v->lock() == v)
 					return true;
 			return false;
@@ -727,7 +719,7 @@ namespace Objects
 		{
 			foreach (structures,s)
 				f(s->lock());
-			foreach (allMobiles,m)
+			foreach (activeMobiles,m)
 				f(m->lock());
 			if (includeStored)
 				foreach (storedMobiles,m)
@@ -771,7 +763,7 @@ namespace Objects
 				if (s)
 					s->InsertSensoryInto(worldData,t);
 			}
-			foreach (this->allMobiles,_m)
+			foreach (this->activeMobiles,_m)
 			{
 				Objects::PWorldEntity e = _m->lock();
 				if (e)
@@ -790,7 +782,7 @@ namespace Objects
 						outSensors.Append(s);
 					});
 			}
-			foreach (this->allMobiles,_m)
+			foreach (this->activeMobiles,_m)
 			{
 				Objects::PWorldEntity e = _m->lock();
 				if (e)
@@ -1391,7 +1383,13 @@ namespace Objects
 		count_t		Faction::CountMobileType(ConstName turretType) const
 		{
 			count_t rs = 0;
-			foreach (this->allMobiles, v0)
+			foreach (this->activeMobiles, v0)
+			{
+				PMobileEntity m = v0->lock();
+				if (m->turret->constName == turretType)
+					rs ++;
+			}
+			foreach (this->storedMobiles, v0)
 			{
 				PMobileEntity m = v0->lock();
 				if (m->turret->constName == turretType)
@@ -1415,19 +1413,9 @@ namespace Objects
 		count_t		Faction::CountTurretType(ConstName turretType) const
 		{
 			count_t rs = 0;
-			foreach (this->towers, t0)
+			foreach (this->allTurretBases, t0)
 			{
 				if (t0->lock()->turret->constName == turretType)
-					rs ++;
-			}
-			foreach (this->allMobiles, m0)
-			{
-				if (m0->lock()->turret->constName == turretType)
-					rs ++;
-			}
-			foreach (this->storedMobiles,m0)
-			{
-				if (m0->lock()->turret->constName == turretType)
 					rs ++;
 			}
 			return rs;
@@ -2190,17 +2178,17 @@ namespace Objects
 						toDelete << f->structures[i].lock();
 					}
 
-				for (index_t i = 0; i < f->allMobiles.Count(); i++)
+				for (index_t i = 0; i < f->activeMobiles.Count(); i++)
 					//if (vehicles[i]->owner == f)
 					{
-						toDelete << f->allMobiles[i].lock();
+						toDelete << f->activeMobiles[i].lock();
 					}
 				float t=0;
 				foreach (toDelete,del)
 					if (*del)
 						Remove(*del,Objects::RemovalType::ControlledExplosion,t);
 				toDelete.Clear();
-				ASSERT__(f->allMobiles.IsEmpty());	//should have cascaded
+				ASSERT__(f->activeMobiles.IsEmpty());	//should have cascaded
 				ASSERT__(f->structures.IsEmpty());	//even if nexus buildings were owned: should have reverted to nexus faction
 			}	//exiting lock: recomputing sensory of f, which is now empty, so should be fast
 

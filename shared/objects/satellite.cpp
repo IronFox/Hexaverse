@@ -1019,7 +1019,7 @@ namespace Objects
 		}
 
 
-		/*virtual override*/ bool SkyGuardian::WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)
+		/*virtual override*/ bool SkyGuardian::WouldAutoAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)
 		{
 			if (!turret->CanAttack() || !HasAmmoForShot())
 			{

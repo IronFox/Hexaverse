@@ -81,16 +81,14 @@ namespace Objects
 
 			AttackTask&				AppendTask(const Grid::LCellIdI&attackTarget);
 		#else
-			Ctr::Queue<AttackTask>	attackQueue;
+			Queue<AttackTask>		attackQueue;
 
 
 			void					BeginAttackPhase()	{}
 
-			bool					AttackNext(const Grid::LCellIdI&target, bool autoTarget);
 			bool					ClearTasks();
 			bool					DropLastTask();
 
-			bool					WouldAttack(const PWorldEntity&e, TurretBase::TargetChoice&outTarget, float entityTime);
 			bool					IsIdleButCouldAttack(float atTime) {return attackQueue.IsEmpty() && HasAmmoForShot();}
 
 		#endif
@@ -166,7 +164,11 @@ namespace Objects
 		virtual String				DescribeFlatAttackRange() const override;
 		virtual bool				HasAmmoForShot() override;
 		virtual float				GetAttackExplosionRadius() const override;
+		virtual WorldEntity&		ToEntity() override {return *this;}
+		virtual float				GetZOffset() const override {return GetEffectiveFoundationHeight();}
 		#ifndef CLIENT
+			virtual void			FlushAutoAttacks() override;
+			virtual bool			AttackNext(const Grid::LCellIdI&target, bool autoTarget) override;
 			virtual void			Attack(float&)	override;
 			virtual bool			FrontQueueAutoAttack(TurretBase::TargetChoice&lastChoice) override;
 		#endif

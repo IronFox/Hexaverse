@@ -90,6 +90,8 @@ namespace Objects
 		virtual float			GetFlatAttackRange() const = 0;
 		virtual float			GetAttackExplosionRadius() const = 0;
 		virtual String			DescribeFlatAttackRange() const = 0;
+		virtual WorldEntity&	ToEntity() = 0;
+		virtual float			GetZOffset() const = 0;
 
 		/**
 		Checks if there are enough resources available for a single shot.
@@ -116,6 +118,20 @@ namespace Objects
 
 
 		#ifndef CLIENT
+			/**
+			Flushes auto attacks from the front of the queue until a non auto attack is encountered or the queue is empty
+			*/
+			virtual void		FlushAutoAttacks()=0;
+			virtual bool		AttackNext(const Grid::LCellIdI&target, bool autoTarget) = 0;
+			/**
+			Checks whether or not the local turret base would attack the given target.
+			Checks munition availability, range, and target ownership. Also checks for collateral damage.
+			If a valid attack trajectory was found, it is stored in @a outTarget, and true is returned.
+			@param target Attack target. Must not be null
+			@param[out] outTarget Found attack trajectory. Content is undefined if the method returns false
+			@return true if the conditions for firing were met, and a good attack trajectory was found, false otherwise
+			*/
+			bool				WouldAutoAttack(const PWorldEntity&target, TurretBase::TargetChoice&outTarget, float entityTime);
 			virtual void		Attack(float&currentTime) = 0;
 
 			/**

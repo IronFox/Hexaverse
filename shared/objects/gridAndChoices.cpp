@@ -1301,7 +1301,7 @@ namespace Objects
 					{
 						e->owner->RegisterActiveMobileLoss(v);
 						if (move)
-							e->owner->storedMobiles << v;
+							e->owner->RegisterStoredMobileGain(v);
 					}
 					else
 						e->owner->RegisterStoredMobileLoss(v);

@@ -326,7 +326,7 @@ namespace Objects
 											task.foci.EraseFront();
 
 										remaining-=task.path.Last().movementCostsFromPrevNode;
-										if (!AttackIgnoresMotion())
+										if (!AttackAndMotionAreIndependent())
 											attackActionLeft -= change;
 										movementActionLeft -= change;
 										attackActionLeft = std::max(attackActionLeft,0.f);	//can happen
@@ -424,7 +424,7 @@ namespace Objects
 									if (remaining < task.path.Last().movementCostsFromPrevNode)
 									{
 										remaining = 0;
-										if (!AttackIgnoresMotion())
+										if (!AttackAndMotionAreIndependent())
 											attackActionLeft = 0;
 										movementActionLeft = 0;
 										RegisterChange(ActionChanged,entityTime);
@@ -510,7 +510,73 @@ namespace Objects
 	
 
 
-		void MobileEntity::HandleMotion(MobilePlacementResult&result, bool signalEvent, const Grid::LCellIdI&oldLocation, float timeCost)
+		/*virtual override*/ void		MobileEntity::FlushAutoAttacks()
+		{
+			while (myTasks.IsNotEmpty() && myTasks.Peek().IsMode(CursorMode::AttackMode) && myTasks.Peek().name.BeginsWith("Auto "))
+				myTasks.EraseFront();
+		}
+
+		/*virtual override*/ bool		MobileEntity::AttackNext(const Grid::LCellIdI&target, bool autoTarget)
+		{
+			ASSERT__(!TasksAreLocked());
+			if (!CanAttack())
+				return false;
+			Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
+			if (target == pointOfOrigin && !IsBeam(turret->trajectoryType))
+			{
+				LogEvent(EventClass::Preset::commandRejected,this,"Destination too close");
+				return false;
+			}
+			if (!IsBeam(turret->trajectoryType))
+			{
+				//Grid::LCellIdI pointOfOrigin = location+1;
+
+
+				//float targetDistance = Grid::GetGeometricDistance(pointOfOrigin,target);
+
+				if (!CanHitFrom(pointOfOrigin,TrajectoryEndPoint( target )))
+				{
+					LogEvent(EventClass::Preset::commandRejected,this,"Destination out of range");
+					return false;
+				}
+			}
+
+			const String prefix = autoTarget ? "Auto " : "";
+
+			if (!HasTasks() || !myTasks.GetNewest().IsMode(CursorMode::AttackMode) || !myTasks.GetNewest().name.BeginsWith(prefix))
+			{
+				if (myTasks.Count() >= MaxTasks)
+				{
+					LogEvent(EventClass::Preset::commandRejected,this,"Max queue length ("+String(MaxTasks)+") reached");
+					return false;
+				}
+
+				auto copy = target;
+				myTasks << Task(prefix + "Attack Position",copy,false,Task::Mode,CursorMode::AttackMode);
+				myTasks.GetNewest().Replot(pointOfOrigin,this,FocusChangeType::FullChange,true);
+				RegisterChange(TasksChanged,-1);
+			}
+			else
+			{
+				if (myTasks.GetNewest().foci.Count() >= MaxFocusPoints)
+				{
+					LogEvent(EventClass::Preset::commandRejected,this,"Max focus point count ("+String(MaxFocusPoints)+") reached");
+					return false;
+				}
+
+				//if (!tasks.GetNewest().foci.Contains(destination))	//irrelevant. attack same location as often as you want
+				{
+					myTasks.GetNewest().foci.Push().target = target;
+					myTasks.GetNewest().Replot(pointOfOrigin,this,FocusChangeType::FocusAppended,true);
+					RegisterChange(TasksChanged,-1);
+				}
+			}
+			return true;
+		}
+
+
+
+		void MobileEntity::HandleMotion( MobilePlacementResult&result, bool signalEvent, const Grid::LCellIdI&oldLocation, float timeCost )
 		{
 //			MobilePlacementResult result;
 			this->UpdateSystem();
@@ -539,12 +605,12 @@ namespace Objects
 					if (b->turret->CanAttack() && !b->turret->dealsEMPDamage)
 					{
 						LogEvent(EventClass::Preset::common,this,"Processing new hostile regular-offensive contact "+(*c)->GetName()+"...");
-						for (WMobileEntity w : owner->allMobiles)
+						for (WMobileEntity w : owner->activeMobiles)
 						{
 							PMobileEntity v2 = w.lock();
 							if (!v2)
 								continue;
-							if (v2->turret->CanAttack() && v2->turret->ignoresVehicleMotion)
+							if (v2->turret->CanAttack() && v2->turret->independentAttackAndMotion)
 								continue;	//otherwise this entity is a hunter, with low sensor range, plus probably able to tank the damage and/or counter-attack
 
 							for (index_t i = 0; i < v2->myTasks.Count(); i++)
@@ -633,46 +699,21 @@ namespace Objects
 						return;
 
 					TurretBase::TargetChoice choice;
-					if (IsAboveGrid())
-					{
-						#ifndef NO_SATELLITES
-							foreach (f->satellites, _s)
-							{
-								PSatellite s = _s->lock();
-								if (s && s->WouldAttack(_this,choice,entityTime))
-								{
-									if (s->AttackNext(choice.cellTarget,true))
-									{
-										LogEvent(EventSignificance::Debug,s.get(),"Auto-targeting moving "+GetName()+" (located at "+location.ToString()+") via closest viable attack target "+loc.ToString()+" at t="+String(entityTime));
-										LogEvent(EventSignificance::Important,s.get(),"Auto-targeting moving "+GetNiceName());
-
-										s->Attack(entityTime);
-										if (IsDeadOrGhost())
-										{
-											doBreak = true;
-											return;
-										}
-										
-									}
-								}
-							}
-						#endif
-					}
 		
 					if (!doBreak)
 					{
-						foreach (f->towers, _t)
+						foreach (f->autoFiringTurrets, _t)
 						{
-							PTower t = _t->lock();
-							if (t && t->WouldAttack(_this,choice,entityTime))
+							PTurretBase t = _t->lock();
+							if (t && t->WouldAutoAttack(_this,choice,entityTime))
 							{
 								if (t->AttackNext(choice.cellTarget,true))
 								{
-									LogEvent(EventSignificance::Debug,t.get(),"Auto-targeting moving "+GetName()+" (located at "+ToString(location)+", =>"+ToString(Grid::ToWorld(location))+",sys="+ToString(system.w.xyz)+") via closest viable attack target "+ToString(choice.cellTarget)+" at t="+String(entityTime));
-									LogEvent(EventSignificance::Important,t.get(),"Auto-targeting moving "+GetNiceName());
+									LogEvent(EventSignificance::Debug,&t->ToEntity(),"Auto-targeting moving "+GetName()+" (located at "+ToString(location)+", =>"+ToString(Grid::ToWorld(location))+",sys="+ToString(system.w.xyz)+") via closest viable attack target "+ToString(choice.cellTarget)+" at t="+String(entityTime));
+									LogEvent(EventSignificance::Important,&t->ToEntity(),"Auto-targeting moving "+GetNiceName());
 
 									t->Attack(entityTime);
-									LogEvent(EventSignificance::Debug,t.get(),"t is now "+String(entityTime));
+									LogEvent(EventSignificance::Debug,&t->ToEntity(),"t is now "+String(entityTime));
 									if (IsDeadOrGhost())
 									{
 										doBreak = true;
@@ -1303,7 +1344,7 @@ namespace Objects
 			{
 				float change = 1.f / float(GetAttacksPerRound());
 				attackActionLeft -= change;
-				if (!turret->ignoresVehicleMotion)
+				if (!turret->independentAttackAndMotion)
 					movementActionLeft -= change;
 				RegisterChange(ActionChanged,entityTime);
 

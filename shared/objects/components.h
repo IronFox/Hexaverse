@@ -261,7 +261,8 @@ namespace Objects
 			#ifndef ONE_COMPOUND_PER_FACTION
 				ResourceVector				baseStorageCapacity;
 			#endif
-			bool							ignoresVehicleMotion = false,	//indicates that the vehicle can fire and move at 100% each in the same round
+			bool							attacksMovingHostilesDuringMotionPhase = false,	//indicates that mobiles using this turret behave like towers
+											independentAttackAndMotion = false,	//indicates that the vehicle can fire and move at 100% each in the same round, with neither action slowing the other
 											dealsEMPDamage = false,
 											detectsResources = false,
 											isScanner = false,	//indicates a turret explicitly designed to scan for hostile units or terrain changes
