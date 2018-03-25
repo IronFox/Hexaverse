@@ -361,7 +361,13 @@ namespace Objects
 			switch (t)
 			{
 				case TrajectoryType::VerticalBeam:
-					return GetGroundHeight(World::actual, origin.cellLocation) != badHeight;
+				{
+					if (dest.cellLocation.stackID != origin.cellLocation.stackID)
+						return false;
+					if (origin.cellLocation.height == dest.cellLocation.height)	//unspecified height
+						return true;
+					return abs(GetGroundHeight(World::actual, origin.cellLocation) - dest.cellLocation.height) <= 1;
+				}
 				case TrajectoryType::Artillery:
 					return Detail::ArtilleryCanHit(flatRange,Vec::distance(origin.worldLocation,dest.worldLocation),dest.radius - origin.radius);
 				case TrajectoryType::Missile:
