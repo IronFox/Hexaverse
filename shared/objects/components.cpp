@@ -1005,7 +1005,7 @@ namespace Objects
 			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 20;
 			#endif
-
+			component.initiative = 80;
 			component.independentAttackAndMotion = false;
 			component.requiresStationaryVehicle = true;
 			component.attacksMovingHostilesDuringMotionPhase = true;
