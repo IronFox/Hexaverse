@@ -625,7 +625,7 @@ namespace Objects
 					autoFiringTurrets << t;
 				allTurretBases << t;
 				if (t->turret->subOrbitalScanningRange.IsFunctionOrConstNonZero())
-					subOrbitalSensors.Append(std::make_pair(t->turret,s));
+					subOrbitalSensors.Append(std::make_pair(t,s));
 			}
 		}
 
@@ -651,7 +651,7 @@ namespace Objects
 			ASSERT1__(v->storedIn.expired(),v->GetName());
 
 			if (v->turret->subOrbitalScanningRange.IsFunctionOrConstNonZero())
-				subOrbitalSensors.Append(std::make_pair(v->turret,v));
+				subOrbitalSensors.Append(std::make_pair(v,v));
 			if (v->turret->attacksMovingHostilesDuringMotionPhase)
 				autoFiringTurrets << v;
 			allTurretBases << v;
@@ -1131,7 +1131,9 @@ namespace Objects
 					LogEvent(EventClass::Preset::internalError,"Found abandoned sub orbital sensor");
 					continue;
 				}
-				const float r = s0->first->subOrbitalScanningRange(researchState.researchState) + sphere.radius;
+				if (s->empDamageLevel > 0)
+					continue;
+				const float r = s0->first.lock()->GetSubOrbitalScanningRange() + sphere.radius;
 				const float dist = Vec::quadraticDistance(Grid::ToWorld(Grid::LCellIdI(s->location.stackID,SubOrbital::Height)),sphere.center);
 				if (dist <= r*r)
 					rs++;
@@ -1153,7 +1155,7 @@ namespace Objects
 				}
 				if (s->empDamageLevel > 0)
 					continue;
-				const float r = s0->first->subOrbitalScanningRange(researchState.researchState);
+				const float r = s0->first.lock()->GetSubOrbitalScanningRange();
 				const float dist = Vec::quadraticDistance(Grid::ToWorld(Grid::LCellIdI(s->location.stackID,SubOrbital::Height)),p);
 				if (dist <= r*r)
 					rs++;

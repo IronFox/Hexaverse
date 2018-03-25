@@ -167,6 +167,9 @@ namespace Objects
 		virtual WorldEntity&		ToEntity() override {return *this;}
 		virtual const WorldEntity&	ToEntity() const override {return *this;}
 		virtual float				GetZOffset() const override {return GetEffectiveFoundationHeight();}
+		virtual float				GetSubOrbitalScanningRange() const override;
+		virtual String				DescribeSubOrbitalScanningRange() const override;
+
 		#ifndef CLIENT
 			virtual void			FlushAutoAttacks() override;
 			virtual bool			AttackNext(const Grid::LCellIdI&target, bool autoTarget) override;

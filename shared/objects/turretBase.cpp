@@ -134,6 +134,21 @@ namespace Objects
 		return true;
 	}
 
+
+	/*virtual*/ float			TurretBase::GetSubOrbitalScanningRange() const
+	{
+		const auto&e = ToEntity();
+		if (e.empDamageLevel)
+			return 0;
+		return turret->subOrbitalScanningRange.GetValue(e.GetResearchState());
+	}
+	/*virtual*/ String			TurretBase::DescribeSubOrbitalScanningRange() const
+	{
+		return turret->subOrbitalScanningRange.Describe(ToEntity().GetResearchState());
+	}
+
+	 
+
 	bool					TurretBase::CanAttack()
 	{
 		return CanAttackIgnoreAmmo()

@@ -301,8 +301,8 @@ namespace Objects
 
 	/*virtual override*/ void				Tower::VisitSensors( const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance /*= false*/ ) const
 	{
-		const float sub = turret->subOrbitalScanningRange(GetResearchState());
-		if (sub > 0 && empDamageLevel == 0)
+		const float sub = GetSubOrbitalScanningRange();
+		if (sub > 0)
 		{
 			visitor(World::Sensor(Grid::ToWorld(Grid::LCellIdI(loc.stackID,SubOrbital::Height)),sub,World::Sensor::UpperHalfSolidSphere));
 		}
@@ -350,7 +350,21 @@ namespace Objects
 		return cache.explosionRadius.Get(GetResearchState(),turret->explosionRadius,nullptr,1);
 	}
 
+	/*virtual override*/ float				Tower::GetSubOrbitalScanningRange() const
+	{
+		if (empDamageLevel)
+			return 0;
+		return cache.subOrbitalScanningRange.GetEMPModified(*this,turret->subOrbitalScanningRange,Objects::LuaAttribute<float,UnitScaleFilter>(2.f));
+	}
+
+	/*virtual override*/ String				Tower::DescribeSubOrbitalScanningRange() const
+	{
+		if (empDamageLevel)
+			return 0;
+		return cache.subOrbitalScanningRange.DescribeEMPModified(*this,turret->subOrbitalScanningRange,Objects::LuaAttribute<float,UnitScaleFilter>(2.f));
+	}
 	
+
 	/*virtual override*/ float			Tower::GetFlatAttackRange() const
 	{
 		if (!turret->CanAttack())
