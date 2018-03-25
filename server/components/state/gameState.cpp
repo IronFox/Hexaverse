@@ -1170,7 +1170,7 @@ namespace Game
 							}
 						}
 					}
-					for (const auto&_v : faction->allMobiles)
+					for (const auto&_v : faction->activeMobiles)
 					{
 						Objects::PMobileEntity v = _v.lock();
 						DBG_ASSERT__(v);

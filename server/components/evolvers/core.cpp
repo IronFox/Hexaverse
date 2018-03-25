@@ -83,19 +83,20 @@ namespace Evolver
 		{
 			Objects::ForeachFaction([&atTime](const Objects::PFaction&f)
 			{
-				foreach (f->towers,_t)
+				foreach (f->autoFiringTurrets,_t)
 				{
-					Objects::PTower t = _t->lock();
-					if (t->attackActionLeft != 1.f)
+					const auto base = _t->lock();
+					Objects::WorldEntity&e = base->ToEntity();
+
+					base->FlushAutoAttacks();
+
+					if (!e.IsTower())
+						continue;
+					Objects::Tower&t = (Objects::Tower&)e;
+					if (t.attackActionLeft != 1.f)
 					{
-						t->attackActionLeft = 1.f;
-						t->SignalChange(Objects::WorldEntity::ActionChanged,atTime);
-					}
-					if (t->attackQueue.IsNotEmpty() && t->attackQueue.Peek().autoTarget)
-					{
-						while (t->attackQueue.IsNotEmpty() && t->attackQueue.Peek().autoTarget)
-							t->attackQueue.EraseFront();
-						t->SignalChange(Objects::WorldEntity::TasksChanged,atTime);
+						t.attackActionLeft = 1.f;
+						t.SignalChange(Objects::WorldEntity::ActionChanged,atTime);
 					}
 				}
 			});
@@ -245,6 +246,9 @@ namespace Evolver
 				e->ResetEntityTime();
 			},false);
 
+
+
+
 			Objects::ForeachMobileWorldEntity([](const Objects::PMobileEntity&v)
 			{
 				if (v->IsHibernating())
@@ -257,7 +261,7 @@ namespace Evolver
 
 				//if (v->IsSentry())
 				{
-					if (v->myTasks.IsEmpty() || (b->turret->ignoresVehicleMotion && !v->NextTaskIsAttack()))
+					if (v->myTasks.IsEmpty() || (b->turret->independentAttackAndMotion && !v->NextTaskIsAttack()))
 					{
 						Objects::TurretBase::TargetChoice choice;
 						while (v->FrontQueueAutoAttack(choice));
@@ -274,7 +278,7 @@ namespace Evolver
 					}
 					else
 					{
-						LogEvent(EventClass::Preset::commandRejected,v.get(),"Insufficient ammunition. Attacks cancelled");
+						LogEvent(EventClass::Preset::commandRejected,v.get(),"Insufficient ammunition. Attacks canceled");
 						v->EraseFirstTask();
 						v->RegisterChange(Objects::WorldEntity::TasksChanged,v->entityTime);
 					}
@@ -284,41 +288,39 @@ namespace Evolver
 
 			},false
 			);
-			Objects::ForeachFaction([](const Objects::PFaction&f)
+			Objects::structures.Foreach([](const Objects::PStructure&s)
 			{
-				foreach (f->towers,_t)
+				if (!s->IsTower())
+					return;
+				Objects::PTower t = To<Objects::Tower>::Cast(s);
+				if (t->IsHibernating())
+					return;
+				t->BeginAttackPhase();
+
+				if (t->turret->CanAttack())
 				{
-					Objects::PTower t = _t->lock();
-					if (!t || t->IsHibernating())
-						continue;
-					t->BeginAttackPhase();
-
-					if (t->turret->CanAttack())
+					if (t->attackQueue.IsEmpty())
 					{
-						if (t->attackQueue.IsEmpty())
-						{
-							bool any = false;
+						bool any = false;
 
-							Objects::TurretBase::TargetChoice choice;
-							while (t->FrontQueueAutoAttack(choice))
-								any = true;
+						Objects::TurretBase::TargetChoice choice;
+						while (t->FrontQueueAutoAttack(choice))
+							any = true;
 
-							if (!any)
-								continue;
-						}
-						if (!t->HasAmmoForShot())
-						{
-							LogEvent(EventClass::Preset::commandRejected,t.get(),"Insufficient ammunition. Attacks cancelled");
-							t->attackQueue.Clear();
-							t->RegisterChange(Objects::WorldEntity::TasksChanged,t->entityTime);
-							continue;
-						}
-
-
-						TAttackReference&ref = attackingEntities.Append(TAttackReference(t));
-						//ref.eref = t;
-						ref.tref = t;
+						if (!any)
+							return;
 					}
+					if (!t->HasAmmoForShot())
+					{
+						LogEvent(EventClass::Preset::commandRejected,t.get(),"Insufficient ammunition. Attacks canceled");
+						t->attackQueue.Clear();
+						t->RegisterChange(Objects::WorldEntity::TasksChanged,t->entityTime);
+						return;
+					}
+
+					TAttackReference&ref = attackingEntities.Append(TAttackReference(t));
+					//ref.eref = t;
+					ref.tref = t;
 				}
 			});
 

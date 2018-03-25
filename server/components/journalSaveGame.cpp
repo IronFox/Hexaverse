@@ -137,7 +137,7 @@ namespace Journal
 						if (processed.IsSet(entityID))
 							return;
 						//ASSERT__(!Objects::GetEntity(entityID));
-						//foreach (f->allMobiles,_m)
+						//foreach (f->activeMobiles,_m)
 						//{
 						//	Objects::PMobileEntity m = _m->lock();
 						//	if (!m)

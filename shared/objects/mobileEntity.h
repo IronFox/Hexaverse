@@ -365,7 +365,7 @@ namespace Objects
 					RegisterChange(ActionChanged,entityTime);
 				movementActionLeft = 1.f;
 
-				if (AttackIgnoresMotion())
+				if (AttackAndMotionAreIndependent())
 				{
 					if (attackActionLeft < 1.f)
 						RegisterChange(ActionChanged,entityTime);
@@ -461,7 +461,7 @@ namespace Objects
 
 		Grid::LCellIdI			GetConstructionLocation() const {return GetConstructionLocation(location);}
 		float					GetMovementInitiative()const	{return GetBaseMovementInitiative() * movementActionLeft;}
-		bool					AttackIgnoresMotion() const {return turret->ignoresVehicleMotion;}
+		bool					AttackAndMotionAreIndependent() const {return turret->independentAttackAndMotion;}
 		bool					AttackIsStationary() const {return turret->requiresStationaryVehicle;}
 		float					GetAttackExplosionRadius() const override;
 		bool					CanRepair() const {return turret->CanRepair();}
@@ -519,7 +519,11 @@ namespace Objects
 		virtual OwnerParameter	GetOwner() const override {return owner;};
 		virtual float			GetAttackActionLeft() const override {return attackActionLeft;};
 		virtual bool			NextTaskIsAttack() const override {return IsAlive() && HasTasks() && myTasks.Peek().IsMode(CursorMode::AttackMode);}
+		virtual WorldEntity&	ToEntity() override {return *this;}
+		virtual float			GetZOffset() const override {return 0;}
 		#ifndef CLIENT
+			virtual void		FlushAutoAttacks() override;
+			virtual bool		AttackNext(const Grid::LCellIdI&target, bool autoTarget) override;
 			virtual void		Attack(float&currentTime)	override;
 		#endif
 		virtual	bool			HasAmmoForShot() override;

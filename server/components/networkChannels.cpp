@@ -490,7 +490,7 @@ namespace Receiver
 				Channels::createStructure.SendTo(peer,st);
 			}
 		}
-		foreach (f->allMobiles,_v)
+		foreach (f->activeMobiles,_v)
 		{
 			Objects::PMobileEntity v= _v->lock();
 			ASSERT__(v);

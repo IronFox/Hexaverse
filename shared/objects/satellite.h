@@ -182,7 +182,7 @@ namespace Objects
 		//new overridables:
 		#ifndef CLIENT
 			virtual bool		ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget,Grid::LCellIdI&actual) const {return false;}
-			virtual bool		WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)	{return false;}
+			virtual bool		WouldAutoAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)	{return false;}
 			virtual bool		IsSentry() const	{return false;}
 			/**
 			Performs all per-round operations the local satellite can. The base version handles fueling of the local satellite.
@@ -475,7 +475,7 @@ namespace Objects
 
 		#ifndef CLIENT
 			//Satellite overrides:
-			virtual bool		WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)	override;
+			virtual bool		WouldAutoAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)	override;
 			virtual bool		ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget,Grid::LCellIdI&actual) const override;
 			virtual bool		IsSentry() const override {return true;}
 		#endif

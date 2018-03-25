@@ -985,7 +985,7 @@ namespace Objects
 				component.baseStorageCapacity.level[Resource::Munitions] = 20;
 			#endif
 
-			component.ignoresVehicleMotion = true;
+			component.independentAttackAndMotion = true;
 		}
 
 		void			AntiAircraft::Configure(Turret&component)
@@ -1006,8 +1006,9 @@ namespace Objects
 				component.baseStorageCapacity.level[Resource::Munitions] = 20;
 			#endif
 
-			component.ignoresVehicleMotion = false;
+			component.independentAttackAndMotion = false;
 			component.requiresStationaryVehicle = true;
+			component.attacksMovingHostilesDuringMotionPhase = true;
 		}
 
 	
@@ -1372,7 +1373,7 @@ namespace Objects
 				component.initiative = 100;
 				component.ammoType = Resource::Uranium;
 				component.requiresStationaryVehicle = false;
-				component.ignoresVehicleMotion = true;
+				component.independentAttackAndMotion = true;
 				component.trajectoryType = TrajectoryType::Missile;
 
 			}
@@ -1392,7 +1393,7 @@ namespace Objects
 				component.initiative = 90;
 				component.ammoType = Resource::Uranium;
 				component.requiresStationaryVehicle = false;
-				component.ignoresVehicleMotion = true;
+				component.independentAttackAndMotion = true;
 				component.trajectoryType = TrajectoryType::VerticalBeam;
 
 			}
@@ -1662,7 +1663,7 @@ namespace Objects
 						outResult <<"Offensive "+lowerName;
 					if (parentType != "Tower")
 					{
-						if (ignoresVehicleMotion)
+						if (independentAttackAndMotion)
 							outResult <<"Can attack independently of movement action";
 						elif (requiresStationaryVehicle)
 							outResult <<"Vehicle must remain stationary to fire";

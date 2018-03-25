@@ -241,6 +241,8 @@ namespace StatePanel
 			cachedLines << " Speed: " + v->DescribeMovementStepsPerRound();
 			if (v->turret->CanAttack())
 			{
+				if (v->turret->independentAttackAndMotion)
+					cachedLines << "  (ignores attacks)";
 				//cachedLines << " Range: "<<v->GetAttackRange() << nl;
 				//cachedLines << " Damage: "<<v->turret->damageLevel << nl;
 				//cachedLines << " Ammo-Usage: "<<v->turret->ammoNeedPerShot<<nl;
@@ -255,7 +257,7 @@ namespace StatePanel
 			if (v->turret->CanAttack())
 			{
 				cachedLines << " Attacks left: "+String(int(v->CountPossibleAttacks()))+"/"+String(v->GetAttacksPerRound());
-				if (v->turret->ignoresVehicleMotion)
+				if (v->turret->independentAttackAndMotion)
 					cachedLines << "  (ignores movement)";
 			}
 			if (v->turret->CanDo(Objects::Component::Construct))
