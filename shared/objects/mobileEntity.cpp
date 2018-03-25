@@ -1323,27 +1323,21 @@ namespace Objects
 			RegisterChange(TasksChanged,entityTime);
 		}
 
-
-		/*virtual override*/ void				MobileEntity::Attack(float&attackTime)
+		void	MobileEntity::OverrideExecuteAttackNow(const Grid::LCellIdI target, float explosionSize, int damageLevel, bool dealsEMPDamage, bool isDoomsday, float&attackTime)
 		{
-			//ASSERT1__(NextTaskIsAttack(),this->id.ToString());
-			if (!NextTaskIsAttack())	//got tired of this
+			if (isDoomsday && RuntimeConfig::doomsdayWeapons == RuntimeConfig::DoomsdayWeapons::Disallow)
+			{
+				LogEvent(EventClass::Preset::commandRejected,this,"Cannot execute attack: Doomsday weapons are not allowed by server rule");
 				return;
-			float change = 1.f / float(GetAttacksPerRound());
-			ASSERT_LESS_OR_EQUAL__(change,attackActionLeft);
-			if (!HasAmmoForShot())
-				return;
+			}
 
 			LogEvent(EventSignificance::Debug,this,"Setting local time ("+String(entityTime)+") to attack time="+String(attackTime));
 			SyncTime(attackTime,timeEpsilon);
 
-			Task&task = LockedPeekTask();
-
-			const Grid::LCellIdI target = task.foci.Pop().target;
 			float3 dir = Grid::low.cells[target.stackID].centerVertex.xyz * Grid::ToRadius(target.height) - this->GetWorldPosition();
 			float3 innerDir;
 			Mat::rotate(this->inverse,dir,innerDir);
-			Ctr::Buffer0<M::TVec4<> > trajectory;
+			Buffer0<M::TVec4<> > trajectory;
 
 			const auto rs = TraceTrajectory(TrajectoryEndPoint(target),true,trajectory);
 			if (rs != TraceResult::InvalidTrajectory)
@@ -1395,12 +1389,29 @@ namespace Objects
 				
 				entityTime += flightTime;
 
-				const int damageLevel = (int)floor(turret->GetDamageLevel(owner));
-				if (turret->dealsEMPDamage)
-					ExplodeEMP(at,rs.impactCell,rs.impactAt,GetAttackExplosionRadius(), damageLevel,entityTime);
+				if (dealsEMPDamage)
+					ExplodeEMP(at,rs.impactCell,rs.impactAt,explosionSize, damageLevel,entityTime);
 				else
-					Explode(at,rs.impactCell,rs.impactAt,GetAttackExplosionRadius(), damageLevel,turret->isDoomsday, entityTime);
+					Explode(at,rs.impactCell,rs.impactAt,explosionSize, damageLevel,isDoomsday, entityTime);
 			}
+
+		}
+
+
+		/*virtual override*/ void				MobileEntity::Attack(float&attackTime)
+		{
+			//ASSERT1__(NextTaskIsAttack(),this->id.ToString());
+			if (!NextTaskIsAttack())	//got tired of this
+				return;
+			float change = 1.f / float(GetAttacksPerRound());
+			ASSERT_LESS_OR_EQUAL__(change,attackActionLeft);
+			if (!HasAmmoForShot())
+				return;
+
+
+			Task&task = LockedPeekTask();
+
+			OverrideExecuteAttackNow(task.foci.Pop().target, GetAttackExplosionRadius(), (int)floor(turret->GetDamageLevel(owner)),turret->dealsEMPDamage, turret->isDoomsday, attackTime);
 
 			if (task.foci.IsEmpty())
 			{
