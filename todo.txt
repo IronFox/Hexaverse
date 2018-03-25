@@ -8,7 +8,6 @@ Permanent checklist for new tutorial maps:
 
 AA should not fire when emp damage is present
 bug: when ownership of nexus port changes while only visible from plane, nexus port will disappear until plane moves
-bug: plane can land on lava
 
 pathfinding: make sure surveyor or ai cannot enter vehicle store on accident because new reachabilitymapper allows such (add parameter)
 check opacity of accessibility mesh
@@ -200,6 +199,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: plane can land on lava
 fixed: bomber auto-attacks targets that cannot be reached by a beam attack
 done: AA attack planes during their motion
 done: bomber obliteration job

@@ -1414,10 +1414,19 @@ namespace Objects{ namespace Pathfinding
 						continue;
 					if (AccessibleHangarHere(wayNode,*sat))
 						continue;
+					return false;
 				}
 				oPath.Append().cell = to;
 				oPath.Last().movementCostsFromPrevNode = 5;
-				return true;
+
+				const World::Data&world = 
+				#ifdef CLIENT
+					World::actual;
+				#else
+					sat->owner->knownWorld;
+				#endif
+
+				return to.height == Objects::SubOrbital::Height || ValidDestinationOf<false>(world,*sat,to,to,AccessibleHangarHere(to,*sat),false,false);
 			}
 			else
 			{
