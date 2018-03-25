@@ -890,11 +890,11 @@ namespace Objects
 		{
 			DefinePlane(component);
 			DefineOffensive(component);
-			component.commands.Add( new Command::IconCommand("Obliterate", &Detail::IssueParameterizedCommand<ConstName::Job_DropBomb, ConstName::DetonationSize_Doomsday>
+			component.commands.Add( new Command::IconCommand("Obliterate", &Detail::IssueParameterizedCommand<ConstName::Job_DoomsdayBeamAttack, ConstName::DetonationSize_Doomsday>
 				, &CommonCmd::IdleCheck
 				,[](int&resourceCostOut, Resource&costTypeOut, int&timeCostOut)
 				{
-					resourceCostOut = SubOrbital::Bomber::DoomsdayDetonationCosts;
+					resourceCostOut = Objects::VehicleJob::DoomsdayBeamAttackCosts;
 					costTypeOut = Resource::Uranium;
 					ASSERT__(selectedMobileEntity);
 					//PVehicle v = To<Vehicle>::Cast(e);

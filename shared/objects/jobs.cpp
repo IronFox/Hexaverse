@@ -725,6 +725,37 @@ namespace Objects
 
 
 
+		/*virtual override*/ bool	DoomsdayBeamAttack::CanContinue(MobileEntity&v, const Grid::LCellIdI&focus, String&outError)
+		{
+			return true;
+		}
+
+
+		/*virtual override*/ BaseJob::continue_t	DoomsdayBeamAttack::Finish(MobileEntity&v, const Grid::LCellIdI&focus)
+		{
+
+			float radius = Component::Bomb::GetRadius(true,v.owner);
+			int damageLevel = Component::Bomb::GetDamageLevel(true,v.owner);
+
+			v.OverrideExecuteAttackNow(focus,radius,damageLevel,false,true, v.entityTime);
+
+			return JobDone;
+		}
+
+		/**/					DoomsdayBeamAttack::DoomsdayBeamAttack(const MobileEntity&v, const Grid::LCellIdI&loc)	
+			: Super(DoomsdayBeamAttackCosts,
+				v,loc,GetOperationAffinity(),Autocomplete::Always,false
+			)
+		{}
+
+		/*virtual override*/ String			DoomsdayBeamAttack::GetName() const
+		{
+			return "Obliterate (DOOMSDAY)";
+		}
+
+
+
+
 		/*virtual override*/ bool	RepairJob::CanContinue(MobileEntity&v, const Grid::LCellIdI&focus, String&outError)
 		{
 			if (!v.CanRepair())

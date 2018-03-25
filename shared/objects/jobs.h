@@ -25,7 +25,8 @@ namespace Objects
 							MinBuildWallMineralCosts = 2,
 							HeightPeneltyMineralCosts = 5,
 							RegularSelfDetonationCosts = -100,
-							DoomsdaySelfDetonationCosts = 200;
+							DoomsdaySelfDetonationCosts = 200,
+							DoomsdayBeamAttackCosts = 300;
 
 
 		class BaseJob;
@@ -599,6 +600,32 @@ namespace Objects
 				virtual	void			Deserialize(IReadStream&inStream) override;
 			};
 
+
+			class DoomsdayBeamAttack : public BaseJob
+			{
+			public:
+				typedef BaseJob			Super;
+
+				/**/					DoomsdayBeamAttack():Super(Autocomplete::Always,false)	{}
+				/**/					DoomsdayBeamAttack(const MobileEntity&v, const Grid::LCellIdI&loc);
+
+				virtual String			GetName() const override;
+				virtual ConstName		GetCTypeName() const override {return ConstName::Job_DoomsdayBeamAttack;}
+				virtual bool			DelayedBySleep() const override {return false;}
+
+				virtual begin_t			BeginHere(MobileEntity&v, const Grid::LCellIdI&, bool hasToMoveFirst)	{return Started;}
+				virtual bool			CanContinue(MobileEntity&v, const Grid::LCellIdI&, String&outError) override;
+				virtual continue_t		Finish(MobileEntity&v, const Grid::LCellIdI&) override;
+				virtual Riff::TID		GetDataKey() const override {return "DDBA";};
+				virtual PJob			Instantiate() const override {return PJob(new DoomsdayBeamAttack());}
+
+				virtual void			UpdateEstimations(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(DoomsdayBeamAttackCosts,v,GetOperationAffinity());}
+				virtual Component::operation_t	GetOperationAffinity() const override {return Component::Nuclear;}
+				virtual Resource		GetConsumedResourceType() const override {return Resource::Uranium;}
+			
+				virtual	void			Serialize(IWriteStream&outStream) const override	{}
+				virtual	void			Deserialize(IReadStream&inStream) override	{}
+			};
 
 		#endif
 	}

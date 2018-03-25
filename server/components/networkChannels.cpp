@@ -1438,6 +1438,7 @@ namespace Receiver
 			case ConstName::Job_Construct:
 				return Objects::Component::Construct;
 			case ConstName::Job_SelfDetonate:
+			case ConstName::Job_DoomsdayBeamAttack:
 				return Objects::Component::Nuclear;
 		}
 		return Objects::Component::TerrainRemove;	//shouldn't happen, but not our case to handle here
@@ -1570,6 +1571,17 @@ namespace Receiver
 			{
 				job.reset(new VehicleJob::SelfDetonate(*v,jobLocation,sjob.parameterName.baseType));
 				target = v->GetLastPointOfOrigin();
+				v->RegisterNewJob("", job,&target);
+				LogEvent(EventSignificance::Common,peer,e,"Registered new job "+job->GetName());
+			}
+			break;
+			case ConstName::Job_DoomsdayBeamAttack:
+			{
+				job.reset(new VehicleJob::DoomsdayBeamAttack(*v,jobLocation));
+				target = v->GetLastPointOfOrigin();
+				target.height = Objects::Component::Turret::GetGroundHeight(v->owner->knownWorld,target);
+				if (target.height == badHeight)
+					target.height = Grid::CellStack::BottomHeight;
 				v->RegisterNewJob("", job,&target);
 				LogEvent(EventSignificance::Common,peer,e,"Registered new job "+job->GetName());
 			}

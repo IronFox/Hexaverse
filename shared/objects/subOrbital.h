@@ -258,8 +258,6 @@ namespace Objects
 			/**/					Bomber():Super(GetTurretType())
 									{}	//global prototype
 		public:
-			static const int		DoomsdayDetonationCosts = 300;
-
 			#ifndef CLIENT
 				//Satellite overrides:
 				virtual bool		ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget, TargetChoice&outExtResult) const override;

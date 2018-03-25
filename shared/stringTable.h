@@ -47,7 +47,7 @@ enum class ConstName : ConstNameRootType	//DO NOT WRITE TO PERSISTENT STORAGE!!!
 	Job_ClearAbove,
 	Job_Sequence,
 	Job_SelfDetonate,
-	Job_DropBomb,	//only used for doomsday attacks
+	Job_DoomsdayBeamAttack,
 
 	DetonationSize_Regular,	//Used in conjunction with Job_SelfDetonate
 	DetonationSize_Doomsday,	//Used in conjunction with Job_SelfDetonate

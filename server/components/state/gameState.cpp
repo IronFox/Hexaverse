@@ -764,6 +764,15 @@ namespace Game
 					{
 						task.visualizationName = detonate->doomsday ? ConstName::DetonationSize_Doomsday : ConstName::DetonationSize_Regular;
 					}
+					else
+					{
+						auto doomsdayBeamAttack = To<Objects::VehicleJob::DoomsdayBeamAttack>::DynamicCast(t.job);
+						if (doomsdayBeamAttack)
+						{
+							task.visualizationName = ConstName::DetonationSize_Doomsday;
+						}
+
+					}
 				}
 
 			}

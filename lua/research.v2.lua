@@ -346,6 +346,7 @@ TurretConfig =
 	},
 	Bomber =
 	{
+		Op_Nuclear = 100,
 		Cost = 160,
 		Weight = 20,	--defines movement speed: 100/Weight
 		HealthMultiplier = 5,	--directly equals health
