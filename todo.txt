@@ -6,6 +6,7 @@ Permanent checklist for new tutorial maps:
 	No survival conditions
 	Only one terraformer (blow up the other)
 
+AA should not fire when emp damage is present
 bug: when ownership of nexus port changes while only visible from plane, nexus port will disappear until plane moves
 bug: plane can land on lava
 bug: bomber auto-attacks targets that cannot be reached by a beam attack
