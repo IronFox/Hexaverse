@@ -471,6 +471,23 @@ namespace Objects
 		int						GetCurrentMineralConsumption() const;
 
 		/**
+		Triggers an attack right now, using the current entity time.
+		Does not change local tasks, but the local entity time will be updated if needed.
+		Meant for certain jobs that trigger attack-like effects.
+		Trajectories are calculated using the local turret configuration.
+		Values not explicitly required by parameters are taken from the local turret and entity state/location.
+		@param target Attack target
+		@param explosionSize Radius of the resulting explosion
+		@param damageLevel Damage inflicted by the resulting explosion
+		@param dealsEMPDamage Set true if the local attack is supposed to cause EMP damage (non-permanent)
+		@param isDoomsday Classifies the issued attack as a doomsday attack. If set and the current server configuration disallows the attack, then execution may fail (will be logged)
+			Depending on the active server configuration, doomsday non-EMP explosions may be sent to all clients regardless of whether they could otherwise see it
+		@param[inout] Time at which the attack happens. May be updated by the local method
+		*/
+		void					OverrideExecuteAttackNow(const Grid::LCellIdI target, float explosionSize, int damageLevel, bool dealsEMPDamage, bool isDoomsday, float &t);
+
+
+		/**
 		Updates @a system and @a invert based on @a location
 		Called automatically where needed.
 		*/
