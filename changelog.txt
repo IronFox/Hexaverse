@@ -1,4 +1,4 @@
-v0.7.8
+v0.8.0	[Mar 25 2018]
 	+ Added experimental visualization of selected vehicle reach.
 	> Client now extends server pathfinding limitation when building very long roads by processing explicit path for server.
 	> Mobile units now scale down as they enter lower areas. Structures scale horizontally.
