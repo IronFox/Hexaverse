@@ -837,7 +837,7 @@ namespace Objects{ namespace Pathfinding
 
 			touched << current;
 
-			GetWays(world,vehicle,  cellID, possibilities, Grid::LCellIdI::Invalid, nullptr, true, true,forceRevertible);
+			GetWays(world,vehicle,  cellID, possibilities, allowAccessibleHangars ? Grid::LCellIdI::Invalid : cellID, nullptr, true, true,forceRevertible);
 
 
 

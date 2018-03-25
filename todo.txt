@@ -7,7 +7,6 @@ Permanent checklist for new tutorial maps:
 	Only one terraformer (blow up the other)
 
 
-pathfinding: make sure surveyor or ai cannot enter vehicle store on accident because new reachabilitymapper allows such (add parameter)
 check opacity of accessibility mesh
 	
 at bottom terrain level, emp-damaged, minimum allowed attack and scanning range is still high enough to see and attack neighboring cell
@@ -198,6 +197,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+done: pathfinding: make sure surveyor or ai cannot enter vehicle store on accident because new reachabilitymapper allows such (add parameter)
 fixed: when ownership of nexus port changes while only visible from plane, nexus port will disappear until plane moves
 done: AA should not fire when emp damage is present
 fixed: plane can land on lava
