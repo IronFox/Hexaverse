@@ -1,5 +1,6 @@
 #include <global_root.h>
 #include "systems.h"
+#include "entity.h"
 
 namespace Objects
 {
@@ -37,6 +38,7 @@ namespace Objects
 		float vscale = Grid::ToRadius(location.height+1) -  r;
 		//if (cell.numCorners < 6)
 			hscale *= 0.9f;
+		hscale *= WorldEntity::GetScaleAtHeight(location.height);
 		BuildSystem(location,hscale,vscale,system);
 	}
 

@@ -1287,7 +1287,7 @@ namespace Objects
 				else
 				{
 					M::TMatrix4<> m = M::Matrix<>::eye4;
-					Objects::Vehicle::UpdateSystem(m,v->location);
+					Objects::Vehicle::UpdateSystem(m,nullptr,v->location);
 					display.SetObjectMatrix(m);
 				}
 				keyColor.Update(float4(v->owner->activeEntityColor,light));

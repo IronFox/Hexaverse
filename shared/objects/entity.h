@@ -98,6 +98,9 @@ namespace Objects
 		M::TMatrix4<>				system;		//!< system matrix. Structures: affecting @a localizableShape . If @a localizableShape is NULL then this matrix has no effect
 		M::TMatrix4<>				inverse;	//!< inverse of system
 
+		static float				GetScaleAtHeight(int h) {return h < 0 ? Grid::ToRadius(h) / Grid::MeanPlanetRadius : 1;}
+		static float				GetScaleAtRadius(float r) {return r < Grid::MeanPlanetRadius ? r / Grid::MeanPlanetRadius : 1;}
+
 
 		const M::TVec3<>&			GetWorldPosition() const {return system.w.xyz;}
 		static M::TVec3<>			GetWorldPosition(const Grid::LCellIdI&loc) {return Grid::ToWorld(loc);}	//might change in the future. Have to make sure that the various system build functions in systems.cpp match

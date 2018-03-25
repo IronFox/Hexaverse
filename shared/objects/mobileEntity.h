@@ -497,9 +497,10 @@ namespace Objects
 		The old location stored in the specified system is used to define the direction of the final system,
 		so don't pass an uninitialized system.
 		@param[in,out] inOutSys System to use for direction calculation, and to put the new vehicle system matrix into. Must be initialized
+		@param[out] outInverse Resulting system inverse (optional)
 		@param location New vehicle location
 		*/
-		static void				UpdateSystem(M::TMatrix4<>&inOutSys,const Grid::LCellIdI&location);
+		static void				UpdateSystem(M::TMatrix4<>&inOutSys, M::TMatrix4<>*outInverse,const Grid::LCellIdI&location);
 
 
 		/**

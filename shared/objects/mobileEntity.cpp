@@ -115,7 +115,7 @@ namespace Objects
 	}
 
 
-	/*static*/ void MobileEntity::UpdateSystem(M::TMatrix4<>&inOutSys,const Grid::LCellIdI&location)
+	/*static*/ void MobileEntity::UpdateSystem(M::TMatrix4<>&inOutSys, M::TMatrix4<>*outInverse, const Grid::LCellIdI&location)
 	{
 		ASSERT_LESS__(location.stackID, Grid::LowSetup::GridType::CellCount);
 		M::TVec3<> oldLocation = inOutSys.w.xyz;
@@ -139,11 +139,28 @@ namespace Objects
 		inOutSys.z.xyz = up;
 		Vec::cross(inOutSys.y.xyz, inOutSys.z.xyz, inOutSys.x.xyz);
 		Mat::resetBottomRow(inOutSys);
+		if (outInverse)
+			Mat::invertSystem(inOutSys, *outInverse);
+
+		float hScale = GetScaleAtHeight(location.height);
+		if (hScale < 1)
+		{
+			inOutSys.x.xyz *= hScale;
+			inOutSys.y.xyz *= hScale;
+			inOutSys.z.xyz *= hScale;
+			if (outInverse)
+			{
+				outInverse->x.xyz /= hScale;
+				outInverse->y.xyz /= hScale;
+				outInverse->z.xyz /= hScale;
+				outInverse->w.xyz /= hScale;
+			}
+		}
 	}
 	
 	void MobileEntity::UpdateSystem()
 	{
-		UpdateSystem(system,location);
+		UpdateSystem(system,&inverse, location);
 
 		#ifdef HAS_WINDOW
 			ambientSound.SetPosition(system.w.xyz);
@@ -152,7 +169,6 @@ namespace Objects
 			activitySound.SetVelocity(float3());
 		#endif
 
-		Mat::invertSystem(system, inverse);
 	}
 
 	float MobileEntity::ContinuationsToRounds(int continuationsToJobCompletion, Component::operation_t op) const

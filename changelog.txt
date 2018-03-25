@@ -4,6 +4,7 @@ v0.7.8
 	+ Added experimental visualization of selected vehicle reach.
 	> Client now extends server pathfinding limitation when building very long roads by processing explicit path for server.
 	> Raptor can no longer fire during movement phase.
+	> Mobile units now scale down as they enter lower areas. Structures scale horizontally.
 	* Fixed stored vehicles not counting towards terraformer statistics.
 	* Fixed path finding when building walls and roads in constrained environments.
 	* Fixed auto-scheduled tower attacks sometimes remaining active.
