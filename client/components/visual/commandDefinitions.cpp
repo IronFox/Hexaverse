@@ -269,7 +269,7 @@ namespace Objects
 		{
 			if (IsBeam(t))
 			{
-				commands.Add( new Command::IconCommand("Beam Attack",[]()
+				commands.Add( new Command::IconCommand("Fire Beam",[]()
 				{
 					if (Objects::selectedEntity)
 						ObjectHelper::DirectTo(Objects::selectedEntity, Objects::selectedEntity->location, ObjectHelper::AssembleMotionFlags(false,true,!ShouldQueueCommands()), Objects::CursorMode::AttackMode);

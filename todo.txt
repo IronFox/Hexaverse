@@ -9,7 +9,6 @@ Permanent checklist for new tutorial maps:
 bug: when ownership of nexus port changes while only visible from plane, nexus port will disappear until plane moves
 bug: plane can land on lava
 bug: bomber auto-attacks targets that cannot be reached by a beam attack
-missing: beam attack button lacks icon
 missing: bomber obliteration job
 missing: AA attack planes during their motion
 
@@ -203,6 +202,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: beam attack button lacks icon
 skipped: emergency transfer of resources to other storage when storage is destroyed. makes attacking storages less rewarding as victim will move resources away as possible. also counter-productive when introducing exploding resource tanks
 skipped: introduce two independent build versions: client and server, and don't match them via network. updated build process in projector should improve upon this
 skipped: dieing factions should not be disconnected, review current statistics?	known to cause all sorts of shit. better not
