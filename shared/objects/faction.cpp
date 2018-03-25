@@ -1151,6 +1151,8 @@ namespace Objects
 					LogEvent(EventClass::Preset::internalError,"Found abandoned sub orbital sensor");
 					continue;
 				}
+				if (s->empDamageLevel > 0)
+					continue;
 				const float r = s0->first->subOrbitalScanningRange(researchState.researchState);
 				const float dist = Vec::quadraticDistance(Grid::ToWorld(Grid::LCellIdI(s->location.stackID,SubOrbital::Height)),p);
 				if (dist <= r*r)
