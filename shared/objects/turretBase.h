@@ -91,6 +91,7 @@ namespace Objects
 		virtual float			GetAttackExplosionRadius() const = 0;
 		virtual String			DescribeFlatAttackRange() const = 0;
 		virtual WorldEntity&	ToEntity() = 0;
+		virtual const WorldEntity&	ToEntity() const = 0;
 		virtual float			GetZOffset() const = 0;
 
 		/**
@@ -100,7 +101,8 @@ namespace Objects
 		*/
 		virtual bool			HasAmmoForShot() = 0;
 		virtual OwnerParameter	GetOwner() const = 0;
-		
+		bool					CanAttack();
+		bool					CanAttackIgnoreAmmo() const;
 
 
 		/**

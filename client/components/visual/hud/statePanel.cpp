@@ -245,7 +245,7 @@ namespace StatePanel
 					cachedLines<<nl;
 				}
 			#endif
-			if (m->CanAttack())
+			if (m->turret->CanAttack())
 				cachedLines << " Attack Initiative: "+String((int)m->GetAttackInitiative())+"/"+String((int)m->turret->initiative);
 			cachedLines << " Speed: " + m->DescribeMovementStepsPerRound();
 			if (m->turret->CanAttack())

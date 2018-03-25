@@ -1490,16 +1490,20 @@ namespace Objects
 		{
 			float zOffset;
 			PTurretBase base = e->GetTurretBase(zOffset);		
-			if (base && base->turret->CanAttack() && (!e->isOwnedByMe || !base->turret->dealsEMPDamage || includeEMPIfOwnedByMe))
+			if (base && base->CanAttackIgnoreAmmo() && (!e->isOwnedByMe || !base->turret->dealsEMPDamage || includeEMPIfOwnedByMe))
+			{
 				RenderRange(e->location,zOffset,base,color,extendedShadow);
+			}
 		}
 
 		void RenderAttackRangeOf(const PWorldEntity&e, const Grid::LCellIdI&at,const float4&color, bool extendedShadow, bool includeEMPIfOwnedByMe)
 		{
 			float zOffset;
 			PTurretBase base = e->GetTurretBase(zOffset);		
-			if (base && base->turret->CanAttack() && (!e->isOwnedByMe || !base->turret->dealsEMPDamage || includeEMPIfOwnedByMe))
+			if (base && base->CanAttackIgnoreAmmo() && (!e->isOwnedByMe || !base->turret->dealsEMPDamage || includeEMPIfOwnedByMe))
+			{
 				RenderRange(at,zOffset,base,color,extendedShadow);
+			}
 		}
 	}
 

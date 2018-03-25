@@ -465,7 +465,6 @@ namespace Objects
 		bool					AttackIsStationary() const {return turret->requiresStationaryVehicle;}
 		float					GetAttackExplosionRadius() const override;
 		bool					CanRepair() const {return turret->CanRepair();}
-		bool					CanAttack() const {return turret->CanAttack();}
 		virtual BYTE			GetConstructionAcceleration(Component::operation_t op) const {return 0;}
 
 		int						GetCurrentMineralConsumption() const;
@@ -537,6 +536,7 @@ namespace Objects
 		virtual float			GetAttackActionLeft() const override {return attackActionLeft;};
 		virtual bool			NextTaskIsAttack() const override {return IsAlive() && HasTasks() && myTasks.Peek().IsMode(CursorMode::AttackMode);}
 		virtual WorldEntity&	ToEntity() override {return *this;}
+		virtual const WorldEntity&	ToEntity() const override {return *this;}
 		virtual float			GetZOffset() const override {return 0;}
 		#ifndef CLIENT
 			virtual void		FlushAutoAttacks() override;

@@ -930,7 +930,7 @@ namespace Objects
 	#ifndef CLIENT
 		/*virtual override*/ bool					Satellite::FrontQueueAutoAttack(TurretBase::TargetChoice&lastChoice)
 		{
-			if (!turret->CanAttack() || !HasAmmoForShot())
+			if (!CanAttack())
 			{
 				//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
 				return false;
@@ -1021,7 +1021,7 @@ namespace Objects
 
 		/*virtual override*/ bool SkyGuardian::WouldAutoAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)
 		{
-			if (!turret->CanAttack() || !HasAmmoForShot())
+			if (!CanAttack())
 			{
 				//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
 				return false;

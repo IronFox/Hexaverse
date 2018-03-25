@@ -20,7 +20,7 @@ namespace Objects
 		bool TurretBase::WouldAutoAttack(const PWorldEntity&target, TurretBase::TargetChoice&outTarget, float entityTime)
 		{
 			auto&e = ToEntity();
-			if (!HasAmmoForShot() || e.empDamageLevel != 0 || e.IsHibernating() || e.owner->IsAlliedWith(target->owner))
+			if (!CanAttack() || e.empDamageLevel != 0 || e.IsHibernating() || e.owner->IsAlliedWith(target->owner))
 			{
 				//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
 				return false;
@@ -133,6 +133,19 @@ namespace Objects
 		outExtResult.cellTarget = dest.cellLocation;
 		return true;
 	}
+
+	bool					TurretBase::CanAttack()
+	{
+		return CanAttackIgnoreAmmo()
+			&& HasAmmoForShot();
+	}
+
+	bool					TurretBase::CanAttackIgnoreAmmo() const
+	{
+		return turret->CanAttack() 
+			;
+	}
+
 
 	bool					TurretBase::ExtCanHit(const PFaction&myFaction, const TrajectoryEndPoint&source, const TrajectoryEndPoint&destIn, TargetChoice&outExtResult)	const
 	{

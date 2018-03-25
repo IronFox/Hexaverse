@@ -1399,7 +1399,7 @@ namespace Objects
 				return;
 			float change = 1.f / float(GetAttacksPerRound());
 			ASSERT_LESS_OR_EQUAL__(change,attackActionLeft);
-			if (!HasAmmoForShot())
+			if (!CanAttack())
 				return;
 
 
