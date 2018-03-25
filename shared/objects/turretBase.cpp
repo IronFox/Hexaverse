@@ -143,6 +143,7 @@ namespace Objects
 	bool					TurretBase::CanAttackIgnoreAmmo() const
 	{
 		return turret->CanAttack() 
+			&& (turret->trajectoryType != TrajectoryType::AAMissile || !ToEntity().empDamageLevel)
 			;
 	}
 

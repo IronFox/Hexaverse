@@ -322,7 +322,7 @@ namespace Objects
 							PlotCourse(waypoints,detailedPath);
 					break;
 					case CursorMode::AttackMode:
-						if (!CanAttack())
+						if (!turret->CanAttack())
 							return false;
 
 						if (leftClick)
@@ -416,7 +416,7 @@ namespace Objects
 
 			/*virtual override*/ bool					Plane::FrontQueueAutoAttack(TurretBase::TargetChoice&outChoice)
 			{
-				if (!turret->CanAttack() || !HasAmmoForShot() || turret->dealsEMPDamage || turret->isDoomsday)
+				if (!CanAttack() || turret->dealsEMPDamage || turret->isDoomsday)
 				{
 					//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
 					return false;
