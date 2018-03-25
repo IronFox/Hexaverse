@@ -1558,8 +1558,16 @@ namespace Objects
 		{
 			Component::Turret* t = Component::vehicleTurretComponents.FindByName(turret);
 			Component::VehicleBase* b = Component::baseComponents.FindByName(base);
-			ASSERT__(b);
-			ASSERT__(t);
+			if (!t)
+			{
+				LogEvent(EventClass::Preset::fileError,"Turret type is not supported: '"+turret+"'");
+				return nullptr;
+			}
+			if (!b)
+			{
+				LogEvent(EventClass::Preset::fileError,"Base type is not supported: '"+base+"'");
+				return nullptr;
+			}
 			PVehicle vehicle(new Vehicle(owner, baseLocation,b,t));
 			vehicle->location = baseLocation;
 			vehicle->id = id;

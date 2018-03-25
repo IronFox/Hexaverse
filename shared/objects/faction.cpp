@@ -1199,7 +1199,7 @@ namespace Objects
 			if (!e || e->owner.get() == this)
 				return;
 			LogEvent(EventSignificance::Debug,e.get(),this->GetLogName()+ ": CheckGridVisibility at time "+String(timeAt));
-			if (seeing.IsSet(e.get()))
+			if (CanSee(e,timeAt))
 			{
 				HandlePotentialDisappearance(e,timeAt,alliance->config.shareSensors);
 			}

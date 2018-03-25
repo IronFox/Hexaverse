@@ -6,15 +6,13 @@ Permanent checklist for new tutorial maps:
 	No survival conditions
 	Only one terraformer (blow up the other)
 
-AA should not fire when emp damage is present
-bug: when ownership of nexus port changes while only visible from plane, nexus port will disappear until plane moves
 
-pathfinding: make sure surveyor or ai cannot enter vehicle store on accident because new reachabilitymapper allows such (add parameter)
 check opacity of accessibility mesh
 	
 at bottom terrain level, emp-damaged, minimum allowed attack and scanning range is still high enough to see and attack neighboring cell
 better visualization of attack/scanning ranges. use special terrain meshes with hard lines to visualize edges
 	
+scale height of lower terrain levels to match loss of horizontal space?
 
 steam: connect via tcp if steam lobby system fails. does not relate to lobbies. cannot reproduce. some explanations:
 	client manages to connect.
@@ -199,6 +197,9 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+done: pathfinding: make sure surveyor or ai cannot enter vehicle store on accident because new reachabilitymapper allows such (add parameter)
+fixed: when ownership of nexus port changes while only visible from plane, nexus port will disappear until plane moves
+done: AA should not fire when emp damage is present
 fixed: plane can land on lava
 fixed: bomber auto-attacks targets that cannot be reached by a beam attack
 done: AA attack planes during their motion

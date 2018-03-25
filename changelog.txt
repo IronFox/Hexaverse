@@ -1,4 +1,4 @@
-v0.7.8
+v0.8.0	[Mar 25 2018]
 	+ Added bomber plane type.
 	+ Added Anti Aircraft missile turret.
 	+ Added experimental visualization of selected vehicle reach.
@@ -11,6 +11,7 @@ v0.7.8
 	* Fixed rendering of concurrent attack trajectories.
 	* Fixed planes being able to land on lava.
 	* Fixed attack trajectory occlusion.
+	* Fixed general sensor problems.
 
 v0.7.7	[Mar 11 2018]
 	> Bug reporter now presents all found log files, and derives game version from selected log file.
