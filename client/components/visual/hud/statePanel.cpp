@@ -221,8 +221,8 @@ namespace StatePanel
 			{
 				const Objects::Vehicle*veh = (const Objects::Vehicle*)(&e);
 				cachedLines << " Turret-Overweight: "+String((int)M::Max(0,veh->turret->weight(e.owner) - floor(veh->base->GetCarryingCapacity(e.owner))));
-				cachedLines << " Movement Initiative: "+String((int)v->GetMovementInitiative())+"/"+String((int)veh->base->initiative);
 			}
+			cachedLines << " Movement Initiative: "+String((int)v->GetMovementInitiative())+"/"+String((int)v->GetBaseMovementInitiative());
 			#ifndef NO_SATELLITES
 				elif (e.IsSatellite())
 				{
@@ -237,7 +237,8 @@ namespace StatePanel
 					cachedLines<<nl;
 				}
 			#endif
-			cachedLines << " Attack Initiative: "+String((int)v->GetAttackInitiative())+"/"+String((int)v->turret->initiative);
+			if (v->CanAttack())
+				cachedLines << " Attack Initiative: "+String((int)v->GetAttackInitiative())+"/"+String((int)v->turret->initiative);
 			cachedLines << " Speed: " + v->DescribeMovementStepsPerRound();
 			if (v->turret->CanAttack())
 			{
