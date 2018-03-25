@@ -664,6 +664,7 @@ MakeUnlockResearchable(unlockGroup, nil, StructureConfig, 'ReactorCore',10);
 planeFactoryUnlock = MakeUnlockResearchable(unlockGroup, nil, StructureConfig, 'PlaneFactory',20);
 MakeUnlockResearchable(unlockGroup, planeFactoryUnlock, TurretConfig, 'CargoPlane',40);
 MakeUnlockResearchable(unlockGroup, planeFactoryUnlock, TurretConfig, 'Raptor',60);
+MakeUnlockResearchable(unlockGroup, planeFactoryUnlock, TurretConfig, 'Bomber',60);
 
 attackRangeGroup = Game.CreateResearch(improveGroup,'Attack Range','Research_AttackRange');
 	MakeImproveResearchable(attackRangeGroup, artilleryUnlock, TurretConfig, 'Artillery', 'HorizontalAttackRange',0.005);
