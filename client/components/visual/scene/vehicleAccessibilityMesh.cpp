@@ -13,7 +13,7 @@ namespace DX11 = Engine::DX11;
 
 namespace VehicleAccessibilityMesh
 {
-	bool	visible = true;
+	bool	visible = false;
 
 	namespace Details
 	{
