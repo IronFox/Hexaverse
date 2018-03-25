@@ -103,7 +103,7 @@ namespace Objects
 
 
 
-	bool TurretBase::IsSafeHit(const PFaction&myFaction, TrajectoryType t, float range,const World::Data&visibleWorld, const World::Data&actualWorld,const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, float explosionRadius, TargetChoice&outExtResult)
+	/*static*/ bool TurretBase::IsSafeHit( const PFaction&myFaction, TrajectoryType t, float range,const World::Data&visibleWorld, const World::Data&actualWorld,const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, float explosionRadius, TargetChoice&outExtResult )
 	{
 		outExtResult.impact = Component::Turret::TraceTrajectory(t,range,visibleWorld, actualWorld,true,source,dest,outExtResult.trajectory);
 
