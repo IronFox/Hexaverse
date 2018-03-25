@@ -697,7 +697,7 @@ namespace Objects
 		void		Faction::RegisterStoredMobileGain( const PMobileEntity&m )
 		{
 			ASSERT1__(m,m->GetName());
-			ASSERT1__(!m->storedIn.expired(),m->GetName());\
+//			ASSERT1__(!m->storedIn.expired(),m->GetName());
 
 			storedMobiles << m;
 			allTurretBases << m;
