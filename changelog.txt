@@ -1,3 +1,5 @@
+v0.8.1
+
 v0.8.0	[Mar 25 2018]
 	+ Added experimental visualization of selected vehicle reach.
 	> Client now extends server pathfinding limitation when building very long roads by processing explicit path for server.
