@@ -1226,7 +1226,7 @@ namespace Objects
 		#endif
 
 		e->SyncTime(timestamp,timeEpsilon);
-		ASSERT1__(e->isInserted != ( t == RemovalType::DestroyedInStorage ),e->GetName());
+		ASSERT_NOT_EQUAL1__(e->isInserted, ( t == RemovalType::DestroyedInStorage ),e->GetName());
 		#ifdef CLIENT
 			if (t != RemovalType::DestroyedInStorage)
 			{
@@ -1291,7 +1291,7 @@ namespace Objects
 			{
 				PMobileEntity v = To<MobileEntity>::Cast(e);
 				#ifdef CLIENT
-					ASSERT1__(v->location==v->preAnimationLocation,v->GetName());
+					ASSERT_EQUAL1__(v->location,v->preAnimationLocation,v->GetName());
 					//inequality means that we are in an animation stream right now.
 					//bad stuff happens when we delete now.
 					//must fix timing issues. some deletion event did not have enough temporal
