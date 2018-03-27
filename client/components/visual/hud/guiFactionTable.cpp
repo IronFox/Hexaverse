@@ -334,9 +334,9 @@ namespace HUD
 
 					Objects::WAlliance wa = a;
 
-
+					const bool isMine = Objects::Faction::mine && a == Objects::Faction::mine->alliance;
 	
-					if (a->CountLivingMembers() > 1)
+					if (isMine && a->CountLivingMembers() > 1)
 					{
 						PButton leaveButton{new Button{"Leave alliance "+a->id.ToNiceString()}};
 						leaveButton->SetTriggerFunction(
