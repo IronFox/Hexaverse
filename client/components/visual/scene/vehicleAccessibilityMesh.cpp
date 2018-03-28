@@ -154,7 +154,7 @@ namespace VehicleAccessibilityMesh
 		if (Objects::WorldEntity::IsAboveGrid(root))
 			return;
 
-		mapper.Map(e.get(),root,nullptr,0xFFFFFFFF,false,true);
+		mapper.Map(e.get(),root,nullptr,0xFFFFFFFF,false,true,true);
 
 		const count_t rootAt = mapper.result.Count();
 		mapper.result.Append().cell = root;
