@@ -154,17 +154,23 @@ namespace Objects
 			#ifndef NO_HIBERNATION
 				e->Hibernate(false,atTime);
 			#endif
+
+			LogEvent(EventSignificance::Common,e.get()," Now stored in "+ToEntity().GetName());
+			e->storedIn = sharedSelf;
+			e->location = ToEntity().location;
+
 		}
 		else
 		{
+			LogEvent(EventSignificance::Common,e.get()," Now stored in "+ToEntity().GetName());
+			e->storedIn = sharedSelf;
+			e->location = ToEntity().location;
+
 			if (!GetEntity(e->id))
 			{
 				RegisterNewOffGrid(e,atTime,setHealthToFullIfNew);
 			}
 		}
-		LogEvent(EventSignificance::Common,e.get()," Now stored in "+ToEntity().GetName());
-		e->storedIn = sharedSelf;
-		e->location = ToEntity().location;
 
 		stored.Append().entity = e;
 
