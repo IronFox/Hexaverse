@@ -964,8 +964,10 @@ namespace Objects
 		{
 			if (!e)
 				return false;
-			if ( SharingSensorWith(e->owner) )
+			if (e->owner.get() == this)
 				return true;
+			//if ( SharingSensorWith(e->owner) )	//theoretically, this should be identical, but practically it may not. therefor, for a non-owning ally, we should always check this->seeing (timing issues, etc)
+				//return true;
 			auto p = seeing.QueryPointer(e.get());
 			return p && p->VisibleAt(t);
 		}
@@ -1134,8 +1136,9 @@ namespace Objects
 		{
 			if (!e || e->owner.get() == this)
 				return;
-			LogEvent(EventSignificance::Debug,e.get(),this->GetLogName()+ ": CheckGridVisibility at time "+String(timeAt));
-			if (CanSee(e,timeAt))
+			const bool visible = CanSee(e,timeAt);
+			LogEvent(EventSignificance::Debug,e.get(),this->GetLogName()+ ": CheckGridVisibility at time "+String(timeAt)+", visible="+String(visible));
+			if (visible)
 			{
 				HandlePotentialDisappearance(e,timeAt,alliance->config.shareSensors);
 			}
