@@ -287,10 +287,6 @@ namespace BugReporter
 									break;
 								}
 							}
-							if (file?.Fatal != null)
-							{
-								bugDescription.Text += file.Value.Fatal;
-							}
 						}
 					}
 					catch
@@ -382,6 +378,7 @@ namespace BugReporter
 							else
 								bugDescription.Text = f.Fatal + "\r\n" + "\r\n" + bugDescription.Text.Trim(new char[] { '\r', '\n' });
 						}
+						bugDescription.Select(0, 0);
 						lastFatal = f.Fatal;
 					}
 				}
