@@ -200,7 +200,11 @@ namespace Objects
 
 
 		#ifdef CLIENT
-			Grid::LCellIdI		preAnimationLocation;
+			/**
+			Set true by client if vehicle has entered a movement sequence. Reset to false when complete.
+			Must be false during any non-motion animation changes to the local entity
+			*/
+			bool				isInMovementStream = false;
 		#endif
 		Ctr::Queue<Task,Swap>	myTasks;
 
@@ -266,9 +270,6 @@ namespace Objects
 		UINT32					constructionActionCounter=0;	//!< Number of round actions that the entity has been busy building at its current location
 
 		/**/					MobileEntity(const OwnerParameter&owner, Component::Turret*turret, const Grid::LCellIdI&location) : Super(owner,location), TurretBase(turret)
-								#ifdef CLIENT
-									,preAnimationLocation(location)
-								#endif
 		{}
 
 		bool					IsBusy() const {return myTasks.IsNotEmpty();}

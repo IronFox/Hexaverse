@@ -115,7 +115,7 @@ namespace Objects
 				DBG_ASSERT4__(!doInsert || v->location.stackID == targetLocation.stackID,self.GetName(),v->GetName(),targetLocation, v->location);
 			}
 		#else
-			v->preAnimationLocation = v->location = targetLocation;
+			v->location = targetLocation;
 		#endif
 		if (doInsert)
 		{

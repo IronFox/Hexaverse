@@ -557,7 +557,7 @@ namespace Animation
 				/*
 				No motion has happened during the local animation phase, or currently not in any phase
 				*/
-				ASSERT3__(v->preAnimationLocation == v->location, v->GetName(), v->preAnimationLocation, v->location);
+				ASSERT2__(!v->isInMovementStream, v->GetName(), v->location);
 				v->Relocate(vs.entityState.location,false);
 			}
 			else
@@ -741,7 +741,6 @@ namespace Animation
 				else
 				{
 					insertIntoGridLater.Unset(v->id);
-					v->preAnimationLocation = v->location;
 				}
 				StoreLocally(storeInHangar,veh,f,false);
 				ASSERT1__(!v->isInsertedIntoGrid,v->GetName());	//should never happen. If failed, StoreLocally would have thrown an exception
@@ -1164,7 +1163,6 @@ namespace Animation
 					else
 					{
 						//MoveSensor(v->preAnimationLocation,v->location,v->turret->scanningRange);
-						v->preAnimationLocation = v->location;
 						Objects::PlaceMobileEntity(v,false);
 						if (v->IsVehicle())	//only vehicles get to be inserted anyhow
 							insertIntoGridLater.Set(v->id);
@@ -1191,7 +1189,7 @@ namespace Animation
 						if (v)
 						{
 							if (!insertIntoGridLater.IsSet(v->id) && removalType != Objects::RemovalType::DestroyedInStorage && !v->IsAboveGrid())
-								Objects::RemoveVehicleFromGrid(v,v->preAnimationLocation);
+								Objects::RemoveVehicleFromGrid(v,v->location);
 						}
 					}
 					if (allocatedTarget->IsMobile() && allocatedTarget->isOwnedByMe)
@@ -1227,19 +1225,16 @@ namespace Animation
 				ASSERT1__(allocatedTarget,targetEntityID);
 				Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(allocatedTarget);
 				ASSERT1__(v,allocatedTarget->GetName());
+				ASSERT1__(!v->isInMovementStream ,v->location);
 
 				if (!insertIntoGridLater.IsSet(v->id))
 				{
-					ASSERT2__(v->preAnimationLocation == v->location ,v->preAnimationLocation,v->location);
-					//#ifdef HAS_WINDOW
-					//	if (v->isOwnedByMe && v->IsVehicle())
-					//		ASSERT1__(World::actual.HasSensor(v->location,v->GetScanningRange()),v->id.ToString());
-					//#endif
-					v->preAnimationLocation = v->location;
 					if (v->IsVehicle() && !v->IsAboveGrid())
 						Objects::RemoveVehicleFromGrid(To<Objects::Vehicle>::Cast(v),v->location);
 					insertIntoGridLater.Set(v->id);
 				}
+				v->isInMovementStream = true;
+
 				path->Rebuild(v);
 			}
 			break;
@@ -1437,7 +1432,9 @@ namespace Animation
 					float t = 0.f;
 					v->MoveSensoryToCurrentLocation(t);
 				}
-				v->preAnimationLocation = v->location;
+				ASSERT1__(v->isInMovementStream,v->id);
+				v->isInMovementStream = false;
+
 				allocatedTarget.reset();	//for debugging purposes
 				#ifdef HAS_WINDOW
 					if (v->myTasks.IsNotEmpty())
@@ -1449,7 +1446,6 @@ namespace Animation
 						v->myTasks.Peek().Replot(v->location,v.get(),Objects::FocusChangeType::FirstSegmentChanged,true);
 					}
 				#endif
-				//v->UpdateSystem();	//might bite me in the arse later
 			}
 			break;
 			case Attack:
@@ -1925,7 +1921,7 @@ namespace Animation
 
 				Objects::ForeachMobileWorldEntity([](const Objects::PMobileEntity&e)
 				{
-					e->preAnimationLocation = e->location;
+					e->isInMovementStream = false;	//just in case
 				},false);
 
 				if (RuntimeConfig::IsInAnyCommandPhase() && Network::gameHasBegun)

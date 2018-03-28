@@ -1517,52 +1517,6 @@ namespace Objects
 		}
 
 
-
-		void	ChangeOwnership( const PWorldEntity&e,const PFaction&newOwner, bool isNowMine)
-		{
-			LogEvent(EventSignificance::Debug, e.get(),"Changing ownership to "+newOwner->GetName());
-			PStructure s = To<Structure>::DynamicCast(e);
-			#ifdef CLIENT
-				//if (e->isOwnedByMe)
-				{
-					float t = 0.f;
-					e->UnregisterSensory(t);
-					#ifdef THOROUGLY_DEBUG_SENSORY
-						VerifySensory();
-					#endif
-				}
-			#endif
-			LogEvent(EventSignificance::Important, e.get(),"Changed ownership to "+newOwner->GetName());	//this is also notified from the server, hence: common
-			if (s)
-			{
-				float t = 0;
-				s->DisconnectFromNeighborhood(t);
-			}
-			e->owner = newOwner;
-			e->isOwnedByMe = isNowMine;
-
-			#ifdef CLIENT
-				//if (e->isOwnedByMe)
-				{
-					float t = 0.f;
-					if (!s && e->IsMobile())
-						e->RegisterSensory(To<MobileEntity>::Cast(e)->preAnimationLocation,t);
-					else
-						e->RegisterSensory(t);
-					#ifdef THOROUGLY_DEBUG_SENSORY
-						VerifySensory();
-					#endif
-				}
-			#endif
-			//if (s)
-			//	InjectIntoNeighborhood(s,0);
-
-			
-			if (s)	
-				RefreshCompoundCoverage(0);
-		}
-
-
 	#endif
 
 	void	Faction::ChangeAlliance(const PAlliance&a)

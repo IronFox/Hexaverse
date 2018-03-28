@@ -122,24 +122,6 @@ namespace ApplicationInterface
 	}
 
 
-	void	SignalOwnershipChange(const Objects::PWorldEntity&e,const Objects::PFaction&target, float t)
-	{
-		for (const auto&p : Network::activePlayersAndSpectators)
-		{
-			if (p->CanSee(e,t) || p->faction == target)
-			{
-				TCP::PPeer peer = p->peer.lock();
-				DBG_ASSERT1__(peer,p->ConvertToString());
-				if (peer)
-				{
-					LogEvent(EventSignificance::Common,*peer,e,"Reported seeing ownership change (-> '"+target->GetName()+"')");
-					Channels::changeEntityOwner.SendTo(peer,Protocol::ChangeEntityOwner(e->id,target->id));
-				}
-			}
-		}
-	}
-
-
 	void	SignalAppearanceToHostileFaction(const Objects::PFaction&target, const Objects::PWorldEntity&e, float atTime)
 	{
 		if (!e)

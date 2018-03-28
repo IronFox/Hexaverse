@@ -182,7 +182,6 @@ namespace Network
 
 		void	ResourceUpdate(Protocol::ResourceUpdate&u);
 
-		void	ChangeEntityOwner(Protocol::ChangeEntityOwner&c);
 		void	GameProgress(Protocol::GameProgress&progress);
 
 		void	CreateMarker(Protocol::Marker&marker);
@@ -238,7 +237,6 @@ namespace Network
 		extern TCP::Channel<Protocol::Explosion,0,Protocol::ChannelID::Explosion>						explosion;
 		extern TCP::Channel<Protocol::EntityTurretRotation,0,Protocol::ChannelID::EntityTurretRotation>	entityTurretRotation;
 		extern TCP::Channel<Protocol::ResourceUpdate,0,Protocol::ChannelID::ResourceUpdate>				resourceUpdate;
-		extern TCP::Channel<Protocol::ChangeEntityOwner,0,Protocol::ChannelID::ChangeEntityOwner>		changeEntityOwner;
 		extern TCP::Channel<Protocol::GameProgress,0,Protocol::ChannelID::GameProgress>					gameProgress;
 
 		extern TCP::Channel<Protocol::Marker, 0, Protocol::ChannelID::CreateMarker>						createMarker;
