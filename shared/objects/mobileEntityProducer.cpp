@@ -145,7 +145,7 @@ namespace Objects
 				while (stack.GetCellI(c.height).structureCounter > 1)
 					c++;
 				M::TMatrix4<> sys;
-				const M::TVec3<>&dir = Grid::low.cells[c.stackID].centerVertex.xyz;
+				const M::TVec3<>&dir = Grid::low.cells[c.stackID].cornerCenter;
 				float h = Grid::ToRadiusf(float(c.height));
 				Mat::makeAxisSystem(dir*h,dir,2,sys);
 				sys.x.xyz *= 0.75f * Grid::UnitScale;

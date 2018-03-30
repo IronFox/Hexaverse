@@ -335,6 +335,7 @@ namespace InputControl
 		{
 			bool enable = !VisualTerrain::SeeThrough::IsEnabled();
 			VisualTerrain::SeeThrough::Update(enable, VisualTerrain::SeeThrough::LocateCamera());
+			HUD::HexGrid::RefreshButtonState();
 			if (enable)
 				Tutorial::ShowMessage("Clip Terrain");
 		}

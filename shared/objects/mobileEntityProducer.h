@@ -19,7 +19,7 @@ namespace Objects
 	public:
 		#ifdef HAS_WINDOW
 			static Grid::LCellIdI	selected;			//!< Gathering point of selected entity (if any, or invalid)
-			static M::TMatrix4<>		selectedVisual;		//!< Point where the respective gathering point should be visualized at. (same cell; may be different height)
+			static M::TMatrix4<>	selectedVisual;		//!< Point where the respective gathering point should be visualized at. (same cell; may be different height)
 
 			void					UpdateVisuals();
 		#endif

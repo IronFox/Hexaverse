@@ -725,7 +725,7 @@ namespace Objects
 						T val = source.GetUnfilteredValue(res)
 							+ bonus.GetUnfilteredValue(res);
 
-						return String(val)+" [="+source.Describe(res) + "+"+bonusStr+" (bonus)]";
+						return String(M::Round(val*100)/100)+" [="+source.Describe(res) + "+"+bonusStr+" (bonus)]";
 					}
 				}
 			
