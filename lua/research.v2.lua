@@ -671,9 +671,11 @@ attackRangeGroup = Game.CreateResearch(improveGroup,'Attack Range','Research_Att
 	MakeImproveResearchable(attackRangeGroup, launcherUnlock, TurretConfig, 'MissileLauncher', 'HorizontalAttackRange',0.005);
 	MakeImproveResearchable(attackRangeGroup, nil, TurretConfig, 'RocketLauncher', 'HorizontalAttackRange',0.005);
 	MakeImproveResearchable(attackRangeGroup, nil, TurretConfig, 'Cannon', 'HorizontalAttackRange',0.005);
+	MakeImproveResearchable(attackRangeGroup, nil, TurretConfig, 'AntiAircraft', 'HorizontalAttackRange',0.02);
 
 scanningRangeGroup = Game.CreateResearch(improveGroup,'Scanning Range','Research_ScanningRange');
 	MakeImproveResearchable(scanningRangeGroup, radarUnlock, TurretConfig, 'Radar', 'ScanningRange',0.005);
+	MakeImproveResearchable(scanningRangeGroup, nil, TurretConfig, 'AntiAircraft', 'SubOrbitalScanningRange',0.02);
 
 healthGroup = Game.CreateResearch(improveGroup,'Health','Research_Health');
 	MakeImproveResearchable(healthGroup, nil, VehicleBaseConfig, 'Hoverbase', 'Health',0.05);
