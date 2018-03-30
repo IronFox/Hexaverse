@@ -91,6 +91,7 @@ namespace InputControl
 		void	SelectAndFocusNextIdle();
 		void	SelectAndFocusPrev();
 		void	SelectAndFocusNext();
+		void	ActivateAttackMode();
 		void	ResumeBatchConstruction();
 		void	AbortBatchConstruction();
 		void	OnWheel(short delta);

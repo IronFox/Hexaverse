@@ -1,5 +1,6 @@
 v0.8.1
 	> Raptors are no longer excluded from stopping when discoverying new anti-aircraft units.
+	> Ctrl can now be used to quickly enqueue unit attacks. Terrain clipping is now toggled using the End key.
 	* Removed 'Leave alliance' button when not member of the respective alliance.
 	* Fixed occasional allied client crash when deploying new units.
 	* Fixed client crash when simultaneously auto-spawning two new vehicles into the same vehicle store.

@@ -146,6 +146,9 @@ namespace ObjectHelper
 		DBG_ASSERT__(!RuntimeConfig::aiMode || !Network::newRoundRequested);
 		const bool moveTo = mode == Objects::CursorMode::Idle && !(flags & Protocol::DirectFlags::LeftClick);
 
+		if (!Objects::ShouldQueueCommands())
+			ApplicationInterface::SignalDropAllTasks(v);
+
 		if (v->IsMobile() && moveTo)
 		{
 			Objects::PMobileEntity me = To<Objects::MobileEntity>::Cast(v);
@@ -210,7 +213,8 @@ namespace ObjectHelper
 		}
 
 		#ifdef HAS_WINDOW
-			Objects::DisableModes(Network::ControlEnabled());
+			if (mode != Objects::CursorMode::AttackMode || !Engine::input.pressed[Key::Control])
+				Objects::DisableModes(Network::ControlEnabled());
 			if (moveTo)
 				Tutorial::ShowMessage("Move To");
 		#endif

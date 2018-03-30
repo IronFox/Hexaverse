@@ -337,25 +337,39 @@ namespace Objects
 		}
 
 
+		void OnAttackButtonPress()
+		{
+			if (!Objects::selectedEntity)
+				return;
+			auto base = Objects::selectedEntity->GetTurretBase();
+			if (!base)
+				return;
+			if (base->turret->trajectoryType == Objects::TrajectoryType::AAMissile)
+				return;	//no manual attack for now
+			if (IsBeam(base->turret->trajectoryType))
+			{
+				Grid::LCellIdI loc = Objects::selectedEntity->location;
+				if (ShouldQueueCommands() && Objects::selectedMobileEntity)
+					loc = Objects::selectedMobileEntity->GetLastPointOfOrigin();
+				ObjectHelper::DirectTo(Objects::selectedEntity, loc, ObjectHelper::AssembleMotionFlags(false,true,!ShouldQueueCommands()), Objects::CursorMode::AttackMode);
+				return;
+			}
+			else
+				CommonCmd::ToggleMode<CursorMode::AttackMode>();
+		}
+
+
 		void DefineOffensive(Command::Container&commands,Objects::TrajectoryType t)
 		{
 			if (t == Objects::TrajectoryType::AAMissile)
 				return;	//no manual attack for now
+
+			String text = "Attack";
 			if (IsBeam(t))
-			{
-				commands.Add( new Command::IconCommand("Fire Beam",[]()
-				{
-					if (Objects::selectedEntity)
-					{
-						Grid::LCellIdI loc = Objects::selectedEntity->location;
-						if (ShouldQueueCommands() && Objects::selectedMobileEntity)
-							loc = Objects::selectedMobileEntity->GetLastPointOfOrigin();
-						ObjectHelper::DirectTo(Objects::selectedEntity, loc, ObjectHelper::AssembleMotionFlags(false,true,!ShouldQueueCommands()), Objects::CursorMode::AttackMode);
-					}
-				}, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
-			}
-			else
-				commands.Add( new Command::IconCommand("Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
+				text = "Fire Beam";
+			auto cmd = new Command::IconCommand(text,&OnAttackButtonPress, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts);
+			cmd->name += " (CTRL)";
+			commands.Add(cmd);
 		}
 
 		void DefineOffensive(Component::Turret&component)

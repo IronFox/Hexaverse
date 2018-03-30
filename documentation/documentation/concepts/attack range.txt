@@ -8,3 +8,16 @@ Hexaverse distinguishes between missile and artillery trajectories.
 To provide a unified representation of range, a single, strictly horizontal attack range is specified. For missile attack ranges, this value represents the maximum attack radius in any direction.
 Artillery attack ranges, on the other hand, vary depending on the height difference between attacker and target.
 Here, the horizontal attack range is accurate only if both attacker and target share the same height.
+
+
+=Attack Mode=
+
+Attacks can be enqueued to the selected unit by different means.
+Commonly, right-clicking on a hostile unit will enqueue the respective attack.
+In order to attack a location that is currently invisible, or otherwise not occupied by a hostile unit, the attack mode must be enabled first.
+Either by clicking on the respective [[controls/command]] in the bottom screen section, or by holding the **CTRL** key.
+While active, red shapes will outline the effective turret range on the terrain.
+Left-clicking anywhere within range while the mode is active will enqueue an attack.
+
+If a tower is currently selected, a simple right-click on the respective terrain spot will directly enqueue the attack, regardless of whether there is a unit at that location.
+

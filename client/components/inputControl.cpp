@@ -11,6 +11,7 @@
 #include "visual/hud/menu.h"
 #include "objectNetworkHelper.h"
 #include <objects/pathfinding.h>
+#include "visual/commandDefinitions.h"
 
 void	OnTutorialsChanged();
 
@@ -491,7 +492,17 @@ namespace InputControl
 			while (to != from);
 		}
 
-
+		void	ActivateAttackMode()
+		{
+			if (!Objects::selectedEntity)
+				return;
+			auto base = Objects::selectedEntity->GetTurretBase();
+			if (!base || !base->CanAttack())
+				return;
+			Objects::DisableModes(Network::ControlEnabled());
+			Objects::Commands::OnAttackButtonPress();
+		}
+		
 
 		void	ResumeBatchConstruction()
 		{

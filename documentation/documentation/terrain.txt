@@ -23,11 +23,11 @@ Structures can 'stand' atop lava; [[concepts/vehicle|vehicles]] can not (if noth
 If the server is configured such, the planet may feature EMP zones, that force new factions closer to one another and quicken the game.
 Zones are unlocked as new factions are created.
 
-Each new faction unlocks at least one previously locked zone until all 12 zones are unlocked.
+Each newly created faction unlocks at least one previously locked zone until all 12 zones are unlocked.
 New factions are spawned within the unlocked areas of the planet.
 
-Mobile units cannot enter these zones, and will route around them.
-Nexus units already located within the EMP zones suffer high levels of [[concepts/EMP damage]] until the respective zone is removed.
+Mobile units cannot enter these zones, and will be routed around them.
+Nexus units already located within EMP zones suffer high levels of [[concepts/EMP damage]] until the respective zone is removed.
 
 == Planet Types ==
 
@@ -39,7 +39,7 @@ Different planet types may be constructed by [[config/server|configuring]] the s
 
 {{ img:ClipTerrain.png?300|Clipped Terrain}}
 Terrain clipping allows to view caves beneath the ground. It visually removes terrain within a certain radius around the current focus point down to the current clipping height.
-It can be configured via the respective [[controls|view buttons]], but may also be toggled using the ''control key''.
-''Page up/down'' can be used to quickly alter the clipping height.
+It can be configured via the respective [[controls|view buttons]], but may also be toggled using the **end** key.
+**Page up/down** can be used to quickly alter the clipping height.
 
 Liquids (water/lava) are shown in their respective colors but all other types are shown as solid dark gray, or black to contrast this viewing mode against regular non-clipped terrain.

@@ -694,14 +694,12 @@ namespace Objects
 			else
 			{
 				activeCursorMode = mode;
-
-				if (!ShouldQueueCommands())
-					ApplicationInterface::SignalDropAllTasks(selectedEntity);
-
 			}
 		}
 		else
 			activeCursorMode = CursorMode::Idle;
+
+		UpdateChoices(Network::ControlEnabled());
 	}
 
 
