@@ -618,12 +618,13 @@ namespace Objects
 					PTurretBase b = (*c)->GetTurretBase(zOffset);
 					if (!b)
 						continue;
+					const bool movingAttack = b->AttacksMovingHostilesDuringMotionPhase();
 					if (b->turret->CanAttack() && !b->turret->dealsEMPDamage)
 					{
 						LogEvent(EventClass::Preset::common,this,"Processing new hostile regular-offensive contact "+(*c)->GetName()+"...");
 						owner->VisitMyActiveMobileEntities([movingAttack,zOffset,c,this,&result,b](const Objects::PMobileEntity&v2)
 						{
-							if (v2->turret->CanAttack() && v2->turret->independentAttackAndMotion)
+							if (v2->turret->CanAttack() && v2->turret->independentAttackAndMotion && !movingAttack)
 								return;	//otherwise this entity is a hunter, with low sensor range, plus probably able to tank the damage and/or counter-attack
 
 							for (index_t i = 0; i < v2->myTasks.Count(); i++)
