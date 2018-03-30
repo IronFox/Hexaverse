@@ -620,7 +620,7 @@ namespace Objects
 			if (s->IsTower())
 			{
 				const PTower t = To<Tower>::Cast(s);
-				if (t->turret->CanAttack())
+				if (t->turret->CanAttack() && t->turret->attacksMovingHostilesDuringMotionPhase)
 					autoFiringTurrets << t;
 				allTurretBases << t;
 			}
@@ -632,7 +632,7 @@ namespace Objects
 			if (s->IsTower())
 			{
 				const PTower t = To<Tower>::Cast(s);
-				if (t->turret->CanAttack())
+				if (t->turret->CanAttack() && t->turret->attacksMovingHostilesDuringMotionPhase)
 					DBG_VERIFY2__(FindAndErase(autoFiringTurrets,To<TurretBase>::Cast(t)),s->GetName(),GetLogName());
 				DBG_VERIFY2__(FindAndErase(allTurretBases,To<TurretBase>::Cast(t)),s->GetName(),this->GetLogName());
 			}

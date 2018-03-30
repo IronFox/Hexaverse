@@ -924,6 +924,7 @@ namespace Objects
 			component.typeName = "Missile Launcher";
 			component.shortName = " Launcher";
 			component.constName = ConstName::Turret_Launcher;
+			component.attacksMovingHostilesDuringMotionPhase = true;
 
 			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 24;
@@ -945,6 +946,7 @@ namespace Objects
 			component.typeName = "Rocket Launcher";
 			component.shortName = " Rockets";
 			component.constName = ConstName::Turret_Rockets;
+			component.attacksMovingHostilesDuringMotionPhase = true;
 
 			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 20;
@@ -1606,6 +1608,15 @@ namespace Objects
 				else
 					if (isScanner)
 						outResult << ("The "+this->typeName + " "+lowerName+" is especially suited for detecting hostile entities. Such turret types are manadatory in order to see hostile forces approaching, as well as their attacks. Offensive turrets usually lack the necessary scanning range to see where they are shooting and depend on this turret type to reside in the vicinity.");
+				}
+
+				if (attacksMovingHostilesDuringMotionPhase)
+				{
+					if (mountType != MountType::TowerOnly)
+						outResult << ("The "+this->typeName + " "+lowerName+" intercepts hostile mobile units during their movement phase even if itself mounted on a mobile unit. It is thus particularly well suited to establish an adhoc defense perimeter, or to persistently defend strategically important regions if mounted on a tower.");
+					else
+						outResult << ("The "+this->typeName + " "+lowerName+" intercepts hostile mobile units during their movement phase. It is thus particularly well suited to defend strategically important regions.");
+				}
 
 				if (this == &bomb)
 					outResult << "This "+lowerName+" type can self-detonate in a large explosion. The vehicle is lost in the process. The explosion can be caused explicitly or by sufficient external damage."
