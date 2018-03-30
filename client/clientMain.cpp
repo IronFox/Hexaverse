@@ -549,6 +549,7 @@ namespace ApplicationInterface
 //			linkedLine.FindAndReplace("Base scanning range","[[concepts/sensory|Base scanning range]]");
 			linkedLine.FindAndReplace("scanning range","[[concepts/scanning range]]");
 			linkedLine.FindAndReplace("Scanning range","[[concepts/scanning range|Scanning range]]");
+			linkedLine.FindAndReplace("Sub-orbital scanning range","[[concepts/scanning range|Sub-orbital scanning range]]");
 			linkedLine.FindAndReplace("compound","[[concepts/compound]]");
 			linkedLine.FindAndReplace("phase","[[concepts/phase]]");
 			linkedLine.FindAndReplace("attack action","[[concepts/action pool|attack action]]");

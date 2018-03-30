@@ -1654,6 +1654,8 @@ namespace Objects
 				{
 					outResult <<"Weight: "+weight.Describe(researchState);
 					outResult <<"Base scanning range: "+scanningRange.Describe(researchState);
+					if (subOrbitalScanningRange.IsFunctionOrConstNonZero())
+						outResult <<"Sub-orbital scanning range: "+subOrbitalScanningRange.Describe(researchState);
 					float healthMult = healthMultiplier.GetValue(researchState);
 					if (healthMult != 1)
 						outResult <<"Health: x"+healthMultiplier.Describe(researchState);
@@ -1731,11 +1733,22 @@ namespace Objects
 					outResult << ("This "+lowerName+" type scans deep into the ground, and detects all naturally occuring resources within its scanning range. It can be automated if mobile.");
 				if (CanAttack())
 				{
-					outResult << ("This "+lowerName+" type can attack objects in range.");
+					if (trajectoryType == TrajectoryType::AAMissile)
+					{
+						if (subOrbitalScanningRange.IsFunctionOrConstNonZero())
+							outResult << ("This "+lowerName+" type can detect and attack sub-orbital planes in flight.");
+						else
+							outResult << ("This "+lowerName+" type can attack sub-orbital planes in flight.");
+					}
+					else
+						outResult << ("This "+lowerName+" type can attack objects in range.");
 					if (dealsEMPDamage)
 						outResult << ("This "+lowerName+" deals EMP damage. EMP damage temporarily reduces attack and scanning range, movement speed, and disallows construction operations. Does not cause any permanent damage.");
 				}
 				else
+				{
+					if (subOrbitalScanningRange.IsFunctionOrConstNonZero())
+						outResult << ("This "+lowerName+" type can detect sub-orbital planes in flight.");
 					if (isScanner)
 						outResult << ("The "+this->typeName + " "+lowerName+" is especially suited for detecting hostile entities. Such turret types are manadatory in order to see hostile forces approaching, as well as their attacks. Offensive turrets usually lack the necessary scanning range to see where they are shooting and depend on this turret type to reside in the vicinity.");
 
