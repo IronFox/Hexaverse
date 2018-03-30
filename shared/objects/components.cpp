@@ -1608,7 +1608,6 @@ namespace Objects
 				else
 					if (isScanner)
 						outResult << ("The "+this->typeName + " "+lowerName+" is especially suited for detecting hostile entities. Such turret types are manadatory in order to see hostile forces approaching, as well as their attacks. Offensive turrets usually lack the necessary scanning range to see where they are shooting and depend on this turret type to reside in the vicinity.");
-				}
 
 				if (attacksMovingHostilesDuringMotionPhase)
 				{
