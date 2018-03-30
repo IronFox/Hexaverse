@@ -18,6 +18,7 @@
 * [[units/structures/Rocket Launcher Tower|Rocket Launcher Tower]]
 * [[units/structures/Radar Tower|Radar Tower]]
 * [[units/structures/Cannon Tower|Cannon Tower]]
+* [[units/structures/AntiAircraft Tower|AntiAircraft Tower]]
 * [[units/structures/Surveyor Tower|Surveyor Tower]]
 ==Turrets==
 * [[units/turrets/Radar|Radar]]
@@ -26,6 +27,7 @@
 * [[units/turrets/Missile Launcher|Missile Launcher]]
 * [[units/turrets/Rocket Launcher|Rocket Launcher]]
 * [[units/turrets/EMP|EMP]]
+* [[units/turrets/AntiAircraft|AntiAircraft]]
 * [[units/turrets/Bomb|Bomb]]
 * [[units/turrets/Terraformer|Terraformer]]
 * [[units/turrets/Surveyor|Surveyor]]
@@ -36,5 +38,6 @@
 * [[units/vbases/Catamaran Base|Catamaran Base]]
 ==Sub Orbital Planes==
 * [[units/planes/Raptor|Raptor]]
+* [[units/planes/Bomber|Bomber]]
 * [[units/planes/Cargo Plane|Cargo Plane]]
 * [[units/planes/Sensor Drone|Sensor Drone]]

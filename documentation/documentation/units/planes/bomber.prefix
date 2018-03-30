@@ -1,0 +1,16 @@
+{{ img:units/Bomber.png|Bomber}}
+=Bomber=
+*  Health: 5
+*  Price: %Minerals% 160
+*  [[concepts/scanning range|Scanning range]]: 4
+*  [[concepts/attack range|Hrz. Attack range]]: 0 (VerticalBeam)
+*  Can attack independently of movement action
+*  Does not require ammunition
+*  1 attack per round
+*  Explosion radius: 2
+*  Damage: 7
+This plane-turret type can attack objects in range.
+*  Can safely fall down 1 height level
+*  Stationary on ground (supported by water)
+*  Speed: 5 (aerial)
+Suborbital planes move above the regular terrain. They can scan the surface, and are invisible to ordinary radar.

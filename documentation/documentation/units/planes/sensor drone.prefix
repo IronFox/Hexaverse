@@ -1,10 +1,9 @@
 {{ img:units/Sensor Drone.png|Sensor Drone}}
 =Sensor Drone=
 *  Health: 4
-*  Price: %Minerals% 10
-*  [[concepts/scanning range|Scanning range]]: 10
-This plane-turret type is especially suited for detecting hostile entities. Such turret types are manadatory in order to see hostile forces approaching, as well as their attacks. Offensive turrets usually lack the necessary [[concepts/scanning range]] to see where they are shooting and depend on this turret type to reside in the vicinity.
+*  Price: %Minerals% 40
+*  [[concepts/scanning range|Scanning range]]: 11
 *  Can safely fall down 1 height level
 *  Stationary on ground (supported by water)
-*  Speed: 9 (aerial)
-Sub orbital planes move above the regular terrain. They can scan the surface, and are invisible to ordinary radar.
+*  Speed: 10 (aerial)
+Suborbital planes move above the regular terrain. They can scan the surface, and are invisible to ordinary radar.

@@ -1,0 +1,16 @@
+{{ img:units/AntiAircraft.png|AntiAircraft}}
+=AntiAircraft=
+*  Cost: %Minerals%10
+*  [[concepts/initiative|Initiative]]: 80
+*  [[concepts/vehicle|Weight]]: 3
+*  Base [[concepts/scanning range]]: 4
+*  Sub-orbital [[concepts/scanning range]]: 5
+*  Offensive turret
+*  Vehicle must remain stationary to fire
+*  [[concepts/attack range|Base horizontal attack range]]: 5 (AAMissile)
+*  Does not require ammunition
+*  1 attack per round
+*  Explosion radius: 1
+*  Damage: 10
+This turret type can detect and attack sub-orbital planes in flight.
+The AntiAircraft turret intercepts hostile mobile units during their movement [[concepts/phase]] even if itself mounted on a mobile unit. It is thus particularly well suited to establish an adhoc defense perimeter, or to persistently defend strategically important regions if mounted on a tower.
