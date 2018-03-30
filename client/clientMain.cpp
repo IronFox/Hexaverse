@@ -2117,6 +2117,7 @@ int main( int argc, const char* argv[])
 				[]()
 				{
 					Engine::input.Bind(Key::Shift, Objects::SignalShiftPressed, Objects::SignalShiftReleased);
+					Engine::input.BindCtrl(Key::Shift, Objects::SignalShiftPressed, Objects::SignalShiftReleased);
 
 					Engine::input.Bind(Key::Left, InputControl::SelectAndFocusPrev);
 					Engine::input.Bind(Key::Right, InputControl::SelectAndFocusNext);
@@ -2137,7 +2138,8 @@ int main( int argc, const char* argv[])
 					//Engine::input.Bind(Key::T,[](){}, InputControl::QueryAndSendChatMessage);
 					Engine::input.BindCtrl(Key::R,Camera::ToggleAutoRotation);
 		//			Engine::input.Bind(Key::R,ToggleResourceView);
-					Engine::input.Bind(Key::Ctrl,InputControl::ToggleSeeThrough);
+					Engine::input.Bind(Key::Ctrl,InputControl::ActivateAttackMode, [](){Objects::DisableModes(Network::ControlEnabled());});
+					Engine::input.Bind(Key::End,InputControl::ToggleSeeThrough);
 
 					Engine::input.Bind(Key::H,InputControl::ToggleControlGUI);
 

@@ -154,26 +154,11 @@ namespace HexGrid
 			/**/					UndoCommand() : Super("Undo") {}
 			/**/					UndoCommand(const String&name) : Super(name) {}
 
+
+
 			virtual void			Refresh(bool controlsEnabled) override
 			{
-				state = Objects::CommandFlags::None;
-				if (HUD::WindowStack::IsModal() || !controlsEnabled || !Objects::selectedEntity)
-					return;
-				if (Objects::selectedMobileEntity)
-				{
-					if (Objects::selectedMobileEntity->myTasks.IsEmpty() && Objects::activeCursorMode == Objects::CursorMode::Idle)
-						return;
-				}
-				else
-					if (Objects::selectedEntity->IsTower())
-					{
-						if (To<Objects::Tower>::Cast( Objects::selectedEntity )->attackQueue.IsEmpty()  && Objects::activeCursorMode == Objects::CursorMode::Idle)
-							return;
-					}
-					else
-						return;
-
-				state |= Objects::CommandFlags::IsEnabled;
+				MyRefresh(controlsEnabled,false);
 			}
 
 			virtual void			Execute() override
@@ -186,6 +171,30 @@ namespace HexGrid
 				String name = Objects::selectedEntity ? Objects::selectedEntity->GetNiceName() : "selected unit";
 				outResult << "(Backspace) Abort current operation or undo last operation of "+name;
 			}
+
+		protected:
+			void					MyRefresh(bool controlsEnabled, bool canClearMode)
+			{
+				state = Objects::CommandFlags::None;
+				if (HUD::WindowStack::IsModal() || !controlsEnabled || !Objects::selectedEntity)
+					return;
+				if (Objects::selectedMobileEntity)
+				{
+					if (Objects::selectedMobileEntity->myTasks.IsEmpty() && (!canClearMode || Objects::activeCursorMode == Objects::CursorMode::Idle))
+						return;
+				}
+				else
+					if (Objects::selectedEntity->IsTower())
+					{
+						if (To<Objects::Tower>::Cast( Objects::selectedEntity )->attackQueue.IsEmpty() && (!canClearMode || Objects::activeCursorMode == Objects::CursorMode::Idle))
+							return;
+					}
+					else
+						return;
+
+				state |= Objects::CommandFlags::IsEnabled;
+
+			}
 		};
 
 		class AbortCommand : public UndoCommand
@@ -197,6 +206,11 @@ namespace HexGrid
 			virtual void			Execute() override
 			{
 				Objects::VehicleCmd::AbortOperation();
+			}
+
+			virtual void			Refresh(bool controlsEnabled) override
+			{
+				Super::MyRefresh(controlsEnabled,true);
 			}
 
 			virtual void			CompileLabel(Label&outResult) override

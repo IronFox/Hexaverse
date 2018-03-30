@@ -43,6 +43,14 @@ namespace Objects
 
 		
 		Grid::LCellIdI	GetPointOfOrigin(const Objects::MobileEntity&e);
+
+
+		/**
+		Executes whatever action is appropritate on the selected entity if the attack button is pressed.
+		If the selected entity uses beam weapons, an attack command is send to the server.
+		Otherwise the attack mode is activated (or deactivated if active).
+		*/
+		void	OnAttackButtonPress();
 		
 	}
 }
