@@ -57,7 +57,7 @@ namespace Objects
 
 	bool					ShouldQueueCommands()
 	{
-		return shiftPressed || !shiftMeansQueue;
+		return shiftPressed || !shiftMeansQueue || Engine::input.pressed[Key::Alt];
 	}
 
 
