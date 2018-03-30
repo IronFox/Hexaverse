@@ -1,7 +1,9 @@
 v0.8.1
+	> Raptors will now stop when discoverying new anti-aircraft units like every other plane.
 	* Removed 'Leave alliance' button when not member of the respective alliance.
 	* Fixed occasional allied client crash when deploying new units.
 	* Fixed client crash when simultaneously auto-spawning two new vehicles into the same vehicle store.
+	* Fixed client crash when non-empty cargo plane is destroyed mid-motion.
 	* Fixed automated surveyors waiting indefinitely in front of other mobile units.
 	
 v0.8.0	[Mar 25 2018]
