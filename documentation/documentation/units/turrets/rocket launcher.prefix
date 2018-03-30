@@ -12,3 +12,4 @@
 *  Explosion radius: 1
 *  Damage: 7
 This turret type can attack objects in range.
+The Rocket Launcher turret intercepts hostile mobile units during their movement [[concepts/phase]]. It is thus particularly well suited to defend strategically important regions.

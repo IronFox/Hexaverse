@@ -12,3 +12,4 @@
 *  Explosion radius: 1
 *  Damage: 10
 This turret type can attack objects in range.
+The Missile Launcher turret intercepts hostile mobile units during their movement [[concepts/phase]]. It is thus particularly well suited to defend strategically important regions.
