@@ -170,6 +170,7 @@ namespace Objects
 		virtual float				GetSubOrbitalScanningRange() const override;
 		virtual String				DescribeSubOrbitalScanningRange() const override;
 
+		virtual bool				AttacksMovingHostilesDuringMotionPhase() const {return true;}
 		#ifndef CLIENT
 			virtual void			FlushAutoAttacks() override;
 			virtual bool			AttackNext(const Grid::LCellIdI&target, bool autoTarget) override;

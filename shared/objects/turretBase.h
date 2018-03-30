@@ -95,6 +95,7 @@ namespace Objects
 		virtual WorldEntity&	ToEntity() = 0;
 		virtual const WorldEntity&	ToEntity() const = 0;
 		virtual float			GetZOffset() const = 0;
+		virtual bool			AttacksMovingHostilesDuringMotionPhase() const {return turret->attacksMovingHostilesDuringMotionPhase;}
 
 		/**
 		Checks if there are enough resources available for a single shot.

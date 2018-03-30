@@ -478,9 +478,8 @@ namespace Receiver
 
 	void	SendEntitiesTo(const Objects::PFaction&f, TCP::Peer&peer, bool detailed, const Protocol::Timestamp&timestamp)
 	{
-		foreach (f->structures,_s)
+		f->VisitMyStructures([detailed,timestamp,&peer](const Objects::PStructure&s)
 		{
-			Objects::PStructure s= _s->lock();
 			ASSERT__(s);
 			if (s)
 			{
@@ -488,10 +487,9 @@ namespace Receiver
 				Game::Network::Describe(st,*s,detailed,timestamp);
 				Channels::createStructure.SendTo(peer,st);
 			}
-		}
-		foreach (f->activeMobiles,_v)
+		});
+		f->VisitMyMobileEntities([detailed,timestamp,&peer](const Objects::PMobileEntity&v)
 		{
-			Objects::PMobileEntity v= _v->lock();
 			ASSERT__(v);
 			if (v)
 			{
@@ -499,18 +497,7 @@ namespace Receiver
 				Game::Network::Describe(st,*v,detailed,timestamp,0xFFFFFFFF);
 				Channels::newMobileEntity.SendTo(peer,st);
 			}
-		}
-		foreach (f->storedMobiles,_v)
-		{
-			Objects::PMobileEntity v= _v->lock();
-			ASSERT__(v);
-			if (v)
-			{
-				Protocol::NewMobileEntity st;
-				Game::Network::Describe(st,*v,detailed,timestamp,0xFFFFFFFF);
-				Channels::newMobileEntity.SendTo(peer,st);
-			}
-		}
+		});
 	}
 
 

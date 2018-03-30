@@ -31,11 +31,10 @@ namespace Nexus
 				DBG_ASSERT_LESS_OR_EQUAL__(ports.Count(),12);
 				for (index_t i = 0; i < ports.Count(); i++)
 					centers[i] = Grid::low.cells[ports[i]->location.stackID].centerVertex.xyz;
-				foreach (Objects::Faction::nexus->structures,s0)
+				Objects::Faction::nexus->VisitMyStructures([&ports,centers](const Objects::PStructure&s)
 				{
-					Objects::PStructure s = s0->lock();
 					if (!s || !s->IsWorkingStructure())
-						continue;
+						return;
 					float closestAt = std::numeric_limits<float>::lowest();
 					index_t closest = InvalidIndex;
 					for (index_t i = 0; i < ports.Count(); i++)
@@ -48,7 +47,7 @@ namespace Nexus
 						}
 					}
 					portList[closest].Append(To<Objects::WorkingStructure>::Cast(s));
-				}
+				});
 			#endif
 		}
 

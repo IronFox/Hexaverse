@@ -649,6 +649,7 @@ namespace Objects
 		{
 			ASSERT1__(v,v->GetName());
 			ASSERT1__(v->storedIn.expired(),v->GetName());
+			LogEvent(EventSignificance::Common,v.get(),"RegisterActiveMobileGain");
 
 			if (v->turret->subOrbitalScanningRange.IsFunctionOrConstNonZero())
 				subOrbitalSensors.Append(std::make_pair(v,v));
@@ -673,6 +674,7 @@ namespace Objects
 		{
 			ASSERT1__(e,e->GetName());
 			DBG_ASSERT1__(e->storedIn.expired(),e->GetName());
+			LogEvent(EventSignificance::Common,e.get(),"RegisterActiveMobileLoss");
 
 			if (e->turret->subOrbitalScanningRange.IsFunctionOrConstNonZero())
 				DBG_VERIFY2__(FindAndEraseF(subOrbitalSensors,[e](const TSubOrbitalSensor&p){return p.second.lock() == e;}), e->GetName(),GetLogName());
@@ -699,15 +701,76 @@ namespace Objects
 			ASSERT1__(m,m->GetName());
 //			ASSERT1__(!m->storedIn.expired(),m->GetName());
 
+			LogEvent(EventSignificance::Common,m.get(),"RegisterStoredMobileGain");
 			storedMobiles << m;
 			allTurretBases << m;
 		}
 
 		void		Faction::RegisterStoredMobileLoss( const PMobileEntity&e )
 		{
+			LogEvent(EventSignificance::Common,e.get(),"RegisterStoredMobileLoss");
 			DBG_VERIFY2__(FindAndErase(allTurretBases,To<TurretBase>::Cast(e)),e->GetName(),this->GetLogName());
 			DBG_VERIFY2__(FindAndErase(storedMobiles,e),e->GetName(),this->GetLogName());
 		}
+
+
+
+
+		void Faction::VisitMyAutoFiringTurrets(const std::function<void(const PTurretBase&)>&f) const
+		{
+			foreach (autoFiringTurrets,_t)
+				f(_t->lock());
+		}
+
+		void Faction::VisitMyActiveMobileEntities(const std::function<void(const PMobileEntity&)>&f) const
+		{
+			foreach (activeMobiles,m)
+				f(m->lock());
+		}
+
+		void Faction::VisitMyMobileEntities(const std::function<void(const PMobileEntity&)>&f) const
+		{
+			foreach (activeMobiles,m)
+				f(m->lock());
+			foreach (storedMobiles,m)
+				f(m->lock());
+		}
+
+
+		void Faction::VisitMyStructures(const std::function<void(const PStructure&)>&f) const
+		{
+			foreach (structures,s)
+				f(s->lock());
+		}
+
+
+		void Faction::VisitVisibleForeignEntities(const std::function<void(const PWorldEntity&e)>&f)	const
+		{
+			seeing.VisitAllValues([&f](const Objects::Faction::SeeingReference&ref)
+			{
+				if (ref.CurrentlyVisible())
+				{
+					DBG_ASSERT__(ref.reverseVisibilityChange.empty());
+					auto e = ref.reference.lock();
+					if (e)
+						f(e);
+				}
+			});
+		};
+
+
+		void Faction::VisitVisibleForeignEntities(float t, const std::function<void(const PWorldEntity&e)>&f)	const
+		{
+			seeing.VisitAllValues([&f,t](const Objects::Faction::SeeingReference&ref)
+			{
+				if (ref.VisibleAt(t))
+				{
+					auto e = ref.reference.lock();
+					if (e)
+						f(e);
+				}
+			});
+		};
 
 
 
