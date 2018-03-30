@@ -15,12 +15,32 @@
 
 ==Unit Control==
 Units are selected by clicking on them. Clicking anywhere else will deselect any selected unit.
-With a unit selected, the **right mouse button** may be used to direct it. When clicking on empty terrain, a selected mobile unit will attempt to reach that destination during its next [[concepts/round|motion phase]].
-If the clicked destination is instead occupied by a hostile unit, and the selected unit can attack, it will instead queue an attack command.
-Right-clicking with the **shift-key** held down queues the command after any other commands it may have.
+
+===Right Mouse Button===
+The right mouse button can be used to drag the camera around the globe.
+When clicking it may trigger different events depending on the selected unit.
+
+If a mobile unit is currently selected, then a motion instruction to the given location will be queued, assuming a valid route can be found.
+If the location is occupied by a known hostile unit, and the selected unit can attack, then an attack is enqueued instead.
+Right-clicking anywhere while an offensive tower is selected will always attempt to enqueue an attack.
+
+Right-clicking with the **shift-key** held down queues the command at the end.
 Otherwise the command queue is cleared first.
+This behavior can be changed in the options dialog.
 
 Right clicking anywhere with a [[units/structures/vehicle plant]] selected moves or unsets its gathering point.
+
+===Unit Attacks===
+
+Offensive units can enqueue attacks at a specific location.
+Usually, they provide a command in the bottom screen section to activate the [[concepts/attack range|attack mode]].
+Towers may also be directly instructued to attack a location by using a mouse right click.
+The **CTRL** hotkey can be used to directly enter this mode without using commands.
+
+Offensive units will fill their attack queue on demand if a hostile unit is within attack range.
+Unless targets should be prioritized, it is commonly not necessary to issue commands manually.
+
+===Terraformer Hotkeys===
 
 Additionally, [[units/turrets/terraformer]]s support the following hotkeys to directly enqueue a particular construction command:
 * **R** Construct a new [[units/structures/radar tower]]
@@ -51,9 +71,9 @@ Left to right, the commands are:
 * **End Round** (shortcut: return): Requests the current round to end. You should press this button when you are done issuing commands to your units. Press the button again to undo the request (possible as long as at least one connected player has no yet requested a new round).
 * **Auto End Round**: Toggles automatic round ending if the game finds no [[concepts/idle]] units, no new hostile contacts, and no hostile activity during the last [[concepts/round|animation phase]]. Processed only if this state was detected at the beginning of the round.
 * **View**: Group of commands that affect the visual game representation.
-** **ClipTerrain** (shortcut: ctrl): Toggles visual terrain clipping (see [[terrain]] for details).
-** **Clip-View Down** (shortcut: page down): Increases clipping depth.
-** **Clip-View Up** (shortcut: page up): Decreases clipping depth.
+** **ClipTerrain** (shortcut: **End**): Toggles visual [[terrain|terrain clipping]].
+** **Clip-View Down** (shortcut: **Page Down**): Increases [[terrain|clipping depth]].
+** **Clip-View Up** (shortcut: **Page Up**): Decreases [[terrain|clipping depth]].
 ** **Hide Objects**: Hides/shows all units on screen. Shadows are still rendered.
 ** **Show Resources**: Toggles display of [[concepts/resources]] on screen.
 ** **Show Ranges**: Displays all friendly attack ranges.
