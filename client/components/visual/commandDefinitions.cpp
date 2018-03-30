@@ -1222,13 +1222,13 @@ namespace Objects
 
 			viewCommands->Add( new GlobalCommand("Clip Terrain", &GlobalCmd::ToggleSeeThrough
 					,Detail::GlobalPermaSwitch(VisualTerrain::SeeThrough::IsEnabled)
-				));
+				))->name += " (End)";
 			viewCommands->Add( new GlobalCommand("Clip-View Down", &GlobalCmd::SeeThroughDown
 					,[](bool)->Objects::CommandFlags{return GlobalCmd::SeeThroughIsActive() ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;}
-				));
+				))->name += " (Page Down)";
 			viewCommands->Add( new GlobalCommand("Clip-View Up", &GlobalCmd::SeeThroughUp
 					,[](bool)->Objects::CommandFlags{return GlobalCmd::SeeThroughIsActive() ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;}
-				));
+				))->name += " (Page Up)";
 
 			viewCommands->Add( new GlobalCommand("Hide Objects", &GlobalCmd::ToggleObjectView
 					,Detail::GlobalPermaSwitch([](){return !Objects::objectView;})
