@@ -126,7 +126,7 @@ namespace ApplicationInterface
 	{
 		if (!e)
 		{
-			LogEvent(EventClass::Preset::error,nullptr, "Trying to show null");
+			LogEvent(EventClass::Preset::error,nullptr, "SignalAppearanceToHostileFaction: Trying to show null");
 			return;
 		}
 		Network::PClient client;

@@ -644,6 +644,7 @@ namespace Objects
 		{
 			ASSERT1__(v,v->GetName());
 			ASSERT1__(v->storedIn.expired(),v->GetName());
+			LogEvent(EventSignificance::Common,v.get(),"RegisterActiveMobileGain");
 
 			if (v->turret->attacksMovingHostilesDuringMotionPhase)
 				autoFiringTurrets << v;
@@ -664,6 +665,7 @@ namespace Objects
 		{
 			ASSERT1__(e,e->GetName());
 			DBG_ASSERT1__(e->storedIn.expired(),e->GetName());
+			LogEvent(EventSignificance::Common,e.get(),"RegisterActiveMobileLoss");
 
 			if (e->turret->attacksMovingHostilesDuringMotionPhase)
 				DBG_VERIFY2__(FindAndErase(autoFiringTurrets,To<TurretBase>::Cast(e)),e->GetName(),this->GetLogName());
@@ -686,12 +688,14 @@ namespace Objects
 			ASSERT1__(m,m->GetName());
 //			ASSERT1__(!m->storedIn.expired(),m->GetName());
 
+			LogEvent(EventSignificance::Common,m.get(),"RegisterStoredMobileGain");
 			storedMobiles << m;
 			allTurretBases << m;
 		}
 
 		void		Faction::RegisterStoredMobileLoss( const PMobileEntity&e )
 		{
+			LogEvent(EventSignificance::Common,e.get(),"RegisterStoredMobileLoss");
 			DBG_VERIFY2__(FindAndErase(allTurretBases,To<TurretBase>::Cast(e)),e->GetName(),this->GetLogName());
 			DBG_VERIFY2__(FindAndErase(storedMobiles,e),e->GetName(),this->GetLogName());
 		}
