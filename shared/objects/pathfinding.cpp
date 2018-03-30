@@ -141,7 +141,7 @@ namespace Objects{ namespace Pathfinding
 			if (location == finalDestination || hangar == finalDestinationHangar || finalDestination == Grid::LCellIdI::Invalid)
 				return true;
 
-		return IgnoreStructuresAtDestination;
+		return IgnoreStructuresAtDestination && finalDestination == location;
 	}
 
 
