@@ -1,4 +1,4 @@
-v0.8.1
+v0.8.1	[Mar 30 2018]
 	+ AntiAircraft scanning and attack range is now researchable by default.
 	> Raptors are no longer excluded from stopping when discoverying new anti-aircraft units.
 	> Ctrl can now be used to quickly enqueue unit attacks. Terrain clipping is now toggled using the End key.

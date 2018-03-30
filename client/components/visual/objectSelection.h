@@ -38,5 +38,6 @@ namespace Objects
 namespace Objects
 {
 	inline constexpr bool	IsSelected(const PWorldEntity&) {return false;}
+	inline bool				ShouldQueueCommands()	{return true;}
 }
 #endif
