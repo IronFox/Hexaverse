@@ -617,8 +617,6 @@ namespace Objects
 //		void	VerifyVisibilityNetwork();
 		bool	CanWithdrawFromStorage(const MobileEntity&v, Resource res, int demand);
 		int		GetStorage(const MobileEntity&v, Resource res);
-	#else
-		void	ChangeOwnership( const PWorldEntity&e,const PFaction&newOwner, bool isNowMine);
 	#endif
 
 	/**

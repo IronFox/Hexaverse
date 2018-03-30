@@ -80,7 +80,6 @@ namespace ApplicationInterface
 	//void	SignalExplosion(const M::TVec3<>&center,float explosionRadius,bool isEMP, float atTime);
 	void	SignalDisappearanceToHostileFaction(const Objects::PFaction&target, const Objects::PWorldEntity&e, float atTime);
 	void	SignalAppearanceToHostileFaction(const Objects::PFaction&target, const Objects::PWorldEntity&e, float atTime);
-	void	SignalOwnershipChange(const Objects::PWorldEntity&e,const Objects::PFaction&target, float t);
 	void	SignalFactionDied(const Objects::PFaction&);
 	void	SignalNexusControlChange(const Objects::PAlliance&);
 	void	SignalChainReactionExplosion(const Objects::PWorldEntity&causedBy, const Grid::LCellIdI&center, float radius, int damageLevel, float atTime);

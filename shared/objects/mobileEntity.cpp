@@ -1463,7 +1463,7 @@ namespace Objects
 			{
 				Objects::RemoveVehicleFromGrid(To<Objects::Vehicle>::Cast(shared_from_this()),location);
 			}
-			preAnimationLocation = location = toLocation;
+			location = toLocation;
 			if (IsGroundBoundVehicle())
 			{
 				Objects::InsertVehicleIntoGrid(To<Objects::Vehicle>::Cast(shared_from_this()),location);

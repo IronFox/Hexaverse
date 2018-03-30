@@ -789,7 +789,7 @@ namespace Objects{ namespace Pathfinding
 		}
 	#endif
 
-	void ReachabilityMapper::Map( const Vehicle*vehicle, const Grid::LCellIdI&from, FBlockTest isBlocked, UINT32 maxRange/*=0xFFFFFFFF*/, bool forceRevertible/*=false*/, bool allowAccessibleHangars/*=false*/ )
+	void ReachabilityMapper::Map( const Vehicle*vehicle, const Grid::LCellIdI&from, FBlockTest isBlocked, UINT32 maxRange/*=0xFFFFFFFF*/, bool forceRevertible/*=false*/, bool allowAccessibleHangars/*=false*/, bool ignoreFriendlyVehiclesOnRoute/*=false*/ )
 	{
 		const World::Data&world = 
 		#ifdef CLIENT
@@ -847,7 +847,7 @@ namespace Objects{ namespace Pathfinding
 
 			touched << current;
 
-			GetWays(world,vehicle,  cellID, possibilities, allowAccessibleHangars ? Grid::LCellIdI::Invalid : cellID, nullptr, true, true,forceRevertible);
+			GetWays(world,vehicle,  cellID, possibilities, allowAccessibleHangars ? Grid::LCellIdI::Invalid : cellID, nullptr, ignoreFriendlyVehiclesOnRoute, ignoreFriendlyVehiclesOnRoute,forceRevertible);
 
 
 

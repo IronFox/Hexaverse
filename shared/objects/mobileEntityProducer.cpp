@@ -171,7 +171,7 @@ namespace Objects
 
 
 	#ifndef CLIENT
-		PMobileEntity				MobileEntityProducer::SpawnFinishedProductionAnywhere(float&t)
+		PMobileEntity				MobileEntityProducer::SpawnFinishedProductionAnywhere( float&t )
 		{
 			if (!AwaitsUserInteraction())
 				return PMobileEntity();

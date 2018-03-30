@@ -1292,7 +1292,7 @@ namespace Objects
 		#endif
 
 		e->SyncTime(timestamp,timeEpsilon);
-		ASSERT1__(e->isInserted != ( t == RemovalType::DestroyedInStorage ),e->GetName());
+		ASSERT_NOT_EQUAL1__(e->isInserted, ( t == RemovalType::DestroyedInStorage ),e->GetName());
 		#ifdef CLIENT
 			if (t != RemovalType::DestroyedInStorage)
 			{
@@ -1357,8 +1357,7 @@ namespace Objects
 			{
 				PMobileEntity v = To<MobileEntity>::Cast(e);
 				#ifdef CLIENT
-					ASSERT1__(v->location==v->preAnimationLocation,v->GetName());
-					//inequality means that we are in an animation stream right now.
+					ASSERT1__(!v->isInMovementStream,v->GetName());
 					//bad stuff happens when we delete now.
 					//must fix timing issues. some deletion event did not have enough temporal
 					//distance to the last motion of this vehicle
@@ -1500,7 +1499,7 @@ namespace Objects
 		PVehicle vehicle(new Vehicle(owner, baseLocation,base,turret));
 		#ifdef CLIENT
 			vehicle->location = baseLocation;
-			ASSERT3__(vehicle->preAnimationLocation == vehicle->location,vehicle->preAnimationLocation,vehicle->location,vehicle->GetName());
+			ASSERT2__(!vehicle->isInMovementStream,vehicle->location,vehicle->GetName());
 			//vehicle->preAnimationLocation = vehicle->location;
 		#else
 			vehicle->health = vehicle->GetMaxHealth();	//or else PositionOnTop will fail
@@ -1666,7 +1665,7 @@ namespace Objects
 		void			Place( const PVehicle&vehicle, bool insertIntoGrid/*=true*/)
 		{
 			ASSERT__(vehicle);
-			ASSERT3__(vehicle->preAnimationLocation == vehicle->location,vehicle->preAnimationLocation,vehicle->location,vehicle->GetName());
+			ASSERT2__(!vehicle->isInMovementStream,vehicle->location,vehicle->GetName());
 			float t = 0;
 			//vehicle->preAnimationLocation = vehicle->location;
 			InsertConstructed(vehicle,t,insertIntoGrid,false);
@@ -1688,7 +1687,7 @@ namespace Objects
 		void			Place( const SubOrbital::PPlane&s)
 		{
 			ASSERT__(s);
-			ASSERT3__(s->preAnimationLocation == s->location,s->preAnimationLocation,s->location,s->GetName());
+			ASSERT2__(!s->isInMovementStream ,s->location,s->GetName());
 			float t = 0;
 			InsertConstructed(s,t);
 			ASSERT1__(SubOrbital::planes.Contains(s),s->GetName());
@@ -1697,7 +1696,7 @@ namespace Objects
 		void			PlaceMobileEntity( const PMobileEntity&m, bool insertIntoGridIfVehicle/*=true*/)
 		{
 			ASSERT__(m);
-			ASSERT3__(m->preAnimationLocation == m->location,m->preAnimationLocation,m->location,m->GetName());
+			ASSERT2__(!m->isInMovementStream,m->location,m->GetName());
 			float t = 0;
 			InsertConstructed(m,t,insertIntoGridIfVehicle);
 			#ifndef NO_SATELLITES

@@ -23,8 +23,8 @@
 	</context>
 	<context name="World">Settings related to the current world
 		<variable name="simulateLiquids" default="true">
-			Enables or liquid expansion. Lava and water will expand horizontally and downwards, and eventually floodfill all available space.
-			No actual simulation at this stage. Liquid volume increases as long as connected space is available.
+			Enables liquid expansion. Lava and water will expand horizontally and downwards, and eventually flood-fill all available space.
+			Currently no actual simulation occurs. Liquid volume increases as long as connected space is available.
 			Set false to disable.
 		</variable>
 		<variable name="worldDiscovery" default="None">

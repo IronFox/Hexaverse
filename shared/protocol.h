@@ -1316,10 +1316,6 @@ namespace Protocol
 		, NET(bool), gameWon
 		, NET(bool), gameOver
 	)
-	NETSTRUCT2(ChangeEntityOwner
-		, NET(TUniqueID), entityID
-		, NET(TUniqueID), ownerID
-	)
 
 	NETSTRUCT2(EntityStateUpdate
 		, NET(TUniqueID), entityID
@@ -1442,8 +1438,6 @@ namespace Protocol
 			PreciseAttackTrajectory,	//s2c: PreciseAttackTrajectory
 			VagueAttackTrajectory,		//s2c: VagueAttackTrajectory
 			EntityTurretRotation,	//s2c: EntityTurretRotation
-
-			ChangeEntityOwner,	//s2c: ChangeEntityOwner
 
 			RemoveEntity,		//c2s: TUniqueID
 			RestoreCoreLink,	//c2s: TUniqueID

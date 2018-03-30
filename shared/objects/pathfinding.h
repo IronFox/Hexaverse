@@ -136,7 +136,7 @@ namespace Objects
 			@param isBlocked Function callback to determine whether units can move to a given cell. Can be empty, considering all cells non-blocked
 			@param forceRevertible Forces that only steps are considered that are possible in both directions
 			*/
-			void			Map(const Vehicle*vehicle, const Grid::LCellIdI&from, FBlockTest isBlocked, UINT32 maxRange=0xFFFFFFFF, bool forceRevertible=false, bool allowAccessibleHangars=false);
+			void			Map(const Vehicle*vehicle, const Grid::LCellIdI&from, FBlockTest isBlocked, UINT32 maxRange=0xFFFFFFFF, bool forceRevertible=false, bool allowAccessibleHangars=false, bool ignoreFriendlyVehiclesOnRoute=false);
 
 
 

@@ -1112,14 +1112,6 @@ namespace Network
 
 		}
 
-		void	ChangeEntityOwner(Protocol::ChangeEntityOwner&c)
-		{
-			Objects::PWorldEntity e = Objects::GetEntity(c.entityID);
-			ASSERT__(e);
-			ASSERT__(e->owner->id != c.ownerID);
-			Objects::ChangeOwnership(e,Network::ResolveFaction(c.ownerID),Network::myID == c.ownerID);
-		}
-
 		void	GameProgress(Protocol::GameProgress&progress)
 		{
 			Network::gameProgress.swap(progress);
@@ -1462,7 +1454,6 @@ namespace Network
 		TCP::Channel<Protocol::Explosion,0,Protocol::ChannelID::Explosion>							explosion(Receiver::Explosion);
 		TCP::Channel<Protocol::EntityTurretRotation,0,Protocol::ChannelID::EntityTurretRotation>	entityTurretRotation(Receiver::EntityTurretRotation);
 		TCP::Channel<Protocol::ResourceUpdate,0,Protocol::ChannelID::ResourceUpdate>				resourceUpdate(Receiver::ResourceUpdate);
-		TCP::Channel<Protocol::ChangeEntityOwner,0,Protocol::ChannelID::ChangeEntityOwner>			changeEntityOwner(Receiver::ChangeEntityOwner);
 		TCP::Channel<Protocol::GameProgress,0,Protocol::ChannelID::GameProgress>					gameProgress(Receiver::GameProgress);
 
 		TCP::Channel<Protocol::Marker, 0, Protocol::ChannelID::CreateMarker>						createMarker(Receiver::CreateMarker);
@@ -1751,7 +1742,6 @@ namespace Network
 		client.InstallChannel(Channels::explosion);
 		client.InstallChannel(Channels::entityTurretRotation);
 		client.InstallChannel(Channels::resourceUpdate);
-		client.InstallChannel(Channels::changeEntityOwner);
 		client.InstallChannel(Channels::gameProgress);
 
 		client.InstallChannel(Channels::createMarker);
@@ -2063,7 +2053,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			Animation::atTime = 0.f;
 			Objects::ForeachMobileWorldEntity([](const Objects::PMobileEntity&m)
 			{
-				m->preAnimationLocation = m->location;
+				m->isInMovementStream = false;	//just in case
 			},false);
 			if (c.timeFactor > 0)
 				animationTimeFactor = c.timeFactor;
