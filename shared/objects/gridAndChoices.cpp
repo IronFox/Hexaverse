@@ -1097,7 +1097,9 @@ namespace Objects
 		ASSERT1__(!v->isInsertedIntoGrid,v->GetName());
 		ASSERT1__(!v->isInserted,v->GetName());
 		DBG_ASSERT__(!storedMobileEntities.Contains(v));
+
 		storedMobileEntities << v;
+
 		v->OnInsert(atTime,setHealthToFull);
 		LogEvent(EventSignificance::Common, v.get(),"Deployed into storage");
 		if (setHealthToFull)
@@ -1108,7 +1110,7 @@ namespace Objects
 		#ifndef CLIENT
 			float signalTime = atTime;
 			v->SyncTime(atTime);
-			v->owner->storedMobiles.Append(v);
+			v->owner->RegisterStoredMobileGain(v);
 			ApplicationInterface::SignalNewMobileEntity(v,false,signalTime);
 		#endif
 	}
