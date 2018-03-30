@@ -703,6 +703,65 @@ namespace Objects
 
 
 
+		void Faction::VisitMyAutoFiringTurrets(const std::function<void(const PTurretBase&)>&f) const
+		{
+			foreach (autoFiringTurrets,_t)
+				f(_t->lock());
+		}
+
+		void Faction::VisitMyActiveMobileEntities(const std::function<void(const PMobileEntity&)>&f) const
+		{
+			foreach (activeMobiles,m)
+				f(m->lock());
+		}
+
+		void Faction::VisitMyMobileEntities(const std::function<void(const PMobileEntity&)>&f) const
+		{
+			foreach (activeMobiles,m)
+				f(m->lock());
+			foreach (storedMobiles,m)
+				f(m->lock());
+		}
+
+
+		void Faction::VisitMyStructures(const std::function<void(const PStructure&)>&f) const
+		{
+			foreach (structures,s)
+				f(s->lock());
+		}
+
+
+		void Faction::VisitVisibleForeignEntities(const std::function<void(const PWorldEntity&e)>&f)	const
+		{
+			seeing.VisitAllValues([&f](const Objects::Faction::SeeingReference&ref)
+			{
+				if (ref.CurrentlyVisible())
+				{
+					DBG_ASSERT__(ref.reverseVisibilityChange.empty());
+					auto e = ref.reference.lock();
+					if (e)
+						f(e);
+				}
+			});
+		};
+
+
+		void Faction::VisitVisibleForeignEntities(float t, const std::function<void(const PWorldEntity&e)>&f)	const
+		{
+			seeing.VisitAllValues([&f,t](const Objects::Faction::SeeingReference&ref)
+			{
+				if (ref.VisibleAt(t))
+				{
+					auto e = ref.reference.lock();
+					if (e)
+						f(e);
+				}
+			});
+		};
+
+
+
+
 		bool		Faction::HasActiveMobile(const PMobileEntity&v) const
 		{
 			foreach (activeMobiles,_v)

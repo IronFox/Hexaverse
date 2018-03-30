@@ -340,6 +340,33 @@ namespace Objects
 		#else
 
 			CryptographicID				accessToken;
+		private:
+
+			struct SeeingReference
+			{
+				WWorldEntity			reference;
+				bool					wasVisibleAtBeginning = false;
+				std::map<float,bool>	reverseVisibilityChange;	//reverse mapped
+
+				void					swap(SeeingReference&other)
+				{
+					std::swap(wasVisibleAtBeginning,other.wasVisibleAtBeginning);
+					reference.swap(other.reference);
+					reverseVisibilityChange.swap(other.reverseVisibilityChange);
+				}
+
+				friend void				swap(SeeingReference&a,SeeingReference&b)
+				{
+					a.swap(b);
+				}
+
+				bool					VisibleAt(float t) const;
+				void					Appear(const Faction*parent, const PWorldEntity&e, float&t);
+				void					Disappear(const Faction*parent, const PWorldEntity&e, float&t);
+				bool					CurrentlyVisible() const {return reverseVisibilityChange.empty() ? wasVisibleAtBeginning : reverseVisibilityChange.begin()->second;}
+
+			};
+
 			Buffer0<WMobileEntity>		activeMobiles,		//!< All active mobiles registered in the world
 										storedMobiles;		//!< All mobile entities registered stored in some other entity. activeMobiles and storedMobiles are exclusive of each other
 			typedef std::pair<Component::Turret*,WWorldEntity>	TSubOrbitalSensor;
@@ -351,7 +378,8 @@ namespace Objects
 			Buffer0<WStructure>			structures;
 			Buffer0<WTurretBase>		allTurretBases;		//!< All (stored or otherwise) entities (structures or mobiles) that have a turret
 			Buffer0<WTurretBase>		autoFiringTurrets;	//!< All active entities (structures or mobiles) that are towers, or feature a turret with attacksMovingHostilesDuringMotionPhase set true
-
+			PointerTable<SeeingReference, Swap>	seeing;
+		public:
 			static Buffer0<PFaction>	all;
 			static PFaction				nexus;
 
@@ -389,60 +417,18 @@ namespace Objects
 			Ctr::Buffer0<Marker,Strategy::Adopt>		markers;
 			Ctr::GenericHashTable<TUniqueID, index_t>	markerMap,referenceMap;
 
-			struct SeeingReference
-			{
-				WWorldEntity			reference;
-				bool					wasVisibleAtBeginning = false;
-				std::map<float,bool>	reverseVisibilityChange;	//reverse mapped
-
-				void					swap(SeeingReference&other)
-				{
-					std::swap(wasVisibleAtBeginning,other.wasVisibleAtBeginning);
-					reference.swap(other.reference);
-					reverseVisibilityChange.swap(other.reverseVisibilityChange);
-				}
-
-				friend void				swap(SeeingReference&a,SeeingReference&b)
-				{
-					a.swap(b);
-				}
-
-				bool					VisibleAt(float t) const;
-				void					Appear(const Faction*parent, const PWorldEntity&e, float&t);
-				void					Disappear(const Faction*parent, const PWorldEntity&e, float&t);
-				bool					CurrentlyVisible() const {return reverseVisibilityChange.empty() ? wasVisibleAtBeginning : reverseVisibilityChange.begin()->second;}
-
-			};
-			PointerTable<SeeingReference, Swap>	seeing;
 
 
-			void VisitVisibleForeignEntities(const std::function<void(const PWorldEntity&e)>&f)	const
-			{
-				seeing.VisitAllValues([&f](const Objects::Faction::SeeingReference&ref)
-				{
-					if (ref.CurrentlyVisible())
-					{
-						DBG_ASSERT__(ref.reverseVisibilityChange.empty());
-						auto e = ref.reference.lock();
-						if (e)
-							f(e);
-					}
-				});
-			};
 
-
-			void VisitVisibleForeignEntities(float t, const std::function<void(const PWorldEntity&e)>&f)	const
-			{
-				seeing.VisitAllValues([&f,t](const Objects::Faction::SeeingReference&ref)
-				{
-					if (ref.VisibleAt(t))
-					{
-						auto e = ref.reference.lock();
-						if (e)
-							f(e);
-					}
-				});
-			};
+			void VisitMyAutoFiringTurrets(const std::function<void(const PTurretBase&)>&f) const;
+			void VisitMyActiveMobileEntities(const std::function<void(const PMobileEntity&)>&f) const;
+			/**
+			Visits all locally owned mobile entities, both active and stored
+			*/
+			void VisitMyMobileEntities(const std::function<void(const PMobileEntity&)>&f) const;
+			void VisitMyStructures(const std::function<void(const PStructure&)>&f) const;
+			void VisitVisibleForeignEntities(const std::function<void(const PWorldEntity&e)>&f)	const;
+			void VisitVisibleForeignEntities(float t, const std::function<void(const PWorldEntity&e)>&f)	const;
 
 					
 			struct TSensorLock

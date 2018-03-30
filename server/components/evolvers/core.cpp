@@ -82,22 +82,21 @@ namespace Evolver
 		{
 			Objects::ForeachFaction([&atTime](const Objects::PFaction&f)
 			{
-				foreach (f->autoFiringTurrets,_t)
+				f->VisitMyAutoFiringTurrets([&atTime](const Objects::PTurretBase&base)
 				{
-					const auto base = _t->lock();
 					Objects::WorldEntity&e = base->ToEntity();
 
 					base->FlushAutoAttacks();
 
 					if (!e.IsTower())
-						continue;
+						return;
 					Objects::Tower&t = (Objects::Tower&)e;
 					if (t.attackActionLeft != 1.f)
 					{
 						t.attackActionLeft = 1.f;
 						t.SignalChange(Objects::WorldEntity::ActionChanged,atTime);
 					}
-				}
+				});
 			});
 		}
 

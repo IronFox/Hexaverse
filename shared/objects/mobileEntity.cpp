@@ -621,13 +621,10 @@ namespace Objects
 					if (b->turret->CanAttack() && !b->turret->dealsEMPDamage)
 					{
 						LogEvent(EventClass::Preset::common,this,"Processing new hostile regular-offensive contact "+(*c)->GetName()+"...");
-						for (WMobileEntity w : owner->activeMobiles)
+						owner->VisitMyActiveMobileEntities([movingAttack,zOffset,c,this,&result,b](const Objects::PMobileEntity&v2)
 						{
-							PMobileEntity v2 = w.lock();
-							if (!v2)
-								continue;
 							if (v2->turret->CanAttack() && v2->turret->independentAttackAndMotion)
-								continue;	//otherwise this entity is a hunter, with low sensor range, plus probably able to tank the damage and/or counter-attack
+								return;	//otherwise this entity is a hunter, with low sensor range, plus probably able to tank the damage and/or counter-attack
 
 							for (index_t i = 0; i < v2->myTasks.Count(); i++)
 							{
@@ -678,7 +675,7 @@ namespace Objects
 								}
 
 							}
-						}
+						});
 					}
 				};
 
@@ -718,9 +715,10 @@ namespace Objects
 		
 					if (!doBreak)
 					{
-						foreach (f->autoFiringTurrets, _t)
+						f->VisitMyAutoFiringTurrets([_this,&choice,this,&doBreak](const PTurretBase&t)
 						{
-							PTurretBase t = _t->lock();
+							if (doBreak)
+								return;
 							if (t && t->WouldAutoAttack(_this,choice,entityTime))
 							{
 								if (t->AttackNext(choice.cellTarget,true))
@@ -738,7 +736,7 @@ namespace Objects
 										
 								}
 							}
-						}
+						});
 					}
 				});
 				if (doBreak)
