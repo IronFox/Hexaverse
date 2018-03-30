@@ -1991,7 +1991,7 @@ namespace World
 			float3 d03 = c3-worldCenter;
 			const M::TVec3<>&up = Grid::high.grid.GetCell(current.stackID).center;
 			d03 -= up * Vec::dot(d03,up);//bend around sphere
-			d03 += up * Grid::SingleLayerHeight* float((int)current.layer - (int)center.layer);
+			d03 += up * Grid::RawMeanLayerHeight * float((int)current.layer - (int)center.layer);
 			d03.Normalize0();
 				
 			u = Visited;

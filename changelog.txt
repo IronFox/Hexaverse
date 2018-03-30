@@ -1,4 +1,5 @@
 v0.8.2
+	> Lower terrain levels are now scaled to maintain the mean planet horizontal-to-vertical ratio.
 
 v0.8.1	[Mar 30 2018]
 	> Ctrl can now be used to quickly enqueue unit attacks. Terrain clipping is now toggled using the End key.

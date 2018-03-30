@@ -967,13 +967,13 @@ namespace Animation
 	void ExplodeEntity(const Objects::PWorldEntity&target)
 	{
 		#ifdef HAS_WINDOW
-			Explosions::InitExplosion(target->system.w.xyz + Grid::low.cells[target->location.stackID].centerVertex.xyz * Grid::SingleLayerHeight*0.5f ,false,GetExplosionSize(target), GetExplosionTime(target));
+			Explosions::InitExplosion(target->system.w.xyz + Grid::low.cells[target->location.stackID].centerVertex.xyz * Grid::GetLayerHeight(target->location.height)*0.5f, false,GetExplosionSize(target), GetExplosionTime(target));
 		#endif
 	}
 	void ExplodeEntity(const Objects::PWorldEntity&target, const std::function<void()>&onQuarterDone)
 	{
 		#ifdef HAS_WINDOW
-			Explosions::InitExplosion(target->system.w.xyz + Grid::low.cells[target->location.stackID].centerVertex.xyz * Grid::SingleLayerHeight*0.5f,false, GetExplosionSize(target), GetExplosionTime(target), onQuarterDone);
+			Explosions::InitExplosion(target->system.w.xyz + Grid::low.cells[target->location.stackID].centerVertex.xyz *Grid::GetLayerHeight(target->location.height)*0.5f, false, GetExplosionSize(target), GetExplosionTime(target), onQuarterDone);
 		#else
 			onQuarterDone();
 		#endif

@@ -48,7 +48,7 @@ namespace Grid
 								empZonesUnlocked;
 
 
-	static const constexpr float RawLayerHeight = 0.025f;
+	static const constexpr float RawMeanLayerHeight = 0.025f;
 	#ifdef LOWER_RESOLUTION_PLANET
 		static const constexpr float UnitScale = 2.f;
 	#else
@@ -62,19 +62,28 @@ namespace Grid
 	Buffer<Volume::Blob>	blobs;
 #endif
 
-	static const constexpr float SingleLayerHeight = RawLayerHeight * VerticalScale;
+	static const constexpr float SingleMeanLayerHeight = RawMeanLayerHeight * VerticalScale;
+	static const constexpr float RadiusDeltaRatio = SingleMeanLayerHeight / MeanPlanetRadius;
 
-	constexpr inline float ToRadiusf(float height)
+	inline float ToRadiusf(float height)
 	{
 		//ASSERT__(layer < 1000.f);
-		return height * SingleLayerHeight + MeanPlanetRadius;
+		return height >= 0 ?
+			height * SingleMeanLayerHeight + MeanPlanetRadius
+			:
+			MeanPlanetRadius * pow(1.f + RadiusDeltaRatio,height);
+			;
 	}
 	inline float HeightFromRadiusf(float radius)
 	{
-		return (radius - MeanPlanetRadius) / SingleLayerHeight;
+		return radius >= MeanPlanetRadius ?
+			(radius - MeanPlanetRadius) / SingleMeanLayerHeight
+			:
+			-log(MeanPlanetRadius/radius)/log(1.f + RadiusDeltaRatio)
+			;
 	}
 
-	constexpr inline float ToRadius(int height)
+	inline float ToRadius(int height)
 	{
 		return ToRadiusf(height);
 	}
@@ -90,6 +99,11 @@ namespace Grid
 		return (int)floor(HeightFromRadiusf(radius));
 	}
 
+
+	inline float GetLayerHeight(int height)
+	{
+		return height < 0 ? RadiusDeltaRatio * ToRadius(height) : SingleMeanLayerHeight;
+	}
 
 
 
@@ -839,8 +853,8 @@ namespace Grid
 
 
 
-	static const constexpr float BottomPlanetRadius = ToRadius(CellStack::BottomHeight);
-	static const constexpr float TopPlanetRadius = ToRadius(CellStack::TopHeight);
+	static const float BottomPlanetRadius = ToRadius(CellStack::BottomHeight);
+	static const float TopPlanetRadius = ToRadius(CellStack::TopHeight);
 
 
 

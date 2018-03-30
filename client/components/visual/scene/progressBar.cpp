@@ -82,7 +82,7 @@ namespace ProgressBar
 	
 		const count_t cnt = DX11::Shader::macroDefinitions.Count();
 
-		DX11::Shader::macroDefinitions << DX11::Shader::Macro("BAR_SIZE",Grid::SingleLayerHeight);
+		DX11::Shader::macroDefinitions << DX11::Shader::Macro("BAR_SIZE",Grid::SingleMeanLayerHeight);
 
 		instruction.vbo = vbo;
 		instruction.binding.Append("PositionMax",0,DXGI_FORMAT_R32G32B32A32_FLOAT);
