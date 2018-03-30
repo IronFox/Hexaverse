@@ -11,6 +11,9 @@ build road to pathfinding:
 	1. make sure detailed road pathfinding cannot create too many jobs
 	2. detailed pathfinding should return substeps rather than a single detailed path
 	
+attack hotkey
+	
+	
 check opacity of accessibility mesh
 	
 at bottom terrain level, emp-damaged, minimum allowed attack and scanning range is still high enough to see and attack neighboring cell
