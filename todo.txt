@@ -1,12 +1,4 @@
 hotkeys in commands instead of clientMain.cpp
-
-build road to pathfinding:
-	1. make sure detailed road pathfinding cannot create too many jobs
-	2. detailed pathfinding should return substeps rather than a single detailed path
-	
-	
-	
-check opacity of accessibility mesh
 	
 at bottom terrain level, emp-damaged, minimum allowed attack and scanning range is still high enough to see and attack neighboring cell
 better visualization of attack/scanning ranges. use special terrain meshes with hard lines to visualize edges
@@ -32,7 +24,6 @@ steam: find alternate server location service
 routing through vehicle stores
 
 
-highlight possible movement targets (distance heatmap); ranged areas: build coarse geometry and highlight edges to cells that cannot be reached, that demand a drop, that take more rounds to reach
 explode uranium storages
 
 
@@ -187,6 +178,9 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+done: highlight possible movement targets (distance heatmap); ranged areas: build coarse geometry and highlight edges to cells that cannot be reached, that demand a drop, that take more rounds to reach
+done: check opacity of accessibility mesh
+done: build road to pathfinding: 1. make sure detailed road pathfinding cannot create too many jobs 2. detailed pathfinding should return substeps rather than a single detailed path
 done: update documentation, and upload
 rejected: exit fullscreen mode on focus loss?
 rejected: improve dig symbol
