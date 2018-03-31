@@ -295,7 +295,7 @@ namespace Objects{ namespace Pathfinding
 
 
 
-	static count_t GetConstructionWays(const World::Data&world, bool ignoreWater, bool flat, bool canGoDownVertically,
+	static count_t GetConstructionWays( const World::Data&world, bool ignoreWater, bool flat, bool canGoDownVertically,
 										const Vehicle*v,  const Grid::LCellIdI&location, 
 										Grid::LCellIdI*outChoices, const Grid::LCellIdI&destination)
 	{
@@ -941,7 +941,7 @@ namespace Objects{ namespace Pathfinding
 	}
 
 	
-	Result AppendShortestConstructionPath(const Vehicle*vehicle, bool ignoreWater, bool flat, const Grid::LCellIdI&from, Grid::LCellIdI to, Ctr::BasicBuffer<Grid::LCellIdI>&oPath, const count_t maxIterations /*= 2000*/)
+	Result AppendShortestConstructionPath( const Vehicle*vehicle, bool ignoreWater, bool flat, const Grid::LCellIdI&from, Grid::LCellIdI to, Ctr::BasicBuffer<Grid::LCellIdI>&oPath, const count_t maxIterations /*= 2000*/ )
 	{
 		if (flat)
 			to.height = from.height;
@@ -1035,32 +1035,26 @@ namespace Objects{ namespace Pathfinding
 
 			for (index_t i = 0; i < ways; i++)
 			{
-				if (flatBuffer[possibilities[i].stackID] && possibilities[i].stackID != cellID.stackID)
+				const auto&p = possibilities[i];
+				if (flatBuffer[p.stackID] && p.stackID != cellID.stackID)
 					continue;
-				UINT32 option = IDOF(possibilities[i]);
+				const UINT32 option = IDOF(p);
 				TNode&n = buffer[option];
 				int cost = possibilities[i].stackID != cellID.stackID ? 1 : 0;
 				int hCosts = abs(possibilities[i].height - cellID.height );
 				cost += hCosts;
 
-				//if (doFloat && possibilities[i].height != cellID.height)
-				//{
-				//	//cost ++;
-				//	if (
-				//		(possibilities[i].height > cellID.height && tn.backLink < buffer.Count() && DESCOF(tn.backLink).height < cellID.height)	//avoid vertical shafts up
-				//		||
-				//		(possibilities[i].height < cellID.height && tn.backLink < buffer.Count() && DESCOF(tn.backLink).height > cellID.height)	//avoid vertical shafts down
-				//		)
-				//		cost += 100000;
-				//	if (possibilities[i].height > cellID.height && possibilities[i] == to)	//avoid going up to destination
-				//		cost += 10000;
-				//}
-
 				if (tn.minDistance + cost < n.minDistance)
 				{
+					const auto old = n.minDistance;
 					n.minDistance = tn.minDistance + cost + EstimateMinimumRemainingCost(possibilities[i],to, 1, 1);
 					n.backLink = (UINT32)current;
-					queue.Push(option,n.minDistance);
+
+
+					if (!queue.AlterPriority(option,old,n.minDistance))
+					{
+						queue.Push(option,n.minDistance);
+					}
 				}
 			}
 		}
