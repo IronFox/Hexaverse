@@ -238,6 +238,7 @@ namespace Objects
 					foreach (Faction::all,f)
 					{
 						bool changed[BaseGrid::NumFamilies] = {false};
+						(*f)->CheckSensory();
 						(*f)->RegisterExplosionCrater(targetCell,terrainExplosionRadius,atTime);
 					}
 
