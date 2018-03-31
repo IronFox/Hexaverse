@@ -441,7 +441,7 @@ namespace ApplicationInterface
 
 		Protocol::VagueAttackTrajectory	roughAttack;
 		bool hasTrajectory = false;
-		if (attack.attackFrom)
+		if (attack.attackFrom && attack.isDirectAttack)
 		{
 			hasTrajectory = true;
 			LogEvent(EventSignificance::Common,attack.attackFrom.get(),"Tracing rough trajectory to "+Vec::toString(center)+" in "+String(attack.flightTime)+" seconds");

@@ -409,6 +409,7 @@ namespace Evolver
 			{
 				ApplicationInterface::TAttack at;
 				at.attackFrom = exp.causedBy;
+				at.isDirectAttack = false;
 				Objects::Explode(at,Grid::ToHigh(exp.center),Grid::ToWorld(exp.center),exp.radius,exp.damageLevel,exp.isDoomsday,exp.atTime);
 			}
 

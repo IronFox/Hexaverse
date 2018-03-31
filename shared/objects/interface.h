@@ -60,7 +60,8 @@ namespace ApplicationInterface
 		float3	traceTo;
 		float	flightTime=0,
 				attackAngle=0;
-		bool	isAutoAttack=false;
+		bool	isAutoAttack=false,
+				isDirectAttack=true;
 	};
 
 	/*
