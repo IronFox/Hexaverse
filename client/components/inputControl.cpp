@@ -589,6 +589,10 @@ namespace InputControl
 			switch (mode)
 			{
 				case Objects::CursorMode::BuildRoadChainMode:
+				case Objects::CursorMode::BuildBridgeMode:
+				case Objects::CursorMode::BuildConnectorChainMode:
+				case Objects::CursorMode::BuildHighWallChainMode:
+				case Objects::CursorMode::BuildLowWallChainMode:
 					return true;
 			}
 			return false;
@@ -664,14 +668,17 @@ namespace InputControl
 						const auto mode = Objects::activeCursorMode;
 						if (ShouldExpand(mode) && Objects::selectedVehicle)
 						{
+							const bool ignoreWater = mode == Objects::CursorMode::BuildRoadChainMode || mode == Objects::CursorMode::BuildBridgeMode;
+							const bool flat = mode == Objects::CursorMode::BuildBridgeMode;
+
 							Buffer0<Grid::LCellIdI>	path;
-							auto rs = Objects::Pathfinding::AppendShortestConstructionPath(Objects::selectedVehicle.get(),true,false,Objects::selectedVehicle->GetLastPointOfOrigin(),target,path);
+							auto rs = Objects::Pathfinding::AppendShortestConstructionPath(Objects::selectedVehicle.get(),ignoreWater,flat,Objects::selectedVehicle->GetLastPointOfOrigin(),target,path);
 							switch (rs)
 							{
 								case Objects::Pathfinding::Result::InsufficientIterations:
 								{
 									path.Clear();
-									auto rs2 = Objects::Pathfinding::AppendShortestConstructionPath(Objects::selectedVehicle.get(),true,false,Objects::selectedVehicle->GetLastPointOfOrigin(),target,path,10000);
+									auto rs2 = Objects::Pathfinding::AppendShortestConstructionPath(Objects::selectedVehicle.get(),ignoreWater,flat,Objects::selectedVehicle->GetLastPointOfOrigin(),target,path,10000);
 									if (rs2 == Objects::Pathfinding::Result::DestinationReached)
 									{
 										const count_t stepLength = 10;

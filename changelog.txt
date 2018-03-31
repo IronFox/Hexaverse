@@ -2,6 +2,7 @@ v0.8.2
 	> Lower terrain levels are now scaled to maintain the mean planet horizontal-to-vertical ratio.
 	> Improved performance and correctness of construction pathfinding.
 	> Client road-path expansion now uses segments rather than a bazillion micro jobs.
+	> Client now also expands other chain construction modes (build bridge to, build wall to, etc.).
 
 v0.8.1	[Mar 30 2018]
 	> Ctrl can now be used to quickly enqueue unit attacks. Terrain clipping is now toggled using the End key.
