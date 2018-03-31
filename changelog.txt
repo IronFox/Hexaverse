@@ -5,6 +5,7 @@ v0.8.2
 	> Client helper for long construction paths now splits route into segments rather than a bazillion micro jobs.
 	> Client helper now also segments other chain construction modes if too far away for server.
 	> Now showing more versions from changelog on server selection screen.
+	> Adjusted loudness of explosions.
 	* Fixed server crash when processing chain reaction explosions.
 	* Fixed doomsday explosions sometimes not being exposed to other factions even though configured such.
 

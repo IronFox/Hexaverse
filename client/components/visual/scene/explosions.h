@@ -83,7 +83,7 @@ namespace Explosions
 		float3						location,
 									normal1,
 									color;
-		Engine::OpenAL::Source		source,auxiliarySources[4];
+		Engine::OpenAL::Source		source,auxiliarySources[2];
 
 		Timer::Time					lastAudioUpdate = 0;
 

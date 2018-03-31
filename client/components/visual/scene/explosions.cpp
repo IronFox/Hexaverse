@@ -197,6 +197,8 @@ namespace Explosions
 
 	void						Explosion::Create(const M::TVec3<>&position, float size_, float duration, bool isEMP)
 	{
+		static Random random;
+
 		location = position;
 		size = size_;
 		executionTime = duration;
@@ -207,28 +209,29 @@ namespace Explosions
 			source.SetPosition(position);
 			source.SetWaveBuffer(isEMP?empExplosionSound : explosionSound);
 			source.SetLooping(false);
-			source.SetReferenceDistance(10.f);
+			source.SetReferenceDistance(sqrt(size)*2.f);
 			source.SetVolume(1.f);
 			//const float basePitch = 1.f/executionTime;
-			const float basePitch = M::Max(0.25f,1.f/executionTime);
+			const float basePitch = M::Max(0.25f,1.f/executionTime) * (float)pow(1.1f,random.NextFloat(-1.f,1.f));
 			source.SetPitch(basePitch);
 			source.Play();
-			for (int i = 0; i < ARRAYSIZE(auxiliarySources); i++)
-			{
-				float pitch = (float)(pow(1.5f,i));
-				if (1.f / (basePitch * pitch) < 1.4f)
-					break;
-				Engine::OpenAL::Source&source = auxiliarySources[i];
-				source.Create();
-				source.SetPosition(position);
-				source.SetWaveBuffer(isEMP?empExplosionSound : explosionSound);
-				source.SetLooping(false);
-				source.Play();
-				source.SetVolume(1.f);
-				source.SetPitch(basePitch * pitch);
-				source.SetReferenceDistance(20.f);
-				this->source.SetReferenceDistance(20.f);
-			}
+			//for (int i = 0; i < ARRAYSIZE(auxiliarySources); i++)
+			//{
+			//	volatile float pitch = (float)(pow(1.5f,i+1));
+			//	volatile float at = basePitch * pitch;
+			//	if (at > 1)
+			//		break;
+			//	Engine::OpenAL::Source&source = auxiliarySources[i];
+			//	source.Create();
+			//	source.SetPosition(position);
+			//	source.SetWaveBuffer(isEMP?empExplosionSound : explosionSound);
+			//	source.SetLooping(false);
+			//	source.Play();
+			//	source.SetVolume(1.f);
+			//	source.SetPitch(basePitch * pitch);
+			//	source.SetReferenceDistance(20.f);
+			//	this->source.SetReferenceDistance(20.f);
+			//}
 
 		}
 	}
