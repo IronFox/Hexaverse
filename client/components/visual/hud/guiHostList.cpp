@@ -76,8 +76,9 @@ namespace HUD{namespace HostList{
 			String line;
 			while (source >> line)
 			{
-				if (line.TrimRef().IsEmpty())
+				if (line.TrimRef().IsEmpty() && cnt > 6)
 					break;
+				cnt ++;
 				PLabel label{new Label{line,0.7f}};
 				label->Anchor().FillHorizontally();
 				label->alignCenter = false;
