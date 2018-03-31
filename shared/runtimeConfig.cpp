@@ -24,6 +24,7 @@ namespace RuntimeConfig
 
 	bool hibernationSystemEnabled = false;
 	bool bombsExplodeWhenDestroyed = true;
+	bool storagesExplodeWhenDestroyed = true;
 	bool tutorialMode = false;
 	RoundNumber roundNumber;
 	Phase	phase;

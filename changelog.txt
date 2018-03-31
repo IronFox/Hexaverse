@@ -1,4 +1,5 @@
 v0.8.2
+	+ If configured, fuel and uranium storage structures now detonate depending on fill level.
 	> Lower terrain levels are now scaled to maintain the mean planet horizontal-to-vertical ratio.
 	> Improved performance and correctness of construction pathfinding.
 	> Client helper for long construction paths now splits route into segments rather than a bazillion micro jobs.
