@@ -1,11 +1,4 @@
-Permanent checklist for new tutorial maps:
-	EMP zones are off
-	Goal is none
-	AI is off
-	Round timer is -1
-	No survival conditions
-	Only one terraformer (blow up the other)
-
+hotkeys in commands instead of clientMain.cpp
 
 build road to pathfinding:
 	1. make sure detailed road pathfinding cannot create too many jobs
@@ -65,7 +58,6 @@ minor bug: allied structure state updates arrive before appearance on new offens
 
 tremor generator building
 
-update documentation, and upload
 
 
 
@@ -82,11 +74,6 @@ bug: clipped terrain sometimes does not rasterize correctly,
 
 
 
-exit fullscreen mode on focus loss?
-
-improve dig symbol
-
-road should not build bridges across liquids? switch mode automatically? reroute?
 
 
 
@@ -106,8 +93,6 @@ controller support
 
 
 
-aerial radar and turret
-bomber
 
 icon floater for insufficient resources to continue job
 
@@ -202,6 +187,12 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+done: update documentation, and upload
+rejected: exit fullscreen mode on focus loss?
+rejected: improve dig symbol
+rejected: road should not build bridges across liquids? switch mode automatically? reroute?
+added: aerial radar and turret
+added: bomber
 done: scale height of lower terrain levels to match loss of horizontal space?
 added: attack hotkey
 done: pathfinding: make sure surveyor or ai cannot enter vehicle store on accident because new reachabilitymapper allows such (add parameter)
