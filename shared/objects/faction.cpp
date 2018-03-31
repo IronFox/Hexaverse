@@ -925,6 +925,11 @@ namespace Objects
 				else
 					this->CollectSensors(sensors,t);
 
+				this->VisitMyEntities([](const PWorldEntity&e)
+				{
+					e->OverrideSetRegisteredSensorToCurrentLocation();
+				},false);
+
 
 				knownWorld.FlushAndValidateSensory();
 
