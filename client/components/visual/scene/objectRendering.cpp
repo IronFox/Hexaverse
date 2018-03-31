@@ -398,7 +398,7 @@ namespace Objects
 				const float hC = sqrt(M::Sqr(h) - M::Sqr(r));
 
 				const M::TVec3<>&d = Grid::low.cells[location.stackID].centerVertex.xyz;
-				RenderFlattenedRangeSphere(d * (hC+Grid::SingleLayerHeight * 0.5f), r + explosionRadius,d,3.f,color, extended);
+				RenderFlattenedRangeSphere(d * (hC+Grid::GetLayerHeight(location.height) * 0.5f), r + explosionRadius,d,3.f,color, extended);
 			}
 			break;
 			default:
