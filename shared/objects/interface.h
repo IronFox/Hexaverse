@@ -79,7 +79,7 @@ namespace ApplicationInterface
 	void	SignalAppearanceToHostileFaction(const Objects::PFaction&target, const Objects::PWorldEntity&e, float atTime);
 	void	SignalFactionDied(const Objects::PFaction&);
 	void	SignalNexusControlChange(const Objects::PAlliance&);
-	void	SignalChainReactionExplosion(const Objects::PWorldEntity&causedBy, const Grid::LCellIdI&center, float radius, int damageLevel, float atTime);
+	void	SignalChainReactionExplosion(const Objects::PWorldEntity&causedBy, const Grid::LCellIdI&center, float radius, int damageLevel, bool isDoomsday, float atTime);
 	void	SignalOperationLacksResources(const Objects::WorldEntity&, const Ctr::ArrayRef<Objects::Resource>&resources, float atTime);
 	/**
 	Signals that a new faction has been created or an existing one has been removed.
