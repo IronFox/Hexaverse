@@ -1977,6 +1977,7 @@ namespace World
 			work << c;
 		});
 		Grid::HCellIdU current;
+		const auto centerRadius = Grid::ToRadius(Grid::CellStack::ToHeight(center.layer));
 		while (work >> current)
 		{
 			const auto&s = World::actual.GetStack(current.stackID).volumeCell[current.layer];
@@ -1991,7 +1992,8 @@ namespace World
 			float3 d03 = c3-worldCenter;
 			const M::TVec3<>&up = Grid::high.grid.GetCell(current.stackID).center;
 			d03 -= up * Vec::dot(d03,up);//bend around sphere
-			d03 += up * Grid::RawMeanLayerHeight * float((int)current.layer - (int)center.layer);
+			d03 += up * (Grid::ToRadius(Grid::CellStack::ToHeight(current.layer)) - centerRadius);
+		//		Grid::RawMeanLayerHeight * float((int)current.layer - (int)center.layer);
 			d03.Normalize0();
 				
 			u = Visited;
