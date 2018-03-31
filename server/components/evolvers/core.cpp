@@ -408,7 +408,8 @@ namespace Evolver
 			{
 				ApplicationInterface::TAttack at;
 				at.attackFrom = exp.causedBy;
-				Objects::Explode(at,Grid::ToHigh(exp.center),Grid::ToWorld(exp.center),exp.radius,exp.damageLevel,false,exp.atTime);
+				at.isDirectAttack = false;
+				Objects::Explode(at,Grid::ToHigh(exp.center),Grid::ToWorld(exp.center),exp.radius,exp.damageLevel,exp.isDoomsday,exp.atTime);
 			}
 
 			switch (RuntimeConfig::phase)
@@ -477,7 +478,7 @@ namespace Evolver
 			ApplicationInterface::TAttack at;
 			at.attackFrom = exp.causedBy;
 			float t = 0;
-			Objects::Explode(at,Grid::ToHigh(exp.center),Grid::ToWorld(exp.center),exp.radius,exp.damageLevel,false,t);
+			Objects::Explode(at,Grid::ToHigh(exp.center),Grid::ToWorld(exp.center),exp.radius,exp.damageLevel,exp.isDoomsday,t);
 			return;
 		}
 		CoreDetails::pendingExplosions << exp;

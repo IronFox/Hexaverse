@@ -222,6 +222,9 @@ namespace Objects
 			Grid::LCellIdI			location = Grid::LCellIdI::Invalid;
 			int						empDamageLevel=0;
 
+			/**/					TRegisteredSensor()	{}
+			/**/					TRegisteredSensor(const Grid::LCellIdI&loc, int empDamageLevel):location(loc),empDamageLevel(empDamageLevel){}
+
 			bool					IsSet() const {return location != Grid::LCellIdI::Invalid;}
 			bool					operator==(const TRegisteredSensor&other) const {return location == other.location && empDamageLevel == other.empDamageLevel;}
 			bool					operator!=(const TRegisteredSensor&other) const {return !operator==(other);}
@@ -685,8 +688,12 @@ namespace Objects
 				}
 			}
 
-		private:
-			//static void				MapVisibilityBetween(const PWorldEntity&, const PWorldEntity&, float&atTime);
+			/**
+			Updates the locally registered sensor to the current entity location.
+			Called ONLY by factions when they repaint sensory.
+			Never call otherwise.
+			*/
+			void					OverrideSetRegisteredSensorToCurrentLocation();
 
 		#endif
 

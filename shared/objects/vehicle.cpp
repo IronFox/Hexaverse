@@ -623,7 +623,14 @@ namespace Objects
 						/*if (!Grid::LowCellIsClear(destination))
 							destination ++;*/
 						for (const auto&way : waypoints)
+						{
+							if (myTasks.Count() >= MaxTasks)
+							{
+								LogEvent(EventClass::Preset::commandRejected,this,"Job denied: Max production jobs reached");
+								break;
+							}
 							RegisterNewJob("", PVehicleJob(new VehicleJob::Sequence(*this,mode)),&way);
+						}
 					}
 					else
 						return PlotCourse(waypoints,detailedPath);

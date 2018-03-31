@@ -310,7 +310,10 @@ namespace Objects
 
 					const float height0 = Vec::length(center0),
 								height1 = Vec::length(center1),
-								heightDelta = height1 - height0;
+								heightDelta = height1 - height0,
+								layerHeight0 = Grid::GetLayerHeight(structure.location.height),
+								layerHeight1 = Grid::GetLayerHeight(c->location.height),
+								layerHeightDelta = layerHeight1 - layerHeight0;
 //						const float3 d = b1 - b0;
 					const float3 centerDelta = center1 - center0;
 					//const float scale = d.GetLength();
@@ -340,7 +343,8 @@ namespace Objects
 						//M::TVec3<> np = b0 + d * position.y;
 						M::TVec3<> np = center0 + centerDelta * position.y;
 						Vec::normalize(np);
-						np *= height0 + heightDelta * position.y + Grid::SingleLayerHeight * position.z;
+						const float layerHeight = layerHeight0 + layerHeightDelta * position.y;
+						np *= height0 + heightDelta * position.y + layerHeight * position.z;
 						np += x * position.x * (horzScaleBase + horzScaleDelta * position.y);
 						float light = l0 + (ld)* position.y;
 						localMesh.MakeVertex(np, float3(), float4(vtx.color.rgb, light));

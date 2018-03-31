@@ -1147,6 +1147,7 @@ namespace Reflection
 			VAR(closedGame,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame);
 			VAR(roundTimer,Game::Config,-1,INT_MAX,Variable::Persistence::RestoreFromSavegame);
 			VAR(bombsExplodeWhenDestroyed,RuntimeConfig,false,true,Variable::Persistence::RestoreFromSavegame);
+			VAR(storagesExplodeWhenDestroyed,RuntimeConfig,false,true,Variable::Persistence::RestoreFromSavegame);
 			VAR(startBases,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame);
 			VAR(basesRequired,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame);
 			VAR(exposeActionLeftToHostileFactions,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame);

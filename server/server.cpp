@@ -64,9 +64,9 @@ namespace ApplicationInterface
 	}
 
 
-	void	SignalChainReactionExplosion(const Objects::PWorldEntity&causedBy, const Grid::LCellIdI&center, float radius, int damageLevel, float atTime)
+	void	SignalChainReactionExplosion( const Objects::PWorldEntity&causedBy, const Grid::LCellIdI&center, float radius, int damageLevel, bool isDoomsday, float atTime )
 	{
-		Game::GetEvolver()->HandleChainReactionExplosion(Evolver::TExplosion(causedBy, center, radius, damageLevel, atTime ));
+		Game::GetEvolver()->HandleChainReactionExplosion(Evolver::TExplosion(causedBy, center, radius, damageLevel, isDoomsday, atTime ));
 	}
 
 
@@ -441,7 +441,7 @@ namespace ApplicationInterface
 
 		Protocol::VagueAttackTrajectory	roughAttack;
 		bool hasTrajectory = false;
-		if (attack.attackFrom)
+		if (attack.attackFrom && attack.isDirectAttack)
 		{
 			hasTrajectory = true;
 			LogEvent(EventSignificance::Common,attack.attackFrom.get(),"Tracing rough trajectory to "+Vec::toString(center)+" in "+String(attack.flightTime)+" seconds");

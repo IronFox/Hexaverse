@@ -1,25 +1,8 @@
-Permanent checklist for new tutorial maps:
-	EMP zones are off
-	Goal is none
-	AI is off
-	Round timer is -1
-	No survival conditions
-	Only one terraformer (blow up the other)
-
-
-build road to pathfinding:
-	1. make sure detailed road pathfinding cannot create too many jobs
-	2. detailed pathfinding should return substeps rather than a single detailed path
-	
-attack hotkey
-	
-	
-check opacity of accessibility mesh
+hotkeys in commands instead of clientMain.cpp
 	
 at bottom terrain level, emp-damaged, minimum allowed attack and scanning range is still high enough to see and attack neighboring cell
 better visualization of attack/scanning ranges. use special terrain meshes with hard lines to visualize edges
 	
-scale height of lower terrain levels to match loss of horizontal space?
 
 steam: connect via tcp if steam lobby system fails. does not relate to lobbies. cannot reproduce. some explanations:
 	client manages to connect.
@@ -41,7 +24,6 @@ steam: find alternate server location service
 routing through vehicle stores
 
 
-highlight possible movement targets (distance heatmap); ranged areas: build coarse geometry and highlight edges to cells that cannot be reached, that demand a drop, that take more rounds to reach
 explode uranium storages
 
 
@@ -67,7 +49,6 @@ minor bug: allied structure state updates arrive before appearance on new offens
 
 tremor generator building
 
-update documentation, and upload
 
 
 
@@ -84,11 +65,6 @@ bug: clipped terrain sometimes does not rasterize correctly,
 
 
 
-exit fullscreen mode on focus loss?
-
-improve dig symbol
-
-road should not build bridges across liquids? switch mode automatically? reroute?
 
 
 
@@ -108,8 +84,6 @@ controller support
 
 
 
-aerial radar and turret
-bomber
 
 icon floater for insufficient resources to continue job
 
@@ -204,6 +178,17 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+done: highlight possible movement targets (distance heatmap); ranged areas: build coarse geometry and highlight edges to cells that cannot be reached, that demand a drop, that take more rounds to reach
+done: check opacity of accessibility mesh
+done: build road to pathfinding: 1. make sure detailed road pathfinding cannot create too many jobs 2. detailed pathfinding should return substeps rather than a single detailed path
+done: update documentation, and upload
+rejected: exit fullscreen mode on focus loss?
+rejected: improve dig symbol
+rejected: road should not build bridges across liquids? switch mode automatically? reroute?
+added: aerial radar and turret
+added: bomber
+done: scale height of lower terrain levels to match loss of horizontal space?
+added: attack hotkey
 done: pathfinding: make sure surveyor or ai cannot enter vehicle store on accident because new reachabilitymapper allows such (add parameter)
 fixed: when ownership of nexus port changes while only visible from plane, nexus port will disappear until plane moves
 done: AA should not fire when emp damage is present

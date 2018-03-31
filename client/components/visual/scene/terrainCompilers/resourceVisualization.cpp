@@ -104,8 +104,9 @@ namespace VisualTerrain
 			const auto&cell = lowNetCells[i];
 			M::TMatrix4<>	system;
 
-
-			h =  Grid::ToRadiusf( float(Grid::CellStack::ToHeight(layer))+add);
+			const auto baseHeight = Grid::CellStack::ToHeight(layer);
+			const auto layerHeight = Grid::GetLayerHeight(baseHeight);
+			h =  Grid::ToRadiusf( float(baseHeight)+add);
 			const M::TVec3<>&center = structureCenter? cell.cornerCenter : cell.centerVertex.xyz;
 			Mat::makeAxisSystem(center * h,center,2,system);
 			float r = cell.minCornerDistance * h / 4.f * 1.5f;	//dark coat
@@ -120,7 +121,7 @@ namespace VisualTerrain
 
 					float3 color (-0.1f);
 
-					float h2 = h + Grid::SingleLayerHeight * (level*0.25f + 0.05f);
+					float h2 = h + layerHeight * (level*0.25f + 0.05f);
 
 					mesh.SetOffset();
 					mesh << ResourceVertex(center,h,center,float4(color,level+0.8f),1.f);
@@ -167,7 +168,7 @@ namespace VisualTerrain
 
 					float3 color = GetColor(level/20.f,res.GetColor());
 
-					float h2 = h + Grid::SingleLayerHeight * (level*0.25f);
+					float h2 = h + layerHeight * (level*0.25f);
 
 					mesh.SetOffset();
 					mesh << ResourceVertex(center,h2,center,float4(color,level+0.8f),1.f);
@@ -213,7 +214,7 @@ namespace VisualTerrain
 
 				float3 color (0.2f);
 
-				float h2 = h + Grid::SingleLayerHeight * (level*0.25f);
+				float h2 = h + layerHeight * (level*0.25f);
 
 				mesh.SetOffset();
 				mesh << ResourceVertex(center,h2,center,float4(color,level+0.8f),1.f);

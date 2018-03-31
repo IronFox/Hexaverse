@@ -31,6 +31,7 @@ namespace RuntimeConfig
 
 	extern bool		hibernationSystemEnabled;
 	extern bool		bombsExplodeWhenDestroyed;
+	extern bool		storagesExplodeWhenDestroyed;
 	extern bool		tutorialMode;
 
 	typedef ::RoundNumber	RoundNumber;

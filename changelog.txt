@@ -1,3 +1,14 @@
+v0.8.2	[Mar 31 2018]
+	+ If configured, fuel and uranium storage structures now detonate when suffering uncontrolled destruction.
+	> Lower terrain levels are now scaled to maintain the mean planet horizontal-to-vertical ratio.
+	> Improved performance and correctness of construction pathfinding.
+	> Client helper for long construction paths now splits route into segments rather than a bazillion micro jobs.
+	> Client helper now also segments other chain construction modes if too far away for server.
+	> Now showing more versions from changelog on server selection screen.
+	> Adjusted loudness of explosions.
+	* Fixed server crash when processing chain reaction explosions.
+	* Fixed doomsday explosions sometimes not being exposed to other factions even though configured such.
+
 v0.8.1	[Mar 30 2018]
 	+ AntiAircraft scanning and attack range is now researchable by default.
 	> Raptors are no longer excluded from stopping when discoverying new anti-aircraft units.

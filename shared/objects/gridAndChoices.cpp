@@ -114,11 +114,12 @@ namespace Objects
 			return false;
 		}
 
+		const ApplicationInterface::TAttack*	currentExplosionAttack = nullptr;
 
 		
-		void Explode(const ApplicationInterface::TAttack& attack, 
-					 const Grid::HCellIdI&targetCell, const M::TVec3<>&center, int explosionRadius, int damageLevel, bool doomsday,
-					 float&atTime)
+		void Explode( const ApplicationInterface::TAttack& attack, 
+					  const Grid::HCellIdI&targetCell, const M::TVec3<>&center, int explosionRadius, int damageLevel, bool doomsday,
+					  float&atTime)
 		{
 			LogEvent(EventSignificance::Common, attack.attackFrom.get(),"Handling regular explosion at "+ToString(center)+", radius="+String(explosionRadius));
 
@@ -129,7 +130,7 @@ namespace Objects
 			}
 
 			DBG_ASSERT__(attack.attackFrom);
-			
+			currentExplosionAttack = &attack;
 
 			//if (RuntimeConfig::empZones && Grid::AffectedByEMP(targetCell))
 			//{
@@ -249,6 +250,7 @@ namespace Objects
 					foreach (Faction::all,f)
 					{
 						bool changed[BaseGrid::NumFamilies] = {false};
+						(*f)->CheckSensory();
 						(*f)->RegisterExplosionCrater(targetCell,terrainExplosionRadius,atTime);
 					}
 
@@ -276,6 +278,8 @@ namespace Objects
 			allLivingAffected.Clear();
 			affectedStructures.Clear();
 			affectedVehicles.Clear();
+
+			currentExplosionAttack = nullptr;
 		}
 	
 		void ExplodeEMP(const ApplicationInterface::TAttack& attack, 
@@ -288,6 +292,8 @@ namespace Objects
 
 			float outerRadius = explosionRadius*explosionRadius;
 			static Ctr::Buffer0<PWorldEntity>	toDisable;
+
+			currentExplosionAttack = &attack;
 
 
 			ForeachWorldEntity([center,outerRadius,damageLevel,&atTime,attack](const PWorldEntity e)
@@ -325,6 +331,8 @@ namespace Objects
 				d->HandleEMPDamage(damageLevel, atTime);
 			}
 			toDisable.Clear();
+
+			currentExplosionAttack = nullptr;
 		}
 	
 

@@ -156,7 +156,7 @@ namespace Objects
 
 				this->radius = flatRadius;
 
-				const constexpr float h0 = Grid::ToRadius(Grid::CellStack::BottomHeight);
+				const float h0 = Grid::BottomPlanetRadius;
 
 				const float radiusAtBottom = flatRadius * h0 / radialHeight;
 				float height = flatRadialHeight - h0;
@@ -1492,7 +1492,7 @@ namespace Objects
 			{
 				ProgressBar::SetLocation(s->GetWorldPosition()
 				+ 
-				Grid::low.cells[s->location.stackID].centerVertex.xyz*(float(s->GetHeight()-1) * Grid::SingleLayerHeight));
+				Grid::low.cells[s->location.stackID].centerVertex.xyz*(float(s->GetHeight()-1) * Grid::GetLayerHeight(s->location.height)));
 				{
 					if (isBuilding)
 					{
@@ -1552,7 +1552,7 @@ namespace Objects
 		sys.y.xyz *= width;
 		sys.x.xyz *= width;
 			//ShowMessage(Vec::length(sys.z.xyz));
-		sys.z.xyz *= Grid::SingleLayerHeight * Grid::CellStack::HalfRange * 2.f;
+		sys.z.xyz *= Grid::SingleMeanLayerHeight * Grid::CellStack::HalfRange * 2.f;
 					
 		display.SetObjectMatrix(sys);
 		display.LazyRenderVertices(skyPortBeam);
@@ -2161,12 +2161,10 @@ namespace Objects
 			M::TVec3<> color = e->owner ? e->owner->activeEntityColor : float3();
 			SetBeamColor(float4(color,0.25),
 						float4(color,0.25));
-			const float bottom = Grid::ToRadius(-Grid::CellStack::HalfRange);
+			const float bottom = Grid::BottomPlanetRadius;
 			{
 				//display.SetBlendMode(Engine::BlendMode::Add);
-				RenderBeam(e->GetWorldPosition(),-(Grid::ToRadius(e->location.height) 
-								- bottom) /
-								Grid::SingleLayerHeight,
+				RenderBeam(e->GetWorldPosition(),Grid::ToRadius(e->location.height) - bottom,
 								0.1f
 								);
 			}
@@ -2184,9 +2182,7 @@ namespace Objects
 					}
 					for (const auto&waypoint : t.foci)
 					{
-						RenderBeam(Grid::ToWorld(waypoint.target),-(Grid::ToRadius(waypoint.target.height) 
-										- bottom) /
-										Grid::SingleLayerHeight,
+						RenderBeam(Grid::ToWorld(waypoint.target),Grid::ToRadius(waypoint.target.height) - bottom,
 										0.05f);
 					}
 				}

@@ -3,6 +3,13 @@
 
 namespace Objects
 {
+	namespace StorageCommon
+	{
+		static const int						MaxStorage=500;
+
+		void	HandleStorageDestruction(const Grid::LCellIdI&location,const ResourceVector&storage,float&atTime);
+	}
+
 
 	template <class Derivative, index_t LeftoverUpdateIteration=2>
 	class StorageStructure : public WorkingStructureT<Derivative>
@@ -15,6 +22,7 @@ namespace Objects
 
 	public:
 		ResourceVector				storage,maxStorage;
+		static const int			MaxStorage = StorageCommon::MaxStorage;
 
 		virtual void				GetResourceVector(ResourceVector&, ResourceVector&storage, ResourceVector&max) const override	{storage = this->storage; max = maxStorage;}
 		virtual void				SetResourceStorage(const ResourceVector&store)	override
@@ -59,6 +67,14 @@ namespace Objects
 					}
 				}
 			}
+			//WorldEntity overrides:
+			virtual void		OnDestroy(RemovalType t, float&atTime) override
+			{
+				Super::OnDestroy(t,atTime);
+				if (t == RemovalType::UncontrolledExplosion)
+					StorageCommon::HandleStorageDestruction(location,storage,atTime);
+			}
+
 		#else
 			#ifdef HAS_WINDOW
 				virtual void			DescribeType(Description&label, UINT32 descFlags) override
@@ -95,12 +111,12 @@ namespace Objects
 		friend class Super;
 		friend class WorkingStructureT<FuelContainer>;
 		/**/						FuelContainer(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
-									: Super(table,owner,location,atTime)	{maxStorage.level[Resource::Fuel] = 400;}
-		/**/						FuelContainer()	{maxStorage.level[Resource::Fuel] = 400; }	//global prototype
+									: Super(table,owner,location,atTime)	{maxStorage.level[Resource::Fuel] = MaxStorage;}
+		/**/						FuelContainer()	{maxStorage.level[Resource::Fuel] = MaxStorage; }	//global prototype
 	public:
+		//BaseEntity overrides:
 		virtual String				GetTypeName() const override { return "Fuel Container"; };
 		virtual EntityType			GetType() const override {return ConstName::Type_FuelContainer;}
-
 	};
 
 
@@ -110,12 +126,12 @@ namespace Objects
 		friend class Super;
 		friend class WorkingStructureT<MineralContainer>;
 		/**/						MineralContainer(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
-									: Super(table,owner,location,atTime)	{maxStorage.level[Resource::Minerals] = 400;}
-		/**/						MineralContainer()	{maxStorage.level[Resource::Minerals] = 400; }	//global prototype
+									: Super(table,owner,location,atTime)	{maxStorage.level[Resource::Minerals] = MaxStorage;}
+		/**/						MineralContainer()	{maxStorage.level[Resource::Minerals] = MaxStorage; }	//global prototype
 	public:
+		//BaseEntity overrides:
 		virtual String				GetTypeName() const override { return "Mineral Container"; };
 		virtual EntityType			GetType() const override {return ConstName::Type_MineralContainer;}
-
 	};
 
 
@@ -125,12 +141,12 @@ namespace Objects
 		friend class Super;
 		friend class WorkingStructureT<UraniumStorage>;
 		/**/						UraniumStorage(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
-									: Super(table,owner,location,atTime)	{maxStorage.level[Resource::Uranium] = 400;}
-		/**/						UraniumStorage()	{maxStorage.level[Resource::Uranium] = 400; }	//global prototype
+									: Super(table,owner,location,atTime)	{maxStorage.level[Resource::Uranium] = MaxStorage;}
+		/**/						UraniumStorage()	{maxStorage.level[Resource::Uranium] = MaxStorage; }	//global prototype
 	public:
+		//BaseEntity overrides:
 		virtual String				GetTypeName() const override { return "Uranium Storage"; };
 		virtual EntityType			GetType() const override {return ConstName::Type_UraniumStorage;}
-
 	};
 
 	
@@ -145,19 +161,19 @@ namespace Objects
 									: Super(table,owner,location,atTime)	
 		{
 			#ifndef NO_MUNITION
-				maxStorage.level[Resource::Munitions] = 400;
+				maxStorage.level[Resource::Munitions] = MaxStorage;
 			#endif
 		}
 		/**/						Self()
 		{
 			#ifndef NO_MUNITION
-				maxStorage.level[Resource::Munitions] = 400; 
+				maxStorage.level[Resource::Munitions] = MaxStorage; 
 			#endif
 		}	//global prototype
 	public:
+		//BaseEntity overrides:
 		virtual String				GetTypeName() const override { return "Munition Storage"; };
 		virtual EntityType			GetType() const override {return ConstName::Type_MunitionStorage;}
-
 	};
 
 	

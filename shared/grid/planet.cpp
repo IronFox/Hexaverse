@@ -12,12 +12,12 @@ namespace Grid
 	{
 		//float topHeight = heights.y;
 		//based on this, h could go up to 40, though chances for that are excessively rare
-		int up0 = (int)M::Round(heights.y * mountains.heightScale / RawLayerHeight / UnitScale);
+		int up0 = (int)M::Round(heights.y * mountains.heightScale / RawMeanLayerHeight / UnitScale);
 		if (abs(up0) <= mountains.dampening)
 			up0 = 0;
 		else
 			up0 -= mountains.dampening * M::Sign(up0);
-		int up1 = (int)M::Round(heights.x * extendedCore.heightScale / RawLayerHeight / UnitScale);
+		int up1 = (int)M::Round(heights.x * extendedCore.heightScale / RawMeanLayerHeight / UnitScale);
 		if (abs(up1) <= extendedCore.dampening)
 			up1 = 0;
 		else

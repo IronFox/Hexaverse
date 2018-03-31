@@ -11,12 +11,13 @@ namespace Evolver
 		float				radius=1;
 		int					damageLevel=1;
 		float				atTime=0;
+		bool				isDoomsday=false;
 		Objects::PWorldEntity	causedBy;
 
 
 		/**/				TExplosion()	{}
-		/**/				TExplosion(const Objects::PWorldEntity&causedBy, const Grid::LCellIdI&center, float radius, int damageLevel, float atTime)
-							:causedBy(causedBy),
+		/**/				TExplosion(const Objects::PWorldEntity&causedBy, const Grid::LCellIdI&center, float radius, int damageLevel, bool isDoomsday, float atTime)
+							:causedBy(causedBy),isDoomsday(isDoomsday),
 							center(center),radius(radius),damageLevel(damageLevel),atTime(atTime)	{}
 	};
 

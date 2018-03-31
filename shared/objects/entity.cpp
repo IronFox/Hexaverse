@@ -550,7 +550,10 @@ namespace Objects
 		//		}
 		//	}
 		//}
-
+		void		WorldEntity::OverrideSetRegisteredSensorToCurrentLocation()
+		{
+			registeredSensor = TRegisteredSensor(location,empDamageLevel);
+		}
 
 	#endif
 	
@@ -645,9 +648,7 @@ namespace Objects
 				UnregisterSensory(registeredSensor,atTime);
 			}
 		#endif
-		TRegisteredSensor rs;
-		rs.location = loc;
-		rs.empDamageLevel = empDamageLevel;
+		TRegisteredSensor rs = TRegisteredSensor(loc,empDamageLevel);
 
 		
 		this->SyncTime(atTime);
