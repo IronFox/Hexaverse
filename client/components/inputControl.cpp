@@ -583,6 +583,17 @@ namespace InputControl
 			HUD::ResourceGauges::resourcesAsList = !HUD::ResourceGauges::resourcesAsList;
 		}
 
+
+		static bool ShouldExpand(Objects::CursorMode mode)
+		{
+			switch (mode)
+			{
+				case Objects::CursorMode::BuildRoadChainMode:
+					return true;
+			}
+			return false;
+		}
+
 		/**
 		Primary entry point used when clicking anywhere on the window
 		*/
@@ -650,7 +661,8 @@ namespace InputControl
 					}
 					else
 					{
-						if (Objects::activeCursorMode == Objects::CursorMode::BuildRoadChainMode && Objects::selectedVehicle)
+						const auto mode = Objects::activeCursorMode;
+						if (ShouldExpand(mode) && Objects::selectedVehicle)
 						{
 							Buffer0<Grid::LCellIdI>	path;
 							auto rs = Objects::Pathfinding::AppendShortestConstructionPath(Objects::selectedVehicle.get(),true,false,Objects::selectedVehicle->GetLastPointOfOrigin(),target,path);
@@ -660,14 +672,24 @@ namespace InputControl
 								{
 									path.Clear();
 									auto rs2 = Objects::Pathfinding::AppendShortestConstructionPath(Objects::selectedVehicle.get(),true,false,Objects::selectedVehicle->GetLastPointOfOrigin(),target,path,10000);
-									ObjectHelper::DirectTo(Objects::selectedMobileEntity,path.ToRef(), ObjectHelper::AssembleMotionFlags(true,true),Objects::activeCursorMode);
+									if (rs2 == Objects::Pathfinding::Result::DestinationReached)
+									{
+										const count_t stepLength = 10;
+										for (index_t i = stepLength; i+1 < path.GetLength(); i+= stepLength)
+											ObjectHelper::DirectTo(Objects::selectedMobileEntity,path[i], ObjectHelper::AssembleMotionFlags(false,true),mode);
+										ObjectHelper::DirectTo(Objects::selectedMobileEntity,path.Last(), ObjectHelper::AssembleMotionFlags(false,true),mode);
+									}
+									else
+									{
+										LogEvent(EventClass::Preset::commandRejected,"Unable to plot path to destination");
+									}
 								}
 								break;
 								case Objects::Pathfinding::Result::NoPath:
 									LogEvent(EventClass::Preset::commandRejected,Objects::selectedMobileEntity.get(),"Unable to plot path to destination");
 									break;
 								case Objects::Pathfinding::Result::DestinationReached:
-									ObjectHelper::DirectTo(Objects::selectedMobileEntity,target, ObjectHelper::AssembleMotionFlags(false,true),Objects::activeCursorMode);
+									ObjectHelper::DirectTo(Objects::selectedMobileEntity,target, ObjectHelper::AssembleMotionFlags(false,true),mode);
 									break;
 							}
 						}
