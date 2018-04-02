@@ -1,3 +1,10 @@
+test: unit limits
+test: player bases off
+test: nexus bases off but ai on
+review planets. Add pillars planet
+home key: toggle sky grid
+steam: store: Short Description, Why Early Access?
+
 hotkeys in commands instead of clientMain.cpp
 	
 at bottom terrain level, emp-damaged, minimum allowed attack and scanning range is still high enough to see and attack neighboring cell
@@ -17,7 +24,6 @@ steam: connect via tcp if steam lobby system fails. does not relate to lobbies. 
 
 base fog on average terrain height
 steam: find alternate server location service
-
 
 
 
