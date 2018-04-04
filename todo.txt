@@ -1,3 +1,18 @@
+steam: no handler set
+steam: no matching callback function set
+
+alliances: make invite message bigger in log
+alliances: allied mobile unit sensor range not properly updated on terrain after motion
+client: clicking on ghosts often crashes client (hostile or friendly)
+
+alliances: friendly conquered nexus ports count as 'conquering'
+alliances: ghosts of allied units appear in red
+
+client: offensive missile trajectories are sometimes not rendered if origin is invisible
+
+
+
+
 test: unit limits
 test: player bases off
 test: nexus bases off but ai on
