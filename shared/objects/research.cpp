@@ -19,10 +19,14 @@ namespace Objects
 	/*static*/ ResearchState::GlobalState		ResearchState::globalState;
 
 
+	int						ResearchTopic::GetProgress(const ResearchState&st) const
+	{
+		return st.topicProgressVector[serialIndex];
+	}
 
 	/*static*/ PResearchTopic	ResearchState::CreateResearch(const PResearchTopic&parent, const String&name, const String&iconName, 
 												const ResearchTopic::FSetProgress&setProgress, 
-												const ResearchTopic::FGetProgress&getProgress, int maxProgress,
+												int maxProgress,
 												const PResearchTopic&dependency
 											)
 	{
@@ -37,7 +41,7 @@ namespace Objects
 		bool hasIcon = !proto && !component;
 
 
-		PResearchTopic rs(new ResearchTopic(parent, name,hasIcon ? iconSource : "",setProgress,getProgress,maxProgress,dependency));
+		PResearchTopic rs(new ResearchTopic(parent, name,hasIcon ? iconSource : "",setProgress,maxProgress,dependency));
 
 		rs->componentReference = component;
 		rs->prototypeReference = proto;
@@ -62,7 +66,7 @@ namespace Objects
 
 		if (dependency)
 		{
-			if (dependency->getProgress.IsEmpty())
+			if (dependency->maxProgress <= 0)
 			{
 				throw Lua::Exception("Trying to register research dependency of '"+name+"' to unresearchable topic '"+dependency->name+"'");
 			}
@@ -73,11 +77,11 @@ namespace Objects
 
 	ResearchTopic::ResearchTopic(const PResearchTopic&parent, const String&name, const String&iconName, 
 								const FSetProgress&setProgress, 
-								const FGetProgress&getProgress, int maxProgress,
+								int maxProgress,
 								const PResearchTopic&dependency
 								)
 								:Super(name), parent(parent),iconName(iconName),
-								setProgress(setProgress),getProgress(getProgress),maxProgress(maxProgress),
+								setProgress(setProgress),maxProgress(maxProgress),
 								dependency(dependency)
 	{}
 
@@ -93,25 +97,30 @@ namespace Objects
 	{
 		if (IsGroup())
 			return false;
-		auto st = owner ? owner->researchState.researchState : Lua::Reference();
-		if (ResearchCompleted(st))
+		//auto st = owner ? owner->researchState.researchState : Lua::Reference();
+		if (owner && ResearchCompleted(owner->researchState.topicProgressVector))
 			return false;
 		PResearchTopic p = dependency.lock();
-		return !p || p->ResearchCompleted(st) || (owner && owner->researchState.GetResearchQueue().Contains(p));
+		if (!p)
+			return true;
+		if (!owner)
+			return false;
+		return p->ResearchCompleted(owner->researchState.topicProgressVector) || owner->researchState.GetResearchQueue().Contains(p);
 	}
 
 
 
 
 
-	static Ctr::Array<BaseAttributeTable>	structureTables;
+	static Array<BaseAttributeTable>	structureTables;
 
+	static count_t						attribCounter = 0;
 
 	template <typename T, typename F>
 		static void InitAttrib(const Lua::Table&source, const String&path, const String&name, LuaAttribute<T,F>&a, bool allowEmpty = false)
 		{
 			Lua::NamedReference ref = source.GetField(name);
-			a.Clear();
+			a.Clear(attribCounter++);
 			if (ref.IsEmpty())
 			{
 				if (!allowEmpty)
@@ -691,6 +700,7 @@ namespace Objects
 		}
 
 		
+		attribCounter = 0;
 		for (index_t i = 0; i < Prototypes::structures.Count(); i++)
 		{
 			const PStructure&s = Prototypes::structures[i];
@@ -839,7 +849,7 @@ namespace Objects
 
 	bool	ResearchState::AppendResearchTask(const PResearchTopic&active)
 	{
-		if (!active || ResearchQueueIsFull() || !active->CanResearch(researchState,researchQueue.ToRef()) || researchQueue.Contains(active))
+		if (!active || ResearchQueueIsFull() || !active->CanResearch(topicProgressVector,researchQueue.ToRef()) || researchQueue.Contains(active))
 			return false;
 		researchQueue << active;
 		return true;
@@ -855,7 +865,7 @@ namespace Objects
 		researchQueue.Erase(at);
 		for (index_t i = at; i < researchQueue.Count();)
 		{
-			if (!researchQueue[i]->CanResearch(researchState,researchQueue.SubRef(0,i)))
+			if (!researchQueue[i]->CanResearch(topicProgressVector,researchQueue.SubRef(0,i)))
 			{
 				LogEvent(EventClass::Preset::operationAborted,owner->shared_from_this(),"Unable to continue research "+researchQueue[i]->GetFullName()+". Preconditions lost. Aborting operation");
 				researchQueue.Erase(i);
@@ -918,7 +928,7 @@ namespace Objects
 			if (t.setProgress.IsSet())
 			{
 				if (t.maxProgress < 0)
-					t.setProgress(researchState,t.getProgress(researchState)+1);
+					topicProgressVector[ t.serialIndex ] ++;
 			}
 		}
 		changed = true;
@@ -931,10 +941,10 @@ namespace Objects
 		{
 			int left;
 			const auto&res = researchQueue.First();
-			int current = res->getProgress(researchState);
+			int&progress = topicProgressVector[ res->serialIndex ];
 			if (res->maxProgress >= 0)
 			{
-				left = res->maxProgress - current;
+				left = res->maxProgress - progress;
 				if (left <= 0)	//already done...?
 				{
 					LogEvent(EventClass::Preset::important,owner->shared_from_this(),"Research "+res->name+" completed");
@@ -947,7 +957,8 @@ namespace Objects
 				changed = true;
 				if (totalContribution < left)	//no chance to get done
 				{
-					res->setProgress(researchState,current + totalContribution);
+					progress += totalContribution;
+					res->setProgress(researchState,progress);
 					break;
 				}
 				totalContribution -= left;
@@ -958,9 +969,8 @@ namespace Objects
 				globalState.onQueueChange(owner);
 				continue;
 			}
-			int next = current + totalContribution;
-			res->setProgress(researchState,next);
-			DBG_ASSERT_EQUAL__(next,res->getProgress(researchState));
+			progress += totalContribution;
+			res->setProgress(researchState,progress);
 			changed = true;
 
 			if (researchQueue.Count() > 1)

@@ -4,6 +4,21 @@
 
 namespace Objects
 {
+	#ifdef CLIENT
+		struct TStateEntry
+		{
+			float	value;
+			String	description;
+		};
+		typedef Array<TStateEntry>	RawResearchState;
+
+	#else
+		typedef Lua::Reference	RawResearchState;
+
+	#endif
+
+
+
 	template <typename T>
 		struct ConstOverride
 		{
@@ -29,10 +44,13 @@ namespace Objects
 	template <typename T, typename Filter= NoFilter>
 		struct LuaAttribute
 		{
-			Lua::Function<T(Lua::Reference)>		luaGetValue;
-			Lua::Function<String(Lua::Reference)>	luaDescribeValue;
+			#ifndef CLIENT
+				Lua::Function<T(Lua::Reference)>		luaGetValue;
+				Lua::Function<String(Lua::Reference)>	luaDescribeValue;
+				ConstOverride<T>	constOverride;
+			#endif
 
-			ConstOverride<T>	constOverride;
+			index_t		linearIndex = InvalidIndex;
 
 			/**/		LuaAttribute()	{}
 			/**/		LuaAttribute(nullptr_t)	{}
@@ -41,43 +59,72 @@ namespace Objects
 				SetConst(constOverride);
 			}
 
-			bool		IsFunctionOrConstNonZero() const {return constOverride.isSet ? constOverride.constValue != 0 : luaGetValue.IsSet();}
-			bool		IsSet() const {return constOverride.isSet || luaGetValue.IsSet();}
-			bool		IsEmpty() const {return !constOverride.isSet && luaGetValue.IsEmpty();}
-
-			void		SetConst(const T&value)
+			bool		IsFunctionOrConstNonZero() const
 			{
-				constOverride.constValue = value;
-				constOverride.isSet = true;
+				#ifdef CLIENT
+					return serverValue > 0;
+				#else
+					return constOverride.isSet ? constOverride.constValue != 0 : luaGetValue.IsSet();
+				#endif
 			}
-			void		Clear()
+			bool		IsSet() const
 			{
-				constOverride.isSet = false;
-				luaGetValue.ClearReference();
-				luaDescribeValue.ClearReference();
+				#ifdef CLIENT
+					return serverValueDescription.IsNotEmpty();
+				#else
+					return constOverride.isSet || luaGetValue.IsSet();
+				#endif
+			}
+			bool		IsEmpty() const {return !IsSet();}
+
+			#ifndef CLIENT
+				void		SetConst(const T&value)
+				{
+					constOverride.constValue = value;
+					constOverride.isSet = true;
+				}
+			#endif
+
+			void		Clear(index_t linearIndex)
+			{
+				#ifndef CLIENT
+					constOverride.isSet = false;
+					luaGetValue.ClearReference();
+					luaDescribeValue.ClearReference();
+				#endif
+
+				this->linearIndex = linearIndex;
 			}
 
-			T			GetUnfilteredValue(const Lua::Reference&researchState)	const
+			T			GetUnfilteredValue(const RawResearchState&researchState)	const
 			{
-				if (constOverride.isSet)
-					return constOverride.constValue;
-				if (luaGetValue.IsEmpty())
-					return (T)0;
-				return luaGetValue(researchState);
+				#ifdef CLIENT
+					return (T)researchState[linearIndex].value;
+				#else
+					if (constOverride.isSet)
+						return constOverride.constValue;
+					if (luaGetValue.IsEmpty())
+						return (T)0;
+					return luaGetValue(researchState);
+				#endif
 			}
 
-			T			GetValue(const Lua::Reference&researchState)	const
+			T			GetValue(const RawResearchState&researchState)	const
 			{
 				T rs = GetUnfilteredValue(researchState);
 				Filter::Filter(rs);
 				return rs;
 			}
 
-			String		Describe(const Lua::Reference&researchState)	const
+			String		Describe(const RawResearchState&researchState)	const
 			{
-				if (luaDescribeValue.IsSet())
-					return luaDescribeValue(researchState);
-				return GetUnfilteredValue(researchState);
+				#ifdef CLIENT
+					return (T)researchState[linearIndex].description;
+				#else
+					if (luaDescribeValue.IsSet())
+						return luaDescribeValue(researchState);
+					return GetUnfilteredValue(researchState);
+				#endif
 			}
 
 		private:

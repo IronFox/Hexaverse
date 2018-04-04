@@ -134,36 +134,41 @@ namespace Objects
 	};
 
 
-	class BaseAttributeCache
-	{
-	public:
-		static index_t			versionCounter;
-
-	};
-
-	template <typename T>
-		class LuaAttributeCache : public BaseAttributeCache
+	#ifdef CLIENT
+		template <typename T>
+			class LuaAttributeCache{};
+	#else
+		class BaseAttributeCache
 		{
-			typedef BaseAttributeCache	Super;
 		public:
-			index_t				versionCounter=InvalidIndex;
-			T					cached;
-			template <typename F1, typename F2>
-				T				GetEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source,const LuaAttribute<T,F2>&bonus);
-			template <typename F1>
-				T				GetEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source)	{return GetEMPModified(e,source,LuaAttribute<T,NoFilter>());}
-			template <typename F1, typename F2>
-				String			DescribeEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source,const LuaAttribute<T,F2>&bonus);
-			template <typename F1>
-				String			DescribeEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source)	{return DescribeEMPModified(e,source,LuaAttribute<T,NoFilter>()); }
-			template <typename T2, typename F1, typename F2>
-				T				Get(const Lua::Reference&researchState, const LuaAttribute<T,F1>&source, const LuaAttribute<T2,F2>&multiplier, T minimum);
-			template <typename F1>
-				T				Get(const Lua::Reference&researchState, const LuaAttribute<T,F1>&source, nullptr_t, T minimum)	{return Get(researchState,source,LuaAttribute<T,NoFilter>(),minimum);}
-			bool				IsCurrent() const {return versionCounter == Super::versionCounter;}
-			T					Update(T newValue) {cached = newValue; versionCounter = Super::versionCounter; return cached;}
-			void				Invalidate() { versionCounter = InvalidIndex; }
+			static index_t			versionCounter;
+
 		};
+
+		template <typename T>
+			class LuaAttributeCache : public BaseAttributeCache
+			{
+				typedef BaseAttributeCache	Super;
+			public:
+				index_t				versionCounter=InvalidIndex;
+				T					cached;
+				template <typename F1, typename F2>
+					T				GetEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source,const LuaAttribute<T,F2>&bonus);
+				template <typename F1>
+					T				GetEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source)	{return GetEMPModified(e,source,LuaAttribute<T,NoFilter>());}
+				template <typename F1, typename F2>
+					String			DescribeEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source,const LuaAttribute<T,F2>&bonus);
+				template <typename F1>
+					String			DescribeEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source)	{return DescribeEMPModified(e,source,LuaAttribute<T,NoFilter>()); }
+				template <typename T2, typename F1, typename F2>
+					T				Get(const Lua::Reference&researchState, const LuaAttribute<T,F1>&source, const LuaAttribute<T2,F2>&multiplier, T minimum);
+				template <typename F1>
+					T				Get(const Lua::Reference&researchState, const LuaAttribute<T,F1>&source, nullptr_t, T minimum)	{return Get(researchState,source,LuaAttribute<T,NoFilter>(),minimum);}
+				bool				IsCurrent() const {return versionCounter == Super::versionCounter;}
+				T					Update(T newValue) {cached = newValue; versionCounter = Super::versionCounter; return cached;}
+				void				Invalidate() { versionCounter = InvalidIndex; }
+			};
+	#endif
 
 	class CachedAttributes
 	{

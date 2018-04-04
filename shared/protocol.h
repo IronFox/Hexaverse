@@ -1277,14 +1277,13 @@ namespace Protocol
 	};
 
 
-	typedef NET(SHA256::HashContainer) ResourceID;
+	//typedef NET(SHA256::HashContainer) ResourceID;
 
 
-	NETSTRUCT4(GameConfig
+	NETSTRUCT3(GameConfig
 		, NET(UINT32), gameFlags
 		, NET(BYTE), gameGoal
 		, NET(BYTE), worldDiscovery
-		, ResourceID, researchScript
 	)	
 
 	NETSTRUCT6(GameInfo
@@ -1371,13 +1370,29 @@ namespace Protocol
 
 	NETSTRUCT2(ResearchState
 		, NET(TUniqueID), ownerID
-		, NETA(BYTE), serializedData
+		, NETA(int), progressVector
 	)
 
-	NETSTRUCT2(ResourceData
-		, ResourceID, id
-		, NETA(BYTE), data
+	NETSTRUCT5(ResearchTopic
+		, SerialUnsigned, parentTopic		//+1. 0=empty
+		, SerialUnsigned, dependentTopic	//+1. 0=empty
+		, Package::NetString<128>, name
+		, Package::NetString<128>, iconName
+		, int, maxProgress
 	)
+	typedef ::Protocol::NetArray<ResearchTopic,256> ResearchProgram;
+	
+	NETSTRUCT2(Attribute
+		, float,	value
+		, Package::NetString<64>, description
+	)
+	typedef ::Protocol::NetArray<Attribute,256> AttributeVector;
+
+
+	//NETSTRUCT2(ResourceData
+	//	, ResourceID, id
+	//	, NETA(BYTE), data
+	//)
 
 	CONSTRUCT_ENUMERATION3(DropMode, LastTask, AllTasks,AllSafeTasks);
 
@@ -1479,11 +1494,14 @@ namespace Protocol
 			FactionOffline,		// s2c: TUniqueID
 			FactionRequestedNewRound,	// s2c: TUniqueID
 			FactionContinuedRound,		// s2c: TUniqueID
+//			RequestResource,	// c2s : ResourceID -> s2c : ResourceData
+	//		ResourceData,		// s2c : ResourceData
+
+			ResearchProgram,	// s2c : ResearchProgram
 			ResearchState,		// s2c : ResearchState
 			QueueResearch,		// c2s : QueueResearch -> s2c : ResearchQueue
 			ResearchQueue,		// s2c : ResearchQueue
-			RequestResource,	// c2s : ResourceID -> s2c : ResourceData
-			ResourceData,		// s2c : ResourceData
+			AttributeVector,	// s2c : AttributeVector
 
 			LockEMPZones,		// s2c : UINT16
 			UplinkBandwidth,	// s2c : int, can be negative to indicate it's disabled

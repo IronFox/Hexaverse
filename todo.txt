@@ -5,6 +5,8 @@ review planets. Add pillars planet
 home key: toggle sky grid
 steam: store: Short Description, Why Early Access?
 
+copy default research script into program
+
 hotkeys in commands instead of clientMain.cpp
 	
 at bottom terrain level, emp-damaged, minimum allowed attack and scanning range is still high enough to see and attack neighboring cell

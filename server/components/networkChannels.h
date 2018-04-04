@@ -29,7 +29,7 @@ namespace Receiver
 	void	QueueResearch(Protocol::QueueResearch&, TCP::Peer&peer);
 	void	ChatMessage(Protocol::ChatMessage&, TCP::Peer&peer);
 	void	SaveAs(Protocol::SaveAs&, TCP::Peer&peer);
-	void	RequestResource(Protocol::ResourceID&, TCP::Peer&peer);
+//	void	RequestResource(Protocol::ResourceID&, TCP::Peer&peer);
 	void	TutorialAt(NET(INT32)&at);
 
 	/**
@@ -93,7 +93,7 @@ namespace Channels
 	extern TCP::Channel<Protocol::ClientName,Level::Faction,Protocol::ChannelID::ChangeMyName>					changeMyName;
 	extern TCP::Channel<NET(TUniqueID), Level::Faction, Protocol::ChannelID::IdentifyFaction>					identifyFactionRecv;
 	extern TCP::Channel<Protocol::QueueResearch, Level::Faction, Protocol::ChannelID::QueueResearch>			queueResearch;
-	extern TCP::Channel<Protocol::ResourceID, Level::PreFaction, Protocol::ChannelID::RequestResource>			requestResource;
+	//extern TCP::Channel<Protocol::ResourceID, Level::PreFaction, Protocol::ChannelID::RequestResource>			requestResource;
 	extern TCP::Channel<NET(INT32),Level::Faction,Protocol::ChannelID::TutorialAt>								tutorialAt;
 
 
@@ -120,7 +120,7 @@ namespace Channels
 	extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionOffline>						factionOffline;
 	extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionRequestedNewRound>				factionRequestedNewRound;
 	extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionContinuedRound>				factionContinuedRound;
-	extern TCP::ObjectSender<Protocol::ResourceData,Protocol::ChannelID::ResourceData>					resourceData;
+	//extern TCP::ObjectSender<Protocol::ResourceData,Protocol::ChannelID::ResourceData>					resourceData;
 	
 	extern TCP::ObjectSender<NET(UINT16), Protocol::ChannelID::LockEMPZones>							lockEmpZones;
 	#ifndef NO_HIBERNATION
