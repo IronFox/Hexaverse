@@ -1159,7 +1159,7 @@ namespace FileIO
 			}
 			catch (const std::exception&ex)
 			{
-				LogEvent(EventClass::Preset::error,String("Exception while loading ")+String(filename)+": "+ex.what());
+				LogEvent(EventClass::Preset::error,String("Exception while loading ")+FileSystem::PathToString(filename)+": "+ex.what());
 				failed = true;
 			}
 		}
@@ -1167,12 +1167,12 @@ namespace FileIO
 
 		if (failed)
 		{
-			LogEvent(EventClass::Preset::error,"Unable to restore saved world state from '"+String(filename)+"'.");
+			LogEvent(EventClass::Preset::error,"Unable to restore saved world state from '"+FileSystem::PathToString(filename)+"'.");
 			return;
 		}
 
 
-		LogEvent(EventSignificance::Uncommon,"Restoring saved world state from '"+String(filename)+"'.");
+		LogEvent(EventSignificance::Uncommon,"Restoring saved world state from '"+FileSystem::PathToString(filename)+"'.");
 		bool wasOpen = ::Network::CloseSession();
 		bool nexusFound = false, worldInfoFound = false;
 
@@ -1199,7 +1199,7 @@ namespace FileIO
 		}
 		catch (const std::exception&ex)
 		{
-			LogEvent(EventClass::Preset::error,String("Exception while loading research script of ")+String(filename)+": "+ex.what());
+			LogEvent(EventClass::Preset::error,String("Exception while loading research script of ")+FileSystem::PathToString(filename)+": "+ex.what());
 			failed = true;
 		}
 
@@ -1923,7 +1923,7 @@ namespace FileIO
 
 		if (container.SaveToFile(name.c_str()))
 		{
-			LogEvent(EventClass(EventSignificance::Uncommon,EventFlavor::ServerPrivate),"World snapshot, round "+RuntimeConfig::roundNumber.ToString()+", written to "+String(name)+" in "+String(timer.GetSecondsSince(t0))+" seconds");
+			LogEvent(EventClass(EventSignificance::Uncommon,EventFlavor::ServerPrivate),"World snapshot, round "+RuntimeConfig::roundNumber.ToString()+", written to "+FileSystem::PathToString(name)+" in "+String(timer.GetSecondsSince(t0))+" seconds");
 			//LogEvent(EventSignificance::Uncommon,"World snapshot created in "+String(timer.GetSecondsSince(t0))+" seconds");
 		}
 		else
