@@ -571,6 +571,13 @@ namespace Objects
 			@return true if the local faction exists, the player faction exists, and the two are allied. Also true if the local faction is the player faction
 			*/
 			bool		IsAlliedWithMe() const;
+
+			/**
+			Checks whether the local faction is allied with the local player's faction and sharing sensors.
+			Null-pointer sensitive (may be called on a null-object)
+			@return true if the local faction exists, the player faction exists, and the two are allied. Also true if the local faction is the player faction
+			*/
+			bool		SharesSensorsWithMe() const;
 		#endif
 
 

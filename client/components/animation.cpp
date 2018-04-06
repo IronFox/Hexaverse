@@ -1192,7 +1192,7 @@ namespace Animation
 								Objects::RemoveVehicleFromGrid(v,v->location);
 						}
 					}
-					if (allocatedTarget->IsMobile() && allocatedTarget->isOwnedByMe)
+					if (allocatedTarget->IsMobile() && allocatedTarget->owner->SharesSensorsWithMe())
 					{
 						Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(allocatedTarget);
 						float t = 0.f;
@@ -1427,7 +1427,7 @@ namespace Animation
 				//v->Relocate(path->rawPath.Last().first,false);
 				v->location = path->rawPath.Last().first;
 				//Objects::InsertVehicleIntoGrid(v,v->location);	will be done later
-				if (v->isOwnedByMe)
+				if (v->owner->SharesSensorsWithMe())
 				{
 					float t = 0.f;
 					v->MoveSensoryToCurrentLocation(t);
@@ -1895,7 +1895,7 @@ namespace Animation
 
 				Objects::ForeachMobileWorldEntity([](const Objects::PMobileEntity&e)
 				{
-					if (e->isOwnedByMe && !Animation::insertIntoGridLater.IsSet(e->id))
+					if (e->owner->SharesSensorsWithMe() && !Animation::insertIntoGridLater.IsSet(e->id))
 					{
 						float t = 0.f;
 						e->MoveSensoryToCurrentLocation(t);
@@ -1908,7 +1908,7 @@ namespace Animation
 					Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(Objects::GetEntity(key));
 					if (v)
 					{
-						if (v->isOwnedByMe)
+						if (v->owner->SharesSensorsWithMe())
 						{
 							float t = 0.f;
 							v->MoveSensoryToCurrentLocation(t);

@@ -54,7 +54,7 @@ namespace ClientGrid
 				World::actual.FlushAndValidateSensory();
 				Objects::ForeachWorldEntity([](const Objects::PWorldEntity&e)
 				{
-					if (e->isOwnedByMe || e->owner->SharingSensorWith(Objects::Faction::mine))
+					if (e->owner->SharesSensorsWithMe())
 					{
 						float t= 0;
 						e->ReapplySensory(t);
