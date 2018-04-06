@@ -154,7 +154,7 @@ namespace Receiver
 							alliance->VisitMembers([&names](const Objects::PFaction&f){names << f->GetName();});
 							members = " ("+implode(',',names.ToRef())+")";
 						}
-						LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain),cother->peer.lock(), "You have been invited into alliance "+ToString(alliance->id)+" by "+client->faction->GetName()+members);
+						LogEvent(EventClass(EventSignificance::Important,EventFlavor::ChatMessage),cother->peer.lock(), client->faction->GetName()+" invited you to join their alliance"+members);
 					}
 					if (alliance->CountLivingMembers() > 1)
 					{
@@ -165,7 +165,7 @@ namespace Receiver
 							Network::PClient cother;
 							if (Network::playerMap.Query(f,cother))
 							{
-								LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain),cother->peer.lock(),client->faction->GetName()+ " invited "+faction->GetName()+" into your alliance");
+								LogEvent(EventClass(EventSignificance::Important,EventFlavor::ChatMessage),cother->peer.lock(),client->faction->GetName()+ " invited "+faction->GetName()+" to join your alliance");
 							}
 						});
 

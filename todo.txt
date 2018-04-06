@@ -2,7 +2,6 @@ documentation: update view icon image and documentation (+home-key on cft_aerial
 steam: no handler set
 steam: no matching callback function set
 
-alliances: make invite message bigger in log
 alliances: allied mobile unit sensor range not properly updated on terrain after motion
 client: clicking on ghosts often crashes client (hostile or friendly)
 
@@ -200,6 +199,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+done: alliances: make invite message bigger in log
 done: highlight possible movement targets (distance heatmap); ranged areas: build coarse geometry and highlight edges to cells that cannot be reached, that demand a drop, that take more rounds to reach
 done: check opacity of accessibility mesh
 done: build road to pathfinding: 1. make sure detailed road pathfinding cannot create too many jobs 2. detailed pathfinding should return substeps rather than a single detailed path
