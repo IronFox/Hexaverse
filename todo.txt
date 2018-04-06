@@ -5,7 +5,6 @@ steam: no matching callback function set
 client: clicking on ghosts often crashes client (hostile or friendly)
 
 alliances: friendly conquered nexus ports count as 'conquering'
-alliances: ghosts of allied units appear in red
 
 client: offensive missile trajectories are sometimes not rendered if origin is invisible
 
@@ -198,6 +197,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: alliances: ghosts of allied units appear in red
 fixed: alliances: allied mobile unit sensor range not properly updated on terrain after motion
 done: alliances: make invite message bigger in log
 done: highlight possible movement targets (distance heatmap); ranged areas: build coarse geometry and highlight edges to cells that cannot be reached, that demand a drop, that take more rounds to reach
