@@ -2191,6 +2191,7 @@ int main( int argc, const char* argv[])
 		//			Engine::input.Bind(Key::R,ToggleResourceView);
 					Engine::input.Bind(Key::Ctrl,InputControl::ActivateAttackMode, [](){Objects::DisableModes(Network::ControlEnabled());});
 					Engine::input.Bind(Key::End,InputControl::ToggleSeeThrough);
+					Engine::input.Bind(Key::Home,Camera::ToggleOrbit);
 
 					Engine::input.Bind(Key::H,InputControl::ToggleControlGUI);
 

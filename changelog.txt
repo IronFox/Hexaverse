@@ -1,4 +1,5 @@
 v0.8.3
+	+ Home key now toggles sub orbital grid visibility.
 
 v0.8.2	[Mar 31 2018]
 	+ If configured, fuel and uranium storage structures now detonate when suffering uncontrolled destruction.
