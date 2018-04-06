@@ -94,9 +94,9 @@ namespace VisualEventLog
 				case EventFlavor::ChatMessage:
 					scale = 2.f;
 					if (owner)
-					{
 						color = owner->color;
-					}
+					else
+						color = float3(0.8,1,0.8);
 				break;
 			}
 			switch (type.significance)
