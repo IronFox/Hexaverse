@@ -77,7 +77,7 @@ namespace ScriptCache
 		if (cached && FileSystem::GetModificationTime(path) == cached->second)
 			return cached->first;
 
-		LogEvent(EventClass::Preset::common,"Loading script file '"+String(path)+"'...");
+		LogEvent(EventClass::Preset::common,"Loading script file '"+FileSystem::PathToString(path)+"'...");
 
 		PScript s(new Script());
 		s->filename = rs.GetLocation();
@@ -184,16 +184,16 @@ namespace ScriptCache
 				fclose(f);
 				if (written != data.size())
 				{
-					LogEvent(EventClass::Preset::error,"Warning: Unable to write entire received resource "+Bin2Str::ConvertPOD(id)+" to file: "+String(path)+". Erasing remains");
+					LogEvent(EventClass::Preset::error,"Warning: Unable to write entire received resource "+Bin2Str::ConvertPOD(id)+" to file: "+FileSystem::PathToString(path)+". Erasing remains");
 					FileSystem::UnlinkFile(path);
 				}
 				else
-					LogEvent(EventClass::Preset::configuration,"Resource "+Bin2Str::ConvertPOD(id)+" cached to file: "+String(path));
+					LogEvent(EventClass::Preset::configuration,"Resource "+Bin2Str::ConvertPOD(id)+" cached to file: "+FileSystem::PathToString(path));
 
 			}
 			else
 			{
-				LogEvent(EventClass::Preset::error,"Warning: Unable to write received resource "+Bin2Str::ConvertPOD(id)+" to file: "+String(path));
+				LogEvent(EventClass::Preset::error,"Warning: Unable to write received resource "+Bin2Str::ConvertPOD(id)+" to file: "+FileSystem::PathToString(path));
 			}
 
 		}
