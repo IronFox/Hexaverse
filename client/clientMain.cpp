@@ -1094,7 +1094,7 @@ namespace ApplicationInterface
 				Tutorial::ShowMessage(Objects::selectedEntity->GetTypeName());
 			if (Objects::selectedEntity->IsDeadOrGhost())
 			{
-				if (Objects::selectedEntity->isOwnedByMe)
+				if (Objects::selectedEntity->owner->IsAlliedWithMe())
 					Tutorial::ShowMessage("Friendly Ghosts");
 				else
 					Tutorial::ShowMessage("Hostile Ghosts");

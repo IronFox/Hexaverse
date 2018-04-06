@@ -1,6 +1,7 @@
 v0.8.3
 	> Alliance invite messages are now much larger in the visual client log.
 	* Fixed fog of war for allied mobile units.
+	* Fixed coloring of allied ghosts.
 
 v0.8.2	[Mar 31 2018]
 	+ If configured, fuel and uranium storage structures now detonate when suffering uncontrolled destruction.
