@@ -1,3 +1,4 @@
+documentation: update view icon image and documentation (+home-key on cft_aerial)
 steam: no handler set
 steam: no matching callback function set
 
