@@ -46,7 +46,7 @@ namespace RuntimeConfig
 		#endif
 		if (!actual.Find(base,outFile,FileSystem::FindFlags::None))
 		{
-			FATAL__("Unable to reference file '"+String(base)+"' relative to '"+String(actual.GetLocation())+"'");
+			FATAL__("Unable to reference file '"+FileSystem::PathToString(base)+"' relative to '"+FileSystem::PathToString(actual.GetLocation())+"'");
 		}
 	}
 
