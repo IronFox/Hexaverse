@@ -1124,9 +1124,7 @@ namespace ApplicationInterface
 			}
 
 			bool anyOrbit = false;
-			if (Objects::selectedMobileEntity && Objects::selectedMobileEntity->turret->subOrbitalScanningRange.IsFunctionOrConstNonZero())
-				anyOrbit = true;
-			elif (Objects::selectedEntity->IsTower() && To<Objects::Tower>::Cast(Objects::selectedEntity)->turret->subOrbitalScanningRange.IsFunctionOrConstNonZero())
+			if (base && base->turret->subOrbitalScanningRange.IsFunctionOrConstNonZero())
 				anyOrbit = true;
 
 			if (!anyOrbit)
