@@ -1096,7 +1096,7 @@ namespace FileIO
 
 		Riff::Container file;
 		bool failed = false;
-		String filenameName = "'"+String(FileSystem::ExtractFileNameExt(filename))+ "'";
+		String filenameName = "'"+FileSystem::PathToString(FileSystem::ExtractFileNameExt(filename))+ "'";
 		if (!file.LoadFromFile(filename.c_str()))
 		{
 			LogEvent(EventClass::Preset::error,"File not found");
@@ -1927,7 +1927,7 @@ namespace FileIO
 			//LogEvent(EventSignificance::Uncommon,"World snapshot created in "+String(timer.GetSecondsSince(t0))+" seconds");
 		}
 		else
-			LogEvent(EventClass::Preset::error,"Unable to write world to "+String(name));
+			LogEvent(EventClass::Preset::error,"Unable to write world to "+FileSystem::PathToString(name));
 		//Grid::SaveToFiles(name+".grid");
 		//Objects::SaveToFiles(name+".objects");
 

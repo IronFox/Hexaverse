@@ -172,7 +172,7 @@ namespace ServerProcess
 			if (TryResume())
 				return;
 			resumed = false;
-			logNormal("Starting server process (workingDirectory='"+String(workingDirectory)+"', path='"+String(path)+"', parameters='"+String(parameters)+"', showWindow="+String(showWindow)+")");
+			logNormal("Starting server process (workingDirectory='"+FileSystem::PathToString(workingDirectory)+"', path='"+FileSystem::PathToString(path)+"', parameters='"+FileSystem::PathToString(parameters)+"', showWindow="+String(showWindow)+")");
 			try
 			{
 				process.onEndAsync = [](){

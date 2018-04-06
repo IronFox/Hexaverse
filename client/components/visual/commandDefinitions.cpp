@@ -1437,7 +1437,8 @@ namespace Objects
 				));
 
 			viewCommands->Add(new GlobalCommand("Show Sky Grid",
-					&Camera::ToggleOrbit, &Detail::SubOrbitalCmd::CheckGridVisibility));
+					&Camera::ToggleOrbit, &Detail::SubOrbitalCmd::CheckGridVisibility
+			))->name += " (Home)";
 
 		}
 		
