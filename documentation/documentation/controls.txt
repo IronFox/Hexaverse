@@ -76,8 +76,10 @@ Left to right, the commands are:
 ** **Clip-View Up** (shortcut: **Page Up**): Decreases [[terrain|clipping depth]].
 ** **Hide Objects**: Hides/shows all units on screen. Shadows are still rendered.
 ** **Show Resources**: Toggles display of [[concepts/resources]] on screen.
-** **Show Ranges**: Displays all friendly attack ranges.
-** **Show Hostile Ranges**: Displays all hostile attack ranges.
+** **Show Ranges**: Displays all friendly sensor/attack ranges.
+** **Show Hostile Ranges**: Displays all hostile sensor/attack ranges.
+** **Show Sensor Ranges**: Displays sensor ranges as yellow bubbles (on by default)
+** **Show Mobile Reach**: Displays an experimental translucent geometry where the currently selected mobile unit can reach in two rounds. Hard edges outline blocking terrain or buildings.
 
 ===Contact and Event Lists===
 Friendly and hostile contacts are grouped by type and displayed at the top edge of the screen.
