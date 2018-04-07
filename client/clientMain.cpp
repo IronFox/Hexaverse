@@ -2423,6 +2423,14 @@ int main( int argc, const char* argv[])
 
 		return 0;
 	}
+	catch (const Except::Renderer::DeviceConnectionLost&ex)
+	{
+		LogEvent(EventClass( EventSignificance::SystemFatal, EventFlavor::SystemError ),ex.what());
+		Logging::End();
+		Network::client.Disconnect();
+		ErrMessage(ex.GetRawMessage());
+		TerminateProcess(GetCurrentProcess(),0);	//self-terminate
+	}
 	catch (const Except::Exception&exception)
 	{
 		FATAL__("Caught unhandled exception of type "+String(exception.GetType())+":\n"+exception.what());
