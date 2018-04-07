@@ -1,6 +1,7 @@
 v0.8.3
 	> Alliance invite messages are now much larger in the visual client log.
 	> Clients can now see the resistance of nexus ports being conquered by allies.
+	> Bug reporter now compresses uploads and allows entering an optional sender email address.
 	* Fixed fog of war for allied mobile units.
 	* Fixed coloring of allied ghosts.
 
