@@ -697,7 +697,23 @@ namespace Objects
 			}
 		}
 		else
-			activeCursorMode = CursorMode::Idle;
+			activeCursorMode = CursorMode::Idle;	//can't do mode
+
+		UpdateChoices(Network::ControlEnabled());
+	}
+
+	void CommonCmd::ActivateMode(CursorMode mode)
+	{
+		if (activeCursorMode == mode)
+			return;
+		PMobileEntity v = selectedMobileEntity;
+		PTower t = ToTower(selectedEntity);
+		if (v || (mode == CursorMode::AttackMode && t))
+		{
+			activeCursorMode = mode;
+		}
+		else
+			activeCursorMode = CursorMode::Idle;	//can't do mode
 
 		UpdateChoices(Network::ControlEnabled());
 	}

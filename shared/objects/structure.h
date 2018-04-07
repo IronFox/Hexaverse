@@ -694,7 +694,7 @@ namespace Objects
 	Resource supplier, and winning condition, NexusPorts are located on the 12 pentagons around the planet.
 	In order to capture a NexusPort, one must build any one structure next to it. If the last structure is lost, the NexusPort
 	will change ownership back to the Nexus faction. Only then can it be captured by another player.
-	When switched on, NexusPorts count down a resistence value until they count as a winning condition.
+	When switched on, NexusPorts count down a resistance value until they count as a winning condition.
 	Whenever ownership changes, or energy supply is cut, this value resets
 	*/
 	class NexusPort : public WorkingStructureT<NexusPort>, public SkyLinkStructure
@@ -704,7 +704,7 @@ namespace Objects
 		typedef NexusPort		Self;
 		friend class Super;
 		/**/						Self(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) 
-									: Super(table,owner,location,atTime),resistence(-1)	{}
+									: Super(table,owner,location,atTime),resistance(-1)	{}
 		/**/						Self()	{ }	//global prototype
 
 		#ifndef CLIENT
@@ -714,13 +714,13 @@ namespace Objects
 		//NaturalResourceVector		naturalResources;
 	public:
 		static const int			EnergyConsumption = 10;
-		int							resistence;
+		int							resistance;
 		#ifndef CLIENT
 			RoundNumber				lastSpawnRound=RoundNumber(
 											0xFFFFFFF0
 											);	//last time this nexus spawned nexus units
 		#endif
-		static int					ResistenceRounds;
+		static int					ResistanceRounds;
 
 
 		virtual bool				WouldLikeToEnable() const override {return true;}

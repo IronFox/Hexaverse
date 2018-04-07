@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -195,8 +196,45 @@ namespace BugReporter
 		public DateTime MinTime;
 		public DateTime MaxTime;
 		private HashSet<string> entityIDs;
-		private string[][] lines;
-		public string Combined { get; private set; }
+		private string[][] tokenizedLines;
+
+		public byte[] Compress()
+		{
+			try
+			{
+				byte[] compressed;
+				using (MemoryStream ms = new MemoryStream())
+				{
+					using (DeflateStream compressionStream = new DeflateStream(ms, CompressionLevel.Optimal))
+					{
+						var fs = new FileStream(File.Path, FileMode.Open, FileAccess.Read, FileShare.Read);
+						fs.CopyTo(compressionStream);
+					}
+					compressed = ms.ToArray();
+				}
+
+				//using (MemoryStream ms2 = new MemoryStream())
+				//using (MemoryStream ms3 = new MemoryStream())
+				//{
+				//	using (DeflateStream decompress = new DeflateStream(new MemoryStream(compressed), CompressionMode.Decompress))
+				//	{
+				//		decompress.CopyTo(ms2);
+				//		var fs = new FileStream(File.Path, FileMode.Open, FileAccess.Read, FileShare.Read); ;
+				//		fs.CopyTo(ms3);
+				//	}
+				//	Debug.Assert(ms2.ToArray().SequenceEqual(ms3.ToArray()));
+				//}
+
+				return compressed;
+			}
+			catch (Exception ex)
+			{
+				MessageBox.Show(ex.Message + " while trying to compress " + File.Path);
+				return new byte[0];
+			}
+
+
+		}
 
 		private static Dictionary<string, LogFile> cache = new Dictionary<string, LogFile>();
 
@@ -239,23 +277,23 @@ namespace BugReporter
 
 		private void LoadLines()
 		{
-			if (lines == null)
+			if (tokenizedLines == null)
 			{
 				try
 				{
-					StringBuilder combined = new StringBuilder();
+					//StringBuilder combined = new StringBuilder();
 					var lines0 = File.ReadAllLines();
 					//lines = new string[lines0.Length][];
 					List<string[]> tempLines = new List<string[]>();
 					foreach (var line in lines0)
 					{
 						tempLines.Add(line.Split('\t'));
-						combined.AppendLine(line);
+					//	combined.AppendLine(line);
 					}
-					lines = tempLines.ToArray();
-					if (combined.Length > 65535)
-						combined.Remove(0, combined.Length - 65535);
-					Combined = combined.ToString();
+					tokenizedLines = tempLines.ToArray();
+					//if (combined.Length > 65535)
+						//combined.Remove(0, combined.Length - 65535);
+					//Combined = combined.ToString();
 				}
 				catch { }
 
@@ -266,7 +304,7 @@ namespace BugReporter
 		public string[] ScanLines(Func<string[], bool> f)
 		{
 			LoadLines();
-			foreach (var line in lines)
+			foreach (var line in tokenizedLines)
 				if (f(line))
 					return line;
 			return null;
@@ -275,7 +313,7 @@ namespace BugReporter
 		public void VisitLines(Action<string[]> f)
 		{
 			LoadLines();
-			foreach (var line in lines)
+			foreach (var line in tokenizedLines)
 				f(line);
 		}
 		public const int MessageAt = 10;

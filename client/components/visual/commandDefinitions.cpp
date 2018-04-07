@@ -870,6 +870,7 @@ namespace Objects
 			#endif
 
 			Command::PBase buildRoadTo(new Command::IconCommand("Build Road to", &CommonCmd::ToggleMode<CursorMode::BuildRoadChainMode>, &CommonCmd::ModeCheck<CursorMode::BuildRoadChainMode>, NoCosts));
+			buildRoadTo->name += " (P)";
 			Command::PBase buildBridgeTo( new Command::IconCommand("Build Bridge to", &CommonCmd::ToggleMode<CursorMode::BuildBridgeMode>, &CommonCmd::ModeCheck<CursorMode::BuildBridgeMode>,NoCosts) );
 
 			terraformAddGround->Add( buildRoadTo);

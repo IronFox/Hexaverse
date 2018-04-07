@@ -125,7 +125,7 @@ namespace VehicleAccessibilityMesh
 
 		mesh.ibo.Clear();
 
-		if (!e)
+		if (!e || e->IsDeadOrGhost())
 			return;
 		const int speed = e->GetMovementStepsPerRound();
 

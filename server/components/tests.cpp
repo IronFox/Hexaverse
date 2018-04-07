@@ -166,8 +166,8 @@ namespace Test
 				utf32String.Set(i,RandomUTF32NoZero(random));
 
 			UTF32String backConverted;
-			String utf8String;
-			UTF16String utf16String;
+			String utf8String,utf16Direct;
+			UTF16String utf16String,utf8Direct;
 
 			StringEncoding::UTF32::ToUTF8(utf32String,utf8String);
 			StringEncoding::UTF32::ToUTF16(utf32String,utf16String);
@@ -175,6 +175,10 @@ namespace Test
 			ASSERT__(backConverted==utf32String);
 			StringEncoding::UTF16::ToUTF32(utf16String,backConverted);
 			ASSERT__(backConverted==utf32String);
+			StringEncoding::UTF8::ToUTF16(utf8String,utf8Direct);
+			ASSERT__(utf8Direct==utf16String);
+			StringEncoding::UTF16::ToUTF8(utf16String,utf16Direct);
+			ASSERT__(utf16Direct==utf8String);
 		}
 
 	}

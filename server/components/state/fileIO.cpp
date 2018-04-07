@@ -915,7 +915,7 @@ namespace FileIO
 			if (n)
 			{
 				UINT32 data[2];
-				data[0] = (UINT32)n->resistence;
+				data[0] = (UINT32)n->resistance;
 				data[1] = n->lastSpawnRound.main;
 				parent->AppendBlock(RID::nexusData)->SetData(data,sizeof(data));
 			}
@@ -1017,7 +1017,7 @@ namespace FileIO
 
 				GetBinary(parent,RID::nexusData,data,sizeof(data));
 
-				n->resistence = (int)data[0];
+				n->resistance = (int)data[0];
 				n->lastSpawnRound = data[1];
 
 				n->OnLoad();
@@ -1096,7 +1096,7 @@ namespace FileIO
 
 		Riff::Container file;
 		bool failed = false;
-		String filenameName = "'"+String(FileSystem::ExtractFileNameExt(filename))+ "'";
+		String filenameName = "'"+FileSystem::PathToString(FileSystem::ExtractFileNameExt(filename))+ "'";
 		if (!file.LoadFromFile(filename.c_str()))
 		{
 			LogEvent(EventClass::Preset::error,"File not found");
@@ -1159,7 +1159,7 @@ namespace FileIO
 			}
 			catch (const std::exception&ex)
 			{
-				LogEvent(EventClass::Preset::error,String("Exception while loading ")+String(filename)+": "+ex.what());
+				LogEvent(EventClass::Preset::error,String("Exception while loading ")+FileSystem::PathToString(filename)+": "+ex.what());
 				failed = true;
 			}
 		}
@@ -1167,12 +1167,12 @@ namespace FileIO
 
 		if (failed)
 		{
-			LogEvent(EventClass::Preset::error,"Unable to restore saved world state from '"+String(filename)+"'.");
+			LogEvent(EventClass::Preset::error,"Unable to restore saved world state from '"+FileSystem::PathToString(filename)+"'.");
 			return;
 		}
 
 
-		LogEvent(EventSignificance::Uncommon,"Restoring saved world state from '"+String(filename)+"'.");
+		LogEvent(EventSignificance::Uncommon,"Restoring saved world state from '"+FileSystem::PathToString(filename)+"'.");
 		bool wasOpen = ::Network::CloseSession();
 		bool nexusFound = false, worldInfoFound = false;
 
@@ -1199,7 +1199,7 @@ namespace FileIO
 		}
 		catch (const std::exception&ex)
 		{
-			LogEvent(EventClass::Preset::error,String("Exception while loading research script of ")+String(filename)+": "+ex.what());
+			LogEvent(EventClass::Preset::error,String("Exception while loading research script of ")+FileSystem::PathToString(filename)+": "+ex.what());
 			failed = true;
 		}
 
@@ -1923,11 +1923,11 @@ namespace FileIO
 
 		if (container.SaveToFile(name.c_str()))
 		{
-			LogEvent(EventClass(EventSignificance::Uncommon,EventFlavor::ServerPrivate),"World snapshot, round "+RuntimeConfig::roundNumber.ToString()+", written to "+String(name)+" in "+String(timer.GetSecondsSince(t0))+" seconds");
+			LogEvent(EventClass(EventSignificance::Uncommon,EventFlavor::ServerPrivate),"World snapshot, round "+RuntimeConfig::roundNumber.ToString()+", written to "+FileSystem::PathToString(name)+" in "+String(timer.GetSecondsSince(t0))+" seconds");
 			//LogEvent(EventSignificance::Uncommon,"World snapshot created in "+String(timer.GetSecondsSince(t0))+" seconds");
 		}
 		else
-			LogEvent(EventClass::Preset::error,"Unable to write world to "+String(name));
+			LogEvent(EventClass::Preset::error,"Unable to write world to "+FileSystem::PathToString(name));
 		//Grid::SaveToFiles(name+".grid");
 		//Objects::SaveToFiles(name+".objects");
 

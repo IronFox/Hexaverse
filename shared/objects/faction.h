@@ -276,7 +276,7 @@ namespace Objects
 		Checks whether or not units of the other faction are considered friendly (invalid auto-targets).
 		This check is symmetric
 		*/
-		bool			IsFriendly(const PFaction&other) const {return other.get() == this || other->alliance == alliance;}
+		bool			IsFriendly(const PFaction&other) const {return other.get() == this || (other && other->alliance == alliance);}
 		/**
 		Checks whether or not units of the other faction receive detailed entity state information such as build queues.
 		This check is symmetric
@@ -571,6 +571,13 @@ namespace Objects
 			@return true if the local faction exists, the player faction exists, and the two are allied. Also true if the local faction is the player faction
 			*/
 			bool		IsAlliedWithMe() const;
+
+			/**
+			Checks whether the local faction is allied with the local player's faction and sharing sensors.
+			Null-pointer sensitive (may be called on a null-object)
+			@return true if the local faction exists, the player faction exists, and the two are allied. Also true if the local faction is the player faction
+			*/
+			bool		SharesSensorsWithMe() const;
 		#endif
 
 

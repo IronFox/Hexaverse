@@ -47,12 +47,14 @@ namespace BugReporter
 			int numFullSteps = str.Length / maxCharacters;
 
 			int numTotalSteps = (str.Length + maxCharacters - 1) / maxCharacters;
-
+			StringBuilder escaped = new StringBuilder();
 			for (int i = 0; i < numFullSteps; i++)
-				builder.Append(Uri.EscapeDataString(str.Substring(maxCharacters * i, maxCharacters)));
+				escaped.Append(Uri.EscapeDataString(str.Substring(maxCharacters * i, maxCharacters)));
 			if (numTotalSteps > numFullSteps)
-				builder.Append(Uri.EscapeDataString(str.Substring(maxCharacters * numFullSteps)));
-
+				escaped.Append(Uri.EscapeDataString(str.Substring(maxCharacters * numFullSteps)));
+			bool nonEqual = escaped.ToString() != str;
+			
+			builder.Append(escaped);
 		}
 
 		static async Task<string> ContactServerAsync(IEnumerable<Tuple<string, string>> parameters, int delayMS, bool validateCertificate)
@@ -537,6 +539,7 @@ namespace BugReporter
 				parameters.Add(new Tuple<string, string>("action", "store"));
 				parameters.Add(new Tuple<string, string>("description", bugDescription.Text));
 				parameters.Add(new Tuple<string, string>("reproduction", reproductionDesc.Text));
+				parameters.Add(new Tuple<string, string>("contact", whoAmI.Text));
 				parameters.Add(new Tuple<string, string>("gameVersion", gameVersion.Text));
 				if (logFile.SelectedItem != null && logFile.SelectedItem is FileID)
 				{
@@ -545,12 +548,14 @@ namespace BugReporter
 					if (log.Fatal != null)
 						parameters.Add(new Tuple<string, string>("fatalMessage", log.Fatal));
 
-					parameters.Add(new Tuple<string, string>("primaryLogFile", log + "\r\n" + log.Combined));
+					parameters.Add(new Tuple<string, string>("primaryLogFileName", log.ToString()));
+					parameters.Add(new Tuple<string, string>("primaryLogFileData", Convert.ToBase64String(log.Compress())));
 
 					foreach (var item in logFileList.CheckedItems)
 					{
 						LogFile f = (LogFile)item;
-						parameters.Add(new Tuple<string, string>("logFile[]", f + "\r\n" + f.Combined));
+						parameters.Add(new Tuple<string, string>("logFileName[]", f.ToString()));
+						parameters.Add(new Tuple<string, string>("logFileData[]", Convert.ToBase64String( f.Compress())));
 					}
 				}
 				uploadTask = ContactServerAsync(parameters, 0, false);

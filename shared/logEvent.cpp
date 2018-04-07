@@ -159,7 +159,7 @@ namespace Logging
 		#ifndef HAS_WINDOW
 		consoleThread.Begin();
 		#endif
-		LogEvent(EventClass::Preset::uncommon,"Logging to '"+String(path)+"'..." );
+		LogEvent(EventClass::Preset::uncommon,"Logging to '"+FileSystem::PathToString(path)+"'..." );
 	}
 
 

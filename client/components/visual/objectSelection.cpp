@@ -82,11 +82,19 @@ namespace Objects
 		
 		if (e != entity)
 		{
-			LogEvent(EventSignificance::Debug,entity.get(),"Selected");
+			//Debug	2018 04 04. 13:06:57	42	CommandPhase			Hover Artillery	940786dd	<NULL>	527[h=1]	Selected
+			LogEvent(EventSignificance::Debug,entity.get(),"Selecting: onSelectionChanged()");	//okay here
+			//crashed somewhere after this. Selected artillery was ghost of previous visible, now invisible Nexus unit (still alive)
+			//other instances selected structure ghosts. no apparent connection to mobile units
 			onSelectionChanged();
+			LogEvent(EventSignificance::Debug,entity.get(),"Selecting: GlobalEvents::invalidateObjectCache()");	//new
 		}
 		GlobalEvents::invalidateObjectCache();
+		if (e != entity)
+			LogEvent(EventSignificance::Debug,entity.get(),"Selecting: UpdatedChoices("+String(controlEnabled)+")");//new
 		UpdateChoices(controlEnabled);
+		if (e != entity)
+			LogEvent(EventSignificance::Debug,entity.get(),"Selected");//new
 	}
 
 	

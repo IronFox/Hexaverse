@@ -150,12 +150,17 @@ namespace Engine
 		errorString = err.ErrorMessage();
 		if (extInfo.IsNotEmpty())
 			errorString += " ("+extInfo+")";
-			//String(DXGetErrorString(rs)) + " ("+ DXGetErrorDescription(rs)+")";
-		 
-		//ErrMessage(errorString);
-		//this is actually a fatal exception. It just should not happen
+		
+		if (rs == DXGI_ERROR_DEVICE_REMOVED)
+		{
+			errorCode = (int)dev->GetDeviceRemovedReason();
+			_com_error err(rs);
+			errorString += "\r\nGetDeviceRemovedReason():\r\n";
+			errorString += err.ErrorMessage();
+			throw Except::Renderer::DeviceConnectionLost(CLOCATION,errorString);
+		}
+
 		Except::TriggerFatal(location,errorString);
-		//FATAL__(errorString);
 	}
 
 

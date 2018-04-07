@@ -1094,7 +1094,7 @@ namespace ApplicationInterface
 				Tutorial::ShowMessage(Objects::selectedEntity->GetTypeName());
 			if (Objects::selectedEntity->IsDeadOrGhost())
 			{
-				if (Objects::selectedEntity->isOwnedByMe)
+				if (Objects::selectedEntity->owner->IsAlliedWithMe())
 					Tutorial::ShowMessage("Friendly Ghosts");
 				else
 					Tutorial::ShowMessage("Hostile Ghosts");
@@ -2148,6 +2148,7 @@ int main( int argc, const char* argv[])
 					{
 						Engine::input.Bind(key,[prototype](){Objects::Commands::TerraformerConstruct(prototype);});
 					});
+					Engine::input.Bind(Key::P,Objects::CommonCmd::ActivateMode<Objects::CursorMode::BuildRoadChainMode>);
 
 
 					Engine::input.BindCtrl(Key::C,ConfigurationMode::OnCopy);
@@ -2422,6 +2423,14 @@ int main( int argc, const char* argv[])
 		TerminateProcess(GetCurrentProcess(),0);	//self-terminate
 
 		return 0;
+	}
+	catch (const Except::Renderer::DeviceConnectionLost&ex)
+	{
+		LogEvent(EventClass( EventSignificance::SystemFatal, EventFlavor::SystemError ),ex.what());
+		Logging::End();
+		Network::client.Disconnect();
+		ErrMessage(ex.GetRawMessage());
+		TerminateProcess(GetCurrentProcess(),0);	//self-terminate
 	}
 	catch (const Except::Exception&exception)
 	{
