@@ -80,6 +80,7 @@ Left to right, the commands are:
 ** **Show Hostile Ranges**: Displays all hostile sensor/attack ranges.
 ** **Show Sensor Ranges**: Displays sensor ranges as yellow bubbles (on by default)
 ** **Show Mobile Reach**: Displays an experimental translucent geometry where the currently selected mobile unit can reach in two rounds. Hard edges outline blocking terrain or buildings.
+** **Show Sky Grid** (shortcut: **Home**): Shows sub-orbital grid for more precise plane navigation, and sub-orbital sensor range visualization.
 
 ===Contact and Event Lists===
 Friendly and hostile contacts are grouped by type and displayed at the top edge of the screen.
