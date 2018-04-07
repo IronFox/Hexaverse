@@ -276,7 +276,7 @@ namespace Objects
 		Checks whether or not units of the other faction are considered friendly (invalid auto-targets).
 		This check is symmetric
 		*/
-		bool			IsFriendly(const PFaction&other) const {return other.get() == this || other->alliance == alliance;}
+		bool			IsFriendly(const PFaction&other) const {return other.get() == this || (other && other->alliance == alliance);}
 		/**
 		Checks whether or not units of the other faction receive detailed entity state information such as build queues.
 		This check is symmetric
