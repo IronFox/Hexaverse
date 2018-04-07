@@ -490,6 +490,8 @@ namespace InputControl
 			auto base = Objects::selectedEntity->GetTurretBase();
 			if (!base || !base->CanAttack())
 				return;
+			if (Objects::activeCursorMode == Objects::CursorMode::AttackMode)
+				return;
 			Objects::DisableModes(Network::ControlEnabled());
 			Objects::Commands::OnAttackButtonPress();
 		}

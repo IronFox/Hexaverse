@@ -5,7 +5,6 @@ steam: no matching callback function set
 client: clicking on ghosts often crashes client (hostile or friendly)
 
 
-client: offensive missile trajectories are sometimes not rendered if origin is invisible
 
 
 
@@ -196,6 +195,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+skipped: client: offensive missile trajectories are sometimes not rendered if origin is invisible. could not reproduce but noticed that random origin sometimes resides within terrain, making the trail hard to spot. might need improvement eventually but is not a bug
 fixed: alliances: friendly conquered nexus ports count as 'conquering'
 fixed: alliances: ghosts of allied units appear in red
 fixed: alliances: allied mobile unit sensor range not properly updated on terrain after motion

@@ -2148,6 +2148,7 @@ int main( int argc, const char* argv[])
 					{
 						Engine::input.Bind(key,[prototype](){Objects::Commands::TerraformerConstruct(prototype);});
 					});
+					Engine::input.Bind(Key::P,Objects::CommonCmd::ActivateMode<Objects::CursorMode::BuildRoadChainMode>);
 
 
 					Engine::input.BindCtrl(Key::C,ConfigurationMode::OnCopy);
