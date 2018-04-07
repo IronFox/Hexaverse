@@ -696,7 +696,7 @@ namespace Animation
 
 
 		}
-		else
+		else if (!v->isOwnedByMe)
 		{
 			const bool building = (vs.flags & Protocol::VehicleFlags::Building) != 0;
 			if (building)
@@ -834,7 +834,7 @@ namespace Animation
 		Objects::PWorkingStructure w = To<Objects::WorkingStructure>::DynamicCast(s);
 		if (w)
 		{
-			w->SetResourceStorage(vs.resourceVector);
+			w->SetResourceStorage(vs.resourceStorage);
 			w->ApplyEnableChangeFromServer((vs.flags & Protocol::StructureFlags::Enabled) != 0);
 			#ifndef NO_HIBERNATION
 				w->Hibernate((vs.flags & Protocol::StructureFlags::Hibernating) != 0,0);

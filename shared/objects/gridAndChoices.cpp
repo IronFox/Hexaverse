@@ -1065,12 +1065,13 @@ namespace Objects
 			v->storedIn.reset();
 		}
 		#ifndef CLIENT
+			float signalTime = atTime;
 			if (restored)
 			{
+				v->RegisterChange(WorldEntity::StoredInChanged,signalTime);
 				v->owner->RegisterStoredMobileLoss(v);
 			}
 			v->owner->RegisterActiveMobileGain(v);
-			float signalTime = atTime;
 		#endif
 
 		atTime += timeEpsilon;

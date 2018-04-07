@@ -400,14 +400,14 @@ namespace Receiver
 		Objects::structures.Foreach([timestamp,&peer](const Objects::PStructure&s)
 		{
 			Protocol::StructureConstruction st;
-			Game::Network::Describe(st,*s,true,timestamp);
+			Game::Network::Describe(st,*s,timestamp,Game::Network::ExposeAll);
 			Channels::createStructure.SendTo(peer,st);
 		});
 
 		Objects::ForeachMobileWorldEntity([&peer, timestamp](const Objects::PMobileEntity&v)
 		{
 			Protocol::NewMobileEntity st;
-			Game::Network::Describe(st,*v,true,timestamp,0xFFFFFFFF);
+			Game::Network::Describe(st,*v,timestamp,Game::Network::ExposeAll);
 			Channels::newMobileEntity.SendTo(peer,st);
 		},false);
 
@@ -476,25 +476,25 @@ namespace Receiver
 		peer.SendSignal(Protocol::ChannelID::EndEverything);
 	}
 
-	void	SendEntitiesTo(const Objects::PFaction&f, TCP::Peer&peer, bool detailed, const Protocol::Timestamp&timestamp)
+	void	SendEntitiesTo(const Objects::PFaction&f, TCP::Peer&peer,const Protocol::Timestamp&timestamp, Game::Network::Expose expose)
 	{
-		f->VisitMyStructures([detailed,timestamp,&peer](const Objects::PStructure&s)
+		f->VisitMyStructures([expose,timestamp,&peer](const Objects::PStructure&s)
 		{
 			ASSERT__(s);
 			if (s)
 			{
 				Protocol::StructureConstruction st;
-				Game::Network::Describe(st,*s,detailed,timestamp);
+				Game::Network::Describe(st,*s,timestamp,expose);
 				Channels::createStructure.SendTo(peer,st);
 			}
 		});
-		f->VisitMyMobileEntities([detailed,timestamp,&peer](const Objects::PMobileEntity&v)
+		f->VisitMyMobileEntities([expose,timestamp,&peer](const Objects::PMobileEntity&v)
 		{
 			ASSERT__(v);
 			if (v)
 			{
 				Protocol::NewMobileEntity st;
-				Game::Network::Describe(st,*v,detailed,timestamp,0xFFFFFFFF);
+				Game::Network::Describe(st,*v,timestamp,expose);
 				Channels::newMobileEntity.SendTo(peer,st);
 			}
 		});
@@ -902,7 +902,7 @@ namespace Receiver
 				if (s)
 				{
 					Protocol::StructureConstruction st;
-					Game::Network::Describe(st,*s,(s)->owner->ExposesEntityDetailsTo(client->faction),timestamp);
+					Game::Network::Describe(st,*s,timestamp,Game::Network::GetExposition(s->owner,client->faction));
 					Channels::createStructure.SendTo(peer,st);
 				}
 				else
@@ -911,21 +911,16 @@ namespace Receiver
 					if (v)
 					{
 						Protocol::NewMobileEntity st;
-						Game::Network::Describe(st,*v,(v)->owner->ExposesEntityDetailsTo(client->faction),timestamp,0xFFFFFFFF);
+						Game::Network::Describe(st,*v,timestamp,Game::Network::GetExposition(v->owner,client->faction));
 						Channels::newMobileEntity.SendTo(peer,st);
 					}
 					else
-						FATAL__("WTF");
+						FATAL__("WTF is this: "+e->GetName());
 
 				}
 			});
 
-			//friendly units will be registered as contacts, therefor they should not be send otherwise
-		/*	client->faction->alliance->ForeachMember([client,&peer,timestamp](const Objects::PFaction&other)
-			{
-				SendEntitiesTo(other, peer,client->faction->alliance->config.exposeEntityDetails,timestamp);
-			});*/
-			SendEntitiesTo(client->faction,peer,true,timestamp);
+			SendEntitiesTo(client->faction,peer,timestamp, Game::Network::ExposeAll);
 		}
 
 
