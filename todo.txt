@@ -1,6 +1,3 @@
-documentation: update view icon image and documentation (+home-key on cft_aerial)
-steam: no handler set
-steam: no matching callback function set
 
 client: clicking on ghosts often crashes client (hostile or friendly)
 
@@ -195,6 +192,9 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+done: documentation: update view icon image and documentation (+home-key on cft_aerial)
+done: steam: no handler set
+done: steam: no matching callback function set
 skipped: client: offensive missile trajectories are sometimes not rendered if origin is invisible. could not reproduce but noticed that random origin sometimes resides within terrain, making the trail hard to spot. might need improvement eventually but is not a bug
 fixed: alliances: friendly conquered nexus ports count as 'conquering'
 fixed: alliances: ghosts of allied units appear in red
