@@ -27,7 +27,7 @@ Each newly created faction unlocks at least one previously locked zone until all
 New factions are spawned within the unlocked areas of the planet.
 
 Mobile units cannot enter these zones, and will be routed around them.
-Nexus units already located within EMP zones suffer high levels of [[concepts/EMP damage]] until the respective zone is removed.
+Nexus units already located within EMP zones suffer high levels of [[concepts/EMP damage]] until the respective zone is removed when new factions are created.
 
 == Planet Types ==
 
@@ -43,3 +43,15 @@ It can be configured via the respective [[controls|view buttons]], but may also 
 **Page up/down** can be used to quickly alter the clipping height.
 
 Liquids (water/lava) are shown in their respective colors but all other types are shown as solid dark gray, or black to contrast this viewing mode against regular non-clipped terrain.
+
+
+== Terraforming ==
+
+[[units/turrets/terraformer|Terraformer]] vehicles can alter the terrain in various ways.
+Common operations include the removal of terrain to flatten areas or dig tunnels, and the addition of concrete or roads.
+Bridges can be built across cliffs or between floating islands to reach remote locations.
+Walls can obstruct hostile movement or sensory.
+And, depending on the terrain, roads can be a significant strategic asset as they dramatically accelerate the motion of land-based mobile units.
+
+{{img:roads.jpg?600 |Roads}}
+
