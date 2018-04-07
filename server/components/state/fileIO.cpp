@@ -915,7 +915,7 @@ namespace FileIO
 			if (n)
 			{
 				UINT32 data[2];
-				data[0] = (UINT32)n->resistence;
+				data[0] = (UINT32)n->resistance;
 				data[1] = n->lastSpawnRound.main;
 				parent->AppendBlock(RID::nexusData)->SetData(data,sizeof(data));
 			}
@@ -1017,7 +1017,7 @@ namespace FileIO
 
 				GetBinary(parent,RID::nexusData,data,sizeof(data));
 
-				n->resistence = (int)data[0];
+				n->resistance = (int)data[0];
 				n->lastSpawnRound = data[1];
 
 				n->OnLoad();

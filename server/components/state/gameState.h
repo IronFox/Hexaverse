@@ -282,7 +282,7 @@ namespace Game
 			MobileAction		= 0x10,		//implicitly set if Config::exposeActionLeftToHostileFactions is true
 			StructureTasks		= 0x20,		//includes mobile entity producer and tower attack queue
 			MineState			= 0x40,		//includes natural resource vector and core-connection
-			NexusControl		= 0x80,		//resistence and control state of described nexus port
+			NexusControl		= 0x80,		//resistance and control state of described nexus port
 			StructureStorage	= 0x100,	//resources stored in described structure
 		};
 

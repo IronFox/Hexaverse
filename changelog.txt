@@ -1,6 +1,6 @@
 v0.8.3
 	> Alliance invite messages are now much larger in the visual client log.
-	> Clients can now see the resistence of nexus ports being conquered by allies.
+	> Clients can now see the resistance of nexus ports being conquered by allies.
 	* Fixed fog of war for allied mobile units.
 	* Fixed coloring of allied ghosts.
 

@@ -885,7 +885,7 @@ namespace Animation
 				{
 					const Protocol::NexusPortState*state = vs.selective.Get2();
 					if (state)
-						n->resistence = *state;
+						n->resistance = *state;
 				}
 				else
 				{

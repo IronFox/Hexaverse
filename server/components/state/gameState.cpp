@@ -944,7 +944,7 @@ namespace Game
 					if (n)
 					{
 						Protocol::NexusPortState&subState = state.selective.Set2();
-						subState = n->resistence;
+						subState = n->resistance;
 					}
 				}
 			}
