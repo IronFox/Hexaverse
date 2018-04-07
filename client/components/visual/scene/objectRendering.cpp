@@ -1242,7 +1242,7 @@ namespace Objects
 
 			vehicles.Foreach([](const Objects::PVehicle&v)
 			{
-				UpdateSeeThroughColor(v->isOwnedByMe, v==selectedEntity);
+				UpdateSeeThroughColor(v->owner->IsAlliedWithMe(), v==selectedEntity);
 				//overallTint.Update(v->isOwnedByMe ? mySeeThroughColor : hostileSeeThroughColor);
 				Renderer::RenderSimple(*v);
 			});
@@ -1713,7 +1713,7 @@ namespace Objects
 		{
 			if (m->IsAboveGrid() != orbital)
 				return;
-			if (m->isOwnedByMe)
+			if (m->owner->IsAlliedWithMe())
 				overallTint.Update(float4(0.2, 0.2, 0.2, 1));
 			else
 				overallTint.Update(float4(1, 0, 0, 1));
@@ -1743,7 +1743,7 @@ namespace Objects
 		{
 			if (s->IsAboveGrid() != orbital)
 				return;
-			if (s->isOwnedByMe)
+			if (s->owner->IsAlliedWithMe())
 				overallTint.Update(float4(0.2, 0.2, 0.2, 1));
 			else
 				overallTint.Update(float4(1, 0, 0, 1));

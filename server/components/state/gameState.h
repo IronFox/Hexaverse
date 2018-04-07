@@ -249,13 +249,17 @@ namespace Game
 	namespace Network
 	{
 	
-		static const UINT32 NotifyOthers = Objects::WorldEntity::PositionChanged 
+		static const UINT32 NotifyForeigners = Objects::WorldEntity::PositionChanged 
 											| Objects::WorldEntity::StartedBuilding 
 											| Objects::WorldEntity::StoppedBuilding 
 											| Objects::WorldEntity::HealthChanged 
 											| Objects::WorldEntity::EnableChanged 
 											| Objects::WorldEntity::EMPDamageChanged
 											| Objects::WorldEntity::HibernationChanged;
+
+		static const UINT32 NotifyAllies = NotifyForeigners
+											| Objects::WorldEntity::NexusControlChanged;
+
 
 
 		UINT32		AssembleGameFlags(bool allowSpectatorFactions);
@@ -267,14 +271,63 @@ namespace Game
 		@param timeWindow Change parameter. Usage depends on phase
 		*/
 		void		ChangePhase(RuntimeConfig::Phase to, float timeWindow = -1);
+
+		enum class Expose
+		{
+			None				= 0x0,
+			Stability			= 0x1,		//Doubles as compound stability and whether a mobile entity must be moved manually to complete some job
+			SleepState			= 0x2,		//whether entity is sleeping or not 
+			Automation			= 0x4,		//whether entity is automated or not
+			MyMobileEntity		= 0x8,		//Includes motion and/or production tasks, storedIn, constructionActionCounter
+			MobileAction		= 0x10,		//implicitly set if Config::exposeActionLeftToHostileFactions is true
+			StructureTasks		= 0x20,		//includes mobile entity producer and tower attack queue
+			MineState			= 0x40,		//includes natural resource vector and core-connection
+			NexusControl		= 0x80,		//resistance and control state of described nexus port
+			StructureStorage	= 0x100,	//resources stored in described structure
+		};
+
+		inline constexpr Expose operator|(Expose a, Expose b)
+		{
+			return (Expose)(((std::underlying_type<Expose>::type)a) | ((std::underlying_type<Expose>::type)b));
+		}
+		inline constexpr bool operator&(Expose a, Expose b)
+		{
+			return (((std::underlying_type<Expose>::type)a) & ((std::underlying_type<Expose>::type)b)) != 0;
+		}
+
+
+		static const constexpr Expose	ExposeAll = (Expose)std::numeric_limits<std::underlying_type<Expose>::type>::max();
+		static const constexpr Expose	ExposeToForeigners = Expose::None;
+		static const constexpr Expose	ExposeToAllies = Expose::SleepState | Expose::Automation | Expose::MobileAction | Expose::MineState | Expose::NexusControl;
+
+
+		inline Expose		GetExposition(const Objects::PFaction&entityOwner,const Objects::PFaction&recipientFaction)
+		{
+			if (entityOwner == recipientFaction)
+				return ExposeAll;
+			if (!entityOwner->IsAlliedWith(recipientFaction))
+				return ExposeToForeigners;
+			return entityOwner->alliance->config.exposeEntityDetails ? ExposeAll : ExposeToAllies;
+		}
+
 		void		Describe(Protocol::MobileTask&task, const Objects::MobileEntity&v, const Grid::LCellIdI&origin, const Objects::MobileEntity::Task&t,index_t taskIndex);
-		void		Describe(Protocol::EntityState&state, const Objects::WorldEntity&e, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags);
-		void		Describe(Protocol::MobileState&state, const Objects::MobileEntity&v, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags);
-		void		Describe(Protocol::NewMobileEntity&cnst, const Objects::MobileEntity&v, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags);
+		void		Describe(Protocol::EntityState&state, const Objects::WorldEntity&e, const Protocol::Timestamp&timestamp, Expose expose, UINT32 changeFlags);
+		void		Describe(Protocol::MobileState&state, const Objects::MobileEntity&v, const Protocol::Timestamp&timestamp, Expose expose, UINT32 changeFlags);
+		void		Describe(Protocol::NewMobileEntity&cnst, const Objects::MobileEntity&v, const Protocol::Timestamp&timestamp, Expose expose);
+
 		void		Describe(Protocol::ProductionTask&task, const Objects::MobileEntityProducer::WorkItem&element);
 		void		Describe(Protocol::AttackTask&task, const Objects::Tower::AttackTask&element);
-		void		Describe(Protocol::StructureState&state, const Objects::Structure&s, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags);
-		void		Describe(Protocol::StructureConstruction&cnst, const Objects::Structure&s, bool owned, const Protocol::Timestamp&timestamp);
+		/**
+		Bakes the specified structure to the given state
+		@param[out] state State container to write to
+		@param s Structure to read the state from
+		@param owned Set true if either the recipient is the actual owner or is in an alliance with the owner, and shared details is active
+		@param timestamp Timestamp to set in the resulting state
+		@param changeFlags Flag bits of information to include in the state description. Should include only changed attributes
+		@param include Flag bits of information that the recipient is allowed to see.
+		*/
+		void		Describe(Protocol::StructureState&state, const Objects::Structure&s, const Protocol::Timestamp&timestamp, Expose expose, UINT32 changeFlags);
+		void		Describe(Protocol::StructureConstruction&cnst, const Objects::Structure&s, const Protocol::Timestamp&timestamp, Expose expose);
 
 
 

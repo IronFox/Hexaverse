@@ -41,7 +41,7 @@ namespace Objects
 	#endif
 
 
-	/*static*/ int				NexusPort::ResistenceRounds = 10;
+	/*static*/ int				NexusPort::ResistanceRounds = 10;
 
 
 	#ifdef HAS_WINDOW
@@ -811,7 +811,7 @@ namespace Objects
 			Super::OnNewConnection(other,acrossHighCell,atTime);
 			if (owner != other->owner && !RuntimeConfig::loadingPhase)
 			{
-				resistence = ResistenceRounds;
+				resistance = ResistanceRounds;
 				SetEnabled(false,atTime,false);
 				ChangeOwnership(shared_from_this(), other->owner,atTime);
 			}
@@ -835,7 +835,7 @@ namespace Objects
 		{
 			if (owner != Faction::nexus)
 			{
-				if (resistence > 0)
+				if (resistance > 0)
 					owner->acquiringNexusControl++;
 				else
 					owner->nexusControl++;
@@ -850,11 +850,11 @@ namespace Objects
 
 		/*virtual override*/ void			NexusPort::Tick(ResourceVector&v)
 		{
-			if (owner != Faction::nexus && resistence > 0)
+			if (owner != Faction::nexus && resistance > 0)
 			{
 				RegisterChange(NexusControlChanged,0);
-				resistence --;
-				if (!resistence)
+				resistance --;
+				if (!resistance)
 				{
 					owner->acquiringNexusControl --;
 					DBG_ASSERT__(owner->acquiringNexusControl >= 0);
@@ -878,7 +878,7 @@ namespace Objects
 				{
 					if (!IsEnabled())
 					{
-						if (resistence > 0)
+						if (resistance > 0)
 						{
 							DBG_ASSERT__(owner->acquiringNexusControl > 0);
 							owner->acquiringNexusControl--;
@@ -897,7 +897,7 @@ namespace Objects
 						LogEvent(EventClass( RuntimeConfig::loadingPhase ? EventSignificance::Common : EventSignificance::Uncommon,EventFlavor::Gain ),this,"Acquiring control");
 
 					}
-					resistence = ResistenceRounds;
+					resistance = ResistanceRounds;
 					RegisterChange(NexusControlChanged,0);
 					ApplicationInterface::SignalNexusControlChange(owner->alliance);
 				}

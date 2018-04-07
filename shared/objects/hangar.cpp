@@ -177,7 +177,7 @@ namespace Objects
 
 		#ifndef CLIENT
 			//RegisterChange(StorageChanged,atTime);	might be irrelevant. let's see
-			e->RegisterChange(WorldEntity::changeType_t(  WorldEntity::StorageChanged | WorldEntity::PositionChanged ),atTime);
+			e->RegisterChange(WorldEntity::changeType_t(  WorldEntity::StorageChanged | WorldEntity::PositionChanged | WorldEntity::StoredInChanged),atTime);
 		#endif
 
 		ASSERT2__(!e->isInsertedIntoGrid,ToEntity().GetName(), e->GetName());

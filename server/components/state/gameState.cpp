@@ -782,24 +782,23 @@ namespace Game
 			}
 		}
 
-		void	Describe( Protocol::EntityState&state, const Objects::WorldEntity&e, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags)
+		void	Describe( Protocol::EntityState&state, const Objects::WorldEntity&e, const Protocol::Timestamp&timestamp, Expose expose, UINT32 changeFlags)
 		{
 			state.health = e.health;
 			state.id = e.id;
 			state.empDamageLevel = e.empDamageLevel;
 			state.location = (changeFlags & Objects::WorldEntity::PositionChanged) ? e.location : Grid::LCellIdI::Invalid;
 			state.entityStateFlags = 0;
-			if (owned)
-			{
+			state.timestamp = timestamp;
+			if (expose & Expose::Stability)
 				if (e.unstable)
 					state.entityStateFlags |= Protocol::EntityStateFlags::IsUnstable;
+			if (expose & Expose::SleepState)
 				if (e.IsSleeping())
 					state.entityStateFlags |= Protocol::EntityStateFlags::IsSleeping;
-			}
-			state.timestamp = timestamp;
 		}
 
-		void	Describe( Protocol::MobileState&state, const Objects::MobileEntity&v, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags)
+		void	Describe( Protocol::MobileState&state, const Objects::MobileEntity&v, const Protocol::Timestamp&timestamp, Expose expose, UINT32 changeFlags)
 		{
 			if (v.IsAboveGrid())
 			{
@@ -807,7 +806,21 @@ namespace Game
 			}
 	
 			state.flags = 0;
-			if (owned)
+			state.attackActionLeft = 0;
+			state.movementActionLeft = 0;
+
+
+			if (expose & Expose::Automation) 
+				if (v.isAutomated)
+					state.flags |= Protocol::VehicleFlags::Automated;
+
+			if ((expose & Expose::MyMobileEntity) && 
+				(
+					(changeFlags & Objects::WorldEntity::TasksChanged)
+					|| (changeFlags & Objects::WorldEntity::StoredInChanged) 
+					|| (changeFlags & Objects::WorldEntity::GatheringPointChanged)
+				)
+			)
 			{
 				auto&info = state.myMobileEntity.Set0();
 				Objects::PHangar h = v.storedIn.lock();
@@ -826,11 +839,7 @@ namespace Game
 				#ifndef ONE_COMPOUND_PER_FACTION
 					info.resourceVector = v.currentStorage;
 				#endif
-				if (v.isAutomated)
-					state.flags |= Protocol::VehicleFlags::Automated;
 				info.constructionActionCounter = v.constructionActionCounter;
-				state.attackActionLeft = v.attackActionLeft;
-				state.movementActionLeft = v.movementActionLeft;
 
 
 				const Objects::MobileEntityProducer*p = dynamic_cast<const Objects::MobileEntityProducer*>(&v);
@@ -847,26 +856,20 @@ namespace Game
 				}
 
 			}
-			else
+			
+			if (expose & Expose::MobileAction || Config::exposeActionLeftToHostileFactions)
 			{
-				if (Config::exposeActionLeftToHostileFactions)
-				{
-					state.attackActionLeft = v.attackActionLeft;
-					state.movementActionLeft = v.movementActionLeft;
-				}
-				else
-				{
-					state.attackActionLeft = 0;
-					state.movementActionLeft = 0;
-				}
+				state.attackActionLeft = v.attackActionLeft;
+				state.movementActionLeft = v.movementActionLeft;
 			}
+
 			if (v.IsHibernating())
 				state.flags |= Protocol::VehicleFlags::Hibernating;
-			if (!owned && v.IsBuilding())
+			if (v.IsBuilding())
 				state.flags |= Protocol::VehicleFlags::Building;
 
-			Describe(state.entityState,v,owned,timestamp,changeFlags);
-			if (owned)
+			Describe(state.entityState,v,timestamp,expose, changeFlags);
+			if (expose & Expose::Stability)
 			{
 				if ((v.myTasks.IsEmpty() && v.completeOnMove) || v.AwaitsUserInteraction())
 					state.entityState.entityStateFlags |= Protocol::EntityStateFlags::IsUnstable;
@@ -874,11 +877,11 @@ namespace Game
 
 		}
 
-		void	Describe( Protocol::NewMobileEntity&cnst, const Objects::MobileEntity&v, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags)
+		void	Describe( Protocol::NewMobileEntity&cnst, const Objects::MobileEntity&v, const Protocol::Timestamp&timestamp, Expose expose)
 		{
 			cnst.type = v.GetType();
 			cnst.owner = v.owner->id;
-			Describe(cnst.state,v,owned,timestamp,changeFlags);
+			Describe(cnst.state,v,timestamp,expose,0xFFFFFFFF);
 		}
 
 
@@ -890,7 +893,7 @@ namespace Game
 			task = element.target;
 		}
 
-		void	Describe( Protocol::StructureState&state, const Objects::Structure&s, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags)
+		void	Describe( Protocol::StructureState&state, const Objects::Structure&s, const Protocol::Timestamp&timestamp, Expose expose, UINT32 changeFlags)
 		{
 			const Objects::WorkingStructure*w = dynamic_cast<const Objects::WorkingStructure*>(&s);
 			//state.productionDone = 0;
@@ -900,60 +903,69 @@ namespace Game
 			if (w && w->IsHibernating())
 				state.flags |= Protocol::StructureFlags::Hibernating;
 
-			if (w && owned)
+			if (w)
 			{
 				Objects::ResourceVector dontCare;
-				w->GetResourceVector(dontCare, state.resourceVector, dontCare);
+				if (expose & Expose::StructureStorage) 
+					w->GetResourceVector(dontCare, state.resourceStorage, dontCare);
 
-				//const Objects::WorkingStructure*p = dynamic_cast<const Objects::WorkingStructure*>(&s);
-				const Objects::MobileEntityProducer*p = dynamic_cast<const Objects::MobileEntityProducer*>(&s);
-				if (p)
+				if ((expose & Expose::StructureTasks) && ((changeFlags & Objects::WorldEntity::TasksChanged) || (changeFlags & Objects::WorldEntity::GatheringPointChanged)))
 				{
-					Protocol::ProducerState&subState = state.selective.Set1();
-					subState.productionTasks.SetSize(p->queue.Count());
-					subState.productionDone = p->productionDone;
-					subState.gatheringPoint = p->gatheringPoint.current;
-					for (index_t i = 0; i < subState.productionTasks.Count(); i++)
+					//const Objects::WorkingStructure*p = dynamic_cast<const Objects::WorkingStructure*>(&s);
+					const Objects::MobileEntityProducer*p = dynamic_cast<const Objects::MobileEntityProducer*>(&s);
+					if (p)
 					{
-						Describe(subState.productionTasks[i],p->queue[i]);
+						Protocol::ProducerState&subState = state.selective.Set1();
+						subState.productionTasks.SetSize(p->queue.Count());
+						subState.productionDone = p->productionDone;
+						subState.gatheringPoint = p->gatheringPoint.current;
+						for (index_t i = 0; i < subState.productionTasks.Count(); i++)
+						{
+							Describe(subState.productionTasks[i],p->queue[i]);
+						}
 					}
-				}
-				const Objects::Tower*t = dynamic_cast<const Objects::Tower*>(&s);
-				if (t)
-				{
-					Protocol::TowerState&subState = state.selective.Set3();
-					subState.attackActionLeft = t->attackActionLeft;
-					subState.attackTasks.SetSize(t->attackQueue.Count());
-					for (index_t i = 0; i < subState.attackTasks.Count(); i++)
+					const Objects::Tower*t = dynamic_cast<const Objects::Tower*>(&s);
+					if (t)
 					{
-						Describe(subState.attackTasks[i],t->attackQueue[i]);
-					}
+						Protocol::TowerState&subState = state.selective.Set3();
+						subState.attackActionLeft = t->attackActionLeft;
+						subState.attackTasks.SetSize(t->attackQueue.Count());
+						for (index_t i = 0; i < subState.attackTasks.Count(); i++)
+						{
+							Describe(subState.attackTasks[i],t->attackQueue[i]);
+						}
 				
+					}
 				}
-				const Objects::NexusPort*n = dynamic_cast<const Objects::NexusPort*>(&s);
-				if (n)
+				if (expose & Expose::MineState)
 				{
-					Protocol::NexusPortState&subState = state.selective.Set2();
-					subState = n->resistence;
+					const Objects::Mine*m = dynamic_cast<const Objects::Mine*>(&s);
+					if (m)
+					{
+						Protocol::MineState&subState = state.selective.Set0();
+						subState.linkedToCore = m->IsLinkedToCore();
+						subState.naturalResources = m->naturalResources;
+					}
 				}
-
-				const Objects::Mine*m = dynamic_cast<const Objects::Mine*>(&s);
-				if (m)
+				if ((expose & Expose::NexusControl) && (changeFlags & Objects::WorldEntity::NexusControlChanged))
 				{
-					Protocol::MineState&subState = state.selective.Set0();
-					subState.linkedToCore = m->IsLinkedToCore();
-					subState.naturalResources = m->naturalResources;
+					const Objects::NexusPort*n = dynamic_cast<const Objects::NexusPort*>(&s);
+					if (n)
+					{
+						Protocol::NexusPortState&subState = state.selective.Set2();
+						subState = n->resistance;
+					}
 				}
 			}
 		
-			Describe(state.entityState,s,owned,timestamp,changeFlags);
+			Describe(state.entityState,s,timestamp,expose, changeFlags);
 		}
 
-		void	Describe( Protocol::StructureConstruction&cnst, const Objects::Structure&s, bool owned, const Protocol::Timestamp&timestamp)
+		void	Describe( Protocol::StructureConstruction&cnst, const Objects::Structure&s, const Protocol::Timestamp&timestamp, Expose expose)
 		{
 			cnst.type = s.GetType();
 			cnst.owner = s.owner->id;
-			Describe(cnst.state,s,owned,timestamp,0xFFFFFFFF);
+			Describe(cnst.state,s,timestamp,expose,0xFFFFFFFF);
 
 		}
 
@@ -1043,26 +1055,31 @@ namespace Game
 				//anythingChanged = true;
 				LogEvent(EventSignificance::Common,&v,"State change detected ("+String(v.changeFlags)+")");
 
-				bool othersNeedToKnow = (v.changeFlags & Network::NotifyOthers) != 0 && v.storedIn.expired();
+				const bool foreignersNeedToKnow = (v.changeFlags & Network::NotifyForeigners) != 0 && v.storedIn.expired();
+				const bool alliesNeedToKnow = (v.changeFlags & Network::NotifyAllies) != 0 && v.storedIn.expired();
 
-				TCP::Serial<Protocol::MobileState>	w0,w1;
-				Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),v.changeTimer);
-				Network::Describe(w0.Ref(),v,false,timestamp,v.changeFlags);
-				Network::Describe(w1.Ref(),v,true,timestamp,v.changeFlags);
-				w0.Seal();
-				w1.Seal();
-				if (!othersNeedToKnow)
+				const Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),v.changeTimer);
+
+				TCP::Serial<Protocol::MobileState>	foreign,allied,owned;
+				Network::Describe(foreign.Ref(),v,timestamp,Network::ExposeToForeigners,v.changeFlags);
+				Network::Describe(allied.Ref(),v,timestamp,Network::ExposeToAllies,v.changeFlags);
+				Network::Describe(owned.Ref(),v,timestamp,Network::ExposeAll,v.changeFlags);
+				foreign.Seal();
+				allied.Seal();
+				owned.Seal();
+
+				if (!foreignersNeedToKnow && !alliesNeedToKnow)
 				{
-					::Network::SendToOwner(Channels::setMobileState,v,w1);
+					::Network::SendToOwner(Channels::setMobileState,v,owned);
 				}
 				else
 					foreach(::Network::activePlayersAndSpectators,cl)
 					{
 						if (::Network::CanSeeAsOwner(*cl,v))
-							Channels::setMobileState.SendTo((*cl)->peer.lock(),w1);
+							Channels::setMobileState.SendTo((*cl)->peer.lock(),owned);
 						else
 							if (::Network::CanSee(*cl,_v,v.entityTime))
-								Channels::setMobileState.SendTo((*cl)->peer.lock(),w0);
+								Channels::setMobileState.SendTo((*cl)->peer.lock(),(*cl)->faction->IsAlliedWith(v.owner) ? allied : foreign);
 					}			
 				v.ResetAllChange();
 			}
@@ -1076,27 +1093,33 @@ namespace Game
 				//anythingChanged = true;
 				LogEvent(EventSignificance::Common,&s,"State change detected");
 				
-				bool othersNeedToKnow = (s.changeFlags & Network::NotifyOthers) != 0;
+				const bool foreignersNeedToKnow = (s.changeFlags & Network::NotifyForeigners) != 0;
+				const bool exposeDetailsToAllies = s.owner->alliance && s.owner->alliance->config.exposeEntityDetails;
+				const bool alliesNeedToKnow = (s.changeFlags & Network::NotifyAllies) != 0;
 
-				Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),s.changeTimer);
+				const Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),s.changeTimer);
 
-				TCP::Serial<Protocol::StructureState>	w0,w1;
-				Network::Describe(w0.Ref(),s,false,timestamp,s.changeFlags);
-				Network::Describe(w1.Ref(),s,true,timestamp,s.changeFlags);
-				w0.Seal();
-				w1.Seal();
-				if (!othersNeedToKnow)
+				TCP::Serial<Protocol::StructureState>	foreign,allied,owned;
+				Network::Describe(foreign.Ref(),s,timestamp,Network::ExposeToForeigners,s.changeFlags);
+				Network::Describe(allied.Ref(),s,timestamp,Network::ExposeToAllies,s.changeFlags);
+				Network::Describe(owned.Ref(),s,timestamp,Network::ExposeAll,s.changeFlags);
+				foreign.Seal();
+				allied.Seal();
+				owned.Seal();
+				if (!alliesNeedToKnow && !foreignersNeedToKnow)
 				{
-					::Network::SendToOwner(Channels::setStructureState,s,w1);
+					::Network::SendToOwner(Channels::setStructureState,s,owned);	//also sends to alliance members if details are exposed
 				}
 				else
 					foreach(::Network::activePlayersAndSpectators,cl)
 					{
-						if (::Network::CanSeeAsOwner(*cl,s))
-							Channels::setStructureState.SendTo((*cl)->peer.lock(),w1);
+						if (::Network::CanSeeAsOwner(*cl,s))	//also coveres alliance members if details are exposed
+							Channels::setStructureState.SendTo((*cl)->peer.lock(),owned);
 						else
 							if (::Network::CanSee(*cl,_s,0))
-								Channels::setStructureState.SendTo((*cl)->peer.lock(),w0);
+							{
+								Channels::setStructureState.SendTo((*cl)->peer.lock(),(*cl)->faction->IsAlliedWith(s.owner) ? allied : foreign);
+							}
 						//Channels::setStructureState.SendTo((*cl)->peer.lock(),Receiver::HasAccess(*cl,s) ? w1 : w0);
 					}
 				s.ResetAllChange();

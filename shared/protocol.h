@@ -1156,7 +1156,7 @@ namespace Protocol
 
 	NETSTRUCT4(StructureState
 		, EntityState, entityState
-		, Objects::PositiveResourceVector, resourceVector
+		, Objects::PositiveResourceVector, resourceStorage
 		, NET(BYTE), flags
 		, SelectiveStructureState, selective
 	)

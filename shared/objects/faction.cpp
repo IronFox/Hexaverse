@@ -2385,6 +2385,18 @@ namespace Objects
 		{
 			return this && (this->isOwnedByMe || (mine && alliance == mine->alliance));
 		}
+
+		bool		Faction::SharesSensorsWithMe() const
+		{
+			if (!this || !mine)
+				return false;
+			if (isOwnedByMe)
+				return true;
+			if (!alliance || alliance != mine->alliance)
+				return false;
+			return alliance->config.shareSensors;
+		}
+
 	#endif
 
 }

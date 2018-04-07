@@ -798,6 +798,8 @@ namespace Objects{ namespace Pathfinding
 			vehicle->owner->knownWorld;
 		#endif
 		//Timer::Time t0 = timer.Now();
+		ASSERT_NOT_NULL__(vehicle);
+		ASSERT1__(vehicle->owner,vehicle->GetName());
 		const THindranceVector&hindrance = vehicle->base->hindrance;
 		const int speed = vehicle->GetMovementStepsPerRound();
 		TWays	possibilities;

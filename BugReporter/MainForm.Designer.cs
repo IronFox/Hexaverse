@@ -46,6 +46,8 @@
 			this.toolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
 			this.connectionTimer = new System.Windows.Forms.Timer(this.components);
 			this.mainBody = new System.Windows.Forms.Panel();
+			this.whoAmI = new System.Windows.Forms.TextBox();
+			this.label7 = new System.Windows.Forms.Label();
 			this.loadTimer = new System.Windows.Forms.Timer(this.components);
 			this.statusStrip.SuspendLayout();
 			this.mainBody.SuspendLayout();
@@ -75,9 +77,9 @@
 			this.label2.AutoSize = true;
 			this.label2.Location = new System.Drawing.Point(13, 180);
 			this.label2.Name = "label2";
-			this.label2.Size = new System.Drawing.Size(188, 13);
+			this.label2.Size = new System.Drawing.Size(229, 13);
 			this.label2.TabIndex = 2;
-			this.label2.Text = "Steps to reproduce the issue (optional)";
+			this.label2.Text = "What did you do before it happened? (optional)";
 			// 
 			// reproductionDesc
 			// 
@@ -86,13 +88,13 @@
 			this.reproductionDesc.Location = new System.Drawing.Point(15, 197);
 			this.reproductionDesc.Multiline = true;
 			this.reproductionDesc.Name = "reproductionDesc";
-			this.reproductionDesc.Size = new System.Drawing.Size(474, 136);
+			this.reproductionDesc.Size = new System.Drawing.Size(474, 118);
 			this.reproductionDesc.TabIndex = 3;
 			// 
 			// label3
 			// 
 			this.label3.AutoSize = true;
-			this.label3.Location = new System.Drawing.Point(12, 379);
+			this.label3.Location = new System.Drawing.Point(12, 408);
 			this.label3.Name = "label3";
 			this.label3.Size = new System.Drawing.Size(238, 13);
 			this.label3.TabIndex = 4;
@@ -104,7 +106,7 @@
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.logFile.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
 			this.logFile.FormattingEnabled = true;
-			this.logFile.Location = new System.Drawing.Point(15, 395);
+			this.logFile.Location = new System.Drawing.Point(15, 424);
 			this.logFile.Name = "logFile";
 			this.logFile.Size = new System.Drawing.Size(474, 21);
 			this.logFile.TabIndex = 6;
@@ -113,7 +115,7 @@
 			// label4
 			// 
 			this.label4.AutoSize = true;
-			this.label4.Location = new System.Drawing.Point(12, 434);
+			this.label4.Location = new System.Drawing.Point(12, 463);
 			this.label4.Name = "label4";
 			this.label4.Size = new System.Drawing.Size(170, 13);
 			this.label4.TabIndex = 7;
@@ -125,7 +127,7 @@
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.logFileList.FormattingEnabled = true;
-			this.logFileList.Location = new System.Drawing.Point(15, 450);
+			this.logFileList.Location = new System.Drawing.Point(15, 479);
 			this.logFileList.Name = "logFileList";
 			this.logFileList.Size = new System.Drawing.Size(474, 94);
 			this.logFileList.TabIndex = 8;
@@ -156,7 +158,7 @@
 			// label5
 			// 
 			this.label5.AutoSize = true;
-			this.label5.Location = new System.Drawing.Point(12, 347);
+			this.label5.Location = new System.Drawing.Point(12, 376);
 			this.label5.Name = "label5";
 			this.label5.Size = new System.Drawing.Size(72, 13);
 			this.label5.TabIndex = 12;
@@ -166,7 +168,7 @@
 			// 
 			this.gameVersion.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.gameVersion.Location = new System.Drawing.Point(114, 344);
+			this.gameVersion.Location = new System.Drawing.Point(114, 373);
 			this.gameVersion.Name = "gameVersion";
 			this.gameVersion.Size = new System.Drawing.Size(375, 20);
 			this.gameVersion.TabIndex = 13;
@@ -196,6 +198,8 @@
 			// 
 			// mainBody
 			// 
+			this.mainBody.Controls.Add(this.whoAmI);
+			this.mainBody.Controls.Add(this.label7);
 			this.mainBody.Controls.Add(this.gameVersion);
 			this.mainBody.Controls.Add(this.label5);
 			this.mainBody.Controls.Add(this.label1);
@@ -213,6 +217,24 @@
 			this.mainBody.Name = "mainBody";
 			this.mainBody.Size = new System.Drawing.Size(501, 627);
 			this.mainBody.TabIndex = 15;
+			// 
+			// whoAmI
+			// 
+			this.whoAmI.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+			this.whoAmI.Location = new System.Drawing.Point(168, 336);
+			this.whoAmI.Name = "whoAmI";
+			this.whoAmI.Size = new System.Drawing.Size(321, 20);
+			this.whoAmI.TabIndex = 15;
+			// 
+			// label7
+			// 
+			this.label7.AutoSize = true;
+			this.label7.Location = new System.Drawing.Point(13, 330);
+			this.label7.Name = "label7";
+			this.label7.Size = new System.Drawing.Size(130, 26);
+			this.label7.TabIndex = 14;
+			this.label7.Text = "Your email address\r\n(optional, never disclosed)";
 			// 
 			// loadTimer
 			// 
@@ -260,6 +282,8 @@
 		private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel;
 		private System.Windows.Forms.Panel mainBody;
 		private System.Windows.Forms.Timer loadTimer;
+		private System.Windows.Forms.TextBox whoAmI;
+		private System.Windows.Forms.Label label7;
 	}
 }
 

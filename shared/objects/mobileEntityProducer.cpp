@@ -506,7 +506,7 @@ namespace Objects
 				LogEvent(EventSignificance::Common, parent, "Unset gathering point");
 				gatheringPoint.current = Grid::LCellIdI::Invalid;
 			}
-			parent->RegisterChange(Objects::WorldEntity::AutomationChanged,0);
+			parent->RegisterChange(Objects::WorldEntity::GatheringPointChanged,0);
 		}
 
 		PMobileEntity			MobileEntityProducer::WorkItem::GetPrototype() const

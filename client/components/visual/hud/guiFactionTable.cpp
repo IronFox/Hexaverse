@@ -471,7 +471,7 @@ namespace HUD
 			}
 			else
 			{
-				textLabel->SetColor(owner->color);
+				textLabel->SetColor(float4(1));
 				textLabel->Anchor().GetHAxis().AnchorLowerUnknown();
 			}
 			textLabel->SetPadding(0);

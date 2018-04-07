@@ -536,12 +536,15 @@ namespace StatePanel
 						const Objects::NexusPort*np = dynamic_cast<const Objects::NexusPort*>(&e);
 						if (np)
 						{
-							if (np->isOwnedByMe)
+							if (np->owner->IsAlliedWithMe())
 							{
-								if (np->resistence)
-									cachedLines << "  Remaining resistence: "+String(np->resistence);
-								else
-									cachedLines << "  Captured";
+								PushCurrentColor();
+									currentColor.rgb &= float3(1,0.5,0.4);
+									if (np->resistance)
+										cachedLines << "  Remaining resistance: "+String(np->resistance);
+									else
+										cachedLines << "  Captured";
+								PopCurrentColor();
 							}
 						}
 					}

@@ -82,14 +82,14 @@ namespace ApplicationInterface
 			if (!restoredFromStorage)
 			{
 				Protocol::NewMobileEntity	w;
-				Game::Network::Describe(w,v,true,timestamp,0xFFFFFFFF);
+				Game::Network::Describe(w,v,timestamp,Game::Network::ExposeAll);
 				Network::SendToOwner(Channels::newMobileEntity,v,w);
 	//			Channels::newMobileEntity.SendTo((client)->peer.lock(),w);
 			}
 			else
 			{
 				Protocol::MobileState state;
-				Game::Network::Describe(state,(const Objects::MobileEntity&)v,true,timestamp,0xFFFFFFFF);
+				Game::Network::Describe(state,(const Objects::MobileEntity&)v,timestamp,Game::Network::ExposeAll,0xFFFFFFFF);
 				Network::SendToOwner(Channels::setMobileState,v,state);
 				//Channels::setMobileState.SendTo(client->peer.lock(),state);
 			}
@@ -112,7 +112,7 @@ namespace ApplicationInterface
 		LogEvent(EventSignificance::Debug,s.get(),"Signaling new structure to owner at t="+String(atTime));
 		Protocol::StructureConstruction	w;
 		Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),atTime);
-		Game::Network::Describe(w,*s,true,timestamp);
+		Game::Network::Describe(w,*s,timestamp,Game::Network::ExposeAll);
 		Network::SendToOwner(Channels::createStructure,v,w);
 
 		if (s->IsTower() && To<Objects::Tower>::Cast(s)->turret->detectsResources)
@@ -136,12 +136,14 @@ namespace ApplicationInterface
 			//return;	//already knows this
 		Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),atTime);
 
+		const auto expose = Game::Network::GetExposition(e->owner,target);
+
 		if (e->IsMobile())
 		{
 			Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(e);
 		//	TCP::Serial<Protocol::VehicleConstruction>	w;
 			TCP::Serial<Protocol::NewMobileEntity>	w;
-			Game::Network::Describe(w.Ref(),*v,false,timestamp,0xFFFFFFFF);
+			Game::Network::Describe(w.Ref(),*v,timestamp,expose);
 			w.Seal();
 			Channels::newMobileEntity.SendTo(client->peer.lock(),w);
 		}
@@ -150,7 +152,7 @@ namespace ApplicationInterface
 			Objects::PStructure s = To<Objects::Structure>::DynamicCast(e);
 			ASSERT1__(s,e->GetName());
 			TCP::Serial<Protocol::StructureConstruction>	w;
-			Game::Network::Describe(w.Ref(),*s,false,timestamp);
+			Game::Network::Describe(w.Ref(),*s,timestamp,expose);
 			w.Seal();
 			Channels::createStructure.SendTo(client->peer.lock(),w);
 		}

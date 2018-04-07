@@ -440,6 +440,13 @@ namespace Objects
 			{
 				ToggleMode(M);
 			}
+		void						ActivateMode(CursorMode mode);
+	
+		template <CursorMode M>
+			inline void ActivateMode()
+			{
+				ActivateMode(M);
+			}
 
 
 		bool IsModeActive(CursorMode mode);
