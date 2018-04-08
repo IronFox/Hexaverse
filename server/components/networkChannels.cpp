@@ -9,6 +9,90 @@
 extern TwisterRandom		random;
 
 
+namespace ResearchSerialization
+{
+	
+
+	template <typename T>
+		static void Export(Protocol::ResearchAttributeArray<T>&dest, const Array<Objects::ResearchAttributeTable::Attrib<T> >&source)
+		{
+			dest.SetSize(source.Count());
+			for (index_t i = 0; i < dest.Count(); i++)
+			{
+				auto&src = source[i];
+				auto&dst = dest[i];
+				dst.value = src.value;
+				dst.description = src.description;
+			}
+		}
+
+	void	SendAttributeVectorTo(TCP::Destination&peer, const Objects::ResearchAttributeTable&table, const TUniqueID&originID)
+	{
+		Protocol::ResearchAttributeVector vec;
+		vec.faction = originID;
+		Export(vec.boolAttributes,table.boolAttributes);
+		Export(vec.floatAttributes,table.floatAttributes);
+		Export(vec.intAttributes,table.intAttributes);
+		Channels::ResearchAttributeVector.SendTo(peer,vec,(UINT32)::Network::UserLevel::CommonFaction);
+	}
+
+	void	SendResearchProgramTo(TCP::Destination&peer)
+	{
+		static Protocol::ResearchProgram outProg;
+		static bool registered = false;
+		if (outProg.IsEmpty())
+		{
+			if (!registered)
+			{
+				registered = true;
+				Objects::ResearchState::globalState.onScriptChange << [](){outProg.Clear();};
+			}
+			outProg.SetSize(Objects::ResearchState::globalState.allTopics.Count());
+			for (index_t i = 0; i < outProg.Count(); i++)
+			{
+				const auto&stateIn = Objects::ResearchState::globalState.allTopics[i];
+				auto&stateOut = outProg[i];
+				stateOut.dependentTopic = (stateIn->dependency.expired()) ? 0 : stateIn->dependency.lock()->serialIndex + 1;
+				stateOut.iconName = stateIn->iconName;
+				stateOut.maxProgress = stateIn->maxProgress;
+				stateOut.name = stateIn->name;
+				stateOut.parentTopic = stateIn->parent.expired() ? 0 : stateIn->parent.lock()->serialIndex + 1;
+			}
+		}
+		Channels::ResearchProgram.SendTo(peer,outProg,(UINT32)::Network::UserLevel::CommonFaction);
+
+	}
+
+	template <typename T>
+		static void MakeDelta(Protocol::ResearchAttributeDeltaArray<T>&outDelta, const ArrayRef<Objects::ResearchAttributeTable::Attrib<T> >&source, Array<T>&reference)
+		{
+			Buffer0<Protocol::ResearchAttributeDelta<T>,Swap> delta;
+			for (index_t i = 0; i < source.Count(); i++)
+			{
+				const auto&src = source[i];
+				auto&ref = reference[i];
+				if (ref != src.value)
+				{
+					ref = src.value;
+					auto& d = delta.Append();
+					d.value = ref;
+					d.description = src.description;
+				}
+			}
+			delta.MoveToArray(outDelta);
+		}
+
+	//void	SendAttributeDeltaVectorTo(TCP::Peer&peer, const Objects::ResearchAttributeTable&table, Protocol::ResearchAttributeVector&reference)
+	//{
+	//	Protocol::ResearchAttributeDeltaVector vec;
+	//	MakeDelta(vec.boolAttributes,table.boolAttributes,reference.boolAttributes);
+	//	MakeDelta(vec.intAttributes,table.intAttributes,reference.intAttributes);
+	//	MakeDelta(vec.floatAttributes,table.floatAttributes,reference.floatAttributes);
+	//	Channels::ResearchAttributeDeltaVector.SendTo(peer,vec);
+	//}
+
+}
+
 namespace Receiver
 {
 	void	ClientVote(Protocol::ClientVote&vote, TCP::Peer&peer)
@@ -241,7 +325,6 @@ namespace Channels
 	TCP::Channel<Protocol::TouchedMarker, Level::Faction, Protocol::ChannelID::TouchMarker>					touchMarker(Receiver::TouchMarker);
 	TCP::Channel<Protocol::ClientName,Level::Faction,Protocol::ChannelID::ChangeMyName>						changeMyName(Receiver::ChangeMyName);
 	TCP::Channel<NET(TUniqueID), Level::Faction, Protocol::ChannelID::IdentifyFaction>						identifyFactionRecv(Receiver::IdentifyFaction);
-	TCP::Channel<Protocol::QueueResearch, Level::Faction, Protocol::ChannelID::QueueResearch>				queueResearch(Receiver::QueueResearch);
 //	TCP::Channel<Protocol::ResourceID, Level::PreFaction, Protocol::ChannelID::RequestResource>				requestResource(Receiver::RequestResource);
 	
 	TCP::Channel<NET(INT32),Level::Faction,Protocol::ChannelID::TutorialAt>							tutorialAt(Receiver::TutorialAt);
@@ -265,7 +348,6 @@ namespace Channels
 	TCP::ObjectSender<Protocol::ResourceUpdate,Protocol::ChannelID::ResourceUpdate>					resourceUpdate;
 	TCP::ObjectSender<Protocol::GameProgress,Protocol::ChannelID::GameProgress>						gameProgress;
 	TCP::ObjectSender<Protocol::IdentifyFaction, Protocol::ChannelID::IdentifyFaction>				identifyFaction;
-	TCP::ObjectSender<Protocol::ResearchState, Protocol::ChannelID::ResearchState>					researchState;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionOnline>							factionOnline;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionOffline>							factionOffline;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionRequestedNewRound>				factionRequestedNewRound;
@@ -279,7 +361,6 @@ namespace Channels
 
 	TCP::ObjectSender<Protocol::UnitLimits,Protocol::ChannelID::UnitLimits>							unitLimits;
 	TCP::ObjectSender<Protocol::OperationLacksResources,Protocol::ChannelID::OperationLacksResources>	operationLacksResources;
-	TCP::ObjectSender<Protocol::ResearchQueue, Protocol::ChannelID::ResearchQueue>					researchQueue;
 
 	TCP::ObjectSender<TUniqueID, Protocol::ChannelID::WinningFaction>								winningFaction;
 
@@ -294,6 +375,13 @@ namespace Channels
 	DECLARE_OBJECT_SENDER(MyFaction);
 	DECLARE_OBJECT_SENDER(GameConfig);
 	DECLARE_OBJECT_SENDER(KillFaction);
+
+	DECLARE_OBJECT_SENDER(ResearchState);
+	DECLARE_OBJECT_SENDER(ResearchProgram);
+	DECLARE_OBJECT_SENDER(ResearchQueue);
+	DECLARE_OBJECT_SENDER(ResearchAttributeVector);
+	DECLARE_OBJECT_SENDER(ResearchAttributeDeltaVector);
+	DECLARE_FACTION_CHANNEL(QueueResearch);
 
 	namespace Statistics
 	{
@@ -447,13 +535,17 @@ namespace Receiver
 
 		SendSessionConfigTo(peer, Objects::PFaction());
 
+		ResearchSerialization::SendResearchProgramTo(peer);
+		ResearchSerialization::SendAttributeVectorTo(peer,Objects::ResearchState::globalState.zeroTable,TUniqueID::Empty());
+
 		Objects::ForeachFaction([&peer](const Objects::PFaction&f)
 		{
 			Protocol::ResearchState state;
 			state.ownerID = f->id;
-			f->researchState.Export(state.serializedData);
-			ASSERT_LESS__(state.serializedData.Count(),state.serializedData.MaxElementCount);
-			Channels::researchState.SendTo(peer,state);
+			state.progressVector = f->researchState.topicProgressVector;
+
+			ResearchSerialization::SendAttributeVectorTo(peer,f->researchState.attributeTable,f->id);
+			Channels::ResearchState.SendTo(peer,state);
 		});
 
 		//if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
@@ -800,6 +892,15 @@ namespace Receiver
 			Channels::createMarker.SendTo(peer, outMarker);
 		}
 
+		Objects::ForeachFaction([&peer](const Objects::PFaction&f)
+		{
+			Protocol::ResearchState state;
+			state.ownerID = f->id;
+			state.progressVector = f->researchState.topicProgressVector;
+			Channels::ResearchState.SendTo(peer,state);
+
+			ResearchSerialization::SendAttributeVectorTo(peer,f->researchState.attributeTable,f->id);
+		});
 
 		if (newFaction)
 		{
@@ -807,18 +908,13 @@ namespace Receiver
 
 		}
 
-		Objects::ForeachFaction([&peer](const Objects::PFaction&f)
-		{
-			Protocol::ResearchState state;
-			state.ownerID = f->id;
-			f->researchState.Export(state.serializedData);
-			ASSERT_LESS__(state.serializedData.Count(),state.serializedData.MaxElementCount);
-			Channels::researchState.SendTo(peer,state);
-		});
+		ResearchSerialization::SendResearchProgramTo(peer);
+
+
 		{
 			Protocol::ResearchQueue queue;
 			client->faction->researchState.ExportResearchQueue(queue);
-			Channels::researchQueue.SendTo(peer,queue);
+			Channels::ResearchQueue.SendTo(peer,queue);
 		}
 
 		#ifndef CHEAT_SHOW_ALL_RESOURCES
@@ -1202,23 +1298,6 @@ namespace Receiver
 	void	TutorialAt(NET(INT32)&at)
 	{
 		Game::tutorialAt = at;
-	}
-
-	void	RequestResource(Protocol::ResourceID&id, TCP::Peer&peer)
-	{
-		LogEvent(EventClass::Preset::common,peer,"Received resource request for resource "+Bin2Str::ConvertPOD(id));
-
-		ScriptCache::PScript script = ScriptCache::Lookup(id);
-		if (script)
-		{
-			LogEvent(EventClass::Preset::common,peer,"Resource "+Bin2Str::ConvertPOD(id)+" is script. Dispatching "+String(script->compressed.Count())+" bytes");
-			Protocol::ResourceData data;
-			data.data = script->compressed;	//stupid copy...
-			data.id = id;
-			Channels::resourceData.SendTo(peer,data);
-			return;
-		}
-		LogEvent(EventClass::Preset::common,peer,"Resource "+Bin2Str::ConvertPOD(id)+" is unknown");
 	}
 
 	

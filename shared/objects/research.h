@@ -99,6 +99,7 @@ namespace Objects
 		typedef ResearchGroup	Super;
 	public:
 		typedef Lua::Function<void(Lua::Reference, int)>	FSetProgress;
+		typedef Lua::Function<int(Lua::Reference)>	FGetProgress;
 		typedef Lua::Function<bool(Lua::Reference)> FBool;
 		typedef Lua::Function<PResearchTopic(Lua::Reference)> FResearchTopic;
 		
@@ -117,6 +118,7 @@ namespace Objects
 		Lua function to update the progress of the local research. Empty if this is a group
 		*/
 		FSetProgress		setProgress;
+		FGetProgress		getProgress;
 		
 
 		/**
@@ -152,7 +154,7 @@ namespace Objects
 
 
 		/**/					ResearchTopic(const PResearchTopic&parent, const String&name, const String&iconName, 
-												const FSetProgress&setProgress, 
+												const FSetProgress&setProgress, const FGetProgress&getProgress,
 												int maxProgress,
 												const PResearchTopic&dependency
 												);
@@ -235,7 +237,7 @@ namespace Objects
 		bool					factionIsNexus;
 		static void				LogLua(const String&msg);
 		static PResearchTopic	CreateResearch(const PResearchTopic&parent, const String&name, const String&iconName, 
-												const ResearchTopic::FSetProgress&setProgress, 
+												const ResearchTopic::FSetProgress&setProgress, const ResearchTopic::FGetProgress&getProgress,
 												int maxProgress,
 												const PResearchTopic&dependency
 												);
@@ -336,6 +338,7 @@ namespace Objects
 		*/
 		void					UpdateAttributeTable();
 		static void				UpdateAttributeTable(const Lua::Reference&luaResearchState, ResearchAttributeTable&table);
+		void					ImportResearchState(const ResearchProgressVector&archived);
 		void					ImportLuaState(const ArrayRef<const BYTE>&serializedState);
 		void					ExportLuaState(Array<BYTE>&outSerializedState) const;
 

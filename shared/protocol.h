@@ -1403,6 +1403,13 @@ namespace Protocol
 				Serialize(s,v.value);
 				Serialize(s,v.description);
 			}
+
+			void				swap(Self&other)
+			{
+				using std::swap;
+				swap(value,other.value);
+				description.swap(other.description);
+			}
 		};
 
 	template <typename T>
@@ -1424,6 +1431,13 @@ namespace Protocol
 				using Serialization::Serialize;
 				s.WriteSize(v.index);
 				Serialize(s,(Super&)v);
+			}
+
+			void				swap(Self&other)
+			{
+				using std::swap;
+				swap(index,other.index);
+				Super::swap(other);
 			}
 		};
 

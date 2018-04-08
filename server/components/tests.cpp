@@ -633,10 +633,10 @@ namespace Test
 		count_t outOfScanning = 0;
 		count_t outOfRange = 0;
 		count_t friendlyTest = 0;
-		auto original = turret->explosionRadius.constOverride;
+		//auto original = Objects::ResearchState:: turret->explosionRadius.constOverride;
 		for (int i = 0; i < 100 || outOfScanning < 10 || outOfRange < 10 || friendlyTest < 10; i++)
 		{
-			turret->explosionRadius.SetConst(random.NextFloat(1,4));
+			//turret->explosionRadius.SetConst(random.NextFloat(1,4));
 
 			Grid::LCellIdI	generatorAt = RandomCell(random);
 			generatorAt.height = Objects::FindApplicableGround(generatorAt,true,true);
@@ -888,7 +888,7 @@ namespace Test
 			ASSERT_EQUAL__(Objects::vehicles.Count(), 0);
 
 		}
-		turret->explosionRadius.constOverride = original;
+		//turret->explosionRadius.constOverride = original;
 		
 		GlobalEvents::FlushObjects();
 

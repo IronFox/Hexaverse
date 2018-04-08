@@ -589,7 +589,6 @@ namespace Game
 
 		void		AssembleGameConfig(Protocol::GameConfig&gameConfig, bool allowSpectatorFactions)
 		{
-			gameConfig.researchScript = Objects::ResearchState::GetScriptIdentifier();
 			gameConfig.gameGoal = (UINT32)RuntimeConfig::gameGoal;
 			gameConfig.gameFlags = AssembleGameFlags(allowSpectatorFactions);
 			gameConfig.worldDiscovery = (BYTE)World::Config::worldDiscovery;
@@ -629,9 +628,9 @@ namespace Game
 						f->researchState.changed = false;
 						Protocol::ResearchState state;
 						state.ownerID = f->id;
-						f->researchState.Export(state.serializedData);
-						ASSERT_LESS__(state.serializedData.Count(),state.serializedData.MaxElementCount);
-						Channels::researchState.SendTo(::Network::server,state,(UINT32)::Network::UserLevel::CommonFaction);
+						state.progressVector = f->researchState.topicProgressVector;
+						ResearchSerialization::SendAttributeVectorTo(::Network::server,f->researchState.attributeTable,f->id);
+						Channels::ResearchState.SendTo(::Network::server,state,(UINT32)::Network::UserLevel::CommonFaction);
 					}
 					if (f->researchState.queueChanged)
 					{
@@ -641,7 +640,7 @@ namespace Game
 						{
 							Protocol::ResearchQueue queue;
 							f->researchState.ExportResearchQueue(queue);
-							::Channels::researchQueue.SendTo(client->peer.lock(),queue);
+							::Channels::ResearchQueue.SendTo(client->peer.lock(),queue);
 						}
 					}
 				});

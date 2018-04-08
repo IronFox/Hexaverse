@@ -973,19 +973,6 @@ int main( int argc, const char* argv[])
 			Reflection::state.DefineCommand("reloadResearchProgram",(CLI::Command::function0_t)[]()
 			{
 				Objects::ResearchState::LoadDefaultProgram();
-				Protocol::GameConfig localhost,other;
-				Game::Network::AssembleGameConfig(other,false);
-				Game::Network::AssembleGameConfig(localhost,true);
-
-				Network::server.VisitAllPeers([localhost,other](const TCP::PPeer&p)
-				{
-					if (p->IsLocalhost())
-						Channels::GameConfig.SendTo(p,localhost);
-					else
-						Channels::GameConfig.SendTo(p,other);
-				});
-
-
 			})->SetUniqueHelp("Reloads research program from file and redeploys to clients");
 
 		Reflection::state.PopFocus();
@@ -1152,6 +1139,17 @@ int main( int argc, const char* argv[])
 		if (ParameterConfig::enableRemoteControl)
 			RemoteControl::Start(ParameterConfig::basePort,ParameterConfig::controlProtocol);
 
+
+		Objects::ResearchState::globalState.onScriptChange <<
+		[]()
+		{
+			ResearchSerialization::SendResearchProgramTo(Network::server);
+			Objects::ForeachFaction([](const Objects::PFaction&f)
+			{
+
+
+			});
+		};
 
 		while (!application_shutting_down && !quitMainLoop)
 		{

@@ -1245,7 +1245,7 @@ namespace Network
 				}
 			}
 
-		void	ResearchAttributeVector(Protocol::ResearchAttributeVector&attributes)
+		void	ResearchAttributeVector( Protocol::ResearchAttributeVector&attributes )
 		{
 			Objects::ResearchAttributeTable*table0 = nullptr;
 			if (attributes.faction.IsEmpty())

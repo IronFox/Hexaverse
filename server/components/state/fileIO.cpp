@@ -1491,7 +1491,7 @@ namespace FileIO
 										Riff::Chunk*researchStateChunk = list->FindFirst(RID::researchState);
 										if (researchStateChunk)
 										{
-											faction->researchState.Import(researchStateChunk->ReferenceData());
+											faction->researchState.ImportLuaState(researchStateChunk->ReferenceData());
 
 
 											Riff::Chunk*activeResearchChunk = list->FindFirst(RID::activeResearchTopic);
@@ -1861,10 +1861,10 @@ namespace FileIO
 				factionSection->AppendBlock(RID::factionAccessToken)->SetPODData(faction->accessToken);	//faction access token
 
 
-				if (faction->researchState.researchState.IsSet())
+				if (faction->researchState.luaResearchState.IsSet())
 				{
 					Ctr::Array<BYTE> data;
-					faction->researchState.Export(data);
+					faction->researchState.ExportLuaState(data);
 					factionSection->AppendBlock(RID::researchState)->SetData(data);
 
 					auto res = faction->researchState.ExportResearchQueue();

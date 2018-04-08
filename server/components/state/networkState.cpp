@@ -448,9 +448,8 @@ namespace Network
 		server.InstallChannel(Channels::touchMarker);
 		server.InstallChannel(Channels::changeMyName);
 		server.InstallChannel(Channels::identifyFactionRecv);
-		server.InstallChannel(Channels::queueResearch);
+		server.InstallChannel(Channels::QueueResearch);
 		server.InstallChannel(Channels::ChatMessage);
-		server.InstallChannel(Channels::requestResource);
 		server.InstallChannel(Channels::tutorialAt);
 
 		server.InstallChannel(Channels::AllianceInvite);
