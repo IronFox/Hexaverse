@@ -77,7 +77,6 @@ namespace Objects
 		ChangingOwnership
 	);
 
-	
 	class Compound;
 	class Marker;
 	struct TrajectoryEndPoint;

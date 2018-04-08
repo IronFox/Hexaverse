@@ -173,13 +173,13 @@ namespace Objects
 					outResult << topic->name;
 					return;
 				}
-				Lua::Reference state = selectedEntity ? selectedEntity->GetResearchState() : Lua::Reference();
+				const auto* state = selectedEntity && selectedEntity->owner ? &selectedEntity->owner->researchState.topicProgressVector : nullptr;
 
 				int current = 0;
 				int max = topic->maxProgress;
-				if (state.IsSet())
+				if (state)
 				{
-					current = topic->getProgress(state);
+					current = state->at(topic->serialIndex);
 				}
 		//		const ResearchState*rs = selectedEntity && selectedEntity->owner ? &selectedEntity->owner->researchState : nullptr;
 
@@ -199,7 +199,7 @@ namespace Objects
 							outResult << "Research completed";
 					}
 					PResearchTopic dep = topic->dependency.lock();
-					if (dep && (state.IsEmpty() || dep->getProgress(state)<dep->maxProgress))
+					if (dep && (!state || state->at(dep->serialIndex) < dep->maxProgress))
 						outResult << "Requires completion of "+dep->GetFullName()+" research";
 					outResult.MarkBriefEnd(true);
 				}

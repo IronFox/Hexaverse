@@ -1381,12 +1381,70 @@ namespace Protocol
 		, int, maxProgress
 	)
 	typedef ::Protocol::NetArray<ResearchTopic,256> ResearchProgram;
-	
-	NETSTRUCT2(Attribute
-		, float,	value
-		, Package::NetString<64>, description
-	)
-	typedef ::Protocol::NetArray<Attribute,256> AttributeVector;
+
+
+	template <typename T>
+		struct ResearchAttribute
+		{
+			typedef ResearchAttribute<T> Self;
+
+			T		value;
+			Package::NetString<128>	description;
+
+			friend	void		Deserialize(IReadStream&s, Self&v)
+			{
+				using Serialization::Deserialize;
+				Deserialize(s,v.value);
+				Deserialize(s,v.description);
+			}
+			friend void			Serialize(IWriteStream&s, const Self&v)
+			{
+				using Serialization::Serialize;
+				Serialize(s,v.value);
+				Serialize(s,v.description);
+			}
+		};
+
+	template <typename T>
+		struct ResearchAttributeDelta : public ResearchAttribute<T>
+		{
+			typedef ResearchAttributeDelta<T> Self;
+			typedef ResearchAttribute<T> Super;
+
+			index_t	index;
+
+			friend	void		Deserialize(IReadStream&s, Self&v)
+			{
+				using Serialization::Deserialize;
+				v.index = s.ReadSize();
+				Deserialize(s,(Super&)v);
+			}
+			friend void			Serialize(IWriteStream&s, const Self&v)
+			{
+				using Serialization::Serialize;
+				s.WriteSize(v.index);
+				Serialize(s,(Super&)v);
+			}
+		};
+
+	template <typename T>
+		class ResearchAttributeArray : public ::Protocol::NetArray<ResearchAttribute<T>,128> {};
+	template <typename T>
+		class ResearchAttributeDeltaArray : public ::Protocol::NetArray<ResearchAttributeDelta<T>,128> {};
+
+	NETSTRUCT4( ResearchAttributeVector
+		, TUniqueID, faction
+		, ResearchAttributeArray<int>, intAttributes
+		, ResearchAttributeArray<float>, floatAttributes
+		, ResearchAttributeArray<bool>, boolAttributes
+	);
+
+	NETSTRUCT4( ResearchAttributeDeltaVector
+		, TUniqueID, faction
+		, ResearchAttributeDeltaArray<int>, intAttributes
+		, ResearchAttributeDeltaArray<float>, floatAttributes
+		, ResearchAttributeDeltaArray<bool>, boolAttributes
+	);
 
 
 	//NETSTRUCT2(ResourceData
@@ -1501,7 +1559,8 @@ namespace Protocol
 			ResearchState,		// s2c : ResearchState
 			QueueResearch,		// c2s : QueueResearch -> s2c : ResearchQueue
 			ResearchQueue,		// s2c : ResearchQueue
-			AttributeVector,	// s2c : AttributeVector
+			ResearchAttributeVector,	// s2c: ResearchAttributeVector
+			ResearchAttributeDeltaVector,	//s2c: ResearchAttributeDeltaVector
 
 			LockEMPZones,		// s2c : UINT16
 			UplinkBandwidth,	// s2c : int, can be negative to indicate it's disabled

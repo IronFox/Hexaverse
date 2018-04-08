@@ -333,7 +333,7 @@ namespace Tutorial
 				myResearch.ClearTable();
 
 			Lua::Reference current;
-			const auto&st = Objects::Faction::mine->researchState.researchState;
+			const auto&st = Objects::Faction::mine->researchState.topicProgressVector;
 			//const index_t at = Objects::Faction::mine->researchState.GetActiveTopicIndex();
 			Array<UINT32> q;
 			Objects::Faction::mine->researchState.ExportResearchQueue(q);
@@ -352,7 +352,7 @@ namespace Tutorial
 				outT.SetField("max",t->maxProgress);
 				outT.SetField("isEndless",t->maxProgress <= 0);
 				
-				const int prog = t->getProgress(st);
+				const int prog = st[t->serialIndex];
 				outT.SetField("progress",prog);
 				outT.SetField("isCompleted",t->ResearchCompleted(st));
 

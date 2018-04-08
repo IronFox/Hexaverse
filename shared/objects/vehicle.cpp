@@ -67,16 +67,17 @@ namespace Objects
 
 	/*virtual override*/ float		Vehicle::GetScanningRange() const
 	{
-		return cache.maxScanningRange.GetEMPModified(*this,turret->scanningRange,turret->CanAttack() ? Component::FScaledFunc() : base->turretRangeModifier);
-		//return EMPModify(turret->GetScanningRange(owner,turret->CanAttack() ? 0 : base->rangeModifier), 2.f);
+		const auto& state = GetResearchState();
+		return EMPModify(turret->scanningRange.GetValue(state) + (turret->CanAttack() ? 0.f : base->turretRangeModifier.GetValue(state)),2.f);
 	}
 
 	/*virtual override*/ String		Vehicle::DescribeScanningRange() const
 	{
-		String rs = turret->scanningRange.Describe(GetResearchState());
+		const auto& state = GetResearchState();
+		String rs = turret->scanningRange.Describe(state);
 		if (!turret->CanAttack())
 		{
-			String mod = base->turretRangeModifier.Describe(GetResearchState());
+			String mod = base->turretRangeModifier.Describe(state);
 			if (mod != '0')
 				rs += "+"+mod;
 		}
@@ -85,13 +86,13 @@ namespace Objects
 
 	/*virtual override*/ int				Vehicle::GetMaxHealth() const
 	{
-		return cache.maxHealth.Get(this->GetResearchState(), base->health,turret->healthMultiplier, 1);
-		//return std::max(1,(int)floor(base->GetBaseHealth(owner) * turret->healthMultiplier(owner)));
+		const auto& state = GetResearchState();
+		return base->health.GetValue(state) * turret->healthMultiplier.GetValue(state);
 	}
 
 	/*virtual override*/ String				Vehicle::DescribeMaxHealth() const
 	{
-		Lua::Reference state = GetResearchState();
+		const auto& state = GetResearchState();
 		String multiplier = turret->healthMultiplier.Describe(state);
 		if (multiplier == "1" || multiplier == "1.0")
 			return base->health.Describe(state);
@@ -197,14 +198,21 @@ namespace Objects
 
 	/*virtual override*/ String			Vehicle::DescribeFlatAttackRange() const
 	{
-		return cache.horizontalAttackRange.DescribeEMPModified(*this,turret->horizontalAttackRange,base->turretRangeModifier);
+		const auto& state = GetResearchState();
+		String rs = turret->horizontalAttackRange.Describe(state);
+		{
+			String mod = base->turretRangeModifier.Describe(state);
+			if (mod != '0')
+				rs += "+"+mod;
+		}
+		return rs;
 	}
 
 	
 	/*virtual override*/ float			Vehicle::GetFlatAttackRange() const
 	{
-		return cache.horizontalAttackRange.GetEMPModified(*this,turret->horizontalAttackRange,base->turretRangeModifier);
-		//EMPModify(turret->GetHorizontalAttackRange(owner,base->turretRangeModifier),1.f);
+		const auto& state = GetResearchState();
+		return EMPModify(turret->horizontalAttackRange.GetValue(state) + base->turretRangeModifier.GetValue(state),2.f);
 	}
 
 

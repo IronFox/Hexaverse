@@ -103,7 +103,7 @@ namespace StatePanel
 		if (ConfigurationMode::IsActive())
 			return;
 
-		Lua::Reference researchState = e.GetResearchState();
+		const auto&researchState = e.GetResearchState();
 
 		currentColor = float4(1);
 		#ifndef NO_HIBERNATION

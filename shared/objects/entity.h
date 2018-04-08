@@ -134,53 +134,6 @@ namespace Objects
 	};
 
 
-	#ifdef CLIENT
-		template <typename T>
-			class LuaAttributeCache{};
-	#else
-		class BaseAttributeCache
-		{
-		public:
-			static index_t			versionCounter;
-
-		};
-
-		template <typename T>
-			class LuaAttributeCache : public BaseAttributeCache
-			{
-				typedef BaseAttributeCache	Super;
-			public:
-				index_t				versionCounter=InvalidIndex;
-				T					cached;
-				template <typename F1, typename F2>
-					T				GetEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source,const LuaAttribute<T,F2>&bonus);
-				template <typename F1>
-					T				GetEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source)	{return GetEMPModified(e,source,LuaAttribute<T,NoFilter>());}
-				template <typename F1, typename F2>
-					String			DescribeEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source,const LuaAttribute<T,F2>&bonus);
-				template <typename F1>
-					String			DescribeEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source)	{return DescribeEMPModified(e,source,LuaAttribute<T,NoFilter>()); }
-				template <typename T2, typename F1, typename F2>
-					T				Get(const Lua::Reference&researchState, const LuaAttribute<T,F1>&source, const LuaAttribute<T2,F2>&multiplier, T minimum);
-				template <typename F1>
-					T				Get(const Lua::Reference&researchState, const LuaAttribute<T,F1>&source, nullptr_t, T minimum)	{return Get(researchState,source,LuaAttribute<T,NoFilter>(),minimum);}
-				bool				IsCurrent() const {return versionCounter == Super::versionCounter;}
-				T					Update(T newValue) {cached = newValue; versionCounter = Super::versionCounter; return cached;}
-				void				Invalidate() { versionCounter = InvalidIndex; }
-			};
-	#endif
-
-	class CachedAttributes
-	{
-	public:
-		LuaAttributeCache<float>	groundScanningRange,
-									maxScanningRange,
-									horizontalAttackRange,
-									explosionRadius;
-		LuaAttributeCache<int>		maxHealth,constructionCost;
-	};
-
-
 	class BaseAttributeTable
 	{
 	public:
@@ -247,9 +200,7 @@ namespace Objects
 
 		#endif
 
-		mutable CachedAttributes	cache;	//less wrong to make this mutable in const methods, than changing all const methods that don't actually change their respective object
-
-		Lua::Reference				GetResearchState() const;
+		const ResearchAttributeTable&GetResearchState() const;
 		virtual BaseAttributeTable*	GetTable() const {FATAL__("Attempting to query attribute table on "+GetTypeName());  return nullptr;}
 
 		inline void					SyncTime(float&remoteTime, float timeOffset)
@@ -501,7 +452,7 @@ namespace Objects
 		virtual bool				IsMobile() const {return false;}
 		virtual bool				IsTower() const {return false;}
 
-		virtual bool				IsUnlockedAtState(const Lua::Reference&researchState) const	{return GetTable()->isUnlocked.GetValue(researchState);}
+		virtual bool				IsUnlockedAtState(const ResearchAttributeTable&table) const	{return GetTable()->isUnlocked.GetValue(table);}
 		bool						IsUnlocked() const {return IsUnlockedAtState(GetResearchState());}
 		virtual bool				CanBeUnlocked() const {return GetTable()->isUnlocked.IsFunctionOrConstNonZero();}
 		virtual bool				IsVehicle() const {return false;}
@@ -697,41 +648,10 @@ namespace Objects
 
 
 
+//				return WorldEntity::StaticEMPModify(cached,2.f * Grid::UnitScale,e.empDamageLevel);;
 
-	template <typename T>
-		template <typename F1, typename F2>
-			T	LuaAttributeCache<T>::GetEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source,const LuaAttribute<T,F2>&bonus)
-			{
-				if (versionCounter != Super::versionCounter)
-				{
-					versionCounter = Super::versionCounter;
-					T val = source.GetValue(e.GetResearchState());
-					if (val > 0 && bonus.IsSet())
-						val += bonus.GetValue(e.GetResearchState());
-					cached = val;
-				}
-				return WorldEntity::StaticEMPModify(cached,2.f * Grid::UnitScale,e.empDamageLevel);;
-			}
-	template <typename T>
-		template <typename F1, typename F2>
-			String	LuaAttributeCache<T>::DescribeEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source,const LuaAttribute<T,F2>&bonus)
-			{
-				const auto res = e.GetResearchState();
-				if (bonus.IsSet() && source.GetValue(res) > 0)
-				{
-					String bonusStr = bonus.Describe(res);
-					if (bonusStr != "0")
-					{
-						T val = source.GetUnfilteredValue(res)
-							+ bonus.GetUnfilteredValue(res);
 
-						return String(M::Round(val*100)/100)+" [="+source.Describe(res) + "+"+bonusStr+" (bonus)]";
-					}
-				}
-			
-				return source.Describe(e.GetResearchState());
-			}
-	template <typename T>
+	/*template <typename T>
 		template <typename T2,typename F1, typename F2>
 			T	LuaAttributeCache<T>::Get(const Lua::Reference&researchState, const LuaAttribute<T,F1>&source, const LuaAttribute<T2,F2>&multiplier, T minimum)
 			{
@@ -747,7 +667,7 @@ namespace Objects
 				}
 				return cached;
 			}
-
+*/
 
 	PWorldEntity							GetEntity(const TUniqueID&id);
 

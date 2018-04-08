@@ -90,9 +90,9 @@ namespace Objects
 		}
 
 
-		Lua::Reference	ResearchStateOf(const OwnerParameter&owner)
+		const ResearchAttributeTable&	ResearchStateOf(const OwnerParameter&owner)
 		{
-			return owner ? owner->researchState.researchState : Lua::Reference();
+			return owner ? owner->researchState.attributeTable : ResearchState::globalState.zeroTable;
 		}
 
 
@@ -1450,7 +1450,7 @@ namespace Objects
 			void VehicleBase::DescribeType(Command::Base::Label&outResult, bool compound, bool includeName, const OwnerParameter&owner)
 			{
 				outResult.BeginBrief();
-				Lua::Reference researchState = ResearchStateOf(owner);
+				const auto& researchState = ResearchStateOf(owner);
 				if (includeName && typeName.IsNotEmpty())
 					outResult << typeName + " (Base)";
 				Base::DescribeType(outResult,compound,owner);
@@ -1516,7 +1516,7 @@ namespace Objects
 						outResult <<"Deployed: "+String(cnt)+"/"+String(limit);
 				}
 
-				Lua::Reference researchState = ResearchStateOf(owner);
+				const auto& researchState = ResearchStateOf(owner);
 
 				Base::DescribeType(outResult,compound,owner);
 				outResult.BeginBrief();

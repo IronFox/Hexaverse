@@ -196,7 +196,6 @@ namespace Network
 		void	FactionContinuedRound(NET(TUniqueID)&);
 		void	LockEmpZones(NET(UINT16)&);
 		void	PlanetConfig(Grid::ExtendedPlanetConfig&);
-		void	ResourceData(Protocol::ResourceData&);
 		void	GameConfig(Protocol::GameConfig&);
 		void	TutorialAt(NET(INT32)&);
 
@@ -251,9 +250,10 @@ namespace Network
 		extern TCP::Channel<NET(UINT16), 0, Protocol::ChannelID::LockEMPZones>							lockEmpZones;
 		extern TCP::Channel<NET(int32_t), 0, Protocol::ChannelID::UplinkBandwidth>						uplinkBandwidth;
 		extern TCP::Channel<Protocol::OperationLacksResources, 0, Protocol::ChannelID::OperationLacksResources>			operationLacksResources;
-		extern TCP::Channel<Protocol::ResearchState, 0, Protocol::ChannelID::ResearchState>				researchState;
-		extern TCP::Channel<Protocol::ResearchQueue, 0, Protocol::ChannelID::ResearchQueue>				researchQueue;
-		extern TCP::Channel<Protocol::ResourceData,0,Protocol::ChannelID::ResourceData>					resourceData;
+
+
+
+
 		extern TCP::Channel<Protocol::GameConfig,0,Protocol::ChannelID::GameConfig>						gameConfig;
 
 		extern TCP::Channel<NET(INT32),0,Protocol::ChannelID::TutorialAt>								tutorialAt;
@@ -282,7 +282,6 @@ namespace Network
 		extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::RemoveEntity>						removeEntity;
 		extern TCP::ObjectSender<Protocol::EntityStateUpdate, Protocol::ChannelID::Sleep>				sleep;
 		extern TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>				changeMyName;
-		extern TCP::ObjectSender<Protocol::ResourceID, Protocol::ChannelID::RequestResource>			requestResource;
 		extern TCP::ObjectSender<Protocol::QueueResearch, Protocol::ChannelID::QueueResearch>			queueResearch;
 		
 
@@ -295,6 +294,13 @@ namespace Network
 		DECLARE_OBJECT_SENDER(ChatMessage);
 		DECLARE_OBJECT_SENDER(SaveAs);
 		DECLARE_CHANNEL(KillFaction);
+
+		DECLARE_CHANNEL(ResearchProgram);
+		DECLARE_CHANNEL(ResearchState);
+		DECLARE_CHANNEL(ResearchQueue);
+		DECLARE_OBJECT_SENDER(QueueResearch);
+		DECLARE_CHANNEL(ResearchAttributeVector);
+		DECLARE_CHANNEL(ResearchAttributeDeltaVector);
 	}
 
 

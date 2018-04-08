@@ -42,7 +42,6 @@ namespace Network
 
 	TUniqueID		myID,serverID,worldID;
 	UINT32				gameFlags = 0;
-	SHA256::HashContainer	requestedResearchScript;
 	UINT16			connectionBasePort = DEFAULT_SERVER_BASE_PORT;
 
 	CryptographicID	activeToken;
@@ -179,33 +178,10 @@ namespace Network
 
 
 
-	void			LoadScript(const SHA256::HashContainer&id)
-	{
-		ScriptCache::PScript script = ScriptCache::Lookup(id);
-		if (script)
-		{
-			LogEvent(EventClass::Preset::common,"Research script '"+Bin2Str::ConvertPOD(id)+"' is already locally available. activating...");
-			Objects::ResearchState::ActivateProgram(script);
-		}
-		else
-		{
-			LogEvent(EventClass::Preset::network,"Research script '"+Bin2Str::ConvertPOD(id)+"' is not locally available. Asking server...");
-			Network::Channels::requestResource.SendTo(client,id);
-		}
-
-	}
-
-
 	void			LoadGameConfig(const Protocol::GameConfig&cfg)
 	{
 		gameFlags = cfg.gameFlags;
 		RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(cfg.gameGoal);
-		requestedResearchScript = cfg.researchScript;
-
-		if (client.IsConnected())
-		{
-			LoadScript(Network::requestedResearchScript);
-		}
 	}
 
 	void			ConnectTo(const Host&host)
@@ -582,8 +558,6 @@ namespace Network
 				#ifdef HAS_WINDOW
 					HUD::HostList::CheckVisibility(false);
 				#endif
-
-				LoadScript(Network::requestedResearchScript);
 			}
 			else
 			{
@@ -1198,16 +1172,37 @@ namespace Network
 			bool brk = true;
 		}
 
+		static bool triggerScriptChange = false;
+
 		void	ResearchState(Protocol::ResearchState&state)
 		{
 			Objects::PFaction f = ResolveFaction(state.ownerID);
-			f->researchState.Import(state.serializedData);
+			ASSERT_EQUAL__(Objects::ResearchState::globalState.allTopics.Count(),state.progressVector.Length());
+			f->researchState.topicProgressVector.adoptData(state.progressVector);
+			f->researchState.changed = true;
 			#ifdef HAS_WINDOW
 				if (RuntimeConfig::tutorialMode && f == Objects::Faction::mine)
 					Tutorial::SignalResearchChange();
 			#endif
-			//Update( state, f);
+
+			if (triggerScriptChange && f->researchState.topicProgressVector.Count() == Objects::ResearchState::globalState.allTopics.Count())
+			{
+				triggerScriptChange = false;
+				Objects::ResearchState::globalState.onScriptChange();
+			}
+
 		}
+
+		//research program updates must always preceed research states
+		void	ResearchProgram(Protocol::ResearchProgram&program)
+		{
+			Objects::ResearchState::BeginServerTopicUpdate();
+			foreach (program,prog)
+				Objects::ResearchState::DeclareServerTopic(prog->parentTopic -1, prog->name,prog->iconName, prog->maxProgress,prog->dependentTopic-1);
+
+			triggerScriptChange = true;	//must wait for state
+		}
+
 
 		void	ResearchQueue(Protocol::ResearchQueue&research)
 		{
@@ -1225,20 +1220,59 @@ namespace Network
 			}
 		}
 
-		void	ResourceData(Protocol::ResourceData&dat)
-		{
-			LogEvent(EventClass::Preset::uncommon,"Received resource "+Bin2Str::ConvertPOD(dat.id));
-			if (dat.id == requestedResearchScript)
+
+		template <typename T>
+			static void Import(Protocol::ResearchAttributeArray<T>&source, Array<Objects::ResearchAttributeTable::Attrib<T> >&dest)
 			{
-				LogEvent(EventClass::Preset::uncommon,"Resource "+Bin2Str::ConvertPOD(dat.id)+" is research script");
-				ScriptCache::PScript script = ScriptCache::DefineFromFleetingCompressedData(dat.id, dat.data);
-				if (script)
+				ASSERT_EQUAL__(source.Count(),dest.Count());
+				for (index_t i = 0; i < dest.Count(); i++)
 				{
-					Objects::ResearchState::ActivateProgram(script);
+					auto&src = source[i];
+					auto&dst = dest[i];
+					dst.value = src.value;
+					dst.description.adoptData(src.description);
 				}
 			}
-			
+
+		template <typename T>
+			static void Import(Protocol::ResearchAttributeDeltaArray<T>&source, Array<Objects::ResearchAttributeTable::Attrib<T> >&dest)
+			{
+				foreach (source,src)
+				{
+					auto&dst = dest[src->index];
+					dst.value = src->value;
+					dst.description.adoptData(src->description);
+				}
+			}
+
+		void	ResearchAttributeVector(Protocol::ResearchAttributeVector&attributes)
+		{
+			Objects::ResearchAttributeTable*table0 = nullptr;
+			if (attributes.faction.IsEmpty())
+				table0 = &Objects::ResearchState::globalState.zeroTable;
+			else
+				table0 = &ResolveFaction(attributes.faction)->researchState.attributeTable;
+			auto&table = *table0;
+
+			Import(attributes.boolAttributes,table.boolAttributes);
+			Import(attributes.intAttributes,table.intAttributes);
+			Import(attributes.floatAttributes,table.floatAttributes);
 		}
+
+		void	ResearchAttributeDeltaVector(Protocol::ResearchAttributeDeltaVector&attributes)
+		{
+			Objects::ResearchAttributeTable*table0 = nullptr;
+			if (attributes.faction.IsEmpty())
+				table0 = &Objects::ResearchState::globalState.zeroTable;
+			else
+				table0 = &ResolveFaction(attributes.faction)->researchState.attributeTable;
+			auto&table = *table0;
+
+			Import(attributes.boolAttributes,table.boolAttributes);
+			Import(attributes.intAttributes,table.intAttributes);
+			Import(attributes.floatAttributes,table.floatAttributes);
+		}
+
 
 
 		void	WinningFaction(TUniqueID&id)
@@ -1469,9 +1503,6 @@ namespace Network
 		TCP::Channel<NET(INT32), 0, Protocol::ChannelID::UplinkBandwidth>							uplinkBandwidth(Receiver::UplinkBandwidth);
 		TCP::Channel<Protocol::UnitLimits, 0, Protocol::ChannelID::UnitLimits>						unitLimits(Receiver::UnitLimits);
 		TCP::Channel<Protocol::OperationLacksResources, 0, Protocol::ChannelID::OperationLacksResources>			operationLacksResources(Receiver::OperationLacksResources);
-		TCP::Channel<Protocol::ResearchState, 0, Protocol::ChannelID::ResearchState>					researchState(Receiver::ResearchState);
-		TCP::Channel<Protocol::ResearchQueue, 0, Protocol::ChannelID::ResearchQueue>				researchQueue(Receiver::ResearchQueue);
-		TCP::Channel<Protocol::ResourceData,0,Protocol::ChannelID::ResourceData>					resourceData(Receiver::ResourceData);
 		TCP::Channel<Protocol::GameConfig,0,Protocol::ChannelID::GameConfig>						gameConfig(Receiver::GameConfig);
 
 		TCP::Channel<NET(INT32),0,Protocol::ChannelID::TutorialAt>									tutorialAt(Receiver::TutorialAt);
@@ -1502,7 +1533,6 @@ namespace Network
 		TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::RemoveEntity>						removeEntity;
 		TCP::ObjectSender<Protocol::EntityStateUpdate, Protocol::ChannelID::Sleep>					sleep;
 		TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>					changeMyName;
-		TCP::ObjectSender<Protocol::ResourceID, Protocol::ChannelID::RequestResource>				requestResource;
 		TCP::ObjectSender<Protocol::QueueResearch, Protocol::ChannelID::QueueResearch>				queueResearch;
 
 		DECLARE_CHANNEL(MyFaction);
@@ -1514,6 +1544,14 @@ namespace Network
 		DECLARE_OBJECT_SENDER(ChatMessage);
 		DECLARE_OBJECT_SENDER(SaveAs);
 		DECLARE_CHANNEL(KillFaction);
+
+		DECLARE_CHANNEL(ResearchProgram);
+		DECLARE_CHANNEL(ResearchState);
+		DECLARE_CHANNEL(ResearchQueue);
+		DECLARE_OBJECT_SENDER(QueueResearch);
+		DECLARE_CHANNEL(ResearchAttributeVector);
+		DECLARE_CHANNEL(ResearchAttributeDeltaVector);
+
 	}
 
 
@@ -1748,8 +1786,6 @@ namespace Network
 		client.InstallChannel(Channels::markerCreationFailedLimitReached);
 		client.InstallChannel(Channels::destroyMarker);
 		client.InstallChannel(Channels::identifyFaction);
-		client.InstallChannel(Channels::researchState);
-		client.InstallChannel(Channels::researchQueue);
 		client.InstallChannel(Channels::factionOnline);
 		client.InstallChannel(Channels::factionOffline);
 		client.InstallChannel(Channels::factionRequestedNewRound);
@@ -1759,7 +1795,6 @@ namespace Network
 		client.InstallChannel(Channels::uplinkBandwidth);
 		client.InstallChannel(Channels::unitLimits);
 		client.InstallChannel(Channels::operationLacksResources);
-		client.InstallChannel(Channels::resourceData);
 		client.InstallChannel(Channels::gameConfig);
 
 		client.InstallChannel(Channels::tutorialAt);
@@ -1769,6 +1804,12 @@ namespace Network
 		client.InstallChannel(Channels::Statistics::entityType);
 		client.InstallChannel(Channels::Statistics::round);
 		client.InstallChannel(Channels::Statistics::factionInteraction);
+
+		client.InstallChannel(Channels::ResearchProgram);
+		client.InstallChannel(Channels::ResearchState);
+		client.InstallChannel(Channels::ResearchQueue);
+		client.InstallChannel(Channels::ResearchAttributeVector);
+		client.InstallChannel(Channels::ResearchAttributeDeltaVector);
 
 		
 

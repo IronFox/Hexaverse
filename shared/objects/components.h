@@ -154,8 +154,7 @@ namespace Objects
 
 
 		const char*			OperationToString(operation_t);
-		Lua::Reference		ResearchStateOf(const PFaction&);
-		Lua::Reference		ResearchStateOf(const OwnerParameter&);
+		const ResearchAttributeTable&		ResearchStateOf(const PFaction&);
 
 
 

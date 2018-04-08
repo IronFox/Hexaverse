@@ -79,7 +79,7 @@ namespace Objects
 	{
 		if (!turret->CanAttack())
 			return 0.f;
-		return cache.explosionRadius.Get(GetResearchState(),turret->explosionRadius,nullptr,1);
+		return turret->explosionRadius.GetValue(GetResearchState());
 	}
 
 
@@ -100,7 +100,7 @@ namespace Objects
 
 	/*virtual override*/ float		MobileEntity::GetScanningRange() const
 	{
-		return cache.maxScanningRange.GetEMPModified(*this,turret->scanningRange);
+		return EMPModify(turret->scanningRange.GetValue(GetResearchState()),2);
 	}
 
 	/*virtual override*/ String		MobileEntity::DescribeScanningRange() const

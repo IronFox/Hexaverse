@@ -10,13 +10,54 @@
 #include "../stringTable.h"
 #include "../luaInterface.h"
 #include "../scriptCache.h"
-#include "luaAttribute.h"
+//#include "luaAttribute.h"
 #include <structure/observable.h>
 
 namespace Objects
 {
-
+	/**
+	Contains one value per research topic denoting the research progress
+	*/
 	typedef Array<int>	ResearchProgressVector;
+
+	
+
+	/**
+	Table containing all attributes in one array per type: float, int, bool
+	*/
+	class ResearchAttributeTable
+	{
+	public:
+		template <typename T>
+			struct Attrib
+			{
+				T			value;
+				String		description;
+			};
+
+		Array<Attrib<float> >	floatAttributes;
+		Array<Attrib<int> >		intAttributes;
+		Array<Attrib<bool> >	boolAttributes;
+
+
+		template <typename T>
+			T				Get(index_t) const = delete;
+		template <>
+			int				Get<int>(index_t at) const {return intAttributes[at].value;}
+		template <>
+			bool			Get<bool>(index_t at) const {return boolAttributes[at].value;}
+		template <>
+			float			Get<float>(index_t at) const {return floatAttributes[at].value;}
+		template <typename T>
+			const String&	Describe(index_t) const = delete;
+		template <>
+			const String&	Describe<int>(index_t at) const {return intAttributes[at].description;}
+		template <>
+			const String&	Describe<bool>(index_t at) const {return boolAttributes[at].description;}
+		template <>
+			const String&	Describe<float>(index_t at) const {return floatAttributes[at].description;}
+	};
+
 
 	class ResearchState;
 
@@ -71,13 +112,12 @@ namespace Objects
 		Always set.
 		*/
 		const WResearchTopic	parent;
-		#ifdef CLIENT
-		#else
-			/**
-			Lua function to update the progress of the local research. Empty if this is a group
-			*/
-			FSetProgress		setProgress;
-		#endif
+
+		/**
+		Lua function to update the progress of the local research. Empty if this is a group
+		*/
+		FSetProgress		setProgress;
+		
 
 		/**
 		Maximum research progress and topic classification.
@@ -212,32 +252,34 @@ namespace Objects
 
 		static const count_t	MaxResearchQueueLength = 4;
 
-		RawResearchState		researchState;
-		ResearchProgressVector	topicProgressVector;
+		ResearchProgressVector	topicProgressVector;	//!< Progress of each research topic. Also represented in luaResearchState, but depends on what the Lua program actually does
+		Lua::Reference			luaResearchState;		//!< Server-only Lua research state to derive attributes from
+		ResearchAttributeTable	attributeTable;			//!< Attributes retrieved from Lua research state
 
-		#ifndef CLIENT
+		struct TSerialState
+		{
+			Array<BYTE>		serialState;
+			String			researchQueue;
 
-			struct TSerialState
+			void			swap(TSerialState&other)
 			{
-				Array<BYTE>		serialState;
-				String			researchQueue;
+				serialState.swap(other.serialState);
+				researchQueue.swap(other.researchQueue);
+			}
 
-				void			swap(TSerialState&other)
-				{
-					serialState.swap(other.serialState);
-					researchQueue.swap(other.researchQueue);
-				}
-
-				friend void		swap(TSerialState&a,TSerialState&b)
-				{
-					a.swap(b);
-				}
-			};
-		#endif
+			friend void		swap(TSerialState&a,TSerialState&b)
+			{
+				a.swap(b);
+			}
+		};
 
 
 		struct GlobalState
 		{
+			bool					zeroTableChanged = false;
+			ResearchAttributeTable	zeroTable;
+			Lua::Reference			zeroState;
+
 			ScriptCache::PScript	script,	//currently loaded program
 									program0,	//absolute fallback program to be used if all fails
 									factoryDefault;	//program defined in install directory
@@ -288,12 +330,68 @@ namespace Objects
 
 		int						GetResearchSpeed() const	{return lastSpeed;}
 
-		void					Import(const Ctr::ArrayRef<const BYTE>&serializedState);
-		void					Export(Ctr::Array<BYTE>&outSerializedState) const;
+		/**
+		Updates this->attributeTable from the current Lua research state.
+		Automatically called by ImportLuaState(), and FinalizeRound()
+		*/
+		void					UpdateAttributeTable();
+		static void				UpdateAttributeTable(const Lua::Reference&luaResearchState, ResearchAttributeTable&table);
+		void					ImportLuaState(const ArrayRef<const BYTE>&serializedState);
+		void					ExportLuaState(Array<BYTE>&outSerializedState) const;
+
+		/**
+		Checks whether either a const value or lua function is defined the specified int attribute index
+		*/
+		static bool				LuaIntAttributeIsSet(index_t);
+		/**
+		Checks whether either a const value or lua function is defined the specified bool attribute index
+		*/
+		static bool				LuaBoolAttributeIsSet(index_t);
+		/**
+		Checks whether either a const value or lua function is defined the specified float attribute index
+		*/
+		static bool				LuaFloatAttributeIsSet(index_t);
+		/**
+		Checks whether a non-zero const value or lua function is defined the specified int attribute index
+		*/
+		static bool				LuaIntAttributeIsFunctionOrConstNonZero(index_t);
+		/**
+		Checks whether a non-zero const value or lua function is defined the specified bool attribute index
+		*/
+		static bool				LuaBoolIsFunctionOrConstNonZero(index_t);
+		/**
+		Checks whether a non-zero const value or lua function is defined the specified float attribute index
+		*/
+		static bool				LuaFloatAttributeIsFunctionOrConstNonZero(index_t);
+
+		template <typename T>
+			static bool			LuaAttributeIsSet(index_t) = delete;
+		template <>
+			static bool			LuaAttributeIsSet<int>( index_t idx ) {return LuaIntAttributeIsSet(idx);}
+		template <>
+			static bool			LuaAttributeIsSet<bool>( index_t idx ) {return LuaBoolAttributeIsSet(idx);}
+		template <>
+			static bool			LuaAttributeIsSet<float>( index_t idx ) {return LuaFloatAttributeIsSet(idx);}
+
+		template <typename T>
+			static bool			LuaAttributeIsFunctionOrConstNonZero(index_t) = delete;
+		template <>
+			static bool			LuaAttributeIsFunctionOrConstNonZero<int>( index_t idx ) {return LuaIntAttributeIsFunctionOrConstNonZero(idx);}
+		template <>
+			static bool			LuaAttributeIsFunctionOrConstNonZero<bool>( index_t idx ) {return LuaBoolIsFunctionOrConstNonZero(idx);}
+		template <>
+			static bool			LuaAttributeIsFunctionOrConstNonZero<float>( index_t idx ) {return LuaFloatAttributeIsFunctionOrConstNonZero(idx);}
+
+
+
 		static PResearchTopic	GetTopic(index_t);
 		static PResearchTopic	FindTopic(const String&path)	{return FindTopic(path.ref());}
 		static PResearchTopic	FindTopic(const StringRef&path);
 		static PResearchTopic	FindTopicOfPrototype(const PWorldEntity&proto);
+
+
+		static void				BeginServerTopicUpdate();
+		static void				DeclareServerTopic(index_t parentTopicIndex, const String&topicName, const String&iconName, int maxProgress, index_t dependentTopicIndex);
 	};
 
 	
