@@ -1,4 +1,11 @@
 
+client: attacks left of towers does not reset (missing server state change)
+ai: radar drives into range of rocket tower
+at end of game: dead factions should be 'revived' and sent to remaining factions without having to disconnect
+spectator at end of game: dead factions do show up, but with no name or color
+
+
+
 client: clicking on ghosts often crashes client (hostile or friendly)
 
 
