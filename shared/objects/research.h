@@ -43,19 +43,43 @@ namespace Objects
 		template <typename T>
 			T				Get(index_t) const = delete;
 		template <>
-			int				Get<int>(index_t at) const {return intAttributes[at].value;}
+			int				Get<int>(index_t at) const {return SafeGet(intAttributes,at);}
 		template <>
-			bool			Get<bool>(index_t at) const {return boolAttributes[at].value;}
+			bool			Get<bool>(index_t at) const {return SafeGet(boolAttributes,at);}
 		template <>
-			float			Get<float>(index_t at) const {return floatAttributes[at].value;}
+			float			Get<float>(index_t at) const {return SafeGet(floatAttributes,at);}
 		template <typename T>
 			const String&	Describe(index_t) const = delete;
 		template <>
-			const String&	Describe<int>(index_t at) const {return intAttributes[at].description;}
+			const String&	Describe<int>(index_t at) const {return SafeDesc(intAttributes,at);}
 		template <>
-			const String&	Describe<bool>(index_t at) const {return boolAttributes[at].description;}
+			const String&	Describe<bool>(index_t at) const {return SafeDesc(boolAttributes,at);}
 		template <>
-			const String&	Describe<float>(index_t at) const {return floatAttributes[at].description;}
+			const String&	Describe<float>(index_t at) const {return SafeDesc(floatAttributes,at);}
+
+	private:
+		template <typename T>
+			static T		SafeGet(const ArrayRef<Attrib<T> >&source, index_t at)
+			{
+				if (at >= source.Count())
+				{
+					ASSERT__(source.IsEmpty());
+					return (T)0;
+				}
+				return source[at].value;
+			}
+
+		template <typename T>
+			static const String&		SafeDesc(const ArrayRef<Attrib<T> >&source, index_t at)
+			{
+				if (at >= source.Count())
+				{
+					ASSERT__(source.IsEmpty());
+					static String rs = "[null]";
+					return rs;
+				}
+				return source[at].description;
+			}
 	};
 
 
