@@ -1825,6 +1825,10 @@ namespace Network
 		client.onSignal = OnSignal;
 		client.onIgnorePackage = OnIgnorePackage;
 		TCP::onIgnoredException = OnIgnoredException;
+		client.onDeserializationFailed = [](UINT32 channel, TCP::Peer&origin, const String&exceptionMessage)
+		{
+			LogEvent(EventSignificance::NonFatalError,"Failed to deserialize package on network channel "+String(channel)+": "+exceptionMessage);
+		};
 
 		ASSERT__(Net::initNet());
 		if (RuntimeConfig::udpListen)
