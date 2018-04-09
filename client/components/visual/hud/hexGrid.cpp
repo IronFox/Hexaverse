@@ -1566,11 +1566,20 @@ namespace HexGrid
 			}
 
 			FindAndDeleteCell(selectedFocus);
-			selectedFocus.reset(new Custom::EntityFocusCommand(e) );
-			selectedFocus->Refresh(true);//Network::ControlEnabled());
-			selectedFocus->UpdateTexture(e,false,e->isOwnedByMe ? friendlyBackgroundColor : hostileBackgroundColor);
+			if (showControls)
+			{
+				selectedFocus.reset(new Custom::EntityFocusCommand(e) );
+				selectedFocus->Refresh(true);//Network::ControlEnabled());
+				selectedFocus->UpdateTexture(e,false,e->isOwnedByMe ? friendlyBackgroundColor : hostileBackgroundColor);
 
-			AllocateCell(selectedFocus,GetFocusLocation(),Anchor::TopRight);
+				AllocateCell(selectedFocus,GetFocusLocation(),Anchor::TopRight);
+				hasFocusButton = true;
+			}
+			else
+			{
+				selectedFocus.reset();
+				hasFocusButton = false;
+			}
 		}
 		else
 		{

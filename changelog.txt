@@ -1,5 +1,6 @@
 v0.8.4
 	> Now also hiding state panel and resource list while HUD is hidden.
+	* Fixed crash when clicking on unit while HUD is hidden.
 
 v0.8.3	[Apr 8 2018]
 	+ Added hotkey (P for Path) to quickly build roads using terraformers.
