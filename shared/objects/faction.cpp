@@ -1560,7 +1560,11 @@ namespace Objects
 				}
 			}
 			outAllianceChanged = true;
-			PAlliance alliance (new Alliance(TUniqueID::New()));
+
+			PAlliance alliance = Alliance::FindByID(allianceID);
+			if (!alliance)
+				alliance.reset(new Alliance(allianceID.IsNotEmpty() ? allianceID : TUniqueID::New()));
+
 			PFaction rs(new Faction(id));
 			idMap.Set(id,rs);
 			allKnown << rs;
