@@ -223,6 +223,8 @@ namespace Evolver
 				c.TickBegin();
 				c.RefreshState(0);
 			});
+			Objects::ResearchState::globalState.zeroTable.ClearChanges();
+
 			Objects::ForeachFaction([](const Objects::PFaction&f)
 			{
 				f->statistics.SignalCompoundProcessingEnd();

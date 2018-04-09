@@ -27,6 +27,7 @@
 #include "voting.h"
 #include "objectNetworkHelper.h"
 #include "playerControlBegin.h"
+#include <expectedBehavior.h>
 
 
 namespace Network
@@ -1179,7 +1180,7 @@ namespace Network
 			Objects::PFaction f = ResolveFaction(state.ownerID);
 			ASSERT_EQUAL__(Objects::ResearchState::globalState.allTopics.Count(),state.progressVector.Length());
 			f->researchState.topicProgressVector.adoptData(state.progressVector);
-			f->researchState.changed = true;
+			f->researchState.topicProgressChanged = true;
 			#ifdef HAS_WINDOW
 				if (RuntimeConfig::tutorialMode && f == Objects::Faction::mine)
 					Tutorial::SignalResearchChange();
@@ -1222,26 +1223,26 @@ namespace Network
 
 
 		template <typename T>
-			static void Import(Protocol::ResearchAttributeArray<T>&source, Array<Objects::ResearchAttributeTable::Attrib<T> >&dest)
+			static void Import(Protocol::ResearchAttributeArray<T>&source, Objects::ResearchAttributeType<T>&dest)
 			{
-				if (dest.Count() != 0)
-					ASSERT_EQUAL__(dest.Count(),source.Count());
-				dest.SetSize(source.Count());
-				for (index_t i = 0; i < dest.Count(); i++)
+				if (dest.attributes.Count() != 0)
+					ASSERT_EQUAL__(dest.attributes.Count(),source.Count());
+				dest.attributes.SetSize(source.Count());
+				for (index_t i = 0; i < dest.attributes.Count(); i++)
 				{
 					auto&src = source[i];
-					auto&dst = dest[i];
+					auto&dst = dest.attributes[i];
 					dst.value = src.value;
 					dst.description.adoptData(src.description);
 				}
 			}
 
 		template <typename T>
-			static void Import(Protocol::ResearchAttributeDeltaArray<T>&source, Array<Objects::ResearchAttributeTable::Attrib<T> >&dest)
+			static void Import(Protocol::ResearchAttributeDeltaArray<T>&source, Objects::ResearchAttributeType<T>&dest)
 			{
 				foreach (source,src)
 				{
-					auto&dst = dest[src->index];
+					auto&dst = Expect::SafeGet(dest.attributes,src->index,CLOCATION);
 					dst.value = src->value;
 					dst.description.adoptData(src->description);
 				}
@@ -1256,9 +1257,9 @@ namespace Network
 				table0 = &ResolveFaction(attributes.faction)->researchState.attributeTable;
 			auto&table = *table0;
 
-			Import(attributes.boolAttributes,table.boolAttributes);
-			Import(attributes.intAttributes,table.intAttributes);
-			Import(attributes.floatAttributes,table.floatAttributes);
+			Import(attributes.boolAttributes,table.bools);
+			Import(attributes.intAttributes,table.ints);
+			Import(attributes.floatAttributes,table.floats);
 		}
 
 		void	ResearchAttributeDeltaVector(Protocol::ResearchAttributeDeltaVector&attributes)
@@ -1270,9 +1271,9 @@ namespace Network
 				table0 = &ResolveFaction(attributes.faction)->researchState.attributeTable;
 			auto&table = *table0;
 
-			Import(attributes.boolAttributes,table.boolAttributes);
-			Import(attributes.intAttributes,table.intAttributes);
-			Import(attributes.floatAttributes,table.floatAttributes);
+			Import(attributes.boolAttributes,table.bools);
+			Import(attributes.intAttributes,table.ints);
+			Import(attributes.floatAttributes,table.floats);
 		}
 
 

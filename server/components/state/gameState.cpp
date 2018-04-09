@@ -605,6 +605,20 @@ namespace Game
 			info.worldID = World::worldID;
 		}
 
+		template <typename T>
+			void	AssembleDeltaVector(Protocol::ResearchAttributeDeltaArray<T>&outArray, const Objects::ResearchAttributeType<T>&source)
+			{
+				outArray.SetSize(source.changedSinceLastRound.Count());
+				for (index_t i = 0; i < outArray.Count(); i++)
+				{
+					auto&dst = outArray[i];
+					dst.index = source.changedSinceLastRound[i];
+					const auto&src = source.attributes[dst.index];
+					dst.value = src.value;
+					dst.description = src.description;
+				}
+			}
+
 
 		void	ChangePhase( RuntimeConfig::Phase to, float timeWindow/* = -1*/)
 		{
@@ -619,19 +633,43 @@ namespace Game
 
 			if (RuntimeConfig::IsACommandPhase(to))
 			{
+
+
+				if (Objects::ResearchState::globalState.zeroTable.AnyChanged())
+				{
+					Protocol::ResearchAttributeDeltaVector vec;
+					vec.faction = TUniqueID::Empty();
+					const auto&t = Objects::ResearchState::globalState.zeroTable;
+					AssembleDeltaVector(vec.boolAttributes,t.bools);
+					AssembleDeltaVector(vec.intAttributes,t.ints);
+					AssembleDeltaVector(vec.floatAttributes,t.floats);
+					Channels::ResearchAttributeDeltaVector.SendTo(::Network::server,vec,(UINT32)::Network::UserLevel::CommonFaction);
+				}
+
 				Objects::ForeachFaction([](const Objects::PFaction&f)
 				{
 					f->DropPerRoundData();	//make sure instantaneous destruction commands are processed with correct visibility information
 
-					if (f->researchState.changed)
+					if (f->researchState.topicProgressChanged)
 					{
-						f->researchState.changed = false;
+						f->researchState.topicProgressChanged = false;
 						Protocol::ResearchState state;
 						state.ownerID = f->id;
 						state.progressVector = f->researchState.topicProgressVector;
 						ResearchSerialization::SendAttributeVectorTo(::Network::server,f->researchState.attributeTable,f->id);
 						Channels::ResearchState.SendTo(::Network::server,state,(UINT32)::Network::UserLevel::CommonFaction);
 					}
+
+					if (f->researchState.attributeTable.AnyChanged())
+					{
+						Protocol::ResearchAttributeDeltaVector vec;
+						vec.faction = f->id;
+						AssembleDeltaVector(vec.boolAttributes,f->researchState.attributeTable.bools);
+						AssembleDeltaVector(vec.intAttributes,f->researchState.attributeTable.ints);
+						AssembleDeltaVector(vec.floatAttributes,f->researchState.attributeTable.floats);
+						Channels::ResearchAttributeDeltaVector.SendTo(::Network::server,vec,(UINT32)::Network::UserLevel::CommonFaction);
+					}
+
 					if (f->researchState.queueChanged)
 					{
 						f->researchState.queueChanged = false;

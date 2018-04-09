@@ -14,12 +14,12 @@ namespace ResearchSerialization
 	
 
 	template <typename T>
-		static void Export(Protocol::ResearchAttributeArray<T>&dest, const Array<Objects::ResearchAttributeTable::Attrib<T> >&source)
+		static void Export(Protocol::ResearchAttributeArray<T>&dest, const Objects::ResearchAttributeType<T>&source)
 		{
-			dest.SetSize(source.Count());
+			dest.SetSize(source.attributes.Count());
 			for (index_t i = 0; i < dest.Count(); i++)
 			{
-				auto&src = source[i];
+				auto&src = source.attributes[i];
 				auto&dst = dest[i];
 				dst.value = src.value;
 				dst.description = src.description;
@@ -30,9 +30,9 @@ namespace ResearchSerialization
 	{
 		Protocol::ResearchAttributeVector vec;
 		vec.faction = originID;
-		Export(vec.boolAttributes,table.boolAttributes);
-		Export(vec.floatAttributes,table.floatAttributes);
-		Export(vec.intAttributes,table.intAttributes);
+		Export(vec.boolAttributes,table.bools);
+		Export(vec.floatAttributes,table.floats);
+		Export(vec.intAttributes,table.ints);
 		Channels::ResearchAttributeVector.SendTo(peer,vec,(UINT32)::Network::UserLevel::CommonFaction);
 	}
 
@@ -63,24 +63,6 @@ namespace ResearchSerialization
 
 	}
 
-	template <typename T>
-		static void MakeDelta(Protocol::ResearchAttributeDeltaArray<T>&outDelta, const ArrayRef<Objects::ResearchAttributeTable::Attrib<T> >&source, Array<T>&reference)
-		{
-			Buffer0<Protocol::ResearchAttributeDelta<T>,Swap> delta;
-			for (index_t i = 0; i < source.Count(); i++)
-			{
-				const auto&src = source[i];
-				auto&ref = reference[i];
-				if (ref != src.value)
-				{
-					ref = src.value;
-					auto& d = delta.Append();
-					d.value = ref;
-					d.description = src.description;
-				}
-			}
-			delta.MoveToArray(outDelta);
-		}
 
 	//void	SendAttributeDeltaVectorTo(TCP::Peer&peer, const Objects::ResearchAttributeTable&table, Protocol::ResearchAttributeVector&reference)
 	//{

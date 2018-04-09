@@ -132,7 +132,7 @@ namespace Objects
 				Lua::Function<String(Lua::Reference)>	luaDescribeValue;
 				ConstOverride							constOverride;
 
-				void		ExportTo( const Lua::Reference&state, ResearchAttributeTable::Attrib<T>&outAttrib ) const
+				void		ExportTo( const Lua::Reference&state, typename ResearchAttributeType<T>::Attrib&outAttrib ) const
 				{
 					if (constOverride.isSet)
 						outAttrib.value = constOverride.constValue;
@@ -151,6 +151,31 @@ namespace Objects
 						using StringConversion::ToString;
 						outAttrib.description = ToString(outAttrib.value);
 					}
+				}
+
+				void		CheckExportTo( const Lua::Reference&state, ResearchAttributeType<T>&outAttribs, index_t at ) const
+				{
+					T value;
+					if (constOverride.isSet)
+						value = constOverride.constValue;
+					else
+					{
+						if (luaGetValue.IsEmpty())
+							value = (T)0;
+						else
+							value = luaGetValue(state);
+					}
+
+					String desc;
+					if (luaDescribeValue.IsSet())
+						desc = luaDescribeValue(state);
+					else
+					{
+						using StringConversion::ToString;
+						desc = ToString(value);
+					}
+
+					outAttribs.CheckUpdate(at,value,desc);
 				}
 
 				void	SetConst( T value )
@@ -236,11 +261,22 @@ namespace Objects
 				return list[idx].IsFunctionOrConstNonZero();
 			}
 
-			static void ExportTo( const Lua::Reference&state, Array<ResearchAttributeTable::Attrib<T> >&outValues )
+			static void ExportTo( const Lua::Reference&state, ResearchAttributeType<T>&outType )
 			{
-				outValues.SetSize(list.Count());
-				for (index_t i = 0; i < list.Count(); i++)
-					list[i].ExportTo(state,outValues[i]);
+				if (outType.attributes.Count() != list.Count())
+				{
+					outType.attributes.SetSize(list.Count());
+					for (index_t i = 0; i < list.Count(); i++)
+					{
+						auto&a = outType.ForceUpdate(i);
+						list[i].ExportTo(state,a);
+					}
+				}
+				else
+				{
+					for (index_t i = 0; i < list.Count(); i++)
+						list[i].CheckExportTo(state,outType,i);
+				}
 			}
 
 		private:
@@ -296,15 +332,16 @@ namespace Objects
 
 	/*static*/ void ResearchState::UpdateAttributeTable( const Lua::Reference&luaResearchState, ResearchAttributeTable&table )
 	{
-		LuaAttributes<int>::ExportTo(luaResearchState,table.intAttributes);
-		LuaAttributes<float>::ExportTo(luaResearchState,table.floatAttributes);
-		LuaAttributes<bool>::ExportTo(luaResearchState,table.boolAttributes);
+		table.ClearChanges();
+		LuaAttributes<int>::ExportTo(luaResearchState,table.ints);
+		LuaAttributes<float>::ExportTo(luaResearchState,table.floats);
+		LuaAttributes<bool>::ExportTo(luaResearchState,table.bools);
 	}
 
 	void ResearchState::UpdateAttributeTable()
 	{
 		UpdateAttributeTable(luaResearchState,attributeTable);
-		changed = true;
+		topicProgressChanged = true;	//implied
 	}
 
 
@@ -1237,7 +1274,6 @@ namespace Objects
 		{
 			globalState.zeroState = globalState.stateConstructor();
 			UpdateAttributeTable(globalState.zeroState,globalState.zeroTable);
-			globalState.zeroTableChanged = true;
 		}
 		globalState.script = script;
 
@@ -1457,6 +1493,8 @@ namespace Objects
 
 	void					ResearchState::FinalizeRound(const PFaction&f)
 	{
+		attributeTable.ClearChanges();
+
 		while (researchQueue.IsNotEmpty() && totalContribution)
 		{
 			int left;
@@ -1474,7 +1512,7 @@ namespace Objects
 					globalState.onQueueChange(owner);
 					continue;
 				}
-				changed = true;
+				topicProgressChanged = true;
 				if (totalContribution < left)	//no chance to get done
 				{
 					progress += totalContribution;
@@ -1491,7 +1529,7 @@ namespace Objects
 			}
 			progress += totalContribution;
 			res->setProgress(luaResearchState,progress);
-			changed = true;
+			topicProgressChanged = true;
 
 			if (researchQueue.Count() > 1)
 			{
@@ -1507,7 +1545,8 @@ namespace Objects
 		}
 		lastSpeed = totalContribution;
 		totalContribution = 0;
-		UpdateAttributeTable();
+		if (topicProgressChanged)
+			UpdateAttributeTable();
 	}
 
 

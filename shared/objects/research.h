@@ -21,6 +21,63 @@ namespace Objects
 	typedef Array<int>	ResearchProgressVector;
 
 	
+	template <typename T>
+		class ResearchAttributeType
+		{
+		public:
+			struct Attrib
+			{
+				T				value;
+				String			description;
+			};
+			Array<Attrib>		attributes;
+			Buffer0<index_t>	changedSinceLastRound;
+
+			void				ClearChanges()
+			{
+				changedSinceLastRound.Clear();
+			}
+
+			Attrib&				ForceUpdate(index_t at)
+			{
+				changedSinceLastRound << at;
+				return attributes[at];
+			}
+
+			bool				CheckUpdate(index_t at, T newValue, const String&newDesc)
+			{
+				Attrib&a = attributes[at];
+				if (a.description == newDesc)
+					return false;
+				a.value = newValue;
+				a.description = newDesc;
+				changedSinceLastRound << at;
+				return true;
+			}
+
+			T				SafeGet(index_t at)	const
+			{
+				if (at >= attributes.Count())
+				{
+					ASSERT__(attributes.IsEmpty());
+					return (T)0;
+				}
+				return attributes[at].value;
+			}
+
+			const String&	SafeDesc(index_t at) const
+			{
+				if (at >= attributes.Count())
+				{
+					ASSERT__(attributes.IsEmpty());
+					static String rs = "[null]";
+					return rs;
+				}
+				return attributes[at].description;
+			}
+
+		};
+
 
 	/**
 	Table containing all attributes in one array per type: float, int, bool
@@ -28,58 +85,49 @@ namespace Objects
 	class ResearchAttributeTable
 	{
 	public:
-		template <typename T>
-			struct Attrib
-			{
-				T			value;
-				String		description;
-			};
+		ResearchAttributeType<float>	floats;
+		ResearchAttributeType<int>		ints;
+		ResearchAttributeType<bool>		bools;
 
-		Array<Attrib<float> >	floatAttributes;
-		Array<Attrib<int> >		intAttributes;
-		Array<Attrib<bool> >	boolAttributes;
+
+		void				ClearChanges()
+		{
+			floats.ClearChanges();
+			ints.ClearChanges();
+			bools.ClearChanges();
+		}
+
+		bool				AnyChanged() const
+		{
+			return
+				floats.changedSinceLastRound.Count() > 0
+				||
+				ints.changedSinceLastRound.Count() > 0
+				||
+				bools.changedSinceLastRound.Count() > 0
+				;
+		}
 
 
 		template <typename T>
 			T				Get(index_t) const = delete;
 		template <>
-			int				Get<int>(index_t at) const {return SafeGet(intAttributes,at);}
+			int				Get<int>(index_t at) const {return ints.SafeGet(at);}
 		template <>
-			bool			Get<bool>(index_t at) const {return SafeGet(boolAttributes,at);}
+			bool			Get<bool>(index_t at) const {return bools.SafeGet(at);}
 		template <>
-			float			Get<float>(index_t at) const {return SafeGet(floatAttributes,at);}
+			float			Get<float>(index_t at) const {return floats.SafeGet(at);}
 		template <typename T>
 			const String&	Describe(index_t) const = delete;
 		template <>
-			const String&	Describe<int>(index_t at) const {return SafeDesc(intAttributes,at);}
+			const String&	Describe<int>(index_t at) const {return ints.SafeDesc(at);}
 		template <>
-			const String&	Describe<bool>(index_t at) const {return SafeDesc(boolAttributes,at);}
+			const String&	Describe<bool>(index_t at) const {return bools.SafeDesc(at);}
 		template <>
-			const String&	Describe<float>(index_t at) const {return SafeDesc(floatAttributes,at);}
+			const String&	Describe<float>(index_t at) const {return floats.SafeDesc(at);}
 
 	private:
-		template <typename T>
-			static T		SafeGet(const ArrayRef<Attrib<T> >&source, index_t at)
-			{
-				if (at >= source.Count())
-				{
-					ASSERT__(source.IsEmpty());
-					return (T)0;
-				}
-				return source[at].value;
-			}
 
-		template <typename T>
-			static const String&		SafeDesc(const ArrayRef<Attrib<T> >&source, index_t at)
-			{
-				if (at >= source.Count())
-				{
-					ASSERT__(source.IsEmpty());
-					static String rs = "[null]";
-					return rs;
-				}
-				return source[at].description;
-			}
 	};
 
 
@@ -270,7 +318,8 @@ namespace Objects
 		void					LoadNexusResearchState();
 	public:
 
-		bool					changed = false, queueChanged = false;
+		bool					topicProgressChanged = false,
+								queueChanged = false;
 
 		static void				StaticCreate();
 		static void				ActivateProgram(const ScriptCache::PScript&script);
@@ -302,7 +351,6 @@ namespace Objects
 
 		struct GlobalState
 		{
-			bool					zeroTableChanged = false;
 			ResearchAttributeTable	zeroTable;
 			Lua::Reference			zeroState;
 
