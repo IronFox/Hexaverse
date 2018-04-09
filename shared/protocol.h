@@ -1442,9 +1442,9 @@ namespace Protocol
 		};
 
 	template <typename T>
-		class ResearchAttributeArray : public ::Protocol::NetArray<ResearchAttribute<T>,128> {};
+		class ResearchAttributeArray : public ::Protocol::NetArray<ResearchAttribute<T>,256> {};
 	template <typename T>
-		class ResearchAttributeDeltaArray : public ::Protocol::NetArray<ResearchAttributeDelta<T>,128> {};
+		class ResearchAttributeDeltaArray : public ::Protocol::NetArray<ResearchAttributeDelta<T>,256> {};
 
 	NETSTRUCT4( ResearchAttributeVector
 		, TUniqueID, faction
