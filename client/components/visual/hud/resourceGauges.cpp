@@ -603,7 +603,7 @@ namespace ResourceGauges
 
 	void	Render()
 	{
-		if (!showControlsAndContacts && !Objects::selectedEntity)
+		if (!showControlsAndContacts /*|| !Objects::selectedEntity*/)
 			return;
 		display.StoreRendererState();
 		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
