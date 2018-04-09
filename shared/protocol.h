@@ -112,16 +112,29 @@ namespace Protocol
 			typedef Array<T>	Super;
 			typedef NetArray<T,MaxSize> Self;
 
-			void				operator=(const Ctr::Array<T>&other)
+			/**/				NetArray()	{}
+			/**/				NetArray(const ArrayRef<T>&other)
 			{
+				operator=(other);
+			}
+
+			void				operator=(const ArrayRef<T>&other)
+			{
+				ASSERT_LESS_OR_EQUAL__(other.Count(),MaxSize);
 				Super::operator=(other);
+			}
+
+			void				SetSize(count_t newSize)
+			{
+				ASSERT_LESS_OR_EQUAL__(newSize,MaxSize);
+				Super::SetSize(newSize);
 			}
 
 			friend	void		Deserialize(IReadStream&s, Self&v)
 			{
 				count_t size = s.ReadSize();
 				if (size > MaxSize)
-					throw Except::Memory::SerializationFault(CLOCATION,"Ctr::Array size "+String(size)+" exceeds maximum safe size "+String(MaxSize));
+					throw Except::Memory::SerializationFault(CLOCATION,"Array<"+String(typeid(T).name())+ ">: Deserialized element count "+String(size)+" exceeds maximum permitted element count "+String(MaxSize));
 				using Serialization::Deserialize;
 				v.SetSize(size);
 				for (index_t i = 0; i < v.Count(); i++)

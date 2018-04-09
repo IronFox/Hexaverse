@@ -677,7 +677,7 @@ namespace ConfigurationMode
 			Query(sub,"dampening",layer.dampening);
 		}
 
-		void	LoadPlanetFrom(const Configuration&cfg)
+		void	LoadPlanetFrom( const Configuration&cfg )
 		{
 			Query(cfg,"atmosphereDensity",config.atmosphereColor.a);
 			QueryMappedEnum<Grid::Content>(cfg,"innerCoreType",config.innerCoreType);
@@ -731,6 +731,9 @@ namespace ConfigurationMode
 			//	HUD::Dialog::ShowMessage("Importing encountered warnings:\n"+implode('\n',warnings.pointer(),warnings.Count()));
 			//}
 			Update();
+			foreach (numberCommands,n)
+				(*n)->RasterizeImage();
+			HUD::HexGrid::RefreshButtonState();
 		}
 		void	ExportConfig(Config::Context&sub, const Grid::ExtendedPlanetConfig::TLayerConfig&layer)
 		{
@@ -1191,6 +1194,7 @@ namespace ConfigurationMode
 		initialConfig = config = cfg;
 		foreach (numberCommands,n)
 			(*n)->RasterizeImage();
+		HUD::HexGrid::RefreshButtonState();
 
 		
 		ClientGrid::Apply(cfg);

@@ -1,11 +1,18 @@
-v0.8.3
+v0.8.4
+	> Now also hiding state panel and resource list while HUD is hidden.
+	* Fixed crash when clicking on unit while HUD is hidden.
+
+v0.8.3	[Apr 8 2018]
 	+ Added hotkey (P for Path) to quickly build roads using terraformers.
+	+ Added new planet type IvoryPillars.
 	> Alliance invite messages are now much larger in the visual client log.
 	> Clients can now see the resistance of nexus ports being conquered by allies.
 	> Bug reporter now compresses uploads and allows entering an optional sender email address.
+	> Revised default planet types FloatingIslands and HollowCore. Removed FloatingLands.
 	* Fixed fog of war for allied mobile units.
 	* Fixed coloring of allied ghosts.
 	* Fixed crash when selecting ghost while mobile reach visualization is on.
+	* Fixed configuration mode not updating hex buttons when loading different planet.
 
 v0.8.2	[Mar 31 2018]
 	+ If configured, fuel and uranium storage structures now detonate when suffering uncontrolled destruction.

@@ -656,7 +656,8 @@ namespace StatePanel
 
 	void		Render(const Objects::WorldEntity&e)
 	{
-
+		if (!showControlsAndContacts)
+			return;
 		UpdateCacheIfNeeded(e);
 			
 		//textout.GetActiveFont()->EndTagMode();

@@ -1,4 +1,11 @@
 
+client: attacks left of towers does not reset (missing server state change)
+ai: radar drives into range of rocket tower
+at end of game: dead factions should be 'revived' and sent to remaining factions without having to disconnect
+spectator at end of game: dead factions do show up, but with no name or color
+
+
+
 client: clicking on ghosts often crashes client (hostile or friendly)
 
 
@@ -9,8 +16,8 @@ client: clicking on ghosts often crashes client (hostile or friendly)
 test: unit limits
 test: player bases off
 test: nexus bases off but ai on
-review planets. Add pillars planet
 home key: toggle sky grid
+
 steam: store: Short Description, Why Early Access?
 
 copy default research script into program
@@ -194,6 +201,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+done: review planets. Add pillars planet
 done: documentation: update view icon image and documentation (+home-key on cft_aerial)
 done: steam: no handler set
 done: steam: no matching callback function set
