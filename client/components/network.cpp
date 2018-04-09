@@ -1224,7 +1224,9 @@ namespace Network
 		template <typename T>
 			static void Import(Protocol::ResearchAttributeArray<T>&source, Array<Objects::ResearchAttributeTable::Attrib<T> >&dest)
 			{
-				ASSERT_EQUAL__(source.Count(),dest.Count());
+				if (dest.Count() != 0)
+					ASSERT_EQUAL__(dest.Count(),source.Count());
+				dest.SetSize(source.Count());
 				for (index_t i = 0; i < dest.Count(); i++)
 				{
 					auto&src = source[i];
