@@ -296,7 +296,7 @@ namespace Network
 		DECLARE_CHANNEL(KillFaction);
 
 		DECLARE_CHANNEL(ResearchProgram);
-		DECLARE_CHANNEL(ResearchState);
+		DECLARE_CHANNEL(ResearchFactionState);
 		DECLARE_CHANNEL(ResearchQueue);
 		DECLARE_OBJECT_SENDER(QueueResearch);
 		DECLARE_CHANNEL(ResearchAttributeVector);

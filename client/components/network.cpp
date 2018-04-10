@@ -1176,10 +1176,10 @@ namespace Network
 		static bool triggerScriptChange = false,
 			reallyTriggerScriptChange = false;
 
-		void	ResearchState(Protocol::ResearchState&state)
+		void	ResearchFactionState(Protocol::ResearchFactionState&state)
 		{
 			Objects::PFaction f = ResolveFaction(state.ownerID);
-			ASSERT_EQUAL__(Objects::ResearchState::globalState.allTopics.Count(),state.progressVector.Length());
+			ASSERT_EQUAL__(Objects::Research::globalState.allTopics.Count(),state.progressVector.Length());
 			f->researchState.topicProgressVector.adoptData(state.progressVector);
 			f->researchState.topicProgressChanged = true;
 			#ifdef HAS_WINDOW
@@ -1187,7 +1187,7 @@ namespace Network
 					Tutorial::SignalResearchChange();
 			#endif
 
-			if (f->isOwnedByMe && triggerScriptChange && f->researchState.topicProgressVector.Count() == Objects::ResearchState::globalState.allTopics.Count())
+			if (f->isOwnedByMe && triggerScriptChange && f->researchState.topicProgressVector.Count() == Objects::Research::globalState.allTopics.Count())
 			{
 				triggerScriptChange = false;
 				reallyTriggerScriptChange = true;
@@ -1198,9 +1198,9 @@ namespace Network
 		//research program updates must always preceed research states
 		void	ResearchProgram(Protocol::ResearchProgram&program)
 		{
-			Objects::ResearchState::BeginServerTopicUpdate();
+			Objects::Research::FactionState::BeginServerTopicUpdate();
 			foreach (program,prog)
-				Objects::ResearchState::DeclareServerTopic(prog->parentTopic -1, prog->name,prog->iconName, prog->maxProgress,prog->dependentTopic-1);
+				Objects::Research::FactionState::DeclareServerTopic(prog->parentTopic -1, prog->name,prog->iconName, prog->maxProgress,prog->dependentTopic-1);
 
 			triggerScriptChange = true;	//must wait for state
 		}
@@ -1224,7 +1224,7 @@ namespace Network
 
 
 		template <typename T>
-			static void Import(Protocol::ResearchAttributeArray<T>&source, Objects::ResearchAttributeType<T>&dest)
+			static void Import(Protocol::ResearchAttributeArray<T>&source, Objects::Research::Attributes::TypeMap<T>&dest)
 			{
 				if (dest.attributes.Count() != 0)
 					ASSERT_EQUAL__(dest.attributes.Count(),source.Count());
@@ -1240,7 +1240,7 @@ namespace Network
 			}
 
 		template <typename T>
-			static void Import(Protocol::ResearchAttributeDeltaArray<T>&source, Objects::ResearchAttributeType<T>&dest)
+			static void Import(Protocol::ResearchAttributeDeltaArray<T>&source, Objects::Research::Attributes::TypeMap<T>&dest)
 			{
 				foreach (source,src)
 				{
@@ -1253,10 +1253,10 @@ namespace Network
 
 		void	ResearchAttributeVector( Protocol::ResearchAttributeVector&attributes )
 		{
-			Objects::ResearchAttributeTable*table0 = nullptr;
+			Objects::Research::Attributes::Table*table0 = nullptr;
 			bool isMine = false;
 			if (attributes.faction.IsEmpty())
-				table0 = &Objects::ResearchState::globalState.zeroTable;
+				table0 = &Objects::Research::globalState.zeroTable;
 			else
 			{
 				auto f = ResolveFaction(attributes.faction);
@@ -1274,16 +1274,16 @@ namespace Network
 			if (isMine && reallyTriggerScriptChange)
 			{
 				reallyTriggerScriptChange = false;
-				Objects::ResearchState::globalState.onScriptChange();
+				Objects::Research::globalState.onScriptChange();
 			}
 
 		}
 
 		void	ResearchAttributeDeltaVector(Protocol::ResearchAttributeDeltaVector&attributes)
 		{
-			Objects::ResearchAttributeTable*table0 = nullptr;
+			Objects::Research::Attributes::Table*table0 = nullptr;
 			if (attributes.faction.IsEmpty())
-				table0 = &Objects::ResearchState::globalState.zeroTable;
+				table0 = &Objects::Research::globalState.zeroTable;
 			else
 				table0 = &ResolveFaction(attributes.faction)->researchState.attributeTable;
 			auto&table = *table0;
@@ -1566,7 +1566,7 @@ namespace Network
 		DECLARE_CHANNEL(KillFaction);
 
 		DECLARE_CHANNEL(ResearchProgram);
-		DECLARE_CHANNEL(ResearchState);
+		DECLARE_CHANNEL(ResearchFactionState);
 		DECLARE_CHANNEL(ResearchQueue);
 		DECLARE_OBJECT_SENDER(QueueResearch);
 		DECLARE_CHANNEL(ResearchAttributeVector);
@@ -1826,7 +1826,7 @@ namespace Network
 		client.InstallChannel(Channels::Statistics::factionInteraction);
 
 		client.InstallChannel(Channels::ResearchProgram);
-		client.InstallChannel(Channels::ResearchState);
+		client.InstallChannel(Channels::ResearchFactionState);
 		client.InstallChannel(Channels::ResearchQueue);
 		client.InstallChannel(Channels::ResearchAttributeVector);
 		client.InstallChannel(Channels::ResearchAttributeDeltaVector);

@@ -243,9 +243,9 @@ namespace Objects
 		{
 			typedef CustomIcon<CommandGroup>	Super;
 		public:
-			PResearchTopic	topic;
+			Research::PTopic	topic;
 
-			/**/			ResearchCommand(const PResearchTopic&topic);
+			/**/			ResearchCommand(const Research::PTopic&topic);
 
 			virtual	void	Refresh(bool controlEnabled) override;
 			virtual void	RasterizeImage()override;
@@ -261,7 +261,7 @@ namespace Objects
 			typedef ResearchCommand	Super;
 			const bool		isActive;
 		public:
-			/**/			ResearchAbortCommand(const PResearchTopic&topic, bool isActive):Super(topic),isActive(isActive){};
+			/**/			ResearchAbortCommand(const Research::PTopic&topic, bool isActive):Super(topic),isActive(isActive){};
 
 			virtual void	Execute() override;
 			virtual	void	Refresh(bool controlEnabled) override;

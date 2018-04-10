@@ -790,11 +790,11 @@ namespace Journal
 		class QueueResearch : public FactionEventT<QueueResearch>
 		{
 		public:
-			Objects::PResearchTopic		topic;
+			Objects::Research::PTopic		topic;
 			bool			drop=false;
 			
 			/**/			QueueResearch() {}
-			/**/			QueueResearch(const Objects::PResearchTopic&t,bool drop) : topic(t),drop(drop) {}
+			/**/			QueueResearch(const Objects::Research::PTopic&t,bool drop) : topic(t),drop(drop) {}
 			virtual void	Decode(const Entry&e) override;
 			virtual void	Execute(const Objects::PFaction&) const override;
 

@@ -1381,7 +1381,7 @@ namespace Protocol
 		, NETA(BYTE), resourceIndices
 	)
 
-	NETSTRUCT2(ResearchState
+	NETSTRUCT2(ResearchFactionState
 		, NET(TUniqueID), ownerID
 		, NETA(int), progressVector
 	)
@@ -1587,7 +1587,7 @@ namespace Protocol
 	//		ResourceData,		// s2c : ResourceData
 
 			ResearchProgram,	// s2c : ResearchProgram
-			ResearchState,		// s2c : ResearchState
+			ResearchFactionState,	// s2c : ResearchFactionState
 			QueueResearch,		// c2s : QueueResearch -> s2c : ResearchQueue
 			ResearchQueue,		// s2c : ResearchQueue
 			ResearchAttributeVector,	// s2c : ResearchAttributeVector

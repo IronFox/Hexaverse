@@ -36,11 +36,11 @@ namespace Objects
 
 			bool		IsFunctionOrConstNonZero() const
 			{
-				return ResearchState::LuaAttributeIsFunctionOrConstNonZero<T>(linearIndex);
+				return Research::LuaAttributeIsFunctionOrConstNonZero<T>(linearIndex);
 			}
 			bool		IsSet() const
 			{
-				return ResearchState::LuaAttributeIsSet<T>(linearIndex);
+				return Research::LuaAttributeIsSet<T>(linearIndex);
 			}
 			bool		IsEmpty() const {return !IsSet();}
 
@@ -50,19 +50,19 @@ namespace Objects
 				this->linearIndex = linearIndex;
 			}
 
-			T			GetUnfilteredValue(const ResearchAttributeTable&researchState)	const
+			T			GetUnfilteredValue(const Research::Attributes::Table&researchState)	const
 			{
 				return researchState.Get<T>(linearIndex);
 			}
 
-			T			GetValue(const ResearchAttributeTable&researchState)	const
+			T			GetValue(const Research::Attributes::Table&researchState)	const
 			{
 				T rs = GetUnfilteredValue(researchState);
 				Filter::Filter(rs);
 				return rs;
 			}
 
-			String		Describe(const ResearchAttributeTable&researchState)	const
+			String		Describe(const Research::Attributes::Table&researchState)	const
 			{
 				return researchState.Describe<T>(linearIndex);
 			}

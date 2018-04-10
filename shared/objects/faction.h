@@ -205,7 +205,7 @@ namespace Objects
 	{
 	private:
 		#ifndef CLIENT
-			friend class ResearchState;
+			friend class Research::FactionState;
 
 			//void		ChangeSensory(const Grid::HighSetup::TVolumeDescriptor&desc, float t, short changeBy);
 			//void		ChangeSensory(const Grid::SkySensorState&state, float t, short changeBy);
@@ -246,7 +246,7 @@ namespace Objects
 		bool			online = false;
 		float3			color;
 		Statistics		statistics;
-		ResearchState	researchState;
+		Research::FactionState	researchState;
 		PAlliance		alliance;
 		/**
 		If set, shares one huge mobile park across all vehicle stores.

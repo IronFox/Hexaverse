@@ -154,7 +154,7 @@ namespace Objects
 
 
 		const char*			OperationToString(operation_t);
-		const ResearchAttributeTable&		ResearchStateOf(const PFaction&);
+		const Research::Attributes::Table&		ResearchStateOf(const PFaction&);
 
 
 

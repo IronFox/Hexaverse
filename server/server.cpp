@@ -972,7 +972,7 @@ int main( int argc, const char* argv[])
 
 			Reflection::state.DefineCommand("reloadResearchProgram",(CLI::Command::function0_t)[]()
 			{
-				Objects::ResearchState::LoadDefaultProgram();
+				Objects::Research::LoadDefaultProgram();
 			})->SetUniqueHelp("Reloads research program from file and redeploys to clients");
 
 		Reflection::state.PopFocus();
@@ -1140,20 +1140,20 @@ int main( int argc, const char* argv[])
 			RemoteControl::Start(ParameterConfig::basePort,ParameterConfig::controlProtocol);
 
 
-		Objects::ResearchState::globalState.onScriptChange <<
+		Objects::Research::globalState.onScriptChange <<
 		[]()
 		{
 			ResearchSerialization::SendResearchProgramTo(Network::server);
-			ResearchSerialization::SendAttributeVectorTo(Network::server,Objects::ResearchState::globalState.zeroTable,TUniqueID::Empty());
+			ResearchSerialization::SendAttributeVectorTo(Network::server,Objects::Research::globalState.zeroTable,TUniqueID::Empty());
 
 			Objects::ForeachFaction([](const Objects::PFaction&f)
 			{
-				Protocol::ResearchState state;
+				Protocol::ResearchFactionState state;
 				state.ownerID = f->id;
 				state.progressVector = f->researchState.topicProgressVector;
 
 				ResearchSerialization::SendAttributeVectorTo(Network::server,f->researchState.attributeTable,f->id);
-				Channels::ResearchState.SendTo(Network::server,state);
+				Channels::ResearchFactionState.SendTo(Network::server,state);
 			});
 		};
 

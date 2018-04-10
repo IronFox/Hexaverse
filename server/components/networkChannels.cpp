@@ -14,7 +14,7 @@ namespace ResearchSerialization
 	
 
 	template <typename T>
-		static void Export(Protocol::ResearchAttributeArray<T>&dest, const Objects::ResearchAttributeType<T>&source)
+		static void Export(Protocol::ResearchAttributeArray<T>&dest, const Objects::Research::Attributes::TypeMap<T>&source)
 		{
 			dest.SetSize(source.attributes.Count());
 			for (index_t i = 0; i < dest.Count(); i++)
@@ -27,7 +27,7 @@ namespace ResearchSerialization
 			}
 		}
 
-	void	SendAttributeVectorTo(TCP::Destination&peer, const Objects::ResearchAttributeTable&table, const TUniqueID&originID)
+	void	SendAttributeVectorTo(TCP::Destination&peer, const Objects::Research::Attributes::Table&table, const TUniqueID&originID)
 	{
 		Protocol::ResearchAttributeVector vec;
 		vec.faction = originID;
@@ -46,12 +46,12 @@ namespace ResearchSerialization
 			if (!registered)
 			{
 				registered = true;
-				Objects::ResearchState::globalState.onScriptChange << [](){outProg.Clear();};
+				Objects::Research::globalState.onScriptChange << [](){outProg.Clear();};
 			}
-			outProg.SetSize(Objects::ResearchState::globalState.allTopics.Count());
+			outProg.SetSize(Objects::Research::globalState.allTopics.Count());
 			for (index_t i = 0; i < outProg.Count(); i++)
 			{
-				const auto&stateIn = Objects::ResearchState::globalState.allTopics[i];
+				const auto&stateIn = Objects::Research::globalState.allTopics[i];
 				auto&stateOut = outProg[i];
 				stateOut.dependentTopic = (stateIn->dependency.expired()) ? 0 : stateIn->dependency.lock()->serialIndex + 1;
 				stateOut.iconName = stateIn->iconName;
@@ -65,7 +65,7 @@ namespace ResearchSerialization
 	}
 
 
-	//void	SendAttributeDeltaVectorTo(TCP::Peer&peer, const Objects::ResearchAttributeTable&table, Protocol::ResearchAttributeVector&reference)
+	//void	SendAttributeDeltaVectorTo(TCP::Peer&peer, const Objects::Research::Attributes::Table&table, Protocol::ResearchAttributeVector&reference)
 	//{
 	//	Protocol::ResearchAttributeDeltaVector vec;
 	//	MakeDelta(vec.boolAttributes,table.boolAttributes,reference.boolAttributes);
@@ -359,7 +359,7 @@ namespace Channels
 	DECLARE_OBJECT_SENDER(GameConfig);
 	DECLARE_OBJECT_SENDER(KillFaction);
 
-	DECLARE_OBJECT_SENDER(ResearchState);
+	DECLARE_OBJECT_SENDER(ResearchFactionState);
 	DECLARE_OBJECT_SENDER(ResearchProgram);
 	DECLARE_OBJECT_SENDER(ResearchQueue);
 	DECLARE_OBJECT_SENDER(ResearchAttributeVector);
@@ -519,16 +519,16 @@ namespace Receiver
 		SendSessionConfigTo(peer, Objects::PFaction());
 
 		ResearchSerialization::SendResearchProgramTo(peer);
-		ResearchSerialization::SendAttributeVectorTo(peer,Objects::ResearchState::globalState.zeroTable,TUniqueID::Empty());
+		ResearchSerialization::SendAttributeVectorTo(peer,Objects::Research::globalState.zeroTable,TUniqueID::Empty());
 
 		Objects::ForeachFaction([&peer](const Objects::PFaction&f)
 		{
-			Protocol::ResearchState state;
+			Protocol::ResearchFactionState state;
 			state.ownerID = f->id;
 			state.progressVector = f->researchState.topicProgressVector;
 
 			ResearchSerialization::SendAttributeVectorTo(peer,f->researchState.attributeTable,f->id);
-			Channels::ResearchState.SendTo(peer,state);
+			Channels::ResearchFactionState.SendTo(peer,state);
 		});
 
 		//if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
@@ -878,10 +878,10 @@ namespace Receiver
 		ResearchSerialization::SendResearchProgramTo(peer);
 		Objects::ForeachFaction([&peer](const Objects::PFaction&f)
 		{
-			Protocol::ResearchState state;
+			Protocol::ResearchFactionState state;
 			state.ownerID = f->id;
 			state.progressVector = f->researchState.topicProgressVector;
-			Channels::ResearchState.SendTo(peer,state);
+			Channels::ResearchFactionState.SendTo(peer,state);
 
 			ResearchSerialization::SendAttributeVectorTo(peer,f->researchState.attributeTable,f->id);
 		});
@@ -1270,7 +1270,7 @@ namespace Receiver
 		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 		if (!client->faction)
 			return;
-		Journal::currentRound.Register(true,client->faction,new Journal::Round::QueueResearch(Objects::ResearchState::GetTopic( research.research),research.drop));
+		Journal::currentRound.Register(true,client->faction,new Journal::Round::QueueResearch(Objects::Research::GetTopic( research.research),research.drop));
 	}
 
 	void	IdentifyFaction(NET(TUniqueID)&id, TCP::Peer&peer)

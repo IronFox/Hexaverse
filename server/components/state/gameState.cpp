@@ -606,7 +606,7 @@ namespace Game
 		}
 
 		template <typename T>
-			void	AssembleDeltaVector(Protocol::ResearchAttributeDeltaArray<T>&outArray, const Objects::ResearchAttributeType<T>&source)
+			void	AssembleDeltaVector(Protocol::ResearchAttributeDeltaArray<T>&outArray, const Objects::Research::Attributes::TypeMap<T>&source)
 			{
 				outArray.SetSize(source.changedSinceLastRound.Count());
 				for (index_t i = 0; i < outArray.Count(); i++)
@@ -636,11 +636,11 @@ namespace Game
 			{
 
 
-				if (Objects::ResearchState::globalState.zeroTable.AnyChanged())
+				if (Objects::Research::globalState.zeroTable.AnyChanged())
 				{
 					Protocol::ResearchAttributeDeltaVector vec;
 					vec.faction = TUniqueID::Empty();
-					const auto&t = Objects::ResearchState::globalState.zeroTable;
+					const auto&t = Objects::Research::globalState.zeroTable;
 					AssembleDeltaVector(vec.boolAttributes,t.bools);
 					AssembleDeltaVector(vec.intAttributes,t.ints);
 					AssembleDeltaVector(vec.floatAttributes,t.floats);
@@ -654,10 +654,10 @@ namespace Game
 					if (f->researchState.topicProgressChanged)
 					{
 						f->researchState.topicProgressChanged = false;
-						Protocol::ResearchState state;
+						Protocol::ResearchFactionState state;
 						state.ownerID = f->id;
 						state.progressVector = f->researchState.topicProgressVector;
-						Channels::ResearchState.SendTo(::Network::server,state,(UINT32)::Network::UserLevel::CommonFaction);
+						Channels::ResearchFactionState.SendTo(::Network::server,state,(UINT32)::Network::UserLevel::CommonFaction);
 					}
 
 					if (f->researchState.attributeTable.AnyChanged())

@@ -200,7 +200,7 @@ namespace Objects
 
 		#endif
 
-		const ResearchAttributeTable&GetResearchState() const;
+		const Research::Attributes::Table&GetResearchState() const;
 		virtual BaseAttributeTable*	GetTable() const {FATAL__("Attempting to query attribute table on "+GetTypeName());  return nullptr;}
 
 		inline void					SyncTime(float&remoteTime, float timeOffset)
@@ -452,7 +452,7 @@ namespace Objects
 		virtual bool				IsMobile() const {return false;}
 		virtual bool				IsTower() const {return false;}
 
-		virtual bool				IsUnlockedAtState(const ResearchAttributeTable&table) const	{return GetTable()->isUnlocked.GetValue(table);}
+		virtual bool				IsUnlockedAtState(const Research::Attributes::Table&table) const	{return GetTable()->isUnlocked.GetValue(table);}
 		bool						IsUnlocked() const {return IsUnlockedAtState(GetResearchState());}
 		virtual bool				CanBeUnlocked() const {return GetTable()->isUnlocked.IsFunctionOrConstNonZero();}
 		virtual bool				IsVehicle() const {return false;}

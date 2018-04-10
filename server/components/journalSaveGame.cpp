@@ -1743,7 +1743,7 @@ namespace Journal
 	{
 		String targetPath;
 		e.stringParameters.Require(CLOCATION,"Target",targetPath);
-		topic = Objects::ResearchState::FindTopic(targetPath);
+		topic = Objects::Research::FindTopic(targetPath);
 		if (!topic)
 		{
 			throw Except::Program::FunctionalityNotImplemented(CLOCATION,"Unknown research target '"+targetPath+"'");

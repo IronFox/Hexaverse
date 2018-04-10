@@ -143,7 +143,7 @@ namespace Objects
 		#ifndef NO_HIBERNATION
 			virtual int			GetUplinkTraffic() const override;
 		#endif
-		virtual bool			IsUnlockedAtState(const ResearchAttributeTable&researchState) const	override {return base->isUnlocked.GetValue(researchState) && turret->isUnlocked.GetValue(researchState);}
+		virtual bool			IsUnlockedAtState(const Research::Attributes::Table&researchState) const	override {return base->isUnlocked.GetValue(researchState) && turret->isUnlocked.GetValue(researchState);}
 		virtual bool			CanBeUnlocked() const {return base->isUnlocked.IsFunctionOrConstNonZero() && turret->isUnlocked.IsFunctionOrConstNonZero();}
 		virtual int				GetMaxHealth() const override;
 		virtual String			DescribeMaxHealth() const override;

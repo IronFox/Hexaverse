@@ -441,7 +441,7 @@ namespace Objects
 	/*virtual override*/ void			Satellite::PrototypeSetup()
 	{
 		Super::PrototypeSetup();
-		ResearchState::RegisterResearch(this,Component::Attribute::FuelDemand);
+		Research::FactionState::RegisterResearch(this,Component::Attribute::FuelDemand);
 	}
 
 

@@ -17,18 +17,18 @@ namespace Objects
 
 
 
-	/*static*/ ResearchState::GlobalState		ResearchState::globalState;
+	/*static*/ Research::GlobalState		Research::globalState;
 
 
-	int						ResearchTopic::GetProgress(const ResearchState&st) const
+	int						Research::Topic::GetProgress(const Research::FactionState&st) const
 	{
 		return st.topicProgressVector[serialIndex];
 	}
 
-	/*static*/ PResearchTopic	ResearchState::CreateResearch(const PResearchTopic&parent, const String&name, const String&iconName, 
-												const ResearchTopic::FSetProgress&setProgress, const ResearchTopic::FGetProgress&getProgress, 
+	/*static*/ Research::PTopic	CreateResearch(const Research::PTopic&parent, const String&name, const String&iconName, 
+												const Research::Topic::FSetProgress&setProgress, const Research::Topic::FGetProgress&getProgress, 
 												int maxProgress,
-												const PResearchTopic&dependency
+												const Research::PTopic&dependency
 											)
 	{
 		LogEvent(EventClass::Preset::debug,"Lua created new research '"+name+"'");
@@ -42,17 +42,17 @@ namespace Objects
 		bool hasIcon = !proto && !component;
 
 
-		PResearchTopic rs(new ResearchTopic(parent, name,hasIcon ? iconSource : "",setProgress,getProgress,maxProgress,dependency));
+		Research::PTopic rs(new Research::Topic(parent, name,hasIcon ? iconSource : "",setProgress,getProgress,maxProgress,dependency));
 
 		rs->componentReference = component;
 		rs->prototypeReference = proto;
-		rs->serialIndex = globalState.allTopics.Count();
-		globalState.allTopics << rs;
+		rs->serialIndex = Research::globalState.allTopics.Count();
+		Research::globalState.allTopics << rs;
 
 
 		if (!parent)
 		{
-			if (!globalState.rootResearch.Insert(rs))
+			if (!Research::globalState.rootResearch.Insert(rs))
 				throw Lua::Exception("Research '"+name+"' is not unique in global namespace");
 		}
 		else
@@ -76,10 +76,10 @@ namespace Objects
 		return rs;
 	}
 
-	ResearchTopic::ResearchTopic(const PResearchTopic&parent, const String&name, const String&iconName, 
+	Research::Topic::Topic(const Research::PTopic&parent, const String&name, const String&iconName, 
 								const FSetProgress&setProgress, const FGetProgress&getProgress, 
 								int maxProgress,
-								const PResearchTopic&dependency
+								const Research::PTopic&dependency
 								)
 								:Super(name), parent(parent),iconName(iconName),
 							#ifndef CLIENT
@@ -91,20 +91,20 @@ namespace Objects
 
 
 
-	ResearchTopic::ResearchTopic::~ResearchTopic()
+	Research::Topic::~Topic()
 	{
 		bool brk = true;
 
 	}
 
-	bool			ResearchTopic::CanResearch(const PFaction&owner) const
+	bool			Research::Topic::CanResearch(const PFaction&owner) const
 	{
 		if (IsGroup())
 			return false;
 		//auto st = owner ? owner->researchState.researchState : Lua::Reference();
 		if (owner && ResearchCompleted(owner->researchState.topicProgressVector))
 			return false;
-		PResearchTopic p = dependency.lock();
+		Research::PTopic p = dependency.lock();
 		if (!p)
 			return true;
 		if (!owner)
@@ -135,7 +135,7 @@ namespace Objects
 				Lua::Function<String(Lua::Reference)>	luaDescribeValue;
 				ConstOverride							constOverride;
 
-				void		ExportTo( const Lua::Reference&state, typename ResearchAttributeType<T>::Attrib&outAttrib ) const
+				void		ExportTo( const Lua::Reference&state, typename Research::Attributes::TypeMap<T>::Attrib&outAttrib ) const
 				{
 					if (constOverride.isSet)
 						outAttrib.value = constOverride.constValue;
@@ -158,19 +158,19 @@ namespace Objects
 					outAttrib.flags = GetFlags();
 				}
 
-				ResearchAttributeFlags::serial_type_t GetFlags() const
+				Research::Attributes::Flags::serial_type_t GetFlags() const
 				{
-					ResearchAttributeFlags::serial_type_t rs = 0;
+					Research::Attributes::Flags::serial_type_t rs = 0;
 					if (luaGetValue.IsSet())
-						rs |= ResearchAttributeFlags::HasFunctionFlag;
+						rs |= Research::Attributes::Flags::HasFunctionFlag;
 					if (constOverride.isSet)
-						rs |= ResearchAttributeFlags::IsConst;
+						rs |= Research::Attributes::Flags::IsConst;
 					return rs;
 				}
 
 
 
-				void		CheckExportTo( const Lua::Reference&state, ResearchAttributeType<T>&outAttribs, index_t at ) const
+				void		CheckExportTo( const Lua::Reference&state, Research::Attributes::TypeMap<T>&outAttribs, index_t at ) const
 				{
 					T value;
 					if (constOverride.isSet)
@@ -296,7 +296,7 @@ namespace Objects
 				}
 			}
 
-			static void ExportTo( const Lua::Reference&state, ResearchAttributeType<T>&outType )
+			static void ExportTo( const Lua::Reference&state, Research::Attributes::TypeMap<T>&outType )
 			{
 				if (outType.attributes.Count() != list.Count())
 				{
@@ -340,7 +340,7 @@ namespace Objects
 
 
 	#ifndef CLIENT
-		/*static*/ void ResearchState::UpdateAttributeTable( const Lua::Reference&luaResearchState, ResearchAttributeTable&table )
+		/*static*/ void UpdateAttributeTable( const Lua::Reference&luaResearchState, Research::Attributes::Table&table )
 		{
 			table.ClearChanges();
 			LuaAttributes<int>::ExportTo(luaResearchState,table.ints);
@@ -348,67 +348,67 @@ namespace Objects
 			LuaAttributes<bool>::ExportTo(luaResearchState,table.bools);
 		}
 
-		void ResearchState::UpdateAttributeTable()
+		void Research::FactionState::UpdateAttributeTable()
 		{
-			UpdateAttributeTable(luaResearchState,attributeTable);
+			Objects::UpdateAttributeTable(luaResearchState,attributeTable);
 			topicProgressChanged = true;	//implied
 		}
-		/*static*/ bool			ResearchState::LuaIntAttributeIsSet( index_t idx )
+		/*static*/ bool			Research::LuaIntAttributeIsSet( index_t idx )
 		{
 			return LuaAttributes<int>::IsSet(idx);
 		}
 
-		/*static*/ bool			ResearchState::LuaBoolAttributeIsSet( index_t idx )
+		/*static*/ bool			Research::LuaBoolAttributeIsSet( index_t idx )
 		{
 			return LuaAttributes<bool>::IsSet(idx);
 		}
 
-		/*static*/ bool			ResearchState::LuaFloatAttributeIsSet( index_t idx )
+		/*static*/ bool			Research::LuaFloatAttributeIsSet( index_t idx )
 		{
 			return LuaAttributes<float>::IsSet(idx);
 		}
 
-		/*static*/ bool			ResearchState::LuaIntAttributeIsFunctionOrConstNonZero( index_t idx )
+		/*static*/ bool			Research::LuaIntAttributeIsFunctionOrConstNonZero( index_t idx )
 		{
 			return LuaAttributes<int>::IsFunctionOrConstNonZero(idx);
 		}
 
-		/*static*/ bool			ResearchState::LuaBoolIsFunctionOrConstNonZero( index_t idx )
+		/*static*/ bool			Research::LuaBoolIsFunctionOrConstNonZero( index_t idx )
 		{
 			return LuaAttributes<bool>::IsFunctionOrConstNonZero(idx);
 		}
 
-		/*static*/ bool			ResearchState::LuaFloatAttributeIsFunctionOrConstNonZero( index_t idx )
+		/*static*/ bool			Research::LuaFloatAttributeIsFunctionOrConstNonZero( index_t idx )
 		{
 			return LuaAttributes<float>::IsFunctionOrConstNonZero(idx);
 		}
 	#else
-		/*static*/ bool			ResearchState::LuaIntAttributeIsSet( index_t idx )
+		/*static*/ bool			Research::LuaIntAttributeIsSet( index_t idx )
 		{
 			return globalState.zeroTable.ints.IsSet(idx);
 		}
 
-		/*static*/ bool			ResearchState::LuaBoolAttributeIsSet( index_t idx )
+		/*static*/ bool			Research::LuaBoolAttributeIsSet( index_t idx )
 		{
 			return globalState.zeroTable.bools.IsSet(idx);
 		}
 
-		/*static*/ bool			ResearchState::LuaFloatAttributeIsSet( index_t idx )
+		/*static*/ bool			Research::LuaFloatAttributeIsSet( index_t idx )
 		{
 			return globalState.zeroTable.floats.IsSet(idx);
 		}
 
-		/*static*/ bool			ResearchState::LuaIntAttributeIsFunctionOrConstNonZero( index_t idx )
+		/*static*/ bool			Research::LuaIntAttributeIsFunctionOrConstNonZero( index_t idx )
 		{
 			return globalState.zeroTable.ints.IsFunctionOrConstNonZero(idx);
 		}
 
-		/*static*/ bool			ResearchState::LuaBoolIsFunctionOrConstNonZero( index_t idx )
+		/*static*/ bool			Research::LuaBoolIsFunctionOrConstNonZero( index_t idx )
 		{
 			return globalState.zeroTable.bools.IsFunctionOrConstNonZero(idx);
 		}
 
-		/*static*/ bool			ResearchState::LuaFloatAttributeIsFunctionOrConstNonZero( index_t idx )
+		/*static*/ bool			Research::LuaFloatAttributeIsFunctionOrConstNonZero( index_t idx )
 		{
 			return globalState.zeroTable.floats.IsFunctionOrConstNonZero(idx);
 		}
@@ -426,7 +426,7 @@ namespace Objects
 			static Lua::Table configTable;
 			if (configTable.IsEmpty())
 			{
-				configTable = ResearchState::globalState.researchProgram->FindGlobal("StructureConfig");
+				configTable = Research::globalState.researchProgram->FindGlobal("StructureConfig");
 				if (configTable.IsEmpty())
 					throw Lua::Exception("Table 'StructureConfig' is not defined");
 			}
@@ -470,7 +470,7 @@ namespace Objects
 		#ifndef CLIENT
 			if (configTable.IsEmpty())
 			{
-				configTable = ResearchState::globalState.researchProgram->FindGlobal("VehicleBaseConfig");
+				configTable = Research::globalState.researchProgram->FindGlobal("VehicleBaseConfig");
 				if (configTable.IsEmpty())
 					throw Lua::Exception("Table 'VehicleBaseConfig' is not defined");
 			}
@@ -492,7 +492,7 @@ namespace Objects
 		#ifndef CLIENT
 			if (configTable.IsEmpty())
 			{
-				configTable = ResearchState::globalState.researchProgram->FindGlobal("TurretConfig");
+				configTable = Research::globalState.researchProgram->FindGlobal("TurretConfig");
 				if (configTable.IsEmpty())
 					throw Lua::Exception("Table 'TurretConfig' is not defined");
 			}
@@ -520,8 +520,28 @@ namespace Objects
 		InitAttrib(myTable,path,"DamageLevel",t.damageLevel,true);
 	}
 
+	static void RemapAttributes()
+	{
+		LuaAttributes<int>::Clear();
+		LuaAttributes<bool>::Clear();
+		LuaAttributes<float>::Clear();
 
-	/*static*/ void		ResearchState::StaticCreate()
+		for (index_t i = 0; i < Prototypes::structures.Count(); i++)
+		{
+			const PStructure&s = Prototypes::structures[i];
+			auto&t = structureTables[i];
+			InitTable(s->GetTypeName(),t);
+		}
+
+		foreach (Component::allTurretComponents,turret)
+			InitTurret(**turret);
+		foreach (Component::baseComponents,base)
+			InitVehicleBase(**base);
+	}
+
+
+
+	/*static*/ void		Research::StaticCreate()
 	{
 		structureTables.SetSize(Prototypes::structures.Count());
 		for (index_t i = 0; i < Prototypes::structures.Count(); i++)
@@ -534,7 +554,7 @@ namespace Objects
 		#ifndef CLIENT
 
 			globalState.program0 = ScriptCache::LoadContent(
-	"--[[ API:\n"
+"--[[ API:\n"
 "\n"
 "Handle\tGame.CreateResearch(Handle group, String name, String iconName, advance(ResearchState,int by), getProgress(ResearchState)->int, int maxProgress, Handle dependency)\n"
 "\n"
@@ -921,7 +941,7 @@ namespace Objects
 "\t\t\tif state == nil then\n"
 "\t\t\t\treturn false\n"
 "\t\t\tend\n"
-"\t\t\treturn ResearchState.GetProgress(state,key) >= ResearchState.GetLimit(state, key)\n"
+"\t\t\treturn tostring(ResearchState.GetProgress(state,key) >= ResearchState.GetLimit(state, key));\n"
 "\t\tend\n"
 "\t}\n"
 "\t\n"
@@ -1147,8 +1167,7 @@ namespace Objects
 "\tMakeImproveResearchable(healthGroup, catUnlock, VehicleBaseConfig, 'CatamaranBase', 'Health',0.05);\n"
 "\n"
 "\n"
-""
-			);
+""			);
 
 			#ifdef _DEBUG
 				ActivateProgram(globalState.program0);	//test fallback program
@@ -1166,56 +1185,36 @@ namespace Objects
 	}
 
 
-	/*static*/ void ResearchState::RemapAttributes()
-	{
-		LuaAttributes<int>::Clear();
-		LuaAttributes<bool>::Clear();
-		LuaAttributes<float>::Clear();
-
-		for (index_t i = 0; i < Prototypes::structures.Count(); i++)
-		{
-			const PStructure&s = Prototypes::structures[i];
-			auto&t = structureTables[i];
-			InitTable(s->GetTypeName(),t);
-		}
-
-		foreach (Component::allTurretComponents,turret)
-			InitTurret(**turret);
-		foreach (Component::baseComponents,base)
-			InitVehicleBase(**base);
-	}
 
 
 	#ifndef CLIENT
-		/*static*/ void			ResearchState::LoadDefaultProgram()
+		/*static*/ void			Research::LoadDefaultProgram()
 		{
-			PathString factoryDefault = "../lua/research.v2.lua";
+			#define RESEARCH_SCRIPT_NAME "attributesAndResearch.lua"
+
+			PathString factoryDefault = "../lua/" RESEARCH_SCRIPT_NAME;
 			#if 0 && defined _DEBUG
 				PathString final = factoryDefault;
 			#else
 				FileSystem::CreateDirectory(RuntimeConfig::myConfig.Lookup("config/lua"));
 				FileSystem::CreateDirectory(RuntimeConfig::sharedConfig.Lookup("config/lua"));
-				PathString final = RuntimeConfig::myConfig.Lookup("config/lua/research.v2.lua");
+				PathString final = RuntimeConfig::myConfig.Lookup("config/lua/" RESEARCH_SCRIPT_NAME);
 				if (!FileSystem::IsFile(final))
-					final = RuntimeConfig::sharedConfig.Lookup("config/lua/research.v2.lua");
+					final = RuntimeConfig::sharedConfig.Lookup("config/lua/" RESEARCH_SCRIPT_NAME);
 				if (!FileSystem::IsFile(final))
 				{
 					final = factoryDefault;
-					#if 0	//leave this disabled. do not copy automatically
-						if (FileSystem::CopyFile("../lua/research.lua",final,false))
-							LogEvent(EventClass::Preset::configuration,"Copied ../lua/research.lua to "+String(final));
-						else
-							FATAL__("Unable to copy ../lua/research.lua to "+String(final));
-					#endif /*0*/
 				}
 			#endif
 			globalState.factoryDefault = ScriptCache::Load(factoryDefault); 
 			ActivateProgram(ScriptCache::Load(final));
 		}
 
+		static void			InnerLoad(const ScriptCache::PScript&script);
+		static void			RequireLoad(const ScriptCache::PScript&script);
 
 
-		/*static*/ void		ResearchState::ActivateProgram(const ScriptCache::PScript&script)
+		/*static*/ void		Research::ActivateProgram(const ScriptCache::PScript&script)
 		{
 			//#if defined _DEBUG && defined HAS_WINDOW
 			//	if (globalState.script)
@@ -1264,7 +1263,7 @@ namespace Objects
 			}
 		}
 
-		/*static*/ void ResearchState::RequireLoad(const ScriptCache::PScript&script)
+		static void RequireLoad(const ScriptCache::PScript&script)
 		{
 			try
 			{
@@ -1277,8 +1276,27 @@ namespace Objects
 			};
 		}
 		
-		/*static*/ void	ResearchState::InnerLoad( const ScriptCache::PScript&script )
+		struct TSerialState
 		{
+			Array<BYTE>		serialState;
+			String			researchQueue;
+
+			void			swap(TSerialState&other)
+			{
+				serialState.swap(other.serialState);
+				researchQueue.swap(other.researchQueue);
+			}
+
+			friend void		swap(TSerialState&a,TSerialState&b)
+			{
+				a.swap(b);
+			}
+		};
+
+		/*static*/ void	InnerLoad( const ScriptCache::PScript&script )
+		{
+			using namespace Research;
+
 			if (!script)
 				throw Lua::Exception(CLOCATION, Except::globalString("Script is NULL"));
 			LogEvent(EventClass(EventSignificance::Common,EventFlavor::ServerPrivate),"Attempting to activate research program "+Bin2Str::ConvertPOD(script->identifier));
@@ -1364,7 +1382,7 @@ namespace Objects
 			//globalState.researchProgram.reset();
 		}
 
-		void ResearchState::LoadNexusResearchState()
+		void Research::FactionState::LoadNexusResearchState()
 		{
 			foreach (globalState.allTopics,_t)
 			{
@@ -1378,7 +1396,7 @@ namespace Objects
 			UpdateAttributeTable();
 		}
 
-		void					ResearchState::AdvanceNexusResearch()
+		void					Research::FactionState::AdvanceNexusResearch()
 		{
 			DBG_ASSERT__(factionIsNexus);
 
@@ -1395,7 +1413,7 @@ namespace Objects
 		}
 
 
-		void					ResearchState::FinalizeRound(const PFaction&f)
+		void					Research::FactionState::FinalizeRound(const PFaction&f)
 		{
 			attributeTable.ClearChanges();
 
@@ -1424,6 +1442,7 @@ namespace Objects
 						break;
 					}
 					totalContribution -= left;
+					progress = res->maxProgress;
 					res->setProgress(luaResearchState,res->maxProgress);
 					LogEvent(EventClass::Preset::important,owner->shared_from_this(),"Research "+res->name+" completed");
 					researchQueue.Erase(0);
@@ -1454,7 +1473,7 @@ namespace Objects
 		}
 
 
-		//void					ResearchState::ImportResearchState(const ResearchProgressVector&archived)
+		//void					Research::FactionState::ImportResearchState(const Research::TopicProgressVector&archived)
 		//{
 		//	if (archived.Count() != globalState.allTopics.Count())
 		//		return;
@@ -1472,7 +1491,7 @@ namespace Objects
 		//}
 
 	
-		void					ResearchState::ImportLuaState(const ArrayRef<const BYTE>&serializedState)
+		void					Research::FactionState::ImportLuaState(const ArrayRef<const BYTE>&serializedState)
 		{
 			if (!globalState.researchProgram)
 			{
@@ -1508,7 +1527,7 @@ namespace Objects
 		}
 	
 	
-		void					ResearchState::ExportLuaState(Array<BYTE>&outSerializedState) const
+		void					Research::FactionState::ExportLuaState(Array<BYTE>&outSerializedState) const
 		{
 			//Buffer0<BYTE> data;
 			if (globalState.exportState.IsEmpty() || luaResearchState.IsEmpty())
@@ -1534,20 +1553,20 @@ namespace Objects
 
 	#else
 
-		/*static*/ void				ResearchState::BeginServerTopicUpdate()
+		/*static*/ void				Research::FactionState::BeginServerTopicUpdate()
 		{
 			globalState.rootResearch.Clear();
 			globalState.allTopics.Clear();
 		}
 
-		/*static*/ void				ResearchState::DeclareServerTopic(index_t parentTopicIndex, const String&topicName, const String&iconName, int maxProgress, index_t dependentTopicIndex)
+		/*static*/ void				Research::FactionState::DeclareServerTopic(index_t parentTopicIndex, const String&topicName, const String&iconName, int maxProgress, index_t dependentTopicIndex)
 		{
-			CreateResearch(parentTopicIndex != InvalidIndex ? Expect::SafeGet(globalState.allTopics,parentTopicIndex,CLOCATION) : nullptr,topicName,iconName,ResearchTopic::FSetProgress(),ResearchTopic::FGetProgress(), maxProgress,dependentTopicIndex != InvalidIndex ? Expect::SafeGet(globalState.allTopics,dependentTopicIndex,CLOCATION):nullptr);
+			CreateResearch(parentTopicIndex != InvalidIndex ? Expect::SafeGet(globalState.allTopics,parentTopicIndex,CLOCATION) : nullptr,topicName,iconName,Research::Topic::FSetProgress(),Research::Topic::FGetProgress(), maxProgress,dependentTopicIndex != InvalidIndex ? Expect::SafeGet(globalState.allTopics,dependentTopicIndex,CLOCATION):nullptr);
 		}
 	#endif
 
 
-	ResearchState::ResearchState( Faction*owner, bool isNexus ):owner(owner)
+	Research::FactionState::FactionState( Faction*owner, bool isNexus ):owner(owner)
 	{
 		factionIsNexus = isNexus;
 		
@@ -1565,7 +1584,7 @@ namespace Objects
 		#endif
 	}
 	
-	bool					ResearchGroup::Insert(const PResearchTopic&t)
+	bool					Research::TopicGroup::Insert(const Research::PTopic&t)
 	{
 		if (Find(t->name))
 			return false;
@@ -1575,19 +1594,19 @@ namespace Objects
 	}
 
 
-	PResearchTopic			ResearchGroup::Find(const StringRef&name) const
+	Research::PTopic			Research::TopicGroup::Find(const StringRef&name) const
 	{
-		//PResearchTopic t;
+		//Research::PTopic t;
 		//map.Query(name,t);
 		//return t;
 		foreach (children,c)
 			if ((*c)->name == name)	//i suspect this is actually faster for slow numbers of topics per family, since it does not force a String copy
 				return *c;
-		return PResearchTopic();
+		return Research::PTopic();
 	}
 
 
-	static PResearchTopic FindTopicOfPrototypeIn(const PResearchTopic&topic, const PWorldEntity&proto)
+	static Research::PTopic FindTopicOfPrototypeIn(const Research::PTopic&topic, const PWorldEntity&proto)
 	{
 		foreach (topic->children,_c)
 		{
@@ -1604,7 +1623,7 @@ namespace Objects
 		return nullptr;
 	}
 
-	static PResearchTopic FindTopicOfPrototypeIn(const PResearchTopic&topic, const Component::Base*proto)
+	static Research::PTopic FindTopicOfPrototypeIn(const Research::PTopic&topic, const Component::Base*proto)
 	{
 		foreach (topic->children,_c)
 		{
@@ -1621,7 +1640,8 @@ namespace Objects
 		return nullptr;
 	}
 
-	/*static*/ PResearchTopic	ResearchState::FindTopicOfPrototype(const Component::Base*proto)
+	#if 0
+	/*static*/ Research::PTopic	Research::FactionState::FindTopicOfPrototype(const Component::Base*proto)
 	{
 		foreach (globalState.allTopics,_t)
 		{
@@ -1638,7 +1658,7 @@ namespace Objects
 		return nullptr;
 	}
 
-	/*static*/ PResearchTopic	ResearchState::FindTopicOfPrototype(const PWorldEntity&proto)
+	/*static*/ Research::PTopic	Research::FactionState::FindTopicOfPrototype(const PWorldEntity&proto)
 	{
 		foreach (globalState.allTopics,_t)
 		{
@@ -1654,38 +1674,38 @@ namespace Objects
 		}
 		return nullptr;
 	}
+	#endif
 
-
-	/*static*/ PResearchTopic	ResearchState::FindTopic(const StringRef&path)
+	/*static*/ Research::PTopic	Research::FindTopic(const StringRef&path)
 	{
 		Ctr::Array<StringRef>	components;
 		explode('/',path,components);
-		PResearchTopic	current = globalState.rootResearch.Find(components.First());
+		Research::PTopic	current = globalState.rootResearch.Find(components.First());
 		for (index_t i = 1; i < components.Count(); i++)
 		{
 			if (!current)
-				return PResearchTopic();
+				return Research::PTopic();
 			current = current->Find(components[i]);
 		}
 		return current;
 	}
 
-	/*static*/ PResearchTopic	ResearchState::GetTopic(index_t serialIndex)
+	/*static*/ Research::PTopic	Research::GetTopic(index_t serialIndex)
 	{
-		return serialIndex < globalState.allTopics.Count() ? globalState.allTopics[serialIndex] : PResearchTopic();
+		return serialIndex < globalState.allTopics.Count() ? globalState.allTopics[serialIndex] : Research::PTopic();
 	}
 
-	bool	ResearchState::ResearchIsPlanned(const PResearchTopic&topic) const
+	bool	Research::FactionState::ResearchIsPlanned(const Research::PTopic&topic) const
 	{
 		return researchQueue.Contains(topic);
 	}
 
-	bool	ResearchState::ResearchQueueIsFull() const
+	bool	Research::FactionState::ResearchQueueIsFull() const
 	{
 		return researchQueue.Count() >= MaxResearchQueueLength;
 	}
 
-	bool	ResearchState::AppendResearchTask(const PResearchTopic&active)
+	bool	Research::FactionState::AppendResearchTask(const Research::PTopic&active)
 	{
 		if (!active || ResearchQueueIsFull() || !active->CanResearch(topicProgressVector,researchQueue.ToRef()) || researchQueue.Contains(active))
 			return false;
@@ -1693,7 +1713,7 @@ namespace Objects
 		return true;
 	}
 
-	bool					ResearchState::DropResearchTask(const PResearchTopic&active)
+	bool					Research::FactionState::DropResearchTask(const Research::PTopic&active)
 	{
 		if (!active)
 			return false;
@@ -1715,7 +1735,7 @@ namespace Objects
 	}
 
 
-	void		ResearchState::RestoreResearchQueue(const String&source)
+	void		Research::FactionState::RestoreResearchQueue(const String&source)
 	{
 		researchQueue.Clear();
 		Ctr::Array<StringRef> paths;
@@ -1725,7 +1745,7 @@ namespace Objects
 		globalState.onQueueChange(owner);
 	}
 
-	String		ResearchState::ExportResearchQueue()
+	String		Research::FactionState::ExportResearchQueue()
 	{
 		if (researchQueue.IsEmpty())
 			return "";
@@ -1739,13 +1759,13 @@ namespace Objects
 		return buffer.CopyToString();
 	}
 
-	void		ResearchState::ExportResearchQueue(Ctr::Array<UINT32>&outRS)
+	void		Research::FactionState::ExportResearchQueue(Ctr::Array<UINT32>&outRS)
 	{
 		outRS.SetSize(researchQueue.Count());
 		for (index_t i = 0; i < researchQueue.Count(); i++)
 			outRS[i] = ((UINT32)(researchQueue[i]->serialIndex));
 	}
-	void					ResearchState::RestoreResearchQueue(const Ctr::Array<UINT32>&q)
+	void					Research::FactionState::RestoreResearchQueue(const Ctr::Array<UINT32>&q)
 	{
 		researchQueue.Clear();
 		foreach (q,e)

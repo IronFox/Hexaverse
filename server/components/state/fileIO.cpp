@@ -1192,9 +1192,9 @@ namespace FileIO
 					script = ScriptCache::DefineFromFleetingCompressedData(id,data,false);
 				}
 				if (script)
-					Objects::ResearchState::ActivateProgram(script);
+					Objects::Research::ActivateProgram(script);
 				else
-					Objects::ResearchState::LoadDefaultProgram();
+					Objects::Research::LoadDefaultProgram();
 			}
 		}
 		catch (const std::exception&ex)
@@ -1789,8 +1789,8 @@ namespace FileIO
 			general->AppendBlock(RID::variableConfiguration,variableBuffer.pointer(),variableBuffer.GetContentSize());
 		}
 
-		if (Objects::ResearchState::globalState.script)
-			general->AppendBlock(RID::researchScript)->SetData(Objects::ResearchState::globalState.script->compressed);
+		if (Objects::Research::globalState.script)
+			general->AppendBlock(RID::researchScript)->SetData(Objects::Research::globalState.script->compressed);
 
 		//general->AppendBlock(RID::factionSupportFlags)->SetPODData(State::Config::factionSupportFlags);
 		//general->AppendBlock(RID::closedGame)->SetPODData(State::Config::closedGame);

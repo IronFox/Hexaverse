@@ -52,7 +52,7 @@ namespace Receiver
 
 namespace ResearchSerialization
 {
-	void	SendAttributeVectorTo(TCP::Destination&peer, const Objects::ResearchAttributeTable&table, const TUniqueID&originID);
+	void	SendAttributeVectorTo(TCP::Destination&peer, const Objects::Research::Attributes::Table&table, const TUniqueID&originID);
 	void	SendResearchProgramTo(TCP::Destination&peer);
 }
 
@@ -147,7 +147,7 @@ namespace Channels
 	DECLARE_OBJECT_SENDER(GameConfig);
 	DECLARE_OBJECT_SENDER(KillFaction);
 
-	DECLARE_OBJECT_SENDER(ResearchState);
+	DECLARE_OBJECT_SENDER(ResearchFactionState);
 	DECLARE_OBJECT_SENDER(ResearchProgram);
 	DECLARE_OBJECT_SENDER(ResearchQueue);
 	DECLARE_OBJECT_SENDER(ResearchAttributeVector);

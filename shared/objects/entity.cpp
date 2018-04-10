@@ -309,9 +309,9 @@ namespace Objects
 
 
 
-	const ResearchAttributeTable& WorldEntity::GetResearchState() const
+	const Research::Attributes::Table& WorldEntity::GetResearchState() const
 	{
-		return owner ? owner->researchState.attributeTable : ResearchState::globalState.zeroTable;
+		return owner ? owner->researchState.attributeTable : Research::globalState.zeroTable;
 	}
 
 

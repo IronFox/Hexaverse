@@ -35,7 +35,7 @@ namespace Objects
 
 		namespace Net
 		{
-			void QueueResearch(const Objects::PResearchTopic&topic, bool drop)
+			void QueueResearch(const Objects::Research::PTopic&topic, bool drop)
 			{
 				#ifdef HAS_WINDOW
 					Network::Channels::queueResearch.SendTo(Network::client,Protocol::QueueResearch((UINT32)topic->serialIndex,drop));
@@ -84,7 +84,7 @@ namespace Objects
 
 		}
 
-		/**/			ResearchCommand::ResearchCommand(const PResearchTopic&topic) : Super(topic->name,topic->iconName),topic(topic)	{}
+		/**/			ResearchCommand::ResearchCommand(const Research::PTopic&topic) : Super(topic->name,topic->iconName),topic(topic)	{}
 
 		///*virtual override*/ void	ResearchCommand::LoadIcon()
 		//{
@@ -181,7 +181,7 @@ namespace Objects
 				{
 					current = state->at(topic->serialIndex);
 				}
-		//		const ResearchState*rs = selectedEntity && selectedEntity->owner ? &selectedEntity->owner->researchState : nullptr;
+		//		const Research::FactionState*rs = selectedEntity && selectedEntity->owner ? &selectedEntity->owner->researchState : nullptr;
 
 				//if (ref || (base && turret))
 				{
@@ -198,7 +198,7 @@ namespace Objects
 						else
 							outResult << "Research completed";
 					}
-					PResearchTopic dep = topic->dependency.lock();
+					Research::PTopic dep = topic->dependency.lock();
 					if (dep && (!state || state->at(dep->serialIndex) < dep->maxProgress))
 						outResult << "Requires completion of "+dep->GetFullName()+" research";
 					outResult.MarkBriefEnd(true);
