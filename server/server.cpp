@@ -1144,10 +1144,16 @@ int main( int argc, const char* argv[])
 		[]()
 		{
 			ResearchSerialization::SendResearchProgramTo(Network::server);
+			ResearchSerialization::SendAttributeVectorTo(Network::server,Objects::ResearchState::globalState.zeroTable,TUniqueID::Empty());
+
 			Objects::ForeachFaction([](const Objects::PFaction&f)
 			{
+				Protocol::ResearchState state;
+				state.ownerID = f->id;
+				state.progressVector = f->researchState.topicProgressVector;
 
-
+				ResearchSerialization::SendAttributeVectorTo(Network::server,f->researchState.attributeTable,f->id);
+				Channels::ResearchState.SendTo(Network::server,state);
 			});
 		};
 

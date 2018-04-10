@@ -616,6 +616,7 @@ namespace Game
 					const auto&src = source.attributes[dst.index];
 					dst.value = src.value;
 					dst.description = src.description;
+					dst.flags = src.flags;
 				}
 			}
 
@@ -656,7 +657,6 @@ namespace Game
 						Protocol::ResearchState state;
 						state.ownerID = f->id;
 						state.progressVector = f->researchState.topicProgressVector;
-						ResearchSerialization::SendAttributeVectorTo(::Network::server,f->researchState.attributeTable,f->id);
 						Channels::ResearchState.SendTo(::Network::server,state,(UINT32)::Network::UserLevel::CommonFaction);
 					}
 

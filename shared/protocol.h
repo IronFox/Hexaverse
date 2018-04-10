@@ -1403,24 +1403,28 @@ namespace Protocol
 
 			T		value;
 			Package::NetString<128>	description;
+			UINT8	flags;
 
 			friend	void		Deserialize(IReadStream&s, Self&v)
 			{
 				using Serialization::Deserialize;
 				Deserialize(s,v.value);
 				Deserialize(s,v.description);
+				Deserialize(s,v.flags);
 			}
 			friend void			Serialize(IWriteStream&s, const Self&v)
 			{
 				using Serialization::Serialize;
 				Serialize(s,v.value);
 				Serialize(s,v.description);
+				Serialize(s,v.flags);
 			}
 
 			void				swap(Self&other)
 			{
 				using std::swap;
 				swap(value,other.value);
+				swap(flags,other.flags);
 				description.swap(other.description);
 			}
 		};
@@ -1586,8 +1590,8 @@ namespace Protocol
 			ResearchState,		// s2c : ResearchState
 			QueueResearch,		// c2s : QueueResearch -> s2c : ResearchQueue
 			ResearchQueue,		// s2c : ResearchQueue
-			ResearchAttributeVector,	// s2c: ResearchAttributeVector
-			ResearchAttributeDeltaVector,	//s2c: ResearchAttributeDeltaVector
+			ResearchAttributeVector,	// s2c : ResearchAttributeVector
+			ResearchAttributeDeltaVector,	//s2c : ResearchAttributeDeltaVector
 
 			LockEMPZones,		// s2c : UINT16
 			UplinkBandwidth,	// s2c : int, can be negative to indicate it's disabled

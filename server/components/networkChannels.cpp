@@ -23,6 +23,7 @@ namespace ResearchSerialization
 				auto&dst = dest[i];
 				dst.value = src.value;
 				dst.description = src.description;
+				dst.flags = src.flags;
 			}
 		}
 
@@ -874,6 +875,7 @@ namespace Receiver
 			Channels::createMarker.SendTo(peer, outMarker);
 		}
 
+		ResearchSerialization::SendResearchProgramTo(peer);
 		Objects::ForeachFaction([&peer](const Objects::PFaction&f)
 		{
 			Protocol::ResearchState state;
@@ -890,7 +892,6 @@ namespace Receiver
 
 		}
 
-		ResearchSerialization::SendResearchProgramTo(peer);
 
 
 		{

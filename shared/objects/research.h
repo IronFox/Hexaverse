@@ -20,15 +20,43 @@ namespace Objects
 	*/
 	typedef Array<int>	ResearchProgressVector;
 
+
+	struct ResearchAttributeFlags
+	{
+		enum flag_t
+		{
+			HasFunctionFlag = 0x1,
+			IsConst = 0x2,
+
+
+			MaxValue = 0x3,
+		};
+
+		typedef UINT8			serial_type_t;
+	};
+
 	
 	template <typename T>
 		class ResearchAttributeType
 		{
 		public:
+			typedef ResearchAttributeFlags::serial_type_t	flag_t;
 			struct Attrib
 			{
 				T				value;
 				String			description;
+				flag_t			flags;
+
+
+				bool			IsSet() const
+				{
+					return flags != 0;
+				}
+
+				bool			IsFunctionOrConstNonZero() const
+				{
+					return IsSet() && (((flags & ResearchAttributeFlags::HasFunctionFlag)!=0) || value != 0);
+				}
 			};
 			Array<Attrib>		attributes;
 			Buffer0<index_t>	changedSinceLastRound;
@@ -44,19 +72,36 @@ namespace Objects
 				return attributes[at];
 			}
 
-			bool				CheckUpdate(index_t at, T newValue, const String&newDesc)
+			bool				IsSet( index_t at ) const
+			{
+				if (attributes.IsEmpty())
+					return false;
+				return Expect::SafeGet(attributes,at,CLOCATION).IsSet();
+			}
+
+			bool				IsFunctionOrConstNonZero( index_t at ) const
+			{
+				if (attributes.IsEmpty())
+					return false;
+				return Expect::SafeGet(attributes,at,CLOCATION).IsFunctionOrConstNonZero();
+			}
+
+			bool				CheckUpdate(index_t at, T newValue, const String&newDesc, flag_t flags)
 			{
 				Attrib&a = attributes[at];
 				if (a.description == newDesc)
 					return false;
 				a.value = newValue;
 				a.description = newDesc;
+				a.flags = flags;
 				changedSinceLastRound << at;
 				return true;
 			}
 
 			T				SafeGet(index_t at)	const
 			{
+				if (at == InvalidIndex)
+					return (T)0;
 				if (at >= attributes.Count())
 				{
 					ASSERT__(attributes.IsEmpty());
@@ -67,6 +112,11 @@ namespace Objects
 
 			const String&	SafeDesc(index_t at) const
 			{
+				if (at == InvalidIndex)
+				{
+					static String rs = "???";
+					return rs;
+				}
 				if (at >= attributes.Count())
 				{
 					ASSERT__(attributes.IsEmpty());
@@ -186,11 +236,13 @@ namespace Objects
 		*/
 		const WResearchTopic	parent;
 
-		/**
-		Lua function to update the progress of the local research. Empty if this is a group
-		*/
-		FSetProgress		setProgress;
-		FGetProgress		getProgress;
+		#ifndef CLIENT
+			/**
+			Lua function to update the progress of the local research. Empty if this is a group
+			*/
+			FSetProgress		setProgress;
+			FGetProgress		getProgress;
+		#endif
 		
 
 		/**
@@ -313,17 +365,24 @@ namespace Objects
 												int maxProgress,
 												const PResearchTopic&dependency
 												);
-		static void				InnerLoad(const ScriptCache::PScript&script);
-		static void				RequireLoad(const ScriptCache::PScript&script);
-		void					LoadNexusResearchState();
+		#ifndef CLIENT
+			static void			InnerLoad(const ScriptCache::PScript&script);
+			static void			RequireLoad(const ScriptCache::PScript&script);
+			void				LoadNexusResearchState();
+		#endif
+
+		static void				RemapAttributes();
+
 	public:
 
 		bool					topicProgressChanged = false,
 								queueChanged = false;
 
 		static void				StaticCreate();
-		static void				ActivateProgram(const ScriptCache::PScript&script);
-		static void				LoadDefaultProgram();
+		#ifndef CLIENT
+			static void			ActivateProgram(const ScriptCache::PScript&script);
+			static void			LoadDefaultProgram();
+		#endif
 
 		static const count_t	MaxResearchQueueLength = 4;
 
@@ -354,15 +413,19 @@ namespace Objects
 			ResearchAttributeTable	zeroTable;
 			Lua::Reference			zeroState;
 
-			ScriptCache::PScript	script,	//currently loaded program
+			#ifndef CLIENT
+				ScriptCache::PScript	script,	//currently loaded program
 									program0,	//absolute fallback program to be used if all fails
 									factoryDefault;	//program defined in install directory
+			#endif
 			Buffer0<PResearchTopic>	allTopics;
 			ResearchGroup			rootResearch;
-			Lua::PProgram			researchProgram;
-			Lua::Function<Lua::Reference()>	stateConstructor;
-			Lua::Function<Lua::Reference(Lua::Reference)>	exportState;
-			Lua::Function<void(Lua::Reference,Lua::Reference)> importState;
+			#ifndef CLIENT
+				Lua::PProgram		researchProgram;
+				Lua::Function<Lua::Reference()>	stateConstructor;
+				Lua::Function<Lua::Reference(Lua::Reference)>	exportState;
+				Lua::Function<void(Lua::Reference,Lua::Reference)> importState;
+			#endif
 			Observable<>			onScriptChange;
 			Observable<Faction*>	onQueueChange;
 
@@ -370,7 +433,9 @@ namespace Objects
 		};
 		static GlobalState		globalState;
 
-		static const TScriptID&	GetScriptIdentifier()	{return globalState.script->identifier;}
+		#ifndef CLIENT
+			static const TScriptID&	GetScriptIdentifier()	{return globalState.script->identifier;}
+		#endif
 
 		Faction*const			owner;
 
@@ -384,7 +449,6 @@ namespace Objects
 		*/
 		void					AdvanceNexusResearch();
 		void					Contribute(int c)	{totalContribution+=c;}
-		void					FinalizeRound(const PFaction&);
 
 		bool					CheckUnlocked(const Component::Base&base, String&errorOut) const	{return true;}
 		bool					CheckUnlocked(ConstName, String&errorOut) const	{return true;}
@@ -404,15 +468,18 @@ namespace Objects
 
 		int						GetResearchSpeed() const	{return lastSpeed;}
 
-		/**
-		Updates this->attributeTable from the current Lua research state.
-		Automatically called by ImportLuaState(), and FinalizeRound()
-		*/
-		void					UpdateAttributeTable();
-		static void				UpdateAttributeTable(const Lua::Reference&luaResearchState, ResearchAttributeTable&table);
-		void					ImportResearchState(const ResearchProgressVector&archived);
-		void					ImportLuaState(const ArrayRef<const BYTE>&serializedState);
-		void					ExportLuaState(Array<BYTE>&outSerializedState) const;
+		#ifndef CLIENT
+			void				FinalizeRound(const PFaction&);
+			/**
+			Updates this->attributeTable from the current Lua research state.
+			Automatically called by ImportLuaState(), and FinalizeRound()
+			*/
+			void				UpdateAttributeTable();
+			static void			UpdateAttributeTable(const Lua::Reference&luaResearchState, ResearchAttributeTable&table);
+			void				ImportLuaState(const ArrayRef<const BYTE>&serializedState);
+			void				ExportLuaState(Array<BYTE>&outSerializedState) const;
+
+		#endif
 
 		/**
 		Checks whether either a const value or lua function is defined the specified int attribute index
@@ -456,6 +523,7 @@ namespace Objects
 			static bool			LuaAttributeIsFunctionOrConstNonZero<bool>( index_t idx ) {return LuaBoolIsFunctionOrConstNonZero(idx);}
 		template <>
 			static bool			LuaAttributeIsFunctionOrConstNonZero<float>( index_t idx ) {return LuaFloatAttributeIsFunctionOrConstNonZero(idx);}
+		
 
 
 
@@ -463,10 +531,12 @@ namespace Objects
 		static PResearchTopic	FindTopic(const String&path)	{return FindTopic(path.ref());}
 		static PResearchTopic	FindTopic(const StringRef&path);
 		static PResearchTopic	FindTopicOfPrototype(const PWorldEntity&proto);
+		static PResearchTopic	FindTopicOfPrototype(const Component::Base*);
 
-
-		static void				BeginServerTopicUpdate();
-		static void				DeclareServerTopic(index_t parentTopicIndex, const String&topicName, const String&iconName, int maxProgress, index_t dependentTopicIndex);
+		#ifdef CLIENT
+			static void			BeginServerTopicUpdate();
+			static void			DeclareServerTopic(index_t parentTopicIndex, const String&topicName, const String&iconName, int maxProgress, index_t dependentTopicIndex);
+		#endif
 	};
 
 	

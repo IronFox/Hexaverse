@@ -30,8 +30,8 @@ namespace Expect
 			throw Except::Program::UnsupportedRequest(loc,"Index out of bounds for array access: "+String(index)+"/"+String(container.Count()));
 		}
 
-	template <typename T>
-		const T& SafeGet(const BasicBuffer<T>&container, index_t index, const TCodeLocation&loc)
+	template <typename T, typename S>
+		const T& SafeGet(const BasicBuffer<T,S>&container, index_t index, const TCodeLocation&loc)
 		{
 			if (index < container.Count())
 				return container[index];

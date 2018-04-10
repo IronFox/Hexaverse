@@ -1278,6 +1278,8 @@ namespace Objects
 		void RebuildTerraformerButtons()
 		{
 			Component::terraformer.commands.Clear();
+			if (Objects::ResearchState::globalState.allTopics.IsNotEmpty())
+				ASSERT__(Component::terraformer.CanConstruct());
 			DefineTerraformer(Component::terraformer);
 			if (Objects::selectedEntity && Objects::selectedEntity->IsVehicle() && To<Vehicle>::Cast(Objects::selectedEntity)->turret == &Component::terraformer)
 				HUD::HexGrid::Configure(Objects::selectedEntity);

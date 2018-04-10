@@ -1173,7 +1173,8 @@ namespace Network
 			bool brk = true;
 		}
 
-		static bool triggerScriptChange = false;
+		static bool triggerScriptChange = false,
+			reallyTriggerScriptChange = false;
 
 		void	ResearchState(Protocol::ResearchState&state)
 		{
@@ -1186,10 +1187,10 @@ namespace Network
 					Tutorial::SignalResearchChange();
 			#endif
 
-			if (triggerScriptChange && f->researchState.topicProgressVector.Count() == Objects::ResearchState::globalState.allTopics.Count())
+			if (f->isOwnedByMe && triggerScriptChange && f->researchState.topicProgressVector.Count() == Objects::ResearchState::globalState.allTopics.Count())
 			{
 				triggerScriptChange = false;
-				Objects::ResearchState::globalState.onScriptChange();
+				reallyTriggerScriptChange = true;
 			}
 
 		}
@@ -1234,6 +1235,7 @@ namespace Network
 					auto&dst = dest.attributes[i];
 					dst.value = src.value;
 					dst.description.adoptData(src.description);
+					dst.flags = src.flags;
 				}
 			}
 
@@ -1245,21 +1247,36 @@ namespace Network
 					auto&dst = Expect::SafeGet(dest.attributes,src->index,CLOCATION);
 					dst.value = src->value;
 					dst.description.adoptData(src->description);
+					dst.flags = src->flags;
 				}
 			}
 
 		void	ResearchAttributeVector( Protocol::ResearchAttributeVector&attributes )
 		{
 			Objects::ResearchAttributeTable*table0 = nullptr;
+			bool isMine = false;
 			if (attributes.faction.IsEmpty())
 				table0 = &Objects::ResearchState::globalState.zeroTable;
 			else
-				table0 = &ResolveFaction(attributes.faction)->researchState.attributeTable;
+			{
+				auto f = ResolveFaction(attributes.faction);
+				if (f->isOwnedByMe)
+					isMine = true;
+				table0 = &f->researchState.attributeTable;
+			}
 			auto&table = *table0;
 
 			Import(attributes.boolAttributes,table.bools);
 			Import(attributes.intAttributes,table.ints);
 			Import(attributes.floatAttributes,table.floats);
+
+
+			if (isMine && reallyTriggerScriptChange)
+			{
+				reallyTriggerScriptChange = false;
+				Objects::ResearchState::globalState.onScriptChange();
+			}
+
 		}
 
 		void	ResearchAttributeDeltaVector(Protocol::ResearchAttributeDeltaVector&attributes)
