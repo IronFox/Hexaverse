@@ -38,4 +38,10 @@ namespace Expect
 			throw Except::Program::UnsupportedRequest(loc,"Index out of bounds for buffer access: "+String(index)+"/"+String(container.Count()));
 		}
 
+
+	#define FAIL_EXPECT(MSG)	throw Except::Program::UnsupportedRequest(CLOCATION,MSG);
+	#define EXPECT(X)			{if (!(X)) FAIL_EXPECT(#X " evaluates to false");}
+	#define EXPECT1(X,V0)		{using ::DeltaWorks::StringConversion::ToString; if (!(X)) FAIL_EXPECT(String(#X " evaluates to false, with " #V0 "=")+ToString(V0));}
+	#define EXPECT2(X,V0,V1)	{using ::DeltaWorks::StringConversion::ToString; if (!(X)) FAIL_EXPECT(String(#X " evaluates to false, with " #V0 "=")+ToString(V0)+" and " #V1 "="+ToString(V1));}
+	#define EXPECT_EQUAL(A,B)	EXPECT2((A)==(B),A,B)
 }
