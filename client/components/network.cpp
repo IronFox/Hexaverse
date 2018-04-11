@@ -1179,7 +1179,7 @@ namespace Network
 		void	ResearchFactionState(Protocol::ResearchFactionState&state)
 		{
 			Objects::PFaction f = ResolveFaction(state.ownerID);
-			ASSERT_EQUAL__(Objects::Research::globalState.allTopics.Count(),state.progressVector.Length());
+			EXPECT_EQUAL(Objects::Research::globalState.allTopics.Count(),state.progressVector.Length());
 			f->researchState.topicProgressVector.adoptData(state.progressVector);
 			f->researchState.topicProgressChanged = true;
 			#ifdef HAS_WINDOW
@@ -1226,9 +1226,7 @@ namespace Network
 		template <typename T>
 			static void Import(Protocol::ResearchAttributeArray<T>&source, Objects::Research::Attributes::TypeMap<T>&dest)
 			{
-				if (dest.attributes.Count() != 0)
-					ASSERT_EQUAL__(dest.attributes.Count(),source.Count());
-				dest.attributes.SetSize(source.Count());
+				dest.attributes.SetSize(source.Count());	//don't assert, just resize. might change
 				for (index_t i = 0; i < dest.attributes.Count(); i++)
 				{
 					auto&src = source[i];
