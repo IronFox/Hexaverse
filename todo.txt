@@ -5,6 +5,7 @@ repairer should hold if repair has completed
 tower attack tasks not shown in state panel
 canceling attack-only tasks via backspace on tank does not update client visualization
 end game statistics: put game state in top label 'The Game Has Ended' or the likes
+hostile ghost has no owner
 
 
 client: attacks left of towers does not reset (missing server state change)
