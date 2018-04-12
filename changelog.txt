@@ -1,6 +1,7 @@
 v0.8.4
 	> Now also hiding state panel and resource list while HUD is hidden.
 	> Lua research script is now executed server-side only, with research topics, progress, and attribute vectors transferred to clients as needed.
+	> Status panel now wraps long lines.
 	* Fixed crash when clicking on unit while HUD is hidden.
 	* Fixed missing tower attack action update.
 
