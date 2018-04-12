@@ -6,6 +6,7 @@ tower attack tasks not shown in state panel
 canceling attack-only tasks via backspace on tank does not update client visualization
 end game statistics: put game state in top label 'The Game Has Ended' or the likes
 hostile ghost has no owner
+build bride to generates micro tasks incorrectly named 'build road to'
 
 
 client: attacks left of towers does not reset (missing server state change)
