@@ -4,6 +4,7 @@ v0.8.4
 	> Status panel now wraps long lines.
 	* Fixed crash when clicking on unit while HUD is hidden.
 	* Fixed missing tower attack action update.
+	* Fixed attack arrow positioning when mobile unit is selected but attack origin is not current entity location.
 
 v0.8.3	[Apr 8 2018]
 	+ Added hotkey (P for Path) to quickly build roads using terraformers.
