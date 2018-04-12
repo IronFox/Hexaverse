@@ -12,30 +12,29 @@ On failure throws a Program::UnsupportedRequest exception, which may be handled 
 */
 namespace Expect
 {
-	using namespace DeltaWorks;
 
 	template <typename T>
-		const T& SafeGet(const ArrayRef<T>&container, index_t index, const TCodeLocation&loc)
+		const T& SafeGet(const DeltaWorks::ArrayRef<T>&container, index_t index, const DeltaWorks::TCodeLocation&loc)
 		{
 			if (index < container.Count())
 				return container[index];
-			throw Except::Program::UnsupportedRequest(loc,"Index out of bounds for array access: "+String(index)+"/"+String(container.Count()));
+			throw DeltaWorks::Except::Program::UnsupportedRequest(loc,"Index out of bounds for array access: "+String(index)+"/"+String(container.Count()));
 		}
 
 	template <typename T>
-		T& SafeGet(MutableArrayRef<T>&container, index_t index, const TCodeLocation&loc)
+		T& SafeGet(DeltaWorks::MutableArrayRef<T>&container, index_t index, const DeltaWorks::TCodeLocation&loc)
 		{
 			if (index < container.Count())
 				return container[index];
-			throw Except::Program::UnsupportedRequest(loc,"Index out of bounds for array access: "+String(index)+"/"+String(container.Count()));
+			throw DeltaWorks::Except::Program::UnsupportedRequest(loc,"Index out of bounds for array access: "+String(index)+"/"+String(container.Count()));
 		}
 
 	template <typename T, typename S>
-		const T& SafeGet(const BasicBuffer<T,S>&container, index_t index, const TCodeLocation&loc)
+		const T& SafeGet(const DeltaWorks::BasicBuffer<T,S>&container, index_t index, const DeltaWorks::TCodeLocation&loc)
 		{
 			if (index < container.Count())
 				return container[index];
-			throw Except::Program::UnsupportedRequest(loc,"Index out of bounds for buffer access: "+String(index)+"/"+String(container.Count()));
+			throw DeltaWorks::Except::Program::UnsupportedRequest(loc,"Index out of bounds for buffer access: "+String(index)+"/"+String(container.Count()));
 		}
 
 
