@@ -1,6 +1,5 @@
 bug: artillery auto attacks, but hits neighboring radar
 bug: plane position markers are drawn atop planes instead below
-tower action not refreshed
 repairer should hold if repair has completed
 tower attack tasks not shown in state panel
 canceling attack-only tasks via backspace on tank does not update client visualization
@@ -211,6 +210,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: tower action not refreshed
 done: review planets. Add pillars planet
 done: documentation: update view icon image and documentation (+home-key on cft_aerial)
 done: steam: no handler set

@@ -249,7 +249,8 @@ namespace Game
 	namespace Network
 	{
 	
-		static const UINT32 NotifyForeigners = Objects::WorldEntity::PositionChanged 
+		static const UINT32 BaseNotifyForeigners = 
+											  Objects::WorldEntity::PositionChanged 
 											| Objects::WorldEntity::StartedBuilding 
 											| Objects::WorldEntity::StoppedBuilding 
 											| Objects::WorldEntity::HealthChanged 
@@ -257,10 +258,11 @@ namespace Game
 											| Objects::WorldEntity::EMPDamageChanged
 											| Objects::WorldEntity::HibernationChanged;
 
-		static const UINT32 NotifyAllies = NotifyForeigners
+		static const UINT32 NotifyAllies = BaseNotifyForeigners
+											| Objects::WorldEntity::ActionChanged
 											| Objects::WorldEntity::NexusControlChanged;
 
-
+		UINT32		NotifyForeignerFlags();
 
 		UINT32		AssembleGameFlags(bool allowSpectatorFactions);
 		void		AssembleGameConfig(Protocol::GameConfig&info, bool allowSpectatorFactions);
@@ -279,7 +281,7 @@ namespace Game
 			SleepState			= 0x2,		//whether entity is sleeping or not 
 			Automation			= 0x4,		//whether entity is automated or not
 			MyMobileEntity		= 0x8,		//Includes motion and/or production tasks, storedIn, constructionActionCounter
-			MobileAction		= 0x10,		//implicitly set if Config::exposeActionLeftToHostileFactions is true
+			Action				= 0x10,		//implicitly set if Config::exposeActionLeftToHostileFactions is true
 			StructureTasks		= 0x20,		//includes mobile entity producer and tower attack queue
 			MineState			= 0x40,		//includes natural resource vector and core-connection
 			NexusControl		= 0x80,		//resistance and control state of described nexus port
@@ -298,7 +300,7 @@ namespace Game
 
 		static const constexpr Expose	ExposeAll = (Expose)std::numeric_limits<std::underlying_type<Expose>::type>::max();
 		static const constexpr Expose	ExposeToForeigners = Expose::None;
-		static const constexpr Expose	ExposeToAllies = Expose::SleepState | Expose::Automation | Expose::MobileAction | Expose::MineState | Expose::NexusControl;
+		static const constexpr Expose	ExposeToAllies = Expose::SleepState | Expose::Automation | Expose::Action | Expose::MineState | Expose::NexusControl;
 
 
 		inline Expose		GetExposition(const Objects::PFaction&entityOwner,const Objects::PFaction&recipientFaction)

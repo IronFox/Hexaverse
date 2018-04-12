@@ -457,6 +457,14 @@ namespace Game
 
 	namespace Network
 	{
+		UINT32		NotifyForeignerFlags()
+		{
+			auto rs = BaseNotifyForeigners;
+			if (Config::exposeActionLeftToHostileFactions)
+				rs |= Objects::WorldEntity::ActionChanged;
+			return rs;
+		}
+
 		static void		_UpdateResourceCoverage(const Objects::PFaction&f, const Grid::LCellIdI&center,float range, const Protocol::Timestamp&timestamp)
 		{
 			static Ctr::Buffer0<UINT32>	changed;
@@ -885,7 +893,7 @@ namespace Game
 
 			}
 			
-			if (expose & Expose::MobileAction || Config::exposeActionLeftToHostileFactions)
+			if (expose & Expose::Action || Config::exposeActionLeftToHostileFactions)
 			{
 				state.attackActionLeft = v.attackActionLeft;
 				state.movementActionLeft = v.movementActionLeft;
@@ -956,7 +964,8 @@ namespace Game
 					if (t)
 					{
 						Protocol::TowerState&subState = state.selective.Set3();
-						subState.attackActionLeft = t->attackActionLeft;
+						if (expose & Expose::Action)
+							subState.attackActionLeft = t->attackActionLeft;
 						subState.attackTasks.SetSize(t->attackQueue.Count());
 						for (index_t i = 0; i < subState.attackTasks.Count(); i++)
 						{
@@ -965,6 +974,28 @@ namespace Game
 				
 					}
 				}
+				elif ((expose & Expose::Action || Config::exposeActionLeftToHostileFactions) && (changeFlags & Objects::WorldEntity::ActionChanged))
+				{
+					if (s.IsTower())
+					{
+						const Objects::Tower*t = dynamic_cast<const Objects::Tower*>(&s);
+						if (t)
+						{
+							Protocol::TowerState&subState = state.selective.Set3();
+							subState.attackActionLeft = t->attackActionLeft;
+							if (expose & Expose::StructureTasks)
+							{
+								subState.attackTasks.SetSize(t->attackQueue.Count());
+								for (index_t i = 0; i < subState.attackTasks.Count(); i++)
+								{
+									Describe(subState.attackTasks[i],t->attackQueue[i]);
+								}
+							}
+						}
+					}
+				}
+
+
 				if (expose & Expose::MineState)
 				{
 					const Objects::Mine*m = dynamic_cast<const Objects::Mine*>(&s);
@@ -1083,7 +1114,7 @@ namespace Game
 				//anythingChanged = true;
 				LogEvent(EventSignificance::Common,&v,"State change detected ("+String(v.changeFlags)+")");
 
-				const bool foreignersNeedToKnow = (v.changeFlags & Network::NotifyForeigners) != 0 && v.storedIn.expired();
+				const bool foreignersNeedToKnow = (v.changeFlags & Network::NotifyForeignerFlags()) != 0 && v.storedIn.expired();
 				const bool alliesNeedToKnow = (v.changeFlags & Network::NotifyAllies) != 0 && v.storedIn.expired();
 
 				const Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),v.changeTimer);
@@ -1121,7 +1152,7 @@ namespace Game
 				//anythingChanged = true;
 				LogEvent(EventSignificance::Common,&s,"State change detected");
 				
-				const bool foreignersNeedToKnow = (s.changeFlags & Network::NotifyForeigners) != 0;
+				const bool foreignersNeedToKnow = (s.changeFlags & Network::NotifyForeignerFlags()) != 0;
 				const bool exposeDetailsToAllies = s.owner->alliance && s.owner->alliance->config.exposeEntityDetails;
 				const bool alliesNeedToKnow = (s.changeFlags & Network::NotifyAllies) != 0;
 
