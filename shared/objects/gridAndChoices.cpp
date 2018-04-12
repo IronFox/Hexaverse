@@ -506,11 +506,11 @@ namespace Objects
 		void				InsertIntoGrid(Ctr::Array<T>&grid, const Grid::LCellIdI&location, const T&object)
 		{
 			ASSERT__(!object->isInsertedIntoGrid);
-			Grid::AssertIsValid(location);
+			Grid::AssertIsValid(location,CLOCATION);
 
 			const int h = object->GetHeight();
 			if (h > 1)
-				Grid::AssertIsValid(location+h-1);
+				Grid::AssertIsValid(location+h-1,CLOCATION);
 			for (int z = 0; z < h; z++)
 			{
 				index_t at = CellToGridIndex(location+z);
