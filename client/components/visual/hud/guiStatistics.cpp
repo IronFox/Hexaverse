@@ -159,6 +159,50 @@ namespace HUD
 				AddRow(panel);
 			}
 
+			static void AddUserLine(const String&prefix,const Objects::PAlliance&a,const String&postFix="")
+			{
+				PPanel panel{new Panel{}};
+				panel->SetBackgroundTransparent();
+				panel->SetAutomaticHeight(true);
+
+				PLabel prefixLabel{new Label{prefix+' '}};
+				prefixLabel->alignCenter = false;
+				prefixLabel->Anchor().Top().Left();
+				prefixLabel->LockToIdealHeight();
+				prefixLabel->LockToIdealWidth();
+				//prefixLabel->SetVerticalPadding(linePadding);
+				prefixLabel->SetPadding(0.f);
+				prefixLabel->LockToIdealWidth();
+				panel->AddComponent(prefixLabel,CLOCATION);
+			
+				auto last = prefixLabel;
+	
+				a->VisitMembers([&last,panel](const Objects::PFaction&f)
+				{
+					PLabel factionLabel{new Label{f->GetName()+' '}};
+					factionLabel->alignCenter = false;
+					factionLabel->SetColor(f->color);
+					factionLabel->Anchor().Top().RightOf(last);
+					factionLabel->SetPadding(0.f);
+					factionLabel->LockToIdealWidth();
+					panel->AddComponent(factionLabel,CLOCATION);
+
+					last = factionLabel;
+				});
+			
+				if (postFix.IsNotEmpty())
+				{
+					PLabel postFixLabel{new Label{postFix}};
+					postFixLabel->Anchor().Top().RightOf(last);
+					postFixLabel->alignCenter = false;
+					//postFixLabel->SetVerticalPadding(linePadding);
+					postFixLabel->SetPadding(0.f);
+					postFixLabel->LockToIdealWidth();
+					panel->AddComponent(postFixLabel,CLOCATION);
+				}
+				AddRow(panel);
+			}
+
 		}
 
 		struct TFactionStats
@@ -240,7 +284,7 @@ namespace HUD
 
 			Stats::AddLine("Total rounds: "+String(endRound));
 
-			Objects::PFaction winner = Objects::Faction::FindByID(Network::winningFactionID);
+			Objects::PAlliance winner = Objects::Alliance::FindByID(Network::winningAllianceID);
 			if (winner)
 				Stats::AddUserLine("Winner:",winner,"");
 
@@ -273,7 +317,7 @@ namespace HUD
 		{
 			{
 				String title = f->GetName();
-				if (Network::winningFactionID == f->id)
+				if (f->alliance && Network::winningAllianceID == f->alliance->id)
 					title += " (WINNER)";
 				PLabel caption{new Label{title,1.2f}};
 				caption->SetColor(f->color);

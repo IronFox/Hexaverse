@@ -115,10 +115,8 @@ namespace Objects
 		foreach (invited,m)
 		{
 			PFaction f = m->wFaction.lock();
-			#ifndef CLIENT
-				if (f->isDead && livingOnly)
-					continue;
-			#endif
+			if (f->isDead && livingOnly)
+				continue;
 			visitor(f);
 		}
 	}
@@ -130,10 +128,8 @@ namespace Objects
 		foreach (members,m)
 		{
 			PFaction f = m->wFaction.lock();
-			#ifndef CLIENT
-				if (f->isDead && livingOnly)
-					continue;
-			#endif
+			if (f->isDead && livingOnly)
+				continue;
 			visitor(f);
 		}
 	}
@@ -142,15 +138,11 @@ namespace Objects
 	{
 		if (!this)
 			return 0;
-		#ifndef CLIENT
-			count_t cnt  = 0;
-			foreach (members,m)
-				if (!m->wFaction.lock()->isDead)
-					cnt++;
-			return cnt;
-		#else
-			return members.Count();
-		#endif
+		count_t cnt  = 0;
+		foreach (members,m)
+			if (!m->wFaction.lock()->isDead)
+				cnt++;
+		return cnt;
 	}
 
 
@@ -1625,8 +1617,9 @@ namespace Objects
 	void			ForeachFaction(const std::function<void(const PFaction&)>&func, bool includeDead/*=false*/)
 	{
 		#ifdef CLIENT
-			foreach (Faction::allKnown,a)
-				func(*a);
+			foreach (Faction::allKnown,f)
+				if (!(*f)->isDead || includeDead)
+					func(*f);
 		#else
 			
 			if (Faction::nexus && (!Faction::nexus->isDead || includeDead))

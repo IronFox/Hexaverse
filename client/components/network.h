@@ -35,7 +35,7 @@ namespace Network
 
 
 	extern Protocol::GameProgress	gameProgress;
-	extern TUniqueID				winningFactionID;
+	extern TUniqueID				winningAllianceID;
 
 	extern float			animationTimeFactor,	//!< Speed factor applied to active animations. Updated when server issues next animation phase.
 							roundTimer;
@@ -260,10 +260,11 @@ namespace Network
 
 		namespace Statistics
 		{
-			extern TCP::Channel<TUniqueID, 0, Protocol::ChannelID::BeginStatisticsSequence>				beginSequence;
 			extern TCP::Channel<Objects::Statistics::Round, 0, Protocol::ChannelID::RoundStatistics>		round;
 			extern TCP::Channel<Objects::Statistics::EntityType, 0, Protocol::ChannelID::EntityTypeStatistics>	entityType;
 			extern TCP::Channel<Objects::Statistics::FactionInteraction, 0, Protocol::ChannelID::FactionInteractionStatistics>	factionInteraction;
+
+			DECLARE_CHANNEL(BeginStatisticsSequence);
 		}
 
 		extern TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;

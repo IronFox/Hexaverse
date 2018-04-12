@@ -1354,10 +1354,13 @@ namespace Protocol
 		, NET(RuntimeConfig::RoundNumber), newRoundNumber
 	)
 
+	static const size_t MaxFactionNameLength = 32;
+
+
 	NETSTRUCT4(IdentifyFaction
 		, NET(TUniqueID), id
 		, TUniqueID, allianceID
-		, Package::NetString<32>, name
+		, Package::NetString<MaxFactionNameLength>, name
 		, NET(M::TVec3<>), color
 	)
 
@@ -1505,6 +1508,17 @@ namespace Protocol
 		, TUniqueID, recipient	//may be faction, alliance, or everybody (if empty)
 	)
 		
+
+	NETSTRUCT5(BeginStatisticsSequence
+		, TUniqueID, factionID
+		, TUniqueID, allianceID
+		, Package::NetString<MaxFactionNameLength>, factionName
+		, float3, color
+		, bool, factionIsDead
+	)
+
+
+
 	typedef Package::NetString<32>	SaveAs;
 	typedef TUniqueID	KillFaction;
 
@@ -1613,9 +1627,9 @@ namespace Protocol
 
 			TutorialAt,			// both: int32
 
-			WinningFaction,		// s2c: TUniqueID (if game has winner)
+			WinningAlliance,		// s2c: TUniqueID (if game has winner)
 
-			BeginStatisticsSequence,	//s2c: TUniqueID (factionID)
+			BeginStatisticsSequence,	//s2c: BeginStatisticsSequence
 			EndStatisticsSequence,		//s2c: <signal>
 			RoundStatistics,			//s2c: Statistics::Round
 			EntityTypeStatistics,		//s2c: Statistics::EntityType

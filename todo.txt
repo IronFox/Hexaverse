@@ -2,15 +2,12 @@ bug: artillery auto attacks, but hits neighboring radar
 bug: plane position markers are drawn atop planes instead below
 repairer should hold if repair has completed
 canceling attack-only tasks via backspace on tank does not update client visualization
-end game statistics: put game state in top label 'The Game Has Ended' or the likes
 hostile ghost has no owner
 build bride to generates micro tasks incorrectly named 'build road to'
 
 
 client: attacks left of towers does not reset (missing server state change)
 ai: radar drives into range of rocket tower
-at end of game: dead factions should be 'revived' and sent to remaining factions without having to disconnect
-spectator at end of game: dead factions do show up, but with no name or color
 
 
 
@@ -209,6 +206,9 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+done: at end of game: dead factions should be 'revived' and sent to remaining factions without having to disconnect
+fixed: spectator at end of game: dead factions do show up, but with no name or color
+done: end game statistics: put game state in top label 'The Game Has Ended' or the likes
 fixed: tower attack tasks not shown in state panel
 fixed: tower action not refreshed
 done: review planets. Add pillars planet

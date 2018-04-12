@@ -392,7 +392,7 @@ namespace Network
 				Objects::ForeachFaction([&peer](const Objects::PFaction&f)
 				{
 					Game::Network::SendStatisticsTo(peer,f);
-				});
+				},true);
 			}
 
 			Channels::gameProgress.SendTo(ppeer,progress);

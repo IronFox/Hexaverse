@@ -288,9 +288,10 @@ namespace Objects
 		{
 			if (!this)
 				return "<NULL>";
+			String dead = isDead ? " (dead)":"";
 			if (name.IsNotEmpty())
-				return name;
-			return ToString(id);
+				return name+dead;
+			return ToString(id)+dead;
 		}
 		String		GetLogName() const
 		{
@@ -319,6 +320,7 @@ namespace Objects
 		#endif
 
 		static const String				nexusName;
+		bool							isDead = false;
 
 		#ifdef CLIENT
 			static Buffer0<PFaction>	allKnown;
@@ -411,7 +413,6 @@ namespace Objects
 				Terraformer = 0x20,
 			};
 
-			bool				isDead = false;
 			UnitClass			hasUnitClasses = UnitClass::None;
 
 			Ctr::Buffer0<Marker,Strategy::Adopt>		markers;

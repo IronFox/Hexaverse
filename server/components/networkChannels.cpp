@@ -345,7 +345,7 @@ namespace Channels
 	TCP::ObjectSender<Protocol::UnitLimits,Protocol::ChannelID::UnitLimits>							unitLimits;
 	TCP::ObjectSender<Protocol::OperationLacksResources,Protocol::ChannelID::OperationLacksResources>	operationLacksResources;
 
-	TCP::ObjectSender<TUniqueID, Protocol::ChannelID::WinningFaction>								winningFaction;
+	TCP::ObjectSender<TUniqueID, Protocol::ChannelID::WinningAlliance>								winningAlliance;
 
 	DECLARE_OBJECT_SENDER(VoteCreation);
 	DECLARE_OBJECT_SENDER(VoteResult);
@@ -368,10 +368,11 @@ namespace Channels
 
 	namespace Statistics
 	{
-		TCP::ObjectSender<TUniqueID, Protocol::ChannelID::BeginStatisticsSequence>					beginSequence;
 		TCP::ObjectSender<Objects::Statistics::Round, Protocol::ChannelID::RoundStatistics>			round;
 		TCP::ObjectSender<Objects::Statistics::EntityType, Protocol::ChannelID::EntityTypeStatistics>	entityType;
 		TCP::ObjectSender<Objects::Statistics::FactionInteraction, Protocol::ChannelID::FactionInteractionStatistics>	factionInteraction;
+
+		DECLARE_OBJECT_SENDER(BeginStatisticsSequence);
 	}
 
 
@@ -546,7 +547,7 @@ namespace Receiver
 		});
 
 		if (!Game::winner.expired())
-			Channels::winningFaction.SendTo(peer,Game::winner.lock()->id);
+			Channels::winningAlliance.SendTo(peer,Game::winner.lock()->id);
 
 		peer.SendSignal(Protocol::ChannelID::EndEverything);
 	}

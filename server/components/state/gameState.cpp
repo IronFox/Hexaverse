@@ -516,7 +516,13 @@ namespace Game
 		void SendStatisticsTo( TCP::Peer & peer, const Objects::PFaction & faction)
 		{
 			Objects::Statistics::EnterNetworkMode();
-			Channels::Statistics::beginSequence.SendTo(peer,faction->id);
+			Protocol::BeginStatisticsSequence begin;
+			begin.factionID = faction->id;
+			begin.allianceID = faction->alliance ? faction->alliance->id : TUniqueID::Empty();
+			begin.factionIsDead = faction->isDead;
+			begin.factionName = faction->name;
+			begin.color = faction->color;
+			Channels::Statistics::BeginStatisticsSequence.SendTo(peer,begin);
 
 			faction->statistics.VisitRounds([&peer](const Objects::Statistics::Round&r)
 			{
@@ -1364,7 +1370,7 @@ namespace Game
 		}
 
 		winner = w;
-		Channels::winningFaction.SendTo(::Network::server,w->id,Channels::Level::Faction);
+		Channels::winningAlliance.SendTo(::Network::server,w->id,Channels::Level::Faction);
 		if (RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame)
 			Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
 	}

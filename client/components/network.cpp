@@ -53,7 +53,7 @@ namespace Network
 
 
 	Protocol::GameProgress	gameProgress;
-	TUniqueID				winningFactionID = TUniqueID::Empty();
+	TUniqueID				winningAllianceID = TUniqueID::Empty();
 
 
 	float			animationTimeFactor = 1,
@@ -496,7 +496,7 @@ namespace Network
 		roundTimer = -1;
 
 		GlobalEvents::FlushObjects();
-		Network::winningFactionID = TUniqueID::Empty();
+		Network::winningAllianceID = TUniqueID::Empty();
 		Network::gameProgress.gameOver = false;
 		Network::gameProgress.gameWon = false;
 		Network::gameProgress.status = "";
@@ -1293,11 +1293,36 @@ namespace Network
 
 
 
-		void	WinningFaction(TUniqueID&id)
+		void	WinningAlliance(TUniqueID&id)
 		{
-			winningFactionID = id;
+			winningAllianceID = id;
 			#ifdef HAS_WINDOW
 				HUD::Statistics::Update();
+
+				const auto winningAlliance = Objects::Alliance::FindByID(winningAllianceID);
+				if (winningAlliance)
+				{
+					if (Objects::Faction::mine && Objects::Faction::mine->alliance == winningAlliance)
+					{
+						if (winningAlliance->CountLivingMembers() > 1)
+							HUD::Dialog::ShowMessage("Congratulations!\nYour alliance has won this game!");
+						else
+							HUD::Dialog::ShowMessage("Congratulations!\nYou have won this game!");
+					}
+					else
+					{
+						Buffer0<String> names;
+						winningAlliance->VisitMembers([&names](const Objects::PFaction&f)
+						{
+							names << f->GetName();
+						});
+						if (names.Count() != 1)
+							HUD::Dialog::ShowMessage(implode(", ",names.ToRef())+" have won this game!");
+						else
+							HUD::Dialog::ShowMessage(names.First()+" has won this game!");
+					}
+				}
+
 			#endif
 		}
 
@@ -1307,7 +1332,7 @@ namespace Network
 		{
 			static Objects::WFaction target;
 
-			void	BeginSequence(TUniqueID&id)
+			void	BeginSequence(Protocol::BeginStatisticsSequence&begin)
 			{
 				if (!target.expired())
 				{
@@ -1316,7 +1341,10 @@ namespace Network
 					EndSequence();
 				}
 
-				Objects::PFaction f = ResolveFaction(id);
+				Objects::PFaction f = ResolveFaction(begin.factionID,begin.allianceID);
+				f->name = begin.factionName;
+				f->isDead = begin.factionIsDead;
+				f->color = begin.color;
 
 				LogEvent(EventClass::Preset::common,"Starting statistics sequence on "+f->GetLogName());
 				target = f;
@@ -1358,6 +1386,11 @@ namespace Network
 					throw Except::Program::DataConsistencyFault(CLOCATION,"Unable to load entity type statistics: Not in sequence or sequence faction has meanwhile expired");
 				f->statistics.Load(std::move(t));
 			}
+		}
+
+		void	BeginStatisticsSequence(Protocol::BeginStatisticsSequence&begin)
+		{
+			Statistics::BeginSequence(begin);
 		}
 
 		void MyFaction(Protocol::MyFaction&faction)
@@ -1524,14 +1557,15 @@ namespace Network
 		TCP::Channel<Protocol::GameConfig,0,Protocol::ChannelID::GameConfig>						gameConfig(Receiver::GameConfig);
 
 		TCP::Channel<NET(INT32),0,Protocol::ChannelID::TutorialAt>									tutorialAt(Receiver::TutorialAt);
-		TCP::Channel<TUniqueID,0,Protocol::ChannelID::WinningFaction>								winningFaction(Receiver::WinningFaction);
+		TCP::Channel<TUniqueID,0,Protocol::ChannelID::WinningAlliance>								winningAlliance(Receiver::WinningAlliance);
 
 		namespace Statistics
 		{
-			TCP::Channel<TUniqueID, 0, Protocol::ChannelID::BeginStatisticsSequence>				beginSequence(Receiver::Statistics::BeginSequence);
 			TCP::Channel<Objects::Statistics::Round, 0, Protocol::ChannelID::RoundStatistics>		round(Receiver::Statistics::Round);
 			TCP::Channel<Objects::Statistics::EntityType, 0, Protocol::ChannelID::EntityTypeStatistics>	entityType(Receiver::Statistics::EntityType);
 			TCP::Channel<Objects::Statistics::FactionInteraction, 0, Protocol::ChannelID::FactionInteractionStatistics>	factionInteraction(Receiver::Statistics::FactionInteraction);
+
+			DECLARE_CHANNEL(BeginStatisticsSequence);
 		}
 
 
@@ -1816,9 +1850,9 @@ namespace Network
 		client.InstallChannel(Channels::gameConfig);
 
 		client.InstallChannel(Channels::tutorialAt);
-		client.InstallChannel(Channels::winningFaction);
+		client.InstallChannel(Channels::winningAlliance);
 
-		client.InstallChannel(Channels::Statistics::beginSequence);
+		client.InstallChannel(Channels::Statistics::BeginStatisticsSequence);
 		client.InstallChannel(Channels::Statistics::entityType);
 		client.InstallChannel(Channels::Statistics::round);
 		client.InstallChannel(Channels::Statistics::factionInteraction);
