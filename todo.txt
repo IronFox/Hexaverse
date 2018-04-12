@@ -23,7 +23,6 @@ home key: toggle sky grid
 
 steam: store: Short Description, Why Early Access?
 
-copy default research script into program
 
 hotkeys in commands instead of clientMain.cpp
 	
@@ -50,7 +49,6 @@ steam: find alternate server location service
 routing through vehicle stores
 
 
-explode uranium storages
 
 
 setting for fog density
@@ -62,13 +60,11 @@ different tutorial types: fighting
 	
 steam: invites not working when already in game
 	
-research: transfer attribute vector rather than lua script and state (less data to transfer, more security)
 	
 https://wiki.winehq.org/Winelib_User%27s_Guide
 feature: animated round number when round is started
 
 
-minor bug: allied structure state updates arrive before appearance on new offensive building
 
 
 
@@ -112,6 +108,7 @@ controller support
 
 
 icon floater for insufficient resources to continue job
+
 
 
 laboratory nexus risk, hacking vehicle turret
@@ -160,8 +157,14 @@ lava ship
 
 make visual events clickable
 better mine output (refinery)
+resource conversion (fusion). convert one resource type into another at 3:1. convert two resource types into another at 2:1.
+	uranium+energy -> minerals (rapid depletion)
+	minerals+energy -> uranium (fusion)
+	...
+	
 
-
+	
+	
 let foundation blocks (and granite) explode into stone first // maybe later
 
 
@@ -204,6 +207,10 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+done: copy default research script into program
+done: explode uranium storages
+done: research: transfer attribute vector rather than lua script and state (less data to transfer, more security)
+probably fixed: minor bug: allied structure state updates arrive before appearance on new offensive building
 fixed: client: attacks left of towers does not reset (missing server state change)
 done: at end of game: dead factions should be 'revived' and sent to remaining factions without having to disconnect
 fixed: spectator at end of game: dead factions do show up, but with no name or color
