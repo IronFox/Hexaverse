@@ -851,6 +851,8 @@ namespace Animation
 				{
 					p->queue.Clear();
 					p->productionDone = state->productionDone;
+					if (state->gatheringPoint != Grid::LCellIdI::Invalid)
+						Grid::AssertIsValid(state->gatheringPoint,CLOCATION);
 					p->gatheringPoint.Set(state->gatheringPoint,Objects::IsSelected(s));
 					
 					foreach (state->productionTasks,t)
@@ -870,7 +872,7 @@ namespace Animation
 					t->attackQueue.Clear();
 					foreach (state->attackTasks,at)
 					{
-						//ASSERT_EQUAL__(t->parameters.Count(),2);
+						Grid::AssertIsValid(*at,CLOCATION);
 						auto&task = t->AppendTask(*at);
 						#ifdef HAS_WINDOW
 							Objects::TowerAttackVisualization::Allocate(task).Recompile(*t,*at);
