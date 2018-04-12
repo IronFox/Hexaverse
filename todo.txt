@@ -5,7 +5,6 @@ hostile ghost has no owner
 build bride to generates micro tasks incorrectly named 'build road to'
 
 
-client: attacks left of towers does not reset (missing server state change)
 ai: radar drives into range of rocket tower
 
 
@@ -205,6 +204,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: client: attacks left of towers does not reset (missing server state change)
 done: at end of game: dead factions should be 'revived' and sent to remaining factions without having to disconnect
 fixed: spectator at end of game: dead factions do show up, but with no name or color
 done: end game statistics: put game state in top label 'The Game Has Ended' or the likes
