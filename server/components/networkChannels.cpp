@@ -115,6 +115,11 @@ namespace Receiver
 
 	void	AllianceConfigChange(Protocol::AllianceConfigChange&ch, TCP::Peer&peer)
 	{
+		if (RuntimeConfig::GameHasEnded())
+		{
+			LogEvent(EventClass::Preset::commandRejected,"Operation not permitted right now: Game has ended");
+			return;
+		}
 		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 		if (!client)
 		{
@@ -157,6 +162,11 @@ namespace Receiver
 
 	void	AllianceInvite(Protocol::AllianceInvite&invite, TCP::Peer&peer)
 	{
+		if (RuntimeConfig::GameHasEnded())
+		{
+			LogEvent(EventClass::Preset::commandRejected,"Operation not permitted right now: Game has ended");
+			return;
+		}
 		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 		if (!client)
 		{
@@ -2023,6 +2033,11 @@ namespace Receiver
 			break;
 			case Protocol::ChannelID::RequestContinueRound:
 			{
+				if (RuntimeConfig::GameHasEnded())
+				{
+					LogEvent(EventClass::Preset::commandRejected,"Operation not permitted right now: Game has ended");
+					return;
+				}
 				
 				//Objects::Tick();
 				Network::PClient client = To<Network::Client>::Cast(peer.attachment);
@@ -2036,6 +2051,11 @@ namespace Receiver
 			break;
 			case Protocol::ChannelID::RequestRoundEnd:
 			{
+				if (RuntimeConfig::GameHasEnded())
+				{
+					LogEvent(EventClass::Preset::commandRejected,"Operation not permitted right now: Game has ended");
+					return;
+				}
 				
 				//Objects::Tick();
 				Network::PClient client = To<Network::Client>::Cast(peer.attachment);
@@ -2069,6 +2089,11 @@ namespace Receiver
 			}
 			break;
 			case Protocol::ChannelID::LeaveAlliance:
+				if (RuntimeConfig::GameHasEnded())
+				{
+					LogEvent(EventClass::Preset::commandRejected,"Operation not permitted right now: Game has ended");
+					return;
+				}
 				Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 				if (client && client->faction && RuntimeConfig::IsInAnyCommandPhase() && client->faction->alliance->CountLivingMembers() > 1)
 				{
