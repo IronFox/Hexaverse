@@ -532,6 +532,25 @@ namespace StatePanel
 				else
 					cachedLines << (ws->IsEnabled() ? "  Enabled" : "  Disabled");
 					
+
+				if (ws->IsTower())
+				{
+					const auto*t = dynamic_cast<const Objects::Tower*>(ws);
+					cachedLines << " Tasks:";
+					if (t->attackQueue.IsEmpty())
+					{
+						cachedLines << "  Idle";
+					}
+					else
+					{
+						PushCurrentColor();
+						currentColor.rgb &= float3(0.75,0.8,1);
+						cachedLines << "  * Attack";
+						if (t->attackQueue.Count() > 1)
+							cachedLines.Last().text+= " (x"+String(t->attackQueue.Count())+')';
+						PopCurrentColor();
+					}
+				}
 	
 	
 				{
