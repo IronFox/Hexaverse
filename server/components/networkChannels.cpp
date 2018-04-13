@@ -893,7 +893,6 @@ namespace Receiver
 			state.ownerID = f->id;
 			state.progressVector = f->researchState.topicProgressVector;
 			Channels::ResearchFactionState.SendTo(peer,state);
-
 			ResearchSerialization::SendAttributeVectorTo(peer,f->researchState.attributeTable,f->id);
 		});
 
@@ -1138,14 +1137,10 @@ namespace Receiver
 		bool failed = false;
 		static_assert(Objects::Marker::Type::NumberOfPossibilities == 3, "Please adjust marker logic");
 		const Protocol::MarkerReferenceEntity*e = m.data.Get0();
-		Protocol::MarkerReferenceEntity ref;
-		ref.type = Objects::EntityType();
 		Objects::Marker::Type type;
-		TUniqueID	refID = TUniqueID::Empty();
 		if (e)
 		{
 			type = Objects::Marker::Type::Reinterpret(0);
-			refID = e->id;
 		}
 		else
 		{
@@ -1153,7 +1148,6 @@ namespace Receiver
 			if (e)
 			{
 				type = Objects::Marker::Type::Reinterpret(1);
-				refID = e->id;
 			}
 			else
 			{
@@ -1166,9 +1160,15 @@ namespace Receiver
 			}
 
 		}
+		Protocol::MarkerReferenceEntity ref;
 		if (e)
 			ref = *e;
-		ref.id = refID;
+		else
+		{
+			ref.id = TUniqueID::Empty();
+			ref.type = Objects::EntityType();
+			ref.owner = TUniqueID::Empty();
+		}
 
 		if (failed)
 		{
