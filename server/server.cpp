@@ -1152,8 +1152,8 @@ int main( int argc, const char* argv[])
 				state.ownerID = f->id;
 				state.progressVector = f->researchState.topicProgressVector;
 
-				ResearchSerialization::SendAttributeVectorTo(Network::server,f->researchState.attributeTable,f->id);
 				Channels::ResearchFactionState.SendTo(Network::server,state);
+				ResearchSerialization::SendAttributeVectorTo(Network::server,f->researchState.attributeTable,f->id);
 			});
 		};
 

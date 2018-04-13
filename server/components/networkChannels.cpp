@@ -538,8 +538,8 @@ namespace Receiver
 			state.ownerID = f->id;
 			state.progressVector = f->researchState.topicProgressVector;
 
-			ResearchSerialization::SendAttributeVectorTo(peer,f->researchState.attributeTable,f->id);
 			Channels::ResearchFactionState.SendTo(peer,state);
+			ResearchSerialization::SendAttributeVectorTo(peer,f->researchState.attributeTable,f->id);
 		});
 
 		//if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
