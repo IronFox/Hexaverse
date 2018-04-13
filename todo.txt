@@ -15,7 +15,7 @@ client: clicking on ghosts often crashes client (hostile or friendly)
 
 
 
-
+test: load ended game
 test: unit limits
 test: player bases off
 test: nexus bases off but ai on
