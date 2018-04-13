@@ -1,27 +1,25 @@
-immediate bugs:
-	plane position markers are drawn atop planes instead below
-	hostile ghost has no owner
-	steam: invites not working when already in game
+plane position markers are drawn atop planes instead below
+steam: invites not working when already in game
 
-logic bugs:
-	radar drives into range of rocket tower
-	artillery auto attacks, but hits neighboring radar
+radar drives into range of rocket tower
+artillery auto attacks, but hits neighboring radar
 
 
-hard to reproduce:
-	clicking on ghosts often crashes client (hostile or friendly)
+load ended game
+unit limits
+player bases off
+nexus bases off but ai on
+
+
+hard to reproduce/fix:
+	hostile ghost has no owner. Added more log message on server and client to track ther issue
+	clicking on ghosts crashes client (hostile or friendly). Added more log entries to track issue. Removed remote possible cause
 	bug: clipped terrain sometimes does not rasterize correctly, 
 		with clip inconsistency between neighboring stacks.
 		disappears after terrain rebuild is enforced (without moving clip area)
 
 conceptual issues:	
 	hotkeys in commands instead of clientMain.cpp
-
-pending tests:
-	load ended game
-	unit limits
-	player bases off
-	nexus bases off but ai on
 
 steam release:
 	store: Short Description, Why Early Access?
