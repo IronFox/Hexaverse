@@ -176,7 +176,7 @@ namespace Objects
 		{
 			typedef CustomLabel<VisualCommand> Super;
 
-			static Buffer0<CommandGroup*>		activeGroupPath;
+			static Buffer0<WCommandGroup>		activeGroupPath;
 
 			void	Collapse()
 			{
@@ -197,6 +197,10 @@ namespace Objects
 					onExpand();
 			}
 
+			static void		SafeCollapse(index_t at, const TCodeLocation&loc);
+
+			static index_t	FindInPath(const CommandGroup*g, const TCodeLocation&loc);
+			static index_t	FindInPath(const CommandContainer*c, const TCodeLocation&loc);
 
 		public:
 			std::function<void()>	onCollapse;
@@ -215,27 +219,12 @@ namespace Objects
 
 			bool			IsExpanded() const {return state & Flags::IsPermaActive;}
 
-			void			CollapseChildren()
-			{
-				if (!activeGroupPath.Contains(this))
-					return;
-				while (activeGroupPath.Last() != this)
-				{
-					activeGroupPath.Last()->Collapse();
-					activeGroupPath.EraseLast();
-				}
-				Collapse();
-			}
+			void			CollapseChildren();
 
 			/**
 			Visually hides all child-members of any expanded children
 			*/
-			static void		CollapseAll()
-			{
-				foreach (activeGroupPath,p)
-					(*p)->Collapse();
-				activeGroupPath.Clear();
-			}
+			static void		CollapseAll();
 		};
 
 
