@@ -1714,6 +1714,8 @@ namespace Network
 			break;
 			case TCP::Event::ConnectionLost:
 			{
+				Receiver::reallyTriggerScriptChange = false;
+				Receiver::triggerScriptChange = false;
 				RuntimeConfig::tutorialMode = false;
 				if (!RuntimeConfig::aiMode)
 					RuntimeConfig::serverAddress = ServerAddress();	//prevent any automatic reconnect
