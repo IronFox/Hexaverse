@@ -1996,6 +1996,15 @@ namespace Objects
 			if (rs.UtilizesReferenceEntity())
 				ASSERT__(referenceMap.SetNew(referenceID,markers.Count()-1));
 
+
+			if (rs.UtilizesReferenceEntity())
+			{
+				if (referenceOwnerID.IsEmpty())
+					LogEvent(EventClass::Preset::uncommon,shared_from_this(), "Marker defined for entity "+ToString(referenceID)+", but owner ID is empty");
+				elif (!FindByID(referenceOwnerID))
+					LogEvent(EventClass::Preset::uncommon,shared_from_this(), "Marker defined for entity "+ToString(referenceID)+", but owner ID could not be matched: "+ToString(referenceOwnerID));
+			}
+
 			return rs; 
 		}
 
