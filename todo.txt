@@ -15,7 +15,6 @@ hard to reproduce:
 		disappears after terrain rebuild is enforced (without moving clip area)
 
 conceptual issues:	
-	repairer should hold if repair has completed
 	hotkeys in commands instead of clientMain.cpp
 
 pending tests:
@@ -182,6 +181,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+done: repairer should hold if repair has completed
 fixed: build bride to generates micro tasks incorrectly named 'build road to'
 done: home key: toggle sky grid
 done: copy default research script into program

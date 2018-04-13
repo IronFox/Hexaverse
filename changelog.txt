@@ -3,6 +3,7 @@ v0.8.4
 	> Lua research script is now executed server-side only, with research topics, progress, and attribute vectors transferred to clients as needed.
 	> Status panel now wraps long lines.
 	> Now disallowing alliance changes once game has ended.
+	> Mechanic now keeps trying to repair the designated unit if insufficient minerals are available for full repair.
 	* Fixed crash when clicking on unit while HUD is hidden.
 	* Fixed missing tower attack action update.
 	* Fixed attack arrow positioning when mobile unit is selected but attack origin is not current entity location.

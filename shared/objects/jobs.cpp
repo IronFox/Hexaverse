@@ -809,7 +809,7 @@ namespace Objects
 			target->RegisterChange(WorldEntity::HealthChanged,v.entityTime);
 
 			ChangeStorage(v,v.entityTime, this->GetConsumedResourceType(),-(int)ceil(float(canRepair) * float(target->GetConstructionCost()) / float(maxHealth)));
-			return JobDone;
+			return JobDelayed;
 
 		}
 
