@@ -1,7 +1,6 @@
 immediate bugs:
 	plane position markers are drawn atop planes instead below
 	hostile ghost has no owner
-	build bride to generates micro tasks incorrectly named 'build road to'
 	steam: invites not working when already in game
 
 logic bugs:
@@ -183,6 +182,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: build bride to generates micro tasks incorrectly named 'build road to'
 done: home key: toggle sky grid
 done: copy default research script into program
 done: explode uranium storages

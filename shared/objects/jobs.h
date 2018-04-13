@@ -202,7 +202,7 @@ namespace Objects
 				virtual Component::operation_t	GetOperationAffinity() const override {return Component::TerrainAdd;}
 
 
-				virtual String			GetName() const override {return "build roads";}
+				virtual String			GetName() const override {return bridgeMode ? "Build bridge here" : "Build road here";}
 
 
 				virtual Riff::TID		GetDataKey() const override {return "BLDR";};
@@ -249,7 +249,7 @@ namespace Objects
 
 
 				virtual begin_t			BeginHere(MobileEntity&v, const Grid::LCellIdI&_destination, bool hasToMoveFirst)	override;
-				virtual String			GetName() const override {return "build wall";}
+				virtual String			GetName() const override {return "Build wall";}
 				virtual bool			CanContinue(MobileEntity&v, const Grid::LCellIdI&focus, String&outError)	override;
 
 
@@ -279,7 +279,7 @@ namespace Objects
 				virtual begin_t			BeginHere(MobileEntity&v, const Grid::LCellIdI&, bool hasToMoveFirst) override	{return hasToMoveFirst ? CannotStartAbort : Started;}
 
 
-				virtual String			GetName() const override {return "build wall (horizontal)";}
+				virtual String			GetName() const override {return "Build wall (horizontal)";}
 				//virtual bool			CanContinue(MobileEntity&v, const Grid::LCellIdI&focus)	override;
 
 
@@ -326,7 +326,7 @@ namespace Objects
 				static Component::operation_t	GetOperationAffinity(CursorMode mode) {return mode == CursorMode::BuildBlockMode ? Component::TerrainAdd : Component::TerrainRemove;}
 				virtual Component::operation_t	GetOperationAffinity() const override {return GetOperationAffinity(mode);}
 
-				virtual String			GetName() const override {return mode == CursorMode::BuildBlockMode ? "build concrete" : "remove terrain";}
+				virtual String			GetName() const override {return mode == CursorMode::BuildBlockMode ? "Build concrete" : "Remove terrain";}
 
 
 				virtual continue_t		Finish(MobileEntity&v, const Grid::LCellIdI&focus)	override;

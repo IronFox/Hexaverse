@@ -1129,15 +1129,15 @@ namespace Objects
 			switch (mode)
 			{
 				case CursorMode::BuildRoadChainMode:
-					return "Build Road to...";
+					return "Build road to...";
 				case CursorMode::BuildConnectorChainMode:
-					return "Build Connectors to...";
+					return "Build connectors to...";
 				case CursorMode::BuildHighWallChainMode:
-					return "Build High Wall to...";
+					return "Build high wall to...";
 				case CursorMode::BuildLowWallChainMode:
-					return "Build Low Wall to...";
+					return "Build low wall to...";
 				case CursorMode::BuildBridgeMode:
-					return "Build Bridge to...";
+					return "Build bridge to...";
 			}
 			return "???...";
 		}
