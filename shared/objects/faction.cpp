@@ -1798,7 +1798,10 @@ namespace Objects
 					if (m.visualization->IsMobile())
 						To<MobileEntity>::Cast( m.visualization)->UpdateSystem();
 					m.visualization->id = referenceID;
-					m.visualization->owner = referenceOwnerID == TUniqueID::Empty() ? PFaction() : Faction::GetOrCreate(referenceOwnerID);
+					if (referenceOwnerID.IsNotEmpty())
+						m.visualization->owner = Faction::GetOrCreate(referenceOwnerID);
+					else
+						LogEvent(EventSignificance::NonFatalError,"Ghost entity has no owner: "+ToString(referenceID));
 					m.visualization->health = -(int)m.age;
 					m.visualization->isOwnedByMe = (m.visualization->owner && m.visualization->owner->isOwnedByMe) || (!m.visualization->owner && m.type == Type::EntityDeath);
 					m.visualization->UpdateNiceName();
