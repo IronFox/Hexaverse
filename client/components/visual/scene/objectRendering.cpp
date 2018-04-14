@@ -2164,7 +2164,8 @@ namespace Objects
 			const float bottom = Grid::BottomPlanetRadius;
 			{
 				//display.SetBlendMode(Engine::BlendMode::Add);
-				RenderBeam(e->GetWorldPosition(),Grid::ToRadius(e->location.height) - bottom,
+				const float r = Grid::ToRadius(e->location.height);
+				RenderBeam(e->GetWorldPosition()/r*bottom,r - bottom,
 								0.1f
 								);
 			}
@@ -2182,7 +2183,7 @@ namespace Objects
 					}
 					for (const auto&waypoint : t.foci)
 					{
-						RenderBeam(Grid::ToWorld(waypoint.target),Grid::ToRadius(waypoint.target.height) - bottom,
+						RenderBeam(Grid::low.cells[waypoint.target.stackID].cornerCenter*bottom,Grid::ToRadius(waypoint.target.height) - bottom,
 										0.05f);
 					}
 				}

@@ -9,6 +9,7 @@ v0.8.3	[Apr 8 2018]
 	* Fixed fog of war for allied mobile units.
 	* Fixed coloring of allied ghosts.
 	* Fixed crash when selecting ghost while mobile reach visualization is on.
+	* Fixed placement of plane location marker beams.
 	* Fixed configuration mode not updating hex buttons when loading different planet.
 
 v0.8.2	[Mar 31 2018]
