@@ -542,7 +542,7 @@ namespace Objects
 
 		}
 
-		static float	PreTraceArtillery(float velocity, float angle, const TrajectoryEndPoint&here, const TrajectoryEndPoint&there, float distance, const World::Data&world)
+		static float	PreTraceArtillery(float velocity, float angle, const TrajectoryEndPoint&here, const TrajectoryEndPoint&there, float distance, const std::function<bool(const Grid::HCellIdI&)>&isOccupied)
 		{
 			float sn = sin(angle),
 					cs = cos(angle);
@@ -579,7 +579,7 @@ namespace Objects
 
 				cellAt = Grid::high.Locate(b,cellAt);
 				int h = (Grid::HeightFloorFromRadius(fy));
-				if (world.GetStack(cellAt).GetCellI(h).IsOccupied())
+				if (isOccupied(Grid::HCellIdI(cellAt,h)))
 				{
 					float3 impactAt = b * (fy);
 					return Vec::quadraticDistance(impactAt, there.worldLocation);
@@ -620,7 +620,23 @@ namespace Objects
 			float leastDistance = std::numeric_limits<float>::max();
 			for (int j = 0; j < angles.numAngles; j++)
 			{
-				float d2 = PreTraceArtillery(velocity,angles.idealAngle[j], source,dest,distance,decisionWorld);
+				#ifndef CLIENT
+					float d2 = PreTraceArtillery(velocity,angles.idealAngle[j], source,dest,distance,[&decisionWorld,&actualWorld](const Grid::HCellIdI&loc)
+					{
+						const auto&cell = decisionWorld.GetCell(loc);
+						if (cell.content != Grid::Content::Clear)
+							return true;
+						if (!cell.IsCurrentlyVisible())
+							return false;
+						return actualWorld.GetCell(loc).structureCounter > 1;
+					});
+				#else
+					float d2 = PreTraceArtillery(velocity,angles.idealAngle[j], source,dest,distance,[&decisionWorld](const Grid::HCellIdI&loc)
+					{
+						return decisionWorld.GetCell(loc).IsOccupied();	
+					});
+					
+				#endif
 				LogEvent(EventSignificance::Debug,ToString(source)+"->"+ToString(dest)+ ": Angle "+String(j)+"/"+String(angles.numAngles)+" "+String(angles.idealAngle[j])+" lead to distance "+String(d2));
 				if (d2 < leastDistance)
 				{
