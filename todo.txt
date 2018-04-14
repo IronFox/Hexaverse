@@ -1,22 +1,46 @@
+plane position markers are drawn atop planes instead below
+steam: invites not working when already in game
 
-client: clicking on ghosts often crashes client (hostile or friendly)
+radar drives into range of rocket tower
+artillery auto attacks, but hits neighboring radar
 
 
+load ended game
+unit limits
+player bases off
+nexus bases off but ai on
 
 
+hard to reproduce/fix:
+	hostile ghost has no owner. Added more log message on server and client to track ther issue
+	clicking on ghosts crashes client (hostile or friendly). Added more log entries to track issue. Removed remote possible cause
+	bug: clipped terrain sometimes does not rasterize correctly, 
+		with clip inconsistency between neighboring stacks.
+		disappears after terrain rebuild is enforced (without moving clip area)
 
+conceptual issues:	
+	hotkeys in commands instead of clientMain.cpp
 
-test: unit limits
-test: player bases off
-test: nexus bases off but ai on
-home key: toggle sky grid
+steam release:
+	store: Short Description, Why Early Access?
 
-steam: store: Short Description, Why Early Access?
-
-hotkeys in commands instead of clientMain.cpp
+should have (eventually):
+	icon floater for insufficient resources to continue job
+	base fog on average terrain height
+	setting for fog density
 	
-at bottom terrain level, emp-damaged, minimum allowed attack and scanning range is still high enough to see and attack neighboring cell
-better visualization of attack/scanning ranges. use special terrain meshes with hard lines to visualize edges
+nice to have:
+	better visualization of attack/scanning ranges. use special terrain meshes with hard lines to visualize edges
+	at bottom terrain level, emp-damaged, minimum allowed attack and scanning range is still high enough to see and attack neighboring cell
+	routing through vehicle stores
+	different tutorial types: fighting
+	BUG REPORT FORM
+	controller support
+	tremor generator building
+
+	better clipping:
+		visually remove all solid terrain beneath clipping height,
+		in clipping range, that has no air/liquid above it, or next to it
 	
 
 steam: connect via tcp if steam lobby system fails. does not relate to lobbies. cannot reproduce. some explanations:
@@ -30,77 +54,34 @@ steam: connect via tcp if steam lobby system fails. does not relate to lobbies. 
 				BeginAuthSession() returns success
 					OnTicketResponse never gets called
 
-base fog on average terrain height
 steam: find alternate server location service
 
 
 
-routing through vehicle stores
 
 
-explode uranium storages
 
 
-setting for fog density
 
 
 	
 
-different tutorial types: fighting
 	
-steam: invites not working when already in game
 	
-research: transfer attribute vector rather than lua script and state (less data to transfer, more security)
 	
 https://wiki.winehq.org/Winelib_User%27s_Guide
 feature: animated round number when round is started
 
 
-minor bug: allied structure state updates arrive before appearance on new offensive building
 
 
 
 
-tremor generator building
 
 
 
 
 benchmark digging operation with many entities
-
-
-better clipping:
-	visually remove all solid terrain beneath clipping height,
-	in clipping range, that has no air/liquid above it, or next to it
-
-bug: clipped terrain sometimes does not rasterize correctly, 
-	with clip inconsistency between neighboring stacks.
-	disappears after terrain rebuild is enforced (without moving clip area)
-
-
-
-
-
-
-
-
-
-
-
-
-
-BUG REPORT FORM
-
-
-controller support
-
-
-
-
-
-
-icon floater for insufficient resources to continue job
-
 
 laboratory nexus risk, hacking vehicle turret
 laboratories have better yield if grouped but pose risk of virus changing lab group ownership to nexus
@@ -148,8 +129,14 @@ lava ship
 
 make visual events clickable
 better mine output (refinery)
+resource conversion (fusion). convert one resource type into another at 3:1. convert two resource types into another at 2:1.
+	uranium+energy -> minerals (rapid depletion)
+	minerals+energy -> uranium (fusion)
+	...
+	
 
-
+	
+	
 let foundation blocks (and granite) explode into stone first // maybe later
 
 
@@ -192,6 +179,20 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+done: repairer should hold if repair has completed
+fixed: build bride to generates micro tasks incorrectly named 'build road to'
+done: home key: toggle sky grid
+done: copy default research script into program
+done: explode uranium storages
+done: research: transfer attribute vector rather than lua script and state (less data to transfer, more security)
+probably fixed: minor bug: allied structure state updates arrive before appearance on new offensive building
+fixed: client: attacks left of towers does not reset (missing server state change)
+done: at end of game: dead factions should be 'revived' and sent to remaining factions without having to disconnect
+fixed: spectator at end of game: dead factions do show up, but with no name or color
+done: end game statistics: put game state in top label 'The Game Has Ended' or the likes
+cannot reproduce: canceling attack-only tasks via backspace on tank does not update client visualization
+fixed: tower attack tasks not shown in state panel
+fixed: tower action not refreshed
 done: review planets. Add pillars planet
 done: documentation: update view icon image and documentation (+home-key on cft_aerial)
 done: steam: no handler set

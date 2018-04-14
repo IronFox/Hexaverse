@@ -10,7 +10,7 @@
 //#include "../sphereGridHelper.h"
 #include "../luaGameAPI.h"
 #include "../globalEvents.h"
-
+#include "../expectedBehavior.h"
 
 namespace Grid
 {
@@ -119,6 +119,14 @@ namespace Grid
 			volumeCell[layer].structureCounter += by;
 			DBG_ASSERT_LESS_OR_EQUAL__(volumeCell[layer].structureCounter, 2);
 		}
+	}
+
+	void			AssertIsValid(const Grid::LCellIdI&location, const TCodeLocation&loc)
+	{
+		if (location.stackID >= LowSetup::GridType::CellCount)
+			throw Except::Program::UnsupportedRequest(loc,"StackID "+String(location.stackID)+" exceeds valid range [0,"+String(LowSetup::GridType::CellCount)+")");
+		if (location.height < CellStack::BottomHeight || location.height > CellStack::TopHeight)
+			throw Except::Program::UnsupportedRequest(loc,"Location height "+String(location.height)+" falls outside valid range ["+String(CellStack::BottomHeight)+ "," +String(CellStack::TopHeight)+"]");
 	}
 
 

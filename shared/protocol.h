@@ -113,16 +113,29 @@ namespace Protocol
 			typedef Array<T>	Super;
 			typedef NetArray<T,MaxSize> Self;
 
-			void				operator=(const Ctr::Array<T>&other)
+			/**/				NetArray()	{}
+			/**/				NetArray(const ArrayRef<T>&other)
 			{
+				operator=(other);
+			}
+
+			void				operator=(const ArrayRef<T>&other)
+			{
+				ASSERT_LESS_OR_EQUAL__(other.Count(),MaxSize);
 				Super::operator=(other);
+			}
+
+			void				SetSize(count_t newSize)
+			{
+				ASSERT_LESS_OR_EQUAL__(newSize,MaxSize);
+				Super::SetSize(newSize);
 			}
 
 			friend	void		Deserialize(IReadStream&s, Self&v)
 			{
 				count_t size = s.ReadSize();
 				if (size > MaxSize)
-					throw Except::Memory::SerializationFault(CLOCATION,"Ctr::Array size "+String(size)+" exceeds maximum safe size "+String(MaxSize));
+					throw Except::Memory::SerializationFault(CLOCATION,"Array<"+String(typeid(T).name())+ ">: Deserialized element count "+String(size)+" exceeds maximum permitted element count "+String(MaxSize));
 				using Serialization::Deserialize;
 				v.SetSize(size);
 				for (index_t i = 0; i < v.Count(); i++)
@@ -1278,14 +1291,13 @@ namespace Protocol
 	};
 
 
-	typedef NET(SHA256::HashContainer) ResourceID;
+	//typedef NET(SHA256::HashContainer) ResourceID;
 
 
-	NETSTRUCT4(GameConfig
+	NETSTRUCT3(GameConfig
 		, NET(UINT32), gameFlags
 		, NET(BYTE), gameGoal
 		, NET(BYTE), worldDiscovery
-		, ResourceID, researchScript
 	)	
 
 	NETSTRUCT6(GameInfo
@@ -1343,10 +1355,13 @@ namespace Protocol
 		, NET(RuntimeConfig::RoundNumber), newRoundNumber
 	)
 
+	static const size_t MaxFactionNameLength = 32;
+
+
 	NETSTRUCT4(IdentifyFaction
 		, NET(TUniqueID), id
 		, TUniqueID, allianceID
-		, Package::NetString<32>, name
+		, Package::NetString<MaxFactionNameLength>, name
 		, NET(M::TVec3<>), color
 	)
 
@@ -1370,15 +1385,107 @@ namespace Protocol
 		, NETA(BYTE), resourceIndices
 	)
 
-	NETSTRUCT2(ResearchState
+	NETSTRUCT2(ResearchFactionState
 		, NET(TUniqueID), ownerID
-		, NETA(BYTE), serializedData
+		, NETA(int), progressVector
 	)
 
-	NETSTRUCT2(ResourceData
-		, ResourceID, id
-		, NETA(BYTE), data
+	NETSTRUCT5(ResearchTopic
+		, SerialUnsigned, parentTopic		//+1. 0=empty
+		, SerialUnsigned, dependentTopic	//+1. 0=empty
+		, Package::NetString<128>, name
+		, Package::NetString<128>, iconName
+		, int, maxProgress
 	)
+	typedef ::Protocol::NetArray<ResearchTopic,256> ResearchProgram;
+
+
+	template <typename T>
+		struct ResearchAttribute
+		{
+			typedef ResearchAttribute<T> Self;
+
+			T		value;
+			Package::NetString<128>	description;
+			UINT8	flags;
+
+			friend	void		Deserialize(IReadStream&s, Self&v)
+			{
+				using Serialization::Deserialize;
+				Deserialize(s,v.value);
+				Deserialize(s,v.description);
+				Deserialize(s,v.flags);
+			}
+			friend void			Serialize(IWriteStream&s, const Self&v)
+			{
+				using Serialization::Serialize;
+				Serialize(s,v.value);
+				Serialize(s,v.description);
+				Serialize(s,v.flags);
+			}
+
+			void				swap(Self&other)
+			{
+				using std::swap;
+				swap(value,other.value);
+				swap(flags,other.flags);
+				description.swap(other.description);
+			}
+		};
+
+	template <typename T>
+		struct ResearchAttributeDelta : public ResearchAttribute<T>
+		{
+			typedef ResearchAttributeDelta<T> Self;
+			typedef ResearchAttribute<T> Super;
+
+			index_t	index;
+
+			friend	void		Deserialize(IReadStream&s, Self&v)
+			{
+				using Serialization::Deserialize;
+				v.index = s.ReadSize();
+				Deserialize(s,(Super&)v);
+			}
+			friend void			Serialize(IWriteStream&s, const Self&v)
+			{
+				using Serialization::Serialize;
+				s.WriteSize(v.index);
+				Serialize(s,(Super&)v);
+			}
+
+			void				swap(Self&other)
+			{
+				using std::swap;
+				swap(index,other.index);
+				Super::swap(other);
+			}
+		};
+
+	template <typename T>
+		class ResearchAttributeArray : public ::Protocol::NetArray<ResearchAttribute<T>,256> {};
+	template <typename T>
+		class ResearchAttributeDeltaArray : public ::Protocol::NetArray<ResearchAttributeDelta<T>,256> {};
+
+	NETSTRUCT4( ResearchAttributeVector
+		, TUniqueID, faction
+		, ResearchAttributeArray<int>, intAttributes
+		, ResearchAttributeArray<float>, floatAttributes
+		, ResearchAttributeArray<bool>, boolAttributes
+	);
+
+	NETSTRUCT4( ResearchAttributeDeltaVector
+		, TUniqueID, faction
+		, ResearchAttributeDeltaArray<int>, intAttributes
+		, ResearchAttributeDeltaArray<float>, floatAttributes
+		, ResearchAttributeDeltaArray<bool>, boolAttributes
+	);
+
+
+	//NETSTRUCT2(ResourceData
+	//	, ResourceID, id
+	//	, NETA(BYTE), data
+	//)
 
 	CONSTRUCT_ENUMERATION3(DropMode, LastTask, AllTasks,AllSafeTasks);
 
@@ -1402,6 +1509,17 @@ namespace Protocol
 		, TUniqueID, recipient	//may be faction, alliance, or everybody (if empty)
 	)
 		
+
+	NETSTRUCT5(BeginStatisticsSequence
+		, TUniqueID, factionID
+		, TUniqueID, allianceID
+		, Package::NetString<MaxFactionNameLength>, factionName
+		, float3, color
+		, bool, factionIsDead
+	)
+
+
+
 	typedef Package::NetString<32>	SaveAs;
 	typedef TUniqueID	KillFaction;
 
@@ -1480,11 +1598,15 @@ namespace Protocol
 			FactionOffline,		// s2c: TUniqueID
 			FactionRequestedNewRound,	// s2c: TUniqueID
 			FactionContinuedRound,		// s2c: TUniqueID
-			ResearchState,		// s2c : ResearchState
+//			RequestResource,	// c2s : ResourceID -> s2c : ResourceData
+	//		ResourceData,		// s2c : ResourceData
+
+			ResearchProgram,	// s2c : ResearchProgram
+			ResearchFactionState,	// s2c : ResearchFactionState
 			QueueResearch,		// c2s : QueueResearch -> s2c : ResearchQueue
 			ResearchQueue,		// s2c : ResearchQueue
-			RequestResource,	// c2s : ResourceID -> s2c : ResourceData
-			ResourceData,		// s2c : ResourceData
+			ResearchAttributeVector,	// s2c : ResearchAttributeVector
+			ResearchAttributeDeltaVector,	//s2c : ResearchAttributeDeltaVector
 
 			LockEMPZones,		// s2c : UINT16
 			UplinkBandwidth,	// s2c : int, can be negative to indicate it's disabled
@@ -1506,9 +1628,9 @@ namespace Protocol
 
 			TutorialAt,			// both: int32
 
-			WinningFaction,		// s2c: TUniqueID (if game has winner)
+			WinningAlliance,		// s2c: TUniqueID (if game has winner)
 
-			BeginStatisticsSequence,	//s2c: TUniqueID (factionID)
+			BeginStatisticsSequence,	//s2c: BeginStatisticsSequence
 			EndStatisticsSequence,		//s2c: <signal>
 			RoundStatistics,			//s2c: Statistics::Round
 			EntityTypeStatistics,		//s2c: Statistics::EntityType

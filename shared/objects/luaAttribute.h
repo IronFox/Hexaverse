@@ -1,15 +1,11 @@
 #pragma once
 
 #include "../luaInterface.h"
+#include "research.h"
 
 namespace Objects
 {
-	template <typename T>
-		struct ConstOverride
-		{
-			T			constValue;
-			bool		isSet = false;
-		};
+
 
 	struct NoFilter
 	{
@@ -29,10 +25,7 @@ namespace Objects
 	template <typename T, typename Filter= NoFilter>
 		struct LuaAttribute
 		{
-			Lua::Function<T(Lua::Reference)>		luaGetValue;
-			Lua::Function<String(Lua::Reference)>	luaDescribeValue;
-
-			ConstOverride<T>	constOverride;
+			index_t		linearIndex = InvalidIndex;
 
 			/**/		LuaAttribute()	{}
 			/**/		LuaAttribute(nullptr_t)	{}
@@ -41,43 +34,37 @@ namespace Objects
 				SetConst(constOverride);
 			}
 
-			bool		IsFunctionOrConstNonZero() const {return constOverride.isSet ? constOverride.constValue != 0 : luaGetValue.IsSet();}
-			bool		IsSet() const {return constOverride.isSet || luaGetValue.IsSet();}
-			bool		IsEmpty() const {return !constOverride.isSet && luaGetValue.IsEmpty();}
-
-			void		SetConst(const T&value)
+			bool		IsFunctionOrConstNonZero() const
 			{
-				constOverride.constValue = value;
-				constOverride.isSet = true;
+				return Research::LuaAttributeIsFunctionOrConstNonZero<T>(linearIndex);
 			}
-			void		Clear()
+			bool		IsSet() const
 			{
-				constOverride.isSet = false;
-				luaGetValue.ClearReference();
-				luaDescribeValue.ClearReference();
+				return Research::LuaAttributeIsSet<T>(linearIndex);
 			}
+			bool		IsEmpty() const {return !IsSet();}
 
-			T			GetUnfilteredValue(const Lua::Reference&researchState)	const
+
+			void		Clear(index_t linearIndex)
 			{
-				if (constOverride.isSet)
-					return constOverride.constValue;
-				if (luaGetValue.IsEmpty())
-					return (T)0;
-				return luaGetValue(researchState);
+				this->linearIndex = linearIndex;
 			}
 
-			T			GetValue(const Lua::Reference&researchState)	const
+			T			GetUnfilteredValue(const Research::Attributes::Table&researchState)	const
+			{
+				return researchState.Get<T>(linearIndex);
+			}
+
+			T			GetValue(const Research::Attributes::Table&researchState)	const
 			{
 				T rs = GetUnfilteredValue(researchState);
 				Filter::Filter(rs);
 				return rs;
 			}
 
-			String		Describe(const Lua::Reference&researchState)	const
+			String		Describe(const Research::Attributes::Table&researchState)	const
 			{
-				if (luaDescribeValue.IsSet())
-					return luaDescribeValue(researchState);
-				return GetUnfilteredValue(researchState);
+				return researchState.Describe<T>(linearIndex);
 			}
 
 		private:

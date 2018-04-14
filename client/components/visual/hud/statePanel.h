@@ -28,6 +28,8 @@ namespace StatePanel
 	*/
 	void		SignalChange();
 
+	float		GetPanelWidth();
+
 }
 
 }

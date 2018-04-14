@@ -1192,9 +1192,9 @@ namespace FileIO
 					script = ScriptCache::DefineFromFleetingCompressedData(id,data,false);
 				}
 				if (script)
-					Objects::ResearchState::ActivateProgram(script);
+					Objects::Research::ActivateProgram(script);
 				else
-					Objects::ResearchState::LoadDefaultProgram();
+					Objects::Research::LoadDefaultProgram();
 			}
 		}
 		catch (const std::exception&ex)
@@ -1491,7 +1491,7 @@ namespace FileIO
 										Riff::Chunk*researchStateChunk = list->FindFirst(RID::researchState);
 										if (researchStateChunk)
 										{
-											faction->researchState.Import(researchStateChunk->ReferenceData());
+											faction->researchState.ImportLuaState(researchStateChunk->ReferenceData());
 
 
 											Riff::Chunk*activeResearchChunk = list->FindFirst(RID::activeResearchTopic);
@@ -1789,8 +1789,8 @@ namespace FileIO
 			general->AppendBlock(RID::variableConfiguration,variableBuffer.pointer(),variableBuffer.GetContentSize());
 		}
 
-		if (Objects::ResearchState::globalState.script)
-			general->AppendBlock(RID::researchScript)->SetData(Objects::ResearchState::globalState.script->compressed);
+		if (Objects::Research::globalState.script)
+			general->AppendBlock(RID::researchScript)->SetData(Objects::Research::globalState.script->compressed);
 
 		//general->AppendBlock(RID::factionSupportFlags)->SetPODData(State::Config::factionSupportFlags);
 		//general->AppendBlock(RID::closedGame)->SetPODData(State::Config::closedGame);
@@ -1861,10 +1861,10 @@ namespace FileIO
 				factionSection->AppendBlock(RID::factionAccessToken)->SetPODData(faction->accessToken);	//faction access token
 
 
-				if (faction->researchState.researchState.IsSet())
+				if (faction->researchState.luaResearchState.IsSet())
 				{
 					Ctr::Array<BYTE> data;
-					faction->researchState.Export(data);
+					faction->researchState.ExportLuaState(data);
 					factionSection->AppendBlock(RID::researchState)->SetData(data);
 
 					auto res = faction->researchState.ExportResearchQueue();

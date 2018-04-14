@@ -158,7 +158,7 @@ namespace Objects
 		foreach (Prototypes::all,p)
 			(*p)->PrototypeSetup();
 
-		ResearchState::StaticCreate();	//all prototypes good. time to set the tables
+		Research::StaticCreate();	//all prototypes good. time to set the tables
 
 		Pathfinding::Init();
 

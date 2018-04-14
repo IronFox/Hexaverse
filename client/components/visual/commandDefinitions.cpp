@@ -443,7 +443,7 @@ namespace Objects
 			commands.Add(cmd);
 		}
 
-		static void BuildCommand(CommandContainer&parent, const PResearchTopic&t)
+		static void BuildCommand(CommandContainer&parent, const Research::PTopic&t)
 		{
 			Command::PResearchCommand rs(new Command::ResearchCommand(t));
 			parent.Add(rs);
@@ -481,7 +481,7 @@ namespace Objects
 				researchCommandOffset = commands.CountCommands();
 			else
 				commands.TruncateRow(0,researchCommandOffset);
-			foreach (ResearchState::globalState.rootResearch,res)
+			foreach (Research::globalState.rootResearch,res)
 			{
 				BuildCommand(commands,*res);
 			}
@@ -1445,7 +1445,10 @@ namespace Objects
 		
 		void RebuildTerraformerButtons()
 		{
+			Command::CommandGroup::CollapseAll();
 			Component::terraformer.commands.Clear();
+			if (Objects::Research::globalState.allTopics.IsNotEmpty())
+				ASSERT__(Component::terraformer.CanConstruct());
 			DefineTerraformer(Component::terraformer);
 			if (Objects::selectedEntity && Objects::selectedEntity->IsVehicle() && To<Vehicle>::Cast(Objects::selectedEntity)->turret == &Component::terraformer)
 				HUD::HexGrid::Configure(Objects::selectedEntity);
@@ -1478,8 +1481,8 @@ namespace Objects
 		void	DefineAll()
 		{
 			DefineItemHandlers();
-			ResearchState::globalState.onScriptChange << ReconfigureResearchButtons << RebuildTerraformerButtons;
-			ResearchState::globalState.onQueueChange << [](Faction*f){ if (f == Faction::mine.get()) ReconfigureResearchQueueButtons();};
+			Research::globalState.onScriptChange << ReconfigureResearchButtons << RebuildTerraformerButtons;
+			Research::globalState.onQueueChange << [](Faction*f){ if (f == Faction::mine.get()) ReconfigureResearchQueueButtons();};
 
 			DefineMine(Objects::Mine::commands);
 			DefineVehiclePlant(Objects::VehiclePlant::commands);

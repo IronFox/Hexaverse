@@ -383,14 +383,13 @@ namespace Objects
 
 		/*virtual override*/ String	Plane::DescribeFlatAttackRange() const
 		{
-			return cache.horizontalAttackRange.DescribeEMPModified(*this,turret->horizontalAttackRange,LuaAttribute<float,NoFilter>());
+			return turret->horizontalAttackRange.Describe(GetResearchState());
 		}
 
 	
 		/*virtual override*/ float	Plane::GetFlatAttackRange() const
 		{
-			return cache.horizontalAttackRange.GetEMPModified(*this,turret->horizontalAttackRange,LuaAttribute<float,NoFilter>());
-			//EMPModify(turret->GetHorizontalAttackRange(owner,base->turretRangeModifier),1.f);
+			return EMPModify(turret->horizontalAttackRange.GetValue(GetResearchState()),1);
 		}
 
 

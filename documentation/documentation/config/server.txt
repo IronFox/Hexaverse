@@ -32,12 +32,13 @@ All predefined planet names are:
 
 == Research Script ==
 
-[[concepts/research|Laboratory research]] is controlled by a [[https://www.lua.org/|Lua script]] located in the installation folder ''[install]\lua\research.v2.lua''.
+[[concepts/research|Laboratory research]] is controlled by a [[https://www.lua.org/|Lua script]] located in the installation folder ''[install]\lua\attributesAndResearch.lua''.
 
-However, if a Lua file exists in ''[[config/game folder|user]]\server\config\lua\research.v2.lua'', then this will override the factory default script.
+However, if a Lua file exists in ''[[config/game folder|user]]\server\config\lua\attributesAndResearch.lua'', then this will override the factory default script.
 
 The script is loaded at [[server start]], but can be updated during runtime via the [[config/control console]] command ''/IO/reloadResearchProgram''.
-Clients will receive a copy of this script during first connection (or as a result to explicit reloading).
+Clients will receive notifications of the generated attributes, topics, and states as needed.
+The script is no longer transferred to the client.
 
-The script defines which research is possible, and how this affects unit availability and attributes.
+The file defines which research is possible, and how this affects unit availability and attributes.
 It also allows basic **modification of all unit attributes.**

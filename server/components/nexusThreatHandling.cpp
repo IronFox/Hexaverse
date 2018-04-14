@@ -339,7 +339,7 @@ namespace Nexus
 					foreach(neighborField, n)
 					{
 						Grid::LCellIdI candidate(*n, p->location.height);
-						Grid::AssertIsValid(candidate);
+						Grid::AssertIsValid(candidate,CLOCATION);
 						candidate.height = Objects::FindApplicableGround(candidate, true, false);
 
 						if (candidate.height != Objects::badHeight && !Objects::GetVehicle(candidate))

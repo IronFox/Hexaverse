@@ -98,9 +98,9 @@ namespace Objects
 		}
 
 
-		Lua::Reference	ResearchStateOf(const OwnerParameter&owner)
+		const Research::Attributes::Table&	ResearchStateOf(const OwnerParameter&owner)
 		{
-			return owner ? owner->researchState.researchState : Lua::Reference();
+			return owner ? owner->researchState.attributeTable : Research::globalState.zeroTable;
 		}
 
 
@@ -1109,14 +1109,14 @@ namespace Objects
 				component.trajectoryType = TrajectoryType::VerticalBeam;
 
 
-				ResearchState::RegisterDependency(component,emp);
-				ResearchState::RegisterDependency(component,SkyPort::globalPrototype);
-				ResearchState::RegisterUnlockCost(component,100);
-				ResearchState::RegisterResearch(component,Attribute::DamageLevel);
-				ResearchState::RegisterResearch(component,Attribute::ExplosionRadius);
-				ResearchState::RegisterResearch(component,Attribute::ScanningRange);
+				Research::FactionState::RegisterDependency(component,emp);
+				Research::FactionState::RegisterDependency(component,SkyPort::globalPrototype);
+				Research::FactionState::RegisterUnlockCost(component,100);
+				Research::FactionState::RegisterResearch(component,Attribute::DamageLevel);
+				Research::FactionState::RegisterResearch(component,Attribute::ExplosionRadius);
+				Research::FactionState::RegisterResearch(component,Attribute::ScanningRange);
 				if (component.baseAmmoNeedPerShot > 0)
-					ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
+					Research::FactionState::RegisterResearch(component,Attribute::AmmoNeed);
 
 				component.FinishCreation(false);
 			}
@@ -1162,16 +1162,16 @@ namespace Objects
 				component.trajectoryType = TrajectoryType::Missile;
 
 
-				ResearchState::RegisterDependency(component,emp);
-				ResearchState::RegisterDependency(component,SkyPort::globalPrototype);
-				ResearchState::RegisterUnlockCost(component,10);
-				ResearchState::RegisterResearch(component,Attribute::AttackRange);
-				ResearchState::RegisterResearch(component,Attribute::AttacksPerRound);
-				ResearchState::RegisterResearch(component,Attribute::DamageLevel);
-				ResearchState::RegisterResearch(component,Attribute::ExplosionRadius);
-				ResearchState::RegisterResearch(component,Attribute::ScanningRange);
+				Research::FactionState::RegisterDependency(component,emp);
+				Research::FactionState::RegisterDependency(component,SkyPort::globalPrototype);
+				Research::FactionState::RegisterUnlockCost(component,10);
+				Research::FactionState::RegisterResearch(component,Attribute::AttackRange);
+				Research::FactionState::RegisterResearch(component,Attribute::AttacksPerRound);
+				Research::FactionState::RegisterResearch(component,Attribute::DamageLevel);
+				Research::FactionState::RegisterResearch(component,Attribute::ExplosionRadius);
+				Research::FactionState::RegisterResearch(component,Attribute::ScanningRange);
 				if (component.baseAmmoNeedPerShot > 0)
-					ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
+					Research::FactionState::RegisterResearch(component,Attribute::AmmoNeed);
 
 				component.FinishCreation(false);
 			}
@@ -1213,10 +1213,10 @@ namespace Objects
 				component.initiative = 60;
 				component.uplinkTraffic = 20;
 
-				ResearchState::RegisterResearch(component,Attribute::ConstructionSpeed);
-				ResearchState::RegisterResearch(component,Attribute::ScanningRange);
+				Research::FactionState::RegisterResearch(component,Attribute::ConstructionSpeed);
+				Research::FactionState::RegisterResearch(component,Attribute::ScanningRange);
 				if (component.baseAmmoNeedPerShot > 0)
-					ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
+					Research::FactionState::RegisterResearch(component,Attribute::AmmoNeed);
 
 				component.FinishCreation(false);
 			}
@@ -1256,9 +1256,9 @@ namespace Objects
 				component.initiative = 30;
 				component.uplinkTraffic = 1;	//irrelevant
 
-				ResearchState::RegisterResearch(component,Attribute::ScanningRange);
+				Research::FactionState::RegisterResearch(component,Attribute::ScanningRange);
 				if (component.baseAmmoNeedPerShot > 0)
-					ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
+					Research::FactionState::RegisterResearch(component,Attribute::AmmoNeed);
 
 				component.FinishCreation(false);
 			}
@@ -1582,7 +1582,7 @@ namespace Objects
 			void VehicleBase::DescribeType(Command::Base::Label&outResult, bool compound, bool includeName, const OwnerParameter&owner)
 			{
 				outResult.BeginBrief();
-				Lua::Reference researchState = ResearchStateOf(owner);
+				const auto& researchState = ResearchStateOf(owner);
 				if (includeName && typeName.IsNotEmpty())
 					outResult << typeName + " (Base)";
 				Base::DescribeType(outResult,compound,owner);
@@ -1648,7 +1648,7 @@ namespace Objects
 						outResult <<"Deployed: "+String(cnt)+"/"+String(limit);
 				}
 
-				Lua::Reference researchState = ResearchStateOf(owner);
+				const auto& researchState = ResearchStateOf(owner);
 
 				Base::DescribeType(outResult,compound,owner);
 				outResult.BeginBrief();

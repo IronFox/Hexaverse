@@ -139,11 +139,11 @@ namespace Objects
 		virtual EntityType		GetType() const override {return EntityType(base->constName,turret->constName);}
 
 		//WorldEntity overrides:
-		virtual int				GetConstructionCost() const override {return cache.constructionCost.IsCurrent() ? cache.constructionCost.cached : cache.constructionCost.Update( GetPrice() );}
+		virtual int				GetConstructionCost() const override {return GetPrice();}
 		#ifndef NO_HIBERNATION
 			virtual int			GetUplinkTraffic() const override;
 		#endif
-		virtual bool			IsUnlockedAtState(const Lua::Reference&researchState) const	override {return base->isUnlocked.GetValue(researchState) && turret->isUnlocked.GetValue(researchState);}
+		virtual bool			IsUnlockedAtState(const Research::Attributes::Table&researchState) const	override {return base->isUnlocked.GetValue(researchState) && turret->isUnlocked.GetValue(researchState);}
 		virtual bool			CanBeUnlocked() const {return base->isUnlocked.IsFunctionOrConstNonZero() && turret->isUnlocked.IsFunctionOrConstNonZero();}
 		virtual int				GetMaxHealth() const override;
 		virtual String			DescribeMaxHealth() const override;

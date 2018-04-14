@@ -81,7 +81,7 @@ namespace Objects
 			virtual bool			IsPlane() const override {return true;}
 			virtual PTurretBase		GetTurretBase(float&zOffset) override { zOffset = 0.f; return To<MobileEntity>::Cast(shared_from_this());}
 			virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = 0.f; return To<const MobileEntity>::Cast(shared_from_this());}
-			virtual bool			IsUnlockedAtState(const Lua::Reference&researchState) const	override {return turret->isUnlocked.GetValue(researchState);}
+			virtual bool			IsUnlockedAtState(const Research::Attributes::Table&table) const	override {return turret->isUnlocked.GetValue(table);}
 			virtual bool			CanBeUnlocked() const override {return turret->isUnlocked.IsFunctionOrConstNonZero();}
 
 			#ifdef HAS_WINDOW

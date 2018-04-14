@@ -115,7 +115,7 @@ namespace Lua
 			return taskOut;
 		}
 
-		Lua::Table ToTable(Lua::PProgram&p, const Objects::TurretBase&b, const Lua::Reference&researchState)
+		Lua::Table ToTable(Lua::PProgram&p, const Objects::TurretBase&b, const Objects::Research::Attributes::Table&researchState)
 		{
 
 			Lua::Table t = p->CreateTable();

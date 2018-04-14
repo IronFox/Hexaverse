@@ -69,6 +69,9 @@ namespace StatePanel
 		float4		color;
 		String		text;
 
+		float		indent = 0.f;
+		Array<String>	wrapped;
+
 		/**/		TCachedLine()	{}
 		/**/		TCachedLine(const String&str):text(str),color(currentColor){}
 		/**/		TCachedLine(const StringRef&str):text(str),color(currentColor){}
@@ -79,9 +82,27 @@ namespace StatePanel
 		{
 			swp(color,other.color);
 			text.swap(other.text);
+			swp(indent,other.indent);
+			wrapped.swap(other.wrapped);
+		}
+
+		static float	CharLen(char c)
+		{
+			return textout.GetScaledWidth(StringRef(&c,1));
+		}
+
+		void		Rewrap(float width)
+		{
+			count_t numSpaces = 0;
+			while (numSpaces < text.Length() && text.GetChar(numSpaces) == ' ')
+				numSpaces++;
+			indent = textout.GetScaledWidth(text.SubStringRef(0,numSpaces));
+
+			wrapf(text.c_str() + numSpaces,width,CharLen,wrapped);
 		}
 	};
 	static Buffer0<TCachedLine,Swap>	cachedLines;
+	static bool doRewrap = false;
 
 	void		SignalChange()
 	{
@@ -100,7 +121,7 @@ namespace StatePanel
 		cachedNumber = RuntimeConfig::roundNumber;
 		cachedEntity = &e;
 		cachedLines.Clear();
-		Lua::Reference researchState = e.GetResearchState();
+		const auto&researchState = e.GetResearchState();
 
 		currentColor = float4(1);
 		#ifndef NO_HIBERNATION
@@ -510,6 +531,25 @@ namespace StatePanel
 				else
 					cachedLines << (ws->IsEnabled() ? "  Enabled" : "  Disabled");
 					
+
+				if (ws->IsTower())
+				{
+					const auto*t = dynamic_cast<const Objects::Tower*>(ws);
+					cachedLines << " Tasks:";
+					if (t->attackQueue.IsEmpty())
+					{
+						cachedLines << "  Idle";
+					}
+					else
+					{
+						PushCurrentColor();
+						currentColor.rgb &= float3(0.75,0.8,1);
+						cachedLines << "  * Attack";
+						if (t->attackQueue.Count() > 1)
+							cachedLines.Last().text+= " (x"+String(t->attackQueue.Count())+')';
+						PopCurrentColor();
+					}
+				}
 	
 	
 				{
@@ -649,27 +689,48 @@ namespace StatePanel
 	
 		}
 
-		
+		doRewrap = true;
 
+	}
+
+	float		GetPanelWidth()
+	{
+		return 300.f / display.GetClientWidth();
 	}
 
 	void		Render(const Objects::WorldEntity&e)
 	{
-
+		if (!showControlsAndContacts)
+			return;
 		UpdateCacheIfNeeded(e);
 			
 		//textout.GetActiveFont()->EndTagMode();
 		textout.PushState();
 
-		float len = 300.f / display.GetClientWidth();
+		float len = GetPanelWidth();
 		//if (len == 0)
 			//len = textout.GetScaledWidth("012345678901234567890123456789012345");
-		textout.MoveTo(1.f - len,0.95f);
+
+		const float h = textout.GetScaledHeight();
+		float at = 0.95f;
+
+		if (doRewrap)
+		{
+			doRewrap = false;
+			const float w = GetPanelWidth();
+			foreach (cachedLines,line)
+				line->Rewrap(w);
+		}
+
 
 		foreach (cachedLines,l)
 		{
+			const index_t i = l - cachedLines.pointer();
 			textout.SetColor(l->color);
-			textout << l->text << nl;
+			textout.MoveTo(1.f - len + l->indent,at);
+			foreach (l->wrapped,str)
+				textout << *str << nl;
+			at -= h * std::max<count_t>(1,l->wrapped.Count());
 		}
 
 		textout.PopState();

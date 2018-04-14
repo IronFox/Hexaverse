@@ -25,7 +25,6 @@ namespace Objects
 
 	Ctr::GenericHashTable<TUniqueID,PWorldEntity>	idMap;
 
-	/*static*/ index_t			BaseAttributeCache::versionCounter = 0;
 
 
 
@@ -285,7 +284,7 @@ namespace Objects
 
 	/*virtual*/ float		WorldEntity::GetScanningRange() const
 	{
-		return cache.maxScanningRange.GetEMPModified(*this,GetTable()->maxScanningRange);
+		return EMPModify(GetTable()->maxScanningRange.GetValue(GetResearchState()),2);
 	}
 
 	/*virtual*/ float3		WorldEntity::GetScanningCenter(const Grid::LCellIdI&loc) const
@@ -295,13 +294,12 @@ namespace Objects
 
 	/*virtual*/ int			WorldEntity::GetConstructionCost() const
 	{
-		return cache.constructionCost.Get(GetResearchState(), GetTable()->constructionCost,Component::IFunc(),1);
+		return GetTable()->constructionCost.GetValue(GetResearchState());
 	}
 
 	/*virtual*/ int			WorldEntity::GetMaxHealth() const
 	{
-		return cache.maxHealth.Get(GetResearchState(),GetTable()->maxHealth,Component::IFunc(),1);
-		//return GetTable()->maxHealth.GetValue(GetResearchState());
+		return GetTable()->maxHealth.GetValue(GetResearchState());
 	}
 
 	/*virtual*/ String		WorldEntity::DescribeMaxHealth() const
@@ -312,9 +310,9 @@ namespace Objects
 
 
 
-	Lua::Reference WorldEntity::GetResearchState() const
+	const Research::Attributes::Table& WorldEntity::GetResearchState() const
 	{
-		return owner ? owner->researchState.researchState : Lua::Reference();
+		return owner ? owner->researchState.attributeTable : Research::globalState.zeroTable;
 	}
 
 
@@ -409,9 +407,9 @@ namespace Objects
 						outResult << "Health: " +String(this->health);
 			}
 			
-			if (!owner && Faction::mine)	//prototype
+			if (!owner && Faction::mine && IsAlive())	//prototype
 			{
-				if (!this->IsUnlockedAtState(Faction::mine->researchState.researchState))
+				if (!this->IsUnlockedAtState(Faction::mine->researchState.attributeTable))
 				{
 					outResult << "[More Research Required]";
 				}

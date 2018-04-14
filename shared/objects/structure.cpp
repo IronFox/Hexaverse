@@ -749,7 +749,7 @@ namespace Objects
 		/*virtual override*/ void				SkyPort::PrototypeSetup()
 		{
 			Super::PrototypeSetup();
-			ResearchState::RegisterUnlockCost(this,20);
+			Research::FactionState::RegisterUnlockCost(this,20);
 
 			#ifdef HAS_WINDOW
 	

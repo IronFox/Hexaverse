@@ -341,21 +341,21 @@ namespace Objects
 	{
 		if (!turret->CanAttack())
 			return 0.f;
-		return cache.explosionRadius.Get(GetResearchState(),turret->explosionRadius,nullptr,1);
+		return turret->explosionRadius.GetValue(GetResearchState());
 	}
 
 	/*virtual override*/ float				Tower::GetSubOrbitalScanningRange() const
 	{
 		if (empDamageLevel)
 			return 0;
-		return cache.subOrbitalScanningRange.GetEMPModified(*this,turret->subOrbitalScanningRange,Objects::LuaAttribute<float,UnitScaleFilter>(2.f));
+		return EMPModify(turret->subOrbitalScanningRange.GetValue(GetResearchState()),1);
 	}
 
 	/*virtual override*/ String				Tower::DescribeSubOrbitalScanningRange() const
 	{
 		if (empDamageLevel)
 			return 0;
-		return cache.subOrbitalScanningRange.DescribeEMPModified(*this,turret->subOrbitalScanningRange,Objects::LuaAttribute<float,UnitScaleFilter>(2.f));
+		return turret->subOrbitalScanningRange.Describe(GetResearchState());
 	}
 	
 
@@ -363,16 +363,16 @@ namespace Objects
 	{
 		if (!turret->CanAttack())
 			return 0.f;
-		return cache.horizontalAttackRange.GetEMPModified(*this,turret->horizontalAttackRange,Objects::LuaAttribute<float,UnitScaleFilter>(2.f));
-		//EMPModify(turret->GetHorizontalAttackRange(owner,2.f),2.f);
+		return EMPModify(turret->horizontalAttackRange.GetValue(GetResearchState())+2.f * Grid::UnitScale,2.f);
 	}
 
 	/*virtual override*/ String			Tower::DescribeFlatAttackRange() const
 	{
 		if (!turret->CanAttack())
 			return 0.f;
-		return cache.horizontalAttackRange.DescribeEMPModified(*this,turret->horizontalAttackRange,Objects::LuaAttribute<float,UnitScaleFilter>(2.f));
-		//EMPModify(turret->GetHorizontalAttackRange(owner,2.f),2.f);
+		String rs = turret->horizontalAttackRange.Describe(GetResearchState());
+		const auto final = turret->horizontalAttackRange.GetValue(GetResearchState())+2.f * Grid::UnitScale;
+		return String(M::Round(final*10.f)/10.f)+"=["+rs+"]+"+String(2.f * Grid::UnitScale)+" (Tower Bonus)";
 	}
 
 

@@ -35,7 +35,7 @@ namespace Objects
 
 		namespace Net
 		{
-			void QueueResearch(const Objects::PResearchTopic&topic, bool drop)
+			void QueueResearch(const Objects::Research::PTopic&topic, bool drop)
 			{
 				#ifdef HAS_WINDOW
 					Network::Channels::queueResearch.SendTo(Network::client,Protocol::QueueResearch((UINT32)topic->serialIndex,drop));
@@ -69,7 +69,7 @@ namespace Objects
 		//}
 
 
-		/*static*/ Buffer0<CommandGroup*>		CommandGroup::activeGroupPath;
+		/*static*/ Buffer0<WCommandGroup>		CommandGroup::activeGroupPath;
 
 
 		/*static*/ GenericHashTable<PathString, DX11::Texture>	VisualCommand::textureMap;
@@ -84,7 +84,7 @@ namespace Objects
 
 		}
 
-		/**/			ResearchCommand::ResearchCommand(const PResearchTopic&topic) : Super(topic->name,topic->iconName),topic(topic)	{}
+		/**/			ResearchCommand::ResearchCommand(const Research::PTopic&topic) : Super(topic->name,topic->iconName),topic(topic)	{}
 
 		///*virtual override*/ void	ResearchCommand::LoadIcon()
 		//{
@@ -164,73 +164,63 @@ namespace Objects
 
 		/*virtual override*/ void		ResearchCommand::CompileLabel(Label&outResult)
 		{
-			try
+			outResult.BeginBrief();
+
+			if (topic->IsGroup())
 			{
-				outResult.BeginBrief();
-
-				if (topic->IsGroup())
-				{
-					outResult << topic->name;
-					return;
-				}
-				Lua::Reference state = selectedEntity ? selectedEntity->GetResearchState() : Lua::Reference();
-
-				int current = 0;
-				int max = topic->maxProgress;
-				if (state.IsSet())
-				{
-					current = topic->getProgress(state);
-				}
-		//		const ResearchState*rs = selectedEntity && selectedEntity->owner ? &selectedEntity->owner->researchState : nullptr;
-
-				//if (ref || (base && turret))
-				{
-					outResult << topic->GetFullName();
-					String dependentOn;
-					//else
-					{
-						if (max < 0)
-							outResult << "Research progress "+String(current);
-						elif (current < max)
-						{
-							outResult << "Research progress "+String(current) + "/"+String(max);
-						}
-						else
-							outResult << "Research completed";
-					}
-					PResearchTopic dep = topic->dependency.lock();
-					if (dep && (state.IsEmpty() || dep->getProgress(state)<dep->maxProgress))
-						outResult << "Requires completion of "+dep->GetFullName()+" research";
-					outResult.MarkBriefEnd(true);
-				}
-
-				PWorldEntity ref = topic->prototypeReference;
-				if (ref)
-				{
-					ref->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth);
-					return;
-				}
-
-				if (topic->componentReference)
-				{
-					if (topic->componentReference->IsVehicleBase())
-					{
-						((Component::VehicleBase*)topic->componentReference)->DescribeType(outResult,false,true,selectedEntity ? selectedEntity->owner : OwnerParameter());
-					}			
-					elif (topic->componentReference->IsTurret())
-					{
-						auto turret = ((Component::Turret*)topic->componentReference);
-						turret->DescribeType(outResult,false, true,turret->mountType.ToString(),selectedEntity ? selectedEntity->owner : OwnerParameter());
-					}
-				}
-
+				outResult << topic->name;
+				return;
 			}
-			catch (const Lua::Exception&ex)
+			const auto* state = selectedEntity && selectedEntity->owner ? &selectedEntity->owner->researchState.topicProgressVector : nullptr;
+
+			int current = 0;
+			int max = topic->maxProgress;
+			if (state)
 			{
-				LogEvent(EventClass::Preset::internalError,ex.what());
-				//leave current at 0
+				current = state->at(topic->serialIndex);
+			}
+	//		const Research::FactionState*rs = selectedEntity && selectedEntity->owner ? &selectedEntity->owner->researchState : nullptr;
+
+			//if (ref || (base && turret))
+			{
+				outResult << topic->GetFullName();
+				String dependentOn;
+				//else
+				{
+					if (max < 0)
+						outResult << "Research progress "+String(current);
+					elif (current < max)
+					{
+						outResult << "Research progress "+String(current) + "/"+String(max);
+					}
+					else
+						outResult << "Research completed";
+				}
+				Research::PTopic dep = topic->dependency.lock();
+				if (dep && (!state || state->at(dep->serialIndex) < dep->maxProgress))
+					outResult << "Requires completion of "+dep->GetFullName()+" research";
+				outResult.MarkBriefEnd(true);
 			}
 
+			PWorldEntity ref = topic->prototypeReference;
+			if (ref)
+			{
+				ref->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth);
+				return;
+			}
+
+			if (topic->componentReference)
+			{
+				if (topic->componentReference->IsVehicleBase())
+				{
+					((Component::VehicleBase*)topic->componentReference)->DescribeType(outResult,false,true,selectedEntity ? selectedEntity->owner : OwnerParameter());
+				}			
+				elif (topic->componentReference->IsTurret())
+				{
+					auto turret = ((Component::Turret*)topic->componentReference);
+					turret->DescribeType(outResult,false, true,turret->mountType.ToString(),selectedEntity ? selectedEntity->owner : OwnerParameter());
+				}
+			}
 		}
 
 
@@ -532,8 +522,82 @@ namespace Objects
 			}
 		}
 
+		/*static*/ index_t	CommandGroup::FindInPath(const CommandGroup*g, const TCodeLocation&loc)
+		{
+			for (index_t i = 0; i < activeGroupPath.Count(); i++)
+			{
+				auto locked = activeGroupPath[i].lock();
+				if (!locked)
+				{
+					LogEvent(EventClass::Preset::internalError,"Active group path contains NULL element at #"+String(i)+"/"+String(activeGroupPath.Count())+". Called by "+String(loc));
+					activeGroupPath.Erase(i--);
+					DBG_FATAL__("Active Group Path Violation");
+					continue;
+				}
+				if (locked.get() == g)
+					return i;
+			}
+			return InvalidIndex;
+		}
 
+		/*static*/ index_t	CommandGroup::FindInPath(const CommandContainer*c, const TCodeLocation&loc)
+		{
+			for (index_t i = 0; i < activeGroupPath.Count(); i++)
+			{
+				auto locked = activeGroupPath[i].lock();
+				if (!locked)
+				{
+					LogEvent(EventClass::Preset::internalError,"Active group path contains NULL element at #"+String(i)+"/"+String(activeGroupPath.Count())+". Called by "+String(loc));
+					activeGroupPath.Erase(i--);
+					DBG_FATAL__("Active Group Path Violation");
+					continue;
+				}
+				if (locked.get() == c)
+					return i;
+			}
+			return InvalidIndex;
+		}
 
+		void			CommandGroup::CollapseChildren()
+		{
+			if (FindInPath(this,CLOCATION) != InvalidIndex)
+				return;
+			while (activeGroupPath.IsNotEmpty())
+			{
+				auto last = activeGroupPath.Last().lock();
+				if (!last)
+				{
+					LogEvent(EventClass::Preset::internalError,"Active group path contains NULL element, found while collapsing children of "+name);
+					activeGroupPath.EraseLast();
+					DBG_FATAL__("Active Group Path Violation");
+					continue;
+				}
+				if (last.get() == this)
+					break;
+				last->Collapse();
+				activeGroupPath.EraseLast();
+			}
+			Collapse();
+		}
+
+		/*static*/ void		CommandGroup::CollapseAll()
+		{
+			for (index_t i = 0; i < activeGroupPath.Count(); i++)
+				SafeCollapse(i,CLOCATION);
+			activeGroupPath.Clear();
+		}
+
+		/*static*/ void CommandGroup::SafeCollapse(index_t at, const TCodeLocation&loc)
+		{
+			auto c = activeGroupPath[at].lock();
+			if (c)
+				c->Collapse();
+			else
+			{
+				LogEvent(EventClass::Preset::internalError,"Active group path contains NULL element at #"+String(at)+"/"+String(activeGroupPath.Count())+". Caller: "+String(loc));
+				DBG_FATAL__("Active Group Path Violation");
+			}
+		}
 	
 		/*virtual override*/ void	CommandGroup::Execute()
 		{
@@ -541,34 +605,36 @@ namespace Objects
 
 			//ASSERT__(activeGroupPath.IsEmpty() || activeGroupPath.Contains(this));
 
-			index_t at = activeGroupPath.GetIndexOf(this);
+			index_t at = FindInPath(this,CLOCATION);
 			if (at != InvalidIndex)
 			{
 				for (index_t i = at+1; i < activeGroupPath.Count(); i++)
-					activeGroupPath[i]->Collapse();
+					SafeCollapse(i,CLOCATION);
 				if (doHide)
-				{
-					activeGroupPath[at]->Collapse();
-				}
+					SafeCollapse(at,CLOCATION);
 				activeGroupPath.Truncate(at+1);
 				ASSERT_EQUAL__(at+1,activeGroupPath.Count());
 			}
 			else
 			{
-				at = activeGroupPath.GetIndexOf(parent);
+				at = FindInPath(parent,CLOCATION);
 				if (at == InvalidIndex)
 				{
 					for (index_t i = 0; i < activeGroupPath.Count(); i++)
-						activeGroupPath[i]->Collapse();
+						SafeCollapse(i,CLOCATION);
 					activeGroupPath.Clear();
 				}
 				else
 				{
 					for (index_t i = at+1; i < activeGroupPath.Count(); i++)
-						activeGroupPath[i]->Collapse();
+					{
+						SafeCollapse(i,CLOCATION);
+					}
 					activeGroupPath.Truncate(at+1);
 				}
-				activeGroupPath << this;
+				auto locked = To<CommandGroup>::Cast(shared_from_this());
+				ASSERT__(locked);
+				activeGroupPath << locked;
 			}
 
 

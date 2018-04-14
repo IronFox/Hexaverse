@@ -457,6 +457,14 @@ namespace Game
 
 	namespace Network
 	{
+		UINT32		NotifyForeignerFlags()
+		{
+			auto rs = BaseNotifyForeigners;
+			if (Config::exposeActionLeftToHostileFactions)
+				rs |= Objects::WorldEntity::ActionChanged;
+			return rs;
+		}
+
 		static void		_UpdateResourceCoverage(const Objects::PFaction&f, const Grid::LCellIdI&center,float range, const Protocol::Timestamp&timestamp)
 		{
 			static Ctr::Buffer0<UINT32>	changed;
@@ -508,7 +516,13 @@ namespace Game
 		void SendStatisticsTo( TCP::Peer & peer, const Objects::PFaction & faction)
 		{
 			Objects::Statistics::EnterNetworkMode();
-			Channels::Statistics::beginSequence.SendTo(peer,faction->id);
+			Protocol::BeginStatisticsSequence begin;
+			begin.factionID = faction->id;
+			begin.allianceID = faction->alliance ? faction->alliance->id : TUniqueID::Empty();
+			begin.factionIsDead = faction->isDead;
+			begin.factionName = faction->name;
+			begin.color = faction->color;
+			Channels::Statistics::BeginStatisticsSequence.SendTo(peer,begin);
 
 			faction->statistics.VisitRounds([&peer](const Objects::Statistics::Round&r)
 			{
@@ -589,7 +603,6 @@ namespace Game
 
 		void		AssembleGameConfig(Protocol::GameConfig&gameConfig, bool allowSpectatorFactions)
 		{
-			gameConfig.researchScript = Objects::ResearchState::GetScriptIdentifier();
 			gameConfig.gameGoal = (UINT32)RuntimeConfig::gameGoal;
 			gameConfig.gameFlags = AssembleGameFlags(allowSpectatorFactions);
 			gameConfig.worldDiscovery = (BYTE)World::Config::worldDiscovery;
@@ -606,6 +619,21 @@ namespace Game
 			info.worldID = World::worldID;
 		}
 
+		template <typename T>
+			void	AssembleDeltaVector(Protocol::ResearchAttributeDeltaArray<T>&outArray, const Objects::Research::Attributes::TypeMap<T>&source)
+			{
+				outArray.SetSize(source.changedSinceLastRound.Count());
+				for (index_t i = 0; i < outArray.Count(); i++)
+				{
+					auto&dst = outArray[i];
+					dst.index = source.changedSinceLastRound[i];
+					const auto&src = source.attributes[dst.index];
+					dst.value = src.value;
+					dst.description = src.description;
+					dst.flags = src.flags;
+				}
+			}
+
 
 		void	ChangePhase( RuntimeConfig::Phase to, float timeWindow/* = -1*/)
 		{
@@ -620,19 +648,42 @@ namespace Game
 
 			if (RuntimeConfig::IsACommandPhase(to))
 			{
+
+
+				if (Objects::Research::globalState.zeroTable.AnyChanged())
+				{
+					Protocol::ResearchAttributeDeltaVector vec;
+					vec.faction = TUniqueID::Empty();
+					const auto&t = Objects::Research::globalState.zeroTable;
+					AssembleDeltaVector(vec.boolAttributes,t.bools);
+					AssembleDeltaVector(vec.intAttributes,t.ints);
+					AssembleDeltaVector(vec.floatAttributes,t.floats);
+					Channels::ResearchAttributeDeltaVector.SendTo(::Network::server,vec,(UINT32)::Network::UserLevel::CommonFaction);
+				}
+
 				Objects::ForeachFaction([](const Objects::PFaction&f)
 				{
 					f->DropPerRoundData();	//make sure instantaneous destruction commands are processed with correct visibility information
 
-					if (f->researchState.changed)
+					if (f->researchState.topicProgressChanged)
 					{
-						f->researchState.changed = false;
-						Protocol::ResearchState state;
+						f->researchState.topicProgressChanged = false;
+						Protocol::ResearchFactionState state;
 						state.ownerID = f->id;
-						f->researchState.Export(state.serializedData);
-						ASSERT_LESS__(state.serializedData.Count(),state.serializedData.MaxElementCount);
-						Channels::researchState.SendTo(::Network::server,state,(UINT32)::Network::UserLevel::CommonFaction);
+						state.progressVector = f->researchState.topicProgressVector;
+						Channels::ResearchFactionState.SendTo(::Network::server,state,(UINT32)::Network::UserLevel::CommonFaction);
 					}
+
+					if (f->researchState.attributeTable.AnyChanged())
+					{
+						Protocol::ResearchAttributeDeltaVector vec;
+						vec.faction = f->id;
+						AssembleDeltaVector(vec.boolAttributes,f->researchState.attributeTable.bools);
+						AssembleDeltaVector(vec.intAttributes,f->researchState.attributeTable.ints);
+						AssembleDeltaVector(vec.floatAttributes,f->researchState.attributeTable.floats);
+						Channels::ResearchAttributeDeltaVector.SendTo(::Network::server,vec,(UINT32)::Network::UserLevel::CommonFaction);
+					}
+
 					if (f->researchState.queueChanged)
 					{
 						f->researchState.queueChanged = false;
@@ -641,7 +692,7 @@ namespace Game
 						{
 							Protocol::ResearchQueue queue;
 							f->researchState.ExportResearchQueue(queue);
-							::Channels::researchQueue.SendTo(client->peer.lock(),queue);
+							::Channels::ResearchQueue.SendTo(client->peer.lock(),queue);
 						}
 					}
 				});
@@ -857,7 +908,7 @@ namespace Game
 
 			}
 			
-			if (expose & Expose::MobileAction || Config::exposeActionLeftToHostileFactions)
+			if (expose & Expose::Action || Config::exposeActionLeftToHostileFactions)
 			{
 				state.attackActionLeft = v.attackActionLeft;
 				state.movementActionLeft = v.movementActionLeft;
@@ -928,7 +979,8 @@ namespace Game
 					if (t)
 					{
 						Protocol::TowerState&subState = state.selective.Set3();
-						subState.attackActionLeft = t->attackActionLeft;
+						if (expose & Expose::Action)
+							subState.attackActionLeft = t->attackActionLeft;
 						subState.attackTasks.SetSize(t->attackQueue.Count());
 						for (index_t i = 0; i < subState.attackTasks.Count(); i++)
 						{
@@ -937,6 +989,28 @@ namespace Game
 				
 					}
 				}
+				elif ((expose & Expose::Action || Config::exposeActionLeftToHostileFactions) && (changeFlags & Objects::WorldEntity::ActionChanged))
+				{
+					if (s.IsTower())
+					{
+						const Objects::Tower*t = dynamic_cast<const Objects::Tower*>(&s);
+						if (t)
+						{
+							Protocol::TowerState&subState = state.selective.Set3();
+							subState.attackActionLeft = t->attackActionLeft;
+							if (expose & Expose::StructureTasks)
+							{
+								subState.attackTasks.SetSize(t->attackQueue.Count());
+								for (index_t i = 0; i < subState.attackTasks.Count(); i++)
+								{
+									Describe(subState.attackTasks[i],t->attackQueue[i]);
+								}
+							}
+						}
+					}
+				}
+
+
 				if (expose & Expose::MineState)
 				{
 					const Objects::Mine*m = dynamic_cast<const Objects::Mine*>(&s);
@@ -1055,7 +1129,7 @@ namespace Game
 				//anythingChanged = true;
 				LogEvent(EventSignificance::Common,&v,"State change detected ("+String(v.changeFlags)+")");
 
-				const bool foreignersNeedToKnow = (v.changeFlags & Network::NotifyForeigners) != 0 && v.storedIn.expired();
+				const bool foreignersNeedToKnow = (v.changeFlags & Network::NotifyForeignerFlags()) != 0 && v.storedIn.expired();
 				const bool alliesNeedToKnow = (v.changeFlags & Network::NotifyAllies) != 0 && v.storedIn.expired();
 
 				const Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),v.changeTimer);
@@ -1093,7 +1167,7 @@ namespace Game
 				//anythingChanged = true;
 				LogEvent(EventSignificance::Common,&s,"State change detected");
 				
-				const bool foreignersNeedToKnow = (s.changeFlags & Network::NotifyForeigners) != 0;
+				const bool foreignersNeedToKnow = (s.changeFlags & Network::NotifyForeignerFlags()) != 0;
 				const bool exposeDetailsToAllies = s.owner->alliance && s.owner->alliance->config.exposeEntityDetails;
 				const bool alliesNeedToKnow = (s.changeFlags & Network::NotifyAllies) != 0;
 
@@ -1305,7 +1379,7 @@ namespace Game
 		}
 
 		winner = w;
-		Channels::winningFaction.SendTo(::Network::server,w->id,Channels::Level::Faction);
+		Channels::winningAlliance.SendTo(::Network::server,w->id,Channels::Level::Faction);
 		if (RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame)
 			Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
 	}

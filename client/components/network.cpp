@@ -27,6 +27,7 @@
 #include "voting.h"
 #include "objectNetworkHelper.h"
 #include "playerControlBegin.h"
+#include <expectedBehavior.h>
 
 
 namespace Network
@@ -42,7 +43,6 @@ namespace Network
 
 	TUniqueID		myID,serverID,worldID;
 	UINT32				gameFlags = 0;
-	SHA256::HashContainer	requestedResearchScript;
 	UINT16			connectionBasePort = DEFAULT_SERVER_BASE_PORT;
 
 	CryptographicID	activeToken;
@@ -53,7 +53,7 @@ namespace Network
 
 
 	Protocol::GameProgress	gameProgress;
-	TUniqueID				winningFactionID = TUniqueID::Empty();
+	TUniqueID				winningAllianceID = TUniqueID::Empty();
 
 
 	float			animationTimeFactor = 1,
@@ -179,33 +179,10 @@ namespace Network
 
 
 
-	void			LoadScript(const SHA256::HashContainer&id)
-	{
-		ScriptCache::PScript script = ScriptCache::Lookup(id);
-		if (script)
-		{
-			LogEvent(EventClass::Preset::common,"Research script '"+Bin2Str::ConvertPOD(id)+"' is already locally available. activating...");
-			Objects::ResearchState::ActivateProgram(script);
-		}
-		else
-		{
-			LogEvent(EventClass::Preset::network,"Research script '"+Bin2Str::ConvertPOD(id)+"' is not locally available. Asking server...");
-			Network::Channels::requestResource.SendTo(client,id);
-		}
-
-	}
-
-
 	void			LoadGameConfig(const Protocol::GameConfig&cfg)
 	{
 		gameFlags = cfg.gameFlags;
 		RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(cfg.gameGoal);
-		requestedResearchScript = cfg.researchScript;
-
-		if (client.IsConnected())
-		{
-			LoadScript(Network::requestedResearchScript);
-		}
 	}
 
 	void			ConnectTo(const Host&host)
@@ -519,7 +496,7 @@ namespace Network
 		roundTimer = -1;
 
 		GlobalEvents::FlushObjects();
-		Network::winningFactionID = TUniqueID::Empty();
+		Network::winningAllianceID = TUniqueID::Empty();
 		Network::gameProgress.gameOver = false;
 		Network::gameProgress.gameWon = false;
 		Network::gameProgress.status = "";
@@ -582,8 +559,6 @@ namespace Network
 				#ifdef HAS_WINDOW
 					HUD::HostList::CheckVisibility(false);
 				#endif
-
-				LoadScript(Network::requestedResearchScript);
 			}
 			else
 			{
@@ -1198,16 +1173,38 @@ namespace Network
 			bool brk = true;
 		}
 
-		void	ResearchState(Protocol::ResearchState&state)
+		static bool triggerScriptChange = false,
+			reallyTriggerScriptChange = false;
+
+		void	ResearchFactionState(Protocol::ResearchFactionState&state)
 		{
 			Objects::PFaction f = ResolveFaction(state.ownerID);
-			f->researchState.Import(state.serializedData);
+			EXPECT_EQUAL(Objects::Research::globalState.allTopics.Count(),state.progressVector.Length());
+			f->researchState.topicProgressVector.adoptData(state.progressVector);
+			f->researchState.topicProgressChanged = true;
 			#ifdef HAS_WINDOW
 				if (RuntimeConfig::tutorialMode && f == Objects::Faction::mine)
 					Tutorial::SignalResearchChange();
 			#endif
-			//Update( state, f);
+
+			if (f->isOwnedByMe && triggerScriptChange && f->researchState.topicProgressVector.Count() == Objects::Research::globalState.allTopics.Count())
+			{
+				triggerScriptChange = false;
+				reallyTriggerScriptChange = true;
+			}
+
 		}
+
+		//research program updates must always preceed research states
+		void	ResearchProgram(Protocol::ResearchProgram&program)
+		{
+			Objects::Research::FactionState::BeginServerTopicUpdate();
+			foreach (program,prog)
+				Objects::Research::FactionState::DeclareServerTopic(prog->parentTopic -1, prog->name,prog->iconName, prog->maxProgress,prog->dependentTopic-1);
+
+			triggerScriptChange = true;	//must wait for state
+		}
+
 
 		void	ResearchQueue(Protocol::ResearchQueue&research)
 		{
@@ -1225,27 +1222,107 @@ namespace Network
 			}
 		}
 
-		void	ResourceData(Protocol::ResourceData&dat)
-		{
-			LogEvent(EventClass::Preset::uncommon,"Received resource "+Bin2Str::ConvertPOD(dat.id));
-			if (dat.id == requestedResearchScript)
+
+		template <typename T>
+			static void Import(Protocol::ResearchAttributeArray<T>&source, Objects::Research::Attributes::TypeMap<T>&dest)
 			{
-				LogEvent(EventClass::Preset::uncommon,"Resource "+Bin2Str::ConvertPOD(dat.id)+" is research script");
-				ScriptCache::PScript script = ScriptCache::DefineFromFleetingCompressedData(dat.id, dat.data);
-				if (script)
+				dest.attributes.SetSize(source.Count());	//don't assert, just resize. might change
+				for (index_t i = 0; i < dest.attributes.Count(); i++)
 				{
-					Objects::ResearchState::ActivateProgram(script);
+					auto&src = source[i];
+					auto&dst = dest.attributes[i];
+					dst.value = src.value;
+					dst.description.adoptData(src.description);
+					dst.flags = src.flags;
 				}
 			}
-			
+
+		template <typename T>
+			static void Import(Protocol::ResearchAttributeDeltaArray<T>&source, Objects::Research::Attributes::TypeMap<T>&dest)
+			{
+				foreach (source,src)
+				{
+					auto&dst = Expect::SafeGet(dest.attributes,src->index,CLOCATION);
+					dst.value = src->value;
+					dst.description.adoptData(src->description);
+					dst.flags = src->flags;
+				}
+			}
+
+		void	ResearchAttributeVector( Protocol::ResearchAttributeVector&attributes )
+		{
+			Objects::Research::Attributes::Table*table0 = nullptr;
+			bool isMine = false;
+			if (attributes.faction.IsEmpty())
+				table0 = &Objects::Research::globalState.zeroTable;
+			else
+			{
+				auto f = ResolveFaction(attributes.faction);
+				if (f->isOwnedByMe)
+					isMine = true;
+				table0 = &f->researchState.attributeTable;
+			}
+			auto&table = *table0;
+
+			Import(attributes.boolAttributes,table.bools);
+			Import(attributes.intAttributes,table.ints);
+			Import(attributes.floatAttributes,table.floats);
+
+
+			if (isMine && reallyTriggerScriptChange)
+			{
+				reallyTriggerScriptChange = false;
+				Objects::Research::globalState.onScriptChange();
+			}
+
+		}
+
+		void	ResearchAttributeDeltaVector(Protocol::ResearchAttributeDeltaVector&attributes)
+		{
+			Objects::Research::Attributes::Table*table0 = nullptr;
+			if (attributes.faction.IsEmpty())
+				table0 = &Objects::Research::globalState.zeroTable;
+			else
+				table0 = &ResolveFaction(attributes.faction)->researchState.attributeTable;
+			auto&table = *table0;
+
+			Import(attributes.boolAttributes,table.bools);
+			Import(attributes.intAttributes,table.ints);
+			Import(attributes.floatAttributes,table.floats);
 		}
 
 
-		void	WinningFaction(TUniqueID&id)
+
+		void	WinningAlliance(TUniqueID&id)
 		{
-			winningFactionID = id;
+			winningAllianceID = id;
 			#ifdef HAS_WINDOW
 				HUD::Statistics::Update();
+
+				const auto winningAlliance = Objects::Alliance::FindByID(winningAllianceID);
+				if (winningAlliance)
+				{
+					if (Objects::Faction::mine && Objects::Faction::mine->alliance == winningAlliance)
+					{
+						if (winningAlliance->CountLivingMembers() > 1)
+							HUD::Dialog::ShowMessage("Congratulations!\nYour alliance has won this game!");
+						else
+							HUD::Dialog::ShowMessage("Congratulations!\nYou have won this game!");
+					}
+					else
+					{
+						Buffer0<String> names;
+						winningAlliance->VisitMembers([&names](const Objects::PFaction&f)
+						{
+							names << f->GetName();
+						});
+						if (names.Count() != 1)
+							HUD::Dialog::ShowMessage(implode(", ",names.ToRef())+" have won this game!");
+						else
+							HUD::Dialog::ShowMessage(names.First()+" has won this game!");
+					}
+				}
+
 			#endif
 		}
 
@@ -1255,7 +1332,7 @@ namespace Network
 		{
 			static Objects::WFaction target;
 
-			void	BeginSequence(TUniqueID&id)
+			void	BeginSequence(Protocol::BeginStatisticsSequence&begin)
 			{
 				if (!target.expired())
 				{
@@ -1264,7 +1341,10 @@ namespace Network
 					EndSequence();
 				}
 
-				Objects::PFaction f = ResolveFaction(id);
+				Objects::PFaction f = ResolveFaction(begin.factionID,begin.allianceID);
+				f->name = begin.factionName;
+				f->isDead = begin.factionIsDead;
+				f->color = begin.color;
 
 				LogEvent(EventClass::Preset::common,"Starting statistics sequence on "+f->GetLogName());
 				target = f;
@@ -1306,6 +1386,11 @@ namespace Network
 					throw Except::Program::DataConsistencyFault(CLOCATION,"Unable to load entity type statistics: Not in sequence or sequence faction has meanwhile expired");
 				f->statistics.Load(std::move(t));
 			}
+		}
+
+		void	BeginStatisticsSequence(Protocol::BeginStatisticsSequence&begin)
+		{
+			Statistics::BeginSequence(begin);
 		}
 
 		void MyFaction(Protocol::MyFaction&faction)
@@ -1469,20 +1554,18 @@ namespace Network
 		TCP::Channel<NET(INT32), 0, Protocol::ChannelID::UplinkBandwidth>							uplinkBandwidth(Receiver::UplinkBandwidth);
 		TCP::Channel<Protocol::UnitLimits, 0, Protocol::ChannelID::UnitLimits>						unitLimits(Receiver::UnitLimits);
 		TCP::Channel<Protocol::OperationLacksResources, 0, Protocol::ChannelID::OperationLacksResources>			operationLacksResources(Receiver::OperationLacksResources);
-		TCP::Channel<Protocol::ResearchState, 0, Protocol::ChannelID::ResearchState>					researchState(Receiver::ResearchState);
-		TCP::Channel<Protocol::ResearchQueue, 0, Protocol::ChannelID::ResearchQueue>				researchQueue(Receiver::ResearchQueue);
-		TCP::Channel<Protocol::ResourceData,0,Protocol::ChannelID::ResourceData>					resourceData(Receiver::ResourceData);
 		TCP::Channel<Protocol::GameConfig,0,Protocol::ChannelID::GameConfig>						gameConfig(Receiver::GameConfig);
 
 		TCP::Channel<NET(INT32),0,Protocol::ChannelID::TutorialAt>									tutorialAt(Receiver::TutorialAt);
-		TCP::Channel<TUniqueID,0,Protocol::ChannelID::WinningFaction>								winningFaction(Receiver::WinningFaction);
+		TCP::Channel<TUniqueID,0,Protocol::ChannelID::WinningAlliance>								winningAlliance(Receiver::WinningAlliance);
 
 		namespace Statistics
 		{
-			TCP::Channel<TUniqueID, 0, Protocol::ChannelID::BeginStatisticsSequence>				beginSequence(Receiver::Statistics::BeginSequence);
 			TCP::Channel<Objects::Statistics::Round, 0, Protocol::ChannelID::RoundStatistics>		round(Receiver::Statistics::Round);
 			TCP::Channel<Objects::Statistics::EntityType, 0, Protocol::ChannelID::EntityTypeStatistics>	entityType(Receiver::Statistics::EntityType);
 			TCP::Channel<Objects::Statistics::FactionInteraction, 0, Protocol::ChannelID::FactionInteractionStatistics>	factionInteraction(Receiver::Statistics::FactionInteraction);
+
+			DECLARE_CHANNEL(BeginStatisticsSequence);
 		}
 
 
@@ -1502,7 +1585,6 @@ namespace Network
 		TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::RemoveEntity>						removeEntity;
 		TCP::ObjectSender<Protocol::EntityStateUpdate, Protocol::ChannelID::Sleep>					sleep;
 		TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>					changeMyName;
-		TCP::ObjectSender<Protocol::ResourceID, Protocol::ChannelID::RequestResource>				requestResource;
 		TCP::ObjectSender<Protocol::QueueResearch, Protocol::ChannelID::QueueResearch>				queueResearch;
 
 		DECLARE_CHANNEL(MyFaction);
@@ -1514,6 +1596,14 @@ namespace Network
 		DECLARE_OBJECT_SENDER(ChatMessage);
 		DECLARE_OBJECT_SENDER(SaveAs);
 		DECLARE_CHANNEL(KillFaction);
+
+		DECLARE_CHANNEL(ResearchProgram);
+		DECLARE_CHANNEL(ResearchFactionState);
+		DECLARE_CHANNEL(ResearchQueue);
+		DECLARE_OBJECT_SENDER(QueueResearch);
+		DECLARE_CHANNEL(ResearchAttributeVector);
+		DECLARE_CHANNEL(ResearchAttributeDeltaVector);
+
 	}
 
 
@@ -1624,6 +1714,8 @@ namespace Network
 			break;
 			case TCP::Event::ConnectionLost:
 			{
+				Receiver::reallyTriggerScriptChange = false;
+				Receiver::triggerScriptChange = false;
 				RuntimeConfig::tutorialMode = false;
 				if (!RuntimeConfig::aiMode)
 					RuntimeConfig::serverAddress = ServerAddress();	//prevent any automatic reconnect
@@ -1748,8 +1840,6 @@ namespace Network
 		client.InstallChannel(Channels::markerCreationFailedLimitReached);
 		client.InstallChannel(Channels::destroyMarker);
 		client.InstallChannel(Channels::identifyFaction);
-		client.InstallChannel(Channels::researchState);
-		client.InstallChannel(Channels::researchQueue);
 		client.InstallChannel(Channels::factionOnline);
 		client.InstallChannel(Channels::factionOffline);
 		client.InstallChannel(Channels::factionRequestedNewRound);
@@ -1759,16 +1849,21 @@ namespace Network
 		client.InstallChannel(Channels::uplinkBandwidth);
 		client.InstallChannel(Channels::unitLimits);
 		client.InstallChannel(Channels::operationLacksResources);
-		client.InstallChannel(Channels::resourceData);
 		client.InstallChannel(Channels::gameConfig);
 
 		client.InstallChannel(Channels::tutorialAt);
-		client.InstallChannel(Channels::winningFaction);
+		client.InstallChannel(Channels::winningAlliance);
 
-		client.InstallChannel(Channels::Statistics::beginSequence);
+		client.InstallChannel(Channels::Statistics::BeginStatisticsSequence);
 		client.InstallChannel(Channels::Statistics::entityType);
 		client.InstallChannel(Channels::Statistics::round);
 		client.InstallChannel(Channels::Statistics::factionInteraction);
+
+		client.InstallChannel(Channels::ResearchProgram);
+		client.InstallChannel(Channels::ResearchFactionState);
+		client.InstallChannel(Channels::ResearchQueue);
+		client.InstallChannel(Channels::ResearchAttributeVector);
+		client.InstallChannel(Channels::ResearchAttributeDeltaVector);
 
 		
 
@@ -1784,6 +1879,10 @@ namespace Network
 		client.onSignal = OnSignal;
 		client.onIgnorePackage = OnIgnorePackage;
 		TCP::onIgnoredException = OnIgnoredException;
+		client.onDeserializationFailed = [](UINT32 channel, TCP::Peer&origin, const String&exceptionMessage)
+		{
+			LogEvent(EventSignificance::NonFatalError,"Failed to deserialize package on network channel "+String(channel)+": "+exceptionMessage);
+		};
 
 		ASSERT__(Net::initNet());
 		if (RuntimeConfig::udpListen)

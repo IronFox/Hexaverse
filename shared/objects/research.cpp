@@ -10,20 +10,25 @@
 #include <io/file_system.h>
 #include "structure/laboratory.h"
 #include <io/byte_stream.h>
+#include "../expectedBehavior.h"
 
 namespace Objects
 {
 
 
 
-	/*static*/ ResearchState::GlobalState		ResearchState::globalState;
+	/*static*/ Research::GlobalState		Research::globalState;
 
 
+	int						Research::Topic::GetProgress(const Research::FactionState&st) const
+	{
+		return st.topicProgressVector[serialIndex];
+	}
 
-	/*static*/ PResearchTopic	ResearchState::CreateResearch(const PResearchTopic&parent, const String&name, const String&iconName, 
-												const ResearchTopic::FSetProgress&setProgress, 
-												const ResearchTopic::FGetProgress&getProgress, int maxProgress,
-												const PResearchTopic&dependency
+	/*static*/ Research::PTopic	CreateResearch(const Research::PTopic&parent, const String&name, const String&iconName, 
+												const Research::Topic::FSetProgress&setProgress, const Research::Topic::FGetProgress&getProgress, 
+												int maxProgress,
+												const Research::PTopic&dependency
 											)
 	{
 		LogEvent(EventClass::Preset::debug,"Lua created new research '"+name+"'");
@@ -37,17 +42,17 @@ namespace Objects
 		bool hasIcon = !proto && !component;
 
 
-		PResearchTopic rs(new ResearchTopic(parent, name,hasIcon ? iconSource : "",setProgress,getProgress,maxProgress,dependency));
+		Research::PTopic rs(new Research::Topic(parent, name,hasIcon ? iconSource : "",setProgress,getProgress,maxProgress,dependency));
 
 		rs->componentReference = component;
 		rs->prototypeReference = proto;
-		rs->serialIndex = globalState.allTopics.Count();
-		globalState.allTopics << rs;
+		rs->serialIndex = Research::globalState.allTopics.Count();
+		Research::globalState.allTopics << rs;
 
 
 		if (!parent)
 		{
-			if (!globalState.rootResearch.Insert(rs))
+			if (!Research::globalState.rootResearch.Insert(rs))
 				throw Lua::Exception("Research '"+name+"' is not unique in global namespace");
 		}
 		else
@@ -62,7 +67,7 @@ namespace Objects
 
 		if (dependency)
 		{
-			if (dependency->getProgress.IsEmpty())
+			if (dependency->maxProgress <= 0)
 			{
 				throw Lua::Exception("Trying to register research dependency of '"+name+"' to unresearchable topic '"+dependency->name+"'");
 			}
@@ -71,91 +76,365 @@ namespace Objects
 		return rs;
 	}
 
-	ResearchTopic::ResearchTopic(const PResearchTopic&parent, const String&name, const String&iconName, 
-								const FSetProgress&setProgress, 
-								const FGetProgress&getProgress, int maxProgress,
-								const PResearchTopic&dependency
+	Research::Topic::Topic(const Research::PTopic&parent, const String&name, const String&iconName, 
+								const FSetProgress&setProgress, const FGetProgress&getProgress, 
+								int maxProgress,
+								const Research::PTopic&dependency
 								)
 								:Super(name), parent(parent),iconName(iconName),
-								setProgress(setProgress),getProgress(getProgress),maxProgress(maxProgress),
+							#ifndef CLIENT
+								setProgress(setProgress),getProgress(getProgress),
+							#endif
+								maxProgress(maxProgress),
 								dependency(dependency)
 	{}
 
 
 
-	ResearchTopic::ResearchTopic::~ResearchTopic()
+	Research::Topic::~Topic()
 	{
 		bool brk = true;
 
 	}
 
-	bool			ResearchTopic::CanResearch(const PFaction&owner) const
+	bool			Research::Topic::CanResearch(const PFaction&owner) const
 	{
 		if (IsGroup())
 			return false;
-		auto st = owner ? owner->researchState.researchState : Lua::Reference();
-		if (ResearchCompleted(st))
+		//auto st = owner ? owner->researchState.researchState : Lua::Reference();
+		if (owner && ResearchCompleted(owner->researchState.topicProgressVector))
 			return false;
-		PResearchTopic p = dependency.lock();
-		return !p || p->ResearchCompleted(st) || (owner && owner->researchState.GetResearchQueue().Contains(p));
+		Research::PTopic p = dependency.lock();
+		if (!p)
+			return true;
+		if (!owner)
+			return false;
+		return p->ResearchCompleted(owner->researchState.topicProgressVector) || owner->researchState.GetResearchQueue().Contains(p);
 	}
 
 
 
 
 
-	static Ctr::Array<BaseAttributeTable>	structureTables;
+	static Array<BaseAttributeTable>	structureTables;
 
+
+	template <typename T>
+		class LuaAttributes
+		{
+		private:
+			struct ConstOverride
+			{
+				T			constValue;
+				bool		isSet = false;
+			};
+
+			struct Attribute
+			{
+				Lua::Function<T(Lua::Reference)>		luaGetValue;
+				Lua::Function<String(Lua::Reference)>	luaDescribeValue;
+				ConstOverride							constOverride;
+
+				void		ExportTo( const Lua::Reference&state, typename Research::Attributes::TypeMap<T>::Attrib&outAttrib ) const
+				{
+					if (constOverride.isSet)
+						outAttrib.value = constOverride.constValue;
+					else
+					{
+						if (luaGetValue.IsEmpty())
+							outAttrib.value = (T)0;
+						else
+							outAttrib.value = luaGetValue(state);
+					}
+
+					if (luaDescribeValue.IsSet())
+						outAttrib.description = luaDescribeValue(state);
+					else
+					{
+						using StringConversion::ToString;
+						outAttrib.description = ToString(outAttrib.value);
+					}
+
+					outAttrib.flags = GetFlags();
+				}
+
+				Research::Attributes::Flags::serial_type_t GetFlags() const
+				{
+					Research::Attributes::Flags::serial_type_t rs = 0;
+					if (luaGetValue.IsSet())
+						rs |= Research::Attributes::Flags::HasFunctionFlag;
+					if (constOverride.isSet)
+						rs |= Research::Attributes::Flags::IsConst;
+					return rs;
+				}
+
+
+
+				void		CheckExportTo( const Lua::Reference&state, Research::Attributes::TypeMap<T>&outAttribs, index_t at ) const
+				{
+					T value;
+					if (constOverride.isSet)
+						value = constOverride.constValue;
+					else
+					{
+						if (luaGetValue.IsEmpty())
+							value = (T)0;
+						else
+							value = luaGetValue(state);
+					}
+
+					String desc;
+					if (luaDescribeValue.IsSet())
+						desc = luaDescribeValue(state);
+					else
+					{
+						using StringConversion::ToString;
+						desc = ToString(value);
+					}
+
+					outAttribs.CheckUpdate(at,value,desc,GetFlags());
+				}
+
+				void	SetConst( T value )
+				{
+					constOverride.constValue = value;
+					constOverride.isSet = true;
+				}
+
+				bool	IsSet() const
+				{
+					return luaGetValue.IsSet() || constOverride.isSet;
+				}
+
+				bool	IsFunctionOrConstNonZero() const
+				{
+					return constOverride.isSet ? constOverride.constValue != 0 : luaGetValue.IsSet();
+				}
+
+				void	swap(Attribute&other)
+				{
+					using std::swap;
+					swap(constOverride,other.constOverride);
+					luaGetValue.swap(other.luaGetValue);
+					luaDescribeValue.swap(other.luaDescribeValue);
+				}
+
+				friend void swap(Attribute&a, Attribute&b)
+				{
+					a.swap(b);
+				}
+
+
+			};
+
+		public:
+
+			template <typename F>
+				static void Set(const Lua::Table&source, const String&path, const String&name, LuaAttribute<T,F>&a, bool allowEmpty = false)
+				{
+
+					a.Clear(list.Count());
+					auto&attrib = list.Append();
+
+					#ifndef CLIENT
+
+
+						Lua::NamedReference ref = source.GetField(name);
+						if (ref.IsEmpty())
+						{
+							if (!allowEmpty)
+								throw Lua::Exception("Field '"+path+"."+name+"' is not defined");
+							return;
+						}
+
+						if (ref.IsTable())
+						{
+							Lua::Table t = ref;
+			
+							attrib.luaGetValue = t.GetField("Get");
+							if (attrib.luaGetValue.IsEmpty())
+								throw Lua::Exception("Function '"+path+"."+name+".Get' is not defined");
+
+							attrib.luaDescribeValue = t.GetField("Describe");
+						}
+						elif (ref.IsFunction())
+						{
+							attrib.luaGetValue = ref;
+						}
+						else
+						{
+							attrib.SetConst(ref.GetAs<T>());
+						}
+					#endif
+				}
+
+			static void Clear()
+			{
+				list.Clear();
+			}
+
+			static bool IsSet( index_t idx )
+			{
+				if (list.IsEmpty())
+					return false;
+				return Expect::SafeGet(list,idx,CLOCATION).IsSet();
+			}
+
+			static bool IsFunctionOrConstNonZero( index_t idx )
+			{
+				if (list.IsEmpty())
+					return false;
+				return Expect::SafeGet(list,idx,CLOCATION).IsFunctionOrConstNonZero();
+			}
+
+			static void ExportFunctionMapTo( Array<bool>&outFunctionIsSet )
+			{
+				outFunctionIsSet.SetSize(list.Count());
+				for (index_t i = 0; i < list.Count(); i++)
+				{
+					outFunctionIsSet[i] = list[i].luaGetValue.IsSet();
+				}
+			}
+
+			static void ExportTo( const Lua::Reference&state, Research::Attributes::TypeMap<T>&outType )
+			{
+				if (outType.attributes.Count() != list.Count())
+				{
+					outType.attributes.SetSize(list.Count());
+					for (index_t i = 0; i < list.Count(); i++)
+					{
+						auto&a = outType.ForceUpdate(i);
+						list[i].ExportTo(state,a);
+					}
+				}
+				else
+				{
+					for (index_t i = 0; i < list.Count(); i++)
+						list[i].CheckExportTo(state,outType,i);
+				}
+			}
+
+		private:
+
+
+
+
+			
+			static Buffer0<Attribute,Swap>	list;
+
+		};
+
+	template <typename T>
+		/*static*/ Buffer0<typename LuaAttributes<T>::Attribute,Swap>	LuaAttributes<T>::list;
 
 	template <typename T, typename F>
 		static void InitAttrib(const Lua::Table&source, const String&path, const String&name, LuaAttribute<T,F>&a, bool allowEmpty = false)
 		{
-			Lua::NamedReference ref = source.GetField(name);
-			a.Clear();
-			if (ref.IsEmpty())
-			{
-				if (!allowEmpty)
-					throw Lua::Exception("Field '"+path+"."+name+"' is not defined");
-				return;
-			}
-
-			if (ref.IsTable())
-			{
-				Lua::Table t = ref;
-			
-				a.luaGetValue = t.GetField("Get");
-				if (a.luaGetValue.IsEmpty())
-					throw Lua::Exception("Function '"+path+"."+name+".Get' is not defined");
-
-				a.luaDescribeValue = t.GetField("Describe");
-			}
-			elif (ref.IsFunction())
-			{
-				a.luaGetValue = ref;
-			}
-			else
-			{
-				a.SetConst(ref.GetAs<T>());
-			}
+			LuaAttributes<T>::Set(source,path,name,a,allowEmpty);
 		}
+
+
+
+
+		
+
+
+	#ifndef CLIENT
+		/*static*/ void UpdateAttributeTable( const Lua::Reference&luaResearchState, Research::Attributes::Table&table )
+		{
+			table.ClearChanges();
+			LuaAttributes<int>::ExportTo(luaResearchState,table.ints);
+			LuaAttributes<float>::ExportTo(luaResearchState,table.floats);
+			LuaAttributes<bool>::ExportTo(luaResearchState,table.bools);
+		}
+
+		void Research::FactionState::UpdateAttributeTable()
+		{
+			Objects::UpdateAttributeTable(luaResearchState,attributeTable);
+			topicProgressChanged = true;	//implied
+		}
+		/*static*/ bool			Research::LuaIntAttributeIsSet( index_t idx )
+		{
+			return LuaAttributes<int>::IsSet(idx);
+		}
+
+		/*static*/ bool			Research::LuaBoolAttributeIsSet( index_t idx )
+		{
+			return LuaAttributes<bool>::IsSet(idx);
+		}
+
+		/*static*/ bool			Research::LuaFloatAttributeIsSet( index_t idx )
+		{
+			return LuaAttributes<float>::IsSet(idx);
+		}
+
+		/*static*/ bool			Research::LuaIntAttributeIsFunctionOrConstNonZero( index_t idx )
+		{
+			return LuaAttributes<int>::IsFunctionOrConstNonZero(idx);
+		}
+
+		/*static*/ bool			Research::LuaBoolIsFunctionOrConstNonZero( index_t idx )
+		{
+			return LuaAttributes<bool>::IsFunctionOrConstNonZero(idx);
+		}
+
+		/*static*/ bool			Research::LuaFloatAttributeIsFunctionOrConstNonZero( index_t idx )
+		{
+			return LuaAttributes<float>::IsFunctionOrConstNonZero(idx);
+		}
+	#else
+		/*static*/ bool			Research::LuaIntAttributeIsSet( index_t idx )
+		{
+			return globalState.zeroTable.ints.IsSet(idx);
+		}
+
+		/*static*/ bool			Research::LuaBoolAttributeIsSet( index_t idx )
+		{
+			return globalState.zeroTable.bools.IsSet(idx);
+		}
+
+		/*static*/ bool			Research::LuaFloatAttributeIsSet( index_t idx )
+		{
+			return globalState.zeroTable.floats.IsSet(idx);
+		}
+
+		/*static*/ bool			Research::LuaIntAttributeIsFunctionOrConstNonZero( index_t idx )
+		{
+			return globalState.zeroTable.ints.IsFunctionOrConstNonZero(idx);
+		}
+
+		/*static*/ bool			Research::LuaBoolIsFunctionOrConstNonZero( index_t idx )
+		{
+			return globalState.zeroTable.bools.IsFunctionOrConstNonZero(idx);
+		}
+
+		/*static*/ bool			Research::LuaFloatAttributeIsFunctionOrConstNonZero( index_t idx )
+		{
+			return globalState.zeroTable.floats.IsFunctionOrConstNonZero(idx);
+		}
+	#endif
+
 
 	static void InitTable(String baseName, BaseAttributeTable&t)
 	{
 		baseName.EraseCharacter(' ');
 		baseName.EraseCharacter('-');
 		
-		static Lua::Table configTable;
-		if (configTable.IsEmpty())
-		{
-			configTable = ResearchState::globalState.researchProgram->FindGlobal("StructureConfig");
+		#ifdef CLIENT
+			Lua::Table source;
+		#else
+			static Lua::Table configTable;
 			if (configTable.IsEmpty())
-				throw Lua::Exception("Table 'StructureConfig' is not defined");
-		}
+			{
+				configTable = Research::globalState.researchProgram->FindGlobal("StructureConfig");
+				if (configTable.IsEmpty())
+					throw Lua::Exception("Table 'StructureConfig' is not defined");
+			}
 
-		Lua::Table source = configTable.GetField(baseName);
-		if (source.IsEmpty())
-			throw Lua::Exception("Table 'StructureConfig."+baseName+"' is not defined");
-
+			Lua::Table source = configTable.GetField(baseName);
+			if (source.IsEmpty())
+				throw Lua::Exception("Table 'StructureConfig."+baseName+"' is not defined");
+		#endif
 		String path =  "StructureConfig."+baseName;
 		InitAttrib(source,path,  "Cost",t.constructionCost);
 		InitAttrib(source,path,  "Health",t.maxHealth);
@@ -172,9 +451,14 @@ namespace Objects
 
 		path += '.'+baseName;
 
-		Lua::Table baseTable = parent.GetField(baseName);
-		if (baseTable.IsEmpty())
-			throw Lua::Exception("Table '"+path+"' is not defined");
+		Lua::Table baseTable;
+
+		#ifndef CLIENT
+			baseTable = parent.GetField(baseName);
+			if (baseTable.IsEmpty())
+				throw Lua::Exception("Table '"+path+"' is not defined");
+		#endif
+
 		InitAttrib(baseTable,path,"Cost",b.productionCosts);
 		InitAttrib(baseTable,path,"IsUnlocked",b.isUnlocked);
 		return baseTable;
@@ -183,12 +467,14 @@ namespace Objects
 	static void InitVehicleBase(Component::VehicleBase&b)
 	{
 		static Lua::Table configTable;
-		if (configTable.IsEmpty())
-		{
-			configTable = ResearchState::globalState.researchProgram->FindGlobal("VehicleBaseConfig");
+		#ifndef CLIENT
 			if (configTable.IsEmpty())
-				throw Lua::Exception("Table 'VehicleBaseConfig' is not defined");
-		}
+			{
+				configTable = Research::globalState.researchProgram->FindGlobal("VehicleBaseConfig");
+				if (configTable.IsEmpty())
+					throw Lua::Exception("Table 'VehicleBaseConfig' is not defined");
+			}
+		#endif
 		
 		String path = "VehicleBaseConfig";
 		Lua::Table myTable = InitComponent(configTable,path,b);
@@ -203,12 +489,14 @@ namespace Objects
 	static void InitTurret(Component::Turret&t)
 	{
 		static Lua::Table configTable;
-		if (configTable.IsEmpty())
-		{
-			configTable = ResearchState::globalState.researchProgram->FindGlobal("TurretConfig");
+		#ifndef CLIENT
 			if (configTable.IsEmpty())
-				throw Lua::Exception("Table 'TurretConfig' is not defined");
-		}
+			{
+				configTable = Research::globalState.researchProgram->FindGlobal("TurretConfig");
+				if (configTable.IsEmpty())
+					throw Lua::Exception("Table 'TurretConfig' is not defined");
+			}
+		#endif
 
 		String path = "TurretConfig";
 		Lua::Table myTable = InitComponent(configTable,path,t);
@@ -228,16 +516,33 @@ namespace Objects
 
 		InitAttrib(myTable,path,"AmmoConsumption",t.ammoNeedPerShot,true);
 		InitAttrib(myTable,path,"AttacksPerRound",t.attacksPerRound,true);
-		if (t.attacksPerRound.IsSet())
-		{
-			InitAttrib(myTable,path,"HorizontalAttackRange",t.horizontalAttackRange);
-		}
+		InitAttrib(myTable,path,"HorizontalAttackRange",t.horizontalAttackRange,true);
 		InitAttrib(myTable,path,"ExplosionRadius",t.explosionRadius,true);	//can be independent
 		InitAttrib(myTable,path,"DamageLevel",t.damageLevel,true);
 	}
 
+	static void RemapAttributes()
+	{
+		LuaAttributes<int>::Clear();
+		LuaAttributes<bool>::Clear();
+		LuaAttributes<float>::Clear();
 
-	/*static*/ void		ResearchState::StaticCreate()
+		for (index_t i = 0; i < Prototypes::structures.Count(); i++)
+		{
+			const PStructure&s = Prototypes::structures[i];
+			auto&t = structureTables[i];
+			InitTable(s->GetTypeName(),t);
+		}
+
+		foreach (Component::allTurretComponents,turret)
+			InitTurret(**turret);
+		foreach (Component::baseComponents,base)
+			InitVehicleBase(**base);
+	}
+
+
+
+	/*static*/ void		Research::StaticCreate()
 	{
 		structureTables.SetSize(Prototypes::structures.Count());
 		for (index_t i = 0; i < Prototypes::structures.Count(); i++)
@@ -247,575 +552,1111 @@ namespace Objects
 			s->DefineAttributeTable(&t);
 		}
 
-		globalState.program0 = ScriptCache::LoadContent(
-			"ResearchState = {}\n"
-			"function ResearchState.New()\n"
-				"local rs = {}\n"
-				"setmetatable(rs,ResearchState)\n"
-				"return rs\n"
-			"end\n"
-			"function ResearchState.Export(self)\n"
-				"return 0\n"
-			"end\n"
-			"function ResearchState.Import(self, exported)\n"
-			"end\n"
-					"\n"
-		"function DefaultHealthAtCost(cost--[[float]]) --float\n"
-		"	return cost /5\n"
-		"end\n"
-		"\n"
-		"function ExplicitStructure(cost, health, scanningRange, isUnlocked)\n"
-		"	return\n"
-		"	{\n"
-		"		Cost = cost,\n"
-		"		Health = health,\n"
-		"		ScanningRange = scanningRange,\n"
-		"		IsUnlocked = isUnlocked\n"
-		"	}\n"
-		"end\n"
-		"\n"
-		"function Structure(cost, scanningRange)\n"
-		"	return ExplicitStructure(cost, DefaultHealthAtCost(cost),scanningRange, true)\n"
-		"end\n"
-		"\n"
-		"function DefaultStructure(cost)\n"
-		"	return Structure(cost,2)\n"
-		"end\n"
-		"\n"
-		"function Get(attribute, state)\n"
-		"	if (attribute == nil) then\n"
-		"		return 0\n"
-		"	end\n"
-		"	t = type(attribute)\n"
-		"	if t == 'table' then\n"
-		"		return attribute.Get(state)\n"
-		"	end\n"
-		"	if t == 'function' then\n"
-		"		return attribute(state)\n"
-		"	end\n"
-		"	return attribute\n"
-		"end\n"
-		"\n"
-		"function Describe(attribute, state)\n"
-		"	if (attribute == nil) then\n"
-		"		return '0'\n"
-		"	end\n"
-		"	t = type(attribute)\n"
-		"	if t == 'table' then\n"
-		"		return attribute.Describe(state)\n"
-		"	end\n"
-		"	if t == 'function' then\n"
-		"		return attribute(state)\n"
-		"	end\n"
-		"	return attribute\n"
-		"end"
-			"	TurretConfig = "
-			"	{\n"
-			"	MissileLauncher = "
-			"	{\n"
-			"	Cost = 40,\n"
-			"	Weight = 13,\n"
-			"	HealthMultiplier = 1.5,\n"
-			"	ScanningRange = 4,\n"
-			"	AttacksPerRound = 1,\n"
-			"	DamageLevel = 10,\n"
-			"	ExplosionRadius = 1,\n"
-			"	HorizontalAttackRange = 8,\n"
-			"	IsUnlocked = true,\n"
-			"	},\n"
-			"	RocketLauncher = "
-			"	{\n"
-			"	Cost = 15,\n"
-			"	Weight = 3,\n"
-			"	HealthMultiplier = 2,\n"
-			"	ScanningRange = 5,\n"
-			"	AttacksPerRound = 2,\n"
-			"	DamageLevel = 7,\n"
-			"	ExplosionRadius = 1,\n"
-			"	HorizontalAttackRange = 5,\n"
-			"	IsUnlocked = true,\n"
-			"	},\n"
-			"	Cannon = "
-			"	{\n"
-			"	Cost = 15,\n"
-			"	Weight = 3,\n"
-			"	HealthMultiplier = 2,\n"
-			"	ScanningRange = 5,\n"
-			"	AttacksPerRound = 2,\n"
-			"	DamageLevel = 3,\n"
-			"	ExplosionRadius = 1,\n"
-			"	HorizontalAttackRange = 5,\n"
-			"	IsUnlocked = true,\n"
-			"	},\n"
-			"	AntiAircraft = "
-			"	{\n"
-				"	Cost = 15,\n"
-				"	Weight = 3,\n"
-				"	HealthMultiplier = 1,\n"
-				"	ScanningRange = 2,\n"
-				"	SubOrbitalScanningRange = 7,\n"
-				"	AttacksPerRound = 1,\n"
-				"	DamageLevel = 10,\n"
-				"	ExplosionRadius = 7,\n"
-				"	HorizontalAttackRange = 0,\n"
-				"	IsUnlocked = true,\n"
-			"	},\n"
-			"	Radar =\n"
-			"	{\n"
-			"	Cost = 10,\n"
-			"	Weight = 2,\n"
-			"	HealthMultiplier = 1,\n"
-			"	ScanningRange = 12,\n"
-			"	IsUnlocked = true,\n"
-			"	},\n"
-			"	Surveyor =\n"
-			"	{\n"
-			"	Cost = 10,\n"
-			"	Weight = 1,\n"
-			"	HealthMultiplier = 1,\n"
-			"	ScanningRange = 4,\n"
-			"	IsUnlocked = true,\n"
-			"	},\n"
-			"	Bomb =\n"
-			"	{\n"
-			"	Cost = 40,\n"
-			"	Weight = 5,\n"
-			"	HealthMultiplier = 1,\n"
-			"	ScanningRange = 1,\n"
-			"	ExplosionRadius = 7,\n"
-			"	DamageLevel = 50,\n"
-			"	HorizontalAttackRange = 0,\n"
-			"	IsUnlocked = true,\n"
-			"	},\n"
-			"	EMP =\n"
-			"	{\n"
-			"	Cost = 100,\n"
-			"	Weight = 5,\n"
-			"	HealthMultiplier = 1,\n"
-			"	ScanningRange = 3,\n"
-			"	AttacksPerRound = 1,\n"
-			"	DamageLevel = 5,\n"
-			"	ExplosionRadius = 3,\n"
-			"	HorizontalAttackRange = 17,\n"
-			"	AmmoConsumption = 50,\n"
-			"	IsUnlocked = false,\n"
-			"	},\n"
-			"	Artillery =\n"
-			"	{\n"
-			"	Cost = 25,\n"
-			"	Weight = 3,\n"
-			"	HealthMultiplier = 1.5,\n"
-			"	ScanningRange = 4,\n"
-			"	AttacksPerRound = 1,\n"
-			"	DamageLevel = 7,\n"
-			"	ExplosionRadius = 3.5,\n"
-			"	HorizontalAttackRange = 7,\n"
-			"	IsUnlocked = false,\n"
-			"	},\n"
-			"	Terraformer =\n"
-			"	{\n"
-			"	Cost = 40,\n"
-			"	Weight = 2,\n"
-			"	HealthMultiplier = 1,\n"
-			"	ScanningRange = 4,\n"
-			"	Op_Construct = 10,\n"
-			"	Op_TerrainRemove = 10,\n"
-			"	Op_TerrainAdd = 10,\n"
-			"	IsUnlocked = true,\n"
-			"	},\n"
-			"	Mechanic =\n"
-			"	{\n"
-			"	Cost = 30,\n"
-			"	Weight = 2,\n"
-			"	HealthMultiplier = 1,\n"
-			"	ScanningRange = 3,\n"
-			"	Op_Repair = 10,\n"
-			"	IsUnlocked = true,\n"
-			"	},\n"
-			"	Raptor = \n"
-			"	{\n"
-				"	Cost = 80,\n"
-				"	Weight = 10,\n"
-				"	HealthMultiplier = 5,\n"
-				"	ScanningRange = 7,\n"
-				"	HorizontalAttackRange = 7,\n"
-				"	GroundScanningRange = 7,\n"
-				"	GroundScannerPenetration = 0,\n"
-				"	ExplosionRadius = 1,\n"
-				"	DamageLevel = 5,\n"
-				"	AttacksPerRound = 2,\n"
-				"	IsUnlocked = true,\n"
-			"	},\n"
-			"	Bomber = \n"
-			"	{\n"
-				"	Cost = 120,\n"
-				"	Weight = 20,\n"
-				"	HealthMultiplier = 5,\n"
-				"	ScanningRange = 4,\n"
-				"	HorizontalAttackRange = 0,\n"
-				"	GroundScanningRange = 4,\n"
-				"	GroundScannerPenetration = 0,\n"
-				"	ExplosionRadius = 3.5,\n"
-				"	DamageLevel = 7,\n"
-				"	AttacksPerRound = 1,\n"
-				"	IsUnlocked = true,\n"
-			"	},\n"
-			"	CargoPlane = \n"
-			"	{\n"
-				"	Cost = 40,\n"
-				"	Weight = 12,\n"
-				"	HealthMultiplier = 15,\n"
-				"	ScanningRange = 5,\n"
-				"	GroundScanningRange = 2,\n"
-				"	GroundScannerPenetration = 0,\n"
-				"	IsUnlocked = true,\n"
-			"	},\n"
-			"	SensorDrone = \n"
-			"	{\n"
-				"	Cost = 10,\n"
-				"	Weight = 11,\n"
-				"	HealthMultiplier = 4,\n"
-				"	ScanningRange = 10,\n"
-				"	GroundScanningRange = 10,\n"
-				"	GroundScannerPenetration = 2,\n"
-				"	IsUnlocked = true,\n"
-			"	},\n"
-			"	}\n"
-			"	VehicleBaseConfig = "
-			"	{\n"
-			"	Hoverbase = "
-			"	{\n"
-			"	Cost = 40,\n"
-			"	MovementSpeed = 20,\n"
-			"	CarryingCapacity = 1,\n"
-			"	Health = 4,\n"
-			"	OperationSpeedMultiplier = 1,\n"
-			"	TurretRangeModifier = 0,\n"
-			"	IsUnlocked = true,\n"
-			"	},\n"
-			"	HeavyBase = "
-			"	{\n"
-			"	Cost = 80,\n"
-			"	MovementSpeed = 15,\n"
-			"	CarryingCapacity = 10,\n"
-			"	Health = 12,\n"
-			"	OperationSpeedMultiplier = 2,\n"
-			"	TurretRangeModifier = 0,\n"
-			"	IsUnlocked = true,\n"
-			"	},\n"
-			"	CatamaranBase = "
-			"	{\n"
-			"	Cost = 100,\n"
-			"	MovementSpeed = 8,\n"
-			"	CarryingCapacity = 15,\n"
-			"	Health = 12,\n"
-			"	OperationSpeedMultiplier = 2,\n"
-			"	TurretRangeModifier = 1,\n"
-			"	IsUnlocked = true,\n"
-			"	},\n"
-			"	}\n"
-
-
-			"function CanAttack(turret)\n"
-			"return Get(turret.AttacksPerRound,nil) > 0\n"
-			"end\n"
-
-			"function TowerScanningModifier(turret)\n"
-			"if CanAttack(turret) then\n"
-			"return -2.0	--penalty for attaching towers\n"
-			"end\n"
-			"return 2.0	--boost non-attacking towers\n"
-			"end\n"
-
-			"function Tower(turret--[[Table]]) --Table\n"
-			"rs =\n"
-			"{\n"
-			"Cost =\n"
-			"{\n"
-			"Get = "
-			"function(state) "
-			"return 40 + Get(turret.Cost,state)\n"
-			"end,\n"
-			"Describe = "
-			"function(state) "
-			"return '40+'.. Describe(turret.Cost,state)\n"
-			"end,\n"
-			"},\n"
-			"Health = "
-			"{\n"
-			"Get = "
-			"function(state) "
-			"return DefaultHealthAtCost(rs.Cost.Get(state)) * Get(turret.HealthMultiplier,state) "
-			"end,\n"
-			"Describe = "
-			"function(state) "
-			"return Round(DefaultHealthAtCost(rs.Cost.Get(state)) * Get(turret.HealthMultiplier,state),2)..'[='.. DefaultHealthAtCost(rs.Cost.Get(state))..'*'.. Describe(turret.HealthMultiplier,state)..']';\n"
-			"end,\n"
-			"},\n"
-			"ScanningRange =\n"
-			"{\n"
-			"Get = "
-			"function(state) "
-			"return Get(turret.ScanningRange,state) + TowerScanningModifier(turret)\n"
-			"end,\n"
-			"Describe = "
-			"function(state) "
-			"return Describe(turret.ScanningRange,state) ..'+'.. TowerScanningModifier(turret) "
-			"end,\n"
-			"},\n"
-			"IsUnlocked = "
-			"function(state) "
-			"return Get(turret.IsUnlocked,state) "
-			"end,\n"
-			"}\n"
-			"return rs;\n"
-			"end\n"
-
-
-			"StructureConfig =\n"
-			"{\n"
-			"	Mine = DefaultStructure(40),\n"
-			"	Generator = DefaultStructure(40),\n"
-			"	ReactorCore = DefaultStructure(120),\n"
-			"	VehicleStore = DefaultStructure(40),\n"
-			"	VehiclePlant = DefaultStructure(80),\n"
-			"	PlaneFactory = DefaultStructure(200),\n"
-			"	Laboratory = DefaultStructure(80),\n"
-			"	MunitionFactory = DefaultStructure(40),\n"
-			"	Connector = DefaultStructure(5),\n"
-			"	FuelContainer = DefaultStructure(10),\n"
-			"	MineralContainer = DefaultStructure(10),\n"
-			"	UraniumStorage = DefaultStructure(10),\n"
-			"	MunitionStorage = DefaultStructure(10),\n"
-			"	NexusPort = ExplicitStructure(0,1,2,false),\n"
-			"	MissileLauncherTower = Tower(TurretConfig.MissileLauncher),\n"
-			"	RocketLauncherTower = Tower(TurretConfig.RocketLauncher),\n"
-			"	RadarTower = Tower(TurretConfig.Radar),\n"
-			"	CannonTower = Tower(TurretConfig.Cannon),\n"
-			"	SurveyorTower = Tower(TurretConfig.Surveyor),\n"
-			"	AntiAircraftTower = Tower(TurretConfig.AntiAircraft),\n"
-			"}\n"
-		);
-
-		#ifdef _DEBUG
-			ActivateProgram(globalState.program0);	//test fallback program
-		#endif
-
-		//.reset(new ScriptCache::Script());
-		
-
-		#if defined _DEBUG || !defined CLIENT
-			LoadDefaultProgram();
-		#endif
-	}
-
-
-	/*static*/ void			ResearchState::LoadDefaultProgram()
-	{
-		PathString factoryDefault = "../lua/research.v2.lua";
-		#if 0 && defined _DEBUG
-			PathString final = factoryDefault;
-		#else
-			FileSystem::CreateDirectory(RuntimeConfig::myConfig.Lookup("config/lua"));
-			FileSystem::CreateDirectory(RuntimeConfig::sharedConfig.Lookup("config/lua"));
-			PathString final = RuntimeConfig::myConfig.Lookup("config/lua/research.v2.lua");
-			if (!FileSystem::IsFile(final))
-				final = RuntimeConfig::sharedConfig.Lookup("config/lua/research.v2.lua");
-			if (!FileSystem::IsFile(final))
-			{
-				final = factoryDefault;
-				#if 0	//leave this disabled. do not copy automatically
-					if (FileSystem::CopyFile("../lua/research.lua",final,false))
-						LogEvent(EventClass::Preset::configuration,"Copied ../lua/research.lua to "+String(final));
-					else
-						FATAL__("Unable to copy ../lua/research.lua to "+String(final));
-				#endif /*0*/
-			}
-		#endif
-		globalState.factoryDefault = ScriptCache::Load(factoryDefault); 
-		ActivateProgram(ScriptCache::Load(final));
-	}
-
-
-
-	/*static*/ void		ResearchState::ActivateProgram(const ScriptCache::PScript&script)
-	{
-		//#if defined _DEBUG && defined HAS_WINDOW
-		//	if (globalState.script)
-		//		return;		//prevent reloading
-		//#endif
-		if (!script || script == globalState.script)
-			return;
-		LogEvent(EventClass::Preset::common,"Activating research script "+Bin2Str::ConvertPOD(script->identifier));
-
-
-
-		
-
-		ScriptCache::PScript current = globalState.script;
-		try
-		{
-			InnerLoad(script);
-			return;
-		}
-		catch (const std::exception&e)
-		{
-			if (script->filename.IsNotEmpty())
-				LogEvent(EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),String(script->filename)+": "+e.what());
-			else
-				LogEvent(EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),e.what());
-		};
-
-		if (current && current != globalState.program0)
-		{
-			LogEvent(EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),"Falling back to previous script");
-			RequireLoad(current);
-		}
-		else
-		{
-			if (script == globalState.factoryDefault)
-			{
-				LogEvent(EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),"Unable to load factory default. Falling back to emergency script");
-				RequireLoad(globalState.program0);
-			}
-			else
-			{
-				ASSERT__(globalState.factoryDefault);
-				LogEvent(EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),"Falling back to factory default script");
-				ActivateProgram(globalState.factoryDefault);
-			}
-		}
-	}
-
-	/*static*/ void ResearchState::RequireLoad(const ScriptCache::PScript&script)
-	{
-		try
-		{
-			InnerLoad(script);
-			return;
-		}
-		catch (const std::exception&e)
-		{
-			FATAL__("Fallback research script failed to load: "+String( e.what() ));
-		};
-	}
-
-	/*static*/ void	ResearchState::InnerLoad(const ScriptCache::PScript&script)
-	{
-		if (!script)
-			throw Lua::Exception(CLOCATION, Except::globalString("Script is NULL"));
-		LogEvent(EventClass(EventSignificance::Common,EventFlavor::ServerPrivate),"Attempting to activate research program "+Bin2Str::ConvertPOD(script->identifier));
-
-
-		Ctr::Buffer0<TSerialState,Swap> taskLists;
-		ForeachFaction([&taskLists](const PFaction&f)
-		{
-			auto&entry = taskLists.Append();
-			f->researchState.Export(entry.serialState);
-			entry.researchQueue = f->researchState.ExportResearchQueue();
-		});
-
-
-
-
-		globalState.rootResearch.Clear();
-		globalState.allTopics.Clear();
-
-		globalState.researchProgram = Lua::Program::Create("Research");
-		ASSERT__(globalState.researchProgram);
-		{
-			Lua::Table api = Lua::CreateGeneralAPI(globalState.researchProgram);
-			api.SetFunction("CreateResearch",CreateResearch);
-		}
-
-
-
-		globalState.researchProgram->Execute(script->content,String(script->filename));
-
-		Lua::Table researchTable = globalState.researchProgram->FindGlobal("ResearchState");
-		if (researchTable.IsEmpty())
-		{
-			throw Lua::Exception("Table 'ResearchState' is not defined");
-		}
-		globalState.stateConstructor = researchTable.GetField("New");
-		if (globalState.stateConstructor.IsEmpty())
-		{
-			throw Lua::Exception("Function 'ResearchState.New' is not defined");
-		}
-
-		globalState.exportState = researchTable.GetField("Export");
-		if (globalState.exportState.IsEmpty())
-		{
-			throw Lua::Exception("Method 'ResearchState:Export' is not defined");
-		}
-		globalState.importState = researchTable.GetField("Import");
-		if (globalState.importState.IsEmpty())
-		{
-			throw Lua::Exception("Method 'ResearchState:Import' is not defined");
-		}
-
-		
-		for (index_t i = 0; i < Prototypes::structures.Count(); i++)
-		{
-			const PStructure&s = Prototypes::structures[i];
-			BaseAttributeTable&t = structureTables[i];
-			InitTable(s->GetTypeName(),t);
-		}
-
-		foreach (Component::allTurretComponents,turret)
-			InitTurret(**turret);
-		foreach (Component::baseComponents,base)
-			InitVehicleBase(**base);
-
-
-		index_t at = 0;
-		ForeachFaction([&at,&taskLists](const PFaction&f)
-		{
-			const auto&entry = taskLists[at];
-			f->researchState.researchState = globalState.stateConstructor();
-			if (entry.serialState.IsNotEmpty())
-				f->researchState.Import(entry.serialState);
-			f->researchState.RestoreResearchQueue(entry.researchQueue);
-			at++;
-		});
-		globalState.script = script;
-
 		#ifndef CLIENT
-			if (Faction::nexus)
-				Faction::nexus->researchState.LoadNexusResearchState();
-		#endif
 
-		globalState.onScriptChange();
-		//globalState.researchProgram.reset();
+			globalState.program0 = ScriptCache::LoadContent(
+"--[[ API:\n"
+"\n"
+"Handle\tGame.CreateResearch(Handle group, String name, String iconName, advance(ResearchState,int by), getProgress(ResearchState)->int, int maxProgress, Handle dependency)\n"
+"\n"
+"\tCreates a new research topic or topic group.\n"
+"\tLeave maxProgress at 0 to indicate that the research is a topic group\n"
+"\n"
+"\t@param group Topic group to insert this research into. Set nil to declare the research a root topic\n"
+"\t@param name String identifier of the research topic\n"
+"\t@param iconName Name of the component, prototype, or image to display. Leave empty to reuse the content of [name] instead\n"
+"\t@param advance Function/method that accepts an instance of ResearchState and an integer containing research points (>0), \n"
+"\t\t\t\t\tto be assigned to this research topic. Leave empty if this is supposed to be a topic group\n"
+"\t@param getProgress Function/method that accepts an instance of ResearchState and returns the current progress of this research topic. \n"
+"\t\t\t\t\tLeave empty if this is supposed to be a topic group\n"
+"\t@param maxProgress Maximum possible amount of research progress that can be invested into this topic. Use negative values to indicate\n"
+"\t\t\t\t\tan infinitely researchable topic. Leave at 0 if this is supposed to be a topic group\n"
+"\t@param dependency Research topic handle that this research depends on. Researching this topic will only be allowed once the specified\n"
+"\t\t\t\t\tdependency is completed\n"
+"\t@return Handle to the new topic group\n"
+"\n"
+"\t\n"
+"void\tGame.Log(msg)\t\t\t\t\tPrints any message to Hexaverse log (client or server-private)\n"
+"\n"
+"bool\tGame.LowerResolutionPlanet\t\tSet to true if the planet has reduced grid resolution (1/4 of cells, each cell twice as high)\n"
+"float\tGame.UnitScale\t\t\t\t\tSet to a global unit scale corresponding to [Game.LowerResolutionPlanet]. This scale value is to be\n"
+"\t\t\t\t\t\t\t\t\t\tapplied too units (hence the name). 1 if the planet is not of lowered resolution, 2 otherwise.\n"
+"\n"
+"\n"
+"Hexaverse expects the following classes and methods to be defined:\n"
+"\tResearchState - table, arbitrary content. Expected but not required to mimic a class\n"
+"\tResearchState.New() - constructs a new instance (expected to be of its own type, but not required)\n"
+"\tResearchState:Export() - expected to return the serializable content of the local research state.\n"
+"\t\t\t\t\t\t\tExpected but not required to operate on instances of type ResearchState. State is passed as first function\n"
+"\t\t\t\t\t\t\tparameter (e.g. [self] in a method).\n"
+"\t\t\t\t\t\t\tResult must not contain non-serializable content. Serializable content includes tables, ints, floats, and strings, \n"
+"\t\t\t\t\t\t\tboth as keys and values.\n"
+"\tResearchState:Import(exported) - expected to integrate a previously exported, deserialized research state. Should only accept recognized data,\n"
+"\t\t\t\t\t\t\t\t\tand discard the rest. Data may come from older savegames containing outdated research formats.\n"
+"\t\t\t\t\t\t\t\t\tExpected but not required to operate on instances of type ResearchState. State is passed as first function\n"
+"\t\t\t\t\t\t\t\t\tparameter (e.g. [self] in a method).\n"
+"]]\n"
+"\n"
+"\n"
+"\n"
+"\n"
+"researchables = {}\n"
+"\n"
+"\n"
+"ResearchEntry = {}\n"
+"\n"
+"function ResearchEntry.New(limit)\n"
+"\tlocal rs = {}\n"
+"\trs.limit = limit\n"
+"\treturn rs\n"
+"end\n"
+"function ResearchEntry.NewBool(limit)\n"
+"\treturn ResearchEntry.New(limit)\n"
+"end\n"
+"function ResearchEntry.NewFloat()\n"
+"\treturn ResearchEntry.New(-1)\n"
+"end\n"
+"\n"
+"\n"
+"\n"
+"ResearchState = {}\n"
+"function ResearchState.New()\n"
+"\tlocal rs = {}\n"
+"\trs.researchProgress = {}\n"
+"\tfor k,v in pairs(researchables) do\n"
+"\t\trs.researchProgress[k] = 0;\n"
+"\tend\n"
+"\treturn rs\n"
+"end\n"
+"\n"
+"function ResearchState.Export(self)\n"
+"\treturn self.researchProgress;\n"
+"end;\n"
+"\n"
+"function ResearchState.GetProgress(self, key--[[string]])\n"
+"\tif type( self.researchProgress[key] ) == nil then\n"
+"\t\tGame.Log(\"Research state lacks key '\"..tostring(key)..\"'. Instantiating new\");\n"
+"\t\tself.researchProgress[key] = 0;\n"
+"\tend;\n"
+"\treturn self.researchProgress[key];\n"
+"end;\n"
+"\n"
+"function ResearchState.SetProgress(self, key--[[string]], progress--[[int]])\n"
+"\tself.researchProgress[key] = progress;\n"
+"end;\n"
+"\n"
+"\n"
+"function ResearchState.GetLimit(self, key--[[string]])\n"
+"\tif type( researchables[key] ) == nil then\n"
+"\t\treturn 0;\n"
+"\tend;\n"
+"\treturn researchables[key].limit;\n"
+"end;\n"
+"\n"
+"\n"
+"\n"
+"function ResearchState.Import(self, exported)\n"
+"\tif type(exported) ~= 'table' then\n"
+"\t\treturn;\n"
+"\tend;\n"
+"\tself.researchProgress = {};\n"
+"\tfor k,v in pairs(exported) do\n"
+"\t\tif type(researchables[k]) ~= 'nil' then\n"
+"\t\t\tif type(v) == 'table' then\n"
+"\t\t\t\tself.researchProgress[k] = v.progress;\n"
+"\t\t\t\tGame.Log(\"Research '\"..tostring(k)..\"' is old table format. Converting...\");\n"
+"\t\t\telse\n"
+"\t\t\t\tself.researchProgress[k] = v;\n"
+"\t\t\tend;\n"
+"\t\telse\n"
+"\t\t\tGame.Log(\"Research '\"..tostring(k)..\"' is not supported by this research script. Ignoring...\");\n"
+"\t\tend;\n"
+"\tend;\n"
+"\tfor k,v in pairs(researchables) do\n"
+"\t\tif type(self.researchProgress[k]) == 'nil' then\n"
+"\t\t\tGame.Log(\"Imported research state lacks key '\"..tostring(k)..\"'. Setting to 0 progress\");\n"
+"\t\t\tself.researchProgress[k] = 0;\n"
+"\t\tend;\n"
+"\tend;\n"
+"end\n"
+"\n"
+"\n"
+"\n"
+"\n"
+"\n"
+"\n"
+"\n"
+"\n"
+"\n"
+"UnlockProgress = {}\n"
+"function UnlockProgress.New()\n"
+"\tlocal rs = {}\n"
+"\trs.progress = 0;\n"
+"\treturn rs\n"
+"end\n"
+"\n"
+"\n"
+"--[[ Helper functions ]]\n"
+"\n"
+"\n"
+"function Round(value--[[float]], digits--[[optional int]])\n"
+"\tlocal factor = 10^(digits or 0);\n"
+"\tlocal result = math.floor(value * factor + 0.5) / factor;\n"
+"\tlocal floored = math.floor(value);\n"
+"\tif (floored==value) then\n"
+"\t\treturn floored;\n"
+"\tend\n"
+"\treturn result;\n"
+"end\n"
+"\n"
+"function DefaultHealthAtCost(cost--[[float]]) --float\n"
+"\treturn cost /5\n"
+"end\n"
+"\n"
+"function ExplicitStructure(cost, health, scanningRange, isUnlocked)\n"
+"\treturn\n"
+"\t{\n"
+"\t\tCost = cost,\n"
+"\t\tHealth = health,\n"
+"\t\tScanningRange = scanningRange,\n"
+"\t\tIsUnlocked = isUnlocked\n"
+"\t}\n"
+"end\n"
+"\n"
+"function Structure(cost, scanningRange)\n"
+"\treturn ExplicitStructure(cost, DefaultHealthAtCost(cost),scanningRange, true)\n"
+"end\n"
+"\n"
+"function DefaultStructure(cost)\n"
+"\treturn Structure(cost,2)\n"
+"end\n"
+"\n"
+"function Get(attribute, state)\n"
+"\tif (attribute == nil) then\n"
+"\t\treturn 0\n"
+"\tend\n"
+"\tt = type(attribute)\n"
+"\tif t == 'table' then\n"
+"\t\treturn attribute.Get(state)\n"
+"\tend\n"
+"\tif t == 'function' then\n"
+"\t\treturn attribute(state)\n"
+"\tend\n"
+"\treturn attribute\n"
+"end\n"
+"\n"
+"function Describe(attribute, state)\n"
+"\tif (attribute == nil) then\n"
+"\t\treturn '0'\n"
+"\tend\n"
+"\tt = type(attribute)\n"
+"\tif t == 'table' then\n"
+"\t\treturn attribute.Describe(state)\n"
+"\tend\n"
+"\tif t == 'function' then\n"
+"\t\treturn attribute(state)\n"
+"\tend\n"
+"\treturn attribute\n"
+"end\n"
+"\n"
+"\n"
+"--[[ Turret configurations ]]\n"
+"TurretConfig = \n"
+"{\n"
+"\tMissileLauncher = \n"
+"\t{\n"
+"\t\tCost = 40,\n"
+"\t\tWeight = 13,\n"
+"\t\tHealthMultiplier = 1.5,\n"
+"\t\tScanningRange = 4,\n"
+"\t\tAttacksPerRound = 1,\n"
+"\t\tDamageLevel = 10,\n"
+"\t\tExplosionRadius = 1,\n"
+"\t\tHorizontalAttackRange = 8,\n"
+"\t\tIsUnlocked = true,\n"
+"\t},\n"
+"\tRocketLauncher = \n"
+"\t{\n"
+"\t\tCost = 15,\n"
+"\t\tWeight = 3,\n"
+"\t\tHealthMultiplier = 2,\n"
+"\t\tScanningRange = 5,\n"
+"\t\tAttacksPerRound = 2,\n"
+"\t\tDamageLevel = 7,\n"
+"\t\tExplosionRadius = 1,\n"
+"\t\tHorizontalAttackRange = 4,\n"
+"\t\tIsUnlocked = true,\n"
+"\t},\n"
+"\tCannon = \n"
+"\t{\n"
+"\t\tCost = 15,\n"
+"\t\tWeight = 3,\n"
+"\t\tHealthMultiplier = 2,\n"
+"\t\tScanningRange = 5,\n"
+"\t\tAttacksPerRound = 2,\n"
+"\t\tDamageLevel = 7,\n"
+"\t\tExplosionRadius = 1,\n"
+"\t\tHorizontalAttackRange = 5,\n"
+"\t\tIsUnlocked = true,\n"
+"\t},\n"
+"\tRadar =\n"
+"\t{\n"
+"\t\tCost = 10,\n"
+"\t\tWeight = 2,\n"
+"\t\tHealthMultiplier = 1,\n"
+"\t\tScanningRange = 7,\n"
+"\t\tIsUnlocked = true,\n"
+"\t},\n"
+"\tSurveyor =\n"
+"\t{\n"
+"\t\tCost = 10,\n"
+"\t\tWeight = 4,\n"
+"\t\tHealthMultiplier = 1,\n"
+"\t\tScanningRange = 4,\n"
+"\t\tIsUnlocked = true,\n"
+"\t},\n"
+"\tAntiAircraft =\n"
+"\t{\n"
+"\t\tCost = 10,\n"
+"\t\tWeight = 3,\n"
+"\t\tHealthMultiplier = 1,\n"
+"\t\tScanningRange = 4,\t--must account for tower malus\n"
+"\t\tSubOrbitalScanningRange = 5,\n"
+"\t\tHorizontalAttackRange = 5,\n"
+"\t\tExplosionRadius = 1,\n"
+"\t\tAttacksPerRound = 1,\n"
+"\t\tDamageLevel = 10,\n"
+"\t\tIsUnlocked = true,\n"
+"\t},\n"
+"\tBomb =\n"
+"\t{\n"
+"\t\tOp_Nuclear = 50,\n"
+"\t\tCost = 40,\n"
+"\t\tWeight = 5,\n"
+"\t\tHealthMultiplier = 1,\n"
+"\t\tScanningRange = 1,\n"
+"\t\tExplosionRadius = 4,\n"
+"\t\tDamageLevel = 10,\n"
+"\t\tHorizontalAttackRange = 0,\n"
+"\t\tIsUnlocked = true,\n"
+"\t},\n"
+"\tEMP =\n"
+"\t{\n"
+"\t\tCost = 100,\n"
+"\t\tWeight = 5,\n"
+"\t\tHealthMultiplier = 1,\n"
+"\t\tScanningRange = 3,\n"
+"\t\tAttacksPerRound = 1,\n"
+"\t\tDamageLevel = 5,\n"
+"\t\tExplosionRadius = 3,\n"
+"\t\tHorizontalAttackRange = 15,\n"
+"\t\tAmmoConsumption = 50,\n"
+"\t\tIsUnlocked = true,\n"
+"\t},\n"
+"\tArtillery =\n"
+"\t{\n"
+"\t\tCost = 25,\n"
+"\t\tWeight = 3,\n"
+"\t\tHealthMultiplier = 1.5,\n"
+"\t\tScanningRange = 4,\n"
+"\t\tAttacksPerRound = 1,\n"
+"\t\tDamageLevel = 7,\n"
+"\t\tExplosionRadius = 2,\n"
+"\t\tHorizontalAttackRange = 7,\n"
+"\t\tIsUnlocked = false,\n"
+"\t},\n"
+"\tTerraformer =\n"
+"\t{\n"
+"\t\tCost = 40,\n"
+"\t\tWeight = 2,\n"
+"\t\tHealthMultiplier = 1,\n"
+"\t\tScanningRange = 4,\n"
+"\t\tOp_Construct = 10,\n"
+"\t\tOp_TerrainRemove = 10,\n"
+"\t\tOp_TerrainAdd = 10,\n"
+"\t\tIsUnlocked = true,\n"
+"\t},\n"
+"\tMechanic =\n"
+"\t{\n"
+"\t\tCost = 30,\n"
+"\t\tWeight = 2,\n"
+"\t\tHealthMultiplier = 1,\n"
+"\t\tScanningRange = 3,\n"
+"\t\tOp_Repair = 10,\n"
+"\t\tIsUnlocked = true,\n"
+"\t},\n"
+"\t\n"
+"\t--Planes:\n"
+"\tRaptor =\n"
+"\t{\n"
+"\t\tCost = 120,\n"
+"\t\tWeight = 10,\t--defines movement speed: 100/Weight\n"
+"\t\tHealthMultiplier = 5,\t--directly equals health\n"
+"\t\tScanningRange = 7,\n"
+"\t\tHorizontalAttackRange = 9,\n"
+"\t\tGroundScanningRange = 7,\n"
+"\t\tGroundScannerPenetration = 0,\n"
+"\t\tExplosionRadius = 1,\n"
+"\t\tDamageLevel = 5,\n"
+"\t\tAttacksPerRound = 2,\n"
+"\t\tIsUnlocked = true,\n"
+"\t},\n"
+"\tBomber =\n"
+"\t{\n"
+"\t\tOp_Nuclear = 100,\n"
+"\t\tCost = 160,\n"
+"\t\tWeight = 20,\t--defines movement speed: 100/Weight\n"
+"\t\tHealthMultiplier = 5,\t--directly equals health\n"
+"\t\tScanningRange = 4,\n"
+"\t\tHorizontalAttackRange = 0,\n"
+"\t\tGroundScanningRange = 4,\n"
+"\t\tGroundScannerPenetration = 0,\n"
+"\t\tExplosionRadius = 2,\n"
+"\t\tDamageLevel = 7,\n"
+"\t\tAttacksPerRound = 1,\n"
+"\t\tIsUnlocked = true,\n"
+"\t},\n"
+"\tCargoPlane = \n"
+"\t{\n"
+"\t\tCost = 120,\n"
+"\t\tWeight = 12,\t--defines movement speed: 100/Weight\n"
+"\t\tHealthMultiplier = 15,\t--directly equals health\n"
+"\t\tScanningRange = 5,\n"
+"\t\tGroundScanningRange = 2,\n"
+"\t\tGroundScannerPenetration = 0,\n"
+"\t\tIsUnlocked = true,\n"
+"\t},\n"
+"\tSensorDrone = \n"
+"\t{\n"
+"\t\tCost = 40,\n"
+"\t\tWeight = 11,\t--defines movement speed: 100/Weight\n"
+"\t\tHealthMultiplier = 4,\t--directly equals health\n"
+"\t\tScanningRange = 11,\n"
+"\t\tGroundScanningRange = 11,\n"
+"\t\tGroundScannerPenetration = 2,\n"
+"\t\tIsUnlocked = true,\n"
+"\t},}\n"
+"\n"
+"\n"
+"VehicleBaseConfig = \n"
+"{\n"
+"\tHoverbase = \n"
+"\t{\n"
+"\t\tCost = 30,\n"
+"\t\tMovementSpeed = 20,\n"
+"\t\tCarryingCapacity = 1,\n"
+"\t\tHealth = 4,\n"
+"\t\tOperationSpeedMultiplier = 1,\n"
+"\t\tTurretRangeModifier = 0,\n"
+"\t\tIsUnlocked = true,\n"
+"\t},\n"
+"\tHeavyBase = \n"
+"\t{\n"
+"\t\tCost = 45,\n"
+"\t\tMovementSpeed = 15,\n"
+"\t\tCarryingCapacity = 10,\n"
+"\t\tHealth = 12,\n"
+"\t\tOperationSpeedMultiplier = 2,\n"
+"\t\tTurretRangeModifier = 0,\n"
+"\t\tIsUnlocked = true,\n"
+"\t},\n"
+"\tCatamaranBase = \n"
+"\t{\n"
+"\t\tCost = 60,\n"
+"\t\tMovementSpeed = 8,\n"
+"\t\tCarryingCapacity = 15,\n"
+"\t\tHealth = 12,\n"
+"\t\tOperationSpeedMultiplier = 2,\n"
+"\t\tTurretRangeModifier = 1,\n"
+"\t\tIsUnlocked = true,\n"
+"\t},\n"
+"}\n"
+"\n"
+"\n"
+"--[[\n"
+"Declares an item as unlock-researchable.\n"
+"Manipulates the IsUnlocked attribute of the specified item.\n"
+"Automatically registers everything\n"
+"\n"
+"@param researchGroup\t\tResearch-group handle (folder) that this new research should be filed under. May be nil, causing this to be filed as a root research topic\n"
+"@param researchDependency\tResearch handle (actual research) that must be completed before this research may commence. Must be a non-improve research. May be nil\n"
+"@param typeTable\t\t\tHandle to the table that the specified type is a member in\n"
+"@param typeName\t\t\t\tName (string) of the type the attribute belongs to\n"
+"@param limit\t\t\t\tMax research (int). Progress must reach this value for the item to become unlocked\n"
+"\n"
+"@return \t\t\t\t\tResulting research handle, as returned from Hexaverse\n"
+"]]\n"
+"function MakeUnlockResearchable(researchGroup, researchDependency, typeTable, typeName, limit)\n"
+"\t--entry = ResearchEntry.New(original)\n"
+"\tlocal key = 'unlock'..typeName\n"
+"\tresearchables[key] = ResearchEntry.NewBool(limit)\n"
+"\tlocal typeHandle = typeTable[typeName]\n"
+"\ttypeHandle.IsUnlocked =\n"
+"\t{\n"
+"\t\tGet = function(state)\n"
+"\t\t\tif state == nil then\n"
+"\t\t\t\t--Game.Log(key..\": no state. false\");\n"
+"\t\t\t\treturn false\n"
+"\t\t\tend\n"
+"\t\t\t--Game.Log(key..\": \"..ResearchState.GetProgress(state,key)..'/'..state:GetLimit(key));\n"
+"\t\t\treturn ResearchState.GetProgress(state,key) >= ResearchState.GetLimit(state, key);\n"
+"\t\tend,\n"
+"\t\tDescribe = function(state)\n"
+"\t\t\tif state == nil then\n"
+"\t\t\t\treturn false\n"
+"\t\t\tend\n"
+"\t\t\treturn tostring(ResearchState.GetProgress(state,key) >= ResearchState.GetLimit(state, key));\n"
+"\t\tend\n"
+"\t}\n"
+"\t\n"
+"\treturn Game.CreateResearch(researchGroup,typeName,nil,\n"
+"\t\tfunction(state,progress) ResearchState.SetProgress(state, key, progress) end,\n"
+"\t\tfunction(state) return ResearchState.GetProgress(state, key); end, \n"
+"\t\tresearchables[key].limit, researchDependency\n"
+"\t\t);\n"
+"\t\n"
+"end\n"
+"\n"
+"\n"
+"--[[\n"
+"Calculates the factor that is to be multiplied with the base attribute to get the final attribute\n"
+"\n"
+"@param researchProgress\t\tActual progress (float) in the chosen research topic. Can be negative causing degeneration of the attribute towards zero\n"
+"@param progressMultiplier\tPositive speed modifier (float) that manipulates how quickly research progresses. 1 leaves research speed unmodified\n"
+"\n"
+"@return \t\t\t\t\tResulting attribute modifier\n"
+"]]\n"
+"function GetResearchImprovementFactor(researchProgress--[[float]],progressMultiplier--[[float]])  --[[float]]\n"
+"\tlocal totalProgress =  math.sqrt(math.abs(researchProgress)) * progressMultiplier;\n"
+"\tif (researchProgress < 0) then\n"
+"\t\treturn 1 / (1 + totalProgress);\n"
+"\tend\n"
+"\treturn (1 + totalProgress);\n"
+"end\n"
+"\n"
+"\n"
+"--[[\n"
+"Declares a currently non-researchable attribute as improvement-researchable.\n"
+"Works on all floating point attributes.\n"
+"Improvement-research goes on indefinitely.\n"
+"Automatically registers everything\n"
+"\n"
+"@param researchGroup\t\tResearch-group handle (folder) that this new research should be filed under. May be nil, causing this to be filed as a root research topic\n"
+"@param researchDependency\tResearch handle (actual research) that must be completed before this research may commence. Must be a non-improve research. May be nil\n"
+"@param typeTable\t\t\tHandle to the table that the specified type is a member in\n"
+"@param typeName\t\t\t\tName (string) of the type the attribute belongs to\n"
+"@param attributeName\t\tName (string) of the attribute to research\n"
+"@param speed\t\t\t\tFloating point speed modifier. The closer to zero, the slower. \n"
+"\t\t\t\t\t\t\tPositive values affect the resulting factor linearly. \n"
+"\t\t\t\t\t\t\tIf 10 rounds are needed to reach 1.2 at factor 0.02, then another 10 rounds will produce 1.4.\n"
+"\t\t\t\t\t\t\tNegative values affect the resulting factor inversely.\n"
+"\t\t\t\t\t\t\tIf 10 rounds are needed to reach 1/(1.2)=83% at factor -0.02, then another 10 rounds will produce 1/(1.4)=71%\n"
+"\t\t\t\t\t\t\t\n"
+"@return \t\t\t\t\tResulting research handle, as returned from Hexaverse\n"
+"]]\n"
+"function MakeImproveResearchable(researchGroup, researchDependency, typeTable, typeName, attributeName, speed)\n"
+"\tlocal key = 'improve'..typeName;\n"
+"\tlocal typeHandle = typeTable[typeName];\n"
+"\t--at this point we assume that typeHandle[attributeName] is still a simple variable. we can add a check here but then ResearchEntry.NewFloat would get really messy\n"
+"\tlocal original = typeHandle[attributeName];\n"
+"\tresearchables[key] = ResearchEntry.NewFloat();\n"
+"\ttypeHandle[attributeName] =\n"
+"\t{\n"
+"\t\tGet = function(state)\n"
+"\t\t\tif state == nil then\n"
+"\t\t\t\treturn original;\n"
+"\t\t\tend\n"
+"\t\t\tlocal progress = ResearchState.GetProgress(state, key);\n"
+"\t\t\tlocal factor = GetResearchImprovementFactor(progress,speed);\n"
+"\t\t\tlocal result = original * factor;\n"
+"\t\t\treturn result;\n"
+"\t\tend,\n"
+"\t\t\n"
+"\t\tDescribe = function(state)\n"
+"\t\t\tif state == nil then\n"
+"\t\t\t\treturn original;\n"
+"\t\t\tend\n"
+"\t\t\tlocal progress = ResearchState.GetProgress(state,key);\n"
+"\t\t\tif (progress == 0) then\n"
+"\t\t\t\treturn original;\n"
+"\t\t\tend\n"
+"\t\t\tlocal factor = GetResearchImprovementFactor(progress,speed);\n"
+"\t\t\treturn Round(original * factor,2)..' [='.. original..'*'..Round(factor,2)..']';\n"
+"\t\tend\n"
+"\t}\n"
+"\t\n"
+"\treturn Game.CreateResearch(researchGroup,typeName,nil,\n"
+"\t\tfunction(state,progress) ResearchState.SetProgress(state, key, progress) end,\n"
+"\t\tfunction(state) return ResearchState.GetProgress(state,key) end, -1, researchDependency\n"
+"\t\t);\n"
+"end\n"
+"\n"
+"\n"
+"\n"
+"function CanAttack(turret--[[Table]])\n"
+"\treturn Get(turret.AttacksPerRound,nil) > 0\n"
+"end\n"
+"\n"
+"function TowerScanningModifier(turret--[[Table]])\n"
+"\tif CanAttack(turret) then\n"
+"\t\treturn -2.0\t--penalty for offensive towers\n"
+"\tend\n"
+"\treturn 2.0\t--boost non-offensive towers\n"
+"end\n"
+" \n"
+"\n"
+"--[[\n"
+"Constructs a tower structure configuration from a given turret entry.\n"
+"Defines both Get and Describe functions\n"
+"]]\n"
+"function Tower(turret--[[Table]]) --Table\n"
+"\tlocal cost = function(state) return 40 + Get(turret.Cost,state) end;\n"
+"\tlocal rs =\n"
+"\t{\n"
+"\t\tCost =\n"
+"\t\t{\n"
+"\t\t\tGet = cost,\n"
+"\t\t\tDescribe = \n"
+"\t\t\t\tfunction(state) \n"
+"\t\t\t\t\treturn '40+'.. Describe(turret.Cost,state)\n"
+"\t\t\t\tend,\n"
+"\t\t},\n"
+"\t\tHealth = \n"
+"\t\t{\n"
+"\t\t\tGet = \n"
+"\t\t\t\tfunction(state) \n"
+"\t\t\t\t\treturn DefaultHealthAtCost(cost()) * Get(turret.HealthMultiplier,state) \n"
+"\t\t\t\tend,\n"
+"\t\t\tDescribe = \n"
+"\t\t\t\tfunction(state) \n"
+"\t\t\t\t\tlocal multiplier = Describe(turret.HealthMultiplier,state);\n"
+"\t\t\t\t\tlocal health = DefaultHealthAtCost(cost());\n"
+"\t\t\t\t\tif (multiplier == 1) then\n"
+"\t\t\t\t\t\treturn Round(health);\n"
+"\t\t\t\t\tend\n"
+"\t\t\t\t\treturn Round(health * Get(turret.HealthMultiplier,state),2)..' [='.. Round(health)..'*'.. multiplier..' (turret health multiplier)]';\n"
+"\t\t\t\tend,\n"
+"\t\t},\n"
+"\t\tScanningRange =\n"
+"\t\t{\n"
+"\t\t\tGet = \n"
+"\t\t\t\tfunction(state) \n"
+"\t\t\t\t\treturn Get(turret.ScanningRange,state) + TowerScanningModifier(turret)\n"
+"\t\t\t\tend,\n"
+"\t\t\tDescribe = \n"
+"\t\t\t\tfunction(state) \n"
+"\t\t\t\t\tlocal modifier =  TowerScanningModifier(turret);\n"
+"\t\t\t\t\tlocal base = Describe(turret.ScanningRange,state);\n"
+"\t\t\t\t\tif (modifier == 0) then\n"
+"\t\t\t\t\t\treturn base;\n"
+"\t\t\t\t\tend\n"
+"\t\t\t\t\tif (modifier > 0) then\n"
+"\t\t\t\t\t\treturn Round(Get(turret.ScanningRange,state)+modifier,2)..' [='..  base ..'+'..Round(modifier,2)..' (tower modifier)]';\n"
+"\t\t\t\t\tend\n"
+"\t\t\t\t\treturn Round(Get(turret.ScanningRange,state)+modifier,2)..' [='..  base ..'-'..Round(-modifier,2)..' (tower modifier)]';\n"
+"\t\t\t\tend,\n"
+"\t\t},\n"
+"\t\tIsUnlocked = \n"
+"\t\t\tfunction(state) \n"
+"\t\t\t\treturn Get(turret.IsUnlocked,state) \n"
+"\t\t\tend,\n"
+"\t}\n"
+"\treturn rs;\n"
+"end\n"
+"\n"
+"\n"
+"--[[\n"
+"Constructs a tower structure configuration from a given turret entry.\n"
+"Defines both Get and Describe functions.\n"
+"It is declared as locked\n"
+"]]\n"
+"function DeprecatedTower(turret--[[Table]]) --Table\n"
+"\tlocal rs = Tower(turret);\n"
+"\trs.IsUnlocked = false;\t--make sure it's not a function. If it's a function, the game assumes it can be unlocked, and displays it as a construction choice\n"
+"\treturn rs;\n"
+"end\n"
+"\n"
+"\n"
+"StructureConfig =\n"
+"{\n"
+"\tMine = DefaultStructure(40),\n"
+"\tGenerator = DefaultStructure(40),\n"
+"\tReactorCore = DefaultStructure(120),\n"
+"\tVehicleStore = DefaultStructure(40),\n"
+"\tVehiclePlant = DefaultStructure(80),\n"
+"\tPlaneFactory = DefaultStructure(200),\n"
+"\tLaboratory = DefaultStructure(80),\n"
+"\tMunitionFactory = DefaultStructure(40),\n"
+"\tConnector = DefaultStructure(5),\n"
+"\tFuelContainer = DefaultStructure(10),\n"
+"\tMineralContainer = DefaultStructure(10),\n"
+"\tUraniumStorage = DefaultStructure(10),\n"
+"\tMunitionStorage = DefaultStructure(10),\n"
+"\tNexusPort = ExplicitStructure(0,1,2,false),\n"
+"\tMissileLauncherTower = Tower(TurretConfig.MissileLauncher),\n"
+"\tRocketLauncherTower = Tower(TurretConfig.RocketLauncher),\n"
+"\tRadarTower = Tower(TurretConfig.Radar),\n"
+"\tCannonTower = DeprecatedTower(TurretConfig.Cannon),\n"
+"\tSurveyorTower = Tower(TurretConfig.Surveyor),\n"
+"\tAntiAircraftTower = Tower(TurretConfig.AntiAircraft),\n"
+"}\n"
+"\n"
+"\n"
+"\n"
+"\n"
+"unlockGroup = Game.CreateResearch(nil,\"Unlock\",\"Research_Unlock\");\n"
+"improveGroup = Game.CreateResearch(nil,\"Improve\",'Increase');\n"
+"\n"
+"\n"
+"\n"
+"artilleryUnlock = MakeUnlockResearchable(unlockGroup, nil, TurretConfig, 'Artillery',20);\n"
+"empUnlock = MakeUnlockResearchable(unlockGroup, artilleryUnlock, TurretConfig, 'EMP',40);\n"
+"bombUnlock = MakeUnlockResearchable(unlockGroup, artilleryUnlock, TurretConfig, 'Bomb',40);\n"
+"launcherUnlock = MakeUnlockResearchable(unlockGroup, nil, TurretConfig, 'MissileLauncher',20);\n"
+"--radarUnlock = MakeUnlockResearchable(unlockGroup, nil, TurretConfig, 'Radar',20);\n"
+"heavyUnlock = MakeUnlockResearchable(unlockGroup, nil, VehicleBaseConfig, 'HeavyBase',20);\n"
+"catUnlock = MakeUnlockResearchable(unlockGroup, nil, VehicleBaseConfig, 'CatamaranBase',20);\n"
+"MakeUnlockResearchable(unlockGroup, nil, StructureConfig, 'ReactorCore',10);\n"
+"planeFactoryUnlock = MakeUnlockResearchable(unlockGroup, nil, StructureConfig, 'PlaneFactory',20);\n"
+"MakeUnlockResearchable(unlockGroup, planeFactoryUnlock, TurretConfig, 'CargoPlane',40);\n"
+"MakeUnlockResearchable(unlockGroup, planeFactoryUnlock, TurretConfig, 'Raptor',60);\n"
+"MakeUnlockResearchable(unlockGroup, planeFactoryUnlock, TurretConfig, 'Bomber',60);\n"
+"\n"
+"attackRangeGroup = Game.CreateResearch(improveGroup,'Attack Range','Research_AttackRange');\n"
+"\tMakeImproveResearchable(attackRangeGroup, artilleryUnlock, TurretConfig, 'Artillery', 'HorizontalAttackRange',0.005);\n"
+"\tMakeImproveResearchable(attackRangeGroup, launcherUnlock, TurretConfig, 'MissileLauncher', 'HorizontalAttackRange',0.005);\n"
+"\tMakeImproveResearchable(attackRangeGroup, nil, TurretConfig, 'RocketLauncher', 'HorizontalAttackRange',0.005);\n"
+"\tMakeImproveResearchable(attackRangeGroup, nil, TurretConfig, 'Cannon', 'HorizontalAttackRange',0.005);\n"
+"\tMakeImproveResearchable(attackRangeGroup, nil, TurretConfig, 'AntiAircraft', 'HorizontalAttackRange',0.02);\n"
+"\n"
+"scanningRangeGroup = Game.CreateResearch(improveGroup,'Scanning Range','Research_ScanningRange');\n"
+"\tMakeImproveResearchable(scanningRangeGroup, radarUnlock, TurretConfig, 'Radar', 'ScanningRange',0.005);\n"
+"\tMakeImproveResearchable(scanningRangeGroup, nil, TurretConfig, 'AntiAircraft', 'SubOrbitalScanningRange',0.02);\n"
+"\n"
+"healthGroup = Game.CreateResearch(improveGroup,'Health','Research_Health');\n"
+"\tMakeImproveResearchable(healthGroup, nil, VehicleBaseConfig, 'Hoverbase', 'Health',0.05);\n"
+"\tMakeImproveResearchable(healthGroup, heavyUnlock, VehicleBaseConfig, 'HeavyBase', 'Health',0.05);\n"
+"\tMakeImproveResearchable(healthGroup, catUnlock, VehicleBaseConfig, 'CatamaranBase', 'Health',0.05);\n"
+"\n"
+"\n"
+""			);
+
+			#ifdef _DEBUG
+				ActivateProgram(globalState.program0);	//test fallback program
+			#endif
+
+			//.reset(new ScriptCache::Script());
+		
+
+			#if defined _DEBUG || !defined CLIENT
+				LoadDefaultProgram();
+			#endif
+		#else
+			RemapAttributes();
+		#endif
 	}
 
-	void ResearchState::LoadNexusResearchState()
-	{
-		foreach (globalState.allTopics,_t)
+
+
+
+	#ifndef CLIENT
+		/*static*/ void			Research::LoadDefaultProgram()
 		{
-			auto&t = **_t;
-			if (t.setProgress.IsSet())
+			#define RESEARCH_SCRIPT_NAME "attributesAndResearch.lua"
+
+			PathString factoryDefault = "../lua/" RESEARCH_SCRIPT_NAME;
+			#if 0 && defined _DEBUG
+				PathString final = factoryDefault;
+			#else
+				FileSystem::CreateDirectory(RuntimeConfig::myConfig.Lookup("config/lua"));
+				FileSystem::CreateDirectory(RuntimeConfig::sharedConfig.Lookup("config/lua"));
+				PathString final = RuntimeConfig::myConfig.Lookup("config/lua/" RESEARCH_SCRIPT_NAME);
+				if (!FileSystem::IsFile(final))
+					final = RuntimeConfig::sharedConfig.Lookup("config/lua/" RESEARCH_SCRIPT_NAME);
+				if (!FileSystem::IsFile(final))
+				{
+					final = factoryDefault;
+				}
+			#endif
+			globalState.factoryDefault = ScriptCache::Load(factoryDefault); 
+			ActivateProgram(ScriptCache::Load(final));
+		}
+
+		static void			InnerLoad(const ScriptCache::PScript&script);
+		static void			RequireLoad(const ScriptCache::PScript&script);
+
+
+		/*static*/ void		Research::ActivateProgram(const ScriptCache::PScript&script)
+		{
+			//#if defined _DEBUG && defined HAS_WINDOW
+			//	if (globalState.script)
+			//		return;		//prevent reloading
+			//#endif
+			if (!script || script == globalState.script)
+				return;
+			LogEvent(EventClass::Preset::common,"Activating research script "+Bin2Str::ConvertPOD(script->identifier));
+
+
+
+		
+
+			ScriptCache::PScript current = globalState.script;
+			try
 			{
-				if (t.maxProgress > 0)
-					t.setProgress(researchState,t.maxProgress);
+				InnerLoad(script);
+				return;
+			}
+			catch (const std::exception&e)
+			{
+				if (script->filename.IsNotEmpty())
+					LogEvent(EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),String(script->filename)+": "+e.what());
+				else
+					LogEvent(EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),e.what());
+			};
+
+			if (current && current != globalState.program0)
+			{
+				LogEvent(EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),"Falling back to previous script");
+				RequireLoad(current);
+			}
+			else
+			{
+				if (script == globalState.factoryDefault)
+				{
+					LogEvent(EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),"Unable to load factory default. Falling back to emergency script");
+					RequireLoad(globalState.program0);
+				}
+				else
+				{
+					ASSERT__(globalState.factoryDefault);
+					LogEvent(EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),"Falling back to factory default script");
+					ActivateProgram(globalState.factoryDefault);
+				}
 			}
 		}
-		changed = true;
-	}
 
-	ResearchState::ResearchState(Faction*owner, bool isNexus):owner(owner)
+		static void RequireLoad(const ScriptCache::PScript&script)
+		{
+			try
+			{
+				InnerLoad(script);
+				return;
+			}
+			catch (const std::exception&e)
+			{
+				FATAL__("Fallback research script failed to load: "+String( e.what() ));
+			};
+		}
+		
+		struct TSerialState
+		{
+			Array<BYTE>		serialState;
+			String			researchQueue;
+
+			void			swap(TSerialState&other)
+			{
+				serialState.swap(other.serialState);
+				researchQueue.swap(other.researchQueue);
+			}
+
+			friend void		swap(TSerialState&a,TSerialState&b)
+			{
+				a.swap(b);
+			}
+		};
+
+		/*static*/ void	InnerLoad( const ScriptCache::PScript&script )
+		{
+			using namespace Research;
+
+			if (!script)
+				throw Lua::Exception(CLOCATION, Except::globalString("Script is NULL"));
+			LogEvent(EventClass(EventSignificance::Common,EventFlavor::ServerPrivate),"Attempting to activate research program "+Bin2Str::ConvertPOD(script->identifier));
+
+
+			Ctr::Buffer0<TSerialState,Swap> taskLists;
+			ForeachFaction([&taskLists](const PFaction&f)
+			{
+				auto&entry = taskLists.Append();
+				f->researchState.ExportLuaState(entry.serialState);
+				entry.researchQueue = f->researchState.ExportResearchQueue();
+			});
+
+			globalState.rootResearch.Clear();
+			globalState.allTopics.Clear();
+
+			globalState.researchProgram = Lua::Program::Create("Research");
+			ASSERT__(globalState.researchProgram);
+			{
+				Lua::Table api = Lua::CreateGeneralAPI(globalState.researchProgram);
+				api.SetFunction("CreateResearch",CreateResearch);
+			}
+
+
+
+			globalState.researchProgram->Execute(script->content,String(script->filename));
+
+		
+
+			Lua::Table researchTable = globalState.researchProgram->FindGlobal("ResearchState");
+			if (researchTable.IsEmpty())
+			{
+				throw Lua::Exception("Table 'ResearchState' is not defined");
+			}
+			globalState.stateConstructor = researchTable.GetField("New");
+			if (globalState.stateConstructor.IsEmpty())
+			{
+				throw Lua::Exception("Function 'ResearchState.New' is not defined");
+			}
+
+			globalState.exportState = researchTable.GetField("Export");
+			if (globalState.exportState.IsEmpty())
+			{
+				throw Lua::Exception("Method 'ResearchState:Export' is not defined");
+			}
+			globalState.importState = researchTable.GetField("Import");
+			if (globalState.importState.IsEmpty())
+			{
+				throw Lua::Exception("Method 'ResearchState:Import' is not defined");
+			}
+
+			RemapAttributes();
+
+
+			index_t at = 0;
+			ForeachFaction([&at,&taskLists](const PFaction&f)
+			{
+				const auto&entry = taskLists[at];
+				f->researchState.luaResearchState = globalState.stateConstructor();
+				if (entry.serialState.IsNotEmpty())
+					f->researchState.ImportLuaState(entry.serialState);
+				else
+				{
+					f->researchState.topicProgressVector.SetSize(globalState.allTopics.Count());
+					f->researchState.topicProgressVector.Fill(0);
+					f->researchState.UpdateAttributeTable();
+				}
+				f->researchState.RestoreResearchQueue(entry.researchQueue);
+				at++;
+			});
+			{
+				globalState.zeroState = globalState.stateConstructor();
+				UpdateAttributeTable(globalState.zeroState,globalState.zeroTable);
+			}
+			globalState.script = script;
+
+			#ifndef CLIENT
+				if (Faction::nexus)
+					Faction::nexus->researchState.LoadNexusResearchState();
+			#endif
+
+			globalState.onScriptChange();
+			//globalState.researchProgram.reset();
+		}
+
+		void Research::FactionState::LoadNexusResearchState()
+		{
+			foreach (globalState.allTopics,_t)
+			{
+				auto&t = **_t;
+				if (t.setProgress.IsSet())
+				{
+					if (t.maxProgress > 0)
+						t.setProgress(luaResearchState,t.maxProgress);
+				}
+			}
+			UpdateAttributeTable();
+		}
+
+		void					Research::FactionState::AdvanceNexusResearch()
+		{
+			DBG_ASSERT__(factionIsNexus);
+
+			foreach (globalState.allTopics,_t)
+			{
+				auto&t = **_t;
+				if (t.setProgress.IsSet())
+				{
+					if (t.maxProgress < 0)
+						topicProgressVector[ t.serialIndex ] ++;
+				}
+			}
+			UpdateAttributeTable();
+		}
+
+
+		void					Research::FactionState::FinalizeRound(const PFaction&f)
+		{
+			attributeTable.ClearChanges();
+
+			while (researchQueue.IsNotEmpty() && totalContribution)
+			{
+				int left;
+				const auto&res = researchQueue.First();
+				int&progress = topicProgressVector[ res->serialIndex ];
+				if (res->maxProgress >= 0)
+				{
+					left = res->maxProgress - progress;
+					if (left <= 0)	//already done...?
+					{
+						LogEvent(EventClass::Preset::important,owner->shared_from_this(),"Research "+res->name+" completed");
+						res->setProgress(luaResearchState,res->maxProgress);
+						researchQueue.Erase(0);
+						queueChanged = true;
+						globalState.onQueueChange(owner);
+						continue;
+					}
+					topicProgressChanged = true;
+					if (totalContribution < left)	//no chance to get done
+					{
+						progress += totalContribution;
+						res->setProgress(luaResearchState,progress);
+						break;
+					}
+					totalContribution -= left;
+					progress = res->maxProgress;
+					res->setProgress(luaResearchState,res->maxProgress);
+					LogEvent(EventClass::Preset::important,owner->shared_from_this(),"Research "+res->name+" completed");
+					researchQueue.Erase(0);
+					queueChanged = true;
+					globalState.onQueueChange(owner);
+					continue;
+				}
+				progress += totalContribution;
+				res->setProgress(luaResearchState,progress);
+				topicProgressChanged = true;
+
+				if (researchQueue.Count() > 1)
+				{
+					LogEvent(EventClass::Preset::common,owner->shared_from_this(),"Multiple research topics defined after "+res->name+". Cycling");
+					auto topic = res;
+					researchQueue.Erase(0);
+					researchQueue.Append(topic);
+					queueChanged = true;
+					globalState.onQueueChange(owner);
+				}
+
+				break;
+			}
+			lastSpeed = totalContribution;
+			totalContribution = 0;
+			if (topicProgressChanged)
+				UpdateAttributeTable();
+		}
+
+
+		//void					Research::FactionState::ImportResearchState(const Research::TopicProgressVector&archived)
+		//{
+		//	if (archived.Count() != globalState.allTopics.Count())
+		//		return;
+
+		//	topicProgressVector = archived;
+		//	luaResearchState = globalState.stateConstructor();
+
+		//	foreach (globalState.allTopics,t)
+		//	{
+		//		if ((*t)->setProgress.IsSet())
+		//			(*t)->setProgress(luaResearchState,archived[t-globalState.allTopics.pointer()]);
+		//	}
+
+		//	UpdateAttributeTable();
+		//}
+
+	
+		void					Research::FactionState::ImportLuaState(const ArrayRef<const BYTE>&serializedState)
+		{
+			if (!globalState.researchProgram)
+			{
+				return;
+			}
+			try
+			{
+				#ifdef CLIENT
+					World::actual.InvalidateSensory();
+				#else
+					owner->knownWorld.InvalidateSensory();
+				#endif
+
+				Lua::Reference deserialized = globalState.researchProgram->DeserializeToReference(ByteReadStream(serializedState));
+				globalState.importState(luaResearchState,deserialized);
+
+				ASSERT_EQUAL__(globalState.allTopics.Count(), topicProgressVector.Count());
+				foreach (globalState.allTopics,t)
+				{
+					const index_t at = t - globalState.allTopics.pointer();
+					if ((*t)->getProgress.IsSet())
+						topicProgressVector[at] = (*t)->getProgress(luaResearchState);
+					else
+						topicProgressVector[at] = -1;
+				}
+
+			}
+			catch (const std::exception&e)
+			{
+				LogEvent(EventClass::Preset::error,e.what());
+			}
+			UpdateAttributeTable();
+		}
+	
+	
+		void					Research::FactionState::ExportLuaState(Array<BYTE>&outSerializedState) const
+		{
+			//Buffer0<BYTE> data;
+			if (globalState.exportState.IsEmpty() || luaResearchState.IsEmpty())
+			{
+				outSerializedState.Clear();
+				return;
+			}
+			try
+			{
+				Lua::Reference exported = globalState.exportState(luaResearchState);
+				ASSERT__(exported.IsSet());
+				ByteStreamBuffer stream;
+				exported.Serialize(stream);
+				outSerializedState = stream.GetWrittenData();
+			}
+			catch (const std::exception&e)
+			{
+				LogEvent(EventClass::Preset::error,e.what());
+				outSerializedState.Clear();
+			}
+		}
+	
+
+	#else
+
+		/*static*/ void				Research::FactionState::BeginServerTopicUpdate()
+		{
+			globalState.rootResearch.Clear();
+			globalState.allTopics.Clear();
+		}
+
+		/*static*/ void				Research::FactionState::DeclareServerTopic(index_t parentTopicIndex, const String&topicName, const String&iconName, int maxProgress, index_t dependentTopicIndex)
+		{
+			CreateResearch(parentTopicIndex != InvalidIndex ? Expect::SafeGet(globalState.allTopics,parentTopicIndex,CLOCATION) : nullptr,topicName,iconName,Research::Topic::FSetProgress(),Research::Topic::FGetProgress(), maxProgress,dependentTopicIndex != InvalidIndex ? Expect::SafeGet(globalState.allTopics,dependentTopicIndex,CLOCATION):nullptr);
+		}
+	#endif
+
+
+	Research::FactionState::FactionState( Faction*owner, bool isNexus ):owner(owner)
 	{
 		factionIsNexus = isNexus;
+		
+		topicProgressVector.SetSize(globalState.allTopics.Count());
+		topicProgressVector.Fill(0);
+		#ifndef CLIENT
 		if (globalState.script)
 		{
-			researchState = globalState.stateConstructor();
+			luaResearchState = globalState.stateConstructor();
 			if (isNexus)
 				LoadNexusResearchState();
+			else
+				UpdateAttributeTable();
 		}
-
+		#endif
 	}
 	
-	bool					ResearchGroup::Insert(const PResearchTopic&t)
+	bool					Research::TopicGroup::Insert(const Research::PTopic&t)
 	{
 		if (Find(t->name))
 			return false;
@@ -825,19 +1666,19 @@ namespace Objects
 	}
 
 
-	PResearchTopic			ResearchGroup::Find(const StringRef&name) const
+	Research::PTopic			Research::TopicGroup::Find(const StringRef&name) const
 	{
-		//PResearchTopic t;
+		//Research::PTopic t;
 		//map.Query(name,t);
 		//return t;
 		foreach (children,c)
 			if ((*c)->name == name)	//i suspect this is actually faster for slow numbers of topics per family, since it does not force a String copy
 				return *c;
-		return PResearchTopic();
+		return Research::PTopic();
 	}
 
 
-	static PResearchTopic FindTopicOfPrototypeIn(const PResearchTopic&topic, const PWorldEntity&proto)
+	static Research::PTopic FindTopicOfPrototypeIn(const Research::PTopic&topic, const PWorldEntity&proto)
 	{
 		foreach (topic->children,_c)
 		{
@@ -854,7 +1695,42 @@ namespace Objects
 		return nullptr;
 	}
 
-	/*static*/ PResearchTopic	ResearchState::FindTopicOfPrototype(const PWorldEntity&proto)
+	static Research::PTopic FindTopicOfPrototypeIn(const Research::PTopic&topic, const Component::Base*proto)
+	{
+		foreach (topic->children,_c)
+		{
+			const auto&t = *_c;
+			if (t->IsGroup())
+			{
+				const auto&rs = FindTopicOfPrototypeIn(t,proto);
+				if (rs)
+					return rs;
+			}
+			if (t->componentReference == proto)
+				return t;
+		}
+		return nullptr;
+	}
+
+	#if 0
+	/*static*/ Research::PTopic	Research::FactionState::FindTopicOfPrototype(const Component::Base*proto)
+	{
+		foreach (globalState.allTopics,_t)
+		{
+			const auto&t = *_t;
+			if (t->IsGroup())
+			{
+				const auto&rs = FindTopicOfPrototypeIn(t,proto);
+				if (rs)
+					return rs;
+			}
+			if (t->componentReference == proto)
+				return t;
+		}
+		return nullptr;
+	}
+
+	/*static*/ Research::PTopic	Research::FactionState::FindTopicOfPrototype(const PWorldEntity&proto)
 	{
 		foreach (globalState.allTopics,_t)
 		{
@@ -870,46 +1746,46 @@ namespace Objects
 		}
 		return nullptr;
 	}
+	#endif
 
-
-	/*static*/ PResearchTopic	ResearchState::FindTopic(const StringRef&path)
+	/*static*/ Research::PTopic	Research::FindTopic(const StringRef&path)
 	{
 		Ctr::Array<StringRef>	components;
 		explode('/',path,components);
-		PResearchTopic	current = globalState.rootResearch.Find(components.First());
+		Research::PTopic	current = globalState.rootResearch.Find(components.First());
 		for (index_t i = 1; i < components.Count(); i++)
 		{
 			if (!current)
-				return PResearchTopic();
+				return Research::PTopic();
 			current = current->Find(components[i]);
 		}
 		return current;
 	}
 
-	/*static*/ PResearchTopic	ResearchState::GetTopic(index_t serialIndex)
+	/*static*/ Research::PTopic	Research::GetTopic(index_t serialIndex)
 	{
-		return serialIndex < globalState.allTopics.Count() ? globalState.allTopics[serialIndex] : PResearchTopic();
+		return serialIndex < globalState.allTopics.Count() ? globalState.allTopics[serialIndex] : Research::PTopic();
 	}
 
-	bool	ResearchState::ResearchIsPlanned(const PResearchTopic&topic) const
+	bool	Research::FactionState::ResearchIsPlanned(const Research::PTopic&topic) const
 	{
 		return researchQueue.Contains(topic);
 	}
 
-	bool	ResearchState::ResearchQueueIsFull() const
+	bool	Research::FactionState::ResearchQueueIsFull() const
 	{
 		return researchQueue.Count() >= MaxResearchQueueLength;
 	}
 
-	bool	ResearchState::AppendResearchTask(const PResearchTopic&active)
+	bool	Research::FactionState::AppendResearchTask(const Research::PTopic&active)
 	{
-		if (!active || ResearchQueueIsFull() || !active->CanResearch(researchState,researchQueue.ToRef()) || researchQueue.Contains(active))
+		if (!active || ResearchQueueIsFull() || !active->CanResearch(topicProgressVector,researchQueue.ToRef()) || researchQueue.Contains(active))
 			return false;
 		researchQueue << active;
 		return true;
 	}
 
-	bool					ResearchState::DropResearchTask(const PResearchTopic&active)
+	bool					Research::FactionState::DropResearchTask(const Research::PTopic&active)
 	{
 		if (!active)
 			return false;
@@ -919,7 +1795,7 @@ namespace Objects
 		researchQueue.Erase(at);
 		for (index_t i = at; i < researchQueue.Count();)
 		{
-			if (!researchQueue[i]->CanResearch(researchState,researchQueue.SubRef(0,i)))
+			if (!researchQueue[i]->CanResearch(topicProgressVector,researchQueue.SubRef(0,i)))
 			{
 				LogEvent(EventClass::Preset::operationAborted,owner->shared_from_this(),"Unable to continue research "+researchQueue[i]->GetFullName()+". Preconditions lost. Aborting operation");
 				researchQueue.Erase(i);
@@ -931,7 +1807,7 @@ namespace Objects
 	}
 
 
-	void		ResearchState::RestoreResearchQueue(const String&source)
+	void		Research::FactionState::RestoreResearchQueue(const String&source)
 	{
 		researchQueue.Clear();
 		Ctr::Array<StringRef> paths;
@@ -941,7 +1817,7 @@ namespace Objects
 		globalState.onQueueChange(owner);
 	}
 
-	String		ResearchState::ExportResearchQueue()
+	String		Research::FactionState::ExportResearchQueue()
 	{
 		if (researchQueue.IsEmpty())
 			return "";
@@ -955,13 +1831,13 @@ namespace Objects
 		return buffer.CopyToString();
 	}
 
-	void		ResearchState::ExportResearchQueue(Ctr::Array<UINT32>&outRS)
+	void		Research::FactionState::ExportResearchQueue(Ctr::Array<UINT32>&outRS)
 	{
 		outRS.SetSize(researchQueue.Count());
 		for (index_t i = 0; i < researchQueue.Count(); i++)
 			outRS[i] = ((UINT32)(researchQueue[i]->serialIndex));
 	}
-	void					ResearchState::RestoreResearchQueue(const Ctr::Array<UINT32>&q)
+	void					Research::FactionState::RestoreResearchQueue(const Ctr::Array<UINT32>&q)
 	{
 		researchQueue.Clear();
 		foreach (q,e)
@@ -971,126 +1847,6 @@ namespace Objects
 
 
 
-
-	void					ResearchState::AdvanceNexusResearch()
-	{
-		DBG_ASSERT__(factionIsNexus);
-
-		foreach (globalState.allTopics,_t)
-		{
-			auto&t = **_t;
-			if (t.setProgress.IsSet())
-			{
-				if (t.maxProgress < 0)
-					t.setProgress(researchState,t.getProgress(researchState)+1);
-			}
-		}
-		changed = true;
-		BaseAttributeCache::versionCounter++;
-	}
-
-	void					ResearchState::FinalizeRound(const PFaction&f)
-	{
-		while (researchQueue.IsNotEmpty() && totalContribution)
-		{
-			int left;
-			const auto&res = researchQueue.First();
-			int current = res->getProgress(researchState);
-			if (res->maxProgress >= 0)
-			{
-				left = res->maxProgress - current;
-				if (left <= 0)	//already done...?
-				{
-					LogEvent(EventClass::Preset::important,owner->shared_from_this(),"Research "+res->name+" completed");
-					res->setProgress(researchState,res->maxProgress);
-					researchQueue.Erase(0);
-					queueChanged = true;
-					globalState.onQueueChange(owner);
-					continue;
-				}
-				changed = true;
-				if (totalContribution < left)	//no chance to get done
-				{
-					res->setProgress(researchState,current + totalContribution);
-					break;
-				}
-				totalContribution -= left;
-				res->setProgress(researchState,res->maxProgress);
-				LogEvent(EventClass::Preset::important,owner->shared_from_this(),"Research "+res->name+" completed");
-				researchQueue.Erase(0);
-				queueChanged = true;
-				globalState.onQueueChange(owner);
-				continue;
-			}
-			int next = current + totalContribution;
-			res->setProgress(researchState,next);
-			DBG_ASSERT_EQUAL__(next,res->getProgress(researchState));
-			changed = true;
-
-			if (researchQueue.Count() > 1)
-			{
-				LogEvent(EventClass::Preset::common,owner->shared_from_this(),"Multiple research topics defined after "+res->name+". Cycling");
-				auto topic = res;
-				researchQueue.Erase(0);
-				researchQueue.Append(topic);
-				queueChanged = true;
-				globalState.onQueueChange(owner);
-			}
-
-			break;
-		}
-		lastSpeed = totalContribution;
-		totalContribution = 0;
-		BaseAttributeCache::versionCounter++;
-	}
-
-	void					ResearchState::Import(const Ctr::ArrayRef<const BYTE>&serializedState)
-	{
-		if (!globalState.researchProgram)
-		{
-			return;
-		}
-		try
-		{
-			#ifdef CLIENT
-				World::actual.InvalidateSensory();
-			#else
-				owner->knownWorld.InvalidateSensory();
-			#endif
-
-			Lua::Reference deserialized = globalState.researchProgram->DeserializeToReference(ByteReadStream(serializedState));
-			globalState.importState(researchState,deserialized);
-			BaseAttributeCache::versionCounter++;
-		}
-		catch (const std::exception&e)
-		{
-			LogEvent(EventClass::Preset::error,e.what());
-		}
-	}
-	
-	
-	void					ResearchState::Export(Ctr::Array<BYTE>&outSerializedState) const
-	{
-		//Buffer0<BYTE> data;
-		if (globalState.exportState.IsEmpty() || researchState.IsEmpty())
-		{
-			outSerializedState.Clear();
-			return;
-		}
-		try
-		{
-			Lua::Reference exported = globalState.exportState(researchState);
-			ASSERT__(exported.IsSet());
-			ByteStreamBuffer stream;
-			exported.Serialize(stream);
-			outSerializedState = stream.GetWrittenData();
-		}
-		catch (const std::exception&e)
-		{
-			LogEvent(EventClass::Preset::error,e.what());
-			outSerializedState.Clear();
-		}
-	}
 
 
 

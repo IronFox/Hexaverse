@@ -9,6 +9,73 @@
 extern TwisterRandom		random;
 
 
+namespace ResearchSerialization
+{
+	
+
+	template <typename T>
+		static void Export(Protocol::ResearchAttributeArray<T>&dest, const Objects::Research::Attributes::TypeMap<T>&source)
+		{
+			dest.SetSize(source.attributes.Count());
+			for (index_t i = 0; i < dest.Count(); i++)
+			{
+				auto&src = source.attributes[i];
+				auto&dst = dest[i];
+				dst.value = src.value;
+				dst.description = src.description;
+				dst.flags = src.flags;
+			}
+		}
+
+	void	SendAttributeVectorTo(TCP::Destination&peer, const Objects::Research::Attributes::Table&table, const TUniqueID&originID)
+	{
+		Protocol::ResearchAttributeVector vec;
+		vec.faction = originID;
+		Export(vec.boolAttributes,table.bools);
+		Export(vec.floatAttributes,table.floats);
+		Export(vec.intAttributes,table.ints);
+		Channels::ResearchAttributeVector.SendTo(peer,vec,(UINT32)::Network::UserLevel::CommonFaction);
+	}
+
+	void	SendResearchProgramTo(TCP::Destination&peer)
+	{
+		static Protocol::ResearchProgram outProg;
+		static bool registered = false;
+		if (outProg.IsEmpty())
+		{
+			if (!registered)
+			{
+				registered = true;
+				Objects::Research::globalState.onScriptChange << [](){outProg.Clear();};
+			}
+			outProg.SetSize(Objects::Research::globalState.allTopics.Count());
+			for (index_t i = 0; i < outProg.Count(); i++)
+			{
+				const auto&stateIn = Objects::Research::globalState.allTopics[i];
+				auto&stateOut = outProg[i];
+				stateOut.dependentTopic = (stateIn->dependency.expired()) ? 0 : stateIn->dependency.lock()->serialIndex + 1;
+				stateOut.iconName = stateIn->iconName;
+				stateOut.maxProgress = stateIn->maxProgress;
+				stateOut.name = stateIn->name;
+				stateOut.parentTopic = stateIn->parent.expired() ? 0 : stateIn->parent.lock()->serialIndex + 1;
+			}
+		}
+		Channels::ResearchProgram.SendTo(peer,outProg,(UINT32)::Network::UserLevel::CommonFaction);
+
+	}
+
+
+	//void	SendAttributeDeltaVectorTo(TCP::Peer&peer, const Objects::Research::Attributes::Table&table, Protocol::ResearchAttributeVector&reference)
+	//{
+	//	Protocol::ResearchAttributeDeltaVector vec;
+	//	MakeDelta(vec.boolAttributes,table.boolAttributes,reference.boolAttributes);
+	//	MakeDelta(vec.intAttributes,table.intAttributes,reference.intAttributes);
+	//	MakeDelta(vec.floatAttributes,table.floatAttributes,reference.floatAttributes);
+	//	Channels::ResearchAttributeDeltaVector.SendTo(peer,vec);
+	//}
+
+}
+
 namespace Receiver
 {
 	void	ClientVote(Protocol::ClientVote&vote, TCP::Peer&peer)
@@ -48,6 +115,11 @@ namespace Receiver
 
 	void	AllianceConfigChange(Protocol::AllianceConfigChange&ch, TCP::Peer&peer)
 	{
+		if (RuntimeConfig::GameHasEnded())
+		{
+			LogEvent(EventClass::Preset::commandRejected,"Operation not permitted right now: Game has ended");
+			return;
+		}
 		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 		if (!client)
 		{
@@ -90,6 +162,11 @@ namespace Receiver
 
 	void	AllianceInvite(Protocol::AllianceInvite&invite, TCP::Peer&peer)
 	{
+		if (RuntimeConfig::GameHasEnded())
+		{
+			LogEvent(EventClass::Preset::commandRejected,"Operation not permitted right now: Game has ended");
+			return;
+		}
 		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 		if (!client)
 		{
@@ -241,8 +318,7 @@ namespace Channels
 	TCP::Channel<Protocol::TouchedMarker, Level::Faction, Protocol::ChannelID::TouchMarker>					touchMarker(Receiver::TouchMarker);
 	TCP::Channel<Protocol::ClientName,Level::Faction,Protocol::ChannelID::ChangeMyName>						changeMyName(Receiver::ChangeMyName);
 	TCP::Channel<NET(TUniqueID), Level::Faction, Protocol::ChannelID::IdentifyFaction>						identifyFactionRecv(Receiver::IdentifyFaction);
-	TCP::Channel<Protocol::QueueResearch, Level::Faction, Protocol::ChannelID::QueueResearch>				queueResearch(Receiver::QueueResearch);
-	TCP::Channel<Protocol::ResourceID, Level::PreFaction, Protocol::ChannelID::RequestResource>				requestResource(Receiver::RequestResource);
+//	TCP::Channel<Protocol::ResourceID, Level::PreFaction, Protocol::ChannelID::RequestResource>				requestResource(Receiver::RequestResource);
 	
 	TCP::Channel<NET(INT32),Level::Faction,Protocol::ChannelID::TutorialAt>							tutorialAt(Receiver::TutorialAt);
 
@@ -265,12 +341,11 @@ namespace Channels
 	TCP::ObjectSender<Protocol::ResourceUpdate,Protocol::ChannelID::ResourceUpdate>					resourceUpdate;
 	TCP::ObjectSender<Protocol::GameProgress,Protocol::ChannelID::GameProgress>						gameProgress;
 	TCP::ObjectSender<Protocol::IdentifyFaction, Protocol::ChannelID::IdentifyFaction>				identifyFaction;
-	TCP::ObjectSender<Protocol::ResearchState, Protocol::ChannelID::ResearchState>					researchState;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionOnline>							factionOnline;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionOffline>							factionOffline;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionRequestedNewRound>				factionRequestedNewRound;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionContinuedRound>					factionContinuedRound;
-	TCP::ObjectSender<Protocol::ResourceData,Protocol::ChannelID::ResourceData>						resourceData;
+	//TCP::ObjectSender<Protocol::ResourceData,Protocol::ChannelID::ResourceData>						resourceData;
 
 	TCP::ObjectSender<NET(UINT16), Protocol::ChannelID::LockEMPZones>								lockEmpZones;
 	#ifndef NO_HIBERNATION
@@ -279,9 +354,8 @@ namespace Channels
 
 	TCP::ObjectSender<Protocol::UnitLimits,Protocol::ChannelID::UnitLimits>							unitLimits;
 	TCP::ObjectSender<Protocol::OperationLacksResources,Protocol::ChannelID::OperationLacksResources>	operationLacksResources;
-	TCP::ObjectSender<Protocol::ResearchQueue, Protocol::ChannelID::ResearchQueue>					researchQueue;
 
-	TCP::ObjectSender<TUniqueID, Protocol::ChannelID::WinningFaction>								winningFaction;
+	TCP::ObjectSender<TUniqueID, Protocol::ChannelID::WinningAlliance>								winningAlliance;
 
 	DECLARE_OBJECT_SENDER(VoteCreation);
 	DECLARE_OBJECT_SENDER(VoteResult);
@@ -295,12 +369,20 @@ namespace Channels
 	DECLARE_OBJECT_SENDER(GameConfig);
 	DECLARE_OBJECT_SENDER(KillFaction);
 
+	DECLARE_OBJECT_SENDER(ResearchFactionState);
+	DECLARE_OBJECT_SENDER(ResearchProgram);
+	DECLARE_OBJECT_SENDER(ResearchQueue);
+	DECLARE_OBJECT_SENDER(ResearchAttributeVector);
+	DECLARE_OBJECT_SENDER(ResearchAttributeDeltaVector);
+	DECLARE_FACTION_CHANNEL(QueueResearch);
+
 	namespace Statistics
 	{
-		TCP::ObjectSender<TUniqueID, Protocol::ChannelID::BeginStatisticsSequence>					beginSequence;
 		TCP::ObjectSender<Objects::Statistics::Round, Protocol::ChannelID::RoundStatistics>			round;
 		TCP::ObjectSender<Objects::Statistics::EntityType, Protocol::ChannelID::EntityTypeStatistics>	entityType;
 		TCP::ObjectSender<Objects::Statistics::FactionInteraction, Protocol::ChannelID::FactionInteractionStatistics>	factionInteraction;
+
+		DECLARE_OBJECT_SENDER(BeginStatisticsSequence);
 	}
 
 
@@ -447,13 +529,17 @@ namespace Receiver
 
 		SendSessionConfigTo(peer, Objects::PFaction());
 
+		ResearchSerialization::SendResearchProgramTo(peer);
+		ResearchSerialization::SendAttributeVectorTo(peer,Objects::Research::globalState.zeroTable,TUniqueID::Empty());
+
 		Objects::ForeachFaction([&peer](const Objects::PFaction&f)
 		{
-			Protocol::ResearchState state;
+			Protocol::ResearchFactionState state;
 			state.ownerID = f->id;
-			f->researchState.Export(state.serializedData);
-			ASSERT_LESS__(state.serializedData.Count(),state.serializedData.MaxElementCount);
-			Channels::researchState.SendTo(peer,state);
+			state.progressVector = f->researchState.topicProgressVector;
+
+			Channels::ResearchFactionState.SendTo(peer,state);
+			ResearchSerialization::SendAttributeVectorTo(peer,f->researchState.attributeTable,f->id);
 		});
 
 		//if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
@@ -471,7 +557,7 @@ namespace Receiver
 		});
 
 		if (!Game::winner.expired())
-			Channels::winningFaction.SendTo(peer,Game::winner.lock()->id);
+			Channels::winningAlliance.SendTo(peer,Game::winner.lock()->id);
 
 		peer.SendSignal(Protocol::ChannelID::EndEverything);
 	}
@@ -800,6 +886,15 @@ namespace Receiver
 			Channels::createMarker.SendTo(peer, outMarker);
 		}
 
+		ResearchSerialization::SendResearchProgramTo(peer);
+		Objects::ForeachFaction([&peer](const Objects::PFaction&f)
+		{
+			Protocol::ResearchFactionState state;
+			state.ownerID = f->id;
+			state.progressVector = f->researchState.topicProgressVector;
+			Channels::ResearchFactionState.SendTo(peer,state);
+			ResearchSerialization::SendAttributeVectorTo(peer,f->researchState.attributeTable,f->id);
+		});
 
 		if (newFaction)
 		{
@@ -807,18 +902,12 @@ namespace Receiver
 
 		}
 
-		Objects::ForeachFaction([&peer](const Objects::PFaction&f)
-		{
-			Protocol::ResearchState state;
-			state.ownerID = f->id;
-			f->researchState.Export(state.serializedData);
-			ASSERT_LESS__(state.serializedData.Count(),state.serializedData.MaxElementCount);
-			Channels::researchState.SendTo(peer,state);
-		});
+
+
 		{
 			Protocol::ResearchQueue queue;
 			client->faction->researchState.ExportResearchQueue(queue);
-			Channels::researchQueue.SendTo(peer,queue);
+			Channels::ResearchQueue.SendTo(peer,queue);
 		}
 
 		#ifndef CHEAT_SHOW_ALL_RESOURCES
@@ -1048,14 +1137,10 @@ namespace Receiver
 		bool failed = false;
 		static_assert(Objects::Marker::Type::NumberOfPossibilities == 3, "Please adjust marker logic");
 		const Protocol::MarkerReferenceEntity*e = m.data.Get0();
-		Protocol::MarkerReferenceEntity ref;
-		ref.type = Objects::EntityType();
 		Objects::Marker::Type type;
-		TUniqueID	refID = TUniqueID::Empty();
 		if (e)
 		{
 			type = Objects::Marker::Type::Reinterpret(0);
-			refID = e->id;
 		}
 		else
 		{
@@ -1063,7 +1148,6 @@ namespace Receiver
 			if (e)
 			{
 				type = Objects::Marker::Type::Reinterpret(1);
-				refID = e->id;
 			}
 			else
 			{
@@ -1076,9 +1160,15 @@ namespace Receiver
 			}
 
 		}
+		Protocol::MarkerReferenceEntity ref;
 		if (e)
 			ref = *e;
-		ref.id = refID;
+		else
+		{
+			ref.id = TUniqueID::Empty();
+			ref.type = Objects::EntityType();
+			ref.owner = TUniqueID::Empty();
+		}
 
 		if (failed)
 		{
@@ -1191,7 +1281,7 @@ namespace Receiver
 		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 		if (!client->faction)
 			return;
-		Journal::currentRound.Register(true,client->faction,new Journal::Round::QueueResearch(Objects::ResearchState::GetTopic( research.research),research.drop));
+		Journal::currentRound.Register(true,client->faction,new Journal::Round::QueueResearch(Objects::Research::GetTopic( research.research),research.drop));
 	}
 
 	void	IdentifyFaction(NET(TUniqueID)&id, TCP::Peer&peer)
@@ -1202,23 +1292,6 @@ namespace Receiver
 	void	TutorialAt(NET(INT32)&at)
 	{
 		Game::tutorialAt = at;
-	}
-
-	void	RequestResource(Protocol::ResourceID&id, TCP::Peer&peer)
-	{
-		LogEvent(EventClass::Preset::common,peer,"Received resource request for resource "+Bin2Str::ConvertPOD(id));
-
-		ScriptCache::PScript script = ScriptCache::Lookup(id);
-		if (script)
-		{
-			LogEvent(EventClass::Preset::common,peer,"Resource "+Bin2Str::ConvertPOD(id)+" is script. Dispatching "+String(script->compressed.Count())+" bytes");
-			Protocol::ResourceData data;
-			data.data = script->compressed;	//stupid copy...
-			data.id = id;
-			Channels::resourceData.SendTo(peer,data);
-			return;
-		}
-		LogEvent(EventClass::Preset::common,peer,"Resource "+Bin2Str::ConvertPOD(id)+" is unknown");
 	}
 
 	
@@ -1974,6 +2047,11 @@ namespace Receiver
 			break;
 			case Protocol::ChannelID::RequestContinueRound:
 			{
+				if (RuntimeConfig::GameHasEnded())
+				{
+					LogEvent(EventClass::Preset::commandRejected,"Operation not permitted right now: Game has ended");
+					return;
+				}
 				
 				//Objects::Tick();
 				Network::PClient client = To<Network::Client>::Cast(peer.attachment);
@@ -1987,6 +2065,11 @@ namespace Receiver
 			break;
 			case Protocol::ChannelID::RequestRoundEnd:
 			{
+				if (RuntimeConfig::GameHasEnded())
+				{
+					LogEvent(EventClass::Preset::commandRejected,"Operation not permitted right now: Game has ended");
+					return;
+				}
 				
 				//Objects::Tick();
 				Network::PClient client = To<Network::Client>::Cast(peer.attachment);
@@ -2020,6 +2103,11 @@ namespace Receiver
 			}
 			break;
 			case Protocol::ChannelID::LeaveAlliance:
+				if (RuntimeConfig::GameHasEnded())
+				{
+					LogEvent(EventClass::Preset::commandRejected,"Operation not permitted right now: Game has ended");
+					return;
+				}
 				Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 				if (client && client->faction && RuntimeConfig::IsInAnyCommandPhase() && client->faction->alliance->CountLivingMembers() > 1)
 				{

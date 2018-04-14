@@ -22,7 +22,11 @@ namespace Objects
 	DECLARE_POINTER_CLASS(MobileEntityProducer)
 	DECLARE_POINTER_CLASS(SkyLinkStructure)
 
-	DECLARE_POINTER_CLASS(ResearchTopic)
+	namespace Research
+	{
+		DECLARE_POINTER_CLASS(Topic)
+	}
+
 	DECLARE_POINTER_CLASS(MobilePark)
 
 	DECLARE_POINTER_CLASS(BaseEntity)
@@ -86,7 +90,6 @@ namespace Objects
 		ChangingOwnership
 	);
 
-	
 	class Compound;
 	class Marker;
 	struct TrajectoryEndPoint;

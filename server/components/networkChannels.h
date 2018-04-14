@@ -29,7 +29,7 @@ namespace Receiver
 	void	QueueResearch(Protocol::QueueResearch&, TCP::Peer&peer);
 	void	ChatMessage(Protocol::ChatMessage&, TCP::Peer&peer);
 	void	SaveAs(Protocol::SaveAs&, TCP::Peer&peer);
-	void	RequestResource(Protocol::ResourceID&, TCP::Peer&peer);
+//	void	RequestResource(Protocol::ResourceID&, TCP::Peer&peer);
 	void	TutorialAt(NET(INT32)&at);
 
 	/**
@@ -48,6 +48,12 @@ namespace Receiver
 	void		OnDeserializationFailed(UINT32 channel, TCP::Peer&origin, const String&exception);
 
 
+}
+
+namespace ResearchSerialization
+{
+	void	SendAttributeVectorTo(TCP::Destination&peer, const Objects::Research::Attributes::Table&table, const TUniqueID&originID);
+	void	SendResearchProgramTo(TCP::Destination&peer);
 }
 
 
@@ -92,8 +98,7 @@ namespace Channels
 	extern TCP::Channel<Protocol::TouchedMarker, Level::Faction, Protocol::ChannelID::TouchMarker>				touchMarker;
 	extern TCP::Channel<Protocol::ClientName,Level::Faction,Protocol::ChannelID::ChangeMyName>					changeMyName;
 	extern TCP::Channel<NET(TUniqueID), Level::Faction, Protocol::ChannelID::IdentifyFaction>					identifyFactionRecv;
-	extern TCP::Channel<Protocol::QueueResearch, Level::Faction, Protocol::ChannelID::QueueResearch>			queueResearch;
-	extern TCP::Channel<Protocol::ResourceID, Level::PreFaction, Protocol::ChannelID::RequestResource>			requestResource;
+	//extern TCP::Channel<Protocol::ResourceID, Level::PreFaction, Protocol::ChannelID::RequestResource>			requestResource;
 	extern TCP::Channel<NET(INT32),Level::Faction,Protocol::ChannelID::TutorialAt>								tutorialAt;
 
 
@@ -115,12 +120,11 @@ namespace Channels
 	extern TCP::ObjectSender<Protocol::ResourceUpdate,Protocol::ChannelID::ResourceUpdate>				resourceUpdate;
 	extern TCP::ObjectSender<Protocol::GameProgress,Protocol::ChannelID::GameProgress>					gameProgress;
 	extern TCP::ObjectSender<Protocol::IdentifyFaction, Protocol::ChannelID::IdentifyFaction>			identifyFaction;
-	extern TCP::ObjectSender<Protocol::ResearchState, Protocol::ChannelID::ResearchState>				researchState;
 	extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionOnline>						factionOnline;
 	extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionOffline>						factionOffline;
 	extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionRequestedNewRound>				factionRequestedNewRound;
 	extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionContinuedRound>				factionContinuedRound;
-	extern TCP::ObjectSender<Protocol::ResourceData,Protocol::ChannelID::ResourceData>					resourceData;
+	//extern TCP::ObjectSender<Protocol::ResourceData,Protocol::ChannelID::ResourceData>					resourceData;
 	
 	extern TCP::ObjectSender<NET(UINT16), Protocol::ChannelID::LockEMPZones>							lockEmpZones;
 	#ifndef NO_HIBERNATION
@@ -128,9 +132,9 @@ namespace Channels
 	#endif
 	extern TCP::ObjectSender<Protocol::UnitLimits,Protocol::ChannelID::UnitLimits>						unitLimits;
 	extern TCP::ObjectSender<Protocol::OperationLacksResources,Protocol::ChannelID::OperationLacksResources>	operationLacksResources;
-	extern TCP::ObjectSender<Protocol::ResearchQueue, Protocol::ChannelID::ResearchQueue>				researchQueue;
 
-	extern TCP::ObjectSender<TUniqueID, Protocol::ChannelID::WinningFaction>							winningFaction;
+	extern TCP::ObjectSender<TUniqueID, Protocol::ChannelID::WinningAlliance>							winningAlliance;
+
 
 	DECLARE_OBJECT_SENDER(VoteCreation);
 	DECLARE_OBJECT_SENDER(VoteResult);
@@ -144,12 +148,21 @@ namespace Channels
 	DECLARE_OBJECT_SENDER(GameConfig);
 	DECLARE_OBJECT_SENDER(KillFaction);
 
+	DECLARE_OBJECT_SENDER(ResearchFactionState);
+	DECLARE_OBJECT_SENDER(ResearchProgram);
+	DECLARE_OBJECT_SENDER(ResearchQueue);
+	DECLARE_OBJECT_SENDER(ResearchAttributeVector);
+	DECLARE_OBJECT_SENDER(ResearchAttributeDeltaVector);
+	DECLARE_FACTION_CHANNEL(QueueResearch);
+
 	namespace Statistics
 	{
-		extern TCP::ObjectSender<TUniqueID, Protocol::ChannelID::BeginStatisticsSequence>				beginSequence;
+		
 		extern TCP::ObjectSender<Objects::Statistics::Round, Protocol::ChannelID::RoundStatistics>		round;
 		extern TCP::ObjectSender<Objects::Statistics::EntityType, Protocol::ChannelID::EntityTypeStatistics>	entityType;
 		extern TCP::ObjectSender<Objects::Statistics::FactionInteraction, Protocol::ChannelID::FactionInteractionStatistics>	factionInteraction;
+
+		DECLARE_OBJECT_SENDER(BeginStatisticsSequence);
 	}
 
 //	Channel<class Object, unsigned MinUserLevel, UINT32 ChannelID>

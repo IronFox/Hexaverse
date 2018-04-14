@@ -1731,7 +1731,7 @@ namespace Journal
 		{
 			Protocol::ResearchQueue queue;
 			f->researchState.ExportResearchQueue(queue);
-			Channels::researchQueue.SendTo(cl->peer.lock(),queue);
+			Channels::ResearchQueue.SendTo(cl->peer.lock(),queue);
 		}
 		if (drop)
 			LogEvent(EventSignificance::Uncommon, GetPeerOfFaction(f), "Faction research "+topic->GetFullName()+" dropped");
@@ -1743,7 +1743,7 @@ namespace Journal
 	{
 		String targetPath;
 		e.stringParameters.Require(CLOCATION,"Target",targetPath);
-		topic = Objects::ResearchState::FindTopic(targetPath);
+		topic = Objects::Research::FindTopic(targetPath);
 		if (!topic)
 		{
 			throw Except::Program::FunctionalityNotImplemented(CLOCATION,"Unknown research target '"+targetPath+"'");

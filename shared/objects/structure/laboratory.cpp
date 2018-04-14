@@ -29,14 +29,14 @@ namespace Objects
 
 	}
 
-	/*virtual override*/ bool			Laboratory::IsBuilding(std::pair<int,int>&outProgress) const
+	/*virtual override*/ bool			Laboratory::IsBuilding( std::pair<int,int>&outProgress ) const
 	{
 		if (!IsEnabled() || !owner || owner->researchState.IsIdle())
 			return false;
 		auto topic = owner->researchState.GetActiveTopic();
 		if (topic->maxProgress <= 0)
 			return false;
-		outProgress.first = topic->getProgress(owner->researchState.researchState);
+		outProgress.first = topic->GetProgress(owner->researchState);
 		outProgress.second = topic->maxProgress;
 		return true;
 	}

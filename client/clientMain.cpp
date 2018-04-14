@@ -1418,7 +1418,7 @@ bool loop()
 						(
 							(Objects::selectedMobileEntity && !Objects::selectedMobileEntity->CanHitFrom(Objects::selectedMobileEntity->GetLastPointOfOrigin(),Objects::choiceVis.arrowCellTarget))
 							||
-							(Objects::selectedEntity && !Objects::selectedEntity->CanHit(Objects::choiceVis.arrowCellTarget))
+							(!Objects::selectedMobileEntity && Objects::selectedEntity && !Objects::selectedEntity->CanHit(Objects::choiceVis.arrowCellTarget))
 						)
 					 //!Objects::Turret::CanHit(Objects::selectedVehicle->GetFlatAttackRange(),Objects::selectedVehicle->GetLastPointOfOrigin(),Objects::arrowCellTarget)
 					 )
@@ -1598,7 +1598,6 @@ bool loop()
 				#ifdef _DEBUG
 					if (Network::haveID)
 						textout << "My ID: "<<Network::myIDString<<nl;
-					textout << "Active Research Script: "<< Bin2Str::ConvertPOD( Objects::ResearchState::GetScriptIdentifier() )<<nl;
 					textout << -Camera::scene.retraction.z/WorldScale << nl;
 				#endif
 				if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Network::roundTimer > 0)

@@ -116,10 +116,8 @@ namespace Objects
 		foreach (invited,m)
 		{
 			PFaction f = m->wFaction.lock();
-			#ifndef CLIENT
-				if (f->isDead && livingOnly)
-					continue;
-			#endif
+			if (f->isDead && livingOnly)
+				continue;
 			visitor(f);
 		}
 	}
@@ -131,10 +129,8 @@ namespace Objects
 		foreach (members,m)
 		{
 			PFaction f = m->wFaction.lock();
-			#ifndef CLIENT
-				if (f->isDead && livingOnly)
-					continue;
-			#endif
+			if (f->isDead && livingOnly)
+				continue;
 			visitor(f);
 		}
 	}
@@ -143,15 +139,11 @@ namespace Objects
 	{
 		if (!this)
 			return 0;
-		#ifndef CLIENT
-			count_t cnt  = 0;
-			foreach (members,m)
-				if (!m->wFaction.lock()->isDead)
-					cnt++;
-			return cnt;
-		#else
-			return members.Count();
-		#endif
+		count_t cnt  = 0;
+		foreach (members,m)
+			if (!m->wFaction.lock()->isDead)
+				cnt++;
+		return cnt;
 	}
 
 
@@ -1638,7 +1630,11 @@ namespace Objects
 				}
 			}
 			outAllianceChanged = true;
-			PAlliance alliance (new Alliance(TUniqueID::New()));
+
+			PAlliance alliance = Alliance::FindByID(allianceID);
+			if (!alliance)
+				alliance.reset(new Alliance(allianceID.IsNotEmpty() ? allianceID : TUniqueID::New()));
+
 			PFaction rs(new Faction(id));
 			idMap.Set(id,rs);
 			allKnown << rs;
@@ -1699,8 +1695,9 @@ namespace Objects
 	void			ForeachFaction(const std::function<void(const PFaction&)>&func, bool includeDead/*=false*/)
 	{
 		#ifdef CLIENT
-			foreach (Faction::allKnown,a)
-				func(*a);
+			foreach (Faction::allKnown,f)
+				if (!(*f)->isDead || includeDead)
+					func(*f);
 		#else
 			
 			if (Faction::nexus && (!Faction::nexus->isDead || includeDead))
@@ -1880,7 +1877,10 @@ namespace Objects
 					if (m.visualization->IsMobile())
 						To<MobileEntity>::Cast( m.visualization)->UpdateSystem();
 					m.visualization->id = referenceID;
-					m.visualization->owner = referenceOwnerID == TUniqueID::Empty() ? PFaction() : Faction::GetOrCreate(referenceOwnerID);
+					if (referenceOwnerID.IsNotEmpty())
+						m.visualization->owner = Faction::GetOrCreate(referenceOwnerID);
+					else
+						LogEvent(EventSignificance::NonFatalError,"Ghost entity has no owner: "+ToString(referenceID));
 					m.visualization->health = -(int)m.age;
 					m.visualization->isOwnedByMe = (m.visualization->owner && m.visualization->owner->isOwnedByMe) || (!m.visualization->owner && m.type == Type::EntityDeath);
 					m.visualization->UpdateNiceName();
@@ -2077,6 +2077,15 @@ namespace Objects
 			markerMap.Set(rs.id, markers.Count() - 1); 
 			if (rs.UtilizesReferenceEntity())
 				ASSERT__(referenceMap.SetNew(referenceID,markers.Count()-1));
+
+
+			if (rs.UtilizesReferenceEntity())
+			{
+				if (referenceOwnerID.IsEmpty())
+					LogEvent(EventClass::Preset::uncommon,shared_from_this(), "Marker defined for entity "+ToString(referenceID)+", but owner ID is empty");
+				elif (!FindByID(referenceOwnerID))
+					LogEvent(EventClass::Preset::uncommon,shared_from_this(), "Marker defined for entity "+ToString(referenceID)+", but owner ID could not be matched: "+ToString(referenceOwnerID));
+			}
 
 			return rs; 
 		}
