@@ -1,6 +1,5 @@
 steam: invites not working when already in game
 
-radar drives into range of rocket tower
 
 
 load ended game
@@ -11,6 +10,7 @@ nexus bases off but ai on
 
 hard to reproduce/fix:
 	Encountered hostile entity in global list of mobile entities with health=0. No entities had actually died. Creation seemed correct, but health should not have been zero
+	AI radar drives into range of rocket tower. this should never happen. player radar stops (verified)
 	hostile ghost has no owner. Added more log message on server and client to track ther issue. Fixed for nexus units. Possibly fixed
 	clicking on ghosts crashes client (hostile or friendly). Added more log entries to track issue. Removed remote possible cause
 	bug: clipped terrain sometimes does not rasterize correctly, 
