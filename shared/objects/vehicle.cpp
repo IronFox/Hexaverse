@@ -75,11 +75,9 @@ namespace Objects
 	{
 		const auto& state = GetResearchState();
 		String rs = turret->scanningRange.Describe(state);
-		if (!turret->CanAttack())
+		if (!turret->CanAttack() && base->turretRangeModifier.GetUnfilteredValue(state) != 0)
 		{
-			String mod = base->turretRangeModifier.Describe(state);
-			if (mod != '0')
-				rs += "+"+mod;
+			rs += "+"+base->turretRangeModifier.Describe(state);
 		}
 		return rs;
 	}

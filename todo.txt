@@ -1,4 +1,3 @@
-plane position markers are drawn atop planes instead below
 steam: invites not working when already in game
 
 radar drives into range of rocket tower
@@ -179,6 +178,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: plane position markers are drawn atop planes instead below
 done: repairer should hold if repair has completed
 fixed: build bride to generates micro tasks incorrectly named 'build road to'
 done: home key: toggle sky grid
