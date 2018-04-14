@@ -274,8 +274,13 @@ namespace StatePanel
 				//cachedLines << " Range: "<<m->GetAttackRange() << nl;
 				//cachedLines << " Damage: "<<m->turret->damageLevel << nl;
 				//cachedLines << " Ammo-Usage: "<<m->turret->ammoNeedPerShot<<nl;
-				cachedLines << " Hrz. Range: "+m->turret->horizontalAttackRange.Describe(researchState)
-								+'+'+m->turret->explosionRadius.Describe(researchState);
+				if (m->turret->horizontalAttackRange.IsFunctionOrConstNonZero())
+				{
+					cachedLines << " Hrz. Range: "+m->turret->horizontalAttackRange.Describe(researchState)
+									+'+'+m->turret->explosionRadius.Describe(researchState);
+				}
+				elif (m->turret->explosionRadius.IsFunctionOrConstNonZero())
+					cachedLines << " Explosion Radius: "+m->turret->explosionRadius.Describe(researchState);
 				cachedLines << " Damage: "+String(m->turret->GetDamageLevel(e.owner));
 				int ammoNeed = m->turret->GetAmmoNeedPerShot(e.owner);
 				if (ammoNeed > 0)
