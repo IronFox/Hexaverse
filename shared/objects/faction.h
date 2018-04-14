@@ -444,8 +444,11 @@ namespace Objects
 			friend struct TSensorLock;
 
 
-
-			static void	RecreateNexus(const TUniqueID&id=TUniqueID::New());	//!< Creates a fresh nexus faction and assigns it to @a nexus
+			/**
+			Creates a fresh nexus faction and assigns it to @a nexus.
+			The default parameter of this function was changed from Empty() to New() since empty owner guids are considered null when creating ghosts.
+			*/
+			static void	RecreateNexus(const TUniqueID&id=TUniqueID::New());	
 			TSensorLock LockSensorUpdates() {return this;}
 
 
