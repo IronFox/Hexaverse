@@ -2,7 +2,6 @@ steam: invites not working when already in game
 
 
 
-unit limits
 nexus bases off but ai on
 
 
@@ -25,6 +24,7 @@ should have (eventually):
 	icon floater for insufficient resources to continue job
 	base fog on average terrain height
 	setting for fog density
+	scriptable AI and regression testing (they are related)
 	
 nice to have:
 	better visualization of attack/scanning ranges. use special terrain meshes with hard lines to visualize edges
@@ -57,10 +57,7 @@ steam: find alternate server location service
 
 
 
-
-
-
-
+deactivate build buttons if unit limit is reached
 	
 
 	
