@@ -73,6 +73,39 @@ namespace Reflection
 		}
 
 
+		class Winner : public Base
+		{
+			typedef Base	Super;
+		public:
+			/**/			Winner() : Super("winner","String",Persistence::Temporary,1,CLI::FullProtection)
+			{}
+
+
+			virtual String	ConvertToString() const override
+			{
+				auto w = Game::winner.lock();
+				if (!w)
+					return "<None>";
+
+				Buffer0<String> winners;
+				w->ForeachMember([&winners](const Objects::PFaction&f)
+				{
+					winners << f->GetName()+" ("+ToString(f->id)+")";
+				});
+
+				if (winners.Count() == 1)
+					return winners.First();
+				String str = implode(", ",winners.ToRef().SubRef(0,winners.Count()-1)) + " and "+winners.Last();
+				return str;
+			}
+
+			virtual	bool	Set(const String&value)	override
+			{
+				return false;
+			}
+
+		};
+
 
 		class GameHasEnded : public Base
 		{
@@ -1066,6 +1099,7 @@ namespace Reflection
 		gameFolder = state.EnterNewFolder("Game");
 		{
 			state.SetVariable(CLI::PVariable(new Variable::GameHasEnded()));
+			state.SetVariable(CLI::PVariable(new Variable::Winner()));
 
 			Variable::SetReadOnlyCallbackVariable("round","Round",[]()
 			{
