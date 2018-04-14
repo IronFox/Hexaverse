@@ -61,9 +61,21 @@ namespace ResearchSerialization
 			}
 		}
 		Channels::ResearchProgram.SendTo(peer,outProg,(UINT32)::Network::UserLevel::CommonFaction);
-
 	}
 
+	void	SendResearchTo( TCP::Destination&dest )
+	{
+		SendResearchProgramTo(dest);
+		SendAttributeVectorTo(dest,Objects::Research::globalState.zeroTable,TUniqueID::Empty());
+		Objects::ForeachFaction([&dest](const Objects::PFaction&f)
+		{
+			Protocol::ResearchFactionState state;
+			state.ownerID = f->id;
+			state.progressVector = f->researchState.topicProgressVector;
+			Channels::ResearchFactionState.SendTo(dest,state);
+			SendAttributeVectorTo(dest,f->researchState.attributeTable,f->id);
+		});
+	}
 
 	//void	SendAttributeDeltaVectorTo(TCP::Peer&peer, const Objects::Research::Attributes::Table&table, Protocol::ResearchAttributeVector&reference)
 	//{
@@ -529,18 +541,7 @@ namespace Receiver
 
 		SendSessionConfigTo(peer, Objects::PFaction());
 
-		ResearchSerialization::SendResearchProgramTo(peer);
-		ResearchSerialization::SendAttributeVectorTo(peer,Objects::Research::globalState.zeroTable,TUniqueID::Empty());
-
-		Objects::ForeachFaction([&peer](const Objects::PFaction&f)
-		{
-			Protocol::ResearchFactionState state;
-			state.ownerID = f->id;
-			state.progressVector = f->researchState.topicProgressVector;
-
-			Channels::ResearchFactionState.SendTo(peer,state);
-			ResearchSerialization::SendAttributeVectorTo(peer,f->researchState.attributeTable,f->id);
-		});
+		ResearchSerialization::SendResearchTo(peer);
 
 		//if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
 		Objects::ForeachFaction([&peer](const Objects::PFaction&f)
@@ -886,15 +887,7 @@ namespace Receiver
 			Channels::createMarker.SendTo(peer, outMarker);
 		}
 
-		ResearchSerialization::SendResearchProgramTo(peer);
-		Objects::ForeachFaction([&peer](const Objects::PFaction&f)
-		{
-			Protocol::ResearchFactionState state;
-			state.ownerID = f->id;
-			state.progressVector = f->researchState.topicProgressVector;
-			Channels::ResearchFactionState.SendTo(peer,state);
-			ResearchSerialization::SendAttributeVectorTo(peer,f->researchState.attributeTable,f->id);
-		});
+		ResearchSerialization::SendResearchTo(peer);
 
 		if (newFaction)
 		{
