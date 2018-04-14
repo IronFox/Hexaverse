@@ -63,16 +63,21 @@ namespace ResearchSerialization
 		Channels::ResearchProgram.SendTo(peer,outProg,(UINT32)::Network::UserLevel::CommonFaction);
 	}
 
+	void	SendTopicProgressVectorTo( TCP::Destination&dest, const Objects::PFaction&f )
+	{
+		Protocol::ResearchFactionState state;
+		state.ownerID = f->id;
+		state.progressVector = f->researchState.topicProgressVector;
+		Channels::ResearchFactionState.SendTo(dest,state,(UINT32)::Network::UserLevel::CommonFaction);
+	}
+
 	void	SendResearchTo( TCP::Destination&dest )
 	{
 		SendResearchProgramTo(dest);
 		SendAttributeVectorTo(dest,Objects::Research::globalState.zeroTable,TUniqueID::Empty());
 		Objects::ForeachFaction([&dest](const Objects::PFaction&f)
 		{
-			Protocol::ResearchFactionState state;
-			state.ownerID = f->id;
-			state.progressVector = f->researchState.topicProgressVector;
-			Channels::ResearchFactionState.SendTo(dest,state);
+			SendTopicProgressVectorTo(dest,f);
 			SendAttributeVectorTo(dest,f->researchState.attributeTable,f->id);
 		});
 	}
@@ -841,6 +846,10 @@ namespace Receiver
 
 			client->faction->accessToken = response.factionToken;
 			Network::tokenMap.Set(response.factionToken,client->faction);
+
+			ResearchSerialization::SendTopicProgressVectorTo(Network::server,faction);	//since the user level hasn't been updated yet, this is not sent to the local client
+			ResearchSerialization::SendAttributeVectorTo(Network::server,faction->researchState.attributeTable,faction->id);
+
 		}
 		else
 		{
