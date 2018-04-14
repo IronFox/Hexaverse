@@ -193,6 +193,7 @@ namespace FileIO
 								researchScript("RESS"),
 								researchState("REST"),
 								activeResearchTopic("ARET"),
+								winningAlliance("WINA"),
 
 								zzzz("zzzz")	//no use, just so that every line can have a comma at the end
 								;
@@ -1217,6 +1218,7 @@ namespace FileIO
 
 			static const int ConfigureAllianceRound = 0;
 			static const int NewFactionRound = ConfigureAllianceRound+1;
+			TUniqueID winnerID = TUniqueID::Empty();
 
 			for (int round = 0; round < 3; round++)
 			{
@@ -1240,6 +1242,7 @@ namespace FileIO
 										GetPOD(list,RID::roundNumber,RuntimeConfig::roundNumber);
 										GetOptionalPOD(list,RID::mostFactionsAlive,Game::mostFactionsAlive,(UINT32)0);
 										GetOptionalPOD(list,RID::mostAlliancesAlive,Game::mostAlliancesAlive,(UINT32)0);
+										GetOptionalPOD(list,RID::winningAlliance,winnerID,TUniqueID::Empty());
 
 										{
 											auto p = list->FindFirst(RID::gamePhase);
@@ -1653,6 +1656,14 @@ namespace FileIO
 				w->ResetAllChange();
 			},false);
 
+
+			if (winnerID.IsNotEmpty())
+			{
+				auto al = Objects::Alliance::FindByID(winnerID);
+				if (al)
+					Game::DeclareWinner(al);
+			}
+
 		}
 
 		lastSaveRound = RuntimeConfig::roundNumber;
@@ -1663,6 +1674,7 @@ namespace FileIO
 
 		if (RuntimeConfig::empZones)
 			World::SetUnlockedEMPZones(Game::Config::CountActuallyAccessibleZones());
+
 
 		LogEvent(EventSignificance::Uncommon,"Restored world '"+World::worldID.ToNiceString()+"'/"+ToString(World::worldID)+" in round "+RuntimeConfig::roundNumber.ToString());
 		RefreshWindowTitle();
@@ -1771,6 +1783,9 @@ namespace FileIO
 		general->AppendBlock(RID::mostFactionsAlive)->SetPODData(Game::mostFactionsAlive);
 		general->AppendBlock(RID::mostAlliancesAlive)->SetPODData(Game::mostAlliancesAlive);
 		
+		if (!Game::winner.expired())
+			general->AppendBlock(RID::winningAlliance)->SetPODData(Game::winner.lock()->id);	//implies that this game has ended
+
 		{
 			String phase = savePhase.ToString();
 			general->AppendBlock(RID::gamePhase, phase.c_str(),phase.GetLength());

@@ -11,6 +11,7 @@ v0.8.4
 	* Building bridges now correctly lists 'Build bridge here' micro task.
 	* Fixed ghosts of nexus units having no owner.
 	* Fixed artillery/cannons sometimes choosing the wrong trajectory server-side and hitting friendly units.
+	* Savegames now correctly record when a game has ended, and the respective winner.
 
 v0.8.3	[Apr 8 2018]
 	+ Added hotkey (P for Path) to quickly build roads using terraformers.
