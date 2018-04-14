@@ -187,10 +187,10 @@
 			<context name="Structures">Limits for buildings
 				<variable name="Mine" default="8" />
 				<variable name="Generator" default="8" />
-				<variable name="Reactor_Core" default="0" />
+				<variable name="Reactor_Core" default="3" />
 				<variable name="Munition_Factory" default="4" />
 				<variable name="Vehicle_Plant" default="4" />
-				<variable name="Laboratory" default="0" />
+				<variable name="Laboratory" default="6" />
 				<variable name="Connector" default="1024" />
 				<variable name="Fuel_Container" default="8" />
 				<variable name="Mineral_Container" default="8" />
@@ -199,9 +199,8 @@
 				<variable name="Nexus_Port" default="0" />
 				<variable name="Vehicle_Store" default="8" />
 				<variable name="Missile_Launcher_Tower" default="6" />
-				<variable name="Rocket_Launcher_Tower" default="0" />
+				<variable name="Rocket_Launcher_Tower" default="8" />
 				<variable name="Radar_Tower" default="8" />
-				<variable name="Cannon_Tower" default="16" />
 				<variable name="Surveyor_Tower" default="6" />
 			</context>
 			<context name="MobileTurrets">Limits for mobile turrets. The used base, if variable, is ignored.
