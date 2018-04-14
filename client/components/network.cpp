@@ -660,6 +660,9 @@ namespace Network
 			{
 
 				Objects::PMobileEntity v;
+				
+				EXPECT2(vc.state.entityState.health>0,vc.state.entityState.health,vc.state.entityState.id);
+
 				auto m = vc.state.myMobileEntity.Get0();
 				const bool place = vc.state.entityState.timestamp.rightNow && (!m || m->storedIn.Get0() == 0);
 				if (place)

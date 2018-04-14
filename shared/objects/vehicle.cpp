@@ -515,7 +515,7 @@ namespace Objects
 			return true;
 		}
 
-		bool	Vehicle::DirectTo(mode_t mode, MutableArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
+		bool	Vehicle::DirectTo( mode_t mode, MutableArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/ )
 		{
 			switch (mode)
 			{

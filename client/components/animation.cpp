@@ -1003,6 +1003,7 @@ namespace Animation
 	void					Primitive::Init(Protocol::NewMobileEntity&sc, const Objects::PMobileEntity&v)
 	{
 		type = NewMobileEntity;
+		ASSERT__(v->IsAlive(),v->GetNameAndOwner());
 		allocatedTarget = v;
 		time.SetMinAndMax(sc.state.entityState.timestamp.atTime/*-0.01f*/);
 	}

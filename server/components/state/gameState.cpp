@@ -838,6 +838,7 @@ namespace Game
 			if (expose & Expose::SleepState)
 				if (e.IsSleeping())
 					state.entityStateFlags |= Protocol::EntityStateFlags::IsSleeping;
+			ASSERT2__(state.health > 0, e.id, e.health);	//we don't describe ghosts
 		}
 
 		void	Describe( Protocol::MobileState&state, const Objects::MobileEntity&v, const Protocol::Timestamp&timestamp, Expose expose, UINT32 changeFlags)
