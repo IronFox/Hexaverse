@@ -9,6 +9,7 @@ v0.8.4
 	* Fixed attack arrow positioning when mobile unit is selected but attack origin is not current entity location.
 	* Fixed handling and display of winning alliance when game ends.
 	* Building bridges now correctly lists 'Build bridge here' micro task.
+	* Fixed ghosts of nexus units having no owner.
 
 v0.8.3	[Apr 8 2018]
 	+ Added hotkey (P for Path) to quickly build roads using terraformers.

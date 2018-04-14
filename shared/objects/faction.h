@@ -445,7 +445,7 @@ namespace Objects
 
 
 
-			static void	RecreateNexus(const TUniqueID&id=TUniqueID::Empty());	//!< Creates a fresh nexus faction and assigns it to @a nexus
+			static void	RecreateNexus(const TUniqueID&id=TUniqueID::New());	//!< Creates a fresh nexus faction and assigns it to @a nexus
 			TSensorLock LockSensorUpdates() {return this;}
 
 
