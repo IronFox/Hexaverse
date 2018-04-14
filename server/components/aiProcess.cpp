@@ -22,7 +22,7 @@ namespace AIProcess
 			PathString	path,
 						workingDirectory = "..\\client\\";
 			#ifdef _DEBUG
-				path = "..\\client\\.projector\\Debug\\Visual Client.exe";
+				path = "..\\client\\.projector\\Debug\\Visual Client" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe";
 			//#elif !defined _RELEASE
 			//	#ifdef PLATFORM_X64
 			//		path = "..\\client\\.projector\\x64\\OptimizedDebug\\Console Client" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe";
