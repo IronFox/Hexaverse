@@ -18,6 +18,7 @@
 #include <objects/structure/tower.h>
 #include "objectNetworkHelper.h"
 #include "playerControlBegin.h"
+#include <expectedBehavior.h>
 
 namespace Animation
 {
@@ -1003,7 +1004,7 @@ namespace Animation
 	void					Primitive::Init(Protocol::NewMobileEntity&sc, const Objects::PMobileEntity&v)
 	{
 		type = NewMobileEntity;
-		ASSERT__(v->IsAlive(),v->GetNameAndOwner());
+		ASSERT1__(v->IsAlive(),v->GetNameAndOwner());
 		allocatedTarget = v;
 		time.SetMinAndMax(sc.state.entityState.timestamp.atTime/*-0.01f*/);
 	}
