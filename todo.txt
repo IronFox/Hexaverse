@@ -6,7 +6,8 @@ nexus bases off but ai on
 
 
 hard to reproduce/fix:
-	Encountered hostile entity in global list of mobile entities with health=0. No entities had actually died. Creation seemed correct, but health should not have been zero
+	Encountered hostile entity in global list of mobile entities with health=0. No entities had actually died. Creation seemed correct, but health should not have been zero.
+		Server data is okay. Client assert on received data did not trigger. Added more checks further down the pipeline
 	AI radar drives into range of rocket tower. this should never happen. player radar stops (verified)
 	hostile ghost has no owner. Added more log message on server and client to track ther issue. Fixed for nexus units. Possibly fixed
 	clicking on ghosts crashes client (hostile or friendly). Added more log entries to track issue. Removed remote possible cause

@@ -682,6 +682,7 @@ namespace Network
 
 				//v->id = vc.state.entityState.id;
 				Animation::ApplyState(v,vc.state,true, !vc.state.entityState.timestamp.rightNow);
+				ASSERT_EQUAL1__(v->health,vc.state.entityState.health,v->id);
 				#ifdef HAS_WINDOW
 					if (v->isOwnedByMe && !amLocated)
 					{
@@ -702,6 +703,8 @@ namespace Network
 					LogEvent(EventSignificance::Debug, "Appended 'new mobile entity("+ToString(vc.state.entityState.id)+")' primitive to animation sequence at t="+String(vc.state.entityState.timestamp.atTime));
 
 				}
+				ASSERT_EQUAL1__(v->health,vc.state.entityState.health,v->id);
+
 			}
 			catch (const std::exception & ex)
 			{

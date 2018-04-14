@@ -1154,10 +1154,12 @@ namespace Animation
 			break;
 			case NewMobileEntity:
 			{
+				EXPECT(allocatedTarget);
+				EXPECT1(allocatedTarget->health > 0,allocatedTarget->id);
 				Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(allocatedTarget);
 				if (v)
 				{
-					LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Placing mobile entity during animation at time "+String(Animation::atTime)+"/"+ToString(this->time));
+					LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Placing mobile entity (health "+String(allocatedTarget->health)+") during animation at time "+String(Animation::atTime)+"/"+ToString(this->time));
 					Objects::PWorldEntity existing = Objects::GetEntity(v->id);
 					if (existing)
 					{
