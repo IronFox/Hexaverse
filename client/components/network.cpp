@@ -1173,8 +1173,47 @@ namespace Network
 			bool brk = true;
 		}
 
-		static bool triggerScriptChange = false,
-			reallyTriggerScriptChange = false;
+		enum class ScriptChangeFlags
+		{
+			Empty = 0x0,
+			HaveNewTopics = 0x1,
+			HaveMyAttributes = 0x2,
+			HaveZeroAttributes = 0x4,
+			HaveMyResearchFactionState = 0x8,
+
+			ShouldLoad = HaveNewTopics | HaveMyAttributes | HaveZeroAttributes | HaveMyResearchFactionState
+
+		};
+
+		inline ScriptChangeFlags	operator|(ScriptChangeFlags a,ScriptChangeFlags b)
+		{
+			typedef std::underlying_type<ScriptChangeFlags>::type	T;
+			return static_cast<ScriptChangeFlags>( static_cast<T>(a) | static_cast<T>(b) );
+		}
+
+		inline void	operator|=(ScriptChangeFlags&a,ScriptChangeFlags b)
+		{
+			a = a | b;
+		}
+
+		inline bool	operator&(ScriptChangeFlags a,ScriptChangeFlags b)
+		{
+			typedef std::underlying_type<ScriptChangeFlags>::type	T;
+			return (static_cast<T>(a) & static_cast<T>(b) ) != 0;
+		}
+		
+		static ScriptChangeFlags scriptChangeFlags = ScriptChangeFlags::Empty;
+
+
+		void	CheckScriptChangeFlags()
+		{
+			if (scriptChangeFlags == ScriptChangeFlags::ShouldLoad)
+			{
+				scriptChangeFlags = ScriptChangeFlags::Empty;
+				Objects::Research::globalState.onScriptChange();
+			}
+		}
+
 
 		void	ResearchFactionState(Protocol::ResearchFactionState&state)
 		{
@@ -1187,10 +1226,11 @@ namespace Network
 					Tutorial::SignalResearchChange();
 			#endif
 
-			if (f->isOwnedByMe && triggerScriptChange && f->researchState.topicProgressVector.Count() == Objects::Research::globalState.allTopics.Count())
+			if (f->isOwnedByMe && f->researchState.topicProgressVector.Count() == Objects::Research::globalState.allTopics.Count())
 			{
-				triggerScriptChange = false;
-				reallyTriggerScriptChange = true;
+				scriptChangeFlags |= ScriptChangeFlags::HaveMyResearchFactionState;
+
+				CheckScriptChangeFlags();
 			}
 
 		}
@@ -1202,7 +1242,8 @@ namespace Network
 			foreach (program,prog)
 				Objects::Research::FactionState::DeclareServerTopic(prog->parentTopic -1, prog->name,prog->iconName, prog->maxProgress,prog->dependentTopic-1);
 
-			triggerScriptChange = true;	//must wait for state
+
+			scriptChangeFlags = ScriptChangeFlags::HaveNewTopics; //must wait for state. Flush all other updates
 		}
 
 
@@ -1253,7 +1294,8 @@ namespace Network
 		{
 			Objects::Research::Attributes::Table*table0 = nullptr;
 			bool isMine = false;
-			if (attributes.faction.IsEmpty())
+			const bool zeroTable = attributes.faction.IsEmpty();
+			if (zeroTable)
 				table0 = &Objects::Research::globalState.zeroTable;
 			else
 			{
@@ -1269,12 +1311,12 @@ namespace Network
 			Import(attributes.floatAttributes,table.floats);
 
 
-			if (isMine && reallyTriggerScriptChange)
-			{
-				reallyTriggerScriptChange = false;
-				Objects::Research::globalState.onScriptChange();
-			}
+			if (isMine)
+				scriptChangeFlags |= ScriptChangeFlags::HaveMyAttributes;
+			elif (zeroTable)
+				scriptChangeFlags |= ScriptChangeFlags::HaveZeroAttributes;
 
+			CheckScriptChangeFlags();
 		}
 
 		void	ResearchAttributeDeltaVector(Protocol::ResearchAttributeDeltaVector&attributes)
@@ -1714,8 +1756,7 @@ namespace Network
 			break;
 			case TCP::Event::ConnectionLost:
 			{
-				Receiver::reallyTriggerScriptChange = false;
-				Receiver::triggerScriptChange = false;
+				Receiver::scriptChangeFlags = Receiver::ScriptChangeFlags::Empty;
 				RuntimeConfig::tutorialMode = false;
 				if (!RuntimeConfig::aiMode)
 					RuntimeConfig::serverAddress = ServerAddress();	//prevent any automatic reconnect
