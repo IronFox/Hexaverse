@@ -2159,8 +2159,8 @@ namespace Objects
 		void RenderFlyingUnitBeams(const Objects::PMobileEntity&e)
 		{
 			M::TVec3<> color = e->owner ? e->owner->activeEntityColor : float3();
-			SetBeamColor(float4(color,0.25),
-						float4(color,0.25));
+			SetBeamColor(float4(color,1),
+						float4(color,1));
 			const float bottom = Grid::BottomPlanetRadius;
 			{
 				//display.SetBlendMode(Engine::BlendMode::Add);
@@ -2177,8 +2177,8 @@ namespace Objects
 					if (first)
 					{
 					//	display.SetBlendMode(Engine::BlendMode::AlphaBlend);
-						SetBeamColor(float4(color,0.5f),
-									float4(color,0.5f));
+						SetBeamColor(float4(color,0.75f),
+									float4(color,0.75f));
 						first = false;
 					}
 					for (const auto&waypoint : t.foci)

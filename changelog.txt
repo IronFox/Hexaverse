@@ -5,6 +5,7 @@ v0.8.3	[Apr 8 2018]
 	> Alliance invite messages are now much larger in the visual client log.
 	> Clients can now see the resistance of nexus ports being conquered by allies.
 	> Bug reporter now compresses uploads and allows entering an optional sender email address.
+	> Increased opacity of plane location marker beams.
 	> Revised default planet types FloatingIslands and HollowCore. Removed FloatingLands.
 	* Fixed fog of war for allied mobile units.
 	* Fixed coloring of allied ghosts.
