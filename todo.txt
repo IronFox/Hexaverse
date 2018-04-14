@@ -3,7 +3,6 @@ steam: invites not working when already in game
 
 
 unit limits
-player bases off
 nexus bases off but ai on
 
 
@@ -177,6 +176,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: player bases off
 implemented: load ended game
 fixed: artillery auto attacks, but hits neighboring radar
 fixed: plane position markers are drawn atop planes instead below
