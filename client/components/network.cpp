@@ -612,6 +612,8 @@ namespace Network
 				DBG_ASSERT__(!ConfigurationMode::IsActive());
 			#endif
 
+			EXPECT2(vs.entityState.health>0,vs.entityState.health,vs.entityState.id);
+
 			if (vs.entityState.timestamp.rightNow && Animation::AllDone())
 			{
 				Objects::PWorldEntity e =Objects::GetEntity(vs.entityState.id);
@@ -619,6 +621,7 @@ namespace Network
 				Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(e);
 				ASSERT1__(v,e->GetName());
 				Animation::ApplyState(v,vs,false,false);
+				ASSERT_EQUAL1__(v->health,vs.entityState.health,v->id);
 			}
 			else
 			{
