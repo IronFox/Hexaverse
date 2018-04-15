@@ -1277,7 +1277,6 @@ namespace Objects
 		
 		void RebuildTerraformerButtons()
 		{
-			Command::CommandGroup::CollapseAll();
 			Component::terraformer.commands.Clear();
 			if (Objects::Research::globalState.allTopics.IsNotEmpty())
 				ASSERT__(Component::terraformer.CanConstruct());

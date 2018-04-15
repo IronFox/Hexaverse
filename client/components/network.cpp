@@ -1219,6 +1219,9 @@ namespace Network
 			if (scriptChangeFlags == ScriptChangeFlags::ShouldLoad)
 			{
 				scriptChangeFlags = ScriptChangeFlags::Empty;
+				#ifdef HAS_WINDOW
+					Objects::Command::CommandGroup::CollapseAll();	//some groups are reconfigured as a result of onScriptChange()
+				#endif
 				Objects::Research::globalState.onScriptChange();
 			}
 		}
