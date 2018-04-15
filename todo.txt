@@ -2,7 +2,6 @@ steam: invites not working when already in game
 
 
 
-nexus bases off but ai on
 
 
 hard to reproduce/fix:
@@ -174,6 +173,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+improved: nexus bases off but ai on
 fixed: player bases off
 implemented: load ended game
 fixed: artillery auto attacks, but hits neighboring radar
