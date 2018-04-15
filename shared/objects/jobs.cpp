@@ -1206,9 +1206,7 @@ namespace Objects
 				}
 				case CursorMode::BuildLowWallChainMode:
 				{
-					const auto&stack = world.GetStack(Grid::low.grid.GetCell(cell.stackID).higherEquivalent);
-					Grid::Content c0 = Grid::Content::Reinterpret(stack.GetCellI(cell.height-1).content);
-					return c0 == Grid::Content::Foundation;
+					return false;
 				}
 			}
 			return true;

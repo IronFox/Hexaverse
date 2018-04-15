@@ -16,6 +16,7 @@ v0.8.4
 	* Fixed artillery/cannons sometimes choosing the wrong trajectory server-side and hitting friendly units.
 	* Savegames now correctly record when a game has ended, and the respective winner.
 	* Fixed Nexus spawning frequency when AI is on but Nexus bases are off.
+	* Fixed low wall building when already atop a wall.
 
 v0.8.3	[Apr 8 2018]
 	+ Added hotkey (P for Path) to quickly build roads using terraformers.
