@@ -147,14 +147,16 @@ namespace Nexus
 				float worldDistance = Vec::distance(Grid::low.cells[at->poleIndex].centerVertex.xyz * Grid::MeanPlanetRadius,worldLoc);
 				if (e.owner != Objects::Faction::nexus)
 					worldDistance = M::Max(0,worldDistance-entityRange);
-				float stepDistance = worldDistance / Grid::MeanPlanetRadius / avg * 0.75f;
 
+
+				const float stepDistance = worldDistance / Grid::MeanPlanetRadius / avg * 0.75f;
 
 				const bool isHostile = e.owner != Objects::Faction::nexus;
+				const bool isBlack = stepDistance < 2;
 				const bool isRed = stepDistance < 4;
 				const bool isYellow = stepDistance < 6;
 				const bool isNoticed = stepDistance < 9;
-				const float opacity = (float(isRed?3:0) + float(isYellow ? 2 : 0) + float(isNoticed))/3.f;	//0->1/3->1->2
+				const float opacity = (float(isBlack?6:0) + float(isRed?3:0) + float(isYellow ? 2 : 0) + float(isNoticed))/3.f;	//0->1/3->1->2
 
 				if (opacity > 0)
 				{
@@ -164,7 +166,7 @@ namespace Nexus
 
 						if (b && b->turret->CanDo(Objects::Component::Construct))
 						{
-							if (isYellow)
+							if (isRed)
 							{
 								at->constructorNearNexus += opacity;
 								at->highestConstructorNearNexus = std::max(at->highestConstructorNearNexus,opacity);
@@ -201,7 +203,6 @@ namespace Nexus
 
 
 
-	
 
 	void ProcessCoverage()
 	{
@@ -237,6 +238,8 @@ namespace Nexus
 
 
 		float estimationFactor = Game::Config::Nexus::threatEstimationFactor;
+		if (!Game::Config::Nexus::bases.havePlaced && Game::Config::Nexus::allPorts.havePlaced)
+			estimationFactor *= 0.25f;
 
 
 		for (auto&e : env)
