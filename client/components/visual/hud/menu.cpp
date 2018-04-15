@@ -459,7 +459,7 @@ namespace Menu
 		main = Menu::Create();
 		main->Setup(0.25f,"Main",true);
 
-		main->AddCommand("Disconnect",
+		main->AddCommand("Return to Server List",
 		[]()
 		{
 			ConfigurationMode::SetActive(false);
