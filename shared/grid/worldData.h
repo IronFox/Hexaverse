@@ -557,6 +557,17 @@ namespace World
 		void			RemoveFrom(World::Data&clientWorld, float t, index_t processorIndex=0) const {ApplyTo(clientWorld,-1,t,processorIndex);}
 
 
+		bool			operator==(const Sensor&other) const
+		{
+			return gridCenter == other.gridCenter && radius == other.radius;
+		}
+
+		bool			operator!=(const Sensor&other) const
+		{
+			return gridCenter != other.gridCenter || radius != other.radius;
+		}
+
+
 		/**
 		Determines whether the local sensor contains the specified location.
 		Note that this does not equal actual visibility unless the specified location is off-grid.
