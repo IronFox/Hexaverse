@@ -465,7 +465,7 @@ namespace Objects
 				virtual void			UpdateEstimations(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(DigDownMineralCosts,v,GetOperationAffinity());}
 				virtual Component::operation_t	GetOperationAffinity() const override {return Component::TerrainRemove;}
 
-				virtual String			GetName() const override {return "dig down";}
+				virtual String			GetName() const override {return "Dig down";}
 
 				virtual bool			CanContinue(MobileEntity&v, const Grid::LCellIdI&focus, String&outError)	override;
 				virtual continue_t		Finish(MobileEntity&v, const Grid::LCellIdI&)	override;
