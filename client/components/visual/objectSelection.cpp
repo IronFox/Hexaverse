@@ -131,7 +131,7 @@ namespace Objects
 			{
 				newSel = e;
 			}
-		},true);
+		},Objects::IncludeGhosts::All);
 
 		return newSel;
 	}

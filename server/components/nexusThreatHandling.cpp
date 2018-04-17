@@ -234,7 +234,7 @@ namespace Nexus
 		Objects::ForeachWorldEntity([&](const Objects::PWorldEntity&e)
 		{
 			AddPresence(*e,e->location,env.ToRef());
-		},false);
+		});
 
 
 		float estimationFactor = Game::Config::Nexus::threatEstimationFactor;

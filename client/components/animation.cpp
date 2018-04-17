@@ -104,7 +104,7 @@ namespace Animation
 				if (d < 2.f)
 					canDo = false;
 			}
-		},true);
+		},Objects::IncludeGhosts::Living);
 		return canDo;
 	}
 
@@ -1906,7 +1906,7 @@ namespace Animation
 						float t = 0.f;
 						e->MoveSensoryToCurrentLocation(t);
 					}
-				},false);
+				},Objects::IncludeGhosts::None);
 
 
 				Animation::insertIntoGridLater.VisitAllKeys([](const TUniqueID&key)
@@ -1928,7 +1928,7 @@ namespace Animation
 				Objects::ForeachMobileWorldEntity([](const Objects::PMobileEntity&e)
 				{
 					e->isInMovementStream = false;	//just in case
-				},false);
+				},Objects::IncludeGhosts::None);
 
 				if (RuntimeConfig::IsInAnyCommandPhase() && Network::gameHasBegun)
 				{

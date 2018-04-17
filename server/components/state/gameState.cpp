@@ -1151,7 +1151,7 @@ namespace Game
 					}			
 				v.ResetAllChange();
 			}
-		},false);
+		});
 
 		Objects::structures.Foreach([](const Objects::PStructure&_s)
 		{
@@ -1445,7 +1445,7 @@ namespace Game
 			{
 				if (v->GetOperationSpeed(Objects::Component::Construct))
 					v->owner->hasUnitClasses |= Objects::Faction::UnitClass::Terraformer;
-			},false);
+			});
 
 
 			//const count_t livingPlayerFactions = CountLivingPlayerFactions();
@@ -1574,7 +1574,7 @@ namespace Game
 			{
 				ApplyEMPZoneDamage(e,atTime);
 			}
-		},false);
+		});
 	}
 
 

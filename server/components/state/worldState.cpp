@@ -420,7 +420,7 @@ namespace World
 					{
 						minNexusHubDist2 = std::min(minNexusHubDist2, d2);
 					}
-				},false);
+				});
 
 				#ifdef LOWER_RESOLUTION_PLANET
 					static const float MinimumNexusBaseDistance = 0.4f;	//minimum distance from any nexus building (nexus hub explicitly excluded)
@@ -487,7 +487,7 @@ namespace World
 			else
 				if (!Grid::AffectedByEMP(e->location,oldEmpZonesUnlocked) && Grid::AffectedByEMP(e->location,newEmpZonesUnlocked))
 					Game::ApplyEMPZoneDamage(e,atTime);
-		},false);
+		});
 	}
 
 	void		SetUnlockedEMPZones(count_t unlocked)

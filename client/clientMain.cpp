@@ -1028,7 +1028,7 @@ namespace ApplicationInterface
 					return;
 				change.level[Objects::Resource::Minerals] -= std::min(opSpeed, v->myTasks.Peek().job->resourceCostLeft);
 
-			}, false);
+			}, Objects::IncludeGhosts::None);
 
 		#ifndef NO_SATELLITES
 			for (const auto&sat : Objects::satellites)
@@ -1095,9 +1095,9 @@ namespace ApplicationInterface
 			if (Objects::selectedEntity->IsDeadOrGhost())
 			{
 				if (Objects::selectedEntity->owner->IsAlliedWithMe())
-					Tutorial::ShowMessage("Friendly Ghosts");
+					Tutorial::ShowMessage("Friendly IncludeGhosts");
 				else
-					Tutorial::ShowMessage("Hostile Ghosts");
+					Tutorial::ShowMessage("Hostile IncludeGhosts");
 			}
 
 			if (Objects::selectedMobileEntity && Objects::selectedMobileEntity->IsAboveGrid())
@@ -1703,7 +1703,7 @@ namespace ApplicationInterface
 				return;
 			if (ObjectHelper::IsIdle(e))
 				any = e;
-		},false);
+		},Objects::IncludeGhosts::None);
 		//#ifdef _DEBUG
 		//if (any)
 		//	LogEvent(EventSignificance::Uncommon,any.get(),"not idle");

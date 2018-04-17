@@ -13,7 +13,8 @@ namespace Objects
 	{
 		objects.Clear();
 		storedMobiles.Clear();
-		markerObjects.Clear();
+		livingMarkerObjects.Clear();
+		deadMarkerObjects.Clear();
 		markers.Clear();
 		unitLimits.Clear();
 		loaded = false;
@@ -30,17 +31,17 @@ namespace Objects
 			e->isInsertedIntoGrid = false;
 			float t = 0;
 			e->UnregisterSensory(t);
-			if (e->IsDeadOrGhost())
-				markerObjects << e;
+			PHangar h;
+			if (e->IsMobile() && (h = To<MobileEntity>::Cast(e)->storedIn.lock()))
+				storedMobiles << std::make_pair(h, To<MobileEntity>::Cast(e)); 
 			else
-			{
-				PHangar h;
-				if (e->IsMobile() && (h = To<MobileEntity>::Cast(e)->storedIn.lock()))
-					storedMobiles << std::make_pair(h, To<MobileEntity>::Cast(e)); 
-				else
-					objects << e; 
-			}
-		},true);
+				objects << e; 
+		},Objects::IncludeGhosts::None);
+		Objects::Marker::livingMobileGhosts.CastAppendAllTo(livingMarkerObjects);
+		Objects::Marker::livingStructureGhosts.CastAppendAllTo(livingMarkerObjects);
+		Objects::Marker::deadMobileGhosts.CastAppendAllTo(deadMarkerObjects);
+		Objects::Marker::deadStructureGhosts.CastAppendAllTo(deadMarkerObjects);
+
 		markers.swap(Marker::all);
 		RuntimeConfig::UnitLimits::Export(unitLimits);
 
@@ -76,13 +77,22 @@ namespace Objects
 			}
 		}
 
-		for (const PWorldEntity&e : markerObjects)
+		for (const PWorldEntity&e : livingMarkerObjects)
 		{
 			if (e->IsMobile())
-				Marker::mobileGhosts << To<MobileEntity>::Cast(e);
+				Marker::livingMobileGhosts << To<MobileEntity>::Cast(e);
 			elif (e->IsStructure())
-				Marker::structureGhosts << To<Structure>::Cast(e);
+				Marker::livingStructureGhosts << To<Structure>::Cast(e);
 		}
+
+		for (const PWorldEntity&e : deadMarkerObjects)
+		{
+			if (e->IsMobile())
+				Marker::deadMobileGhosts << To<MobileEntity>::Cast(e);
+			elif (e->IsStructure())
+				Marker::deadStructureGhosts << To<Structure>::Cast(e);
+		}
+
 		for (const auto&p : storedMobiles)
 		{
 			p.first->StoreLocallyFromImport(p.second);

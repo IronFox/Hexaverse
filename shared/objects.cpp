@@ -111,7 +111,7 @@ namespace Objects
 								To<MobileEntity>::Cast(e)->CheckGround(t);	//check if mobile entity should fall
 						}
 					}
-				},false);
+				});
 			};
 
 			//#ifdef _DEBUG
@@ -179,14 +179,14 @@ namespace Objects
 				ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
 				{
 					e->owner.reset();
-				},true);
+				},Objects::IncludeGhosts::All);
 			}
 
 			#ifdef HAS_WINDOW
 				ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
 				{
 					e->ambientSound.Destroy();
-				},false);
+				},Objects::IncludeGhosts::None);
 			#endif
 
 			storedMobileEntities.Clear();

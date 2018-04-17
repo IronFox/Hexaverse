@@ -1211,7 +1211,7 @@ int main( int argc, const char* argv[])
 					Objects::ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
 					{
 						e->ReSeedRandom();
-					},false);
+					});
 
 					Nexus::ProcessCoverage();
 

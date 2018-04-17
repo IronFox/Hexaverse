@@ -51,7 +51,7 @@ namespace Objects
 				ASSERT2__(!m->owner->HasMobileInStorage(m),m->GetName(),m->owner->GetName());
 				ASSERT2__(m->owner->HasActiveMobile(m),m->GetName(),m->owner->GetName());
 			#endif
-		},false);
+		},Objects::IncludeGhosts::None);
 		
 		storedMobileEntities.Foreach([](const Objects::PMobileEntity&m)
 		{

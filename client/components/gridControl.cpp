@@ -59,7 +59,7 @@ namespace ClientGrid
 						float t= 0;
 						e->ReapplySensory(t);
 					}
-				},false);
+				},Objects::IncludeGhosts::None);
 			}
 		}
 

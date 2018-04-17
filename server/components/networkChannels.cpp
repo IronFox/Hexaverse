@@ -508,7 +508,7 @@ namespace Receiver
 			Protocol::NewMobileEntity st;
 			Game::Network::Describe(st,*v,timestamp,Game::Network::ExposeAll);
 			Channels::newMobileEntity.SendTo(peer,st);
-		},false);
+		});
 
 
 		{

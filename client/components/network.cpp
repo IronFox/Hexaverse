@@ -2206,7 +2206,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			Objects::ForeachMobileWorldEntity([](const Objects::PMobileEntity&m)
 			{
 				m->isInMovementStream = false;	//just in case
-			},false);
+			},Objects::IncludeGhosts::None);
 			if (c.timeFactor > 0)
 				animationTimeFactor = c.timeFactor;
 		break;
@@ -2222,7 +2222,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 				Objects::Marker *m = Objects::Marker::Find(e->location);
 				if (m)
 					ObjectHelper::SignalMarkerDeletion(m->id);
-			},false);
+			},Objects::IncludeGhosts::None);
 
 			#ifdef HAS_WINDOW
 				Objects::structures.Foreach([](const Objects::PStructure&s)

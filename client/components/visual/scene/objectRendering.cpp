@@ -1390,7 +1390,7 @@ namespace Objects
 					}
 				}
 			}
-		},false);
+		},Objects::IncludeGhosts::None);
 
 
 		structures.Foreach([](const Objects::PStructure&s)
@@ -1551,7 +1551,7 @@ namespace Objects
 						}
 					}
 				}
-				,true
+				,Objects::IncludeGhosts::Living
 			);
 		}
 
@@ -1573,6 +1573,55 @@ namespace Objects
 		sys.y.xyz /= fc;
 	}
 
+	static void ForeachMobileGhost(const std::function<void(const Objects::PMobileEntity&)>&f)
+	{
+		Marker::livingMobileGhosts.Foreach(f);
+		Marker::deadMobileGhosts.Foreach(f);
+	}
+
+	static void ForeachStructureGhost(const std::function<void(const Objects::PStructure&)>&f)
+	{
+		Marker::livingStructureGhosts.Foreach(f);
+		Marker::deadStructureGhosts.Foreach(f);
+	}
+
+
+	static void RenderGhosts(SharedContainer<MobileEntity>&mobileGhosts, SharedContainer<Structure>&structureGhosts, bool orbital)
+	{
+		mobileGhosts.Foreach([orbital](const Objects::PMobileEntity&m)
+		{
+			if (m->IsAboveGrid() != orbital)
+				return;
+			if (m->IsVehicle())
+			{
+				PVehicle v = To<Vehicle>::Cast(m);
+				Renderer::RenderSimple(*v);
+			}
+			else
+				#ifndef NO_SATELLITES
+					if (m->IsSatellite())
+					{
+						PSatellite s = To<Satellite>::Cast(m);
+						Renderer::RenderSimple(*s);
+					}
+					else
+				#endif
+					FATAL__("Unsupported ghost type "+m->GetTypeName());
+		});
+
+		structureGhosts.Foreach([orbital](const Objects::PStructure&s)
+		{
+			if (s->IsAboveGrid() != orbital)
+				return;
+			if (s->owner->IsAlliedWithMe())
+				overallTint.Update(float4(0.2, 0.2, 0.2, 1));
+			else
+				overallTint.Update(float4(1, 0, 0, 1));
+			Renderer::RenderSimple(*s,s->HasFoundation());
+		});
+	}
+
+
 	void	Renderer::RenderTranslucent(bool orbital)
 	{
 		if (!objectView)
@@ -1588,7 +1637,7 @@ namespace Objects
 
 		display.LinkShader(jobShader, false, true);
 
-		Marker::mobileGhosts.Foreach([orbital](const Objects::PMobileEntity&m)
+		ForeachMobileGhost([orbital](const Objects::PMobileEntity&m)
 		{
 			if (m->IsAboveGrid() != orbital)
 				return;
@@ -1608,47 +1657,20 @@ namespace Objects
 				#endif
 					FATAL__("Unsupported ghost type "+m->GetTypeName());
 		});
-		Marker::structureGhosts.Foreach([orbital](const Objects::PStructure&s)
+		ForeachStructureGhost([orbital](const Objects::PStructure&s)
 		{
 			if (s->IsAboveGrid() != orbital)
 				return;
 			Renderer::RenderSimple(*s,s->HasFoundation());
 		});
 
-		Marker::mobileGhosts.Foreach([orbital](const Objects::PMobileEntity&m)
-		{
-			if (m->IsAboveGrid() != orbital)
-				return;
-			if (m->isOwnedByMe || m->owner->IsAlliedWithMe())
-				overallTint.Update(float4(0.2, 0.2, 0.2, 1));
-			else
-				overallTint.Update(float4(1, 0, 0, 1));
-			if (m->IsVehicle())
-			{
-				PVehicle v = To<Vehicle>::Cast(m);
-				Renderer::RenderSimple(*v);
-			}
-			else
-				#ifndef NO_SATELLITES
-					if (m->IsSatellite())
-					{
-						PSatellite s = To<Satellite>::Cast(m);
-						Renderer::RenderSimple(*s);
-					}
-					else
-				#endif
-					FATAL__("Unsupported ghost type "+m->GetTypeName());
-		});
-		Marker::structureGhosts.Foreach([orbital](const Objects::PStructure&s)
-		{
-			if (s->IsAboveGrid() != orbital)
-				return;
-			if (s->owner->IsAlliedWithMe())
-				overallTint.Update(float4(0.2, 0.2, 0.2, 1));
-			else
-				overallTint.Update(float4(1, 0, 0, 1));
-			Renderer::RenderSimple(*s,s->HasFoundation());
-		});
+		overallTint.Update(float4(0.2, 0.2, 0.2, 1));
+		RenderGhosts(Marker::deadMobileGhosts,Marker::deadStructureGhosts,orbital);
+
+		overallTint.Update(float4(1, 0, 0, 1));
+		RenderGhosts(Marker::livingMobileGhosts,Marker::livingStructureGhosts,orbital);
+
+
 		display.UnlockShader();
 
 
@@ -1679,7 +1701,7 @@ namespace Objects
 					}
 				}
 			}
-		},false);
+		},IncludeGhosts::None);
 
 
 		display.SetObjectMatrix(M::Matrix<>::eye4);
@@ -1734,7 +1756,7 @@ namespace Objects
 			}
 			if (selected)
 				overallTint.Update(float4(0,0,0,1));	//make sure localizable shapes appear - but in black
-		},false);
+		},IncludeGhosts::None);
 
 		structures.Foreach([orbital](const Objects::PStructure&s)
 		{
@@ -1857,7 +1879,7 @@ namespace Objects
 				}
 
 			}
-		},false);
+		},IncludeGhosts::None);
 		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 		overallTint.Update(noTint);
 		display.SetDepthTest(false, false);

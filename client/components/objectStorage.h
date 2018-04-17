@@ -9,7 +9,7 @@ namespace Objects
 	*/
 	class Storage
 	{
-		Buffer0<PWorldEntity>	objects,markerObjects;
+		Buffer0<PWorldEntity>	objects,livingMarkerObjects,deadMarkerObjects;
 		Buffer0<std::pair<PHangar, PMobileEntity> > storedMobiles;
 		Buffer0<Marker, Strategy::Adopt>	markers;
 		Array<std::pair<EntityType,UINT16> >	unitLimits;

@@ -365,7 +365,7 @@ namespace Objects
 				{
 					e->owner->statistics.totalEntities ++;
 					e->owner->statistics.totalEntityMineralValue += e->GetConstructionCost();
-				},false);
+				});
 
 				Objects::ForeachFaction([](const Objects::PFaction&f)
 				{

@@ -317,7 +317,7 @@ namespace Tutorial
 				{
 					myUnits.AppendElement(RebuildEntity(e));
 				}
-			},false);
+			},Objects::IncludeGhosts::None);
 
 		}
 

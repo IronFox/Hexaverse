@@ -55,7 +55,7 @@ namespace Objects
 						FATAL__("Expected to find "+e->GetTypeName()+" "+e->GetName()+" in location "+ToString(e->location)+", but found "+foundName);
 					}
 				}
-			},false);
+			});
 		}
 
 
@@ -226,7 +226,7 @@ namespace Objects
 				{
 					affectedStructures << To<Structure>::Cast(e);
 				}
-			},false);
+			});
 			atTime += timeEpsilon;
 
 
@@ -311,7 +311,7 @@ namespace Objects
 					atTime = std::max(atTime,e->entityTime);
 					toDisable << e;
 				}
-			},false);
+			});
 			atTime += timeEpsilon;
 			foreach (toDisable,_d)
 			{

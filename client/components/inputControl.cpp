@@ -64,7 +64,7 @@ namespace InputControl
 							result = v->location;
 							rs = true;
 						}
-					},true);
+					},Objects::IncludeGhosts::All);
 				}
 
 				#ifndef NO_SATELLITES

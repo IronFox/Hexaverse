@@ -1665,7 +1665,7 @@ namespace FileIO
 			Objects::ForeachWorldEntity([](const Objects::PWorldEntity&w)
 			{
 				w->ResetAllChange();
-			},false);
+			});
 
 
 			if (winnerID.IsNotEmpty())
@@ -1840,7 +1840,7 @@ namespace FileIO
 		{
 			Objects::MobileEntity&v = *_v;
 			Export(objects->AppendBlock(RIFF_LIST),v,allFactions);
-		},false);
+		});
 
 
 		Objects::structures.Foreach([&objects,&allFactions](const Objects::PStructure&_s)
