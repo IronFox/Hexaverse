@@ -17,6 +17,7 @@ v0.8.4
 	* Savegames now correctly record when a game has ended, and the respective winner.
 	* Fixed Nexus spawning frequency when AI is on but Nexus bases are off.
 	* Fixed low wall building when already atop a wall.
+	* Fixed zero unit health loaded from file when health was heavily researched.
 
 v0.8.3	[Apr 8 2018]
 	+ Added hotkey (P for Path) to quickly build roads using terraformers.
