@@ -301,21 +301,33 @@ namespace FileIO
 		Riff::Chunk*source = parent->FindFirst(RID::entity);
 		ASSERT_NOT_NULL__(source);
 
+
 		source->OpenStream();
 		ASSERT__(source->Stream(e.id));
 		TUniqueID	ownerID;
 		ASSERT__(source->Stream(ownerID));
+		ASSERT__(ownerMap.Query(ownerID,e.owner));
+
+		const auto maxHealth = e.GetMaxHealth();
+		ASSERT__(maxHealth > 0);
+
+		float fhealth;
 		if (globalVersionOfCurrentFile < FileVersions::CurrentEntityHealthIsFloat)
 		{
 			ASSERT__(source->Stream(e.health));
+			fhealth = e.health;
 		}
 		else
 		{
-			float fhealth;
 			ASSERT__(source->Stream(fhealth));
-			e.health = (int)round(float(e.GetMaxHealth()) * fhealth);
+			e.health = (int)round(float(maxHealth) * fhealth);
 		}
-		e.health = std::min(e.health,e.GetMaxHealth());
+		e.health = std::min(e.health,maxHealth);
+		if (e.health <= 0)
+		{
+			LogEvent(EventClass::Preset::fileError,&e, "Entity with 0 health detected (fhealth="+String(fhealth)+"). Setting to 1");
+			e.health = 1;
+		}
 		if (globalVersionOfCurrentFile < FileVersions::EntitiesHaveFlags)
 		{
 			ASSERT__(source->Stream(e.unstable));
@@ -329,7 +341,6 @@ namespace FileIO
 			e.SetSleep((flags&EntityFlag::IsSleeping) !=0,t,false);
 		}
 		ASSERT__(source->CloseStream());
-		ASSERT__(ownerMap.Query(ownerID,e.owner));
 
 		GetOptionalPOD(parent,RID::empDamageLevel,e.empDamageLevel,0);
 
