@@ -53,6 +53,7 @@ namespace Objects
 		void						adoptData(Marker&other)
 		{
 			referenceEntity = other.referenceEntity;
+			referenceEntityOwner = other.referenceEntityOwner;
 			referencedType = other.referencedType;
 			type = other.type;
 			createdInRound = other.createdInRound;

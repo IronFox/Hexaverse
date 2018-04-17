@@ -12,7 +12,7 @@ v0.8.4
 	* Fixed attack arrow positioning when mobile unit is selected but attack origin is not current entity location.
 	* Fixed handling and display of winning alliance when game ends.
 	* Building bridges now correctly lists 'Build bridge here' micro task.
-	* Fixed ghosts of nexus units having no owner.
+	* Fixed various ghosts ownership issues.
 	* Fixed artillery/cannons sometimes choosing the wrong trajectory server-side and hitting friendly units.
 	* Savegames now correctly record when a game has ended, and the respective winner.
 	* Fixed Nexus spawning frequency when AI is on but Nexus bases are off.
