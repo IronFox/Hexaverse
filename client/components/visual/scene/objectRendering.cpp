@@ -1619,7 +1619,7 @@ namespace Objects
 		{
 			if (m->IsAboveGrid() != orbital)
 				return;
-			if (m->owner->IsAlliedWithMe())
+			if (m->isOwnedByMe || m->owner->IsAlliedWithMe())
 				overallTint.Update(float4(0.2, 0.2, 0.2, 1));
 			else
 				overallTint.Update(float4(1, 0, 0, 1));
