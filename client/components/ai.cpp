@@ -41,19 +41,17 @@ namespace AI
 		float	unknownDistanceThreat = 0.f;
 	
 
-		float	ActualDamageThreat() const
+		bool	ShouldBlock(const TThreatEstimation&base) const
 		{
-			if (damageThreat == 0 && unknownDistanceThreat < 0.2f)
-				return 0;
-			if (!beingSeen && unknownDistanceThreat < 0.2f && currentIsOffensiveVehicle)
-				return 0;
-			return 20.f * unknownDistanceThreat +  damageThreat;
-		}
+			if (!beingSeen && currentIsOffensiveVehicle && unknownDistanceThreat < 0.2f)
+				return false;
 
+			if (damageThreat > base.damageThreat)
+				return true;
+			if (unknownDistanceThreat == base.unknownDistanceThreat)
+				return false;
 
-		bool	operator>(const TThreatEstimation&base) const
-		{
-			return ActualDamageThreat() > base.ActualDamageThreat();	
+			return unknownDistanceThreat * 0.8f > base.unknownDistanceThreat;
 		}
 	};
 
@@ -118,7 +116,7 @@ namespace AI
 		TThreatEstimation threat;
 		EstimateThreatFromAll(reference,currentIsOverconfident,  currentCanIgnoreThreat,threat);
 
-		return threat > currentThreat;
+		return threat.ShouldBlock(currentThreat);
 	}
 
 
