@@ -1,5 +1,15 @@
 steam: invites not working when already in game
 
+bug:
+if research based sensor range expansion is the only 'terrain change' during round, fog of war is not updated
+
+
+vehicle stores repair contained vehicles
+
+AI:
+	if dead ghost outside hostile sensory but in attack range of living hostile structure ghost, apply matching 'virtual' scanning range of given distance to that structure
+	if dead ghost outside hostile attack range but in scanning range of living hostile structure ghost, apply matching 'virtual' attack range of given distance to that structure
+	cache threat estimation
 
 
 
