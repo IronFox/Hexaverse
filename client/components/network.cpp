@@ -1247,12 +1247,19 @@ namespace Network
 
 		}
 
+		static index_t ImportIndex(const Protocol::SerialUnsigned&v)
+		{
+			if (v.value == 0)
+				return InvalidIndex;
+			return v.value - 1;
+		}
+
 		//research program updates must always preceed research states
 		void	ResearchProgram(Protocol::ResearchProgram&program)
 		{
 			Objects::Research::FactionState::BeginServerTopicUpdate();
 			foreach (program,prog)
-				Objects::Research::FactionState::DeclareServerTopic(prog->parentTopic -1, prog->name,prog->iconName, prog->maxProgress,prog->dependentTopic-1);
+				Objects::Research::FactionState::DeclareServerTopic(ImportIndex(prog->parentTopic), prog->name,prog->iconName, prog->maxProgress,ImportIndex(prog->dependentTopic));
 
 
 			scriptChangeFlags = ScriptChangeFlags::HaveNewTopics; //must wait for state. Flush all other updates
