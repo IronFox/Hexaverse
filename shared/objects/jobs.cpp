@@ -143,6 +143,16 @@ namespace Objects
 					#endif
 					)
 				{
+					/*
+					Lock reason from git history:
+						...so that a vehicle does not undo the job's terrain change as a result of World::actual.onTerrainChange callbacks
+
+					Problem:
+						If terrain is locked, sensories will not be invalidated
+						-> movesToFocusWhenDone will indirectly attempt to relocate the sensor of the local entity to the new location
+						-> Will remove old sensor in updated terrain without knowing sensory is invalid (has not been invalidated)
+						-> Negative sensory paintaing screws up because terrain has actually changed
+					*/
 					auto lock = World::actual.LockOnChange();
 					continue_t rs = Finish(v,focus);
 					if (rs == TerminalFailure || rs == TerminalFailureVehicleDestroyed)
