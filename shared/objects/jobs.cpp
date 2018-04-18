@@ -152,6 +152,11 @@ namespace Objects
 						-> movesToFocusWhenDone will indirectly attempt to relocate the sensor of the local entity to the new location
 						-> Will remove old sensor in updated terrain without knowing sensory is invalid (has not been invalidated)
 						-> Negative sensory paintaing screws up because terrain has actually changed
+
+					Solution:
+						New global variable const MobileEntity* MobileEntity::processingJob, which is set while a job's Continue() method is executed
+						-> Exclude from onTerrainChange handler in objects.cpp
+						-> Remove this lock as it might cause other problems
 					*/
 					auto lock = World::actual.LockOnChange();
 					continue_t rs = Finish(v,focus);
