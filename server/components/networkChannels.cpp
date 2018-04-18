@@ -53,7 +53,7 @@ namespace ResearchSerialization
 			{
 				const auto&stateIn = Objects::Research::globalState.allTopics[i];
 				auto&stateOut = outProg[i];
-				stateOut.dependentTopic = (stateIn->dependency.expired()) ? 0 : stateIn->dependency.lock()->serialIndex + 1;
+				stateOut.dependentTopic = int((stateIn->dependency.expired()) ? 0 : stateIn->dependency.lock()->serialIndex + 1);
 				stateOut.iconName = stateIn->iconName;
 				stateOut.maxProgress = stateIn->maxProgress;
 				stateOut.name = stateIn->name;
