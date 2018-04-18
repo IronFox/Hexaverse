@@ -143,7 +143,7 @@ namespace Objects
 					#endif
 					)
 				{
-					/*
+					/* FIXED:
 					Lock reason from git history:
 						...so that a vehicle does not undo the job's terrain change as a result of World::actual.onTerrainChange callbacks
 
@@ -154,11 +154,14 @@ namespace Objects
 						-> Negative sensory paintaing screws up because terrain has actually changed
 
 					Solution:
-						New global variable const MobileEntity* MobileEntity::processingJob, which is set while a job's Continue() method is executed
+						New global variable const MobileEntity* MobileEntity::executingJob, which is set while a job's Continue() method is executed
 						-> Exclude from onTerrainChange handler in objects.cpp
-						-> Remove this lock as it might cause other problems
+						-> Removed this lock as it might cause other problems
+
+					done. do not re-add:
+						auto lock = World::actual.LockOnChange();
 					*/
-					auto lock = World::actual.LockOnChange();
+
 					continue_t rs = Finish(v,focus);
 					if (rs == TerminalFailure || rs == TerminalFailureVehicleDestroyed)
 						return rs;

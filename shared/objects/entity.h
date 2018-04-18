@@ -579,6 +579,7 @@ namespace Objects
 			*/
 			void					UpdateEMPDamage(int damageLevel, bool isCreated=true);
 		#else
+			virtual void			SignalTerrainChange(float atTime);
 
 
 			bool					HandleEMPDamage(const int newDamage, float&atTime)

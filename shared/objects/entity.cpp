@@ -511,6 +511,15 @@ namespace Objects
 	#ifndef CLIENT
 
 	
+		/*virtual*/ void			WorldEntity::SignalTerrainChange(float atTime)
+		{
+			if (!ClearOccupiedTerrain(atTime))
+			{
+				Remove(shared_from_this(),Objects::RemovalType::UncontrolledExplosion,atTime);
+			}
+		}
+
+
 	
 
 		///*static*/ void WorldEntity::MapVisibilityBetween(const PWorldEntity&e, const PWorldEntity&other, float&atTime)

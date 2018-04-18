@@ -98,19 +98,8 @@ namespace Objects
 				{
 					if (e->IsAboveGrid())
 						return;
-					if (changed.IsSet( Grid::low.grid.GetCell(e->location.stackID).family ))
-					{
-						if (!e->ClearOccupiedTerrain(t))
-						{
-							float t2 = t;
-							Remove(e,Objects::RemovalType::UncontrolledExplosion,t2);
-						}
-						else
-						{
-							if (e->IsMobile())
-								To<MobileEntity>::Cast(e)->CheckGround(t);	//check if mobile entity should fall
-						}
-					}
+					if (changed.IsSet(Grid::low.grid.GetCell(e->location.stackID).family))
+						e->SignalTerrainChange(t);
 				});
 			};
 
