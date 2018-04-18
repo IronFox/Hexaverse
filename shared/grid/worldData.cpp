@@ -1948,6 +1948,28 @@ namespace World
 	}
 
 
+	template <count_t Depth>
+		struct Pow
+		{
+			static float Exec(float x)
+			{
+				float y = Pow<Depth-1>::Exec(x);
+				return y * y;
+			}
+		};
+
+	template <>
+		struct Pow<1>
+		{
+			static float Exec(float x)
+			{
+				return x*x;
+			}
+		};
+
+
+
+
 	void		Sensor::ApplyShadedSphereTo(World::Data&v, short change,Data::ChangeSequence&seq, index_t processorIndex)	const
 	{
 		enum
@@ -1994,7 +2016,8 @@ namespace World
 			d03 -= up * Vec::dot(d03,up);//bend around sphere
 			d03 += up * (Grid::ToRadius(Grid::CellStack::ToHeight(current.layer)) - centerRadius);
 		//		Grid::RawMeanLayerHeight * float((int)current.layer - (int)center.layer);
-			d03.Normalize0();
+			//d03.Normalize0();
+			FastNormalize(d03);
 				
 			u = Visited;
 			marked << current;
@@ -2023,7 +2046,8 @@ namespace World
 					//going inwards
 					if (translucent)
 					{
-						float w = pow(fabs(dot),64);
+						//float w = pow(fabs(dot),64);
+						float w = Pow<6>::Exec(fabs(dot));
 						totalWeight += w;
 						if ((nu & Visible))
 							visibleWeight += w;
