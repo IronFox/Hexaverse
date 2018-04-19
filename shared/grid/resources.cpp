@@ -3,7 +3,9 @@
 
 #include "../objects/resource.h"
 #include "../globalEvents.h"
-#include "../luaGameAPI.h"
+#ifndef CLIENT
+	#include <lua/luaGameAPI.h>
+#endif
 
 namespace Grid
 {

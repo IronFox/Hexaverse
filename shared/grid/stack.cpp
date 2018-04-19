@@ -7,8 +7,6 @@
 
 #include "../objects.h"
 #include "../logEvent.h"
-//#include "../sphereGridHelper.h"
-#include "../luaGameAPI.h"
 #include "../globalEvents.h"
 #include "../expectedBehavior.h"
 

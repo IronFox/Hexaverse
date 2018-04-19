@@ -168,12 +168,6 @@ namespace Objects
 						return (T)EmptyDefault;
 					return this->GetValue(ResearchStateOf(p));
 				}
-				T						operator()(const Lua::Reference&researchState) const
-				{
-					if (this->IsEmpty())
-						return (T)EmptyDefault;
-					return this->GetValue(researchState);
-				}
 			};
 
 		class Base 
