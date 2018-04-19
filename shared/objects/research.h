@@ -9,8 +9,8 @@
 #include "../uniqueID.h"
 #include "../stringTable.h"
 #ifndef CLIENT
-	#include <lua/luaInterface.h>
-	#include <lua/scriptCache.h>
+	#include "../lua/luaInterface.h"
+	#include "../lua/scriptCache.h"
 #endif
 //#include "luaAttribute.h"
 #include <structure/observable.h>
