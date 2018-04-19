@@ -57,7 +57,7 @@ namespace ResearchSerialization
 				stateOut.iconName = stateIn->iconName;
 				stateOut.maxProgress = stateIn->maxProgress;
 				stateOut.name = stateIn->name;
-				stateOut.parentTopic = stateIn->parent.expired() ? 0 : stateIn->parent.lock()->serialIndex + 1;
+				stateOut.parentTopic = int(stateIn->parent.expired() ? 0 : stateIn->parent.lock()->serialIndex + 1);
 			}
 		}
 		Channels::ResearchProgram.SendTo(peer,outProg,(UINT32)::Network::UserLevel::CommonFaction);
