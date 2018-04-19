@@ -2,12 +2,6 @@ steam: invites not working when already in game
 
 
 
-vehicle stores repair contained vehicles
-
-AI:
-	if dead ghost outside hostile sensory but in attack range of living hostile structure ghost, apply matching 'virtual' scanning range of given distance to that structure
-	if dead ghost outside hostile attack range but in scanning range of living hostile structure ghost, apply matching 'virtual' attack range of given distance to that structure
-	cache threat estimation
 
 
 
@@ -35,6 +29,7 @@ should have (eventually):
 	scriptable AI and regression testing (they are related)
 	
 nice to have:
+	vehicle stores repair contained vehicles
 	better visualization of attack/scanning ranges. use special terrain meshes with hard lines to visualize edges
 	at bottom terrain level, emp-damaged, minimum allowed attack and scanning range is still high enough to see and attack neighboring cell
 	routing through vehicle stores
@@ -46,8 +41,11 @@ nice to have:
 	better clipping:
 		visually remove all solid terrain beneath clipping height,
 		in clipping range, that has no air/liquid above it, or next to it
-	
-
+	AI:
+		if dead ghost outside hostile sensory but in attack range of living hostile structure ghost, apply matching 'virtual' scanning range of given distance to that structure
+		if dead ghost outside hostile attack range but in scanning range of living hostile structure ghost, apply matching 'virtual' attack range of given distance to that structure
+		cache threat estimation
+		
 steam: connect via tcp if steam lobby system fails. does not relate to lobbies. cannot reproduce. some explanations:
 	client manages to connect.
 	possible causes:
