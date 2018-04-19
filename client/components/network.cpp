@@ -1,4 +1,3 @@
-#include <scriptCache.h>
 #include <grid/resources.h>
 #include <io/string_file.h>
 
@@ -1331,25 +1330,38 @@ namespace Network
 
 
 			if (isMine)
+			{
 				scriptChangeFlags |= ScriptChangeFlags::HaveMyAttributes;
+
+				World::actual.InvalidateSensory();
+			}
 			elif (zeroTable)
 				scriptChangeFlags |= ScriptChangeFlags::HaveZeroAttributes;
 
 			CheckScriptChangeFlags();
+
 		}
 
 		void	ResearchAttributeDeltaVector(Protocol::ResearchAttributeDeltaVector&attributes)
 		{
 			Objects::Research::Attributes::Table*table0 = nullptr;
+			bool isMine = false;
 			if (attributes.faction.IsEmpty())
 				table0 = &Objects::Research::globalState.zeroTable;
 			else
-				table0 = &ResolveFaction(attributes.faction)->researchState.attributeTable;
+			{
+				auto f = ResolveFaction(attributes.faction);
+				isMine = f->isOwnedByMe;
+				table0 = &f->researchState.attributeTable;
+			}
 			auto&table = *table0;
 
 			Import(attributes.boolAttributes,table.bools);
 			Import(attributes.intAttributes,table.ints);
 			Import(attributes.floatAttributes,table.floats);
+
+			if (isMine)
+				World::actual.InvalidateSensory();
 		}
 
 
