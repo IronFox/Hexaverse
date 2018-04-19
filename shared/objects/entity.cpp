@@ -572,16 +572,17 @@ namespace Objects
 		//		}
 		//	}
 		//}
-		void		WorldEntity::OverrideSetRegisteredSensorToCurrentLocation()
-		{
-			registeredSensors.Clear();
-			VisitSensors(location, [this](const World::Sensor&sensor)
-			{
-				registeredSensors << sensor;
-			});
-		}
 
 	#endif
+
+	void		WorldEntity::OverrideSetRegisteredSensorToCurrentLocation()
+	{
+		registeredSensors.Clear();
+		VisitSensors(location, [this](const World::Sensor&sensor)
+		{
+			registeredSensors << sensor;
+		});
+	}
 	
 
 	void		WorldEntity::MoveSensoryToCurrentLocation(float&atTime, Ctr::Buffer0<PWorldEntity>*newContacts/* = nullptr*/)

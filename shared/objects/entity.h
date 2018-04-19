@@ -619,17 +619,18 @@ namespace Objects
 				}
 			}
 
-			/**
-			Updates the locally registered sensor to the current entity location.
-			Called ONLY by factions when they repaint sensory.
-			Never call otherwise.
-			*/
-			void					OverrideSetRegisteredSensorToCurrentLocation();
 
 		#endif
 
-		private:
-			RegisteredSensorStorage	registeredSensors;
+		/**
+		Updates the locally registered sensor to the current entity location.
+		Called ONLY by factions or client side grid handling when they repaint sensory.
+		Never call otherwise.
+		*/
+		void					OverrideSetRegisteredSensorToCurrentLocation();
+
+	private:
+		RegisteredSensorStorage	registeredSensors;
 
 	};
 

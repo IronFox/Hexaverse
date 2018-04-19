@@ -1135,10 +1135,8 @@ namespace VisualTerrain
 	{
 
 		BYTE familiesRebuilt = 0;
-		Timer::Time t0 = timer.Now();
 
-		ClientGrid::CheckSensory();
-
+		const auto t0 = timer.Now();
 
 		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 		{

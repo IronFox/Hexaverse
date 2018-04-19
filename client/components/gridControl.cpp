@@ -10,6 +10,7 @@
 #include "clientEvents.h"
 #include <objects/faction.h>
 #include "network.h"
+#include <general/thread_system.h>
 
 namespace ClientGrid
 {
@@ -45,21 +46,42 @@ namespace ClientGrid
 	*/
 	void CheckSensory()
 	{
+		static bool started = false;
+
+		if (started && !World::actual.PaintingConcurrently())
+		{
+			started = false;
+			VisualTerrain::Invalidate();
+		}
+
 		if (World::actual.SensoryIsInvalid())
 		{
+			if (World::actual.PaintingConcurrently())
+				return;
+
+
 			if (Network::amSpectator)
 				World::actual.FlushAndValidateSensory(1);
 			else
 			{
-				World::actual.FlushAndValidateSensory();
+				static Buffer0<World::Sensor>	sensors;
 				Objects::ForeachWorldEntity([](const Objects::PWorldEntity&e)
 				{
 					if (e->owner->SharesSensorsWithMe())
 					{
-						float t= 0;
-						e->ReapplySensory(t);
+						e->VisitSensors(e->location,[](const World::Sensor&s)
+						{
+							sensors << s;
+						});
+						e->OverrideSetRegisteredSensorToCurrentLocation();
 					}
 				},Objects::IncludeGhosts::None);
+				World::actual.PaintConcurrently(sensors);
+				sensors.Clear();
+
+				started = true;
+
+
 			}
 		}
 

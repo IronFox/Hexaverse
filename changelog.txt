@@ -7,6 +7,7 @@ v0.8.4
 	> Mechanic now keeps trying to repair the designated unit if insufficient minerals are available for full repair.
 	> If auto-spawned player bases are off, new factions receive a single full mineral container so they can build.
 	> Renamed 'Disconnect' to 'Return to Server List' to clarify what happens when in interactive configuration mode.
+	> Parallelized client sensor repainting in background threads, avoiding sub-second update freezes on large deployments.
 	* Fixed crash when clicking on unit while HUD is hidden.
 	* Fixed missing tower attack action update.
 	* Fixed attack arrow positioning when mobile unit is selected but attack origin is not current entity location.
