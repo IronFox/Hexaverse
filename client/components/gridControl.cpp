@@ -51,7 +51,9 @@ namespace ClientGrid
 		if (started && !World::actual.PaintingConcurrently())
 		{
 			started = false;
-			VisualTerrain::Invalidate();
+			#ifdef HAS_WINDOW
+				VisualTerrain::Invalidate();
+			#endif
 		}
 
 		if (World::actual.SensoryIsInvalid())
